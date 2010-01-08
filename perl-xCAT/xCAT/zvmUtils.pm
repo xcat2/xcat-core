@@ -73,6 +73,31 @@ sub getTabPropsByKey {
 
 #-------------------------------------------------------
 
+=head3   getAllTabEntries
+	Description	: Get all entries within given table
+    Arguments	: 	Table
+    Returns		: All table entries
+    Example		: my $entries = xCAT::zvmUtils->getAllTabEntries($tabName);
+    
+=cut
+
+#-------------------------------------------------------
+sub getAllTabEntries {
+
+	# Get inputs
+	my ( $class, $tabName ) = @_;
+
+	# Get table
+	my $tab = xCAT::Table->new($tabName);
+	my $entries;
+
+	# Get all entries within given table
+	$entries = $tab->getAllEntries();
+	return ($entries);
+}
+
+#-------------------------------------------------------
+
 =head3   setNodeProp
 
 	Description	: Set node property in a given table
@@ -328,7 +353,7 @@ sub getHwcfg {
 	my ( $class, $node ) = @_;
 
 	# Get OS
-	my $os = xCAT::zvmCPUtils->getOs($node);
+	my $os = xCAT::zvmUtils->getOs($node);
 
 	# Get network configuration file path
 	my $out;
@@ -365,7 +390,7 @@ sub getIfcfg {
 	my ( $class, $node ) = @_;
 
 	# Get OS
-	my $os = xCAT::zvmCPUtils->getOs($node);
+	my $os = xCAT::zvmUtils->getOs($node);
 
 	# Get network configuration file path
 	my $out;
@@ -408,7 +433,7 @@ sub getIfcfgByNic {
 	my ( $class, $node, $nic ) = @_;
 
 	# Get OS
-	my $os = xCAT::zvmCPUtils->getOs($node);
+	my $os = xCAT::zvmUtils->getOs($node);
 
 	# Get network configuration file path
 	my $out;
@@ -872,7 +897,7 @@ sub generateMacId {
 
 		# Convert decimal -- hexadecimal
 		$macId = sprintf( "%X", $macId );
-		
+
 		# Save new MACID
 		$out = `ssh -o ConnectTimeout=5 $hcp "echo $macId > /opt/zhcp/conf/next_macid"`;
 	}
@@ -935,4 +960,109 @@ sub createMacAddr {
 	  . substr( $mac, 10, 2 );
 
 	return $mac;
+}
+
+#-------------------------------------------------------
+
+=head3   getSn
+
+	Description	: Get serial number for given node
+    Arguments	: Node
+    Returns		: Serial number
+    Example		: my $sn = xCAT::zvmUtils->getSn($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getSn {
+
+	# Get inputs
+	my ( $class, $node ) = @_;
+
+	# Get node properties from 'zvm' table
+	my @propNames = ('hcp');
+	my $propVals  = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+
+	# Get HCP
+	my $hcp = $propVals->{'hcp'};
+
+	# Look in /proc/sysinfo to get serial number
+	my $out   = `ssh $hcp "cat /proc/sysinfo" | egrep -i "manufacturer|type|model|sequence code|plant"`;
+	my @props = split( '\n', $out );
+	my $man   = $props[0];
+	my $type  = $props[1];
+	my $model = $props[2];
+	my $sn    = $props[3];
+	my $plant = $props[4];
+
+	# Trim and get property value
+	# Get manufacturer
+	@props = split( ':', $man );
+	$man   = xCAT::zvmUtils->trimStr( $props[1] );
+
+	# Get machine type
+	@props = split( ':', $type );
+	$type  = xCAT::zvmUtils->trimStr( $props[1] );
+
+	# Get model
+	@props = split( ': ', $model );
+	$model = xCAT::zvmUtils->trimStr( $props[1] );
+	@props = split( ' ', $model );
+	$model = xCAT::zvmUtils->trimStr( $props[0] );
+
+	# Get sequence number
+	@props = split( ':', $sn );
+	$sn    = xCAT::zvmUtils->trimStr( $props[1] );
+
+	# Get plant
+	@props = split( ':', $plant );
+	$plant = xCAT::zvmUtils->trimStr( $props[1] );
+
+	return ("$man-$type-$model-$plant-$sn");
+}
+
+#-------------------------------------------------------
+
+=head3   getOs
+
+	Description	: Get operating system name of given node
+    Arguments	: Node
+    Returns		: Operating system name
+    Example		: my $osName = xCAT::zvmUtils->getOs($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getOs {
+
+	# Get inputs
+	my ( $class, $node ) = @_;
+
+	# Get operating system
+	my $out = `ssh -o ConnectTimeout=10 $node "cat /etc/*release"`;
+	my @results = split( '\n', $out );
+	return ( xCAT::zvmUtils->trimStr( $results[0] ) );
+}
+
+#-------------------------------------------------------
+
+=head3   getArch
+
+	Description	: Get architecture of given node
+    Arguments	: Node
+    Returns		: Architecture of node
+    Example		: my $arch = xCAT::zvmUtils->getArch($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getArch {
+
+	# Get inputs
+	my ( $class, $node ) = @_;
+
+	# Get host using VMCP
+	my $arch = `ssh $node "uname -p"`;
+
+	return ( xCAT::zvmUtils->trimStr($arch) );
 }
