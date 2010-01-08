@@ -49,7 +49,7 @@ sub do_getmacs {
     # Find Expect script 
     #######################################
     $cmd = ($::XCATROOT) ? "$::XCATROOT/sbin/" : "/opt/xcat/sbin/";
-    $cmd .= "lpar_netboot2.expect"; 
+    $cmd .= "lpar_netboot.expect"; 
 
     #######################################
     # Check command installed 
