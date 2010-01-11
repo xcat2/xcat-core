@@ -11,10 +11,11 @@ use Getopt::Long;
 my @hosts; #Hold /etc/hosts data to be written back
 my $LONGNAME;
 my $OTHERNAMESFIRST;
+my $ADDNAMES;
 
 
 my %usage=(
-    makehosts => "Usage: makehosts <noderange> [-n] [-l]\n       makehosts -h",
+    makehosts => "Usage: makehosts <noderange> [-n] [-l] [-a] [-o]\n       makehosts -h",
 );
 sub handled_commands {
   return {
@@ -68,7 +69,8 @@ sub build_line {
 		$longname=$_;
 		$_="";
 	    }
-	}
+	} elsif ($ADDNAMES) {
+        $$othernames = $_.$domain." ".$othernames;
     } 
 
     if ($node =~ m/\.$domain$/i) {
@@ -118,7 +120,8 @@ sub process_request {
   if(!GetOptions(
       'h|help'  => \$HELP,
       'n'  => \$REMOVE,
-      'h|hostnamesfirst'  => \$OTHERNAMESFIRST,
+      'o|othernamesfirst'  => \$OTHERNAMESFIRST,
+      'a|adddomaintohostnames'  => \$ADDNAMES,
       'l|longnamefirst'  => \$LONGNAME,))
   {
     $callback->({data=>$usage{makehosts}});
