@@ -394,11 +394,11 @@ sub action {
     }
   
     
-    if($$attrs[4] =~ /^fsp$/) {
+    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ ) {
         $type = 0;
         $id = 0;
     } else { 
-	$type = 1;
+   	    $type = 1;
     } 
 
     ############################
@@ -494,13 +494,13 @@ sub rflash {
 	#For one mtms, it just needs to do the operation one time.
 	#
         $flag += 1;
-	if($flag > 1) {
-	    last;	
-	}	
+	    if($flag > 1) {
+	        last;	
+	    }	
 	
-	$mtms =~ /(\w+)-(\w+)\*(\w+)/;
-	my $mtm    = "$1-$2";
-	my $serial = $3;
+	    $mtms =~ /(\w+)-(\w+)\*(\w+)/;
+	    my $mtm    = "$1-$2";
+	    my $serial = $3;
 		
 	
         while (my ($name,$d) = each(%$h) ) {
