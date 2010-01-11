@@ -166,6 +166,7 @@ sub process_request {
       if ($forcenic == -1) { #if force to skip, go to next nic
           next;
       }
+      my $currmac = lc($ifinfo[2]);
       if ($ifinfo[3]) {
           (my $ip,my $netbits) = split /\//,$ifinfo[3];
     	  if ($ip =~ /\d+\.\d+\.\d+\.\d+/) {
@@ -182,13 +183,13 @@ sub process_request {
                     $nrtab->setNodeAttribs($node,{nfsserver=>xCAT::Utils->my_ip_facing($hosttag)});
                  }
                  $usednames{$hosttag}=1;
-    		   $macstring .= $ifinfo[2]."!".$hosttag."|";
+    		   $macstring .= $$currmac."!".$hosttag."|";
 	    	} else {
-               if ($forcenic == 1) { $macstring .= $ifinfo[2]."|"; } else { $macstring .= $ifinfo[2]."!*NOIP*|"; }
+               if ($forcenic == 1) { $macstring .= $currmac."|"; } else { $macstring .= $currmac."!*NOIP*|"; }
             }
-    	  }
+          }
       } else {
-          if ($forcenic == 1) { $macstring .= $ifinfo[2]."|"; }
+          if ($forcenic == 1) { $macstring .= $currmac."|"; }
       }
     }
     $macstring =~ s/\|\z//;
