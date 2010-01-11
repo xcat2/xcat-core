@@ -72,6 +72,7 @@ sub build_line {
 	} elsif ($ADDNAMES) {
         $$othernames = $_.$domain." ".$othernames;
     } 
+    }
 
     if ($node =~ m/\.$domain$/i) {
         $longname = $node;
