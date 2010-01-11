@@ -56,6 +56,7 @@ sub build_line {
     my $domain=shift;
     my $othernames=shift;
     my @o_names=();
+    my @n_names=();
     if (defined $othernames) {
          @o_names=split(/,| /, $othernames);
     }
@@ -70,9 +71,10 @@ sub build_line {
 		$_="";
 	    }
 	} elsif ($ADDNAMES) {
-        $$othernames = $_.$domain." ".$othernames;
+        unshift(@n_names,"$_.$domain");
     } 
     }
+    unshift(@o_names,@n_names);
 
     if ($node =~ m/\.$domain$/i) {
         $longname = $node;
@@ -83,7 +85,7 @@ sub build_line {
 
     $othernames=join(' ', @o_names);
     if ($LONGNAME) { return "$ip $longname $node $othernames\n"; } 
-    elsif ($OTHERNAMESFIRST) { return "$ip $othernames $node $longname\n"; }
+    elsif ($OTHERNAMESFIRST) { return "$ip $othernames $longname $node\n"; }
     else { return "$ip $node $longname $othernames\n"; }
 }
 
