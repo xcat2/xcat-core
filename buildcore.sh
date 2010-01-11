@@ -113,7 +113,8 @@ if ! $GREP 'At revision' $SVNUP; then		# Use to be:  $GREP perl-xCAT $SVNUP; the
    mv $source/SRPMS/perl-xCAT-$VER*rpm $SRCDIR/
 fi
 if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh perl-xCAT-$VER-*rpm" > $DESTDIR/instxcat
+	# For the 1st one we overwrite, not append
+	echo "rpm -Uvh perl-xCAT-$SHORTVER*rpm" > $DESTDIR/instxcat
 fi
 
 if $GREP xCAT-client $SVNUP; then
@@ -125,8 +126,7 @@ if $GREP xCAT-client $SVNUP; then
    mv $source/SRPMS/xCAT-client-$VER*rpm $SRCDIR/
 fi
 if [ "$OSNAME" = "AIX" ]; then
-	# For the 1st one we overwrite, not append
-	echo "rpm -Uvh xCAT-client-$VER-*rpm" >> $DESTDIR/instxcat
+	echo "rpm -Uvh xCAT-client-$SHORTVER*rpm" >> $DESTDIR/instxcat
 fi
 
 if $GREP xCAT-UI $SVNUP; then
@@ -139,7 +139,7 @@ if $GREP xCAT-UI $SVNUP; then
 fi
 # Do not automatically install xCAT-UI on AIX
 #if [ "$OSNAME" = "AIX" ]; then
-#	echo "rpm -Uvh xCAT-UI-$VER-*rpm" >> $DESTDIR/instxcat
+#	echo "rpm -Uvh xCAT-UI-$SHORTVER*rpm" >> $DESTDIR/instxcat
 #fi
 
 if $GREP xCAT-server $SVNUP; then
@@ -151,7 +151,7 @@ if $GREP xCAT-server $SVNUP; then
    mv $source/SRPMS/xCAT-server-$VER*rpm $SRCDIR
 fi
 if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh --nodeps xCAT-server-$VER-*rpm" >> $DESTDIR/instxcat
+	echo "rpm -Uvh --nodeps xCAT-server-$SHORTVER*rpm" >> $DESTDIR/instxcat
 fi
 
 if $GREP xCAT-rmc $SVNUP; then
@@ -217,8 +217,8 @@ if $GREP -E '^[UAD] +xCAT/' $SVNUP; then
 fi
 
 if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh xCAT-$VER-*rpm" >> $DESTDIR/instxcat
-	echo "rpm -Uvh xCAT-rmc-$VER-*rpm" >> $DESTDIR/instxcat
+	echo "rpm -Uvh xCAT-$SHORTVER*rpm" >> $DESTDIR/instxcat
+	echo "rpm -Uvh xCAT-rmc-$SHORTVER*rpm" >> $DESTDIR/instxcat
 	# add the service node bundle files 
 	cp xCATaixSN.bnd xCATaixSN2.bnd xCATaixSSH.bnd xCATaixSSL.bnd $DESTDIR/
 fi
