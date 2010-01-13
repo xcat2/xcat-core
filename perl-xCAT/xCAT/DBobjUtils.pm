@@ -407,11 +407,13 @@ sub getobjdefs
                 {
                     next;
                 }
-                # skip the attributes that does not needed
-                if (scalar(@attrs) > 0 && !grep(/^$attr$/, @attrs)) {
-                    next;
-                } 
-    
+                # skip the attributes that does not needed for node type
+                if ($getnodes) {
+                    if (scalar(@attrs) > 0 && !grep(/^$attr$/, @attrs)) {
+                        next;
+                    } 
+                }
+ 
                 #  OK - get the info needed to access the DB table
                 #   - i.e. table name, key name, attr names
     
