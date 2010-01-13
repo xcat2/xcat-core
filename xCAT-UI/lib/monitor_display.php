@@ -98,7 +98,8 @@ echo <<<TOS5
         $("#association").dataTable({
             "bLengthChange": false,
             "bFilter": true,
-            "bSort": true
+            "bSort": true,
+            "iDisplayLength": 50
         });
     </script>
 <table>
@@ -331,9 +332,10 @@ echo '<div id=lseventLog>';
 echo <<<TOS8
 <script type="text/javascript" type"utf-8">
 $("#lseventLog table").dataTable({
-    "bLengthChange": true,
-    "bFilter": true,
-    "bSort": true
+    "bLengthChange": false,
+    "bFilter": false,
+    "bSort": true,
+    "iDisplayLength": 50
 });
 </script>
 TOS8;

@@ -334,8 +334,8 @@ function init_ositree(){
     //display all the nodes with OSI type
     nrtree = new tree_component();  //-tree begin
     nrtree.init($("#ositree"),{
-        rules: { multiple: "Ctrl" },
-        ui: { animation: 250 },
+        rules: {multiple: "Ctrl"},
+        ui: {animation: 250},
         data : {
             type: "json",
             async: "true",
@@ -358,8 +358,8 @@ function init_ositree(){
 function init_rmc_ositree() {
     nrtree = new tree_component();  //-tree begin
     nrtree.init($("#rmc_tree"),{
-        rules: { multiple: "Ctrl" },
-        ui: { animation: 250 },
+        rules: {multiple: "Ctrl"},
+        ui: {animation: 250},
         callback: {
             onchange: function(n) {
                 $("#monshow_tip_1").hide();
@@ -480,6 +480,22 @@ function rmc_monshow_draw_by_flot(div, value)
 function loadLLCfgEditor()
 {
     window.document.location="../ll/llconfig_editor.pl";
+}
+
+/* 
+ * loadNodeStatus()
+ * will show the power status of all nodes in the cluster
+ * with the help of "rpower all stat"
+ * It's used in PHP function showNodeStat().
+ */
+function loadNodeStatus()
+{
+    $.get("rpowerstat.php", {type: "table"}, function(data) {
+        $("#p_stat_table").html("<div id=stat_table></div>");
+        $("#stat_table").html(data);
+        $("#stat_table").dataTable({"bJQueryUI": true, "iDisplayLength": 50});
+        $("#p_stat_table").show();
+    });
 }
 
 // load progress bar

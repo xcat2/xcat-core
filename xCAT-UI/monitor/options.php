@@ -146,15 +146,70 @@ JS11;
     echo <<<ACD01
     <h3><a href="#">RMC Event Log</a></h3>
     <div>
-    <p>TODO</p>
-    </div>
 ACD01;
+    showEventInThreeHours();
+    echo <<<ACD011
+    <div>
+        <div class='ui-state-highlight'>The above table shows the RMC events happened in 3 hours.<br />If you want to see more, please click the Redirect button.</div>
+        <button class='fg-button ui-state-active ui-corner-all' onclick='loadMainPage("monitor/rmc_lsevent.php")'>Redirect</button>
+    </div>
+ACD011;
     echo <<<ACD02
+    </div>
     <h3><a href="#">RMC Performance Monitoring</a></h3>
     <div>
-    <p>TODO</p>
+        <div class='ui-state-highlight'>
+        <p>Please click the Redirect button to see the monitoring details.</p>
+        <button class='fg-button ui-state-active' onclick='loadMainPage("monitor/rmc_monshow.php")'>Redirect</button>
+        </div>
     </div>
 ACD02;
+    echo "</div>";
+}
+
+function showEventInThreeHours()
+{
+    # display the RMC Events in three hours
+    $datem = date("m"); //month: 01-12
+    $dated = date("d"); //day:   01-31
+    $dateY = date("Y"); //Year:  2009
+    $dateh = date("h"); //hour:  01-12
+    $datei = date("i") - 3; //minute: 01-59
+    
+    $Bdate = date("mdhiY", mktime($dateh, $datei, 0, $datem, $dated, $dateY));
+    
+    $xml = docmd("webrun", "", array("lsevent -B $Bdate"));
+    
+    if(getXmlErrors($xml, $error)) {
+        echo "<p class=Error>",implode(' ', $errors), "</p>";
+        exit;
+    }
+    echo "<div id='eventinthreehour'>";
+echo <<<JS31
+       <script type="text/javascript">
+        $("#eventinthreehour").dataTable({
+            "bLengthChange": false,
+            "bFilter": true,
+            "bSort": true,
+            "iDisplayLength":50
+        });
+    </script>
+JS31;
+    echo "<table>";
+    echo "<thead><tr><th width=20%>Category</th><th width=60%>Description</th><th width=20%>Time</th></tr></thead>";
+    # parse the output
+    foreach($xml->children() as $response) foreach($response->children() as $records) {
+        echo "<tr>";
+        if($records->children()) {
+            foreach($records->children() as $data) {
+                echo "<td>$data</td>";
+            }
+        }else {
+            echo "<td>Category</td><td>Description</td><td>Time</td>";
+        }
+        echo "</tr>";
+    }
+    echo "</table>";
     echo "</div>";
 }
 
@@ -183,8 +238,13 @@ function showPluginDesc($name)
 
 
     $information = "";
+    $order = array("\r\n","\n", "\r");
+    $replace = '<br />';
+    print_r($xml);
+    echo "<br />#############<br />";
     foreach ($xml->children() as $response) foreach ($response->children() as $data) {
-        $information .="<p>$data</p>";
+        $newstr = str_replace($order, $replace, $data);
+        $information .="<p>$newstr</p>";
     }
     echo $information;
 }
@@ -274,7 +334,7 @@ function insertButtonSet($state1, $state2, $default)
 
 function showNRTreeInput()
 {
-    echo "<div id=nrtree-input class='ui-state-default ui-corner-all'>";
+    echo "<div id=nrtree-input class='ui-corner-all'>";
 echo <<<TOS3
 <script type="text/javascript">
     $(function() {

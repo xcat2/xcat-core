@@ -332,8 +332,7 @@ padding:10px 2px;
 
 #rmc_tree {
     float: left;
-    width: auto;
-    min-height: 255px;
+    width: 21%;
     border-right: 1px dotted #555;
     min-width: 130px;
     /*display: none;*/
@@ -341,9 +340,9 @@ padding:10px 2px;
 
 #rmc_monshow {
     float: left;
-    width: 701px;  /*need update*/
-    margin: 10px;
-    padding: 10px;
+    width: 78%;  /*need update*/
+    margin: 0px;
+    padding: 0px;
     display: block;
 }
 
@@ -406,3 +405,116 @@ padding:10px 2px;
     float: right;
 }
 
+/*
+ * @the following definitions are used for cluster summary page
+ */
+
+ h5 {
+	font-family: "Trebuchet MS", Verdana, Helvetica, Arial,sans-serif !important;
+	margin: 0;
+	padding: 0;
+	letter-spacing: 0;
+	border-bottom: 0 !important;
+}
+
+a {
+    text-decoration:none;
+	color: #5DB0E6;
+}
+a:focus {
+	outline: 1px dotted #eee;
+}
+a:active {
+	outline: 0px;
+}
+a:hover {
+	color: #7bc4f4;
+}
+
+#clusternav {
+     float: right;
+     display: inline;
+     width: 164px;
+     background: #fafafa;
+     border: 1px solid #ccc;
+     padding: 5px 15px 15px;
+     min-height: 500px;
+     -moz-border-radius: .5em; /* gecko */
+     -webkit-border-radius: .5em; /*webkit*/
+     border-radius: .5em; /* w3 */
+     color: #000;
+}
+
+#clusternav h5 {
+    background: #ddd;
+    margin: 4px 0px 0px 24px;
+    outline-color: #192839;
+    padding: 3px 10px;
+    font-size: 12px;
+    text-align: left;
+}
+
+#clusternav ul li {
+    list-style-type: none;
+    text-align: left;
+    border-bottom: 1px solid #999999;
+    margin-bottom: 5px;
+}
+
+#clusterprimary {
+    position: relative;
+    float: left;
+    display: inline;
+    width: 732px;
+    background: #fafafa;
+    border: 1px solid #aaa;
+    padding: 5px 15px 15px;
+    color: #222;
+    min-height: 500px;
+    -moz-border-radius: .5em; /* gecko */
+    -webkit-border-radius: .5em; /* webkit */
+    border-radius: .5em; /* w3 */
+    overflow: visible;
+}
+
+.cluster_subinfo {
+    border-bottom: 1px solid #fafafa;
+    text-align: left;
+}
+
+.cluster_subinfo h5 {
+    background: #ddd;
+    margin: 4px 0px 0px 24px;
+    outline-color: #192839;
+    padding: 3px 10px;
+    font-size: 12px;
+    text-align: left;
+}
+
+.stat_table {
+    border-bottom: 1px solid #fafafa;
+    font-size: .8em;
+}
+
+.spacer {
+    clear: both;
+    height: 20px;
+    display: block;
+}
+
+#mgmt_network, #rpowerstat_num, #monplugin_list, #rpmtable {
+    border: 1px solid #AAA;
+    background-color: #f9f9f9;
+    clear: right;
+    color: black;
+    margin: 0.5em 0em 0.5em 1em;
+    padding: 0.2em;
+}
+
+#rpmtable tr:odd {
+    background-color: #CCCCCC;
+}
+
+#general table {
+    margin-left: 30px;
+}

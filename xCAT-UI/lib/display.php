@@ -75,6 +75,9 @@ echo <<<EOS2
  <div id=header>
   <ul class="sf-menu" id='sf-menu'>
    <li>
+        <img src="img/logo.gif" height=100% onclick='loadMainPage("index.php")'/>
+   </li>
+   <li>
     <a href="control.php">control</a>
 	<ul>
 	<li><a href="vm.php">VM Management</a></li>
@@ -118,6 +121,13 @@ echo <<<EOS4
                         <a href="monitor/rmc_lsevent.php">RMC Events</a>
                 </li>
 	</ul>
+   </li>
+   <li>
+        <a href="help.php">Help</a>
+        <ul>
+            <li><a href="#">Update</a></li>
+            <li><a href="summary.php">Summary</a></li>
+        </ul>
    </li>
   </ul>
   <!-- <div id="cmdForm">
@@ -466,7 +476,8 @@ $(document).ready(function() {
     $("#tableForCtrl").dataTable({
         "bLengthChange": true,
         "bFilter": true,
-        "bSort": true
+        "bSort": true,
+        "iDisplayLength": 50
     });
 });
 </script>
@@ -693,6 +704,284 @@ function displayProvisionOps($nr){
 <div id='part6' style='display:none'></div>
 
 EOF;
+}
+
+
+function getHostName() {
+    if($_SERVER['SERVER_SOFTWARE'] == 'IBM_HTTP_Server') {
+        return exec("hostname");
+    }else {
+        return exec("hostname --long");
+    }
+}
+
+function getCPUInfo() {
+    #check the var $_SERVER['SERVER_SOFTWARE'] to determine the server's os type
+    #if its value is "IBM_HTTP_Server", the server will be treated as AIX
+    if($_SERVER['SERVER_SOFTWARE'] == 'IBM_HTTP_Server') {
+        return exec("lscfg -vp |wc -l");#on AIX, the command can show processor count
+    }else {
+        return exec("cat /proc/cpuinfo |grep -i processor |wc -l");
+    }
+}
+
+function getMemInfo() {
+    if($_SERVER['SERVER_SOFTWARE'] == 'IBM_HTTP_Server') {#AIX
+        $str = exec("lsattr -El sys0 |grep realmem");
+        $arr = preg_split('/\s+/', $str);
+        return $arr[1];
+    }else {
+        $str = exec("cat /proc/meminfo |grep MemTotal");
+        $arr = preg_split('/[:\s]+/', $str);
+        return $arr[1];
+    }
+}
+
+function getNetworksInfo() {
+    #the command is "lsdef -t network -i net,mask,mgtifname" in the sever end;
+    #display the net, mask and mgtifname in one small table
+    echo "<table id=mgmt_network cellspacing=5 >";
+    echo "<thead>";
+    echo "<tr><th>Network</th><th>Netmask</th><th>MgtIfName</th></tr>";
+    echo "</thead>";
+    echo "<tbody>";
+    $xml = docmd("tabdump", "", array("networks"));
+    foreach($xml->children() as $response) foreach($response->children() as $data) {
+        if(strstr($data[0], '#') != FALSE) { continue; }
+        else {
+            #print_r($data);
+            $arr = split(",", $data);
+            echo "<tr>";
+            echo "<td>".$arr[1]."</td>";
+            echo "<td>".$arr[2]."</td>";
+            echo "<td>".$arr[3]."</td>";
+            echo "</tr>";
+        }
+    }
+    echo "</tbody>";
+    echo "</table>";
+}
+
+function summary_general() {
+    $hostname = getHostName();
+    $cpus = getCPUInfo();
+    $mem = getMemInfo();
+    #TODO
+echo <<<INFO0
+       <table>
+        <tbody>
+        <tr>
+        <td bgcolor="#cccccc">Hostname</td>
+        <td>$hostname</td>
+        </tr>
+        <tr>
+        <td bgcolor="#cccccc">Processors</td>
+        <td>$cpus</td>
+        </tr>
+        <tr>
+        <td bgcolor="#cccccc">Memory</td>
+        <td>$mem KB</td>
+        </tr>
+        <tr>
+        <td bgcolor="#cccccc">Networks</td>
+        <td>
+INFO0;
+    getNetworksInfo();
+echo <<<INFO1
+        </td>
+        </tr>
+        </tbody>
+        </table>
+INFO1;
+}
+
+/*
+ * showNodeStat()
+ * will show the number of nodes in the cluster
+ * and also show their status
+ */
+
+function showNodeStat() {
+    $xml=docmd("rpower", "all", array("stat"));
+    $stat_arr = array();
+    foreach($xml->children() as $response){
+        #parse the xml tree
+        #print_r($response);
+        if($response->errorcode == 0) {
+            #echo $response->node->name, $response->node->data->contents;
+            $key = $response->node->name;
+            $stat_arr["$key"] = $response->node->data->contents;
+        }
+    }
+    echo "<div>";
+    echo "<div style='width:40%; margin-left:64px'>";
+    echo "<table id=rpowerstat_num>";
+    $stat_num = array("Operating" => 0, "Running" => 0, "Not Activated" => 0, "Open Firmware" => 0);
+    foreach ($stat_arr as $k => $v) {
+        $stat_num["$v"] ++;
+    }
+    echo "<tr><td>Operating</td><td>", $stat_num["Operating"], "</td></tr>";
+    echo "<tr><td>Running</td><td>",$stat_num["Running"],"</td></tr>";
+    echo "<tr><td>Not Activated</td><td>",$stat_num["Not Activated"],"</td></tr>";
+    echo "<tr><td>Open Firmware</td><td>",$stat_num["Open Firmware"],"</td></tr>";
+    echo "</table>";
+    #add two buttons here: show/hide the detailed status in stat_table <table>
+    #TODO: move them to the proper positions 
+    echo "<div class='fg-buttonset fg-buttonset-single' style='margin-left:30px'>";
+    echo "<button id='show' class='fg-button ui-state-default ui-state-active ui-priority-primary ui-corner-left'>Show</button>";
+    echo "<button id='hide' class='fg-button ui-state-default ui-corner-right'>Hide</button>";
+    echo "</div>";
+    echo "</div>";
+echo <<<GRAPH0
+<script type="text/javascript">
+    $(function() {
+        $("#show").click(function() {
+            if($(this).is(".ui-state-active")) {
+                loadNodeStatus();
+                $(this).removeClass("ui-state-active");
+                $("#hide").addClass("ui-state-active");
+            }
+        });
+        $("#hide").click(function() {
+            if($(this).is(".ui-state-active")) {
+                $("#p_stat_table").hide();
+                $(this).removeClass("ui-state-active");
+                $("#show").addClass("ui-state-active");
+            }
+        });
+    });
+    /*
+    var data=[
+        {label: "Operating", data: 3 },
+        {label: "Running", data: 4 },
+        {label: "Not Activated", data: 12 },
+        {label: "Open Firmware", data: 1 }
+    ];
+    */
+    var options = {
+        series: {
+            pie: {
+                show: true
+            }
+        }
+    };
+    $.ajax({
+        url: "rpowerstat.php",
+        type: 'POST',
+        data: "type=json",
+        dataType: 'json',
+        success: function(data) {
+            $.plot($("#chart0"), data, options);
+        }
+    });
+    /*
+    "rpowerstat.php", {type:"json"}, function(data) {
+        $.plot($("#chart0"), data, options);
+    });
+    */
+
+</script>
+<div id='chart0' style="width:65%;height:256px;float: right">
+</div>
+GRAPH0;
+    echo "</div>";
+    echo "<div id='p_stat_table' style='border: 1px solid #AAA; width: 95%; float: right'>";
+    echo "<div id='stat_table'></div>";
+    echo "</div>";
+    echo "<div class='spacer'></div>";
+}
+
+
+/* showMonSum()
+ * will show the summary information of monitor plugins.
+ * 
+ */
+
+function showMonSum() {
+    $xml = docmd("monls", "", array("-a"));
+
+    echo "<div> ";
+    #print_r($xml);
+    echo "<table id='monplugin_list' style='margin-left: 30px'>";
+    echo "<thead><tr><th>Plugins</th><th>Status</th><th>NodeStatSupport</th><th></th></tr></thead>";
+    echo "<tbody>";
+
+    foreach($xml->children() as $response)  foreach($response->children() as $data){
+            list($name, $stat, $nodemon) = preg_split("/\s+/", $data);
+            echo "<tr>";
+            echo "<td>$name</td><td>$stat</td>";
+            if($nodemon) {
+                echo "<td>Enabled</td>";
+            }else {
+                echo "<td>Disabled</td>";
+            }
+            echo "<td><button class='fg-button ui-state-active'>MonShow</button></td>";
+            echo "</tr>";
+    }
+
+    echo "</tbody>";
+    echo "</table>";
+    echo "</div>";
+}
+
+function showxCATInfo() {
+    echo "<div>";
+    #$ret = shell_exec("rpm -qa |grep xCAT");/* there's no newline character in the string */
+    /*
+     *  xCAT-UI-2.4-snap200912080702
+        xCAT-client-2.4-snap200912180657
+        perl-xCAT-2.4-snap200912240801
+        xCAT-rmc-2.4-snap200912051911
+        xCAT-2.4-snap200912240802
+        xCAT-server-2.4-snap200912190921
+     *
+     */
+    #$rpms = preg_split("/\n/", $ret);
+    echo "<table id=rpmtable style='margin-left: 30px'>";
+    $ret = shell_exec("rpm -q xCAT");
+    if($ret) {
+        $verstr = substr($ret, 5);
+        echo "<tr>";
+        echo "<td>xCAT</td><td>$verstr</td><td></td>";
+        echo "</tr>";
+    }
+    $ret = shell_exec("rpm -q xCAT-server");
+    if($ret) {
+        $verstr = substr($ret, 12);
+        echo "<tr>";
+        echo "<td>xCAT-server</td><td>$verstr</td><td></td>";
+        echo "</tr>";
+    }
+    $ret = shell_exec("rpm -q xCAT-client");
+    if($ret) {
+        $verstr = substr($ret, 12);
+        echo "<tr>";
+        echo "<td>xCAT-client</td><td>$verstr</td><td></td>";
+        echo "</tr>";
+    }
+    $ret = shell_exec("rpm -q perl-xCAT");
+    if($ret) {
+        $verstr = substr($ret, 10);
+        echo "<tr>";
+        echo "<td>perl-xCAT</td><td>$verstr</td><td></td>";
+        echo "</tr>";
+    }
+    $ret = shell_exec("rpm -q xCAT-rmc");
+    if($ret) {
+        $verstr = substr($ret,9);
+        echo "<tr>";
+        echo "<td>xCAT-rmc</td><td>$verstr</td><td></td>";
+        echo "</tr>";
+    }
+    $ret = shell_exec("rpm -q xCAT-UI");
+    if($ret) {
+        $verstr = substr($ret,8);
+        echo "<tr>";
+        echo "<td>xCAT-UI</td><td>$verstr</td><td></td>";
+        echo "</tr>";
+    }
+    echo '</table>';
+    echo "</div>";
 }
 
 ?>

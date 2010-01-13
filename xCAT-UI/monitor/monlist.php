@@ -5,7 +5,7 @@ require_once "$TOPDIR/lib/functions.php";
 require_once "$TOPDIR/lib/display.php";
 require_once "$TOPDIR/lib/monitor_display.php";
 
-displayMapper(array('home'=>'main.php', 'new_monitor' =>''));
+displayMapper(array('home'=>'main.php', 'monitor plugins' =>''));
 
 ?>
 
