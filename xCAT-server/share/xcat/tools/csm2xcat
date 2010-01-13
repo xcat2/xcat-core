@@ -271,15 +271,15 @@ sub getNodeinfo
 
         while (($attr, $value) = each %$attributes)
         {
-            if ($attr eq "InstallServer")
-            {
-                if ($value)
-                {
-                    $xcatline = "    xcatmaster=$value\n";
-                    $xcatline .= "    servicenode=$value\n";
+            #if ($attr eq "InstallServer")
+            #{
+             #   if ($value)
+              #  {
+               #     $xcatline = "    xcatmaster=$value\n";
+                #    $xcatline .= "    servicenode=$value\n";
 
-                }
-            }
+                #}
+            #}
             # since we are suggesting that the xCAT MN is a different machine
             # than the CSM MS,  we will not use the Management Server value
             #if ($attr eq "ManagementServer")
