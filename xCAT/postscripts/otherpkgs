@@ -183,7 +183,7 @@ do
 		fi
 	    elif [ $haszypper -eq 1 ]; then
                 #use zypper
-		if [ "$OSVER" = "sles11" ]; then
+		if [[ "$OSVER" = sles11* ]]; then
 		    result=`zypper ar -c $REPOFILE`
 		else
 		    result=`zypper sa -c $REPOFILE` 
