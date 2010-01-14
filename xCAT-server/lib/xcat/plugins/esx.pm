@@ -39,6 +39,7 @@ my $usehostnamesforvcenter;
 my %tablecfg; #to hold the tables
 my $currkey;
 my $viavcenter;
+my $viavcenterbyhyp;
 my $vmwaresdkdetect = eval {
     require VMware::VIRuntime;
     VMware::VIRuntime->import();
@@ -306,27 +307,44 @@ sub process_request {
 	foreach my $hyp (sort(keys %hyphash)){
 		#if($pid == 0){
         if ($viavcenter or (defined $tablecfg{hypervisor}->{$hyp}->[0]->{mgr} and not $tablecfg{hypervisor}->{$hyp}->[0]->{preferdirect})) {
-	    $viavcenter=1;
+	    $viavcenterbyhyp->{$hyp}=1;
             $hypready{$hyp} = 0; #This hypervisor requires a flag be set to signify vCenter sanenes before proceeding
             my $vcenter = $hyphash{$hyp}->{vcenter}->{name};
             unless ($vcenterhash{$vcenter}->{conn}) {
+	        eval { 
                 $vcenterhash{$vcenter}->{conn} =
                     Vim->new(service_url=>"https://$vcenter/sdk");
                 $vcenterhash{$vcenter}->{conn}->login(
                             user_name => $hyphash{$hyp}->{vcenter}->{username},
                             password => $hyphash{$hyp}->{vcenter}->{password}
                             );
+                };
+                if ($@) { 
+                      $vcenterhash{$vcenter}->{conn} = undef;
+                      sendmsg([1,"Unable to reach $vcenter vCenter server to manage $hyp"]);
+                      next;
+                }
             }
             $hyphash{$hyp}->{conn} = $vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{conn};
             $hyphash{$hyp}->{vcenter}->{conn} = $vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{conn};
-            validate_vcenter_prereqs($hyp, \&declare_ready, {
+            if (validate_vcenter_prereqs($hyp, \&declare_ready, {
                 hyp=>$hyp,
                 vcenter=>$vcenter
-                });
+                }) eq "failed") {
+                $hypready{$hyp} = -1;
+            }
         } else {
-            $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk");
-            $hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
-            validate_licenses($hyp);
+            eval { 
+              $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk");
+              $hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
+            }; 
+            if ($@) {
+	       $hyphash{$hyp}->{conn} = undef;
+	       sendmsg([1,"Unable to reach $hyp to perform operation"]);
+                $hypready{$hyp} = -1;
+	       next;
+            }
+              validate_licenses($hyp);
         }
 		#}else{
 		#	$esx_comm_pids{$pid} = 1;
@@ -341,10 +359,14 @@ sub process_request {
         foreach (keys %hypready) {
             if ($hypready{$_} == -1) {
                 push @badhypes,$_;
+		my @relevant_nodes = sort (keys %{$hyphash{$_}->{nodes}});
+		foreach (@relevant_nodes) {
+			sendmsg([1,": hypervisor unreachable"],$_);
+		}
+		delete $hyphash{$_};
             }
         }
-        sendmsg([1,"The following hypervisors failed to become ready for the operation: ".join(',',@badhypes)]);
-        return;
+        sendmsg([1,": The following hypervisors failed to become ready for the operation: ".join(',',@badhypes)]);
     } 
     do_cmd($command,@exargs);
 	foreach my $hyp (sort(keys %hyphash)){
@@ -924,7 +946,7 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
     my $hyp; 
     my $vmviews;
     my %vcviews; #views populated once per vcenter server for improved performance
-    if ($viavcenter) {
+    if ($viavcenterbyhyp->{$hyp}) {
         foreach $hyp (keys %hyphash) {
             if ($vcviews{$hyphash{$hyp}->{vcenter}->{name}}) { next; }
             $vcviews{$hyphash{$hyp}->{vcenter}->{name}} = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
@@ -958,7 +980,7 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
         }
     }
     foreach $hyp (keys %hyphash) {
-        if ($viavcenter) { 
+        if ($viavcenterbyhyp->{$hyp}) { 
             $vmviews= $vcviews{$hyphash{$hyp}->{vcenter}->{name}}
         } else {
 		    $vmviews = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
@@ -1386,8 +1408,13 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
     my $depargs = shift;
     my $vcenter = $hyphash{$hyp}->{vcenter}->{name};
     unless ($hyphash{$hyp}->{vcenter}->{conn}) {
-        $hyphash{$hyp}->{vcenter}->{conn} = Vim->new(service_url=>"https://$vcenter/sdk");
-        $hyphash{$hyp}->{vcenter}->{conn}->login(user_name=>$hyphash{$hyp}->{vcenter}->{username},password=>$hyphash{$hyp}->{vcenter}->{password});
+        eval {
+           $hyphash{$hyp}->{vcenter}->{conn} = Vim->new(service_url=>"https://$vcenter/sdk");
+           $hyphash{$hyp}->{vcenter}->{conn}->login(user_name=>$hyphash{$hyp}->{vcenter}->{username},password=>$hyphash{$hyp}->{vcenter}->{password});
+        };
+        if ($@) {
+          $hyphash{$hyp}->{vcenter}->{conn} = undef;
+        }
     }
     unless ($hyphash{$hyp}->{vcenter}->{conn}) {
         sendmsg([1,": Unable to reach vCenter server managing $hyp"]);
@@ -1443,8 +1470,15 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
         }
     }
     #If still in function, haven't found any likely host entries, make a new one
-    $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk"); #Direct connect to install/check licenses
-    $hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
+    eval {
+        $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk"); #Direct connect to install/check licenses
+    	$hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
+    };
+    if ($@) {
+		sendmsg([1,": Failed to communicate with $hyp"]);
+                 $hyphash{$hyp}->{conn} = undef;
+                return "failed";
+    }
     validate_licenses($hyp);
     addhosttovcenter(undef,{
         depfun => $depfun,

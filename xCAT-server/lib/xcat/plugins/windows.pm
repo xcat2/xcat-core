@@ -425,6 +425,9 @@ sub copycd
 	}
 	close(DBNAME);
     }
+    if (-r $path . "/sources/install_Windows Server 2008 R2 SERVERENTERPRISE.clg") {
+        $distname = "win2k8r2";
+    }
     unless ($distname)
     {
         return;
