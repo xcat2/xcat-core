@@ -125,7 +125,7 @@ echo <<<EOS4
    <li>
         <a href="help.php">Help</a>
         <ul>
-            <li><a href="#">Update</a></li>
+            <li><a href="update.php">Update</a></li>
             <li><a href="summary.php">Summary</a></li>
         </ul>
    </li>

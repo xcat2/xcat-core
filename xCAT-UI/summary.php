@@ -33,14 +33,14 @@ require_once "$TOPDIR/lib/monitor_display.php";
 <div id="clusternav">
     <h5>Options</h5>
     <ul style="list-style-type:none">
-        <li><a href="#">Power control</a></li>
-        <li<a href="#">Vitals information</a></li>
-        <li><a href="#">OS Provision</a></li>
-        <li><a href="#">Configure xCAT Tables</a></li>
-        <li><a href="#">All Inverntories</a></li>
-        <li><a href="#">Remote Commands</a></li>
-        <li><a href="#">Monitor</a></li>
-        <li><a href="#">Syslog</a></li>
+        <li><a href="#" onclick="loadMainPage('control.php')">Power control</a></li>
+        <li<a href="#" onclick="loadMainPage('control.php')">Vitals information</a></li>
+        <li><a href="#" onclick="loadMainPage('provision.php')" >OS Provision</a></li>
+        <li><a href="#" onclick="loadMainPage('config.php')">Configure xCAT Tables</a></li>
+        <li><a href="#" onclick="loadMainPage('control.php')" >All Inverntories</a></li>
+        <li><a href="#" onclick="loadMainPage('control.php')" >Remote Commands</a></li>
+        <li><a href="#" onclick="loadMainPage('monitor/monlist.php')" >Monitor</a></li>
+        <li><a href="#" onclick="loadMainPage('monitor.php')" >Syslog</a></li>
         
     </ul>
 </div>
