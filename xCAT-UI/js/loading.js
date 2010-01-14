@@ -101,7 +101,8 @@ var xStart = function(){
      myBar.addScript("jquery.form.js");  
      myBar.addScript("jquery.jeditable.mini.js");
      myBar.addScript("jquery.dataTables.min.js");
-     myBar.addScript("hoverIntent.js");  
+     myBar.addScript("hoverIntent.js");
+     myBar.addScript("excanvas.js");
      myBar.addScript("superfish.js");  
      myBar.addScript("jquery.tablesorter.js");
      myBar.addScript("jquery.flot.js");

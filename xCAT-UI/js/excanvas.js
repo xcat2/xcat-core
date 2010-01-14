@@ -783,3 +783,7 @@ if (!window.CanvasRenderingContext2D) {
 })();
 
 } // if
+
+
+//loading bar progress
+myBar.loaded("excanvas.js");
