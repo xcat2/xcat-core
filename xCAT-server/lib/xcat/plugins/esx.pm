@@ -691,21 +691,28 @@ sub migrate {
     my $tgthyp = $exargs->[0];
     my $destination = ${$args{exargs}}[0];
     my $vcenter = $hyphash{$hyp}->{vcenter}->{name};
+    actually_migrate({
+        nodes=>$nodes,
+        hyp=>$hyp,
+        target=>$tgthyp,
+        vcenter=>$vcenter
+    });
+#The following code is now redundant.  validate_vcenter_prereqs is now called well before this point.
 #We do target first to prevent multiple sources to single destination from getting confused
 #one source to multiple destinations (i.e. revacuate) may require other provisions
 #by getting confused, I mean that actually migrate not thinking both are good before it's correct
-    validate_vcenter_prereqs($tgthyp, \&actually_migrate, {
-        nodes=>$nodes,
-        hyp=>$hyp,
-        target=>$tgthyp,
-        vcenter=>$vcenter
-    });
-    validate_vcenter_prereqs($hyp, \&actually_migrate, {
-        nodes=>$nodes,
-        hyp=>$hyp,
-        target=>$tgthyp,
-        vcenter=>$vcenter
-    });
+#   validate_vcenter_prereqs($tgthyp, \&actually_migrate, {
+#       nodes=>$nodes,
+#       hyp=>$hyp,
+#       target=>$tgthyp,
+#       vcenter=>$vcenter
+#   });
+#   validate_vcenter_prereqs($hyp, \&actually_migrate, {
+#       nodes=>$nodes,
+#       hyp=>$hyp,
+#       target=>$tgthyp,
+#       vcenter=>$vcenter
+#   });
 }
 
 sub reconfig_callback {
