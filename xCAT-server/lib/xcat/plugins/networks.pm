@@ -16,10 +16,13 @@ sub preprocess_request
 {
     my $req = shift;
     my $callback  = shift;
+
+	# exit if preprocessed
 	if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
-    # exit if preprocessed
-    my @requests = ({%$req}); #first element is local instance
-	$::args     = $req->{arg};
+    
+	my @requests = ({%$req}); #first element is local instance
+
+	$::args = $req->{arg};
 
 	if (defined(@{$::args})) {
         @ARGV = @{$::args};
@@ -30,7 +33,6 @@ sub preprocess_request
         !GetOptions(
                     'help|h|?'    => \$::HELP,
 					'display|d'	=> \$::DISPLAY,
-					'mnonly|m'	=> \$::MNONLY,
 					'verbose|V' => \$::VERBOSE,
                     'version|v' => \$::VERSION,
         )
@@ -56,13 +58,23 @@ sub preprocess_request
         return undef;
     }
 
+	# process the network interfaces on this system
+    if (&donets($callback) != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get network information.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return undef;
+    }
+
     my @sn = xCAT::Utils->getSNList();
     foreach my $s (@sn)
     {
         my $reqcopy = {%$req};
         $reqcopy->{'_xcatdest'} = $s;
+		$reqcopy->{_xcatpreprocessed}->[0] = 1;
         push @requests, $reqcopy;
     }
+
     return \@requests;
 }
 
@@ -70,9 +82,6 @@ sub process_request
 {
 	my $request  = shift;
     my $callback = shift;
-
-	my $host = `hostname`;
-	chomp $host;
 
 	$::args     = $request->{arg};
 
@@ -85,7 +94,6 @@ sub process_request
         !GetOptions(
                     'help|h|?'    => \$::HELP,
                     'display|d' => \$::DISPLAY,
-                    'mnonly|m'  => \$::MNONLY,
                     'verbose|V' => \$::VERBOSE,
                     'version|v' => \$::VERSION,
         )
@@ -93,6 +101,61 @@ sub process_request
     {
     #    return 1;
     }
+
+	# process the network interfaces on this system
+	#	- management node was already done
+	if (!xCAT::Utils->isMN()) {
+		if (&donets($callback) != 0) {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not get network information.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  donets
+			Get network information and display or create xCAT network defs 
+
+        Returns:
+            0 - OK
+            1 - error
+
+        Usage:
+			my $rc = &donets($callback);
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub donets
+{
+	my $callback = shift;
+
+	my $host = `hostname`;
+    chomp $host;
+
+	# get all the existing xCAT network defs
+    my @netlist;
+    @netlist = xCAT::DBobjUtils->getObjectsOfType('network');
+
+	my %nethash;
+	if (scalar(@netlist)) {
+		my %objtype;
+    	foreach my $netn (@netlist) {
+        	$objtype{$netn} = 'network';
+    	}
+	
+    	%nethash = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
+    	if (!defined(%nethash)) {
+        	my $rsp;
+        	$rsp->{data}->[0] = "Could not get xCAT network definitions.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $::callback);
+        	return 1;
+    	}
+	}
 
 	my $nettab = xCAT::Table->new('networks', -create => 1, -autocommit => 0);
 
@@ -157,6 +220,23 @@ sub process_request
 				#  ( 1_2_3_4-255_255_255_192 - ugh!)
 				my $netname = $netn . "-" . $maskn;
 
+				# see if this network (or equivalent) is already defined
+				# - compare net and mask values
+				foreach my $netn (@netlist) {
+					# split definition mask
+					my ($dm1, $dm2, $dm3, $dm4) = split('\.', $nethash{$netn}{'mask'});
+
+					# split definition net addr
+					my ($dn1, $dn2, $dn3, $dn4) = split('\.', $nethash{$netn}{'net'});
+
+					# check for the same netmask and network address
+					if ( ($n1 == $dn1) && ($n2 ==$dn2) && ($n3 == $dn3) && ($n4 == $dn4) ) {
+						if ( ($m1 == $dm1) && ($m2 ==$dm2) && ($m3 == $dm3) && ($m4== $dm4) ) {
+							$foundmatch=1;
+						}
+					}
+				}
+
 				if ($::DISPLAY) {
 					my $rsp;
 					push @{$rsp->{data}}, "\n#From $host.";
@@ -165,12 +245,19 @@ sub process_request
 					push @{$rsp->{data}}, "    net=$net";
 					push @{$rsp->{data}}, "    mask=$netmask";
 					push @{$rsp->{data}}, "    gateway=$gateway\n";
+					if ($foundmatch) {
+                        push @{$rsp->{data}}, "# Note: An equivalent xCAT network definition already exists.\n";
+					}
             		xCAT::MsgUtils->message("I", $rsp, $callback);
 				} else {
-					# add new network def 
-					$nettab->setAttribs({'net' => $net}, {'mask' => $mask}, {'netname' => $netname}, {'gateway' => $gateway});
-				}
 
+					if ($foundmatch) {
+                        next;
+                    }
+
+					# add new network def 
+					$nettab->setAttribs({'net' => $net, 'mask' => $netmask}, {'netname' => $netname, 'gateway' => $gateway});
+				}
 			}
 		}
 
@@ -201,6 +288,7 @@ sub process_request
     	foreach (@rtable)
     	{ #should be the lines to think about, do something with U, and something else with UG
 
+			my $foundmatch=0;
 			my $rsp;
         	my $net;
         	my $mask;
@@ -214,6 +302,7 @@ sub process_request
         	{
             	next;
         	}
+
         	if ($ent[3] eq 'U')
         	{
             	$net       = $ent[0];
@@ -228,6 +317,31 @@ sub process_request
                 #  ( 1_2_3_4-255_255_255_192 - ugh!)
                 my $netname = $netn . "-" . $maskn;
 
+				# see if this network (or equivalent) is already defined
+                # - compare net and mask values
+
+				# split mask
+                my ($m1, $m2, $m3, $m4) = split('\.', $mask);
+
+				# split net addr
+				my ($n1, $n2, $n3, $n4) = split('\.', $net);
+
+				foreach my $netn (@netlist) {
+
+					# split definition mask
+					my ($dm1, $dm2, $dm3, $dm4) = split('\.', $nethash{$netn}{'mask'});
+
+					# split definition net addr
+					my ($dn1, $dn2, $dn3, $dn4) = split('\.', $nethash{$netn}{'net'});
+
+					# check for the same netmask and network address
+					if ( ($n1 == $dn1) && ($n2 ==$dn2) && ($n3 == $dn3) && ($n4 == $dn4) ) {
+						if ( ($m1 == $dm1) && ($m2 ==$dm2) && ($m3 == $dm3) && ($m4== $dm4) ) {
+							$foundmatch=1;
+						}
+					}
+				}
+
 				if ($::DISPLAY) {
 					push @{$rsp->{data}}, "\n#From $host.";
 					push @{$rsp->{data}}, "$netname:";
@@ -236,17 +350,21 @@ sub process_request
                     push @{$rsp->{data}}, "    mask=$mask";
                     push @{$rsp->{data}}, "    mgtifname=$mgtifname";
 				} else {
-            		$nettab->setAttribs({'net' => $net}, {'mask' => $mask, 'mgtifname' => $mgtifname}, {'netname' => $netname});
+					if (!$foundmatch) {
+						$nettab->setAttribs({'net' => $net, 'mask' => $mask}, {'netname' => $netname, 'mgtifname' => $mgtifname});
+					}
 				}
 
-            	my $tent = $nettab->getAttribs({'net' => $net}, 'nameservers');
+            	my $tent = $nettab->getAttribs({'net' => $net, 'mask' => $mask}, 'nameservers');
             	unless ($tent and $tent->{nameservers})
             	{
                 	my $text = join ',', @nameservers;
 					if ($::DISPLAY) {
                     	push @{$rsp->{data}}, "    nameservers=$text";
 					} else {
-                		$nettab->setAttribs({'net' => $net}, {nameservers => $text});
+						if (!$foundmatch) {
+                			$nettab->setAttribs({'net' => $net, 'mask' => $mask}, {nameservers => $text});
+						}
 					}
             	}
             	unless ($tent and $tent->{tftpserver})
@@ -276,7 +394,9 @@ sub process_request
 							if ($::DISPLAY) {
                         		push @{$rsp->{data}}, "    tftpserver=$ipaddr";
                     		} else {
-                        		$nettab->setAttribs({'net' => $net}, {tftpserver => $ipaddr});
+								if (!$foundmatch) {
+                        			$nettab->setAttribs({'net' => $net, 'mask' => $mask}, {tftpserver => $ipaddr});
+								}
 							}
                         	last;
                     	}
@@ -295,14 +415,20 @@ sub process_request
 
             	#TODO: anything to do with such entries?
         	}
-			
+
 			if ($::DISPLAY) {
+
+				if ($foundmatch) {
+					push @{$rsp->{data}}, "# Note: An equivalent xCAT network definition already exists.\n";
+				}
 				xCAT::MsgUtils->message("I", $rsp, $callback);
 			}
     	}
 	}
 
 	$nettab->commit;
+
+	return 0;
 }
 
 #----------------------------------------------------------------------------
