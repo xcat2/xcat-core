@@ -181,6 +181,7 @@ sub process_request_nmap {
    my $request = shift;
    my $callback = shift;
    my $doreq = shift;
+   my %nodebyip;
    my %portservices = (
         '22' => 'sshd',
         '15002' => 'pbs',
@@ -198,6 +199,8 @@ sub process_request_nmap {
                 $rsp{name}=[$_];
                 $rsp{data} = [ "Please make sure $_ exists in /etc/hosts or DNS" ];
                 $callback->({node=>[\%rsp]});
+        } else {
+            $nodebyip{inet_ntoa($packed_ip)} = $_;
         }
    }
 
@@ -219,6 +222,13 @@ sub process_request_nmap {
    while (<$fping>) {
       if (/Interesting ports on ([^ ]*) /) {
           $currnode=$1;
+          my $nip;
+          if ($nip = gethostbyname($currnode)) {
+              $nip = inet_ntoa($nip); #reverse lookup may not resemble the nodename, key by ip
+              if ($nodebyip{$nip}) {
+                 $currnode = $nodebyip{$nip};
+              }
+          }
           $installquerypossible=0; #reset possibility indicator
           %rsp=();
           unless ($deadnodes{$1}) {
