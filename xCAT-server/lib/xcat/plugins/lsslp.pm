@@ -88,8 +88,8 @@ my %exattr = (
 # Power methods
 #######################################
 my %mgt = (
-    lc(TYPE_FSP) => "hmc",
-    lc(TYPE_HMC) => "hmc",
+    lc(TYPE_FSP) => "fsp",
+    lc(TYPE_BPA) => "bpa",
     lc(TYPE_MM)  => "blade",
     lc(TYPE_HMC) => "hmc",
     lc(TYPE_IVM) => "ivm",
