@@ -20,7 +20,8 @@ sub handled_commands {
       rinv      => 'nodehm:mgt',
       rflash    => 'nodehm:mgt',
       getmacs   => 'nodehm:mgt',
-      rnetboot  => 'nodehm:mgt'
+      rnetboot  => 'nodehm:mgt',
+      rvitals   => 'nodehm:mgt'
 
   };
 }

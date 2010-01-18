@@ -32,6 +32,8 @@ my %modules = (
                        bpa    => "xCAT::FSPpower",
 		       },
         rvitals   => { hmc    => "xCAT::PPCvitals",
+                       fsp    => "xCAT::FSPvitals",
+                       bpa    => "xCAT::FSPvitals",
 		       },
         rscan     => { hmc    => "xCAT::PPCscan",
 		       },
@@ -165,7 +167,7 @@ sub process_command {
 	    my $fsp_api = check_fsp_api($request);
 	    if($fsp_api == 0 && 
 		    ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/
-                || $request->{command} =~ /^getmacs$/ || $request->{command} =~ /^rnetboot$/  )
+                || $request->{command} =~ /^getmacs$/ || $request->{command} =~ /^rnetboot$/ || $request->{command} =~ /^rvitals$/  )
               ) {
 	        #support FSPpower, FSPinv and FSPrflash 
 	        $request->{fsp_api} = 1;

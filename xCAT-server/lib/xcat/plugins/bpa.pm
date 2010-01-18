@@ -15,8 +15,8 @@ sub handled_commands {
       rmhwconn    => 'nodehm:mgt',
       lshwconn    => 'nodehm:mgt',
       rinv        => 'nodehm:mgt',
-      rflash      => 'nodehm:mgt'
-
+      rflash      => 'nodehm:mgt',
+      rvitals     => 'nodehm:mgt'
   };
 }
 

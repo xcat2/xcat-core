@@ -11,7 +11,6 @@ use xCAT::Table;
 use Getopt::Long;
 use File::Spec;
 use POSIX qw(tmpnam);
-use xCAT::FSPflash;
 
 
 my $packages_dir= ();
@@ -149,6 +148,8 @@ sub parse_args {
 		print "no housekeeping - update mode\n";
 		$housekeeping = undef;
 	}
+    
+    $request->{housekeeping} = $housekeeping;
 
 	#############################################
     # Option -V for verbose output
@@ -548,6 +549,8 @@ sub rflash {
     my $hwtype  = @$exp[2];
     my @result;
     my $timeout    = $request->{ppctimeout};
+    
+    my $housekeeping = $request->{housekeeping};
 
     $packages_dir = $request->{opt}->{p};
     $activate = $request->{opt}->{activate};	

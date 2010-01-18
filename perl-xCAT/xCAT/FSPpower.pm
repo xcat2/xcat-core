@@ -173,10 +173,13 @@ sub state {
 
     my $request = shift;
     my $hash    = shift;
-#    my $prefix  = shift;
-#    my $convert = shift;
+    my $exp     = shift; # NOt use
+    my $prefix  = shift;
+    my $convert = shift;
     my @output  = ();
-   
+  
+			
+    
     #print "------in state--------\n"; 
     #print Dumper($request);	
     #print Dumper($hash); 
@@ -207,7 +210,7 @@ sub state {
         for my $node_name ( keys %$node_hash)
         {
             my $d = $node_hash->{$node_name};
-            my $stat = action ($node_name, $d, "state");
+            my $stat = action ($node_name, $d, "state", $prefix, $convert);
             my $Rc = shift(@$stat);
     	    my $data = @$stat[0];
        	    my $t = $data->{$node_name}; 
@@ -237,6 +240,8 @@ sub action {
     my $node_name  = shift;
     my $attrs          = shift;
     my $action     = shift;
+    my $prefix    = shift;
+    my $convert = shift;
 #    my $fsp_api    ="/opt/xcat/sbin/fsp-api"; 
     my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
     my $id         = 1;
@@ -318,12 +323,23 @@ sub action {
 		    return ([$Rc, \%outhash]);
 		}
 	}
-  
-    ##################
+       ##############################
+       # Convert state to on/off 
+       ##############################
+       if ( defined( $convert )) {
+          $res = power_status( $res );
+       }
+
+        #print Dumper($prefix); 
+        ##################
 	# state cec_state
 	#################
-	$outhash{ $node_name } = $res;
-     
+	if (!defined($prefix)) {
+             $outhash{ $node_name } = $res;
+	} else {
+             $outhash{ $node_name } = "$prefix $res";
+        }
+       
 	return( [$Rc,\%outhash] ); 
 
 }

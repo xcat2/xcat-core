@@ -355,7 +355,8 @@ sub action {
     my $action     = shift;
 #    my $user 	   = "HMC";
 #    my $password   = "abc123";
-    my $fsp_api    ="/home/fsp-api"; 
+#    my $fsp_api    ="/opt/xcat/sbin/fsp-api"; 
+    my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
     my $id         = 1;
     my $fsp_name   = ();
     my $fsp_ip     = ();
