@@ -810,7 +810,23 @@ sub initDB
     my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
     if ($? == 0)
     {
-        $master = inet_ntoa($addrs[0]);
+        my $len= scalar(@addrs);
+        if ($len > 0 ) {   # we got some ip addresses
+           for (my $i = 0 ; $i < $len ; $i++){           
+             my @ipaddr=inet_ntoa($addrs[$i]);
+             if (!grep(/127.0.0/, @ipaddr)) {
+                $master = inet_ntoa($addrs[$i]);
+                last;
+             }
+           }
+           if (!defined($master)) {
+            xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
+            $master = "NORESOLUTION";
+           } 
+        } else {
+          xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
+          $master = "NORESOLUTION";
+        }
     }
     else
     {
