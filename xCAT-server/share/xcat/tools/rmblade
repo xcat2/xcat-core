@@ -22,14 +22,17 @@ sub rmblade {
 	my $blade = shift;
 	my $hex = ip2hex($blade);
 	print FILE "Running: nodech $blade chain.currstate='' chain.currchain=''\n";
-	`nodech $blade chain.currstate='' chain.currchain=''`; 
+	`nodech $blade chain.currstate= chain.currchain=`; 
 	print FILE "Running: chtab -d node=$blade mac\n";
 	`chtab -d node=$blade mac`;
 	print FILE "Running: makedhcp -d $blade\n";
 	`makedhcp -d $blade`;
 	print FILE "Running: rm /tftpboot/pxelinux.cfg/$blade\n";
 	`rm  /tftpboot/pxelinux.cfg/$blade`;
-	print FILE "Running: rm /tftpboot/pxelinux.cfg/$hex\n";
+	if($hex){
+		print FILE "Running: rm /tftpboot/pxelinux.cfg/$hex\n";
+		`rm /tftpboot/pxelinux.cfg/$hex`;
+	}
 }
 
 sub ip2hex {
@@ -37,7 +40,6 @@ sub ip2hex {
 	my $ip = '';
 	my @quad;
 	my $hex = '';
-	my $node = $ARGV[0];
 	my $packed_ip = gethostbyname($node);
 	if(defined $packed_ip){
 		$ip = inet_ntoa($packed_ip);	
