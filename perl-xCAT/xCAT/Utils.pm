@@ -2203,6 +2203,21 @@ sub my_nets
         $textnet.="/$maskbits";
         $rethash->{$textnet} = $curnet;
     }
+
+
+    my $nettab = xCAT::Table->new("networks");
+    my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
+    foreach(@vnets){
+      my $n = $_->{net};
+      my $if = $_->{mgtifname};
+      my $nm = $_->{mask}; 
+      if ($if =~ /!remote!/) { #only take in networks with special interface
+        $nm = formatNetmask($nm, 0 , 1);
+        $n .="/$nm";            
+        $rethash->{$n} = $if;   
+      }                 
+    }
+
     return $rethash;
 }
 #-------------------------------------------------------------------------------
