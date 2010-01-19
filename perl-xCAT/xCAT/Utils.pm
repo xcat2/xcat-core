@@ -5459,5 +5459,49 @@ sub updateEtcHosts
     close( HOSTS );
     return [$host,$ip];
 }
+#-------------------------------------------------------------------------------
+
+=head3   getDBName 
+    Description:
+        Returns the current database (SQLITE,DB2,MYSQL,PG) 
+
+    Arguments:
+        None 
+    Returns:
+        Return string.
+    Globals:
+        none
+    Error:
+        none
+    Example:
+		my $DBname = xCAT::Utils->getDBName;
+    Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_DBName
+{
+    my $name = "SQLITE";  # default
+    my $xcatcfg;
+    if (-r "/etc/xcat/cfgloc") {
+      my $cfgl;
+      open($cfgl,"<","/etc/xcat/cfgloc");
+      $xcatcfg = <$cfgl>;
+      close($cfgl);
+      if ($xcatcfg =~ /^mysql:/) {
+        $name="MYSQL"
+      } else {
+          if ($xcatcfg =~ /^DB2:/) {
+             $name="DB2"
+          } else {
+            if ($xcatcfg =~ /^Pg:/) {
+             $name="PG"
+            }
+          }
+      }
+    }
+    return $name;
+}
 
 1;
