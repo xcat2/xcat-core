@@ -37,7 +37,6 @@ use Sys::Syslog;
 use Storable qw/freeze thaw/;
 use IO::Socket;
 use Data::Dumper;
-use POSIX qw/WNOHANG/;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -56,6 +55,7 @@ use lib "$::XCATROOT/lib/perl";
 my $cachethreshold=16; #How many nodes in 'getNodesAttribs' before switching to full DB retrieval
 
 use DBI;
+$DBI::dbi_debug=9; # increase the debug output
 
 use strict;
 use Scalar::Util qw/weaken/;
@@ -150,8 +150,6 @@ sub init_dbworker {
     }
     unless ($dbworkerpid) {
         #This process is the database worker, it's job is to manage database queries to reduce required handles and to permit cross-process caching
-        $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) {}}; #avoid zombies
-        #TODO: how children are being born, I'm not sure, but on occasion it happens
         $0 = "xcatd: DB Access";
         use File::Path;
         mkpath('/tmp/xcat/');
@@ -417,21 +415,31 @@ sub buildcreatestmt
     foreach $col (@{$descr->{cols}})
     {
         my $datatype=get_datatype_string($col,$xcatcfg, $types);
-        if ($datatype eq "TEXT") {
+        my $db2key=0;
+        if (($datatype eq "TEXT") || ($xcatcfg =~ /^DB2:/)) {
 	    if (isAKey(\@{$descr->{keys}}, $col)) {   # keys need defined length
-		$datatype = "VARCHAR(128)";
+              
+              if ($xcatcfg =~ /^DB2:/) {  # for DB2 
+		 $datatype = "VARCHAR(128) NOT NULL ";  
+                 $db2key=1;
+              } else {
+		$datatype = "VARCHAR(128) ";
+	      }
 	    }
-	}
+	}  
+        # build the columns of the table
         if ($xcatcfg =~ /^mysql:/) {  #for mysql
 	      $retv .= q(`) . $col . q(`) . " $datatype";  # mysql change
-              
-        } else { # for other dbs
+        } else { # for other dbs including DB2
             $retv .= "\"$col\" $datatype ";
         }
-
+        
         if (grep /^$col$/, @{$descr->{required}})
-        {
-            $retv .= " NOT NULL";
+        { 
+            # will have already put in NOT NULL, if DB2 and a key
+            if ($db2key == 0) {  # not a db2 key
+              $retv .= " NOT NULL";
+            }
         }
         $retv .= ",\n  ";
     }
@@ -441,15 +449,18 @@ sub buildcreatestmt
 	$retv .= "PRIMARY KEY (";
 	foreach (@{$descr->{keys}})
 	{
+
             if ($xcatcfg =~ /^mysql:/) {  #for mysql
-	      $retv .= q(`) . $_ . q(`) . ",";  # mysql change
-              
-            } else { # for other dbs
-	      $retv .= "\"$_\",";
+	      $retv .= q(`) . $_ . q(`) . ",";  # mysql  support reserved words
+            } else { # for other dbs including db2
+	       $retv .= "\"$_\",";
             }
 	}
 	$retv =~ s/,$/)\n)/;
     }
+        #if ($xcatcfg =~ /^DB2:/) {  # for DB2 add tablespace
+	 #  $retv .= " IN XCATTBS16K";
+        #} 
 	#print "retv=$retv\n";
     return $retv; 
 }
@@ -468,15 +479,20 @@ sub get_datatype_string {
 		$ret = "SERIAL";
 	    } elsif ($xcatcfg =~ /^mysql:/){
 		$ret = "INTEGER AUTO_INCREMENT";
-	    } elsif ($xcatcfg =~ /^db2:/){
-		$ret = "INTEGER GENERATED ALWAYS AS IDENTITY";  #have not tested on DB2
+	    } elsif ($xcatcfg =~ /^DB2:/){
+		$ret = "INTEGER GENERATED ALWAYS AS IDENTITY";  
 	    } else {
 	    }
 	} else {
 	    $ret = $types->{$col};
 	}
     } else {
-	$ret = "TEXT";
+        if ($xcatcfg =~ /^DB2:/){   # DB2 does not support TEXT type
+           $ret = "CLOB";
+           #$ret = "VARCHAR(128)";
+        } else {
+	  $ret = "TEXT";
+        }
     }
     return $ret;
 }
@@ -579,6 +595,12 @@ sub new
         $self->{dbpass}="";
 
 	my $xcatcfg =get_xcatcfg();
+        my $xcatdb2schema;
+        if ($xcatcfg =~ /^DB2:/) {  # for DB2 , get schema name
+         my @parts =  split ( '\|', $xcatcfg);
+         $xcatdb2schema = $parts[1];
+         $xcatdb2schema =~ tr/a-z/A-Z/;    # convert to upper 
+        }
 
         if ($xcatcfg =~ /^SQLite:/)
         {
@@ -667,26 +689,36 @@ sub new
            {
                return undef;
            }
-           my $tbexistq = $self->{dbh}->table_info('','',$self->{tabname},'TABLE');
-        my $found = 0;
+           my $tbexistq;
+           my $db2tablename=$self->{tabname};
+           my $found = 0;
+           if ($xcatcfg =~ /^DB2:/) {  # for DB2 
+              $db2tablename  =~ tr/a-z/A-Z/;    # convert to upper 
+              $tbexistq = $self->{dbh}->table_info(undef,$xcatdb2schema,$db2tablename,'TABLE');
+           } else {  
+              $tbexistq = $self->{dbh}->table_info('','',$self->{tabname},'TABLE');
+           }
            while (my $data = $tbexistq->fetchrow_hashref) {
-        if ($data->{'TABLE_NAME'} =~ /^\"?$self->{tabname}\"?\z/) {
-            $found = 1;
-            last;
-        }
-        }
-        unless ($found) {
-            unless ($create)
-            {
-               return undef;
+            if ($data->{'TABLE_NAME'} =~ /^\"?$db2tablename\"?\z/) {
+             $found = 1;
+             last;
             }
-            my $str =
+           }
+
+  
+           unless ($found) {
+              unless ($create)
+              {
+                 return undef;
+              }
+              my $str =
                buildcreatestmt($self->{tabname},
                                $xCAT::Schema::tabspec{$self->{tabname}},
                        $xcatcfg);
-            $self->{dbh}->do($str);
-        }
-         }
+              $self->{dbh}->do($str);
+              
+          }
+         } # end Generic DBI
 
 
        updateschema($self, $xcatcfg);
@@ -736,6 +768,12 @@ sub updateschema
     my $xcatcfg = shift;
     my $descr=$xCAT::Schema::tabspec{$self->{tabname}};
     my $tn=$self->{tabname};
+    my $xcatdb2schema;
+    if ($xcatcfg =~ /^DB2:/) {  # for DB2 , get schema name
+      my @parts =  split ( '\|', $xcatcfg);
+      $xcatdb2schema = $parts[1];
+      $xcatdb2schema =~ tr/a-z/A-Z/;    # convert to upper 
+    }
 
     my @columns;
     my %dbkeys;
@@ -758,7 +796,14 @@ sub updateschema
         $sth->finish;
     } else { #Attempt generic dbi..
        #my $sth = $self->{dbh}->column_info('','',$self->{tabname},'');
-       my $sth = $self->{dbh}->column_info(undef,undef,$self->{tabname},'%'); 
+       my $sth;
+       if ($xcatcfg =~ /^DB2:/) {  # for DB2 
+          my $db2table = $self->{tabname};
+          $db2table =~ tr/a-z/A-Z/;    # convert to upper for db2 
+          $sth = $self->{dbh}->column_info(undef,$xcatdb2schema,$db2table,'%'); 
+       } else {
+          $sth = $self->{dbh}->column_info(undef,undef,$self->{tabname},'%'); 
+       }
        while (my $cd = $sth->fetchrow_hashref) {
            #print Dumper($cd);
            push @columns,$cd->{'COLUMN_NAME'};
@@ -775,7 +820,13 @@ sub updateschema
 	}
 
        #get primary keys
-       $sth = $self->{dbh}->primary_key_info(undef,undef,$self->{tabname});
+       if ($xcatcfg =~ /^DB2:/) {  # for DB2 
+          my $db2table = $self->{tabname};
+          $db2table =~ tr/a-z/A-Z/;    # convert to upper for db2 
+          $sth = $self->{dbh}->primary_key_info(undef,$xcatdb2schema,$db2table); 
+       } else {
+          $sth = $self->{dbh}->primary_key_info(undef,undef,$self->{tabname});
+       }
        if ($sth) {
            my $data = $sth->fetchall_arrayref;
            #print "data=". Dumper($data);
@@ -797,9 +848,13 @@ sub updateschema
         {
             #TODO: log/notify of schema upgrade?
             my $datatype=get_datatype_string($dcol, $xcatcfg, $types);
-	    if ($datatype eq "TEXT") {
+            if (($datatype eq "TEXT") || ($xcatcfg =~ /^DB2:/)) { 
 		if (isAKey(\@{$descr->{keys}}, $dcol)) {   # keys need defined length
-		    $datatype = "VARCHAR(128)";
+                    if ($xcatcfg =~ /^DB2:/) {  # for DB2 
+		      $datatype = "VARCHAR(128) NOT NULL   ";  
+                    } else {
+		      $datatype = "VARCHAR(128) ";
+	            }
 		}
 	    }
 
@@ -823,11 +878,15 @@ sub updateschema
 	    $change_keys=1; 
             #for my sql, we do not have to recreate table, but we have to make sure the type is correct, 
             #TEXT is not a valid type for a primary key
-	    if ($xcatcfg =~ /^mysql:/) {  
+	    if (($xcatcfg =~ /^mysql:/) || ($xcatcfg =~ /^DB2:/)) {  
 		my $datatype=get_datatype_string($dbkey, $xcatcfg, $types);
-		if ($datatype eq "TEXT") {
+                if (($datatype eq "TEXT") || ($xcatcfg =~ /^DB2:/)) { 
 		    if (isAKey(\@{$descr->{keys}}, $dbkey)) {   # keys need defined length
-			$datatype = "VARCHAR(128)";
+                      if ($xcatcfg =~ /^DB2:/) {  # for DB2 
+		        $datatype = "VARCHAR(128) NOT NULL ";  
+                      } else {
+		        $datatype = "VARCHAR(128) ";
+	              }
 		    }
 		}
 		
@@ -855,7 +914,7 @@ sub updateschema
 	}
     }
 
-    #finaly drop the old keys and add the new keys
+    #finally drop the old keys and add the new keys
     if ($change_keys) {
 	if ($xcatcfg =~ /^mysql:/) {  #for mysql, just alter the table
 	    my $tmp=join(',',@new_dbkeys); 
@@ -1193,7 +1252,8 @@ sub setAttribs
     my @bind  = ();
     my $action;
     my @notif_data;
-    my $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE ";
+    my $qstring;
+    $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE ";
     my @qargs   = ();
     my $query;
     my $data;
@@ -1201,19 +1261,19 @@ sub setAttribs
         $self->{intransaction}=1;
         $self->{dbh}->{AutoCommit}=0;
     }
-
     if (($pKeypairs != undef) && (keys(%keypairs)>0)) {
 	foreach (keys %keypairs)
 	{
-	    #$qstring .= "$_ = ? AND "; 
-	    #push @qargs, $keypairs{$_};
-	    #$qstring .= "\"$_\" = ? AND ";  # mysql change
 
             if ($xcatcfg =~ /^mysql:/) {  #for mysql
-	      $qstring .= q(`) . $_ . q(`) . " = ? AND ";  # mysql change
+	      $qstring .= q(`) . $_ . q(`) . " = ? AND ";  
+            } else {
+                 if ($xcatcfg =~ /^DB2:/) { # for DB2
+	            $qstring .= "\"$_\" LIKE ? AND ";  
               
-            } else { # for other dbs
-	      $qstring .= "$_ = ? AND "; 
+                 } else { # for other dbs
+	           $qstring .= "$_ = ? AND "; 
+                 }  
             }  
 
 	    push @qargs, $keypairs{$_};
@@ -1282,18 +1342,24 @@ sub setAttribs
             {
                 if ($xcatcfg =~ /^mysql:/) {  #for mysql
                   $cmd .= q(`) . $_ . q(`) . " = '" . $keypairs{$_}->[0] . "' AND ";
-                } else {  #other dbs
-                  #$cmd .= "\"$_\"" . " = '" . $keypairs{$_}->[0] . "' AND ";
-                  $cmd .= "$_" . " = '" . $keypairs{$_}->[0] . "' AND ";
+                } else { 
+                   if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+                     $cmd .= "\"$_\"" . " = '" . $keypairs{$_}->[0] . "' AND ";
+                   } else {  # other dbs
+                     $cmd .= "$_" . " = '" . $keypairs{$_}->[0] . "' AND ";
+                   }
                 }
             }
             else
             {
                 if ($xcatcfg =~ /^mysql:/) {  #for mysql
                   $cmd .= q(`) . $_ . q(`) . " = '" . $keypairs{$_} . "' AND ";
-                } else {  #other dbs
-                  #$cmd .= "\"$_\"" . " = '" . $keypairs{$_} . "' AND ";
-                  $cmd .= "$_" . " = '" . $keypairs{$_} . "' AND ";
+                } else {  
+                   if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+                     $cmd .= "\"$_\"" . " = '" . $keypairs{$_} . "' AND ";
+                   } else {  # other dbs
+                     $cmd .= "$_" . " = '" . $keypairs{$_} . "' AND ";
+                   }
                 }
             }
         }
@@ -1333,12 +1399,16 @@ sub setAttribs
             return;
         }
 	foreach (keys %newpairs) {
+
 	   if ($xcatcfg =~ /^mysql:/) {  #for mysql
               $cols .= q(`) . $_ . q(`) . ","; 
-            } else {
-              $cols .= $_ . ","; # for other dbs 
+           } else {
+               if ($xcatcfg =~ /^DB2:/) {  #for DB2
+                   $cols .= "\"$_\"" . ",";
+               } else {
+                $cols .= $_ . ","; # for other dbs 
+               }  
             }  
-            #$cols .= "\"$_\"" . ",";
             push @bind, $newpairs{$_};
         }
         chop($cols);
@@ -1378,6 +1448,11 @@ sub setAttribs
 
     Description:
        This function sets the attributes for the rows selected by the where clause.
+    Warning, because we support mulitiple databases (SQLite,MySQL and DB2) that
+    require different syntax.  Any code using this routine,  must call the 
+    Utils->getDBName routine and code the where clause that is appropriate for
+    each supported database.
+
     Arguments:
          Where clause.
          Note: if the Where clause contains any reserved keywords like
@@ -1646,11 +1721,7 @@ sub setNodesAttribs {
             foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
                 $upstring .= "$col = ?, ";
             }
-            if (grep { $_ eq $nodekey } @orderedcols) {
-                $upstring =~ s/, \z//;
-            } else {
-                $upstring =~ s/, \z/ where $nodekey = ?/;
-            }
+            $upstring =~ s/, / where $nodekey = ?/;
             $upsth = $self->{dbh}->prepare($upstring);
         }
         if (scalar keys %updatenodes) {
@@ -2101,10 +2172,20 @@ sub getAllEntries
          $query = $self->{dbh}->prepare('SELECT * FROM '
              . $self->{tabname}
         . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
-      } else { # for other dbs
-         $query = $self->{dbh}->prepare('SELECT * FROM '
+
+      } else {   
+          if ($xcatcfg =~ /^DB2:/) {  #for DB2
+              my $qstring = 
+                "SELECT * FROM "
+                . $self->{tabname}
+                . " WHERE \"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR \"disable\" LIKE 'NO' OR \"disable\" LIKE 'nO' ";
+               $query =  $self->{dbh}->prepare($qstring);
+ 
+          } else { # for other dbs
+            $query = $self->{dbh}->prepare('SELECT * FROM '
              . $self->{tabname}
-          . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
+          . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','No','nO')");
+          }
       }
     }
 
@@ -2129,6 +2210,11 @@ sub getAllEntries
 =head3 getAllAttribsWhere
 
     Description:  Get all attributes with "where" clause
+
+    Warning, because we support mulitiple databases (SQLite,MySQL and DB2) that
+    require different syntax.  Any code using this routine,  must call the 
+    Utils->getDBName routine and code the where clause that is appropriate for
+    each supported database.
 
     Arguments:
        Database Handle
@@ -2167,12 +2253,21 @@ sub getAllAttribsWhere
                 . $whereclause
                 . ")  and " 
                 . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO'))");
-    } else { # for other dbs
-           $query = $self->{dbh}->prepare('SELECT * FROM '
+      } else {   
+          if ($xcatcfg =~ /^DB2:/) {  #for DB2
+            $query = $self->{dbh}->prepare('SELECT * FROM '
+             . $self->{tabname}
+             . ' WHERE ('
+             . $whereclause
+          . " ) and (\"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR  \"disable\" LIKE 'NO' OR  \"disable\" LIKE 'No' OR  \"disable\" LIKE 'nO')");
+ 
+           } else { # for other dbs
+              $query = $self->{dbh}->prepare('SELECT * FROM '
                 . $self->{tabname}
                 . ' WHERE ('
                 . $whereclause
                 . ") and (\"disable\" is NULL or \"disable\" in ('0','no','NO','no'))");
+            }
     }
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
@@ -2223,6 +2318,7 @@ sub getAllNodeAttribs
 
     #Extract and substitute every node record, expanding groups and substituting as getNodeAttribs does
     my $self    = shift;
+    my $xcatcfg =get_xcatcfg();
     if ($dbworkerpid) {
         return dbc_call($self,'getAllNodeAttribs',@_);
     }
@@ -2232,10 +2328,24 @@ sub getAllNodeAttribs
     my @results = ();
     my %donenodes
       ; #Remember those that have been done once to not return same node multiple times
-    my $query =
-      $self->{dbh}->prepare('SELECT node FROM '
+    my $query;
+    if ($xcatcfg =~ /^mysql:/) {  #for mysql
+         $query = $self->{dbh}->prepare('SELECT node FROM '
+             . $self->{tabname}
+        . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
+      } else {   
+          if ($xcatcfg =~ /^DB2:/) {  #for DB2
+            $query = $self->{dbh}->prepare('SELECT \"node\" FROM '
+             . $self->{tabname}
+          . " WHERE \"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR  \"disable\" LIKE 'NO' OR  \"disable\" LIKE 'No' OR  \"disable\" LIKE 'nO')");
+ 
+          } else {  # for other dbs 
+             $query =
+             $self->{dbh}->prepare('SELECT node FROM '
               . $self->{tabname}
               . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
+          }
+       }
     $query->execute();
     xCAT::NodeRange::retain_cache(1);
     $self->{_use_cache} = 0;
@@ -2366,11 +2476,20 @@ sub getAllAttribs
          $query = $self->{dbh}->prepare('SELECT * FROM '
              . $self->{tabname}
         . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
+    } else {
+      if ($xcatcfg =~ /^DB2:/) {  #for DB2  
+         my $qstring = 
+          "SELECT * FROM "
+              . $self->{tabname}
+              . " WHERE \"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR \"disable\" LIKE 'NO' OR \"disable\" LIKE 'nO' ";
+         $query =  $self->{dbh}->prepare($qstring);
       } else { # for other dbs
          $query =  $self->{dbh}->prepare('SELECT * FROM '
               . $self->{tabname}
-              . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
+              . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','nO')");
+      }
     }
+    #print $query;
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
     {
@@ -2456,9 +2575,13 @@ sub delEntries
                 foreach my $keypair (keys %{$keypairs})
                 {
                     if ($xcatcfg =~ /^mysql:/) {
-                      $qstring .= q(`) . $keypair . q(`) . " = ? AND ";  # mysql change
-                    } else { # for other dbs
-                      $qstring .= "$keypair = ? AND ";
+                      $qstring .= q(`) . $keypair . q(`) . " = ? AND ";
+                    } else {
+                      if ($xcatcfg =~ /^DB2:/) {
+                        $qstring .= q(") . $keypair . q(") . " = ? AND "; 
+                      } else { # for other dbs
+                        $qstring .= "$keypair = ? AND ";
+                      }
                     }
 
                     push @qargs, $keypairs->{$keypair};
@@ -2492,9 +2615,13 @@ sub delEntries
             foreach my $keypair (keys %{$keypairs})
             {
                 if ($xcatcfg =~ /^mysql:/) {
-                   $delstring .= q(`) . $keypair. q(`) . ' = ? AND ';  # mysql change
-                } else { # for other dbs
-                  $delstring .= $keypair . ' = ? AND ';
+                   $delstring .= q(`) . $keypair. q(`) . ' = ? AND '; 
+                } else {
+                   if ($xcatcfg =~ /^DB2:/) {
+                     $delstring .= q(") . $keypair. q(") . ' = ? AND '; 
+                   } else { # for other dbs
+                     $delstring .= $keypair . ' = ? AND ';
+                   }
                 }
                 if (ref($keypairs->{$keypair}))
                 {   #XML transformed data may come in mangled unreasonably into listrefs
@@ -2629,11 +2756,14 @@ sub getAttribs
     {
         if ($keypairs{$_})
         {
-           # $statement .= "\"".$_ . "\" = ? and ";
             if ($xcatcfg =~ /^mysql:/) {  #for mysql
               $statement .= q(`) . $_ . q(`) . " = ? and "
-            } else { # for other dbs
-                $statement .= "$_ = ? and ";
+            } else {
+              if ($xcatcfg =~ /^DB2:/) {  #for  DB2
+                 $statement .= q(") . $_ . q(") . " = ? and "
+                } else { # for other dbs
+                   $statement .= "$_ = ? and ";
+              }  
             }  
             if (ref($keypairs{$_}))
             {    #correct for XML process mangling if occurred
@@ -2648,16 +2778,23 @@ sub getAttribs
         {
             if ($xcatcfg =~ /^mysql:/) {  #for mysql
 	        $statement .= q(`) . $_ . q(`) . " is NULL and " ; 
-            } else { # for other dbs
-              #$statement .= "\"$_\" is NULL and ";
-              $statement .= "$_ is NULL and ";
+            } else {
+              if ($xcatcfg =~ /^DB2:/) {  #for  DB2
+	        $statement .= q(") . $_ . q(") . " is NULL and " ; 
+              } else { # for other dbs
+                $statement .= "$_ is NULL and ";
+              }
             }
         }
     }
     if ($xcatcfg =~ /^mysql:/) {  #for mysql
        $statement .= "(" . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO'))";
-    } else { # for other dbs
-       $statement .= "(\"disable\" is NULL or \"disable\" in ('0','no','NO','No','nO'))";
+    } else {
+       if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+         $statement .= "(\"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR \"disable\" LIKE 'NO'  OR \"disable\" LIKE 'No' OR \"disable\" LIKE 'nO')";
+       } else { # for other dbs
+         $statement .= "(\"disable\" is NULL or \"disable\" in ('0','no','NO','No','nO'))";
+       }
     }
     #print "This is my statement: $statement \n";
     my $query = $self->{dbh}->prepare($statement);
