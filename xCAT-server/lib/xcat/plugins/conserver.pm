@@ -219,10 +219,8 @@ sub docfheaders {
   #push @$content,"#xCAT BEGIN ACCESS\n";
   push @newheaders,"access * {\n";
   push @newheaders,"  trusted 127.0.0.1;\n";
-  if (xCAT::Utils->isServiceNode()) {
-    my $master=xCAT::Utils->get_site_Master();
-    push @newheaders, "  trusted $master;\n";
-  }
+  my $master=xCAT::Utils->get_site_Master();
+  push @newheaders, "  trusted $master;\n";
   push @newheaders,"}\n";
   #push @$content,"#xCAT END ACCESS\n";
 
