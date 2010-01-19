@@ -394,7 +394,7 @@ sub readBNDfile
       xCAT::InstUtils->get_nim_attr_val($BNDname,  'location', $callback,
                                         $nimprime, $sub_req);
 
-    # The boundle file may be on nimprime
+    # The bundle file may be on nimprime
     my $ccmd = qq~cat $bnd_file_name~;
     my $output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nimprime, $ccmd, 0);
     if ($::RUNCMD_RC != 0) {
@@ -404,7 +404,6 @@ sub readBNDfile
     }
 
     # get the names of the packages
-    #$output =~ s/$nimprime:\s+//g;
     foreach my $line (split(/\n/, $output))
     {
         #May include xdsh prefix $nimprime:
@@ -413,7 +412,6 @@ sub readBNDfile
         next if ($line =~ /^\s*$/ || $line =~ /^\s*#/);
         push(@pkglist, $line);
     }
-    close(BNDFILE);
 
     return (0, \@pkglist, $bnd_file_name);
 }
