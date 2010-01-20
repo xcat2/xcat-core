@@ -511,6 +511,9 @@ sub noderange {
   }
 
   while (my $atom = shift @elems) {
+    if ($atom eq ',') {
+        next;
+    }
     if ($atom =~ /^-/) {           # if this is an exclusion, strip off the minus, but remember it
       $atom = substr($atom,1);
       $op = $op."-";
