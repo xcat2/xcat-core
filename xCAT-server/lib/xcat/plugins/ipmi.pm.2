@@ -4518,6 +4518,15 @@ sub renergy {
             my $capenabled = $iem->capping_enabled();
             push @output,"cappingstatus: ".($capenabled ? "on" : "off");
         }
+        if ($directive =~ /relhistogram/) {
+            my $entry;
+            $iem->prep_retrieve_histogram();
+            execute_iem_commands($iem);
+            my @histdata = $iem->extract_relative_histogram;
+            foreach (sort { $a <=> $b } keys %{$histdata[0]}) {
+                push @output,"$_: ".$histdata[0]->{$_};
+            }
+        }
     }
     return (0,@output);
 }
