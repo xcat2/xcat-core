@@ -3032,11 +3032,11 @@ sub update_inittab
 	my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
 
-    my ($cmd, $rc, $entry);
+    my ($rc, $entry);
 
 	my $spotinittab = "$spot_loc/lpp/bos/inst_root/etc/inittab";
 
-	my $entry = "xcat:2:wait:/opt/xcat/xcataixpost\n";
+	my $entry = "xcat:2:wait:/opt/xcat/xcataixpost";
 
 	# see if xcataixpost is already in the file
 	my $cmd = "cat $spotinittab | grep xcataixpost";
@@ -3047,8 +3047,8 @@ sub update_inittab
 		return 0;
     }
 
-        my $cmd = "echo $entry >>$spotinittab";
-	my @result = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 1);
+	my $ecmd = qq~echo "$entry" >>$spotinittab~;
+	my @result = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $ecmd, 1);
         if ($::RUNCMD_RC != 0)
         {
                 my $rsp;
@@ -3517,7 +3517,7 @@ sub updatespot {
 		xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 
-	my @result = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 1);
+	my @result = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cpcmd, 1);
 	if ($::RUNCMD_RC  != 0)
 	{
 		my $rsp;
