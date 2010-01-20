@@ -277,11 +277,14 @@ sub donets
         	close($rconf);
         	foreach (grep /nameserver/, @rcont)
         	{
-            	my $line = $_;
-            	my @pair;
-            	$line =~ s/#.*//;
-            	@pair = split(/\s+/, $line);
-            	push @nameservers, $pair[1];
+                    my $line = $_;
+                    my @pair;
+                    $line =~ s/#.*//;
+                    $line =~ s/^\s*//; 
+                    @pair = split(/\s+/, $line);
+                    if ($pair[0] eq 'nameserver' && $pair[1] ne '') {
+                        push @nameservers, $pair[1];
+                    }
         	}
     	}
     	splice @rtable, 0, 2;
