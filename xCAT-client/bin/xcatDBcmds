@@ -6,6 +6,7 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 
+use Cwd;
 use File::Basename;
 use xCAT::MsgUtils;
 use xCAT::Client;
@@ -50,6 +51,7 @@ else
     exit 1;
 }
 
+$cmdref->{cwd}->[0] = cwd();
 # get info from files piped in as stdin
 if (-p STDIN) {
   my $data;
@@ -58,6 +60,32 @@ if (-p STDIN) {
   }
   $cmdref->{stdin}->[0]=$data;
 }
+# The noderange can be specified through a noderange file
+# the noderange file can be a relative path,
+# convert the relative path to a full path.
+my @tmpargv = ();
+my @tmpv = @ARGV;
+foreach my $a (@tmpv)
+{
+    if (!($a =~ /=/) && !($a =~ /^-/)) {
+        my @tempnr = ();
+        foreach my $nr (split(/,/, $a)) {
+            if ($nr =~ /^\^(.*)$/) {
+                my $nrf = $1;
+                if ($nrf !~ /^\//) { #relative path
+                   $nrf = Cwd::abs_path($nrf);
+                } 
+                $nrf = "\^" . $nrf;
+                push @tempnr, $nrf;
+            } else {
+                push @tempnr, $nr;
+            }
+        }
+        $a = join(',',@tempnr);
+    } 
+    push @tmpargv, $a;
+}
+@ARGV = @tmpargv;
 
 # add all the cmd line args to the hash - to pass to the plugin subroutine
 foreach my $a (@ARGV)

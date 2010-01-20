@@ -36,6 +36,27 @@ while ($arg =~ /^-/) {
   $arg=shift(@ARGV);
 }
 if ($arg ne "NO_NODE_RANGE") {
+  # The noderange can be specified through a noderange file,
+  # the noderange file can be a relative path,
+  # convert the relative path to a full path.
+  # an ideal way is converting the relative path in xCAT::Noderange::noderange,
+  # but the existing xCAT::Noderange::noderange can not get the cwd(),
+  # needs to change all the callers to pass the cwd(),
+  # there are more than 100 callers.
+  my @tempnr = ();
+  foreach my $nr (split(/,/, $arg)) {
+    if ($nr =~ /^\^(.*)$/) {
+      my $nrf = $1;
+      if ($nrf !~ /^\//) { #relative path
+        $nrf = Cwd::abs_path($nrf);
+      }
+      $nrf = "\^" . $nrf;
+      push @tempnr, $nrf;
+    } else {
+      push @tempnr, $nr;
+    }
+  }
+  $arg = join(',',@tempnr);
   $cmdref->{noderange}->[0]=$arg;
 }
 push (@{$cmdref->{arg}}, @ARGV);
