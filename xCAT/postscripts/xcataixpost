@@ -253,7 +253,7 @@ if (-f $scriptname)
 run_ps () {
  if [[ -f \\\$1 ]]; then
   echo \\"Running postscript: \\\$1\\"
-  OUTPUT=\\\`\\\$1 2>&1\\\`
+  OUTPUT=\\\`./\\\$1 2>&1\\\`
   if [[ -n \\\$OUTPUT ]]; then
     echo \\"\\\$OUTPUT\\"
   fi
