@@ -251,7 +251,10 @@ sub runendpre
 #-------------------------------------------------------
 sub getprescripts
 {
-    my ($nodes, $action, $colname) = @_;
+    my ($nodes, $tmp_action, $colname) = @_;
+    my @action_a=split('=',$tmp_action);
+    my $action=$action_a[0]; 
+
     my %ret=();
     if ($nodes && (@$nodes>0)) {
 	my $tab = xCAT::Table->new('prescripts',-create=>1);  
