@@ -977,11 +977,11 @@ sub resetbmc {
 		$rc = 1;
 		$text = $error;
 	} else {
-		if (0 == $returnd[36]) {
+		if (0 == $returnd[0]) {
 			$text = "BMC reset";
 		} else {
-            if ($codes{$returnd[36]}) {
-                $text = $codes{$returnd[36]};
+            if ($codes{$returnd[0]}) {
+                $text = $codes{$returnd[0]};
             } else {
 			    $text = sprintf("BMC Responded with code %d",$returnd[36]);
             }
@@ -1079,7 +1079,7 @@ sub setnetinfo {
 	}
 	else {
 		if($subcommand eq "garp" or $subcommand =~ m/snmpdest\d+/ or $subcommand eq "alert" or $subcommand =~ /community/) {
-			$code = $returnd[36];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
 				$text = "ok";
@@ -1106,7 +1106,6 @@ sub getnetinfo {
        my @cmd = (0x41,0x4d,0x4f,0x00,0x6f,0xff,0x61,0x00);
        my @bytes;
        my $error = docmd($netfun,\@cmd,\@bytes);
-       @bytes=splice @bytes,36-$authoffset;
        @bytes=splice @bytes,16;
        my $validprofiles="";
        foreach (keys %idpxthermprofiles) {
@@ -1193,10 +1192,10 @@ sub getnetinfo {
           # N bytes   (data)
           # 1 byte    (checksum)
 		if($subcommand eq "garp") {
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
-				$code = $returnd[38-$authoffset] / 2;
+				$code = $returnd[2] / 2;
 				$text = sprintf("$format %d","Gratuitous ARP seconds:",$code);
 			}
 			else {
@@ -1205,7 +1204,7 @@ sub getnetinfo {
 			}
 		}
       elsif($subcommand eq "alert") {
-         if ($returnd[39-$authoffset] & 0x8) { 
+         if ($returnd[3] & 0x8) { 
             $text = "SP Alerting: enabled";
          } else {
             $text = "SP Alerting: disabled";
@@ -1214,50 +1213,50 @@ sub getnetinfo {
 		elsif($subcommand =~ m/^snmpdest(\d+)/ ) {
 			$text = sprintf("$format %d.%d.%d.%d",
 				"SP SNMP Destination $1:",
-				$returnd[41-$authoffset],
-				$returnd[42-$authoffset],
-				$returnd[43-$authoffset],
-				$returnd[44-$authoffset]);
+				$returnd[5],
+				$returnd[6],
+				$returnd[7],
+				$returnd[8]);
 		}
 		elsif($subcommand eq "ip") {
 			$text = sprintf("$format %d.%d.%d.%d",
 				"BMC IP:",
-				$returnd[38-$authoffset],
-				$returnd[39-$authoffset],
-				$returnd[40-$authoffset],
-				$returnd[41-$authoffset]);
+				$returnd[2],
+				$returnd[3],
+				$returnd[4],
+				$returnd[5]);
 		}
 		elsif($subcommand eq "netmask") {
 			$text = sprintf("$format %d.%d.%d.%d",
 				"BMC Netmask:",
-				$returnd[38-$authoffset],
-				$returnd[39-$authoffset],
-				$returnd[40-$authoffset],
-				$returnd[41-$authoffset]);
+				$returnd[2],
+				$returnd[3],
+				$returnd[4],
+				$returnd[5]);
 		}
 		elsif($subcommand eq "gateway") {
 			$text = sprintf("$format %d.%d.%d.%d",
 				"BMC Gateway:",
-				$returnd[38-$authoffset],
-				$returnd[39-$authoffset],
-				$returnd[40-$authoffset],
-				$returnd[41-$authoffset]);
+				$returnd[2],
+				$returnd[3],
+				$returnd[4],
+				$returnd[5]);
 		}
 		elsif($subcommand eq "backupgateway") {
 			$text = sprintf("$format %d.%d.%d.%d",
 				"BMC Backup Gateway:",
-				$returnd[38-$authoffset],
-				$returnd[39-$authoffset],
-				$returnd[40-$authoffset],
-				$returnd[41-$authoffset]);
+				$returnd[2],
+				$returnd[3],
+				$returnd[4],
+				$returnd[5]);
 		}
 		elsif ($subcommand eq "community") {
 			$text = sprintf("$format ","SP SNMP Community:");
-			my $l = 38-$authoffset;
+			my $l = 2;
 			while ($returnd[$l] ne 0) {
 				$l = $l + 1;
 			}
-			my $i=38-$authoffset;
+			my $i=2;
 			while ($i<$l) {
 				$text = $text . sprintf("%c",$returnd[$i]);
 				$i = $i + 1;
@@ -1384,7 +1383,7 @@ sub setboot {
         if($error) {
             return(1,$error);
         }
-        $code = $returnd[36-$authoffset];
+        $code = $returnd[0];
         unless ($code == 0x00) {
                     return(1,$codes{$code});
             }
@@ -1398,15 +1397,15 @@ sub setboot {
     if($error) {
                 return(1,$error);
         }
-    $code = $returnd[36-$authoffset];
+    $code = $returnd[0];
     unless ($code == 0x00) {
                 return(1,$codes{$code});
         }
-    unless ($returnd[39-$authoffset] & 0x80) {
+    unless ($returnd[3] & 0x80) {
         $text = "boot override inactive";
         return($rc,$text);
     }
-    my $boot=($returnd[40-$authoffset] & 0x3C) >> 2;
+    my $boot=($returnd[4] & 0x3C) >> 2;
     $text = $bootchoices{$boot};
     return($rc,$text);
 }
@@ -1447,7 +1446,6 @@ sub getrvidparms {
     if ($localerror) {
         return(1,$localerror);
     }
-    @build_id=splice @build_id,36-$authoffset;
     unless ($build_id[1]==0x59 and $build_id[2]==0x55 and $build_id[3]==0x4f and $build_id[4]==0x4f) { #Only know how to cope with yuoo builds
         return(1,"Remote video is not supported on this system");
     }
@@ -1521,10 +1519,10 @@ sub power {
 	}
 	else {
 		if($subcommand eq "stat") {
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
-				$code = $returnd[37-$authoffset];
+				$code = $returnd[1];
 
 				if($code & 0b00000001) {
 					$text = "on";
@@ -1539,7 +1537,7 @@ sub power {
 			}
 		}
 		if($subcommand eq "nmi") {
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
 				$text="nmi";
@@ -1550,7 +1548,7 @@ sub power {
 			}
 		}
 		if($subcommand eq "on") {
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
 				$text="on";
@@ -1561,7 +1559,7 @@ sub power {
 			}
 		}
 		if($subcommand eq "softoff") {
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
 				$text="softoff";
@@ -1572,7 +1570,7 @@ sub power {
 			}
 		}
 		if($subcommand eq "off") {
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
 				$text="off";
@@ -1586,7 +1584,7 @@ sub power {
 			}
 		}
 		if($subcommand eq "reset") {
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
 				$text="reset";
@@ -1643,7 +1641,7 @@ sub generic {
 		$text = $error;
 	}
 
-	$code = $returnd[36-$authoffset];
+	$code = $returnd[0];
 
 	if($code == 0x00) {
 	}
@@ -1655,7 +1653,7 @@ sub generic {
 	printf("return code: 0x%02x\n\n",$code);
 
 	print "return data:\n";
-	my @rdata = @returnd[37-$authoffset..@returnd-2]; 
+	my @rdata = @returnd[1..@returnd-2]; 
 	hexadump(\@rdata);
 	print "\n";
 
@@ -1714,7 +1712,7 @@ sub beacon {
 	}
 	else {
 		if($subcommand eq "on") {
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
 				$text="on";
@@ -1725,7 +1723,7 @@ sub beacon {
 			}
 		}
 		if($subcommand eq "off") {
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
 				$text="off";
@@ -1850,7 +1848,7 @@ sub initoemfru {
 			return($rc,$text);
 		}
 
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 
 		if($code == 0x00) {
 		}
@@ -1866,7 +1864,7 @@ sub initoemfru {
 			return($rc,$text);
 		}
 
-		my @oem_fru_data = @returnd[37-$authoffset..@returnd-2];
+		my @oem_fru_data = @returnd[1..@returnd-2];
 		my $model_type = getascii(@oem_fru_data[0..3]);
 		my $model_number = getascii(@oem_fru_data[4..6]);
 		my $serial = getascii(@oem_fru_data[7..13]);
@@ -1902,7 +1900,7 @@ sub initoemfru {
 			return($rc,$text);
 		}
 
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 
 		if($code == 0x00) {
 		}
@@ -1921,7 +1919,7 @@ sub initoemfru {
 hexadump(\@returnd);
 return(2,"");
 
-		my @oem_fru_data = @returnd[37-$authoffset..@returnd-2];
+		my @oem_fru_data = @returnd[1..@returnd-2];
 		my $model_type = getascii(@oem_fru_data[0..3]);
 		my $model_number = getascii(@oem_fru_data[4..6]);
 		my $serial = getascii(@oem_fru_data[7..13]);
@@ -2126,9 +2124,9 @@ sub initfru {
 			\@lcmd,
 			\@lreturnd
 		);
-		if ($lerror eq "" && $lreturnd[36-$authoffset] == 0) {
+		if ($lerror eq "" && $lreturnd[0] == 0) {
 			my @a = ($fw_rev2);
-			my @b= @lreturnd[37-$authoffset .. $#lreturnd-1];
+			my @b= @lreturnd[1 .. $#lreturnd-1];
 			$mprom = sprintf("%d.%s (%s)",$fw_rev1,decodebcd(\@a),getascii(@b));
 		} else {
 			my @a = ($fw_rev2);
@@ -2190,7 +2188,6 @@ sub initfru {
 	@cmd=(0x10,0x00);
     $error = docmd($netfun,\@cmd,\@bytes);
     if ($error) { return (1,$error); }
-    @bytes=splice @bytes,36-$authoffset;
     pop @bytes;
     unless (defined $bytes[0] and $bytes[0] == 0) {
         if ($codes{$bytes[0]}) {
@@ -2457,7 +2454,6 @@ sub get_frusize {
     my @cmd=(0x10,$fruid);
 	my @bytes;
     my $error = docmd($netfun,\@cmd,\@bytes);
-    @bytes=splice @bytes,36-$authoffset;
     pop @bytes;
     unless (defined $bytes[0] and $bytes[0] == 0) {
         if ($codes{$bytes[0]}) {
@@ -2609,7 +2605,7 @@ sub fru {
 		return($rc,$text);
 	}
 
-	$code = $returnd[36-$authoffset];
+	$code = $returnd[0];
 
 	if($code == 0x00) {
 	}
@@ -2625,8 +2621,8 @@ sub fru {
 		return($rc,$text);
 	}
 
-	my $fru_size_ls = $returnd[37-$authoffset];
-	my $fru_size_ms = $returnd[38-$authoffset];
+	my $fru_size_ls = $returnd[1];
+	my $fru_size_ms = $returnd[2];
 	my $fru_size = $fru_size_ms*256 + $fru_size_ls;
 
 	if($subcommand eq "dump") {
@@ -2693,7 +2689,7 @@ sub frudump {
 			return($rc,$text);
 		}
 
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 
 		if($code == 0x00) {
 		}
@@ -2709,14 +2705,14 @@ sub frudump {
 			return($rc,$text);
 		}
 
-		my $count = $returnd[37-$authoffset];
+		my $count = $returnd[1];
 		if($count != $reqsize) {
 			$rc = 1;
 			$text = "FRU read error (bytes requested: $reqsize, got: $count)";
 			return($rc,$text);
 		}
 
-		my @data = @returnd[38-$authoffset..@returnd-2];
+		my @data = @returnd[2..@returnd-2];
 		@fru_data = (@fru_data,@data);
 	}
 
@@ -3032,7 +3028,6 @@ sub writefru {
     my @cmd=(0x10,0);
 	my @bytes;
     my $error = docmd($netfun,\@cmd,\@bytes);
-    @bytes=splice @bytes,36-$authoffset;
     pop @bytes;
     unless (defined $bytes[0] and $bytes[0] == 0) {
         return (1,"FRU device 0 inaccessible");
@@ -3100,7 +3095,7 @@ sub fruwrite {
 			return($rc,$text);
 		}
 
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 
 		if($code == 0x00) {
 		}
@@ -3119,7 +3114,7 @@ sub fruwrite {
 			return($rc,$text);
 		}
 
-		my $count = $returnd[37-$authoffset];
+		my $count = $returnd[1];
 		if($count != $chunk) {
 			$rc = 1;
 			$text = "FRU write error (bytes requested: $chunk, wrote: $count)";
@@ -3303,7 +3298,6 @@ sub readauxentry {
         \@data
         );
     if ($error) { return $error; }
-    @data=splice @data,36-$authoffset;
     if ($data[0]) { return $data[0]; }
     my $text;
     unless ($data[1] == 0x4d and $data[2] == 0x4f and $data[3] == 0) { return "Unrecognized response format" }
@@ -3382,7 +3376,7 @@ sub eventlog {
       [0x48],
       \@returnd
    );
-   $tfactor = $returnd[40]<<24 | $returnd[39]<<16 | $returnd[38]<<8 | $returnd[37];
+   $tfactor = $returnd[4]<<24 | $returnd[3]<<16 | $returnd[2]<<8 | $returnd[1];
    if ($tfactor > 0x20000000) {
       $tfactor -= time(); 
    } else {
@@ -3402,7 +3396,7 @@ sub eventlog {
 		return($rc,$text);
 	}
 
-	$code = $returnd[36-$authoffset];
+	$code = $returnd[0];
 
 	if($code == 0x00) {
 	}
@@ -3422,21 +3416,21 @@ sub eventlog {
 		return($rc,$text);
 	}
 
-	my $sel_version = $returnd[37-$authoffset];
+	my $sel_version = $returnd[1];
 	if($sel_version != 0x51) {
 		$rc = 1;
 		$text = sprintf("SEL version 51h support only, version reported: %x",$sel_version);
 		return($rc,$text);
 	}
 
-	my $num_entries = $returnd[39-$authoffset]*256 + $returnd[38-$authoffset];
+	my $num_entries = $returnd[3]*256 + $returnd[2];
 	if($num_entries <= 0) {
 		$rc = 1;
 		$text = "no SEL entries";
 		return($rc,$text);
 	}
 
-	my $canres = $returnd[50-$authoffset] & 0b00000010;
+	my $canres = $returnd[14] & 0b00000010;
 	if(!$canres) {
 		$rc = 1;
 		$text = "SEL reservation not supported";
@@ -3461,7 +3455,7 @@ sub eventlog {
     		return($rc,$text);
     	}
         
-    	$code = $returnd[36-$authoffset];
+    	$code = $returnd[0];
     
     	if($code == 0x00) {
     	}
@@ -3481,8 +3475,8 @@ sub eventlog {
     		return($rc,$text);
     	}
 
-	    $res_id_ls = $returnd[37-$authoffset];
-    	$res_id_ms = $returnd[38-$authoffset];
+	    $res_id_ls = $returnd[1];
+    	$res_id_ms = $returnd[2];
     } elsif ($mfg_id == 2) {
         #For requests other than clear, we check for IBM extended auxillary log data
         my @auxdata;
@@ -3492,7 +3486,6 @@ sub eventlog {
             $netfn,
             \@auxlogcmd,
             \@auxdata);
-        @auxdata=splice @auxdata,36-$authoffset;
         #print Dumper(\@auxdata);
         unless ($error or $auxdata[0] or $auxdata[5] != 0x4d or $auxdata[6] != 0x4f or $auxdata[7] !=0x0 ) { #Don't bother if support cannot be confirmed by service processor
             $netfn=0x2e<<2; #switch netfunctions to read
@@ -3540,7 +3533,7 @@ sub eventlog {
 			return($rc,$text);
 		}
 
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 
 		if($code == 0x00) {
 		}
@@ -3556,7 +3549,7 @@ sub eventlog {
 			return($rc,$text);
 		}
 
-		my $erase_status = $returnd[37-$authoffset] & 0b00000001;
+		my $erase_status = $returnd[1] & 0b00000001;
 
 #skip test for now, need to get new res id for some machines
 		while($erase_status == 0 && 0) {
@@ -3574,7 +3567,7 @@ sub eventlog {
 				return($rc,$text);
 			}
 
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 
 			if($code == 0x00) {
 			}
@@ -3590,7 +3583,7 @@ sub eventlog {
 				return($rc,$text);
 			}
 
-			$erase_status = $returnd[37-$authoffset] & 0b00000001;
+			$erase_status = $returnd[1] & 0b00000001;
 		}
 
 		$text = "SEL cleared";
@@ -3621,7 +3614,7 @@ sub eventlog {
 			return($rc,@output);
 		}
 
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 
 		if($code == 0x00) {
 		}
@@ -3646,9 +3639,9 @@ sub eventlog {
 			return($rc,@output);
 		}
 
-		my $next_rec_ls = $returnd[37-$authoffset];
-		my $next_rec_ms = $returnd[38-$authoffset];
-		my @sel_data = @returnd[39-$authoffset..39-$authoffset+16];
+		my $next_rec_ls = $returnd[1];
+		my $next_rec_ms = $returnd[2];
+		my @sel_data = @returnd[3..19];
 		@cmd=(0x43,$res_id_ls,$res_id_ms,$next_rec_ls,$next_rec_ms,0x00,0xFF);
 
 		$entry++;
@@ -4275,7 +4268,6 @@ sub initiem {
 			\@payload,
 			\@returnd
 		);
-    @returnd=splice @returnd,36-$authoffset;
     $iem->handle_next_payload(@returnd);
     return $iem;
 }
@@ -4309,7 +4301,6 @@ sub execute_iem_commands {
         my $netfun = shift @payload;
         my $error = docmd($netfun<<2,\@payload,\@returnd);
         if ($error) { return $error; }
-        @returnd=splice @returnd,36-$authoffset;
         $iem->handle_next_payload(@returnd);
         @payload = $iem->get_next_payload();
     }
@@ -4397,7 +4388,7 @@ sub checkleds {
 				$text = $error;
 				return($rc,$text);
 			}
-			if ($returnd[36-$authoffset] == 0xc9) {
+			if ($returnd[0] == 0xc9) {
 				my $tmp;
 				#we probably guessed endianness wrong.
 				$tmp=$led_id_ls;
@@ -4416,24 +4407,24 @@ sub checkleds {
 				}
 			}
 
-			if ($returnd[38-$authoffset]) { # != 0) {
+			if ($returnd[2]) { # != 0) {
 				#It's on...
-				if ($returnd[42-$authoffset] == 4) {
+				if ($returnd[6] == 4) {
 					push(@output,sprintf("BIOS or admininstrator has %s lit",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
 				}
-				elsif ($returnd[42-$authoffset] == 3) {
+				elsif ($returnd[6] == 3) {
 					push(@output,sprintf("A user has manually requested LED 0x%04x (%s) be active",$sdr->led_id,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
 				}
-				elsif ($returnd[42-$authoffset] == 1 && $sdr->led_id !=0) {
-					push(@output,sprintf("LED 0x%02x%02x (%s) active to indicate LED 0x%02x%02x (%s) is active",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds"),$returnd[40-$authoffset],$returnd[41-$authoffset],getsensorname($mfg_id,$prod_id,($returnd[40-$authoffset]<<8)+$returnd[41-$authoffset],"ibmleds")));
+				elsif ($returnd[6] == 1 && $sdr->led_id !=0) {
+					push(@output,sprintf("LED 0x%02x%02x (%s) active to indicate LED 0x%02x%02x (%s) is active",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds"),$returnd[4],$returnd[5],getsensorname($mfg_id,$prod_id,($returnd[4]<<8)+$returnd[5],"ibmleds")));
 				}
 				elsif ($sdr->led_id ==0) {
 					push(@output,sprintf("LED 0x0000 (%s) active to indicate system error condition.",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
 				}
-				elsif ($returnd[42-$authoffset] == 2) {
+				elsif ($returnd[6] == 2) {
 					my $sensor_desc;
 					#Ok, LED is tied to a sensor..
-					my $sensor_num=$returnd[41-$authoffset];
+					my $sensor_num=$returnd[5];
 				        foreach $key (keys %sdr_hash) {
 						my $osdr = $sdr_hash{$key};
 				                if($osdr->sensor_number == $sensor_num) {
@@ -4719,7 +4710,7 @@ sub readsensor {
 		return($rc,$text);
 	}
 
-	$code = $returnd[36-$authoffset];
+	$code = $returnd[0];
 	if($code != 0x00) {
 		$rc = 1;
 		$text = $codes{$code};
@@ -4732,14 +4723,14 @@ sub readsensor {
 		return($rc,$text);
 	}
 	
-	if ($returnd[38-$authoffset] & 0x20) {
+	if ($returnd[2] & 0x20) {
 		$rc = 1;
 		$text = "N/A";
 		return($rc,$text);
 	}
-	$text = $returnd[37-$authoffset];
-    my $exdata1 = $returnd[39-$authoffset];
-    my $exdata2 = $returnd[39-$authoffset];
+	$text = $returnd[1];
+    my $exdata1 = $returnd[3];
+    my $exdata2 = $returnd[3];
     my $extext;
     my @exparts;
     if ($sdr->event_type_code == 0x1) {
@@ -5086,7 +5077,7 @@ sub initsdr {
 			return($rc,$text);
 		}
 
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 		if($code != 0x00) {
 			$rc = 1;
 			$text = $codes{$code};
@@ -5100,15 +5091,15 @@ sub initsdr {
 		$rid_ls = $nrid_ls;
 		$rid_ms = $nrid_ms;
 ###
-		$nrid_ls = $returnd[37-$authoffset];
-		$nrid_ms = $returnd[38-$authoffset];
+		$nrid_ls = $returnd[1];
+		$nrid_ms = $returnd[2];
 ### correct IPMI code
-#		$rid_ls = $returnd[39-$authoffset];
-#		$rid_ms = $returnd[40-$authoffset];
+#		$rid_ls = $returnd[3];
+#		$rid_ms = $returnd[4];
 ###
-		$sdr_ver = $returnd[41-$authoffset];
-		$sdr_type = $returnd[42-$authoffset];
-		$sdr_len = $returnd[43-$authoffset] + 5;
+		$sdr_ver = $returnd[5];
+		$sdr_type = $returnd[6];
+		$sdr_len = $returnd[7] + 5;
 
 		if($sdr_type == 0x01) {
 			$sdr_offset = 0;
@@ -5149,7 +5140,7 @@ sub initsdr {
 				return($rc,$text);
 			}
 
-			$code = $returnd[36-$authoffset];
+			$code = $returnd[0];
 			if($code != 0x00) {
 				$rc = 1;
 				$text = $codes{$code};
@@ -5160,7 +5151,7 @@ sub initsdr {
 				return($rc,$text);
 			}
 
-			@sdr_data = (@sdr_data,@returnd[39-$authoffset..@returnd-2]);
+			@sdr_data = (@sdr_data,@returnd[3..@returnd-2]);
 
 			$offset += $len;
 		}
@@ -5336,7 +5327,7 @@ sub getchassiscap {
 		return($rc,$text);
 	}
 
-	$code = $returnd[36-$authoffset];
+	$code = $returnd[0];
 	if($code == 0x00) {
 		$text = "";
 	}
@@ -5350,7 +5341,7 @@ sub getchassiscap {
 		return($rc,$text);
 	}
 
-	return($rc,@returnd[37-$authoffset..@returnd-2]);
+	return($rc,@returnd[1..@returnd-2]);
 }
 
 sub getdevid {
@@ -5376,7 +5367,7 @@ sub getdevid {
 		return($rc,$text);
 	}
 	else {
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 
 		if($code == 0x00) {
 			$text = "";
@@ -5392,12 +5383,12 @@ sub getdevid {
 		}
 	}
 
-	my $device_id = $returnd[37-$authoffset];
-	my $device_rev = $returnd[38-$authoffset] & 0b00001111;
-	my $firmware_rev1 = $returnd[39-$authoffset] & 0b01111111;
-	my $firmware_rev2 = $returnd[40-$authoffset];
-	my $ipmi_ver = $returnd[41-$authoffset];
-	my $dev_support = $returnd[42-$authoffset];
+	my $device_id = $returnd[1];
+	my $device_rev = $returnd[2] & 0b00001111;
+	my $firmware_rev1 = $returnd[3] & 0b01111111;
+	my $firmware_rev2 = $returnd[4];
+	my $ipmi_ver = $returnd[5];
+	my $dev_support = $returnd[6];
 	my $sensor_device = 0;
 	my $SDR = 0;
 	my $SEL = 0;
@@ -5430,9 +5421,9 @@ sub getdevid {
 	if($dev_support & 0b10000000) {
 		$CD = 1;
 	}
-	my $mfg_id = $returnd[43-$authoffset] + $returnd[44-$authoffset]*0x100 +  $returnd[45-$authoffset]*0x10000;
-	my $prod_id = $returnd[46-$authoffset] + $returnd[47-$authoffset]*0x100;
-	my @data = @returnd[48-$authoffset..@returnd-2];
+	my $mfg_id = $returnd[7] + $returnd[8]*0x100 +  $returnd[9]*0x10000;
+	my $prod_id = $returnd[10] + $returnd[11]*0x100;
+	my @data = @returnd[12..@returnd-2];
 
 	return($rc,$text,$mfg_id,$prod_id,$device_id,$device_rev,$firmware_rev1,$firmware_rev2);
 }
@@ -5459,7 +5450,7 @@ sub getguid {
 		return($rc,$text);
 	}
 	else {
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 
 		if($code == 0x00) {
 			$text = "";
@@ -5475,7 +5466,7 @@ sub getguid {
 		}
 	}
 
-	my @guid = @returnd[37-$authoffset..52-$authoffset];
+	my @guid = @returnd[1..16];
 	my $guidtext = sprintf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",@guid);
 	$guidtext =~ tr/[a-z]/[A-Z]/;
 
@@ -5507,7 +5498,7 @@ sub get_sdr_rep_info {
 		return($rc,$text);
 	}
 	else {
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 
 		if($code == 0x00) {
 			$text = "";
@@ -5523,9 +5514,9 @@ sub get_sdr_rep_info {
 		}
 	}
 
-	$sdr_rep_info->version($returnd[37-$authoffset]);
-	$sdr_rep_info->rec_count($returnd[38-$authoffset] + $returnd[39-$authoffset]*0x100);
-	$sdr_rep_info->resv_sdr(($returnd[50-$authoffset] & 0b00000010) ? 1 : 0);
+	$sdr_rep_info->version($returnd[1]);
+	$sdr_rep_info->rec_count($returnd[2] + $returnd[3]*0x100);
+	$sdr_rep_info->resv_sdr(($returnd[14] & 0b00000010) ? 1 : 0);
 
 	return($rc,$text);
 }
@@ -5553,7 +5544,7 @@ sub resv_sdr_repo {
 		return($rc,$text);
 	}
 	else {
-		$code = $returnd[36-$authoffset];
+		$code = $returnd[0];
 
 		if($code == 0x00) {
 			$text = "";
@@ -5569,8 +5560,8 @@ sub resv_sdr_repo {
 		}
 	}
 
-	my $resv_id_ls = $returnd[37-$authoffset];
-	my $resv_id_ms = $returnd[38-$authoffset];
+	my $resv_id_ls = $returnd[1];
+	my $resv_id_ms = $returnd[2];
 
 	return($rc,$text,$resv_id_ls,$resv_id_ms);
 }
@@ -5609,6 +5600,7 @@ sub docmd {
 	);
 
 	($error,@$response) = domsg($sock,\@msg,$timeout,1);
+    splice @$response,0,36-$authoffset;
 
 	return($error);
 }
