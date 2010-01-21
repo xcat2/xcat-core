@@ -687,6 +687,8 @@ sub new
         } else { #generic DBI
            if (!$self->{dbh})
            {
+			   xCAT::MsgUtils->message("S", "Could not connect to the database. Database handle not defined.");
+
                return undef;
            }
            my $tbexistq;
@@ -716,6 +718,10 @@ sub new
                                $xCAT::Schema::tabspec{$self->{tabname}},
                        $xcatcfg);
               $self->{dbh}->do($str);
+			  if ($xcatcfg =~ /^DB2:/) {  # for DB2
+			     $self->{dbh}->commit;  #  commit the create
+		     }
+
               
           }
          } # end Generic DBI
