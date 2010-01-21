@@ -222,7 +222,7 @@ EOF
 chmod 755 /etc/profile.d/xcat.*
 
 %else
-if [ "$1" = "1" ]; then #Only if installing for the first time..
+if ! egrep PERL5LIB /etc/environment > /dev/null 2>&1 ; then
 echo "
 # xCAT Perl setup
 PERL5LIB=/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi " >>/etc/environment
