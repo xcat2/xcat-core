@@ -79,9 +79,8 @@ if (! $inoperative) {   # active
     }
 
     # Wait for end of the xcatd subsystem
-    $check_num = 3;
+    $check_num = 5;
     while ($check_num > 0) {
-        $check_num--;
         $cmd = "lssrc -s xcatd | grep 'xcatd' | grep 'inoperative'";
         @output = `$cmd`;
         if (scalar(@output) == 0) {
@@ -89,6 +88,7 @@ if (! $inoperative) {   # active
         } else {
             last;
         }
+        $check_num--;
     }
 
     if ($check_num <= 0) {
@@ -122,9 +122,8 @@ if (scalar(@output)) {
         my $cmd = "/usr/bin/kill -9 $pid >/dev/null 2>&1";
         `$cmd`;
     }
-    $check_num = 3;
+    $check_num = 5;
     while ($check_num > 0) {
-        $check_num--;
         $cmd = "ps -ef | grep xcatd: | grep -v grep";
         @output = `$cmd`;
         if (scalar(@output)) {
@@ -132,6 +131,7 @@ if (scalar(@output)) {
         } else {
             last;
         }
+        $check_num--;
     }
     if ($check_num <= 0) {
         xCAT::MsgUtils->message("E", "Error: Cannot kill the xcatd processes correctly.\n");
@@ -164,9 +164,8 @@ if ($rc >> 8) {
 sleep 3;
 
 # Check the status of xcatd subsystem
-$check_num = 3;
+$check_num = 5;
 while ($check_num > 0) {
-    $check_num--;
     $cmd = "lssrc -s xcatd | grep 'xcatd' | grep 'active'";
     my @output = `$cmd`;
     if (scalar(@output) == 0) {
@@ -174,6 +173,7 @@ while ($check_num > 0) {
     } else {
         last;
     }
+    $check_num--;
 }
 
 if ($check_num <= 0) {
