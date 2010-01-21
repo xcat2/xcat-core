@@ -464,7 +464,8 @@ sub getdestiny {
       next;
     }
     unless ($ref->{currstate}) { #Has a record, but not yet in a state...
-      return nextdestiny(0); #Becomes a nextdestiny...
+      # we set a 1 here so that it does the nodeset to create tftpboot files
+      return nextdestiny(0,1); #Becomes a nextdestiny...
 #      my @chain = split /,/,$ref->{chain};
 #      $ref->{currstate} = shift @chain;
 #      $chaintab->setNodeAttribs($node,{currstate=>$ref->{currstate}});
