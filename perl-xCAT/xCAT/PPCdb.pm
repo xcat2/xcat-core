@@ -231,9 +231,7 @@ sub update_ppc {
 
         next if ( !$predefined_node);
         
-        if ( $predefined_node =~ /-A$/ ) {
-            $name = $name . "-A";
-        } elsif ( $predefined_node =~ /-B$/ ) {
+        if ( $predefined_node =~ /-B$/ ) {
             $name = $name . "-B";
         }
 
