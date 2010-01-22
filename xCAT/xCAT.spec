@@ -120,7 +120,3 @@ fi
 /install/postscripts
 /install/prescripts
 %defattr(-,root,root)
-%postun
-# removes MN file
-  rm /etc/xCATMN
-
