@@ -105,7 +105,6 @@ cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 %else
 . /etc/profile.d/xcat.sh
 %endif
-touch /etc/xCATMN
 if [ "$1" = "1" ]; then #Only if installing for the first time..
 $RPM_INSTALL_PREFIX0/sbin/xcatconfig -i
 else
@@ -121,7 +120,4 @@ fi
 /install/postscripts
 /install/prescripts
 %defattr(-,root,root)
-%postun
-# removes MN file
-  rm /etc/xCATMN
 
