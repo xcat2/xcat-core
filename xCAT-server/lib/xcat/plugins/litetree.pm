@@ -147,26 +147,56 @@ sub showSync {
 	my $callback = shift;
 	my $node = shift;
 	my $dirs = shift;
-
+	my $mnts;
+	my $first;
 	#print Dumper($dirs);
 	# go through each directory in priority order
 	#mkdir "/mnt/xcat";
 	if($syncType eq "dir"){
+
 		foreach my $priority (sort {$a <=> $b} keys %$dirs){
 			# split the nfs server up from the directory:
+			my $mntpnt;
 			my ($server, $dir) = split(/:/,$dirs->{$priority});
+
+			# if server is blank then its the directory:
+			unless($dir){
+				$dir = $server;
+				$server = '';	
+			}
+
 			if(grep /\$|#CMD/, $dir){
 				$dir = subVar($dir,$node,'dir',$callback);
 				$dir =~ s/\/\//\//g;
 			}
+			$first = $dir;
+			$first =~ s!\/([^/]*)\/.*!$1!;
 
-			if(grep /\$/, $server){
-				$server = subVar($server,$node,'server',$callback);
-			}
-			my $mntpnt = $server . ":" . $dir;
+			if($server){
+				if(grep /\$/, $server){
+					$server = subVar($server,$node,'server',$callback);
+				}
+		
+				$mntpnt = $server . ":";
+				# we have a server and need to make sure we can mount them under unique names
+				if($mnts->{$first} eq '' ){  # if the first mount point doesn't have a server then leave it.
+					$mnts->{$first} = $server;
+				}else{
+					# they may just have the name in twice:
+					unless($server eq $mnts->{$first}){ 
+						my $msg = "# " . $mnts->{$first} . " and $server both mount /$first.  This not supported.";
+						$callback->({info => $msg});
+						return;	
+					}else{
+						$mntpnt = "";  # only mount it once, so get rid of the directory
+					}
+				}
+			}	
+			$mntpnt .= $dir;
 			# ok, now we have all the mount points.  Let's go through them all?
 			$callback->({info => "$node: $mntpnt"});
 		}
+
 	}elsif($syncType =~ /file|image/){
 		foreach my $file (sort keys %$dirs){
 			my $options	= $dirs->{$file};
@@ -175,7 +205,7 @@ sub showSync {
 			$callback->({info => $out});
 		}
 	}
-	
+
 }
 
 # some directories will have xCAT database values, like:
