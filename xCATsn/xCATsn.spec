@@ -15,6 +15,7 @@ Source1: xcat.conf
 Source2: license.tar.gz
 Provides: xCATsn = %{version}
 Requires: xCAT-server xCAT-client  perl-xCAT perl-XML-Parser
+Conflicts: xCAT-2 
 
 %ifos linux
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
@@ -76,8 +77,7 @@ if [ -f /etc/xCATMN ]; then
 fi
 
 
-###  Start the xcatd daemon
-
+# start xcatd
     chkconfig httpd on
     if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     	XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
@@ -95,3 +95,6 @@ fi
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
 %defattr(-,root,root)
+%postun 
+# removes SN file 
+  rm /etc/xCATSN
