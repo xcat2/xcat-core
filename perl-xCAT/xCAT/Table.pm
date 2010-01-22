@@ -37,6 +37,7 @@ use Sys::Syslog;
 use Storable qw/freeze thaw/;
 use IO::Socket;
 use Data::Dumper;
+use POSIX qw/WNOHANG/;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -149,6 +150,7 @@ sub init_dbworker {
         die "Error spawining database worker";
     }
     unless ($dbworkerpid) {
+        $SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) {}}; #avoid zombies from notification framework
         #This process is the database worker, it's job is to manage database queries to reduce required handles and to permit cross-process caching
         $0 = "xcatd: DB Access";
         use File::Path;
@@ -1727,7 +1729,11 @@ sub setNodesAttribs {
             foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
                 $upstring .= "$col = ?, ";
             }
-            $upstring =~ s/, / where $nodekey = ?/;
+            if (grep { $_ eq $nodekey } @orderedcols) {
+                $upstring =~ s/, \z//;
+            } else {
+                $upstring =~ s/, \z/ where $nodekey = ?/;
+            }
             $upsth = $self->{dbh}->prepare($upstring);
         }
         if (scalar keys %updatenodes) {
