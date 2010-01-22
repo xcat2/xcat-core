@@ -95,6 +95,3 @@ fi
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
 %defattr(-,root,root)
-%postun 
-# removes SN file 
-  rm /etc/xCATSN
