@@ -7,7 +7,7 @@
 # description: statelite initialization script
 
 # get all the database files.
-set -x
+#set -x
 SL=".statelite"
 ME=`hostname`
 MNTDIR="/sysroot"
