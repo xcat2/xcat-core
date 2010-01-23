@@ -7,7 +7,7 @@
 # description: statelite initialization script
 
 # get all the database files.
-#set -x
+set -x
 SL=".statelite"
 ME=`hostname`
 MNTDIR="/sysroot"
@@ -94,13 +94,14 @@ MountTrees () {
 		echo "Can't read $SYNCTREE.  Something is wrong with this image..." >/dev/console
 		exit 1
 	fi
-	P=1
-	for i in `cat $SYNCTREE | grep -v '^#'`;
+	for i in `cat $SYNCTREE | grep -v '^#' | grep ':'`;
 	do
-		mkdir $TREEMOUNT/$P
-		MAX=10
+		SERV=`echo $i | awk -F: '{print $1}'`  # SERV is (SERV):/blah/blah/blah
+		MNT=`echo $i | awk -F/ '{print $2}'`   # MNT is server:/(MNT)/blah/blah
+		mkdir $TREEMOUNT/$MNT
+		MAX=5
 		TRIES=1
-		while ! mount $i $TREEMOUNT/$P -r -n -o nolock
+		while ! mount $SERV:/$MNT $TREEMOUNT/$MNT -r -n -o nolock
 		do
 			if [ "$TRIES" = "$MAX" ]
 			then
@@ -110,10 +111,9 @@ MountTrees () {
 			fi
 			TRIES=`expr $TRIES + 1`
 			S=`expr $RANDOM % 20`
-			echo "Can't mount $i... Sleeping $S seconds then trying again" >/dev/console
+			echo "Can't mount $SERV:/$MNT... Sleeping $S seconds then trying again" >/dev/console
 			sleep $S
 		done
-		P=`expr $P + 1`
 	done
 }
 
@@ -211,7 +211,7 @@ FindFile () {
 	path=$1
 	type=$2
 	FOUND=0
-	for DIR in `ls $TREEMOUNT`
+	for DIR in `cat ${SYNCTREE} | sed 's/[^\/]*//'`
 	do
 		if [ -e ${TREEMOUNT}/${DIR}${path} ]
 		then
