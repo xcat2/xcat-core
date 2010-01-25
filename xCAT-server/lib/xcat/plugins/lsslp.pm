@@ -96,7 +96,7 @@ my %mgt = (
     lc(TYPE_RSA) => "blade"
 );
 
-my @attribs    = qw(nodetype model serial groups node mgt mpa id side);
+my @attribs    = qw(nodetype model serial groups node mgt mpa id side ip);
 my $verbose    = 0;
 my %ip_addr    = ();
 my %slp_result = ();
@@ -1479,8 +1479,8 @@ sub parse_responses {
         ###########################################
         # Strip commas from IP list
         ###########################################
-        $result[3] =~ s/,/ /g;
-        my $ip     = $result[3];
+        $result[4] =~ s/,/ /g;
+        my $ip     = $result[4];
 
         ###########################################
         # Process any extra attributes
@@ -1714,6 +1714,11 @@ sub format_stanza {
         my $side = $data[3]; 
         my $i = 0;
 
+        if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
+            $name = $1;
+            $ip  = $2;
+        }
+
         #################################
         # Node attributes
         #################################
@@ -1775,6 +1780,11 @@ sub format_xml {
         my $ip   = $data[4];
         my $side = $data[3];
         my $i = 0;
+
+        if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
+            $name = $1;
+            $ip  = $2;
+        }
 
         #################################
         # Initialize hash reference
