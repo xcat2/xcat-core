@@ -5508,4 +5508,41 @@ sub get_DBName
     return $name;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3  full_path
+    Description:
+        Convert the relative path to full path.
+
+    Arguments:
+        relpath: relative path
+        cwdir: current working directory, use the cwd() if not specified
+    Returns:
+        Return the full path
+        NULL  - Failed to get the full path.
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $fp = xCAT::Utils::full_path('./test', '/home/guest');
+    Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub full_path
+{
+    my ($class, $relpath, $cwdir) = @_;
+
+    my $fullpath;
+
+    if (!$cwdir) { #cwdir is not specified
+        $fullpath = Cwd::abs_path($relpath);
+    } else {
+        $fullpath = $cwdir . "/$relpath";
+    }
+
+    return $fullpath;
+}
 1;
