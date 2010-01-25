@@ -8,6 +8,7 @@
 #      updatenode -S --> xcatdsklspost 2 otherpkgs
 #      moncfg rmcmon --> xcatdsklspost 3 configrmcnodes
 #      node deployment  --> xcatdsklspost
+#      statelite mode   --> xcatdsklspost 4
 #
 #####################################################
 download_postscripts()
@@ -39,6 +40,7 @@ download_postscripts()
     return $rc
 }
 
+MODE=$1 
 
 if [ ! `uname` == Linux ]; then
    MYDIR=`dirname $0`
@@ -48,27 +50,55 @@ fi
 let SLI=$RANDOM%10
 sleep $SLI
 
-mkdir -p /xcatpost; 
-mkdir -p /tmp/postage
+if [ ! -d /xcatpost ]; then
+    mkdir -p /xcatpost; 
+fi
+
+if [ ! -d /tmp/postage ]; then
+    mkdir -p /tmp/postage
+fi
 rm -R -f /xcatpost/*
 rm -R -f /tmp/postage/*
 
 #here we get all the postscripts.  Please do not change this behaviour because some scripts depend on others
 cd /tmp/postage
 
-downloaded=0;
-#open the xcatinfo file to look for the master if it is not set
-if [ -f /opt/xcat/xcatinfo ]; then
-    SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
-    if [ -n "$SIP" ]; then
-	download_postscripts $SIP
-	if [ $? -eq 0 ]; then 
-	    downloaded=1
-	fi
-    fi
-fi   
-
 argnum=$#;
+
+if [ "$MODE" != "4" ]; then # not statelite mode
+    downloaded=0;
+    #open the xcatinfo file to look for the master if it is not set
+    if [ -f /opt/xcat/xcatinfo ]; then
+        SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
+        if [ -n "$SIP" ]; then
+	        download_postscripts $SIP
+	        if [ $? -eq 0 ]; then 
+	            downloaded=1
+	        fi
+        fi
+    fi   
+else # for statelite mode
+    # We have written the xCATSERVER info into the kernel command line!!
+    for i in `cat /proc/cmdline`; do
+        KEY=`echo $i | awk -F= '{print $1}'`
+        if [ "$KEY" ==  "XCAT" ]; then
+            TMP=`echo $i | awk -F= '{print $2}'`
+            XCATSERVER=`echo $TMP | cut -d: -f1`
+            echo "XCATSERVER=$XCATSERVER" > /opt/xcat/xcatinfo
+            break
+        fi
+    done
+
+    if [ -f /opt/xcat/xcatinfo ]; then
+        SIP=`cut -d= -f2 /opt/xcat/xcatinfo`;
+    else
+        echo "xCAT management server IP can't be determined.\nexiting...";
+        exit;
+    fi
+fi
+
+if [ "$MODE" != "4" ]; then # NOSTATELITE: NOT for statelite MODE
+
 #try the -m if it is specified, -m is passed in the updatenode command
 if [ $downloaded -eq 0 ]; then
    #get the -m
@@ -116,6 +146,8 @@ if [ $downloaded -eq 0 ]; then
     exit  
 fi
 
+fi  #END NOSTATELITE
+
 if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
     touch /var/lock/subsys/xcatmounts
     echo '#!/bin/bash' > /etc/rc6.d/K10xcatmounts
@@ -126,17 +158,37 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
 fi
 
 
-#wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts 2> /tmp/wget.log
+if [ "$MODE" != "4" ]; then
+    
+    #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts 2> /tmp/wget.log
+    
+    #mv $SIP/install/postscripts/* /xcatpost; 
+    mv $SIP/postscripts/* /xcatpost; 
+    rm -rf $SIP
+else  # for statelite mode
+    MAX=10
+    TRIES=1
+    while ! mount $SIP:/install/postscripts /xcatpost -r -n -o nolock
+    do
+        if [ "$TRIES" = "$MAX" ]
+        then
+            echo "can't mount $SIP:/install/postscripts. I give up... ">/dev/console
+            exit
+        fi
+        TRIES=`expr $TRIES + 1`
+        S=`expr $RANDOM % 20`
+        echo "Can't mount $SIP:/install/postscripts... Sleeping $S seconds then trying again" >/dev/console
+        sleep $S
+    done
 
+fi
 
-
-#mv $SIP/install/postscripts/* /xcatpost; 
-mv $SIP/postscripts/* /xcatpost; 
-rm -rf $SIP
 cd /xcatpost; 
 PATH=/xcatpost:$PATH
 export PATH
-chmod +x /xcatpost/*;
+if [ "$MODE" != "4" ]; then
+    chmod +x /xcatpost/*; # no effect for statelite mode, since the directory are readonly
+fi
 #echo "PATH=$PATH" 
 
 
@@ -165,19 +217,27 @@ while [ -z "$MYCONT" ]; do
     let SLI=$RANDOM%10
     let SLI=10+$SLI
     sleep $SLI
-    for SIP in $SIPS; do #Attempt against several candidates
-        if [ -x /usr/bin/openssl ]; then
-             XCATSERVER="$SIP:3001"
-             export XCATSERVER
-             USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
-             export USEOPENSSLFORXCAT
-        fi
-        /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
+    if [ "$MODE" != "4" ]; then
+        for SIP in $SIPS; do #Attempt against several candidates
+            if [ -x /usr/bin/openssl ]; then
+                XCATSERVER="$SIP:3001"
+                export XCATSERVER
+                USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
+                export USEOPENSSLFORXCAT
+            fi
+            /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
+            MYCONT=`grep MASTER /tmp/mypostscript`
+            if [ ! -z "$MYCONT" ]; then
+                break;
+            fi
+        done
+    else    # for statelite mode
+        /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript;
         MYCONT=`grep MASTER /tmp/mypostscript`
         if [ ! -z "$MYCONT" ]; then
             break;
         fi
-    done
+    fi
 #    echo "MYCONT=$MYCONT"
 done
 
