@@ -338,6 +338,7 @@ sub process_request
 	my $command  = $flatreq->{command};
     $::args     = $flatreq->{arg};
     $::filedata = $flatreq->{stdin}->[0];
+    $::cwd = $flatreq->{cwd};
 
 	# set the data passed in by the preprocess_request routine
     my $nodehash = $flatreq->{'nodehash'};
@@ -1255,10 +1256,10 @@ sub mknimimage
         # This is not a full path
         if($::opt_l !~ /^\//)
         {
-            my $abspath = Cwd::abs_path($::opt_l);
+                my $abspath = xCAT::Utils->full_path($::opt_l, $::cwd);
             if ($abspath)
             {
-                $::opt_l = Cwd::abs_path($::opt_l);
+                    $::opt_l = $abspath;
             }
         }
     }
@@ -1317,9 +1318,9 @@ sub mknimimage
 
 		# if its not installed then run nim_master_setup
 		if($::opt_s !~ /^\//) {
-			my $abspath = Cwd::abs_path($::opt_s);
+			my $abspath = xCAT::Utils->full_path($::opt_s, $::cwd);
 			if ($abspath) {
-				$::opt_s = Cwd::abs_path($::opt_s);
+				$::opt_s = $abspath;
 			}
 		}
 
@@ -1936,9 +1937,9 @@ sub mk_lpp_source
 			#	lpp_source resource
 			if (!(grep(/^$::opt_s$/, @lppresources))) {
 				if($::opt_s !~ /^\//) {
-					my $abspath = Cwd::abs_path($::opt_s);
+					my $abspath = xCAT::Utils->full_path($::opt_s, $::cwd);
 					if ($abspath) {
-						$::opt_s = Cwd::abs_path($::opt_s);
+						$::opt_s = $abspath;
 					}
 				}
 				if ( !(-e $::opt_s) ) {
