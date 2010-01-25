@@ -13,6 +13,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 #BuildArch: noarch
 Source1: xcat.conf
 Source2: license.tar.gz
+Source3: xCATSN 
 Provides: xCATsn = %{version}
 Requires: xCAT-server xCAT-client  perl-xCAT perl-XML-Parser
 Conflicts: xCAT-2 
@@ -58,6 +59,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 # cd -
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
+cp %{SOURCE3} $RPM_BUILD_ROOT/etc/xCATSN
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
@@ -94,4 +96,5 @@ fi
 # one for sles, one for rhel. yes, it's ugly...
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
+/etc/xCATSN
 %defattr(-,root,root)

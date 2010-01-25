@@ -17,6 +17,7 @@ then
     gzip -f /opt/freeware/src/packages/SOURCES/templates.tar
 
     cp xcat.conf /opt/freeware/src/packages/SOURCES
+    cp xCATMN /opt/freeware/src/packages/SOURCES
 
     rm -f /opt/freeware/src/packages/SRPMS/xCAT-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/xCAT-$VER*rpm
     cd -
@@ -38,6 +39,7 @@ else
 	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/prescripts.tar.gz  prescripts
 	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/templates.tar.gz templates
 	cp xcat.conf /usr/src/$pkg/SOURCES
+	cp xCATMN /usr/src/$pkg/SOURCES
 	cd -
 	rm -f /usr/src/$pkg/SRPMS/xCAT-$VER*rpm /usr/src/$pkg/RPMS/*/xCAT-$VER*rpm
    if [ ! -z "$1" ]; then

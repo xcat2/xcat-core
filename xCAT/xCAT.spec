@@ -13,6 +13,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 Source1: xcat.conf
 Source2: postscripts.tar.gz
 Source3: templates.tar.gz
+Source5: xCATMN 
 
 %ifos linux
 Source4: prescripts.tar.gz
@@ -95,6 +96,7 @@ mkdir -p postscripts/hostkeys
 cd -
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/apache2/conf.d/xcat.conf
 cp %{SOURCE1} $RPM_BUILD_ROOT/etc/httpd/conf.d/xcat.conf
+cp %{SOURCE5} $RPM_BUILD_ROOT/etc/xCATMN
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT
@@ -117,7 +119,7 @@ fi
 # one for sles, one for rhel. yes, it's ugly...
 /etc/httpd/conf.d/xcat.conf
 /etc/apache2/conf.d/xcat.conf
+/etc/xCATMN
 /install/postscripts
 /install/prescripts
 %defattr(-,root,root)
-
