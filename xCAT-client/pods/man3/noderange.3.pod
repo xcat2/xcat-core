@@ -73,7 +73,7 @@ A regular expression match of nodes or groups:
  /node[345].*   (will match any nodes that start with node3, node4, or node5)
  /group[12].*   (will match any groups that start with group1 or group2)
 
-The full path of a file containing noderanges of nodes or groups:
+The path of a file containing noderanges of nodes or groups:
 
  ^/tmp/nodelist
 

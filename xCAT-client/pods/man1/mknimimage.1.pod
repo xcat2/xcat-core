@@ -52,7 +52,7 @@ Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=
 
 =item B<-b mksysbfile>
 
-Used to specify the full path name of a mksysb file to use when defining a NIM mksysb resource.
+Used to specify the path name of a mksysb file to use when defining a NIM mksysb resource.
 
 =item B<-f|--force>
 
@@ -88,7 +88,7 @@ Use this option to specify that a NIM "shared_root" resource be created for the 
 
 =item B<-s image_source>
 
-The source of software to use when creating the new NIM lpp_source resource. This could be a source directory or a previously defined NIM lpp_source resource name.  B<When specifying a source directory make sure to use the full path name.>
+The source of software to use when creating the new NIM lpp_source resource. This could be a source directory or a previously defined NIM lpp_source resource name. 
 
 =item B<-t nimtype>
 
