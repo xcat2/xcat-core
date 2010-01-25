@@ -2575,6 +2575,9 @@ sub mk_mksysb
             	}
 
 			} elsif ($::SYSB) {
+				if($::SYSB !~ /^\//) { #relative path
+					$::SYSB = xCAT::Utils->full_path($::SYSB, $::cwd);
+				}
 
 				# def res with existing mksysb image
 				my $mkcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a location=$::SYSB $mksysb_name 2>&1";
