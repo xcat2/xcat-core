@@ -145,8 +145,14 @@ ProcessType () {
 
 	case "${3}" in 
 		tmpfs,rw)
-			cp -a ${1} ${TMPFS}${2}
-			echo "cp -a ${1} ${TMPFS}${2}" >>$LOG
+            if [ ! -d ${TMPFS}${2} ]
+            then
+			    cp -a ${1} ${TMPFS}${2}
+			    echo "cp -a ${1} ${TMPFS}${2}" >>$LOG
+            else
+                cp -a ${1}* ${TMPFS}${2}
+                echo "cp -a ${1}/* ${TMPFS}${2}/" >>$LOG
+            fi
 			# the link will already be in place on the image, so nothing else to do!
 			#mount -n --bind ${TMPFS}${2} ${1}
 			;;
