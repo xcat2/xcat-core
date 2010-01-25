@@ -71,8 +71,6 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
 # so conserver will start
  mkdir -p /var/log/consoles
 
-# makes it a service node
-  touch /etc/xCATSN
 # remove any management node file
 if [ -f /etc/xCATMN ]; then
   rm  /etc/xCATMN
