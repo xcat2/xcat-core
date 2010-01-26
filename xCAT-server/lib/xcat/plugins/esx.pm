@@ -1184,9 +1184,18 @@ sub getcfgdatastore {
         #TODO: if multiple drives are specified, make sure to split this out
         #DONE: I believe the regex after this conditional takes care of that case already..
     }
-    $cfgdatastore =~ s/,.*$//;
-    $cfgdatastore =~ s/\/$//;
-    $cfgdatastore = "[".$dses->{$cfgdatastore}."]";
+    (my $method,my $location) = split /:\/\//,$cfgdatastore,2;
+    (my $server,my $path = split/\//,$location,2;
+    $server =~ s/:$//; #tolerate habitual colons
+    my $servern = inet_aton($server);
+    unless ($servern) {
+        sendmsg([1,"could not resolve '$server' to an address from vm.storage/vm.cfgstore"]);
+    }
+    $server = inet_ntoa($servern);
+    my $uri = "nfs://$server/$path";
+    $cfgdatastore = "[".$dses->{$uri}."]";
+    #$cfgdatastore =~ s/,.*$//; #these two lines of code were kinda pointless
+    #$cfgdatastore =~ s/\/$//;
     return $cfgdatastore;
 }
 
@@ -1362,8 +1371,18 @@ sub create_storage_devs {
         unless (scalar @sizes) { @sizes = ($disksize); } #if we emptied the array, stick the last entry back on to allow it to specify all remaining disks
         $disksize = getUnits($disksize,'G',1024);
         $storeloc =~ s/\/$//;
+        (my $method,my $location) = split /:\/\//,$cfgdatastore,2;
+        (my $server,my $path = split/\//,$location,2;
+        $server =~ s/:$//; #tolerate habitual colons
+        my $servern = inet_aton($server);
+        unless ($servern) {
+            sendmsg([1,"could not resolve '$server' to an address from vm.storage"]);
+            return;
+        }
+        $server = inet_ntoa($servern);
+        my $uri = "nfs://$server/$path";
         $backingif = VirtualDiskFlatVer2BackingInfo->new(diskMode => 'persistent',
-                                                           fileName => "[".$sdmap->{$storeloc}."]");
+                                                           fileName => "[".$sdmap->{$uri}."]");
         if ($disktype eq 'ide' and $idecontrollerkey eq 1 and $unitnum eq 0) { #reserve a spot for CD
             $unitnum = 1;
         } elsif ($disktype eq 'ide' and $unitnum eq 2) { #go from current to next ide 'controller'
@@ -1763,7 +1782,14 @@ sub validate_datastore_prereqs {
             my $dsv = $hypconn->get_view(mo_ref=>$_);
             if (defined $dsv->info->{nas}) {
                 if ($dsv->info->nas->type eq 'NFS') {
-                    $hyphash{$hyp}->{datastoremap}->{"nfs://".$dsv->info->nas->remoteHost.$dsv->info->nas->remotePath}=$dsv->info->name;
+                    my $mnthost = inet_aton($dsv->info->nas->remoteHost);
+                    if ($mnthost) {
+                     $mnthost = inet_ntoa($mnthost);
+                    } else {
+                        $mnthost = $dsv->info->nas->remoteHost;
+                        sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"]);
+                    }
+                    $hyphash{$hyp}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
                 } #TODO: care about SMB
             } #TODO: care about VMFS
         }
@@ -1778,13 +1804,22 @@ sub validate_datastore_prereqs {
             s/\/$//; #Strip trailing slash if specified, to align to VMware semantics
             if (/:\/\//) {
                 ($method,$location) = split /:\/\//,$_,2;
+                (my $server, my $path) = split /\//,$location,2;
+                $server =~ s/:$//; #remove a : if someone put it in out of nfs mount habit
+                my $servern = inet_aton($server);
+                unless ($servern) {
+                    sendmsg([1,": Unable to resolve '$server' to an address, check vm.cfgstore/vm.storage"]);
+                    return 0;
+                }
+                $server = inet_ntoa($servern);
+                my $uri = "nfs://$server/$path";
                 unless ($method =~ /nfs/) {
                     sendmsg([1,": $method is unsupported at this time (nfs would be)"],$node);
                     return 0;
                 }
-                unless ($hyphash{$hyp}->{datastoremap}->{$_}) { #If not already there, must mount it
+                unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, must mount it
                     $refresh_names=1;
-                    $hyphash{$hyp}->{datastoremap}->{$_}=mount_nfs_datastore($hostview,$location);
+                    $hyphash{$hyp}->{datastoremap}->{$uri}=mount_nfs_datastore($hostview,$location);
                 }
             } else {
                 sendmsg([1,": $_ not supported storage specification for ESX plugin, 'nfs://<server>/<path>' only currently supported vm.storage supported for ESX at the moment"],$node);
@@ -1799,7 +1834,14 @@ sub validate_datastore_prereqs {
                 my $dsv = $hypconn->get_view(mo_ref=>$_);
                 if (defined $dsv->info->{nas}) {
                     if ($dsv->info->nas->type eq 'NFS') {
-                        $hyphash{$hyp}->{datastoremap}->{"nfs://".$dsv->info->nas->remoteHost.$dsv->info->nas->remotePath}=$dsv->info->name;
+                        my $mnthost = inet_aton($dsv->info->nas->remoteHost);
+                        if ($mnthost) {
+                         $mnthost = inet_ntoa($mnthost);
+                        } else {
+                            $mnthost = $dsv->info->nas->remoteHost;
+                            sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"]);
+                        }
+                        $hyphash{$hyp}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
                     } #TODO: care about SMB
                 } #TODO: care about VMFS
             }
