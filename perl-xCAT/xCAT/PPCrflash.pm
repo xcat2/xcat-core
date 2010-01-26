@@ -112,6 +112,9 @@ sub parse_args {
 		return( usage("Option -p must be used with --activate ") );
 	}	
 	
+	if ( exists( $opt{p} ) && ($opt{p} !~ /^\//) ) {#relative path
+		$opt{p} = xCAT::Utils->full_path($opt{p}, $request->{cwd}->[0]);
+	}
 	###############################
 	#--activate's value only can be concurrent and disruptive
 	################################
