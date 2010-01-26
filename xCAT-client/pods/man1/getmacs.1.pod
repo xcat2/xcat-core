@@ -4,9 +4,13 @@ B<getmacs> - Collects node MAC address.
 
 =head1 SYNOPSIS
 
-I<getmacs [-h| --help]>
+=head2 Common:
 
-I<getmacs [-v| --version]>
+I<getmacs noderange [-d] [-V| --verbose]>
+
+I<getmacs [-h| --help | -v| --version]>
+
+=head2 PPC specific:
 
 I<getmacs noderange> [-F filter]
 
