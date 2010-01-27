@@ -322,12 +322,43 @@ sub preprocess_updatenode
         push @requests, $reqcopy;
     }
 
+    # when specified -S or -P
+    # find service nodes for requested nodes
+    # build an individual request for each service node
+    unless (defined($::SWMAINTENANCE) || defined($::RERUNPS))
+    {
+        return \@requests;
+    }
+
+
+    my %insttype_node = ();
+    # get the nodes installation type
+    xCAT::SvrUtils->getNodesetStates($nodes, \%insttype_node);
+
+    
+
+    # figure out the diskless nodes list and non-diskless nodes
+    foreach my $type (keys %insttype_node) {
+        if ($type eq "netboot" || $type eq "diskless") {
+            push @dsklsnodes, @{$insttype_node{$type}};
+        } else {
+            push @notdsklsnodes, @{$insttype_node{$type}};
+        }
+    }
+
+    if (defined($::SWMAINTENANCE) && scalar(@dsklsnodes) > 0) {
+        my $rsp;
+        my $outdsklsnodes = join (',', @dsklsnodes);
+        push @{$rsp->{data}}, "updatenode command does not support software maintenance to diskless node. Following diskless nodes will be skipped to perform software maintenance:\n$outdsklsnodes";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+    }
+
     #  - need to consider the mixed cluster case
     #		- can't depend on the os of the MN - need to split out the AIX
-    #		nodes from the node list
-    my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes(\@nodes);
+    #		nodes from the node list which are not diskless 
+    my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes(\@notdsklsnodes);
     my @aixnodes = @$AIXnodes;
-
+    
     # for AIX nodes we need to copy software to SNs first - if needed
     my ($rc, $imagedef, $updateinfo);
     if (defined($::SWMAINTENANCE) && scalar(@aixnodes))
@@ -340,15 +371,6 @@ sub preprocess_updatenode
             return undef;
         }
     }
-
-    # when specified -S or -P
-    # find service nodes for requested nodes
-    # build an individual request for each service node
-    unless (defined($::SWMAINTENANCE) || defined($::RERUNPS))
-    {
-        return \@requests;
-    }
-
 
     my $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
     if ($::ERROR_RC)
@@ -372,18 +394,28 @@ sub preprocess_updatenode
 
         if (defined($::SWMAINTENANCE))
         {
-            $reqcopy->{swmaintenance}->[0] = "yes";
-
-            # send along the update info and osimage defs
-            if ($imagedef)
-            {
-                xCAT::InstUtils->taghash($imagedef);
-                $reqcopy->{imagedef} = [$imagedef];
+            # skip the diskless nodes
+            my @validnode = ();
+            foreach my $node (@{$sn->{$snkey}}) {
+                if (! grep /^$node$/, @dsklsnodes) {
+                    push @validnode, $node;
+                }
             }
-            if ($updateinfo)
-            {
-                xCAT::InstUtils->taghash($updateinfo);
-                $reqcopy->{updateinfo} = [$updateinfo];
+            if (scalar (@validnode) > 0) {
+                $reqcopy->{nondsklsnode} = \@validnode;
+                $reqcopy->{swmaintenance}->[0] = "yes";
+    
+                # send along the update info and osimage defs
+                if ($imagedef)
+                {
+                    xCAT::InstUtils->taghash($imagedef);
+                    $reqcopy->{imagedef} = [$imagedef];
+                }
+                if ($updateinfo)
+                {
+                    xCAT::InstUtils->taghash($updateinfo);
+                    $reqcopy->{updateinfo} = [$updateinfo];
+                }
             }
         }
 
@@ -421,8 +453,8 @@ sub updatenode
     my $subreq   = shift;
 
     #print Dumper($request);
-
     my $nodes         = $request->{node};
+    my $nondsklsnodes = $request->{nondsklsnode};
     my $localhostname = hostname();
 
     # in a mixed cluster we could potentially have both AIX and Linux
@@ -588,11 +620,13 @@ sub updatenode
           "Performing software maintenance operations. This could take a while.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
 
-        if (scalar(@$Linuxnodes))
+        my ($rc, $AIXnodes_nd, $Linuxnodes_nd) = xCAT::InstUtils->getOSnodes($nondsklsnodes);
+
+        if (scalar(@$Linuxnodes_nd))
         {    # we have a list of linux nodes
             my $cmd;
  	    # get server names as known by the nodes
-	    my %servernodes = %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes)};
+	    my %servernodes = %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes_nd)};
 	    # it's possible that the nodes could have diff server names
 	    # do all the nodes for a particular server at once
 	    foreach my $snkey (keys %servernodes) {
@@ -643,14 +677,14 @@ sub updatenode
 
         }
 
-        if (scalar(@$AIXnodes))
+        if (scalar(@$AIXnodes_nd))
         {    # we have AIX nodes
 
             # update the software on an AIX node
             if (
                 &updateAIXsoftware(
                                    $callback, $imgdefs, $updates,
-                                   $AIXnodes, $subreq
+                                   $AIXnodes_nd, $subreq
                 ) != 0
               )
             {
@@ -1077,16 +1111,12 @@ sub doAIXcopy
         {
 
             # if lpp_source is not defined on SN then next
-            #my $scmd =
-            #  qq~/usr/sbin/lsnim -l $imagedef{$img}{lpp_source} 2>/dev/null~;
-            #my $out =
-            #  xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $scmd,
-            #                        0);
+            my $scmd =
+              qq~/usr/sbin/lsnim -l $imagedef{$img}{lpp_source} 2>/dev/null~;
+            my $out =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $snkey, $scmd,
+                                    0);
 
-            # Here has an issue when call the xcmd, as a workaround to use the
-            # runcmd, it should be recovered after fixing the xcmd issue
-            my $scmd = "$::XCATROOT/bin/xdsh $snkey /usr/sbin/lsnim -l $imagedef{$img}{lpp_source} 2>/dev/null";
-            xCAT::Utils->runcmd("$scmd", -1);
             if ($::RUNCMD_RC != 0)
             {
                 next;
