@@ -219,9 +219,9 @@ if { [llength $argv] != 0 } {
 		set printlist [ join $nodelist ", " ]
 		set scp "/usr/bin/scp"
 		set directory "$home/.ssh"
-		set fh_auth_keys2  [ open "$home/.ssh/authorized_keys2" "r"]
-		set auth_keys2 [read $fh_auth_keys2]
-		close $fh_auth_keys2
+		set fh_auth_keys  [ open "$home/.ssh/authorized_keys" "r"]
+		set auth_keys [read $fh_auth_keys]
+		close $fh_auth_keys
 	   if { [info exists env(DSH_REMOTE_PASSWORD)] } {
 		    set word $env(DSH_REMOTE_PASSWORD)
 		} else {
@@ -339,10 +339,10 @@ if { [llength $argv] != 0 } {
 					}
 				}
 			} else {
-				# Loop all keys in $auth_keys2 and generate ssh setup command one by one
+				# Loop all keys in $auth_keys and generate ssh setup command one by one
 				# Remove '\n'
-				set auth_keys2 [string range $auth_keys2 0 end-1]
-				set all_keys [split $auth_keys2 "\n"]
+				set auth_keys [string range $auth_keys 0 end-1]
+				set all_keys [split $auth_keys "\n"]
 				set ssh_setup_string ""
 				foreach each_key $all_keys {
 					# Skip blank line
