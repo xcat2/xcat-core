@@ -7,7 +7,7 @@
 # description: statelite initialization script
 
 # get all the database files.
-#set -x
+set -x
 SL=".statelite"
 ME=`hostname`
 MNTDIR="/sysroot"
@@ -97,11 +97,11 @@ MountTrees () {
 	for i in `cat $SYNCTREE | grep -v '^#' | grep ':'`;
 	do
 		SERV=`echo $i | awk -F: '{print $1}'`  # SERV is (SERV):/blah/blah/blah
-		MNT=`echo $i | awk -F/ '{print $2}'`   # MNT is server:/(MNT)/blah/blah
-		mkdir $TREEMOUNT/$MNT
+		MNT=`echo $i | awk -F: '{print $2}'`   # MNT is server:(/blah/blah/blah)
+		mkdir -p ${TREEMOUNT}${MNT}
 		MAX=5
 		TRIES=1
-		while ! mount $SERV:/$MNT $TREEMOUNT/$MNT -r -n -o nolock
+		while ! mount $SERV:$MNT ${TREEMOUNT}${MNT} -r -n -o nolock
 		do
 			if [ "$TRIES" = "$MAX" ]
 			then
@@ -111,7 +111,7 @@ MountTrees () {
 			fi
 			TRIES=`expr $TRIES + 1`
 			S=`expr $RANDOM % 20`
-			echo "Can't mount $SERV:/$MNT... Sleeping $S seconds then trying again" >/dev/console
+			echo "Can't mount $SERV:$MNT... Sleeping $S seconds then trying again" >/dev/console
 			sleep $S
 		done
 	done
@@ -145,14 +145,8 @@ ProcessType () {
 
 	case "${3}" in 
 		tmpfs,rw)
-            if [ ! -d ${TMPFS}${2} ]
-            then
-			    cp -a ${1} ${TMPFS}${2}
-			    echo "cp -a ${1} ${TMPFS}${2}" >>$LOG
-            else
-                cp -a ${1}* ${TMPFS}${2}
-                echo "cp -a ${1}/* ${TMPFS}${2}/" >>$LOG
-            fi
+			cp -a ${1} ${TMPFS}${2}
+			echo "cp -a ${1} ${TMPFS}${2}" >>$LOG
 			# the link will already be in place on the image, so nothing else to do!
 			#mount -n --bind ${TMPFS}${2} ${1}
 			;;
@@ -189,12 +183,11 @@ ProcessType () {
 			# you have to get rid of the /sysroot in the beginning 
 			# so that when the chroot happens the link is valid.	
 			LINK=`echo ${PERSISTENT}${2} | sed -e 's/^\/sysroot//'`
-
 			# whack of trailing / for persistent directories:
 			TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
-		
+
 			echo "ln -sf ${LINK} ${TARGET}" >>$LOG
-			ln -sf ${LINK} ${TARGET}	>>$LOG 2>&1
+			ln -sf ${LINK} ${TARGET}        >>$LOG 2>&1
 			;;
 		ro)
 			# need to make sure directory exists:
