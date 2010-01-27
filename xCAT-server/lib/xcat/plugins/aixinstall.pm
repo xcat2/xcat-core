@@ -117,6 +117,9 @@ sub preprocess_request
 	my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
 
+	#exit if preprocessed
+   # if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+
 	# if this is a service node and not the NIM primary then just return
     #       don't want to do preprocess again
 
@@ -165,6 +168,7 @@ sub preprocess_request
 			foreach my $snkey (keys %$sn) {
 				my $reqcopy = {%$req};
 				$reqcopy->{'_xcatdest'} = $snkey;
+				#$reqcopy->{_xcatpreprocessed}->[0] = 1;
 				if ($imagehash) {
 					# add tags to the hash keys that start with a number
 					xCAT::InstUtils->taghash($imagehash); 
@@ -2718,20 +2722,12 @@ sub prermnimimage
 
 		Support for the rmnimimage command.
 
-		Removes an AIX/NIM diskless image - referred to as a SPOT or COSI.
+		Removes AIX/NIM resources
 
-		Arguments:
 		Returns:
 				0 - OK
 				1 - error
-		Globals:
 
-		Error:
-
-		Example:
-
-		Comments:
-			rmnimimage [-V] [-f|--force] image_name
 =cut
 
 #-----------------------------------------------------------------------------
@@ -2795,6 +2791,18 @@ sub rmnimimage
             return 0;
         }
     }
+	#
+    #  Get a list of all nim resource types
+    #
+    my $cmd = qq~/usr/sbin/lsnim -P -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+    my @nimrestypes = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC  != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "$Sname: Could not get NIM resource types.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
 
 	#
 	#  Get a list of the all the locally defined nim resources
@@ -2805,7 +2813,7 @@ sub rmnimimage
 	if ($::RUNCMD_RC  != 0)
 	{
 		my $rsp;
-        push @{$rsp->{data}}, "Could not get NIM resource definitions.";
+        push @{$rsp->{data}}, "$Sname: Could not get NIM resource definitions.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
 	}
@@ -2816,82 +2824,91 @@ sub rmnimimage
     {
 		chomp $attr;
 
-        if ($attr eq 'objtype') {
-            next;
-        }
+		if (!grep(/^$attr$/, @nimrestypes) ) {
+			next;
+		}
 
 		my $resname = $imagedef{$image_name}{$attr};
+		chomp $resname;
 
-		# if it's a defined resource name we can try to remove it
-		if ( ($resname)  && (grep(/^$resname$/, @nimresources))) {
+		if ( $resname ne '') {
 
-			# is it allocated?
-			my $alloc_count = xCAT::InstUtils->get_nim_attr_val($resname, "alloc_count", $callback, "", $subreq);
+			# if it's a defined resource name we can try to remove it
+			if ( grep(/^$resname$/, @nimresources)) {
 
-			if ( defined($alloc_count) && ($alloc_count != 0) ){
-				my $rsp;
-				push @{$rsp->{data}}, "The resource named \'$resname\' is currently allocated. It will not be removed.\n";
-				xCAT::MsgUtils->message("I", $rsp, $callback);
-				next;
-			}
+				# is it allocated?
+				my $alloc_count = xCAT::InstUtils->get_nim_attr_val($resname, "alloc_count", $callback, "", $subreq);
 
-			# try to remove it
-			my $cmd = "nim -o remove $resname";
-
-			my $output;
-		    $output = xCAT::Utils->runcmd("$cmd", -1);
-		    if ($::RUNCMD_RC  != 0)
-       		{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not remove the NIM resource definition \'$resname\'.\n";
-				push @{$rsp->{data}}, "$output";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-				next;
-			} else {
-				my $rsp;
-				push @{$rsp->{data}}, "Removed the NIM resource named \'$resname\'.\n";
-				xCAT::MsgUtils->message("I", $rsp, $callback);
-
-			}
-
-			if ($::DELETE) {
-
-				# clean up the files and directories that NIM leaves
-				my $loc;
-
-				# just use the NIM location value to remove these
-				if (($attr eq "lpp_source") || ($attr eq "bosinst_data") || ($attr eq "script") || ($attr eq "installp_bundle") || ($attr eq "root") || ($attr eq "shared_root") || ($attr eq "paging")) {
-					$loc = xCAT::InstUtils->get_nim_attr_val($resname, 'location', $callback, "", $subreq);
+				if ( defined($alloc_count) && ($alloc_count != 0) ){
+					my $rsp;
+					push @{$rsp->{data}}, "$Sname: The resource named \'$resname\' is currently allocated. It will not be removed.\n";
+					xCAT::MsgUtils->message("I", $rsp, $callback);
+					next;
 				}
 
-				#  need the directory name to remove these
-				if (($attr eq "resolv_conf") || ($attr eq "spot")) {
-					my $tmp = xCAT::InstUtils->get_nim_attr_val($resname, 'location', $callback, "", $subreq);
-					$loc = dirname($tmp);
+				# try to remove it
+				my $cmd = "nim -o remove $resname";
+
+				my $output;
+		    	$output = xCAT::Utils->runcmd("$cmd", -1);
+		    	if ($::RUNCMD_RC  != 0)
+       			{
+					my $rsp;
+					push @{$rsp->{data}}, "$Sname: Could not remove the NIM resource definition \'$resname\'.\n";
+					push @{$rsp->{data}}, "$output";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					$error++;
+					next;
+				} else {
+					my $rsp;
+					push @{$rsp->{data}}, "$Sname: Removed the NIM resource named \'$resname\'.\n";
+					xCAT::MsgUtils->message("I", $rsp, $callback);
+
 				}
 
+				if ($::DELETE) {
 
-				if ($loc) {
-					my $cmd = qq~/usr/bin/rm -R $loc 2>/dev/null~;
-					my $output = xCAT::Utils->runcmd("$cmd", -1);
+					# clean up the files and directories that NIM leaves
+					my $loc;
+
+					# just use the NIM location value to remove these
+					if (($attr eq "lpp_source") || ($attr eq "bosinst_data") || ($attr eq "script") || ($attr eq "installp_bundle") || ($attr eq "root") || ($attr eq "shared_root") || ($attr eq "paging")) {
+						$loc = xCAT::InstUtils->get_nim_attr_val($resname, 'location', $callback, "", $subreq);
+					}
+
+					#  need the directory name to remove these
+					if (($attr eq "resolv_conf") || ($attr eq "spot")) {
+						my $tmp = xCAT::InstUtils->get_nim_attr_val($resname, 'location', $callback, "", $subreq);
+						$loc = dirname($tmp);
+					}
+
+
+					if ($loc) {
+						my $cmd = qq~/usr/bin/rm -R $loc 2>/dev/null~;
+						my $output = xCAT::Utils->runcmd("$cmd", -1);
 					if ($::RUNCMD_RC  != 0)
-					{
-				#		my $rsp;
-				#		push @{$rsp->{data}}, "Could not delete files for the the NIM resource \'$resname\'.\n";
-				#		push @{$rsp->{data}}, "$output";
-				#		xCAT::MsgUtils->message("E", $rsp, $callback);
-				#		$error++;
-				#		next;
+						{
+				#			my $rsp;
+				#			push @{$rsp->{data}}, "Could not delete files for the the NIM resource \'$resname\'.\n";
+				#			push @{$rsp->{data}}, "$output";
+				#			xCAT::MsgUtils->message("E", $rsp, $callback);
+				#			$error++;
+				#			next;
+						}
 					}
 				}
+			} else {
+				my $rsp;
+				push @{$rsp->{data}}, "$Sname: Could not remove a NIM resource called \'$resname\'\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+				$error++;
 			}
 		}
 	}
 
 	if ($error) {
 		my $rsp;
-		push @{$rsp->{data}}, "One or more errors occurred when trying to remove the xCAT osimage definition \'$image_name\' and the related NIM resources.\n";
+		push @{$rsp->{data}}, "$Sname: One or more errors occurred when trying to remove the xCAT osimage definition \'$image_name\' and the related NIM resources.\n";
 		xCAT::MsgUtils->message("E", $rsp, $callback);
 		return 1;
 	}
@@ -6351,7 +6368,7 @@ sub rmnimimage_usage
 	my $callback = shift;
 
 	my $rsp;
-	push @{$rsp->{data}}, "\n  rmnimimage - Use this xCAT command to remove an xCAT osimage definition and associated NIM resources.";
+	push @{$rsp->{data}}, "\n  rmnimimage - Use this xCAT command to remove an xCAT osimage definition\n             and associated NIM resources.";
 	push @{$rsp->{data}}, "  Usage: ";
 	push @{$rsp->{data}}, "\trmnimimage [-h | --help]";
 	push @{$rsp->{data}}, "or";
