@@ -880,6 +880,8 @@ sub plugin_command {
   }
   $plugin_numchildren=0;
   %plugin_children=();
+  # save the old signal
+  my $old_sig_chld = $SIG{CHLD};
   $SIG{CHLD} = \&plugin_reaper; #sub {my $plugpid; while (($plugpid = waitpid(-1, WNOHANG)) > 0) { if ($plugin_children{$plugpid}) { delete $plugin_children{$plugpid}; $plugin_numchildren--; } } };
   my $check_fds;
   if ($sock) { 
@@ -970,11 +972,20 @@ sub plugin_command {
       }
     }
   }
-  unless ($sock) { return $Main::resps };
+  unless ($sock) { 
+    # restore the old signal
+    $SIG{CHLD} = $old_sig_chld;
+    return $Main::resps 
+  }
+
   while (($plugin_numchildren > 0) and ($check_fds->count > 0)) { #this tracks end of useful data from children much more closely
     relay_fds($check_fds,$sock);
   }
   #while (relay_fds($check_fds,$sock)) {}
+
+  # restore the old signal
+  $SIG{CHLD} = $old_sig_chld;
+
   my %done;
   $done{serverdone} = {};
   if ($req->{transid}) {
@@ -1059,6 +1070,9 @@ sub dispatch_request {
    my $reqs = [];
    my $child_fdset = new IO::Select;
    no strict  "refs";
+
+   # save the old signal
+   my $old_sig_chld = $SIG{CHLD};
 
    #Hierarchy support.  Originally, the default scope for noderange commands was
    #going to be the servicenode associated unless overriden.
@@ -1180,6 +1194,9 @@ sub dispatch_request {
   }
  while (($dispatch_children > 0) and ($child_fdset->count > 0)) { relay_dispatch($child_fdset,$dispatch_cb) }
  while (relay_dispatch($child_fdset,$dispatch_cb)) { } #Potentially useless drain.
+
+ # restore the old signal
+ $SIG{CHLD} = $old_sig_chld;
 }
 
 
