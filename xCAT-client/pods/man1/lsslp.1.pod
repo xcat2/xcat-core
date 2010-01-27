@@ -16,7 +16,7 @@ I<lsslp [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|H
 
 The lsslp command discovers selected service types using the -s flag. All service types are returned if the -s flag is not specified. If a specific IP address is not specified using the -i flag, the request is sent out all available network adapters. The optional -r, -x, and -z flags format the output.
 
-NOTE: SLP broadcast requests will propagate only within the subnet of the network adapter broadcast IPs specified by the -b flag.
+NOTE: SLP broadcast requests will propagate only within the subnet of the network adapter broadcast IPs specified by the -i flag.
 
 =head1 OPTIONS
 
@@ -81,7 +81,7 @@ Output is similar to:
 
 2. list all discovered FSP service types in raw response format on subnet 30.0.0.255, enter:
 
- lsslp -b 3.0.0.255 -s FSP -r
+ lsslp -i 3.0.0.255 -s FSP -r
 
 Output is similar to:
 
