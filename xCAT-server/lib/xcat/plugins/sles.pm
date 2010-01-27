@@ -26,7 +26,8 @@ sub handled_commands
     return {
             copycd    => "sles",
             mknetboot => "nodetype:os=(sles.*)|(suse.*)",
-            mkinstall => "nodetype:os=(sles.*)|(suse.*)"
+            mkinstall => "nodetype:os=(sles.*)|(suse.*)",
+            mkstatelite => "nodetype:os=(sles.*)"
             };
 }
 
@@ -35,6 +36,12 @@ sub mknetboot
     my $req      = shift;
     my $callback = shift;
     my $doreq    = shift;
+
+    my $statelite = 0;
+    if($req->{command}->[0] =~ 'mkstatelite') {
+        $statelite = "true";
+    }
+
     my $tftpdir  = "/tftpboot";
     my $nodes    = @{$req->{node}};
     my @nodes    = @{$req->{node}};
@@ -45,6 +52,8 @@ sub mknetboot
     my $installroot;
     $installroot = "/install";
 
+    my $xcatdport = "3001";
+
     if ($sitetab)
     {
         (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
@@ -52,11 +61,23 @@ sub mknetboot
         {
             $installroot = $ref->{value};
         }
+        ($ref) = $sitetab->getAttribs({key => 'xcatdport'}, 'value');
+        if ($ref and $ref->{value}) 
+        {
+            $xcatdport = $ref->{value};
+        }
     }
 
     my $ntents = $ostab->getNodesAttribs($req->{node}, ['os', 'arch', 'profile', 'provmethod']);
     my %img_hash=();
 
+    my $statetab;
+    my $stateHash;
+    if ($statelite) {
+        $statetab = xCAT::Table->new('statelite', -create=>1);
+        $stateHash = $statetab->getNodesAttribs(\@nodes, ['statemnt']);
+    }
+   
     my %donetftp=();
     foreach my $node (@nodes)
     {
@@ -65,70 +86,70 @@ sub mknetboot
         my $profile;
         my $rootimgdir;
 	
-	my $ent= $ntents->{$node}->[0];
-        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot')) {
-	    my $imagename=$ent->{provmethod};
-	    #print "imagename=$imagename\n";
-	    if (!exists($img_hash{$imagename})) {
-		if (!$osimagetab) {
-		    $osimagetab=xCAT::Table->new('osimage', -create=>1);
-		}
-		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
-		if ($ref) {
-		    $img_hash{$imagename}->{osver}=$ref->{'osvers'};
-		    $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
-		    $img_hash{$imagename}->{profile}=$ref->{'profile'};
-		    $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'};
-		    if (!$linuximagetab) {
-			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
-		    }
-		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir');
-		    if (($ref1) && ($ref1->{'rootimgdir'})) {
-			$img_hash{$imagename}->{rootimgdir}=$ref1->{'rootimgdir'};
-		    }
-		} else {
-		    $callback->(
-			{error     => ["The os image $imagename does not exists on the osimage table for $node"],
-			 errorcode => [1]});
-		    next;
-		}
-	    }
-	    my $ph=$img_hash{$imagename};
-	    $osver = $ph->{osver};
-	    $arch  = $ph->{osarch};
-	    $profile = $ph->{profile};
+	    my $ent= $ntents->{$node}->[0];
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
+	        my $imagename=$ent->{provmethod};
+	        #print "imagename=$imagename\n";
+	        if (!exists($img_hash{$imagename})) {
+		        if (!$osimagetab) {
+		            $osimagetab=xCAT::Table->new('osimage', -create=>1);
+		        }
+		        (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+		        if ($ref) {
+		            $img_hash{$imagename}->{osver}=$ref->{'osvers'};
+		            $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
+		            $img_hash{$imagename}->{profile}=$ref->{'profile'};
+		            $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'};
+		            if (!$linuximagetab) {
+			            $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
+		            }
+		            (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir');
+		            if (($ref1) && ($ref1->{'rootimgdir'})) {
+			            $img_hash{$imagename}->{rootimgdir}=$ref1->{'rootimgdir'};
+		            }
+		        } else {
+		            $callback->(
+			            {error     => ["The os image $imagename does not exists on the osimage table for $node"],
+			            errorcode => [1]});
+		            next;
+		        }
+	        }
+	        my $ph=$img_hash{$imagename};
+	        $osver = $ph->{osver};
+	        $arch  = $ph->{osarch};
+	        $profile = $ph->{profile};
 	
-	    $rootimgdir=$ph->{rootimgdir};
-	    if (!$rootimgdir) {
-		$rootimgdir="$installroot/netboot/$osver/$arch/$profile";
+	        $rootimgdir=$ph->{rootimgdir};
+	        if (!$rootimgdir) {
+		        $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
+	        }
 	    }
-	}
-	else {
-	    $osver = $ent->{os};
-	    $arch    = $ent->{arch};
-	    $profile = $ent->{profile};
-	    $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
-	}
+	    else {
+	        $osver = $ent->{os};
+	        $arch    = $ent->{arch};
+	        $profile = $ent->{profile};
+	        $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
+	    }
 
-	unless ($osver and $arch and $profile)
-	{
-	    $callback->(
-		{
-		    error     => ["Insufficient nodetype entry or osimage entry for $node"],
-		    errorcode => [1]
-		}
-		);
-	    next;
-	}
+	    unless ($osver and $arch and $profile)
+	    {
+	        $callback->(
+		    {
+		        error     => ["Insufficient nodetype entry or osimage entry for $node"],
+		        errorcode => [1]
+		    }
+		    );
+	        next;
+	    }
 
-    #print"osvr=$osver, arch=$arch, profile=$profile, imgdir=$rootimgdir\n";
-	my $platform;
+        #print"osvr=$osver, arch=$arch, profile=$profile, imgdir=$rootimgdir\n";
+	    my $platform;
         if ($osver =~ /sles.*/)
         {
             $platform = "sles";
         }elsif($osver =~ /suse.*/){
             $platform = "sles";
-	}
+	    }
 
         my $suffix  = 'gz';       
         if (-r "$rootimgdir/rootimg.sfs")
@@ -139,17 +160,23 @@ sub mknetboot
         {
             $suffix = 'nfs';
         }
+        #statelite images are not packed
         unless (
                 (
                     -r "$rootimgdir/rootimg.gz"
                  or -r "$rootimgdir/rootimg.sfs"
                  or -r "$rootimgdir/rootimg.nfs"
+                 or $statelite
                 )
                 and -r "$rootimgdir/kernel"
                 and -r "$rootimgdir/initrd.gz"
           )
         {
-            $callback->(
+            if($statelite) {
+                # TODO: maybe the $osver-$arch-$profile record doesn't exist in osimage, but it the statelite rootimg can exist
+                $callback->({error=> ["$node: statelite image $osver-$arch-$profile doesn't exist"], errorcode => [1]});
+            } else {
+                $callback->(
                 {
                  error => [
                      "No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (i.e.  packimage -o $osver -p $profile -a $arch"
@@ -157,6 +184,7 @@ sub mknetboot
                  errorcode => [1]
                 }
                 );
+            }
             next;
         }
 
@@ -239,6 +267,32 @@ sub mknetboot
             $kcmdline =
               "imgurl=nfs://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg ";
         }
+        elsif ($statelite) 
+        {
+            # get entry for nfs root if it exists;
+            # have to get nfssvr and nfsdir from noderes table
+            my $nfssrv = $imgsrv;
+            my $nfsdir = $rootimgdir;
+
+            if ($restab) {
+                my $resHash = $restab->getNodeAttribs(@node, ['nfsserver', 'nfsdir']);
+                if($resHash and $resHash->{nfsserver}) {
+                    $nfssrv = $resHash->{nfsserver};
+                }
+                if($resHash and $resHash->{nfsdir} ne '') {
+                    $nfsdir = $resHash->{nfsdir} . "/netboot/$osver/$arch/$profile";
+                }
+            }
+            $kcmdline = 
+                "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
+            if ($stateHash->{statemnt}) {
+                $kcmdline .= $stateHash->{statemnt} . " ";
+            } else {
+                $kcmdline .= " ";
+            }
+            $kcmdline .=
+                "XCAT=$imgsrv:$xcatdport ";
+        }
         else
         {
             $kcmdline =
@@ -294,7 +348,8 @@ sub process_request
     {
         return mkinstall($request, $callback, $doreq);
     }
-    elsif ($request->{command}->[0] eq 'mknetboot')
+    elsif ($request->{command}->[0] eq 'mknetboot' or
+    $request->{command}->[0] eq 'mkstatelite')
     {
         return mknetboot($request, $callback, $doreq);
     }
