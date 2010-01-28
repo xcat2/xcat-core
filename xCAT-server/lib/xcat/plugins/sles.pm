@@ -548,8 +548,8 @@ sub mkinstall
                 {
                     copy("$pkgdir/1/suseboot/inst64",
                          "/tftpboot/xcat/$os/$arch");
-                    #special case for sles 11
-                    if ( $os eq 'sles11' and -r "$pkgdir/1/suseboot/yaboot")
+                    #special case for sles 11 and 11.x 
+                    if ( $os =~ /sles11/ and -r "$pkgdir/1/suseboot/yaboot")
                     {
                         copy("$pkgdir/1/suseboot/yaboot", "/tftpboot/");
                     }
