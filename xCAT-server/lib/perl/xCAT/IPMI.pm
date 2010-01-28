@@ -17,10 +17,24 @@ use IO::Socket::INET;
 use IO::Select;
 use Data::Dumper;
 use Digest::MD5 qw/md5/;
+my $ipmi2support = eval {
+    require Digest::SHA1;
+    Digest::SHA1->import(qw/sha1/);
+    1;
+};
+my $aessupport;
+if ($ipmi2support) {
+    $aessupport = eval {
+        require Crypt::Rijndael;
+        require Crypt::CBC;
+        1;
+    };
+}
 sub hexdump {
     foreach  (@_) {
         printf "%02X ",$_;
     }
+    print "\n";
 }
 
 my %payload_types = ( #help readability in certain areas of code by specifying payload by name rather than number
@@ -32,12 +46,12 @@ my %payload_types = ( #help readability in certain areas of code by specifying p
     'rakp2' => 0x13,
     'rakp3' => 0x14,
     'rakp4' => 0x15,
-);
+    );
 my $socket; #global socket for all sessions to share.  Fun fun
 my $select = IO::Select->new();
 
 my %bmc_handlers; #hash from bmc address to a live session management object.  
-                  #only one allowed at a time per bmc
+#only one allowed at a time per bmc
 my %sessions_waiting; #track session objects that may want to retry a packet, value is timestamp to 'wake' object for retransmit
 
 sub new {
@@ -46,6 +60,9 @@ sub new {
     my $self = {};
     bless $self,$class;
     my %args = @_;
+    unless ($ipmi2support) {
+        $self->{ipmi15only} = 1;
+    }
     unless ($args{'bmc'} and defined $args{'userid'} and defined $args{'password'}) {
         return (undef,"bmc, userid, and password must be specified");
     }
@@ -62,13 +79,13 @@ sub new {
     $bmc_handlers{inet_ntoa(inet_aton($self->{bmc}))}=$self;
     $self->{peeraddr} = sockaddr_in($self->{port},inet_aton($self->{bmc}));
     $self->{'sequencenumber'} = 0; #init sequence number
-    $self->{'sequencenumberbytes'} = [0,0,0,0]; #init sequence number
-    $self->{'sessionid'} = [0,0,0,0]; # init session id
-    $self->{'authtype'}=0; # first messages will have auth type of 0
-    $self->{'ipmiversion'}='1.5'; # send first packet as 1.5
-    $self->{'timeout'}=1; #start at a quick timeout, increase on retry
-    $self->{'seqlun'}=0; #the IPMB seqlun combo, increment by 4s
-    $self->{'logged'}=0;
+        $self->{'sequencenumberbytes'} = [0,0,0,0]; #init sequence number
+        $self->{'sessionid'} = [0,0,0,0]; # init session id
+        $self->{'authtype'}=0; # first messages will have auth type of 0
+        $self->{'ipmiversion'}='1.5'; # send first packet as 1.5
+        $self->{'timeout'}=1; #start at a quick timeout, increase on retry
+        $self->{'seqlun'}=0; #the IPMB seqlun combo, increment by 4s
+        $self->{'logged'}=0;
     return $self;
 }
 sub login {
@@ -96,12 +113,12 @@ sub logged_out {
     if ($rsp->{code} == 0) { 
         $self->{logged}=0;
         if ( $self->{onlogout}) { 
-          $self->{onlogout}->("SUCCESS",$self->{onlogout_args});
+            $self->{onlogout}->("SUCCESS",$self->{onlogout_args});
         }
     } else {
-         if ( $self->{onlogout}) {
-             $self->{onlogout}->("ERROR:",$self->{onlogout_args});
-         }
+        if ( $self->{onlogout}) {
+            $self->{onlogout}->("ERROR:",$self->{onlogout_args});
+        }
     }
 }
 
@@ -112,8 +129,8 @@ sub get_channel_auth_cap { #implement special case for session management comman
     } else {
         $self->subcmd(netfn=>0x6,command=>0x38,data=>[0x8e,0x04],callback=>\&got_channel_auth_cap,callback_args=>$self);
     }
-    #0x8e, set bit to signify recognition of IPMI 2.0 and request channel 'e', current.  
-    #0x04, request administrator privilege
+#0x8e, set bit to signify recognition of IPMI 2.0 and request channel 'e', current.  
+#0x04, request administrator privilege
 }
 
 sub get_session_challenge  {
@@ -137,18 +154,18 @@ sub got_session_challenge {
     my @data = @{$rsp->{data}};
     my %localcodes = ( 0x81 => "Invalid user name", 0x82 => "null user disabled" );
     my $code = $rsp->{code}; #just to save me some typing
-    if ($code) { 
-        my $errtxt = sprintf("ERROR: Get challenge failed with %02xh",$code);
-        if ($localcodes{$code}) {
-            $errtxt .= " ($localcodes{$code})";
-        } #TODO: generic codes
+        if ($code) { 
+            my $errtxt = sprintf("ERROR: Get challenge failed with %02xh",$code);
+            if ($localcodes{$code}) {
+                $errtxt .= " ($localcodes{$code})";
+            } #TODO: generic codes
 
-        $self->{onlogon}->($errtxt, $self->{onlogon_args});
-        return;
-    }
+            $self->{onlogon}->($errtxt, $self->{onlogon_args});
+            return;
+        }
     $self->{sessionid} = [splice @data,0,4];
     $self->{authtype}=2; #switch to auth mode
-    $self->activate_session(@data);
+        $self->activate_session(@data);
 }
 
 sub activate_session {
@@ -162,14 +179,14 @@ sub session_activated {
     my $rsp = shift;
     my $self = shift;
     my $code = $rsp->{code}; #just to save me some typing
-    my %localcodes = (
-        0x81 => "No available login slots",
-        0x82 => "No available login slots for ".$self->{userid},
-        0x83 => "No slot available as administrator",
-        0x84 => "Session sequence number out of range",
-        0x85 => "Invalid session ID",
-        0x86 => $self->{userid}. " is not allowed to be Administrator or Administrator not allowed over network",
-        );
+        my %localcodes = (
+                0x81 => "No available login slots",
+                0x82 => "No available login slots for ".$self->{userid},
+                0x83 => "No slot available as administrator",
+                0x84 => "Session sequence number out of range",
+                0x85 => "Invalid session ID",
+                0x86 => $self->{userid}. " is not allowed to be Administrator or Administrator not allowed over network",
+                );
     my @data = @{$rsp->{data}};
     if ($code) {
         my $errtxt = sprintf("ERROR: Unable to log in to BMC due to code %02xh",$code);
@@ -192,10 +209,10 @@ sub admin_level_set {
     my $rsp = shift;
     my $self = shift;
     my %localcodes = (
-        0x80 => $self->{userid}." is not allowed administrator access",
-        0x81 => "This user or channel is not allowed administrator access",
-        0x82 => "Cannot disable User Level authentication",
-        );
+            0x80 => $self->{userid}." is not allowed administrator access",
+            0x81 => "This user or channel is not allowed administrator access",
+            0x82 => "Cannot disable User Level authentication",
+            );
     my $code = $rsp->{code};
     if ($code) {
         my $errtxt = sprintf("ERROR: Failed requesting  administrator privilege %02xh",$code);
@@ -212,28 +229,45 @@ sub got_channel_auth_cap {
     my $rsp = shift;
     my $self = shift;
     my $code = $rsp->{code}; #just to save me some typing
-    if ($code == 0xcc and not defined $self->{ipmi15only}) { #ok, most likely a stupid ipmi 1.5 bmc
-        $self->{ipmi15only}=1;
-        return $self->get_channel_auth_cap();
-    }
+        if ($code == 0xcc and not defined $self->{ipmi15only}) { #ok, most likely a stupid ipmi 1.5 bmc
+            $self->{ipmi15only}=1;
+            return $self->get_channel_auth_cap();
+        }
     if ($code != 0) { 
         $self->{onlogon}->("ERROR: Get channel capabilities failed with $code", $self->{onlogon_args});
         return;
     }
     my @data = @{$rsp->{data}};
-    unless ($data[1] & 0b100) { 
-        $self->{onlogon}->("ERROR: MD5 is required but not enabeld or available on target BMC",$self->{onlogon_args});
-    }
     $self->{currentchannel} = $data[0];
-    #TODO: enable 2.0 code
-    #if (($data[1] & 0b10000000) and ($data[3] & 0b10)) {
-    #    $self->{ipmiversion} = '2.0';
-    #}
+    if (($data[1] & 0b10000000) and ($data[3] & 0b10)) {
+        $self->{ipmiversion} = '2.0';
+    }
     if ($self->{ipmiversion} eq '1.5') {
+        unless ($data[1] & 0b100) { 
+            $self->{onlogon}->("ERROR: MD5 is required but not enabeld or available on target BMC",$self->{onlogon_args});
+        }
         $self->get_session_challenge();
     } elsif ($self->{ipmiversion} eq '2.0') { #do rmcp+
+        $self->open_rmcpplus_request();
+
     }
 
+}
+sub open_rmcpplus_request {
+    my $self = shift;
+    $self->{'authtype'}=6;
+    my @payload = (0x1f,#message tag, TODO: could be random
+            0, #requested privilege role, 0 is highest allowed
+            0,0, #reserved
+            0x00,0xba,0xda,0x55, #Pick a session id TODO could be random
+            0,0,0,8,1,0,0,0, #table 13-17, request sha
+            1,0,0,8,1,0,0,0); #sha integrity
+        if ($aessupport) { 
+            push @payload,(2,0,0,8,1,0,0,0);
+        } else {
+            push @payload,(2,0,0,8,0,0,0,0);
+        }
+    $self->sendpayload(payload=>\@payload,type=>$payload_types{'rmcpplusopenreq'});
 }
 
 sub checksum {
@@ -279,7 +313,6 @@ sub waitforrsp {
 
     if ($select->can_read($timeout)) {
         while ($select->can_read(0)) {
-            print "got a packet\n";
             $peerport = $socket->recv($data,1500,0);
             route_ipmiresponse($peerport,unpack("C*",$data));
         }
@@ -301,7 +334,6 @@ sub route_ipmiresponse {
     ($port,$host) = sockaddr_in($sockaddr);
     $host = inet_ntoa($host);
     if ($bmc_handlers{$host}) {
-        print "stop waiting\n";
         delete $sessions_waiting{$bmc_handlers{$host}};
         $bmc_handlers{$host}->handle_ipmi_packet(@rsp);
     }
@@ -343,8 +375,16 @@ sub handle_ipmi_packet {
         }
         $self->parse_ipmi_payload(@payload);
     } elsif ($rsp[4] == 6) { #IPMI 2.0
+        if (($rsp[5]& 0b00111111) == 0x11) {
+            hexdump(@rsp);
+            $self->got_rmcp_response(splice @rsp,16);
         #TODO: ipmi 2...
+        }
     }
+}
+sub got_rmcp_response {
+    my $self = shift;
+    hexdump(@_);
 }
 
 sub parse_ipmi_payload {
@@ -393,13 +433,13 @@ sub sendpayload {
     my $self = shift;
     my %args = @_;
     my @msg = (0x6,0x0,0xff,0x07); #RMCP header is constant in IPMI
-    hexdump(@{$args{payload}});
-    print "Going to wait now\n";
     $sessions_waiting{$self}=time()+$self->{timeout};
     my @payload = @{$args{payload}};
     push @msg,$self->{'authtype'}; # add authtype byte (will support 0 only for session establishment, 2 for ipmi 1.5, 6 for ipmi2
     if ($self->{'ipmiversion'} eq '2.0') { #TODO: revisit this to see if assembly makes sense
+        hexdump(@msg);
         push @msg, $args{type};
+        hexdump(@msg);
         if ($args{type} == 2) {
             push @msg,@{$self->{'iana'}},0;
             push @msg,@{$self->{'oem_payload_id'}};
@@ -418,12 +458,16 @@ sub sendpayload {
     } elsif ($self->{'ipmiversion'} eq '2.0') {
 #TODO:
             #push conf header
-            #push payload
+            my $size = scalar(@payload);
+            push @msg,($size&0xff,$size>>8);
+            push @msg,@payload;
             #push conf trailer (or had to do it before...
             #push integrity pad
-            push @msg,0x7; #reserved byte in 2.0
+            #push @msg,0x7; #reserved byte in 2.0
             #push integrity data
     }
+    hexdump(@msg);
+    print "\n";
     $socket->send(pack("C*",@msg),0,$self->{peeraddr});
     if ($self->{sequencenumber}) { #if using non-zero, increment, otherwise..
         $self->{sequencenumber} += 1;
