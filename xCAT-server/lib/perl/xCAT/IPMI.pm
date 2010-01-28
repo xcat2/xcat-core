@@ -20,6 +20,8 @@ use Digest::MD5 qw/md5/;
 my $ipmi2support = eval {
     require Digest::SHA1;
     Digest::SHA1->import(qw/sha1/);
+    require Digest::HMAC_SHA1;
+    Digest::HMAC_SHA1->import(qw/hmac_sha1/);
     1;
 };
 my $aessupport;
@@ -256,10 +258,11 @@ sub got_channel_auth_cap {
 sub open_rmcpplus_request {
     my $self = shift;
     $self->{'authtype'}=6;
+    $self->{sidm} = [0x15,0x58,0x25,0x7a];
     my @payload = (0x1f,#message tag, TODO: could be random
             0, #requested privilege role, 0 is highest allowed
             0,0, #reserved
-            0x00,0xba,0xda,0x55, #Pick a session id TODO could be random
+            0x15,0x58,0x25,0x7a, #we only have to sweat one session, so no need to generate
             0,0,0,8,1,0,0,0, #table 13-17, request sha
             1,0,0,8,1,0,0,0); #sha integrity
         if ($aessupport) { 
@@ -292,7 +295,11 @@ sub subcmd {
     $self->{seqlun} &= 0xff; #keep it one byte
     $self->{ipmicallback} = $args{callback};
     $self->{ipmicallback_args} = $args{callback_args};
-    $self->sendpayload(payload=>\@payload,type=>$payload_types{'ipmi'});
+    my $type = $payload_types{'ipmi'};
+    if ($self->{integrityalgo}) {
+        $type = $type | 0b01000000; #add integrity
+    }
+    $self->sendpayload(payload=>\@payload,type=>$type);
 }
 
 sub waitforrsp {
@@ -378,13 +385,124 @@ sub handle_ipmi_packet {
         if (($rsp[5]& 0b00111111) == 0x11) {
             hexdump(@rsp);
             $self->got_rmcp_response(splice @rsp,16);
-        #TODO: ipmi 2...
+        } elsif (($rsp[5]& 0b00111111) == 0x13) {
+            $self->got_rakp2(splice @rsp,16);
+        } elsif (($rsp[5]& 0b00111111) == 0x15) {
+            $self->got_rakp4(splice @rsp,16);
         }
     }
 }
+
 sub got_rmcp_response {
     my $self = shift;
-    hexdump(@_);
+    my @data = @_;
+    my $byte = shift @data;
+    unless ($byte == 0x1f) {
+        return;
+    }
+    $byte = shift @data;
+    unless ($byte == 0x00) {
+        $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
+        return;
+    }
+    $byte = shift @data;
+    unless ($byte >= 4) {
+        $self->{onlogon}->("ERROR: Cannot acquire sufficient privilege",$self->{onlogon_args});
+        return;
+    }
+    splice @data,0,5;
+    $self->{pendingsessionid} = [splice @data,0,4];
+    $self->send_rakp1();
+}
+
+sub send_rakp3 {
+    my $self = shift;
+    my @payload = (0x1f,0,0,0,@{$self->{pendingsessionid}});
+    my @user = unpack("C*",$self->{userid});
+    push @payload,unpack("C*",hmac_sha1(pack("C*",@{$self->{remoterandomnumber}},@{$self->{sidm}},4,scalar @user,@user),$self->{password}));
+    $self->sendpayload(payload=>\@payload,type=>$payload_types{'rakp3'});
+}
+
+sub send_rakp1 {
+    my $self = shift;
+    my @payload = (0x1f,0,0,0,@{$self->{pendingsessionid}});
+    $self->{randomnumber}=[];
+    foreach (1..16) {
+        my $randomnumber = int(rand(255));
+        push @{$self->{randomnumber}},$randomnumber;
+    }
+    push @payload, @{$self->{randomnumber}};
+    push @payload,(4,0,0); # request admin
+    my @user = unpack("C*",$self->{userid});
+    push @payload,scalar @user;
+    push @payload,@user;
+    $self->sendpayload(payload=>\@payload,type=>$payload_types{'rakp1'});
+}
+
+sub got_rakp4 {
+    my $self = shift;
+    my @data = @_;
+    my $byte = shift @data;
+    unless ($byte == 0x1f) {
+        return;
+    }
+    $byte = shift @data;
+    unless ($byte == 0x00) {
+        $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
+        return;
+    }
+    splice @data,0,6; #discard reserved bytes and session id
+    hexdump(@data);
+    my @expectauthcode = unpack("C*",hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{pendingsessionid}},@{$self->{remoteguid}}),$self->{sik}));
+    hexdump(@expectauthcode);
+    foreach  (@expectauthcode[0..11]) {
+        unless ($_ == (shift @data)) {
+            $self->{onlogon}->("ERROR: failure in final rakp exchange message",$self->{onlogon_args});
+            return;
+        }
+    }
+    $self->{sessionid} = $self->{pendingsessionid};
+    $self->{integrityalgo}='sha1';
+    $self->set_admin_level();
+}
+
+
+sub got_rakp2 {
+    my $self=shift;
+    my @data = @_;
+    hexdump(@data);
+    my $byte = shift @data;
+    unless ($byte == 0x1f) {
+        return;
+    }
+    $byte = shift @data;
+    unless ($byte == 0x00) {
+        $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
+        return;
+    }
+    splice @data,0,6; # throw away reserved bytes, and session id, might need to check
+    $self->{remoterandomnumber} = [];
+    foreach (1..16) {
+        push @{$self->{remoterandomnumber}},(shift @data);
+    }
+    $self->{remoteguid} = [];
+    foreach (1..16) {
+        push @{$self->{remoteguid}},(shift @data);
+    }
+    #Data now represents authcode.. sha1 only..
+    my @user = unpack("C*",$self->{userid});
+    my $ulength = scalar @user;
+    my $hmacdata = pack("C*",(0x15,0x58,0x25,0x7a,@{$self->{pendingsessionid}},@{$self->{randomnumber}},@{$self->{remoterandomnumber}},@{$self->{remoteguid}},4,$ulength,@user));
+    hexdump(0x15,0x58,0x25,0x7a,@{$self->{pendingsessionid}},@{$self->{randomnumber}},@{$self->{remoterandomnumber}},@{$self->{remoteguid}},4,$ulength,@user);
+    my @expectedhash = (unpack("C*",hmac_sha1($hmacdata,$self->{password})));
+    foreach (0..(scalar(@expectedhash)-1)) {
+        if ($expectedhash[$_] != $data[$_]) {
+            $self->{onlogon}->("ERROR: Incorrect password provided",$self->{onlogon_args});
+            return;
+        }
+    }
+    $self->{sik} = hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{remoterandomnumber}},4,$ulength,@user),$self->{password});
+    $self->send_rakp3();
 }
 
 sub parse_ipmi_payload {
@@ -433,6 +551,7 @@ sub sendpayload {
     my $self = shift;
     my %args = @_;
     my @msg = (0x6,0x0,0xff,0x07); #RMCP header is constant in IPMI
+    my $type = $args{type} & 0b00111111;
     $sessions_waiting{$self}=time()+$self->{timeout};
     my @payload = @{$args{payload}};
     push @msg,$self->{'authtype'}; # add authtype byte (will support 0 only for session establishment, 2 for ipmi 1.5, 6 for ipmi2
@@ -440,7 +559,7 @@ sub sendpayload {
         hexdump(@msg);
         push @msg, $args{type};
         hexdump(@msg);
-        if ($args{type} == 2) {
+        if ($type == 2) {
             push @msg,@{$self->{'iana'}},0;
             push @msg,@{$self->{'oem_payload_id'}};
         }
@@ -462,9 +581,11 @@ sub sendpayload {
             push @msg,($size&0xff,$size>>8);
             push @msg,@payload;
             #push conf trailer (or had to do it before...
+            if ($self->{integrityalgo}) {
             #push integrity pad
             #push @msg,0x7; #reserved byte in 2.0
             #push integrity data
+            }
     }
     hexdump(@msg);
     print "\n";
