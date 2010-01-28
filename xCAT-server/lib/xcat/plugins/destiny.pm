@@ -277,6 +277,8 @@ sub setdestiny {
                                    initrd => "xcat/nbfs.$arch.gz",
                                    kcmdline => $kcmdline."xcatd=$master:$xcatdport"});
     }
+	}elsif ($state eq "offline"){
+		1;
   } elsif (!($state eq "boot")) { 
       $callback->({error=>["Unknown state $state requested"],errorcode=>[1]});
       return;
