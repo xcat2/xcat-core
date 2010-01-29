@@ -463,6 +463,8 @@ sub got_rakp4 {
     }
     $self->{sessionid} = $self->{pendingsessionid};
     $self->{integrityalgo}='sha1';
+    $self->{sequencenumber}=1;
+    $self->{sequencenumberbytes}=[1,0,0,0];
     $self->set_admin_level();
 }
 
@@ -502,6 +504,7 @@ sub got_rakp2 {
         }
     }
     $self->{sik} = hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{remoterandomnumber}},4,$ulength,@user),$self->{password});
+    $self->{k1} = hmac_sha1(pack("C*",1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1),$self->{sik});
     $self->send_rakp3();
 }
 
@@ -582,6 +585,26 @@ sub sendpayload {
             push @msg,@payload;
             #push conf trailer (or had to do it before...
             if ($self->{integrityalgo}) {
+                print "woo?\n";
+                hexdump(@msg);
+                my @integdata = @msg[4..(scalar @msg)-1];
+                hexdump(@integdata);
+                my $neededpad=((scalar @integdata)+2)%4;
+                if ($neededpad) { $neededpad = 4-$neededpad; }
+                for (my $i=0;$i<$neededpad;$i++) {
+                    push @integdata,0xff;
+                    push @msg,0xff;
+                }
+                hexdump(@integdata);
+                push @msg,$neededpad;
+                push @integdata,$neededpad;
+                push @msg,7;
+                push @integdata,7;
+                my $intdata = pack("C*",@integdata);
+                my @acode = unpack("C*",hmac_sha1($intdata,$self->{k1}));
+                hexdump @acode;
+                push @msg,splice @acode,0,12;
+                hexdump @msg;
             #push integrity pad
             #push @msg,0x7; #reserved byte in 2.0
             #push integrity data
