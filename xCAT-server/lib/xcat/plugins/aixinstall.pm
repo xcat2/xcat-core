@@ -144,7 +144,7 @@ sub preprocess_request
     if ($command =~ /rmnimimage/) {
 		# take care of -h etc.
 		# also get osimage hash to pass on!!
-		my ($rc, $imagehash) = &prermnimimage($cb, $sub_req);
+		my ($rc, $imagehash, $servers) = &prermnimimage($cb, $sub_req);
 		if ( $rc ) { # either error or -h was processed etc.
             my $rsp;
             if ($rc eq "1") {
@@ -155,17 +155,9 @@ sub preprocess_request
             return undef;
         }
 
-		# need to remove NIM res from all SNs
-		# get all the service nodes
-		my @nlist = xCAT::Utils->list_all_nodes;
-		my $sn;
-		if (\@nlist) {
-			$sn = xCAT::Utils->get_ServiceNode(\@nlist, $service, "MN");
-		}
-
 		# if something more than -h etc. then pass on the request
-		if (defined($imagehash)) {
-			foreach my $snkey (keys %$sn) {
+		if (defined($imagehash)&& scalar(@{$servers}) ) {
+			foreach my $snkey (@{$servers}) {
 				my $reqcopy = {%$req};
 				$reqcopy->{'_xcatdest'} = $snkey;
 				#$reqcopy->{_xcatpreprocessed}->[0] = 1;
@@ -329,6 +321,7 @@ sub process_request
 
     my $request  = shift;
     my $callback = shift;
+
     my $sub_req = shift; 
     my $ret;
     my $msg;
@@ -1665,6 +1658,7 @@ sub mknimimage
 						push @{$rsp->{data}}, "Could not create a NIM definition for \'$paging_name\'.\n";
 						xCAT::MsgUtils->message("E", $rsp, $callback);
 						return 1;
+
 					}
 				}
 			}
@@ -1856,7 +1850,9 @@ sub mknimimage
 		if ($attr eq 'objtype') {
 			next;
 		}
-		push @{$rsp->{data}}, "\t$attr=$osimagedef{$::image_name}{$attr}";
+		if ( $osimagedef{$::image_name}{$attr} ne '') {
+			push @{$rsp->{data}}, "\t$attr=$osimagedef{$::image_name}{$attr}";
+		}
 	}
 	xCAT::MsgUtils->message("I", $rsp, $callback);
 
@@ -2617,8 +2613,6 @@ sub mk_mksysb
 
         Arguments:
         Returns:
-                0 - OK
-                1 - error
         Globals:
         Error:
         Example:
@@ -2629,6 +2623,9 @@ sub mk_mksysb
 sub prermnimimage
 {
 	my $callback = shift;
+
+	my @servicenodes=();  # pass back list of service nodes
+	my %imagedef;		  # pass back image def hash
 
 	if (defined(@{$::args})) {
         @ARGV = @{$::args};
@@ -2643,9 +2640,11 @@ sub prermnimimage
         'f|force'   => \$::FORCE,
         'h|help'    => \$::HELP,
 		'd|delete'  => \$::DELETE,
+		'managementnode|M'  => \$::MN,
         's=s'       => \$::SERVERLIST,
         'verbose|V' => \$::VERBOSE,
-        'v|version' => \$::VERSION,))
+        'v|version' => \$::VERSION,
+		'x|xcatdef' => \$::XCATDEF,))
     {
 
         &rmnimimage_usage($callback);
@@ -2680,7 +2679,6 @@ sub prermnimimage
     }
 
     # get the xCAT image definition
-    my %imagedef;
     my %objtype;
     $objtype{$image_name} = 'osimage';
     %imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype,$callback);
@@ -2691,29 +2689,52 @@ sub prermnimimage
         return (0);
     }
 
-	# if a servicenode list is provided then don't remove the 
-	#	osimage definition
-	if ($::SERVERLIST) {
-		return (0, \%imagedef);
+	#
+	#  get a list of servers that we need to remove resources from
+	#
+	# NIM resources need to be removed on the NIM primary
+	#	- not necessarily the management node - in mixed cluster
+    my $nimprime = xCAT::InstUtils->getnimprime();
+    chomp $nimprime;
+
+	if ($::MN) {
+		# only do management node
+		@servicenodes=("$nimprime");
+	} elsif ($::SERVERLIST) {
+		@servicenodes=split(',', $::SERVERLIST);
+	} else {
+		# do MN and all servers
+		# 	get all the service nodes
+        my @nlist = xCAT::Utils->list_all_nodes;
+        my $sn;
+		my $service  = "xcat";
+        if (\@nlist) {
+            $sn = xCAT::Utils->get_ServiceNode(\@nlist, $service, "MN");
+        }
+		foreach my $snkey (keys %$sn) {
+			push(@servicenodes, $snkey);
+		}
 	}
 
 	#
-    # remove the osimage def
+    # remove the osimage def - if requested
     #
-    my %objhash;
-    $objhash{$image_name} = "osimage";
+	if ($::XCATDEF) {
+    	my %objhash;
+    	$objhash{$image_name} = "osimage";
 
-    if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0) { 
-        my $rsp;
-        push @{$rsp->{data}}, "Could not remove the existing xCAT definition for \'$image_name\'.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-    } else {
-        my $rsp;
-        push @{$rsp->{data}}, "Removed the xCAT osimage definition \'$image_name\'.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }
+    	if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0) { 
+        	my $rsp;
+        	push @{$rsp->{data}}, "Could not remove the existing xCAT definition for \'$image_name\'.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+    	} else {
+        	my $rsp;
+        	push @{$rsp->{data}}, "Removed the xCAT osimage definition \'$image_name\'.\n";
+        	xCAT::MsgUtils->message("I", $rsp, $callback);
+    	}
+	}	
 
-	return (0, \%imagedef);
+	return (0, \%imagedef, \@servicenodes);
 }
 
 #----------------------------------------------------------------------------
@@ -2759,9 +2780,11 @@ sub rmnimimage
         'f|force'   => \$::FORCE,
         'h|help'    => \$::HELP,
 		'd|delete'  => \$::DELETE,
+		'managementnode|M'  => \$::MN,
         's=s'       => \$::SERVERLIST,
         'verbose|V' => \$::VERBOSE,
-        'v|version' => \$::VERSION,))
+        'v|version' => \$::VERSION,
+		'x|xcatdef' => \$::XCATDEF,))
     {
 
         &rmnimimage_usage($callback);
@@ -2784,6 +2807,7 @@ sub rmnimimage
     my $Sname = xCAT::InstUtils->myxCATname();
     chomp $Sname;
 
+	#  should not need the next two checks???
     if ($::SERVERLIST) {
         @servernodelist = xCAT::NodeRange::noderange($::SERVERLIST);
         if (!grep(/^$Sname$/, @servernodelist) ) {
@@ -2791,6 +2815,13 @@ sub rmnimimage
             return 0;
         }
     }
+
+	if ($::MN) {
+		if (!xCAT::Utils->isMN()) {
+			return 0;
+		}
+	}
+
 	#
     #  Get a list of all nim resource types
     #
@@ -2846,30 +2877,8 @@ sub rmnimimage
 					next;
 				}
 
-				# try to remove it
-				my $cmd = "nim -o remove $resname";
-
-				my $output;
-		    	$output = xCAT::Utils->runcmd("$cmd", -1);
-		    	if ($::RUNCMD_RC  != 0)
-       			{
-					my $rsp;
-					push @{$rsp->{data}}, "$Sname: Could not remove the NIM resource definition \'$resname\'.\n";
-					push @{$rsp->{data}}, "$output";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-					next;
-				} else {
-					my $rsp;
-					push @{$rsp->{data}}, "$Sname: Removed the NIM resource named \'$resname\'.\n";
-					xCAT::MsgUtils->message("I", $rsp, $callback);
-
-				}
-
+				my $loc;
 				if ($::DELETE) {
-
-					# clean up the files and directories that NIM leaves
-					my $loc;
 
 					# just use the NIM location value to remove these
 					if (($attr eq "lpp_source") || ($attr eq "bosinst_data") || ($attr eq "script") || ($attr eq "installp_bundle") || ($attr eq "root") || ($attr eq "shared_root") || ($attr eq "paging")) {
@@ -2881,27 +2890,39 @@ sub rmnimimage
 						my $tmp = xCAT::InstUtils->get_nim_attr_val($resname, 'location', $callback, "", $subreq);
 						$loc = dirname($tmp);
 					}
-
-
-					if ($loc) {
-						my $cmd = qq~/usr/bin/rm -R $loc 2>/dev/null~;
-						my $output = xCAT::Utils->runcmd("$cmd", -1);
-					if ($::RUNCMD_RC  != 0)
-						{
-				#			my $rsp;
-				#			push @{$rsp->{data}}, "Could not delete files for the the NIM resource \'$resname\'.\n";
-				#			push @{$rsp->{data}}, "$output";
-				#			xCAT::MsgUtils->message("E", $rsp, $callback);
-				#			$error++;
-				#			next;
-						}
-					}
 				}
+
+				# try to remove it
+                my $cmd = "nim -o remove $resname";
+
+                my $output;
+                $output = xCAT::Utils->runcmd("$cmd", -1);
+                if ($::RUNCMD_RC  != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$Sname: Could not remove the NIM resource definition \'$resname\'.\n";
+                    push @{$rsp->{data}}, "$output";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                    next;
+                } else {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$Sname: Removed the NIM resource named \'$resname\'.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+
+                }
+
+				if ($::DELETE) {
+					if ($loc) {
+                        my $cmd = qq~/usr/bin/rm -R $loc 2>/dev/null~;
+                        my $output = xCAT::Utils->runcmd("$cmd", -1);
+                    }
+				}
+
 			} else {
 				my $rsp;
-				push @{$rsp->{data}}, "$Sname: Could not remove a NIM resource called \'$resname\'\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
+				push @{$rsp->{data}}, "$Sname: A NIM resource named \'$resname\' is not defined.\n";
+				xCAT::MsgUtils->message("W", $rsp, $callback);
 			}
 		}
 	}
@@ -6372,7 +6393,7 @@ sub rmnimimage_usage
 	push @{$rsp->{data}}, "  Usage: ";
 	push @{$rsp->{data}}, "\trmnimimage [-h | --help]";
 	push @{$rsp->{data}}, "or";
-	push @{$rsp->{data}}, "\trmnimimage [-V] [-f|--force] [-d|--delete] \n\t\t[-s <servernoderange>] image_name\n";
+	push @{$rsp->{data}}, "\trmnimimage [-V] [-f|--force] [-d|--delete] [-M|--managementnode] \n\t\t[-s <servernoderange>] [-x|--xcatdef] image_name\n";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
 	return 0;
 }
