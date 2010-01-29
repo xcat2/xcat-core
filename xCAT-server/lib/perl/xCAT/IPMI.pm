@@ -383,7 +383,6 @@ sub handle_ipmi_packet {
         $self->parse_ipmi_payload(@payload);
     } elsif ($rsp[4] == 6) { #IPMI 2.0
         if (($rsp[5]& 0b00111111) == 0x11) {
-            hexdump(@rsp);
             $self->got_rmcp_response(splice @rsp,16);
         } elsif (($rsp[5]& 0b00111111) == 0x13) {
             $self->got_rakp2(splice @rsp,16);
@@ -452,9 +451,7 @@ sub got_rakp4 {
         return;
     }
     splice @data,0,6; #discard reserved bytes and session id
-    hexdump(@data);
     my @expectauthcode = unpack("C*",hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{pendingsessionid}},@{$self->{remoteguid}}),$self->{sik}));
-    hexdump(@expectauthcode);
     foreach  (@expectauthcode[0..11]) {
         unless ($_ == (shift @data)) {
             $self->{onlogon}->("ERROR: failure in final rakp exchange message",$self->{onlogon_args});
@@ -472,7 +469,6 @@ sub got_rakp4 {
 sub got_rakp2 {
     my $self=shift;
     my @data = @_;
-    hexdump(@data);
     my $byte = shift @data;
     unless ($byte == 0x1f) {
         return;
@@ -495,7 +491,6 @@ sub got_rakp2 {
     my @user = unpack("C*",$self->{userid});
     my $ulength = scalar @user;
     my $hmacdata = pack("C*",(0x15,0x58,0x25,0x7a,@{$self->{pendingsessionid}},@{$self->{randomnumber}},@{$self->{remoterandomnumber}},@{$self->{remoteguid}},4,$ulength,@user));
-    hexdump(0x15,0x58,0x25,0x7a,@{$self->{pendingsessionid}},@{$self->{randomnumber}},@{$self->{remoterandomnumber}},@{$self->{remoteguid}},4,$ulength,@user);
     my @expectedhash = (unpack("C*",hmac_sha1($hmacdata,$self->{password})));
     foreach (0..(scalar(@expectedhash)-1)) {
         if ($expectedhash[$_] != $data[$_]) {
@@ -559,9 +554,7 @@ sub sendpayload {
     my @payload = @{$args{payload}};
     push @msg,$self->{'authtype'}; # add authtype byte (will support 0 only for session establishment, 2 for ipmi 1.5, 6 for ipmi2
     if ($self->{'ipmiversion'} eq '2.0') { #TODO: revisit this to see if assembly makes sense
-        hexdump(@msg);
         push @msg, $args{type};
-        hexdump(@msg);
         if ($type == 2) {
             push @msg,@{$self->{'iana'}},0;
             push @msg,@{$self->{'oem_payload_id'}};
@@ -585,33 +578,25 @@ sub sendpayload {
             push @msg,@payload;
             #push conf trailer (or had to do it before...
             if ($self->{integrityalgo}) {
-                print "woo?\n";
-                hexdump(@msg);
                 my @integdata = @msg[4..(scalar @msg)-1];
-                hexdump(@integdata);
                 my $neededpad=((scalar @integdata)+2)%4;
                 if ($neededpad) { $neededpad = 4-$neededpad; }
                 for (my $i=0;$i<$neededpad;$i++) {
                     push @integdata,0xff;
                     push @msg,0xff;
                 }
-                hexdump(@integdata);
                 push @msg,$neededpad;
                 push @integdata,$neededpad;
                 push @msg,7;
                 push @integdata,7;
                 my $intdata = pack("C*",@integdata);
                 my @acode = unpack("C*",hmac_sha1($intdata,$self->{k1}));
-                hexdump @acode;
                 push @msg,splice @acode,0,12;
-                hexdump @msg;
             #push integrity pad
             #push @msg,0x7; #reserved byte in 2.0
             #push integrity data
             }
     }
-    hexdump(@msg);
-    print "\n";
     $socket->send(pack("C*",@msg),0,$self->{peeraddr});
     if ($self->{sequencenumber}) { #if using non-zero, increment, otherwise..
         $self->{sequencenumber} += 1;
