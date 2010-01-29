@@ -616,7 +616,7 @@ sub sendpayload {
                 push @msg,($newsize&0xff,$newsize>>8);
                 my @iv;
                 foreach (1..16) {
-                    my $num = 0xff; #int(rand(255));
+                    my $num = int(rand(255));
                     push @msg,$num;
                     push @iv, $num;
                 }
