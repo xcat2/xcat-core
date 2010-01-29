@@ -1353,17 +1353,23 @@ sub nodels
         {
             my @attribs = ("node");
             my @ents    = $nodelisttab->getAllAttribs(@attribs);
-            foreach (@ents)
-            {
+	    my @nodes;
+            foreach (@ents) {
+         	if ($_->{node}) {
+			push @nodes, $_->{node};
+		}
+	    }
+	    @nodes = sort {$a cmp $b} @nodes;
+	    foreach (@nodes) {
                 my $rsp;
-                if ($_->{node})
-                {
-                    $rsp->{node}->[0]->{name}->[0] = ($_->{node});
+                #if ($_)
+                #{
+                    $rsp->{node}->[0]->{name}->[0] = ($_);
 
                     #              $rsp->{node}->[0]->{data}->[0]->{contents}->[0]="$_->{node} node contents";
                     #              $rsp->{node}->[0]->{data}->[0]->{desc}->[0]="$_->{node} node desc";
                     $callback->($rsp);
-                }
+                #}
             }
         }
     }

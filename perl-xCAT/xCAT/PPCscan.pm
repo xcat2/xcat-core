@@ -430,15 +430,19 @@ sub format_output {
         #######################################
         # Get longest name for formatting
         #######################################
+	my $nodehash;
+        my @errmsg;
         foreach ( @$values ) {
-            ###################################
-            # Skip error message
-            ###################################
+            ##############################################
+            # Skip error message after saving it for last
+            ##############################################
             if ( /^#.*: ERROR / ) {
+                push @errmsg, $_;
                 next;
             }
-            /[^\,]+,([^\,]+),/;
-            my $length  = length( $1 );
+            /([^\,]+),([^\,]+),/;
+	    $nodehash->{$1.$2} = $_;
+            my $length  = length( $2 );
             $max_length = ($length > $max_length) ? $length : $max_length;
         }
         my $format = sprintf( "%%-%ds", ($max_length + 2 ));
@@ -453,18 +457,10 @@ sub format_output {
         #######################################
         # Add node information
         #######################################
-        my @errmsg;
-        foreach ( @$values ) {
-            my @data = split /,/;
+        foreach ( sort keys %$nodehash ) {
+            my @data = split /,/, $nodehash->{$_};
             my $i = 0;
 
-            ###################################
-            # Save error messages for last
-            ###################################
-            if ( /^#.*: ERROR / ) {
-                push @errmsg, $_;
-                next;
-            }
             foreach ( @header ) {
                 my $d = $data[$i++]; 
 
@@ -502,23 +498,29 @@ sub format_stanza {
     my $values = shift;
     
     my $result;
+    my $nodehash;
 
     #####################################
     # Skip hardware control point 
     #####################################
     shift(@$values);
 
-    foreach ( sort @$values ) {
-        my @data = split /,/;
+    foreach ( @$values ) {
+            ###################################
+            # Skip error message
+            ###################################
+            if ( /^#.*: ERROR / ) {
+                next;
+            }
+            /[^\,]+,([^\,]+),/;
+            $nodehash->{$1} = $_;
+    }
+
+    foreach ( sort keys %$nodehash ) {
+        my @data = split /,/, $nodehash->{$_};
         my $type = $data[0];
         my $i = 0;
 
-        #################################
-        # Skip error message 
-        #################################
-        if ( /^#.*: ERROR / ) {
-            next;
-        }
         #################################
         # Node attributes
         #################################
@@ -565,26 +567,31 @@ sub format_xml {
     my $hwtype = shift;
     my $values = shift;
     my $xml;
+    my $nodehash;
 
     #####################################
     # Skip hardware control point 
     #####################################
     shift(@$values);
 
+    foreach ( @$values ) {
+            ###################################
+            # Skip error message
+            ###################################
+            if ( /^#.*: ERROR / ) {
+                next;
+            }
+            /[^\,]+,([^\,]+),/;
+            $nodehash->{$1} = $_;
+    }
     #####################################
     # Create XML formatted attributes
     #####################################
-    foreach ( @$values ) {
-        my @data = split /,/;
+    foreach ( sort keys %$nodehash ) {
+        my @data = split /,/, $nodehash->{$_};
         my $type = $data[0];
         my $i = 0;
 
-        #################################
-        # Skip error message
-        #################################
-        if ( /^#.*: ERROR / ) {
-            next;
-        }
         #################################
         # Initialize hash reference
         #################################

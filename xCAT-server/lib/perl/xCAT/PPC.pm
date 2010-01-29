@@ -606,15 +606,26 @@ sub child_response {
                 $data .= <$rfh>;
             }
             my $responses = thaw($data);
-            foreach ( @$responses ) {
-                #save the nodes that has errors for node status monitoring
-                if ((exists($_->{errorcode})) && ($_->{errorcode} != 0))  { 
-                    if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; } 
-                } else {
-                    if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
-                }
-                $callback->( $_ );
-            }
+	    my @nodes;
+	    foreach ( @$responses ) {
+     	    	my $node = $_->{node}->[0]->{name}->[0];
+     	    	push (@nodes, $node);
+	    }
+
+	    foreach ( sort @nodes ) {
+     		my $nodename = $_;
+     		foreach ( @$responses ) {
+	  		if ($nodename eq $_->{node}->[0]->{name}->[0]) {
+                		#save the nodes that has errors for node status monitoring
+          			if ((exists($_->{errorcode})) && ($_->{errorcode} != 0))  {
+                     			if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; }
+                		} else {
+                     			if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; }
+                		}
+                		$callback->( $_ );
+           		}
+     		}
+	    }
             next;
         }
         #################################
@@ -1434,6 +1445,7 @@ sub preprocess_request {
         foreach (@$hcps1) { 
             push @nodes, @{$hcp_hash{$_}{nodes}};
         }
+	@nodes = sort @nodes;
         $reqcopy->{node} = \@nodes;
         #print "nodes=@nodes\n";
         push @requests, $reqcopy;
