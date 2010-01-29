@@ -388,6 +388,29 @@ sub handle_ipmi_packet {
             $self->got_rakp2(splice @rsp,16);
         } elsif (($rsp[5]& 0b00111111) == 0x15) {
             $self->got_rakp4(splice @rsp,16);
+        } elsif (($rsp[5]& 0b00111111) == 0x0) {
+            my $encrypted;
+            if ($rsp[5]&0b10000000) {
+                $encrypted=1;
+            }
+            unless ($rsp[5]&0b01000000) {
+                return 3; #we refuse to examine unauthenticated packets
+            }
+            splice (@rsp,0,4); #ditch the header
+            my @authcode = splice(@rsp,-12);
+            my @expectedcode = unpack("C*",hmac_sha1(pack("C*",@rsp),$self->{k1}));
+            splice (@expectedcode,12);
+            foreach (@expectedcode) {
+                unless ($_ == shift @authcode) {
+                   return 3;
+                }
+            }
+            if ($encrypted) {
+#TODO: encryption
+            }
+            my $psize = $rsp[10]+($rsp[11]<<8);
+            my @payload = splice(@rsp,12,$psize);
+            $self->parse_ipmi_payload(@payload);
         }
     }
 }
