@@ -299,6 +299,9 @@ sub subcmd {
     if ($self->{integrityalgo}) {
         $type = $type | 0b01000000; #add integrity
     }
+    if ($self->{confalgo}) {
+        $type = $type | 0b10000000; #add secrecy
+    }
     $self->sendpayload(payload=>\@payload,type=>$type);
 }
 
@@ -483,6 +486,9 @@ sub got_rakp4 {
     }
     $self->{sessionid} = $self->{pendingsessionid};
     $self->{integrityalgo}='sha1';
+    if ($aessupport) {
+        $self->{confalgo} = 'aes';
+    }
     $self->{sequencenumber}=1;
     $self->{sequencenumberbytes}=[1,0,0,0];
     $self->set_admin_level();
@@ -523,6 +529,11 @@ sub got_rakp2 {
     }
     $self->{sik} = hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{remoterandomnumber}},4,$ulength,@user),$self->{password});
     $self->{k1} = hmac_sha1(pack("C*",1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1),$self->{sik});
+    if ($aessupport) {
+        $self->{k2} = hmac_sha1(pack("C*",2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2),$self->{sik});
+        my @aeskey = unpack("C*",$self->{k2});
+        $self->{aeskey} = pack("C*",(splice @aeskey,0,16));
+    }
     $self->send_rakp3();
 }
 
@@ -595,10 +606,35 @@ sub sendpayload {
        #TODO: sweat a pad or not? spec isn't crystal clear on the 'legacy pad' and it sounds like it is just for some old crappy nics that have no business in a good server
     } elsif ($self->{'ipmiversion'} eq '2.0') {
 #TODO:
-            #push conf header
             my $size = scalar(@payload);
-            push @msg,($size&0xff,$size>>8);
-            push @msg,@payload;
+            #push conf header
+            if ($self->{confalgo}) {
+                my $pad = ($size+1)%16;
+                if ($pad) { $pad = 16-$pad; }
+                my $newsize =$size+$pad+17;
+                print $newsize;
+                push @msg,($newsize&0xff,$newsize>>8);
+                my @iv;
+                foreach (1..16) {
+                    my $num = 0xff; #int(rand(255));
+                    push @msg,$num;
+                    push @iv, $num;
+                }
+                foreach (1..$pad) {
+                    push @payload,$_;#int(rand(255)); #random padding
+                }
+                push @payload,$pad;
+                my $cipher = Crypt::CBC->new(-literal_key => 1,-key=>$self->{aeskey},-cipher=>"Rijndael",-header=>"none",-iv=>pack("C*",@iv),-keysize=>16);
+                $cipher->start('encrypting');
+                hexdump(@payload);
+                my $ciphertext = $cipher->crypt(pack("C*",@payload));
+                hexdump(unpack("C*",$ciphertext));
+                push @msg,unpack("C*",$ciphertext);
+                hexdump(@msg);
+            } else {
+                push @msg,($size&0xff,$size>>8);
+                push @msg,@payload;
+            }
             #push conf trailer (or had to do it before...
             if ($self->{integrityalgo}) {
                 my @integdata = @msg[4..(scalar @msg)-1];
