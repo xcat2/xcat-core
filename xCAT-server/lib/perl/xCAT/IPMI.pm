@@ -408,11 +408,28 @@ sub handle_ipmi_packet {
                    return 3;
                 }
             }
-            if ($encrypted) {
-#TODO: encryption
-            }
             my $psize = $rsp[10]+($rsp[11]<<8);
             my @payload = splice(@rsp,12,$psize);
+            if ($encrypted) {
+                my $iv = pack("C*",splice @payload,0,16);
+                print scalar @payload;
+                print "\n";
+                hexdump(@payload);
+                my $cipher = Crypt::CBC->new(-literal_key => 1,-key=>$self->{aeskey},-cipher=>"Rijndael",-header=>"none",-iv=>$iv,-keysize=>16);
+                $cipher->start("decrypting");
+                my $clearpay = $cipher->decrypt(pack("C*",@payload));
+                $cipher->finish();
+                print "\n";
+                print  $cipher->decrypt_hex(pack("C*",@payload));
+                print "\n";
+                @payload = unpack("C*",$clearpay);
+                print scalar @payload; #Why am I coming up short....
+                print "\n";
+
+                hexdump(@payload);
+#TODO: encryption
+            }
+                hexdump(@payload);
             $self->parse_ipmi_payload(@payload);
         }
     }
@@ -607,21 +624,19 @@ sub sendpayload {
     } elsif ($self->{'ipmiversion'} eq '2.0') {
 #TODO:
             my $size = scalar(@payload);
-            #push conf header
             if ($self->{confalgo}) {
                 my $pad = ($size+1)%16;
                 if ($pad) { $pad = 16-$pad; }
                 my $newsize =$size+$pad+17;
-                print $newsize;
                 push @msg,($newsize&0xff,$newsize>>8);
                 my @iv;
-                foreach (1..16) {
+                foreach (1..16) { #generate a new iv for outbound packet
                     my $num = int(rand(255));
                     push @msg,$num;
                     push @iv, $num;
                 }
                 foreach (1..$pad) {
-                    push @payload,$_;#int(rand(255)); #random padding
+                    push @payload,$_;#padding must be increasing numerical values
                 }
                 push @payload,$pad;
                 my $cipher = Crypt::CBC->new(-literal_key => 1,-key=>$self->{aeskey},-cipher=>"Rijndael",-header=>"none",-iv=>pack("C*",@iv),-keysize=>16);
@@ -630,12 +645,10 @@ sub sendpayload {
                 my $ciphertext = $cipher->crypt(pack("C*",@payload));
                 hexdump(unpack("C*",$ciphertext));
                 push @msg,unpack("C*",$ciphertext);
-                hexdump(@msg);
             } else {
                 push @msg,($size&0xff,$size>>8);
                 push @msg,@payload;
             }
-            #push conf trailer (or had to do it before...
             if ($self->{integrityalgo}) {
                 my @integdata = @msg[4..(scalar @msg)-1];
                 my $neededpad=((scalar @integdata)+2)%4;
