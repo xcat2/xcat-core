@@ -164,10 +164,17 @@ my %usage = (
     lshwconn noderange [-V|--verbose]",
     "renergy" =>
 "Usage:
-    renergy [-h | --help]
-    renergy [-v | --version]
-    renergy noderange [-V] {all | {[savingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed]}}
-    renergy noderange [-V] {{savingstatus}={on | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage}",
+    renergy [-h | --help] 
+    renergy [-v | --version] 
+
+    Power 6 server specific :
+    renergy noderange [-V] { all | { [savingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] } }
+    renergy noderange [-V] { {savingstatus}={on | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage } 
+
+    Power 7 server specific :
+    renergy noderange [-V] { all | { [savingstatus] [dsavingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime] } }
+    renergy noderange [-V] { {savingstatus}={on | off} | {dsavingstatus}={on-norm | on-maxp | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage }",
+
 );
 my $vers = xCAT::Utils->Version();
 my %version = (

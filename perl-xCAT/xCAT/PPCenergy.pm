@@ -10,6 +10,7 @@ use xCAT::NodeRange;
 
 %::QUERY_ATTRS = (
 'savingstatus' => 1,
+'dsavingstatus' => 1,
 'cappingstatus' => 1,
 'cappingmaxmin' => 1,
 'cappingvalue' => 1,
@@ -18,10 +19,14 @@ use xCAT::NodeRange;
 'averageDC' => 1,
 'ambienttemp' => 1,
 'exhausttemp' => 1,
-'CPUspeed' => 1);
+'CPUspeed' => 1,
+'syssbpower' => 1,
+'sysIPLtime' => 1,
+);
 
 %::SET_ATTRS = (
 'savingstatus' => 1,
+'dsavingstatus' => 1,
 'cappingstatus' => 1,
 'cappingwatt' => 1,
 'cappingperc' => 1,
@@ -47,7 +52,7 @@ sub parse_args {
     # set the usage subroutine
     local *usage = sub {
         my $usage_string = xCAT::Usage->getUsage($cmd);
-        return( [ $_[0], $usage_string] );
+        return( [ $_[0], $usage_string ] );
     };
 
     if ($request->{arg}) {
@@ -71,7 +76,7 @@ sub parse_args {
             # Check the validity of the parameters of Query and Set
             foreach my $attr (@ARGV) {
                 my ($set_attr, $set_value) = split (/=/, $attr);
-                if ($set_value) {
+                if (defined($set_value)) {
                     if ($argv_flag) {
                         return (&usage());
                     }
@@ -81,6 +86,10 @@ sub parse_args {
     
                     if ($set_attr eq "savingstatus" 
                          && ($set_value ne "on" && $set_value ne "off")) {
+                        return (&usage());
+                    } elsif ($set_attr eq "dsavingstatus"
+                         && ($set_value ne "off"
+                             && $set_value ne "on-norm" && $set_value ne "on-maxp")) {
                         return (&usage());
                     } elsif ($set_attr eq "cappingstatus" 
                          && ($set_value ne "on" && $set_value ne "off")) {
@@ -104,14 +113,14 @@ sub parse_args {
 
             if (!$set_flag) {
                 my @query_list = @ARGV;
-            
+           
                 if ($query_list[0] eq "all" and $#query_list == 0) {
-                    $query_attrs = "savingstatus,cappingstatus,cappingmaxmin,cappingvalue,cappingsoftmin,averageAC,averageDC,ambienttemp,exhausttemp,CPUspeed";
+                    $query_attrs = "all";
                 } else {
                     my @no_dup_query_list = ();
                     foreach my $q_attr (@query_list) {
                         chomp($q_attr);
-    
+   
                         if ($::QUERY_ATTRS{$q_attr} != 1) {
                             return (&usage());
                         }
@@ -122,7 +131,6 @@ sub parse_args {
                     }
                     $query_attrs = join (',', @no_dup_query_list);
                 }
-                
             }
         } else {
             # If has not nodes, the -h or -v option must be input
@@ -142,6 +150,10 @@ sub parse_args {
                 my $version_string = xCAT::Usage->getVersion('renergy');
                 return( [ $_[0], $version_string] );
             }
+
+            if (scalar(@ARGV)) {
+                return (&usage());
+            }
         }
     } else {
         return (&usage());
@@ -150,7 +162,7 @@ sub parse_args {
     # Check whether the hardware type of nodes are fsp
     my $nodetype_tb = xCAT::Table->new('nodetype');
     unless ($nodetype_tb) {
-        return (1, "Error: Cannot open the nodetype table");
+        return ([undef, "Error: Cannot open the nodetype table"]);
     }
 
     my $nodetype_v = $nodetype_tb->getNodesAttribs($nodes, ['nodetype']);
@@ -162,7 +174,7 @@ sub parse_args {
     $nodetype_tb->close();
 
     if (@notfspnodes) {
-        return (1, "Error: The hardware type of following nodes are not fsp: ".join(',', @notfspnodes));
+        return ([undef, "Error: The hardware type of following nodes are not fsp: ".join(',', @notfspnodes)]);
     }
 
     if ($query_attrs) {

@@ -9,50 +9,89 @@ B<renergy> [-h | --help]
 
 B<renergy> [-v | --version] 
 
-B<renergy> noderange [-V] {all | {[savingstatus] 
-    [cappingstatus] [cappingmaxmin] [cappingvalue] 
-    [cappingsoftmin] [averageAC] [averageDC]
-    [ambienttemp] [exhausttemp] [CPUspeed]}}
 
-B<renergy> noderange [-V] {{savingstatus}={on | off} 
+B<Power 6 server specific :>
+
+B<renergy> noderange [-V] { all | { [savingstatus] [cappingstatus] 
+    [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] 
+    [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] } }
+
+B<renergy> noderange [-V] { {savingstatus}={on | off} 
     | {cappingstatus}={on | off} | {cappingwatt}=watt 
-    | {cappingperc}=percentage} 
+    | {cappingperc}=percentage } 
+
+
+B<Power 7 server specific :>
+
+B<renergy> noderange [-V] { all | { [savingstatus] [dsavingstatus] 
+    [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] 
+    [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] 
+    [syssbpower] [sysIPLtime] } }
+
+B<renergy> noderange [-V] { {savingstatus}={on | off}
+    | {dsavingstatus}={on-norm | on-maxp | off}
+    | {cappingstatus}={on | off} | {cappingwatt}=watt
+    | {cappingperc}=percentage }
+
 
 =head1 B<DESCRIPTION>
 
-This renergy command can be used to manage the energy attributes of 
-a machine. Presently, it only supports IBM POWER6 rack-mounted servers. 
-Note: The keyword 'server' in this document is identical to 
-'rack-mounted server'.
+This B<renergy> command can be used to manage the energy consumption of
+IBM servers which support IBM EnergyScale technology. Through this command, 
+user can query and set the power saving and power capping status, also can 
+query the average consumed energy, the ambient and exhaust temperature, 
+the processor frequency for a server.
 
-The parameter 'noderange' can be a list of node names (CEC's name). 
-Note: Lpar name is not acceptable.
+B<renergy> command supports IBM POWER6 and POWER7 rack-mounted servers. 
+Currently, following specific hardware types are supported:
+I<8203-E4A>, I<8204-E8A>, I<9125-F2A>, I<8233-E8B>.
 
-B<renergy> command can accept multiple attributes to query. If only 
-keywords list is specified, without the '=', it displays the current 
-value.
-B<energy> command can only set one attribute once running.
+The parameter I<noderange> needs to be specified for B<renergy> command to 
+get the target server. The I<noderange> should be a list of CEC names. Lpar name
+is not acceptable here.
 
-For the attributes that are not supported by certain server, the return 
-value will be 'na'.
+B<renergy> command can accept multiple of energy attributes to query or one of energy 
+attribute to set. If only the attribute name is specified, without the '=', B<renergy> 
+gets and displays the current value. Otherwise, if specifying the attribute with '=' like 
+'savingstatus=on', B<renergy> will turn on the static power saving. 
 
-Prerequisite:
-Before running the B<energy> command, a prerequisite package 
-B<xCAT-cimclient> needs to be downloaded from IBM web site and installed. 
+The attributes listed in the B<SYNOPSIS> section are which ones can be handled by 
+B<renergy> command. But for each specific type of server, there are some attributes 
+are not supported. If user specifies an attribute which does not be supported by certain
+server, the return value of this attribute will be 'na'.
+
+The supported attributes for each specific hardware types are listed at following:
+
+8203-E4A, 8204-E8A 
+    Supported attributes: 
+    B<Query>: savingstatus,cappingstatus,cappingmin,cappingmax,cappingvalue,
+cappingsoftmin,averageAC,averageDC,ambienttemp,exhausttemp,CPUspeed
+    B<Set>:   savingstatus,cappingstatus,cappingwatt,cappingperc
+
+9125-F2A 
+    Supported attributes: 
+    B<Query>: savingstatus,averageAC,ambienttemp,exhausttemp,CPUspeed 
+    B<Set>:   savingstatus
+
+8233-E8B
+    Supported attributes:
+    B<Query>: savingstatus,dsavingstatus,cappingstatus,cappingmin,cappingmax,
+cappingvalue,cappingsoftmin,averageAC,averageDC,ambienttemp,exhausttemp,
+CPUspeed,syssbpower,sysIPLtime
+    B<Set>:   savingstatus,dsavingstatus,cappingstatus,cappingwatt,cappingperc
+
 Note:
 Each query operation for attribute CPUspeed, averageAC or averageDC 
-costs about 30 seconds to complete. Query for the others attributes 
+needs about 30 seconds to complete. The query for others attributes 
 will get response immediately.
 
 
-Only following specific hardware types are supported by B<renergy> command:
+=head1 B<PREREQUISITE>
 
-8203-E4A, 8204-E8A 
-    Supports attributes: all
-
-9125-F2A 
-    Supports attributes: savingstatus,CPUspeed,ambienttemp, 
-    exhausttemp,averageAC
+B<renergy> command depends on a CIM client tool B<xCAT-cimclient> to 
+communicate with server. Then, before running the B<renergy> command, please
+check whether the B<xCAT-cimclient> package has been installed. 
+B<xCAT-cimclient> can be downloaded from IBM web site. 
 
 
 =head1 B<OPTIONS>
@@ -67,55 +106,74 @@ Only following specific hardware types are supported by B<renergy> command:
     Verbose output.
 
 				
-all
-    Query all of the energy attributes.
+B<all>
+    Query all energy attributes which supported by the specific 
+    type of hardware.
 
 savingstatus		
-    Query the Power Saving status. The result should be 
-    'on' or 'off'.
-    Note: To support the power saving attribute, POWER6 
-    processors should greater than or equal to 4.0 GHz.
+    Query the static power saving status. The result should be 
+    'on' or 'off'. 'on' - enable; 'off' - disable.
 
 savingstatus={on | off}
-    Set the Power Saving status. The value must be 'on' 
-    or 'off'.
-    Note: The setting value needs about 2 minutes to take 
-    effect.
+    Set the static power saving. The value must be 'on' or 'off'. 
+    If turning on the static power saving, the processor frequency 
+    and voltage will be dropped to a fixed value to save energy.
+    The savingstatus setting operation needs about 2 minutes to 
+    take effect. (The used time depends on the hardware type)
+
+dsavingstatus
+    Query the dynamic power saving status. The result should 
+    be 'on-norm', 'on-maxp'  or 'off'. 
+    If turning on the dynamic power saving, the processor 
+    frequency and voltage will be dropped dynamically based on 
+    the core utilization. It supports two modes for turn on state: 
+    I<on-norm> - means normal, the processor frequency cannot 
+    exceed the nominal value; 
+    I<on-maxp> - means maximum performance, the processor 
+    frequency can exceed the nominal value.
+
+dsavingstatus={on-norm | on-maxp | off}
+    Set the dynamic power saving. The value must be 'on-norm', 
+    'on-maxp' or 'off'.
+    The dsavingstatus setting operation needs about 2 minutes 
+    to take effect. (The used time depends on the hardware type)
 
 cappingstatus
-    Query the Power Capping status. The result should be 
-    'on' or 'off'.
-
-cappingstatus={on | off}
-    Set the Power Capping status. The value must be 'on' 
+    Query the power capping status. The result should be 'on' 
     or 'off'.
 
+cappingstatus={on | off}
+    Set the power capping status. The value must be 'on' 
+    or 'off'. This is the switch to turn on or turn off the 
+    power capping function.
+
 cappingwatt=watt 
-    Set the Power Capping value base on the watt unit.  
-    If the 'watt' >  maximum of cappingmaxmin or 'watt' 
-    < minimum of cappingmaxmim, the setting operation 
-    will fail.
+    Set the power capping value base on the watt unit.  
+    If the 'watt' >  maximum of I<cappingmaxmin> or 'watt' 
+    < minimum of I<cappingmaxmim>, the setting operation 
+    will be failed.
 
 cappingperc=percentage
-    Set the Power Capping value base on the percentage of 
-    the max-min of capping value.
+    Set the power capping value base on the percentage of 
+    the max-min of capping value which getting from 
+    I<cappingmaxmim> attribute. The valid value must be 
+    from 0 to 100.
 
 cappingmaxmin
-    Query the maximum and minimum of Power Capping value 
-    that can be set for a CEC. (Unit is watt) 
+    Query the maximum and minimum of power capping value 
+    which can be set for a CEC. (Unit is watt) 
 
 cappingvalue
-    Query the current Power Capping value. (Unit is watt)
+    Query the current power capping value. (Unit is watt)
 
 cappingsoftmin
-    Query the minimum value that can be assigned to Pcap 
-    without guaranteed enforceability. (Unit is watt)
+    Query the minimum value that can be assigned to power 
+    capping without guaranteed enforceability. (Unit is watt)
 
 averageAC
     Query the average power consumed (Input). (Unit is watt)
     Note: For 9125-F2A server, the value of attribute 
-    averageAC is the aggregate for all of the servers in the 
-    rack.
+    averageAC is the aggregate for all of the servers in a rack.
 
 averageDC
     Query the average power consumed (Output). (Unit is 
@@ -128,7 +186,15 @@ exhausttemp
     Query the current exhaust temperature. (Unit is centigrade)
 
 CPUspeed
-    Query the effective CPU speed. (Unit is MHz)
+    Query the effective processor frequency. (Unit is MHz)
+
+syssbpower
+    Query the system power consumed prior to power on. 
+    (Unit is MHz)
+
+sysIPLtime
+    Query the time used from FSP standby to OS standby. 
+    (Unit is Second)
 
 
 =head1 B<RETURN VALUE>
@@ -140,51 +206,54 @@ CPUspeed
 
 =head1 B<EXAMPLES>
 
-1. Query all the attributes which CEC1,CEC2 supported
+1. Query all the attributes which CEC1,CEC2 supported.
     B<renergy> CEC1,CEC2 all
 
     The output of the query operation:
-        CEC1: savingstatus: on
-        CEC1: cappingstatus: on
-        CEC1: cappingmin: 782 W
-        CEC1: cappingmax: 850 W
-        CEC1: cappingvalue: 816 W
-        CEC1: cappingsoftmin: 200 W
-        CEC1: averageAC: 430 W
-        CEC1: averageDC: 364 W
-        CEC1: ambienttemp: 25 C
-        CEC1: exhausttemp: 32 C
-        CEC1: CPUspeed: 3621 MHz
+        CEC1: savingstatus: off
+        CEC1: dsavingstatus: off
+        CEC1: cappingstatus: off
+        CEC1: cappingmin: 1953 W
+        CEC1: cappingmax: 2358 W
+        CEC1: cappingvalue: 2000 W
+        CEC1: cappingsoftmin: 304 W
+        CEC1: averageAC: na
+        CEC1: averageDC: na
+        CEC1: ambienttemp: na
+        CEC1: exhausttemp: na
+        CEC1: CPUspeed: na
+        CEC1: syssbpower: 40 W
+        CEC1: sysIPLtime: 900 S
         CEC2: savingstatus: off
         CEC2: cappingstatus: off
-        CEC2: cappingmin: na
-        CEC2: cappingmax: na
-        CEC2: cappingvalue: na
-        CEC2: cappingsoftmin: na
-        CEC2: averageAC: na
-        CEC2: averageDC: na
-        CEC2: ambienttemp: na
-        CEC2: exhausttemp: na
-        CEC2: CPUspeed: na
+        CEC2: cappingmin: 955 W
+        CEC2: cappingmax: 1093 W
+        CEC2: cappingvalue: 1000 W
+        CEC2: cappingsoftmin: 226 W
+        CEC2: averageAC: 627 W
+        CEC2: averageDC: 531 W
+        CEC2: ambienttemp: 25 C
+        CEC2: exhausttemp: 40 C
+        CEC2: CPUspeed: 4695 MHz
 
 2. Query the attributes savingstatus, cappingstatus 
-    and CPUspeed of server CEC1
-    B<renergy> CEC1 savingstatus,cappingstatus,CPUspeed
+    and CPUspeed for server CEC1.
+    B<renergy> CEC1 savingstatus cappingstatus CPUspeed
 
     The output of the query operation:
         CEC1: savingstatus: off
         CEC1: cappingstatus: on
         CEC1: CPUspeed: 3621 MHz
 
-3.  Turn on the Power saving function of CEC1
+3.  Turn on the power saving function of CEC1.
     B<renergy> CEC1 savingstatus=on
 
     The output of the setting operation:
         CEC1: Set savingstatus succeeded.         
         CEC1: This setting may need some minutes to take effect.   
 
-4. Set the Power Capping value base on the percentage of the 
-    max-min capping value
+4. Set the power capping value base on the percentage of the 
+    max-min capping value. Here, set it to 50%.
     B<renergy> CEC1 cappingperc=50
 
     If the maximum capping value of the CEC1 is 850w, and the 
