@@ -412,26 +412,32 @@ sub handle_ipmi_packet {
             my @payload = splice(@rsp,12,$psize);
             if ($encrypted) {
                 my $iv = pack("C*",splice @payload,0,16);
-                print scalar @payload;
-                print "\n";
-                hexdump(@payload);
-                my $cipher = Crypt::CBC->new(-literal_key => 1,-key=>$self->{aeskey},-cipher=>"Rijndael",-header=>"none",-iv=>$iv,-keysize=>16);
-                $cipher->start("decrypting");
-                my $clearpay = $cipher->decrypt(pack("C*",@payload));
-                $cipher->finish();
-                print "\n";
-                print  $cipher->decrypt_hex(pack("C*",@payload));
-                print "\n";
-                @payload = unpack("C*",$clearpay);
-                print scalar @payload; #Why am I coming up short....
-                print "\n";
-
-                hexdump(@payload);
-#TODO: encryption
+                my $cipher = Crypt::CBC->new(-literal_key => 1,-key=>$self->{aeskey},-cipher=>"Crypt::Rijndael",-header=>"none",-iv=>$iv,-keysize=>16,-blocksize=>16,-padding=>\&cbc_pad);
+                my $crypted = pack("C*",@payload);
+                @payload = unpack("C*",$cipher->decrypt($crypted));
             }
-                hexdump(@payload);
             $self->parse_ipmi_payload(@payload);
         }
+    }
+}
+sub cbc_pad {
+    my $block = shift;
+    my $size = shift;
+    my $mode = shift;
+    if ($mode eq 'e') {
+        my $neededpad=$size-length($block)%$size;
+        $neededpad -= 1;
+        my @pad=unpack("C*",$block);
+        foreach (1..$neededpad) {
+            push @pad,$_;
+        }
+        push @pad,$neededpad;
+        return pack("C*",@pad);
+    } elsif ($mode eq 'd') {
+        my @block = unpack("C*",$block);
+        my $count = pop @block;
+        splice @block,0-$count;
+        return pack("C*",@block);
     }
 }
 
@@ -635,16 +641,8 @@ sub sendpayload {
                     push @msg,$num;
                     push @iv, $num;
                 }
-                foreach (1..$pad) {
-                    push @payload,$_;#padding must be increasing numerical values
-                }
-                push @payload,$pad;
-                my $cipher = Crypt::CBC->new(-literal_key => 1,-key=>$self->{aeskey},-cipher=>"Rijndael",-header=>"none",-iv=>pack("C*",@iv),-keysize=>16);
-                $cipher->start('encrypting');
-                hexdump(@payload);
-                my $ciphertext = $cipher->crypt(pack("C*",@payload));
-                hexdump(unpack("C*",$ciphertext));
-                push @msg,unpack("C*",$ciphertext);
+                my $cipher = Crypt::CBC->new(-literal_key => 1,-key=>$self->{aeskey},-cipher=>"Rijndael",-header=>"none",-iv=>pack("C*",@iv),-keysize=>16,-padding=>\&cbc_pad);
+                push @msg,(unpack("C*",$cipher->encrypt(pack("C*",@payload))));
             } else {
                 push @msg,($size&0xff,$size>>8);
                 push @msg,@payload;
