@@ -479,9 +479,12 @@ sub on_bmc_connect {
 		return(0,"ping");
 	}
     return;
+    my @output;
 
-    my $rc;
+    my $rc; #in for testing, evaluated as a TODO
     my $text;
+    my $error;
+    my $node;
 	if($command eq "rpower") { #TODO: this should have been a function on it's own instead of all here
 		if($subcommand eq "stat" || $subcommand eq "state" || $subcommand eq "status") {
 			($rc,$text) = power("stat");
@@ -1138,9 +1141,11 @@ sub idpxthermprofile {
 
 
 sub getrvidparms {
+    my $sessdata = shift;
+    unless ($sessdata) { die "not fixed yet" }
     my $netfun = 0x3a;
 #check devide id
-    unless ($mcinfo[2] == 2) { #Only implemented for IBM servers
+    unless ($sessdata->{mfg_id} == 2) { #Only implemented for IBM servers
         return(1,"Remote video is not supported on this system");
     }
     #TODO: use get bmc capabilities to see if rvid is actually supported before bothering the client java app
@@ -1158,7 +1163,7 @@ sub getrvidparms {
     }
     #wvid should be a possiblity, time to do the http...
     my $browser = LWP::UserAgent->new();
-    my $message = "$userid,$passwd";
+    my $message = $sessdata->{ipmisession}->{userid}.",".$sessdata->{ipmissession}->{passwd};
     $browser->cookie_jar({});
     my $baseurl = "http://".$ipmi_bmcipaddr."/";
     my $response = $browser->request(POST $baseurl."/session/create",'Content-Type'=>"text/xml",Content=>$message);
@@ -1776,6 +1781,8 @@ sub add_textual_frus {
 
 sub initfru {
 	my $netfun = 0x28;
+    my $sessdata = shift;
+    unless ($sessdata) { die "not fixed yet"; }
 	my @cmd;
 	my @returnd = ();
 	my $error;
@@ -2106,6 +2113,7 @@ sub initfru {
     #Ok, done with fru 0, on to the other fru devices from SDR
     my $key;
     my $subrc;
+    my %sdr_hash = %{$sessdata->{sdr_hash}};
     foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
         my $sdr = $sdr_hash{$key};
         unless ($sdr->rec_type == 0x11 and $sdr->fru_type == 0x10) { #skip non fru sdr stuff and frus I don't understand
@@ -2826,6 +2834,10 @@ sub fruwrite {
 }
 
 sub decodealert {
+    my $sessdata = shift;
+    unless ($sessdata) {
+        die "not fixed yet";
+    }
   my $trap = shift;
   my $skip_sdrinit=0;
   if ($trap =~ /xCAT_plugin::ipmi/) {
@@ -2959,6 +2971,7 @@ sub decodealert {
 
 	my $key;
 	my $sensor_desc = sprintf("Sensor 0x%02x",$sensor_num);
+    my %sdr_hash = %{$sessdata->{sdr_hash}};
 	foreach $key (keys %sdr_hash) {
 		my $sdr = $sdr_hash{$key};
 		if($sdr->sensor_number == $sensor_num) {
@@ -3021,6 +3034,8 @@ sub readauxentry {
 
 sub eventlog {
 	my $subcommand = shift;
+    my $sessdata = shift;
+    unless ($sessdata) { die "not fixed yet" }
 
 	my $netfun = 0x28;
 	my @cmd;
@@ -3446,6 +3461,7 @@ sub eventlog {
 #				last;
 #			}
 #		}
+        my %sdr_hash = %{$sessdata->{sdr_hash}};
 		if(defined $sdr_hash{$key}) {
 			$sensor_desc = $sdr_hash{$key}->id_string;
          if ($sdr_hash{$key}->event_type_code == 1) {
@@ -4023,6 +4039,8 @@ sub process_data_from_iem {
 }
 
 sub checkleds {
+    my $sessdata = shift;
+    unless ($sessdata) { die "not fixed yet" }
 	my $netfun = 0xe8; #really 0x3a
 	my @cmd;
 	my @returnd = ();
@@ -4040,6 +4058,7 @@ sub checkleds {
 		return (0,"LED status not supported on this system");
 	}
 	
+    my %sdr_hash = %{$sessdata->{sdr_hash}};
 	foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
 		my $sdr = $sdr_hash{$key};
 		if($sdr->rec_type == 0xC0 && $sdr->sensor_type == 0xED) {
@@ -4206,6 +4225,11 @@ sub renergy {
     return (0,@output);
 }
 sub vitals {
+    my $sessdata = shift;
+    unless ($sessdata) {
+        die "not fixed yet";
+    }
+    my %sdr_hash = %{$sessdata->{sdr_hash}};
 	my $subcommand = shift;
     my @textfilters = split /,/,$subcommand;
     unless (scalar @textfilters) { @textfilters = ("all"); }
@@ -4680,13 +4704,12 @@ sub initsdr {
 	my $len;
 	my $i;
 #	my $numbytes = 27;
-	my $override_string;
 	my $ipmisensortab = "$ENV{XCATROOT}/lib/GUMI/ipmisensor.tab";
 	my $byte_format;
 	my $cache_file;
 
      #device id data TODO
-    $sessdata->{ipmisession}->subcmd(netfn=>0x0a,command=>0x20,data=>[],callback=>got_sdr_rep_info,callback_args=>$sessdata);
+    $sessdata->{ipmisession}->subcmd(netfn=>0x0a,command=>0x20,data=>[],callback=>\&got_sdr_rep_info,callback_args=>$sessdata);
 }
 
 sub  initsdr_withrepinfo {
@@ -4699,12 +4722,13 @@ sub  initsdr_withrepinfo {
 	my $fw_rev2=$sessdata->{fw_rev2};
     #TODO: beware of dynamic SDR contents
 
-	$cache_file = "$cache_dir/sdr_$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version";
+	my $cache_file = "$cache_dir/sdr_$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version";
+    $sessdata->{sdrcache_file} = $cache_file;
 	if($enable_cache eq "yes") {
         if ($sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"}) {
             $sessdata->{sdr_cache} = $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"};
         } else {
-    		my $rc = loadsdrcache($sesssdata,$cache_file);
+    		my $rc = loadsdrcache($sessdata,$cache_file);
     		if($rc == 0) {
                 $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"} = $sessdata->{sdr_cache};
                 on_bmc_connect("SUCCESS",$sessdata); #retry bmc_connect since sdr_cache is validated
@@ -4741,7 +4765,7 @@ sub initsdr_withreservation {
     my $resv_id_ms = $sessdata->{resv_id_ms};
     if ( $rid_ls == 0xff and $rid_ms == 0xff) {
 	    if($enable_cache eq "yes") { #cache SDR repository for future use
-		    storsdrcache($cache_file);
+		    storsdrcache($sessdata->{sdrcache_file});
 	    }
         on_bmc_connect("SUCCESS",$sessdata); #go back armed with a capable reserviction
         return; #Have reached the end
@@ -4765,7 +4789,7 @@ sub start_sdr_record {
     my @returnd = ($rsp->{code},@{$rsp->{data}});
 	my $code = $returnd[0];
 	if($code != 0x00) {
-		$text = $codes{$code};
+		my $text = $codes{$code};
 		if(!$text) {
 			$text = sprintf("unknown response %02x",$code);
 		}
@@ -4780,10 +4804,10 @@ sub start_sdr_record {
 	$sessdata->{curr_sdr_len} = $returnd[7] + 5;
 
 	if($sdr_type == 0x01) {
-		$sdr_offset = 0;
+		$sessdata->{sdr_offset} = 0;
 	}
 	elsif($sdr_type == 0x02) {
-		$sdr_offset = 16;
+		$sessdata->{sdr_offset} = 16; #TODO: understand this..
 	}
 	elsif($sdr_type == 0xC0) {
 		#LED descriptor, maybe
@@ -4826,9 +4850,9 @@ sub add_sdr_data {
         return; #give up
     }
     my @returnd = ($rsp->{code},@{$rsp->{data}});
-	$code = $returnd[0];
+	my $code = $returnd[0];
 	if($code != 0x00) {
-		$text = $codes{$code};
+		my $text = $codes{$code};
 		if(!$text) {
 			$text = sprintf("unknown response %02x",$code);
 		}
@@ -4904,7 +4928,7 @@ sub parse_sdr { #parse sdr data, then cann initsdr_withreserveation to advance t
 			#seem to not to match reality...
 			#$override_string = getsensorname($mfg_id,$prod_id,$sdr->sensor_number,$ipmiledtab);
 			#I'm hacking in owner and lun of 260 for LEDs....
-			$sdr_hash{"260.260.".$sdr->led_id} = $sdr;
+			$sessdata->{sdr_hash}->{"260.260.".$sdr->led_id} = $sdr;
             initsdr_withreservation($sessdata); #next record
             return;
 		}
@@ -4932,20 +4956,20 @@ sub parse_sdr { #parse sdr data, then cann initsdr_withreserveation to advance t
 		   $sdr->sensor_units_1($sdr_data[21]);
         }
 
-		$sdr->id_string_type($sdr_data[48-$sdr_offset]);
+		$sdr->id_string_type($sdr_data[48-$sessdata->{sdr_offset}]);
 
-		$override_string = getsensorname($mfg_id,$prod_id,$sdr->sensor_number,$ipmisensortab);
+		my $override_string = getsensorname($mfg_id,$prod_id,$sdr->sensor_number);
 
 		if($override_string ne "") {
 			$sdr->id_string($override_string);
 		}
 		else {
             unless (defined $sdr->id_string_type) { initsdr_withreservation($sessdata); return; }
-			$byte_format = ($sdr->id_string_type & 0b11000000) >> 6;
+			my $byte_format = ($sdr->id_string_type & 0b11000000) >> 6;
 			if($byte_format == 0b11) {
 				my $len = ($sdr->id_string_type & 0b00011111) - 1;
 				if($len > 1) {
-					$sdr->id_string(pack("C*",@sdr_data[49-$sdr_offset..49-$sdr_offset+$len]));
+					$sdr->id_string(pack("C*",@sdr_data[49-$sessdata->{sdr_offset}..49-$sessdata->{sdr_offset}+$len]));
 				}
 				else {
 					$sdr->id_string("no description");
@@ -4967,7 +4991,7 @@ sub parse_sdr { #parse sdr data, then cann initsdr_withreserveation to advance t
 			}
 		}
 
-		$sdr_hash{$sdr->sensor_owner_id . "." . $sdr->sensor_owner_lun . "." . $sdr->sensor_number} = $sdr;
+		$sessdata->{sdr_hash}->{$sdr->sensor_owner_id . "." . $sdr->sensor_owner_lun . "." . $sdr->sensor_number} = $sdr;
         initsdr_withreservation($sessdata); return;
 }
 
@@ -5043,18 +5067,15 @@ sub gotdevid {
     my $sessdata = shift;
     my $text;
 
-	if($rsp->{$error}) {
+	if($rsp->{error}) {
         sendoutput([1,$rsp->{error}]);
         return;
 	}
 	else {
-		$code = $$rsp->{code};
+		my $code = $rsp->{code};
 
-		if($code == 0x00) {
-			$text = "";
-		}
-		else {
-			$text = $codes{$code};
+		if($code != 0x00) {
+			my $text = $codes{$code};
 			if(!$text) {
 				$text = sprintf("unknown response %02x",$code);
 			}
@@ -5062,6 +5083,7 @@ sub gotdevid {
             return;
 		}
 	}
+    my @returnd = ($rsp->{code},@{$rsp->{data}});
 
 	$sessdata->{device_id} = $returnd[1];
 	$sessdata->{device_rev} = $returnd[2] & 0b00001111;
@@ -5163,13 +5185,10 @@ sub got_sdr_rep_info {
         return;
 	}
 	else {
-		$code = $rsp->{code};
+		my $code = $rsp->{code};
 
-		if($code == 0x00) {
-			$text = "";
-		}
-		else {
-			$text = $codes{$code};
+		if($code != 0x00) {
+			my $text = $codes{$code};
 			if(!$text) {
 				$text = sprintf("unknown response %02x",$code);
 			}
@@ -5375,6 +5394,8 @@ sub decodebcd {
 
 sub storsdrcache {
 	my $file = shift;
+    my $sessdata = shift;
+    unless ($sessdata) { die "need to fix this one too" }
 	my $key;
 	my $fh;
 
@@ -5385,8 +5406,8 @@ sub storsdrcache {
 
 	flock($fh,LOCK_EX) || return(1);
 
-	foreach $key (keys %sdr_hash) {
-		my $r = $sdr_hash{$key};
+	foreach $key (keys %{$sessdata->{sdr_hash}}) {
+		my $r = $sessdata->{sdr_hash}->{$key};
 		store_fd($r,$fh);
 	}
 
@@ -5770,15 +5791,15 @@ sub donode {
   my $timeout = shift;
   my $retries = shift;
   my $command = shift;
+  my %namedargs=@_;
+  my $extra=$namedargs{-args};
+  my @exargs=@$extra;
   $sessiondata{$node} = {
       node => $node, #this seems redundant, but some code will not be privy to what the key was
       ipmisession => xCAT::IPMI->new(bmc=>$bmcip,userid=>$user,password=>$pass),
       command => $command,
       extraargs => \@exargs,
   };
-  my %namedargs=@_;
-  my $extra=$namedargs{-args};
-  my @exargs=@$extra;
   my ($rc,@output) = ipmicmd($sessiondata{$node});
   my @outhashes;
   sendoutput($rc,@output);
