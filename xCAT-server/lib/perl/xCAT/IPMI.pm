@@ -436,6 +436,9 @@ sub cbc_pad {
     } elsif ($mode eq 'd') {
         my @block = unpack("C*",$block);
         my $count = pop @block;
+	unless ($count) {
+        	return pack("C*",@block);
+	}
         splice @block,0-$count;
         return pack("C*",@block);
     }
