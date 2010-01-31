@@ -456,7 +456,7 @@ sub on_bmc_connect {
     @cmdargv = @{$sessdata->{extraargs}};
 	my $subcommand = $cmdargv[0];
     if ($status =~ /ERROR:/) {
-        sendoutput([1,$status]);
+        sendoutput(1,$status);
         return;
     }
     #ok, detect some common prereqs here, notably:
@@ -464,15 +464,18 @@ sub on_bmc_connect {
     if ($command eq "getrvidparms") {
         unless (defined $sessdata->{device_id}) {
             $sessdata->{ipmisession}->subcmd(netfn=>6,command=>1,data=>[],callback=>\&gotdevid,callback_args=>$sessdata);
+	    return;
         }
     }
     #initsdr
     if ($command eq "rinv" or $command eq "reventlog" or $command eq "rvitals") {
         unless (defined $sessdata->{device_id}) {
             $sessdata->{ipmisession}->subcmd(netfn=>6,command=>1,data=>[],callback=>\&gotdevid,callback_args=>$sessdata);
+            return;
         }
-        unless ($sessdata->{sdr}) {
+        unless ($sessdata->{sdr_hash}) {
             initsdr($sessdata);
+	    return;
         }
     }
 	if($command eq "ping") {
@@ -4717,20 +4720,20 @@ sub  initsdr_withrepinfo {
 	my $mfg_id=$sessdata->{mfg_id};
 	my $prod_id=$sessdata->{prod_id};
 	my $device_id=$sessdata->{device_id};
-	my $dev_rev=$sessdata->{dev_rev};
-	my $fw_rev1=$sessdata->{fw_rev1};
-	my $fw_rev2=$sessdata->{fw_rev2};
+	my $dev_rev=$sessdata->{device_rev};
+	my $fw_rev1=$sessdata->{firmware_rev1};
+	my $fw_rev2=$sessdata->{firmware_rev2};
     #TODO: beware of dynamic SDR contents
 
 	my $cache_file = "$cache_dir/sdr_$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version";
     $sessdata->{sdrcache_file} = $cache_file;
 	if($enable_cache eq "yes") {
         if ($sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"}) {
-            $sessdata->{sdr_cache} = $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"};
+            $sessdata->{sdr_hash} = $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"};
         } else {
     		my $rc = loadsdrcache($sessdata,$cache_file);
     		if($rc == 0) {
-                $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"} = $sessdata->{sdr_cache};
+                $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"} = $sessdata->{sdr_hash};
                 on_bmc_connect("SUCCESS",$sessdata); #retry bmc_connect since sdr_cache is validated
     		}
         }
@@ -4738,12 +4741,12 @@ sub  initsdr_withrepinfo {
 
 
 	if($sessdata->{sdr_info}->{version} != 0x51) {
-        sendoutput([1,"SDR version unsupported."]);
+        sendoutput(1,"SDR version unsupported.");
 		return(1); #bail, do not try to continue
 	}
 
 	if($sessdata->{sdr_info}->{resv_sdr} != 1) {
-        sendoutput([1,"SDR reservation unsupported."]);
+        sendoutput(1,"SDR reservation unsupported.");
         return 1;
 	}
 
@@ -4765,7 +4768,7 @@ sub initsdr_withreservation {
     my $resv_id_ms = $sessdata->{resv_id_ms};
     if ( $rid_ls == 0xff and $rid_ms == 0xff) {
 	    if($enable_cache eq "yes") { #cache SDR repository for future use
-		    storsdrcache($sessdata->{sdrcache_file});
+		    storsdrcache($sessdata->{sdrcache_file},$sessdata);
 	    }
         on_bmc_connect("SUCCESS",$sessdata); #go back armed with a capable reserviction
         return; #Have reached the end
@@ -4779,7 +4782,7 @@ sub start_sdr_record {
     my $rsp = shift;
     my $sessdata = shift;
 	if($rsp->{error}) {
-        sendoutput([1,$rsp->{error}]);
+        sendoutput(1,$rsp->{error});
 		return;
 	}
     my $resv_id_ls = shift @{$sessdata->{sdr_fetch_args}};
@@ -4787,20 +4790,21 @@ sub start_sdr_record {
     my $rid_ls = shift @{$sessdata->{sdr_fetch_args}};
     my $rid_ms = shift @{$sessdata->{sdr_fetch_args}};
     my @returnd = ($rsp->{code},@{$rsp->{data}});
+hexdump(\@returnd);
 	my $code = $returnd[0];
 	if($code != 0x00) {
 		my $text = $codes{$code};
 		if(!$text) {
 			$text = sprintf("unknown response %02x",$code);
 		}
-        sendoutput([1,$text]);
+        sendoutput(1,$text);
 		return;
 	}
 	$sessdata->{sdr_nrid_ls} = $returnd[1];
 	$sessdata->{sdr_nrid_ms} = $returnd[2];
 	my $sdr_ver = $returnd[5];
 	my $sdr_type = $returnd[6];
-    $sessdata->{curr_sdr_type} = $sdr_type;
+   	$sessdata->{curr_sdr_type} = $sdr_type;
 	$sessdata->{curr_sdr_len} = $returnd[7] + 5;
 
 	if($sdr_type == 0x01) {
@@ -4832,7 +4836,7 @@ sub start_sdr_record {
             $numbytes = $sessdata->{curr_sdr_len} - $offset;
         }
         $sessdata->{sdr_fetch_args} = [$resv_id_ls,$resv_id_ms,$rid_ls,$rid_ms,$offset,$numbytes];
-        $sessdata->subcmd(netfn=>0x0a,command=>0x23,data=>$sessdata->{sdr_fetch_args},callback=>\&add_sdr_data,callback_args=>$sessdata);
+        $sessdata->{ipmisession}->subcmd(netfn=>0x0a,command=>0x23,data=>$sessdata->{sdr_fetch_args},callback=>\&add_sdr_data,callback_args=>$sessdata);
         return;
     } else {
         initsdr_withreservation($sessdata); #next
@@ -4868,7 +4872,7 @@ sub add_sdr_data {
     $sessdata->{sdr_fetch_args}->[4] = $sessdata->{sdr_offset};
     $sessdata->{sdr_fetch_args}->[5] = $numbytes;
     if ($sessdata->{sdr_offset}<$sessdata->{curr_sdr_len}) {
-        $sessdata->subcmd(netfn=>0x0a,command=>0x23,data=>$sessdata->{sdr_fetch_args},callback=>\&add_sdr_data,callback_args=>$sessdata);
+        $sessdata->{ipmisession}->subcmd(netfn=>0x0a,command=>0x23,data=>$sessdata->{sdr_fetch_args},callback=>\&add_sdr_data,callback_args=>$sessdata);
         return;
     } else { #in this case, time to parse the accumulated data
         parse_sdr($sessdata);
@@ -4881,9 +4885,9 @@ sub parse_sdr { #parse sdr data, then cann initsdr_withreserveation to advance t
 	my $mfg_id=$sessdata->{mfg_id};
 	my $prod_id=$sessdata->{prod_id};
 	my $device_id=$sessdata->{device_id};
-	my $dev_rev=$sessdata->{dev_rev};
-	my $fw_rev1=$sessdata->{fw_rev1};
-	my $fw_rev2=$sessdata->{fw_rev2};
+	my $dev_rev=$sessdata->{device_rev};
+	my $fw_rev1=$sessdata->{firmware_rev1};
+	my $fw_rev2=$sessdata->{firmware_rev2};
     my $sdr_type = $sessdata->{curr_sdr_type};
 	if($sdr_type == 0x11) { #FRU locator
         my $sdr = decode_fru_locator(@sdr_data);
@@ -5009,7 +5013,7 @@ sub getsensorname
 	my $desc;
 	my $name="";
 
-    if ($file eq "ibmleds") {
+    if ($file and $file eq "ibmleds") {
             if ($xCAT::data::ibmleds::leds{"$mfgid,$prodid"}->{$sensor}) {
               return $xCAT::data::ibmleds::leds{"$mfgid,$prodid"}->{$sensor}. " LED";
             } elsif ($ndebug) {
@@ -5192,15 +5196,14 @@ sub got_sdr_rep_info {
 			if(!$text) {
 				$text = sprintf("unknown response %02x",$code);
 			}
-            sendoutput([1,$text]);
+            sendoutput(1,$text);
             return;
 		}
 	}
     my @returnd = @{$rsp->{data}};
     $sessdata->{sdr_info}->{version} = $returnd[0];
     $sessdata->{sdr_info}->{rec_count} = $returnd[1] + $returnd[2]<<8;
-    $sessdata->{sdr_info}->{resv_sdr} = ($returnd[14] & 0b00000010)>>1;
-    $sessdata->{sdr_info}->{vintage} = @returnd[6..14];
+    $sessdata->{sdr_info}->{resv_sdr} = ($returnd[13] & 0b00000010)>>1;
     initsdr_withrepinfo($sessdata);
 }
 
@@ -5434,7 +5437,7 @@ sub loadsdrcache {
 			$r = retrieve_fd($fh);
 		} || last;
 
-		$sessdata->{sdr_cache}->{$r->sensor_owner_id . "." . $r->sensor_owner_lun . "." . $r->sensor_number} = $r;
+		$sessdata->{sdr_hash}->{$r->sensor_owner_id . "." . $r->sensor_owner_lun . "." . $r->sensor_number} = $r;
 	}
 
 	close($fh);
@@ -5445,7 +5448,7 @@ sub loadsdrcache {
 
 sub preprocess_request { 
   my $request = shift;
-  if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
+  if (defined $request->{_xcatpreprocessed}->[0] and $request->{_xcatpreprocessed}->[0] == 1) { return [$request]; }
   #exit if preprocessed
   my $callback=shift;
   my @requests;
@@ -5801,6 +5804,8 @@ sub donode {
       extraargs => \@exargs,
   };
   my ($rc,@output) = ipmicmd($sessiondata{$node});
+  while ($sessiondata{$node}->{ipmisession}->waitforrsp()) { yield };
+  $sessiondata{$node}->{ipmisession}->logout();
   while ($sessiondata{$node}->{ipmisession}->waitforrsp()) { yield };
   my @outhashes;
   sendoutput($rc,@output);
