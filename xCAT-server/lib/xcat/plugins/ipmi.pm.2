@@ -5801,6 +5801,7 @@ sub donode {
       extraargs => \@exargs,
   };
   my ($rc,@output) = ipmicmd($sessiondata{$node});
+  while ($sessiondata{$node}->{ipmisession}->waitforrsp()) { yield };
   my @outhashes;
   sendoutput($rc,@output);
   yield;
