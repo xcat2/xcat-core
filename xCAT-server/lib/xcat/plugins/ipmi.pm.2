@@ -46,6 +46,7 @@ sub handled_commands {
     renergy => 'nodehm:power,mgt',
     getipmicons => 'ipmi',
     rspconfig => 'nodehm:mgt',
+    rspreset => 'nodehm:mgt',
     rvitals => 'nodehm:mgt',
     rinv => 'nodehm:mgt',
     rsetboot => 'nodehm:mgt',
@@ -483,7 +484,9 @@ sub on_bmc_connect {
 	}
 	if ($command eq "rpower") {
 		return power($sessdata);
-	}
+	} elsif ($command eq "rspreset") {
+        return resetbmc($sessdata);
+    }
     return;
     my @output;
 
@@ -678,33 +681,26 @@ sub on_bmc_connect {
 }
 
 sub resetbmc {
-	my $netfun = 0x18;
-	my @cmd = (0x02);
-	my @returnd = ();
-	my $rc = 0;
-	my $text;
-	my $error;
-
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
-	if ($error) {
-		$rc = 1;
-		$text = $error;
+    my $sessdata = shift;
+    $sessdata->{ipmisession}->subcmd(netfn=>6,command=>2,data=>[],callback=>\&resetedbmc,callback_args=>$sessdata);
+}
+sub resetedbmc {
+    my $rsp = shift;
+    my $sessdata = shift;
+	if ($rsp->{error}) {
+        sendmsg([1,$rsp->{error}],$sessdata->{node});
 	} else {
-		if (0 == $returnd[0]) {
-			$text = "BMC reset";
-		} else {
-            if ($codes{$returnd[0]}) {
-                $text = $codes{$returnd[0]};
+        if ($rsp->{code}) {
+            if ($codes{$rsp->{code}}) {
+                sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
             } else {
-			    $text = sprintf("BMC Responded with code %d",$returnd[36]);
+                sendmsg([1,sprintf("Unknown error %02xh",$rsp->{code})],$sessdata->{node});
             }
-		}
+            return;
+        } 
+        sendmsg("BMC reset",$sessdata->{node});
+        $sessdata->{ipmisession} = undef; #throw away now unusable session
 	}
-	return($rc,$text);
 }
 
 sub setnetinfo {
@@ -4799,7 +4795,6 @@ sub add_sdr_data {
     my $offset = $sessdata->{sdr_offset}; #shorten typing a little
     if ($rsp->{error}) {
         sendoutput([1,$rsp->{error}]);
-        $sessdata->{ipmissession}->logout(); 
         return; #give up
     }
     my @returnd = ($rsp->{code},@{$rsp->{data}});
@@ -4810,7 +4805,6 @@ sub add_sdr_data {
 			$text = sprintf("unknown response %02x",$code);
 		}
         sendoutput([1,$text]);
-        $sessdata->{ipmissession}->logout();
         return; #abort the whole mess
 	}
     push @{$sessdata->{sdr_data}},@returnd[3..@returnd-1];
@@ -5755,8 +5749,10 @@ sub donode {
   };
   my ($rc,@output) = ipmicmd($sessiondata{$node});
   while ($sessiondata{$node}->{ipmisession}->waitforrsp()) { yield };
-  $sessiondata{$node}->{ipmisession}->logout();
-  while ($sessiondata{$node}->{ipmisession}->waitforrsp()) { yield };
+  if ($sessiondata{$node}->{ipmisession}) {
+    $sessiondata{$node}->{ipmisession}->logout();
+    while ($sessiondata{$node}->{ipmisession}->waitforrsp()) { yield };
+  }
   my @outhashes;
   sendoutput($rc,@output);
   yield;
