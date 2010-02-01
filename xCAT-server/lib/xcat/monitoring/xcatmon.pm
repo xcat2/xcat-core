@@ -109,6 +109,8 @@ sub supportNodeStatusMon {
 sub startNodeStatusMon
 {
   print "xcatmon.startNodeStatusMon\n";
+  if (! -e "/etc/xCATMN") { return (0, ""); } #only run the cron job on mn
+
   my $noderef=shift;
   if ($noderef =~ /xCAT_monitoring::xcatmon/) {
     $noderef=shift;
@@ -117,7 +119,8 @@ sub startNodeStatusMon
   my $callback=shift;
 
   #run the command first to update the status, 
-  my $cmd="$::XCATROOT/sbin/xcatnodemon";
+  #my $cmd="$::XCATROOT/sbin/xcatnodemon";
+  my $cmd="$::XCATROOT/bin/nodestat all -m -u -q";
   #$output=`$cmd 2>&1`;
   #if ($?) {
   #  print "xcatmon: $output\n";
@@ -194,6 +197,8 @@ sub startNodeStatusMon
 #--------------------------------------------------------------------------------
 sub stopNodeStatusMon {
   print "xcatmon.stopNodeStatusMon\n";
+  if (! -e "/etc/xCATMN") { return (0, ""); } #only run the cron job on mn
+
   my $noderef=shift;
   if ($noderef =~ /xCAT_monitoring::xcatmon/) {
     $noderef=shift;
@@ -201,7 +206,8 @@ sub stopNodeStatusMon {
   my $scope=shift;
   my $callback=shift;
   
-  my $job="$::XCATROOT/sbin/xcatnodemon";
+  #my $job="$::XCATROOT/sbin/xcatnodemon";
+  my $job="$::XCATROOT/bin/nodestat all -m -u -q";
   my ($code, $msg)=xCAT::Utils::remove_cron_job($job);
   my $localhostname=hostname(); 
   if ($code==0) { 
@@ -291,49 +297,49 @@ sub getMonNodesStatus {
       return %status;	
   }
  
-
   my @mon_servers=keys(%$hierachy); 
   my $isSV=xCAT::Utils->isServiceNode(); 
   
   #on a service node or on ms, get the nodes that has local host as the server node
-  my $monnodes;
   my @hostinfo=xCAT::Utils->determinehostname();
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   #if this is mn, include the ones that has no service nodes
   if (!$isSV) { $iphash{'noservicenode'}=1;}
   
-
+  my %processed=();
   foreach(@mon_servers) {
     #service node come in pairs, the first one is the monserver adapter that facing the mn,
     # the second one is facing the cn. we use the first one here
     my @server_pair=split(':', $_); 
     my $sv=$server_pair[0];
-    if ($iphash{$sv}) {
-      $monnodes=$hierachy->{$_};
-    }
-  
-     
-    foreach(@$monnodes) {
-      my $node=$_->[0];
-      my $status=$_->[2];
-      my $type=$_[1];
-      if (!$status) { $status=$::STATUS_DEFINED;} #default
+    if (!$processed{$sv}) { $processed{$sv}=1;}
+    else {  next; }
 
-      if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}
-      elsif ($status eq $::STATUS_INACTIVE) { push(@inactive_nodes, $node);}
-      else {
-	my $need_active=0;
-        my $need_inactive=0;
-	if ($::NEXT_NODESTAT_VAL{$status}->{$::STATUS_ACTIVE}==1) { $need_active=1;}
-	if ($::NEXT_NODESTAT_VAL{$status}->{$::STATUS_INACTIVE}==1) { $need_inactive=1;}
-        if (($need_active==1) && ($need_inactive==0)) { push(@inactive_nodes, $node); } #put it into the inactive list so that the monitoring code can switch it to active.
-        elsif (($need_active==0) && ($need_inactive==1)) { push(@active_nodes, $node); } #put it into the active list so that the monitoring code can chane it to inactive.
-        elsif  (($need_active==1) && ($need_inactive==1)) { push(@unknown_nodes, $node);} #unknow list so that the monitoring code can change it to active or inactive
-        else {
-          #if it is non-osi node, check it anyway
-	  if ($type !~ /osi/) {push(@unknown_nodes, $node);}
-        }
+    if ($iphash{$sv}) {
+      my $monnodes=$hierachy->{$_};
+        
+      foreach(@$monnodes) {
+	  my $node=$_->[0];
+	  my $status=$_->[2];
+	  my $type=$_[1];
+	  if (!$status) { $status=$::STATUS_DEFINED;} #default
+	  
+	  if ($status eq $::STATUS_ACTIVE) { push(@active_nodes, $node);}
+	  elsif ($status eq $::STATUS_INACTIVE) { push(@inactive_nodes, $node);}
+	  else {
+	      my $need_active=0;
+	      my $need_inactive=0;
+	      if ($::NEXT_NODESTAT_VAL{$status}->{$::STATUS_ACTIVE}==1) { $need_active=1;}
+	      if ($::NEXT_NODESTAT_VAL{$status}->{$::STATUS_INACTIVE}==1) { $need_inactive=1;}
+	      if (($need_active==1) && ($need_inactive==0)) { push(@inactive_nodes, $node); } #put it into the inactive list so that the monitoring code can switch it to active.
+	      elsif (($need_active==0) && ($need_inactive==1)) { push(@active_nodes, $node); } #put it into the active list so that the monitoring code can chane it to inactive.
+	      elsif  (($need_active==1) && ($need_inactive==1)) { push(@unknown_nodes, $node);} #unknow list so that the monitoring code can change it to active or inactive
+	      else {
+		  #if it is non-osi node, check it anyway
+		  if ($type !~ /osi/) {push(@unknown_nodes, $node);}
+	      }
+	  }
       }
     }
   }
@@ -344,6 +350,8 @@ sub getMonNodesStatus {
 
   return %status;
 }
+
+
 
 
 #--------------------------------------------------------------------------------
