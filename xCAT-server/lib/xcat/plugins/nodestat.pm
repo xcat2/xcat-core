@@ -109,13 +109,14 @@ sub preprocess_request
     $::UPDATE=0;
     $::QUITE=0;
     $::MON=0;
-    Getopt::Long::Configure("posix_default");
-    Getopt::Long::Configure("no_gnu_compat");
+    #Getopt::Long::Configure("posix_default");
+    #Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
+    $Getopt::Long::ignorecase=0;
     if (!GetOptions(
              'm|usemon' => \$::MON,
 	     'q|quite'   => \$::QUITE, #this is a internal flag used by monitoring
-	     'u|update'   => \$::UPDATE,
+	     'u|updatedb'   => \$::UPDATE,
 	     'h|help'     => \$::HELP,
 	     'v|version'  => \$::VERSION))
     {
@@ -865,7 +866,7 @@ sub usage
     my $cb=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  nodestat [noderange] [-m|--usemon] [-u|update]";
+    $rsp->{data}->[1]= "  nodestat [noderange] [-m|--usemon] [-u|--updatedb]";
     $rsp->{data}->[2]= "  nodestat [-h|--help|-v|--version]";
     xCAT::MsgUtils->message("I", $rsp, $cb);
 }
