@@ -15,7 +15,7 @@ single or range of nodes or groups.  See L<noderange(3)|noderange.3>.
 
 
 By default, it works as following:
-    1. gets the ssh,pbs,xend port status;
+    1. gets the sshd,pbs_mom,xend port status;
     2. if none of them are open, it gets the fping status;
     3. for pingable nodes that are in the middle of deployment, it gets the deployment status;
     4. for non-pingable nodes, it shows 'noping'.
