@@ -1506,25 +1506,19 @@ sub mknimimage
 		# root res
 		#
 		my $root_name;
+
+		# check the command line attrs first
 		if ( $::attrres{root} ) {
-
-        	# if provided on cmd line then use it
         	$root_name=$::attrres{root};
+		}
+		if ( $::attrres{shared_root} ) {
+			$root_name=$::attrres{shared_root};
+		}
+		chomp $root_name;
 
-		} elsif ($::opt_i) {
-
-# TODO - this logic looks wrong - may have an image def but if
-#   no root then we still want to make one
-
-			# if one is provided in osimage use it    
-			if ($::imagedef{$::opt_i}{root}) {
-				$root_name=$::imagedef{$::opt_i}{root};
-			}
-
-    	} else {
-
-			# may need to create new one
-
+		# if we don't have a root/shared_root then 
+		#	we may need to create one
+    	if (!$root_name) {
 			# use naming convention
 			if ($::SHAREDROOT) {
                 $root_name=$::image_name . "_shared_root";
@@ -1555,7 +1549,7 @@ sub mknimimage
 				}
 			}
 		} # end root res
-		chomp $root_name;
+
 		if ($::SHAREDROOT) {
             $newres{shared_root}= $root_name;
         } else {
@@ -1619,18 +1613,18 @@ sub mknimimage
 		#
 		my $paging_name;
 		if ( $::attrres{paging} ) {
-
         	# if provided then use it
         	$paging_name=$::attrres{paging};
-
-		} elsif ($::opt_i) {
-
-        	# if one is provided in osimage and we don't want a new one
+		} 
+		if ($::opt_i) {
+        	# if one is provided in osimage 
         	if ($::imagedef{$::opt_i}{paging}) {
             	$paging_name=$::imagedef{$::opt_i}{paging};
         	}
+    	} 
+		chomp $paging_name;
 
-    	} else {
+		if (!$paging_name) {
 			# create it
 			# only if type diskless
 			my $nimtype;
@@ -1658,11 +1652,11 @@ sub mknimimage
 						push @{$rsp->{data}}, "Could not create a NIM definition for \'$paging_name\'.\n";
 						xCAT::MsgUtils->message("E", $rsp, $callback);
 						return 1;
-
 					}
 				}
 			}
 		} # end paging res
+
 		chomp $paging_name;
         $newres{paging} = $paging_name;
 
@@ -5573,6 +5567,7 @@ sub checkNIMnetworks
 			my ($dm1, $dm2, $dm3, $dm4) = split('\.', $NIMnets{$netwk}{'snm'});
 
 			# split definition net addr
+
 			my ($dn1, $dn2, $dn3, $dn4) = split('\.', $NIMnets{$netwk}{'net_addr'});
 			# check for the same netmask and network address
 			if ( ($nn1 == $dn1) && ($nn2 ==$dn2) && ($nn3 == $dn3) && ($nn4 == $dn4) ) {
