@@ -9,7 +9,7 @@ I<rmvm [-h| --help]>
 I<rmvm [-v| --version]>
 
 
-I<rmvm [-V| --verbose] noderange [--service]>
+I<rmvm [-V| --verbose] noderange [-r] [--service]>
 
 
 =head1 DESCRIPTION
@@ -24,6 +24,8 @@ B<-h>          Display usage message.
 B<-v>          Command Version.
 
 B<-V>          Verbose output.
+
+B<-r>          Remain the data object definitions of the nodes.
 
 B<--service>   Remove the service partitions of the specified CECs.
 
@@ -62,6 +64,14 @@ Output is similar to:
 
  cec01: Success
  cec02: Success
+
+4. To remove the partition lpar1, but remaining its definition, enter:
+
+I<rmvm lpar1 -r>
+
+Output is similar to:
+
+lpar1: Success
 
 
 =head1 FILES

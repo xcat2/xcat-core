@@ -379,7 +379,7 @@ sub rmvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose service) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose service r) )) {
         return( usage() );
     }
     ####################################
@@ -711,7 +711,7 @@ sub remove {
                 ################################
                 # Remove LPAR from database 
                 ################################
-                if ( $Rc == SUCCESS ) {
+                if ( $Rc == SUCCESS and !exists( $opt->{r} ) ) {
                     my $err = xCATdB( "rmvm", $name );
                     if ( defined( $err )) {
                         push @values, [$lpar,$err,RC_ERROR];
