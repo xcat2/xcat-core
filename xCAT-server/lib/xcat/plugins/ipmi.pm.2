@@ -454,7 +454,6 @@ sub on_bmc_connect {
     my $sessdata = shift;
 	my $command = $sessdata->{command};
     @cmdargv = @{$sessdata->{extraargs}};
-	my $subcommand = $cmdargv[0];
     if ($status =~ /ERROR:/) {
         sendoutput(1,$status);
         return;
@@ -479,7 +478,11 @@ sub on_bmc_connect {
         }
     }
 	if($command eq "ping") {
-		return(0,"ping");
+		sendmsg("ping",$sessdata->{node});
+		return;
+	}
+	if ($command eq "rpower") {
+		return power($sessdata);
 	}
     return;
     my @output;
@@ -488,6 +491,7 @@ sub on_bmc_connect {
     my $text;
     my $error;
     my $node;
+	my $subcommand = "";
 	if($command eq "rpower") { #TODO: this should have been a function on it's own instead of all here
 		if($subcommand eq "stat" || $subcommand eq "state" || $subcommand eq "status") {
 			($rc,$text) = power("stat");
@@ -1190,7 +1194,7 @@ sub getrvidparms {
 
 
 sub power {
-	my $subcommand = shift;
+	my $sessdata = shift;
 
 	my $netfun = 0x00;
 	my @cmd;
@@ -1199,127 +1203,71 @@ sub power {
 	my $rc = 0;
 	my $text;
 	my $code;
-
-	if($subcommand eq "stat") {
-		@cmd = (0x01);
+	$sessdata->{ipmisession}->subcmd(netfn=>0,command=>1,data=>[],callback=>\&power_with_context,callback_args=>$sessdata);
+}
+sub power_with_context {
+	my $rsp = shift;
+	my $sessdata = shift;
+	my $text="";
+	if ($rsp->{error}) {
+		sendmsg([1,$rsp->{error}],$sessdata->{node});
+		return;
 	}
-	elsif($subcommand eq "on") {
-		@cmd = (0x02,0x01);
+	if ($rsp->{code} != 0) {
+		$text = $codes{$rsp->{code}};
+		unless ($text) { $text = sprintf("Unknown error code %02xh",$rsp->{code}); }
+		sendmsg([1,$text],$sessdata->{node});
+		return;
 	}
-	elsif($subcommand eq "softoff") {
-		@cmd = (0x02,0x05);
+	$sessdata->{powerstatus} = ($rsp->{data}->[0] & 1 ? "on" : "off");
+	if ($sessdata->{subcommand} eq "stat" or $sessdata->{subcommand} eq "state" or $sessdata->{subcommand} eq "status") { 
+		sendmsg($sessdata->{powerstatus},$sessdata->{node});
+		return;
 	}
-	elsif($subcommand eq "off") {
-		@cmd = (0x02,0x00);
+	my $subcommand = $sessdata->{subcommand};
+	if ($sessdata->{subcommand} eq "boot") {
+		$text = $sessdata->{powerstatus}. " ";
+		$subcommand = ($sessdata->{powerstatus} eq "on" ? "reset" : "on");
+		$sessdata->{subcommand}=$subcommand; #lazy typing..
 	}
-	elsif($subcommand eq "reset") {
-		@cmd = (0x02,0x03);
-	}
-	elsif($subcommand eq "nmi") {
-		@cmd = (0x02,0x04);
-	}
-	else {
-		return(1,"unsupported command power $subcommand");
-	}
-
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
-
-	if($error) {
-		$rc = 1;
-		$text = $error;
-	}
-	else {
-		if($subcommand eq "stat") {
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-				$code = $returnd[1];
-
-				if($code & 0b00000001) {
-					$text = "on";
-				}
-				else {
-					$text = "off";
-				}
-			}
-			else {
-				$rc = 1;
-				$text = $codes{$code};
-			}
+	my %argmap = ( #english to ipmi dictionary
+		"on" => 1,
+		"off" => 2,
+		"softoff" => 5,
+		"reset" => 3,
+		"nmi" => 4
+		);
+	if($subcommand eq "on") {
+		if ($sessdata->{powerstatus} eq "on") {
+			sendmsg("on $status_noop",$sessdata->{node});
+			return; # don't bother sending command
 		}
-		if($subcommand eq "nmi") {
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-				$text="nmi";
-			}
-			else {
-				$rc = 1;
-				$text = $codes{$code};
-			}
+	} elsif ($subcommand eq "softoff" or $subcommand eq "off" or $subcommand eq "reset") {
+		if ($sessdata->{powerstatus} eq "off") {
+			sendmsg("off $status_noop",$sessdata->{node});
+			return;
 		}
-		if($subcommand eq "on") {
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-				$text="on";
-			}
-			else {
-				$rc = 1;
-				$text = $codes{$code};
-			}
-		}
-		if($subcommand eq "softoff") {
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-				$text="softoff";
-			}
-			else {
-				$rc = 1;
-				$text = $codes{$code};
-			}
-		}
-		if($subcommand eq "off") {
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-				$text="off";
-			}
-			elsif($code == 0xd5) {
-				$text="off";
-			}
-			else {
-				$rc = 1;
-				$text = $codes{$code};
-			}
-		}
-		if($subcommand eq "reset") {
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-				$text="reset";
-			}
-			elsif($code == 0xd5) {
-				$text="off";
-			}
-			else {
-				$rc = 1;
-				$text = $codes{$code};
-			}
-		}
-
-		if(!$text) {
-			$rc = 1;
-			$text = sprintf("unknown response %02x",$code);
-		}
+	} elsif (not $argmap{$subcommand}) {
+		sendmsg([1,"unsupported command power $subcommand"]);
+		return;
 	}
 
-	return($rc,$text);
+	$sessdata->{ipmisession}->subcmd(netfn=>0,command=>2,data=>[$argmap{$subcommand}],callback=>\&power_response,callback_args=>$sessdata);
+}
+sub power_response { 
+	my $rsp = shift;
+	my $sessdata = shift;
+	my @returnd = ($rsp->{code},@{$rsp->{data}});
+	if($rsp->{error}) {
+		sendmsg([1,$rsp->{error}],$sessdata->{node});
+		return;
+	}
+	if ($rsp->{code}) {
+		my $text = $codes{$rsp->{code}};
+		unless ($text) { $text = sprintf("Unknown response %02xh",$rsp->{code}); }
+		sendmsg([1,$text],$sessdata->{node});
+	}
+	sendmsg($sessdata->{subcommand},$sessdata->{node});
 }
 
 sub generic {
@@ -5803,6 +5751,7 @@ sub donode {
       ipmisession => xCAT::IPMI->new(bmc=>$bmcip,userid=>$user,password=>$pass),
       command => $command,
       extraargs => \@exargs,
+      subcommand => $exargs[0],
   };
   my ($rc,@output) = ipmicmd($sessiondata{$node});
   while ($sessiondata{$node}->{ipmisession}->waitforrsp()) { yield };
@@ -5816,6 +5765,47 @@ sub donode {
   return $rc;
 }
 
+sub sendmsg {
+#    my $callback = $output_handler;
+    my $text = shift;
+    my $node = shift;
+    my $descr;
+    my $rc;
+    if (ref $text eq 'HASH') {
+        die "not right now";
+    } elsif (ref $text eq 'ARRAY') {
+        $rc = $text->[0];
+        $text = $text->[1];
+    }
+    if ($text =~ /:/) {
+        ($descr,$text) = split /:/,$text,2;
+    }
+    $text =~ s/^ *//;
+    $text =~ s/ *$//;
+    my $msg;
+    my $curptr;
+    if ($node) {
+        $msg->{node}=[{name => [$node]}];
+        $curptr=$msg->{node}->[0];
+    } else {
+        $msg = {};
+        $curptr = $msg;
+    }
+    if ($rc) {
+        $curptr->{errorcode}=[$rc];
+        $curptr->{error}=[$text];
+        $curptr=$curptr->{error}->[0];
+    } else {
+        $curptr->{data}=[{contents=>[$text]}];
+        $curptr=$curptr->{data}->[0];
+        if ($descr) { $curptr->{desc}=[$descr]; }
+    }
+        print $outfd freeze([$msg]);
+        print $outfd "\nENDOFFREEZE6sK4ci\n";
+        yield;
+        waitforack($outfd);
+#    $callback->($msg);
+}
 sub sendoutput {
     my $rc=shift;
     foreach (@_) {
