@@ -1185,7 +1185,7 @@ sub getcfgdatastore {
         #DONE: I believe the regex after this conditional takes care of that case already..
     }
     (my $method,my $location) = split /:\/\//,$cfgdatastore,2;
-    (my $server,my $path = split/\//,$location,2;
+    (my $server,my $path) = split/\//,$location,2;
     $server =~ s/:$//; #tolerate habitual colons
     my $servern = inet_aton($server);
     unless ($servern) {
@@ -1371,8 +1371,8 @@ sub create_storage_devs {
         unless (scalar @sizes) { @sizes = ($disksize); } #if we emptied the array, stick the last entry back on to allow it to specify all remaining disks
         $disksize = getUnits($disksize,'G',1024);
         $storeloc =~ s/\/$//;
-        (my $method,my $location) = split /:\/\//,$cfgdatastore,2;
-        (my $server,my $path = split/\//,$location,2;
+        (my $method,my $location) = split /:\/\//,$storeloc,2;
+        (my $server,my $path) = split/\//,$location,2;
         $server =~ s/:$//; #tolerate habitual colons
         my $servern = inet_aton($server);
         unless ($servern) {
