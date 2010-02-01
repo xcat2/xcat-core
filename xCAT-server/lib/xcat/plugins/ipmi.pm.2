@@ -50,7 +50,7 @@ sub handled_commands {
     rvitals => 'nodehm:mgt',
     rinv => 'nodehm:mgt',
     rsetboot => 'nodehm:mgt', #done
-    rbeacon => 'nodehm:mgt',
+    rbeacon => 'nodehm:mgt', #done
     reventlog => 'nodehm:mgt',
     rfrurewrite => 'nodehm:mgt',
     getrvidparms => 'nodehm:mgt'
@@ -466,6 +466,7 @@ sub on_bmc_connect {
             $sessdata->{ipmisession}->subcmd(netfn=>6,command=>1,data=>[],callback=>\&gotdevid,callback_args=>$sessdata);
 	    return;
         }
+        getrvidparms($sessdata);
     }
     #initsdr
     if ($command eq "rinv" or $command eq "reventlog" or $command eq "rvitals") {
@@ -501,10 +502,7 @@ sub on_bmc_connect {
     my $error;
     my $node;
 	my $subcommand = "";
-	if($command eq "getrvidparms") {
-		($rc,@output) = getrvidparms($subcommand); #TODO: tricky, this wouldn't fit into the non-fork diagram cleanly
-	}
-	elsif($command eq "rvitals") {
+	if($command eq "rvitals") {
 		($rc,@output) = vitals($subcommand);
 	}
 	elsif($command eq "renergy") {
@@ -1020,46 +1018,62 @@ sub idpxthermprofile {
 sub getrvidparms {
     my $sessdata = shift;
     unless ($sessdata) { die "not fixed yet" }
-    my $netfun = 0x3a;
 #check devide id
     unless ($sessdata->{mfg_id} == 2) { #Only implemented for IBM servers
-        return(1,"Remote video is not supported on this system");
+        sendmsg([1,"Remote video is not supported on this system"],$sessdata->{node});
+        return;
     }
     #TODO: use get bmc capabilities to see if rvid is actually supported before bothering the client java app
-    my @build_id;
-    my $localerror = docmd(
-        0xe8,
-        [0x50],
-        \@build_id
-    );
-    if ($localerror) {
-        return(1,$localerror);
+    print "my turn\n";
+    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x50,data=>[],callback=>\&getrvidparms_with_buildid,callback_args=>$sessdata);
+}
+sub getrvidparms_with_buildid {
+    my $rsp = shift;
+    my $sessdata = shift;
+    print "mi turn\n";
+	if($rsp->{error}) { #non ipmi error
+        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        return;
+	}
+    if ($rsp->{code}) { #ipmi error
+        if ($codes{$rsp->{code}}) {
+            sendmsg([1,$codes{$rsp->{code}}]);
+        } else {
+             sendmsg([1,sprintf("Unknown error code %02xh",$rsp->{code})],$sessdata->{node});
+        }
+        return;
     }
+    my @build_id = (0,@{$rsp->{data}});
     unless ($build_id[1]==0x59 and $build_id[2]==0x55 and $build_id[3]==0x4f and $build_id[4]==0x4f) { #Only know how to cope with yuoo builds
-        return(1,"Remote video is not supported on this system");
+        sendmsg([1,"Remote video is not supported on this system"],$sessdata->{node});
+        return;
     }
     #wvid should be a possiblity, time to do the http...
     my $browser = LWP::UserAgent->new();
-    my $message = $sessdata->{ipmisession}->{userid}.",".$sessdata->{ipmissession}->{passwd};
+    my $message = $sessdata->{ipmisession}->{userid}.",".$sessdata->{ipmisession}->{password};
     $browser->cookie_jar({});
-    my $baseurl = "http://".$ipmi_bmcipaddr."/";
+    my $baseurl = "http://".$sessdata->{ipmisession}->{bmc}."/";
     my $response = $browser->request(POST $baseurl."/session/create",'Content-Type'=>"text/xml",Content=>$message);
     unless ($response->content eq "ok") {
-        return (1,"Server returned unexpected data");
+        sendmsg ([1,"Server returned unexpected data"],$sessdata->{node});
+        return;
     }
 
     $response = $browser->request(GET $baseurl."/kvm/kvm/jnlp");
     my $jnlp = $response->content;
     if ($jnlp =~ /This advanced option requires the purchase and installation/) {
-        return (1,"Node does not have feature key for remote video");
+        sendmsg ([1,"Node does not have feature key for remote video"],$sessdata->{node});
     }
     $jnlp =~ s!argument>title=.*Video Viewer</argument>!argument>title=$currnode wvid</argument>!;
-    my @return=("method:imm","jnlp:$jnlp");
+    sendmsg("method:imm",$sessdata->{node});
+    sendmsg("jnlp:$jnlp",$sessdata->{node});
+    print "jnlp:$jnlp";
+    my @cmdargv = @{$sessdata->{extraargs}};
     if (grep /-m/,@cmdargv) {
         $response = $browser->request(GET $baseurl."/kvm/vm/jnlp");
-        push @return,"mediajnlp:".$response->content;
+        sendmsg("mediajnlp:".$response->content,$sessdata->{node});;
     }
-    return (0,@return);
+    return;
 }
 
 
