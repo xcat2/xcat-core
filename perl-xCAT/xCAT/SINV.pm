@@ -156,6 +156,15 @@ sub parse_and_run_sinv
         exit 1;
     }
 
+    if ( exists( $options{template_path} ) && ($options{template_path} !~ /^\//) ) {#relative path
+        $options{template_path} = xCAT::Utils->full_path($options{template_path}, $request->{cwd}->[0]);
+    }
+    if ( exists( $options{output_file} ) && ($options{output_file} !~ /^\//) ) {#relative path
+        $options{output_file} = xCAT::Utils->full_path($options{output_file}, $request->{cwd}->[0]);
+    }
+    if ( exists( $options{sinv_cmd_file} ) && ($options{sinv_cmd_file} !~ /^\//) ) {#relative path
+        $options{sinv_cmd_file} = xCAT::Utils->full_path($options{sinv_cmd_file}, $request->{cwd}->[0]);
+    }
     #
     # Get Command to run
     #
