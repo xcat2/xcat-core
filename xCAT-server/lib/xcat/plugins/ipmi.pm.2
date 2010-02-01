@@ -71,8 +71,7 @@ use Fcntl qw(:flock);
 
 
 #local to module
-my $outfd; #File descriptor for children to send messages to parent
-my $currnode; #string to describe current node, presumably nodename
+my $callback;
 my $ipmi_bmcipaddr;
 my $timeout;
 my $port;
@@ -456,7 +455,7 @@ sub on_bmc_connect {
 	my $command = $sessdata->{command};
     @cmdargv = @{$sessdata->{extraargs}};
     if ($status =~ /ERROR:/) {
-        sendoutput(1,$status);
+        sendmsg([1,$status],$sessdata->{node});
         return;
     }
     #ok, detect some common prereqs here, notably:
@@ -1064,6 +1063,7 @@ sub getrvidparms_with_buildid {
     if ($jnlp =~ /This advanced option requires the purchase and installation/) {
         sendmsg ([1,"Node does not have feature key for remote video"],$sessdata->{node});
     }
+    my $currnode = $sessdata->{node};
     $jnlp =~ s!argument>title=.*Video Viewer</argument>!argument>title=$currnode wvid</argument>!;
     sendmsg("method:imm",$sessdata->{node});
     sendmsg("jnlp:$jnlp",$sessdata->{node});
@@ -2051,7 +2051,10 @@ sub transfieldtobytes {
     return @data;
 }
 sub mergefru {
+    my $sessdata = shift;
     my $phash = shift; #Product hash
+    unless ($phash) { die "here" }
+    my $currnode = $sessdata->{node};
     if ($vpdhash->{$currnode}->[0]->{mtm}) {
         $phash->{model}->{encoding}=3;
         $phash->{model}->{value}=$vpdhash->{$currnode}->[0]->{mtm};
@@ -2067,8 +2070,10 @@ sub mergefru {
 }
 
 sub buildprodfru {
+    my $sessdata = shift;
     my $prod=shift;
-    mergefru($prod);
+    mergefru($sessdata,$prod);
+    my $currnode = $sessdata->{node};
     my @bytes=(1,0,0);
     my @data;
     my $padsize;
@@ -5335,7 +5340,7 @@ sub getipmicons {
    
 sub process_request {
   my $request = shift;
-  my $callback = shift;
+  $callback = shift;
   my $noderange = $request->{node}; #Should be arrayref
   my $command = $request->{command}->[0];
   my $extrargs = $request->{arg};
@@ -5465,37 +5470,19 @@ sub process_request {
          }
          exit 0;
     };
-    $SIG{CHLD} = sub {my $kpid; do { $kpid = waitpid(-1, WNOHANG); if ($bmc_comm_pids{$kpid}) { delete $bmc_comm_pids{$kpid}; $children--; } } while $kpid > 0; };
     my $sub_fds = new IO::Select;
     foreach (@donargs) {
-      while ($children > $ipmimaxp) { 
-        my $handlednodes={};
-        forward_data($callback,$sub_fds,$handlednodes);
-        #update the node status to the nodelist.status table
-        if ($check) {
-          updateNodeStatus($handlednodes, \@allerrornodes);
-        }
-      }
-      $children++;
-      my $cfd;
-      my $pfd;
-      socketpair($pfd, $cfd,AF_UNIX,SOCK_STREAM,PF_UNSPEC) or die "socketpair: $!";
-      $cfd->autoflush(1);
-      $pfd->autoflush(1);
-      binmode($cfd,':utf8');
-      binmode($pfd,':utf8');
-      my $child = xCAT::Utils->xfork();
-      unless (defined $child) { die "Fork failed" };
-	if ($child == 0) { 
-        close($cfd);
-        my $rrc=donode($pfd,$_->[0],$_->[1],$_->[2],$_->[3],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
-        close($pfd);
-	exit(0);
-      }
-      $bmc_comm_pids{$child}=1;
-      close ($pfd);
-      $sub_fds->add($cfd)
+      donode($_->[0],$_->[1],$_->[2],$_->[3],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
 	}
+    while (xCAT::IPMI->waitforrsp()) { yield };
+    my $node;
+    foreach $node (keys %sessiondata) {
+        if ($sessiondata{$node}->{ipmisession}) {
+            $sessiondata{$node}->{ipmisession}->logout();
+        }
+    }
+    while (xCAT::IPMI->waitforrsp()) { yield };
+    return;
     while ($sub_fds->count > 0 and $children > 0) {
       my $handlednodes={};
       forward_data($callback,$sub_fds,$handlednodes);
@@ -5591,9 +5578,7 @@ sub forward_data { #unserialize data from pipe, chunk at a time, use magic to de
 }
 
 sub donode {
-  $outfd = shift;
   my $node = shift;
-  $currnode=$node;
   my $bmcip = shift;
   my $user = shift;
   my $pass = shift;
@@ -5611,11 +5596,6 @@ sub donode {
       subcommand => $exargs[0],
   };
   my ($rc,@output) = ipmicmd($sessiondata{$node});
-  while ($sessiondata{$node}->{ipmisession}->waitforrsp()) { yield };
-  if ($sessiondata{$node}->{ipmisession}) {
-    $sessiondata{$node}->{ipmisession}->logout();
-    while ($sessiondata{$node}->{ipmisession}->waitforrsp()) { yield };
-  }
   my @outhashes;
   sendoutput($rc,@output);
   yield;
@@ -5659,11 +5639,11 @@ sub sendmsg {
         $curptr=$curptr->{data}->[0];
         if ($descr) { $curptr->{desc}=[$descr]; }
     }
-        print $outfd freeze([$msg]);
-        print $outfd "\nENDOFFREEZE6sK4ci\n";
-        yield;
-        waitforack($outfd);
-#    $callback->($msg);
+#        print $outfd freeze([$msg]);
+#        print $outfd "\nENDOFFREEZE6sK4ci\n";
+#        yield;
+#        waitforack($outfd);
+    $callback->($msg);
 }
 sub sendoutput {
     my $rc=shift;
@@ -5681,18 +5661,19 @@ sub sendoutput {
         }
         $text =~ s/^\s+//;
         $text =~ s/\s+$//;
-        $output{node}->[0]->{name}->[0]=$currnode;
+        $output{node}->[0]->{name}->[0]="BADCODE";
         if ($rc) {
           $output{node}->[0]->{errorcode}=[$rc];
             $output{node}->[0]->{error}->[0]=$text;
         } else {
             $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
         }
+        $callback->(\%output);
         #push @outhashes,\%output; #Save everything for the end, don't know how to be slicker with Storable and a pipe
-        print $outfd freeze([\%output]);
-        print $outfd "\nENDOFFREEZE6sK4ci\n";
-        yield;
-        waitforack($outfd);
+#        print $outfd freeze([\%output]);
+#        print $outfd "\nENDOFFREEZE6sK4ci\n";
+#        yield;
+#        waitforack($outfd);
     }
 }
 
