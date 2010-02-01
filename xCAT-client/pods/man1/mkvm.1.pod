@@ -31,6 +31,8 @@ The second form of this command duplicates all the partitions from the source sp
 
 Please make sure the nodes in the I<noderange> is defined in the I<nodelist> table and the I<mgt> is set to 'hmc' in the I<nodehm> table before running this command.
 
+Please note that the mkvm command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
+
 =head2 For KVM:
 
 mkvm ....
