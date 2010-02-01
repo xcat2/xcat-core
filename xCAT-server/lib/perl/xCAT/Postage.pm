@@ -140,7 +140,11 @@ sub makescript {
          if ($et and defined($et->{'xcatmaster'})) { 
            $value = $et->{'xcatmaster'};
          } else {
+             my $sitemaster_value = $value;
 	     $value=xCAT::Utils->getFacingIP($node); 
+             if ($value eq "0") {
+                 $value = $sitemaster_value;
+             }
 	 }
          push @scriptd, "$attribute=".$value."\n";
          push @scriptd, "export $attribute\n";
