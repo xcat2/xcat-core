@@ -4864,7 +4864,7 @@ sub add_sdr_data {
         $sessdata->{ipmissession}->logout();
         return; #abort the whole mess
 	}
-    push @{$sessdata->{sdr_data}},@returnd[3..@returnd-2];
+    push @{$sessdata->{sdr_data}},@returnd[3..@returnd-1];
 	$sessdata->{sdr_offset} += $numbytes;
     if($sessdata->{sdr_offset}+$numbytes > $sessdata->{curr_sdr_len}) { #scale back request for remainder
        $numbytes = $sessdata->{curr_sdr_len} - $sessdata->{sdr_offset};
