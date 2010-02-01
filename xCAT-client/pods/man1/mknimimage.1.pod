@@ -68,7 +68,7 @@ The name of the xCAT osimage definition.  This will be used as the name of the x
 
 =item B<-i current_image>
 
-The name of an existing xCAT osimage that should be copied to make a new xCAT osimage definition. The new definition will contain the same resources as the current_image except for the SPOT, which will be copied and given the new name. Only valid when defining a "diskless" or "dataless" type image.
+The name of an existing xCAT osimage that should be copied to make a new xCAT osimage definition. Only valid when defining a "diskless" or "dataless" type image.
 
 =item B<-l location>
 
