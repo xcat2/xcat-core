@@ -42,14 +42,14 @@ our @EXPORT = qw(
 
 sub handled_commands {
   return {
-    rpower => 'nodehm:power,mgt',
+    rpower => 'nodehm:power,mgt', #done
     renergy => 'nodehm:power,mgt',
-    getipmicons => 'ipmi',
+    getipmicons => 'ipmi', #done
     rspconfig => 'nodehm:mgt',
-    rspreset => 'nodehm:mgt',
+    rspreset => 'nodehm:mgt', #done
     rvitals => 'nodehm:mgt',
     rinv => 'nodehm:mgt',
-    rsetboot => 'nodehm:mgt',
+    rsetboot => 'nodehm:mgt', #done
     rbeacon => 'nodehm:mgt',
     reventlog => 'nodehm:mgt',
     rfrurewrite => 'nodehm:mgt',
@@ -490,6 +490,9 @@ sub on_bmc_connect {
 	elsif($command eq "rbeacon") {
 		return beacon($sessdata);
 	}
+	elsif($command eq "rsetboot") {
+		return setboot($sessdata);
+	}
     return;
     my @output;
 
@@ -898,15 +901,84 @@ sub getnetinfo {
 }
 
 sub setboot {
-    my $subcommand=shift;
-    my $netfun = 0x00;
-    my @cmd = (0x08,0x3,0x8);
-    my @returnd = ();
+    my $sessdata = shift;
+    #This disables the 60 second timer
+    $sessdata->{ipmisession}->subcmd(netfn=>0,command=>8,data=>[3,8],callback=>\&setboot_timerdisabled,callback_args=>$sessdata);
+}
+sub setboot_timerdisabled {
+    my $rsp = shift;
+    my $sessdata = shift;
+    my $subcommand=$sessdata->{subcommand};
+    if ($rsp->{error}) { 
+        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        return;
+    }
+    if ($rsp->{code}) {
+        if ($codes{$rsp->{code}}) {
+            sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+        } else {
+            sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+        }
+        return;
+    }
     my $error;
-    my $rc = 0;
-    my $text = "";
-    my $code;
-    my $skipset = 0;
+
+    my @cmd;
+    if ($subcommand eq "net") {
+        @cmd=(0x5,0x80,0x4,0x0,0x0,0x0);
+    }
+    elsif ($subcommand eq "hd" ) {
+        @cmd=(0x5,0x80,0x8,0x0,0x0,0x0);
+    }
+    elsif ($subcommand eq "cd" ) {
+        @cmd=(0x5,0x80,0x14,0x0,0x0,0x0);
+    }
+    elsif ($subcommand eq "floppy" ) {
+        @cmd=(0x5,0x80,0x3c,0x0,0x0,0x0);
+    }
+    elsif ($subcommand =~ m/^def/) {
+        @cmd=(0x5,0x0,0x0,0x0,0x0,0x0);
+    }
+    elsif ($subcommand eq "setup" ) { #Not supported by BMCs I've checked so far..
+        @cmd=(0x5,0x18,0x0,0x0,0x0,0x0);
+    }
+    elsif ($subcommand =~ m/^stat/) {
+        setboot_stat("NOQUERY",$sessdata);
+        return;
+    }
+    else {
+        sendmsg([1,"unsupported command setboot $subcommand"],$sessdata->{node});
+    }
+    $sessdata->{ipmisession}->subcmd(netfn=>0,command=>8,data=>\@cmd,callback=>\&setboot_stat,callback_args=>$sessdata);
+}
+sub setboot_stat {
+    my $rsp = shift;
+    my $sessdata = shift;
+    if (ref $rsp) {
+        if ($rsp->{error}) { sendmsg([1,$rsp->{error}],$sessdata->{node}); }
+        elsif ($rsp->{code}) {
+        if ($codes{$rsp->{code}}) {
+            sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+        } else {
+            sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+        }
+        return;
+        }
+    }
+    $sessdata->{ipmisession}->subcmd(netfn=>0,command=>9,data=>[5,0,0],callback=>\&setboot_gotstat,callback_args=>$sessdata);
+}
+sub setboot_gotstat {
+    my $rsp = shift;
+    my $sessdata = shift;
+    if ($rsp->{error}) { sendmsg([1,$rsp->{error}],$sessdata->{node}); }
+    elsif ($rsp->{code}) {
+    if ($codes{$rsp->{code}}) {
+        sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+    } else {
+        sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+    }
+    return;
+    }
     my %bootchoices = (
         0 => 'BIOS default',
         1 => 'Network',
@@ -915,74 +987,14 @@ sub setboot {
         6 => 'BIOS Setup',
         15 => 'Floppy'
     );
-
-    #This disables the 60 second timer
-    $error = docmd(
-        $netfun,
-        \@cmd,
-        \@returnd
-    );
-    if ($subcommand eq "net") {
-        @cmd=(0x08,0x5,0x80,0x4,0x0,0x0,0x0);
-    }
-    elsif ($subcommand eq "hd" ) {
-        @cmd=(0x08,0x5,0x80,0x8,0x0,0x0,0x0);
-    }
-    elsif ($subcommand eq "cd" ) {
-        @cmd=(0x08,0x5,0x80,0x14,0x0,0x0,0x0);
-    }
-    elsif ($subcommand eq "floppy" ) {
-        @cmd=(0x08,0x5,0x80,0x3c,0x0,0x0,0x0);
-    }
-    elsif ($subcommand =~ m/^def/) {
-        @cmd=(0x08,0x5,0x0,0x0,0x0,0x0,0x0);
-    }
-    elsif ($subcommand eq "setup" ) { #Not supported by BMCs I've checked so far..
-        @cmd=(0x08,0x5,0x18,0x0,0x0,0x0,0x0);
-    }
-    elsif ($subcommand =~ m/^stat/) {
-        $skipset=1;
-    }
-    else {
-        return(1,"unsupported command setboot $subcommand");
-    }
-
-
-    unless ($skipset) {
-        $error = docmd(
-            $netfun,
-            \@cmd,
-            \@cmd,
-            \@returnd
-        );
-        if($error) {
-            return(1,$error);
-        }
-        $code = $returnd[0];
-        unless ($code == 0x00) {
-                    return(1,$codes{$code});
-            }
-    }
-    @cmd=(0x09,0x5,0x0,0x0);
-    $error = docmd(
-                $netfun,
-                \@cmd,
-                \@returnd
-        );
-    if($error) {
-                return(1,$error);
-        }
-    $code = $returnd[0];
-    unless ($code == 0x00) {
-                return(1,$codes{$code});
-        }
+    my @returnd = ($rsp->{code},@{$rsp->{data}});
     unless ($returnd[3] & 0x80) {
-        $text = "boot override inactive";
-        return($rc,$text);
+        sendmsg("boot override inactive",$sessdata->{node});
+        return;
     }
     my $boot=($returnd[4] & 0x3C) >> 2;
-    $text = $bootchoices{$boot};
-    return($rc,$text);
+    sendmsg($bootchoices{$boot},$sessdata->{node});
+    return;
 }
 
 sub idpxthermprofile {
