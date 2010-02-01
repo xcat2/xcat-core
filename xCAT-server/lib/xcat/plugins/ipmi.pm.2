@@ -4735,6 +4735,7 @@ sub  initsdr_withrepinfo {
     		if($rc == 0) {
                 $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"} = $sessdata->{sdr_hash};
                 on_bmc_connect("SUCCESS",$sessdata); #retry bmc_connect since sdr_cache is validated
+                return; #don't proceed to slow load
     		}
         }
 	}
