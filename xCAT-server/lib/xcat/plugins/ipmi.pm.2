@@ -487,6 +487,9 @@ sub on_bmc_connect {
 	} elsif ($command eq "rspreset") {
         return resetbmc($sessdata);
     }
+	elsif($command eq "rbeacon") {
+		return beacon($sessdata);
+	}
     return;
     my @output;
 
@@ -495,81 +498,7 @@ sub on_bmc_connect {
     my $error;
     my $node;
 	my $subcommand = "";
-	if($command eq "rpower") { #TODO: this should have been a function on it's own instead of all here
-		if($subcommand eq "stat" || $subcommand eq "state" || $subcommand eq "status") {
-			($rc,$text) = power("stat");
-		}
-		elsif($subcommand eq "on") {
-                   my ($oldrc,$oldtext) = power("stat");
-		   ($rc,$text) = power("on");
-                   if(($rc == 0) && ($text eq "on") && ($oldtext eq "on")) { $text .= " $status_noop"; }
-		}
-		elsif($subcommand eq "nmi") {
-			($rc,$text) = power("nmi");
-		}
-		elsif($subcommand eq "off" or $subcommand eq "softoff") {
-                        my ($oldrc,$oldtext) = power("stat");
-			($rc,$text) = power($subcommand);
-                         if(($rc == 0) && ($text eq "off") && ($oldtext eq "off")) { $text .= " $status_noop"; }
-	
-#			if($text0 ne "") {
-#				$text = $text0 . " " . $text;
-#			}
-		}
-		elsif($subcommand eq "reset") {
-                        my ($oldrc,$oldtext) = power("stat");
-			($rc,$text) = power("reset");
-                        if(($rc == 0) && ($text eq "off") && ($oldtext eq "off")) { $text .= " $status_noop"; }
-		}
-		elsif($subcommand eq "cycle") {
-			my $text2;
-
-			($rc,$text) = power("stat");
-
-			if($rc == 0 && $text eq "on") {
-				($rc,$text) = power("off");
-				if($rc == 0) {
-					sleep(5);
-				}
-			}
-
-			if($rc == 0 && $text eq "off") {
-				($rc,$text2) = power("on");
-			}
-
-			if($rc == 0) {	
-				$text = $text . " " . $text2
-			}
-		}
-		elsif($subcommand eq "boot") {
-			my $text2;
-
-			($rc,$text) = power("stat");
-
-			if($rc == 0) {
-				if($text eq "on") {
-					($rc,$text2) = power("reset");
-					$noclose = 0;
-				}
-				elsif($text eq "off") {
-					($rc,$text2) = power("on");
-				}
-				else {
-					$rc = 1;
-				}
-			
-				$text = $text . " " . $text2
-			}
-		}
-		else {
-			$rc = 1;
-			$text = "unsupported command $command $subcommand";
-		}
-	}
-	elsif($command eq "rbeacon") {
-		($rc,$text) = beacon($subcommand);
-	}
-	elsif($command eq "getrvidparms") {
+	if($command eq "getrvidparms") {
 		($rc,@output) = getrvidparms($subcommand); #TODO: tricky, this wouldn't fit into the non-fork diagram cleanly
 	}
 	elsif($command eq "rvitals") {
@@ -635,12 +564,6 @@ sub on_bmc_connect {
          push(@output,@coutput);
       }
 	}
-	elsif($command eq "sete325cli") {
-		($rc,@output) = sete325cli($subcommand);
-	}
-	elsif($command eq "sete326cli") {
-		($rc,@output) = sete325cli($subcommand);
-	}
 	elsif($command eq "generic") {
 		($rc,@output) = generic($subcommand);
 	}
@@ -662,21 +585,10 @@ sub on_bmc_connect {
 		print "$node: command completed\n";
 	}
 
-	if($noclose == 0) {
-		$error = closesession();
-		if($error) {
-			return(1,"$text, session close: $error");
-		}
-		if($debug) {
-			print "$node: session closed.\n";
-		}
-	}
-
 	if($text) {
 		push(@output,$text);
 	}
 
-	$sock->close();
 	return($rc,@output);
 }
 
@@ -985,56 +897,6 @@ sub getnetinfo {
 	return($rc,$text);
 }
 
-sub sete325cli {
-	my $subcommand = shift;
-
-	my $netfun = 0xc8;
-	my @cmd;
-	my @returnd = ();
-	my $error;
-	my $rc = 0;
-	my $text;
-	my $code;
-
-	if($subcommand eq "disable") {
-		@cmd = (0x00);
-	}
-	elsif($subcommand eq "cli") {
-		@cmd = (0x02);
-	}
-	else {
-		return(1,"unsupported command sete325cli $subcommand");
-	}
-
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
-
-	if($error) {
-		$rc = 1;
-		$text = $error;
-	}
-	else {
-		if($code == 0x00) {
-			$rc = 0;
-			$text = "$subcommand";
-		}
-		else {
-			$rc = 1;
-			$text = $codes{$code};
-		}
-
-		if(!$text) {
-			$rc = 1;
-			$text = sprintf("unknown response %02x",$code);
-		}
-	}
-
-	return($rc,$text);
-}
-
 sub setboot {
     my $subcommand=shift;
     my $netfun = 0x00;
@@ -1329,77 +1191,52 @@ sub generic {
 }
 
 sub beacon {
-	my $subcommand = shift;
+    my $sessdata = shift;
+	my $subcommand = $sessdata->{subcommand};
+    my $ipmiv2=0;
+    if ($sessdata->{ipmisession}->{ipmiversion} eq '2.0') {
+        $ipmiv2 = 1;
+    }
+	if($subcommand ne "on" and $subcommand ne "off"){
+                sendmsg([1,"please specify on or off for ipmi nodes (stat impossible)"],$sessdata->{node});
+     }
 
-	my $netfun = 0x00;
-	my @cmd;
-	my @returnd = ();
-	my $error;
-	my $rc = 0;
-	my $text;
-	my $code;
-	if($subcommand eq ""){
-                return(1,"please specify on or off for ipmi nodes");
-        }
+    #if stuck with 1.5, say light for 255 seconds.  In 2.0, specify to turn it on forever
 	if($subcommand eq "on") {
         if ($ipmiv2) {
-		    @cmd = (0x04,0x0,0x01);
+            $sessdata->{ipmisession}->subcmd(netfn=>0,command=>4,data=>[0,1],callback=>\&beacon_answer,callback_args=>$sessdata);
         } else {
-		    @cmd = (0x04,0xFF);
+            $sessdata->{ipmisession}->subcmd(netfn=>0,command=>4,data=>[0xff],callback=>\&beacon_answer,callback_args=>$sessdata);
         }
-	}
+	} 
 	elsif($subcommand eq "off") {
         if ($ipmiv2) {
-            @cmd = (0x04,0x0,0x00);
+            $sessdata->{ipmisession}->subcmd(netfn=>0,command=>4,data=>[0,0],callback=>\&beacon_answer,callback_args=>$sessdata);
         } else {
-		    @cmd = (0x04,0x00);
+            $sessdata->{ipmisession}->subcmd(netfn=>0,command=>4,data=>[0x0],callback=>\&beacon_answer,callback_args=>$sessdata);
         }
 	}
 	else {
-		return(1,"unsupported command beacon $subcommand");
+        return;
 	}
+}
+sub beacon_answer {
+    my $rsp = shift;
+    my $sessdata = shift;
 
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
-
-	if($error) {
-		$rc = 1;
-		$text = $error;
+	if($rsp->{error}) { #non ipmi error
+        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        return;
 	}
-	else {
-		if($subcommand eq "on") {
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-				$text="on";
-			}
-			else {
-				$rc = 1;
-				$text = $codes{$code};
-			}
-		}
-		if($subcommand eq "off") {
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-				$text="off";
-			}
-			else {
-				$rc = 1;
-				$text = $codes{$code};
-			}
-		}
-
-		if(!$text) {
-			$rc = 1;
-			$text = sprintf("unknown response %02x",$code);
-		}
-	}
-
-	return($rc,$text);
+    if ($rsp->{code}) { #ipmi error
+        if ($codes{$rsp->{code}}) {
+            sendmsg([1,$codes{$rsp->{code}}]);
+        } else {
+             sendmsg([1,sprintf("Unknown error code %02xh",$rsp->{code})],$sessdata->{node});
+        }
+        return;
+    }
+    sendmsg($sessdata->{subcommand},$sessdata->{node});
 }
 
 sub inv {
