@@ -20,8 +20,17 @@ use xCAT::GlobalDef;
 
 my %nodesetstats;
 my %default_ports = (
-      'ssh' => '22',
-      'sshd' => '22'
+    'ftp' => '21',
+    'ssh' => '22',
+    'sshd' => '22',
+    'pbs' => '15002',
+    'pbs_mom' => '15002',
+    'xend' => '8002',
+    'll' => '9616',
+    'loadl' => '9616',
+    'loadl_master' => '9616',
+    'loadleveler' => '9616',
+    'gpfs' => '1191'
     );
 
 sub handled_commands {
