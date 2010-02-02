@@ -26,9 +26,8 @@ use Thread qw(yield);
 use LWP 5.64;
 use HTTP::Request::Common;
 my $tfactor = 0;
-my $vpdhash;
-my %bmc_comm_pids;
 my $iem_support;
+my $vpdhash;
 eval {
     require IBM::EnergyManager;
     $iem_support=1;
@@ -45,7 +44,7 @@ sub handled_commands {
     rpower => 'nodehm:power,mgt', #done
     renergy => 'nodehm:power,mgt',
     getipmicons => 'ipmi', #done
-    rspconfig => 'nodehm:mgt',
+    rspconfig => 'nodehm:mgt', #done
     rspreset => 'nodehm:mgt', #done
     rvitals => 'nodehm:mgt',
     rinv => 'nodehm:mgt',
@@ -53,7 +52,7 @@ sub handled_commands {
     rbeacon => 'nodehm:mgt', #done
     reventlog => 'nodehm:mgt',
     rfrurewrite => 'nodehm:mgt',
-    getrvidparms => 'nodehm:mgt'
+    getrvidparms => 'nodehm:mgt' #done
   }
 }
 
@@ -80,7 +79,6 @@ my $ndebug = 0;
 my @cmdargv;
 my $sock;
 my $noclose;
-my $channel_number;
 my %fru_hash;
 my %sessiondata; #hold per session variables, in preparation for single-process strategy
 my %pendingtransactions; #list of peers with callbacks, callback arguments, and timer expiry data
@@ -486,13 +484,20 @@ sub on_bmc_connect {
 		return power($sessdata);
 	} elsif ($command eq "rspreset") {
         return resetbmc($sessdata);
-    }
-	elsif($command eq "rbeacon") {
+    } elsif($command eq "rbeacon") {
 		return beacon($sessdata);
-	}
-	elsif($command eq "rsetboot") {
+	} elsif($command eq "rsetboot") {
 		return setboot($sessdata);
-	}
+	} elsif($command eq "rspconfig") {
+       shift @{$sessdata->{extraargs}};
+       if ($sessdata->{subcommand} =~ /=/) {
+           setnetinfo($sessdata);
+       } else {
+           getnetinfo($sessdata);
+       }
+	} elsif($command eq "rvitals") {
+        vitals($sessdata);
+    }
     return;
     my @output;
 
@@ -554,16 +559,6 @@ sub on_bmc_connect {
 			($rc,@output) = getnetinfo($subcommand);
 		}
 	}
-	elsif($command eq "rspconfig") {
-      foreach ($subcommand,@_) {
-         my @coutput;
-		   ($rc,@coutput) = setnetinfo($_);
-		   if($rc == 0) {
-			   ($rc,@coutput) = getnetinfo($_);
-		   }
-         push(@output,@coutput);
-      }
-	}
 	elsif($command eq "generic") {
 		($rc,@output) = generic($subcommand);
 	}
@@ -616,7 +611,8 @@ sub resetedbmc {
 }
 
 sub setnetinfo {
-	my $subcommand = shift;
+    my $sessdata = shift;
+	my $subcommand = $sessdata->{subcommand};
    my $argument;
    ($subcommand,$argument) = split(/=/,$subcommand);
 	my @input = @_;
@@ -629,6 +625,7 @@ sub setnetinfo {
 	my $text;
 	my $code;
 	my $match;
+    my $channel_number = $sessdata->{ipmisession}->{currentchannel};
 
 	if($subcommand eq "snmpdest") {
 		$subcommand = "snmpdest1";
@@ -673,6 +670,7 @@ sub setnetinfo {
    }
 	elsif($subcommand =~ m/snmpdest(\d+)/ ) {
 		my $dstip = $argument; #pop(@input);
+        $dstip = inet_ntoa(inet_aton($dstip));
 		my @dip = split /\./, $dstip;
 		@cmd = (0x01,$channel_number,0x13,$1,0x00,0x00,$dip[0],$dip[1],$dip[2],$dip[3],0,0,0,0,0,0);
 	}
@@ -691,37 +689,32 @@ sub setnetinfo {
 	else {
 		return(1,"configuration of $subcommand is not implemented currently");
 	}
-
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
-
-	if($error) {
-		$rc = 1;
-		$text = $error;
-	}
-	else {
-		if($subcommand eq "garp" or $subcommand =~ m/snmpdest\d+/ or $subcommand eq "alert" or $subcommand =~ /community/) {
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-				$text = "ok";
-			}
-		} 
-
-		if(!$text) {
-			$rc = 1;
-			$text = sprintf("unknown response %02x",$code);
-		}
-	}
-
-	return($rc,$text);
+    my $command = shift @cmd;
+    $sessdata->{ipmisession}->subcmd(netfn=>0x0c,command=>$command,data=>\@cmd,callback=>\&netinfo_set,callback_args=>$sessdata);
+}
+sub netinfo_set {
+    my $rsp = shift;
+    my $sessdata = shift;
+    if ($rsp->{error}) { 
+        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        return;
+    }
+    if ($rsp->{code}) {
+        if ($codes{$rsp->{code}}) {
+            sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+        } else {
+            sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+        }
+        return;
+    }
+    getnetinfo($sessdata);
+    return;
 }
 
 sub getnetinfo {
-	my $subcommand = shift;
+    my $sessdata = shift;
+	my $subcommand = $sessdata->{subcommand};
+    my $channel_number = $sessdata->{ipmisession}->{currentchannel};
    $subcommand =~ s/=.*//;
    if ($subcommand eq "thermprofile") {
        my $code;
@@ -745,19 +738,18 @@ sub getnetinfo {
        return (1,sprintf("Unable to identify current thermal profile: \"%02x %02x %02x %02x %02x %02x %02x\"",@bytes));
    }
 
-	my $netfun = 0x30;
 	my @cmd;
 	my @returnd = ();
 	my $error;
 	my $rc = 0;
 	my $text;
 	my $code;
-	my $format = "%-25s";
 
 	if ($subcommand eq "snmpdest") {
 		$subcommand = "snmpdest1";
 	}
 
+    my $netfun = 0x0c;
    if ($subcommand eq "alert") {
       $netfun = 0x10;
       @cmd = (0x13,9,1,0);
@@ -787,96 +779,79 @@ sub getnetinfo {
 		return(1,"unsupported command getnetinfo $subcommand");
 	}
 
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
-
-
-	if($error) {
-		$rc = 1;
-		$text = $error;
+    my $command = shift @cmd;
+    $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@cmd,callback=>\&getnetinfo_response,callback_args=>$sessdata);
+}
+sub getnetinfo_response {
+    my $rsp = shift;
+    my $sessdata = shift;
+    my $subcommand = $sessdata->{subcommand};
+    $sessdata->{subcommand} = shift @{$sessdata->{extraargs}};
+    if ($rsp->{error}) { 
+        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        return;
+    }
+    if ($rsp->{code}) {
+        if ($codes{$rsp->{code}}) {
+            sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+        } else {
+            sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+        }
+        return;
+    }
+    if ($subcommand eq "snmpdest") {
+        $subcommand = "snmpdest1";
+    }
+    my @returnd = (0,@{$rsp->{data}});
+	my $format = "%-25s";
+	if($subcommand eq "garp") {
+			my $code = $returnd[2] / 2;
+				sendmsg(sprintf("$format %d","Gratuitous ARP seconds:",$code),$sessdata->{node});
 	}
-	else {
-          # response format:
-          # 4 bytes   (RMCP header)
-          # 1 byte    (auth type)
-          # 4 bytes   (session sequence)
-          # 4 bytes   (session id)
-          # 16 bytes  (message auth code, not present if auth type is 0, $authoffset=16)
-          # 1 byte    (ipmi message length)
-          # 1 byte    (requester's address
-          # 1 byte    (netfun, req lun)
-          # 1 byte    (checksum)
-          # 1 byte    (Responder's slave address)
-          # 1 byte    (Sequence number, generated by the requester)
-          # 1 byte    (command)
-          # 1 byte    (return code)
-          # 1 byte    (param revision)
-          # N bytes   (data)
-          # 1 byte    (checksum)
-		if($subcommand eq "garp") {
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-				$code = $returnd[2] / 2;
-				$text = sprintf("$format %d","Gratuitous ARP seconds:",$code);
-			}
-			else {
-				$rc = 1;
-				$text = $codes{$code};
-			}
-		}
-      elsif($subcommand eq "alert") {
-         if ($returnd[3] & 0x8) { 
-            $text = "SP Alerting: enabled";
-         } else {
-            $text = "SP Alerting: disabled";
-         }
-      }
-		elsif($subcommand =~ m/^snmpdest(\d+)/ ) {
-			$text = sprintf("$format %d.%d.%d.%d",
+    elsif($subcommand eq "alert") {
+        if ($returnd[3] & 0x8) { 
+           sendmsg("SP Alerting: enabled",$sessdata->{node});
+        } else {
+           sendmsg("SP Alerting: disabled",$sessdata->{node});
+        }
+     }
+	elsif($subcommand =~ m/^snmpdest(\d+)/ ) {
+			sendmsg(sprintf("$format %d.%d.%d.%d",
 				"SP SNMP Destination $1:",
 				$returnd[5],
 				$returnd[6],
 				$returnd[7],
-				$returnd[8]);
-		}
-		elsif($subcommand eq "ip") {
-			$text = sprintf("$format %d.%d.%d.%d",
+				$returnd[8]),$sessdata->{node});
+	} elsif($subcommand eq "ip") {
+			sendmsg(sprintf("$format %d.%d.%d.%d",
 				"BMC IP:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
-				$returnd[5]);
-		}
-		elsif($subcommand eq "netmask") {
-			$text = sprintf("$format %d.%d.%d.%d",
+				$returnd[5]),$sessdata->{node});
+	} elsif($subcommand eq "netmask") {
+			sendmsg(sprintf("$format %d.%d.%d.%d",
 				"BMC Netmask:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
-				$returnd[5]);
-		}
-		elsif($subcommand eq "gateway") {
-			$text = sprintf("$format %d.%d.%d.%d",
+				$returnd[5]),$sessdata->{node});
+	} elsif($subcommand eq "gateway") {
+			sendmsg(sprintf("$format %d.%d.%d.%d",
 				"BMC Gateway:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
-				$returnd[5]);
-		}
-		elsif($subcommand eq "backupgateway") {
-			$text = sprintf("$format %d.%d.%d.%d",
+				$returnd[5]),$sessdata->{node});
+	} elsif($subcommand eq "backupgateway") {
+			sendmsg(sprintf("$format %d.%d.%d.%d",
 				"BMC Backup Gateway:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
-				$returnd[5]);
-		}
-		elsif ($subcommand eq "community") {
-			$text = sprintf("$format ","SP SNMP Community:");
+				$returnd[5]),$sessdata->{node});
+	} elsif ($subcommand eq "community") {
+			my $text = sprintf("$format ","SP SNMP Community:");
 			my $l = 2;
 			while ($returnd[$l] ne 0) {
 				$l = $l + 1;
@@ -886,15 +861,16 @@ sub getnetinfo {
 				$text = $text . sprintf("%c",$returnd[$i]);
 				$i = $i + 1;
 			}
-		}
-
-		if(!$text) {
-			$rc = 1;
-			$text = sprintf("unknown response %02x",$code);
-		}
+            sendmsg($text,$sessdata->{node});
 	}
-
-	return($rc,$text);
+    if ($sessdata->{subcommand}) {
+        if ($sessdata->{subcommand} =~ /=/) {
+            setnetinfo($sessdata);
+        } else {
+            getnetinfo($sessdata);
+        }
+    }
+    return;
 }
 
 sub setboot {
@@ -1026,13 +1002,12 @@ sub getrvidparms {
     print "my turn\n";
     $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x50,data=>[],callback=>\&getrvidparms_with_buildid,callback_args=>$sessdata);
 }
-sub getrvidparms_with_buildid {
+sub check_rsp_errors { #TODO: pass in command-specfic error code translation table
     my $rsp = shift;
     my $sessdata = shift;
-    print "mi turn\n";
 	if($rsp->{error}) { #non ipmi error
         sendmsg([1,$rsp->{error}],$sessdata->{node});
-        return;
+        return 1;
 	}
     if ($rsp->{code}) { #ipmi error
         if ($codes{$rsp->{code}}) {
@@ -1040,8 +1015,16 @@ sub getrvidparms_with_buildid {
         } else {
              sendmsg([1,sprintf("Unknown error code %02xh",$rsp->{code})],$sessdata->{node});
         }
+        return 1;
+    }
+    return 0;
+}
+sub getrvidparms_with_buildid {
+    if (check_rsp_errors(@_)) {
         return;
     }
+    my $rsp = shift;
+    my $sessdata = shift;
     my @build_id = (0,@{$rsp->{data}});
     unless ($build_id[1]==0x59 and $build_id[2]==0x55 and $build_id[3]==0x4f and $build_id[4]==0x4f) { #Only know how to cope with yuoo builds
         sendmsg([1,"Remote video is not supported on this system"],$sessdata->{node});
@@ -4041,12 +4024,11 @@ sub renergy {
 }
 sub vitals {
     my $sessdata = shift;
-    unless ($sessdata) {
-        die "not fixed yet";
-    }
     my %sdr_hash = %{$sessdata->{sdr_hash}};
-	my $subcommand = shift;
-    my @textfilters = split /,/,$subcommand;
+    my @textfilters;
+    foreach (@{$sessdata->{extraargs}}) {
+        push @textfilters,(split /,/,$_);
+    }
     unless (scalar @textfilters) { @textfilters = ("all"); }
 
 	my $rc = 0;
@@ -4059,9 +4041,8 @@ sub vitals {
 	my $value;
 	my $extext;
 	my $format = "%-30s%8s %-20s";
-	my $per = " ";
-   my $doall;
-   $doall=0;
+    my $doall;
+    $doall=0;
 	$rc=0;
     #filters: defined in sensor type codes and data table
     # 1 == temp, 2 == voltage 3== current (we lump in wattage here for lack of a better spot), 4 == fan
@@ -4095,9 +4076,10 @@ sub vitals {
         $sensor_filters{leds}=1;
 	}
 	unless (keys %sensor_filters) {
-		return(1,"unsupported command vitals $subcommand");
+        sendmsg([1,"Unrecognized rvitals arguments ".join(" ",@{$sessdata->{extraargs}})],$sessdata->{node});;
 	}
 
+    $sessdata->{sensorstoread} = [];
 	foreach(keys %sensor_filters) {
 		my $filter = $_;
         if ($filter eq "energy" or $filter eq "leds") { next; }
@@ -4106,151 +4088,94 @@ sub vitals {
 			my $sdr = $sdr_hash{$key};
 			if(($doall and not $sdr->rec_type == 0x11 and not $sdr->sensor_type==0xed) or ($sdr->rec_type == 0x01 and $sdr->sensor_type == $filter)) {
 				my $lformat = $format;
-
-				($rc,$reading,$extext) = readsensor($sdr);
-				$unitdesc = "";
-				if($rc == 0) {
-					$unitdesc = $units{$sdr->sensor_units_2};
-
-                    $value = $reading;
-                    if ($sdr->rec_type==1) {
-    					$value = (($sdr->M * $reading) + ($sdr->B * (10**$sdr->B_exp))) * (10**$sdr->R_exp);
-                    }
-					if($sdr->rec_type != 1 or $sdr->linearization == 0) {
-						$reading = $value;
-						if($value == int($value)) {
-							$lformat = "%-30s%8d%s";
-						}
-						else {
-							$lformat = "%-30s%8.3f%s";
-						}
-					}
-					elsif($sdr->linearization == 7) {
-						if($value > 0) {
-							$reading = 1/$value;
-						}
-						else {
-							$reading = 0;
-						}
-						$lformat = "%-30s%8d %s";
-					}
-					else {
-						$reading = "RAW(".$sdr->linearization.") $reading";
-					}
-	
-					if($sdr->sensor_units_1 & 1) {
-						$per = "% ";
-					} else {
-                  $per = " ";
-               }
-               my $numformat = ($sdr->sensor_units_1 & 0b11000000) >> 6;
-               if ($numformat) {
-                  if ($numformat eq 0b11)  {
-                     #Not sure what to do here..
-                  } else {
-                     if ($reading & 0b10000000) {
-                        if ($numformat eq 0b01) {
-                           $reading = 0-((~($reading&0b01111111))&0b1111111);
-                        } elsif ($numformat eq 0b10) {
-                           $reading = 0-(((~($reading&0b01111111))&0b1111111)+1);
-                        }
-                     }
-                  }
-               }
-	
-                    if($unitdesc eq "Watts") {
-                        my $f = ($reading * 3.413);
-                        $unitdesc = "Watts (".int($f+.5)." BTUs/hr)";
-                    }
-					if($unitdesc eq "C") {
-						my $f = ($reading * 9/5) + 32;
-						$unitdesc = "C (" . int($f + .5) . " F)";
-					}
-					if($unitdesc eq "F") {
-						my $c = ($reading - 32) * 5/9;
-						$unitdesc = "F (" . int($c + .5) . " C)";
-					}
-				}
-            #$unitdesc.= sprintf(" %x",$sdr->sensor_type);
-				$text = sprintf($lformat,$sdr->id_string . ":",$reading,$per.$unitdesc);
-				if ($extext) {
-					$text="$text ($extext)";
-				}
-				push(@output,$text);
-			}
-#			else {
-#				printf("%x %s %d\n",$sdr->sensor_number,$sdr->id_string,$sdr->sensor_type);
-#			}
+                push @{$sessdata->{sensorstoread}},$sdr;
+            }
 		}
 	}
 
 	if($sensor_filters{leds}) {
-		my @cleds;
-		($rc,@cleds) = checkleds();
-        push @output,@cleds;
+        push @{$sessdata->{sensorstoread}},"leds";
+		#my @cleds;
+		#($rc,@cleds) = checkleds();
+        #push @output,@cleds;
     }
     if ($sensor_filters{powerstate}) {
-		($rc,$text) = power("stat");
-		$text = sprintf($format,"Power Status:",$text,"");
-		push(@output,$text);
+        push @{$sessdata->{sensorstoread}},"powerstat";
+		#($rc,$text) = power("stat");
+		#$text = sprintf($format,"Power Status:",$text,"");
+		#push(@output,$text);
     }
     if ($sensor_filters{energy}) {
-        my @energies;
-        ($rc,@energies)=readenergy();
-        push @output,@energies;
+        push @{$sessdata->{sensorstoread}},"energy";
+        #my @energies;
+        #($rc,@energies)=readenergy();
+        #push @output,@energies;
 	}
+    if (scalar @{$sessdata->{sensorstoread}}) {
+        $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
+        readsensor($sessdata); #and we are off
+    }
+}
 
-	return($rc,@output);
+
+
+sub sensorformat {
+    my $sessdata = shift;
+    my $sdr = $sessdata->{currsdr};
+    my $rc = shift;
+    my $reading = shift;
+    my $extext = shift;
+	my $unitdesc = "";
+    my $value;
+	my $lformat = "%-30s %-20s";
+	my $per = " ";
+    my $data;
+	if($rc == 0) {
+        $data = translate_sensor($reading,$sdr);
+	} else {
+        $data = "N/A";
+    }
+#$unitdesc.= sprintf(" %x",$sdr->sensor_type);
+    use Data::Dumper;
+    print Dumper($lformat,$sdr->id_string,$data);
+	my $text = sprintf($lformat,$sdr->id_string . ":",$data);
+	if ($extext) {
+		$text="$text ($extext)";
+	}
+    sendmsg($text,$sessdata->{node});
+    if (scalar @{$sessdata->{sensorstoread}}) {
+        $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
+        readsensor($sessdata); #next
+    }
 }
 
 sub readsensor {
-    my $sdr = shift;
-	my $sensor = $sdr->sensor_number;
-	my $netfun = 0x10;
-	my @cmd;
-	my @returnd = ();
-	my $error;
-	my $rc = 0;
-	my $text;
-	my $code;
+    my $sessdata = shift;
+    if (not ref $sessdata->{currsdr}) {
+        sendmsg([1,"TODO: make this work again"],$sessdata->{node});
+        return;
+    }
+	my $sensor = $sessdata->{currsdr}->sensor_number;
+    $sessdata->{ipmisession}->subcmd(netfn=>0x4,command=>0x2d,data=>[$sensor],callback=>\&sensor_was_read,callback_args=>$sessdata);
+}
 
-	@cmd = (0x2d,$sensor);
-
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
-
-	if($error) {
-		$rc = 1;
-		$text = $error;
-		return($rc,$text);
-	}
-
-	$code = $returnd[0];
-	if($code != 0x00) {
-		$rc = 1;
-		$text = $codes{$code};
-
-		if(!$text) {
-			$text = sprintf("unknown response %02x",$code);
-		}
-		chomp $text;
-
-		return($rc,$text);
-	}
+sub sensor_was_read {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @returnd = (0,@{$rsp->{data}});
 	
 	if ($returnd[2] & 0x20) {
-		$rc = 1;
-		$text = "N/A";
-		return($rc,$text);
+		return sensorformat($sessdata,1,"N/A");
 	}
-	$text = $returnd[1];
+	my $text = $returnd[1];
     my $exdata1 = $returnd[3];
     my $exdata2 = $returnd[3];
     my $extext;
     my @exparts;
+    my $sdr = $sessdata->{currsdr};
     if ($sdr->event_type_code == 0x1) {
         if ($exdata1 & 1<<5) {
             $extext = "At or above upper non-recoverable threshold";
@@ -4496,7 +4421,7 @@ sub readsensor {
         }
     }
 
-	return($rc,$text,$extext);
+	return sensorformat($sessdata,0,$text,$extext);
 }
 
 sub initsdr {
@@ -4542,6 +4467,8 @@ sub  initsdr_withrepinfo {
 	if($enable_cache eq "yes") {
         if ($sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"}) {
             $sessdata->{sdr_hash} = $sdr_caches{"$mfg_id.$prod_id.$device_id.$dev_rev.$fw_rev1.$fw_rev2.$cache_version"};
+            on_bmc_connect("SUCCESS",$sessdata); #retry bmc_connect since sdr_cache is validated
+            return; #don't proceed to slow load
         } else {
     		my $rc = loadsdrcache($sessdata,$cache_file);
     		if($rc == 0) {
@@ -4621,10 +4548,10 @@ hexdump(\@returnd);
 	$sessdata->{curr_sdr_len} = $returnd[7] + 5;
 
 	if($sdr_type == 0x01) {
-		$sessdata->{sdr_offset} = 0;
+		$sessdata->{total_sdr_offset} = 0;
 	}
 	elsif($sdr_type == 0x02) {
-		$sessdata->{sdr_offset} = 16; #TODO: understand this..
+		$sessdata->{total_sdr_offset} = 16; #TODO: understand this..
 	}
 	elsif($sdr_type == 0xC0) {
 		#LED descriptor, maybe
@@ -4771,7 +4698,7 @@ sub parse_sdr { #parse sdr data, then cann initsdr_withreserveation to advance t
 		   $sdr->sensor_units_1($sdr_data[21]);
         }
 
-		$sdr->id_string_type($sdr_data[48-$sessdata->{sdr_offset}]);
+		$sdr->id_string_type($sdr_data[48-$sessdata->{total_sdr_offset}]);
 
 		my $override_string = getsensorname($mfg_id,$prod_id,$sdr->sensor_number);
 
@@ -4784,7 +4711,7 @@ sub parse_sdr { #parse sdr data, then cann initsdr_withreserveation to advance t
 			if($byte_format == 0b11) {
 				my $len = ($sdr->id_string_type & 0b00011111) - 1;
 				if($len > 1) {
-					$sdr->id_string(pack("C*",@sdr_data[49-$sessdata->{sdr_offset}..49-$sessdata->{sdr_offset}+$len]));
+					$sdr->id_string(pack("C*",@sdr_data[49-$sessdata->{total_sdr_offset}..49-$sessdata->{total_sdr_offset}+$len]));
 				}
 				else {
 					$sdr->id_string("no description");
@@ -5464,12 +5391,6 @@ sub process_request {
   }
 
     my $children = 0;
-    $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
-         foreach (keys %bmc_comm_pids) {
-            kill 2, $_;
-         }
-         exit 0;
-    };
     my $sub_fds = new IO::Select;
     foreach (@donargs) {
       donode($_->[0],$_->[1],$_->[2],$_->[3],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
