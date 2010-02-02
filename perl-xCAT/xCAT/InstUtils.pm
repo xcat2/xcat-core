@@ -394,7 +394,7 @@ sub readBNDfile
       xCAT::InstUtils->get_nim_attr_val($BNDname,  'location', $callback,
                                         $nimprime, $sub_req);
 
-    # The bundle file may be on nimprime
+    # The boundle file may be on nimprime
     my $ccmd = qq~cat $bnd_file_name~;
     my $output=xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $nimprime, $ccmd, 0);
     if ($::RUNCMD_RC != 0) {
@@ -404,6 +404,7 @@ sub readBNDfile
     }
 
     # get the names of the packages
+    #$output =~ s/$nimprime:\s+//g;
     foreach my $line (split(/\n/, $output))
     {
         #May include xdsh prefix $nimprime:
@@ -412,6 +413,7 @@ sub readBNDfile
         next if ($line =~ /^\s*$/ || $line =~ /^\s*#/);
         push(@pkglist, $line);
     }
+    close(BNDFILE);
 
     return (0, \@pkglist, $bnd_file_name);
 }
@@ -546,8 +548,8 @@ sub taghash
 		
 
     Comments:
-		Based on "os" attr of node definition.  This assumes that the "os" 
-		attribute of AIX nodes will always be set!
+		Based on "os" attr of node definition. If attr is not set,
+        defaults to OS of current system.   
 
 	Example:
     	my ($rc, $AIXnodes, $Linuxnodes) 
@@ -569,7 +571,13 @@ sub getOSnodes
     my $os = $nodetab->getNodesAttribs(\@nodelist, ['node', 'os']);
     foreach my $n (@nodelist)
     {
-        if (($os->{$n}->[0]->{os} ne "AIX") && ($os->{$n}->[0]->{os} ne "aix"))
+        my $osname;
+        if (defined($os->{$n}->[0]->{os})) {
+            $osname = $os->{$n}->[0]->{os};
+        } else {
+            $osname =  $^O;
+        }
+        if (($osname ne "AIX") && ($osname ne "aix"))
         {
             push(@linuxnodes, $n);
             $rc = 0;
