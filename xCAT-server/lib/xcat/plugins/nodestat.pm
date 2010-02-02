@@ -414,7 +414,7 @@ sub interrogate_node { #Meant to run against confirmed up nodes
     my $status = "";
     my $appsd=""; #detailed status
     my $ret={};
-    $ret->{'status'}=$::STATUS_ACTIVE;
+    $ret->{'status'}="ping";
 
     foreach my $port (keys(%portservices)) {
 	if (nodesockopen($node,$port)) {
@@ -532,7 +532,7 @@ sub process_request_nmap {
                  push @nodesetnodes,$currnode; #Aggregate call to nodeset
                  next;
               }
-              $ret->{$currnode}->{'status'}=$::STATUS_ACTIVE;
+              $ret->{$currnode}->{'status'}="ping";
               $ret->{$currnode}->{'appstatus'}=$status;
               $ret->{$currnode}->{'appsd'}=$appsd;
               $currnode="";

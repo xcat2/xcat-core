@@ -72,24 +72,24 @@ Print help.
 
 1.  nodestat compute
 
- node1   alive,sshd
- node2   alive,sshd
- node3   alive
- node4   alive,pbs
+ node1   ping,sshd
+ node2   ping,sshd
+ node3   ping
+ node4   ping,pbs
  node5   noping
 
 
 2. nodeset compute -u
- node1   alive,sshd
- node2   alive,sshd
- node3   alive
+ node1   ping,sshd
+ node2   ping,sshd
+ node3   ping
  node4   netboot
  node5   noping
 
 
 3. nodeset compute -m
- node1   alive,sshd,ll,gpfs=ok
- node2   alive,sshd,ll,gpfs=not ok,someapp=something is wrong
+ node1   ping,sshd,ll,gpfs=ok
+ node2   ping,sshd,ll,gpfs=not ok,someapp=something is wrong
  node3   netboot
  node4   noping
 
