@@ -987,6 +987,13 @@ sub runcmd
 		   the entire command string xdsh runs needs to be a single entry
 		   in the arg array.
 
+         The caller to the runxcmd is responsible for filename expansion, that
+         would have been done if the command was run on the command line.  
+         For example,  the xdcp node1 /tmp/testfile*  /tmp command needs to 
+         have the /tmp/testfile* argument expanded before call xdcp with 
+         runxcmd.   The easy way to do this is to use the perl glob function.
+              @files=glob "/tmp/testfile*";
+
 
 =cut
 
