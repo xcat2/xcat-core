@@ -174,7 +174,18 @@ sub preprocess_request
 		#add port number in if nothing is specified
 		if (exists($default_ports{$app})) { $apps{$app}->{'port'} = $default_ports{$app}; }
 		else {
-		    print "need to get the port number form /etc/services\n";
+		    my $p=`grep "^$app" /etc/services`;
+		    if ($? == 0) {
+			my @a_list=sort(split('\n', $p));
+			my @a_temp=split('/',$a_list[0]);
+			my @a=split(' ', $a_temp[0]);
+			$apps{$app}->{'port'}=$a[1];
+		    } else {
+			my $rsp={};
+			$rsp->{data}->[0]= "Cannot find port number for application $app. Please either specify a port number or a command in monsetting table for $app.";;
+			xCAT::MsgUtils->message("I", $rsp, $cb);
+			return (0);
+		    }
 		}
 	    }
 
