@@ -20,7 +20,7 @@ This command is used to register a Perl module or a command to the xCAT notifica
 
 =head1 Parameters
 
-I<filename> is the full path name of the Perl module or command to be registered.
+I<filename> is the path name of the Perl module or command to be registered.
 I<tablename> is the name of the table that the user is interested in.
 
 =head1 OPTIONS

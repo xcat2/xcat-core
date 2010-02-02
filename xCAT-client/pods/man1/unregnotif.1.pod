@@ -20,7 +20,7 @@ This command is used to unregistered a Perl module or a command that was watchin
 
 =head1 Parameters
 
-I<filename> is the full path name of the Perl module or command to be registered.
+I<filename> is the path name of the Perl module or command to be registered.
 
 =head1 OPTIONS
 
