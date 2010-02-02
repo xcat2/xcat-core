@@ -3838,7 +3838,6 @@ sub process_data_from_iem {
 
 sub checkleds {
     my $sessdata = shift;
-    unless ($sessdata) { die "not fixed yet" }
 	my $netfun = 0xe8; #really 0x3a
 	my @cmd;
 	my @returnd = ();
@@ -3849,14 +3848,15 @@ sub checkleds {
 	my @output =();
 	my $text="";
 	my $key;
-	my $mfg_id;
-	my $prod_id;
+	my $mfg_id=$sessdata->{mfg_id};
 #TODO device id
 	if ($mfg_id != 2) {
-		return (0,"LED status not supported on this system");
+		sendmsg("LED status not supported on this system",$sessdata->{node});
+        return;
 	}
 	
     my %sdr_hash = %{$sessdata->{sdr_hash}};
+    $sessdata->{doleds} = [];
 	foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
 		my $sdr = $sdr_hash{$key};
 		if($sdr->rec_type == 0xC0 && $sdr->sensor_type == 0xED) {
@@ -3878,75 +3878,98 @@ sub checkleds {
 				$led_id_ms=$sdr->led_id&0xff;
 			}
 				
-			@cmd=(0xc0,$led_id_ms,$led_id_ls);
-			$error = docmd(
-				$netfun,
-				\@cmd,
-				\@returnd
-			);
-			if($error) {
-				$rc = 1;
-				$text = $error;
-				return($rc,$text);
-			}
-			if ($returnd[0] == 0xc9) {
-				my $tmp;
-				#we probably guessed endianness wrong.
-				$tmp=$led_id_ls;
-				$led_id_ls=$led_id_ms;
-				$led_id_ms=$tmp;
-				@cmd=(0xc0,$led_id_ms,$led_id_ls);
-				$error = docmd(
-                                	$netfun,
-					\@cmd,
-					\@returnd
-                       		);
-				if($error) {
-					$rc = 1;
-					$text = $error;
-					return($rc,$text);
-				}
-			}
+            push @{$sessdata->{doleds}},[$led_id_ms,$led_id_ls,$sdr];
+        }
+    }
+    $sessdata->{doled} = shift @{$sessdata->{doleds}};
+    if ($sessdata->{doled}) {
+        $sessdata->{current_led_sdr} = pop @{$sessdata->{doled}};
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xc0,data=>$sessdata->{doled},callback=>\&did_led,callback_args=>$sessdata);
+    } else {
+        sendmsg("No supported LEDs found in system",$sessdata->{node});
+    }
+#	if ($#output==-1) {
+#		push(@output,"No active error LEDs detected");
+#	}
+}
 
-			if ($returnd[2]) { # != 0) {
-				#It's on...
-				if ($returnd[6] == 4) {
-					push(@output,sprintf("BIOS or admininstrator has %s lit",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
-				}
-				elsif ($returnd[6] == 3) {
-					push(@output,sprintf("A user has manually requested LED 0x%04x (%s) be active",$sdr->led_id,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
-				}
-				elsif ($returnd[6] == 1 && $sdr->led_id !=0) {
-					push(@output,sprintf("LED 0x%02x%02x (%s) active to indicate LED 0x%02x%02x (%s) is active",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds"),$returnd[4],$returnd[5],getsensorname($mfg_id,$prod_id,($returnd[4]<<8)+$returnd[5],"ibmleds")));
-				}
-				elsif ($sdr->led_id ==0) {
-					push(@output,sprintf("LED 0x0000 (%s) active to indicate system error condition.",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")));
-				}
-				elsif ($returnd[6] == 2) {
-					my $sensor_desc;
-					#Ok, LED is tied to a sensor..
-					my $sensor_num=$returnd[5];
-				        foreach $key (keys %sdr_hash) {
-						my $osdr = $sdr_hash{$key};
-				                if($osdr->sensor_number == $sensor_num) {
-				                        $sensor_desc = $sdr_hash{$key}->id_string;
-				                        if($osdr->rec_type == 0x01) {
-			                                	last;
-							}
-			                        }
-			                }
-					$rc=0;
-					#push(@output,sprintf("Sensor 0x%02x (%s) has activated LED 0x%04x",$sensor_num,$sensor_desc,$sdr->led_id));
-					push(@output,sprintf("LED 0x%02x%02x active to indicate Sensor 0x%02x (%s) error.",$led_id_ms,$led_id_ls,$sensor_num,$sensor_desc));
-			        }
-			} 
-					
-		}
-	}
-	if ($#output==-1) {
-		push(@output,"No active error LEDs detected");
-	}
-	return($rc,@output);
+sub did_led {
+    my $rsp = $_[0];
+    my $sessdata = $_[1];
+    my $mfg_id = $sessdata->{mfg_id};
+    my $prod_id = $sessdata->{prod_id};
+    my $sdr = $sessdata->{current_led_sdr};
+    if (not $sessdata->{ledswappedendian} and $_[0]->{code} == 0xc9) { #missed an endian guess probably
+        $sessdata->{ledswappedendian}=1;
+        my @doled;
+        $doled[0]=$sessdata->{doled}->[1];
+        $doled[1]=$sessdata->{doled}->[0];
+        $sessdata->{doled} = \@doled;
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xc0,data=>$sessdata->{doled},callback=>\&did_led,callback_args=>$sessdata);
+        return;
+    } elsif ( $_[0]->{code} == 0xc9) {
+        $_[0]->{code} = 0; #TODO: some system actually gives an led locator record that doesn't exist....
+                    print "DEBUG: unfindable LED record\n";
+    }
+    $sessdata->{ledswappedendian}=0; #reset ledswappedendian flag to allow future swaps
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $led_id_ls = $sessdata->{doled}->[1];
+    my $led_id_ms = $sessdata->{doled}->[0];
+    my @returnd = (0,@{$rsp->{data}});
+		if ($returnd[2]) { # != 0) {
+			#It's on...
+			if ($returnd[6] == 4) {
+				sendmsg(sprintf("BIOS or admininstrator has %s lit",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$sessdata->{node});
+            $sessdata->{activeleds}=1;
+			}
+			elsif ($returnd[6] == 3) {
+				sendmsg(sprintf("A user has manually requested LED 0x%04x (%s) be active",$sdr->led_id,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$sessdata->{node});
+            $sessdata->{activeleds}=1;
+			}
+			elsif ($returnd[6] == 1 && $sdr->led_id !=0) {
+				sendmsg(sprintf("LED 0x%02x%02x (%s) active to indicate LED 0x%02x%02x (%s) is active",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds"),$returnd[4],$returnd[5],getsensorname($mfg_id,$prod_id,($returnd[4]<<8)+$returnd[5],"ibmleds")),$sessdata->{node});
+            $sessdata->{activeleds}=1;
+			}
+			elsif ($sdr->led_id ==0) {
+				sendmsg(sprintf("LED 0x0000 (%s) active to indicate system error condition.",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$sessdata->{node});
+            $sessdata->{activeleds}=1;
+			}
+			elsif ($returnd[6] == 2) {
+				my $sensor_desc;
+				#Ok, LED is tied to a sensor..
+				my $sensor_num=$returnd[5];
+                my %sdr_hash = %{$sessdata->{sdr_hash}};
+			        foreach my $key (keys %sdr_hash) {
+					my $osdr = $sdr_hash{$key};
+			                if($osdr->sensor_number == $sensor_num) {
+			                        $sensor_desc = $sdr_hash{$key}->id_string;
+			                        if($osdr->rec_type == 0x01) {
+		                                	last;
+						}
+		                        }
+		                }
+				#push(@output,sprintf("Sensor 0x%02x (%s) has activated LED 0x%04x",$sensor_num,$sensor_desc,$sdr->led_id));
+				sendmsg(sprintf("LED 0x%02x%02x active to indicate Sensor 0x%02x (%s) error.",$led_id_ms,$led_id_ls,$sensor_num,$sensor_desc),$sessdata->{node});
+            $sessdata->{activeleds}=1;
+		        } else { #an LED is on for some other reason
+                    print "DEBUG: unknown LED reason code ".$returnd[6]."\n";
+                    #TODO: discern meaning of more 'reason' codes, 5 and ff have come up
+                }
+                    
+		} 
+    $sessdata->{doled} = shift @{$sessdata->{doleds}};
+    if ($sessdata->{doled}) {
+        $sessdata->{current_led_sdr} = pop @{$sessdata->{doled}};
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xc0,data=>$sessdata->{doled},callback=>\&did_led,callback_args=>$sessdata);
+    } elsif (not $sessdata->{activeleds}) {
+        sendmsg("No active error LEDs detected",$sessdata->{node});
+    }
+    if (scalar @{$sessdata->{sensorstoread}}) {
+        $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
+        readsensor($sessdata); #next sensor
+    }
 }
 	
 sub renergy {
@@ -4152,7 +4175,14 @@ sub sensorformat {
 sub readsensor {
     my $sessdata = shift;
     if (not ref $sessdata->{currsdr}) {
+        if ($sessdata->{currsdr} eq "leds") {
+            checkleds($sessdata);
+		#my @cleds;
+		#($rc,@cleds) = checkleds();
+        #push @output,@cleds;
+        } else {
         sendmsg([1,"TODO: make this work again"],$sessdata->{node});
+        }
         return;
     }
 	my $sensor = $sessdata->{currsdr}->sensor_number;
@@ -4160,11 +4190,17 @@ sub readsensor {
 }
 
 sub sensor_was_read {
-    if (check_rsp_errors(@_)) {
-        return;
-    }
     my $rsp = shift;
     my $sessdata = shift;
+    if ($rsp->{error}) {
+        sendmsg([1,$rsp->{error}],$sessdata->{node});
+    }
+    if ($rsp->{code}) {
+        my $text = $codes{$rsp->{code}};
+        unless ($text) { $text = sprintf("Unknown error %02xh",$rsp->{code}) };
+        return sensorformat($sessdata,1,$text);
+    }
+
     my @returnd = (0,@{$rsp->{data}});
 	
 	if ($returnd[2] & 0x20) {
