@@ -1128,14 +1128,14 @@ sub doAIXcopy
             # copy  all the packages
             foreach my $pkg (@pkglist)
             {
-                my $rcpcmd;
+                my $rcpargs;
                 my $srcfile;
                 if (($pkg =~ /R:/))
                 {
                     my ($junk, $pname) = split(/:/, $pkg);
 
                     # use rpm location
-                    $rcpcmd = "xdcp $snkey $rpm_srcdir/$pname $rpm_srcdir";
+                    $rcpargs = ["$rpm_srcdir/$pname", "$rpm_srcdir"];
                 }
                 else
                 {
@@ -1151,11 +1151,18 @@ sub doAIXcopy
                     }
 
                     # use installp loc
-                    $rcpcmd = "xdcp $snkey $instp_srcdir/$pname* $instp_srcdir";
+                    my @allfiles = glob "$instp_srcdir/$pname*";
+                    my $sourcefiles = "";
+                    foreach my $file (@allfiles) {
+                        $sourcefiles .= "$file ";	
+                    }
+                    $rcpargs = [$sourcefiles, "$instp_srcdir"];
 
                 }
 
-                my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
+                my  $output = xCAT::Utils->runxcmd({command => ["xdcp"],
+                                    node => [$snkey], arg => $rcpargs}, $subreq, -1, 0);
+
                 if ($::RUNCMD_RC != 0)
                 {
                     my $rsp;
