@@ -134,6 +134,9 @@ sub process_request
     {
         return tabgrep($nodes, $callback);
     }
+    elsif ($command eq "tabch"){
+        return tabgrep($args, $callback);
+    }
     else
     {
         print "$command not implemented yet\n";
@@ -1376,3 +1379,54 @@ sub nodels
 
     return 0;
 }
+
+#########
+#  tabch
+#########
+sub tabch {
+	my $args = shift;
+	my $callback = shift;
+	my @ARGV = @{$args};
+	my $target = shift @ARGV;
+	my %tables;
+	my %keyhash=();
+	my @keypairs=split(/,/,$target);
+	if ($keypairs[0] !~ /([^\.\=]+)\.([^\.\=]+)\=(.+)/) {
+		foreach (@keypairs) {
+			m/(.*)=(.*)/;
+			my $key=$1;
+			my $val=$2;
+			$keyhash{$key}=$val;
+		}
+	} else {
+		unshift(@ARGV, $target);
+	}
+	my %tableupdates;
+	for (@ARGV) {
+		my $temp;
+		my $table;
+		my $column;
+		my $value;
+		($table,$temp) = split('\.',$_,2);
+		($column,$value) = split("=",$temp,2);
+		unless ($tables{$table}) {
+			my $tab = xCAT::Table->new($table,-create => 1,-autocommit => 0);
+			if ($tab) {
+				$tables{$table}=$tab;
+			} else {
+				print "Table $table does not exist.\n";
+				exit(1);
+			}
+		}
+		$tableupdates{$table}{$column}=$value;
+	}
+
+  #commit all the changes
+  foreach (keys %tables) {
+    if (exists($tableupdates{$_})) {
+      $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+    }
+    $tables{$_}->commit;
+  }
+}
+
