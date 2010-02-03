@@ -7,9 +7,11 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use Sys::Syslog;
 use xCAT::Table;
+use xCAT::Utils;
 use xCAT_plugin::ipmi;
 use xCAT_monitoring::monitorctrl;
 use Socket;
+
 
 #-------------------------------------------------------------------------------
 =head1  xcat_traphandler  
@@ -29,10 +31,14 @@ my $node1;
 my $info;
 my $severity_type;
 my $severity;
+my $appname;
+my $id;
+my $message1;
+my $errsrc;
 
 #get settings
-$EMAIL=0, $LOG=0, $RUNCMD=0, $IGNORE=0;
-%hashI=(),%hashE=(),%hashL=(),%hashR=(); 
+$EMAIL=0, $LOG=0, $RUNCMD=0, $IGNORE=0, $DB=0;
+%hashI=(),%hashE=(),%hashL=(),%hashR=(),%hashD=();
 my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("snmpmon");
 my $i=$settings{'ignore'};
 if ($i) { %hashI =parseSettings($i); }
@@ -42,6 +48,8 @@ my $l=$settings{'log'};
 if ($l) { %hashL=parseSettings($l); }
 my $r=$settings{'runcmd'};
 if ($r) { %hashR=parseSettings($r); }
+my $d=$settings{'db'};
+if ($d) { %hashD=parseSettings($d); }
 
 # read host name
 my $host=<STDIN>; 
@@ -67,7 +75,7 @@ $oid=shift @a;
 $value=join(' ', @a);
 $message .= "    $oid=$value\n";
 checkWithOid($oid, $value);
-#print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
+#print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD D=$DB\n";
 if ($IGNORE) { exit 0;}
 
 #for ipmi traps, the values is: SNMPv2-SMI::enterprises.3183.1.1.0.x or
@@ -112,17 +120,22 @@ while ($temp=<STDIN>) {
   @a=split(/ /, $pair);
   $oid=shift @a;
   $value=join(' ', @a);
+  $value =~ s/^"//;
+  $value =~ s/"$//;
 
   
   #for BladeCenter MM traps and RSA II traps,  creat a brief message 
   if ($oid =~ /BLADESPPALT-MIB::spTrapAppId|RSASPPALT-MIB::ibmSpTrapAppId/) {
     $briefmsg .= "  App ID: $value\n";  
+    $appname=$value;
   }
   elsif ($oid =~ /BLADESPPALT-MIB::spTrapAppType|RSASPPALT-MIB::ibmSpTrapAppType/) {
     $briefmsg .= "  App Alert Type: $value\n";
+    $id=$value;
   } 
   elsif ($oid =~ /BLADESPPALT-MIB::spTrapMsgText|RSASPPALT-MIB::ibmSpTrapMsgText/) {
     $briefmsg .= "  Message: $value\n";  
+    $message1=$value;
   } 
   elsif ($oid =~ /BLADESPPALT-MIB::spTrapBladeName/) {
     my $temp="$value";
@@ -133,7 +146,8 @@ while ($temp=<STDIN>) {
     }
   } 
   elsif (($oid =~ /BLADESPPALT-MIB::spTrapSourceId/)) {
-    $briefmsg .= "  Error Source=$value\n";       
+    $briefmsg .= "  Error Source=$value\n";  
+    $errsrc=$value;     
   }   
   elsif ($oid =~ /BLADESPPALT-MIB::spTrapPriority|RSASPPALT-MIB::ibmSpTrapPriority/) {
     # Critical Alert(0), Major(1), Non-Critical Alert(2), System Alert(4), 
@@ -228,12 +242,13 @@ while ($temp=<STDIN>) {
     } 
   }
  
+  
   $message .= "    $oid=$value\n";
 
   #check agains the settings 
   $value =~ s/\"//g;  
   checkWithOid($oid, $value);
-  #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
+  #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD, D=$DB\n";
   if ($IGNORE) { exit 0;} 
 }
 
@@ -244,8 +259,9 @@ if ((!$IGNORE) && exists($hashI{$severity_type})) {
 }
 if ((!$EMAIL) && exists($hashE{$severity_type})) { $EMAIL=1; }
 if ((!$LOG) && exists($hashL{$severity_type})) { $LOG=1; }
-if ((!$RUNCMD) && exists($hashR{severity_type})) { $RUNCMD=1; }
-#print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD\n";
+if ((!$DB) && exists($hashD{$severity_type})) { $DB=1; }
+if ((!$RUNCMD) && exists($hashR{$severity_type})) { $RUNCMD=1; }
+#print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD, D=$DB\n";
 
 #email 'alerts' aliase
 if ($EMAIL || ((keys(%hashE)==0) && ($severity_type =~/Critical|Warning/))) { 
@@ -277,6 +293,28 @@ if ($LOG || (keys(%hashL)==0)) {
     syslog("local4|err", "$head\n$body\n");
   }
   closelog();
+}
+
+#save to eventlog table in xCAT database
+if ($DB) {
+  my $head="SNMP $severity received from $host($ip)\n$briefmsg\n";
+  if (($node1)&& (!$info)) { $info= getMoreInfo($node1);}
+  my $middle="Trap details:\n$message\n";
+  my $event={
+        eventtype => 'event',
+        monitor => 'snmpmon',
+        monnode => $host,
+        node => $node1? $node1:"",
+        application => $appname,
+        component => $errsrc ,
+        id =>$id,
+        severity => $severity_type,
+        message => $message1,
+        rawdata => "$info$head\n$middle",
+    };
+  my @a=();
+  push(@a, $event);
+  xCAT::Utils->logEventsToDatabase(\@a); 
 }
 
 #run user defined commands if needed.
@@ -321,7 +359,7 @@ sub getMoreInfo {
 
   # get the info from rinv command if nothing in the vpd table
   if (!$vpd) { 
-    my $result=`XCATBYPASS=Y $XCATROOT/bin/rinv $node all 2>&1 | egrep -i '(model|serial)' | grep -v Univ`; 
+    my $result=`XCATBYPASS=Y $::XCATROOT/bin/rinv $node all 2>&1 | egrep -i '(model|serial)' | grep -v Univ`; 
     if ($? == 0) {#success
         chomp($result);
         my @b=split(/\n/, $result);
@@ -440,6 +478,10 @@ sub checkWithOid {
 
   if ((!$LOG) && (keys(%hashL)>0)) {
     $LOG=checking(\%hashL);
+  }
+
+  if ((!$DB) && (keys(%hashD)>0)) {
+    $DB=checking(\%hashD);
   }
 
   if ((!$RUNCMD) && (keys(%hashR)>0)) {

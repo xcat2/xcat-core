@@ -265,6 +265,7 @@ sub config {
   #configure mail to enabling receiving mails from trap handler
   configMail();
 
+
   if ($scope) {
     if ($callback) {
       my $rsp={};
@@ -786,6 +787,8 @@ sub getDescription {
     runcmd: specifies the events that will be passed to the user defined scripts.
     cmds:   specifies the command names that will be invoked for the events 
             specified in the runcmd row.
+    db:     specifies the events that will be logged into the eventlog table
+            in xCAT database.
     
     Special keywords for specifying events:
       All -- all events.
