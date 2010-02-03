@@ -1707,6 +1707,12 @@ sub getGroupMembers
 
     my %objhash = %$hash_ref;
 
+    # set 'static' as the dafault of nodetype
+    if (!defined($objhash{$objectname}{'grouptype'}) ||
+          $objhash{$objectname}{'grouptype'} eq "") {
+        $objhash{$objectname}{'grouptype'} = 'static';
+    }
+
     if ($objhash{$objectname}{'grouptype'} eq 'static')
     {
 
