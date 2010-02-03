@@ -1001,7 +1001,7 @@ sub initDB
         }
 
         $chtabcmds .=
-          "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode'";
+          "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode,xcatserver,xcatclient'";
 
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
         if ($::RUNCMD_RC != 0)
