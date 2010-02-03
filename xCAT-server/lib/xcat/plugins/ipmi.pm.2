@@ -46,7 +46,7 @@ sub handled_commands {
     getipmicons => 'ipmi', #done
     rspconfig => 'nodehm:mgt', #done
     rspreset => 'nodehm:mgt', #done
-    rvitals => 'nodehm:mgt',
+    rvitals => 'nodehm:mgt', #done
     rinv => 'nodehm:mgt',
     rsetboot => 'nodehm:mgt', #done
     rbeacon => 'nodehm:mgt', #done
@@ -1088,7 +1088,15 @@ sub power_with_context {
 	}
 	$sessdata->{powerstatus} = ($rsp->{data}->[0] & 1 ? "on" : "off");
 	if ($sessdata->{subcommand} eq "stat" or $sessdata->{subcommand} eq "state" or $sessdata->{subcommand} eq "status") { 
-		sendmsg($sessdata->{powerstatus},$sessdata->{node});
+        if ($sessdata->{powerstatprefix}) {
+		    sendmsg($sessdata->{powerstatprefix}.$sessdata->{powerstatus},$sessdata->{node});
+        } else {
+		    sendmsg($sessdata->{powerstatus},$sessdata->{node});
+        }
+        if (scalar @{$sessdata->{sensorstoread}}) { #if we are in an rvitals path, hook back into good graces
+            $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
+            readsensor($sessdata); #next
+        }
 		return;
 	}
 	my $subcommand = $sessdata->{subcommand};
@@ -3761,61 +3769,95 @@ sub getaddsensorevent {
 }
 
 sub initiem {
-    my $iem = IBM::EnergyManager->new();
-    my @payload = $iem->get_next_payload();
+    my $sessdata = shift;
+    $sessdata->{iem} =  IBM::EnergyManager->new();
+    my @payload = $sessdata->{iem}->get_next_payload();
     my $netfun = shift @payload;
-    my @returnd;
-	my $error = docmd(
-			$netfun<<2,
-			\@payload,
-			\@returnd
-		);
-    $iem->handle_next_payload(@returnd);
-    return $iem;
+    my $command = shift @payload;
+    $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@payload,callback=>\&ieminitted,callback_args=>$sessdata);
+}
+sub ieminitted {
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @returnd = ($rsp->{code},@{$rsp->{data}});
+    $sessdata->{iem}->handle_next_payload(@returnd);
+    $sessdata->{iemcallback}->($sessdata);
 }
 
 sub readenergy {
+    my $sessdata = shift;
     unless ($iem_support) { 
-        return (1,"IBM::EnergyManager package required for this value");
+        sendmsg([1,"IBM::EnergyManager package required for this value"],$sessdata->{node});
+        return;
     }
     my @entries;
-    my $iem = initiem();
-    my $entry;
-    $iem->prep_get_ac_energy();
-    $entry = process_data_from_iem($iem);
-    $iem->prep_get_precision();
-    execute_iem_commands($iem); #this gets all precision data initialized
-    $entry .= sprintf(" +/-%.1f%%",$iem->energy_ac_precision()*0.1); #note while \x{B1} would be cool, it's non-trivial to support
-    push @entries,$entry;
-    $iem->prep_get_dc_energy();
-    $entry = process_data_from_iem($iem);
-    $entry .= sprintf(" +/-%.1f%%",$iem->energy_dc_precision()*0.1);
-    push @entries,$entry;
-    return (0,@entries);
+    $sessdata->{iemcallback}=\&readenergy_withiem;
+    initiem($sessdata);
+}
+sub readenergy_withiem {
+    my $sessdata = shift;
+    $sessdata->{iem}->prep_get_ac_energy();
+    $sessdata->{iemcallback} = \&got_ac_energy;
+    process_data_from_iem($sessdata);
+}
+sub got_ac_energy {
+    my $sessdata = shift;
+    $sessdata->{iem}->prep_get_precision();
+    $sessdata->{iemcallback} = \&got_ac_energy_with_precision;
+    execute_iem_commands($sessdata); #this gets all precision data initialized
+}
+sub got_ac_energy_with_precision {
+    my $sessdata=shift;
+    $sessdata->{iemtextdata} .= sprintf(" +/-%.1f%%",$sessdata->{iem}->energy_ac_precision()*0.1); #note while \x{B1} would be cool, it's non-trivial to support
+    sendmsg($sessdata->{iemtextdata},$sessdata->{node});
+    $sessdata->{iem}->prep_get_dc_energy();
+    $sessdata->{iemcallback} = \&got_dc_energy;
+    process_data_from_iem($sessdata);
+}
+sub got_dc_energy {
+    my $sessdata = shift;
+    $sessdata->{iemtextdata} .= sprintf(" +/-%.1f%%",$sessdata->{iem}->energy_dc_precision()*0.1);
+    sendmsg($sessdata->{iemtextdata},$sessdata->{node});
+    if (scalar @{$sessdata->{sensorstoread}}) {
+        $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
+        readsensor($sessdata); #next sensor
+    }
 
 }
 
 sub execute_iem_commands {
-    my $iem = shift;
-    my @payload = $iem->get_next_payload();
-    my @returnd;
-    while (scalar @payload) {
+    my $sessdata = shift;
+    my @payload = $sessdata->{iem}->get_next_payload();
+    if (scalar @payload) {
         my $netfun = shift @payload;
-        my $error = docmd($netfun<<2,\@payload,\@returnd);
-        if ($error) { return $error; }
-        $iem->handle_next_payload(@returnd);
-        @payload = $iem->get_next_payload();
+        my $command = shift @payload;
+        $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@payload,callback=>\&executed_iem_command,callback_args=>$sessdata);
+    } else { #complete, return to callback
+        $sessdata->{iemcallback}->($sessdata);
     }
-    return 0;
+}
+sub executed_iem_command {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @returnd = ($rsp->{code},@{$rsp->{data}});
+    $sessdata->{iem}->handle_next_payload(@returnd);
+    execute_iem_commands($sessdata);
 }
 
 sub process_data_from_iem {
-    my $iem = shift;
+    my $sessdata = shift;
+    
     my @returnd;
-    my @iemdata;
-    if (!execute_iem_commands($iem)) {
-        @iemdata = $iem->extract_data;
-    }
+    $sessdata->{iemdatacallback} = $sessdata->{iemcallback};
+    $sessdata->{iemcallback} = \&got_data_to_process_from_iem;
+    execute_iem_commands($sessdata);
+}
+sub got_data_to_process_from_iem {
+    my $sessdata = shift;
+    my @iemdata = $sessdata->{iem}->extract_data;
     my $label = shift @iemdata;
     my $units = shift @iemdata;
     my $value=0;
@@ -3828,12 +3870,13 @@ sub process_data_from_iem {
     if ($units eq "mJ") {
         $units = "kWh";
         $value = $value / 3600000000;
-        return sprintf("$label: %.4f $units",$value);
+        $sessdata->{iemtextdata} = sprintf("$label: %.4f $units",$value);
     } elsif ($units eq "mW") {
         $units = "W";
         $value = $value / 1000.0;
-        return sprintf("$label: %.1f $units",$value);
+        $sessdata->{iemtextdata} = sprintf("$label: %.1f $units",$value);
     }
+    $sessdata->{iemdatacallback}->($sessdata);
 }
 
 sub checkleds {
@@ -4129,7 +4172,11 @@ sub vitals {
 		#push(@output,$text);
     }
     if ($sensor_filters{energy}) {
-        push @{$sessdata->{sensorstoread}},"energy";
+        if ($iem_support) {
+            push @{$sessdata->{sensorstoread}},"energy";
+        } elsif (not $doall) {
+            sendmsg([1,"Energy data requires additional IBM::EnergyManager plugin in conjunction with IMM managed IBM equipment"],$sessdata->{node});
+        }
         #my @energies;
         #($rc,@energies)=readenergy();
         #push @output,@energies;
@@ -4177,11 +4224,17 @@ sub readsensor {
     if (not ref $sessdata->{currsdr}) {
         if ($sessdata->{currsdr} eq "leds") {
             checkleds($sessdata);
-		#my @cleds;
-		#($rc,@cleds) = checkleds();
-        #push @output,@cleds;
+            return;
+        } elsif ($sessdata->{currsdr} eq "powerstat") {
+            $sessdata->{powerstatprefix}="Power Status: ";
+            $sessdata->{subcommand}="stat";
+            power($sessdata);
+            return;
+        } elsif ($sessdata->{currsdr} eq "energy") {
+            readenergy($sessdata);
+            return;
         } else {
-        sendmsg([1,"TODO: make this work again"],$sessdata->{node});
+        sendmsg([1,"TODO: make ".$sessdata->{currsdr}." work again"],$sessdata->{node});
         }
         return;
     }
