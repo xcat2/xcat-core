@@ -112,11 +112,13 @@ my %usage = (
     "getmacs" => 
 "Usage: 
    Common:
-       getmacs <noderange> [-d] [-V|--verbose]
        getmacs [-h|--help|-v|--version]
    PPC specific:
        getmacs <noderange> [-F filter] 
-       getmacs <noderange> [-f][-d] [--arp] | [-D [-S server] [-G gateway] [-C client]]",
+       getmacs <noderange> [-V| --verbose] [-f] [-d] [--arp] | [-D [-S server] [-G gateway] [-C client]]
+   blade specific:
+       getmacs <noderange> [-V| --verbose] [-d] [--arp]
+",
     "mkvm" => 
 "Usage:
     Common:

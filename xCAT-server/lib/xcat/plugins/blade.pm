@@ -1351,13 +1351,28 @@ sub rscan_stanza {
 }
 
 sub getmacs {
-   my (@args) = @_;
+   my ($node, @args) = @_;
 
    my $display = ();
+   my $byarp = ();
    foreach my $arg (@args) {
       if ($arg eq "-d") {
          $display = "yes";
+      } elsif ($arg eq "--arp") {
+         $byarp = "yes";
       }
+   }
+
+   if ($byarp eq "yes") {
+       my $output = xCAT::Utils->get_mac_by_arp([$node], $display);
+       my @ret = ();
+       foreach my $n (keys %$output) {
+           if ($n ne $node) {
+               next;
+           }
+           push @ret, $output->{$n};
+       }
+       return (0, @ret);
    }
 
    (my $code,my @macs)=inv('mac');
@@ -1674,7 +1689,7 @@ sub bladecmd {
   } elsif ($command eq "switchblade") {
      return switchblade(@args);
   } elsif ($command eq "getmacs") {
-    return getmacs(@args);
+    return getmacs($node, @args);
   } elsif ($command eq "rinv") {
     return inv(@args);
   } elsif ($command eq "reventlog") {
@@ -1992,7 +2007,7 @@ sub preprocess_request {
   #parse the arguments for commands
   if ($command eq "getmacs") {
     foreach my $arg (@exargs) {
-      if (defined($arg) && $arg !~ /^-V|--verbose|-d$/) {
+      if (defined($arg) && $arg !~ /^-V|--verbose|-d|--arp$/) {
         $usage_string="Error arguments\n";
         $usage_string .=xCAT::Usage->getUsage($command);
         $callback->({data=>$usage_string});

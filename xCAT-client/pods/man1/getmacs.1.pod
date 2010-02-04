@@ -6,16 +6,17 @@ B<getmacs> - Collects node MAC address.
 
 =head2 Common:
 
-I<getmacs noderange [-d] [-V| --verbose]>
-
 I<getmacs [-h| --help | -v| --version]>
 
 =head2 PPC specific:
 
-I<getmacs noderange> [-F filter]
+I<getmacs noderange [-F filter]>
 
-I<getmacs [-V| --verbose] noderange> [-f][-d] [--arp] | [-D [-S server] [-G gateway] [-C client]]
+I<getmacs noderange [-V| --verbose] [-f] [-d] [--arp] | [-D [-S server] [-G gateway] [-C client]]>
 
+=head2 blade specific:
+
+I<getmacs noderange [-V| --verbose] [-d] [--arp]>
 
 =head1 DESCRIPTION
 
@@ -37,7 +38,7 @@ B<-D>          Perform ping test.  Please be aware that in this way, the lpars w
 
 B<-f>          Force immediate shutdown of the partition.
 
-B<-F>          Specify filters to select the correct adapter.  Acceptable filters are Type,MAC_Address,Phys_Port_Loc,Adapter,Port_Group,Phys_Port,Logical_Port,VLan,VSwitch,Curr_Conn_Speed.
+B<-F>          Specify filters to select the correct adapter.  Acceptable filters are Type, MAC_Address, Phys_Port_Loc, Adapter, Port_Group, Phys_Port, Logical_Port, VLan, VSwitch, Curr_Conn_Speed.
 
 B<-G>          Gateway IP address of the partition.  The default is to read from xCAT database if no -G specified.
 

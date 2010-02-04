@@ -343,78 +343,18 @@ sub process_command {
             }
         }
     } elsif ( $request->{command} =~ /^(getmacs)$/ && exists( $request->{opt}->{arp} ) ) {
-        my $node;
-        my $data;
-        my $unreachable_nodes;
-        my $noderange = join (',', @$nodes);
-        my @output = xCAT::Utils->runcmd("/opt/xcat/bin/pping $noderange", -1);
-
-        foreach my $line (@output) {
-            my ($hostname, $result) = split ':', $line;
-            my ($token,    $status) = split ' ', $result;
-            chomp($token);
-            if ($token eq 'ping') {
-                $node->{$hostname}->{reachable} = 1;
-            }
+        my $display = "";
+        if (defined($request->{opt}->{d})) {
+            $display = "yes";
         }
-
-        foreach my $n ( @$nodes ) {
-            if ( $node->{$n}->{reachable} ) {
-                my $output;
-                my $IP = xCAT::Utils::toIP( $n );
-                if ( xCAT::Utils->isAIX() ) {
-                    $output = `/usr/sbin/arp -a`;
-                } else {
-                    $output = `/sbin/arp -n`;
-                }
-
-                my ($ip, $mac);
-                my @lines = split /\n/, $output;
-                foreach my $line ( @lines ) {
-                    if ( xCAT::Utils->isAIX() && $line =~ /\((\S+)\)\s+at\s+(\S+)/ ) {
-                        ($ip, $mac) = ($1,$2);
-                        ######################################################
-                        # Change mac format to be same as linux. For example:
-                        # '0:d:60:f4:f8:22' to '00:0d:60:f4:f8:22'
-                        ######################################################
-                        if ( $mac)
-                        {
-                            my @mac_sections = split /:/, $mac;
-                            for my $m (@mac_sections)
-                            {
-                                $m = "0$m" if ( length($m) == 1);
-                            }
-                            $mac = join ':', @mac_sections;
-                        }
-                    } elsif ( $line =~ /^(\S+)+\s+\S+\s+(\S+)\s/ ) {
-                        ($ip, $mac) = ($1,$2);
-                    } else {
-                        ($ip, $mac) = (undef,undef);
-                    }
-                    if ( @$IP[1] !~ $ip ) {
-                        ($ip, $mac) = (undef,undef);
-                    } else {
-                        last;
-                    }
-                }
-                if ( $ip && $mac ) {
-                    if ( !exists( $request->{opt}->{d} ) ) {
-                        #####################################
-                        # Write adapter mac to database
-                        #####################################
-                        my $mactab = xCAT::Table->new( "mac", -create=>1, -autocommit=>1 );
-                        $mactab->setNodeAttribs( $n,{mac=>$mac} );
-                        $mactab->close();
-                    }
-
-                    $callback->({node=>[{name=>[$n],data=>["\n#IP           MAC\n$ip  $mac\n"]}]});
-                }
-            } else {
-                $unreachable_nodes = join (",", $n, $unreachable_nodes);
-            }
+        my $output = xCAT::Utils->get_mac_by_arp($nodes, $display);
+        
+        my $rsp = ();
+        foreach my $node (keys %{$output}) {
+            push @{$rsp->{node}}, {name => [$node], data => [$output->{$node}]};
         }
-        $callback->({data=>["Unreachable Nodes:"]});
-        $callback->({data=>["$unreachable_nodes\n"]});
+        $rsp->{errorcode} = 0;
+        $callback->($rsp);
     } elsif ( $request->{command} =~ /^rpower$/ ) {
         my $hw;
         my $sessions;
