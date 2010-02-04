@@ -203,35 +203,9 @@ sub addnode
             $hname = $node;
         }    #Default to hostname equal to nodename
         unless ($mac) { next; }    #Skip corrupt format
-        my $inetn;
-        $inetn = "";
-        if ($hname eq '*NOIP*')
-        {
-            $inetn = "DENIED";
-            $hname = $node . "-noip" . $mac;
-            $hname =~ s/://g;
-        }
-        else
-        {
-            $inetn = inet_aton($hname);
-        }
-        unless ($inetn)
-        {
-            syslog(
-                  "local1|err",
-                  "xCAT DHCP plugin unable to resolve IP for $hname (for $node)"
-                  );
-            return;
-        }
-        my $ip;
-        $ip = "";
-        if ($inetn eq "DENIED")
-        {
+        my $ip = xCAT::Utils::getNodeIPaddress($hname);
+        if ( !defined($ip) ) {
             $ip = "DENIED";
-        }
-        else
-        {
-            $ip = inet_ntoa(inet_aton($hname));
         }
         if ($guess_next_server and $ip ne "DENIED")
         {

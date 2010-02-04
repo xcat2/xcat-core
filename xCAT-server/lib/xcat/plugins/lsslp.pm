@@ -96,7 +96,7 @@ my %mgt = (
     lc(TYPE_RSA) => "blade"
 );
 
-my @attribs    = qw(nodetype model serial groups node mgt mpa id side ip);
+my @attribs    = qw(nodetype serial serial side otherinterfaces groups mgt id parent mac);
 my $verbose    = 0;
 my %ip_addr    = ();
 my %slp_result = ();
@@ -193,7 +193,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c u H n))) {
+            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n updatehosts makedhcp M=s resetnet))) {
         return( usage() );
     }
     #############################################
@@ -246,9 +246,6 @@ sub parse_args {
     if ( (exists($opt{r}) + exists($opt{x}) + exists($opt{z})) > 1 ) {
         return( usage() );
     }
-    if ( (exists($opt{u}) + exists($opt{H})) > 1 ) {
-        return( usage("Cannot use flags -u and -H together"));
-    }
     #############################################
     # Command tries
     #############################################
@@ -276,6 +273,21 @@ sub parse_args {
         }
         $request->{service} = $services{$opt{s}};
     }
+
+    #############################################
+    # Check the dependency of makedhcp option
+    #############################################
+    if ( exists( $opt{makedhcp} ) and !exists( $opt{w} ) ) {
+        return( usage("'makedhcp' should work with '-w' option"  ) );
+    }
+
+    #############################################
+    # Check the validation of -M option
+    #############################################
+    if ( exists( $opt{M} ) and ($opt{M} !~ /^vpd$/) and ($opt{M} !~ /^switchport$/) ) {
+        return( usage("'-M' option only accept 'vpd' or 'switchport'") );
+    }
+
     return(0);
 }
 
@@ -664,6 +676,7 @@ sub invoke_cmd {
                     $target_dev,
                     @cmds );
         }
+
         ####################################
         # Pass result array back to parent
         ####################################
@@ -996,18 +1009,9 @@ sub format_output {
     my $result;
 
     ###########################################
-    # Query switch ports
-    ###########################################
-    my $rsp_targets = undef;
-    if ( $opt{u} or $opt{H})
-    {
-        $rsp_targets = switch_cmd( $request, $values );
-    }
-
-    ###########################################
     # Parse responses and add to hash
     ###########################################
-    my $outhash = parse_responses( $request, $values, $rsp_targets, \$length );
+    my $outhash = parse_responses( $request, $values, \$length );
 
     ###########################################
     # No responses
@@ -1021,6 +1025,22 @@ sub format_output {
     ###########################################
     if ( exists( $opt{w} )) {
         xCATdB( $outhash );
+    }
+
+    ###########################################
+    # --makedhcp flag to issue xCAT command
+    # makedhcp internally.
+    ###########################################
+    if ( exists( $opt{makedhcp} ) ) {
+        do_makedhcp( $outhash );
+    }
+
+    ###########################################
+    # --resetnet flag to reset the network 
+    # interface of the node
+    ###########################################
+    if ( exists( $opt{resetnet} ) ) {
+        do_resetnet( $request, $outhash );
     }
 
     ###########################################
@@ -1065,12 +1085,16 @@ sub format_output {
     ###########################################
     # Display response attributes
     ###########################################
-    foreach ( sort keys %$outhash ) {
-        my $data = $outhash->{$_};
+    foreach my $hostname ( sort keys %$outhash ) {
+        my $data = $outhash->{$hostname};
         my $i = 0;
 
         foreach ( @header ) {
-            $result .= sprintf @$_[1], @$data[$i++];
+            if ( @$_[0] =~ /^hostname$/ ) {
+                $result .= sprintf @$_[1], $hostname;
+            } else {
+                $result .= sprintf @$_[1], @$data[$i++];
+            }
         }
         $result .= "\n";
     }
@@ -1113,6 +1137,11 @@ sub gethost_from_url {
     my $sn      = shift;
     my $side    = shift;
     my $iplist  = shift;
+    my $bpc_machinetype = shift;
+    my $bpc_serial      = shift;
+    my $frame_number    = shift;
+    my $cage_number     = shift;
+    my $host;
 
     if ( $side =~ /^N\/A$/ ) {
         $side = undef;
@@ -1137,85 +1166,88 @@ sub gethost_from_url {
         }
         return undef;
     }
+
     #######################################
-    # Get host from vpd table
+    # Get hostname from vpd table
     #######################################
-    if ( !%::VPD_TAB_CACHE)
-    {
+    if ( exists($opt{M}) and ($opt{M} =~ /^vpd$/) ) {
+        $host = match_vpdtable($type, $mtm, $sn, $side, $bpc_machinetype, $bpc_serial, $frame_number, $cage_number);
+    }
+
+    #######################################
+    # Get hostname from switch table
+    #######################################
+    if ( exists($opt{M}) and ($opt{M} =~ /^switchport$/) ) {
+        $host = match_switchtable($ip, $bpc_machinetype, $bpc_serial, $frame_number, $cage_number);
+    }
+
+    if ( !$host ) {
+        $host = getFactoryHostname($type,$mtm,$sn,$side,$rsp);
+        #######################################
+        # Convert hostname to short-hostname
+        #######################################
+        if ( $host =~ /([^\.]+)\./ ) {
+            $host = $1;
+        }
+    }
+
+    return( "$host($ip)" );
+
+}
+
+##########################################################################
+# Match hostnames in vpd table
+##########################################################################
+sub match_vpdtable
+{
+    my $type    = shift;
+    my $mtm     = shift;
+    my $sn      = shift;
+    my $side    = shift;
+    my $bpc_machinetype = shift;
+    my $bpc_serial      = shift;
+    my $frame_number    = shift;
+    my $cage_number     = shift;
+    my $host;
+
+    #######################################
+    # Cache ppc table
+    #######################################
+    if ( !%::PPC_TAB_CACHE) {
+        my $ppctab = xCAT::Table->new( 'ppc' );
+        my @entries = $ppctab->getAllNodeAttribs(['node','parent','id']);
+        for my $entry ( @entries ) {
+            if ( $entry->{mtm} and $entry->{serial} and defined( $entry->{side} ) ) {
+            }
+        }
+    }
+
+    #######################################
+    # Cache vpd table
+    #######################################
+    if ( !%::VPD_TAB_CACHE ) {
         my $vpdtab  = xCAT::Table->new( 'vpd' );
         my @entries = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
         #Assuming IP is unique in hosts table
-        for my $entry ( @entries)
-        {
-            if ( $entry->{mtm} and $entry->{serial} and defined( $entry->{side} ))
-            {
-                $::VPD_TAB_CACHE{$entry->{ 'node'}} = $entry->{mtm} . '*' . $entry->{serial} . '-' . $entry->{side};
+        for my $entry ( @entries ) {
+            if ( $entry->{mtm} and $entry->{serial} and defined( $entry->{side} ) ) {
+                $::VPD_TAB_CACHE{$entry->{mtm} . '*' . $entry->{serial} . '-' . $entry->{side}} = $entry->{ 'node'};
+
             }
         }
     }
 
-    if ( $rsp =~ /\(machinetype-model=(.*?)\)/ )
-    {
-        my $mtm = $1;
-        if ( $rsp =~ /\(serial-number=(.*?)\)/)
-        {
-            my $sn = $1;
-            foreach my $node ( keys %::VPD_TAB_CACHE ) {
-                if ( $::VPD_TAB_CACHE{$node} eq $mtm . '*' . $sn . '-' . $side ) {
-                    if ( exists( $opt{n} ) ) {
-                        return undef;
-                    } else {
-                        return $node . "($ip)";
-                    }
-                }
-            }
-        }
+    if ( exists( $::VPD_TAB_CACHE{$mtm . '*' . $sn . '-' . $side} ) ) {
+        $host = $::VPD_TAB_CACHE{$mtm . '*' . $sn . '-' . $side};
+        return( "$host" );
     }
-    #######################################
-    # Read host from hosts table
-    #######################################
-    if ( ! %::HOST_TAB_CACHE)
-    {
-        my $hosttab  = xCAT::Table->new( 'hosts' );
-        my @entries = $hosttab->getAllNodeAttribs(['node','ip']);
-        #Assuming IP is unique in hosts table
-        for my $entry ( @entries)
-        {
-            if ( defined $entry->{ 'ip'})
-            {
-                $::HOST_TAB_CACHE{$entry->{ 'ip'}} = $entry->{ 'node'};
-            }
-        }
-    }
-    if ( exists $::HOST_TAB_CACHE{$ip})
-    {
-        if ( exists( $opt{n} ) ) {
-            return undef;
-        } else {
-            return $::HOST_TAB_CACHE{$ip} . "($ip)";
-        }
-    }
+}
 
-    my $host = getFactoryHostname($type,$mtm,$sn,$side,$rsp);
-    #######################################
-    # Convert hostname to short-hostname
-    #######################################
-    if ( $host =~ /([^\.]+)\./ ) {
-        $host = $1;
-    }
-    return( "$host($ip)" );
-
-#    ###########################################
-#    #  Otherwise, URL is not in IP format
-#    ###########################################
-#    if ( !($url =~ /service:.*:\/\/(.*)/  )) {
-#        if ( $verbose ) {
-#            trace( $request, "Invalid URL: $_[0]" );
-#        }
-#        return undef;
-#    }
-#    return( $1 );
-
+##########################################################################
+# Match hostnames in switch table
+##########################################################################
+sub match_switchtable
+{
 }
 
 sub getFactoryHostname
@@ -1276,6 +1308,61 @@ sub getip_from_iplist
             }
         }
     }
+    return undef;
+}
+
+##########################################################################
+# Match IP addresses to MAC in arp table
+##########################################################################
+sub match_ip_mac
+{
+    my $ips = shift;
+
+    ######################################################
+    # Cache ARP table entries
+    ######################################################
+    if ( !%::ARP_CACHE ) {
+        my $arp;
+        if ( $^O eq 'aix' ) {
+            $arp = `/usr/sbin/arp -a`;
+        } else {
+            $arp = `/sbin/arp -n`;
+        }
+
+        my @arpents = split /\n/, $arp;
+
+
+        foreach my $arpent ( @arpents ) {
+            my ($ip, $mac);
+            if ( $^O eq 'aix' && $arpent =~ /\((\S+)\)\s+at\s+(\S+)/ ) {
+                ($ip, $mac) = ($1,$2);
+                ######################################################
+                # Change mac format to be same as linux. For example:
+                # '0:d:60:f4:f8:22' to '00:0d:60:f4:f8:22'
+                ######################################################
+                if ( $mac ) {
+                    my @mac_sections = split /:/, $mac;
+                    for (@mac_sections ) {
+                        $_ = "0$_" if ( length($_) == 1) ;
+                    }
+                    $mac = join '', @mac_sections;
+                }
+            } elsif ( $arpent =~ /^(\S+)+\s+\S+\s+(\S+)\s/ ) {
+                ($ip, $mac) = ($1,$2);
+            } else {
+                ($ip, $mac) = (undef,undef);
+            }
+           
+            if ( defined($ip) and defined($mac) ) {
+                $::ARP_CACHE{$ip} = $mac;
+            }
+        }
+    }
+
+    if ( exists($::ARP_CACHE{$ips}) ) {
+        return( $::ARP_CACHE{$ips} );
+    }
+
     return undef;
 }
 
@@ -1351,16 +1438,19 @@ sub parse_responses {
 
     my $request = shift;
     my $values  = shift;
-    my $mm      = shift;
     my $length  = shift;
 
     my %outhash = ();
     my @attrs   = (
-       "type",
-       "machinetype-model",
-       "serial-number",
-       "slot",
-       "ip-address" );
+        "type",
+        "machinetype-model",
+        "serial-number",
+        "slot",
+        "ip-address",
+        "bpc-machinetype-model",
+        "bpc-serial-number",
+        "frame-number",
+        "cage-number" );
 
     #######################################
     # RSA/MM Attributes
@@ -1457,24 +1547,24 @@ sub parse_responses {
         ###########################################
         # If MM, use the discovered host
         ###########################################
-        if (!$host and ( $type eq SERVICE_MM ) and ( defined( $mm ))) {
-            my $ip = getip_from_url( $request, $1 );
+#        if (!$host and ( $type eq SERVICE_MM ) and ( defined( $mm ))) {
+#            my $ip = getip_from_url( $request, $1 );
+#
+#            if ( defined( $ip )) {
+#                if ( exists( $mm->{$ip}->{args} )) {
+#                    $mm->{$ip}->{args} =~ /^.*,(.*)$/;
+#                    $host = $1;
+#                }
+#            }
+#        }
 
-            if ( defined( $ip )) {
-                if ( exists( $mm->{$ip}->{args} )) {
-                    $mm->{$ip}->{args} =~ /^.*,(.*)$/;
-                    $host = $1;
-                }
-            }
-        }
-
-        push @result, $host;
+#        push @result, $host;
         ###################################
         # Strip off trailing ",lifetime"
         ###################################
-        my $at = $2;
-        $at =~ s/,\d+$//;
-        push @result, $at;
+#        my $at = $2;
+#        $at =~ s/,\d+$//;
+#        push @result, $at;
 
         ###########################################
         # Strip commas from IP list
@@ -1485,9 +1575,9 @@ sub parse_responses {
         ###########################################
         # Process any extra attributes
         ###########################################
-        foreach ( @{$exattr{$type}} ) {
-             push @result, ($rsp =~ /\($_=([\w\-\.,]+)\)/) ? $1 : "0";
-        }
+#        foreach ( @{$exattr{$type}} ) {
+#             push @result, ($rsp =~ /\($_=([\w\-\.,]+)\)/) ? $1 : "0";
+#        }
         ###########################################
         # Save longest IP for formatting purposes
         ###########################################
@@ -1507,26 +1597,19 @@ sub parse_responses {
     # give a warning message.
     ##########################################################
     my %ip_record;
-    for my $h ( keys %outhash)
-    {
+    for my $h ( keys %outhash ) {
         my ($name, $ip);
-        if ( $h =~ /^([^\(]+)\(([^\)]+)\)$/)
-        {
+        if ( $h =~ /^([^\(]+)\(([^\)]+)\)$/ ) {
             $name = $1;
             $ip   = $2;
 
-        }
-        else
-        {
+        } else {
             next;
         }
 
-        if ( ! $ip_record{$ip})
-        {
+        if ( ! $ip_record{$ip} ) {
             $ip_record{$ip} = $h;
-        }
-        else
-        {
+        } else {
             my $response;
             $response->{data}->[0] =  "IP address of node $h is conflicting to node $ip_record{$ip}. Remove node $h from discovery result.";
             xCAT::MsgUtils->message("W", $response, $request->{callback});
@@ -1534,65 +1617,120 @@ sub parse_responses {
         }
     }
 
-    return( \%outhash );
+    my %vpd_table_hash;
+    my $vpdtab  = xCAT::Table->new( 'vpd' );
+    my @entries = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
+    for my $entry ( @entries ) {
+        if ( $entry->{mtm} and $entry->{serial} ) {
+            $vpd_table_hash{$entry->{mtm} . '*' . $entry->{serial} . '-' . $entry->{side}} = $entry->{ 'node'};
+        }
+    }
+
+    my %hash = ();
+    for my $h ( keys %outhash ) {
+        my $data = $outhash{$h};
+        my $type = @$data[0];
+        my $mtm  = @$data[1];
+        my $sn   = @$data[2];
+        my $frame;
+
+        my ($name, $ip);
+        if ( $h =~ /^([^\(]+)\(([^\)]+)\)$/ ) {
+            $name = $1;
+            $ip   = $2;
+        } else {
+            $name = $h;
+            $ip   = @$data[4];
+        }
+
+        if ( $type =~ /^FSP$/ ) {
+            ############################################################
+            # For HE machine, there are 2 FSPs, but only one FSP have the
+            # BPA information. We need to go through the outhash and
+            # find its BPA
+            ############################################################
+            if ((@$data[5] eq "0" ) and ( @$data[6] eq "0" )) {
+                for my $he_node ( keys %outhash ) {
+                    if ( $mtm eq $outhash{$he_node}->[1] and
+                         $sn eq $outhash{$he_node}->[2] and
+                         $outhash{$he_node}->[5] and
+                         $outhash{$he_node}->[6]
+                        ) {
+                        @$data[5] = $outhash{$he_node}->[5];
+                        @$data[6] = $outhash{$he_node}->[6];
+                        @$data[8] = $outhash{$he_node}->[8];
+                    }
+                }
+            }
+
+            ########################################
+            # Find the parent for this FSP
+            ########################################
+            if (( @$data[5] ne "0" ) and ( @$data[6] ne "0" )) {
+                if ( exists $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-A'} ) {
+                    $frame = $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-A'};
+                } elsif ( exists $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-B'} ) {
+                    $frame = $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-B'};
+                } elsif ( exists $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-'} ) {
+                    $frame = $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-'};
+                } else {
+                    $frame = "Server-@$data[5]-SN@$data[6]";
+                }
+            } else {
+                $frame = $name;
+            }
+        } elsif ( $type =~ /^BPA$/ ) {
+            $frame = $name;
+        }
+
+        push @$data, $frame;
+
+        ########################################
+        # Get the Mac address
+        ########################################
+        my $mac = match_ip_mac( $ip );
+#my $names = $macmap->find_mac( $mac );
+        push @$data, $mac;
+
+        $hash{$h} = $data;
+    }
+
+    return( \%hash );
 }
 
 ##########################################################################
 # Write result to xCat database
 ##########################################################################
 sub xCATdB {
-
     my $outhash = shift;
     my %keyhash = ();
     my %updates = ();
     my %sn_node = ();
-    my %host_ip = ();
-    ############################
-    # Cache vpd table
-    ############################
-    my $vpdtab  = undef;
-    $vpdtab = xCAT::Table->new('vpd');
-    if ($vpdtab)
-    {
-        my @ents=$vpdtab->getAllNodeAttribs(['serial','mtm']);
-        for my $ent ( @ents)
-        {
-            if ( $ent->{mtm} and $ent->{serial} )
-            {
-                # if there is no BPA, or there is the second BPA, change it
-                if ( ! exists $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial} } )
-                {
-                    $sn_node{"Server-" . $ent->{mtm} . "-SN" . $ent->{serial}} = $ent->{node};
-                }
-            }
-        }
-    }
 
-    foreach ( keys %$outhash ) {
-        my $data = $outhash->{$_};
+    foreach my $hostname ( keys %$outhash ) {
+        my $data = $outhash->{$hostname};
         my $type = @$data[0];
-        my $nameips = @$data[5];
-        my ($name,$ips);
-        if ( $nameips =~ /^([^\(]+)\(([^\)]+)\)$/)
+        my $ip   = @$data[4];
+        my $name = $hostname;
+        if ( $hostname =~ /^([^\(]+)\(([^\)]+)\)$/)
         {
             $name = $1;
-            $ips  = $2;
-            $host_ip{$name} = $ips;
+            $ip  = $2;
         }
-
-        $ips    = @$data[4] if ( !$ips);
-        $name   = @$data[5] if ( !$name);
 
         ########################################
         # Write result to hosts table
         ########################################
-        my $hostip = writehost($name,$ips);
+        if ( exists($opt{updatehosts}) ) {
+            my $hostip = writehost($name,$ip);
+        }
 
         if ( $type =~ /^BPA$/ ) {
             my $model  = @$data[1];
             my $serial = @$data[2];
             my $side   = @$data[3];
             my $id     = @$data[7];
+            my $mac    = @$data[10];
 
             ####################################
             # N/A Values
@@ -1601,11 +1739,12 @@ sub xCATdB {
             my $frame = "";
 
             my $values = join( ",",
-               lc($type),$name,$id,$model,$serial,$side,$name,$prof,$frame,$ips );
-            xCAT::PPCdb::add_ppc( lc($type), [$values],1 );
-        }
-        elsif ( $type =~ /^(HMC|IVM)$/ ) {
-            xCAT::PPCdb::add_ppchcp( lc($type), $name,1 );
+               lc($type),$name,$id,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
+            xCAT::PPCdb::add_ppc( lc($type), [$values], 0, 1 );
+        } elsif ( $type =~ /^(HMC|IVM)$/ ) {
+            my $mac    = @$data[10];
+
+            xCAT::PPCdb::add_ppchcp( lc($type), "$name,$mac",1 );
         }
         elsif ( $type =~ /^FSP$/ ) {
             ########################################
@@ -1615,47 +1754,11 @@ sub xCATdB {
             my $model      = @$data[1];
             my $serial     = @$data[2];
             my $side       = @$data[3];
-            $ips           = @$data[4] if ( !$ips);
-            $name          = @$data[5] if ( !$name);
-            my $bpc_model  = @$data[7];
-            my $bpc_serial = @$data[8];
-            my $cageid     = @$data[9];
-
-            ############################################################
-            # For HE machine, there are 2 FSPs, but only one FSP have the 
-            # BPA information. We need to go through the outhash and
-            # find its BPA
-            ############################################################
-            if (($bpc_model eq "0" ) and ( $bpc_serial eq "0" )) 
-            {
-                for my $he_node ( keys %$outhash )
-                {
-                    if ( $model eq $outhash->{$he_node}->[1] and
-                         $serial eq $outhash->{$he_node}->[2] and
-                         $outhash->{$he_node}->[8] and
-                         $outhash->{$he_node}->[9]
-                        )
-                    {
-                        $bpc_model = $outhash->{$he_node}->[7];
-                        $bpc_serial = $outhash->{$he_node}->[8];
-                        $cageid = $outhash->{$he_node}->[9];
-                    }
-                }
-            }
-
-            ########################################
-            # May be no Frame with this FSP
-            ########################################
-            if (( $bpc_model ne "0" ) and ( $bpc_serial ne "0" )) {
-                if ( exists $sn_node{"Server-$bpc_model-SN$bpc_serial"})
-                {
-                    $frame = $sn_node{"Server-$bpc_model-SN$bpc_serial"};
-                }
-                else
-                {
-                    $frame = "Server-$bpc_model-SN$bpc_serial";
-                }
-            }
+            my $bpc_model  = @$data[5];
+            my $bpc_serial = @$data[6];
+            my $cageid     = @$data[8];
+            my $frame      = @$data[9];
+            my $mac        = @$data[10];
 
             ########################################
             # "Factory-default" FSP name format:
@@ -1684,16 +1787,119 @@ sub xCATdB {
             my $server = "";
 
             my $values = join( ",",
-               lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ips );
-            xCAT::PPCdb::add_ppc( "fsp", [$values],1 );
+               lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
+            xCAT::PPCdb::add_ppc( "fsp", [$values], 0, 1 );
         }
         elsif ( $type =~ /^(RSA|MM)$/ ) {
             xCAT::PPCdb::add_systemX( $type, $data );
         }
     }
-#    xCAT::Utils::updateEtcHosts(\%host_ip);
 }
 
+##########################################################################
+# Run makedhcp internally
+##########################################################################
+sub do_makedhcp {
+
+    my $outhash = shift;
+    my @nodes;
+
+    my @tabs   = qw(hosts mac);
+    my %db     = ();
+        
+    foreach ( @tabs ) {
+        $db{$_} = xCAT::Table->new( $_, -create=>1, -autocommit=>1 );
+            if ( !$db{$_} ) {
+            return( "Error opening '$_'" );
+        }
+    }
+
+
+    #####################################
+    # Collect nodenames
+    #####################################
+    foreach my $name ( keys %$outhash ) {
+        if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
+            $name = $1;
+        }
+        
+        #####################################
+        # Check if IP and mac are both
+        # existing for this node
+        #####################################
+        my ($hostsent) = $db{hosts}->getNodeAttribs( $name, [qw(ip)] );
+        if ( !$hostsent or !$hostsent->{ip} ) {
+            xCAT::MsgUtils->message("I", "Cannot find IP address for node $name during makedhcp, skipping", $::callback);
+            next;
+        }
+
+        my ($macent) = $db{mac}->getNodeAttribs( $name, [qw(mac)] );
+        if ( !$macent or !$macent->{mac} ) {
+            xCAT::MsgUtils->message("I", "Cannot find MAC address for node $name during makedhcp, skipping..", $::callback);
+            next;
+        }
+
+        push @nodes, $name;
+    }
+
+    my $node = join ",", @nodes;
+    `makedhcp -n $node`;
+
+    return undef;
+}
+
+##########################################################################
+# Reset the network interfraces if necessary
+##########################################################################
+sub do_resetnet {
+
+    my $req     = shift;
+    my $outhash = shift;
+    my $targets;
+
+    my $hoststab = xCAT::Table->new( 'hosts'); 
+    foreach my $name ( keys %$outhash ) {
+        my $data = $outhash->{$name};
+        my $type = @$data[0];
+        my $ip   = @$data[4];
+        my $mac  = @$data[10];
+        if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
+            $name = $1;
+            $ip   = $2;
+        }
+
+        #####################################
+        # Skip the node if the IP attributes
+        # is same as otherinterfaces
+        #####################################
+        my $ent = $hoststab->getNodeAttribs( $name, ['ip','otherinterfaces'] ); 
+        if ( !$ent->{'ip'} or $ent->{'ip'} eq $ent->{'otherinterfaces'} ) {
+            xCAT::MsgUtils->message("I", "$name: Current hardware IP is the same new setting, or there is no new IP address defined, skipping network reset..", $::callback);
+            next;
+        }
+
+        #####################################
+        # Make the target that will reset its
+        # network interface
+        #####################################
+        $targets->{$type}->{$ip}->{'args'} = "0.0.0.0,$name";
+        $targets->{$type}->{$ip}->{'mac'} = $mac;
+        $targets->{$type}->{$ip}->{'name'} = $name;
+        $targets->{$type}->{$ip}->{'ip'} = $ip;
+        $targets->{$type}->{$ip}->{'type'} = $type;
+        if ( $type !~ /^MM$/ ) {
+            my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$ip] );
+            $targets->{$type}->{$ip}->{'args'} .= ",$netinfo{$ip}{'gateway'},$netinfo{$ip}{'mask'}";
+        }
+    }
+
+    ###########################################
+    # Update target hardware w/discovery info
+    ###########################################
+    rspconfig( $req, $targets );
+
+    return undef;
+}
 
 ##########################################################################
 # Stanza formatting
@@ -1706,12 +1912,10 @@ sub format_stanza {
     #####################################
     # Write attributes
     #####################################
-    foreach ( keys %$outhash ) {
-        my @data = @{$outhash->{$_}};
+    foreach my $name ( keys %$outhash ) {
+        my @data = @{$outhash->{$name}};
         my $type = lc($data[0]);
-        my $name = $data[5];
         my $ip   = $data[4];
-        my $side = $data[3]; 
         my $i = 0;
 
         if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
@@ -1730,31 +1934,34 @@ sub format_stanza {
         foreach ( @attribs ) {
             my $d = $data[$i++];
 
-            if ( /^node$/ ) {
-                next;
-            } elsif ( /^nodetype$/ ) {
+            if ( /^nodetype$/ ) {
                 $d = $type;
             } elsif ( /^groups$/ ) {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $mgt{$type};
-            } elsif ( /^(id|mpa)$/ ) {
-                if ( $type =~ /^(mm|rsa)$/ ) {
-                    $d = (/^id$/) ? "0" : $name;
-                } else {
-                    next;
+            } elsif ( /^id$/ ) {
+                if ( $type =~ /^fsp$/ ) {
+                    $d = $data[$i++]; 
+                } elsif ( $type =~ /^bpa$/ ) {
+                    $i++;
                 }
             } elsif ( /^side$/ ) {
-                if ( $type =~ /^(fsp|bpa)$/ ) {
-                    $d = $side;
-                } else {
+                if ( $type !~ /^(fsp|bpa)$/ ) {
                     next;
                 }
-            } elsif ( /^ip$/ ) {
+            } elsif ( /^otherinterfaces$/ ) {
                 $d = $ip;
             }
 
+            if ( !defined($d) ) {
+                next;
+            }
+
             $result .= "\t$_=$d\n";
+        }
+        if ( exists($opt{updatehosts}) ) {
+            $result .= "\tip=$ip\n";
         }
     }
     return( $result );
@@ -1773,12 +1980,10 @@ sub format_xml {
     #####################################
     # Create XML formatted attributes
     #####################################
-    foreach ( keys %$outhash ) {
-        my @data = @{ $outhash->{$_}};
+    foreach my $name ( keys %$outhash ) {
+        my @data = @{ $outhash->{$name}};
         my $type = lc($data[0]);
-        my $name = $data[5];
         my $ip   = $data[4];
-        my $side = $data[3];
         my $i = 0;
 
         if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
@@ -1792,6 +1997,10 @@ sub format_xml {
         my $href = {
             Node => { }
         };
+        $href->{Node}->{node} = $name;
+        if ( exists($opt{updatehosts}) ) {
+            $href->{Node}->{ip} = $ip;
+        }
         #################################
         # Add each attribute
         #################################
@@ -1804,22 +2013,22 @@ sub format_xml {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
                 $d = $mgt{$type};
-            } elsif ( /^(id|mpa)$/ ) {
-                if ( $type =~ /^(mm|rsa)$/ ) {
-                    $d = (/^id$/) ? "0" : $name;
-                } else {
-                    next;
+            } elsif ( /^id$/ ) {
+                if ( $type =~ /^fsp$/ ) {
+                    $d = $data[$i++];
+                } elsif ( $type =~ /^bpa$/ ) {
+                    $i++;
                 }
             } elsif ( /^side$/ ) {
-                if ( $type =~ /^(fsp|bpa)$/ ) {
-                    $d = $side;
-                } else {
+                if ( $type !~ /^(fsp|bpa)$/ ) {
                     next;
                 }
-            } elsif ( /^node$/ ) {
-                $d = $name;
-            } elsif ( /^ip$/ ) {
+            } elsif ( /^otherinterfaces$/ ) {
                 $d = $ip;
+            }
+
+            if ( !defined($d) ) {
+                next;
             }
             $href->{Node}->{$_} = $d;
         }
@@ -2218,305 +2427,6 @@ sub preprocess_request {
     return \@result;
 }
 
-
-##########################################################################
-# Match SLP IP/ARP MAC/Switch table port to actual switch data
-##########################################################################
-sub switch_cmd {
-
-    my $req = shift;
-    my $slp = shift;
-    my $slp_all = undef;
-    my %hosts;
-    my @entries;
-    my $targets = {};
-    my $hosttab  = xCAT::Table->new( 'hosts' );
-    my $swtab    = xCAT::Table->new( 'switch' );
-
-    ###########################################
-    # No tables
-    ###########################################
-    if ( !defined($swtab)) {
-    #if ( !defined($swtab) or !defined($hosttab) ) {
-        return;
-    }
-    ###########################################
-    # Any MMs/HMCs/FSPs/BPAs in SLP response
-    ###########################################
-    foreach my $slp_entry ( @$slp ) {
-        my $slp_hash = get_slp_attr( $slp_entry);
-        $slp_all->{$slp_hash->{'ip-address'}} = $slp_hash if ($slp_hash);
-    }
-    ###########################################
-    # No MMs/HMCs/FSPs/BPAs in response
-    ###########################################
-    if ( !$slp_all ) {
-        return;
-    }
-
-    ###########################################
-    # Any entries in switch table
-    ###########################################
-    foreach ( $swtab->getAllNodeAttribs([qw(node)]) ) {
-        push @entries, $_->{node};
-    }
-    ###########################################
-    # Any entries in hosts table
-    ###########################################
-    if ( $verbose ) {
-        trace( $req, "SWITCH/HOSTS TABLE:" );
-    }
-    if ( $opt{u})
-    {
-        foreach my $nodename ( @entries ) {
-            my $ent = undef;
-            if ( $hosttab)
-            {
-                my $enthash = $hosttab->getNodeAttribs( $nodename,[qw(ip)]);
-                $ent = $enthash->{ip};
-            }
-            if (!$ent)
-            {
-                my $net_bin = inet_aton($nodename);
-                $ent = inet_ntoa($net_bin) if ($net_bin);
-            }
-
-            if ( !$ent ) {
-                next;
-            }
-
-            $hosts{ $nodename} = $ent;
-            if ( $verbose ) {
-                trace( $req, "\t\t($nodename)->($ent)" );
-            }
-        }
-        ###########################################
-        # No MMs/HMCs in hosts/switch table
-        ###########################################
-        if ( !%hosts ) {
-            return undef;
-        }
-    }
-    ###########################################
-    # Ping each MM/HMCs to update arp table
-    ###########################################
-    my %internal_ping_catch;
-    foreach my $ips ( keys %$slp_all ) {
-        my @all_ips = split /,/, $ips;
-        my $rc = 0;
-        for my $single_ip (@all_ips)
-        {
-            my $rc;
-            if ( exists $internal_ping_catch{ $single_ip})
-            {
-                 $rc = $internal_ping_catch{ $single_ip};
-            }
-            else
-            {
-                trace ($req, "Trying ping $single_ip");
-                #$rc = system("ping -c 1 -w 1 $single_ip 2>/dev/null 1>/dev/null");
-                my $res = `LANG=C ping -c 1 -w 1 $single_ip 2>&1`;
-                if ( $res =~ /100% packet loss/g)
-                { 
-                    $rc = 1;
-                }
-                else
-                {
-                    $rc = 0;
-                }
-		#$rc = $?;
-                $internal_ping_catch{ $single_ip} = $rc;
-            }
-            if ( !$rc )
-            {
-                $slp_all->{$single_ip} = $slp_all->{ $ips};
-                delete $slp_all->{ $ips};
-                last;
-            }
-        }
-        if ( $rc)
-        {
-            trace( $req, "Cannot ping any IP of $ips, it's because the network is too slow?");
-            delete $slp_all->{ $ips};
-        }
-    }
-    ###########################################
-    # Match discovered IP to MAC in arp table
-    ###########################################
-    return undef if ( ! scalar( keys %$slp_all));
-    my $arp;
-    if ( $^O eq 'aix')
-    {
-        $arp = `/usr/sbin/arp -a`;
-    }
-    else
-    {
-        $arp = `/sbin/arp -n`;
-    }
-
-    my @arpents = split /\n/, $arp;
-
-    if ( $verbose ) {
-        trace( $req, "ARP TABLE:" );
-    }
-    my $isMacFound = 0;
-    foreach my $arpent ( @arpents ) {
-        my ($ip, $mac);
-        if ( $^O eq 'aix' && $arpent =~ /\((\S+)\)\s+at\s+(\S+)/)
-        {
-            ($ip, $mac) = ($1,$2);
-            ######################################################
-            # Change mac format to be same as linux. For example:
-            # '0:d:60:f4:f8:22' to '00:0d:60:f4:f8:22'
-            ######################################################
-            if ( $mac)
-            {
-                my @mac_sections = split /:/, $mac;
-                for (@mac_sections)
-                {
-                    $_ = "0$_" if ( length($_) == 1);
-                }
-                $mac = join ':', @mac_sections;
-            }
-        }
-        elsif ( $arpent =~ /^(\S+)+\s+\S+\s+(\S+)\s/)
-        {
-            ($ip, $mac) = ($1,$2);
-        }
-        else
-        {
-             ($ip, $mac) = (undef,undef);
-        }
-        if ( exists( $slp_all->{$ip} )) {
-            if ( $verbose ) {
-                trace( $req, "\t\t($ip)->($mac)" );
-            }
-            $slp_all->{$ip}->{'mac'} = $mac;
-            $isMacFound = 1;
-        }
-    }
-    ###########################################
-    # No discovered IP - MAC matches
-    ###########################################
-    if ( ! $isMacFound) {
-        return;
-    }
-    if ( $verbose ) {
-        trace( $req, "getting switch information...." );
-    }
-    foreach my $ip ( sort keys %$slp_all ) {
-        #######################################
-        # Not in SLP response
-        #######################################
-        if ( !defined( $slp_all->{$ip}->{'mac'} ) or !defined( $macmap )) {
-            next;
-        }
-        #######################################
-        # Get node from switch
-        #######################################
-        my $names = $macmap->find_mac( $slp_all->{$ip}->{'mac'} );
-        if ( !defined( $names )) {
-            if ( $verbose ) {
-                trace( $req, "\t\t($slp_all->{$ip}->{'mac'})-> NOT FOUND" );
-            }
-            next;
-        }
-        
-        #######################################
-        # Identify multiple nodes
-        #######################################
-        my $name;
-        if ( $names =~/,/ ) {
-            $name = disti_multi_node( $req, $names, $slp_all->{$ip});
-            if ( ! $name)
-            {
-                trace( $req, "\t\tCannot identify node $ip.");
-                next;
-            }
-            
-        }
-        else
-        {
-            $name = $names;
-        }
-        if ( $verbose ) {
-            trace( $req, "\t\t($slp_all->{$ip}->{'mac'})-> $name" );
-        }
-        #######################################
-        # In hosts table
-        #######################################
-        if ( $opt{u})
-        {
-            if ( defined( $hosts{$name} )) {
-                if ( $ip eq $hosts{$name} ) {
-                    if ( $verbose ) {
-                        trace( $req, "\t\t\t$slp_all->{$ip}->{'type'} already set '$ip' - skipping" );
-
-                    }
-                }
-                else
-                {
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'args'} = "$hosts{$name},$name";
-                    if ( $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'type'} ne 'MM')
-                    {
-                        my %netinfo = xCAT::DBobjUtils->getNetwkInfo([$hosts{$name}]);
-                        $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'args'} .= ",$netinfo{$hosts{$name}}{'gateway'},$netinfo{$hosts{$name}}{'mask'}";
-                    }
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'mac'}  = $slp_all->{$ip}->{'mac'};
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'name'} = $name;
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'ip'}   = $hosts{$name};
-                    $targets->{$slp_all->{$ip}->{'type'}}->{$ip}->{'type'} = $slp_all->{$ip}->{'type'};
-                }
-            }
-        }
-        else 
-        {
-            #An tentative solution. The final solution should be
-            #if there is any conflicting, remove this entry
-            $hosts{$name} = $ip if ( ! $hosts{$name});
-        }
-    }
-    ###########################################
-    # No rspconfig target found
-    ###########################################
-    if (( $opt{u} and !%$targets) or ( $opt{H} and !%hosts)) {
-        if ( $verbose ) {
-            trace( $req, "No ARP-Switch-SLP matches found" );
-        }
-        return undef;
-    }
-    ###########################################
-    # Update target hardware w/discovery info
-    ###########################################
-    return rspconfig( $req, $targets ) if ($opt{u});
-    ###########################################
-    # Update hosts table
-    ###########################################
-     send_msg( $req, 0, "Updating hosts table...");
-    return update_hosts( $req, \%hosts);
-}
-
-###########################################
-# Update hosts table
-###########################################
-sub update_hosts
-{
-    my $req = shift;
-    my $hosts = shift;
-    my $hoststab = xCAT::Table->new( 'hosts', -create=>1, -autocommit=>0 );
-    if ( !$hoststab)
-    {
-        send_msg( $req, 1,  "Cannot open hosts table");
-        return undef;
-    }
-    for my $node (keys %$hosts)
-    {
-        send_msg( $req, 0, "\t$node => $hosts->{$node}");
-        $hoststab->setNodeAttribs( $node, {ip=>$hosts->{$node}});
-    }
-    $hoststab->commit;
-    return SUCCESS;
-}
 ##########################################################################
 # Distinguish 
 ##########################################################################
@@ -2573,35 +2483,6 @@ sub disti_multi_node
         }
     }
     return $correct_node;    
-}
-##########################################################################
-# Run rspconfig against targets
-##########################################################################
-sub get_slp_attr
-{
-    my $slp_entry = shift;
-    my $slp_hash  = undef;
-
-    $slp_entry =~ s/^[^\(]*?\((.*)\)[^\)]*?$/$1/;
-    
-    my @entries = split /\),\(/, $slp_entry;
-    for my $entry ( @entries)
-    {
-        if ( $entry =~ /^(.+?)=(.*)$/)
-        {
-            $slp_hash->{$1} = $2;
-        }
-    }
-    
-    if ( $slp_hash->{'type'})
-    {
-        $slp_hash->{'type'} = 'MM'  if ($slp_hash->{'type'} eq SERVICE_MM);
-        $slp_hash->{'type'} = 'FSP' if ($slp_hash->{'type'} eq SERVICE_FSP);
-        $slp_hash->{'type'} = 'BPA' if ($slp_hash->{'type'} eq SERVICE_BPA);
-        $slp_hash->{'type'} = 'HMC' if ($slp_hash->{'type'} eq SERVICE_HMC);
-    }
-    
-    return $slp_hash;
 }
 
 ##########################################################################
@@ -2665,66 +2546,27 @@ sub rspconfig {
         ##################################
         # Process each response
         ##################################
-        foreach ( @{@$result[0]} ) {
-            if ( $verbose ) {
-                trace( $request, "$ip: $_" );
-            }
-            /^(\S+)\s+(\d+)/;
-            my $cmd = $1;
-            $Rc = $2;
-
-            if ( $cmd =~ /^network_reset/ ) {
-                if ( $Rc != SUCCESS ) {
-                    delete $rsp_dev{$ip};
-                    next;
-                }
+        if ( defined(@$result[0]) ) {
+            foreach ( @{@$result[0]} ) {
                 if ( $verbose ) {
-                    trace( $request,"Resetting management-module ($ip)...." );
+                    trace( $request, "$ip: $_" );
+                }
+                /^(\S+)\s+(\d+)/;
+                my $cmd = $1;
+                $Rc = $2;
+
+                if ( $cmd =~ /^network_reset/ ) {
+                    if ( $Rc != SUCCESS ) {
+                        delete $rsp_dev{$ip};
+                        next;
+                    }
+                    if ( $verbose ) {
+                        trace( $request,"Resetting management-module ($ip)...." );
+                    }
                 }
             }
         }
     }
-    ######################################
-    # Update etc/hosts
-    ######################################
-    my $fname = "/etc/hosts";
-    if ( $verbose ) {
-        trace( $request, "updating /etc/hosts...." );
-    }
-    unless ( open( HOSTS,"<$fname" )) {
-        if ( $verbose ) {
-            trace( $request, "Error opening '$fname'" );
-        }
-        return( \%rsp_dev );
-    }
-    my @rawdata = <HOSTS>;
-    close( HOSTS );
-
-    ######################################
-    # Remove old entry
-    ######################################
-    foreach ( keys %rsp_dev) {
-        my ($ip,$host) = split /,/,$rsp_dev{$_}->{args};
-        foreach ( @rawdata ) {
-            if ( /^#/ or /^\s*\n$/ ) {
-                next;
-            } elsif ( /\s+$host\s+$/ ) {
-                s/$_//;
-            }
-        }
-        push @rawdata,"$ip\t$host\n";
-    }
-    ######################################
-    # Rewrite file
-    ######################################
-    unless ( open( HOSTS,">$fname" )) {
-        if ( $verbose ) {
-            trace( $request, "Error opening '$fname'" );
-        }
-        return( \%rsp_dev );
-    }
-    print HOSTS @rawdata;
-    close( HOSTS );
     return( \%rsp_dev );
 }
 
@@ -2782,7 +2624,7 @@ sub get_rsp_dev
         # Get HMC userid/password
         #############################################
         foreach ( keys %$hmc ) {
-            ( $hmc->{$_}->{username}, $hmc->{$_}->{password}) = xCAT::PPCdb::credentials( $_, lc($hmc->{$_}->{'type'})); 
+            ( $hmc->{$_}->{username}, $hmc->{$_}->{password}) = xCAT::PPCdb::credentials( $hmc->{$_}->{name}, lc($hmc->{$_}->{'type'})); 
             trace( $request, "user/passwd for $_ is $hmc->{$_}->{username} $hmc->{$_}->{password}");
         }
     }
@@ -2793,7 +2635,7 @@ sub get_rsp_dev
         # Get FSP userid/password
         #############################################
         foreach ( keys %$fsp ) {
-            ( $fsp->{$_}->{username}, $fsp->{$_}->{password}) = xCAT::PPCdb::credentials( $_, lc($fsp->{$_}->{'type'})); 
+            ( $fsp->{$_}->{username}, $fsp->{$_}->{password}) = xCAT::PPCdb::credentials( $fsp->{$_}->{name}, lc($fsp->{$_}->{'type'})); 
             trace( $request, "user/passwd for $_ is $fsp->{$_}->{username} $fsp->{$_}->{password}");
         }
     }
@@ -2804,7 +2646,7 @@ sub get_rsp_dev
         # Get BPA userid/password
         #############################################
         foreach ( keys %$bpa ) {
-            ( $bpa->{$_}->{username}, $bpa->{$_}->{password}) = xCAT::PPCdb::credentials( $_, lc($bpa->{$_}->{'type'})); 
+            ( $bpa->{$_}->{username}, $bpa->{$_}->{password}) = xCAT::PPCdb::credentials( $bpa->{$_}->{name}, lc($bpa->{$_}->{'type'})); 
             trace( $request, "user/passwd for $_ is $bpa->{$_}->{username} $bpa->{$_}->{password}");
         }
     }
