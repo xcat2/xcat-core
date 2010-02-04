@@ -123,3 +123,9 @@ fi
 /install/postscripts
 /install/prescripts
 %defattr(-,root,root)
+
+%postun
+%ifnos linux
+/usr/sbin/rmitab xcatd
+%endif
+
