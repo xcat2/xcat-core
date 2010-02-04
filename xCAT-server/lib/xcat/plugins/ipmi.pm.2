@@ -1270,7 +1270,7 @@ sub inv {
         $subcommand = "all";
     }
 	if($subcommand eq "all") {
-		@types = qw(model serial deviceid mprom guid misc hw asset);
+		@types = qw(model serial deviceid mprom guid misc hw asset firmware);
 	}
 	elsif($subcommand eq "asset") {
         $sessdata->{skipotherfru}=1;
@@ -1443,7 +1443,6 @@ sub got_bmc_fw_info {
 			my @a = ($fw_rev2);
             my $prefix = pack("C*",@returnd[0..3]);
             if ($prefix =~ /yuoo/i) { #we have an imm
-                print "DEBUG: an IMM!\n";
                 $isanimm=1;
             }
 			$mprom = sprintf("%d.%s (%s)",$fw_rev1,decodebcd(\@a),getascii(@returnd));
@@ -1452,7 +1451,7 @@ sub got_bmc_fw_info {
 		$mprom = sprintf("%d.%s",$fw_rev1,decodebcd(\@a));
 	}
     my $fru = FRU->new();
-   	$fru->rec_type("mprom");
+   	$fru->rec_type("mprom,firmware,bmc,imm");
    	$fru->desc("BMC Firmware");
    	$fru->value($mprom);
    	$sessdata->{fru_hash}->{mprom} = $fru;
@@ -1489,24 +1488,26 @@ sub get_uefi_version_with_xid {
     }
     splice @data,0,5;
     $sessdata->{fmapixid} = \@data;
-    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[3,0,0,0xa,0x44,@{$sessdata->{fmapixid}},0x84,0x62,0x69,0x6f,0x73],callback=>\&get_uefi_version_with_openxid,callback_args=>$sessdata);
+    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[3,0,0,0xa,0x44,@{$sessdata->{fmapixid}},0x84,0x62,0x69,0x6f,0x73],callback=>\&waitfor_openxid,callback_args=>$sessdata);
 }
 
-sub get_uefi_version_with_openxid {
+sub waitfor_openxid {
     if (check_rsp_errors(@_)) {
         return;
     }
     my $rsp = shift;
     my $sessdata = shift;
     my @data = @{$rsp->{data}};
-    hexdump(\@data);
     if ($data[2] != 0) {
         sendmsg([1,"Error2 retrieving UEFI build version"],$sessdata->{node});
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
         return;
     }
-    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x9,0,0,0x5,0x44,@{$sessdata->{fmapixid}}],callback=>\&got_uefi_buildid,callback_args=>$sessdata);
-    #$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0xa,0,0,0xf,0x44,@{$sessdata->{fmapixid}},0x87,0x62,0x75,0x69,0x6C,0x64,0x69,0x64,0x11,0x52],callback=>\&got_uefi_buildid,callback_args=>$sessdata);
+    if ((scalar @data) > 4 and $data[5] == 0x40) { #ready to proceed
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0xa,0,0,0xf,0x44,@{$sessdata->{fmapixid}},0x87,0x62,0x75,0x69,0x6C,0x64,0x69,0x64,0x11,0x52],callback=>\&got_uefi_buildid,callback_args=>$sessdata);
+    } else {
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x9,0,0,0x5,0x44,@{$sessdata->{fmapixid}}],callback=>\&waitfor_openxid,callback_args=>$sessdata);
+    }
 }
 sub got_uefi_buildid {
     if (check_rsp_errors(@_)) {
@@ -1515,11 +1516,7 @@ sub got_uefi_buildid {
     my $rsp = shift;
     my $sessdata = shift;
     my @data = @{$rsp->{data}};
-        hexdump(\@data);
-        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
-        return;
     if ($data[2] != 0) {
-        hexdump(\@data);
         sendmsg([1,"Error3 retrieving UEFI build version"],$sessdata->{node});
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
         return;
@@ -1537,7 +1534,6 @@ sub got_uefi_buildversion {
     my $sessdata = shift;
     my @data = @{$rsp->{data}};
     if ($data[2] != 0) {
-        hexdump(\@data);
         sendmsg([1,"Error4 retrieving UEFI build version"],$sessdata->{node});
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
         return;
@@ -4538,7 +4534,6 @@ sub start_sdr_record {
     my $rid_ls = shift @{$sessdata->{sdr_fetch_args}};
     my $rid_ms = shift @{$sessdata->{sdr_fetch_args}};
     my @returnd = ($rsp->{code},@{$rsp->{data}});
-hexdump(\@returnd);
 	my $code = $returnd[0];
 	if($code != 0x00) {
 		my $text = $codes{$code};
