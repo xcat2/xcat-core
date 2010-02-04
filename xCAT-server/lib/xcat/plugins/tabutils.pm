@@ -1383,17 +1383,17 @@ sub nodels
 #########
 #  tabch
 #########
+
 sub tabch {
 	my $args = shift;
 	my $callback = shift;
 	my @ARGV = @{$args};
 	my $delete = 0;
-	my $fo = $ARGV[0];
-	
-	if($ARGV[0] =~ /^-d$/){
+	if ($ARGV[0] =~ /^-d$/){
 		shift @ARGV;
 		$delete = 1;
 	}
+	
 	my $target = shift @ARGV;
 	my %tables;
 	my %keyhash=();
@@ -1408,7 +1408,6 @@ sub tabch {
 	} else {
 		unshift(@ARGV, $target);
 	}
-
 
 	if($delete){
 		my @tables_to_del=@ARGV;
@@ -1439,7 +1438,15 @@ sub tabch {
 					$callback->({error => [ "Table $table does not exist."],errorcode=>[1]});
 				}
 			}
+		$tableupdates{$table}{$column}=$value;
 			$tableupdates{$table}{$column}=$value;
+		}
+  	#commit all the changes
+  	foreach (keys %tables) {
+    	if (exists($tableupdates{$_})) {
+    		$tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+			}
+			$tables{$_}->commit;
 		}
 
 		#commit all the changes
