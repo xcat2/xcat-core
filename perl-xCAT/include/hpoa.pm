@@ -10,7 +10,7 @@
 ## For example:
 ## 	hpoa->new(oaAddress => '16.129.49.209');
 
-package xCAT::hpoa;
+package hpoa;
 
 use strict;
 

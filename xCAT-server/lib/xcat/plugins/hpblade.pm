@@ -12,6 +12,7 @@ BEGIN
 	$::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
+use lib "$::XCATROOT/lib/include";
 
 use strict;
 use xCAT::Table;
@@ -27,7 +28,7 @@ use Net::SSLeay qw(die_now die_if_ssl_error);
 use Data::Dumper;
 use POSIX "WNOHANG";
 use Getopt::Long;
-use xCAT::hpoa;
+use hpoa;
 
 sub handled_commands {
 	return {
