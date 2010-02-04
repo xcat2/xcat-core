@@ -135,7 +135,7 @@ sub process_request
         return tabgrep($nodes, $callback);
     }
     elsif ($command eq "tabch"){
-        return tabgrep($args, $callback);
+        return tabch($args, $callback);
     }
     else
     {
@@ -1387,6 +1387,13 @@ sub tabch {
 	my $args = shift;
 	my $callback = shift;
 	my @ARGV = @{$args};
+	my $delete = 0;
+	my $fo = $ARGV[0];
+	
+	if($ARGV[0] =~ /^-d$/){
+		shift @ARGV;
+		$delete = 1;
+	}
 	my $target = shift @ARGV;
 	my %tables;
 	my %keyhash=();
@@ -1401,32 +1408,46 @@ sub tabch {
 	} else {
 		unshift(@ARGV, $target);
 	}
-	my %tableupdates;
-	for (@ARGV) {
-		my $temp;
-		my $table;
-		my $column;
-		my $value;
-		($table,$temp) = split('\.',$_,2);
-		($column,$value) = split("=",$temp,2);
-		unless ($tables{$table}) {
-			my $tab = xCAT::Table->new($table,-create => 1,-autocommit => 0);
-			if ($tab) {
-				$tables{$table}=$tab;
-			} else {
-				print "Table $table does not exist.\n";
-				exit(1);
-			}
+
+
+	if($delete){
+		my @tables_to_del=@ARGV;
+		if(@tables_to_del == 0){
+			$callback->({error => ["Missing table name."],errorcode=>[1]});
+			return;
 		}
-		$tableupdates{$table}{$column}=$value;
+
+		for(@tables_to_del){
+			$tables{$_} = xCAT::Table->new($_,-create=> 1,-autocommit => 0);
+			$tables{$_}->delEntries(\%keyhash);
+			$tables{$_}->commit;
+		}
+	}else{	
+		my %tableupdates;
+		for (@ARGV) {
+			my $temp;
+			my $table;
+			my $column;
+			my $value;
+			($table,$temp) = split('\.',$_,2);
+			($column,$value) = split("=",$temp,2);
+			unless ($tables{$table}) {
+				my $tab = xCAT::Table->new($table,-create => 1,-autocommit => 0);
+				if ($tab) {
+					$tables{$table}=$tab;
+				} else {
+					$callback->({error => [ "Table $table does not exist."],errorcode=>[1]});
+				}
+			}
+			$tableupdates{$table}{$column}=$value;
+		}
+
+		#commit all the changes
+		foreach (keys %tables) {
+			if (exists($tableupdates{$_})) {
+				$tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+			}
+			$tables{$_}->commit;
+		}
 	}
-
-  #commit all the changes
-  foreach (keys %tables) {
-    if (exists($tableupdates{$_})) {
-      $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
-    }
-    $tables{$_}->commit;
-  }
 }
-
