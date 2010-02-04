@@ -21,7 +21,7 @@ require xCAT::Table;
 use POSIX qw(ceil);
 use Socket;
 use strict;
-#use warnings "all";
+use warnings "all";
 require xCAT::InstUtils;
 require xCAT::Schema;
 require Data::Dumper;
@@ -2135,15 +2135,15 @@ For an example
 =cut
 
 #-----------------------------------------------------------------------
-%::PING_CACHE;
+my %PING_CACHE;
 sub isPingable
 {
     my $ip = shift;
 
     my $rc;
-    if ( exists $::PING_CACHE{ $ip})
+    if ( exists $PING_CACHE{ $ip})
     {
-         $rc = $::PING_CACHE{ $ip};
+         $rc = $PING_CACHE{ $ip};
     }
     else
     {
@@ -2156,7 +2156,7 @@ sub isPingable
         {
             $rc = 0;
         }
-        $::PING_CACHE{ $ip} = $rc;
+        $PING_CACHE{ $ip} = $rc;
     }
 
     return ! $rc;    
