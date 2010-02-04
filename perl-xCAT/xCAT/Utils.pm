@@ -854,7 +854,7 @@ sub runcmd
 
     my ($class, $cmd, $exitcode, $refoutput) = @_;
     $::RUNCMD_RC = 0;
-    if (!$xCAT::Utils::NO_STDERR_REDIRECT)
+    if (defined($xCAT::Utils::NO_STDERR_REDIRECT) && !$xCAT::Utils::NO_STDERR_REDIRECT)
     {
         if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
 
