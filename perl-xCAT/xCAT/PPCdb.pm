@@ -45,7 +45,8 @@ sub add_ppc {
     my $hwtype   = shift;
     my $values   = shift;
     my $not_overwrite = shift;
-    my @tabs     = qw(ppc vpd nodehm nodelist nodetype); 
+    my $otherinterfaces = shift;
+    my @tabs     = qw(ppc vpd nodehm nodelist nodetype hosts mac); 
     my %db       = ();
     my %nodetype = (
         fsp  => $::NODETYPE_FSP,
@@ -77,7 +78,8 @@ sub add_ppc {
             $server,
             $pprofile,
             $parent,
-            $ips ) = split /,/;
+            $ips,
+            $mac ) = split /,/;
          
         ###############################
         # Update nodetype table
@@ -155,7 +157,27 @@ sub add_ppc {
                  });
             $db{vpd}{commit} = 1;
         }
+
+        ###############################
+        # Update hosts table
+        ###############################
+        if ( $otherinterfaces ) {
+            $db{hosts}->setNodeAttribs( $name,
+               { otherinterfaces=>$ips });
+        } else {
+            $db{hosts}->setNodeAttribs( $name,
+                { ip=>$ips });
+        }
+        $db{hosts}{commit} = 1;
         
+        ###############################
+        # Update mac table
+        ###############################
+        if ( $mac ) {
+            $db{mac}->setNodeAttribs( $name,
+                { mac=>$mac });
+        }
+        $db{mac}{commit} = 1;
     }
 
     ###################################
@@ -477,9 +499,11 @@ sub updategroups {
 sub add_ppchcp {
 
     my $hwtype = shift;
-    my $name   = shift;
-    my @tabs   = qw(ppchcp nodehm nodelist nodetype);
+    my $values = shift;
+    my @tabs   = qw(ppchcp nodehm nodelist nodetype mac);
     my %db     = ();
+
+    my ($name, $mac) = split ',', $values;
 
     ###################################
     # Open database needed
@@ -509,6 +533,11 @@ sub add_ppchcp {
     # Update nodetype table
     ###################################
     $db{nodetype}->setNodeAttribs( $name, {nodetype=>lc($hwtype)});
+
+    ###################################
+    # Update mac table
+    ###################################
+     $db{mac}->setNodeAttribs( $name, {mac=>$mac});
 
     ###################################
     # Update nodelist table

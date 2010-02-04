@@ -2527,11 +2527,8 @@ sub nodeonmynet
     {
         $nodetocheck = shift;
     }
-    unless (inet_aton($nodetocheck))
-    {
-        return 0;
-    }
-    my $nodeip = inet_ntoa(inet_aton($nodetocheck));
+
+    my $nodeip = getNodeIPaddress( $nodetocheck );
     unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/)
     {
         return 0;    #Not supporting IPv6 here IPV6TODO
@@ -2587,6 +2584,36 @@ sub nodeonmynet
         }
     }
     return 0;
+}
+
+-------------------------------------------------------------------------------
+
+=head3   getNodeIPaddress
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub getNodeIPaddress 
+{
+    my $nodetocheck = shift;
+    my $nodeip;
+
+    if ( inet_aton($nodetocheck) ) {
+        $nodeip = inet_ntoa(inet_aton($nodetocheck));
+    } else {
+        my $hoststab = xCAT::Table->new( 'hosts');
+        my $ent = $hoststab->getNodeAttribs( $nodetocheck, ['ip'] );
+        if ( $ent->{'ip'} ) {
+            $nodeip = $ent->{'ip'};
+        }
+    }
+
+    if ( $nodeip ) {
+        return $nodeip;
+    } else {
+        return undef;
+    }
 }
 
 #-------------------------------------------------------------------------------
