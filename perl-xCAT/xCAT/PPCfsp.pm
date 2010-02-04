@@ -165,7 +165,6 @@ sub connect {
     #    Set-Cookie: asm_session=3038839768778613290
     #
     ##################################
-
     if ( $res->as_string =~ /Set-Cookie: asm_session=(\d+)/ ) {   
         ##############################
         # Successful logon....
@@ -1597,7 +1596,6 @@ sub netcfg
     my $form = undef;
     
     my $res = get_netcfg( $exp, $request, $id, \$interfaces, \$form);
-
     return $res if ( $res->[0] == RC_ERROR);
 		
     my $output = "";
@@ -1674,8 +1672,31 @@ sub get_netcfg
         if ( !defined( $$form )) {
             return( [RC_ERROR,"'Network Configuration' form not found"] );
         } 
-    }
+    } else {
+        my $data = $$form->click('submit');
+        $res = $ua->request( $data);
+        $$form = HTML::Form->parse( $res->content, $res->base );
+        if ( !defined( $$form )) {
+            return( [RC_ERROR,"'Network Configuration' form not found' form not found"] );
+        }
+        if ( $$form->find_input('ip', 'radio', 1))
+        {
+            my $ipv4Radio = $$form->find_input('ip', 'radio', 1);
+            if (!$ipv4Radio)
+            {
+                print "Cannot find IPv4 option\n";
+                exit;
+            }
+            #$ipv4Radio->check();
     
+            my $data = $$form->click('submit');
+            $res = $ua->request( $data);
+            $$form = HTML::Form->parse( $res->content, $res->base );
+            if ( !defined( $$form )) {
+                return( [RC_ERROR,"'Network Configuration' form not found"] );
+            }
+        }
+     }    
     #######################################
     # Parse the form to get the inc input
     #######################################

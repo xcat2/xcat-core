@@ -1508,7 +1508,7 @@ sub sshcmds_on_hmc
         ################################
         # Get userid and password 
         ################################
-        my @cred = ($target_dev->{'username'},$target_dev->{'password'});
+        my @cred = ($user, $password);
         $request{$individual_ip}{cred} = \@cred;
 
         @exp = xCAT::PPCcli::connect( \%request, 'hmc', $individual_ip);

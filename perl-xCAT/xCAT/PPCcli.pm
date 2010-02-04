@@ -1188,14 +1188,16 @@ sub network_reset {
 #####################################
     my @eth_ip = split /,/,$current_all_ip;
     my $i;
+    my $matched = 0;
     for( $i=0; $i < scalar(@eth_ip); $i++)
     {
         if (@eth_ip[$i] eq $current_ip)
         {
+            $matched = 1;
             last;
         }
     }
-    if ($i >= scalar(@eth_ip))
+    if ( !$matched )
     {
 # What's happen?
         return ( [RC_ERROR,"No appropriate IP addresses to be updated. This could be a internal bug of xCAT."]);
