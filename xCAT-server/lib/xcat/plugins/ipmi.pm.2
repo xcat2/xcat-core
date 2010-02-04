@@ -79,7 +79,6 @@ my $ndebug = 0;
 my @cmdargv;
 my $sock;
 my $noclose;
-my %fru_hash;
 my %sessiondata; #hold per session variables, in preparation for single-process strategy
 my %pendingtransactions; #list of peers with callbacks, callback arguments, and timer expiry data
 my $ipmiv2=0;
@@ -91,7 +90,6 @@ use xCAT::data::ibmleds;
 use xCAT::data::ipmigenericevents;
 use xCAT::data::ipmisensorevents;
 my $cache_version = 3;
-my $frudex; #iterator for initfru to use
 my %sdr_caches; #store sdr cachecs in memory indexed such that identical nodes do not hit the disk multiple times
 
 my $status_noop="XXXno-opXXX";
@@ -497,6 +495,8 @@ sub on_bmc_connect {
        }
 	} elsif($command eq "rvitals") {
         vitals($sessdata);
+	} elsif($command eq "rinv") {
+        inv($sessdata);
     }
     return;
     my @output;
@@ -1093,7 +1093,7 @@ sub power_with_context {
         } else {
 		    sendmsg($sessdata->{powerstatus},$sessdata->{node});
         }
-        if (scalar @{$sessdata->{sensorstoread}}) { #if we are in an rvitals path, hook back into good graces
+        if ($sessdata->{sensorstoread} and scalar @{$sessdata->{sensorstoread}}) { #if we are in an rvitals path, hook back into good graces
             $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
             readsensor($sessdata); #next
         }
@@ -1257,18 +1257,14 @@ sub beacon_answer {
 }
 
 sub inv {
-	my $subcommand = shift;
+    my $sessdata = shift;
+	my $subcommand = $sessdata->{subcommand};
 
 	my $rc = 0;
 	my $text;
 	my @output;
 	my @types;
-	my $format = "%-20s %s";
 
-	($rc,$text) = initfru();
-	if($rc != 0) {
-		return($rc,$text);
-	}
 
     unless ($subcommand) {
         $subcommand = "all";
@@ -1277,250 +1273,64 @@ sub inv {
 		@types = qw(model serial deviceid mprom guid misc hw asset);
 	}
 	elsif($subcommand eq "asset") {
+        $sessdata->{skipotherfru}=1;
 		@types = qw(asset);
 	}
 	elsif($subcommand eq "model") {
+        $sessdata->{skipotherfru}=1;
 		@types = qw(model);
 	}
 	elsif($subcommand eq "serial") {
+        $sessdata->{skipotherfru}=1;
 		@types = qw(serial);
 	}
 	elsif($subcommand eq "vpd") {
+        $sessdata->{skipotherfru}=1;
 		@types = qw(model serial deviceid mprom);
 	}
 	elsif($subcommand eq "mprom") {
+        $sessdata->{skipfru}=1; #full fru read is expensive, skip it
 		@types = qw(mprom);
 	}
 	elsif($subcommand eq "misc") {
+        $sessdata->{skipotherfru}=1;
 		@types = qw(misc);
 	}
 	elsif($subcommand eq "deviceid") {
+        $sessdata->{skipfru}=1; #full fru read is expensive, skip it
 		@types = qw(deviceid);
 	}
 	elsif($subcommand eq "guid") {
+        $sessdata->{skipfru}=1; #full fru read is expensive, skip it
 		@types = qw(guid);
 	}
 	elsif($subcommand eq "uuid") {
+        $sessdata->{skipfru}=1; #full fru read is expensive, skip it
 		@types = qw(guid);
 	}
 	else {
         @types = ($subcommand);
 		#return(1,"unsupported BMC inv argument $subcommand");
 	}
-
-	my $otext;
+    $sessdata->{invtypes} = \@types;
+	initfru($sessdata);
+}
+sub fru_initted {
+    my $sessdata = shift;
 	my $key;
+    my @types = @{$sessdata->{invtypes}};
+	my $format = "%-20s %s";
 
-	foreach $key (sort keys %fru_hash) {
-		my $fru = $fru_hash{$key};
+	foreach $key (sort keys %{$sessdata->{fru_hash}}) {
+		my $fru = $sessdata->{fru_hash}->{$key};
         my $type;
         foreach $type (split /,/,$fru->rec_type) {
     		if(grep {$_ eq $type} @types) {
-    			$otext = sprintf($format,$fru_hash{$key}->desc . ":",$fru_hash{$key}->value);
-    			#print $otext;
-    			push(@output,$otext);
+    			sendmsg(sprintf($format,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$sessdata->{node});
                 last;
             }
         }
 	}
-
-	return($rc,@output);
-}
-
-sub initoemfru {
-	my $mfg_id = shift;
-	my $prod_id = shift;
-	my $device_id = shift;
-
-	my $netfun;
-	my @cmd;
-	my @returnd = ();
-	my $error;
-	my $rc = 0;
-	my $text;
-	my @output;
-	my $code;
-
-	if($mfg_id == 2 && ($prod_id == 34869 or $prod_id == 31081 or $prod_id==34888)) {
-		$netfun = 0xc8;
-		
-		@cmd=(0x05);
-		$error = docmd(
-			$netfun,
-			\@cmd,
-			\@returnd
-		);
-
-		if($error) {
-			$rc = 1;
-			$text = $error;
-			return($rc,$text);
-		}
-
-		$code = $returnd[0];
-
-		if($code == 0x00) {
-		}
-		else {
-			$rc = 1;
-			$text = $codes{$code};
-		}
-
-		if($rc != 0) {
-			if(!$text) {
-				$text = sprintf("unknown response %02x",$code);
-			}
-			return($rc,$text);
-		}
-
-		my @oem_fru_data = @returnd[1..@returnd-2];
-		my $model_type = getascii(@oem_fru_data[0..3]);
-		my $model_number = getascii(@oem_fru_data[4..6]);
-		my $serial = getascii(@oem_fru_data[7..13]);
-		my $model = "$model_type-$model_number";
-
-		my $fru = FRU->new();
-		$fru->rec_type("serial");
-		$fru->desc("Serial Number");
-		$fru->value($serial);
-		$fru_hash{1} = $fru;
-
-		$fru = FRU->new();
-		$fru->rec_type("model");
-		$fru->desc("Model Number");
-		$fru->value($model);
-		$fru_hash{2} = $fru;
-
-		return(2,"");
-	}
-	if($mfg_id == 2 && $prod_id == 4 && 0) {
-		$netfun = 0x3a;
-		
-		@cmd=(0x0b,0x0,0x0,0x0,0x1,0x8);
-		$error = docmd(
-			$netfun,
-			\@cmd,
-			\@returnd
-		);
-
-		if($error) {
-			$rc = 1;
-			$text = $error;
-			return($rc,$text);
-		}
-
-		$code = $returnd[0];
-
-		if($code == 0x00) {
-		}
-		else {
-			$rc = 1;
-			$text = $codes{$code};
-		}
-
-		if($rc != 0) {
-			if(!$text) {
-				$text = sprintf("unknown response %02x",$code);
-			}
-			return($rc,$text);
-		}
-
-hexadump(\@returnd);
-return(2,"");
-
-		my @oem_fru_data = @returnd[1..@returnd-2];
-		my $model_type = getascii(@oem_fru_data[0..3]);
-		my $model_number = getascii(@oem_fru_data[4..6]);
-		my $serial = getascii(@oem_fru_data[7..13]);
-		my $model = "$model_type-$model_number";
-
-		my $fru = FRU->new();
-		$fru->rec_type("serial");
-		$fru->desc("Serial Number");
-		$fru->value($serial);
-		$fru_hash{1} = $fru;
-
-		$fru = FRU->new();
-		$fru->rec_type("model");
-		$fru->desc("Model Number");
-		$fru->value($model);
-		$fru_hash{2} = $fru;
-
-		return(2,"");
-	}
-	if($mfg_id == 2 && $prod_id == 20) {
-		my $serial = "unknown";
-		my $model = "x3655";
-
-		my $fru = FRU->new();
-		$fru->rec_type("serial");
-		$fru->desc("Serial Number");
-		$fru->value($serial);
-		$fru_hash{1} = $fru;
-
-		$fru = FRU->new();
-		$fru->rec_type("model");
-		$fru->desc("Model Number");
-		$fru->value($model);
-		$fru_hash{2} = $fru;
-
-		return(2,"");
-	}
-	if($mfg_id == 2 && $prod_id == 3) {
-		my $serial = "unknown";
-		my $model = "x346";
-
-		my $fru = FRU->new();
-		$fru->rec_type("serial");
-		$fru->desc("Serial Number");
-		$fru->value($serial);
-		$fru_hash{1} = $fru;
-
-		$fru = FRU->new();
-		$fru->rec_type("model");
-		$fru->desc("Model Number");
-		$fru->value($model);
-		$fru_hash{2} = $fru;
-
-		return(2,"");
-	}
-	if($mfg_id == 2 && $prod_id == 4) {
-		my $serial = "unknown";
-		my $model = "x336";
-
-		my $fru = FRU->new();
-		$fru->rec_type("serial");
-		$fru->desc("Serial Number");
-		$fru->value($serial);
-		$fru_hash{1} = $fru;
-
-		$fru = FRU->new();
-		$fru->rec_type("model");
-		$fru->desc("Model Number");
-		$fru->value($model);
-		$fru_hash{2} = $fru;
-
-		return(2,"");
-	}
-   my $serial = "unkown";
-   my $model = "unkown";
-
-   my $fru = FRU->new();
-	$fru->rec_type("serial");
-	$fru->desc("Serial Number");
-	$fru->value($serial);
-	$fru_hash{1} = $fru;
-
-	$fru = FRU->new();
-	$fru->rec_type("model");
-	$fru->desc("Model Number");
-	$fru->value($model);
-	$fru_hash{2} = $fru;
-
-	return(2,"");
-
-
-	return(1,"No OEM FRU Support");
 }
 
 sub add_textual_fru {
@@ -1529,6 +1339,7 @@ sub add_textual_fru {
     my $category = shift;
     my $subcategory = shift;
     my $types = shift;
+    my $sessdata = shift;
 
     if ($parsedfru->{$category} and $parsedfru->{$category}->{$subcategory}) {
         my $fru;
@@ -1553,7 +1364,8 @@ sub add_textual_fru {
                 }
                     
             }
-            $fru_hash{$frudex++} = $fru;
+            $sessdata->{fru_hash}->{$sessdata->{frudex}} = $fru;
+            $sessdata->{frudex} += 1;
         }
     }
 }
@@ -1563,101 +1375,34 @@ sub add_textual_frus {
     my $categorydesc = shift;
     my $category = shift;
     my $type = shift;
+    my $sessdata = shift;
     unless ($type) { $type = 'hw'; }
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."Part Number",$category,"partnumber","hw");
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacturer",$category,"manufacturer","hw");
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."Serial Number",$category,"serialnumber","hw");
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."",$category,"name","hw");
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Part Number",$category,"partnumber","hw",$sessdata);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacturer",$category,"manufacturer","hw",$sessdata);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Serial Number",$category,"serialnumber","hw",$sessdata);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."",$category,"name","hw",$sessdata);
     if ($parsedfru->{$category}->{builddate}) {
-        add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Date",$category,"builddate","hw");
+        add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Date",$category,"builddate","hw",$sessdata);
     }
     if ($parsedfru->{$category}->{buildlocation}) {
-        add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Location",$category,"buildlocation","hw");
+        add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Location",$category,"buildlocation","hw",$sessdata);
     }
     if ($parsedfru->{$category}->{model})  {
-        add_textual_fru($parsedfru,$desc." ".$categorydesc."Model",$category,"model","hw");
+        add_textual_fru($parsedfru,$desc." ".$categorydesc."Model",$category,"model","hw",$sessdata);
     }
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."Additional Info",$category,"extra","hw");
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Additional Info",$category,"extra","hw",$sessdata);
 }
 
 sub initfru {
 	my $netfun = 0x28;
     my $sessdata = shift;
-    unless ($sessdata) { die "not fixed yet"; }
-	my @cmd;
-	my @returnd = ();
-	my $error;
-	my $rc = 0;
-	my $text;
-	my @output;
-	my $code;
+    $sessdata->{fru_hash} = {};
 
-	my $mfg_id;
-	my $prod_id;
-	my $device_id;
-	my $dev_rev;
-	my $fw_rev1;
-	my $fw_rev2;
-	my $mprom;
-	my $fru;
-	my $guid;
-	my @guidcmd;
+    my $mfg_id = $sessdata->{mfg_id};
+    my $prod_id = $sessdata->{prod_id};
+	my $device_id=$sessdata->{device_id};
 
-    #TODO: device id needed here
-
-	@guidcmd = (0x18,0x37);
-	if($mfg_id == 2 && $prod_id == 34869) {
-		@guidcmd = (0x18,0x08);
-	}
-	if($mfg_id == 2 && $prod_id == 4) {
-		@guidcmd = (0x18,0x08);
-	}
-	if($mfg_id == 2 && $prod_id == 3) {
-		@guidcmd = (0x18,0x08);
-	}
-
-	($rc,$text,$guid) = getguid(\@guidcmd);
-	if($rc != 0) {
-		return($rc,$text);
-	}
-
-	if($mfg_id == 2 && $prod_id == 34869) {
-		$mprom = sprintf("%x.%x",$fw_rev1,$fw_rev2);
-	}
-	elsif ($mfg_id == 2) {
-		my @lcmd = (0x50);
-		my @lreturnd = ();
-		my $lerror = docmd(
-			0xe8,
-			\@lcmd,
-			\@lreturnd
-		);
-		if ($lerror eq "" && $lreturnd[0] == 0) {
-			my @a = ($fw_rev2);
-			my @b= @lreturnd[1 .. $#lreturnd-1];
-			$mprom = sprintf("%d.%s (%s)",$fw_rev1,decodebcd(\@a),getascii(@b));
-		} else {
-			my @a = ($fw_rev2);
-			$mprom = sprintf("%d.%s",$fw_rev1,decodebcd(\@a));
-		}
-	} else {
-        my @a = ($fw_rev2);
-        $mprom = sprintf("%d.%s",$fw_rev1,decodebcd(\@a));
-    }
-
-	$fru = FRU->new();
-	$fru->rec_type("mprom");
-	$fru->desc("BMC Firmware");
-	$fru->value($mprom);
-	$fru_hash{mprom} = $fru;
-
-	$fru = FRU->new();
-	$fru->rec_type("guid");
-	$fru->desc("GUID");
-	$fru->value($guid);
-	$fru_hash{guid} = $fru;
-
-	$fru = FRU->new();
+	my $fru = FRU->new();
 	$fru->rec_type("deviceid");
 	$fru->desc("Manufacturer ID");
 	my $value = $mfg_id;
@@ -1665,7 +1410,7 @@ sub initfru {
 		$value = "$MFG_ID{$mfg_id} ($mfg_id)";
 	}
 	$fru->value($value);
-	$fru_hash{mfg_id} = $fru;
+	$sessdata->{fru_hash}->{mfg_id} = $fru;
 
 	$fru = FRU->new();
 	$fru->rec_type("deviceid");
@@ -1676,53 +1421,208 @@ sub initfru {
 		$value = "$PROD_ID{$tmp} ($prod_id)";
 	}
 	$fru->value($value);
-	$fru_hash{prod_id} = $fru;
+	$sessdata->{fru_hash}->{prod_id} = $fru;
 
 	$fru = FRU->new();
 	$fru->rec_type("deviceid");
 	$fru->desc("Device ID");
 	$fru->value($device_id);
-	$fru_hash{device_id} = $fru;
+	$sessdata->{fru_hash}->{device_id} = $fru;
 
-#	($rc,$text)=initoemfru($mfg_id,$prod_id,$device_id);
-#	if($rc == 1) {
-#		return($rc,$text);
-#	}
-#	if($rc == 2) {
-#		return(0,"");
-#	}
-    $netfun = 0x28; # Storage (0x0A << 2)
-	my @bytes;
-	@cmd=(0x10,0x00);
-    $error = docmd($netfun,\@cmd,\@bytes);
-    if ($error) { return (1,$error); }
-    pop @bytes;
-    unless (defined $bytes[0] and $bytes[0] == 0) {
-        if ($codes{$bytes[0]}) {
-            return (1,"FRU device 0 inaccessible".$codes{$bytes[0]});
-        } else {
-            return (1,"FRU device 0 inaccessible");
-        }
+    $sessdata->{ipmisession}->subcmd(netfn=>0x6,command=>0x37,data=>[],callback=>\&gotguid,callback_args=>$sessdata);
+}
+sub got_bmc_fw_info {
+    my $rsp = shift;
+    my $sessdata = shift;
+	my $fw_rev1=$sessdata->{firmware_rev1};
+    my $fw_rev2=$sessdata->{firmware_rev2};
+    my $mprom;
+    my $isanimm=0;
+    if (ref $rsp and not $rsp->{error} and not $rsp->{code}) { #I am a callback and the command worked
+        my @returnd = (@{$rsp->{data}});
+			my @a = ($fw_rev2);
+            my $prefix = pack("C*",@returnd[0..3]);
+            if ($prefix =~ /yuoo/i) { #we have an imm
+                print "DEBUG: an IMM!\n";
+                $isanimm=1;
+            }
+			$mprom = sprintf("%d.%s (%s)",$fw_rev1,decodebcd(\@a),getascii(@returnd));
+	} else { #either not a callback or IBM call failed
+		my @a = ($fw_rev2);
+		$mprom = sprintf("%d.%s",$fw_rev1,decodebcd(\@a));
+	}
+    my $fru = FRU->new();
+   	$fru->rec_type("mprom");
+   	$fru->desc("BMC Firmware");
+   	$fru->value($mprom);
+   	$sessdata->{fru_hash}->{mprom} = $fru;
+    if ($isanimm) {
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0,0,0,0],callback=>\&get_uefi_version_with_fmapi,callback_args=>$sessdata);
+    } else {
+        initfru_with_mprom($sessdata);
     }
-    my $frusize=($bytes[2]<<8)+$bytes[1];
+}
+sub get_uefi_version_with_fmapi {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @data = @{$rsp->{data}};
+    unless ($data[2] == 0 and $data[3] = 3 and $data[4]==0x12 and $data[5]==2) { #we support this major version only 
+        initfru_with_mprom($sessdata);
+        return;
+    }
+    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[1,0,0,5,0x84,0x62,0x69,0x6f,0x73],callback=>\&get_uefi_version_with_xid,callback_args=>$sessdata);
+}
 
-	($rc,@bytes) = frudump(0,$frusize,16);
-	if($rc != 0) {
-		return($rc,@bytes);
-	}
-    my $fruhash;
-    ($error,$fruhash) = parsefru(\@bytes);
-    if ($error) {
-		($rc,$text)=initoemfru($mfg_id,$prod_id,$device_id);
-		if($rc == 1) {
-			$text = "FRU format unknown";
-			return($rc,$text);
-		}
-		if($rc == 2) {
-			return(0,"");
-		}
-	}
-    $frudex=0;
+sub get_uefi_version_with_xid {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @data = @{$rsp->{data}};
+    if ($data[2] != 0 or $data[3] != 5 or $data[4] != 0x44) {
+        sendmsg([1,"Error1 retrieving UEFI build version"],$sessdata->{node});
+        return;
+    }
+    splice @data,0,5;
+    $sessdata->{fmapixid} = \@data;
+    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[3,0,0,0xa,0x44,@{$sessdata->{fmapixid}},0x84,0x62,0x69,0x6f,0x73],callback=>\&get_uefi_version_with_openxid,callback_args=>$sessdata);
+}
+
+sub get_uefi_version_with_openxid {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @data = @{$rsp->{data}};
+    hexdump(\@data);
+    if ($data[2] != 0) {
+        sendmsg([1,"Error2 retrieving UEFI build version"],$sessdata->{node});
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
+        return;
+    }
+    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x9,0,0,0x5,0x44,@{$sessdata->{fmapixid}}],callback=>\&got_uefi_buildid,callback_args=>$sessdata);
+    #$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0xa,0,0,0xf,0x44,@{$sessdata->{fmapixid}},0x87,0x62,0x75,0x69,0x6C,0x64,0x69,0x64,0x11,0x52],callback=>\&got_uefi_buildid,callback_args=>$sessdata);
+}
+sub got_uefi_buildid {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @data = @{$rsp->{data}};
+        hexdump(\@data);
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
+        return;
+    if ($data[2] != 0) {
+        hexdump(\@data);
+        sendmsg([1,"Error3 retrieving UEFI build version"],$sessdata->{node});
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
+        return;
+    }
+    my $buildsize = $data[4]&0x7f;
+    my @buildid = splice @data,5,$buildsize;
+    $sessdata->{biosbuildid} = pack("C*",@buildid);
+    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0xa,0,0,0x14,0x44,@{$sessdata->{fmapixid}},0x8c,0x62,0x75,0x69,0x6C,0x64,0x76,0x65,0x72,0x73,0x69,0x6F,0x6E,0x11,0x52],callback=>\&got_uefi_buildversion,callback_args=>$sessdata);
+}
+sub got_uefi_buildversion {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @data = @{$rsp->{data}};
+    if ($data[2] != 0) {
+        hexdump(\@data);
+        sendmsg([1,"Error4 retrieving UEFI build version"],$sessdata->{node});
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
+        return;
+    }
+    my $buildsize = $data[4]&0x7f;
+    my @buildid = splice @data,5,$buildsize;
+    $sessdata->{biosbuildversion} = pack("C*",@buildid);
+    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0xa,0,0,0x11,0x44,@{$sessdata->{fmapixid}},0x89,0x62,0x75,0x69,0x6C,0x64,0x64,0x61,0x74,0x65,0x11,0x52],callback=>\&got_uefi_builddate,callback_args=>$sessdata);
+}
+sub got_uefi_builddate {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @data = @{$rsp->{data}};
+    if ($data[2] != 0) {
+        sendmsg([1,"Error5 retrieving UEFI build version"],$sessdata->{node});
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
+        return;
+    }
+    my $buildsize = $data[4]&0x7f;
+    my @buildid = splice @data,5,$buildsize;
+    $sessdata->{biosbuilddate} = pack("C*",@buildid);
+    my $bver = $sessdata->{biosbuildversion}." (".$sessdata->{biosbuildid}." ".$sessdata->{biosbuilddate}.")";
+    my $fru = FRU->new();
+   	$fru->rec_type("bios,uefi,firmware");
+   	$fru->desc("UEFI Version");
+   	$fru->value($bver);
+    $sessdata->{fru_hash}->{uefi} = $fru;
+    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
+}
+sub fmapi_xid_closed {
+    my $rsp = shift;
+    my $sessdata=shift;
+    $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x2,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_destroyed,callback_args=>$sessdata);
+}
+sub fmapi_xid_destroyed {
+    my $rsp = shift;
+    my $sessdata = shift;
+    initfru_with_mprom($sessdata);
+}
+
+sub initfru_withguid {
+    my $sessdata = shift;
+    my $mfg_id = $sessdata->{mfg_id};
+    my $prod_id = $sessdata->{prod_id};
+	my $mprom;
+
+	if($mfg_id == 2 && $prod_id != 34869) {
+        $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x50,data=>[],callback=>\&got_bmc_fw_info,callback_args=>$sessdata);
+	} else {
+        got_bmc_fw_info(0,$sessdata);
+    }
+}
+sub initfru_with_mprom {
+    my $sessdata = shift;
+    if ($sessdata->{skipfru}) {
+        fru_initted($sessdata);
+        return;
+    }
+    $sessdata->{currfruid}=0;
+    $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[0],callback=>\&process_currfruid,callback_args=>$sessdata);
+}
+sub process_currfruid {
+    my $rsp = shift;
+    my $sessdata = shift;
+    if ($rsp->{code} == 0xcb) {
+            $sessdata->{currfrudata}="Not Present";
+            $sessdata->{currfrudone}=1;
+            add_fruhash($sessdata);
+            return;
+    }
+    if (check_rsp_errors($rsp,$sessdata)) {
+        return;
+    }
+    my @bytes =@{$rsp->{data}};
+    $sessdata->{currfrusize} = ($bytes[1]<<8)+$bytes[0];
+    readcurrfrudevice(0,$sessdata);
+}
+sub initfru_zero {
+    my $sessdata = shift;
+    my $fruhash = shift;
+    my $frudex=0;
+    my $fru;
     if (defined $fruhash->{product}->{manufacturer}->{value}) {
 	    $fru = FRU->new();
     	$fru->rec_type("misc");
@@ -1732,7 +1632,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{product}->{manufacturer}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     if (defined $fruhash->{product}->{product}->{value}) {
 	    $fru = FRU->new();
@@ -1743,7 +1643,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{product}->{product}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     if (defined $fruhash->{product}->{model}->{value}) {
 	    $fru = FRU->new();
@@ -1754,7 +1654,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{product}->{model}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     if (defined $fruhash->{product}->{version}->{value}) {
 	    $fru = FRU->new();
@@ -1765,7 +1665,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{product}->{version}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     if (defined $fruhash->{product}->{serialnumber}->{value}) {
 	    $fru = FRU->new();
@@ -1776,7 +1676,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{product}->{serialnumber}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     if (defined $fruhash->{product}->{asset}->{value}) {
 	    $fru = FRU->new();
@@ -1787,7 +1687,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{product}->{asset}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     foreach (@{$fruhash->{product}->{extra}}) {
         $fru = FRU->new();
@@ -1801,7 +1701,7 @@ sub initfru {
             next;
             $fru->value(phex($_->{value}));
         }
-        $fru_hash{$frudex++} = $fru;
+        $sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     
 
@@ -1814,7 +1714,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{chassis}->{serialnumber}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
 
     if ($fruhash->{chassis}->{partnumber}->{value}) {
@@ -1826,7 +1726,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{chassis}->{partnumber}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
 
 
@@ -1842,7 +1742,7 @@ sub initfru {
             #print $_->{encoding};
             $fru->value(phex($_->{value}));
         }
-        $fru_hash{$frudex++} = $fru;
+        $sessdata->{fru_hash}->{$frudex++} = $fru;
     }
 
     if ($fruhash->{board}->{builddate})  {
@@ -1850,7 +1750,7 @@ sub initfru {
         $fru->rec_type("misc");
         $fru->desc("Board manufacture date");
         $fru->value($fruhash->{board}->{builddate});
-        $fru_hash{$frudex++} = $fru;
+        $sessdata->{fru_hash}->{$frudex++} = $fru;
     }
 
     if ($fruhash->{board}->{manufacturer}->{value}) {
@@ -1862,7 +1762,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{board}->{manufacturer}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     if ($fruhash->{board}->{name}->{value}) {
 	    $fru = FRU->new();
@@ -1873,7 +1773,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{board}->{name}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     if ($fruhash->{board}->{serialnumber}->{value}) {
 	    $fru = FRU->new();
@@ -1884,7 +1784,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{board}->{serialnumber}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     if ($fruhash->{board}->{partnumber}->{value}) {
 	    $fru = FRU->new();
@@ -1895,7 +1795,7 @@ sub initfru {
         } else {
         	$fru->value(phex($fruhash->{board}->{partnumber}->{value}));
         }
-    	$fru_hash{$frudex++} = $fru;
+    	$sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     foreach (@{$fruhash->{board}->{extra}}) {
         $fru = FRU->new();
@@ -1909,12 +1809,19 @@ sub initfru {
             #print $_->{encoding};
             $fru->value(phex($_->{value}));
         }
-        $fru_hash{$frudex++} = $fru;
+        $sessdata->{fru_hash}->{$frudex++} = $fru;
     }
     #Ok, done with fru 0, on to the other fru devices from SDR
+    $sessdata->{frudex} = $frudex;
+    if ($sessdata->{skipotherfru}) { #skip non-primary fru devices
+        fru_initted($sessdata);
+        return;
+    }
     my $key;
     my $subrc;
     my %sdr_hash = %{$sessdata->{sdr_hash}};
+    $sessdata->{dimmfru} = [];
+    $sessdata->{genhwfru} = [];
     foreach $key (sort {$sdr_hash{$a}->id_string cmp $sdr_hash{$b}->id_string} keys %sdr_hash) {
         my $sdr = $sdr_hash{$key};
         unless ($sdr->rec_type == 0x11 and $sdr->fru_type == 0x10) { #skip non fru sdr stuff and frus I don't understand
@@ -1923,39 +1830,25 @@ sub initfru {
         
         if ($sdr->fru_type == 0x10) { #supported
             if ($sdr->fru_subtype == 0x1) { #DIMM
-                $fru = FRU->new();
-                $fru->rec_type("hw,dimm");
-                $fru->desc($sdr->id_string);
-	            ($subrc,@bytes) = frudump(0,get_frusize($sdr->sensor_number),16,$sdr->sensor_number);
-                if ($subrc) {
-                    print $sdr->id_string.":".$bytes[0]."\n";
-                    $fru->value($bytes[0]);
-                    $fru_hash{$frudex++} = $fru;
-                    next;
-                }
-                my $parsedfru = decode_spd(@bytes);
-                add_textual_frus($parsedfru,$sdr->id_string,"",'product','dimm,hw');
+                push @{$sessdata->{dimmfru}},$sdr;
             } elsif ($sdr->fru_subtype == 0 or $sdr->fru_subtype == 2) {
-	            ($subrc,@bytes) = frudump(0,get_frusize($sdr->sensor_number),16,$sdr->sensor_number);
-                if ($subrc) {
-                    $fru = FRU->new();
-                    $fru->value($bytes[0]);
-                    $fru->rec_type("hw");
-                    $fru->desc($sdr->id_string);
-                    $fru_hash{$frudex++} = $fru;
-                    next;
-                }
-                my $parsedfru=parsefru(\@bytes);
-                add_textual_frus($parsedfru,$sdr->id_string,"Board ",'board');
-                add_textual_frus($parsedfru,$sdr->id_string,"Product ",'product');
-                add_textual_frus($parsedfru,$sdr->id_string,"Chassis ",'chassis');
+                push @{$sessdata->{genhwfru}},$sdr;
             }
         }
     }
-
-
-
-	return($rc,$text);
+   if (scalar @{$sessdata->{dimmfru}}) {
+        $sessdata->{currfrusdr} = shift  @{$sessdata->{dimmfru}};
+        $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
+        $sessdata->{currfrutype}="dimm";
+        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
+  } elsif (scalar @{$sessdata->{genhwfru}}) {
+        $sessdata->{currfrusdr} = shift  @{$sessdata->{genhwfru}};
+        $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
+        $sessdata->{currfrutype}="genhw";
+        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
+  } else {
+      fru_initted($sessdata);
+  }
 }
 sub get_frusize {
     my $fruid=shift;
@@ -2164,73 +2057,99 @@ sub fru {
 	return(0,"");
 }
 
-sub frudump {
-	my $offset = shift;
-	my $length = shift;
-	my $chunk = shift;
-    my $fruid = shift;
-    unless (defined $fruid) { $fruid = 0; }
-    unless ($length) { return (1,$chunk); } #chunk happens to get the error text
-
-	my $netfun = 0x28;
-	my @cmd;
-	my @returnd = ();
-	my $error;
-	my $rc = 0;
-	my $text;
-	my @output;
-	my $code;
-	my @fru_data=();
-
-	for(my $c=$offset;$c < $length+$offset;$c += $chunk) {
-		my $ms = int($c / 0x100);
-		my $ls = $c - $ms * 0x100;
-        my $reqsize = $chunk;
-        if ($c+$chunk > $length+$offset) {
-            $reqsize = ($length+$offset-$c);
+sub add_fruhash {
+    my $sessdata = shift;
+    my $fruhash;
+    if ($sessdata->{currfruid} !=0 and not ref $sessdata->{currfrudata}) {
+        my $fru = FRU->new();
+        if ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
+            $fru->rec_type("dimm,hw");
+        } else {
+             $fru->rec_type("hw");
         }
+        $fru->value($sessdata->{currfrudata});
+        $fru->desc($sessdata->{currfrusdr}->id_string);
+        $sessdata->{fru_hash}->{$sessdata->{frudex}} = $fru;
+        $sessdata->{frudex} += 1;
+    } elsif ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
+        $fruhash = decode_spd(@{$sessdata->{currfrudata}});
+    } else {
+            my $err;
+            ($err,$fruhash) = parsefru($sessdata->{currfrudata});
+            if ($err) {
+                sendmsg([1,"Error reading fru area $err".$sessdata->{currfruid}]);
+                return;
+            }
+    }
+    if ($sessdata->{currfruid} == 0) {
+        initfru_zero($sessdata,$fruhash);
+        return;
+    } elsif (ref $sessdata->{currfrudata}) {
+        if ($sessdata->{currfrutype} and $sessdata->{currfrutype} eq 'dimm') {
+            add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"","product","dimm,hw",$sessdata);
+        } else {
+            add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"Board","board",undef,$sessdata);
+            add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"Product","product",undef,$sessdata);
+            add_textual_frus($fruhash,$sessdata->{currfrusdr}->id_string,"Chassis","chassis",undef,$sessdata);
+        }
+    }
+    if (scalar @{$sessdata->{dimmfru}}) {
+        $sessdata->{currfrusdr} = shift  @{$sessdata->{dimmfru}};
+        $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
+        $sessdata->{currfrutype}="dimm";
+        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
+    } elsif (scalar @{$sessdata->{genhwfru}}) {
+        $sessdata->{currfrusdr} = shift  @{$sessdata->{genhwfru}};
+        $sessdata->{currfruid} = $sessdata->{currfrusdr}->sensor_number;
+        $sessdata->{currfrutype}="genhw";
+        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x10,data=>[$sessdata->{currfruid}],callback=>\&process_currfruid,callback_args=>$sessdata);
+    } else {
+        fru_initted($sessdata);
+    }
+}
 
-		@cmd=(0x11,$fruid,$ls,$ms,$reqsize);
-		$error = docmd(
-			$netfun,
-			\@cmd,
-			\@returnd
-		);
+sub readcurrfrudevice {
+    my $rsp = shift;
+    my $sessdata = shift;
+    my $chunk=16; #we have no idea how much will be supported to grab at a time, stick to 16 as a magic number for the moment
+    if (not ref $rsp) {
+        $sessdata->{currfruoffset}=0;
+        $sessdata->{currfrudata}=[];
+        $sessdata->{currfrudone}=0;
+        $sessdata->{currfruchunk}=16;
+    } else {
+        if ($rsp->{code} != 0xcb and check_rsp_errors($rsp,$sessdata)) {
+            return;
+        } elsif ($rsp->{code} == 0xcb) {
+            print "Oh no..".$sessdata->{currfruid}."\n";
+            $sessdata->{currfrudata}="Not Present";
+            $sessdata->{currfrudone}=1;
+            add_fruhash($sessdata);
+            return;
+        }
+        my @data = @{$rsp->{data}};
+        if ($data[0] != $sessdata->{currfruchunk}) {
+            sendmsg([1,"Received incorrect data from BMC"],$sessdata->{node});
+            return;
+        }
+        shift @data;
+        push @{$sessdata->{currfrudata}},@data;
+        if ($sessdata->{currfrudone}) {
+            add_fruhash($sessdata);
+            return;
+        }
+    }
 
-		if($error) {
-			$rc = 1;
-			$text = $error;
-			return($rc,$text);
-		}
-
-		$code = $returnd[0];
-
-		if($code == 0x00) {
-		}
-		else {
-			$rc = 1;
-			$text = $codes{$code};
-		}
-
-		if($rc != 0) {
-			if(!$text) {
-				$text = sprintf("unknown response %02x",$code);
-			}
-			return($rc,$text);
-		}
-
-		my $count = $returnd[1];
-		if($count != $reqsize) {
-			$rc = 1;
-			$text = "FRU read error (bytes requested: $reqsize, got: $count)";
-			return($rc,$text);
-		}
-
-		my @data = @returnd[2..@returnd-2];
-		@fru_data = (@fru_data,@data);
-	}
-
-	return(0,@fru_data);
+    my $ms=$sessdata->{currfruoffset}>>8;
+    my $ls=$sessdata->{currfruoffset}&0xff;
+    if ($sessdata->{currfruoffset}+16  >= $sessdata->{currfrusize}) {
+        $chunk =  $sessdata->{currfrusize}-$sessdata->{currfruoffset}; # shrink chunk to only get the remainder data
+        $sessdata->{currfrudone}=1;
+    } else {
+        $sessdata->{currfruoffset}+=$chunk;
+    }
+    $sessdata->{currfruchunk}=$chunk;
+    $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x11,data=>[$sessdata->{currfruid},$ls,$ms,$chunk],callback=>\&readcurrfrudevice,callback_args=>$sessdata);
 }
 
 sub parsefru {
@@ -4962,49 +4881,28 @@ sub gotdevid {
 #	return($rc,$text,$mfg_id,$prod_id,$device_id,$device_rev,$firmware_rev1,$firmware_rev2);
 }
 
-sub getguid {
-	my $guidcmd = shift;
-	my $netfun = @$guidcmd[0] || 0x18;
-	my @cmd = @$guidcmd[1] || 0x37;
-	my @returnd = ();
-	my $error;
-	my $rc = 0;
-	my $text;
-	my $code;
-
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
-
-	if($error) {
-		$rc = 1;
-		$text = $error;
-		return($rc,$text);
-	}
-	else {
-		$code = $returnd[0];
-
-		if($code == 0x00) {
-			$text = "";
-		}
-		else {
-			$rc = 1;
-			$text = $codes{$code};
-			if(!$text) {
-				$rc = 1;
-				$text = sprintf("unknown response %02x",$code);
-			}
-			return($rc,$text);
-		}
-	}
-
-	my @guid = @returnd[1..16];
-	my $guidtext = sprintf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",@guid);
-	$guidtext =~ tr/[a-z]/[A-Z]/;
-
-	return($rc,$text,$guidtext);
+sub gotguid {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+	#my @guidcmd = (0x18,0x37);
+	#if($mfg_id == 2 && $prod_id == 34869) { TODO: if GUID is inaccurate on the products mentioned, this code may be uncommented
+	#	@guidcmd = (0x18,0x08);
+	#}
+	#if($mfg_id == 2 && $prod_id == 4) {
+	#	@guidcmd = (0x18,0x08);
+	#}
+	#if($mfg_id == 2 && $prod_id == 3) {
+	#	@guidcmd = (0x18,0x08);
+	#}
+	my $fru = FRU->new();
+	$fru->rec_type("guid");
+	$fru->desc("GUID");
+	$fru->value(sprintf("%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",@{$rsp->{data}}));
+	$sessdata->{fru_hash}->{guid} = $fru;
+    initfru_withguid($sessdata);
 }
 
 sub got_sdr_rep_info {
