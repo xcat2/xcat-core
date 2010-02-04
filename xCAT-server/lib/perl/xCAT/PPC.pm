@@ -1568,7 +1568,7 @@ sub sshcmds_on_hmc
         ################################
         # Get userid and password 
         ################################
-        my @cred = xCAT::PPCdb::credentials( $individual_ip, "hmc" );
+        my @cred = ($target_dev->{'username'},$target_dev->{'password'});
         $request{$individual_ip}{cred} = \@cred;
 
         @exp = xCAT::PPCcli::connect( \%request, 'hmc', $individual_ip);
@@ -1652,7 +1652,7 @@ sub updconf_in_asm
         ################################
         # Get userid and password 
         ################################
-        my @cred = xCAT::PPCdb::credentials( $individual_ip, lc($target_dev->{'type'}));
+        my @cred = ($target_dev->{'username'},$target_dev->{'password'});
         $request{$individual_ip}{cred} = \@cred;
         $request{node} = [$individual_ip];  
 
