@@ -21,6 +21,7 @@ require xCAT::Table;
 use POSIX qw(ceil);
 use Socket;
 use strict;
+#use warnings "all";
 require xCAT::InstUtils;
 require xCAT::Schema;
 require Data::Dumper;
@@ -1461,7 +1462,7 @@ rmdir \"/tmp/$to_userid\"";
            }
            $cmd = "rm  $home/.ssh/authorized_keys.xcatbackup";
            xCAT::Utils->runcmd($cmd, 0);
-           my $rsp = {};
+           $rsp = {};
            if ($::RUNCMD_RC != 0)
            {
               $rsp->{data}->[0] = "$cmd failed.\n";
@@ -1596,7 +1597,7 @@ sub cpSSHFiles
     # changed from  identity.pub
     $cmd = " cp $home/.ssh/id_rsa.pub $authorized_keys";
     xCAT::Utils->runcmd($cmd, 0);
-    my $rsp = {};
+    $rsp = {};
     if ($::RUNCMD_RC != 0)
     {
         $rsp->{data}->[0] = "$cmd failed.\n";
@@ -1617,7 +1618,7 @@ sub cpSSHFiles
     # changed from  identity.pub
     $cmd = " cp $home/.ssh/id_rsa.pub $home/.ssh/authorized_keys";
     xCAT::Utils->runcmd($cmd, 0);
-    my $rsp = {};
+    $rsp = {};
     if ($::RUNCMD_RC != 0)
     {
         $rsp->{data}->[0] = "$cmd failed.\n";
@@ -1775,7 +1776,7 @@ sub bldnonrootSSHFiles
     #$cmd = " cp $home/.ssh/identity.pub $home/.ssh/authorized_keys";
     $cmd = " cp $home/.ssh/id_rsa.pub $home/.ssh/authorized_keys";
     xCAT::Utils->runcmd($cmd, 0);
-    my $rsp = {};
+    $rsp = {};
     if ($::RUNCMD_RC != 0)
     {
         $rsp->{data}->[0] = "$cmd failed.\n";
@@ -1835,7 +1836,7 @@ sub bldnonrootSSHFiles
 
     # add roots keys
     # if cannot access, warn and continue
-    my $rsp = {};
+    $rsp = {};
     #$cmd = "cat $roothome/.ssh/identity.pub >> $home/.ssh/authorized_keys";
     $cmd = "cat $roothome/.ssh/id_rsa.pub >> $home/.ssh/authorized_keys";
     xCAT::Utils->runcmd($cmd, 0);
@@ -4519,7 +4520,7 @@ sub checkCredFiles
         xCAT::MsgUtils->message("I", $rsp, $cb);
     }
 
-    my $dir = "/etc/xcat/cert";
+    $dir = "/etc/xcat/cert";
     if (-d $dir)
     {
         my $file = "$dir/server-cred.pem";    # from getcredentials
@@ -4538,7 +4539,7 @@ sub checkCredFiles
         xCAT::MsgUtils->message("I", $rsp, $cb);
     }
 
-    my $dir = "/install/postscripts/ca";
+    $dir = "/install/postscripts/ca";
     if (-d $dir)
     {
         my $file = "$dir/ca-cert.pem";
@@ -4572,7 +4573,7 @@ sub checkCredFiles
     # todo, I think  next release this directory can be removed and
     # copycerts modified because ca.pem is gotten by getcredentials from
     # /etc/xcat/cert
-    my $dir = "/install/postscripts/cert";
+    $dir = "/install/postscripts/cert";
     if (-d $dir)
     {
         my $file = "$dir/ca.pem";
@@ -4604,7 +4605,7 @@ sub checkCredFiles
     }
 
     # ssh hostkeys
-    my $dir = "/install/postscripts/hostkeys";
+    $dir = "/install/postscripts/hostkeys";
     if (-d $dir)
     {
         my $file = "$dir/ssh_host_key.pub";
@@ -4635,7 +4636,7 @@ sub checkCredFiles
         xCAT::MsgUtils->message("I", $rsp, $cb);
     }
     # ssh hostkeys
-    my $dir = "/etc/xcat/hostkeys";
+    $dir = "/etc/xcat/hostkeys";
     if (-d $dir)
     {
         my $file = "$dir/ssh_host_key.pub";
@@ -4667,10 +4668,8 @@ sub checkCredFiles
     }
 
     # ssh directory
-    my $dir = "/install/postscripts/_ssh";
+    $dir = "/install/postscripts/_ssh";
 
-    # ssh directory
-    my $dir = "/install/postscripts/_ssh";
     if (-d $dir)
     {
         my $file = "$dir/authorized_keys";
