@@ -104,7 +104,7 @@ is not specified, a default fanout value of B<64> is used.
 
 =item B<-F>|B<--File> I<rsync input file>
 
-Specifies the full path to the file that will be used to  
+Specifies the path to the file that will be used to  
 build the rsync command.
 The format of the input file is as follows, each line contains:
  <path to source file1> <path to source file2> ... ->  < path to destination file/directory>
@@ -130,7 +130,7 @@ Displays usage information.
 =item B<-i>|B<--rootimg> I<install image>
 
 
-Specifies  the  full  path to the install image on the local Linux node.
+Specifies  the path to the install image on the local Linux node.
 
 
 
