@@ -764,5 +764,108 @@ sub  update_tables_with_diskless_image
 }
 
 
+#-------------------------------------------------------------------------------
+
+=head3  get_mac_by_arp
+    Description:
+        Get the MAC address by arp protocol
+
+    Arguments:
+        nodes: a reference to nodes array
+        display: whether just display the result, if not 'yes', the result will
+                 be written to the mac table.
+    Returns:
+        Return a hash with node name as key
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils->get_mac_by_arp($nodes, $display);
+    Comments:
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub get_mac_by_arp ()
+{
+    my ($class, $nodes, $display) = @_;
+
+    my $node;
+    my $data;
+    my %ret = ();
+    my $unreachable_nodes = "";
+    my $noderange = join (',', @$nodes);
+    my @output = xCAT::Utils->runcmd("/opt/xcat/bin/pping $noderange", -1);
+
+    foreach my $line (@output) {
+        my ($hostname, $result) = split ':', $line;
+        my ($token,    $status) = split ' ', $result;
+        chomp($token);
+        if ($token eq 'ping') {
+            $node->{$hostname}->{reachable} = 1;
+        }
+    }
+
+    foreach my $n ( @$nodes ) {
+        if ( $node->{$n}->{reachable} ) {
+            my $output;
+            my $IP = xCAT::Utils::toIP( $n );
+            if ( xCAT::Utils->isAIX() ) {
+                $output = `/usr/sbin/arp -a`;
+            } else {
+                $output = `/sbin/arp -n`;
+            }
+
+            my ($ip, $mac);
+            my @lines = split /\n/, $output;
+            foreach my $line ( @lines ) {
+                if ( xCAT::Utils->isAIX() && $line =~ /\((\S+)\)\s+at\s+(\S+)/ ) {
+                    ($ip, $mac) = ($1,$2);
+                    ######################################################
+                    # Change mac format to be same as linux, but without ':'
+                    # For example: '0:d:60:f4:f8:22' to '000d60f4f822'
+                    ######################################################
+                    if ( $mac)
+                    {
+                        my @mac_sections = split /:/, $mac;
+                        for my $m (@mac_sections)
+                        {
+                            $m = "0$m" if ( length($m) == 1);
+                        }
+                        $mac = join '', @mac_sections;
+                    }
+                } elsif ( $line =~ /^(\S+)+\s+\S+\s+(\S+)\s/ ) {
+                    ($ip, $mac) = ($1,$2);
+                } else {
+                    ($ip, $mac) = (undef,undef);
+                }
+                if ( @$IP[1] !~ $ip ) {
+                    ($ip, $mac) = (undef,undef);
+                } else {
+                    last;
+                }
+            }
+            if ( $ip && $mac ) {
+                if ( $display ne "yes" ) {
+                    #####################################
+                    # Write adapter mac to database
+                    #####################################
+                    my $mactab = xCAT::Table->new( "mac", -create=>1, -autocommit=>1 );
+                    $mactab->setNodeAttribs( $n,{mac=>$mac} );
+                    $mactab->close();
+                }
+                $ret{$n} = "MAC Address: $mac";
+            } else {
+                $ret{$n} = "Cannot find MAC Address in arp table, please make sure target node and management node are in same network.";
+            }
+        } else {
+                $ret{$n} = "Unreachable.";
+        }
+    }
+
+    return \%ret;
+}
+
 
 1;

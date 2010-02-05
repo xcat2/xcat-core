@@ -347,7 +347,7 @@ sub process_command {
         if (defined($request->{opt}->{d})) {
             $display = "yes";
         }
-        my $output = xCAT::Utils->get_mac_by_arp($nodes, $display);
+        my $output = xCAT::SvrUtils->get_mac_by_arp($nodes, $display);
         
         my $rsp = ();
         foreach my $node (keys %{$output}) {

@@ -1364,7 +1364,7 @@ sub getmacs {
    }
 
    if ($byarp eq "yes") {
-       my $output = xCAT::Utils->get_mac_by_arp([$node], $display);
+       my $output = xCAT::SvrUtils->get_mac_by_arp([$node], $display);
        my @ret = ();
        foreach my $n (keys %$output) {
            if ($n ne $node) {
