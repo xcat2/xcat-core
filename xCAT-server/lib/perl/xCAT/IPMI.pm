@@ -234,6 +234,10 @@ sub admin_level_set {
 sub got_channel_auth_cap {
     my $rsp = shift;
     my $self = shift;
+    if ($rsp->{error}) {
+        $self->{onlogon}->("ERROR: ".$rsp->{error}, $self->{onlogon_args});
+        return;
+    }
     my $code = $rsp->{code}; #just to save me some typing
         if ($code == 0xcc and not defined $self->{ipmi15only}) { #ok, most likely a stupid ipmi 1.5 bmc
             $self->{ipmi15only}=1;
@@ -348,6 +352,9 @@ sub timedout {
     $self->{timeout} = $self->{timeout}+1;
     if ($self->{timeout} > 4) { #giveup, really
         $self->{timeout}=1;
+        my $rsp={};
+        $rsp->{error} = "timeout";
+        $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
         return;
     }
     $self->sendpayload(%{$self->{pendingargs}});
