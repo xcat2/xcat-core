@@ -107,6 +107,10 @@ sub logout {
     my %args = @_;
     $self->{onlogout} =  $args{callback};
     $self->{onlogout_args} = $args{callback_args};
+    unless ($self->{logged}) {
+        if ( $self->{onlogout}) { $self->{onlogout}->("SUCCESS",$self->{onlogout_args}); }
+        return;
+    }
     $self->subcmd(netfn=>0x6,command=>0x3c,data=>$self->{sessionid},callback=>\&logged_out,callback_args=>$self);
 }
 sub logged_out {
@@ -312,13 +316,22 @@ sub waitforrsp {
     my $peerhost;
     my $timeout; #TODO: code to scan pending objects to find soonest retry deadline
     my $curtime=time();
-    foreach (values %sessions_waiting) {
+    foreach (keys %sessions_waiting) {
+       if  ($sessions_waiting{$_}->{timeout} <= $curtime) { #retry or fail..
+           my $session = $sessions_waiting{$_}->{ipmisession};
+           delete $sessions_waiting{$_};
+           $session->timedout();
+           next;
+        }
         if (defined $timeout) {
-            if ($timeout < $_-$curtime) {
+            if ($timeout < $sessions_waiting{$_}->{timeout}-$curtime) {
                 next;
             }
         }
-        $timeout = $_-$curtime;
+        $timeout = $sessions_waiting{$_}->{timeout}-$curtime;
+    }
+    unless (defined $timeout) {
+        return scalar (keys %sessions_waiting);
     }
 
     if ($select->can_read($timeout)) {
@@ -330,6 +343,15 @@ sub waitforrsp {
     return scalar (keys %sessions_waiting);
 }
 
+sub timedout {
+    my $self = shift;
+    $self->{timeout} = $self->{timeout}+1;
+    if ($self->{timeout} > 4) { #giveup, really
+        $self->{timeout}=1;
+        return;
+    }
+    $self->sendpayload(%{$self->{pendingargs}});
+}
 sub route_ipmiresponse {
     my $sockaddr=shift;
     my @rsp = @_;
@@ -610,8 +632,11 @@ sub sendpayload {
     my %args = @_;
     my @msg = (0x6,0x0,0xff,0x07); #RMCP header is constant in IPMI
     my $type = $args{type} & 0b00111111;
-    $sessions_waiting{$self}=time()+$self->{timeout};
+    $sessions_waiting{$self}={};
+    $sessions_waiting{$self}->{timeout}=time()+$self->{timeout};
+    $sessions_waiting{$self}->{ipmisession}=$self;
     my @payload = @{$args{payload}};
+    $self->{pendingargs} = \%args;
     push @msg,$self->{'authtype'}; # add authtype byte (will support 0 only for session establishment, 2 for ipmi 1.5, 6 for ipmi2
     if ($self->{'ipmiversion'} eq '2.0') { #TODO: revisit this to see if assembly makes sense
         push @msg, $args{type};
