@@ -1628,6 +1628,7 @@ sub get_netcfg
     my $form       = shift;
     my $ua         = @$exp[0];
     my $server     = @$exp[1];
+
 	######################################
     # Get Network Configuration URL
     ######################################
@@ -1876,7 +1877,7 @@ sub set_netcfg
         return ( [RC_ERROR,join "\n", @lines_to_print]);
     }
 
-    $ua->timeout( 10 );
+    $ua->timeout( 2 );
 
     $form = HTML::Form->parse( $res->content, $res->base );
     $data = $form->click('submit');

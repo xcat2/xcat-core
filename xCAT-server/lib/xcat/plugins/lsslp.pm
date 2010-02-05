@@ -282,10 +282,21 @@ sub parse_args {
     }
 
     #############################################
+    # If no -M option, lsslp only accept -s
+    # option to ouput specific hardwares' mtms
+    #############################################
+#    if ( !exists( $opt{M} ) ) {
+#        if ( exists($opt{r}) or exists($opt{x}) or exists($opt{z}) or exists($opt{w})
+#             or exists($opt{makedhcp}) or exists($opt{writehosts}) or exists($opt{n}) {
+#            return( usage("-r,-x,-z,-w,-n,--makedhcp,--writehosts are not allowed without -M option") );
+#        }
+#    }
+
+    #############################################
     # Check the validation of -M option
     #############################################
     if ( exists( $opt{M} ) and ($opt{M} !~ /^vpd$/) and ($opt{M} !~ /^switchport$/) ) {
-        return( usage("'-M' option only accept 'vpd' or 'switchport'") );
+        return( usage("Invalid value for '-M' option. Acceptable value is 'vpd' or 'switchport'") );
     }
 
     return(0);
@@ -643,7 +654,7 @@ sub invoke_cmd {
         if ( $verbose ) {
             trace( $request, "Forked: ($ip)->($target_dev->{args})" );
         }
-        if ($target_dev->{'type'} eq 'MM')
+        if ($target_dev->{'type'} eq 'mm')
         {
             @cmds = (
                     "snmpcfg=enable",
@@ -657,7 +668,7 @@ sub invoke_cmd {
                     0,
                     @cmds );
         }
-        elsif($target_dev->{'type'} eq 'HMC')
+        elsif($target_dev->{'type'} eq 'hmc')
         {
             @cmds = ("network_reset=$target_dev->{args}");
             trace( $request, "sshcmds on hmc $ip");
@@ -666,7 +677,7 @@ sub invoke_cmd {
                     $target_dev->{username},
                     $target_dev->{password},
                     @cmds );
-        }
+       }
         else #The rest must be fsp or bpa
         {
             @cmds = ("network=$ip,$target_dev->{args}");
@@ -1174,13 +1185,6 @@ sub gethost_from_url {
         $host = match_vpdtable($type, $mtm, $sn, $side, $bpc_machinetype, $bpc_serial, $frame_number, $cage_number);
     }
 
-    #######################################
-    # Get hostname from switch table
-    #######################################
-    if ( exists($opt{M}) and ($opt{M} =~ /^switchport$/) ) {
-        $host = match_switchtable($ip, $bpc_machinetype, $bpc_serial, $frame_number, $cage_number);
-    }
-
     if ( !$host ) {
         $host = getFactoryHostname($type,$mtm,$sn,$side,$rsp);
         #######################################
@@ -1248,6 +1252,44 @@ sub match_vpdtable
 ##########################################################################
 sub match_switchtable
 {
+    my $ip   = shift;
+    my $mac  = shift;
+    my $type = shift;
+    my $bpc_model    = shift;
+    my $bpc_serial   = shift;
+    my $frame_number = shift;
+    my $cage_number  = shift;
+    my $side   = shift;
+    my $mtm    = shift;
+    my $serial = shift;
+    my $name;
+
+    #######################################
+    # Find the nodenames that match the
+    # port on switch to their mac
+    #######################################
+    my $names = $macmap->find_mac( $mac );
+    if ( $names =~ /,/ ) {
+        #######################################
+        # For High end machines, only BPA have
+        # connections to switch, FSPs shared the 
+        # port with BPA.  So need to distiguish
+        # the FSPs on the same port
+        #######################################
+        $name = disti_multi_node( $names, $type, $bpc_model, $bpc_serial, $frame_number, $cage_number, $side, $mtm, $serial );
+        if ( ! $name ) {
+            xCAT::MsgUtils->message("I", "$ip:Cannot distinguish the correct node from $names.", $::callback);
+            return undef;
+        }
+    } else {
+        $name = $names;
+    }
+
+    if ( $name ) {
+        return $name;
+    } else {
+        return undef;
+    }
 }
 
 sub getFactoryHostname
@@ -1677,10 +1719,10 @@ sub parse_responses {
                     $frame = "Server-@$data[5]-SN@$data[6]";
                 }
             } else {
-                $frame = $name;
+                $frame = undef;
             }
         } elsif ( $type =~ /^BPA$/ ) {
-            $frame = $name;
+            $frame = undef;
         }
 
         push @$data, $frame;
@@ -1689,8 +1731,27 @@ sub parse_responses {
         # Get the Mac address
         ########################################
         my $mac = match_ip_mac( $ip );
-#my $names = $macmap->find_mac( $mac );
         push @$data, $mac;
+
+        #######################################
+        # Get hostname from switch table
+        #######################################
+        my $host;
+        if ( $mac and exists($opt{M}) and ($opt{M} =~ /^switchport$/) ) {
+            my $type       = @$data[0];
+            my $mtm        = @$data[1];
+            my $serial     = @$data[2];
+            my $bpc_model  = @$data[5];
+            my $bpc_serial = @$data[6];
+            my $frame_number = @$data[7];
+            my $cage_number  = @$data[8];
+            my $side         = @$data[3];
+            $host = match_switchtable($ip, $mac, $type, $bpc_model, $bpc_serial, $frame_number, $cage_number, $side, $mtm, $serial);
+        }
+
+        if ( $host ) {
+            $h = "$host($ip)";
+        }
 
         $hash{$h} = $data;
     }
@@ -1744,7 +1805,7 @@ sub xCATdB {
         } elsif ( $type =~ /^(HMC|IVM)$/ ) {
             my $mac    = @$data[10];
 
-            xCAT::PPCdb::add_ppchcp( lc($type), "$name,$mac",1 );
+            xCAT::PPCdb::add_ppchcp( lc($type), "$name,$mac,$ip",1 );
         }
         elsif ( $type =~ /^FSP$/ ) {
             ########################################
@@ -1855,48 +1916,119 @@ sub do_resetnet {
 
     my $req     = shift;
     my $outhash = shift;
+    my $reset_all = 1;
+    my $namehash;
     my $targets;
+    my $result;
 
-    my $hoststab = xCAT::Table->new( 'hosts'); 
-    foreach my $name ( keys %$outhash ) {
-        my $data = $outhash->{$name};
-        my $type = @$data[0];
-        my $ip   = @$data[4];
-        my $mac  = @$data[10];
-        if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
-            $name = $1;
-            $ip   = $2;
+    if ( $outhash ) {
+        $reset_all = 0;
+        foreach my $name ( keys %$outhash ) {
+            my $data = $outhash->{$name};
+            my $ip = @$data[4];
+            if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
+                $name = $1;
+                $ip = $2;
+            }
+            $namehash->{$name} = $ip;
         }
+    }
+
+    my $hoststab = xCAT::Table->new( 'hosts' ); 
+    if ( !$hoststab ) {
+        send_msg( $req, 1, "Error open hosts table" );
+        return( [RC_ERROR] );
+    }
+
+    my $nodetypetab = xCAT::Table->new( 'nodetype' );
+    if ( !$nodetypetab ) {
+        send_msg( $req, 1, "Error open nodetype table" );
+        return( [RC_ERROR] );
+    }
+
+    my $mactab = xCAT::Table->new( 'mac' );
+    if ( !$mactab ) {
+        send_msg( $req, 1, "Error open mac table" );
+        return( [RC_ERROR] );
+    } 
+
+    my $ip_host;
+    my @hostslist = $hoststab->getAllNodeAttribs(['node','ip','otherinterfaces']);
+    foreach my $host ( @hostslist ) {
+        my $name = $host->{node};
+        my $ip   = $host->{ip};
+        my $oi   = $host->{otherinterfaces};
 
         #####################################
         # Skip the node if the IP attributes
-        # is same as otherinterfaces
+        # is same as otherinterfaces or ip
+        # discovered
         #####################################
-        my $ent = $hoststab->getNodeAttribs( $name, ['ip','otherinterfaces'] ); 
-        if ( !$ent->{'ip'} or $ent->{'ip'} eq $ent->{'otherinterfaces'} ) {
-            xCAT::MsgUtils->message("I", "$name: Current hardware IP is the same new setting, or there is no new IP address defined, skipping network reset..", $::callback);
+        if ( !$reset_all ) {
+            if ( $namehash->{$name} ) {
+                if ( !$ip or $ip eq $namehash->{$name} ) {
+                    $result .= "$name: same ip address, skipping network reset\n";
+                    next;
+                }
+            } else {
+                next;
+            }
+        } elsif (!$ip or !$oi or $ip eq $oi) {
+            $result .= "$name: same ip address, skipping network reset\n";
             next;
         }
+
+        my $type = $nodetypetab->getNodeAttribs( $name, [qw(nodetype)]);
+        if ( !$type or !$type->{nodetype} ) {
+            $result .= "$name: no nodetype defined, skipping network reset\n";
+            next;
+        }
+
+        my $mac = $mactab->getNodeAttribs( $name, [qw(mac)]);
+        if ( !$mac or !$mac->{mac} ) {
+            $result .= "$name: no mac defined, skipping network reset\n";
+            next;
+        }
+
+        $result .= "$name: network resetting..\n";
 
         #####################################
         # Make the target that will reset its
         # network interface
         #####################################
-        $targets->{$type}->{$ip}->{'args'} = "0.0.0.0,$name";
-        $targets->{$type}->{$ip}->{'mac'} = $mac;
-        $targets->{$type}->{$ip}->{'name'} = $name;
-        $targets->{$type}->{$ip}->{'ip'} = $ip;
-        $targets->{$type}->{$ip}->{'type'} = $type;
-        if ( $type !~ /^MM$/ ) {
-            my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$ip] );
-            $targets->{$type}->{$ip}->{'args'} .= ",$netinfo{$ip}{'gateway'},$netinfo{$ip}{'mask'}";
+        $targets->{$type->{nodetype}}->{$oi}->{'args'} = "0.0.0.0,$name";
+        $targets->{$type->{nodetype}}->{$oi}->{'mac'} = $mac->{mac};
+        $targets->{$type->{nodetype}}->{$oi}->{'name'} = $name;
+        $targets->{$type->{nodetype}}->{$oi}->{'ip'} = $oi;
+        $targets->{$type->{nodetype}}->{$oi}->{'type'} = $type->{nodetype};
+        if ( $type->{nodetype} !~ /^mm$/ ) {
+            my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$oi] );
+            $targets->{$type->{nodetype}}->{$oi}->{'args'} .= ",$netinfo{$oi}{'gateway'},$netinfo{$oi}{'mask'}";
         }
+        $ip_host->{$oi} = $name;
     }
+    send_msg( $req, 0, $result );
 
+    $result = undef;
     ###########################################
     # Update target hardware w/discovery info
     ###########################################
-    rspconfig( $req, $targets );
+    my ($fail_nodes,$succeed_nodes) = rspconfig( $req, $targets );
+    $result = "Failed reset network:\n";
+    foreach my $ip ( @$fail_nodes ) {
+        if ( $ip_host->{$ip} ) {
+            $result .= $ip_host->{$ip} . ",";
+        }
+    }
+    $result .= "\nSuccessfully reseted network:\n";
+    foreach my $ip ( @$succeed_nodes ) {
+        if ( $ip_host->{$ip} ) {
+            $result .= $ip_host->{$ip} . ",";
+        }
+    }
+    $result .= "\n";
+
+    send_msg( $req, 0, $result );
 
     return undef;
 }
@@ -2432,57 +2564,105 @@ sub preprocess_request {
 ##########################################################################
 sub disti_multi_node
 {
-    my $req = shift;
     my $names = shift;
-    my $slp = shift;
+    my $type  = shift;
+    my $bpc_model    = shift;
+    my $bpc_serial   = shift;
+    my $frame_number = shift;
+    my $cage_number  = shift;
+    my $side   = shift;
+    my $mtm    = shift;
+    my $serial = shift;
 
-    return undef if ( $slp->{'type'} eq 'FSP' and ! exists $slp->{'cage-number'});    
-    return undef if ( $slp->{'type'} eq 'BPA' and ! exists $slp->{'frame-number'});
+    return undef if ( $type eq 'FSP' and !defined $cage_number );    
+    return undef if ( $type eq 'BPA' and !defined $frame_number );
 
-    my $ppctab = xCAT::Table->new( 'ppc');
-    return undef if ( ! $ppctab);
-    my $nodetypetab = xCAT::Table->new( 'nodetype');
-    return undef if ( ! $nodetypetab);
+    my $ppctab = xCAT::Table->new( 'ppc' );
+    return undef if ( ! $ppctab );
+    my $nodetypetab = xCAT::Table->new( 'nodetype' );
+    return undef if ( ! $nodetypetab );
 
-    my $vpdtab = xCAT::Table->new( 'vpd');
+    my $vpdtab = xCAT::Table->new( 'vpd' );
     my @nodes = split /,/, $names;
     my $correct_node = undef;
-    for my $node ( @nodes)
-    {
-        my $id_parent = $ppctab->getNodeAttribs( $node, ['id','parent']);
-        next if (! defined $id_parent or ! exists $id_parent->{'id'});
-        my $nodetype = $nodetypetab->getNodeAttribs($node, ['nodetype']);
-	next if (! defined $nodetype or ! exists $nodetype->{'nodetype'});
-        next if ( $nodetype->{'nodetype'} ne lc($slp->{type}));
-        if ( ($nodetype->{'nodetype'} eq 'fsp' and $id_parent->{'id'} eq $slp->{'cage-number'}) or
-             ($nodetype->{'nodetype'} eq 'bpa' and $id_parent->{'id'} eq $slp->{
- 'frame-number'}))
-        {
-            my $vpdnode = undef;
-            if ( defined $id_parent->{ 'parent'})#if no parent defined, take it as is.  
-            {
-                if( $vpdtab
-                        and $vpdnode = $vpdtab->getNodeAttribs($id_parent->{ 'parent'}, ['serial','mtm'])
+    foreach my $node ( @nodes ) {
+        my $id_parent = $ppctab->getNodeAttribs( $node, ['id','parent'] );
+        my $nodetype = $nodetypetab->getNodeAttribs($node, ['nodetype'] );
+	    next if ( !defined $nodetype or !exists $nodetype->{'nodetype'} );
+        next if ( $nodetype->{'nodetype'} ne lc($type) );
+
+        if ( $nodetype->{'nodetype'} eq 'fsp') {
+            if ( defined $id_parent->{'id'} and defined $id_parent->{'parent'} ) {
+                ###########################################
+                # For high end machines.
+                # Check if this node's parent and id is the
+                # same in SLP response.
+                ###########################################
+                if ( $id_parent->{'id'} eq $cage_number ) {
+                    my $vpdnode = undef;
+                    if ( $vpdtab
+                        and $vpdnode = $vpdtab->getNodeAttribs($id_parent->{'parent'}, ['serial','mtm'])
                         and exists $vpdnode->{'serial'}
-                        and exists $vpdnode->{'mtm'})
-                {
-                    if ( $vpdnode->{'serial'} ne $slp->{'bpc-serial-number'} 
-                            or $vpdnode->{'mtm'} ne $slp->{'bpc-machinetype-model'})
-                    {
+                        and exists $vpdnode->{'mtm'} ) {
+                        if ( $vpdnode->{'serial'} ne $bpc_serial 
+                                or $vpdnode->{'mtm'} ne $bpc_model ) {
+                            next;
+                        }
+                    }
+                } else {
+                    next;
+                }
+            } else {
+                ###########################################
+                # For low end machines.
+                # If there is hub to connect several FSPs
+                # with the same switch port, check node's
+                # mtms
+                ###########################################
+                my $vpdnode = undef;
+                if( $vpdtab 
+                        and $vpdnode = $vpdtab->getNodeAttribs($node, ['serial','mtm']) 
+                        and exists $vpdnode->{'serial'}
+                        and exists $vpdnode->{'mtm'} ) {
+                    if ( $vpdnode->{'serial'} ne $serial 
+                            or $vpdnode->{'mtm'} ne $mtm ) {
                         next;
                     }
                 }
-                elsif ( "$slp->{'bpc-machinetype-model'}*$slp->{'bpc-serial-number'}" ne $id_parent->{ 'parent'})
-                {
+            }
+
+            ###########################################
+            # Check if the side attribute for this node
+            # is the same in SLP response
+            # For FSP redundancy.
+            ###########################################
+            my $nodeside = undef;
+            $nodeside = $vpdtab->getNodeAttribs($node, ['side']);
+            if ( defined $nodeside->{'side'} and $nodeside->{'side'} ne $side ) {
+                next;
+            }
+            return $node;
+        }
+        if ( $nodetype->{'nodetype'} eq 'bpa' ) {
+            my $vpdnode = undef;
+            ###########################################
+            # If there is a hub to connect several BPAs
+            # with the same switch port, check this
+            # node's mtms
+            ###########################################
+            if ( $vpdtab 
+                and $vpdnode = $vpdtab->getNodeAttribs( $node, ['serial','mtm']) 
+                and exists $vpdnode->{'serial'}
+                and exists $vpdnode->{'mtm'} ) {
+                if ( $vpdnode->{'serial'} ne $bpc_serial
+                        or $vpdnode->{'mtm'} ne $bpc_model ) {
                     next;
                 }
-                    
             }
-            return undef if ( $correct_node);#had matched another node before
-            $correct_node = $node;
         }
+        return $node;
     }
-    return $correct_node;    
+    return undef;    
 }
 
 ##########################################################################
@@ -2524,12 +2704,21 @@ sub rspconfig {
         trace( $request, $msg );
     }
 
+    my $result;
+    my @failed_node;
+    my @succeed_node;
     foreach my $ip ( keys %rsp_result ) {
         #################################
         # Error logging on to MM
         #################################
         my $result = $rsp_result{$ip};
         my $Rc = shift(@$result);
+
+        if ( $Rc != SUCCESS ) {
+            push @failed_node, $ip;
+        } else { 
+            push @succeed_node, $ip;
+        }
 
         if ( $Rc != SUCCESS ) {
             #############################
@@ -2543,6 +2732,7 @@ sub rspconfig {
                 next;
             }
         }
+
         ##################################
         # Process each response
         ##################################
@@ -2567,7 +2757,8 @@ sub rspconfig {
             }
         }
     }
-    return( \%rsp_dev );
+
+    return( \@failed_node, \@succeed_node );
 }
 
 #############################################
@@ -2578,10 +2769,10 @@ sub get_rsp_dev
     my $request = shift;
     my $targets = shift;
 
-    my $mm  = $targets->{'MM'}  ? $targets->{'MM'} : {};
-    my $hmc = $targets->{'HMC'} ? $targets->{'HMC'}: {};
-    my $fsp = $targets->{'FSP'} ? $targets->{'FSP'}: {};
-    my $bpa = $targets->{'BPA'} ? $targets->{'BPA'}: {};
+    my $mm  = $targets->{'mm'}  ? $targets->{'mm'} : {};
+    my $hmc = $targets->{'hmc'} ? $targets->{'hmc'}: {};
+    my $fsp = $targets->{'fsp'} ? $targets->{'fsp'}: {};
+    my $bpa = $targets->{'bpa'} ? $targets->{'bpa'}: {};
 
     if (%$mm)
     {
@@ -2683,10 +2874,15 @@ sub process_request {
         send_msg( \%request, 1, @$result );
         return(1);
     }
-    ###########################################
-    # SLP service-request - select program
-    ###########################################
-    $result = $openSLP ? slptool( \%request ) : slp_query( \%request );
+
+    if ( exists($opt{resetnet}) and scalar(keys %opt) eq 1 ) {
+        $result = do_resetnet( \%request );
+    } else {
+        ###########################################
+        # SLP service-request - select program
+        ###########################################
+        $result = $openSLP ? slptool( \%request ) : slp_query( \%request );
+    }
     my $Rc  = shift(@$result);
 
     return( $Rc );
