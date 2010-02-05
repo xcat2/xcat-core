@@ -96,9 +96,13 @@ else
     }
 }
 
-foreach (@SaveARGV)
+foreach my $sarg (@SaveARGV)
 {
-    push(@{$cmdref->{arg}}, $_);
+    if (($bname eq "xdcp") && ( $sarg !~ /^\//))
+    {
+        $sarg = xCAT::Utils->full_path($sarg);
+    }
+    push(@{$cmdref->{arg}}, $sarg);
 }
 
 #  add environment variables, if they have not already been assigned with
@@ -498,6 +502,12 @@ sub parse_args_xdcp
     {
         xCAT::DSHCLI->show_dsh_config;
         exit 0;
+    }
+    if ( exists( $options{File} ) && ($options{File} !~ /^\//) ) {#relative path
+        $options{File} = xCAT::Utils->full_path($options{File});
+    }
+    if ( exists( $options{rootimg} ) && ($options{rootimg} !~ /^\//) ) {#relative path
+        $options{rootimg} = xCAT::Utils->full_path($options{rootimg});
     }
 
     # rsync only to the service node
