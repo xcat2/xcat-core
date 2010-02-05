@@ -859,10 +859,18 @@ sub runcmd
         if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }
 
     }
-    if ($::VERBOSE)
-    {
-        xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
-    }
+
+	if ($::VERBOSE)
+	{
+		if ($::CALLBACK){
+			my $rsp    = {};
+			$rsp->{data}->[0] = "Running Command: $cmd\n";
+			xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+		} else {
+			xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
+		}
+	}
+
     my $outref = [];
     @$outref = `$cmd`;
     if ($?)
@@ -1006,18 +1014,31 @@ sub runxcmd
     my $save_CALLBACK = $::CALLBACK;
     my ($class, $cmd, $subreq, $exitcode, $refoutput) = @_;
     $::RUNCMD_RC = 0;
+
     if ($::VERBOSE)
     {
         if (ref($cmd) eq "HASH")
         {
-            xCAT::MsgUtils->message("I",
-                  "Running internal xCAT command: $cmd->{command}->[0] ... \n");
+			if ($::CALLBACK){
+            	my $rsp    = {};
+            	$rsp->{data}->[0] = "Running internal xCAT command: $cmd->{command}->[0] ... \n";
+            	xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+        	} else {
+            	xCAT::MsgUtils->message("I", "Running internal xCAT command: $cmd->{command}->[0] ... \n");
+			}
         }
         else
         {
-            xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
+			if ($::CALLBACK){
+                my $rsp    = {};
+                $rsp->{data}->[0] = "Running Command: $cmd\n";
+                xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+            } else {
+            	xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
+			}
         }
     }
+
     $::xcmd_outref = [];
     my $req;
     if (ref($cmd) eq "HASH")
