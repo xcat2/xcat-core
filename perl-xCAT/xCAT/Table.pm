@@ -416,7 +416,12 @@ sub buildcreatestmt
 
     foreach $col (@{$descr->{cols}})
     {
-        my $datatype=get_datatype_string($col,$xcatcfg, $types);
+        my $datatype;
+        if ($xcatcfg =~ /^DB2:/){
+         $datatype=get_datatype_string_db2($col, $types, $tabn);
+        } else {
+         $datatype=get_datatype_string($col,$xcatcfg, $types);
+        }
         my $db2key=0;
         if (($datatype eq "TEXT") || ($xcatcfg =~ /^DB2:/)) {
 	    if (isAKey(\@{$descr->{keys}}, $col)) {   # keys need defined length
@@ -467,6 +472,27 @@ sub buildcreatestmt
     return $retv; 
 }
 
+#--------------------------------------------------------------------------
+
+=head3   
+
+    Description: get_datatype_string ( for mysql,sqlite,postgresql) 
+
+    Arguments:
+                Table column,database,types 
+    Returns:
+              the datatype for the column being defined 
+    Globals:
+
+    Error:
+
+    Example:
+
+        my $datatype=get_datatype_string($col,$xcatcfg, $types);
+
+=cut
+
+#--------------------------------------------------------------------------------
 sub get_datatype_string {
     my $col=shift;    #column name
     my $xcatcfg=shift;  #db config string
@@ -481,24 +507,77 @@ sub get_datatype_string {
 		$ret = "SERIAL";
 	    } elsif ($xcatcfg =~ /^mysql:/){
 		$ret = "INTEGER AUTO_INCREMENT";
-	    } elsif ($xcatcfg =~ /^DB2:/){
-		$ret = "INTEGER GENERATED ALWAYS AS IDENTITY";  
 	    } else {
 	    }
 	} else {
 	    $ret = $types->{$col};
 	}
     } else {
-        if ($xcatcfg =~ /^DB2:/){   # DB2 does not support TEXT type
-           $ret = "CLOB";
-           #$ret = "VARCHAR(128)";
-        } else {
-	  $ret = "TEXT";
-        }
+       $ret = "TEXT";
     }
     return $ret;
 }
 
+#--------------------------------------------------------------------------
+
+=head3   
+
+    Description: get_datatype_string_db2 ( for DB2) 
+
+    Arguments:
+                Table column,database,types,tablename 
+    Returns:
+              the datatype for the column being defined 
+    Globals:
+
+    Error:
+
+    Example:
+
+        my $datatype=get_datatype_string_db2($col, $types,$tablename);
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub get_datatype_string_db2 {
+    my $col=shift;    #column name
+    my $types=shift;  #types field (eventlog)
+    my $tablename=shift;  # tablename
+    my $ret;
+
+    if (($types) && ($types->{$col})) {
+	if ($types->{$col} =~ /INTEGER AUTO_INCREMENT/) {
+		$ret = "INTEGER GENERATED ALWAYS AS IDENTITY";  
+	} else {
+	    $ret = $types->{$col};
+	}
+    } else {
+       $ret = "varchar(1024)";
+    }
+    return $ret;
+}
+
+#--------------------------------------------------------------------------
+
+=head3   
+
+    Description: get_xcatcfg 
+
+    Arguments:
+              none 
+    Returns:
+              the database name from /etc/xcat/cfgloc or sqlite
+    Globals:
+
+    Error:
+
+    Example:
+	my $xcatcfg =get_xcatcfg();
+
+
+=cut
+
+#--------------------------------------------------------------------------------
 
 sub get_xcatcfg
 {
@@ -817,7 +896,7 @@ sub updateschema
            push @columns,$cd->{'COLUMN_NAME'};
 
            #special code for old version of perl-DBD-mysql
-           if (exists($cd->{mysql_is_pri_key}) && ($cd->{mysql_is_pri_key}==1)) {
+           if (defined($cd->{mysql_is_pri_key}) && ($cd->{mysql_is_pri_key}==1)) {
                my $tmp_col=$cd->{'COLUMN_NAME'};
                $tmp_col =~ s/"//g;
                $dbkeys{$tmp_col}=1;
@@ -855,7 +934,12 @@ sub updateschema
         unless (grep /^$dcol$/, @columns)
         {
             #TODO: log/notify of schema upgrade?
-            my $datatype=get_datatype_string($dcol, $xcatcfg, $types);
+            my $datatype;
+            if ($xcatcfg =~ /^DB2:/){
+             $datatype=get_datatype_string_db2($dcol, $types, $tn);
+            } else{
+             $datatype=get_datatype_string($dcol, $xcatcfg, $types);
+            }
             if (($datatype eq "TEXT") || ($xcatcfg =~ /^DB2:/)) { 
 		if (isAKey(\@{$descr->{keys}}, $dcol)) {   # keys need defined length
                     if ($xcatcfg =~ /^DB2:/) {  # for DB2 
@@ -886,9 +970,14 @@ sub updateschema
 	    $change_keys=1; 
             #for my sql, we do not have to recreate table, but we have to make sure the type is correct, 
             #TEXT is not a valid type for a primary key
+            my $datatype;
 	    if (($xcatcfg =~ /^mysql:/) || ($xcatcfg =~ /^DB2:/)) {  
-		my $datatype=get_datatype_string($dbkey, $xcatcfg, $types);
-                if (($datatype eq "TEXT") || ($xcatcfg =~ /^DB2:/)) { 
+               if ($xcatcfg =~ /^mysql:/) { 
+		 $datatype=get_datatype_string($dbkey, $xcatcfg, $types);
+               } else {   # db2 
+		 $datatype=get_datatype_string_db2($dbkey, $types, $tn);
+               }
+               if (($datatype eq "TEXT") || ($xcatcfg =~ /^DB2:/)) { 
 		    if (isAKey(\@{$descr->{keys}}, $dbkey)) {   # keys need defined length
                       if ($xcatcfg =~ /^DB2:/) {  # for DB2 
 		        $datatype = "VARCHAR(128) NOT NULL ";  
