@@ -413,7 +413,6 @@ sub readBNDfile
         next if ($line =~ /^\s*$/ || $line =~ /^\s*#/);
         push(@pkglist, $line);
     }
-    close(BNDFILE);
 
     return (0, \@pkglist, $bnd_file_name);
 }
