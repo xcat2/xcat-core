@@ -498,6 +498,8 @@ sub on_bmc_connect {
         inv($sessdata);
     } elsif($command eq "reventlog") {
         eventlog($sessdata);
+    } elsif($command eq "renergy") {
+        renergy($sessdata);
     }
     return;
     my @output;
@@ -2846,7 +2848,6 @@ sub eventlog_with_selinfo {
         return;
 	}
 
-    my %auxloginfo;
     my $subcommand = $sessdata->{subcommand};
     if ($subcommand =~ /clear/) { #Don't bother with a reservation unless a clear is involved
         #atomic SEL retrieval need not require it, so an event during retrieval will not kill reventlog effort off
@@ -3852,77 +3853,93 @@ sub did_led {
 }
 	
 sub renergy {
-    my @subcommands = shift;
-    my @output;
-    my @settable_keys = qw/savingstatus cappingstatus cappingwatt/;
+    my $sessdata = shift;
+    my @subcommands = @{$sessdata->{extraargs}};
     unless ($iem_support) {
         return (1,"Command unsupported without IBM::EnergyManager installed");
     }
-    my $iem = initiem();
     my @directives=();
     foreach (@subcommands) {
+        if ($_ eq 'cappingmaxmin') {
+            push @directives,'cappingmax','cappingmin';
+        }
         push @directives,split /,/,$_;
     }
-    my $directive;
-    my $value;
-    my $key;
-    foreach $directive (@directives) {
-        $value=undef;
-        $key=undef;
-        if ($directive =~ /(.*)=(.*)\z/) { #todo: assigment
-            $key = $1;
-            $value = $2;
-            unless (grep /$key/,@settable_keys and $value) {
-                return (1,"Malformed argument $directive");
-            }
-            if ($key eq "cappingwatt") {
-                $value = $value*1000; #convert to milliwatts
-                $iem->prep_set_cap($value);
-                execute_iem_commands($iem); #this gets all precision data initialized
-            }
-            if ($key eq "cappingstatus") {
-                if (grep /$value/,qw/enable on 1/) {
-                    $value = 1;
-                } else {
-                    $value = 0;
-                }
-                $iem->prep_set_capenable($value);
-                execute_iem_commands($iem); #this gets all precision data initialized
-            }
-
-        }
-        if ($directive =~ /cappingmaxmin/) {
-            my $entry;
-            $iem->prep_get_mincap();
-            $entry = process_data_from_iem($iem);
-            push @output,$entry;
-            $iem->prep_get_maxcap();
-            $entry = process_data_from_iem($iem);
-            push @output,$entry;
-        }
-        if ($directive =~ /cappingvalue/) {
-            my $entry;
-            $iem->prep_get_cap();
-            push @output,process_data_from_iem($iem);
-        }
-        if ($directive =~ /cappingstatus/) {
-            my $entry;
-            $iem->prep_get_powerstatus();
-            execute_iem_commands($iem);
-            my $capenabled = $iem->capping_enabled();
-            push @output,"cappingstatus: ".($capenabled ? "on" : "off");
-        }
-        if ($directive =~ /relhistogram/) {
-            my $entry;
-            $iem->prep_retrieve_histogram();
-            execute_iem_commands($iem);
-            my @histdata = $iem->extract_relative_histogram;
-            foreach (sort { $a <=> $b } keys %{$histdata[0]}) {
-                push @output,"$_: ".$histdata[0]->{$_};
-            }
+    $sessdata->{directives} = \@directives;
+    $sessdata->{iemcallback}=\&renergy_withiem;
+    initiem($sessdata);
+}
+sub renergy_withiem {
+    my $sessdata = shift;
+    my @settable_keys = qw/savingstatus cappingstatus cappingwatt cappingvalue/;
+    my $directive = shift (@{$sessdata->{directives}});
+    if ($sessdata->{iemtextdata}) {
+        sendmsg($sessdata->{iemtextdata},$sessdata->{node});
+        $sessdata->{iemtextdata}="";
+    }
+    if ($sessdata->{gotcapstatus}) {
+        $sessdata->{gotcapstatus}=0;
+        my $capenabled = $sessdata->{iem}->capping_enabled();
+        sendmsg("cappingstatus: ".($capenabled ? "on" : "off"),$sessdata->{node});
+    }
+    if ($sessdata->{gothistogram}) {
+        $sessdata->{gothistogram}=0;
+        my @histdata = $sessdata->{iem}->extract_relative_histogram;
+        foreach (sort { $a <=> $b } keys %{$histdata[0]}) {
+            sendmsg("$_: ".$histdata[0]->{$_},$sessdata->{node});
         }
     }
-    return (0,@output);
+
+    unless ($directive) { 
+        return;
+    }
+    my $value=undef;
+    my $key=undef;
+    $sessdata->{iemcallback} = \&renergy_withiem;
+    if ($directive =~ /(.*)=(.*)\z/) {
+        $key = $1;
+        $value = $2;
+        unless (grep /$key/,@settable_keys and $value) {
+            return (1,"Malformed argument $directive");
+        }
+        if ($key eq "cappingwatt" or $key eq "cappingvalue") {
+            $value = $value*1000; #convert to milliwatts
+            $sessdata->{iem}->prep_set_cap($value);
+            execute_iem_commands($sessdata); #this gets all precision data initialized
+        }
+        if ($key eq "cappingstatus") {
+            if (grep /$value/,qw/enable on 1/) {
+                $value = 1;
+            } else {
+                $value = 0;
+            }
+            $sessdata->{iem}->prep_set_capenable($value);
+            execute_iem_commands($sessdata); #this gets all precision data initialized
+        }
+
+    }
+    if ($directive =~ /cappingmin/) {
+        $sessdata->{iem}->prep_get_mincap();
+        process_data_from_iem($sessdata);
+    } elsif ($directive =~ /cappingmax/) {
+        $sessdata->{iem}->prep_get_maxcap();
+        process_data_from_iem($sessdata);
+    }
+    if ($directive =~ /cappingvalue/) {
+        $sessdata->{iem}->prep_get_cap();
+        process_data_from_iem($sessdata);
+    }
+    if ($directive =~ /cappingstatus/) {
+        $sessdata->{iem}->prep_get_powerstatus();
+        $sessdata->{gotcapstatus}=1;
+        execute_iem_commands($sessdata);
+    }
+    if ($directive =~ /relhistogram/) {
+        $sessdata->{gothistogram}=1;
+        $sessdata->{iem}->prep_retrieve_histogram();
+        execute_iem_commands($sessdata);
+    }
+    return;
 }
 sub vitals {
     my $sessdata = shift;
