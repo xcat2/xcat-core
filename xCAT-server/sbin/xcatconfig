@@ -1039,6 +1039,8 @@ sub initDB
             $chtabcmds =
               "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
             $chtabcmds .=
+              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=allow;";
+            $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=2 policy.commands=getbmcconfig policy.rule=allow;";
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=3 policy.commands=nextdestiny policy.rule=allow;";
@@ -1240,6 +1242,13 @@ sub genCredentials
         else
         {
             xCAT::MsgUtils->message('I', "Created xCAT certificate.");
+            my $chtabcmds =
+              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=allow;";
+            my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+              xCAT::MsgUtils->message('E', "Could not create policy definition.$chtabcmds.");
+            }
         }
     }
 
