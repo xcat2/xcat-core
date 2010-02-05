@@ -2846,8 +2846,6 @@ sub eventlog_with_selinfo {
         return;
 	}
 
-    my $res_id_ls=0;
-    my $res_id_ms=0;
     my %auxloginfo;
     my $subcommand = $sessdata->{subcommand};
     if ($subcommand =~ /clear/) { #Don't bother with a reservation unless a clear is involved
@@ -2861,7 +2859,7 @@ sub eventlog_with_selinfo {
     }
     $sessdata->{selentries} = [];
     $sessdata->{selentry}=0;
-    $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[$res_id_ls,$res_id_ms,0x00,0x00,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
+    $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[0,0,0x00,0x00,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
 }
 sub got_sel {
     if (check_rsp_errors(@_)) {
@@ -2906,7 +2904,7 @@ sub got_sel {
 				sendsel($sessdata);
                 return;
 			}
-            $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[$sessdata->{res_id_ls},$sessdata->{res_id_ms},$next_rec_ls,$next_rec_ms,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
+            $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[0,0,$next_rec_ls,$next_rec_ms,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
             return;
 		}
 
@@ -3042,7 +3040,7 @@ sub got_sel {
 				sendsel($sessdata);
                 return;
 		}
-        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[$sessdata->{res_id_ls},$sessdata->{res_id_ms},$next_rec_ls,$next_rec_ms,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
+        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[0,0,$next_rec_ls,$next_rec_ms,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
 }
 
 sub sendsel {
