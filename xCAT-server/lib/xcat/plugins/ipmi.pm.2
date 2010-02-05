@@ -3030,7 +3030,7 @@ sub got_sel {
 
         } else {
             if ($sessdata->{fullsel}) {
-                sendmsg($rc,$text);
+                sendmsg($text,$sessdata->{node});
             } else {
         		push(@{$sessdata->{selentries}},$text);
             }
