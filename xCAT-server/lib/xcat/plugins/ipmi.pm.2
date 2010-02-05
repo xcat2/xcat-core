@@ -25,7 +25,6 @@ use xCAT::Usage;
 use Thread qw(yield);
 use LWP 5.64;
 use HTTP::Request::Common;
-my $tfactor = 0;
 my $iem_support;
 my $vpdhash;
 eval {
@@ -47,11 +46,11 @@ sub handled_commands {
     rspconfig => 'nodehm:mgt', #done
     rspreset => 'nodehm:mgt', #done
     rvitals => 'nodehm:mgt', #done
-    rinv => 'nodehm:mgt',
+    rinv => 'nodehm:mgt', #done
     rsetboot => 'nodehm:mgt', #done
     rbeacon => 'nodehm:mgt', #done
     reventlog => 'nodehm:mgt',
-    rfrurewrite => 'nodehm:mgt',
+#    rfrurewrite => 'nodehm:mgt', #deferred, doesn't even work on several models, no one asks about it, keeping it commented for future requests
     getrvidparms => 'nodehm:mgt' #done
   }
 }
@@ -497,6 +496,8 @@ sub on_bmc_connect {
         vitals($sessdata);
 	} elsif($command eq "rinv") {
         inv($sessdata);
+    } elsif($command eq "reventlog") {
+        eventlog($sessdata);
     }
     return;
     my @output;
@@ -2754,11 +2755,11 @@ sub readauxentry {
 
 
 sub eventlog {
-	my $subcommand = shift;
     my $sessdata = shift;
+	my $subcommand = $sessdata->{subcommand};
     unless ($sessdata) { die "not fixed yet" }
 
-	my $netfun = 0x28;
+	my $netfun = 0x0a;
 	my @cmd;
 	my @returnd = ();
 	my $error;
@@ -2766,12 +2767,9 @@ sub eventlog {
 	my $text;
 	my $code;
 	my @output;
-	my $num;
 	my $entry;
-    my $skiptail=0;
+    $sessdata->{fullsel}=0;
 	my @sel;
-	#my $ipmisensoreventtab = "$ENV{XCATROOT}/lib/GUMI/ipmisensorevent.tab";
-	#my $ipmigenericeventtab = "$ENV{XCATROOT}/lib/GUMI/ipmigenericevent.tab";
 	my $mfg_id;
 	my $prod_id;
 	my $device_id;
@@ -2782,295 +2780,109 @@ sub eventlog {
       $subcommand = 'all';
    }
 	if($subcommand eq "all") {
-        $skiptail=1;
-
-		$num = 0x100 * 0x100;
+         $sessdata->{fullsel}=1;
 	}
 	elsif($subcommand eq "clear") {
 	}
 	elsif($subcommand =~ /^\d+$/) {
-		$num = $subcommand;
+        $sessdata->{numevents} = $subcommand;
 	}
 	else {
 		return(1,"unsupported command eventlog $subcommand");
 	}
+    $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x48,data=>[],callback=>\&eventlog_with_time,callback_args=>$sessdata);
+}
+sub eventlog_with_time {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @returnd = (0,@{$rsp->{data}});
 
    #Here we set tfactor based on the delta between the BMC reported time and our
    #time.  The IPMI spec says the BMC should return seconds since 1970 in local
    #time, but the reality is the firmware pushing to the BMC has no context
    #to know, so here we guess and adjust all timestamps based on delta between
    #our now and the BMC's now
-   $error = docmd(
-      $netfun,
-      [0x48],
-      \@returnd
-   );
-   $tfactor = $returnd[4]<<24 | $returnd[3]<<16 | $returnd[2]<<8 | $returnd[1];
-   if ($tfactor > 0x20000000) {
-      $tfactor -= time(); 
+   $sessdata->{tfactor} = $returnd[4]<<24 | $returnd[3]<<16 | $returnd[2]<<8 | $returnd[1];
+   if ($sessdata->{tfactor} > 0x20000000) {
+      $sessdata->{tfactor} -= time(); 
    } else {
-      $tfactor = 0;
+      $sessdata->{tfactor} = 0;
    }
-      
-	@cmd=(0x40);
-	$error = docmd(
-		$netfun,
-		\@cmd,
-		\@returnd
-	);
+   $sessdata->{ipmisession}->subcmd(netfn=>0x0a,command=>0x40,data=>[],callback=>\&eventlog_with_selinfo,callback_args=>$sessdata);
+}
+sub eventlog_with_selinfo {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+	my $code = $rsp->{code}; 
+    my @returnd = (0,@{$rsp->{data}});
 
-	if($error) {
-		$rc = 1;
-		$text = $error;
-		return($rc,$text);
-	}
-
-	$code = $returnd[0];
-
-	if($code == 0x00) {
-	}
-	elsif($code == 0x81) {
-		$rc = 1;
-		$text = "cannot execute command, SEL erase in progress";
-	}
-	else {
-		$rc = 1;
-		$text = $codes{$code};
-	}
-
-	if($rc != 0) {
-		if(!$text) {
-			$text = sprintf("unknown response %02x",$code);
-		}
-		return($rc,$text);
-	}
+	#sif($code == 0x81) { 
+	#	$rc = 1;
+	#	$text = "cannot execute command, SEL erase in progress";
+	#}
 
 	my $sel_version = $returnd[1];
 	if($sel_version != 0x51) {
-		$rc = 1;
-		$text = sprintf("SEL version 51h support only, version reported: %x",$sel_version);
-		return($rc,$text);
+		sendmsg(sprintf("SEL version 51h support only, version reported: %x",$sel_version),$sessdata->{node});
+		return;
 	}
 
-	my $num_entries = $returnd[3]*256 + $returnd[2];
+    hexdump(\@returnd);
+	my $num_entries = ($returnd[3]<<8) + $returnd[2];
 	if($num_entries <= 0) {
-		$rc = 1;
-		$text = "no SEL entries";
-		return($rc,$text);
+		sendmsg("no SEL entries",$sessdata->{node});
+        return;
 	}
 
 	my $canres = $returnd[14] & 0b00000010;
 	if(!$canres) {
-		$rc = 1;
-		$text = "SEL reservation not supported";
-		return($rc,$text);
+        sendmsg([1,"SEL reservation not supported"],$sessdata->{node});
+        return;
 	}
 
     my $res_id_ls=0;
     my $res_id_ms=0;
     my %auxloginfo;
+    my $subcommand = $sessdata->{subcommand};
     if ($subcommand =~ /clear/) { #Don't bother with a reservation unless a clear is involved
         #atomic SEL retrieval need not require it, so an event during retrieval will not kill reventlog effort off
-    	@cmd=(0x42);
-    	$error = docmd(
-    		$netfun,
-    		\@cmd,
-    		\@returnd
-    	);
-    
-    	if($error) {
-    		$rc = 1;
-    		$text = $error;
-    		return($rc,$text);
-    	}
-        
-    	$code = $returnd[0];
-    
-    	if($code == 0x00) {
-    	}
-    	elsif($code == 0x81) {
-    		$rc = 1;
-    		$text = "cannot execute command, SEL erase in progress";
-    	}
-    	else {
-    		$rc = 1;
-    		$text = $codes{$code};
-    	}
-    
-    	if($rc != 0) {
-    		if(!$text) {
-    			$text = sprintf("unknown response %02x",$code);
-    		}
-    		return($rc,$text);
-    	}
-
-	    $res_id_ls = $returnd[1];
-    	$res_id_ms = $returnd[2];
-    } elsif ($mfg_id == 2) {
+        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x42,data=>[],callback=>\&clear_sel_with_reservation,callback_args=>$sessdata);
+        return;
+    } elsif ($sessdata->{mfg_id} == 2) {
+        #read_ibm_auxlog($sessdata); #TODO JBJ fix this back in
+        #return;
         #For requests other than clear, we check for IBM extended auxillary log data
-        my @auxdata;
-        my $netfn = 0xa << 2;
-        my @auxlogcmd = (0x5a,1);
-        $error = docmd(
-            $netfn,
-            \@auxlogcmd,
-            \@auxdata);
-        #print Dumper(\@auxdata);
-        unless ($error or $auxdata[0] or $auxdata[5] != 0x4d or $auxdata[6] != 0x4f or $auxdata[7] !=0x0 ) { #Don't bother if support cannot be confirmed by service processor
-            $netfn=0x2e<<2; #switch netfunctions to read
-            my $numauxlogs = $auxdata[8]+($auxdata[9]<<8);
-            my $auxidx=1;
-            my $rc;
-            my $entry;
-            my $extdata;
-            while ($auxidx<=$numauxlogs) {
-                ($rc,$entry,$extdata) = readauxentry($auxidx++);
-                unless ($rc) {
-                    if ($auxloginfo{$entry}) {
-                        $auxloginfo{$entry}.="!".$extdata;
-                    } else {
-                        $auxloginfo{$entry}=$extdata;
-                    }
-                }
-            }
-            if ($auxloginfo{0}) {
-                if ($skiptail) {
-                    foreach (split /!/,$auxloginfo{0}) {
-                        sendoutput(0,":Unassociated auxillary data detected:");
-                        foreach (split /\n/,$_) {
-                            sendoutput(0,$_);
-                        }
-                    }
-                }
-            }
-            #print Dumper(\%auxloginfo);
-        }
     }
+    $sessdata->{selentries} = [];
+    $sessdata->{selentry}=0;
+    $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[$res_id_ls,$res_id_ms,0x00,0x00,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
+}
+sub got_sel {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @returnd = (0,@{$rsp->{data}});
+		#elsif($code == 0x81) {
+		#	$rc = 1;
+		#	$text = "cannot execute command, SEL erase in progress";
+		#}
 
 
-	if($subcommand eq "clear") {
-		@cmd=(0x47,$res_id_ls,$res_id_ms,0x43,0x4c,0x52,0xaa);
-		$error = docmd(
-			$netfun,
-			\@cmd,
-			\@returnd
-		);
+	my $next_rec_ls = $returnd[1];
+	my $next_rec_ms = $returnd[2];
+	my @sel_data = @returnd[3..19];
 
-		if($error) {
-			$rc = 1;
-			$text = $error;
-			return($rc,$text);
-		}
-
-		$code = $returnd[0];
-
-		if($code == 0x00) {
-		}
-		else {
-			$rc = 1;
-			$text = $codes{$code};
-		}
-
-		if($rc != 0) {
-			if(!$text) {
-				$text = sprintf("unknown response %02x",$code);
-			}
-			return($rc,$text);
-		}
-
-		my $erase_status = $returnd[1] & 0b00000001;
-
-#skip test for now, need to get new res id for some machines
-		while($erase_status == 0 && 0) {
-			sleep(1);
-			@cmd=(0x47,$res_id_ls,$res_id_ms,0x43,0x4c,0x52,0x00);
-			$error = docmd(
-				$netfun,
-				\@cmd,
-				\@returnd
-			);
-
-			if($error) {
-				$rc = 1;
-				$text = $error;
-				return($rc,$text);
-			}
-
-			$code = $returnd[0];
-
-			if($code == 0x00) {
-			}
-			else {
-				$rc = 1;
-				$text = $codes{$code};
-			}
-
-			if($rc != 0) {
-				if(!$text) {
-					$text = sprintf("unknown response %02x",$code);
-				}
-				return($rc,$text);
-			}
-
-			$erase_status = $returnd[1] & 0b00000001;
-		}
-
-		$text = "SEL cleared";
-		return($rc,$text);
-	}
-
-	@cmd=(0x43,$res_id_ls,$res_id_ms,0x00,0x00,0x00,0xFF);
-	while(1) {
-		$error = docmd(
-			$netfun,
-			\@cmd,
-			\@returnd
-		);
-
-		if($error) {
-			$rc = 1;
-			$text = $error;
-            if ($skiptail) {
-                sendoutput($rc,$text);
-                return;
-            }
-            push(@output,$text);
-			return($rc,@output);
-		}
-
-		$code = $returnd[0];
-
-		if($code == 0x00) {
-		}
-		elsif($code == 0x81) {
-			$rc = 1;
-			$text = "cannot execute command, SEL erase in progress";
-		}
-		else {
-			$rc = 1;
-			$text = $codes{$code};
-		}
-
-		if($rc != 0) {
-			if(!$text) {
-				$text = sprintf("unknown response %02x",$code);
-			}
-            if ($skiptail) {
-                sendoutput($rc,$text);
-                return;
-            }
-            push(@output,$text);
-			return($rc,@output);
-		}
-
-		my $next_rec_ls = $returnd[1];
-		my $next_rec_ms = $returnd[2];
-		my @sel_data = @returnd[3..19];
-		@cmd=(0x43,$res_id_ls,$res_id_ms,$next_rec_ls,$next_rec_ms,0x00,0xFF);
-
-		$entry++;
+		$sessdata->{selentry}+=1;
         if ($debug) {
-			print "$entry: ";
+			print $sessdata->{selentry}.": ";
 			hexdump(\@sel_data);
         }
 
@@ -3080,28 +2892,31 @@ sub eventlog {
 		if($record_type == 0x02) {
 		}
 		else {
-			$text=getoemevent($record_type,$mfg_id,\@sel_data);
-            if ($auxloginfo{$entry}) { 
-                $text.=" With additional data:\n".$auxloginfo{$entry};
+			my $text=getoemevent($record_type,$sessdata->{mfg_id},\@sel_data);
+            my $entry =  $sessdata->{selentry};
+            if ($sessdata->{auxloginfo} and $sessdata->{auxloginfo}->{$entry}) { 
+                $text.=" With additional data:\n".$sessdata->{auxloginfo}->{$entry};
             }
-            if ($skiptail) {
-                sendoutput($rc,$text);
+            if ($sessdata->{fullsel}) {
+               sendmsg($text,$sessdata->{node});
             } else {
-			    push(@output,$text);
+			    push(@{$sessdata->{selentries}},$text);
             }
 			if($next_rec_ms == 0xFF && $next_rec_ls == 0xFF) {
-				last;
+				sendsel($sessdata);
+                return;
 			}
-			next;
+            $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[$sessdata->{res_id_ls},$sessdata->{res_id_ms},$next_rec_ls,$next_rec_ms,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
+            return;
 		}
 
 		my $timestamp = ($sel_data[3] | $sel_data[4]<<8 | $sel_data[5]<<16 | $sel_data[6]<<24);
       unless ($timestamp < 0x20000000) { #IPMI Spec says below this is effectively BMC uptime, not correctable
-         $timestamp -= $tfactor; #apply correction factor based on how off the current BMC clock is from management server
+         $timestamp -= $sessdata->{tfactor}; #apply correction factor based on how off the current BMC clock is from management server
       }
 		my ($seldate,$seltime) = timestamp2datetime($timestamp);
 #		$text = "$entry: $seldate $seltime";
-		$text = ":$seldate $seltime";
+		my $text = ":$seldate $seltime";
 
 #		my $gen_id_slave_addr = ($sel_data[7] & 0b11111110) >> 1;
 #		my $gen_id_slave_addr_hs = ($sel_data[7] & 0b00000001);
@@ -3128,6 +2943,7 @@ sub eventlog {
 
 		my $type;
 		my $desc;
+        my $rc;
 		($rc,$type,$desc) = getsensorevent($sensor_type,$offset,"ipmisensorevents");
 		if($rc == 1) {
 			$type = "Unknown Type $sensor_type";
@@ -3200,55 +3016,162 @@ sub eventlog {
 		if($event_dir) {
 			$text = "$text - Recovered";
 		}
+        my $entry = $sessdata->{selentry};
 
-        if ($auxloginfo{$entry}) {
+        if ($sessdata->{auxloginfo} and $sessdata->{auxloginfo}->{$entry}) {
              $text.=" with additional data:";
-             if ($skiptail) {
-                sendoutput($rc,$text);
-                foreach (split /\n/,$auxloginfo{$entry}) {
-                    sendoutput(0,$_);
+             if ($sessdata->{fullsel}) {
+                sendmsg($text,$sessdata->{node});
+                foreach (split /\n/,$sessdata->{auxloginfo}->{$entry}) {
+                    sendmsg(0,$_,$sessdata->{node});
                 }
              } else {
-        		push(@output,$text);
-                push @output,split /\n/,$auxloginfo{$entry};
+        		push(@{$sessdata->{selentries}},$text);
+                push @{$sessdata->{selentries}},split /\n/,$sessdata->{auxloginfo}->{$entry};
              } 
 
         } else {
-            if ($skiptail) {
-                sendoutput($rc,$text);
+            if ($sessdata->{fullsel}) {
+                sendmsg($rc,$text);
             } else {
-        		push(@output,$text);
+        		push(@{$sessdata->{selentries}},$text);
             }
         }
 
 		if($next_rec_ms == 0xFF && $next_rec_ls == 0xFF) {
-			last;
+				sendsel($sessdata);
+                return;
 		}
-	}
-
-	my @routput = reverse(@output);
-	my @noutput;
-	my $c;
-	foreach(@routput) {
-		$c++;
-		if($c > $num) {
-			last;
-		}
-		push(@noutput,$_);
-	}
-	@output = reverse(@noutput);
-
-	return($rc,@output);
+        $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x43,data=>[$sessdata->{res_id_ls},$sessdata->{res_id_ms},$next_rec_ls,$next_rec_ms,0x00,0xFF],callback=>\&got_sel,callback_args=>$sessdata);
 }
+
+sub sendsel {
+    my $sessdata = shift;
+####my @routput = reverse(@output);
+####my @noutput;
+####my $c;
+####foreach(@routput) {
+####	$c++;
+####	if($c > $num) {
+####		last;
+####	}
+####	push(@noutput,$_);
+####}
+####@output = reverse(@noutput);
+
+####return($rc,@output);
+}
+sub clear_sel_with_reservation {
+    if (check_rsp_errors(@_)) {
+        return;
+    }
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @returnd = (0,@{$rsp->{data}});
+    	#elsif($code == 0x81) {
+    	#	$rc = 1;
+    	#	$text = "cannot execute command, SEL erase in progress";
+    	#}
+        $sessdata->{res_id_ls} = $returnd[1];
+        $sessdata->{res_id_ms} = $returnd[2];
+    $sessdata->{ipmisession}->subcmd(netfn=>0xa,command=>0x47,data=>[$sessdata->{res_id_ls},$sessdata->{res_id_ms},0x43,0x4c,0x52,0xaa],callback=>\&wait_for_selerase,callback_args=>$sessdata);
+}
+sub wait_for_selerase {
+    my $rsp = shift;
+    my $sessdata = shift;
+    my @returnd = (0,@{$rsp->{data}});
+	my $erase_status = $returnd[1] & 0b00000001;
+    sendmsg("SEL cleared",$sessdata->{node});
+}
+
+#commenting out usless 'while 0' loop.
+#skip test for now, need to get new res id for some machines
+#   	while($erase_status == 0 && 0) {
+#   		sleep(1);
+#   		@cmd=(0x47,$res_id_ls,$res_id_ms,0x43,0x4c,0x52,0x00);
+#   		$error = docmd(
+#   			$netfun,
+#   			\@cmd,
+#   			\@returnd
+#   		);
+
+#   		if($error) {
+#   			$rc = 1;
+#   			$text = $error;
+#   			return($rc,$text);
+#   		}
+
+#   		$code = $returnd[0];
+
+#   		if($code == 0x00) {
+#   		}
+#   		else {
+#   			$rc = 1;
+#   			$text = $codes{$code};
+#   		}
+
+#   		if($rc != 0) {
+#   			if(!$text) {
+#   				$text = sprintf("unknown response %02x",$code);
+#   			}
+#   			return($rc,$text);
+#   		}
+
+#   		$erase_status = $returnd[1] & 0b00000001;
+#   	}
+
+sub read_ibm_auxlog {
+    my $sessdata = shift;
+    my $entry = $sessdata->{selentry};
+        my @auxdata;
+        my $netfn = 0xa << 2;
+        my @auxlogcmd = (0x5a,1);
+        my $error = docmd(
+            $netfn,
+            \@auxlogcmd,
+            \@auxdata);
+        #print Dumper(\@auxdata);
+        unless ($error or $auxdata[0] or $auxdata[5] != 0x4d or $auxdata[6] != 0x4f or $auxdata[7] !=0x0 ) { #Don't bother if support cannot be confirmed by service processor
+            $netfn=0x2e<<2; #switch netfunctions to read
+            my $numauxlogs = $auxdata[8]+($auxdata[9]<<8);
+            my $auxidx=1;
+            my $rc;
+            my $entry;
+            my $extdata;
+            while ($auxidx<=$numauxlogs) {
+                ($rc,$entry,$extdata) = readauxentry($auxidx++);
+                unless ($rc) {
+                    if ($sessdata->{auxloginfo}->{$entry}) {
+                        $sessdata->{auxloginfo}->{$entry}.="!".$extdata;
+                    } else {
+                        $sessdata->{auxloginfo}->{$entry}=$extdata;
+                    }
+                }
+            }
+            if ($sessdata->{auxloginfo}->{0}) {
+                if ($sessdata->{fullsel}) {
+                    foreach (split /!/,$sessdata->{auxloginfo}->{0}) {
+                        sendoutput(0,":Unassociated auxillary data detected:");
+                        foreach (split /\n/,$_) {
+                            sendoutput(0,$_);
+                        }
+                    }
+                }
+            }
+            #print Dumper(\%auxloginfo);
+        }
+}
+
 sub getoemevent {
 	my $record_type = shift;
 	my $mfg_id = shift;
 	my $sel_data = shift;
+    my $sessdata;
 	my $text=":";
 	if ($record_type < 0xE0 && $record_type > 0x2F) { #Should be timestampped, whatever it is
 		my $timestamp =  (@$sel_data[3] | @$sel_data[4]<<8 | @$sel_data[5]<<16 | @$sel_data[6]<<24);
       unless ($timestamp < 0x20000000) {
-         $timestamp -= $tfactor;
+         $timestamp -= $sessdata->{tfactor};
       }
 		my ($seldate,$seltime) = timestamp2datetime($timestamp);
 		my @rest = @$sel_data[7..15];
@@ -4750,7 +4673,6 @@ sub getsensorname
 	my $mfg;
 	my $prod;
 	my $type;
-	my $num;
 	my $desc;
 	my $name="";
 
