@@ -75,6 +75,9 @@ sub preprocess_request
     my $cb  = shift;
     my %sn;
 
+	# need for runcmd output
+    $::CALLBACK=$cb;
+
 	#exit if preprocessed
     if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
@@ -149,6 +152,9 @@ sub process_request
 
     $::request  = shift;
     my $callback = shift;
+
+	# need for runcmd output
+	$::CALLBACK=$callback;
 
     my $ret;
     my $msg;
@@ -1047,7 +1053,7 @@ ions.\n";
     #   - NIM can't handle that
     if ($#members > 1024) {
     	my $rsp;
-       	$rsp->{data}->[0] = "$::msgstr Cannot create a NIM group definition with more than 1024 members - on \'$servname\'.";
+       	$rsp->{data}->[0] = "$::msgstr Cannot create a NIM group definition with more than 1024 members.";
        	xCAT::MsgUtils->message("E", $rsp, $callback);
        	next;
     }
@@ -1078,6 +1084,7 @@ ions.\n";
 		}
 
 		my $output = xCAT::Utils->runcmd("$cmd", -1);
+
    		if ($::RUNCMD_RC  != 0)
    		{
    			my $rsp;
@@ -1254,7 +1261,9 @@ sub getNIMmaster
         $NimMaster = $::objhash{$node}{xcatmaster};
 
     } else {
-        $NimMaster = $::local_host;
+		my $nimprime = xCAT::InstUtils->getnimprime();
+    	chomp $nimprime;
+        $NimMaster = $nimprime;
     }
 
     # assume short hostnames for now???

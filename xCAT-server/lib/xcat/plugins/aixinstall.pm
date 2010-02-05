@@ -95,6 +95,9 @@ sub preprocess_request
 
     my %sn;
 
+	# need for runcmd output
+	$::CALLBACK=$cb;
+
 	# don't want preprocess to run on service node but _xcatdest is not set??
     #if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
 
@@ -327,6 +330,8 @@ sub process_request
     my $msg;
     
     $::callback=$callback;
+	# need for runcmd output
+	$::CALLBACK=$callback;
 
 	# convert the hashes back to the way they were passed in
     #   XML created arrays - we need to strip them out
