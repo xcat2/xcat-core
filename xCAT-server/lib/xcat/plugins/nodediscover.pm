@@ -183,7 +183,7 @@ sub process_request {
                     $nrtab->setNodeAttribs($node,{nfsserver=>xCAT::Utils->my_ip_facing($hosttag)});
                  }
                  $usednames{$hosttag}=1;
-    		   $macstring .= $$currmac."!".$hosttag."|";
+    		   $macstring .= $currmac."!".$hosttag."|";
 	    	} else {
                if ($forcenic == 1) { $macstring .= $currmac."|"; } else { $macstring .= $currmac."!*NOIP*|"; }
             }
