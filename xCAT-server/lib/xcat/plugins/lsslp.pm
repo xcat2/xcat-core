@@ -193,7 +193,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n updatehosts makedhcp M=s resetnet))) {
+            qw(h|help V|Verbose v|version i=s x z T w r s=s e=s t=s m c n updatehosts makedhcp M=s resetnet))) {
         return( usage() );
     }
     #############################################
@@ -243,7 +243,7 @@ sub parse_args {
     #############################################
     # Check for mutually-exclusive formatting
     #############################################
-    if ( (exists($opt{r}) + exists($opt{x}) + exists($opt{z})) > 1 ) {
+    if ( (exists($opt{r}) + exists($opt{x}) + exists($opt{z}) + exists($opt{T}) ) > 1 ) {
         return( usage() );
     }
     #############################################
@@ -280,17 +280,6 @@ sub parse_args {
     if ( exists( $opt{makedhcp} ) and !exists( $opt{w} ) ) {
         return( usage("'makedhcp' should work with '-w' option"  ) );
     }
-
-    #############################################
-    # If no -M option, lsslp only accept -s
-    # option to ouput specific hardwares' mtms
-    #############################################
-#    if ( !exists( $opt{M} ) ) {
-#        if ( exists($opt{r}) or exists($opt{x}) or exists($opt{z}) or exists($opt{w})
-#             or exists($opt{makedhcp}) or exists($opt{writehosts}) or exists($opt{n}) {
-#            return( usage("-r,-x,-z,-w,-n,--makedhcp,--writehosts are not allowed without -M option") );
-#        }
-#    }
 
     #############################################
     # Check the validation of -M option
@@ -1043,7 +1032,7 @@ sub format_output {
     # makedhcp internally.
     ###########################################
     if ( exists( $opt{makedhcp} ) ) {
-        do_makedhcp( $outhash );
+        do_makedhcp( $request, $outhash );
     }
 
     ###########################################
@@ -1076,6 +1065,14 @@ sub format_output {
     ###########################################
     if ( exists( $opt{z} )) {
         send_msg( $request, 0, format_stanza( $outhash ));
+        return;
+    }
+
+    ###########################################
+    # -T flag for vpd table format
+    ###########################################
+    if ( exists( $opt{T} ) ) {
+        send_msg( $request, 0, format_table( $outhash ) );
         return;
     }
 
@@ -1278,18 +1275,15 @@ sub match_switchtable
         #######################################
         $name = disti_multi_node( $names, $type, $bpc_model, $bpc_serial, $frame_number, $cage_number, $side, $mtm, $serial );
         if ( ! $name ) {
-            xCAT::MsgUtils->message("I", "$ip:Cannot distinguish the correct node from $names.", $::callback);
             return undef;
         }
+    } elsif ( !$names ) {
+        return undef;
     } else {
         $name = $names;
     }
 
-    if ( $name ) {
-        return $name;
-    } else {
-        return undef;
-    }
+    return $name;
 }
 
 sub getFactoryHostname
@@ -1746,11 +1740,11 @@ sub parse_responses {
             my $frame_number = @$data[7];
             my $cage_number  = @$data[8];
             my $side         = @$data[3];
-            $host = match_switchtable($ip, $mac, $type, $bpc_model, $bpc_serial, $frame_number, $cage_number, $side, $mtm, $serial);
-        }
 
-        if ( $host ) {
-            $h = "$host($ip)";
+            $host = match_switchtable($ip, $mac, $type, $bpc_model, $bpc_serial, $frame_number, $cage_number, $side, $mtm, $serial);
+            if ( $host ) {
+                $h = "$host($ip)";
+            }
         }
 
         $hash{$h} = $data;
@@ -1822,26 +1816,6 @@ sub xCATdB {
             my $mac        = @$data[10];
 
             ########################################
-            # "Factory-default" FSP name format:
-            # Server-<type>-<model>-<serialnumber>
-            # ie. Server-9117-MMA-SN10F6F3D
-            #
-            # If the IP address cannot be converted
-            # to a shirt-hostname use the following:
-            #
-            # Note that this may not be the name
-            # that the user (or the HMC) knows this
-            # CEC as. This is the "factory-default"
-            # CEC name. SLP does not return the
-            # user- or system-defined CEC name and
-            # FSPs are assigned dynamic hostnames
-            # by DHCP so there is no point in using
-            # the short-hostname as the name.
-            ########################################
-            if ( $name =~ /^[\d]{1}/ ) {
-                $name = "Server-$model-$serial-$side";
-            }
-            ########################################
             # N/A Values
             ########################################
             my $prof   = "";
@@ -1862,8 +1836,10 @@ sub xCATdB {
 ##########################################################################
 sub do_makedhcp {
 
+    my $request = shift;
     my $outhash = shift;
     my @nodes;
+    my $string;
 
     my @tabs   = qw(hosts mac);
     my %db     = ();
@@ -1875,6 +1851,8 @@ sub do_makedhcp {
         }
     }
 
+    $string = "\nStart to do makedhcp..\n";
+    send_msg( $request, 0, $string );
 
     #####################################
     # Collect nodenames
@@ -1890,13 +1868,15 @@ sub do_makedhcp {
         #####################################
         my ($hostsent) = $db{hosts}->getNodeAttribs( $name, [qw(ip)] );
         if ( !$hostsent or !$hostsent->{ip} ) {
-            xCAT::MsgUtils->message("I", "Cannot find IP address for node $name during makedhcp, skipping", $::callback);
+            $string = "Cannot find IP address for node $name during makedhcp, skip";
+            send_msg( $request, 0, $string );
             next;
         }
 
         my ($macent) = $db{mac}->getNodeAttribs( $name, [qw(mac)] );
         if ( !$macent or !$macent->{mac} ) {
-            xCAT::MsgUtils->message("I", "Cannot find MAC address for node $name during makedhcp, skipping..", $::callback);
+            $string = "Cannot find MAC address for node $name during makedhcp, skip";
+            send_msg( $request, 0, $string );
             next;
         }
 
@@ -1904,7 +1884,13 @@ sub do_makedhcp {
     }
 
     my $node = join ",", @nodes;
+
+    $string = "Add following nodes to dhcp server: \n$node\n";
+    send_msg( $request, 0, $string );
+
     `makedhcp -n $node`;
+
+    send_msg( $request, 0, "\nMakedhcp finished.\n" );
 
     return undef;
 }
@@ -1952,6 +1938,8 @@ sub do_resetnet {
         return( [RC_ERROR] );
     } 
 
+    send_msg( $req, 0, "\nStart to reset network..\n" );
+
     my $ip_host;
     my @hostslist = $hoststab->getAllNodeAttribs(['node','ip','otherinterfaces']);
     foreach my $host ( @hostslist ) {
@@ -1967,30 +1955,28 @@ sub do_resetnet {
         if ( !$reset_all ) {
             if ( $namehash->{$name} ) {
                 if ( !$ip or $ip eq $namehash->{$name} ) {
-                    $result .= "$name: same ip address, skipping network reset\n";
+                    send_msg( $req, 0, "$name: same ip address, skipping network reset" );
                     next;
                 }
             } else {
                 next;
             }
         } elsif (!$ip or !$oi or $ip eq $oi) {
-            $result .= "$name: same ip address, skipping network reset\n";
+            send_msg( $req, 0, "$name: same ip address, skipping network reset" );
             next;
         }
 
         my $type = $nodetypetab->getNodeAttribs( $name, [qw(nodetype)]);
         if ( !$type or !$type->{nodetype} ) {
-            $result .= "$name: no nodetype defined, skipping network reset\n";
+            send_msg( $req, 0, "$name: no nodetype defined, skipping network reset" );
             next;
         }
 
         my $mac = $mactab->getNodeAttribs( $name, [qw(mac)]);
         if ( !$mac or !$mac->{mac} ) {
-            $result .= "$name: no mac defined, skipping network reset\n";
+            send_msg( $req, 0, "$name: no mac defined, skipping network reset" );
             next;
         }
-
-        $result .= "$name: network resetting..\n";
 
         #####################################
         # Make the target that will reset its
@@ -2007,26 +1993,25 @@ sub do_resetnet {
         }
         $ip_host->{$oi} = $name;
     }
-    send_msg( $req, 0, $result );
 
     $result = undef;
     ###########################################
     # Update target hardware w/discovery info
     ###########################################
     my ($fail_nodes,$succeed_nodes) = rspconfig( $req, $targets );
-    $result = "Failed reset network:\n";
+    $result = "\nReset network failed nodes:\n";
     foreach my $ip ( @$fail_nodes ) {
         if ( $ip_host->{$ip} ) {
             $result .= $ip_host->{$ip} . ",";
         }
     }
-    $result .= "\nSuccessfully reseted network:\n";
+    $result .= "\nReset network succeed nodes:\n";
     foreach my $ip ( @$succeed_nodes ) {
         if ( $ip_host->{$ip} ) {
             $result .= $ip_host->{$ip} . ",";
         }
     }
-    $result .= "\n";
+    $result .= "\nReset network finished.\n";
 
     send_msg( $req, 0, $result );
 
@@ -2173,6 +2158,34 @@ sub format_xml {
                      RootName => undef );
     }
     return( $xml );
+}
+
+##########################################################################
+# VPD table formatting
+##########################################################################
+sub format_table {
+
+    my $outhash = shift;
+    my $result;
+
+    $result = "\n#node,serial,mtm,side,asset,comments,disable\n";
+    #####################################
+    # Create XML formatted attributes
+    #####################################
+    foreach my $name ( keys %$outhash ) {
+        my @data = @{ $outhash->{$name}};
+        my $type = lc($data[0]);        
+        my $mtm  = $data[1];
+        my $serial = $data[2];
+        my $side = $data[3];
+        if ( $side =~ /^N\/A$/ ) {
+            $result .= ",\"$serial\",\"$mtm\",,,\"$type\",\n";
+        } else {
+            $result .= ",\"$serial\",\"$mtm\",\"$side\",,\"$type\",\n";
+        }
+    }
+
+    return( $result );
 }
 
 
@@ -2583,6 +2596,8 @@ sub disti_multi_node
     return undef if ( ! $nodetypetab );
 
     my $vpdtab = xCAT::Table->new( 'vpd' );
+    return undef if ( ! $vpdtab );
+ 
     my @nodes = split /,/, $names;
     my $correct_node = undef;
     foreach my $node ( @nodes ) {
@@ -2591,23 +2606,20 @@ sub disti_multi_node
 	    next if ( !defined $nodetype or !exists $nodetype->{'nodetype'} );
         next if ( $nodetype->{'nodetype'} ne lc($type) );
 
-        if ( $nodetype->{'nodetype'} eq 'fsp') {
-            if ( defined $id_parent->{'id'} and defined $id_parent->{'parent'} ) {
+        if ( $nodetype->{'nodetype'} eq 'fsp' ) {
+            if ( (exists $id_parent->{'id'}) and (exists $id_parent->{'parent'}) ) {
                 ###########################################
                 # For high end machines.
                 # Check if this node's parent and id is the
                 # same in SLP response.
                 ###########################################
                 if ( $id_parent->{'id'} eq $cage_number ) {
-                    my $vpdnode = undef;
-                    if ( $vpdtab
-                        and $vpdnode = $vpdtab->getNodeAttribs($id_parent->{'parent'}, ['serial','mtm'])
-                        and exists $vpdnode->{'serial'}
-                        and exists $vpdnode->{'mtm'} ) {
-                        if ( $vpdnode->{'serial'} ne $bpc_serial 
-                                or $vpdnode->{'mtm'} ne $bpc_model ) {
-                            next;
-                        }
+                    my $vpdnode = $vpdtab->getNodeAttribs($id_parent->{'parent'}, ['serial','mtm']);
+                    if ( (exists $vpdnode->{'serial'}) and ($vpdnode->{'serial'} ne $bpc_serial) ) {
+                        next;
+                    }
+                    if ( (exists $vpdnode->{'mtm'}) and ($vpdnode->{'mtm'} ne $bpc_model) ) {
+                        next;
                     }
                 } else {
                     next;
@@ -2619,15 +2631,12 @@ sub disti_multi_node
                 # with the same switch port, check node's
                 # mtms
                 ###########################################
-                my $vpdnode = undef;
-                if( $vpdtab 
-                        and $vpdnode = $vpdtab->getNodeAttribs($node, ['serial','mtm']) 
-                        and exists $vpdnode->{'serial'}
-                        and exists $vpdnode->{'mtm'} ) {
-                    if ( $vpdnode->{'serial'} ne $serial 
-                            or $vpdnode->{'mtm'} ne $mtm ) {
-                        next;
-                    }
+                my $vpdnode = $vpdtab->getNodeAttribs($node, ['serial','mtm']); 
+                if ( (exists $vpdnode->{'serial'}) and ($vpdnode->{'serial'} ne $serial) ) {
+                    next;
+                }
+                if ( (exists $vpdnode->{'mtm'}) and ($vpdnode->{'mtm'} ne $mtm) ) {
+                    next;
                 }
             }
 
@@ -2636,32 +2645,33 @@ sub disti_multi_node
             # is the same in SLP response
             # For FSP redundancy.
             ###########################################
-            my $nodeside = undef;
-            $nodeside = $vpdtab->getNodeAttribs($node, ['side']);
-            if ( defined $nodeside->{'side'} and $nodeside->{'side'} ne $side ) {
+            my $nodeside = $vpdtab->getNodeAttribs($node, ['side']);
+            if ( (exists $nodeside->{'side'}) and ($nodeside->{'side'} ne $side) ) {
                 next;
             }
-            return $node;
         }
+
         if ( $nodetype->{'nodetype'} eq 'bpa' ) {
-            my $vpdnode = undef;
             ###########################################
             # If there is a hub to connect several BPAs
             # with the same switch port, check this
-            # node's mtms
+            # node's mtms and side
             ###########################################
-            if ( $vpdtab 
-                and $vpdnode = $vpdtab->getNodeAttribs( $node, ['serial','mtm']) 
-                and exists $vpdnode->{'serial'}
-                and exists $vpdnode->{'mtm'} ) {
-                if ( $vpdnode->{'serial'} ne $bpc_serial
-                        or $vpdnode->{'mtm'} ne $bpc_model ) {
-                    next;
-                }
+            my $vpdnode = $vpdtab->getNodeAttribs( $node, ['serial','mtm','side'] );
+
+            if ( (exists $vpdnode->{'serial'}) and ($vpdnode->{'serial'} ne $serial) ) {
+                next;
+            }
+            if ( (exists $vpdnode->{'mtm'}) and ($vpdnode->{'mtm'} ne $mtm) ) {
+                next;
+            }
+            if ( (exists $vpdnode->{'side'}) and ($vpdnode->{'side'} ne $side) ) {
+                next;
             }
         }
         return $node;
     }
+
     return undef;    
 }
 
