@@ -1,4 +1,4 @@
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #TODO:
 #MEMLEAK fix
 # see NodeRange.pm for notes about how to produce a memory leak
@@ -418,20 +418,14 @@ sub buildcreatestmt
     {
         my $datatype;
         if ($xcatcfg =~ /^DB2:/){
-         $datatype=get_datatype_string_db2($col, $types, $tabn);
+         $datatype=get_datatype_string_db2($col, $types, $tabn,$descr);
         } else {
          $datatype=get_datatype_string($col,$xcatcfg, $types);
         }
-        my $db2key=0;
-        if (($datatype eq "TEXT") || ($xcatcfg =~ /^DB2:/)) {
+        if ($datatype eq "TEXT") {
 	    if (isAKey(\@{$descr->{keys}}, $col)) {   # keys need defined length
               
-              if ($xcatcfg =~ /^DB2:/) {  # for DB2 
-		 $datatype = "VARCHAR(128) NOT NULL ";  
-                 $db2key=1;
-              } else {
 		$datatype = "VARCHAR(128) ";
-	      }
 	    }
 	}  
         # build the columns of the table
@@ -444,7 +438,7 @@ sub buildcreatestmt
         if (grep /^$col$/, @{$descr->{required}})
         { 
             # will have already put in NOT NULL, if DB2 and a key
-            if ($db2key == 0) {  # not a db2 key
+            if (!($xcatcfg =~ /^DB2:/)){   # not a db2 key
               $retv .= " NOT NULL";
             }
         }
@@ -525,7 +519,7 @@ sub get_datatype_string {
     Description: get_datatype_string_db2 ( for DB2) 
 
     Arguments:
-                Table column,database,types,tablename 
+                Table column,database,types,tablename,table schema 
     Returns:
               the datatype for the column being defined 
     Globals:
@@ -534,7 +528,7 @@ sub get_datatype_string {
 
     Example:
 
-        my $datatype=get_datatype_string_db2($col, $types,$tablename);
+        my $datatype=get_datatype_string_db2($col, $types,$tablename,$descr);
 
 =cut
 
@@ -543,16 +537,28 @@ sub get_datatype_string_db2 {
     my $col=shift;    #column name
     my $types=shift;  #types field (eventlog)
     my $tablename=shift;  # tablename
-    my $ret;
+    my $descr=shift;  # table schema
 
+    my $ret = "varchar(512)";  # default for most attributes
     if (($types) && ($types->{$col})) {
 	if ($types->{$col} =~ /INTEGER AUTO_INCREMENT/) {
 		$ret = "INTEGER GENERATED ALWAYS AS IDENTITY";  
 	} else {
 	    $ret = $types->{$col};
 	}
-    } else {
-       $ret = "varchar(1024)";
+    }
+    if ($col eq "disable") {
+         
+       $ret = "varchar(8)";
+    }
+    if ($col eq "rawdata") {  # from eventlog table
+         
+       $ret = "varchar(4098)";
+    }
+    # if the column is a key
+    if (isAKey(\@{$descr->{keys}}, $col)) { 
+              
+          $ret = "VARCHAR(128) NOT NULL ";  
     }
     return $ret;
 }
@@ -936,17 +942,13 @@ sub updateschema
             #TODO: log/notify of schema upgrade?
             my $datatype;
             if ($xcatcfg =~ /^DB2:/){
-             $datatype=get_datatype_string_db2($dcol, $types, $tn);
+             $datatype=get_datatype_string_db2($dcol, $types, $tn,$descr);
             } else{
              $datatype=get_datatype_string($dcol, $xcatcfg, $types);
             }
-            if (($datatype eq "TEXT") || ($xcatcfg =~ /^DB2:/)) { 
+            if ($datatype eq "TEXT") { 
 		if (isAKey(\@{$descr->{keys}}, $dcol)) {   # keys need defined length
-                    if ($xcatcfg =~ /^DB2:/) {  # for DB2 
-		      $datatype = "VARCHAR(128) NOT NULL   ";  
-                    } else {
 		      $datatype = "VARCHAR(128) ";
-	            }
 		}
 	    }
 
@@ -975,15 +977,11 @@ sub updateschema
                if ($xcatcfg =~ /^mysql:/) { 
 		 $datatype=get_datatype_string($dbkey, $xcatcfg, $types);
                } else {   # db2 
-		 $datatype=get_datatype_string_db2($dbkey, $types, $tn);
+		 $datatype=get_datatype_string_db2($dbkey, $types, $tn,$descr);
                }
-               if (($datatype eq "TEXT") || ($xcatcfg =~ /^DB2:/)) { 
+               if ($datatype eq "TEXT") { 
 		    if (isAKey(\@{$descr->{keys}}, $dbkey)) {   # keys need defined length
-                      if ($xcatcfg =~ /^DB2:/) {  # for DB2 
-		        $datatype = "VARCHAR(128) NOT NULL ";  
-                      } else {
 		        $datatype = "VARCHAR(128) ";
-	              }
 		    }
 		}
 		
