@@ -178,11 +178,15 @@ if [ "$OSNAME" != "AIX" ]; then
 	fi
 fi
 
-if [ "$OSNAME" != "AIX" ]; then
-	if $GREP -E '^[UAD] +xCATsn/' $SVNUP; then
-	   UPLOAD=1
-	   rm -f $DESTDIR/xCATsn-$SHORTVER*rpm
-	   rm -f $SRCDIR/xCATsn-$SHORTVER*rpm
+if $GREP -E '^[UAD] +xCATsn/' $SVNUP; then
+   UPLOAD=1
+   rm -f $DESTDIR/xCATsn-$SHORTVER*rpm
+   rm -f $SRCDIR/xCATsn-$SHORTVER*rpm
+	if [ "$OSNAME" = "AIX" ]; then
+		./makexcatsnrpm
+		mv $source/RPMS/*/xCATsn-$VER*rpm $DESTDIR
+		mv $source/SRPMS/xCATsn-$VER*rpm $SRCDIR
+	else
 	   ./makexcatsnrpm x86_64
 	   mv $source/RPMS/*/xCATsn-$VER*rpm $DESTDIR
 	   mv $source/SRPMS/xCATsn-$VER*rpm $SRCDIR

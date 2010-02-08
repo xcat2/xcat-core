@@ -7,12 +7,15 @@ if [ "$OSNAME" = "AIX" ]
 then
     cd `dirname $0`/xCATsn
     echo '.svn' > /tmp/xcat-excludes
+	echo 'upflag' >> /tmp/xcat-excludes
 
     tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/license.tar LICENSE.html
     gzip -f /opt/freeware/src/packages/SOURCES/license.tar
 
-    cp xcat.conf /opt/freeware/src/packages/SOURCES
-    cp xCATSN /usr/src/$pkg/SOURCES
+#    cp xcat.conf /opt/freeware/src/packages/SOURCES
+#    cp xCATSN /usr/src/$pkg/SOURCES
+
+	cp xCATSN /opt/freeware/src/packages/SOURCES
     rm -f /opt/freeware/src/packages/SRPMS/xCATsn-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/xCATsn-$VER*rpm
     cd -
 
