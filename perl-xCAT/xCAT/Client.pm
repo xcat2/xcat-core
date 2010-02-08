@@ -868,8 +868,7 @@ sub handle_response {
 #print "printing node\n";
     my $nodes=($rsp->{node});
     my $node;
-    my @nodelist = sort {$a cmp $b} @$nodes;
-    foreach $node (@nodelist) {
+    foreach $node (@$nodes) {
       my $desc=$node->{name}->[0];
       if ($node->{errorcode}) {
         if (ref($node->{errorcode}) eq 'ARRAY') { foreach my $ecode (@{$node->{errorcode}}) { $xCAT::Client::EXITCODE |= $ecode; } }
