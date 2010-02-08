@@ -503,10 +503,10 @@ sub parse_args_xdcp
         xCAT::DSHCLI->show_dsh_config;
         exit 0;
     }
-    if ( exists( $options{File} ) && ($options{File} !~ /^\//) ) {#relative path
+    if ( defined( $options{File} ) && ($options{File} !~ /^\//) ) {#relative path
         $options{File} = xCAT::Utils->full_path($options{File});
     }
-    if ( exists( $options{rootimg} ) && ($options{rootimg} !~ /^\//) ) {#relative path
+    if ( defined( $options{rootimg} ) && ($options{rootimg} !~ /^\//) ) {#relative path
         $options{rootimg} = xCAT::Utils->full_path($options{rootimg});
     }
 
