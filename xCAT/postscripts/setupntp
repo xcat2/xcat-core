@@ -57,6 +57,17 @@ fi
 
 #service ntpd restart 
   service $SERVICE stop 
+#ntpdate program is deprecated on SuSE
+if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+  logger -t xcat "ntpd -q -g"
+  ntpd -q -g
+  if [ "$?" != "0" ]
+        then
+            echo
+            echo "  ntpd -q -g failed"
+            logger -t xcat "ntpd -q -g failed"
+  fi
+else
   logger -t xcat "ntpdate -t5 $master "
   ntpdate -t5 $master 
   if [ "$?" != "0" ]
@@ -65,10 +76,11 @@ fi
             echo "  ntpdate -t5 $master  failed"
             logger -t xcat "ntpdate -t5 $master failed"
   fi
+fi
 
   service $SERVICE start 
-  chkconfig --add  $SERVICE 
-  chkconfig --level 345 $SERVICE on
+  chkconfig --add  $SERVICE >/dev/null 2>&1
+  chkconfig --level 345 $SERVICE on >/dev/null 2>&1
 else
 # stop and start AIX ntp
   echo "driftfile /etc/ntp.drift
