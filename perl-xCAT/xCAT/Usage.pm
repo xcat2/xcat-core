@@ -145,8 +145,9 @@ my %usage = (
        rmvm [-h|--help|-v|--version]",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
-       lsslp [-V|--verbose][-i ip[,ip..]][-w][-u] [-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC]
-             [-t tries][-m][-e cmd][-c [timeout[timeout,..]]]",
+       lsslp [-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC]
+             [-t tries][-m][-e cmd][-c [timeout[timeout,..]]][--vpdtable]
+             [-M vpd|switchport][--makedhcp][--updatehost][--resetnet]",
   "rflash" =>
 "Usage: rflash [ -h|--help|-v|--version]
 	rflash <noderange> -p directory [--activate concurrent | disruptive][-V|--verbose] 

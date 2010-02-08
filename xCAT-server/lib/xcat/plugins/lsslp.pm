@@ -193,9 +193,11 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z T w r s=s e=s t=s m c n updatehosts makedhcp M=s resetnet))) {
+            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n updatehosts makedhcp M=s resetnet vpdtable))) {
         return( usage() );
     }
+
+    
     #############################################
     # Check for switch "-" with no option
     #############################################
@@ -243,7 +245,7 @@ sub parse_args {
     #############################################
     # Check for mutually-exclusive formatting
     #############################################
-    if ( (exists($opt{r}) + exists($opt{x}) + exists($opt{z}) + exists($opt{T}) ) > 1 ) {
+    if ( (exists($opt{r}) + exists($opt{x}) + exists($opt{z}) + exists($opt{vpdtable}) ) > 1 ) {
         return( usage() );
     }
     #############################################
@@ -1048,7 +1050,7 @@ sub format_output {
     ###########################################
     if ( exists( $opt{r} )) {
         foreach ( keys %$outhash ) {
-            $result .= "@{ $outhash->{$_}}[5]\n";
+            $result .= "@{ $outhash->{$_}}[9]\n";
         }
         send_msg( $request, 0, $result );
         return;
@@ -1071,7 +1073,7 @@ sub format_output {
     ###########################################
     # -T flag for vpd table format
     ###########################################
-    if ( exists( $opt{T} ) ) {
+    if ( exists( $opt{vpdtable} ) ) {
         send_msg( $request, 0, format_table( $outhash ) );
         return;
     }
@@ -1306,7 +1308,7 @@ sub getFactoryHostname
         }
     }
 
-    if ( $type eq SERVICE_FSP or $type eq SERVICE_BPA)
+    if ( $type eq SERVICE_FSP or $type eq SERVICE_BPA or $type eq SERVICE_MM )
     {
         $host = "Server-$mtm-SN$sn-$side";
     }
@@ -1562,45 +1564,12 @@ sub parse_responses {
         # Get host directly from URL
         ###########################################
         if ( $type eq SERVICE_HMC or $type eq SERVICE_BPA 
-                or $type eq SERVICE_FSP) {
+                or $type eq SERVICE_FSP or $type eq SERVICE_MM ) {
             $host = gethost_from_url( $request, $rsp, @result);
             if ( !defined( $host )) {
                 next;
             }
         }
-        ###########################################
-        # Seperate ATTR and URL portions:
-        # URL: service:management-software.IBM...
-        # ATTR: (type=hardware-management-cons...
-        # (serial-number=KPHHK24),(name=c76v2h...
-        # 1ab1dd89ca8e0763e),(ip-address=192.1...
-        # 0CR3*KPHHK24),(web-management-interf...
-        # 2.ppd.pok.ibm.com:8443),(cimom-port=...
-        #
-        ###########################################
-        $rsp =~ /.*URL: (.*)\nATTR: +(.*)/;
-
-        ###########################################
-        # If MM, use the discovered host
-        ###########################################
-#        if (!$host and ( $type eq SERVICE_MM ) and ( defined( $mm ))) {
-#            my $ip = getip_from_url( $request, $1 );
-#
-#            if ( defined( $ip )) {
-#                if ( exists( $mm->{$ip}->{args} )) {
-#                    $mm->{$ip}->{args} =~ /^.*,(.*)$/;
-#                    $host = $1;
-#                }
-#            }
-#        }
-
-#        push @result, $host;
-        ###################################
-        # Strip off trailing ",lifetime"
-        ###################################
-#        my $at = $2;
-#        $at =~ s/,\d+$//;
-#        push @result, $at;
 
         ###########################################
         # Strip commas from IP list
@@ -1609,17 +1578,14 @@ sub parse_responses {
         my $ip     = $result[4];
 
         ###########################################
-        # Process any extra attributes
-        ###########################################
-#        foreach ( @{$exattr{$type}} ) {
-#             push @result, ($rsp =~ /\($_=([\w\-\.,]+)\)/) ? $1 : "0";
-#        }
-        ###########################################
         # Save longest IP for formatting purposes
         ###########################################
         if ( length( $ip ) > $$length ) {
             $$length = length( $ip );
         }
+
+        push @result, $rsp;
+ 
         $result[0] = $service_slp{$type};
         $outhash{$host} = \@result;
     }
@@ -1785,7 +1751,7 @@ sub xCATdB {
             my $serial = @$data[2];
             my $side   = @$data[3];
             my $id     = @$data[7];
-            my $mac    = @$data[10];
+            my $mac    = @$data[11];
 
             ####################################
             # N/A Values
@@ -1797,7 +1763,7 @@ sub xCATdB {
                lc($type),$name,$id,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
             xCAT::PPCdb::add_ppc( lc($type), [$values], 0, 1 );
         } elsif ( $type =~ /^(HMC|IVM)$/ ) {
-            my $mac    = @$data[10];
+            my $mac    = @$data[11];
 
             xCAT::PPCdb::add_ppchcp( lc($type), "$name,$mac,$ip",1 );
         }
@@ -1812,8 +1778,8 @@ sub xCATdB {
             my $bpc_model  = @$data[5];
             my $bpc_serial = @$data[6];
             my $cageid     = @$data[8];
-            my $frame      = @$data[9];
-            my $mac        = @$data[10];
+            my $frame      = @$data[10];
+            my $mac        = @$data[11];
 
             ########################################
             # N/A Values
@@ -2063,6 +2029,7 @@ sub format_stanza {
                 } elsif ( $type =~ /^bpa$/ ) {
                     $i++;
                 }
+                $i++;
             } elsif ( /^side$/ ) {
                 if ( $type !~ /^(fsp|bpa)$/ ) {
                     next;
@@ -2136,6 +2103,7 @@ sub format_xml {
                 } elsif ( $type =~ /^bpa$/ ) {
                     $i++;
                 }
+                $i++;
             } elsif ( /^side$/ ) {
                 if ( $type !~ /^(fsp|bpa)$/ ) {
                     next;
