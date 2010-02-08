@@ -50,7 +50,7 @@ An error has occurred.
 
 To put rows into the mp table:
 
-  B<tabrestore> I<mp.csv>
+B<  tabrestore> I<mp.csv>
 
 The file mp.csv could contain something like:
 
