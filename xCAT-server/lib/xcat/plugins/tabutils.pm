@@ -1338,7 +1338,7 @@ sub nodels
         }
         else
         {
-            foreach sort (@$nodes)
+            foreach (sort @$nodes)
             {
                 my $noderec;
                 $noderec->{name}->[0] = ($_);
