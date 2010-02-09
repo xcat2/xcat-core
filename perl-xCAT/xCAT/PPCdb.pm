@@ -579,10 +579,10 @@ sub rm_ppc {
 sub add_systemX {
 
     my $hwtype = shift;
+    my $name   = shift;
     my $data   = shift;
     my @tabs   = qw(mpa mp nodehm nodelist);
     my %db     = ();
-    my $name   = @$data[4];
 
     ###################################
     # Open database needed

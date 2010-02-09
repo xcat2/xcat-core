@@ -96,7 +96,7 @@ my %mgt = (
     lc(TYPE_RSA) => "blade"
 );
 
-my @attribs    = qw(nodetype serial serial side otherinterfaces groups mgt id parent mac);
+my @attribs    = qw(nodetype mtm serial side otherinterfaces groups mgt id parent mac);
 my $verbose    = 0;
 my %ip_addr    = ();
 my %slp_result = ();
@@ -1185,7 +1185,7 @@ sub gethost_from_url {
     }
 
     if ( !$host ) {
-        $host = getFactoryHostname($type,$mtm,$sn,$side,$rsp);
+        $host = getFactoryHostname($type,$mtm,$sn,$side,$ip,$rsp);
         #######################################
         # Convert hostname to short-hostname
         #######################################
@@ -1294,6 +1294,7 @@ sub getFactoryHostname
     my $mtm  = shift;
     my $sn   = shift;
     my $side = shift;
+    my $ip   = shift;
     my $rsp  = shift;
     my $host = undef;
 
@@ -1312,6 +1313,14 @@ sub getFactoryHostname
     {
         $host = "Server-$mtm-SN$sn-$side";
     }
+
+    if ( $ip ) {
+        my $hname = gethostbyaddr( inet_aton($ip), AF_INET );
+        if ( $hname ) {
+            $host = $hname;
+        }
+    }
+
     return $host;
 }
 
@@ -1634,6 +1643,7 @@ sub parse_responses {
         my $type = @$data[0];
         my $mtm  = @$data[1];
         my $sn   = @$data[2];
+        my $side = @$data[3];
         my $frame;
 
         my ($name, $ip);
@@ -1643,6 +1653,15 @@ sub parse_responses {
         } else {
             $name = $h;
             $ip   = @$data[4];
+        }
+
+        ############################################################
+        # -n flag to skip the existing node
+        ############################################################
+        if ( exists( $opt{n} ) ) {
+            if ( exists $vpd_table_hash{$mtm . '*' . $sn . '-' . $side} ) {
+                next;
+            }
         }
 
         if ( $type =~ /^FSP$/ ) {
@@ -1701,13 +1720,25 @@ sub parse_responses {
             my $type       = @$data[0];
             my $mtm        = @$data[1];
             my $serial     = @$data[2];
-            my $bpc_model  = @$data[5];
-            my $bpc_serial = @$data[6];
-            my $frame_number = @$data[7];
-            my $cage_number  = @$data[8];
-            my $side         = @$data[3];
 
-            $host = match_switchtable($ip, $mac, $type, $bpc_model, $bpc_serial, $frame_number, $cage_number, $side, $mtm, $serial);
+            if ( $type =~ /^BPA$/ or $type =~ /^FSP$/ ) {
+                my $bpc_model  = @$data[5];
+                my $bpc_serial = @$data[6];
+                my $frame_number = @$data[7];
+                my $cage_number  = @$data[8];
+                my $side         = @$data[3];
+
+                $host = match_switchtable($ip, $mac, $type, $bpc_model, $bpc_serial, $frame_number, $cage_number, $side, $mtm, $serial);
+            } else {
+                my $bpc_model  = undef;
+                my $bpc_serial = undef;
+                my $frame_number = undef;
+                my $cage_number  = undef;
+                my $side         = @$data[3];
+
+                $host = match_switchtable($ip, $mac, $type, $bpc_model, $bpc_serial, $frame_number, $cage_number, $side, $mtm, $serial);
+            }
+ 
             if ( $host ) {
                 $h = "$host($ip)";
             }
@@ -1792,7 +1823,7 @@ sub xCATdB {
             xCAT::PPCdb::add_ppc( "fsp", [$values], 0, 1 );
         }
         elsif ( $type =~ /^(RSA|MM)$/ ) {
-            xCAT::PPCdb::add_systemX( $type, $data );
+            xCAT::PPCdb::add_systemX( $type, $name, $data );
         }
     }
 }
@@ -2619,7 +2650,7 @@ sub disti_multi_node
             }
         }
 
-        if ( $nodetype->{'nodetype'} eq 'bpa' ) {
+        if ( $nodetype->{'nodetype'} eq 'bpa' or $nodetype->{'nodetype'} eq 'mm' ) {
             ###########################################
             # If there is a hub to connect several BPAs
             # with the same switch port, check this

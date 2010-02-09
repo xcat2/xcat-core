@@ -9,12 +9,12 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-e command][-c [timeout[timeout,..]]]>
+I<lsslp [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-e command][-c [timeout[timeout,..]]][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp][--resetnet]>
 
 
 =head1 DESCRIPTION
 
-The lsslp command discovers selected service types using the -s flag. All service types are returned if the -s flag is not specified. If a specific IP address is not specified using the -i flag, the request is sent out all available network adapters. The optional -r, -x, and -z flags format the output.
+The lsslp command discovers selected service types using the -s flag. All service types are returned if the -s flag is not specified. If a specific IP address is not specified using the -i flag, the request is sent out all available network adapters. The optional -r, -x, -z and --vpdtable flags format the output.
 
 NOTE: SLP broadcast requests will propagate only within the subnet of the network adapter broadcast IPs specified by the -i flag.
 
@@ -40,13 +40,31 @@ B<-h>          Display usage message.
 
 B<-m>          Multicast mode (defaults to broadcast).
 
+B<--makedhcp>  Issue xCAT command makedhcp internally.
+
+B<-M>          Matching mode, match the pre-defined node names from vpd table or switch table.
+            Default is using factory name if no -M specified.
+
 B<-n>          Only display and write the newly discovered hardwares.
 
 B<-r>          Display Raw SLP response.
 
+B<--resetnet>  Login to hardwares and reset the network interfaces. This option is only valid
+            for the nodes with different attributes: ip and otherinterfaces in hosts table.
+
 B<-s>          Service type interested in discovering.
 
 B<-t>          Number or service-request attempts.
+
+B<--updatehosts>  Display current IP address or write the ip address into xCAT DB. Please be 
+            aware that otherinterfaces column in hosts table saved the current ip address, 
+            ip column stores the new ip address that user defined. With this option, lsslp
+            will write the current ip to ip column also, which means the ip user wants is 
+            the same as current ip address running on hardwares. This is to avoid useless 
+            network resetting that if ip and otherinterfaces are the same, lsslp will skip
+            the network resetting for that node.
+
+B<--vpdtable>  Output the SLP response in vpdtable formatting. Easy for writting data to vpd table.
 
 B<-v>          Command Version.
 
@@ -98,13 +116,13 @@ Output is similar to:
 
   <Node>
     <groups>mm,all</groups>
-    <id>0</id>
+    <id>00:14:5E:E0:CB:1E</id>
     <mgt>blade</mgt>
-    <model>86772XX</model>
-    <mpa>mm01</mpa>
-    <node>mm01</node>
+    <mtm>029310C</mtm>
+    <node>Server-029310C-SN100485A-A</node>
     <nodetype>mm</nodetype>
-    <serial>78AG034</serial>
+    <otherinterfaces>9.114.47.229</otherinterfaces>
+    <serial>100485A</serial>
   </Node>
 
 
@@ -114,35 +132,85 @@ Output is similar to:
 
 Output is similar to:
 
-  mm01:
-    objtype=node
-    nodetype=mm
-    model=86772XX
-    serial=78AG034
-    groups=mm,all
-    mgt=blade
-    mpa=mm01
-    id=0
-
-  hmc01:
-    objtype=node
-    nodetype=hmc
-    model=7310CR3
-    serial=KPHHK24
-    groups=hmc,all
-    mgt=hmc
-    mpa=
-    id=
-
-  fsp01:
+ mm01:
     objtype=node
     nodetype=fsp
-    model=9110-51A
-    serial=1075EEF
+    mtm=8233-E8B
+    serial=1000ECP
+    side=A
+    otherinterfaces=50.0.0.5
     groups=fsp,all
-    mgt=hmc
-    mpa=
-    id=
+    mgt=fsp
+    id=0
+    mac=00:14:5E:F0:5C:FD
+    ip=50.0.0.5
+
+ bpa01:
+    objtype=node
+    nodetype=bpa
+    mtm=9A01-100
+    serial=0P1N746
+    side=A
+    otherinterfaces=50.0.0.1
+    groups=bpa,all
+    mgt=bpa
+    id=0
+    mac=00:1A:64:54:8C:A5
+    ip=50.0.0.1
+
+
+5. To list all discovered service types in stanza format and display the IP address, enter:
+
+ lsslp -w --updatehosts
+
+Output is similar to:
+
+ mm01:
+    objtype=node
+    nodetype=fsp
+    mtm=8233-E8B
+    serial=1000ECP
+    side=A
+    otherinterfaces=50.0.0.5
+    groups=fsp,all
+    mgt=fsp
+    id=0
+    mac=00:14:5E:F0:5C:FD
+    ip=50.0.0.5
+
+ bpa01:
+    objtype=node
+    nodetype=bpa
+    mtm=9A01-100
+    serial=0P1N746
+    side=A
+    otherinterfaces=50.0.0.1
+    groups=bpa,all
+    mgt=bpa
+    id=0
+    mac=00:1A:64:54:8C:A5
+    ip=50.0.0.1
+
+
+6. To list all the FSPs and reset their network interfaces to get new IP from dhcp server, enter:
+
+ lsslp -s FSP --resetnet
+
+Output is similar to:
+
+ Start to reset network..
+
+ Reset network failed nodes:
+
+ Reset network succeed nodes:
+ Server-8233-E8B-SN1000ECP-A,Server-9119-FHA-SN0275995-B,Server-9119-FHA-SN0275995-A,
+
+ Reset network finished.
+
+ device  type-model  serial-number  side  ip-addresses             hostname
+ FSP     8233-E8B    1000ECP        A     192.168.200.19 50.0.0.5  Server-8233-E8B-SN1000ECP-A(50.0.0.5)
+ FSP     9119-FHA    0275995        A     192.168.200.6 50.0.0.3   Server-9119-FHA-SN0275995-A(50.0.0.3)
+ FSP     9119-FHA    0275995        B     192.168.200.2 50.0.0.4   Server-9119-FHA-SN0275995-B(50.0.0.4)
 
 
 =head1 FILES
