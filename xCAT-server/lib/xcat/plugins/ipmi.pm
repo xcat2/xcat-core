@@ -1380,20 +1380,20 @@ sub add_textual_frus {
     my $type = shift;
     my $sessdata = shift;
     unless ($type) { $type = 'hw'; }
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."Part Number",$category,"partnumber","hw",$sessdata);
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacturer",$category,"manufacturer","hw",$sessdata);
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."Serial Number",$category,"serialnumber","hw",$sessdata);
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."",$category,"name","hw",$sessdata);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Part Number",$category,"partnumber",$type,$sessdata);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacturer",$category,"manufacturer",$type,$sessdata);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Serial Number",$category,"serialnumber",$type,$sessdata);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."",$category,"name",$type,$sessdata);
     if ($parsedfru->{$category}->{builddate}) {
-        add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Date",$category,"builddate","hw",$sessdata);
+        add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Date",$category,"builddate",$type,$sessdata);
     }
     if ($parsedfru->{$category}->{buildlocation}) {
-        add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Location",$category,"buildlocation","hw",$sessdata);
+        add_textual_fru($parsedfru,$desc." ".$categorydesc."Manufacture Location",$category,"buildlocation",$type,$sessdata);
     }
     if ($parsedfru->{$category}->{model})  {
-        add_textual_fru($parsedfru,$desc." ".$categorydesc."Model",$category,"model","hw",$sessdata);
+        add_textual_fru($parsedfru,$desc." ".$categorydesc."Model",$category,"model",$type,$sessdata);
     }
-    add_textual_fru($parsedfru,$desc." ".$categorydesc."Additional Info",$category,"extra","hw",$sessdata);
+    add_textual_fru($parsedfru,$desc." ".$categorydesc."Additional Info",$category,"extra",$type,$sessdata);
 }
 
 sub initfru {
