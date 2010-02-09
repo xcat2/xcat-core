@@ -1426,11 +1426,18 @@ sub setAttribs
         $action = "u";
         for my $col (keys %$elems)
         {
-            $cols = $cols . $col . " = ?,";
+           if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+             my $colsq = q(") . $col . q(");  # quote columns
+             $cols = $cols . $colsq . " = ?,";
+           } else {
+             $cols = $cols . $col . " = ?,";
+           }
             push @bind, (($$elems{$col} =~ /NULL/) ? undef: $$elems{$col});
         }
         chop($cols);
-        my $cmd = "UPDATE " . $self->{tabname} . " set $cols where ";
+        my $cmd ;
+
+        $cmd = "UPDATE " . $self->{tabname} . " set $cols where ";
         foreach (keys %keypairs)
         {
             if (ref($keypairs{$_}))
