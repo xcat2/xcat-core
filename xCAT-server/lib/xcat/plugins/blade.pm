@@ -538,14 +538,14 @@ sub mpaconfig {
                $restorev1agent=1;
                setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.1.5',0,0,'INTEGER');
             }
-            setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.".(2+$dstindex).".1",1,$value,'OCTET');
+            setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.".(2+$dstindex),1,$value,'OCTET');
             setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.6.1",1,1,'INTEGER'); #access type: read-traps, don't give full write access to the community
             if ($restorev1agent) { #If we had to transiently disable the v1 agent, put it back the way it was
                setoid('1.3.6.1.4.1.2.3.51.2.4.9.3.1.5',0,1,'INTEGER');
             }
 
          }
-         my $data = $session->get(["1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.".(2+$dstindex).".1.1"]);
+         my $data = $session->get(["1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.".(2+$dstindex).".1"]);
          push @cfgtext,"SP SNMP Destination $1: $data";
          next;
       }
