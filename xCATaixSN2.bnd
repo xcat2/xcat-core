@@ -10,8 +10,8 @@ I:bos.sysmgt.nim.master
 
 # RPMs
 R:bash-3.2-1.aix5.2.ppc.rpm
-R:popt-1.7-2.aix5.1.ppc.rpm
-R:rsync-2.6.2-1.aix5.1.ppc.rpm
+#R:popt-1.7-2.aix5.1.ppc.rpm
+#R:rsync-2.6.2-1.aix5.1.ppc.rpm
 R:expat-2.0.1-2.aix5.1.ppc.rpm
 R:conserver-8.1.16-2.aix5.3.ppc.rpm
 R:fping-2.4b2_to-1.aix5.3.ppc.rpm
@@ -27,6 +27,7 @@ R:perl-xCAT-2.4*
 R:xCAT-client-2.4*
 R:xCAT-server-2.4*
 R:xCAT-rmc-2.4*
+R:xCATsn-2.4*
 R:perl-DBD-SQLite-1.13-1.aix5.3.ppc.rpm
 R:net-snmp-5.4.2.1-1.aix5.3.ppc.rpm
 R:net-snmp-devel-5.4.2.1-1.aix5.3.ppc.rpm
