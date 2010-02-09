@@ -321,7 +321,7 @@ sub process_request {
                 };
                 if ($@) { 
                       $vcenterhash{$vcenter}->{conn} = undef;
-                      sendmsg([1,"Unable to reach $vcenter vCenter server to manage $hyp"]);
+                      sendmsg([1,"Unable to reach $vcenter vCenter server to manage $hyp: $@"]);
                       next;
                 }
             }
@@ -966,6 +966,9 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
                     my $host = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$_->{'runtime.host'});
                     $host = $host->summary->config->name;
                     if ( $tablecfg{vm}->{$node}->[0]->{host} eq "$host" ) { next; }
+                    my $newnhost = inet_aton($host);
+                    my $oldnhost = inet_aton($tablecfg{vm}->{$node}->[0]->{host});
+                    if ($newnhost = $oldnhost) { next; } #it resolved fine
                     my $shost = $host;
                     $shost =~ s/\..*//;
                     if ( $tablecfg{vm}->{$node}->[0]->{host} eq "$shost" ) { next; }
@@ -978,9 +981,9 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
                     if ($nodes[0]) {
                         print $node. " and ".$nodes[0];
                         $vmtab->setNodeAttribs($node,{host=>$nodes[0]});
-                    } else {
-                        $vmtab->setNodeAttribs($node,{host=>$host});
-                    }
+                    } #else {
+                      #  $vmtab->setNodeAttribs($node,{host=>$host});
+                    #}
 
                 }
             }
