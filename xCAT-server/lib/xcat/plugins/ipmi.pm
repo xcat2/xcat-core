@@ -5435,13 +5435,16 @@ sub donode {
       extraargs => \@exargs,
       subcommand => $exargs[0],
   };
-  my ($rc,@output) = ipmicmd($sessiondata{$node});
-  my @outhashes;
-  sendoutput($rc,@output);
-  yield;
+  if ($sessiondata{$node}->{ipmisession}->{error}) {
+      sendmsg([1,$sessiondata{$node}->{ipmisession}->{error}],$node);
+  } else {
+    my ($rc,@output) = ipmicmd($sessiondata{$node});
+    sendoutput($rc,@output);
+    yield;
+    return $rc;
+  }
   #my $msgtoparent=freeze(\@outhashes);
  # print $outfd $msgtoparent;
-  return $rc;
 }
 
 sub sendmsg {

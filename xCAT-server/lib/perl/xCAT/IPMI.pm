@@ -66,7 +66,8 @@ sub new {
         $self->{ipmi15only} = 1;
     }
     unless ($args{'bmc'} and defined $args{'userid'} and defined $args{'password'}) {
-        return (undef,"bmc, userid, and password must be specified");
+        $self->{error}="bmc, userid, and password must be specified";
+        return $self;
     }
     foreach (keys %args) { #store all passed parameters
         $self->{$_} = $args{$_};
@@ -78,7 +79,13 @@ sub new {
         $socket = IO::Socket::INET->new(Proto => 'udp');
         $select->add($socket);
     }
-    $bmc_handlers{inet_ntoa(inet_aton($self->{bmc}))}=$self;
+    my $bmc_n;
+    unless ($bmc_n = inet_aton($self->{bmc})) {
+        $self->{error} = "Could not resolve ".$self->{bmc}." to an address";
+        return $self;
+    }
+
+    $bmc_handlers{inet_ntoa($bmc_n)}=$self;
     $self->{peeraddr} = sockaddr_in($self->{port},inet_aton($self->{bmc}));
     $self->{'sequencenumber'} = 0; #init sequence number
         $self->{'sequencenumberbytes'} = [0,0,0,0]; #init sequence number
