@@ -15,7 +15,7 @@ my $ADDNAMES;
 
 
 my %usage=(
-    makehosts => "Usage: makehosts <noderange> [-n] [-l] [-a] [-o]\n       makehosts -h",
+    makehosts => "Usage: makehosts <noderange> [-d] [-n] [-l] [-a] [-o]\n       makehosts -h",
 );
 sub handled_commands {
   return {
@@ -23,6 +23,22 @@ sub handled_commands {
   }
 }
   
+
+sub delnode {
+  my $node = shift;
+  my $ip = shift;
+  unless ($node and $ip) { return; } #bail if requested to do something that could zap /etc/hosts badly
+  my $othernames = shift;
+  my $domain = shift;
+  my $idx=0;
+  
+  while ($idx <= $#hosts) {
+    if (($ip and $hosts[$idx] =~ /^${ip}\s/) or $hosts[$idx] =~ /^\d+\.\d+\.\d+\.\d+\s+${node}[\s\.r]/) {
+        $hosts[$idx]=""; 
+    }
+    $idx++;
+  }
+}
 
 sub addnode {
   my $node = shift;
@@ -114,6 +130,7 @@ sub process_request {
   my $callback = shift;
   my $HELP;
   my $REMOVE;
+  my $DELNODE;
 
   # parse the options
   if ($req && $req->{arg}) {@ARGV = @{$req->{arg}};}
@@ -123,6 +140,7 @@ sub process_request {
   if(!GetOptions(
       'h|help'  => \$HELP,
       'n'  => \$REMOVE,
+      'd'  => \$DELNODE,
       'o|othernamesfirst'  => \$OTHERNAMESFIRST,
       'a|adddomaintohostnames'  => \$ADDNAMES,
       'l|longnamefirst'  => \$LONGNAME,))
@@ -173,12 +191,19 @@ sub process_request {
     my $hostscache = $hoststab->getNodesAttribs($req->{node},[qw(ip node hostnames otherinterfaces)]);
     foreach(@{$req->{node}}) {
       my $ref = $hostscache->{$_}->[0]; #$hoststab->getNodeAttribs($_,[qw(ip node hostnames otherinterfaces)]);
-      addnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
-      if (defined($ref->{otherinterfaces})){
-         addotherinterfaces $ref->{node},$ref->{otherinterfaces},$domain;
+      if ($DELNODE) {
+          delnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
+      } else {
+          addnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
+          if (defined($ref->{otherinterfaces})){
+             addotherinterfaces $ref->{node},$ref->{otherinterfaces},$domain;
+        }
       }
     }
   } else {
+      if ($DELNODE) {
+          return;
+      }
     my @hostents = $hoststab->getAllNodeAttribs(['ip','node','hostnames','otherinterfaces']);
     foreach (@hostents) {
       addnode $_->{node},$_->{ip},$_->{hostnames},$domain;
