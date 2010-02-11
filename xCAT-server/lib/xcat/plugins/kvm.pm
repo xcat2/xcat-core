@@ -528,7 +528,10 @@ sub migrate {
     }
     my $sock = IO::Socket::INET->new(Proto=>'udp');
     my $ipa=inet_aton($node);
-    my $pa=sockaddr_in(7,$ipa); #UDP echo service, not needed to be actually
+    my $pa;
+    if ($ipa) {
+        $pa=sockaddr_in(7,$ipa); #UDP echo service, not needed to be actually
+    }
     #serviced, we just want to trigger MAC move in the switch forwarding dbs
     my $nomadomain;
     eval { 
@@ -550,8 +553,10 @@ sub migrate {
     unless ($newdom) {
         return (1,"Failed migration from $prevhyp to $targ");
     }
-    system("arp -d $node"); #Make ethernet fabric take note of change
-    send($sock,"dummy",0,$pa);  #UDP packet to force forwarding table update in switches, ideally a garp happened, but just in case...
+    if ($ipa) {
+        system("arp -d $node"); #Make ethernet fabric take note of change
+        send($sock,"dummy",0,$pa);  #UDP packet to force forwarding table update in switches, ideally a garp happened, but just in case...
+    }
     #BTW, this should all be moot since the underlying kvm seems good about gratuitous traffic, but it shouldn't hurt anything
     refresh_vm($newdom);
     #The migration seems tohave suceeded, but to be sure...
