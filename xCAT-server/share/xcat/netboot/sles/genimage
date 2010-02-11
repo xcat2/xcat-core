@@ -213,6 +213,7 @@ if($mode eq "statelite") {
     push @ndrivers, "sunrpc.ko";
     push @ndrivers, "lockd.ko";
     push @ndrivers, "nfs_acl.ko";
+    push @ndrivers, "fscache.ko";
     push @ndrivers, "auth_rpcgss.ko";
     push @ndrivers, "exportfs.ko";
     push @ndrivers, "nfsd.ko";
@@ -405,12 +406,13 @@ if (($postinstall_filename) && (-x $postinstall_filename)) {
 
 if($mode eq "statelite") {
     mkpath "$rootimg_dir/.statelite"; # create place for NFS mounts;
+    mkpath "$rootimg_dir/root/.ssh"; # create place for NFS mounts for ssh;
     # this script will get the directories;
-    unless( -r "../add-on/statelite/rc.statelite") {
-        print "Can't find ../add-on/statelite/rc.statelite!\n";
+    unless( -r "$pathtofiles/../add-on/statelite/rc.statelite") {
+        print "Can't find $pathtofiles/../add-on/statelite/rc.statelite!\n";
         exit;
     }
-    system("cp ../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
+    system("cp $pathtofiles/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
     # the dhcp client information stores in the directory "/var/lib/dhcpcd/"
     unless(-l "$rootimg_dir/var/lib/dhcpcd") {
         mkpath "$rootimg_dir/var/lib/dhcpcd/";
@@ -490,10 +492,12 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/tmp");
 	mkpath("/tmp/xcatinitrd.$$/var/run");
 	mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
-	if($osver =~ /sles/ && $arch eq "ppc64") {#SLES for Power6
+	if($osver =~ /sles/ && $arch eq "ppc64") {#SLES for Power6&7
 	    mkpath("/tmp/xcatinitrd.$$/lib64/power6");
+	    mkpath("/tmp/xcatinitrd.$$/lib64/power7");
 	}
 	mkpath("/tmp/xcatinitrd.$$/lib/power6");#SLES10
+	mkpath("/tmp/xcatinitrd.$$/lib/power7");#SLES10
 	mkpath("/tmp/xcatinitrd.$$/lib/mkinitrd/bin");
 	mkpath("/tmp/xcatinitrd.$$/proc");
 	mkpath("/tmp/xcatinitrd.$$/sys");
@@ -679,6 +683,17 @@ for i in `cat /proc/cmdline`; do
         VALUE=`echo \$i |awk -F= '{print \$2}'`
         SERVER=`echo \$VALUE|awk -F: '{print \$1}'`
         ROOTDIR=`echo \$VALUE|awk -F/ '{for(i=2;i<=NF;i++) printf "/%s",\$i}'`
+   elif [ "\$KEY" == 'STATEMNT' ]; then
+	NFSROOT=1
+	VALUE=`echo \$i |awk -F= '{print \$2}'`
+	SNAPSHOTSERVER=`echo \$VALUE|awk -F: '{print \$1}'`
+	SNAPSHOTROOT=`echo \$VALUE|awk -F/ '{for(i=2;i<=NF;i++) printf "/%s",\$i}'`
+	# may be that there is not server and just a directory.
+	if [ -z \$SNAPSHOTROOT ]
+	then
+		 SNAPSHOTROOT=\$SNAPSHOTSERVER
+		SNAPSHOTSERVER=
+	fi
    fi
 done
 
@@ -735,13 +750,20 @@ if [ "\$NFSROOT" = "1" ]; then
     mount -t tmpfs rw \$NEWROOT/\$RWDIR
     mkdir -p \$NEWROOT/\$RWDIR/tmpfs
 
+    #mount the /root/.ssh, it needs more strict permission in order for ssh work
+    if [ ! -e "\$NEWROOT/root/.ssh" ]
+    then
+        mkdir -p \$NEWROOT/root/.ssh
+    fi
+    mount -t tmpfs -o mode=755 ssh \$NEWROOT/root/.ssh
+
     # mount the SNAPSHOT directory here for persistent use.
     if [ ! -z \$SNAPSHOTSERVER ]
     then
         mkdir -p \$NEWROOT/\$RWDIR/persistent
         MAXTRIES=5
         ITER=0
-        while ! mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT  \$NEWROOT/\$RWDIR/persistent
+        while ! mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT  \$NEWROOT/\$RWDIR/persistent -o nolock
         do
             ITER=\$(expr \$ITER + 1)
             if [ "\$ITER" == "\$MAXTRIES" ]
@@ -1005,8 +1027,8 @@ sub postscripts { # TODO: customized postscripts
         }
         copy ("$installroot/postscripts/xcatdsklspost", "$rootimg_dir/opt/xcat/");
         chmod '0755', "$rootimg_dir/opt/xcat/xcatdsklspost";
-        system("$XCATROOT/share/xcat/netboot/add-on/statelite/add_passwd $rootimg_dir");
-        system("$XCATROOT/share/xcat/netboot/add-on/statelite/add_ssh $rootimg_dir");
+        #system("$XCATROOT/share/xcat/netboot/add-on/statelite/add_passwd $rootimg_dir");
+        #system("$XCATROOT/share/xcat/netboot/add-on/statelite/add_ssh $rootimg_dir");
     }
    if (-d "$installroot/postscripts/hostkeys") {
       for my $key (<$installroot/postscripts/hostkeys/*key>) {

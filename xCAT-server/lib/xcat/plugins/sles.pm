@@ -291,8 +291,8 @@ sub mknetboot
             }
             $kcmdline = 
                 "NFSROOT=$nfssrv:$nfsdir STATEMNT=";
-            if ($stateHash->{statemnt}) {
-                $kcmdline .= $stateHash->{statemnt} . " ";
+            if (exists($stateHash->{$node})) {
+                $kcmdline .= $stateHash->{$node}->[0]->{statemnt} . " ";
             } else {
                 $kcmdline .= " ";
             }

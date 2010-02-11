@@ -138,7 +138,41 @@ sub process_request {
 	# - arch
 	# - profile
 	$callback->({info=>["going to modify $rootimg_dir"]});
-	
+
+        #get the root password for the node 
+	my $passtab = xCAT::Table->new('passwd');
+	if ($passtab) {
+	    (my $pent) = $passtab->getAttribs({key=>'system',username=>'root'},'password');
+	    if ($pent and defined ($pent->{password})) {
+		my $pass = $pent->{password};
+		my $shadow;
+		open($shadow,"<","$rootimg_dir/etc/shadow");
+		my @shadents = <$shadow>;
+		close($shadow);
+		open($shadow,">","$rootimg_dir/etc/shadow");
+		unless ($pass =~ /^\$1\$/) {
+		    $pass = crypt($pass,'$1$'.genpassword(8));
+		}
+		print $shadow "root:$pass:13880:0:99999:7:::\n";
+		foreach (@shadents) {
+		    unless (/^root:/) {
+			print $shadow "$_";
+		    }
+		}
+		close($shadow);
+	    }
+	}
+
+	# sync fils configured in the synclist to the rootimage
+	#if (!$imagename) {
+	#    $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
+	#    if (defined ($syncfile) && -f $syncfile
+	#	&& -d $rootimg_dir) {
+	#	print "sync files from $syncfile to the $rootimg_dir\n";
+	#	`$::XCATROOT/bin/xdcp -i $rootimg_dir -F $syncfile`;
+	#    }
+	#}
+
 
 	# now get the files for the node	
 	my @synclist = xCAT::Utils->runcmd("ilitefile $osver-$arch-$profile", 0, 1);
@@ -260,7 +294,7 @@ sub liteMe {
 			$verbose && $callback->({info=>["ln -sf ../../$l/.default$f $rootimg_dir/$statedir/tmpfs$f"]});
 			system("ln -sfn ../../$l/.default$f $rootimg_dir/$statedir/tmpfs/$f");
 
-			$verbose && $callback->({info=>["ln -sf $relPath/$statedir/tmpfs$f $rootimg_dir$f"]});
+			$verbose && $callback->({info=>["ln -sf $l/$statedir/tmpfs$f $rootimg_dir$f"]});
 			system("ln -sfn $l/$statedir/tmpfs$f $rootimg_dir$f");
 				
 		}	
