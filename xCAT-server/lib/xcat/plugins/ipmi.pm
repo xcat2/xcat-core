@@ -1110,7 +1110,7 @@ sub power_with_context {
 	}
 	my %argmap = ( #english to ipmi dictionary
 		"on" => 1,
-		"off" => 2,
+		"off" => 0,
 		"softoff" => 5,
 		"reset" => 3,
 		"nmi" => 4
