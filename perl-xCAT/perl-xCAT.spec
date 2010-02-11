@@ -44,7 +44,6 @@ Includes xCAT::Table, xCAT::NodeRange, among others.
 rm -rf $RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data
-mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/include/
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man5
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man5
@@ -56,13 +55,11 @@ cp -r xCAT/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/*
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data
 chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/data/*
-cp -r include/* $RPM_BUILD_ROOT/%{prefix}/lib/include/
-chmod 644 $RPM_BUILD_ROOT/%{prefix}/lib/include/*
 
 
 # For now, don't ship these plugins - to avoid AIX dependency error.
 %ifnos linux
-rm $RPM_BUILD_ROOT/%{prefix}/lib/include/hpoa.pm
+rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT/hpoa.pm
 %endif
 
 cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/perl-xCAT

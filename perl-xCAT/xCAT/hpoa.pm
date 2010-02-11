@@ -10,7 +10,7 @@
 ## For example:
 ## 	hpoa->new(oaAddress => '16.129.49.209');
 
-package hpoa;
+package xCAT::hpoa;
 
 use strict;
 
@@ -122,14 +122,14 @@ sub call {
 
   # Make sure we're using the correct version of SOAP, but
   # don't mess up packages that use a different version.
-  my $version = hpoa->soapversion();
-  hpoa->soapversion('1.2');
+  my $version = xCAT::hpoa->soapversion();
+  xCAT::hpoa->soapversion('1.2');
 
   # Call the method and put the response in $r
   my $r = $self->SUPER::call($method, @soapargs);
 
   # Reset the SOAP version
-  hpoa->soapversion($version);
+  xCAT::hpoa->soapversion($version);
 
   # If this was the login method and it was successful, then extract
   # the session key and remember it for subsequent calls.

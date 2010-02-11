@@ -12,7 +12,6 @@ BEGIN
 	$::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
 use lib "$::XCATROOT/lib/perl";
-use lib "$::XCATROOT/lib/include";
 
 use strict;
 use xCAT::Table;
@@ -28,7 +27,7 @@ use Net::SSLeay qw(die_now die_if_ssl_error);
 use Data::Dumper;
 use POSIX "WNOHANG";
 use Getopt::Long;
-use hpoa;
+use xCAT::hpoa;
 
 sub handled_commands {
 	return {
@@ -151,7 +150,7 @@ sub oaLogin {
 	}
 	
 	
-	$hpoa = hpoa->new('oaAddress' => $oaName);
+	$hpoa = xCAT::hpoa->new('oaAddress' => $oaName);
 	my $loginResponse = $hpoa->userLogIn('username' => $username, 'password' => $password);
 	if($loginResponse->fault) {
 		$errHash = $loginResponse->fault;
