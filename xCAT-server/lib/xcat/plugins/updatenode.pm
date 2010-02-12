@@ -1491,7 +1491,7 @@ sub updateAIXsoftware
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
-                push @{$rsp->{data}}, "Could not run updtvpkg on node $node.\n";
+                push @{$rsp->{data}}, "Could not run updtvpkg.\n";
                 push @{$rsp->{data}}, "$output\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 next;
@@ -1523,13 +1523,7 @@ sub updateAIXsoftware
                     }
 
 					my $rcmd;
-					if ($pkg_string =~ /xCAT/) {
-						# add temporary hack to handle problem installing
-						#  xCAT rpms that start the xcatd daemon.
-						$rcmd = qq~rpm $flags $pkg_string; /opt/xcat/sbin/xcatstart -r~;
-					} else {
-						$rcmd = qq~rpm $flags $pkg_string~;
- 					}
+					$rcmd = qq~rpm $flags $pkg_string~;
 
                     if ($::VERBOSE)
                     {
@@ -1592,8 +1586,13 @@ sub updateAIXsoftware
 
         foreach $file (@installp_files)
         {
-            my $rcmd =
-              qq~rm -f $imagedefs{$img}{lpp_loc}/$file; rm -f /tmp/$file~;
+			my $rcmd;
+			if ($file =~ /installp_file/) {
+				$rcmd = qq~rm -f /tmp/$file~;
+			} else {
+            	$rcmd = qq~rm -f $imagedefs{$img}{lpp_loc}/$file; rm -f /tmp/$file~;
+			}
+
             my $output = xCAT::Utils->runcmd("$rcmd", -1);
 
             if ($::RUNCMD_RC != 0)
