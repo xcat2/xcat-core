@@ -2434,6 +2434,10 @@ sub extractfield { #idx is location of the type/length byte, returns something a
     my $idx = shift;
     my $language=shift;
     my $data;
+    if ($idx >= scalar @$area)  {
+        sendmsg([1,"Error parsing FRU data from BMC"]);
+        return 1,undef,undef;
+    }
     my $size = $area->[$idx] & 0b00111111;
     my $encoding = ($area->[$idx] & 0b11000000)>>6;
     unless ($size) {

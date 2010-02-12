@@ -5,6 +5,7 @@
 #This module abstracts the session management aspects of IPMI
 
 package xCAT::IPMI;
+        use Carp qw/confess cluck/;
 BEGIN
 {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
@@ -92,7 +93,7 @@ sub new {
         $self->{'sessionid'} = [0,0,0,0]; # init session id
         $self->{'authtype'}=0; # first messages will have auth type of 0
         $self->{'ipmiversion'}='1.5'; # send first packet as 1.5
-        $self->{'timeout'}=1; #start at a quick timeout, increase on retry
+        $self->{'timeout'}=2; #start at a quick timeout, increase on retry
         $self->{'seqlun'}=0; #the IPMB seqlun combo, increment by 4s
         $self->{'logged'}=0;
     return $self;
@@ -285,6 +286,7 @@ sub open_rmcpplus_request {
         } else {
             push @payload,(2,0,0,8,0,0,0,0);
         }
+    $self->{sessionestablishmentcontext} = 'opensession';
     $self->sendpayload(payload=>\@payload,type=>$payload_types{'rmcpplusopenreq'});
 }
 
@@ -358,7 +360,7 @@ sub timedout {
     my $self = shift;
     $self->{timeout} = $self->{timeout}+1;
     if ($self->{timeout} > 4) { #giveup, really
-        $self->{timeout}=1;
+        $self->{timeout}=2;
         my $rsp={};
         $rsp->{error} = "timeout";
         $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
@@ -380,18 +382,18 @@ sub route_ipmiresponse {
     ($port,$host) = sockaddr_in($sockaddr);
     $host = inet_ntoa($host);
     if ($bmc_handlers{$host}) {
-        delete $sessions_waiting{$bmc_handlers{$host}};
         $bmc_handlers{$host}->handle_ipmi_packet(@rsp);
     }
 }
 
 sub handle_ipmi_packet {
+    #return zero if we like the response
     my $self = shift;
     my @rsp = @_;
     if ($rsp[4] == 0 or $rsp[4] == 2) { #IPMI 1.5 (check 0 assumption...)
         my $remsequencenumber=$rsp[5]+$rsp[6]>>8+$rsp[7]>>16+$rsp[8]>>24;
         if ($self->{remotesequencenumber} and $remsequencenumber < $self->{remotesequencenumber} ) {
-            return; #ignore malformed sequence number
+            return 5; #ignore malformed sequence number
         }
         $self->{remotesequencenumber}=$remsequencenumber;
         $self->{remotesequencebytes} = [@rsp[5..8]];
@@ -419,31 +421,42 @@ sub handle_ipmi_packet {
                 }
             }
         }
-        $self->parse_ipmi_payload(@payload);
+        return $self->parse_ipmi_payload(@payload);
     } elsif ($rsp[4] == 6) { #IPMI 2.0
         if (($rsp[5]& 0b00111111) == 0x11) {
-            $self->got_rmcp_response(splice @rsp,16);
+            return $self->got_rmcp_response(splice @rsp,16); #the function always leaves ourselves waiting, no need to deregister
         } elsif (($rsp[5]& 0b00111111) == 0x13) {
-            $self->got_rakp2(splice @rsp,16);
+            return $self->got_rakp2(splice @rsp,16); #same as above
         } elsif (($rsp[5]& 0b00111111) == 0x15) {
-            $self->got_rakp4(splice @rsp,16);
-        } elsif (($rsp[5]& 0b00111111) == 0x0) {
+            return $self->got_rakp4(splice @rsp,16); #same as above
+        } elsif (($rsp[5]& 0b00111111) == 0x0) { #ipmi payload, sophisticated logic to follow
             my $encrypted;
             if ($rsp[5]&0b10000000) {
                 $encrypted=1;
             }
             unless ($rsp[5]&0b01000000) {
-                return 3; #we refuse to examine unauthenticated packets
+                return 3; #we refuse to examine unauthenticated packets in this context
             }
-            splice (@rsp,0,4); #ditch the header
-            my @authcode = splice(@rsp,-12);
+            splice (@rsp,0,4); #ditch the rmcp header
+            my @authcode = splice(@rsp,-12);#strip away authcode and remember it
             my @expectedcode = unpack("C*",hmac_sha1(pack("C*",@rsp),$self->{k1}));
             splice (@expectedcode,12);
             foreach (@expectedcode) {
                 unless ($_ == shift @authcode) {
-                   return 3;
+                   return 3; #authcode bad, pretend it never existed
                 }
             }
+            unless ($rsp[2] == 0x15 and 
+                    $rsp[3] == 0x58 and
+                    $rsp[4] == 0x25 and
+                    $rsp[5] == 0x7a) {
+                return 1; #this response does not match our current session id, ignore it
+            }
+            my $remsequencenumber=$rsp[6]+$rsp[7]>>8+$rsp[8]>>16+$rsp[9]>>24;
+            if ($self->{remotesequencenumber} and $remsequencenumber < $self->{remotesequencenumber} ) {
+                return 5; #ignore malformed sequence number
+            }
+            $self->{remotesequencenumber}=$remsequencenumber;
             my $psize = $rsp[10]+($rsp[11]<<8);
             my @payload = splice(@rsp,12,$psize);
             if ($encrypted) {
@@ -452,8 +465,12 @@ sub handle_ipmi_packet {
                 my $crypted = pack("C*",@payload);
                 @payload = unpack("C*",$cipher->decrypt($crypted));
             }
-            $self->parse_ipmi_payload(@payload);
+            return $self->parse_ipmi_payload(@payload);
+        } else {
+            return 6; #unsupported payload
         }
+    } else {
+        return 7; #unsupported ASF traffic
     }
 }
 sub cbc_pad {
@@ -484,22 +501,27 @@ sub got_rmcp_response {
     my $self = shift;
     my @data = @_;
     my $byte = shift @data;
+    unless ($self->{sessionestablishmentcontext} eq 'opensession') {
+        return 9; #now's not the time for this response, ignore it
+    }
     unless ($byte == 0x1f) {
-        return;
+        return 9;
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
         $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
-        return;
+        return 9;
     }
     $byte = shift @data;
     unless ($byte >= 4) {
         $self->{onlogon}->("ERROR: Cannot acquire sufficient privilege",$self->{onlogon_args});
-        return;
+        return 9;
     }
     splice @data,0,5;
     $self->{pendingsessionid} = [splice @data,0,4];
+    $self->{sessionestablishmentcontext} = 'rakp2';
     $self->send_rakp1();
+    return 0;
 }
 
 sub send_rakp3 {
@@ -530,20 +552,23 @@ sub got_rakp4 {
     my $self = shift;
     my @data = @_;
     my $byte = shift @data;
+    unless ($self->{sessionestablishmentcontext} eq 'rakp4') {
+        return 9; #now's not the time for this response, ignore it
+    }
     unless ($byte == 0x1f) {
-        return;
+        return 9;
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
         $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
-        return;
+        return 9;
     }
     splice @data,0,6; #discard reserved bytes and session id
     my @expectauthcode = unpack("C*",hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{pendingsessionid}},@{$self->{remoteguid}}),$self->{sik}));
     foreach  (@expectauthcode[0..11]) {
         unless ($_ == (shift @data)) {
             $self->{onlogon}->("ERROR: failure in final rakp exchange message",$self->{onlogon_args});
-            return;
+            return 9;
         }
     }
     $self->{sessionid} = $self->{pendingsessionid};
@@ -553,7 +578,9 @@ sub got_rakp4 {
     }
     $self->{sequencenumber}=1;
     $self->{sequencenumberbytes}=[1,0,0,0];
+    $self->{sessionestablishmentcontext} = 'done'; #will move on to relying upon session sequence number
     $self->set_admin_level();
+    return 0;
 }
 
 
@@ -561,13 +588,16 @@ sub got_rakp2 {
     my $self=shift;
     my @data = @_;
     my $byte = shift @data;
+    unless ($self->{sessionestablishmentcontext} eq 'rakp2') {
+        return 9; #now's not the time for this response, ignore it
+    }
     unless ($byte == 0x1f) {
-        return;
+        return 9;
     }
     $byte = shift @data;
     unless ($byte == 0x00) {
         $self->{onlogon}->("ERROR: $byte code on opening RMCP+ session",$self->{onlogon_args}); #TODO: errors
-        return;
+        return 9;
     }
     splice @data,0,6; # throw away reserved bytes, and session id, might need to check
     $self->{remoterandomnumber} = [];
@@ -586,7 +616,7 @@ sub got_rakp2 {
     foreach (0..(scalar(@expectedhash)-1)) {
         if ($expectedhash[$_] != $data[$_]) {
             $self->{onlogon}->("ERROR: Incorrect password provided",$self->{onlogon_args});
-            return;
+            return 9;
         }
     }
     $self->{sik} = hmac_sha1(pack("C*",@{$self->{randomnumber}},@{$self->{remoterandomnumber}},4,$ulength,@user),$self->{password});
@@ -596,13 +626,22 @@ sub got_rakp2 {
         my @aeskey = unpack("C*",$self->{k2});
         $self->{aeskey} = pack("C*",(splice @aeskey,0,16));
     }
+    $self->{sessionestablishmentcontext} = 'rakp4';
     $self->send_rakp3();
+    return 0;
 }
 
 sub parse_ipmi_payload {
     my $self=shift;
     my @payload = @_;
     #for now, just trash the headers, this has been validated to death anyway
+    #except seqlun, that one is important
+    if ($payload[4] != ($self->{seqlun} ? $self->{seqlun}-4 : 252)) {
+        print "Successfully didn't get confused by stale response ".$payload[4]." and ".($self->{seqlun}-4)."\n";
+        hexdump(@payload);
+        return 1; #response mismatch
+    }
+    delete $sessions_waiting{$self}; #deregister self as satisfied, callback will reregister if appropriate
     splice @payload,0,5; #remove rsaddr/netfs/lun/checksum/rq/seq/lun
     pop @payload; #remove checksum
     my $rsp;
@@ -610,6 +649,7 @@ sub parse_ipmi_payload {
     $rsp->{code} = shift @payload;
     $rsp->{data} = \@payload;
     $self->{ipmicallback}->($rsp,$self->{ipmicallback_args});
+    return 0;
 }
 
 sub ipmi15authcode {
