@@ -2563,11 +2563,12 @@ sub fruwrite {
 
 sub decodealert {
     my $sessdata = shift;
-    unless ($sessdata) {
-        die "not fixed yet";
+  my $skip_sdrinit=0;
+    unless (ref $sessdata) { #called from xcat traphandler
+        $sessdata = { sdr_hash => {} };
+        $skip_sdrinit=1; #TODO sdr_init, cache only to avoid high trap handling overhead
     }
   my $trap = shift;
-  my $skip_sdrinit=0;
   if ($trap =~ /xCAT_plugin::ipmi/) {
     $trap=shift;
     $skip_sdrinit=1;
