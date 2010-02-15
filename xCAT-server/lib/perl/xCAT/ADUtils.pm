@@ -10,6 +10,8 @@ use strict;
 use MIME::Base64;
 use Encode;
 use xCAT::Utils qw/genpassword/;
+use IPC::Open3;
+use IO::Select;
 
 
 my $machineldiftemplate = 'dn: CN=##UPCASENODENAME##,##OU##
@@ -97,5 +99,45 @@ sub add_machine_account {
     $rc = system("echo '$ldif'|ldapmodify  -H ldaps://$directoryserver"); 
     return {password=>$newpassword};
 }
+sub find_free_params { #search for things like next available uidNumber
+    my %args = @_;
+    my @needed_parms = split /,/,$args{needed_params};
+    my $uidnumber = 10000; #common linux default is 500, some unix people would say 100, MS went with 10000.  In this case, the highest number
+                             #seems the best choice since it won't confuse any software assuming too low a number is a 'system' account
+                             #also, a machine having local ids of 500-9999 won't as likely conflict with network accounts
+                             #modern systems should tolerate 4.2 billion ids, so potentially wasting 9,500 isn't that big of a deal
+                                
+    #for now, just supporting uidNumber
+    my $directoryserver = $args{directoryserver};
+    my $dc = $args{ou};
+    my $ldapout;
+    my $ldapin;
+    my $ldaperr;
+    my $ldappid = open3($ldapin,$ldapout,$ldaperr,qw!ldapsearch -H !,"ldaps://$directoryserver","-b","$dc",qw!(uidNumber=*) uidNumber!);
+    my $select = IO::Select->new($ldapout,$ldaperr);
+    my @handles;
+    my %useduids=();
+    while (@handles = $select->can_read()) {
+        foreach (@handles) {
+            my $line = <$_>;
+            if (not defined $line) {
+                $select->remove($_);
+                next;
+            }
+            if ($line =~ /^uidNumber: (\d+)$/) {
+                $useduids{$1}=1;
+            }
+        }
+    }
+
+    while (1) { #loop through until 'return'
+        unless ($useduids{$uidnumber}) {
+            return {uidNumber=>$uidnumber};
+        }
+        $uidnumber +=1;
+    }
+}
+
+
 use Data::Dumper;
-print Dumper(add_machine_account(node=>'v6.xcat.e1350',directoryserver=>'v4.xcat.e1350',ou=>'ou=wharbl'));
+print Dumper(find_free_params(directoryserver=>"v4.xcat.e1350",ou=>"dc=xcat,dc=e1350"));
