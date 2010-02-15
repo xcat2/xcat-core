@@ -19,7 +19,7 @@ objectClass: person
 objectClass: organizationalPerson
 objectClass: user
 objectClass: computer
-cn: ##UPCASENODENAME## 
+cn: ##UPCASENODENAME##
 distinguishedName: CN=##UPCASENODENAME##,##OU##
 objectCategory: CN=Computer,CN=Schema,CN=Configuration##REALMDCS##
 instanceType: 4
@@ -95,15 +95,7 @@ sub add_machine_account {
         return {error=>"Unknown error $rc"};
     }
     $rc = system("echo '$ldif'|ldapmodify  -H ldaps://$directoryserver"); 
-
-
-
-
-
-
-
-    
     return {password=>$newpassword};
 }
 use Data::Dumper;
-print Dumper(add_machine_account(node=>'v6.xcat.e1350',directoryserver=>'v4.xcat.e1350'));
+print Dumper(add_machine_account(node=>'v6.xcat.e1350',directoryserver=>'v4.xcat.e1350',ou=>'ou=wharbl'));
