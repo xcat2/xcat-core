@@ -42,11 +42,11 @@ statelite => {
 	cols => [qw(node image statemnt comments disable)],
 	keys => [qw(node)],
 	required => [qw(node statemnt)],
-	table_desc => 'Node Statelite directories.',
+	table_desc => 'The location on an NFS server where node persistent files are stored.  Any file marked persistent in the litefile table will be stored in the location specified in this table for that node.',
 	descriptions => {
-		node => 'The name of the node that will use this snapshot.',
-		image => 'The name of the image that holds this snapshot information.  This can be left blank or say ALL for all images, or have the specific image name listed: nodetype.os-nodetype.arch-nodetype.profile',
-		statemnt => 'The persistant read/write area where a node will be written to.  e.g: 10.0.0.1/state/.  Do not use the node name as a name as this will be added by default. So in reality, 10.0.0.1:/state, becomes 10.0.0.1:/state/<nodename>',
+		node => 'The name of the node or group that will use this location.',
+		image => 'The name of the image that should use this location, as specified in the osimage table.  This can be left blank or have a value of ALL for all images, or have the specific image name listed: nodetype.os-nodetype.arch-nodetype.profile',
+		statemnt => "The persistant read/write area where a node's persistent files will be written to, e.g: 10.0.0.1/state/.  The node name will be automatically added to the pathname, so in reality, 10.0.0.1:/state, will become 10.0.0.1:/state/<nodename>",
 		comments => 'Any user-written notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",
 	},
@@ -56,11 +56,11 @@ litetree => {
 	cols => [qw(priority image directory comments disable)],
 	keys => [qw(priority)],
 	required => [qw(priority directory)],
-	table_desc => 'Directory hierarchy to traverse when syncing node files.',        
+	table_desc => 'Directory hierarchy to traverse to get the initial contents of node files.  The files that are specified in the litefile table are searched for in the directories specified in this table.',        
 	descriptions => {
-		priority => 'The priority value for this directory.  Tools that use syncdir will use the smaller number first in looking through trees.',
-		image => 'The name of the image that will use this directory.  You can also say \'ALL\' for this value to have all images use it.'  ,
-		directory => 'The hierarchical directory structure where the directory is:  e.g: $noderes.nfsserver://xcatmasternode/install/$node/#CMD=uname-r#/',
+		priority => 'Controls what order the directories are searched in.  Directories are searched from smallest priority number to largest.',
+		image => "The name of the image that will use this directory, as specified in the osimage table.  'ALL' means use it for every image.",
+		directory => 'The location (hostname and path) of a sparsely populated directory that contains some of the files specified in the litefile table.  Variables are allowed.  E.g: $noderes.nfsserver://xcatmasternode/install/$node/#CMD=uname-r#/',
 		comments => 'Any user-written notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",      
 	},
@@ -70,17 +70,16 @@ litefile => {
 	cols => [qw(image file options comments disable)],
 	keys => [qw(image file)],
 	required => [qw(file)], # default type is rw nfsroot   
-	table_desc => 'Place to enter unique per node files for statelite nodes.',        
+	table_desc => 'The litefile table specifies the directories and files on the statelite nodes that should be readwrite, persistent, or readonly overlay.  All other files in the statelite nodes come from the readonly statelite image.',        
 	descriptions => {
-		image => "The name of the image that will use these files.  Leave blank or set to 'ALL' for this value to apply to all images.",            
-		file => 'The name of the file. e.g: /etc/hosts',
-		options => "Optional ways the file is to be synced.  
-\tSupported:
-\t- <empty>,ALL, or tmpfs - This is the default for statelite: the file is placed in tmpfs
-\t- con - This is rw file that is concatenated (advanced)
-\t- persistent - Requires a stateful mount point on the node.  Like tmpfs,rw, but persistent over reboots.  If file doesn't exist it's created.
-\t- persistent,con - rw file that is concatenated initially and then placed in persistent mount point.
-\t- ro - Read Only file",
+		image => "The name of the image that will use these files, as specified in the osimage table.  Leave blank or set to 'ALL' for this value to apply to all images.",            
+		file => 'The full pathname of the file. e.g: /etc/hosts.  If the path is a directory, then it should be terminated with a ‘/’.',
+		options => "Options for the file:\n".
+			" <empty>, tmpfs, or ALL - the file is readwrite and will be placed in tmpfs on the booted node.  When searching for the file, the first one to be found in the litetree hierarchy will be used.  When the node is rebooted, this file will be reinitialized.".
+			" con - The contents of the pathname are concatenated onto the contents of the existing file.  For this directive the searching in the litetree hierarchy does not stop when the first match is found.  Con is similar to tmpfs, but all files found in the hierarchy will be concatenated to the file when found.".
+			" persistent - This means that the file is readwrite and will be persistent across reboots.  If the file does not exist at first, it will be created during initialization.  Every time there after the file will be left alone if it exists.  (Requires the statelite table to be filled out with a spot for persistent storage).".
+			" persistent,con - readwrite file that is concatenated initially and then placed in the persistent mount point.".
+			" ro - file  will be read only.   Generally this means that it will be linked to some place in the directory hierarchy specified in the litetree table.  (Need more detail here??)",
 		comments => 'Any user-written notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",
         }
