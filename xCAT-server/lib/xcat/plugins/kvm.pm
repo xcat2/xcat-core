@@ -415,6 +415,7 @@ sub pick_target {
     my $currentfreememory;
     my $candidates= $confdata->{vm}->{$node}->[0]->{migrationdest};
     my $currhyp=$confdata->{vm}->{$node}->[0]->{host};
+#caching strategy is implicit on whether $addmemory is passed.
     unless ($candidates) {
         return undef;
     }
@@ -424,7 +425,7 @@ sub pick_target {
         if ($_ eq $currhyp) { next; } #skip current node
         if ($offlinehyps{$_}) { next }; #skip already offlined nodes
         if (grep { "$_" eq $cand } @destblacklist) { next; } #skip blacklisted destinations
-        if (defined $hypstats{$_}->{freememory}) {
+        if ($addmemory and defined $hypstats{$_}->{freememory}) { #only used cache results when addmemory suggests caching can make sense
             $currentfreememory=$hypstats{$_}->{freememory}
         } else {
             if (not nodesockopen($_,22)) { $offlinehyps{$_}=1; next; } #skip unusable destinations
@@ -466,6 +467,15 @@ sub migrate {
     if ($offlinevms{$node}) {
         return power("on");
     }
+#TODO: currently, we completely serialize migration events.  Some IO fabrics can facilitate concurrent migrations
+#One trivial example is an ethernet port aggregation where a single conversation may likely be unable to utilize all the links
+#because traffic is balanced by a mac address hashing algorithim, but talking to several hypervisors would have
+#distinct peers that can be balanced more effectively.
+#The downside is that migration is sufficiently slow that a lot can change in the intervening time on a target hypervisor, but
+#this should not be an issue if:
+#xCAT is the only path a configuration is using to make changes in the virtualization stack
+#xCAT implements a global semaphore mechanism that this plugin can use to assure migration targets do not change by our own hand..
+#failing that.. flock.
     unless ($targ) {
         $targ = pick_target($node);
     }
@@ -562,8 +572,8 @@ sub migrate {
     #The migration seems tohave suceeded, but to be sure...
     close($sock);
     if ($desthypconn->get_domain_by_name($node)) {
-        $updatetable->{vm}->{$node}->{host} = $targ;
-        #$vmtab->setNodeAttribs($node,{host=>$targ});
+        #$updatetable->{vm}->{$node}->{host} = $targ;
+        $vmtab->setNodeAttribs($node,{host=>$targ});
         return (0,"migrated to $targ");
     } else { #This *should* not be possible
         return (1,"Failed migration from $prevhyp to $targ, despite normal looking run...");
@@ -953,10 +963,6 @@ sub adopt {
     }
 }
 
-#TODO: adopt orphans into suitable homes if possible
-#    return 0;
-#}
-     
 sub process_request { 
   $SIG{INT} = $SIG{TERM} = sub { 
      foreach (keys %vm_comm_pids) {
