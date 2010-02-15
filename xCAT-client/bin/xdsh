@@ -98,7 +98,7 @@ else
 
 foreach my $sarg (@SaveARGV)
 {
-    if (($bname eq "xdcp") && ( $sarg !~ /^\//))
+    if (($bname eq "xdcp") && ($sarg !~ /^\//))
     {
         $sarg = xCAT::Utils->full_path($sarg);
     }
@@ -341,26 +341,29 @@ sub parse_args_xdsh
     }
     if ($options{'ssh-setup'})    # if going to setup ssh keys
     {
+        my $msg;
+        if (!($ENV{'DSH_REMOTE_PASSWORD'}))
+        {                         # if not already set
+             # prompt for the password for the userid on the node that will be setup
+            my $userpw;
+            $msg =
+              "Enter the password for the userid: $to_userid on the node where the ssh keys \nwill be updated:\n";
+            xCAT::MsgUtils->message("I", $msg);
+            system("stty -echo");    # turn off keyboard
+            chop($userpw = <STDIN>);
+            system("stty echo");     # turn on keyboard
 
-        # prompt for the password for the userid on the node that will be setup
-        my $userpw;
-        my $msg =
-          "Enter the password for the userid: $to_userid on the node where the ssh keys \nwill be updated:\n";
-        xCAT::MsgUtils->message("I", $msg);
-        system("stty -echo");     # turn off keyboard
-        chop($userpw = <STDIN>);
-        system("stty echo");      # turn on keyboard
+            if ($userpw eq "")
+            {                        # did not enter a password
+                $msg = "Did not enter a password must abort the key exchange";
+                xCAT::MsgUtils->message("E", $msg);
+                exit 2;
+            }
+            else
+            {                        # password entered pass to the server
+                $ENV{DSH_REMOTE_PASSWORD} = $userpw;
 
-        if ($userpw eq "")
-        {                         # did not enter a password
-            $msg = "Did not enter a password must abort the key exchange";
-            xCAT::MsgUtils->message("E", $msg);
-            exit 2;
-        }
-        else
-        {                         # password entered pass to the server
-            $ENV{DSH_REMOTE_PASSWORD} = $userpw;
-
+            }
         }
 
         # Get the home directory
@@ -503,10 +506,12 @@ sub parse_args_xdcp
         xCAT::DSHCLI->show_dsh_config;
         exit 0;
     }
-    if ( defined( $options{File} ) && ($options{File} !~ /^\//) ) {#relative path
+    if (defined($options{File}) && ($options{File} !~ /^\//))
+    {    #relative path
         $options{File} = xCAT::Utils->full_path($options{File});
     }
-    if ( defined( $options{rootimg} ) && ($options{rootimg} !~ /^\//) ) {#relative path
+    if (defined($options{rootimg}) && ($options{rootimg} !~ /^\//))
+    {    #relative path
         $options{rootimg} = xCAT::Utils->full_path($options{rootimg});
     }
 
