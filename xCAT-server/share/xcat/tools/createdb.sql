@@ -1,4 +1,4 @@
-create db xcatdb on /var/lib/db2/data;
+create db xcatdb;
 connect to xcatdb;
 CREATE BUFFERPOOL BP16K SIZE 2000 PAGESIZE 16K;
 Create tablespace xcattbs16k pagesize 16k managed by system using('/var/lib/db2/ts16')  BUFFERPOOL BP16K;
