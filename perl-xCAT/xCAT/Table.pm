@@ -715,6 +715,10 @@ sub new
            $self->{connstring} =~ s/^/dbi:/;
             #return undef;
         }
+        if ($xcatcfg =~ /^DB2:/) {  # for DB2 ,export the INSTANCE name
+           $ENV{'DB2INSTANCE'} = $self->{dbuser};
+        } 
+        
         my $oldumask= umask 0077;
         unless ($::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{realautocommit}}) { #= $self->{tabname};
           $::XCAT_DBHS->{$self->{connstring},$self->{dbuser},$self->{dbpass},$self->{realautocommit}} =
