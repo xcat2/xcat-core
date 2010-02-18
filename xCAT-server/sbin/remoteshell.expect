@@ -126,32 +126,6 @@ if { [llength $argv] != 0 } {
 		exit 1
 	} elseif { [string compare "-k" [lindex $argv 0]] ==0 } {
 		# -k  means generate the keys to the nodes
-		# check to see if ssh rsa1 keys exists, if not generate it
-		if {![file exists "$home/.ssh/identity"]} {   # key does not exist 
-			set env(LC_ALL) "C"
-			spawn /usr/bin/ssh-keygen -t rsa1
-			expect "Generating public/private rsa1"
-			expect -re "Enter file.*:"
-			send "\r"
-			expect -re "Enter passphrase.*:"
-			send "\r"
-			expect -re "Enter same passphrase.*:"
-			send "\r"
-			expect eof
-		} elseif {[file exists "$home/.ssh/identity"] &&([file size "$home/.ssh/identity"] == 0)} {  # key exists
-			set env(LC_ALL) "C"
-			spawn /usr/bin/ssh-keygen -t rsa1
-			expect "Generating public/private rsa1"
-			expect -re "Enter file.*:"
-			send "\r"
-			expect -re "Overwrite.*\(y/n\)\?"
-			send "y\r"
-			expect -re "Enter passphrase.*:"
-			send "\r"
-			expect -re "Enter same passphrase.*:"
-			send "\r"
-			expect eof
-		}
 
 		# check to see if ssh rsa keys exists, if not generate it
 		if {![file exists "$home/.ssh/id_rsa"]} {
@@ -180,32 +154,6 @@ if { [llength $argv] != 0 } {
 			expect eof
 		}
 
-		# check to see if ssh dsa keys exists, if not generate it
-		if {![file exists "$home/.ssh/id_dsa"]} {
-			set env(LC_ALL) "C"	
-			spawn /usr/bin/ssh-keygen -t dsa
-			expect "Generating public/private dsa"
-			expect -re "Enter file.*:"
-			send "\r"
-			expect -re "Enter passphrase.*:"
-			send "\r"
-			expect -re "Enter same passphrase.*:"
-			send "\r"
-			expect eof
-		} elseif {[file exists "$home/.ssh/id_dsa"] && ([file size "$home/.ssh/id_dsa"] == 0)} {
-			set env(LC_ALL) "C"	
-			spawn /usr/bin/ssh-keygen -t dsa
-			expect "Generating public/private dsa"
-			expect -re "Enter file.*:"
-			send "\r"
-			expect -re "Overwrite.*\(y/n\)\?"
-			send "y\r"
-			expect -re "Enter passphrase.*:"
-			send "\r"
-			expect -re "Enter same passphrase.*:"
-			send "\r"
-			expect eof
-		}
 	} elseif { [string compare "-s" [lindex $argv 0]] ==0 } {
                 # copy the keys to the nodes
 		set nodes [lindex $argv 1]
@@ -219,9 +167,9 @@ if { [llength $argv] != 0 } {
 		set printlist [ join $nodelist ", " ]
 		set scp "/usr/bin/scp"
 		set directory "$home/.ssh"
-		set fh_auth_keys  [ open "$home/.ssh/authorized_keys" "r"]
-		set auth_keys [read $fh_auth_keys]
-		close $fh_auth_keys
+      set fh_auth_keys  [ open "$home/.ssh/authorized_keys" "r"]
+      set auth_keys [read $fh_auth_keys]
+      close $fh_auth_keys
 	   if { [info exists env(DSH_REMOTE_PASSWORD)] } {
 		    set word $env(DSH_REMOTE_PASSWORD)
 		} else {
@@ -254,20 +202,6 @@ if { [llength $argv] != 0 } {
 						exec /bin/kill $pid
 					}
 				}
-				set pid [ spawn $scp  $directory/authorized_keys2 $to_userid\@$node:/tmp/$to_userid/.ssh ] 
-				expect {
-					"Are you sure you want to continue connecting (yes/no)?" {
-						send "yes\r"
-						exp_continue
-					}
-					"*ssword*" {
-						send "$word\r"
-						exp_continue
-					}
-					"Permission denied*" {
-						exec /bin/kill $pid
-					}
-				}
 				set pid [ spawn $scp  $directory/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh ] 
 				expect {
 					"Are you sure you want to continue connecting (yes/no)?" {
@@ -283,20 +217,6 @@ if { [llength $argv] != 0 } {
 					}
 				}
 				set pid [ spawn $scp  $directory/id_rsa $to_userid\@$node:/tmp/$to_userid/.ssh ] 
-				expect {
-					"Are you sure you want to continue connecting (yes/no)?" {
-						send "yes\r"
-						exp_continue
-					}
-					"*ssword*" {
-						send "$word\r"
-						exp_continue
-					}
-					"Permission denied*" {
-						exec /bin/kill $pid
-					}
-				}
-				set pid [ spawn $scp  $directory/id_dsa $to_userid\@$node:/tmp/$to_userid/.ssh ] 
 				expect {
 					"Are you sure you want to continue connecting (yes/no)?" {
 						send "yes\r"
