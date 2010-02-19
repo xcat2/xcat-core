@@ -2473,10 +2473,10 @@ sub getAllNodeAttribs
         . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
       } else {   
           if ($xcatcfg =~ /^DB2:/) {  #for DB2
-            $query = $self->{dbh}->prepare('SELECT \"node\" FROM '
-             . $self->{tabname}
-          . " WHERE \"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR  \"disable\" LIKE 'NO' OR  \"disable\" LIKE 'No' OR  \"disable\" LIKE 'nO')");
- 
+            my $qstring = "Select \"node\" FROM ";
+            $qstring  .= $self->{tabname};
+            $qstring  .=  " WHERE \"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR  \"disable\" LIKE 'NO' OR  \"disable\" LIKE 'No' OR  \"disable\" LIKE 'nO'";
+            $query =  $self->{dbh}->prepare($qstring); 
           } else {  # for other dbs 
              $query =
              $self->{dbh}->prepare('SELECT node FROM '
