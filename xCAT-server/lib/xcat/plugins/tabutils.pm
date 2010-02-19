@@ -288,7 +288,6 @@ sub tabrestore
     my $request    = shift;
     my $cb         = shift;
     my $table      = $request->{table}->[0];
-    my $linenumber = 1;
     my $tab        = xCAT::Table->new($table, -create => 1, -autocommit => 0);
     unless ($tab) {
         $cb->({error => "Unable to open $table",errorcode=>4});
@@ -320,9 +319,13 @@ sub tabrestore
     my %auto_cols=();
     foreach (@tmp) { $auto_cols{$_}=1;}
 
-  LINE: foreach $line (@{$request->{data}})
+
+    my $linenumber;
+    my $linecount = scalar(@{$request->{data}});
+
+    LINE: for($linenumber = 0; $linenumber < $linecount; $linenumber++)
     {
-        $linenumber++;
+        $line = @{$request->{data}}[$linenumber];
         $line =~ s/\s+$//;
         my $origline = $line;    #save for error reporting
         my %record;
@@ -359,53 +362,73 @@ sub tabrestore
                 {
                     $offset = index($line, '"', $offset);
                     $offset++;
-                    if ($offset <= 0)
-                    {
 
-                        #MALFORMED CSV, request rollback, report an error
-                        $rollback = 1;
-                        $cb->(
-                            {
-                             error =>
-                               "CSV unmatched \" in record on line $linenumber, character "
-                               . index($origline, $line) . ": $origline", errorcode=>4
-                            }
-                            );
-                        next LINE;
-                    }
-                    $nextchar = substr($line, $offset, 1);
-                    if ($nextchar eq '"')
-                    {
-                        $offset++;
-                    }
-                    elsif ($offset eq length($line) or $nextchar eq ',')
-                    {
-                        $ent = substr($line, 0, $offset, '');
-                        $line =~ s/^,//;
-                        chop $ent;
-                        $ent = substr($ent, 1);
-                        $ent =~ s/""/"/g;
-			if (!exists($auto_cols{$col})) {
-			    $record{$col} = $ent;
-			}
+                    if ($offset <= 0)
+                    { #the matching quote is not on this line of the file
+
+                        if($linenumber < $linecount)
+                        { #it's not the end of the world, we have more lines to check
+
+                            my $continuedline = @{$request->{data}}[++$linenumber];
+                            $offset = length($line);
+                            $line .= "\n" . $continuedline;
+                            $line =~ s/\s+$//;
+                        }
+                        else
+                        { #the matching quote was not found before the end of the file
+
+                            #MALFORMED CSV, request rollback, report an error
+                            $rollback = 1;
+                            $cb->(
+                                {
+                                 error =>
+                                   "CSV unmatched \" in record on line $linenumber, character "
+                                   . index($origline, $line) . ": $origline", errorcode=>4
+                                }
+                                );
+                            next LINE;
+                        }
                     }
                     else
-                    {
-                        $cb->(
+                    { #the next quote was on the current line
+
+                        $nextchar = substr($line, $offset, 1);
+
+                        if ($nextchar eq '"')
+                        { #the case of 2 double quotes.  ignore them and move on
+                            $offset++;
+                        }
+                        elsif ($offset eq length($line) or $nextchar eq ',')
+                        { #hit the end of the line or at least the end of the column
+                            $ent = substr($line, 0, $offset, '');
+                            $line =~ s/^,//;
+                            chop $ent;
+                            $ent = substr($ent, 1);
+                            $ent =~ s/""/"/g;
+			    if (!exists($auto_cols{$col}))
                             {
-                             error =>
-                               "CSV unescaped \" in record on line $linenumber, character "
-                               . index($origline, $line) . ": $origline", errorcode=>4
-                            }
-                            );
-                        $rollback = 1;
-                        next LINE;
+			        $record{$col} = $ent;
+			    }
+                        }
+                        else
+                        {
+                            $cb->(
+                                {
+                                 error =>
+                                   "CSV unescaped \" in record on line $linenumber, character "
+                                   . index($origline, $line) . ": $origline", errorcode=>4
+                                }
+                                );
+                            $rollback = 1;
+                            next LINE;
+                        }
                     }
                 }
             }
             elsif ($line =~ /^([^,]+)/)
             {    #easiest case, no Text::Balanced needed..
-		if (!exists($auto_cols{$col})) {
+		if (!exists($auto_cols{$col}))
+                {
 		    $record{$col} = $1;
 		}
                 $line =~ s/^([^,]+)(,|$)//;
