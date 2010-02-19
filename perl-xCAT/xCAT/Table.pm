@@ -1973,7 +1973,8 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     if ($dbworkerpid) {
         return dbc_call($self,'_build_cache',@_);
     }
-    my $refresh = shift;
+    my $attriblist = shift;
+    my $refresh = not ref $attriblist; #if attriblist is not a reference, it is a refresh request
     if (not $refresh and $self->{_cache_ref}) { #we have active cache reference, increment counter and return
         #TODO: ensure that the cache isn't somehow still ludirously old
         $self->{_cache_ref} += 1;
@@ -1986,7 +1987,6 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     my $oldusecache = $self->{_use_cache}; #save previous 'use_cache' setting
     $self->{_use_cache} = 0; #This function must disable cache 
                             #to function
-    my $attriblist = shift;
     my $nodekey = "node";
     if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
         $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
