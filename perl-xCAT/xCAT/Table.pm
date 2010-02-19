@@ -1538,6 +1538,7 @@ sub setAttribs
 	    $sth->finish;
     }
 
+    $self->_refresh_cache(); #cache is invalid, refresh
     #notify the interested parties
     if ($notif == 1)
     {
@@ -1854,6 +1855,7 @@ sub setNodesAttribs {
     }
     $self->{dbh}->commit; #commit pending transactions
     $self->{dbh}->{AutoCommit}=$oldac;#restore autocommit semantics
+    $self->_refresh_cache(); #cache is invalid, refresh
 }
 
 #--------------------------------------------------------------------------
@@ -1927,6 +1929,24 @@ sub getNodesAttribs {
     return $rethash;
 }
 
+sub _refresh_cache { #if cache exists, force a rebuild, leaving reference counts alone
+    my $self = shift; #dbworker check not currently required
+    if ($self->{_use_cache}) { #only do things if cache is set up
+        $self->_build_cache(1); #for now, rebuild the whole thing.
+                    #in the future, a faster cache update may be possible
+                    #however, the payoff may not be worth it
+                    #as this case is so rare
+                    #the only known case that trips over this is:
+                    #1st noderange starts being expanded
+                    #the nodelist is updated by another process
+                    #2nd noderange  starts being expanded (sharing first cache)
+                    #   (uses stale nodelist data and misses new nodes, the error)
+                    #1st noderange finishes
+                    #2nd noderange finishes
+    }
+    return;
+}
+
 sub _clear_cache { #PRIVATE FUNCTION TO EXPIRE CACHED DATA EXPLICITLY
     #This is no longer sufficient to do at destructor time, as Table objects actually live an indeterminite amount of time now
     #TODO: only clear cache if ref count mentioned in build_cache is 1, otherwise decrement ref count
@@ -1953,13 +1973,16 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     if ($dbworkerpid) {
         return dbc_call($self,'_build_cache',@_);
     }
-    if ($self->{_cache_ref}) { #we have active cache reference, increment counter and return
+    my $refresh = shift;
+    if (not $refresh and $self->{_cache_ref}) { #we have active cache reference, increment counter and return
         #TODO: ensure that the cache isn't somehow still ludirously old
         $self->{_cache_ref} += 1;
         return;
     }
     #If here, _cache_ref indicates no cache
-    $self->{_cache_ref} = 1;
+    if (not $refresh) {
+        $self->{_cache_ref} = 1;
+    }
     my $oldusecache = $self->{_use_cache}; #save previous 'use_cache' setting
     $self->{_use_cache} = 0; #This function must disable cache 
                             #to function
