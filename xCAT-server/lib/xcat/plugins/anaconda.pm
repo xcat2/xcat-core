@@ -412,10 +412,10 @@ sub mknetboot
 
 		$kcmdline = 
 		"NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
-		if($stateHash->{statemnt} ){
-			$kcmdline .= $stateHash->{statemnt} . " ";
-		}else{
-			$kcmdline .= " ";
+		if (exists($stateHash->{$node})) {
+		    $kcmdline .= $stateHash->{$node}->[0]->{statemnt} . " ";
+		} else {
+		    $kcmdline .= " ";
 		}
 		$kcmdline .=
 			"XCAT=$imgsrv:$xcatdport ";
@@ -528,7 +528,7 @@ sub mkinstall
 
         my $osinst;
         my $ent = $osents{$node}->[0]; #$ostab->getNodeAttribs($node, ['profile', 'os', 'arch']);
-        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot')) {
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 	    $imagename=$ent->{provmethod};
 	    #print "imagename=$imagename\n";
 	    if (!exists($img_hash{$imagename})) {

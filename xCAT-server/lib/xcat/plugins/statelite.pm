@@ -173,11 +173,19 @@ sub process_request {
 	#    }
 	#}
 
+        #store the image in the DB
+	if (!$imagename) {
+	    my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($osver, $arch, $profile, 'statelite');
+	    if ($ret[0] != 0) {
+		$callback->({error=>["Error when updating the osimage tables: " . $ret[1]]});
+	    }
+            $imagename="$osver-$arch-statelite-$profile"
+	}
 
 	# now get the files for the node	
-	my @synclist = xCAT::Utils->runcmd("ilitefile $osver-$arch-$profile", 0, 1);
+	my @synclist = xCAT::Utils->runcmd("ilitefile $imagename", 0, 1);
 	if(!@synclist){
-		$callback->({error=>["There are no files to sync for $osver-$arch-$profile.  You have to have some files read/write filled out in the synclist table."],errorcode=>[1]});
+		$callback->({error=>["There are no files to sync for $imagename.  You have to have some files read/write filled out in the synclist table."],errorcode=>[1]});
 		return;
 	}
 
@@ -197,6 +205,8 @@ sub process_request {
 	}
 	
 	liteMe($rootimg_dir,\@files, $callback);
+
+
 	
 	
 }

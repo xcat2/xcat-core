@@ -120,22 +120,31 @@ sub syncmount {
 	my %osents;
 	unless($syncType =~ /image/){
 		$ostab = xCAT::Table->new('nodetype');
-		%osents = %{$ostab->getNodesAttribs(\@nodes,['profile','os','arch'])};
+		%osents = %{$ostab->getNodesAttribs(\@nodes,['profile','os','arch','provmethod'])};
 	}
 	foreach my $node (@nodes){
-		# node may be an image...
-		my $ent;
-		if(! $syncType =~ /image/){
-			$ent = $osents{$node}->[0];
-			unless($ent->{os} && $ent->{arch} && $ent->{profile}){
-				$callback->({error=>["$node does not have os, arch, or profile defined in nodetype table"],errorcode=>[1]});
-				$request = {};
-				return;
-			}
+	    # node may be an image...
+	    my $image;
+	    my $ent;
+	    if($syncType !~ /image/){
+		$ent = $osents{$node}->[0];
+		
+		unless($ent->{os} && $ent->{arch} && $ent->{profile}){
+		    $callback->({error=>["$node does not have os, arch, or profile defined in nodetype table"],errorcode=>[1]});
+		    $request = {};
+		    next;
 		}
-		my $fData = getNodeData($syncType,$node,$ent,$tab,$callback);	
-		# now we go through each directory and search for the file.
-		showSync($syncType,$callback, $node, $fData);	
+                if ((!$ent->{provmethod}) ||  ($ent->{provmethod} eq 'statelite') || ($ent->{provmethod} eq 'netboot') || ($ent->{provmethod} eq 'install')) {
+		    $image = $ent->{os} . "-" . $ent->{arch} . "-statelite-" . $ent->{profile};
+		} elsif (($ent->{provmethod} ne 'netboot') && ($ent->{provmethod} ne 'install')) {
+			$image=$ent->{provmethod};
+		}
+	    } else {
+		$image=$node;
+	    }
+	    my $fData = getNodeData($syncType,$node,$image,$tab,$callback);	
+	    # now we go through each directory and search for the file.
+	    showSync($syncType,$callback, $node, $fData);	
 	}	
 }
 
@@ -308,16 +317,17 @@ sub subVar {
 sub getNodeData {
 	my $type = shift;
 	my $node = shift;
-	my $ent = shift;
+	my $image = shift;
 	my $tab = shift;	
 	my $cb = shift;  # callback to print messages!!
 	# the image name will be something like rhels5.4-x86_64-nfsroot
-	my $image;
-	unless($type =~ /image/){
-		$image = $ent->{os} . "-" . $ent->{arch} . "-" . $ent->{profile};
-	}else{
-		$image = $node;
-	}
+	#my $image;
+	#unless($type =~ /image/){
+	#	$image = $ent->{os} . "-" . $ent->{arch} . "-statelite-" . $ent->{profile};
+	#}else{
+	#	$image = $node;
+	#}
+
 	my @imageInfo;
 	my @attrs;
 	if($type eq "dir"){

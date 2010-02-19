@@ -399,7 +399,7 @@ sub mkinstall
         my $osinst;
         my $ent = $ntents->{$node}->[0];
 
-        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot')) {
+        if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 	    my $imagename=$ent->{provmethod};
 	    #print "imagename=$imagename\n";
 	    if (!exists($img_hash{$imagename})) {

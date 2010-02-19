@@ -98,9 +98,9 @@ sub setdestiny {
               $state = $stents{$_}->[0]->{currstate};
               $state =~ s/ .*//;
               #get the osimagename if nodetype.provmethod has osimage specified
-	      if (($sninit ==1) && (($state eq 'install') || ($state eq 'netboot'))) {
+	      if (($sninit ==1) && (($state eq 'install') || ($state eq 'netboot') || ($state eq 'statelite'))) {
 		  my $osimage=$ntents{$_}->[0]->{provmethod};
-		  if (($osimage) && ($osimage ne 'install') && ($osimage ne 'netboot')) {
+		  if (($osimage) && ($osimage ne 'install') && ($osimage ne 'netboot') && ($osimage ne 'statelite')) {
 		     $state="osimage=$osimage"; 
 		  }
 	      }
@@ -297,7 +297,7 @@ sub setdestiny {
          #if the previous nodeset staute is not install, then blank nodetype.provmethod
 	 if ($ntent and $ntent->{provmethod}){
 	     my $provmethod=$ntent->{provmethod};
-	     if (($provmethod ne 'install') && ($provmethod ne 'netboot')) {
+	     if (($provmethod ne 'install') && ($provmethod ne 'netboot') && ($provmethod ne 'statelite')) {
 		 if (exists($osimage_hash{$provmethod})) {
 		     $provmethod= $osimage_hash{$provmethod};
 		 } else {

@@ -289,7 +289,7 @@ sub getsynclistfile()
 
     foreach my $node (@$nodes) {
       my $provmethod=$nodetype_v->{$node}->[0]->{'provmethod'};
-      if (($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot")) {
+      if (($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
 	  # get the syncfiles base on the osimage
 	  my $osimage_t = xCAT::Table->new('osimage');
 	  unless ($osimage_t) {
@@ -644,6 +644,10 @@ sub  update_tables_with_diskless_image
     }
     my $arch = shift;  #like ppc64, x86, x86_64
     my $profile = shift;
+    my $mode=shift;
+
+    my $provm="netboot";
+    if ($mode) { $provm = $mode; } 
     
     my $osname=$osver;;  #like sles, rh, centos, windows
     my $ostype="Linux";  #like Linux, Windows
@@ -716,7 +720,7 @@ sub  update_tables_with_diskless_image
 	    my $tmp1=$osimagetab->getAllEntries();
 	    if (defined($tmp1) && (@$tmp1 > 0)) {
 		foreach my $rowdata(@$tmp1) {
-		    if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq "netboot") && ($profile eq $rowdata->{profile})){
+		    if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq $provm) && ($profile eq $rowdata->{profile})){
 			$found=1;
 			last;
 		    }
@@ -724,12 +728,12 @@ sub  update_tables_with_diskless_image
 	    }
 	    if ($found) { print "The image is already in the db.\n"; return (0, ""); } 
 	    
-	    my $imagename=$osver . "-" . $arch . "-netboot-" . $profile;
+	    my $imagename=$osver . "-" . $arch . "-$provm-" . $profile;
 	    #TODO: check if there happen to be a row that has the same imagename but with different contents
 	    #now we can wirte the info into db
 	    my %key_col = (imagename=>$imagename);
 	    my %tb_cols=(imagetype=>$imagetype, 
-			 provmethod=>"netboot",
+			 provmethod=>$provm,
 			 profile=>$profile, 
 			 osname=>$ostype,
 			 osvers=>$osver,

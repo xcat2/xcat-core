@@ -266,7 +266,7 @@ sub makescript {
   #get packge names for extra rpms
   my $otherpkgdir;
   my $pkglist;
-  if (($^O =~ /^linux/i) && ($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot")) {
+  if (($^O =~ /^linux/i) && ($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
       #this is the case where image from the osimage table is used
       my $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
       (my $ref1) = $linuximagetab->getAttribs({imagename => $provmethod}, 'otherpkglist', 'otherpkgdir');
@@ -331,7 +331,7 @@ sub makescript {
   
   # check if there are sync files to be handled
   my $syncfile;
-  if (($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot")) {
+  if (($provmethod) && ($provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
       my $osimagetab=xCAT::Table->new('osimage', -create=>1);
       if ($osimagetab) {
 	  (my $ref) = $osimagetab->getAttribs({imagename => $provmethod}, 'osvers', 'osarch', 'profile', 'provmethod', 'synclists');
