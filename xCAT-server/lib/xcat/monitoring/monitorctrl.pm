@@ -543,6 +543,7 @@ sub getNodeStatusFromNodesetState {
   my $status=$::STATUS_BOOTING; #boot, reboot, runimage
   if ($nodeset =~ /^install/) { $status=$::STATUS_INSTALLING; }  #linux
   elsif ($nodeset =~ /^netboot/) { $status=$::STATUS_NETBOOTING;}  #linux 
+  elsif ($nodeset =~ /^statelite/) { $status=$::STATUS_NETBOOTING;}  #linux 
   elsif (($nodeset =~ /^diskless/) || ($nodeset =~ /^dataless/)) { $status=$::STATUS_NETBOOTING;}  #aix
   elsif ($nodeset =~ /^standalone/) {   #aix
     if ($action eq "rnetboot") { $status=$::STATUS_INSTALLING; }
