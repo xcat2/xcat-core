@@ -1371,13 +1371,11 @@ home=`egrep \"^$to_userid:\" /etc/passwd | cut -f6 -d :`
 dest_dir=\"\$home/.ssh\"
 mkdir -p \$dest_dir
 cat /tmp/$to_userid/.ssh/authorized_keys >> \$home/.ssh/authorized_keys 2>&1
-#cat /tmp/$to_userid/.ssh/authorized_keys2 >> \$home/.ssh/authorized_keys2 2>&1
 cp /tmp/$to_userid/.ssh/id_rsa  \$home/.ssh/id_rsa 2>&1
-#cp /tmp/$to_userid/.ssh/id_dsa  \$home/.ssh/id_dsa 2>&1
 chmod 0600 \$home/.ssh/id_* 2>&1
-#rm -f /tmp/$to_userid/.ssh/* 2>&1
-#rmdir \"/tmp/$to_userid/.ssh\"
-#rmdir \"/tmp/$to_userid\"";
+rm -f /tmp/$to_userid/.ssh/* 2>&1
+rmdir \"/tmp/$to_userid/.ssh\"
+rmdir \"/tmp/$to_userid\"";
 
     close FILE;
     chmod 0777,"$home/.ssh/copy.sh";
@@ -1385,39 +1383,6 @@ chmod 0600 \$home/.ssh/id_* 2>&1
     my $auth_key2=0;
     if (xCAT::Utils->isMN())
     {    # if on Management Node
-        # if there is an authorized_keys or authorized_keys2 file in 
-        # root home directory, back it up  to authorized_keys*.xcatbackup
-        # we are going to build a new one to send to the nodes and need
-        # to restore the admins files after we are finished
-        #
-        
-        #if (-e("$home/.ssh/authorized_keys")) {
-         #  my $cmd="mv $home/.ssh/authorized_keys  $home/.ssh/authorized_keys.xcatbackup";
-         #  xCAT::Utils->runcmd($cmd, 0);
-         #  my $rsp = {};
-         #  if ($::RUNCMD_RC != 0)
-         #  {
-          #    $rsp->{data}->[0] = "$cmd failed.\n";
-          #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-          #    return (1);
-
-          # }
-          # $auth_key=1;
-       # }
-        # comment out authorized_keys2 setup
-        #if (-e("$home/.ssh/authorized_keys2")) {
-        #my $cmd="mv $home/.ssh/authorized_keys2  $home/.ssh/authorized_keys2.xcatbackup";
-        #xCAT::Utils->runcmd($cmd, 0);
-        #my $rsp = {};
-        #if ($::RUNCMD_RC != 0)
-        #{
-         #          $rsp->{data}->[0] = "$cmd failed.\n";
-          #         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-           #        return (1);
-
-         #}
-         #$auth_key2=1;
-        #}
         if ($from_userid eq "root")
         {
 
@@ -1464,76 +1429,6 @@ chmod 0600 \$home/.ssh/id_* 2>&1
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
 
     }
-    #  if on the MN
-    #  remove the created authorized_keys and restore if a backed up 
-    #  version of authorized_keys* was created because the file
-    #   existed when the command was run
-    #if (xCAT::Utils->isMN())
-    #{
-     #   if ($auth_key == 1) {  # need to restore
-      #     my $cmd="cp $home/.ssh/authorized_keys.xcatbackup  $home/.ssh/authorized_keys";
-       #    xCAT::Utils->runcmd($cmd, 0);
-        #   my $rsp = {};
-        #   if ($::RUNCMD_RC != 0)
-        #   {
-        #      $rsp->{data}->[0] = "$cmd failed.\n";
-        #      xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-         #     return (1);
-
-         #  }
-         #  $cmd = "rm  $home/.ssh/authorized_keys.xcatbackup";
-         #  xCAT::Utils->runcmd($cmd, 0);
-         #  $rsp = {};
-         #  if ($::RUNCMD_RC != 0)
-         #  {
-          #    $rsp->{data}->[0] = "$cmd failed.\n";
-          #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-         #  }
-      #  } else {  # just delete
-       #   $cmd = "rm  $home/.ssh/authorized_keys";
-       #   xCAT::Utils->runcmd($cmd, 0);
-       #   my $rsp = {};
-       #   if ($::RUNCMD_RC != 0)
-       #   {
-       #     $rsp->{data}->[0] = "$cmd failed.\n";
-       #     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-
-      #    }
-      #  }
-        # comment out authorized_keys2 setup
-        #if ($auth_key2 == 1) {  # need to restore
-         # my $cmd=
-          # "cp $home/.ssh/authorized_keys2.xcatbackup  $home/.ssh/authorized_keys2";
-          #xCAT::Utils->runcmd($cmd, 0);
-          #my $rsp = {};
-          #if ($::RUNCMD_RC != 0)
-          #{
-           #   $rsp->{data}->[0] = "$cmd failed.\n";
-           #   xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-           #   return (1);
-          
-         # } 
-         # $cmd = "rm  $home/.ssh/authorized_keys2.xcatbackup";
-         # xCAT::Utils->runcmd($cmd, 0);
-         # my $rsp = {};
-         # if ($::RUNCMD_RC != 0)
-         # {
-         #     $rsp->{data}->[0] = "$cmd failed.\n";
-         #     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-         # } 
-
-       #} else { # just delete it
-        #   $cmd = "rm  $home/.ssh/authorized_keys2";
-        #   xCAT::Utils->runcmd($cmd, 0);
-        #   my $rsp = {};
-        #   if ($::RUNCMD_RC != 0)
-        #   {
-        #     $rsp->{data}->[0] = "$cmd failed.\n";
-        #     xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-
-         #  }
-       #}
-  #  }
 
     # must always check to see if worked, run test
     my @testnodes=  split(",", $nodes[0]);
@@ -1604,9 +1499,6 @@ sub cpSSHFiles
     my $home = xCAT::Utils->getHomeDir("root");
 
     if (!(-e "$home/.ssh/id_rsa.pub"))   # only using rsa
-    #if (   !(-e "$home/.ssh/identity.pub")
-     #   || !(-e "$home/.ssh/id_rsa.pub")
-      #  || !(-e "$home/.ssh/id_dsa.pub"))
     {
         $rsp->{data}->[0] = "Public key id_rsa.pub was missing in the .ssh directory.";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
@@ -1635,17 +1527,18 @@ sub cpSSHFiles
         }
     }
 
-    # changed from  identity.pub
     # make tmp directory to hold authorized_keys for node transfer
-    $cmd = " mkdir $home/.ssh/tmp";
-    xCAT::Utils->runcmd($cmd, 0);
-    $rsp = {};
-    if ($::RUNCMD_RC != 0)
-    {
+    if (!(-e "$home/.ssh/tmp")) {
+      $cmd = " mkdir $home/.ssh/tmp";
+      xCAT::Utils->runcmd($cmd, 0);
+      $rsp = {};
+      if ($::RUNCMD_RC != 0)
+      {
         $rsp->{data}->[0] = "$cmd failed.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return (1);
 
+      }
     }
     # create authorized_keys file 
     
@@ -1669,90 +1562,6 @@ sub cpSSHFiles
         }
     }
 
-    # copy to install directory
-    # comment out authorized_keys2 setup
-    #my $authorized_keys2 = "$SSHdir/authorized_keys2";
-    #$cmd = "cp $home/.ssh/id_rsa.pub $authorized_keys2";
-    #xCAT::Utils->runcmd($cmd, 0);
-    #if ($::RUNCMD_RC != 0)
-    #{
-    #    $rsp->{data}->[0] = "$cmd failed.\n";
-    #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-    #    return (1);
-    #}
-    #else
-    #{
-     #   if ($::VERBOSE)
-      #  {
-       #     $rsp->{data}->[0] = "$cmd succeeded.\n";
-        #    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-       # }
-   # }
-
-    # copy to home ssh directory
-    # comment out authorized_keys2 setup
-    #$cmd = "cp $home/.ssh/id_rsa.pub $home/.ssh/authorized_keys2";
-    #xCAT::Utils->runcmd($cmd, 0);
-    #if ($::RUNCMD_RC != 0)
-    #{
-     #   $rsp->{data}->[0] = "$cmd failed.\n";
-      #  xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-      #  return (1);
-
-    #}
-    #else
-    #{
-     #  chmod 0600, "$home/.ssh/authorized_keys2";
-      # if ($::VERBOSE)
-     #  {
-      #     $rsp->{data}->[0] = "$cmd succeeded.\n";
-      #     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-      # }
-   #}
-
-    # add dsa key to install directory
-    # comment out authorized_keys2 setup
-    #my $rsp = {};
-    #$cmd = "cat $home/.ssh/id_dsa.pub >> $authorized_keys2";
-    #xCAT::Utils->runcmd($cmd, 0);
-    #if ($::RUNCMD_RC != 0)
-    #{
-    #    $rsp->{data}->[0] = "$cmd failed.\n";
-    #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-    #    return (1);
-
-   # }
-   # else
-   # {
-    #    if ($::VERBOSE)
-     #   {
-     #       $rsp->{data}->[0] = "$cmd succeeded.\n";
-     #       xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-     #   }
-   # }
-
-    # add dsa key to  home ssh directory
-    # comment out authorized_keys2 setup
-    #my $rsp = {};
-    #$cmd = "cat $home/.ssh/id_dsa.pub >> $home/.ssh/authorized_keys2";
-    #xCAT::Utils->runcmd($cmd, 0);
-    #if ($::RUNCMD_RC != 0)
-    #{
-     #   $rsp->{data}->[0] = "$cmd failed.\n";
-     #   xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-     #   return (1);
-
-    #}
-   # else
-   # {
-   #     if ($::VERBOSE)
-    #    {
-    #        $rsp->{data}->[0] = "$cmd succeeded.\n";
-    #        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-    #    }
-   # }
-
-    #if (!(-e "$authorized_keys") || !(-e "$authorized_keys2"))
     if (!(-e "$authorized_keys"))
     {
         return 1;
@@ -1798,25 +1607,22 @@ sub bldnonrootSSHFiles
     }
     my $home     = xCAT::Utils->getHomeDir($from_userid);
     my $roothome = xCAT::Utils->getHomeDir("root");
-    # comment out authorized_keys2
     if (!(-e "$home/.ssh/id_rsa.pub"))
-    #if (   !(-e "$home/.ssh/identity.pub")
-     #   || !(-e "$home/.ssh/id_rsa.pub")
-      #  || !(-e "$home/.ssh/id_dsa.pub"))
     {
         return 1;
     }
-    #$cmd = " cp $home/.ssh/identity.pub $home/.ssh/authorized_keys";
     # make tmp directory to hold authorized_keys for node transfer
-    $cmd = " mkdir $home/.ssh/tmp";
-    xCAT::Utils->runcmd($cmd, 0);
-    $rsp = {};
-    if ($::RUNCMD_RC != 0)
-    {
+    if (!(-e "$home/.ssh/tmp")) {
+      $cmd = " mkdir $home/.ssh/tmp";
+      xCAT::Utils->runcmd($cmd, 0);
+      $rsp = {};
+      if ($::RUNCMD_RC != 0)
+      {
         $rsp->{data}->[0] = "$cmd failed.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return (1);
 
+      }
     }
     $cmd = " cp $home/.ssh/id_rsa.pub $home/.ssh/tmp/authorized_keys";
     xCAT::Utils->runcmd($cmd, 0);
@@ -1838,50 +1644,8 @@ sub bldnonrootSSHFiles
         }
     }
 
-    # comment out authorized_keys2
-    #my $rsp = {};
-    #$cmd = "cp $home/.ssh/id_rsa.pub $home/.ssh/authorized_keys2";
-    #xCAT::Utils->runcmd($cmd, 0);
-    #if ($::RUNCMD_RC != 0)
-    #{
-     #   $rsp->{data}->[0] = "$cmd failed.\n";
-     #   xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-     #   return (1);
-
-    #}
-    #else
-    #{
-     #   chmod 0600, "$home/.ssh/authorized_keys2";
-     #   if ($::VERBOSE)
-      #  {
-       #     $rsp->{data}->[0] = "$cmd succeeded.\n";
-       #     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-       # }
-    #}
-
-    #my $rsp = {};
-    #$cmd = "cat $home/.ssh/id_dsa.pub >> $home/.ssh/authorized_keys2";
-    #xCAT::Utils->runcmd($cmd, 0);
-    #if ($::RUNCMD_RC != 0)
-   # {
-    #    $rsp->{data}->[0] = "$cmd failed.\n";
-    #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-    #    return (1);
-
-    #}
-    #else
-    #{
-    #    if ($::VERBOSE)
-    #    {
-    #        $rsp->{data}->[0] = "$cmd succeeded.\n";
-    #        xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-    #    }
-    #}
-
-    # add roots keys
     # if cannot access, warn and continue
     $rsp = {};
-    #$cmd = "cat $roothome/.ssh/identity.pub >> $home/.ssh/authorized_keys";
     $cmd = "cat $roothome/.ssh/id_rsa.pub >> $home/.ssh/tmp/authorized_keys";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
@@ -1898,43 +1662,7 @@ sub bldnonrootSSHFiles
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
     }
-    # comment out authorized_keys2
-    #my $rsp = {};
-    #$cmd = "cat $roothome/.ssh/id_rsa.pub >> $home/.ssh/authorized_keys2";
-    #xCAT::Utils->runcmd($cmd, 0);
-    #if ($::RUNCMD_RC != 0)
-    #{
-     #   $rsp->{data}->[0] = "Warning: Cannot give $from_userid root ssh authority. \n";
-     #   xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
-    #}
-    #else
-    #{
-    #    if ($::VERBOSE)
-     #   {
-     #       $rsp->{data}->[0] = "$cmd succeeded.\n";
-     #       xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-     #   }
-    #}
-
-   # my $rsp = {};
-   # $cmd = "cat $roothome/.ssh/id_dsa.pub >> $home/.ssh/authorized_keys2";
-   # xCAT::Utils->runcmd($cmd, 0);
-   # if ($::RUNCMD_RC != 0)
-   # {
-    #    $rsp->{data}->[0] = "Warning: Cannot give $from_userid root ssh authority. \n";
-    #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-    #    return (1);
-
-   # }
-   # else
-   # {
-   #     if ($::VERBOSE)
-   #     {
-   #         $rsp->{data}->[0] = "$cmd succeeded.\n";
-   #         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-   #     }
-   # }
 
     return (0);
 }
