@@ -167,7 +167,7 @@ if { [llength $argv] != 0 } {
 		set printlist [ join $nodelist ", " ]
 		set scp "/usr/bin/scp"
 		set directory "$home/.ssh"
-      set fh_auth_keys  [ open "$home/.ssh/authorized_keys" "r"]
+      set fh_auth_keys  [ open "$home/.ssh/tmp/authorized_keys" "r"]
       set auth_keys [read $fh_auth_keys]
       close $fh_auth_keys
 	   if { [info exists env(DSH_REMOTE_PASSWORD)] } {
@@ -202,7 +202,7 @@ if { [llength $argv] != 0 } {
 						exec /bin/kill $pid
 					}
 				}
-				set pid [ spawn $scp  $directory/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh ] 
+				set pid [ spawn $scp  $directory/tmp/authorized_keys $to_userid\@$node:/tmp/$to_userid/.ssh ] 
 				expect {
 					"Are you sure you want to continue connecting (yes/no)?" {
 						send "yes\r"
