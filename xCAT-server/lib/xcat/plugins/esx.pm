@@ -71,6 +71,7 @@ sub handled_commands{
 		rmigrate => 'nodehm:power,mgt',
 		mkvm => 'nodehm:mgt',
 		rmvm => 'nodehm:mgt',
+		rmhypervisor => 'hypervisor:type',
 		#lsvm => 'nodehm:mgt', not really supported yet
 	};
 }
@@ -132,6 +133,9 @@ sub preprocess_request {
 
 	my $vmtabhash = $vmtab->getNodesAttribs($noderange,['host']);
 	foreach my $node (@$noderange){
+        if ($command eq "rmhypervisor") {
+            $hyp_hash{$node}{nodes} = [$node];
+        } else {
         my $ent = $vmtabhash->{$node}->[0];
 		if(defined($ent->{host})) {
 			push @{$hyp_hash{$ent->{host}}{nodes}}, $node;
@@ -145,6 +149,7 @@ sub preprocess_request {
 		}else{
  			push @{$hyp_hash{$ent->{host}}{ids}}, "";
 		}
+        }
 	}
 
 	# find service nodes for the MMs
@@ -296,7 +301,7 @@ sub process_request {
     #my $vmmaxp = 84;
 	#$SIG{CHLD} = sub { my $cpid; while ($cpid = waitpid(-1, WNOHANG) > 0) { delete $esx_comm_pids{$cpid}; $children--; } };
     $viavcenter = 0;
-    if ($command eq 'rmigrate') { #Only use vcenter when required, fewer prereqs
+    if ($command eq 'rmigrate' or $command eq 'rmhypervisor') { #Only use vcenter when required, fewer prereqs
         $viavcenter = 1;
     }
     my $keytab = xCAT::Table->new('prodkey');
@@ -409,6 +414,8 @@ sub do_cmd {
         generic_vm_operation(['config.name','runtime.powerState','runtime.host'],\&rmvm,@exargs);
     } elsif ($command eq 'rsetboot') {
         generic_vm_operation(['config.name','runtime.host'],\&setboot,@exargs);
+    } elsif ($command eq 'rmhypervisor') {
+        generic_hyp_operation(\&rmhypervisor,@exargs);
     } elsif ($command eq 'mkvm') {
         generic_hyp_operation(\&mkvms,@exargs);
     } elsif ($command eq 'rmigrate') { #Technically, on a host view, but vcenter path is 'weirder'
@@ -515,8 +522,15 @@ sub get_hostview {
         $subargs{properties}=$args{properties};
     }
     my @addrs = gethostbyname($host);
-    my $ip=inet_ntoa($addrs[4]);
-    (my $name, my $aliases) = gethostbyaddr($addrs[4],AF_INET); #TODO: IPv6
+    my $ip;
+    my $name;
+    my $aliases;
+    if ($addrs[4]) {
+        $ip=inet_ntoa($addrs[4]);
+        ($name, $aliases) = gethostbyaddr($addrs[4],AF_INET); #TODO: IPv6
+    } else  {
+        ($ip,$name,$aliases) = ($host,$host,"");
+    }
     my @matchvalues = ($host,$ip,$name);
     foreach (split /\s+/,$aliases) {
         push @matchvalues,$_;
@@ -1047,6 +1061,54 @@ sub generic_hyp_operation { #The general form of firing per-hypervisor requests 
 #           }
 #        }
     }
+}
+
+sub rmhypervisor_disconnected {
+    my $task = shift;
+    my $parms = shift;
+    my $node = $parms->{node};
+    my $hyp = $node;
+    my $state = $task->info->state->val;
+    if ($state eq 'success') {
+        my $task = $hyphash{$hyp}->{hostview}->Destroy_Task();
+        $running_tasks{$task}->{data} = { node => $node, successtext => 'removed' };
+        $running_tasks{$task}->{task} = $task;
+        $running_tasks{$task}->{callback} = \&generic_task_callback;
+        $running_tasks{$task}->{hyp} =$hyp;
+    } elsif ($state eq 'error') {
+        relay_vmware_err($task,"",$node);
+    }
+}
+sub rmhypervisor_inmaintenance {
+    my $task = shift;
+    my $parms = shift;
+    my $state = $task->info->state->val;
+    my $node = $parms->{node};
+    my $intent = $parms->{successtext};
+    if ($state eq 'success') {
+        my $hyp = $parms->{node};
+        my $task = $hyphash{$hyp}->{hostview}->DisconnectHost_Task();
+        $running_tasks{$task}->{task} = $task;
+        $running_tasks{$task}->{callback} = \&rmhypervisor_disconnected;
+        $running_tasks{$task}->{hyp} = $hyp; 
+        $running_tasks{$task}->{data} = { node => $hyp }; 
+    } elsif ($state eq 'error') {
+        relay_vmware_err($task,"",$node);
+    }
+}
+
+sub rmhypervisor {
+    my %args = @_;
+    my $hyp = $args{hyp};
+    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
+    if (defined $hyphash{$hyp}->{hostview}) {
+        my $task = $hyphash{$hyp}->{hostview}->EnterMaintenanceMode_Task(timeout=>0);
+        $running_tasks{$task}->{task} = $task;
+        $running_tasks{$task}->{callback} = \&rmhypervisor_inmaintenance;
+        $running_tasks{$task}->{hyp} = $args{hyp}; 
+        $running_tasks{$task}->{data} = { node => $hyp }; 
+    }
+    return;
 }
 
 sub mkvms {
