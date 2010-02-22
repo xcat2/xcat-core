@@ -124,6 +124,7 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rspreset
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rsetboot
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rbootseq
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/reventlog
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmhypervisor
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodels
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodech
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/noderm
