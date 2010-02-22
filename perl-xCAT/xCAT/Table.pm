@@ -788,18 +788,26 @@ sub new
                return undef;
            }
            my $tbexistq;
-           my $db2tablename=$self->{tabname};
+           my $dbtablename=$self->{tabname};
            my $found = 0;
            if ($xcatcfg =~ /^DB2:/) {  # for DB2 
-              $db2tablename  =~ tr/a-z/A-Z/;    # convert to upper 
-              $tbexistq = $self->{dbh}->table_info(undef,$xcatdb2schema,$db2tablename,'TABLE');
+              $dbtablename  =~ tr/a-z/A-Z/;    # convert to upper 
+              $tbexistq = $self->{dbh}->table_info(undef,$xcatdb2schema,$dbtablename,'TABLE');
            } else {  
               $tbexistq = $self->{dbh}->table_info('','',$self->{tabname},'TABLE');
            }
            while (my $data = $tbexistq->fetchrow_hashref) {
-            if ($data->{'TABLE_NAME'} =~ /^\"?$db2tablename\"?\z/) {
-             $found = 1;
-             last;
+            if ($data->{'TABLE_NAME'} =~ /^\"?$dbtablename\"?\z/) {
+              if ($xcatcfg =~ /^DB2:/) {  # for DB2
+                 if ($data->{'TABLE_SCHEM'}  =~ /^\"?$xcatdb2schema\"?\z/) {
+                   # must check schema also with db2
+                     $found = 1;
+                       last;
+                 }
+              } else {  # not db2
+                 $found = 1;
+                 last;
+              }
             }
            }
 
@@ -956,14 +964,14 @@ sub updateschema
              $datatype=get_datatype_string($dcol, $xcatcfg, $types);
             }
             if ($datatype eq "TEXT") { 
-		if (isAKey(\@{$descr->{keys}}, $dcol)) {   # keys need defined length
-		      $datatype = "VARCHAR(128) ";
-		}
+	 	       if (isAKey(\@{$descr->{keys}}, $dcol)) {   # keys 
+		         $datatype = "VARCHAR(128) ";
+		       }
 	    }
 
 	    if (grep /^$dcol$/, @{$descr->{required}})
 	    {
-		$datatype .= " NOT NULL";
+	 	    $datatype .= " NOT NULL";
 	    }
             my $stmt =
                   "ALTER TABLE " . $self->{tabname} . " ADD $dcol $datatype";
