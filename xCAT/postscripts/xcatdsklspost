@@ -93,6 +93,7 @@ else # for statelite mode
         SIP=`cut -d= -f2 /opt/xcat/xcatinfo`;
     else
         echo "xCAT management server IP can't be determined.\nexiting...";
+        logger -t xCAT "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
         exit;
     fi
 fi
@@ -143,6 +144,7 @@ fi
 if [ $downloaded -eq 0 ]; then
     hn=`hostname`
     echo "Cannot download the postscripts from the xCAT server for node $hn"
+    logger -t xCAT "xcatdsklspost:Cannot download the postscripts from the xCAT server for node $hn"
     exit  
 fi
 
@@ -173,11 +175,13 @@ else  # for statelite mode
         if [ "$TRIES" = "$MAX" ]
         then
             echo "can't mount $SIP:/install/postscripts. I give up... ">/dev/console
+            logger -t xCAT "xcatdsklspost:Can't mount $SIP:/install/postscripts. exiting... "
             exit
         fi
         TRIES=`expr $TRIES + 1`
         S=`expr $RANDOM % 20`
         echo "Can't mount $SIP:/install/postscripts... Sleeping $S seconds then trying again" >/dev/console
+        logger -t xCAT "xcatdsklspost:Can't mount $SIP:/install/postscripts... Sleeping $S seconds then trying again" 
         sleep $S
     done
 
