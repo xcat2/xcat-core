@@ -16,6 +16,10 @@ the sinv command.
 #------------------------------------------------------------------------------
 
 package xCAT::SINV;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+}
 use strict;
 use xCAT::MsgUtils;
 use xCAT::NodeRange;
@@ -1476,7 +1480,7 @@ sub storeresults
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
-    my $cmd = " /opt/xcat/sbin/xdshcoll <$newtempfile |";
+    my $cmd = " $::XCATROOT/sbin/xdshcoll <$newtempfile |";
 
     open(XCOLL, "$cmd");
     if ($? > 0)
