@@ -43,6 +43,11 @@ if ! console -h 2>&1 | grep "encryption not compiled" > /dev/null; then
 	    echo "	sslcredentials $HOME/.xcat/client-cred.pem;" >> $HOME/.consolerc
 	    echo '}' >> $HOME/.consolerc
     fi
+else
+    # ssl is not enabled, comment out the ssl settings in .consolerc
+    if [ -f $HOME/.consolerc ]; then
+        sed -i 's/\Wssl/#ssl/1' $HOME/.consolerc
+    fi
 fi
 
 exec console $FORCE -M $CONSERVER $1
