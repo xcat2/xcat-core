@@ -41,7 +41,7 @@ SUM=`$SUMPROGRAM /tmp/tabedit.$$/$TABLE.csv`
 EXIT=0
 while [ $EXIT -eq 0 ]; do
   cd /tmp/tabedit.$$
-  "$TABEDITOR" $TABLE.csv
+  $TABEDITOR $TABLE.csv
   cd - >/dev/null
   NEWSUM=`$SUMPROGRAM /tmp/tabedit.$$/$TABLE.csv`
   if [ "$NEWSUM" == "$SUM" ]; then
