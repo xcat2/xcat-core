@@ -549,7 +549,9 @@ sub child_response {
 	    my @nodes;
 	    foreach ( @$responses ) {
      	    	my $node = $_->{node}->[0]->{name}->[0];
-     	    	push (@nodes, $node);
+		if (! grep /^$node$/, @nodes) {
+     	    		push (@nodes, $node);
+		}
 	    }
 
 	    foreach ( sort @nodes ) {
