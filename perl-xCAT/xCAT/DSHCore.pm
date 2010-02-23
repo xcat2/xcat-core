@@ -3,6 +3,10 @@
 
 package xCAT::DSHCore;
 
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+}
 use locale;
 use strict;
 use Socket;
@@ -706,7 +710,7 @@ sub pping_hostnames
 
     my $hostname_list = join ",", @hostnames;
     my @output =
-      xCAT::Utils->runcmd("/opt/xcat/bin/pping $hostname_list", -1);
+      xCAT::Utils->runcmd("$::XCATROOT/bin/pping $hostname_list", -1);
       if ($::RUNCMD_RC !=0) {
         my $rsp={};
         $rsp->{data}->[0] = "Error from pping";
