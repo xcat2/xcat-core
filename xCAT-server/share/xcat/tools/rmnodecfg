@@ -4,6 +4,13 @@
 # usage: rmnodecfg <noderange>
 # this does not remove it completely from xCAT.  You may want to do this
 # command before running noderm to completely purge the system of the node
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+use lib "$::XCATROOT/lib/perl";
+use xCAT::Utils;
 use strict;
 use Socket;
 
@@ -12,6 +19,8 @@ if(! $blades) {
   print "Please specify a noderange of blades to remove\n";
   exit; 
 }
+
+my $tftpdir = xCAT::Utils->getTftpDir();
 
 foreach my $blade (`/opt/xcat/bin/nodels $blades`){
   chomp($blade);
@@ -26,11 +35,11 @@ foreach my $blade (`/opt/xcat/bin/nodels $blades`){
   $cmd = "makedhcp -d $blade";
   print "$cmd\n";
   `$cmd`;
-  $cmd = "rm /tftpboot/pxelinux.cfg/$blade";
+  $cmd = "rm $tftpdir/pxelinux.cfg/$blade";
   print "$cmd\n";
   `$cmd`;
   if($hex){
-    $cmd = "rm /tftpboot/pxelinux.cfg/$hex";
+    $cmd = "rm $tftpdir/pxelinux.cfg/$hex";
     print "$cmd\n";
     `$cmd`;     
   }     

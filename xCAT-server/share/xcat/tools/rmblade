@@ -7,12 +7,23 @@
 ## 4.  so if blade is placed in new slot or back in then xCAT goes 
 ##     through rediscover process again.
 
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+use lib "$::XCATROOT/lib/perl";
+use xCAT::Utils;
 use strict;
 use Socket; # for name resolution
+
 my $ip='';
 my $mm='';
 my $slot='';
 my $log = "/var/log/xcatsnmp";
+my $tftpdir = xCAT::Utils->getTftpDir();
+
+
 open(FILE,">>$log") or die "Can't open log!!!";
 
 my $date = `date`;
@@ -27,11 +38,11 @@ sub rmblade {
 	`chtab -d node=$blade mac`;
 	print FILE "Running: makedhcp -d $blade\n";
 	`makedhcp -d $blade`;
-	print FILE "Running: rm /tftpboot/pxelinux.cfg/$blade\n";
-	`rm  /tftpboot/pxelinux.cfg/$blade`;
+	print FILE "Running: rm $tftpdir/pxelinux.cfg/$blade\n";
+	`rm  $tftpdir/pxelinux.cfg/$blade`;
 	if($hex){
-		print FILE "Running: rm /tftpboot/pxelinux.cfg/$hex\n";
-		`rm /tftpboot/pxelinux.cfg/$hex`;
+		print FILE "Running: rm $tftpdir/pxelinux.cfg/$hex\n";
+		`rm $tftpdir/pxelinux.cfg/$hex`;
 	}
 }
 
