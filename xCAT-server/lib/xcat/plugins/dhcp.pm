@@ -28,7 +28,7 @@ my $nrhash;
 my $machash;
 my $iscsients;
 my $chainents;
-my $tftpdir='/tftpboot';
+my $tftpdir = xCAT::Utils->getTftpDir();
 my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf'; 
 
 sub handled_commands
