@@ -1272,7 +1272,7 @@ sub getTftpDir
     my $tftpdir = "/tftpboot";
 
     # Try to lookup real tftpdir place.
-    my @tftpdir1 = get_site_attribute("tftpdir");
+    my @tftpdir1 = xCAT::Utils->get_site_attribute("tftpdir");
 
     # Use fetched value, incase successful database lookup.
     if ($tftpdir1[0])
