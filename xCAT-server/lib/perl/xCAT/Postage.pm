@@ -281,6 +281,7 @@ sub makescript {
       }
   } else {
       my $stat="install";
+      my $installroot = xCAT::Utils->getInstallDir();
       if ($profile) {
 	  my $platform="rh";
 	  if ($os) {
@@ -291,7 +292,7 @@ sub makescript {
 	      elsif ($os =~ /aix.*/) { $platform = "aix"; }
 	  }
 	  if (($nodesetstate) && ($nodesetstate eq "netboot")) { $stat="netboot";}
-	  $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("/install/custom/$stat/$platform", $profile,  $os, $arch);
+	  $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("$installroot/custom/$stat/$platform", $profile,  $os, $arch);
 	  if (!$pkglist) { $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("$::XCATROOT/share/xcat/$stat/$platform", $profile, $os, $arch); }
       }
   }
