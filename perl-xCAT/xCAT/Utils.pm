@@ -1245,6 +1245,46 @@ sub getInstallDir
 
 #--------------------------------------------------------------------------------
 
+=head3    getTftpDir
+
+        Get location of the directory, used to hold network boot files.
+
+        Arguments:
+                none
+        Returns:
+                path to TFTP directory defined at site.tftpdir.
+        Globals:
+                none
+        Error:
+                none
+        Example:
+                $tftpdir = xCAT::Utils->getTftpDir();
+        Comments:
+                none
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub getTftpDir
+{
+    # Default tftpdir location. Used by default in most Linux distros.
+    my $tftpdir = "/tftpboot";
+
+    # Try to lookup real tftpdir place.
+    my @tftpdir1 = get_site_attribute("tftpdir");
+
+    # Use fetched value, incase successful database lookup.
+    if ($tftpdir1[0])
+    {
+        $tftpdir = $tftpdir1[0];
+    }
+
+    return $tftpdir;
+}
+
+#--------------------------------------------------------------------------------
+
 =head3    getHomeDir
 
         Get the path the  user home directory from /etc/passwd.
