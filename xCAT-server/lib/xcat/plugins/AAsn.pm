@@ -284,8 +284,8 @@ sub mountInstall
 {
     my ($nodename) = @_;
     my $rc         = 0;
-    my $installdir = "/install";    # default
-    my $installloc = "/install";    # default
+    my $installdir = xCAT::Utils->getInstallDir();
+    my $installloc = xCAT::Utils->getInstallDir();
     my $newinstallloc;
     # read DB for nodeinfo
     my $master;
@@ -328,11 +328,6 @@ sub mountInstall
 
         if ($nomount == 0)
         {    # mount the install directory
-            my @installdir1 = xCAT::Utils->get_site_attribute("installdir");
-            if ($installdir1[0])
-            {
-                $installdir = $installdir1[0];    # save directory to mount to
-            }
             if (!(-e $installdir))
             {
                 mkpath($installdir);
@@ -513,13 +508,7 @@ sub setup_FTP
     # change ftp user id home directory to installdir
     # link installdir
     # restart the daemon
-    my $installdir = "/install";    # default
-                                    # read from database
-    my @installdir1 = xCAT::Utils->get_site_attribute("installdir");
-    if ($installdir1[0])            # if exists
-    {
-        $installdir = $installdir1[0];
-    }
+    my $installdir = xCAT::Utils->getInstallDir();
     if (!(-e $installdir))          # make it
     {
         mkpath($installdir);
