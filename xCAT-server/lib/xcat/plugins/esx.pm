@@ -967,8 +967,8 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
     my $hyp; 
     my $vmviews;
     my %vcviews; #views populated once per vcenter server for improved performance
-    if ($viavcenterbyhyp->{$hyp}) {
-        foreach $hyp (keys %hyphash) {
+    foreach $hyp (keys %hyphash) {
+        if ($viavcenterbyhyp->{$hyp}) {
             if ($vcviews{$hyphash{$hyp}->{vcenter}->{name}}) { next; }
             $vcviews{$hyphash{$hyp}->{vcenter}->{name}} = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
             foreach (@{$vcviews{$hyphash{$hyp}->{vcenter}->{name}}}) {
@@ -982,7 +982,7 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
                     if ( $tablecfg{vm}->{$node}->[0]->{host} eq "$host" ) { next; }
                     my $newnhost = inet_aton($host);
                     my $oldnhost = inet_aton($tablecfg{vm}->{$node}->[0]->{host});
-                    if ($newnhost = $oldnhost) { next; } #it resolved fine
+                    if ($newnhost eq $oldnhost) { next; } #it resolved fine
                     my $shost = $host;
                     $shost =~ s/\..*//;
                     if ( $tablecfg{vm}->{$node}->[0]->{host} eq "$shost" ) { next; }
