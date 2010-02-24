@@ -1205,6 +1205,46 @@ sub runxcmd_output
 
 #--------------------------------------------------------------------------------
 
+=head3    getInstallDir
+
+        Get location of the directory, used to hold the node deployment packages.
+
+        Arguments:
+                none
+        Returns:
+                path to install directory defined at site.installdir.
+        Globals:
+                none
+        Error:
+                none
+        Example:
+                $installdir = xCAT::Utils->getInstallDir();
+        Comments:
+                none
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub getInstallDir
+{
+    # Default installdir location. Used by default in most Linux distros.
+    my $installdir = "/install";
+
+    # Try to lookup real installdir place.
+    my @installdir1 = get_site_attribute("installdir");
+
+    # Use fetched value, incase successful database lookup.
+    if ($installdir1[0])
+    {
+        $installdir = $installdir1[0];
+    }
+
+    return $installdir;
+}
+
+#--------------------------------------------------------------------------------
+
 =head3    getHomeDir
 
         Get the path the  user home directory from /etc/passwd.
