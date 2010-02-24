@@ -218,6 +218,8 @@ sub getsynclistfile()
 
   my ($os, $arch, $profile, $inst_type) = @_;
 
+  my $installdir = xCAT::Utils->getInstallDir();
+
   # for aix node, use the node figure out the profile, then use the value of
   # profile (osimage name) to get the synclist file path (osimage.synclists)
   if (xCAT::Utils->isAIX()) {
@@ -319,7 +321,7 @@ sub getsynclistfile()
 	      elsif ($os =~ /AIX.*/) { $platform = "AIX"; }
 	  }
 
-	  my $base =  "/install/custom/$inst_type/$platform";
+	  my $base =  "$installdir/custom/$inst_type/$platform";
 	  if (-r "$base/$profile.$os.$arch.synclist") {
 	      $node_syncfile{$node} = "$base/$profile.$os.$arch.synclist";
 	  } elsif (-r "$base/$profile.$arch.synclist") {
@@ -344,7 +346,7 @@ sub getsynclistfile()
       elsif ($os =~ /win/)  {$platform = "windows"; }
     }
 
-    my $base = "/install/custom/$inst_type/$platform";
+    my $base = "$installdir/custom/$inst_type/$platform";
     if (-r "$base/$profile.$os.$arch.synclist") {
       return "$base/$profile.$os.$arch.synclist";
     } elsif (-r "$base/$profile.$arch.synclist") {
@@ -516,7 +518,7 @@ sub  update_tables_with_templates
 
   
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos\n";
-    my $installroot="/install";  
+    my $installroot = xCAT::Utils->getInstallDir();
     my $sitetab = xCAT::Table->new('site');
     if ($sitetab) {
 	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
@@ -673,7 +675,7 @@ sub  update_tables_with_diskless_image
     }
   
     #print "osver=$osver, arch=$arch, osname=$osname, genos=$genos, profile=$profile\n";
-    my $installroot="/install";  
+    my $installroot = xCAT::Utils->getInstallDir();
     my $sitetab = xCAT::Table->new('site');
     if ($sitetab) {
 	(my $ref) = $sitetab->getAttribs({key => "installdir"}, "value");
