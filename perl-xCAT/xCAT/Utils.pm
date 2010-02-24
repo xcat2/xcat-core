@@ -19,6 +19,7 @@ if ($^O =~ /^aix/i) {
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Table;
 use POSIX qw(ceil);
+use File::Path;
 use Socket;
 use strict;
 use warnings "all";
@@ -1277,7 +1278,7 @@ sub setupSSH
     my @nodes    = $ref_nodes;
     my @badnodes = ();
     my $n_str    = $nodes[0];
-    my $SSHdir   = "/install/postscripts/_ssh";
+    my $SSHdir   = getInstallDir() . "/postscripts/_ssh";
     if (!($ENV{'DSH_REMOTE_PASSWORD'}))
     {
         my $rsp = ();
@@ -1345,9 +1346,7 @@ sub setupSSH
         # make the directory to hold keys to transfer to the nodes
         if (!-d $SSHdir)
         {
-            mkdir("/install",                  0755);
-            mkdir("/install/postscripts",      0755);
-            mkdir("/install/postscripts/_ssh", 0755);
+            mkpath("$SSHdir", { mode => 0755 });
         }
 
         # generates new keys for root, if they do not already exist
@@ -2883,14 +2882,15 @@ sub gethost_ips
 sub create_postscripts_tar
 {
     my ($class) = @_;
+    my $installdir = getInstallDir();
     my $cmd;
-    if (!(-e "/install/autoinst"))
+    if (!(-e "$installdir/autoinst"))
     {
-        mkdir("/install/autoinst");
+        mkdir("$installdir/autoinst");
     }
 
     $cmd =
-      "cd /install/postscripts; tar -cf /install/autoinst/xcatpost.tar * .ssh/* _xcat/*; gzip -f /install/autoinst/xcatpost.tar";
+      "cd $installdir/postscripts; tar -cf $installdir/autoinst/xcatpost.tar * .ssh/* _xcat/*; gzip -f $installdir/autoinst/xcatpost.tar";
     my @result = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -2903,7 +2903,7 @@ sub create_postscripts_tar
     if (xCAT::Utils->isAIX())
     {
         my $tftpctlfile = "/etc/tftpaccess.ctl";
-        my $entry       = "allow:/install/autoinst/xcatpost.tar.gz";
+        my $entry       = "allow:$installdir/autoinst/xcatpost.tar.gz";
 
         # see if there is already an entry
         my $cmd = "cat $tftpctlfile | grep xcatpost";
@@ -4261,7 +4261,8 @@ sub checkCredFiles
 {
     my $lib = shift;
     my $cb  = shift;
-    my $dir = "/install/postscripts/_xcat";
+    my $installdir = getInstallDir();
+    my $dir = "$installdir/postscripts/_xcat";
     if (-d $dir)
     {
         my $file = "$dir/ca.pem";
@@ -4311,7 +4312,7 @@ sub checkCredFiles
         xCAT::MsgUtils->message("I", $rsp, $cb);
     }
 
-    $dir = "/install/postscripts/ca";
+    $dir = "$installdir/postscripts/ca";
     if (-d $dir)
     {
         my $file = "$dir/ca-cert.pem";
@@ -4345,7 +4346,7 @@ sub checkCredFiles
     # todo, I think  next release this directory can be removed and
     # copycerts modified because ca.pem is gotten by getcredentials from
     # /etc/xcat/cert
-    $dir = "/install/postscripts/cert";
+    $dir = "$installdir/postscripts/cert";
     if (-d $dir)
     {
         my $file = "$dir/ca.pem";
@@ -4377,7 +4378,7 @@ sub checkCredFiles
     }
 
     # ssh hostkeys
-    $dir = "/install/postscripts/hostkeys";
+    $dir = "$installdir/postscripts/hostkeys";
     if (-d $dir)
     {
         my $file = "$dir/ssh_host_key.pub";
@@ -4440,7 +4441,7 @@ sub checkCredFiles
     }
 
     # ssh directory
-    $dir = "/install/postscripts/_ssh";
+    $dir = "$installdir/postscripts/_ssh";
 
     if (-d $dir)
     {
@@ -4488,7 +4489,7 @@ sub checkCredFiles
     }
 
     # remove any old cfgloc files
-    my $file = "/install/postscripts/etc/xcat/cfgloc";
+    my $file = "$installdir/postscripts/etc/xcat/cfgloc";
     if (-e $file)
     {
 
@@ -4570,6 +4571,7 @@ sub release_lock {
 sub getrootimage()
 {
   my $node = shift;
+  my $installdir = getInstallDir();
   if (($node) && ($node =~ /xCAT::Utils/))
   {
     $node = shift;
@@ -4585,7 +4587,7 @@ sub getrootimage()
   my $arch = $nodetype_v->{'arch'};
 
   if ($^O eq "linux") {
-    my $rootdir = "/install/netboot/$os/$arch/$profile/rootimg/";
+    my $rootdir = "$installdir/netboot/$os/$arch/$profile/rootimg/";
     if (-d $rootdir) {
       return $rootdir;
     } else {
