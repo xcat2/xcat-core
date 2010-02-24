@@ -39,8 +39,7 @@ sub process_request {
       $sitetab->close;
    }
 
-   my $installdir = "/install";
-   my $tftpdir = "/tftpboot";
+   my $tftpdir = xCAT::Utils->getTftpDir();
    if (scalar(@{$request->{arg}}) != 1) {
       $callback->({error=>"Need to specifiy architecture (x86, x86_64 or ppc64)"},{errorcode=>[1]});
       return;
