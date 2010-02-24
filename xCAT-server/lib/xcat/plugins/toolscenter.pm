@@ -130,24 +130,20 @@ sub mknetboot
     my $req      = shift;
     my $callback = shift;
     my $doreq    = shift;
-    my $tftpdir  = "/tftpboot";
     my $nodes    = @{$request->{node}};
     my @args     = @{$req->{arg}};
     my @nodes    = @{$req->{node}};
     my $ostab    = xCAT::Table->new('nodetype');
     my $sitetab  = xCAT::Table->new('site');
-    my $installroot;
-    $installroot = "/install";
+
+    my $installroot = xCAT::Utils->getInstallDir();
+    my $tftpdir = xCAT::Utils->getTftpDir();
+
     my $xcatiport;
 
     if ($sitetab)
     {
-        (my $ref) = $sitetab->getAttribs({key => installdir}, value);
-        if ($ref and $ref->{value})
-        {
-            $installroot = $ref->{value};
-        }
-        ($ref) = $sitetab->getAttribs({key => xcatiport}, value);
+        (my $ref) = $sitetab->getAttribs({key => xcatiport}, value);
         if ($ref and $ref->{value})
         {
             $xcatiport = $ref->{value};
