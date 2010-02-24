@@ -22,16 +22,11 @@ sub handled_commands {
 }
 
 sub process_request {
-   my $sitetab = xCAT::Table->new('site');
    my $request = shift;
    my $callback = shift;
    my $doreq = shift;
-   my $ent = $sitetab->getAttribs({key=>'installdir'},['value']);
-   my $installroot = "/install";
+   my $installroot = xCAT::Utils->getInstallDir();
 
-   if ($ent and $ent->{value}) {
-      $installroot = $ent->{value};
-   }
    @ARGV = @{$request->{arg}};
    my $argc = scalar @ARGV;
    if ($argc == 0) {
