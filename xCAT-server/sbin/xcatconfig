@@ -36,6 +36,12 @@ $::command = "$0 $args";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 
+# Default Install dir location
+$::INSTALLDIR = "/install";
+
+# Default TFTP dir location
+$::TFTPDIR = "/tftpboot";
+
 # parse the options
 if (
     !GetOptions(
@@ -49,6 +55,8 @@ if (
                 'h|help'            => \$::HELP,
                 'v|version'         => \$::VERSION,
                 'V|verbose'         => \$::VERBOSE,
+                'installdir=s'      => \$::INSTALLDIR,
+                'tftpdir=s'         => \$::TFTPDIR,
     )
   )
 {
@@ -305,7 +313,7 @@ if ($::INITIALINSTALL || $::UPDATEINSTALL || $::FORCE || $::initDB)
 # use postscript to set up syslog
 if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
 {
-    my $cmd = "/install/postscripts/syslog";
+    my $cmd = "$::INSTALLDIR/postscripts/syslog";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -349,18 +357,18 @@ if (($::osname eq 'Linux') && (($::INITIALINSTALL || $::FORCE)))
 {
 
     #Zap the almost certainly wrong pxelinux.cfg file
-    if (-f "/tftpboot/pxelinux.cfg/default")
+    if (-f "$::TFTPDIR/pxelinux.cfg/default")
     {
-        $cmd = "/bin/rm /tftpboot/pxelinux.cfg/default";
+        $cmd = "/bin/rm $::TFTPDIR/pxelinux.cfg/default";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                             "Could not remove /tftpboot/pxelinux.cfg/default");
+                             "Could not remove $::TFTPDIR/pxelinux.cfg/default");
         }
         else
         {
-            verbose("Removed /tftpboot/pxelinux.cfg/default.");
+            verbose("Removed $::TFTPDIR/pxelinux.cfg/default.");
         }
     }
 
@@ -492,18 +500,18 @@ sub genSSHRootKeys
     #
     #  create /install/postscripts/_ssh if needed
     #
-    if (!-d "/install/postscripts/_ssh")
+    if (!-d "$::INSTALLDIR/postscripts/_ssh")
     {
-        my $cmd = "/bin/mkdir -p /install/postscripts/_ssh";
+        my $cmd = "/bin/mkdir -p $::INSTALLDIR/postscripts/_ssh";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                       "Could not create /install/postscripts/_ssh directory.");
+                       "Could not create $::INSTALLDIR/postscripts/_ssh directory.");
         }
         else
         {
-            verbose("Created /install/postscripts/_ssh directory.");
+            verbose("Created $::INSTALLDIR/postscripts/_ssh directory.");
         }
     }
 
@@ -550,20 +558,20 @@ sub genSSHRootKeys
     if (-r $pubfile)
     {
         my $cmd =
-          "/bin/cp -p $pubfile /install/postscripts/_ssh/authorized_keys ";
+          "/bin/cp -p $pubfile $::INSTALLDIR/postscripts/_ssh/authorized_keys ";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message(
                 'E',
-                "Could not copy $pubfile to /install/postscripts/_ssh/authorized_keys."
+                "Could not copy $pubfile to $::INSTALLDIR/postscripts/_ssh/authorized_keys."
                 );
         }
         else
         {
             xCAT::MsgUtils->message(
                  'I',
-                 "Copied $pubfile to /install/postscripts/_ssh/authorized_keys."
+                 "Copied $pubfile to $::INSTALLDIR/postscripts/_ssh/authorized_keys."
                  );
         }
     }
@@ -571,7 +579,7 @@ sub genSSHRootKeys
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not copy $pubfile to /install/postscripts/_ssh/authorized_keys,because $pubfile does not exist."
+            "Could not copy $pubfile to $::INSTALLDIR/postscripts/_ssh/authorized_keys,because $pubfile does not exist."
             );
     }
 }
@@ -596,7 +604,7 @@ sub genSSHNodeHostKey
 
 {
 
-    my $hostkey  = "/install/postscripts/hostkeys/ssh_host_rsa_key";
+    my $hostkey  = "$::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key";
     my $hostkey2 = "/etc/xcat/hostkeys/ssh_host_rsa_key";
     if (   ((!-r $hostkey) && (!-r $hostkey2))
         || $::FORCE
@@ -604,15 +612,15 @@ sub genSSHNodeHostKey
     {
 
         #  create directories /etc/xcat/hostkeys and /install/postscripts/hostkeys
-        if (!-d "/install/postscripts/hostkeys")    # directory for public keys
+        if (!-d "$::INSTALLDIR/postscripts/hostkeys")    # directory for public keys
         {
-            my $cmd = "/bin/mkdir -p /install/postscripts/hostkeys";
+            my $cmd = "/bin/mkdir -p $::INSTALLDIR/postscripts/hostkeys";
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message(
                      'E',
-                     "Could not create /install/postscripts/hostkeys directory."
+                     "Could not create $::INSTALLDIR/postscripts/hostkeys directory."
                      );
             }
         }
@@ -630,13 +638,13 @@ sub genSSHNodeHostKey
         # remove the old keys
         if (-r $hostkey)
         {
-            my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host*";
+            my $cmd = "/bin/rm $::INSTALLDIR/postscripts/hostkeys/ssh_host*";
             my $outref = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message(
                     'I',
-                    "Could not remove ssh keys from /install/postscripts/hostkeys directory. They may not exist."
+                    "Could not remove ssh keys from $::INSTALLDIR/postscripts/hostkeys directory. They may not exist."
                     );
             }
         }
@@ -688,7 +696,7 @@ sub genSSHNodeHostKey
 
         # copy the public keys to install directory
         my $cmd =
-          "/bin/cp /etc/xcat/hostkeys/*.pub /install/postscripts/hostkeys/.";
+          "/bin/cp /etc/xcat/hostkeys/*.pub $::INSTALLDIR/postscripts/hostkeys/.";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
@@ -704,12 +712,12 @@ sub genSSHNodeHostKey
           # so if private keys are in /install ( some migration)
           # move old hostkeys keys if they exist in /install, to the
           # new directory /etc/xcat/hostkeys & remove private keys from /install
-        if (-f "/install/postscripts/hostkeys/ssh_host_rsa_key")
+        if (-f "$::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key")
         {
 
             # copy all keys to /etc/xcat/hostkeys directory
             my $cmd =
-              "/bin/cp -p /install/postscripts/hostkeys/* /etc/xcat/hostkeys/.";
+              "/bin/cp -p $::INSTALLDIR/postscripts/hostkeys/* /etc/xcat/hostkeys/.";
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -717,29 +725,29 @@ sub genSSHNodeHostKey
             }
 
             # remove private keys from install dir, leave the public keys
-            if (-f "/install/postscripts/hostkeys/ssh_host_dsa_key")
+            if (-f "$::INSTALLDIR/postscripts/hostkeys/ssh_host_dsa_key")
             {
                 my $cmd =
-                  "/bin/rm /install/postscripts/hostkeys/ssh_host_dsa_key";
+                  "/bin/rm $::INSTALLDIR/postscripts/hostkeys/ssh_host_dsa_key";
                 my $outref = xCAT::Utils->runcmd("$cmd", 0);
                 if ($::RUNCMD_RC != 0)
                 {
                     xCAT::MsgUtils->message('E', "$cmd not successful.");
                 }
             }
-            if (-f "/install/postscripts/hostkeys/ssh_host_key")
+            if (-f "$::INSTALLDIR/postscripts/hostkeys/ssh_host_key")
             {
-                my $cmd = "/bin/rm /install/postscripts/hostkeys/ssh_host_key";
+                my $cmd = "/bin/rm $::INSTALLDIR/postscripts/hostkeys/ssh_host_key";
                 my $outref = xCAT::Utils->runcmd("$cmd", 0);
                 if ($::RUNCMD_RC != 0)
                 {
                     xCAT::MsgUtils->message('E', "$cmd not successful.");
                 }
             }
-            if (-f "/install/postscripts/hostkeys/ssh_host_rsa_key")
+            if (-f "$::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key")
             {
                 my $cmd =
-                  "/bin/rm /install/postscripts/hostkeys/ssh_host_rsa_key";
+                  "/bin/rm $::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key";
                 my $outref = xCAT::Utils->runcmd("$cmd", 0);
                 if ($::RUNCMD_RC != 0)
                 {
@@ -751,11 +759,11 @@ sub genSSHNodeHostKey
         # so if no public key in  /install/postscripts/hostkeys
         # copy the /etc/xcat/hostkeys
         # public keys to /install/postscripts/hostkeys
-        if (!(-f "/install/postscripts/hostkeys/ssh_host_rsa_key.pub"))
+        if (!(-f "$::INSTALLDIR/postscripts/hostkeys/ssh_host_rsa_key.pub"))
         {
 
             # rm any files
-            my $cmd = "/bin/rm /install/postscripts/hostkeys/*";
+            my $cmd = "/bin/rm $::INSTALLDIR/postscripts/hostkeys/*";
             my $outref = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC != 0)
             {
@@ -769,7 +777,7 @@ sub genSSHNodeHostKey
 
             # copy the public keys to install directory
             my $cmd =
-              "/bin/cp /etc/xcat/hostkeys/*.pub /install/postscripts/hostkeys/.";
+              "/bin/cp /etc/xcat/hostkeys/*.pub $::INSTALLDIR/postscripts/hostkeys/.";
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -804,8 +812,8 @@ sub initDB
     # some values common to both AIX & Linux
     my $xcatport   = "3001";
     my $xcatiport  = "3002";
-    my $tftpdir    = "/tftpboot";
-    my $installdir = "/install";
+    my $tftpdir    = "$::TFTPDIR";
+    my $installdir = "$::INSTALLDIR";
     my $master;
     my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
     if ($? == 0)
@@ -1199,33 +1207,33 @@ sub genCredentials
     }
 
     #  copy to postscript directory
-    my $cmd    = "/bin/rm -rf /install/postscripts/ca >/dev/null 2>&1";
+    my $cmd    = "/bin/rm -rf $::INSTALLDIR/postscripts/ca >/dev/null 2>&1";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    my $cmd    = "/bin/mkdir -p /install/postscripts/ca/certs";
+    my $cmd    = "/bin/mkdir -p $::INSTALLDIR/postscripts/ca/certs";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                   "Could not create /install/postscripts/ca/certs directory.");
+                   "Could not create $::INSTALLDIR/postscripts/ca/certs directory.");
     }
     else
     {
         xCAT::MsgUtils->message('I',
-                            "Created /install/postscripts/ca/certs directory.");
+                            "Created $::INSTALLDIR/postscripts/ca/certs directory.");
     }
-    my $cmd = "/bin/cp -r /etc/xcat/ca/* /install/postscripts/ca";
+    my $cmd = "/bin/cp -r /etc/xcat/ca/* $::INSTALLDIR/postscripts/ca";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not copy /etc/xcat/ca/* to  /install/postscripts/ca directory."
+            "Could not copy /etc/xcat/ca/* to  $::INSTALLDIR/postscripts/ca directory."
             );
     }
     else
     {
         xCAT::MsgUtils->message('I',
-                 "Copied /etc/xcat/ca/* to /install/postscripts/ca directory.");
+                 "Copied /etc/xcat/ca/* to $::INSTALLDIR/postscripts/ca directory.");
     }
 
     if ((!-d "/etc/xcat/cert") || $::FORCE || $::genCredentials)
@@ -1253,32 +1261,32 @@ sub genCredentials
     }
 
     #  copy to postscript directory
-    my $cmd    = "/bin/rm -rf /install/postscripts/cert >/dev/null 2>&1";
+    my $cmd    = "/bin/rm -rf $::INSTALLDIR/postscripts/cert >/dev/null 2>&1";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    my $cmd    = "/bin/mkdir -p /install/postscripts/cert";
+    my $cmd    = "/bin/mkdir -p $::INSTALLDIR/postscripts/cert";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                       "Could not create /install/postscripts/cert directory.");
+                       "Could not create $::INSTALLDIR/postscripts/cert directory.");
     }
     else
     {
-        verbose("Created /install/postscripts/cert directory.");
+        verbose("Created $::INSTALLDIR/postscripts/cert directory.");
     }
-    my $cmd = "/bin/cp -r /etc/xcat/cert/* /install/postscripts/cert";
+    my $cmd = "/bin/cp -r /etc/xcat/cert/* $::INSTALLDIR/postscripts/cert";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not copy /etc/xcat/cert/* to  /install/postscripts/cert directory."
+            "Could not copy /etc/xcat/cert/* to  $::INSTALLDIR/postscripts/cert directory."
             );
     }
     else
     {
         xCAT::MsgUtils->message('I',
-             "Copied /etc/xcat/cert/* to /install/postscripts/cert directory.");
+             "Copied /etc/xcat/cert/* to $::INSTALLDIR/postscripts/cert directory.");
     }
 
     if ((!-r "$::root/.xcat/client-key.pem") || $::FORCE || $::genCredentials)
@@ -1300,47 +1308,47 @@ sub genCredentials
     }
 
     #  copy to postscript directory
-    my $cmd    = "/bin/rm -rf /install/postscripts/_xcat >/dev/null 2>&1";
+    my $cmd    = "/bin/rm -rf $::INSTALLDIR/postscripts/_xcat >/dev/null 2>&1";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    my $cmd    = "/bin/mkdir -p /install/postscripts/_xcat";
+    my $cmd    = "/bin/mkdir -p $::INSTALLDIR/postscripts/_xcat";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E',
-                      "Could not create /install/postscripts/_xcat directory.");
+                      "Could not create $::INSTALLDIR/postscripts/_xcat directory.");
     }
     else
     {
-        verbose("Created /install/postscripts/_xcat directory.");
+        verbose("Created $::INSTALLDIR/postscripts/_xcat directory.");
     }
-    my $cmd = "/bin/cp -r $::root/.xcat/* /install/postscripts/_xcat";
+    my $cmd = "/bin/cp -r $::root/.xcat/* $::INSTALLDIR/postscripts/_xcat";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not copy $::root/.xcat/* to  /install/postscripts/_xcat directory."
+            "Could not copy $::root/.xcat/* to  $::INSTALLDIR/postscripts/_xcat directory."
             );
     }
     else
     {
         xCAT::MsgUtils->message('I',
-             "Copied $::root/.xcat/* to /install/postscripts/_xcat directory.");
+             "Copied $::root/.xcat/* to $::INSTALLDIR/postscripts/_xcat directory.");
     }
-    my $cmd = "/bin/cp -r /etc/xcat/ca/certs/* /install/postscripts/ca/certs";
+    my $cmd = "/bin/cp -r /etc/xcat/ca/certs/* $::INSTALLDIR/postscripts/ca/certs";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message(
             'E',
-            "Could not copy /etc/xcat/ca/certs/* to  /install/postscripts/ca/certs directory."
+            "Could not copy /etc/xcat/ca/certs/* to  $::INSTALLDIR/postscripts/ca/certs directory."
             );
     }
     else
     {
         xCAT::MsgUtils->message(
             'I',
-            "Copied /etc/xcat/ca/certs* to /install/postscripts/ca/certs directory."
+            "Copied /etc/xcat/ca/certs* to $::INSTALLDIR/postscripts/ca/certs directory."
             );
     }
 }
@@ -1482,14 +1490,14 @@ sub setupAIXexports
 
     # check if /install/postscripts is in /etc/exports
     my $catcmd =
-      "/bin/cat /etc/exports 2>&1 | grep '/install/postscripts ' >/dev/null 2>&1";
+      "/bin/cat /etc/exports 2>&1 | grep '$::INSTALLDIR/postscripts ' >/dev/null 2>&1";
     my $outref = xCAT::Utils->runcmd("$catcmd", -1);
     if ($::RUNCMD_RC != 0)
     {
 
         # if not add it and make sure it is exported
         my $ecmd =
-          "echo '/install/postscripts -ro' >> /etc/exports; exportfs -a";
+          "echo '$::INSTALLDIR/postscripts -ro' >> /etc/exports; exportfs -a";
         my $outref2 = xCAT::Utils->runcmd("$ecmd", -1);
         if ($::RUNCMD_RC != 0)
         {
@@ -1517,7 +1525,7 @@ sub setupLinuxexports
     #  add tftpboot to /etc/exports - if needed
     #
 
-    my $cmd = "/bin/cat /etc/exports | grep '/tftpboot'";
+    my $cmd = "/bin/cat /etc/exports | grep '$::TFTPDIR'";
     my $outref = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC != 0)
     {
@@ -1525,7 +1533,7 @@ sub setupLinuxexports
         # ok - then add this entry
         #SECURITY: this has potential for sharing private host/user keys
         my $cmd =
-          "/bin/echo '/tftpboot *(rw,no_root_squash,sync)' >> /etc/exports";
+          "/bin/echo '$::TFTPDIR *(rw,no_root_squash,sync)' >> /etc/exports";
 
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
@@ -1535,7 +1543,7 @@ sub setupLinuxexports
         }
         else
         {
-            verbose("Added /tftpboot to the /etc/exports file.");
+            verbose("Added $::TFTPDIR to the /etc/exports file.");
             $changed_exports++;
         }
     }
@@ -1544,7 +1552,7 @@ sub setupLinuxexports
     #  add /install to /etc/exports - if needed
     #
 
-    my $cmd = "/bin/cat /etc/exports | grep '/install'";
+    my $cmd = "/bin/cat /etc/exports | grep '$::INSTALLDIR'";
     my $outref = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC != 0)
     {
@@ -1552,7 +1560,7 @@ sub setupLinuxexports
         # ok - then add this entry
         #SECURITY: this has potential for sharing private host/user keys
         my $cmd =
-          "/bin/echo '/install *(rw,no_root_squash,sync)' >> /etc/exports";
+          "/bin/echo '$::INSTALLDIR *(rw,no_root_squash,sync)' >> /etc/exports";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
@@ -1561,7 +1569,7 @@ sub setupLinuxexports
         }
         else
         {
-            verbose("Added /install to the /etc/exports file.");
+            verbose("Added $::INSTALLDIR to the /etc/exports file.");
             $changed_exports++;
         }
     }
