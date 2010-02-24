@@ -1,13 +1,20 @@
+defgw=`ip route | grep default | awk '{print $3}'`
 if [ -f /etc/SuSE-release ]
 then
     #SLES9 and SLES10, uses /etc/sysconfig/network/ifcfg-eth-id-<mac>
     #SLES11, uses /etc/sysconfig/network/ifcfg-eth<x>
     NICFILEPRE="/etc/sysconfig/network/ifcfg-"
     echo `hostname` > /etc/HOSTNAME
+    if [ ! -z "$defgw" ]; then
+        echo "default $defgw - -" > /etc/sysconfig/routes
+    fi
 else
     #RedHat uses /etc/sysconfig/network-scripts/ifcfg-eth<x>
     NICFILEPRE="/etc/sysconfig/network-scripts/ifcfg-"
     sed -i "s/HOSTNAME.*/HOSTNAME=`hostname`/" /etc/sysconfig/network
+    if [ ! -z "$defgw" ]; then
+        echo "GATEWAY=$defgw" >> /etc/sysconfig/network
+    fi
 fi
 for nic in `ifconfig -a|grep -B1 "inet addr"|awk '{print $1}'|grep -v inet|grep -v -- --|grep -v lo`; do
    IPADDR=`ifconfig $nic |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}'`
