@@ -922,12 +922,7 @@ sub setup_TFTP
         }
         $stab->close;
         # read tftpdir directory from database
-        $tftpdir    = "/tftpboot";    # default
-        my @tftpdir1 = xCAT::Utils->get_site_attribute("tftpdir");
-        if (defined($tftpdir1[0]))
-        {
-            $tftpdir = $tftpdir1[0];
-        }
+        $tftpdir = xCAT::Utils->getTftpDir();
         if (!(-e $tftpdir))
         {
             mkdir($tftpdir);
