@@ -148,6 +148,8 @@ sub preprocess_updatenode
     my $args     = $request->{arg};
     my @requests = ();
 
+    my $installdir = xCAT::Utils->getInstallDir();
+
     # subroutine to display the usage
     sub updatenode_usage
     {
@@ -300,11 +302,11 @@ sub preprocess_updatenode
             my @posts = split(',', $postscripts);
             foreach (@posts)
             {
-                if (!-e "/install/postscripts/$_")
+                if (!-e "$installdir/postscripts/$_")
                 {
                     my $rsp = {};
                     $rsp->{data}->[0] =
-                      "The postcript /install/postscripts/$_ does not exist.";
+                      "The postcript $installdir/postscripts/$_ does not exist.";
                     $callback->($rsp);
                     return \@requests;
                 }
@@ -467,6 +469,10 @@ sub updatenode
     {
         @ARGV = @{$args};
     }
+
+    # Lookup Install dir location at this Mangment Node.
+    # XXX: Suppose that compute nodes has the same Install dir location.
+    my $installdir = xCAT::Utils->getInstallDir();
 
     # convert the hashes back to the way they were passed in
     my $flatreq = xCAT::InstUtils->restore_request($request, $callback);
@@ -634,12 +640,12 @@ sub updatenode
             	my $cmd;
 		if ($::SETSERVER) {
 		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost -M $snkey otherpkgs 2>&1";
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost -M $snkey otherpkgs 2>&1";
 
 		} else {
 		    
 		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost -m $snkey otherpkgs 2>&1";
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost -m $snkey otherpkgs 2>&1";
 		}
 
 		if (defined($::VERBOSE))
@@ -721,12 +727,12 @@ sub updatenode
             	my $cmd;
 		if ($::SETSERVER) {
 		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost -M $snkey $postscripts 2>&1";
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost -M $snkey $postscripts 2>&1";
 
 		} else {
 		    
 		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcatdsklspost -m $snkey $postscripts 2>&1";
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost -m $snkey $postscripts 2>&1";
 		}
 		
 
@@ -777,10 +783,9 @@ sub updatenode
 		$nodestring = join(',', @{$servernodes{$snkey}});
             	my $cmd;
 		if ($::SETSERVER) {
-		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -M $snkey -c 1 $postscripts 2>&1";
+		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcataixpost -M $snkey -c 1 $postscripts 2>&1";
 		} else {
-		    
-		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e /install/postscripts/xcataixpost -m $snkey -c 1 $postscripts 2>&1";
+		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcataixpost -m $snkey -c 1 $postscripts 2>&1";
 		}
 		
             	if (defined($::VERBOSE))
