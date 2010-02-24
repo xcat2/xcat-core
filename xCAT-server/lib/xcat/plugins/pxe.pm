@@ -10,7 +10,7 @@ my $addkcmdlinehandled;
 my $request;
 my $callback;
 my $dhcpconf = "/etc/dhcpd.conf";
-my $tftpdir = "/tftpboot";
+my $tftpdir = xCAT::Utils->getTftpDir();
 #my $dhcpver = 3;
 
 my %usage = (
