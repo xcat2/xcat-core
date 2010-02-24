@@ -3926,7 +3926,7 @@ sub renergy_withiem {
     if ($directive =~ /cappingmin/) {
         $sessdata->{iem}->prep_get_mincap();
         process_data_from_iem($sessdata);
-    } elsif ($directive =~ /cappingmax/) {
+    } elsif ($directive =~ /cappingmax$/) {
         $sessdata->{iem}->prep_get_maxcap();
         process_data_from_iem($sessdata);
     }
