@@ -151,12 +151,7 @@ sub runbeginpre
     my $args     = $request->{arg};
     my $action=$args->[0];
     my $localhostname=hostname();
-    my $installdir = "/install";    # default
-    my @installdir1 = xCAT::Utils->get_site_attribute("installdir");
-    if ($installdir1[0])
-    {
-	$installdir = $installdir1[0];    
-    }
+    my $installdir = xCAT::Utils->getInstallDir();
  
     my %script_hash=getprescripts($nodes, $action, "begin");
     foreach my $scripts (keys %script_hash) {
@@ -202,12 +197,7 @@ sub runendpre
     my $args= $request->{arg};
     my $action=$args->[0];
     my $localhostname=hostname();
-    my $installdir = "/install";    # default
-    my @installdir1 = xCAT::Utils->get_site_attribute("installdir");
-    if ($installdir1[0])
-    {
-	$installdir = $installdir1[0];    
-    }
+    my $installdir = xCAT::Utils->getInstallDir();
 
     my %script_hash=getprescripts($nodes, $action, "end");
     foreach my $scripts (keys %script_hash) {
