@@ -136,6 +136,21 @@ if [ $downloaded -eq 0 ]; then
 	if [ $? -eq 0 ]; then 
 	    downloaded=1
 	fi
+    elif [ -x "/sbin/dhcpcd" ]; then
+        # New dhcpcd doesn't creates *.info files.
+        for lease in $(ls "/var/lib/dhcpcd/"); do
+            iface="$(echo "$lease" | sed -n -e 's/^dhcpcd-\(.*\)\.lease$/\1/p')"
+            if [ -n "$iface" ]; then
+                SIP="$(dhcpcd -q -T "$iface" | sed -n -e '/new_dhcp_server_identifier/ s/.*=//p')"
+                if [ -n "$SIP" ]; then
+                    download_postscripts $SIP
+                    if [ $? -eq 0 ]; then
+                        downloaded=1
+                        break
+                    fi
+                fi
+            fi
+        done
     fi
 fi
 
