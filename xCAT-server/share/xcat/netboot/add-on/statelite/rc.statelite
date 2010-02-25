@@ -145,8 +145,13 @@ ProcessType () {
 
 	case "${3}" in 
 		tmpfs,rw)
-			cp -a ${1} ${TMPFS}${2}
-			echo "cp -a ${1} ${TMPFS}${2}" >>$LOG
+            if [ -d ${TMPFS}${2} ]; then
+			    cp -a ${1}* ${TMPFS}${2}
+			    echo "cp -a ${1}* ${TMPFS}${2}" >>$LOG
+            else
+                cp -a ${1} ${TMPFS}${2}
+                echo "cp -a ${1} ${TMPFS}${2}" >>$LOG
+            fi
 			# the link will already be in place on the image, so nothing else to do!
 			#mount -n --bind ${TMPFS}${2} ${1}
 			;;
@@ -154,8 +159,34 @@ ProcessType () {
 			# cons go in tmpfs
 			cat ${1} >>${TMPFS}${2}
 			echo "cat ${1} >>${TMPFS}${2}" >>$LOG
-			
 			;;	
+        bind)
+            ORIG=`echo ${2} |  sed -e 's/\/$//'`
+            TARGET=`echo ${1}`
+            
+            echo "mount --bind /${TARGET} /sysroot/${ORIG}" >>$LOG
+            mount --bind ${TARGET} /sysroot/${ORIG}>>$LOG 2>&1           
+            ;;
+        bind,persistent)
+            if [ ! -d ${PERSISTENT}`dirname ${2}` ]
+            then
+                mkdir -p ${PERSISTENT}`dirname ${2}`
+                echo "mkdir -p ${PERSISTENT}`dirname ${2}`" >>$LOG
+            fi
+
+            # if the file doesn't exist, then copy it over to persistent
+            if [ ! -e ${PERSISTENT}${2} ]
+            then
+                echo "cp -a ${1} ${PERSISTENT}${2}" >>$LOG
+                cp -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
+            fi
+
+            ORIG=`echo ${2} |  sed -e 's/\/$//'`
+            TARGET=`echo ${PERSISTENT}${2}`
+
+            echo "mount --bind ${TARGET} /sysroot/${ORIG}" >>$LOG
+            mount --bind ${TARGET} /sysroot/${ORIG}>>$LOG 2>&1
+            ;;
 		persistent*)
 			# everything from root image points to tmpfs	
 			# so have tmpfs point to persistent

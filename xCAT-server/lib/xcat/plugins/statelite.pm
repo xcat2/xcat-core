@@ -189,22 +189,35 @@ sub process_request {
 		return;
 	}
 
-	# all I care about are the files, not the characteristics at this point:
+	# this line is TOO OLD: all I care about are the files, not the characteristics at this point:
+    # We need to consider the characteristics of the file if the option is "bind,persistent" or "bind"
 	my @files;
+    my @bindedFiles;
 	foreach my $line (@synclist){
 		foreach (@{$line}){
-			my $f = (split(/\s+/, $_))[2];
-			if($f =~ /^\//){
-				push @files, $f;
-			}else{
-				# make sure each file begins with "/"
-				$callback->({error=>["$f in litefile does not begin with absolute path!  Need a '/' in the beginning"],errorcode=>[1]});
-				return;
-			}
+            my @entry = split(/\s+/, $_);
+            my $f = $entry[2];
+            if($entry[1] =~ m/bind/) {
+                if($f =~ /^\//) {
+                    push @bindedFiles, $f;
+                }else {
+                    # make sure each file begins with "/"
+                    $callback->({error=>["$f in litefile does not begin with absolute path!  Need a '/' in the beginning"],errorcode=>[1]});
+                    return;
+                }
+            } else {
+			    if($f =~ /^\//){
+				    push @files, $f;
+			    }else{
+				    # make sure each file begins with "/"
+				    $callback->({error=>["$f in litefile does not begin with absolute path!  Need a '/' in the beginning"],errorcode=>[1]});
+				    return;
+			    }
+            }
 		}
 	}
 	
-	liteMe($rootimg_dir,\@files, $callback);
+	liteMe($rootimg_dir,\@files, \@bindedFiles, $callback);
 
 
 	
@@ -216,6 +229,10 @@ sub liteMe {
 	# Arg 1:  root image dir: /install/netboot/centos5.3/x86_64/compute/rootimg
 	my $rootimg_dir = shift; 
 	my $files = shift;
+    my $bindedFiles = shift;
+    use Data::Dumper;
+    print Dumper($files);
+    print Dumper($bindedFiles);
 	# Arg 2: callback ref to make comments...
 	my $callback = shift;	
 	unless(-d $rootimg_dir){
@@ -227,6 +244,24 @@ sub liteMe {
 	mkpath("$rootimg_dir/$statedir/tmpfs");
 	# now make a place for all the files.	
 
+    # this loop uses "mount --bind" to mount files instead of creating symbolic links for 
+    # each of the files in the @$bindedFiles sync list;
+    # 1.  copy original contents if they exist to .default directory
+    foreach my $f (@$bindedFiles) {
+        print Dumper($f);
+        # copy the file to /.defaults
+        my $rif = $rootimg_dir . $f;
+        my $d = dirname($f);
+
+        if( !(-e "$rootimg_dir/.default$d") ) {
+            $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
+            system("mkdir -p $rootimg_dir/.default$d");
+        }
+        
+        # copy the file in place.
+        $verbose && $callback->({info=>["cp -a $rif $rootimg_dir/.default$d"]});
+        system("cp -a $rif $rootimg_dir/.default$d");
+    }
 
 	# this loop creates symbolic links for each of the files in the sync list.
 	# 1.  copy original contents if they exist to .default directory
