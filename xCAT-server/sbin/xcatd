@@ -674,17 +674,17 @@ if ($inet6support) {
 
 	if ($domain) {
         # strip off domain if set
-        $peerhost =~ s/\.$domain\.*$//;
+        $peerhost && $peerhost =~ s/\.$domain\.*$//;
     } else {
         # otherwise just strip off whatever comes after the first dot
-        $peerhost =~ s/^.*?\.//;
+        $peerhost && $peerhost =~ s/^.*?\.//;
     }
 
-    $peerhost =~ s/-eth\d*$//;
-    $peerhost =~ s/-myri\d*$//;
-    $peerhost =~ s/-ib\d*$//;
+    $peerhost && $peerhost =~ s/-eth\d*$//;
+    $peerhost && $peerhost =~ s/-myri\d*$//;
+    $peerhost && $peerhost =~ s/-ib\d*$//;
     #printf('info'.": xcatd: connection from ".($peername ? $peername . "@" . $peerhost : $peerhost)."\n");
-    $$progname="xCATd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost);
+    $$progname="xCATd SSL: Instance for ".($peername ? $peername ."@".$peerhost : $peerhost) if $peerhost;
     service_connection($connection,$peername,$peerhost,$peerfqdn);
     xexit(0);
   }
@@ -1383,7 +1383,10 @@ sub service_connection {
           if ($req->{noderange} && defined($req->{noderange}->[0])) {
               $$progname .= " to ".$req->{noderange}->[0];
           }
-          $$progname .= " for ".($peername ? $peername ."@".$peerhost : $peerhost);
+
+	  if($peerhost){
+          	$$progname .= " for ".($peername ? $peername ."@".$peerhost : $peerhost);
+	  }
           if ($req->{command}->[0] eq "authcheck") { #provide a method for UI to verify a user without actually requesting action
               my $resp;
               if ($peername or $peername eq "0") {
