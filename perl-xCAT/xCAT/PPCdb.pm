@@ -265,6 +265,9 @@ sub update_ppc {
         }
     }
 
+    my @newppclist = $db{ppc}->getAllNodeAttribs(['node','hcp','id',
+                                               'pprofile','parent','supernode',
+                                               'comments', 'disable']);
     ###################################
     # Update BPA in tables 
     ###################################
@@ -278,7 +281,7 @@ sub update_ppc {
             $server,
             $pprofile,
             $parent,
-            $ips ) = split /,/;
+            $ips ) = split /,/, $value;
          
         next if ( $type ne 'bpa');
 
@@ -301,7 +304,7 @@ sub update_ppc {
         }
         if (update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
                             $server, $pprofile, $parent, $ips, 
-                            \%db, $predefined_node, \@ppclist))
+                            \%db, $predefined_node, \@newppclist))
         {
             push @update_list, $value;
         }
@@ -345,7 +348,7 @@ sub update_node_attribs
     #############################
     # update vpd table
     #############################
-    my $vpdhash = $db->{vpd}->getNodeAttribs( $name, [qw(mtm serial)]);
+    my $vpdhash = $db->{vpd}->getNodeAttribs( $predefined_node, [qw(mtm serial)]);
     if ( $model ne $vpdhash->{mtm} or $serial ne $vpdhash->{serial} or $namediff)
     {
         $db->{vpd}->delEntries( $key_col) if ( $namediff);
@@ -376,7 +379,12 @@ sub update_node_attribs
     #############################
     # update ppc table
     #############################
-    my $ppchash = $db->{ppc}->getNodeAttribs( $name, [qw(hcp id pprofile parent)]);
+    my $ppchash = $db->{ppc}->getNodeAttribs( $predefined_node, [qw(hcp id pprofile parent)]);
+    if ( $ppchash->{parent} ne $predefined_node ) 
+    {
+        $parent = $ppchash->{parent};
+    }
+
     if ( $server ne $ppchash->{hcp} or
          $id     ne $ppchash->{id} or
          $pprofile ne $ppchash->{pprofile} or
@@ -408,7 +416,7 @@ sub update_node_attribs
     ###########################
     # Update nodehm table
     ###########################
-    my $nodehmhash = $db->{nodehm}->getNodeAttribs( $name, [qw(mgt)]);
+    my $nodehmhash = $db->{nodehm}->getNodeAttribs( $predefined_node, [qw(mgt)]);
     if ( $mgt ne $nodehmhash->{mgt} or $namediff)
     {
         $db->{nodehm}->delEntries( $key_col) if ( $namediff);
@@ -420,7 +428,7 @@ sub update_node_attribs
     ###########################
     # Update nodetype table
     ###########################
-    my $nodetypehash = $db->{nodetype}->getNodeAttribs( $name, [qw(nodetype)]);
+    my $nodetypehash = $db->{nodetype}->getNodeAttribs( $predefined_node, [qw(nodetype)]);
     if ( $type ne $nodetypehash->{nodetype} or $namediff)
     {
         $db->{nodetype}->delEntries( $key_col) if ( $namediff);
@@ -432,7 +440,7 @@ sub update_node_attribs
     ###########################
     # Update nodelist table
     ###########################
-    my $nodelisthash = $db->{nodelist}->getNodeAttribs( $name, [qw(groups status appstatus primarysn comments disable)]);
+    my $nodelisthash = $db->{nodelist}->getNodeAttribs( $predefined_node, [qw(groups status appstatus primarysn comments disable)]);
     if ( $namediff)
     {
         updategroups( $name, $db->{nodelist}, $type );
@@ -450,7 +458,7 @@ sub update_node_attribs
     ###########################
     # Update hosts table
     ###########################
-    my $hostslisthash = $db->{hosts}->getNodeAttribs( $name, [qw(ip)]);
+    my $hostslisthash = $db->{hosts}->getNodeAttribs( $predefined_node, [qw(ip)]);
     if ( $namediff )
     {
         $db->{hosts}->delEntries( $key_col);
