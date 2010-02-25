@@ -323,16 +323,27 @@ sub refresh_switch {
   }
   #Above is valid without community string indexing, on cisco, we need it on the next one and onward
   my $iftovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.68.1.2.2.1.2',silentfail=>1);
+  my $trunktovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.46.1.6.1.1.5',silentfail=>1); #for trunk ports, we are interested in the native vlan
   my %vlans_to_check;
-  if (defined($iftovlanmap)) { #We have a cisco, the intelligent thing is to do SNMP gets on the ports 
+  if (defined($iftovlanmap) or defined($trunktovlanmap)) { #We have a cisco, the intelligent thing is to do SNMP gets on the ports 
 # that we can verify are populated per switch table
     my $portid;
     foreach $portid (keys %{$namemap}) {
       my $portname;
       my $switchport = $namemap->{$portid};
       foreach $portname (keys %{$self->{switches}->{$switch}}) {
-        unless (namesmatch($portname,$switchport) and defined $iftovlanmap->{$portid}) { next }
-        $vlans_to_check{"".$iftovlanmap->{$portid}} = 1; #cast to string, may not be needed
+        unless (namesmatch($portname,$switchport)) {
+            next;
+        }
+        if (not defined  $iftovlanmap->{$portid} and not defined $trunktovlanmap->{$portid}) {
+            xCAT::MsgUtils->message("S","$portid missing from switch");
+            next;
+        }
+        if (defined  $iftovlanmap->{$portid}) {
+            $vlans_to_check{"".$iftovlanmap->{$portid}} = 1; #cast to string, may not be needed
+        } else { #given above if statement, brigetovlanmap *must* be defined*
+            $vlans_to_check{"".$trunktovlanmap->{$portid}} = 1; #cast to string, may not be needed
+        }
       }
     }
   } else {
