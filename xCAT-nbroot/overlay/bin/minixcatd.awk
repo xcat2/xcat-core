@@ -9,7 +9,7 @@ BEGIN {
 			if (match($0,"restart")) {
 				print "restarting bootstrap process" |& listener
                 quit="yes"
-				system("touch /restart")
+				system("echo \"" $0 "\" > /restart")
 				system("killall sleep")
 		        close(listener)
 			}

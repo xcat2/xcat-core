@@ -1,13 +1,38 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 #Redhcp, do the xcat part again
+FORCENICS=`cat /restart|awk '{print $2}'`
 rm /restart
 echo -n > /tmp/dhcpserver
-killall -12 udhcpc;killall -10 udhcpc
-echo -n "Wating 10 seconds for DHCP changes to take effect "
-for i in 1 2 3 4 5 6 7 8 9 10; do
-   sleep 1
-   echo -n .
+if [ ! -z "$FORCENICS" ]; then
+    echo "Forcing down nics aside from $FORCENICS due to discoverynics setting"
+    kill `ps axf|grep udhcpc|egrep -v "$FORCENICS"|grep -v grep|awk '{print $1}'`
+    for nic in `ifconfig|grep HWaddr|awk '{print $1}'|egrep -v "$FORCENICS"`; do
+        ifconfig $nic down
+    done
+fi
+WAITING=1
+while [ $WAITING -gt 0 ]; do
+    killall -12 udhcpc;killall -10 udhcpc
+    echo -n "Wating 10 seconds for DHCP changes to take effect "
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+       sleep 1
+       echo -n .
+    done
+    WAITING=0
+    if [ ! -z "$FORCENICS" ]; then
+        for nic in `ifconfig|grep HWaddr|awk '{print $1}'|egrep "$FORCENICS"`; do
+            if ! ifconfig $nic|grep "inet addr" > /dev/null; then
+                WAITING=1
+            fi
+        done
+        if [ $WAITING -gt 0 ]; then
+            echo -n "Not all of the nics $FORCEDNICS managed to acquire an address, retrying in 30 seconds..."
+            sleep 30
+            echo "now retrying"
+        fi
+    fi
 done
+        
 echo "Done waiting"
 /etc/init.d/S11stunnel #redo stunnel config
 exec /etc/init.d/S99xcat.sh

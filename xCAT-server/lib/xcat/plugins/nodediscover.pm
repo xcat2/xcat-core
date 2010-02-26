@@ -102,6 +102,7 @@ sub process_request {
   }
   my $nrtab;
   my @discoverynics;
+  my @forcenics; #list of 'eth' style interface names to require to come up on post-discovery client dhcp restart
   if (defined($request->{arch})) {
     #Set the architecture in nodetype.  If 32-bit only x86 or ppc detected, overwrite.  If x86_64, only set if either not set or not an x86 family
     my $typetab=xCAT::Table->new("nodetype",-create=>1);
@@ -152,10 +153,12 @@ sub process_request {
                     (my $driver,my $index) = split /:/,$nic;
                     if ($driver eq $ifinfo[0] and $index == ($bydriverindex{$driver}-1)) { 
                         $forcenic=1; #force nic to be put into database
+                        push @forcenics,$ifinfo[1];
                         last;
                     }
                 } else { #simple 'eth2' sort of argument
                     if ($nic eq $ifinfo[1]) {
+                        push @forcenics,$ifinfo[1];
                         $forcenic=1;
                         last;
                     }
@@ -183,7 +186,11 @@ sub process_request {
                     $nrtab->setNodeAttribs($node,{nfsserver=>xCAT::Utils->my_ip_facing($hosttag)});
                  }
                  $usednames{$hosttag}=1;
+                 if ($hosttag eq $node) {
+    		   $macstring .= $currmac."|";
+               } else {
     		   $macstring .= $currmac."!".$hosttag."|";
+               }
 	    	} else {
                if ($forcenic == 1) { $macstring .= $currmac."|"; } else { $macstring .= $currmac."!*NOIP*|"; }
             }
@@ -209,6 +216,10 @@ sub process_request {
   }
 
 
+  my $restartstring = "restart";
+  if (scalar @forcenics > 0) {
+      $restartstring .= " (".join("|",@forcenics).")";
+  }
   #now, notify the node to continue life
   my $sock = new IO::Socket::INET (
           PeerAddr => $ip,
@@ -217,7 +228,7 @@ sub process_request {
           Proto => 'tcp'
     );
     unless ($sock) { syslog("err","Failed to notify $ip that it's actually $node."); return; } #Give up if the node won't hear of it.
-    print $sock "restart";
+    print $sock $restartstring;
     close($sock);
     syslog("info","$node has been discovered");
 }
