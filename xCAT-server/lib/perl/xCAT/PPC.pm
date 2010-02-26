@@ -62,12 +62,12 @@ my %modules = (
                        bpa    => "xCAT::FSPflash",
 	              },
         mkhwconn  => { hmc    => "xCAT::PPCconn",
-                       fsp    => "xCAT::PPCconn",
-                       bpa    => "xCAT::PPCconn",
+                       fsp    => "xCAT::FSPconn",
+                       bpa    => "xCAT::FSPconn",
 		      },
         rmhwconn  => { hmc    => "xCAT::PPCconn",
-                       fsp    => "xCAT::PPCconn",
-                       bpa    => "xCAT::PPCconn",
+                       fsp    => "xCAT::FSPconn",
+                       bpa    => "xCAT::FSPconn",
 		      },
         lshwconn  => { hmc    => "xCAT::PPCconn",
                        fsp    => "xCAT::PPCconn",
@@ -167,7 +167,9 @@ sub process_command {
 	    my $fsp_api = check_fsp_api($request);
 	    if($fsp_api == 0 && 
 		    ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/
-                || $request->{command} =~ /^getmacs$/ || $request->{command} =~ /^rnetboot$/ || $request->{command} =~ /^rvitals$/  )
+                || $request->{command} =~ /^getmacs$/ || $request->{command} =~ /^rnetboot$/ || $request->{command} =~ /^rvitals$/  
+                || $request->{command} =~ /^mkhwconn$/ || $request->{command} =~ /^rmhwconn$/
+            )
               ) {
 	        #support FSPpower, FSPinv and FSPrflash 
 	        $request->{fsp_api} = 1;

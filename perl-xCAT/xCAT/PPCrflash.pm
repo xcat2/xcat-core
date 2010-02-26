@@ -174,7 +174,7 @@ sub parse_args {
           return(usage());
    }
   
-   $request->{callback}->({data =>[ "It may take considerable time to complete, depending on the number of systems being updated and the workload on the target HMC.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting."]});
+   $request->{callback}->({data =>[ "It may take considerable time to complete, depending on the number of systems being updated.  In particular, power subsystem updates may take an hour or more if there are many attached managed systems. Please waiting."]});
 
 	####################################
   	# No operands - add command name 
@@ -243,7 +243,7 @@ sub noderange_validate {
             }
         }
         #print "type:$type\n";
-        if( $type =~/^(fsp|lpar)$/) {
+        if( $type =~/(fsp|lpar)/) {
             $f1 = 1;
         } else {
             $f2 = 1;

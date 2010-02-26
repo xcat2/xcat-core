@@ -16,79 +16,6 @@ sub parse_args {
 }
 
 ##########################################################################
-# invoke the fsp-api command.
-##########################################################################
-sub action {
-    my $node_name  = shift;
-    my $attrs          = shift;
-    my $action     = shift;
-#    my $fsp_api    ="/opt/xcat/sbin/fsp-api"; 
-    my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
-    my $id         = 1;
-    my $fsp_name   = ();
-    my $fsp_ip     = ();
-    my $target_list=();
-    my $type = (); # fsp|lpar -- 0. BPA -- 1
-    my @result;
-    my $Rc = 0 ;
-    my %outhash = ();
-        
-    $id = $$attrs[0];
-    $fsp_name = $$attrs[3]; 
-
-    my %objhash = (); 
-    $objhash{$fsp_name} = "node";
-    my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
-    my $password    = $myhash{$fsp_name}{"passwd.hscroot"};
-    #print "fspname:$fsp_name password:$password\n";
-#    print Dumper(%myhash);
-    if(!$password ) {
-	$outhash{$node_name} = "The password.hscroot of $fsp_name in ppcdirect table is empty";
-	return ([-1, \%outhash]);
-    }
-#   my $user = "HMC";
-    my $user = "hscroot";
-#    my $cred = $request->{$fsp_name}{cred};
-#    my $user = @$cred[0];
-#    my $password = @$cred[1];
-	    
-    if($$attrs[4] =~ /^lpar$/) {
-        $type = 0;
-	if($action =~ /^lcds$/) {$action = "query_lcds"; }
-	
-    } elsif($$attrs[4] =~ /^fsp$/) { 
-	$type = 0;
-	if($action =~ /^lcds$/) {$action = "cec_query_lcds";} 
-    } else {
-	$type = 1;
-	if($action =~ /^lcds$/) {$action = "cec_query_lcds"; }
-    }
-
-    ############################
-    # Get IP address
-    ############################
-    $fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
-    if($fsp_ip == -1) {
-        $outhash{$node_name} = "Failed to get the $fsp_name\'s ip";
-        return ([-1, \%outhash]);	
-    }
-	
-    print "fsp name: $fsp_name\n";
-    print "fsp ip: $fsp_ip\n";
-
-    my $cmd = "$fsp_api -a $action -u $user -p $password -t $type:$fsp_ip:$id:$node_name:";
-
-    print "cmd: $cmd\n"; 
-    $SIG{CHLD} = (); 
-    my $res = xCAT::Utils->runcmd($cmd, -1);
-    $Rc = $::RUNCMD_RC;
-    ##################
-     
-    return( [$Rc, $res] ); 
-
-}
-
-##########################################################################
 # Returns Frame voltages/currents
 ##########################################################################
 sub enumerate_volt {
@@ -138,10 +65,19 @@ sub enumerate_lcds {
     my $nodetype = @$d[4];
     my $lpar_id = @$d[0];
     my @refcode = ();
-   
-    my $values = action ($name, $d, "lcds" );
-    $Rc =  shift(@$values);
-    my $data = @$values[0];
+    my $action; 
+    if($$d[4] =~ /^lpar$/) {
+	    $action = "query_lcds"; 
+	
+    #} elsif($$d[4] =~ /^fsp$/) { 
+    #    $action = "cec_query_lcds"; 
+    } else {
+	    $action = "cec_query_lcds"; 
+    }
+    
+    my $values = xCAT::Utils::fsp_api_action ($name, $d, $action);
+    $Rc =  @$values[2];
+    my $data = @$values[1];
     $data =~ /\|(\w*)/ ;
        my $code = $1;
        if ( ! $code) {

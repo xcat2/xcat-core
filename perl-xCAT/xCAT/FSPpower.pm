@@ -50,39 +50,44 @@ sub powercmd_boot {
     {
          
        my $d = $hash->{$node_name};
-       my $stat = action ($node_name, $d, "state");
+       if (!($$d[4] =~ /^lpar$/)) { 
+           push @output, [$node_name, "\'boot\' command not supported for CEC or BPA", -1 ];
+	       #return (\@output);
+	       next;
+       }
+       
+       my $res = xCAT::Utils::fsp_api_action ($node_name, $d, "state");
 	   print "In boot, state\n";
-	   print Dumper($stat);
-       my $Rc = shift(@$stat);
-       my $data = @$stat[0];
-       my $type = @$d[4];
-       my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
+	   print Dumper($res);
+       my $Rc = @$res[2];
+       my $data = @$res[1];
+       #my $type = @$d[4];
+       #my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
         
-	   ##################################
+       ##################################
        # Output error
        ##################################
        if ( $Rc != SUCCESS ) {
            push @output, [$node_name,$data,$Rc];
            next;
        }
-       my $t = $data->{$node_name}; 
-	   print "boot: $t \n";
+       
        ##################################
        # Convert state to on/off
        ##################################
-       my $state = power_status($data->{$node_name});
+       my $state = power_status($data);
 	   print "boot:state:$state\n";
-	   my $op    = ($state =~ /^off$/) ? "on" : "reset";
-       $stat = action ($node_name, $d, $op);
+       my $op    = ($state =~ /^off$/) ? "on" : "reset";
+       $res = xCAT::Utils::fsp_api_action ($node_name, $d, $op);
 	
        # @output  ...	
-	   $Rc = shift(@$stat);
-	   $data = @$stat[0];
-	   if ( $Rc != SUCCESS ) {
-	       push @output, [$node_name,$data->{$node_name},$Rc];
-		   next;
+       $Rc = @$res[2];
+       $data = @$res[1];
+       if ( $Rc != SUCCESS ) {
+	       push @output, [$node_name,$data,$Rc];
+	       next;
 	   }
-	   push @output,[$node_name, "SUCCESS", 0];	  
+	   push @output,[$node_name, "Success", 0];	  
 
     }
     return( \@output );
@@ -99,7 +104,8 @@ sub powercmd {
     my $hash    = shift;
     my @result  = ();
     my @output;
-
+    my $action  =  $request->{'op'}; 
+    
     print "++++in powercmd++++\n";   
     print Dumper($hash);
     
@@ -123,24 +129,45 @@ sub powercmd {
     foreach my $node_name ( keys %$hash)
     {
         my $d = $hash->{$node_name};
-        my $res = action ($node_name, $d, $request->{'op'});
-	    print "In boot, state\n";
-	    print Dumper($res);
-    	my $Rc = shift(@$res);
-    	my $data = @$res[0];
-       	my $t = $data->{$node_name}; 
-        my $type = @$d[4];
-        my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
+	    if ($$d[4] =~ /^lpar$/) {
+	        if( !($action =~ /^(on|off|of|reset|sms)$/)) {
+	            push @output, [$node_name, "\'$action\' command not supported for LPAR", -1 ];
+	            return (\@output);
+	        }
+	    } elsif ($$d[4] =~ /^fsp$/) {
+	        if($action =~ /^on$/) { $action = "cec_on_autostart"; }
+	        if($action =~ /^off$/) { $action = "cec_off"; }
+	        if($action =~ /^of$/ ) {
+	            push @output, [$node_name, "\'$action\' command not supported for CEC", -1 ];
+	            #return (\@output);
+		        next;
+	         }		    
+        } else {
+             if($action =~ /^state$/) {
+	         $action = "cec_state";
+	     } else {
+	         push @output, [$node_name, "$node_name\'s type isn't fsp or lpar. Not allow doing this operation", -1 ];
+		     #return (\@output);
+             next;
+	     }
+        }		
+        my $res = xCAT::Utils::fsp_api_action($node_name, $d, $action );
+	#    print "In boot, state\n";
+	#    print Dumper($res);
+    	my $Rc = @$res[2];
+    	my $data = @$res[1];
+	#my $type = @$d[4];
+	#my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
         
-	    ##################################
+	##################################
         # Output error
         ##################################
         if ( $Rc != SUCCESS ) {
-            push @output, [$node_name,$t,$Rc];
-            next;
-        }
-             
-	    push @output, [$node_name,$t,$Rc];
+            push @output, [$node_name,$data,$Rc];
+	    #    next;
+        } else {
+	    push @output, [$node_name,"Success",$Rc];
+	}
     }
 
     return( \@output );
@@ -159,7 +186,7 @@ sub power_status {
         "Open Firmware|open-firmware"
     );
     foreach ( @states ) { 
-        if ( /^$_[0]$/ ) {
+        if ( /$_[0]/ ) {
             return("on");
         }
     } 
@@ -177,7 +204,7 @@ sub state {
     my $prefix  = shift;
     my $convert = shift;
     my @output  = ();
-  
+    my $action  = "state"; 
 			
     
     #print "------in state--------\n"; 
@@ -194,11 +221,11 @@ sub state {
     #                                   'Server-9110-51A-SN1075ECF' => [
     #    	                                                          0,
     #		                                                          0,
-    #			                            						  '9110-51A*1075ECF',
-    #			                            						  'fsp1_name',
-    #                           									  'fsp',
-    #							                            		  0
-    #									                                ]
+    #	                      						  '9110-51A*1075ECF',
+    #	                     						  'fsp1_name',
+    #   							          'fsp',
+    #							                  0
+    #									]
     #					                 }          
     # 	   };
 
@@ -210,138 +237,44 @@ sub state {
         for my $node_name ( keys %$node_hash)
         {
             my $d = $node_hash->{$node_name};
-            my $stat = action ($node_name, $d, "state", $prefix, $convert);
-            my $Rc = shift(@$stat);
-    	    my $data = @$stat[0];
-       	    my $t = $data->{$node_name}; 
+	    if($$d[4] =~ /^fsp$/ || $$d[4] =~ /^bpa$/) {
+	        $action = "cec_state";		  
+            }  
+            my $stat = xCAT::Utils::fsp_api_action ($node_name, $d, $action);
+            my $Rc = @$stat[2];
+    	    my $data = @$stat[1];
             my $type = @$d[4];
-            my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
+	    #my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
         
 	    ##################################
             # Output error
             ##################################
             if ( $Rc != SUCCESS ) {
-                push @output, [$node_name,$t,$Rc];
+                push @output, [$node_name,$data,$Rc];
                 next;
             }
-	    push @output,[$node_name, $t, $Rc];
+	    ##############################
+            # Convert state to on/off 
+            ##############################
+            if ( defined( $convert )) {
+                $data = power_status( $data );
+            }
+
+            #print Dumper($prefix); 
+            ##################
+	    # state cec_state
+	    #################
+	    if ( defined($prefix) ) {
+                $data = "$prefix $data";
+            }
+
+	    
+	    push @output,[$node_name, $data, $Rc];
 	}
 
     }
     return( \@output );
    
-}
-
-
-##########################################################################
-# invoke the fsp-api command.
-##########################################################################
-sub action {
-    my $node_name  = shift;
-    my $attrs          = shift;
-    my $action     = shift;
-    my $prefix    = shift;
-    my $convert = shift;
-#    my $fsp_api    ="/opt/xcat/sbin/fsp-api"; 
-    my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
-    my $id         = 1;
-    my $fsp_name   = ();
-    my $fsp_ip     = ();
-    my $target_list=();
-    my $type = (); # fsp|lpar -- 0. BPA -- 1
-    my @result;
-    my $Rc = 0 ;
-    my %outhash = ();
-        
-    $id = $$attrs[0];
-    $fsp_name = $$attrs[3]; 
-
-    my %objhash = (); 
-    $objhash{$fsp_name} = "node";
-    my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
-    my $password    = $myhash{$fsp_name}{"passwd.hscroot"};
-    #print "fspname:$fsp_name password:$password\n";
-#    print Dumper(%myhash);
-    if(!$password ) {
-	$outhash{$node_name} = "The password.hscroot of $fsp_name in ppcdirect table is empty";
-	return ([-1, \%outhash]);
-    }
-#   my $user = "HMC";
-    my $user = "hscroot";
-#    my $cred = $request->{$fsp_name}{cred};
-#    my $user = @$cred[0];
-#    my $password = @$cred[1];
-	    
-    if($$attrs[4] =~ /^lpar$/) {
-	   	$type = 0;
-	} elsif($$attrs[4] =~ /^fsp$/) { 
-		$type = 0;
-	    if($action =~ /^state$/) {$action = "cec_state"; }
-	    if($action =~ /^on$/) { $action = "cec_on_autostart"; }
-	    if($action =~ /^off$/) { $action = "cec_off"; }
-   	    if($action =~ /^of$/ ) {
-	        $outhash{$node_name} = "\'$action\' command not supported";
-		    return ([-1, \%outhash]);
-        }
-	    
-	} else {
-	    $type = 1;
-		if($action =~ /^state$/) {
-		    $action = "cec_state"; 
-	    } else {
-		    $outhash{$node_name} = "$node_name\'s type isn't fsp or lpar. Not allow doing this operation";
-		    return ([-1, \%outhash]);
-	    }
-	}
-
-	############################
-    # Get IP address
-    ############################
-    $fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
-    if($fsp_ip == -1) {
-        $outhash{$node_name} = "Failed to get the $fsp_name\'s ip";
-        return ([-1, \%outhash]);	
-    }
-	
-	print "fsp name: $fsp_name\n";
-	print "fsp ip: $fsp_ip\n";
-
-    my $cmd = "$fsp_api -a $action -u $user -p $password -t $type:$fsp_ip:$id:$node_name:";
-
-    print "cmd: $cmd\n"; 
-    $SIG{CHLD} = (); 
-    my $res = xCAT::Utils->runcmd($cmd, -1);
-	if($::RUNCMD_RC != 0){
-	   	$Rc = -1;	
-	} else {
-	  	$Rc = SUCCESS;
-		####################
-		# on,off, of, reset, cec_onstandby,cec_off, if $? == 0, it will return sucess
-		###################
-		if(index($action,"state") == -1 ) {
-		    $outhash{$node_name} = "Sucess";
-		    return ([$Rc, \%outhash]);
-		}
-	}
-       ##############################
-       # Convert state to on/off 
-       ##############################
-       if ( defined( $convert )) {
-          $res = power_status( $res );
-       }
-
-        #print Dumper($prefix); 
-        ##################
-	# state cec_state
-	#################
-	if (!defined($prefix)) {
-             $outhash{ $node_name } = $res;
-	} else {
-             $outhash{ $node_name } = "$prefix $res";
-        }
-       
-	return( [$Rc,\%outhash] ); 
-
 }
 
 

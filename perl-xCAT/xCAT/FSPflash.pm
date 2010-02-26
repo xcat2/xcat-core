@@ -320,7 +320,7 @@ sub fork_cmd {
         close( $parent );
         $pipe = $child;
 
-        $res = action( $node_name, $attrs, $action );
+        $res = xCAT::Utils::fsp_api_action( $node_name, $attrs, $action );
 	print "res\n";
 	print Dumper($res);
 	my %output;
@@ -347,93 +347,6 @@ sub fork_cmd {
 }
 
 
-
-
-sub action {
-    my $node_name  = shift;
-    my $attrs      = shift;
-    my $action     = shift;
-#    my $user 	   = "HMC";
-#    my $password   = "abc123";
-#    my $fsp_api    ="/opt/xcat/sbin/fsp-api"; 
-    my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
-    my $id         = 1;
-    my $fsp_name   = ();
-    my $fsp_ip     = ();
-    my $target_list=();
-    my $type = (); # fsp|lpar -- 0. BPA -- 1
-    my @result;
-    my $Rc = 0 ;
-    my %outhash = ();
-    my $res;    
-    
-    $id = $$attrs[0];
-    $fsp_name = $$attrs[3]; 
-
-    my %objhash = (); 
-    $objhash{$fsp_name} = "node";
-    my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
-    my $password    = $myhash{$fsp_name}{"passwd.hscroot"};
-    print "fspname:$fsp_name password:$password\n";
-    print Dumper(%myhash);
-    if(!$password ) {
-	$res = "The password.hscroot of $fsp_name in ppcdirect table is empty";
-	return ([$node_name, $res, -1]);
-    }
-    #   my $user = "HMC";
-    my $user = "hscroot";
-#    my $cred = $request->{$fsp_name}{cred};
-#    my $user = @$cred[0];
-#    my $password = @$cred[1];
-     
-    if($action =~ /^commit$/) { $action = "code_commit"}
-    if($action =~ /^recover$/) { $action = "code_reject"}
-    if($action =~ /^disruptive$/) { $action = "code_update"}
-    if($action =~ /^concurrent$/) {
-        $res = "\'$action\' option not supported in FSPflash.Please use disruptive mode";
-        return ([$node_name, $res, -1]);
-    }
-  
-    
-    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ ) {
-        $type = 0;
-        $id = 0;
-    } else { 
-   	    $type = 1;
-    } 
-
-    ############################
-    # Get IP address
-    ############################
-    $fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
-    if($fsp_ip == -1) {
-        $res = "Failed to get the $fsp_name\'s ip";
-        return ([$node_name, $res, -1]);	
-    }
-	
-    print "fsp name: $fsp_name\n";
-    print "fsp ip: $fsp_ip\n";
-
-    my $cmd = "$fsp_api -a $action -u $user -p $password -t $type:$fsp_ip:$id:$node_name: -d /install/packages_fw/";
-
-    print "cmd: $cmd\n"; 
-    $SIG{CHLD} = (); 
-    my $res = xCAT::Utils->runcmd($cmd, -1);
-    #my $res = "good"; 
-    $Rc = $::RUNCMD_RC;
-    #$Rc = -1;
-    ##################
-    # output the prompt
-    #################
-    #$outhash{ $node_name } = $res;
-     
-    return( [$node_name,$res, $Rc] ); 
-
-}
-
-
-
-
 ##########################
 #Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems
 ###########################
@@ -449,11 +362,12 @@ sub rflash {
     my $housekeeping = $request->{housekeeping};
     $packages_dir = $request->{opt}->{p};
     $activate = $request->{opt}->{activate};	
-
+    print "housekeeping:$housekeeping\n";
     my $mtms;
     my $h;
     my $user;
-	
+    my $action;
+
     my $tmp_file; #the file handle of the stanza
     my $rpm_file;
     my $xml_file;
@@ -495,13 +409,13 @@ sub rflash {
 	#For one mtms, it just needs to do the operation one time.
 	#
         $flag += 1;
-	    if($flag > 1) {
-	        last;	
-	    }	
+	if($flag > 1) {
+	    last;	
+	}	
 	
-	    $mtms =~ /(\w+)-(\w+)\*(\w+)/;
-	    my $mtm    = "$1-$2";
-	    my $serial = $3;
+	$mtms =~ /(\w+)-(\w+)\*(\w+)/;
+	my $mtm    = "$1-$2";
+	my $serial = $3;
 		
 	
         while (my ($name,$d) = each(%$h) ) {
@@ -509,10 +423,10 @@ sub rflash {
 	    if($flag2 > 1) {
 	        last;	
  	    }
-            my $values  = xCAT::FSPinv::action( $name, $d, "list_firmware_level"); 
+            my $values  = xCAT::Utils::fsp_api_action( $name, $d, "list_firmware_level"); 
 	    # my $level = xCAT::PPCcli::lslic( $exp, $d, $timeout );
-            my $Rc = shift(@$values);
-	    my $level = $$values[0]->{$name};
+            my $Rc = @$values[2];
+	    my $level = @$values[1];
 	    #####################################
 	    # Return error
       	    #####################################
@@ -536,6 +450,15 @@ sub rflash {
                 $active_level = $1;
                 &dpush( \@value, [$name,"$mtms :activated level:$1"]);
 	   }	
+	  
+       if($housekeeping =~ /^commit$/) { $action = "code_commit"}
+       if($housekeeping =~ /^recover$/) { $action = "code_reject"}
+       if($activate =~ /^disruptive$/) { $action = "code_update"}
+       if($activate =~ /^concurrent$/) {
+           my $res = "\'concurrent\' option not supported in FSPflash.Please use disruptive mode";
+           push @value, [$name, $res, -1];
+	       next;
+       }
 	   
 	   my $msg;	
 	   if(!defined($housekeeping)) {	   
@@ -589,12 +512,8 @@ sub rflash {
 		my($hcp, $id) = get_hcp_id($name2);
 		my @dt = ($id, @$d[1], $mtms, $hcp, @$d[4], 0);
 	   
-     		if( defined( $housekeeping ) ) {
-                    ($pipe) = fork_cmd( $name2, \@dt, $housekeeping );
+                ($pipe) = fork_cmd( $name2, \@dt, $action );
 	       	
-	        } else {
-	            ($pipe) = fork_cmd( $name2, \@dt, $activate);
-	        }
                 if ( $pipe ) {
 	            $fds->add( $pipe );
 		    $children++;
@@ -602,12 +521,8 @@ sub rflash {
 	        sleep(5); 
            }
 	   $pipe = undef;  
-	   if( defined( $housekeeping ) ) {
-	        ($pipe) = fork_cmd( $name, $d, $housekeeping );
+	   ($pipe) = fork_cmd( $name, $d, $action );
 	       	
-	   } else {
-	        ($pipe) = fork_cmd( $name, $d, $activate );
-	   }
            if ( $pipe ) {
 	        $fds->add( $pipe );
 		$children++;

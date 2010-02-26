@@ -84,17 +84,18 @@ sub firmware {
 	       ##########
 	       if(@$d[4] eq "lpar")	{
 		        @$d[4] = "fsp";
+			    @$d[0] = 0;
 	       }
-           my $values = action( $name, $d, "list_firmware_level");
-           my $Rc = shift(@$values);
-   	       my $data = @$values[0];
+           my $values = xCAT::Utils::fsp_api_action( $name, $d, "list_firmware_level");
+           my $Rc = @$values[2];
+   	       my $data = @$values[1];
            #print "values";
            #print Dumper($values); 
-            #####################################
-            # Return error
-            #####################################
-            if ( $Rc != SUCCESS ) {
-                push @result, [$name,$data->{$name},$Rc];
+           #####################################
+           # Return error
+           #####################################
+           if ( $Rc != SUCCESS ) {
+                push @result, [$name,$data,$Rc];
                 next; 
             }
             
@@ -103,7 +104,7 @@ sub firmware {
             #####################################
             my $val;
             foreach $val ( @licmap ) {  
-                if ( $data->{$name} =~ /@$val[0]=(\w+)/ ) {
+                if ( $data =~ /@$val[0]=(\w+)/ ) {
                     push @result, [$name,"@$val[1]: $1",$Rc];
                 }
             }
@@ -111,83 +112,6 @@ sub firmware {
     }
     return( \@result );
 }
-
-##########################################################################
-# invoke the fsp-api command
-##########################################################################
-sub action {
-    my $node_name  = shift;
-    my $attrs          = shift;
-    my $action     = shift;
-#    my $fsp_api    ="/opt/xcat/sbin/fsp-api"; 
-    my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";    
-    my $id         = 1;
-    my $fsp_name   = ();
-    my $fsp_ip     = ();
-    my $target_list=();
-    my $type = (); # fsp|lpar -- 0. BPA -- 1
-    my @result;
-    my $Rc = 0 ;
-    my %outhash = ();
-        
-    $id = $$attrs[0];
-    $fsp_name = $$attrs[3]; 
-
-    my %objhash = (); 
-    $objhash{$fsp_name} = "node";
-    my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
-    my $password    = $myhash{$fsp_name}{"passwd.hscroot"};
-    #print "fspname:$fsp_name password:$password\n";
-    #print Dumper(%myhash);
-    if(!$password ) {
-	    $outhash{$node_name} = "The password.hscroot of $fsp_name in ppcdirect table is empty";
-	    return ([-1, \%outhash]);
-    }
-    #   my $user = "HMC";
-    my $user = "hscroot";
-#    my $cred = $request->{$fsp_name}{cred};
-#    my $user = @$cred[0];
-#    my $password = @$cred[1];
-	    
-    if($$attrs[4] =~ /^lpar$/) {
-	   	$type = 0;
-		$id = 1;
-	} elsif($$attrs[4] =~ /^fsp$/) { 
-		$type = 0;
-	} else {
-		 $type = 1;
-	}
-
-	############################
-    # Get IP address
-    ############################
-   $fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
-    if($fsp_ip == -1) {
-        $outhash{$node_name} = "Failed to get the $fsp_name\'s ip";
-        return ([-1, \%outhash]);	
-    }
-
-
-	print "fsp name: $fsp_name\n";
-	print "fsp ip: $fsp_ip\n";
-
-    my $cmd = "$fsp_api -a $action -u $user -p $password -t $type:$fsp_ip:$id:$node_name:";
-
-    print "cmd: $cmd\n"; 
-    $SIG{CHLD} = (); 
-    my $res = xCAT::Utils->runcmd($cmd, -1);
-	if($::RUNCMD_RC != 0){
-	   	$Rc = -1;	
-	} else {
-	  	$Rc = SUCCESS;
-	}
-     
-	$outhash{ $node_name } = $res;
-     
-	return( [$Rc,\%outhash] ); 
-
-}
-
 
 
 ##########################################################################
