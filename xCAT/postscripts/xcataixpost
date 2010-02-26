@@ -311,6 +311,7 @@ if (-f $scriptname) {
 }
 
 # If this is a diskfull node then remove the xcat entry in the inittab file
+$nodesetstat =~ s/'|"//g;
 if ($nodesetstat eq 'standalone') {
     # see if it is already there
     my $lsicmd = "/usr/sbin/lsitab xcat > /dev/null 2>&1";
