@@ -412,8 +412,29 @@ sub mknetboot
 
 		$kcmdline = 
 		"NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
+
+        # add support for subVars in the value of "statemnt"
 		if (exists($stateHash->{$node})) {
-		    $kcmdline .= $stateHash->{$node}->[0]->{statemnt} . " ";
+            my $statemnt = $stateHash->{$node}->[0]->{statemnt};
+            if (grep /\$/, $statemnt) {
+                my ($server, $dir) = split(/:/, $statemnt);
+                
+                #if server is blank, then its the directory
+                unless($dir) {
+                    $dir = $server;
+                    $server = '';
+                }
+                if(grep /\$|#CMD/, $dir) {
+                    $dir = subVars($dir, $node, 'dir', $callback);
+                    $dir = ~ s/\/\//\//g;
+                }
+                if($server) { 
+                    $server = subVars($server, $node, 'server', $callback);
+                }
+                $kcmdline .= $server . ":" . $dir . " ";
+            } else {
+		        $kcmdline .= $stateHash->{$node}->[0]->{statemnt} . " ";
+            }
 		} else {
 		    $kcmdline .= " ";
 		}
@@ -1031,5 +1052,109 @@ sub getplatform {
     }
     return $platform;
 }
+
+# sub subVars
+# copied from litetreee.pm
+# TODO: need to move the function to xCAT::Utils? 
+
+# some directories will have xCAT database values, like:
+# $nodetype.os.  If that is the case we need to open up
+# the database and look at them.  We need to make sure
+# we do this sparingly...  We don't like tons of hits
+# to the database.
+
+sub subVars()
+{
+    my $dir = shift;
+    my $node = shift;
+    my $type = shift;
+    my $callback = shift;
+
+    # parse all the dollar signs...
+    # if its a directory then it has a / in it, so you have to parse it.
+    # if its a server, it won't have one so don't worry about it.
+    my @arr = split("/", $dir);
+    my $fdir = "";
+    foreach my $p (@arr){
+        # have to make this geric so $ can be in the midle of the name: asdf$foobar.sitadsf
+        if($p =~ /\$/){
+            my $pre;
+            my $suf;
+            my @fParts;
+            if($p =~ /([^\$]*)([^# ]*)(.*)/){
+                $pre= $1;
+                $p = $2;
+                $suf = $3;
+            }
+            # have to sub here:
+            # get rid of the $ sign.
+            foreach my $part (split('\$',$p)){
+                if($part eq ''){ next; }
+                #$callback->({error=>["part is $part"],errorcode=>[1]});
+                # check if p is just the node name:
+                if($part eq 'node'){
+                    # it is so, just return the node.
+                    #$fdir .= "/$pre$node$suf";
+                    push @fParts, $node;
+                }else{
+                    # ask the xCAT DB what the attribute is.
+                    my ($table, $col) = split('\.', $part);
+                    unless($col){ $col = 'UNDEFINED' };
+                    my $tab = xCAT::Table->new($table);
+                    unless($tab){
+                        $callback->({error=>["$table does not exist"],errorcode=>[1]});
+                        return;
+                    }
+                    my $ent;
+                    my $val;
+                    if($table eq 'site'){
+                        $val = $tab->getAttribs( { key => "$col" }, 'value' );
+                        $val = $val->{'value'};
+                    }else{
+                        $ent = $tab->getNodeAttribs($node,[$col]);
+                        $val = $ent->{$col};
+                    }
+                    unless($val){
+                        # couldn't find the value!!
+                        $val = "UNDEFINED"
+                    }
+                    push @fParts, $val;
+                }
+            }
+            my $val = join('.', @fParts);
+            if($type eq 'dir'){
+                    $fdir .= "/$pre$val$suf";
+            }else{
+                    $fdir .= $pre . $val . $suf;
+            }
+        }else{
+            # no substitution here
+            $fdir .= "/$p";
+        }
+    }
+    # now that we've processed variables, process commands
+    # this isn't quite rock solid.  You can't name directories with #'s in them.
+    if($fdir =~ /#CMD=/){
+        my $dir;
+        foreach my $p (split(/#/,$fdir)){
+            if($p =~ /CMD=/){
+                $p =~ s/CMD=//;
+                my $cmd = $p;
+                #$callback->({info=>[$p]});
+                $p = `$p 2>&1`;
+                chomp($p);
+                #$callback->({info=>[$p]});
+                unless($p){
+                    $p = "#CMD=$p did not return output#";
+                }
+            }
+            $dir .= $p;
+        }
+        $fdir = $dir;
+    }
+
+    return $fdir;
+}
+
 
 1;

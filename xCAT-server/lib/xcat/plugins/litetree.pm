@@ -227,6 +227,9 @@ sub subVar {
 	my $node = shift;
 	my $type = shift;
 	my $callback = shift;
+    #debug#
+    use Data::Dumper;
+    #debug#
 	# parse all the dollar signs...	
 	# if its a directory then it has a / in it, so you have to parse it.
 	# if its a server, it won't have one so don't worry about it.
@@ -234,6 +237,7 @@ sub subVar {
 	my $fdir = "";
 	foreach my $p (@arr){
 		# have to make this geric so $ can be in the midle of the name: asdf$foobar.sitadsf
+        print Dumper($p);
 		if($p =~ /\$/){
 			my $pre;
 			my $suf;
