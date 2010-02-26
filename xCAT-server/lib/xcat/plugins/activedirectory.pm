@@ -6,6 +6,7 @@ BEGIN
 }
 my $callback;
 use lib "$::XCATROOT/lib/perl";
+use Getopt::Long;
 sub handled_commands { 
     return {
         addclusteruser => 'site:directoryprovider',
@@ -14,10 +15,36 @@ sub handled_commands {
 }
 sub process_request {
     my $request = shift;
-    my $callback = shift;
+    my $command = $request->{command}->[0];
+    $callback = shift;
     my $doreq = shift;
     use Data::Dumper;
-    sendmsg(Dumper($request));
+    if ($command =~ /add.*user/) { #user management command, adding
+        my $homedir;
+        my $fullname;
+        my $gid;
+        my $uid;
+        @ARGV=@{$request->{arg}};
+        Getopt::Long::Configure("bundling");
+        Getopt::Long::Configure("pass_through");
+
+         if (!GetOptions(
+            'd=s' => \$homedir,
+            'c=s' => \$fullname,
+            'g=s' => \$gid,
+            'u=s' => \$uid)) {
+             die "Not possible";
+         }
+         my $username = shift @ARGV;
+         my %args ( username => $username );
+         if ($fullname) { $args{fullname} = $fullname };
+         sendmsg("Full name: ".$fullname);
+         sendmsg(join(" ",@ARGV));
+    }
+
+
+
+        
 
 }
 
@@ -61,3 +88,4 @@ sub sendmsg {
 #        waitforack($outfd);
     $callback->($msg);
 }
+1;
