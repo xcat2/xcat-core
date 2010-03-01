@@ -353,7 +353,17 @@ sub mknetboot
         # last resort use self
         my $imgsrv;
         my $ient;
+        my $xcatmaster;
+
         $ient = $reshash->{$node}->[0]; #$restab->getNodeAttribs($node, ['tftpserver']);
+
+        if ($ient and $ient->{xcatmaster})
+        {
+            $xcatmaster = $ient->{xcatmaster};
+        } else {
+            $callback->({error=>"Error: xcatmaster for $node is not set!\nPlease check the noderes table",errorcode=>[1]});
+        }
+
         if ($ient and $ient->{tftpserver})
         {
             $imgsrv = $ient->{tftpserver};
@@ -361,12 +371,12 @@ sub mknetboot
         else
         {
             $ient = $reshash->{$node}->[0]; #$restab->getNodeAttribs($node, ['xcatmaster']);
-            if ($ient and $ient->{xcatmaster})
-            {
-                $imgsrv = $ient->{xcatmaster};
-            }
-            else
-            {
+            #if ($ient and $ient->{xcatmaster})
+            #{
+            #    $imgsrv = $ient->{xcatmaster};
+            #}
+            #else
+            #{
                 # master not correct for service node pools
                 #$ient = $sitetab->getAttribs({key => master}, value);
                 #if ($ient and $ient->{value})
@@ -375,9 +385,10 @@ sub mknetboot
                 #}
                 #else
                 #{
-                $imgsrv = '!myipfn!';
+            #   $imgsrv = '!myipfn!';
                 #}
-            }
+            #}
+            $imgsrv = $xcatmaster;
         }
         unless ($imgsrv)
         {
@@ -439,7 +450,7 @@ sub mknetboot
 		    $kcmdline .= " ";
 		}
 		$kcmdline .=
-			"XCAT=$imgsrv:$xcatdport ";
+			"XCAT=$xcatmaster:$xcatdport ";
 	}
         else
         {

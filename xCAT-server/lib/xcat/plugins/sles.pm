@@ -229,6 +229,16 @@ sub mknetboot
         # last resort use self
         my $imgsrv;
         my $ient;
+        my $xcatmaster;
+
+        $ient = $restab->getNodeAttribs($node, ['xcatmaster']);
+        if ($ient and $ient->{xcatmaster})
+        {
+            $xcatmaster = $ient->{xcatmaster};
+        } else {
+            $callbck->({error=>"Error: xcatmaster for $node is not set!\nPlease check the noderes table",errorcode=>[1]});
+        }
+
         $ient = $restab->getNodeAttribs($node, ['tftpserver']);
         if ($ient and $ient->{tftpserver})
         {
@@ -236,24 +246,25 @@ sub mknetboot
         }
         else
         {
-            $ient = $restab->getNodeAttribs($node, ['xcatmaster']);
-            if ($ient and $ient->{xcatmaster})
-            {
-                $imgsrv = $ient->{xcatmaster};
-            }
-            else
-            {
-                # master removed, does not work for servicenode pools
-                #$ient = $sitetab->getAttribs({key => master}, value);
-                #if ($ient and $ient->{value})
-                #{
-                 #   $imgsrv = $ient->{value};
-                #}
-                #else
-                #{
-                $imgsrv = '!myipfn!';
-                #}
-            }
+        #    $ient = $restab->getNodeAttribs($node, ['xcatmaster']);
+        #    if ($ient and $ient->{xcatmaster})
+        #    {
+        #        $imgsrv = $ient->{xcatmaster};
+        #    }
+        #    else
+        #    {
+        #        # master removed, does not work for servicenode pools
+        #        #$ient = $sitetab->getAttribs({key => master}, value);
+        #        #if ($ient and $ient->{value})
+        #        #{
+        #         #   $imgsrv = $ient->{value};
+        #        #}
+        #        #else
+        #        #{
+        #        $imgsrv = '!myipfn!';
+        #        #}
+        #    }
+            $imgsrv = $xcatmaster;
         }
         unless ($imgsrv)
         {
@@ -276,7 +287,7 @@ sub mknetboot
         elsif ($statelite) 
         {
             # get entry for nfs root if it exists;
-            # have to get nfssvr and nfsdir from noderes table
+            # have to get nfssvr, nfsdir and xcatmaster from noderes table
             my $nfssrv = $imgsrv;
             my $nfsdir = $rootimgdir;
 
@@ -316,8 +327,10 @@ sub mknetboot
             } else {
                 $kcmdline .= " ";
             }
+            # get "xcatmaster" value from the "noderes" table
+            
             $kcmdline .=
-                "XCAT=$imgsrv:$xcatdport ";
+                "XCAT=$xcatmaster:$xcatdport ";
         }
         else
         {
