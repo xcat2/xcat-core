@@ -216,29 +216,29 @@ done
 #Now we have parse the input, let's remove rpms if is specified with -
 if [ "$repo_pkgs_preremove" != "" ]; then
     if [ $hasyum -eq 1 ]; then 
-        echo "yum -y removel $repo_pkgs_preremove"
+        echo "yum -y remove $repo_pkgs_preremove"
         result=`yum -y remove $repo_pkgs_preremove 2>&1`
-        echo "$result"
         if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
         fi
+        echo "$result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper remove -y $repo_pkgs_preremove"
 	result=`zypper remove -y $repo_pkgs_preremove 2>&1`
-        echo "$result"
 	if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
 	fi
+        echo "$result"
     fi
 fi 
 
 if [ "$plain_pkgs_preremove" != "" ]; then 
     echo "rpm -ev $plain_pkgs_preremove" 
     result=`rpm -ev $plain_pkgs_preremove 2>&1`
-    echo "$result"
     if [ $? -ne 0 ]; then 
 	logger "otherpkgs $result"
     fi
+    echo "$result"
 fi
 
 
@@ -247,17 +247,17 @@ if [ "$repo_pkgs" != "" ]; then
     if [ $hasyum -eq 1 ]; then 
         echo "yum -y install $repo_pkgs"
         result=`yum -y install $repo_pkgs 2>&1`
-        echo "$result"
         if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
         fi
+        echo "$result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper install -y $repo_pkgs"
 	result=`zypper install -y $repo_pkgs 2>&1`
-        echo "$result"
 	if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
 	fi
+        echo "$result"
         #remove the repos
         #old_repo=`zypper lr -u |grep xcat-otherpkgs | cut -f2 -d '|'`
         #for x in $old_repo
@@ -292,10 +292,10 @@ if [ "$plain_pkgs" != "" ]; then
     echo "rpm -Uvh --replacepkgs $plain_pkgs" 
     result=`rpm -Uvh --replacepkgs $plain_pkgs 2>&1`
     #result=`rpm -Fvh $plain_pkgs 2>&1`
-    echo "$result"
     if [ $? -ne 0 ]; then 
 	logger "otherpkgs $result"
     fi
+    echo "$result"
     
     if [ $mounted -eq 0 ]; then
 	cd /xcatpost
@@ -309,27 +309,27 @@ if [ "$repo_pkgs_postremove" != "" ]; then
     if [ $hasyum -eq 1 ]; then 
         echo "yum -y removel $repo_pkgs_postremove"
         result=`yum -y remove $repo_pkgs_postremove 2>&1`
-        echo "$result"
         if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
         fi
+        echo "$result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper remove -y $repo_pkgs_postremove"
 	result=`zypper remove -y $repo_pkgs_postremove 2>&1`
-        echo "$result"
 	if [ $? -ne 0 ]; then 
             logger "otherpkgs: $result"
 	fi
+        echo "$result"
     fi
 fi 
 
 if [ "$plain_pkgs_postremove" != "" ]; then 
     echo "rpm -ev $plain_pkgs_postremove" 
     result=`rpm -ev $plain_pkgs_postremove 2>&1`
-    echo "$result"
     if [ $? -ne 0 ]; then 
 	logger "otherpkgs $result"
     fi
+    echo "$result"
 fi
 
 exit 0
