@@ -489,8 +489,7 @@ sub nimnodeset
     #
     #  Get a list of the defined NIM machines
     #
-    my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/nu
-ll~;
+    my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
     @machines = xCAT::Utils->runcmd("$cmd", -1);
 	# don't fail - maybe just don't have any defined!
 
@@ -1188,8 +1187,9 @@ sub mknimimage
 	Getopt::Long::Configure("no_pass_through");
 	if(!GetOptions(
 		'b=s'		=> \$::SYSB,
+		'D|mkdumpres' => \$::MKDUMP,
 		'f|force'	=> \$::FORCE,
-		'h|help'     => \$::HELP,
+		'h|help'    => \$::HELP,
 		's=s'       => \$::opt_s,
 	 	'r|sharedroot'  => \$::SHAREDROOT,
 		'l=s'       => \$::opt_l,
@@ -1199,7 +1199,7 @@ sub mknimimage
 		'n=s'		=> \$::MKSYSBNODE,
 		'u|update'  => \$::UPDATE,
 		'verbose|V' => \$::VERBOSE,
-		'v|version'  => \$::VERSION,))
+		'v|version' => \$::VERSION,))
 	{
 
 		&mknimimage_usage($callback);
@@ -1565,15 +1565,15 @@ sub mknimimage
 		# dump res
 		#  - dump is optional with new AIX versions
 		#
-		my $dodumpold=0;
+		$::dodumpold=0;
 		my $vrmf = xCAT::Utils->get_OS_VRMF();
 		if (defined($vrmf)) {
-			if (xCAT::Utils->testversion($vrmf, "<", "6.1.4.0")) {
-					$dodumpold=1;
+			if (xCAT::Utils->testversion($vrmf, "<", "6.1.4.0", "", "")) {
+					$::dodumpold=1;
 			}
 		}
 
-		if ($dodumpold) {
+		if ($::dodumpold || $::MKDUMP) {
 
 			my $dump_name;
 			if ( $::attrres{dump} ) {
@@ -1601,7 +1601,7 @@ sub mknimimage
         		} else {
 					# create it
 					my $type="dump";
-					if (&mknimres($dump_name, $type, $callback, $::opt_l) != 0) {
+					if (&mkdumpres($dump_name, \%::attrres, $callback, $::opt_l) != 0) {
 						my $rsp;
 						push @{$rsp->{data}}, "Could not create a NIM definition for \'$dump_name\'.\n";
 						xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1839,6 +1839,15 @@ sub mknimimage
 	# Output results
 	#
 	#
+
+	# only display the attrs for the osimage def
+	my $datatype = $xCAT::Schema::defspec{'osimage'};
+	my @osattrlist;
+	foreach my $this_attr (@{$datatype->{'attrs'}}) {
+		my $attr = $this_attr->{attr_name};
+		push (@osattrlist, $attr);
+	}
+
 	my $rsp;
 	push @{$rsp->{data}}, "The following xCAT osimage definition was created. Use the xCAT lsdef command \nto view the xCAT definition and the AIX lsnim command to view the individual \nNIM resources that are included in this definition.";
 
@@ -1847,6 +1856,9 @@ sub mknimimage
 	foreach my $attr (sort(keys %{$osimagedef{$::image_name}}))
 	{
 		if ($attr eq 'objtype') {
+			next;
+		}
+		if (!grep (/^$attr$/, @osattrlist)) {
 			next;
 		}
 		if ( $osimagedef{$::image_name}{$attr} ne '') {
@@ -2879,6 +2891,7 @@ sub rmnimimage
 				my $loc;
 				if ($::DELETE) {
 
+
 					# just use the NIM location value to remove these
 					if (($attr eq "lpp_source") || ($attr eq "bosinst_data") || ($attr eq "script") || ($attr eq "installp_bundle") || ($attr eq "root") || ($attr eq "shared_root") || ($attr eq "paging")) {
 						$loc = xCAT::InstUtils->get_nim_attr_val($resname, 'location', $callback, "", $subreq);
@@ -3339,6 +3352,76 @@ sub enoughspace {
 
 	return 0;
 }
+
+
+
+#----------------------------------------------------------------------------
+
+=head3  mkdumpres
+
+       Create a NIM diskless dump resource
+
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+
+        Example:
+			$rc = &mkdumpres($res_name, \%attrs, $callback, $location);
+
+        Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+sub mkdumpres {
+    my $res_name = shift;
+	my $attrs = shift;
+    my $callback = shift;
+	my $location = shift;
+
+	my %attrvals = %{$attrs}; # cmd line attr=val pairs
+
+	if ($::VERBOSE) {
+		my $rsp;
+		push @{$rsp->{data}}, "Creating \'$res_name\'.\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+
+	my $type='dump';
+
+	my $cmd = "/usr/sbin/nim -o define -t $type -a server=master ";
+
+	# where to put it - the default is /install
+	if ($location) {
+		$cmd .= "-a location=$location ";
+	} else {
+		#$cmd .= "-a location=/install/nim/$type/$res_name ";
+$cmd .= "-a location=/install/nim/dump2/$res_name ";
+	}
+
+	if ( !$::dodumpold ) {
+		# add any additional supported attrs  from cmd line
+		my @attrlist=("dumpsize", "max_dumps", "notify", "snapcollect");
+		foreach my $attr (keys %attrvals) {
+			if (grep(/^$attr$/, @attrlist)) {
+				$cmd .= "-a $attr=$attrvals{$attr} ";	
+			}
+		}
+	}
+
+	$cmd .= "$res_name  2>&1";
+	if ($::VERBOSE) {
+        my $rsp;
+        push @{$rsp->{data}}, "Running command: \'$cmd\'.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
+	my $output = xCAT::Utils->runcmd("$cmd", -1);
+	if ($::RUNCMD_RC  != 0) {
+		return 1;
+	}
+	return 0;
+}
+
 
 #----------------------------------------------------------------------------
 
@@ -5067,8 +5150,7 @@ sub mkdsklsnode
 	#    these are machines defined on this server
     #
 	my @machines = ();
-    my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/nu
-ll~;
+    my $cmd = qq~/usr/sbin/lsnim -c machines | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
 
     @machines = xCAT::Utils->runcmd("$cmd", -1);
 	# don't fail - maybe just don't have any defined!
@@ -5297,6 +5379,16 @@ ll~;
 		$defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
 		$defcmd .= "-a net_definition='ent $nethash{$node}{'mask'} $nethash{$node}{'gateway'}' ";
 		$defcmd .= "-a net_settings1='$speed $duplex' ";
+
+		# add any additional supported attrs from cmd line
+		my @attrlist=("dump_iscsi_port");
+		foreach my $attr (keys %attrs) {
+			if (grep(/^$attr$/, @attrlist)) {
+				$defcmd .= "-a $attr=$attrs{$attr} ";
+			}
+		}
+
+
 		$defcmd .= "$nim_name  2>&1";
 		if ($::VERBOSE) {
            	my $rsp;
@@ -5352,6 +5444,14 @@ ll~;
 		}
 		if ($imagehash{$image_name}{shared_home}) {
 			$arg_string .= "-a shared_home=$imagehash{$image_name}{shared_home} ";
+		}
+
+		# add any additional supported attrs from cmd line
+		my @attrlist=("configdump");
+		foreach my $attr (keys %attrs) {
+			if (grep(/^$attr$/, @attrlist)) {
+				$arg_string .= "-a $attr=$attrs{$attr} ";
+			}
 		}
 
 		#
@@ -6372,7 +6472,7 @@ sub mknimimage_usage
     push @{$rsp->{data}}, "or";
 	push @{$rsp->{data}}, "\tmknimimage [-V] -u osimage_name [attr=val [attr=val ...]]";
 	push @{$rsp->{data}}, "or";
-	push @{$rsp->{data}}, "\tmknimimage [-V] [-f|--force] [-r|--sharedroot] [-l <location>] \n\t\t[-s image_source] [-i current_image] [-t nimtype] \n\t\t[-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name \n\t\t[attr=val [attr=val ...]]\n";
+	push @{$rsp->{data}}, "\tmknimimage [-V] [-f|--force] [-t nimtype] [-m nimmethod]\n\t\t[-r|--sharedroot] [-D|--mkdumpres] [-l <location>]\n\t\t[-s image_source] [-i current_image] [-t nimtype] [-m nimmethod]\n\t\t[-n mksysbnode] [-b mksysbfile] osimage_name\n\t\t[attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
