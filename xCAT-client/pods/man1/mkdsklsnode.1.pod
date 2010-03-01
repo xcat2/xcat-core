@@ -47,6 +47,14 @@ Specifies the speed setting (optional). Used when defining the NIM machine. This
 
 Specifies the size in Megabytes of the paging space for the diskless node.(optional) Used when initializing the NIM machine. The minimum and default size is 64 MB of paging space. (ex. "psize=64")
 
+=item B<dump_iscsi_port>
+
+The tcpip port number to use to communicate dump images from the client to the dump	resource server. Normally set by default. This port number is used by a dump resource server.
+
+=item B<configdump>
+
+Specifies the type dump to be collected at the client.  The values are "selective", "full", and	"none".  If the configdump attribute is set to "full" or "selective" the client will automatically be setup to dump to an iSCSI Target device. The "selective" memory dump will avoid dumping user data. The "full" memory dump will dump all the memory of the client partition. Selective and full memory dumps will be collected in the dump resource allocated to the client. Only POWER6 clients an dump to the dump resource.
+
 =back
 
 =item B<-f |--force>

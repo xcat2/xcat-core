@@ -8,7 +8,7 @@ B<mknimimage [-h | --help ]>
 
 B<mknimimage [-V] -u osimage_name [attr=val [attr=val ...]]>
 
-B<mknimimage [-V] [-f|--force] [-r|--sharedroot] [-l location] [-s image_source] [-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
+B<mknimimage [-V] [-f|--force] [-r|--sharedroot] [-D|--mkdumpres] [-l location] [-s image_source] [-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -48,7 +48,104 @@ To remove specific NIM resource definitons use the AIX nim command.
 
 =item B<attr=val [attr=val ...]>
 
-Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. These are used to specify additional or different information to use when creating the the xCAT osimage definition.  Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). Valid attribute names include any of the attributes of the xCAT osimage object plus "installp_flags". (The default for installp_flags is "-agQX".)
+Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line. 
+
+Currently supported attributes:
+
+=over 3
+
+=item B<bosinst_data>
+
+The name of a NIM bosinst_data resource.
+
+=item B<dump>
+
+The name of the NIM dump resource.
+
+=item B<fb_script>
+
+The name of a NIM fb_script resource.
+
+=item B<home>
+
+The name of the NIM home resource.
+
+=item B<installp_bundle>
+
+One or more comma separated NIM installp_bundle resources.
+
+=item B<lpp_source>
+
+The name of the NIM lpp_source resource.
+
+=item B<mksysb>
+
+The name of a NIM mksysb resource.
+
+=item B<otherpkgs>
+
+One or more comma separated installp or rpm packages.  The rpm packages must have a prefix of 'R:', (ex. R:foo.rpm)
+
+=item B<paging> 
+
+The name of the NIM paging resource.
+
+=item B<resolv_conf> 
+
+The name of the NIM resolv_conf resource.
+
+=item B<root>
+
+The name of the NIM root resource.
+
+=item B<script>
+
+The name of a NIM script resource.
+
+=item B<shared_home>
+
+The name of the NIM shared_home resource.
+
+=item B<shared_root>
+
+A shared_root resource represents a directory that can be used as a / (root) directory by one or more diskless clients.
+
+=item B<spot>
+
+The name of the NIM SPOT resource.
+
+=item B<synclists>
+
+The fully qualified name of a file containing a list of files to synchronize on the nodes.
+
+=item B<tmp>
+
+The name of the NIM tmp resource.
+
+=item B<installp_flags>
+
+The alternate flags to be passed along to the AIX installp command. (The default for installp_flags is "-agQX".)
+
+=item B<dumpsize>
+
+The maximum size for a single dump image the dump resource will accept. Space is not allocated until a client starts to dump. The default size is 50GB. The dump resource should be large enough to hold the expected AIX dump and snap data.  
+
+=item B<max_dumps>
+
+The maximum number of archived dumps for an individual client. The default is one. 
+
+=item B<notify>
+
+An administrator supplied script that will be invoked when a new dump is captured, or when a dump error occurs on the client.
+
+=item B<snapcollect>
+
+Indicates that after a dump is collected then snap data should be collected. The snap data will be collected in the clients dump resource directory.  Values are "yes" or "no". The default is "no".
+
+
+=back
+
+Note that you may specify multiple "script", "otherpkgs", and "installp_bundle" resources by using a comma seperated list. (ex. "script=ascript,bscript"). RPM names may be included in the "otherpkgs" list by using a "R:" prefix(ex. "R:whatever.rpm"). 
 
 =item B<-b mksysbfile>
 
@@ -65,6 +162,10 @@ Display usage message.
 =item B<osimage_name>
 
 The name of the xCAT osimage definition.  This will be used as the name of the xCAT osimage definition as well as the name of the NIM SPOT resource.
+
+=item B<-D|--mkdumpres>
+
+Create a diskless dump resource.
 
 =item B<-i current_image>
 
@@ -152,9 +253,11 @@ This command defines a NIM mksysb resource and a spot definition using mysysbima
 
 B<mknimimage -t diskless -s /AIX/instimages 61dskls>
 
-7) Create a diskless image called "614dskls" that includes a NIM "shared_root" resource.  Use the existing NIM lpp_resource called "614_lpp_source". Also specify verbose output.
+7) Create a diskless image called "614dskls" that includes a NIM "shared_root" and a "dump" resource.  Use the existing NIM lpp_resource called "614_lpp_source". Also specify verbose output.
 
-B<mknimimage -V -r -t diskless -s 614_lpp_source 614dskls>
+B<mknimimage -V -r -D -t diskless -s 614_lpp_source 614dskls snapcollect=yes>
+
+The "snapcollect" attribute specifies that AIX "snap" data should be include when a system dump is initiated.
 
 8) Create a new diskless image by copying an existing image.
 
