@@ -523,6 +523,7 @@ sub mkvterm {
     # character preceeded with \000 (blank??)
     #
     ##########################################
+    my $fail_msg  = "HSCL";
     my $ivm_open  = "Virtual terminal is already connected";
     my $hmc_open  = "\000o\000p\000e\000n\000 \000f\000a\000i\000l\000e\000d"; 
     my $hmc_open2 =
@@ -558,7 +559,7 @@ sub mkvterm {
     # Expect result 
     ##########################################
     my @result = $ssh->expect( $timeout,
-        [ "$hmc_open|$hmc_open2|$ivm_open",
+        [ "$hmc_open|$hmc_open2|$ivm_open|$fail_msg",
            sub {
                $failed = 1; 
            } ]
@@ -566,7 +567,11 @@ sub mkvterm {
 
     if ( $failed ) {
         $ssh->hard_close();
-        return( [RC_ERROR,"Virtual terminal is already connected"] );
+	if (grep(/$fail_msg/, @result)) {
+		return( [RC_ERROR, "mkvterm returns the unsuccessful value, please check your entry and retry the command."] );
+	} else {
+        	return( [RC_ERROR,"Virtual terminal is already connected"] );
+	}
     }
 
     ##########################################
