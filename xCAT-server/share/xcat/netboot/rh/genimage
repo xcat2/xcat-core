@@ -1050,7 +1050,6 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    print $cfgfile "     fi\n";
    print $cfgfile "  fi\n";
    print $cfgfile "done\n";
-   close($cfgfile);
    chmod(0755,"$rootimg_dir/etc/rc3.d/S60gettyset");
    #link("$rootimg_dir/sbin/init","$rootimg_dir/init");
     #add postscript support for redhat
@@ -1059,6 +1058,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    } else {
         print $cfgfile "/opt/xcat/xcatdsklspost\n";
    }
+   close($cfgfile);
    
    rename(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel"); } 
 
