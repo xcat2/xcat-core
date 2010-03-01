@@ -326,7 +326,7 @@ sub getobjdefs
         if ($objtype eq 'site') {
             my @TableRowArray = xCAT::DBobjUtils->getDBtable('site');
             foreach my $objname (sort @{$type_obj{$objtype}}) {
-                if (defined(@TableRowArray))
+                if (@TableRowArray)
                 {
                     my $foundinfo = 0;
                     foreach (@TableRowArray)
@@ -361,7 +361,7 @@ sub getobjdefs
             #	 the same name as the monitoring table entry.
             my @TableRowArray = xCAT::DBobjUtils->getDBtable('monsetting');
             foreach my $objname (sort @{$type_obj{$objtype}}) {
-                if (defined(@TableRowArray)) {
+                if (@TableRowArray) {
                     my $foundinfo = 0;
                     foreach (@TableRowArray) {                     
                         if ($_->{name} eq $objname ) {
@@ -487,7 +487,7 @@ sub getobjdefs
                     {
                         # look up attr values
                         my @rows = xCAT::DBobjUtils->getDBtable($lookup_table);
-                        if (defined(@rows))
+                        if (@rows)
                         {
                             foreach my $rowent (@rows)
                             {
@@ -587,7 +587,7 @@ sub getDBtable
 
 	} # end if not cached
 
-   	if (defined(@rows))
+   	if (@rows)
    	{
        	return @rows;
    	}
@@ -1038,8 +1038,7 @@ sub setobjdefs
                      xCAT::MsgUtils->message("E", $rsp, $::callback);
                      next;
                 }
-                my $lookup_table = $tabentry{'lookup_table'};
-                my $attr_name = $this_attr->{attr_name};
+                $lookup_table = $tabentry{'lookup_table'};
                 # Set the lookup criteria for this attribute into %allupdates
                 # the key is 'lookup_attrs'
                 foreach my $lookup_attr (keys %{$tabentry{'lookup_attrs'}})
@@ -1129,8 +1128,6 @@ sub setobjdefs
 
             }
 
-            my $lookup_table = $tabentry{'lookup_table'};
-            my $attr_name = $this_attr->{attr_name};
             # Set the values into %allupdates
             # the key is 'tabattrs'
             $allupdates{$lookup_table}{$objname}{$attr_name}{'tabattrs'}{$::tabattr} = $val;
@@ -1245,7 +1242,7 @@ if (0) {
                 my $xcatdefaultsps;
                 my $xcatdefaultspbs;
                 my @TableRowArray = xCAT::DBobjUtils->getDBtable('postscripts');
-                if (defined(@TableRowArray))
+                if (@TableRowArray)
                 {
                     foreach my $tablerow (@TableRowArray)
                     {
@@ -1554,7 +1551,7 @@ sub readFileInput
 
     my @lines = split /\n/, $filedata;
 
-    my $header = @lines[0];
+    my $header = $lines[0];
 
     # to do
     #if ($header =~/<xCAT data object stanza file>/) {
@@ -1750,7 +1747,6 @@ sub getGroupMembers
         #	value
         my %whereHash;
         my %tabhash;
-        my %nodeattrhash;
 
         # remove spaces and quotes so createnode won't get upset
         #$val =~ s/^\s*"\s*//;
@@ -1839,7 +1835,7 @@ sub getNetwkInfo
 
 	# read the networks table
 	my @TableRowArray = xCAT::DBobjUtils->getDBtable('networks');
-	if (!defined(@TableRowArray))
+	if (! @TableRowArray)
     {
 		return undef;
 	}
@@ -1869,18 +1865,10 @@ sub getNetwkInfo
 			my ($na, $nb, $nc, $nd) = split('\.', $NM);
 
 			# Convert to integers so the bitwise and (&) works correctly.
-			int $ia;
-			int $ib;
-			int $ic;
-			int $id;
-			int $na;
-			int $nb;
-			int $nc;
-			int $nd;
-			my $sa     = ($ia & $na);
-			my $sb     = ($ib & $nb);
-			my $sc     = ($ic & $nc);
-			my $sd     = ($id & $nd);
+			my $sa     = (int($ia) & int($na));
+			my $sb     = (int($ib) & int($nb));
+			my $sc     = (int($ic) & int($nc));
+			my $sd     = (int($id) & int($nd));
 
 			# if all the octals match then we have the right network
 			if ( ($n1 == $sa) && ($n2 ==$sb) && ($n3 == $sc) && ($n4 == $sd) ) {
