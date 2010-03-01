@@ -1439,6 +1439,25 @@ my @nodeattrs = (
                  tabentry => 'websrv.password',
                  access_tabentry => 'websrv.node=attr:node',
                 },
+######################
+#  switch table      #
+######################
+                {attr_name => 'switch',
+                 tabentry => 'switch.switch',
+                 access_tabentry => 'switch.node=attr:node',
+                },
+                {attr_name => 'switchport',
+                 tabentry => 'switch.port',
+                 access_tabentry => 'switch.node=attr:node',
+                },
+                {attr_name => 'switchvlan',
+                 tabentry => 'switch.vlan',
+                 access_tabentry => 'switch.node=attr:node',
+                },
+                {attr_name => 'switchinterface',
+                 tabentry => 'switch.interface',
+                 access_tabentry => 'switch.node=attr:node',
+                },
   );
 
 
