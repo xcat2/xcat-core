@@ -780,6 +780,29 @@ eventlog => {
 	disable => "Set to 'yes' or '1' to comment out this row.",
     },
 },
+
+auditlog => {
+    cols => [qw(recid  audittime userid clientname clienttype command noderange args status comments disable)], 
+    keys => [qw(recid)],
+    types => {
+	recid => 'INTEGER AUTO_INCREMENT',  
+    },
+    table_desc => ' Audit Data log.',  
+    descriptions => {
+        recid => 'The record id.',
+	audittime => 'The timestamp for the audit entry.',     
+	userid => 'The user running the command.',  
+	clientname => 'The client machine, where the command originated.',  
+        clienttype => 'Type of command: cli, Java, Web.',
+	command => 'Command executed.',    
+	noderange => 'The noderange on which the command was run.',   
+	args  => 'The command argument list.',  
+	status => 'Allowed or Denied.',
+	comments => 'Any user-provided notes.',
+	disable => "Set to 'yes' or '1' to comment out this row.",
+    },
+},
+
 prescripts => {
     cols => [qw(node begin end comments disable)],
     keys => [qw(node)],
@@ -888,6 +911,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   monitoring => { attrs => [], attrhash => {}, objkey => 'name' },
   notification => { attrs => [], attrhash => {}, objkey => 'filename' },
   eventlog => { attrs => [], attrhash => {}, objkey => 'recid' }, 
+  auditlog => { attrs => [], attrhash => {}, objkey => 'recid' }, 
   boottarget => { attrs => [], attrhash => {}, objkey => 'bprofile' },
 );
 
@@ -1989,6 +2013,54 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  },
 );
 
+
+
+@{$defspec{auditlog}->{'attrs'}} = (
+        {attr_name => 'recid',
+                 tabentry => 'auditlog.recid',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+        {attr_name => 'audittime',
+                 tabentry => 'auditlog.audittime',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+        {attr_name => 'userid',
+                 tabentry => 'auditlog.userid',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+        {attr_name => 'clientname',
+                 tabentry => 'auditlog.clientname',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+        {attr_name => 'clienttype',
+                 tabentry => 'auditlog.clienttype',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+        {attr_name => 'command',
+                 tabentry => 'auditlog.command',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+        {attr_name => 'noderange',
+                 tabentry => 'auditlog.noderange',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+        {attr_name => 'args',
+                 tabentry => 'auditlog.args',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+        {attr_name => 'status',
+                 tabentry => 'auditlog.status',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+        {attr_name => 'comments',
+                 tabentry => 'auditlog.comments',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+	{attr_name => 'disable',
+                 tabentry => 'auditlog.disable',
+                 access_tabentry => 'auditlog.recid=attr:recid',
+                 },
+);
 
 
 
