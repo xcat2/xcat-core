@@ -1232,7 +1232,7 @@ sub getInstallDir
     my $installdir = "/install";
 
     # Try to lookup real installdir place.
-    my @installdir1 = get_site_attribute("installdir");
+    my @installdir1 = xCAT::Utils->get_site_attribute("installdir");
 
     # Use fetched value, incase successful database lookup.
     if ($installdir1[0])
