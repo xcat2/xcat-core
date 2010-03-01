@@ -633,7 +633,7 @@ if [ "\$NFSROOT" = "1" ]; then
  	MAXTRIES=5
 	ITER=0
 	ME=`hostname`
-	while ! mount.nfs \${SERVER}:\${ROOTDIR}/rootimg \$NEWROOT -r -n -o nolock,rsize=32768,udp,nfsvers=3,timeo=14
+	while ! mount.nfs \${SERVER}:\${ROOTDIR}/rootimg \$NEWROOT -r -n -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14
 	do
 		ITER=\$(expr \$ITER + 1)
 		if [ "\$ITER" == "\$MAXTRIES" ]
@@ -682,7 +682,7 @@ if [ "\$NFSROOT" = "1" ]; then
 		mkdir -p \$NEWROOT/\$RWDIR/persistent
  		MAXTRIES=5
 		ITER=0
-		while ! mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT  \$NEWROOT/\$RWDIR/persistent
+		while ! mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT  \$NEWROOT/\$RWDIR/persistent -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14
 		do
 			ITER=\$(expr \$ITER + 1)
 			if [ "\$ITER" == "\$MAXTRIES" ]
@@ -785,7 +785,7 @@ if [ "\$NFS" = "1" ]; then
   #NOTE: should prob have max count
   while [ ! -d /ro/bin ]; do
     echo mounting \$SERVER:\$ROOTDIR on /ro
-    mount.nfs \$SERVER:\$ROOTDIR /ro -r -n -o nolock,rsize=32768,udp,nfsvers=3,timeo=14
+    mount.nfs \$SERVER:\$ROOTDIR /ro -r -n -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14
     ST=`expr \$RANDOM % 5`
     sleep \$ST
   done

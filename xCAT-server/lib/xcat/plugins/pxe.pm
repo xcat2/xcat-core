@@ -68,9 +68,53 @@ sub setstate {
   my %chainhash = %{shift()};
   my %machash = %{shift()};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
-  if (not $addkcmdlinehandled->{$node} and $kern->{addkcmdline}) {  #Implement the kcmdline append here for
-                               #most generic, least code duplication
-        $kern->{kcmdline} .= " ".$kern->{addkcmdline};
+  if (not $addkcmdlinehandled->{$node} and $kern->{addkcmdline}) {
+
+#Implement the kcmdline append here for
+#most generic, least code duplication
+
+###hack start
+# This is my comment. There are many others like it, but this one is mine.
+# My comment is my best friend. It is my life. I must master it as I must master my life.
+# Without me, my comment is useless. Without my comment, I am useless.
+
+# Jarrod to clean up.  It really should be in Table.pm and support
+# the new statelite $table notation.
+
+#I dislike spaces, tabs are cleaner, I'm too tired to change all the xCAT code.
+#I give in.
+
+    my $kcmdlinehack = $kern->{addkcmdline};
+
+    while ($kcmdlinehack =~ /#NODEATTRIB:([^:#]+):([^:#]+)#/) {
+        my $natab = xCAT::Table->new($1);
+        my $naent = $natab->getNodeAttribs($node,[$2]);
+        my $naval = $naent->{$2};
+        $kcmdlinehack =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$naval/;
+    }
+    while ($kcmdlinehack =~ /#TABLE:([^:#]+):([^:#]+):([^:#]+)#/) {
+        my $tabname = $1;
+        my $keyname = $2;
+        my $colname = $3;
+        if ($2 =~ /THISNODE/ or $2 =~ /\$NODE/) {
+            my $natab = xCAT::Table->new($tabname);
+            my $naent = $natab->getNodeAttribs($node,[$colname]);
+            my $naval = $naent->{$colname};
+            $kcmdlinehack =~ s/#TABLE:([^:#]+):([^:#]+):([^:#]+)#/$naval/;
+        } else {
+            my $msg =  "Table key of $2 not yet supported by boottarget mini-template";
+            $callback->({
+                error => ["$msg"],
+                errorcode => [1]
+            });
+        }
+    }
+
+    #$kern->{kcmdline} .= " ".$kern->{addkcmdline};
+    $kern->{kcmdline} .= " ".$kcmdlinehack;
+
+###hack end
+
   }
   if ($kern->{kcmdline} =~ /!myipfn!/) {
       my $ipfn = xCAT::Utils->my_ip_facing($node);

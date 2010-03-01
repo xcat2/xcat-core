@@ -418,7 +418,15 @@ sub mknetboot
 		}
 		if($ient->{nfsdir} ne ''){	
 			$nfsdir = $ient->{nfsdir} . "/netboot/$osver/$arch/$profile";
-			
+                        #this code sez, "if nfsdir starts with //, then
+                        #use a absolute path, i.e. do not append xCATisms"
+                        #this is required for some statelite envs.
+                        #still open for debate.
+
+			if($ient->{nfsdir} =~ m!^//!) {
+				$nfsdir = $ient->{nfsdir};
+				$nfsdir =~ s!^/!!;
+			}
 		}
 
 		$kcmdline = 
