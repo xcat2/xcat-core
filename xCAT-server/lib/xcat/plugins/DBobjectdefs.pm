@@ -296,6 +296,7 @@ sub processArgs
 
                 # if we know the type isn't "node" then set the object list
                 @::clobjnames = split(',', $a);
+                @::noderange = @::clobjnames;
                 $::objectsfrom_args = 1;
             }
             elsif (!$::opt_t || ($::opt_t eq 'node'))
@@ -1583,6 +1584,9 @@ sub defch
         if (!$isDefined)
         {
             $newobjects{$obj} = $type;
+            if (! grep (/^groups$/, keys %{$::FINALATTRS{$obj}}) ) {
+                $::FINALATTRS{$obj}{'groups'} = "all";
+            }
         }
 
         if (!$isDefined && $::opt_m)
@@ -2040,7 +2044,7 @@ sub defch
         #		xCAT::MsgUtils->message("E", $rsp, $::callback);
         $error = 1;
     }
-
+    
     if ($error)
     {
         my $rsp;
