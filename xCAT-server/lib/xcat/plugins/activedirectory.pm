@@ -36,7 +36,7 @@ sub process_request {
              die "Not possible";
          }
          my $username = shift @ARGV;
-         my %args ( username => $username );
+         my %args = ( username => $username );
          if ($fullname) { $args{fullname} = $fullname };
          sendmsg("Full name: ".$fullname);
          sendmsg(join(" ",@ARGV));
