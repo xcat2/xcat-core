@@ -251,6 +251,7 @@ sub add_machine_account {
 }
 
 sub krb_login {
+    #TODO: use distinct credential cache
     #TODO: klist -s to see if credentials are good
     my %args = @_;
     my $password = $args{password};
@@ -259,7 +260,11 @@ sub krb_login {
     my $krbin;
     my $krbout;
     my $krberr = gensym;
-    my $kinit = open3($krbin,$krbout,$krberr,qw/kinit/,$username."@".$realm);
+    my $kinit = "kinit";
+    if (-x "/usr/kerberos/bin/kinit") {
+        $kinit = "/usr/kerberos/bin/kinit";
+    }
+    my $kinit = open3($krbin,$krbout,$krberr,$kinit,$username."@".$realm);
     my $ksel = IO::Select->new($krbout,$krberr);
     my @handles;
     while (@handles = $ksel->can_read()) {
@@ -330,9 +335,10 @@ sub find_free_params { #search for things like next available uidNumber
 }
 
 
-use Data::Dumper;
+#use Data::Dumper;
 #print krb_login(username=>"Administrator",password=>"cluster",realm=>"XCAT.E1350");
 #print Dumper(find_free_params(directoryserver=>"v4.xcat.e1350",ou=>"dc=xcat,dc=e1350"));
 #print Dumper add_user_account(dnsdomain=>'xcat.e1350',username=>'ffuu',directoryserver=>'v4.xcat.e1350');
 #print Dumper add_machine_account(node=>'ufred.xcat.e1350',directoryserver=>'v4.xcat.e1350');
 
+1;
