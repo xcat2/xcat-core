@@ -28,7 +28,7 @@ my $vardir = "/var/opt/$dirname";
 my $default_runfile = "$vardir/.monerrorlog_run";
 my $default_fifo = "$vardir/syslog_fifo";
 my $default_pri = "*.warn";
-$::MAX_SENSOR_STRING = 10240;
+$::MAX_SENSOR_STRING = 65535;
 
 my ($facility_priority, $fifo, $runfile) = &getArgs();
 my ($syslogconf, $embedinfo);

@@ -15,7 +15,7 @@ my $default_runfile = "$vardir/.monaixsyslog_run";
 my $default_file = "$vardir/syslog.out";
 my $default_pri = "*.warn";
 
-$::MAX_SENSOR_STRING = 10240;
+$::MAX_SENSOR_STRING = 65535;
 my ($facility_priority, $logfile, $runfile) = &getArgs();
 
 my ($syslogconf, $embedinfo);
