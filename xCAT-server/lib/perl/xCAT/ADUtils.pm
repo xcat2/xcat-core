@@ -107,7 +107,9 @@ sub add_user_account {
         return {error=>"Unable to determine all required parameters"};
     }
     my $newpassword = $args{password};
-    unless ($newpassword) {
+    if ($newpassword) {
+        $newpassword = '"'.$newpassword.'"';
+    } else {
         $newpassword = '"'.genpassword(8).'"';
     }
     Encode::from_to($newpassword,"utf8","utf16le"); #ms uses utf16le, we use utf8
@@ -186,8 +188,6 @@ sub add_user_account {
     } elsif (not $rc==8192) {
         return {error=>"Unknown error $rc"};
     }
-    open(HUH,">","/tmp/huhh");
-    print HUH $ldif;
     $rc = system("echo '$ldif'|ldapmodify  -H ldaps://$directoryserver"); 
     return {password=>$newpassword};
 }
@@ -264,7 +264,7 @@ sub krb_login {
     if (-x "/usr/kerberos/bin/kinit") {
         $kinit = "/usr/kerberos/bin/kinit";
     }
-    my $kinit = open3($krbin,$krbout,$krberr,$kinit,$username."@".$realm);
+    $kinit = open3($krbin,$krbout,$krberr,$kinit,$username."@".$realm);
     my $ksel = IO::Select->new($krbout,$krberr);
     my @handles;
     while (@handles = $ksel->can_read()) {
@@ -338,7 +338,8 @@ sub find_free_params { #search for things like next available uidNumber
 #use Data::Dumper;
 #print krb_login(username=>"Administrator",password=>"cluster",realm=>"XCAT.E1350");
 #print Dumper(find_free_params(directoryserver=>"v4.xcat.e1350",ou=>"dc=xcat,dc=e1350"));
-#print Dumper add_user_account(dnsdomain=>'xcat.e1350',username=>'ffuu',directoryserver=>'v4.xcat.e1350');
+#use Data::Dumper;
+#print Dumper(add_user_account(dnsdomain=>'xcat.e1350',username=>'ffuu',directoryserver=>'v4.xcat.e1350'));
 #print Dumper add_machine_account(node=>'ufred.xcat.e1350',directoryserver=>'v4.xcat.e1350');
 
 1;

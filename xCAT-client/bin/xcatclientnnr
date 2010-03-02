@@ -25,6 +25,11 @@ if (-p STDIN) {
 }
 
 push (@{$cmdref->{arg}}, @ARGV);
+foreach (keys %ENV) {
+    if (/^XCAT_/) {
+        $cmdref->{environment}->{$_} = $ENV{$_};
+    }
+}
 
 xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
