@@ -822,9 +822,7 @@ sub new
                                $xCAT::Schema::tabspec{$self->{tabname}},
                        $xcatcfg);
               $self->{dbh}->do($str);
-			  if ($xcatcfg =~ /^DB2:/) {  # for DB2
 			     $self->{dbh}->commit;  #  commit the create
-		     }
 
               
           }
