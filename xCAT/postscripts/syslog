@@ -111,23 +111,23 @@ if [ $isLinux -eq 1 ] && [ -a $sysconfig ]; then
     if [ -f /etc/xCATMN ]; then
       #on MN: make the syslogd be able to receive remote logs 
       awk  '{if($0 ~ /^SYSLOGD_OPTIONS=|^SYSLOGD_PARAMS=/) {
-            if ($0 !~ /-r/) {sub(/\"$/, " -r\"", $0)}
-            if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/\"$/, " -m 0\"", $0)}
+            if ($0 !~ /-r/) {sub(/-/, "-r -", $0)}
+            if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/-/, "-m 0 -", $0)}
             print $0}
           else { print $0}}'  $sysconfig > $sysconfig.tmp 
     else
       if [ $isSN -eq 1 ]; then
         #on SN: make the syslog be able to receive and forward remote logs
         awk '{if($0 ~ /^SYSLOGD_OPTIONS=|^SYSLOGD_PARAMS=/) {
-              if ($0 !~ /-r/) {sub(/\"$/, " -r\"", $0)}
-              if ($0 !~ /-h/) {sub(/\"$/, " -h\"", $0)}
-              if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/\"$/, " -m 0\"", $0)}
+              if ($0 !~ /-r/) {sub(/-/, "-r -", $0)}
+              if ($0 !~ /-h/) {sub(/-/, "-h -", $0)}
+              if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/-/, "-m 0 -", $0)}
               print $0}
             else { print $0}}'  $sysconfig > $sysconfig.tmp 
       else
         ##turn off the time marker on all 
         awk '{if($0 ~ /^SYSLOGD_OPTIONS=|^SYSLOGD_PARAMS=/) {
-              if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/\"$/, " -m 0\"", $0)}
+              if (($0 !~ /-m0/) && ($0 !~/-m 0/)) { sub(/-/, "-m 0 -", $0)}
               print $0}
             else {print $0}}' $sysconfig > $sysconfig.tmp 
       fi
