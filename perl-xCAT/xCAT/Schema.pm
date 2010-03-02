@@ -52,6 +52,36 @@ statelite => {
 	},
 },
 
+#If we support multiple domains managed in a single xCAT instance, the following
+#tables come into play.  Given no explicit request to span domains and no effort to
+#seriously evaluate wider support of multi-domain environments, will leave them 
+#commented rather than tempt people to try with an expectation that it could work.
+#domain => {
+#    cols => [qw(node domain comments disable)],
+#    keys => ['node'],
+#    table_desc => 'Mapping of nodes to domains',
+#    descriptions => {
+#        node => 'The node or group the entry applies to',
+#        domain => 'The name of the domain it is a member of, such as "example.com".  Defaults to domain value from the site table',
+#		comments => 'Any user-written notes.',
+#		disable => "Set to 'yes' or '1' to comment out this row.",      
+#	},
+#},
+#domains => {
+#    cols => [qw(domain nameserver authserver realm comments disable)],
+#    keys => ['domain'],
+#    table_desc => 'Parameters concerning domain-wide management',
+#    descriptions => {
+#        domain => 'The name of the domain, such as "example.com"',
+#        nameserver => 'The address of the server that is responsible for updating DNS records',
+#        authserver => 'The provider of authentication and authorization data, which may be a generic LDAP server as well as a Kerberos KDC, or specifically an active directory domain controller'.
+#        realm => 'The kerberos realm name associated with the domain.  Defaults to uppercase of the domain name',
+#		comments => 'Any user-written notes.',
+#		disable => "Set to 'yes' or '1' to comment out this row.",      
+#	},
+#},
+        
+
 litetree => {
 	cols => [qw(priority image directory comments disable)],
 	keys => [qw(priority)],
