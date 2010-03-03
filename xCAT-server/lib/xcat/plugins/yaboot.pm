@@ -397,7 +397,7 @@ sub process_request {
   #print "yaboot:inittime=$inittime; normalnodeset=@normalnodeset; breaknetboot=@breaknetboot\n";
 
   #Don't bother to try dhcp binding changes if sub_req not passed, i.e. service node build time
-  unless (($args[0] eq 'stat') || ($inittime)) {
+  unless (($args[0] eq 'stat') || ($inittime) || ($args[0] eq 'offline')) {
       #dhcp stuff
       my $do_dhcpsetup=1;
       my $sitetab = xCAT::Table->new('site');
