@@ -511,7 +511,7 @@ sub process_request {
 
 
   #dhcp stuff -- inittime is set when xcatd on sn is started
-  unless (($args[0] eq 'stat') || ($inittime)) {
+  unless (($args[0] eq 'stat') || ($inittime) || ($args[0] eq 'offline')) {
       my $do_dhcpsetup=1;
       my $sitetab = xCAT::Table->new('site');
       if ($sitetab) {
