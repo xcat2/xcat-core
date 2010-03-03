@@ -5,15 +5,17 @@ package xCAT::MsgUtils;
 
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
-if ($^O =~ /^aix/i) {
-        use lib "/usr/opt/perl5/lib/5.8.2/aix-thread-multi";
-        use lib "/usr/opt/perl5/lib/5.8.2";
-        use lib "/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi";
-        use lib "/usr/opt/perl5/lib/site_perl/5.8.2";
+if ($^O =~ /^aix/i)
+{
+    use lib "/usr/opt/perl5/lib/5.8.2/aix-thread-multi";
+    use lib "/usr/opt/perl5/lib/5.8.2";
+    use lib "/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi";
+    use lib "/usr/opt/perl5/lib/site_perl/5.8.2";
 }
 
 use strict;
 use Sys::Syslog qw (:DEFAULT setlogsock);
+require xCAT::Table;
 
 #use locale;
 use Socket;
@@ -141,6 +143,7 @@ This program module file, supports the xcat messaging and logging
                 S - Message will be logged to syslog ( severe error)
                      Note S can be combined with other flags for example
 					 SE logs message to syslog and is sent to STDERR.
+					 SA logs message to syslog and to the auditlog DB table 
                 V - verbose.  This flag is not valid, the calling routine
 				should check for verbose mode before calling the message
 
@@ -169,12 +172,30 @@ This program module file, supports the xcat messaging and logging
 		# Message to STDOUT
         xCAT::MsgUtils->message('I', "Operation $value1 succeeded\n");
         xCAT::MsgUtils->message('N', "Node:$node failed\n");
+		
 		# Message to STDERR
         xCAT::MsgUtils->message('E', "Operation $value1 failed\n");
+		
         # Message to Syslog 
         xCAT::MsgUtils->message('S', "Host $host not responding\n");
+		
+        # Message to Syslog and auditlog table 
+		# see tabdump -d auditlog
+        my $rsp = {};
+		$rsp->{syslogdata}->[0] = "$host not responding\n"; # for syslog
+		# the next data is for auditlog table,  audittime added below
+		$rsp->{userid} ->[0] = $user; 
+		$rsp->{clientname} -> [0] = $client; 
+		$rsp->{clienttype} -> [0] = $clienttype; 
+		$rsp->{command} -> [0] = $command; 
+		$rsp->{noderange} -> [0] = $noderange; 
+		$rsp->{args} -> [0] = $arguments; 
+		$rsp->{status} -> [0] = $status; 
+        xCAT::MsgUtils->message('SA', $rsp);
+		
         # Message to Log and Syslog 
         xCAT::MsgUtils->message('LS', "Host $host not responding\n");
+		
         # Message to Log 
         xCAT::MsgUtils->message('L', "Host $host not responding\n");
 
@@ -255,7 +276,7 @@ sub message
     my $call_back = shift;    # optional
     my $exitcode  = shift;    # optional
 
-    # should be I, D, E, S, W , L,N
+    # should be I, D, E, S, SA ,LS, W , L,N
     #  or S(I, D, E, S, W, L,N)
 
     my $stdouterrf = \*STDOUT;
@@ -280,7 +301,7 @@ sub message
                 # build callback structure
                 my $newrsp;
                 my $sevkey = 'error';
-                my $err =
+                my $err    =
                   "Logging requested without setting up log by calling xCAT:MsgUtils->start_logging.\n";
                 push @{$newrsp->{$sevkey}}, $err;
                 push @{$newrsp->{errorcode}}, "1";
@@ -344,7 +365,7 @@ sub message
             # build callback structure
             my $newrsp;
             my $sevkey = 'error';
-            my $err =
+            my $err    =
               "Invalid or no severity code passed to MsgUtils::message().\n";
             push @{$newrsp->{$sevkey}}, $err;
             push @{$newrsp->{errorcode}}, "1";
@@ -416,11 +437,19 @@ sub message
         else
         {                             # print to stdout
 
-            print $stdouterrf $rsp."\n";    # print the message
+            print $stdouterrf $rsp . "\n";    # print the message
         }
     }
 
     # is syslog requested
+    my $newrsp;
+    if ($sev eq 'SA')
+    {    # if SA then need to pull first entry from $rsp
+            # for syslog, to preserve old interface
+        $newrsp = $rsp;
+        $rsp    = $newrsp->{syslogdata}->[0];
+    }
+
     if ($sev =~ /S/)
     {
 
@@ -436,6 +465,57 @@ sub message
         {
             print $stdouterrf
               "Unable to log $rsp to syslog because of $errstr\n";
+        }
+    }
+
+    # if write to auditlog table requested
+    if ($sev eq 'SA')
+    {
+        my $auditlogentry;
+        my $tab = xCAT::Table->new("auditlog", -create => 1, -autocommit => 0);
+        if ($tab)
+        {
+            my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
+              localtime(time);
+            my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+                                   $mon + 1, $mday, $year + 1900,
+                                   $hour, $min, $sec);
+
+            $auditlogentry->{audittime}  = $currtime;
+            $auditlogentry->{userid}     = $newrsp->{userid}->[0];
+            $auditlogentry->{clientname} = $newrsp->{clientname}->[0];
+            $auditlogentry->{clienttype} = $newrsp->{clienttype}->[0];
+            $auditlogentry->{command}    = $newrsp->{command}->[0];
+            $auditlogentry->{noderange}  = $newrsp->{noderange}->[0];
+            $auditlogentry->{args}       = $newrsp->{args}->[0];
+            $auditlogentry->{status}     = $newrsp->{status}->[0];
+
+            my @ret = $tab->setAttribs(undef, $auditlogentry);
+            if (@ret > 1)
+            {
+                print $stdouterrf "Unable to open auditlog\n";
+                eval {
+                    openlog("xCAT", '', 'local4');
+                    setlogsock(["tcp", "unix", "stream"]);
+                    syslog("err", "Unable to write to auditlog");
+                    closelog();
+                };
+            }
+            else
+            {
+                $tab->commit;
+            }
+        }
+        else
+        {    # error
+            print $stdouterrf "Unable to open auditlog\n";
+            eval {
+                openlog("xCAT", '', 'local4');
+                setlogsock(["tcp", "unix", "stream"]);
+                syslog("err", "Unable to open auditlog");
+                closelog();
+            };
+
         }
     }
     return;
