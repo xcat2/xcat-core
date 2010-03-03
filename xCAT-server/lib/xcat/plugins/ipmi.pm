@@ -27,6 +27,8 @@ use LWP 5.64;
 use HTTP::Request::Common;
 my $iem_support;
 my $vpdhash;
+my %allerrornodes=();
+
 eval {
     require IBM::EnergyManager;
     $iem_support=1;
@@ -91,7 +93,7 @@ use xCAT::data::ipmisensorevents;
 my $cache_version = 3;
 my %sdr_caches; #store sdr cachecs in memory indexed such that identical nodes do not hit the disk multiple times
 
-my $status_noop="XXXno-opXXX";
+#my $status_noop="XXXno-opXXX";
 
 my %idpxthermprofiles = (
     '0z' => [0x37,0x41,0,0,0,0,5,0xa,0x3c,0xa,0xa,0x1e],
@@ -1117,12 +1119,14 @@ sub power_with_context {
 		);
 	if($subcommand eq "on") {
 		if ($sessdata->{powerstatus} eq "on") {
-			sendmsg("on $status_noop",$sessdata->{node});
+			sendmsg("on",$sessdata->{node});
+            $allerrornodes{$sessdata->{node}}=1;
 			return; # don't bother sending command
 		}
 	} elsif ($subcommand eq "softoff" or $subcommand eq "off" or $subcommand eq "reset") {
 		if ($sessdata->{powerstatus} eq "off") {
-			sendmsg("off $status_noop",$sessdata->{node});
+			sendmsg("off",$sessdata->{node});
+            $allerrornodes{$sessdata->{node}}=1;
 			return;
 		}
 	} elsif (not $argmap{$subcommand}) {
@@ -5256,7 +5260,6 @@ sub process_request {
 
   #get new node status
   my %oldnodestatus=(); #saves the old node status
-  my @allerrornodes=();
   my $check=0;
   my $global_check=1;
   if ($sitetab) {
@@ -5327,100 +5330,99 @@ sub process_request {
         }
     }
     while (xCAT::IPMI->waitforrsp()) { yield };
-    return;
-    while ($sub_fds->count > 0 and $children > 0) {
-      my $handlednodes={};
-      forward_data($callback,$sub_fds,$handlednodes);
-      #update the node status to the nodelist.status table
-      if ($check) {
-        updateNodeStatus($handlednodes, \@allerrornodes);
-      }
-    }
-    
-    #Make sure they get drained, this probably is overkill but shouldn't hurt
-    my $rc=1;
-    while ( $rc>0 ) {
-      my $handlednodes={};
-      $rc=forward_data($callback,$sub_fds,$handlednodes);
-      #update the node status to the nodelist.status table
-      if ($check) {
-        updateNodeStatus($handlednodes, \@allerrornodes);
-      }
-    } 
+####return;
+####while ($sub_fds->count > 0 and $children > 0) {
+####  my $handlednodes={};
+####  forward_data($callback,$sub_fds,$handlednodes);
+####  #update the node status to the nodelist.status table
+####  if ($check) {
+####    updateNodeStatus($handlednodes, \@allerrornodes);
+####  }
+####}
+####
+#####Make sure they get drained, this probably is overkill but shouldn't hurt
+####my $rc=1;
+####while ( $rc>0 ) {
+####  my $handlednodes={};
+####  $rc=forward_data($callback,$sub_fds,$handlednodes);
+####  #update the node status to the nodelist.status table
+####  if ($check) {
+####    updateNodeStatus($handlednodes, \@allerrornodes);
+####  }
+####} 
 
     if ($check) {
         #print "allerrornodes=@allerrornodes\n";
         #revert the status back for there is no-op for the nodes
         my %old=(); 
-        foreach my $node (@allerrornodes) {
-	    my $stat=$oldnodestatus{$node};
-	    if (exists($old{$stat})) {
-		my $pa=$old{$stat};
-		push(@$pa, $node);
-	    }
-	    else {
-		$old{$stat}=[$node];
-	    }
+        foreach my $node (keys %allerrornodes) {
+    	    my $stat=$oldnodestatus{$node};
+    	    if (exists($old{$stat})) {
+    		    my $pa=$old{$stat};
+        		push(@$pa, $node);
+    	    } else {
+          		$old{$stat}=[$node];
+	        }
         } 
         xCAT_monitoring::monitorctrl::setNodeStatusAttributes(\%old, 1);
     }  
 }
 
-sub updateNodeStatus {
-  my $handlednodes=shift;
-  my $allerrornodes=shift;
-  foreach my $node (keys(%$handlednodes)) {
-    if ($handlednodes->{$node} == -1) { push(@$allerrornodes, $node); }  
-  }
-}
+#sub updateNodeStatus {
+#  my $handlednodes=shift;
+#  my $allerrornodes=shift;
+#  foreach my $node (keys(%$handlednodes)) {
+#    if ($handlednodes->{$node} == -1) { push(@$allerrornodes, $node); }  
+#  }
+#}
 
 
 
-sub forward_data { #unserialize data from pipe, chunk at a time, use magic to determine end of data structure
-  my $callback = shift;
-  my $fds = shift;
-  my $errornodes=shift;
+#sub forward_data { #unserialize data from pipe, chunk at a time, use magic to determine end of data structure
+# my $callback = shift;
+# my $fds = shift;
+# my $errornodes=shift;
 
-  my @ready_fds = $fds->can_read(1);
-  my $rfh;
-  my $rc = @ready_fds;
-  foreach $rfh (@ready_fds) {
-    my $data;
-    if ($data = <$rfh>) {
-      while ($data !~ /ENDOFFREEZE6sK4ci/) {
-        $data .= <$rfh>;
-      }
-      eval { print $rfh "ACK\n"; };  # Ignore ack loss to child that has given up and exited
-      my $responses=thaw($data);
-      foreach (@$responses) {
-        #save the nodes that has errors and the ones that has no-op for use by the node status monitoring
-        my $no_op=0;
-        if (exists($_->{node}->[0]->{errorcode})) { $no_op=1; }
-        else { 
-          my $text=$_->{node}->[0]->{data}->[0]->{contents}->[0];
-          #print "data:$text\n";
-          if (($text) && ($text =~ /$status_noop/)) {
-	    $no_op=1;
-            #remove the symbols that meant for use by node status
-            $_->{node}->[0]->{data}->[0]->{contents}->[0] =~ s/ $status_noop//; 
-          }
-        }  
-	#print "data:". $_->{node}->[0]->{data}->[0]->{contents}->[0] . "\n";
-        if ($no_op) {
-          if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; } 
-        } else {
-          if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
-        }
-        $callback->($_);
-      }
-    } else {
-      $fds->remove($rfh);
-      close($rfh);
-    }
-  }
-  yield; #Avoid useless loop iterations by giving children a chance to fill pipes
-  return $rc;
-}
+# my @ready_fds = $fds->can_read(1);
+# my $rfh;
+# my $rc = @ready_fds;
+# foreach $rfh (@ready_fds) {
+#   my $data;
+#   if ($data = <$rfh>) {
+#     while ($data !~ /ENDOFFREEZE6sK4ci/) {
+#       $data .= <$rfh>;
+#     }
+#     eval { print $rfh "ACK\n"; };  # Ignore ack loss to child that has given up and exited
+#     my $responses=thaw($data);
+#     foreach (@$responses) {
+#       #save the nodes that has errors and the ones that has no-op for use by the node status monitoring
+#       my $no_op=0;
+#       if (exists($_->{node}->[0]->{errorcode})) { $no_op=1; }
+#       else { 
+#         my $text=$_->{node}->[0]->{data}->[0]->{contents}->[0];
+#         #print "data:$text\n";
+#         if (($text) && ($text =~ /$status_noop/)) {
+#       $no_op=1;
+#           #remove the symbols that meant for use by node status
+#           $_->{node}->[0]->{data}->[0]->{contents}->[0] =~ s/ $status_noop//; 
+#         }
+#       }  
+#   #print "data:". $_->{node}->[0]->{data}->[0]->{contents}->[0] . "\n";
+#       if ($no_op) {
+#         if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; } 
+#       } else {
+#         if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; } 
+#       }
+#       $callback->($_);
+#     }
+#   } else {
+#     $fds->remove($rfh);
+#     close($rfh);
+#   }
+# }
+# yield; #Avoid useless loop iterations by giving children a chance to fill pipes
+# return $rc;
+#}
 
 sub donode {
   my $node = shift;
@@ -5482,6 +5484,9 @@ sub sendmsg {
         $curptr->{errorcode}=[$rc];
         $curptr->{error}=[$text];
         $curptr=$curptr->{error}->[0];
+        if (defined $node) {
+            $allerrornodes{$node}=1;
+        }
     } else {
         $curptr->{data}=[{contents=>[$text]}];
         $curptr=$curptr->{data}->[0];
