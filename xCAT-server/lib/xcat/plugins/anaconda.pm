@@ -776,18 +776,47 @@ sub mkinstall
             if ($maxmem) {
                 $kcmdline.=" mem=$maxmem";
             }
+            my $ksdev = "";
             if ($ent->{installnic})
             {
-                $kcmdline .= " ksdevice=" . $ent->{installnic};
+                if ($ent->{installnic} eq "mac")
+                {
+                    my $mactab = xCAT::Table->new("mac");
+                    my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                    $ksdev = $macref->{mac};
+                }
+                else
+                {
+                    $ksdev = $ent->{installnic};
+                }
             }
             elsif ($ent->{primarynic})
             {
-                $kcmdline .= " ksdevice=" . $ent->{primarynic};
+                if ($ent->{primarynic} eq "mac")
+                {
+                    my $mactab = xCAT::Table->new("mac");
+                    my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                    $ksdev = $macref->{mac};
+                }
+                else
+                {
+                    $ksdev = $ent->{primarynic};
+                }
             }
             else
             {
-                $kcmdline .= " ksdevice=eth0";
+                $ksdev = "eth0";
             }
+            if ($ksdev eq "")
+            {
+                $callback->(
+                        {
+                         error => ["No MAC address defined for " . $node],
+                         errorcode => [1]
+                        }
+                        );
+             }
+             $kcmdline .= " ksdevice=" . $ksdev;
 
             #TODO: dd=<url> for driver disks
             if (defined($sent->{serialport}))

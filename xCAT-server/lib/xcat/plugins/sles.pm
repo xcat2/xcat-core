@@ -653,18 +653,47 @@ sub mkinstall
             } 
             else 
             {
+                my $netdev = "";
                 if ($ent->{installnic})
                 {
-                    $kcmdline .= " netdevice=" . $ent->{installnic};
+                    if ($ent->{installnic} eq "mac")
+                    {
+                        my $mactab = xCAT::Table->new("mac");
+                        my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                        $netdev = $macref->{mac};
+                     }
+                    else
+                    {
+                        $netdev = $ent->{installnic};
+                    }
                 }
                 elsif ($ent->{primarynic})
                 {
-                    $kcmdline .= " netdevice=" . $ent->{primarynic};
+                    if ($ent->{primarynic} eq "mac")
+                    {
+                        my $mactab = xCAT::Table->new("mac");
+                        my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                        $netdev = $macref->{mac};
+                    }
+                    else
+                    {
+                        $netdev = $ent->{primarynic};
+                    }
                 }
                 else
                 {
-                    $kcmdline .= " netdevice=eth0";
+                    $netdev = "eth0";
                 }
+                if ($netdev eq "") #why it is blank, no mac defined?
+                {
+                    $callback->(
+                        {
+                            error => ["No mac.mac for $node defined"],
+                            errorcode => [1]
+                        }
+                    );
+                }
+                $kcmdline .= " netdevice=" . $netdev;
             }
 
             #TODO: driver disk handling should in SLES case be a mod of the install source, nothing to see here
