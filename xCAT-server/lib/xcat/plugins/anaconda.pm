@@ -361,7 +361,7 @@ sub mknetboot
         {
             $xcatmaster = $ient->{xcatmaster};
         } else {
-            $callback->({error=>"Error: xcatmaster for $node is not set!\nPlease check the noderes table",errorcode=>[1]});
+            $xcatmaster = '!myipfn!'; #allow service nodes to dynamically nominate themselves as a good contact point, this is of limited use in the event that xcat is not the dhcp/tftp server
         }
 
         if ($ient and $ient->{tftpserver})
