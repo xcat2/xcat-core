@@ -3,6 +3,10 @@
 #
 echo "post scripts" >/root/post.log
 export PRINIC=#TABLE:noderes:THISNODE:primarynic#
+if [ "$PRINIC" == "mac"]
+then
+    export PRINIC=#TABLE:mac:THISNODE:mac#
+fi
 if [ -z "$PRINIC" ]
 then
     export PRINIC=eth0

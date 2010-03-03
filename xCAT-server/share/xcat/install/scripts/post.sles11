@@ -17,6 +17,10 @@ STARTMODE=onboot
 EOF
 
 export PRINIC=#TABLE:noderes:$NODE:primarynic#
+if [ "$PRINIC" == "mac"]
+then
+    export PRINIC=#TABLE:mac:$NODE:mac#
+fi
 if [ -z "$PRINIC" ]; then
     export PRINIC=eth0
 elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?` == "0" ]]; then
