@@ -180,7 +180,7 @@ sub mknetboot
         {
             if($statelite) {
                 # TODO: maybe the $osver-$arch-$profile record doesn't exist in osimage, but it the statelite rootimg can exist
-                $callback->({error=> ["$node: statelite image $osver-$arch-$profile doesn't exist"], errorcode => [1]});
+                $callback->({error=> ["$node: statelite image $osver-$arch-$profile doesn't exist; or kernel/initrd.gz doesn't exist"], errorcode => [1]});
             } else {
                 $callback->(
                 {
