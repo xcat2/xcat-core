@@ -80,6 +80,66 @@ replace: userAccountControl
 userAccountControl: 512';
 
 
+sub list_user_accounts { #provide enough data to construct an /etc/passwd looking output
+    my %args = @_;
+    my $directoryserver = $args{directoryserver};
+    my $dnsdomain = $args{dnsdomain};
+    unless ($dnsdomain and $directoryserver) {
+        die "Invalid arguments";
+    }
+    my $domain_components = $dnsdomain;
+    $domain_components =~ s/^\.//;
+    $domain_components =~ s/\./,dc=/g;
+    $domain_components =~ s/^/dc=/;
+    my @searchcmd = qw/ldapsearch  -H /;
+    push @searchcmd,"ldaps://$directoryserver","-b",$domain_components;
+    push @searchcmd,qw/(&(objectClass=user)(!(objectClass=computer))) sAMAccountName unixHomeDirectory uidNumber gidNumber cn loginShell/;
+    my $searchout;
+    my $searchin;
+    my $searcherr = gensym;
+    my $search = open3($searchin,$searchout,$searcherr,@searchcmd);
+    print Dumper(@searchcmd);
+    my $searchselect = IO::Select->new($searchout,$searchin);
+    my @handles;
+    my $failure;
+    my %currvalues =();
+    my %userhash= ();
+    while (@handles = $searchselect->can_read()) {
+        foreach (@handles) {
+            my $line = <$_>;
+            print $line;
+            if (not defined $line) {
+                $searchselect->remove($_);
+                next;
+            }
+            if ($_ == $searcherr) {
+                if ($line =~ /error/i or $line =~ /problem/i) {
+                    print $line;
+                    $failure=1;
+                }
+            } elsif ($line =~ /^dn: (.*)$/) {
+                foreach(keys %currvalues) {
+                    $userhash{$currvalues{accountname}}->{$_} = $currvalues{$_};
+                }
+                %currvalues=();
+            } elsif ($line =~ /^cn: (.*)$/) {
+                $currvalues{fullname} = $1;
+            } elsif ($line =~ /^sAMAccountName: (.*)$/) {
+                $currvalues{accountname} = $1;
+            } elsif ($line =~ /^uidNumber: (.*)$/) {
+                $currvalues{uid} = $1;
+            } elsif ($line =~ /^gidNumber: (.*)$/) {
+                $currvalues{gid} = $1;
+            } elsif ($line =~ /^unixHomeDirectory: (.*)$/) {
+                $currvalues{homedir} = $1;
+            } elsif ($line =~ /^loginShell: (.*)$/) {
+                $currvalues{shell} = $1;
+            }
+        }
+    }
+    if ($failure) { return undef; }
+    return \%userhash;
+}
 =cut
   example: add_user_account(username=>'fred',fullname=>'fred the great');
 =cut
@@ -336,7 +396,8 @@ sub find_free_params { #search for things like next available uidNumber
 
 
 #use Data::Dumper;
-#print krb_login(username=>"Administrator",password=>"cluster",realm=>"XCAT.E1350");
+#krb_login(username=>"Administrator",password=>"cluster",realm=>"XCAT.E1350");
+#print Dumper(list_user_accounts(directoryserver=>"v4.xcat.e1350",dnsdomain=>'xcat.e1350'));
 #print Dumper(find_free_params(directoryserver=>"v4.xcat.e1350",ou=>"dc=xcat,dc=e1350"));
 #use Data::Dumper;
 #print Dumper(add_user_account(dnsdomain=>'xcat.e1350',username=>'ffuu',directoryserver=>'v4.xcat.e1350'));
