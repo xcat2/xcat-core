@@ -136,7 +136,19 @@ sub list_user_accounts { #provide enough data to construct an /etc/passwd lookin
         }
     }
     if ($failure) { return undef; }
+    foreach(keys %currvalues) {
+        $userhash{$currvalues{accountname}}->{$_} = $currvalues{$_};
+    }
     return \%userhash;
+}
+sub delete_user_account { #provide enough data to construct an /etc/passwd looking output
+    my %args = @_;
+    my $directoryserver = $args{directoryserver};
+    my $dnsdomain = $args{dnsdomain};
+    my $username = $args{username};
+    unless ($dnsdomain and $directoryserver $username) {
+        die "Invalid arguments";
+    }
 }
 =cut
   example: add_user_account(username=>'fred',fullname=>'fred the great');
