@@ -98,7 +98,6 @@ sub list_user_accounts { #provide enough data to construct an /etc/passwd lookin
     my $searchin;
     my $searcherr = gensym;
     my $search = open3($searchin,$searchout,$searcherr,@searchcmd);
-    print Dumper(@searchcmd);
     my $searchselect = IO::Select->new($searchout,$searchin);
     my @handles;
     my $failure;
@@ -107,7 +106,6 @@ sub list_user_accounts { #provide enough data to construct an /etc/passwd lookin
     while (@handles = $searchselect->can_read()) {
         foreach (@handles) {
             my $line = <$_>;
-            print $line;
             if (not defined $line) {
                 $searchselect->remove($_);
                 next;
