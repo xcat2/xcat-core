@@ -146,7 +146,7 @@ sub delete_user_account { #provide enough data to construct an /etc/passwd looki
     my $directoryserver = $args{directoryserver};
     my $dnsdomain = $args{dnsdomain};
     my $username = $args{username};
-    unless ($dnsdomain and $directoryserver $username) {
+    unless ($dnsdomain and $directoryserver and $username) {
         die "Invalid arguments";
     }
 }
