@@ -64,7 +64,8 @@ sub process_request {
 		
 	# if request comes from node post script .awk file.
 	}elsif($request->{'_xcat_clienthost'}){
-		$noderange = noderange($request->{'_xcat_clienthost'}.",".$request->{'_xcat_clientfqdn'});
+		my @nodenames = noderange($request->{'_xcat_clienthost'}.",".$request->{'_xcat_clientfqdn'});
+		$noderange = $nodenames[0];
 	}else{
 		$callback->({error=>["Well Kemosabi, I can't figure out who you are."],errorcode=>[1]});
 		return;
