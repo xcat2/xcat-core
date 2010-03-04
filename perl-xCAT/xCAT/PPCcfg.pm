@@ -12,7 +12,8 @@ use xCAT::Usage;
 ##########################################
 my %rspconfig = ( 
     sshcfg => \&sshcfg,
-    frame  => \&frame
+    frame  => \&frame,
+    hostname => \&hostname
 );
 
 
@@ -40,7 +41,9 @@ sub parse_args {
         "network",
         "HMC_passwd",
         "admin_passwd",
-        "general_passwd"
+        "general_passwd",
+        "*_passwd",
+        "hostname"
     );
     my @bpa = (
         "frame",
@@ -48,7 +51,9 @@ sub parse_args {
         "newpassword",
         "HMC_passwd",
         "admin_passwd",
-        "general_passwd"
+        "general_passwd",
+        "*_passwd",
+        "hostname"
     );
     my @ppc = (
         "sshcfg"
@@ -151,7 +156,7 @@ sub parse_args {
     ####################################
     # Return method to invoke
     ####################################
-    if ( exists($cmds{frame}) ) {
+    if ( exists($cmds{frame}) or exists($cmds{hostname}) ) {
         $request->{hcp} = "hmc";
         $request->{method} = "cfg";
         return( \%opt );
@@ -160,7 +165,7 @@ sub parse_args {
     ####################################
     # Return method to invoke
     ####################################
-    if ( exists($cmds{HMC_passwd}) or exists($cmds{general_passwd}) or exists($cmds{admin_passwd}) ) {
+    if ( exists($cmds{HMC_passwd}) or exists($cmds{general_passwd}) or exists($cmds{admin_passwd}) or exists($cmds{"*_passwd"}) ) {
         $request->{hcp} = "hmc";
         $request->{method} = "passwd";
         return( \%opt );
@@ -246,10 +251,10 @@ sub parse_option {
         }
     }
 
-    if ( $command eq 'admin_passwd' or $command eq 'general_passwd' ){
+    if ( $command eq 'admin_passwd' or $command eq 'general_passwd' or $command eq '*_passwd' ){
         my ($passwd,$newpasswd) = split /,/, $value;
         if ( !$passwd or !$newpasswd) {
-            return( "Current password and new password couldn't be empty for user 'admin' and 'general'" );
+            return( "Current password and new password couldn't be empty" );
         }
     }
 
@@ -273,24 +278,37 @@ sub passwd {
     my $exp     = shift;
     my $args    = $request->{arg};
     my $result;
+    my $users;
 
     foreach my $arg ( @$args ) {
         my ($user,$value) = split /=/, $arg;
         my ($passwd,$newpasswd) = split /,/, $value;
         $user =~ s/_passwd$//;
+        $user =~ s/^HMC$/access/g;
 
-        while ( my ($cec,$h) = each(%$hash) ) {
-            while ( my ($node,$d) = each(%$h) ) {
-                my $type = @$d[4];
-                my $data = xCAT::PPCcli::chsyspwd( $exp, $user, $type, $cec, $newpasswd, $passwd );
-                my $Rc = shift(@$data);
-                push @$result, [$node,@$data[0],$Rc];
+        if ( $user eq "*" ) {
+            push @$users, "access";
+            push @$users, "admin";
+            push @$users, "general";
+        } else {
+            push @$users, $user;
+        }
 
-                ##################################
-                # Write the new password to table
-                ##################################
-                if ( $Rc == SUCCESS ) {
-                    xCAT::PPCdb::update_credentials( $node, $type, $user, $newpasswd );
+        foreach my $usr ( @$users ) {
+            while ( my ($cec,$h) = each(%$hash) ) {
+                while ( my ($node,$d) = each(%$h) ) {
+                    my $type = @$d[4];
+                    my $data = xCAT::PPCcli::chsyspwd( $exp, $usr, $type, $cec, $newpasswd, $passwd );
+                    my $Rc = shift(@$data);
+                    $usr =~ s/^access$/HMC/g;
+                    push @$result, [$node,"$usr: @$data[0]",$Rc];
+    
+                    ##################################
+                    # Write the new password to table
+                    ##################################
+                    if ( $Rc == SUCCESS ) {
+                        xCAT::PPCdb::update_credentials( $node, $type, $usr, $newpasswd );
+                    }
                 }
             }
         }
@@ -453,7 +471,7 @@ sub frame {
                     if ( !defined($ent) or !defined($ent->{id}) ) {
                         return( [[$node,"Cannot find frame num in database",RC_ERROR]] );
                     }
-                    $data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, $ent->{id} );
+                    $data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=".$ent->{id} );
                     $Rc = shift(@$data);
 
                     #################################
@@ -470,7 +488,7 @@ sub frame {
                     # Set frame number
                     # Read the frame number from opt
                     #################################
-                    $data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, $value );
+                    $data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=$value" );
                     $Rc = shift(@$data);
 
                     #################################
@@ -492,6 +510,72 @@ sub frame {
             return( [@$result] );
         }  
     }
+}
+
+sub hostname {
+    my $request = shift;
+    my $exp     = shift;
+    my $value   = shift;
+    my $hash    = shift;
+    my $arg     = $request->{arg};
+    my $result;
+
+    foreach ( @$arg ) {
+        my $data;
+        my $Rc;
+
+        my ($cmd, $value) = split /=/, $_;
+        if ( $cmd ne "hostname" ) {
+            return( [[@$exp[2],"Multiple option $cmd and hostname is not accepted",SUCCESS]] );
+        }
+
+        while ( my ($cec,$h) = each(%$hash) ) {
+            while ( my ($node,$d) = each(%$h) ) {
+                if ( !defined($value) ) {
+                    #################################
+                    # Get system name
+                    #################################
+                    $data = xCAT::PPCcli::lssyscfg( $exp, @$d[4], @$d[2], 'name' );
+                    $Rc = shift(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != SUCCESS ) {
+                        push @$result, [$node,@$data[0],$Rc];
+                    }
+
+                    push @$result, [$node,@$data[0],SUCCESS];
+                } elsif ( $value eq '*' ) {
+                    $data = xCAT::PPCcli::chsyscfg( $exp, @$d[4], $d, "new_name=$node" );
+                    $Rc = shift(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != SUCCESS ) {
+                        push @$result, [$node,@$data[0],$Rc];
+                    }
+
+                    push @$result, [$node,@$data[0],SUCCESS];
+                } else {
+                    $data = xCAT::PPCcli::chsyscfg( $exp, @$d[4], $d, "new_name=$value" );
+                    $Rc = shift(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != SUCCESS ) {
+                        push @$result, [$node,@$data[0],$Rc];
+                    }
+
+                    push @$result, [$node,@$data[0],SUCCESS];
+                }
+            }
+        }
+    }
+
+    return( [@$result] );
 }
 
 1;

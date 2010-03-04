@@ -97,18 +97,27 @@ my %usage = (
            textid=<*>|
            frame=<*>|
            ntp=<[ntp],[ip],[frequency],[v3]>
-   FSP specific:
-       rspconfig <noderange> [autopower|iocap|decfg|memdecfg|procdecfg|time|date|spdump|sysdump]
+   FSP/BPA Common:
+       rspconfig <noderange> [autopower|iocap|decfg|memdecfg|procdecfg|time|date|spdump|sysdump|network|hostname]
        rspconfig <noderange> autopower=<enable|disable>|
            iocap=<enable|disable>|
            decfg=<enable|disable>:<policy name>,...|
            memdecfg=<configure|deconfigure>:<processing unit>:<bank|unit>:<bank/unit number>:id,...|
            procdecfg=<configure|deconfigure>:<processing unit>:id,...|
            date=<mm-dd-yyyy>|
-           time=<hh:mm:ss>
+           time=<hh:mm:ss>|
+           network=<*|[ip],[host],[gateway],[netmask]>|
+           HMC_passwd=<currentpasswd,newpasswd>|
+           admin_passwd=<currentpasswd,newpasswd>|
+           general_passwd=<currentpasswd,newpasswd>|
+           *_passwd=<currentpasswd,newpasswd>|
+           hostname=<*|hostname>
+   BPA specific:
+       rspconfig <noderange> [frame]
+       rspconfig <noderange> frame=<*|frame>
    HMC specific:
-           rspconfig <noderange>  [sshcfg]
-           rspconfig <noderange>  [sshcfg=<enable|disable>]",
+       rspconfig <noderange>  [sshcfg]
+       rspconfig <noderange>  [sshcfg=<enable|disable>]",
     "getmacs" => 
 "Usage: 
    Common:

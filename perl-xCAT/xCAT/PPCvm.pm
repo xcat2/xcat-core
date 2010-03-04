@@ -689,7 +689,7 @@ sub remove {
                     	my $cfgdata = @$service_lparid[0];
                     		if ( ($id == $cfgdata) && ($cfgdata !~ /none/) ) {
                     			$cfgdata = "service_lpar_id=none";
-                        		my $result = xCAT::PPCcli::chsyscfg( $exp, "sys", $d, $cfgdata );
+                        		my $result = xCAT::PPCcli::chsyscfg( $exp, "fsp", $d, $cfgdata );
                         		$Rc = shift(@$result);
                         		if ( $Rc != SUCCESS ) {
                         			return( [[$lpar, @$service_lparid[0], $Rc]] );
@@ -1918,7 +1918,7 @@ my $ppctab  = xCAT::Table->new('ppc');
         ###########################################
 		if ( $Rc == SUCCESS) {
 			$cfgdata	= "service_lpar_id=$lpar_id";  
-	    	$result		= xCAT::PPCcli::chsyscfg( $exp, "sys", $d, $cfgdata  );
+	    	$result		= xCAT::PPCcli::chsyscfg( $exp, "fsp", $d, $cfgdata  );
 	    	$Rc			= shift(@$result);
             if ( $Rc != SUCCESS ) {
             	$ppctab->close;
