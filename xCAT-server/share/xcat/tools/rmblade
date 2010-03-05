@@ -77,7 +77,8 @@ print "ip: $ip\n";
 print "host: $mm\n";
 print "slot: $slot\n";
 # we now have slot and amm.  Need to now get which blade this is:
-my $node = `nodels mp.id==$slot@mp.mpa==$mm`;
+my $nlscmd = "nodels mp.id==$slot".'@'."mp.mpa==$mm"
+my $node = `$nlscmd`;
 chomp($node);
 print "node: $node\n";
 if($node ne ''){
