@@ -1512,7 +1512,33 @@ my @nodeattrs = (
                  tabentry => 'switch.interface',
                  access_tabentry => 'switch.node=attr:node',
                 },
-  );
+####################
+#  hosts table    #
+####################
+        {attr_name => 'ip',
+                 tabentry => 'hosts.ip',
+                 access_tabentry => 'hosts.node=attr:node',
+             },
+        {attr_name => 'hostnames',
+                 tabentry => 'hosts.hostnames',
+                 access_tabentry => 'hosts.node=attr:node',
+             },
+        {attr_name => 'otherinterfaces',
+                 tabentry => 'hosts.otherinterfaces',
+                 access_tabentry => 'hosts.node=attr:node',
+             },
+####################
+# prescripts table#
+####################
+        {attr_name => 'prescripts-begin',
+                 tabentry => 'prescripts.begin',
+                 access_tabentry => 'prescripts.node=attr:node',
+			},
+        {attr_name => 'prescripts-end',
+                 tabentry => 'prescripts.end',
+                 access_tabentry => 'prescripts.node=attr:node',
+			},
+  );	# end of @nodeattrs that applies to both nodes and groups
 
 
 ####################
@@ -1542,36 +1568,10 @@ my @nodeattrs = (
                  tabentry => 'nodelist.primarysn',
                  access_tabentry => 'nodelist.node=attr:node',
              },
-####################
-#  hosts table    #
-####################
-        {attr_name => 'ip',
-                 tabentry => 'hosts.ip',
-                 access_tabentry => 'hosts.node=attr:node',
-             },
-        {attr_name => 'hostnames',
-                 tabentry => 'hosts.hostnames',
-                 access_tabentry => 'hosts.node=attr:node',
-             },
-        {attr_name => 'otherinterfaces',
-                 tabentry => 'hosts.otherinterfaces',
-                 access_tabentry => 'hosts.node=attr:node',
-             },
- {attr_name => 'usercomment',
+		{attr_name => 'usercomment',
                  tabentry => 'nodelist.comments',
                  access_tabentry => 'nodelist.node=attr:node',
              },
-####################
-# prescripts table#
-####################
-        {attr_name => 'prescripts-begin',
-                 tabentry => 'prescripts.begin',
-                 access_tabentry => 'prescripts.node=attr:node',
-  },
-        {attr_name => 'prescripts-end',
-                 tabentry => 'prescripts.end',
-                 access_tabentry => 'prescripts.node=attr:node',
-  },
           );
 
 # add on the node attrs from other tables
@@ -1864,14 +1864,6 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'nodegroup.wherevals',
                  access_tabentry => 'nodegroup.groupname=attr:groupname',
                  },
- {attr_name => 'ip',
-                 tabentry => 'hosts.ip',
-                 access_tabentry => 'hosts.node=attr:node',
-                },
- {attr_name => 'hostnames',
-                 tabentry => 'hosts.hostnames',
-                 access_tabentry => 'hosts.node=attr:node',
-                },
  {attr_name => 'usercomment',
                  tabentry => 'nodegroup.comments',
                  access_tabentry => 'nodegroup.groupname=attr:groupname',
