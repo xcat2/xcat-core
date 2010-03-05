@@ -163,12 +163,14 @@ $rootimg_dir="$destdir/rootimg";
 
 
 unless ($osver and $profile and $netdriver and $prinic) {
-   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> -m <mode>'."\n";
+   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [-m <mode> [--permission <permission>]]'."\n";
    print '       genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -k <KERNELVER> <imagename>'."\n";
+   print "       --permission only works when '-m statelite' is set\n";
    print "Examples:\n";
    print " genimage -i eth0 -n tg3 -o centos5.1 -p compute\n";
    print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
    print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot -m statelite\n";
+   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot -m statelite --permission 777\n";
    print " genimage -i eth0 -n tg3 myimage\n";
    exit 1;
 }
