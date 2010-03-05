@@ -164,7 +164,7 @@ sub list_user_accounts { #provide enough data to construct an /etc/passwd lookin
     $domain_components =~ s/^/dc=/;
     my @searchcmd = qw/ldapsearch  -H /;
     push @searchcmd,"ldaps://$directoryserver","-b",$domain_components;
-    push @searchcmd,qw/(&(objectClass=user)(!(objectClass=computer))) sAMAccountName unixHomeDirectory uidNumber gidNumber cn loginShell/;
+    push @searchcmd,qw/(&(&(objectClass=user)(!(objectClass=computer)))(!(isCriticalSystemObject=TRUE))) sAMAccountName unixHomeDirectory uidNumber gidNumber cn loginShell/;
     my $searchout;
     my $searchin;
     my $searcherr = gensym;
