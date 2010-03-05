@@ -360,19 +360,21 @@ sub update_node_attribs
     ###########################
     # Update ppcdirect table
     ###########################
-    my $pwhash = $db->{ppcdirect}->getNodeAttribs( $predefined_node, [qw(username password comments disable)]);
-    if ( $pwhash)
-    {
-        if ( $namediff)
+    my @users = qw(HMC admin general);
+    foreach my $user ( @users ) {
+        my $pwhash = $db->{ppcdirect}->getAttribs( {hcp=>$predefined_node,username=>$user}, qw(password comments disable));
+        if ( $pwhash )
         {
-            $db->{ppcdirect}->delEntries( {hcp=>$predefined_node}) if ( $namediff);;
-            $db->{ppcdirect}->setAttribs({hcp=>$name},
-                    {username=>$pwhash->{username},
-                    password=>$pwhash->{password},
-                    comments=>$pwhash->{comments},
-                    disable=>$pwhash->{disable}});
-            $db->{vpd}->{commit} = 1;
-            $updated = 1;
+            if ( $namediff )
+            {
+                $db->{ppcdirect}->delEntries( {hcp=>$predefined_node,username=>$user}) if ( $namediff);;
+                $db->{ppcdirect}->setAttribs({hcp=>$name,username=>$user},
+                        {password=>$pwhash->{password},
+                        comments=>$pwhash->{comments},
+                        disable=>$pwhash->{disable}});
+                $db->{ppcdirect}->{commit} = 1;
+                $updated = 1;
+            }
         }
     }
 
