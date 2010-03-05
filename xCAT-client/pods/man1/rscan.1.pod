@@ -27,7 +27,7 @@ B<-v>          Command Version.
 
 B<-V>          Verbose output.
 
-B<-u>          Updates and then prints out node definitions in the xCAT database for the hardware control point. It updates the existing nodes that contain the same mtms and serial number for nodes managed by thespecified hardware control point. This primarily works with CEC/FSP and frame/BPA nodes when the node name is not the same as the managed system name on hardware control point (HMC), This flag will update the BPA/FSP node name definitions to be listed as the managed system name. in the xCAT database.  
+B<-u>          Updates and then prints out node definitions in the xCAT database for CEC/BPA. It updates the existing nodes that contain the same mtms and serial number for nodes managed by the specified hardware control point. This primarily works with CEC/FSP and frame/BPA nodes when the node name is not the same as the managed system name on hardware control point (HMC), This flag will update the BPA/FSP node name definitions to be listed as the managed system name in the xCAT database.  
 
 B<-w>          Writes output to xCAT database.
 
@@ -176,7 +176,7 @@ Output is similar to:
 
   #Updated following nodes:
   type    name                           id      type-model  serial-number  address
-  fsp     Server-9125-F2A-SN0262672-new  3       9125-F2A    0262672        192.168.200.243
+  fsp     Server-9125-F2A-SN0262672-B  3       9125-F2A    0262672        192.168.200.243
 
 =head1 FILES
 

@@ -76,6 +76,12 @@ B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
 
+B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> {B<hostname>}
+
+B<rspconfig> I<noderange> B<hostname>={B<*|name>}
+
 =head2 BPA Specific:
 
 B<rspconfig> I<noderange> {B<network>}
@@ -91,6 +97,12 @@ B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
 B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> {B<hostname>}
+
+B<rspconfig> I<noderange> B<hostname>={B<*|name>}
 
 =head2 HMC Specific:
 
@@ -146,6 +158,14 @@ Get or set Gratuitous ARP generation interval. The unit is number of 1/2 second.
 =item B<gateway>
 
 The gateway ip address.
+
+=item B<hostname>
+
+Display the CEC/BPA system names
+
+=item B<hostname>={I<*|name>}
+
+Set CEC/BPA system names to the names in xCAT DB or the input name.
 
 =item B<iocap>={I<enable>|I<disable>}
 
