@@ -1130,7 +1130,7 @@ sub nodels
     	my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage:";
-        push @{$rsp{data}}, "  nodels [noderange] [-H|--with-fieldname] [table.attribute | shortname] [...]";
+        push @{$rsp{data}}, "  nodels [noderange] [-b|--blame] [-H|--with-fieldname] [table.attribute | shortname] [...]";
         push @{$rsp{data}}, "  nodels {-v|--version}";
         push @{$rsp{data}}, "  nodels [-?|-h|--help]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
@@ -1143,8 +1143,9 @@ sub nodels
         @ARGV=();
     }
     my $NOTERSE;
+    my $ATTRIBUTION;
 
-   if (!GetOptions('h|?|help'  => \$HELP, 'H|with-fieldname' => \$NOTERSE, 'v|version' => \$VERSION,) ) { $nodels_usage->(1); return; }
+   if (!GetOptions('h|?|help'  => \$HELP, 'H|with-fieldname' => \$NOTERSE, 'b|blame' => \$ATTRIBUTION, 'v|version' => \$VERSION,) ) { $nodels_usage->(1); return; }
 
     # Help
     if ($HELP) { $nodels_usage->(0); return; }
@@ -1280,7 +1281,7 @@ sub nodels
                 if (grep /^$nodekey$/,@cols) {
                     $removenodecol=0;
                 }
-                my $rechash=$tabh->getNodesAttribs($nodes,\@cols);
+                my $rechash=$tabh->getNodesAttribs($nodes,\@cols,withattribution=>$ATTRIBUTION);
                 foreach $node (@$nodes)
                 {
                     my @cols;
@@ -1290,6 +1291,7 @@ sub nodels
 
                         foreach (keys %$rec)
                         {
+                          if ($_ eq '!!xcatgroupattribution!!') { next; }
                           if ($_ eq $nodekey and $removenodecol) { next; }
                           $satisfiedreqs{$_}=1;
                           my %datseg=();
@@ -1309,7 +1311,11 @@ sub nodels
                           unless ($terse > 0) {
                               $datseg{data}->[0]->{desc}     = [$labels{$_}];
                           }
-                          $datseg{data}->[0]->{contents} = [$rec->{$_}];
+                          if ($rec->{'!!xcatgroupattribution!!'} and $rec->{'!!xcatgroupattribution!!'}->{$_}) {
+                            $datseg{data}->[0]->{contents} = [$rec->{$_}." (inherited from group ".$rec->{'!!xcatgroupattribution!!'}->{$_}.")"];
+                          } else {
+                            $datseg{data}->[0]->{contents} = [$rec->{$_}];
+                          }
                           $datseg{name} = [$node]; #{}->{contents} = [$rec->{$_}];
                           push @{$noderecs{$node}}, \%datseg;
                         }

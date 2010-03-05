@@ -1898,9 +1898,11 @@ sub getNodesAttribs {
         return dbc_call($self,'getNodesAttribs',@_);
     }
     my $nodelist = shift;
+    my %options=();
     my @attribs;
     if (ref $_[0]) {
         @attribs = @{shift()};
+        %options = @_;
     } else {
         @attribs = @_;
     }
@@ -1925,7 +1927,7 @@ sub getNodesAttribs {
     }
     my $rethash;
     foreach (@$nodelist) {
-        my @nodeentries=$self->getNodeAttribs($_,\@attribs);
+        my @nodeentries=$self->getNodeAttribs($_,\@attribs,%options);
         $rethash->{$_} = \@nodeentries; #$self->getNodeAttribs($_,\@attribs);
     }
     $self->_clear_cache;
@@ -2047,13 +2049,15 @@ sub getNodeAttribs
     }
     my $node    = shift;
     my @attribs;
+    my %options = ();
     if (ref $_[0]) {
         @attribs = @{shift()};
+        %options = @_;
     } else {
         @attribs = @_;
     }
     my $datum;
-    my @data = $self->getNodeAttribs_nosub($node, \@attribs);
+    my @data = $self->getNodeAttribs_nosub($node, \@attribs,%options);
     #my ($datum, $extra) = $self->getNodeAttribs_nosub($node, \@attribs);
     #if ($extra) { return undef; }    # return (undef,"Ambiguous query"); }
     defined($data[0])
@@ -2166,11 +2170,16 @@ sub getNodeAttribs_nosub
     my $self   = shift;
     my $node   = shift;
     my $attref = shift;
+    my %options = @_;
     my @data;
     my $datum;
     my @tents;
     my $return = 0;
-    @tents = $self->getNodeAttribs_nosub_returnany($node, $attref);
+    @tents = $self->getNodeAttribs_nosub_returnany($node, $attref,%options);
+    my $nodekey = "node";
+    if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+        $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
+    }
     foreach my $tent (@tents) {
       $datum={};
       foreach (@$attref)
@@ -2179,12 +2188,18 @@ sub getNodeAttribs_nosub
         {
            $return = 1;
            $datum->{$_} = $tent->{$_};
+           if ($options{withattribution} and $_ ne $nodekey) {
+               $datum->{'!!xcatgroupattribution!!'}->{$_} = $tent->{'!!xcatsourcegroup!!'};
+           }
         } else { #attempt to fill in gapped attributes
            unless (scalar(@$attref) <= 1) {
-             my $sent = $self->getNodeAttribs($node, [$_]);
+             my $sent = $self->getNodeAttribs($node, [$_],%options);
              if ($sent and defined($sent->{$_})) {
                  $return = 1;
                  $datum->{$_} = $sent->{$_};
+                if ($options{withattribution} and $_ ne $nodekey) {
+                   $datum->{'!!xcatgroupattribution!!'}->{$_} = $sent->{'!!xcatgroupattribution!!'}->{$_};
+               }
              }
            }
         }
@@ -2228,6 +2243,7 @@ sub getNodeAttribs_nosub_returnany
     my $self    = shift;
     my $node    = shift;
     my @attribs = @{shift()};
+    my %options = @_;
     my @results;
 
     #my $recurse = ((scalar(@_) == 1) ?  shift : 1);
@@ -2254,7 +2270,8 @@ sub getNodeAttribs_nosub_returnany
             if ($data != undef)
             {
                 foreach (@results) {
-                   if ($_->{node}) { $_->{node} = $node; }
+                   if ($_->{$nodekey}) { $_->{$nodekey} = $node; }
+                   if ($options{withattribution}) { $_->{'!!xcatsourcegroup!!'} = $group; }
                 };
                 return @results;
             }

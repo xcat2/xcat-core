@@ -4,7 +4,7 @@ B<nodels> - lists the nodes, and their attributes, from the xCAT database.
 
 =head1 SYNOPSIS
 
-B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table.column> | I<shortname>] [I<...>]
+B<nodels> [I<noderange>] [B<-b> | B<--blame>] [B<-H> | B<--with-fieldname>] [I<table.column> | I<shortname>] [I<...>]
 
 B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table>]
 
@@ -72,6 +72,10 @@ Command Version.
 =item B<-H|--with-fieldname>
 
 Force display of table name and column name context for each result
+
+=item B<-b|--blame>
+
+For values inherited from groups, display which groups provided the inheritence
 
 =item B<-?|-h|--help>
 
