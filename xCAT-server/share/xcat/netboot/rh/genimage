@@ -47,6 +47,8 @@ my $otherpkglist;
 my $postinstall_filename;
 my $rootimg_dir;
 my $rwfiles;   # these files are used by statelite for tmpfs rw
+my $mode;
+my $permission; # the permission works only for statelite mode currently
 
 
 sub xdie {
@@ -65,7 +67,8 @@ GetOptions(
    'l=s' => \$rootlimit,
    't=s' => \$tmplimit,
    'k=s' => \$kernelver,
-   'm=s' => \$mode
+   'm=s' => \$mode,
+   'permission=s' => \$permission
 );
 if (@ARGV > 0) {
     $imagename=$ARGV[0];
@@ -128,6 +131,12 @@ if (@ARGV > 0) {
     $otherpkglist=$ref1->{'otherpkglist'};
     $postinstall_filename=$ref1->{'postinstall'};
     $destdir=$ref1->{'rootimgdir'};
+}
+
+if ($mode eq "statelite") {
+    if (!$permission) {
+        $permission = "755";
+    }
 }
 
 if (!$arch) {
@@ -672,7 +681,7 @@ if [ "\$NFSROOT" = "1" ]; then
 		shell
 	done
 	grep '\\(shell\\)' /proc/cmdline >/dev/null && shell
-	mount -t tmpfs rw \$NEWROOT/\$RWDIR
+	mount -t tmpfs rw  -o mode=$permission \$NEWROOT/\$RWDIR
 	mkdir -p \$NEWROOT/\$RWDIR/tmpfs
 
 
