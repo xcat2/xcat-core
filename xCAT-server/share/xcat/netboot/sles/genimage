@@ -615,7 +615,7 @@ EOS1
 
 	print $inifile "mount -t proc /proc /proc\n";
 	print $inifile "mount -t sysfs /sys /sys\n";
-   print $inifile "mount -o mode=$permission -t tmpfs /dev /dev\n"; # the default permission will be 755
+    print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
    print $inifile "mkdir /dev/pts\n";
    print $inifile "mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts\n";
    print $inifile "mkdir /dev/shm\n";
@@ -757,10 +757,10 @@ if [ "\$NFSROOT" = "1" ]; then
         shell
     done
     grep '\\(shell\\)' /proc/cmdline >/dev/null && shell
-    mount -t tmpfs rw -o mode=755 \$NEWROOT/\$RWDIR
+    mount -t tmpfs rw -o mode=$permission \$NEWROOT/\$RWDIR
     mkdir -p \$NEWROOT/\$RWDIR/tmpfs
 
-    mount the /root/.ssh, it needs more strict permission in order for ssh work
+    #mount the /root/.ssh, it needs more strict permission in order for ssh work
     if [ ! -e "\$NEWROOT/root/.ssh" ]
     then
         mkdir -p \$NEWROOT/root/.ssh
