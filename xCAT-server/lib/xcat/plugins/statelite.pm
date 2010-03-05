@@ -271,6 +271,16 @@ sub liteMe {
 	my $sym = "1"; # sym = 0 means no symlinks, just bindmount
 	if($sym){
 		foreach my $f (@$files){
+                    #check if the file has been moved to .default by its parent or by last liteimg, if yes, then do nothing
+		    my $ret=`readlink -m $rootimg_dir$f`;
+                    if ($? == 0) {
+			if ($ret =~ /$rootimg_dir\/.default/)
+                        {
+			    $verbose && $callback->({info=>["do nothing for file $f"]});
+			    next;
+			}
+		    }
+                    
 			# copy the file to /.defaults
 			my $rif = $rootimg_dir . $f;
 			my $d = dirname($f);
