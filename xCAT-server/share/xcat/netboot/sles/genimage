@@ -48,6 +48,7 @@ my $postinstall_filename;
 my $rootimg_dir;
 my $rwfiles;    #these files are used by statelite for tmpfs rw
 my $mode;
+my $permission; #the permission works only for statelite mode currently
 
 sub xdie {
    system("rm -rf /tmp/xcatinitrd.$$");
@@ -80,8 +81,10 @@ GetOptions(
    'l=s' => \$rootlimit,
    't=s' => \$tmplimit,
    'k=s' => \$kernelver,
-   'm=s' => \$mode      #provide options for the mode of "genimage"
+   'm=s' => \$mode,      #provide options for the mode of "genimage"
+   'permission=s' => \$permission
 );
+
 if (@ARGV > 0) {
     $imagename=$ARGV[0];
     if ($arch or $osver or $profile) {
@@ -145,6 +148,13 @@ if (@ARGV > 0) {
     $postinstall_filename=$ref1->{'postinstall'};
     $destdir=$ref1->{'rootimgdir'};
 }
+
+if ($mode eq "statelite") {
+    if (!$permission) {
+        $permission = "755";
+    }
+}
+
 
 if (!$arch) {
     $arch = `uname -m`;
@@ -605,7 +615,7 @@ EOS1
 
 	print $inifile "mount -t proc /proc /proc\n";
 	print $inifile "mount -t sysfs /sys /sys\n";
-   print $inifile "mount -o mode=0755 -t tmpfs /dev /dev\n";
+   print $inifile "mount -o mode=$permission -t tmpfs /dev /dev\n"; # the default permission will be 755
    print $inifile "mkdir /dev/pts\n";
    print $inifile "mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts\n";
    print $inifile "mkdir /dev/shm\n";
@@ -747,10 +757,10 @@ if [ "\$NFSROOT" = "1" ]; then
         shell
     done
     grep '\\(shell\\)' /proc/cmdline >/dev/null && shell
-    mount -t tmpfs rw \$NEWROOT/\$RWDIR
+    mount -t tmpfs rw -o mode=755 \$NEWROOT/\$RWDIR
     mkdir -p \$NEWROOT/\$RWDIR/tmpfs
 
-    #mount the /root/.ssh, it needs more strict permission in order for ssh work
+    mount the /root/.ssh, it needs more strict permission in order for ssh work
     if [ ! -e "\$NEWROOT/root/.ssh" ]
     then
         mkdir -p \$NEWROOT/root/.ssh
