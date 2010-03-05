@@ -80,6 +80,77 @@ replace: userAccountControl
 userAccountControl: 512';
 
 
+sub del_user_account {
+    my %args = @_;
+    my $directoryserver = $args{directoryserver};
+    my $dnsdomain = $args{dnsdomain};
+    my $account = $args{username};
+    unless ($dnsdomain and $directoryserver and $account) {
+        die "Invalid arguments $dnsdomain and $directoryserver and $account";
+    }
+    my $domain_components = $dnsdomain;
+    $domain_components =~ s/^\.//;
+    $domain_components =~ s/\./,dc=/g;
+    $domain_components =~ s/^/dc=/;
+    my @searchcmd = qw/ldapsearch  -H /;
+    push @searchcmd,"ldaps://$directoryserver","-b",$domain_components;
+    push @searchcmd,"(sAMAccountname=$account)","dn";
+    my $searchout;
+    my $searchin;
+    my $searcherr = gensym;
+    my $search = open3($searchin,$searchout,$searcherr,@searchcmd);
+    print $searchout;
+    print $searchin;
+    my $searchselect = IO::Select->new($searchout,$searcherr);
+    my @handles;
+    my $failure;
+    my $dn;
+    while (@handles = $searchselect->can_read()) {
+        foreach (@handles) {
+            my $line = <$_>;
+            print $line;
+            if (not defined $line) {
+                $searchselect->remove($_);
+                next;
+            }
+            print $line;
+            if ($_ == $searcherr) {
+                if ($line =~ /error/i or $line =~ /problem/i) {
+                    return {error=>$line};
+                }
+            } elsif ($line =~ /^dn: (.*)$/) {
+                if ($dn) { die "TODO: identify these cases, let xcat-user know this can happen"; }
+                $dn = $1;
+            }
+        }
+    }
+    my $ldif = "dn: $dn
+changetype: delete";
+    my $deletein;
+    my $deleteout;
+    my $deleteerr = gensym;
+    my $deletion = open3($deletein,$deleteout,$deleteerr,'ldapmodify','-H',"ldaps://$directoryserver");
+    print $deletein $ldif."\n";
+    close($deletein);
+    print $ldif;
+    my $delselect = IO::Select->new($deleteout,$deleteerr);
+    while (@handles = $delselect->can_read()) {
+        foreach (@handles) {
+            my $line = <$_>;
+            print $line;
+            if (not defined $line) {
+                $delselect->remove($_);
+                next;
+            }
+            if ($_ == $deleteerr) {
+                if ($line =~ /error/i or $line =~ /problem/i) {
+                    return {error=> $line};
+                }
+            }
+        }
+    }
+}
+
 sub list_user_accounts { #provide enough data to construct an /etc/passwd looking output
     my %args = @_;
     my $directoryserver = $args{directoryserver};
@@ -98,7 +169,7 @@ sub list_user_accounts { #provide enough data to construct an /etc/passwd lookin
     my $searchin;
     my $searcherr = gensym;
     my $search = open3($searchin,$searchout,$searcherr,@searchcmd);
-    my $searchselect = IO::Select->new($searchout,$searchin);
+    my $searchselect = IO::Select->new($searchout,$searcherr);
     my @handles;
     my $failure;
     my %currvalues =();

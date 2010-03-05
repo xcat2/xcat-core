@@ -107,6 +107,37 @@ sub process_request {
                  sendmsg($account);
              }
          }
+    } elsif ($command =~ /del.*user/) {
+         my $username = shift @{$request->{arg}};
+         if (scalar @{$request->{arg}}) {
+             die "TODO: usage";
+         }
+         if ($username =~ /@/) {
+             ($username,$domain) = split /@/,$username;
+             $domain = lc($domain);
+         } 
+         unless ($domain) {
+             sendmsg([1,"Unable to determine domain from arguments or site table"]);
+             return undef;
+         }
+
+         #my $domainstab = xCAT::Table->new('domains');
+         #$realm = $domainstab->getAttribs({domain=>$domain},
+         unless ($realm) {
+            $realm = uc($domain);
+            $realm =~ s/\.$//; #remove trailing dot if provided
+         }
+
+         my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
+         if ($err) {
+             sendmsg([1,"Error authenticating to Active Directory"]);
+             return 1;
+         }
+         my $ret = xCAT::ADUtils::del_user_account(
+            username => $username,
+            dnsdomain => $domain,
+            directoryserver=> $server,
+            );
     } elsif ($command =~ /add.*user/) { #user management command, adding
         my $homedir;
         my $fullname;
