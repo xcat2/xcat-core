@@ -9,6 +9,7 @@ use lib "$::XCATROOT/lib/perl";
 use Getopt::Long;
 use xCAT::ADUtils;
 use Net::DNS;
+use strict;
 
 sub handled_commands { 
     return {
@@ -67,16 +68,18 @@ sub process_request {
     }
     if ($command =~ /list.*user/) { #user management command, listing
         my $passwdfmt;
-        @ARGV=@{$request->{arg}};
-        Getopt::Long::Configure("bundling");
-        Getopt::Long::Configure("no_pass_through");
-        if (!GetOptions(
-            'p' => \$passwdfmt
-            )) {
-            die "TODO: usage message";
+        if ($request->{arg}) {
+            @ARGV=@{$request->{arg}};
+            Getopt::Long::Configure("bundling");
+            Getopt::Long::Configure("no_pass_through");
+            if (!GetOptions(
+                'p' => \$passwdfmt
+                )) {
+                die "TODO: usage message";
+            }
         }
          unless ($domain and $realm) {
-             sendmsg([1,"Unable to determine domain from arguments or site tabel"]);
+             sendmsg([1,"Unable to determine domain from arguments or site table"]);
              return undef;
          }
          my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
@@ -123,13 +126,12 @@ sub process_request {
              die "TODO: usage message";
          }
          my $username = shift @ARGV;
-         my $domain;
          if ($username =~ /@/) {
              ($username,$domain) = split /@/,$username;
              $domain = lc($domain);
          } 
          unless ($domain) {
-             sendmsg([1,"Unable to determine domain from arguments or site tabel"]);
+             sendmsg([1,"Unable to determine domain from arguments or site table"]);
              return undef;
          }
 
