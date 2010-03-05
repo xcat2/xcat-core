@@ -209,14 +209,21 @@ ProcessType () {
 				#mount -n --bind ${TMPFS}${2} ${1}
 			fi
 
-			# finally make the tmpfs link point to the persistent file
+                        #if target is a directory, then remove it first, 
+                        #otherwise, the link will be created under this dir instead of replacing it.
+			# whack of trailing / for persistent directories:
+			TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
+                        if [ -d ${TARGET} ]
+                        then
+			    echo "rm -Rf ${TARGET}" >>$LOG
+                            rm -Rf ${TARGET} 2>&1 >>$LOG
+                        fi
 
+			# finally make the tmpfs link point to the persistent file
+                        
 			# you have to get rid of the /sysroot in the beginning 
 			# so that when the chroot happens the link is valid.	
 			LINK=`echo ${PERSISTENT}${2} | sed -e 's/^\/sysroot//'`
-			# whack of trailing / for persistent directories:
-			TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
-
 			echo "ln -sf ${LINK} ${TARGET}" >>$LOG
 			ln -sf ${LINK} ${TARGET}        >>$LOG 2>&1
 			;;
