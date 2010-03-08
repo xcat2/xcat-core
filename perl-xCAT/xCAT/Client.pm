@@ -89,7 +89,8 @@ sub submit_request {
   unless ($certfile) { $certfile = xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem"; }
   unless ($cafile) { $cafile  = xCAT::Utils->getHomeDir()."/.xcat/ca.pem"; }
   $xCAT::Client::EXITCODE = 0;    # clear out exit code before invoking the plugin
-
+#  add current userid to the request
+$request->{username}->[0] = getpwuid($>);
 
 # If XCATBYPASS is set, invoke the plugin process_request method directly
 # without going through the socket connection to the xcatd daemon
