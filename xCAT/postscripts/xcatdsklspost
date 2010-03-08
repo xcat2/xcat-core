@@ -262,7 +262,7 @@ done
 
 #save the MASTER into the xcatinfo file for node deployment case, 
 #for updatenode case, only save it when -M is specified
-if [ $argnum -eq 0 ]; then
+if [ $argnum -eq 0 ] || [ "$MODE" == "4" ]; then
     new_ms=`grep '^MASTER' /tmp/mypostscript |cut -d= -f2`
 fi
 if [ -n "$new_ms" ]; then
@@ -281,7 +281,7 @@ fi
 
 # when called by the updatenode command
 #modify the UPDATENODE flag to 1 
-if [ $argnum -gt 0 ]; then
+if [ $argnum -gt 0 ] && [ "$MODE" != "4" ]; then
   TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /tmp/mypostscript`;
   echo "$TMP" > /tmp/mypostscript;
 fi
@@ -332,7 +332,7 @@ echo "$TMP" >> /tmp/mypostscript
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
 echo "$TMP" > /tmp/mypostscript 
 
-if [ $argnum -eq 0 ]; then
+if [ $argnum -eq 0 ] || [ "$MODE" == "4" ]; then
   #notify the server that we are done with netbooting
   CNS=`grep NODESTATUS= /tmp/mypostscript |awk -F = '{print $2}'`
   if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
@@ -349,8 +349,13 @@ if [ -x /tmp/mypostscript ];then
 fi
 #rm -f /tmp/mypostscript
 
+#unmount the /xcatpost for statelite deployment case so that updatenode will work later
+if [ "$MODE" == "4" ]; then
+    umount -l /xcatpost
+fi 
+
 #tell user it is done when this is called by updatenode command
-if [ $argnum -gt 0 ]; then
+if [ $argnum -gt 0 ] && [ "$MODE" != "4" ]; then
   echo "returned from postscript"
 fi
 
