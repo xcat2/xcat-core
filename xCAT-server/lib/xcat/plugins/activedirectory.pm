@@ -13,16 +13,17 @@ use strict;
 
 sub handled_commands { 
     return {
-        addclusteruser => 'site:directoryprovider',
-        addclouduser => 'site:directoryprovider',
-        delclusteruser => 'site:directoryprovider',
-        delclouduser => 'site:directoryprovider',
-        listclusterusers => 'site:directoryprovider',
-        listcloudusers => 'site:directoryprovider',
+        clusteruseradd => 'site:directoryprovider',
+        clusteruserdel => 'site:directoryprovider',
+        clusteruserlist => 'site:directoryprovider',
+        hostaccountlist => 'site:directoryprovider',
+        hostaccountadd => 'site:directoryprovider',
+        hostaccountdel => 'site:directoryprovider',
     };
 }
 
 sub process_request {
+    $ENV{LDAPCONF}='/etc/xcat/ad.ldaprc';
     my $request = shift;
     my $command = $request->{command}->[0];
     $callback = shift;
@@ -66,7 +67,7 @@ sub process_request {
             return;
         }
     }
-    if ($command =~ /list.*user/) { #user management command, listing
+    if ($command =~ /userlist/) { #user management command, listing
         my $passwdfmt;
         if ($request->{arg}) {
             @ARGV=@{$request->{arg}};
@@ -107,8 +108,66 @@ sub process_request {
                  sendmsg($account);
              }
          }
-    } elsif ($command =~ /del.*user/) {
-         my $username = shift @{$request->{arg}};
+    } elsif ($command =~ /hostaccountlist/) {
+         unless ($domain and $realm) {
+             sendmsg([1,"Unable to determine domain from arguments or site table"]);
+             return undef;
+         }
+         my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
+         if ($err) {
+             sendmsg([1,"Error authenticating to Active Directory"]);
+             return 1;
+         }
+         my $accounts = xCAT::ADUtils::list_host_accounts(
+            dnsdomain => $domain,
+            directoryserver=> $server,
+         );
+         my $account;
+         foreach $account (keys %$accounts) {
+             sendmsg($account);
+         }
+    } elsif ($command =~ /hostaccountdel/) {
+         my $accountname;
+         my %loggedrealms = ();
+         foreach $accountname (@{$request->{node}}) {
+             if ($request->{arg} and scalar @{$request->{arg}}) {
+                 die "TODO: usage";
+             }
+             if ($accountname =~ /@/) {
+                 ($accountname,$domain) = split /@/,$accountname;
+                 $domain = lc($domain);
+             } 
+              unless ($domain) {
+                 sendmsg([1,"Unable to determine domain from arguments or site table"]);
+                 return undef;
+             }
+             #my $domainstab = xCAT::Table->new('domains');
+             #$realm = $domainstab->getAttribs({domain=>$domain},
+             unless ($realm) {
+                $realm = uc($domain);
+                $realm =~ s/\.$//; #remove trailing dot if provided
+             }
+             $ENV{KRB5CCNAME}="/tmp/xcat/krbcache.$realm.$$";
+             unless ($loggedrealms{$realm}) {
+                my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
+                 if ($err) {
+                     sendmsg([1,"Error authenticating to Active Directory"],$accountname);
+                     next;
+                 }
+                 $loggedrealms{$realm}=1;
+             }
+             my %args = (
+                account => $accountname,
+                dnsdomain => $domain,
+                directoryserver=> $server,
+                );
+             my $ret = xCAT::ADUtils::del_host_account(%args);
+         }
+         foreach my $realm (keys %loggedrealms) {
+             unlink "/tmp/xcat/krbcache.$realm.$$";
+         }
+    } elsif ($command =~ /userdel/) {
+        my $username = shift @{$request->{arg}};
          if (scalar @{$request->{arg}}) {
              die "TODO: usage";
          }
@@ -127,18 +186,24 @@ sub process_request {
             $realm = uc($domain);
             $realm =~ s/\.$//; #remove trailing dot if provided
          }
+         $ENV{KRB5CCNAME}="/tmp/xcat/krbcache.$realm.$$";
 
          my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
          if ($err) {
              sendmsg([1,"Error authenticating to Active Directory"]);
              return 1;
          }
-         my $ret = xCAT::ADUtils::del_user_account(
-            username => $username,
-            dnsdomain => $domain,
-            directoryserver=> $server,
-            );
-    } elsif ($command =~ /add.*user/) { #user management command, adding
+         my %args = (
+                account => $username,
+                dnsdomain => $domain,
+                directoryserver=> $server,
+                );
+         if ($command =~ /userdel/) {
+             my $ret = xCAT::ADUtils::del_user_account(%args);
+         } elsif ($command =~ /hostaccountdel/) {
+             my $ret = xCAT::ADUtils::del_host_account(%args);
+         }
+    } elsif ($command =~ /useradd$/) { #user management command, adding
         my $homedir;
         my $fullname;
         my $gid;
@@ -198,9 +263,63 @@ sub process_request {
          if (ref $ret and $ret->{error}) {
              sendmsg([1,$ret->{error}]);
          }
+    } elsif ($command =~ /hostaccountadd$/) { #user management command, adding
+        my $ou;
+        if ($request->{arg}) {
+            @ARGV=@{$request->{arg}};
+            Getopt::Long::Configure("bundling");
+            Getopt::Long::Configure("no_pass_through");
+    
+            if (!GetOptions('o=s' => \$ou)) {
+                die "TODO: usage message";
+            }
+        }
+        #my $domainents = $domaintab->getNodesAttribs($request->{node},['ou','domain']); #TODO: have this in schema
+        my $nodename;
+        my %loggedrealms=();
+        foreach $nodename (@{$request->{node}}) {
+          if ($nodename =~ /\./) {
+                 ($nodename,$domain) = split /\./,$nodename,2;
+                 $domain = lc($domain);
+             } 
+             unless ($domain) {
+                 sendmsg([1,"Unable to determine domain from arguments or site table"]);
+                 return undef;
+             }
+    
+             #my $domainstab = xCAT::Table->new('domains');
+             #$realm = $domainstab->getAttribs({domain=>$domain},
+             unless ($realm) {
+                $realm = uc($domain);
+                $realm =~ s/\.$//; #remove trailing dot if provided
+             }
+             unless ($loggedrealms{$realm}) {
+                my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
+                 if ($err) {
+                     sendmsg([1,"Error authenticating to Active Directory"],$nodename);
+                     next;
+                 }
+                 $loggedrealms{$realm}=1;
+             }
+    
+             my %args = ( 
+                node => $nodename,
+                dnsdomain => $domain,
+                directoryserver=> $server,
+             );
+             if ($ou)  { $args{ou} = $ou };
+             if ($request->{environment} and 
+                 $request->{environment}->[0]->{XCAT_HOSTPASS}) {
+                 $args{password} = $request->{environment}->[0]->{XCAT_HOSTPASS}->[0];
+             }
+             my $ret = xCAT::ADUtils::add_host_account(%args);
+             if (ref $ret and $ret->{error}) {
+                 sendmsg([1,$ret->{error}]);
+             } elsif (ref $ret)  {
+                 print $ret->{password};
+             }
+        }
     }
-        
-
 }
 
 sub sendmsg {

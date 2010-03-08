@@ -80,11 +80,81 @@ replace: userAccountControl
 userAccountControl: 512';
 
 
+sub del_host_account {
+    my %args = @_;
+    my $directoryserver = $args{directoryserver};
+    my $dnsdomain = $args{dnsdomain};
+    my $account = $args{account};
+    unless ($dnsdomain and $directoryserver and $account) {
+        die "Invalid arguments $dnsdomain and $directoryserver and $account";
+    }
+    my $domain_components = $dnsdomain;
+    $domain_components =~ s/^\.//;
+    $domain_components =~ s/\./,dc=/g;
+    $domain_components =~ s/^/dc=/;
+    my @searchcmd = qw/ldapsearch  -H /;
+    push @searchcmd,"ldaps://$directoryserver","-b",$domain_components;
+    push @searchcmd,"(&(&(&(objectClass=user)(objectClass=computer))(!(isCriticalSystemObject=TRUE)))(name=$account))","dn";
+    my $searchout;
+    my $searchin;
+    my $searcherr = gensym;
+    my $search = open3($searchin,$searchout,$searcherr,@searchcmd);
+    print $searchout;
+    print $searchin;
+    my $searchselect = IO::Select->new($searchout,$searcherr);
+    my @handles;
+    my $failure;
+    my $dn;
+    while (@handles = $searchselect->can_read()) {
+        foreach (@handles) {
+            my $line = <$_>;
+            print $line;
+            if (not defined $line) {
+                $searchselect->remove($_);
+                next;
+            }
+            print $line;
+            if ($_ == $searcherr) {
+                if ($line =~ /error/i or $line =~ /problem/i) {
+                    return {error=>$line};
+                }
+            } elsif ($line =~ /^dn: (.*)$/) {
+                if ($dn) { die "TODO: identify these cases, let xcat-user know this can happen"; }
+                $dn = $1;
+            }
+        }
+    }
+    my $ldif = "dn: $dn
+changetype: delete";
+    my $deletein;
+    my $deleteout;
+    my $deleteerr = gensym;
+    my $deletion = open3($deletein,$deleteout,$deleteerr,'ldapmodify','-H',"ldaps://$directoryserver");
+    print $deletein $ldif."\n";
+    close($deletein);
+    print $ldif;
+    my $delselect = IO::Select->new($deleteout,$deleteerr);
+    while (@handles = $delselect->can_read()) {
+        foreach (@handles) {
+            my $line = <$_>;
+            print $line;
+            if (not defined $line) {
+                $delselect->remove($_);
+                next;
+            }
+            if ($_ == $deleteerr) {
+                if ($line =~ /error/i or $line =~ /problem/i) {
+                    return {error=> $line};
+                }
+            }
+        }
+    }
+}
 sub del_user_account {
     my %args = @_;
     my $directoryserver = $args{directoryserver};
     my $dnsdomain = $args{dnsdomain};
-    my $account = $args{username};
+    my $account = $args{account};
     unless ($dnsdomain and $directoryserver and $account) {
         die "Invalid arguments $dnsdomain and $directoryserver and $account";
     }
@@ -151,6 +221,61 @@ changetype: delete";
     }
 }
 
+sub list_host_accounts { #provide enough data to construct an /etc/passwd looking output
+    my %args = @_;
+    my $directoryserver = $args{directoryserver};
+    my $dnsdomain = $args{dnsdomain};
+    unless ($dnsdomain and $directoryserver) {
+        die "Invalid arguments";
+    }
+    my $domain_components = $dnsdomain;
+    $domain_components =~ s/^\.//;
+    $domain_components =~ s/\./,dc=/g;
+    $domain_components =~ s/^/dc=/;
+    my @searchcmd = qw/ldapsearch  -H /;
+    push @searchcmd,"ldaps://$directoryserver","-b",$domain_components;
+    push @searchcmd,qw/(&(&(objectClass=user)(objectClass=computer))(!(isCriticalSystemObject=TRUE))) name operatingSystem operatingSystemServicePack/;
+    my $searchout;
+    my $searchin;
+    my $searcherr = gensym;
+    my $search = open3($searchin,$searchout,$searcherr,@searchcmd);
+    my $searchselect = IO::Select->new($searchout,$searcherr);
+    my @handles;
+    my $failure;
+    my %currvalues =();
+    my %acchash= ();
+    while (@handles = $searchselect->can_read()) {
+        foreach (@handles) {
+            my $line = <$_>;
+            if (not defined $line) {
+                $searchselect->remove($_);
+                next;
+            }
+            if ($_ == $searcherr) {
+                if ($line =~ /error/i or $line =~ /problem/i) {
+                    print $line;
+                    $failure=1;
+                }
+            } elsif ($line =~ /^dn: (.*)$/) {
+                foreach(keys %currvalues) {
+                    $acchash{$currvalues{accountname}}->{$_} = $currvalues{$_};
+                }
+                %currvalues=();
+            } elsif ($line =~ /^name: (.*)$/) {
+                $currvalues{accountname} = $1;
+            } elsif ($line =~ /^OperatingSystem: (.*)$/) {
+                $currvalues{os} = $1;
+            } elsif ($line =~ /^OperatingSystemServicePack: (.*)$/) {
+                $currvalues{osservicepack} = $1;
+            }
+        }
+    }
+    if ($failure) { return undef; }
+    foreach(keys %currvalues) {
+        $acchash{$currvalues{accountname}}->{$_} = $currvalues{$_};
+    }
+    return \%acchash;
+}
 sub list_user_accounts { #provide enough data to construct an /etc/passwd looking output
     my %args = @_;
     my $directoryserver = $args{directoryserver};
@@ -333,11 +458,11 @@ sub add_user_account {
     return {password=>$newpassword};
 }
 =cut
-add_machine_account
+add_host_account
 Arguments are in a hash:
     node=>name of machine to add
 =cut
-sub add_machine_account {
+sub add_host_account {
     my %args = @_;
     my $nodename = $args{node};
     my $dnsdomain = $args{dnsdomain};
