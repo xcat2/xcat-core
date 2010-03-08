@@ -99,7 +99,7 @@ proc run_lssyscfg {} {
     nc_msg "$PROGRAM Status: run_lssyscg : partition status : $msg\n"
     regexp "$node:\[ ]*(.*)" $msg tmp1 tmp
     set msg $tmp
-    send_user "####msg:$msg#########"
+    nc_msg "####msg:$msg#########\n"
 
 
     # Slow down the requests speed to hcp, so that hcp will not busy on
@@ -1827,7 +1827,7 @@ proc Firmware_Dump { device_path phandle } {
 # Main MAIN main
 #
 set BINPATH "/opt/xcat/bin"
-set PROGRAM "lpar_netboot.expect"
+set PROGRAM "lpar_netboot"
 
 set CONSOLEBIN "/opt/xcat/bin/rcons"
 
@@ -2131,6 +2131,13 @@ expect {
 send_user "# Checking for power off.\n"
 
 run_lssyscfg
+
+if { [string compare "$msg" "Not Available"] == 0  } {
+        send_user "$PROGRAM: LPAR is Not Available. Please make sure the CEC's state\n"
+        set rc 1
+        exit 1
+}
+
 
 if { ([string compare "$msg" "Off"] == 0) || ([string compare "$msg" "off"] == 0)  || ([string compare "$msg" "Not Activated"] == 0) } {
     send_user "# Power off complete.\n"
