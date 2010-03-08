@@ -358,6 +358,13 @@ unless ($onlyinitrd) {
 	   $rc = system("$yumcmd_remove $rm_packges");
        }
 
+   # run zypper update to update any installed rpms
+   # needed when running genimage again after updating software in repositories
+   my $yumcmd_update = "zypper -R $rootimg_dir update  ";
+   $rc = system("$yumcmd_update");
+   # ignore any return code
+
+
    postscripts(); #run 'postscripts'
 }
 unlink "/tmp/genimage.$$.yum.conf";

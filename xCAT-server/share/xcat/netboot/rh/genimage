@@ -295,6 +295,7 @@ unless ($onlyinitrd) {
 
 
       #enable extra package repo
+      my $yumcmd_base = $yumcmd;
       $yumcmd .= "install ";
       #append extra pkg names to yum command 
       if ($extrapkgnames) {
@@ -321,6 +322,14 @@ unless ($onlyinitrd) {
 	      $rc = system("$yumcmd_remove $rm_packges");
 	  }
       }
+
+      # run zypper update to update any installed rpms
+      # needed when running genimage again after updating software in repositories
+      my $yumcmd_update = $yumcmd_base . " update  ";
+      $rc = system("$yumcmd_update");
+      # ignore any return code
+
+
    }
 
    postscripts(); #run 'postscripts'
