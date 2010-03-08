@@ -209,6 +209,8 @@ sub fillresps {
   my $response = shift;
   my $mac = $response->{node}->[0]->{data}->[0]->{contents}->[0];
   my $node = $response->{node}->[0]->{name}->[0];
+  unless ($mac) { return; } #The event that a bay is empty should not confuse 
+#xcat into having an odd mapping
   $mac = uc($mac); #Make sure it is uppercase, the MM people seem to change their mind on this..
   if ($mac =~ /->/) { #The new and 'improved' syntax for pBlades
       $mac =~ /(\w+):(\w+):(\w+):(\w+):(\w+):(\w+)\s*->\s*(\w+):(\w+):(\w+):(\w+):(\w+):(\w+)/;
