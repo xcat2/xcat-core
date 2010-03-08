@@ -1635,32 +1635,48 @@ sub validate {
     }
     # If we are still in, that means this rule is the first match and dictates behavior.
     if ($rule->{rule}) {
+      my $logst;
+      my $rc;
+      my $status;
       if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i) {
-        my $logst = "xCAT: Allowing ".$request->{command}->[0];
-        if ($request->{noderange} && defined($request->{noderange}->[0])) { $logst .= " to ".$request->{noderange}->[0]; }
-        # add each argument
-        my $args = $request->{arg};
-        foreach my $argument (@$args){
-
-             $logst .= " " . $argument;
-        }
-        if ($peername) { $logst .= " for " . $peername };
-        if ($peerhost) { $logst .= " from " . $peerhost };
-         xCAT::MsgUtils->message("S",$logst);
-        return 1;
+         $logst = "xCAT: Allowing ".$request->{command}->[0];
+         $status = "Allowed";
+         $rc=1;
       } else {
-        my $logst = "xCAT: Denying ".$request->{command}->[0];
-        # add each argument
-        my $args = $request->{arg};
-        foreach my $argument (@$args){
-
-             $logst .= " " . $argument;
-        }
-        if ($peername) { $logst .= " for " . $peername };
-        if ($peerhost) { $logst .= " from " . $peerhost };
-         xCAT::MsgUtils->message("S",$logst);
-        return 0;
+         $logst = "xCAT: Denying ".$request->{command}->[0];
+         $status = "Denied";
+         $rc=0;
       }
+      if ($request->{noderange} && defined($request->{noderange}->[0])) { $logst .= " to ".$request->{noderange}->[0]; }
+        # add each argument
+      my $args = $request->{arg};
+      my $arglist;
+      foreach my $argument (@$args){
+
+             $arglist .= " " . $argument;
+      }
+      $logst .= $arglist;
+      if ($peername) { $logst .= " for " . $peername };
+      if ($peerhost) { $logst .= " from " . $peerhost };
+      # xCAT::MsgUtils->message("S",$logst);
+      # put in audit Table
+      my $rsp = {};
+      $rsp->{syslogdata}->[0] = $logst;
+      if ($peername) {
+           $rsp->{userid} ->[0] = $peername;
+      }
+      if ($peerhost) {
+        $rsp->{clientname} -> [0] = $peerhost;
+      }
+      $rsp->{clienttype} -> [0] = "cli";
+      $rsp->{command} -> [0] = $request->{command}->[0];
+      if ($request->{noderange} && defined($request->{noderange}->[0])) { 
+          $rsp->{noderange} -> [0] = $request->{noderange}->[0];
+      }
+      $rsp->{args} -> [0] =$arglist; 
+      $rsp->{status} -> [0] = $status;
+      xCAT::MsgUtils->message("SA",$rsp);
+      return $rc;
     } else { #Shouldn't be possible....
        xCAT::MsgUtils->message("S","Impossible line in xcatd reached");
       return 0;
