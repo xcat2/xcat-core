@@ -90,8 +90,9 @@ sub submit_request {
   unless ($cafile) { $cafile  = xCAT::Utils->getHomeDir()."/.xcat/ca.pem"; }
   $xCAT::Client::EXITCODE = 0;    # clear out exit code before invoking the plugin
 #  add current userid to the request
-$request->{username}->[0] = getpwuid($>);
-
+if (!(defined($request->{username}))) {
+  $request->{username}->[0] = getpwuid($>);
+}
 # If XCATBYPASS is set, invoke the plugin process_request method directly
 # without going through the socket connection to the xcatd daemon
   if ($ENV{XCATBYPASS}) {
