@@ -513,7 +513,7 @@ sub setup_FTP
     {
         mkpath($installdir);
     }
-    $cmd = "usermod -d $installdir ftp";
+    $cmd = "usermod -d $installdir ftp 2>&1";
     my $outref = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC)
     {
