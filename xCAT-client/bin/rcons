@@ -2,6 +2,7 @@
 if [ -z "$1" ] || [ "$1" = "-h"  ]; then
     echo "rcons - remotely accesses the serial console of a node"
     echo "rcons <singlenode> [conserver] [-f]"
+    echo "rcons <singlenode> [conserver] [-s]"
     echo "rcons [-h|--help|-v|--version]"
     exit 0
 fi
@@ -15,8 +16,19 @@ if [ -n "$3" ] && [ "$3" = "-f" ]; then
     CONSERVER=$2
 fi
 
+#console spy mode
+if [ -n "$3" ] && [ "$3" = "-s" ]; then
+    FORCE=-s
+    CONSERVER=$2
+fi
+
 if [ -n "$2" ] && [ "$2" = "-f" ]; then
     FORCE=-f
+fi
+
+#console spy mode
+if [ -n "$2" ] && [ "$2" = "-s" ]; then
+    FORCE=-s
 fi
 
 if [ -z "$CONSERVER" ]; then
