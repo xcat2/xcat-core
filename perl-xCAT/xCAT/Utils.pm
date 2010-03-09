@@ -5281,17 +5281,20 @@ sub get_hdwr_ip
     my $node = shift;
     my $ip   = undef; 
     my $Rc   = undef;
-    my $hosttab  = xCAT::Table->new( 'hosts' );
-    if ( $hosttab) {
-        my $node_ip_hash = $hosttab->getNodeAttribs( $node,[qw(ip)]);
-        $ip = $node_ip_hash->{ip};
+
+    my $ip_tmp_res  = xCAT::Utils::toIP($node);
+    ($Rc, $ip) = @$ip_tmp_res;
+    if ( $Rc ) {
+        my $hosttab  = xCAT::Table->new( 'hosts' );
+        if ( $hosttab) {
+            my $node_ip_hash = $hosttab->getNodeAttribs( $node,[qw(ip)]);
+            $ip = $node_ip_hash->{ip};
+        }
+	
     }
+     
     if (!$ip) {
-        my $ip_tmp_res  = xCAT::Utils::toIP($node);
-        ($Rc, $ip) = @$ip_tmp_res;
-        if ( $Rc ) {
-		    return -1;
-	    }
+        return undef;
     }
 
     return $ip;
@@ -5503,7 +5506,7 @@ sub fsp_api_action {
     my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
 #    my $password    = $myhash{$fsp_name}{"passwd.hscroot"};
     my $password    = $myhash{$fsp_name}{"passwd.HMC"};
-    print "fspname:$fsp_name password:$password\n";
+    #print "fspname:$fsp_name password:$password\n";
     if(!$password ) {
 	$res = "The password.hscroot of $fsp_name in ppcdirect table is empty";
 	return ([$node_name, $res, -1]);
@@ -5523,9 +5526,18 @@ sub fsp_api_action {
     ############################
     # Get IP address
     ############################
-    $fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
-    if($fsp_ip == -1) {
+    #$fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
+    #if($fsp_ip == 0) {
+    #    $res = "Failed to get the $fsp_name\'s ip";
+    #    return ([$node_name, $res, -1]);	
+    #}
+    $fsp_ip = getNodeIPaddress( $fsp_name );
+    if(!defined($fsp_ip)) {
         $res = "Failed to get the $fsp_name\'s ip";
+        return ([$node_name, $res, -1]);	
+    }
+    unless ($fsp_ip =~ /\d+\.\d+\.\d+\.\d+/) {
+	    $res = "Not supporting IPv6 here"; #Not supporting IPv6 here IPV6TODO
         return ([$node_name, $res, -1]);	
     }
 	
