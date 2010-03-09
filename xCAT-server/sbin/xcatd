@@ -1668,10 +1668,14 @@ sub validate {
       if ($peerhost) {
         $rsp->{clientname} -> [0] = $peerhost;
       }
-      if (defined $request->{becomeuser}) {
-        $rsp->{clienttype} -> [0] = "webui";
+      if (defined $request->{clienttype}) {
+        $rsp->{clienttype} -> [0] = $request->{clienttype} -> [0];
       } else {
-        $rsp->{clienttype} -> [0] = "cli";
+         if (defined $request->{becomeuser}) {
+           $rsp->{clienttype} -> [0] = "webui";
+         } else {
+           $rsp->{clienttype} -> [0] = "other";
+         }
       }
       $rsp->{command} -> [0] = $request->{command}->[0];
       if ($request->{noderange} && defined($request->{noderange}->[0])) { 
