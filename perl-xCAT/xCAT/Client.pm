@@ -93,6 +93,7 @@ sub submit_request {
 if (!(defined($request->{username}))) {
   $request->{username}->[0] = getpwuid($>);
 }
+$request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
 # If XCATBYPASS is set, invoke the plugin process_request method directly
 # without going through the socket connection to the xcatd daemon
   if ($ENV{XCATBYPASS}) {
