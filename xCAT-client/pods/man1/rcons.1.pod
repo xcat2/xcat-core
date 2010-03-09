@@ -4,7 +4,7 @@ B<rcons> - remotely accesses the serial console of a node
 
 =head1 B<Synopsis>
 
-B<rcons> I<singlenode> [I<conserver-host>] [B<-f>]
+B<rcons> I<singlenode> [I<conserver-host>] [B<-f>] [B<-s>]
 
 B<rcons> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -26,7 +26,12 @@ To exit the console session, enter:  <ctrl><shift>e c .
 
 If another console for this node is already open in read-write mode, force that console into read-only (spy) mode, and
 open this console in read-write mode.  If -f is not specified, this console will be put in spy mode if another console
-is already open in read-write mode.
+is already open in read-write mode. The -f flag can not be used with the -s flag.
+
+=item B<-s>
+
+Open the console in read-only (spy) mode, in this mode all the escape sequences work, but all other keyboard input is 
+discarded. The -s flag can not be used with the -f flag. 
 
 =item B<-h>|B<--help>
 
