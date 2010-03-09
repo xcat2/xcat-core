@@ -130,6 +130,7 @@ unless ($onlyinitrd) {
    close($fd);
    #system("zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ sa file:$srcdir");
    my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$installroot/netboot/$osver/$arch/$profile/rootimg/ ";
+   my $yumcmd_base = $yumcmd;
    $yumcmd .= "install ";
    mkpath("$installroot/netboot/$osver/$arch/$profile/rootimg/var/lib/yum");
    #my $yumcmd = "zypper -R $installroot/netboot/$osver/$arch/$profile/rootimg/ install -y ";
@@ -160,13 +161,14 @@ unless ($onlyinitrd) {
    $yumcmd =~ s/ $/\n/;
    my $rc = system($yumcmd);
    if ($rc) { 
-      print "zypper invocation failed\n";
+      print "yum invocation failed\n";
       exit 1;
    }
 
-   # run zypper update to update any installed rpms
+   # run yum update to update any installed rpms
    # needed when running genimage again after updating software in repositories
-   my $yumcmd_update = "zypper -R $rootimg_dir update  ";
+   my $yumcmd_update = $yumcmd_base . " update  ";
+   $yumcmd_update =~ s/ $/\n/;
    $rc = system("$yumcmd_update");
    # ignore any return code
 

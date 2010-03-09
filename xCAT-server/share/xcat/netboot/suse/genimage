@@ -289,6 +289,10 @@ unless ($onlyinitrd) {
      }
    }
 
+
+   # Refresh the zypper cache in case there is still old data out there
+   system("zypper -R $rootimg_dir refresh");
+
    #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir --disablerepo=* ";
    #$yumcmd .= "install ";
    #mkpath("$rootimg_dir/var/lib/yum");
