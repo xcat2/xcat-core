@@ -248,7 +248,7 @@ sub rnetboot {
         my $chaintab = xCAT::Table->new('chain');
         my $vcon = $chaintab->getAttribs({ node => "$node"}, 'currstate');
         if ( $vcon and $vcon->{"currstate"} and $vcon->{"currstate"} eq "boot" ) {
-            return( [[$node,"Node is in boot state. Use nimnodeset command before rnetboot or -F option to forcely reinitialize",RC_ERROR]] );
+            return( [[$node,"Node is in boot state. Use nodeset command before rnetboot or use -F option with rnetboot",RC_ERROR]] );
         }
     }
 
