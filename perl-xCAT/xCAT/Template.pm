@@ -8,6 +8,11 @@ use File::Basename;
 use File::Path;
 use Data::Dumper;
 use Sys::Syslog;
+use xCAT::ADUtils; #to allow setting of one-time machine passwords
+my $netdnssupport = eval {
+    require Net::DNS;
+    1;
+};
 
 my $tmplerr;
 my $table;
@@ -15,6 +20,7 @@ my $key;
 my $field;
 my $idir;
 my $node;
+my %loggedrealms;
 
 sub subvars { 
   my $self = shift;
@@ -70,6 +76,7 @@ sub subvars {
   #ok, now do everything else..
   $inc =~ s/#XCATVAR:([^#]+)#/envvar($1)/eg;
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
+  $inc =~ s/#MACHINEPASSWORD#/machinepassword()/eg;
   $inc =~ s/#TABLE:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3)/eg;
   $inc =~ s/#TABLEBLANKOKAY:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3,'1')/eg;
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
@@ -86,6 +93,78 @@ sub subvars {
   close($outh);
   return 0;
 }
+sub machinepassword {
+    my $domaintab = xCAT::Table->new('domain');
+    $ENV{LDAPCONF}='/etc/xcat/ad.ldaprc';
+    my $ou;
+    if ($domaintab) {
+        my $ouent = $domaintab->getNodeAttribs('node','ou');
+        if ($ouent and $ouent->{ou}) {
+            $ou = $ouent->{ou};
+        }
+    }
+    my $sitetab = xCAT::Table->new('site');
+    unless ($sitetab) {
+        return "ERROR: unable to open site table"; 
+    }
+    my $domain;
+    (my $et) = $sitetab->getAttribs({key=>"domain"},'value');
+    if ($et and $et->{value}) {
+        $domain = $et->{value};
+    }
+    unless ($domain) {
+        return "ERROR: no domain set in site table";
+    }
+    my $realm = uc($domain);
+    $realm =~ s/\.$//;
+    $realm =~ s/^\.//;
+    $ENV{KRB5CCNAME}="/tmp/xcat/krbcache.$realm.$$";
+    unless ($loggedrealms{$realm}) {
+        my $passtab = xCAT::Table->new('passwd',-create=>0);
+        unless ($passtab) { sendmsg([1,"Error authenticating to Active Directory"],$node); return; }
+        (my $adpent) = $passtab->getAttribs({key=>'activedirectory'},['username','password']);
+        unless ($adpent and $adpent->{username} and $adpent->{password}) {
+            return "ERROR: activedirectory entry missing from passwd table";
+        }
+        my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
+        if ($err) {
+            return "ERROR: authenticating to Active Directory";
+        }
+        $loggedrealms{$realm}=1;
+    }
+    my $server = $sitetab->getAttribs({key=>'directoryserver'},['value']);
+    if ($server and $server->{value}) {
+        $server = $server->{value};
+    } else {
+        $server = '';
+        if ($netdnssupport) {
+           my $res = Net::DNS::Resolver->new;
+           my $query = $res->query("_ldap._tcp.$domain","SRV");
+           if ($query) {
+               foreach my $srec ($query->answer) {
+                   $server = $srec->{target};
+               }
+           }
+        }
+        unless ($server) {
+            sendmsg([1,"Unable to determine a directory server to communicate with, try site.directoryserver"]);
+            return;
+        }
+    }
+    my %args = (
+        node => $node,
+        dnsdomain => $domain,
+        directoryserver => $server,
+        changepassondupe => 1,
+    );
+    if ($ou) { $args{ou} = $ou };
+    my $data = xCAT::ADUtils::add_host_account(%args);
+    if ($data->{error}) { 
+        return "ERROR: ".$data->{error};
+    } else {
+        return $data->{password};
+    }
+}
 sub includefile
 {
     my $file = shift;
@@ -95,8 +174,7 @@ sub includefile
       $file = $idir."/".$file;
     }
 
-    open(INCLUDE,$file) || \
-	return "#INCLUDEBAD:cannot open $file#";
+    open(INCLUDE,$file) || return "#INCLUDEBAD:cannot open $file#";
     
     while(<INCLUDE>) {
 	$text .= "$_";

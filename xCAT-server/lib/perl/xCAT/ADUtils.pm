@@ -41,6 +41,12 @@ dn: CN=##NODENAME##,##OU##
 changetype: modify
 replace: unicodePwd
 unicodePwd::##B64PASSWORD##';
+
+my $machineldifpasschange = 'dn: CN=##NODENAME##,##OU##
+changetype: modify
+replace: unicodePwd
+unicodePwd::##B64PASSWORD##';
+
 my $useraccounttemplate = 'dn: CN=##FULLNAME##,##OU##
 changetype: add
 objectClass: top
@@ -466,6 +472,7 @@ sub add_host_account {
     my %args = @_;
     my $nodename = $args{node};
     my $dnsdomain = $args{dnsdomain};
+    my $changepassondupe = $args{changepassondupe};
     if (not $dnsdomain and $nodename =~ /\./) { #if no domain provided, guess from nodename
         $dnsdomain = $nodename;
         $dnsdomain =~ s/^[^\.]*//;
@@ -492,28 +499,37 @@ sub add_host_account {
         return {error=>"Unable to determine all required parameters"};
     }
     my $newpassword = $args{password};
-    unless ($newpassword) {
-        $newpassword = '"'.genpassword(8).'"';
+    if ($newpassword) {
+        $newpassword = '"'.$newpassword.'"';
+    } else {
+        $newpassword = '"'.genpassword(8).'a0P"'; #add a little to assure that a fluke doesn't produce a password that won't pass MS filters
     }
+    my $nativenewpassword = $newpassword;
     Encode::from_to($newpassword,"utf8","utf16le"); #ms uses utf16le, we use utf8
     my $b64password = encode_base64($newpassword);
-    my $ldif = $machineldiftemplate;
+    my $ldif;
+    my $dn = "CN=$nodename,$ou";
+    my $rc = system("ldapsearch -H ldaps://$directoryserver -b $dn"); #TODO: for mass add, search once, hit that
+    if ($rc == 0) { 
+        if ($changepassondupe) {
+            $ldif = $machineldifpasschange;
+        } else {
+            return {error=>"System already exists"};
+        }
+    } elsif (not $rc==8192) {
+        return {error=>"Unknown error $rc"};
+    } else {
+        $ldif = $machineldiftemplate;
+    }
     $ldif =~ s/##B64PASSWORD##/$b64password/g;
     $ldif =~ s/##OU##/$ou/g;
     $ldif =~ s/##REALMDCS##/$domain_components/g;
     $ldif =~ s/##DNSDOMAIN##/$dnsdomain/g;
     $ldif =~ s/##NODENAME##/$nodename/g;
-    my $dn = "CN=$nodename,$ou";
-    my $rc = system("ldapsearch -H ldaps://$directoryserver -b $dn");
-    if ($rc == 0) { 
-        return {error=>"System already exists"};
-    } elsif (not $rc==8192) {
-        return {error=>"Unknown error $rc"};
-    }
-    open(HUH,">","/tmp/huhh");
-    print HUH $ldif;
     $rc = system("echo '$ldif'|ldapmodify  -H ldaps://$directoryserver"); 
-    return {password=>$newpassword};
+    substr $nativenewpassword,0,1,'';
+    chop($nativenewpassword);
+    return {password=>$nativenewpassword};
 }
 
 sub krb_login {

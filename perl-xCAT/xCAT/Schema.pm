@@ -56,17 +56,19 @@ statelite => {
 #tables come into play.  Given no explicit request to span domains and no effort to
 #seriously evaluate wider support of multi-domain environments, will leave them 
 #commented rather than tempt people to try with an expectation that it could work.
-#domain => {
-#    cols => [qw(node domain comments disable)],
-#    keys => ['node'],
-#    table_desc => 'Mapping of nodes to domains',
-#    descriptions => {
-#        node => 'The node or group the entry applies to',
+domain => {
+    cols => [qw(node ou comments disable)],
+    keys => ['node'],
+    table_desc => 'Mapping of nodes to domain attributes',
+    descriptions => {
+        node => 'The node or group the entry applies to',
 #        domain => 'The name of the domain it is a member of, such as "example.com".  Defaults to domain value from the site table',
-#		comments => 'Any user-written notes.',
-#		disable => "Set to 'yes' or '1' to comment out this row.",      
-#	},
-#},
+# the above column is unimplemented by anything, so leave it out for this pass
+        ou => 'For an LDAP described machine account (i.e. Active Directory), the orginaztional unit to place the system.  If not set, defaults to cn=Computers,dc=your,dc=domain',
+		comments => 'Any user-written notes.',
+		disable => "Set to 'yes' or '1' to comment out this row.",      
+	},
+},
 #domains => {
 #    cols => [qw(domain nameserver authserver realm comments disable)],
 #    keys => ['domain'],
