@@ -481,8 +481,11 @@ sub mpaconfig {
        my $highid = $1;
        $nodeid =~ s/-.*//;
        @morenodeids = ($nodeid+1..$highid);
-       print Dumper(@morenodeids);
    }
+   if (scalar @moreslots) {
+       push @morenodeids,@moreslots;
+   }
+
 
    my $parameter;
    my $value;
