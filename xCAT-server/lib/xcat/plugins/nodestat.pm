@@ -848,17 +848,30 @@ sub process_request {
            #get current values and compare with the new value to decide if update of db is necessary
            my @nodes1=keys(%$status); 
 	   my $stuff = $nodetab->getNodesAttribs(\@nodes1, ['node', 'status', 'appstatus']);
-	   foreach my $node1 (@nodes1) {
+
+           #get current local time
+	   my (
+	       $sec,  $min,  $hour, $mday, $mon,
+	       $year, $wday, $yday, $isdst
+	       )
+	       = localtime(time);
+	   my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+			       $mon + 1, $mday, $year + 1900,
+			       $hour, $min, $sec);
+
+ 	   foreach my $node1 (@nodes1) {
 	       my $oldstatus=$stuff->{$node1}->[0]->{status};
                my $newstatus=$status->{$node1}->{status};
                if ($newstatus) {
 		  if ((!$oldstatus) || ($newstatus ne $oldstatus)) { 
-		      $status1->{$node1}->{status}= $newstatus; 
+		      $status1->{$node1}->{status}= $newstatus;
+		      $status1->{$node1}->{statustime}= $currtime;
 		  }   
 	       } 
 	       else {
 		   if ($oldstatus) {
 		       $status1->{$node1}->{status}= "";
+		       $status1->{$node1}->{statustime}= "";
 		   }
 	       }
 
@@ -867,11 +880,13 @@ sub process_request {
                if ($newappstatus) {
 		  if ((!$oldappstatus) || ($newappstatus ne $oldappstatus)) { 
 		      $status1->{$node1}->{appstatus}= $newappstatus; 
+		      $status1->{$node1}->{appstatustime}= $currtime; 
 		  }  
 	       } 
 	       else {
 		   if ($oldappstatus) {
 		       $status1->{$node1}->{appstatus}= "";
+		       $status1->{$node1}->{appstatustime}= ""; 
 		   }
 	       }
 	   }  

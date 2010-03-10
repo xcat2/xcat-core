@@ -622,11 +622,20 @@ sub setNodeStatusAttributes {
   }
 
   my %updates;
+  my (
+      $sec,  $min,  $hour, $mday, $mon,
+      $year, $wday, $yday, $isdst
+      )
+      = localtime(time);
+  my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+			 $mon + 1, $mday, $year + 1900,
+			 $hour, $min, $sec);
   if ($tab) {
     foreach (keys %status_hash) {
       my $nodes=$status_hash{$_};
       if (@$nodes > 0) {
         $updates{'status'} = $_;
+        $updates{'statustime'} = $currtime;
         my $where_clause="node in ('" . join("','", @$nodes) . "')";
         $tab->setAttribsWhere($where_clause, \%updates );
       }
