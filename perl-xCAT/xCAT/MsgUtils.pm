@@ -468,9 +468,10 @@ sub message
         }
     }
 
-    # if write to auditlog table requested
-    if ($sev eq 'SA')
-    {
+    # if write to auditlog table requested, if not on service node
+    if (xCAT::Utils->isMN()){
+     if ($sev eq 'SA')
+     {
         my $auditlogentry;
         my $tab = xCAT::Table->new("auditlog", -create => 1, -autocommit => 0);
         if ($tab)
@@ -517,6 +518,7 @@ sub message
             };
 
         }
+     }
     }
     return;
 }
