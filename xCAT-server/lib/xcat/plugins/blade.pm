@@ -696,6 +696,45 @@ sub cleantemp {
     return $temp;
 }
 
+sub collect_health_summary { #extracts the health summary table
+    my %summarymap;
+    my %idmap;
+    my $varbind = new SNMP::VarList(
+      ['.1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.2','1'], 
+      );
+    $session->get($varbind);
+    while ($varbind->[0]->[0] eq '.1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.2') {
+        $idmap{$varbind->[0]->[1]} = $varbind->[0]->[2];
+        $session->getnext($varbind);
+    }
+    my $numentries = scalar (keys %idmap);
+    my @bindlist;
+    foreach (1..$numentries) {
+        push @bindlist,['.1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.3',$_];
+    }
+    my $sevbind =  new SNMP::VarList(@bindlist);
+    $session->get($sevbind);
+    my $id;
+    my $bladeid;
+    foreach (@$sevbind) {
+        $id = $_->[1];
+        $bladeid = $idmap{$id};
+        $summarymap{$bladeid}->{$id}->{severity} = $_->[2];
+    }
+    @bindlist=();
+    foreach (1..$numentries) {
+        push @bindlist,['.1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.4',$_];
+    }
+    my $detailbind = new SNMP::VarList(@bindlist);
+    $session->get($detailbind);
+    foreach (@$detailbind) {
+        $id = $_->[1];
+        $bladeid = $idmap{$id};
+        $summarymap{$bladeid}->{$id}->{detail} = $_->[2];
+    }
+    return \%summarymap;
+}
+
 my %chassiswidevitals;
 sub vitals {
    my @output;
@@ -832,9 +871,12 @@ sub vitals {
 
 
     if (grep /summary/,@vitems) {
-      $tmp="Status: ".$session->get(['1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.3.'.$slot]);
-      $tmp.=", ".$session->get(['1.3.6.1.4.1.2.3.51.2.22.1.5.2.1.4.'.$slot]);
-      push @output,"$tmp";
+      unless ($chassiswidevitals{healthsummary}) {
+          $chassiswidevitals{healthsummary} = collect_health_summary();
+      }
+      foreach (values %{$chassiswidevitals{healthsummary}->{$slot}}) {
+          push @output,"Status: ".$_->{severity}.", ".$_->{detail};
+      }
     }
 
     my %ledresults=();
