@@ -292,7 +292,7 @@ sub mknetboot
             my $nfsdir = $rootimgdir;
 
             if ($restab) {
-                my $resHash = $restab->getNodeAttribs(@node, ['nfsserver', 'nfsdir']);
+                my $resHash = $restab->getNodeAttribs($node, ['nfsserver', 'nfsdir']);
                 if($resHash and $resHash->{nfsserver}) {
                     $nfssrv = $resHash->{nfsserver};
                 }
