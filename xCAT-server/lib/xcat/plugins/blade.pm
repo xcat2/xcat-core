@@ -194,6 +194,7 @@ my @rscan_header = (
 
 my $session;
 my $slot;
+my @moreslots;
 my $didchassis = 0;
 my @eventlog_array = ();
 my $activemm;
@@ -367,6 +368,14 @@ sub eventlog { #Tried various optimizations, but MM seems not to do bulk-request
       if ($source =~ m/$matchstring$/i) { #MM guys changed their minds on capitalization
         $numentries++;
         unshift @output,"$sev:$date $time $text"; #unshift to get it in a sane order
+      } else {
+          foreach (@moreslots) {
+            $matchstring=sprintf("BLADE_%02d",$_);
+            if ($source =~ m/$matchstring$/i) { #MM guys changed their minds on capitalization
+                $numentries++;
+                unshift @output,"$sev:$date $time $text"; #unshift to get it in a sane order
+            }
+          }
       }
       if ($numentries >= $requestednumber) {
         last;
@@ -467,6 +476,14 @@ sub mpaconfig {
    my $pass=shift;
    my $node=shift;
    my $nodeid=shift;
+   my @morenodeids;
+   if ($nodeid =~ /-(.*)/) {
+       my $highid = $1;
+       $nodeid =~ s/-.*//;
+       @morenodeids = ($nodeid+1..$highid);
+       print Dumper(@morenodeids);
+   }
+
    my $parameter;
    my $value;
    my $assignment;
@@ -503,6 +520,11 @@ sub mpaconfig {
          if ($assignment) {
            my $txtid = ($value =~ /^\*/) ? $node : $value;
            setoid("1.3.6.1.4.1.2.3.51.2.22.1.7.1.1.5",$nodeid,$txtid,'OCTET');
+           my $extrabay=2;
+           foreach(@morenodeids) {
+            setoid("1.3.6.1.4.1.2.3.51.2.22.1.7.1.1.5",$_,$txtid.", slot $extrabay",'OCTET');
+            $extrabay+=1;
+           }
          }
          my $data;
          if ($slot > 0) {
@@ -513,6 +535,10 @@ sub mpaconfig {
          }
          $textid = 1;
          push @cfgtext,"textid: $data";
+         foreach(@morenodeids) {
+            $data = $session->get([$bladeoname,$_]);
+            push @cfgtext,"textid: $data";
+         }
       }
       if ($parameter =~ /^snmpcfg$/i) {
          my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.1.6',0]);
@@ -876,6 +902,11 @@ sub vitals {
       }
       foreach (values %{$chassiswidevitals{healthsummary}->{$slot}}) {
           push @output,"Status: ".$_->{severity}.", ".$_->{detail};
+      }
+      foreach (@moreslots) {
+          foreach (values %{$chassiswidevitals{healthsummary}->{$_}}) {
+              push @output,"Status: ".$_->{severity}.", ".$_->{detail};
+          }
       }
     }
 
@@ -1707,6 +1738,10 @@ sub bladecmd {
   $mpa = shift;
   my $node = shift;
   $slot = shift;
+  if ($slot =~ /-/) {
+      $slot =~ s/-(.*)//;
+      @moreslots = ($slot+1..$1);
+  }
   my $user = shift;
   my $pass = shift;
   my $command = shift;
@@ -2858,6 +2893,7 @@ sub dompa {
       #that would give full AMM access to the KVM client
       foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
           my $slot = $mpahash->{$mpa}->{nodes}->{$node};
+          $slot =~ s/-.*//;
           my @output = ();
           push(@output,"method:blade");
           push(@output,"server:$target");
@@ -2892,7 +2928,7 @@ sub dompa {
   if ($command eq "rspconfig") { 
     foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
       @cfgtext=();
-      my $slot = $mpahash->{$mpa}->{nodes}->{$node};
+      my $slot = $mpahash->{$mpa}->{nodes}->{$node}; #this should preserve '-' in multi-blade configs
       my $user = $mpahash->{$mpa}->{username};
       my $pass = $mpahash->{$mpa}->{password};
   
