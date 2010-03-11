@@ -181,6 +181,21 @@ sub process_request {
 	    }
             $imagename="$osver-$arch-statelite-$profile"
 	}
+    # check if the file "litefile.save" exists or not
+    # if it doesn't exist, then we get the synclist, and run liteMe
+    # if it exists, it means "liteimg" has run more than one time, we need to compare with the synclist
+
+    my @listSaved;
+    if ( -e "$rootimg_dir/.statelite/litefile.save") {
+        open SAVED, "$rootimg_dir/.statelite/litefile.save";
+        # store all its contents to @listSaved;
+        while(<SAVED>) {
+            chomp $_;
+            push @listSaved, $_;
+        }
+        close SAVED;
+    }
+
 
 	# now get the files for the node	
 	my @synclist = xCAT::Utils->runcmd("ilitefile $imagename", 0, 1);
@@ -189,13 +204,74 @@ sub process_request {
 		return;
 	}
 
-	# this line is TOO OLD: all I care about are the files, not the characteristics at this point:
-    # We need to consider the characteristics of the file if the option is "bind,persistent" or "bind"
+    my $listNew = $synclist[0]; 
+    # verify the entries in litefile.save
+    foreach my $line (@listSaved) {
+        my @oldentry = split(/\s+/, $line);
+        my $f = $oldentry[2];
+        # if the file is not in the new synclist, or the option for the file has been changed, we need to recover the file back
+        
+        my @newentries = grep /\s+$f$/, @{$listNew}; # should only one entry in the array
+        my @entry;
+
+        if (scalar @newentries == 1) {
+            @entry = split /\s+/, $newentries[0];
+        }
+
+        if($entry[1] eq $oldentry[1]) {
+            #$callback->({info => ["$f is not changed..."]});
+        } else {
+
+            # have to consider both genimage and liteimg re-run
+            $callback->({info => ["! $f may be removed or changed..."]});
+            #TODO: recover the file back 
+            if ($oldentry[1] =~ m/bind/) {
+                # shouldn't copy back from /.default, maybe the user has replaced the file/directory in .postinstall file
+                my $default = $rootimg_dir."/.default".$f;
+                #my $target = $rootimg_dir.$f;
+                #if (-d $target) {
+                #    xCAT::Utils->runcmd("cp -a $default* $target",0, 1);
+                #}else {
+                #    xCAT::Utils->runcmd("cp -a $default $target",0, 1);
+                #}
+                xCAT::Utils->runcmd("rm -rf $default", 0, 1);   # not sure whether it's necessary right now
+            } else {
+                my $target = $rootimg_dir.$f;
+                if (-l $target) {
+                    xCAT::Utils->runcmd("rm -rf $target", 0, 1);
+                }
+
+                $target = $rootimg_dir . "/.statelite/tmpfs" . $f;
+                xCAT::Utils->runcmd("rm -rf $target", 0, 1);
+
+                my $default = $rootimg_dir . "/.default".$f;
+                $target = $rootimg_dir . $f;
+                if ( ! -e $target ) {
+                    xCAT::Utils->runcmd("cp -a $default $target",0, 1);
+                }
+                xCAT::Utils->runcmd("rm -rf $default", 0, 1);
+            }
+        }
+    }
+    # then store the @synclist to litefile.save
+    #system("cp $rootimg_dir/.statelite/litefile.save $rootimg_dir/.statelite/litefile.save1");
+    open SAVED, ">$rootimg_dir/.statelite/litefile.save";
+    foreach my $line (@{$listNew}) {
+        print SAVED "$line\n";
+    }
+    close SAVED;
+    
+
+    # then the @synclist
+    # We need to consider the characteristics of the file if the option is "persistent,bind" or "bind"
 	my @files;
     my @bindedFiles;
 	foreach my $line (@synclist){
 		foreach (@{$line}){
             my @entry = split(/\s+/, $_);
+            # $entry[0] => imgname or nodename
+            # $entry[1] => option value
+            # $entry[2] => file/directory name
             my $f = $entry[2];
             if($entry[1] =~ m/bind/) {
                 if($f =~ /^\//) {
@@ -230,9 +306,6 @@ sub liteMe {
 	my $rootimg_dir = shift; 
 	my $files = shift;
     my $bindedFiles = shift;
-    use Data::Dumper;
-    print Dumper($files);
-    print Dumper($bindedFiles);
 	# Arg 2: callback ref to make comments...
 	my $callback = shift;	
 	unless(-d $rootimg_dir){
@@ -248,7 +321,6 @@ sub liteMe {
     # each of the files in the @$bindedFiles sync list;
     # 1.  copy original contents if they exist to .default directory
     foreach my $f (@$bindedFiles) {
-        print Dumper($f);
         # copy the file to /.defaults
         my $rif = $rootimg_dir . $f;
         my $d = dirname($f);
@@ -271,16 +343,17 @@ sub liteMe {
 	my $sym = "1"; # sym = 0 means no symlinks, just bindmount
 	if($sym){
 		foreach my $f (@$files){
-                    #check if the file has been moved to .default by its parent or by last liteimg, if yes, then do nothing
-		    my $ret=`readlink -m $rootimg_dir$f`;
-                    if ($? == 0) {
-			if ($ret =~ /$rootimg_dir\/.default/)
-                        {
-			    $verbose && $callback->({info=>["do nothing for file $f"]});
-			    next;
-			}
-		    }
-                    
+            #check if the file has been moved to .default by its parent or by last liteimg, if yes, then do nothing
+            my $ret=`readlink -m $rootimg_dir$f`;
+            if ($? == 0) {
+                if ($ret =~ /$rootimg_dir\/.default/)
+                {
+                    $verbose && $callback->({info=>["do nothing for file $f"]});
+                    next;
+                }
+            }
+
+
 			# copy the file to /.defaults
 			my $rif = $rootimg_dir . $f;
 			my $d = dirname($f);
