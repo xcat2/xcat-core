@@ -525,7 +525,7 @@ sub getmacs {
 
 
                 if ( scalar(@$value) < 2 ) {
-                    my $filter = "lpar_id,curr_profile,default_profile";
+                    my $filter = "lpar_id,curr_profile";
                     my $prof   = xCAT::PPCcli::lssyscfg( $exp, "node", $mtms, $filter, $id );
                     my $Rc = shift(@$prof);
 
@@ -537,8 +537,8 @@ sub getmacs {
                     }
 
                     foreach my $val ( @$prof ) {
-                        my ($lpar_id,$curr_profile,$default_profile) = split  /,/, $val;
-			if ( ((!length($default_profile)) and (!length($curr_profile))) || (($default_profile =~ /^none$/) and ($curr_profile =~ /^none$/)) ) {
+                        my ($lpar_id,$curr_profile) = split  /,/, $val;
+			if ( (!length($curr_profile)) || ($curr_profile =~ /^none$/) ) {
                             push @emptynode,$node;
                         }
                     }
