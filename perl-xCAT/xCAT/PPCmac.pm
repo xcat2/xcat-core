@@ -537,8 +537,8 @@ sub getmacs {
                     }
 
                     foreach my $val ( @$prof ) {
-                        my ($lpar_id,$curr_profile) = split  /,/, $val;
-                        if ( !length($curr_profile) || ($curr_profile =~ /^none$/) ) {
+                        my ($lpar_id,$curr_profile,$default_profile) = split  /,/, $val;
+			if ( ((!length($default_profile)) and (!length($curr_profile))) || (($curr_profile =~ /^none$/) and ($curr_profile =~ /^none$/)) ) {
                             push @emptynode,$node;
                         }
                     }
