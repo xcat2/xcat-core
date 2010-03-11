@@ -1637,6 +1637,15 @@ sub parse_responses {
         }
     }
 
+    my %nodehm_table_hash;
+    my $nodehm_tab  = xCAT::Table->new('nodehm');
+    my @nodehm_entries = $nodehm_tab->getAllNodeAttribs(['node','mgt']);
+    for my $entry ( @nodehm_entries ) {
+        if ( $entry->{'mgt'} ) {
+            $nodehm_table_hash{$entry->{'node'}} = $entry->{ 'mgt'};
+        }
+    }
+
     my %hash = ();
     for my $h ( keys %outhash ) {
         my $data = $outhash{$h};
@@ -1660,7 +1669,10 @@ sub parse_responses {
         ############################################################
         if ( exists( $opt{n} ) ) {
             if ( exists $vpd_table_hash{$mtm . '*' . $sn . '-' . $side} ) {
-                next;
+                my $existing_node = $vpd_table_hash{$mtm . '*' . $sn . '-' . $side};
+                if ( exists $nodehm_table_hash{$existing_node} ) {
+                    next;
+                }
             }
         }
 
