@@ -12,6 +12,10 @@ Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: /opt/xcat
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 
+%ifnos linux
+AutoReqProv: no
+%endif
+
 # AIX will build with an arch of "ppc"
 # also need to fix Requires for AIX
 %ifos linux
