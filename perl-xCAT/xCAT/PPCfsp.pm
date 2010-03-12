@@ -1417,15 +1417,17 @@ sub sysdump {
     # Get current dump settings 
     ######################################
     foreach ( my $i=0; $i<3; $i++ ) {
-        if ( ($html !~ s/Dump policy:\s+(\w+)//) and ($i == 0) ) {
-            goto ERROR;
-        } else {
-            next;
+	if ($i == 0) {
+            if ($html !~ /Dump policy:\s+(\w+)/) {
+                goto ERROR;
+            }
         }
 
-        if ( ($html !~ s/selected value='(\d+)'//) and ($i != 0) ) {
+        if ($i != 0) {
+	    if ($html !~ s/selected value='(\d+)'//) {
 ERROR:
-            return( [RC_ERROR,"Error getting dump settings"] );
+                return( [RC_ERROR,"Error getting dump settings"] );
+	    }
         }
 
         push @d, $1;
