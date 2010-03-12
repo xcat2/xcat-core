@@ -1573,10 +1573,16 @@ sub validate {
      xCAT::MsgUtils->message("S","Unable to open policy data, denying");
     return 0;
   }
+ 
   my $policies = $policytable->getAllEntries;
   $policytable->close;
   my $rule;
+  my $peerstatus;
   RULE: foreach $rule (@$policies) {
+    # check to see if peerhost is trusted
+    if (($rule->{name} eq $peerhost)  && ($rule->{rule}=~ /trusted/i)) {
+     $peerstatus="Trusted";
+    }
     if ($rule->{name} and $rule->{name} ne '*') {
       #TODO: more complex matching (lists, wildcards)
       next unless ($peername and $peername eq $rule->{name});
@@ -1606,7 +1612,7 @@ sub validate {
     }
     if ($rule->{noderange} and $rule->{noderange} ne '*') {
       my $matchall=0;
-      if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i) {
+      if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i or $rule->{rule} =~ /trusted/i) {
           $matchall=1;
       }
       if (defined $request->{noderange}->[0]) {
@@ -1638,7 +1644,7 @@ sub validate {
       my $logst;
       my $rc;
       my $status;
-      if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i) {
+      if ($rule->{rule} =~ /allow/i or $rule->{rule} =~ /accept/i or $rule->{rule} =~ /trusted/i) {
          $logst = "xCAT: Allowing ".$request->{command}->[0];
          $status = "Allowed";
          $rc=1;
@@ -1646,6 +1652,15 @@ sub validate {
          $logst = "xCAT: Denying ".$request->{command}->[0];
          $status = "Denied";
          $rc=0;
+      }
+      # set username authenticated to run command
+      # if from Trusted host, use input username,  else set from creds
+      if (($request->{username}) && defined($request->{username}->[0])) {
+         if ($peerstatus ne "Trusted" ) {  # then set to peername
+            $request->{username}->[0] = $peername;
+         }
+      } else {
+            $request->{username}->[0] = $peername;
       }
       if ($request->{noderange} && defined($request->{noderange}->[0])) { $logst .= " to ".$request->{noderange}->[0]; }
         # add each argument
@@ -1656,14 +1671,13 @@ sub validate {
              $arglist .= " " . $argument;
       }
       $logst .= $arglist;
-      if ($peername) { $logst .= " for " . $peername };
+      if($peername) { $logst .= " for " . $request->{username}->[0]};
       if ($peerhost) { $logst .= " from " . $peerhost };
-      # xCAT::MsgUtils->message("S",$logst);
       # put in audit Table
       my $rsp = {};
       $rsp->{syslogdata}->[0] = $logst;
       if ($peername) {
-           $rsp->{userid} ->[0] = $peername;
+           $rsp->{userid} ->[0] = $request->{username}->[0];
       }
       if ($peerhost) {
         $rsp->{clientname} -> [0] = $peerhost;
