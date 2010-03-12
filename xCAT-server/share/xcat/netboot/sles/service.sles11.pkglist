@@ -1,9 +1,8 @@
-aaa_base
 bash
 sysconfig
 syslog-ng
 klogd
-kernel-ppc64
+kernel-default
 openssh
 vim
 rpm
