@@ -1034,7 +1034,7 @@ sub initDB
             $chtabcmds =
               "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
             $chtabcmds .=
-              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=allow;";
+              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=trusted;";
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=4.4 policy.commands=getpostscript policy.rule=allow;";
             $chtabcmds .=
@@ -1047,7 +1047,7 @@ sub initDB
             $chtabcmds =
               "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
             $chtabcmds .=
-              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=allow;";
+              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=trusted;";
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=2 policy.commands=getbmcconfig policy.rule=allow;";
             $chtabcmds .=
@@ -1080,6 +1080,20 @@ sub initDB
     # adding otherpkgs and syncfiles new postscripts for migration
     if ($::UPDATEINSTALL)
     {
+        # setup Management Node policy to trusted
+        my $chtabcmds;
+        $chtabcmds =
+          "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=trusted";
+        my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E',
+                            "Could not update policy.name=$hname rule.");
+        }
+        else
+        {
+            verbose("Updated policy definition for MN.");
+        }
 
         # check to see if otherpkgs in the postscripts table
         # if it does do not change it, otherwise put in postbootscripts
