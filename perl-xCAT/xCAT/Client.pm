@@ -89,14 +89,14 @@ sub submit_request {
   unless ($certfile) { $certfile = xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem"; }
   unless ($cafile) { $cafile  = xCAT::Utils->getHomeDir()."/.xcat/ca.pem"; }
   $xCAT::Client::EXITCODE = 0;    # clear out exit code before invoking the plugin
-#  add current userid to the request
-if (!(defined($request->{username}))) {
-  $request->{username}->[0] = getpwuid($>);
-}
 $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
 # If XCATBYPASS is set, invoke the plugin process_request method directly
 # without going through the socket connection to the xcatd daemon
   if ($ENV{XCATBYPASS}) {
+     #add current userid to the request
+     if (!(defined($request->{username}))) {
+       $request->{username}->[0] = getpwuid($>);
+     }
    # Load plugins from either specified or default dir
     require xCAT::Table;
     my %cmd_handlers;
