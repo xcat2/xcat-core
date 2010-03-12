@@ -563,7 +563,7 @@ policy => {
   noderange => 'The Noderange that this rule applies to.  Default is "*" (all nodes).',
   parameters => 'Command parameters that this rule applies to.  Default all parameters.',
   time => 'Time ranges that this command may be executed in.  Default is any time.',
-  rule => 'Specifies how this rule should be applied.  Valid values are: allow, accept.  Either of these values will allow the user to run the commands.  Any other value will deny the user access to the commands.',
+  rule => 'Specifies how this rule should be applied.  Valid values are: allow, accept , trusted. Allow or accept  will allow the user to run the commands. Any other value will deny the user access to the commands. Trusted is used to designated a host that has extra security trust. The only node that is given that security level now is the MN.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
