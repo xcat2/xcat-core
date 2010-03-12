@@ -563,7 +563,7 @@ policy => {
   noderange => 'The Noderange that this rule applies to.  Default is "*" (all nodes).',
   parameters => 'Command parameters that this rule applies to.  Default all parameters.',
   time => 'Time ranges that this command may be executed in.  Default is any time.',
-  rule => 'Specifies how this rule should be applied.  Valid values are: allow, accept , trusted. Allow or accept  will allow the user to run the commands. Any other value will deny the user access to the commands. Trusted is used to designated a host that has extra security trust. The only node that is given that security level now is the MN.',
+  rule => 'Specifies how this rule should be applied.  Valid values are: allow, accept, trusted. Allow or accept  will allow the user to run the commands. Any other value will deny the user access to the commands. Trusted means that once this client has been authenticated via the certificate, all other information that is sent (e.g. the username) is believed without question.  This authorization should only be given to the xcatd on the management node at this time.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
