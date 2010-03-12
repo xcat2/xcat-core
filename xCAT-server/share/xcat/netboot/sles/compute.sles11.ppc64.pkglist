@@ -1,0 +1,13 @@
+bash 
+nfs-utils
+openssl
+dhcpcd 
+kernel-ppc64
+openssh
+psmisc
+wget
+sysconfig 
+syslog-ng
+klogd
+vim
+rsync
