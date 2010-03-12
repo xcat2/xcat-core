@@ -1577,12 +1577,16 @@ sub validate {
   my $policies = $policytable->getAllEntries;
   $policytable->close;
   my $rule;
-  my $peerstatus;
-  RULE: foreach $rule (@$policies) {
-    # check to see if peerhost is trusted
+  my $peerstatus="untrusted";
+  # check to see if peerhost is trusted
+  foreach $rule (@$policies) {
+     
     if (($rule->{name} eq $peerhost)  && ($rule->{rule}=~ /trusted/i)) {
      $peerstatus="Trusted";
+     last;
     }
+  }
+  RULE: foreach $rule (@$policies) {
     if ($rule->{name} and $rule->{name} ne '*') {
       #TODO: more complex matching (lists, wildcards)
       next unless ($peername and $peername eq $rule->{name});
