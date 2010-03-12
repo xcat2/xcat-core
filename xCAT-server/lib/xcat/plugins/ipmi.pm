@@ -1046,6 +1046,7 @@ sub getrvidparms_with_buildid {
         return;
     }
 
+    $response = $browser->request(GET $baseurl."/page/session.html"); #we don't care, but some firmware is confused if we don't
     $response = $browser->request(GET $baseurl."/kvm/kvm/jnlp");
     my $jnlp = $response->content;
     if ($jnlp =~ /This advanced option requires the purchase and installation/) {
