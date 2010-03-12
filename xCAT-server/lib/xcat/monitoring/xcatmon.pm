@@ -408,10 +408,23 @@ sub processSettingChanges {
 sub getDescription {
   return 
 "  Description:
-    xcatmon uses fping to report the node liveness status and update the 
-    nodelist.status column. Use command 'monstart xcatmon -n' to start 
+    xcatmon provides node status monitoring using fping on AIX and nmap on Linux. 
+    It also provides application status monitoring. The status and the appstatus 
+    columns of the nodelist table will be  updated periodically  with the latest 
+    status values for the nodes.   Use  command  'monstart xcatmon -n'  to start 
     monitoring. 
   Settings:
-    ping-interval:  the number of minutes between each fping operation. 
-        The default value is 3.";
+    ping - interval:  the number of minutes between each fping operation. 
+        The default value is 3.
+    apps -- a list of comma separated application names whose status will be queried. 
+        For how to get the status of each app, look for app name in the key filed 
+        in a different row.
+    port -- the application daemon port number, if not specified, use internal list, 
+        then /etc/services.
+    group -- the name of a node group that needs to get the application status from.
+         If not specified, assume all the nodes in the nodelist table. 
+         To specify more than one groups, use group=a,group=b format.
+    cmd -- the command will be run locally on mn or sn.
+    dcmd -- the command will be run distributed on the nodes (xdsh <nodes> ...).";
+
 }
