@@ -57,7 +57,7 @@ This option will remove and regenerate the node host ssh keys.  It should only b
 
 =item B<-c|--credentials>
 
-This option will remove and regenerate the xCAT credentials.  It should only be used, if they are deleted or become corrupted. The credentials must be redistribed to the service nodes by installing the service node. makeconservercf must be rerun to pick up the new credentials,  and conserver must be stop and started.
+This option will remove all xcat credentials for root and any userids where credentials have been created. It will regenerate roots credentials,  but the admin will have to add back all the userid credentials needed with the /opt/xcat/share/xcat/scripts/setup-local-client.sh <username> command.  It should only be used, if they are deleted or become corrupted. The credentials must be redistribed to the service nodes by installing the service node. makeconservercf must be rerun to pick up the new credentials,  and conserver must be stop and started.
 
 =item B<-d|--database>
 
