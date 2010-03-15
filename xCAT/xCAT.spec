@@ -24,7 +24,7 @@ Conflicts: xCATsn
 Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
-Requires: atftp dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
+Requires: atftp-xcat dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
 %ifarch s390x
 # No additional requires for zLinux right now
 %else
