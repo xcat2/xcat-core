@@ -2,16 +2,13 @@ package xCAT_plugin::dns;
 use Getopt::Long;
 use Net::DNS;
 use xCAT::Table;
+use Sys::Hostname;
 use Socket;
 use strict;
 #This is a rewrite of DNS management using nsupdate rather than direct zone mangling
 
 my $callback;
 
-sub update_named_conf {
-    my $ctx = shift;
-
-}
 sub get_reverse_zone_for_entity {
     my $ctx = shift;
     my $node = shift;
@@ -36,7 +33,7 @@ sub get_reverse_zone_for_entity {
                     unshift(@zone,(shift @orig));
                 }
                 $rev = join('.',@zone);
-                $rev .= '.IN_ADDR.ARPA';
+                $rev .= '.IN-ADDR.ARPA';
                 return $rev;
             }
         }
@@ -67,13 +64,44 @@ sub process_request {
         @nodes = @{$request->{node}};
     } elsif ($allnodes) {
         #read all nodelist specified nodes
-    } else { #legacy behavior, read from /etc/hosts
-        sendmsg([1,"TODO: reading from /etc/hosts like old makedns"]);
+    } else { 
+        #legacy behavior, read from /etc/hosts
+        my $hostsfile;
+        open($hostsfile,"<","/etc/hosts");
+        my @contents = <$hostsfile>;
+        close($hostsfile);
+        my $addr;
+        my $name;
+        my $canonical;
+        my $aliasstr;
+        my @aliases;
+        my $names;
+        foreach (@contents) {
+            s/#.*//; #strip comments;
+            s/^[ \t]*//; #remove leading whitespace
+            next unless ($_); #skip empty lines
+            ($addr,$names) = split /[ \t]+/,$_,2;
+            if ($addr !~ /^\d+\.\d+\.\d+\.\d+$/) {
+                sendmsg("Ignoring line $_ in /etc/hosts, only IPv4 format entries are supported currently");
+                next;
+            }
+            unless ($canonical =~ /^[a-z0-9- \t\n]$/i) {
+                sendmsg("Ignoring line $_ in /etc/hosts, names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'");
+                next;
+            }
+            ($canonical,$aliasstr)  = split /[ \t]+/,$names,2;
+            if ($aliasstr) {
+                @aliases= split /[ \t]+/,$aliasstr;
+            } else {
+                @aliases = ();
+            }
+        }
     }
     my $hoststab = xCAT::Table->new('hosts',-create=>0);
     if ($hoststab) {
         $ctx->{hoststab} = $hoststab->getNodesAttribs(\@nodes,['ip']);
     }
+    $ctx->{nodes} = \@nodes;
     my $networkstab = xCAT::Table->new('networks',-create=>0);
     unless ($networkstab) { sendmsg([1,'Unable to enumerate networks, try to run makenetworks']); }
     my @networks = $networkstab->getAllAttribs('net','mask');
@@ -99,10 +127,10 @@ sub process_request {
         my @forwarders = split /[ ,]/,$stab->{value};
         $ctx->{forwarders}=\@forwarders;
     }
-    $ctx->{domainstotouch}->{$ctx->{domain}}=1;
+    $ctx->{zonestotouch}->{$ctx->{domain}}=1;
     foreach (@nodes) {
            $ctx->{revzones}->{$_} = get_reverse_zone_for_entity($ctx,$_);
-           $ctx->{domainstotouch}->{$ctx->{revzones}->{$_}}=1;
+           $ctx->{zonestotouch}->{$ctx->{revzones}->{$_}}=1;
     }
     use Data::Dumper;
     if (1) { #TODO: function to detect and return 1 if the master server is DNS SOA for all the zones we care about
@@ -114,6 +142,12 @@ sub process_request {
             if ($stab and $stab->{value} and $stab->{value}) {
                 my @dservers = split /[ ,]/,$stab->{value};
                 $ctx->{adservers} = \@dservers;
+                $ctx->{adzones} = {
+                    "_msdcs.". $ctx->{domain} => 1,
+                    "_sites.". $ctx->{domain} => 1,
+                    "_tcp.". $ctx->{domain} => 1,
+                    "_udp.". $ctx->{domain} => 1,
+                };
             }
         }
         $stab =$sitetab->getAttribs({key=>'dnsupdaters'},['value']); #allow unsecure updates from these
@@ -124,7 +158,13 @@ sub process_request {
         if ($zapfiles) { #here, we unlink all the existing files to start fresh
         }
         #We manipulate local namedconf
+        $ctx->{dbdir} = get_dbdir();
         update_namedconf($ctx);
+        update_zones($ctx);
+        if ($ctx->{restartneeded}) {
+            system("/sbin/service named start");
+            system("/sbin/service named reload");
+        }
     } else {
         unless ($ctx->{privkey}) {
             sendmsg([1,"Unable to update DNS due to lack of credentials in passwd to communicate with remote server"]);
@@ -132,6 +172,54 @@ sub process_request {
     }
     #now we stick to Net::DNS style updates, with TSIG if possible.  TODO: kerberized (i.e. Windows) DNS server support, maybe needing to use nsupdate -g....
 }
+
+sub get_dbdir {
+    if (-d "/var/named") {
+        return "/var/named/";
+    } elsif (-d "/var/lib/named") {
+        return "/var/lib/named/";
+    } else {
+        use File::Path;
+        mkpath "/var/named/";
+        return "/var/named/";
+    }
+}
+
+sub update_zones {
+    my $ctx = shift;
+    my $currzone;
+    my $dbdir = $ctx->{dbdir};
+    my $domain = $ctx->{domain};
+    my $name = hostname;
+    unless ($name =~ /\./) {
+        $name .= $domain;
+    }
+    unless ($name =~ /\.\z/) {
+        $name .= '.';
+    }
+    my @neededzones = keys %{$ctx->{zonestotouch}};
+    push @neededzones,keys %{$ctx->{adzones}};
+    my ($sec, $min, $hour, $mday, $mon, $year, $rest) = localtime(time);
+    my $serial = ($mday * 100) + (($mon + 1) * 10000) + (($year + 1900) * 1000000);
+    foreach $currzone (@neededzones) {
+        if ($currzone =~ /IN-ADDR\.ARPA/) {
+            $currzone =~ s/\.IN-ADDR\.ARPA.*//;
+            my @octets = split/\./,$currzone;
+            $currzone = join('.',reverse(@octets));
+        }
+        unless (-f $dbdir."/db.$currzone") {
+            my $zonehdl;
+            open($zonehdl,">",$dbdir."/db.$currzone");
+            print $zonehdl '$TTL 86400'."\n";
+            print $zonehdl '@ IN SOA '.$name." root.$name ( $serial 10800 3600 604800 86400 )\n";
+            print $zonehdl "  IN NS  $name\n";
+            close($zonehdl);
+            $ctx->{restartneeded}=1;
+        }
+    }
+}
+
+
 
 sub update_namedconf {
     my $ctx = shift;
@@ -154,14 +242,14 @@ sub update_namedconf {
                 my $skip=0;
                 do {
                     if ($ctx->{forwarders} and $line =~ /forwarders {/) {
-                        push @newnamed,"\tforwarders \{";
+                        push @newnamed,"\tforwarders \{\n";
                         $skip=1;
                         foreach (@{$ctx->{forwarders}}) {
-                            push  @newnamed,"\t\t".$_."\n";
+                            push  @newnamed,"\t\t".$_.";\n";
                         }
+                        push @newnamed,"\t};\n";
                     } elsif ($skip) {
-                        if ($line =~ / };/) {
-                            push @newnamed,"\t};";
+                        if ($line =~ /};/) {
                             $skip = 0;
                         }
                     } else {
@@ -170,34 +258,72 @@ sub update_namedconf {
                     $i++;
                     $line = $currnamed[$i];
                 } while ($line !~ /^\};/);
+                push @newnamed,$line;
             } elsif ($line =~ /^zone "([^"]*)" in \{/) {
                 my $currzone = $1;
                 if ($ctx->{zonestotouch}->{$currzone} or $ctx->{adzones}->{$currzone}) {
                     $didzones{$currzone}=1;
-                    push @newnamed,"zone \"$currzone\" in {\n","\ttype master;\n","\tallow-update {\n","\t\tkey xcat_key;\n";
-                    my @list;
-                    if ($ctx->{adzones}->{$currzone}) {
-                        @list = @{$ctx->{dnsupdaters}};
-                    } else {
-                        @list = @{$ctx->{adservers}};
-                    }
-                    foreach (@list) {
-                        push @newnamed,"\t\t$_\n";
-                    }
-                    push @newnamed,"\t};\n","\tfile \"db.$currzone\";\n","};\n";
-                    while ($line !~ /^\};/) { #skip the old file zone
+                    my @candidate = ($line);
+                    my $needreplace=1;
+                    do {
                         $i++;
                         $line =  $currnamed[$i];
+                        push @candidate,$line;
+                        if ($line =~ /key xcat_key/) {
+                            $needreplace=0;
+                        }
+                    } while ($line !~ /^\};/); #skip the old file zone
+                    unless ($needreplace) {
+                        push @newnamed,@candidate;
+                        next;
                     }
-                    $i++;
+                    $ctx->{restartneeded}=1;
+                    push @newnamed,"zone \"$currzone\" in {\n","\ttype master;\n","\tallow-update {\n","\t\tkey xcat_key;\n";
+                    my @list;
+                    if (not $ctx->{adzones}->{$currzone}) {
+                        if ($ctx->{dnsupdaters}) {
+                            @list = @{$ctx->{dnsupdaters}};
+                        }
+                    } else {
+                        if ($ctx->{adservers}) {
+                            @list = @{$ctx->{adservers}};
+                        }
+                    }
+                    foreach (@list) {
+                        push @newnamed,"\t\t$_;\n";
+                    }
+                    if ($currzone =~ /IN-ADDR\.ARPA/) {
+                        my $net = $currzone;
+                        $net =~ s/.IN-ADDR\.ARPA.*//;
+                        my @octets = split/\./,$net;
+                        $net = join('.',reverse(@octets));
+                        push @newnamed,"\t};\n","\tfile \"db.$net\";\n","};\n";
+
+                    } else {
+                        push @newnamed,"\t};\n","\tfile \"db.$currzone\";\n","};\n";
+                    }
                 } else {
                     push @newnamed,$line;
+                    do {
+                        $i++;
+                        $line =  $currnamed[$i];
+                        push @newnamed,$line;
+                    } while ($line !~ /^\};/);
                 }
+
             } elsif ($line =~ /^key xcat_key/) {
                 $gotkey=1;
                 if ($ctx->{privkey}) {
-                    push @newnamed,"key xcat_key {\n","\talgorithm hmac-md5;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n";
+                    #for now, assume the field is correct
+                    #push @newnamed,"key xcat_key {\n","\talgorithm hmac-md5;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n\n";
+                    push @newnamed,$line;
+                    do {
+                        $i++;
+                        $line =  $currnamed[$i];
+                        push @newnamed,$line;
+                    } while ($line !~ /^\};/);
                 } else {
+                    push @newnamed,$line;
                     while ($line !~ /^\};/) { #skip the old file zone
                         if ($line =~ /secret \"([^"]*)\"/) {
                             my $passtab = xCAT::Table->new("passwd",-create=>1);
@@ -205,13 +331,16 @@ sub update_namedconf {
                         }
                         $i++;
                         $line =  $currnamed[$i];
+                        push @newnamed,$line;
                     }
                 }
+            } else {
+                push @newnamed,$line;
             }
         }
     }
     unless ($gotoptions) {
-        push @newnamed,"options {\n","\tdirectory \"/var/named/\";\n";
+        push @newnamed,"options {\n","\tdirectory \"".$ctx->{dbdir}."\";\n";
         if ($ctx->{forwarders}) {
             push @newnamed,"\tforwarders {\n";
             foreach (@{$ctx->{forwarders}}) {
@@ -219,43 +348,90 @@ sub update_namedconf {
             }
             push @newnamed,"\t};\n";
         }
-        push @newnamed,"};\n";
+        push @newnamed,"};\n\n";
         open($nameconf,"<",$namedlocation);
     }
     unless ($gotkey) {
         unless ($ctx->{privkey}) { #need to generate one
             $ctx->{privkey} = encode_base64(genpassword(32));
         }
-        push @newnamed,"key xcat_key {\n","\talgorithm hmac-md5;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n";
+        push @newnamed,"key xcat_key {\n","\talgorithm hmac-md5;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n\n";
+        $ctx->{restartneeded}=1;
     }
     my $zone;
     foreach $zone (keys %{$ctx->{zonestotouch}}) {
         if ($didzones{$zone}) { next; }
-        push @newnamed,"zone \"$zone\" in {\n","\ttype master;\n","allow-update {\n","\t\tkey xcat_key;\n";
+        $ctx->{restartneeded}=1; #have to add a zone, a restart will be needed
+        push @newnamed,"zone \"$zone\" in {\n","\ttype master;\n","\tallow-update {\n","\t\tkey xcat_key;\n";
         foreach (@{$ctx->{dnsupdaters}}) {
-            push @newnamed,"\t\t$_\n";
+            push @newnamed,"\t\t$_;\n";
         }
-        push @newnamed,"\t};","\tfile \"db.$zone\";\n","};\n";
+        if ($zone =~ /IN-ADDR\.ARPA/) {
+            my $net = $zone;
+            $net =~ s/.IN-ADDR\.ARPA.*//;
+            my @octets = split/\./,$net;
+            $net = join('.',reverse(@octets));
+            push @newnamed,"\t};\n","\tfile \"db.$net\";\n","};\n";
+
+        } else {
+            push @newnamed,"\t};\n","\tfile \"db.$zone\";\n","};\n";
+        }
     }
     foreach $zone (keys %{$ctx->{adzones}}) {
         if ($didzones{$zone}) { next; }
-        push @newnamed,"zone \"$zone\" in {\n","\ttype master;\n","allow-update {\n","\t\tkey xcat_key;\n";
+        $ctx->{restartneeded}=1; #have to add a zone, a restart will be needed
+        push @newnamed,"zone \"$zone\" in {\n","\ttype master;\n","\tallow-update {\n","\t\tkey xcat_key;\n";
         foreach (@{$ctx->{adservers}}) {
-            push @newnamed,"\t\t$_\n";
+            push @newnamed,"\t\t$_;\n";
         }
-        push @newnamed,"\t};","\tfile \"db.$zone\";\n","};\n";
+        push @newnamed,"\t};\n","\tfile \"db.$zone\";\n","};\n\n";
     }
-    use Data::Dumper;
-    print Dumper(@newnamed);
+    my $newnameconf;
+    open($newnameconf,">",$namedlocation);
+    for my $l  (@newnamed) { print $newnameconf $l; }
+    close($newnameconf);
+}
+
+sub add_records {
+    my $ctx = shift;
+    unless ($ctx->{privkey}) {
+        my $passtab = xCAT::Table->new('passwd');
+        my $pent = $passtab->getAttribs({key=>'omapi',username=>'xcat_key'},['password']);
+        if ($pent and $pent->{password}) { 
+            $ctx->{privkey} = $pent->{password};
+        } else {
+            sendmsg([1,"Unable to find omapi key in passwd table"]);
+        }
+    }
+    my $node;
+    my $ip;
+    foreach $node (@{$ctx->{nodes}}) {
+        $ip = $node;
+        if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
+            $ip = $ctx->{hoststab}->{$node}->[0]->{ip};
+        } else {
+            unless ($ip = inet_aton($ip)) {
+                sendmsg([1,"Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts"]);
+                next;
+            }
+            $ip = inet_ntoa($ip);
+        }
+        #time to update, A and PTR records, IPv6 still TODO
+        $ip = reverse(split(/\./,$ip));
+        $ip .= '.IN-ADDR.ARPA.';
+    }
 }
 my $resolver = Net::DNS::Resolver->new;
-
 my $key_name = 'xcat_key';
 my $key = 'UlpPekE5Zmg0VzBsbTA2alZSRkxWMGRWTDZRckhJaHM=';
-my $update = Net::DNS::Update->new('xcat.e1350');
-$update->push(update => rr_add('foo.xcat.e1350 A 172.16.0.22'));
+my $update = Net::DNS::Update->new();
+$update->push(update => rr_add('bar.xcat.e1350 A 172.16.0.21'));
 $update->sign_tsig($key_name,$key);
 my $reply = $resolver->send($update);
-
-use Data::Dumper;
-process_request({node=>['bmc1','n1','switch1']});
+print Dumper($reply);
+$update = Net::DNS::Update->new('16.172.IN-ADDR.ARPA');
+$update->push(update => rr_add('21.0.16.172.IN-ADDR.ARPA. IN PTR foo.xcat.e1350.'));
+$update->sign_tsig($key_name,$key);
+$reply = $resolver->send($update);
+print Dumper($reply);
+#process_request({node=>['noctilucent','bmc1','n1','switch1']});
