@@ -68,6 +68,9 @@ echo "rpm -Uvh --nodeps xCAT-server-$VER-*rpm" >> $RPMDIR/instxcat
 mv /opt/freeware/src/packages/RPMS/ppc/xCAT-$VER-*rpm $RPMDIR/
 echo "rpm -Uvh xCAT-$VER-*rpm" >> $RPMDIR/instxcat
 
+./makexcatsnrpm
+mv /opt/freeware/src/packages/RPMS/ppc/xCATsn-$VER-*rpm $RPMDIR/
+
 ./makermcrpm
 mv /opt/freeware/src/packages/RPMS/ppc/xCAT-rmc-$VER-*rpm $RPMDIR/
 echo "rpm -Uvh xCAT-rmc-$VER-*rpm" >> $RPMDIR/instxcat
