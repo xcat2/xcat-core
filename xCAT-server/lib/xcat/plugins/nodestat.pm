@@ -866,7 +866,7 @@ sub process_request {
 	       }
 	   } else  {
 	       my $rsp;
-	       $rsp->{data}->[0]= "here ...$tmpdata";
+	       $rsp->{data}->[0]= "$tmpdata";
 	       xCAT::MsgUtils->message("I", $rsp, $callback);
            }
        }
