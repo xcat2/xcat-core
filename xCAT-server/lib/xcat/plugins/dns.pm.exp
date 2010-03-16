@@ -159,7 +159,7 @@ sub process_request {
         }
         #We manipulate local namedconf
         $ctx->{dbdir} = get_dbdir();
-        update_namedconf($ctx);
+        update_namedconf($ctx); 
         update_zones($ctx);
         if ($ctx->{restartneeded}) {
             system("/sbin/service named start");
@@ -171,6 +171,8 @@ sub process_request {
         }
     }
     #now we stick to Net::DNS style updates, with TSIG if possible.  TODO: kerberized (i.e. Windows) DNS server support, maybe needing to use nsupdate -g....
+    $ctx->{resolver} = Net::DNS::Resolver->new();
+    add_records($ctx);
 }
 
 sub get_dbdir {
@@ -191,11 +193,26 @@ sub update_zones {
     my $dbdir = $ctx->{dbdir};
     my $domain = $ctx->{domain};
     my $name = hostname;
+    my $node = $name;
+    unless ($domain =~ /^\./) {
+        $domain = '.'.$domain;
+    }
     unless ($name =~ /\./) {
         $name .= $domain;
     }
     unless ($name =~ /\.\z/) {
         $name .= '.';
+    }
+    my $ip=$node;
+    if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
+        $ip = $ctx->{hoststab}->{$node}->[0]->{ip};
+    } else {
+        unless ($ip = inet_aton($ip)) {
+            print "Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts";
+            sendmsg([1,"Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts"]);
+            next;
+        }
+        $ip = inet_ntoa($ip);
     }
     my @neededzones = keys %{$ctx->{zonestotouch}};
     push @neededzones,keys %{$ctx->{adzones}};
@@ -213,6 +230,9 @@ sub update_zones {
             print $zonehdl '$TTL 86400'."\n";
             print $zonehdl '@ IN SOA '.$name." root.$name ( $serial 10800 3600 604800 86400 )\n";
             print $zonehdl "  IN NS  $name\n";
+            if ($name =~ /$currzone/) { #Must guarantee an A record for the DNS server
+                print $zonehdl "$name  IN A  $ip\n";
+            }
             close($zonehdl);
             $ctx->{restartneeded}=1;
         }
@@ -405,8 +425,16 @@ sub add_records {
     }
     my $node;
     my $ip;
+    my $domain = $ctx->{domain}; # store off for lazy typing and possible local mangling
+    unless ($domain =~ /^\./) { $domain = '.'.$domain; } #example.com becomes .example.com for consistency
+    $ctx->{nsmap} = {}; #will store a map to known NS records to avoid needless redundant queries to sort nodes into domains
+    $ctx->{updatesbyzone}={}; #sort all updates into their respective zones for bulk update for fewer DNS transactions
     foreach $node (@{$ctx->{nodes}}) {
         $ip = $node;
+        my $name = $node;
+        unless ($name =~ /$domain/) { $name .= $domain } # $name needs to represent fqdn, but must preserve $node as a nodename for cfg lookup
+        #if (domaintab->{$node}->[0]->{domain) { $domain = domaintab->{$node}->[0]->{domain) }  
+        #above is TODO draft of how multi-domain support could come into play
         if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
             $ip = $ctx->{hoststab}->{$node}->[0]->{ip};
         } else {
@@ -416,22 +444,70 @@ sub add_records {
             }
             $ip = inet_ntoa($ip);
         }
+        $ctx->{currip}=$ip;
         #time to update, A and PTR records, IPv6 still TODO
-        $ip = reverse(split(/\./,$ip));
+        $ip = join('.',reverse(split(/\./,$ip)));
         $ip .= '.IN-ADDR.ARPA.';
+        #ok, now it is time to identify which zones should actually hold the forward (A) and reverse (PTR) records and a nameserver to handle the request
+        my $revzone = $ip;
+        $ctx->{currnode}=$node;
+        $ctx->{currname}=$name;
+        $ctx->{currrevname}=$ip;
+        find_nameserver_for_dns($ctx,$revzone);
+        find_nameserver_for_dns($ctx,$domain);
+    }
+    my $zone;
+    foreach $zone (keys %{$ctx->{updatesbyzone}}) {
+        my $resolver = Net::DNS::Resolver->new(nameservers=>[$ctx->{nsmap}->{$zone}]);
+        my $update = Net::DNS::Update->new($zone);
+        foreach (@{$ctx->{updatesbyzone}->{$zone}}) {
+            $update->push(update=>rr_add($_));
+        }
+        $update->sign_tsig("xcat_key",$ctx->{privkey});
+        my $reply = $resolver->send($update);
+        print Dumper($reply);
     }
 }
-my $resolver = Net::DNS::Resolver->new;
-my $key_name = 'xcat_key';
-my $key = 'UlpPekE5Zmg0VzBsbTA2alZSRkxWMGRWTDZRckhJaHM=';
-my $update = Net::DNS::Update->new();
-$update->push(update => rr_add('bar.xcat.e1350 A 172.16.0.21'));
-$update->sign_tsig($key_name,$key);
-my $reply = $resolver->send($update);
-print Dumper($reply);
-$update = Net::DNS::Update->new('16.172.IN-ADDR.ARPA');
-$update->push(update => rr_add('21.0.16.172.IN-ADDR.ARPA. IN PTR foo.xcat.e1350.'));
-$update->sign_tsig($key_name,$key);
-$reply = $resolver->send($update);
-print Dumper($reply);
-#process_request({node=>['noctilucent','bmc1','n1','switch1']});
+sub find_nameserver_for_dns {
+    my $ctx = shift;
+    my $zone = shift;
+    my $node = $ctx->{currnode};
+    my $ip = $ctx->{currip};
+    my $rname = $ctx->{currrevname};
+    my $name = $ctx->{currname};
+    unless ($name =~ /\.\z/) { $name .= '.' }
+    my $rrcontent = "$name IN A $ip";
+    if ($zone =~ /IN-ADDR.ARPA/) { #reverse style
+        $rrcontent = "$rname IN PTR $name";
+    }
+    while ($zone) {
+       unless (defined $ctx->{nsmap}->{$zone}) { #ok, we already thought about this zone and made a decision
+           print $zone."\n";
+           my $reply = $ctx->{resolver}->query($zone,'NS');
+           if ($reply)  {
+                foreach my $record ($reply->answer) {
+                    $ctx->{nsmap}->{$zone} = $record->nsdname;
+                }
+           } else { 
+               $ctx->{nsmap}->{$zone} = 0; 
+           }
+       }
+       if ($ctx->{nsmap}->{$zone}) {  #we have a nameserver for this zone, therefore this zone is one to update
+           if ($ctx->{updatesbyzone}->{$zone}) { #attach to existing list of updates
+               push @{$ctx->{updatesbyzone}->{$zone}},$rrcontent;
+           } else { #create a new list.
+               $ctx->{updatesbyzone}->{$zone} = [ $rrcontent ];
+           }
+           last;
+       } else { #we have it defined, but zero, means search higher domains.  Possible to shortcut further by pointing to the right domain, maybe later
+           $zone =~ s/^[^\.]*\.//; #strip all up to and including first dot
+           unless ($zone) {
+               sendmsg([1,"Unable to find reverse lookup zone to hold $ip"],$node);
+               last;
+           }
+       }
+    }
+}
+sub sendmsg {
+    print Dumper(@_);
+}
