@@ -36,6 +36,7 @@ my %default_ports = (
 sub handled_commands {
    return { 
       nodestat => 'nodestat',
+      nodestat_internal => 'nodestat',
    };
 }
 
@@ -103,48 +104,64 @@ sub preprocess_request
     my $req = shift;
     my $cb  = shift;
     my %sn;
+
     if ((defined($req->{_xcatpreprocessed})) &&
       ($req->{_xcatpreprocessed}->[0] == 1)) {
       return [$req];
     }
 
-    @ARGV=();
-    my $args=$req->{arg};  
-    if ($args) {
+    my $command = $req->{command}->[0];
+    if ($command eq "nodestat") { 
+
+	@ARGV=();
+	my $args=$req->{arg};  
+	if ($args) {
 	@ARGV = @{$args};
-    } 
-
-    # parse the options
-    $::UPDATE=0;
-    $::QUITE=0;
-    $::MON=0;
-    #Getopt::Long::Configure("posix_default");
-    #Getopt::Long::Configure("no_gnu_compat");
-    Getopt::Long::Configure("bundling");
-    $Getopt::Long::ignorecase=0;
-    if (!GetOptions(
-             'm|usemon' => \$::MON,
-	     'q|quite'   => \$::QUITE, #this is a internal flag used by monitoring
-	     'u|updatedb'   => \$::UPDATE,
-	     'h|help'     => \$::HELP,
-	     'v|version'  => \$::VERSION))
-    {
-	&usage($cb);
-	return(1);
+	} 
+	
+	# parse the options
+	$::UPDATE=0;
+	$::QUITE=0;
+	$::MON=0;
+	#Getopt::Long::Configure("posix_default");
+	#Getopt::Long::Configure("no_gnu_compat");
+	Getopt::Long::Configure("bundling");
+	$Getopt::Long::ignorecase=0;
+	if (!GetOptions(
+		 'm|usemon' => \$::MON,
+		 'q|quite'   => \$::QUITE, #this is a internal flag used by monitoring
+		 'u|updatedb'   => \$::UPDATE,
+		 'h|help'     => \$::HELP,
+		 'v|version'  => \$::VERSION))
+	{
+	    &usage($cb);
+	    return(1);
+	}
+	if ($::HELP) {
+	    &usage($cb);
+	    return(0);
+	} 
+	if ($::VERSION) {
+	    my $version = xCAT::Utils->Version();
+	    my $rsp={};
+	    $rsp->{data}->[0] = "$version";
+	    xCAT::MsgUtils->message("I", $rsp, $cb);
+	    return(0);
+	} 
+	my $nodes    = $req->{node};
+	if (!$nodes)
+	{
+	    &usage($cb);
+	    return (1);
+	}
+	
+	$req->{'update'}->[0]=$::UPDATE;
+	$req->{'quite'}->[0]=$::QUITE;
+        $req->{'mon'}->[0]=$::MON;
+	return [$req];
     }
-    if ($::HELP) {
-	&usage($cb);
-	return(0);
-    } 
-    if ($::VERSION) {
-	my $version = xCAT::Utils->Version();
-	my $rsp={};
-	$rsp->{data}->[0] = "$version";
-	xCAT::MsgUtils->message("I", $rsp, $cb);
-	return(0);
-    } 
-
-
+    
+    #the following is for nodestat_internal command
     my $nodes    = $req->{node};
     my $service  = "xcat";
     my @requests;
@@ -162,7 +179,8 @@ sub preprocess_request
 
 	#get monsettings
 	my %apps = ();
-        if ($::MON == 1) { %apps=getStatusMonsettings(); }
+        my $mon=$req->{'mon'}->[0];
+        if ($mon == 1) { %apps=getStatusMonsettings(); }
    
         #if no apps specified in the monsetting table, add sshd, pbs and xend
 	if (keys(%apps) == 0) {
@@ -235,9 +253,6 @@ sub preprocess_request
             $reqcopy->{'_xcatdest'} = $snkey;
             $reqcopy->{_xcatpreprocessed}->[0] = 1;
 
-
-	    $reqcopy->{'update'}->[0]=$::UPDATE;
-	    $reqcopy->{'quite'}->[0]=$::QUITE;
 	    $reqcopy->{'useNmapfromMN'}->[0]=$usenmapfrommn;
             $reqcopy->{'allapps'}=$all_apps;
 
@@ -393,8 +408,6 @@ sub preprocess_request
 	    if (!$handled) {
 		my $reqcopy = {%$req};
 		$reqcopy->{_xcatpreprocessed}->[0] = 1;
-		$reqcopy->{'update'}->[0]=$::UPDATE;
-		$reqcopy->{'quite'}->[0]=$::QUITE;
 		$reqcopy->{'useNmapfromMN'}->[0]=$usenmapfrommn;
 		$reqcopy->{'allapps'}=$all_apps;
 		my $i=1;
@@ -726,172 +739,235 @@ sub process_request {
    my $callback = shift;
    my $doreq = shift;
    %nodesetstats=();
+   my $command = $request->{command}->[0];
+   my $separator="XXXXXYYYYYZZZZZ";
 
-   #print Dumper($request);
-   my $update=$request->{'update'}->[0];
-   my $quite=$request->{'quite'}->[0];
-   my $all_apps=$request->{'allapps'};
-
-   #if ( -x '/usr/bin/nmap' ) {
-   #    my %portservices = (
-   #	   '22' => 'sshd',
-   #	   '15002' => 'pbs',
-   #	   '8002' => 'xend',
-   #	   );
-   #
-   #    return process_request_nmap($request, $callback, $doreq, $request->{node}, \%portservices);
-   # }
-
-   #handle ports and nodelist.status
-   my $status={};
-   if (exists($request->{'portapps'})) {
-       for (my $i=1; $i<=$request->{'portapps'}->[0]; $i++) {
-	   my %portservices=();
-	   my @apps=split(',', $request->{"portapps$i"}->[0]);
-           my @ports=split(',', $request->{"portapps$i" . "port"}->[0]);
-           my $nodes=$request->{"portapps$i" . "node"};
-	   for (my $j=0; $j <@ports; $j++) {
-	       $portservices{$ports[$j]}=$apps[$j];
-	   } 
-           
-           my $ret={};
-	   if ( -x '/usr/bin/nmap' ) {
-	       $ret=process_request_nmap($request, $callback, $doreq, $nodes, \%portservices);
-	   }  else {
-	       $ret=process_request_port($request, $callback, $doreq, $nodes, \%portservices);
-           } 
-           %$status=(%$status, %$ret);
+   if ($command eq "nodestat_internal") {
+       
+       #if ( -x '/usr/bin/nmap' ) {
+       #    my %portservices = (
+       #	   '22' => 'sshd',
+       #	   '15002' => 'pbs',
+       #	   '8002' => 'xend',
+       #	   );
+       #
+       #    return process_request_nmap($request, $callback, $doreq, $request->{node}, \%portservices);
+       # }
+       
+       #handle ports and nodelist.status
+       my $status={};
+       if (exists($request->{'portapps'})) {
+	   for (my $i=1; $i<=$request->{'portapps'}->[0]; $i++) {
+	       my %portservices=();
+	       my @apps=split(',', $request->{"portapps$i"}->[0]);
+	       my @ports=split(',', $request->{"portapps$i" . "port"}->[0]);
+	       my $nodes=$request->{"portapps$i" . "node"};
+	       for (my $j=0; $j <@ports; $j++) {
+		   $portservices{$ports[$j]}=$apps[$j];
+	       } 
+	       
+	       my $ret={};
+	       if ( -x '/usr/bin/nmap' ) {
+		   $ret=process_request_nmap($request, $callback, $doreq, $nodes, \%portservices);
+	       }  else {
+		   $ret=process_request_port($request, $callback, $doreq, $nodes, \%portservices);
+	       } 
+	       %$status=(%$status, %$ret);
+	   }
        }
-   }
-
-   #print Dumper($status);
-
-   #handle local commands
-   if (exists($request->{'cmdapps'})) {
-       for (my $i=1; $i<=$request->{'cmdapps'}->[0]; $i++) {
-	   my %cmdhash=();
-	   my @apps=split(',', $request->{"cmdapps$i"}->[0]);
-           my @cmds=split(',', $request->{"cmdapps$i" . "cmd"}->[0]);
-           my $nodes=$request->{"cmdapps$i" . "node"};
-	   for (my $j=0; $j <@cmds; $j++) {
-	       $cmdhash{$cmds[$j]}=$apps[$j];
-	   } 
-           
-           my $ret = process_request_local_command($request, $callback, $doreq, $nodes, \%cmdhash);
-           foreach my $node1 (keys(%$ret)) {
-               if (exists($status->{$node1})) {
-		   my $appstatus=$status->{$node1}->{'appstatus'};
-                   if ($appstatus) { $status->{$node1}->{'appstatus'} .= "," . $ret->{$node1}; }
-                   else { $status->{$node1}->{'appstatus'} = $ret->{$node1}; }
-		   my $appsd=$status->{$node1}->{'appsd'};
-                   if ($appsd) { $status->{$node1}->{'appsd'} .= "," . $ret->{$node1}; }
-                   else { $status->{$node1}->{'appsd'} = $ret->{$node1}; }
-	       } else {
-		   $status->{$node1}->{'appstatus'} = $ret->{$node1};
-		   $status->{$node1}->{'appsd'} = $ret->{$node1};
-	       }
-
-	   }    
+       
+       #print Dumper($status);
+       
+       #handle local commands
+       if (exists($request->{'cmdapps'})) {
+	   for (my $i=1; $i<=$request->{'cmdapps'}->[0]; $i++) {
+	       my %cmdhash=();
+	       my @apps=split(',', $request->{"cmdapps$i"}->[0]);
+	       my @cmds=split(',', $request->{"cmdapps$i" . "cmd"}->[0]);
+	       my $nodes=$request->{"cmdapps$i" . "node"};
+	       for (my $j=0; $j <@cmds; $j++) {
+		   $cmdhash{$cmds[$j]}=$apps[$j];
+	       } 
+	       
+	       my $ret = process_request_local_command($request, $callback, $doreq, $nodes, \%cmdhash);
+	       foreach my $node1 (keys(%$ret)) {
+		   if (exists($status->{$node1})) {
+		       my $appstatus=$status->{$node1}->{'appstatus'};
+		       if ($appstatus) { $status->{$node1}->{'appstatus'} .= "," . $ret->{$node1}; }
+		       else { $status->{$node1}->{'appstatus'} = $ret->{$node1}; }
+		       my $appsd=$status->{$node1}->{'appsd'};
+		       if ($appsd) { $status->{$node1}->{'appsd'} .= "," . $ret->{$node1}; }
+		       else { $status->{$node1}->{'appsd'} = $ret->{$node1}; }
+		   } else {
+		       $status->{$node1}->{'appstatus'} = $ret->{$node1};
+		       $status->{$node1}->{'appsd'} = $ret->{$node1};
+		   }
+		   
+	       }    
+	   }
        }
-   }
-
-   #handle remote commands
-   if (exists($request->{'dcmdapps'})) {
-       for (my $i=1; $i<=$request->{'dcmdapps'}->[0]; $i++) {
-	   my %dcmdhash=();
-	   my @apps=split(',', $request->{"dcmdapps$i"}->[0]);
-           my @dcmds=split(',', $request->{"dcmdapps$i" . "dcmd"}->[0]);
-           my $nodes=$request->{"dcmdapps$i" . "node"};
-	   for (my $j=0; $j <@dcmds; $j++) {
-	       $dcmdhash{$dcmds[$j]}=$apps[$j];
-	   } 
-           
-           my $ret = process_request_remote_command($request, $callback, $doreq, $nodes, \%dcmdhash);
-           foreach my $node1 (keys(%$ret)) {
-               if (exists($status->{$node1})) {
-		   my $appstatus=$status->{$node1}->{'appstatus'};
-                   if ($appstatus) { $status->{$node1}->{'appstatus'} .= "," . $ret->{$node1}; }
-                   else { $status->{$node1}->{'appstatus'} = $ret->{$node1}; }
-		   my $appsd=$status->{$node1}->{'appsd'};
-                   if ($appsd) { $status->{$node1}->{'appsd'} .= "," . $ret->{$node1}; }
-                   else { $status->{$node1}->{'appsd'} = $ret->{$node1}; }
-	       } else {
-		   $status->{$node1}->{'appstatus'} = $ret->{$node1};
-		   $status->{$node1}->{'appsd'} = $ret->{$node1};
-	       }
-	   }    
+       
+       #handle remote commands
+       if (exists($request->{'dcmdapps'})) {
+	   for (my $i=1; $i<=$request->{'dcmdapps'}->[0]; $i++) {
+	       my %dcmdhash=();
+	       my @apps=split(',', $request->{"dcmdapps$i"}->[0]);
+	       my @dcmds=split(',', $request->{"dcmdapps$i" . "dcmd"}->[0]);
+	       my $nodes=$request->{"dcmdapps$i" . "node"};
+	       for (my $j=0; $j <@dcmds; $j++) {
+		   $dcmdhash{$dcmds[$j]}=$apps[$j];
+	       } 
+	       
+	       my $ret = process_request_remote_command($request, $callback, $doreq, $nodes, \%dcmdhash);
+	       foreach my $node1 (keys(%$ret)) {
+		   if (exists($status->{$node1})) {
+		       my $appstatus=$status->{$node1}->{'appstatus'};
+		       if ($appstatus) { $status->{$node1}->{'appstatus'} .= "," . $ret->{$node1}; }
+		       else { $status->{$node1}->{'appstatus'} = $ret->{$node1}; }
+		       my $appsd=$status->{$node1}->{'appsd'};
+		       if ($appsd) { $status->{$node1}->{'appsd'} .= "," . $ret->{$node1}; }
+		       else { $status->{$node1}->{'appsd'} = $ret->{$node1}; }
+		   } else {
+		       $status->{$node1}->{'appstatus'} = $ret->{$node1};
+		       $status->{$node1}->{'appsd'} = $ret->{$node1};
+		   }
+	       }    
+	   }
        }
-   }
 
-   #show the output 
-   if (!$quite) {
+       #nodestat_internal command the output, nodestat command will collect it
        foreach my $node1 (sort keys(%$status)) {
 	   my %rsp;
 	   $rsp{name}=[$node1];
 	   my $st=$status->{$node1}->{'status'};
 	   my $ast= $status->{$node1}->{'appstatus'};
-	   if ($st) {
-	       $st = $ast ? "$st,$ast" : "$st";
-	   } else {
-	       $st=$ast;
-	   }
-	   $rsp{data}->[0] = $st;
+           my $appsd = $status->{$node1}->{'appsd'};
+	   
+	   $rsp{data}->[0] = "$st$separator$ast$separator$appsd";
 	   $callback->({node=>[\%rsp]});
        }  
-   }
+   } else {  #nodestat command
+       #first collect the status from the nodes
+       my $reqcopy = {%$request};
+       $reqcopy->{command}->[0]='nodestat_internal';
+       my $ret = xCAT::Utils->runxcmd($reqcopy, $doreq, 0, 1);
 
-   #update the nodelist table
-   if ($update) {
-       my $nodetab=xCAT::Table->new('nodelist', -create=>1);
-       if ($nodetab) {
-           my $status1={};
-           #get current values and compare with the new value to decide if update of db is necessary
-           my @nodes1=keys(%$status); 
-	   my $stuff = $nodetab->getNodesAttribs(\@nodes1, ['node', 'status', 'appstatus']);
-
-           #get current local time
-	   my (
-	       $sec,  $min,  $hour, $mday, $mon,
-	       $year, $wday, $yday, $isdst
-	       )
-	       = localtime(time);
-	   my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
-			       $mon + 1, $mday, $year + 1900,
-			       $hour, $min, $sec);
-
- 	   foreach my $node1 (@nodes1) {
-	       my $oldstatus=$stuff->{$node1}->[0]->{status};
-               my $newstatus=$status->{$node1}->{status};
-               if ($newstatus) {
-		  if ((!$oldstatus) || ($newstatus ne $oldstatus)) { 
-		      $status1->{$node1}->{status}= $newstatus;
-		      $status1->{$node1}->{statustime}= $currtime;
-		  }   
-	       } 
-	       else {
-		   if ($oldstatus) {
-		       $status1->{$node1}->{status}= "";
-		       $status1->{$node1}->{statustime}= "";
-		   }
+       #print Dumper($ret);
+       my $status={};
+       my @noping_nodes=();
+       foreach my $tmpdata (@$ret) {
+	   if ($tmpdata =~ /([^:]+): (.*)$separator(.*)$separator(.*)/) {
+	      # print "node=$1, status=$2, appstatus=$3, appsd=$4\n";
+               $status->{$1}->{'status'}=$2;
+               $status->{$1}->{'appstatus'}=$3;
+               $status->{$1}->{'appsd'}=$4;
+               if ($2 eq "noping") {
+		   push(@noping_nodes, $1);
 	       }
+	   } else  {
+	       my $rsp;
+	       $rsp->{data}->[0]= "here ...$tmpdata";
+	       xCAT::MsgUtils->message("I", $rsp, $callback);
+           }
+       }
 
-	       my $oldappstatus=$stuff->{$node1}->[0]->{appstatus};
-               my $newappstatus=$status->{$node1}->{appsd};
-               if ($newappstatus) {
-		  if ((!$oldappstatus) || ($newappstatus ne $oldappstatus)) { 
-		      $status1->{$node1}->{appstatus}= $newappstatus; 
-		      $status1->{$node1}->{appstatustime}= $currtime; 
-		  }  
-	       } 
-	       else {
-		   if ($oldappstatus) {
-		       $status1->{$node1}->{appstatus}= "";
-		       $status1->{$node1}->{appstatustime}= ""; 
-		   }
+       if (@noping_nodes > 0) {
+	   #print "noping_nodes=@noping_nodes\n";
+	   my $ret = xCAT::Utils->runxcmd(
+	       {
+		   command => ['rpower'],
+		   node    => \@noping_nodes,
+		   arg     => [ 'stat' ]
+	       },
+	       $doreq, 0, 1 );
+
+	   foreach my $tmpdata (@$ret) {
+	       if ($tmpdata =~ /([^:]+): (.*)/) {
+		   $status->{$1}->{'status'}="noping($2}";
+	       } else  {
+		   my $rsp;
+		   $rsp->{data}->[0]= "$tmpdata";
+		   xCAT::MsgUtils->message("I", $rsp, $callback);
 	       }
+	   }
+       }
+      
+       #print Dumper($request);
+       my $update=$request->{'update'}->[0];
+       my $quite=$request->{'quite'}->[0];
+
+       
+      #show the output 
+       if (!$quite) {
+	   foreach my $node1 (sort keys(%$status)) {
+	       my %rsp;
+	       $rsp{name}=[$node1];
+	       my $st=$status->{$node1}->{'status'};
+	       my $ast= $status->{$node1}->{'appstatus'};
+	       if ($st) {
+		   if ($st eq 'ping') { $st = $ast ? "$ast" : "$st"; }
+                   else {  $st = $ast ? "$st,$ast" : "$st"; }
+	       } else {
+		   $st=$ast;
+	       }
+	       $rsp{data}->[0] = $st;
+	       $callback->({node=>[\%rsp]});
 	   }  
-           #print Dumper($status1);    
-       	   $nodetab->setNodesAttribs($status1);
+       }
+       
+       #update the nodelist table
+       if ($update) {
+	   my $nodetab=xCAT::Table->new('nodelist', -create=>1);
+	   if ($nodetab) {
+	       my $status1={};
+	       #get current values and compare with the new value to decide if update of db is necessary
+	       my @nodes1=keys(%$status); 
+	       my $stuff = $nodetab->getNodesAttribs(\@nodes1, ['node', 'status', 'appstatus']);
+	       
+	       #get current local time
+	       my (
+		   $sec,  $min,  $hour, $mday, $mon,
+		   $year, $wday, $yday, $isdst
+		   )
+		   = localtime(time);
+	       my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+				      $mon + 1, $mday, $year + 1900,
+				      $hour, $min, $sec);
+	       
+	       foreach my $node1 (@nodes1) {
+		   my $oldstatus=$stuff->{$node1}->[0]->{status};
+		   my $newstatus=$status->{$node1}->{status};
+		   if ($newstatus) {
+		       if ((!$oldstatus) || ($newstatus ne $oldstatus)) { 
+			   $status1->{$node1}->{status}= $newstatus;
+			   $status1->{$node1}->{statustime}= $currtime;
+		       }   
+		   } 
+		   else {
+		       if ($oldstatus) {
+			   $status1->{$node1}->{status}= "";
+			   $status1->{$node1}->{statustime}= "";
+		       }
+		   }
+		   
+		   my $oldappstatus=$stuff->{$node1}->[0]->{'appstatus'};
+		   my $newappstatus=$status->{$node1}->{'appsd'};
+		   if ($newappstatus) {
+		       if ((!$oldappstatus) || ($newappstatus ne $oldappstatus)) { 
+			   $status1->{$node1}->{appstatus}= $newappstatus; 
+			   $status1->{$node1}->{appstatustime}= $currtime; 
+		       }  
+		   } 
+		   else {
+		       if ($oldappstatus) {
+			   $status1->{$node1}->{appstatus}= "";
+			   $status1->{$node1}->{appstatustime}= ""; 
+		       }
+		   }
+	       }  
+	       #print Dumper($status1);    
+	       $nodetab->setNodesAttribs($status1);
+	   }
        }
    }
 }
