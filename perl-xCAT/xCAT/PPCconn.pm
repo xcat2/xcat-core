@@ -130,6 +130,7 @@ sub mkhwconn_parse_args
     # Set HW type to 'hmc' anyway, so that this command will not going to 
     # PPCfsp.pm
     $request->{ 'hwtype'} = 'hmc';
+    $request->{hcp} = 'hmc';
     $request->{method} = 'mkhwconn';
     return( \%opt);
 }
@@ -390,16 +391,10 @@ sub mkhwconn
             ############################
             # Get IP address
             ############################
-            my $hosttab  = xCAT::Table->new( 'hosts' );
-            my $node_ip = undef;
-            if ( $hosttab)
-            {
-                my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
-                $node_ip = $node_ip_hash->{ip};
-            }
+            my $node_ip = xCAT::Utils::getNodeIPaddress( $node_name );
             if (!$node_ip)
             {
-                push @value, [$node_name, $node_ip, $Rc];
+                push @value, [$node_name, "Cannot get IP address. Please check table 'hosts' or name resolution", 1];
                 next;
             }
             my ( undef,undef,$mtms,undef,$type) = @$d;

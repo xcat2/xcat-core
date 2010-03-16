@@ -70,6 +70,7 @@ sub mkhwconn_parse_args
         return( usage('Flags -P can only be used when flag -p is specified.'));
     }
 
+    
     ##########################################
     # Check if CECs are controlled by a frame
     ##########################################
@@ -80,17 +81,58 @@ sub mkhwconn_parse_args
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
     my @frame_members    = ();
+
+    ###########################################
+    # mgt=fsp/bpa for PPCconn.pm
+    ##########################################
+    if ( exists $opt{p} )
+    {
+        my $nodetype_hash    = $nodetypetab->getNodeAttribs( $opt{p},[qw(nodetype)]);
+        my $nodetype    = $nodetype_hash->{nodetype};
+        if ( $nodetype eq 'hmc' )
+        {
+    	    $request->{ 'hwtype'} = 'hmc';
+        }	
+    }
+
     if ( $ppctab)
     {
+        my $hcp_nodetype = undef;
         for my $node ( @$nodes)
         {
             my $node_parent = undef;
             my $nodetype    = undef;
+            my $node_hcp_nodetype = undef;    
             my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
             my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
+            if ( exists $opt{t} )
+            {
+                my $node_hcp_hash = $ppctab->getNodeAttribs( $node,[qw(hcp)]);
+                if ( $node_hcp_hash->{hcp} )
+                {
+                    my $node_hcp_nodetype_hash = $nodetypetab->getNodeAttribs($node_hcp_hash->{hcp},[qw(nodetype)]);
+                    $node_hcp_nodetype = $node_hcp_nodetype_hash->{nodetype};
+                }
+                if ( defined $hcp_nodetype )
+                {
+                    if ( $hcp_nodetype ne $node_hcp_nodetype )
+                    {   
+                        return( usage("Nodetype for all the nodes' hcp must be the same.") );
+                    }
+                }
+                else
+                {
+                    $hcp_nodetype = $node_hcp_nodetype;
+                    if ( $hcp_nodetype eq 'hmc' )
+                    {   
+                        $request->{ 'hwtype'} = 'hmc';
+                    }
+                }
+ 
+            }
             $nodetype    = $nodetype_hash->{nodetype};
             $node_parent = $node_parent_hash->{parent};
-            if ( !$nodetype)
+            if ( !$nodetype )
             {
                 push @no_type_nodes, $node;
                 next;
@@ -108,6 +150,7 @@ sub mkhwconn_parse_args
                 my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
                 push @frame_members, @$my_frame_bpa_cec;
             }
+
         }
     }
 
