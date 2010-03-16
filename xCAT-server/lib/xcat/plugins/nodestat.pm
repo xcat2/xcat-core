@@ -883,7 +883,7 @@ sub process_request {
 
 	   foreach my $tmpdata (@$ret) {
 	       if ($tmpdata =~ /([^:]+): (.*)/) {
-		   $status->{$1}->{'status'}="noping($2}";
+		   $status->{$1}->{'status'}="noping($2)";
 	       } else  {
 		   my $rsp;
 		   $rsp->{data}->[0]= "$tmpdata";
