@@ -44,7 +44,7 @@ the processor frequency for a server.
 
 B<renergy> command supports IBM POWER6 and POWER7 rack-mounted servers. 
 Currently, following specific hardware types are supported:
-I<8203-E4A>, I<8204-E8A>, I<9125-F2A>, I<8233-E8B>.
+I<8203-E4A>, I<8204-E8A>, I<9125-F2A>, I<8233-E8B>, I<8236-E8C>.
 
 The parameter I<noderange> needs to be specified for B<renergy> command to 
 get the target server. The I<noderange> should be a list of CEC names. Lpar name
@@ -73,7 +73,7 @@ cappingsoftmin,averageAC,averageDC,ambienttemp,exhausttemp,CPUspeed
     B<Query>: savingstatus,averageAC,ambienttemp,exhausttemp,CPUspeed 
     B<Set>:   savingstatus
 
-8233-E8B
+8233-E8B, 8236-E8C
     Supported attributes:
     B<Query>: savingstatus,dsavingstatus,cappingstatus,cappingmin,cappingmax,
 cappingvalue,cappingsoftmin,averageAC,averageDC,ambienttemp,exhausttemp,
