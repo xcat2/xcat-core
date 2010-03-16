@@ -42,13 +42,14 @@ sub get_reverse_zone_for_entity {
             }
         }
     }
+    print "Whoopsie for $node\n";
 }
 
 sub process_request {
     my $request = shift;
-    my $callback = shift;
+    $callback = shift;
     my $ctx = {};
-    my @nodes;
+    my @nodes=();
     my $hadargs=0;
     my $allnodes;
     my $zapfiles;
@@ -64,6 +65,14 @@ sub process_request {
         }
     }
         
+    my $sitetab = xCAT::Table->new('site');
+    my $stab = $sitetab->getAttribs({key=>'domain'},['value']);
+    unless ($stab and $stab->{value}) {
+        sendmsg([1,"domain not defined in site table"]);
+        return;
+    }
+    $ctx->{domain} = $stab->{value};
+
     if ($request->{node}) { #we have a noderange to process
         @nodes = @{$request->{node}};
     } elsif ($allnodes) {
@@ -74,6 +83,8 @@ sub process_request {
         open($hostsfile,"<","/etc/hosts");
         my @contents = <$hostsfile>;
         close($hostsfile);
+        my $domain = $ctx->{domain};
+        unless ($domain =~ /^\./) { $domain = '.'.$domain; }
         my $addr;
         my $name;
         my $canonical;
@@ -81,16 +92,17 @@ sub process_request {
         my @aliases;
         my $names;
         foreach (@contents) {
+            chomp; #no newline
             s/#.*//; #strip comments;
-            s/^[ \t]*//; #remove leading whitespace
+            s/^[ \t\n]*//; #remove leading whitespace
             next unless ($_); #skip empty lines
             ($addr,$names) = split /[ \t]+/,$_,2;
             if ($addr !~ /^\d+\.\d+\.\d+\.\d+$/) {
                 sendmsg("Ignoring line $_ in /etc/hosts, only IPv4 format entries are supported currently");
                 next;
             }
-            unless ($canonical =~ /^[a-z0-9- \t\n]$/i) {
-                sendmsg("Ignoring line $_ in /etc/hosts, names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'");
+            unless ($names =~ /^[a-z0-9\. \t\n-]+$/i) {
+                sendmsg("Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'");
                 next;
             }
             ($canonical,$aliasstr)  = split /[ \t]+/,$names,2;
@@ -99,6 +111,25 @@ sub process_request {
             } else {
                 @aliases = ();
             }
+            my %names = ();
+            my $node = $canonical;
+            unless ($canonical =~ /$domain/) {
+                $canonical.=$domain;
+            }
+            unless ($canonical =~ /\.\z/) { $canonical .= '.' } #for only the sake of comparison, ensure consistant dot suffix
+            foreach my $alias (@aliases) {
+                unless ($alias =~ /$domain/) {
+                    $alias .= $domain;
+                }
+                unless ($alias =~ /\.\z/) {
+                    $alias .= '.';
+                }
+                if ($alias eq $canonical) {
+                    next;
+                }
+                $ctx->{aliases}->{$node}->{$alias}=1; #remember alias for CNAM records later
+            }
+            push @nodes,$node;
         }
     }
     my $hoststab = xCAT::Table->new('hosts',-create=>0);
@@ -119,13 +150,6 @@ sub process_request {
     if ($pent and $pent->{password}) { 
         $ctx->{privkey} = $pent->{password};
     } #do not warn/error here yet, if we can't generate or extract, we'll know later
-    my $sitetab = xCAT::Table->new('site');
-    my $stab = $sitetab->getAttribs({key=>'domain'},['value']);
-    unless ($stab and $stab->{value}) {
-        sendmsg([1,"domain not defined in site table"]);
-        return;
-    }
-    $ctx->{domain} = $stab->{value};
     $stab =  $sitetab->getAttribs({key=>'forwarders'},['value']);
     if ($stab and $stab->{value}) {
         my @forwarders = split /[ ,]/,$stab->{value};
@@ -133,10 +157,11 @@ sub process_request {
     }
     $ctx->{zonestotouch}->{$ctx->{domain}}=1;
     foreach (@nodes) {
-           $ctx->{revzones}->{$_} = get_reverse_zone_for_entity($ctx,$_);
-           $ctx->{zonestotouch}->{$ctx->{revzones}->{$_}}=1;
+        my $revzone =  get_reverse_zone_for_entity($ctx,$_);;
+        unless ($revzone) { next; }
+        $ctx->{revzones}->{$_} = $revzone;
+        $ctx->{zonestotouch}->{$ctx->{revzones}->{$_}}=1;
     }
-    use Data::Dumper;
     if (1) { #TODO: function to detect and return 1 if the master server is DNS SOA for all the zones we care about
         #here, we are examining local files to assure that our key is in named.conf, the zones we care about are there, and that if
         #active directory is in use, allow the domain controllers to update specific zones
@@ -469,7 +494,6 @@ sub add_records {
         }
         $update->sign_tsig("xcat_key",$ctx->{privkey});
         my $reply = $resolver->send($update);
-        print Dumper($reply);
     }
 }
 sub find_nameserver_for_dns {
@@ -542,9 +566,6 @@ sub sendmsg {
         $curptr->{errorcode}=[$rc];
         $curptr->{error}=[$text];
         $curptr=$curptr->{error}->[0];
-        if (defined $node) {
-            $allerrornodes{$node}=1;
-        }
     } else {
         $curptr->{data}=[{contents=>[$text]}];
         $curptr=$curptr->{data}->[0];
@@ -556,3 +577,4 @@ sub sendmsg {
 #        waitforack($outfd);
     $callback->($msg);
 }
+1;
