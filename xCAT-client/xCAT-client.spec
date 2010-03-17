@@ -143,7 +143,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/lsslp
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/nodegrpch
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/tabdump
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/packimage
-ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makedns
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/makedns
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/gettab
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/nodeadd
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makenetworks
