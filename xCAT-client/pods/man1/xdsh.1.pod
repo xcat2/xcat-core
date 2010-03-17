@@ -224,18 +224,18 @@ Displays usage information.
 
 =item B<-K>|B<--ssh-setup>  B<-l>|B<--user> I<user_ID> B<--devicetype> I<type_of_device> 
 
-Set  up  the  SSH  keys  for the specified node list.
-Currently, this must be run on on a client that has the userid
-defined consistent with the userid that will be updated with ssh
-keys on the node.  
+Set up the SSH keys for the user running the command to the specified node list.
+The userid must have the same uid, gid and password as the userid on the node
+ where the keys will be setup.
 If the current user is root,  roots public ssh keys will be put in the
 authorized_keys* files under roots .ssh directory on the node(s).
-If the current user is non-root, and the user is in the policy table, then
-the current users public ssh keys and root's public ssh keys will be put in
-the authorized_keys* files under the current users .ssh directory on the node(s).
+If the current user is non-root, the user must be in the policy table and have credential to run the xdsh command.
+The non-root users public ssh keys and root's public ssh keys will be put in
+the authorized_keys* files under the non-root users .ssh directory on the node(s).
 Other device types, such as IB switch, are also supported.  The
 device should be defined as a node and nodetype should be defined 
 as switch before connecting.
+The xdsh -K command cannot be run from a remote client. 
 
 =item B<-l>|B<--user> I<user_ID>
 
