@@ -14,6 +14,7 @@ use IO::Select;
 use IO::Handle;
 use xCAT::Utils;
 use Sys::Syslog;
+use Text::Balanced qw(extract_bracketed);
 
 
 sub gethosttag {
@@ -43,11 +44,63 @@ sub gethosttag {
    foreach (@netents) {
       if ($_->{net} eq $netn or ($mgtifname and $mgtifname eq $netmap{$_->{net}})) { #either is the network  or shares physical interface
          if ($_->{nodehostname}) { #Check for a nodehostname rule in the table
-            my $left;
-            my $right;
-            ($left,$right) = split(/\//,$_->{nodehostname},2);
-            $name = $node;
-            $name =~ s/$left/$right/;
+			$name = $node;
+			if ($_->{nodehostname} =~ /^\/[^\/]*\/[^\/]*\/$/)
+        	{   
+            		my $exp = substr($_->{nodehostname}, 1);
+            		chop $exp;
+            		my @parts = split('/', $exp, 2);
+            		$name =~ s/$parts[0]/$parts[1]/;
+        	}
+        	elsif ($_->{nodehostname} =~ /^\|.*\|.*\|$/)
+        	{
+
+            	#Perform arithmetic and only arithmetic operations in bracketed issues on the right.
+            	#Tricky part:  don't allow potentially dangerous code, only eval if
+            	#to-be-evaled expression is only made up of ()\d+-/%$
+            	#Futher paranoia?  use Safe module to make sure I'm good
+            	my $exp = substr($_->{nodehostname}, 1);
+            	chop $exp;
+            	my @parts = split('\|', $exp, 2);
+            	my $curr;
+            	my $next;
+            	my $prev;
+            	my $retval = $parts[1];
+            	($curr, $next, $prev) =
+              		extract_bracketed($retval, '()', qr/[^()]*/);
+
+            	unless($curr) { #If there were no paramaters to save, treat this one like a plain regex
+               		$name =~ s/$parts[0]/$parts[1]/;
+            	}
+            	while ($curr)
+            	{   
+                #my $next = $comps[0];
+                	if ($curr =~ /^[\{\}()\-\+\/\%\*\$\d]+$/ or $curr =~ /^\(sprintf\(["'%\dcsduoxefg]+,\s*[\{\}()\-\+\/\%\*\$\d]+\)\)$/ )
+                	{   
+                    	use integer;
+                      #We only allow integer operations, they are the ones that make sense for the application
+                    	my $value = $name;
+                    	$value =~ s/$parts[0]/$curr/ee;
+                    	$retval = $prev . $value . $next;
+                	}
+                	else
+                	{   
+                    	print "$curr is bad\n";
+                	}
+                	($curr, $next, $prev) =
+                  	extract_bracketed($retval, '()', qr/[^()]*/);
+            	}
+            	#At this point, $retval is the expression after being arithmetically contemplated, a generated regex, and therefore
+            	#must be applied in total
+            	$name =~ s/$parts[0]/$retval/;
+
+            #print Data::Dumper::Dumper(extract_bracketed($parts[1],'()',qr/[^()]*/));
+            #use text::balanced extract_bracketed to parse earch atom, make sure nothing but arith operators, parans, and numbers are in it to guard against code execution
+        }
+
+	print "Name: $name\n";
+
+           #$name =~ s/$left/$right/;
             if ($name and inet_aton($name)) { 
                if ($netn eq $_->{net} and not $usednames->{$name}) { return $name; } 
                #At this point, it could still be valid if block was entered due to mgtifname
@@ -102,7 +155,6 @@ sub process_request {
   }
   my $nrtab;
   my @discoverynics;
-  my @forcenics; #list of 'eth' style interface names to require to come up on post-discovery client dhcp restart
   if (defined($request->{arch})) {
     #Set the architecture in nodetype.  If 32-bit only x86 or ppc detected, overwrite.  If x86_64, only set if either not set or not an x86 family
     my $typetab=xCAT::Table->new("nodetype",-create=>1);
@@ -153,12 +205,10 @@ sub process_request {
                     (my $driver,my $index) = split /:/,$nic;
                     if ($driver eq $ifinfo[0] and $index == ($bydriverindex{$driver}-1)) { 
                         $forcenic=1; #force nic to be put into database
-                        push @forcenics,$ifinfo[1];
                         last;
                     }
                 } else { #simple 'eth2' sort of argument
                     if ($nic eq $ifinfo[1]) {
-                        push @forcenics,$ifinfo[1];
                         $forcenic=1;
                         last;
                     }
@@ -177,6 +227,7 @@ sub process_request {
     		my $mask = 2**$netbits-1<<(32-$netbits);
     		my $netn = inet_ntoa(pack("N",$ipn & $mask));
     		my $hosttag = gethosttag($node,$netn,@ifinfo[1],\%usednames);
+	print Dumper($hosttag) . "\n";
     		if ($hosttag) {
                  (my $rent) = $nrtab->getNodeAttribs($node,['primarynic','nfsserver']);
                  unless ($rent and $rent->{primarynic}) { #if primarynic not set, set it to this nic
@@ -186,11 +237,7 @@ sub process_request {
                     $nrtab->setNodeAttribs($node,{nfsserver=>xCAT::Utils->my_ip_facing($hosttag)});
                  }
                  $usednames{$hosttag}=1;
-                 if ($hosttag eq $node) {
-    		   $macstring .= $currmac."|";
-               } else {
     		   $macstring .= $currmac."!".$hosttag."|";
-               }
 	    	} else {
                if ($forcenic == 1) { $macstring .= $currmac."|"; } else { $macstring .= $currmac."!*NOIP*|"; }
             }
@@ -216,10 +263,6 @@ sub process_request {
   }
 
 
-  my $restartstring = "restart";
-  if (scalar @forcenics > 0) {
-      $restartstring .= " (".join("|",@forcenics).")";
-  }
   #now, notify the node to continue life
   my $sock = new IO::Socket::INET (
           PeerAddr => $ip,
@@ -228,7 +271,7 @@ sub process_request {
           Proto => 'tcp'
     );
     unless ($sock) { syslog("err","Failed to notify $ip that it's actually $node."); return; } #Give up if the node won't hear of it.
-    print $sock $restartstring;
+    print $sock "restart";
     close($sock);
     syslog("info","$node has been discovered");
 }
