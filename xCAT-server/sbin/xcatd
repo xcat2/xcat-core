@@ -1644,6 +1644,7 @@ sub validate {
       }
     }
     # If we are still in, that means this rule is the first match and dictates behavior.
+    #print Dumper($request);
     if ($rule->{rule}) {
       my $logst;
       my $rc;
@@ -1666,7 +1667,22 @@ sub validate {
       } else {
             $request->{username}->[0] = $peername;
       }
-      if ($request->{noderange} && defined($request->{noderange}->[0])) { $logst .= " to ".$request->{noderange}->[0]; }
+      if ($request->{noderange} && defined($request->{noderange}->[0]))
+       {
+          $logst .= " to ".$request->{noderange}->[0];
+       } else { # no noderange maybe a nodes
+          
+           if ($request->{node} && defined($request->{node}->[0])) {
+             my @reqnodes = @{$request->{node}};
+             if (@reqnodes) {
+               $logst .= " to ";
+               foreach my $node (@reqnodes) {
+                 $logst .= "$node,";
+               }
+               chop $logst;
+             }
+           }
+       }
         # add each argument
       my $args = $request->{arg};
       my $arglist;
