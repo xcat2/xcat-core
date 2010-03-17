@@ -1,10 +1,11 @@
 package xCAT_plugin::dns;
+use strict;
 use Getopt::Long;
 use Net::DNS;
 use xCAT::Table;
 use Sys::Hostname;
 use Socket;
-use strict;
+use Fcntl qw/:flock/;
 #This is a rewrite of DNS management using nsupdate rather than direct zone mangling
 
 my $callback;
@@ -42,12 +43,13 @@ sub get_reverse_zone_for_entity {
             }
         }
     }
-    print "Whoopsie for $node\n";
+    return undef;
 }
 
 sub process_request {
     my $request = shift;
     $callback = shift;
+    umask 0007;
     my $ctx = {};
     my @nodes=();
     my $hadargs=0;
@@ -81,7 +83,9 @@ sub process_request {
         #legacy behavior, read from /etc/hosts
         my $hostsfile;
         open($hostsfile,"<","/etc/hosts");
+        flock($hostsfile,LOCK_SH);
         my @contents = <$hostsfile>;
+        flock($hostsfile,LOCK_UN);
         close($hostsfile);
         my $domain = $ctx->{domain};
         unless ($domain =~ /^\./) { $domain = '.'.$domain; }
@@ -98,11 +102,11 @@ sub process_request {
             next unless ($_); #skip empty lines
             ($addr,$names) = split /[ \t]+/,$_,2;
             if ($addr !~ /^\d+\.\d+\.\d+\.\d+$/) {
-                sendmsg("Ignoring line $_ in /etc/hosts, only IPv4 format entries are supported currently");
+                sendmsg(":Ignoring line $_ in /etc/hosts, only IPv4 format entries are supported currently");
                 next;
             }
             unless ($names =~ /^[a-z0-9\. \t\n-]+$/i) {
-                sendmsg("Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'");
+                sendmsg(":Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'");
                 next;
             }
             ($canonical,$aliasstr)  = split /[ \t]+/,$names,2;
@@ -185,14 +189,23 @@ sub process_request {
                 $ctx->{dnsupdaters} = \@nservers;
         }
         if ($zapfiles) { #here, we unlink all the existing files to start fresh
+            unlink "/etc/named.conf";
+            foreach (</var/named/db.*>) {
+                unlink $_;
+            }
+            foreach (</var/lib/named/db.*>) {
+                unlink $_;
+            }
         }
         #We manipulate local namedconf
         $ctx->{dbdir} = get_dbdir();
         update_namedconf($ctx); 
         update_zones($ctx);
         if ($ctx->{restartneeded}) {
+            sendmsg("Restarting named");
             system("/sbin/service named start");
             system("/sbin/service named reload");
+            sendmsg("Restarting named complete");
         }
     } else {
         unless ($ctx->{privkey}) {
@@ -212,6 +225,7 @@ sub get_dbdir {
     } else {
         use File::Path;
         mkpath "/var/named/";
+        chown(scalar(getpwnam('named')),scalar(getgrnam('named')),"/var/named");
         return "/var/named/";
     }
 }
@@ -255,14 +269,19 @@ sub update_zones {
         }
         unless (-f $dbdir."/db.$currzone") {
             my $zonehdl;
-            open($zonehdl,">",$dbdir."/db.$currzone");
+            open($zonehdl,">>",$dbdir."/db.$currzone");
+            flock($zonehdl,LOCK_EX);
+            seek($zonehdl,0,0);
+            truncate($zonehdl,0);
             print $zonehdl '$TTL 86400'."\n";
             print $zonehdl '@ IN SOA '.$name." root.$name ( $serial 10800 3600 604800 86400 )\n";
             print $zonehdl "  IN NS  $name\n";
             if ($name =~ /$currzone/) { #Must guarantee an A record for the DNS server
                 print $zonehdl "$name  IN A  $ip\n";
             }
+            flock($zonehdl,LOCK_UN);
             close($zonehdl);
+            chown(scalar(getpwnam('named')),scalar(getgrnam('named')),$dbdir."/db.$currzone");
             $ctx->{restartneeded}=1;
         }
     }
@@ -281,7 +300,9 @@ sub update_namedconf {
     if (-r $namedlocation) {
         my @currnamed=();
         open($nameconf,"<",$namedlocation);
+        flock($nameconf,LOCK_SH);
         @currnamed=<$nameconf>;
+        flock($nameconf,LOCK_UN);
         close($nameconf);
         my $i = 0;
         for ($i=0;$i<scalar(@currnamed);$i++) {
@@ -398,7 +419,6 @@ sub update_namedconf {
             push @newnamed,"\t};\n";
         }
         push @newnamed,"};\n\n";
-        open($nameconf,"<",$namedlocation);
     }
     unless ($gotkey) {
         unless ($ctx->{privkey}) { #need to generate one
@@ -436,9 +456,14 @@ sub update_namedconf {
         push @newnamed,"\t};\n","\tfile \"db.$zone\";\n","};\n\n";
     }
     my $newnameconf;
-    open($newnameconf,">",$namedlocation);
+    open($newnameconf,">>",$namedlocation);
+    flock($newnameconf,LOCK_EX);
+    seek($newnameconf,0,0);
+    truncate($newnameconf,0);
     for my $l  (@newnamed) { print $newnameconf $l; }
+    flock($newnameconf,LOCK_UN);
     close($newnameconf);
+    chown (scalar(getpwnam('root')),scalar(getgrnam('named')),$namedlocation);
 }
 
 sub add_records {
@@ -488,9 +513,10 @@ sub add_records {
     my $zone;
     foreach $zone (keys %{$ctx->{updatesbyzone}}) {
         my $resolver = Net::DNS::Resolver->new(nameservers=>[$ctx->{nsmap}->{$zone}]);
+        my $entry;
         my $update = Net::DNS::Update->new($zone);
-        foreach (@{$ctx->{updatesbyzone}->{$zone}}) {
-            $update->push(update=>rr_add($_));
+        foreach $entry (@{$ctx->{updatesbyzone}->{$zone}}) {
+            $update->push(update=>rr_add($entry));
         }
         $update->sign_tsig("xcat_key",$ctx->{privkey});
         my $reply = $resolver->send($update);
@@ -510,14 +536,21 @@ sub find_nameserver_for_dns {
     }
     while ($zone) {
        unless (defined $ctx->{nsmap}->{$zone}) { #ok, we already thought about this zone and made a decision
-           print $zone."\n";
-           my $reply = $ctx->{resolver}->query($zone,'NS');
-           if ($reply)  {
-                foreach my $record ($reply->answer) {
-                    $ctx->{nsmap}->{$zone} = $record->nsdname;
-                }
-           } else { 
-               $ctx->{nsmap}->{$zone} = 0; 
+           if ($zone =~ /^\.*192.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*172.IN-ADDR.ARPA\.*/ or $zone =~ /127.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*IN-ADDR.ARPA\.*/ or $zone =~ /^\.*ARPA\.*/) {
+                $ctx->{nsmap}->{$zone} = 0; #ignore zones that are likely to appear, but probably not ours
+           } else {
+               my $reply = $ctx->{resolver}->query($zone,'NS');
+               if ($reply)  {
+                    foreach my $record ($reply->answer) {
+                        if ( $record->nsdname =~ /blackhole.*\.iana\.org/) {
+                            $ctx->{nsmap}->{$zone} = 0; 
+                        } else {
+                            $ctx->{nsmap}->{$zone} = $record->nsdname;
+                        }
+                    }
+               } else { 
+                   $ctx->{nsmap}->{$zone} = 0; 
+               }
            }
        }
        if ($ctx->{nsmap}->{$zone}) {  #we have a nameserver for this zone, therefore this zone is one to update
@@ -528,9 +561,14 @@ sub find_nameserver_for_dns {
            }
            last;
        } else { #we have it defined, but zero, means search higher domains.  Possible to shortcut further by pointing to the right domain, maybe later
+            if ($zone !~ /\./) {
+               sendmsg([1,"Unable to find reverse zone to hold $node"],$node);
+               last;
+            }
+
            $zone =~ s/^[^\.]*\.//; #strip all up to and including first dot
            unless ($zone) {
-               sendmsg([1,"Unable to find reverse lookup zone to hold $ip"],$node);
+               sendmsg([1,"Unable to find zone to hold $node"],$node);
                last;
            }
        }
