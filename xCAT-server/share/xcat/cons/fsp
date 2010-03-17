@@ -189,9 +189,9 @@ sub invoke_cmd {
     my %objhash = (); 
     $objhash{$fsp_name} = "node";
     my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
-    my $password    = $myhash{$fsp_name}{"passwd.hscroot"};
+    my $password    = $myhash{$fsp_name}{"passwd.HMC"};
     if(!$password ) {
-   	return "The password.hscroot of $fsp_name in ppcdirect table is empty"; 
+   	    return "The password.HMC of $fsp_name in ppcdirect table is empty"; 
     }
     
     my $username = "hscroot";	
