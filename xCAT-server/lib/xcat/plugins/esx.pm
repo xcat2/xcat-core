@@ -98,7 +98,7 @@ sub preprocess_request {
 	}
     xCAT::Common::usage_noderange($request,$callback);
 
-        if ($request->{_xcatpreprocessed}->[0] == 1) { return [$request]; } 
+        if ($request->{_xcatpreprocessed} and $request->{_xcatpreprocessed}->[0] == 1) { return [$request]; } 
          # exit if preprocesses
 	my @requests;
 
