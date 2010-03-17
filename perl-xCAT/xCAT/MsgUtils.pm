@@ -278,7 +278,16 @@ sub message
 
     # should be I, D, E, S, SA ,LS, W , L,N
     #  or S(I, D, E, S, W, L,N)
-
+    #
+    # if new SA option need to split syslog messages from auditlog entry
+    #
+    my $newrsp;
+    if ($sev eq 'SA')
+    {    # if SA then need to pull first entry from $rsp
+            # for syslog, to preserve old interface
+        $newrsp = $rsp;
+        $rsp    = $newrsp->{syslogdata}->[0];
+    }
     my $stdouterrf = \*STDOUT;
     my $stdouterrd = '';
     if ($sev =~ /[E]/)
@@ -442,13 +451,6 @@ sub message
     }
 
     # is syslog requested
-    my $newrsp;
-    if ($sev eq 'SA')
-    {    # if SA then need to pull first entry from $rsp
-            # for syslog, to preserve old interface
-        $newrsp = $rsp;
-        $rsp    = $newrsp->{syslogdata}->[0];
-    }
 
     if ($sev =~ /S/)
     {
