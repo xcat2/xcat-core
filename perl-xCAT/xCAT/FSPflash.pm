@@ -214,24 +214,24 @@ sub process_node {
 	}
        
 	print "in process_node1, node $node\n";
-	print Dumper($node);
+    #print Dumper($node);
 	my $ent = $tab->getNodeAttribs($node, ['serial', 'mtm']);	
-	print "in process_node\n";
-	print Dumper($ent);
+	#print "in process_node\n";
+    #print Dumper($ent);
 
 	my $serial = $ent->{'serial'};
 	my $mtm	   = $ent->{'mtm'};
 	#################################
 	#Get node
 	#################################
-	print "in get_related_fsp_bpa(), serial = $serial, mtm= $mtm\n";
+    #print "in get_related_fsp_bpa(), serial = $serial, mtm= $mtm\n";
 	my @ents = $tab->getAllAttribsWhere("serial=\"$serial\" and mtm=\"$mtm\"", 'node');
 	if (@ents < 0) {
 		$msg = "failed to get the FSPs or BPAs whose mtm is $mtm, serial is $serial!";
 		return ("", $msg);
 	}
 	my $e;
-	print Dumper(@ents);
+	#print Dumper(@ents);
 	foreach $e (@ents) {
 		if($e->{node} ne $node) {
 #			push @{$req->{node}},$e->{node};

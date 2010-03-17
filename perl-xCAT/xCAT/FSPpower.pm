@@ -57,8 +57,8 @@ sub powercmd_boot {
        }
        
        my $res = xCAT::Utils::fsp_api_action ($node_name, $d, "state");
-	   print "In boot, state\n";
-	   print Dumper($res);
+       #print "In boot, state\n";
+       #print Dumper($res);
        my $Rc = @$res[2];
        my $data = @$res[1];
        #my $type = @$d[4];
@@ -76,7 +76,7 @@ sub powercmd_boot {
        # Convert state to on/off
        ##################################
        my $state = power_status($data);
-	   print "boot:state:$state\n";
+       #print "boot:state:$state\n";
        my $op    = ($state =~ /^off$/) ? "on" : "reset";
        $res = xCAT::Utils::fsp_api_action ($node_name, $d, $op);
 	
@@ -106,8 +106,8 @@ sub powercmd {
     my @output;
     my $action  =  $request->{'op'}; 
     
-    print "++++in powercmd++++\n";   
-    print Dumper($hash);
+    #print "++++in powercmd++++\n";   
+    #print Dumper($hash);
     
     ####################################
     # Power commands are grouped by cec or lpar 

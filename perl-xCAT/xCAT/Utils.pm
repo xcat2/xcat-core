@@ -5508,8 +5508,8 @@ sub fsp_api_action {
     my $password    = $myhash{$fsp_name}{"passwd.HMC"};
     #print "fspname:$fsp_name password:$password\n";
     if(!$password ) {
-	$res = "The password.hscroot of $fsp_name in ppcdirect table is empty";
-	return ([$node_name, $res, -1]);
+	   $res = "The password.HMC of $fsp_name in ppcdirect table is empty";
+	   return ([$node_name, $res, -1]);
     }
     my $user = "HMC";
     #my $user = "hscroot";
@@ -5541,8 +5541,8 @@ sub fsp_api_action {
         return ([$node_name, $res, -1]);	
     }
 	
-    print "fsp name: $fsp_name\n";
-    print "fsp ip: $fsp_ip\n";
+    #print "fsp name: $fsp_name\n";
+    #print "fsp ip: $fsp_ip\n";
     
     my $cmd;
     if( $action =~ /^code_update$/) { 
@@ -5551,8 +5551,8 @@ sub fsp_api_action {
         $cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
     }
 
-    print "cmd: $cmd\n"; 
-    $SIG{CHLD} = (); 
+    #print "cmd: $cmd\n"; 
+    $SIG{CHLD} = 'DEFAULT'; 
     $res = xCAT::Utils->runcmd($cmd, -1);
     #$res = "good"; 
     $Rc = $::RUNCMD_RC;
