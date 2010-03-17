@@ -1460,20 +1460,17 @@ rmdir \"/tmp/$to_userid\"";
     chmod 0777,"$home/.ssh/copy.sh";
     my $auth_key=0;
     my $auth_key2=0;
-    if (xCAT::Utils->isMN())
-    {    # if on Management Node
-        if ($from_userid eq "root")
-        {
-
-            my $rc = xCAT::Utils->cpSSHFiles($SSHdir);
-            if ($rc != 0)
-            {    # error
+    if ($from_userid eq "root")
+    {
+       my $rc = xCAT::Utils->cpSSHFiles($SSHdir);
+       if ($rc != 0)
+       {    # error
                 $rsp->{data}->[0] = "Error running cpSSHFiles.\n";
                 xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
                 return 1;
 
-            }
-
+       }
+       if (xCAT::Utils->isMN()) {    # if on Management Node
             # copy the copy install file to the install directory, if from and
             # to userid are root
             if ($to_userid eq "root")
@@ -1490,12 +1487,11 @@ rmdir \"/tmp/$to_userid\"";
 
                 }
             }
-        }
-        else
-        {    # from_userid is not root
+        }  # end is MN
+    }
+    else {    # from_userid is not root
                 # build the authorized key files for non-root user
             xCAT::Utils->bldnonrootSSHFiles($from_userid);
-        }
     }
 
     # send the keys to the nodes   for root or some other id
@@ -1543,8 +1539,7 @@ rmdir \"/tmp/$to_userid\"";
 
 =head3    cpSSHFiles
 
-           Builds authorized_keyfiles from the keys only run on Management Node
-           and for root and puts them in /install/postscripts/_ssh 
+           Builds authorized_keyfiles for root 
 
         Arguments:
                install directory path
@@ -1577,35 +1572,38 @@ sub cpSSHFiles
     }
     my $home = xCAT::Utils->getHomeDir("root");
 
-    if (!(-e "$home/.ssh/id_rsa.pub"))   # only using rsa
-    {
-        $rsp->{data}->[0] = "Public key id_rsa.pub was missing in the .ssh directory.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-        return 1;
-    }
 
-    # copy to id_rsa public key to authorized_keys in the install directory
-    my $authorized_keys = "$SSHdir/authorized_keys";
-    # changed from  identity.pub
-    $cmd = " cp $home/.ssh/id_rsa.pub $authorized_keys";
-    xCAT::Utils->runcmd($cmd, 0);
-    $rsp = {};
-    if ($::RUNCMD_RC != 0)
-    {
+    if (xCAT::Utils->isMN()) {    # if on Management Node
+      if (!(-e "$home/.ssh/id_rsa.pub"))   # only using rsa
+      {
+          $rsp->{data}->[0] = "Public key id_rsa.pub was missing in the .ssh directory.";
+          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+          return 1;
+      }
+      # copy to id_rsa public key to authorized_keys in the install directory
+      my $authorized_keys = "$SSHdir/authorized_keys";
+      # changed from  identity.pub
+      $cmd = " cp $home/.ssh/id_rsa.pub $authorized_keys";
+      xCAT::Utils->runcmd($cmd, 0);
+      $rsp = {};
+      if ($::RUNCMD_RC != 0)
+      {
         $rsp->{data}->[0] = "$cmd failed.\n";
         xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
         return (1);
 
-    }
-    else
-    {
+      }
+      else
+      {
         if ($::VERBOSE)
         {
             $rsp->{data}->[0] = "$cmd succeeded.\n";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
-    }
+      }
+    } # end is MN
 
+    # on MN and SN
     # make tmp directory to hold authorized_keys for node transfer
     if (!(-e "$home/.ssh/tmp")) {
       $cmd = " mkdir $home/.ssh/tmp";
@@ -1620,8 +1618,11 @@ sub cpSSHFiles
       }
     }
     # create authorized_keys file 
-    
-    $cmd = " cp $home/.ssh/id_rsa.pub $home/.ssh/tmp/authorized_keys";
+    if (xCAT::Utils->isMN()) {    # if on Management Node
+      $cmd = " cp $home/.ssh/id_rsa.pub $home/.ssh/tmp/authorized_keys";
+    } else {  # SN
+      $cmd = " cp $home/.ssh/authorized_keys $home/.ssh/tmp/authorized_keys";
+    }
     xCAT::Utils->runcmd($cmd, 0);
     $rsp = {};
     if ($::RUNCMD_RC != 0)
@@ -1641,10 +1642,6 @@ sub cpSSHFiles
         }
     }
 
-    if (!(-e "$authorized_keys"))
-    {
-        return 1;
-    }
     return (0);
 }
 
@@ -1686,9 +1683,11 @@ sub bldnonrootSSHFiles
     }
     my $home     = xCAT::Utils->getHomeDir($from_userid);
     my $roothome = xCAT::Utils->getHomeDir("root");
-    if (!(-e "$home/.ssh/id_rsa.pub"))
-    {
-        return 1;
+    if (xCAT::Utils->isMN()) {    # if on Management Node
+      if (!(-e "$home/.ssh/id_rsa.pub"))
+      {
+          return 1;
+      }
     }
     # make tmp directory to hold authorized_keys for node transfer
     if (!(-e "$home/.ssh/tmp")) {
@@ -1703,7 +1702,12 @@ sub bldnonrootSSHFiles
 
       }
     }
-    $cmd = " cp $home/.ssh/id_rsa.pub $home/.ssh/tmp/authorized_keys";
+    # create authorized_key file in tmp directory for transfer
+    if (xCAT::Utils->isMN()) {    # if on Management Node
+      $cmd = " cp $home/.ssh/id_rsa.pub $home/.ssh/tmp/authorized_keys";
+    } else {  # SN
+      $cmd = " cp $home/.ssh/authorized_keys $home/.ssh/tmp/authorized_keys";
+    }
     xCAT::Utils->runcmd($cmd, 0);
     $rsp = {};
     if ($::RUNCMD_RC != 0)
@@ -1715,31 +1719,32 @@ sub bldnonrootSSHFiles
     }
     else
     {
-        chmod 0600, "$home/.ssh/authorized_keys";
+        chmod 0600, "$home/.ssh/tmp/authorized_keys";
         if ($::VERBOSE)
         {
             $rsp->{data}->[0] = "$cmd succeeded.\n";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
     }
-
-    # if cannot access, warn and continue
-    $rsp = {};
-    $cmd = "cat $roothome/.ssh/id_rsa.pub >> $home/.ssh/tmp/authorized_keys";
-    xCAT::Utils->runcmd($cmd, 0);
-    if ($::RUNCMD_RC != 0)
-    {
+    if (xCAT::Utils->isMN()) {    # if on Management Node
+      # if cannot access, warn and continue
+      $rsp = {};
+      $cmd = "cat $roothome/.ssh/id_rsa.pub >> $home/.ssh/tmp/authorized_keys";
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
         $rsp->{data}->[0] = "Warning: Cannot give $from_userid root ssh authority. \n";
         xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 
-    }
-    else
-    {
+      }
+      else
+      {
         if ($::VERBOSE)
         {
             $rsp->{data}->[0] = "$cmd succeeded.\n";
             xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
         }
+      }
     }
 
 
