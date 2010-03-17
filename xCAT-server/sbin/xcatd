@@ -1581,7 +1581,7 @@ sub validate {
   # check to see if peerhost is trusted
   foreach $rule (@$policies) {
      
-    if (($rule->{name} eq $peerhost)  && ($rule->{rule}=~ /trusted/i)) {
+    if (($rule->{name} and ($rule->{name} eq $peerhost))  && ($rule->{rule}=~ /trusted/i)) {
      $peerstatus="Trusted";
      last;
     }
@@ -1674,7 +1674,7 @@ sub validate {
 
              $arglist .= " " . $argument;
       }
-      $logst .= $arglist;
+      if ($arglist) { $logst .= $arglist; }
       if($peername) { $logst .= " for " . $request->{username}->[0]};
       if ($peerhost) { $logst .= " from " . $peerhost };
       # put in audit Table

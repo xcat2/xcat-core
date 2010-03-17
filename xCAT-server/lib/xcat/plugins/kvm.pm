@@ -91,7 +91,6 @@ sub get_path_for_nfsuri {
     $diskname =~ /nfs:\/\/([^\/]*)(\/.*)/;
     my $server = $1;
     my $path = $2;
-    print $diskname." $server $path \n";
     if (xCAT::Utils::thishostisnot($server)) {
         return [$server,$path];
     } else { #I am the server
@@ -1011,10 +1010,8 @@ sub process_request {
       my $state = $exargs[0];
       if ($state eq 'vmoff') {
           $vmtab->setNodeAttribs($exargs[1],{powerstate=>'off'});
-          print "Completion?\n";
           return;
       } elsif ($state eq 'vmon') {
-          print "Completion?\n";
           $vmtab->setNodeAttribs($exargs[1],{powerstate=>'on'});
           return;
       } elsif ($state eq 'hypshutdown') { #turn this into an evacuate

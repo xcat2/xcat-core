@@ -1004,7 +1004,6 @@ sub getrvidparms {
         return;
     }
     #TODO: use get bmc capabilities to see if rvid is actually supported before bothering the client java app
-    print "my turn\n";
     $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x50,data=>[],callback=>\&getrvidparms_with_buildid,callback_args=>$sessdata);
 }
 sub check_rsp_errors { #TODO: pass in command-specfic error code translation table
@@ -1056,7 +1055,6 @@ sub getrvidparms_with_buildid {
     $jnlp =~ s!argument>title=.*Video Viewer</argument>!argument>title=$currnode wvid</argument>!;
     sendmsg("method:imm",$sessdata->{node});
     sendmsg("jnlp:$jnlp",$sessdata->{node});
-    print "jnlp:$jnlp";
     my @cmdargv = @{$sessdata->{extraargs}};
     if (grep /-m/,@cmdargv) {
         $response = $browser->request(GET $baseurl."/kvm/vm/jnlp");
@@ -2125,7 +2123,6 @@ sub readcurrfrudevice {
         if ($rsp->{code} != 0xcb and check_rsp_errors($rsp,$sessdata)) {
             return;
         } elsif ($rsp->{code} == 0xcb) {
-            print "Oh no..".$sessdata->{currfruid}."\n";
             $sessdata->{currfrudata}="Not Present";
             $sessdata->{currfrudone}=1;
             add_fruhash($sessdata);

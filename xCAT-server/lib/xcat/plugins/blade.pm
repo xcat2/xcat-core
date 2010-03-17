@@ -300,9 +300,6 @@ sub walkelog {
   } while ($varbind->[31] and $varbind->[31]->[2] ne 'NOSUCHINSTANCE' and ($current < 2000));
 
   return $retmap;
-  print "Count was $current\n";
-  #print Dumper($varbind->[60]->[2]);
-  print "\n\n";
   return undef;
   my $count=0;
   while ($varbind->[0] =~ /^$oid\.?(.*)/) {
