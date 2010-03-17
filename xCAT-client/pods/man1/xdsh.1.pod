@@ -235,7 +235,7 @@ the authorized_keys* files under the non-root users .ssh directory on the node(s
 Other device types, such as IB switch, are also supported.  The
 device should be defined as a node and nodetype should be defined 
 as switch before connecting.
-The xdsh -K command cannot be run from a remote client. 
+The xdsh -K command must be run from the Management Node. 
 
 =item B<-l>|B<--user> I<user_ID>
 
