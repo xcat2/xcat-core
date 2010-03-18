@@ -40,6 +40,7 @@ Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
 use File::Temp qw/mkdtemp/;
+use strict;
 my @cpiopid;
 
 
@@ -130,7 +131,9 @@ sub mknetboot
     my $req      = shift;
     my $callback = shift;
     my $doreq    = shift;
-    my $nodes    = @{$request->{node}};
+    unless ($req->{arg}) {
+        $req->{arg} = [];
+    }
     my @args     = @{$req->{arg}};
     my @nodes    = @{$req->{node}};
     my $ostab    = xCAT::Table->new('nodetype');
@@ -143,7 +146,7 @@ sub mknetboot
 
     if ($sitetab)
     {
-        (my $ref) = $sitetab->getAttribs({key => xcatiport}, value);
+        (my $ref) = $sitetab->getAttribs({key => 'xcatiport'}, 'value');
         if ($ref and $ref->{value})
         {
             $xcatiport = $ref->{value};
@@ -160,7 +163,7 @@ sub mknetboot
                                  ['serialport', 'serialspeed', 'serialflow']);
     #my $addkcmdhash =
     #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
-    foreach $node (@nodes)
+    foreach my $node (@nodes)
     {
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
         unless ($ent->{os} and $ent->{arch} and $ent->{profile})
@@ -239,8 +242,22 @@ BEGIN {
 }
 ENDOFAWK
             close($menush);
+            open($menush,"<","menu/unattended_menu.sh");
+            my @oldunattendmenu = <$menush>; #store old menu;
+            close($menush);
+            open($menush,">","menu/unattended_menu.sh");
+            foreach (@oldunattendmenu) {
+                if (/^exit 0/) { #the exit line, hijack this
+                    print $menush 'DIR=`dirname $0`'."\n";
+                    print $menush '$DIR/calltoxcat.awk ${xcat_server} '."$xcatiport\n";
+                    print $menush "reboot\n";
+                } else {
+                    print $menush $_;
+                }
+            }
+            close($menush);
             system("zip /$installroot/netboot/$osver/$arch/$profile/tc.xcat.zip -r .");
-            chdir ..
+            chdir "..";
             system("rm -rf $dpath");
         }
                 
@@ -271,7 +288,7 @@ ENDOFAWK
                 );
             next;
         }
-        my $ent    = $reshash->{$node}->[0];#$restab->getNodeAttribs($node, ['primarynic']);
+        $ent    = $reshash->{$node}->[0];#$restab->getNodeAttribs($node, ['primarynic']);
         my $sent   = $hmhash->{$node}->[0];
 #          $hmtab->getNodeAttribs($node,
 #                                 ['serialport', 'serialspeed', 'serialflow']);
