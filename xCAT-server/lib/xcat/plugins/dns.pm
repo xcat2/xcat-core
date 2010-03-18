@@ -615,4 +615,19 @@ sub sendmsg {
 #        waitforack($outfd);
     $callback->($msg);
 }
+sub genpassword
+{
+
+    #Generate a pseudo-random password of specified length
+    my $length     = shift;
+    my $password   = '';
+    my $characters =
+      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890';
+    srand;    #have to reseed, rand is not rand otherwise
+    while (length($password) < $length)
+    {
+        $password .= substr($characters, int(rand 63), 1);
+    }
+    return $password;
+}
 1;
