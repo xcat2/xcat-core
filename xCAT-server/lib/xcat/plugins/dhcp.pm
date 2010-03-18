@@ -952,7 +952,7 @@ sub addnet
                 $callback->(
                     {
                      warning => [
-                         "No dynamic range specified for $net, unknown systems on this network will not receive an address"
+                         "No dynamic range specified for $net. If hardware discovery is being used, a dynamic range is required."
                      ]
                     }
                     );
