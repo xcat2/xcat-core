@@ -188,11 +188,18 @@ sub docfheaders {
   my $skip = 0;
   my @meat = grep(!/^#/,@$content);
   unless (grep(/^config \* {/,@meat)) {
-    push @newheaders,"config * {\n";
-    push @newheaders,"  sslrequired yes;\n";
-    push @newheaders,"  sslauthority /etc/xcat/cert/ca.pem;\n";
-    push @newheaders,"  sslcredentials /etc/xcat/cert/server-cred.pem;\n";
-    push @newheaders,"}\n";
+    # do not add the ssl configurations 
+    # if conserver is not compiled with ssl support
+    my $cmd = "console -h 2>&1";
+    my $output = xCAT::Utils->runcmd($cmd, -1);
+    if ($output !~ "encryption not compiled")
+    {
+        push @newheaders,"config * {\n";
+        push @newheaders,"  sslrequired yes;\n";
+        push @newheaders,"  sslauthority /etc/xcat/cert/ca.pem;\n";
+        push @newheaders,"  sslcredentials /etc/xcat/cert/server-cred.pem;\n";
+        push @newheaders,"}\n";
+    }
   }
   unless (grep(/^default cyclades/,@meat)) {
     push @newheaders,"default cyclades { type host; portbase 7000; portinc 1; }\n"
