@@ -300,6 +300,14 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
 }    # end install,update or force
 
 #
+#  set up the certificates for xcatd, gen new ones if requested or do not exist
+#
+if ($::INITIALINSTALL || $::FORCE || $::genCredentials)
+{
+    &genCredentials;
+}
+
+#
 # Setup  database
 #
 if ($::INITIALINSTALL || $::UPDATEINSTALL || $::FORCE || $::initDB)
@@ -325,13 +333,6 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
     }
 }
 
-#
-#  set up the certificates for xcatd, gen new ones if requested or do not exist
-#
-if ($::INITIALINSTALL || $::FORCE || $::genCredentials)
-{
-    &genCredentials;
-}
 
 #
 
@@ -841,6 +842,21 @@ sub initDB
         xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
         $master = "NORESOLUTION";
     }
+    # for policy table
+    # get hostname from the /etc/xcat/cert/server-cert.pem
+    my $MNname;
+    if ( -e ("/etc/xcat/cert/server-cert.pem")) {
+      my  $cmd ="grep Subject /etc/xcat/cert/server-cert.pem";
+      my $result = xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+        xCAT::MsgUtils->message("E", "Error from $cmd.\n MN policy not created.");
+        
+      }
+      (my $subject,my $mname) = split /CN=/ , $result;
+      ($MNname, my $endstuff) = split /Subject/, $mname;
+       $MNname =~ s/\s*//g;
+    }
 
     # set value based on OS
     my ($domain, $timezone);
@@ -990,6 +1006,9 @@ sub initDB
                 $chtabcmds .=
                   "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,aixremoteshell,otherpkgs,syncfiles';";
             }
+            $chtabcmds .=
+               "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode'";
+
         }
         else     # linux
         {
@@ -1006,10 +1025,9 @@ sub initDB
                 $chtabcmds .=
                   "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,remoteshell,otherpkgs,syncfiles';";
             }
+            $chtabcmds .=
+               "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode,xcatserver,xcatclient'";
         }
-
-        $chtabcmds .=
-          "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode,xcatserver,xcatclient'";
 
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
         if ($::RUNCMD_RC != 0)
@@ -1022,7 +1040,6 @@ sub initDB
             verbose("Created postscripts definition.");
         }
     }
-
     # create basic policy definition, if does not exist or request reset.
     if (   ((!-r "/etc/xcat/policy.sqlite") && (!-r "/etc/xcat/cfgloc"))
         || $::FORCE
@@ -1033,8 +1050,10 @@ sub initDB
         {
             $chtabcmds =
               "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
-            $chtabcmds .=
-              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=trusted;";
+            if (defined($MNname)){
+              $chtabcmds .=
+                "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$MNname policy.rule=trusted;";
+            } 
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=4.4 policy.commands=getpostscript policy.rule=allow;";
             $chtabcmds .=
@@ -1046,8 +1065,10 @@ sub initDB
         {
             $chtabcmds =
               "$::XCATROOT/sbin/chtab priority=1 policy.name=root policy.rule=allow;";
-            $chtabcmds .=
-              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=trusted;";
+            if (defined($MNname)){
+              $chtabcmds .=
+              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$MNname policy.rule=trusted;";
+            }
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=2 policy.commands=getbmcconfig policy.rule=allow;";
             $chtabcmds .=
@@ -1083,7 +1104,7 @@ sub initDB
         # setup Management Node policy to trusted
         my $chtabcmds;
         $chtabcmds =
-          "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=trusted";
+          "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$MNname policy.rule=trusted";
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
         if ($::RUNCMD_RC != 0)
         {
