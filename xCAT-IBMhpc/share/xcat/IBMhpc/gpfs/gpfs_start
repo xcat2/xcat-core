@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# Run this script as a postscript on any node (stateless, statefull,
+#  full-disk install, AIX, Linux) to start the GPFS daemon
+# 
+
+# If you have any special network dependencies, you may want to add code
+# to check them first
+
+/usr/lpp/mmfs/bin/mmsdrrestore
+/usr/lpp/mmfs/bin/mmstartup
+

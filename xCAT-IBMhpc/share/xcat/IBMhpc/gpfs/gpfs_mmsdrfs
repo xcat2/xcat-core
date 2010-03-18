@@ -1,0 +1,70 @@
+#!/bin/sh
+
+# Run this script to sync the GPFS mmsdrfs file into the node images
+# Set the SOURCE, IMAGE, and SERVICE variables appropriately
+
+# Usage:  gpfs_mmsdrfs [packimage|liteimage] [syncinstall]
+#   If packimage or liteimage specified, will run that command for the image
+#     if rsync updated any destination files
+#   If syncinstall specified, and if site.install_loc is blank, 
+#     sync the /install directory to the SERVICE noderange 
+#     if rysnc updated any destination files
+#
+# To keep your diskless images current with any GPFS changes, run this
+# script periodically from cron using the packimage/liteimage and 
+# syncinstall options as required by your cluster 
+#
+
+# The source server:location of the mmsdrfs file.  Default is this xCAT MN.
+#SOURCE=gpfsmgr:/var/mmfs/gen/mmsdrfs
+SOURCE=/var/mmfs/gen/mmsdrfs
+
+# The images to be updated (list as many as needed)
+IMAGE[1]=sles11-ppc64-netboot-service2
+IMAGE[2]=sles11-ppc64-netboot-compute
+
+# The noderange for service nodes
+SERVICE=service
+
+
+# If $installroot is set, then this script was called from genimage
+# Ignore all IMAGE variables and only rsync to $installroot
+if [ ! -z "$installroot" ]; then
+   rsync -i -t $SOURCE $installroot/var/mmfs/gen/mmsdrfs
+   exit
+fi
+
+packcmd=""
+syncinstall=""
+if [ "$1" == "packimage" ] || [ "$1" == "liteimage" ]; then
+  packcmd=$1
+  if [ "$2" == "syncinstall" ]; then
+    installloc=`/opt/xcat/bin/gettab key=installloc site.value`
+    if [ -z "$installloc" ]; then
+      syncinstall="yes"
+    fi
+  fi
+fi
+
+updates=""
+for syncimage in ${IMAGE[@]}; do
+    dest=`/opt/xcat/bin/gettab imagename=$syncimage linuximage.rootimgdir`
+    dest=$dest/rootimg/var/mmfs/gen/mmsdrfs
+    #echo "rsync cmd:  rsync -i -t $SOURCE $dest "
+    result=`rsync -i -t $SOURCE $dest`
+    #echo "rsync result=$result"
+    r1=`echo $result | cut -c1`
+    if [ "$r1" == ">" ]; then
+       date
+       echo "mmsdrfs updated in image $syncimage"
+       if [ ! -z $packcmd ]; then
+          updates="yes"
+          /opt/xcat/sbin/$packcmd $syncimage
+       fi
+    fi
+done
+
+if [ ! -z "$updates" ] && [ ! -z "$syncinstall" ]; then
+   xdcp $SERVICE -r /usr/bin/rsync -o '-e ssh -craz' /install/netboot /install/netboot 
+fi
+
