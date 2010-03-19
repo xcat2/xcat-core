@@ -2608,14 +2608,19 @@ sub defls
             # if anything but the site table do this
             if ($type ne 'site')
             {
-                if (!grep(/^$obj$/, @allobjoftype))
+                # check the object names only if
+                # the object names are passed in through command line
+                if ($::objectsfrom_args || (($type eq 'node') && ($::opt_o || @::noderange)))
                 {
-                    my $rsp;
-                    $rsp->{data}->[0] =
-                      "Could not find an object named \'$obj\' of type \'$type\'.";
-                    xCAT::MsgUtils->message("I", $rsp, $::callback);
-                    next;
-                }
+                    if (!grep(/^$obj$/, @allobjoftype))
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] =
+                          "Could not find an object named \'$obj\' of type \'$type\'.";
+                        xCAT::MsgUtils->message("I", $rsp, $::callback);
+                        next;
+                    }
+                 }
             }    # end - if not site table
 
             # special handling for site table - for now !!!!!!!
