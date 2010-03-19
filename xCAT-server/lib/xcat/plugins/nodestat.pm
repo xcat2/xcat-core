@@ -123,6 +123,7 @@ sub preprocess_request
 	$::UPDATE=0;
 	$::QUITE=0;
 	$::MON=0;
+	$::POWER=0;
 	#Getopt::Long::Configure("posix_default");
 	#Getopt::Long::Configure("no_gnu_compat");
 	Getopt::Long::Configure("bundling");
@@ -131,6 +132,7 @@ sub preprocess_request
 		 'm|usemon' => \$::MON,
 		 'q|quite'   => \$::QUITE, #this is a internal flag used by monitoring
 		 'u|updatedb'   => \$::UPDATE,
+		 'p|powerstat'   => \$::POWER,
 		 'h|help'     => \$::HELP,
 		 'v|version'  => \$::VERSION))
 	{
@@ -158,6 +160,7 @@ sub preprocess_request
 	$req->{'update'}->[0]=$::UPDATE;
 	$req->{'quite'}->[0]=$::QUITE;
         $req->{'mon'}->[0]=$::MON;
+        $req->{'power'}->[0]=$::POWER;
 	return [$req];
     }
     
@@ -487,8 +490,6 @@ sub process_request_nmap {
    my %portservices = %$p_tmp;
    my @nodes =();
    if ($nodelist) { @nodes=@$nodelist;}
-
-   my $update=$request->{'update'}->[0];
 
    my %nodebyip;
    my @livenodes;
@@ -855,13 +856,14 @@ sub process_request {
        #print Dumper($ret);
        my $status={};
        my @noping_nodes=();
+       my $power=$request->{'power'}->[0];
        foreach my $tmpdata (@$ret) {
 	   if ($tmpdata =~ /([^:]+): (.*)$separator(.*)$separator(.*)/) {
 	      # print "node=$1, status=$2, appstatus=$3, appsd=$4\n";
                $status->{$1}->{'status'}=$2;
                $status->{$1}->{'appstatus'}=$3;
                $status->{$1}->{'appsd'}=$4;
-               if ($2 eq "noping") {
+               if (($power) && ($2 eq "noping")) {
 		   push(@noping_nodes, $1);
 	       }
 	   } else  {
@@ -871,7 +873,8 @@ sub process_request {
            }
        }
 
-       if (@noping_nodes > 0) {
+       #get power status for noping nodes
+       if (($power) && (@noping_nodes > 0)) {
 	   #print "noping_nodes=@noping_nodes\n";
 	   my $ret = xCAT::Utils->runxcmd(
 	       {
@@ -977,7 +980,7 @@ sub usage
     my $cb=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  nodestat [noderange] [-m|--usemon] [-u|--updatedb]";
+    $rsp->{data}->[1]= "  nodestat [noderange] [-m|--usemon] [-p|powerstat] [-u|--updatedb]";
     $rsp->{data}->[2]= "  nodestat [-h|--help|-v|--version]";
     xCAT::MsgUtils->message("I", $rsp, $cb);
 }

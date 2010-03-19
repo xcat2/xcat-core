@@ -4,7 +4,7 @@ B<nodestat> - display the running status of each node in a noderange
 
 =head1 B<Synopsis>
 
-B<nodestat> [I<noderange>] [I<-m>|I<--usemon>]  [I<-u>|I<--updatedb>]
+B<nodestat> [I<noderange>] [I<-m>|I<--usemon>] [I<-p>|I<--powerstat>] [I<-u>|I<--updatedb>]
 
 B<nodestat> [I<-h>|I<--help>|I<-v>|I<--version>]
 
@@ -21,7 +21,7 @@ By default, it works as following:
     4. for non-pingable nodes, it shows 'noping'.
 
 
-When -m is specified and there are settings in the monsetting table, it displays the status of the applications specified in the monsetting table. When -u is specified it saves the status info into the xCAT database. Node's pingable status and deployment status is saved in the nodelist.status column. Node's application status is saved in the nodelist.appstatus column.
+When -m is specified and there are settings in the monsetting table, it displays the status of the applications specified in the monsetting table. When -p is specified it shows the power status for the nodes that are not pingable. When -u is specified it saves the status info into the xCAT database. Node's pingable status and deployment status is saved in the nodelist.status column. Node's application status is saved in the nodelist.appstatus column.
 
 
 To specify settings in the B<monsetting> table, use 'xcatmon' as the name, 'apps' as the key and the value will be a list of comma separated list of application names. For each application, you can specify the port number that can be queried on the nodes to get the running status. Or you can specify a command that can be called to get the node status from. The command can be a command that can be run locally at the management node or the service node for hierarchical cluster, or a command that can be run remotely on the nodes. 
@@ -53,6 +53,10 @@ Keywords to use:
 
 Uses the settings from the B<monsetting> talbe to determine a list of applications that need to get status for. 
 
+=item B<-p>|B<--powerstat>
+
+Gets the power status for the nodes that are 'noping'.
+
 =item B<-u>|B<--updatedb>
 
 Updates the status and appstatus columns of the nodelist table with the returned running status from the given nodes. 
@@ -78,8 +82,16 @@ Print help.
  node4   ping,pbs
  node5   noping
 
+2.  nodestat compute -p
 
-2. nodeset compute -u
+ node1   ping,sshd
+ node2   ping,sshd
+ node3   ping
+ node4   ping,pbs
+ node5   noping(Shutting down)
+
+
+3. nodeset compute -u
  node1   ping,sshd
  node2   ping,sshd
  node3   ping
@@ -87,7 +99,7 @@ Print help.
  node5   noping
 
 
-3. nodeset compute -m
+4. nodeset compute -m
  node1   ping,sshd,ll,gpfs=ok
  node2   ping,sshd,ll,gpfs=not ok,someapp=something is wrong
  node3   netboot
