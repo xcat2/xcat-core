@@ -439,7 +439,14 @@ sub process_tasks {
                 $running_tasks{$_}->{callback}->($curt,$running_tasks{$_}->{data});
                 delete $running_tasks{$_};
             }
-
+            if ($state eq 'running' and not $running_tasks{$_}->{questionasked}) { # and $curt->info->progress == 95) { #This is unfortunate, there should be a 'state' to indicate a question is blocking
+                    #however there isn't, so if we see something running at 95%, we just manually see if a question blocked the rest
+                    my $vm = $curcon->get_view(mo_ref=>$curt->info->entity);
+                    if ($vm->{summary} and $vm->summary->runtime->question) {
+                        $running_tasks{$_}->{questionasked}=1;
+                         $running_tasks{$_}->{callback}->($curt,$running_tasks{$_}->{data},$vm->summary->runtime->question,$vm);
+                    } 
+            }
         }
 }
 #this function is a barrier to ensure prerequisites are met
@@ -605,6 +612,34 @@ sub migrate_callback {
     }
 }
 
+sub poweron_task_callback {
+    my $task = shift;
+    my $parms = shift;
+    my $q = shift; #question if blocked
+    my $vm = shift; #path to answer questions if asked
+    my $state = $task->info->state->val;
+    my $node = $parms->{node};
+    my $intent = $parms->{successtext};
+    if ($state eq 'success') {
+        sendmsg($intent,$node);
+    } elsif ($state eq 'error') {
+        relay_vmware_err($task,"",$node);
+    }  elsif ($q and $q->text =~ /^msg.uuid.altered:/ and ($q->choice->choiceInfo->[0]->summary eq 'Cancel' and ($q->choice->choiceInfo->[0]->key eq '0'))) { #make sure it is what is what we have seen it to be
+        if ($parms->{forceon} and $q->choice->choiceInfo->[1]->summary eq 'I _moved it' and $q->choice->choiceInfo->[1]->key eq '1') { #answer the question as 'moved'
+            $vm->AnswerVM(questionId=>$q->id,answerChoice=>'1');
+        } else {
+            $vm->AnswerVM(questionId=>$q->id,answerChoice=>'0');
+            sendmsg([1,"Failure powering on VM, it mismatched against the hypervisor.  If positive VM is not running on another hypervisor, use -f to force VM on"],$node);
+        }
+    } elsif ($q) {
+        if ($q->choice->choiceInfo->[0]->summary eq 'Cancel') {
+            sendmsg([1,":Cancelling due to unexpected question executing task: ".$q->text],$node);
+        } else {
+            sendmsg([1,":Task hang due to unexpected question executing task, need to use VMware tools to clean up the mess for now: ".$q->text],$node);
+        }
+    }
+
+}
 sub generic_task_callback {
     my $task = shift;
     my $parms = shift;
@@ -851,7 +886,13 @@ sub power {
     if (not defined $args{vmview}) { #attempt one refresh
         $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','config','runtime.powerState'],filter=>{name=>$node});
     }
-    my $subcmd = ${$args{exargs}}[0];
+    @ARGV = @{$args{exargs}}; #for getoptions;
+    my $forceon;
+    require Getopt::Long;
+    GetOptions(
+        'force|f' => \$forceon,
+        );
+    my $subcmd = $ARGV[0];
     my $intent="";
     my $task;
     my $currstat;
@@ -920,9 +961,9 @@ sub power {
                         return;
                     }
                     $running_tasks{$task}->{task} = $task;
-                    $running_tasks{$task}->{callback} = \&generic_task_callback;
+                    $running_tasks{$task}->{callback} = \&poweron_task_callback;
                     $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
-                    $running_tasks{$task}->{data} = { node => $node, successtext => $intent.'on' };
+                    $running_tasks{$task}->{data} = { node => $node, successtext => $intent.'on', forceon=>$forceon };
                 } else {
                     sendmsg("on",$node);
                 }
