@@ -134,6 +134,7 @@ sub process_request {
                 $ctx->{aliases}->{$node}->{$alias}=1; #remember alias for CNAM records later
             }
             push @nodes,$node;
+            $ctx->{nodeips}->{$node}->{$addr}=1;
         }
     }
     my $hoststab = xCAT::Table->new('hosts',-create=>0);
@@ -530,9 +531,14 @@ sub find_nameserver_for_dns {
     my $rname = $ctx->{currrevname};
     my $name = $ctx->{currname};
     unless ($name =~ /\.\z/) { $name .= '.' }
-    my $rrcontent = "$name IN A $ip";
+    my @rrcontent = ( "$name IN A $ip" );
+    foreach (keys %{$ctx->{nodeips}->{$node}}) {
+        unless ($_ eq $ip) {
+            push @rrcontent,"$name IN A $_";
+        }
+    }
     if ($zone =~ /IN-ADDR.ARPA/) { #reverse style
-        $rrcontent = "$rname IN PTR $name";
+        @rrcontent = ("$rname IN PTR $name");
     }
     while ($zone) {
        unless (defined $ctx->{nsmap}->{$zone}) { #ok, we already thought about this zone and made a decision
@@ -554,11 +560,7 @@ sub find_nameserver_for_dns {
            }
        }
        if ($ctx->{nsmap}->{$zone}) {  #we have a nameserver for this zone, therefore this zone is one to update
-           if ($ctx->{updatesbyzone}->{$zone}) { #attach to existing list of updates
-               push @{$ctx->{updatesbyzone}->{$zone}},$rrcontent;
-           } else { #create a new list.
-               $ctx->{updatesbyzone}->{$zone} = [ $rrcontent ];
-           }
+           push @{$ctx->{updatesbyzone}->{$zone}},@rrcontent;
            last;
        } else { #we have it defined, but zero, means search higher domains.  Possible to shortcut further by pointing to the right domain, maybe later
             if ($zone !~ /\./) {
