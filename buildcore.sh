@@ -320,7 +320,9 @@ REPOFILE=`basename xCAT-*.repo`
 sed -e 's|baseurl=.*|baseurl=file://'`pwd`'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'`pwd`'/repodata/repomd.xml.key|' > /etc/yum.repos.d/$REPOFILE
 cd -
 EOF2
-fi
+chmod 775 mklocalrepo.sh
+
+fi	# not AIX
 
 # Build the tarball
 cd ..
