@@ -1435,6 +1435,10 @@ sub create_storage_devs {
         my $disksize = shift @sizes;
         unless (scalar @sizes) { @sizes = ($disksize); } #if we emptied the array, stick the last entry back on to allow it to specify all remaining disks
         $disksize = getUnits($disksize,'G',1024);
+        $disktype = 'ide';
+        if ($storeloc =~ /=/) {
+            ($storeloc,$disktype) = split /=/,$storeloc;
+        }
         $storeloc =~ s/\/$//;
         (my $method,my $location) = split /:\/\//,$storeloc,2;
         (my $server,my $path) = split/\//,$location,2;
@@ -1454,16 +1458,19 @@ sub create_storage_devs {
             $idecontrollerkey++;
             $unitnum=0;
         }
-        push @{$disktocont{$idecontrollerkey}},$currkey;
+        unless ($disktype eq 'ide') {
+            push @{$disktocont{$scsicontrollerkey}},$currkey;
+        }
         my $controllerkey;
         if ($disktype eq 'ide') {
             $controllerkey = $idecontrollerkey;
         } else {
             $controllerkey = $scsicontrollerkey;
+            $havescsidevs=1;
         }
 
         $dev =VirtualDisk->new(backing=>$backingif,
-                        controllerKey => $idecontrollerkey,
+                        controllerKey => $controllerkey,
                         key => $currkey++,
                         unitNumber => $unitnum++,
                         capacityInKB => $disksize); 
@@ -1477,7 +1484,7 @@ sub create_storage_devs {
         foreach(0..$scsicontrollerkey) {
             $dev=VirtualLsiLogicController->new(key => $_,
                                                 device => \@{$disktocont{$_}},
-#                                                sharedBus => VirtualSCSISharing->new('noSharing'),
+                                                sharedBus => VirtualSCSISharing->new('noSharing'),
                                                 busNumber => $_);
             push @devs,VirtualDeviceConfigSpec->new(device => $dev,
                                                 operation =>  VirtualDeviceConfigSpecOperation->new('add'));
@@ -1866,6 +1873,7 @@ sub validate_datastore_prereqs {
             push @storage,$tablecfg{vm}->{$node}->[0]->{cfgstore};
         }
         foreach (@storage) {
+            s/=.*//; #remove device type information from configuration
             s/\/$//; #Strip trailing slash if specified, to align to VMware semantics
             if (/:\/\//) {
                 ($method,$location) = split /:\/\//,$_,2;
