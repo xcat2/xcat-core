@@ -325,7 +325,7 @@ ENDOFAWK
                 );
             next;
         }
-        my $kcmdline = "root=/dev/ram0 rw ramdisk_size=100000 tftp_server=$imgsrv tftp_tcrootfs=xcat/netboot/$osver/$arch/$profile/tcrootfs tftp_tczip=xcat/netboot/$osver/$arch/$profile/tc.zip xcat_server=$xcatserver";
+        my $kcmdline = "vga=0x317 root=/dev/ram0 rw ramdisk_size=100000 tftp_server=$imgsrv tftp_tcrootfs=xcat/netboot/$osver/$arch/$profile/tcrootfs tftp_tczip=xcat/netboot/$osver/$arch/$profile/tc.zip xcat_server=$xcatserver";
         if (defined $sent->{serialport})
         {
 
