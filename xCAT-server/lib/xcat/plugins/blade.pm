@@ -2462,7 +2462,7 @@ sub telnetcmds {
     elsif (/^swnet$/)   { $result = swnet($t,$handled{$_}); }
     elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
     elsif (/^textid$/)  { $result = mmtextid($t,$mpa,$handled{$_},$mm); }
-    elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,1); }
+    elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,1); }
     push @data, "$_: @$result";
     $Rc |= shift(@$result);
     push @cfgtext,@$result;
@@ -2519,8 +2519,8 @@ sub network {
   my $t = shift;
   my $value = shift;
   my $mpa = shift;
-  my $reset = shift;
   my $mm = shift;
+  my $reset = shift;
   my $cmd = "ifconfig -eth0 -c static -r auto -d auto -m 1500 -T system:$mm";
   my ($ip,$host,$gateway,$mask);
 
