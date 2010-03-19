@@ -228,42 +228,44 @@ unless ($onlyinitrd) {
    mkpath("$rootimg_dir/var/lib/yum");
 
    if (!$imagename) {
-       $pkglist= get_pkglist_file_name($customdir);
+       $pkglist= get_profile_def_filename($customdir, "pkglist");
        if (!$pkglist) {
-	   $pkglist= get_pkglist_file_name($pathtofiles);
+	   $pkglist= get_profile_def_filename($pathtofiles, "pkglist");
        }  
    }
-   print "pkglist=$pkglist\n";
 
    if (!$pkglist) {
       print "Unable to find package list for $profile!";
       exit 1;
    }
 
-   open($yumconfig,"<","$pkglist");
-   while (<$yumconfig>) {
-      chomp;
-      $yumcmd .= $_ . " ";
+   my %pkg_hash=get_package_names($pkglist);
+   my $index=1;
+   foreach (keys(%pkg_hash)) {
+       if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
+       my $pa=$pkg_hash{$_};
+       $pkgnames .= " " . join(' ', @$pa);
    }
-   close($yumconfig);
-   $yumcmd =~ s/ $/\n/;
-    
-   #debug
-   #print "yumcmd=$yumcmd\n";
-   #my $repo=`cat /tmp/genimage.$$.yum.conf`;
-   #print "repo=$repo";
 
-   my $rc = system($yumcmd);
+   print "$yumcmd $pkgnames\n";
+   my $rc = system("$yumcmd $pkgnames");
    if ($rc) { 
       print "yum invocation failed\n";
       exit 1;
    }
 
    #Now let's handle extra packages
-   my %extra_hash=get_extra_package_names();
-   my $extrapkgnames; 
+    if (!$imagename) {
+	$otherpkglist=get_profile_def_filename($customdir, "otherpkgs.pkglist");
+	if (!$otherpkglist) { $otherpkglist=get_profile_def_filename($pathtofiles, "otherpkgs.pkglist"); }
+    }
+    my %extra_hash=();
+    if ($otherpkglist) {
+       %extra_hash=get_package_names($otherpkglist);
+    }
+    my $extrapkgnames; 
 
-  if (keys(%extra_hash) > 0) {
+    if (keys(%extra_hash) > 0) {
       open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
       my $index=1;
       foreach (keys(%extra_hash)) {
@@ -289,6 +291,7 @@ unless ($onlyinitrd) {
 	  my $pa=$extra_hash{'PRE_REMOVE'};
 	  my $rm_packges= join(' ', @$pa);
 	  if ($rm_packges) {
+              print "$yumcmd_remove $rm_packges\n";
 	      $rc = system("$yumcmd_remove $rm_packges");
 	  }
       }
@@ -304,7 +307,7 @@ unless ($onlyinitrd) {
       $yumcmd =~ s/ $/\n/;
     
       #debug
-      #print "yumcmd=$yumcmd\n";
+      print "yumcmd=$yumcmd\n";
       #my $repo=`cat /tmp/genimage.$$.yum.conf`;
       #print "repo=$repo";
       
@@ -319,6 +322,7 @@ unless ($onlyinitrd) {
 	  my $pa=$extra_hash{'POST_REMOVE'};
 	  my $rm_packges= join(' ', @$pa);
 	  if ($rm_packges) {
+              print "$yumcmd_remove $rm_packges\n";
 	      $rc = system("$yumcmd_remove $rm_packges");
 	  }
       }
@@ -354,9 +358,9 @@ unlink "/tmp/genimage.$$.yum.conf";
 
 #-- run postinstall script
 if (!$imagename) {
-    $postinstall_filename= get_postinstall_file_name($customdir);
+    $postinstall_filename= get_profile_def_filename($customdir, "postinstall");
     if (!$postinstall_filename) {
-	$postinstall_filename= get_postinstall_file_name($pathtofiles);
+	$postinstall_filename= get_profile_def_filename($pathtofiles, "postinstall");
     }
 } 
 
@@ -1082,21 +1086,15 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    
    rename(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel"); } 
 
-#get th extra package name
-sub get_extra_package_names {
-    if (!$imagename) {
-	$otherpkglist=get_extra_pkglist_file_name($customdir);
-	if (!$otherpkglist) { $otherpkglist=get_extra_pkglist_file_name($pathtofiles); }
-    }
-
-   #print "customdir=$customdir,pathtofiles=$pathtofiles,otherpkglist=$otherpkglist\n";
+sub get_package_names {
+   my $plist_file_name=shift;
    my %pkgnames=();
    my @tmp_array=();
 
 
-   if ($otherpkglist) {
+   if ($plist_file_name) {
      my $pkgfile;
-     open($pkgfile,"<","$otherpkglist");
+     open($pkgfile,"<","$plist_file_name");
      while (<$pkgfile>) {
         chomp;
 	s/\s+$//;   #remove trailing white spaces
@@ -1109,7 +1107,7 @@ sub get_extra_package_names {
         my $pkgtext=join(',',@tmp_array);
       
         #handle the #INLCUDE# tag recursively
-        my $idir = dirname($otherpkglist);
+        my $idir = dirname($plist_file_name);
         my $doneincludes=0;
 	while (not $doneincludes) {
 	    $doneincludes=1;
@@ -1173,64 +1171,28 @@ sub include_file
 }
 
 
-sub get_extra_pkglist_file_name {
+
+sub get_profile_def_filename {
    my $base=shift;
-   if (-r "$base/$profile.$osver.$arch.otherpkgs.pkglist") {
-      return  "$base/$profile.$osver.$arch.otherpkgs.pkglist";
-   } elsif (-r "$base/$profile.$arch.otherpkgs.pkglist") {
-      return "$base/$profile.$arch.otherpkgs.pkglist";
-   } elsif (-r "$base/$profile.$osver.otherpkgs.pkglist") {
-      return "$base/$profile.$osver.otherpkgs.pkglist";
-   } elsif (-r "$base/$profile.otherpkgs.pkglist") {
-      return "$base/$profile.otherpkgs.pkglist";
-   } 
-   return "";
-}
-
-sub get_pkglist_file_name {
-   my $base=shift;
-   if (-r "$base/$profile.$osver.$arch.pkglist") {
-      return "$base/$profile.$osver.$arch.pkglist";
-   } elsif (-r "$base/$profile.$arch.pkglist") {
-      return "$base/$profile.$arch.pkglist";
-   } elsif (-r "$base/$profile.$osver.pkglist") {
-      return "$base/$profile.$osver.pkglist";
-   } elsif (-r "$base/$profile.pkglist") {
-      return "$base/$profile.pkglist";
-   } 
-   return "";
-}
-
-sub get_rwfiles_file_name {
-   my $base=shift;
-   if (-r "$base/$profile.$osver.$arch.rwfiles") {
-      return "$base/$profile.$osver.$arch.rwfiles";
-   } elsif (-r "$base/$profile.$arch.rwfiles") {
-      return "$base/$profile.$arch.rwfiles";
-   } elsif (-r "$base/$profile.$osver.rwfiles") {
-      return "$base/$profile.$osver.rwfiles";
-   } elsif (-r "$base/$profile.rwfiles") {
-      return "$base/$profile.rwfiles";
-   } 
-   return "";
-}
-
-
-
-
-sub get_postinstall_file_name {
-   my $base=shift;
-   if (-x "$base/$profile.$osver.$arch.postinstall") {
-      return "$base/$profile.$osver.$arch.postinstall";
-   } elsif (-x "$base/$profile.$arch.postinstall") {
-      return "$base/$profile.$arch.postinstall";
-   } elsif (-x "$base/$profile.$osver.postinstall") {
-      return "$base/$profile.$osver.postinstall";
-   } elsif (-x "$base/$profile.postinstall") {
-      return "$base/$profile.postinstall";
+   my $ext=shift;
+   my $dotpos = rindex($osver, ".");
+   my $osbase = substr($osver, 0, $dotpos);
+   if (-r "$base/$profile.$osver.$arch.$ext") {
+      return "$base/$profile.$osver.$arch.$ext";
+   } elsif (-r "$base/$profile.$osbase.$arch.$ext") {
+      return "$base/$profile.$osbase.$arch.$ext";
+   } elsif (-r "$base/$profile.$arch.$ext") {
+      return "$base/$profile.$arch.$ext";
+   } elsif (-r "$base/$profile.$osver.$ext") {
+      return "$base/$profile.$osver.$ext";
+   } elsif (-r "$base/$profile.$osbase.$ext") {
+      return "$base/$profile.$osbase.$ext";
+   } elsif (-r "$base/$profile.$ext") {
+      return "$base/$profile.$ext";
    } 
 
    return "";
 }
+
 
 	
