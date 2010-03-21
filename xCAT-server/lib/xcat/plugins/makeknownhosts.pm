@@ -405,6 +405,6 @@ sub remove_nodes_from_knownhosts
             return 1;
         }
     }
-    xCAT::Utils->runcmd("$::RM -f $file", -1);
+    xCAT::Utils->runcmd("rm -f $file", -1);
     return 0;
 }

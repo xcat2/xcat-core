@@ -224,8 +224,13 @@ if (-f $scriptname)
     # when called by the updatenode command,
     # modify the UPDATENODE flag to 1
     if (@ARGV > 0) {
-      $TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' $scriptname`;
-      `echo "$TMP" > $scriptname`;
+      if ($ARGV[0] == 1 || $ARGV[0] == 2) {
+        $TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' $scriptname`;
+        `echo "$TMP" > $scriptname`;
+      } elsif ($ARGV[0] == 5) {
+        $TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1\\\nUPDATESECURITY=1\\\nexport UPDATESECURITY/g' $scriptname`;
+        `echo "$TMP" > $scriptname`;
+      }
     }
 
     if (@ARGV>1) {

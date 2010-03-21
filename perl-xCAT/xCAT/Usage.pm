@@ -187,6 +187,35 @@ my %usage = (
     renergy noderange [-V] { all | { [savingstatus] [dsavingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime] } }
     renergy noderange [-V] { {savingstatus}={on | off} | {dsavingstatus}={on-norm | on-maxp | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage }",
 
+  "updatenode" =>
+"Usage:
+    updatenode [-h|--help|-v|--version]
+    or
+    updatenode <noderange> [-V|--verbose] [--security] [-s|--sn]
+    or
+    updatenode <noderange> [-V|--verbose] [--security] [--user] 
+        [--devicetype]
+    or
+    updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] 
+        [-P|--scripts [script1,script2,...]] [-s|--sn] [-c|--cmdlineonly]
+        [attr=val [attr=val...]]
+    or
+    updatenode <noderange> [-V|--verbose] [script1,script2,...]
+    <noderange> is a list of nodes or groups.
+    [--security] update the security keys and certificates for the target nodes
+    [--security] [--user] [--devicetype] update the ssh keys for specific device
+    [-F|--sync] Perform File Syncing.
+    [-S|--sw] Perform Software Maintenance.
+    [-P|--scripts] Execute postscripts listed in the postscripts table or 
+        parameters.
+    [-c|--cmdlineonly] Only use AIX software maintenance information 
+        provided on the command line. (AIX only)
+    [-s|--sn] Set the server information stored on the nodes.
+    [script1,script2,...] A comma separated list of postscript names. 
+        If omitted, all the post scripts defined for the nodes will be run.
+    [attr=val [attr=val...]]  Specifies one or more 'attribute equals value' 
+        pairs, separated by spaces. (AIX only)",
+
 );
 my $vers = xCAT::Utils->Version();
 my %version = (

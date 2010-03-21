@@ -4,11 +4,12 @@
 #
 #   Generic xCAT post script for diskless nodes
 #   This script is called in the following different palces:
-#      updatenode -P ... --> xcatdsklspost 1 ...
-#      updatenode -S --> xcatdsklspost 2 otherpkgs
+#      updatenode -P ... --> xcatdsklspost 1 -m/-M ...
+#      updatenode -S --> xcatdsklspost 2 -m/-M otherpkgs
 #      moncfg rmcmon --> xcatdsklspost 3 configrmcnodes
 #      node deployment  --> xcatdsklspost
 #      statelite mode   --> xcatdsklspost 4
+#      update security  --> xcatdsklspost 5 -m/-M ...
 #
 #####################################################
 download_postscripts()
@@ -40,7 +41,32 @@ download_postscripts()
     return $rc
 }
 
-MODE=$1 
+# parse the arguments
+ARGNUM=$#;
+if [ -z $1 ]; then
+    NODE_DEPLOYMENT=1
+else
+  case $1 in
+    1|2|5)
+      MODE=$1
+      if [ $ARGNUM -gt 1 ]; then
+        if [ $2 == "-m" ]; then
+          P_SIP=$3
+        else
+          if [ $2 == "-M" ]; then
+            P_SIP=$3
+            new_ms=$P_SIP
+          fi
+        fi
+      fi
+      if [ $ARGNUM -gt 3 ]; then
+        POSTSCRIPTS=$4
+      fi
+      ;;
+    3|4) MODE=$1;;
+  esac
+fi
+
 
 if [ ! `uname` == Linux ]; then
    MYDIR=`dirname $0`
@@ -63,21 +89,8 @@ rm -R -f /tmp/postage/*
 #here we get all the postscripts.  Please do not change this behaviour because some scripts depend on others
 cd /tmp/postage
 
-argnum=$#;
 
-if [ "$MODE" != "4" ]; then # not statelite mode
-    downloaded=0;
-    #open the xcatinfo file to look for the master if it is not set
-    if [ -f /opt/xcat/xcatinfo ]; then
-        SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
-        if [ -n "$SIP" ]; then
-	        download_postscripts $SIP
-	        if [ $? -eq 0 ]; then 
-	            downloaded=1
-	        fi
-        fi
-    fi   
-else # for statelite mode
+if [ "$MODE" == "4" ]; then # for statelite mode
     # We have written the xCATSERVER info into the kernel command line!!
     for i in `cat /proc/cmdline`; do
         KEY=`echo $i | awk -F= '{print $1}'`
@@ -96,74 +109,73 @@ else # for statelite mode
         logger -t xCAT "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
         exit;
     fi
-fi
-
-if [ "$MODE" != "4" ]; then # NOSTATELITE: NOT for statelite MODE
-
-#try the -m if it is specified, -m is passed in the updatenode command
-if [ $downloaded -eq 0 ]; then
-   #get the -m
-    while [ $# -gt 0 ]
-    do
-	case "$1" in
-	    -m) SIP="$2"; break;;
-	    -M) SIP="$2"; new_ms=$SIP;  break;;
-	esac
-	shift
-    done
-    if [ -n "$SIP" ]; then
-	download_postscripts $SIP
-	if [ $? -eq 0 ]; then 
-	    downloaded=1
-	fi
+else # for common mode
+    downloaded=0;
+    #open the xcatinfo file to look for the master if it is not set
+    if [ -f /opt/xcat/xcatinfo ]; then
+        SIP=`grep 'XCATSERVER' /opt/xcat/xcatinfo |cut -d= -f2`
+        if [ -n "$SIP" ]; then
+            download_postscripts $SIP
+            if [ $? -eq 0 ]; then 
+                downloaded=1
+            fi
+        fi
     fi
-fi 
 
-
-#try the dhcp server, this is used for initial boot for the node.
-if [ $downloaded -eq 0 ]; then
-  #setup $OSVER ,for SLES11
-    if [ -e '/etc/SuSE-release' ]; then
-	OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
-    fi
-    SIPS=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*.leases 2> /dev/null|awk '{print $3}'|sed -e 's/;//'`
-    if [ -z "$SIPS" ]; then
-	SIPS=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
-    fi
-    SIP=`echo $SIPS|awk '{printf $NF}' | tail -n 1` #Pick one for wget
-    if [ -n "$SIP" ]; then
-	download_postscripts $SIP
-	if [ $? -eq 0 ]; then 
-	    downloaded=1
-	fi
-    elif [ -x "/sbin/dhcpcd" ]; then
-        # New dhcpcd doesn't creates *.info files.
-        for lease in $(ls "/var/lib/dhcpcd/"); do
-            iface="$(echo "$lease" | sed -n -e 's/^dhcpcd-\(.*\)\.lease$/\1/p')"
-            if [ -n "$iface" ]; then
-                SIP="$(dhcpcd -q -T "$iface" | sed -n -e '/new_dhcp_server_identifier/ s/.*=//p')"
-                if [ -n "$SIP" ]; then
-                    download_postscripts $SIP
-                    if [ $? -eq 0 ]; then
-                        downloaded=1
-                        break
+    #try the -m if it is specified, -m is passed in the updatenode command
+    if [ $downloaded -eq 0 ]; then
+        if [ "XX$P_SIP" != "XX" ]; then
+            $SIP=$P_SIP
+    	     download_postscripts $SIP
+            if [ $? -eq 0 ]; then 
+                downloaded=1
+            fi
+        fi
+    fi 
+    
+    #try the dhcp server, this is used for initial boot for the node.
+    if [ $downloaded -eq 0 ]; then
+        #setup $OSVER ,for SLES11
+        if [ -e '/etc/SuSE-release' ]; then
+            OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
+        fi
+        SIPS=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*.leases 2> /dev/null|awk '{print $3}'|sed -e 's/;//'`
+        if [ -z "$SIPS" ]; then
+            SIPS=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
+        fi
+        SIP=`echo $SIPS|awk '{printf $NF}' | tail -n 1` #Pick one for wget
+        if [ -n "$SIP" ]; then
+            download_postscripts $SIP
+            if [ $? -eq 0 ]; then 
+                downloaded=1
+            fi
+        elif [ -x "/sbin/dhcpcd" ]; then
+            # New dhcpcd doesn't creates *.info files.
+            for lease in $(ls "/var/lib/dhcpcd/"); do
+                iface="$(echo "$lease" | sed -n -e 's/^dhcpcd-\(.*\)\.lease$/\1/p')"
+                if [ -n "$iface" ]; then
+                    SIP="$(dhcpcd -q -T "$iface" | sed -n -e '/new_dhcp_server_identifier/ s/.*=//p')"
+                    if [ -n "$SIP" ]; then
+                        download_postscripts $SIP
+                        if [ $? -eq 0 ]; then
+                            downloaded=1
+                            break
+                        fi
                     fi
                 fi
-            fi
-        done
+            done
+        fi
     fi
-fi
+    
+    #no hope, now let's get out of here.
+    if [ $downloaded -eq 0 ]; then
+        hn=`hostname`
+        echo "Cannot download the postscripts from the xCAT server for node $hn"
+        logger -t xCAT "xcatdsklspost:Cannot download the postscripts from the xCAT server for node $hn"
+        exit  
+    fi
 
-
-#no hope, now let's get out of here.
-if [ $downloaded -eq 0 ]; then
-    hn=`hostname`
-    echo "Cannot download the postscripts from the xCAT server for node $hn"
-    logger -t xCAT "xcatdsklspost:Cannot download the postscripts from the xCAT server for node $hn"
-    exit  
-fi
-
-fi  #END NOSTATELITE
+fi # finish the postscripts download
 
 if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
     touch /var/lock/subsys/xcatmounts
@@ -174,15 +186,7 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
     ln -sf /etc/rc6.d/K10xcatmounts /etc/rc0.d/K10xcatmounts
 fi
 
-
-if [ "$MODE" != "4" ]; then
-    
-    #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts 2> /tmp/wget.log
-    
-    #mv $SIP/install/postscripts/* /xcatpost; 
-    mv $SIP/postscripts/* /xcatpost; 
-    rm -rf $SIP
-else  # for statelite mode
+if [ "$MODE" == "4" ]; then
     MAX=10
     TRIES=1
     while ! mount $SIP:/install/postscripts /xcatpost -r -n -o nolock
@@ -199,17 +203,18 @@ else  # for statelite mode
         logger -t xCAT "xcatdsklspost:Can't mount $SIP:/install/postscripts... Sleeping $S seconds then trying again" 
         sleep $S
     done
-
+else  # for statelite mode
+    #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts 2> /tmp/wget.log
+    
+    #mv $SIP/install/postscripts/* /xcatpost; 
+    chmod +x /xcatpost/*; # no effect for statelite mode, since the directory are readonly
+    mv $SIP/postscripts/* /xcatpost; 
+    rm -rf $SIP
 fi
 
 cd /xcatpost; 
 PATH=/xcatpost:$PATH
 export PATH
-if [ "$MODE" != "4" ]; then
-    chmod +x /xcatpost/*; # no effect for statelite mode, since the directory are readonly
-fi
-#echo "PATH=$PATH" 
-
 
 if [ -x /usr/bin/openssl ]; then
      XCATSERVER="$SIP:3001"
@@ -217,7 +222,6 @@ if [ -x /usr/bin/openssl ]; then
      USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
      export USEOPENSSLFORXCAT
 fi
-
 
 /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
 MYCONT=`grep MASTER /tmp/mypostscript`
@@ -236,33 +240,17 @@ while [ -z "$MYCONT" ]; do
     let SLI=$RANDOM%10
     let SLI=10+$SLI
     sleep $SLI
-    if [ "$MODE" != "4" ]; then
-        for SIP in $SIPS; do #Attempt against several candidates
-            if [ -x /usr/bin/openssl ]; then
-                XCATSERVER="$SIP:3001"
-                export XCATSERVER
-                USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
-                export USEOPENSSLFORXCAT
-            fi
-            /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript; 
-            MYCONT=`grep MASTER /tmp/mypostscript`
-            if [ ! -z "$MYCONT" ]; then
-                break;
-            fi
-        done
-    else    # for statelite mode
-        /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript;
-        MYCONT=`grep MASTER /tmp/mypostscript`
-        if [ ! -z "$MYCONT" ]; then
-            break;
-        fi
+    
+    /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript;
+    MYCONT=`grep MASTER /tmp/mypostscript`
+    if [ ! -z "$MYCONT" ]; then
+        break;
     fi
-#    echo "MYCONT=$MYCONT"
 done
 
 #save the MASTER into the xcatinfo file for node deployment case, 
 #for updatenode case, only save it when -M is specified
-if [ $argnum -eq 0 ] || [ "$MODE" == "4" ]; then
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" == "4" ]; then
     new_ms=`grep '^MASTER' /tmp/mypostscript |cut -d= -f2`
 fi
 if [ -n "$new_ms" ]; then
@@ -281,14 +269,17 @@ fi
 
 # when called by the updatenode command
 #modify the UPDATENODE flag to 1 
-if [ $argnum -gt 0 ] && [ "$MODE" != "4" ]; then
+if [ "$MODE" == "1" ] || [ "$MODE" == "2" ]; then
   TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /tmp/mypostscript`;
+  echo "$TMP" > /tmp/mypostscript;
+fi
+if [ "$MODE" == "5" ]; then
+  TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1\nUPDATESECURITY=1\nexport UPDATESECURITY/g' /tmp/mypostscript`;
   echo "$TMP" > /tmp/mypostscript;
 fi
 
 # postscript name is specified with the updatenode
-if [ $argnum -gt 2 ]; then
-  POSTS=$3
+if [ "XX$POSTSCRIPTS" != "XX" ]; then
   #remove all the postbootscripts
   TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
   echo "$TMP" > /tmp/mypostscript
@@ -297,7 +288,7 @@ if [ $argnum -gt 2 ]; then
   echo "$TMP" > /tmp/mypostscript
   echo "# postscripts-start-here\n" >> /tmp/mypostscript
   #add requested postscripts in
-  echo "$POSTS" | tr "," "\n" >> /tmp/mypostscript
+  echo "$POSTSCRIPTS" | tr "," "\n" >> /tmp/mypostscript
   echo "# postscripts-end-here\n" >> /tmp/mypostscript
 fi
 
@@ -332,7 +323,7 @@ echo "$TMP" >> /tmp/mypostscript
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
 echo "$TMP" > /tmp/mypostscript 
 
-if [ $argnum -eq 0 ] || [ "$MODE" == "4" ]; then
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" == "4" ]; then
   #notify the server that we are done with netbooting
   CNS=`grep NODESTATUS= /tmp/mypostscript |awk -F = '{print $2}'`
   if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
@@ -355,7 +346,7 @@ if [ "$MODE" == "4" ]; then
 fi 
 
 #tell user it is done when this is called by updatenode command
-if [ $argnum -gt 0 ] && [ "$MODE" != "4" ]; then
+if [ "$MODE" == "1" ] || [ "$MODE" == "2" ] || [ "$MODE" == "5" ]; then
   echo "returned from postscript"
 fi
 

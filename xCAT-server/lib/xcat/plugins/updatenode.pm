@@ -155,24 +155,9 @@ sub preprocess_updatenode
     {
         my $cb  = shift;
         my $rsp = {};
-        $rsp->{data}->[0] = "Usage:";
-        $rsp->{data}->[1] = "  updatenode [-h|--help|-v|--version]";
-        $rsp->{data}->[2] = "or";
-        $rsp->{data}->[3] =
-          "  updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] [-P|--scripts \n\t\t[-s|--sn] [script1,script2,...]] [-c|--cmdlineonly] \n\t\t[attr=val [attr=val...]]";
-        $rsp->{data}->[4] = "or";
-        $rsp->{data}->[5] =
-          "  updatenode <noderange> [-V|--verbose] [script1,script2,...]\n";
-        $rsp->{data}->[6] = "     <noderange> is a list of nodes or groups.";
-        $rsp->{data}->[7] = "     [-F|--sync] Perform File Syncing.";
-        $rsp->{data}->[8] = "     [-S|--sw] Perform Software Maintenance.";
-        $rsp->{data}->[9] =
-          "     [-P|--scripts] Execute postscripts listed in the postscripts table or \n\tparameters.";
-        $rsp->{data}->[10] =
-          "     [-c|--cmdlineonly] Only use AIX software maintenance information provided \n\ton the command line. (AIX only)";
-		$rsp->{data}->[11] = "     [-s|--sn] Set the server information stored on the nodes.";
-        $rsp->{data}->[12] = "     [script1,script2,...] A comma separated list of postscript names. \n\tIf omitted, all the postscripts defined for the nodes will be run.";
-		$rsp->{data}->[13] = "     [attr=val [attr=val...]]  Specifies one or more 'attribute equals value'\n\tpairs, separated by spaces. (AIX only)";
+        my $usage_string = xCAT::Usage->getUsage("updatenode");
+        push @{$rsp->{data}},$usage_string;
+
         $cb->($rsp);
     }
 
@@ -187,14 +172,17 @@ sub preprocess_updatenode
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
-                    'c|cmdlineonly'   => \$::CMDLINE,
-                    'h|help'      => \$::HELP,
-                    'v|version'   => \$::VERSION,
-                    'V|verbose'   => \$::VERBOSE,
-                    'F|sync'      => \$::FILESYNC,
-                    'S|sw'        => \$::SWMAINTENANCE,
-					's|sn'        => \$::SETSERVER,
-                    'P|scripts:s' => \$::RERUNPS
+                    'c|cmdlineonly'    => \$::CMDLINE,
+                    'h|help'           => \$::HELP,
+                    'v|version'        => \$::VERSION,
+                    'V|verbose'        => \$::VERBOSE,
+                    'F|sync'           => \$::FILESYNC,
+                    'S|sw'             => \$::SWMAINTENANCE,
+                    's|sn'             => \$::SETSERVER,
+                    'P|scripts:s'      => \$::RERUNPS,
+                    'security'         => \$::SECURITY,
+                    'user=s'           => \$::USER,
+                    'devicetype=s'     => \$::DEVICETYPE,
         )
       )
     {
@@ -218,6 +206,30 @@ sub preprocess_updatenode
         return \@requests;
     }
 
+    # -c must work with -S for AIX node
+    if ($::CMDLINE && !$::SWMAINTENANCE) {
+        &updatenode_usage($callback);
+        return \@requests;
+    }
+    
+    # -s must work with -P or -S or --security
+    if ($::SETSERVER && !($::SWMAINTENANCE || $::RERUNPS || $::SECURITY)) {
+        &updatenode_usage($callback);
+        return \@requests;
+    }
+
+    # --user and --devicetype must work with --security
+    if (($::USER || $::DEVICETYPE) && !($::SECURITY && $::USER && $::DEVICETYPE)) {
+        &updatenode_usage($callback);
+        return \@requests;
+    }
+
+    # --security cannot work with -S -P -F
+    if ($::SECURITY && ($::SWMAINTENANCE || $::RERUNPS || defined($::RERUNPS))) {
+        &updatenode_usage($callback);
+        return \@requests;
+    }
+
     # the -P flag is omitted when only postscritps are specified,
     # so if there are parameters without any flags, it may mean
     # to re-run the postscripts.
@@ -226,7 +238,7 @@ sub preprocess_updatenode
 
         # we have one or more operands on the cmd line
         if ($#ARGV == 0
-            && !($::FILESYNC || $::SWMAINTENANCE || defined($::RERUNPS)))
+            && !($::FILESYNC || $::SWMAINTENANCE || defined($::RERUNPS) || $::SECURIT))
         {
 
             # there is only one operand
@@ -234,6 +246,7 @@ sub preprocess_updatenode
             if (!($ARGV[0] =~ /=/))
             {
                 $::RERUNPS = $ARGV[0];
+                $ARGV[0] = "";
             }
         }
     }
@@ -241,12 +254,16 @@ sub preprocess_updatenode
     {
 
         # no flags and no operands
-        if (!($::FILESYNC || $::SWMAINTENANCE || defined($::RERUNPS)))
+        if (!($::FILESYNC || $::SWMAINTENANCE || defined($::RERUNPS) ||$::SECURITY))
         {
             $::FILESYNC      = 1;
             $::SWMAINTENANCE = 1;
             $::RERUNPS       = "";
         }
+    }
+
+    if ($::SECURITY && !($::USER || $::DEVICETYPE)) {
+        $::RERUNPS = "allkeys44444444security";
     }
 
     my $nodes = $request->{node};
@@ -257,39 +274,38 @@ sub preprocess_updatenode
     }
 
     #
-    # process @ARGV
+    # process @ARGV for the software maintenance of AIX node, it should 
+    # be the list of attr=val, put attr=val operands in %attrvals hash
     #
 
-    # the first arg should be a noderange - the other should be attr=val
-    #  - put attr=val operands in %attrvals hash
     my %attrvals;
-    while (my $a = shift(@ARGV))
-    {
-        if ($a =~ /=/)
+    if ($::SWMAINTENANCE) {
+        while (my $a = shift(@ARGV))
         {
-
-            # if it has an "=" sign its an attr=val - we hope
-            my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
-
-            if (!defined($attr) || !defined($value))
+            if ($a =~ /=/)
             {
-                my $rsp;
-                $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
-                xCAT::MsgUtils->message("E", $rsp, $::callback);
-                return 3;
+    
+                # if it has an "=" sign its an attr=val - we hope
+                my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+    
+                if (!defined($attr) || !defined($value))
+                {
+                    my $rsp;
+                    $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    return 3;
+                }
+    
+                # put attr=val in hash
+                $attrvals{$attr} = $value;
             }
-
-            # put attr=val in hash
-            $attrvals{$attr} = $value;
         }
     }
 
     my @nodes = @$nodes;
     my $postscripts;
 
-    if (@nodes == 0) { return \@requests; }
-
-    # handle the re-run postscripts option -P
+    # handle the validity of postscripts 
     if (defined($::RERUNPS))
     {
         if ($::RERUNPS eq "")
@@ -299,7 +315,13 @@ sub preprocess_updatenode
         else
         {
             $postscripts = $::RERUNPS;
-            my @posts = split(',', $postscripts);
+            my @posts = ();
+            if ($postscripts eq "allkeys44444444security") {
+                @posts = ("remoteshell", "aixremoteshell", "servicenode", "xcatserver", "xcatclient");
+            } else {
+                @posts = split(',', $postscripts);
+            }
+
             foreach (@posts)
             {
                 if (!-e "$installdir/postscripts/$_")
@@ -315,8 +337,8 @@ sub preprocess_updatenode
     }
 
     # If -F option specified, sync files to the noderange.
-    # Note: This action only happens on MN, since xdcp handles the
-    #	hierarchical scenario
+    # Note: This action only happens on MN, since xdcp, xdsh handles the
+    #	hierarchical scenario inside
     if ($::FILESYNC)
     {
         my $reqcopy = {%$request};
@@ -324,10 +346,10 @@ sub preprocess_updatenode
         push @requests, $reqcopy;
     }
 
-    # when specified -S or -P
+    # when specified -S or -P or --security
     # find service nodes for requested nodes
     # build an individual request for each service node
-    unless (defined($::SWMAINTENANCE) || defined($::RERUNPS))
+    unless (defined($::SWMAINTENANCE) || defined($::RERUNPS) || $::SECURITY)
     {
         return \@requests;
     }
@@ -338,7 +360,6 @@ sub preprocess_updatenode
     xCAT::SvrUtils->getNodesetStates($nodes, \%insttype_node);
 
     
-
     # figure out the diskless nodes list and non-diskless nodes
     foreach my $type (keys %insttype_node) {
         if ($type eq "netboot" || $type eq "diskless") {
@@ -374,6 +395,7 @@ sub preprocess_updatenode
         }
     }
 
+
     my $sn = xCAT::Utils->get_ServiceNode(\@nodes, "xcat", "MN");
     if ($::ERROR_RC)
     {
@@ -385,10 +407,97 @@ sub preprocess_updatenode
         # return undef; ???
     }
 
+
+    # for security update, we need to handle the service node first
+    my @good_sns = ();
+    my @MNip   = xCAT::Utils->determinehostname;
+    my @sns = ();
+    foreach my $s (keys %$sn) {
+        if (!grep (/^$s$/, @MNip)) {
+            push @sns, $s;
+        }
+    }
+    if (scalar(@sns) && $::SECURITY) {
+        
+        $::CALLBACK = $callback;
+        $::NODEOUT = ();
+
+        # setup the ssh keys
+        my $req_sshkey = {%$request};
+        $req_sshkey->{node} = \@sns;
+        $req_sshkey->{security}->[0] = "yes";
+        if ($::USER) {
+            $req_sshkey->{user}->[0] = $::USER;
+        }
+        if ($::DEVICETYPE) {
+            $req_sshkey->{devicetype}->[0] = $::DEVICETYPE;
+        }
+
+        updatenode($req_sshkey, \&updatenode_cb, $subreq);
+
+        # run the postscripts: remoteshell, servicenode, xcatserver, xcatclient
+        if ($postscripts eq "allkeys44444444security") {
+            my ($rc, $AIXnodes, $Linuxnodes) = xCAT::InstUtils->getOSnodes(\@sns);
+
+            my $req_rs = {%$request};
+            my $ps;
+            if (scalar(@{$AIXnodes})) {
+                $ps = "aixremoteshell,servicenode";
+                $req_rs->{rerunps}->[0] = "yes";
+                $req_rs->{rerunps4security}->[0] = "yes";
+                $req_rs->{node} = $AIXnodes;
+                $req_rs->{postscripts} = [$ps];
+                updatenode($req_rs, \&updatenode_cb, $subreq);
+            }
+            if (scalar(@{$Linuxnodes})) {
+                $ps = "remoteshell,servicenode,xcatserver,xcatclient";
+                $req_rs->{rerunps}->[0] = "yes";
+                $req_rs->{rerunps4security}->[0] = "yes";
+                $req_rs->{node} = $Linuxnodes;
+                $req_rs->{postscripts} = [$ps];
+                updatenode($req_rs, \&updatenode_cb, $subreq);
+            }
+        }
+        
+        # parse the output of update security for sns
+        foreach my $sn (keys %{$::NODEOUT}) {
+            if (!grep /^$sn$/, @sns) {
+                next;
+            }
+            if ( (grep /ps ok/, @{$::NODEOUT->{$sn}})
+             &&  (grep /ssh ok/, @{$::NODEOUT->{$sn}}) ) {
+                push @good_sns, $sn;
+            }
+        }
+
+        if ($::VERBOSE) {
+            my $rsp;
+            push @{$rsp->{data}}, "Update security for following service nodes: @sns.";
+            push @{$rsp->{data}}, "  Following service nodes have been updated successfully: @good_sns";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }
+    }
+    
     # build each request for each service node
     foreach my $snkey (keys %$sn)
     {
+        if ($::SECURITY
+            && !(grep /^$snkey$/, @good_sns)
+            && !(grep /^$snkey$/, @MNip)) {
+            my $rsp;
+            push @{$rsp->{data}}, "The security update for service node $snkey encountered error, update security for following nodes will be skipped: @{$sn->{$snkey}}";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            next;
+        }
 
+        # remove the service node which have been handled before
+        if ($::SECURITY && (grep /^$snkey$/, @MNip)) {
+            delete @{$sn->{$snkey}}[@sns];
+            if (scalar(@{$sn->{$snkey}}) == 0) {
+                next;
+            }
+        }
+        
         my $reqcopy = {%$request};
         $reqcopy->{node}                   = $sn->{$snkey};
         $reqcopy->{'_xcatdest'}            = $snkey;
@@ -425,6 +534,19 @@ sub preprocess_updatenode
         {
             $reqcopy->{rerunps}->[0] = "yes";
             $reqcopy->{postscripts} = [$postscripts];
+            if (defined($::SECURITY)) {
+                $reqcopy->{rerunps4security}->[0] = "yes";
+            }
+        }
+
+        if (defined($::SECURITY)) {
+            $reqcopy->{security}->[0] = "yes";
+            if ($::USER) {
+                $reqcopy->{user}->[0] = $::USER;
+            }
+            if ($::DEVICETYPE) {
+                $reqcopy->{devicetype}->[0] = $::DEVICETYPE;
+            }
         }
 
         push @requests, $reqcopy;
@@ -432,6 +554,40 @@ sub preprocess_updatenode
     }
     return \@requests;
 }
+
+
+#--------------------------------------------------------------------------------
+
+=head3   updatenode_cb
+
+    A callback function which is used to handle the output of updatenode function
+    when run updatenode --secruity for service node inside 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub updatenode_cb
+{
+    my $resp = shift;
+
+    # call the original callback function
+    $::CALLBACK->($resp);
+
+    foreach my $line (@{$resp->{data}}) {
+        my $node;
+        my $msg;
+        if ($line =~ /(.*):(.*)/) {
+            $node = $1;
+            $msg = $2;
+        }
+        if ($msg =~ /Redeliver certificates has completed/) {
+            push @{$::NODEOUT->{$node}}, "ps ok";
+        } elsif ($msg =~ /Setup ssh keys has completed/) {
+            push @{$::NODEOUT->{$node}}, "ssh ok";
+        }
+    }
+}
+
 
 #--------------------------------------------------------------------------------
 
@@ -574,7 +730,7 @@ sub updatenode
             {
                 my $rsp = {};
                 $rsp->{data}->[0] =
-                  "  Internal call command: xdcp -F $synclist";
+                  "  $localhostname: Internal call command: xdcp -F $synclist";
                 $callback->($rsp);
             }
             my $args = ["-F", "$synclist"];
@@ -640,25 +796,25 @@ sub updatenode
             	my $cmd;
 		if ($::SETSERVER) {
 		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost -M $snkey otherpkgs 2>&1";
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost 2 -M $snkey otherpkgs 2>&1";
 
 		} else {
 		    
 		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost -m $snkey otherpkgs 2>&1";
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost 2 -m $snkey otherpkgs 2>&1";
 		}
 
 		if (defined($::VERBOSE))
 		{
 		    my $rsp = {};
-		    $rsp->{data}->[0] = "  Internal call command: $cmd";
+		    $rsp->{data}->[0] = "  $localhostname: Internal call command: $cmd";
 		    $callback->($rsp);
 		}
 		
 		if ($cmd && !open(CMD, "$cmd |"))
 		{
 		    my $rsp = {};
-		    $rsp->{data}->[0] = "Cannot run command $cmd";
+		    $rsp->{data}->[0] = "$localhostname: Cannot run command $cmd";
 		    $callback->($rsp);
 		}
 		else
@@ -704,20 +860,102 @@ sub updatenode
     }    # end sw maint section
 
     #
+    # handle of setting up ssh keys
+    #
+
+    if ($request->{security} && $request->{security}->[0] eq "yes") {
+         
+        # generate the arguments
+        my @args = ("-K");
+        if ($request->{user}->[0]) {
+            push @args, "--user";
+            push @args, $request->{user}->[0];
+        }
+        if ($request->{devicetype}->[0]) {
+            push @args, "--devicetype";
+            push @args, $request->{devicetype}->[0];
+        }
+
+        # remove the host key from known_hosts
+        xCAT::Utils->runxcmd(  {
+            command => ['makeknownhosts'],
+            node    => \@$nodes,
+            arg     => ['-r'],
+            }, $subreq, 0, 1);
+
+        if (defined($::VERBOSE))
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] =
+              "  $localhostname: run makeknownhosts to clean known_hosts file for nodes: @$nodes";
+            $callback->($rsp);
+        }
+
+        # call the xdsh -K to set up the ssh keys
+        my @envs = @{$request->{environment}};
+        my $res = xCAT::Utils->runxcmd(  {
+            command => ['xdsh'],
+            node    => \@$nodes,
+            arg     => \@args,
+            env     => \@envs,
+            }, $subreq, 0, 1);
+            
+        if (defined($::VERBOSE))
+        {
+            my $rsp = {};
+            $rsp->{data}->[0] =
+              "  $localhostname: Internal call command: xdsh -K. nodes = @$nodes, arguments = @args, env = @envs";
+            $rsp->{data}->[1] = 
+              "  $localhostname: return messages of last command: @$res";
+            $callback->($rsp);
+        }
+
+        # parse the output of xdsh -K
+        my @failednodes = @$nodes;
+        foreach my $line (@$res) {
+            chomp($line);
+            if ($line =~ /SSH setup failed for the following nodes: (.*)\./) {
+                @failednodes = split(/,/, $1);
+            } elsif ($line =~ /setup is complete/) {
+                @failednodes = ();
+            }
+        }
+
+
+        my $rsp = {};
+        foreach my $node (@$nodes) {
+            if (grep /^$node$/, @failednodes) {
+                push @{$rsp->{data}}, "$node: Setup ssh keys failed.";
+            } else {
+                push @{$rsp->{data}}, "$node: Setup ssh keys has completed.";
+            }
+        }
+        $callback->($rsp);
+    }
+
+    #
     # handle the running of cust scripts
     #
 
     if ($request->{rerunps} && $request->{rerunps}->[0] eq "yes")
     {
         my $postscripts = "";
+        my $orig_postscripts = "";
         if (($request->{postscripts}) && ($request->{postscripts}->[0]))
         {
-            $postscripts = $request->{postscripts}->[0];
+            $orig_postscripts = $request->{postscripts}->[0];
         }
 
         if (scalar(@$Linuxnodes))
-        {    # we have Linux nodes
-            my $cmd;
+        {    
+           if ($orig_postscripts eq "allkeys44444444security") {
+               $postscripts = "remoteshell,servicenode,xcatserver,xcatclient";
+           } else {
+               $postscripts = $orig_postscripts;
+           }
+           
+           # we have Linux nodes
+           my $cmd;
 	    # get server names as known by the nodes
 	    my %servernodes = %{xCAT::InstUtils->get_server_nodes($callback, \@$Linuxnodes)};
 	    # it's possible that the nodes could have diff server names
@@ -725,35 +963,43 @@ sub updatenode
 	    foreach my $snkey (keys %servernodes) {
 		my $nodestring = join(',', @{$servernodes{$snkey}});
             	my $cmd;
+                my $mode;
+                if ($request->{rerunps4security} && $request->{rerunps4security}->[0] eq "yes") {
+                    # for updatenode --security
+                    $mode = "5";
+                } else {
+                    # for updatenode -P
+                    $mode = "1"; 
+                }
 		if ($::SETSERVER) {
 		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost -M $snkey $postscripts 2>&1";
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost $mode -M $snkey $postscripts 2>&1";
 
 		} else {
 		    
 		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost -m $snkey $postscripts 2>&1";
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost $mode -m $snkey $postscripts 2>&1";
 		}
 		
 
 		if (defined($::VERBOSE))
 		{
 		    my $rsp = {};
-		    $rsp->{data}->[0] = "  Internal call command: $cmd";
+		    $rsp->{data}->[0] = "  $localhostname: Internal call command: $cmd";
 		    $callback->($rsp);
 		}
 		
 		if (!open(CMD, "$cmd |"))
 		{
 		    my $rsp = {};
-		    $rsp->{data}->[0] = "Cannot run command $cmd";
+		    $rsp->{data}->[0] = "$localhostname: Cannot run command $cmd";
 		    $callback->($rsp);
 		}
 		else
 		{
+                    my $rsp    = {};
 		    while (<CMD>)
 		    {
-			my $rsp    = {};
 			my $output = $_;
 			chomp($output);
 			$output =~ s/\\cM//;
@@ -762,17 +1008,32 @@ sub updatenode
 			    $output =~
 				s/returned from postscript/Running of postscripts has completed./;
 			}
-			$rsp->{data}->[0] = "$output";
-			$callback->($rsp);
+                        if ($request->{rerunps4security} && $request->{rerunps4security}->[0] eq "yes") {
+                            if ($output =~ /Running of postscripts has completed/) {
+                                $output =~ s/Running of postscripts has completed/Redeliver certificates has completed/;
+                                push @{$rsp->{data}}, $output;
+                            } elsif ($output !~ /Running postscript|Error loading module/) {
+			        push @{$rsp->{data}}, "$output";
+                            }
+                        } else {
+			    push @{$rsp->{data}}, "$output";
+                        }
 		    }
 		    close(CMD);
+                    $callback->($rsp);
 		}
 	    }
         }
 
         if (scalar(@$AIXnodes))
-        {    # we have AIX nodes
-
+        {
+           # we have AIX nodes
+           if ($orig_postscripts eq "allkeys44444444security") {
+               $postscripts = "aixremoteshell,servicenode";
+           } else {
+               $postscripts = $orig_postscripts;
+           }
+           
 	    # need to pass the name of the server on the xcataixpost cmd line
 	    
 	    # get server names as known by the nodes
@@ -782,30 +1043,39 @@ sub updatenode
 	    foreach my $snkey (keys %servernodes) {
 		$nodestring = join(',', @{$servernodes{$snkey}});
             	my $cmd;
+                my $mode;
+                if ($request->{rerunps4security} && $request->{rerunps4security}->[0] eq "yes") {
+                    # for updatenode --security
+                    $mode = "5";
+                } else {
+                    # for updatenode -P
+                    $mode = "1";
+                }
+
 		if ($::SETSERVER) {
-		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcataixpost -M $snkey -c 1 $postscripts 2>&1";
+		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcataixpost -M $snkey -c $mode $postscripts 2>&1";
 		} else {
-		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcataixpost -m $snkey -c 1 $postscripts 2>&1";
+		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcataixpost -m $snkey -c $mode $postscripts 2>&1";
 		}
 		
             	if (defined($::VERBOSE))
             	{
 		    my $rsp = {};
-		    $rsp->{data}->[0] = "  Internal call command: $cmd";
+		    $rsp->{data}->[0] = "  $localhostname: Internal call command: $cmd";
 		    $callback->($rsp);
             	}
 		
             	if (!open(CMD, "$cmd |"))
             	{
 		    my $rsp = {};
-		    $rsp->{data}->[0] = "Cannot run command $cmd";
+		    $rsp->{data}->[0] = "$localhostname: Cannot run command $cmd";
 		    $callback->($rsp);
             	}
             	else
             	{
+                    my $rsp = {};
 		    while (<CMD>)
 		    {
-                    	my $rsp    = {};
                     	my $output = $_;
                     	chomp($output);
                     	$output =~ s/\\cM//;
@@ -814,14 +1084,32 @@ sub updatenode
 			    $output =~
 				s/returned from postscript/Running of postscripts has completed./;
                     	}
-                    	$rsp->{data}->[0] = "$output";
-                    	$callback->($rsp);
+                        if ($request->{rerunps4security} && $request->{rerunps4security}->[0] eq "yes") {
+                            if ($output =~ /Running of postscripts has completed/) {
+                                $output =~ s/Running of postscripts has completed/Redeliver certificates has completed/;
+                                push @{$rsp->{data}}, $output;
+                            } elsif ($output !~ /Running postscript|Error loading module/) {
+                                push @{$rsp->{data}}, $output;
+                            }
+                        } else {
+			    push @{$rsp->{data}}, "$output";
+                        }
 		    }
 		    close(CMD);
+                    $callback->($rsp);
             	}
 	    }
         }
+        if ($request->{rerunps4security} && $request->{rerunps4security}->[0] eq "yes") {
+            # clean the know_hosts
+            xCAT::Utils->runxcmd(  {
+                command => ['makeknownhosts'],
+                node    => \@$nodes,
+                arg     => ['-r'],
+                }, $subreq, 0, 1);
+        }
     }
+
 
     return 0;
 }

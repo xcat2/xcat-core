@@ -1182,7 +1182,7 @@ sub addNodes {
 	my $nr = join(',', @{$servernodes{$snkey}});
 	my $cmd;
 	if (xCAT::Utils->isLinux()) {
-	    $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcatdsklspost -m $snkey configrmcnode 2>&1";
+	    $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcatdsklspost 2 -m $snkey configrmcnode 2>&1";
 	    print "$cmd\n";
 	}
 	else {

@@ -1,0 +1,126 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+
+use Getopt::Long;
+
+use lib "$::XCATROOT/lib/perl";
+use Cwd;
+use File::Basename;
+use xCAT::Client;
+use xCAT::MsgUtils;
+use xCAT::Usage;
+
+sub updatenode_usage
+{
+    my $usage_string = xCAT::Usage->getUsage("updatenode");
+    print "$usage_string\n";
+}
+
+my $bname = basename($0);
+my $cmdref;
+$cmdref->{command}->[0] = $bname;
+$cmdref->{cwd}->[0] = cwd();
+
+if (-p STDIN) {
+  my $data;
+  while ( <STDIN> ) { $data.=$_; }
+  $cmdref->{stdin}->[0]=$data;
+}
+
+my $arg=shift(@ARGV);
+
+# Set the noderange
+if ($arg !~ /^-/) {
+  my @tempnr = ();
+  foreach my $nr (split(/,/, $arg)) {
+    if ($nr =~ /^\^(.*)$/) {
+      my $nrf = $1;
+      if ($nrf !~ /^\//) { #relative path
+        $nrf = Cwd::abs_path($nrf);
+      }
+      $nrf = "\^" . $nrf;
+      push @tempnr, $nrf;
+    } else {
+      push @tempnr, $nr;
+    }
+  }
+  $arg = join(',',@tempnr);
+  $cmdref->{noderange}->[0]=$arg;
+} else {
+  push @{$cmdref->{arg}}, $arg;
+}
+
+push (@{$cmdref->{arg}}, @ARGV);
+
+# if trying to update security, get the password 
+# to access the target node firstly
+Getopt::Long::Configure("posix_default");
+Getopt::Long::Configure("no_gnu_compat");
+Getopt::Long::Configure("bundling");
+if (
+    !GetOptions(
+                'c|cmdlineonly'    => \$::CMDLINE,
+                'h|help'           => \$::HELP,
+                'v|version'        => \$::VERSION,
+                'V|verbose'        => \$::VERBOSE,
+                'F|sync'           => \$::FILESYNC,
+                'S|sw'             => \$::SWMAINTENANCE,
+                's|sn'             => \$::SETSERVER,
+                'P|scripts:s'      => \$::RERUNPS,
+                'security'         => \$::SECURITY,
+                'user=s'           => \$::USER,
+                'devicetype=s'     => \$::DEVICETYPE,
+    )
+  ) {
+    &updatenode_usage();
+    exit 1;
+}
+
+my $current_userid = getpwuid($>);
+$ENV{DSH_FROM_USERID} = $current_userid;
+my $to_userid;
+if ($::USER)
+{
+    $to_userid = $::USER;
+}
+else
+{
+    $to_userid = $current_userid;
+}
+$ENV{DSH_TO_USERID} = $to_userid;
+
+if ($::SECURITY) {
+    my $msg;
+    if (!($ENV{'DSH_REMOTE_PASSWORD'}))
+    {                         # if not already set
+        # prompt for the password for the userid on the node that will be setup
+        my $userpw;
+        $msg =
+          "Enter the password for the userid: $to_userid on the node where the ssh keys \nwill be updated:\n";
+        xCAT::MsgUtils->message("I", $msg);
+        system("stty -echo");    # turn off keyboard
+        chop($userpw = <STDIN>);
+        system("stty echo");     # turn on keyboard
+
+        if ($userpw eq "")
+        {                        # did not enter a password
+            $msg = "Did not enter a password will abort the security update.";
+            xCAT::MsgUtils->message("E", $msg);
+            exit 2;
+        }
+        else
+        {                        # password entered pass to the server
+            $ENV{DSH_REMOTE_PASSWORD} = $userpw;
+
+        }
+    }
+}
+
+foreach (keys %ENV) {
+    push @{$cmdref->{environment}}, "$_=$ENV{$_}";
+}
+
+xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
+exit $xCAT::Client::EXITCODE;
