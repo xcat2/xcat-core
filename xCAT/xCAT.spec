@@ -91,6 +91,8 @@ tar -xf postscripts.tar
 rm postscripts.tar
 %endif
 
+chmod 755 $RPM_BUILD_ROOT/install/postscripts/*
+
 rm LICENSE.html
 mkdir -p postscripts/hostkeys
 cd -
