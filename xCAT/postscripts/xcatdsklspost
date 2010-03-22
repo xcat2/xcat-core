@@ -207,9 +207,9 @@ else  # for statelite mode
     #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts 2> /tmp/wget.log
     
     #mv $SIP/install/postscripts/* /xcatpost; 
-    chmod +x /xcatpost/*; # no effect for statelite mode, since the directory are readonly
     mv $SIP/postscripts/* /xcatpost; 
     rm -rf $SIP
+    chmod +x /xcatpost/*; # no effect for statelite mode, since the directory are readonly
 fi
 
 cd /xcatpost; 
