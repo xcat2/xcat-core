@@ -142,15 +142,14 @@ fi
 #	echo "rpm -Uvh xCAT-UI-$SHORTVER*rpm" >> $DESTDIR/instxcat
 #fi
 
-# Not quite ready to ship this yet...
-#if $GREP xCAT-IBMhpc $SVNUP; then
-#   UPLOAD=1
-#   rm -f $DESTDIR/xCAT-IBMhpc*rpm
-#   rm -f $SRCDIR/xCAT-IBMhpc*rpm
-#   ./makehpcrpm
-#   mv $source/RPMS/noarch/xCAT-IBMhpc-$VER*rpm $DESTDIR
-#   mv $source/SRPMS/xCAT-IBMhpc-$VER*rpm $SRCDIR
-#fi
+if $GREP xCAT-IBMhpc $SVNUP; then
+   UPLOAD=1
+   rm -f $DESTDIR/xCAT-IBMhpc*rpm
+   rm -f $SRCDIR/xCAT-IBMhpc*rpm
+   ./makehpcrpm
+   mv $source/RPMS/noarch/xCAT-IBMhpc-$VER*rpm $DESTDIR
+   mv $source/SRPMS/xCAT-IBMhpc-$VER*rpm $SRCDIR
+fi
 # Do not automatically install xCAT-IBMhpc on AIX
 #if [ "$OSNAME" = "AIX" ]; then
 #	echo "rpm -Uvh xCAT-IBMhpc-$SHORTVER*rpm" >> $DESTDIR/instxcat
