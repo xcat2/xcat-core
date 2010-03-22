@@ -1,0 +1,16 @@
+# Sample script for diskless image changes for IB support
+#  Invoke this script from your 
+#  /install/custom/netboot/<os>/<arch>/<profile>.postinstall script as:
+#   /opt/xcat/share/xcat/ib/sles/ib.postinstall $1
+#
+installroot=$1
+cd $installroot/usr/lib
+ln -s libibverbs.so.1.0.0 libibverbs.so
+cd $installroot/usr/lib64
+ln -s libibverbs.so.1.0.0 libibverbs.so
+
+/usr/bin/sed -i 's/SDP_LOAD=yes/SDP_LOAD=no/g' $installroot/etc/infiniband/openi
+b.conf
+/usr/bin/sed -i 's/MLX4_EN_LOAD=yes/MLX4_EN_LOAD=no/g' $installroot/etc/infiniba
+nd/openib.conf
+

@@ -1,0 +1,3 @@
+#image,file,options,comments,disable
+"ALL","/etc/modprobe.conf.local",,"for IB",
+"ALL","/etc/infiniband/openib.conf",,"for IB",
