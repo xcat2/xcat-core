@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<rspconfig> - remote power control of nodes
+B<rspconfig> - Configures nodes' service processors
 
 =head1 SYNOPSIS
 
