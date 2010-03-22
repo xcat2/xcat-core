@@ -36,11 +36,21 @@ xCAT-IBMhpc provides sample installation and configuration scripts for running t
 %build
 %install
 rm -rf $RPM_BUILD_ROOT
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/compilers
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/essl
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/gpfs
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/loadl
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/pe
 
 set +x
-cp share/xcat/IBMhpc/gpfs/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/gpfs/
-chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/gpfs/*
+
+%ifos linux
+cp -a share/xcat/IBMhpc/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/
+chmod -R 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/*
+%else
+cp -hpR share/xcat/IBMhpc/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/
+chmod -R 755 $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/*
+%endif
 
 set -x
 
