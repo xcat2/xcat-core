@@ -278,14 +278,16 @@ unless ($onlyinitrd) {
    }
 
    #add the new repository for extra packages
-   my $extrapkgnames; 
+   my %extrapkgnames; 
    if($osver_host == 11) {	#SLES11
       if(-e "$rootimg_dir/etc/zypp/repos.d/otherpkg.repo") {
 	  system("rm -rf $rootimg_dir/etc/zypp/repos.d/otherpkg.repo");
       }
    }
    my $index=1;
-   foreach (keys(%extra_hash)) {
+   my $pass;
+   foreach $pass (keys(%extra_hash)) {
+     foreach (keys(%{$extra_hash{$pass}})) {
        if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
        my $whole_path="$srcdir_otherpkgs/$_";
        if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
@@ -303,8 +305,9 @@ unless ($onlyinitrd) {
        }
        $index++;
 
-       my $pa=$extra_hash{$_};
-       $extrapkgnames .= " " . join(' ', @$pa);
+       my $pa=$extra_hash{$pass}{$_};
+       $extrapkgnames{$pass} .= " " . join(' ', @$pa);
+     }
    }
 
    #-- add custom repositories to the image  
@@ -342,7 +345,7 @@ unless ($onlyinitrd) {
         $yumcmd = "zypper -R $rootimg_dir install ";
    }
 
-   #install pakages from pkglist file
+   #install packages from pkglist file
    my $pkgnames;
    if (!$imagename) {
        $pkglist=get_profile_def_filename($customdir, "pkglist");
@@ -356,48 +359,52 @@ unless ($onlyinitrd) {
 
    my %pkg_hash=get_package_names($pkglist);
    my $index=1;
-   foreach (keys(%pkg_hash)) {
-       if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
-       my $pa=$pkg_hash{$_};
-       $pkgnames .= " " . join(' ', @$pa);
-   }
-   #print "$yumcmd $pkgnames\n";
-   my $rc = system("$yumcmd $pkgnames");
-   if ($rc) { 
-      print "zypper invocation failed\n";
-      exit 1;
-   }
-
-   #remove the packages that are specified in the otherpkgs.list files with leading '-'
-   my $yumcmd_remove= "zypper -R $rootimg_dir remove "; 
-   if ((%extra_hash) && (exists ($extra_hash{'PRE_REMOVE'}))) {
-       my $pa=$extra_hash{'PRE_REMOVE'};
-       my $rm_packges= join(' ', @$pa);
-       if ($rm_packges) {
-	   $rc = system("$yumcmd_remove $rm_packges");
+   foreach $pass (keys(%pkg_hash)) {
+       $pkgnames = "";
+       foreach (keys(%{$pkg_hash{$pass}})) {
+           if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
+           my $pa=$pkg_hash{$_};
+           $pkgnames .= " " . join(' ', @$pa);
+       }
+       #print "$yumcmd $pkgnames\n";
+       my $rc = system("$yumcmd $pkgnames");
+       if ($rc) { 
+          print "zypper invocation failed\n";
+          exit 1;
        }
    }
+
+   foreach $pass (keys(%extra_hash)) {
+       #remove the packages that are specified in the otherpkgs.list files with leading '-'
+       my $yumcmd_remove= "zypper -R $rootimg_dir remove "; 
+       if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
+           my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
+           my $rm_packges= join(' ', @$pa);
+           if ($rm_packges) {
+	       $rc = system("$yumcmd_remove $rm_packges");
+           }
+       }
    
 
-   #add extra packages in the list
-   if ($extrapkgnames) {
-       #print "$yumcmd $extrapkgnames\n";
-       $rc = system("$yumcmd $extrapkgnames");
-       if ($rc) { 
-	   print "zypper invocation failed\n";
-	   exit 1;
+       #add extra packages in the list
+       if ($extrapkgnames{$pass}) {
+           #print "$yumcmd $extrapkgnames{$pass}\n";
+           $rc = system("$yumcmd $extrapkgnames{$pass}");
+           if ($rc) { 
+	       print "zypper invocation failed\n";
+	       exit 1;
+           }
+       }
+
+       #remove the packages that are specified in the otherpkgs.list files with leading '--'
+       if (exists ($extra_hash{$pass}{'POST_REMOVE'})) {
+           my $pa=$extra_hash{$pass}{'POST_REMOVE'};
+           my $rm_packges= join(' ', @$pa);
+           if ($rm_packges) {
+	       $rc = system("$yumcmd_remove $rm_packges");
+           }
        }
    }
-
-   #remove the packages that are specified in the otherpkgs.list files with leading '--'
-   if ((%extra_hash) && (exists ($extra_hash{'POST_REMOVE'}))) {
-       my $pa=$extra_hash{'POST_REMOVE'};
-       my $rm_packges= join(' ', @$pa);
-       if ($rm_packges) {
-	   $rc = system("$yumcmd_remove $rm_packges");
-       }
-   }
-
 
    # run zypper update to update any installed rpms
    # needed when running genimage again after updating software in repositories
@@ -1199,6 +1206,7 @@ sub get_package_names {
      
         #print "pkgtext=$pkgtext\n";
 	my @tmp=split(',', $pkgtext);
+        my $pass=1;
 	foreach (@tmp) {
 	    my $idir;
 	    if (/^--/) {	
@@ -1207,15 +1215,21 @@ sub get_package_names {
             } elsif  (/^-/) {
 		$idir="PRE_REMOVE"; #line starts with single - means the package should be removed before otherpkgs are installed
 		s/^-//;
+            } elsif  (/^#NEW_INSTALL_LIST#/) {
+                $pass++;
+                next;
+            } elsif  (/^#/) {
+                # ignore all other comment lines
+                next;
             } else { 
 		$idir=dirname($_); 
 	    }
 	    my $fn=basename($_);
-	    if (exists($pkgnames{$idir})) {
-		my $pa=$pkgnames{$idir};
-		push(@$pa, $fn);
-	    } else {
-		$pkgnames{$idir}=[$fn];
+            if (exists($pkgnames{$pass}{$idir})) {
+                my $pa=$pkgnames{$pass}{$idir};
+                push(@$pa, $fn);
+            } else {
+                $pkgnames{$pass}{$idir}=[$fn];
 	    }
 	}
      }
