@@ -20,7 +20,7 @@
 SOURCE=/var/mmfs/gen/mmsdrfs
 
 # The images to be updated (list as many as needed)
-IMAGE[1]=sles11-ppc64-netboot-service2
+IMAGE[1]=sles11-ppc64-netboot-service
 IMAGE[2]=sles11-ppc64-netboot-compute
 
 # The noderange for service nodes

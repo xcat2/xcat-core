@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# 
+# Sample script to accept licenses and install ESSL and PESSL packages
+# For AIX:
+#    TBD
+# For Linux:
+#    Assumes all prerequisite software has been installed (e.g. compilers)
+
+
+OS=`uname`
+INSTALL_DIR='/install'
+ESSL_DIR=$essldir
+essl_bin=/opt/ibmmath/essl/5.1/bin
+pessl_bin=/opt/ibmmath/pessl/3.3/bin
+
+if [ -z $ESSL_DIR ]; then
+   # try to default
+   ESSL_DIR=$INSTALL_DIR/post/otherpkgs/$OSVER/$ARCH/essl
+fi
+
+
+
+if [ $OS != "AIX" ]; then
+    if [ $NODESETSTATE == "install" ]; then
+    #  Being run from a stateful install postscript
+    #  Copy rpms directly from the xCAT management node and install        
+        mkdir -p /tmp/essl
+        rm -f -R /tmp/essl/*
+        cd /tmp/essl
+        download_dir=`echo $ESSL_DIR | cut -d '/' -f3-`
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=3 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
+        rpm -Uvh essl.license*.rpm
+        $essl_bin/install_essl -y -d . -nodocs
+        rpm -Uvh pessl.license*.rpm
+        $pessl_bin/install_pessl -y -d . -nodocs
+        rm -Rf /tmp/essl
+    fi
+
+    if [ $NODESETSTATE == "genimage" ]; then
+    # Being called from <image>.postinstall script
+    # Assume we are on the same machine
+        # IP of MN (this host)
+        MN=`hostname`
+        MNIP=`host -t A $MN | cut -d' ' -f4`
+        xcatmount=/xcatmount
+        chroot $installroot mkdir $xcatmount
+        chroot $installroot mount $MNIP:$ESSL_DIR $xcatmount
+        chroot $installroot rpm -Uvh $xcatmount/essl.license*.rpm
+        chroot $installroot $essl_bin/install_essl -y -d $xcatmount -nodocs
+        chroot $installroot rpm -Uvh $xcatmount/pessl.license*.rpm
+        chroot $installroot $pessl_bin/install_pessl -y -d $xcatmount -nodocs
+        chroot $installroot umount $xcatmount
+        chroot $installroot rmdir $xcatmount
+    fi
+fi  
+
+

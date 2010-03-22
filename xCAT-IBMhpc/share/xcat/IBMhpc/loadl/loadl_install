@@ -1,0 +1,115 @@
+#!/bin/sh
+
+#
+# Sample script to accept license and install LoadLeveler resmgr package
+# and perform additional customizations
+# For AIX:
+#    TBD
+# For Linux:
+#    
+
+
+OS=`uname`
+INSTALL_DIR='/install'
+LOADL_DIR=$loadldir
+aix_loadl_bin=/usr/lpp/LoadL/full/bin
+linux_loadl_bin=/opt/ibmll/LoadL/resmgr/full/bin
+linux_loadl_license_script=/opt/ibmll/LoadL/resmgr/sbin/install_resmgr
+
+if [ -z $LOADL_DIR ]; then
+   # try to default
+   LOADL_DIR=$INSTALL_DIR/post/otherpkgs/$OSVER/$ARCH/loadl
+fi
+
+
+if [ $OS != "AIX" ]; then
+    if [ $NODESETSTATE == "install" ]; then
+    #  Being run from a stateful install postscript
+    #  Copy rpms directly from the xCAT management node and install
+        mkdir -p /tmp/loadl
+        rm -f -R /tmp/loadl/*
+        cd /tmp/loadl
+        download_dir=`echo $LOADL_DIR | cut -d '/' -f3-`
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=3 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
+        rpm -Uvh LoadL-resmgr-full-license*.rpm
+        $linux_loadl_license_script -y -d .
+        rm -Rf /tmp/loadl
+        mkdir /dev/cpuset
+        mount -t cpuset none /dev/cpuset
+    fi
+
+    if [ $NODESETSTATE == "genimage" ]; then
+        # Being called from <image>.postinstall script
+        # Assume we are on the same machine
+        # IP of MN (this host)
+        MN=`hostname`
+        MNIP=`host -t A $MN | cut -d' ' -f4`
+        xcatmount=/xcatmount
+        mkdir $installroot/$xcatmount
+        chroot $installroot mount $MNIP:$LOADL_DIR $xcatmount
+        # The license rpm should already be installed, but just in case...
+        chroot $installroot rpm -Uvh $xcatmount/LoadL-resmgr-full-license*.rpm
+        chroot $installroot $linux_loadl_license_script -y -d $xcatmount 
+        chroot $installroot umount $xcatmount
+        rmdir $installroot/$xcatmount
+        mkdir $installroot/dev/cpuset
+        chroot $installroot mount -t cpuset none /dev/cpuset
+    fi
+fi
+
+# Add LoadLeveler path to profile
+if [ $OS == "AIX" ]; then
+    # add to /etc/profile
+    if ! grep 'LoadL' /etc/profile >& /dev/null; then
+        echo 'PATH=$PATH:$aix_loadl_bin' >> /etc/profile
+    fi
+else  # assume Linux
+    loadlprofile=/etc/profile.d/loadl
+    if [ $NODESETSTATE == "genimage" ]; then
+       loadlprofile=$installroot$loadlprofile
+    fi
+    if [ ! -e $loadlprofile.sh ]; then
+        echo 'PATH=$PATH:$linux_loadl_bin' > $loadlprofile.sh
+        echo 'PATH=$PATH:$linux_loadl_bin' > $loadlprofile.csh
+        # Turn off LANG support since we did not install other msg catalogs
+        echo 'export LC_CTYPE=POSIX' $loadlprofile.sh
+        echo 'export LC_CTYPE=POSIX' $loadlprofile.csh
+        echo 'export LC_ALL=POSIX' $loadlprofile.sh
+        echo 'export LC_ALL=POSIX' $loadlprofile.csh
+        chmod 744 $loadlprofile.sh
+        chmod 744 $loadlprofile.csh
+    fi
+fi
+
+
+
+# Create LoadLeveler Directories:
+# For stateless nodes, these directories need to be created in the image
+# since they will be in memory only, and will be lost on node reboot. 
+# You may choose to modify this approach and use a more 
+# persistent location. 
+# For statelite, make sure the directory is writable;  
+# this will also be a memory-only copy of the files unless you set 
+# the directory "persistent" in the statelite table.  
+if [ $NODESETSTATE != "genimage" ]; then
+   # running as a postscript in a full-disk install or AIX diskless install
+   installroot=""
+fi  
+logdir=/var/loadl
+mkdir -p $installroot$logdir/execute
+mkdir -p $installroot$logdir/spool
+mkdir -p $installroot$logdir/log
+mkdir -p $installroot$logdir/sockets
+mkdir -p $installroot$logdir/core
+chmod 700 $installroot$logdir/spool
+chmod 1777 $installroot$logdir/execute
+chmod 775 $installroot$logdir/log
+chmod 777 $installroot$logdir/sockets
+chmod 777 $installroot$logdir/core
+
+# Owner set to 'loadl' userid, change if using a different userid
+chown -R loadl:loadl $installroot$logdir/
+
+cp /etc/LoadL.cfg $installroot/etc/LoadL.cfg
+
+

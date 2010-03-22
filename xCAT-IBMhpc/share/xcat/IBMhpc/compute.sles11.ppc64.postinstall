@@ -1,0 +1,49 @@
+#!/bin/sh
+# Sample postinstall script for building a diskless SLES11 PPC64 image
+#  with all IBM HPC products
+#
+#-- this script is run after all packages from $profile.pkglist are installed
+#--
+#-- it gets these arguments:
+#--
+#-- $1 = install root (chroot directory for profile)
+#-- $2 = OS version
+#-- $3 = architecture
+#-- $4 = profile name
+#-- $5 = work dir (where genimage is located)
+#--
+#--
+installroot=$1
+osver=$2
+arch=$3
+profile=$4
+workdir=$5
+
+# Run default postinstall shipped with xcat
+/opt/xcat/share/xcat/netboot/sles/compute.sles11.postinstall $1 $2 $3 $4 $5
+
+# Run general IBMhpc postinstall script
+/opt/xcat/share/xcat/IBMhpc/IBMhpc.sles.postinstall $1 $2 $3 $4 $5
+
+# Run script to install gpfs updates
+installroot=$installroot NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_updates
+# Run script to update GPFS mmsdrfs file in the image
+installroot=$installroot   /install/postscripts/gpfs_mmsdrfs
+
+
+# Run script to accept compiler license
+installroot=$installroot NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/compilers/compilers_license
+
+
+# Run script for PE
+installroot=$installroot NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/pe/pe_updates
+
+
+# Run script to install ESSL and PESSL rpms
+installroot=$installroot essldir=/install/post/otherpkgs/$osver/$arch/essl NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/essl/essl_install
+
+
+# Run script to accept LoadLeveler license, install product rpms, 
+# and do some config
+installroot=$installroot loadldir=/install/post/otherpkgs/$osver/$arch/loadl NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/loadl/loadl_install
+

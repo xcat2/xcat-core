@@ -84,18 +84,32 @@ if [ $OS == "AIX" ]; then
         echo 'PATH=$PATH:/usr/lpp/mmfs/bin' >> /etc/profile
     fi 
 else  # assume Linux
+    gpfsprofile=/etc/profile.d/gpfs
     if [ $NODESETSTATE == "genimage" ]; then
-       gpfsprofile=$installroot/etc/profile.d/gpfs
-    else
-       gpfsprofile=/etc/profile.d/gpfs
+       gpfsprofile=$installroot$gpfsprofile
     fi
     if [ ! -e $gpfsprofile.sh ]; then
         echo 'PATH=$PATH:/usr/lpp/mmfs/bin' > $gpfsprofile.sh
         echo 'PATH=$PATH:/usr/lpp/mmfs/bin' > $gpfsprofile.csh
+        # Turn off LANG support since we did not install other msg catalogs
+        echo 'export LC_CTYPE=POSIX' $gpfsprofile.sh
+        echo 'export LC_CTYPE=POSIX' $gpfsprofile.csh
+        echo 'export LC_ALL=POSIX' $gpfsprofile.sh
+        echo 'export LC_ALL=POSIX' $gpfsprofile.csh
         chmod 744 $gpfsprofile.sh
         chmod 744 $gpfsprofile.csh
     fi
 fi
+
+# If you are using a shared home directory stored in GPFS,
+#   create the symbolic link
+#
+# GPFSHOME=/gpfs/home
+# HOMEDIR=/u
+# if [ $NODESETSTATE == "genimage" ]; then
+#    HOMEDIR=$installroot/$HOMEDIR
+# fi
+# ln -s $GPFSHOME $HOMEDIR
 
 
 

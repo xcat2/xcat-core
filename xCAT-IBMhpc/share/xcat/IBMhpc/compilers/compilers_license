@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# 
+# Sample script to accept licenses for the IBM vacpp and xlf compilers
+# For AIX:
+#    TBD
+# For Linux:
+#    Assumes all compiler software has been installed
+
+
+OS=`uname`
+vacpp_script=/opt/ibmcmp/vacpp/11.1/bin/new_install
+xlf_script=/opt/ibmcmp/xlf/13.1/bin/new_install
+
+
+if [ $OS != "AIX" ]; then
+    if [ $NODESETSTATE == "install" ]; then
+    #  Being run from a stateful install postscript
+       echo 1 | $vacpp_script
+       echo 1 | $xlf_script
+    fi
+
+    if [ $NODESETSTATE == "genimage" ]; then
+    # Being called from <image>.postinstall script
+    # Assume we are on the same machine
+        chroot $installroot echo 1 | $vacpp_script
+        chroot $installroot echo 1 | $xlf_script
+    fi
+fi  
+
+

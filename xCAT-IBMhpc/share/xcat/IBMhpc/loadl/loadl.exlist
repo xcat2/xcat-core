@@ -1,0 +1,10 @@
+#LoadL
+./opt/ibmll/LoadL/READMES*
+./opt/ibmll/LoadL/full/man*
+./opt/ibmll/LoadL/full/samples*
+./opt/ibmll/LoadL/lap/*.jar
+./opt/ibmll/LoadL/lap/LI_*
+./opt/ibmll/LoadL/lap/LA_*
+./opt/ibmll/LoadL/lap/license/*.txt
+
+
