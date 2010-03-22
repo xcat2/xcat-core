@@ -4,6 +4,7 @@ use Getopt::Long;
 use Net::DNS;
 use xCAT::Table;
 use Sys::Hostname;
+use MIME::Base64;
 use Socket;
 use Fcntl qw/:flock/;
 #This is a rewrite of DNS management using nsupdate rather than direct zone mangling
@@ -424,6 +425,7 @@ sub update_namedconf {
     unless ($gotkey) {
         unless ($ctx->{privkey}) { #need to generate one
             $ctx->{privkey} = encode_base64(genpassword(32));
+            chomp($ctx->{privkey});
         }
         push @newnamed,"key xcat_key {\n","\talgorithm hmac-md5;\n","\tsecret \"".$ctx->{privkey}."\";\n","};\n\n";
         $ctx->{restartneeded}=1;
