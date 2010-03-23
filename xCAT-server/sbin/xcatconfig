@@ -1287,7 +1287,7 @@ sub genCredentials
          if ($::genCredentials) { # if just generating new credentials
             xCAT::MsgUtils->message('I', "Created xCAT certificate.");
             my $chtabcmds =
-              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=allow;";
+              "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=trusted;";
             my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
             if ($::RUNCMD_RC != 0)
             {
