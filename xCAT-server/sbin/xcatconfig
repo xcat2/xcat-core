@@ -1284,6 +1284,7 @@ sub genCredentials
         }
         else
         {
+         if ($::genCredentials) { # if just generating new credentials
             xCAT::MsgUtils->message('I', "Created xCAT certificate.");
             my $chtabcmds =
               "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$hname policy.rule=allow;";
@@ -1292,6 +1293,7 @@ sub genCredentials
             {
               xCAT::MsgUtils->message('E', "Could not create policy definition.$chtabcmds.");
             }
+         }
         }
     }
 
