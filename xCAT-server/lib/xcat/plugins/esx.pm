@@ -442,7 +442,7 @@ sub process_tasks {
             if ($state eq 'running' and not $running_tasks{$_}->{questionasked}) { # and $curt->info->progress == 95) { #This is unfortunate, there should be a 'state' to indicate a question is blocking
                     #however there isn't, so if we see something running at 95%, we just manually see if a question blocked the rest
                     my $vm = $curcon->get_view(mo_ref=>$curt->info->entity);
-                    if ($vm->{summary} and $vm->summary->runtime->question) {
+                    if ($vm->{summary} and  $vm->summary->{runtime} and $vm->summary->runtime->{question} and $vm->summary->runtime->question) {
                         $running_tasks{$_}->{questionasked}=1;
                          $running_tasks{$_}->{callback}->($curt,$running_tasks{$_}->{data},$vm->summary->runtime->question,$vm);
                     } 
