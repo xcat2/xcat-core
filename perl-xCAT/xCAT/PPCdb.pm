@@ -247,22 +247,19 @@ sub update_ppc {
             if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
             {
                 $predefined_node = $vpdent->{node};
-                last;
+                if ( $predefined_node =~ /-B$/ ) {
+                    $name = $name . "-B";
+                }
+
+                if ( update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
+                                    $server, $pprofile, $parent, $ips,
+                                    \%db, $predefined_node, \@ppclist))
+                {
+                    push @update_list, $value;
+                }
             }
         }
 
-        next if ( !$predefined_node);
-        
-        if ( $predefined_node =~ /-B$/ ) {
-            $name = $name . "-B";
-        }
-
-        if ( update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side, 
-                            $server, $pprofile, $parent, $ips, 
-                            \%db, $predefined_node, \@ppclist))
-        {
-            push @update_list, $value;
-        }
     }
 
     my @newppclist = $db{ppc}->getAllNodeAttribs(['node','hcp','id',
@@ -291,23 +288,20 @@ sub update_ppc {
             if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
             {
                 $predefined_node = $vpdent->{node};
-                last;
+                if ( $predefined_node =~ /-A$/ ) {
+                    $name = $name . "-A";
+                } elsif ( $predefined_node =~ /-B$/ ) {
+                    $name = $name . "-B";
+                }   
+                if (update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
+                                    $server, $pprofile, $parent, $ips, 
+                                    \%db, $predefined_node, \@newppclist))
+                {
+                    push @update_list, $value;
+                }
             }
         }
 
-        next if ( !$predefined_node);
-        
-        if ( $predefined_node =~ /-A$/ ) {
-            $name = $name . "-A";
-        } elsif ( $predefined_node =~ /-B$/ ) {
-            $name = $name . "-B";
-        }
-        if (update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
-                            $server, $pprofile, $parent, $ips, 
-                            \%db, $predefined_node, \@newppclist))
-        {
-            push @update_list, $value;
-        }
     }
 
     ###################################
