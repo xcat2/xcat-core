@@ -2499,8 +2499,8 @@ sub child_response {
             # Formatted SLP results
             #############################
             if ( @$responses[0] =~ /^FORMATDATA6sK4ci$/ ) {
-                shift @$responses;
-                foreach ( keys %$responses ) {
+                my $result = @$responses[1];
+                foreach ( keys %$result ) {
                     $slp_result{$_} = 1;
                 }
                 next;
