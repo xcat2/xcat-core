@@ -135,6 +135,9 @@ sub do_rnetboot {
     if ( !-x $cmd ) {
         return( [RC_ERROR,"Command not installed: $cmd"] );
     }
+    if (!-x "/usr/bin/expect" ) {
+        return( [RC_ERROR,"Command not installed: /usr/bin/expect"] );
+    }
     #######################################
     # Save user name and passwd of hcp to
     # environment variables.
