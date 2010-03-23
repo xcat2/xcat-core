@@ -284,12 +284,22 @@ sub processArgs
     #
 
     #  - put attr=val operands in ATTRS hash
+    my $noderangespace = 0;
     while (my $a = shift(@ARGV))
     {
 
         if (!($a =~ /=/))
         {
 
+            # can not have spaces in the noderange
+            if ($noderangespace)
+            {
+               my $rsp;
+               $rsp->{data}->[0] = "noderange can not contain spaces.";
+               xCAT::MsgUtils->message("E", $rsp, $::callback);
+               return 2;
+            }
+            $noderangespace++;
             # the first arg could be a noderange or a list of args
             if (($::opt_t) && ($::opt_t ne 'node'))
             {
