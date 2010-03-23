@@ -164,7 +164,7 @@ if $GREP xCAT-server $SVNUP; then
    mv $source/SRPMS/xCAT-server-$VER*rpm $SRCDIR
 fi
 if [ "$OSNAME" = "AIX" ]; then
-	echo "rpm -Uvh --nodeps xCAT-server-$SHORTVER*rpm" >> $DESTDIR/instxcat
+	echo "rpm -Uvh xCAT-server-$SHORTVER*rpm" >> $DESTDIR/instxcat
 fi
 
 if $GREP xCAT-rmc $SVNUP; then
