@@ -543,7 +543,7 @@ sub get_datatype_string_db2 {
     my $types=shift;  #types field (eventlog)
     my $tablename=shift;  # tablename
     my $descr=shift;  # table schema
-
+    my $typedefined=0;
     my $ret = "varchar(512)";  # default for most attributes
     if (($types) && ($types->{$col})) {
 	if ($types->{$col} =~ /INTEGER AUTO_INCREMENT/) {
@@ -551,6 +551,7 @@ sub get_datatype_string_db2 {
 	} else {
 	    $ret = $types->{$col};
 	}
+     $typedefined=1; 
     }
     if ($col eq "disable") {
          
@@ -560,10 +561,11 @@ sub get_datatype_string_db2 {
          
        $ret = "varchar(4098)";
     }
-    # if the column is a key
+    # if the column is a key  and not already defined
     if (isAKey(\@{$descr->{keys}}, $col)) { 
-              
+       if ($typedefined == 0) {          
           $ret = "VARCHAR(128) NOT NULL ";  
+       }
     }
     return $ret;
 }
@@ -3228,6 +3230,63 @@ sub getAutoIncrementColumns {
     return @ret;
 }
 
+#--------------------------------------------------------------------------
 
+=head3  truncate 
+
+    Description:truncates the input table ( removes all entries, but does
+        not drop the table) 
+
+
+    Arguments: 
+                Table Handle
+    Returns:
+              
+    Globals:
+
+    Error:
+
+    Example:
+	my $table=xCAT::Table->new("eventlog");
+        $table->truncate();
+    Comments:
+        TODO : NEED to add code for CSV and test 
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub truncate 
+{
+    #takes table handle 
+    my $self   = shift;
+    my $xcatcfg =get_xcatcfg();
+    my $notif = xCAT::NotifHandler->needToNotify($self->{tabname}, 'd');
+    # TODO add notification
+    # truncate the table
+    my $trunstring;
+    if ($xcatcfg =~ /^SQLite:/) {
+       $trunstring = 'DROP Table ' . $self->{tabname};
+       my $stmt = $self->{dbh}->prepare($trunstring);
+       $stmt->execute;
+       $stmt->finish;
+       if (!$self->{dbh}->{AutoCommit}) {
+           $self->{dbh}->commit;
+       }
+       my $self=xCAT::Table->new($self->{tabname});  # create table
+       return ;
+    } else {
+     if ($xcatcfg =~ /^DB2:/){  # does not support TRUNCATE
+       $self->{tabname} =~ tr/a-z/A-Z/;  
+       $trunstring = 'DROP TABLE ' .  q(") . $self->{tabname} .  q(");
+     } else {  # mysql/postgresql/CVS
+       $trunstring = 'TRUNCATE TABLE ' . $self->{tabname};
+     } 
+     my $stmt = $self->{dbh}->prepare($trunstring);
+     $stmt->execute;
+     $stmt->finish;
+     $self->commit;
+    } 
+    return ;
+}
 1;
 
