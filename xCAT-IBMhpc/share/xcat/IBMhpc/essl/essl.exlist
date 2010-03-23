@@ -1,8 +1,8 @@
-./opt/ibmmath/essl/4.4/FFTW3/include*
-./opt/ibmmath/essl/4.4/include*
-./opt/ibmmath/essl/4.4/lap/license/*.txt
-./opt/ibmmath/essl/4.4/lap/LI_*
-./opt/ibmmath/essl/4.4/lap/LA_*
+./opt/ibmmath/essl/4.3/FFTW3/include*
+./opt/ibmmath/essl/4.3/include*
+./opt/ibmmath/essl/4.3/lap/license/*.txt
+./opt/ibmmath/essl/4.3/lap/LI_*
+./opt/ibmmath/essl/4.3/lap/LA_*
 
 ./opt/ibmmath/pessl/3.3/lap/LA_*
 ./opt/ibmmath/pessl/3.3/lap/LI_*

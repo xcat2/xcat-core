@@ -9,8 +9,8 @@
 
 
 OS=`uname`
-vacpp_script=/opt/ibmcmp/vacpp/11.1/bin/new_install
-xlf_script=/opt/ibmcmp/xlf/13.1/bin/new_install
+vacpp_script=/opt/ibmcmp/vacpp/10.1/bin/new_install
+xlf_script=/opt/ibmcmp/xlf/12.1/bin/new_install
 
 
 if [ $OS != "AIX" ]; then

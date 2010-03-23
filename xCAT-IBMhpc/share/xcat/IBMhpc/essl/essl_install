@@ -11,7 +11,7 @@
 OS=`uname`
 INSTALL_DIR='/install'
 ESSL_DIR=$essldir
-essl_bin=/opt/ibmmath/essl/5.1/bin
+essl_bin=/opt/ibmmath/essl/4.3/bin
 pessl_bin=/opt/ibmmath/pessl/3.3/bin
 
 if [ -z $ESSL_DIR ]; then
