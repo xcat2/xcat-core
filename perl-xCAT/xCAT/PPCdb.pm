@@ -247,6 +247,7 @@ sub update_ppc {
             if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
             {
                 $predefined_node = $vpdent->{node};
+print "TEST:prefdefined_node=$predefined_node\n";
                 if ( $predefined_node =~ /-B$/ ) {
                     $name = $name . "-B";
                 }
@@ -288,9 +289,7 @@ sub update_ppc {
             if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
             {
                 $predefined_node = $vpdent->{node};
-                if ( $predefined_node =~ /-A$/ ) {
-                    $name = $name . "-A";
-                } elsif ( $predefined_node =~ /-B$/ ) {
+                if ( $predefined_node =~ /-B$/ ) {
                     $name = $name . "-B";
                 }   
                 if (update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
