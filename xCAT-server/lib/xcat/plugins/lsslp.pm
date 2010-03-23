@@ -1320,6 +1320,15 @@ sub getFactoryHostname
             $host = $hname;
         }
     }
+    if ( !$host ) {
+        my $hoststab = xCAT::Table->new( 'hosts' );
+        my @entries = $hoststab->getAllNodeAttribs(['node','ip']);
+        foreach my $entry ( @entries ) {
+            if ( $entry->{ip} and $entry->{ip} eq $ip ) {
+                $host = $entry->{node};
+            }
+        }
+    }
 
     return $host;
 }
