@@ -6,6 +6,8 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 B<updatenode> I<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-S>|B<--sw>] [B<-P>|B<--scripts> [I<script1,script2...>]] [B<-c>|B<--cmdlineonly>] [I<attr=val> [I<attr=val...>]]
 
+B<updatenode> I<noderange> [B<-k>|B<--security> [B<--user>] [B<--devicetype>]]
+
 B<updatenode> I<noderange> [B<-V>|B<--verbose>] [I<script1,script2...>]
 
 B<updatenode> [B<-h>|B<--help>|B<-v>|B<--version>]
@@ -29,6 +31,11 @@ Install or update software on diskfull nodes.
 
 Run postscripts.
 
+=item 4
+
+Update the ssh keys and host keys for the service nodes and compute nodes; 
+Update the ca and credentials for the service nodes.
+
 =back
 
 The default behavior of updatenode will be to attempt to perform all three
@@ -39,6 +46,10 @@ For example, If you just want to synchronize configuration file you could
 specify the "-F" flag.   If you want to synchronize files and update 
 software you would specify the "-F" and "-S" flags. See the descriptions 
 of these flags and examples below.
+
+The flag "-k" (--security) can NOT be used together with "-S", "-P", and "-F" flags.
+And the flag "--user" and "--devicetype" ONLY can be used with "-k" flag to 
+update the ssh keys for specific device.
 
 Note: In a large cluster environment the updating of nodes in an ad hoc 
 manner can quickly get out of hand, leaving the system administrator with 
@@ -345,6 +356,71 @@ automatically run on the node. However, if you want script1 and
 script2 to get invoked next time the nodes are deployed then make sure 
 to add them to the "postscripts" attribute in the database for the nodes. 
 
+
+=head2 Update security
+
+The basic functions of update security for nodes:
+
+=over 3
+
+=item *
+
+Setup the ssh keys for the target nodes. It makes the management 
+node and service node access the target nodes without password.
+
+=item *
+
+Redeliver the host keys to the target nodes.
+
+=item *
+
+Redeliver the ca and certificates files to the service node. 
+These files are used to authenticate the ssl connection between 
+xcatd's of management node and service node.
+
+=item *
+
+Remove the entries of target nodes from known_hosts file.
+
+=back
+
+I<Set up the SSH keys>
+
+A password for the user who is running this command is needed to setup 
+the ssh keys. This user must have the same uid and gid as 
+the userid on the target node where the keys will be setup.
+
+If the current user is root, roots public ssh keys will be put in the
+authorized_keys* files under roots .ssh directory on the node(s).
+If the current user is non-root, the user must be in the policy table 
+and have credential to run the xdsh command.
+The non-root users public ssh keys and root's public ssh keys will be put in
+the authorized_keys* files under the non-root users .ssh directory on the node(s).
+
+Other device types, such as IB switch, are also supported.  The
+device should be defined as a node and nodetype should be defined
+as switch before connecting.
+The flags B<--user> and B<--devicetype> can be used to specify the 'user'
+and configuration file to set up the ssh keys for the specific device.
+
+I<Handle the hierarchical scenario>
+
+When update security files for the node which is served by a service node, 
+the service node will be updated automatically first, and then the target
+node.
+
+The ca and certificates files are needed for service node to authenticate
+the ssl connections between the xCAT client and xcatd on the service node, 
+and the xcatd's between service node and management node. The files in the
+directories /etc/xcat/cert/ and ~/.xcat/ will be updated. 
+
+Since the certificates have the validity time, the ntp service is recommended to be
+set up between management node and service node. 
+
+Simply running following command to update the security keys:
+    B<updatenode> I<noderange> -k
+
+
 =head1 PARAMETERS
 
 =over 10
@@ -382,6 +458,17 @@ Specifies that the updatenode command should only use software maintenance
 information provided on the command line.  This flag is only valid when
 using AIX software maintenance support.
 
+=item --devicetype
+
+Specify a user-defined device type that references the location
+of relevant device configuration file. The devicetype value must
+correspond to a valid device configuration file under the /var/opt/xcat/
+directory.
+For example, /var/opt/xcat/IBSwitch/Qlogic/config is the configuration
+file location if devicetype is specified as IBSwitch::Qlogic
+
+This flag ONLY can be used with -k and --user.
+
 =item -F|--sync
 
 Specifies the file synchronization should be
@@ -392,6 +479,11 @@ be installed and configured on the nodes.
 
 Display usage message.
 
+=item -k|--security
+
+Update the ssh keys and host keys for the service nodes and compute nodes; 
+Update the ca and credentials to the service nodes.
+
 =item -P|--scripts
 
 Specifies that postscripts should be run on the nodes.
@@ -399,6 +491,12 @@ Specifies that postscripts should be run on the nodes.
 =item -S|--sw
 
 Specifies that node software should be updated.
+
+=item --user
+
+Specifies a remote user name to login a specific device.
+
+This flag ONLY can be used with -k and --devicetype.
 
 =item -v|--version
 
@@ -527,6 +625,12 @@ B<updatenode node42 -V -S otherpkgs="rsct.base" installp_flags="-apXY">
 To check what rpm packages are installed on the AIX node "node09". (You must use the "-c" flag so updatenode does not get a list of packages from the database.)
 
 B<updatenode node09 -V -c -S rpm_flags="-qa">
+
+=item 14
+
+To update the security keys for the node "node01"
+
+B<updatenode node01 -k>
 
 =back
 
