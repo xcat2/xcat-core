@@ -891,6 +891,19 @@ sub defmk
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         &defmk_usage;
         return 1;
+    } else {
+        my $invalidnodename = ();
+        foreach my $node (@::allobjnames) {
+            if ($node =~ /[A-Z]/) {
+                $invalidnodename .= ",$node";
+            }
+        }
+        if ($invalidnodename) {
+            $invalidnodename =~ s/,//;
+            my $rsp;
+            $rsp->{data}->[0] = "The node name \'$invalidnodename\' has capital which can not be resolved correctly by dns server. Please don't use the capital in the node name which need to be installed Operating System.";
+            xCAT::MsgUtils->message("W", $rsp, $::callback);
+        }
     }
 
     # set $objtype & fill in cmd line hash
@@ -2090,14 +2103,30 @@ sub defch
             xCAT::MsgUtils->message("I", $rsp, $::callback);
             if (scalar(keys %newobjects) > 0)
             {
-                my $newobj = join(',', sort(keys %newobjects));
-                my $rsp;
-                $rsp->{data}->[0] = "New object definitions \'$newobj\' have been created.";
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                my $newobj = ();
+                my $invalidnodename = ();
+                foreach my $node (keys %newobjects) {
+                    if ($node =~ /[A-Z]/) {
+                        $invalidnodename .= ",$node";
+                    }
+                    $newobj .= ",$node";
+                }
+
+                if ($newobj) {
+                    $newobj =~ s/,//;
+                    my $rsp;
+                    $rsp->{data}->[0] = "New object definitions \'$newobj\' have been created.";
+                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                }
+                if ($invalidnodename) {
+                    $invalidnodename =~ s/,//;
+                    my $rsp;
+                    $rsp->{data}->[0] = "The node name \'$invalidnodename\' has capital which can not be resolved correctly by dns server. Please don't use the capital in the node name which need to be installed Operating System.";
+                    xCAT::MsgUtils->message("W", $rsp, $::callback);
+                }
+   
             }
-                
-                    
-        }
+        }  
         return 0;
     }
 }
