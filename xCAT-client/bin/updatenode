@@ -49,7 +49,9 @@ if ($arg !~ /^-/) {
   $arg = join(',',@tempnr);
   $cmdref->{noderange}->[0]=$arg;
 } else {
-  push @{$cmdref->{arg}}, $arg;
+  print "The noderange should be the first argument.\n";
+  &updatenode_usage();
+  exit 1;
 }
 
 push (@{$cmdref->{arg}}, @ARGV);
@@ -69,7 +71,7 @@ if (
                 'S|sw'             => \$::SWMAINTENANCE,
                 's|sn'             => \$::SETSERVER,
                 'P|scripts:s'      => \$::RERUNPS,
-                'security'         => \$::SECURITY,
+                'k|security'       => \$::SECURITY,
                 'user=s'           => \$::USER,
                 'devicetype=s'     => \$::DEVICETYPE,
     )

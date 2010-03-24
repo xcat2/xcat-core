@@ -3,6 +3,8 @@
 #####################################################
 #
 #   Generic xCAT post script for diskless nodes
+#   The syntax of this script
+#      xcatdsklspost {mode} {-m|-M} [postscirpts]
 #   This script is called in the following different palces:
 #      updatenode -P ... --> xcatdsklspost 1 -m/-M ...
 #      updatenode -S --> xcatdsklspost 2 -m/-M otherpkgs
@@ -44,8 +46,9 @@ download_postscripts()
 # parse the arguments
 ARGNUM=$#;
 if [ -z $1 ]; then
-    NODE_DEPLOYMENT=1
+  NODE_DEPLOYMENT=1
 else
+  NODE_DEPLOYMENT=0
   case $1 in
     1|2|5)
       MODE=$1

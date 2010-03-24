@@ -180,7 +180,7 @@ sub preprocess_updatenode
                     'S|sw'             => \$::SWMAINTENANCE,
                     's|sn'             => \$::SETSERVER,
                     'P|scripts:s'      => \$::RERUNPS,
-                    'security'         => \$::SECURITY,
+                    'k|security'       => \$::SECURITY,
                     'user=s'           => \$::USER,
                     'devicetype=s'     => \$::DEVICETYPE,
         )
@@ -652,14 +652,17 @@ sub updatenode
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
-                    'c|cmdlineonly'   => \$::CMDLINE,
-                    'h|help'      => \$::HELP,
-                    'v|version'   => \$::VERSION,
-                    'V|verbose'   => \$::VERBOSE,
-                    'F|sync'      => \$::FILESYNC,
-					's|sn'		  => \$::SETSERVER,
-                    'S|sw'        => \$::SWMAINTENANCE,
-                    'P|scripts:s' => \$::RERUNPS
+                    'c|cmdlineonly'    => \$::CMDLINE,
+                    'h|help'           => \$::HELP,
+                    'v|version'        => \$::VERSION,
+                    'V|verbose'        => \$::VERBOSE,
+                    'F|sync'           => \$::FILESYNC,
+                    'S|sw'             => \$::SWMAINTENANCE,
+                    's|sn'             => \$::SETSERVER,
+                    'P|scripts:s'      => \$::RERUNPS,
+                    'k|security'       => \$::SECURITY,
+                    'user=s'           => \$::USER,
+                    'devicetype=s'     => \$::DEVICETYPE,
         )
       )
     {
@@ -1015,7 +1018,7 @@ sub updatenode
                             } elsif ($output !~ /Running postscript|Error loading module/) {
 			        push @{$rsp->{data}}, "$output";
                             }
-                        } else {
+                        } elsif ($output !~ /Error loading module/) {
 			    push @{$rsp->{data}}, "$output";
                         }
 		    }
@@ -1091,7 +1094,7 @@ sub updatenode
                             } elsif ($output !~ /Running postscript|Error loading module/) {
                                 push @{$rsp->{data}}, $output;
                             }
-                        } else {
+                        } elsif ($output !~ /Error loading module/) {
 			    push @{$rsp->{data}}, "$output";
                         }
 		    }

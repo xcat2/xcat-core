@@ -100,7 +100,7 @@ fi
 rm /tmp/ssh_rsa_hostkey
 
 if [ -r /etc/xCATSN ] ; then
-   mkdir /etc/xcat/hostkeys
+   mkdir -p /etc/xcat/hostkeys
    cp /etc/ssh/ssh* /etc/xcat/hostkeys/.
 fi
 

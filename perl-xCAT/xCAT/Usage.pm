@@ -191,9 +191,9 @@ my %usage = (
 "Usage:
     updatenode [-h|--help|-v|--version]
     or
-    updatenode <noderange> [-V|--verbose] [--security] [-s|--sn]
+    updatenode <noderange> [-V|--verbose] [-k|--security] [-s|--sn]
     or
-    updatenode <noderange> [-V|--verbose] [--security] [--user] 
+    updatenode <noderange> [-V|--verbose] [-k|--security] [--user] 
         [--devicetype]
     or
     updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] 
@@ -202,8 +202,10 @@ my %usage = (
     or
     updatenode <noderange> [-V|--verbose] [script1,script2,...]
     <noderange> is a list of nodes or groups.
-    [--security] update the security keys and certificates for the target nodes
-    [--security] [--user] [--devicetype] update the ssh keys for specific device
+    [-k|--security] update the security keys and certificates for the 
+        target nodes
+    [-k|--security] [--user] [--devicetype] update the ssh keys for 
+        specific device
     [-F|--sync] Perform File Syncing.
     [-S|--sw] Perform Software Maintenance.
     [-P|--scripts] Execute postscripts listed in the postscripts table or 
