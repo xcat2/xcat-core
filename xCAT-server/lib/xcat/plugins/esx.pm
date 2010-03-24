@@ -1290,6 +1290,7 @@ sub getcfgdatastore {
         #TODO: if multiple drives are specified, make sure to split this out
         #DONE: I believe the regex after this conditional takes care of that case already..
     }
+    $cfgdatastore =~ s/=.*//;
     (my $method,my $location) = split /:\/\//,$cfgdatastore,2;
     (my $server,my $path) = split/\//,$location,2;
     $server =~ s/:$//; #tolerate habitual colons
