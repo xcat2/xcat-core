@@ -954,7 +954,7 @@ sub power {
                         return; #We'll pick it up on the retry if it gets registered
                     } 
                     eval {
-                        $task = $args{vmview}->PowerOnVM_Task();
+                        $task = $args{vmview}->PowerOnVM_Task(host=>$hyphash{$hyp}->{hostview});
                     };
                     if ($@) {
                         sendmsg([1,":".$@],$node);
@@ -986,7 +986,7 @@ sub power {
                     $running_tasks{$task}->{data} = { node => $node, successtext => $intent.'reset' }; 
                 } elsif ($args{pretendop}) { #It is off, but pretend it was on
                     eval {
-                        $task = $args{vmview}->PowerOnVM_Task();
+                        $task = $args{vmview}->PowerOnVM_Task(host=>$hyphash{$hyp}->{hostview});
                     };
                     if ($@) {
                         sendmsg([1,":".$@],$node);
