@@ -128,6 +128,9 @@ fi
 
 %postun
 %ifnos linux
-/usr/sbin/rmitab xcatd
+if grep "^xcatd" /etc/inittab >/dev/null
+then
+	/usr/sbin/rmitab xcatd >/dev/null
+fi
 %endif
 
