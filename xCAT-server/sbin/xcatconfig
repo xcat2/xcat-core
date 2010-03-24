@@ -280,9 +280,19 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
         system($mkssys_cmd);
         use strict;
 
-        # for AIX systems add xcatd to the /etc/inittab file
-        my $rmitab_cmd = "rmitab xcatd";
-        system($rmitab_cmd);
+		#
+		# for AIX systems add xcatd to the /etc/inittab file
+		#
+
+		# first remove any existing xcatd entry
+		my $rcmd = "/bin/cat /etc/inittab | grep 'xcatd'";
+		my $outref = xCAT::Utils->runcmd("$rcmd", -1);
+		if ($::RUNCMD_RC == 0) {
+			my $rmitab_cmd = "rmitab xcatd  > /dev/null 2>&1";
+			system($rmitab_cmd);
+		}
+
+		# now create a new entry
         my $mkitab_cmd =
           "mkitab \"xcatd:2:once:$::XCATROOT/sbin/restartxcatd > /dev/console 2>&1\" > /dev/null 2>&1";
         my $rc = system($mkitab_cmd);
