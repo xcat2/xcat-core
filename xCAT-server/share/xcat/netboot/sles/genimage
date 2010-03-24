@@ -202,8 +202,8 @@ unless ($osver and $profile and $netdriver and $prinic) {
    print "Examples:\n";
    print " genimage -i eth0 -n tg3 -o centos5.1 -p compute\n";
    print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
-   print " genimage -i eth0 -n tg3,bnx2 -o centos5.1 -p compute -p nfsroot -m statelite\n";
-   print " genimage -i eth0 -n tg3,bnx2 -o centos5.1 -p compute -p nfsroot -m statelite --permission 777\n";
+   print " genimage -i eth0 -n tg3,bnx2 -o centos5.1 -p compute -m statelite\n";
+   print " genimage -i eth0 -n tg3,bnx2 -o centos5.1 -p compute -m statelite --permission 777\n";
    print " genimage -i eth0 -ntg3 myimagename\n";
    exit 1;
 }
@@ -363,7 +363,7 @@ unless ($onlyinitrd) {
        $pkgnames = "";
        foreach (keys(%{$pkg_hash{$pass}})) {
            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
-           my $pa=$pkg_hash{$_};
+           my $pa=$pkg_hash{$pass}{$_};
            $pkgnames .= " " . join(' ', @$pa);
        }
        #print "$yumcmd $pkgnames\n";
