@@ -1285,7 +1285,7 @@ sub get_unassigned_iba
                 my $adapter_id       = $1;
                 my $phys_loc         = $2;
                 my $unassigned_guids = $3;
-                if ( $phys_loc =~ /C65$/ or $phys_loc =~ /C66$/)
+                if ( $phys_loc =~ /C65$/ or $phys_loc =~ /C66$/ or $phys_loc =~ /C7$/)
                 {
                     my @guids = split /,/, $unassigned_guids;
                     $max_ib_num = scalar( @guids) if (scalar( @guids) < $max_ib_num);
