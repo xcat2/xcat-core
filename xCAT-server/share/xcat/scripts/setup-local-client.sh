@@ -44,9 +44,7 @@ if [ -e $USERHOME/.xcat ]; then
   rm -rf $USERHOME/.xcat
 fi
 # remove user from index
-echo $CNA
 index=`grep $CNA /etc/xcat/ca/index  |  cut -f4  2>&1`
-echo $index
 for id  in $index; do
   openssl ca -config /etc/xcat/ca/openssl.cnf -revoke /etc/xcat/ca/certs/$id.pem
 done
