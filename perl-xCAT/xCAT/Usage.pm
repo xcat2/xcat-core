@@ -197,24 +197,43 @@ my %usage = (
         [--devicetype]
     or
     updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] 
-        [-P|--scripts [script1,script2,...]] [-s|--sn] [-c|--cmdlineonly]
+        [-P|--scripts [script1,script2,...]] [-s|--sn] 
+        [-A|--updateallsw] [-c|--cmdlineonly] [-d alt_source_dir]
         [attr=val [attr=val...]]
     or
     updatenode <noderange> [-V|--verbose] [script1,script2,...]
-    <noderange> is a list of nodes or groups.
-    [-k|--security] update the security keys and certificates for the 
-        target nodes
-    [-k|--security] [--user] [--devicetype] update the ssh keys for 
-        specific device
+
+Options:
+    <noderange> A list of nodes or groups.
+
+    [-k|--security] Update the security keys and certificates for the 
+        target nodes.
+
+    [-k|--security] [--user] [--devicetype] Update the ssh keys for 
+        specific device.
+
     [-F|--sync] Perform File Syncing.
+
     [-S|--sw] Perform Software Maintenance.
+
     [-P|--scripts] Execute postscripts listed in the postscripts table or 
         parameters.
+
     [-c|--cmdlineonly] Only use AIX software maintenance information 
         provided on the command line. (AIX only)
+
     [-s|--sn] Set the server information stored on the nodes.
+
+    [-A|--updateallsw] Install or update all software contained in the source 
+        directory. (AIX only)
+
+    [-d <alt_source_dir>] Used to indicate a source directory other than
+        the standard lpp_source directory specified in the xCAT osimage 
+        definition.  (AIX only)
+
     [script1,script2,...] A comma separated list of postscript names. 
         If omitted, all the post scripts defined for the nodes will be run.
+
     [attr=val [attr=val...]]  Specifies one or more 'attribute equals value' 
         pairs, separated by spaces. (AIX only)",
 
