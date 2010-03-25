@@ -18,7 +18,7 @@ fi
 if [ -z "$1" ]; then
   set `whoami`
 fi
-# if diretory is not supplied then just use home
+# if directory is not supplied then just use home
 if [ -z "$2" ]; then
    CNA="$*"
 #  getent doesn't exist on AIX
@@ -43,6 +43,13 @@ if [ -e $USERHOME/.xcat ]; then
   fi
   rm -rf $USERHOME/.xcat
 fi
+# remove user from index
+echo $CNA
+index=`grep $CNA /etc/xcat/ca/index  |  cut -f4  2>&1`
+echo $index
+for id  in $index; do
+  openssl ca -config /etc/xcat/ca/openssl.cnf -revoke /etc/xcat/ca/certs/$id.pem
+done
 mkdir -p $USERHOME/.xcat
 cd $USERHOME/.xcat
 openssl genrsa -out client-key.pem 2048
@@ -70,4 +77,3 @@ find $USERHOME/.xcat -type d -exec chmod 700 {} \;
 chmod 644 $USERHOME/.xcat/ca.pem
 chmod 755 $USERHOME/.xcat
 cd -
-
