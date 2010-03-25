@@ -241,17 +241,21 @@ unless ($onlyinitrd) {
 
    my %pkg_hash=get_package_names($pkglist);
    my $index=1;
-   foreach (keys(%pkg_hash)) {
-       if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
-       my $pa=$pkg_hash{$_};
-       $pkgnames .= " " . join(' ', @$pa);
-   }
+   my $pass;
+   foreach $pass (keys(%pkg_hash)) {
+       my $pkgnames = "";
+       foreach (keys(%{$pkg_hash{$pass}})) {
+           if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
+           my $pa=$pkg_hash{$pass}{$_};
+           $pkgnames .= " " . join(' ', @$pa);
+       }
 
-   print "$yumcmd $pkgnames\n";
-   my $rc = system("$yumcmd $pkgnames");
-   if ($rc) { 
-      print "yum invocation failed\n";
-      exit 1;
+       print "$yumcmd $pkgnames\n";
+       my $rc = system("$yumcmd $pkgnames");
+       if ($rc) { 
+          print "yum invocation failed\n";
+          exit 1;
+       }
    }
 
    #Now let's handle extra packages
@@ -263,17 +267,19 @@ unless ($onlyinitrd) {
     if ($otherpkglist) {
        %extra_hash=get_package_names($otherpkglist);
     }
-    my $extrapkgnames; 
+    my %extrapkgnames; 
 
     if (keys(%extra_hash) > 0) {
       open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
       my $index=1;
-      foreach (keys(%extra_hash)) {
+      foreach $pass (keys(%extra_hash)) {
+        foreach (keys(%{$extra_hash{$pass}})) {
 	  if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
 	  print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
 	  $index++;
-	  my $pa=$extra_hash{$_};
-	  $extrapkgnames .= " " . join(' ', @$pa);
+	  my $pa=$extra_hash{$pass}{$_};
+	  $extrapkgnames{$pass} .= " " . join(' ', @$pa);
+        }
       }
       close($yumconfig);
       $index--;
@@ -285,56 +291,57 @@ unless ($onlyinitrd) {
 	  $yumcmd .= "--enablerepo=otherpkgs$_ ";
       } 
 
+      foreach $pass (keys(%extra_hash)) {
       #remove the packages that are specified in the otherpkgs.list files with leading '-'
-      my $yumcmd_remove= "$yumcmd erase ";
-      if (exists ($extra_hash{'PRE_REMOVE'})) {
-	  my $pa=$extra_hash{'PRE_REMOVE'};
-	  my $rm_packges= join(' ', @$pa);
-	  if ($rm_packges) {
-              print "$yumcmd_remove $rm_packges\n";
-	      $rc = system("$yumcmd_remove $rm_packges");
-	  }
-      }
+          my $yumcmd_remove= "$yumcmd erase ";
+          if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
+	      my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
+	      my $rm_packges= join(' ', @$pa);
+	      if ($rm_packges) {
+                  print "$yumcmd_remove $rm_packges\n";
+	          $rc = system("$yumcmd_remove $rm_packges");
+	      }
+          }
 
 
-      #enable extra package repo
-      my $yumcmd_base = $yumcmd;
-      $yumcmd .= "install ";
-      #append extra pkg names to yum command 
-      if ($extrapkgnames) {
-	  $yumcmd .= " $extrapkgnames ";
-      }   
-      $yumcmd =~ s/ $/\n/;
+      #install extra packages
+          my $yumcmd_base = $yumcmd;
+          $yumcmd .= "install ";
+          #append extra pkg names to yum command 
+          if ($extrapkgnames{$pass}) {
+	      $yumcmd .= " $extrapkgnames{$pass} ";
+          }   
+          $yumcmd =~ s/ $/\n/;
     
-      #debug
-      print "yumcmd=$yumcmd\n";
-      #my $repo=`cat /tmp/genimage.$$.yum.conf`;
-      #print "repo=$repo";
+          #debug
+          print "yumcmd=$yumcmd\n";
+          #my $repo=`cat /tmp/genimage.$$.yum.conf`;
+          #print "repo=$repo";
       
-      my $rc = system($yumcmd);
-      if ($rc) { 
-	  print "yum invocation failed\n";
-	  exit 1;
-      }
+          my $rc = system($yumcmd);
+          if ($rc) { 
+	      print "yum invocation failed\n";
+	      exit 1;
+          }
 	
       #remove the packages that are specified in the otherpkgs.list files with leading '--'
-      if (exists ($extra_hash{'POST_REMOVE'})) {
-	  my $pa=$extra_hash{'POST_REMOVE'};
-	  my $rm_packges= join(' ', @$pa);
-	  if ($rm_packges) {
-              print "$yumcmd_remove $rm_packges\n";
-	      $rc = system("$yumcmd_remove $rm_packges");
-	  }
+          if (exists ($extra_hash{$pass}{'POST_REMOVE'})) {
+	      my $pa=$extra_hash{$pass}{'POST_REMOVE'};
+	      my $rm_packges= join(' ', @$pa);
+	      if ($rm_packges) {
+                  print "$yumcmd_remove $rm_packges\n";
+	          $rc = system("$yumcmd_remove $rm_packges");
+	      }
+          }
       }
-
-      # run zypper update to update any installed rpms
-      # needed when running genimage again after updating software in repositories
-      my $yumcmd_update = $yumcmd_base . " update  ";
-      $rc = system("$yumcmd_update");
-      # ignore any return code
-
-
    }
+
+   # run yum update to update any installed rpms
+   # needed when running genimage again after updating software in repositories
+   my $yumcmd_update = $yumcmd_base . " update  ";
+   $rc = system("$yumcmd_update");
+   # ignore any return code
+
 
    postscripts(); #run 'postscripts'
 }
@@ -1119,6 +1126,7 @@ sub get_package_names {
      
         #print "pkgtext=$pkgtext\n";
 	my @tmp=split(',', $pkgtext);
+        my $pass=1;
 	foreach (@tmp) {
 	    my $idir;
 	    if (/^--/) {	
@@ -1127,15 +1135,21 @@ sub get_package_names {
             } elsif  (/^-/) {
 		$idir="PRE_REMOVE"; #line starts with single - means the package should be removed before otherpkgs are installed
 		s/^-//;
+            } elsif  (/^#NEW_INSTALL_LIST#/) {
+                $pass++;
+                next;
+            } elsif  (/^#/) {
+                # ignore all other comment lines
+                next;
             } else { 
 		$idir=dirname($_); 
 	    }
 	    my $fn=basename($_);
-	    if (exists($pkgnames{$idir})) {
-		my $pa=$pkgnames{$idir};
+	    if (exists($pkgnames{$pass}{$idir})) {
+		my $pa=$pkgnames{$pass}{$idir};
 		push(@$pa, $fn);
 	    } else {
-		$pkgnames{$idir}=[$fn];
+		$pkgnames{$pass}{$idir}=[$fn];
 	    }
 	}
      }
