@@ -4,13 +4,13 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 =head1 SYNOPSIS
 
-B<updatenode> I<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-S>|B<--sw>] [B<-P>|B<--scripts> [I<script1,script2...>]] [B<-c>|B<--cmdlineonly>] [I<attr=val> [I<attr=val...>]]
+B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-S>|B<--sw>] [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<attr=val> [B<attr=val...>]]
 
-B<updatenode> I<noderange> [B<-k>|B<--security> [B<--user>] [B<--devicetype>]]
+B<updatenode> B<noderange> [B<-k>|B<--security> [B<--user>] [B<--devicetype>]]
 
-B<updatenode> I<noderange> [B<-V>|B<--verbose>] [I<script1,script2...>]
+B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<script1,script2...>]
 
-B<updatenode> [B<-h>|B<--help>|B<-v>|B<--version>]
+B<updatenode> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
@@ -33,7 +33,7 @@ Run postscripts.
 
 =item 4
 
-Update the ssh keys and host keys for the service nodes and compute nodes; 
+Update the ssh keys and host keys for the service nodes and compute nodes;
 Update the ca and credentials for the service nodes.
 
 =back
@@ -47,8 +47,8 @@ specify the "-F" flag.   If you want to synchronize files and update
 software you would specify the "-F" and "-S" flags. See the descriptions 
 of these flags and examples below.
 
-The flag "-k" (--security) can NOT be used together with "-S", "-P", and "-F" flags.
-And the flag "--user" and "--devicetype" ONLY can be used with "-k" flag to 
+The flag "-k" (--security) can NOT be used together with "-S", "-P", and "-F"
+flags. The flag "--user" and "--devicetype" ONLY can be used with "-k" flag to
 update the ssh keys for specific device.
 
 Note: In a large cluster environment the updating of nodes in an ad hoc 
@@ -245,73 +245,93 @@ B<For AIX systems:>
 
 Note: The updatenode command is used to update AIX diskfull nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
 
+You can update the software on AIX nodes using AIX installp filesets, RPM 
+packages or AIX interim fix manager packages. The updatenode command will 
+handle the underlying calls to the appropriate AIX commands.  The AIX
+installp, rpm and emgr commands will be used.  See the AIX documentation for 
+more details on these commands.
+
 The software packages that you wish to install on the nodes must be 
-copied to the appropriate directory locations in the NIM lpp_source 
-resource associated with the node. A simple way to do this is to use 
+copied to a directory location that can be exported and mounted on the
+node.  This should normally be the appropriate directory location in 
+the NIM lpp_source resource corresponding to the operating system image
+that was used to install the node.  You can, however, specify a different
+directory location by specifying the "-d" option on the command line.
+
+Note: To find the correct lpp_source for the node get the name of
+the xCAT osimage definition from the "provmethod" attribute of the xCAT node
+definition and then get the name of the lpp_source resource from the
+osimage definition. You can use the xCAT lsdef command to display the node 
+and osimage definitions.
+
+A simple way to copy software to the lpp_source resource is to use 
 the "nim -o update" command.  For example, assuming the software is in 
 /images and the lpp_source resource used for this node is named "mylpp" then 
 you could run:
 
 B<nim -o update -a packages=all -a source=/images mylpp>
 
-Note: To find the correct lpp_source for the node get the name of 
-the xCAT osimage definition from the "provmethod" attribute of the xCAT node
-definition and then get the name of the lpp_source resource from the 
-osimage definition. You can use the xCAT lsdef command to display the node and osimage definitions.
-
 The software you wish to install or update must be specified to
 the updatenode command.  There are two methods that may be used to specify 
 the software to update.
 
-The first is to set the "installp_bundle" and/or the "otherpkgs" attributes 
-of the xCAT osimage definition you are using for the node.  
+The first is to specify the software in the osimage definition 
+that is included in the node definiton.  In this case the software 
+to install would be whatever is provided in the "installp_bundle" and/or
+"otherpkgs" attributes of the xCAT osimage definition.
 
-The second is to specify one or both of these attribute values on the 
-updatenode command line.
+The second method is to specify the software to install on the updatenode
+command line.  You can do this by providing either the "otherpkgs" or
+"installp_bundle" attributes or the "-A" flag.
 
 Using the first method provides a record of what was updated which is stored
 in the xCAT database. This can be useful when managing a large cluster 
 environment.  The second method is more "ad hoc" but also can be more flexible.
 
 The updatenode command will either use the information in the database or the
-information on the command line - BUT NOT BOTH.  If you specify infornmation
+information on the command line - BUT NOT BOTH.  If you specify information
 on the command line it will use that, otherwise it will use what is in the 
 database.
 
 The "installp_bundle" attribute value may be set to a comma separated list of
 one or more NIM installp_bundle resource names.  These NIM resources must
 be created using standard NIM interfaces. See the AIX documentation for more 
-information on creating NIM resources. Also, there are examples for creating installp_bundle resources in several of the xCAT for AIX documents.
+information on creating NIM resources. Also, there are examples for creating 
+installp_bundle resources in several of the xCAT for AIX documents.
 
 The "otherpkgs" attribute value may be set to a comma separated list of 
-installp filesets or RPM packages.
-
-When specifying RPM names you must use a prefix of "R:".  (ex. "R:foo.rpm").
+installp filesets, RPM packages or epkg (AIX interim fix package) files.
 
 Along with the names of the software to install you may also provide the
-specific installp and rpm flags you want used when those commands are run
-on the nodes.  Use the "installp_flags" and "rpm_flags" attributes to provide
-this information.  Make sure you specify the exact string you want used in
-quotes.  For example: I<installp_flags="-apXY" rpm_flags="-i --nodeps">.
+specific installp, rpm, and emgr flags you want used when those commands 
+are run on the nodes.  Use the "installp_flags", "rpm_flags", and "emgr_flags"
+attributes to provide this information. Make sure you specify the exact 
+string you want used in quotes.  For example: 
+I<installp_flags="-apXY" rpm_flags="-i --nodeps" emgr_flags="-X">.  The 
+flags specified on the updatenode command line will replace the
+default values.
 
 The default value for installp_flags is "-agQX" and the default value for 
-rpm_flags is "-Uvh".
+rpm_flags is "-Uvh --replacepkgs". There is no default for the emgr command.  
+
+The underlying calls to the installp and emgr commands are both handled by
+creating a temporary file containing the list of software to install and 
+then using the "-f listfile" option. 
 
 When doing software maintenance on AIX nodes you may also find the "-c" 
 flag useful.  When you specify this flag on the updatenode command line
 the command will know to use the command line information ONLY, even if
 there is no software specified (i.e. It won't go look in the database.).  
-This option would be needed when using installp or rpm options that do not 
-require a list of software.
+This option would be needed when using installp, rpm or emgr options that 
+do not require a list of software.
 
-If you wish to see the output from the installp or rpm commands that are run
+If you wish to see the output from the installp, emgr or rpm commands 
 then you must specifiy "-V" on the updatenode command line.
 
 See the examples below for more details.
 
 When working in a hierarchical xCAT cluster the updatenode command will
-automatically take care of distributing the software to the 
-appropriate service nodes.
+distribute the software to the service nodes as needed.
 
 =back
 
@@ -356,7 +376,6 @@ automatically run on the node. However, if you want script1 and
 script2 to get invoked next time the nodes are deployed then make sure 
 to add them to the "postscripts" attribute in the database for the nodes. 
 
-
 =head2 Update security
 
 The basic functions of update security for nodes:
@@ -365,7 +384,7 @@ The basic functions of update security for nodes:
 
 =item *
 
-Setup the ssh keys for the target nodes. It makes the management 
+Setup the ssh keys for the target nodes. It makes the management
 node and service node access the target nodes without password.
 
 =item *
@@ -374,8 +393,8 @@ Redeliver the host keys to the target nodes.
 
 =item *
 
-Redeliver the ca and certificates files to the service node. 
-These files are used to authenticate the ssl connection between 
+Redeliver the ca and certificates files to the service node.
+These files are used to authenticate the ssl connection between
 xcatd's of management node and service node.
 
 =item *
@@ -386,64 +405,66 @@ Remove the entries of target nodes from known_hosts file.
 
 I<Set up the SSH keys>
 
-A password for the user who is running this command is needed to setup 
-the ssh keys. This user must have the same uid and gid as 
+A password for the user who is running this command is needed to setup
+the ssh keys. This user must have the same uid and gid as
 the userid on the target node where the keys will be setup.
 
 If the current user is root, roots public ssh keys will be put in the
 authorized_keys* files under roots .ssh directory on the node(s).
-If the current user is non-root, the user must be in the policy table 
+If the current user is non-root, the user must be in the policy table
 and have credential to run the xdsh command.
 The non-root users public ssh keys and root's public ssh keys will be put in
-the authorized_keys* files under the non-root users .ssh directory on the node(s).
+the authorized_keys* files under the non-root users .ssh directory on the node(s
+).
 
 Other device types, such as IB switch, are also supported.  The
 device should be defined as a node and nodetype should be defined
 as switch before connecting.
+
 The flags B<--user> and B<--devicetype> can be used to specify the 'user'
 and configuration file to set up the ssh keys for the specific device.
 
 I<Handle the hierarchical scenario>
 
-When update security files for the node which is served by a service node, 
+When update security files for the node which is served by a service node,
 the service node will be updated automatically first, and then the target
 node.
 
 The ca and certificates files are needed for service node to authenticate
-the ssl connections between the xCAT client and xcatd on the service node, 
+the ssl connections between the xCAT client and xcatd on the service node,
 and the xcatd's between service node and management node. The files in the
-directories /etc/xcat/cert/ and ~/.xcat/ will be updated. 
+directories /etc/xcat/cert/ and ~/.xcat/ will be updated.
 
-Since the certificates have the validity time, the ntp service is recommended to be
-set up between management node and service node. 
+Since the certificates have the validity time, the ntp service is recommended 
+to be set up between management node and service node.
 
 Simply running following command to update the security keys:
-    B<updatenode> I<noderange> -k
+	 B<updatenode> I<noderange> -k
 
 
 =head1 PARAMETERS
 
 =over 10
 
-=item I<noderange>
+=item B<noderange>
 
 A set of comma delimited xCAT node names
 and/or group names. See the xCAT "noderange"
 man page for details on additional supported 
 formats.
 
-=item I<script1,script2...>
+=item B<script1,script2...>
 
 A comma-separated list of script names. 
 The scripts must be executable and copied 
 to the /install/postscripts directory.
 
-=item [I<attr=val> [I<attr=val...>]]
+=item [B<attr=val> [B<attr=val...>]]
 
 Specifies one or more "attribute equals value" pairs, separated by spaces.
 Attr=val pairs must be specified last on the command line.  The currently
 supported attributes are: "installp_bundle", "otherpkgs", "installp_flags", 
-and "rpm_flags".  These attribute are only valid for AIX software
+"emgr_flags" and "rpm_flags".  These attribute are only valid for AIX software
 maintenance support.
 
 =back
@@ -452,13 +473,17 @@ maintenance support.
 
 =over 10
 
-=item -c|cmdlineonly
+=item B<-A|--updateallsw>
+
+Install or update all software contained in the source directory. (AIX only)
+
+=item B<-c|cmdlineonly>
 
 Specifies that the updatenode command should only use software maintenance
 information provided on the command line.  This flag is only valid when
 using AIX software maintenance support.
 
-=item --devicetype
+=item B<--devicetype>
 
 Specify a user-defined device type that references the location
 of relevant device configuration file. The devicetype value must
@@ -469,40 +494,48 @@ file location if devicetype is specified as IBSwitch::Qlogic
 
 This flag ONLY can be used with -k and --user.
 
-=item -F|--sync
+=item B<-d alt_source_dir>
+
+Used to specify a source directory other than the standard lpp_source directory specified in the xCAT osimage definition.  (AIX only)
+
+=item B<-F|--sync>
 
 Specifies the file synchronization should be
 performed on the nodes.  rsync and ssh must
 be installed and configured on the nodes. 
 
-=item -h|--help
+=item B<-h|--help>
 
 Display usage message.
 
-=item -k|--security
+=item B<-k|--security>
 
-Update the ssh keys and host keys for the service nodes and compute nodes; 
+Update the ssh keys and host keys for the service nodes and compute nodes;
 Update the ca and credentials to the service nodes.
 
-=item -P|--scripts
+=item B<-P|--scripts>
 
 Specifies that postscripts should be run on the nodes.
 
-=item -S|--sw
+=item B<-S|--sw>
 
 Specifies that node software should be updated.
 
-=item --user
+=item B<-s|--sn>
+
+Set the server information stored on the nodes.
+
+=item B<--user>
 
 Specifies a remote user name to login a specific device.
 
 This flag ONLY can be used with -k and --devicetype.
 
-=item -v|--version
+=item B<-v|--version>
 
 Command Version.
 
-=item -V|--verbose
+=item B<-V|--verbose>
 
 Verbose mode.
 
@@ -580,11 +613,13 @@ B<updatenode clstrn01 -S>
 =item 7
 
 To update the AIX node named "xcatn11" using the "installp_bundle" and/or
-"otherpkgs" attribute values stored in the xCAT database.  Use the default installp ("-agQX") and rpm ("-Uvh") flags.
+"otherpkgs" attribute values stored in the xCAT database.  Use the default installp, rpm and emgr flags.
 
-B<updatenode xcatn11 -S>
+B<updatenode xcatn11 -V -S>
 
-Note: The xCAT "xcatn11" node definition points to an xCAT osimage definition which contains the "installp_bundle" and "otherpkgs" attributes.
+Note: The xCAT "xcatn11" node definition points to an xCAT osimage definition 
+which contains the "installp_bundle" and "otherpkgs" attributes as well as
+the name of the NIM lpp_source resource.
 
 =item 8
 
@@ -610,23 +645,51 @@ Note: Using the "-V" flag with multiple nodes may result in a large amount of ou
 
 =item 11
 
+To uninstall the rsync rpm that was installed in the previous example.
+
+B<updatenode xcatn11 -V -S otherpkgs="R:rsync-2.6.2-1" rpm_flags="-e">
+
+=item 12
+
 Update the AIX node "node01" using the software specified in the NIM "sslbnd" and "sshbnd" installp_bundle resources and the "-agQXY" installp flags.
 
 B<updatenode node01 -V -S installp_bundle="sslbnd,sshbnd" installp_flags="-agQXY">
 
-=item 12
+=item 13
 
 To get a preview of what would happen if you tried to install the "rsct.base" fileset on AIX node "node42".  (You must use the "-V" option to get the full output from the installp command.)
 
 B<updatenode node42 -V -S otherpkgs="rsct.base" installp_flags="-apXY">
 
-=item 13
+=item 14
 
 To check what rpm packages are installed on the AIX node "node09". (You must use the "-c" flag so updatenode does not get a list of packages from the database.)
 
 B<updatenode node09 -V -c -S rpm_flags="-qa">
 
-=item 14
+=item 15
+
+To install all software updates contained in the /images directory.
+
+B<updatenode node27 -V -S -A -d /images>
+
+Note:  Make sure the directory is exportable and that the permissions are set
+correctly for all the files.  (Including the .toc file in the case of
+installp filesets.)
+
+=item 16
+
+Install the interim fix package located in the /efixes directory.
+
+B<updatenode node29 -V -S -d /efixes otherpkgs=IZ38930TL0.120304.epkg.Z>
+
+=item 17
+
+To uninstall the interim fix that was installed in the previous example.
+
+B<updatenode xcatsn11 -V -S -c emgr_flags="-r -L IZ38930TL0">
+
+=item 18
 
 To update the security keys for the node "node01"
 
