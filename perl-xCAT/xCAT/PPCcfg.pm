@@ -298,16 +298,17 @@ sub passwd {
             while ( my ($cec,$h) = each(%$hash) ) {
                 while ( my ($node,$d) = each(%$h) ) {
                     my $type = @$d[4];
-                    my $data = xCAT::PPCcli::chsyspwd( $exp, $usr, $type, $cec, $newpasswd, $passwd );
+                    my $data = xCAT::PPCcli::chsyspwd( $exp, $usr, $type, $cec, $passwd, $newpasswd );
                     my $Rc = shift(@$data);
-                    $usr =~ s/^access$/HMC/g;
-                    push @$result, [$node,"$usr: @$data[0]",$Rc];
+                    my $usr_back = $usr;
+                    $usr_back =~ s/^access$/HMC/g;
+                    push @$result, [$node,"$usr_back: @$data[0]",$Rc];
     
                     ##################################
                     # Write the new password to table
                     ##################################
                     if ( $Rc == SUCCESS ) {
-                        xCAT::PPCdb::update_credentials( $node, $type, $usr, $newpasswd );
+                        xCAT::PPCdb::update_credentials( $node, $type, $usr_back, $newpasswd );
                     }
                 }
             }
