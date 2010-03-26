@@ -4,7 +4,7 @@ B<rpower> - remote power control of nodes
 
 =head1 SYNOPSIS
 
-B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<reset>|B<boot>} [-m table.column==expectedstatus [-m table.column=~expectedstatus]] [-t timeout] [-r retrycount]
+B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<onstandby>|B<off>|B<suspend>|B<stat>|B<state>|B<reset>|B<boot>} [-m table.column==expectedstatus [-m table.column=~expectedstatus]] [-t timeout] [-r retrycount]
 
 B<rpower> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -43,6 +43,10 @@ Attempt to request clean shutdown of OS (may not detect failures in completing c
 =item B<off>
 
 Turn power off.
+
+=item B<suspend>
+
+Suspend the target nodes execution
 
 =item B<stat>|B<state>
 
