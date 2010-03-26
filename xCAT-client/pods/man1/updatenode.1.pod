@@ -38,8 +38,9 @@ Update the ca and credentials for the service nodes.
 
 =back
 
-The default behavior of updatenode will be to attempt to perform all three
-types of updates.  If you wish to limit updatenode to one or two specific 
+The default behavior of updatenode will be to attempt to perform the update 
+which doing by "-S", "-P" and "-F" flags.
+If you wish to limit updatenode to one or two specific 
 actions you can use combinations of the "-S", "-P", and "-F" flags.
 
 For example, If you just want to synchronize configuration file you could
