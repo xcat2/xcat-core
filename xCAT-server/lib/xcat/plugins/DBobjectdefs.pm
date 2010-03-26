@@ -200,7 +200,8 @@ sub processArgs
         @ARGV = @{$::args};
     } else {
         if ($::command eq "lsdef") {
-            push @ARGV, "-a";
+            push @ARGV, "-t";
+            push @ARGV, "node";
             push @ARGV, "-s";
         } else {
             return 2;
@@ -209,7 +210,8 @@ sub processArgs
 
     if ($::command eq "lsdef") {
         if (scalar(@ARGV) == 1 && $ARGV[0] eq "-l") {
-            push @ARGV, "-a";
+            push @ARGV, "-t";
+            push @ARGV, "node";
         }
     }
 
@@ -2786,7 +2788,7 @@ sub defls
                         }
                         else
                         {
-                            if ($#::clobjtypes > 0)
+                            if (scalar(@::clobjtypes) > 0)
                             {
                                 push (@{$rsp_info->{data}}, "$obj  ($defhash{$obj}{'objtype'})");
                             }
