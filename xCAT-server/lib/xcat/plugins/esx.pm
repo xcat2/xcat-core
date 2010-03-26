@@ -947,7 +947,7 @@ sub power {
                 }
             }
             if ($subcmd =~ /on/) {
-                if ($currstat eq 'off') {
+                if ($currstat eq 'off' or $currstat eq 'suspend') {
                     if (not $args{vmview}) { #We are asking to turn on a system the hypervisor
                         #doesn't know, attempt to register it first
                         register_vm($hyp,$node,undef,\&power,\%args);
@@ -965,7 +965,7 @@ sub power {
                     $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
                     $running_tasks{$task}->{data} = { node => $node, successtext => $intent.'on', forceon=>$forceon };
                 } else {
-                    sendmsg("on",$node);
+                    sendmsg($currstat,$node);
                 }
             } elsif ($subcmd =~ /off/) {
                 if ($currstat eq 'on') {
@@ -974,6 +974,16 @@ sub power {
                     $running_tasks{$task}->{callback} = \&generic_task_callback;
                     $running_tasks{$task}->{hyp} = $args{hyp}; 
                     $running_tasks{$task}->{data} = { node => $node, successtext => 'off' }; 
+                } else {
+                    sendmsg($currstat,$node);
+                }
+            } elsif ($subcmd =~ /suspend/) {
+                if ($currstat eq 'on') {
+                    $task = $args{vmview}->SuspendVM_Task();
+                    $running_tasks{$task}->{task} = $task;
+                    $running_tasks{$task}->{callback} = \&generic_task_callback;
+                    $running_tasks{$task}->{hyp} = $args{hyp}; 
+                    $running_tasks{$task}->{data} = { node => $node, successtext => 'suspend' }; 
                 } else {
                     sendmsg("off",$node);
                 }
