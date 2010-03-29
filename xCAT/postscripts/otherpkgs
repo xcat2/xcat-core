@@ -1,4 +1,4 @@
-#!/bin/sh 
+#!/bin/sh  
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -85,10 +85,12 @@ else
         do
             result=`zypper sd $x`
         done
-	zypper refresh
+	zypper --non-interactive refresh
         repo_base="/tmp"
     fi
 fi
+
+dhcpcd -n eth0
 
 
 repo_path=()
@@ -189,7 +191,7 @@ do
 		    result=`zypper sa -c $REPOFILE` 
 		fi	
 		
-		result=`zypper refresh xcat-otherpkgs$index 2>&1`
+		result=`zypper --non-interactive refresh xcat-otherpkgs$index 2>&1`
 		if [ $? -eq 0 ]; then  
 		    rc=0
 		    repo_path[${#repo_path[*]}]=$path
