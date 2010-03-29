@@ -26,8 +26,13 @@ use Getopt::Long;
  Linux.
  A few functions are done not based on the servicenode table. For example:
 
-  mounts /install if site.installloc set
   on a Linux Service Node
+      if site.installloc set
+          mounts /install
+      if site.installloc not set
+          creates /install if needed
+          sets up nfs
+          exports /install 
 
 #-------------------------------------------------------
 
@@ -38,7 +43,7 @@ If xcat daemon reload then exit
 
 Check to see if on a Service Node
 If Linux
-   Call  mountInstall
+   Call  setupInstallloc
 If this is a service Node
   Read Service Node Table
    For each service returned to be setup
@@ -50,9 +55,9 @@ else if on the Management Node
 
 #-------------------------------------------------------
 
-sub handled_commands
-{ return; }
-sub init_plugin 
+sub handled_commands { return; }
+
+sub init_plugin
 {
     my $doreq = shift;
 
@@ -81,15 +86,15 @@ sub init_plugin
         {
 
             # service needed on Linux Service Node
-            $service = "mountInstall";
-            $rc      = &mountInstall($nodename);           # mount install
+            $service = "setupInstallloc";
+            $rc      = &setupInstallloc($nodename);
             if ($rc == 0)
             {
                 xCAT::Utils->update_xCATSN($service);
             }
             $service = "ssh";
 
-            $rc = &setup_SSH();                            # setup SSH
+            $rc = &setup_SSH();    # setup SSH
             if ($rc == 0)
             {
                 xCAT::Utils->update_xCATSN($service);
@@ -117,7 +122,6 @@ sub init_plugin
                     }
 
                 }
-
 
                 $service = "ftpserver";
                 if (grep(/$service/, @servicelist))
@@ -159,14 +163,13 @@ sub init_plugin
                 if (grep(/$service/, @servicelist))
                 {
 
-                    $rc = &setup_TFTP($nodename,$doreq);    # setup TFTP
+                    $rc = &setup_TFTP($nodename, $doreq);    # setup TFTP
                     if ($rc == 0)
                     {
                         xCAT::Utils->update_xCATSN($service);
                     }
 
                 }
-
 
             }    # end Linux only
 
@@ -193,11 +196,12 @@ sub init_plugin
                 {
                     xCAT::Utils->update_xCATSN($service);
                 }
-                # The nfsserver field in servicenode table 
+
+                # The nfsserver field in servicenode table
                 # will also setup http service for Linux
                 if (xCAT::Utils->isLinux())
                 {
-                    $rc = &setup_HTTP($nodename);    # setup HTTP 
+                    $rc = &setup_HTTP($nodename);    # setup HTTP
                     if ($rc == 0)
                     {
                         xCAT::Utils->update_xCATSN('http');
@@ -205,10 +209,12 @@ sub init_plugin
                 }
 
             }
+
             #
-            # setup dhcp only on Linux and last 
+            # setup dhcp only on Linux and last
             #
-            if (xCAT::Utils->isLinux())  {
+            if (xCAT::Utils->isLinux())
+            {
                 my $service = "dhcpserver";
                 if (grep(/$service/, @servicelist))
                 {
@@ -221,7 +227,6 @@ sub init_plugin
 
                 }
             }
-
 
             # done now in setupntp postinstall script, but may change
             #$service = "ntpserver";
@@ -249,7 +254,8 @@ sub init_plugin
         # $rc = &setup_NTPmn();  # setup NTP on the Management Node
         if (xCAT::Utils->isLinux())
         {
-        	print "\n";		# make OK prints look better.  Only need to do this for the 1st service.
+            print "\n"
+              ; # make OK prints look better.  Only need to do this for the 1st service.
             $rc = &setup_FTP();    # setup FTP
         }
     }
@@ -272,21 +278,29 @@ sub process_request
 
 #-----------------------------------------------------------------------------
 
-=head3 mountInstall
+=head3 setupInstallloc
 
     if site.installloc attribute set
-	  mount the install directory
+          If the installdir directory is exported, unexport it
+	      mount the installdir directory from the installloc location
+    if site.installoc not set and we are on a Stateful install 
+          If installdir mounted, unmount it 
+          If installdir directory not created,  create it
+          setup NFS
+          export the installdir directory
+          
 
 =cut
 
 #-----------------------------------------------------------------------------
-sub mountInstall
+sub setupInstallloc
 {
     my ($nodename) = @_;
     my $rc         = 0;
     my $installdir = xCAT::Utils->getInstallDir();
-    my $installloc = xCAT::Utils->getInstallDir();
+    my $installloc;
     my $newinstallloc;
+
     # read DB for nodeinfo
     my $master;
     my $os;
@@ -295,7 +309,7 @@ sub mountInstall
 
     my $retdata = xCAT::Utils->readSNInfo($nodename);
     if (ref $retdata and $retdata->{'arch'})
-    {                               # no error
+    {    # no error
         $master = $retdata->{'master'};    # management node
         $os     = $retdata->{'os'};
         $arch   = $retdata->{'arch'};
@@ -312,8 +326,8 @@ sub mountInstall
                 my ($hostname, $newinstallloc) = split ":", $installlocation[0];
                 if ($hostname)
                 {    # hostname set in /installloc attribute
-                    $master = $hostname;    # set name for mount
-                    $installloc = $newinstallloc; #set path for mount point
+                    $master     = $hostname;         # set name for mount
+                    $installloc = $newinstallloc;    #set path for mount point
                 }
             }
             else
@@ -322,48 +336,190 @@ sub mountInstall
             }
         }
         else
-        {    # if no install location then we do not mount
+        {    # if no installloc attribute then we do not mount
             $nomount = 1;
         }
 
-        if ($nomount == 0)
-        {    # mount the install directory
+        if ($nomount == 0)    # we do have installloc attribute
+        {
+
+            # mount the install directory from the installloc location
+            # make the directory to mount on
             if (!(-e $installdir))
             {
                 mkpath($installdir);
+            }
+
+            # check if exported, and unexport it
+            my $cmd = "/bin/cat /etc/exports | grep '$installdir'";
+            my $outref = xCAT::Utils->runcmd("$cmd", -1);
+            if ($::RUNCMD_RC == 0)    # it is exported
+            {
+
+                # remove from /etc/exports
+                my $sedcmd = "sed \\";
+                $sedcmd .= "$installdir/d  /etc/exports > /etc/exports.tmp";
+                system $sedcmd;
+                if ($? > 0)
+                {                     # error
+                    xCAT::MsgUtils->message("S", "Error $cmd");
+                }
+                else
+                {
+                    $cmd = "cp /etc/exports.tmp /etc/exports";
+                    system $cmd;
+                    if ($? > 0)
+                    {                 # error
+                        xCAT::MsgUtils->message("S", "Error $cmd");
+                    }
+                }
+
+                # restart nfs
+                &setup_NFS($nodename);
+
+                $cmd = " exportfs -a";
+                system $cmd;
+                if ($? > 0)
+                {                     # error
+                    $rc = 1;
+                    xCAT::MsgUtils->message("S", "Error $cmd");
+                }
+
             }
 
             # check to see if install  already mounted
 
             my $mounted = xCAT::Utils->isMounted($installdir);
             if ($mounted == 0)
-            {                                     # not mounted
+            {                         # not mounted
 
                 # need to  mount the directory
                 my $cmd = "mount -o rw,nolock $master:$installloc $installdir";
                 system $cmd;
                 if ($? > 0)
-                {                                 # error
+                {                     # error
                     $rc = 1;
                     xCAT::MsgUtils->message("S", "Error $cmd");
                 }
             }
         }
 
+        else
+        {
+
+        # installloc not set so we will export /install on the SN, if Stateful
+            if (xCAT::Utils->isStateful())
+            {
+
+                # no installloc attribute, create and export installdir
+                # check to see if installdir is mounted
+                my $mounted = xCAT::Utils->isMounted($installdir);
+                if ($mounted == 1)
+                {
+
+                    # need to  unmount the directory
+                    my $cmd = "umount $installdir";
+                    system $cmd;
+                    if ($? > 0)
+                    {    # error
+                        $rc = 1;
+                        xCAT::MsgUtils->message("S", "Error $cmd");
+                    }
+
+                }
+
+                # if it does not exist,need to make the installdir directory
+                if (!(-e $installdir))
+                {
+                    mkpath($installdir);
+                }
+
+                # export the installdir
+                #
+                #  add /install to /etc/exports - if needed
+                #
+
+                my $cmd = "/bin/cat /etc/exports | grep '$installdir'";
+                my $outref = xCAT::Utils->runcmd("$cmd", -1);
+                my $changed_exports;
+                if ($::RUNCMD_RC != 0)
+                {
+
+                    # ok - then add this entry
+                    my $cmd =
+                      "/bin/echo '$installdir *(rw,no_root_squash,sync)' >> /etc/exports";
+                    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        xCAT::MsgUtils->message('S',
+                                     "Could not update the /etc/exports file.");
+                    }
+                    else
+                    {
+                        $changed_exports++;
+                    }
+                }
+
+                if ($changed_exports)
+                {
+
+                    # restart nfs
+                    &setup_NFS($nodename);
+
+                    my $cmd = "/usr/sbin/exportfs -a";
+                    my $outref = xCAT::Utils->runcmd("$cmd", 0);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        xCAT::MsgUtils->message('S', "Error with $cmd.");
+                    }
+
+                }
+            }
+        }
     }
     else
-    {                                             # error reading Db
+    {    # error reading Db
         $rc = 1;
     }
-    if ($rc == 0 && $nomount == 0)
+    if ($rc == 0)
     {
 
-        # update fstab to mount on reboot
+        # update fstab
         my $cmd = "grep $master:$installloc $installdir  /etc/fstab  ";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
-            `echo "$master:$installloc $installdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+            if ($nomount == 0)    # then add the entry
+            {
+                `echo "$master:$installloc $installdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+
+            }
+        }
+        else
+        {                         # fstab entry there
+
+            if ($nomount == 1)
+            {
+
+                # then remove the entry
+                my $sedcmd = "sed \\";
+                $sedcmd .= "$installdir/d  /etc/fstab > /etc/fstab.tmp";
+                system $sedcmd;
+                if ($? > 0)
+                {                 # error
+                    xCAT::MsgUtils->message("S", "Error $cmd");
+                }
+                else
+                {
+                    $cmd = "cp /etc/fstab.tmp /etc/fstab";
+                    system $cmd;
+                    if ($? > 0)
+                    {             # error
+                        xCAT::MsgUtils->message("S", "Error $cmd");
+                    }
+                }
+
+            }
         }
     }
     return $rc;
@@ -398,10 +554,10 @@ sub setup_CONS
         # make the consever 8 configuration file
         my $cmdref;
         $cmdref->{command}->[0] = "makeconservercf";
-        $cmdref->{arg}->[0] = "-l";
+        $cmdref->{arg}->[0]     = "-l";
         $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
         $cmdref->{svboot}->[0]  = "yes";
-        no strict  "refs";
+        no strict "refs";
         my $modname = "conserver";
         ${"xCAT_plugin::" . $modname . "::"}{process_request}
           ->($cmdref, \&xCAT::Client::handle_response);
@@ -459,10 +615,10 @@ sub setup_DHCP
     }
     my $cmdref;
     $cmdref->{command}->[0] = "makedhcp";
-    $cmdref->{arg}->[0] = "-l";
+    $cmdref->{arg}->[0]     = "-l";
     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
     $cmdref->{arg}->[0]     = "-n";
-    no strict  "refs";
+    no strict "refs";
     my $modname = "dhcp";
     ${"xCAT_plugin::" . $modname . "::"}{process_request}
       ->($cmdref, \&xCAT::Client::handle_response);
@@ -474,7 +630,7 @@ sub setup_DHCP
     }
     $cmdref;
     $cmdref->{command}->[0] = "makedhcp";
-    $cmdref->{arg}->[0] = "-l";
+    $cmdref->{arg}->[0]     = "-l";
     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
     $cmdref->{arg}->[0]     = "-a";
 
@@ -509,7 +665,7 @@ sub setup_FTP
     # link installdir
     # restart the daemon
     my $installdir = xCAT::Utils->getInstallDir();
-    if (!(-e $installdir))          # make it
+    if (!(-e $installdir))         # make it
     {
         mkpath($installdir);
     }
@@ -598,13 +754,16 @@ sub setup_NFS
     my $rc = 0;
     if (xCAT::Utils->isLinux())
     {
-       my $os = xCAT::Utils->osver();
-       if ($os =~ /sles.*/) {
-         $rc = xCAT::Utils->startService("nfs");
-         $rc = xCAT::Utils->startService("nfsserver");
-       } else {
-         $rc = xCAT::Utils->startService("nfs");
-       }
+        my $os = xCAT::Utils->osver();
+        if ($os =~ /sles.*/)
+        {
+            $rc = xCAT::Utils->startService("nfs");
+            $rc = xCAT::Utils->startService("nfsserver");
+        }
+        else
+        {
+            $rc = xCAT::Utils->startService("nfs");
+        }
     }
     else
     {    #AIX
@@ -656,7 +815,7 @@ sub setup_NTPsn
         # create config file
         open(CFGFILE, ">$ntpcfg")
           or xCAT::MsgUtils->message('SE',
-                                  "Cannot open $ntpcfg for NTP update. \n");
+                                     "Cannot open $ntpcfg for NTP update. \n");
         print CFGFILE "server ";
         print CFGFILE $master;
         print CFGFILE "\n";
@@ -696,7 +855,7 @@ sub setup_NTPmn
             # add server names
             open(CFGFILE, ">$ntpcfg")
               or xCAT::MsgUtils->message('SE',
-                                  "Cannot open $ntpcfg for NTP update. \n");
+                                      "Cannot open $ntpcfg for NTP update. \n");
             my @servers = split ',', $ntpservers[0];
             foreach my $addr (@servers)
             {
@@ -865,12 +1024,12 @@ sub setup_TFTP
 {
     my ($nodename, $doreq) = @_;
 
-    my $rc         = 0;
+    my $rc = 0;
     my $cmd;
     my $master;
     my $os;
     my $arch;
-    my $XCATROOT = "/opt/xcat";         # default
+    my $XCATROOT = "/opt/xcat";    # default
 
     if ($ENV{'XCATROOT'})
     {
@@ -903,13 +1062,14 @@ sub setup_TFTP
 
         # read sharedtftp attribute from site table, if exist
         my $stab = xCAT::Table->new('site');
-        my $sharedtftp = $stab->getAttribs({key=>'sharedtftp'},'value');
-        if ($sharedtftp) 
+        my $sharedtftp = $stab->getAttribs({key => 'sharedtftp'}, 'value');
+        if ($sharedtftp)
         {
             $mountdirectory = $sharedtftp->{value};
             $mountdirectory =~ tr/a-z/A-Z/;    # convert to upper
         }
         $stab->close;
+
         # read tftpdir directory from database
         $tftpdir = xCAT::Utils->getTftpDir();
         if (!(-e $tftpdir))
@@ -935,45 +1095,58 @@ sub setup_TFTP
                     xCAT::MsgUtils->message("S", "Error $cmd");
                 }
             }
-        } else { #if not mounting, have to regenerate....
-            #first, run mknb to get nbfs and such going?
+        }
+        else
+        {                         #if not mounting, have to regenerate....
+                                  #first, run mknb to get nbfs and such going?
             my $cmdref;
             use xCAT_plugin::mknb;
-            for my $architecture ("ppc64","x86","x86_64") {
-                unless (-d "$::XCATROOT/share/xcat/netboot/$architecture") {
+            for my $architecture ("ppc64", "x86", "x86_64")
+            {
+                unless (-d "$::XCATROOT/share/xcat/netboot/$architecture")
+                {
                     next;
                 }
                 $cmdref->{command}->[0] = "mknb";
-                $cmdref->{arg}->[0] = $architecture;
-                $doreq->($cmdref,\&xCAT::Client::handle_response);
+                $cmdref->{arg}->[0]     = $architecture;
+                $doreq->($cmdref, \&xCAT::Client::handle_response);
             }
+
             #now, run nodeset enact on
             my $mactab = xCAT::Table->new('mac');
-            my $hmtab = xCAT::Table->new('noderes');
-            if ($mactab and $hmtab) {
-                my @mentries = ($mactab->getAllNodeAttribs([qw(node mac)])); #nodeset fails if no mac entry, filter on discovered nodes first...
+            my $hmtab  = xCAT::Table->new('noderes');
+            if ($mactab and $hmtab)
+            {
+                my @mentries =
+                  ($mactab->getAllNodeAttribs([qw(node mac)]))
+                  ; #nodeset fails if no mac entry, filter on discovered nodes first...
                 my %netmethods;
                 my @tnodes;
-                foreach (@mentries) {
+                foreach (@mentries)
+                {
                     unless (defined $_->{mac}) { next; }
-                    push @tnodes,$_->{node};
+                    push @tnodes, $_->{node};
                 }
-                my %hmhash = %{$hmtab->getNodesAttribs(\@tnodes,[qw(node netboot)])};
-                foreach (@tnodes) {
-                  if ($hmhash{$_}->[0]->{netboot}) {
-                      push @{$netmethods{$hmhash{$_}->[0]->{netboot}}},$_;
-                  }
+                my %hmhash =
+                  %{$hmtab->getNodesAttribs(\@tnodes, [qw(node netboot)])};
+                foreach (@tnodes)
+                {
+                    if ($hmhash{$_}->[0]->{netboot})
+                    {
+                        push @{$netmethods{$hmhash{$_}->[0]->{netboot}}}, $_;
+                    }
                 }
-                $cmdref->{command}->[0] = "nodeset";
+                $cmdref->{command}->[0]  = "nodeset";
                 $cmdref->{inittime}->[0] = "1";
-                $cmdref->{arg}->[0] = "enact";
-                $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-                my $plugins_dir=$::XCATROOT.'/lib/perl/xCAT_plugin';
-                foreach my $modname (keys %netmethods) {
+                $cmdref->{arg}->[0]      = "enact";
+                $cmdref->{cwd}->[0]      = "/opt/xcat/sbin";
+                my $plugins_dir = $::XCATROOT . '/lib/perl/xCAT_plugin';
+                foreach my $modname (keys %netmethods)
+                {
                     $cmdref->{node} = $netmethods{$modname};
-                    $doreq->($cmdref,\&xCAT::Client::handle_response);
+                    $doreq->($cmdref, \&xCAT::Client::handle_response);
                 }
-                
+
             }
         }
 
@@ -1030,8 +1203,9 @@ sub setup_HTTP
     if (xCAT::Utils->isLinux())
     {
         my $os = xCAT::Utils->osver();
-        if ($os =~ /sles.*/) {
-           $rc = xCAT::Utils->startService("apache2");
+        if ($os =~ /sles.*/)
+        {
+            $rc = xCAT::Utils->startService("apache2");
         }
         else
         {
