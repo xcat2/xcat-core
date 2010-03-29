@@ -1,0 +1,91 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+
+#-----------------------------------------------------------------------------
+
+=head1   confignimsh
+
+	This sample customization script can be used to automatically configure
+	the NIM nimsh (NIM service handler).  It will also configure NIMSH to 
+	use OpenSSL in the NIM environment.
+
+	It assumes that the openssl software has already been installed on the 
+	node.
+
+	This script also assumes that you have run "nimconfig -c" on the NIM 
+	master for the nodes.  
+
+	This script should only be run on AIX standalone (diskfull) cluster compute 
+	nodes. It should NOT be run on the xCAT management node, service nodes or
+	diskless nodes.
+
+	Note:  This script will also remove the .rhosts file (actually back it up).
+	If you don't want it removed then comment out those lines.
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use Socket;
+
+# this script gets run from an xCAT post script that sets the MASTER and NODE
+# environment variables.
+
+# NIM needs the short hostnames
+#get short hostname for master
+my $master = $ENV{'MASTER'};
+my $mhost;
+my $shortmaster;
+if ($master =~ /\d+\.\d+\.\d+\.\d+/)
+{
+	my $packedaddr = inet_aton($master);
+	$mhost = gethostbyaddr($packedaddr, AF_INET);
+} else {
+	$mhost = $master;
+}
+($shortmaster = $mhost) =~ s/\..*$//;
+chomp $shortmaster;
+
+# get short hostname for node
+my $name = $ENV{'NODE'};
+my $nhost;
+my $shortname;
+if ($name =~ /\d+\.\d+\.\d+\.\d+/)
+{
+    my $packedaddr = inet_aton($name);
+    $nhost = gethostbyaddr($packedaddr, AF_INET);
+} else {
+    $nhost = $name;
+}
+($shortname = $nhost) =~ s/\..*$//;
+chomp $shortname;
+
+# save off the existing niminfo file
+if (-f "/etc/niminfo") {
+	runcmd("mv /etc/niminfo /etc/niminfo.bak");
+}
+
+# create new niminfo file and start nimsh daemon etc.
+runcmd("niminit -a name=$shortname -a master=$shortmaster -a connect='nimsh'");
+
+# configure nimsh to use ssl 
+runcmd("nimclient -c");
+
+# get rid of the .rhost - ????
+if (-f "/.rhosts") {
+	runcmd("mv /.rhost /.rhost.orig");
+}
+
+exit 0;
+
+sub runcmd {
+	my $cmd = shift @_;
+	$cmd .= ' 2>&1';
+	my @output = `$cmd`;
+	my $rc = $? >> 8;
+	if ($rc) {
+		system("logger -t xcat 'confignimsh: command $cmd failed with rc $rc: " . join('',@output) . "'");
+		exit $rc;
+	}
+}
