@@ -5571,7 +5571,53 @@ sub fsp_api_action {
 
 }
 
+#-------------------------------------------------------------------------------
 
+=head3    isStateful
+    returns 1 if localHost is a Stateful install 
+    Arguments:
+        none
+    Returns:
+        1 - localHost is Stateful 
+        0 - localHost is not Stateful 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::Utils->isStateful()) { }
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub isStateful
+{
+    # check to see if / is a real directory 
+    my $dir = "\/";
+    my $cmd = "df -P $dir ";
+    my @output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0)
+    {    # error 
+        xCAT::MsgUtils->message("", " Could not determine Stateful\n");
+        return 0;
+    }
+    foreach my $line (@output)
+    {
+        my ($file_sys, $blocks, $used, $avail, $cap, $mount_point) =
+          split(' ', $line);
+        $mount_point=~ s/\s*//g; # remove blanks
+        if ($mount_point eq $dir) {
+         if ( -e ($file_sys))
+         {
+             return 1;
+         } else {
+             return 0;
+         }
+        }
+    }
+   return 0; 
+}
 
 
 
