@@ -1298,6 +1298,10 @@ sub preprocess_request {
 
     $req->{opt} = $opt;
 
+    if ( exists( $req->{opt}->{V} )) {
+        $req->{verbose} = 1;
+    }
+
     ####################################
     # Get hwtype 
     ####################################
@@ -1418,13 +1422,15 @@ sub parse_args
     $req->{command}  = $command;
     $req->{stdin}    = $stdin; 
     $req->{hwtype}   = $package; 
-    $req->{callback} = $callback; 
+    #$req->{callback} = $callback; 
     $req->{method}   = "parse_args";
 
     my $opt = runcmd( $req);
 
     $req->{command} = [ $command];
     $req->{stdin}   = [ $stdin];
+    $req->{method}  = [$req->{method}];
+    $req->{op}  = [$req->{op}];
     return $opt;
 }
 
@@ -1449,7 +1455,9 @@ sub process_request {
     ####################################
     my $request = {%$req};
     $request->{command} = $req->{command}->[0];
-    $request->{stdin}   = $req->{stdin}->[0]; 
+    $request->{stdin}   = $req->{stdin}->[0];
+    $request->{method} = $req->{method}->[0];
+    $request->{op}   = $req->{op}->[0];
 #    $request->{hwtype}  = $package;
     $request->{callback}= $callback;
     $request->{subreq}  = $subreq;
@@ -1466,9 +1474,9 @@ sub process_request {
     ####################################
     # Option -V for verbose output
     ####################################
-    if ( exists( $request->{opt}->{V} )) {
-        $request->{verbose} = 1;
-    }
+    #if ( exists( $request->{opt}->{V} )) {
+    #    $request->{verbose} = 1;
+    #}
     ####################################
     # Process remote command
     ####################################
