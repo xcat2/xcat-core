@@ -28,7 +28,7 @@ workdir=$5
 # Run script to install gpfs updates
 installroot=$installroot NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_updates
 # Run script to update GPFS mmsdrfs file in the image
-installroot=$installroot   /install/postscripts/gpfs_mmsdrfs
+installroot=$installroot   /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_mmsdrfs
 
 
 # Run script to accept compiler license
