@@ -8,4 +8,13 @@
 ./usr/share/cracklib*
 ./usr/share/info*
 ./usr/share/omf*
+./usr/lib/locale*
+./usr/lib64/dri*
+./lib/modules/*/kernel/drivers/net/pcmcia*
+./lib/modules/*/kernel/drivers/net/tokenring*
+./lib/modules/*/kernel/drivers/net/wireless*
+./lib/modules/*/kernel/drivers/net/media*
+./lib/modules/*/kernel/drivers/isdn*
+./lib/modules/*/kernel/drivers/hwmon*
+./lib/modules/*/kernel/sound*
 ./boot*
