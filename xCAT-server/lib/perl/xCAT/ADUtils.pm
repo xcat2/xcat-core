@@ -34,8 +34,10 @@ countryCode: 0
 accountExpires: 0
 sAMAccountName: ##NODENAME##$
 dNSHostName: ##NODENAME####DNSDOMAIN##
-servicePrincipalName: HOST/##NODENAME##
-servicePrincipalName: HOST/##NODENAME####DNSDOMAIN##
+servicePrincipalName: host/##NODENAME##
+servicePrincipalName: host/##NODENAME####DNSDOMAIN##
+servicePrincipalName: nfs/##NODENAME##
+servicePrincipalName: nfs/##NODENAME####DNSDOMAIN##
 
 dn: CN=##NODENAME##,##OU##
 changetype: modify
