@@ -787,7 +787,7 @@ sub nodech
         }
         if ($invalidnodename) {
             $invalidnodename =~ s/,//;
-            $callback->( {warning => "The node name \'$invalidnodename\' has capital which can not be resolved correctly by dns server. Please don't use the capital in the node name which need to be installed Operating System.\n"} );
+            $callback->( {warning => "The node name \'$invalidnodename\' contains capital letters which may not be resolved correctly by the dns server."} );
         }
     } elsif ($groupmode) {
         @groups = split /,/, shift @ARGV;

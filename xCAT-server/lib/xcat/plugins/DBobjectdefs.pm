@@ -903,7 +903,7 @@ sub defmk
         if ($invalidnodename) {
             $invalidnodename =~ s/,//;
             my $rsp;
-            $rsp->{data}->[0] = "The node name \'$invalidnodename\' has capital which can not be resolved correctly by dns server. Please don't use the capital in the node name which need to be installed Operating System.";
+            $rsp->{data}->[0] = "The node name \'$invalidnodename\' contains capital letters which may not be resolved correctly by the dns server.";
             xCAT::MsgUtils->message("W", $rsp, $::callback);
         }
     }
@@ -2123,7 +2123,7 @@ sub defch
                 if ($invalidnodename) {
                     $invalidnodename =~ s/,//;
                     my $rsp;
-                    $rsp->{data}->[0] = "The node name \'$invalidnodename\' has capital which can not be resolved correctly by dns server. Please don't use the capital in the node name which need to be installed Operating System.";
+                    $rsp->{data}->[0] = "The node name \'$invalidnodename\' contains capital letters which may not be resolved correctly by the dns server.";
                     xCAT::MsgUtils->message("W", $rsp, $::callback);
                 }
    
