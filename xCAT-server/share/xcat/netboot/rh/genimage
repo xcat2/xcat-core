@@ -194,6 +194,7 @@ if($mode eq "statelite"){
 
 }
 
+
 unless ($onlyinitrd) {
    @yumdirs=();
    find(\&isyumdir, <$installroot/$osver/$arch/>);
@@ -367,6 +368,29 @@ unless ($kernelver) {
     $kernelver=$basekernelver;
 }
 chomp($kernelver);
+open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
+my @moddeps = <$moddeps>;
+my @checkdeps = @ndrivers;
+while (scalar @checkdeps) {
+    my $driver = pop @checkdeps;
+    my @lines = grep /\/$driver:/,@moddeps;
+    foreach (@lines) {
+        chomp;
+        s/.*://;
+        s/^\s*//;
+        my @deps = split /\s+/,$_;
+        my $dep;
+        foreach $dep (@deps) {
+            $dep =~ s/.*\///;
+            unless (grep { $_ eq $dep } @ndrivers) { #only add if not added
+                unshift (@checkdeps,$dep); #recursively check dependencies
+                unshift (@ndrivers,$dep);
+                print "Added $dep as an autodetected depedency\n";
+            }
+        }
+    }
+}
+close($moddeps);
 unlink "/tmp/genimage.$$.yum.conf";
 
 #-- run postinstall script
