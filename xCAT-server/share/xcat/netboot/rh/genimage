@@ -350,9 +350,15 @@ unless ($onlyinitrd) {
 #If specified, that takes precedence.
 #if image has one, that is used
 #if all else fails, resort to uname -r like this script did before
-my @KVERS= <$rootimg_dir/lib/modules/*>;
+my @KVERS= <$rootimg_dir/boot/vmlinuz-*>;
+foreach (@KVERS) {
+	s/vmlinuz-//;
+}
+unless (scalar(@KVERS)) {
+	@KVERS= <$rootimg_dir/lib/modules/*>;
+}
 if (scalar(@KVERS)) {
-    $basekernelver = basename($KVERS[0]);
+    $basekernelver = basename(pop @KVERS);
 }
 unless ($basekernelver) {
     $basekernelver = `uname -r`;
@@ -433,11 +439,11 @@ sub getlibs {
 sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/bin");
 	if($basekernelver eq $kernelver) {
-		rename(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel");
+		copy(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel");
 	}
 	else {
 		if(-r "$rootimg_dir/boot/vmlinuz-$kernelver") {
-			rename("$rootimg_dir/boot/vmlinuz-$kernelver","$destdir/kernel");
+			copy("$rootimg_dir/boot/vmlinuz-$kernelver","$destdir/kernel");
         } elsif(-r "/boot/vmlinuz-$kernelver") {
 			copy("/boot/vmlinuz-$kernelver","$destdir/kernel");
 		}
@@ -1091,7 +1097,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    }
    close($cfgfile);
    
-   rename(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel"); } 
+   copy(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel"); } 
 
 sub get_package_names {
    my $plist_file_name=shift;
