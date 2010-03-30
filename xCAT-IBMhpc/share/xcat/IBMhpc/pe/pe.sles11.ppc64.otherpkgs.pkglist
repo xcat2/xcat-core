@@ -3,6 +3,7 @@ lapi_ppc_64bit_IP_sles1100
 lapi_ppc_32bit 
 lapi_ppc_64bit_US_sles1100 
 IBM_pe_license 
+#NEW_INSTALL_LIST#
 ibm_pe_sles11 
 ppe_ppc_base_32bit_sles1100 
 ppe_ppc_64bit_sles1100 
