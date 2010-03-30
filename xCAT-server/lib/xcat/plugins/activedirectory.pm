@@ -316,7 +316,7 @@ sub process_request {
              if (ref $ret and $ret->{error}) {
                  sendmsg([1,$ret->{error}]);
              } elsif (ref $ret)  {
-                 print $ret->{password};
+                 sendmsg($ret->{password},$nodename);
              }
         }
     }
