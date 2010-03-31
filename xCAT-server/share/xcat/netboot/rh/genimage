@@ -243,7 +243,7 @@ unless ($onlyinitrd) {
    my %pkg_hash=get_package_names($pkglist);
    my $index=1;
    my $pass;
-   foreach $pass (keys(%pkg_hash)) {
+   foreach $pass (sort (keys(%pkg_hash))) {
        my $pkgnames = "";
        foreach (keys(%{$pkg_hash{$pass}})) {
            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
@@ -273,7 +273,7 @@ unless ($onlyinitrd) {
     if (keys(%extra_hash) > 0) {
       open($yumconfig,">>","/tmp/genimage.$$.yum.conf");
       my $index=1;
-      foreach $pass (keys(%extra_hash)) {
+      foreach $pass (sort (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
 	  if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
 	  print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
@@ -292,7 +292,7 @@ unless ($onlyinitrd) {
 	  $yumcmd .= "--enablerepo=otherpkgs$_ ";
       } 
 
-      foreach $pass (keys(%extra_hash)) {
+      foreach $pass (sort (keys(%extra_hash))) {
       #remove the packages that are specified in the otherpkgs.list files with leading '-'
           my $yumcmd_remove= "$yumcmd erase ";
           if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
