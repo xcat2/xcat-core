@@ -573,7 +573,7 @@ sub tabdump
     $cb->(\%rsp);
 }
 
-# Prune a number of records from the eventlog or auditlog or all records.
+# Prune records from the eventlog or auditlog or all records.
 #  Only supports eventlog and auditlog
 sub tabprune
 {
@@ -585,6 +585,7 @@ sub tabprune
     my $NUMBERENTRIES;
     my $PERCENT;
     my $RECID;
+    my $rc=0;
 
     my $tabprune_usage = sub {
     	my $exitcode = shift @_;
@@ -639,13 +640,59 @@ sub tabprune
         return 1;
       
     } 
+    if ((defined $PERCENT ) && ((defined $RECID) || (defined $ALL) || (defined $NUMBERENTRIES))) {
+        my %rsp;
+        $rsp{data}->[0] = "Only one option -p or -i or -n or -a maybe used at a time.";
+        $rsp{errorcode} = 1; 
+        $cb->(\%rsp);
+        return 1;
+      
+    } 
+    if ((defined $RECID ) && ((defined $PERCENT) || (defined $ALL) || (defined $NUMBERENTRIES))) {
+        my %rsp;
+        $rsp{data}->[0] = "Only one option -p or -i or -n or -a maybe used at a time.";
+        $rsp{errorcode} = 1; 
+        $cb->(\%rsp);
+        return 1;
+    } 
+    if ((defined $ALL ) && ((defined $PERCENT) || (defined $RECID) || (defined $NUMBERENTRIES))) {
+        my %rsp;
+        $rsp{data}->[0] = "Only one option -p or -i or -n or -a maybe used at a time.";
+        $rsp{errorcode} = 1; 
+        $cb->(\%rsp);
+        return 1;
+    } 
+    if ((defined $NUMBERENTRIES ) && ((defined $PERCENT) || (defined $RECID) || (defined $ALL))) {
+        my %rsp;
+        $rsp{data}->[0] = "Only one option -p or -i or -n or -a maybe used at a time.";
+        $rsp{errorcode} = 1; 
+        $cb->(\%rsp);
+        return 1;
+    } 
+      
+    if (defined $ALL ) {
+     $rc=tabprune_all($table,$cb); 
+    }
     my %rsp;
     push @{$rsp{data}}, "tabprune of $table complete.";
-    $rsp{errorcode} = 0; 
+    $rsp{errorcode} = $rc; 
     $cb->(\%rsp);
-    return 0;
+    return $rc;
 }
 
+sub tabprune_all {
+   my $table = shift;
+   my $cb  = shift;
+   my $rc=0;
+   my $tab        = xCAT::Table->new($table, -create => 1, -autocommit => 0);
+   unless ($tab) {
+        $cb->({error => "Unable to open $table",errorcode=>4});
+        return 1;
+   }
+   $tab->delEntries();    #Yes, delete *all* entries
+   $tab->commit;         #  commit
+   return $rc;
+}
 sub getTableColumn {
     my $string = shift;
     if ($shortnames{$string}) {
