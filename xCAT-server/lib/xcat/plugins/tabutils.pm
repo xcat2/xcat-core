@@ -593,8 +593,8 @@ sub tabprune
         push @{$rsp{data}}, "       tabprune [eventlog | auditlog] -n [# of records]";
         push @{$rsp{data}}, "       tabprune [eventlog | auditlog] -i [recid]";
         push @{$rsp{data}}, "       tabprune [eventlog | auditlog] -p [percentage]";
-        push @{$rsp{data}}, "       tabprune [-?|-h|--help]";
-        push @{$rsp{data}}, "       tabprune [-?|-v|--version]";
+        push @{$rsp{data}}, "       tabprune [-h|--help]";
+        push @{$rsp{data}}, "       tabprune [-v|--version]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
     };
@@ -622,12 +622,28 @@ sub tabprune
     }
     if (scalar(@ARGV)>1) { $tabprune_usage->(1); return; }
     my $table = $ARGV[0];
-    
+    if (!(defined $table)) {
+        my %rsp;
+        $rsp{data}->[0] = "Table name eventlog or auditlog required.";
+        $rsp{errorcode} = 1; 
+        $cb->(\%rsp);
+        return 1;
+      
+    }
+    $table=~ s/\s*//g; # remove blanks 
+    if (($table ne "eventlog") && ($table ne "auditlog")){
+        my %rsp;
+        $rsp{data}->[0] = "Table name eventlog or auditlog required.";
+        $rsp{errorcode} = 1; 
+        $cb->(\%rsp);
+        return 1;
+      
+    } 
     my %rsp;
-    push @{$rsp{data}}, "tabprune $table complete";
+    push @{$rsp{data}}, "tabprune of $table complete.";
     $rsp{errorcode} = 0; 
     $cb->(\%rsp);
-    return;
+    return 0;
 }
 
 sub getTableColumn {
