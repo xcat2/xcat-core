@@ -1815,13 +1815,14 @@ sub set_netcfg
              #last HTML::Form. So let's take a guess of the type value
              #Not sure if it can work for all AIX version
         {
+            my @types = $interfaces->{ $real_inc_name}->{'type'}->possible_values();
             if ( $inc_type eq 'Dynamic')
             {
-                $interfaces->{ $real_inc_name}->{'type'}->value(1);
+                $interfaces->{ $real_inc_name}->{'type'}->value(@types[0]);
             }
             else
             {
-                $interfaces->{ $real_inc_name}->{'type'}->value(0);
+                $interfaces->{ $real_inc_name}->{'type'}->value(@types[1]);
             }
         }
 #not work on AIX
