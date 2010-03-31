@@ -221,35 +221,26 @@ sub process_request {
         if($entry[1] eq $oldentry[1]) {
             #$callback->({info => ["$f is not changed..."]});
         } else {
-
             # have to consider both genimage and liteimg re-run
             $callback->({info => ["! $f may be removed or changed..."]});
-            #TODO: recover the file back 
             if ($oldentry[1] =~ m/bind/) {
                 # shouldn't copy back from /.default, maybe the user has replaced the file/directory in .postinstall file
-                my $default = $rootimg_dir."/.default".$f;
-                #my $target = $rootimg_dir.$f;
-                #if (-d $target) {
-                #    xCAT::Utils->runcmd("cp -a $default* $target",0, 1);
-                #}else {
-                #    xCAT::Utils->runcmd("cp -a $default $target",0, 1);
-                #}
+                my $default = $rootimg_dir . "/.default" . $f;
                 xCAT::Utils->runcmd("rm -rf $default", 0, 1);   # not sure whether it's necessary right now
             } else {
                 my $target = $rootimg_dir.$f;
                 if (-l $target) {
-                    xCAT::Utils->runcmd("rm -rf $target", 0, 1);
+                    my $location = readlink $target;
+                    # if it is not linked from tmpfs, it should be modified by the .postinstall file
+                    if ($location =~ /\.statelite\/tmpfs/) {
+                        xCAT::Utils->runcmd("rm -rf $target", 0, 1);
+                        my $default = $rootimg_dir . "/.default" . $f;
+                        xCAT::Utils->runcmd("cp -a $default $target", 0, 1);
+                    }
                 }
 
                 $target = $rootimg_dir . "/.statelite/tmpfs" . $f;
                 xCAT::Utils->runcmd("rm -rf $target", 0, 1);
-
-                my $default = $rootimg_dir . "/.default".$f;
-                $target = $rootimg_dir . $f;
-                if ( ! -e $target ) {
-                    xCAT::Utils->runcmd("cp -a $default $target",0, 1);
-                }
-                xCAT::Utils->runcmd("rm -rf $default", 0, 1);
             }
         }
     }
