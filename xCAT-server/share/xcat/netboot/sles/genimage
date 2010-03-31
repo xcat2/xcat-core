@@ -286,7 +286,7 @@ unless ($onlyinitrd) {
    }
    my $index=1;
    my $pass;
-   foreach $pass (keys(%extra_hash)) {
+   foreach $pass (sort (keys(%extra_hash))) {
      foreach (keys(%{$extra_hash{$pass}})) {
        if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
        my $whole_path="$srcdir_otherpkgs/$_";
@@ -359,22 +359,23 @@ unless ($onlyinitrd) {
 
    my %pkg_hash=get_package_names($pkglist);
    my $index=1;
-   foreach $pass (keys(%pkg_hash)) {
+   foreach $pass (sort (keys(%pkg_hash))) {
        $pkgnames = "";
        foreach (keys(%{$pkg_hash{$pass}})) {
            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
            my $pa=$pkg_hash{$pass}{$_};
            $pkgnames .= " " . join(' ', @$pa);
        }
-       #print "$yumcmd $pkgnames\n";
+       print "$yumcmd $pkgnames\n";
        my $rc = system("$yumcmd $pkgnames");
-       if ($rc) { 
-          print "zypper invocation failed\n";
+       $rc = $rc >> 8;
+       if (($rc) && ($rc != '104')) { 
+          print "zypper invocation failed with rc: $rc\n";
           exit 1;
        }
    }
 
-   foreach $pass (keys(%extra_hash)) {
+   foreach $pass (sort (keys(%extra_hash))) {
        #remove the packages that are specified in the otherpkgs.list files with leading '-'
        my $yumcmd_remove= "zypper -R $rootimg_dir remove "; 
        if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
@@ -388,10 +389,11 @@ unless ($onlyinitrd) {
 
        #add extra packages in the list
        if ($extrapkgnames{$pass}) {
-           #print "$yumcmd $extrapkgnames{$pass}\n";
+           print "$yumcmd $extrapkgnames{$pass}\n";
            $rc = system("$yumcmd $extrapkgnames{$pass}");
-           if ($rc) { 
-	       print "zypper invocation failed\n";
+           $rc = $rc >> 8;
+           if (($rc) && ($rc != '104')) { 
+	       print "zypper invocation failed with rc: $rc\n";
 	       exit 1;
            }
        }
