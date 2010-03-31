@@ -2412,7 +2412,8 @@ sub nodeonmynet
         my $nettab=xCAT::Table->new("networks");
         my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
         foreach (@vnets) {
-            if ($_->{mgtifname} eq '!remote!') { #global scoped network
+            if ((defined $_->{mgtifname}) && ($_->{mgtifname} eq '!remote!'))
+            { #global scoped network
                 my $curm = unpack("N", inet_aton($_->{mask}));
                 my $bits=32;
                 until ($curm & 1)  {
