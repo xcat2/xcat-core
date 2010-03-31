@@ -40,18 +40,14 @@ if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "genimage" ]; then
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
-        # IP of MN (this host)
-        MN=`hostname`
-        MNIP=`host -t A $MN | cut -d' ' -f4`
-        xcatmount=/xcatmount
-        chroot $installroot mkdir $xcatmount
-        chroot $installroot mount $MNIP:$ESSL_DIR $xcatmount
-        chroot $installroot rpm -Uvh $xcatmount/essl.license*.rpm
-        chroot $installroot $essl_bin/install_essl -y -d $xcatmount -nodocs
-        chroot $installroot rpm -Uvh $xcatmount/pessl.license*.rpm
-        chroot $installroot $pessl_bin/install_pessl -y -d $xcatmount -nodocs
-        chroot $installroot umount $xcatmount
-        chroot $installroot rmdir $xcatmount
+        tmpdir=tmpessl
+        mkdir $installroot/$tmpdir
+        cp -p $ESSL_DIR/* $installroot/$tmpdir
+        rpm --root $installroot -Uvh $installroot/$tmpdir/essl.license*.rpm
+        chroot $installroot $essl_bin/install_essl -y -nodocs -d /$tmpdir
+        rpm --root  $installroot -Uvh $installroot/$tmpdir/pessl.license*.rpm
+        chroot $installroot $pessl_bin/install_pessl -y -nodocs -d /$tmpdir
+        rm -rf $installroot/$tmpdir
     fi
 fi  
 
