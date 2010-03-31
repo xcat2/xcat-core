@@ -14,7 +14,7 @@ INSTALL_DIR='/install'
 LOADL_DIR=$loadldir
 aix_loadl_bin=/usr/lpp/LoadL/full/bin
 linux_loadl_bin=/opt/ibmll/LoadL/resmgr/full/bin
-linux_loadl_license_script=/opt/ibmll/LoadL/resmgr/sbin/install_resmgr
+linux_loadl_license_script=/opt/ibmll/LoadL/sbin/install_ll
 
 if [ -z $LOADL_DIR ]; then
    # try to default
@@ -41,17 +41,14 @@ if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "genimage" ]; then
         # Being called from <image>.postinstall script
         # Assume we are on the same machine
-        # IP of MN (this host)
-        MN=`hostname`
-        MNIP=`host -t A $MN | cut -d' ' -f4`
-        xcatmount=/xcatmount
-        mkdir $installroot/$xcatmount
-        chroot $installroot mount $MNIP:$LOADL_DIR $xcatmount
+        tmpdir=tmploadl
+        mkdir $installroot/$tmpdir
+        cp -p $LOADL_DIR/* $installroot/$tmpdir
         # The license rpm should already be installed, but just in case...
-        chroot $installroot rpm -Uvh $xcatmount/LoadL-resmgr-full-license*.rpm
-        chroot $installroot $linux_loadl_license_script -y -d $xcatmount 
-        chroot $installroot umount $xcatmount
-        rmdir $installroot/$xcatmount
+        rpm --root $installroot rpm -Uvh $installroot/$tmpdir/LoadL-full-license*.rpm
+        chroot $installroot $linux_loadl_license_script -y -d  /$tmpdir
+        rm -rf $installroot/$tmpdir
+
         mkdir $installroot/dev/cpuset
         chroot $installroot mount -t cpuset none /dev/cpuset
     fi
