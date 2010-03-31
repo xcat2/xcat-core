@@ -524,10 +524,10 @@ sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/tmp");
 	mkpath("/tmp/xcatinitrd.$$/var/run");
 	mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
-	if($osver =~ /sles/ && $arch eq "ppc64") {#SLES for Power6&7
-	    mkpath("/tmp/xcatinitrd.$$/lib64/power6");
-	    mkpath("/tmp/xcatinitrd.$$/lib64/power7");
-	}
+#	if($osver =~ /sles/ && $arch eq "ppc64") {#SLES for Power6&7
+#	    mkpath("/tmp/xcatinitrd.$$/lib64/power6");
+#	    mkpath("/tmp/xcatinitrd.$$/lib64/power7");
+#	}
 	mkpath("/tmp/xcatinitrd.$$/lib/power6");#SLES10
 	mkpath("/tmp/xcatinitrd.$$/lib/power7");#SLES10
 	mkpath("/tmp/xcatinitrd.$$/lib/mkinitrd/bin");
@@ -973,7 +973,7 @@ END
         } 
     }else {
         foreach ("sbin/ifconfig","usr/bin/clear", "usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed") {
-            getlibs($_); #there's one small bug for getlibs
+            getlibs($_); 
             push @filestoadd,$_;
         }
     }
@@ -983,6 +983,19 @@ END
    else {
       push @filestoadd,"lib/libnss_dns.so.2";
    }
+
+    # cross-platfrom support on power6&7 etc
+    # ldd can't handle such one scenario: mn is power6, the target platform is power7
+   if ($arch =~ /ppc64/) {
+      my @archs = ("power6", "power6x", "power7", "ppc-cell-be");
+      foreach my $arch (@archs) {
+          if(-d "$rootimg_dir/lib64/$arch") {
+              system("cp -a $rootimg_dir/lib64/$arch /tmp/xcatinitrd.$$/lib64/");
+          }
+      }
+   }
+
+
    push @filestoadd,keys %libhash;
 	if($basekernelver ne $kernelver) {
 		system("rm -rf $rootimg_dir/lib/modules/$basekernelver");
