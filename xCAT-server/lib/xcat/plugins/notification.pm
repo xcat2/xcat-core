@@ -192,9 +192,6 @@ sub regNotification {
   }
  
   my $fname=shift(@ARGV);
-  if ( fname !~ /^\// ) {#relative path
-    $fname = xCAT::Utils->full_path($fname);
-  }
   my $table_names=shift(@ARGV);
   
   my $table=xCAT::Table->new("notification", -create => 1,-autocommit => 0);
@@ -278,9 +275,6 @@ sub unregNotification {
 
 
   my $fname=shift(@ARGV);
-  if ( $fname !~ /^\// ) {#relative path                         
-    $fname = xCAT::Utils->full_path($fname);
-  }
 
   my $table=xCAT::Table->new("notification", -create => 1,-autocommit => 0);
   if ($table) {
