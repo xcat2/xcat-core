@@ -39,17 +39,26 @@ my @output;
 my $inoperative = 0;
 my $check_num;
 
-my $cmd = basename($0);
-# for auditing
-my $current_userid = getpwuid($>);
-xCAT::MsgUtils->message("S", " restartxcatd invoked by $current_userid.\n");
 if (!(xCAT::Utils->isAIX()))
 {    # only runs on AIX
-    xCAT::MsgUtils->message("E", "Error: This command should only be run on AIX.\n");
+    xCAT::MsgUtils->message("E", "Error: This command should only be run on AIX.");
     exit 1;
 
 }
 
+my $cmd = basename($0);
+# for auditing
+my $current_userid = getpwuid($>);
+my $rsp = {};
+my $host=`hostname`;
+$host=~ s/\s*//g; # remove blanks
+$rsp->{syslogdata}->[0] ="restartxcatd invoked by $current_userid.\n";
+$rsp->{userid} ->[0] = $current_userid;
+$rsp->{clientname} -> [0] = $host;
+$rsp->{clienttype} -> [0]= "cli";
+$rsp->{command} -> [0] = $cmd;
+$rsp->{status} -> [0] = "allowed";
+xCAT::MsgUtils->message("SA",$rsp); # syslog and auditlog
 &parse_args($cmd);
 
 # Check whether the xcatd subsystem has been created
