@@ -35,6 +35,7 @@ sub handled_commands
     return {
             gettab     => "tabutils",
             tabdump    => "tabutils",
+            tabprune   => "tabutils",
             tabrestore => "tabutils",
             tabch      => "tabutils",     # not implemented yet
             nodegrpch     => "tabutils",
@@ -55,15 +56,6 @@ sub handled_commands
 }
 
 # Each cmd now returns its own usage inside its function
-#my %usage = (
-    #nodech => "Usage: nodech <noderange> [table.column=value] [table.column=value] ...",
-    #nodeadd => "Usage: nodeadd <noderange> [table.column=value] [table.column=value] ...",
-    #noderm  => "Usage: noderm <noderange>",
-    # the usage for tabdump is in the tabdump function
-    #tabdump => "Usage: tabdump <tablename>\n   where <tablename> is one of the following:\n     " . join("\n     ", keys %xCAT::Schema::tabspec),
-    # the usage for tabrestore is in the tabrestore client cmd
-    #tabrestore => "Usage: tabrestore <tablename>.csv",
-    #);
 
 #####################################################
 # Process the command
@@ -125,6 +117,10 @@ sub process_request
     elsif ($command eq "tabdump")
     {
         return tabdump($args, $callback);
+    }
+    elsif ($command eq "tabprune")
+    {
+       return tabprune($args, $callback);
     }
     elsif ($command eq "gettab")
     {
@@ -575,6 +571,63 @@ sub tabdump
         push @{$rsp{data}}, $line;
     }
     $cb->(\%rsp);
+}
+
+# Prune a number of records from the eventlog or auditlog or all records.
+#  Only supports eventlog and auditlog
+sub tabprune
+{
+    my $args  = shift;
+    my $cb    = shift;
+    my $HELP;
+    my $VERSION;
+    my $ALL;
+    my $NUMBERENTRIES;
+    my $PERCENT;
+    my $RECID;
+
+    my $tabprune_usage = sub {
+    	my $exitcode = shift @_;
+        my %rsp;
+        push @{$rsp{data}}, "Usage: tabprune [eventlog | auditlog] -a";
+        push @{$rsp{data}}, "       tabprune [eventlog | auditlog] -n [# of records]";
+        push @{$rsp{data}}, "       tabprune [eventlog | auditlog] -i [recid]";
+        push @{$rsp{data}}, "       tabprune [eventlog | auditlog] -p [percentage]";
+        push @{$rsp{data}}, "       tabprune [-?|-h|--help]";
+        push @{$rsp{data}}, "       tabprune [-?|-v|--version]";
+        if ($exitcode) { $rsp{errorcode} = $exitcode; }
+        $cb->(\%rsp);
+    };
+
+	# Process arguments
+    if ($args) {
+        @ARGV = @{$args};
+    }
+    if (!GetOptions('h|?|help' => \$HELP,
+                     'v|version' => \$VERSION,
+                     'p|percent=i' => \$PERCENT,
+                     'i|recid=s' => \$RECID,
+                     'a' => \$ALL,
+                     'n|number=i' => \$NUMBERENTRIES))
+             { $tabprune_usage->(1); return; }
+
+    if ($HELP) { $tabprune_usage->(0); return; }
+    # Version
+    if ($VERSION) {
+        my %rsp;
+        my $version = xCAT::Utils->Version();
+        $rsp{data}->[0] = "$version";
+        $cb->(\%rsp);
+        return;
+    }
+    if (scalar(@ARGV)>1) { $tabprune_usage->(1); return; }
+    my $table = $ARGV[0];
+    
+    my %rsp;
+    push @{$rsp{data}}, "tabprune $table complete";
+    $rsp{errorcode} = 0; 
+    $cb->(\%rsp);
+    return;
 }
 
 sub getTableColumn {
