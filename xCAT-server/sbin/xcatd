@@ -1652,8 +1652,11 @@ sub validate {
       }
     }
     # If we are still in, that means this rule is the first match and dictates behavior.
+    # We are not going to log getdestiny,getbladecons,getipmicons commands, way
+    # too many of them
     #print Dumper($request);
     if ($rule->{rule}) {
+     if (($request->{command}->[0] ne "getdestiny") && ($request->{command}->[0] ne "getbladecons") && ($request->{command}->[0] ne "getipmicons")) {
       my $logst;
       my $rc;
       my $status;
@@ -1727,11 +1730,12 @@ sub validate {
       $rsp->{status} -> [0] = $status;
       xCAT::MsgUtils->message("SA",$rsp);
       return $rc;
+     } # end getbladecons,etc check
     } else { #Shouldn't be possible....
        xCAT::MsgUtils->message("S","Impossible line in xcatd reached");
       return 0;
     }
-  }
+  } # end RULE
   #Reached end of policy table, reject by default.
    xCAT::MsgUtils->message("S","Request matched no policy rule: ".$request->{command}->[0]);
   return 0;
