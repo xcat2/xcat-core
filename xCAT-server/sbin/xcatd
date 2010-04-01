@@ -963,12 +963,20 @@ sub plugin_command {
       }
     } else {
       my $pm_name = $plugins_dir."/".$modname.".pm";
-      foreach my $node (keys %{$handler_hash{$_}}) {
-        if ($sock) {
-         print $sock XMLout({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
-        } else {
-         $callback->({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]});
-        }
+      if (ref $handler_hash{$_}) {
+          foreach my $node (keys %{$handler_hash{$_}}) {
+            if ($sock) {
+             print $sock XMLout({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]},NoAttr=>1,RootName=>'xcatresponse');
+            } else {
+             $callback->({node=>[{name=>[$node],data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]}]});
+            }
+          }
+      } else {
+          if ($sock) {
+           print $sock XMLout({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]},NoAttr=>1,RootName=>'xcatresponse');
+          } else {
+           $callback->({data=>["Cannot find the perl module to complete the operation: $pm_name"],errorcode=>[1]});
+          }
       }
     }
   }
