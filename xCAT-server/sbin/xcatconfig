@@ -1580,7 +1580,7 @@ sub setupLinuxexports
         # ok - then add this entry
         #SECURITY: this has potential for sharing private host/user keys
         my $cmd =
-          "/bin/echo '$::TFTPDIR *(rw,no_root_squash,sync)' >> /etc/exports";
+          "/bin/echo '$::TFTPDIR *(rw,no_root_squash,sync,no_subtree_check)' >> /etc/exports";
 
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
@@ -1607,7 +1607,7 @@ sub setupLinuxexports
         # ok - then add this entry
         #SECURITY: this has potential for sharing private host/user keys
         my $cmd =
-          "/bin/echo '$::INSTALLDIR *(rw,no_root_squash,sync)' >> /etc/exports";
+          "/bin/echo '$::INSTALLDIR *(rw,no_root_squash,sync,no_subtree_check)' >> /etc/exports";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
