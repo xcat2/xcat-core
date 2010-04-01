@@ -447,7 +447,7 @@ sub setupInstallloc
 
                     # ok - then add this entry
                     my $cmd =
-                      "/bin/echo '$installdir *(rw,no_root_squash,sync)' >> /etc/exports";
+                      "/bin/echo '$installdir *(rw,no_root_squash,sync,no_subtree_check)' >> /etc/exports";
                     my $outref = xCAT::Utils->runcmd("$cmd", 0);
                     if ($::RUNCMD_RC != 0)
                     {
