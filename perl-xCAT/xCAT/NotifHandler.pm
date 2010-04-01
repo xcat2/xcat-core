@@ -8,8 +8,8 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 
 use File::Basename qw(fileparse);
-require xCAT::Utils;
-require Data::Dumper;
+use xCAT::Utils;
+use Data::Dumper;
 
 #%notif is a cache that holds the info from the "notification" table.
 #the format of it is:
@@ -20,6 +20,7 @@ require Data::Dumper;
 #   }
 my %notif;
 my $masterpid;
+my $dbworkerid;
 
 1;
 
@@ -40,6 +41,7 @@ my $masterpid;
       table and store it into %notif variable.
     Arguments:
       pid -- the process id of the caller.
+      pid1 -- the process id of the dbworker.
     Returns:
       none
 =cut
@@ -50,6 +52,8 @@ sub setup
   if ($masterpid =~ /xCAT::NotifHandler/) {
     $masterpid=shift;
   }
+  $dbworkerid=shift;
+
   refreshNotification();
 
   $SIG{USR1}=\&handleNotifSignal;
@@ -66,6 +70,7 @@ sub setup
 =cut
 #-------------------------------------------------------------------------------
 sub handleNotifSignal {
+   #print "handleNotifSignal pid=$$\n";
    refreshNotification();
    $SIG{USR1}=\&handleNotifSignal;
 }
@@ -82,6 +87,9 @@ sub handleNotifSignal {
 sub sendNotifSignal {
   if ($masterpid) {
     kill('USR1', $masterpid);
+  }
+  if ($dbworkerid) {
+    kill('USR1', $dbworkerid);
   }
 }
 
@@ -100,6 +108,7 @@ sub sendNotifSignal {
 #-------------------------------------------------------------------------------
 sub refreshNotification
 {
+  #print "refreshNotification get called\n";
   #flush the cache
   %notif=();
   my $table=xCAT::Table->new("notification", -create =>0);
@@ -161,6 +170,7 @@ sub refreshNotification
     }#end if (@row_array)
   } #end if ($table)
 
+   #print Dumper(%notif);
   return 1;
 }
 
@@ -213,6 +223,9 @@ sub dumpNotificationCache {
 =cut
 #-------------------------------------------------------------------------------
 sub needToNotify {
+
+  #print "needToNotify pid=$$, notify=" . Dumper(%notif) . "\n";
+
   if (!%notif) {
     # print "notif not defined\n";
     refreshNotification();

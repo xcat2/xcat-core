@@ -172,6 +172,10 @@ sub init_dbworker {
         my $currcon;
         my $clientset = new IO::Select;
         $clientset->add($dbworkersocket);
+
+        #setup signal in NotifHandler so that the cache can be updated
+        xCAT::NotifHandler::setup($$, 0);
+
         while (not $exitdbthread) {
             eval {
                 my @ready_socks = $clientset->can_read;

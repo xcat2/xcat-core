@@ -599,7 +599,7 @@ unless ($listener) {
 closelog();
 
 #setup signal in NotifHandler so that the cache can be updated
-xCAT::NotifHandler::setup($$);
+xCAT::NotifHandler::setup($$, $dbmaster);
 
 #start the monitoring process
 xCAT_monitoring::monitorctrl::start($$);
