@@ -88,12 +88,17 @@ if [ -f /etc/xCATMN ]; then
 fi
 
 %ifos linux
+if [ -e "/etc/redhat-release" ]; then
+    apachedaemon='httpd'
+else # SuSE
+    apachedaemon='apache2'
+fi
+
 # start xcatd
-    chkconfig httpd on
+    chkconfig $apachedaemon on
     if [ -f "/proc/cmdline" ]; then   # prevent running it during install into chroot image
     	XCATROOT=$RPM_INSTALL_PREFIX0 /etc/init.d/xcatd start
-		/etc/init.d/httpd stop
-		/etc/init.d/httpd start
+		/etc/init.d/$apachedaemon reload 
 	fi
     echo "xCATsn is now installed"
 %endif
