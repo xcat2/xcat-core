@@ -1704,31 +1704,37 @@ sub validate {
       if ($arglist) { $logst .= $arglist; }
       if($peername) { $logst .= " for " . $request->{username}->[0]};
       if ($peerhost) { $logst .= " from " . $peerhost };
-      # put in audit Table
-      my $rsp = {};
-      $rsp->{syslogdata}->[0] = $logst;
-      if ($peername) {
+      # if not getpostscript and not getcredentials, put in syslog and auditlog
+      if (($request->{command}->[0] ne "getpostscript") && ($request->{command}->[0] ne "getcredentials")) {
+      
+        # put in audit Table and syslog
+        my $rsp = {};
+        $rsp->{syslogdata}->[0] = $logst;
+        if ($peername) {
            $rsp->{userid} ->[0] = $request->{username}->[0];
+        }
+        if ($peerhost) {
+          $rsp->{clientname} -> [0] = $peerhost;
+        }
+        if (defined $request->{clienttype}) {
+          $rsp->{clienttype} -> [0] = $request->{clienttype} -> [0];
+        } else {
+           if (defined $request->{becomeuser}) {
+             $rsp->{clienttype} -> [0] = "webui";
+           } else {
+             $rsp->{clienttype} -> [0] = "other";
+           }
+        }
+        $rsp->{command} -> [0] = $request->{command}->[0];
+        if ($request->{noderange} && defined($request->{noderange}->[0])) { 
+            $rsp->{noderange} -> [0] = $request->{noderange}->[0];
+        }
+        $rsp->{args} -> [0] =$arglist; 
+        $rsp->{status} -> [0] = $status;
+        xCAT::MsgUtils->message("SA",$rsp);
+      } else { # getpostscript or getcredentials, just syslog
+          xCAT::MsgUtils->message("S",$logst);
       }
-      if ($peerhost) {
-        $rsp->{clientname} -> [0] = $peerhost;
-      }
-      if (defined $request->{clienttype}) {
-        $rsp->{clienttype} -> [0] = $request->{clienttype} -> [0];
-      } else {
-         if (defined $request->{becomeuser}) {
-           $rsp->{clienttype} -> [0] = "webui";
-         } else {
-           $rsp->{clienttype} -> [0] = "other";
-         }
-      }
-      $rsp->{command} -> [0] = $request->{command}->[0];
-      if ($request->{noderange} && defined($request->{noderange}->[0])) { 
-          $rsp->{noderange} -> [0] = $request->{noderange}->[0];
-      }
-      $rsp->{args} -> [0] =$arglist; 
-      $rsp->{status} -> [0] = $status;
-      xCAT::MsgUtils->message("SA",$rsp);
       return $rc;
      } # end getbladecons,etc check
     } else { #Shouldn't be possible....
