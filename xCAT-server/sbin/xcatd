@@ -1656,7 +1656,6 @@ sub validate {
     # too many of them
     #print Dumper($request);
     if ($rule->{rule}) {
-     if (($request->{command}->[0] ne "getdestiny") && ($request->{command}->[0] ne "getbladecons") && ($request->{command}->[0] ne "getipmicons")) {
       my $logst;
       my $rc;
       my $status;
@@ -1669,6 +1668,7 @@ sub validate {
          $status = "Denied";
          $rc=0;
       }
+     if (($request->{command}->[0] ne "getdestiny") && ($request->{command}->[0] ne "getbladecons") && ($request->{command}->[0] ne "getipmicons")) {
       # set username authenticated to run command
       # if from Trusted host, use input username,  else set from creds
       if (($request->{username}) && defined($request->{username}->[0])) {
@@ -1735,8 +1735,8 @@ sub validate {
       } else { # getpostscript or getcredentials, just syslog
           xCAT::MsgUtils->message("S",$logst);
       }
-      return $rc;
      } # end getbladecons,etc check
+      return $rc;
     } else { #Shouldn't be possible....
        xCAT::MsgUtils->message("S","Impossible line in xcatd reached");
       return 0;
