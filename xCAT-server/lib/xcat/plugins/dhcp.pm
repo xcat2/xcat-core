@@ -207,6 +207,10 @@ sub addnode
         if ( !defined($ip) ) {
             $ip = "DENIED";
         }
+        if ($hname eq '*NOIP*') {
+            $hname = $node . "-noip".$mac;
+            $hname =~ s/://g;
+        }
         if ($guess_next_server and $ip ne "DENIED")
         {
             $nxtsrv = xCAT::Utils->my_ip_facing($hname);
