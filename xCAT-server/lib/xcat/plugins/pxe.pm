@@ -4,6 +4,7 @@ use Data::Dumper;
 use Sys::Syslog;
 use Socket;
 use File::Copy;
+use File::Path;
 use Getopt::Long;
 
 my $addkcmdlinehandled;
@@ -133,6 +134,10 @@ sub setstate {
       $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
   }
   my $pcfg;
+  unless (-d $tftpdir."/pxelinux.cfg/") {
+      mkpath($tftpdir."/pxelinux.cfg/");
+  }
+
   open($pcfg,'>',$tftpdir."/pxelinux.cfg/".$node);
   my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
   if ($cref->{currstate}) {
