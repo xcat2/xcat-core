@@ -399,7 +399,7 @@ sub update_namedconf {
                     while ($line !~ /^\};/) { #skip the old file zone
                         if ($line =~ /secret \"([^"]*)\"/) {
                             my $passtab = xCAT::Table->new("passwd",-create=>1);
-                            $passtab->setAttribs({key=>"omapi",user=>"xcat_key"},{password=>$1});
+                            $passtab->setAttribs({key=>"omapi",username=>"xcat_key"},{password=>$1});
                         }
                         $i++;
                         $line =  $currnamed[$i];
