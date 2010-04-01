@@ -201,6 +201,7 @@ sub process_request {
         }
         #We manipulate local namedconf
         $ctx->{dbdir} = get_dbdir();
+        chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
         update_namedconf($ctx); 
         update_zones($ctx);
         if ($ctx->{restartneeded}) {
@@ -264,14 +265,16 @@ sub update_zones {
     my ($sec, $min, $hour, $mday, $mon, $year, $rest) = localtime(time);
     my $serial = ($mday * 100) + (($mon + 1) * 10000) + (($year + 1900) * 1000000);
     foreach $currzone (@neededzones) {
+        my $zonefilename = $currzone;
+        $zonefilename =~ s/\..*//; #compatible with bind.pm
         if ($currzone =~ /IN-ADDR\.ARPA/) {
             $currzone =~ s/\.IN-ADDR\.ARPA.*//;
             my @octets = split/\./,$currzone;
             $currzone = join('.',reverse(@octets));
         }
-        unless (-f $dbdir."/db.$currzone") {
+        unless (-f $dbdir."/db.$zonefilename") {
             my $zonehdl;
-            open($zonehdl,">>",$dbdir."/db.$currzone");
+            open($zonehdl,">>",$dbdir."/db.$zonefilename");
             flock($zonehdl,LOCK_EX);
             seek($zonehdl,0,0);
             truncate($zonehdl,0);
@@ -283,7 +286,7 @@ sub update_zones {
             }
             flock($zonehdl,LOCK_UN);
             close($zonehdl);
-            chown(scalar(getpwnam('named')),scalar(getgrnam('named')),$dbdir."/db.$currzone");
+            chown(scalar(getpwnam('named')),scalar(getgrnam('named')),$dbdir."/db.$zonefilename");
             $ctx->{restartneeded}=1;
         }
     }
@@ -372,7 +375,9 @@ sub update_namedconf {
                         push @newnamed,"\t};\n","\tfile \"db.$net\";\n","};\n";
 
                     } else {
-                        push @newnamed,"\t};\n","\tfile \"db.$currzone\";\n","};\n";
+                        my $zfilename = $currzone;
+                        $zfilename =~ s/\..*//;
+                        push @newnamed,"\t};\n","\tfile \"db.$zfilename\";\n","};\n";
                     }
                 } else {
                     push @newnamed,$line;
@@ -446,7 +451,9 @@ sub update_namedconf {
             push @newnamed,"\t};\n","\tfile \"db.$net\";\n","};\n";
 
         } else {
-            push @newnamed,"\t};\n","\tfile \"db.$zone\";\n","};\n";
+            my $zfilename = $zone;
+            $zfilename =~ s/\..*//;
+            push @newnamed,"\t};\n","\tfile \"db.$zfilename\";\n","};\n";
         }
     }
     foreach $zone (keys %{$ctx->{adzones}}) {
@@ -456,7 +463,9 @@ sub update_namedconf {
         foreach (@{$ctx->{adservers}}) {
             push @newnamed,"\t\t$_;\n";
         }
-        push @newnamed,"\t};\n","\tfile \"db.$zone\";\n","};\n\n";
+        my $zfilename = $zone;
+        $zfilename =~ s/\..*//;
+        push @newnamed,"\t};\n","\tfile \"db.$zfilename\";\n","};\n\n";
     }
     my $newnameconf;
     open($newnameconf,">>",$namedlocation);
