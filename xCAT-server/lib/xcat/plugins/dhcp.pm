@@ -269,6 +269,12 @@ sub addnode
         }
         else
         {
+            if ( !grep /:/,$mac ) {
+                $mac = lc($mac);
+                $mac =~ s/(\w{2})/$1:/g;
+                $mac =~ s/:$//;
+            }
+
             #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
             print $omshell "new host\n";
             print $omshell
