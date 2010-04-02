@@ -132,7 +132,7 @@ sub connect {
     ##################################
     my $hosttab  = xCAT::Table->new( 'hosts' );
     if ( $hosttab) {
-        my $hostshash = $hosttab->getNodeAttribs( $server, [qw(ip)]);
+        my $hostshash = $hosttab->getNodeAttribs( $server, [qw(otherinterfaces)]);
         if ( $hostshash ) {
             $server = $hostshash->{ip};
         }
