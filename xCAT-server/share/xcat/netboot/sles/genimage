@@ -179,22 +179,6 @@ if (!$destdir)
 $rootimg_dir="$destdir/rootimg";
 
 
-#Default to the first kernel found in the install image if nothing specified explicitly.
-#A more accurate guess than whatever the image build server happens to be running
-#If specified, that takes precedence.
-#if image has one, that is used
-#if all else fails, resort to uname -r like this script did before
-my @KVERS= <$rootimg_dir/lib/modules/*>;
-if (scalar(@KVERS)) {
-    $basekernelver = basename($KVERS[0]);
-}
-unless ($basekernelver) {
-    $basekernelver = `uname -r`;
-}
-unless ($kernelver) {
-    $kernelver=$basekernelver;
-}
-chomp($kernelver);
 unless ($osver and $profile and $netdriver and $prinic) {
    print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -k <KERNELVER> -o <OSVER> -p <PROFILE> -a <ARCH> [-m <mode> [--permission <permission>]]'."\n";
    print '       genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -k <KERNELVER> <imagename>'."\n";
@@ -466,6 +450,23 @@ my $ret = grep m{$rootimg_dir/proc}, @lines;
 if($ret > 0) {
     system("umount -l $rootimg_dir/proc");
 }
+
+#Default to the first kernel found in the install image if nothing specified explicitly.
+#A more accurate guess than whatever the image build server happens to be running
+#If specified, that takes precedence.
+#if image has one, that is used
+#if all else fails, resort to uname -r like this script did before
+my @KVERS= <$rootimg_dir/lib/modules/*>;
+if (scalar(@KVERS)) {
+    $basekernelver = basename($KVERS[0]);
+}
+unless ($basekernelver) {
+    $basekernelver = `uname -r`;
+}
+unless ($kernelver) {
+    $kernelver=$basekernelver;
+}
+chomp($kernelver);
 
 mkinitrd();
 
