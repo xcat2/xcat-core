@@ -266,11 +266,13 @@ sub update_zones {
     my $serial = ($mday * 100) + (($mon + 1) * 10000) + (($year + 1900) * 1000000);
     foreach $currzone (@neededzones) {
         my $zonefilename = $currzone;
-        $zonefilename =~ s/\..*//; #compatible with bind.pm
         if ($currzone =~ /IN-ADDR\.ARPA/) {
             $currzone =~ s/\.IN-ADDR\.ARPA.*//;
             my @octets = split/\./,$currzone;
             $currzone = join('.',reverse(@octets));
+            $zonefilename = $currzone;
+        } else {
+            $zonefilename =~ s/\..*//; #compatible with bind.pm
         }
         unless (-f $dbdir."/db.$zonefilename") {
             my $zonehdl;
