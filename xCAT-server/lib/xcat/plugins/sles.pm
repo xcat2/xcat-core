@@ -18,6 +18,9 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
+
+use Socket;
+
 #use strict;
 my @cpiopid;
 
@@ -331,6 +334,20 @@ sub mknetboot
             
             $kcmdline .=
                 "XCAT=$xcatmaster:$xcatdport ";
+
+            #BEGIN service node 
+            my $res = xCAT::Utils->runcmd("hostname", 0);
+            my $sip = inet_ntoa(inet_aton($res));  # this is the IP of service node
+            if(($xcatmaster eq $sip) or ($xcatmaster eq $res)) {
+                # if the NFS directory in litetree is on the service node, 
+                # and it is not exported, then it will be mounted automatically 
+                setupNFSTree($node, $sip, $callback);
+                # then, export the statemnt directory if it is on the service node
+                if($stateHash->{$node}->[0]->{statemnt}) {
+                    setupStatemnt($sip, $stateHash->{$node}->[0]->{statemnt}, $callback);
+                }
+            }
+            #END sevice node 
         }
         else
         {
@@ -1130,5 +1147,78 @@ sub subVars()
     return $fdir;
 }
 
+sub setupNFSTree {
+    my $node = shift;
+    my $sip = shift;
+    my $callback = shift;
+
+    my $cmd = "litetree $node";
+    my @uris = xCAT::Utils->runcmd($cmd, 0);
+
+    foreach my $uri (@uris) {
+        # parse the result
+        # the result looks like "nodename: nfsserver:directory";
+        $uri =~ m/\Q$node\E:\s+(.+):(.+)$/;
+        my $nfsserver = $1;
+        my $nfsdirectory = $2;
+
+        if($nfsserver eq $sip) { # on the service node
+
+            if (-d $nfsdirectory) {
+                #nothing to do
+            } else {
+                if (-e $nfsdirectory) {
+                    unlink $nfsdirectory;
+                }
+                mkpath $nfsdirectory;
+            }
+        
+            $cmd = "showmount -e $nfsserver";
+            my @entries = xCAT::Utils->runcmd($cmd, 0);
+            shift @entries;
+            if(grep /\Q$nfsdirectory\E/, @entries) {
+                $callback->({data=>["$nfsdirectory has been exported already!"]});
+                # nothing to do
+            }else {
+                $cmd = "/usr/sbin/exportfs :$nfsdirectory";
+                xCAT::Utils->runcmd($cmd, 0);
+                # exportfs can export this directory immediately
+                $callback->({data=>["now $nfsdirectory is exported!"]});
+            }
+        }
+    }
+}
+
+sub setupStatemnt {
+    my $sip = shift;
+    my $statemnt = shift;
+    my $callback = shift;
+
+    $statemnt =~ m/^(.+):(.+)$/;
+    my $nfsserver = $1;
+    my $nfsdirectory = $2;
+    if($sip eq inet_ntoa(inet_aton($nfsserver))) {
+        if (-d $nfsdirectory) {
+            # nothing to do
+        } else {
+            if (-e $nfsdirectory) {
+                unlink $nfsdirectory;
+            } 
+            mkpath $nfsdirectory;
+        }
+
+        my $cmd = "showmount -e $nfsserver";
+        my @entries = xCAT::Utils->runcmd($cmd, 0);
+        shift @entries;
+        if(grep /\Q$nfsdirectory\E/, @entries) {
+            $callback->({data=>["$nfsdirectory has been exported already!"]});
+        } else {
+            $cmd = "/usr/sbin/exportfs :$nfsdirectory -o rw,no_root_squash,sync,no_subtree_check";
+            xCAT::Utils->runcmd($cmd, 0);
+            $callback->({data=>["now $nfsdirectory is exported!"]});
+        }
+    }
+    
+}
 
 1;
