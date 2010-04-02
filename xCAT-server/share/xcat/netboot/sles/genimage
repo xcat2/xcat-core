@@ -456,9 +456,18 @@ if($ret > 0) {
 #If specified, that takes precedence.
 #if image has one, that is used
 #if all else fails, resort to uname -r like this script did before
-my @KVERS= <$rootimg_dir/lib/modules/*>;
+my @KVERS= <$rootimg_dir/boot/vmlinux-*>;
+unless (scalar(@KVERS)) {
+    @KVERS= <$rootimg_dir/boot/vmlinuz-*>;
+}
+foreach (@KVERS) {
+	s/vmlinu.-//;
+}
+unless (scalar(@KVERS)) {
+	@KVERS= <$rootimg_dir/lib/modules/*>;
+}
 if (scalar(@KVERS)) {
-    $basekernelver = basename($KVERS[0]);
+    $basekernelver = basename(pop @KVERS);
 }
 unless ($basekernelver) {
     $basekernelver = `uname -r`;
@@ -467,6 +476,30 @@ unless ($kernelver) {
     $kernelver=$basekernelver;
 }
 chomp($kernelver);
+
+open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
+my @moddeps = <$moddeps>;
+my @checkdeps = @ndrivers;
+while (scalar @checkdeps) {
+    my $driver = pop @checkdeps;
+    my @lines = grep /\/$driver:/,@moddeps;
+    foreach (@lines) {
+        chomp;
+        s/.*://;
+        s/^\s*//;
+        my @deps = split /\s+/,$_;
+        my $dep;
+        foreach $dep (@deps) {
+            $dep =~ s/.*\///;
+            unless (grep { $_ eq $dep } @ndrivers) { #only add if not added
+                unshift (@checkdeps,$dep); #recursively check dependencies
+                unshift (@ndrivers,$dep);
+                print "Added $dep as an autodetected depedency\n";
+            }
+        }
+    }
+}
+close($moddeps);
 
 mkinitrd();
 
@@ -494,53 +527,52 @@ sub getlibs {
 }
 
 sub mkinitrd {
-	mkpath("/tmp/xcatinitrd.$$/bin");
-	if($basekernelver eq $kernelver) {
+    mkpath("/tmp/xcatinitrd.$$/bin");
+    if($basekernelver eq $kernelver) {
         if (-f "$rootimg_dir/boot/vmlinuz-$kernelver") {
-		    rename(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel");
-	         } elsif (-f "$rootimg_dir/boot/vmlinux-$kernelver"){
-                    rename(<$rootimg_dir/boot/vmlinux*>,"$destdir/kernel");
-                 }
+            copy(<$rootimg_dir/boot/vmlinuz-*>,"$destdir/kernel");
+        } elsif (-f "$rootimg_dir/boot/vmlinux-$kernelver"){
+            copy(<$rootimg_dir/boot/vmlinux-*>,"$destdir/kernel");
         }
-	else {
-	    if(-r "$rootimg_dir/boot/vmlinuz-$kernelver") {
-		    rename("$rootimg_dir/boot/vmlinuz-$kernelver","$destdir/kernel");
+    }
+    else {
+        if(-r "$rootimg_dir/boot/vmlinuz-$kernelver") {
+            copy("$rootimg_dir/boot/vmlinuz-$kernelver","$destdir/kernel");
         } elsif(-r "$rootimg_dir/boot/vmlinux-$kernelver") {
-            rename("$rootimg_dir/boot/vmlinux-$kernelver","$destdir/kernel");
-        }  elsif(-r "/boot/vmlinuz-$kernelver") {
-		    copy("/boot/vmlinuz-$kernelver","$destdir/kernel");
-	    } elsif(-r "/boot/vmlinux-$kernelver") {#for SLES10,11
-			copy("/boot/vmlinux-$kernelver","$destdir/kernel");
-	    }
-	    else {
-		    xdie("Cannot read /boot/vmlinuz-$kernelver");
-	    }
-	}
-	symlink("bin","/tmp/xcatinitrd.$$/sbin");
-	mkpath("/tmp/xcatinitrd.$$/usr/bin");
-	mkpath("/tmp/xcatinitrd.$$/usr/sbin");
-	mkpath("/tmp/xcatinitrd.$$/usr/lib");
-	mkpath("/tmp/xcatinitrd.$$/usr/lib64");
-	mkpath("/tmp/xcatinitrd.$$/lib/firmware");
-	mkpath("/tmp/xcatinitrd.$$/tmp");
-	mkpath("/tmp/xcatinitrd.$$/var/run");
-	mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
-#	if($osver =~ /sles/ && $arch eq "ppc64") {#SLES for Power6&7
-#	    mkpath("/tmp/xcatinitrd.$$/lib64/power6");
-#	    mkpath("/tmp/xcatinitrd.$$/lib64/power7");
-#	}
-	mkpath("/tmp/xcatinitrd.$$/lib/power6");#SLES10
-	mkpath("/tmp/xcatinitrd.$$/lib/power7");#SLES10
-	mkpath("/tmp/xcatinitrd.$$/lib/mkinitrd/bin");
-	mkpath("/tmp/xcatinitrd.$$/proc");
-	mkpath("/tmp/xcatinitrd.$$/sys");
-	mkpath("/tmp/xcatinitrd.$$/dev/mapper");
-	mkpath("/tmp/xcatinitrd.$$/sysroot");
-	mkpath("/tmp/xcatinitrd.$$/etc/ld.so.conf.d");
-	mkpath("/tmp/xcatinitrd.$$/var/lib/dhcpcd");
-	my $inifile;
-	open($inifile,">","/tmp/xcatinitrd.$$/init");
-	print $inifile "#!/bin/bash\n";
+            copy("$rootimg_dir/boot/vmlinux-$kernelver","$destdir/kernel");
+        } elsif(-r "/boot/vmlinuz-$kernelver") {
+            copy("/boot/vmlinuz-$kernelver","$destdir/kernel");
+        } elsif(-r "/boot/vmlinux-$kernelver") {#for SLES10,11
+        	copy("/boot/vmlinux-$kernelver","$destdir/kernel");
+        } else {
+          xdie("Cannot read /boot/vmlinuz-$kernelver");
+        }
+    }
+    symlink("bin","/tmp/xcatinitrd.$$/sbin");
+    mkpath("/tmp/xcatinitrd.$$/usr/bin");
+    mkpath("/tmp/xcatinitrd.$$/usr/sbin");
+    mkpath("/tmp/xcatinitrd.$$/usr/lib");
+    mkpath("/tmp/xcatinitrd.$$/usr/lib64");
+    mkpath("/tmp/xcatinitrd.$$/lib/firmware");
+    mkpath("/tmp/xcatinitrd.$$/tmp");
+    mkpath("/tmp/xcatinitrd.$$/var/run");
+    mkpath("/tmp/xcatinitrd.$$/lib64/firmware");
+    #	if($osver =~ /sles/ && $arch eq "ppc64") {#SLES for Power6&7
+    #	    mkpath("/tmp/xcatinitrd.$$/lib64/power6");
+    #	    mkpath("/tmp/xcatinitrd.$$/lib64/power7");
+    #	}
+    mkpath("/tmp/xcatinitrd.$$/lib/power6");#SLES10
+    mkpath("/tmp/xcatinitrd.$$/lib/power7");#SLES10
+    mkpath("/tmp/xcatinitrd.$$/lib/mkinitrd/bin");
+    mkpath("/tmp/xcatinitrd.$$/proc");
+    mkpath("/tmp/xcatinitrd.$$/sys");
+    mkpath("/tmp/xcatinitrd.$$/dev/mapper");
+    mkpath("/tmp/xcatinitrd.$$/sysroot");
+    mkpath("/tmp/xcatinitrd.$$/etc/ld.so.conf.d");
+    mkpath("/tmp/xcatinitrd.$$/var/lib/dhcpcd");
+    my $inifile;
+    open($inifile,">","/tmp/xcatinitrd.$$/init");
+    print $inifile "#!/bin/bash\n";
 
 # copied from genimage for rh
 # add some functions
@@ -1182,9 +1214,9 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       system("ln -s ../gettyset $rootimg_dir/etc/init.d/rc3.d/S60gettyset");
    }
    if(($osver =~ /sles11/) || ($osver =~ /sles10/)) {#for sles11,sles10
-	   rename(<$rootimg_dir/boot/vmlinux*>,"$destdir/kernel");
+	   copy(<$rootimg_dir/boot/vmlinux-*>,"$destdir/kernel");
    }else {
-   	   rename(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel");
+   	   copy(<$rootimg_dir/boot/vmlinuz-*>,"$destdir/kernel");
    }
 }
 
