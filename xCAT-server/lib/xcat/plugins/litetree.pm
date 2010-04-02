@@ -36,9 +36,13 @@ sub usage {
 	my $error = shift;
 	my $msg;	
 	if($command eq "ilitefile"){
-		$msg = "ilitefile <imagename>
-\texample:\n\tilitefile centos5.3-x86_64-compute"
-	}	else{
+		$msg = "Usage: ilitefile <imagename>
+\texample:\n\tilitefile centos5.3-x86_64-statelite-compute"
+	} elsif($command eq "litefile") {
+        $msg = "Usage: litefile <noderange>\nexample:\n\tlitefile node1";
+   	} elsif($command eq "litetree") {
+        $msg = "Usage: litetree <noderange>\nexample:\n\tlitetree node1";
+    } else{
 		$msg = "some general usage string";
 	}
 
@@ -80,13 +84,21 @@ sub process_request {
 
 	my $command = $request->{command}->[0];
 	if($command eq "litetree"){
+        unless($request->{node}) {
+            usage($command, $callback, 0);
+            return 1;
+        }
 		return syncmount("dir",$request,$callback,$noderange);
 	}elsif($command eq "litefile"){
-		return syncmount("file",$request, $callback,$noderange);
+		unless($request->{node}) {
+            usage($command, $callback, 0);
+            return 1;
+        }
+        return syncmount("file",$request, $callback,$noderange);
 	}elsif($command eq "ilitefile"){
 			#print Dumper($request);
 			unless($request->{arg}){
-				usage($command, $callback,1);
+				usage($command, $callback, 0);
 				return 1;
 			}
 			return syncmount("image",$request, $callback,$request->{arg});
