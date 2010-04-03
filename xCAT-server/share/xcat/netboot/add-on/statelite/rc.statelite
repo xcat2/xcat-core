@@ -51,16 +51,17 @@ GetSyncInfo () {
 			break
 		fi
 	done
+
+    hn=`hostname`
 	
 
 	if [ -z $XCATSERVER ]; then
-		hn=`hostname`
 		echo "Cannot find the xCAT server for node $hn"
 		exit 1
 	fi
 
 	# request the list of files from xCAT:
-	xCATCmd $XCATSERVER litefile  \
+	xCATCmd $XCATSERVER litefile  $hn\
 		| sed  -e 's/<[^>]*>//g' \
 		| egrep -v '^ *$' 	\
 		| sed -e 's/^ *//' \
@@ -70,7 +71,7 @@ GetSyncInfo () {
 
 	# files will now be inside /.snapshot/tmpfs/synclist in the form:
 	# options path
-	xCATCmd $XCATSERVER litetree  \
+	xCATCmd $XCATSERVER litetree  $hn\
 		| sed  -e 's/<[^>]*>//g' \
 		| egrep -v '^ *$' \
 		| sed -e 's/^ *//' \
@@ -81,7 +82,8 @@ GetSyncInfo () {
 xCATCmd () {
 # $1 is the xCAT server
 # $2 is the command
-	echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | LD_LIBRARY_PATH=/sysroot/lib64:/sysroot/usr/lib64 /sysroot/usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
+# $3 is the noderange
+	echo "<xcatrequest>\n<command>${2}</command>\n<noderange>$hn</noderange>\n</xcatrequest>" | LD_LIBRARY_PATH=/sysroot/lib64:/sysroot/usr/lib64 /sysroot/usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
 
 }
 
