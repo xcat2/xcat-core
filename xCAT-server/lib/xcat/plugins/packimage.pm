@@ -309,7 +309,7 @@ sub copybootscript {
     my $arch = shift;
     my $profile = shift;
     my $callback = shift;
-
+    my @timezone = xCAT::Utils->get_site_attribute("timezone");
 
     if ( -f "$installroot/postscripts/xcatdsklspost") {
 
@@ -317,6 +317,10 @@ sub copybootscript {
         mkpath("$rootimg_dir/opt/xcat");  
 
         copy ("$installroot/postscripts/xcatdsklspost", "$rootimg_dir/opt/xcat/xcatdsklspost");
+        if($timezone[0]) {
+	    copy ("$rootimg_dir/usr/share/zoneinfo/$timezone[0]", "$rootimg_dir/etc/localtime");
+        }
+
 
         chmod(0755,"$rootimg_dir/opt/xcat/xcatdsklspost");
 
@@ -327,6 +331,8 @@ sub copybootscript {
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
+
+    # the following block might need to be removed as xcatdsklspost.aix may no longer be used
     if ( -f "$installroot/postscripts/xcatdsklspost.aix") {
        copy ("$installroot/postscripts/xcatdsklspost.aix", "$rootimg_dir/opt/xcat/xcatdsklspost.aix");
        chmod(0755,"$rootimg_dir/opt/xcat/xcatdsklspost.aix");
