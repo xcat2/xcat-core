@@ -50,9 +50,6 @@ if [ $OS != "AIX" ]; then
         chroot $installroot $linux_loadl_license_script -y -d  /$tmpdir
         umount -l $installroot/proc
         rm -rf $installroot/$tmpdir
-
-        mkdir $installroot/dev/cpuset
-        chroot $installroot mount -t cpuset none /dev/cpuset
     fi
 fi
 
