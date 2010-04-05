@@ -58,15 +58,18 @@ chroot $installroot chkconfig atd on
 chroot $installroot chkconfig xinetd on
 
 # Modify some ulimits
+if [ ! -f $installroot/etc/sysconfig/ulimit ]; then
+    cp -p /etc/sysconfig/ulimit $installroot/ect/sysconfig
+fi
 if [ ! -f $installroot/etc/sysconfig/ulimit.XCAT_BAK ]; then
-  cp -p $installroot/etc/sysconfig/ulimit $installroot/etc/sysconfig/ulimit.XCAT_BAK
+   cp -p $installroot/etc/sysconfig/ulimit $installroot/etc/sysconfig/ulimit.XCAT_BAK
 fi
-if [ -f $installroot/etc/sysconfig/ulimit ]; then
-    # max locked memory
-    /usr/bin/sed -i 's/HARDLOCKLIMIT=.*/HARDLOCKLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
-    /usr/bin/sed -i 's/SOFTLOCKLIMIT=.*/SOFTLOCKLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
-    # max memory size
-    /usr/bin/sed -i 's/HARDRESIDENTLIMIT=.*/HARDRESIDENTLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
-    /usr/bin/sed -i 's/SOFTRESIDENTLIMIT=.*/SOFTRESIDENTLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
-fi
+# max locked memory
+/usr/bin/sed -i 's/HARDLOCKLIMIT=.*/HARDLOCKLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
+/usr/bin/sed -i 's/SOFTLOCKLIMIT=.*/SOFTLOCKLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
+# max memory size
+/usr/bin/sed -i 's/HARDRESIDENTLIMIT=.*/HARDRESIDENTLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
+/usr/bin/sed -i 's/SOFTRESIDENTLIMIT=.*/SOFTRESIDENTLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
+
+
 

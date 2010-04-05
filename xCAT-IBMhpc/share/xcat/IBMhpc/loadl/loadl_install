@@ -45,8 +45,10 @@ if [ $OS != "AIX" ]; then
         mkdir $installroot/$tmpdir
         cp -p $LOADL_DIR/* $installroot/$tmpdir
         # The license rpm should already be installed, but just in case...
-        rpm --root $installroot rpm -Uvh $installroot/$tmpdir/LoadL-full-license*.rpm
+        rpm --root $installroot -Uvh $installroot/$tmpdir/LoadL-full-license*.rpm
+        chroot $installroot mount -t proc none /proc
         chroot $installroot $linux_loadl_license_script -y -d  /$tmpdir
+        umount -l $installroot/proc
         rm -rf $installroot/$tmpdir
 
         mkdir $installroot/dev/cpuset
@@ -107,6 +109,7 @@ chmod 777 $installroot$logdir/core
 # Owner set to 'loadl' userid, change if using a different userid
 chown -R loadl:loadl $installroot$logdir/
 
-cp /etc/LoadL.cfg $installroot/etc/LoadL.cfg
-
+if [ -f /etc/LoadL.cfg ] ; then
+    cp /etc/LoadL.cfg $installroot/etc/LoadL.cfg
+fi
 
