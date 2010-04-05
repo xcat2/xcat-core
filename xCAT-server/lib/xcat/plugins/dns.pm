@@ -191,6 +191,7 @@ sub process_request {
                 $ctx->{dnsupdaters} = \@nservers;
         }
         if ($zapfiles) { #here, we unlink all the existing files to start fresh
+            system("/sbin/service named stop"); #named may otherwise hold on to stale journal filehandles
             unlink "/etc/named.conf";
             foreach (</var/named/db.*>) {
                 unlink $_;
@@ -543,7 +544,7 @@ sub add_records {
                 $update =  Net::DNS::Update->new($zone); #new empty request
             }
         }
-        if ($numreqs == 300) { #either no entries at all to begin with or a perfect multiple of 300
+        if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
             $update->sign_tsig("xcat_key",$ctx->{privkey});
             my $reply = $resolver->send($update);
         }
