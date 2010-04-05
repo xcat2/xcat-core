@@ -528,12 +528,25 @@ sub add_records {
     foreach $zone (keys %{$ctx->{updatesbyzone}}) {
         my $resolver = Net::DNS::Resolver->new(nameservers=>[$ctx->{nsmap}->{$zone}]);
         my $entry;
+        my $numreqs = 300; # limit to 300 updates in a payload, something broke at 644 on a certain sample, choosing 300 for now
         my $update = Net::DNS::Update->new($zone);
         foreach $entry (@{$ctx->{updatesbyzone}->{$zone}}) {
             $update->push(update=>rr_add($entry));
+            $numreqs -= 1;
+            if ($numreqs == 0) {
+                $update->sign_tsig("xcat_key",$ctx->{privkey});
+                $numreqs=300;
+                my $reply = $resolver->send($update);
+                if ($reply->header->rcode ne 'NOERROR') {
+                    sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode]);
+                }
+                $update =  Net::DNS::Update->new($zone); #new empty request
+            }
         }
-        $update->sign_tsig("xcat_key",$ctx->{privkey});
-        my $reply = $resolver->send($update);
+        if ($numreqs == 300) { #either no entries at all to begin with or a perfect multiple of 300
+            $update->sign_tsig("xcat_key",$ctx->{privkey});
+            my $reply = $resolver->send($update);
+        }
     }
 }
 sub find_nameserver_for_dns {
