@@ -673,6 +673,12 @@ sub tabprune
     if (defined $ALL ) {
      $rc=tabprune_all($table,$cb); 
     }
+    if (defined $NUMBERENTRIES ) {
+     $rc=tabprune_numberentries($table,$cb,$NUMBERENTRIES); 
+    }
+    if (defined $RECID ) {
+     $rc=tabprune_recid($table,$cb,$RECID); 
+    }
     my %rsp;
     push @{$rsp{data}}, "tabprune of $table complete.";
     $rsp{errorcode} = $rc; 
@@ -693,6 +699,42 @@ sub tabprune_all {
    $tab->commit;         #  commit
    return $rc;
 }
+#  prune input number of records for the table TODO
+#  if number of entries > number than in the table, then remove all
+#ub tabprune_numberentries {
+#  my $table = shift;
+#  my $cb  = shift;
+#  my $numberentries  = shift;
+#  my $rc=0;
+#  #my $tab        = xCAT::Table->new($table, -create => 1, -autocommit => 0);
+#  #unless ($tab) {
+#  #     $cb->({error => "Unable to open $table",errorcode=>4});
+#  #     return 1;
+#  #}
+#  #$tab->commit;         #  commit
+#  return $rc;
+#}
+
+#  prune all entries up to the record id input 
+#  if rec id  does not exist error 
+sub tabprune_recid {
+   my $table = shift;
+   my $cb  = shift;
+   my $recid  = shift;
+   my $rc=0;
+   my $tab        = xCAT::Table->new($table, -create => 1, -autocommit => 0);
+   unless ($tab) {
+        $cb->({error => "Unable to open $table",errorcode=>4});
+        return 1;
+   }
+   my @ents=$tab->getAllAttribsWhere("recid<$recid", 'recid');
+   foreach my $rid (@ents) {
+     $tab->delEntries($rid);
+   } 
+   $tab->commit;       
+   return $rc;
+}
+
 sub getTableColumn {
     my $string = shift;
     if ($shortnames{$string}) {
