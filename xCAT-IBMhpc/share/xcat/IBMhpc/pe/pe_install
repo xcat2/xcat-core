@@ -3,6 +3,16 @@
 # For AIX:
 #    TBD
 # For Linux:
+#    - For full-disk installs:
+#        - Copy rpms to node
+#        - Install and accept PE license rpm
+#        - Install PE rpms
+#    - For diskless images:
+#        - Install PE license on MN if not already installed
+#        - Install PE license rpm into image, but DO NOT ACCEPT
+#          (java accept program will hang)
+#        - Copy PE license files from MN into image
+#        - Install PE rpms
 #    - Create a smaller PNSD log file in /tmp 
 #    - Configure poe.limits file
 
@@ -41,18 +51,35 @@ if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "genimage" ]; then
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
-        chroot $installroot mount -t proc none /proc
         if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
         # For SLES, assume zypper is available on the system running genimage
-
-            IBM_PE_LICENSE_PROMPT=N zypper -R $installroot install $PE_DIR/IBM_pe_license*.rpm
+            if [ ! -d /etc/opt/ibmhpc/license ] ; then
+            # Install and accept PE license on the MN
+                IBM_PE_LICENSE_PROMPT=N zypper install $PE_DIR/IBM_pe_license*.rpm
+            fi
+            # Install PE license rpm into image, BUT DO NOT ACCEPT
+            # The java process fails when you try to run in chroot
+            zypper -R $installroot install $PE_DIR/IBM_pe_license*.rpm
+            # Copy license files from MN into the image
+            mkdir -p $installroot/etc/opt/ibmhpc/license
+            cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
+            # Install PE product rpms
             zypper -R $installroot install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm $PE_DIR/sci_*.rpm
         else
         # For Redhat, etc., assume yum is available on the system running genimage
-             IBM_PE_LICENSE_PROMPT=N yum --installroot $installroot --nogpgcheck localupdate  $PE_DIR/IBM_pe_license*.rpm
-             yum --installroot $installroot --nogpgcheck localupdate $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm $PE_DIR/sci_*.rpm
+            if [ ! -d /etc/opt/ibmhpc/license ] ; then
+            # Install and accept PE license on the MN
+                IBM_PE_LICENSE_PROMPT=N yum --nogpgcheck localupdate  $PE_DIR/IBM_pe_license*.rpm
+            fi
+            # Install PE license rpm into image, BUT DO NOT ACCEPT
+            # The java process fails when you try to run in chroot
+            yum --installroot $installroot --nogpgcheck localupdate  $PE_DIR/IBM_pe_license*.rpm
+            # Copy license files from MN into the image
+            mkdir -p $installroot/etc/opt/ibmhpc/license
+            cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
+            # Install PE product rpms
+            yum --installroot $installroot --nogpgcheck localupdate $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm $PE_DIR/sci_*.rpm
         fi
-        umount -l $installroot/proc
     fi
 fi
 

@@ -1,1 +1,2 @@
-pe/ibm-java2-ppc64-jre
+#  No PE otherpkgs at this time
+#  All PE packages are installed through the pe_install postinstall script

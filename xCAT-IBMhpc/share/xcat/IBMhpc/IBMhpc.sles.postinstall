@@ -60,7 +60,7 @@ chroot $installroot chkconfig xinetd on
 
 # Modify some ulimits
 if [ ! -f $installroot/etc/sysconfig/ulimit ]; then
-    cp -p /etc/sysconfig/ulimit $installroot/ect/sysconfig
+    cp -p /etc/sysconfig/ulimit $installroot/etc/sysconfig
 fi
 if [ ! -f $installroot/etc/sysconfig/ulimit.XCAT_BAK ]; then
    cp -p $installroot/etc/sysconfig/ulimit $installroot/etc/sysconfig/ulimit.XCAT_BAK
