@@ -5389,7 +5389,7 @@ sub updateEtcHosts
     Error:
         none
     Example:
-		my $DBname = xCAT::Utils->getDBName;
+		my $DBname = xCAT::Utils->get_DBName;
     Comments:
 
 =cut

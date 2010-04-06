@@ -1574,7 +1574,7 @@ sub setAttribs
        This function sets the attributes for the rows selected by the where clause.
     Warning, because we support mulitiple databases (SQLite,MySQL and DB2) that
     require different syntax.  Any code using this routine,  must call the 
-    Utils->getDBName routine and code the where clause that is appropriate for
+    Utils->get_DBName routine and code the where clause that is appropriate for
     each supported database.
 
     Arguments:
