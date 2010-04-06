@@ -1574,7 +1574,7 @@ sub setAttribs
        This function sets the attributes for the rows selected by the where clause.
     Warning, because we support mulitiple databases (SQLite,MySQL and DB2) that
     require different syntax.  Any code using this routine,  must call the 
-    Utils->get_DBName routine and code the where clause that is appropriate for
+    Utils->getDBName routine and code the where clause that is appropriate for
     each supported database.
 
     Arguments:
@@ -2414,17 +2414,14 @@ sub getAllAttribsWhere
     my @results     = ();
     my $query;
     my $query2;
-    $query2='SELECT * FROM '  . $self->{tabname} . ' WHERE (' . $whereclause . ")  and " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')";
 
     if ($xcatcfg =~ /^mysql:/) {  #for mysql
+           $query2='SELECT * FROM '  . $self->{tabname} . ' WHERE (' . $whereclause . ")  and " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')";
            $query = $self->{dbh}->prepare($query2);
       } else {   
           if ($xcatcfg =~ /^DB2:/) {  #for DB2
-            $query = $self->{dbh}->prepare('SELECT * FROM '
-             . $self->{tabname}
-             . ' WHERE ('
-             . $whereclause
-          . " ) and (\"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR  \"disable\" LIKE 'NO' OR  \"disable\" LIKE 'No' OR  \"disable\" LIKE 'nO')");
+            $query2= 'SELECT * FROM ' . $self->{tabname} . ' WHERE (' . $whereclause . " ) and (\"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR  \"disable\" LIKE 'NO' OR  \"disable\" LIKE 'No' OR  \"disable\" LIKE 'nO')";
+            $query = $self->{dbh}->prepare($query2);
  
            } else { # for other dbs
               $query = $self->{dbh}->prepare('SELECT * FROM '
