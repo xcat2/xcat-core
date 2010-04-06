@@ -846,18 +846,25 @@ prescripts => {
   # Do not put description text past column 88, so it displays well in a 100 char wide window.
   # ----------------------------------------------------------------------------------|
 	begin => 
-   "The scripts to be run at the beginning of the nodeset (Linux) command.\n\n". 
+   "The scripts to be run at the beginning of the nodeset (Linux) command.\n". 
    " The format is:\n".
    "   [action1:]s1,s2...[|action2:s3,s4,s5...]\n".
    " where:\n".
    "  - action1 and action2 are the nodeset/nimnodeset actions specified in the command\n".
    "  - s1 and s2 are the scripts to run for action1 in order\n".
-   "  - s3, s4, and s5 are the scripts to run for actions2\n\n".
+   "  - s3, s4, and s5 are the scripts to run for actions2\n".
    " If actions are omitted, the scripts apply to all actions.\n".
-   " All the scripts should be copied to /install/prescripts directory.\n\n".
    " Examples:\n".
    "   myscript1,myscript2\n".
-   "   install:myscript1,myscript2|netboot:myscript3",
+   "   install:myscript1,myscript2|netboot:myscript3\n\n".
+   " All the scripts should be copied to /install/prescripts directory.\n".
+   " The following two environment variables will be passed to each script: \n".
+   "   NODES a coma separated list of node names that need to run the script for\n".
+   "   ACTION current nodeset action.\n\n".
+   " If '#xCAT setting:MAX_INSTANCE=number' is specified in the script, the script\n".
+   " will get invoked for each node in parallel, but no more than number of instances\n".
+   " will be invoked at at a time. If it is not sepcified, the script will be invoked\n".
+   " once for all the nodes.\n",
     end => "The scripts to be run at the end of the nodeset (Linux) command. The format is the same as the 'begin' column.",
 	comments => 'Any user-written notes.',
 	disable => "Set to 'yes' or '1' to comment out this row.",

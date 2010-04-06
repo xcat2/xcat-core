@@ -11,6 +11,10 @@ require xCAT::Utils;
 require xCAT::MsgUtils;
 use Getopt::Long;
 use Sys::Hostname;
+use Time::HiRes qw(gettimeofday sleep);
+use POSIX "WNOHANG";
+
+
 1;
 
 #-------------------------------------------------------
@@ -158,26 +162,43 @@ sub runbeginpre
 	my $runnodes=$script_hash{$scripts};
         if ($runnodes && (@$runnodes>0)) {
 	    my $runnodes_s=join(',', @$runnodes);
-	    my $rsp = {};
-	    $rsp->{data}->[0]="$localhostname: Running begin scripts $scripts for nodes $runnodes_s.";
-	    $callback->($rsp);
 
 	    #now run the scripts 
-	    undef $SIG{CHLD};
 	    my @script_array=split(',', $scripts);
             foreach my $s (@script_array) {
-		my $ret=`NODES=$runnodes_s ACTION=$action $installdir/prescripts/$s 2>&1`;
-		my $err_code=$?;
-		if ($ret) {
-		    my $rsp = {};
-		    $rsp->{data}->[0]="$localhostname: $s: $ret";
-		    $callback->($rsp);
+		my $rsp = {};
+		$rsp->{data}->[0]="$localhostname: Running begin script $s for nodes $runnodes_s.";
+		$callback->($rsp);
+
+                #check if the script need to be invoked for each node in parallel. 
+                #script must contian a line like this in order to be run this way: #xCAT setting: MAX_INSTANCE=4
+                #where 4 is the maximum instance at a time
+                my $max_instance=0; 
+                my $ret=`grep -E '#+xCAT setting: *MAX_INSTANCE=' $installdir/prescripts/$s`;
+                if ($? == 0) {
+		   $max_instance=`echo "$ret" | cut -d= -f2`; 
+                   chomp($max_instance);
 		}
-		if ($err_code != 0) {
-		    $rsp = {};
-		    $rsp->{error}->[0]="$localhostname: $s: return code=$err_code. Error message=$ret";
-		    $callback->($rsp);
-		    #last;
+                
+                if ($max_instance > 0) {
+		    #run the script for each node in paralell, no more than max_instance at a time
+		    run_script_single_node($installdir, $s,$action,$max_instance,$runnodes,$callback);
+		} else { 
+		    undef $SIG{CHLD};
+                    #pass all the nodes to the script, only invoke the script once
+		    my $ret=`NODES=$runnodes_s ACTION=$action $installdir/prescripts/$s 2>&1`;
+		    my $err_code=$?;
+		    if ($err_code != 0) {
+			my $rsp = {};
+			$rsp->{error}->[0]="$localhostname: $s: return code=$err_code. Error message=$ret";
+			$callback->($rsp);
+		    } else {
+			if ($ret) {
+			    my $rsp = {};
+			    $rsp->{data}->[0]="$localhostname: $s: $ret";
+			    $callback->($rsp);
+			}
+		    }
 		}
 	    }
 	}
@@ -206,26 +227,41 @@ sub runendpre
 	    my $runnodes_s=join(',', @$runnodes);
             my %runnodes_hash=();
 
-	    my $rsp = {};
-	    $rsp->{data}->[0]="$localhostname: Running end scripts $scripts for nodes $runnodes_s.";
-	    $callback->($rsp);
-
 	    #now run the scripts 
-	    undef $SIG{CHLD};
 	    my @script_array=split(',', $scripts);
             foreach my $s (@script_array) {
-		my $ret=`NODES=$runnodes_s ACTION=$action $installdir/prescripts/$s 2>&1`;
-		my $err_code=$?;
-		if ($ret) {
-		    my $rsp = {};
-		    $rsp->{data}->[0]="$localhostname: $s: $ret";
-		    $callback->($rsp);
+		my $rsp = {};
+		$rsp->{data}->[0]="$localhostname: Running end script $s for nodes $runnodes_s.";
+		$callback->($rsp);
+
+                #check if the script need to be invoked for each node in parallel. 
+                #script must contian a line like this in order to be run this way: #xCAT setting: MAX_INSTANCE=4
+                #where 4 is the maximum instance at a time
+                my $max_instance=0; 
+                my $ret=`grep -E '#+xCAT setting: *MAX_INSTANCE=' $installdir/prescripts/$s`;
+                if ($? == 0) {
+		   $max_instance=`echo "$ret" | cut -d= -f2`; 
+                   chomp($max_instance);
 		}
-		if ($err_code != 0) {
-		    $rsp = {};
-		    $rsp->{error}->[0]="$localhostname: $s: return code=$err_code. Error message=$ret";
-		    $callback->($rsp);
-		    #last;
+                
+                if ($max_instance > 0) {
+		    #run the script for each node in paralell, no more than max_instance at a time
+		    run_script_single_node($installdir, $s,$action,$max_instance,$runnodes,$callback);
+		} else { 
+		    undef $SIG{CHLD};
+		    my $ret=`NODES=$runnodes_s ACTION=$action $installdir/prescripts/$s 2>&1`;
+		    my $err_code=$?;
+		    if ($err_code != 0) {
+			my $rsp = {};
+			$rsp->{error}->[0]="$localhostname: $s: return code=$err_code. Error message=$ret";
+			$callback->($rsp);
+		    } else {
+			if ($ret) {
+			    my $rsp = {};
+			    $rsp->{data}->[0]="$localhostname: $s: $ret";
+			    $callback->($rsp);
+			}
+		    }
 		}
 	    }
 	}
@@ -323,4 +359,71 @@ sub  parseprescripts
 	}
     }
     return $ret;
+}
+
+
+#-------------------------------------------------------
+=head3  run_script_single_node
+   
+=cut
+#-------------------------------------------------------
+sub  run_script_single_node
+{
+    my $installdir=shift; #/install
+    my $s=shift;  #script name
+    my $action=shift;
+    my $max=shift;  #max number of instances to be run at a time
+    my $nodes=shift; #nodes to be run
+    my $callback=shift; #callback
+    
+    my $children=0;
+    my $localhostname=hostname();
+    
+    foreach my $node ( @$nodes ) {
+	$SIG{CHLD} = sub { my $pid = 0; while (($pid = waitpid(-1, WNOHANG)) > 0) {  $children--; } };
+	
+	while ( $children >= $max ) {
+	    Time::HiRes::sleep(0.5);
+	    next;
+	}
+	
+	my $pid = xCAT::Utils->xfork;
+	if ( !defined($pid) ) {
+	    # Fork error
+	    my $rsp = {};
+	    $rsp->{data}->[0]="$localhostname: Fork error before running script $s for node $node";
+	    $callback->($rsp);
+	    return 1;
+	}
+	elsif ( $pid == 0 ) {
+	    # Child process
+	    undef $SIG{CHLD};
+	    my $ret=`NODES=$node ACTION=$action $installdir/prescripts/$s 2>&1`;
+	    my $err_code=$?;
+	    my $rsp = {};
+	    if ($err_code != 0) {
+		$rsp = {};
+		$rsp->{error}->[0]="$localhostname: $s: node=$node. return code=$err_code. Error message=$ret";
+		$callback->($rsp);
+	    } else {
+		if ($ret) {
+		    $rsp->{data}->[0]="$localhostname: $s: node=$node. $ret";
+		    $callback->($rsp);
+		}
+	    }    
+	    exit $err_code;
+	}
+	else {
+	    # Parent process
+	    $children++;
+	}
+    }
+    
+    #drain one more time
+    while ($children > 0) {
+	Time::HiRes::sleep(0.5);
+	
+	$SIG{CHLD} = sub { my $pid = 0; while (($pid = waitpid(-1, WNOHANG)) > 0) { $children--; } };
+    }
+    return 0;
 }
