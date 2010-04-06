@@ -475,7 +475,7 @@ sub message
      if ($sev eq 'SA')
      {
         my $auditlogentry;
-        my $tab = xCAT::Table->new("auditlog", -create => 1, -autocommit => 0);
+        my $tab = xCAT::Table->new("auditlog");
         if ($tab)
         {
             my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
