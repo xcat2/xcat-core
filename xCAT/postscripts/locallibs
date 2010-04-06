@@ -18,6 +18,7 @@ ARCH=$(uname -m)
 
 DIRS="$LOCALDIR/goto/lib"
 
+echo "$0: arch is $ARCH" | logger -t xcat
 case "$ARCH" in
 	i686)
 		DIRS="$DIRS $LOCALDIR/intel/$ARCH/lib"

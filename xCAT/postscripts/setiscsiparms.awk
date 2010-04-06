@@ -12,6 +12,7 @@ BEGIN {
                         print $0 | "logger -t xcat"
                 else {
                     print "Retrying iSCSI paramater config script"
+                    print "Retrying iSCSI paramater config script" | "logger -t xcat"
                     close(ns)
                     system("sleep 1")
                 }

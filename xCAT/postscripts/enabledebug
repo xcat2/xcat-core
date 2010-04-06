@@ -3,7 +3,7 @@
 #egan@us.ibm.com
 #(C)IBM Corp
 #
-
+echo "$0: the OS version is $OSVER" | logger -t xcat
 case $OSVER in
 	sles*|suse*|ul*)
 		perl -pi -e 's/^KERNEL_LOGLEVEL=1/KERNEL_LOGLEVEL=8/' /etc/sysconfig/syslog

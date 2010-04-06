@@ -5,6 +5,7 @@
 #
 
 if [ ! -x /usr/bin/openssl ]; then
+   logger -t xcat "$0: /usr/bin/openssl is not executable"
    exit 0
 fi
 USEOPENSSLFORXCAT=1

@@ -63,7 +63,9 @@ if [ $mounted -eq 0 ]; then
 fi
 
 echo NFSSERVER=$NFSSERVER
+logger -t xcat "NFSSERVER=$NFSSERVER"
 echo OTHERPKGDIR=$OTHERPKGDIR
+logger -t xcat "OTHERPKGDIR=$OTHERPKGDIR"
 
 #check if the node has yum or zypper installed, it will try yum first, then zypper and last rpm
 hasyum=0  
@@ -220,15 +222,17 @@ if [ "$repo_pkgs_preremove" != "" ]; then
     if [ $hasyum -eq 1 ]; then 
         echo "yum -y remove $repo_pkgs_preremove"
         result=`yum -y remove $repo_pkgs_preremove 2>&1`
+        logger -t xcat "$result"
         if [ $? -ne 0 ]; then 
-            logger "otherpkgs: $result"
+	    logger -t xcat "otherpkgs: $result"
         fi
         echo "$result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper remove -y $repo_pkgs_preremove"
 	result=`zypper remove -y $repo_pkgs_preremove 2>&1`
+        logger -t xcat "$result"
 	if [ $? -ne 0 ]; then 
-            logger "otherpkgs: $result"
+            logger -t xcat "otherpkgs: $result"
 	fi
         echo "$result"
     fi
@@ -237,8 +241,9 @@ fi
 if [ "$plain_pkgs_preremove" != "" ]; then 
     echo "rpm -ev $plain_pkgs_preremove" 
     result=`rpm -ev $plain_pkgs_preremove 2>&1`
+    logger -t xcat "$result"
     if [ $? -ne 0 ]; then 
-	logger "otherpkgs $result"
+	logger -t xcat "otherpkgs $result"
     fi
     echo "$result"
 fi
@@ -249,15 +254,17 @@ if [ "$repo_pkgs" != "" ]; then
     if [ $hasyum -eq 1 ]; then 
         echo "yum -y install $repo_pkgs"
         result=`yum -y install $repo_pkgs 2>&1`
+	 logger -t xcat "$result"
         if [ $? -ne 0 ]; then 
-            logger "otherpkgs: $result"
+            logger -t xcat "otherpkgs: $result"
         fi
         echo "$result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper install -y $repo_pkgs"
 	result=`zypper install -y $repo_pkgs 2>&1`
+        logger -t xcat "$result"
 	if [ $? -ne 0 ]; then 
-            logger "otherpkgs: $result"
+            logger -t xcat "otherpkgs: $result"
 	fi
         echo "$result"
         #remove the repos
@@ -294,8 +301,9 @@ if [ "$plain_pkgs" != "" ]; then
     echo "rpm -Uvh --replacepkgs $plain_pkgs" 
     result=`rpm -Uvh --replacepkgs $plain_pkgs 2>&1`
     #result=`rpm -Fvh $plain_pkgs 2>&1`
+    logger -t xcat "$result"
     if [ $? -ne 0 ]; then 
-	logger "otherpkgs $result"
+	logger -t xcat "otherpkgs $result"
     fi
     echo "$result"
     
@@ -311,15 +319,17 @@ if [ "$repo_pkgs_postremove" != "" ]; then
     if [ $hasyum -eq 1 ]; then 
         echo "yum -y removel $repo_pkgs_postremove"
         result=`yum -y remove $repo_pkgs_postremove 2>&1`
+        logger -t xcat "$result"
         if [ $? -ne 0 ]; then 
-            logger "otherpkgs: $result"
+            logger -t xcat "otherpkgs: $result"
         fi
         echo "$result"
     elif [ $haszypper -eq 1 ]; then
         echo "zypper remove -y $repo_pkgs_postremove"
 	result=`zypper remove -y $repo_pkgs_postremove 2>&1`
+        logger -t xcat "$result"
 	if [ $? -ne 0 ]; then 
-            logger "otherpkgs: $result"
+            logger -t xcat "otherpkgs: $result"
 	fi
         echo "$result"
     fi
@@ -328,8 +338,9 @@ fi
 if [ "$plain_pkgs_postremove" != "" ]; then 
     echo "rpm -ev $plain_pkgs_postremove" 
     result=`rpm -ev $plain_pkgs_postremove 2>&1`
+    logger -t xcat "$result"
     if [ $? -ne 0 ]; then 
-	logger "otherpkgs $result"
+	logger -t xcat "otherpkgs $result"
     fi
     echo "$result"
 fi

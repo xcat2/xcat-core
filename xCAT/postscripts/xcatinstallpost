@@ -8,6 +8,7 @@
 if [ ! `uname` == Linux ]; then
    MYDIR=`dirname $0`
    #exec $MYDIR/xcatdsklspost.aix
+   logger -t xcat "$0: the OS name is not Linux"
    exit
 fi
 let SLI=$RANDOM%10

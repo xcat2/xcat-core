@@ -123,6 +123,7 @@ else
 	&runcmd("/opt/xcat/sbin/copycerts");
 }
 
+`logger -t xcat rc=$rc`;
 exit $rc;
 
 #

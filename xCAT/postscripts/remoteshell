@@ -38,6 +38,7 @@ fi
 #	cp /xcatpost/hostkeys/*_key /etc/ssh/
 #fi
 if [ ! -x /usr/bin/openssl ]; then
+    logger -t xcat "Install: /usr/bin/openssl is not executable."
     exit 0
 fi
 allowcred.awk &
@@ -140,6 +141,7 @@ if [ -r /root/.ssh/id_rsa ]; then
 fi
 
 # start up the sshd for syncfiles postscript to do the sync work
+logger -t xCAT "start up sshd"
 service sshd start
 
 kill -9 $CREDPID

@@ -9,7 +9,7 @@
 if [ -r /etc/ldap.conf -a -r /etc/resolv.conf ]
         then
             echo -n "         LDAP: "
-
+	     logger -t xcat "         LDAP: "
             DC=$(
                 cat /etc/resolv.conf | \
                 egrep '(domain|search)' | \

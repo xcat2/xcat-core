@@ -14,6 +14,7 @@ fi
 
 #do nothing id there is no sync file template for the node
 if [[ $NOSYNCFILES -eq 1 ]]; then
+   logger -t xCAT "$0: there is no sync file template for the node"
    exit 0
 fi
 
@@ -22,6 +23,7 @@ if [ "$NODESETSTATE" = "netboot" -o \
      "$NODESETSTATE" = "diskless" -o \
      "$NODESETSTATE" = "dataless" ] 
 then
+  logger -t xCAT "$0: the node set state is $NODESETSTATE"
   exit 0
 fi
 
@@ -32,6 +34,7 @@ osname=`uname`
 # run the xdcp on the MN/SN
 xcatpostdir="/xcatpost"
 
+logger -t xCAT "$0: the OS name = $osname"
 if [ $osname = "Linux" ] 
 then
 `$xcatpostdir/startsyncfiles.awk`
@@ -44,9 +47,9 @@ fi
 
 if [ $returncode -eq 1 ]
 then
-  logger -t xCAT "Perform Syncing File action successfully"
+  logger -t xCAT "$0: Perform Syncing File action successfully"
 else
-  logger -t xCAT "Perform Syncing File action encountered error"
+  logger -t xCAT "$0: Perform Syncing File action encountered error"
 fi
 
 exit 0

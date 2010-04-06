@@ -28,6 +28,7 @@ if [ "$master" ==  "$sitemaster" ]; then
 	   master=$i
 	done 
   else
+	logger -t xcat "Install: $NTPSERVERS don't exist"
         exit 0	
 
   fi

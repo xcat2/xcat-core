@@ -21,6 +21,7 @@ then
 	logger -t xcat "Install: sync clock"
 	ntpdate -bs $T 2>&1 | logger -t xcat
 
+	logger -t xcat "$0: the OS version is $OSVER"
 	case "$OSVER" in
 		rh9|rh[awe]s[34]|rh*5)
 			hwclock -w 2>&1 | logger -t xcat

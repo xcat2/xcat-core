@@ -14,6 +14,7 @@ done
 
 if [ -n "$GRUB" ]
 then
+        logger -t xcat "Install: the GRUB dir is $GRUBDIR"
 	cd $GRUBDIR
 	perl -pi -e 's/^gfxmenu/#gfxmenu/' $GRUBFILE
 	perl -pi -e 's/^color/#color/' $GRUBFILE

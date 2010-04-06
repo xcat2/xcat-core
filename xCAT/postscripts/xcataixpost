@@ -14,6 +14,8 @@
 
 # if AIX - make sure we include perl 5.8.2 in INC path.
 #       Needed to find perl dependencies shipped in deps tarball.
+my $osname = $^0;
+`logger -t xcat $osname`;
 if ($^O =~ /^aix/i) {
         use lib "/usr/opt/perl5/lib/5.8.2/aix-thread-multi";
         use lib "/usr/opt/perl5/lib/5.8.2";
@@ -40,6 +42,7 @@ if (!-d $logdir) {
 $::sdate = `/bin/date`;
 chomp $::sdate;
 my $logfile = $logdir . "/xcat.log";
+`logger -t xcat $logfile`;
 
 # this log should not contain much so it might be ok to let it grow?
 # at least we'll have the errors preserved
@@ -258,12 +261,15 @@ if (-f $scriptname)
 run_ps () {
  if [[ -f \\\$1 ]]; then
   echo \\"Running postscript: \\\$1\\"
+  print $::LOG_FILE "$::sdate  xcataixpost: Running postscript: $1\n";
   OUTPUT=\\\`./\\\$1 2>&1\\\`
   if [[ -n \\\$OUTPUT ]]; then
     echo \\"\\\$OUTPUT\\"
+    print $::LOG_FILE "$::sdate  xcataixpost: output=$output\n";
   fi
  else
   echo \\"Postscript \\\$1 does NOT exist.\\"
+  print $::LOG_FILE "$::sdate  xcataixpost: $1 does NOT exist.\n";
  fi
 }
 # subroutine end
@@ -276,6 +282,7 @@ run_ps () {
     $ENV{PATH}="/xcatpost:$ENV{PATH}";
     &runcmd("cd /xcatpost;$scriptname");
     print $::outref;
+    print $::LOG_FILE "$::sdate  xcataixpost: outref = $::outref\n";
 } else {
 	print "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
 	print $::LOG_FILE "$::sdate  xcataixpost: Could not find post script for $::shorthost.\n";
@@ -296,6 +303,7 @@ if (@ARGV<1) {
 } else {
   #called by updatenode, infrom user it is done
   print "returned from postscript";
+  print $::LOG_FILE "$::sdate  xcataixpost: returned from postscript.\n";
 }
 
 if (-f $scriptname) {
@@ -442,7 +450,7 @@ sub  updateflag {
 sub runcmd
 {
     my ($cmd) = @_;
-	my $rc=0;
+    my $rc=0;
     $cmd .= ' 2>&1' ;
     $::outref = [];
     $::outref = `$cmd`;
@@ -451,8 +459,8 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-	#		print "$::sdate  xcataixpost: $::outref\n";
-	#		print $::LOG_FILE "$::sdate  xcataixpost: $::outref\n";
+		print "$::sdate  xcataixpost: $::outref\n";
+		print $::LOG_FILE "$::sdate  xcataixpost: $::outref\n";
         }
     }
  return $rc;

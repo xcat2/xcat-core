@@ -5,6 +5,7 @@
 #
 
 if [ ! -x /usr/bin/openssl ]; then #Unless we have openssl stup
+   logger -t xcat "$0: /usr/bin/openssl is not executable"
    exit 0
 fi
 USEOPENSSLFORXCAT=1 #Declare 2.3 style SSL

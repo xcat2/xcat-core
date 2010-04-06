@@ -55,6 +55,7 @@ esxcfg-firewall -e ntpClient
 esxcfg-firewall -o 123,udp,out,ntpServer
 esxcfg-firewall -o 514,udp,out,syslog
 esxcfg-firewall -l
+logger -t xcat "Install: restart syslog"
 service syslog restart
 
 EOF1

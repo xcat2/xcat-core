@@ -10,6 +10,7 @@ BEGIN {
                         print $0 | "logger -t xcat"
                 else {
                     print "Retrying unlock of tftp directory"
+                    print "$0: Retrying unlock of tftp directory" | "logger -t xcat"
                     close(ns)
                     system("sleep 5")
                 }

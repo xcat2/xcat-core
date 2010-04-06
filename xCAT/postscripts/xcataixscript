@@ -75,8 +75,8 @@ if ((@ARGV==0) || ($ARGV[0] != 2)) {
 }
 
 if (&runcmd($cpcmd) != 0) {
-#    print "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
-#	print $::LOG_FILE "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
+    print "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
 }
 
 # make sure all are executable
@@ -124,8 +124,8 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-#			print "$::sdate  xcataixpost: $::outref\n";
-#			print $::LOG_FILE "$::sdate  xcataixpost: $::outref\n";
+		print "$::sdate  xcataixpost: $::outref\n";
+		print $::LOG_FILE "$::sdate  xcataixpost: $::outref\n";
         }
     }
  return $rc;

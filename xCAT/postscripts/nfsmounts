@@ -24,6 +24,7 @@ XCATFS=$MASTER:$XCATROOT
 
 logger -t xcat "Install: setup NFS mounts in fstab"
 
+echo "$0: the OS version is $OSVER" | logger -t xcat
 case "$OSVER" in
 	rhfc[23])
 		XOPTS=",nfsvers=2"

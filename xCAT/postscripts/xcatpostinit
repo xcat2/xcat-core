@@ -19,6 +19,7 @@ if [ -x /etc/rc.d/init.d/functions ]; then
   . /etc/rc.d/init.d/functions
 fi
 
+logger -t xcat "$0: action is $1"
 case $1 in
 restart)
   $0 stop
@@ -26,9 +27,11 @@ restart)
   ;;
 status)
   echo -n "xcatpostinit runs only at boot, runs additional post scripts"
+  logger -t xcat "xcatpostinit runs only at boot, runs additional post scripts"
   ;;
 stop)
   echo -n "nothing to stop "
+  logger -t xcat "nothing to stop"
   ;;
 start)
   # run /opt/xcat/xcatdsklspost
