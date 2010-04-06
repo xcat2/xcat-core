@@ -34,7 +34,6 @@ timezone
 mysql-client
 perl-Expect
 openssl
-xCATsn
 perl-DBD-mysql
 portmap
 zypper
