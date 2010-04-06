@@ -1148,12 +1148,12 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    print $cfgfile "#Dummy resolv.conf to make boot cleaner";
    close($cfgfile);
    open($cfgfile,">","$rootimg_dir/etc/sysconfig/network/ifcfg-$prinic");
-   print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
+   print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\nSTARTMODE=auto\n";
    close($cfgfile);
    foreach (split /,/,$othernics) {
       if (/^$/) { next; }
       open($cfgfile,">","$rootimg_dir/etc/sysconfig/network/ifcfg-$_");
-      print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\n";
+      print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\nSTARTMODE=auto\n";
       close($cfgfile);
    }
    open($cfgfile,">>","$rootimg_dir/etc/securetty");
