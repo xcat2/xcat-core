@@ -16,7 +16,7 @@ BEGIN {
         print "</xcatrequest>" |& server
 
         while (server |& getline) {
-                print $0 | "logger -t xcat"
+                print $0 
                 if (match($0,"<serverdone>")) {
                   quit = "yes"
                 }
