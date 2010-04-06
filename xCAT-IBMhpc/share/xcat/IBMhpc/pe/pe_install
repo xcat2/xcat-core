@@ -43,7 +43,7 @@ if [ $OS != "AIX" ]; then
         download_dir=`echo $PE_DIR | cut -d '/' -f3-`
         wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=3 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
         rpm -Uvh IBM_pe_license*.rpm
-        rpm -Uvh ibm_lapi*.rpm ibm_pe*.rpm ppe_*.rpm sci_*.rpm
+        rpm -Uvh ibm_lapi*.rpm ibm_pe*.rpm ppe_*.rpm *sci_*.rpm
         cd /
         rm -Rf /tmp/pe
     fi
@@ -64,7 +64,7 @@ if [ $OS != "AIX" ]; then
             mkdir -p $installroot/etc/opt/ibmhpc/license
             cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
             # Install PE product rpms
-            zypper -R $installroot install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm $PE_DIR/sci_*.rpm
+            zypper -R $installroot install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm $PE_DIR/*sci_*.rpm
         else
         # For Redhat, etc., assume yum is available on the system running genimage
             if [ ! -d /etc/opt/ibmhpc/license ] ; then
@@ -78,7 +78,7 @@ if [ $OS != "AIX" ]; then
             mkdir -p $installroot/etc/opt/ibmhpc/license
             cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
             # Install PE product rpms
-            yum --installroot $installroot --nogpgcheck localupdate $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm $PE_DIR/sci_*.rpm
+            yum --installroot $installroot --nogpgcheck localupdate $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm $PE_DIR/*sci_*.rpm
         fi
     fi
 fi
