@@ -722,12 +722,19 @@ sub tabprune_recid {
    my $cb  = shift;
    my $recid  = shift;
    my $rc=0;
+   # check which database so can build the correct Where clause
+   my $DBname = xCAT::Utils->get_DBName;
    my $tab        = xCAT::Table->new($table, -create => 1, -autocommit => 0);
    unless ($tab) {
         $cb->({error => "Unable to open $table",errorcode=>4});
         return 1;
    }
-   my @ents=$tab->getAllAttribsWhere("recid<$recid", 'recid');
+   my @ents;
+   if ($DBname =~ /^DB2/) {
+      @ents=$tab->getAllAttribsWhere("\"recid\"<$recid", 'recid');
+   } else {
+      @ents=$tab->getAllAttribsWhere("recid<$recid", 'recid');
+   }  
    foreach my $rid (@ents) {
      $tab->delEntries($rid);
    } 
