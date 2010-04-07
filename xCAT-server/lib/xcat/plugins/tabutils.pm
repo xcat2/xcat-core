@@ -584,16 +584,17 @@ sub tabprune
     my $ALL;
     my $NUMBERENTRIES;
     my $PERCENT;
+    my $VERBOSE;
     my $RECID;
     my $rc=0;
 
     my $tabprune_usage = sub {
     	my $exitcode = shift @_;
         my %rsp;
-        push @{$rsp{data}}, "Usage: tabprune [eventlog | auditlog] -a";
-        push @{$rsp{data}}, "       tabprune [eventlog | auditlog] -n [# of records]";
-        push @{$rsp{data}}, "       tabprune [eventlog | auditlog] -i [recid]";
-        push @{$rsp{data}}, "       tabprune [eventlog | auditlog] -p [percentage]";
+        push @{$rsp{data}}, "Usage: tabprune <eventlog | auditlog> [-V] -a";
+        push @{$rsp{data}}, "       tabprune <eventlog | auditlog> [-V] -n <# of records>";
+        push @{$rsp{data}}, "       tabprune <eventlog | auditlog> [-V] -i <recid>";
+        push @{$rsp{data}}, "       tabprune <eventlog | auditlog> [-V] -p <percent>";
         push @{$rsp{data}}, "       tabprune [-h|--help]";
         push @{$rsp{data}}, "       tabprune [-v|--version]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
@@ -606,6 +607,7 @@ sub tabprune
     }
     if (!GetOptions('h|?|help' => \$HELP,
                      'v|version' => \$VERSION,
+                     'V' => \$VERBOSE,
                      'p|percent=i' => \$PERCENT,
                      'i|recid=s' => \$RECID,
                      'a' => \$ALL,
@@ -671,33 +673,41 @@ sub tabprune
     } 
       
     if (defined $ALL ) {
-     $rc=tabprune_all($table,$cb); 
+     $rc=tabprune_all($table,$cb,$VERBOSE); 
     }
     if (defined $NUMBERENTRIES ) {
-     $rc=tabprune_numberentries($table,$cb,$NUMBERENTRIES,"n"); 
+     $rc=tabprune_numberentries($table,$cb,$NUMBERENTRIES,"n",$VERBOSE); 
     }
     if (defined $PERCENT) {
-     $rc=tabprune_numberentries($table,$cb,$PERCENT,"p"); 
+     $rc=tabprune_numberentries($table,$cb,$PERCENT,"p",$VERBOSE); 
     }
     if (defined $RECID ) {
-     $rc=tabprune_recid($table,$cb,$RECID); 
+     $rc=tabprune_recid($table,$cb,$RECID,$VERBOSE); 
     }
-    my %rsp;
-    push @{$rsp{data}}, "tabprune of $table complete.";
-    $rsp{errorcode} = $rc; 
-    $cb->(\%rsp);
+    if (!($VERBOSE)) {  # not putting out changes
+      my %rsp;
+      push @{$rsp{data}}, "tabprune of $table complete.";
+      $rsp{errorcode} = $rc; 
+      $cb->(\%rsp);
+    }
     return $rc;
 }
 
 sub tabprune_all {
    my $table = shift;
    my $cb  = shift;
+   my $VERBOSE  = shift;
    my $rc=0;
    my $tab        = xCAT::Table->new($table);
    unless ($tab) {
         $cb->({error => "Unable to open  $table",errorcode=>4});
         return 1;
    }
+   if ($VERBOSE) { # will output change to std 
+    my $recs = $tab->getAllEntries("all");
+    tabprune_verbose($table,$cb,$tab,$recs); 
+   } 
+   
    $tab->delEntries();    #Yes, delete *all* entries
    $tab->commit;         #  commit
    return $rc;
@@ -712,6 +722,7 @@ sub tabprune_numberentries {
   my $numberentries  = shift; # either number of entries or percent to 
                               # remove based on the flag
   my $flag  = shift;   # (n or p flag)
+  my $VERBOSE  = shift;
   my $rc=0;
   my $tab        = xCAT::Table->new($table);
   unless ($tab) {
@@ -759,7 +770,7 @@ sub tabprune_numberentries {
      my $cnt=sprintf( "%d", $percentage ); # round to whole number
      $RECID=$smallrid->{recid} + $cnt; # get recid to remove all before
   }
-  $rc=tabprune_recid($table,$cb,$RECID); 
+  $rc=tabprune_recid($table,$cb,$RECID,$VERBOSE); 
   return $rc;
 }
 
@@ -769,6 +780,7 @@ sub tabprune_recid {
    my $table = shift;
    my $cb  = shift;
    my $recid  = shift;
+   my $VERBOSE  = shift;
    my $rc=0;
    # check which database so can build the correct Where clause
    my $tab        = xCAT::Table->new($table);
@@ -788,6 +800,41 @@ sub tabprune_recid {
    } 
    $tab->commit;       
    return $rc;
+}
+
+#  If Verbose, return the records that will be deleted to stdout.  
+sub tabprune_verbose {
+   my $table = shift;
+   my $cb  = shift;
+   my $tabh=shift;
+   my $recs=shift;
+   my %rsp;
+   my $tabdump_header = sub {
+        my $header = "#" . join(",", @_);
+        push @{$rsp{data}}, $header;
+    };
+    # Display all the rows of the table in order of the columns in the schema
+    $tabdump_header->(@{$tabh->{colnames}});
+    foreach my $rec (@$recs)
+    {
+        my $line = '';
+        foreach (@{$tabh->{colnames}})
+        {
+            if (defined $rec->{$_})
+            {
+            	$rec->{$_} =~ s/"/""/g;
+                $line = $line . '"' . $rec->{$_} . '",';
+            }
+            else
+            {
+                $line .= ',';
+            }
+        }
+        $line =~ s/,$//;    # remove the extra comma at the end
+        push @{$rsp{data}}, $line;
+    }
+    $cb->(\%rsp);
+   return;
 }
 
 sub getTableColumn {
