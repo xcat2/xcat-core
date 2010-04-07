@@ -1,2 +1,2 @@
-#  No PE otherpkgs at this time
+pe/IBM_pe_license
 #  All PE packages are installed through the pe_install postinstall script
