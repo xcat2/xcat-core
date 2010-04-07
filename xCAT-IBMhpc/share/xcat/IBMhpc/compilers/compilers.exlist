@@ -1,26 +1,26 @@
 ./opt/ibmcmp/msg/*
 +./opt/ibmcmp/msg/en_US*
 
-./opt/ibmcmp/vac/10.1/crt/include*
-./opt/ibmcmp/vac/10.1/include*
-./opt/ibmcmp/vac/10.1/msg/*
-+./opt/ibmcmp/vac/10.1/msg/en_US*
-./opt/ibmcmp/vac/10.1/lap/LI_*
-./opt/ibmcmp/vac/10.1/lap/LA_*
-./opt/ibmcmp/vac/10.1/lap/license/*.txt
+./opt/ibmcmp/vac/*/crt/include*
+./opt/ibmcmp/vac/*/include*
+./opt/ibmcmp/vac/*/msg/*
++./opt/ibmcmp/vac/*/msg/en_US*
+./opt/ibmcmp/vac/*/lap/LI_*
+./opt/ibmcmp/vac/*/lap/LA_*
+./opt/ibmcmp/vac/*/lap/license/*.txt
 
-./opt/ibmcmp/xlmass/5.0/include*
-./opt/ibmcmp/xlsmp/1.8/include*
+./opt/ibmcmp/xlmass/*/include*
+./opt/ibmcmp/xlsmp/*/include*
 ./opt/ibmcmp/xlhelp*
 
-./opt/ibmcmp/vacpp/10.1/include*
-./opt/ibmcmp/vacpp/10.1/msg/*
-+./opt/ibmcmp/vacpp/10.1/msg/en_US*
+./opt/ibmcmp/vacpp/*/include*
+./opt/ibmcmp/vacpp/*/msg/*
++./opt/ibmcmp/vacpp/*/msg/en_US*
 
-./opt/ibmcmp/xlf/12.1/include*
-./opt/ibmcmp/xlf/12.1/msg/*
-+./opt/ibmcmp/xlf/12.1/msg/en_US*
-./opt/ibmcmp/xlf/12.1/lap/LA_*
-./opt/ibmcmp/xlf/12.1/lap/LI_*
-./opt/ibmcmp/xlf/12.1/lap/license/*.txt
+./opt/ibmcmp/xlf/*/include*
+./opt/ibmcmp/xlf/*/msg/*
++./opt/ibmcmp/xlf/*/msg/en_US*
+./opt/ibmcmp/xlf/*/lap/LA_*
+./opt/ibmcmp/xlf/*/lap/LI_*
+./opt/ibmcmp/xlf/*/lap/license/*.txt
 

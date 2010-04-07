@@ -1,11 +1,11 @@
-./opt/ibmmath/essl/4.3/FFTW3/include*
-./opt/ibmmath/essl/4.3/include*
-./opt/ibmmath/essl/4.3/lap/license/*.txt
-./opt/ibmmath/essl/4.3/lap/LI_*
-./opt/ibmmath/essl/4.3/lap/LA_*
+./opt/ibmmath/essl/*/FFTW3/include*
+./opt/ibmmath/essl/*/include*
+./opt/ibmmath/essl/*/lap/license/*.txt
+./opt/ibmmath/essl/*/lap/LI_*
+./opt/ibmmath/essl/*/lap/LA_*
 
-./opt/ibmmath/pessl/3.3/lap/LA_*
-./opt/ibmmath/pessl/3.3/lap/LI_*
-./opt/ibmmath/pessl/3.3/lap/*.jar
+./opt/ibmmath/pessl/*/lap/LA_*
+./opt/ibmmath/pessl/*/lap/LI_*
+./opt/ibmmath/pessl/*/lap/*.jar
 
 
