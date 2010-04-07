@@ -2315,6 +2315,7 @@ sub process_request {
         foreach (@{$request->{mac}}) {
            /.*\|.*\|([\dABCDEFabcdef:]+)(\||$)/;
            if ($1 and $macmap{$1}) {
+               $mac = $1; #the mac of consequence is identified here
                $found=1;
                last;
            }
