@@ -2852,9 +2852,9 @@ sub determinehostname
         push @validnodenames,$hostnamecandidates[0];
     }
     #now, noderange doesn't guarantee the order, so we search the preference order, most to least specific.
-    foreach (@hostnamecandidates) {
-        if (grep /^$_$/,@validnodenames) {
-            $nodename = $_;
+    foreach my $host (@hostnamecandidates) {
+        if (grep /^$host$/,@validnodenames) {
+            $nodename = $host;
             last;
         }
     }
