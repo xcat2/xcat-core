@@ -303,7 +303,7 @@ sub getsynclistfile()
 	  }  
       } else {
 	  $inst_type = $node_insttype{$node};
-	  if ($inst_type eq "netboot" || $inst_type eq "diskless") {
+	  if ($inst_type eq "netboot" || $inst_type eq "diskless" || $inst_type eq "statelite") {
 	      $inst_type = "netboot";
 	  } else {
 	      $inst_type = "install";
