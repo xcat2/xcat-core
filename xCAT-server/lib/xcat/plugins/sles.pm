@@ -1184,6 +1184,16 @@ sub setupNFSTree {
                 xCAT::Utils->runcmd($cmd, 0);
                 # exportfs can export this directory immediately
                 $callback->({data=>["now $nfsdirectory is exported!"]});
+                $cmd = "cat /etc/exports";
+                @entries = xCAT::Utils->runcmd($cmd, 0);
+                if(my $entry = grep /\Q$nfsdirectory\E/, @entries) {
+                    # nothing to do
+                } else {
+                    #if there's no entry in /etc/exports, one with default option is added
+                    $cmd = qq{echo "$nfsdirectory *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports};
+                    xCAT::Utils->runcmd($cmd, 0);
+                    $callback->({data=>["$nfsdirectory is added into /etc/exports with default option"]});
+                }
             }
         }
     }
@@ -1216,6 +1226,17 @@ sub setupStatemnt {
             $cmd = "/usr/sbin/exportfs :$nfsdirectory -o rw,no_root_squash,sync,no_subtree_check";
             xCAT::Utils->runcmd($cmd, 0);
             $callback->({data=>["now $nfsdirectory is exported!"]});
+            # add the directory into /etc/exports if not exist
+            $cmd = "cat /etc/exports";
+            @entries = xCAT::Utils->runcmd($cmd, 0);
+            if(my $entry = grep /\Q$nfsdirectory\E/, @entries) {
+                if ($entry =~ m/rw/) {
+                }esle {
+                    $callback->({data=>["The $nfsdirectory should be with rw option in /etc/exports"]});
+                }
+            }else {
+                xCAT::Utils->runcmd(qq{echo "$nfsdirectory *(rw,no_root_squash,sync,no_subtree_check)" >>/etc/exports}, 0);
+            }
         }
     }
     
