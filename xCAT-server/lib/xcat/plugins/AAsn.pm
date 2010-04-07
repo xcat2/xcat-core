@@ -701,8 +701,14 @@ sub setup_FTP
 sub setup_DNS
 {
 
+    my $XCATROOT = "/opt/xcat";    # default
+
+    if ($ENV{'XCATROOT'})
+    {
+        $XCATROOT = $ENV{'XCATROOT'};
+    }
     # setup the named.conf file
-    system("/opt/xcat/sbin/makenamed.conf");
+    system("$XCATROOT/sbin/makenamed.conf");
 
     # turn DNS on
 
