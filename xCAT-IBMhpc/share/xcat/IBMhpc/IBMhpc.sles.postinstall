@@ -34,7 +34,6 @@ devpts          /dev/pts devpts rw,gid=5,mode=620 0 0
 #${profile}_${arch}      /        tmpfs  rw 0 1
 none            /tmp     tmpfs  defaults,size=3g 0 2
 none            /var/tmp tmpfs  defaults,size=1g 0 2
-none		/dev/cpuset	cpuset	defaults,noauto	 0 0
 END
 
 #-- Uncomment the "cons" entry in /etc/inittab
@@ -57,6 +56,17 @@ chroot $installroot chkconfig atd on
 
 # Turn on xinetd
 chroot $installroot chkconfig xinetd on
+
+# Automatically mount /dev/cpuset at node boot
+if ! grep 'cpuset' $installroot/etc/init.d/boot.local ; then
+cat <<END >>$installroot/etc/init.d/boot.local
+if test -e /dev/cpuset || mkdir -p /dev/cpuset ; then 
+	mount -t cpuset none /dev/cpuset 
+fi
+END
+fi
+
+
 
 # Modify some ulimits
 if [ ! -f $installroot/etc/sysconfig/ulimit ]; then
