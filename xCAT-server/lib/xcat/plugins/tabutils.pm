@@ -674,7 +674,10 @@ sub tabprune
      $rc=tabprune_all($table,$cb); 
     }
     if (defined $NUMBERENTRIES ) {
-     $rc=tabprune_numberentries($table,$cb,$NUMBERENTRIES); 
+     $rc=tabprune_numberentries($table,$cb,$NUMBERENTRIES,"n"); 
+    }
+    if (defined $PERCENT) {
+     $rc=tabprune_numberentries($table,$cb,$PERCENT,"p"); 
     }
     if (defined $RECID ) {
      $rc=tabprune_recid($table,$cb,$RECID); 
@@ -700,12 +703,15 @@ sub tabprune_all {
    return $rc;
 }
 
-#  prune input number of records for the table TODO
+#  prune input number of records for the table
 #  if number of entries > number than in the table, then remove all
+#  this handles the number of records or percentage to delete
 sub tabprune_numberentries {
   my $table = shift;
   my $cb  = shift;
-  my $numberentries  = shift;
+  my $numberentries  = shift; # either number of entries or percent to 
+                              # remove based on the flag
+  my $flag  = shift;   # (n or p flag)
   my $rc=0;
   my $tab        = xCAT::Table->new($table);
   unless ($tab) {
@@ -738,10 +744,22 @@ sub tabprune_numberentries {
          $largerid=$rid;
     }
   }
-  #determine recid to delete all entries that come before like the -i flag
-  my $RECID= $smallrid->{recid} + $numberentries ; 
+  my $RECID;
+  if ($flag eq "n") {  # deleting number of records
+    #determine recid to delete all entries that come before like the -i flag
+    $RECID= $smallrid->{recid} + $numberentries ; 
+  } else {  # flag must be percentage
+     #take largest and smallest recid and percentage and determine the recid
+     # that will remove the requested percentage.   If some are missing in the
+     # middle due to tabedit,  we are not worried about it.
+     
+     my $totalnumberrids = $largerid->{recid} - $smallrid->{recid} +1;
+     my $percent = $numberentries / 100;
+     my $percentage=$totalnumberrids * $percent ;
+     my $cnt=sprintf( "%d", $percentage ); # round to whole number
+     $RECID=$smallrid->{recid} + $cnt; # get recid to remove all before
+  }
   $rc=tabprune_recid($table,$cb,$RECID); 
-
   return $rc;
 }
 
