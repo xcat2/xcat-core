@@ -10,6 +10,8 @@ use File::Path;
 use File::Copy;
 use Cwd;
 use File::Temp;
+use File::Basename;
+use File::Path;
 use xCAT::Utils qw(genpassword);
 use xCAT::SvrUtils;
 Getopt::Long::Configure("bundling");
@@ -149,10 +151,28 @@ sub process_request {
     my $includestr;
     if ($exlistloc) {
         my $exlist;
+	my $excludetext;
         open($exlist,"<",$exlistloc);
         system("echo -n > /tmp/xcat_packimg.txt");
         while (<$exlist>) {
-            chomp $_;
+	    $excludetext .= $_;
+	}   
+        close($exlist);
+
+        #handle the #INLCUDE# tag recursively
+        my $idir = dirname($exlistloc);
+        my $doneincludes=0;
+	while (not $doneincludes) {
+	    $doneincludes=1;
+	    if ($excludetext =~ /#INCLUDE:[^#]+#/) {
+		$doneincludes=0;
+		$excludetext =~ s/#INCLUDE:([^#]+)#/include_file($1,$idir)/eg;
+	    }
+	}
+
+	my @tmp=split("\n", $excludetext);
+	foreach (@tmp) {
+	    chomp $_;
             s/\s*#.*//;      #-- remove comments 
             next if /^\s*$/; #-- skip empty lines
             if (/^\+/) {
@@ -163,7 +183,6 @@ sub process_request {
 		$excludestr .= "'!' -path '".$_."' -a ";
 	    }
         }
-        close($exlist);
    }
    $excludestr =~ s/-a $//;
    if ($includestr) {
@@ -367,3 +386,26 @@ sub copybootscript {
 	return 0;
 }
 
+sub include_file
+{
+   my $file = shift;
+   my $idir = shift;
+   my @text = ();
+   unless ($file =~ /^\//) {
+       $file = $idir."/".$file;
+   }
+   
+   open(INCLUDE,$file) || \
+       return "#INCLUDEBAD:cannot open $file#";
+   
+   while(<INCLUDE>) {
+       chomp($_);
+       s/\s+$//;  #remove trailing spaces
+       next if /^\s*$/; #-- skip empty lines
+       push(@text, $_);
+   }
+   
+   close(INCLUDE);
+   
+   return join("\n", @text);
+}
