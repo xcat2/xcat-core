@@ -692,28 +692,58 @@ sub tabprune_all {
    my $rc=0;
    my $tab        = xCAT::Table->new($table);
    unless ($tab) {
-        $cb->({error => "Unable to open the $table",errorcode=>4});
+        $cb->({error => "Unable to open  $table",errorcode=>4});
         return 1;
    }
    $tab->delEntries();    #Yes, delete *all* entries
    $tab->commit;         #  commit
    return $rc;
 }
+
 #  prune input number of records for the table TODO
 #  if number of entries > number than in the table, then remove all
-#ub tabprune_numberentries {
-#  my $table = shift;
-#  my $cb  = shift;
-#  my $numberentries  = shift;
-#  my $rc=0;
-#  #my $tab        = xCAT::Table->new($table);
-#  #unless ($tab) {
-#  #     $cb->({error => "Unable to open $table",errorcode=>4});
-#  #     return 1;
-#  #}
-#  #$tab->commit;         #  commit
-#  return $rc;
-#}
+sub tabprune_numberentries {
+  my $table = shift;
+  my $cb  = shift;
+  my $numberentries  = shift;
+  my $rc=0;
+  my $tab        = xCAT::Table->new($table);
+  unless ($tab) {
+       $cb->({error => "Unable to open $table",errorcode=>4});
+       return 1;
+  }
+  my $DBname = xCAT::Utils->get_DBName;
+  my @attribs;
+  if ($DBname =~ /^DB2/) {
+    @attribs = ("\"recid\"");
+  } else {
+    @attribs = ("recid");
+  } 
+  my @ents=$tab->getAllAttribs(@attribs);
+  # find smallest and largest  recid, note table is not ordered by recid after
+  # a while
+  my $smallrid;
+  my $largerid;
+  foreach my $rid (@ents) {
+    if (!(defined $smallrid)) {
+         $smallrid=$rid;
+    }
+    if (!(defined $largerid)) {
+         $largerid=$rid;
+    }
+    if ($rid->{recid} < $smallrid->{recid}) {
+         $smallrid=$rid;
+    }
+    if ($rid->{recid} > $largerid->{recid}) {
+         $largerid=$rid;
+    }
+  }
+  #determine recid to delete all entries that come before like the -i flag
+  my $RECID= $smallrid->{recid} + $numberentries ; 
+  $rc=tabprune_recid($table,$cb,$RECID); 
+
+  return $rc;
+}
 
 #  prune all entries up to the record id input 
 #  if rec id  does not exist error 
@@ -723,12 +753,12 @@ sub tabprune_recid {
    my $recid  = shift;
    my $rc=0;
    # check which database so can build the correct Where clause
-   my $DBname = xCAT::Utils->get_DBName;
    my $tab        = xCAT::Table->new($table);
    unless ($tab) {
         $cb->({error => "Unable to open $table",errorcode=>4});
         return 1;
    }
+   my $DBname = xCAT::Utils->get_DBName;
    my @ents;
    if ($DBname =~ /^DB2/) {
       @ents=$tab->getAllAttribsWhere("\"recid\"<$recid", 'recid');
