@@ -215,6 +215,8 @@ sub get_image_info {
 		$errors++;
 	}
 
+	$attrs->{imagename} = $imagename;
+
 	if($errors){
 		return 0;
 	}
@@ -227,7 +229,6 @@ sub get_image_info {
 		}
 	}
 
-	$attrs->{imagename} = $imagename;
 	# if we get nothing back, then we couldn't find the files.  How sad, return nuthin'
 	return $attrs;	
 
@@ -290,7 +291,7 @@ sub get_files{
 	if($provmethod =~ /install/){
 		# we need to get the template for this one!
 		@arr = ("$installroot/custom/install", "$xcatroot/share/xcat/install");
-		my $template = look_for_file('tmpl', $attrs, @arr);
+		my $template = look_for_file('tmpl', $callback, $attrs, @arr);
 		unless($template){
 			$callback->({error=>["Couldn't find install template for $imagename"],errorcode=>[1]});
 			$errors++;
@@ -310,7 +311,7 @@ sub get_files{
 		@arr = ("$installroot/netboot");
 
 		# look for ramdisk
-		my $ramdisk = look_for_file('initrd.gz', $attrs, @arr);
+		my $ramdisk = look_for_file('initrd.gz', $callback, $attrs, @arr);
 		unless($ramdisk){
 			$callback->({error=>["Couldn't find ramdisk (initrd.gz) for  $imagename"],errorcode=>[1]});
 			$errors++;
@@ -320,7 +321,7 @@ sub get_files{
 		}
 
 		# look for kernel
-		my $kernel = look_for_file('kernel', $attrs, @arr);
+		my $kernel = look_for_file('kernel', $callback, $attrs, @arr);
 		unless($kernel){
 			$callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
 			$errors++;
@@ -330,7 +331,7 @@ sub get_files{
 		}
 
 		# look for rootimg.gz
-		my $rootimg = look_for_file('rootimg.gz', $attrs, @arr);
+		my $rootimg = look_for_file('rootimg.gz', $callback, $attrs, @arr);
 		unless($rootimg){
 			$callback->({error=>["Couldn't find rootimg (rootimg.gz) for  $imagename"],errorcode=>[1]});
 			$errors++;
@@ -358,6 +359,7 @@ sub get_files{
 # mostly because we just ooze awesomeness.
 sub look_for_file {
 	my $file = shift;
+	my $callback = shift;
 	my $attrs = shift;
 	my @dirs = @_;
 	my $r_file = '';
@@ -365,16 +367,19 @@ sub look_for_file {
 	my $profile = $attrs->{profile};
 	my $arch = $attrs->{osarch};
 	my $distname = $attrs->{osvers};
-	my $dd = $distname; # dd is distro directory, or disco dave, whichever you prefer.
 
 
 	# go through the directories and look for the file.  We hopefully will find it...
 	foreach my $d (@dirs){
 			# widdle down rhel5.4, rhel5., rhel5, rhel, rhe, rh, r, 
+			my $dd = $distname; # dd is distro directory, or disco dave, whichever you prefer.
+			if($dd =~ /win/){ $dd = 'windows' };
 			until(-r "$d/$dd" or not $dd){
+				$callback->({data=>["not in  $d/$dd..."]}) if $::VERBOSE;
 				chop($dd);	
 			}
 			if($distname && $file eq 'tmpl'){		
+				$callback->({data=>["looking in $d/$dd..."]}) if $::VERBOSE;
 				# now look for the file name: foo.rhel5.x86_64.tmpl
 				(-r "$d/$dd/$profile.$distname.$arch.tmpl") && (return "$d/$dd/$profile.$distname.$arch.tmpl");
 				
@@ -410,7 +415,11 @@ sub make_bundle {
 	# so doing it in cwd is easy and predictable.
 	my $dir = shift;
 	#my $dir = getcwd;
-	
+
+	# get rid of spaces and put in underlines.  
+	$imagename =~ s/\s+/_/g;	
+
+
 	# we may find that cwd doesn't work, so we use the request cwd.
 	my $ttpath = mkdtemp("$dir/imgexport.$$.XXXXXX");
 	$callback->({data=>["Creating $ttpath..."]}) if $::VERBOSE;
@@ -446,6 +455,7 @@ sub make_bundle {
 
 	# now get right below all this stuff and tar it up.
 	chdir($ttpath);
+	$callback->( {data => ["Inside $ttpath."]});
 	unless($dest){ 
 		$dest = "$dir/$imagename.tgz";
 	}
@@ -463,6 +473,7 @@ sub make_bundle {
 	}else{
 		 $rc = system("tar czf $dest . ");	
 	}
+	$callback->( {data => ["Done!"]});
 	if($rc) {
 		$callback->({error=>["Failed to compress archive!  (Maybe there was no space left?)"],errorcode=>[1]});
 		return;
@@ -529,7 +540,7 @@ sub extract_bundle {
 		# put it in an eval string so that it 
 		$data = eval { $xml->XMLin("$imgdir/manifest.xml") };
 		if($@){
-			$callback->({error=>["None valid manifest.xml file inside the bundle.  Please verify the XML"],errorcode=>[1]});
+			$callback->({error=>["invalid manifest.xml file inside the bundle.  Please verify the XML"],errorcode=>[1]});
 			#my $foo = $@;
 			#$foo =~ s/\n//;
 			#$callback->({error=>[$foo],errorcode=>[1]});
@@ -718,6 +729,10 @@ sub make_files {
 		#          'osvers' => 'centos5.4'
 		#        };
 		my $template = basename($data->{template});
+	
+		if($os =~ /win/){
+			$os = 'windows';
+		}	
 		my $instdir = "$installroot/custom/$os/$arch"; 
 		#mkpath("$instdir", { verbose => 1, mode => 0755, error => \my $err });
 		mkpath("$instdir", { verbose => 1, mode => 0755 });
