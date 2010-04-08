@@ -103,3 +103,9 @@ else
     /usr/bin/sed -i 's/MP_POE_LAUNCH=.*/MP_POE_LAUNCH=all/g'  $installroot/etc/poe.limits
 fi
 
+
+# POE requires rsh to be running
+/usr/bin/sed -i 's/disable.*/disable = no/g'  $installroot/etc/xinetd.d/rsh
+
+
+
