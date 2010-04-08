@@ -6,19 +6,21 @@
 package xCAT_plugin::imgport;
 use strict;
 use warnings;
-use xCAT::Table;
-use xCAT::Schema;
+#use xCAT::Table;
+#use xCAT::Schema;
+#use xCAT::NodeRange qw/noderange abbreviate_noderange/;
+#use xCAT::Utils;
 use Data::Dumper;
 use XML::Simple;
-use xCAT::NodeRange qw/noderange abbreviate_noderange/;
-use xCAT::Utils;
 use POSIX qw/strftime/;
 use Getopt::Long;
 use File::Temp;
 use File::Copy;
-use File::Path;
+use File::Path qw/mkpath/;
+use File::Basename;
 use Cwd;
 my $requestcommand;
+$::VERBOSE = 0;
 
 1;
 
@@ -94,6 +96,7 @@ sub ximport {
 
 	GetOptions(
 		'h|?|help' => \$help,
+		'v|verbose' => \$::VERBOSE
 	);
 
 	if($help){
@@ -133,7 +136,8 @@ sub xexport {
 
 	GetOptions(
 		'h|?|help' => \$help,
-		'extra=s' => \@extra
+		'extra=s' => \@extra,
+		'v|verbose' => \$::VERBOSE
 	);
 
 	if($help){
@@ -144,8 +148,10 @@ sub xexport {
 	# ok, we're done with all that.  Now lets actually start doing some work.
 	my $img_name = shift @ARGV;	
 	my $dest = shift @ARGV;
+	my $cwd = $request->{cwd}; #getcwd;
+	$cwd = $cwd->[0];
 
-	$callback->( {data => ["Exporting $img_name..."]});
+	$callback->( {data => ["Exporting $img_name to $cwd..."]});
 	# check if all files are in place
 	my $attrs = get_image_info($img_name, $callback, @extra);
 	#print Dumper($attrs);
@@ -155,7 +161,7 @@ sub xexport {
 	}	
 
 	# make manifest and tar it up.
-	make_bundle($img_name, $dest, $attrs, $callback);
+	make_bundle($img_name, $dest, $attrs, $callback,$cwd);
 	
 }
 
@@ -402,8 +408,12 @@ sub make_bundle {
 	# tar ball is made in local working directory.  Sometimes doing this in /tmp 
 	# is bad.  In the case of my development machine, the / filesystem was nearly full.
 	# so doing it in cwd is easy and predictable.
-	my $dir = getcwd;
+	my $dir = shift;
+	#my $dir = getcwd;
+	
+	# we may find that cwd doesn't work, so we use the request cwd.
 	my $ttpath = mkdtemp("$dir/imgexport.$$.XXXXXX");
+	$callback->({data=>["Creating $ttpath..."]}) if $::VERBOSE;
 	my $tpath = "$ttpath/$imagename";
 	mkdir("$tpath");
 	chmod 0755,$tpath;
@@ -446,7 +456,13 @@ sub make_bundle {
 	}
 
 	$callback->( {data => ["Compressing $imagename bundle.  Please be patient."]});
-	my $rc = system("tar czvf $dest . ");	
+	my $rc;
+	if($::VERBOSE){
+		 $callback->({data => ["tar czvf $dest . "]});	
+		 $rc = system("tar czvf $dest . ");	
+	}else{
+		 $rc = system("tar czf $dest . ");	
+	}
 	if($rc) {
 		$callback->({error=>["Failed to compress archive!  (Maybe there was no space left?)"],errorcode=>[1]});
 		return;
@@ -461,20 +477,39 @@ sub make_bundle {
 
 sub extract_bundle {
 	my $request = shift;
+	#print Dumper($request);
 	my $callback = shift;
 	@ARGV = @{ $request->{arg} };
 	my $xml;
 	my $data;
 	my $datas;
+	my $error = 0;
 	
-
 	my $bundle = shift @ARGV;
 	# extract the image in temp path in cwd
-	my $dir = getcwd;
+	my $dir = $request->{cwd}; #getcwd;
+	$dir = $dir->[0];
+	#print Dumper($dir);
+	unless(-r $bundle){
+		$bundle = "$dir/$bundle";
+	}
+
+	unless(-r $bundle){
+		$callback->({error => ["Can not find $bundle"],errorcode=>[1]});
+		return;
+	}
+
 	my $tpath = mkdtemp("$dir/imgimport.$$.XXXXXX");
 	
-	$callback->({data=>["Unbundling image..."],errorcode=>[1]});
-	my $rc = system("tar zxf $bundle -C $tpath");
+	$callback->({data=>["Unbundling image..."]});
+	my $rc;
+	if($::VERBOSE){
+		$callback->({data=>["tar zxvf $bundle -C $tpath"]});
+		$rc = system("tar zxvf $bundle -C $tpath");
+		$rc = system("tar zxvf $bundle -C $tpath");
+	}else{
+		$rc = system("tar zxf $bundle -C $tpath");
+	}
 	if($rc){
 		$callback->({error => ["Failed to extract bundle $bundle"],errorcode=>[1]});
 	}
@@ -484,7 +519,7 @@ sub extract_bundle {
 	# go through each image directory.  Find the XML and put it into the array.  If there are any 
 	# errors then the whole thing is over and we error and leave.
 	foreach my $imgdir (@files){
-		print "$imgdir \n";
+		#print "$imgdir \n";
 		unless(-r "$imgdir/manifest.xml"){
 			$callback->({error=>["Failed to find manifest.xml file in image bundle"],errorcode=>[1]});
 			return;
@@ -494,23 +529,80 @@ sub extract_bundle {
 		# put it in an eval string so that it 
 		$data = eval { $xml->XMLin("$imgdir/manifest.xml") };
 		if($@){
-			$callback->({error=>$@,errorcode=>[1]});
+			$callback->({error=>["None valid manifest.xml file inside the bundle.  Please verify the XML"],errorcode=>[1]});
+			#my $foo = $@;
+			#$foo =~ s/\n//;
+			#$callback->({error=>[$foo],errorcode=>[1]});
+			#foreach($@){
+			#	last;
+			#}
 			return;
 		}
-		print Dumper($data);
+		#print Dumper($data);
 		#push @{$datas}, $data;
 		
 		# now we need to import the files...
 		unless(verify_manifest($data, $callback)){
+			$error++;
 			next;		
 		}
 
-		#print "manifest looks good, lets import!\n";
-		set_config($data, $callback);
+		# check media first
+		unless(check_media($data, $callback)){
+			$error++;
+			next;		
+		}
+
+		#import manifest.xml into xCAT database
+		unless(set_config($data, $callback)){
+			$error++;
+			next;
+		}
 		
 		# now place files in appropriate directories.
-		make_files($data, $callback);
+		unless(make_files($data, $imgdir, $callback)){
+			$error++;
+			next;
+		}
+
+		my $osimage = $data->{imagename};	
+		$callback->({data=>["Successfully imported $osimage"]});
+		
 	}
+
+	# remove temp file only if there were no problems.
+	unless($error){
+		$rc = system("rm -rf $tpath");
+		if ($rc) {
+			$callback->({error=>["Failed to clean up temp space $tpath"],errorcode=>[1]});
+			return;
+		}	
+	}
+
+}
+
+# return 1 for true 0 for false.
+# need to make sure media is copied before importing image.
+sub check_media {
+	my $data = shift;	
+	my $callback = shift;	
+	my $rc = 0;
+	unless( $data->{'media'}) {
+		$rc = 1;
+	}elsif($data->{media} eq 'required'){
+		my $os = $data->{osvers};
+		my $arch = $data->{osarch};
+		my $installroot = xCAT::Utils->getInstallDir();
+		unless($installroot){
+			$installroot = '/install';
+		}
+		unless(-d "$installroot/$os/$arch"){
+			$callback->({error=>["This image requires that you first copy media for $os-$arch"],errorcode=>[1]});
+		}else{
+			$rc = 1;
+		}
+	}
+	return $rc;
 }
 
 
@@ -521,7 +613,7 @@ sub set_config {
 	my %keyhash;
 	my $osimage = $data->{imagename};
 
-	$callback->({data=>["Adding $osimage"],errorcode=>[1]});
+	$callback->({data=>["Adding $osimage"]}) if $::VERBOSE;
 
 	# now we make a quick hash of what we want to put into this 
 	$keyhash{provmethod} = $data->{provmethod};
@@ -530,6 +622,7 @@ sub set_config {
 	$keyhash{osarch} = $data->{osarch};
         $ostab->setAttribs({imagename => $osimage }, \%keyhash );
         $ostab->commit;
+	return 1;
 }
 
 
@@ -603,26 +696,96 @@ sub verify_manifest {
 
 sub make_files {
 	my $data = shift;
+	my $imgdir = shift;
 	my $callback = shift;
 	my $os = $data->{osvers};
 	my $arch = $data->{osarch};
 	my $profile = $data->{profile};
+	my $installroot = xCAT::Utils->getInstallDir();
+	unless($installroot){
+		$installroot = '/install';
+	}
 	
 	if($data->{provmethod} =~ /install/){
-		my $template = $data->{template};
-		print "mkdir -p /install/custom/$os/$arch/$profile\n";
-		print "cp  $template /install/netboot/$os/$arch/$profile\n";
+		# you'll get a hash like this:
+		#$VAR1 = { 
+		#          'provmethod' => 'install',
+		#          'profile' => 'all',
+		#          'template' => '/opt/xcat/share/xcat/install/centos/all.tmpl',
+		#          'imagename' => 'Default_Stateful',
+		#          'osarch' => 'x86_64',
+		#          'media' => 'required',
+		#          'osvers' => 'centos5.4'
+		#        };
+		my $template = basename($data->{template});
+		my $instdir = "$installroot/custom/$os/$arch"; 
+		#mkpath("$instdir", { verbose => 1, mode => 0755, error => \my $err });
+		mkpath("$instdir", { verbose => 1, mode => 0755 });
+
+		# it could be that the old one already exists, in this case back it up.
 		
+		if(-r "$instdir/$template"){
+			$callback->( {data => ["$instdir/$template already exists.  Moving to $instdir/$template.ORIG..."]});
+			move("$instdir/$template", "$instdir/$template.ORIG");
+		}
+		move("$imgdir/$template", $instdir);		
 
 	}elsif($data->{provmethod} =~/netboot|statelite/){
-		print "mkdir -p /install/netboot/$os/$arch/$profile\n";
-		print "cp kernel /install/netboot/$os/$arch/$profile\n";
-		print "cp initrd.gz /install/netboot/$os/$arch/$profile\n";
-		print "cp rootimg.gz /install/netboot/$os/$arch/$profile\n";
+
+		# data will look something like this:
+		#$VAR1 = { 
+		#          'provmethod' => 'netboot',
+		#          'profile' => 'compute',
+		#          'ramdisk' => '/install/netboot/centos5.4/x86_64/compute/initrd.gz',
+		#          'kernel' => '/install/netboot/centos5.4/x86_64/compute/kernel',
+		#          'imagename' => 'Default_Stateless_1265981465',
+		#          'osarch' => 'x86_64',
+		#          'extra' => [
+		#                     { 
+		#                       'dest' => '/install/custom/netboot/centos',
+		#                       'src' => '/opt/xcat/share/xcat/netboot/centos/compute.centos5.4.pkglist'
+		#                     },
+		#                     { 
+		#                       'dest' => '/install/custom/netboot/centos',
+		#                       'src' => '/opt/xcat/share/xcat/netboot/centos/compute.exlist'
+		#                     }
+		#                   ],
+		#          'osvers' => 'centos5.4',
+		#          'rootimg' => '/install/netboot/centos5.4/x86_64/compute/rootimg.gz'
+		#        };
+		my $kernel = basename($data->{kernel});
+		my $ramdisk = basename($data->{ramdisk});
+		my $rootimg = basename($data->{rootimg});
+
+		my $netdir = "$installroot/netboot/$os/$arch/$profile";
+		mkpath("$netdir", {verbose => 1, mode => 0755 });
+
+		# save the old one off
+		foreach my $f ($kernel, $ramdisk, $rootimg){
+			if(-r "$netdir/$kernel"){
+				$callback->( {data => ["Moving old $netdir/$f to $netdir/$f.ORIG..."]}) if $::VERBOSE;
+				move("$netdir/$f", "$netdir/$f.ORIG");
+			}
+			copy("$imgdir/$f", $netdir);
+		}
+		# TODO: for statelite we should expand the rootimg and get the table values in place.
 	}
 
 	if($data->{extra}){
 		# have to copy extras
-		print "copying extras...\n";
+		print "copying extras...\n" if $::VERBOSE;
+		foreach(@{ $data->{extra} }) {
+			my $f = basename($_->{src});
+			my $dest = $_->{dest};
+			print "cp $imgdir/extra/$f $dest\n" if $::VERBOSE;
+			if(-r "$dest/$f"){
+				$callback->( {data => ["Moving old $dest/$f to $dest/$f.ORIG..."]}) if $::VERBOSE;
+				move("$dest/$f", "$dest/$f.ORIG");
+			}
+			copy("$imgdir/extra/$f", $dest);
+		}
 	}
+
+	# return 1 meant everything was successful!	
+	return 1;
 }
