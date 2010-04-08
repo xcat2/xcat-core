@@ -21,3 +21,5 @@ pam-64bit
 resmgr
 resmgr-64bit
 rsync
+bc
+powerpc-utils

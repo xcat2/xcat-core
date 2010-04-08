@@ -11,3 +11,5 @@ syslog-ng
 klogd
 vim
 rsync
+bc
+powerpc-utils

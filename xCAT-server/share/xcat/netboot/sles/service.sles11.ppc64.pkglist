@@ -38,3 +38,5 @@ perl-DBD-mysql
 portmap
 zypper
 rsync
+powerpc-utils
+bc
