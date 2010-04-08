@@ -32,7 +32,7 @@ if [ $OS != "AIX" ]; then
         download_dir=`echo $LOADL_DIR | cut -d '/' -f3-`
         wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=3 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
         rpm -Uvh LoadL-resmgr-full-license*.rpm
-        $linux_loadl_license_script -y -d .
+        $linux_loadl_license_script -c resmgr -y -d .
         rm -Rf /tmp/loadl
         mkdir /dev/cpuset
         mount -t cpuset none /dev/cpuset
@@ -47,7 +47,7 @@ if [ $OS != "AIX" ]; then
         # The license rpm should already be installed, but just in case...
         rpm --root $installroot -Uvh $installroot/$tmpdir/LoadL-full-license*.rpm
         chroot $installroot mount -t proc none /proc
-        chroot $installroot $linux_loadl_license_script -y -d  /$tmpdir
+        chroot $installroot $linux_loadl_license_script -c resmgr -y -d  /$tmpdir
         umount -l $installroot/proc
         rm -rf $installroot/$tmpdir
     fi
