@@ -19,3 +19,4 @@ vixie-cron
 wget
 vsftpd
 rsync
+timezone
