@@ -1293,9 +1293,10 @@ sub preprocess_request {
     if ( ref($opt) eq 'ARRAY' ) 
     {
         send_msg( $req, 1, @$opt );
+        delete($req->{callback}); # if not, it will cause an error --  "Can't encode a value of type: CODE" in hierairchy.
         return(1);
     }
-
+    delete($req->{callback}); # remove 'callback' => sub { "DUMMY" } in hierairchy.
     $req->{opt} = $opt;
 
     if ( exists( $req->{opt}->{V} )) {
@@ -1422,7 +1423,7 @@ sub parse_args
     $req->{command}  = $command;
     $req->{stdin}    = $stdin; 
     $req->{hwtype}   = $package; 
-    #$req->{callback} = $callback; 
+    $req->{callback} = $callback; 
     $req->{method}   = "parse_args";
 
     my $opt = runcmd( $req);
