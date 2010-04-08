@@ -520,8 +520,8 @@ sub tabdump
     my $tabh = xCAT::Table->new($table);
 
     my $tabdump_header = sub {
-        my $header = "#" . join(",", @_);
-        push @{$rsp{data}}, $header;
+       my $header = "#" . join(",", @_);
+       push @{$rsp{data}}, $header;
     };
 
     # If the table does not exist yet (because its never been written to),
@@ -549,28 +549,28 @@ sub tabdump
             return;
         }
     }
-
-	# Display all the rows of the table in the order of the columns in the schema
-    $tabdump_header->(@{$tabh->{colnames}});
-    foreach $rec (@$recs)
-    {
-        my $line = '';
-        foreach (@{$tabh->{colnames}})
-        {
-            if (defined $rec->{$_})
-            {
-            	$rec->{$_} =~ s/"/""/g;
-                $line = $line . '"' . $rec->{$_} . '",';
-            }
-            else
-            {
-                $line .= ',';
-            }
-        }
-        $line =~ s/,$//;    # remove the extra comma at the end
-        push @{$rsp{data}}, $line;
-    }
-    $cb->(\%rsp);
+    # Display all the rows of the table  the order of the columns in the schema
+    output_table($table,$cb,$tabh,$recs); 
+    #$tabdump_header->(@{$tabh->{colnames}});
+    #foreach $rec (@$recs)
+    #{
+    #    my $line = '';
+    #    foreach (@{$tabh->{colnames}})
+    #    {
+    #        if (defined $rec->{$_})
+    #        {
+    #        	$rec->{$_} =~ s/"/""/g;
+    #            $line = $line . '"' . $rec->{$_} . '",';
+    #        }
+    #        else
+    #        {
+    #            $line .= ',';
+    #        }
+    #    }
+    #    $line =~ s/,$//;    # remove the extra comma at the end
+    #    push @{$rsp{data}}, $line;
+    #}
+    #$cb->(\%rsp);
 }
 
 # Prune records from the eventlog or auditlog or all records.
@@ -705,7 +705,7 @@ sub tabprune_all {
    }
    if ($VERBOSE) { # will output change to std 
     my $recs = $tab->getAllEntries("all");
-    tabprune_verbose($table,$cb,$tab,$recs); 
+    output_table($table,$cb,$tab,$recs); 
    } 
    
    $tab->delEntries();    #Yes, delete *all* entries
@@ -802,8 +802,8 @@ sub tabprune_recid {
    return $rc;
 }
 
-#  If Verbose, return the records that will be deleted to stdout.  
-sub tabprune_verbose {
+#  Dump table records to  stdout.  
+sub output_table {
    my $table = shift;
    my $cb  = shift;
    my $tabh=shift;
