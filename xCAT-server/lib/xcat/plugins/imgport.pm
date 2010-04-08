@@ -68,8 +68,48 @@ sub process_request
 	}
 }
 
+# extract the bundle, then add it to the osimage table.  Basically the ying of the yang of the xexport
+# function.
+sub ximport {
+	my $request = shift;
+	my $callback = shift;
+	my %rsp;	# response
+	my $help;
 
-# return sthe mount point to the requesting node.
+	my $xusage = sub {
+		my $ec = shift;
+		push@{ $rsp{data} }, "imgimport: Takes in an xCAT image bundle and defines it to xCAT so you can use it"; 
+		push@{ $rsp{data} }, "Usage: ";
+		push@{ $rsp{data} }, "\timgimport [-h|--help] - displays this help message";
+		push@{ $rsp{data} }, "\timgimport <image name> - imports image.  Image should be an xCAT bundle";
+		if($ec){ $rsp{errorcode} = $ec; }
+		$callback->(\%rsp);
+	};
+	unless(defined($request->{arg})){ $xusage->(1); return; }
+	@ARGV = @{ $request->{arg}};
+	if($#ARGV eq -1){
+		$xusage->(1);
+		return;
+	}
+
+	GetOptions(
+		'h|?|help' => \$help,
+	);
+
+	if($help){
+		$xusage->(0);
+		return;
+	}
+
+	# first extract the bundle	
+	extract_bundle($request, $callback);
+	
+}
+
+
+# function to export your image.  The image should already be in production, work well, and have 
+# no bugs.  Lots of places will have problems because the image may not be in osimage table
+# or they may have hardcoded things, or have post install scripts.
 sub xexport { 
 	my $request = shift;
 	my $callback = shift;
@@ -118,6 +158,10 @@ sub xexport {
 	make_bundle($img_name, $dest, $attrs, $callback);
 	
 }
+
+
+
+
 
 # verify the image and return the values
 sub get_image_info {
@@ -177,6 +221,7 @@ sub get_image_info {
 		}
 	}
 
+	$attrs->{imagename} = $imagename;
 	# if we get nothing back, then we couldn't find the files.  How sad, return nuthin'
 	return $attrs;	
 
@@ -358,7 +403,7 @@ sub make_bundle {
 	# is bad.  In the case of my development machine, the / filesystem was nearly full.
 	# so doing it in cwd is easy and predictable.
 	my $dir = getcwd;
-	my $ttpath = mkdtemp("$dir/export.$$.XXXXXX");
+	my $ttpath = mkdtemp("$dir/imgexport.$$.XXXXXX");
 	my $tpath = "$ttpath/$imagename";
 	mkdir("$tpath");
 	chmod 0755,$tpath;
@@ -367,7 +412,7 @@ sub make_bundle {
 	# the idea at first though.
 	my $xml = new XML::Simple(RootName =>'xcatimage');	
 	open(FILE,">$tpath/manifest.xml") or die "Could not open $tpath/manifest.xml";
-	print FILE  $xml->XMLout($attribs, noattr => 1, xmldecl => '<?xml version="1.0">');
+	print FILE  $xml->XMLout($attribs, noattr => 1, xmldecl => '<?xml version="1.0"?>');
 	#print $xml->XMLout($attribs, noattr => 1, xmldecl => '<?xml version="1.0">');
 	close(FILE);
 
@@ -412,4 +457,172 @@ sub make_bundle {
 		$callback->({error=>["Failed to clean up temp space $ttpath"],errorcode=>[1]});
 		return;
 	}	
+}
+
+sub extract_bundle {
+	my $request = shift;
+	my $callback = shift;
+	@ARGV = @{ $request->{arg} };
+	my $xml;
+	my $data;
+	my $datas;
+	
+
+	my $bundle = shift @ARGV;
+	# extract the image in temp path in cwd
+	my $dir = getcwd;
+	my $tpath = mkdtemp("$dir/imgimport.$$.XXXXXX");
+	
+	$callback->({data=>["Unbundling image..."],errorcode=>[1]});
+	my $rc = system("tar zxf $bundle -C $tpath");
+	if($rc){
+		$callback->({error => ["Failed to extract bundle $bundle"],errorcode=>[1]});
+	}
+
+	# get all the files in the tpath.  These should be all the image names.
+	my @files = < $tpath/* >;
+	# go through each image directory.  Find the XML and put it into the array.  If there are any 
+	# errors then the whole thing is over and we error and leave.
+	foreach my $imgdir (@files){
+		print "$imgdir \n";
+		unless(-r "$imgdir/manifest.xml"){
+			$callback->({error=>["Failed to find manifest.xml file in image bundle"],errorcode=>[1]});
+			return;
+		}
+		$xml = new XML::Simple;
+		# get the data!
+		# put it in an eval string so that it 
+		$data = eval { $xml->XMLin("$imgdir/manifest.xml") };
+		if($@){
+			$callback->({error=>$@,errorcode=>[1]});
+			return;
+		}
+		print Dumper($data);
+		#push @{$datas}, $data;
+		
+		# now we need to import the files...
+		unless(verify_manifest($data, $callback)){
+			next;		
+		}
+
+		#print "manifest looks good, lets import!\n";
+		set_config($data, $callback);
+		
+		# now place files in appropriate directories.
+		make_files($data, $callback);
+	}
+}
+
+
+sub set_config {
+	my $data = shift;
+	my $callback = shift;
+	my $ostab = xCAT::Table->new('osimage',-create => 1,-autocommit => 0);
+	my %keyhash;
+	my $osimage = $data->{imagename};
+
+	$callback->({data=>["Adding $osimage"],errorcode=>[1]});
+
+	# now we make a quick hash of what we want to put into this 
+	$keyhash{provmethod} = $data->{provmethod};
+	$keyhash{profile} = $data->{profile};
+	$keyhash{osvers} = $data->{osvers};
+	$keyhash{osarch} = $data->{osarch};
+        $ostab->setAttribs({imagename => $osimage }, \%keyhash );
+        $ostab->commit;
+}
+
+
+sub verify_manifest {
+	my $data = shift;
+	my $callback = shift;
+	my $errors = 0;
+
+	# first make sure that the stuff is defined!
+	unless($data->{imagename}){
+		$callback->({error=>["The 'imagename' field is not defined in manifest.xml."],errorcode=>[1]});
+		$errors++;
+	}
+	unless($data->{provmethod}){
+		$callback->({error=>["The 'provmethod' field is not defined in manifest.xml."],errorcode=>[1]});
+		$errors++;
+	}
+
+	unless($data->{profile}){
+		$callback->({error=>["The 'profile' field is not defined in manifest.xml."],errorcode=>[1]});
+		$errors++;
+	}
+
+	unless($data->{osvers}){
+		$callback->({error=>["The 'osvers' field is not defined in manifest.xml."],errorcode=>[1]});
+		$errors++;
+	}
+
+	unless($data->{osarch}){
+		$callback->({error=>["The 'osarch' field is not defined in manifest.xml."],errorcode=>[1]});
+		$errors++;
+	}
+
+	unless($data->{provmethod} =~ /install|netboot|statelite/){
+		$callback->({error=>["Importing images with 'provemethod' " . $data->{provmethod} . " is not supported. Hint: install, netboot, or statelite"],errorcode=>[1]});
+		$errors++;
+	}
+
+	# if the install method is used, then we need to have certain files in place.
+	if($data->{provmethod} =~ /install/){
+		# we need to get the template for this one!
+		unless($data->{template}){
+			$callback->({error=>["The 'osarch' field is not defined in manifest.xml."],errorcode=>[1]});
+			$errors++;
+		}
+		#$attrs->{media} = "required"; (need to do something to verify media!
+
+	}elsif($data->{provmethod} =~ /netboot|statelite/){
+		unless($data->{ramdisk}){
+			$callback->({error=>["The 'ramdisk' field is not defined in manifest.xml."],errorcode=>[1]});
+			$errors++;
+		}
+		unless($data->{kernel}){
+			$callback->({error=>["The 'kernel' field is not defined in manifest.xml."],errorcode=>[1]});
+			$errors++;
+		}
+		unless($data->{rootimg}){
+			$callback->({error=>["The 'rootimg' field is not defined in manifest.xml."],errorcode=>[1]});
+			$errors++;
+		}
+	
+	}	
+	
+	if($errors){
+		# we had problems, error and exit.
+		return 0;
+	}
+	# returning 1 means everything went good!	
+	return 1;
+}
+
+sub make_files {
+	my $data = shift;
+	my $callback = shift;
+	my $os = $data->{osvers};
+	my $arch = $data->{osarch};
+	my $profile = $data->{profile};
+	
+	if($data->{provmethod} =~ /install/){
+		my $template = $data->{template};
+		print "mkdir -p /install/custom/$os/$arch/$profile\n";
+		print "cp  $template /install/netboot/$os/$arch/$profile\n";
+		
+
+	}elsif($data->{provmethod} =~/netboot|statelite/){
+		print "mkdir -p /install/netboot/$os/$arch/$profile\n";
+		print "cp kernel /install/netboot/$os/$arch/$profile\n";
+		print "cp initrd.gz /install/netboot/$os/$arch/$profile\n";
+		print "cp rootimg.gz /install/netboot/$os/$arch/$profile\n";
+	}
+
+	if($data->{extra}){
+		# have to copy extras
+		print "copying extras...\n";
+	}
 }
