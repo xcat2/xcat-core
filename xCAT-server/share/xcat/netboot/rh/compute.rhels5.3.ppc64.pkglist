@@ -12,3 +12,4 @@ ntp
 sysklogd
 rpm
 rsync
+ppc64-utils
