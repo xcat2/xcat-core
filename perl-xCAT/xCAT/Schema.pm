@@ -811,7 +811,7 @@ eventlog => {
 	message => 'The full description of the event.',
 	rawdata => ' The data that associated with the event. ',    # in RMC, it's the attribute value, it takes the format of attname=attvalue[,atrrname=attvalue....]
 	comments => 'Any user-provided notes.',
-	disable => "Set to 'yes' or '1' to comment out this row.",
+	disable => "Do not use.  tabprune will not work if set to yes or 1",
     },
 },
 
@@ -833,7 +833,7 @@ auditlog => {
 	args  => 'The command argument list.',  
 	status => 'Allowed or Denied.',
 	comments => 'Any user-provided notes.',
-	disable => "Set to 'yes' or '1' to comment out this row.",
+	disable => "Do not use.  tabprune will not work if set to yes or 1",
     },
 },
 
