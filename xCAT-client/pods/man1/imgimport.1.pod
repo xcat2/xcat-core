@@ -1,0 +1,48 @@
+=head1 NAME
+
+B<imgimport> - Imports an xCAT image or configuration file into the xCAT tables so that you can immediately begin
+deploying with it..
+
+=head1 SYNOPSIS
+
+B<imgimport [-h| --help]>
+
+B<imgimport> I<imagename> [-v]
+
+=head1 DESCRIPTION
+
+The imgimport command will import an image that has been exported by imgexport from xCAT.  This is the easiest way 
+to transfer/backup/ or share images created by xCAT whether they be stateless or stateful.
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Verbose output.
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. Simplest way to import an image.  If there is a bundle file named 'foo.gz', then run:
+
+I<imgimport foo.gz>
+
+foo.tgz will be unpacked in the current working directory.  The xCAT configuration will then be updated and the
+files will be copied to the appropriate directories.
+
+=head1 FILES
+
+/opt/xcat/bin/imgimport
+
+
+=head1 SEE ALSO
+
+L<imgexport(1)|imgexport.1>
+

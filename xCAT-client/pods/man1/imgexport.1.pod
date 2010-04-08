@@ -1,0 +1,66 @@
+=head1 NAME
+
+B<imgexport> - Exports an xCAT image.
+
+=head1 SYNOPSIS
+
+B<imgexport [-h| --help]>
+
+B<imgexport [-v| --verbose] imagename exported_file_name >
+B<imgexport> I<imagename> 
+
+
+=head1 DESCRIPTION
+
+The imgexport command will export an image that is being used by xCAT.  To export images, you must have the images defined in the osimage table. 
+The following columns must be filled out for an image to be exported:
+osimage.imagename
+osimage.profile
+osimage.provmethod
+osimage.osvers
+osimage.osarch
+
+=head1 OPTIONS
+
+
+B<-h>          Display usage message.
+
+B<-v>          Verbose output.
+
+B<-extra srcfile:destdir>      Pack up extra files
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+1. Simplest way to export an image.  If there is an image in the osimage table named 'foo', then run:
+
+B<imgexport foo>
+
+foo.tgz will be built in the current working directory.  Make sure that you have enough space in the directory
+that you are in to run imgexport if you have a big image to tar up.
+
+2. To include extra files with your image:
+
+B<imgexport Default_Stateless_1265981465 foo.tgz --extra=/opt/xcat/share/xcat/netboot/centos/compute.centos5.4.pkglist:/install/custom/netboot/centos --extra=/opt/xcat/share/xcat/netboot/centos/compute.exlist:/install/custom/netboot/centos>
+
+This will export the image Default_stateless_1265981465 into a file called foo.tgz.  In addition, it will package up extra files as well:
+ compute.centos5.4.pkglist
+ compute.exlist
+It will also place the contents of the file in the manifest.xml file that is part of the bundle.
+
+=head1 FILES
+
+/opt/xcat/bin/imgexport
+
+
+=head1 SEE ALSO
+
+L<imgimport(1)|imgimport.1>
+
+
+
