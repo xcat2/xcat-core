@@ -1,0 +1,59 @@
+#!/bin/sh
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+
+#
+#-----------------------------------------------------------------------------
+#
+#setbootfromnet 
+#
+#   This sets up the node to boot from network, if the GATEWAY is set,
+#   the bootlist will be set with the client ip, server ip and gateway information,
+#   otherwise, only set to boot from network, the client ip, server ip
+#   and the gateway information will not be set to openfirmware
+#
+#-----------------------------------------------------------------------------
+NODE_NAME=$NODE
+SERVER_IP=$MASTER
+GATE_WAY=$GATEWAY
+
+OS=`uname`
+if [ ! -z $NODE_NAME ]; then
+   if [[ $OS = "Linux" ]]; then
+      CLIENT_IP=`ping -c 3 $NODE_NAME | sed '/icmp_seq/!d;s/.*(\([0-9.]\+\)).*/\1/' | uniq  2>&1`
+      RET=`echo $?`
+      NIC=`ip route | grep "src $CLIENT_IP" | sed -r 's/.*dev (.*)  proto.*/\1/'  2>&1`
+      NRET=`echo $?`
+   else ## for AIX
+      CLIENT_IP=`ping -c 3 $NODE_NAME | grep "icmp_seq" | sed 's/.*from \([0-9.]*\):.*/\1/' | uniq 2>&1`
+      RET=`echo $?`
+      NIC=`netstat -rni | grep  "$CLIENT_IP" | awk '{print $1}' | sed 's/en/ent/g' | uniq 2>&1`
+      NRET=`echo $?`
+   fi
+else
+   msg="$0: The environment variable NODE is null, pls check.\n"
+   echo $msg
+   `logger -t xcat "$msg"`
+   exit 1 
+fi
+
+if [[ $RET -ne 0 ]] || [[ $NRET -ne 0 ]]; then
+   msg="$0: The returned value is not correct, client_ip=$client_ip, nic=$nic\n"
+   `logger -t xcat "$msg"`
+   exit 1
+fi
+
+if [ ! -z $NIC ]; then
+   if [[ ! -z $CLIENT_IP ]] && [[ ! -z $SERVER_IP ]] && [[ ! -z $GATE_WAY ]]; then
+      `bootlist -m normal $NIC bserver=$SERVER_IP gateway=$GATE_WAY client=$CLIENT_IP`
+   else
+      `bootlist -m normal $NIC`
+   fi
+else
+   msg="$0: The network interface NIC on the host $CLIENT_IP is not retrieved, pls check.\n"
+   echo $msg
+   `logger -t xcat "$msg"`
+   exit 1
+fi
+
+exit 0
