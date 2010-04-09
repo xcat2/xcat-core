@@ -1010,7 +1010,9 @@ sub resolve {
     #################################
     foreach my $at ( @attribs ) {
         if ( !exists( $att->{$at} )) {
-            return( sprintf( $errmsg{NO_ATTR}, $at, "ppc" ));
+            if ( $request->{fsp_api} == 1  && $at !~ /^pprofile$/ ) {
+                return( sprintf( $errmsg{NO_ATTR}, $at, "ppc" ));
+            }
         } 
     }
     #################################
@@ -1638,15 +1640,17 @@ sub check_fsp_api
     my $request = shift;
     
 #    my $fsp_api = "/opt/xcat/sbin/fsp-api";
-    my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
-    my $libfsp  = "/usr/lib/libfsp.a";
+     my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
+    #my $libfsp  = "/usr/lib/libfsp.a";
+     my $libfsp_aix   = ($::XCATROOT) ? "$::XCATROOT/lib/libfsp.so" : "/opt/xcat/lib/libfsp.so";
+     my $libfsp_linux   = ($::XCATROOT) ? "$::XCATROOT/lib/libfsp.a" : "/opt/xcat/lib/libfsp.a";
 #    my $libfsp  = "/opt/xcat/lib/libfsp.a";
 #    my $libfsp    = ($::XCATROOT) ? "$::XCATROOT/lib/libfsp.a" : "/opt/xcat/lib/libfsp.a";
 #    my $hw_svr  = "/opt/csm/csmbin/hdwr_svr";
     
     my $msg = ();
 #    if((-e $fsp_api) && (-x $fsp_api)&& (-e $libfsp) && (-e $hw_svr)) {
-    if((-e $fsp_api) && (-x $fsp_api)&& (-e $libfsp)) {
+    if((-e $fsp_api) && (-x $fsp_api)&& ((-e $libfsp_aix) || (-e $libfsp_linux) )) {
     	return 0;
     }
     
