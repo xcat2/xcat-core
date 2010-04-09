@@ -297,13 +297,10 @@ unless ($onlyinitrd) {
    #-- add custom repositories to the image  
    #TODO: should we add the support to otherpkgs for this? we have too many list files and it seems only SLES supports this
    my $repolist;
-   if ( -r "$pathtofiles/$profile.$osver.$arch.repolist") {
-       $repolist = "$pathtofiles/$profile.$osver.$arch.repolist";
-   }elsif ( -r "$pathtofiles/$profile.$osver.repolist") {
-       $repolist = "$pathtofiles/$profile.$osver.repolist";
-   }elsif ( -r "$pathtofiles/$profile.repolist") {
-       $repolist = "$pathtofiles/$profile.repolist";
-   }
+    $repolist = get_profile_def_filename($customdir, "repolist");
+    if(!$repolist) {
+        $repolist = get_profile_def_filename($pathtofiles, "repolist");
+    }
 
    if ( -r "$repolist") {
      print "Reading custom repositories\n";
