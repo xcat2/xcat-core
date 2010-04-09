@@ -308,15 +308,21 @@ fi
 TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
 echo "
 # subroutine used to run postscripts
-run_ps () { 
+run_ps () {
+ logdir=\"var/log/xcat\"
+ \`mkdir -p \$logdir\`
+ logfile=\"var/log/xcat/xcat.log\"
+ 
  if [[ -f \$1 ]]; then 
   echo \"Running postscript: \$1\"
   OUTPUT=\`./\$1 2>&1\`
   if [[ -n \$OUTPUT ]]; then
     echo \"\$OUTPUT\"
+    echo \"Postscript \$1: $OUTPUT\"\ >> \$logfile
   fi
  else
   echo \"Postscript \$1 does NOT exist.\"
+  echo \"Postscript \$1 does NOT exist.\" >> \$logfile
  fi
 }
 # subroutine end
