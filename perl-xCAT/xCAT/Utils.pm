@@ -575,7 +575,8 @@ sub list_all_nodes
 	Arguments:
 
 	Returns:
-	    an array of all define node groups from the nodelist table
+	    an array of all define node groups from the nodelist and nodegroup
+            table
 	Globals:
 		none
 	Error:
@@ -618,6 +619,28 @@ sub list_all_node_groups
         xCAT::MsgUtils->message("E", " Could not read the nodelist table\n");
     }
     $nodelisttab->close;
+    # now read the nodegroup table
+    if ($nodelisttab = xCAT::Table->new("nodegroup"))
+     {
+         my @attribs = ("groupname");
+         @grouplist = $nodelisttab->getAllAttribs(@attribs);
+ 
+         # build a distinct list of unique group names
+         foreach my $group (@grouplist)
+         {
+             my $groupname = $group->{groupname};
+             if (!grep(/$groupname/, @distinctgroups))
+             {    # not already in list
+                 push @distinctgroups, $groupname;
+             }
+         }
+         $nodelisttab->close;
+     }
+     else
+     {
+         xCAT::MsgUtils->message("E", " Could not read the nodegroup table\n");
+     }
+
     return @distinctgroups;
 }
 
