@@ -551,26 +551,6 @@ sub tabdump
     }
     # Display all the rows of the table  the order of the columns in the schema
     output_table($table,$cb,$tabh,$recs); 
-    #$tabdump_header->(@{$tabh->{colnames}});
-    #foreach $rec (@$recs)
-    #{
-    #    my $line = '';
-    #    foreach (@{$tabh->{colnames}})
-    #    {
-    #        if (defined $rec->{$_})
-    #        {
-    #        	$rec->{$_} =~ s/"/""/g;
-    #            $line = $line . '"' . $rec->{$_} . '",';
-    #        }
-    #        else
-    #        {
-    #            $line .= ',';
-    #        }
-    #    }
-    #    $line =~ s/,$//;    # remove the extra comma at the end
-    #    push @{$rsp{data}}, $line;
-    #}
-    #$cb->(\%rsp);
 }
 
 # Prune records from the eventlog or auditlog or all records.
@@ -789,12 +769,23 @@ sub tabprune_recid {
         return 1;
    }
    my $DBname = xCAT::Utils->get_DBName;
+   # display the output 
+   my @recs;
+   if ($VERBOSE) { # need to get all attributes 
+    if ($DBname =~ /^DB2/) {
+      @recs=$tab->getAllAttribsWhere("\"recid\"<$recid", 'ALL');
+    } else {
+      @recs=$tab->getAllAttribsWhere("recid<$recid", 'ALL');
+    }  
+    output_table($table,$cb,$tab,\@recs); 
+   }  
    my @ents;
    if ($DBname =~ /^DB2/) {
       @ents=$tab->getAllAttribsWhere("\"recid\"<$recid", 'recid');
    } else {
       @ents=$tab->getAllAttribsWhere("recid<$recid", 'recid');
-   }  
+   } 
+   # delete them 
    foreach my $rid (@ents) {
      $tab->delEntries($rid);
    } 
