@@ -2394,6 +2394,9 @@ sub getAllEntries
 
     Example:
     $nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'node','group');
+    returns  node and group attributes
+    $nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'ALL');
+    returns  all attributes
     Comments:
         none
 
@@ -2435,16 +2438,27 @@ sub getAllAttribsWhere
     while (my $data = $query->fetchrow_hashref())
     {
         my %newrow = ();
-        foreach (@attribs)
-        {
+        if ($attribs[0] eq "ALL") {  # want all attributes
+           foreach (keys %$data){
+           
+             if ($data->{$_} =~ /^$/)
+             {
+                $data->{$_} = undef;
+             }
+           }
+           push @results, $data;
+        } else {  # want specific attributes
+          foreach (@attribs)
+          {
             unless ($data->{$_} =~ /^$/ || !defined($data->{$_}))
             { #The reason we do this is to undef fields in rows that may still be returned..
                 $newrow{$_} = $data->{$_};
             }
-        }
-        if (keys %newrow)
-        {
-            push(@results, \%newrow);
+          }
+          if (keys %newrow)
+          {
+             push(@results, \%newrow);
+          }
         }
     }
     $query->finish();
