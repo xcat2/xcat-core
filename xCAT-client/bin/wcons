@@ -80,9 +80,19 @@ if (defined($tilefact)) {
          }
       }
    }
+   if ($panel_pad == 0) {
+           $rootinf = `xwininfo -name "Top Expanded Edge Panel"`;
+           foreach (split /\n/,$rootinf) {
+              if (/-geometry\s+([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)/) {
+                 if ($1 > 640 and $2 < 480 and $3 == 0 and $4 == 0) {
+                    $panel_pad=$2;
+                 }
+              }
+           }
+   }
 
 
-   system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode -geometry +0+0 ".join(" ",@ARGV)." -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
+   system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode -geometry +0+0 ".join(" ",@ARGV)." -e /bin/bash -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi  \" &");
    sleep(2); #Give time for window manager to figure out everything
    my $xinfo = `xwininfo -name $firstnode`;
    my @xinfl = split(/\n/,$xinfo);
@@ -118,7 +128,7 @@ if (defined($tilefact)) {
       $currx=0;
    }
 } else {
-   system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode ".join(" ",@ARGV)." -e /bin/sh -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
+   system("xterm $xrm -bg black -fg white -title $firstnode -n $firstnode ".join(" ",@ARGV)." -e /bin/bash -c \"$mydir/xtcd.pl ".$ENV{DISPLAY}." $firstnode $firstnode & let SDATE=`date +%s`+5; $mydir/rcons $firstnode ".$conservers{$firstnode}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
 
 }
 my $geometry="";
@@ -137,7 +147,7 @@ foreach (@nodes) {
       }
    }
 
-   system("xterm $xrm -bg black -fg white ".join(" ",@ARGV)." -title $_ -n $_ $geometry -e /bin/sh -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & let SDATE=`date +%s`+5; $mydir/rcons $_ ".$conservers{$_}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
+   system("xterm $xrm -bg black -fg white ".join(" ",@ARGV)." -title $_ -n $_ $geometry -e /bin/bash -c \"$mydir/xtcd.pl .".$ENV{DISPLAY}." $_ $_ & let SDATE=`date +%s`+5; $mydir/rcons $_ ".$conservers{$_}."; if [ \\\$SDATE -gt \\`date +%s\\` ]; then echo Press enter to close; read SDATE; fi\" &");
 }
 
 
