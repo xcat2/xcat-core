@@ -1,0 +1,99 @@
+=head1 NAME
+
+B<tabprune> - Deletes records from the eventlog or auditlog tables.
+
+=head1 SYNOPSIS
+
+B<tabprune> B<eventlog | auditlog>  [B<-V>] B<-i> I<recid> |B<-n> I<number of records> | B<-p> I<percentage> | B<-a>  
+
+B<tabprune> [B<-h>|B<--help>] [B<-v>|B<--version>] 
+
+=head1 DESCRIPTION
+
+The tabprune command is used to delete records from the auditlog or eventlog. As an option, the table header and all the rows pruned from the specified table will be displayed in CSV (comma separated values) format.  
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-a>
+
+Remove all records.
+
+=item B<-i>  I<recid number>
+
+Remove the records whose recid is less than the input recid number.
+
+=item B<-n> I<number>
+
+Remove the number of records input.
+
+=item B<-p> I<percent>
+
+Remove the percentage of records input.
+
+=back
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
+
+=head1 EXAMPLES
+
+=over 2
+
+=item *
+
+To remove all the records in the eventlog table:
+
+B<tabprune> I<eventlog> -a
+
+=item *
+
+To remove all the records in the eventlog table saving the deleted records in eventlog.csv:
+
+B<tabprune> I<eventlog> -V -a > eventlog.csv
+
+=item *
+
+To remove all the records before recid=200 in the auditlog table:
+
+B<tabprune> I<auditlog> -i 200
+
+=item *
+
+To remove 400 records from the auditlog table and display the remove records: 
+
+B<tabprune> I<auditlog> -V -n 400
+
+=item *
+
+To remove 50% of the  eventlog table: 
+
+B<tabprune> I<eventlog>  -p 50 
+
+
+
+=back
+
+=head1 FILES
+
+/opt/xcat/sbin/tabprune
+
+=head1 SEE ALSO
+
+L<tabrestore(8)|tabrestore.8>, L<tabedit(8)|tabedit.8>,L<tabdump(8)|tabdump.8>
