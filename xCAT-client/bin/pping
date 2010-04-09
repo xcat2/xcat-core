@@ -22,11 +22,13 @@ use IO::Select;
 use Getopt::Long;
 
 my $USAGE="Usage: pping [-i|--interface interfaces] noderange
+       pping -f|--use_fping
        pping -h|--help
        pping -v|--version\n"; 
 
 my $interface;
 if(!GetOptions(
+      'f|use_fping'     => \$::USE_FPING,
       'h|help'     => \$::HELP,
       'v|version'  => \$::VERSION,
       'X|noexpand'  => \$::NOEXPAND,
@@ -101,6 +103,9 @@ unless (scalar(@nodes)) {
 #$SIG{CHLD} = sub { while (waitpid(-1,WNOHANG) > 0) { $children--; } };
 
 my $usenmap = (-x '/usr/bin/nmap' or -x '/usr/local/bin/nmap');
+if ($::USE_FPING) { # Use fping instead of nmap
+	$usenmap = 0;
+}
 
 my @interfaces;
 if ($interface) { @interfaces = split(/,/, $interface); }
