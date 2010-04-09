@@ -135,7 +135,6 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lsvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/chvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/tabgrep
-ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/updatenode
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/renergy
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litetree
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/litefile
