@@ -154,7 +154,7 @@ $::mysqlrunning     = 0;
 $::xcatrunningmysql = 0;
 my $cmd        = "ps -ef | grep mysqld";
 my @output     = xCAT::Utils->runcmd($cmd, 0);
-my $mysqlcheck = "--datadir";                    # see if really running
+my $mysqlcheck = "mysql.sock";                    # see if really running
 if (grep(/$mysqlcheck/, @output))
 {
 
