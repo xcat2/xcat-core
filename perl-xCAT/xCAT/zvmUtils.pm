@@ -1,4 +1,4 @@
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------
 
 =head1
@@ -239,7 +239,7 @@ sub replaceStr {
 
 =head3   printLn
 
-	Description	: Print string
+	Description	: Print string to stdout
     Arguments	: String
     Returns		: Nothing
     Example		: xCAT::zvmUtils->printLn($callback, $str);
@@ -301,45 +301,10 @@ sub isZvmNode {
 
 #-------------------------------------------------------
 
-=head3   getIp
-
-	Description	: Get the IP address of a given node
-    Arguments	: Node
-    Returns		: IP address of given node
-    Example		: my $ip = xCAT::zvmUtils->getIp($node);
-    
-=cut
-
-#-------------------------------------------------------
-sub getIp {
-
-	# Get inputs
-	my ( $class, $node ) = @_;
-
-	# Get IP address
-	my $out   = `ssh -o ConnectTimeout=10 $node "ifconfig" | grep "inet addr:" | grep -v "127.0.0.1"`;
-	my @lines = split( '\n', $out );
-
-	# Get the first IP that comes back
-	my @parms = split( ' ', $lines[0] );
-	foreach (@parms) {
-
-		# Get inet addr parameter
-		if ( $_ =~ m/addr:/i ) {
-			my @ip = split( ':', $_ );
-			return ( $ip[1] );
-		}
-	}
-
-	return;
-}
-
-#-------------------------------------------------------
-
 =head3   getHwcfg
 
-	Description	: 	Get hardware configuration file path of given node
-					SUSE --	/etc/sysconfig/hardware/hwcfg-qeth
+	Description	: 	Get the hardware configuration file path
+					e.g. /etc/sysconfig/hardwarehwcfg-qeth-bus-ccw-0.0.0600
     Arguments	: Node
     Returns		: Hardware configuration file path
     Example		: my $hwcfg = xCAT::zvmUtils->getHwcfg($node);
@@ -372,9 +337,35 @@ sub getHwcfg {
 
 #-------------------------------------------------------
 
+=head3   getIp
+
+	Description	: Get the IP address of a given node
+    Arguments	: Node
+    Returns		: IP address of given node
+    Example		: my $ip = xCAT::zvmUtils->getIp($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getIp {
+
+	# Get inputs
+	my ( $class, $node ) = @_;
+
+	# Get IP address
+	# You need the extra space in the pattern, 
+	# else it will confuse gpok2 with gpok21
+	my $out   = `cat /etc/hosts | grep "$node "`;
+	my @parms = split( ' ', $out );
+	
+	return $parms[0];
+}
+
+#-------------------------------------------------------
+
 =head3   getIfcfg
 
-	Description	: 	Get network configuration file path of given node
+	Description	: 	Get the network configuration file path of a given node
 					Red Hat -- 	/etc/sysconfig/network-scripts/ifcfg-eth
 					SUSE 	-- 	/etc/sysconfig/network/ifcfg-qeth
     Arguments	: Node
@@ -418,10 +409,10 @@ sub getIfcfg {
 
 =head3   getIfcfgByNic
 
-	Description	: Get /etc/sysconfig/network/ifcfg-qeth file name of given NIC
+	Description	: Get the network configuration file path of a given node by its NIC address
     Arguments	: 	Node
     				NIC address
-    Returns		: /etc/sysconfig/network/ifcfg-qeth file name
+    Returns		: Network configuration file path
     Example		: my $ifcfg = xCAT::zvmUtils->getIfcfgByNic($node, $nic);
     
 =cut
@@ -441,9 +432,19 @@ sub getIfcfgByNic {
 
 	# If it is Red Hat -- ifcfg-qeth file is in /etc/sysconfig/network-scripts
 	if ( $os =~ m/Red Hat/i ) {
-		$out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network-scripts/ifcfg-eth*" | grep "$nic"`;
+		$out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network-scripts/ifcfg-eth*"`;
 		@parms = split( '\n', $out );
-		return ( $parms[0] );
+		
+		# Go through each line
+		foreach( @parms ) {
+			
+			# If the network file contains the NIC address
+			$out = `ssh -o ConnectTimeout=5 $node "cat $_" | grep "$nic"`;
+			if ( $out ) {
+				# Return network file path
+				return ( $_ );
+			}
+		}				
 	}
 
 	# If it is SUSE -- ifcfg-qeth file is in /etc/sysconfig/network
@@ -455,77 +456,6 @@ sub getIfcfgByNic {
 
 	# If no file is found -- Return nothing
 	return;
-}
-
-#-------------------------------------------------------
-
-=head3   getBroadcastIP
-
-	Description	: Get IP broadcast of given node
-    Arguments	: Node
-    Returns		: IP broadcast
-    Example		: my $broadcast = xCAT::zvmUtils->getBroadcastIP($node);
-    
-=cut
-
-#-------------------------------------------------------
-sub getBroadcastIP {
-
-	# Get inputs
-	my ( $class, $node ) = @_;
-
-	# Get IP address
-	my $out   = `ssh -o ConnectTimeout=5 $node "ifconfig" | grep "Bcast:" | cut -d: -f3`;
-	my @parms = split( ' ', $out );
-
-	return ( $parms[0] );
-}
-
-#-------------------------------------------------------
-
-=head3   getDns
-
-	Description	: Get DNS server of given node
-    Arguments	: Node
-    Returns		: DNS server
-    Example		: my $dns = xCAT::zvmUtils->getDns($node);
-    
-=cut
-
-#-------------------------------------------------------
-sub getDns {
-
-	# Get inputs
-	my ( $class, $node ) = @_;
-
-	# Get IP address
-	my $out   = `ssh -o ConnectTimeout=5 $node "cat /etc/resolv.conf" | grep "nameserver"`;
-	my @parms = split( ' ', $out );
-
-	return ( $parms[1] );
-}
-
-#-------------------------------------------------------
-
-=head3   getGateway
-
-	Description	: Get default gateway of given node
-    Arguments	: Node
-    Returns		: Default gateway
-    Example		: my $gw = xCAT::zvmUtils->getGateway($node);
-    
-=cut
-
-#-------------------------------------------------------
-sub getGateway {
-
-	# Get inputs
-	my ( $class, $node ) = @_;
-
-	# Get IP address
-	my $out = `ssh -o ConnectTimeout=5 $node "cat /etc/sysconfig/network/routes"`;
-	my @parms = split( ' ', $out );
-	return ( $parms[1] );
 }
 
 #-------------------------------------------------------
@@ -580,8 +510,7 @@ sub getRootDiskAddr {
 	my $devNode = $parms[0];
 
 	# Get disk address
-	$out =
-	  `ssh $node "cat /proc/dasd/devices" | grep "$devNode" | sed 's/(ECKD)//' | sed 's/(FBA )//' | sed 's/0.0.//'`;
+	$out = `ssh $node "cat /proc/dasd/devices" | grep "$devNode" | sed 's/(ECKD)//' | sed 's/(FBA )//' | sed 's/0.0.//'`;
 	@parms = split( " ", $out );
 	return ( $parms[0] );
 }
@@ -590,9 +519,9 @@ sub getRootDiskAddr {
 
 =head3   disableEnableDisk
 
-	Description	: Disable/enable a disk for given node
+	Description	: Disable/enable a disk for a given node
     Arguments	: 	Device address
-    				Option (-d|-e)
+    				Option [-d|-e]
     Returns		: Nothing
     Example		: my $out = xCAT::zvmUtils->disableEnableDisk($callback, $node, $option, $devAddr);
     
@@ -616,7 +545,7 @@ sub disableEnableDisk {
 
 =head3   getMdisks
 
-	Description	: Get MDisk statements in user directory entry
+	Description	: Get the MDisk statements in the user entry of a given node
     Arguments	: Node
     Returns		: MDisk statements
     Example		: my @mdisks = xCAT::zvmUtils->getMdisks($callback, $node);
@@ -659,7 +588,7 @@ sub getMdisks {
 
 =head3   getUserEntryWODisk
 
-	Description	: 	Get user directory entry for given node
+	Description	: 	Get the user entry of a given node
 					without MDISK statments, and save it to a file
     Arguments	: 	Node
     				File name to save user entry under
@@ -719,7 +648,7 @@ sub getUserEntryWODisk {
 
 =head3   appendHostname
 
-	Description	: 	Append specified hostname in front of a given string
+	Description	: 	Append a specified hostname in front of a given string
     Arguments	: 	Hostname
     				String
     Returns		: 	String with hostname in front
@@ -774,7 +703,7 @@ sub checkOutput {
 
 =head3   isAddressUsed
 
-	Description	: 	Check if given address is used
+	Description	: 	Check if given an address is used
     Arguments	: 	Node
     				Disk address
     Returns		: 	 0	Address used
@@ -800,7 +729,7 @@ sub isAddressUsed {
 
 =head3   getMacID
 
-	Description	: Get MACID from /opt/zhcp/conf/next_macid on HCP
+	Description	: Get the MACID from /opt/zhcp/conf/next_macid on the HCP
     Arguments	: HCP node
     Returns		: MACID
     Example		: my $macId = xCAT::zvmUtils->getMacID($hcp);
@@ -848,7 +777,7 @@ sub getMacID {
 
 	Description	: Generate a MACID 
     Arguments	: HCP node
-    Returns		: MACID
+    Returns		: Nothing
     Example		: my $macId = xCAT::zvmUtils->generateMacId($hcp);
     
 =cut
@@ -902,7 +831,7 @@ sub generateMacId {
 		$out = `ssh -o ConnectTimeout=5 $hcp "echo $macId > /opt/zhcp/conf/next_macid"`;
 	}
 
-	return $macId;
+	return;
 }
 
 #-------------------------------------------------------
@@ -934,7 +863,7 @@ sub createMacAddr {
 
 	# Get HCP MAC address
 	# Get the first MAC address found
-	my $out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q nic" | grep "MAC"`;
+	my $out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q nic" | grep "MAC:"`;
 	my @lines = split( "\n", $out );
 	my @vars  = split( " ", $lines[0] );
 
@@ -964,68 +893,9 @@ sub createMacAddr {
 
 #-------------------------------------------------------
 
-=head3   getSn
-
-	Description	: Get serial number for given node
-    Arguments	: Node
-    Returns		: Serial number
-    Example		: my $sn = xCAT::zvmUtils->getSn($node);
-    
-=cut
-
-#-------------------------------------------------------
-sub getSn {
-
-	# Get inputs
-	my ( $class, $node ) = @_;
-
-	# Get node properties from 'zvm' table
-	my @propNames = ('hcp');
-	my $propVals  = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
-
-	# Get HCP
-	my $hcp = $propVals->{'hcp'};
-
-	# Look in /proc/sysinfo to get serial number
-	my $out   = `ssh $hcp "cat /proc/sysinfo" | egrep -i "manufacturer|type|model|sequence code|plant"`;
-	my @props = split( '\n', $out );
-	my $man   = $props[0];
-	my $type  = $props[1];
-	my $model = $props[2];
-	my $sn    = $props[3];
-	my $plant = $props[4];
-
-	# Trim and get property value
-	# Get manufacturer
-	@props = split( ':', $man );
-	$man   = xCAT::zvmUtils->trimStr( $props[1] );
-
-	# Get machine type
-	@props = split( ':', $type );
-	$type  = xCAT::zvmUtils->trimStr( $props[1] );
-
-	# Get model
-	@props = split( ': ', $model );
-	$model = xCAT::zvmUtils->trimStr( $props[1] );
-	@props = split( ' ', $model );
-	$model = xCAT::zvmUtils->trimStr( $props[0] );
-
-	# Get sequence number
-	@props = split( ':', $sn );
-	$sn    = xCAT::zvmUtils->trimStr( $props[1] );
-
-	# Get plant
-	@props = split( ':', $plant );
-	$plant = xCAT::zvmUtils->trimStr( $props[1] );
-
-	return ("$man-$type-$model-$plant-$sn");
-}
-
-#-------------------------------------------------------
-
 =head3   getOs
 
-	Description	: Get operating system name of given node
+	Description	: Get the operating system name of a given node
     Arguments	: Node
     Returns		: Operating system name
     Example		: my $osName = xCAT::zvmUtils->getOs($node);
@@ -1048,7 +918,7 @@ sub getOs {
 
 =head3   getArch
 
-	Description	: Get architecture of given node
+	Description	: Get the architecture of a given node
     Arguments	: Node
     Returns		: Architecture of node
     Example		: my $arch = xCAT::zvmUtils->getArch($node);

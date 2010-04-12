@@ -1,4 +1,4 @@
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
 #-------------------------------------------------------
 
 =head1
@@ -18,7 +18,7 @@ use warnings;
 
 =head3   getUserId
 
-	Description	: Get userID of given node
+	Description	: Get the userID of a given node
     Arguments	: Node
     Returns		: UserID
     Example		: my $userID = xCAT::zvmCPUtils->getUserId($node);
@@ -32,7 +32,7 @@ sub getUserId {
 	my ( $class, $node ) = @_;
 
 	# Get userId using VMCP
-	my $out     = `ssh -o ConnectTimeout=5 $node "vmcp q userid"`;
+	my $out = `ssh -o ConnectTimeout=5 $node "vmcp q userid"`;
 	my @results = split( ' ', $out );
 
 	return ( $results[0] );
@@ -42,7 +42,7 @@ sub getUserId {
 
 =head3   getHost
 
-	Description	: Get z/VM host for given node
+	Description	: Get the z/VM host for a given node
     Arguments	: Node
     Returns		: z/VM host
     Example		: my $host = xCAT::zvmCPUtils->getHost($node);
@@ -67,7 +67,7 @@ sub getHost {
 
 =head3   getPrivileges
 
-	Description	: Get privilege class of given node
+	Description	: Get the privilege class of a given node
     Arguments	: Node
     Returns		: Privilege class
     Example		: my $memory = xCAT::zvmCPUtils->getPrivileges($node);
@@ -94,7 +94,7 @@ sub getPrivileges {
 
 =head3   getMemory
 
-	Description	: Get memory of given node
+	Description	: Get the memory of a given node
     Arguments	: Node
     Returns		: Memory
     Example		: my $memory = xCAT::zvmCPUtils->getMemory($node);
@@ -118,7 +118,7 @@ sub getMemory {
 
 =head3   getCpu
 
-	Description	: Get processor(s) of given node
+	Description	: Get the processor(s) of a given node
     Arguments	: Node
     Returns		: Processor(s)
     Example		: my $proc = xCAT::zvmCPUtils->getCpu($node);
@@ -142,7 +142,7 @@ sub getCpu {
 
 =head3   getNic
 
-	Description	: Get network interface card (NIC) of given node
+	Description	: Get the network interface card (NIC) of a given node
     Arguments	: Node
     Returns		: NIC(s)
     Example		: my $nic = xCAT::zvmCPUtils->getNic($node);
@@ -164,9 +164,76 @@ sub getNic {
 
 #-------------------------------------------------------
 
+=head3   getNetworkNames
+
+	Description	: Get a list of network names
+    Arguments	: Node
+    Returns		: Network names
+    Example		: my $lans = xCAT::zvmCPUtils->getNetworkNames($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getNetworkNames {
+
+	# Get inputs
+	my ( $class, $node ) = @_;
+
+	# Get network names
+	my $out = `ssh -o ConnectTimeout=5 $node "vmcp q lan | egrep 'LAN|VSWITCH'"`;
+	my @lines = split( '\n', $out );
+	my @parms;
+	my $names;
+	foreach (@lines) {
+
+		# Trim output
+		$_ = xCAT::zvmUtils->trimStr($_);
+		@parms = split( ' ', $_ );
+
+		# Get the network name
+		if ( $parms[0] eq "LAN" || $parms[0] eq "VSWITCH" ) {
+			$names .= $parms[0] . " " . $parms[2] . "\n";
+		}
+	}
+
+	return ($names);
+}
+
+#-------------------------------------------------------
+
+=head3   getNetwork
+
+	Description	: Get the network configuration
+    Arguments	: 	Node
+    				Network name
+    Returns		: Network configuration
+    Example		: my $config = xCAT::zvmCPUtils->getNetwork($node, $netName);
+    
+=cut
+
+#-------------------------------------------------------
+sub getNetwork {
+
+	# Get inputs
+	my ( $class, $node, $netName ) = @_;
+
+	# Get network configuration
+	my $out;
+	if ( $netName eq "all" ) {
+		$out = `ssh -o ConnectTimeout=5 $node "vmcp q lan"`;
+	}
+	else {
+		$out = `ssh -o ConnectTimeout=5 $node "vmcp q lan $netName"`;
+	}
+
+	return ($out);
+}
+
+#-------------------------------------------------------
+
 =head3   getDisks
 
-	Description	: Get disk(s) of given node
+	Description	: Get the disk(s) of given node
     Arguments	: Node
     Returns		: Disk(s)
     Example		: my $storage = xCAT::zvmCPUtils->getDisks($node);
@@ -190,7 +257,7 @@ sub getDisks {
 
 =head3   loadVmcp
 
-	Description	: Load VMCP module on specified node
+	Description	: Load Linux VMCP module on a given node
     Arguments	: Node
     Returns		: Nothing
     Example		: xCAT::zvmCPUtils->loadVmcp($node);
@@ -212,7 +279,7 @@ sub loadVmcp {
 
 =head3   getVswitchId
 
-	Description	: Get VSWITCH ID of given node
+	Description	: Get the VSWITCH ID(s) of given node
     Arguments	: Node
     Returns		: VSwitch IDs
     Example		: my @vswitch = xCAT::zvmCPUtils->getVswitchId($node);
@@ -242,7 +309,7 @@ sub getVswitchId {
 
 =head3   grantVSwitch
 
-	Description	: Grant access to virtual switch (VSWITCH) for given userID
+	Description	: Grant access to a virtual switch (VSWITCH) for given userID
     Arguments	: 	HCP node
     				User ID 
     				VSWITCH ID
@@ -369,7 +436,7 @@ sub purgeReader {
 
 =head3   sendCPCmd
 
-	Description	: 	Send CP command to given userID (Class C users only)
+	Description	: 	Send CP command to a given userID (Class C users only)
     Arguments	: 	HCP node
     				UserID to send CP command
     Returns		: 	Nothing
@@ -407,7 +474,7 @@ sub getNetworkLayer {
 
 	# Get node properties from 'zvm' table
 	my @propNames = ('hcp');
-	my $propVals  = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+	my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
 
 	# Get HCP
 	my $hcp = $propVals->{'hcp'};
@@ -416,7 +483,7 @@ sub getNetworkLayer {
 	}
 
 	# Get network name
-	my $out   = `ssh -o ConnectTimeout=5 $node "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
+	my $out = `ssh -o ConnectTimeout=5 $node "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
 	my @lines = split( '\n', $out );
 
 	# Go through each line and extract VSwitch and Lan names
@@ -484,7 +551,8 @@ sub getNetworkType {
 	my ( $class, $hcp, $netName ) = @_;
 
 	# Get network details
-	my $out = `ssh -o ConnectTimeout=5 $hcp "vmcp q lan $netName" | grep "Type"`;
+	my $out =
+	  `ssh -o ConnectTimeout=5 $hcp "vmcp q lan $netName" | grep "Type"`;
 
 	# Go through each line and determine network type
 	my @lines = split( '\n', $out );
@@ -508,4 +576,28 @@ sub getNetworkType {
 	}
 
 	return $netType;
+}
+
+#-------------------------------------------------------
+
+=head3   defineCpu
+
+	Description	: Add processor(s) to given node
+    Arguments	: Node
+    Returns		: Nothing
+    Example		: my $out = xCAT::zvmCPUtils->defineCpu($node, $addr, $type);
+    
+=cut
+
+#-------------------------------------------------------
+sub defineCpu {
+
+	# Get inputs
+	my ( $class, $node, $addr, $type ) = @_;
+
+	# Define processor(s)
+	my $out =
+	  `ssh -o ConnectTimeout=5 $node "vmcp define cpu $addr type $type"`;
+
+	return ($out);
 }
