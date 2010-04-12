@@ -1533,6 +1533,16 @@ sub makeVM {
 			$generateNew = 1;
 		}
 
+		# Get the network name the HCP is on
+		$out = `ssh $hcp "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
+		my @lines = split( '\n', $out );
+		my $line = xCAT::zvmUtils->trimStr($lines[0]);
+		my @words = split( ' ', $line );
+		my $netName = $words[4];
+		
+		# Append MACID at the end of the NICDEF statement in user entry text file
+		$out = `sed --in-place -e "s,$netName,$netName MACID $macId,g" $userEntry`;
+	
 		# SCP file over to HCP
 		$out = `scp $userEntry $target:$userEntry`;
 
@@ -1986,7 +1996,7 @@ sub clone {
 	# Remove existing user entry if any
 	$out = `rm $userEntry`;
 	$out = `ssh -o ConnectTimeout=5 $hcp "rm $userEntry"`;
-
+			
 	# Copy user entry of source node
 	$out = `cp $srcUserEntry $userEntry`;
 	
@@ -1995,6 +2005,7 @@ sub clone {
 
 	# Get target MAC address in 'mac' table
 	my $targetMac;
+	my $macId;
 	my $generateNew = 0;    # Flag to generate new MACID
 	@propNames = ('mac');
 	$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $tgtNode, @propNames );
@@ -2002,10 +2013,31 @@ sub clone {
 
 		# Get MACID
 		$targetMac = $propVals->{'mac'};
+		$macId     = $propVals->{'mac'};
+		$macId     = xCAT::zvmUtils->replaceStr( $macId, ":", "" );
+		$macId     = substr( $macId, 6 );
 	} else {
-		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing MAC address" );
+		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing target MAC address" );
 		return;
 	}
+	
+	# Get source MAC address in 'mac' table
+	my $srcMacId;
+	@propNames = ('mac');
+	$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $sourceNode, @propNames );
+	if ($propVals) {
+
+		# Get MACID
+		$srcMacId     = $propVals->{'mac'};
+		$srcMacId     = xCAT::zvmUtils->replaceStr( $srcMacId, ":", "" );
+		$srcMacId     = substr( $srcMacId, 6 );
+	} else {
+		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing source MAC address" );
+		return;
+	}
+	
+	# Append MACID at the end of the NICDEF statement in user entry text file
+	$out = `sed --in-place -e "s,$srcMacId,$macId,g" $userEntry`;
 	
 	# SCP user entry file over to HCP
 	xCAT::zvmUtils->sendFile( $hcp, $userEntry, $userEntry );
@@ -2623,14 +2655,14 @@ sub nodeSet {
 		$out = `mkdir -p /install/custom/install/sles`;
 
 		# Copy autoyast template
-		$template = "/install/custom/install/sles/$profile";
+		$template = "/install/custom/install/sles/" . $node . ".sles10.s390x.tmpl";
 		$out      = `cp /opt/xcat/share/xcat/install/sles/$profile $template`;
 
 		# Edit template
 		my $device  = "qeth-bus-ccw-$readChannel";
 		my $chanIds = "$readChannel $writeChannel $dataChannel";
-
-		$out = `sed --in-place -e "s,replace_host_address,$hostIP,g" \ -e "s,replace_long_name,$hostname,g" \ -e "s,replace_short_name,$node,g" \ -e "s,replace_domain,$domain,g" \ -e "s,replace_hostname,$node,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_broadcast,$broadcast,g" \ -e "s,replace_device,$device,g" \ -e "s,replace_ipaddr,$hostIP,g" \ -e "s,replace_lladdr,$mac,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_network,$network,g" \ -e "s,replace_ccw_chan_ids,$chanIds,g" \ -e "s,replace_ccw_chan_mode,FOOBAR,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_root_password,$passwd,g" $template`;
+            
+        $out = `sed --in-place -e "s,replace_host_address,$hostIP,g" \ -e "s,replace_long_name,$hostname,g" \ -e "s,replace_short_name,$node,g" \ -e "s,replace_domain,$domain,g" \ -e "s,replace_hostname,$node,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_broadcast,$broadcast,g" \ -e "s,replace_device,$device,g" \ -e "s,replace_ipaddr,$hostIP,g" \ -e "s,replace_lladdr,$mac,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_network,$network,g" \ -e "s,replace_ccw_chan_ids,$chanIds,g" \ -e "s,replace_ccw_chan_mode,FOOBAR,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_root_password,$passwd,g" $template`;
 
 		# Read sample parmfile in /install/sles10.2/s390x/1/boot/s390x/
 		$sampleParm = "/install/$distr/s390x/1/boot/s390x/parmfile";
@@ -2659,7 +2691,7 @@ sub nodeSet {
 		#	Install=ftp://10.0.0.1/sles10.2/s390x/1/
 		#	UseVNC=1  VNCPassword=123456
 		#	InstNetDev=osa OsaInterface=qdio OsaMedium=eth Manual=0
-		my $ay = "ftp://$ftp/custom/install/sles/$profile";
+		my $ay = "ftp://$ftp/custom/install/sles/" . $node . ".sles10.s390x.tmpl";
 
 		$parms = $parmHeader . "\n";
 		$parms = $parms . "AutoYaST=$ay\n";
@@ -2734,7 +2766,7 @@ sub nodeSet {
 		$out = `mkdir -p /install/custom/install/rh`;
 
 		# Copy kickstart template
-		$template = "/install/custom/install/rh/$profile";
+		$template = "/install/custom/install/rh/" . $node . ".rhel5.s390x.tmpl";
 		$out      = `cp /opt/xcat/share/xcat/install/rh/$profile $template`;
 
 		# Edit template
@@ -2787,7 +2819,7 @@ sub nodeSet {
 		#	GATEWAY=10.0.0.1 DNS=9.0.2.11 MTU=1500
 		#	PORTNAME=UNASSIGNED PORTNO=0 LAYER2=0
 		#	vnc vncpassword=123456
-		my $ks = "ftp://$ftp/custom/install/rh/$profile";
+		my $ks = "ftp://$ftp/custom/install/rh/" . $node . ".rhel5.s390x.tmpl";
 
 		$parms = $parmHeader . "\n";
 		$parms = $parms . "ks=$ks\n";
