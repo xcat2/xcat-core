@@ -264,15 +264,13 @@ run_ps () {
  logfile=\\"/var/log/xcat/xcat.log\\"
 
  if [[ -f \\\$1 ]]; then
-  echo \\"Running postscript: \\\$1\\"
+  echo \\"Running postscript: \\\$1\\" | tee -a \\\$logfile
   OUTPUT=\\\`./\\\$1 2>&1\\\`
   if [[ -n \\\$OUTPUT ]]; then
-    echo \\"\\\$OUTPUT\\"
-    echo \\"Postscript \\\$1: \\\$OUTPUT\\" >> \\\$logfile
+    echo \\"\\\$OUTPUT\\"  | tee -a \\\$logfile
   fi
  else
-  echo \\"Postscript \\\$1 does NOT exist.\\"
-  echo \\"Postscript \\\$1 does NOT exist.\\" >> \\\$logfile
+  echo \\"Postscript \\\$1 does NOT exist.\\" | tee -a \\\$logfile
  fi
 }
 # subroutine end
