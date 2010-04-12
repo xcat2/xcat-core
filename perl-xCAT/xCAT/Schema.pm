@@ -672,9 +672,10 @@ site => {
    " genpasswords:  Automatically generate random passwords for BMCs when configuring\n".
    "                them.\n\n".
    " installdir:  The local directory name used to hold the node deployment packages.\n\n".
-   " installloc:  The location that service nodes should mount the install directory\n".
-   "              from in format hostname:/path.  If hostname is omitted, it defaults\n".
-   "              to the management node.\n\n".
+   " installloc:  The location from which the service nodes should mount the \n".
+   "              deployment packages in the format hostname:/path.  If hostname is\n".
+   "              ommited, it defaults to the management node. The path must\n".
+   "              match the path in the installdir attribute.\n\n".
    " ipmimaxp:  The max # of processes for ipmi hw ctrl.\n\n".
    " ipmiretries:  The # of retries to use when communicating with BMCs.\n\n".
    " ipmisdrcache:  If set to 'no', then the xCAT IPMI support will not cache locally\n".
