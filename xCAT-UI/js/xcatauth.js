@@ -83,22 +83,19 @@ function openDialog(){
     });
 
     $("#username").keydown(function(event) { //When 'enter' is hit while in username, advance to password
-        if (event.keyCode==13) {
+        if ((event.which && event.which == 13) || (event.keyCode && event.keyCode == 13)) {
+            event.preventDefault();
             $("#password").focus();
         }
     });
+
     $("#password").keydown(function(event) { //Submit authentication if enter is pressed in password field
-        if (event.keyCode==13) {
-            //TODO: it doesn't work on Chrome and Safari
-            $(".ui-dialog-buttonpane button").each(function() {
-                if($(this).html() == "Log In") {
-                    $(this).click();
-                }
-            });
-            //authenticate();
+        if ((event.which && event.which == 13) || (event.keyCode && event.keyCode == 13)) {
+            event.preventDefault();
+            authenticate();
         }
     });
-	  
+
 	$("#logout").click(function(event){
 		logout();
 	});
