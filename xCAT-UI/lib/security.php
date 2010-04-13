@@ -8,7 +8,7 @@ echo <<<EOS2
 
 <div id=logdialog>
 <p id=logdialogTitle>Please enter a username and password</p>
-<form id=loginform>
+<form method=post id=loginform>
 <label for=username>Username </label><input id=username type=text name=username>
 <br>
 <label for=password>Password </label><input id=password type=password name=password>
