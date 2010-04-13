@@ -68,9 +68,13 @@ sub subvars {
   my $doneincludes=0;
   while (not $doneincludes) {
     $doneincludes=1;
+    if ($inc =~ /#INCLUDE_PKGLIST:[^#]+#/) {
+      $doneincludes=0;
+      $inc =~ s/#INCLUDE_PKGLIST:([^#]+)#/includefile($1, 0, 1)/eg;
+    }
     if ($inc =~ /#INCLUDE:[^#]+#/) {
       $doneincludes=0;
-      $inc =~ s/#INCLUDE:([^#]+)#/includefile($1, 0)/eg;
+      $inc =~ s/#INCLUDE:([^#]+)#/includefile($1, 0, 0)/eg;
     }
   }
   #ok, now do everything else..
@@ -81,8 +85,9 @@ sub subvars {
   $inc =~ s/#TABLEBLANKOKAY:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3,'1')/eg;
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
   $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
-  $inc =~ s/#INCLUDE_NOP:([^#]+)#/includefile($1,1)/eg;
-  $inc =~ s/#INCLUDE:([^#]+)#/includefile($1, 0)/eg;
+  $inc =~ s/#INCLUDE_NOP:([^#]+)#/includefile($1,1,0)/eg;
+  $inc =~ s/#INCLUDE_PKGLIST:([^#]+)#/includefile($1,0,1)/eg;
+  $inc =~ s/#INCLUDE:([^#]+)#/includefile($1, 0, 0)/eg;
 
 
   if ($tmplerr) {
@@ -169,6 +174,7 @@ sub includefile
 {
     my $file = shift;
     my $special=shift;
+    my $pkglist=shift;
     my $text = "";
     unless ($file =~ /^\//) {
       $file = $idir."/".$file;
@@ -176,8 +182,23 @@ sub includefile
 
     open(INCLUDE,$file) || return "#INCLUDEBAD:cannot open $file#";
     
+    my $pkgb = "";
+    my $pkge = "";
+    if ($pkglist) {
+      $pkgb = "<package>";
+      $pkge = "</package>";
+    }
     while(<INCLUDE>) {
-	$text .= "$_";
+        if ($pkglist) {
+            s/#INCLUDE:/#INCLUDE_PKGLIST:/;
+        }
+        if (( $_ =~ /^\s*#/ ) || ( $_ =~ /^\s*$/ )) {
+	    $text .= "$_";
+        } else {
+            chomp;
+            s/\s*$//;
+	    $text .= "$pkgb$_$pkge\n";
+        }
     }
     
     close(INCLUDE);
