@@ -707,6 +707,19 @@ sub process_request
 
     if ($req->{node})
     {
+        my $ip_hash;
+        foreach my $node ( @{$req->{node}} ) {
+            my $hoststab  = xCAT::Table->new('hosts');
+            my $ent = $hoststab->getNodeAttribs( $node, ['ip'] );
+            if ( $ent->{ip} ) {
+                if ( $ip_hash->{ $ent->{ip} } ) {
+                    $callback->({error=>["Duplicated IP addresses in hosts table for following nodes: $node," . $ip_hash->{ $ent->{ip} }],errorcode=>[1]});
+                    return;
+                }
+                $ip_hash->{ $ent->{ip} } = $node;
+            }
+        }
+
         @ARGV       = @{$req->{arg}};
         $statements = "";
         GetOptions('s|statements=s' => \$statements);
