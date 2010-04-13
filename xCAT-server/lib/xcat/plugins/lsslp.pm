@@ -2027,9 +2027,12 @@ sub do_resetnet {
     foreach my $ip ( @$succeed_nodes ) {
         if ( $ip_host->{$ip} ) {
             $result .= $ip_host->{$ip} . ",";
+            my $new_ip = $hoststab->getNodeAttribs( $ip_host->{$ip}, [qw(ip)]);
+            $hoststab->setNodeAttribs( $ip_host->{$ip},{otherinterfaces=>$new_ip->{ip}} );
         }
     }
     $result .= "\nReset network finished.\n";
+    $hoststab->close();
 
     send_msg( $req, 0, $result );
 
