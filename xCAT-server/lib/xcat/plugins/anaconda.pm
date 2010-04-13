@@ -305,7 +305,7 @@ sub mknetboot
           )
         {
 		if($statelite){
-			$callback->({error=> ["$node: statelite image $osver-$arch-$profile does not exist"], errorcode =>[1] });
+			$callback->({error=> ["$node: statelite image $osver-$arch-statelite-$profile does not exist"], errorcode =>[1] });
 		}else{
             		$callback->(
                 	{
