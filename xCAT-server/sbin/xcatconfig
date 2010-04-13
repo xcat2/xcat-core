@@ -930,7 +930,7 @@ sub initDB
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab key=ipmitimeout site.value=2;";
             $chtabcmds .=
-              "$::XCATROOT/sbin/chtab key=consoleondemand site.value=no;";
+              "$::XCATROOT/sbin/chtab key=consoleondemand site.value=yes;";
         }
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=master site.value=$master;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=maxssh site.value=8;";
