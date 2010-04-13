@@ -304,8 +304,7 @@ sub makescript {
 	  if (!$pkglist) { $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("$::XCATROOT/share/xcat/$stat/$platform", $profile, $os, $arch); }
       }
   }
-  print "pkglist=$pkglist\n";
-
+#  print "pkglist=$pkglist\n";
   if ($pkglist) {
       my @otherpkgs=();
       if (open(FILE1, "<$pkglist")) {
@@ -456,10 +455,13 @@ sub includefile
        return "#INCLUDEBAD:cannot open $file#";
    
    while(<INCLUDE>) {
-       chomp($_);
-       s/\s+$//;  #remove trailing spaces
-       next if /^\s*$/; #-- skip empty lines
-       push(@text, $_);
+      chomp($_); #remove newline
+      s/\s+$//;  #remove trailing spaces
+      next if /^\s*$/; #-- skip empty lines
+      next if ( /^\s*#/ && 
+                !/^\s*#INCLUDE:/ &&
+                !/^\s*#NEW_INSTALL_LIST#/ ); #-- skip comments
+      push(@text, $_);
    }
    
    close(INCLUDE);
