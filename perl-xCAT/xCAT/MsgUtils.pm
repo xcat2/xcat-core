@@ -16,7 +16,7 @@ if ($^O =~ /^aix/i)
 use strict;
 use Sys::Syslog qw (:DEFAULT setlogsock);
 require xCAT::Table;
-
+use xCAT::Utils;
 #use locale;
 use Socket;
 use File::Path;
@@ -506,7 +506,10 @@ sub message
             }
             else
             {
-                $tab->commit;
+                my $DBname = xCAT::Utils->get_DBName;
+                if (!($DBname =~ /^SQLITE/)) {
+                  $tab->commit;
+                }
             }
         }
         else
