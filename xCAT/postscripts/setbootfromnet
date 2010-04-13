@@ -33,26 +33,26 @@ if [ ! -z $NODE_NAME ]; then
 else
    msg="$0: The environment variable NODE is null, pls check.\n"
    echo $msg
-   `logger -t xcat "$msg"`
+   logger -t xcat "$msg"
    exit 1 
 fi
 
 if [[ $RET -ne 0 ]] || [[ $NRET -ne 0 ]]; then
    msg="$0: The returned value is not correct, client_ip=$client_ip, nic=$nic\n"
-   `logger -t xcat "$msg"`
+   logger -t xcat "$msg"
    exit 1
 fi
 
 if [ ! -z $NIC ]; then
    if [[ ! -z $CLIENT_IP ]] && [[ ! -z $SERVER_IP ]] && [[ ! -z $GATE_WAY ]]; then
-      `bootlist -m normal $NIC bserver=$SERVER_IP gateway=$GATE_WAY client=$CLIENT_IP`
+      bootlist -m normal $NIC bserver=$SERVER_IP gateway=$GATE_WAY client=$CLIENT_IP
    else
-      `bootlist -m normal $NIC`
+      bootlist -m normal $NIC
    fi
 else
    msg="$0: The network interface NIC on the host $CLIENT_IP is not retrieved, pls check.\n"
    echo $msg
-   `logger -t xcat "$msg"`
+   logger -t xcat "$msg"
    exit 1
 fi
 
