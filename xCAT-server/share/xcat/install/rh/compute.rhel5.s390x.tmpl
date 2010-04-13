@@ -4,7 +4,7 @@ install
 url --url replace_url
 key --skip
 lang en_US.UTF-8
-network --device eth0 --mtu=1500 --bootproto static --ip replace_ip --netmask replace_netmask --gateway replace_gateway --nameserver replace_nameserver --hostname replace_hostname
+network --bootproto dhcp
 rootpw replace_rootpw
 firewall --disabled 
 authconfig --enableshadow --enablemd5
