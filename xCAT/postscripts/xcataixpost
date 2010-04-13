@@ -265,10 +265,7 @@ run_ps () {
 
  if [[ -f \\\$1 ]]; then
   echo \\"Running postscript: \\\$1\\" | tee -a \\\$logfile
-  OUTPUT=\\\`./\\\$1 2>&1\\\`
-  if [[ -n \\\$OUTPUT ]]; then
-    echo \\"\\\$OUTPUT\\"  | tee -a \\\$logfile
-  fi
+  \\\`./\\\$1 2>&1\\\` | tee -a \\\$logfile
  else
   echo \\"Postscript \\\$1 does NOT exist.\\" | tee -a \\\$logfile
  fi
