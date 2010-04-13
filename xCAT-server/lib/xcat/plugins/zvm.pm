@@ -1533,16 +1533,6 @@ sub makeVM {
 			$generateNew = 1;
 		}
 
-		# Get the network name the HCP is on
-		$out = `ssh $hcp "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
-		my @lines = split( '\n', $out );
-		my $line = xCAT::zvmUtils->trimStr($lines[0]);
-		my @words = split( ' ', $line );
-		my $netName = $words[4];
-		
-		# Append MACID at the end of the NICDEF statement in user entry text file
-		$out = `sed --in-place -e "s,$netName,$netName MACID $macId,g" $userEntry`;
-	
 		# SCP file over to HCP
 		$out = `scp $userEntry $target:$userEntry`;
 
@@ -2020,25 +2010,7 @@ sub clone {
 		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing target MAC address" );
 		return;
 	}
-	
-	# Get source MAC address in 'mac' table
-	my $srcMacId;
-	@propNames = ('mac');
-	$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $sourceNode, @propNames );
-	if ($propVals) {
-
-		# Get MACID
-		$srcMacId     = $propVals->{'mac'};
-		$srcMacId     = xCAT::zvmUtils->replaceStr( $srcMacId, ":", "" );
-		$srcMacId     = substr( $srcMacId, 6 );
-	} else {
-		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing source MAC address" );
-		return;
-	}
-	
-	# Append MACID at the end of the NICDEF statement in user entry text file
-	$out = `sed --in-place -e "s,$srcMacId,$macId,g" $userEntry`;
-	
+		
 	# SCP user entry file over to HCP
 	xCAT::zvmUtils->sendFile( $hcp, $userEntry, $userEntry );
 
@@ -2512,22 +2484,28 @@ sub nodeSet {
 		return;
 	}
 
+	# Get the network name the HCP is on
+	$out = `ssh $hcp "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
+	my @lines = split( '\n', $out );
+	my $line = xCAT::zvmUtils->trimStr($lines[0]);
+	@words = split( ' ', $line );
+	my $netName = $words[4];
+	
 	# Get NIC address from user entry
-	$out = `ssh $hcp "$::DIR/getuserentry $userId" | grep "NICDEF"`;
+	$out = `ssh $hcp "$::DIR/getuserentry $userId" | grep "$netName"`;
 	if ( !$out ) {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing NICDEF statement in user entry of node" );
 		return;
 	}
 
 	# Grab first NICDEF address
-	my @lines = split( '\n', $out );
+	@lines = split( '\n', $out );
 	@words = split( ' ', $lines[0] );
 	my $readChannel  = "0.0.0" . ( $words[1] + 0 );
 	my $writeChannel = "0.0.0" . ( $words[1] + 1 );
 	my $dataChannel  = "0.0.0" . ( $words[1] + 2 );
 
 	# Get network type (Layer 2 or 3)
-	my $netName = $words[6];
 	$out = `ssh $hcp "vmcp q lan $netName"`;
 	if ( !$out ) {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing NICDEF statement in user entry of node" );
