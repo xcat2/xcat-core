@@ -34,6 +34,9 @@ Requires: conserver yaboot-xcat perl-Net-Telnet
 %ifarch ppc64
 Requires: perl-IO-Stty
 %endif
+%ifarch ppc64 x86_64
+Requires: openslp-xcat
+%endif
 %endif
 
 %ifarch i386 i586 i686 x86 x86_64

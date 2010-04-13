@@ -21,9 +21,6 @@ AutoReqProv: no
 %ifos linux
 BuildArch: noarch
 Requires: perl-IO-Socket-SSL perl-XML-Simple perl-IO-Tty
-%ifarch ppc64 x86_64
-Requires: openslp-xcat
-%endif
 %endif
 
 Requires: perl-xCAT >= %{epoch}:%(cat Version|cut -d. -f 1,2)
