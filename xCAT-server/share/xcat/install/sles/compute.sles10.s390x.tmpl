@@ -1,8 +1,11 @@
 <?xml version="1.0"?>
 <!DOCTYPE profile>
 <profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
+
+  <!-- The dasd attached to the virtual server -->  
   <dasd>
     <devices config:type="list">
+      <!-- Dasd attached at 0100 --> 
       <listentry>
         <bus>None</bus>
         <bus_hwcfg>none</bus_hwcfg>
@@ -36,10 +39,20 @@
               <sectors config:type="integer">12</sectors>
             </listentry>
           </disk_log_geo>
+          <io config:type="list">
+            <listentry>
+              <active config:type="boolean">true</active>
+              <length config:type="integer">1</length>
+              <mode>rw</mode>
+              <start config:type="integer">256</start>
+            </listentry>
+          </io>
         </resource>
         <sysfs_bus_id>0.0.0100</sysfs_bus_id>
         <udi>/org/freedesktop/Hal/devices/ccw_0_0_0100_storage</udi>
       </listentry>
+      
+      <!-- Dasd attached at 0101 --> 
       <listentry>
         <bus>None</bus>
         <bus_hwcfg>none</bus_hwcfg>
@@ -73,10 +86,20 @@
               <sectors config:type="integer">12</sectors>
             </listentry>
           </disk_log_geo>
+          <io config:type="list">
+            <listentry>
+              <active config:type="boolean">true</active>
+              <length config:type="integer">1</length>
+              <mode>rw</mode>
+              <start config:type="integer">256</start>
+            </listentry>
+          </io>
         </resource>
         <sysfs_bus_id>0.0.0101</sysfs_bus_id>
         <udi>/org/freedesktop/Hal/devices/ccw_0_0_0101_storage</udi>
       </listentry>
+      
+      <!-- Dasd attached at 0300 -->
       <listentry>
         <bus>None</bus>
         <bus_hwcfg>none</bus_hwcfg>
@@ -114,6 +137,8 @@
         <sysfs_bus_id>0.0.0300</sysfs_bus_id>
         <udi>/org/freedesktop/Hal/devices/ccw_0_0_0300_storage</udi>
       </listentry>
+      
+      <!-- Dasd attached at 0301 -->
       <listentry>
         <bus>None</bus>
         <bus_hwcfg>none</bus_hwcfg>
@@ -153,6 +178,7 @@
       </listentry>
     </devices>
   </dasd>
+  
   <general>
     <mode>
       <confirm config:type="boolean">false</confirm>
@@ -169,6 +195,8 @@
       <import_gpg_key config:type="boolean">true</import_gpg_key>
     </signature-handling>
   </general>
+  
+  <!-- Groups to create on Linux -->
   <groups config:type="list">
     <group>
       <group_password>x</group_password>
@@ -376,6 +404,8 @@
       <userlist></userlist>
     </group>
   </groups>
+  
+  <!-- Contents of /etc/hosts -->
   <host>
     <hosts config:type="list">
       <hosts_entry>
@@ -390,53 +420,24 @@
           <name>replace_long_name replace_short_name</name>
         </names>
       </hosts_entry>
-      <hosts_entry>
-        <host_address>::1</host_address>
-        <names config:type="list">
-          <name>localhost ipv6-localhost ipv6-loopback</name>
-        </names>
-      </hosts_entry>
-      <hosts_entry>
-        <host_address>fe00::0</host_address>
-        <names config:type="list">
-          <name>ipv6-localnet</name>
-        </names>
-      </hosts_entry>
-      <hosts_entry>
-        <host_address>ff00::0</host_address>
-        <names config:type="list">
-          <name>ipv6-mcastprefix</name>
-        </names>
-      </hosts_entry>
-      <hosts_entry>
-        <host_address>ff02::1</host_address>
-        <names config:type="list">
-          <name>ipv6-allnodes</name>
-        </names>
-      </hosts_entry>
-      <hosts_entry>
-        <host_address>ff02::2</host_address>
-        <names config:type="list">
-          <name>ipv6-allrouters</name>
-        </names>
-      </hosts_entry>
-      <hosts_entry>
-        <host_address>ff02::3</host_address>
-        <names config:type="list">
-          <name>ipv6-allhosts</name>
-        </names>
-      </hosts_entry>
     </hosts>
   </host>
+  
+  
   <iscsi-client>
     <initiatorname></initiatorname>
     <targets config:type="list"/>
     <version>1.0</version>
   </iscsi-client>
+  
+  
+  <!-- Language setup (english) -->
   <language>
     <language>en_US</language>
     <languages></languages>
   </language>
+  
+  <!-- Networking setup (DHCP) -->
   <networking>
     <dhcp_options>
       <dhclient_additional_options></dhclient_additional_options>
@@ -462,27 +463,33 @@
       </interface>
     </interfaces>
     <managed config:type="boolean">false</managed>
+    
+    <!-- Device type -->
     <modules config:type="list">
       <module_entry>
         <device>dasd-bus-ccw-0.0.0100</device>
         <module>dasd_eckd_mod</module>
         <options></options>
       </module_entry>
+      
       <module_entry>
         <device>dasd-bus-ccw-0.0.0101</device>
         <module>dasd_eckd_mod</module>
         <options></options>
       </module_entry>
+            
       <module_entry>
         <device>dasd-bus-ccw-0.0.0300</device>
         <module>dasd_fba_mod</module>
         <options></options>
       </module_entry>
+      
       <module_entry>
         <device>dasd-bus-ccw-0.0.0301</device>
         <module>dasd_fba_mod</module>
         <options></options>
       </module_entry>
+      
       <module_entry>
         <ccw_chan_ids>replace_ccw_chan_ids</ccw_chan_ids>
         <ccw_chan_mode>replace_ccw_chan_mode</ccw_chan_mode>
@@ -496,6 +503,8 @@
       <ip_forward config:type="boolean">false</ip_forward>
     </routing>
   </networking>
+  
+  
   <nis>
     <nis_broadcast config:type="boolean">false</nis_broadcast>
     <nis_broken_server config:type="boolean">false</nis_broken_server>
@@ -508,7 +517,11 @@
     <start_autofs config:type="boolean">false</start_autofs>
     <start_nis config:type="boolean">false</start_nis>
   </nis>
+  
+  <!-- File system partitioning -->
   <partitioning config:type="list">
+  
+    <!-- Root partition -->
     <drive>
       <device>/dev/dasda</device>
       <partitions config:type="list">
@@ -526,6 +539,8 @@
       </partitions>
       <use>all</use>
     </drive>
+    
+    <!-- /usr partition -->
     <drive>
       <device>/dev/dasdb</device>
       <partitions config:type="list">
@@ -543,6 +558,8 @@
       </partitions>
       <use>all</use>
     </drive>
+        
+    <!-- Swap space -->
     <drive>
       <device>/dev/dasdc</device>
       <partitions config:type="list">
@@ -560,6 +577,8 @@
       </partitions>
       <use>all</use>
     </drive>
+    
+    <!-- Swap space -->
     <drive>
       <device>/dev/dasdd</device>
       <partitions config:type="list">
@@ -578,6 +597,7 @@
       <use>all</use>
     </drive>
   </partitioning>
+    
   <proxy>
     <enabled config:type="boolean">false</enabled>
     <ftp_proxy></ftp_proxy>
@@ -587,6 +607,8 @@
     <proxy_password></proxy_password>
     <proxy_user></proxy_user>
   </proxy>
+  
+  
   <report>
     <errors>
       <log config:type="boolean">true</log>
@@ -609,9 +631,13 @@
       <timeout config:type="integer">0</timeout>
     </yesno_messages>
   </report>
+  
+  
   <runlevel>
     <default>5</default>
   </runlevel>
+  
+  <!-- Software to install on Linux -->
   <software>
     <packages config:type="list">
       <package>libgsm</package>
@@ -675,11 +701,13 @@
       <package>limal-nfs-server-perl</package>
       <package>bind</package>
     </packages>
+    
     <patterns config:type="list">
       <pattern>x11</pattern>
       <pattern>gnome</pattern>
       <pattern>base</pattern>
     </patterns>
+    
     <remove-packages config:type="list">
       <package>xorg-x11-driver-video-radeon</package>
       <package>915resolution</package>
@@ -725,10 +753,14 @@
       <package>yast2-power-management</package>
     </remove-packages>
   </software>
+  
+  <!-- Time zone -->
   <timezone>
     <hwclock>UTC</hwclock>
     <timezone>US/Eastern</timezone>
   </timezone>
+  
+  
   <user_defaults>
     <expire></expire>
     <group>100</group>
@@ -738,6 +770,8 @@
     <shell>/bin/bash</shell>
     <skel>/etc/skel</skel>
   </user_defaults>
+  
+  <!-- Users on Linux -->
   <users config:type="list">
     <user>
       <encrypted config:type="boolean">true</encrypted>
@@ -1078,9 +1112,13 @@
       <username>sshd</username>
     </user>
   </users>
+  
+  
   <zfcp>
     <devices config:type="list"/>
   </zfcp>
+  
+  <!-- Scripts (post-script) -->
   <configure>
     <scripts>
 		<post-scripts config:type="list">
