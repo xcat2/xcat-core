@@ -2544,6 +2544,8 @@ sub nodeSet {
 
 	# Get domain from site table
 	my $siteTab    = xCAT::Table->new('site');
+	my $installDirHash = $siteTab->getAttribs( { key => "installdir" }, 'value' );
+	my $installDir = $installDirHash->{'value'};
 	my $domainHash = $siteTab->getAttribs( { key => "domain" }, 'value' );
 	my $domain     = $domainHash->{'value'};
 
@@ -2630,10 +2632,10 @@ sub nodeSet {
 	if ( $distr =~ m/sles/i ) {
 
 		# Create directory in FTP root (/install) to hold template
-		$out = `mkdir -p /install/custom/install/sles`;
+		$out = `mkdir -p $installDir/custom/install/sles`;
 
 		# Copy autoyast template
-		$template = "/install/custom/install/sles/" . $node . ".sles10.s390x.tmpl";
+		$template = "$installDir/custom/install/sles/" . $node . ".sles10.s390x.tmpl";
 		$out      = `cp /opt/xcat/share/xcat/install/sles/$profile $template`;
 
 		# Edit template
@@ -2643,7 +2645,7 @@ sub nodeSet {
         $out = `sed --in-place -e "s,replace_host_address,$hostIP,g" \ -e "s,replace_long_name,$hostname,g" \ -e "s,replace_short_name,$node,g" \ -e "s,replace_domain,$domain,g" \ -e "s,replace_hostname,$node,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_broadcast,$broadcast,g" \ -e "s,replace_device,$device,g" \ -e "s,replace_ipaddr,$hostIP,g" \ -e "s,replace_lladdr,$mac,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_network,$network,g" \ -e "s,replace_ccw_chan_ids,$chanIds,g" \ -e "s,replace_ccw_chan_mode,FOOBAR,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_root_password,$passwd,g" $template`;
 
 		# Read sample parmfile in /install/sles10.2/s390x/1/boot/s390x/
-		$sampleParm = "/install/$distr/s390x/1/boot/s390x/parmfile";
+		$sampleParm = "$installDir/$distr/s390x/1/boot/s390x/parmfile";
 		open( SAMPLEPARM, "<$sampleParm" );
 
 		# Search parmfile for -- ramdisk_size=65536 root=/dev/ram1 ro init=/linuxrc TERM=dumb
@@ -2699,8 +2701,8 @@ sub nodeSet {
 		# Send kernel, parmfile, and initrd to reader to HCP
 		$kernelFile = "/tmp/" . $node . "Kernel";
 		$initFile = "/tmp/" . $node . "Initrd";
-		$out = `cp /install/$distr/s390x/1/boot/s390x/vmrdr.ikr $kernelFile`;
-		$out = `cp /install/$distr/s390x/1/boot/s390x/initrd $initFile`;
+		$out = `cp $installDir/$distr/s390x/1/boot/s390x/vmrdr.ikr $kernelFile`;
+		$out = `cp $installDir/$distr/s390x/1/boot/s390x/initrd $initFile`;
 		xCAT::zvmUtils->sendFile( $hcp, $kernelFile, $kernelFile );
 		xCAT::zvmUtils->sendFile( $hcp, $parmFile, $parmFile );
 		xCAT::zvmUtils->sendFile( $hcp, $initFile, $initFile );
@@ -2741,10 +2743,10 @@ sub nodeSet {
 	elsif ( $distr =~ m/rhel/i ) {
 
 		# Create directory in FTP root (/install) to hold template
-		$out = `mkdir -p /install/custom/install/rh`;
+		$out = `mkdir -p $installDir/custom/install/rh`;
 
 		# Copy kickstart template
-		$template = "/install/custom/install/rh/" . $node . ".rhel5.s390x.tmpl";
+		$template = "$installDir/custom/install/rh/" . $node . ".rhel5.s390x.tmpl";
 		$out      = `cp /opt/xcat/share/xcat/install/rh/$profile $template`;
 
 		# Edit template
@@ -2752,7 +2754,7 @@ sub nodeSet {
 		$out = `sed --in-place -e "s,replace_url,$url,g" \ -e "s,replace_ip,$hostIP,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_hostname,$hostname,g" \ -e "s,replace_rootpw,$passwd,g" $template`;
 
 		# Read sample parmfile in /install/rhel5.3/s390x/images
-		$sampleParm = "/install/$distr/s390x/images/generic.prm";
+		$sampleParm = "$installDir/$distr/s390x/images/generic.prm";
 		open( SAMPLEPARM, "<$sampleParm" );
 
 		# Search parmfile for -- root=/dev/ram0 ro ip=off ramdisk_size=40000
@@ -2829,8 +2831,8 @@ sub nodeSet {
 		$kernelFile = "/tmp/" . $node . "Kernel";
 		$initFile = "/tmp/" . $node . "Initrd";
 		
-		$out = `cp /install/$distr/s390x/images/kernel.img $kernelFile`;
-		$out = `cp /install/$distr/s390x/images/initrd.img $initFile`;
+		$out = `cp $installDir/$distr/s390x/images/kernel.img $kernelFile`;
+		$out = `cp $installDir/$distr/s390x/images/initrd.img $initFile`;
 		xCAT::zvmUtils->sendFile( $hcp, $kernelFile, $kernelFile );
 		xCAT::zvmUtils->sendFile( $hcp, $parmFile, $parmFile );
 		xCAT::zvmUtils->sendFile( $hcp, $initFile, $initFile );
@@ -3073,6 +3075,11 @@ sub updateNode {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	
+	# Get install directory
+	my $siteTab    = xCAT::Table->new('site');
+	my $installDirHash = $siteTab->getAttribs( { key => "installdir" }, 'value' );
+	my $installDir = $installDirHash->{'value'};
 
 	# Get host IP and hostname from /etc/hosts
 	my $out      = `cat /etc/hosts | grep $node`;
@@ -3178,7 +3185,7 @@ sub updateNode {
 			if ($out =~ m/[$version]/i) {
 				
 				# Send over release key
-				my $key = "/install/rhel5.4/s390x/RPM-GPG-KEY-redhat-release";
+				my $key = "$installDir/$version/s390x/RPM-GPG-KEY-redhat-release";
 				my $tmp = "/tmp/RPM-GPG-KEY-redhat-release";
 				xCAT::zvmUtils->sendFile($node, $key, $tmp);
 				
@@ -3196,7 +3203,7 @@ sub updateNode {
 				$out = `ssh $node "echo enabled=1 >> /etc/yum.repos.d/file.repo"`;
 				
 				# Send over release key
-				my $key = "/install/rhel5.4/s390x/RPM-GPG-KEY-redhat-release";
+				my $key = "$installDir/$version/s390x/RPM-GPG-KEY-redhat-release";
 				my $tmp = "/tmp/RPM-GPG-KEY-redhat-release";
 				xCAT::zvmUtils->sendFile($node, $key, $tmp);
 				
