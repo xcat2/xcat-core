@@ -31,11 +31,13 @@ then
 	cd /etc/sysconfig/network
 	if [ ! -r ifcfg-$PRINIC ]
 	then
-		cp -f ifcfg-eth0 ifcfg-$PRINIC
+#		cp -f ifcfg-eth0 ifcfg-$PRINIC
+		mv -f ifcfg-eth0 ifcfg-$PRINIC
 		perl -pi -e "s/eth0/$PRINIC/" ifcfg-$PRINIC
-		echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
+#		echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
 	fi
 fi
+echo "DHCLIENT_PRIMARY_DEVICE=yes" >> ifcfg-$PRINIC
 perl -pi -e 's/^FIREWALL="yes"/FIREWALL="no"/' /etc/sysconfig/network/config
 /etc/init.d/network restart
 
