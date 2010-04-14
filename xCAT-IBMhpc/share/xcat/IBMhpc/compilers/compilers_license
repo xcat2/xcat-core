@@ -15,7 +15,7 @@ xlf_script=`find opt/ibmcmp/xlf -name new_install -print`
 
 
 if [ $OS != "AIX" ]; then
-    if [ $NODESETSTATE == "install" ]; then
+    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
     #  Being run from a stateful install postscript
        echo 1 | $vacpp_script
        echo 1 | $xlf_script

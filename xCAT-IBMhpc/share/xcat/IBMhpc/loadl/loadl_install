@@ -23,15 +23,15 @@ fi
 
 
 if [ $OS != "AIX" ]; then
-    if [ $NODESETSTATE == "install" ]; then
+    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
     #  Being run from a stateful install postscript
     #  Copy rpms directly from the xCAT management node and install
         mkdir -p /tmp/loadl
         rm -f -R /tmp/loadl/*
         cd /tmp/loadl
         download_dir=`echo $LOADL_DIR | cut -d '/' -f3-`
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=3 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
-        rpm -Uvh LoadL-resmgr-full-license*.rpm
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
+        rpm -Uvh LoadL-full-license*.rpm
         $linux_loadl_license_script -c resmgr -y -d .
         rm -Rf /tmp/loadl
         mkdir /dev/cpuset

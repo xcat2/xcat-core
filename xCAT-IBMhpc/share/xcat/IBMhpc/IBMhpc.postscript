@@ -1,0 +1,38 @@
+#!/bin/sh
+# Sample postscript script for base OS configuration for all HPC software
+# for statefull (full-disk install) nodes
+# Make sure this runs before the node reboots after initial install
+# for services to be activated
+#
+
+ps_dir=/xcatpost
+
+hpc=/opt/xcat/share/xcat/IBMhpc
+otherpkgs=/install/post/otherpkgs/$osver/$arch
+
+
+chkconfig atd on
+chkconfig xinetd on
+
+# Automatically mount /dev/cpuset at node boot
+if ! grep 'cpuset' /etc/init.d/boot.local ; then
+cat <<END >>/etc/init.d/boot.local
+if test -e /dev/cpuset || mkdir -p /dev/cpuset ; then
+        mount -t cpuset none /dev/cpuset
+fi
+END
+fi
+
+# Modify some ulimits
+if [ -f /etc/sysconfig/ulimit ]; then
+    if [ ! -f /etc/sysconfig/ulimit.XCAT_BAK ]; then
+       cp -p /etc/sysconfig/ulimit /etc/sysconfig/ulimit.XCAT_BAK
+    fi
+    # max locked memory
+    /usr/bin/sed -i 's/HARDLOCKLIMIT=.*/HARDLOCKLIMIT="unlimited"/g'  /etc/sysconfig/ulimit
+    /usr/bin/sed -i 's/SOFTLOCKLIMIT=.*/SOFTLOCKLIMIT="unlimited"/g'  /etc/sysconfig/ulimit
+    # max memory size
+    /usr/bin/sed -i 's/HARDRESIDENTLIMIT=.*/HARDRESIDENTLIMIT="unlimited"/g'  /etc/sysconfig/ulimit
+    /usr/bin/sed -i 's/SOFTRESIDENTLIMIT=.*/SOFTRESIDENTLIMIT="unlimited"/g'  /etc/sysconfig/ulimit
+fi
+

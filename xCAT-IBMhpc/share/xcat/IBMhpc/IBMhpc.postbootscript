@@ -1,0 +1,28 @@
+#!/bin/sh
+# Sample postbootscript script for installing and configuring HPC software
+# for statefull (full-disk install) nodes
+# Make sure this runs after the otherpkgs postbootscript
+#
+
+ps_dir=/xcatpost
+
+# Run script to install gpfs updates
+$ps_dir/gpfs_updates
+
+
+# Run script to accept compiler license
+$ps_dir/compilers_license
+
+
+# Run script to install PE and accept license
+$ps_dir/pe_install
+
+
+# Run script to install ESSL and PESSL rpms
+$ps_dir/essl_install
+
+
+# Run script to accept LoadLeveler license, install product rpms, 
+# and do some config
+$ps_dir/loadl_install
+
