@@ -128,7 +128,7 @@ else # for common mode
     #try the -m if it is specified, -m is passed in the updatenode command
     if [ $downloaded -eq 0 ]; then
         if [ "XX$P_SIP" != "XX" ]; then
-            $SIP=$P_SIP
+            SIP=$P_SIP
     	     download_postscripts $SIP
             if [ $? -eq 0 ]; then 
                 downloaded=1
