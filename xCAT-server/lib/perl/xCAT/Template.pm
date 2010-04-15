@@ -68,13 +68,13 @@ sub subvars {
   my $doneincludes=0;
   while (not $doneincludes) {
     $doneincludes=1;
-    if ($inc =~ /#INCLUDE_PKGLIST:[^#]+#/) {
+    if ($inc =~ /#INCLUDE_PKGLIST:[^#^\n]+#/) {
       $doneincludes=0;
-      $inc =~ s/#INCLUDE_PKGLIST:([^#]+)#/includefile($1, 0, 1)/eg;
+      $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1, 0, 1)/eg;
     }
-    if ($inc =~ /#INCLUDE:[^#]+#/) {
+    if ($inc =~ /#INCLUDE:[^#^\n]+#/) {
       $doneincludes=0;
-      $inc =~ s/#INCLUDE:([^#]+)#/includefile($1, 0, 0)/eg;
+      $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
     }
   }
   #ok, now do everything else..
@@ -85,9 +85,9 @@ sub subvars {
   $inc =~ s/#TABLEBLANKOKAY:([^:]+):([^:]+):([^#]+)#/tabdb($1,$2,$3,'1')/eg;
   $inc =~ s/#CRYPT:([^:]+):([^:]+):([^#]+)#/crydb($1,$2,$3)/eg;
   $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
-  $inc =~ s/#INCLUDE_NOP:([^#]+)#/includefile($1,1,0)/eg;
-  $inc =~ s/#INCLUDE_PKGLIST:([^#]+)#/includefile($1,0,1)/eg;
-  $inc =~ s/#INCLUDE:([^#]+)#/includefile($1, 0, 0)/eg;
+  $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
+  $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1,0,1)/eg;
+  $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
 
 
   if ($tmplerr) {

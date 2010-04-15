@@ -1243,9 +1243,9 @@ sub get_package_names {
         my $doneincludes=0;
 	while (not $doneincludes) {
 	    $doneincludes=1;
-	    if ($pkgtext =~ /#INCLUDE:[^#]+#/) {
+	    if ($pkgtext =~ /#INCLUDE:[^#^\n]+#/) {
 		$doneincludes=0;
-		$pkgtext =~ s/#INCLUDE:([^#]+)#/include_file($1,$idir)/eg;
+		$pkgtext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg;
 	    }
 	}
      
