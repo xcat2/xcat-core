@@ -705,6 +705,21 @@ sub process_request
         }
     }
 
+    foreach (@nrn)
+    {
+        my @line = split /:/;
+        my $firstoctet = $line[0];
+        $firstoctet =~ s/^(\d+)\..*/$1/;
+        if ($line[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239))
+        {
+            next;
+        }
+        if ($activenics{$line[1]} and $line[3] !~ /G/)
+        {
+            addnet($line[0], $line[2]);
+        }
+    }
+
     if ($req->{node})
     {
         my $ip_hash;
@@ -782,20 +797,6 @@ sub process_request
             }
         }
         close($omshell) if ($^O ne 'aix');
-    }
-    foreach (@nrn)
-    {
-        my @line = split /:/;
-        my $firstoctet = $line[0]; 
-        $firstoctet =~ s/^(\d+)\..*/$1/;
-        if ($line[0] eq "169.254.0.0" or ($firstoctet >= 224 and $firstoctet <= 239))
-        {
-            next;
-        }
-        if ($activenics{$line[1]} and $line[3] !~ /G/)
-        {
-            addnet($line[0], $line[2]);
-        }
     }
     writeout();
     if ($restartdhcp) {

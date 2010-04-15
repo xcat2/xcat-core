@@ -1906,7 +1906,7 @@ sub do_makedhcp {
     $string = "Add following nodes to dhcp server: \n$node\n";
     send_msg( $request, 0, $string );
 
-    `makedhcp -n $node`;
+    `makedhcp $node`;
 
     send_msg( $request, 0, "\nMakedhcp finished.\n" );
 
