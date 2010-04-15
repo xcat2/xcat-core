@@ -44,7 +44,7 @@ sub handled_commands {
 		nodeset    => 'noderes:netboot',
 		getmacs    => 'nodehm:getmac,mgt',
 		rnetboot   => 'nodehm:mgt',
-		updatenode => 'nodehm:mgt',
+		# updatenode => 'nodehm:mgt',
 	};
 }
 
