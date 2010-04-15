@@ -158,16 +158,17 @@ sub process_request {
 	    $excludetext .= $_;
 	}   
         close($exlist);
-
+      
         #handle the #INLCUDE# tag recursively
         my $idir = dirname($exlistloc);
         my $doneincludes=0;
 	while (not $doneincludes) {
 	    $doneincludes=1;
-	    if ($excludetext =~ /#INCLUDE:[^#]+#/) {
+	    if ($excludetext =~ /#INCLUDE:[^#^\n]+#/) {
 		$doneincludes=0;
-		$excludetext =~ s/#INCLUDE:([^#]+)#/include_file($1,$idir)/eg;
+		$excludetext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg;                 
 	    }
+
 	}
 
 	my @tmp=split("\n", $excludetext);
@@ -189,7 +190,7 @@ sub process_request {
        $includestr =~ s/-o $//;
        $includestr = "find . " .  $includestr;
    }
-   #print "\nexcludestr=$excludestr\n\n includestr=$includestr\n\n";
+  # print "\nexcludestr=$excludestr\n\n includestr=$includestr\n\n";
 
    # add the xCAT post scripts to the image
     if (! -d "$rootimg_dir") {
