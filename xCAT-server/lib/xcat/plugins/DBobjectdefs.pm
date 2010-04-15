@@ -2651,7 +2651,7 @@ sub defls
             {
                 # check the object names only if
                 # the object names are passed in through command line
-                if ($::objectsfrom_args || (($type eq 'node') && ($::opt_o || @::noderange)))
+                if ($::objectsfrom_args || $::opt_o || (($type eq 'node') && ($::opt_o || @::noderange)))
                 {
                     if (!grep(/^$obj$/, @allobjoftype))
                     {
