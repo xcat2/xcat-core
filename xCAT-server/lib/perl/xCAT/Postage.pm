@@ -313,7 +313,7 @@ sub makescript {
 	      s/\s+$//;  #remove trailing spaces
 	      next if /^\s*$/; #-- skip empty lines
 	      next if ( /^\s*#/ && 
-                        !/^\s*#INCLUDE:/ &&
+                        !/^\s*#INCLUDE:[^#^\n]+#/ &&
                         !/^\s*#NEW_INSTALL_LIST#/ ); #-- skip comments
 	      push(@otherpkgs,$_);
 	  }
@@ -327,9 +327,9 @@ sub makescript {
 	  my $doneincludes=0;
 	  while (not $doneincludes) {
 	      $doneincludes=1;
-	      if ($pkgtext =~ /#INCLUDE:[^#]+#/) {
+	      if ($pkgtext =~ /#INCLUDE:[^#^\n]+#/) {
 		  $doneincludes=0;
-		  $pkgtext =~ s/#INCLUDE:([^#]+)#/includefile($1,$idir)/eg;
+		  $pkgtext =~ s/#INCLUDE:([^#^\n]+)#/includefile($1,$idir)/eg;
 	      }
 	  }
           my @sublists = split('#NEW_INSTALL_LIST#',$pkgtext);
@@ -459,7 +459,7 @@ sub includefile
       s/\s+$//;  #remove trailing spaces
       next if /^\s*$/; #-- skip empty lines
       next if ( /^\s*#/ && 
-                !/^\s*#INCLUDE:/ &&
+                !/^\s*#INCLUDE:[^#^\n]+#/ &&
                 !/^\s*#NEW_INSTALL_LIST#/ ); #-- skip comments
       push(@text, $_);
    }
