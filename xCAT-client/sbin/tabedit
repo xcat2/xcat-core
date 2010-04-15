@@ -12,8 +12,10 @@ function cexit {
 }
 trap cexit 2 15
 
-#Source for environment variables
-source /etc/profile.d/xcat.sh
+if [ `uname` == Linux ]; then
+    #Source for environment variables
+    source /etc/profile.d/xcat.sh
+fi
 
 TABLE=$1
 if [ -z "$TABEDITOR" ]; then
