@@ -12,7 +12,7 @@ function cexit {
 }
 trap cexit 2 15
 
-if [ `uname` == Linux ]; then
+if [ -r /etc/profile.d/xcat.sh ]; then
     #Source for environment variables
     source /etc/profile.d/xcat.sh
 fi
