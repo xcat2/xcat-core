@@ -1,0 +1,11 @@
+bash
+nfs-utils
+openssl
+glibc.ppc64
+dhclient 
+kernel.ppc64
+busybox-anaconda
+openssh-server
+openssh-clients
+wget
+rsync

@@ -1,0 +1,11 @@
+bash 
+nfs-utils
+openssl
+dhclient 
+kernel 
+openssh-server 
+openssh-clients
+wget
+ntp
+vim-minimal
+rsync
