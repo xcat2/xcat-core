@@ -415,6 +415,7 @@ sub retain_cache { #A semi private operation to be used *ONLY* in the interestin
         @allnodeset=();
         %allnodehash=();
         @grplist=();
+        $didgrouplist = 0;
         %allgrphash=();
     }
 }
