@@ -1447,7 +1447,7 @@ sub setupAIXconserver
     }
 
     $cmd = "lssrc -a | grep conserver >/dev/null 2>&1";
-    $outref = xCAT::Utils->runcmd("$cmd", 0);
+    $outref = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC != 0)
     {
         $cmd =
