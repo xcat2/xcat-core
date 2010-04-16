@@ -440,8 +440,9 @@ sub mknetboot
 		"NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
 
         # add support for subVars in the value of "statemnt"
+        my $statemnt = "";
 		if (exists($stateHash->{$node})) {
-            my $statemnt = $stateHash->{$node}->[0]->{statemnt};
+            $statemnt = $stateHash->{$node}->[0]->{statemnt};
             if (grep /\$/, $statemnt) {
                 my ($server, $dir) = split(/:/, $statemnt);
                 
@@ -457,25 +458,23 @@ sub mknetboot
                 if($server) { 
                     $server = subVars($server, $node, 'server', $callback);
                 }
-                $kcmdline .= $server . ":" . $dir . " ";
-            } else {
-		        $kcmdline .= $stateHash->{$node}->[0]->{statemnt} . " ";
+                $statemnt = $server . ":" . $dir;
             }
-		} else {
-		    $kcmdline .= " ";
 		}
+		$kcmdline .= $statemnt ." ";
 		$kcmdline .=
 			"XCAT=$xcatmaster:$xcatdport ";
         # BEGIN service node
+        my $isSV = xCAT::Utils->isServiceNode();
         my $res = xCAT::Utils->runcmd("hostname", 0);
         my $sip = inet_ntoa(inet_aton($res));  # this is the IP of service node
-        if(($xcatmaster eq $sip) or ($xcatmaster eq $res)) {
+        if($isSV and (($xcatmaster eq $sip) or ($xcatmaster eq $res))) {
             # if the NFS directory in litetree is on the service node,
             # and it is not exported, then it will be mounted automatically
             setupNFSTree($node, $sip, $callback);
             # then, export the statemnt directory if it is on the service node
-            if($stateHash->{$node}->[0]->{statemnt}) {
-                setupStatemnt($sip, $stateHash->{$node}->[0]->{statemnt}, $callback);
+            if($statemnt) {
+                setupStatemnt($sip, $statemnt, $callback);
             }
         }
         # END service node
