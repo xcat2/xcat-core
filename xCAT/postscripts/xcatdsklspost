@@ -189,31 +189,9 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
     ln -sf /etc/rc6.d/K10xcatmounts /etc/rc0.d/K10xcatmounts
 fi
 
-if [ "$MODE" == "4" ]; then
-    MAX=10
-    TRIES=1
-    while ! mount $SIP:/install/postscripts /xcatpost -r -n -o nolock
-    do
-        if [ "$TRIES" = "$MAX" ]
-        then
-            echo "can't mount $SIP:/install/postscripts. I give up... ">/dev/console
-            logger -t xCAT "xcatdsklspost:Can't mount $SIP:/install/postscripts. exiting... "
-            exit
-        fi
-        TRIES=`expr $TRIES + 1`
-        S=`expr $RANDOM % 20`
-        echo "Can't mount $SIP:/install/postscripts... Sleeping $S seconds then trying again" >/dev/console
-        logger -t xCAT "xcatdsklspost:Can't mount $SIP:/install/postscripts... Sleeping $S seconds then trying again" 
-        sleep $S
-    done
-else  # for statelite mode
-    #wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts 2> /tmp/wget.log
-    
-    #mv $SIP/install/postscripts/* /xcatpost; 
-    mv $SIP/postscripts/* /xcatpost; 
-    rm -rf $SIP
-    chmod +x /xcatpost/*; # no effect for statelite mode, since the directory are readonly
-fi
+rm -rf /xcatpost/*;
+wget -l inf -nH -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts -P /xcatpost --cut-dirs=2 2> /tmp/wget.log
+chmod +x /xcatpost/*; # no effect for statelite mode, since the directory are readonly
 
 cd /xcatpost; 
 PATH=/xcatpost:$PATH
@@ -343,11 +321,6 @@ if [ -x /tmp/mypostscript ];then
    /tmp/mypostscript
 fi
 #rm -f /tmp/mypostscript
-
-#unmount the /xcatpost for statelite deployment case so that updatenode will work later
-if [ "$MODE" == "4" ]; then
-    umount -l /xcatpost
-fi 
 
 #tell user it is done when this is called by updatenode command
 if [ "$MODE" == "1" ] || [ "$MODE" == "2" ] || [ "$MODE" == "5" ]; then
