@@ -229,13 +229,31 @@ sub process_request {
                 xCAT::Utils->runcmd("rm -rf $default", 0, 1);   # not sure whether it's necessary right now
             } else {
                 my $target = $rootimg_dir.$f;
-                if (-l $target) {
+                if (-l $target) {   #not one directory
                     my $location = readlink $target;
                     # if it is not linked from tmpfs, it should be modified by the .postinstall file
                     if ($location =~ /\.statelite\/tmpfs/) {
                         xCAT::Utils->runcmd("rm -rf $target", 0, 1);
                         my $default = $rootimg_dir . "/.default" . $f;
-                        xCAT::Utils->runcmd("cp -a $default $target", 0, 1);
+                        if( -e $default) {
+                            xCAT::Utils->runcmd("cp -a $default $target", 0, 1);
+                        }else { # maybe someone deletes the copy in .default directory
+                            xCAT::Utils->runcmd("touch $target", 0, 1);
+                        }
+                    }
+                } else {    
+                    chop $target;
+                    if( -l $target ) {
+                        my $location = readlink $target;
+                        if ($location =~ /\.statelite\/tmpfs/) {
+                            xCAT::Utils->runcmd("rm -rf $target", 0, 1);
+                            my $default = $rootimg_dir . "/.default" . $f;
+                            if( -e $default) {
+                                xCAT::Utils->runcmd("cp -a $default $target", 0, 1);
+                            } else {
+                                xCAT::Utils->runcmd("mkdir $target", 0, 1);
+                            }
+                        }
                     }
                 }
 
