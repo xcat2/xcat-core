@@ -334,6 +334,18 @@ sub liteMe {
         my $rif = $rootimg_dir . $f;
         my $d = dirname($f);
 
+        # if no such file like $rif, create one
+        if ( !(-e "$rif") ) {
+            my $rifstr = $rif;
+            if($f =~ m{/$}) {
+                $verbose && $callback->({info=>["mkdir -p $rif"]});
+                system("mkdir -p $rif");
+            } else {
+                $verbose && $callback->({info=>["touch $rif"]});
+                system("touch $rif");
+            }
+        }
+
         if( !(-e "$rootimg_dir/.default$d") ) {
             $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
             system("mkdir -p $rootimg_dir/.default$d");
