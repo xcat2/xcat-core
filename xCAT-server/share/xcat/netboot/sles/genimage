@@ -1211,9 +1211,23 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       system("ln -s ../gettyset $rootimg_dir/etc/init.d/rc3.d/S60gettyset");
    }
    if(($osver =~ /sles11/) || ($osver =~ /sles10/)) {#for sles11,sles10
-	   copy(<$rootimg_dir/boot/vmlinux-*>,"$destdir/kernel");
+        if(-e <$rootimg_dir/boot/vmlinux-*>) {
+	        copy(<$rootimg_dir/boot/vmlinux-*>,"$destdir/kernel");
+        } else {
+            unless (-e "$destdir/kernel") {
+                print qq{Error: couldn't find the suitable kernel in $rootimg_dir/boot/ directory and $destdir directory};
+                exit 1;
+            }
+        }
    }else {
-   	   copy(<$rootimg_dir/boot/vmlinuz-*>,"$destdir/kernel");
+        if(-e <$rootimg_dir/boot/vmlinuz-*>) {
+   	        copy(<$rootimg_dir/boot/vmlinuz-*>,"$destdir/kernel");
+        } else {
+            unless (-e "$destdir/kernel") {
+                print qq{Error: couldn't find the suitable kernel in $rootimg_dir/boot/ directory and $destdir directory};
+                exit 1;
+            }
+        }
    }
 }
 
