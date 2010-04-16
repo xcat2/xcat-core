@@ -29,7 +29,7 @@ UPLOADUSER=bp-sawyers
 
 OSNAME=$(uname)
 
-if [ "$OSNAME" = "AIX" ]; then
+if [ "$OSNAME" != "AIX" ]; then
 	GSA=http://pokgsa.ibm.com/projects/x/xcat/build/linux
 fi
 
@@ -294,6 +294,7 @@ chgrp -R xcat $DESTDIR
 chmod -R g+w $DESTDIR
 chgrp -R xcat $SRCDIR
 chmod -R g+w $SRCDIR
+
 fi		# end of very long if-not-promote
 
 
