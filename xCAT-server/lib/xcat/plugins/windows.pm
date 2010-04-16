@@ -116,6 +116,7 @@ sub mkimage {
 }
 
 sub mkwinlinks {
+    my $installroot = "/install"; # for now put this, as it breaks for imagex
     my $node = shift;
     my $ent = shift;
     foreach (getips($node)) {
