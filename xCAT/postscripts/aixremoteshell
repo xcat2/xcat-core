@@ -48,9 +48,7 @@ $rc = &runcmd("chown root $home");
 if ($rc != 0)
 {
    my $msg = "It fails to chown root $home";
-   if (defined($logenable)) {
-      `logger -t xcat $msg`;
-   }
+   `logger -t xcat $msg`;
    exit 1;
 }
 $rc = &runcmd("chgrp system $home");
