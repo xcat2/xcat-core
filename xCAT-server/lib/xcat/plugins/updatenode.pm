@@ -741,7 +741,7 @@ sub updatenode
         # Sync files to the target nodes
         foreach my $synclist (keys %syncfile_node)
         {
-            if (defined($::VERBOSE))
+            if ($::VERBOSE)
             {
                 my $rsp = {};
                 $rsp->{data}->[0] =
@@ -822,7 +822,7 @@ sub updatenode
 		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost 2 -m $snkey otherpkgs 2>&1";
 		}
 
-		if (defined($::VERBOSE))
+		if ($::VERBOSE)
 		{
 		    my $rsp = {};
 		    $rsp->{data}->[0] = "  $localhostname: Internal call command: $cmd";
@@ -898,7 +898,7 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
             arg     => ['-r'],
             }, $subreq, 0, 1);
 
-        if (defined($::VERBOSE))
+        if ($::VERBOSE)
         {
             my $rsp = {};
             $rsp->{data}->[0] =
@@ -915,7 +915,7 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
             env     => \@envs,
             }, $subreq, 0, 1);
             
-        if (defined($::VERBOSE))
+        if ($::VERBOSE)
         {
             my $rsp = {};
             $rsp->{data}->[0] =
@@ -997,7 +997,7 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
 		}
 		
 
-		if (defined($::VERBOSE))
+		if ($::VERBOSE)
 		{
 		    my $rsp = {};
 		    $rsp->{data}->[0] = "  $localhostname: Internal call command: $cmd";
@@ -1073,7 +1073,7 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
 		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcataixpost -m $snkey -c $mode $postscripts 2>&1";
 		}
 		
-            	if (defined($::VERBOSE))
+            	if ($::VERBOSE)
             	{
 		    my $rsp = {};
 		    $rsp->{data}->[0] = "  $localhostname: Internal call command: $cmd";
