@@ -112,9 +112,7 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/switch.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/xen.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/kvm.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
-rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/dns.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/activedirectory.pm
-mv $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bind.pm.legacy $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/bind.pm
 %endif
 
 cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/opt/xcat/xdsh/Context
