@@ -129,11 +129,3 @@ fi
 /install/prescripts
 %defattr(-,root,root)
 
-%postun
-%ifnos linux
-if grep "^xcatd" /etc/inittab >/dev/null
-then
-	/usr/sbin/rmitab xcatd >/dev/null
-fi
-%endif
-
