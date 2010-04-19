@@ -56,6 +56,10 @@ foreach my $num ( @nums ) {
         {
             runcmd("/usr/bin/sed -i 's/SDP_LOAD=yes/SDP_LOAD=no/g' /etc/infiniband/openib.conf");
         }
+        if ( -f "/etc/modprobe.conf" )
+        {
+            runcmd("sed -i 's/options\ ib_ehca\ nr_ports=1//g' /etc/modprobe.conf");
+        }
         my $openibd_cmd = "/sbin/chkconfig --level 2345 openibd on";
         runcmd($openibd_cmd);
         # Write the info to the ifcfg file
