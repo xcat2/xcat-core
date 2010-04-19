@@ -19,7 +19,7 @@ then
     tar -X /tmp/xcat-excludes -cf $source/SOURCES/xCAT-IBMhpc-$VER.tar xCAT-IBMhpc
     gzip -f $source/SOURCES/xCAT-IBMhpc-$VER.tar
     rm -f $source/SRPMS/xCAT-IBMhpc-$VER*rpm $source/RPMS/ppc/xCAT-IBMhpc-$VER*rpm
-    rpm -ba xCAT-server/xCAT-IBMhpc.spec
+    rpm -ba xCAT-IBMhpc/xCAT-IBMhpc.spec
     #rpm -ta $source/SOURCES/xCAT-IBMhpc-$VER.tar.gz
 
 else

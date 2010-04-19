@@ -148,7 +148,7 @@ if $GREP xCAT-IBMhpc $SVNUP; then
    rm -f $DESTDIR/xCAT-IBMhpc*rpm
    rm -f $SRCDIR/xCAT-IBMhpc*rpm
    ./makehpcrpm
-   mv $source/RPMS/noarch/xCAT-IBMhpc-$VER*rpm $DESTDIR
+   mv $source/RPMS/$NOARCH/xCAT-IBMhpc-$VER*rpm $DESTDIR
    mv $source/SRPMS/xCAT-IBMhpc-$VER*rpm $SRCDIR
 fi
 # Do not automatically install xCAT-IBMhpc on AIX
