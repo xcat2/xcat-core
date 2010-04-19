@@ -115,7 +115,7 @@ if ! $GREP 'At revision' $SVNUP; then		# Use to be:  $GREP perl-xCAT $SVNUP; the
 fi
 if [ "$OSNAME" = "AIX" ]; then
 	# For the 1st one we overwrite, not append
-	echo "rpm -Uvh perl-xCAT-$SHORTVER*rpm" > $DESTDIR/instxcat
+	echo "rpm -Uvh perl-xCAT-$SHORTSHORTVER*rpm" > $DESTDIR/instxcat
 fi
 
 if $GREP xCAT-client $SVNUP; then
