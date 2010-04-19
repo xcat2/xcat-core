@@ -220,6 +220,16 @@ is not specified, a default fanout value of B<64> is used.
 
 Displays usage information.
 
+
+=item B<-i>|B<--rootimg> I<install image>
+
+
+Specifies the path to the install image on the local node. 
+xdsh will chroot to this path and run the xdsh command against the
+install image.  No other xdsh flags, environment variables apply with 
+this input.  A noderange is not accepted. Only runs on the local host, 
+normally the Management Node. 
+
 =item B<-K>|B<--ssh-setup>
 
 =item B<-K>|B<--ssh-setup>  B<-l>|B<--user> I<user_ID> B<--devicetype> I<type_of_device> 
@@ -278,16 +288,6 @@ written to standard output.
 
 Specifies the path of the remote shell command used
 for remote command execution on node targets.
-
-
-=item B<-i>|B<--rootimg> I<install image>
-
-
-Specifies the path to the install image on the local node. 
-xdsh will chroot to this path and run the xdsh command against the
-install image.  No other xdsh flags, environment variables apply with 
-this input.  A noderange is not accepted. Only runs on the local host, 
-normally the Management Node. 
 
 
 =item B<-s>|B<--stream>
