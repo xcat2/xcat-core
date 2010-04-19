@@ -2419,7 +2419,7 @@ sub getAllAttribsWhere
     my $query2;
 
     if ($xcatcfg =~ /^mysql:/) {  #for mysql
-           $query2='SELECT * FROM '  . $self->{tabname} . ' WHERE (' . $whereclause . ")  and " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')";
+           $query2='SELECT * FROM '  . $self->{tabname} . ' WHERE (' . $whereclause . ")  and  (\`disable\`  is NULL or \`disable\` in ('0','no','NO','No','nO'))";
            $query = $self->{dbh}->prepare($query2);
       } else {   
           if ($xcatcfg =~ /^DB2:/) {  #for DB2
