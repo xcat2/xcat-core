@@ -173,6 +173,13 @@ sub process_request {
     if (-e "/etc/hosts") {
       my $bakname = "/etc/hosts.xcatbak";
       rename("/etc/hosts",$bakname);
+      
+      # add the localhost entry if trying to create the /etc/hosts from scratch
+      if ($^O =~ /^aix/i) {
+        push @hosts, "127.0.0.1 loopback localhost\n";
+      } else {
+        push @hosts, "127.0.0.1 localhost\n";
+      }
     }
   } else {
     if (-e "/etc/hosts") {
@@ -217,7 +224,10 @@ sub process_request {
     }
   }
   writeout();
-  flock($lockh,LOCK_UN);
+  
+  if ($lockh) {
+    flock($lockh,LOCK_UN);
+  }
 }
 
 
