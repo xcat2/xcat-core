@@ -273,7 +273,7 @@ sub process_request {
       if ($includestr) {
 	  system("$includestr >> /tmp/xcat_packimg.txt"); 
       }
-      $excludestr =~ "cat /tmp/xcat_packimg.txt|cpio -dump $temppath"; 
+      $excludestr = "cat /tmp/xcat_packimg.txt|cpio -dump $temppath"; 
     } elsif ($method =~ /nfs/) {
        $excludestr = "touch ../rootimg.nfs";
     } else {
