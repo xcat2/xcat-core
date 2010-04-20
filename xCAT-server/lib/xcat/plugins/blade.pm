@@ -50,6 +50,7 @@ sub handled_commands {
     rbootseq => 'nodehm:mgt',
     reventlog => 'nodehm:mgt',
     switchblade => 'nodehm:mgt',
+    renergy => 'nodehm:mgt',
   };
 }
 
@@ -1734,6 +1735,383 @@ sub beacon {
   }
 }
 
+
+# The oids which are used in the renergy command
+my $bladetype_oid = "1.3.6.1.4.1.2.3.51.2.2.21.1.1.1.0";    #bladeCenterVpdMachineType
+
+my $pdstatus_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.3";    #fuelGaugeStatus
+my $pdpolicy_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.6";    #fuelGaugePowerManagementPolicySetting
+my $pdmodule1_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.4";    #fuelGaugeFirstPowerModule
+my $pdmodule2_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.5";    #fuelGaugeSecondPowerModule
+my $pdavailablepower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.7";    #fuelGaugeTotalPower
+my $pdreservepower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.8";    #fuelGaugeAllocatedPower
+my $pdremainpower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.9";    #fuelGaugeRemainingPower
+my $pdinused_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.10";    #fuelGaugePowerInUsed
+
+my $chassisDCavailable_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.5.1.1.0";    #chassisTotalDCPowerAvailable
+my $chassisACinused_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.5.1.2.0";    #chassisTotalACPowerInUsed
+my $chassisThermalOutput_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.5.1.3.0";    #chassisTotalThermalOutput
+
+my $chassisFrontTmp_oid = ".1.3.6.1.4.1.2.3.51.2.2.1.5.1.0";    #frontPanelTemp
+my $mmtemp_oid = ".1.3.6.1.4.1.2.3.51.2.2.1.1.2.0";    #mmTemp
+
+my $bladewidth_oid = "1.3.6.1.4.1.2.3.51.2.22.1.5.1.1.15";    #bladeWidth
+
+my $curallocpower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.7";    #pd1ModuleAllocatedPowerCurrent
+my $maxallocpower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.8";    #pd1ModuleAllocatedPowerMax
+my $minallocpower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.9";    #pd1ModuleAllocatedPowerMin
+my $powercapability_oid = "1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.12";    #pd1ModulePowerCapabilities
+
+my $powercapping_oid = "1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.3";    #bladeDetailsMaxPowerConfig
+my $effCPU_oid = "1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.4";    #bladeDetailsEffectiveClockRate
+my $maxCPU_oid = "1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.5";    #bladeDetailsMaximumClockRate
+my $savingstatus_oid = "1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.6";    #bladeDetailsPowerSaverMode
+
+# The meaning of obj fuelGaugePowerManagementPolicySetting
+my %pdpolicymap = (
+    '0' => "redundantWithoutPerformanceImpact",
+    '1' => "redundantWithPerformanceImpact",
+    '2' => "nonRedundant",
+    '3' => "redundantACPowerSource",
+    '4' => "acPowerSourceWithBladeThrottlingAllowed",
+    '255' => "notApplicable",
+);
+
+# The meaning of obj pd1/2ModulePowerCapabilities
+my %capabilitymap = (
+    '0' => "noAbility",
+    '1' => "staticPowerManagement",
+    '2' => "fixedPowerManagement",
+    '3' => "dynamicPowerManagement",
+    '4' => "dynamicPowerMeasurement1",
+    '5' => "dynamicPowerMeasurement2",
+    '6' => "dynamicPowerMeasurement2",
+    '255' => "notApplicable",
+);
+
+# The valid attributes the renergy command can support
+# 1 for readonly; 2 for write; 3 readwrite
+my %mm_valid_items = (
+    'all' => 1,
+    'pd1all' => 1,
+    'pd2all' => 1,
+    'pd1status' => 1,
+    'pd2status' => 1,
+    'pd1policy' => 1,
+    'pd2policy' => 1,
+    'pd1powermodule1' => 1,
+    'pd1powermodule2' => 1,
+    'pd2powermodule1' => 1,
+    'pd2powermodule2' => 1,
+    'pd1avaiablepower' => 1,
+    'pd2avaiablepower' => 1,
+    'pd1reservedpower' => 1,
+    'pd2reservedpower' => 1,
+    'pd1remainpower' => 1,
+    'pd2remainpower' => 1,
+    'pd1inusedpower' => 1,
+    'pd2inusedpower' => 1,
+    'availableDC' => 1,
+    'averageAC' => 1,
+    'thermaloutput' => 1,
+    'ambienttemp' => 1,
+    'mmtemp' => 1,
+);
+my %blade_valid_items = (
+    'all' => 1,
+    'averageAC' => 1,
+    'cappingmaxmin' => 1,
+    'cappingmax' => 1,
+    'cappingmin' => 1,
+    'capability' => 1,
+    'cappingvalue' => 1,
+    'cappingwatt' => 2,
+    'CPUspeed' => 1,
+    'maxCPUspeed' => 1,
+    'savingstatus' => 2,
+    'dsavingstatus' => 2,
+);
+
+
+# use the slot number of serverblade to get the powerdomain number
+# and the bay number in the powerdomain
+sub getpdbayinfo {
+    my ($bc_type, $slot) = @_;
+
+    my $pdnum = 0;
+    my $pdbay = 0;
+    
+    if ($bc_type =~ /^1886|7989|8852$/) {  # for blade center H
+        if ($slot < 8) {
+            $pdnum = 1;
+            $pdbay = $slot + 16;
+        } elsif ($slot < 15) {
+            $pdnum = 2;
+            $pdbay = $slot + 16 -7;
+        }
+    } elsif ($bc_type =~ /^8740|8750$/) { # for blade center HT
+        if ($slot < 7) {
+            $pdnum = 1;
+            $pdbay = $slot + 22;
+        } elsif ($slot < 13) {
+            $pdnum = 2;
+            $pdbay = $slot + 12 -6;
+        }
+    } elsif ($bc_type =~ /^8720|8730$/) { # for blade center T
+        if ($slot < 5) {
+            $pdnum = 1;
+            $pdbay = $slot + 12;
+        } elsif ($slot < 9) {
+            $pdnum = 2;
+            $pdbay = $slot + 2 -4;
+        }
+    } elsif ($bc_type =~ /^8720|8730$/) { # for blade center S
+        if ($slot < 7) {
+            $pdnum = 1;
+            $pdbay = $slot + 17;
+        } 
+    } else { # for common blade center
+        if ($slot < 7) {
+            $pdnum = 1;
+            $pdbay = $slot + 10;
+        } elsif ($slot < 15) {
+            $pdnum = 2;
+            $pdbay = $slot - 6;
+        }
+    }
+
+    return ($pdnum, $pdbay);
+}
+
+
+# command to hand the renergy request
+sub renergy {
+    my ($mpa, $node, $slot, @items) = @_;
+
+    if (!$mpa) {
+        return (1, "The attribute [mpa] needs to be set for the node $node.");
+    }
+    if (!$slot) {
+        return (1, "The attribute [id] needs to be set for the node $node.");
+    }
+
+    # the type of blade center
+    my $bc_type = ""; 
+    
+    #check the validity of all the attributes
+    my @readlist = ();
+    my %writelist = ();
+    foreach my $item (@items) {
+        if (!$item) {
+            next;
+        }
+        if ($item =~ /^all$/) {
+            if ($mpa eq $node) {
+                #handle the mm itself
+                push @readlist, ('pd1status','pd2status','pd1policy','pd2policy',
+                    'pd1powermodule1','pd1powermodule2','pd2powermodule1',
+                    'pd2powermodule2','pd1avaiablepower','pd2avaiablepower',
+                    'pd1reservedpower','pd2reservedpower','pd1remainpower',
+                    'pd2remainpower','pd1inusedpower','pd2inusedpower',
+                    'availableDC','averageAC','thermaloutput','ambienttemp',
+                    'mmtemp');
+            } else {
+                push @readlist, ('averageAC','cappingmax','cappingmin','capability', 
+                    'cappingvalue','CPUspeed','maxCPUspeed','savingstatus'.'dsavingstatus');
+            }
+        } elsif ($item =~ /^pd1all$/) {
+            push @readlist, ('pd1status','pd1policy','pd1powermodule1',
+                'pd1powermodule2','pd1avaiablepower','pd1reservedpower',
+                'pd1remainpower','pd1inusedpower');
+        } elsif ($item =~ /^pd2all$/) {
+            push @readlist, ('pd2status','pd2policy','pd2powermodule1',
+                'pd2powermodule2','pd2avaiablepower','pd2reservedpower',
+                'pd2remainpower','pd2inusedpower');
+        } elsif ($item =~ /^cappingmaxmin$/) {
+            push @readlist, ('cappingmin','cappingmax');
+        } elsif ($item =~ /(.*)=(.*)/) {
+            my $name = $1;
+            my $value = $2;
+            if ($mpa eq $node) {
+                if ($mm_valid_items{$name} < 2) {
+                    return (1, "$name is NOT writable.");
+                }
+            } else {
+                if ($blade_valid_items{$name} < 2) {
+                    return (1, "$name is NOT writable.");
+                }
+            }
+            $writelist{$name} = $value;
+        } else {
+            if ($mpa eq $node) {
+                if ($mm_valid_items{$item} != 1 && $mm_valid_items{$item} != 3) {
+                    return (1, "$item is NOT a valid attribute.");
+                }
+            } else {
+                if ($blade_valid_items{$item} != 1 && $blade_valid_items{$item} != 3) {
+                    return (1, "$item is NOT a valid attribute.");
+                }
+            }
+            push @readlist, $item;
+        }
+    }
+
+    # does not support to read and write in one command
+    if ( @readlist && %writelist ) {
+        return (1, "Cannot handle read and write in one command.");
+    }
+
+    if (! (@readlist || %writelist) ) {
+        return (1, "Does not get any valid attributes.");
+    }
+
+    # get the blade center type first
+    if (grep (/^averageAC|cappingmax|cappingmin|capability$/, @readlist)) {
+        $bc_type =$session->get([$bladetype_oid]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    }
+
+
+    my @output = ();
+    foreach my $item (sort(@readlist)) {
+        my $oid = "";
+        if ($item eq "pd1status") {
+            $oid = $pdstatus_oid.".1";
+        } elsif ($item eq "pd2status") {
+            $oid = $pdstatus_oid.".2";
+        } elsif ($item eq "pd1policy") {
+            $oid = $pdpolicy_oid.".1";
+        } elsif ($item eq "pd2policy") {
+            $oid = $pdpolicy_oid.".2";
+        } elsif ($item eq "pd1powermodule1") {
+            $oid = $pdmodule1_oid.".1";
+        } elsif ($item eq "pd2powermodule1") {
+            $oid = $pdmodule1_oid.".2";
+        } elsif ($item eq "pd1powermodule2") {
+            $oid = $pdmodule2_oid.".1";
+        } elsif ($item eq "pd2powermodule2") {
+            $oid = $pdmodule2_oid.".2";
+        } elsif ($item eq "pd1avaiablepower") {
+            $oid = $pdavailablepower_oid.".1";
+        } elsif ($item eq "pd2avaiablepower") {
+            $oid = $pdavailablepower_oid.".2";
+        } elsif ($item eq "pd1reservedpower") {
+            $oid = $pdreservepower_oid.".1";
+        } elsif ($item eq "pd2reservedpower") {
+            $oid = $pdreservepower_oid.".2";
+        } elsif ($item eq "pd1remainpower") {
+            $oid = $pdremainpower_oid.".1";
+        } elsif ($item eq "pd2remainpower") {
+            $oid = $pdremainpower_oid.".2";
+        } elsif ($item eq "pd1inusedpower") {
+            $oid = $pdinused_oid.".1";
+        } elsif ($item eq "pd2inusedpower") {
+            $oid = $pdinused_oid.".2";
+        } elsif ($item eq "availableDC") {
+            $oid = $chassisDCavailable_oid;
+        } elsif ($item eq "thermaloutput") {
+            $oid = $chassisThermalOutput_oid;
+        } elsif ($item eq "ambienttemp") {
+            $oid = $chassisFrontTmp_oid;
+        } elsif ($item eq "mmtemp") {
+            $oid = $mmtemp_oid;
+        } elsif ($item eq "averageAC") {
+            if ($mpa eq $node) {
+                # for management module
+                $oid = $chassisACinused_oid;
+            } else {
+                # for server blade
+                my ($pdnum, $pdbay) = getpdbayinfo($bc_type, $slot);
+                $oid = $curallocpower_oid;
+                $pdnum++;
+                $oid =~ s/pdnum/$pdnum/;
+                $oid = $oid.".".$pdbay;
+            }
+        } elsif ($item eq "cappingmax") {
+            my ($pdnum, $pdbay) = getpdbayinfo($bc_type, $slot);
+            $oid = $maxallocpower_oid;
+            $pdnum++;
+            $oid =~ s/pdnum/$pdnum/;
+            $oid = $oid.".".$pdbay;
+        } elsif ($item eq "cappingmin") {
+            my ($pdnum, $pdbay) = getpdbayinfo($bc_type, $slot);
+            $oid = $minallocpower_oid;
+            $pdnum++;
+            $oid =~ s/pdnum/$pdnum/;
+            $oid = $oid.".".$pdbay;
+        } elsif ($item eq "capability") {
+            my ($pdnum, $pdbay) = getpdbayinfo($bc_type, $slot);
+            $oid = $powercapability_oid;
+            $pdnum++;
+            $oid =~ s/pdnum/$pdnum/;
+            $oid = $oid.".".$pdbay;
+        } elsif ($item eq "cappingvalue") {
+            $oid = $powercapping_oid.".".$slot;
+        } elsif ($item eq "CPUspeed") {
+            $oid = $effCPU_oid.".".$slot;
+        } elsif ($item eq "maxCPUspeed") {
+            $oid = $maxCPU_oid.".".$slot;
+        } elsif ($item eq "savingstatus") {
+            $oid = "";
+            push @output, "$item: not support now.";
+        } elsif ($item eq "dsavingstatus") {
+            $oid = "";
+            push @output, "$item: not support now.";
+        } 
+
+        if ($oid ne "") {
+            my $data=$session->get([$oid]);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            
+            if ($data ne "" 
+                && $data ne "NOSUCHINSTANCE"
+                && $data ne "notApplicable" ) {
+                if ($item =~ /pd[1|2]policy/) {
+                    push @output, "$item: $pdpolicymap{$data}";
+                } elsif ($item eq "capability") {
+                    push @output, "$item: $capabilitymap{$data}";
+                } elsif ($item eq "cappingvalue") {
+                    if ($data eq "0") {
+                        push @output,"$item: na";
+                    } else {
+                        push @output, "$item: $data"."W";
+                    }
+                } elsif ($item =~/averageAC|cappingmax|cappingmin/) {
+                    my $bladewidth = $session->get([$bladewidth_oid.".$slot"]);
+                    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                    foreach (1..$bladewidth-1) {
+                        $oid =~ /(\d+)$/;
+                        my $next = $1+$_;
+                        $oid =~ s/(\d+)$/$next/;
+                        my $nextdata=$session->get([$oid]);
+                        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                        $data += $nextdata;
+                    }
+                    push @output, "$item: $data";
+                } else {
+                    push @output,"$item: $data";
+                }
+            } else {
+                push @output,"$item: na";
+            }
+        }
+    }
+
+    foreach my $item (keys %writelist) {
+        my $oid = "";
+        if ($item eq "cappingvalue") {
+            $oid = $powercapping_oid;
+        }
+
+        my $data = $session->set(new SNMP::Varbind([".".$oid, $slot, $writelist{$item} ,'INTEGER']));
+        unless ($data) { return (1,$session->{ErrorStr}); }
+        push @output, "$item: set value to $writelist{$item}";
+    }
+
+    return (0, @output);
+}
+
+
 sub bladecmd {
   $mpa = shift;
   my $node = shift;
@@ -1775,6 +2153,8 @@ sub bladecmd {
     return eventlog(@args);
   } elsif ($command eq "rscan") {
     return rscan(\@args);
+  } elsif ($command eq "renergy") {
+    return renergy($mpa, $node, $slot, @args);
   }
   
   return (1,"$command not a supported command by blade method");
@@ -2093,6 +2473,14 @@ sub preprocess_request {
         $request = {};
         return;
       }
+    }
+  } elsif ($command eq "renergy") {
+    if (! @exargs) {
+        $usage_string="Missing arguments\n";
+        $usage_string .=xCAT::Usage->getUsage($command);
+        $callback->({data=>$usage_string});
+        $request = {};
+        return;
     }
   }
 
