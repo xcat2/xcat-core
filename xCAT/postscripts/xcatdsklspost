@@ -191,7 +191,7 @@ fi
 
 rm -rf /xcatpost/*;
 wget -l inf -nH -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts -P /xcatpost --cut-dirs=2 2> /tmp/wget.log
-chmod +x /xcatpost/*; # no effect for statelite mode, since the directory are readonly
+chmod +x /xcatpost/*; 
 
 cd /xcatpost; 
 PATH=/xcatpost:$PATH
