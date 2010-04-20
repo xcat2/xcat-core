@@ -335,7 +335,7 @@ sub liteMe {
         my $d = dirname($f);
 
         # if no such file like $rif, create one
-        if ( !(-e "$rif") ) {
+        unless ( -e "$rif" ) {
             my $rifstr = $rif;
             if($f =~ m{/$}) {
                 $verbose && $callback->({info=>["mkdir -p $rif"]});
