@@ -2083,9 +2083,12 @@ sub format_stanza {
                     $d = $data[$i++]; 
                 } elsif ( $type =~ /^bpa$/ ) {
                     $i++;
+                } else {
+                    $i++;
+                    next;
                 }
                 $i++;
-            } elsif ( /^side$/ ) {
+            } elsif ( /^side$/ or /^parent$/ ) {
                 if ( $type !~ /^(fsp|bpa)$/ ) {
                     next;
                 }
@@ -2157,9 +2160,12 @@ sub format_xml {
                     $d = $data[$i++];
                 } elsif ( $type =~ /^bpa$/ ) {
                     $i++;
+                } else {
+                    $i++;
+                    next;
                 }
                 $i++;
-            } elsif ( /^side$/ ) {
+            } elsif ( /^side$/ or /^parent$/ ) {
                 if ( $type !~ /^(fsp|bpa)$/ ) {
                     next;
                 }
