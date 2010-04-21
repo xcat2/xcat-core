@@ -12,6 +12,7 @@ use xCAT::Utils;
 use xCAT::SvrUtils;
 use Data::Dumper;
 use File::Basename;
+use Socket;
 use strict;
 
 
@@ -367,6 +368,27 @@ sub makescript {
       push @scriptd, "export NOSYNCFILES\n";
   }
 
+  my $setbootfromnet = 0;
+  if (($arch eq "ppc64") || ($os =~ /aix.*/i))
+  {
+       if (($provmethod) && ($provmethod ne "install")) { 
+         # on Linux, the provmethod can be install,netboot or statelite,
+         # on AIX, the provmethod can be null or diskless image name
+        (my $ip,my $mask,my $gw) = net_parms($node);
+        if (!$ip || !$mask || !$gw)
+        {
+             xCAT::MsgUtils->message('S',"Unable to determine IP, netmask or gateway for $node, can not set the node to boot from network");
+        }
+        else
+        {
+            $setbootfromnet = 1;
+            push @scriptd, "NETMASK=$mask\n";
+            push @scriptd, "export NETMASK\n";
+            push @scriptd, "GATEWAY=$gw\n";
+            push @scriptd, "export GATEWAY\n";
+        }
+      }
+  }
   ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
   push @scriptd, "# postscripts-start-here\n";
 
@@ -395,7 +417,10 @@ sub makescript {
     }
   }
 
- 
+  if ($setbootfromnet)
+  {
+    push @scriptd, "setbootfromnet\n";
+  }
   ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
   push @scriptd, "# postscripts-end-here\n";
 
@@ -483,5 +508,32 @@ sub getnodesetstate {
 }
 
 
+sub net_parms {
+  my $ip = shift;
+  if (inet_aton($ip)) {
+     $ip = inet_ntoa(inet_aton($ip));
+  } else {
+     xCAT::MsgUtils->message("S","Unable to resolve $ip");
+     return undef;
+  }
+  my $nettab = xCAT::Table->new('networks');
+  unless ($nettab) { return undef };
+  my @nets = $nettab->getAllAttribs('net','mask','gateway');
+  foreach (@nets) {
+    my $net = $_->{'net'};
+    my $mask =$_->{'mask'};
+    my $gw = $_->{'gateway'};
+    $ip =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
+    my $ipnum = ($1<<24)+($2<<16)+($3<<8)+$4;
+    $mask =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
+    my $masknum = ($1<<24)+($2<<16)+($3<<8)+$4;
+    $net =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
+    my $netnum = ($1<<24)+($2<<16)+($3<<8)+$4;
+    if (($ipnum & $masknum)==$netnum) {
+      return ($ip,$mask,$gw);
+    } 
+  }
+  xCAT::MsgUtils->message("S","xCAT BMC configuration error, no appropriate network for $ip found in networks, unable to determine netmask");
+}
 
 1;
