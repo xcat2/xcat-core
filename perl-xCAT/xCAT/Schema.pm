@@ -697,8 +697,10 @@ site => {
    " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
    " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
    "                 removing DHCP entries when noderm is executed)\n\n".
-   " sharedtftp:  Set to no or 0 if xCAT should not assume /tftpboot is mounted on all\n".
-   "              service nodes. Default is 1/yes.\n\n".
+   " sharedtftp:  Set to 0 or no, if xCAT should not assume the directory\n".
+   "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n". 
+   "              If value is set to a hostname, the directory in tftpdir\n".
+   "              will be mounted from that hostname on the SN\n\n". 
    " timezone:  (e.g. America/New_York)\n\n".
    " tftpdir:  tftp directory path. Default is /tftpdir\n\n".
    " useSSHonAIX:  (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no,\n".
