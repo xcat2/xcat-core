@@ -576,7 +576,7 @@ sub nimnodeset
 					xCAT::MsgUtils->message("I", $rsp, $callback);
 				}
 
-				my $rcmd = "/usr/sbin/nim -Fo reset $shorthost;/usr/sbin/nim -Fo deallocate -a subclass=all $shorthost";
+				my $rcmd = "/usr/sbin/nim -o reset -a force=yes $shorthost;/usr/sbin/nim -Fo deallocate -a subclass=all $shorthost";
 				my $output = xCAT::Utils->runcmd("$rcmd", -1);
             	if ($::RUNCMD_RC  != 0) {
                 	my $rsp;
@@ -5290,7 +5290,7 @@ sub mkdsklsnode
 					xCAT::MsgUtils->message("I", $rsp, $callback);
 				}
 				
-				my $rmcmd = "/usr/sbin/nim -Fo reset $nim_name;/usr/sbin/nim -Fo deallocate -a subclass=all $nim_name;/usr/sbin/nim -Fo remove $nim_name";
+				my $rmcmd = "/usr/sbin/nim -o reset -a force=yes $nim_name;/usr/sbin/nim -Fo deallocate -a subclass=all $nim_name;/usr/sbin/nim -Fo remove $nim_name";
 				my $output = xCAT::Utils->runcmd("$rmcmd", -1);
 				if ($::RUNCMD_RC  != 0) {
 					my $rsp;
@@ -6332,7 +6332,7 @@ sub rmdsklsnode
 		}
 
 		# nim -Fo reset c75m5ihp05_53Lcosi
-		my $cmd = "nim -Fo reset $nodename  >/dev/null 2>&1";
+		my $cmd = "nim -o reset -a force=yes $nodename  >/dev/null 2>&1";
 		my $output;
 
     	$output = xCAT::Utils->runcmd("$cmd", -1);
