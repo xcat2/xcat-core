@@ -56,6 +56,13 @@ chomp $::sdate;
 $::hname = `hostname`;
 chomp $::hname;
 
+my $installdir = $ENV{'INSTALLDIR'};
+if (!$installdir) {
+    $installdir="/install";
+}
+chomp $installdir;
+$installdir =~ s/^(\'|\")(.*)(\"|\')$/$2/; # remove any surrounding quotes
+
 # update security certificates keys for service node
 if ($ENV{UPDATESECURITY} && $ENV{UPDATESECURITY} eq "1") {
     $::servnode = $ENV{'MASTER'};
@@ -66,8 +73,8 @@ if ($ENV{UPDATESECURITY} && $ENV{UPDATESECURITY} eq "1") {
     }
 
     # copy the postscripts to /install/postscripts
-    if (&runcmd("mkdir -p /install/postscripts; cp -p -R /xcatpost/* /install/postscripts > /dev/null 2>&1") != 0 ) {
-        $msg = "$::sdate servicenode: Could not copy postscripts to /install/postscripts.\n";
+    if (&runcmd("mkdir -p $installdir/postscripts; cp -p -R /xcatpost/* $installdir/postscripts > /dev/null 2>&1") != 0 ) {
+        $msg = "$::sdate servicenode: Could not copy postscripts to $installdir/postscripts.\n";
         `logger -t xcat $msg`;
     }
 
@@ -167,15 +174,15 @@ sub setupAIXsn
     }
 
 	# copy the postscripts to /install/postscripts
-	if (&runcmd("mkdir -p /install/postscripts; cp -p -R /xcatpost/* /install/postscripts > /dev/null 2>&1") != 0 ) {
-		$msg = "$::sdate servicenode: Could not copy postscripts to /install/postscripts.\n";
+	if (&runcmd("mkdir -p $installdir/postscripts; cp -p -R /xcatpost/* $installdir/postscripts > /dev/null 2>&1") != 0 ) {
+		$msg = "$::sdate servicenode: Could not copy postscripts to $installdir/postscripts.\n";
 		`logger -t xcat $msg`;
 	}
 
 	# check if /install/postscripts is in /etc/exports
-    if (&runcmd("/bin/cat /etc/exports | grep '/install/postscripts ' >/dev/null 2>&1")  != 0) {
+    if (&runcmd("/bin/cat /etc/exports | grep '$installdir/postscripts ' >/dev/null 2>&1")  != 0) {
         # if not add it and make sure it is exported
-        if (&runcmd("echo '/install/postscripts -ro' >> /etc/exports; exportfs -a") !=0 ) {
+        if (&runcmd("echo '$installdir/postscripts -ro' >> /etc/exports; exportfs -a") !=0 ) {
             $msg = "$::sdate servicenode: Could not update the /etc/exports file.\n";
             `logger -t xcat $msg`;
         }

@@ -144,6 +144,28 @@ unless ($servnode) {
     exit 0;
 }
 
+# request the xCAT postscript for this particular node
+my $scriptname = "/xcatpost/myxcatpost_" . $::shorthost;
+if (&getmypost != 0) {
+    print "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
+}
+
+# get the installdir to use
+my $installdir;
+if (-f $scriptname) {
+    # set the timezone
+    my $cmd = "cat $scriptname | grep 'INSTALLDIR='";
+    &runcmd($cmd);
+    my $dline = $::outref;
+    my ($junk, $installdir) =  split(/=/, $dline);
+	chomp $installdir;
+	$installdir =~ s/^(\'|\")(.*)(\"|\')$/$2/; # remove any surrounding quotes
+}
+if (!$installdir) {
+	$installdir = "/install";
+}
+
 # if the /xcatpost dir has not been populated or the -c option is
 #   specified then do the mount and copy of /install/postscripts
 if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
@@ -156,10 +178,10 @@ if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
 
 	# get the contents of the /install/postscripts dir on the server
 	#   - mount dir from server and copy files
-	my $mcmd = "mkdir -p /xcatmnt; mount $servnode:/install/postscripts /xcatmnt";
+	my $mcmd = "mkdir -p /xcatmnt; mount $servnode:$installdir/postscripts /xcatmnt";
 	if (&runcmd($mcmd) != 0) {
-    	print "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
-    	print $::LOG_FILE "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
+    	print "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode.\n";
+    	print $::LOG_FILE "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode.\n";
 	}
 
 	my $cpcmd;
@@ -179,19 +201,11 @@ if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
 
 	my $ucmd = "umount /xcatmnt; rmdir /xcatmnt";
 	if (&runcmd($ucmd) != 0) {
-    	print "$::sdate xcataixpost: Could not unmount /install.\n";
-    	print $::LOG_FILE "$::sdate xcataixpost: Could not unmount /install/postscripts.\n";
+    	print "$::sdate xcataixpost: Could not unmount $installdir.\n";
+    	print $::LOG_FILE "$::sdate xcataixpost: Could not unmount $installdir/postscripts.\n";
 	}
 
 } # end recopy postscripts
-
-
-# request the xCAT postscript for this particular node
-$scriptname = "/xcatpost/myxcatpost_" . $::shorthost;
-if (&getmypost != 0) {
-	print "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
-	print $::LOG_FILE "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
-}
 
 # make sure all are executable
 my $chcmd = "chmod +x /xcatpost/*";

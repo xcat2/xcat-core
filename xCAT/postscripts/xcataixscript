@@ -6,7 +6,20 @@
 #
 #####################################################
 
+# if AIX - make sure we include perl 5.8.2 in INC path.
+#       Needed to find perl dependencies shipped in deps tarball.
+if ($^O =~ /^aix/i) {
+        use lib "/usr/opt/perl5/lib/5.8.2/aix-thread-multi";
+        use lib "/usr/opt/perl5/lib/5.8.2";
+        use lib "/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi";
+        use lib "/usr/opt/perl5/lib/site_perl/5.8.2";
+}
+
 use File::Path;
+use IO::Socket;
+my $useSocketSSL=eval { require IO::Socket::SSL; };
+use Getopt::Long;
+use XML::Simple;
 
 # since we don't have syslog set up yet we'll
 # just save msgs in a local log file
@@ -57,12 +70,37 @@ if (&runcmd($cmd) != 0) {
 	print $::LOG_FILE "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
 }
 
-# get the contents of the /install/postscripts dir on the server
+# need to find out what dir to mount - so need to get INSTALLDIR attribute
+#	from the node-specific script
+# request the xCAT postscript for this particular node
+$scriptname = "/xcatpost/myxcatpost_" . $::shorthost;
+if (&getmypost != 0) {
+    print "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
+}
+
+my $installdir;
+if (-f $scriptname) {
+    my $cmd = "cat $scriptname | grep 'INSTALLDIR='";
+    &runcmd($cmd);
+    my $Sline = $::outref;
+    my $junk;
+    ($junk, $installdir) =  split(/=/, $Sline);
+    chomp $installdir;
+    $installdir =~ s/^\s*//;
+	$installdir =~ s/^(\'|\")(.*)(\"|\')$/$2/; # remove any surrounding quotes
+}
+
+if (!$installdir) {
+	$installdir="/install";
+}
+
+# get the contents of the $installdir/postscripts dir on the server
 #   - mount dir from server and copy files
-my $mcmd = "mkdir -p /xcatmnt; mount -o nolock $servnode:/install/postscripts /xcatmnt";
+my $mcmd = "mkdir -p /xcatmnt; mount -o nolock $servnode:$installdir/postscripts /xcatmnt";
 if (&runcmd($mcmd) != 0) {
-    print "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
-    print $::LOG_FILE "$::sdate xcataixpost: Could not mount /install/postscripts from $servnode.\n";
+    print "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode.\n";
 }
 
 my $cpcmd;
@@ -88,8 +126,8 @@ if (&runcmd($chcmd) != 0) {
 
 my $ucmd = "umount /xcatmnt; rmdir /xcatmnt";
 if (&runcmd($ucmd) != 0) {
-    print "$::sdate xcataixpost: Could not unmount /install.\n";
-    print $::LOG_FILE "$::sdate xcataixpost: Could not unmount /install/postscripts.\n";
+    print "$::sdate xcataixpost: Could not unmount $installdir.\n";
+    print $::LOG_FILE "$::sdate xcataixpost: Could not unmount $installdir/postscripts.\n";
 }
 
 # add xcatd to /etc/inittab???
@@ -107,6 +145,74 @@ if (&runcmd($lsicmd) != 0) {
 close($::LOG_FILE);
 
 exit 0;
+
+#####################################################
+#
+#   getmypost
+#               Get the xCAT post script info for this node
+#					and write it to a file 
+#
+#####################################################
+sub  getmypost {
+	
+	my $port = "3001";
+
+	# open a socket to request credentials
+    my $remote = IO::Socket::SSL->new(
+        PeerAddr => $servnode,
+        PeerPort  => $port,
+        Proto    => 'tcp',
+    );
+
+	unless ($remote) {
+        print "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+        print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+        return 1;
+    }
+
+	if (!open(POSTSCRIPT, ">$scriptname") ) {
+        print "$::sdate  xcataixpost: Could not open $scriptname.\n";
+        print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n"
+;
+        close $remote;
+        return 1;
+    }
+    # setup the perl library path for xcat-dep packages
+    # this is necessary for AIX 5.3V/61H and beyond
+    # but does not hurt old AIX versions
+    print POSTSCRIPT "PERL5LIB='/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi'\n";
+    print POSTSCRIPT "export PERL5LIB\n";
+    
+
+	# request must be in XML format
+    print $remote "<xcatrequest>\n";
+    print $remote "   <command>getpostscript</command>\n";
+    print $remote "</xcatrequest>\n";
+
+	# get reponse in XML format
+	my $response='';
+	my $rsp;
+	while (<$remote>) {
+		$response .= $_;
+		if ($response =~ m/<\/xcatresponse>/) {
+			$rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
+
+			if ($rsp->{serverdone}) {
+				last;			
+			}
+
+			foreach my $line (@{$rsp->{data}}) {
+				$line =~ s/^\s+//;    # strip any leading spaces
+				print POSTSCRIPT "$line";
+			}
+			$response='';
+		}
+    }
+	
+	close(POSTSCRIPT);
+    close $remote;
+    return 0;
+}
 
 #####################################################
 #
