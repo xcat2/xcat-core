@@ -4447,7 +4447,7 @@ sub parse_rsync_input_file_on_MN
                 {
 
                     #  if syncing the Service Node, file goes to the same place
-                    #  where it was on the MN but in the syncdir on the service
+                    #  where it was on the MN off the syncdir on the service
                     # node
                     if ($rsyncSN == 1)
                     {    #  syncing the SN
@@ -4604,15 +4604,14 @@ sub parse_rsync_input_file_on_SN
                 # for each file on the line
                 foreach my $srcfile (@srcfiles)
                 {
-                    my $tmpsrcfile = $syncdir;    # add syndir on front
-                    $tmpsrcfile .= $srcfile;
-                    $srcfile = $tmpsrcfile;
+                    my $newsrcfile = $syncdir;    # add syndir on front
+                    $newsrcfile .= $srcfile;
                     $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
                       {};
 
                     # can be full file name for destination or just the
                     # directory name. For source must be full path
-                    my $src_basename = basename($srcfile);    # get file name
+                    my $src_basename = basename($newsrcfile);    # get file name
 
                     my $dest_basename;    # destination file name
                     if (-e $dest_file)
@@ -4649,14 +4648,14 @@ sub parse_rsync_input_file_on_SN
                         $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
                           {'same_dest_name'} ||= [];
                         push @{$$options{'destDir_srcFile'}{$target_node}
-                              {$dest_dir}{'same_dest_name'}}, $srcfile;
+                              {$dest_dir}{'same_dest_name'}}, $newsrcfile;
                     }
                     else    # changing file names
                     {
                         $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
                           {'diff_dest_name'} ||= {};
                         $$options{'destDir_srcFile'}{$target_node}{$dest_dir}
-                          {'diff_dest_name'}{$srcfile} = $dest_basename;
+                          {'diff_dest_name'}{$newsrcfile} = $dest_basename;
                     }
 
                 }
