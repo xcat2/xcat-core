@@ -407,7 +407,7 @@ sub setupInstallloc
         else
         {
 
-        # installloc not set so we will export /install on the SN, if Stateful
+            # installloc not set so we will export /install on the SN, if Stateful
             if (xCAT::Utils->isStateful())
             {
 
@@ -707,6 +707,7 @@ sub setup_DNS
     {
         $XCATROOT = $ENV{'XCATROOT'};
     }
+
     # setup the named.conf file
     system("$XCATROOT/sbin/makenamed.conf");
 
@@ -1058,115 +1059,121 @@ sub setup_TFTP
     my @output = xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
     {    # not installed
-        xCAT::MsgUtils->message("S", "atftp is not installed");
-        return 1;
+        xCAT::MsgUtils->message("S", "atftp is not installed, ok for Power5");
     }
     my $tftpdir;
-    my $mountdirectory = "1";    # default to mount tftpboot dir
-    if ($output[0] =~ "atftp")   # it is atftp
+    my $mountdirectory = "1";        # default to mount tftpdir
+    my $tftphost       = $master;    # default to master
+         # read sharedtftp attribute from site table, if exist
+    my $stab = xCAT::Table->new('site');
+    my $sharedtftp = $stab->getAttribs({key => 'sharedtftp'}, 'value');
+    if ($sharedtftp)
     {
 
-        # read sharedtftp attribute from site table, if exist
-        my $stab = xCAT::Table->new('site');
-        my $sharedtftp = $stab->getAttribs({key => 'sharedtftp'}, 'value');
-        if ($sharedtftp)
-        {
-            $mountdirectory = $sharedtftp->{value};
-            $mountdirectory =~ tr/a-z/A-Z/;    # convert to upper
-        }
-        $stab->close;
-
-        # read tftpdir directory from database
-        $tftpdir = xCAT::Utils->getTftpDir();
-        if (!(-e $tftpdir))
-        {
-            mkdir($tftpdir);
-        }
-
-        # if request to mount
-        if ($mountdirectory eq "1" || $mountdirectory eq "YES")
-        {
-
-            # check to see if tftp directory already mounted
-            my $mounted = xCAT::Utils->isMounted($tftpdir);
-            if ($mounted == 0)    # not already mounted
-            {
-
-                # need to  mount the directory
-                my $cmd = " mount -o rw,nolock $master:$tftpdir $tftpdir";
-                system $cmd;
-                if ($? > 0)
-                {                 # error
-                    $rc = 1;
-                    xCAT::MsgUtils->message("S", "Error $cmd");
-                }
-            }
+        $tftphost       = $sharedtftp->{value};    # either hostname or yes/no
+        $mountdirectory = $tftphost;
+        $mountdirectory =~ tr/a-z/A-Z/;            # convert to upper
+        if (   $mountdirectory ne "1"
+            && $mountdirectory ne "YES"
+            && $mountdirectory ne "0"
+            && $mountdirectory ne "NO")
+        {                                          # then tftphost is hostname
+                                                   # for the mount
+            $mountdirectory = "1";                 # and we mount the directory
         }
         else
-        {                         #if not mounting, have to regenerate....
-                                  #first, run mknb to get nbfs and such going?
-            my $cmdref;
-            use xCAT_plugin::mknb;
-            for my $architecture ("ppc64", "x86", "x86_64")
+        {
+            $tftphost = $master;                   # will mount master,if req
+        }
+
+    }
+    $stab->close;
+
+    # read tftpdir directory from database
+    $tftpdir = xCAT::Utils->getTftpDir();
+    if (!(-e $tftpdir))
+    {
+        mkdir($tftpdir);
+    }
+
+    # if request to mount
+    if ($mountdirectory eq "1" || $mountdirectory eq "YES")
+    {
+
+        # check to see if tftp directory already mounted
+        my $mounted = xCAT::Utils->isMounted($tftpdir);
+        if ($mounted == 0)    # not already mounted
+        {
+
+            # need to  mount the directory
+            my $cmd = " mount -o rw,nolock $tftphost:$tftpdir $tftpdir";
+            system $cmd;
+            if ($? > 0)
+            {                 # error
+                $rc = 1;
+                xCAT::MsgUtils->message("S", "Error $cmd");
+            }
+        }
+    }
+    else
+    {                         #if not mounting, have to regenerate....
+                              #first, run mknb to get nbfs and such going?
+        my $cmdref;
+        use xCAT_plugin::mknb;
+        for my $architecture ("ppc64", "x86", "x86_64")
+        {
+            unless (-d "$::XCATROOT/share/xcat/netboot/$architecture")
             {
-                unless (-d "$::XCATROOT/share/xcat/netboot/$architecture")
+                next;
+            }
+            $cmdref->{command}->[0] = "mknb";
+            $cmdref->{arg}->[0]     = $architecture;
+            $doreq->($cmdref, \&xCAT::Client::handle_response);
+        }
+
+        #now, run nodeset enact on
+        my $mactab = xCAT::Table->new('mac');
+        my $hmtab  = xCAT::Table->new('noderes');
+        if ($mactab and $hmtab)
+        {
+            my @mentries = ($mactab->getAllNodeAttribs([qw(node mac)]));
+
+            #nodeset fails if no mac entry, filter on discovered nodes first
+            my %netmethods;
+            my @tnodes;
+            foreach (@mentries)
+            {
+                unless (defined $_->{mac}) { next; }
+                push @tnodes, $_->{node};
+            }
+            my %hmhash =
+              %{$hmtab->getNodesAttribs(\@tnodes, [qw(node netboot)])};
+            foreach (@tnodes)
+            {
+                if ($hmhash{$_}->[0]->{netboot})
                 {
-                    next;
+                    push @{$netmethods{$hmhash{$_}->[0]->{netboot}}}, $_;
                 }
-                $cmdref->{command}->[0] = "mknb";
-                $cmdref->{arg}->[0]     = $architecture;
+            }
+            $cmdref->{command}->[0]  = "nodeset";
+            $cmdref->{inittime}->[0] = "1";
+            $cmdref->{arg}->[0]      = "enact";
+            $cmdref->{cwd}->[0]      = "/opt/xcat/sbin";
+            my $plugins_dir = $::XCATROOT . '/lib/perl/xCAT_plugin';
+            foreach my $modname (keys %netmethods)
+            {
+                $cmdref->{node} = $netmethods{$modname};
                 $doreq->($cmdref, \&xCAT::Client::handle_response);
             }
 
-            #now, run nodeset enact on
-            my $mactab = xCAT::Table->new('mac');
-            my $hmtab  = xCAT::Table->new('noderes');
-            if ($mactab and $hmtab)
-            {
-                my @mentries =
-                  ($mactab->getAllNodeAttribs([qw(node mac)]))
-                  ; #nodeset fails if no mac entry, filter on discovered nodes first...
-                my %netmethods;
-                my @tnodes;
-                foreach (@mentries)
-                {
-                    unless (defined $_->{mac}) { next; }
-                    push @tnodes, $_->{node};
-                }
-                my %hmhash =
-                  %{$hmtab->getNodesAttribs(\@tnodes, [qw(node netboot)])};
-                foreach (@tnodes)
-                {
-                    if ($hmhash{$_}->[0]->{netboot})
-                    {
-                        push @{$netmethods{$hmhash{$_}->[0]->{netboot}}}, $_;
-                    }
-                }
-                $cmdref->{command}->[0]  = "nodeset";
-                $cmdref->{inittime}->[0] = "1";
-                $cmdref->{arg}->[0]      = "enact";
-                $cmdref->{cwd}->[0]      = "/opt/xcat/sbin";
-                my $plugins_dir = $::XCATROOT . '/lib/perl/xCAT_plugin';
-                foreach my $modname (keys %netmethods)
-                {
-                    $cmdref->{node} = $netmethods{$modname};
-                    $doreq->($cmdref, \&xCAT::Client::handle_response);
-                }
-
-            }
         }
-
-        # start atftp
-        my $rc = xCAT::Utils->startService("tftpd");
-        if ($rc != 0)
-        {
-            return 1;
-        }
-
     }
-    else
-    {    # no ATFTP
-        xCAT::MsgUtils->message("S", "atftp is not installed");
+
+    # start atftp
+    my $rc = xCAT::Utils->startService("tftpd");
+    if ($rc != 0)
+    {
+        xCAT::MsgUtils->message("S", " Failed to start tftpd.");
         return 1;
     }
 
@@ -1178,12 +1185,12 @@ sub setup_TFTP
 
             # update fstab so that it will restart on reboot
             $cmd =
-              "fgrep \"$master:$tftpdir $tftpdir nfs timeo=14,intr 1 2\" /etc/fstab";
+              "fgrep \"$tftphost:$tftpdir $tftpdir nfs timeo=14,intr 1 2\" /etc/fstab";
             xCAT::Utils->runcmd($cmd, -1);
             if ($::RUNCMD_RC != 0)    # not already there
             {
 
-                `echo "$master:$tftpdir $tftpdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
+                `echo "$tftphost:$tftpdir $tftpdir nfs timeo=14,intr 1 2" >>/etc/fstab`;
             }
         }
     }
