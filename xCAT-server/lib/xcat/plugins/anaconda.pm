@@ -213,7 +213,7 @@ sub mknetboot
     my $stateHash;
     if($statelite){
         $statetab = xCAT::Table->new('statelite',-create=>1);
-        $stateHash = $statetab->getNodeAttribs(\@nodes, ['statemnt']);
+        $stateHash = $statetab->getNodesAttribs(\@nodes, ['statemnt']);
     }
     #my $addkcmdhash =
     #    $bptab->getNodesAttribs(\@nodes, ['addkcmdline']);
