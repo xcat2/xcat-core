@@ -190,10 +190,12 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
 fi
 
 rm -rf /xcatpost/*;
-wget -l inf -nH -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts -P /xcatpost --cut-dirs=2 2> /tmp/wget.log
+wget -l inf -nH -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts -P /xcatpost 2> /tmp/wget.log
+cd /xcatpost; 
+mv postscripts/* ./;
+rm -rf postscripts;
 chmod +x /xcatpost/*; 
 
-cd /xcatpost; 
 PATH=/xcatpost:$PATH
 export PATH
 
