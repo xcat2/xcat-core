@@ -77,13 +77,8 @@ sub copyCertstoSN
         {
             mkdir("/etc/xcat/ca", 0755);
         }
-        if (!(-d "/etc/xcat/ca/certs"))
-        {
-            mkdir("/etc/xcat/ca/certs", 0755);
-        }
         `cp -f -rp /xcatpost/ca/* /etc/xcat/ca`;
         `chmod 0600 /etc/xcat/ca/*`;
-        `chmod 0600 /etc/xcat/ca/certs/*`;
     }
     else
     {
@@ -91,7 +86,7 @@ sub copyCertstoSN
 
     }
     if (xCAT::Utils->isAIX()) { 
-      if (-d "/xcatpost/cert")
+      if (-d "/xcatpost/_xcat")
       {
         if (!(-d "/etc/xcat"))
         {
@@ -106,7 +101,7 @@ sub copyCertstoSN
       }
       else
       {
-        xCAT::MsgUtils->message('S', "/xcatpost/cert directory does not exist\n");
+        xCAT::MsgUtils->message('S', "/xcatpost/_xcat directory does not exist\n");
       }
     }
     return $rc;
