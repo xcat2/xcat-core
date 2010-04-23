@@ -25,7 +25,7 @@ download_postscripts()
     retry=0
     rc=1 
     while [ 0 -eq 0 ]; do
-	wget -l inf -N -r --waitretry=10 --random-wait -T 60 ftp://$server/postscripts 2> /tmp/wget.log
+	wget -l inf -nH -N -r --waitretry=10 --random-wait -T 60 ftp://$server/postscripts -P /xcatpost --cut-dirs=1 2> /tmp/wget.log
         rc=$?
         
 	if [ $rc -eq 0 ]; then
@@ -107,6 +107,12 @@ if [ "$MODE" == "4" ]; then # for statelite mode
 
     if [ -f /opt/xcat/xcatinfo ]; then
         SIP=`cut -d= -f2 /opt/xcat/xcatinfo`;
+        if [ -n "$SIP" ]; then
+            download_postscripts $SIP
+            if [ $? -eq 0 ]; then
+                downloaded=1
+            fi
+        fi
     else
         echo "xCAT management server IP can't be determined.\nexiting...";
         logger -t xCAT "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
@@ -189,8 +195,6 @@ if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
     ln -sf /etc/rc6.d/K10xcatmounts /etc/rc0.d/K10xcatmounts
 fi
 
-rm -rf /xcatpost/*;
-wget -l inf -nH -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$SIP/postscripts -P /xcatpost --cut-dirs=1 2> /tmp/wget.log
 chmod +x /xcatpost/*; 
 
 cd /xcatpost; 
