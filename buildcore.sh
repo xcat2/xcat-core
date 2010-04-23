@@ -29,8 +29,22 @@ UPLOADUSER=bp-sawyers
 
 OSNAME=$(uname)
 
+cd `dirname $0`
+# Strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
+CURDIR=`pwd`
+#D=${CURDIR/\/src\/xcat-core/}
+D=${CURDIR%/src/xcat-core}
+REL=`basename $D`
+
 if [ "$OSNAME" != "AIX" ]; then
 	GSA=http://pokgsa.ibm.com/projects/x/xcat/build/linux
+	
+	# Get a lock, so can not do 2 builds at once
+	exec 8>/var/lock/xcatbld-$REL.lock
+	if ! flock -n 8; then;
+		echo "Can't get lock /var/lock/xcatbld-$REL.lock.  Someone else must be doing a build right now.  Exiting...."
+		exit 1
+	fi
 fi
 
 set -x
@@ -44,13 +58,6 @@ done
 if [ "$OSNAME" != "AIX" ]; then
 	export HOME=/root		# This is so rpm and gpg will know home, even in sudo
 fi
-cd `dirname $0`
-
-# Strip the /src/xcat-core from the end of the dir to get the next dir up and use as the release
-CURDIR=`pwd`
-#D=${CURDIR/\/src\/xcat-core/}
-D=${CURDIR%/src/xcat-core}
-REL=`basename $D`
 
 XCATCORE="xcat-core"
 svn up Version
