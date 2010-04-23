@@ -506,7 +506,7 @@ sub mpaconfig {
         push @cfgtext,@$result;
         next;
       }
-      if ($parameter =~ /^network$/) {
+      elsif ($parameter =~ /^network$/) {
         my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.4',0]);
         push @cfgtext,"MM IP: $data";
         $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.1.1.3',0]);
@@ -517,7 +517,7 @@ sub mpaconfig {
         push @cfgtext,"Subnet Mask: $data";
         next;
       }
-      if ($parameter eq "textid") {
+      elsif ($parameter eq "textid") {
          if ($assignment) {
            my $txtid = ($value =~ /^\*/) ? $node : $value;
            setoid("1.3.6.1.4.1.2.3.51.2.22.1.7.1.1.5",$nodeid,$txtid,'OCTET');
@@ -541,7 +541,7 @@ sub mpaconfig {
             push @cfgtext,"textid: $data";
          }
       }
-      if ($parameter =~ /^snmpcfg$/i) {
+      elsif ($parameter =~ /^snmpcfg$/i) {
          my $data = $session->get(['1.3.6.1.4.1.2.3.51.2.4.9.3.1.6',0]);
          if ($data) {
             push @cfgtext,"SNMP: enabled";
@@ -551,10 +551,11 @@ sub mpaconfig {
          }
          next;
       }
-      if ($parameter eq "snmpdest") {
-         $parameter = "snmpdest1";
-      }
-      if ($parameter =~ /snmpdest(\d+)/) {
+      elsif ($parameter =~ /^snmpdest/ or $parameter eq "snmpdest") {
+         if ($parameter eq "snmpdest") {
+            $parameter = "snmpdest1";
+         }
+         $parameter =~ /snmpdest(\d+)/;
          if ($1 > 3) {
             $returncode |= 1;
             push(@cfgtext,"Only up to three snmp destinations may be defined");
@@ -578,7 +579,7 @@ sub mpaconfig {
          push @cfgtext,"SP SNMP Destination $1: $data";
          next;
       }
-      if ($parameter =~ /^community/i) {
+      elsif ($parameter =~ /^community/i) {
          if ($assignment) {
             setoid("1.3.6.1.4.1.2.3.51.2.4.9.3.1.4.1.1.2.1.1",0,$value,'OCTET');
          }
@@ -586,7 +587,7 @@ sub mpaconfig {
          push @cfgtext,"SP SNMP Community: $data";
          next;
       }
-      if ($parameter =~ /^alert/i) {
+      elsif ($parameter =~ /^alert/i) {
          if ($assignment) {
             if ($value =~ /^enable/i or $value =~ /^en/i or $value =~ /^on$/i) {
                setoid('1.3.6.1.4.1.2.3.51.2.4.1.3.1.1.4',12,'xCAT configured SNMP','OCTET'); #Set a description so the MM doesn't flip out
@@ -603,11 +604,19 @@ sub mpaconfig {
          if ($data == 2) {
             push @cfgtext,"SP Alerting: enabled";
             next;
-         } else {
+         } elsif (defined $data and $data == 0) {
             push @cfgtext,"SP Alerting: disabled";
             next;
+         } else { 
+            $returncode |= 1;
+            push @cfgtext,"Unable to get alert configuration (is SNMP enabled?)";
+            next;
          }
+      } else {
+         $returncode |= 1;
+         push(@cfgtext,"Unrecognized argument $parameter");
       }
+
    }
    unless ($textid) {
      $didchassis=1;
