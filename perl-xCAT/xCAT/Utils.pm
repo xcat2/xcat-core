@@ -4402,24 +4402,6 @@ sub checkCredFiles
         xCAT::MsgUtils->message("I", $rsp, $cb);
     }
 
-    $dir = "/etc/xcat/cert";
-    if (-d $dir)
-    {
-        my $file = "$dir/server-cred.pem";    # from getcredentials
-        if (!(-e $file))
-        {
-
-            my $rsp = {};
-            $rsp->{data}->[0] = "Error: $file is missing. run xcatconfig (no force)";
-            xCAT::MsgUtils->message("I", $rsp, $cb);
-        }
-    }
-    else
-    {
-        my $rsp = {};
-        $rsp->{data}->[0] = "Error: $dir is missing.";
-        xCAT::MsgUtils->message("I", $rsp, $cb);
-    }
 
     $dir = "$installdir/postscripts/ca";
     if (-d $dir)
@@ -4452,39 +4434,6 @@ sub checkCredFiles
         xCAT::MsgUtils->message("I", $rsp, $cb);
     }
 
-    # todo, I think  next release this directory can be removed and
-    # copycerts modified because ca.pem is gotten by getcredentials from
-    # /etc/xcat/cert
-    $dir = "$installdir/postscripts/cert";
-    if (-d $dir)
-    {
-        my $file = "$dir/ca.pem";
-        if (-e $file)
-        {
-            my $file2  = "$dir/*";
-            my $cmd    = "/bin/chmod 0644 $file2";
-            my $outref = xCAT::Utils->runcmd("$cmd", 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "Error on command: $cmd";
-                xCAT::MsgUtils->message("I", $rsp, $cb);
-
-            }
-        }
-        else
-        {    # ca.pem missing
-            my $rsp = {};
-            $rsp->{data}->[0] = "Error: $file is missing. Run xcatconfig (no force)";
-            xCAT::MsgUtils->message("I", $rsp, $cb);
-        }
-    }
-    else
-    {
-        my $rsp = {};
-        $rsp->{data}->[0] = "Error: $dir is missing.";
-        xCAT::MsgUtils->message("I", $rsp, $cb);
-    }
 
     # ssh hostkeys
     $dir = "$installdir/postscripts/hostkeys";
