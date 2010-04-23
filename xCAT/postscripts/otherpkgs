@@ -26,9 +26,11 @@
 # do nothing for diskless deployment case because it is done in the image already
 if [[ $UPDATENODE -ne 1 ]]; then
   if [ "$NODESETSTATE" = "netboot" -o \
+     "$NODESETSTATE" = "statelite" -o \
      "$NODESETSTATE" = "diskless" -o \
      "$NODESETSTATE" = "dataless" ] 
   then
+      echo "  Did not install any extra rpms."
       exit 0
   fi
 fi 

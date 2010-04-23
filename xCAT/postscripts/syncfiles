@@ -22,6 +22,7 @@ fi
 
 # do nothing for diskless deployment case because it is done in the image already
 if [ "$NODESETSTATE" = "netboot" -o \
+     "$NODESETSTATE" = "statelite" -o \
      "$NODESETSTATE" = "diskless" -o \
      "$NODESETSTATE" = "dataless" ] 
 then
