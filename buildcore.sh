@@ -41,7 +41,7 @@ if [ "$OSNAME" != "AIX" ]; then
 	
 	# Get a lock, so can not do 2 builds at once
 	exec 8>/var/lock/xcatbld-$REL.lock
-	if ! flock -n 8; then;
+	if ! flock -n 8; then
 		echo "Can't get lock /var/lock/xcatbld-$REL.lock.  Someone else must be doing a build right now.  Exiting...."
 		exit 1
 	fi
