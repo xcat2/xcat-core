@@ -1292,8 +1292,7 @@ sub genCredentials
     }
     else
     {
-        xCAT::MsgUtils->message('I',
-                 "$cmd succeeded.");
+        verbose  "$cmd succeeded.";
     }
 
     if ((!-d "/etc/xcat/cert") || $::FORCE || $::genCredentials)
@@ -1369,8 +1368,7 @@ sub genCredentials
     }
     else
     {
-        xCAT::MsgUtils->message('I',
-             "Copied $::root/.xcat/ca.pem to $::INSTALLDIR/postscripts/_xcat directory.");
+        verbose  "Copied $::root/.xcat/ca.pem to $::INSTALLDIR/postscripts/_xcat directory.";
     }
 }
 
