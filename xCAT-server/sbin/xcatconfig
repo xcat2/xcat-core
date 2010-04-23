@@ -1158,6 +1158,19 @@ sub initDB
                 verbose("Updated postscripts definition.");
             }
         }
+        # remove any xcatdefaults node in nodelist
+        # leave to cleanup from previous bug
+        my $rmdefault="$::XCATROOT/sbin/chtab -d node=xcatdefaults nodelist";
+        my $outref = xCAT::Utils->runcmd("$rmdefault", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E',
+                                    "Could not remove xcatdefaults.");
+        }
+        else
+        {
+            verbose("Removed xcatdefaults.");
+        }
 
     }
 }    # end initial DB install setup
