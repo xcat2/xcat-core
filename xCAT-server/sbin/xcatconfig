@@ -987,7 +987,7 @@ sub initDB
         #  0 = does not exist
         #  1 = exists in postscripts
         #  2 = exists in postbootscripts
-        my $otherpkgsexist     = &checkotherpkgs;
+        my ($otherpkgsexist,undef,undef)     = &checkotherpkgs;
         my $otherpkgsprocessed = 0;
 
         my $chtabcmds = "";
@@ -1131,33 +1131,32 @@ sub initDB
         #  0 = does not exist
         #  1 = exists in postscripts
         #  2 = exists in postbootscripts
-        my $otherpkgsexist = &checkotherpkgs;
+        my ($otherpkgsexist, $post, $postboot) = &checkotherpkgs;
         my $chdefcmds ="";
-        if (($otherpkgsexist == 1) || ($otherpkgsexist == 2))
-        {    # otherpkgs already in postscripts or in postbootscripts
-            $chdefcmds =
-              "$::XCATROOT/bin/chdef -t node -o xcatdefaults -p postscripts='syncfiles'";
+        if ($otherpkgsexist == 0) {
+            $postboot .= ",otherpkgs";
+            $postboot =~ s/^,//;
+            $chdefcmds = "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postbootscripts=$postboot;";
         }
-        else
-        {    # else otherpkgs does not exist
-            if ($otherpkgsexist == 0)
-            {    #  put in postbootscripts
-                $chdefcmds =
-                  "$::XCATROOT/bin/chdef -t node -o xcatdefaults -p postbootscripts='otherpkgs';";
-            $chdefcmds .=
-              "$::XCATROOT/bin/chdef -t node -o xcatdefaults -p postscripts='syncfiles'";
 
-            } 
+        my @values = split(',', $post);
+        if (! grep /^syncfiles$/, @values) {
+            $post .= ",syncfiles";
+            $post =~ s/^,//;
+            $chdefcmds .= "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts=$post";
         }
-        my $outref = xCAT::Utils->runcmd("$chdefcmds", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E',
+
+        if ($chdefcmds ne "") {
+            my $outref = xCAT::Utils->runcmd("$chdefcmds", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E',
                                     "Could not update postscripts definition.");
-        }
-        else
-        {
-            verbose("Updated postscripts definition.");
+            }
+            else
+            {
+                verbose("Updated postscripts definition.");
+            }
         }
 
     }
@@ -1169,9 +1168,11 @@ sub initDB
 	
     Check to see if other pkgs exists in postscripts table.
 	If it does not we will be putting it in postbootscripts
-	  return 0 does not exist
-	  return 1 exists  in postscripts
-	  return 2 exists in postbootscripts
+          retrun (exist_flag, post_value, postboot_value)
+
+	  exist_flag = 0 does not exist
+	  exist_flag = 1 exists  in postscripts
+	  exist_flag = 2 exists in postbootscripts
 
 =cut
 
@@ -1182,14 +1183,16 @@ sub checkotherpkgs
     my $otherpkgsexist = 0;
     my $postscriptstab  = xCAT::Table->new('postscripts');
     my $attr            = "xcatdefaults";
-    my @values;
+    my $post_value = "";
+    my $postboot_value = "";
+
     if ($postscriptstab)
     {
         my $ref = $postscriptstab->getAttribs({node => $attr}, 'postscripts');
         if ($ref)
         {
-            @values = $ref->{postscripts};
-            if (grep(/otherpkgs/, @values))
+            $post_value = $ref->{postscripts};
+            if (grep(/otherpkgs/, $post_value))
             {
                 $otherpkgsexist = 1;
             }
@@ -1202,8 +1205,8 @@ sub checkotherpkgs
               $postscriptstab->getAttribs({node => $attr}, 'postbootscripts');
             if ($ref)
             {
-                @values = $ref->{postscripts};
-                if (grep(/otherpkgs/, @values))
+                $postboot_value = $ref->{postbootscripts};
+                if (grep(/otherpkgs/, $postboot_value))
                 {
                     $otherpkgsexist = 2;
                 }
@@ -1211,7 +1214,7 @@ sub checkotherpkgs
 
         }
     }
-    return $otherpkgsexist;
+    return ($otherpkgsexist,$post_value,$postboot_value);
 }
 
 #-----------------------------------------------------------------------------
