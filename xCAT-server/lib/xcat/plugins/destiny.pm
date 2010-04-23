@@ -148,11 +148,10 @@ sub setdestiny {
         my $updateattribs;
         if ($target) {
             my $archentries = $nodetypetable->getNodesAttribs($req->{node},['supportedarchs']);
-            if ($target =~ /^([^-]*)-([^-]*)-([^-]*)-(.*)/) {
+            if ($target =~ /^([^-]*)-([^-]*)-(.*)/) {
                 $updateattribs->{os}=$1;
                 $updateattribs->{arch}=$2;
-                $updateattribs->{provmethod}=$3;
-                $updateattribs->{profile}=$4;
+                $updateattribs->{profile}=$3;
                 my $nodearch=$2;
                 foreach (@{$req->{node}}) {
                     if ($archentries->{$_}->[0]->{supportedarchs} and $archentries->{$_}->[0]->{supportedarchs} !~ /(^|,)$nodearch(\z|,)/) {
