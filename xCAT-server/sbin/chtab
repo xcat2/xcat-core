@@ -50,7 +50,8 @@ if ($::HELP) { &usage; exit(0);}
 # display the version statement if -v or --verison is specified
 if ($::VERSION)
 {
-  print "chtab version 2.0\n";
+  my $version = xCAT::Utils->Version();
+  print "chtab $version\n";
   exit(0);
 }
 
@@ -101,17 +102,50 @@ else {
 	my $table;
 	my $column;
 	my $value;
+
 	($table,$temp) = split('\.',$_,2);
-	($column,$value) = split("=",$temp,2);
-    unless ($tables{$table}) {
-	my $tab = xCAT::Table->new($table,-create => 1,-autocommit => 0);
-	if ($tab) {
-	    $tables{$table}=$tab;
-	} else {
-	    print "Table $table does not exist.\n";
-	    exit(1);
-	}
-    }
+
+    #try to create the entry if it doesn't exist
+      unless ($tables{$table}) {
+          my $tab = xCAT::Table->new($table,-create => 1,-autocommit => 0);
+	  if ($tab) {
+	      $tables{$table}=$tab;
+	  } else {
+	      print "Table $table does not exist.\n";
+	      exit(1);
+	  }
+        }
+
+        #splice assignment
+	if(grep /\+=/, $temp) {
+            ($column,$value) = split('\+=',$temp,2);
+
+            #grab the current values to check against
+            my ($attrHash) = $tables{$table}->getAttribs(\%keyhash, $column);
+            my @existing = split(",",$attrHash->{$column});
+
+            #if it has values, merge the new and old ones together so no dupes
+            if (@existing) {
+                my @values = split(",",$value);
+                my %seen = ();
+                my @uniq = ();
+                my $item;
+
+                foreach $item (@existing,@values) {
+                    unless ($seen{$item}) {
+                        # if we get here, we have not seen it before
+                        $seen{$item} = 1;
+                        push(@uniq, $item);
+                    }
+                }
+                $value = join(",",@uniq);
+            }
+        }
+        #normal non-splicing assignment
+	else {
+            ($column,$value) = split("=",$temp,2);
+        }
+
     $tableupdates{$table}{$column}=$value;
   }
   
