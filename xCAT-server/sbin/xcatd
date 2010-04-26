@@ -721,7 +721,7 @@ sub plugin_command {
   } elsif ($req->{noderange} and $req->{noderange}->[0]) {
     @nodes = noderange($req->{noderange}->[0]);
     if (nodesmissed) {
-      my $rsp = {errorcode=>1,error=>"Invalid nodes in noderange:".join(',',nodesmissed)};
+      my $rsp = {errorcode=>1,error=>"Invalid nodes and/or groups in noderange: ".join(',',nodesmissed)};
      $rsp->{serverdone} = {};
       if ($sock) {
         print $sock XMLout($rsp,RootName=>'xcatresponse' ,NoAttr=>1);
