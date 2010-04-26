@@ -77,14 +77,14 @@ NEEDVETH=0;
 for dir in /proc/device-tree/vdevice/l-lan*; do
     if [ -d $dir ]; then NEEDVETH=1; fi
 done
-if [ $NEEDVETH ==  1 ]; then
+if [ $NEEDVETH =  1 ]; then
 	modprobe ibmveth
 fi
 NEEDEHEA=0;
 for dir in /proc/device-tree/lhea*; do
     if [ -d $dir ]; then NEEDEHEA=1; fi
 done
-if [ $NEEDEHEA == 1 ]; then
+if [ $NEEDEHEA = 1 ]; then
 		    modprobe ehea
 fi
 
@@ -96,10 +96,10 @@ done
 
 
 
-let extrat=0
-until [ $extrat == 80 -o -z "$NICSTOWAIT" ]; do
+((extrat=0))
+until [ $extrat = 80 -o -z "$NICSTOWAIT" ]; do
    sleep 1
-   let extrat=extrat+1
+   ((extrat=extrat+1))
    for nic in $NICSTOWAIT; do 
       if ifconfig $nic|grep "inet addr"; then
          NICSTOWAIT=`echo $NICSTOWAIT|sed -e s/$nic//`
@@ -107,7 +107,7 @@ until [ $extrat == 80 -o -z "$NICSTOWAIT" ]; do
             echo "Warning: $nic took more than 45 seconds to receive DHCP reply, spanning-tree may not be configured well, examine switch configuration" >> /etc/motd
             echo "Warning: $nic took more than 45 seconds to receive DHCP reply, spanning-tree may not be configured well, examine switch configuration"
          fi
-      elif [ $extrat == 15 ]; then
+      elif [ $extrat = 15 ]; then
             if ethtool $nic | grep "Link detected: no"; then
                echo "$nic did not have any link when bringing up network"
                echo "$nic did not have any link when bringing up network" >> /etc/motd
