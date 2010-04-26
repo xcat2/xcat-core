@@ -20,7 +20,19 @@ unless (GetOptions(
     usage;
     exit 1;
 }
-my $noderange=join(',',@ARGV);
+my $arraysize=@ARGV;
+if ($arraysize > 1) {
+    print "noderange invalid\n";
+    usage;
+    exit 1;
+}
+if ($arraysize == 0) {
+    print "noderange not supplied\n";
+    usage;
+    exit 1;
+}
+my $noderange=@ARGV[0];
+
 my $nodechline = "";
 if ($OSVER) {
     $nodechline = "nodetype.os=$OSVER";
