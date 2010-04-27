@@ -104,7 +104,7 @@ litefile => {
 	required => [qw(file)], # default type is rw nfsroot   
 	table_desc => 'The litefile table specifies the directories and files on the statelite nodes that should be readwrite, persistent, or readonly overlay.  All other files in the statelite nodes come from the readonly statelite image.',        
 	descriptions => {
-		image => "The name of the image that will use these files, as specified in the osimage table.  If image is not supplied, the default is 'ALL'. 'ALL' means use it for all images.",
+		image => "The name of the image that will use these files, as specified in the osimage table. 'ALL' means use it for all images.",
 		file => "The full pathname of the file. e.g: /etc/hosts.  If the path is a directory, then it should be terminated with a '/'. ",
 		options => "Options for the file:\n\n".
 			" blank, tmpfs, or ALL - the file is readwrite and will be placed in tmpfs on the booted node.  When searching for the file, the first one to be found in the litetree hierarchy will be used.  When the node is rebooted, this file will be reinitialized.\n\n".
