@@ -612,6 +612,19 @@ sub mkinstall
 			    $img_hash{$imagename}->{pkgdir}=$ref1->{'pkgdir'};
 			}
 		    }
+		    # if the install template wasn't found, then lets look for it in the default locations.
+		    unless($img_hash{$imagename}->{template}){
+	                my $pltfrm=xCAT_plugin::anaconda::getplatform($ref->{'osvers'});
+	    		my $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$pltfrm", 
+		 			$ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+	    		if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$pltfrm", 
+		 			$ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+					 }
+			# if we managed to find it, put it in the hash:
+			if($tmplfile){
+			    $img_hash{$imagename}->{template}=$tmplfile;
+			}
+		    }
 		} else {
 		    $callback->(
 			{error     => ["The os image $imagename does not exists on the osimage table for $node"],
