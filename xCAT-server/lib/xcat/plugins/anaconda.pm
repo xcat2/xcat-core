@@ -1239,9 +1239,7 @@ sub setupNFSTree {
         my $nfsdirectory = $2;
 
         if($nfsserver eq $sip) { # on the service node
-            if (-d $nfsdirectory) {
-                # nothing to do
-            } else {
+            unless (-d $nfsdirectory) {
                 if (-e $nfsdirectory) {
                     unlink $nfsdirectory;
                 }
@@ -1261,9 +1259,7 @@ sub setupNFSTree {
                 $callback->({data=>["now $nfsdirectory is exported!"]});
                 $cmd = "cat /etc/exports";
                 @entries = xCAT::Utils->runcmd($cmd, 0);
-                if(my $entry = grep /\Q$nfsdirectory\E/, @entries) {
-                    # nothing to do
-                }else {
+                unless (my $entry = grep /\Q$nfsdirectory\E/, @entries) {
                     # if no entry in /etc/exports, one entry with default options will be added
                     $cmd = qq{echo "$nfsdirectory *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports};
                     xCAT::Utils->runcmd($cmd, 0);
@@ -1284,9 +1280,7 @@ sub setupStatemnt {
     my $nfsdirectory = $2;
 
     if($sip eq inet_ntoa(inet_aton($nfsserver))) {
-        if (-d $nfsdirectory) {
-            # nothing to do
-        } else {
+        unless (-d $nfsdirectory) {
             if (-e $nfsdirectory) {
                 unlink $nfsdirectory;
             }
@@ -1306,9 +1300,7 @@ sub setupStatemnt {
             $cmd = "cat /etc/exports";
             @entries = xCAT::Utils->runcmd($cmd, 0);
             if(my $entry = grep /\Q$nfsdirectory\E/, @entries) {
-                if ($entry =~ m/rw/) {
-                    # nothing to do
-                } else {
+                unless ($entry =~ m/rw/) {
                     $callback->({data => ["The $nfsdirectory should be with rw option in /etc/exports"]});
                 }
             } else {
