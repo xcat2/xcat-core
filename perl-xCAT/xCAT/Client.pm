@@ -156,6 +156,7 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
      }
   }
   my $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
+  if ($ENV{XCATXMLTRACE}) { print $msg; }
   $SIG{TERM} =  $SIG{INT} = sub { print $client XMLout({abortcommand=>1},RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]); exit 0; };
   print $client $msg;
   my $response;
@@ -167,6 +168,7 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
       #replace ESC with xxxxESCxxx because XMLin cannot handle it
       $response =~ s/\e/xxxxESCxxxx/g;
 
+       if ($ENV{XCATXMLTRACE}) { print $response; }
       $rsp = XMLin($response,SuppressEmpty=>undef,ForceArray=>1);
 
       #add ESC back
