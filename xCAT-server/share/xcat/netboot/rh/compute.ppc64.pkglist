@@ -13,3 +13,4 @@ sysklogd
 rpm
 rsync
 ppc64-utils
+iputils

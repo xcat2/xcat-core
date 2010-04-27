@@ -30,3 +30,4 @@ net-snmp-perl
 ntp
 rsync
 ppc64-utils
+iputils
