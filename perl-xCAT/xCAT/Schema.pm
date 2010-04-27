@@ -42,11 +42,11 @@ statelite => {
 	cols => [qw(node image statemnt comments disable)],
 	keys => [qw(node)],
 	required => [qw(node statemnt)],
-	table_desc => 'The location on an NFS server where node persistent files are stored.  Any file marked persistent in the litefile table will be stored in the location specified in this table for that node.',
+	table_desc => 'The location on an NFS server where a nodes persistent files are stored.  Any file marked persistent in the litefile table will be stored in the location specified in this table for that node.',
 	descriptions => {
 		node => 'The name of the node or group that will use this location.',
-		image => 'The name of the image that should use this location, as specified in the osimage table.  This can be left blank or have a value of ALL for all images, or have the specific image name listed: nodetype.os-nodetype.arch-nodetype.profile',
-		statemnt => "The persistant read/write area where a node's persistent files will be written to, e.g: 10.0.0.1/state/.  The node name will be automatically added to the pathname, so in reality, 10.0.0.1:/state, will become 10.0.0.1:/state/<nodename>",
+		image => "The name of the image that will use this location, as specified in the osimage table.  If image is not supplied, the default is 'ALL'. 'ALL' means use it for all images.",
+		statemnt => "The persistant read/write area where a node's persistent files will be written to, e.g: 10.0.0.1/state/.  The node name will be automatically added to the pathname, so 10.0.0.1:/state, will become 10.0.0.1:/state/<nodename>.",
 		comments => 'Any user-written notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",
 	},
@@ -90,9 +90,9 @@ litetree => {
 	required => [qw(priority directory)],
 	table_desc => 'Directory hierarchy to traverse to get the initial contents of node files.  The files that are specified in the litefile table are searched for in the directories specified in this table.',        
 	descriptions => {
-		priority => 'Controls what order the directories are searched in.  Directories are searched from smallest priority number to largest.',
-		image => "The name of the image that will use this directory, as specified in the osimage table.  'ALL' means use it for every image.",
-		directory => 'The location (hostname and path) of a sparsely populated directory that contains some of the files specified in the litefile table.  Variables are allowed.  E.g: $noderes.nfsserver://xcatmasternode/install/$node/#CMD=uname-r#/',
+		priority => 'This number controls what order the directories are searched.  Directories are searched from smallest priority number to largest.',
+		image => "The name of the image that will use this directory, as specified in the osimage table.  If image is not supplied, the default is 'ALL'. 'ALL' means use it for all images.",
+		directory => 'The location (hostname:path) of a directory that contains files specified in the litefile table.  Variables are allowed.  E.g: $noderes.nfsserver://xcatmasternode/install/$node/#CMD=uname-r#/',
 		comments => 'Any user-written notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",      
 	},
@@ -104,14 +104,16 @@ litefile => {
 	required => [qw(file)], # default type is rw nfsroot   
 	table_desc => 'The litefile table specifies the directories and files on the statelite nodes that should be readwrite, persistent, or readonly overlay.  All other files in the statelite nodes come from the readonly statelite image.',        
 	descriptions => {
-		image => "The name of the image that will use these files, as specified in the osimage table.  Leave blank or set to 'ALL' for this value to apply to all images.",            
-		file => 'The full pathname of the file. e.g: /etc/hosts.  If the path is a directory, then it should be terminated with a ‘/’.',
+		image => "The name of the image that will use these files, as specified in the osimage table.  If image is not supplied, the default is 'ALL'. 'ALL' means use it for all images.",
+		file => "The full pathname of the file. e.g: /etc/hosts.  If the path is a directory, then it should be terminated with a '/'. ",
 		options => "Options for the file:\n\n".
-			" <empty>, tmpfs, or ALL - the file is readwrite and will be placed in tmpfs on the booted node.  When searching for the file, the first one to be found in the litetree hierarchy will be used.  When the node is rebooted, this file will be reinitialized.\n\n".
-			" con - The contents of the pathname are concatenated onto the contents of the existing file.  For this directive the searching in the litetree hierarchy does not stop when the first match is found.  Con is similar to tmpfs, but all files found in the hierarchy will be concatenated to the file when found.\n\n".
-			" persistent - This means that the file is readwrite and will be persistent across reboots.  If the file does not exist at first, it will be created during initialization.  Every time there after the file will be left alone if it exists.  (Requires the statelite table to be filled out with a spot for persistent storage).\n\n".
+			" blank, tmpfs, or ALL - the file is readwrite and will be placed in tmpfs on the booted node.  When searching for the file, the first one to be found in the litetree hierarchy will be used.  When the node is rebooted, this file will be reinitialized.\n\n".
+                        " bind instead of using symbolic links, 'mount --bind' is used to mount the file to the root image, and the permission for the file will be the same as the original.\n\n".
+                        " bind,persistent - the file will be persistent across reboots, and the file will be mounted with '--bind' option. \n\n".
+			" con - The contents of the pathname are concatenated to the contents of the existing file.  For this directive the searching in the litetree hierarchy does not stop when the first match is found.  Con is similar to tmpfs, but all files found in the hierarchy will be concatenated to the file when found.\n\n".
+			" persistent - This means that the file is readwrite and will be persistent across reboots.  If the file does not exist at first, it will be created during initialization.   If the file exists, it will be left alone.  (Requires the statelite table to be filled out with a spot for persistent storage).\n\n".
 			" persistent,con - readwrite file that is concatenated initially and then placed in the persistent mount point.\n\n".
-			" ro - file  will be read only.   Generally this means that it will be linked to some place in the directory hierarchy specified in the litetree table.  (Need more detail here??)",
+			" ro - file  will be read only.   This file will be located in the directory hierarchy specified in the litetree table.  The directory will be mounted on the node while the node is running (not just during the boot process), and the file will be linked to this directory.  Changes made to this file on the server will be immediately seen in this file on the node.",
 		comments => 'Any user-written notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",
         }
