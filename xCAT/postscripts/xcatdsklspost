@@ -291,9 +291,9 @@ TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ s/\(.*\)/run_ps \1/;s/
 echo "
 # subroutine used to run postscripts
 run_ps () {
- logdir=\"var/log/xcat\"
+ logdir=\"/var/log/xcat\"
  mkdir -p \$logdir
- logfile=\"var/log/xcat/xcat.log\"
+ logfile=\"/var/log/xcat/xcat.log\"
  
  if [[ -f \$1 ]]; then 
   echo \"Running postscript: \$1\" | tee -a \$logfile
