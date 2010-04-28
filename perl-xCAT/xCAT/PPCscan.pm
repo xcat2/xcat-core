@@ -21,8 +21,7 @@ my @header = (
     ["id",            "%-8s" ],
     ["type-model",    "%-12s" ],
     ["serial-number", "%-15s" ],
-    ["side",          "%-6s" ],
-    ["address",       "%s\n" ]);
+    ["side",          "%-6s\n" ]);
 
 my @attribs = qw(nodetype node id mtm serial side hcp pprofile parent groups mgt cons);
 my %nodetype = (

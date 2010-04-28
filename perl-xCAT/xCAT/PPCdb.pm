@@ -199,7 +199,7 @@ sub update_ppc {
     my $hwtype   = shift;
     my $values   = shift;
     my $not_overwrite = shift;
-    my @tabs     = qw(ppc vpd nodehm nodelist nodetype ppcdirect hosts); 
+    my @tabs     = qw(ppc vpd nodehm nodelist nodetype ppcdirect hosts mac); 
     my %db       = ();
     my %nodetype = (
         fsp  => $::NODETYPE_FSP,
@@ -224,6 +224,8 @@ sub update_ppc {
     my @ppclist = $db{ppc}->getAllNodeAttribs(['node','hcp','id',
                                                'pprofile','parent','supernode',
                                                'comments', 'disable']);
+    my @maclist = $db{mac}->getAllNodeAttribs(['node','mac']);
+
     ###################################
     # Update FSP in tables 
     ###################################
@@ -247,7 +249,6 @@ sub update_ppc {
             if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
             {
                 $predefined_node = $vpdent->{node};
-print "TEST:prefdefined_node=$predefined_node\n";
                 if ( $predefined_node =~ /-B$/ ) {
                     $name = $name . "-B";
                 }
@@ -453,14 +454,29 @@ sub update_node_attribs
     ###########################
     # Update hosts table
     ###########################
-    my $hostslisthash = $db->{hosts}->getNodeAttribs( $predefined_node, [qw(ip)]);
+    my $hostslisthash = $db->{hosts}->getNodeAttribs( $predefined_node, [qw(ip otherinterfaces)]);
     if ( $namediff )
     {
         $db->{hosts}->delEntries( $key_col);
-        $db->{hosts}->setNodeAttribs( $name,{ip=>$ips} );
+        $db->{hosts}->setNodeAttribs( $name,{ip=>$ips,
+                                             otherinterfaces=>$hostslisthash->{otherinterfaces}
+                                            } );
         $db->{hosts}->{commit} = 1;
         $updated = 1;
     }
+
+    ###########################
+    # Update mac table
+    ###########################
+    my $maclisthash = $db->{mac}->getNodeAttribs( $predefined_node, [qw(mac)]);
+    if ( $namediff )
+    {
+        $db->{mac}->delEntries( $key_col);
+        $db->{mac}->setNodeAttribs( $name,{mac=>$maclisthash->{mac}} );
+        $db->{mac}->{commit} = 1;
+        $updated = 1;
+    }
+
     return $updated;
 }
 
