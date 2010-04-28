@@ -96,10 +96,10 @@ done
 
 
 
-((extrat=0))
+extrat=0
 until [ $extrat = 80 -o -z "$NICSTOWAIT" ]; do
    sleep 1
-   ((extrat=extrat+1))
+   extrat=$(($extrat+1))
    for nic in $NICSTOWAIT; do 
       if ifconfig $nic|grep "inet addr"; then
          NICSTOWAIT=`echo $NICSTOWAIT|sed -e s/$nic//`
