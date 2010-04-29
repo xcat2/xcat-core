@@ -85,6 +85,7 @@ foreach my $num ( @nums ) {
         my $openibd_start_cmd = "/sbin/service openibd start";
         runcmd($openibd_start_cmd);
 
+        sleep(5);
         runcmd("ifup $nic");
         system("logger -t xcat 'configiba: successfully configured $nic.'");
     } elsif ( $PLTFRM eq "AIX" ) {
