@@ -15,6 +15,7 @@ text, and then writes changes back to the database table.  The table is flattene
 (comma separated values) format file before giving it to the editor.  After the editor is
 exited, the CSV file will be translated back into the database format.
 You may not tabedit the auditlog or eventlog because indexes will be regenerated.
+Use tabprune command to edit auditlog and eventlog.
 
 =head1 OPTIONS
 
