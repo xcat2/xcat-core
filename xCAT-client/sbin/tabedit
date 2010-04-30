@@ -1,8 +1,7 @@
 #!/bin/sh
-#test
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-# Opens the specified table in the users editor and writes changes back to the db
+# Opens the specified table in the users editor;writes changes back to the db
 
 function cexit {
   if [ -d /tmp/tabedit.$$ ]; then
@@ -18,6 +17,11 @@ if [ -r /etc/profile.d/xcat.sh ]; then
 fi
 
 TABLE=$1
+
+if [ $TABLE = "eventlog" ]  || [ $TABLE = "auditlog" ]; then
+    echo "The auditlog and eventlog tables may not be edited. Editing will cause index regeneration.";
+    exit 1
+fi
 if [ -z "$TABEDITOR" ]; then
   TABEDITOR=$EDITOR
 fi
