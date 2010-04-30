@@ -14,6 +14,7 @@ The tabedit command opens the specified table in the user's editor, allows them 
 text, and then writes changes back to the database table.  The table is flattened into a CSV
 (comma separated values) format file before giving it to the editor.  After the editor is
 exited, the CSV file will be translated back into the database format.
+You may not tabedit the auditlog or eventlog because indexes will be regenerated.
 
 =head1 OPTIONS
 
