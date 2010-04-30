@@ -69,7 +69,7 @@ sub parse_args
 {
     my $msg;
     my  $usagemsg =
-          " dumpxCATdb -h \n dumpxCATdb -v \n dumpxCATdb [-V] [-p] [path to dump directory]\n";
+          " dumpxCATdb -h \n dumpxCATdb -v \n dumpxCATdb [-V] <-p> [path to dump directory]\n";
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");

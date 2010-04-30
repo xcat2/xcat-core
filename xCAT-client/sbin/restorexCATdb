@@ -15,6 +15,7 @@ use lib "$::XCATROOT/lib/perl";
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Utils;
+use strict;
 
 #-----------------------------------------------------------------------------
 
@@ -49,11 +50,22 @@ foreach my $table (@files)
         my $tablename = $::PATH;
         $tablename .= "/";
         $tablename .= $table;
-        $cmd = "tabrestore $tablename";
+        if ( (!$::ALL) && (($table =~ /^eventlog/) || ($table =~ /^auditlog/))) {
+            
+          if ($::VERBOSEREST) {
+            xCAT::MsgUtils->message("I", "Skipping $table\n");
+          }
+          next;
+        }
+        my $cmd = "tabrestore $tablename";
         my @errout = xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {    # error
             xCAT::MsgUtils->message("E", "Error running $cmd, @errout\n");
+        } else {
+          if ($::VERBOSEREST) {
+            xCAT::MsgUtils->message("I", "Restoring $table.\n");
+          }
         }
     }
 }
@@ -72,28 +84,27 @@ exit $rc;
 sub parse_args
 {
     my $msg;
-    my $usagemsg;
+    my    $usagemsg =
+          " restorexCATdb  -h \n restorexCATdb -v \n restorexCATdb [-a] [-V] <-p> [path to restore .csv files]\n";
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
     if (
         !GetOptions(
+            'a|all'  => \$::ALL,
             'p|path=s'  => \$::PATH,
             'h|help'    => \$::HELP,
+            'V|verbose'    => \$::VERBOSEREST,
             'v|version' => \$::VERSION
 
         )
       )
     {
-        $usagemsg =
-          " restorexCATdb -h \n restorexCATdb -v \n restorexCATdb [-p] [path to restore .csv files]\n";
         xCAT::MsgUtils->message("E", $usagemsg);
         exit 1;
     }
     if ($::HELP)
     {
-        $usagemsg =
-          " restorexCATdb -h \n restorexCATdb -v \n restorexCATdb [-p] [path to restore .csv files]\n";
         xCAT::MsgUtils->message("I", $usagemsg);
         exit 0;
     }
