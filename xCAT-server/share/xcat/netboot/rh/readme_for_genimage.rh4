@@ -1,0 +1,81 @@
+README for RHELS4.8 (diskless & statelite support)
+
+I will take x86_64 as the arch in the following.
+
+1) Prepare the ISO images
+Get the DVD or CDs for RHELS AS 4.8 (which is what I am using).
+Run the command "copycds <imagepath>";
+Then, you can find the directory "/install/rhas4.8/x86_64" is created, which holds the contents of RHELS AS 4.8;
+
+2) Prepare the rpm packages related with "yum" and "createrepo"
+Since RHEL4.x doesn't provide the "yum" utils, we need to find some third-party builds of "rpm" and "createrepo";
+The rpm packages include:
+	createrepo-0.4.6-1.el4.rf.noarch.rpm
+	python-elementtree-1.2.6-7.el4.rf.x86_64.rpm
+	python-sqlite-1.1.7-0.1.2.2.el4.x86_64.rpm
+	python-urlgrabber-2.9.6-1.2.el4.rf.noarch.rpm
+	redhat-yumconf-4-4.8.el4.nosrc.rpm
+	sqlite-3.3.6-0.3.el4.x86_64.rpm
+	yum-2.4.2-0.4.el4.rf.noarch.rpm
+You can find them from some websites including "DAG"; for convienice, there's one webpage to tell us where to get the rpm packages, it is here:
+	http://www.eth0.us/yum-rhel
+It will be easy to install "yum" and "createrepo" following the guide.
+
+3) Create yum repository for RHELS4.8
+We need to generate the repodata for the "/install/rhas4.8/x86_64" directory, so we should run the following command
+	"createrepo /install/rhas4.8/x86_64";
+
+After the above 3 steps are done, the repository for RHELS4.8 x86_64 will be generated, and we can generate the diskless or statelite images with the common steps, please use "genimage.rh4" as the "genimage" command, 
+for example, 
+	./genimage.rh4 -i eth0 -n bnx2 -o rhas4.8 -p compute -a x86_64 -m statelite
+	
+There's also one .pkglist file for RHAS4.8, I name it as "compute.rhas4.pkglist".
+
+Specically for statelite, make sure the following entries are in the litefile table:
+		#image,file,options,comments,disable
+		"ALL","/etc/adjtime",,,
+		"ALL","/etc/fstab",,,
+		"ALL","/etc/inittab",,,
+		"ALL","/etc/lvm/.cache",,,
+		"ALL","/etc/mtab",,,
+		"ALL","/etc/ntp.conf",,,
+		"ALL","/etc/ntp.conf.predhclient",,,
+		"ALL","/etc/resolv.conf",,,
+		"ALL","/etc/resolv.conf.predhclient",,,
+		"ALL","/etc/ssh/",,,
+		"ALL","/tmp/",,,
+		"ALL","/var/account/",,,
+		"ALL","/var/arpwatch",,,
+		"ALL","/var/cache/alchemist",,,
+		"ALL","/var/cache/foomatic/",,,
+		"ALL","/var/cache/logwatch/",,,
+		"ALL","/var/cache/man/",,,
+		"ALL","/var/cache/mod_ssl/",,,
+		"ALL","/var/cache/mod_proxy/",,,
+		"ALL","/var/cache/php-pear/",,,
+		"ALL","/var/cache/systemtap/",,,
+		"ALL","/var/empty/",,,
+		"ALL","/var/db/nscd/",,,
+		"ALL","/var/gdm/",,,
+		"ALL","/var/lib/dav/",,,
+		"ALL","/var/lib/dhcp/",,,
+		"ALL","/var/lib/dhclient/",,,
+		"ALL","/var/lib/php/",,,
+		"ALL","/var/lib/scsi/",,,
+		"ALL","/var/lib/ups/",,,
+		"ALL","/var/lib/random-seed",,,
+		"ALL","/var/lib/iscsi",,,
+		"ALL","/var/lib/logrotate.status",,,
+		"ALL","/var/lib/ntp/",,,
+		"ALL","/var/lib/xen/ntp",,,
+		"ALL","/var/lock/","bind",,
+		"ALL","/var/log/","bind",,
+		"ALL","/var/run/",,,
+		"ALL","/var/tmp/",,,
+		"ALL","/var/tux/",,,
+		"ALL","/opt/xcat/",,,
+		"ALL","/xcatpost/",,,
+		"ALL","/etc/syslog.conf",,,
+		"ALL","/etc/exports",,,
+		"ALL","/root/.ssh/","bind",,
+ 
