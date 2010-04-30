@@ -15,6 +15,7 @@ use lib "$::XCATROOT/lib/perl";
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Utils;
+use strict;
 
 #-----------------------------------------------------------------------------
 
