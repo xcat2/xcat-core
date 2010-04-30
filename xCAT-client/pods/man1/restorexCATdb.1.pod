@@ -4,7 +4,7 @@ B<restorexCATdb> - restores the xCAT db tables .
 
 =head1 SYNOPSIS
 
-B<restorexCATdb> [{B<-p>|B<--path>} I<path>]
+B<restorexCATdb> [B<-a>] [B<-V>] [{B<-p>|B<--path>} I<path>]
 
 B<restorexCATdb> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
@@ -19,6 +19,11 @@ The restorexCATdb command restores the xCAT database tables from the directory g
 B<-h>          Display usage message.
 
 B<-v>          Command Version.
+
+B<-V>          Verbose.
+
+B<-a>          All,without this flag the eventlog and auditlog will be skipped. 
+These tables are skipped by default because restoring will generate new indexes.  
 
 B<-p>          Path to the directory containing the database restore files.
 
@@ -35,6 +40,9 @@ B<-p>          Path to the directory containing the database restore files.
 
 B<restorexCATdb -p /tmp/db>
 
+2. To restore the xCAT database including auditlog and eventlog from the /tmp/db directory, enter:
+
+B<restorexCATdb -a -p /tmp/db>
 
 
 =head1 FILES

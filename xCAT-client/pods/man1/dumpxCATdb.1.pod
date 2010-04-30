@@ -4,7 +4,7 @@ B<dumpxCATdb> - dumps the xCAT db tables .
 
 =head1 SYNOPSIS
 
-B<dumpxCATdb> [{B<-p>|B<--path>} I<path>]
+B<dumpxCATdb> [B<-V>] [{B<-p>|B<--path>} I<path>]
 
 B<dumpxCATdb> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
@@ -19,6 +19,8 @@ The dumpxCATdb command creates .csv files for all  xCAT database tables and puts
 B<-h>          Display usage message.
 
 B<-v>          Command Version.
+
+B<-V>          Verbose.
 
 B<-p>          Path to the directory to dump the tables.
 
