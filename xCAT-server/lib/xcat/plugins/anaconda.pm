@@ -837,7 +837,7 @@ sub mkinstall
             }
             else
             {
-                $ksdev = "eth0";
+                $ksdev = "bootif"; #if not specified, fall back to bootif
             }
             if ($ksdev eq "")
             {

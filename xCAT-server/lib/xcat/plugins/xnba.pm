@@ -198,11 +198,14 @@ sub setstate {
             } else {
               print $pcfg "\n";
             }
+            print $pcfg "IPAPPEND 2\n";
         } else { #other than comboot/multiboot, we won't have need of pxelinux
             print $pcfg "imgfetch -n kernel http://".'${next-server}/tftpboot/'.$kern->{kernel}."\n";
             print $pcfg "imgload kernel\n";
             if ($kern->{kcmdline}) {
-                print $pcfg "imgargs kernel ".$kern->{kcmdline}."\n";
+                print $pcfg "imgargs kernel ".$kern->{kcmdline}." BOOTIF=${netX/mac}\n";
+            } else {
+                print $pcfg "imgargs kernel BOOTIF=${netX/mac}\n";
             }
             if ($kern->{initrd}) {
                 print $pcfg "imgfetch http://".'${next-server}'."/tftpboot/".$kern->{initrd}."\n";

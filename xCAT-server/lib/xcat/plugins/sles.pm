@@ -698,7 +698,7 @@ sub mkinstall
                 }
                 else
                 {
-                    $netdev = "eth0";
+                    $netdev = "bootif";
                 }
                 if ($netdev eq "") #why it is blank, no mac defined?
                 {
@@ -709,7 +709,9 @@ sub mkinstall
                         }
                     );
                 }
-                $kcmdline .= " netdevice=" . $netdev;
+                unless ($netdev eq "bootif") { #if going by bootif, BOOTIF will suffice
+                    $kcmdline .= " netdevice=" . $netdev;
+                }
             }
 
             #TODO: driver disk handling should in SLES case be a mod of the install source, nothing to see here

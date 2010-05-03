@@ -169,6 +169,7 @@ sub setstate {
     } else {
       print $pcfg "\n";
     }
+    print $pcfg "  IPAPPEND 2\n";
     }
     close($pcfg);
     my $inetn = inet_aton($node);
