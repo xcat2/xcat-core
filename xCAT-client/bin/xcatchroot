@@ -1,0 +1,273 @@
+#!/bin/ksh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+################################################################
+# Usage:
+#		xcatchroot -h 
+#		xcatchroot [-v] -i osimage  cmd_string
+#
+#
+# WARNING:
+#			Be very careful when using this script!!!  Make sure you are 
+#			very clear about exactly what you are changing and what effect
+#			it will have.
+#
+#			As a precaution it is advisable to make a copy of the original 
+#			spot in case your changes wind up corrupting the image.
+#
+# Note:
+#        	There is a fix for the AIX bosboot command that is needed for
+#			this script to work properly if your command involves modifying
+#			the ODM.  The AIX APAR information is not available at this time.
+#
+#			However, it is very easy to check for and/or make the required
+#			modification.
+#
+#			In the bosboot code, there is a check for the creation of a boot
+#			image; if the image creation is anything other than disk, the 
+#			odm values are not picked up. You will have to confirm that
+#			the bosboot command in your spot has the check removed.
+#
+#           Edit the bosboot command contained in the spot (save a backup). 
+#			(ex. "vi <path_to_spotName>/usr/sbin/bosboot"). Search for
+#			"zap it as". The next line checks to see if the
+#			device prefix is "hdisk".  Comment out the line and the
+#			corresponding "fi" which ends the "if" statement.  Now this
+#			code will always execute. Save changes.
+#
+# Note:  	Always run the NIM check operation after you are done updating 
+#			your spot.
+#
+#        		nim -Fo check spotName
+#
+######################################################################
+
+# include common NIM shell defines/functions
+NIM="/usr/sbin/nim"
+NIMPATH=/usr/lpp/bos.sysmgt/nim
+NIM_METHODS="${NIMPATH}/methods"
+. ${NIM_METHODS}/c_sh_lib
+M_CHATTR="${NIM_METHODS}/m_chattr"
+
+#---------------------------- local defines     --------------------------------
+server=""
+spot=""
+lpp_source=""
+spotObj=""
+lppObj=""
+
+#---------------------------- module globals    --------------------------------
+REQUIRED_ATTRS=""
+OPTIONAL_ATTRS=""
+location=""
+osimage=""
+cmd_string=""
+verbose=0
+
+usage="Usage:\n\txcatchroot -h\n\txcatchroot [-V] -i osimage  cmd_string"
+
+# signal processing
+trap cleanup 0
+trap err_signal 1 2 11 15
+
+# NIM initialization
+nim_init
+
+# initialize local variables
+typeset z=""
+
+# set parameters from command line
+while getopts :i:vVh z
+do
+	case ${z} in
+
+		h)			echo $usage
+					exit 0 
+					;;
+
+		i)			# xCAT osimage name
+					osimage=${OPTARG}
+					;;
+
+		v)          # NIM verbose mode (undocumented option for debugging)
+                    set -x
+                    for i in $(typeset +f)
+                    do
+                        typeset -ft $i
+                    done
+                    ;;
+
+		V)			# xCAT verbose
+					verbose=1
+					;;
+
+		\?)			# unknown option
+					echo "Unknown options."
+					echo $usage
+					exit 1
+					;;
+	esac
+done
+
+shift `expr $OPTIND - 1`
+cmd_string=$1
+
+# check for cmd string
+if [[ $cmd_string = "" ]] ; then
+	echo "ERROR: A command strng is required."
+	echo "xcatchroot: ERROR: A command strng is required." | logger -t xcat
+	echo $usage
+	exit 1
+fi
+
+# chk for osimage ??
+if [[ $osimage = "" ]] ; then
+	echo "ERROR: An xCAT osimage name is required."
+	echo "xcatchroot: ERROR: An xCAT osimage name is required." | logger -t xcat
+	echo $usage
+	exit 1
+fi
+
+# get the spot and lpp_source name from the osimage def
+if [ $verbose -eq 1 ]
+then
+	echo "Running command: '/opt/xcat/bin/lsdef -t osimage -o $osimage -i spot | grep spot | cut -f2 -d ='\n"
+fi
+
+spot=`/opt/xcat/bin/lsdef -t osimage -o $osimage -i spot | grep spot | cut -f2 -d = `
+
+if [[ $spot = "" ]] ; then
+	echo "ERROR: Could not get spot name from xCAT osimage definition."
+	echo "xcatchroot: ERROR: Could not get spot name from xCAT osimage definition." | logger -t xcat
+	exit 1
+fi
+
+if [ $verbose -eq 1 ]
+then
+    echo "Running command: '/opt/xcat/bin/lsdef -t osimage -o $osimage -i lpp_source | grep lpp_source | cut -f2 -d ='\n"
+fi
+lpp_source=`/opt/xcat/bin/lsdef -t osimage -o $osimage -i lpp_source | grep lpp_source | cut -f2 -d = `
+
+# confirm & set spot path for chroot global vars
+if ${LSNIM} $spot >/dev/null ; then
+
+	if [[ $verbose -eq 1 ]]; then
+    	echo "Running command: ${LSNIM} -a server $spot | ${AWK} '/server/ {print $3}'\n"
+	fi
+	server=`${LSNIM} -a server $spot | ${AWK} '/server/ {print $3}'`
+
+	if [[ $server = "master" ]] ; then
+
+		spotObj="$spot"
+		# chroot uses location var
+		if [ $verbose -eq 1 ]
+		then
+			echo "Running command: ${LSNIM} -a location $spotObj | ${AWK} '/location/ {print $3}'\n"
+		fi
+		location=`${LSNIM} -a location $spotObj | ${AWK} '/location/ {print $3}'` 
+
+	else
+		echo "ERROR: Cannot use chroot with remote resources $spot." 
+		echo "xcatchroot: ERROR: Cannot use chroot with remote resources $spot." | logger -t xcat
+		exit 1
+	fi
+fi
+
+# confirm & set lpp_source path for chroot global vars
+if ${LSNIM} $lpp_source >/dev/null ; then
+
+	if [ $verbose -eq 1 ]
+	then
+		echo "Running command: ${LSNIM} -a server $lpp_source | ${AWK} '/server/ {print $3}'\n"
+	fi
+	server=`${LSNIM} -a server $lpp_source | ${AWK} '/server/ {print $3}'`
+
+	if [[ $server = "master" ]] ; then
+
+		lppObj="$lpp_source"
+		# chroot uses lpp_source var
+		if [ $verbose -eq 1 ]
+		then
+			echo "Running command: ${LSNIM} -a location $lppObj | ${AWK} '/location/ {print $3}'\n"
+		fi
+
+		lpp_source=`${LSNIM} -a location $lppObj | ${AWK} '/location/ {print $3}'`
+	else
+		echo "ERROR: Cannot use chroot with remote resource $lpp_source."
+        echo "xcatchroot: ERROR: Cannot use chroot with remote resource $lpp_source." | logger -t xcat
+        exit 1
+	fi
+fi
+
+# last sanity check before chroot session is attempted
+if [[ ! -d $location ]] ; then
+	echo "ERROR: Unable to proceed. Check resource name(s) also verify path location(s)."
+	echo "xcatchroot: ERROR: Unable to proceed. Check resource name(s) also verify path location(s)." | logger -t xcat
+	exit 1
+else
+
+	# create a temporary script containing the $cmd_string
+    # put it in the spot location
+	if [ $verbose -eq 1 ]
+	then
+		echo "Running command: echo '#!/bin/ksh\n$cmd_string' > $location/xcatchrootscript\n"
+	fi
+
+    `echo "#!/bin/ksh\n$cmd_string" > $location/xcatchrootscript`
+	`chmod 777 $location/xcatchrootscript`
+
+	# setup chroot environment
+	setup_chroot_env
+	${SET_CHROOT_LIBPATH}
+	
+	# mount the lpp_source
+	if [[ -d $lpp_source ]] ; then
+		if [ $verbose -eq 1 ]
+		then
+			echo "Running command: 'mount ${lpp_source} ${new_root}/lpp_source'\n"
+		fi
+		nim_mount ${lpp_source} ${new_root}/lpp_source
+	fi
+
+	# add session id to spot comment field
+	# on a graceful exit, we'll update this to show completion timestamp
+	if tty -s
+	then
+		$NIM -o change -a comments="chroot session $$ is enabled on `tty`" $spotObj
+	fi
+	
+	# sensitive process : place "unavailable" state on spot & lpp_source
+	${M_CHATTR} -a Rstate=unavailable $spotObj
+	if [[ -d $lpp_source ]] ; then
+		${M_CHATTR} -a Rstate=unavailable $lppObj
+	fi
+
+	# run the temp script using chroot
+	if [ $verbose -eq 1 ]
+    then
+		echo "Running command: ${chroot} /usr/xcatchrootscript\n"
+	fi
+	${chroot} /usr/xcatchrootscript
+
+	# sensitive process has completed
+	${M_CHATTR} -a Rstate=available $spotObj
+	if [[ -d $lpp_source ]] ; then
+		${M_CHATTR} -a Rstate=available $lppObj
+	fi
+
+	# update spot comment field
+	$NIM -o change -a comments="chroot session $$ has ended" $spotObj
+
+fi
+
+# remove the tmp script
+if [ $verbose -eq 1 ]
+then
+	echo "Running command: 'rm $location/xcatchrootscript'\n"
+fi
+`rm $location/xcatchrootscript`
+
+# echo "\nNote: Be sure to perform the NIM check operation after completing NIM spot\nupdates. (ex. 'nim -o check <spot_name>')"
+
+# all done
+exit 0
