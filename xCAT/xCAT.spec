@@ -24,12 +24,12 @@ Conflicts: xCATsn
 Requires: xCAT-server xCAT-client perl-DBD-SQLite
 
 %ifos linux
-Requires: atftp-xcat dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
+Requires: dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
 %ifarch s390x
 # No additional requires for zLinux right now
 %else
 # yaboot-xcat is pulled in so any MN can manage ppc nodes
-Requires: conserver yaboot-xcat perl-Net-Telnet
+Requires: atftp-xcat conserver yaboot-xcat perl-Net-Telnet
 %endif
 %ifarch ppc64
 Requires: perl-IO-Stty
