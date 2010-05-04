@@ -2,10 +2,21 @@
 # Setup hostname
 #
 echo "post scripts" >/root/post.log
-export PRINIC=#TABLE:noderes:THISNODE:primarynic#
+export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
 if [ "$PRINIC" == "mac"]
 then
-    export PRINIC=#TABLE:mac:THISNODE:mac#
+    export PRINIC="#TABLE:mac:THISNODE:mac#"
+fi
+if [ -z "$PRINIC" ]
+then
+    for karg in $(cat /proc/cmdline |sed -e 's/ /\n/g'); do
+        if  [ "${karg%%=*}" = "BOOTIF" ]; then
+            export PRINIC=`ifconfig -a|grep -i "hwaddr ${karg#*=}"|awk '{print $1}'`
+        fi
+    done
+    if [ -z "$PRINIC" ]; then
+        export PRINIC=eth0
+    fi
 fi
 if [ -z "$PRINIC" ]
 then

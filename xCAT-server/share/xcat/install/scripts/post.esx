@@ -2,10 +2,17 @@
 # Setup hostname
 #
 echo "post scripts" >/root/post.log
-export PRINIC=#TABLE:noderes:THISNODE:primarynic#
+export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
 if [ -z "$PRINIC" ]
 then
-    export PRINIC=eth0
+    for karg in $(cat /proc/cmdline |sed -e 's/ /\n/g'); do
+        if  [ "${karg%%=*}" = "BOOTIF" ]; then
+            export PRINIC=`ifconfig -a|grep -i "hwaddr ${karg#*=}"|awk '{print $1}'`
+        fi
+    done
+    if [ -z "$PRINIC" ]; then
+        export PRINIC=eth0
+    fi
 fi
 IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
 if [ -z $IP ]
