@@ -79,7 +79,7 @@ if ($ENV{UPDATESECURITY} && $ENV{UPDATESECURITY} eq "1") {
     }
 
     # copy the certificates
-    if (&runcmd("/opt/xcat/sbin/copycerts") != 0) {
+    if (&runcmd("$::XCATROOT/sbin/copycerts") != 0) {
         $msg = "$::sdate servicenode: Could not run copycerts.\n";
         `logger -t xcat $msg`;
     }
@@ -127,7 +127,7 @@ else
         my $arch=$ENV{'ARCH'};
         &runcmd("OTHERPKGS=xcat/xcat-core/xCATsn,xcat/xcat-dep/$osver/$arch/conserver /xcatpost/otherpkgs");
     }
-	&runcmd("/opt/xcat/sbin/copycerts");
+	&runcmd("$::XCATROOT/sbin/copycerts");
 }
 
 `logger -t xcat rc=$rc`;
@@ -197,7 +197,7 @@ sub setupAIXsn
 	}
 
 	# call copycerts
-    if (&runcmd("/opt/xcat/sbin/copycerts") != 0) {
+    if (&runcmd("$::XCATROOT/sbin/copycerts") != 0) {
         $msg = "$::sdate servicenode: Could not run copycerts.\n";
         `logger -t xcat $msg`;
     }
@@ -206,20 +206,20 @@ sub setupAIXsn
 	&getcreds;
 
 	# Add the xcatd subsystem to the AIX
-	my $mkssys_cmd = 'mkssys -p /opt/xcat/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a "-f"';
+	my $mkssys_cmd = 'mkssys -p $::XCATROOT/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a "-f"';
 	if (&runcmd($mkssys_cmd) != 0) {
 		$msg = "$::sdate servicenode: Could not create subsystem for xcatd. It maybe already have been added.\n";
 		`logger -t xcat $msg`;
 	}
 
 	# start xcatd
-	if (&runcmd("/opt/xcat/sbin/restartxcatd") != 0) {
+	if (&runcmd("$::XCATROOT/sbin/restartxcatd") != 0) {
 		$msg = "$::sdate servicenode: Could not start xcatd.\n";
         	`logger -t xcat $msg`;
     	}
 
 	# add xcatd to /etc/inittab???
-	my $mkitab_cmd = 'mkitab "xcatd:2:once:/opt/xcat/sbin/restartxcatd > /dev/console 2>&1"';
+	my $mkitab_cmd = 'mkitab "xcatd:2:once:$::XCATROOT/sbin/restartxcatd > /dev/console 2>&1"';
 
 	if (&runcmd($mkitab_cmd) != 0) {
 		# error might just mean that the entry is already there!
