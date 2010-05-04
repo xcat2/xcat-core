@@ -26,7 +26,7 @@ while [ $WAITING -gt 0 ]; do
             fi
         done
         if [ $WAITING -gt 0 ]; then
-            echo -n "Not all of the nics $FORCEDNICS managed to acquire an address, retrying in 30 seconds..."
+            echo -n "Not all of the nics $FORCENICS managed to acquire an address, retrying in 30 seconds..."
             sleep 30
             echo "now retrying"
         fi
