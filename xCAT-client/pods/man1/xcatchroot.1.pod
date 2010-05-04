@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<xcatchroot> - Use this xCAT command to modify an xCAT diskless operating system image.
+B<xcatchroot> - Use this xCAT command to modify an xCAT AIX diskless operating system image.
 
 =head1 SYNOPSIS
 
