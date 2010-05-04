@@ -6,6 +6,7 @@ use Sys::Syslog;
 use xCAT::GlobalDef;
 use xCAT::Table;
 use Getopt::Long;
+use xCAT::SvrUtils;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
@@ -188,7 +189,7 @@ sub showSync {
 			}
 
 			if(grep /\$|#CMD/, $dir){
-				$dir = subVar($dir,$node,'dir',$callback);
+				$dir = xCAT::SvrUtils->subVars($dir,$node,'dir',$callback);
 				$dir =~ s/\/\//\//g;
 			}
 			$first = $dir;
@@ -196,7 +197,7 @@ sub showSync {
 
 			if($server){
 				if(grep /\$/, $server){
-					$server = subVar($server,$node,'server',$callback);
+					$server = xCAT::SvrUtils->subVars($server,$node,'server',$callback);
 				}
 		
 				$mntpnt = $server . ":";
@@ -228,102 +229,6 @@ sub showSync {
 		}
 	}
 
-}
-
-# some directories will have xCAT database values, like:
-# $nodetype.os.  If that is the case we need to open up
-# the database and look at them.  We need to make sure
-# we do this sparingly...  We don't like tons of hits
-# to the database.
-sub subVar {
-	my $dir = shift;
-	my $node = shift;
-	my $type = shift;
-	my $callback = shift;
-	# parse all the dollar signs...	
-	# if its a directory then it has a / in it, so you have to parse it.
-	# if its a server, it won't have one so don't worry about it.
-	my @arr = split("/", $dir);
-	my $fdir = "";
-	foreach my $p (@arr){
-		# have to make this geric so $ can be in the midle of the name: asdf$foobar.sitadsf
-		if($p =~ /\$/){
-			my $pre;
-			my $suf;
-			my @fParts;
-			if($p =~ /([^\$]*)([^# ]*)(.*)/){
-				$pre= $1;
-				$p = $2;
-				$suf = $3;
-			}
-			# have to sub here:
-			# get rid of the $ sign.
-			foreach my $part (split('\$',$p)){
-				if($part eq ''){ next; }
-				#$callback->({error=>["part is $part"],errorcode=>[1]});
-				# check if p is just the node name:
-				if($part eq 'node'){
-					# it is so, just return the node.
-					#$fdir .= "/$pre$node$suf";
-					push @fParts, $node;
-				}else{
-					# ask the xCAT DB what the attribute is.
-					my ($table, $col) = split('\.', $part);
-					unless($col){ $col = 'UNDEFINED' };
-					my $tab = xCAT::Table->new($table);
-					unless($tab){
-						$callback->({error=>["$table does not exist"],errorcode=>[1]});
-						return;
-					}
-					my $ent;
-					my $val;
-					if($table eq 'site'){
-						$val = $tab->getAttribs( { key => "$col" }, 'value' );
- 						$val = $val->{'value'};
-					}else{
-						$ent = $tab->getNodeAttribs($node,[$col]);		
-						$val = $ent->{$col};
-					}
-					unless($val){
-						# couldn't find the value!!
-						$val = "UNDEFINED"
-					}
-					push @fParts, $val;
-				}	
-			}
-			my $val = join('.', @fParts);
-			if($type eq 'dir'){
-					$fdir .= "/$pre$val$suf";
-			}else{
-					$fdir .= $pre . $val . $suf;
-			}
-		}else{
-			# no substitution here
-			$fdir .= "/$p";
-		}
-	}	
-	# now that we've processed variables, process commands
-	# this isn't quite rock solid.  You can't name directories with #'s in them.
-	if($fdir =~ /#CMD=/){	
-		my $dir;
-		foreach my $p (split(/#/,$fdir)){
-			if($p =~ /CMD=/){
-				$p =~ s/CMD=//;
-				my $cmd = $p;
-				#$callback->({info=>[$p]});
-				$p = `$p 2>&1`;
-				chomp($p);
-				#$callback->({info=>[$p]});
-				unless($p){
-					$p = "#CMD=$p did not return output#";
-				}
-			}
-			$dir .= $p;
-		}
-		$fdir = $dir;	
-	}
-
-	return $fdir;
 }
 
 # get all the directories or files for given image related to this node.

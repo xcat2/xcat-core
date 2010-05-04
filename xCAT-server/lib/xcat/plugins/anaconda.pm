@@ -351,7 +351,7 @@ sub mknetboot
                 );
             next;
         }
-        my $ent    = $reshash->{$node}->[0];#$restab->getNodeAttribs($node, ['primarynic']);
+        $ent    = $reshash->{$node}->[0];#$restab->getNodeAttribs($node, ['primarynic']);
         my $sent   = $hmhash->{$node}->[0];
 #          $hmtab->getNodeAttribs($node,
 #                                 ['serialport', 'serialspeed', 'serialflow']);
@@ -452,11 +452,11 @@ sub mknetboot
                     $server = '';
                 }
                 if(grep /\$|#CMD/, $dir) {
-                    $dir = subVars($dir, $node, 'dir', $callback);
+                    $dir = xCAT::SvrUtils->subVars($dir, $node, 'dir', $callback);
                     $dir = ~ s/\/\//\//g;
                 }
                 if($server) { 
-                    $server = subVars($server, $node, 'server', $callback);
+                    $server = xCAT::SvrUtils->subVars($server, $node, 'server', $callback);
                 }
                 $statemnt = $server . ":" . $dir;
             }
@@ -471,10 +471,10 @@ sub mknetboot
         if($isSV and (($xcatmaster eq $sip) or ($xcatmaster eq $res))) {
             # if the NFS directory in litetree is on the service node,
             # and it is not exported, then it will be mounted automatically
-            setupNFSTree($node, $sip, $callback);
+            xCAT::SvrUtils->setupNFSTree($node, $sip, $callback);
             # then, export the statemnt directory if it is on the service node
             if($statemnt) {
-                setupStatemnt($sip, $statemnt, $callback);
+                xCAT::SvrUtils->setupStatemnt($sip, $statemnt, $callback);
             }
         }
         # END service node
@@ -1132,197 +1132,5 @@ sub getplatform {
     }
     return $platform;
 }
-
-# sub subVars
-# copied from litetreee.pm
-# TODO: need to move the function to xCAT::Utils? 
-
-# some directories will have xCAT database values, like:
-# $nodetype.os.  If that is the case we need to open up
-# the database and look at them.  We need to make sure
-# we do this sparingly...  We don't like tons of hits
-# to the database.
-
-sub subVars()
-{
-    my $dir = shift;
-    my $node = shift;
-    my $type = shift;
-    my $callback = shift;
-
-    # parse all the dollar signs...
-    # if its a directory then it has a / in it, so you have to parse it.
-    # if its a server, it won't have one so don't worry about it.
-    my @arr = split("/", $dir);
-    my $fdir = "";
-    foreach my $p (@arr){
-        # have to make this geric so $ can be in the midle of the name: asdf$foobar.sitadsf
-        if($p =~ /\$/){
-            my $pre;
-            my $suf;
-            my @fParts;
-            if($p =~ /([^\$]*)([^# ]*)(.*)/){
-                $pre= $1;
-                $p = $2;
-                $suf = $3;
-            }
-            # have to sub here:
-            # get rid of the $ sign.
-            foreach my $part (split('\$',$p)){
-                if($part eq ''){ next; }
-                #$callback->({error=>["part is $part"],errorcode=>[1]});
-                # check if p is just the node name:
-                if($part eq 'node'){
-                    # it is so, just return the node.
-                    #$fdir .= "/$pre$node$suf";
-                    push @fParts, $node;
-                }else{
-                    # ask the xCAT DB what the attribute is.
-                    my ($table, $col) = split('\.', $part);
-                    unless($col){ $col = 'UNDEFINED' };
-                    my $tab = xCAT::Table->new($table);
-                    unless($tab){
-                        $callback->({error=>["$table does not exist"],errorcode=>[1]});
-                        return;
-                    }
-                    my $ent;
-                    my $val;
-                    if($table eq 'site'){
-                        $val = $tab->getAttribs( { key => "$col" }, 'value' );
-                        $val = $val->{'value'};
-                    }else{
-                        $ent = $tab->getNodeAttribs($node,[$col]);
-                        $val = $ent->{$col};
-                    }
-                    unless($val){
-                        # couldn't find the value!!
-                        $val = "UNDEFINED"
-                    }
-                    push @fParts, $val;
-                }
-            }
-            my $val = join('.', @fParts);
-            if($type eq 'dir'){
-                    $fdir .= "/$pre$val$suf";
-            }else{
-                    $fdir .= $pre . $val . $suf;
-            }
-        }else{
-            # no substitution here
-            $fdir .= "/$p";
-        }
-    }
-    # now that we've processed variables, process commands
-    # this isn't quite rock solid.  You can't name directories with #'s in them.
-    if($fdir =~ /#CMD=/){
-        my $dir;
-        foreach my $p (split(/#/,$fdir)){
-            if($p =~ /CMD=/){
-                $p =~ s/CMD=//;
-                my $cmd = $p;
-                #$callback->({info=>[$p]});
-                $p = `$p 2>&1`;
-                chomp($p);
-                #$callback->({info=>[$p]});
-                unless($p){
-                    $p = "#CMD=$p did not return output#";
-                }
-            }
-            $dir .= $p;
-        }
-        $fdir = $dir;
-    }
-
-    return $fdir;
-}
-
-sub setupNFSTree {
-    my $node = shift;
-    my $sip = shift;
-    my $callback = shift;
-
-    my $cmd = "litetree $node";
-    my @uris = xCAT::Utils->runcmd($cmd, 0);
-    
-    foreach my $uri (@uris) {
-        # parse the result
-        # the result looks like "nodename: nfsserver:directory";
-        $uri =~ m/\Q$node\E:\s+(.+):(.+)$/;
-        my $nfsserver = $1;
-        my $nfsdirectory = $2;
-
-        if($nfsserver eq $sip) { # on the service node
-            unless (-d $nfsdirectory) {
-                if (-e $nfsdirectory) {
-                    unlink $nfsdirectory;
-                }
-                mkpath $nfsdirectory;
-            }
-
-
-            $cmd = "showmount -e $nfsserver";
-            my @entries = xCAT::Utils->runcmd($cmd, 0);
-            shift @entries;
-            if(grep /\Q$nfsdirectory\E/, @entries) {
-                $callback->({data=>["$nfsdirectory has been exported already!"]});
-            } else {
-                $cmd = "/usr/sbin/exportfs :$nfsdirectory";
-                xCAT::Utils->runcmd($cmd, 0);
-                # exportfs can export this directory immediately
-                $callback->({data=>["now $nfsdirectory is exported!"]});
-                $cmd = "cat /etc/exports";
-                @entries = xCAT::Utils->runcmd($cmd, 0);
-                unless (my $entry = grep /\Q$nfsdirectory\E/, @entries) {
-                    # if no entry in /etc/exports, one entry with default options will be added
-                    $cmd = qq{echo "$nfsdirectory *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports};
-                    xCAT::Utils->runcmd($cmd, 0);
-                    $callback->({data=>["$nfsdirectory is added to /etc/exports with default option"]});
-                }
-            }
-        }
-    }
-}
-
-sub setupStatemnt {
-    my $sip = shift;
-    my $statemnt = shift;
-    my $callback = shift;
-    
-    $statemnt =~ m/^(.+):(.+)$/;
-    my $nfsserver = $1;
-    my $nfsdirectory = $2;
-
-    if($sip eq inet_ntoa(inet_aton($nfsserver))) {
-        unless (-d $nfsdirectory) {
-            if (-e $nfsdirectory) {
-                unlink $nfsdirectory;
-            }
-            mkpath $nfsdirectory;
-        }
-
-        my $cmd = "showmount -e $nfsserver";
-        my @entries = xCAT::Utils->runcmd($cmd, 0);
-        shift @entries;
-        if(grep /\Q$nfsdirectory\E/, @entries) {
-            $callback->({data=>["$nfsdirectory has been exported already!"]});
-        } else {
-            $cmd = "/usr/sbin/exportfs :$nfsdirectory -o rw,no_root_squash,sync,no_subtree_check";
-            xCAT::Utils->runcmd($cmd, 0);
-            $callback->({data=>["now $nfsdirectory is exported!"]});
-            # add the directory into /etc/exports if not exist
-            $cmd = "cat /etc/exports";
-            @entries = xCAT::Utils->runcmd($cmd, 0);
-            if(my $entry = grep /\Q$nfsdirectory\E/, @entries) {
-                unless ($entry =~ m/rw/) {
-                    $callback->({data => ["The $nfsdirectory should be with rw option in /etc/exports"]});
-                }
-            } else {
-                xCAT::Utils->runcmd(qq{echo "$nfsdirectory *(rw,no_root_squash,sync,no_subtree_check)" >> /etc/exports}, 0);
-                $callback->({data => ["$nfsdirectory is added into /etc/exports with default options"]});
-            }
-        }
-    }
-}
-
 
 1;
