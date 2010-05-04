@@ -42,6 +42,13 @@
 #
 ######################################################################
 
+# make sure we only run on AIX for now
+OSNAME=$(uname -s)
+if [[ $OSNAME != "AIX" ]] ; then
+	echo "This command is currently only supported on AIX."
+	exit 0
+fi
+
 # include common NIM shell defines/functions
 NIM="/usr/sbin/nim"
 NIMPATH=/usr/lpp/bos.sysmgt/nim
