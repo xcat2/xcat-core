@@ -246,6 +246,7 @@ sub renergy {
     $SIG{CHLD} = (); 
 
     # Call the xCAT_cim_client to query or set the energy capabilities
+    $cmd .= " 2>&1";
     my @result = xCAT::Utils->runcmd("$cmd", -1);
     
     foreach my $line (@result) {
