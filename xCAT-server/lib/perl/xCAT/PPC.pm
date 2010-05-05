@@ -36,6 +36,7 @@ my %modules = (
                        bpa    => "xCAT::FSPvitals",
 		       },
         rscan     => { hmc    => "xCAT::PPCscan",
+                       fsp    => "xCAT::FSPscan",
 		       },
         mkvm      => { hmc    => "xCAT::PPCvm",
 		      },
@@ -169,6 +170,7 @@ sub process_command {
 		    ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/
                 || $request->{command} =~ /^getmacs$/ || $request->{command} =~ /^rnetboot$/ || $request->{command} =~ /^rvitals$/  
                 || $request->{command} =~ /^mkhwconn$/ || $request->{command} =~ /^rmhwconn$/ || $request->{command} =~ /^lshwconn$/
+                || $request->{command} =~ /^rscan$/
             )
               ) {
 	        #support FSPpower, FSPinv and FSPrflash 
