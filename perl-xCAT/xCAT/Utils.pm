@@ -5592,6 +5592,130 @@ sub isStateful
    return 0; 
 }
 
+#-----------------------------------------------------------------------------
+
+=head3    setupAIXconserver 
+	
+    Set AIX conserver 
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+=head3  setupAIXconserver 
+    Description:
+        Set AIX conserver
+    Arguments:
+        $verbose: 
+    Returns:
+        Return result of the operation
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $res = xCAT::Utils::setupAIXconserver($verbose);
+    Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub setupAIXconserver
+{
+    my ($class, $verbose) = @_;
+    my $cmd;
+    my $outref;
+    my $msg;
+    my $rc = 0;
+
+    if (!-f "/usr/sbin/conserver")
+    {
+        $cmd = "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver";
+        $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message(
+                'E',
+                "Could not ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver."
+                );
+        }
+        else 
+        {  
+           $msg = "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.";
+           if( $verbose == 1) {
+               xCAT::MsgUtils->message("I", $msg);
+           }  
+        }
+    }
+    if (!-f "/usr/bin/console")
+    {
+        $cmd = "ln -sf /opt/freeware/bin/console /usr/bin/console";
+        $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message(
+                  'E',
+                  "Could not ln -sf /opt/freeware/bin/console /usr/bin/console."
+                  );
+        }
+        else 
+        {
+           
+           $msg = "ln -sf /opt/freeware/bin/console /usr/sbin/console.";
+           if( $verbose == 1) {
+               xCAT::MsgUtils->message("I", $msg);
+           }  
+        }
+    }
+
+    $cmd = "lssrc -a | grep conserver >/dev/null 2>&1";
+    $outref = xCAT::Utils->runcmd("$cmd", -1);
+    if ($::RUNCMD_RC != 0)
+    {
+        $cmd =
+          "mkssys -p /opt/freeware/sbin/conserver -s conserver -u 0 -S -n 15 -f 15 -a \"-o -O1 -C /etc/conserver.cf\"";
+        $outref = xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message('E', "Could not add subsystem conserver.");
+        }
+        else
+        {
+            xCAT::MsgUtils->message('I', "Added subsystem conserver.");
+
+            # Remove old setting
+            my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
+            $rc         = system($rmitab_cmd);
+
+            # add to the /etc/inittab file
+            my $mkitab_cmd =
+              'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
+            $rc = system($mkitab_cmd);    # may already be there no error check
+        }
+    }
+    else
+    {                                     # conserver already a service
+                                          # Remove old setting
+        my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
+        $rc         = system($rmitab_cmd);
+
+        # make sure it is registered in /etc/inittab file
+        my $mkitab_cmd =
+          'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
+        $rc = system($mkitab_cmd);        # may already be there no error check
+    }
+
+    # now make sure conserver is started
+    $rc = xCAT::Utils->startService("conserver");
+    return $rc;
+}
+
+
+
+  
+
+
 
 
 1;

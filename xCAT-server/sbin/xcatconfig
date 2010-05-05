@@ -269,7 +269,7 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
 
     if ($::osname eq 'AIX')
     {
-        &setupAIXconserver;
+        xCAT::Utils->setupAIXconserver($::VERBOSE);
 
         &setupAIXIPMITool;
 

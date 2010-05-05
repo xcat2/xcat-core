@@ -175,7 +175,7 @@ sub init_plugin
             else 
             {  
                 #AIX
-                $rc = &setupAIXconserver();
+                $rc = xCAT::Utils->setupAIXconserver();
             
             }
             #
@@ -529,91 +529,6 @@ sub setupInstallloc
     }
     return $rc;
 }
-
-
-#-----------------------------------------------------------------------------
-
-=head3    setupAIXconserver 
-	
-    Set AIX conserver 
-
-=cut
-
-#-----------------------------------------------------------------------------
-
-sub setupAIXconserver
-{
-    my $cmd;
-    my $outref;
-    my $rc = 0;
-
-    if (!-f "/usr/sbin/conserver")
-    {
-        $cmd = "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver";
-        $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message(
-                'E',
-                "Could not ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver."
-                );
-        }
-    }
-    if (!-f "/usr/bin/console")
-    {
-        $cmd = "ln -sf /opt/freeware/bin/console /usr/bin/console";
-        $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message(
-                  'E',
-                  "Could not ln -sf /opt/freeware/bin/console /usr/bin/console."
-                  );
-        }
-    }
-
-    $cmd = "lssrc -a | grep conserver >/dev/null 2>&1";
-    $outref = xCAT::Utils->runcmd("$cmd", -1);
-    if ($::RUNCMD_RC != 0)
-    {
-        $cmd =
-          "mkssys -p /opt/freeware/sbin/conserver -s conserver -u 0 -S -n 15 -f 15 -a \"-o -O1 -C /etc/conserver.cf\"";
-        $outref = xCAT::Utils->runcmd("$cmd", 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message('E', "Could not add subsystem conserver.");
-        }
-        else
-        {
-            xCAT::MsgUtils->message('I', "Added subsystem conserver.");
-
-            # Remove old setting
-            my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
-            $rc         = system($rmitab_cmd);
-
-            # add to the /etc/inittab file
-            my $mkitab_cmd =
-              'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
-            $rc = system($mkitab_cmd);    # may already be there no error check
-        }
-    }
-    else
-    {                                     # conserver already a service
-                                          # Remove old setting
-        my $rmitab_cmd = 'rmitab conserver > /dev/null 2>&1';
-        $rc         = system($rmitab_cmd);
-
-        # make sure it is registered in /etc/inittab file
-        my $mkitab_cmd =
-          'mkitab "conserver:2:once:/usr/bin/startsrc -s conserver > /dev/console 2>&1" > /dev/null 2>&1';
-        $rc = system($mkitab_cmd);        # may already be there no error check
-    }
-
-    # now make sure conserver is started
-    $rc = xCAT::Utils->startService("conserver");
-    return $rc;
-}
-
 
 
 #-----------------------------------------------------------------------------
