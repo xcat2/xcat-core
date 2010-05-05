@@ -1459,6 +1459,16 @@ sub process_request {
     $request->{stdin}   = $req->{stdin}->[0];
     $request->{method} = $req->{method}->[0];
     $request->{op}   = $req->{op}->[0];
+    #support more options in hierachy
+    if( ref( $req->{opt}) eq 'ARRAY' ) {
+        my $h = $req->{opt}->[0];
+        my %t = ();
+        foreach my $k(keys %$h){
+            $t{$k} = $h->{$k}->[0];
+        }
+        $request->{opt} = \%t;
+     }
+
 #    $request->{hwtype}  = $package;
     $request->{callback}= $callback;
     $request->{subreq}  = $subreq;
