@@ -336,17 +336,22 @@ sub liteMe {
 
         # if no such file like $rif, create one
         unless ( -e "$rif" ) {
-            my $rifstr = $rif;
             if($f =~ m{/$}) {
                 $verbose && $callback->({info=>["mkdir -p $rif"]});
                 system("mkdir -p $rif");
             } else {
+                # check whether its directory exists or not
+                my $rifdir = dirname($rif);
+                unless( -e $rifdir ) {
+                    $verbose && $callback->({info => ["mkdir $rifdir"]});
+                    mkdir($rifdir);
+                }
                 $verbose && $callback->({info=>["touch $rif"]});
                 system("touch $rif");
             }
         }
 
-        if( !(-e "$rootimg_dir/.default$d") ) {
+        unless ( -e "$rootimg_dir/.default$d" ) {
             $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
             system("mkdir -p $rootimg_dir/.default$d");
         }
