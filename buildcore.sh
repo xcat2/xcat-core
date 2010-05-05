@@ -325,7 +325,7 @@ EOF
 #!/bin/sh
 cd `dirname $0`
 REPOFILE=`basename xCAT-*.repo`
-sed -e 's|baseurl=.*|baseurl=file://'`pwd`'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'`pwd`'/repodata/repomd.xml.key|' > /etc/yum.repos.d/$REPOFILE
+sed -e 's|baseurl=.*|baseurl=file://'"`pwd`"'|' $REPOFILE | sed -e 's|gpgkey=.*|gpgkey=file://'"`pwd`"'/repodata/repomd.xml.key|' > /etc/yum.repos.d/$REPOFILE
 cd -
 EOF2
 chmod 775 mklocalrepo.sh
