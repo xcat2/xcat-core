@@ -13,7 +13,7 @@ use xCAT::Utils;
 ##############################################
 my %method = (
     mkhwconn => \&mkhwconn_parse_args,
-#   lshwconn => \&lshwconn_parse_args,
+    lshwconn => \&lshwconn_parse_args,
     rmhwconn => \&rmhwconn_parse_args,
 );
 ##########################################################################
@@ -279,11 +279,10 @@ sub lshwconn_parse_args
         {
             return( ["Failed to get nodehm.mgt value for node $node.\n"]);
         }
-        if ( $ent->{nodetype} ne 'hmc' 
-                and $ent->{nodetype} ne 'fsp' 
+        if ( $ent->{nodetype} ne 'fsp' 
                 and $ent->{nodetype} ne 'bpa')
         {
-            return( ["Node type $ent->{nodetype} is not supported for this command.\n"]);
+            return( ["Node type $ent->{nodetype} is not supported for this command in FSPAPI\n"]);
         }
         if ( ! $nodetype)
         {
@@ -455,7 +454,7 @@ sub mkhwconn
     return \@value;
 }
 ##########################################################################
-# List connection status for CECs/BPAs -- This function isn't impletmented and used.
+# List connection status for CECs/BPAs through FSPAPI 
 ##########################################################################
 sub lshwconn
 {
@@ -466,108 +465,68 @@ sub lshwconn
     my $opt     = $request->{opt};
     my @value   = ();
     my $Rc      = undef;
+    my $res    = undef;
 
-
-    my $hosttab  = xCAT::Table->new( 'hosts' );
-    my $res = xCAT::PPCcli::lssysconn( $exp, "all" );
-    $Rc = shift @$res;
-    if ( $request->{nodetype} eq 'hmc')
+    for my $cec_bpa ( keys %$hash)
     {
-        if ( $Rc)
-        {
-            push @value, [$exp->[3], $res->[0], $Rc];
-            return \@value;
-        }
-        my $vpdtab = xCAT::Table->new('vpd');
-        my @vpdentries = $vpdtab->getAllAttribs(qw(node serial mtm));
-        my %node_vpd_hash;
-        for my $vpdent ( @vpdentries)
-        {
-            if ( $vpdent->{node} and $vpdent->{serial} and $vpdent->{mtm})
-            {
-                $node_vpd_hash{"$vpdent->{mtm}*$vpdent->{serial}"} = $vpdent->{node};
-            }
-        }
-        my %node_ppc_hash;
-        my $ppctab =  xCAT::Table->new('ppc');
-        for my $node ( values %node_vpd_hash)
-        {
-            my $node_parent_hash = $ppctab->getNodeAttribs( $node, [qw(parent)]);
-            $node_ppc_hash{$node} = $node_parent_hash->{parent};
-        }
-
-        for my $r ( @$res)
-        {
-            $r =~ s/type_model_serial_num=([^,]*),//;
-            my $mtms = $1;
-            $r =~ s/resource_type=([^,]*),//;
-            $r =~ s/sp=.*?,//;
-            $r =~ s/sp_phys_loc=.*?,//;
-            my $node_name;
-            if ( exists $node_vpd_hash{$mtms})
-            {
-                $node_name = $node_vpd_hash{$mtms};
-                $r = "hcp=$exp->[3],parent=$node_ppc_hash{$node_name}," . $r;
-            }
-            else
-            {
-                $node_name = $mtms;
-                $r = "hcp=$exp->[3],parent=," . $r;
-            }
-            push @value, [ $node_name, $r, $Rc];
-        }
-    }
-    else
-    {
-        for my $cec_bpa ( keys %$hash)
-        {
-            my $node_hash = $hash->{$cec_bpa};
-            for my $node_name (keys %$node_hash)
-            {
-                ############################################
-                # If lssysconn failed, put error into all
-                # nodes' return values
-                ############################################
-                if ( $Rc ) 
-                {
-                    push @value, [$node_name, @$res[0], $Rc];
+         my $node_hash = $hash->{$cec_bpa};
+         for my $node_name (keys %$node_hash)
+         {    
+	      my $d = $node_hash->{$node_name};
+	      my $action = "query_connection";
+	      my $res = xCAT::Utils::fsp_api_action ($node_name, $d, $action);
+	      #print "in lshwconn:\n";
+	      #print Dumper($res);
+	      my $Rc = @$res[2];
+	      my $data = @$res[1];
+		     
+	      ############################################
+              # If lssysconn failed, put error into all
+              # nodes' return values
+              ############################################
+              if ( $Rc ) 
+              {
+                    push @value, [$node_name, $data, $Rc];
                     next;
-                }
-
-                ############################
-                # Get IP address
-                ############################
-                my $node_ip = undef;
-                if ( $hosttab)
-                {
-                    my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
-                    $node_ip = $node_ip_hash->{ip};
-                }
-                if (!$node_ip)
-                {
-                    push @value, [$node_name, $node_ip, $Rc];
-                    next;
-                }
-
-                if ( my @res_matched = grep /\Qipaddr=$node_ip,\E/, @$res)
-                {
-                    for my $r ( @res_matched)
-                    {
-                        $r =~ s/\Qtype_model_serial_num=$cec_bpa,\E//;
-#                        $r =~ s/\Qresource_type=$type,\E//;
-                        $r =~ s/sp=.*?,//;
-                            $r =~ s/sp_phys_loc=.*?,//;
-                            push @value, [$node_name, $r, $Rc];
-                    }
-                }
-                else
-                {
-                    push @value, [$node_name, 'Connection not found', 1];
-                }
+               }
+               
+	       my $node_ip = xCAT::Utils::getNodeIPaddress( $node_name );
+	       if(!defined($node_ip)) {
+                    $data = "Failed to get the $node_name\'s ip";
+		    push @value, [$node_name, $data, -1];
+		    next;
+	       }
+	       if( $data =~ /state/) { 
+	           $data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
+	           print "parsing: $1,$2,$3,$4,$5,$6,$7\n";
+	           my $state      = $1;
+	           my $type       = $2;
+	           my $sn         = $3;
+	           my $mtm        = $4;
+	           my $sp         = $5;
+	           my $ipadd      = $6;
+	           my $alt_ipaddr = $7;
+	           if($ipadd ne $node_ip) {
+	               $ipadd=$7;
+	               $alt_ipaddr = $6;
+	           }
+	           $data = "sp=$sp,ipadd=$node_ip,alt_ipadd=$alt_ipaddr,state=$state";
+	       #my $s;
+	       #foreach my $val ( @infomap ) {
+	       #    if ( $data =~ /@$val[0]=([\w.\-\s]+)/ ) {
+	       #  	print "$1\n";
+	       #         $s = $s + "@$val[1]=$1";
+	       #   }
+	       #}
+	       #$data = $s;
+               }
+               push @value, [$node_name, $data, $Rc];
+                
             }
         }
-    }
     return \@value;
+
+
 }
 
 ##########################################################################
