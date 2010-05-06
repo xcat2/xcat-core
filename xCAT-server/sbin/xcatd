@@ -1566,13 +1566,14 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
 }
 
 sub validate {
-  #BIG TODO, make this do something meaningful
-  #here is where we check if  $peername is allowed to do $request.  $peername if set signifies client has a 
-  #cert that the xCAT CA accepted.  This will be a policy table with $peername as key
-  #things like 'stage2/stage3' and install images will have no client certificate.
-  #A client key for something that a third party could easily tftp down themselves means nothing
-  #however, privacy between the nodes can be maintained, and $peerhost will be checked just like 1.2.0.
-# returns 1 if policy engine allows the action, 0 if denied
+  #Here is where we check if  $peername is allowed to do $request in policy tbl.
+  # $peername, if set signifies client has a cert that the xCAT CA accepted.
+  # Logs to syslog and auditlog table all user commands, see site.auditskipcmds
+  # attribute. 
+  # returns 1 if policy engine allows the action, 0 if denied.
+
+
+  # now check the policy table if user can run the command
   my $peername=shift;
   my $peerhost=shift;
   my $request=shift;
@@ -1704,8 +1705,25 @@ sub validate {
       if ($arglist) { $logst .= $arglist; }
       if($peername) { $logst .= " for " . $request->{username}->[0]};
       if ($peerhost) { $logst .= " from " . $peerhost };
-      # if not getpostscript and not getcredentials, put in syslog and auditlog
-      if (($request->{command}->[0] ne "getpostscript") && ($request->{command}->[0] ne "getcredentials")) {
+
+      # read site.auditskipcmds attribute,
+      # if set skip commands else audit all cmds.
+      my @skipcmds=xCAT::Utils->get_site_attribute('auditskipcmds');
+      # if not "ALL" and not a command from site.auditskipcmds 
+      # and not getcredentials and not getcredentials ,
+      # put in syslog and  auditlog
+      my $skip = 0; 
+      my $all = "all";
+      if (defined($skipcmds[0])) { # if there are values
+        if (grep(/$all/i, @skipcmds)) {  # skip all
+           $skip = 1;
+        } else {
+          if (grep(/$request->{command}->[0]/, @skipcmds)) {  # skip the command 
+             $skip = 1;
+          }
+        }
+      }
+      if (($request->{command}->[0] ne "getpostscript") && ($request->{command}->[0] ne "getcredentials") && ($skip == 0)) {
       
         # put in audit Table and syslog
         my $rsp = {};
