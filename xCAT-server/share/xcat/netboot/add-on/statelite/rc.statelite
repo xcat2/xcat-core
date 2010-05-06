@@ -61,7 +61,7 @@ GetSyncInfo () {
 	fi
 
 	# request the list of files from xCAT:
-	xCATCmd $XCATSERVER litefile  $hn\
+	xCATCmd $XCATSERVER litefile  \
 		| sed  -e 's/<[^>]*>//g' \
 		| egrep -v '^ *$' 	\
 		| sed -e 's/^ *//' \
@@ -71,7 +71,7 @@ GetSyncInfo () {
 
 	# files will now be inside /.snapshot/tmpfs/synclist in the form:
 	# options path
-	xCATCmd $XCATSERVER litetree  $hn\
+	xCATCmd $XCATSERVER litetree  \
 		| sed  -e 's/<[^>]*>//g' \
 		| egrep -v '^ *$' \
 		| sed -e 's/^ *//' \
@@ -82,8 +82,7 @@ GetSyncInfo () {
 xCATCmd () {
 # $1 is the xCAT server
 # $2 is the command
-# $3 is the noderange
-	echo "<xcatrequest>\n<command>${2}</command>\n<noderange>${3}</noderange>\n</xcatrequest>" | LD_LIBRARY_PATH=/sysroot/lib64:/sysroot/usr/lib64 /sysroot/usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
+	echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | LD_LIBRARY_PATH=/sysroot/lib64:/sysroot/usr/lib64 /sysroot/usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
 
 }
 
