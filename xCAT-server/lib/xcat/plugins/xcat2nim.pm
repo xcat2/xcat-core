@@ -914,9 +914,6 @@ sub mkclientdef
 			$net_name="find_net";
 		}
 
-		# only support Ethernet for management interfaces
-		$adaptertype = "ent";
-
 		if (!$::objhash{$node}{'mac'})
 		{
 			my $rsp;
@@ -927,7 +924,18 @@ sub mkclientdef
 			$::objhash{$node}{'mac'} =~ s/://g;
 		}
 			
-		$ifattr="-a if1=\'$net_name $shorthost $::objhash{$node}{'mac'} $adaptertype\'";
+                my $mac_or_local_link_addr;
+                if (xCAT::Utils->getipaddr($shorthost) =~ /:/) #ipv6 node
+                {
+                    $mac_or_local_link_addr = xCAT::Utils->linklocaladdr($::objhash{$node}{'mac'});
+                    $adaptertype = "ent6";
+                } else {
+                    $mac_or_local_link_addr = $::objhash{$node}{'mac'};
+                    # only support Ethernet for management interfaces
+                    $adaptertype = "ent";
+                }
+               
+		$ifattr="-a if1=\'$net_name $shorthost $mac_or_local_link_addr $adaptertype\'";
 	}
 
 	# only support standalone for now - will get this from node def in future
@@ -1471,7 +1479,7 @@ sub mkNIMnetwork
 
 			# get the local adapter hostname for this network
 			# get all the possible IPs for the node I'm running on
-			my $ifgcmd = "ifconfig -a | grep 'inet '";
+			my $ifgcmd = "ifconfig -a | grep 'inet'";
 			my @result = xCAT::Utils->runcmd($ifgcmd, 0);
 			if ($::RUNCMD_RC != 0) {
 				my $rsp;
@@ -1484,29 +1492,15 @@ sub mkNIMnetwork
 			foreach my $int (@result) {
 				my ($inet, $myIP, $str) = split(" ", $int);
 				chomp $myIP;
+                                $myIP =~ s/\/.*//; # ipv6 address 4000::99/64
+                                $myIP =~ s/\%.*//; # ipv6 address ::1%1/128
 
-				# split interface IP
-				my ($h1, $h2, $h3, $h4) = split('\.', $myIP);
-
-				# split mask 
-				my ($m1, $m2, $m3, $m4) = split('\.', $xnethash{$net}{mask});
-
-				# split net address 
-				my ($n1, $n2, $n3, $n4) = split('\.', $xnethash{$net}{net});
-
-				# AND this interface IP with the netmask of the network
-				my $a1 = ((int $h1) & (int $m1));
-				my $a2 = ((int $h2) & (int $m2));
-				my $a3 = ((int $h3) & (int $m3));
-				my $a4 = ((int $h4) & (int $m4));
-
-				# if all the octals match the network addr then we have 
-				#	the right interface
-				if ( ($n1 == $a1) && ($n2 ==$a2) && ($n3 == $a3) && ($n4 == $a4) ) {
-					my $packedaddr = inet_aton($myIP);
-					$adapterhostname = gethostbyaddr($packedaddr, AF_INET);
-					last;
-				}
+                                # if the ip address is in the subnet
+                                #       the right interface
+                                if ( xCAT::Utils->ishostinsubnet($myIP, $nethash{$node}{mask}, $nethash{$node}{net} )) {
+                                        $adapterhostname = xCAT::Utils->gethostname($myIP);
+                                        last;
+                                }
 			}
 
 			# define the new interface
