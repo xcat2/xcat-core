@@ -1548,7 +1548,7 @@ sub mkNIMnetwork
 			}
 
 			# get the ip of the nim primary interface
-			my $gwIP = inet_ntoa(inet_aton($adapterhost));
+			my $gwIP = xCAT::Utils->getipaddr($adapterhost);
 			chomp $gwIP;
 
 			# create static routes between the networks
