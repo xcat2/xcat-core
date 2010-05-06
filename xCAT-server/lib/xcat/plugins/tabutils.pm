@@ -622,6 +622,14 @@ sub tabprune
         return 1;
       
     } 
+    if (!(defined $PERCENT ) && (!(defined $RECID) && (!(defined $ALL)) && (!(defined $NUMBERENTRIES)))) {
+        my %rsp;
+        $rsp{data}->[0] = "One option -p or -i or -n or -a must be supplied.";
+        $rsp{errorcode} = 1; 
+        $cb->(\%rsp);
+        return 1;
+      
+    } 
     if ((defined $PERCENT ) && ((defined $RECID) || (defined $ALL) || (defined $NUMBERENTRIES))) {
         my %rsp;
         $rsp{data}->[0] = "Only one option -p or -i or -n or -a maybe used at a time.";
