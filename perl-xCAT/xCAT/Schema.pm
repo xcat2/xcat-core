@@ -652,6 +652,11 @@ site => {
   # Do not put description text past column 88, so it displays well in a 100 char wide window.
   # ----------------------------------------------------------------------------------|
   key => "Attribute Name:  Description\n\n".
+   " auditskipcmds: List of commands that will not be written to the auditlog table.\n".
+   "                ALL - means all cmds will be skipped. If attribute null, all\n".
+   "                commands will be written.\n".
+   "                For example: tabdump,nodels,lsdef will not log those cmds.\n".
+   "                ALL will not log any cmds.\n\n".
    " blademaxp:  The maximum number of processes for blade hardware control.\n\n".
    " consoleondemand:  When set to 'yes', conserver connects and creates the console\n".
    "                   output only when the user opens the console. Default is no on\n".
