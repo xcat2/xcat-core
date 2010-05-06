@@ -1813,7 +1813,6 @@ sub getGroupMembers
                 %nethash = xCAT::DBobjUtils->getNetwkInfo(\@targetnodes);
 
 		Comments:
-			      Not supporting IPv6 yet
 
 =cut
 
@@ -1845,11 +1844,11 @@ sub getNetwkInfo
     {
 
 		# get, check, split the node IP
-		my $IP = inet_ntoa(inet_aton($node));
+		my $IP = xCAT::Utils->getipaddr($node);
 		chomp $IP;
-		unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
+		unless (($IP =~ /\d+\.\d+\.\d+\.\d+/) || ($IP =~ /:/))
 		{
-    		next;    #Not supporting IPv6 yet
+    		next;
 		}
 		my ($ia, $ib, $ic, $id) = split('\.', $IP);
 
@@ -1861,25 +1860,18 @@ sub getNetwkInfo
 			my $net=$_->{'net'};
 			chomp $NM;
 			chomp $net;
-			my ($n1, $n2, $n3, $n4) = split('\.', $net);
-			my ($na, $nb, $nc, $nd) = split('\.', $NM);
 
-			# Convert to integers so the bitwise and (&) works correctly.
-			my $sa     = (int($ia) & int($na));
-			my $sb     = (int($ib) & int($nb));
-			my $sc     = (int($ic) & int($nc));
-			my $sd     = (int($id) & int($nd));
-
-			# if all the octals match then we have the right network
-			if ( ($n1 == $sa) && ($n2 ==$sb) && ($n3 == $sc) && ($n4 == $sd) ) {
+                        if(xCAT::Utils->ishostinsubnet($IP, $NM, $net))
+                        {
 				# fill in the hash - 
 				foreach my $attr (@attrnames) {
 					if ( defined($_->{$attr}) ) {
 						$nethash{$node}{$attr} = $_->{$attr};
 					}
-				}
-				next;
-			}
+                                }
+                                next;
+                        }
+                            
 		}
 
 	} #end - for each node

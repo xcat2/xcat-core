@@ -185,14 +185,14 @@ sub is_me
     my ($class, $name) = @_;
 
     # convert to IP
-    my $nameIP = inet_ntoa(inet_aton($name));
+    my $nameIP = xCAT::Utils->getipaddr($name);
     chomp $nameIP;
 
     # split into octets
-    my ($b1, $b2, $b3, $b4) = split /\./, $nameIP;
+    #my ($b1, $b2, $b3, $b4) = split /\./, $nameIP;
 
     # get all the possible IPs for the node I'm running on
-    my $ifcmd = "ifconfig -a | grep 'inet '";
+    my $ifcmd = "ifconfig -a | grep 'inet'";
     my $result = xCAT::Utils->runcmd($ifcmd, 0, 1);
     if ($::RUNCMD_RC != 0)
     {
@@ -207,11 +207,10 @@ sub is_me
     {
         my ($inet, $myIP, $str) = split(" ", $int);
         chomp $myIP;
+        $myIP =~ s/\/.*//; # ipv6 address 4000::99/64
+        $myIP =~ s/\%.*//; # ipv6 address ::1%1/128
 
-        # Split the two ip addresses up into octets
-        my ($a1, $a2, $a3, $a4) = split /\./, $myIP;
-
-        if (($a1 == $b1) && ($a2 == $b2) && ($a3 == $b3) && ($a4 == $b4))
+        if ($myIP eq $nameIP)
         {
             return 1;
         }

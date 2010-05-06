@@ -107,7 +107,7 @@ sub getshorthost {
 
     my $ip = shift;
 
-    my $host = gethostbyaddr( inet_aton($ip), AF_INET );
+    my $host = xCAT::Utils->gethostname($ip);
     if ( $host and !$! ) {
         ##############################
         # Get short-hostname

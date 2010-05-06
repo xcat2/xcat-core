@@ -96,7 +96,7 @@ sub parse_args {
             push @network, $_;
         } else {
             # get, check the node IP
-            $client_ip = inet_ntoa(inet_aton(@$node[0]));
+            $client_ip = xCAT::Utils->getipaddr(@$node[0]);
             chomp $client_ip;
             if ( $client_ip ) {
                 $opt{C} = $client_ip;
@@ -118,7 +118,7 @@ sub parse_args {
                     # Service node is returned as hostname, Convert 
                     # hostname to IP  
                     ####################################
-                    $server_ip = inet_ntoa(inet_aton($key));
+                    $server_ip = xCAT::Utils->getipaddr($key);
                     chomp $server_ip;
                 } else {
                     ####################################
@@ -139,7 +139,9 @@ sub parse_args {
         # Fulfill in the server network information for gateway resolving
         ####################################################################
         if ( exists($opt{S}) ) {
-            $server = gethostbyaddr( inet_aton($opt{S}), AF_INET );
+            # why convert to hostname??
+            #$server = gethostbyaddr( inet_aton($opt{S}), AF_INET );
+            $server = $opt{S};
             if ( $server ) {
                 %server_nethash = xCAT::DBobjUtils->getNetwkInfo( [$server] );
             }
