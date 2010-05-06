@@ -2,10 +2,7 @@
 #-------------------------------------------------------
 
 =head1
-	
-	(Hello)
-	(Bye)
-	
+		
 	This is a CP utility plugin for z/VM.
 
 =cut

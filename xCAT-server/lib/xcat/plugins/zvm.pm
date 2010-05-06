@@ -871,17 +871,6 @@ sub changeVM {
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
 
-	# exchangesshkeys [password]
-	elsif ( $args->[0] eq "--exchangesshkeys" ) {
-
-		# Get password
-		my $password = $args->[1];
-
-		# Exchange SSH keys
-		$out = `DSH_REMOTE_PASSWORD=$password xdsh $node -K`;
-		$out = xCAT::zvmUtils->appendHostname( $node, $out );
-	}
-
 	# formatdisk [address] [multi password]
 	elsif ( $args->[0] eq "--formatdisk" ) {
 		my $tgtNode      = $node;
@@ -1579,6 +1568,9 @@ sub makeVM {
 			if ( $generateNew == 1 ) {
 				$out = xCAT::zvmUtils->generateMacId($hcp);
 			}
+			
+			# Remove user entry file (on HCP)
+			$out = `ssh -o ConnectTimeout=5 $hcp "rm $userEntry"`;
 		}
 	}
 	else {
@@ -1820,6 +1812,9 @@ sub cloneVM {
 		foreach (@children) {
 			waitpid( $_, 0 );
 		}
+		
+		# Remove source user entry
+		$out = `rm $srcUserEntry`;
 	}
 		
 	# --- Detatch source disks ---
@@ -2013,7 +2008,7 @@ sub clone {
 		
 	# SCP user entry file over to HCP
 	xCAT::zvmUtils->sendFile( $hcp, $userEntry, $userEntry );
-
+	
 	# --- Create new virtual server ---
 	my $try = 10;
 	while ($try > 0) {
@@ -2037,13 +2032,17 @@ sub clone {
 			last;
 		}
 	}
+	
+	# Remove user entry
+	$out = `rm $userEntry`;
+	$out = `ssh -o ConnectTimeout=5 $hcp "rm $userEntry"`;
 
 	# Exit on bad output
 	if ( $rc == -1 ) {
 		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Could not create user entry" );
 		return;
 	}
-	
+		
 	# Load VMCP module on HCP and source node
 	xCAT::zvmCPUtils->loadVmcp($hcp);
 	xCAT::zvmCPUtils->loadVmcp($sourceNode);
@@ -2308,7 +2307,7 @@ sub clone {
 			$out = `ssh $hcp sed --in-place -e "s/$sourceIp/$targetIp/g" \ -e "s/$sourceNode/$tgtNode/g" $ifcfgPath`;
 
 			# Set MAC address
-			my $networkFile = $tgtNode . "_network_config";
+			my $networkFile = $tgtNode . "NetworkConfig";
 			if ( $os =~ m/Red Hat/i ) {
 				# Red Hat only
 				$out = `ssh $hcp "cat $ifcfgPath" | grep -v "MACADDR" > /tmp/$networkFile`;
@@ -2320,6 +2319,9 @@ sub clone {
 				$out = `echo "UNIQUE=''" >> /tmp/$networkFile`;
 			}
 			xCAT::zvmUtils->sendFile( $hcp, "/tmp/$networkFile", $ifcfgPath );
+			
+			# Remove network file from /tmp
+			$out = `rm /tmp/$networkFile`;
 
 			# Set to hardware configuration -- Only for layer 2
 			my $layer = xCAT::zvmCPUtils->getNetworkLayer($sourceNode);
@@ -2365,10 +2367,13 @@ sub clone {
 
 					# Set layer 2 support
 					$hwcfgPath .= $hwcfg;
-					my $hardwareFile = $tgtNode . "_hardware_config";
+					my $hardwareFile = $tgtNode . "HardwareConfig";
 					$out = `ssh $hcp "cat $hwcfgPath" | grep -v "QETH_LAYER2_SUPPORT" > /tmp/$hardwareFile`;
 					$out = `echo "QETH_LAYER2_SUPPORT='1'" >> /tmp/$hardwareFile`;
 					xCAT::zvmUtils->sendFile( $hcp, "/tmp/$hardwareFile", $hwcfgPath );
+					
+					# Remove hardware file from /tmp
+					$out = `rm /tmp/$hardwareFile`;
 				}
 			}    # End of if ( $layer == 2 )
 
@@ -2492,7 +2497,7 @@ sub nodeSet {
 	my $netName = $words[4];
 	
 	# Get NIC address from user entry
-	$out = `ssh $hcp "$::DIR/getuserentry $userId" | grep "$netName"`;
+	$out = `ssh $hcp "$::DIR/getuserentry $userId" | grep "NICDEF" | grep "$netName"`;
 	if ( !$out ) {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing NICDEF statement in user entry of node" );
 		return;
@@ -2706,7 +2711,7 @@ sub nodeSet {
 		xCAT::zvmUtils->sendFile( $hcp, $kernelFile, $kernelFile );
 		xCAT::zvmUtils->sendFile( $hcp, $parmFile, $parmFile );
 		xCAT::zvmUtils->sendFile( $hcp, $initFile, $initFile );
-
+		
 		# Set the virtual unit record devices online on HCP
 		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", "c" );
 		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", "d" );
@@ -2736,6 +2741,10 @@ sub nodeSet {
 			return;
 		}
 
+		# Remove kernel, parmfile, and initrd from /tmp
+		$out = `rm $parmFile $kernelFile $initFile`;
+		$out = `ssh -o ConnectTimeout=5 $hcp "rm $parmFile $kernelFile $initFile"`;
+		
 		xCAT::zvmUtils->printLn( $callback, "$node: Kernel, parm, and initrd punched to reader.  Ready for boot." );
 	}
 
@@ -2866,6 +2875,10 @@ sub nodeSet {
 			return;
 		}
 
+		# Remove kernel, parmfile, and initrd from /tmp
+		$out = `rm $parmFile $kernelFile $initFile`;
+		$out = `ssh -o ConnectTimeout=5 $hcp "rm $parmFile $kernelFile $initFile"`;
+		
 		xCAT::zvmUtils->printLn( $callback, "$node: Kernel, parm, and initrd punched to reader.  Ready for boot." );
 	}
 

@@ -5,11 +5,13 @@
   <!-- The dasd attached to the virtual server -->  
   <dasd>
     <devices config:type="list">
+
       <!-- Dasd attached at 0100 --> 
       <listentry>
         <bus>None</bus>
         <bus_hwcfg>none</bus_hwcfg>
         <channel>0.0.0100</channel>
+        <format config:type="boolean">true</format>
         <dev_name>/dev/dasda</dev_name>
         <dev_names config:type="list">
           <listentry>/dev/dasda</listentry>
@@ -34,7 +36,6 @@
         <resource>
           <disk_log_geo config:type="list">
             <listentry>
-              <cylinders config:type="integer">3338</cylinders>
               <heads config:type="integer">15</heads>
               <sectors config:type="integer">12</sectors>
             </listentry>
@@ -44,12 +45,10 @@
               <active config:type="boolean">true</active>
               <length config:type="integer">1</length>
               <mode>rw</mode>
-              <start config:type="integer">256</start>
             </listentry>
           </io>
         </resource>
         <sysfs_bus_id>0.0.0100</sysfs_bus_id>
-        <udi>/org/freedesktop/Hal/devices/ccw_0_0_0100_storage</udi>
       </listentry>
       
       <!-- Dasd attached at 0101 --> 
@@ -57,6 +56,7 @@
         <bus>None</bus>
         <bus_hwcfg>none</bus_hwcfg>
         <channel>0.0.0101</channel>
+        <format config:type="boolean">true</format>
         <dev_name>/dev/dasdb</dev_name>
         <dev_names config:type="list">
           <listentry>/dev/dasdb</listentry>
@@ -81,7 +81,6 @@
         <resource>
           <disk_log_geo config:type="list">
             <listentry>
-              <cylinders config:type="integer">3338</cylinders>
               <heads config:type="integer">15</heads>
               <sectors config:type="integer">12</sectors>
             </listentry>
@@ -91,12 +90,10 @@
               <active config:type="boolean">true</active>
               <length config:type="integer">1</length>
               <mode>rw</mode>
-              <start config:type="integer">256</start>
             </listentry>
           </io>
         </resource>
         <sysfs_bus_id>0.0.0101</sysfs_bus_id>
-        <udi>/org/freedesktop/Hal/devices/ccw_0_0_0101_storage</udi>
       </listentry>
       
       <!-- Dasd attached at 0300 -->
@@ -128,14 +125,12 @@
         <resource>
           <disk_log_geo config:type="list">
             <listentry>
-              <cylinders config:type="integer">256</cylinders>
               <heads config:type="integer">16</heads>
               <sectors config:type="integer">128</sectors>
             </listentry>
           </disk_log_geo>
         </resource>
         <sysfs_bus_id>0.0.0300</sysfs_bus_id>
-        <udi>/org/freedesktop/Hal/devices/ccw_0_0_0300_storage</udi>
       </listentry>
       
       <!-- Dasd attached at 0301 -->
@@ -167,17 +162,16 @@
         <resource>
           <disk_log_geo config:type="list">
             <listentry>
-              <cylinders config:type="integer">512</cylinders>
               <heads config:type="integer">16</heads>
               <sectors config:type="integer">128</sectors>
             </listentry>
           </disk_log_geo>
         </resource>
         <sysfs_bus_id>0.0.0301</sysfs_bus_id>
-        <udi>/org/freedesktop/Hal/devices/ccw_0_0_0301_storage</udi>
       </listentry>
     </devices>
   </dasd>
+  
   
   <general>
     <mode>
@@ -186,55 +180,41 @@
     <mouse>
       <id>none</id>
     </mouse>
-    <signature-handling>
-      <accept_file_without_checksum config:type="boolean">true</accept_file_without_checksum>
-      <accept_non_trusted_gpg_key config:type="boolean">true</accept_non_trusted_gpg_key>
-      <accept_unknown_gpg_key config:type="boolean">true</accept_unknown_gpg_key>
-      <accept_unsigned_file config:type="boolean">true</accept_unsigned_file>
-      <accept_verification_failed config:type="boolean">false</accept_verification_failed>
-      <import_gpg_key config:type="boolean">true</import_gpg_key>
-    </signature-handling>
+    <signature-handling/>
   </general>
+  
   
   <!-- Groups to create on Linux -->
   <groups config:type="list">
     <group>
-      <group_password>x</group_password>
       <groupname>users</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>floppy</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>bin</groupname>
       <userlist>daemon</userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>xok</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>nobody</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>modem</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>lp</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>tty</groupname>
       <userlist></userlist>
     </group>
@@ -249,7 +229,6 @@
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>nogroup</groupname>
       <userlist>nobody</userlist>
     </group>
@@ -264,27 +243,22 @@
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>video</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>sys</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>shadow</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>console</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>cdrom</groupname>
       <userlist></userlist>
     </group>
@@ -294,37 +268,35 @@
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>trusted</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>dialout</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
+      <group_password>!</group_password>
+      <groupname>ts-shell</groupname>
+      <userlist></userlist>
+    </group>
+    <group>
       <groupname>wheel</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>www</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>games</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>disk</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>audio</groupname>
       <userlist></userlist>
     </group>
@@ -334,7 +306,6 @@
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>ftp</groupname>
       <userlist></userlist>
     </group>
@@ -344,27 +315,22 @@
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>kmem</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>public</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>root</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>mail</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>daemon</groupname>
       <userlist></userlist>
     </group>
@@ -374,7 +340,6 @@
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>uucp</groupname>
       <userlist></userlist>
     </group>
@@ -384,17 +349,14 @@
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>man</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>utmp</groupname>
       <userlist></userlist>
     </group>
     <group>
-      <group_password>x</group_password>
       <groupname>news</groupname>
       <userlist></userlist>
     </group>
@@ -404,6 +366,7 @@
       <userlist></userlist>
     </group>
   </groups>
+  
   
   <!-- Contents of /etc/hosts -->
   <host>
@@ -422,21 +385,22 @@
       </hosts_entry>
     </hosts>
   </host>
-  
-  
+    
+
   <iscsi-client>
     <initiatorname></initiatorname>
     <targets config:type="list"/>
     <version>1.0</version>
   </iscsi-client>
   
-  
+
   <!-- Language setup (english) -->
   <language>
     <language>en_US</language>
     <languages></languages>
   </language>
   
+
   <!-- Networking setup (DHCP) -->
   <networking>
     <dhcp_options>
@@ -463,7 +427,8 @@
       </interface>
     </interfaces>
     <managed config:type="boolean">false</managed>
-    
+
+
     <!-- Device type -->
     <modules config:type="list">
       <module_entry>
@@ -512,11 +477,13 @@
     <nis_domain></nis_domain>
     <nis_local_only config:type="boolean">false</nis_local_only>
     <nis_options></nis_options>
-    <nis_other_domains config:type="list"/>
+    <nis_other_domains config:type="list">
+    </nis_other_domains>
     <nis_servers config:type="list"/>
     <start_autofs config:type="boolean">false</start_autofs>
     <start_nis config:type="boolean">false</start_nis>
   </nis>
+  
   
   <!-- File system partitioning -->
   <partitioning config:type="list">
@@ -558,7 +525,7 @@
       </partitions>
       <use>all</use>
     </drive>
-        
+            
     <!-- Swap space -->
     <drive>
       <device>/dev/dasdc</device>
@@ -568,7 +535,7 @@
           <filesystem config:type="symbol">swap</filesystem>
           <format config:type="boolean">true</format>
           <mount>swap</mount>
-          <mountby config:type="symbol">device</mountby>
+          <mountby config:type="symbol">path</mountby>
           <partition_id config:type="integer">131</partition_id>
           <partition_nr config:type="integer">1</partition_nr>
           <partition_type>primary</partition_type>
@@ -587,7 +554,7 @@
           <filesystem config:type="symbol">swap</filesystem>
           <format config:type="boolean">true</format>
           <mount>swap</mount>
-          <mountby config:type="symbol">device</mountby>
+          <mountby config:type="symbol">path</mountby>
           <partition_id config:type="integer">131</partition_id>
           <partition_nr config:type="integer">1</partition_nr>
           <partition_type>primary</partition_type>
@@ -598,6 +565,7 @@
     </drive>
   </partitioning>
     
+  
   <proxy>
     <enabled config:type="boolean">false</enabled>
     <ftp_proxy></ftp_proxy>
@@ -637,122 +605,16 @@
     <default>5</default>
   </runlevel>
   
+  
   <!-- Software to install on Linux -->
   <software>
-    <packages config:type="list">
-      <package>libgsm</package>
-      <package>libssui</package>
-      <package>perl-Bootloader</package>
-      <package>samba-client</package>
-      <package>libiniparser</package>
-      <package>libnl</package>
-      <package>cifs-mount</package>
-      <package>OpenEXR</package>
-      <package>perl-XML-Parser</package>
-      <package>qt-qt3support</package>
-      <package>net-snmp</package>
-      <package>dbus-1-qt</package>
-      <package>perl-gettext</package>
-      <package>perl-Carp-Clan</package>
-      <package>dmapi</package>
-      <package>xorg-x11-Xnest</package>
-      <package>glibc-32bit</package>
-      <package>mDNSResponder-lib</package>
-      <package>perl-Config-Crontab</package>
-      <package>perl-X500-DN</package>
-      <package>libogg</package>
-      <package>perl-TermReadKey</package>
-      <package>pciutils-ids</package>
-      <package>perl-Config-IniFiles</package>
-      <package>perl-XML-Writer</package>
-      <package>update-alternatives</package>
-      <package>mono-winforms</package>
-      <package>yast2-trans-en_US</package>
-      <package>libvorbis</package>
-      <package>perl-Crypt-SmbHash</package>
-      <package>perl-TimeDate</package>
-      <package>zypper</package>
-      <package>taglib</package>
-      <package>libicu</package>
-      <package>perl-Digest-MD4</package>
-      <package>perl-Parse-RecDescent</package>
-      <package>unrar</package>
-      <package>perl-Bit-Vector</package>
-      <package>perl-Date-Calc</package>
-      <package>boost</package>
-      <package>flac</package>
-      <package>python-cairo</package>
-      <package>aspell-en</package>
-      <package>libgimpprint</package>
-      <package>susehelp_en</package>
-      <package>iso-codes</package>
-      <package>libsvg-cairo</package>
-      <package>audiofile</package>
-      <package>esound</package>
-      <package>dbus-1-mono</package>
-      <package>limal-nfs-server</package>
-      <package>libzypp-zmd-backend</package>
-      <package>aalib</package>
-      <package>libsvg</package>
-      <package>perl-Compress-Zlib</package>
-      <package>perl-Digest-SHA1</package>
-      <package>perl-URI</package>
-      <package>libgdiplus</package>
-      <package>limal-nfs-server-perl</package>
-      <package>bind</package>
-    </packages>
-    
     <patterns config:type="list">
+      <pattern>base</pattern>
       <pattern>x11</pattern>
       <pattern>gnome</pattern>
-      <pattern>base</pattern>
     </patterns>
-    
-    <remove-packages config:type="list">
-      <package>xorg-x11-driver-video-radeon</package>
-      <package>915resolution</package>
-      <package>xorg-x11-driver-video-nvidia</package>
-      <package>3ddiag</package>
-      <package>sax2-libsax-perl</package>
-      <package>sax2-ident</package>
-      <package>sax2</package>
-      <package>sax2-gui</package>
-      <package>sax2-libsax</package>
-      <package>xorg-x11-server-glx</package>
-      <package>xorg-x11-server</package>
-      <package>xorg-x11-driver-video</package>
-      <package>nautilus-cd-burner</package>
-      <package>yast2-sound</package>
-      <package>evolution</package>
-      <package>gnome2-SLES</package>
-      <package>mDNSResponder</package>
-      <package>cdrecord</package>
-      <package>cdrdao</package>
-      <package>dosbootdisk</package>
-      <package>gnome2-SuSE</package>
-      <package>suspend</package>
-      <package>acpid</package>
-      <package>bootcycle</package>
-      <package>fbset</package>
-      <package>libpfm</package>
-      <package>mcelog</package>
-      <package>mpt-status</package>
-      <package>linux32</package>
-      <package>master-boot-code</package>
-      <package>pfmon</package>
-      <package>numactl</package>
-      <package>powersave</package>
-      <package>pdisk</package>
-      <package>smartmontools</package>
-      <package>salinfo</package>
-      <package>powerpc32</package>
-      <package>syslinux</package>
-      <package>wol</package>
-      <package>yast2-irda</package>
-      <package>yast2-vm</package>
-      <package>yast2-power-management</package>
-    </remove-packages>
   </software>
+  
   
   <!-- Time zone -->
   <timezone>
@@ -770,6 +632,7 @@
     <shell>/bin/bash</shell>
     <skel>/etc/skel</skel>
   </user_defaults>
+  
   
   <!-- Users on Linux -->
   <users config:type="list">
@@ -866,7 +729,7 @@
     <user>
       <encrypted config:type="boolean">true</encrypted>
       <fullname>Novell Customer Center User</fullname>
-      <gid>105</gid>
+      <gid>106</gid>
       <home>/var/lib/YaST2/suse-ncc-fakehome</home>
       <password_settings>
         <expire></expire>
@@ -898,42 +761,6 @@
       <uid>40</uid>
       <user_password>*</user_password>
       <username>ftp</username>
-    </user>
-    <user>
-      <encrypted config:type="boolean">true</encrypted>
-      <fullname>Gnome Display Manager daemon</fullname>
-      <gid>104</gid>
-      <home>/var/lib/gdm</home>
-      <password_settings>
-        <expire></expire>
-        <flag></flag>
-        <inact></inact>
-        <max>99999</max>
-        <min>0</min>
-        <warn>7</warn>
-      </password_settings>
-      <shell>/bin/false</shell>
-      <uid>50</uid>
-      <user_password>!</user_password>
-      <username>gdm</username>
-    </user>
-    <user>
-      <encrypted config:type="boolean">true</encrypted>
-      <fullname>Batch jobs daemon</fullname>
-      <gid>25</gid>
-      <home>/var/spool/atjobs</home>
-      <password_settings>
-        <expire></expire>
-        <flag></flag>
-        <inact></inact>
-        <max>99999</max>
-        <min>0</min>
-        <warn>7</warn>
-      </password_settings>
-      <shell>/bin/bash</shell>
-      <uid>25</uid>
-      <user_password>!</user_password>
-      <username>at</username>
     </user>
     <user>
       <encrypted config:type="boolean">false</encrypted>
@@ -1008,13 +835,6 @@
       <username>ntp</username>
     </user>
     <user>
-      <fullname>User for D-BUS</fullname>
-      <gid>101</gid>
-      <home>/var/run/dbus</home>
-      <shell>/bin/false</shell>
-      <uid>100</uid>
-    </user>
-    <user>
       <encrypted config:type="boolean">true</encrypted>
       <fullname>Unix-to-Unix CoPy system</fullname>
       <gid>14</gid>
@@ -1031,6 +851,13 @@
       <uid>10</uid>
       <user_password>*</user_password>
       <username>uucp</username>
+    </user>
+    <user>
+      <fullname>User for D-BUS</fullname>
+      <gid>101</gid>
+      <home>/var/run/dbus</home>
+      <shell>/bin/false</shell>
+      <uid>100</uid>
     </user>
     <user>
       <fullname>User for haldaemon</fullname>
@@ -1117,6 +944,7 @@
   <zfcp>
     <devices config:type="list"/>
   </zfcp>
+  
   
   <!-- Scripts (post-script) -->
   <configure>
