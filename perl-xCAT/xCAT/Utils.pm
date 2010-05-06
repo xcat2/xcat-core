@@ -5921,5 +5921,50 @@ sub linklocaladdr {
     return $laddr;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3  ishostinsubnet
+    Works for both IPv4 and IPv6.
+    Takes an ip address, the netmask and a subnet,
+    chcek if the ip address is in the subnet
+    Arguments:
+       ip address, netmask, subnet
+    Returns: 
+       1 - if the ip address is in the subnet
+       0 - if the ip address is NOT in the subnet
+    Globals:
+    Error:
+        none
+    Example:
+        if(xCAT::Utils->ishostinsubnet($ip, $netmask, $subnet);
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub ishostinsubnet {
+    my ($class, $ip) = shift;
+    my $mask = shift;
+    my $subnet =shift;
+ 
+    if ($ip =~ /\d+\.\d+\.\d+\.\d+/) {# ipv4 address
+       $ip =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
+       my $ipnum = ($1<<24)+($2<<16)+($3<<8)+$4;
+
+       $mask =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
+       my $masknum = ($1<<24)+($2<<16)+($3<<8)+$4;
+
+       $subnet =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
+       my $netnum = ($1<<24)+($2<<16)+($3<<8)+$4;
+
+       if (($ipnum & $masknum) == $netnum) {
+          return 1;
+       } else {
+          return 0;
+       }
+    } else { # for ipv6
+        #TODO
+    }
+}
 
 1;
