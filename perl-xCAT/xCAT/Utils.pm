@@ -5886,7 +5886,7 @@ sub getipaddr()
 
 #-------------------------------------------------------------------------------
 sub linklocaladdr {
-    my $mac = shift;
+    my ($class, $mac) = @_;
     $mac = lc($mac);
     my $localprefix = "fe80";
 
