@@ -267,6 +267,7 @@ sub preprocess_request
 
         # handle -h etc.
         # copy stuff to service nodes
+
         my ($rc, $bndloc) = &prenimnodecust($cb, $nodes, $sub_req);
         if ($rc)
         {    # either error or -h was processed etc.
@@ -1577,9 +1578,15 @@ sub mknimimage
             }
         }
 
-        #  TODO - add location (opt_l) - so all res go in same place!
+        #  - add location ($::opt_l or default) - so all res go in same place!
+		my $loc;
+		if ($::opt_l) {
+			$loc=$::opt_l;
+		} else {
+			$loc = "/install/nim";
+		}
 
-        my $nimcmd = qq~nim_master_setup -a mk_resource=no -a device=$::opt_s~;
+        my $nimcmd = qq~nim_master_setup -a file_system=$loc -a mk_resource=no -a device=$::opt_s~;
         if ($::VERBOSE)
         {
             my $rsp;
@@ -1763,6 +1770,7 @@ sub mknimimage
 
         #
         # get lpp_source
+
         #
         $lpp_source_name = &mk_lpp_source($callback);
         chomp $lpp_source_name;
@@ -1817,6 +1825,7 @@ sub mknimimage
         # if we don't have a root/shared_root then
         #	we may need to create one
         if (!$root_name)
+
         {
 
             # use naming convention
@@ -4026,6 +4035,7 @@ sub enoughspace
             }
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
+
         }
     }
 
@@ -6762,6 +6772,7 @@ sub checkNIMnetworks
     my $callback = shift;
     my $nodes    = shift;
     my $nethash  = shift;
+
 
     my @nodelist = @{$nodes};
     my %nethash;    # hash of xCAT network definitions for each node
