@@ -5866,5 +5866,60 @@ sub getipaddr()
     }
 } 
 
+#-------------------------------------------------------------------------------
+
+=head3  linklocaladdr
+    Only for IPv6.               
+    Takes a mac address, calculate the IPv6 link local address
+    Arguments:
+       mac address
+    Returns:
+       ipv6 link local address. returns undef if passed in a invalid mac address
+    Globals:
+    Error:
+        none
+    Example:
+        my $linklocaladdr = xCAT::Utils->linklocaladdr($mac);                   
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub linklocaladdr {
+    my $mac = shift;
+    $mac = lc($mac);
+    my $localprefix = "fe80";
+
+    my ($m1, $m2, $m3, $m6, $m7, $m8);
+    # mac address can be 00215EA376B0 or 00:21:5E:A3:76:B0
+    if($mac =~ /^([0-9A-Fa-f]{2}).*?([0-9A-Fa-f]{2}).*?([0-9A-Fa-f]{2}).*?([0-9A-Fa-f]{2}).*?([0-9A-Fa-f]{2}).*?([0-9A-Fa-f]{2})$/)
+    {
+        ($m1, $m2, $m3, $m6, $m7, $m8) = ($1, $2, $3, $4, $5, $6);
+    }
+    else
+    {
+        #not a valid mac address
+        return undef;
+    }
+    my ($m4, $m5)  = ("ff","fe");
+
+    my $bit = (int $m1) & 2;
+    if ($bit) {
+       $m1 = $m1 - 2;
+    } else {
+       $m1 = $m1 + 2;
+    }
+
+    $m1 = $m1 . $m2;
+    $m3 = $m3 . $m4;
+    $m5 = $m5 . $m6;
+    $m7 = $m7 . $m8;
+
+    my $laddr = join ":", $m1, $m3, $m5, $m7;
+    $laddr = join "::", $localprefix, $laddr;
+
+    return $laddr;
+}
+
 
 1;
