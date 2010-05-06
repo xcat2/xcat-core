@@ -29,6 +29,26 @@ if (-p STDIN) {
   $cmdref->{stdin}->[0]=$data;
 }
 
+Getopt::Long::Configure("posix_default");
+Getopt::Long::Configure("no_gnu_compat");
+Getopt::Long::Configure("bundling");
+GetOptions('h|help'    => \$::HELP,
+             'v|version' => \$::VERSION);
+# display the usage if -h or --help is specified
+if ($::HELP)
+{
+  &updatenode_usage($callback);
+  exit 0;
+}
+
+# display the version statement if -v or --verison is specified
+if ($::VERSION)
+{
+  my $version = xCAT::Utils->Version();
+  print "$version\n";
+  exit 0;
+}
+
 my $arg=shift(@ARGV);
 
 # Set the noderange
@@ -58,9 +78,6 @@ push (@{$cmdref->{arg}}, @ARGV);
 
 # if trying to update security, get the password 
 # to access the target node firstly
-Getopt::Long::Configure("posix_default");
-Getopt::Long::Configure("no_gnu_compat");
-Getopt::Long::Configure("bundling");
 if (
     !GetOptions(
                 'c|cmdlineonly'    => \$::CMDLINE,
