@@ -5711,11 +5711,160 @@ sub setupAIXconserver
     return $rc;
 }
 
+#-------------------------------------------------------------------------------
 
+=head3  gethostnameandip 
+    Works for both IPv4 and IPv6.
+    Takes either a host name or an IP address string 
+    and performs a lookup on that name, 
+    returns an array with two elements: the hostname, the ip address
+    if the host name or ip address can not be resolved, 
+    the corresponding element in the array will be undef
+    Arguments:
+       hostname or ip address
+    Returns: the hostname and the ip address
+    Globals:
+        
+    Error:
+        none
+    Example:
+        my ($ip, $host) = xCAT::Utils->gethostnameandip($iporhost);
+    Comments:
+        none
+=cut
 
-  
+#-------------------------------------------------------------------------------
+sub gethostnameandip()
+{
+    my ($class, $iporhost) = @_;
 
+    if (($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/)) #ip address
+    {
+        return (xCAT::Utils->gethostname($iporhost), $iporhost);
+    }
+    else #hostname
+    {
+        return ($iporhost, xCAT::Utils->getipaddr($iporhost));
+    }
+}
 
+#-------------------------------------------------------------------------------
+
+=head3  gethostname
+    Works for both IPv4 and IPv6.
+    Takes an IP address string and performs a lookup on that name,
+    returns the hostname of the ip address 
+    if the ip address can not be resolved, returns undef
+    Arguments:
+       ip address
+    Returns: the hostname
+    Globals:
+        cache: %::iphosthash 
+    Error:
+        none
+    Example:
+        my $host = xCAT::Utils->gethostname($ip);
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub gethostname()
+{
+    my ($class, $iporhost) = @_;
+
+    my $socket6support = eval { require Socket6 };
+
+    if (($iporhost !~ /\d+\.\d+\.\d+\.\d+/) && ($iporhost !~ /:/))
+    {
+        #why you do so? pass in a hostname and only want a hostname??
+        return $iporhost;
+    }
+    #cache, do not lookup DNS each time
+    if (defined($::iphosthash{$iporhost}) && $::iphosthash{$iporhost})
+    {
+        return $::iphosthash{$iporhost};
+    }
+    else
+    {
+        if ($socket6support) # the getaddrinfo and getnameinfo supports both IPv4 and IPv6
+        {
+            my ($family, $socket, $protocol, $ip, $name) = getaddrinfo($iporhost,0);
+            my $host = (getnameinfo($ip))[0];
+            if ($host eq $iporhost) # can not resolve
+            {
+                return undef;
+            }
+            if ($host)
+            {
+                $host =~ s/\..*//; #short hostname
+            }
+            return $host;
+        }
+        else
+        {
+            my $hostname = gethostbyaddr(inet_aton($iporhost), AF_INET);
+            $hostname =~ s/\..*//; #short hostname
+            return $hostname;
+        }
+     }
+}
+
+#-------------------------------------------------------------------------------
+
+=head3  getipaddr
+    Works for both IPv4 and IPv6.
+    Takes a hostname string and performs a lookup on that name,
+    returns the the ip address of the hostname
+    if the hostname can not be resolved, returns undef
+    Arguments:
+       hostname
+    Returns: ip address
+    Globals:
+        cache: %::hostiphash
+    Error:
+        none
+    Example:
+        my $ip = xCAT::Utils->getipaddr($hostname);                  
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub getipaddr()
+{
+    my ($class, $iporhost) = @_;
+
+    my $socket6support = eval { require Socket6 };
+
+    if (($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/))
+    {
+        #pass in an ip and only want an ip??
+        return $iporhost;
+    }
+
+    #cache, do not lookup DNS each time
+    if (defined($::hostiphash{$iporhost}) && $::hostiphash{$iporhost})
+    {
+        return $::hostiphash{$iporhost};
+    }
+    else
+    {
+        if ($socket6support) # the getaddrinfo and getnameinfo supports both IPv4 and IPv6
+        {
+            my ($family, $socket, $protocol, $ip, $name) = getaddrinfo($iporhost,0);
+            if ($ip)
+            {
+                return (getnameinfo($ip, NI_NUMERICHOST()))[0];
+            }
+            return undef;
+        }
+        else
+        {
+             return inet_ntoa(inet_aton($iporhost))
+        }
+    }
+} 
 
 
 1;
