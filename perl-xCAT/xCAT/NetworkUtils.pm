@@ -22,6 +22,7 @@ use File::Path;
 use Socket;
 use strict;
 use warnings "all";
+my $netipmodule = eval {require Net::IP;};
 
 our @ISA       = qw(Exporter);
 
@@ -289,7 +290,18 @@ sub ishostinsubnet {
           return 0;
        }
     } else { # for ipv6
-       #todo
+       if ($netipmodule) {
+           my $eip = Net::IP::ip_expand_address ($ip,6);
+           my $enet = Net::IP::ip_expand_address ($subnet,6);
+           my $bmask = Net::IP::ip_get_mask($mask,6);
+           my $bip = Net::IP::ip_iptobin($eip,6);
+           my $bipnet = $bip & $bmask;
+           my $bnet = Net::IP::ip_iptobin($enet,6);
+           if ($bipnet == $bnet) {
+               return 1;
+           }
+       } # else, can not check without Net::IP module
+       return 0; 
     }
 }
 
