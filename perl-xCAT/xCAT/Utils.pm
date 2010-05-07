@@ -2532,7 +2532,7 @@ sub thishostisnot
     {
         @ips = split /\n/, `/sbin/ip addr`;
     }
-    my $comp = xCAT::Utils->getipaddr($comparison);
+    my $comp = xCAT::NetworkUtils->getipaddr($comparison);
     if ($comp)
     {
         foreach (@ips)
