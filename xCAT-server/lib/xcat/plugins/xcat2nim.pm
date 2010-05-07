@@ -1498,7 +1498,7 @@ sub mkNIMnetwork
 
                                 # if the ip address is in the subnet
                                 #       the right interface
-                                if ( xCAT::Utils->ishostinsubnet($myIP, $nethash{$node}{mask}, $nethash{$node}{net} )) {
+                                if ( xCAT::NetworkUtils->ishostinsubnet($myIP, $nethash{$node}{mask}, $nethash{$node}{net} )) {
                                         $adapterhostname = xCAT::NetworkUtils->gethostname($myIP);
                                         last;
                                 }
