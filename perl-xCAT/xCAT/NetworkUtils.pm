@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
-package xCAT::Utils;
+package xCAT::NetworkUtils;
 
 BEGIN
 {
