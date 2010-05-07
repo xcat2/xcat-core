@@ -587,10 +587,6 @@ sub processArgs
         if (($::opt_t eq 'site') && ($::opt_o ne 'clustersite'))
         {
             push(@::clobjnames, 'clustersite');
-			my $rsp;
-            $rsp->{data}->[0] ="Only one site definition is supported.";
-			$rsp->{data}->[1] = "Setting the name of the site definition to \'clustersite\'.";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
 
         }
         elsif ($::opt_t eq 'node')
@@ -630,9 +626,6 @@ sub processArgs
     # special case for site table!!!!!!!!!!!!!!
     if (($::opt_t eq 'site') && !$::opt_o)
     {
-		my $rsp;
-        $rsp->{data}->[0] ="Setting the name of the site definition to \'clustersite\'.";
-        xCAT::MsgUtils->message("I", $rsp, $::callback);
         push(@::clobjnames, 'clustersite');
         $::objectsfrom_opto = 1;
     }
