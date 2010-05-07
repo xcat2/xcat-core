@@ -20,6 +20,7 @@ use File::Basename;
 use xCAT::NodeRange;
 use xCAT::Schema;
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use xCAT::InstUtils;
 use xCAT::DBobjUtils;
 use XML::Simple;
@@ -5105,7 +5106,7 @@ sub prenimnodeset
     #  - if not then exit
     foreach my $n (@nodelist)
     {
-        my $packed_ip = gethostbyname($n);
+        my $packed_ip = xCAT::NetworkUtils->getipaddr($n);
         if (!$packed_ip)
         {
             my $rsp;
