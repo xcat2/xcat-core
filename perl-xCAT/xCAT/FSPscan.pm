@@ -118,17 +118,18 @@ sub enumerate {
             #########################################
             # GET CEC's information
             #########################################
-            $data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
-	    print "parsing: $1,$2,$3,$4,$5,$6,$7\n";
+	    #$data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
+	    $data =~ /state=([\w\s]+), type=([\w-]+), MTMS=([\w-]+)\*([\w-]+), ([\w=]+), slot=([\w]+), ipadd=([\w.]+), alt_ipadd=([\w.]+)/ ;
+	    print "parsing: $1,$2,$3,$4,$5,$6,$7,$8\n";
 	    
 	    my $fsp=$node_name;
-	    my $model = $4;
-	    my $serial = $3;
-            my $side = $5; 
+	    my $model = $3;
+	    my $serial = $4;
+            my $side = $6; 
 	    $server = $fsp; 
-            my $ips ="$6,$7";	    
+            my $ips ="$7,$8";	    
             push @values, join( ",",
-             "fsp",$node_name,$cageid,$4,$3,$5, $server,$prof,$fname, $6);
+             "fsp",$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
             #"fsp",$fsp,$cageid,$model,$serial,$side,$server,$prof,$fname,$ips );
            
 	    #####################################

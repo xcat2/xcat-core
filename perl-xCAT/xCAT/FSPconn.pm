@@ -497,20 +497,21 @@ sub lshwconn
 		    next;
 	       }
 	       if( $data =~ /state/) { 
-	           $data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
+	           $data =~ /state=([\w\s]+), type=([\w-]+), MTMS=([\w-\*]+), ([\w=]+), slot=([\w]+), ipadd=([\w.]+), alt_ipadd=([\w.]+)/ ;
+	          #$data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
 	           print "parsing: $1,$2,$3,$4,$5,$6,$7\n";
 	           my $state      = $1;
 	           my $type       = $2;
-	           my $sn         = $3;
-	           my $mtm        = $4;
-	           my $sp         = $5;
+	           my $mtms       = $3;
+	           my $sp         = $4;
+	           my $slot       = $5;
 	           my $ipadd      = $6;
 	           my $alt_ipaddr = $7;
 	           if($ipadd ne $node_ip) {
 	               $ipadd=$7;
 	               $alt_ipaddr = $6;
 	           }
-	           $data = "sp=$sp,ipadd=$node_ip,alt_ipadd=$alt_ipaddr,state=$state";
+	           $data = "$sp,ipadd=$node_ip,alt_ipadd=$alt_ipaddr,state=$state";
 	       #my $s;
 	       #foreach my $val ( @infomap ) {
 	       #    if ( $data =~ /@$val[0]=([\w.\-\s]+)/ ) {
