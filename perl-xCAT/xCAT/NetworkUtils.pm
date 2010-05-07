@@ -248,6 +248,7 @@ sub linklocaladdr {
     return $laddr;
 }
 
+
 #-------------------------------------------------------------------------------
 
 =head3  ishostinsubnet
@@ -270,9 +271,7 @@ sub linklocaladdr {
 
 #-------------------------------------------------------------------------------
 sub ishostinsubnet {
-    my ($class, $ip) = shift;
-    my $mask = shift;
-    my $subnet =shift;
+    my ($class, $ip, $mask, $subnet) = @_;
  
     if ($ip =~ /\d+\.\d+\.\d+\.\d+/) {# ipv4 address
        $ip =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
@@ -290,7 +289,7 @@ sub ishostinsubnet {
           return 0;
        }
     } else { # for ipv6
-        #TODO
+       #todo
     }
 }
 
