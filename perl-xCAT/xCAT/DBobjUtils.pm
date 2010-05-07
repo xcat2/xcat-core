@@ -1862,7 +1862,7 @@ sub getNetwkInfo
 			chomp $NM;
 			chomp $net;
 
-                        if(xCAT::Utils->ishostinsubnet($IP, $NM, $net))
+                        if(xCAT::NetworkUtils->ishostinsubnet($IP, $NM, $net))
                         {
 				# fill in the hash - 
 				foreach my $attr (@attrnames) {

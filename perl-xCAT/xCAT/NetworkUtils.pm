@@ -117,8 +117,8 @@ sub gethostname()
     {
         if ($socket6support) # the getaddrinfo and getnameinfo supports both IPv4 and IPv6
         {
-            my ($family, $socket, $protocol, $ip, $name) = getaddrinfo($iporhost,0);
-            my $host = (getnameinfo($ip))[0];
+            my ($family, $socket, $protocol, $ip, $name) = Socket6::getaddrinfo($iporhost,0);
+            my $host = (Socket6::getnameinfo($ip))[0];
             if ($host eq $iporhost) # can not resolve
             {
                 return undef;
@@ -180,10 +180,10 @@ sub getipaddr()
     {
         if ($socket6support) # the getaddrinfo and getnameinfo supports both IPv4 and IPv6
         {
-            my ($family, $socket, $protocol, $ip, $name) = getaddrinfo($iporhost,0);
+            my ($family, $socket, $protocol, $ip, $name) = Socket6::getaddrinfo($iporhost,0);
             if ($ip)
             {
-                return (getnameinfo($ip, NI_NUMERICHOST()))[0];
+                return (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
             }
             return undef;
         }
