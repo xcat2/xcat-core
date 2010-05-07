@@ -55,7 +55,7 @@ This program module file, is a set of network utilities used by xCAT commands.
     Error:
         none
     Example:
-        my ($ip, $host) = xCAT::Utils->gethostnameandip($iporhost);
+        my ($ip, $host) = xCAT::NetworkUtils->gethostnameandip($iporhost);
     Comments:
         none
 =cut
@@ -67,11 +67,11 @@ sub gethostnameandip()
 
     if (($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/)) #ip address
     {
-        return (xCAT::Utils->gethostname($iporhost), $iporhost);
+        return (xCAT::NetworkUtils->gethostname($iporhost), $iporhost);
     }
     else #hostname
     {
-        return ($iporhost, xCAT::Utils->getipaddr($iporhost));
+        return ($iporhost, xCAT::NetworkUtils->getipaddr($iporhost));
     }
 }
 
@@ -90,7 +90,7 @@ sub gethostnameandip()
     Error:
         none
     Example:
-        my $host = xCAT::Utils->gethostname($ip);
+        my $host = xCAT::NetworkUtils->gethostname($ip);
     Comments:
         none
 =cut
@@ -152,7 +152,7 @@ sub gethostname()
     Error:
         none
     Example:
-        my $ip = xCAT::Utils->getipaddr($hostname);                  
+        my $ip = xCAT::NetworkUtils->getipaddr($hostname);                  
     Comments:
         none
 =cut
@@ -206,7 +206,7 @@ sub getipaddr()
     Error:
         none
     Example:
-        my $linklocaladdr = xCAT::Utils->linklocaladdr($mac);                   
+        my $linklocaladdr = xCAT::NetworkUtils->linklocaladdr($mac);                   
     Comments:
         none
 =cut
@@ -263,7 +263,7 @@ sub linklocaladdr {
     Error:
         none
     Example:
-        if(xCAT::Utils->ishostinsubnet($ip, $netmask, $subnet);
+        if(xCAT::NetworkUtils->ishostinsubnet($ip, $netmask, $subnet);
     Comments:
         none
 =cut
