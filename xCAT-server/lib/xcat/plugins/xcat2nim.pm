@@ -16,6 +16,7 @@ use Sys::Hostname;
 use xCAT::NodeRange;
 use xCAT::Schema;
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use xCAT::DBobjUtils;
 use Data::Dumper;
 use Getopt::Long;
@@ -1498,7 +1499,7 @@ sub mkNIMnetwork
                                 # if the ip address is in the subnet
                                 #       the right interface
                                 if ( xCAT::Utils->ishostinsubnet($myIP, $nethash{$node}{mask}, $nethash{$node}{net} )) {
-                                        $adapterhostname = xCAT::Utils->gethostname($myIP);
+                                        $adapterhostname = xCAT::NetworkUtils->gethostname($myIP);
                                         last;
                                 }
 			}
