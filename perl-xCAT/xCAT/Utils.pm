@@ -2532,22 +2532,21 @@ sub thishostisnot
     {
         @ips = split /\n/, `/sbin/ip addr`;
     }
-    my $comp = inet_aton($comparison);
+    my $comp = xCAT::Utils->getipaddr($comparison);
     if ($comp)
     {
         foreach (@ips)
         {
-            if (/^\s*inet\s+/)
+            if (/^\s*inet.?\s+/)
             {
                 my @ents = split(/\s+/);
                 my $ip   = $ents[2];
                 $ip =~ s/\/.*//;
-                if (inet_aton($ip) eq $comp)
+                $ip =~ s/\%.*//;
+                if ($ip eq $comp)
                 {
                     return 0;
                 }
-
-                #print Dumper(inet_aton($ip));
             }
         }
     }
