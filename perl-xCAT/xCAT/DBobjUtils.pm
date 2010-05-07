@@ -15,6 +15,7 @@ use xCAT::Schema;
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
+use xCAT::NetworkUtils;
 use strict;
 
 #  IPv6 not yet implemented - need Socket6
@@ -1844,7 +1845,7 @@ sub getNetwkInfo
     {
 
 		# get, check, split the node IP
-		my $IP = xCAT::Utils->getipaddr($node);
+		my $IP = xCAT::NetworkUtils->getipaddr($node);
 		chomp $IP;
 		unless (($IP =~ /\d+\.\d+\.\d+\.\d+/) || ($IP =~ /:/))
 		{

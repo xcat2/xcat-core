@@ -5,6 +5,7 @@ use Socket;
 use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
+use xCAT::NetworkUtils;
 
 
 ##########################################################################
@@ -96,7 +97,7 @@ sub parse_args {
             push @network, $_;
         } else {
             # get, check the node IP
-            $client_ip = xCAT::Utils->getipaddr(@$node[0]);
+            $client_ip = xCAT::NetworkUtils->getipaddr(@$node[0]);
             chomp $client_ip;
             if ( $client_ip ) {
                 $opt{C} = $client_ip;
@@ -118,7 +119,7 @@ sub parse_args {
                     # Service node is returned as hostname, Convert 
                     # hostname to IP  
                     ####################################
-                    $server_ip = xCAT::Utils->getipaddr($key);
+                    $server_ip = xCAT::NetworkUtils->getipaddr($key);
                     chomp $server_ip;
                 } else {
                     ####################################

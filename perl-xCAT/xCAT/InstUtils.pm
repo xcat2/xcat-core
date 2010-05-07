@@ -24,6 +24,7 @@ use Socket;
 use Sys::Hostname;
 use strict;
 require xCAT::Schema;
+use xCAT::NetworkUtils;
 
 #require Data::Dumper;
 use Data::Dumper;
@@ -185,7 +186,7 @@ sub is_me
     my ($class, $name) = @_;
 
     # convert to IP
-    my $nameIP = xCAT::Utils->getipaddr($name);
+    my $nameIP = xCAT::NetworkUtils->getipaddr($name);
     chomp $nameIP;
 
     # split into octets
