@@ -925,9 +925,9 @@ sub mkclientdef
 		}
 			
                 my $mac_or_local_link_addr;
-                if (xCAT::Utils->getipaddr($shorthost) =~ /:/) #ipv6 node
+                if (xCAT::NetworkUtils->getipaddr($shorthost) =~ /:/) #ipv6 node
                 {
-                    $mac_or_local_link_addr = xCAT::Utils->linklocaladdr($::objhash{$node}{'mac'});
+                    $mac_or_local_link_addr = xCAT::NetworkUtils->linklocaladdr($::objhash{$node}{'mac'});
                     $adaptertype = "ent6";
                 } else {
                     $mac_or_local_link_addr = $::objhash{$node}{'mac'};
@@ -1542,7 +1542,7 @@ sub mkNIMnetwork
 			}
 
 			# get the ip of the nim primary interface
-			my $gwIP = xCAT::Utils->getipaddr($adapterhost);
+			my $gwIP = xCAT::NetworkUtils->getipaddr($adapterhost);
 			chomp $gwIP;
 
 			# create static routes between the networks
