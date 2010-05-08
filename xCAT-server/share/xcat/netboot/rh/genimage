@@ -15,6 +15,7 @@ use Cwd qw(realpath);
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 
+my $dracutmode; #Indicate whether this is a dracut style initrd
 my $prinic; #TODO be flexible on node primary nic
 my $othernics; #TODO be flexible on node primary nic
 my $netdriver;
@@ -162,9 +163,9 @@ if (!$destdir)
 $rootimg_dir="$destdir/rootimg";
 
 
-unless ($osver and $profile and $netdriver and $prinic) {
-   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [-m <mode> [--permission <permission>]]'."\n";
-   print '       genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -k <KERNELVER> <imagename>'."\n";
+unless ($osver and $profile) {
+   print 'Usage: genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [-m <mode> [--permission <permission>]]'."\n";
+   print '       genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -k <KERNELVER> <imagename>'."\n";
    print "       --permission only works when '-m statelite' is set\n";
    print "Examples:\n";
    print " genimage -i eth0 -n tg3 -o centos5.1 -p compute\n";
@@ -176,6 +177,9 @@ unless ($osver and $profile and $netdriver and $prinic) {
 }
 
 my @ndrivers;
+unless ($netdriver) {
+    @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en/;
+}
 foreach (split /,/,$netdriver) {
    unless (/\.ko$/) {
       s/$/.ko/;
@@ -423,15 +427,17 @@ if($mode eq "statelite"){
 	# also need to add this file:
 	# may have already been made into a symbolic link, if so ignore it
 
-	unless(-l "$rootimg_dir/var/lib/dhclient" ){
-		mkpath "$rootimg_dir/var/lib/dhclient/";
-		system("touch $rootimg_dir/var/lib/dhclient/dhclient-$prinic.leases");
-	}
-
-	unless(-l "$rootimg_dir/var/lib/dhcp" ){
-		mkpath "$rootimg_dir/var/lib/dhcp/";
-		system("touch $rootimg_dir/var/lib/dhcp/dhclient-$prinic.leases");
-	}
+    unless ($dracutmode) { #in dracut mode, we delegate all this activity
+    	unless(-l "$rootimg_dir/var/lib/dhclient" ){
+    		mkpath "$rootimg_dir/var/lib/dhclient/";
+    		system("touch $rootimg_dir/var/lib/dhclient/dhclient-$prinic.leases");
+    	}
+    
+    	unless(-l "$rootimg_dir/var/lib/dhcp" ){
+    		mkpath "$rootimg_dir/var/lib/dhcp/";
+    		system("touch $rootimg_dir/var/lib/dhcp/dhclient-$prinic.leases");
+    	}
+    }
 }   
 
 
@@ -774,25 +780,25 @@ if [ "\$NFSROOT" = "1" ]; then
 	then
 		mkdir -p \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhcp
 	fi
+    IFACE=$prinic
+    if [ -z "\$IFACE" ]; then
+        for i in `cat /proc/cmdline`; do
+           KEY=`echo \$i |awk -F= '{print \$1}'`
+           if [ "\$KEY" == 'netdev' ]; then
+              IFACE=`echo \$i |awk -F= '{print \$2}'`
+              break
+           fi
+           if [ "\$KEY" == 'BOOTIF' ]; then
+              VALUE=`echo \$i |awk -F= '{print \$2}'`
+              IFACE=`ifconfig -a|grep -i "hwaddr $VALUE"|awk '{print $1}'`
+           fi
+        done
+    fi
 
-	cp -fp /var/lib/dhclient/dhclient.leases \${NEWROOT}/\${RWDIR}/tmpfs/var/lib/dhclient/dhclient-$prinic.leases
-	cp -fp /var/lib/dhclient/dhclient.leases \${NEWROOT}/\${RWDIR}/tmpfs/var/lib/dhcp/dhclient-$prinic.leases
 
-	# dhclient
-	#while ! mount -n --bind \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhclient/dhclient-$prinic.leases \$NEWROOT/var/lib/dhclient/dhclient-$prinic.leases
-	#do
-	#	echo "Can't mount /tmpfs/var/lib/dhclient/dhclient-$prinic.leases to /var/lib/dhclient/dhclient-$prinic.leases"
-	#	shell
-	#done
+	cp -fp /var/lib/dhclient/dhclient.leases \${NEWROOT}/\${RWDIR}/tmpfs/var/lib/dhclient/dhclient-\$IFACE.leases
+	cp -fp /var/lib/dhclient/dhclient.leases \${NEWROOT}/\${RWDIR}/tmpfs/var/lib/dhcp/dhclient-\$IFACE.leases
 
-	# dhcp
-	#while ! mount -n --bind \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhcp/dhclient-$prinic.leases \$NEWROOT/var/lib/dhcp/dhclient-$prinic.leases
-	#do
-	#	echo "Can't mount /tmpfs/var/lib/dhcp/dhclient-$prinic.leases to /var/lib/dhcp/dhclient-$prinic.leases"
-	#	shell
-	#done
-
-	
 
 	[ -e /etc/ntp.conf ] && mkdir -p \$NEWROOT/\$RWDIR/tmpfs/etc && cp /etc/ntp.conf \$NEWROOT/\$RWDIR/tmpfs/etc/ 
 
@@ -854,7 +860,7 @@ if [ "\$NFS" = "1" ]; then
   mkdir -p /rw/etc
   mkdir -p /rw/var/lib/dhclient
   cp /etc/resolv.conf /rw/etc/
-  cp /var/lib/dhclient/dhclient.leases /rw/var/lib/dhclient/dhclient-$prinic.leases
+  cp /var/lib/dhclient/dhclient.leases /rw/var/lib/dhclient/dhclient-\$IFACE.leases
   mount -t aufs -o dirs=/rw:/ro mergedroot  /sysroot
   mkdir -p /sysroot/ro
   mkdir -p /sysroot/rw
@@ -913,8 +919,8 @@ EOMS
    print $inifile "  exit\n";
    print $inifile "fi\n";
    print $inifile "cd /\n";
-   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-$prinic.leases\n";
-   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/var/lib/dhclient/dhclient-$prinic.leases\n";
+   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-\$IFACE.leases\n";
+   print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/var/lib/dhclient/dhclient-\$IFACE.leases\n";
    print $inifile "mknod /sysroot/dev/console c 5 1\n";
    print $inifile "exec switch_root -c /dev/console /sysroot /sbin/init\n";
    close($inifile);
@@ -925,7 +931,7 @@ EOMS
 
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/sbin/nash\n";
-   print $inifile "network --device $prinic --bootproto dhcp\n";
+   print $inifile "network --device \$IFACE --bootproto dhcp\n";
    close($inifile);
 	chmod(0755,"/tmp/xcatinitrd.$$/init");
 	chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
@@ -1058,8 +1064,8 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    open($cfgfile,">","$rootimg_dir/etc/resolv.conf");
    print $cfgfile "#Dummy resolv.conf to make boot cleaner";
    close($cfgfile);
-   open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$prinic");
-   print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
+#   open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$prinic");
+#   print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
    close($cfgfile);
    foreach (split /,/,$othernics) {
       if (/^$/) { next; }
