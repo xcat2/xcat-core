@@ -239,29 +239,20 @@ sub add_known_host
         return 1;
     }
     chop($output[0]);
-    my $ip_address = "";
-    if (($hostname, $aliases, $addrtype, $length, @addrs) =
-        gethostbyname($node))
+    my ($hostname,$ip_address) = xCAT::NetworkUtils->gethostnameandip($node);
+    if (!$hostname || !$ip_address)
     {
-        foreach my $ipaddr (@addrs)
-        {
-            $ip_address .= inet_ntoa($ipaddr);
-            $ip_address .= ",";
-        }
+        my $rsp = {};
+        $rsp->{data}->[0] = "Can not resolve $node";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+        return 1;
     }
     chop($ip_address);
-    my @newaliaslist = split (/ /,$aliases);
 
-    my $aliaslist="";
-    foreach my $entry (@newaliaslist) {
-        $aliaslist .= "$entry,";
-    }
-    
     if (defined $hostname)
     {
         $line = "\"";
         $line .= "$hostname,";
-        $line .= "$aliaslist";
         $line .= "$ip_address";
         $line .= " ";
         $line .= $output[0];
@@ -317,7 +308,7 @@ sub remove_nodes_from_knownhosts
     
     my @all_names;
     
-    my ($hostname, $aliases, $addrtype, $length, @addrs);
+    my ($hostname, $ipaddr);
     
     # Put all the possible knownhosts entries 
     # for the nodes into @all_names
@@ -327,30 +318,20 @@ sub remove_nodes_from_knownhosts
         { 
             push @all_names, $node;
         }
-        if (($hostname, $aliases, $addrtype, $length, @addrs) =
-            gethostbyname($node))
+        ($hostname, $ipaddr) = xCAT::NetworkUtils->gethostnameandip($node);
+        if (!$hostname || !$ipaddr)
         {
-            if (!grep(/^$hostname$/, @all_names))
-            {
-                push @all_names, $hostname;
-            }
-            foreach my $ipaddr (@addrs)
-            {
-                my $realip = inet_ntoa($ipaddr);
-                if (!grep(/^$realip$/, @all_names))
-                {
-                    push @all_names, $realip;
-                }
-            }
-            my @newaliaslist = split (/ /,$aliases);
-        
-            foreach my $entry (@newaliaslist) {
-                if (!grep(/^$entry$/, @all_names))
-                {
-                    push @all_names, $entry;
-                }
-            }
+            return 0;
         }
+        if (!grep(/^$hostname$/, @all_names))
+        {
+            push @all_names, $hostname;
+        }
+        if (!grep(/^$ipaddr$/, @all_names))
+        {
+            push @all_names, $ipaddr;
+        }
+        
     }
 
     #create the sed command
