@@ -235,7 +235,13 @@ else
   exit
 fi
 cd /
-if [ -d "$NEWROOT/etc/sysconfig" && ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
+for lf in /tmp/dhclient.*.lease; do
+    netif=${lf#*.}
+    netif=${netif%.*}
+    cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
+done
+
+if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
 	echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
 fi
 
