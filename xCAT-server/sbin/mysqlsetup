@@ -30,6 +30,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use DBI;
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use xCAT::Table;
@@ -267,10 +268,11 @@ if ($::INIT)
         chomp $hname;
 
     }
-    my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
-    if ($? == 0)
+    #my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
+    my $ipaddr = xCAT::NetworkUtils->getipaddr($hname);
+    if ($ipaddr)
     {
-        $::MN = inet_ntoa($addrs[0]);
+        $::MN = $ipaddr;
     }
     else
     {
