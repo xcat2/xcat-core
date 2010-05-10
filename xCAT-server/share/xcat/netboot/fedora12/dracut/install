@@ -1,5 +1,0 @@
-#!/bin/sh
-echo $drivers
-dracut_install wget cpio gzip
-inst "$moddir/xcatroot" "/sbin/xcatroot"
-inst_hook cmdline 10 "$moddir/xcat-cmdline.sh" 

@@ -2144,9 +2144,12 @@ sub copycd {
         open(LINE, $path . "/README.txt") or die "couldn't open!";
         while($line = <LINE>){
             chomp($line);
-            if($line =~ /VMware ESXi version 4.0.0/){
+            if($line =~ /VMware ESXi version 4\.(\d+)/){
                 $darch = "x86_64";
                 $distname = "esxi4";
+                if ($1) {
+                    $distname .= '.'.$1;
+                }
                 $found = 1;
                 if( $arch and $arch ne $darch){
                     sendmsg([1, "Requested distribution architecture $arch, but media is $darch"]);
