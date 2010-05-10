@@ -190,7 +190,7 @@ sub getArgs()
     	foreach my $node (@::NodeList)
         {
             #If there are IP addresses in NodeList, convert IP to hostname first
-            if (isIpaddr($node))
+            if (isIpaddr($node)) # why? for xCAT, nodename can not be ip address...
             {
                 my ($hostname, $ip) = getHost($node);
                 $node = $hostname;
@@ -259,6 +259,10 @@ sub getArgs()
 sub isIpaddr
 {
     my ($class, $addr) = @_;
+
+    if ($addr =~ /:/) { #ipv6
+       return 1;
+    }
 
     #print "addr=$addr\n";
     if ($addr !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
