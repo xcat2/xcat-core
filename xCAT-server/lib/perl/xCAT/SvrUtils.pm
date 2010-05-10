@@ -9,6 +9,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 require xCAT::Table;
 require xCAT::Utils;
+require xCAT::NetworkUtils;
 use File::Basename;
 
 use strict;
@@ -1060,7 +1061,7 @@ sub setupStatemnt {
     $statemnt =~ m/^(.+):(.+)$/;
     my $nfsserver = $1;
     my $nfsdirectory = $2;
-    if($sip eq inet_ntoa(inet_aton($nfsserver))) {
+    if($sip eq xCAT::NetworkUtils->getipaddr($nfsserver)) {
         unless (-d $nfsdirectory) {
             if (-e $nfsdirectory) {
                 unlink $nfsdirectory;
