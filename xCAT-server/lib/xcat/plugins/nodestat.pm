@@ -16,6 +16,7 @@ use IO::Handle;
 use Getopt::Long;
 use Data::Dumper;
 use xCAT::GlobalDef;
+use xCAT::NetworkUtils;
 
 
 my %nodesetstats;
@@ -496,15 +497,15 @@ sub process_request_nmap {
    my %unknownnodes;
    foreach (@nodes) {
 	$unknownnodes{$_}=1;
-	my $packed_ip = undef;
-        $packed_ip = gethostbyname($_);
-        if( !defined $packed_ip) {
+	my $ip = undef;
+        $ip = xCAT::NetworkUtils->getipaddr($_);
+        if( !defined $ip) {
                 my %rsp;
                 $rsp{name}=[$_];
                 $rsp{data} = [ "Please make sure $_ exists in /etc/hosts or DNS" ];
                 $callback->({node=>[\%rsp]});
         } else {
-            $nodebyip{inet_ntoa($packed_ip)} = $_;
+            $nodebyip{$ip} = $_;
         }
    }
 
@@ -529,8 +530,7 @@ sub process_request_nmap {
       if (/Interesting ports on ([^ ]*) /) {
           $currnode=$1;
           my $nip;
-          if ($nip = gethostbyname($currnode)) {
-              $nip = inet_ntoa($nip); #reverse lookup may not resemble the nodename, key by ip
+          if ($nip = xCAT::NetworkUtils->getipaddr($currnode)) { #reverse lookup may not resemble the nodename, key by ip
               if ($nodebyip{$nip}) {
                  $currnode = $nodebyip{$nip};
               }
@@ -615,7 +615,7 @@ sub process_request_port {
    foreach (@nodes) {
 	$unknownnodes{$_}=1;
 	my $packed_ip = undef;
-        $packed_ip = gethostbyname($_);
+        $packed_ip = xCAT::NetworkUtils->getipaddr($_);
         if( !defined $packed_ip) {
                 my %rsp;
                 $rsp{name}=[$_];
