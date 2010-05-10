@@ -20,6 +20,7 @@ require xCAT::MsgUtils;
 use Getopt::Long;
 use Socket;
 require xCAT::DSHCLI;
+require xCAT::NetworkUtils;
 1;
 
 #-------------------------------------------------------
