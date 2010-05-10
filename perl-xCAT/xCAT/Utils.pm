@@ -2073,6 +2073,8 @@ sub my_nets
 {
     my $rethash;
     my @nets;
+    my $v6net;
+    my $v6ip;
     if ( $^O eq 'aix')
     {
         @nets = split /\n/, `/usr/sbin/ifconfig -a`;
@@ -2083,28 +2085,47 @@ sub my_nets
     }
     foreach (@nets)
     {
+        $v6net = '';
         my @elems = split /\s+/;
-        unless (/^\s*inet\s/)
+        unless (/^\s*inet/)
         {
             next;
         }
         my $curnet; my $maskbits;
         if ( $^O eq 'aix')
         {
-            $curnet = $elems[2];
-            $maskbits = formatNetmask( $elems[4], 2, 1);
+            if ($elems[1] eq 'inet6')
+            {
+                $v6net=$elems[2];
+                $v6ip=$elems[2];
+                $v6ip =~ s/\/.*//; # ipv6 address 4000::99/64
+                $v6ip =~ s/\%.*//; # ipv6 address ::1%1/128
+            }
+            else
+            {
+                $curnet = $elems[2];
+                $maskbits = formatNetmask( $elems[4], 2, 1);
+            }
         }
         else
         {
             ($curnet, $maskbits) = split /\//, $elems[2];
         }
-        my $curmask  = 2**$maskbits - 1 << (32 - $maskbits);
-        my $nown     = unpack("N", inet_aton($curnet));
-        $nown = $nown & $curmask;
-        my $textnet=inet_ntoa(pack("N",$nown));
-        $textnet.="/$maskbits";
-        $rethash->{$textnet} = $curnet;
+        if (!$v6net)
+        {
+            my $curmask  = 2**$maskbits - 1 << (32 - $maskbits);
+            my $nown     = unpack("N", inet_aton($curnet));
+            $nown = $nown & $curmask;
+            my $textnet=inet_ntoa(pack("N",$nown));
+            $textnet.="/$maskbits";
+            $rethash->{$textnet} = $curnet;
+         }
+         else
+         {
+             $rethash->{$v6net} = $v6ip;
+         }
     }
+
 
   # now get remote nets
     my $nettab = xCAT::Table->new("networks");
