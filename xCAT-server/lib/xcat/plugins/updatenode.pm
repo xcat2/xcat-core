@@ -13,6 +13,7 @@ use xCAT::Table;
 use xCAT::Schema;
 use Data::Dumper;
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use xCAT::InstUtils;
 use Getopt::Long;
 use xCAT::GlobalDef;
@@ -1249,7 +1250,7 @@ sub doAIXcopy
     # want list of remote service nodes - to copy files to
 
     # get the ip of the NIM primary (normally the management node)
-    my $ip = inet_ntoa(inet_aton($nimprime));
+    my $ip = xCAT::NetworkUtils->getipaddr($nimprime);
     chomp $ip;
     my ($p1, $p2, $p3, $p4) = split /\./, $ip;
 
@@ -1257,10 +1258,9 @@ sub doAIXcopy
     foreach my $snkey (keys %$sn)
     {
 
-        my $ip = inet_ntoa(inet_aton($snkey));
+        my $sip = xCAT::NetworkUtils->getipaddr($snkey);
         chomp $ip;
-        my ($s1, $s2, $s3, $s4) = split /\./, $ip;
-        if (($s1 == $p1) && ($s2 == $p2) && ($s3 == $p3) && ($s4 == $p4))
+        if ($ip eq $sip)
         {
             next;
         }
