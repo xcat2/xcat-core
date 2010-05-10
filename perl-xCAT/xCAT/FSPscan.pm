@@ -11,6 +11,7 @@ use xCAT::PPCdb;
 use xCAT::PPCscan;
 use xCAT::GlobalDef;
 use xCAT::Usage;
+use xCAT::NetworkUtils;
 use Data::Dumper;
 
 ##############################################
@@ -49,7 +50,7 @@ sub getshorthost {
 
     my $ip = shift;
 
-    my $host = gethostbyaddr( inet_aton($ip), AF_INET );
+    my $host = xCAT::NetworkUtils->gethostname($ip);
     if ( $host and !$! ) {
         ##############################
         # Get short-hostname
