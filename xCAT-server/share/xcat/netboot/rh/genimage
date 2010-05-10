@@ -7,7 +7,7 @@ use lib "$::XCATROOT/lib/perl";
 
 use File::Basename;
 use File::Path;
-use File::Copy;
+use File::Copy qw/copy cp mv move/;
 use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
@@ -476,8 +476,11 @@ sub getlibs {
 sub mkinitrd_dracut {
     mkpath("$rootimg_dir/usr/share/dracut/modules.d/97xcat");
     foreach (<$fullpath/dracut/*>) {
-        copy($_,"$rootimg_dir/usr/share/dracut/modules.d/97xcat");
+        my $perm = (stat($_))[2];
+        cp($_,"$rootimg_dir/usr/share/dracut/modules.d/97xcat");
+        chmod($perm&07777,"$rootimg_dir/usr/share/dracut/modules.d/97xcat/".basename($_));
     }
+    foreach (@ndrivers) { s/\.ko$//; }
     system("chroot '$rootimg_dir' dracut -d '".join(' ',@ndrivers)."' -m 'xcat base' /tmp/initrd.$$.gz");
     move("$rootimg_dir/tmp/initrd.$$.gz","$destdir/initrd.gz");
 }
