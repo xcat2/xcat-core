@@ -510,9 +510,8 @@ sub getnodesetstate {
 
 sub net_parms {
   my $ip = shift;
-  if (inet_aton($ip)) {
-     $ip = inet_ntoa(inet_aton($ip));
-  } else {
+  $ip = xCAT::NetworkUtils->getipaddr($ip);
+  if (!$ip) {
      xCAT::MsgUtils->message("S","Unable to resolve $ip");
      return undef;
   }
@@ -523,13 +522,7 @@ sub net_parms {
     my $net = $_->{'net'};
     my $mask =$_->{'mask'};
     my $gw = $_->{'gateway'};
-    $ip =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-    my $ipnum = ($1<<24)+($2<<16)+($3<<8)+$4;
-    $mask =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-    my $masknum = ($1<<24)+($2<<16)+($3<<8)+$4;
-    $net =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-    my $netnum = ($1<<24)+($2<<16)+($3<<8)+$4;
-    if (($ipnum & $masknum)==$netnum) {
+    if (xCAT::NetworkUtils->ishostinsubnet($ip, $mask, $gw)) {
       return ($ip,$mask,$gw);
     } 
   }
