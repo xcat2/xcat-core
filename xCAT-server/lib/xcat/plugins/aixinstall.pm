@@ -1114,7 +1114,8 @@ sub spot_updates
 
         # we don't want to include the nimprime in the list of SNs
         #  need to compare IPs of nimprime and SN
-        my $ip = inet_ntoa(inet_aton($nimprime));
+        #my $ip = inet_ntoa(inet_aton($nimprime));
+        my $ip = xCAT::NetworkUtils->getipaddr($nimprime);
         chomp $ip;
 
         my ($p1, $p2, $p3, $p4) = split /\./, $ip;
@@ -1125,7 +1126,8 @@ sub spot_updates
 
             # if the SN is the same as the nim prime then skip it
             #  nimprime is handle differently
-            my $ip = inet_ntoa(inet_aton($srvnode));
+            #my $ip = inet_ntoa(inet_aton($srvnode));
+            my $ip = xCAT::NetworkUtils->getipaddr($srvnode);
             chomp $ip;
             my ($s1, $s2, $s3, $s4) = split /\./, $ip;
             if (($s1 == $p1) && ($s2 == $p2) && ($s3 == $p3) && ($s4 == $p4))
@@ -3678,8 +3680,8 @@ sub update_rhosts
     {
 
         # get the node IP for the file entry
-        # TODO - need IPv6 update
-        my $IP = inet_ntoa(inet_aton($node));
+        #my $IP = inet_ntoa(inet_aton($node));
+        my $IP = xCAT::NetworkUtils->getipaddr($node);
         chomp $IP;
         unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
         {
@@ -4648,7 +4650,8 @@ sub prenimnodecust
     #  - if not then exit
     foreach my $n (@nodelist)
     {
-        my $packed_ip = gethostbyname($n);
+        #my $packed_ip = gethostbyname($n);
+        my $packed_ip = xCAT::NetworkUtils->getipaddr($n);
         if (!$packed_ip)
         {
             my $rsp;
@@ -6106,7 +6109,8 @@ sub mkdsklsnode
     #  - if not then exit
     foreach my $n (@nodelist)
     {
-        my $packed_ip = gethostbyname($n);
+        #my $packed_ip = gethostbyname($n);
+        my $packed_ip = xCAT::NetworkUtils->getipaddr($n);
         if (!$packed_ip)
         {
             my $rsp;
@@ -6394,7 +6398,8 @@ sub mkdsklsnode
 
         # get, check the node IP
         # TODO - need IPv6 update
-        my $IP = inet_ntoa(inet_aton($node));
+        #my $IP = inet_ntoa(inet_aton($node));
+        my $IP = xCAT::NetworkUtils->getipaddr($node);
         chomp $IP;
         unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
         {
@@ -6823,41 +6828,17 @@ sub checkNIMnetworks
 
         # see if the NIM net we need is defined
 
-        # split node mask
-        my ($nm1, $nm2, $nm3, $nm4) = split('\.', $nethash{$node}{mask});
-
-        # split node net addr
-        my ($nn1, $nn2, $nn3, $nn4) = split('\.', $nethash{$node}{net});
-
         my $foundmatch = 0;
-
         # foreach nim network name
-        foreach my $netwk (@networks)
-        {
+        foreach my $netwk (@networks) {
 
-            # split definition mask
-            my ($dm1, $dm2, $dm3, $dm4) = split('\.', $NIMnets{$netwk}{'snm'});
-
-            # split definition net addr
-
-            my ($dn1, $dn2, $dn3, $dn4) =
-              split('\.', $NIMnets{$netwk}{'net_addr'});
-
-            # check for the same netmask and network address
-            if (   ($nn1 == $dn1)
-                && ($nn2 == $dn2)
-                && ($nn3 == $dn3)
-                && ($nn4 == $dn4))
-            {
-                if (   ($nm1 == $dm1)
-                    && ($nm2 == $dm2)
-                    && ($nm3 == $dm3)
-                    && ($nm4 == $dm4))
-                {
-                    $foundmatch = 1;
-                }
-            }
-        }
+        # check for the same netmask and network address
+              if ( ($nethash{$node}{net} eq $NIMnets{$netwk}{'net_addr'}) ) {
+                      if ( $nethash{$node}{mask} eq $NIMnets{$netwk}{'snm'} ) {
+                             $foundmatch=1;
+                      }
+               }
+     }
 
         # if not defined then define it!
         if (!$foundmatch)
@@ -6915,37 +6896,18 @@ sub checkNIMnetworks
             }
 
             my $adapterhostname;
-            foreach my $int (@result)
-            {
-                my ($inet, $myIP, $str) = split(" ", $int);
-                chomp $myIP;
+            foreach my $int (@result) {
+                    my ($inet, $myIP, $str) = split(" ", $int);
+                    chomp $myIP;
+                    $myIP =~ s/\/.*//; # ipv6 address 4000::99/64
+                    $myIP =~ s/\%.*//; # ipv6 address ::1%1/128
 
-                # split interface IP
-                my ($h1, $h2, $h3, $h4) = split('\.', $myIP);
-
-                # split mask
-                my ($m1, $m2, $m3, $m4) = split('\.', $nethash{$node}{mask});
-
-                # split net address
-                my ($n1, $n2, $n3, $n4) = split('\.', $nethash{$node}{net});
-
-                # AND this interface IP with the netmask of the network
-                my $a1 = ((int $h1) & (int $m1));
-                my $a2 = ((int $h2) & (int $m2));
-                my $a3 = ((int $h3) & (int $m3));
-                my $a4 = ((int $h4) & (int $m4));
-
-                # if all the octals match the network addr then we have
-                #	the right interface
-                if (   ($n1 == $a1)
-                    && ($n2 == $a2)
-                    && ($n3 == $a3)
-                    && ($n4 == $a4))
-                {
-                    my $packedaddr = inet_aton($myIP);
-                    $adapterhostname = gethostbyaddr($packedaddr, AF_INET);
-                    last;
-                }
+                    # if the ip address is in the subnet
+                    #       the right interface
+                    if ( xCAT::NetworkUtils->ishostinsubnet($myIP, $nethash{$node}{mask}, $nethash{$node}{net} )) {
+                            $adapterhostname = xCAT::NetworkUtils->gethostname($myIP);
+                            last;
+                    }
             }
 
             # define the new interface
