@@ -396,6 +396,9 @@ while (scalar @checkdeps) {
 }
 close($moddeps);
 unlink "/tmp/genimage.$$.yum.conf";
+if (-d "$rootimg_dir/usr/share/dracut") {
+    $dracutmode=1;
+}
 
 #-- run postinstall script
 if (!$imagename) {
@@ -442,7 +445,11 @@ if($mode eq "statelite"){
 
 
 
-mkinitrd();
+if ($dracutmode) {
+    mkinitrd_dracut();
+} else {
+    mkinitrd();
+}
 
 sub getlibs {
 	my $file = shift;
@@ -464,6 +471,15 @@ sub getlibs {
       $temp1 =~ s/^\///;
 		$libhash{$temp1}=1;
    }
+}
+
+sub mknitrd_dracut {
+    mkpath("$rootimg_dir/usr/share/dracut/modules.d/97xcat");
+    foreach (<$fullpath/dracut/*>) {
+        copy($_,"$rootimg_dir/usr/share/dracut/modules.d/97xcat");
+    }
+    system("chroot '$rootimg_dir' dracut -d '".join(' ',@ndrivers)."' -m 'xcat base' /tmp/initrd.$$.gz")
+    move("$rootimg_dir/tmp/initrd.$$.gz","$destdir/initrd.gz");
 }
 
 sub mkinitrd {
