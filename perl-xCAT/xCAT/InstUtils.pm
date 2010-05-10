@@ -83,10 +83,9 @@ sub getnimprime
     my $hostname;
     if ($nimprime)
     {
-        if ($nimprime =~ /\d+\.\d+\.\d+\.\d+/)
+        if (($nimprime =~ /\d+\.\d+\.\d+\.\d+/) || ($nimprime =~ /:/))
         {
-            my $packedaddr = inet_aton($nimprime);
-            $hostname = gethostbyaddr($packedaddr, AF_INET);
+            $hostname = xCAT::NetworkUtils->gethostname($nimprime);
         }
         else
         {
@@ -125,10 +124,9 @@ sub myxCATname
 
         # read the site table, master attrib
         my $hostname = xCAT::Utils->get_site_Master();
-        if ($hostname =~ /\d+\.\d+\.\d+\.\d+/)
+        if (($hostname =~ /\d+\.\d+\.\d+\.\d+/) || ($hostname =~ /:/))
         {
-            my $packedaddr = inet_aton($hostname);
-            $name = gethostbyaddr($packedaddr, AF_INET);
+            $name = xCAT::NetworkUtils->gethostname($hostname);
         }
         else
         {
@@ -640,7 +638,7 @@ sub get_server_nodes
         {
 			# get ip of node xcatmaster attribute
 			my $xcatmaster = $xcatmasters->{$node}->[0]->{xcatmaster};			
-			$serv = inet_ntoa(inet_aton($xcatmaster));
+			$serv = xCAT::NetworkUtils->getipaddr($xcatmaster);
         }
         else
         {
