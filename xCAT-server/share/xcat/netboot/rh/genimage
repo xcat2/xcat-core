@@ -478,7 +478,7 @@ sub mknitrd_dracut {
     foreach (<$fullpath/dracut/*>) {
         copy($_,"$rootimg_dir/usr/share/dracut/modules.d/97xcat");
     }
-    system("chroot '$rootimg_dir' dracut -d '".join(' ',@ndrivers)."' -m 'xcat base' /tmp/initrd.$$.gz")
+    system("chroot '$rootimg_dir' dracut -d '".join(' ',@ndrivers)."' -m 'xcat base' /tmp/initrd.$$.gz");
     move("$rootimg_dir/tmp/initrd.$$.gz","$destdir/initrd.gz");
 }
 
