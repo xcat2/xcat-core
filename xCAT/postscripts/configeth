@@ -15,18 +15,49 @@ if ($^O =~ /^aix/i) {
     $nic = 'eth1';
 }
 
+sub getipaddr()
+{
+    my ($iporhost) = @_;
+
+    my $socket6support = eval { require Socket6 };
+
+    if (($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/))
+    {
+        #pass in an ip and only want an ip??
+        return $iporhost;
+    }
+
+    if ($socket6support) # the getaddrinfo and getnameinfo supports both IPv4 and IPv6
+    {
+        my ($family, $socket, $protocol, $ip, $name) = Socket6::getaddrinfo($iporhost,0);
+        if ($ip)
+        {
+            return (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
+        }
+       return undef;
+    }
+    else
+    {
+         return inet_ntoa(inet_aton($iporhost))
+    }
+}
+
 my $hostname = "$ENV{NODE}-$nic";
-my $packed_ip = gethostbyname($hostname);
-if (!$packed_ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
-my $ip = inet_ntoa($packed_ip);
+my $ip = &getipaddr($hostname);
+if (!$ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
 
 #TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
 my $netmask = "255.255.0.0";
-my ($first, $second, $rest) = split(/\./, $ip);
-my $gateway = "$first.$second.255.254";
+#my ($first, $second, $rest) = split(/\./, $ip);
+#my $gateway = "$first.$second.255.254";
+
 
 if ($^O =~ /^aix/i) { 
-	runcmd("chdev -l 'en1' -a netaddr=$ip -a netmask=$netmask -a state='up'");
+        if ($ip =~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/) {
+            runcmd("chdev -l 'en1' -a netaddr=$ip -a netmask=$netmask -a state='up'");
+        } else { #ipv6
+            runcmd("autoconf6 -6i en1");
+        }
 }
 elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release")) { 
 	# Write the info to the ifcfg file
@@ -55,9 +86,8 @@ elsif (($ENV{OSVER} && ($ENV{OSVER} =~ /sles|suse/i)) || (-f "/etc/SuSE-release"
         # make file for eth0, too
 	if (! -f "$dir/ifcfg-$nic") {
 	    my $hostname = "$ENV{NODE}";
-	    my $packed_ip = gethostbyname($hostname);
-	    if (!$packed_ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
-	    my $ip = inet_ntoa($packed_ip);
+	    my $ip = &getipaddr($hostname);
+	    if (!$ip) { system("logger -t xcat 'configeth: cannot resolve $hostname.'"); exit 1; }
 	    
             #TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
 	    my $netmask = "255.255.0.0";
