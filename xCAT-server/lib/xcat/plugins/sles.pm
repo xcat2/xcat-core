@@ -10,6 +10,7 @@ use Sys::Syslog;
 use File::Temp qw/tempdir/;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use xCAT::SvrUtils;
 use xCAT::MsgUtils;
 use Data::Dumper;
@@ -336,7 +337,7 @@ sub mknetboot
             #BEGIN service node 
             my $isSV = xCAT::Utils->isServiceNode();
             my $res = xCAT::Utils->runcmd("hostname", 0);
-            my $sip = inet_ntoa(inet_aton($res));  # this is the IP of service node
+            my $sip = xCAT::NetworkUtils->getipaddr($res);  # this is the IP of service node
             if($isSV and (($xcatmaster eq $sip) or ($xcatmaster eq $res))) {
                 # if the NFS directory in litetree is on the service node, 
                 # and it is not exported, then it will be mounted automatically 
