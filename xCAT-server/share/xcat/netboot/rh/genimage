@@ -473,7 +473,7 @@ sub getlibs {
    }
 }
 
-sub mknitrd_dracut {
+sub mkinitrd_dracut {
     mkpath("$rootimg_dir/usr/share/dracut/modules.d/97xcat");
     foreach (<$fullpath/dracut/*>) {
         copy($_,"$rootimg_dir/usr/share/dracut/modules.d/97xcat");
