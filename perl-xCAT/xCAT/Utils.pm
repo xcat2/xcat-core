@@ -2260,13 +2260,22 @@ sub my_ip_facing_aix
     chomp @nets;
     foreach my $net (@nets)
     {
+        my ($curnet,$netmask);
         if ( $net =~ /^\s*inet\s+([\d\.]+)\s+netmask\s+(\w+)\s+broadcast/)
         {
-            my ($curnet,$netmask) = ($1,$2);
-            if (isInSameSubnet($peer, $curnet, $netmask, 2))
-            {
-                return $curnet;
-            }
+            ($curnet,$netmask) = ($1,$2);
+        }
+        elsif ($net =~ /^\s*inet6\s+(.*)$/)
+        {
+            ($curnet,$netmask) = split('/', $1);
+        }
+        else
+        {
+            next;
+        }
+        if (isInSameSubnet($peer, $curnet, $netmask, 2))
+        {
+            return $curnet;
         }
     }
     return undef;
@@ -2381,28 +2390,61 @@ sub isInSameSubnet
     my $mask = shift;
     my $maskType = shift;
 
-    my $maskn;
-    if ( $maskType == 0)
+    $ip1 = xCAT::NetworkUtils->getipaddr($ip1);
+    $ip2 = xCAT::NetworkUtils->getipaddr($ip2);
+
+    if ((($ip1 =~ /\d+\.\d+\.\d+\.\d+/) && ($ip2 !~ /\d+\.\d+\.\d+\.\d+/))
+      ||(($ip1 !~ /\d+\.\d+\.\d+\.\d+/) && ($ip2 =~ /\d+\.\d+\.\d+\.\d+/)))
     {
-        $maskn = unpack("N", inet_aton($mask));
-    }
-    elsif ( $maskType == 1)
-    {
-        $maskn = 2**$mask - 1 << (32 - $mask);
-    }
-    elsif( $maskType == 2)
-    {
-        $maskn = hex $mask;
-    }
-    else
-    {
+        #ipv4 and ipv6 can not be in the same subnet
         return undef;
     }
 
-    my $ip1n = unpack("N", inet_aton($ip1));
-    my $ip2n = unpack("N", inet_aton($ip2));
+    if (($ip1 =~ /\d+\.\d+\.\d+\.\d+/) && ($ip2 =~ /\d+\.\d+\.\d+\.\d+/))
+    {
+        my $maskn;
+        if ( $maskType == 0)
+        {
+            $maskn = unpack("N", inet_aton($mask));
+        }
+        elsif ( $maskType == 1)
+        {
+            $maskn = 2**$mask - 1 << (32 - $mask);
+        }
+        elsif( $maskType == 2)
+        {
+            $maskn = hex $mask;
+        }
+        else
+        {
+            return undef;
+        }
 
-    return ( ( $ip1n & $maskn) == ( $ip2n & $maskn) );
+        my $ip1n = unpack("N", inet_aton($ip1));
+        my $ip2n = unpack("N", inet_aton($ip2));
+
+        return ( ( $ip1n & $maskn) == ( $ip2n & $maskn) );
+    }
+    else
+    {
+        #ipv6
+        if (($ip1 =~ /\%/) || ($ip2 =~ /\%/))
+        {
+            return undef;
+        }
+        my $netipmodule = eval {require Net::IP;};
+        if ($netipmodule) {
+           my $eip1 = Net::IP::ip_expand_address ($ip1,6);
+           my $eip2 = Net::IP::ip_expand_address ($ip2,6);
+           my $bmask = Net::IP::ip_get_mask($mask,6);
+           my $bip1 = Net::IP::ip_iptobin($eip1,6);
+           my $bip2 = Net::IP::ip_iptobin($eip2,6);
+           if (($bip1 & $bmask) == ($bip2 & $bmask)) {
+               return 1;
+           }
+       } # else, can not check without Net::IP module
+       return undef;
+     }
 }
 #-------------------------------------------------------------------------------
 
