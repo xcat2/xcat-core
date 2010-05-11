@@ -101,6 +101,15 @@ sub gethostname()
 {
     my ($class, $iporhost) = @_;
 
+   if (ref($iporhost) eq 'ARRAY')
+   {
+       $iporhost = @{$iporhost}[0];
+       if (!$iporhost)
+       {
+           return undef;
+       }
+   }
+   
     my $socket6support = eval { require Socket6 };
 
     if (($iporhost !~ /\d+\.\d+\.\d+\.\d+/) && ($iporhost !~ /:/))
@@ -163,6 +172,14 @@ sub getipaddr()
 {
     my ($class, $iporhost) = @_;
 
+   if (ref($iporhost) eq 'ARRAY')
+   {
+       $iporhost = @{$iporhost}[0];
+       if (!$iporhost)
+       {
+           return undef;
+       }
+   }
     my $socket6support = eval { require Socket6 };
 
     if (($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/))
@@ -189,7 +206,13 @@ sub getipaddr()
         }
         else
         {
-             return inet_ntoa(inet_aton($iporhost))
+             #return inet_ntoa(inet_aton($iporhost))
+             my $packed_ip = inet_aton($iporhost);
+             if (!$packed_ip)
+             {
+                return undef;
+             }
+             return inet_ntoa($packed_ip);
         }
     }
 } 
