@@ -154,7 +154,7 @@ my %usage = (
        rmvm [-h|--help|-v|--version]",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
-       lsslp [-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-s BPA|MM|IVM|RSA|FSP|HMC]
+       lsslp [-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC]
              [-t tries][-m][-e cmd][-c [timeout[timeout,..]]][--vpdtable]
              [-M vpd|switchport][--makedhcp][--updatehost][--resetnet]",
   "rflash" =>
