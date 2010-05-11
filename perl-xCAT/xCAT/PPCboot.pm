@@ -43,7 +43,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version F f s=s m:s@ r=s t=s) )) { 
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version I|iscsiboot F f s=s m:s@ r=s t=s) )) { 
         return( usage() );
     }
 
@@ -107,6 +107,7 @@ sub do_rnetboot {
     my $ssh     = @$exp[0];
     my $userid  = @$exp[4];
     my $pw      = @$exp[5];
+    my $subreq = $request->{subreq};
     my $cmd;
     my $result;
 
@@ -179,8 +180,58 @@ sub do_rnetboot {
     #######################################
     # Network specified
     #######################################
-    $cmd.= " -s auto -d auto -m $opt->{m} -S $opt->{S} -G $opt->{G} -C $opt->{C}";
+    $cmd.= " -s auto -d auto -m $opt->{m} -S $opt->{S} -G $opt->{G} -C $opt->{C} -N $opt->{N}";
    
+    #######################################
+    # Get required attributes from master
+    # of the node if -I|--iscsiboot is
+    # specified
+    #######################################
+    if (  exists( $opt->{I} )) {
+        my $ret;
+        my $dump_target;
+        my $dump_lun;
+        my $dump_port;
+        my $noderestab = xCAT::Table->new('noderes');
+        unless ($noderestab)
+        {
+            xCAT::MsgUtils->message('S',
+                                "Unable to open noderes table.\n");
+            return 1;
+        }
+        my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
+        if ($et and $et->{'xcatmaster'})
+        {
+            $ret = xCAT::Utils->runxcmd(
+            {
+                command => ['xdsh'],
+                node    => [$et->{'xcatmaster'}],
+                arg     => [ 'cat /tftpboot/$node.info' ]
+            },
+            $subreq, 0, 0 );
+        } else {
+            $ret = `cat /tftpboot/$node.info`;
+        }
+        chomp($ret);
+        my @attrs = split /\n/, $ret;
+        foreach (@attrs)
+        {
+            if (/DUMP_TARGET=(.*)$/) {
+                $dump_target = $1;
+            } elsif (/DUMP_LUN=(.*)$/) {
+                $dump_lun = $1;
+                $dump_lun =~ s/^0x(.*)$/$1/g;
+            } elsif (/DUMP_PORT=(.*)$/) {
+                $dump_port =$1;
+            }
+        }
+        if ( defined($dump_target) and defined($dump_lun) and defined($dump_port) ) {
+            $cmd.= " -T \"$dump_target\" -L \"$dump_lun\" -p \"$dump_port\"";
+        } else {
+            return( [RC_ERROR,"Unable to find DUMP_TARGET, DUMP_LUN, DUMP_PORT for iscsi dump"] );
+        }
+    }
+
     #######################################
     # Add command options
     #######################################
@@ -262,8 +313,11 @@ sub rnetboot {
         G => $o->{gateway},
         S => $o->{server},
         C => $o->{client},
+        N => $o->{netmask},
         m => $o->{mac}
     );
+
+
     #####################################
     # Strip colons from mac address 
     #####################################
@@ -281,6 +335,13 @@ sub rnetboot {
     if ( exists( $options->{s} )) {
         $opt{s} = $options->{s};
     }
+    #####################################
+    # Do iscsi boot
+    #####################################
+    if ( exists( $options->{I} )) {
+        $opt{I} = 1; 
+    }
+
 
     #####################################
     # Invalid target hardware 

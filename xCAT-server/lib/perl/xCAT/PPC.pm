@@ -842,6 +842,13 @@ sub resolve_netwk {
         }
         my $gateway_ip = @$ip[1];
 
+        my $netmask = $nethash{$_}{mask};
+        if ( !defined( $netmask )) {
+            my $msg = sprintf("$_: $errmsg{NO_ATTR}","mask","networks");
+            send_msg( $request, 1, $msg );
+            next;
+        }
+
         #################################
         # Get server (-S)
         #################################
@@ -883,6 +890,7 @@ sub resolve_netwk {
         $result{$_}{server}  = $server_ip;
         $result{$_}{client}  = $client_ip;
         $result{$_}{mac}     = $ent->{mac};
+        $result{$_}{netmask} = $netmask;
     }
     return( \%result );
 }

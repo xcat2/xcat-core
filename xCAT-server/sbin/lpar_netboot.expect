@@ -607,7 +607,7 @@ proc get_adap_prop { phandle } {
                 return
             }
             timeout {
-                send_user "$PROGRAM: Timeout\n"
+                send_user "$PROGRAM: Timeout in getting adapter properpties\n"
                 nc_msg "timeout state is $state\n"
                 set rc 1
                 return
@@ -738,7 +738,7 @@ proc get_mac_addr { phandle } {
                             return $mac_address
                         }
                         timeout {
-                            send_user "$PROGRAM: Timeout\n"
+                            send_user "$PROGRAM: Timeout when getting mac address\n"
                             nc_msg "timeout state is $state\n"
                             set rc 1
                             return
@@ -762,7 +762,7 @@ proc get_mac_addr { phandle } {
                 return
             }
             timeout {
-                send_user "$PROGRAM: Timeout\n"
+                send_user "$PROGRAM: Timeout in getting mac address\n"
                 nc_msg "timeout state is $state\n"
                 set rc 1
                 return
@@ -872,7 +872,7 @@ proc get_adaptr_loc { phandle } {
                             return
                         }
                         timeout {
-                            send_user "$PROGRAM: Timeout\n"
+                            send_user "$PROGRAM: Timeout when openning console\n"
                             set rc 1
                             return
                         }
@@ -895,7 +895,7 @@ proc get_adaptr_loc { phandle } {
                 return
             }
             timeout {
-                send_user "$PROGRAM: Timeout\n"
+                send_user "$PROGRAM: Timeout in openning console\n"
                 nc_msg "$PROGRAM Status: timeout state is $state\n"
                 set rc 1
                 return
@@ -1152,7 +1152,7 @@ proc ping_server { full_path_name phandle } {
                                     return
                                 }
                                 timeout {
-                                    send_user "$PROGRAM: Timeout\n"
+                                    send_user "$PROGRAM: Timeout in ping server\n"
                                     set 1
                                     return
                                 }
@@ -1205,7 +1205,7 @@ proc ping_server { full_path_name phandle } {
                 return
             }
             timeout {
-                send_user "$PROGRAM: Timeout\n"
+                send_user "$PROGRAM: Timeout when pinging server\n"
                 set rc 1
                 return
             }
@@ -1345,7 +1345,7 @@ proc set_disk_boot {} {
                        
 
             timeout {
-                send_user "$PROGRAM: Timeout\n"
+                send_user "$PROGRAM: Timeout in settin boot order\n"
                 set rc 1
                 return
             }
@@ -1381,6 +1381,10 @@ proc boot_network {} {
     global server_ip
     global client_ip
     global gateway_ip
+    global netmask
+    global dump_target
+    global dump_lun
+    global dump_port
     global extra_args
     global PROGRAM
     global NODENAME
@@ -1411,14 +1415,19 @@ proc boot_network {} {
     # duplex during boot.
     # state 0, stack count 0
     set done(0) 0
-    if {$extra_args != "" } {
-        set net_device(0) "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip $extra_args"
+    if {$dump_target != ""} {
+        set net_device(0) "$full_path_name:iscsi,ciaddr=$client_ip,subnet-mask=$netmask,itname=dummy,iport=$dump_port,ilun=$dump_lun,iname=$dump_target,siaddr=$server_ip,2"
+        set pattern(0) "iSCSI"
     } else {
-        set net_device(0) "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip"
+        if {$extra_args != "" } {
+            set net_device(0) "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip $extra_args"
+        } else {
+            set net_device(0) "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip"
+        }
+        set pattern(0) "BOOTP"
     }
     set cmd(0) "boot $net_device(0)\r"
     set msg(0) "$PROGRAM Status: network boot initiated\n"
-    set pattern(0) "BOOTP"
     set newstate(0) 99
 
     # If the install adapter is FDDI, don't set the speed and duplex
@@ -1516,7 +1525,7 @@ proc boot_network {} {
                 return
             }
             timeout {
-                send_user "$PROGRAM: Timeout\n"
+                send_user "$PROGRAM: Timeout in boot network\n"
                 nc_msg "timeout state is $state\n"
                 set rc 1
                 return
@@ -1569,6 +1578,9 @@ proc Boot {} {
             nc_msg "$PROGRAM: # Network boot proceeding, exiting.\n"
         }
         -ex {------} {
+            nc_msg "$PROGRAM: # Network boot proceeding, exiting.\n"
+        }
+        -ex {iSCSI} {
             nc_msg "$PROGRAM: # Network boot proceeding, exiting.\n"
         }
         timeout {
@@ -1858,6 +1870,10 @@ set server_ip ""
 set gateway_ip ""
 set extra_args ""
 set macaddress ""
+set netmask ""
+set dump_target ""
+set dump_lun ""
+set dump_port ""
 set phys_loc ""
 set userid ""
 set passwd ""
@@ -1914,6 +1930,10 @@ while { [llength $argv] > 0} {
                set argv [lrange $argv 1 end]
              }
 
+        "-N" { set netmask [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
         "-S" { set server_ip [lindex $argv 1]
                set argv [lrange $argv 2 end]
              }
@@ -1942,6 +1962,10 @@ while { [llength $argv] > 0} {
                set argv [lrange $argv 2 end]
              }
 
+        "-L" { set dump_lun [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
         "-l" { set phys_loc [lindex $argv 1]
                set argv [lrange $argv 2 end]
              }
@@ -1954,7 +1978,15 @@ while { [llength $argv] > 0} {
                set argv [lrange $argv 1 end]
              }
 
+        "-p" { set dump_port [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
         "-s" { set adap_speed [lindex $argv 1]
+               set argv [lrange $argv 2 end]
+             }
+
+        "-T" { set dump_target [lindex $argv 1]
                set argv [lrange $argv 2 end]
              }
 
@@ -2614,8 +2646,12 @@ if { $noboot } { # Display information for all supported adapters
 #
 # mission accomplished, beam me up scotty.
 #
-if { (!$noboot) && ( $rc == 0 ) } { 
-    send_user "# Finished.\n" 
+if { !$noboot  } { 
+    if { $rc == 0 } {
+        send_user "# Finished.\n" 
+    } else {
+        send_user "# Finished in an error.\n"
+    }
 } else {
     set done 0
     set query_count 0
