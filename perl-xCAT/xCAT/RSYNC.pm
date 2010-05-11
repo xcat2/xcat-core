@@ -23,6 +23,7 @@ if ($^O eq 'linux')
 {
     our $RSYNC_CMD = '/usr/bin/rsync';
 }
+#-----------------------------------------------------------------------
 
 =head3
         remote_copy_command
@@ -63,11 +64,28 @@ if ($^O eq 'linux')
 
 =cut
 
+#-----------------------------------------------------------------------
+
 sub remote_copy_command
 {
     my ($class, $config, $exec_path) = @_;
 
     $exec_path || ($exec_path = $RSYNC_CMD);
+
+    # see if we are using rsh or ssh on AIX
+    my $usersh=0;
+    if ($^O eq 'aix')
+    {
+      my @useSSH = xCAT::Utils->get_site_attribute("useSSHonAIX");
+      if (defined($useSSH[0])) { 
+        $useSSH[0] =~ tr/a-z/A-Z/;    # convert to upper
+        if (($useSSH[0] eq "0") || ($useSSH[0] eq "NO"))
+        {
+         $usersh=1;
+        }
+      }
+    }
+
 
     my @command = ();
     my $rsyncfile;
@@ -78,9 +96,17 @@ sub remote_copy_command
         if ($^O eq 'aix')
         {
             if (-e ("/usr/bin/rsync")) {
-              $sync_opt = '--rsync-path /usr/bin/rsync ';
+             if ($usersh == 0) { # using ssh
+                $sync_opt = '--rsync-path /usr/bin/rsync ';
+             } else {
+                $sync_opt = '--rsh /bin/rsh --rsync-path /usr/bin/rsync ';
+             }
             } else {
-              $sync_opt = '--rsync-path /usr/local/bin/rsync ';
+             if ($usersh == 0) { # using ssh
+                $sync_opt = '--rsync-path /usr/local/bin/rsync ';
+             } else {
+                $sync_opt = '--rsh /bin/rsh --rsync-path /usr/local/bin/rsync ';
+             }
             }
         }
         else #linux
@@ -109,9 +135,13 @@ sub remote_copy_command
               "$$config{'dest-user'}@" . "$$config{'dest-host'}";
         }
         print RSCYCCMDFILE "#!/bin/sh\n";
-        print RSCYCCMDFILE
-          "/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
-
+        if ($usersh == 0) { # using ssh
+          print RSCYCCMDFILE
+            "/usr/bin/ssh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+        } else {
+          print RSCYCCMDFILE
+            "/usr/bin/rsh  $dest_user_host '/bin/mkdir -p $dest_dir_list'\n";
+        }
         foreach my $dest_dir (keys %{$$config{'destDir_srcFile'}})
         {
             my @src_file =
