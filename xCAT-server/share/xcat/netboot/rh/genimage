@@ -480,6 +480,12 @@ sub mkinitrd_dracut {
         cp($_,"$rootimg_dir/usr/share/dracut/modules.d/97xcat");
         chmod($perm&07777,"$rootimg_dir/usr/share/dracut/modules.d/97xcat/".basename($_));
     }
+    if ($prinic) {
+        my $optspec;
+        open($optspec,'>>',"$rootimg_dir/usr/share/dracut/modules.d/97xcat/xcat-cmdline.sh");
+        print $optspec "IFACE=$prinic\n";
+        close($optspec);
+    }
     foreach (@ndrivers) { s/\.ko$//; }
     system("chroot '$rootimg_dir' dracut -d '".join(' ',@ndrivers)."' -m 'xcat base' /tmp/initrd.$$.gz");
     move("$rootimg_dir/tmp/initrd.$$.gz","$destdir/initrd.gz");
