@@ -322,10 +322,14 @@ sub get_xcat_remote_cmds
     # override with site table settings, if they exist 
     my $ssh_setup = 0;
     my @useSSH = xCAT::Utils->get_site_attribute("useSSHonAIX");
-    $useSSH[0] =~ tr/a-z/A-Z/;    # convert to upper 
-    if (($useSSH[0] eq "1") || ($useSSH[0] eq "YES"))
-    {
-        $ssh_setup = 1;
+    if (defined($useSSH[0])) {
+      $useSSH[0] =~ tr/a-z/A-Z/;    # convert to upper 
+      if (($useSSH[0] eq "1") || ($useSSH[0] eq "YES"))
+      {
+          $ssh_setup = 1;
+      }
+    } else {   # default is SSH
+          $ssh_setup = 1;
     }
     if (xCAT::Utils->isLinux()) { 
       $XCAT_RSH_CMD = "/usr/bin/ssh";    # use ssh
