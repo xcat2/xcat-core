@@ -194,6 +194,10 @@ sub remote_copy_command
         $$config{'dest-file'} && push @dest_file, $$config{'dest-file'};
 
         push @command, $exec_path;
+        if ($usersh == 1) { # using rsh 
+          push @command, "--rsh";
+          push @command, "/bin/rsh";
+        }
         $$config{'preserve'} && push @command, ('-p', '-t');
         $$config{'recursive'} && push @command, '-r';
 
