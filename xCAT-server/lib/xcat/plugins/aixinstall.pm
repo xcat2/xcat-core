@@ -1434,6 +1434,7 @@ sub mknimimage
                     'u|update'     => \$::UPDATE,
                     'verbose|V'    => \$::VERBOSE,
                     'v|version'    => \$::VERSION,
+                    'nfsv4'        => \$::NFSV4,
         )
       )
     {
@@ -2436,6 +2437,10 @@ sub mk_lpp_source
             # make cmd
             my $lpp_cmd =
               "/usr/sbin/nim -Fo define -t lpp_source -a server=master ";
+            if ($::NFSV4)
+            {
+                $lpp_cmd .= "-a nfs_vers=4 ";
+            }
 
             # set multi_volume to yes just in case /dev/cd0 is provided
             $lpp_cmd .= "-a multi_volume=yes ";
@@ -2576,6 +2581,10 @@ sub mk_spot
 
             # Create the SPOT/COSI
             my $cmd = "/usr/sbin/nim -o define -t spot -a server=master ";
+            if ($::NFSV4)
+            {
+                $cmd .= "-a nfs_vers=4 ";
+            }
 
             # source of images
             if ($::METHOD eq "mksysb")
@@ -2774,6 +2783,10 @@ sub mk_bosinst_data
 
             # define the new bosinst_data resource
             $cmd = "/usr/sbin/nim -o define -t bosinst_data -a server=master ";
+            if ($::NFSV4)
+            {
+                $cmd .= "-a nfs_vers=4 ";
+            }
             $cmd .= "-a location=$loc/$bosinst_data_name  ";
             $cmd .= "$bosinst_data_name  2>&1";
 
@@ -2999,6 +3012,10 @@ sub mk_resolv_conf
                 # define the new resolv_conf resource
                 my $cmd =
                   "/usr/sbin/nim -o define -t resolv_conf -a server=master ";
+                if ($::NFSV4)
+                {
+                    $cmd .= "-a nfs_vers=4 ";
+                }
                 $cmd .= "-a location=$fileloc ";
                 $cmd .= "$resolv_conf_name  2>&1";
 
@@ -3115,9 +3132,15 @@ sub mk_mksysb
 
                 # create sys backup from remote node and define res
                 my $location = "$loc/$mksysb_name";
-                my $nimcmd   =
-                  "/usr/sbin/nim -o define -t mksysb -a server=master -a location=$location -a mk_image=yes -a source=$::MKSYSBNODE $mksysb_name 2>&1";
-
+                my $nimcmd;
+                if ($::NFSV4)
+                {
+                    $nimcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a nfs_vers=4 -a location=$location -a mk_image=yes -a source=$::MKSYSBNODE $mksysb_name 2>&1";
+                }
+                else
+                {
+                    $nimcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a location=$location -a mk_image=yes -a source=$::MKSYSBNODE $mksysb_name 2>&1";
+                }
                 $output = xCAT::Utils->runcmd("$nimcmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
@@ -3141,8 +3164,15 @@ sub mk_mksysb
                 }
 
                 # def res with existing mksysb image
-                my $mkcmd =
-                  "/usr/sbin/nim -o define -t mksysb -a server=master -a location=$::SYSB $mksysb_name 2>&1";
+                my $mkcmd;
+                if ($::NFSV4)
+                {
+                  $mkcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a nfs_vers=4 -a location=$::SYSB $mksysb_name 2>&1";
+                }
+                else
+                {
+                  $mkcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a location=$::SYSB $mksysb_name 2>&1";
+                }
 
                 if ($::VERBOSE)
                 {
@@ -3632,8 +3662,15 @@ sub mkScriptRes
     if (!grep(/^$resname$/, @nimresources))
     {
 
-        my $defcmd =
-          qq~/usr/sbin/nim -o define -t script -a server=master -a location=$respath $resname 2>/dev/null~;
+        my $defcmd;
+        if ($::NFSV4)
+        {
+           $defcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a nfs_vers=4 -a location=$respath $resname 2>/dev/null~;
+        }
+        else
+        {
+           $defcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a location=$respath $resname 2>/dev/null~;
+        }
 
         my $output =
           xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $defcmd,
@@ -4083,6 +4120,10 @@ sub mkdumpres
 
     my $cmd = "/usr/sbin/nim -o define -t $type -a server=master ";
 
+    if ($::NFSV4)
+    {
+        $cmd .= "-a nfs_vers=4 ";
+    }
     # where to put it - the default is /install
     if ($location)
     {
@@ -4159,6 +4200,10 @@ sub mknimres
 
     my $cmd = "/usr/sbin/nim -o define -t $type -a server=master ";
 
+    if ($::NFSV4)
+    {
+        $cmd .= "-a nfs_vers=4 ";
+    }
     # if this is a shared_root we need the spot name
     if ($type eq 'shared_root')
     {
@@ -4926,6 +4971,10 @@ sub nimnodecust
                 # try to define it
                 my $bcmd =
                   "/usr/sbin/nim -Fo define -t installp_bundle -a server=master -a location=$bndloc{$bnd} $bnd";
+                if ($::NFSV4)
+                {
+                    $bcmd .= "-a nfs_vers=4 ";
+                }
 
                 my $output = xCAT::Utils->runcmd("$bcmd", -1);
                 if ($::RUNCMD_RC != 0)
@@ -5335,8 +5384,15 @@ sub prenimnodeset
             }
 
             # define the xcataixscript resource
-            my $dcmd =
-              qq~/usr/sbin/nim -o define -t script -a server=master -a location=/install/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
+            my $dcmd;
+            if ($::NFSV4)
+            {
+              $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a nfs_vers=4 -a location=/install/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
+            }
+            else
+            {
+              $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a location=/install/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
+            }
             $out =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime,
                                     $dcmd, 0);
@@ -6144,6 +6200,7 @@ sub mkdsklsnode
                     'n|new'     => \$::NEWNAME,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
+                    'nfsv4'     => \$::NFSV4,
         )
       )
     {
@@ -6463,6 +6520,10 @@ sub mkdsklsnode
 
         # define the node
         my $defcmd = "/usr/sbin/nim -o define -t $type ";
+        if ($::NFSV4)
+        {
+            $defcmd .= "-a nfs_vers=4 ";
+        }
         if ($::NEWNAME)
         {
             $defcmd .= "-a if1='find_net $nodeshorthost 0' ";
@@ -7275,6 +7336,10 @@ sub make_SN_resource
                     # define the local res
                     my $cmd =
                       "/usr/sbin/nim -Fo define -t lpp_source -a server=master -a location=$lochash{$imghash{$image}{$restype}} $imghash{$image}{$restype}";
+                    if ($::NFSV4)
+                    {
+                        $cmd .= "-a nfs_vers=4 ";
+                    }
                     $output = xCAT::Utils->runcmd("$cmd", -1);
                     if ($::RUNCMD_RC != 0)
                     {
@@ -7298,8 +7363,15 @@ sub make_SN_resource
                         {
 
                             # define the local resource
-                            my $cmd =
-                              "/usr/sbin/nim -Fo define -t $restype -a server=master -a location=$lochash{$res}  $res";
+                            my $cmd; 
+                            if ($::NFSV4)
+                            {
+                                $cmd = "/usr/sbin/nim -Fo define -t $restype -a server=master -a nfs_vers=4 -a location=$lochash{$res}  $res";
+                            }
+                            else
+                            {
+                                 $cmd = "/usr/sbin/nim -Fo define -t $restype -a server=master -a location=$lochash{$res}  $res";
+                            }
 
                             my $output = xCAT::Utils->runcmd("$cmd", -1);
                             if ($::RUNCMD_RC != 0)
@@ -7321,8 +7393,15 @@ sub make_SN_resource
                 {
 
                     # define the local resource
-                    my $cmd =
-                      "/usr/sbin/nim -Fo define -t $restype -a server=master -a location=$lochash{$imghash{$image}{$restype}} $imghash{$image}{$restype}";
+                    my $cmd;
+                    if ($::NFSV4)
+                    {
+                        $cmd = "/usr/sbin/nim -Fo define -t $restype -a server=master -a nfs_vers=4 -a location=$lochash{$imghash{$image}{$restype}} $imghash{$image}{$restype}";
+                    }
+                    else
+                    {
+                        $cmd = "/usr/sbin/nim -Fo define -t $restype -a server=master -a location=$lochash{$imghash{$image}{$restype}} $imghash{$image}{$restype}";
+                    }
                     my $output = xCAT::Utils->runcmd("$cmd", -1);
                     if ($::RUNCMD_RC != 0)
                     {
