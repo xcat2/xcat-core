@@ -23,6 +23,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use strict;
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use Getopt::Long;
 use xCAT::MsgUtils;
 use Socket;
@@ -826,32 +827,11 @@ sub initDB
     my $tftpdir    = "$::TFTPDIR";
     my $installdir = "$::INSTALLDIR";
     my $master;
-    my ($name, $aliases, $addrtype, $length, @addrs) = gethostbyname($hname);
-    if ($? == 0)
-    {
-        my $len= scalar(@addrs);
-        if ($len > 0 ) {   # we got some ip addresses
-           for (my $i = 0 ; $i < $len ; $i++){           
-             my @ipaddr=inet_ntoa($addrs[$i]);
-             if (!grep(/127.0.0/, @ipaddr)) {
-                $master = inet_ntoa($addrs[$i]);
-                last;
-             }
-           }
-           if (!defined($master)) {
-            xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
-            $master = "NORESOLUTION";
-           } 
-        } else {
-          xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
-          $master = "NORESOLUTION";
-        }
-    }
-    else
-    {
+    $master  = xCAT::NetworkUtils->getipaddr($hname);
+    if (!$master) {
         xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
         $master = "NORESOLUTION";
-    }
+    } 
     # for policy table
     # get hostname from the /etc/xcat/cert/server-cert.pem
     my $MNname;

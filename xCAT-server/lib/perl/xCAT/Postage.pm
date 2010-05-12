@@ -142,7 +142,7 @@ sub makescript {
            $value = $et->{'xcatmaster'};
          } else {
              my $sitemaster_value = $value;
-	     $value=xCAT::Utils->getFacingIP($node); 
+	     $value=xCAT::Utils->my_ip_facing($node); 
              if ($value eq "0") {
                  $value = $sitemaster_value;
              }

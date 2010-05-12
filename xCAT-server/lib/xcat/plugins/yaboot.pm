@@ -3,6 +3,7 @@ package xCAT_plugin::yaboot;
 use Data::Dumper;
 use Sys::Syslog;
 use xCAT::Scope;
+use xCAT::NetworkUtils;
 use File::Path;
 use Socket;
 use Getopt::Long;
@@ -125,7 +126,7 @@ sub setstate {
       print $pcfg "\tappend=\"".$kern->{kcmdline}."\"\n";
     }
     close($pcfg);
-    my $inetn = inet_aton($node);
+    my $inetn = xCAT::NetworkUtils->getipaddr($node);
     unless ($inetn) {
      syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
      return;
@@ -134,7 +135,7 @@ sub setstate {
     print $pcfg "bye\n";
     close($pcfg);
   }
-  my $ip = inet_ntoa(inet_aton($node));;
+  my $ip = xCAT::NetworkUtils->getipaddr($node);
   unless ($ip) {
     syslog("local1|err","xCAT unable to resolve IP in yaboot plugin");
     return;
@@ -148,8 +149,9 @@ sub setstate {
         my @macs = split(/\|/,$ment->{mac});
         foreach (@macs) {
            if (/!(.*)/) {
-              if (inet_aton($1)) {
-               $ipaddrs{inet_ntoa(inet_aton($1))} = 1;
+              my $ipaddr = xCAT::NetworkUtils->getipaddr($1);
+              if ($ipaddr) {
+               $ipaddrs{$ipaddr} = 1;
               }
            }
         }

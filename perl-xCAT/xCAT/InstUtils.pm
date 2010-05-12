@@ -643,7 +643,7 @@ sub get_server_nodes
         else
         {
             #  get ip facing node
-			$serv = xCAT::Utils->getFacingIP($node);
+			$serv = xCAT::Utils->my_ip_facing($node);
         }
 		chomp $serv;
 

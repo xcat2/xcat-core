@@ -8,6 +8,7 @@ use lib "$::XCATROOT/lib/perl";
 use Sys::Syslog;
 use xCAT::Table;
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use xCAT_plugin::ipmi;
 use xCAT_monitoring::monitorctrl;
 use Socket;
@@ -182,8 +183,7 @@ while ($temp=<STDIN>) {
 
     # get the host name if it is unknown
     if ($node1 =~/<UNKNOWN>/) {
-      my $iaddr = inet_aton($ip1);
-      my ($name) = gethostbyaddr($iaddr, AF_INET);
+      my $name = xCAT::NetworkUtils->gethostname($iaddr);
       if ($name) {
         $node1=$name; 
         $host=$name;
