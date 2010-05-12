@@ -90,13 +90,17 @@ release_lock();
 my $isintel=0;
 my $sleepint;
 my $rc;
-my @mcinfo=`ipmitool -I lan -U $username -P $password -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
+my $ipmitool = "ipmitool";
+if (-x "$XCATROOT/bin/ipmitool-xcat") {
+    $ipmitool = "$XCATROOT/bin/ipmitool-xcat";
+}
+my @mcinfo=`$ipmitool -I lan -U $username -P $password -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
 $rc = $?;
 while ($rc != 0) {
    $sleepint = 10+int(rand(20));
    print "Failure to reach IPMI device, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
    sleep $sleepint;
-   @mcinfo=`ipmitool -I lan -U $username -P $password -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
+   @mcinfo=`$ipmitool -I lan -U $username -P $password -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
    $rc = $?;
 }
 
@@ -113,9 +117,9 @@ if ($isintel) {
    $inteloption=" -o intelplus";
 }
 if ($iface eq "lanplus") {
-    system "ipmitool -I lanplus $inteloption -U $username -P $password -H $bmc $solcom deactivate"; #Stop any active session
+    system "$ipmitool -I lanplus $inteloption -U $username -P $password -H $bmc $solcom deactivate"; #Stop any active session
 }
 
-exec "ipmitool -I $iface $inteloption -U $username -P $password -H $bmc $solcom activate";
+exec "$ipmitool -I $iface $inteloption -U $username -P $password -H $bmc $solcom activate";
   
 
