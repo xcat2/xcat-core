@@ -3038,7 +3038,7 @@ sub gethost_ips
     my $cmd;
     my @ipaddress;
     $cmd = "ifconfig" . " -a";
-    $cmd = $cmd . "| grep \"inet \"";
+    $cmd = $cmd . "| grep \"inet\"";
     my @result = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -4315,6 +4315,7 @@ sub CheckVersion
 =head3   getFacingIP
        Gets the ip address of the adapter of the localhost that is facing the
     the given node.
+       Assume it is the same as my_ip_facing...
     Arguments:
        The name of the node that is facing the localhost.
     Returns:
@@ -5319,7 +5320,7 @@ sub getNodeNetworkCfg
     my $node = shift;
 
     my $nets = xCAT::Utils::my_nets();
-    my $ip   = inet_ntoa(inet_aton($node));
+    my $ip   = xCAT::NetworkUtils->getipaddr($node);
     my $mask = undef;
     for my $net (keys %$nets)
     {
