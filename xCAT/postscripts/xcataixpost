@@ -144,6 +144,13 @@ unless ($servnode) {
     exit 0;
 }
 
+# create the xcatpost dir
+my $cmd = "mkdir -p /xcatpost";
+if (&runcmd($cmd) != 0) {
+	print "$::sdate xcataixpost: Could not create the /xcatpost directory.\n";
+	print $::LOG_FILE "$::sdate xcataixpost: Could not create the /xcatpost directory.\n";
+}
+
 # request the xCAT postscript for this particular node
 my $scriptname = "/xcatpost/myxcatpost_" . $::shorthost;
 if (&getmypost != 0) {
@@ -169,12 +176,6 @@ if (!$installdir) {
 # if the /xcatpost dir has not been populated or the -c option is
 #   specified then do the mount and copy of /install/postscripts
 if ( !(-f "/xcatpost/xcataixpost") || $::opt_c ) {
-	# create the xcatpost dir
-	my $cmd = "mkdir -p /xcatpost";
-	if (&runcmd($cmd) != 0) {
-		print "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
-		print $::LOG_FILE "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
-	}
 
 	# get the contents of the /install/postscripts dir on the server
 	#   - mount dir from server and copy files
