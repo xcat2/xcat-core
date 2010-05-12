@@ -21,7 +21,8 @@ sub handled_commands {
       rflash    => 'nodehm:mgt',
       getmacs   => 'nodehm:mgt',
       rnetboot  => 'nodehm:mgt',
-      rvitals   => 'nodehm:mgt'
+      rvitals   => 'nodehm:mgt',
+      rscan     => 'nodehm:mgt'
 
   };
 }

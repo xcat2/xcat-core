@@ -148,8 +148,8 @@ sub enumerate {
                 next;
             }
 	    my @list = split(/\n/,$data);    
-	    print "list\n";
-	    print Dumper(\@list);
+        #print "list\n";
+        #print Dumper(\@list);
 	    foreach my $lpar (@list) {
 	         $lpar =~ /lparid:\s+(\d+),\s+state:/;
 		 my $name = "";
@@ -418,10 +418,10 @@ sub format_output {
     my $max_length = 0;
     my $result;
  
-    print "In format output\n";
-    print Dumper($request);   
-    print Dumper($exp);   
-    print Dumper($values);   
+    #print "In format output\n";
+    #print Dumper($request);   
+    #print Dumper($exp);   
+    #print Dumper($values);   
     ###########################################
     # -w flag for write to xCat database
     ###########################################
@@ -655,7 +655,7 @@ sub format_xml {
             }
             $href->{Node}->{$_} = $d;
         }
-	print Dumper($href);
+        #print Dumper($href);
         #################################
         # XML encoding
         #################################
@@ -680,17 +680,17 @@ sub rscan {
     my $args    = $request->{arg};
     my $server  = @$exp[3];
 
-    print "in rscan,";
-    print Dumper($request);
-    print Dumper($hash);
-    print Dumper($exp);
+    #print "in rscan,";
+    #print Dumper($request);
+    #print Dumper($hash);
+    #print Dumper($exp);
     
     ###################################
     # Enumerate all the hardware
     ###################################
     my $values = enumerate( $hash );
-    print "In rscan:\n";
-    print Dumper($values);
+    #print "In rscan:\n";
+    #print Dumper($values);
     if ( ref($values) ne 'ARRAY' ) {
         return( [[$server,$values,1]] );
     }
