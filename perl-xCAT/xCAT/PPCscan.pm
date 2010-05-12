@@ -10,6 +10,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCdb;
 use xCAT::GlobalDef;
 use xCAT::Usage;
+use xCAT::NetworkUtils;
 
 
 ##############################################
@@ -107,7 +108,7 @@ sub getshorthost {
 
     my $ip = shift;
 
-    my $host = xCAT::Utils->gethostname($ip);
+    my $host = xCAT::NetworkUtils->gethostname($ip);
     if ( $host and !$! ) {
         ##############################
         # Get short-hostname
