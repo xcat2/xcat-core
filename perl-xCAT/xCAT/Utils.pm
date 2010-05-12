@@ -3050,23 +3050,42 @@ sub gethost_ips
         my @ip;
         if (xCAT::Utils->isLinux())
         {
-            my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
-            @ip = split(":", $addr1);
-            push @ipaddress, $ip[1];
+            if ($addr =~ /inet6/)
+            {
+               #TODO, Linux ipv6 
+            }
+            else
+            {
+                my ($inet, $addr1, $Bcast, $Mask) = split(" ", $addr);
+                @ip = split(":", $addr1);
+                push @ipaddress, $ip[1];
+            }
         }
         else
         {    #AIX
-            my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
-              split(" ", $addr);
-            push @ipaddress, $addr1;
+            if ($addr =~ /inet6/)
+            {
+               $addr =~ /\s*inet6\s+([\da-fA-F:]+).*\/(\d+)/;
+               my $v6ip = $1;
+               my $v6mask = $2;
+               if ($v6ip)
+               {
+                   push @ipaddress, $v6ip;
+               }
+            }
+            else
+            {
+                my ($inet, $addr1, $netmask, $mask1, $Bcast, $bcastaddr) =
+                  split(" ", $addr);
+                push @ipaddress, $addr1;
+            }
 
         }
     }
     my @names = @ipaddress;
     foreach my $ipaddr (@names)
     {
-        my $packedaddr = inet_aton($ipaddr);
-        my $hostname = gethostbyaddr($packedaddr, AF_INET);
+        my $hostname = xCAT::NetworkUtils->gethostname($ipaddr);
         if ($hostname)
         {
             my @shorthost = split(/\./, $hostname);
