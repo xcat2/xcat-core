@@ -24,6 +24,7 @@ use Socket;
 use strict;
 use warnings "all";
 require xCAT::InstUtils;
+require xCAT::NetworkUtils;
 require xCAT::Schema;
 require Data::Dumper;
 require xCAT::NodeRange;
@@ -2472,9 +2473,44 @@ sub nodeonmynet
     }
 
     my $nodeip = getNodeIPaddress( $nodetocheck );
+    if (!$nodeip)
+    {
+        return 0;
+    }
     unless ($nodeip =~ /\d+\.\d+\.\d+\.\d+/)
     {
-        return 0;    #Not supporting IPv6 here IPV6TODO
+        #IPv6
+        if ( $^O eq 'aix')
+        {
+            my @subnets = get_subnet_aix();
+            for my $net_ent (@subnets)
+            {
+                if ($net_ent !~ /-/)
+                {
+                    #ipv4
+                    next;
+                }
+                my ($net, $interface, $mask, $flag) = split/-/ , $net_ent;
+                if (xCAT::NetworkUtils->ishostinsubnet($nodeip, $mask, $net))
+                {
+                    return 1;
+                }
+            }
+
+        }
+        #TODO, ipv6 on Linux
+        my $nettab=xCAT::Table->new("networks");
+        my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
+        foreach (@vnets) {
+            if ((defined $_->{mgtifname}) && ($_->{mgtifname} eq '!remote!'))
+            {
+                if (xCAT::NetworkUtils->ishostinsubnet($nodeip, $_->{mask}, $_->{net}))
+                {
+                    return 1;
+                }
+            }
+        }
+        return 0;
     }
     my $noden = unpack("N", inet_aton($nodeip));
     my @nets;
@@ -2486,6 +2522,11 @@ sub nodeonmynet
             my @subnets = get_subnet_aix();
             for my $net_ent (@subnets)
             {
+                if ($net_ent =~ /-/) 
+                {
+                    #ipv6
+                    next;
+                }
                 my @ents = split /:/ , $net_ent;
                 push @nets, $ents[0] . '/' . $ents[2] . ' dev ' . $ents[1];
             }
@@ -2543,9 +2584,9 @@ sub getNodeIPaddress
     my $nodetocheck = shift;
     my $nodeip;
 
-    if ( inet_aton($nodetocheck) ) {
-        $nodeip = inet_ntoa(inet_aton($nodetocheck));
-    } else {
+    $nodeip = xCAT::NetworkUtils->getipaddr($nodetocheck);
+    if (!$nodeip)
+    {
         my $hoststab = xCAT::Table->new( 'hosts');
         my $ent = $hoststab->getNodeAttribs( $nodetocheck, ['ip'] );
         if ( $ent->{'ip'} ) {
@@ -5164,15 +5205,24 @@ sub get_subnet_aix
 #We need to find entries like:
 #Destination        Gateway           Flags   Refs     Use  If   Exp  Groups
 #9.114.47.192/27    9.114.47.205      U         1         1 en0
+#4000::/64          link#4            UCX       1         0 en2      -      - 
+        my ( $net, $netmask, $flag, $nic);
         if ( $entry =~ /^\s*([\d\.]+)\/(\d+)\s+[\d\.]+\s+(\w+)\s+\d+\s+\d+\s(\w+)/)
         {
-            my ( $net, $netmask, $flag, $nic) = ($1,$2,$3,$4);
+            ( $net, $netmask, $flag, $nic) = ($1,$2,$3,$4);
             my @dotsec = split /\./, $net;
             for ( my $i = 4; $i > scalar(@dotsec); $i--)
             {
                 $net .= '.0';
             }
             push @aix_nrn, "$net:$nic:$netmask:$flag" if ($net ne '127.0.0.0');
+        }
+        elsif ($entry =~ /^\s*([\dA-Fa-f\:]+)\/(\d+)\s+.*?\s+(\w+)\s+\d+\s+\d+\s(\w+)/)
+        {
+            #print "=====$entry====\n";
+            ( $net, $netmask, $flag, $nic) = ($1,$2,$3,$4);
+            # for ipv6, can not use : as the delimiter
+            push @aix_nrn, "$net-$nic-$netmask-$flag" if ($net ne '::')
         }
     }
     return @aix_nrn;

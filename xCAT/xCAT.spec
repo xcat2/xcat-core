@@ -134,9 +134,11 @@ fi
 %postun
 if [ "$1" = "0" ]; then
 %ifnos linux
+if [ !"$1" = "2" ]
 if grep "^xcatd" /etc/inittab >/dev/null
 then
 /usr/sbin/rmitab xcatd >/dev/null
+fi
 fi
 %endif
 true    # so on aix we do not end up with an empty if stmt
