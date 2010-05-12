@@ -120,7 +120,7 @@ For example:
 
   /tmp/filex  ->  /tmp/source/filey
 
-
+On Linux rsync always uses ssh remoteshell. On AIX, ssh or rsh is used depending on the site.useSSHonAIX attribute.
 
 =item B<-h>|B<--help>
 
@@ -344,7 +344,7 @@ B<xdcp> I<NodeGroup1 -f 12 -RP /var/log/testlogdir /var/log>
 =item *
 
 To copy  /localnode/smallfile and /tmp/bigfile to /tmp on node1
-using rsync (ssh) and input -t flag to rsync, enter:
+using rsync and input -t flag to rsync, enter:
 
 I<xdcp node1 -r /usr/bin/rsync -o "-t"  /localnode/smallfile /tmp/bigfile /tmp>
 
