@@ -1,10 +1,13 @@
 #!/bin/sh
-# Sample postbootscript script for installing and configuring HPC software
+# Sample Linux postbootscript script for installing and configuring HPC software
 # for statefull (full-disk install) nodes
 # Make sure this runs after the otherpkgs postbootscript
 #
 
 ps_dir=/xcatpost
+
+# Run script to set up some basics for all HPC software
+$ps_dir/IBMhpc.postscript
 
 # Run script to install gpfs updates
 $ps_dir/gpfs_updates

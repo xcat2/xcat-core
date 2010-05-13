@@ -1,10 +1,30 @@
 #!/bin/sh
 # Sample postscript script for base OS configuration for all HPC software
-# for statefull (full-disk install) nodes
-# Make sure this runs before the node reboots after initial install
-# for services to be activated
+# AIX:
+#    set network tunables
+#
+# Linux: for statefull (full-disk install) nodes
+#     Make sure this runs before the node reboots after initial install
+#     for services to be activated
 #
 
+OS=`uname`
+
+# AIX
+if [ $OS = "AIX" ]; then
+   # Set network tunables
+    no -p -o tcp_recvspace=524288
+    no -p -o tcp_sendspace=524288
+    no -p -o udp_recvspace=655360
+    no -p -o udp_sendspace=65536
+    no -p -o arpqsize=64
+    no -p -o rfc1323=1
+    no -p -o sb_max=8388608
+    chdev -l sys0 -a maxuproc='4096'
+   exit
+fi
+
+# Linux
 ps_dir=/xcatpost
 
 hpc=/opt/xcat/share/xcat/IBMhpc

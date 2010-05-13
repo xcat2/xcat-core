@@ -1,0 +1,10 @@
+# AIX Bundle file for compiler runtime packages
+
+I:xlC.rte
+I:xlfrte
+I:xlfrte.aix53
+I:xlfrte.msg.en_US
+I:xlsmp.aix53.rte
+I:xlsmp.msg.en_US.rte
+I:xlsmp.rte
+

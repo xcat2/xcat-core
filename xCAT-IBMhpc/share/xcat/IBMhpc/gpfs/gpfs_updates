@@ -23,6 +23,12 @@
 #      - create /var/mmfs/etc/nsddevices that simply returns 0
 #      - add GPFS paths to profile
 
+# Set installroot here ONLY if passed in as an argument
+# Don't set otherwise -- may have been set as an ENV var for this script
+#   or not set at all if this was called as a postscript
+if [ -n "$1" ]; then
+  installroot=$1
+fi
 
 OS=`uname`
 INSTALL_DIR='/install'
@@ -62,15 +68,18 @@ fi
 # This assumes that the node is NOT an NSD server
 if [ $OS == "AIX" ]; then
     # Create the script on the node
-    echo 'return 0' > /var/mmfs/etc/nsddevices
-    chmod 744 /var/mmfs/etc/nsddevices
+    mkdir -p $installroot/var/mmfs/etc
+    echo 'return 0' > $installroot/var/mmfs/etc/nsddevices
+    chmod 744 $installroot/var/mmfs/etc/nsddevices
 else  # assume Linux
     if [ $NODESETSTATE == "genimage" ]; then
         # Create the script in the image
+        mkdir -p $installroot/var/mmfs/etc
         echo 'return 0' > $installroot/var/mmfs/etc/nsddevices
         chmod 744 $installroot/var/mmfs/etc/nsddevices
     else
         # Create the script on the node
+        mkdir -p /var/mmfs/etc
         echo 'return 0' > /var/mmfs/etc/nsddevices
         chmod 744 /var/mmfs/etc/nsddevices
     fi
@@ -80,8 +89,8 @@ fi
 # Add GPFS path to profile
 if [ $OS == "AIX" ]; then
     # add to /etc/profile
-    if ! grep 'mmfs' /etc/profile >& /dev/null; then
-        echo 'PATH=$PATH:/usr/lpp/mmfs/bin' >> /etc/profile
+    if ! grep 'mmfs' $installroot/etc/profile > /dev/null 2>&1; then
+        echo 'export PATH=$PATH:/usr/lpp/mmfs/bin' >> $installroot/etc/profile
     fi 
 else  # assume Linux
     gpfsprofile=/etc/profile.d/gpfs
@@ -89,8 +98,8 @@ else  # assume Linux
        gpfsprofile=$installroot$gpfsprofile
     fi
     if [ ! -e $gpfsprofile.sh ]; then
-        echo 'PATH=$PATH:/usr/lpp/mmfs/bin' > $gpfsprofile.sh
-        echo 'PATH=$PATH:/usr/lpp/mmfs/bin' > $gpfsprofile.csh
+        echo 'export PATH=$PATH:/usr/lpp/mmfs/bin' > $gpfsprofile.sh
+        echo 'export PATH=$PATH:/usr/lpp/mmfs/bin' > $gpfsprofile.csh
         # Turn off LANG support since we did not install other msg catalogs
         echo 'export LC_CTYPE=POSIX' $gpfsprofile.sh
         echo 'export LC_CTYPE=POSIX' $gpfsprofile.csh
@@ -104,11 +113,8 @@ fi
 # If you are using a shared home directory stored in GPFS,
 #   create the symbolic link
 #
-# GPFSHOME=/gpfs/home
-# HOMEDIR=/u
-# if [ $NODESETSTATE == "genimage" ]; then
-#    HOMEDIR=$installroot/$HOMEDIR
-# fi
+# GPFSHOME=$installroot/gpfs/home
+# HOMEDIR=$installroot/u
 # ln -s $GPFSHOME $HOMEDIR
 
 

@@ -1,0 +1,24 @@
+# AIX bundle file for ESSL and PESSL packages
+
+# ESSL
+I:essl.rte.up
+I:essl.rte.mp
+I:essl.rte
+I:essl.msg.en_US
+#I:essl.msg.En_US
+#I:essl.man.en_US
+I:essl.loc.license
+
+# PESSL
+I:pessl.rte.up
+I:pessl.rte.smp
+I:pessl.rte.rs1
+I:pessl.rte.mp
+I:pessl.rte.hv
+I:pessl.rte.common
+I:pessl.rte
+I:pessl.msg.en_US
+#I:pessl.msg.En_US
+#I:pessl.man.en_US
+I:pessl.loc.license
+

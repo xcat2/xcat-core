@@ -1,0 +1,6 @@
+# AIX bundle file for LoadLeveler packages
+
+#I:LoadL
+I:LoadL.resmgr
+
+

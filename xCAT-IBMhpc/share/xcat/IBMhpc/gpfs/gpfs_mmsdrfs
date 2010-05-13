@@ -1,11 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 
 # Run this script to sync the GPFS mmsdrfs file into the node images
-# Set the SOURCE, IMAGE, and SERVICE variables appropriately
+# Set the SOURCE, TARGETDIR, IMAGE, and SERVICE variables appropriately
 
 # Usage:  gpfs_mmsdrfs [packimage|liteimage] [syncinstall]
-#   If packimage or liteimage specified, will run that command for the image
-#     if rsync updated any destination files
+#   For Linux, if packimage or liteimage specified, 
+#     will run that command for the image if rsync updated any 
+#     destination files
 #   If syncinstall specified, and if site.install_loc is blank, 
 #     sync the /install directory to the SERVICE noderange 
 #     if rysnc updated any destination files
@@ -19,52 +20,113 @@
 #SOURCE=gpfsmgr:/var/mmfs/gen/mmsdrfs
 SOURCE=/var/mmfs/gen/mmsdrfs
 
-# The images to be updated (list as many as needed)
-IMAGE[1]=sles11-ppc64-netboot-service
-IMAGE[2]=sles11-ppc64-netboot-compute
+# The target directory on the xCAT MN that holds the master copy
+TARGETDIR=/install/mmfs/gen
 
 # The noderange for service nodes
 SERVICE=service
 
+# The images to be updated (list as many as needed)
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# EDIT HERE TO SPECIFY IMAGES TO BE UPDATED!!!
+#   default is to update all images        !!!
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+IMAGE[1]=ALL_IMAGES
+#IMAGE[1]=sles11-ppc64-netboot-service
+#IMAGE[2]=sles11-ppc64-netboot-compute
+
+
+
 
 # If $installroot is set, then this script was called from genimage
 # Ignore all IMAGE variables and only rsync to $installroot
-if [ ! -z "$installroot" ]; then
-   rsync -i -t $SOURCE $installroot/var/mmfs/gen/mmsdrfs
-   exit
+if [[ ! -z "$installroot" ]]; then
+  OS=`uname`
+  if [[ "$OS" != "AIX" ]]; then
+    rsync -i -t $SOURCE $installroot/var/mmfs/gen/mmsdrfs
+    exit
+  fi
 fi
 
-packcmd=""
-syncinstall=""
-if [ "$1" == "packimage" ] || [ "$1" == "liteimage" ]; then
-  packcmd=$1
-  if [ "$2" == "syncinstall" ]; then
+
+# rsync the GPFS config file to the MN
+# DEVELOPER NOTE:  Keep all code above this rsync call as short
+#    and efficient as possible.  
+#    This script may be frequently called from cron.
+if [ ! -d $TARGETDIR ]; then
+  mkdir -p $TARGETDIR
+fi 
+result=`rsync -i -t $SOURCE $TARGETDIR/mmsdrfs`
+r1=`echo $result | cut -c1`
+if [ "$r1" == ">" ]; then
+  OS=`uname`
+  packcmd=""
+  syncinstall=""
+  if [ "$1" == "packimage" ] || [ "$1" == "liteimage" ]; then
+    packcmd=$1
+  fi
+  if [ "$1" == "syncinstall" ] || [ "$2" == "syncinstall" ]; then
+    if [ -z "`/opt/xcat/bin/nodels $SERVICE`" ]; then
+       SERVICE=""
+    fi
     installloc=`/opt/xcat/bin/gettab key=installloc site.value`
     if [ -z "$installloc" ]; then
       syncinstall="yes"
     fi
   fi
-fi
 
-updates=""
-for syncimage in ${IMAGE[@]}; do
-    dest=`/opt/xcat/bin/gettab imagename=$syncimage linuximage.rootimgdir`
-    dest=$dest/rootimg/var/mmfs/gen/mmsdrfs
-    #echo "rsync cmd:  rsync -i -t $SOURCE $dest "
-    result=`rsync -i -t $SOURCE $dest`
-    #echo "rsync result=$result"
-    r1=`echo $result | cut -c1`
-    if [ "$r1" == ">" ]; then
-       date
-       echo "mmsdrfs updated in image $syncimage"
-       if [ ! -z $packcmd ]; then
-          updates="yes"
-          /opt/xcat/sbin/$packcmd $syncimage
-       fi
+  if [[ -z "${IMAGE[1]}" || "${IMAGE[1]}" == "ALL_IMAGES" ]]; then
+    if [ $OS = "AIX" ]; then
+       imgtable="nimimage"
+    else
+       imgtable="linuximage"
     fi
-done
+    IMAGE=(`tabdump $imgtable | cut -d, -f1 | grep -v '#' | tr -d '"'`)
+  fi
+  if [ $OS = "AIX" ]; then
+      # do AIX stuff
+    updates=""
+    for syncimage in ${IMAGE[@]}; do
+        spot=`/opt/xcat/bin/gettab imagename=$syncimage nimimage.spot`
+        if [ -n "$spot" ]; then
+            dest=`lsnim -Z -a location $spot | grep -v '#' | cut -f2 -d':' `
+            if [ -n "$dest" ]; then 
+                mkdir -p $dest/lpp/bos/inst_root/var/mmfs/gen
+                cp $TARGETDIR/mmsdrfs $dest/lpp/bos/inst_root/var/mmfs/gen/mmsdrfs
+                if [[ -n "$syncinstall" && -n "$SERVICE" ]]; then
+                  /opt/xcat/bin/xdcp $SERVICE $TARGETDIR/mmsdrfs $dest/lpp/bos/inst_root/var/mmfs/gen
+                fi
+            fi
+        fi
+        shared_root=`/opt/xcat/bin/gettab imagename=$syncimage nimimage.shared_root`
+        if [ -n "$shared_root" ]; then
+            dest=`lsnim -Z -a location $shared_root | grep -v '#' | cut -f2 -d':' `
+            if [ -n "$dest" ]; then 
+                mkdir -p $dest/var/mmfs/gen
+                cp $TARGETDIR/mmsdrfs $dest/var/mmfs/gen/mmsdrfs
+                if [[ -n "$syncinstall" && -n "$SERVICE" ]]; then
+                  /opt/xcat/bin/xdcp $SERVICE $TARGETDIR/mmsdrfs $dest/var/mmfs/gen
+                fi
+            fi
+        fi
+    done
 
-if [ ! -z "$updates" ] && [ ! -z "$syncinstall" ]; then
-   xdcp $SERVICE -r /usr/bin/rsync -o '-e ssh -craz' /install/netboot /install/netboot 
+  else # do Linux stuff
+    updates=""
+    for syncimage in ${IMAGE[@]}; do
+        dest=`/opt/xcat/bin/gettab imagename=$syncimage linuximage.rootimgdir`
+        if [ -n "$dest" ]; then 
+            dest=$dest/rootimg/var/mmfs/gen/mmsdrfs
+            cp $TARGETDIR/mmsdrfs $dest
+            if [ -n "$packcmd" ]; then
+               updates="yes"
+               /opt/xcat/sbin/$packcmd $syncimage
+            fi
+        fi
+    done
+
+    if [ -n "$updates" ] && [ -n "$syncinstall" ] && [ -n "$SERVICE" ]; then
+       xdcp $SERVICE -r /usr/bin/rsync -o '-e ssh -craz' /install/netboot /install/netboot 
+    fi
+  fi
 fi
-

@@ -12,7 +12,7 @@ OS=`uname`
 INSTALL_DIR='/install'
 ESSL_DIR=$essldir
 
-if [ -z $ESSL_DIR ]; then
+if [ -z "$ESSL_DIR" ]; then
    # try to default
    ESSL_DIR=$INSTALL_DIR/post/otherpkgs/$OSVER/$ARCH/essl
 fi

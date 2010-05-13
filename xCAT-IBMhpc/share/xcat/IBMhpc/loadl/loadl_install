@@ -4,7 +4,8 @@
 # Sample script to accept license and install LoadLeveler resmgr package
 # and perform additional customizations
 # For AIX:
-#    TBD
+#    add LL path to profile
+#    create directories for LL log, spool, etc.
 # For Linux:
 #    
 
@@ -12,11 +13,11 @@
 OS=`uname`
 INSTALL_DIR='/install'
 LOADL_DIR=$loadldir
-aix_loadl_bin=/usr/lpp/LoadL/full/bin
+aix_loadl_bin=/usr/lpp/LoadL/resmgr/full/bin
 linux_loadl_bin=/opt/ibmll/LoadL/resmgr/full/bin
 linux_loadl_license_script=/opt/ibmll/LoadL/sbin/install_ll
 
-if [ -z $LOADL_DIR ]; then
+if [ -z "$LOADL_DIR" ]; then
    # try to default
    LOADL_DIR=$INSTALL_DIR/post/otherpkgs/$OSVER/$ARCH/loadl
 fi
@@ -54,19 +55,25 @@ if [ $OS != "AIX" ]; then
 fi
 
 # Add LoadLeveler path to profile
-if [ $OS == "AIX" ]; then
+if [ "$OS" == "AIX" ]; then
     # add to /etc/profile
-    if ! grep 'LoadL' /etc/profile >& /dev/null; then
-        echo 'PATH=$PATH:$aix_loadl_bin' >> /etc/profile
+    if ! grep 'LoadL' /etc/profile  > /dev/null 2>&1 ; then
+        echo "export PATH=$PATH:$aix_loadl_bin" >> /etc/profile
     fi
+    # UNCOMMENT to add to /etc/inittab if not already in image
+    #if ! grep 'loadl' /etc/inittab ; then
+    #   echo "loadl:2:once:/usr/lpp/LoadL/resmgr/full/bin/llrctl start > /dev/console 2>&1" >> /etc/inittab
+   #fi
+
+
 else  # assume Linux
     loadlprofile=/etc/profile.d/loadl
     if [ $NODESETSTATE == "genimage" ]; then
        loadlprofile=$installroot$loadlprofile
     fi
     if [ ! -e $loadlprofile.sh ]; then
-        echo 'PATH=$PATH:$linux_loadl_bin' > $loadlprofile.sh
-        echo 'PATH=$PATH:$linux_loadl_bin' > $loadlprofile.csh
+        echo "export PATH=$PATH:$linux_loadl_bin" > $loadlprofile.sh
+        echo "export PATH=$PATH:$linux_loadl_bin" > $loadlprofile.csh
         # Turn off LANG support since we did not install other msg catalogs
         echo 'export LC_CTYPE=POSIX' $loadlprofile.sh
         echo 'export LC_CTYPE=POSIX' $loadlprofile.csh
@@ -106,7 +113,13 @@ chmod 777 $installroot$logdir/core
 # Owner set to 'loadl' userid, change if using a different userid
 chown -R loadl:loadl $installroot$logdir/
 
-if [ -f /etc/LoadL.cfg ] ; then
+if [ "$NODESETSTATE" == "genimage" ] && [ -f /etc/LoadL.cfg ] ; then
     cp /etc/LoadL.cfg $installroot/etc/LoadL.cfg
 fi
+
+
+# UNCOMMENT to  Start loadleveler during postscripts 
+#if [ $NODESETSTATE != "genimage" ]; then
+#   /usr/lpp/LoadL/resmgr/full/bin/llrctl start
+#fi
 

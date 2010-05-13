@@ -1,0 +1,16 @@
+# AIX bundle file containing base AIX prereq for all HPC software
+
+I:bos.adt.debug
+I:bos.adt.libm
+I:bos.adt.syscalls
+I:bos.adt.prof
+I:bos.cpr
+I:bos.loc.iso.en_US
+I:bos.pmapi
+I:perfagent.tools
+I:sysmgt.sguide.rte
+I:Java5
+
+
+~
+

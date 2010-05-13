@@ -1,0 +1,6 @@
+# GPFS
+I:gpfs.msg.en_US
+I:gpfs.base
+# The gpfs.docs.data lpp contains the man pages for GPFS
+# By default, this will not be installed into node images
+#I:gpfs.docs.data

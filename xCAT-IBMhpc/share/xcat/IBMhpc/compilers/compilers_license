@@ -3,18 +3,17 @@
 # 
 # Sample script to accept licenses for the IBM vacpp and xlf compilers
 # For AIX:
-#    TBD
+#    do nothing, license accepted with installp -Y flag
 # For Linux:
 #    Assumes all compiler software has been installed
 
 
 OS=`uname`
-cd $installroot/
-vacpp_script=`find opt/ibmcmp/vacpp -name new_install -print`
-xlf_script=`find opt/ibmcmp/xlf -name new_install -print`
-
-
 if [ $OS != "AIX" ]; then
+    cd $installroot/
+    vacpp_script=`find opt/ibmcmp/vacpp -name new_install -print`
+    xlf_script=`find opt/ibmcmp/xlf -name new_install -print`
+
     if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
     #  Being run from a stateful install postscript
        echo 1 | $vacpp_script
