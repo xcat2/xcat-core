@@ -1,0 +1,12 @@
+#  Sample package list for installing all IBM HPC products in a
+#  SLES11 ppc64   minimal  diskless image
+
+#INCLUDE:/opt/xcat/share/xcat/netboot/sles/compute.sles11.ppc64.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/min-IBMhpc.sles11.ppc64.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/min-compilers.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/min-essl.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/min-loadl.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/min-pe.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/rsct.pkglist#
+
+

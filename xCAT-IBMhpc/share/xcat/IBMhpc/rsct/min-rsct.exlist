@@ -1,0 +1,130 @@
+# Exclude list for building a minimal diskless image
+# Review this list carefully.  Many files and directories are being
+# removed from the image.
+# Depending on how you use rsct on the compute nodes, you may need some
+# of the function provided by these files.
+
++./usr/lib/perl5*
+./usr/include/rsct/*
+./usr/sbin/rsct/README
+./usr/sbin/rsct/include*
+./usr/sbin/rsct/man/*
+./usr/sbin/rsct/bin/trap2rmcd
+./usr/sbin/rsct/bin/ctadmingroup 
+./usr/sbin/rsct/bin/mkcdef
+
+#fc funcitons
+./usr/sbin/rsct/bin/fccheck
+./usr/sbin/rsct/bin/fcclear
+./usr/sbin/rsct/bin/fcdecode
+./usr/sbin/rsct/bin/fcdispfid
+./usr/sbin/rsct/bin/fcfilter
+./usr/sbin/rsct/bin/fcinit.csh
+./usr/sbin/rsct/bin/fcismd
+./usr/sbin/rsct/bin/fcistm
+./usr/sbin/rsct/bin/fcjoin.sed
+./usr/sbin/rsct/bin/fclogerr
+./usr/sbin/rsct/bin/fcparse.awk
+./usr/sbin/rsct/bin/fcpushstk
+./usr/sbin/rsct/bin/fcreport
+./usr/sbin/rsct/bin/fcslogrpt
+./usr/sbin/rsct/bin/fcstkrpt
+./usr/sbin/rsct/bin/fcstrip.sed
+./usr/sbin/rsct/bin/fcsysparse
+./usr/sbin/rsct/bin/fcteststk
+./usr/sbin/rsct/bin/fcinit.sh 
+#java interface
+./usr/sbin/rsct/lib/java.exp
+./usr/sbin/rsct/lib/librmcjni.so
+./usr/sbin/rsct/lib/librmcjni.so.exp
+./usr/sbin/rsct/lib/libutiljni.so
+./usr/sbin/rsct/lib/libutiljni.so.exp
+./usr/sbin/rsct/codebase*
+
+#remove assuming ctbackup/ctrestore not being used
+./usr/sbin/rsct/bin/ctrestore
+./usr/sbin/rsct/bin/ctbrdefs  
+./usr/sbin/rsct/bin/ctbackup  
+
+#remove assuming trace spooling is not used
+./usr/sbin/rsct/bin/chkspool  
+./usr/sbin/rsct/bin/showtr 
+./usr/sbin/rsct/bin/lstrsp
+
+#remove; CtSec verification utility
+./usr/sbin/rsct/bin/ctsvhbar 
+./usr/sbin/rsct/bin/ctsvhbal
+./usr/sbin/rsct/bin/ctsvhbac  
+./usr/sbin/rsct/bin/ctaclfck  
+./usr/sbin/rsct/bin/ctsidmck  
+
+#remove; System Registry diagnostic tool
+./usr/sbin/rsct/bin/sr_lstfs    
+./usr/sbin/rsct/bin/sr_lsfds       
+./usr/sbin/rsct/bin/sr_filter_trace   
+./usr/sbin/rsct/bin/sr_dump_table_raw 
+./usr/sbin/rsct/bin/sr_dump_table   
+./usr/sbin/rsct/bin/sr_diag        
+./usr/sbin/rsct/bin/ct_sr_trace_scan 
+./usr/sbin/rsct/bin/ct_sr_file_scan 
+
+#System Registry -api commnd; probably not needed  
+./usr/sbin/rsct/bin/rmsrtbl-api
+./usr/sbin/rsct/bin/rmsrrow-api
+./usr/sbin/rsct/bin/mksrtbl-api
+./usr/sbin/rsct/bin/mksrrow-api
+./usr/sbin/rsct/bin/mksrcol-api
+./usr/sbin/rsct/bin/lssrtbldef-api
+./usr/sbin/rsct/bin/lssrtbl-api
+./usr/sbin/rsct/bin/lssr-api 
+./usr/sbin/rsct/bin/chsrfld-api 
+
+#remove if not monitoring IBM.NetworkInterface resources 
+./usr/sbin/rsct/bin/IBM.ConfigRMd
+
+#remove if not using LPRM
+./usr/sbin/rsct/bin/IBM.LPRMd
+./usr/sbin/rsct/bin/runlpcmd
+./usr/sbin/rsct/bin/rmlpcmd
+./usr/sbin/rsct/bin/mklpcmd
+./usr/sbin/rsct/bin/lslpcmd
+./usr/sbin/rsct/bin/lphistory
+./usr/sbin/rsct/bin/chlprsacl
+./usr/sbin/rsct/bin/chlpriacl
+./usr/sbin/rsct/bin/chlpcmd
+./usr/sbin/rsct/bin/chlpclacl
+./usr/sbin/rsct/bin/lslprsacl
+./usr/sbin/rsct/bin/lslpriacl
+./usr/sbin/rsct/bin/lslpracl
+./usr/sbin/rsct/bin/lslpclacl
+./usr/sbin/rsct/bin/chlpracl
+
+#remove if not using IBM.FileSystem
+#./usr/sbin/rsct/bin/IBM.FSrmd
+
+#remove if not using Condition/Response
+./usr/sbin/rsct/bin/IBM.ERrmd
+./usr/sbin/rsct/bin/stopcondresp 
+./usr/sbin/rsct/bin/startcondresp 
+./usr/sbin/rsct/bin/rmresponse 
+./usr/sbin/rsct/bin/rmcondresp
+./usr/sbin/rsct/bin/rmcondition
+./usr/sbin/rsct/bin/mkresponse
+./usr/sbin/rsct/bin/mkcondresp
+./usr/sbin/rsct/bin/mkcondition
+./usr/sbin/rsct/bin/lsresponse
+./usr/sbin/rsct/bin/lsevent
+./usr/sbin/rsct/bin/lscondresp
+./usr/sbin/rsct/bin/lscondition
+./usr/sbin/rsct/bin/chresponse
+./usr/sbin/rsct/bin/chcondition
+./usr/sbin/rsct/bin/wallevent
+./usr/sbin/rsct/bin/notifyevent
+./usr/sbin/rsct/bin/msgevent 
+./usr/sbin/rsct/bin/logevent
+./usr/sbin/rsct/bin/ewallevent
+./usr/sbin/rsct/bin/enotifyevent
+./usr/sbin/rsct/bin/elogevent
+./usr/sbin/rsct/bin/displayevent
+./usr/sbin/rsct/bin/snmpevent
+

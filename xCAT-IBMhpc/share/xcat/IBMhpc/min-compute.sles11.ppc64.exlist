@@ -1,0 +1,10 @@
+# Sample exlude list for building a diskless SLES 11 PPC64 image
+
+#INCLUDE:/opt/xcat/share/xcat/netboot/sles/compute.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/min-IBMhpc.sles11.ppc64.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/min-essl.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/min-gpfs.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/loadl/min-loadl.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/min-rsct.exlist#
