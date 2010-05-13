@@ -128,7 +128,7 @@ sub setdestiny {
       my $ient = $ients->{$_}->[0]; #$iscsitab->getNodeAttribs($_,[qw(kernel kcmdline initrd)]);
       my $ntent = $ntents->{$_}->[0];
       unless ($ient and $ient->{kernel}) {
-         unless ($ntent and $ntent->{arch} =~ /x86/ and -f "$tftpdir/undionly.kpxe") { $callback->({error=>"$_: No iscsi boot data available",errorcode=>[1]}); } #If x86 node and undionly.kpxe exists, presume they know what they are doing
+         unless ($ntent and $ntent->{arch} =~ /x86/ and -f ("$tftpdir/undionly.kpxe" or -f "$tftpdir/xcat/xnba.kpxe")) { $callback->({error=>"$_: No iscsi boot data available",errorcode=>[1]}); } #If x86 node and undionly.kpxe exists, presume they know what they are doing
          next;
       }
       my $hash;
