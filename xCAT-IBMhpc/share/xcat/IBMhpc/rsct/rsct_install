@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# 
+# Sample script to accept licenses and install RSCT packages
+# For AIX:
+#    do nothing - RSCT gets installed with base AIX
+# For Linux:
+#    install the rsct rpms
+
+
+OS=`uname`
+INSTALL_DIR='/install'
+RSCT_DIR=$rsctdir
+
+if [ -z "$RSCT_DIR" ]; then
+   # try to default
+   RSCT_DIR=$INSTALL_DIR/post/otherpkgs/$OSVER/$ARCH/rsct
+fi
+
+
+
+if [ $OS != "AIX" ]; then
+ #   if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ] ; then
+    #  Being run from a stateful install postscript
+    #  Do nothing - use rsct.otherpkgs.pkglist to install the
+    #  rsct rpms
+#    fi
+
+    if [ $NODESETSTATE == "genimage" ]; then
+    # Being called from <image>.postinstall script
+    # Assume we are on the same machine
+        INUCLIENTS=1 INUBOSTYPE=1  rpm --root $installroot --force -Uvh $RSCT_DIR/src-* $RSCT_DIR/rsct.core-* $RSCT_DIR/rsct.core.utils-*
+    fi
+fi  
+
+

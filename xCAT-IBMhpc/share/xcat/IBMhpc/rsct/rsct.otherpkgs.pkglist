@@ -1,0 +1,7 @@
+# RSCT rpms
+#   Use this pkglist ONLY for full-disk install (stateful) images
+#   The rsct_install postscript will install the rpms into 
+#   diskless/statelite images with genimage
+rsct/rsct.core
+rsct/rsct.core.utils
+rsct/src

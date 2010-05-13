@@ -6,5 +6,6 @@
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.pkglist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.pkglist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/rsct.pkglist#
 
 

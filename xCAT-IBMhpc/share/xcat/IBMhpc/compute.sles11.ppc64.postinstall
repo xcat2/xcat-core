@@ -53,3 +53,7 @@ installroot=$installroot essldir=$otherpkgs/essl NODESETSTATE=genimage   $hpc/es
 # and do some config
 installroot=$installroot loadldir=$otherpkgs/loadl NODESETSTATE=genimage   $hpc/loadl/loadl_install
 
+# Run script to install RSCT rpms
+installroot=$installroot rsctdir=$otherpkgs/rsct NODESETSTATE=genimage   $hpc/rsct/rsct_install
+
+

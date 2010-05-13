@@ -1,0 +1,18 @@
++./usr/lib/perl5*
+./usr/include/rsct/*
+./usr/sbin/rsct/README
+./usr/sbin/rsct/include*
+./usr/sbin/rsct/man/*
+./usr/sbin/rsct/bin/trap2rmcd
+./usr/sbin/rsct/bin/ctadmingroup 
+./usr/sbin/rsct/bin/mkcdef
+
+#java interface
+./usr/sbin/rsct/lib/java.exp
+./usr/sbin/rsct/lib/librmcjni.so
+./usr/sbin/rsct/lib/librmcjni.so.exp
+./usr/sbin/rsct/lib/libutiljni.so
+./usr/sbin/rsct/lib/libutiljni.so.exp
+./usr/sbin/rsct/codebase*
+
+

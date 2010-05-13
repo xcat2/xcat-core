@@ -7,3 +7,7 @@
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.otherpkgs.pkglist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.otherpkgs.pkglist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/loadl/loadl.otherpkgs.pkglist#
+
+#  For full-disk (stateful) images, EDIT below to use rsct.otherpkgs
+#  For diskless, rpms are installed with postinstall script
+#do not INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/rsct.otherpkgs.pkglist#
