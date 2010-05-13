@@ -41,6 +41,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/essl
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/gpfs
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/loadl
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/pe
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/IBMhpc/rsct
 
 set +x
 
