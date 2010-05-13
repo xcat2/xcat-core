@@ -87,23 +87,6 @@ my %pids; # pid => node
 my %exitcodes; # Keep a list of children with known exit codes
 my %foundcodes;
 
-# This happens whenever a child dies; keeps track of exit codes.
-sub handle_chld {
-  my $pid;
-  my $lasterr=$?>>8;
-  my $foundproc=0;
-  while (($pid = waitpid(-1,WNOHANG)) > 0) { 
-    $foundproc=1;
-    $exitcodes{$pids{$pid}} = $? >> 8;
-    $children--;
-  }
-  unless ($foundproc) { #Above loop mysteriously had no children, store previous $?  as a candidate for omitted return codes
-    $foundcodes{$lasterr}=1;
-    $children--; #Free a slot from the child that must have sent this signal
-  }
-}
-$SIG{CHLD} = \&handle_chld;
-
 if ($interface) {
   foreach (@nodes) {
     s/$/-$interface/;
@@ -159,6 +142,8 @@ sub processoutput { #This way, one arbiter handles output, no interrupting
       unless ($line) {
         $inputs->remove($readyh);
         close($readyh);
+        $exitcodes{$nodehdl{$readyh}} = $? >> 8;
+        $children--;
         next;
       }
       chomp($line);
