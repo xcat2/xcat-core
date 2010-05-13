@@ -56,7 +56,7 @@ This program module file, is a set of network utilities used by xCAT commands.
     Error:
         none
     Example:
-        my ($ip, $host) = xCAT::NetworkUtils->gethostnameandip($iporhost);
+        my ($host, $ip) = xCAT::NetworkUtils->gethostnameandip($iporhost);
     Comments:
         none
 =cut
