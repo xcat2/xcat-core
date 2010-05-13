@@ -10,11 +10,13 @@ I<chtab [-v| --version]>
 
 I<chtab [keycolname=keyvalue] [tablename.colname=newvalue] >
 
+I<chtab [keycolname=keyvalue] [tablename.colname+=newvalue] >
+
 I<chtab -d [keycolname=keyvalue] [tablename.colname=newvalue] >
 
 =head1 DESCRIPTION
 
- The chtab command adds or deletes or updates the attribute value in the input table.column for the input keyvalue.  Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the coma separated list of the attribute, if it is not already there.
+The chtab command adds, deletes or updates the attribute value in the specified table.column for the specified keyvalue.  Normally, the given value will completely replace the current attribute value.  But if "+=" is used instead of "=", the specified value will be appended to the coma separated list of the attribute, if it is not already there.
 
 
 =head1 OPTIONS
