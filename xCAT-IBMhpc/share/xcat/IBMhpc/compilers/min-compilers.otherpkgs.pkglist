@@ -1,0 +1,26 @@
+# Compiler rpms for building a minimal diskless image
+# These are not needed for runtime compute nodes
+# Ensure you do not need any of the commented rpms in your environment
+
+#compilers/xlmass.lib
+compilers/xlsmp.msg.rte
+compilers/xlsmp.rte
+#compilers/xlsmp.lib
+compilers/xlf.msg.rte
+compilers/xlf.rte
+compilers/xlf.rte.lnk
+#compilers/xlf.lib
+#compilers/xlf.cmp
+#compilers/xlf.help.pdf
+#compilers/xlf.samples
+#compilers/xlf.man
+compilers/vacpp.rte
+#compilers/vac.lib
+#compilers/vacpp.lib
+compilers/vacpp.rte.lnk
+#compilers/vac.cmp
+#compilers/vacpp.cmp
+#compilers/vacpp.help.pdf
+#compilers/vacpp.samples
+#compilers/vacpp.man
+

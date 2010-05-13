@@ -1,0 +1,20 @@
+# Pkglist for building a minimal diskless image
+
+xorg-x11-libICE
+xorg-x11-libSM
+xorg-x11-libX11
+xorg-x11-libXau
+xorg-x11-libXext
+xorg-x11-libXmu
+xorg-x11-libXt
+xorg-x11-libxcb
+xorg-x11-libXfixes
+xorg-x11-libXp
+xorg-x11-libXpm
+xorg-x11-libXprintUtil
+xorg-x11-libXrender
+xorg-x11-libXv
+xorg-x11-libfontenc
+xorg-x11-libs
+xorg-x11-libxkbfile
+

@@ -1,0 +1,6 @@
+# GPFS rpms for building a minimal diskless image
+
+gpfs/gpfs.base
+#gpfs/gpfs.gpl
+gpfs/gpfs.gplbin*
+gpfs/gpfs.msg.en_US

@@ -1,0 +1,15 @@
+# Exclude list for building a minimal diskless image
+# Ensure you do not need any of the files below that will be removed from
+# your image
+#LoadL
+./opt/ibmll/LoadL/resmgr/READMES*
+./opt/ibmll/LoadL/resmgr/full/man*
+./opt/ibmll/LoadL/resmgr/full/samples*
+./opt/ibmll/LoadL/lap/resmgr/*.jar
+./opt/ibmll/LoadL/lap/resmgr/LI_*
+./opt/ibmll/LoadL/lap/resmgr/LA_*
+./opt/ibmll/LoadL/lap/resmgr/license/*.txt
+./opt/ibmll/LoadL/lap/scheduler*.jar
+./opt/ibmll/LoadL/lap/scheduler/LI_*
+./opt/ibmll/LoadL/lap/scheduler/LA_*
+./opt/ibmll/LoadL/lap/scheduler/license/*.txt

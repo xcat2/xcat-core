@@ -1,0 +1,9 @@
+# Exclude list for building a minimal diskless image
+# Ensure you do not need any of the files that will be deleted from your image
+./opt/ibmmath/essl/*/FFTW3*
+./opt/ibmmath/essl/*/include*
+./opt/ibmmath/essl/*/lap/lapc
+
+./opt/ibmmath/pessl/*/lap/*.jar
+./opt/ibmmath/pessl/*/example*
+

@@ -1,0 +1,55 @@
+# OS packages that are useful for all IBM HPC products
+# This list should only be used when creating a minimal diskless image
+# It does NOT include many standard rpms that you may expect to be installed,
+# but that are probably not required for a runtime compute node.
+# Review this list carefully to ensure you do NOT need any of the rpms
+# that are not being included.
+
+#systemtap
+#kernel-source
+#linux-kernel-headers
+kdump
+yast2-kdump
+crash
+#make
+iputils
+gdb
+powerpc-utils
+timezone
+ntp
+rsh-server
+#libnuma1-32bit
+at
+#numactl
+#libnuma1
+#libpython2_6-1_0
+xinetd
+ksh
+rsh
+binutils
+
+glibc-32bit
+libgcc43-32bit
+libstdc++33
+
+#gcc-32bit
+#gcc
+#gcc-c++
+#gcc43-32bit
+#gcc43
+#gcc43-c++
+#glibc-devel
+#glibc-devel-32bit
+
+#xorg-x11-libX11-32bit
+#xorg-x11-libXp-32bit
+#xorg-x11-libXau-32bit
+#xorg-x11-libXext-32bit
+#xorg-x11-libxcb-32bit
+#xorg-x11-libXmu
+#xorg-x11-libXmu-32bit
+#xorg-x11-libs
+#xorg-x11-libs-32bit
+#xorg-x11-libX11
+#xorg-x11-libXext
+

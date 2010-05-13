@@ -1,0 +1,5 @@
+# Package list for building a minimal diskless image
+
+libibverbs
+libibverbs-32bit
+libstdc++43-32bit

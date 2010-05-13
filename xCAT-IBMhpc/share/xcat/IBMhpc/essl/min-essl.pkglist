@@ -1,0 +1,9 @@
+# Package list for building a minimal diskless image
+
+bc
+#the following are needed by the license accptance, and removed afterward
+xorg-x11-libX11-32bit
+xorg-x11-libXau-32bit 
+xorg-x11-libXext-32bit 
+xorg-x11-libXp-32bit
+xorg-x11-libxcb-32bit

@@ -1,0 +1,17 @@
+# Package list for building minimal diskless image
+#  currently nothing in this list
+#  shipping it to keep top-level INCLUDE processing correct
+
+#libstdc++-devel
+#libstdc++43-32bit
+#libstdc++43-devel-32bit
+#libstdc++43-devel
+#cpp
+#cpp43
+#gcc
+#gcc-c++
+#gcc43
+#gcc43-c++
+#gmp
+#libgomp43
+#libmpfr1

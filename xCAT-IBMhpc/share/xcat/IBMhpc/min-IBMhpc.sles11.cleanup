@@ -1,0 +1,35 @@
+#!/bin/sh
+# This script should be run as a postinstall script from genimage when
+#  creating minimal diskless images
+# It will remove various rpms from the image that are probably not needed
+#  for runtime compute nodes
+# Review this script carefully in case you need any of these rpms in your
+#  image
+#
+#-- $1 = install root (chroot directory for profile)
+#-- $2 = OS version
+#-- $3 = architecture
+#-- $4 = profile name
+#-- $5 = work dir (where genimage is located)
+#--
+#--
+installroot=$1
+osver=$2
+arch=$3
+profile=$4
+workdir=$5
+
+#uninstall the ibm-java2 and rpms pulled in by it
+rpm -e  --root $installroot ibm-java2-ppc64-jre xorg-x11-libX11-32bit xorg-x11-libXau-32bit xorg-x11-libXext-32bit xorg-x11-libXp-32bit xorg-x11-libxcb-32bit 
+
+#uninstall the rpms pulled in by LoadL_resmgr
+rpm -e --nodeps --root $installroot xorg-x11-libICE xorg-x11-libSM xorg-x11-libX11 xorg-x11-libXau  xorg-x11-libXext xorg-x11-libXfixes  xorg-x11-libXmu xorg-x11-libXp  xorg-x11-libXpm xorg-x11-libXprintUtil  xorg-x11-libXrender xorg-x11-libXt  xorg-x11-libXv xorg-x11-libfontenc  xorg-x11-libs xorg-x11-libxcb xorg-x11-libxkbfile
+
+#uninstall the rpms pulled in by vacpp.rte
+rpm -e --nodeps --root $installroot gcc gcc-c++ gcc43 gcc43-c++ cpp cpp43 glibc-devel libstdc++43-devel libstdc++43-devel
+
+#uninstall rpms that should not be on a compute node
+rpm -e --root $installroot PolicyKit-doc bash-doc readline-doc perl-doc bootsplash bootsplash-branding-SLES desktop-translations liblcms1 lcms libmng libjpeg libtiff3 fontconfig freetype2 vim-data
+
+#uninstall yast2 rpms
+rpm -e --root $installroot yast2 yast2-bootloader yast2-kdump yast2-packager yast2-storage yast2-branding-SLES yast2-core yast2-hardware-detection yast2-ncurses-pkg yast2-perl-bindings yast2-pkg-bindings yast2-theme-SLE yast2-transfer yast2-xml yast2-ycp-ui-bindings yast2-country-data yast2-libyui yast2-ncurses yast2-storage-lib
