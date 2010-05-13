@@ -3,7 +3,7 @@
 #(C)IBM Corp
 #
 
-PBS_HOME=/var/spool/pbs
+PBS_HOME=/var/spool/torque
 PATH=$PBS_HOME/mom_priv:$PATH
 export LANG=C
 

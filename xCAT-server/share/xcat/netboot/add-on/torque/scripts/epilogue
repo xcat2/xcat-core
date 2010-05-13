@@ -7,7 +7,7 @@ trap "exit 0" 1 2 3 15 20
 
 sleep 5
 
-PBS_HOME=/var/spool/pbs
+PBS_HOME=/var/spool/torque
 PATH=$PBS_HOME/mom_priv:$PATH
 TAKEDOWN=$PBS_HOME/mom_priv/takedownnode
 TAKEDOWN2=$PBS_HOME/mom_priv/takedownnode2
