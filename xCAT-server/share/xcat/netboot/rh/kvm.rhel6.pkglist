@@ -1,0 +1,15 @@
+bash 
+dracut-network
+nfs-utils
+openssl
+dhclient 
+kernel 
+openssh-server 
+openssh-clients
+wget
+vim-minimal
+ntp
+rpm
+rsync
+libvirt
+qemu-kvm

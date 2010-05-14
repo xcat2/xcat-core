@@ -10,4 +10,5 @@
 ./usr/share/omf*
 ./usr/lib/locale*
 ./usr/lib/perl5*
+./usr/share/backgrounds*
 ./boot*
