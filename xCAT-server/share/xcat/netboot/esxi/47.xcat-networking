@@ -2,6 +2,10 @@
 #Default networking config supporting BOOTIF semantics
 #bring up one interface, if bonding, management software can do that 
 #after the fact
+MACADDR=`vsish -e get /system/bootCmdLine | grep MAC | sed 's/.*MAC=//'|sed 's/-/:/g'`
+if [ ! -z "$MACADDR" ]; then #if MAC= syntax detected, skip execution
+    return ${SUCCESS}
+fi
 MACADDR=`vsish -e get /system/bootCmdLine | grep BOOTIF | sed 's/.*BOOTIF=01-//'|sed 's/-/:/g'`
 if [ ! -z "$MACADDR" ]; then
     NIC=`esxcfg-nics -l|grep ${MACADDR}|awk '{print $1}'`
