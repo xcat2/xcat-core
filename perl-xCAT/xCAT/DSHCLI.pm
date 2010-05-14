@@ -3683,7 +3683,8 @@ sub parse_and_run_dsh
 
     #printf " node list is $options{'nodes'}";
     # build arguments
-
+    
+    # get the command from the argument list
     $options{'command'} = join ' ', @ARGV;
 
     #
