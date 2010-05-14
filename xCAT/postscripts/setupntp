@@ -20,7 +20,10 @@ if [ "$master" ==  "$sitemaster" ]; then
         if [ !  -f $conf_file_org ]; then
           mv -f $conf_file $conf_file_org
         else
-          mv -f $conf_file $conf_file_backup
+          # mv can't work on statelite node
+          # "cp" and "empty" is used to simulate
+          cp -a $conf_file $conf_file_backup
+          echo "" > $conf_file
         fi
 	for i in $(echo $NTPSERVERS | tr ',' ' ')
 	do
@@ -36,7 +39,8 @@ else
    if [ !  -f $conf_file_org ]; then
      mv -f $conf_file $conf_file_org
    else
-     mv -f $conf_file $conf_file_backup
+     cp -a $conf_file $conf_file_backup
+     echo "" > $conf_file
    fi
    echo "server $master" >$conf_file
     
