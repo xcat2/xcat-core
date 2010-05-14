@@ -16,6 +16,7 @@ use strict;
 use Storable qw(dclone);
 use File::Basename;
 use File::Path;
+use POSIX;
 require xCAT::Table;
 
 require xCAT::Utils;
@@ -78,6 +79,7 @@ sub preprocess_request
     my $syncsn = 0;                        # sync service node only if 1
 
     # read the environment variables for rsync setup
+    # and xdsh -e command
     foreach my $envar (@{$req->{env}})
     {
         my ($var, $value) = split(/=/, $envar, 2);
@@ -93,6 +95,10 @@ sub preprocess_request
         if ($var eq "DCP_PULL")        # from -P flag
         {
             $::dcppull = 1;            # TBD  handle pull hierarchy
+        }
+        if ($var eq "DSHEXECUTE")      # from xdsh -e flag
+        {
+            $::dshexecute = $value;      # Handle hierarchy 
         }
     }
 
@@ -128,17 +134,17 @@ sub preprocess_request
             }
         }
 
-        # if servicenodes and if xdcp and not pull function
+        # if servicenodes and (if xdcp and not pull function or xdsh -e)
         # send command to service nodes first and process errors
         # return an array  of good service nodes
         #
+        my $synfiledir;
         if (@snodes)    # service nodes
         {
 
-            # if xdcp and not pull function
-            if (($command eq "xdcp") && ($::dcppull == 0))
+            # if xdcp and not pull function or xdsh -e
+            if ((($command eq "xdcp") && ($::dcppull == 0)) or ($::dshexecute))
             {
-                my $synfiledir;
 
                 # get the directory on the servicenode to put the  files in
                 my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
@@ -153,18 +159,30 @@ sub preprocess_request
 
                 # setup the service node with the files to xdcp to the
                 # compute nodes
-                $rc =
-                  &process_servicenodes($req, $cb, $sub_req, \@snodes,
+                if ($command eq "xdcp"){
+                  $rc =
+                    &process_servicenodes_xdcp($req, $cb, $sub_req, \@snodes,
                                         \@snoderange, $synfiledir);
 
-                # fatal error need to stop
-                if ($rc != 0)
-                {
-                    return;
+                  # fatal error need to stop
+                  if ($rc != 0)
+                  {
+                     return;
+                  }
+                } else {  # xdsh -e
+                   $rc =
+                    &process_servicenodes_xdsh($req, $cb, $sub_req, \@snodes,
+                                        \@snoderange, $synfiledir);
+
+                   # fatal error need to stop
+                   if ($rc != 0)
+                   {
+                      return;
+                   }
                 }
             }
             else
-            {    # command is xdsh or xdcp pull
+            {    # command is xdsh ( not -e)  or xdcp pull
                 @::good_SN = @snodes;    # all good service nodes for now
             }
 
@@ -196,7 +214,8 @@ sub preprocess_request
                     # if it is a good SN, one ready to service the nodes
                     if (grep(/$snkey/, @::good_SN))
                     {
-                        my $noderequests = &process_nodes($req, $sn, $snkey);
+                        my $noderequests =
+                            &process_nodes($req, $sn, $snkey,$synfiledir);
                         push @requests, $noderequests;    # build request queue
 
                     }
@@ -222,7 +241,7 @@ sub preprocess_request
 
 #-------------------------------------------------------
 
-=head3  process_servicenodes
+=head3  process_servicenodes_xdcp
   Build the xdcp command to send to the service nodes first 
   Return an array of servicenodes that do not have errors 
   Returns error code:
@@ -233,7 +252,7 @@ sub preprocess_request
 =cut
 
 #-------------------------------------------------------
-sub process_servicenodes
+sub process_servicenodes_xdcp
 {
 
     my $req        = shift;
@@ -261,7 +280,8 @@ sub process_servicenodes
             return (1);    # process no service nodes
         }
 
-        # xdcp sync to the service node first
+        # xdcp rsync each of the files contained in the -F syncfile to
+        # the service node first to the site.SNsyncfiledir directory
         #change noderange to the service nodes
         # sync each one and check for error
         # if error do not add to good_SN array, add to bad_SN
@@ -436,6 +456,122 @@ sub process_servicenodes
     }
     return (0);
 }
+#-------------------------------------------------------
+
+=head3  process_servicenodes_xdsh
+  Build the xdsh command to send the -e file 
+  The executable must be copied into /var/xcat/syncfiles, and then
+  the command modified so that the xdsh running on the SN will cp the file
+  from /var/xcat/syncfiles to the compute node /tmp directory and run it.
+  Return an array of servicenodes that do not have errors 
+  Returns error code:
+  if  = 0,  good return continue to process the
+	  nodes.
+  if  = 1,  global error need to quit
+
+=cut
+
+#-------------------------------------------------------
+sub process_servicenodes_xdsh
+{
+
+    my $req        = shift;
+    my $callback   = shift;
+    my $sub_req    = shift;
+    my $sn         = shift;
+    my $snrange    = shift;
+    my $synfiledir = shift;
+    my @snodes     = @$sn;
+    my @snoderange = @$snrange;
+    my $args;
+    $::RUNCMD_RC = 0;
+    my $cmd = $req->{command}->[0];
+
+    # if xdsh -e <executable> command, service nodes first need
+    #   to be rsync with the executable file to the $synfiledir
+    if ($::dshexecute)
+    {
+        if (!-f $::dshexecute)
+        {    # -e file  does not exist,  quit
+            my $rsp = {};
+            $rsp->{data}->[0] = "File:$::dshexecute does not exist.";
+            xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+            return (1);    # process no service nodes
+        }
+
+        # xdcp the executable from the xdsh -e to the service node first
+        # change noderange to the service nodes
+        # sync to each SN and check for error
+        # if error do not add to good_SN array, add to bad_SN
+
+        # build a tmp syncfile with
+        # $::dshexecute -> $synfiledir . $::dshexecute
+        my $tmpsyncfile = POSIX::tmpnam . ".dsh";
+        my $destination=$synfiledir . $::dshexecute;
+        open(TMPFILE, "> $tmpsyncfile")
+                  or die "can not open file $tmpsyncfile";
+                print TMPFILE "$::dshexecute -> $destination\n";
+        close TMPFILE;
+        chmod 0755, $tmpsyncfile;
+        foreach my $node (@snodes)
+        {
+
+            # sync the file to the SN /var/xcat/syncfiles directory
+            # (site.SNsyncfiledir) 
+            # xdcp <sn> -s -F <tmpsyncfile>
+  
+            my @sn = ();
+            push @sn, $node;
+
+            # don't use runxcmd, because can go straight to process_request,
+            # these are all service nodes. Also servicenode is taken from
+            # the noderes table and may not be the same name as in the nodelist
+            # table, for example may be an ip address.
+            # here on the MN
+            my $addreq;
+            $addreq->{'_xcatdest'}  = $::mnname;
+            $addreq->{node}         = \@sn;
+            $addreq->{noderange}    = \@sn;
+            $addreq->{arg}->[0]     = "-s";
+            $addreq->{arg}->[1]     = "-F";
+            $addreq->{arg}->[2]     = $tmpsyncfile;
+            $addreq->{command}->[0] = "xdcp";
+            $addreq->{cwd}->[0]     = $req->{cwd}->[0];
+            $addreq->{env}          = $req->{env};
+            &process_request($addreq, $callback, $sub_req);
+
+            if ($::FAILED_NODES == 0)
+            {
+                push @::good_SN, $node;
+            }
+            else
+            {
+                push @::bad_SN, $node;
+            }
+        }    # end foreach good servicenode
+        # remove the tmp syncfile
+        `/bin/rm $tmpsyncfile`;
+
+    }    # end  xdsh -E
+
+    # report bad service nodes]
+    if (@::bad_SN)
+    {
+        my $rsp = {};
+        my $badnodes;
+        foreach my $badnode (@::bad_SN)
+        {
+            $badnodes .= $badnode;
+            $badnodes .= ", ";
+        }
+        chop $badnodes;
+        my $msg =
+          "\nThe following servicenodes: $badnodes have errors and cannot be updated\n Until the error is fixed, xdsh -e  will not work to nodes serviced by these service nodes. Run xdsh <servicenode,...> -c ,  to clean up the xdcp servicenode directory, and run the command again.";
+        $rsp->{data}->[0] = $msg;
+        xCAT::MsgUtils->message("D", $rsp, $callback);
+    }
+    return (0);
+}
 
 #-------------------------------------------------------
 
@@ -453,10 +589,11 @@ sub process_nodes
     my $req     = shift;
     my $sn      = shift;
     my $snkey   = shift;
+    my $synfiledir   = shift;
     my $command = $req->{command}->[0];
     my @requests;
 
-    # if the -F option to sync the nodes
+    # if the xdcp -F option to sync the nodes
     # then for a Node
     # change the command to use the -F /tmp/xcatrf.tmp
     # because that is where the file was put on the SN
@@ -481,6 +618,7 @@ sub process_nodes
             $i++;
         }
     }
+      
     else
     {    # if other dcp command, change from directory
             # to be the site.SNsyncfiledir
@@ -490,7 +628,26 @@ sub process_nodes
         if (($command eq "xdcp") && ($::dcppull == 0))
         {
             $newSNreq->{arg}->[-2] = $::SNpath;
-        }
+        } else { # if xdsh -e
+          if ($::dshexecute) { # put in new path from SN directory
+            my $destination=$synfiledir . $::dshexecute;
+            my $args = $newSNreq->{arg};
+            my $i = 0;
+            foreach my $argument (@$args)
+            {
+               # find the -e and change the name of the
+               # file in the next array entry to SN offset 
+               if ($argument eq "-e")
+               {
+                   $i++;
+                   $newSNreq->{arg}->[$i] = $destination;
+                   last;
+                }
+                $i++;
+                 
+            }
+          } # end if dshexecute
+        } 
     }
     $newSNreq->{node}                   = $sn->{$snkey};
     $newSNreq->{'_xcatdest'}            = $snkey;
