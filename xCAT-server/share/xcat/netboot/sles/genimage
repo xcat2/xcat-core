@@ -1168,7 +1168,16 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       copy $_,"$rootimg_dir/root/";
    }
    open($cfgfile,">","$rootimg_dir/etc/init.d/gettyset");
-   print $cfgfile "#!/bin/bash\n"; 
+   print $cfgfile "#!/bin/bash\n";
+   print $cfgfile "### BEGIN INIT INFO\n";
+   print $cfgfile "# Provides: gettyset\n";
+   print $cfgfile "# Required-Start: sshd\n";
+   print $cfgfile "# Required-Stop:\n";
+   print $cfgfile "# Default-Start: 3\n";
+   print $cfgfile "# Default-Stop: 0 1 2 6\n";
+   print $cfgfile "# Short-Description: gettyset\n";
+   print $cfgfile "# Description:\n";
+   print $cfgfile "### END INIT INFO\n";
    print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
    print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
    print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
