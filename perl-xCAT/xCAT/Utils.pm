@@ -5773,7 +5773,7 @@ sub setupAIXconserver
         else 
         {  
            $msg = "ln -sf /opt/freeware/sbin/conserver /usr/sbin/conserver.";
-           if( $verbose == 1) {
+           if( $verbose ) {
                xCAT::MsgUtils->message("I", $msg);
            }  
         }
@@ -5793,7 +5793,7 @@ sub setupAIXconserver
         {
            
            $msg = "ln -sf /opt/freeware/bin/console /usr/sbin/console.";
-           if( $verbose == 1) {
+           if( $verbose ) {
                xCAT::MsgUtils->message("I", $msg);
            }  
         }
