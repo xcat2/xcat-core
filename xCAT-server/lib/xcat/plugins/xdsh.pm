@@ -98,7 +98,9 @@ sub preprocess_request
         }
         if ($var eq "DSHEXECUTE")      # from xdsh -e flag
         {
-            $::dshexecute = $value;      # Handle hierarchy 
+            $::dshexecutecmd = $value;   # Handle hierarchy 
+            my @cmd = split(/ /, $value); # split off args, if any
+            $::dshexecute = $cmd[0];      # This is the executable file 
         }
     }
 
