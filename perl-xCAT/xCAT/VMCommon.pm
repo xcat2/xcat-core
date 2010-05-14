@@ -214,7 +214,7 @@ sub genMac { #Generates a mac address for a node, does NOT assure uniqueness, ca
     if ($prefix) { #Specific prefix requested, honor it
         my $tail = int(rand(0xffffff)); #With only 24 bits of space, use random bits;
         if ($prefix eq '00:50:56') { #vmware reserves certain addresses in their scheme if this prefix used
-            $tail = $tail&0x3f; #mask out the two bits in question
+            $tail = $tail&0x3fffff; #mask out the two bits in question
         }
         $tail = sprintf("%06x",$tail);
         $tail =~ s/(..)(..)(..)/:$1:$2:$3/;
