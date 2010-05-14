@@ -183,6 +183,10 @@ if ($ENV{'DCP_PULL'})
 {
     push(@{$cmdref->{env}}, "DCP_PULL=$ENV{'DCP_PULL'}");
 }
+if ($ENV{'DSHEXECUTE'})
+{
+    push(@{$cmdref->{env}}, "DSHEXECUTE=$ENV{'DSHEXECUTE'}");
+}
 
 xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
 exit $xCAT::Client::EXITCODE;
@@ -309,6 +313,12 @@ sub parse_args_xdsh
     {
         xCAT::DSHCLI->show_dsh_config;
         exit 0;
+    }
+    # -if -e flag, execute script have to do special processing for hierarchy
+    # in the plugin 
+    if ($options{'execute'})
+    {
+        $ENV{'DSHEXECUTE'} = join ' ', @ARGV;    # execute script 
     }
 
     # find out who is the current user running xdsh
