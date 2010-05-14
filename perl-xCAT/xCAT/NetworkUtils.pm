@@ -140,6 +140,12 @@ sub gethostname()
         }
         else
         {
+            #it is possible that no Socket6 available,
+            #but passing in IPv6 address, such as ::1 on loopback
+            if ($iporhost =~ /:/)
+            {
+                return undef;
+            }
             my $hostname = gethostbyaddr(inet_aton($iporhost), AF_INET);
             $hostname =~ s/\..*//; #short hostname
             return $hostname;
@@ -207,6 +213,7 @@ sub getipaddr()
         else
         {
              #return inet_ntoa(inet_aton($iporhost))
+             #TODO, what if no scoket6 support, but passing in a IPv6 hostname?
              my $packed_ip = inet_aton($iporhost);
              if (!$packed_ip)
              {
