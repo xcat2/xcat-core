@@ -7,6 +7,12 @@
 #    add LL path to profile
 #    create directories for LL log, spool, etc.
 # For Linux:
+#    Add LL bin directory to PATH in default profile (modify "linux_loadl_bin"
+#      if using a different LL bin location)
+#    Create LL log directories (modify "logdir" if not using /var/loadl)
+#    Change the owner of these directories (modify "loadl_admin" and
+#           "loadl_group" if not using loadl:loadl)
+#    If run from genimage, copy in /etc/LoadL.cfg from MN into image
 #    
 
 
@@ -16,6 +22,10 @@ LOADL_DIR=$loadldir
 aix_loadl_bin=/usr/lpp/LoadL/resmgr/full/bin
 linux_loadl_bin=/opt/ibmll/LoadL/resmgr/full/bin
 linux_loadl_license_script=/opt/ibmll/LoadL/sbin/install_ll
+
+logdir=/var/loadl
+loadl_admin=loadl
+loadl_group=loadl
 
 if [ -z "$LOADL_DIR" ]; then
    # try to default
@@ -58,7 +68,7 @@ fi
 if [ "$OS" == "AIX" ]; then
     # add to /etc/profile
     if ! grep 'LoadL' /etc/profile  > /dev/null 2>&1 ; then
-        echo "export PATH=$PATH:$aix_loadl_bin" >> /etc/profile
+        echo "export PATH=\$PATH:$aix_loadl_bin" >> /etc/profile
     fi
     # UNCOMMENT to add to /etc/inittab if not already in image
     #if ! grep 'loadl' /etc/inittab ; then
@@ -72,8 +82,8 @@ else  # assume Linux
        loadlprofile=$installroot$loadlprofile
     fi
     if [ ! -e $loadlprofile.sh ]; then
-        echo "export PATH=$PATH:$linux_loadl_bin" > $loadlprofile.sh
-        echo "export PATH=$PATH:$linux_loadl_bin" > $loadlprofile.csh
+        echo "export PATH=\$PATH:$linux_loadl_bin" > $loadlprofile.sh
+        echo "export PATH=\$PATH:$linux_loadl_bin" > $loadlprofile.csh
         # Turn off LANG support since we did not install other msg catalogs
         echo 'export LC_CTYPE=POSIX' $loadlprofile.sh
         echo 'export LC_CTYPE=POSIX' $loadlprofile.csh
@@ -98,7 +108,6 @@ if [ $NODESETSTATE != "genimage" ]; then
    # running as a postscript in a full-disk install or AIX diskless install
    installroot=""
 fi  
-logdir=/var/loadl
 mkdir -p $installroot$logdir/execute
 mkdir -p $installroot$logdir/spool
 mkdir -p $installroot$logdir/log
@@ -111,7 +120,7 @@ chmod 777 $installroot$logdir/sockets
 chmod 777 $installroot$logdir/core
 
 # Owner set to 'loadl' userid, change if using a different userid
-chown -R loadl:loadl $installroot$logdir/
+chown -R $loadl_admin:$loadl_group $installroot$logdir/
 
 if [ "$NODESETSTATE" == "genimage" ] && [ -f /etc/LoadL.cfg ] ; then
     cp /etc/LoadL.cfg $installroot/etc/LoadL.cfg
