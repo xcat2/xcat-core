@@ -62,8 +62,8 @@ echo "fi" >> $RPMDIR/instoss
 cp /opt/freeware/src/packages/RPMS/ppc/popt-1.7-2.aix5.1.ppc.rpm $RPMDIR/
 echo "rpm -Uvh popt-1.7-2.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 
-cp /opt/freeware/src/packages/RPMS/ppc/rsync-2.6.2-1.aix5.1.ppc.rpm $RPMDIR/
-echo "rpm -Uvh rsync-2.6.2-1.aix5.1.ppc.rpm" >> $RPMDIR/instoss
+cp /opt/freeware/src/packages/RPMS/ppc/rsync-3.0.6-1.aix5.3.ppc.rpm $RPMDIR/
+echo "rpm -Uvh rsync-3.0.6-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 
 cp /opt/freeware/src/packages/RPMS/ppc/wget-1.9.1-1.aix5.1.ppc.rpm $RPMDIR/
 echo "rpm -Uvh wget-1.9.1-1.aix5.1.ppc.rpm" >> $RPMDIR/instoss
@@ -103,6 +103,12 @@ echo "rpm -Uvh perl-Digest-SHA-5.48-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 
 cp /opt/freeware/src/packages/RPMS/ppc/perl-Digest-HMAC-1.01-1.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh perl-Digest-HMAC-1.01-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
+
+cp /opt/freeware/src/packages/RPMS/ppc/perl-Net-DNS-0.66-1.aix5.3.ppc.rpm $RPMDIR/
+echo "rpm -Uvh --nodeps perl-Net-DNS-0.66-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
+
+cp /opt/freeware/src/packages/RPMS/ppc/perl-Net-IP-1.25-1.aix5.3.ppc.rpm $RPMDIR/
+echo "rpm -Uvh perl-Net-IP-1.25-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 
 cp /opt/freeware/src/packages/RPMS/ppc/perl-Digest-MD5-2.36-1.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh perl-Digest-MD5-2.36-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
