@@ -6,6 +6,7 @@ package xCAT::Common;
 
 use File::stat;
 use File::Copy;
+use Thread qw/yield/;
 
 BEGIN
 {
@@ -42,7 +43,7 @@ sub forward_data {
       close($rfh);
     }
   }
-  yield; #Try to avoid useless iterations as much as possible
+  yield(); #Try to avoid useless iterations as much as possible
   return $rc;
 }
 

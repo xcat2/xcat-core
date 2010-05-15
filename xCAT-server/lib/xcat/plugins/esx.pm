@@ -2277,7 +2277,7 @@ sub  makecustomizedmod {
     close($shadow);
     if (-e "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking") {
         mkpath($tempdir."/etc/vmware/init/init.d");
-        copy( "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking",$tempdir."/etc/vmware/init/init.d/47.xcat-networking"
+        copy( "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking",$tempdir."/etc/vmware/init/init.d/47.xcat-networking");
     }
     #TODO: auto-enable ssh and request boot-time customization rather than on-demand?
     require Cwd;
