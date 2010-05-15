@@ -2275,6 +2275,11 @@ sub  makecustomizedmod {
         print $shadow "$_:*:$dayssince1970:0:99999:7:::\n";
     }
     close($shadow);
+    if (-e "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking") {
+        mkpath($tempdir."/etc/vmware/init/init.d");
+        copy( "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking",$tempdir."/etc/vmware/init/init.d/47.xcat-networking"
+    }
+    #TODO: auto-enable ssh and request boot-time customization rather than on-demand?
     require Cwd;
     my $dir=Cwd::cwd();
     chdir($tempdir);
