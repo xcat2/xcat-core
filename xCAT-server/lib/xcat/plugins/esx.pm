@@ -2372,7 +2372,7 @@ sub mknetboot {
                 push @reqmods,"mod.tgz";
                 $mods{"mod.tgz"}=1;
             }
-            if (-r $::XCATROOT/share/xcat/netboot/syslinux/mboot.c32) { #prefer xCAT patched mboot.c32 with BOOTIF for mboot
+            if (-r "$::XCATROOT/share/xcat/netboot/syslinux/mboot.c32") { #prefer xCAT patched mboot.c32 with BOOTIF for mboot
 			    copy("$::XCATROOT/share/xcat/netboot/syslinux/", $dest);
             } else {
 			    copy("$srcdir/mboot.c32", $dest);
