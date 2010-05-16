@@ -73,6 +73,7 @@ my $mpresetoid = '1.3.6.1.4.1.2.3.51.2.22.1.6.1.1.9'; #restartBladeSMP
 my $bladexistsoid = '1.3.6.1.4.1.2.3.51.2.22.1.5.1.1.3'; #bladeExists
 my $bladeserialoid = '1.3.6.1.4.1.2.3.51.2.2.21.4.1.1.6'; #bladeHardwareVpdSerialNumber
 my $blademtmoid = '1.3.6.1.4.1.2.3.51.2.2.21.4.1.1.7'; #bladeHardwareVpdMachineType
+my $bladeuuidoid = '1.3.6.1.4.1.2.3.51.2.2.21.4.1.1.8'; #bladeHardwareVpdUuid
 my $bladempveroid = '1.3.6.1.4.1.2.3.51.2.2.21.5.3.1.7'; #bladeSysMgmtProcVpdRevision
 my $bladempaveroid = '1.3.6.1.4.1.2.3.51.2.2.21.3.1.1.4';#mmMainApplVpdRevisonNumber
 my $bladempabuildidoid = '1.3.6.1.4.1.2.3.51.2.2.21.3.1.1.3';#mmMainApplVpdBuildId
@@ -1622,6 +1623,12 @@ sub inv {
       $data=$session->get([$blademtmoid,$slot]);
       if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
       push @output,"Machine Type/Model: ".$data;
+    }
+    if ($item =~ /^uuid/ or $item =~ /^guid/) {
+      $data=$session->get([$bladeuuidoid,$slot]);
+      if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+      $data =~ s/ /-/g;
+      push @output,"UUID/GUID: ".$data;
     }
     if ($item =~ /^serial/) {
       $data=$session->get([$bladeserialoid,$slot]);

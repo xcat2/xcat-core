@@ -4838,7 +4838,7 @@ sub gotguid {
 	#}
 	my $fru = FRU->new();
 	$fru->rec_type("guid");
-	$fru->desc("GUID");
+	$fru->desc("UUID/GUID");
 	$fru->value(sprintf("%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",@{$rsp->{data}}));
 	$sessdata->{fru_hash}->{guid} = $fru;
     initfru_withguid($sessdata);
