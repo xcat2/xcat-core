@@ -216,8 +216,8 @@ sub getNodeUUID {
     if ($confdata->{vpd}->{$node}->[0] and $confdata->{vpd}->{$node}->[0]->{uuid}) {
         return $confdata->{vpd}->{$node}->[0]->{uuid};
     }
-    if ($confdata->{mac}->{$node}->[0]) { #a uuidv1 is possible, generate that for absolute uniqueness guarantee
-        my $mac = ($confdata->{mac}->{$node}->[0];
+    if ($confdata->{mac}->{$node}->[0]->{mac}) { #a uuidv1 is possible, generate that for absolute uniqueness guarantee
+        my $mac = $confdata->{mac}->{$node}->[0]->{mac};
         $mac =~ s/\|.*//;
         $mac =~ s/!.*//;
         $updatetable->{vpd}->{$node}={uuid=>xCAT::Utils::genUUID(mac=>$mac)};
