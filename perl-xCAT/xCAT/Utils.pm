@@ -47,9 +47,9 @@ This program module file, is a set of utilities used by xCAT commands.
 #-------------------------------------------------------------
 
 =head3 genUUID
-    Returns an RFC 4122 compliant UUIDv4
+    Returns an RFC 4122 compliant UUIDv4 or UUIDv1
     Arguments:
-        none
+        mac: If requesting a UUIDv1, the mac to use to base it upon
     Returns:
         string representation of a UUDv4, 
             for example: f16196d1-7534-41c1-a0ae-a9633b030583
@@ -67,7 +67,31 @@ sub genUUID
     #two identical UUIDs is 4 in 10 octillion.
     my %args = @_;
     if ($args{mac}) { #if a mac address was supplied, generate a uuidv1 instead
-        #TODO: UUIDv1
+        use Config;
+        if ($Config{use64bitint}) { #do it the simple way
+            no warnings 'portable';
+            use Time::HiRes qw/gettimeofday/;
+            my $sec;
+            my $usec;
+            ($sec,$usec) = gettimeofday();
+            my $uuidtime=($sec*10000000)+($usec*10) + 0x01B21DD213814000;
+            my $timelow=$uuidtime&0xffffffff;# get lower 32bit
+            my $timemid=$uuidtime&0xffff00000000;
+            my $timehigh=$uuidtime&0xffff000000000000;
+            $timemid = $timemid>>32;
+            $timehigh=$timehigh>>48;
+            $timehigh = $timehigh | (1<<12); #add in version, don't bother stripping out the high bits since by the year 5236, none of this should matter
+            my $clockseq=rand(8191); #leave the top three bits alone.  We could leave just top two bits, but it's unneeded
+            #also, randomness matters very little, as the time+mac is here
+            $clockseq = $clockseq | 0x8000; #RFC4122 variant
+            #time to assemble...
+            my $uuid=sprintf("%08x-%04x-%04x-%04x-",$timelow,$timemid,$timehigh,$clockseq);
+            my $mac = $args{mac};
+            $mac =~ s/://g;
+            $mac = lc($mac);
+            $uuid .= $mac;
+            return $uuid;
+        }
     }
     srand();    #Many note this as bad practice, however, forks are going on..
     my $uuid;
