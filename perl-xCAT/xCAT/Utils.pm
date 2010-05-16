@@ -65,6 +65,10 @@ sub genUUID
     #Though a UUID of this form is not guaranteed to be unique absolutely,
     #the chances of a cluster the size of the entire internet generating
     #two identical UUIDs is 4 in 10 octillion.
+    my %args = @_;
+    if ($args{mac}) { #if a mac address was supplied, generate a uuidv1 instead
+        #TODO: UUIDv1
+    }
     srand();    #Many note this as bad practice, however, forks are going on..
     my $uuid;
     $uuid =

@@ -213,7 +213,15 @@ sub build_diskstruct {
 }
 sub getNodeUUID {
     my $node = shift;
-    return xCAT::Utils::genUUID();
+    if ($confdata->{mac}->{$node}->[0]) { #a uuidv1 is possible, generate that for absolute uniqueness guarantee
+        my $mac = ($confdata->{mac}->{$node}->[0];
+        $mac =~ s/\|.*//;
+        $mac =~ s/!.*//;
+        return xCAT::Utils::genUUID(mac=>$mac);
+    } else {
+        return xCAT::Utils::genUUID();
+    }
+
 }
 sub build_nicstruct {
     my $rethash;
