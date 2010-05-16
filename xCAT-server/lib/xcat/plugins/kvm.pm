@@ -213,14 +213,18 @@ sub build_diskstruct {
 }
 sub getNodeUUID {
     my $node = shift;
+    if ($confdata->{vpd}->{$node}->[0] and $confdata->{vpd}->{$node}->[0]->{uuid}) {
+        return $confdata->{vpd}->{$node}->[0]->{uuid};
+    }
     if ($confdata->{mac}->{$node}->[0]) { #a uuidv1 is possible, generate that for absolute uniqueness guarantee
         my $mac = ($confdata->{mac}->{$node}->[0];
         $mac =~ s/\|.*//;
         $mac =~ s/!.*//;
-        return xCAT::Utils::genUUID(mac=>$mac);
+        $updatetable->{vpd}->{$node}={uuid=>xCAT::Utils::genUUID(mac=>$mac)};
     } else {
-        return xCAT::Utils::genUUID();
+        $updatetable->{vpd}->{$node}={uuid=>xCAT::Utils::genUUID()};
     }
+    return $updatetable->{vpd}->{$node};
 
 }
 sub build_nicstruct {

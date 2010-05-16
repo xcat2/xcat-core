@@ -7,6 +7,7 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
   my $cfghash = shift;
   my $callback=shift;
   my $vmtab = xCAT::Table->new("vm");
+  my $vpdtab = xCAT::Table->new("vpd");
   my $hmtab = xCAT::Table->new("nodehm");
   my $nttab = xCAT::Table->new("nodetype");
   my $sitetab = xCAT::Table->new("site");
@@ -20,6 +21,9 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
   unless ($vmtab) { 
     $callback->({data=>["Cannot open vm table"]});
     return;
+  }
+  if ($vpdtab) {
+      $cfghash->{vpd} = $vpdtab->getNodesAttribs($noderange,['uuid']);
   }
   $cfghash->{vm} = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','cfgstore','storage','memory','cpus','nics','bootorder','virtflags']);
   my $mactab = xCAT::Table->new("mac",-create=>1);
