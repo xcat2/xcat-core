@@ -1627,7 +1627,12 @@ sub inv {
     if ($item =~ /^uuid/ or $item =~ /^guid/) {
       $data=$session->get([$bladeuuidoid,$slot]);
       if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-      $data =~ s/ /-/g;
+      $data =~ s/ //;
+      $data =~ s/ /-/;
+      $data =~ s/ /-/;
+      $data =~ s/ /-/;
+      $data =~ s/ /-/;
+      $data =~ s/ //g;
       push @output,"UUID/GUID: ".$data;
     }
     if ($item =~ /^serial/) {
