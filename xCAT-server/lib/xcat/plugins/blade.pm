@@ -51,6 +51,9 @@ sub handled_commands {
     reventlog => 'nodehm:mgt',
     switchblade => 'nodehm:mgt',
     renergy => 'nodehm:mgt',
+    lsflexnode => 'blade',
+    mkflexnode => 'blade',
+    rmflexnode => 'blade',
   };
 }
 
@@ -2133,6 +2136,459 @@ sub renergy {
 }
 
 
+# the mib object of complex table
+my $comp_table_oid = ".1.3.6.1.4.1.2.3.51.2.24.1";    #scalableComplexTable
+my $comppart_table_oid = ".1.3.6.1.4.1.2.3.51.2.24.2";    #scalableComplexPartitionTable
+my $compnode_table_oid = ".1.3.6.1.4.1.2.3.51.2.24.3";    #scalableComplexNodeTable
+
+# the mib object used for flexnode management
+my $comp_id_oid = ".1.3.6.1.4.1.2.3.51.2.24.1.1.1";    #scalableComplexIdentifier
+my $comp_part_num_oid = ".1.3.6.1.4.1.2.3.51.2.24.1.1.2";    #scalableComplexNumPartitions
+my $comp_node_num_oid = ".1.3.6.1.4.1.2.3.51.2.24.1.1.3";    #scalableComplexNumNodes
+
+# following two oid are used for create partition
+my $comp_node_start_oid = ".1.3.6.1.4.1.2.3.51.2.24.1.1.4";    #scalableComplexPartStartSlot
+my $comp_partnode_num_oid = ".1.3.6.1.4.1.2.3.51.2.24.1.1.5";    #scalableComplexPartNumNodes
+
+# operate for the partition
+my $comp_action_oid = ".1.3.6.1.4.1.2.3.51.2.24.1.1.6";    #scalableComplexAction
+
+
+# oid for complex partitions
+my $comp_part_comp_id_oid = ".1.3.6.1.4.1.2.3.51.2.24.2.1.1";   #scalableComplexId
+my $comp_part_mode_oid = ".1.3.6.1.4.1.2.3.51.2.24.2.1.3";    #scalableComplexPartitionMode
+my $comp_part_nodenum_oid = ".1.3.6.1.4.1.2.3.51.2.24.2.1.4";   #scalableComplexPartitionNumNodes
+my $comp_part_status_oid = ".1.3.6.1.4.1.2.3.51.2.24.2.1.5";    #scalableComplexPartitionStatus
+my $comp_part_action_oid = ".1.3.6.1.4.1.2.3.51.2.24.2.1.6";    #scalableComplexPartitionAction
+
+
+#oid for complex nodes
+my $comp_node_slot_oid = ".1.3.6.1.4.1.2.3.51.2.24.3.1.1";    #scalableComplexNodeSlot
+my $comp_node_type_oid = ".1.3.6.1.4.1.2.3.51.2.24.3.1.3";    #scalableComplexNodeType
+my $comp_node_res_oid = ".1.3.6.1.4.1.2.3.51.2.24.3.1.4";    #scalableComplexNodeResources
+my $comp_node_role_oid = ".1.3.6.1.4.1.2.3.51.2.24.3.1.5";    #scalableComplexNodeRole
+my $comp_node_state_oid = ".1.3.6.1.4.1.2.3.51.2.24.3.1.6";    #scalableComplexNodeState
+my $comp_node_cid_oid = ".1.3.6.1.4.1.2.3.51.2.24.3.1.10";    #scalableComplexNodeComplexID
+my $comp_node_pid_oid = ".1.3.6.1.4.1.2.3.51.2.24.3.1.11";    #scalableComplexNodePartitionID
+my $comp_node_lid_oid = ".1.3.6.1.4.1.2.3.51.2.24.3.1.12";    #scalableComplexNodeLogicalID
+my $comp_node_action_oid = ".1.3.6.1.4.1.2.3.51.2.24.3.1.14";    #scalableComplexNodeAction
+
+my %compdata = ();
+
+# get all the attributes for a specified complex
+sub getcomplex {
+    my ($complex_id) = @_;
+
+    my $oid = $comp_part_num_oid.".$complex_id";
+    my $data = $session->get([$oid]);
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    $compdata{$complex_id}{'Partition number'} = $data;
+
+    $oid = $comp_node_num_oid.".$complex_id";
+    $data = $session->get([$oid]);
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    $compdata{$complex_id}{'Complex node number'} = $data;
+}
+
+# get all the attributes for a partition which belong a certain complex
+sub getcomppart {
+    my ($complex_id, $part_id) = @_;
+
+    my $oid = $comp_part_mode_oid.".$complex_id".".$part_id";
+    my $data = $session->get([$oid]);
+    if ($data == 1) {
+        $data = "partition";
+    } elsif ($data == 2) {
+        $data = "standalone";
+    }
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    $compdata{$complex_id}{'partition'}{$part_id}{'Partition Mode'} = $data;
+
+    $oid = $comp_part_nodenum_oid.".$complex_id".".$part_id";
+    $data = $session->get([$oid]);
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    $compdata{$complex_id}{'partition'}{$part_id}{'Partition node number'} = $data;
+
+    $oid = $comp_part_status_oid.".$complex_id".".$part_id";
+    $data = $session->get([$oid]);
+    if ($data == 1) {
+        $data = "poweredoff";
+    } elsif ($data == 2) {
+        $data = "poweredon";
+    } elsif ($data == 3) {
+        $data = "resetting";
+    } else {
+        $data = "invalid";
+    }
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    $compdata{$complex_id}{'partition'}{$part_id}{'Partition status'} = $data;
+}
+
+# get all the attributes for a node in a complex
+sub getcomnode {
+    my ($node_id) = @_;
+
+    my $oid = $comp_node_lid_oid.".$node_id";
+    my $node_logic_id = $session->get([$oid]);
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+    $oid = $comp_node_cid_oid.".$node_id";
+    my $complex_id = $session->get([$oid]);
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+    $oid = $comp_node_pid_oid.".$node_id";
+    my $part_id = $session->get([$oid]);
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+    $oid = $comp_node_slot_oid.".$node_id";
+    my $slot_id = $session->get([$oid]);
+
+    if($part_id == 255) {
+        $part_id = "unassigned";
+        $node_logic_id = $slot_id;
+    }
+
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    $compdata{$complex_id}{'partition'}{$part_id}{'node'}{$node_logic_id}{'Node slot'} = $slot_id;
+
+    $oid = $comp_node_type_oid.".$node_id";
+    my $data = $session->get([$oid]);
+    if ($data == 1) {
+        $data = "processor";
+    } elsif ($data == 2) {
+        $data = "memory";
+    } elsif ($data == 3) {
+        $data = "io";
+    }
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    $compdata{$complex_id}{'partition'}{$part_id}{'node'}{$node_logic_id}{'Node type'} = $data;
+
+    $oid = $comp_node_res_oid.".$node_id";
+    my $data = $session->get([$oid]);
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    $compdata{$complex_id}{'partition'}{$part_id}{'node'}{$node_logic_id}{'Node resource'} = $data;
+
+    $oid = $comp_node_role_oid.".$node_id";
+    my $data = $session->get([$oid]);
+    if ($data == 1) {
+        $data = "primary";
+    } elsif ($data == 2) {
+        $data = "secondary";
+    } else {
+        $data = "unassigned";
+    } 
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    $compdata{$complex_id}{'partition'}{$part_id}{'node'}{$node_logic_id}{'Node role'} = $data;
+
+    $oid = $comp_node_state_oid.".$node_id";
+    my $data = $session->get([$oid]);
+    if ($data == 1) {
+        $data = "poweredoff";
+    } elsif ($data == 2) {
+        $data = "poweredon";
+    } elsif ($data == 3) {
+        $data = "resetting";
+    }
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+    $compdata{$complex_id}{'partition'}{$part_id}{'node'}{$node_logic_id}{'Node state'} = $data;
+
+    return ($complex_id, $part_id, $node_logic_id);
+}
+
+# display the flexnodes for amm
+sub lsflexnode {
+    my ($mpa, $node, $slot, @moreslot) = @_;
+
+    my @output = ();
+    %compdata = ();
+    
+    # if specify the mpa as node, then list all the complex, partition and node in this chassis
+    if ($node eq $mpa) {
+      my @attrs = ($comp_id_oid);
+      while (1) {
+        my $orig_oid = $attrs[0];
+        $session->getnext(\@attrs);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+        # if success of getnext, the @attrs will be set to (obj,iid,val,type)
+        my $complex_obj = $attrs[0];
+        my $complex_id = $attrs[1];
+        if ($orig_oid =~ /^$complex_obj/) {
+          &getcomplex($complex_id);
+
+          # search all the partitions in the complex
+          my @part_attrs = ($comp_part_comp_id_oid.".$complex_id");
+          while (1) {
+            my $orig_part_oid = $part_attrs[0];
+            $session->getnext(\@part_attrs);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+            my $part_obj = $part_attrs[0];
+            my $part_id = $part_attrs[1];
+            if ($orig_part_oid =~ /^$part_obj/) {
+              &getcomppart($complex_id, $part_id);
+
+            } else {
+              last;
+            }
+
+            @part_attrs = ($part_obj.".$part_id");
+          } # end of searching partition
+
+        } else {
+          last;
+        }
+
+        @attrs = ($complex_obj.".$complex_id");
+      } # end of searching complex
+
+      # search all the nodes in the complex
+      my @node_attrs = ($comp_node_slot_oid);
+      while (1) {
+        my $orig_node_oid = $node_attrs[0];
+        $session->getnext(\@node_attrs);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+        my $node_obj = $node_attrs[0];
+        my $node_id = $node_attrs[1];
+        if ($orig_node_oid =~ /^$node_obj/) {
+          &getcomnode($node_id);
+        } else {
+          last;
+        }
+
+        @node_attrs = ($node_obj.".$node_id");
+      }
+
+      # display complex, parition and nodes in a chassis
+      foreach my $comp (keys %compdata) {
+        push @output, "Complex - $comp";
+      
+        foreach my $compattr (keys %{$compdata{$comp}}) {
+          if ($compattr ne "partition") {
+            push @output, "..$compattr - $compdata{$comp}{$compattr}";
+          } else {
+            foreach my $part (sort(keys %{$compdata{$comp}{'partition'}})) {
+              push @output, "..Partition = $part";
+              foreach my $partattr (keys %{$compdata{$comp}{'partition'}{$part}}) {
+                if ($partattr ne "node") {
+                  push @output, "....$partattr - $compdata{$comp}{'partition'}{$part}{$partattr}";
+                } else {
+                  foreach my $node (sort(keys %{$compdata{$comp}{'partition'}{$part}{'node'}})) {
+                    if ($node eq "unassigned") {
+                      push @output, "....Node - $node (slot id)";
+                    } else {
+                      push @output, "....Node - $node (logic id)";
+                    }
+                    foreach my $nodeattr (keys %{$compdata{$comp}{'partition'}{$part}{'node'}{$node}}) {
+                      push @output, "......$nodeattr - $compdata{$comp}{'partition'}{$part}{'node'}{$node}{$nodeattr}";
+                    }
+                  } #end of node go ghrough
+                }
+              } #end of partition attributes
+            } #end of parition go through
+          }
+        } #end of complex attributes
+      } #end of complex go through
+
+    } else { # display the information of a node
+      my @slots = ($slot, @moreslot);
+      my @sortslots = sort(@slots);
+      foreach (0..$#sortslots-1) {
+        if ($sortslots[$_]+1 != $sortslots[$_+1]) {
+          return (1, "The slots used to create flexed node should be consecutive.");
+        }
+      }
+
+      #get the slot information
+      my $complex_flag = "";
+      my $part_flag = "";
+      foreach my $slot (@sortslots) {
+        my ($complex_id, $part_id, $node_id) = &getcomnode($slot);
+        if ($complex_id eq "NOSUCHINSTANCE") {
+          return (1, "This node should belong to a complex.");
+        }
+        if ($complex_flag ne "" && $complex_flag ne $complex_id) {
+          return (1, "All the slots of this flexnode should be located in one complex.");
+        } else {
+          $complex_flag = $complex_id;
+        }
+        if ($part_flag ne "" && $part_flag ne $part_id) {
+          return (1, "All the slots of this flexnode should belong to one parition.");
+        } else {
+          $part_flag = $part_id;
+        }
+
+        if ($slot eq $sortslots[0]) {
+          my $oid = $comp_part_status_oid.".$complex_id".".$part_id";
+          my $data = $session->get([$oid]);
+          if ($data == 1) {
+              $data = "poweredoff";
+          } elsif ($data == 2) {
+              $data = "poweredon";
+          } elsif ($data == 3) {
+              $data = "resetting";
+          } else {
+              $data = "invalid";
+          }
+          if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+          push @output, "Flexnode state - $data";
+          push @output, "Complex id - $complex_id";
+          push @output, "Partition id - $part_id";
+        }
+        foreach my $nodeattr (keys %{$compdata{$complex_id}{'partition'}{$part_id}{'node'}{$node_id}}) {
+          push @output, "Slot$slot: $nodeattr - $compdata{$complex_id}{'partition'}{$part_id}{'node'}{$node_id}{$nodeattr}";
+        }
+      }
+    }
+
+    return (0, @output);
+}
+
+# Create a flexnode
+sub mkflexnode {
+    my ($mpa, $node, $slot, @moreslot) = @_;
+
+    my @slots = ($slot, @moreslot);
+
+    # the slots assigned for a partition must be consecutive
+    my @sortslots =  sort(@slots);
+    foreach (0..$#sortslots-1) {
+        if ($sortslots[$_]+1 != $sortslots[$_+1]) {
+            return (1, "The slots used to create flexed node should be consecutive.");
+        }
+    }
+
+    # get the status of all the nodes
+    my $complex_id = "";
+    foreach my $slot (@sortslots) {
+        #get the complex of the node
+        my $oid = $comp_node_cid_oid.".$slot";
+        my $node_comp = $session->get([$oid]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        if ($node_comp eq 'NOSUCHINSTANCE') {
+            return (1, "The slot [$slot] is NOT a member of a complex.");
+        }
+
+        # all the nodes should be located in one complex
+        if ($complex_id ne "" && $node_comp ne $complex_id) {
+            return (1, "All the slots of this flexnode should be located in one complex.");
+        } else {
+            $complex_id = $node_comp;
+        }
+
+        $oid = $comp_node_pid_oid.".$slot";
+        my $node_part = $session->get([$oid]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        if ($node_part ne '255') {
+            return (1, "The slot [$slot] has been assigned to one partition.");
+        }
+
+        $oid = $comp_node_state_oid.".$slot";
+        my $node_state = $session->get([$oid]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        if ($node_state != 1) {  # 1 is power off
+            return (1, "The slot [$slot] is NOT in power off state.");
+        }
+    }
+
+    # set the startslot
+    my $startslot = @sortslots[0];
+    $session->set(new SNMP::Varbind([$comp_node_start_oid, $complex_id, $startslot, 'INTEGER']));
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+    # set the slot number
+    my $slotnum = $#sortslots+1;
+    $session->set(new SNMP::Varbind([$comp_partnode_num_oid, $complex_id, $slotnum, 'INTEGER']));
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+    # create the partition
+    $session->set(new SNMP::Varbind([$comp_action_oid, $complex_id, 3, 'INTEGER']));
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+    # check to make sure the parition has been created
+    my $waiting = 60;  #waiting time before creating parition take affect
+    while ($waiting > 0) {
+        sleep 1;
+        my $oid = $comp_node_pid_oid.".$slot";
+        my $node_part = $session->get([$oid]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        if ($node_part ne '255') {
+            my $slotlist = join(',', @slots);
+            return (0, "Creating flexed node succeeded with slots: $slotlist.");
+        }
+        $waiting--;
+    }
+
+    return (1, "Failed to create the flexnode.");
+}
+
+# remove a flexnode
+sub rmflexnode {
+    my ($mpa, $node, $slot, @moreslot) = @_;
+
+    my @slots = ($slot, @moreslot);
+
+    # get the status of all the nodes
+    my $complex_id = "";
+    my $part_id = "";
+    foreach my $slot (@slots) {
+        #get the complex of the node
+        my $oid = $comp_node_cid_oid.".$slot";
+        my $node_comp = $session->get([$oid]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        if ($node_comp eq 'NOSUCHINSTANCE') {
+            return (1, "The slot [$slot] is NOT a member of one complex.");
+        }
+
+        # all the nodes should be located in one complex
+        if ($complex_id ne "" && $node_comp ne $complex_id) {
+            return (1, "All the slots of this node should be located in one complex.");
+        } else {
+            $complex_id = $node_comp;
+        }
+
+        # get the partition of the node
+        $oid = $comp_node_pid_oid.".$slot";
+        my $node_part = $session->get([$oid]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        if ($node_part eq '255') {
+            return (1, "The slot [$slot] was NOT assigned to a partition.");
+        }
+
+        # all the nodes should belong to one parition
+        if ($part_id ne "" && $node_part ne $part_id) {
+            return (1, "All the slots of this flexnode should belong to one parition.");
+        } else {
+            $part_id = $node_part;
+        }
+
+        $oid = $comp_node_state_oid.".$slot";
+        my $node_state = $session->get([$oid]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        if ($node_state != 1) {  # 1 is power off
+            return (1, "The slot [$slot] is NOT in power off state.");
+        }
+    }
+
+    my $output = $session->set(new SNMP::Varbind([$comp_part_action_oid.".$complex_id", $part_id, 1, 'INTEGER']));
+    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+    # check to make sure the parition has been deleted
+    my $waiting = 60;  #waiting time before delete parition take affect
+    while ($waiting > 0) {
+        sleep 1;
+        my $oid = $comp_part_comp_id_oid.".$complex_id".".$part_id";
+        my $part_comp = $session->get([$oid]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        if ($part_comp eq 'NOSUCHINSTANCE') {
+            return (0, "The flexnode has been removed successfully."); 
+        } 
+        $waiting--;
+    }
+    return (1, "Failed to remove the flexnode.");
+}
+
 sub bladecmd {
   $mpa = shift;
   my $node = shift;
@@ -2176,6 +2632,12 @@ sub bladecmd {
     return rscan(\@args);
   } elsif ($command eq "renergy") {
     return renergy($mpa, $node, $slot, @args);
+  } elsif ($command eq "lsflexnode") {
+    return lsflexnode($mpa, $node, $slot, @moreslots);
+  } elsif ($command eq "mkflexnode") {
+    return mkflexnode($mpa, $node, $slot, @moreslots);
+  } elsif ($command eq "rmflexnode") {
+    return rmflexnode($mpa, $node, $slot, @moreslots);
   }
   
   return (1,"$command not a supported command by blade method");

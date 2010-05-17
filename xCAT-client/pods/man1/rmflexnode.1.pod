@@ -1,0 +1,62 @@
+=head1 B<NAME>
+
+B<rmflexnode> - Delete a flexible node.
+
+
+=head1 B<SYNOPSIS>
+
+B<rmflexnode> [-h | --help]
+
+B<rmflexnode> [-v | --version]
+
+B<rmflexnode> I<noderange>
+
+
+=head1 B<DESCRIPTION>
+
+Delete a flexible node which created by the B<mkflexnode> command.
+
+The B<rmflexnode> command will delete the B<Partition> which the slots in I<id> attribute assigned to.
+
+The action of deleting flexible node will impact the hardware status. Before deleting it, the blades in the slot range should be in B<power off> state.
+
+After the deleting, use the B<lsflexnode> to check the status of the node.
+
+The I<noderange> only can be a blade node.
+
+=head1 B<OPTIONS>
+
+=over 4
+
+=item B<-h | --help>
+
+Display the usage message.
+
+=item B<-v | --version>
+
+Display the version information.
+
+=back
+
+
+=head1 B<EXAMPLES>
+
+=over 3
+
+=item 1
+
+Delete a flexible node base on the xCAT node blade1.
+
+The blade1 should belong to a complex, the I<id> attribute should be set correctly and all the slots should be in B<power off> state.
+
+B<rmflexnode> blade1
+
+=back
+
+=head1 B<FILES>
+
+/opt/xcat/bin/rmflexnode
+
+=head1 SEE ALSO
+
+L<lsflexnode>, L<mkflexnode>

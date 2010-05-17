@@ -242,7 +242,18 @@ Options:
 
     [attr=val [attr=val...]]  Specifies one or more 'attribute equals value' 
         pairs, separated by spaces. (AIX only)",
-
+  "lsflexnode" =>
+"Usage:
+    lsflexnode [-h|--help|-v|--version]
+    lsflexnode <noderange>",
+  "mkflexnode" =>
+"Usage:
+    mkflexnode [-h|--help|-v|--version]
+    mkflexnode <noderange>",
+  "rmflexnode" =>
+"Usage:
+    rmflexnode [-h|--help|-v|--version]
+    rmflexnode <noderange>",
 );
 my $vers = xCAT::Utils->Version();
 my %version = (
@@ -263,7 +274,10 @@ my %version = (
     "rmvm" => "$vers",
     "lsslp" => "$vers",
     "rflash" => "$vers",
-    "renergy" => "$vers"
+    "renergy" => "$vers",
+    "lsflexnode" => "$vers",
+    "mkflexnode" => "$vers",
+    "rmflexnode" => "$vers",
 );
 
 #--------------------------------------------------------------------------------
