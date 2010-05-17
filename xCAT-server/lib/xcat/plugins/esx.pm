@@ -2356,7 +2356,7 @@ sub mknetboot {
 		}
 
 		mkpath("$tftpdir/xcat/netboot/$osver/$arch/");
-        my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz/; #Required modules for an image to be considered complete
+        my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz cim.vgz oem.tgz license.tgz/; #Required modules for an image to be considered complete
         my %mods;
         foreach (@reqmods) {
             $mods{$_} = 1;
@@ -2398,6 +2398,12 @@ sub mknetboot {
         delete $mods{"vmk.gz"};
 		$append .= " --- $tp/sys.vgz";
         delete $mods{"sys.vgz"};
+		$append .= " --- $tp/cim.vgz";
+        delete $mods{"cim.vgz"};
+		$append .= " --- $tp/oem.tgz";
+        delete $mods{"oem.tgz"};
+		$append .= " --- $tp/license.tgz";
+        delete $mods{"license.tgz"};
         if ($mods{"mod.tgz"}) {
 		    $append .= " --- $tp/mod.tgz";
             delete $mods{"mod.tgz"};
@@ -2445,11 +2451,11 @@ sub cpNetbootImages {
 		unless(   -r "$destDir/vmk.gz" 
 			and -r "$destDir/vmkboot.gz"
 			and -r "$destDir/sys.vgz"
-			#and -r "$destDir/license.tgz"
-			#and -r "$destDir/oem.tgz"
+			and -r "$destDir/license.tgz"
+			and -r "$destDir/oem.tgz"
 			and -r "$destDir/pkgdb.tgz"
-			#and -r "$destDir/cim.vgz"
-			#and -r "$destDir/cimstg.tgz"
+			and -r "$destDir/cim.vgz"
+			and -r "$destDir/cimstg.tgz"
 			and -r "$destDir/boot.cfg"
 		){
             if (-r "$srcDir/image.tgz") { #it still may work without image.tgz if profile customization has everything replaced
