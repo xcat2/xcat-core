@@ -55,7 +55,7 @@ my %modules = (
         reventlog => { hmc    => "xCAT::PPClog",
 		      },
         rspconfig => { hmc    => "xCAT::PPCcfg",
-                       fsp    => "xCAT::PPCcfg",
+                       fsp    => "xCAT::FSPcfg",
                        bpa    => "xCAT::PPCcfg",
 		      },
         rflash    => { hmc    => "xCAT::PPCrflash",
@@ -170,7 +170,7 @@ sub process_command {
 		    ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/
                 || $request->{command} =~ /^getmacs$/ || $request->{command} =~ /^rnetboot$/ || $request->{command} =~ /^rvitals$/  
                 || $request->{command} =~ /^mkhwconn$/ || $request->{command} =~ /^rmhwconn$/ || $request->{command} =~ /^lshwconn$/
-                || $request->{command} =~ /^rscan$/
+                || $request->{command} =~ /^rscan$/ || ($request->{command} =~ /^rspconfig$/ && $request->{method} =~ /^passwd$/)
             )
               ) {
 	        #support FSPpower, FSPinv and FSPrflash 
