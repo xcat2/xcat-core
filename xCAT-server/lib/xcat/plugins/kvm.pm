@@ -355,6 +355,8 @@ sub build_xmldesc {
     $xtree{features}->{content}="\n";
     $xtree{devices}->{disk}=build_diskstruct($cdloc);
     $xtree{devices}->{interface}=build_nicstruct($node);
+    #use content to force xml simple to not make model the 'name' of video
+    $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>'vga',vram=>8192}}];
     $xtree{devices}->{input}->{type}='tablet';
     $xtree{devices}->{input}->{bus}='usb';
     $xtree{devices}->{graphics}->{type}='vnc';
