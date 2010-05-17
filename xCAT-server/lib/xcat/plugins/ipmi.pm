@@ -1138,11 +1138,11 @@ sub power_with_context {
 sub power_response { 
 	my $rsp = shift;
 	my $sessdata = shift;
-	my @returnd = ($rsp->{code},@{$rsp->{data}});
 	if($rsp->{error}) {
 		sendmsg([1,$rsp->{error}],$sessdata->{node});
 		return;
 	}
+	my @returnd = ($rsp->{code},@{$rsp->{data}});
 	if ($rsp->{code}) {
 		my $text = $codes{$rsp->{code}};
 		unless ($text) { $text = sprintf("Unknown response %02xh",$rsp->{code}); }
