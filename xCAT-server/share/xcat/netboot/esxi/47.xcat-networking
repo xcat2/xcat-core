@@ -16,4 +16,5 @@ if [ ! -z "$MACADDR" ]; then
     esxcfg-init -R $MACADDR -K vmk0
 fi
 
+sed -ie 's/#ssh/ssh/' /etc/inetd.conf #ssh is too nice not to have
 return ${SUCCESS}
