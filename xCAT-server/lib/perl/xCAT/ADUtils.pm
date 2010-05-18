@@ -9,7 +9,7 @@ package xCAT::ADUtils;
 use strict;
 use MIME::Base64;
 use Encode;
-use xCAT::Utils qw/genpassword/;
+use xCAT::Utils qw/genpassword runcmd3/;
 use IPC::Open3;
 use IO::Select;
 use Symbol qw/gensym/;
@@ -456,13 +456,14 @@ sub add_user_account {
     $ldif =~ s/##USERSHELL##/$shell/g;
     $ldif =~ s/##B64PASSWORD##/$b64password/g;
     my $dn = "CN=$fullname,$ou";
-    my $rc = system("ldapsearch -H ldaps://$directoryserver -b \"$dn\"");
+    my $retdata = runcmd3(command=>["ldapsearch","-H","ldaps://$directoryserver","-b" ,"$dn"]);
+    my $rc = $retdata->{exitcode};
     if ($rc == 0) {
         return {error=>"User already exists"};
     } elsif (not $rc==8192) {
-        return {error=>"Unknown error $rc"};
+        return {error=>"Unknown error $rc:".$retdata->{errors}};
     }
-    $rc = system("echo '$ldif'|ldapmodify  -H ldaps://$directoryserver"); 
+    $retdata = runcmd3(input=>$ldif,command=>["ldapmodify","-H","ldaps://$directoryserver"]); 
     return {password=>$newpassword};
 }
 =cut
@@ -511,7 +512,8 @@ sub add_host_account {
     my $b64password = encode_base64($newpassword);
     my $ldif;
     my $dn = "CN=$nodename,$ou";
-    my $rc = system("ldapsearch -H ldaps://$directoryserver -b $dn"); #TODO: for mass add, search once, hit that
+    my $retdata = runcmd3(command=>["ldapsearch","-H","ldaps://$directoryserver","-b","$dn"]); #TODO: for mass add, search once, hit that
+    my $rc = $retdata->{exitcode};
     if ($rc == 0) { 
         if ($changepassondupe) {
             $ldif = $machineldifpasschange;
@@ -519,7 +521,7 @@ sub add_host_account {
             return {error=>"System already exists"};
         }
     } elsif (not $rc==8192) {
-        return {error=>"Unknown error $rc"};
+        return {error=>"Unknown error $rc: ".$retdata->{errors}};
     } else {
         $ldif = $machineldiftemplate;
     }
@@ -528,9 +530,11 @@ sub add_host_account {
     $ldif =~ s/##REALMDCS##/$domain_components/g;
     $ldif =~ s/##DNSDOMAIN##/$dnsdomain/g;
     $ldif =~ s/##NODENAME##/$nodename/g;
-    $rc = system("echo '$ldif'|ldapmodify  -H ldaps://$directoryserver"); 
+    $retdata = runcmd3(input=>$ldif,command=>['ldapmodify','-H',"ldaps://$directoryserver"]); 
     substr $nativenewpassword,0,1,'';
     chop($nativenewpassword);
+    #if ($retdata->{exitcode} != 0) {
+    #}
     return {password=>$nativenewpassword};
 }
 
@@ -569,6 +573,7 @@ sub krb_login {
         die "Bug, $kinit got reaped before we could get to it\n";
     }
 }
+
 
 
 

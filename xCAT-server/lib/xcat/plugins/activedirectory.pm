@@ -23,7 +23,8 @@ sub handled_commands {
 }
 
 sub process_request {
-    $ENV{LDAPCONF}='/etc/xcat/ad.ldaprc';
+    $ENV{LDAPRC}='/etc/xcat/ad.ldaprc';
+    $ENV{HOME}='';
     my $request = shift;
     my $command = $request->{command}->[0];
     $callback = shift;

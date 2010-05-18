@@ -22,6 +22,7 @@ use POSIX qw(ceil);
 use File::Path;
 use Socket;
 use strict;
+use Symbol;
 use warnings "all";
 require xCAT::InstUtils;
 require xCAT::NetworkUtils;
@@ -31,7 +32,7 @@ require xCAT::NodeRange;
 require DBI;
 
 our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(genpassword);
+our @EXPORT_OK = qw(genpassword runcmd3);
 
 my $utildata; #data to persist locally
 #--------------------------------------------------------------------------------
@@ -863,6 +864,64 @@ sub remove_cron_job
     close(CRONTAB);
 
     return (0, "");
+}
+
+#-------------------------------------------------------------------------------
+=head3    runcmd3
+    Run the specified command with optional input and return stderr, stdout, and exit code
+
+    Arguments:
+        command=>[] - Array reference of command to run
+        input=>[] or string - Data to send to stdin of process like piping input
+    Returns:
+        { exitcode => number, output=> $string, errors => string }
+=cut
+sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and accepts a stdin
+    my %args = @_;
+    my @indata;
+    my $output;
+    my $errors;
+    if ($args{input}) {
+        if (ref $args{input}) { #array ref
+            @indata = @{$args{input}};
+        } else { #just a string
+            @indata=($args{input});
+        }
+    }
+    my @cmd;
+    if (ref $args{command}) {
+        @cmd = @{$args{command}};
+    } else {
+        @cmd = ($args{command});
+    }
+    my $cmdin;
+    my $cmdout;
+    my $cmderr = gensym;
+    my $cmdpid = open3($cmdin,$cmdout,$cmderr,@cmd);
+    my $cmdsel = IO::Select->new($cmdout,$cmdin);
+    foreach (@indata) {
+        print $cmdin $_;
+    }
+    my @handles;
+    while (@handles = $cmdsel->can_read()) {
+        foreach (@handles) {
+            my $line;
+            my $done = sysread $_,$line,180;
+            if ($done) {
+                if ($_ eq $cmdout) {
+                    $output .= $line;
+                } else {
+                    $errors .= $line;
+                }
+            } else {
+                $cmdsel->remove($_);
+                close($_);
+            }
+        }
+    }
+    waitpid($cmdpid,0);
+    my $exitcode = $? >> 8;
+    return { 'exitcode' => $exitcode, 'output' => $output, 'errors' => $errors }
 }
 
 #-------------------------------------------------------------------------------
