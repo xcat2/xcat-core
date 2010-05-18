@@ -65,7 +65,14 @@ cd $DESTDIR/xcat-dep
 $XCATCOREDIR/build-utils/rpmsign.exp `find . -type f -name '*.rpm'`
 
 # Create the repodata dirs
-for i in `find -mindepth 2 -maxdepth 2 -type d `; do createrepo $i; done
+for i in `find -mindepth 2 -maxdepth 2 -type d `; do
+	createrepo $i
+	rm -f $i/repodata/repomd.xml.asc
+	gpg -a --detach-sign $i/repodata/repomd.xml
+	if [ ! -f $i/repodata/repomd.xml.key ]; then
+		cp $GSA/../keys/repomd.xml.key $i/repodata
+	fi
+done
 
 # Get the permissions correct.  Have to have all dirs/files with a group of xcat
 # and have them writeable by group, so any member of the xcat can build.
