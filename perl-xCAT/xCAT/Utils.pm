@@ -903,6 +903,7 @@ sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and
     foreach (@indata) {
         print $cmdin $_;
     }
+    close($cmdin);
     my @handles;
     while (@handles = $cmdsel->can_read()) {
         foreach (@handles) {
