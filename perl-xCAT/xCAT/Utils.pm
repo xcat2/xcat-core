@@ -23,6 +23,7 @@ use File::Path;
 use Socket;
 use strict;
 use Symbol;
+use IPC::Open3;
 use warnings "all";
 require xCAT::InstUtils;
 require xCAT::NetworkUtils;
