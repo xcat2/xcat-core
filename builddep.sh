@@ -73,8 +73,8 @@ chgrp -R xcat *
 chmod -R g+w *
 
 # Build the tarball
-VER=`cat $XCATCOREDIR/Version`
-DFNAME=xcat-dep-$VER-`date +%Y%m%d%H%M`.tar.bz2
+#VER=`cat $XCATCOREDIR/Version`
+DFNAME=xcat-dep-`date +%Y%m%d%H%M`.tar.bz2
 cd ..
 tar jcvf $DFNAME xcat-dep
 cd xcat-dep
