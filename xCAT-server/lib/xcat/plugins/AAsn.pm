@@ -252,6 +252,16 @@ sub init_plugin
                                 "AAsn.pm:Error reading the servicenode table.");
         }
 
+	my $service = "ipforward";
+	if (grep(/$service/, @servicelist))
+	{
+	    
+	    $rc = &setup_ip_forwarding($nodename, $doreq);    # setup ip forwarding
+	    if ($rc == 0)
+	    {
+		xCAT::Utils->update_xCATSN($service);
+	    }
+	}
     }
     else     # management node
     {
@@ -1233,5 +1243,34 @@ sub setup_HTTP
     }
     return $rc;
 }
+
+#-----------------------------------------------------------------------------
+
+=head3 setup_ip_forwarding
+
+    Sets up ip forwarding on the sn
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub setup_ip_forwarding
+{
+    if (xCAT::Utils->isLinux()) {
+	my $conf_file="/etc/sysctl.conf";
+	my $rc=`grep "net.ipv4.ip_forward" $conf_file`;
+        if ($? == 0) {
+	    `sed -i "s/^net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/" $conf_file`;
+ 	} else {
+	    `echo "net.ipv4.ip_forward = 1" >> $conf_file`;
+	}
+	$rc = `sysctl -p $conf_file`;
+    }
+    else
+    {    #AIX: TODO
+    }
+
+    return $rc;
+}
+
 
 1;

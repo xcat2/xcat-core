@@ -624,7 +624,7 @@ ppchcp => {
  },
   },
 servicenode => {
-    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver ftpserver nimserver comments disable)],
+    cols => [qw(node nameserver dhcpserver tftpserver nfsserver conserver monserver ldapserver ntpserver ftpserver nimserver ipforward comments disable)],
     keys => [qw(node)],
     table_desc => 'List of all Service Nodes and services that will be set up on the Service Node.',
  descriptions => {
@@ -639,6 +639,7 @@ servicenode => {
   ntpserver => 'Not used presently. Do we set up a ntp server on this service node? Valid values:yes or 1, no or 0.',
   ftpserver => 'Do we set up a ftp server on this service node? Valid values:yes or 1, no or 0.',
   nimserver => 'Do we set up a NIM server on this service node? Valid values:yes or 1, no or 0.',
+  ipforward => 'Do we set up ip forwarding on this service node? Valid values:yes or 1, no or 0.',
 
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -1015,6 +1016,7 @@ my @nodeattrs = (
                  tabentry => 'noderes.nimserver',
                  access_tabentry => 'noderes.node=attr:node',
   },
+
 ###
 # TODO:  Is noderes.nfsdir used anywhere?  Could not find any code references
 #        to this attribute.
@@ -1082,6 +1084,10 @@ my @nodeattrs = (
   },
 	{attr_name => 'setupconserver',
                  tabentry => 'servicenode.conserver',
+                 access_tabentry => 'servicenode.node=attr:node',
+  },
+	{attr_name => 'setupipforward',
+                 tabentry => 'servicenode.ipforward',
                  access_tabentry => 'servicenode.node=attr:node',
   },
 # - moserver not used yet

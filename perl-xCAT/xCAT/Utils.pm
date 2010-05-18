@@ -2965,7 +2965,7 @@ sub isServiceReq
     my @services = (
                     "nameserver", "dhcpserver", "tftpserver", "nfsserver",
                     "conserver",  "monserver",  "ldapserver", "ntpserver",
-                    "ftpserver"
+                    "ftpserver",  "ipforward"
                     );
 
     my @ips = @$serviceip;    # list of service node ip addresses and names
