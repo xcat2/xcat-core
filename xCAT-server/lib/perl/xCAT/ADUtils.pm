@@ -460,7 +460,7 @@ sub add_user_account {
     my $rc = $retdata->{exitcode};
     if ($rc == 0) {
         return {error=>"User already exists"};
-    } elsif (not $rc==8192) {
+    } elsif (not $rc==32) {
         return {error=>"Unknown error $rc:".$retdata->{errors}};
     }
     $retdata = runcmd3(input=>$ldif,command=>["ldapmodify","-H","ldaps://$directoryserver"]); 
@@ -520,7 +520,7 @@ sub add_host_account {
         } else {
             return {error=>"System already exists"};
         }
-    } elsif (not $rc==8192) {
+    } elsif (not $rc==32) {
         return {error=>"Unknown error $rc: ".$retdata->{errors}};
     } else {
         $ldif = $machineldiftemplate;

@@ -899,7 +899,7 @@ sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and
     my $cmdout;
     my $cmderr = gensym;
     my $cmdpid = open3($cmdin,$cmdout,$cmderr,@cmd);
-    my $cmdsel = IO::Select->new($cmdout,$cmdin);
+    my $cmdsel = IO::Select->new($cmdout,$cmderr);
     foreach (@indata) {
         print $cmdin $_;
     }
