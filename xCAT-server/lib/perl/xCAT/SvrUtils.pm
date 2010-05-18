@@ -915,6 +915,7 @@ sub get_nodename_from_request()
 # we do this sparingly...  We don't like tons of hits
 # to the database.
 sub subVars {
+        shift; #toss the class name
         my $dir = shift;
         my $node = shift;
         my $type = shift;
