@@ -76,7 +76,8 @@ sub genUUID
         my $usec;
         ($sec,$usec) = gettimeofday();
         my $uuidtime = Math::BigInt->new($sec);
-        $uuidtime->bmuladd('10000000',$usec*10);
+        $uuidtime->bmul('10000000');
+        $uuidtime->badd($usec*10);
         $uuidtime->badd('0x01B21DD213814000');
         my $timelow=$uuidtime->copy();
         $timelow->band('0xffffffff');# get lower 32bit
