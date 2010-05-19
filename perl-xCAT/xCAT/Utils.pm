@@ -905,7 +905,8 @@ sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and
     }
     close($cmdin);
     my @handles;
-    while (@handles = $cmdsel->can_read()) {
+    while ($cmdsel->count())) {
+        @handles = $cmdsel->can_read();
         foreach (@handles) {
             my $line;
             my $done = sysread $_,$line,180;
