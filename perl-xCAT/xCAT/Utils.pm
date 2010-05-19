@@ -69,31 +69,40 @@ sub genUUID
     #two identical UUIDs is 4 in 10 octillion.
     my %args = @_;
     if ($args{mac}) { #if a mac address was supplied, generate a uuidv1 instead
-        use Config;
-        if ($Config{use64bitint}) { #do it the simple way
-            no warnings 'portable';
-            use Time::HiRes qw/gettimeofday/;
-            my $sec;
-            my $usec;
-            ($sec,$usec) = gettimeofday();
-            my $uuidtime=($sec*10000000)+($usec*10) + 0x01B21DD213814000;
-            my $timelow=$uuidtime&0xffffffff;# get lower 32bit
-            my $timemid=$uuidtime&0xffff00000000;
-            my $timehigh=$uuidtime&0xffff000000000000;
-            $timemid = $timemid>>32;
-            $timehigh=$timehigh>>48;
-            $timehigh = $timehigh | (1<<12); #add in version, don't bother stripping out the high bits since by the year 5236, none of this should matter
-            my $clockseq=rand(8191); #leave the top three bits alone.  We could leave just top two bits, but it's unneeded
-            #also, randomness matters very little, as the time+mac is here
-            $clockseq = $clockseq | 0x8000; #RFC4122 variant
-            #time to assemble...
-            my $uuid=sprintf("%08x-%04x-%04x-%04x-",$timelow,$timemid,$timehigh,$clockseq);
-            my $mac = $args{mac};
-            $mac =~ s/://g;
-            $mac = lc($mac);
-            $uuid .= $mac;
-            return $uuid;
-        }
+        use Math::BigInt;
+        no warnings 'portable';
+        use Time::HiRes qw/gettimeofday/;
+        my $sec;
+        my $usec;
+        ($sec,$usec) = gettimeofday();
+        my $uuidtime = Math::BigInt->new($sec);
+        $uuidtime->bmuladd('10000000',$usec*10);
+        $uuidtime->badd('0x01B21DD213814000');
+        my $timelow=$uuidtime->copy();
+        $timelow.band('0xffffffff');# get lower 32bit
+        my $timemid=$uuidtime->copy();
+        $timemid.band('0xffff00000000');
+        my $timehigh=$uuidtime->copy();
+        $timehigh.band('0xffff000000000000');
+        $timemid.brsft(32);
+        $timehigh.brsft(48);
+        $timehigh.bior('0x1000'); #add in version, don't bother stripping out the high bits since by the year 5236, none of this should matter
+        my $clockseq=rand(8191); #leave the top three bits alone.  We could leave just top two bits, but it's unneeded
+        #also, randomness matters very little, as the time+mac is here
+        $clockseq = $clockseq | 0x8000; #RFC4122 variant
+        #time to assemble...
+        $timelow = $timelow->bstr();
+        $timelow == 0; # doing numeric comparison induces perl to 'int'-ify it.  Safe at this point as the subpieces are all sub-32 bit now
+        $timemid = $timemid->bstr();
+        $timemid == 0;
+        $timehigh = $timehigh->bstr()
+        $timehigh == 0;
+        my $uuid=sprintf("%08x-%04x-%04x-%04x-",$timelow,$timemid,$timehigh,$clockseq);
+        my $mac = $args{mac};
+        $mac =~ s/://g;
+        $mac = lc($mac);
+        $uuid .= $mac;
+        return $uuid;
     }
     srand();    #Many note this as bad practice, however, forks are going on..
     my $uuid;
