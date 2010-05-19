@@ -1264,12 +1264,12 @@ sub setup_ip_forwarding
 	    `echo "net.ipv4.ip_forward = 1" >> $conf_file`;
 	}
 	$rc = `sysctl -p $conf_file`;
+    return $rc;
     }
     else
     {    #AIX: TODO
     }
 
-    return $rc;
 }
 
 
