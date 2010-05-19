@@ -79,24 +79,25 @@ sub genUUID
         $uuidtime->bmuladd('10000000',$usec*10);
         $uuidtime->badd('0x01B21DD213814000');
         my $timelow=$uuidtime->copy();
-        $timelow.band('0xffffffff');# get lower 32bit
+        $timelow->band('0xffffffff');# get lower 32bit
         my $timemid=$uuidtime->copy();
-        $timemid.band('0xffff00000000');
+        $timemid->band('0xffff00000000');
         my $timehigh=$uuidtime->copy();
-        $timehigh.band('0xffff000000000000');
-        $timemid.brsft(32);
-        $timehigh.brsft(48);
-        $timehigh.bior('0x1000'); #add in version, don't bother stripping out the high bits since by the year 5236, none of this should matter
+        $timehigh->band('0xffff000000000000');
+        $timemid->brsft(32);
+        $timehigh->brsft(48);
+        $timehigh->bior('0x1000'); #add in version, don't bother stripping out the high bits since by the year 5236, none of this should matter
         my $clockseq=rand(8191); #leave the top three bits alone.  We could leave just top two bits, but it's unneeded
         #also, randomness matters very little, as the time+mac is here
         $clockseq = $clockseq | 0x8000; #RFC4122 variant
         #time to assemble...
         $timelow = $timelow->bstr();
-        $timelow == 0; # doing numeric comparison induces perl to 'int'-ify it.  Safe at this point as the subpieces are all sub-32 bit now
+        $usec=$timelow == 0; # doing numeric comparison induces perl to 'int'-ify it.  Safe at this point as the subpieces are all sub-32 bit now
+        #assign to $usec the result so that perl doesn't complain about this trickery
         $timemid = $timemid->bstr();
-        $timemid == 0;
-        $timehigh = $timehigh->bstr()
-        $timehigh == 0;
+        $usec=$timemid == 0;
+        $timehigh = $timehigh->bstr();
+        $usec=$timehigh == 0;
         my $uuid=sprintf("%08x-%04x-%04x-%04x-",$timelow,$timemid,$timehigh,$clockseq);
         my $mac = $args{mac};
         $mac =~ s/://g;
