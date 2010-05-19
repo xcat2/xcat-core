@@ -23,8 +23,8 @@ sub handled_commands {
 }
 
 sub process_request {
-    $ENV{LDAPRC}='/etc/xcat/ad.ldaprc';
-    $ENV{HOME}='';
+    $ENV{LDAPRC}='ad.ldaprc'; #after examining openldap source, this is the best way to get their libraries to source /etc/xcat/ad.ldaprc
+    $ENV{HOME}='/etc/xcat';
     my $request = shift;
     my $command = $request->{command}->[0];
     $callback = shift;
