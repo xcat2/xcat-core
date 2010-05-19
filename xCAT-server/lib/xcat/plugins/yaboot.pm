@@ -165,7 +165,7 @@ sub setstate {
    #special case for sles 11
    my $mac = lc($machash{$node}->[0]->{mac});
    $mac =~ s/!.*//;
-   $mac =~ s/|.*//;
+   $mac =~ s/\|.*//;
    if (! (grep /\:/, $mac) ) {
       $mac =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
    }
