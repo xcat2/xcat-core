@@ -1255,21 +1255,21 @@ sub setup_HTTP
 #-----------------------------------------------------------------------------
 sub setup_ip_forwarding
 {
+    my $rc=0;
     if (xCAT::Utils->isLinux()) {
 	my $conf_file="/etc/sysctl.conf";
-	my $rc=`grep "net.ipv4.ip_forward" $conf_file`;
+	$rc=`grep "net.ipv4.ip_forward" $conf_file`;
         if ($? == 0) {
 	    `sed -i "s/^net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/" $conf_file`;
  	} else {
 	    `echo "net.ipv4.ip_forward = 1" >> $conf_file`;
 	}
 	$rc = `sysctl -p $conf_file`;
-    return $rc;
     }
     else
     {    #AIX: TODO
     }
-
+    return $rc;
 }
 
 
