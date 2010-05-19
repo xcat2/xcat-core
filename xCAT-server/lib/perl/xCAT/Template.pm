@@ -100,7 +100,8 @@ sub subvars {
 }
 sub machinepassword {
     my $domaintab = xCAT::Table->new('domain');
-    $ENV{LDAPCONF}='/etc/xcat/ad.ldaprc';
+    $ENV{HOME}='/etc/xcat';
+    $ENV{LDAPRC}='ad.ldaprc';
     my $ou;
     if ($domaintab) {
         my $ouent = $domaintab->getNodeAttribs('node','ou');
