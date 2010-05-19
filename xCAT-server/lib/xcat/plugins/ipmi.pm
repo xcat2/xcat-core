@@ -622,7 +622,7 @@ sub setnetinfo {
    ($subcommand,$argument) = split(/=/,$subcommand);
 	my @input = @_;
 
-	my $netfun = 0x30;
+	my $netfun = 0x0c;
 	my @cmd;
 	my @returnd = ();
 	my $error;
@@ -644,10 +644,10 @@ sub setnetinfo {
        return idpxthermprofile($argument);
    }
    if ($subcommand eq "alert" and $argument eq "on" or $argument =~ /^en/ or $argument =~ /^enable/) {
-      $netfun = 0x10;
+      $netfun = 0x4;
       @cmd = (0x12,0x9,0x1,0x18,0x11,0x00);
    } elsif ($subcommand eq "alert" and $argument eq "off" or $argument =~ /^dis/ or $argument =~ /^disable/) {
-      $netfun = 0x10;
+      $netfun = 0x4;
       @cmd = (0x12,0x9,0x1,0x10,0x11,0x00);
    }
 	elsif($subcommand eq "garp") {
@@ -695,7 +695,7 @@ sub setnetinfo {
 		return(1,"configuration of $subcommand is not implemented currently");
 	}
     my $command = shift @cmd;
-    $sessdata->{ipmisession}->subcmd(netfn=>0x0c,command=>$command,data=>\@cmd,callback=>\&netinfo_set,callback_args=>$sessdata);
+    $sessdata->{ipmisession}->subcmd(netfn=>$netfun,command=>$command,data=>\@cmd,callback=>\&netinfo_set,callback_args=>$sessdata);
 }
 sub netinfo_set {
     my $rsp = shift;
@@ -756,7 +756,7 @@ sub getnetinfo {
 
     my $netfun = 0x0c;
    if ($subcommand eq "alert") {
-      $netfun = 0x10;
+      $netfun = 0x4;
       @cmd = (0x13,9,1,0);
    }
 	elsif($subcommand eq "garp") {
