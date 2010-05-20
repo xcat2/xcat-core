@@ -307,10 +307,10 @@ sub addnode
                 print $omshell "set ip-address = $ip\n";
                 if ($lstatements)
                 {
-                    $lstatements = 'option host-name \"'.$node.'\"; send host-name \"'.$node.'\";'.$lstatements;
+                    $lstatements = 'send host-name \"'.$node.'\";'.$lstatements;
 
                 } else {
-                    $lstatements = 'option host-name \"'.$node.'\"; send host-name \"'.$node.'\";';
+                    $lstatements = 'send host-name \"'.$node.'\";';
                 }
                 print $omshell "set statements = \"$lstatements\"\n";
             }
