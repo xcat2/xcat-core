@@ -15,7 +15,8 @@ chomp $PLTFRM;
 my $HOST = `hostname -s`;
 chomp $HOST;
 
-my @nums = (0..3);
+my @nums = (0..1);
+my @nics;
 foreach my $num ( @nums ) {
     # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
     my $nic = "ib$num";
@@ -60,8 +61,6 @@ foreach my $num ( @nums ) {
         {
             runcmd("sed -i 's/options\ ib_ehca\ nr_ports=1//g' /etc/modprobe.conf");
         }
-        my $openibd_cmd = "/sbin/chkconfig --level 2345 openibd on";
-        runcmd($openibd_cmd);
         # Write the info to the ifcfg file
         my $dir;
         if ( $OS_name eq 'suse')
@@ -82,12 +81,7 @@ foreach my $num ( @nums ) {
         print FILE "STARTMODE=auto\n" if ( $OS_name eq 'suse');
         close FILE;
 
-        my $openibd_start_cmd = "/sbin/service openibd start";
-        runcmd($openibd_start_cmd);
-
-        sleep(5);
-        runcmd("ifup $nic");
-        system("logger -t xcat 'configiba: successfully configured $nic.'");
+        push @nics, $nic;
     } elsif ( $PLTFRM eq "AIX" ) {
     #Check whether the icm is available
         my $cmd = "lsdev -C | grep icm | grep Available";
@@ -109,6 +103,19 @@ foreach my $num ( @nums ) {
         else { $port = 2; }
         my $mkib_cmd = "mkiba -a $ip -i $nic -A $ib_adapter -p $port -P -1 -S up -m $netmask";
         runcmd($mkib_cmd);
+        system("logger -t xcat 'configiba: successfully configured $nic.'");
+    }
+}
+
+if ( $PLTFRM eq "Linux" ) {
+    my $openibd_cmd = "/sbin/chkconfig --level 2345 openibd on";
+    runcmd($openibd_cmd);
+    my $openibd_start_cmd = "/sbin/service openibd restart";
+    runcmd($openibd_start_cmd);
+
+    sleep(5);
+    foreach my $nic ( @nics ) {
+        runcmd("ifup $nic");
         system("logger -t xcat 'configiba: successfully configured $nic.'");
     }
 }
