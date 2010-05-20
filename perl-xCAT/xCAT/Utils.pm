@@ -5770,7 +5770,7 @@ sub fsp_api_action {
     # output the prompt
     #################
     #$outhash{ $node_name } = $res;
-     
+    $res =~ s/$node_name: //;  
     return( [$node_name,$res, $Rc] ); 
 
 }
