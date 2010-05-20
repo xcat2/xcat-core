@@ -1221,7 +1221,8 @@ sub newconfig
     push @dhcpconf, "option user-class-identifier code 77 = string;\n";
     push @dhcpconf, "option gpxe.no-pxedhcp code 176 = unsigned integer 8;\n";
     push @dhcpconf, "option iscsi-initiator-iqn code 203 = string;\n"; #Only via gPXE, not a standard
-    push @dhcpconf, "ddns-update-style none;\n";
+    push @dhcpconf, "ddns-update-style interim;\n";
+    push @dhcpconf, "update-static-leases on;\n"; #makedns rendered optional
     push @dhcpconf,
       "option client-architecture code 93 = unsigned integer 16;\n";
     push @dhcpconf, "option gpxe.no-pxedhcp 1;\n";
@@ -1249,6 +1250,12 @@ sub newconfig
     push @dhcpconf, "  secret \"" . $secret . "\";\n";
     push @dhcpconf, "};\n";
     push @dhcpconf, "omapi-key xcat_key;\n";
+    push @dhcpconf, "zone $domain. {\n";
+    my $ddnserver = $sitedomainservers;
+    $ddnsserver =~ s/,.*//;
+    push @dhcpconf, "$domain. {\n";
+    push @dhcpconf, "   primary $ddnserver; key xcat_key; \n";
+    push @dhcpconf, " }\n";
 }
 
 sub newconfig_aix
