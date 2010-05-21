@@ -121,12 +121,6 @@ sub mkwinlinks {
     my $ent = shift;
     foreach (getips($node)) {
         link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd";
-        unlink "/tftpboot/Boot/BCD.$_";
-        if ($ent->{arch} =~ /64/) {
-            symlink "/tftpboot/Boot/BCD.64","/tftpboot/Boot/BCD.$_";
-        } else {
-            symlink "/tftpboot/Boot/BCD.32","/tftpboot/Boot/BCD.$_";
-        }
     }
 }
 
@@ -233,12 +227,46 @@ sub mkinstall
                      print $shandle $script;
                      close($shandle);
                      mkwinlinks($node,$ent);
-                    if ($arch =~ /x86/)
+                    if ($arch =~ /x86_64/)
                     {
                         $bptab->setNodeAttribs(
                                                 $node,
                                                 {
                                                  kernel   => "Boot/pxeboot.0",
+                                                 initrd   => "",
+                                                 kcmdline => ""
+                                                }
+                                                );
+                   } elsif ($arch =~ /x86/) {
+                       unless (-r "$tftpdir/Boot/pxeboot32.0") {
+                           my $origpxe;
+                           my $pxeboot;
+                           open($origpxe,"<$tftpdir/Boot/pxeboot.0");
+                           open($pxeboot,">$tftpdir/Boot/pxeboot32.0");
+                           binmode($origpxe);
+                           binmode($pxeboot);
+                           my @origpxecontent = <$origpxe>;
+                           foreach (@origpxecontent) {
+                               s/bootmgr.exe/bootm32.exe/;
+                               print $pxeboot $_;
+                           }
+                       }
+                       unless (-r "$tftpdir/bootm32.exe") {
+                           my $origmgr;
+                           my $bootmgr;
+                           open($origmgr,"<$tftpdir/bootmgr.exe");
+                           open($bootmgr,">$tftpdir/bootm32.exe");
+                           binmode($origmgr);
+                           binmode($bootmgr);
+                           foreach (@data) {
+                               s/(\\.B.o.o.t.\\.B.)C(.)D/${1}3${2}2/; # 16 bit encoding... cheat
+                               print $bootmgr $_;
+                           }
+                       }
+                        $bptab->setNodeAttribs(
+                                                $node,
+                                                {
+                                                 kernel   => "Boot/pxeboot32.0",
                                                  initrd   => "",
                                                  kcmdline => ""
                                                 }
