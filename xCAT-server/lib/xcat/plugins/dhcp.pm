@@ -1050,7 +1050,7 @@ sub addnet
         }
         push @netent, "zone $domain. {\n";
         my $ddnserver = $nameservers;
-        $ddnsserver =~ s/,.*//;
+        $ddnserver =~ s/,.*//;
         push @netent, "$domain. {\n";
         push @netent, "   primary $ddnserver; key xcat_key; \n";
         push @netent, " }\n";
