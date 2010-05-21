@@ -96,7 +96,7 @@ sub ximport {
 
 	GetOptions(
 		'h|?|help' => \$help,
-		'v|verbose' => \$::VERBOSE
+		'v|verbose' => \$::VERBOSE,
 	);
 
 	if($help){
@@ -123,7 +123,7 @@ sub xexport {
 	my $xusage = sub {
 		my $ec = shift;
 		push@{ $rsp{data} }, "imgexport: Creates a tarball of an existing xCAT image";
-		push@{ $rsp{data} }, "Usage: imgexport <image name> [directory] [[--extra <file:dir> ] ... ]";
+		push@{ $rsp{data} }, "Usage: imgexport [-f] <image name> [directory] [[--extra <file:dir> ] ... ]";
 		if($ec){ $rsp{errorcode} = $ec; }
 		$callback->(\%rsp);
 	};
@@ -285,6 +285,7 @@ sub get_files{
 	}
 
 	my $provmethod = $attrs->{provmethod};
+	my $osvers = $attrs->{osvers};
 
 	# here's the case for the install.  All we need at first is the 
 	# template.  That should do it.
@@ -307,7 +308,9 @@ sub get_files{
 	# ramdisk
 	# the kernel
 	# the rootimg.gz
-	if($provmethod =~ /netboot/){
+	if($osvers =~ /esx/){
+		# don't do anything because these files don't exist for ESX stateless.
+	}elsif($provmethod =~ /netboot/){
 		@arr = ("$installroot/netboot");
 
 		# look for ramdisk
@@ -681,6 +684,10 @@ sub verify_manifest {
 		}
 		#$attrs->{media} = "required"; (need to do something to verify media!
 
+	}elsif($data->{osvers} =~ /esx/){
+		$callback->({info => ['this is an esx image']});
+		# do nothing for ESX
+		1;
 	}elsif($data->{provmethod} =~ /netboot|statelite/){
 		unless($data->{ramdisk}){
 			$callback->({error=>["The 'ramdisk' field is not defined in manifest.xml."],errorcode=>[1]});
@@ -745,6 +752,8 @@ sub make_files {
 		}
 		move("$imgdir/$template", $instdir);		
 
+	}elsif($data->{osvers} =~ /esx/){
+		1;
 	}elsif($data->{provmethod} =~/netboot|statelite/){
 
 		# data will look something like this:
