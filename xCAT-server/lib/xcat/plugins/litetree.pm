@@ -79,13 +79,6 @@ sub process_request {
 		return;
 	}
 
-	if(!$noderange){
-		my $usage_string="Missing Noderange\n";
-		$callback->({error=>[$usage_string],errorcode=>[1]});
-		$request = {};
-		return;
-	}
-
 	my $command = $request->{command}->[0];
 	if($command eq "litetree"){
         unless($request->{node}) {
