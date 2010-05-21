@@ -12,6 +12,7 @@ use xCAT::NetworkUtils;
 use xCAT_plugin::ipmi;
 use xCAT_monitoring::monitorctrl;
 use Socket;
+use Data::Dumper;
 
 
 #-------------------------------------------------------------------------------
@@ -412,18 +413,23 @@ sub getMoreInfo {
 sub parseSettings {
   my $settings=shift;
   my %ret=();
-  while (($settings =~ s/^(Informational|Warning|Critical|All|None)()(,)*//) ||
-         ($settings =~ s/^([^\=]+)=(\"[^\"]+\")(,)*//) || 
-         ($settings =~ s/^([^\=]+)=([^\"\,]+)(,)*//)) {
-    #print "$1=$2\n";
-    if (exists($ret{$1}{'eq'})) {
-      my $pa=$ret{$1}{eq};
-      push(@$pa, $2);
+  while (($settings =~ s/^(Informational|Warning|Critical|All|None)()()(,)*//) ||
+         ($settings =~ s/^([^\=]+)(=~)(\"[^\"]+\")(,)*//) || 
+         ($settings =~ s/^([^\=]+)(=~)([^\"\,]+)(,)*//) ||
+         ($settings =~ s/^([^\=]+)(=)(\"[^\"]+\")(,)*//) || 
+         ($settings =~ s/^([^\=]+)(=)([^\"\,]+)(,)*//)) {
+    my $val='eq';
+    if ($2 eq "=~") { $val='=~';}
+    if (exists($ret{$1}{$val})) {
+      my $pa=$ret{$1}{$val};
+      push(@$pa, $3);
     }
     else {
-      $ret{$1}{'eq'}=[$2];
+      $ret{$1}{$val}=[$3];
     }
   }
+
+  #print Dumper(%ret);
   return %ret;
 }
 
@@ -451,19 +457,37 @@ sub checkWithOid {
     @a_oid=split('::', $o);
     my $new_o=$o;
     if (@a_oid == 2) { $new_o=$a_oid[1]; } 
-    print "o=$o, new_o=$new_o\n"; 
+    #print "o=$o, new_o=$new_o v=$v\n"; 
+
+    #check for 'contains'
+    if (exists($hashX->{$o})) {
+      my $pa= $hashX->{$o}{'=~'};
+      foreach(@$pa) {
+        if ($v =~ /$_/) {return 1; } 
+      }
+    }
+    if (exists($hashX->{$new_o})) {
+      my $pa= $hashX->{$new_o}{'=~'};
+      foreach(@$pa) {
+        if ($v =~ /$_/) {return 1; } 
+      }
+    }
+
+    #check for 'equals'
     if (exists($hashX->{$o})) {
       my $pa= $hashX->{$o}{'eq'};
       foreach(@$pa) {
-        if ($_ eq $v) {return 1; } 
+        if ($_ eq $v) { return 1; } 
       }
     }
     if (exists($hashX->{$new_o})) {
       my $pa= $hashX->{$new_o}{'eq'};
       foreach(@$pa) {
-        if ($_ eq $v) {return 1; } 
+        if ($_ eq $v) { return 1; } 
       }
     }
+
+    
     return 0;
   }
  

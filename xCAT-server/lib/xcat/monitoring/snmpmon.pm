@@ -781,7 +781,7 @@ sub getDescription {
   Settings:
     ignore:  specifies the events that will be ignored. It's a comma separated 
         pairs of oid=value. For example, 
-        BLADESPPALT-MIB::spTrapAppType=4,BLADESPPALT-MIB::spTrapAppType=4.
+        spTrapAppType=4,spTrapMsgText=~power,spTrapMsgText=Hello there.
     email:  specifies the events that will get email notification.
     log:    specifies the events that will get logged.
     runcmd: specifies the events that will be passed to the user defined scripts.
@@ -798,9 +798,9 @@ sub getDescription {
       Informational -- all informational events.
 
     For example, you can have the following setting:
-      email  CRITICAL,BLADESPPALT-MIB::pTrapPriority=4
-      This means send email for all the critical events and the BladeCenter 
-      system events.\n"  
+      email  Critical,spTrapMsgText=~Test this,spTrapMsgText=Hello there
+      This means send email for all the critical events and events with spTrapMsgText
+      contains the phrase 'Test this' or equals 'Hello there'.\n"  
 }
 
 #--------------------------------------------------------------------------------
