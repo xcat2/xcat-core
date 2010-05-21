@@ -1,9 +1,9 @@
-=head1 B<NAME>
+=head1 NAME
 
 B<lsflexnode> - Display the information of flexible node
 
 
-=head1 B<SYNOPSIS>
+=head1 SYNOPSIS
 
 B<lsflexnode> [-h | --help]
 
@@ -12,7 +12,7 @@ B<lsflexnode> [-v | --version]
 B<lsflexnode> I<noderange> 
 
 
-=head1 B<DESCRIPTION>
+=head1 DESCRIPTION
 
 IBM BladeCenter HX5 offers flexibility ideal that the blades can be combined together for scalability. 
 
@@ -35,9 +35,9 @@ A B<Partition> can be created base on the B<Complex>, each B<Partition> can have
 The I<noderange> in the B<SYNOPSIS> can be a AMM node or a blade node.
 
 
-=head1 B<OPTIONS>
+=head1 OPTIONS
 
-=over 4
+=over 17
 
 =item B<-h | --help>
 
@@ -51,7 +51,7 @@ Display the version information.
 
 
 
-=head1 B<ATTRIBUTES>
+=head1 ATTRIBUTES
 
 The meaning of attributes which displayed by the B<lsflexnode>. The word 'node' in this section means B<Blade slot node>.
 
@@ -123,9 +123,9 @@ The identifier of the complex this node belongs to.
 
 The identifier of the partition this node belongs to.
 
+=back
 
-
-=head1 B<EXAMPLES>
+=head1 EXAMPLES
 
 =over 3
 
@@ -133,9 +133,10 @@ The identifier of the partition this node belongs to.
 
 Display all the B<Complex>, B<Partition> and B<Blade slot node> which managed by a AMM.
 
-B<lsflexnode> amm1
+ lsflexnode amm1
 
 The output:
+
     amm1: Complex - 24068
     amm1: ..Partition number - 1
     amm1: ..Complex node number - 2
@@ -161,9 +162,10 @@ The output:
 
 Display a flexible node.
 
-B<lsflexnode> blade1
+ lsflexnode blade1
 
 The output:
+
     blade1: Flexnode state - poweredoff
     blade1: Complex id - 24068
     blade1: Partition id - 1
@@ -175,10 +177,10 @@ The output:
 
 =back
 
-=head1 B<FILES>
+=head1 FILES
 
 /opt/xcat/bin/lsflexnode
 
 =head1 SEE ALSO
 
-L<mkflexnode>, L<rmflexnode>
+L<mkflexnode(1)|mkflexnode.1>, L<rmflexnode(1)|rmflexnode.1>

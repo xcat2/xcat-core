@@ -1,9 +1,9 @@
-=head1 B<NAME>
+=head1 NAME
 
 B<rmflexnode> - Delete a flexible node.
 
 
-=head1 B<SYNOPSIS>
+=head1 SYNOPSIS
 
 B<rmflexnode> [-h | --help]
 
@@ -12,7 +12,7 @@ B<rmflexnode> [-v | --version]
 B<rmflexnode> I<noderange>
 
 
-=head1 B<DESCRIPTION>
+=head1 DESCRIPTION
 
 Delete a flexible node which created by the B<mkflexnode> command.
 
@@ -24,9 +24,9 @@ After the deleting, use the B<lsflexnode> to check the status of the node.
 
 The I<noderange> only can be a blade node.
 
-=head1 B<OPTIONS>
+=head1 OPTIONS
 
-=over 4
+=over 17
 
 =item B<-h | --help>
 
@@ -39,7 +39,7 @@ Display the version information.
 =back
 
 
-=head1 B<EXAMPLES>
+=head1 EXAMPLES
 
 =over 3
 
@@ -49,14 +49,14 @@ Delete a flexible node base on the xCAT node blade1.
 
 The blade1 should belong to a complex, the I<id> attribute should be set correctly and all the slots should be in B<power off> state.
 
-B<rmflexnode> blade1
+ rmflexnode blade1
 
 =back
 
-=head1 B<FILES>
+=head1 FILES
 
 /opt/xcat/bin/rmflexnode
 
 =head1 SEE ALSO
 
-L<lsflexnode>, L<mkflexnode>
+L<lsflexnode(1)|lsflexnode.1>, L<mkflexnode(1)|mkflexnode.1>

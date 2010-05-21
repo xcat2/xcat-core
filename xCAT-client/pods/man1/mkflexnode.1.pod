@@ -1,9 +1,9 @@
-=head1 B<NAME>
+=head1 NAME
 
 B<mkflexnode> - Create a flexible node.
 
 
-=head1 B<SYNOPSIS>
+=head1 SYNOPSIS
 
 B<mkflexnode> [-h | --help]
 
@@ -12,7 +12,7 @@ B<mkflexnode> [-v | --version]
 B<mkflexnode> I<noderange>
 
 
-=head1 B<DESCRIPTION>
+=head1 DESCRIPTION
 
 A flexible node is a B<Partition> in a complex. Creating a flexible node is to create a partition which including all the slots defined in the xCAT blade node.
 
@@ -24,9 +24,9 @@ After the creating, use the B<lsflexnode> to check the status of the node.
 
 The I<noderange> only can be a blade node.
 
-=head1 B<OPTIONS>
+=head1 OPTIONS
 
-=over 4
+=over 17
 
 =item B<-h | --help>
 
@@ -39,7 +39,7 @@ Display the version information.
 =back
 
 
-=head1 B<EXAMPLES>
+=head1 EXAMPLES
 
 =over 3
 
@@ -49,14 +49,14 @@ Create a flexible node base on the xCAT node blade1.
 
 The blade1 should belong to a complex, the I<id> attribute should be set correctly and all the slots should be in B<power off> state.
 
-B<mkflexnode> blade1
+ mkflexnode blade1
 
 =back
 
-=head1 B<FILES>
+=head1 FILES
 
 /opt/xcat/bin/mkflexnode
 
 =head1 SEE ALSO
 
-L<lsflexnode>, L<rmflexnode>
+L<lsflexnode(1)|lsflexnode.1>, L<rmflexnode(1)|rmflexnode.1>
