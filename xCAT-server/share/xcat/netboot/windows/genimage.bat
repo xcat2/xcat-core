@@ -33,14 +33,16 @@ bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX% /set {bootmgr} timeout 1
 bcdedit /store c:\WinPE_%SUFFiX%\pxe\Boot\BCD.%SUFFIX% /set {bootmgr} displayorder %GUID%
 bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%
 
-"C:\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" /mountrw c:\WinPE_%SUFFIX%\pxe\Boot\winpe_%SUFFIX%.wim 1 c:\WinPE_%SUFFIX%\rootfs
+dism /mount-wim /wimfile:c:\WinPE_%SUFFIX%\pxe\Boot\winpe_%SUFFIX%.wim /index:1 /mountdir:c:\WinPE_%SUFFIX%\rootfs
 copy startnet.cmd c:\WinPE_%SUFFIX%\rootfs\Windows\system32
 copy "C:\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" c:\WinPE_%SUFFIX%\rootfs\Windows\system32
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\pxeboot.n12 c:\WinPE_%SUFFIX%\pxe\Boot\pxeboot.0
+copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\wdsmgfw.efi c:\WinPE_%SUFFIX%\pxe\Boot\wdsmgfw.efi
+copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\EFI\bootmgfw.efi c:\WinPE_%SUFFIX%\pxe\Boot\bootmgfw.efi
+copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\EFI\bootmgr.efi c:\WinPE_%SUFFIX%\pxe\Boot\bootmgr.efi
 copy c:\WinPE_%SUFFIX%\rootfs\Windows\Boot\PXE\bootmgr.exe c:\WinPE_%SUFFIX%\pxe\
-for /r c:\drivers %%d in (*.inf) do "C:\Program Files\Windows AIK\Tools\PETools\peimg.exe" /inf=%%d c:\WinPE_%SUFFIX%\rootfs
-"C:\Program Files\Windows AIK\Tools\PETools\peimg.exe" /inf= c:\WinPE_%SUFFIX%\rootfs
-"C:\Program Files\Windows AIK\Tools\%ARCH%\imagex.exe" /unmount /commit c:\WinPE_%SUFFIX%\rootfs
+for /r c:\drivers %%d in (*.inf) do dism /image c:\WinPE_%SUFFIX%\rootfs /add-driver /driver:%%d 
+dism /Unmount-Wim /commit /mountdir:c:\WinPE_%SUFFIX%\rootfs
 
 echo Upload c:\WinPE_%SUFFIX%\pxe to somewhere
 goto :eof
