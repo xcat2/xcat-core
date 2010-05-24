@@ -1199,6 +1199,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
     }
    close($cfgfile);
    chmod(0755,"$rootimg_dir/etc/init.d/gettyset");
+   system("chroot $rootimg_dir insserv gettyset");
    #link("$rootimg_dir/sbin/init","$rootimg_dir/init");
    my $rc = system("grep sshd $rootimg_dir/etc/init.d/.depend.start");
    if ($rc) {
