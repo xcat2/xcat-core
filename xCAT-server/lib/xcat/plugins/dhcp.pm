@@ -1048,10 +1048,9 @@ sub addnet
         {
             push @netent, "    option domain-name-servers  $nameservers;\n";
         }
-        push @netent, "zone $domain. {\n";
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;
-        push @netent, "$domain. {\n";
+        push @netent, "zone $domain. {\n";
         push @netent, "   primary $ddnserver; key xcat_key; \n";
         push @netent, " }\n";
         my $tmpmaskn = unpack("N", inet_aton($mask));
@@ -1236,7 +1235,6 @@ sub newconfig
     push @dhcpconf, "omapi-port 7911;\n";        #Enable omapi...
     push @dhcpconf, "key xcat_key {\n";
     push @dhcpconf, "  algorithm hmac-md5;\n";
-    push @dhcpconf, ('class "pxe" {'."\n","   match if substring (option vendor-class-identefier, 0, 9) = \"PXEclient\";\n","   ddns-updates off;\n","    max-lease-time 600;\n");
     (my $passent) =
       $passtab->getAttribs({key => 'omapi', username => 'xcat_key'}, 'password');
     my $secret = encode_base64(genpassword(32));    #Random from set of  62^32
@@ -1257,6 +1255,7 @@ sub newconfig
     push @dhcpconf, "  secret \"" . $secret . "\";\n";
     push @dhcpconf, "};\n";
     push @dhcpconf, "omapi-key xcat_key;\n";
+    push @dhcpconf, ('class "pxe" {'."\n","   match if substring (option vendor-class-identifier, 0, 9) = \"PXEclient\";\n","   ddns-updates off;\n","    max-lease-time 600;\n");
 }
 
 sub newconfig_aix
