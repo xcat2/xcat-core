@@ -18,7 +18,6 @@
 #Future ToolsCenter enhancements may dictate that we drop support for version 1.10 to cleanly take advantage of it
 
 
-
 package xCAT_plugin::toolscenter;
 BEGIN
 {
@@ -39,6 +38,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
+use File::stat;
 use File::Temp qw/mkdtemp/;
 use strict;
 my @cpiopid;
@@ -152,11 +152,12 @@ sub mknetboot
             $xcatiport = $ref->{value};
         }
     }
-    my %donetftp=();
     my %oents = %{$ostab->getNodesAttribs(\@nodes,[qw(os arch profile)])};
     my $restab = xCAT::Table->new('noderes');
     my $bptab  = xCAT::Table->new('bootparams',-create=>1);
     my $hmtab  = xCAT::Table->new('nodehm');
+    my $cmostab  = xCAT::Table->new('cmossettings');
+    my $cmoshash  = $cmostab->getNodesAttribs(\@nodes, ['file']);
     my $reshash    = $restab->getNodesAttribs(\@nodes, ['tftpserver','xcatmaster']);
     my $hmhash =
           $hmtab->getNodesAttribs(\@nodes,
@@ -182,35 +183,55 @@ sub mknetboot
         my $arch    = $ent->{arch};
         my $profile = $ent->{profile};
         my $suffix  = 'gz';
-        unless ( -r "/$installroot/netboot/$osver/$arch/$profile/img2a" and -r "/$installroot/netboot/$osver/$arch/$profile/img3a") {
+	my $path = "/$installroot/netboot/$osver/$arch/$profile";
+	my $tpath = "/$tftpdir/xcat/netboot/$osver/$arch/$profile";
+	my $cmosfile = $cmoshash->{$node}->[0]->{file};   
+	if ($cmosfile) {
+	  copy($cmosfile,"$path/repo/$node.cmos");
+	}
+	my $asu = "/toolscenter/asu";
+	if ($ent->{arch} eq "x86_64") {
+	    $asu = "/toolscenter/asu64";
+	}
+        unless ( -r "$path/img2a" and -r "$path/img3a" and -r "$path/tc.zip") {
             $callback->(
                         {
-                         error     => ["Unavailable or unrecognized IBM ToolsCenter image in $installroot/netboot/$osver/$arch/$profile/"],
+                         error     => ["Unavailable or unrecognized IBM ToolsCenter image in $path"],
                          errorcode => [1]
                         }
                         );
             next;
         }
-        unless ( -r "/$installroot/netboot/$osver/$arch/$profile/img2b" ) {
-            system("dd if=/$installroot/netboot/$osver/$arch/$profile/img2a of=/$installroot/netboot/$osver/$arch/$profile/img2b bs=2048 skip=1");
+        unless (-r "$path/img2b" and # but not if it's newer
+                stat("$path/img2b")->mtime > stat("$path/img2a")->mtime) {
+            system("dd if=$path/img2a of=$path/img2b bs=2048 skip=1");
         }
-        unless ( -r "/$installroot/netboot/$osver/$arch/$profile/img3b" ) {
-            system("dd if=/$installroot/netboot/$osver/$arch/$profile/img3a of=/$installroot/netboot/$osver/$arch/$profile/img3b bs=2048 skip=1");
+        unless (-r "$path/img3b"  and # but not if it's newer
+                stat("$path/img3b")->mtime > stat("$path/img3a")->mtime) {
+            system("dd if=$path/img3a of=$path/img3b bs=2048 skip=1");
         }
-        unless ( -r "/$installroot/netboot/$osver/$arch/$profile/tc.xcat.zip" ) {
+        unless (-r "$path/tc.xcat.zip" and 
+# regen if tc.zip is newer - they updated the repo underneath us
+     		stat("$path/tc.xcat.zip")->mtime > stat("$path/tc.zip")->mtime) {
             my $dpath = mkdtemp("/tmp/xcat/toolscenter.$$.XXXXXXX");
             unless (-d $dpath) {
                 $callback->({error => ["Failure creating temporary directory to extract ToolsCenter content for xCAT customization" ], errorcode => [1]});
                 return 1;
             }
             chdir $dpath;
-            system("unzip /$installroot/netboot/$osver/$arch/$profile/tc.zip");
+            system("unzip $path/tc.zip");
             my $menush;
             open($menush,">","menu/menu.sh");
-            print $menush "#!/bin/sh\n";
+            print $menush "#!/bin/sh -x\n";
+            print $menush 'LOG_PATH=/bomc/${hostname}',"\n";
+            print $menush 'mkdir -p $LOG_PATH',"\n";
+            print $menush 'ERROR_FILE=/bomc/${hostname}/error.log',"\n";
+            print $menush 'LOG_FILE=/bomc/${hostname}/bomc.log',"\n";
             print $menush '${UXSPI_BINARY_PATH} update --unattended --firmware -l ${UXSPI_BOOTABLE} --timeout=${UXSPI_TIMEOUT}'."\n";
-            print $menush 'if [ $? ]; then /bin/sh; fi'."\n";#TODO: proper feedback
             print $menush 'DIR=`dirname $0`'."\n";
+            print $menush 'if [ ${cmos_file} != "" ]; then',"\n";
+            print $menush "  $asu",' batch ${cmos_file}', "\n";
+            print $menush "fi\n";
             print $menush '$DIR/calltoxcat.awk ${xcat_server} '."$xcatiport\n";
             print $menush "reboot\n";
             close($menush);
@@ -249,6 +270,9 @@ ENDOFAWK
             foreach (@oldunattendmenu) {
                 if (/^exit 0/) { #the exit line, hijack this
                     print $menush 'DIR=`dirname $0`'."\n";
+                    print $menush 'if [ ${cmos_file} != "" ]; then',"\n";
+                    print $menush "  $asu",' batch ${cmos_file}', "\n";
+                    print $menush "fi\n";
                     print $menush '$DIR/calltoxcat.awk ${xcat_server} '."$xcatiport\n";
                     print $menush "reboot\n";
                 } else {
@@ -256,33 +280,35 @@ ENDOFAWK
                 }
             }
             close($menush);
-            system("zip /$installroot/netboot/$osver/$arch/$profile/tc.xcat.zip -r .");
+            system("zip $path/tc.xcat.zip -r .");
             chdir "..";
             system("rm -rf $dpath");
         }
                 
-        mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+        mkpath($tpath);
 
-        #TODO: only copy if newer...
-        unless ($donetftp{$osver,$arch,$profile}) {
-        copy("/$installroot/netboot/$osver/$arch/$profile/img2b",
-             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-        copy("/$installroot/netboot/$osver/$arch/$profile/img3b",
-             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-        copy("/$installroot/netboot/$osver/$arch/$profile/tcrootfs",
-             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-        copy("/$installroot/netboot/$osver/$arch/$profile/tc.xcat.zip",
-             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/tc.zip");
-            $donetftp{$osver,$arch,$profile} = 1;
+	unless ( -r "$tpath/img2b"  and 
+           stat("$path/img2b")->mtime < stat("$tpath/img2b")->mtime) {
+          copy("$path/img2b",$tpath);
+	}
+	unless ( -r "$tpath/img3b"  and 
+           stat("$path/img3b")->mtime < stat("$tpath/img3b")->mtime) {
+          copy("$path/img3b",$tpath);
+	}
+	unless ( -r "$tpath/tcrootfs"  and 
+           stat("$path/tcrootfs")->mtime < stat("$tpath/tcrootfs")->mtime) {
+          copy("$path/tcrootfs",$tpath);
+	}
+	unless ( -r "$tpath/tc.zip"  and 
+          stat("$path/tc.xcat.zip")->mtime < stat("$tpath/tc.zip")->mtime) {
+          copy("$path/tc.xcat.zip","$tpath/tc.zip");
         }
-        unless (    -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/img2b"
-                and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/img3b")
+        unless ( -r "$tpath/img2b" and -r "$tpath/img3b" and
+	 	-r "$tpath/tcrootfs" and -r "$tpath/tc.zip")
         {
             $callback->(
                 {
-                 error => [
-                     "Copying to /$tftpdir/xcat/netboot/$osver/$arch/$profile failed"
-                 ],
+                 error => [ "Copying to $tpath failed" ],
                  errorcode => [1]
                 }
                 );
@@ -325,7 +351,11 @@ ENDOFAWK
                 );
             next;
         }
-        my $kcmdline = "vga=0x317 root=/dev/ram0 rw ramdisk_size=100000 tftp_server=$imgsrv tftp_tcrootfs=xcat/netboot/$osver/$arch/$profile/tcrootfs tftp_tczip=xcat/netboot/$osver/$arch/$profile/tc.zip xcat_server=$xcatserver";
+	$tpath =~ s!/$tftpdir/!!;
+        my $kcmdline = "vga=0x317 root=/dev/ram0 rw ramdisk_size=100000 tftp_server=$imgsrv tftp_tcrootfs=$tpath/tcrootfs tftp_tczip=$tpath/tc.zip xcat_server=$xcatserver hostname=$node";
+	if ($cmosfile) {
+		$kcmdline .= " cmos_file=/bomc/$node.cmos";
+	}
         if (defined $sent->{serialport})
         {
 
@@ -359,12 +389,12 @@ ENDOFAWK
            
         #}
         
-	    my $kernstr="xcat/netboot/$osver/$arch/$profile/img2b";
+	    my $kernstr="$tpath/img2b";
         $bptab->setNodeAttribs(
                       $node,
                       {
                        kernel => "$kernstr",
-                       initrd => "xcat/netboot/$osver/$arch/$profile/img3b",
+                       initrd => "$tpath/img3b",
                        kcmdline => $kcmdline
                       }
                       );
