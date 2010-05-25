@@ -16,8 +16,12 @@ if [ $OS != "AIX" ]; then
 
     if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
     #  Being run from a stateful install postscript
-       echo 1 | $vacpp_script
-       echo 1 | $xlf_script
+       if [ -n "$vacpp_script" ] ; then
+           echo 1 | $vacpp_script
+       fi
+       if [ -n "$xlf_script" ] ; then
+           echo 1 | $xlf_script
+       fi
     fi
 
     if [ $NODESETSTATE == "genimage" ]; then

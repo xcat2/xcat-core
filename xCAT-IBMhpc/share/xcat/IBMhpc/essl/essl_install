@@ -30,10 +30,14 @@ if [ $OS != "AIX" ]; then
         wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
         rpm -Uvh essl.license*.rpm
         install_essl=`find /opt/ibmmath/essl -name install_essl -print`
-        $install_essl -y -d . -nodocs
+        if [ -n "$install_essl" ] ; then
+            $install_essl -y -d . -nodocs
+        fi
         rpm -Uvh pessl.license*.rpm
         install_pessl=`find /opt/ibmmath/pessl -name install_pessl -print`
-        $install_pessl -y -d . -nodocs
+        if [ -n "$install_pessl" ] ; then
+            $install_pessl -y -d . -nodocs
+        fi
         rm -Rf /tmp/essl
     fi
 
@@ -46,10 +50,14 @@ if [ $OS != "AIX" ]; then
         rpm --root $installroot -Uvh $installroot/$tmpdir/essl.license*.rpm
         cd $installroot
         install_essl=`find opt/ibmmath/essl -name install_essl -print`
-        chroot $installroot /$install_essl -y -nodocs -d /$tmpdir
+        if [ -n "$install_essl" ] ; then
+            chroot $installroot /$install_essl -y -nodocs -d /$tmpdir
+        fi
         rpm --root  $installroot -Uvh $installroot/$tmpdir/pessl.license*.rpm
         install_pessl=`find opt/ibmmath/pessl -name install_pessl -print`
-        chroot $installroot /$install_pessl -y -nodocs -d /$tmpdir
+        if [ -n "$install_pessl" ] ; then
+            chroot $installroot /$install_pessl -y -nodocs -d /$tmpdir
+        fi
         rm -rf $installroot/$tmpdir
     fi
 fi  
