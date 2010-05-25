@@ -154,9 +154,6 @@ sub mknetboot
             $platform = "sles";
             #TODO: should get the $pkgdir value from the linuximage table
             $pkgdir = "$installroot/$osver/$arch";
-            if($osver =~ m/sles11/ and -r "$pkgdir/1/suseboot/yaboot") {
-                copy("$pkgdir/1/suseboot/yaboot", "/tftpboot/");
-            }
         }elsif($osver =~ /suse.*/){
             $platform = "sles";
 	    }
@@ -604,11 +601,6 @@ sub mkinstall
                 {
                     copy("$pkgdir/1/suseboot/inst64",
                          "/tftpboot/xcat/$os/$arch");
-                    #special case for sles 11 and 11.x 
-                    if ( $os =~ m/sles11/ and -r "$pkgdir/1/suseboot/yaboot")
-                    {
-                        copy("$pkgdir/1/suseboot/yaboot", "/tftpboot/");
-                    }
                 }
                 $doneimgs{"$os|$arch"} = 1;
             }

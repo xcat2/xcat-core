@@ -162,21 +162,8 @@ sub setstate {
   foreach $ip (keys %ipaddrs) {
    my @ipa=split(/\./,$ip);
    my $pname = sprintf("%02x%02x%02x%02x",@ipa);
-   #special case for sles 11
-   my $mac = lc($machash{$node}->[0]->{mac});
-   $mac =~ s/!.*//;
-   $mac =~ s/\|.*//;
-   if (! (grep /\:/, $mac) ) {
-      $mac =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
-   }
-   my @mac_substr = split /\:/, $mac;
-   my $sles_yaboot_link = sprintf("yaboot.conf-%s-%s-%s-%s-%s-%s", @mac_substr);
    unlink($tftpdir."/etc/".$pname);
    link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
-
-   # Add the yaboot.conf-%s-%s-%s-%s-%s-%s for both the rh and sles
-   unlink($tftpdir . "/" . $sles_yaboot_link);
-   link($tftpdir."/etc/".$node, $tftpdir . '/' . $sles_yaboot_link);
   }
 }
   
