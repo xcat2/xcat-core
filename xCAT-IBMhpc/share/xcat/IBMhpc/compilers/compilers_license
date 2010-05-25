@@ -27,8 +27,12 @@ if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "genimage" ]; then
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
-        echo 1 | chroot $installroot /$vacpp_script
-        echo 1 | chroot $installroot /$xlf_script
+       if [ -n "$vacpp_script" ] ; then
+           echo 1 | chroot $installroot /$vacpp_script
+       fi
+       if [ -n "$xlf_script" ] ; then
+           echo 1 | chroot $installroot /$xlf_script
+       fi
     fi
 fi  
 
