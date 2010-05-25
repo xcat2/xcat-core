@@ -107,12 +107,16 @@ sub do_getmacs {
             $cmd.= " -i";
         }
     }
-
+    
     #######################################
     # Network specified (-D ping test)
     #######################################
     if ( exists( $opt->{S} )) { 
-        $cmd.= " -D -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C}";
+        if ( exists( $opt->{o} )) {
+            $cmd .=" -o";
+        }
+
+        $cmd.= " -D -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C} ";
     } 
     #######################################
     # Add command options 

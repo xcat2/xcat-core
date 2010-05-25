@@ -33,7 +33,7 @@ sub do_rnetboot {
     my $pw      = @$exp[5];
     my $cmd;
     my $result;
-
+    
     #######################################
     # Disconnect Expect session
     #######################################
@@ -101,7 +101,9 @@ sub do_rnetboot {
     # Network specified
     #######################################
     $cmd.= " -s auto -d auto -m $opt->{m} -S $opt->{S} -G $opt->{G} -C $opt->{C}";
-   
+    if (  exists( $opt->{o} )) {
+        $cmd.= " -o";
+    }
     #######################################
     # Add command options
     #######################################
@@ -203,7 +205,10 @@ sub rnetboot {
     if ( exists( $options->{s} )) {
         $opt{s} = $options->{s};
     }
-
+    if ( exists( $options->{o} )) {
+        $opt{o} = $options->{o};
+    }
+     
     #####################################
     # Invalid target hardware 
     #####################################
