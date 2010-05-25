@@ -41,7 +41,7 @@ if [ $OS != "AIX" ]; then
         rm -f -R /tmp/loadl/*
         cd /tmp/loadl
         download_dir=`echo $LOADL_DIR | cut -d '/' -f3-`
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
         rpm -Uvh LoadL-full-license*.rpm
         $linux_loadl_license_script -c resmgr -y -d .
         rm -Rf /tmp/loadl

@@ -27,7 +27,7 @@ if [ $OS != "AIX" ]; then
         rm -f -R /tmp/essl/*
         cd /tmp/essl
         download_dir=`echo $ESSL_DIR | cut -d '/' -f3-`
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
         rpm -Uvh essl.license*.rpm
         install_essl=`find /opt/ibmmath/essl -name install_essl -print`
         $install_essl -y -d . -nodocs
