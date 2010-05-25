@@ -3351,10 +3351,13 @@ sub get_ServiceNode
     my $master =
       xCAT::Utils->get_site_Master();    # read the site table, master attrib
 
-	# for AIX nodes the NIM primary will be either the site.NIMprime attr
-	#	or, if not set, the site.master attr
-	my $nimprime = xCAT::InstUtils->getnimprime();
-    chomp $nimprime;
+	my $nimprime;
+	if (xCAT::Utils->isAIX()) {
+		# for AIX nodes the NIM primary will be either the site.NIMprime attr
+		#	or, if not set, the site.master attr
+		$nimprime = xCAT::InstUtils->getnimprime();
+    	chomp $nimprime;
+	}
 
     $noderestab = xCAT::Table->new('noderes');
 	$nodetab = xCAT::Table->new('nodetype');
