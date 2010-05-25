@@ -868,10 +868,24 @@ sub copycd
 
             if ($prod =~ m/SUSE-Linux-Enterprise-Server/)
             {
-                my @parts    = split /\s+/, $prod;
-                my @subparts = split /-/,   $parts[2];
-                $detdistname = "sles" . $subparts[0];
-                unless ($distname) { $distname = "sles" . $subparts[0] };
+                if (-f "$path/content") {
+                    my $content;
+                    open($content,"<","$path/content");
+                    my @contents = <$content>;
+                    close($content);
+                    foreach (@contents) {
+                        if (/^VERSION/) {
+                            my @verpair = split;
+                            $detdistname = "sles".$verpair[1];
+                            unless ($distname) { $distname = $detdistname; }
+                        }
+                    }
+                } else {
+                    my @parts    = split /\s+/, $prod;
+                    my @subparts = split /-/,   $parts[2];
+                    $detdistname = "sles" . $subparts[0];
+                    unless ($distname) { $distname = "sles" . $subparts[0] };
+                }
 		# check media.1/products for text.  
 		# the cselx is a special GE built version.
 		# openSUSE is the normal one.
