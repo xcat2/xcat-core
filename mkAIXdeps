@@ -5,7 +5,7 @@
 #    - it puts everything in a aix-dep-snap subdirectory
 #
 # to upload deps gz file to FRS SourceForge location
-#scp ./dep-aix-2.3-200909241259.tar.gz nott,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x_AIX/
+#scp ./dep-aix-200909241259.tar.gz nott,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat-dep/2.x_AIX/
 
 BLDTOP=`pwd`
 RPMDIR=$BLDTOP/aix-dep-snap
@@ -151,8 +151,8 @@ chmod +x $RPMDIR/instoss
 chgrp xcat *
 chmod g+w *
 
-tar -cvf $RPMDIR/dep-aix-$VER-$SNAP.tar -L $RPMDIR/flist
-gzip $RPMDIR/dep-aix-$VER-$SNAP.tar
+tar -cvf $RPMDIR/dep-aix-$SNAP.tar -L $RPMDIR/flist
+gzip $RPMDIR/dep-aix-$SNAP.tar
 
 # make a second tar.gz for mysql packages
 cp /opt/freeware/src/packages/RPMS/ppc/perl-DBD-mysql-4.007-1.aix5.3.ppc.rpm $RPMDIR/
@@ -174,8 +174,8 @@ echo "README" >> $RPMDIR/flist2
 chgrp xcat *
 chmod g+w *
 
-tar -cvf $RPMDIR/xcat-mysql-$VER-$SNAP.tar -L $RPMDIR/flist2
-gzip $RPMDIR/xcat-mysql-$VER-$SNAP.tar
+tar -cvf $RPMDIR/xcat-mysql-$SNAP.tar -L $RPMDIR/flist2
+gzip $RPMDIR/xcat-mysql-$SNAP.tar
 
 
 # create xcat-web-dep tar ball
@@ -195,8 +195,8 @@ cp /xcat-web-dep.tar.gz $RPMDIR/
 #chmod +x $RPMDIR/instwebdep
 #echo "instwebdep" >> $RPMDIR/flist3
 #echo "web-dep.README" >> $RPMDIR/flist3
-#tar -cvf $RPMDIR/xcat-web-dep-$VER-$SNAP.tar -L $RPMDIR/flist3
-#gzip $RPMDIR/xcat-web-dep-$VER-$SNAP.tar
+#tar -cvf $RPMDIR/xcat-web-dep-$SNAP.tar -L $RPMDIR/flist3
+#gzip $RPMDIR/xcat-web-dep-$SNAP.tar
 
 cd $RPMDIR
 
