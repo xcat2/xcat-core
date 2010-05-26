@@ -1,0 +1,495 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# This script sets up the Bootable Media Creator Environment for later use
+#
+# Process steps:
+# 1) USER downloads version of BOMC suitable for the mgt node's OSVER and ARCH
+# 2) We gather machine types and download firmware
+# 3) We construct the bootable image and set up the NFS mount
+# 
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use IO::File;
+use File::Path;  
+use File::Copy;  
+use Getopt::Long;
+use strict;
+
+use constant DEFAULT_LOG_FILE => "mktoolscenter.log"; 
+
+my $surrogate = 0;        
+my $nodels = "/opt/xcat/bin/nodels";
+my %Options = ('interactive',"yes",'warnings','','log',"yes",'dump',"yes");
+my @warnings;
+my $logfile = DEFAULT_LOG_FILE;
+my $now = localtime;
+
+#
+# print a warning and wait a bit if warnings are enabled
+#
+sub warning {
+  my $msg = shift;
+  if ($Options{warnings} ne '') {
+    print($msg, "\n");
+    sleep 10;
+  }
+  push(@warnings,$msg);
+}
+
+#
+# output a value to the log file and stdout
+#
+sub output {
+  if ($Options{log} ne '') {
+    print(LOG "@_\n");
+  }
+  print("@_\n");
+}
+
+#
+# common exit processing
+#
+
+sub at_exit {
+  if (@warnings > 0) {
+    output("WARNINGS FOLLOW");
+    while (@warnings > 0) {
+      output(pop(@warnings));
+    }
+  }
+}
+
+#
+# Remove leading and trailing whitespaces
+#
+sub remove_whitespaces {
+  my $string = shift;
+
+  $string =~ s/^\s*//;
+  $string =~ s/\s*$//;
+  return $string;
+}
+
+#
+# Pose a question and get a response
+#
+sub question {
+  my $message = shift;
+  my $defaultreply = shift;
+  my $type = shift;
+  my $reply = '';
+
+  do {
+    if ($Options{interactive} ne '') {
+      print($message, ' [',  $defaultreply , '] ');
+      $reply = <STDIN>;
+      $reply = '' unless defined($reply);
+      chomp($reply);
+    }
+    else {
+      seek (IN, 0, 0) || die "rewind failed";
+      while (<IN>) {
+        chomp;
+        if ( /"#"/ ) {
+        }  # scan out comments
+        elsif ( /$message/ ) {
+          my $garb;
+          ($garb, $reply) = split(":");
+          seek (IN, 0, 2) || die "seek end failed";
+        }
+      }
+      if ($reply eq '') {
+        warning("Question ($message) not present in input file - please rerun in interactive mode");
+        at_exit();
+        exit (-1);
+      }
+    }
+
+    $reply = remove_whitespaces($reply);
+    if ($reply eq '') {
+      $reply = $defaultreply;
+    }
+    if ($type eq "yesno") {
+      if (($reply =~ /^y$/i) || ($reply =~ /^yes$/)) {
+        $reply = "yes";
+      } elsif (($reply =~ /^n$/i) || ($reply =~ /^no$/)) {
+        $reply = "no";
+      } else {
+        print("Unrecognizable - try again\n");
+        $reply = '';
+      }
+    }
+  } while ($reply eq '');
+  if ($Options{log} ne '') {
+    print(LOG  $message, ": ", $reply, "\n");
+  }
+  return $reply;
+}
+
+#
+# Begin main
+#
+
+GetOptions("s"=>\$surrogate, "l=s"=>\$logfile);
+
+if (@ARGV > 0) {
+        open(IN,"<",@ARGV[0]) || die "cannot open input file @ARGV[0]";
+        $Options{interactive} = '';
+}
+
+my $ARCH = `uname -m`;
+chomp($ARCH);
+my $WEIRDARCH = $ARCH;   
+$WEIRDARCH =~ s/_/-/;
+my $OSVER = "unknown";
+my $util = "ibm_utl_bomc*.bin";
+my $asu = "ibm_utl_asu_asut*$WEIRDARCH.tgz";
+
+if ( -e '/etc/SuSE-release' ) {     
+    $OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
+} elsif ( -e '/etc/redhat-release' ) {
+    $OSVER="rhels" . `cat /etc/redhat-release |cut -f7 -d' '`;
+    chomp($OSVER);
+}
+
+open(LOG, ">", $logfile) || die "cannnot open logfile";
+print(LOG "# Date: ",$now, "\n");
+
+output("#Your target OS version and architecture are:", $OSVER, $ARCH );
+
+#
+# if this is a surrogate - these will have to be answered manually
+#
+
+my $instroot;
+my $machines;
+if ($surrogate eq 0) {
+   $instroot = `gettab key=installdir site.value`;
+   my $nodes = `$nodels|tr '\n' ','`;
+   $machines = `$nodels $nodes vpd.mtm |cut -f2 -d:|sort -u|cut -b2-5`;
+} else {
+   $instroot = question("What is the installdir?","/install",'');
+   $machines = question("What is the list of machine types?","7947",'');
+}
+
+#
+# end questions for surrogate
+#
+
+chomp($instroot);
+
+my @machines = split("\n",$machines,);
+$machines = '';
+my $i;
+for ($i= 0; $i < @machines; $i++) {
+  if (@machines[$i] ne '') {
+    if ($machines ne '') {
+      $machines .= "," . @machines[$i];
+    }
+    else {
+      $machines = @machines[$i];
+    }
+  }
+}
+output("#It appears that you have these machine types in your inventory:", $machines);
+while ( question("Would you like to add others?","no","yesno") eq "yes") {
+   print "Here is a list of known supported machine types: \n\n";
+   print " IBM BladeCenter HS12 (8014, 1916, 8028)\n";
+   print " IBM BladeCenter HS20 (1883, 8843)\n";
+   print " IBM BladeCenter HS21 (8853, 1885)\n";
+   print " IBM BladeCenter HS21 XM (7995, 1915)\n";
+   print " IBM BladeCenter HS22 (1936, 7870)\n";
+   print " IBM BladeCenter HS22V (1949, 7871)\n";
+   print " IBM BladeCenter LS20 (8850)\n";
+   print " IBM BladeCenter LS21 (7971)\n";
+   print " IBM BladeCenter LS22 (7901)\n";
+   print " IBM BladeCenter LS41 (7972)\n";
+   print " IBM BladeCenter LS42 (7902)\n";
+   print " IBM System x3105 (4347)\n";
+   print " IBM System x3200 (4362, 4363)\n";
+   print " IBM System x3200 M2 (4367, 4368)\n";
+   print " IBM System x3200 M3 (7327, 7328)\n";
+   print " IBM System x3250 (4364, 4365, 4366)\n";
+   print " IBM System x3250 M2 (4190, 4191, 4194)\n";
+   print " IBM System x3250 M3 (4251, 4252)\n";
+   print " IBM System x3350 (4192, 4193)\n";
+   print " IBM System x3400 (7973, 7974, 7975, 7976)\n";
+   print " IBM System x3400 M2 (7836, 7837)\n";
+   print " IBM System x3400 M3 (7878, 7379)\n";
+   print " IBM System x3450 (4197, 7948)\n";
+   print " IBM System x3455 (7940, 7941, 7984, 7986)\n";
+   print " IBM System x3500 (7977)\n";
+   print " IBM System x3500 M2 (7839)\n";
+   print " IBM System x3500 M3 (7880)\n";
+   print " IBM System x3550 (1913, 7978)\n";
+   print " IBM System x3550 M2 (7946)\n";
+   print " IBM System x3550 M3 (4254, 7944)\n";
+   print " IBM System x3650 (1914, 7979)\n";
+   print " IBM System x3650 M2 (7947)\n";
+   print " IBM System x3650 M3 (4255, 7945)\n";
+   print " IBM System x3655 (7943, 7985)\n";
+   print " IBM System x3755 (7163, 8877)\n";
+   print " IBM System x3800 (8866)\n";
+   print " IBM System x3850 (8863, 7365, 8864, 7362)\n";
+   print " IBM System x3850 M2 (7233, 7234, 7141, 7144)\n";
+   print " IBM System x3850 X5 (7145, 7146)\n";
+   print " IBM System x3950 (8872, 7366, 8878, 7363)\n";
+   print " IBM System x3950 M2 (7141, 7233, 7234)\n";
+   print " IBM System x3950 E (8874, 7367, 8879, 7364)\n";
+   print " IBM System x3950 X5 (7145)\n";
+   print " IBM System x iDataPlex dx320 server (6388)\n";
+   print " IBM System x iDataPlex dx340 server (7832)\n";
+   print " IBM System x iDataPlex dx360 server (7833)\n";
+   print " IBM System x iDataPlex dx360 M2 server (7321, 7323, 6380)\n";
+   print " IBM System x iDataPlex dx360 M3 server (6391)\n";
+   print " IBM eServer xSeries 206m (8485, 8490)\n";
+   print " IBM eServer xSeries 226 (8648, 8488)\n";
+   print " IBM eServer xSeries 236 (8841)\n";
+   print " IBM eServer xSeries 260 (8865)\n";
+   print " IBM eServer xSeries 306m (8491, 8849, 1887)\n";
+   print " IBM eServer xSeries 336 (8837, 1879)\n";
+   print " IBM eServer xSeries 346 (1880, 8840)\n";
+   print " IBM eServer xSeries 366 (8863)\n";
+   print " IBM eServer xSeries 460 (8874)\n";
+   print " IBM eServer xSeries MXE 460 (8874)\n";
+   my $add = question("Additional Machine Type is?","6391",'');
+   if ($machines ne '') {
+      $machines .= "," . $add;
+   }
+   else {
+      $machines = $add;
+   }
+   output("#Current list is now:", $machines);
+}
+
+my $srcdir = question("Where is the ibm_utl_bomc bin file?","/root/Desktop",'');
+my $asudir = question("Where is the ibm_utl_asu tgz file?","/root/Desktop",'');
+my $ppath = "$instroot/netboot/toolscenter/$ARCH";
+my $path = "$ppath/bomc";
+my $repo = "$ppath/repo";
+my $one_path = "$instroot/netboot/toolscenter/$ARCH";
+my $two_path = "$instroot/netboot/bomc/$ARCH";
+while ($path) {
+  $_ = question("Do you want to change the target path?",$path,'');
+  last if (( /$one_path/ ) or ( /$two_path/ ));  
+};
+$path = $_;
+my $sandbox = "$repo/sandbox";
+if ( mkdir($path) or mkdir($sandbox) or system("cp $srcdir/$util $repo") or system("cp $asudir/$asu $repo")) {
+  output("Error making path or copying input file");
+  exit;
+}
+
+if ( system("chmod +x $repo/$util") or system("cd $repo; tar -zxf $asu") or system("cd $repo; ./$util --tui -m $machines")) {
+  output("Error executing $repo/$util");
+  exit;
+}
+
+my $src = "/opt/xcat/share/xcat/templates/cmos_settings";
+if ( system("cp -r $src $repo")) {
+  output("Error copying $src to $repo");
+  exit;
+}
+
+my $do_asu = question("Do you want to configure CMOS Settings for ASU?","yes","yesno");
+if ($do_asu eq "yes") {
+  my $sol = question("Are these systems configured for SOL?","yes","yesno");
+  my $hpc = question("Are these HPC systems?","yes","yesno");
+  if ($sol eq "yes") {
+    $sol = "sol";
+  } 
+  else {
+    $sol = "nosol";
+  }
+
+  if ($hpc eq "yes") {
+    $hpc = "hpc";
+  } 
+  else {
+    $hpc = "default";
+  }
+  my $srcp = "$repo/cmos_settings/$sol/$hpc";
+  foreach my $node (`$nodels`) {
+    chomp($node);
+    my $machine_type = `$nodels $node vpd.mtm |cut -f2 -d: |cut -b2-5`;
+    chomp($machine_type);
+    if ($machine_type ne '' and -e "$srcp/$machine_type") {
+      `chtab node=$node cmossettings.file="$srcp/$machine_type"`;
+    }
+  }
+}
+
+my $sh;
+open($sh, ">","$sandbox/start.sh");
+print $sh <<'ENDOFSH';
+#!/bin/sh -x
+#
+# This script prepares the current Linux environment for ToolsCenter. 
+export PATH=$PATH:/sbin:/usr/sbin:/usr/local/sbin:/root/bin:/usr/local/bin:/usr/bin:/usr/X11R6/bin:/bin:/usr/games:/usr/lib/mit/bin:/usr/lib/mit/sbin
+
+cp -f /toolscenter/media_check.sh /tmp/media_check.sh
+chmod +x /tmp/media_check.sh
+
+cd /toolscenter/
+chmod -R +x * /dev/null 2>/dev/null
+dos2unix /toolscenter/bomc200.config > /dev/null 2>&1
+
+#disable Crtl+z and Ctrl+c
+trap "" 2 20
+
+BOMC_MENU=/toolscenter/menu/show_menu.sh
+BOMC_LOG_FILE=/tmp/bomc.log
+# Export the UXSPI_TIMEOUT environment to uxspi
+TIMEOUT=60
+if cat bomc200.config | grep IBM_SYSTEM_TIMEOUT > /dev/null 2>&1
+then
+  TIMEOUT=`cat bomc200.config | grep IBM_SYSTEM_TIMEOUT | sed 's/IBM_SYSTEM_TIMEOUT=//'`
+fi
+export UXSPI_TIMEOUT=${TIMEOUT}
+
+# setup a mount point
+mkdir -p /bomc
+MNTPOINT=/bomc
+mount -t nfs ${xcat_server}:#BOMCPATH# /bomc
+
+export UXSPI_BOOTABLE=/bomc
+
+# SEP environment variable
+export SEP_REPOSITORY_PATH=/toolscenter
+export SEP_INSTALL_PATH=/tmp
+
+# UXSPI environment variable
+export UXLITE_CLEAN_INVFILE=1
+export UXSPI_CLEAN_INVFILE=1
+export UXSPI_BINARY_PATH=`find /toolscenter/uxspi -name 'uxspi*.sles10_64' | sort | tail -n 1`
+export UXSPI_GUI_CMD="xterm -geometry 168x58+5+5 +sb -e ${UXSPI_BINARY_PATH}"
+export UXSPI_TUI_CMD="${UXSPI_BINARY_PATH} update --tui --firmware -l ${UXSPI_BOOTABLE} --timeout=${UXSPI_TIMEOUT}"
+
+# DSA environment variable
+export DSA_PATH=/tmp/embed:/tmp/embed/qlogic:/usr/X11R6/lib64:/usr/X11R6/lib
+export DSA_GUI_CMD="xterm -geometry 168x58+5+5 +sb –e  /toolscenter/dsa/start.sh --gui"
+export DSA_CMD_CMD="xterm -geometry 168x58+5+5 +sb -e /toolscenter/dsa/start.sh --cmd"
+export DSA_TUI_CMD="/toolscenter/dsa/start.sh --cmd"
+
+# Export environment for exit script command
+if cat bomc200.config | grep "IBM_SYSTEM_MEDIA_EJECT=NO" > /dev/null 2>&1
+then
+        export BOMC_EXIT_CMD="/toolscenter/tcexit_noeject.sh"
+else
+        export BOMC_EXIT_CMD="/toolscenter/tcexit.sh"
+fi
+# Export environment for UXSPI autorun command
+if cat bomc200.config | grep "IBM_SYSTEM_AUTORUN=uxspi" > /dev/null 2>&1
+then
+        export UXSPI_AUTORUN=1
+fi
+
+# Export the unattended mode environment variable
+UNATTD_FULLSTR=`cat bomc200.config | grep IBM_SYSTEM_UNATTENDED | sed 's/IBM_SYSTEM_UNATTENDED=//'`
+if echo ${UNATTD_FULLSTR} | grep '[tftp://|ftp://|nfs://|smb://|usb:/]' > /dev/null 2>&1
+then
+  echo "Unattended mode specified by user" >> ${BOMC_LOG_FILE}
+  export BOMC_UNATTENDED_MODE=1
+fi
+
+if [ $# -eq 0 ]
+then
+  echo "Running in non SOL mode" >> ${BOMC_LOG_FILE}
+  if [ "${BOMC_UNATTENDED_MODE}" = "1" ]
+  then
+    echo "Calling show_menu.sh unattended" >> ${BOMC_LOG_FILE}
+          ${BOMC_MENU} unattended
+  else
+    echo "Calling show_menu.sh attended" >> ${BOMC_LOG_FILE}
+          ${BOMC_MENU} attended
+  fi
+else
+  if [ "$1" = "serial" ]
+  then
+        echo "Running in SOL mode - Console" >> ${BOMC_LOG_FILE}
+        export BOMC_SOL_MODE=1
+        if [ "${BOMC_UNATTENDED_MODE}" = "1" ]
+        then
+            echo "Calling show_menu.sh unattended" >> ${BOMC_LOG_FILE}
+                ${BOMC_MENU} unattended
+        else
+            echo "Calling show_menu.sh attended" >> ${BOMC_LOG_FILE}
+                ${BOMC_MENU} attended
+        fi
+  elif [ "$1" = "serial-on" ]
+  then
+while [ 1 ];do
+            clear
+            echo "ToolsCenter 2.0 started on SOL console......type \"reboot\" to reboot the system"
+             read INPUT
+             if [ "${INPUT}" = "reboot" ]
+             then
+                echo "Rebooting the system ..."
+                ${BOMC_EXIT_CMD} reboot
+                exit
+             elif [ "${INPUT}" = "r2d2" ]
+             then
+                 sh
+             fi
+        done
+  fi
+fi
+
+# Exit ToolsCenter
+echo "Using Exit Script: ${BOMC_EXIT_CMD}...."
+sleep 3
+
+if [ "${BOMC_UNATTENDED_MODE}" = "1" ]
+then
+        # Shut down the system when it's unattended image
+        ${BOMC_EXIT_CMD} shutdown
+elif cat bomc200.config | grep "IBM_SYSTEM_PXE_FILE=NULL" > /dev/null 2>&1
+then
+        echo "Rebooting the system ..."
+        ${BOMC_EXIT_CMD} reboot
+else
+        # Shut down the system when it's PXE image
+        echo "Shut down the system ..." 
+        ${BOMC_EXIT_CMD} shutdown
+fi
+exit 0
+ENDOFSH
+
+close($sh);
+my $editstr1 = "perl -pi -e !s|#BOMCPATH#|$repo|! $sandbox/start.sh";
+$editstr1 =~ s/!/\'/g;
+
+if (system($editstr1)) {
+  output("Error updating start.sh");
+  exit;
+}
+
+if ( system("cd $sandbox; cp $repo/asu* .; cp $repo/cdc_interface* .; cp $repo/$util .; cp -a $repo/uxspi .; cp $repo/ibm_utl_boot* .; echo y |./$util --tui --pxe=$path --no-acquire --latest --force")) {
+  output("Error executing $path/$util for the second time");
+  exit;
+}
+
+if ( symlink($repo,"$path/repo") eq 0 ) {
+  output("Error executing symlink $repo to $path/repo");
+  exit;
+}
+
+if ($surrogate eq 1) {
+  output("Creating tar");
+  my $tarme ="";
+  if ( -d "$instroot/netboot/toolscenter" ) {
+    $tarme = "$instroot/netboot/toolscenter ";     
+  }
+  if ( -d "$instroot/netboot/bomc" ) {
+    $tarme .= "$instroot/netboot/bomc";     
+  }
+  if ( system("tar -czf ~/surrogate.tgz $tarme") ) {
+    output("Error executing tar") ;
+  }
+  else {
+    output("To unpack it tar -zxf surrogate.tgz -C $instroot/netboot");
+  }
+}
