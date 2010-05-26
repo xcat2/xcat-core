@@ -369,26 +369,47 @@ sub makescript {
       push @scriptd, "export NOSYNCFILES\n";
   }
 
+  my $isdiskless = 0;
   my $setbootfromnet = 0;
   if (($arch eq "ppc64") || ($os =~ /aix.*/i))
   {
-       if (($provmethod) && ($provmethod ne "install")) { 
-         # on Linux, the provmethod can be install,netboot or statelite,
-         # on AIX, the provmethod can be null or diskless image name
-        (my $ip,my $mask,my $gw) = net_parms($node);
-        if (!$ip || !$mask || !$gw)
-        {
-             xCAT::MsgUtils->message('S',"Unable to determine IP, netmask or gateway for $node, can not set the node to boot from network");
-        }
-        else
-        {
-            $setbootfromnet = 1;
-            push @scriptd, "NETMASK=$mask\n";
-            push @scriptd, "export NETMASK\n";
-            push @scriptd, "GATEWAY=$gw\n";
-            push @scriptd, "export GATEWAY\n";
-        }
-      }
+       # on Linux, the provmethod can be install,netboot or statelite,
+       # on AIX, the provmethod can be null or image name
+       #this is for Linux
+       if (($provmethod) && (($provmethod eq "netboot") || ($provmethod eq "statelite"))) { 
+           $isdiskless = 1;   
+       }
+       if (($os =~ /aix.*/i) && ($provmethod) && ($provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
+           my $nimtype;
+           my $nimimagetab=xCAT::Table->new('nimimage', -create=>1);
+           if ($nimimagetab) {
+	      (my $ref) = $nimimagetab->getAttribs({imagename => $provmethod}, 'nimtype');
+	      if ($ref) {
+	          $nimtype = $ref->{'nimtype'}
+	      }
+          }
+          if ($nimtype eq 'diskless')
+          {
+              $isdiskless = 1;
+          }
+       }
+
+       if ($isdiskless)
+       {
+          (my $ip,my $mask,my $gw) = net_parms($node);
+          if (!$ip || !$mask || !$gw)
+          {
+               xCAT::MsgUtils->message('S',"Unable to determine IP, netmask or gateway for $node, can not set the node to boot from network");
+          }
+          else
+          {
+              $setbootfromnet = 1;
+              push @scriptd, "NETMASK=$mask\n";
+              push @scriptd, "export NETMASK\n";
+              push @scriptd, "GATEWAY=$gw\n";
+              push @scriptd, "export GATEWAY\n";
+          }
+       }
   }
   ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
   push @scriptd, "# postscripts-start-here\n";
@@ -523,7 +544,7 @@ sub net_parms {
     my $net = $_->{'net'};
     my $mask =$_->{'mask'};
     my $gw = $_->{'gateway'};
-    if (xCAT::NetworkUtils->ishostinsubnet($ip, $mask, $gw)) {
+    if (xCAT::NetworkUtils->ishostinsubnet($ip, $mask, $net)) {
       return ($ip,$mask,$gw);
     } 
   }
