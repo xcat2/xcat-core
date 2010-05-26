@@ -312,6 +312,7 @@ sub makescript {
 	  while (readline(FILE1)) {
 	      chomp($_); #remove newline
 	      s/\s+$//;  #remove trailing spaces
+              s/^\s*//;  #remove leading blanks
 	      next if /^\s*$/; #-- skip empty lines
 	      next if ( /^\s*#/ && 
                         !/^\s*#INCLUDE:[^#^\n]+#/ &&
