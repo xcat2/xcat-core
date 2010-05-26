@@ -1168,6 +1168,7 @@ srvnode.";
                 if (defined($alloc_count) && ($alloc_count != 0))
                 {
                     my $rsp;
+
                     push @{$rsp->{data}},
                       "The resource named \'$spot_name\' iscurrently allocated on service node \'$srvnode\'.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -2240,6 +2241,59 @@ sub mknimimage
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
+
+
+#ndebug
+	#
+	# Set root password in diskless images
+	#
+	my $rootpw;
+	my $method;
+	if (($::NIMTYPE eq "diskless") | ($::NIMTYPE eq "dataless"))
+	{
+		my $passwdtab = xCAT::Table->new('passwd');
+		unless ( $passwdtab) {
+			my $rsp;
+			push @{$rsp->{data}}, "Unable to open passwd table.";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
+
+		if ($passwdtab) {
+			my $et = $passwdtab->getAttribs({key => 'system', username => 'root'}, 'password','cryptmethod');
+			if ($et and defined ($et->{'password'})) {
+				$rootpw = $et->{'password'};
+			}
+			if ($et and defined ($et->{'cryptmethod'})) {
+                $method = $et->{'cryptmethod'};
+            }
+		}
+	}
+
+	if ($rootpw) {
+		if ( $::VERBOSE) {
+			my $rsp;
+			$rsp->{data}->[0] = "Setting the root password in the spot \'$spot_name\'\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+
+		}
+
+		chomp $rootpw;
+		my $pwcmd;
+		if ($method) {
+			$pwcmd = qq~xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -e" >/dev/null 2>&1~;
+		} else {
+			$pwcmd = qq~xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -c" >/dev/null 2>&1~;
+		}
+
+		my $out = xCAT::Utils->runcmd("$pwcmd", -1);
+		if ($::RUNCMD_RC != 0)
+		{
+			my $rsp;
+            push @{$rsp->{data}}, "Unable to set root password.";
+			push @{$rsp->{data}}, "$out\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
+	}
 
     #
     # Output results
