@@ -20,7 +20,7 @@ Getopt::Long::Configure("pass_through");
 
 my $cmdname = "liteimg";
 my $statedir = ".statelite";
-my $verbose = "0";
+my $verbose = "1";
 sub handled_commands {
 	return {
 		$cmdname => "statelite"
@@ -196,72 +196,136 @@ sub process_request {
         close SAVED;
     }
 
+    my %hashSaved = ();
+    if ( parseLiteFiles(\@listSaved, \%hashSaved) ) {
+        $callback->({error=>["parseLiteFiles failed for listSaved!"]});
+        return ;
+    }
+
 
 	# now get the files for the node	
 	my @synclist = xCAT::Utils->runcmd("ilitefile $imagename", 0, 1);
-	if(!@synclist){
+	unless (@synclist) {
 		$callback->({error=>["There are no files to sync for $imagename.  You have to have some files read/write filled out in the synclist table."],errorcode=>[1]});
 		return;
 	}
 
     my $listNew = $synclist[0]; 
-    # verify the entries in litefile.save
-    foreach my $line (@listSaved) {
-        my @oldentry = split(/\s+/, $line);
-        my $f = $oldentry[2];
-        # if the file is not in the new synclist, or the option for the file has been changed, we need to recover the file back
-        
-        my @newentries = grep /\s+$f$/, @{$listNew}; # should only one entry in the array
-        my @entry;
 
-        if (scalar @newentries == 1) {
-            @entry = split /\s+/, $newentries[0];
-        }
+    my %hashNew = ();
+    if ( parseLiteFiles($listNew, \%hashNew) ) {
+        $callback->({error=>["parseLiteFiles failed for listNew!"]});
+        return;
+    }
 
-        if($entry[1] eq $oldentry[1]) {
-            #$callback->({info => ["$f is not changed..."]});
-        } else {
-            # have to consider both genimage and liteimg re-run
-            $callback->({info => ["! $f may be removed or changed..."]});
-            if ($oldentry[1] =~ m/bind/) {
-                # shouldn't copy back from /.default, maybe the user has replaced the file/directory in .postinstall file
-                my $default = $rootimg_dir . "/.default" . $f;
-                xCAT::Utils->runcmd("rm -rf $default", 0, 1);   # not sure whether it's necessary right now
-            } else {
-                my $target = $rootimg_dir.$f;
-                if (-l $target) {   #not one directory
-                    my $location = readlink $target;
-                    # if it is not linked from tmpfs, it should be modified by the .postinstall file
-                    if ($location =~ /\.statelite\/tmpfs/) {
-                        xCAT::Utils->runcmd("rm -rf $target", 0, 1);
-                        my $default = $rootimg_dir . "/.default" . $f;
-                        if( -e $default) {
-                            xCAT::Utils->runcmd("cp -a $default $target", 0, 1);
-                        }else { # maybe someone deletes the copy in .default directory
-                            xCAT::Utils->runcmd("touch $target", 0, 1);
-                        }
-                    }
-                } else {    
-                    chop $target;
-                    if( -l $target ) {
-                        my $location = readlink $target;
-                        if ($location =~ /\.statelite\/tmpfs/) {
-                            xCAT::Utils->runcmd("rm -rf $target", 0, 1);
-                            my $default = $rootimg_dir . "/.default" . $f;
-                            if( -e $default) {
-                                xCAT::Utils->runcmd("cp -a $default $target", 0, 1);
-                            } else {
-                                xCAT::Utils->runcmd("mkdir $target", 0, 1);
-                            }
-                        }
-                    }
+    foreach my $entry (keys %hashNew) {
+        my @tmp = split (/\s+/, $entry);
+        if ($hashNew{$entry} and $tmp[1] =~ m/persistent/) {
+            foreach my $child ( @{$hashNew{$entry}} ) {
+                my @tmpc = split (/\s+/, $child);
+                unless ( $tmpc[1] =~ m/persistent/ ) {
+                    my $f = $tmp[2];
+                    my $fc = $tmpc[2];
+                    $callback->({error=>["$fc should have persistent option like $f "], errorcode=> [ 1]});
+                    return;
                 }
-
-                $target = $rootimg_dir . "/.statelite/tmpfs" . $f;
-                xCAT::Utils->runcmd("rm -rf $target", 0, 1);
             }
         }
     }
+
+    # backup the file/directory before recovering the files in litefile.save
+    unless ( -d "$rootimg_dir/.statebackup") {
+        if (-e "$rootimg_dir/.statebackup") {
+            xCAT::Utils->runcmd("rm $rootimg_dir/.statebackup", 0, 1);
+        }
+        $verbose && $callback->({info=>["mkdir $rootimg_dir/.statebackup"]});
+        xCAT::Utils->runcmd("mkdir $rootimg_dir/.statebackup", 0, 1);
+    }
+
+    # recovery the files in litefile.save if necessary
+    foreach my $line (keys %hashSaved) {
+        my @oldentry = split(/\s+/, $line);
+        my $f = $oldentry[2];
+
+        my @newentries = grep /\s+$f$/, @{$listNew};
+        my @entry;
+        if(scalar @newentries == 1) {
+            @entry = split(/\s+/, $newentries[0]);
+        }
+
+        # backup the children to .statebackup
+        if ($hashSaved{$line}) {
+            my $childrenRef = $hashSaved{$line};
+
+            unless ( -d "$rootimg_dir/.statebackup$f" ) {
+                xCAT::Utils->runcmd("rm -rf $rootimg_dir/.statebackup$f", 0, 1) if (-e "$rootimg_dir/.statebackup$f");
+                $verbose && $callback->({info=>["mkdir $rootimg_dir/.statebackup$f"]});
+                xCAT::Utils->runcmd("mkdir -p $rootimg_dir/.statebackup$f");
+            }
+            foreach my $child (@{$childrenRef}) {
+                my @tmpc = split(/\s+/, $child);
+                my $name = $rootimg_dir . $tmpc[2];
+
+                if (-e $name) {
+                    $verbose && $callback->({info=>["cp -a $name $rootimg_dir.statebackup$f"]});
+                    xCAT::Utils->runcmd("cp -a $name $rootimg_dir.statebackup$f");
+                }
+            }
+        }
+
+        unless ($entry[1] eq $oldentry[1]) {
+            recoverFiles($rootimg_dir, \@oldentry, $callback);
+            if ($hashSaved{$line}) {
+                $verbose && $callback->({info=>["$f has sub items in the litefile table."]});
+                my $childrenRef = $hashSaved{$line};
+                foreach my $child (@{$childrenRef}) {
+                    # recover them from .statebackup to $rootimg_dir
+                    my @tmpc = split (/\s+/, $child);
+                    my $name = $tmpc[2];
+                    my @newentries = grep /\s+$name$/, @{listNew};
+                    my @entry;
+
+                    my $destf = $rootimg_dir . $name;
+                    my $srcf = $rootimg_dir . ".statebackup" . $name;
+                    if ( -e $destf ) {
+                        $verbose && $callback->({info => ["rm -rf $destf"]});
+                        xCAT::Utils->runcmd("rm -rf $destf", 0, 1);
+                    }
+
+                    if ( -e $srcf ) {
+                        $verbose && $callback->({info=>["recovering from $srcf to $destf"]});
+                        xCAT::Utils->runcmd("cp -a $destf $srcf", 0, 1);
+                    }
+
+                }
+            }
+        }
+
+        # recover the children
+        if ($hashSaved{$line}) {
+            $verbose && $callback->({info=>["$f has sub items in the litefile table."]});
+            my $childrenRef = $hashSaved{$line};
+            foreach my $child (@{$childrenRef}) {
+                my @tmpc = split (/\s+/, $child);
+                my $name = $tmpc[2];
+                my @newentries = grep /\s+$name$/, @{listNew};
+                my @entry;
+                
+                if (scalar @newentries == 1) {
+                    @entry = split(/\s+/, $newentries[0]);
+                }
+                unless($tmpc[1] eq $entry[1]) {
+                    recoverFiles($rootimg_dir, \@tmpc, $callback);
+                }
+            }
+        }
+
+    }
+
+    # remove  .statebackup
+    $verbose && $callback->({info=>["remove .statebackup"]});
+    xCAT::Utils->runcmd("rm -rf $rootimg_dir/.statelite/.statebackup", 0, 1);
+    
     # then store the @synclist to litefile.save
     #system("cp $rootimg_dir/.statelite/litefile.save $rootimg_dir/.statelite/litefile.save1");
     open SAVED, ">$rootimg_dir/.statelite/litefile.save";
@@ -270,7 +334,7 @@ sub process_request {
     }
     close SAVED;
     
-
+=head3
     # then the @synclist
     # We need to consider the characteristics of the file if the option is "persistent,bind" or "bind"
 	my @files;
@@ -303,10 +367,44 @@ sub process_request {
 	}
 	
 	liteMe($rootimg_dir,\@files, \@bindedFiles, $callback);
+=cut
 
+    liteMeNew($rootimg_dir, \%hashNew, $callback);
 
-	
-	
+}
+
+sub liteMeNew {
+    my $rootimg_dir = shift;
+    my $hashNewRef = shift;
+    my $callback = shift;
+
+    unless (-d $rootimg_dir) {
+        $callback->({error=>["no rootimage dir"],errorcode=>[1]});
+        return;
+    }
+
+    # snapshot directory for tmpfs and persistent data.
+    $callback->({info=>["creating $rootimg_dir/$statedir"]});
+    unless ( -d "$rootimg_dir/$statedir/tmpfs" ) {
+        xCAT::Utils->runcmd("mkdir -p $rootimg_dir/$statedir/tmpfs", 0, 1);
+    }
+
+    foreach my $line (keys %{$hashNewRef}) {
+        liteItem($rootimg_dir, $line, 0, $callback);
+        if($hashNewRef->{$line}) { # there're children 
+            my $childrenRef = $hashNewRef->{$line};
+            print Dumper($childrenRef);
+            foreach my $child (@{$childrenRef}) {
+                liteItem($rootimg_dir, $child, 1, $callback);
+            }
+        }
+    }
+
+    # end loop, synclist should now all be in place.
+    # now stick the rc file in:
+    # this is actually a pre-rc file because it gets run before the node boots up all the way.
+    $verbose && $callback->({info => ["put the statelite rc file to $rootimg_dir/etc/init.d/"]});
+    system("cp -a $::XCATROOT/share/xcat/netboot/add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
 }
 
 
@@ -503,5 +601,283 @@ sub getRelDir {
 	chop($l); # get rid of last /
 	return $l
 }
+
+=head3 parseLiteFiles
+In the liteentry table, one directory and its sub-items (including sub-directory and entries) can co-exist;
+In order to handle such a scenario, one hash is generated to show the hirarachy relationship
+
+For example, one array with entry names is used as the input:
+my @entries = (
+    "imagename bind,persistent /var/",
+    "imagename bind /var/tmp/",
+    "imagename tmpfs,rw /root/",
+    "imagename tmpfs,rw /root/.bashrc",
+    "imagename tmpfs,rw /root/test/",
+    "imagename bind /etc/resolv.conf",
+    "imagename bind /var/run/"
+);
+Then, one hash will generated as:
+%hashentries = {
+          'imagename bind,persistent /var/' => [
+                                                 'imagename bind /var/tmp/',
+                                                 'imagename bind /var/run/'
+                                               ],
+          'imagename bind /etc/resolv.conf' => undef,
+          'imagename tmpfs,rw /root/' => [
+                                           'imagename tmpfs,rw /root/.bashrc',
+                                           'imagename tmpfs,rw /root/test/'
+                                         ]
+        };
+
+Arguments:
+    one array with entrynames,
+    one hash to hold the entries parsed
+
+Returns:
+    0 if sucucess
+    1 if fail
+
+=cut
+
+sub parseLiteFiles {
+    my ($flref, $dhref) = @_;
+    my @entries = @{$flref};
+
+
+    foreach (@entries) {
+        my $entry = $_;
+        my @str = split /\s+/, $entry;
+        my $file = $str[2];
+        chop $file if ($file =~ m{/$});
+        unless (exists $dhref->{"$entry"}) {
+            my $parent = dirname($file);
+            # to see whether $parent exists in @entries or not
+            unless ($parent =~ m/\/$/) {
+                $parent .= "/";
+            }
+            #$verbose && print "+++$parent+++\n";
+            #my $found = grep $_ =~ m/\Q$parent\E$/, @entries;
+            my @res = grep {$_ =~ m/\Q$parent\E$/} @entries;
+            my $found = scalar @res;
+            #$verbose && print "+++found = $found+++\n";
+
+            if($found eq 1) { # $parent is found in @entries
+                #$verbose && print "+++$parent is found+++\n";
+                chop $parent;
+                my @keys = keys %{$dhref};
+                my $kfound = grep {$_ =~ m/\Q$res[0]\E$/} @keys;
+                if($kfound eq 0) {
+                    $dhref->{$res[0]} = [];
+                }
+                push @{$dhref->{"$res[0]"}}, $entry;
+            }else {
+                $dhref->{"$entry"} = ();
+            }
+        }
+    }
+
+    return 0;
+}
+
+
+=head3
+    recoverFiles 
+=cut
+
+sub recoverFiles {
+    my ($rootimg_dir, $oldentry, $callback) = @_;
+    $f = $oldentry->[2];
+    
+    #$callback->({info => ["! updating $f ..."]});
+
+    if ($oldentry->[1] =~ m/bind/) {
+        # shouldn't copy back from /.default, maybe the user has replaced the file/directory in .postinstall file
+        my $default = $rootimg_dir . $f;
+        xCAT::Utils->runcmd("rm -rf $default", 0, 1);   # not sure whether it's necessary right now
+    } else {
+        my $target = $rootimg_dir . $f;
+        if (-l $target) {   #not one directory
+            my $location = readlink $target;
+            # if it is not linked from tmpfs, it should have been modified by the .postinstall file
+            if ($location =~ /\.statelite\/tmpfs/) {
+                xCAT::Utils->runcmd("rm -rf $target", 0, 1);
+                my $default = $rootimg_dir . "/.default" . $f;
+                if( -e $default) {
+                    xCAT::Utils->runcmd("cp -a $default $target", 0, 1);
+                }else { # maybe someone deletes the copy in .default directory
+                    xCAT::Utils->runcmd("touch $target", 0, 1);
+                }
+            }
+        } else {
+            chop $target;
+            if( -l $target ) {
+                my $location = readlink $target;
+                if ($location =~ /\.statelite\/tmpfs/) {
+                    xCAT::Utils->runcmd("rm -rf $target", 0, 1);
+                    my $default = $rootimg_dir . "/.default" . $f;
+                    if( -e $default) {
+                        xCAT::Utils->runcmd("cp -a $default $target", 0, 1);
+                    } else {
+                        xCAT::Utils->runcmd("mkdir $target", 0, 1);
+                    }
+                }
+            }
+        }
+        $target = $rootimg_dir . "/.statelite/tmpfs" . $f;
+        xCAT::Utils->runcmd("rm -rf $target", 0, 1);
+    }
+
+    return 0;
+}
+
+=head3
+    liteItem
+=cut
+
+sub liteItem {
+    my $rootimg_dir = shift;
+    my $item = shift;
+    my $isChild = shift;
+    my $callback = shift;
+
+    my @entry = split (/\s+/, $item);
+    my $f = $entry[2];
+
+    my $rif = $rootimg_dir . $f;
+    my $d = dirname($f);
+
+    if($entry[1] =~ m/bind/) {
+
+        # if no such file like $rif, create one
+        unless ( -e "$rif" ) {
+            if ($f =~ m{/$}) {
+                $verbose && $callback->({info=>["mkdir -p $rif"]});
+                system("mkdir -p $rif");
+            } else {
+                # check whether its directory exists or not
+                my $rifdir = $rootimg_dir . $d;
+                unless (-e $rifdir) {
+                    $verbose && $callback->({info => ["mkdir $rifdir"]});
+                    mkdir($rifdir);
+                }
+                $verbose && $callback->({info=>["touch $rif"]});
+                system("touch $rif");
+            }
+        }
+
+        unless ( -e "$rootimg_dir/.default$d" ) {
+            $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
+            system("mkdir -p $rootimg_dir/.default$d");
+        }
+        
+        # copy the file to /.defaults
+        $verbose && $callback->({info=>["cp -a $rif $rootimg_dir/.default$d"]});
+        system("cp -a $rif $rootimg_dir/.default$d");
+
+    }else {
+        # 1.  copy original contents if they exist to .default directory
+        # 2.  remove file
+        # 3.  create symbolic link to .statelite
+
+        if ($isChild == 0) {
+            #check if the file has been moved to .default by its parent or by last liteimg, if yes, then do nothing
+            my $ret=`readlink -m $rootimg_dir$f`;
+            if ($? == 0) {
+                if ($ret =~ /$rootimg_dir\/.default/) {
+                    $verbose && $callback->({info=>["do nothing for file $f"]});
+                    next;
+                }
+            }
+
+            # copy the file to /.defaults
+            if( -f "$rif" or -d "$rif"){
+                # if its already a link then leave it alone.
+                unless(-l $rif){
+                    # mk the directory if it doesn't exist:
+                    $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
+                    system("mkdir -p $rootimg_dir/.default$d");
+                
+                    # copy the file in place.
+                    $verbose && $callback->({info=>["cp -a $rif $rootimg_dir/.default$d"]});
+                    system("cp -a $rif $rootimg_dir/.default$d");
+
+                    # remove the real file
+                    $verbose && $callback->({info=>["rm -rf $rif"]});
+                    system("rm -rf $rif");
+                }
+            } else {
+                # in this case the file doesn't exist in the image so we create something to it.
+                # here we're modifying the read/only image
+
+                unless (-d "$rootimg_dir$d") {
+                    $verbose && $callback->({info=>["mkdir -p $rootimg_dir$d"]});
+                    system("mkdir -p $rootimg_dir$d");
+                }
+
+                unless(-d "$rootimg_dir/.default$d"){
+                    $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
+                    system("mkdir -p $rootimg_dir/.default$d");
+                }
+
+                # now make touch the file:
+                if($f =~ /\/$/){
+                    # if its a directory, make the directory in .default
+                    $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$f"]});
+                    system("mkdir -p $rootimg_dir/.default$f");
+                } else {
+                    # if its just a file then link it.
+                    $verbose && $callback->({info=>["touch $rootimg_dir/.default$f"]});
+                    system("touch $rootimg_dir/.default$f");
+                }
+            }
+
+            # now create the spot in tmpfs
+            $verbose && $callback->({info=>["mkdir -p $rootimg_dir/$statedir/tmpfs$d"]});
+            system("mkdir -p $rootimg_dir/$statedir/tmpfs$d");
+
+            # now for each file, create a symbollic link to /.statelite/tmpfs/
+            # strip the last / if its a directory for linking, but be careful!
+            # doing ln -sf ../../tmp <blah>../tmp when tmp is a directory creates 50 levels of links.
+            # have to do:
+            # ln -sf ../../tmp <blah>../../tmp/ <- note the / on the end!
+            if($f =~ /\/$/){
+                $f =~ s/\/$//g;
+            }
+            # now do the links.
+            # link the .default file to the .statelite file and the real file to the .statelite file.
+            # ../ for tmpfs
+            # ../ for .statelite
+            # the rest are for the paths in the file.
+            my $l = getRelDir($f);
+            $verbose && $callback->({info=>["ln -sf ../../$l/.default$f $rootimg_dir/$statedir/tmpfs$f"]});
+            system("ln -sfn ../../$l/.default$f $rootimg_dir/$statedir/tmpfs/$f");
+
+            $verbose && $callback->({info=>["ln -sf $l/$statedir/tmpfs$f $rootimg_dir$f"]});
+            system("ln -sfn $l/$statedir/tmpfs$f $rootimg_dir$f");
+
+        } else {
+            # since its parent directory has been linked to .default and .statelite/tmpfs/, 
+            # what we only to do is to check it exists in .default directory
+            if($f =~ m{/$}) { # one directory
+                unless ( -d "$rootimg_dir/.default$f" ) {
+                    if (-e "$rootimg_dir/.default$f") {
+                        xCAT::Utils->runcmd("rm -rf $rootimg_dir/.default$f", 0, 1);
+                    }
+                    $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$f"]});
+                    xCAT::Utils->runcmd("mkdir -p $rootimg_dir/.default$f", 0, 1);
+                }
+            }else { # only one file
+                my $fdir = dirname($f);
+                unless ( -d "$rootimg_dir/.default$fdir") {
+                    xCAT::Utils->runcmd("mkdir -p $rootimg_dir/.default$fdir", 0, 1);
+                }
+                $verbose && $callback->({info=>["touch $rootimg_dir/.default$f"]});
+                xCAT::Utils->runcmd("touch $rootimg_dir/.default$f", 0, 1);
+            }
+        }
+    }
+
+}
+
 
 1;
