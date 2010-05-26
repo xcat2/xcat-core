@@ -1493,15 +1493,15 @@ sub mkNIMnetwork
 			foreach my $int (@result) {
 				my ($inet, $myIP, $str) = split(" ", $int);
 				chomp $myIP;
-                                $myIP =~ s/\/.*//; # ipv6 address 4000::99/64
-                                $myIP =~ s/\%.*//; # ipv6 address ::1%1/128
+				$myIP =~ s/\/.*//; # ipv6 address 4000::99/64
+				$myIP =~ s/\%.*//; # ipv6 address ::1%1/128
 
-                                # if the ip address is in the subnet
-                                #       the right interface
-                                if ( xCAT::NetworkUtils->ishostinsubnet($myIP, $nethash{$node}{mask}, $nethash{$node}{net} )) {
-                                        $adapterhostname = xCAT::NetworkUtils->gethostname($myIP);
-                                        last;
-                                }
+				# if the ip address is in the subnet
+				#       the right interface
+				if ( xCAT::NetworkUtils->ishostinsubnet($myIP, $xnethash{$net}{mask}, $xnethash{$net}{net} )) {
+					$adapterhostname = xCAT::NetworkUtils->gethostname($myIP);
+					last;
+				}
 			}
 
 			# define the new interface
