@@ -7,7 +7,7 @@
 # description: statelite initialization script
 
 # get all the database files.
-set -x
+#set -x
 SL=".statelite"
 ME=`hostname`
 MNTDIR="/sysroot"
@@ -18,6 +18,9 @@ PERSISTENT="${MNTDIR}/$SL/persistent/$ME"
 TMPFS="${MNTDIR}/$SL/tmpfs"
 DEFAULT="${MNTDIR}/.default"
 LOG="${MNTDIR}/${SL}/statelite.log"
+ELIST=[]    # entry list, each entry will contain the type and the path
+declare -a CLIST 
+declare -a PLIST 
 
 
 if [ ! -d $MNTDIR ]
@@ -119,7 +122,8 @@ MountTrees () {
 }
 
 
-ResolveLinks () {
+ResolveLinksOld () {
+
 	# go through each file and do the right thing to it.
 	cat $SYNCLIST | grep -v "^#" | \
 	while read type path
@@ -129,12 +133,63 @@ ResolveLinks () {
 }
 
 
+ResolveLinks () {
+    exec <$SYNCLIST
+    i=0 
+    while read type path 
+    do
+        ELIST[$i]="$type $path";
+        i=`expr $i + 1`;
+    done
+
+    num=${#ELIST[@]}
+    # put all the child entry to the end of the ELIST array
+    for ((i=0;i<$num;i++)); do
+        set -- ${ELIST[$i]}
+        type=$1
+        path=$2
+    
+        parent="`dirname $path`/"
+        efound=0
+        for ((j=0;j<$num;j++)); do
+            set -- ${ELIST[$j]}
+            jtype=$1
+            jpath=$2
+            if [ "$parent" = "$jpath" ]; then
+                efound=1
+            fi  
+        done
+    
+        if [ "$efound" = "1" ]; then
+            # put it into CLIST
+            CLIST[`expr ${#CLIST[@]}`]=${ELIST[$i]}
+        else
+            # put it into PLIST
+            PLIST[`expr ${#PLIST[@]}`]=${ELIST[$i]}
+        fi  
+    done
+
+    num=${#PLIST[@]}
+    for ((i=0;i<$num;i++)); do
+        set -- ${PLIST[$i]}
+        FindFile ${2} ${1} 0
+    done
+
+    num=${#CLIST[@]}
+    for ((i=0;i<$num;i++)); do
+        set -- ${CLIST[$i]}
+        FindFile ${2} ${1} 1
+    done
+}
+
+
 
 
 ProcessType () {
 	#MOUNT=$1  	# mount point where this is.
 	#PATH=$2	  	# file
 	#TYPE=$3		# type of file
+    #isChild=$4     # child = 1, parent = 0
 	
 	# every type has to have a base dir in tmpfs
 	if [ ! -d ${TMPFS}`dirname ${2}` ]
@@ -143,7 +198,6 @@ ProcessType () {
 		echo "mkdir -p ${TMPFS}`dirname ${2}`" >>$LOG
 	fi	
 	
-
 	case "${3}" in 
 		tmpfs,rw)
             if [ -d ${TMPFS}${2} ]; then
@@ -173,8 +227,10 @@ ProcessType () {
                 echo "cp -a ${1} ${TMPFS}${2}" >>$LOG
             fi
             
-            echo "mount --bind ${TMPFS}${2} /sysroot${ORIG}" >>$LOG
-            mount --bind ${TMPFS}${2} /sysroot${ORIG}>>$LOG 2>&1           
+            if [ "$isChild" = "0" ]; then
+                echo "mount --bind ${TMPFS}${2} /sysroot${ORIG}" >>$LOG
+                mount --bind ${TMPFS}${2} /sysroot${ORIG}>>$LOG 2>&1           
+            fi
             ;;
         bind,persistent)
             if [ ! -d ${PERSISTENT}`dirname ${2}` ]
@@ -227,14 +283,16 @@ ProcessType () {
                 rm -Rf ${TARGET} 2>&1 >>$LOG
             fi
 
-            # finally make the tmpfs link point to the persistent file
+            if [ "$isChild" = "0" ]; then
+                # finally make the tmpfs link point to the persistent file
 
-			# you have to get rid of the /sysroot in the beginning 
-			# so that when the chroot happens the link is valid.	
-            LINK=`echo ${PERSISTENT}${2} | sed -e 's/^\/sysroot//'`
+			    # you have to get rid of the /sysroot in the beginning 
+			    # so that when the chroot happens the link is valid.	
+                LINK=`echo ${PERSISTENT}${2} | sed -e 's/^\/sysroot//'`
 
-			echo "ln -sf ${LINK} ${TARGET}" >>$LOG
-			ln -sf ${LINK} ${TARGET}        >>$LOG 2>&1
+			    echo "ln -sf ${LINK} ${TARGET}" >>$LOG
+			    ln -sf ${LINK} ${TARGET}        >>$LOG 2>&1
+            fi
 			;;
 		ro)
 			# need to make sure directory exists:
@@ -258,15 +316,17 @@ ProcessType () {
 FindFile () {
 	# $1 = Pathname to locate
 	# $2 = Type of file
+    # $3 = 0 or 1: 0 means parent, 1 means child
 	path=$1
 	type=$2
+    isChild=$3
 	FOUND=0
 	for DIR in `cat ${SYNCTREE} | sed 's/[^\/]*//'`
 	do
 		if [ -e ${TREEMOUNT}/${DIR}${path} ]
 		then
 			FOUND=1  # we found it!
-			ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type}
+			ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
 			if [ "${2}" = "con" ]
 			then
 				1
@@ -283,7 +343,7 @@ FindFile () {
 	then
 		if [ -e "${DEFAULT}${path}" ]
 		then
-			ProcessType ${DEFAULT}${path} ${path} ${type}
+			ProcessType ${DEFAULT}${path} ${path} ${type} ${isChild}
 		else
 			echo "Could not find ${path} in defaults or any other place" >/dev/console
 		fi
