@@ -20,7 +20,7 @@ Getopt::Long::Configure("pass_through");
 
 my $cmdname = "liteimg";
 my $statedir = ".statelite";
-my $verbose = "1";
+my $verbose = "0";
 sub handled_commands {
 	return {
 		$cmdname => "statelite"
@@ -324,7 +324,7 @@ sub process_request {
 
     # remove  .statebackup
     $verbose && $callback->({info=>["remove .statebackup"]});
-    xCAT::Utils->runcmd("rm -rf $rootimg_dir/.statelite/.statebackup", 0, 1);
+    xCAT::Utils->runcmd("rm -rf $rootimg_dir/.statebackup", 0, 1);
     
     # then store the @synclist to litefile.save
     #system("cp $rootimg_dir/.statelite/litefile.save $rootimg_dir/.statelite/litefile.save1");
