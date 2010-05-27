@@ -3,6 +3,7 @@ package xCAT_plugin::hosts;
 use strict;
 use warnings;
 use xCAT::Table;
+use xCAT::NetworkUtils;
 use Data::Dumper;
 use File::Copy;
 use Getopt::Long;
@@ -13,10 +14,11 @@ my @hosts; #Hold /etc/hosts data to be written back
 my $LONGNAME;
 my $OTHERNAMESFIRST;
 my $ADDNAMES;
+my $MACTOLINKLOCAL;
 
 
 my %usage=(
-    makehosts => "Usage: makehosts <noderange> [-d] [-n] [-l] [-a] [-o]\n       makehosts -h",
+    makehosts => "Usage: makehosts <noderange> [-d] [-n] [-l] [-a] [-o] [-m]\n       makehosts -h",
 );
 sub handled_commands {
   return {
@@ -144,6 +146,7 @@ sub process_request {
       'd'  => \$DELNODE,
       'o|othernamesfirst'  => \$OTHERNAMESFIRST,
       'a|adddomaintohostnames'  => \$ADDNAMES,
+      'm|mactolinklocal'  => \$MACTOLINKLOCAL,
       'l|longnamefirst'  => \$LONGNAME,))
   {
     $callback->({data=>$usage{makehosts}});
@@ -199,18 +202,36 @@ sub process_request {
   }
 
   if ($req->{node}) {
-    my $hostscache = $hoststab->getNodesAttribs($req->{node},[qw(ip node hostnames otherinterfaces)]);
-    foreach(@{$req->{node}}) {
-      my $ref = $hostscache->{$_}->[0]; #$hoststab->getNodeAttribs($_,[qw(ip node hostnames otherinterfaces)]);
-      if ($DELNODE) {
-          delnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
-      } else {
-          addnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
-          if (defined($ref->{otherinterfaces})){
-             addotherinterfaces $ref->{node},$ref->{otherinterfaces},$domain;
+    if ($MACTOLINKLOCAL) {
+        my $mactab = xCAT::Table->new("mac");
+        my $machash = $mactab->getNodesAttribs($req->{node},['mac']);
+        foreach my $node (keys %{$machash})
+        {
+            my $mac = $machash->{$node}->[0]->{mac};
+            if (!$mac) {
+                next;
+            }
+            my $linklocal = xCAT::NetworkUtils->linklocaladdr($mac);
+            if ($DELNODE) {
+              delnode $node,$linklocal,$node,$domain;
+            } else {
+              addnode $node,$linklocal,$node,$domain;
+            }
         }
-      }
-    }
+    } else {
+        my $hostscache = $hoststab->getNodesAttribs($req->{node},[qw(ip node hostnames otherinterfaces)]);
+        foreach(@{$req->{node}}) {
+          my $ref = $hostscache->{$_}->[0]; #$hoststab->getNodeAttribs($_,[qw(ip node hostnames otherinterfaces)]);
+          if ($DELNODE) {
+              delnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
+          } else {
+              addnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
+              if (defined($ref->{otherinterfaces})){
+                 addotherinterfaces $ref->{node},$ref->{otherinterfaces},$domain;
+            }
+          }
+        } #end foreach
+    } # end else
   } else {
       if ($DELNODE) {
           return;
