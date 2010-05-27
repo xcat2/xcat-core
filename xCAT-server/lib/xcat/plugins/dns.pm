@@ -234,6 +234,19 @@ sub get_dbdir {
     }
 }
 
+sub isvalidip {
+    #inet_pton/ntop good for ensuring an ip looks like an ip? or do string compare manually?
+    #for now, do string analysis, one problem with pton/ntop is that 010.1.1.1 would look diff from 10.1.1.1)
+    my $candidate = shift;
+    if ($candidate =~ /^(\d+)\.(\d+)\.(\d+).(\d+)\z/) {
+        return (
+            $1 >= 0 and $1 <= 255 and
+            $2 >= 0 and $2 <= 255 and
+            $3 >= 0 and $3 <= 255 and
+            $4 >= 0 and $4 <= 255
+            );
+    }
+}
 sub update_zones {
     my $ctx = shift;
     my $currzone;
@@ -253,6 +266,10 @@ sub update_zones {
     my $ip=$node;
     if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
         $ip = $ctx->{hoststab}->{$node}->[0]->{ip};
+        unless (isvalidip($ip)) {
+            sendmsg([1,"The hosts table entry for $node indicates $ip as an ip address, which is not a valid address"]);
+            next;
+        }
     } else {
         unless ($ip = inet_aton($ip)) {
             print "Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts";
