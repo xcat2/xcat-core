@@ -6,6 +6,7 @@ use strict;
 use xCAT::Table;
 
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 
 use xCAT::MsgUtils;
 use xCAT_plugin::dhcp;
@@ -256,10 +257,21 @@ sub init_plugin
 	if (grep(/$service/, @servicelist))
 	{
 	    
-	    $rc = &setup_ip_forwarding($nodename, $doreq);    # setup ip forwarding
+	    $rc =  xCAT::NetworkUtils->setup_ip_forwarding(1);    # enable ip forwarding
 	    if ($rc == 0)
 	    {
 		xCAT::Utils->update_xCATSN($service);
+	    }
+	} else {
+	    
+	    $rc =  xCAT::NetworkUtils->setup_ip_forwarding(0);    # disable ip forwarding
+	    if ($rc == 0)
+	    {
+		#remove the service from the /etc/xCATSN file
+		my $text=`sed -e "/$service/d" /etc/xCATSN`;
+                if ($?==0) {
+		    `echo "$text" > /etc/xCATSN`;
+		}
 	    }
 	}
     }
@@ -1240,34 +1252,6 @@ sub setup_HTTP
         {
             $rc = xCAT::Utils->startService("httpd");
         }
-    }
-    return $rc;
-}
-
-#-----------------------------------------------------------------------------
-
-=head3 setup_ip_forwarding
-
-    Sets up ip forwarding on the sn
-
-=cut
-
-#-----------------------------------------------------------------------------
-sub setup_ip_forwarding
-{
-    my $rc=0;
-    if (xCAT::Utils->isLinux()) {
-	my $conf_file="/etc/sysctl.conf";
-	$rc=`grep "net.ipv4.ip_forward" $conf_file`;
-        if ($? == 0) {
-	    `sed -i "s/^net.ipv4.ip_forward = 0/net.ipv4.ip_forward = 1/" $conf_file`;
- 	} else {
-	    `echo "net.ipv4.ip_forward = 1" >> $conf_file`;
-	}
-	$rc = `sysctl -p $conf_file`;
-    }
-    else
-    {    #AIX: TODO
     }
     return $rc;
 }

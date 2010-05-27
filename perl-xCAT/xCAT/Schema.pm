@@ -884,6 +884,21 @@ prescripts => {
     },
 },
 
+routes => {
+    cols => [qw(routename net mask gateway ifname comments disable)],
+    keys => [qw(routename)],
+    table_desc => 'Describes the additional routes needed to be setup in the os routing table. These routes usually are used to connect the management node to the compute node using the servie node as gateway.',
+    descriptions => {
+	routename => 'Name used to identify this route.',
+	net => 'The network address.',
+	mask => 'The network mask.',
+	ifname => 'The interface name of the management node facing the gateway.',
+	gateway => 'The gateway that routes the ip traffic from the mn to the nodes. It is usually a service node.',
+	comments => 'Any user-written notes.',
+	disable => "Set to 'yes' or '1' to comment out this row.",
+    },
+},
+
 zvm => {
 	cols => [qw(node hcp userid comments disable)],
 	keys => [qw(node)],
@@ -959,6 +974,7 @@ foreach my $tabname (keys(%xCAT::ExtTab::ext_tabspec)) {
   node =>    { attrs => [], attrhash => {}, objkey => 'node' },
   osimage => { attrs => [], attrhash => {}, objkey => 'imagename' },
   network => { attrs => [], attrhash => {}, objkey => 'netname' },
+  route => { attrs => [], attrhash => {}, objkey => 'routename' },
   group => { attrs => [], attrhash => {}, objkey => 'groupname' },
   site =>    { attrs => [], attrhash => {}, objkey => 'master' },
   policy => { attrs => [], attrhash => {}, objkey => 'priority' },
@@ -1855,6 +1871,37 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
  {attr_name => 'usercomment',
                  tabentry => 'networks.comments',
                  access_tabentry => 'networks.netname=attr:netname',
+                },
+             );
+#########################
+#  route data object  #
+#########################
+#     routes table    #
+#########################
+@{$defspec{route}->{'attrs'}} = (
+        {attr_name => 'routename',
+                 tabentry => 'routes.routename',
+                 access_tabentry => 'routes.routename=attr:routename',
+                 },
+        {attr_name => 'net',
+                 tabentry => 'routes.net',
+                 access_tabentry => 'routes.routename=attr:routename',
+  },
+        {attr_name => 'mask',
+                 tabentry => 'routes.mask',
+                 access_tabentry => 'routes.routename=attr:routename',
+  },
+        {attr_name => 'gateway',
+                 tabentry => 'routes.gateway',
+                 access_tabentry => 'routes.routename=attr:routename',
+  },
+        {attr_name => 'ifname',
+                 tabentry => 'routes.ifname',
+                 access_tabentry => 'routes.routename=attr:routename',
+  },
+ {attr_name => 'usercomment',
+                 tabentry => 'routes.comments',
+                 access_tabentry => 'routes.routename=attr:routename',
                 },
              );
 

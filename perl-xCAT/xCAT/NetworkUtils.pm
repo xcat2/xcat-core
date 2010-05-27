@@ -338,4 +338,32 @@ sub ishostinsubnet {
     }
 }
 
+#-----------------------------------------------------------------------------
+
+=head3 setup_ip_forwarding
+
+    Sets up ip forwarding on localhost
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub setup_ip_forwarding
+{
+    my ($class, $enable)=@_;  
+    if (xCAT::Utils->isLinux()) {
+	my $conf_file="/etc/sysctl.conf";
+	`grep "net.ipv4.ip_forward" $conf_file`;
+        if ($? == 0) {
+	    `sed -i "s/^net.ipv4.ip_forward = .*/net.ipv4.ip_forward = $enable/" $conf_file`;
+ 	} else {
+	    `echo "net.ipv4.ip_forward = $enable" >> $conf_file`;
+	}
+	`sysctl -p $conf_file`;
+    }
+    else
+    {    #AIX: TODO
+    }
+    return 0;
+}
+
 1;
