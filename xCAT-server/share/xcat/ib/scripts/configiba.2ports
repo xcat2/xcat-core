@@ -113,8 +113,9 @@ if ( $PLTFRM eq "Linux" ) {
     my $openibd_start_cmd = "/sbin/service openibd restart";
     runcmd($openibd_start_cmd);
 
-    sleep(5);
+    sleep(20);
     foreach my $nic ( @nics ) {
+        sleep(5);
         runcmd("ifup $nic");
         system("logger -t xcat 'configiba: successfully configured $nic.'");
     }
