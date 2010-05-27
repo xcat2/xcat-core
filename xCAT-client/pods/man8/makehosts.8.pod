@@ -4,7 +4,7 @@ B<makehosts> - sets up /etc/hosts from the xCAT hosts table.
 
 =head1 SYNOPSIS
 
-B<makehosts> [B<-n>] [I<noderange>] [B<-l>|B<--longnamefirst>] [B<-d>]
+B<makehosts> [B<-n>] [I<noderange>] [B<-l>|B<--longnamefirst>] [B<-d>] [B<-m>|B<--mactolinklocal>]
 
 B<makehosts> {B<-h>|B<--help>}
 
@@ -27,6 +27,11 @@ it will only replace the lines in the file that correspond to the nodes in the s
 
 The long name of the host will appear before the short name for each host in the /etc/hosts file.
 The default is short name first.
+
+=item B<-m>|B<--mactolinklocal>
+
+Updates /etc/hosts file with IPv6 link local addresses, the link local address is generated 
+from the mac address stored in mac table.
 
 =item B<-d>
 
