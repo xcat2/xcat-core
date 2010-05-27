@@ -261,12 +261,15 @@ sub linklocaladdr {
     }
     my ($m4, $m5)  = ("ff","fe");
 
-    my $bit = (int $m1) & 2;
-    if ($bit) {
-       $m1 = $m1 - 2;
-    } else {
-       $m1 = $m1 + 2;
-    }
+    #my $bit = (int $m1) & 2;
+    #if ($bit) {
+    #   $m1 = $m1 - 2;
+    #} else {
+    #   $m1 = $m1 + 2;
+    #}
+    $m1 = hex($m1);
+    $m1 = $m1 ^ 2;
+    $m1 = sprintf("%x", $m1);
 
     $m1 = $m1 . $m2;
     $m3 = $m3 . $m4;
