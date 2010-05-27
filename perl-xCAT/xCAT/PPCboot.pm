@@ -177,11 +177,15 @@ sub do_rnetboot {
         }
     }
 
+    if (  exists( $opt->{o} )) {
+        $cmd.= " -o";
+    }
     #######################################
     # Network specified
     #######################################
     $cmd.= " -s auto -d auto -m $opt->{m} -S $opt->{S} -G $opt->{G} -C $opt->{C} -N $opt->{N}";
-   
+  
+
     #######################################
     # Get required attributes from master
     # of the node if -I|--iscsiboot is
@@ -335,13 +339,17 @@ sub rnetboot {
     if ( exists( $options->{s} )) {
         $opt{s} = $options->{s};
     }
+    
+    if ( exists( $options->{o} )) {
+        $opt{o} = $options->{o};
+    }
+
     #####################################
     # Do iscsi boot
     #####################################
     if ( exists( $options->{I} )) {
         $opt{I} = 1; 
     }
-
 
     #####################################
     # Invalid target hardware 

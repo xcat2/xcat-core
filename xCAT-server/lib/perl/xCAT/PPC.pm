@@ -56,7 +56,7 @@ my %modules = (
 		      },
         rspconfig => { hmc    => "xCAT::PPCcfg",
                        fsp    => "xCAT::FSPcfg",
-                       bpa    => "xCAT::PPCcfg",
+                       bpa    => "xCAT::FSPcfg",
 		      },
         rflash    => { hmc    => "xCAT::PPCrflash",
                        fsp    => "xCAT::FSPflash",

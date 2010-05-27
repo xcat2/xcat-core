@@ -301,7 +301,10 @@ sub do_getmacs {
     #######################################
     # Network specified (-D ping test)
     #######################################
-    if ( exists( $opt->{S} )) { 
+    if ( exists( $opt->{S} )) {
+        if ( exists( $opt->{o} )) {
+            $cmd .=" -o";
+        }
         $cmd.= " -D -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C}";
     } 
     #######################################
