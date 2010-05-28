@@ -889,7 +889,7 @@ sub defmk
     } else {
         my $invalidnodename = ();
         foreach my $node (@::allobjnames) {
-            if ($node =~ /[A-Z]/) {
+            if (($node =~ /[A-Z]/) && ((!$::opt_t) || ($::opt_t eq "node"))) {
                 $invalidnodename .= ",$node";
             }
         }
@@ -2101,7 +2101,7 @@ sub defch
                 my $newobj = ();
                 my $invalidnodename = ();
                 foreach my $node (keys %newobjects) {
-                    if ($node =~ /[A-Z]/) {
+                    if (($node =~ /[A-Z]/) && ((!$::opt_t) || ($::opt_t eq "node"))) {
                         $invalidnodename .= ",$node";
                     }
                     $newobj .= ",$node";
