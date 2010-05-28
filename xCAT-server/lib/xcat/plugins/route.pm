@@ -325,20 +325,42 @@ sub route_exists {
     my $gw_ip = shift;
     my $gw=shift;
 
+    my $islinux=xCAT::Utils->isLinux();
     my $result;
-    $result=`route|grep $net`;
+    $result=`netstat -nr|grep $net`;
     if ($? == 0) {
 	if ($result) {
             my @b=split('\n', $result);
 	    foreach my $tmp (@b) {
 		chomp($tmp);
 		my @a=split(' ', $tmp);
-		if (@a >= 3) {
-		    my $net1=$a[0];
-		    my $mask1=$a[2];
-		    my $gw1=$a[1];
-		    if (($net1 eq $net) && ($mask1 eq $mask) && (($gw1 eq $gw) || ($gw1 eq $gw_ip)))  {
-			return 1;
+		if ($islinux) { #Linux
+		    if (@a >= 3) {
+			my $net1=$a[0];
+			my $mask1=$a[2];
+			my $gw1=$a[1];
+			if (($net1 eq $net) && ($mask1 eq $mask) && (($gw1 eq $gw) || ($gw1 eq $gw_ip)))  {
+			    return 1;
+			}
+		    }
+		} 
+		else { #AIX
+		    if (@a >= 2) {
+			my $tmp1=$a[0];
+			my $gw1=$a[1];
+
+                        #now convert $mask to bits
+			$net =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
+			my $netnum = ($1<<24)+($2<<16)+($3<<8)+$4;
+                        my $bits=32;
+			while (($netnum % 2) == 0) {
+			    $bits--;
+			    $netnum=$netnum>>1;
+			}
+			my $tmp2="$net/$bits";
+			if (($tmp1 eq $tmp2) && (($gw1 eq $gw) || ($gw1 eq $gw_ip)))  {
+			    return 1;
+			}
 		    }
 		}
 	    }
@@ -358,15 +380,21 @@ sub set_route {
     my $result;
     if (!route_exists($net, $mask, $gw_ip, $gw)) {
 	#set temporay route
-	print "cmd=route add -net $net netmask $mask gw $gw_ip\n";
-	$result=`route add -net $net netmask $mask gw $gw_ip 2>&1`;
+        my $cmd;
+	if (xCAT::Utils->isLinux()) {
+	    $cmd="route add -net $net netmask $mask gw $gw_ip";
+	} else {
+	    $cmd="route add -net $net -netmask $mask $gw_ip";
+	}
+	print "cmd=$cmd\n";
+	$result=`$cmd 2>&1`;
 	if ($? != 0) {
 	    my $rsp={};
-	    $rsp->{error}->[0]= "route add -net $net netmask $mask gw $gw_ip\nerror code=$?, result=$result\n";
+	    $rsp->{error}->[0]= "$cmd\nerror code=$?, result=$result\n";
 	    $callback->($rsp);
 	    return 1;
 	} else {
-	    #set per permanent route
+	    #TODO: set per permanent route
 	}
     }
     return 0;
@@ -383,15 +411,21 @@ sub delete_route {
     my $result;
     if (route_exists($net, $mask, $gw_ip, $gw)) {
 	#delete  route temporarily
-	print "cmd=route delete -net $net netmask $mask gw $gw_ip\n";
-	$result=`route delete -net $net netmask $mask gw $gw_ip 2>&1`;
+        my $cmd;
+	if (xCAT::Utils->isLinux()) {
+	    $cmd="route delete -net $net netmask $mask gw $gw_ip";
+	} else {
+	    $cmd="route delete -net $net -netmask $mask $gw_ip";
+	}
+	print "cmd=$cmd\n";
+	$result=`$cmd 2>&1`;
 	if ($? != 0) {
 	    my $rsp={};
-	    $rsp->{error}->[0]= "route delete -net $net netmask $mask gw $gw_ip\nerror code=$?, result=$result\n";
+	    $rsp->{error}->[0]= "$cmd\nerror code=$?, result=$result\n";
 	    $callback->($rsp);
 	    return 1;
 	} else {
-	    #delete route permanently
+	    #TODO: delete route permanently
 	}
     }
     return 0;
