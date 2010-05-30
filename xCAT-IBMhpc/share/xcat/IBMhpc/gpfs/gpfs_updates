@@ -42,11 +42,14 @@ if [ $OS != "AIX" ]; then
         rm -f -R /tmp/gpfs_updates/*
         cd /tmp/gpfs_updates
         wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=3 ftp://$SITEMASTER/$UPDATES_DIR/*.rpm 2> /tmp/wget.log
-        rpm -Uvh *.rpm
+        if [ -n "`ls *.rpm 2> /dev/null`" ] ; then
+            rpm -Uvh *.rpm
+        fi
         rm -f -R /tmp/gpfs_updates
     fi
 
     if [ $NODESETSTATE == "genimage" ]; then
+      if [ -d $INSTALL_DIR/$UPDATES_DIR ] ;  then
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
         if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
@@ -59,7 +62,7 @@ if [ $OS != "AIX" ]; then
 	# For Redhat, etc., assume yum is available on the system running genimage
              yum --installroot $installroot --nogpgcheck localupdate $INSTALL_DIR/$UPDATES_DIR/*.rpm
         fi
-
+      fi
     fi
 fi  
 
