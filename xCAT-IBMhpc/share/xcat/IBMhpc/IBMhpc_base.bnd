@@ -6,6 +6,8 @@ I:bos.adt.syscalls
 I:bos.adt.prof
 I:bos.cpr
 I:bos.loc.iso.en_US
+I:bos.loc.utf.EN_US
+I:bos.loc.com.utf
 I:bos.pmapi
 I:perfagent.tools
 I:sysmgt.sguide.rte
