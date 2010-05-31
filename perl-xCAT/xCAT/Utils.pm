@@ -3910,6 +3910,11 @@ sub validate_ip
     my ($class, @IPs) = @_;
     foreach (@IPs) {
         my $ip = $_;
+        #TODO need more check for IPv6 address
+        if ($ip =~ /:/)
+        {
+            return([0]);
+        }
         ###################################
         # Length is 4 for IPv4 addresses
         ###################################

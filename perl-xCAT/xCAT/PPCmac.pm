@@ -82,29 +82,6 @@ sub parse_args {
         my $server_ip;
         my %server_nethash;
 
-        my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( $node );
-        #####################################
-        # Network attributes undefined
-        #####################################
-        if ( !%client_nethash ) {
-            return( [RC_ERROR,"Cannot get network information for node"] );
-        }
-
-        if ( exists($opt{C}) ) {
-            if ( scalar(@$node) > 1 ) {
-                return( [RC_ERROR,"Option '-C' doesn't work with noderange\n"] );
-            }
-            push @network, $_;
-        } else {
-            # get, check the node IP
-            $client_ip = xCAT::NetworkUtils->getipaddr(@$node[0]);
-            chomp $client_ip;
-            if ( $client_ip ) {
-                $opt{C} = $client_ip;
-                push @network, $client_ip;
-            }
-        }
-
         ####################################
         # Set server IP
         ####################################
@@ -147,6 +124,39 @@ sub parse_args {
                 %server_nethash = xCAT::DBobjUtils->getNetwkInfo( [$server] );
             }
         }
+
+        my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( $node );
+        #####################################
+        # Network attributes undefined
+        #####################################
+        if ( !%client_nethash ) {
+            # IPv6, the client ip address may not be available,
+            # if the link local address is being used,
+            # the link local address is calculated from mac address
+            if ($opt{S} =~ /:/) {
+                #get the network "fe80::"
+                my $tmpll = "fe80::1";
+                %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$tmpll] );
+            } else {
+                return( [RC_ERROR,"Cannot get network information for node"] );
+            }
+        }
+
+        if ( exists($opt{C}) ) {
+            if ( scalar(@$node) > 1 ) {
+                return( [RC_ERROR,"Option '-C' doesn't work with noderange\n"] );
+            }
+            push @network, $_;
+        } else {
+            # get, check the node IP
+            $client_ip = xCAT::NetworkUtils->getipaddr(@$node[0]);
+            chomp $client_ip;
+            if ( $client_ip ) {
+                $opt{C} = $client_ip;
+                push @network, $client_ip;
+            }
+        }
+
 
         if ( exists($opt{G}) ) {
             push @network, $_;
