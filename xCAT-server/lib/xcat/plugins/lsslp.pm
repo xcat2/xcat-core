@@ -1974,6 +1974,9 @@ sub do_resetnet {
             if ( $namehash->{$name} ) {
                 if ( !$ip or $ip eq $namehash->{$name} ) {
                     send_msg( $req, 0, "$name: same ip address, skipping network reset" );
+                    if ($ip ne $oi) {
+                        $hoststab->setNodeAttribs( $name,{otherinterfaces=>$ip} );
+                    }
                     next;
                 }
             } else {
