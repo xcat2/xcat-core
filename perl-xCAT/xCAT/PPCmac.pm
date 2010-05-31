@@ -137,6 +137,10 @@ sub parse_args {
                 #get the network "fe80::"
                 my $tmpll = "fe80::1";
                 %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$tmpll] );
+                if (defined $client_nethash{$tmpll})
+                {
+                    $client_nethash{@$node[0]} = $client_nethash{$tmpll};
+                }
             } else {
                 return( [RC_ERROR,"Cannot get network information for node"] );
             }
@@ -154,6 +158,12 @@ sub parse_args {
             if ( $client_ip ) {
                 $opt{C} = $client_ip;
                 push @network, $client_ip;
+            } else {
+                if ($opt{S} =~ /:/) {
+                    # set the IPv6 loopback address, lpar_netboot will handle it
+                    $opt{C} = "::1";
+                    push @network, "::1";
+                }
             }
         }
 
