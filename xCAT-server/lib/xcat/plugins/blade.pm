@@ -1464,36 +1464,48 @@ sub getmacs {
        return (0, @ret);
    }
 
-   (my $code,my @macs)=inv('mac');
-   foreach (@macs) {
-       if (/(.*) ->/) { #Convert JS style mac ranges to pretend to be simple
-                        #this is not a guarantee of how the macs work, but 
-                        #this is as complex as this function can reasonably accomodate
-                        #if you need more complexity, the auto-discovery process
-                        #can actually cope
+   my @macs = ();
+   (my $code,my @orig_macs)=inv('mac');
+   foreach my $mac (@orig_macs) {
+       push @macs, $mac;
+       if ($mac =~ /(.*) -> (.*)/) { 
+           #Convert JS style mac ranges to pretend to be simple
+           #this is not a guarantee of how the macs work, but 
+           #this is as complex as this function can reasonably accomodate
+           #if you need more complexity, the auto-discovery process
+           #can actually cope
+
            my $basemac = $1;
+           my $lastmac = $2;
            $basemac =~ s/mac address \d: //i;
-           $basemac =~ s/://g;
-           # Since 32bit Operating System can only handle 32bit integer, 
-           # split the mac address as high 24bit and low 24bit 
-           $basemac =~ /(......)(......)/;
-           my ($basemac_h6, $basemac_l6) = ($1, $2);
-           my $macnum_l6 = hex($basemac_l6);
-           my $macnum_h6 = hex($basemac_h6);
-           $macnum_l6 += 1;
-           if ($macnum_l6 > 0xFFFFFF) {
-               $macnum_h6 += 1;
+           $lastmac =~ s/mac address \d: //i;
+
+           while ($basemac ne $lastmac) {
+               $basemac =~ s/://g;
+               # Since 32bit Operating System can only handle 32bit integer, 
+               # split the mac address as high 24bit and low 24bit 
+               $basemac =~ /(......)(......)/;
+               my ($basemac_h6, $basemac_l6) = ($1, $2);
+               my $macnum_l6 = hex($basemac_l6);
+               my $macnum_h6 = hex($basemac_h6);
+               $macnum_l6 += 1;
+               if ($macnum_l6 > 0xFFFFFF) {
+                   $macnum_h6 += 1;
+               }
+               my $newmac_l6 = sprintf("%06X", $macnum_l6);
+               $newmac_l6 =~ /(......)$/;
+               $newmac_l6 = $1;
+               my $newmac_h6 = sprintf("%06X", $macnum_h6);
+               my $newmac = $newmac_h6.$newmac_l6;
+               $newmac =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
+               my $newidx = scalar(@macs)+1;
+               push @macs,"MAC Address $newidx: ".$newmac;
+
+               $basemac = $newmac;
            }
-           my $newmac_l6 = sprintf("%06X", $macnum_l6);
-           $newmac_l6 =~ /(......)$/;
-           $newmac_l6 = $1;
-           my $newmac_h6 = sprintf("%06X", $macnum_h6);
-           my $newmac = $newmac_h6.$newmac_l6;
-           $newmac =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
-           my $newidx = scalar(@macs)+1;
-           push @macs,"MAC Address $newidx: ".$newmac;
        }
    }
+
    my $midx=0;
    my @midxary;
    my $nrtab = xCAT::Table->new('noderes');
