@@ -1,0 +1,53 @@
+#!/usr/bin/env perl
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#####################################################
+#
+# This script will calculate the IPv6 link local address 
+# from the mac address
+# the mac address can be something like
+# 00215ea68cd9 or 00:21:5e:a6:8c:d9
+# example mac2linklocal 00215ea68cd9 
+#
+#####################################################
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+use lib "$::XCATROOT/lib/perl";
+
+use strict;
+use warnings;
+use Getopt::Long;
+use xCAT::NetworkUtils;
+
+if (
+    !GetOptions("h|help"  => \$::HELP,
+                "m=s" => \$::MACADDR,)
+  )
+{
+    &usage;
+    exit 1;
+}
+
+if ($::HELP)
+{
+    &usage;
+    exit 0;
+}
+
+if ($::MACADDR)
+{
+    my $linklocal =  xCAT::NetworkUtils->linklocaladdr($::MACADDR);
+    print "$linklocal";
+}
+
+sub usage
+{
+    print "Mac to IPv6 link local address utility.\n";
+    print "Usage:\n";
+    print "\t mac2linklocal -m <mac_address>\n";
+    return;
+}
