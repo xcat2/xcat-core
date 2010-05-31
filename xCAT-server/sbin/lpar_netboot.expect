@@ -943,6 +943,7 @@ proc ping_server { full_path_name phandle } {
     global PROGRAM
     global NODENAME
     global env
+    global mac_address
 
     nc_msg "$PROGRAM Status: ping_server start\n"
 
@@ -999,7 +1000,18 @@ proc ping_server { full_path_name phandle } {
     set done(3) 0
     set msg(3) "$PROGRAM Status: ping return code now on stack\n"
     set newstate(3) 4
-    set cmd(3) "ping $full_path_name:$server_ip,$client_ip,$gateway_ip\r"
+    #IPv6
+    if { [regexp ":" $server_ip]!=0 } {
+        #::1, calculate link local address
+        if { [string compare "$client_ip" "::1"] == 0  } {
+            
+            #set macaddr [get_mac_addr $phandle]
+            set linklocal_ip [exec /opt/xcat/share/xcat/tools/mac2linklocal -m $mac_address]
+        }
+        set cmd(3) "ping $full_path_name:ipv6,$server_ip,$linklocal_ip,$gateway_ip\r"
+    } else {
+        set cmd(3) "ping $full_path_name:$server_ip,$client_ip,$gateway_ip\r"
+    }
     set pattern(3) "(.*)ok(.*)0 >(.*)"
     
     # state 4, all done
@@ -1882,6 +1894,7 @@ set userid ""
 set passwd ""
 set prompt "\\\$ \$"
 set ssh_spawn_id 0
+set mac_address ""
 
 # List supported network adapters here.  dev_pat is an array of regexp patterns
 # the script searches for in the device tree listing.  dev_type is the type
@@ -2437,6 +2450,9 @@ if { $noboot } { # Display information for all supported adapters
     if { $discover_all } { 
         for {set i 1} {$i <= $adapter_found} {incr i 1} {
             if {[regexp $match_pat $adap_type($i)] != 0 } {
+                set mac_address [get_mac_addr $phandle_array($i)]
+                set loc_code [get_adaptr_loc $phandle_array($i)]
+
                 set ping_result ""
                 if { $discovery } {
                     set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
@@ -2447,9 +2463,6 @@ if { $noboot } { # Display information for all supported adapters
 			set ping_result "successful"
                     }
                 }
-
-                set mac_address [get_mac_addr $phandle_array($i)]
-                set loc_code [get_adaptr_loc $phandle_array($i)]
 
                 if { $hdr_printed == 0 } {
                     if { $colon } {
@@ -2478,6 +2491,8 @@ if { $noboot } { # Display information for all supported adapters
     } else {
         for {set i 1} {$i <= $adapter_found} {incr i 1} {
 	    if {[regexp $match_pat $adap_type($i)] != 0 } {
+                set mac_address [get_mac_addr $phandle_array($i)]
+                set loc_code [get_adaptr_loc $phandle_array($i)]
                 set ping_result "" 
                 if { $discovery } {
                     set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
@@ -2488,8 +2503,6 @@ if { $noboot } { # Display information for all supported adapters
 			set ping_result "successful"
                     }
                 }
-                set mac_address [get_mac_addr $phandle_array($i)]
-                set loc_code [get_adaptr_loc $phandle_array($i)]
                 if { [string first "vdevice" "$full_path_name_array($i)"] != -1 } {
                     set device_type "virtual"
                 } else {
