@@ -361,7 +361,8 @@ sub setup_ip_forwarding
 	`sysctl -p $conf_file`;
     }
     else
-    {    #AIX: TODO
+    {    
+	`no -o ipforwarding=$enable`;
     }
     return 0;
 }
