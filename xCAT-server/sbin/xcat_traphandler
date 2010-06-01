@@ -13,6 +13,7 @@ use xCAT_plugin::ipmi;
 use xCAT_monitoring::monitorctrl;
 use Socket;
 use Data::Dumper;
+#use strict;
 
 
 #-------------------------------------------------------------------------------
@@ -39,8 +40,16 @@ my $message1;
 my $errsrc;
 
 #get settings
-$EMAIL=0, $LOG=0, $RUNCMD=0, $IGNORE=0, $DB=0;
-%hashI=(),%hashE=(),%hashL=(),%hashR=(),%hashD=();
+my $EMAIL=0;
+my $LOG=0;
+my $IGNORE=0;
+my $DB=0;
+my %hashI=();
+my %hashE=();
+my %hashL=();
+my %hashR=();
+my %hashD=(); 
+my %hashRUN=();
 my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("snmpmon");
 my $i=$settings{'ignore'};
 if ($i) { %hashI =parseSettings($i); }
@@ -48,10 +57,17 @@ my $e=$settings{'email'};
 if ($e) { %hashE=parseSettings($e); }
 my $l=$settings{'log'};
 if ($l) { %hashL=parseSettings($l); }
-my $r=$settings{'runcmd'};
-if ($r) { %hashR=parseSettings($r); }
 my $d=$settings{'db'};
 if ($d) { %hashD=parseSettings($d); }
+
+foreach my $k (keys %settings) {
+    if ($k =~ /runcmd(\d*)/) { 
+	my $r=$settings{$k};
+	my %hashTemp=parseSettings($r);
+	$hashR{$k}=\%hashTemp;
+        $hashRUN{$k}=0;
+    }
+}
 
 # read host name
 my $host=<STDIN>; 
@@ -92,6 +108,7 @@ if ($value =~ /enterprises\.3183\.1\.1\.0\.(.*)/) { $trapid=$1; }
 my $holder;
 my $begin=1;
 my $pair;
+my $temp;
 while ($temp=<STDIN>) {
   chomp($temp);
   my $temp1=$temp; #save the one with quotes
@@ -125,7 +142,6 @@ while ($temp=<STDIN>) {
   $value =~ s/^"//;
   $value =~ s/"$//;
 
-  
   #for BladeCenter MM traps and RSA II traps,  creat a brief message 
   if ($oid =~ /BLADESPPALT-MIB::spTrapAppId|RSASPPALT-MIB::ibmSpTrapAppId/) {
     $briefmsg .= "  App ID: $value\n";  
@@ -178,17 +194,17 @@ while ($temp=<STDIN>) {
     $node1=$host;
     #$node1 =~ s/(-(eth|man)\d+)?(\..*)?$//;
 
-    $ip1=$ip;
+    my $ip1=$ip;
     $ip1 =~ /(\d+\.\d+\.\d+\.\d+)/;
     $ip1=$1;
 
     # get the host name if it is unknown
     if ($node1 =~/<UNKNOWN>/) {
-      my $name = xCAT::NetworkUtils->gethostname($iaddr);
+      my $name = xCAT::NetworkUtils->gethostname($ip1);
       if ($name) {
         $node1=$name; 
         $host=$name;
-        @shorthost = split(/\./, $node1);
+        my @shorthost = split(/\./, $node1);
         $node1=$shorthost[0];
       }
     }
@@ -223,7 +239,7 @@ while ($temp=<STDIN>) {
     #LOG,INFORMATION,OK,CRITICAL,NON-RECOVERABLE,MONITOR and UNKNOWN-SEVERITY
     $severity_type="Warning";
     if ($error) {
-      @tempArray=split(/\:/, $error);  
+      my @tempArray=split(/\:/, $error);  
       $severity=$tempArray[0];
       if ($severity eq "LOG") {#in fact this is called "unspecifiled"
         $severity_type="Warning";
@@ -261,7 +277,9 @@ if ((!$IGNORE) && exists($hashI{$severity_type})) {
 if ((!$EMAIL) && exists($hashE{$severity_type})) { $EMAIL=1; }
 if ((!$LOG) && exists($hashL{$severity_type})) { $LOG=1; }
 if ((!$DB) && exists($hashD{$severity_type})) { $DB=1; }
-if ((!$RUNCMD) && exists($hashR{$severity_type})) { $RUNCMD=1; }
+foreach my $k (keys %hashRUN) {
+    if (($hashRUN{$k} == 0) && exists($hashR{$k}->{$severity_type})) { $hashRUN{$k} = 1; }
+}
 #print "I=$IGNORE,E=$EMAIL, L=$LOG, R=$RUNCMD, D=$DB\n";
 
 #email 'alerts' aliase
@@ -319,12 +337,15 @@ if ($DB) {
 }
 
 #run user defined commands if needed.
-if ($RUNCMD) {
-  my $scripts=$settings{'cmds'};
-  while ($scripts =~ s/^([^,]+)(,)*//) {
-     my $cmd="echo \'host=$host\nip=$ip\n$message\n\' \| $1";
-     `$cmd`;   
-  }
+foreach my $k (keys %hashRUN) {
+    if ($hashRUN{$k} == 1) {
+	$k =~ /runcmd(\d*)/;
+	my $scripts=$settings{"cmds$1"};
+	while ($scripts =~ s/^([^,]+)(,)*//) {
+	    my $cmd="echo \'host=$host\nip=$ip\n$message\n\' \| $1";
+	    `$cmd`;   
+	}
+    }
 }
 
 
@@ -445,16 +466,18 @@ sub parseSettings {
 =cut
 #--------------------------------------------------------------------------------
 sub checkWithOid {
-  $o=shift;
-  $v=shift;
+  my $o=shift;
+  my $v=shift;
 
   sub checking {
     my $hashX=shift;
+    my $o=shift;
+    my $v=shift;
     
     if (exists($hashX->{'All'})) { return 1;  }     
     if (exists($hashX->{'None'})) { return 0;  } 
     
-    @a_oid=split('::', $o);
+    my @a_oid=split('::', $o);
     my $new_o=$o;
     if (@a_oid == 2) { $new_o=$a_oid[1]; } 
     #print "o=$o, new_o=$new_o v=$v\n"; 
@@ -492,25 +515,26 @@ sub checkWithOid {
   }
  
   if ((!$IGNORE) && (keys(%hashI)>0)) {
-    $IGNORE=checking(\%hashI);
+    $IGNORE=checking(\%hashI, $o, $v);
     if ($IGNORE) { return;}
   }
 
   if ((!$EMAIL) && (keys(%hashE)>0)) {
-    $EMAIL=checking(\%hashE);
+    $EMAIL=checking(\%hashE, $o, $v);
   }
 
   if ((!$LOG) && (keys(%hashL)>0)) {
-    $LOG=checking(\%hashL);
+    $LOG=checking(\%hashL, $o, $v);
   }
 
   if ((!$DB) && (keys(%hashD)>0)) {
-    $DB=checking(\%hashD);
+    $DB=checking(\%hashD, $o, $v);
   }
 
-  if ((!$RUNCMD) && (keys(%hashR)>0)) {
-    $RUNCMD=checking(\%hashR);
+  foreach my $k (keys %hashRUN) {
+    if ($hashRUN{$k} == 0) { $hashRUN{$k} = checking($hashR{$k}, $o, $v); }
   }
+ 
 }
 
 

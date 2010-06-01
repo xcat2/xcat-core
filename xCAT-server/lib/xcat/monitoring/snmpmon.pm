@@ -784,9 +784,9 @@ sub getDescription {
         spTrapAppType=4,spTrapMsgText=~power,spTrapMsgText=Hello there.
     email:  specifies the events that will get email notification.
     log:    specifies the events that will get logged.
-    runcmd: specifies the events that will be passed to the user defined scripts.
-    cmds:   specifies the command names that will be invoked for the events 
-            specified in the runcmd row.
+    runcmd#:specifies the events that will be passed to the user defined scripts.
+    cmds#:  specifies the command names that will be invoked for the events 
+            specified in the runcmd# row. '#' is a number.
     db:     specifies the events that will be logged into the eventlog table
             in xCAT database.
     
