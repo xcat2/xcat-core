@@ -43,7 +43,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version I|iscsiboot F f o s=s m:s@ r=s t=s) )) { 
+    if ( !GetOptions( \%opt, qw(h|help V|Verbose v|version I|iscsiboot F f hfi o s=s m:s@ r=s t=s) )) { 
         return( usage() );
     }
 
@@ -236,10 +236,16 @@ sub do_rnetboot {
         }
     }
 
+    if (  exists( $opt->{hfi} )) {
+        $cmd.= " -t hfi-ent";
+    } else {
+        $cmd.= " -t ent";
+    }
+
     #######################################
     # Add command options
     #######################################
-    $cmd.= " -t ent -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
+    $cmd.= " -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
 
     my $done = 0;
     my $Rc = SUCCESS;
@@ -343,6 +349,11 @@ sub rnetboot {
     if ( exists( $options->{o} )) {
         $opt{o} = $options->{o};
     }
+
+    if ( exists( $options->{hfi} )) {
+        $opt{hfi} = 1;
+    }
+
 
     #####################################
     # Do iscsi boot

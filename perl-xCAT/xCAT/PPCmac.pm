@@ -44,7 +44,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s D d f o F=s arp))) { 
+    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s D d f hfi o F=s arp))) { 
         return( usage() );
     }
     ####################################
@@ -216,6 +216,9 @@ sub parse_args {
             }
         }
 
+    if ( exists($opt{hfi}) && !exists($opt{D}) ) {
+        return( usage("Option 'hfi' must work with '-D'") );
+    }
 
     ####################################
     # Set method to invoke 
@@ -318,6 +321,12 @@ sub do_getmacs {
         }
     }
 
+    if ( exists( $opt->{hfi} )) {
+        $cmd .=" -t hfi-ent";
+    } else {
+        $cmd .=" -t ent";
+    }
+
     #######################################
     # Network specified (-D ping test)
     #######################################
@@ -330,7 +339,7 @@ sub do_getmacs {
     #######################################
     # Add command options 
     #######################################
-    $cmd.= " -t ent -f -M -A -n \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
+    $cmd.= " -f -M -A -n \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
 
     #######################################
     # Execute command 
@@ -690,7 +699,7 @@ sub getmacs {
         foreach ( @$result ) {
             if ( /^#\s?Type/ ) {
                 $data.= "\n$_\n";
-            } elsif ( /^ent\s+/ ) {
+            } elsif ( /^ent\s+/ or /^hfi-ent\s+/ ) {
                 $data.= format_mac( $_ );
             }
         }
@@ -747,7 +756,7 @@ sub writemac {
     # Find first valid adapter
     #####################################
     foreach ( @$data ) {
-        if ( /^ent\s+/ ) {
+        if ( /^ent\s+/ or /^hfi-ent\s+/ ) {
             $value = $_;
             #####################################
             # MAC not found in output
@@ -769,7 +778,7 @@ sub writemac {
     #####################################
     if ( $pingret ne "successful" ) {
         foreach ( @$data ) {
-            if ( /^ent\s+/ ) {
+            if ( /^ent\s+/ or /^hfi-ent\s+/ ) {
                 $value = $_;
                 $ping_test = 0;
                 last;

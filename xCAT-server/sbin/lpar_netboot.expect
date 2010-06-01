@@ -441,6 +441,9 @@ proc get_phandle {} {
                     set path($level) $x4
                     for {set j 0} {$j < $dev_count} {incr j 1} {
                         if {[regexp $dev_pat($j) $x4]} {
+                            if {[regexp "hfi-ethernet" $x4] && $dev_pat($j) == "ethernet"} {
+                                continue
+                            }
                             incr adapter_found 1
                             for {set i 0} {$i <= $level} {incr i 1} {
                                 append full_path_name_array($adapter_found) "/$path($i)"
@@ -1004,7 +1007,6 @@ proc ping_server { full_path_name phandle } {
     if { [regexp ":" $server_ip]!=0 } {
         #::1, calculate link local address
         if { [string compare "$client_ip" "::1"] == 0  } {
-            
             #set macaddr [get_mac_addr $phandle]
             set linklocal_ip [exec /opt/xcat/share/xcat/tools/mac2linklocal -m $mac_address]
         }
@@ -2013,6 +2015,11 @@ while { [llength $argv] > 0} {
         "-t" { set list_type [lindex $argv 1]
                set argv [lrange $argv 2 end]
 
+               if { $list_type == "hfi-ent" } {
+                   set dev_pat(0) "hfi-ethernet"
+                   set dev_type(0) "hfi-ent"
+               }
+
                #
                # Validate the argument
                #
@@ -2025,7 +2032,7 @@ while { [llength $argv] > 0} {
                }
 
                if {$dev_type_found == 0 } {
-                  send_user "$PROGRAM: '$list_type' is not a valid adapter choice\n"
+                  send_user "$PROGRAM:$dev_type_found, '$list_type' is not a valid adapter choice\n"
                   exit 1
                }
              }
@@ -2062,6 +2069,7 @@ if { [llength $argv] > 10 } {
     send_user "$PROGRAM: Extraneous parameter(s)\n"
     usage
 }
+
 if { $list_physical == 0 } {
     set dev_pat(3) "l-lan"
     set dev_type(3) "ent"
@@ -2341,9 +2349,7 @@ while { ! $done } {
 
     sleep 1
 }
-
 }
-
 set retry 0
 set done 0
 set timeout 10
@@ -2414,6 +2420,8 @@ while { ! $done } {
 
     if { $rc } {
         incr retry 
+        set command  "\r"
+        send_command
         if { $retry == 3 } {
             send_user "$PROGRAM: Unable to obtain network adapter information.  Quitting.\n"
             exit 1
@@ -2422,7 +2430,6 @@ while { ! $done } {
         set done 1 
     }
 }
-
 
 # Call multiple_open-dev to circumvent firmware OPEN-DEV failure
 multiple_open-dev
@@ -2439,7 +2446,6 @@ if { $discovery } {
 }
 
 if { $noboot } { # Display information for all supported adapters
-    send_user "# Getting adapter location codes.\n"
 
     if {[info exists list_type]} {
         set match_pat $list_type
@@ -2447,11 +2453,20 @@ if { $noboot } { # Display information for all supported adapters
         set match_pat ".*"  ;# match anything
     }
 
+    if { $colon } {
+        send_user "#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:\n"
+    } else {
+        send_user "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\n"
+    }
+
+
     if { $discover_all } { 
         for {set i 1} {$i <= $adapter_found} {incr i 1} {
             if {[regexp $match_pat $adap_type($i)] != 0 } {
-                set mac_address [get_mac_addr $phandle_array($i)]
-                set loc_code [get_adaptr_loc $phandle_array($i)]
+                if ( $adap_type($i) != "hfi-ent" ) {
+                    set mac_address [get_mac_addr $phandle_array($i)]
+                    set loc_code [get_adaptr_loc $phandle_array($i)]
+                }
 
                 set ping_result ""
                 if { $discovery } {
@@ -2464,15 +2479,10 @@ if { $noboot } { # Display information for all supported adapters
                     }
                 }
 
-                if { $hdr_printed == 0 } {
-                    if { $colon } {
-                        send_user "#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:\n"
-                    } else {
-                        send_user "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\n"
-		    }
-                    set hdr_printed 1
+                if ( $adap_type($i) == "hfi-ent" ) {
+                    set mac_address [get_mac_addr $phandle_array($i)]
+                    set loc_code [get_adaptr_loc $phandle_array($i)]
                 }
-
 		
                 if { [string first "vdevice" "$full_path_name_array($i)"] != -1 } {
                     set device_type "virtual"
@@ -2491,8 +2501,10 @@ if { $noboot } { # Display information for all supported adapters
     } else {
         for {set i 1} {$i <= $adapter_found} {incr i 1} {
 	    if {[regexp $match_pat $adap_type($i)] != 0 } {
-                set mac_address [get_mac_addr $phandle_array($i)]
-                set loc_code [get_adaptr_loc $phandle_array($i)]
+                if ( $adap_type($i) == "hfi-ent" ) {
+                    set mac_address [get_mac_addr $phandle_array($i)]
+                    set loc_code [get_adaptr_loc $phandle_array($i)]
+                }
                 set ping_result "" 
                 if { $discovery } {
                     set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
@@ -2503,6 +2515,10 @@ if { $noboot } { # Display information for all supported adapters
 			set ping_result "successful"
                     }
                 }
+                if ( $adap_type($i) == "hfi-ent" ) {
+                    set mac_address [get_mac_addr $phandle_array($i)]
+                    set loc_code [get_adaptr_loc $phandle_array($i)]
+                }
                 if { [string first "vdevice" "$full_path_name_array($i)"] != -1 } {
                     set device_type "virtual"
                 } else {
@@ -2510,10 +2526,8 @@ if { $noboot } { # Display information for all supported adapters
                 }
 
 		if { $colon } {
-		    send_user "#Type:Location_Code:MAC_Address:Full_Path_Name:Ping_Result:Device_Type:Size_MB:OS:OS_Version:\n"
                     send_user "$adap_type($i)\:$loc_code\:$mac_address\:$full_path_name_array($i)\:$ping_result\:$device_type\:\:\:\:\n"
 	        } else {
-                    send_user "# Type \tLocation Code \tMAC Address\t Full Path Name\t Ping Result\n"
                     send_user "$adap_type($i) $loc_code $mac_address $full_path_name_array($i) $ping_result $device_type\n"
 		}
                 break;
@@ -2563,10 +2577,15 @@ if { $noboot } { # Display information for all supported adapters
     } elseif { $macaddress != "" } {
         set match 0
 	for {set i 1} {$i <= $adapter_found} {incr i 1} {
+            if {[regexp "hfi-ent" $adap_type($i)] } {
+                set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
+            }
             set mac_address [get_mac_addr $phandle_array($i)]
             if { [string compare -nocase "$mac_address" "$macaddress"] == 0 } {
                 if { $discovery == 1 } {
-                    set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
+                    if { $adap_type($i) != "hfi-ent" } {
+                        set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
+                    }
                     if { $ping_rc != 0 } {
                         send_user "$PROGRAM: Unable to boot network adapter.\n"
                         exit 1

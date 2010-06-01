@@ -107,7 +107,13 @@ sub do_getmacs {
             $cmd.= " -i";
         }
     }
-    
+
+    if ( exists( $opt->{hfi} )) {
+        $cmd .=" -t hfi-ent";
+    } else {
+        $cmd .=" -t ent";
+    }
+
     #######################################
     # Network specified (-D ping test)
     #######################################
@@ -121,8 +127,7 @@ sub do_getmacs {
     #######################################
     # Add command options 
     #######################################
-    $cmd.= " -t ent -f -M -A -n \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
-    print "cmd : $cmd\n";
+    $cmd.= " -f -M -A -n \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
     #######################################
     # Execute command 
     #######################################
@@ -485,7 +490,7 @@ sub getmacs {
         foreach ( @$result ) {
             if ( /^#\s?Type/ ) {
                 $data.= "\n$_\n";
-            } elsif ( /^ent\s+/ ) {
+            } elsif ( /^ent\s+/ or /^hfi-ent\s+/) {
                 $data.= format_mac( $_ );
             }
         }
@@ -542,7 +547,7 @@ sub writemac {
     # Find first valid adapter
     #####################################
     foreach ( @$data ) {
-        if ( /^ent\s+/ ) {
+        if ( /^ent\s+/ or /^hfi-ent\s+/ ) {
             $value = $_;
             #####################################
             # MAC not found in output
@@ -564,7 +569,7 @@ sub writemac {
     #####################################
     if ( $pingret ne "successful" ) {
         foreach ( @$data ) {
-            if ( /^ent\s+/ ) {
+            if ( /^ent\s+/ or /^hfi-ent\s+/ ) {
                 $value = $_;
                 $ping_test = 0;
                 last;

@@ -17,7 +17,7 @@ use xCAT::Utils;
 
 my %usage = (
     "rnetboot" => 
-"Usage: rnetboot <noderange> [-s net|hd] [-F] [-f] [-I|--iscsiboot] [-V|--verbose] [-m table.colum==expectedstatus] [-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
+"Usage: rnetboot <noderange> [-s net|hd] [-F] [-f] [--hfi] [-I|--iscsiboot] [-V|--verbose] [-m table.colum==expectedstatus] [-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
        rnetboot [-h|--help|-v|--version]",
     "rpower" => 
 "Usage: rpower <noderange> [--nodeps] [on|onstandby|off|suspend|reset|stat|state|boot] [-V|--verbose] [-m table.colum==expectedstatus][-m table.colum==expectedstatus...] [-r <retrycount>] [-t <timeout>]
@@ -124,7 +124,7 @@ my %usage = (
        getmacs [-h|--help|-v|--version]
    PPC specific:
        getmacs <noderange> [-F filter] 
-       getmacs <noderange> [-V| --verbose] [-f] [-d] [--arp] | [-D [-S server] [-G gateway] [-C client]]
+       getmacs <noderange> [-V| --verbose] [-f] [-d] [--hfi] [--arp] | [-D [-S server] [-G gateway] [-C client]]
    blade specific:
        getmacs <noderange> [-V| --verbose] [-d] [--arp]
 ",

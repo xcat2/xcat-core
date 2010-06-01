@@ -104,10 +104,17 @@ sub do_rnetboot {
     if (  exists( $opt->{o} )) {
         $cmd.= " -o";
     }
+
+    if (  exists( $opt->{hfi} )) {
+        $cmd.= " -t hfi-ent";
+    } else {
+        $cmd.= " -t ent";
+    }
+
     #######################################
     # Add command options
     #######################################
-    $cmd.= " -t ent -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
+    $cmd.= " -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
     print "cmd: $cmd\n";
     my $done = 0;
     my $Rc = SUCCESS;
@@ -207,6 +214,10 @@ sub rnetboot {
     }
     if ( exists( $options->{o} )) {
         $opt{o} = $options->{o};
+    }
+
+    if ( exists( $options->{hfi} )) {
+        $opt{hfi} = 1;
     }
      
     #####################################
