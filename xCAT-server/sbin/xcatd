@@ -938,6 +938,7 @@ sub plugin_command {
           close($parent_fd);
           xexit(0);
         } 
+        $@=""; #sometimes a child 'eval' doesn't clean up $@, if we make it this far, no non-eval bug bombed out
         }; #REMOVEEVALFORDEBUG
         if ($sock or $shouldbealivepid != $$) { #We shouldn't still be alive, try to send as much detail to parent as possible as to why
             my $error= "$modname plugin bug, pid $$, process description: '$$progname'";
