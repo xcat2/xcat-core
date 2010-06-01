@@ -156,8 +156,8 @@ sub mknetboot
     my $restab = xCAT::Table->new('noderes');
     my $bptab  = xCAT::Table->new('bootparams',-create=>1);
     my $hmtab  = xCAT::Table->new('nodehm');
-    my $cmostab  = xCAT::Table->new('cmossettings');
-    my $cmoshash  = $cmostab->getNodesAttribs(\@nodes, ['file']);
+    my $firmtab  = xCAT::Table->new('firmware');
+    my $firmhash  = $firmtab->getNodesAttribs(\@nodes, ['cfgfile']);
     my $reshash    = $restab->getNodesAttribs(\@nodes, ['tftpserver','xcatmaster']);
     my $hmhash =
           $hmtab->getNodesAttribs(\@nodes,
@@ -185,9 +185,9 @@ sub mknetboot
         my $suffix  = 'gz';
 	my $path = "/$installroot/netboot/$osver/$arch/$profile";
 	my $tpath = "/$tftpdir/xcat/netboot/$osver/$arch/$profile";
-	my $cmosfile = $cmoshash->{$node}->[0]->{file};   
-	if ($cmosfile) {
-	  copy($cmosfile,"$path/repo/$node.cmos");
+	my $firmfile = $firmhash->{$node}->[0]->{cfgfile};   
+	if ($firmfile) {
+	  copy($firmfile,"$path/repo/$node.cfgfile");
 	}
 	my $asu = "/toolscenter/asu";
 	if ($ent->{arch} eq "x86_64") {
@@ -353,8 +353,8 @@ ENDOFAWK
         }
 	$tpath =~ s!/$tftpdir/!!;
         my $kcmdline = "vga=0x317 root=/dev/ram0 rw ramdisk_size=100000 tftp_server=$imgsrv tftp_tcrootfs=$tpath/tcrootfs tftp_tczip=$tpath/tc.zip xcat_server=$xcatserver hostname=$node";
-	if ($cmosfile) {
-		$kcmdline .= " cmos_file=/bomc/$node.cmos";
+	if ($firmfile) {
+		$kcmdline .= " cmos_file=/bomc/$node.cfgfile";
 	}
         if (defined $sent->{serialport})
         {
