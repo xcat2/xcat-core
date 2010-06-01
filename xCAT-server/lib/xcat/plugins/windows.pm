@@ -392,7 +392,10 @@ sub mkinstall
 }
 sub getips { #TODO: all the possible ip addresses
     my $node = shift;
-    my $ip = inet_ntoa(inet_aton($node));;
+    my $ipn = inet_aton($node); #would use proper method, but trying to deprecate this anyhow
+    unless ($ipn) { return (); }
+    #THIS CURRENTLY WOULD BREAK WITH IPV6 anyway...
+    my $ip = inet_ntoa($ipn);
     return ($ip);
 }
 
