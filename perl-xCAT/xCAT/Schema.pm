@@ -912,8 +912,22 @@ zvm => {
 	},
 },
 
-);        # end of tabspec definition
-
+firmware => {
+        cols => [qw(node cfgfile comments disable)], 
+        keys => [qw(node)],
+        required => [qw(node)],
+        types => {
+            node => 'TEXT',
+        },
+        table_desc => 'Maps node to firmware values to be used for setup at node discovery or later',
+        descriptions => {
+            node => 'The node id.',
+            cfgfile => 'The file to use.',
+            comments => 'Any user-written notes.',
+            disable => "Set to 'yes' or '1' to comment out this row.",
+        },
+    },
+); # end of tabspec definition
 
 
 
@@ -2173,6 +2187,22 @@ push(@{$defspec{group}->{'attrs'}}, @nodeattrs);
                  },
 );
 
+
+@{$defspec{firmware}->{'attrs'}} =
+(
+    {   attr_name => 'cfgfile',
+        tabentry => 'firmware.cfgfile',
+        access_tabentry => 'firmware.file=attr:cfgfile',
+    },
+    {attr_name => 'comments',
+        tabentry => 'firmware.comments',
+        access_tabentry => 'firmware.file=attr:cfgfile',
+     },
+     {attr_name => 'disable',
+        tabentry => 'auditlog.disable',
+        access_tabentry => 'firmware.file=attr:cfgfile',
+     },
+);
 
 
 
