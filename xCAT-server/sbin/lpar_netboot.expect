@@ -2463,7 +2463,7 @@ if { $noboot } { # Display information for all supported adapters
     if { $discover_all } { 
         for {set i 1} {$i <= $adapter_found} {incr i 1} {
             if {[regexp $match_pat $adap_type($i)] != 0 } {
-                if ( $adap_type($i) != "hfi-ent" ) {
+                if { $adap_type($i) != "hfi-ent" } {
                     set mac_address [get_mac_addr $phandle_array($i)]
                     set loc_code [get_adaptr_loc $phandle_array($i)]
                 }
@@ -2479,7 +2479,7 @@ if { $noboot } { # Display information for all supported adapters
                     }
                 }
 
-                if ( $adap_type($i) == "hfi-ent" ) {
+                if { $adap_type($i) == "hfi-ent" } {
                     set mac_address [get_mac_addr $phandle_array($i)]
                     set loc_code [get_adaptr_loc $phandle_array($i)]
                 }
@@ -2501,7 +2501,7 @@ if { $noboot } { # Display information for all supported adapters
     } else {
         for {set i 1} {$i <= $adapter_found} {incr i 1} {
 	    if {[regexp $match_pat $adap_type($i)] != 0 } {
-                if ( $adap_type($i) == "hfi-ent" ) {
+                if { $adap_type($i) == "hfi-ent" } {
                     set mac_address [get_mac_addr $phandle_array($i)]
                     set loc_code [get_adaptr_loc $phandle_array($i)]
                 }
@@ -2515,7 +2515,7 @@ if { $noboot } { # Display information for all supported adapters
 			set ping_result "successful"
                     }
                 }
-                if ( $adap_type($i) == "hfi-ent" ) {
+                if { $adap_type($i) == "hfi-ent" } {
                     set mac_address [get_mac_addr $phandle_array($i)]
                     set loc_code [get_adaptr_loc $phandle_array($i)]
                 }
