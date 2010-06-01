@@ -10,6 +10,7 @@ Getopt::Long::Configure("pass_through");
 use Socket;
 use Sys::Syslog;
 use IPC::Open2;
+use xCAT::NetworkUtils;
 use xCAT::Utils;
 use xCAT::NodeRange;
 use Fcntl ':flock';
@@ -204,14 +205,12 @@ sub addnode
         }    #Default to hostname equal to nodename
         unless ($mac) { next; }    #Skip corrupt format
         my $ip = xCAT::Utils::getNodeIPaddress($hname);
-        if ( !defined($ip) ) {
-            $ip = "DENIED";
-        }
         if ($hname eq '*NOIP*') {
             $hname = $node . "-noip".$mac;
             $hname =~ s/://g;
+            $ip='DENIED';
         }
-        if ($guess_next_server and $ip ne "DENIED")
+        if ($guess_next_server and $ip and $ip ne "DENIED")
         {
             $nxtsrv = xCAT::Utils->my_ip_facing($hname);
             if ($nxtsrv)
@@ -219,6 +218,8 @@ sub addnode
                 $tftpserver = $nxtsrv;
                 $lstatements = "next-server $nxtsrv;$statements";
             }
+        } elsif ($guess_next_server) {
+            $nxtsrv='${next-server}'; #if floating IP support, cause gPXE command-line expansion patch to drive inheritence from network
         }
         my $doiscsi=0;
         if ($ient and $ient->{server} and $ient->{target}) {
@@ -282,11 +283,13 @@ sub addnode
                 print $omshell "open\n";
             print $omshell "remove\n";
             print $omshell "close\n";
-            print $omshell "new host\n";
-            print $omshell "set ip-address = $ip\n";   #find and destroy ip conflict
-                print $omshell "open\n";
-            print $omshell "remove\n";
-            print $omshell "close\n";
+            if ($ip and $ip ne 'DENIED') {
+                print $omshell "new host\n";
+                print $omshell "set ip-address = $ip\n";   #find and destroy ip conflict
+                    print $omshell "open\n";
+                print $omshell "remove\n";
+                print $omshell "close\n";
+            }
             print $omshell "new host\n";
             print $omshell "set hardware-address = " . $mac
                 . "\n";    #find and destroy mac conflict
@@ -304,7 +307,9 @@ sub addnode
             }
             else
             {
-                print $omshell "set ip-address = $ip\n";
+                if ($ip) {
+                    print $omshell "set ip-address = $ip\n";
+                }
                 if ($lstatements)
                 {
                     $lstatements = 'ddns-hostname \"'.$node.'\"; send host-name \"'.$node.'\";'.$lstatements;
@@ -789,7 +794,7 @@ sub process_request
             }
             else
             {
-                unless (xCAT::Utils->nodeonmynet($_))
+                if  (xCAT::NetworkUtils->getipaddr($_) and not xCAT::Utils->nodeonmynet($_))
                 {
                     next;
                 }
