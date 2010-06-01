@@ -317,7 +317,7 @@ if ($do_asu eq "yes") {
     my $machine_type = `$nodels $node vpd.mtm |cut -f2 -d: |cut -b2-5`;
     chomp($machine_type);
     if ($machine_type ne '' and -e "$srcp/$machine_type") {
-      `chtab node=$node cmossettings.file="$srcp/$machine_type"`;
+      `chtab node=$node firmware.cfgfile="$srcp/$machine_type"`;
     }
   }
 }
