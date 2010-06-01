@@ -1480,22 +1480,25 @@ sub setupAIXIPMITool
 sub setupAIXexports
 
 {
-
-    # check if /install/postscripts is in /etc/exports
-    my $catcmd =
-      "/bin/cat /etc/exports 2>&1 | grep '$::INSTALLDIR/postscripts ' >/dev/null 2>&1";
-    my $outref = xCAT::Utils->runcmd("$catcmd", -1);
-    if ($::RUNCMD_RC != 0)
+    # check if /install/postscripts is exported
+    my $lsnfsexpcmd =
+      "/usr/sbin/lsnfsexp -d $::INSTALLDIR/postscripts 2>&1";
+    my $outref = xCAT::Utils->runcmd("$lsnfsexpcmd", -1);
+    if (($::RUNCMD_RC != 0) || ($outref !~ /-vers=3:4/))
     {
 
-        # if not add it and make sure it is exported
-        my $ecmd =
-          "echo '$::INSTALLDIR/postscripts -ro' >> /etc/exports; exportfs -a";
-        my $outref2 = xCAT::Utils->runcmd("$ecmd", -1);
+        # if not exported for both NFS version 3 and version 4,
+        # make sure it is exported with -vers=3:4
+        my $rmnfsexpcmd = "/usr/sbin/rmnfsexp -d $::INSTALLDIR/postscripts 2>&1";
+        xCAT::Utils->runcmd("$rmnfsexpcmd", -1);
+
+        my $mknfsexpcmd =
+          "mknfsexp -d $::INSTALLDIR/postscripts '-B' -v '3,4' -t 'ro'";
+        my $outref2 = xCAT::Utils->runcmd("$mknfsexpcmd", -1);
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message('E',
-                                    "Could not update the /etc/exports file.");
+                                    "Could not export directory $::INSTALLDIR/postscripts.");
         }
     }
 }
