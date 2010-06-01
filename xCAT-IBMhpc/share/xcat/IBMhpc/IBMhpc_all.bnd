@@ -1,21 +1,15 @@
+# Bundle file combining all HPC packages
+# (should be identical to using each bundle file individually)
+
 # GPFS
 I:gpfs.msg.en_US
 I:gpfs.base
 # The gpfs.docs.data lpp contains the man pages for GPFS
 # By default, this will not be installed into node images
 #I:gpfs.docs.data
-# AIX bundle file for LoadLeveler packages
-# LoadL
-I:LoadL
-#I:LoadL.resmgr
-
-# MetaCluster (checkpoint/restore)
-I:mcr.rte
-I:mdcr
 
 
 # AIX Bundle file for compiler runtime packages
-
 I:xlC.rte
 I:xlfrte
 I:xlfrte.aix53
@@ -23,6 +17,28 @@ I:xlfrte.msg.en_US
 I:xlsmp.aix53.rte
 I:xlsmp.msg.en_US.rte
 I:xlsmp.rte
+
+
+# AIX bundle package list for PE
+
+# POE
+I:ppe.poe
+I:ppe.pdb
+#I:ppe.man
+I:ppe.loc.license
+
+# needed on login node
+#I:ppe.hpct
+
+# LAPI
+I:rsct.lapi
+#I:rsct.sci
+
+# MetaCluster (checkpoint/restore)
+I:mcr.rte
+I:mdcr
+
+
 
 # AIX bundle file for ESSL and PESSL packages
 
@@ -48,18 +64,10 @@ I:pessl.msg.en_US
 #I:pessl.man.en_US
 I:pessl.loc.license
 
-# AIX bundle package list for PE
 
-# POE
-I:ppe.poe
-I:ppe.pdb
-I:ppe.man
-I:ppe.loc.license
+# AIX bundle file for LoadLeveler packages
+# LoadL
+#I:LoadL
+I:LoadL.resmgr
 
-# needed on login node
-#I:ppe.hpct
-
-# LAPI
-I:rsct.lapi
-#I:rsct.sci
 

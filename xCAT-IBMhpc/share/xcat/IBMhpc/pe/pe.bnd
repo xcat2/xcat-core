@@ -3,7 +3,7 @@
 # POE
 I:ppe.poe
 I:ppe.pdb
-I:ppe.man
+#I:ppe.man
 I:ppe.loc.license
 
 # needed on login node
