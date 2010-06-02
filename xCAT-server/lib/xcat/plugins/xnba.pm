@@ -463,7 +463,7 @@ sub process_request {
        return;
     }
     copy($::XCATROOT."/share/xcat/netboot/syslinux/pxelinux.0","$tftpdir/xcat/pxelinux.0");
-     chmod(0644,"$tftpdir/pxelinux.0");
+     chmod(0644,"$tftpdir/xcat/pxelinux.0");
   }
   unless ( -r "$tftpdir/xcat/pxelinux.0" ) {
      $callback->({errror=>["Unable to find pxelinux.0 from syslinux"],errorcode=>[1]});
