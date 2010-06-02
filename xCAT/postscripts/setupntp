@@ -108,6 +108,6 @@ restrict 127.0.0.1" >>$conf_file
             echo "  ntpdate -t5 $master  failed "
             logger -t xcat "ntpdate -t5 $master failed"
   fi
-  startsrc -s xntpd 
+  /usr/sbin/chrctcp -S -a xntpd 
 fi
 exit $? 
