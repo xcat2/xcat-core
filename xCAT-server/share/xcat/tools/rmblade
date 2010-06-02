@@ -69,7 +69,7 @@ foreach (<>){
 	}elsif(/spTrapSourceId=/){
 		$slot = $_;
 		chomp($slot);
-		$slot =~ s/.*Blade_(\d\d)".*/$1/g;
+		$slot =~ s/.*Blade_(\d\d).*/$1/g;
 		$slot = $slot * 1; # to get rid of the leading 0's.
 	}
 }
