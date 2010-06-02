@@ -205,7 +205,7 @@ on the nodegroup, B<testnodes> ,possibly generating up to two
 new templates, and removing all generated templates in the end, and writing
 output report to /tmp/sinv.output, enter:
 
-B<sinv> I< -c "xdsh testnodes rpm -qa | grep xCAT" -p /tmp/sinv.template -t 2 -r -o /tmp/sinv.output>
+B<sinv> I< -c "xdsh testnodes rpm -qa | grep ssh" -p /tmp/sinv.template -t 2 -r -o /tmp/sinv.output>
 
 Note: do not add the pipe to xdshcoll on the -c flag, it is automatically
 added by the sinv routine.
