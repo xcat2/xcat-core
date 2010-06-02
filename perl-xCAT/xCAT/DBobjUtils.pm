@@ -1105,7 +1105,7 @@ sub setobjdefs
                     foreach my $i (sort @currentList)
                     {
                         chomp $i;
-                        if (!grep(/^$i$/, @minusList))
+                        if (!grep(/^\Q$i\E$/, @minusList))
                         {
 
                             # set new list for node
