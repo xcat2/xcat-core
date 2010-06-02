@@ -17,13 +17,15 @@ logger -t xcat "Install: Setup NTP"
 # else use the master which should be a service node
 if [ "$master" ==  "$sitemaster" ]; then
   if [ $NTPSERVERS ]; then
-        if [ !  -f $conf_file_org ]; then
-          mv -f $conf_file $conf_file_org
+        if [ "$NODESETSTATE" == "statelite" ]; then
+            cp -a $conf_file $conf_file_org
+            echo  "" > $conf_file
         else
-          # mv can't work on statelite node
-          # "cp" and "empty" is used to simulate
-          cp -a $conf_file $conf_file_backup
-          echo "" > $conf_file
+            if [ !  -f $conf_file_org ]; then
+                mv -f $conf_file $conf_file_org
+            else
+                mv -f $conf_file $conf_file_backup
+            fi
         fi
 	for i in $(echo $NTPSERVERS | tr ',' ' ')
 	do
@@ -36,14 +38,17 @@ if [ "$master" ==  "$sitemaster" ]; then
 
   fi
 else
-   if [ !  -f $conf_file_org ]; then
-     mv -f $conf_file $conf_file_org
-   else
-     cp -a $conf_file $conf_file_backup
-     echo "" > $conf_file
-   fi
-   echo "server $master" >$conf_file
-    
+    if [ "$NODESETSTATE" == "statelite" ]; then
+        cp -a $conf_file $conf_file_org
+        echo  "" > $conf_file
+    else
+        if [ !  -f $conf_file_org ]; then
+            mv -f $conf_file $conf_file_org
+        else
+            mv -f $conf_file $conf_file_backup
+        fi
+    fi
+    echo "server $master" >$conf_file
 fi
 
 
