@@ -2586,19 +2586,16 @@ sub defls
 
         # Get all the objects of this type
         my @allobjoftype;
-        if ($type ne 'site')
-        {
-            @allobjoftype = xCAT::DBobjUtils->getObjectsOfType($type);
+        @allobjoftype = xCAT::DBobjUtils->getObjectsOfType($type);
 
-            unless (@allobjoftype)
-            {
-                my $rsp;
-                $rsp->{data}->[0] =
-                  "Could not find any objects of type \'$type\'.";
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
-                next;
-            }
-        }    # end - if not site table
+        unless (@allobjoftype)
+        {
+            my $rsp;
+            $rsp->{data}->[0] =
+              "Could not find any objects of type \'$type\'.";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            next;
+        }
 
         my @attrlist;
         if (($type ne 'site') && ($type ne 'monitoring'))
@@ -2639,23 +2636,19 @@ sub defls
                 }
             }
 
-            # if anything but the site table do this
-            if ($type ne 'site')
+            # check the object names only if
+            # the object names are passed in through command line
+            if ($::objectsfrom_args || $::opt_o || (($type eq 'node') && ($::opt_o || @::noderange)))
             {
-                # check the object names only if
-                # the object names are passed in through command line
-                if ($::objectsfrom_args || $::opt_o || (($type eq 'node') && ($::opt_o || @::noderange)))
+                if (!grep(/^$obj$/, @allobjoftype))
                 {
-                    if (!grep(/^$obj$/, @allobjoftype))
-                    {
-                        my $rsp;
-                        $rsp->{data}->[0] =
-                          "Could not find an object named \'$obj\' of type \'$type\'.";
-                        xCAT::MsgUtils->message("I", $rsp, $::callback);
-                        next;
-                    }
-                 }
-            }    # end - if not site table
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Could not find an object named \'$obj\' of type \'$type\'.";
+                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    next;
+                }
+             }
 
             # special handling for site table - for now !!!!!!!
             if (($type eq 'site') || ($type eq 'monitoring'))
