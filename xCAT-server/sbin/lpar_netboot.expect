@@ -1435,9 +1435,17 @@ proc boot_network {} {
         set pattern(0) "iSCSI"
     } else {
         if {$extra_args != "" } {
-            set net_device(0) "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip $extra_args"
+            if { [regexp ":" $server_ip]!=0 } { #ipv6
+                set net_device(0) "$full_path_name:ipv6,speed=$speed,duplex=$duplex,siaddr=$server_ip,ciaddr=$client_ip,giaddr=$gateway_ip,filename=$NODENAME,$extra_args"
+            } else {
+                set net_device(0) "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip $extra_args"
+            }
         } else {
-            set net_device(0) "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip"
+            if { [regexp ":" $server_ip]!=0 } { #ipv6
+                set net_device(0) "$full_path_name:ipv6,speed=$speed,duplex=$duplex,siaddr=$server_ip,ciaddr=$client_ip,giaddr=$gateway_ip,filename=$NODENAME"
+            } else {
+                set net_device(0) "$full_path_name:speed=$speed,duplex=$duplex,bootp,$server_ip,,$client_ip,$gateway_ip"
+            }
         }
         set pattern(0) "BOOTP"
     }
@@ -1526,6 +1534,10 @@ proc boot_network {} {
                         set cmd(3) "setenv boot-device $boot_device_bk\r"
                     }
                 }
+                nc_msg $msg($state)
+                set state $newstate($state)
+            }
+            -re "----" {
                 nc_msg $msg($state)
                 set state $newstate($state)
             }
