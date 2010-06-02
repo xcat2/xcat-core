@@ -3661,18 +3661,16 @@ sub getSNformattedhash
 sub toIP
 {
 
-    # does not support IPV6  IPV6TODO
-    if ($_[0] =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/)
+    if (($_[0] =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/) || ($_[0] =~ /:/))
     {
         return ([0, $_[0]]);
     }
-    $!=undef;
-    my $packed_ip = gethostbyname($_[0]);
-    if (!$packed_ip or $!)
+    my $ip = xCAT::NetworkUtils->getipaddr($_[0]);
+    if (!$ip)
     {
         return ([1, "Cannot Resolve: $_[0]\n"]);
     }
-    return ([0, inet_ntoa($packed_ip)]);
+    return ([0, $ip]);
 }
 
 #-----------------------------------------------------------------------------
