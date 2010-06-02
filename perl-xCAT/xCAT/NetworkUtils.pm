@@ -330,6 +330,10 @@ sub ishostinsubnet {
            my $bip = Net::IP::ip_iptobin($eip,6);
            my $bipnet = $bip & $bmask;
            my $bnet = Net::IP::ip_iptobin($enet,6);
+           if (!$bipnet || !$bnet)
+           {
+               return 0;
+           }
            if ($bipnet == $bnet) {
                return 1;
            }
