@@ -714,26 +714,74 @@ sub getmacs {
 }
 
 ##########################################################################
+# Calculate secondary 1 and secondary 2 MAC address based on primary MAC
+# for HFI devices
+##########################################################################
+sub cal_mac {
+
+    my $mac = shift;
+
+    $mac =~ s/://g;
+    $mac =~ /(.........)(.)(..)/; 
+    my ($basemac, $mac_h, $mac_l) = ($1,$2, $3);
+    my $macnum_l = hex($mac_l);
+    my $macnum_h = hex($mac_h);
+    $macnum_l += 1; 
+    if ($macnum_l > 0xFF) {
+        $macnum_h += 1;
+    }
+    my $newmac_l = sprintf("%02X", $macnum_l);
+    $newmac_l =~ /(..)$/;
+    $newmac_l = $1;
+    my $newmac_h = sprintf("%01X", $macnum_h);
+    my $newmac = $basemac.$newmac_h.$newmac_l;
+
+    return( $newmac );
+}
+
+##########################################################################
 # Insert colons in MAC addresses for Linux only
 ##########################################################################
 sub format_mac {
 
     my $data = shift;
 
-    if ( !xCAT::Utils->isAIX() ) {
-        #####################################
-        # Get adapter mac
-        #####################################
-        $data =~ /^(\S+\s+\S+\s+)(\S+)(\s+.*)$/;
-        my $mac  = $2;
-        my $save = $mac;
-        #################################
-        # Delineate MAC with colons 
-        #################################
-        $mac    = lc($mac);
-        $mac    =~ s/(\w{2})/$1:/g;
-        $mac    =~ s/:$//;
-        $data   =~ s/$save/$mac/;
+    #####################################
+    # Get adapter mac
+    #####################################
+    $data =~ /^(\S+\s+\S+\s+)(\S+)(\s+.*)$/;
+    my $mac = $2;
+    my $save = $mac;
+    if ( $data =~ /^hfi-ent\s+/ ) {
+        my @macs;
+        my $newmac;
+        my $newmac0 = cal_mac( $mac );
+        my $newmac1 = cal_mac( $newmac0 );
+        push @macs, $mac;
+        push @macs, $newmac0;
+        push @macs, $newmac1;
+        foreach my $mac_a ( @macs ) {
+            if ( !xCAT::Utils->isAIX() ) {
+                $mac_a    = lc($mac_a);
+                $mac_a    =~ s/(\w{2})/$1:/g;
+                $mac_a    =~ s/:$//;
+                $newmac   = $newmac.",".$mac_a;
+            } else {
+                $newmac   = $newmac.",".$mac_a;
+            }
+            $newmac =~ s/^,//;
+        }
+        $data   =~ s/$save/$newmac/;
+    } else {
+        if ( !xCAT::Utils->isAIX() ) {
+            #################################
+            # Delineate MAC with colons 
+            #################################
+            $mac    = lc($mac);
+            $mac    =~ s/(\w{2})/$1:/g;
+            $mac    =~ s/:$//;
+            $data   =~ s/$save/$mac/;
+        }
     }
     return( "$data\n" );
 }
