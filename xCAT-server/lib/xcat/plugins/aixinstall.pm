@@ -120,6 +120,11 @@ sub preprocess_request
     #	- either the NIMprime attr of the site table or the management node
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
+    my $nimprimeip = xCAT::NetworkUtils->getipaddr($nimprime);
+    if ($nimprimeip =~ /:/) #IPv6, needs NFSv4 support
+    {
+        $::NFSV4 = 1;
+    }
 
     #exit if preprocessed
     # if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
@@ -502,6 +507,7 @@ sub nimnodeset
     }
 
     # parse the options
+    Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
                     'f|force'   => \$::FORCE,
@@ -509,6 +515,7 @@ sub nimnodeset
                     'i=s'       => \$::OSIMAGE,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
+                    'nfsv4'     => \$::NFSV4,
         )
       )
     {
@@ -1591,26 +1598,324 @@ sub mknimimage
 			$loc = "/install/nim";
 		}
 
-        my $nimcmd = qq~nim_master_setup -a file_system=$loc -a mk_resource=no -a device=$::opt_s~;
-        if ($::VERBOSE)
+        if ($::NFSV4)
         {
-            my $rsp;
-            push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
-        my $nimout =
-          xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
-                                0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp;
-            push @{$rsp->{data}}, "Could not install and configure NIM.\n";
+            #nim_master_setup does not support IPv6, needs to use separate nim commands
+            #1. start ndpd-host service for IPv6
+            my $nimcmd = qq~lssrc -s ndpd-host~;
             if ($::VERBOSE)
             {
-                push @{$rsp->{data}}, "$nimout";
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
             }
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
+            my $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            if ($nimout =~ /inoperative/)
+            {
+                my $nimcmd = qq~startsrc -s ndpd-host~;
+                my $nimout =
+                  xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                        0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not start ndpd-host service\n";
+                    if ($::VERBOSE)
+                    {
+                        push @{$rsp->{data}}, "$nimout";
+                    }
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                } 
+            }
+            #2. Configure nfs domain for nfs version 4
+            # check site table - get domain attr
+            my $sitetab = xCAT::Table->new('site');
+            my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+            my $domain = $tmp->{value};
+            $sitetab->close;
+            if (!$domain)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Can not determine domain name, check site table.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+            $nimcmd = qq~chnfsdom $domain~;
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not change nfsv4 domain to $domain.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+            $nimcmd = qq~stopsrc -g nfs~;
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            sleep 2;
+            $nimcmd = qq~startsrc -g nfs~;
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+                
+            #3. install bos.sysmgt.nim.master bos.sysmgt.nim.spot
+            $nimcmd = qq~installp -aXYd $::opt_s bos.sysmgt.nim.master bos.sysmgt.nim.spot~;
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not install bos.sysmgt.nim.master bos.sysmgt.nim.spot.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+            #4. Initialize NIM
+            $nimcmd = qq~hostname~;
+            my $hname =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            chomp($hname);
+            $hname =~ s/\..*//; #shorthostname
+            $nimcmd = qq~netstat -if inet~;
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            my $pif;
+            foreach my $line (split(/\n/,$nimout))
+            {
+                if ($line =~ /(.*?)\s+\d+\s+$hname/)
+                {
+                    $pif = $1;
+                    last;
+                }
+            }
+            if (!$pif)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not get the primary nim master interface.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+            #get the link local address for the primary nim interface
+            my $linklocaladdr;
+            foreach my $line (split(/\n/,$nimout))
+            {
+                if ($line =~ /$pif\s+\d+\s+(fe80.*?)\s+/)
+                {
+                    $linklocaladdr = $1;
+                    last;
+                }
+            }
+            if (!$linklocaladdr)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not get the link local address of the interface $pif.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+           
+            $nimcmd = qq~nimconfig -aplatform=chrp -anetboot_kernel=64 -acable_type=N/A -a netname=master_net -apif_name=$pif~;
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not initialize nim.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+            #5. Conigure NIM master
+            $nimcmd = qq~nim -o change -a global_export=yes master~;
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not change global_export for master.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+            $nimcmd = qq~nim -o change -a nfs_domain=clusters.com master~;
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not change nfs_domain for master.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+            #6. Add ipv6 network
+            my $net;
+            my $gw;
+            my $netname;
+            my $nettab = xCAT::Table->new('networks');
+            my @nets = $nettab->getAllAttribs('netname', 'net','mask','gateway');
+            if (scalar(@nets) == 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "No entries in networks table, check networks table.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+            foreach my $enet (@nets)
+            {
+                #use the first IPv6 network in networks table
+                if ($enet->{'net'} =~ /:/) { #ipv6
+                    $net = $enet->{'net'};
+                    $gw = $enet->{'gateway'};
+                    $netname = $enet->{'netname'};
+                    last;
+                }
+            }
+            if (!$netname || !$gw || !$net)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Can not get the netname, gateway or net in networks table.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+            $nimcmd = qq~nim -o define -t ent6 -a net_addr=$net -a routing1="default $gw" $netname~;
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not create nim network $netname.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+            
+            #7. Add an IPv6 interface to master
+            my $hip = xCAT::NetworkUtils->getipaddr($hname);
+            $nimcmd = qq~nim -o change -a if2="$netname $hname $linklocaladdr" -a cable_type2=N/A master~;
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not add ipv6 network to nim master.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+        }
+        else
+        {
+            my $nimcmd = qq~nim_master_setup -a file_system=$loc -a mk_resource=no -a device=$::opt_s~;
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Running: \'$nimcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            my $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not install and configure NIM.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
         }
     }
 
@@ -5116,6 +5421,7 @@ sub prenimnodeset
     }
 
     # parse the options
+    Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
                     'f|force'   => \$::FORCE,
@@ -5124,6 +5430,7 @@ sub prenimnodeset
                     'n|new'     => \$::NEWNAME,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
+                    'nfsv4'     => \$::NFSV4,
         )
       )
     {
