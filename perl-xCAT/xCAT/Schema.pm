@@ -549,7 +549,7 @@ passwd => {
   key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes), omapi (DHCP), hmc, ivm, fsp.',
   username => 'The default userid for this type of component',
   password => 'The default password for this type of component',
-  cryptmethod => 'Indicates the method that was used to encrypt the password attribute.  If a value is provided for this attribute it indicates that the passwword attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value.',
+  cryptmethod => 'Indicates the method that was used to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the passwword attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryyptmethod is not supported however the code attempts to auto-discover MD5 encrypted passowrds.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
