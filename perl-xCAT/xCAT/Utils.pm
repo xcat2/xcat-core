@@ -2209,11 +2209,19 @@ sub my_nets
         }
         else
         {
+            if ($elems[1] eq 'inet6')
+            {
+                next; #Linux IPv6 TODO, do not return IPv6 networks on Linux for now
+            }
             ($curnet, $maskbits) = split /\//, $elems[2];
         }
         if (!$v6net)
         {
             my $curmask  = 2**$maskbits - 1 << (32 - $maskbits);
+            if (!$curnet)
+            {
+                next;
+            }
             my $nown     = unpack("N", inet_aton($curnet));
             $nown = $nown & $curmask;
             my $textnet=inet_ntoa(pack("N",$nown));
@@ -2238,6 +2246,10 @@ sub my_nets
       my $n = $_->{net};
       my $if = $_->{mgtifname};
       my $nm = $_->{mask};
+      if (!$n || !$if || $nm)
+      {
+          next; #incomplete network
+      }
       if ($if =~ /!remote!/) { #only take in networks with special interface
         $nm = formatNetmask($nm, 0 , 1);
         $n .="/$nm";
