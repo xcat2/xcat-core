@@ -2218,10 +2218,6 @@ sub my_nets
         if (!$v6net)
         {
             my $curmask  = 2**$maskbits - 1 << (32 - $maskbits);
-            if (!$curnet)
-            {
-                next;
-            }
             my $nown     = unpack("N", inet_aton($curnet));
             $nown = $nown & $curmask;
             my $textnet=inet_ntoa(pack("N",$nown));
