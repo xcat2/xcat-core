@@ -10,6 +10,7 @@ I:tk.man.en_US
 I:openssl.base
 I:openssl.license
 I:bos.sysmgt.nim.master
+I:devices.tmiscsw
 
 # RPMs
 R:bash-3.2-1.aix5.2.ppc.rpm
