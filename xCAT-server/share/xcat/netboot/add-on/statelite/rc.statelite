@@ -9,7 +9,7 @@
 # get all the database files.
 #set -x
 SL=".statelite"
-ME=`hostname`
+ME=`hostname -s`
 MNTDIR="/sysroot"
 SYNCTREE="${MNTDIR}/$SL/litetree" 	# the list of directories to sync from
 SYNCLIST="${MNTDIR}/$SL/litefile" 	# the list of files to sync
@@ -55,7 +55,7 @@ GetSyncInfo () {
 		fi
 	done
 
-    hn=`hostname`
+    hn=`hostname -s`
 	
 
 	if [ -z $XCATSERVER ]; then
