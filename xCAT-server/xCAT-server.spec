@@ -50,7 +50,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/sles
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
-mkdir -p $RPM_BUILD_ROOT/opt/xcat/xdsh/Context
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/xdsh/Context
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/samples
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/pcp
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_schema/samples
@@ -117,8 +117,8 @@ rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/vbox.pm
 rm $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin/activedirectory.pm
 %endif
 
-cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/opt/xcat/xdsh/Context
-chmod 644 $RPM_BUILD_ROOT/opt/xcat/xdsh/Context/*
+cp lib/xcat/dsh/Context/* $RPM_BUILD_ROOT/%{prefix}/xdsh/Context
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/xdsh/Context/*
 
 set +x
 cp -r lib/xcat/monitoring/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring
