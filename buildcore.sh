@@ -245,7 +245,9 @@ if [ "$OSNAME" = "AIX" ]; then
 	echo "rpm -Uvh xCAT-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
 	echo "rpm -Uvh xCAT-rmc-$SHORTSHORTVER*rpm" >> $DESTDIR/instxcat
 	# add the service node bundle files 
-	cp xCATaixSN.bnd xCATaixSN2.bnd xCATaixSSH.bnd xCATaixSSL.bnd $DESTDIR/
+	#   these are now shipped as part of xCAT-server !!!!
+	#	- installed in /opt/xcat/share/xcat/installp_bundles
+	# cp xCATaixSN.bnd xCATaixSN2.bnd xCATaixSSH.bnd xCATaixSSL.bnd $DESTDIR/
 fi
 
 # Decide if anything was built or not
