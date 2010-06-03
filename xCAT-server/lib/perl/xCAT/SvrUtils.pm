@@ -915,8 +915,12 @@ sub get_nodename_from_request()
 # we do this sparingly...  We don't like tons of hits
 # to the database.
 sub subVars {
-        shift; #toss the class name
-        my $dir = shift;
+  my $dir = shift;
+  if (($dir) && ($dir =~ /xCAT::SvrUtils/))
+  {
+    $dir = shift;
+  }
+
         my $node = shift;
         my $type = shift;
         my $callback = shift;
@@ -1007,7 +1011,12 @@ sub subVars {
 }
 
 sub setupNFSTree {
-    my $node = shift;
+  my $node = shift;
+  if (($node) && ($node =~ /xCAT::SvrUtils/))
+  {
+    $node = shift;
+  }
+
     my $sip = shift;
     my $callback = shift;
 
@@ -1056,6 +1065,11 @@ sub setupNFSTree {
 
 sub setupStatemnt {
     my $sip = shift;
+    if (($sip) && ($sip=~ /xCAT::SvrUtils/))
+    {
+      $sip = shift;
+    }
+
     my $statemnt = shift;
     my $callback = shift;
 
