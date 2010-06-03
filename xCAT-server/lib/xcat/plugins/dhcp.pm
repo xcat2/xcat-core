@@ -209,15 +209,15 @@ sub addnode
             $hname = $node . "-noip".$mac;
             $hname =~ s/://g;
             $ip='DENIED';
-        }
-        if ($guess_next_server and $ip and $ip ne "DENIED")
-        {
-            $nxtsrv = xCAT::Utils->my_ip_facing($hname);
-            if ($nxtsrv)
-            {
-                $tftpserver = $nxtsrv;
-                $lstatements = "next-server $nxtsrv;$statements";
-            }
+#        } #if 'guess_next_server', inherit from the network provided value... see how this pans out
+#       if ($guess_next_server and $ip and $ip ne "DENIED")
+#       {
+#           $nxtsrv = xCAT::Utils->my_ip_facing($hname);
+#           if ($nxtsrv)
+#           {
+#               $tftpserver = $nxtsrv;
+#               $lstatements = "next-server $nxtsrv;$statements";
+#           } #of course, we set the xNBA variable to let that propogation carry forward into filename uri interpolation
         } elsif ($guess_next_server) {
             $nxtsrv='${next-server}'; #if floating IP support, cause gPXE command-line expansion patch to drive inheritence from network
         }
