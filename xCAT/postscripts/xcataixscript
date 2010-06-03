@@ -45,7 +45,7 @@ chomp $::shorthost;
 my $servnode;
 # get the name of my service node/NIM master from the /etc/niminfo file
 if (-f "/etc/niminfo") {
-   	$cmd = "cat /etc/niminfo | grep 'NIM_MASTER_HOSTNAME'";
+   	$cmd = "/bin/cat /etc/niminfo | /bin/grep 'NIM_MASTER_HOSTNAME'";
    	&runcmd($cmd);
    	my $SNline = $::outref;
 	my $junk;
@@ -57,162 +57,85 @@ if (-f "/etc/niminfo") {
 	print XCATINFO "XCATSERVER=$servnode\n";
 	close(XCATINFO);
 } else {
-	print "$::sdate  xcataixpost: Could not find /etc/niminfo file.\n";
+	print "$::sdate  xcataixscript: Could not find /etc/niminfo file.\n";
    	print $::LOG_FILE "$::sdate  xcataixscript: Could not find /etc/niminfo file.\n";
 }
 $servnode =~ s/^\s*//;
 chomp $servnode;
 
 # create the xcatpost dir
-my $cmd = "mkdir -m 755 -p /xcatpost";
+my $cmd = "/bin/mkdir -m 755 -p /xcatpost";
 if (&runcmd($cmd) != 0) {
-	print "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
-	print $::LOG_FILE "$::sdate xcataixpost: Could not make the /xcatpost directory.\n";
+	print "$::sdate xcataixscript: Could not make the /xcatpost directory.\n";
+	print $::LOG_FILE "$::sdate xcataixscript: Could not make the /xcatpost directory.\n";
 }
 
-# need to find out what dir to mount - so need to get INSTALLDIR attribute
-#	from the node-specific script
-# request the xCAT postscript for this particular node
-$scriptname = "/xcatpost/myxcatpost_" . $::shorthost;
-if (&getmypost != 0) {
-    print "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
-    print $::LOG_FILE "$::sdate xcataixpost: Could not get the xCAT post script for this node.\n";
+# Set a temporary root password 
+# - the user-provided root passwd will be set by xcataixpost
+my $pwcmd = qq~/bin/echo "root:xcatroot" | /bin/chpasswd -c >/dev/null 2>&1~;
+if (&runcmd($pwcmd) != 0) {
+	print "$::sdate xcataixscript: Could not set password.\n";
+	print $::LOG_FILE "$::sdate xcataixscript: Could not set password.\n";
 }
 
+#  need fix to support INSTALLDIR !!!!!
+#  socket doesn't work at this point of install so need another 
+#	way to get INSTALLDIR value!!!
 my $installdir;
-if (-f $scriptname) {
-    my $cmd = "cat $scriptname | grep 'INSTALLDIR='";
-    &runcmd($cmd);
-    my $Sline = $::outref;
-    my $junk;
-    ($junk, $installdir) =  split(/=/, $Sline);
-    chomp $installdir;
-    $installdir =~ s/^\s*//;
-	$installdir =~ s/^(\'|\")(.*)(\"|\')$/$2/; # remove any surrounding quotes
-}
-
 if (!$installdir) {
 	$installdir="/install";
 }
 
 # get the contents of the $installdir/postscripts dir on the server
 #   - mount dir from server and copy files
-my $mcmd = "mkdir -p /xcatmnt; mount -o nolock $servnode:$installdir/postscripts /xcatmnt";
+my $mcmd = "/bin/mkdir -p /xcatmnt; /usr/sbin/mount -o nolock $servnode:$installdir/postscripts /xcatmnt";
 if (&runcmd($mcmd) != 0) {
-    print "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode.\n";
-    print $::LOG_FILE "$::sdate xcataixpost: Could not mount $installdir/postscripts from $servnode.\n";
+    print "$::sdate xcataixscript: Could not mount $installdir/postscripts from $servnode.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not mount $installdir/postscripts from $servnode.\n";
 }
 
 my $cpcmd;
 if ((@ARGV==0) || ($ARGV[0] != 2)) {
-    $cpcmd = "cp -r /xcatmnt/* /xcatpost >/dev/null 2>&1";
+    $cpcmd = "/bin/cp -r /xcatmnt/* /xcatpost >/dev/null 2>&1";
 } else {
     # when argv[1]=2, there is only one postscript file,
     #   user wants only download it to save time
-    $cpcmd= "cp /xcatmnt/$ARGV[1] /xcatpost >/dev/null 2>&1";
+    $cpcmd= "/bin/cp /xcatmnt/$ARGV[1] /xcatpost >/dev/null 2>&1";
 }
 
 if (&runcmd($cpcmd) != 0) {
-    print "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
-    print $::LOG_FILE "$::sdate xcataixpost: Could not copy postscripts to /xcatpost.\n";
+    print "$::sdate xcataixscript: Could not copy postscripts to /xcatpost.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not copy postscripts to /xcatpost.\n";
 }
 
 # make sure all are executable
-my $chcmd = "chmod +x /xcatpost/*";
+my $chcmd = "/bin/chmod +x /xcatpost/*";
 if (&runcmd($chcmd) != 0) {
-    print "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
-    print $::LOG_FILE "$::sdate xcataixpost: Could not change /xcatpost file permissions.\n";
+    print "$::sdate xcataixscript: Could not change /xcatpost file permissions.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not change /xcatpost file permissions.\n";
 }
 
-my $ucmd = "umount /xcatmnt; rmdir /xcatmnt";
+my $ucmd = "/usr/sbin/umount /xcatmnt; /bin/rmdir /xcatmnt";
 if (&runcmd($ucmd) != 0) {
-    print "$::sdate xcataixpost: Could not unmount $installdir.\n";
-    print $::LOG_FILE "$::sdate xcataixpost: Could not unmount $installdir/postscripts.\n";
+    print "$::sdate xcataixscript: Could not unmount $installdir.\n";
+    print $::LOG_FILE "$::sdate xcataixscript: Could not unmount $installdir/postscripts.\n";
 }
 
-# add xcatd to /etc/inittab???
+# add xcat to /etc/inittab???
 # see if it is already there
 my $lsicmd = "/usr/sbin/lsitab xcat > /dev/null 2>&1";
 if (&runcmd($lsicmd) != 0) {
 	# ok - create the entry
-	my $mkitab_cmd = 'mkitab "xcat:2:wait:/xcatpost/xcataixpost > /dev/console 2>&1"';
+	my $mkitab_cmd = '/usr/sbin/mkitab "xcat:2:wait:/xcatpost/xcataixpost > /dev/console 2>&1"';
 	if (&runcmd($mkitab_cmd) != 0) {
-		print "$::sdate xcataixpost: Could not add xcataixpost to /etc/inittab.\n";
-		print $::LOG_FILE "$::sdate xcataixpost: Could not add xcataixpost to /etc/inittab.\n";
+		print "$::sdate xcataixscript: Could not add xcataixpost to /etc/inittab.\n";
+		print $::LOG_FILE "$::sdate xcataixscript: Could not add xcataixpost to /etc/inittab.\n";
 	}
 }
 
 close($::LOG_FILE);
 
 exit 0;
-
-#####################################################
-#
-#   getmypost
-#               Get the xCAT post script info for this node
-#					and write it to a file 
-#
-#####################################################
-sub  getmypost {
-	
-	my $port = "3001";
-
-	# open a socket to request credentials
-    my $remote = IO::Socket::SSL->new(
-        PeerAddr => $servnode,
-        PeerPort  => $port,
-        Proto    => 'tcp',
-    );
-
-	unless ($remote) {
-        print "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
-        print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
-        return 1;
-    }
-
-	if (!open(POSTSCRIPT, ">$scriptname") ) {
-        print "$::sdate  xcataixpost: Could not open $scriptname.\n";
-        print $::LOG_FILE "$::sdate  xcataixpost: Could not open $scriptname.\n"
-;
-        close $remote;
-        return 1;
-    }
-    # setup the perl library path for xcat-dep packages
-    # this is necessary for AIX 5.3V/61H and beyond
-    # but does not hurt old AIX versions
-    print POSTSCRIPT "PERL5LIB='/usr/opt/perl5/lib/5.8.2:/usr/opt/perl5/lib/5.8.2/aix-thread-multi:/usr/opt/perl5/lib/site_perl/5.8.2:/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi'\n";
-    print POSTSCRIPT "export PERL5LIB\n";
-    
-
-	# request must be in XML format
-    print $remote "<xcatrequest>\n";
-    print $remote "   <command>getpostscript</command>\n";
-    print $remote "</xcatrequest>\n";
-
-	# get reponse in XML format
-	my $response='';
-	my $rsp;
-	while (<$remote>) {
-		$response .= $_;
-		if ($response =~ m/<\/xcatresponse>/) {
-			$rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
-
-			if ($rsp->{serverdone}) {
-				last;			
-			}
-
-			foreach my $line (@{$rsp->{data}}) {
-				$line =~ s/^\s+//;    # strip any leading spaces
-				print POSTSCRIPT "$line";
-			}
-			$response='';
-		}
-    }
-	
-	close(POSTSCRIPT);
-    close $remote;
-    return 0;
-}
 
 #####################################################
 #
@@ -230,8 +153,8 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-		print "$::sdate  xcataixpost: $::outref\n";
-		print $::LOG_FILE "$::sdate  xcataixpost: $::outref\n";
+		print "$::sdate  xcataixscript: $::outref\n";
+		print $::LOG_FILE "$::sdate  xcataixscript: $::outref\n";
         }
     }
  return $rc;

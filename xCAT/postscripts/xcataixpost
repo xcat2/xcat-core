@@ -319,16 +319,17 @@ if (@ARGV<1) {
 
 if (-f $scriptname) {
 
-	# Set the local password - if provided
-	my $cmd = "cat $scriptname | grep 'ROOTPW='";
-    &runcmd($cmd);
-    my $PWline = $::outref;
-    my ($junk, $rpd) =  split(/=/, $PWline);
-	if ($rpd) {
-		chomp $rpd;
-		my $pwcmd = qq~echo "root:$rpd" | /bin/chpasswd -c >/dev/null 2>&1~;
+	if ($::ROOTPW) {
+		chomp $::ROOTPW;
+		my $pwcmd;
+
+		if ($::CRYPTMETHOD) {
+			$pwcmd = qq~echo "root:$::ROOTPW" | /bin/chpasswd -e -c >/dev/null 2>&1~;
+		} else {
+			$pwcmd = qq~echo "root:$::ROOTPW" | /bin/chpasswd -c >/dev/null 2>&1~;
+		}
 		if (&runcmd($pwcmd) != 0) {
-			$msg = "$::sdate xcataixpost: Could not set password.\n";
+			$msg = "$::sdate xcataixpost: Could not set root password.\n";
 			`logger -t xcat $msg`;
 		}
 	}
@@ -409,7 +410,19 @@ sub  getmypost {
 			}
 
 			foreach my $line (@{$rsp->{data}}) {
-				$line =~ s/^\s+//;    # strip any leading spaces
+				$line =~ s/^\s+//; 
+				if ($line =~ /=/) {
+					my ($attr, $val) = $line =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+					if ($attr eq 'ROOTPW') {
+						$::ROOTPW=$val;
+					}
+					if ($attr eq 'CRYPTMETHOD') {
+						$::CRYPTMETHOD=$val;
+					}
+				}
+				if (($line =~ /ROOTPW/) || ($line =~ /CRYPTMETHOD/))  {
+					next;
+				}
 				print POSTSCRIPT "$line";
 			}
 			$response='';
