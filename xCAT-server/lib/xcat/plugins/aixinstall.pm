@@ -1194,13 +1194,9 @@ srvnode.";
     }    # end - if UPDATE
 
     # ok -then the spot can be updated
-    if ($::VERBOSE)
-    {
-        my $rsp;
-        push @{$rsp->{data}},
-          "Updating the NIM spot resource named \'$spot_name\'.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }
+	my $rsp;
+	push @{$rsp->{data}}, "Updating the NIM spot resource named \'$spot_name\'.\n";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
 
     #
     # update spot with additional software if have bnds
@@ -2585,7 +2581,7 @@ sub mknimimage
 		chomp $rootpw;
 		my $pwcmd;
 		if ($method) {
-			$pwcmd = qq~xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -e" >/dev/null 2>&1~;
+			$pwcmd = qq~xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -e -c" >/dev/null 2>&1~;
 		} else {
 			$pwcmd = qq~xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -c" >/dev/null 2>&1~;
 		}
@@ -6592,6 +6588,10 @@ sub mkdsklsnode
             $attrs{$attr} = $value;
         }
     }
+
+	my $rsp;
+	$rsp->{data}->[0] = "$Sname: Initializing AIX diskless nodes.  This could take a while.\n";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
 
     #
     #  Get a list of the defined NIM machines
