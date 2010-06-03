@@ -34,7 +34,6 @@ if ($^O =~ /^aix/i) {
 use lib "$::XCATROOT/lib/perl";
 
 # MAIN
-use strict;
 use IO::Socket;
 
 my $useSocketSSL=eval { require IO::Socket::SSL; };
@@ -144,14 +143,18 @@ sub runcmd
     my $rc=0;
 
     $cmd .= ' 2>&1' ;
-    my $outref = [];
-    @$outref = `$cmd`;
+
+   # my $outref = [];
+   # @$outref = `$cmd`;
+
+	$::outref = [];
+	$::outref = `$cmd`;
     if ($?)
     {
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            my $msg="$cmd returned rc=$rc @$outref\n";
+            my $msg="$cmd returned rc=$rc $::outref\n";
             `logger -t xcat $msg`;
 			return 1;
         }
@@ -180,7 +183,7 @@ sub setupAIXsn
 	}
 
 	# check if /install/postscripts is in /etc/exports
-    if (&runcmd("/bin/cat /etc/exports | grep '$installdir/postscripts ' >/dev/null 2>&1")  != 0) {
+    if (&runcmd("/bin/cat /etc/exports 2>/dev/null | grep '$installdir/postscripts ' >/dev/null 2>&1")  != 0) {
         # if not add it and make sure it is exported
         if (&runcmd("echo '$installdir/postscripts -ro' >> /etc/exports; exportfs -a") !=0 ) {
             $msg = "$::sdate servicenode: Could not update the /etc/exports file.\n";
@@ -206,7 +209,8 @@ sub setupAIXsn
 	&getcreds;
 
 	# Add the xcatd subsystem to the AIX
-	my $mkssys_cmd = 'mkssys -p $::XCATROOT/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a "-f"';
+	my $mkssys_cmd = "mkssys -p $::XCATROOT/sbin/xcatd -s xcatd -u 0 -S -n 15 -f 15 -a '-f' ";
+
 	if (&runcmd($mkssys_cmd) != 0) {
 		$msg = "$::sdate servicenode: Could not create subsystem for xcatd. It maybe already have been added.\n";
 		`logger -t xcat $msg`;
@@ -214,12 +218,12 @@ sub setupAIXsn
 
 	# start xcatd
 	if (&runcmd("$::XCATROOT/sbin/restartxcatd") != 0) {
-		$msg = "$::sdate servicenode: Could not start xcatd.\n";
-        	`logger -t xcat $msg`;
-    	}
+		$msg = "$::sdate servicenode: Could not start xcatd.\n\n $::outref \n";
+       	`logger -t xcat $msg`;
+    }
 
 	# add xcatd to /etc/inittab???
-	my $mkitab_cmd = 'mkitab "xcatd:2:once:$::XCATROOT/sbin/restartxcatd > /dev/console 2>&1"';
+	my $mkitab_cmd = qq~/usr/sbin/mkitab "xcatd:2:once:$::XCATROOT/sbin/restartxcatd > /dev/console 2>&1"~;
 
 	if (&runcmd($mkitab_cmd) != 0) {
 		# error might just mean that the entry is already there!
@@ -321,7 +325,7 @@ sub getcreds
 		`logger -t xcat $msg`;
 	}
 
-	my $response=&getresponse("xcat_server_cred");
+	$response=&getresponse("xcat_server_cred");
 	if (defined ($response) ) {
 		my $fd;
 		my $filename = "/etc/xcat/cert/server-cred.pem";
@@ -339,7 +343,7 @@ sub getcreds
         `logger -t xcat $msg`;
     }
 
-	my $response=&getresponse("xcat_cfgloc");
+	$response=&getresponse("xcat_cfgloc");
 	if (defined ($response) ) {
 		# need to change entry to use the name of the server as
 		#       know by this node
