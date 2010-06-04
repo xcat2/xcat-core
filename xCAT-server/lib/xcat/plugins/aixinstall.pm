@@ -6881,10 +6881,6 @@ sub mkdsklsnode
 
         # define the node
         my $defcmd = "/usr/sbin/nim -o define -t $type ";
-        if ($::NFSV4)
-        {
-            $defcmd .= "-a nfs_vers=4 ";
-        }
         if ($::NEWNAME)
         {
             $defcmd .= "-a if1='find_net $nodeshorthost 0' ";
@@ -7820,8 +7816,15 @@ sub make_SN_resource
                       dirname(dirname($lochash{$imghash{$image}{$restype}}));
                     chomp $loc;
 
-                    my $spotcmd =
-                      "/usr/lpp/bos.sysmgt/nim/methods/m_mkspot -o -a server=master -a location=$loc -a source=no $imghash{$image}{$restype}";
+                    my $spotcmd;
+                    if ($::NFSV4)
+                    { 
+                      $spotcmd = "/usr/lpp/bos.sysmgt/nim/methods/m_mkspot -o -a server=master -a location=$loc -a nfs_vers=4 -a source=no $imghash{$image}{$restype}";
+                    } 
+                    else
+                    {
+                        $spotcmd = "/usr/lpp/bos.sysmgt/nim/methods/m_mkspot -o -a server=master -a location=$loc -a source=no $imghash{$image}{$restype}"; 
+                    }
 
                     if ($::VERBOSE)
                     {
