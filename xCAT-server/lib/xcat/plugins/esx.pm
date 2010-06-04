@@ -71,6 +71,8 @@ sub handled_commands{
 		rmigrate => 'nodehm:power,mgt',
 		mkvm => 'nodehm:mgt',
 		rmvm => 'nodehm:mgt',
+		rinv => 'nodehm:mgt',
+                chvm => 'nodehm:mgt',
 		rmhypervisor => 'hypervisor:type',
 		#lsvm => 'nodehm:mgt', not really supported yet
 	};
@@ -414,6 +416,10 @@ sub do_cmd {
         generic_vm_operation(['config.name','runtime.powerState','runtime.host'],\&rmvm,@exargs);
     } elsif ($command eq 'rsetboot') {
         generic_vm_operation(['config.name','runtime.host'],\&setboot,@exargs);
+    } elsif ($command eq 'chvm') {
+        chvm(@exargs);
+    } elsif ($command eq 'rinv') {
+        generic_vm_operation(['config.name','config','runtime.host'],\&inv,@exargs);
     } elsif ($command eq 'rmhypervisor') {
         generic_hyp_operation(\&rmhypervisor,@exargs);
     } elsif ($command eq 'mkvm') {
@@ -422,6 +428,71 @@ sub do_cmd {
         generic_hyp_operation(\&migrate,@exargs);
     }
     wait_for_tasks();
+}
+
+sub inv {
+    my %args = @_;
+    my $node = $args{node};
+    my $hyp = $args{hyp};
+    if (not defined $args{vmview}) { #attempt one refresh
+        $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
+    }
+    if (not defined $args{vmview}) { 
+        sendmsg([1,"VM does not appear to exist"],$node);
+        return;
+    }
+    my $vmview = $args{vmview};
+    my $uuid = $vmview->config->uuid;
+    sendmsg("$node:  UUID/GUI:  $uuid");
+    my $cpuCount = $vmview->config->hardware->numCPU;
+    sendmsg("$node:  CPUs:  $cpuCount");
+    my $memory = $vmview->config->hardware->memoryMB;
+    sendmsg("$node:  Memory:  $memory MB");
+    my $devices = $vmview->config->hardware->device;
+    my $label;
+    my $size;
+    my $fileName;
+    my $device;
+    foreach $device (@$devices) {
+      
+      $label = $device->deviceInfo->label;
+
+      if($label =~ /^Hard disk/) {
+        $size = $device->capacityInKB / 1024;
+        $fileName = $device->backing->fileName;
+
+        sendmsg("$node:  $label:  $size MB @ $fileName");
+
+      }
+    }
+}
+
+sub chvm {
+#    my @exargs = @_;
+#
+#    my $reconfigspec;
+#    if ($reconfigspec = getreconfigspec(node=>$node,view=>$args{vmview})) {
+#        if ($currstat eq 'poweredOff') {
+#            #sendmsg("Correcting guestId because $currid and $rightid are not the same...");#DEBUG
+#             my $task = $args{vmview}->ReconfigVM_Task(spec=>$reconfigspec);
+#             $running_tasks{$task}->{task} = $task;
+#             $running_tasks{$task}->{callback} = \&reconfig_callback;
+#             $running_tasks{$task}->{hyp} = $args{hyp}; 
+#             $running_tasks{$task}->{data} = { node => $node, reconfig_fun=>\&power, reconfig_args=>\%args }; 
+#         return;
+#        } elsif (grep /$subcmd/,qw/reset boot/) { #going to have to do a 'cycle' and present it up normally..
+#             #sendmsg("DEBUG: forcing a cycle");
+#             $task = $args{vmview}->PowerOffVM_Task();
+#             $running_tasks{$task}->{task} = $task;
+#             $running_tasks{$task}->{callback} = \&repower;
+#             $running_tasks{$task}->{hyp} = $args{hyp}; 
+#             $running_tasks{$task}->{data} = { node => $node, power_args=>\%args}; 
+#             return; #we have to wait
+#        }
+#TODO: fixit
+           #sendmsg("I see vm has $currid and I want it to be $rightid");
+#    }
+
 }
 
 #this function will check pending task status
