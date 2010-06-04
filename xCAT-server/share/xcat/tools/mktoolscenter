@@ -364,7 +364,7 @@ export SEP_INSTALL_PATH=/tmp
 # UXSPI environment variable
 export UXLITE_CLEAN_INVFILE=1
 export UXSPI_CLEAN_INVFILE=1
-export UXSPI_BINARY_PATH=`find /toolscenter/uxspi -name 'uxspi*.sles10_64' | sort | tail -n 1`
+export UXSPI_BINARY_PATH=`find /toolscenter/uxspi -name 'uxspi*.anyos' | sort | tail -n 1`
 export UXSPI_GUI_CMD="xterm -geometry 168x58+5+5 +sb -e ${UXSPI_BINARY_PATH}"
 export UXSPI_TUI_CMD="${UXSPI_BINARY_PATH} update --tui --firmware -l ${UXSPI_BOOTABLE} --timeout=${UXSPI_TIMEOUT}"
 
