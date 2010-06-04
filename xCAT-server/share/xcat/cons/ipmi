@@ -96,12 +96,22 @@ if (-x "$XCATROOT/bin/ipmitool-xcat") {
 }
 my @mcinfo=`$ipmitool -I lan -U $username -P $password -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
 $rc = $?;
+if ($rc) { #some shoddy vendors ignore the IPMI 2.0 requirement to support IPMI 1.5 formats for BMC capability determination, attempt IPMI 2.0 even without the ability to confirm IPMI 2.0 support.  Though SOL was not baked in prior IPMI 2.0, this script supports pre-2.0 'ISOL' on older devices, hence why we are checking for 1.5/2.0 before proceeding normally
+    @mcinfo=`$ipmitool -I lanplus -U $username -P $password -H $bmc mc info`;
+    $rc = $?;
+}
+    @mcinfo=`$ipmitool -I lan -U $username -P $password -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
+}
 while ($rc != 0) {
    $sleepint = 10+int(rand(20));
    print "Failure to reach IPMI device, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
    sleep $sleepint;
    @mcinfo=`$ipmitool -I lan -U $username -P $password -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
    $rc = $?;
+    if ($rc) { #repeat workaround for shoddy vendors
+        @mcinfo=`$ipmitool -I lanplus -U $username -P $password -H $bmc mc info`;
+        $rc = $?;
+    }
 }
 
 my $solcom="sol";
