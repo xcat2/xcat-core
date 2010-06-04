@@ -1,5 +1,7 @@
 #!/bin/sh
 
+MYNAME="${MYNAME:-${0##*/}}"
+
 function usage {
 	echo
 	echo "Usage: $MYNAME netboot_rootdir "
