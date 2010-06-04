@@ -220,17 +220,26 @@ sub process_request {
 
     foreach my $entry (keys %hashNew) {
         my @tmp = split (/\s+/, $entry);
-        if ($hashNew{$entry} and $tmp[1] =~ m/persistent/) {
+        if ($hashNew{$entry}) {
             foreach my $child ( @{$hashNew{$entry}} ) {
                 my @tmpc = split (/\s+/, $child);
-                unless ( $tmpc[1] =~ m/persistent/ ) {
-                    my $f = $tmp[2];
-                    my $fc = $tmpc[2];
+                my $f = $tmp[2];
+                my $fc = $tmpc[2];
+                if ($tmp[1] =~ m/bind/ && $tmpc[1] !~ m/bind/) {
+                    $callback->({error=>["$fc should have bind options like $f "], errorcode=> [ 1]});
+                    return;
+                }
+                if ($tmp[1] =~ m/tmpfs/ && $tmpc[1] =~ m/bind/) {
+                    $callback->({error=>["$fc shouldnot use bind options "], errorcode=> [ 1]});
+                    return;
+                }
+                if ($tmp[1] =~ m/persistent/ && $tmpc[1] !~ m/persistent/) {
                     $callback->({error=>["$fc should have persistent option like $f "], errorcode=> [ 1]});
                     return;
                 }
             }
         }
+
     }
 
     # backup the file/directory before recovering the files in litefile.save
