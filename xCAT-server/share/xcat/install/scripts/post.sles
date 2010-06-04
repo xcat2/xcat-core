@@ -23,9 +23,9 @@ then
 fi
 if [ -z "$PRINIC" ]
 then
-    for karg in $(cat /proc/cmdline |sed -e 's/ /\n/g'); do
+    for karg in $(cat /proc/cmdline |sed -e 's/-/:/g' -e 's/ /\n/g'); do
         if  [ "${karg%%=*}" = "BOOTIF" ]; then
-            export PRINIC=`ifconfig -a|grep -i "hwaddr ${karg#*=}"|awk '{print $1}'`
+            export PRINIC=`ifconfig -a|grep -i "hwaddr ${karg#*=01:}"|awk '{print $1}'`
         fi
     done
     if [ -z "$PRINIC" ]; then
