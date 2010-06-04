@@ -9,13 +9,63 @@ use xCAT::MsgUtils;
 use Data::Dumper;
 use xCAT::DBobjUtils;
 use xCAT::PPCpower;
-
+use xCAT::FSPUtils;
 ##########################################################################
 # Parse the command line for options and operands
 ##########################################################################
 sub parse_args {
 	xCAT::PPCpower::parse_args(@_);	
 }
+
+
+##########################################################################
+# Builds a hash of CEC/LPAR information returned from FSP
+##########################################################################
+sub enumerate {
+
+    my $h    = shift;
+    my $mtms    = shift;
+    my %outhash = ();
+    my %cmds    = (); 
+    my $type    = ();
+    my $cec_bpa = ();
+    ######################################
+    # Check for CEC/LPAR/BPAs in list
+    ######################################
+    while (my ($name,$d) = each(%$h) ) {
+        $cec_bpa = @$d[3];
+        $type = @$d[4];
+        $cmds{$type} = ($type=~/^lpar$/) ? "all_lpars_state" : "cec_state";
+    }
+    foreach my $type ( keys %cmds ) {
+        my $action = $cmds{$type};
+        my $values =  xCAT::FSPUtils::fsp_state_action ($cec_bpa, $type, $action);;
+        my $Rc = shift(@$values);
+        ##################################
+        # Return error 
+        ##################################
+        if ( $Rc != 0 ) {
+            return( [$Rc,@$values[0]] );
+        }
+        ##################################
+        # Save LPARs by id 
+        ##################################
+        foreach ( @$values ) {
+            my ($state,$lparid) = split /,/;
+
+            ##############################
+            # No lparid for fsp/bpa     
+            ##############################
+            if ( $type =~ /^(fsp|bpa)$/ ) {
+                $lparid = $type;
+            }
+            $outhash{ $lparid } = $state;
+        }
+    }
+    return( [0,\%outhash] );
+}
+
+
 
 
 
@@ -56,7 +106,7 @@ sub powercmd_boot {
 	       next;
        }
        
-       my $res = xCAT::Utils::fsp_api_action ($node_name, $d, "state");
+       my $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "state");
        #print "In boot, state\n";
        #print Dumper($res);
        my $Rc = @$res[2];
@@ -78,7 +128,7 @@ sub powercmd_boot {
        my $state = power_status($data);
        #print "boot:state:$state\n";
        my $op    = ($state =~ /^off$/) ? "on" : "reset";
-       $res = xCAT::Utils::fsp_api_action ($node_name, $d, $op);
+       $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, $op);
 	
        # @output  ...	
        $Rc = @$res[2];
@@ -151,7 +201,7 @@ sub powercmd {
              next;
 	     }
         }		
-        my $res = xCAT::Utils::fsp_api_action($node_name, $d, $action );
+        my $res = xCAT::FSPUtils::fsp_api_action($node_name, $d, $action );
 	#    print "In boot, state\n";
 	#    print Dumper($res);
     	my $Rc = @$res[2];
@@ -204,6 +254,102 @@ sub state {
     my $prefix  = shift;
     my $convert = shift;
     my @output  = ();
+			
+    
+    #print "------in state--------\n"; 
+    #print Dumper($request);	
+    #print Dumper($hash); 
+    ####################################
+    # Power commands are grouped by hardware control point
+    # In FSPpower, the hcp is the related fsp.  
+    ####################################
+    
+    # Example of $hash.    
+    #VAR1 = {
+    #	          '9110-51A*1075ECF' => {
+    #                                   'Server-9110-51A-SN1075ECF' => [
+    #    	                                                          0,
+    #		                                                          0,
+    #	                      						  '9110-51A*1075ECF',
+    #	                     						  'fsp1_name',
+    #   							          'fsp',
+    #							                  0
+    #									]
+    #					                 }          
+    # 	   };
+
+    my @result  = ();
+
+
+    if ( !defined( $prefix )) {
+        $prefix = "";
+    }
+    while (my ($mtms,$h) = each(%$hash) ) {
+        ######################################
+        # Build CEC/LPAR information hash
+        ######################################
+        my $stat = enumerate( $h, $mtms );
+        my $Rc = shift(@$stat);
+        my $data = @$stat[0];
+        if($Rc != 0) {
+            push @result,[$mtms ,$$data[0],$Rc];
+            return(\@result);
+        }
+        while (my ($name,$d) = each(%$h) ) {
+            ##################################
+            # Look up by lparid 
+            ##################################
+            my $type = @$d[4];
+            my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
+            
+            ##################################
+            # Output error
+            ##################################
+            if ( $Rc != SUCCESS ) {
+                push @result, [$name, "$prefix$data",$Rc];
+                next;
+            }
+            ##################################
+            # Node not found 
+            ##################################
+            if ( !exists( $data->{$id} )) {
+                push @result, [$name, $prefix."Node not found",1];
+                next;
+            }
+            ##################################
+            # Output value
+            ##################################
+            my $value = $data->{$id};
+
+            ##############################
+            # Convert state to on/off 
+            ##############################
+            if ( defined( $convert )) {
+                $value = power_status( $value );
+            }
+            push @result, [$name,"$prefix$value",$Rc];
+        }
+    }
+    return( \@result );
+ 
+   
+}
+
+
+
+
+
+##########################################################################
+# Queries CEC/LPAR power status 
+##########################################################################
+sub state1 {
+
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift; # NOt use
+    my $prefix  = shift;
+    my $convert = shift;
+    my @output  = ();
     my $action  = "state"; 
 			
     
@@ -231,7 +377,8 @@ sub state {
 
     
     foreach my $cec_bpa ( keys %$hash)
-    { 
+    {
+       
 
         my $node_hash = $hash->{$cec_bpa};
         for my $node_name ( keys %$node_hash)
@@ -239,13 +386,12 @@ sub state {
             my $d = $node_hash->{$node_name};
 	    if($$d[4] =~ /^fsp$/ || $$d[4] =~ /^bpa$/) {
 	        $action = "cec_state";		  
-            }  
+            } 
             my $stat = xCAT::Utils::fsp_api_action ($node_name, $d, $action);
             my $Rc = @$stat[2];
     	    my $data = @$stat[1];
             my $type = @$d[4];
 	    #my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
-        
 	    ##################################
             # Output error
             ##################################
