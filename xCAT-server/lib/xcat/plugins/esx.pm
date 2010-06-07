@@ -575,7 +575,29 @@ sub chvm {
   
 	if(@add) {
 		my $addSizes = join(',',@add);
-    		push @devChanges, create_storage_devs($node,$hyphash{$hyp}->{datastoremap},$addSizes);
+		my $scsiCont;
+		my $scsiUnit;
+		my $ideCont;
+		my $ideUnit;
+		my $label;
+		foreach $device (@$devices) {
+			$label = $device->deviceInfo->label;
+			sendmsg("label=$label");
+			if($label =~ /^SCSI controller/) {
+				$scsiCont = $device;
+			}
+			if($label =~ /^IDE/) {
+				$ideCont = $device;
+			}
+		}
+		if($scsiCont) {
+			$scsiUnit = getHighestUnit($scsiCont->{key},$devices);
+		}
+		if($ideCont) {
+			$ideUnit = getHighestUnit($ideCont->{key},$devices);
+		}
+		unless ($hyphash{$hyp}->{datastoremap}) { validate_datastore_prereqs([],$hyp); }
+    		push @devChanges, create_storage_devs($node,$hyphash{$hyp}->{datastoremap},$addSizes,$scsiCont,$scsiUnit,$ideCont,$ideUnit);
 	}
 
 	if(%resize) {
@@ -618,6 +640,18 @@ sendmsg(Dumper(\%conargs));
 	$running_tasks{$task}->{hyp} = $hyp;
 	$running_tasks{$task}->{data} = { node => $node, successtext => "node successfully changed" };
 
+}
+
+sub getHighestUnit {
+  my $contKey = shift;
+  my $devices = shift;
+  my $highestUnit = 0;
+  for my $device (@$devices) {
+    if(($device->{controllerKey} eq $contKey) && ($device->{unitNumber} >= $highestUnit)) {
+      $highestUnit = $device->{unitNumber}+1;
+    }
+  }
+  return $highestUnit;
 }
 
 #given a device list from a vm and a label for a hard disk, returns the device object
@@ -1687,6 +1721,10 @@ sub create_storage_devs {
     my $sdmap = shift;
     my $sizes = shift;
     my @sizes = split /[,:]/, $sizes;
+    my $existingScsiCont = shift;
+    my $scsiUnit = shift;
+    my $existingIdeCont = shift;
+    my $ideUnit = shift;
     my $scsicontrollerkey=0;
     my $idecontrollerkey=200; #IDE 'controllers' exist at 200 and 201 invariably, with no flexibility?
                               #Cannot find documentation that declares this absolute, but attempts to do otherwise
@@ -1696,9 +1734,17 @@ sub create_storage_devs {
     my @devs;
     my $havescsidevs =0;
     my $disktype = 'ide';
-    my $unitnum=1; #Going to make IDE controllers for now, aiming for
-                   #lowest common denominator guest driver for 
-                   #changing hypervisor technology
+    my $ideunitnum=0; 
+    my $scsiunitnum=0;
+    if (defined $existingScsiCont) { 
+	$scsicontrollerkey = $existingScsiCont->{key};
+	$scsiunitnum = $scsiUnit;
+    }
+    if (defined $existingIdeCont) { 
+	$idecontrollerkey = $existingIdeCont->{key};
+	$ideunitnum = $ideUnit;
+    }
+    my $unitnum;
     my %disktocont;
     my $dev;
     my @storelocs = split /,/,$tablecfg{vm}->{$node}->[0]->{storage};
@@ -1727,11 +1773,11 @@ sub create_storage_devs {
         my $uri = "nfs://$server/$path";
         $backingif = VirtualDiskFlatVer2BackingInfo->new(diskMode => 'persistent',
                                                            fileName => "[".$sdmap->{$uri}."]");
-        if ($disktype eq 'ide' and $idecontrollerkey eq 1 and $unitnum eq 0) { #reserve a spot for CD
-            $unitnum = 1;
-        } elsif ($disktype eq 'ide' and $unitnum eq 2) { #go from current to next ide 'controller'
+        if ($disktype eq 'ide' and $idecontrollerkey eq 1 and $ideunitnum eq 0) { #reserve a spot for CD
+            $ideunitnum = 1;
+        } elsif ($disktype eq 'ide' and $ideunitnum eq 2) { #go from current to next ide 'controller'
             $idecontrollerkey++;
-            $unitnum=0;
+            $ideunitnum=0;
         }
         unless ($disktype eq 'ide') {
             push @{$disktocont{$scsicontrollerkey}},$currkey;
@@ -1739,15 +1785,17 @@ sub create_storage_devs {
         my $controllerkey;
         if ($disktype eq 'ide') {
             $controllerkey = $idecontrollerkey;
+	    $unitnum = $ideunitnum++;
         } else {
             $controllerkey = $scsicontrollerkey;
+	    $unitnum = $scsiunitnum++;
             $havescsidevs=1;
         }
 
         $dev =VirtualDisk->new(backing=>$backingif,
                         controllerKey => $controllerkey,
                         key => $currkey++,
-                        unitNumber => $unitnum++,
+                        unitNumber => $unitnum,
                         capacityInKB => $disksize); 
         push @devs,VirtualDeviceConfigSpec->new(device => $dev,
                                                 fileOperation => VirtualDeviceConfigSpecFileOperation->new('create'),
