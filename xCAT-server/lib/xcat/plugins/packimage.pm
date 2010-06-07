@@ -358,19 +358,18 @@ sub copybootscript {
        chmod(0755,"$rootimg_dir/opt/xcat/xcatdsklspost.aix");
     }
 
-	if ( -f "$installroot/postscripts/xcatpostinit") {
-
+	#if ( -f "$installroot/postscripts/xcatpostinit") {
         # copy the linux diskless init script to the image
         #   - & set the permissions
-        copy ("$installroot/postscripts/xcatpostinit","$rootimg_dir/etc/init.d/xcatpostinit");
+        #copy ("$installroot/postscripts/xcatpostinit","$rootimg_dir/etc/init.d/xcatpostinit");
 
-        chmod(0755,"$rootimg_dir/etc/init.d/xcatpostinit");
+        #chmod(0755,"$rootimg_dir/etc/init.d/xcatpostinit");
 
         # run chkconfig
         #my $chkcmd = "chroot $rootimg_dir chkconfig --add xcatpostinit";
-        symlink "/etc/init.d/xcatpostinit","$rootimg_dir/etc/rc3.d/S84xcatpostinit";
-        symlink "/etc/init.d/xcatpostinit","$rootimg_dir/etc/rc4.d/S84xcatpostinit";
-        symlink "/etc/init.d/xcatpostinit","$rootimg_dir/etc/rc5.d/S84xcatpostinit";
+        #symlink "/etc/init.d/xcatpostinit","$rootimg_dir/etc/rc3.d/S84xcatpostinit";
+        #symlink "/etc/init.d/xcatpostinit","$rootimg_dir/etc/rc4.d/S84xcatpostinit";
+        #symlink "/etc/init.d/xcatpostinit","$rootimg_dir/etc/rc5.d/S84xcatpostinit";
         #my $rc = system($chkcmd);
         #if ($rc) {
 		#my $rsp;
@@ -378,12 +377,12 @@ sub copybootscript {
       #  	xCAT::MsgUtils->message("E", $rsp, $callback);
       #      	return 1;
       #  }
-    } else {
-	my $rsp;
-        push @{$rsp->{data}}, "Could not find the script $installroot/postscripts/xcatpostinit.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-    }
+    #} else {
+	#my $rsp;
+    #    push @{$rsp->{data}}, "Could not find the script $installroot/postscripts/xcatpostinit.\n";
+    #    xCAT::MsgUtils->message("E", $rsp, $callback);
+    #    return 1;
+    #}
 	return 0;
 }
 
