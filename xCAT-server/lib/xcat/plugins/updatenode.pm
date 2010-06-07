@@ -259,6 +259,7 @@ sub preprocess_updatenode
                 $::RERUNPS = $ARGV[0];
                 $ARGV[0] = "";
             }
+
         }
     }
     else
@@ -1851,9 +1852,35 @@ sub updateAIXsoftware
 			# $serv is the name of the nodes server as known by the node
 
 		  	if (scalar(@pkglist)) {
-
+#ndebug
             	foreach my $serv (@servers)
             	{
+
+					# make sure the permissions are correct in the lpp_source
+					my $chmcmd = qq~/bin/chmod -R +r $pkgdir~;
+
+					# if server is me then just do chmod
+					if (xCAT::InstUtils->is_me($serv)) {
+						my @result = xCAT::Utils->runcmd("$chmcmd", -1);
+						if ($::RUNCMD_RC != 0)
+						{
+							my $rsp;
+							push @{$rsp->{data}}, "Could not set permissions for $pkgdir.\n";
+							xCAT::MsgUtils->message("E", $rsp, $callback);
+							return 1;
+						}
+
+					} else {  # if server is remote then use xdsh
+						my $output = xCAT::Utils->runxcmd({command => ["xdsh"], node => [$serv], arg => [$chmcmd]}, $subreq, -1, 1);
+						if ($::RUNCMD_RC != 0)
+						{
+							my $rsp;
+							push @{$rsp->{data}}, "Could not set permissions for $pkgdir.\n";
+							xCAT::MsgUtils->message("E", $rsp, $callback);
+						 	return 1;
+						}
+					}
+
                 	# mount source dir to node
                 	my $mcmd   = qq~mkdir -m 644 -p /xcatmnt; mount $serv:$pkgdir /xcatmnt~;
 
