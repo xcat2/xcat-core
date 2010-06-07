@@ -773,7 +773,7 @@ sub setupxcatdb
     # must su to postgres id
     xCAT::MsgUtils->message(
         "I",
-        "Creating xcatadm in the Pg database, when prompted enter same password as was assigned to the xcatadm Unix id."
+        "Creating xcatadm in the Pg database, when prompted enter same password as was assigned to the xcatadm user id."
         );
     if ($::osname eq 'AIX')
     {
