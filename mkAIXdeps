@@ -47,18 +47,6 @@ echo "rpm -Uvh bash-3.2-1.aix5.2.ppc.rpm" >> $RPMDIR/instoss
 cp /opt/freeware/src/packages/RPMS/ppc/perl-DBD-SQLite-1.13-1.aix5.3.ppc.rpm $RPMDIR/
 echo "rpm -Uvh perl-DBD-SQLite-1.13-1.aix5.3.ppc.rpm" >> $RPMDIR/instoss
 
-cp /opt/freeware/src/packages/RPMS/ppc/tcl-8.4.7-3.aix5.1.ppc.rpm $RPMDIR/
-cp /opt/freeware/src/packages/RPMS/ppc/tk-8.4.7-3.aix5.1.ppc.rpm $RPMDIR/
-cp /opt/freeware/src/packages/RPMS/ppc/expect-5.42.1-3.aix5.1.ppc.rpm $RPMDIR/
-
-echo "# don't try to install tcl, tk, or expect if they are already installed!" >> $RPMDIR/instoss
-echo "lslpp -l | grep expect.base > /dev/null 2>&1" >> $RPMDIR/instoss
-echo "if [ \$? -gt 0 ]; then" >> $RPMDIR/instoss
-echo "    rpm -Uvh tcl-8.4.7-3.aix5.1.ppc.rpm" >> $RPMDIR/instoss
-echo "    rpm -Uvh tk-8.4.7-3.aix5.1.ppc.rpm" >> $RPMDIR/instoss
-echo "    rpm -Uvh expect-5.42.1-3.aix5.1.ppc.rpm" >> $RPMDIR/instoss
-echo "fi" >> $RPMDIR/instoss
-
 cp /opt/freeware/src/packages/RPMS/ppc/popt-1.7-2.aix5.1.ppc.rpm $RPMDIR/
 echo "rpm -Uvh popt-1.7-2.aix5.1.ppc.rpm" >> $RPMDIR/instoss
 
