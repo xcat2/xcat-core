@@ -100,8 +100,6 @@ if ($rc) { #some shoddy vendors ignore the IPMI 2.0 requirement to support IPMI 
     @mcinfo=`$ipmitool -I lanplus -U $username -P $password -H $bmc mc info`;
     $rc = $?;
 }
-    @mcinfo=`$ipmitool -I lan -U $username -P $password -H $bmc mc info`;#| grep 'Manufacturer ID           : 343' > /dev/null 2>&1";
-}
 while ($rc != 0) {
    $sleepint = 10+int(rand(20));
    print "Failure to reach IPMI device, retrying in $sleepint seconds (Hit Ctrl-E,c,o to skip)\n";
