@@ -416,83 +416,235 @@ sub do_cmd {
         generic_vm_operation(['config.name','runtime.powerState','runtime.host'],\&rmvm,@exargs);
     } elsif ($command eq 'rsetboot') {
         generic_vm_operation(['config.name','runtime.host'],\&setboot,@exargs);
-    } elsif ($command eq 'chvm') {
-        chvm(@exargs);
     } elsif ($command eq 'rinv') {
         generic_vm_operation(['config.name','config','runtime.host'],\&inv,@exargs);
     } elsif ($command eq 'rmhypervisor') {
         generic_hyp_operation(\&rmhypervisor,@exargs);
     } elsif ($command eq 'mkvm') {
         generic_hyp_operation(\&mkvms,@exargs);
+    } elsif ($command eq 'chvm') {
+        generic_vm_operation(['config.name','config','runtime.host'],\&chvm,@exargs);
+        #generic_hyp_operation(\&chvm,@exargs);
     } elsif ($command eq 'rmigrate') { #Technically, on a host view, but vcenter path is 'weirder'
         generic_hyp_operation(\&migrate,@exargs);
     }
     wait_for_tasks();
 }
 
+#inventory request for esx
 sub inv {
-    my %args = @_;
-    my $node = $args{node};
-    my $hyp = $args{hyp};
-    if (not defined $args{vmview}) { #attempt one refresh
-        $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
-    }
-    if (not defined $args{vmview}) { 
-        sendmsg([1,"VM does not appear to exist"],$node);
-        return;
-    }
-    my $vmview = $args{vmview};
-    my $uuid = $vmview->config->uuid;
-    sendmsg("$node:  UUID/GUI:  $uuid");
-    my $cpuCount = $vmview->config->hardware->numCPU;
-    sendmsg("$node:  CPUs:  $cpuCount");
-    my $memory = $vmview->config->hardware->memoryMB;
-    sendmsg("$node:  Memory:  $memory MB");
-    my $devices = $vmview->config->hardware->device;
-    my $label;
-    my $size;
-    my $fileName;
-    my $device;
-    foreach $device (@$devices) {
-      
-      $label = $device->deviceInfo->label;
+  my %args = @_;
+  my $node = $args{node};
+  my $hyp = $args{hyp};
+  if (not defined $args{vmview}) { #attempt one refresh
+    $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
+  }
+  if (not defined $args{vmview}) { 
+    sendmsg([1,"VM does not appear to exist"],$node);
+    return;
+  }
+  my $vmview = $args{vmview};
+  my $uuid = $vmview->config->uuid;
+  sendmsg("$node:  UUID/GUI:  $uuid");
+  my $cpuCount = $vmview->config->hardware->numCPU;
+  sendmsg("$node:  CPUs:  $cpuCount");
+  my $memory = $vmview->config->hardware->memoryMB;
+  sendmsg("$node:  Memory:  $memory MB");
+  my $devices = $vmview->config->hardware->device;
+  my $label;
+  my $size;
+  my $fileName;
+  my $device;
+  foreach $device (@$devices) {
+    $label = $device->deviceInfo->label;
 
-      if($label =~ /^Hard disk/) {
-        $size = $device->capacityInKB / 1024;
-        $fileName = $device->backing->fileName;
+    if($label =~ /^Hard disk/) {
+      $size = $device->capacityInKB / 1024;
+      $fileName = $device->backing->fileName;
 
-        sendmsg("$node:  $label:  $size MB @ $fileName");
-
-      }
+      sendmsg("$node:  $label:  $size MB @ $fileName");
     }
+  }
 }
 
-sub chvm {
-#    my @exargs = @_;
-#
-#    my $reconfigspec;
-#    if ($reconfigspec = getreconfigspec(node=>$node,view=>$args{vmview})) {
-#        if ($currstat eq 'poweredOff') {
-#            #sendmsg("Correcting guestId because $currid and $rightid are not the same...");#DEBUG
-#             my $task = $args{vmview}->ReconfigVM_Task(spec=>$reconfigspec);
-#             $running_tasks{$task}->{task} = $task;
-#             $running_tasks{$task}->{callback} = \&reconfig_callback;
-#             $running_tasks{$task}->{hyp} = $args{hyp}; 
-#             $running_tasks{$task}->{data} = { node => $node, reconfig_fun=>\&power, reconfig_args=>\%args }; 
-#         return;
-#        } elsif (grep /$subcmd/,qw/reset boot/) { #going to have to do a 'cycle' and present it up normally..
-#             #sendmsg("DEBUG: forcing a cycle");
-#             $task = $args{vmview}->PowerOffVM_Task();
-#             $running_tasks{$task}->{task} = $task;
-#             $running_tasks{$task}->{callback} = \&repower;
-#             $running_tasks{$task}->{hyp} = $args{hyp}; 
-#             $running_tasks{$task}->{data} = { node => $node, power_args=>\%args}; 
-#             return; #we have to wait
-#        }
-#TODO: fixit
-           #sendmsg("I see vm has $currid and I want it to be $rightid");
-#    }
 
+#changes the memory, number of cpus and device size
+#can also add and remove disks
+sub chvm {
+	my %args = @_;
+	my $node = $args{node};
+	my $hyp = $args{hyp};
+	if (not defined $args{vmview}) { #attempt one refresh
+		$args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',
+				properties=>['config.name','runtime.powerState'],
+				filter=>{name=>$node});
+	}
+	if (not defined $args{vmview}) {
+		sendmsg([1,"VM does not appear to exist"],$node);
+		return;
+	}
+	@ARGV= @{$args{exargs}};
+	my @deregister;
+	my @purge;
+	my @add;
+	my %resize;
+	my $cpuCount;
+	my $memory;
+	my $vmview = $args{vmview};
+
+	require Getopt::Long;
+	$SIG{__WARN__} = sub {
+		sendmsg([1,"Could not parse options, ".shift()]);
+	};
+	my $rc = GetOptions(
+		"d=s"       => \@deregister,
+		"p=s"       => \@purge,
+		"a=s"       => \@add,
+		"resize=s%" => \%resize,
+		"cpus=i"    => \$cpuCount,
+		"mem=s"     => \$memory
+	);
+	$SIG{__WARN__} = 'DEFAULT';
+
+	if(@ARGV) {
+		sendmsg("Invalid arguments:  @ARGV");
+		return;
+	}
+
+	if(!$rc) {
+		return;
+	}
+
+	#use Data::Dumper;
+	#sendmsg("dereg = ".Dumper(\@deregister));
+	#sendmsg("purge = ".Dumper(\@purge));
+	#sendmsg("add = ".Dumper(\@add));
+	#sendmsg("resize = ".Dumper(\%resize));
+	#sendmsg("cpus = $cpuCount");
+	#sendmsg("mem = ".getUnits($memory,"K",1024));
+
+
+	my %conargs;
+	if($cpuCount) {
+		$conargs{numCPUs} = $cpuCount;
+	}
+
+	if($memory) {
+		$conargs{memoryMB} = getUnits($memory, "M", 1048576);
+	}
+
+	my $disk;
+	my $devices = $vmview->config->hardware->device;
+	my $label;
+	my $device;
+	my $cmdLabel;
+	my $newSize;
+	my @devChanges;
+
+	if(@deregister) {
+		for $disk (@deregister) {
+			$device = getDiskByLabel($disk, $devices);
+			unless($device) {
+				sendmsg("$node:  Disk:  $disk does not exist");
+				return;
+			}
+			#sendmsg(Dumper($device));
+			push @devChanges, VirtualDeviceConfigSpec->new(
+						device => $device,
+						operation =>  VirtualDeviceConfigSpecOperation->new('remove'));
+
+		}
+	}
+
+	if(@purge) {
+		for $disk (@purge) {
+			$device = getDiskByLabel($disk, $devices);
+			unless($device) {
+				sendmsg("$node:  Disk:  $disk does not exist");
+				return;
+			}
+			#sendmsg(Dumper($device));
+			push @devChanges, VirtualDeviceConfigSpec->new(
+						device => $device,
+						operation =>  VirtualDeviceConfigSpecOperation->new('remove'),
+						fileOperation =>  VirtualDeviceConfigSpecFileOperation->new('destroy'));
+
+		}
+     
+	}
+  
+	if(@add) {
+		my $addSizes = join(',',@add);
+    		push @devChanges, create_storage_devs($node,$hyphash{$hyp}->{datastoremap},$addSizes);
+	}
+
+	if(%resize) {
+		while( my ($key, $value) = each(%resize) ) {
+			my @drives = split(/,/, $key);
+			for my $device ( @drives ) {
+				my $disk = $device;
+				$device = getDiskByLabel($disk, $devices);
+				unless($device) {
+					sendmsg("$node:  Disk:  $disk does not exist");
+					return;
+				}
+				$value = getUnits($value, "G", 1024);
+				my $newDevice = VirtualDisk->new(deviceInfo => $device->deviceInfo,
+                        			key => $device->key,
+						controllerKey => $device->controllerKey,
+						unitNumber => $device->unitNumber,
+						deviceInfo => $device->deviceInfo,
+						backing => $device->backing,
+                        			capacityInKB => $value); 
+				push @devChanges, VirtualDeviceConfigSpec->new(
+						device => $newDevice,
+						operation =>  VirtualDeviceConfigSpecOperation->new('edit'));
+			}
+		}
+
+	}
+	if(@devChanges) {
+		$conargs{deviceChange} = \@devChanges;
+	}
+use Data::Dumper;
+sendmsg(Dumper(\%conargs));
+
+	my $reconfigspec = VirtualMachineConfigSpec->new(%conargs);
+	
+	#sendmsg("reconfigspec = ".Dumper($reconfigspec));
+	my $task = $vmview->ReconfigVM_Task(spec=>$reconfigspec);
+	$running_tasks{$task}->{task} = $task;
+	$running_tasks{$task}->{callback} = \&generic_task_callback;
+	$running_tasks{$task}->{hyp} = $hyp;
+	$running_tasks{$task}->{data} = { node => $node, successtext => "node successfully changed" };
+
+}
+
+#given a device list from a vm and a label for a hard disk, returns the device object
+sub getDiskByLabel {
+  my $cmdLabel = shift;
+  my $devices = shift;
+  my $device;
+  my $label;
+
+  $cmdLabel = commandLabel($cmdLabel);
+  foreach $device (@$devices) {
+    $label = $device->deviceInfo->label;
+
+    if($cmdLabel eq $label) {
+      return $device;
+    }
+  }
+  return undef;
+}
+
+#takes a label for a hard disk and prepends "Hard disk " if it's not there already
+sub commandLabel {
+  my $label = shift;
+  if($label =~ /^Hard disk/) {
+    return $label;
+  }
+  return "Hard disk ".$label;
 }
 
 #this function will check pending task status
@@ -1544,7 +1696,7 @@ sub create_storage_devs {
     my @devs;
     my $havescsidevs =0;
     my $disktype = 'ide';
-    my $unitnum=0; #Going to make IDE controllers for now, aiming for
+    my $unitnum=1; #Going to make IDE controllers for now, aiming for
                    #lowest common denominator guest driver for 
                    #changing hypervisor technology
     my %disktocont;
@@ -1603,17 +1755,17 @@ sub create_storage_devs {
     }
 
     #It *seems* that IDE controllers are not subject to require creation, so we skip it
-    if ($havescsidevs) { #need controllers to attach the disks to
-        foreach(0..$scsicontrollerkey) {
-            $dev=VirtualLsiLogicController->new(key => $_,
-                                                device => \@{$disktocont{$_}},
-                                                sharedBus => VirtualSCSISharing->new('noSharing'),
-                                                busNumber => $_);
-            push @devs,VirtualDeviceConfigSpec->new(device => $dev,
-                                                operation =>  VirtualDeviceConfigSpecOperation->new('add'));
-                                                 
-        }
-    }
+#   if ($havescsidevs) { #need controllers to attach the disks to
+#       foreach(0..$scsicontrollerkey) {
+#           $dev=VirtualLsiLogicController->new(key => $_,
+#                                               device => \@{$disktocont{$_}},
+#                                               sharedBus => VirtualSCSISharing->new('noSharing'),
+#                                               busNumber => $_);
+#           push @devs,VirtualDeviceConfigSpec->new(device => $dev,
+#                                               operation =>  VirtualDeviceConfigSpecOperation->new('add'));
+#                                                
+#       }
+#   }
     return  @devs;
 #    my $ctlr = VirtualIDEController->new(
 }
