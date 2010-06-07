@@ -74,6 +74,9 @@ sub mkimage {
     my $ostab = xCAT::Table->new('nodetype');
     my $oshash = $ostab->getNodesAttribs(\@nodes,['profile','arch']);
     my $shandle;
+    unless (-d "$installroot/autoinst") {
+        mkpath "$installroot/autoinst";
+    }
     foreach $node (@nodes) {
         $ent = $oshash->{$node}->[0];
         unless ($ent->{arch} and $ent->{profile})
