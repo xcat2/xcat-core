@@ -1,7 +1,13 @@
-#  List of packages required for Infiniband support
+# List of packages required for Infiniband support
+ofed
+ofed-kmp-default
+ofed-kmp
+opensm
+opensm-32bit
+libcxgb3-rdmav2
+libcxgb3-rdmav2-32bit
 libehca-rdmav2
 libehca-rdmav2-32bit
-libgomp43-32bit
 libibcm
 libibcm-32bit
 libibcommon1
@@ -12,7 +18,20 @@ libibumad1
 libibumad1-32bit
 libibverbs
 libibverbs-32bit
+libibverbs-devel
+libibverbs-devel-32bit
+libipathverbs
+libibverbs-devel-32bit
+libipathverbs
+libipathverbs-32bit
+libmlx4-rdmav2
+libmlx4-rdmav2-32bit
 libmthca-rdmav2
 libmthca-rdmav2-32bit
-ofed
-
+librdmacm
+librdmacm-32bit
+libsdp
+libsdp-32bit
+mpi-selector
+mstflint
+libgomp43-32bit
