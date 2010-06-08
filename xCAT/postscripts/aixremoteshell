@@ -105,6 +105,7 @@ sub setupSSH
         &runcmd("echo \"KeyRegenerationInterval 0\" >>$sshdconfig");
         &runcmd("echo \"X11Forwarding yes\" >>$sshdconfig");
         &runcmd("echo \"MaxStartups 1024\" >>$sshdconfig");
+        &runcmd("echo \"ListenAddress ::\" >>$sshdconfig");
         #&runcmd("echo \"PasswordAuthentication no\" >>$sshdconfig");
         if (!(-e "$sshconfig.ORIG"))
         {
