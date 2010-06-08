@@ -582,7 +582,6 @@ sub chvm {
 		my $label;
 		foreach $device (@$devices) {
 			$label = $device->deviceInfo->label;
-			sendmsg("label=$label");
 			if($label =~ /^SCSI controller/) {
 				$scsiCont = $device;
 			}
@@ -628,8 +627,6 @@ sub chvm {
 	if(@devChanges) {
 		$conargs{deviceChange} = \@devChanges;
 	}
-use Data::Dumper;
-sendmsg(Dumper(\%conargs));
 
 	my $reconfigspec = VirtualMachineConfigSpec->new(%conargs);
 	
