@@ -227,10 +227,12 @@ sub mknetboot
             print $menush 'mkdir -p $LOG_PATH',"\n";
             print $menush 'ERROR_FILE=/bomc/${hostname}/error.log',"\n";
             print $menush 'LOG_FILE=/bomc/${hostname}/bomc.log',"\n";
-            print $menush '${UXSPI_BINARY_PATH} update --unattended --firmware -l ${UXSPI_BOOTABLE} --timeout=${UXSPI_TIMEOUT}'."\n";
+            print $menush '${UXSPI_BINARY_PATH} update --unattended --firmware -l ${UXSPI_BOOTABLE} --timeout=${UXSPI_TIMEOUT} >${LOG_FILE} 2>${ERROR_FILE}'."\n";
             print $menush 'DIR=`dirname $0`'."\n";
+            print $menush 'ERROR_FILE=/bomc/${hostname}/asu_error.log',"\n";
+            print $menush 'LOG_FILE=/bomc/${hostname}/asu.log',"\n";
             print $menush 'if [ ${cmos_file} != "" ]; then',"\n";
-            print $menush "  $asu",' batch ${cmos_file}', "\n";
+            print $menush "  $asu",' batch ${cmos_file} >${LOG_FILE} 2>${ERROR_FILE}', "\n";
             print $menush "fi\n";
             print $menush '$DIR/calltoxcat.awk ${xcat_server} '."$xcatiport\n";
             print $menush "reboot\n";
@@ -270,8 +272,11 @@ ENDOFAWK
             foreach (@oldunattendmenu) {
                 if (/^exit 0/) { #the exit line, hijack this
                     print $menush 'DIR=`dirname $0`'."\n";
+                    print $menush 'mkdir -p $LOG_PATH',"\n";
+                    print $menush 'ERROR_FILE=/bomc/${hostname}/asu_error.log',"\n";
+                    print $menush 'LOG_FILE=/bomc/${hostname}/asu.log',"\n";
                     print $menush 'if [ ${cmos_file} != "" ]; then',"\n";
-                    print $menush "  $asu",' batch ${cmos_file}', "\n";
+                    print $menush "  $asu",' batch ${cmos_file} >${LOG_FILE} 2>${ERROR_FILE}', "\n";
                     print $menush "fi\n";
                     print $menush '$DIR/calltoxcat.awk ${xcat_server} '."$xcatiport\n";
                     print $menush "reboot\n";
