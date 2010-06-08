@@ -1260,7 +1260,7 @@ sub newconfig
     push @dhcpconf, "  secret \"" . $secret . "\";\n";
     push @dhcpconf, "};\n";
     push @dhcpconf, "omapi-key xcat_key;\n";
-    push @dhcpconf, ('class "pxe" {'."\n","   match if substring (option vendor-class-identifier, 0, 9) = \"PXEclient\";\n","   ddns-updates off;\n","    max-lease-time 600;\n","}\n");
+    push @dhcpconf, ('class "pxe" {'."\n","   match if substring (option vendor-class-identifier, 0, 9) = \"PXEClient\";\n","   ddns-updates off;\n","    max-lease-time 600;\n","}\n");
 }
 
 sub newconfig_aix

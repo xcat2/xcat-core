@@ -289,8 +289,9 @@ sub update_zones {
             my @octets = split/\./,$currzone;
             $currzone = join('.',reverse(@octets));
             $zonefilename = $currzone;
-        } else {
-            $zonefilename =~ s/\..*//; #compatible with bind.pm
+        #If needed, the below, but it was a fairly painfully restricted paradigm for zonefile names...
+        #} elsif (not $zonefilename =~ /_/) {
+        #    $zonefilename =~ s/\..*//; #compatible with bind.pm
         }
         unless (-f $dbdir."/db.$zonefilename") {
             my $zonehdl;
