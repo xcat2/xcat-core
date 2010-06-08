@@ -1426,7 +1426,6 @@ sub lsvm {
     my $hyp = $args{hyp};
     $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
     use Data::Dumper;
-    if ($hyphash{$hyp}->{hostview}->vm) {
     my $vms = $hyphash{$hyp}->{hostview}->vm;
     unless ($vms) {
         return;
