@@ -506,7 +506,7 @@ sub chvm {
 		"p=s"       => \@purge,
 		"a=s"       => \@add,
 		"resize=s%" => \%resize,
-		"cpus=i"    => \$cpuCount,
+		"cpus=s"    => \$cpuCount,
 		"mem=s"     => \$memory
 	);
 	$SIG{__WARN__} = 'DEFAULT';
@@ -531,11 +531,22 @@ sub chvm {
 
 	my %conargs;
 	if($cpuCount) {
+        if ($cpuCount =~ /^\+(\d+)/) {
+            $cpuCount = $vmview->config->hardware->numCPU+$1;
+        } elsif ($cpuCount =~ /^-(\d+)/) {
+            $cpuCount = $vmview->config->hardware->numCPU-$1;
+        }
 		$conargs{numCPUs} = $cpuCount;
 	}
 
 	if($memory) {
-		$conargs{memoryMB} = getUnits($memory, "M", 1048576);
+        if ($memory =~ /^\+(.+)/) {
+            $conargs{memoryMB} = $vmview->config->hardware->memoryMB + getUnits($1,"M",1048576);
+        } elsif ($memory =~ /^-(\d+)/) {
+            $conargs{memoryMB} = $vmview->config->hardware->memoryMB - getUnits($1,"M",1048576);
+        } else {
+		    $conargs{memoryMB} = getUnits($memory, "M", 1048576);
+        }
 	}
 
 	my $disk;
@@ -614,7 +625,11 @@ sub chvm {
 					sendmsg([1,"Disk:  $disk does not exist"],$node);
 					return;
 				}
-				$value = getUnits($value, "G", 1024);
+                if ($value =~ /^\+(.+)/) {
+                    $value = $device->capacityInKB + getUnits($1,"G",1024);
+                } else {
+				    $value = getUnits($value, "G", 1024);
+                }
 				my $newDevice = VirtualDisk->new(deviceInfo => $device->deviceInfo,
                         			key => $device->key,
 						controllerKey => $device->controllerKey,
