@@ -159,7 +159,7 @@ sub preprocess_request {
 	# build an individual request for each service node
 	my $service  = "xcat";
 	my @hyps=keys(%hyp_hash);
-    if ($command eq 'rmigrate') {
+    if ($command eq 'rmigrate' and (scalar @{$extraargs} == 1)) {
         my $dsthyp = $extraargs->[0];
         push @hyps,$dsthyp;
     }
@@ -856,6 +856,18 @@ sub relay_vmware_err {
     }
 }
 
+sub relocate_callback {
+    my $task = shift;
+    my $parms = shift;
+    my $state = $task->info->state->val;
+    if ($state eq 'success') {
+        #my $vmtab = xCAT::Table->new('vm'); #TODO: update vm.storage?
+        #$vmtab->setNodeAttribs($parms->{node},{host=>$parms->{target}});
+        sendmsg(":relocated to to ".$parms->{target},$parms->{node});
+    } else {
+        relay_vmware_err($task,"Relocating to ".$parms->{target}." ",$parms->{node});
+    }
+}
 sub migrate_callback {
     my $task = shift;
     my $parms = shift;
@@ -949,12 +961,47 @@ sub sendmsg {
 }
 
 
-sub actually_migrate {
-    my %args = %{shift()};
+sub migrate {
+    my %args = @_;
     my @nodes = @{$args{nodes}};
-    my $target = $args{target};
     my $hyp = $args{hyp};
-    my $vcenter = $args{vcenter};
+    my $vcenter = $hyphash{$hyp}->{vcenter}->{name};
+    my $datastoredest;
+    @ARGV=@{$args{exargs}};
+    unless (GetOptions(
+        's=s' => \$datastoredest,
+        )) {
+        sendmsg([1,"Error parsing arguments"]);
+        return;
+    }
+    my $target=$hyp; #case for storage migration
+    if ($datastoredest and scalar @ARGV) {
+        sendmsg([1,"Unable to mix storage migration and processing of arguments ".join(' ',@ARGV)]);
+        return;
+    } elsif (@ARGV) {
+        $target=shift @ARGV;
+        if (@ARGV) {
+            sendmsg([1,"Unrecognized arguments ".join(' ',@ARGV)]);
+            return;
+        }
+    } elsif ($datastoredest) { #storage migration only
+        unless (validate_datastore_prereqs([],$hyp,{$datastoredest=>\@nodes})) {
+            sendmsg([1,"Unable to find/mount target datastore $datastoredest"]);
+            return;
+        }
+        foreach (@nodes) {
+            my $hostview = $hyphash{$hyp}->{conn}->find_entity_view(view_type=>'VirtualMachine',properties=>['config.name'],filter=>{name=>$_});
+            my $relocatspec = VirtualMachineRelocateSpec->new(
+                datastore=>$hyphash{$hyp}->{datastorerefmap}->{$datastoredest},
+                );
+            my $task = $hostview->RelocateVM_Task(spec=>$relocatspec);
+            $running_tasks{$task}->{task} = $task;
+            $running_tasks{$task}->{callback} = \&relocate_callback;
+            $running_tasks{$task}->{hyp} = $args{hyp}; 
+            $running_tasks{$task}->{data} = { node => $_, target=>$datastoredest }; 
+        }
+        return;
+    }
     if ($vcenterhash{$vcenter}->{$hyp} eq 'bad' or $vcenterhash{$vcenter}->{$target} eq 'bad') {
         sendmsg([1,"Unable to migrate ".join(',',@nodes)." to $target due to inability to validate vCenter connectivity"]);
         return;
@@ -989,37 +1036,6 @@ sub actually_migrate {
     }
 }
 
-sub migrate {
-    my %args = @_;
-    my $nodes = $args{nodes};
-    my $hyp = $args{hyp};
-    my $exargs = $args{exargs};
-    my $tgthyp = $exargs->[0];
-    my $destination = ${$args{exargs}}[0];
-    my $vcenter = $hyphash{$hyp}->{vcenter}->{name};
-    actually_migrate({
-        nodes=>$nodes,
-        hyp=>$hyp,
-        target=>$tgthyp,
-        vcenter=>$vcenter
-    });
-#The following code is now redundant.  validate_vcenter_prereqs is now called well before this point.
-#We do target first to prevent multiple sources to single destination from getting confused
-#one source to multiple destinations (i.e. revacuate) may require other provisions
-#by getting confused, I mean that actually migrate not thinking both are good before it's correct
-#   validate_vcenter_prereqs($tgthyp, \&actually_migrate, {
-#       nodes=>$nodes,
-#       hyp=>$hyp,
-#       target=>$tgthyp,
-#       vcenter=>$vcenter
-#   });
-#   validate_vcenter_prereqs($hyp, \&actually_migrate, {
-#       nodes=>$nodes,
-#       hyp=>$hyp,
-#       target=>$tgthyp,
-#       vcenter=>$vcenter
-#   });
-}
 
 sub reconfig_callback {
     my $task = shift;
@@ -2178,6 +2194,7 @@ sub validate_network_prereqs {
 sub validate_datastore_prereqs {
     my $nodes = shift;
     my $hyp = shift;
+    my $newdatastores = shift; # a hash reference of URLs to afflicted nodes outside of table space
     my $hypconn = $hyphash{$hyp}->{conn};
     my $hostview = $hyphash{$hyp}->{hostview};
     unless ($hostview) {
@@ -2200,6 +2217,7 @@ sub validate_datastore_prereqs {
                         sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"]);
                     }
                     $hyphash{$hyp}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
+                    $hyphash{$hyp}->{datastorerefmap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$_;
                 } #TODO: care about SMB
             } #TODO: care about VMFS
         }
@@ -2210,7 +2228,7 @@ sub validate_datastore_prereqs {
         if ($tablecfg{vm}->{$node}->[0]->{cfgstore}) {
             push @storage,$tablecfg{vm}->{$node}->[0]->{cfgstore};
         }
-        foreach (@storage) {
+        foreach (@storage) { #TODO: merge this with foreach loop below.  Here we could build onto $newdatastores instead, for faster operation at scale
             s/=.*//; #remove device type information from configuration
             s/\/$//; #Strip trailing slash if specified, to align to VMware semantics
             if (/:\/\//) {
@@ -2230,10 +2248,42 @@ sub validate_datastore_prereqs {
                 }
                 unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, must mount it
                     $refresh_names=1;
-                    $hyphash{$hyp}->{datastoremap}->{$uri}=mount_nfs_datastore($hostview,$location);
+                    ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=mount_nfs_datastore($hostview,$location);
                 }
             } else {
                 sendmsg([1,": $_ not supported storage specification for ESX plugin, 'nfs://<server>/<path>' only currently supported vm.storage supported for ESX at the moment"],$node);
+                return 0;
+            } #TODO: raw device mapping, VMFS via iSCSI, VMFS via FC?
+        }
+    }
+    if (ref $newdatastores) {
+        foreach (keys %$newdatastores) {
+            s/\/$//; #Strip trailing slash if specified, to align to VMware semantics
+            if (/:\/\//) {
+                ($method,$location) = split /:\/\//,$_,2;
+                (my $server, my $path) = split /\//,$location,2;
+                $server =~ s/:$//; #remove a : if someone put it in out of nfs mount habit
+                my $servern = inet_aton($server);
+                unless ($servern) {
+                    sendmsg([1,": Unable to resolve '$server' to an address, check vm.cfgstore/vm.storage"]);
+                    return 0;
+                }
+                $server = inet_ntoa($servern);
+                my $uri = "nfs://$server/$path";
+                unless ($method =~ /nfs/) {
+                    foreach (@{$newdatastores->{$_}}) {
+                        sendmsg([1,": $method is unsupported at this time (nfs would be)"],$_);
+                    }
+                    return 0;
+                }
+                unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, must mount it
+                    $refresh_names=1;
+                    ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=mount_nfs_datastore($hostview,$location);
+                }
+            } else {
+                foreach (@{$newdatastores->{$_}}) {
+                    sendmsg([1,": $_ not supported storage specification for ESX plugin, 'nfs://<server>/<path>' only currently supported vm.storage supported for ESX at the moment"],$_);
+                }
                 return 0;
             } #TODO: raw device mapping, VMFS via iSCSI, VMFS via FC?
         }
@@ -2253,6 +2303,7 @@ sub validate_datastore_prereqs {
                             sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"]);
                         }
                         $hyphash{$hyp}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
+                        $hyphash{$hyp}->{datastorerefmap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$_;
                     } #TODO: care about SMB
                 } #TODO: care about VMFS
             }
@@ -2298,8 +2349,9 @@ sub mount_nfs_datastore {
                                     remotePath=>"/".$path);
     my $dsmv = $hostview->{vim}->get_view(mo_ref=>$hostview->configManager->datastoreSystem);
 
+    my $dsref;
     eval {
-      $dsmv->CreateNasDatastore(spec=>$nds);
+      $dsref=$dsmv->CreateNasDatastore(spec=>$nds);
     };
 
     if ($@) {
@@ -2309,15 +2361,7 @@ sub mount_nfs_datastore {
         unless &match_nfs_datastore($server,"/$path",$hostview->{vim});
     }
 
-    return $location;
-}
-sub lsvm {
-	my $hyp = shift;
-	my $hyphash = shift;
-	my $callback = shift;
-	my ($node,$img, $imgname, $out);
-	my $f1 = `ssh $hyp "ls /vmfs/volumes/images/"`;
- 	$callback->({data=>[$f1]});
+    return ($location,$dsref);
 }
 
 
