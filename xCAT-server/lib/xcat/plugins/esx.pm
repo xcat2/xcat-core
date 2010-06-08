@@ -606,10 +606,10 @@ sub chvm {
 			}
 		}
 		if($scsiCont) {
-			$scsiUnit = getHighestUnit($scsiCont->{key},$devices);
+			$scsiUnit = getAvailUnit($scsiCont->{key},$devices);
 		}
 		if($ideCont) {
-			$ideUnit = getHighestUnit($ideCont->{key},$devices);
+			$ideUnit = getAvailUnit($ideCont->{key},$devices);
 		}
 		unless ($hyphash{$hyp}->{datastoremap}) { validate_datastore_prereqs([],$hyp); }
     		push @devChanges, create_storage_devs($node,$hyphash{$hyp}->{datastoremap},$addSizes,$scsiCont,$scsiUnit,$ideCont,$ideUnit);
@@ -659,14 +659,20 @@ sub chvm {
 
 }
 
-sub getHighestUnit {
+sub getAvailUnit {
   my $contKey = shift;
   my $devices = shift;
-  my $highestUnit = 0;
+  my %usedids;
+  $usedids{7}=1;
+  $usedids{'7'}=1; #TODO: figure out which of these is redundant, the string or the number variant
   for my $device (@$devices) {
-    if(($device->{controllerKey} eq $contKey) && ($device->{unitNumber} >= $highestUnit)) {
-      $highestUnit = $device->{unitNumber}+1;
+    if($device->{controllerKey} eq $contKey) {
+        $usedids{$device->{unitNumber}}=1;
     }
+  }
+  my $highestUnit=0;
+  while ($usedids{$highestUnit}) {
+      $highestUnit++;
   }
   return $highestUnit;
 }
