@@ -462,9 +462,9 @@ sub inv {
     $label = $device->deviceInfo->label;
 
     if($label =~ /^Hard disk/) {
+        $label .= " (d".$device->unitNumber.")";
       $size = $device->capacityInKB / 1024;
       $fileName = $device->backing->fileName;
-
       sendmsg("$label:  $size MB @ $fileName",$node);
     } elsif ($label =~ /Network/) {
         sendmsg("$label: ".$device->macAddress,$node);
@@ -474,7 +474,7 @@ sub inv {
 
 
 #changes the memory, number of cpus and device size
-#can also add and remove disks
+#can also add,resize and remove disks
 sub chvm {
 	my %args = @_;
 	my $node = $args{node};
@@ -684,7 +684,12 @@ sub getDiskByLabel {
 
     if($cmdLabel eq $label) {
       return $device;
+    } elsif (($label =~ /^Hard disk/) and ($cmdLabel =~ /^d(\d+)/)) {
+        if ($device->unitNumber == $1) {
+            return $device;
+        }
     }
+
   }
   return undef;
 }
@@ -692,7 +697,7 @@ sub getDiskByLabel {
 #takes a label for a hard disk and prepends "Hard disk " if it's not there already
 sub commandLabel {
   my $label = shift;
-  if($label =~ /^Hard disk/) {
+  if(($label =~ /^Hard disk/) or ($label =~ /^d\d+/)) {
     return $label;
   }
   return "Hard disk ".$label;
