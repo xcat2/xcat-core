@@ -445,7 +445,7 @@ sub inv {
   }
   my $vmview = $args{vmview};
   my $uuid = $vmview->config->uuid;
-  sendmsg("$node:  UUID/GUI:  $uuid");
+  sendmsg("$node:  UUID/GUID:  $uuid");
   my $cpuCount = $vmview->config->hardware->numCPU;
   sendmsg("$node:  CPUs:  $cpuCount");
   my $memory = $vmview->config->hardware->memoryMB;
