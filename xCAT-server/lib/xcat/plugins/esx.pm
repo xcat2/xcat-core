@@ -448,11 +448,11 @@ sub inv {
   }
   my $vmview = $args{vmview};
   my $uuid = $vmview->config->uuid;
-  sendmsg("$node:  UUID/GUID:  $uuid");
+  sendmsg("UUID/GUID:  $uuid",$node);
   my $cpuCount = $vmview->config->hardware->numCPU;
-  sendmsg("$node:  CPUs:  $cpuCount");
+  sendmsg("CPUs:  $cpuCount",$node);
   my $memory = $vmview->config->hardware->memoryMB;
-  sendmsg("$node:  Memory:  $memory MB");
+  sendmsg("Memory:  $memory MB",$node);
   my $devices = $vmview->config->hardware->device;
   my $label;
   my $size;
@@ -465,7 +465,9 @@ sub inv {
       $size = $device->capacityInKB / 1024;
       $fileName = $device->backing->fileName;
 
-      sendmsg("$node:  $label:  $size MB @ $fileName");
+      sendmsg("$label:  $size MB @ $fileName",$node);
+    } elsif ($label =~ /Network/) {
+        sendmsg("$label: ".$device->macAddress,$node);
     }
   }
 }
@@ -548,7 +550,7 @@ sub chvm {
 		for $disk (@deregister) {
 			$device = getDiskByLabel($disk, $devices);
 			unless($device) {
-				sendmsg("$node:  Disk:  $disk does not exist");
+				sendmsg([1,"Disk:  $disk does not exist"],$node);
 				return;
 			}
 			#sendmsg(Dumper($device));
@@ -563,7 +565,7 @@ sub chvm {
 		for $disk (@purge) {
 			$device = getDiskByLabel($disk, $devices);
 			unless($device) {
-				sendmsg("$node:  Disk:  $disk does not exist");
+				sendmsg([1,"Disk:  $disk does not exist"],$node);
 				return;
 			}
 			#sendmsg(Dumper($device));
@@ -609,7 +611,7 @@ sub chvm {
 				my $disk = $device;
 				$device = getDiskByLabel($disk, $devices);
 				unless($device) {
-					sendmsg("$node:  Disk:  $disk does not exist");
+					sendmsg([1,"Disk:  $disk does not exist"],$node);
 					return;
 				}
 				$value = getUnits($value, "G", 1024);
