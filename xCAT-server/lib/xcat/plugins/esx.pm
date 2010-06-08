@@ -1736,7 +1736,9 @@ sub create_storage_devs {
     my $disktype = 'ide';
     my $ideunitnum=0; 
     my $scsiunitnum=0;
+    my $havescsicontroller=0;
     if (defined $existingScsiCont) { 
+    $havescsicontroller=1;
 	$scsicontrollerkey = $existingScsiCont->{key};
 	$scsiunitnum = $scsiUnit;
     }
@@ -1803,17 +1805,17 @@ sub create_storage_devs {
     }
 
     #It *seems* that IDE controllers are not subject to require creation, so we skip it
-#   if ($havescsidevs) { #need controllers to attach the disks to
-#       foreach(0..$scsicontrollerkey) {
-#           $dev=VirtualLsiLogicController->new(key => $_,
-#                                               device => \@{$disktocont{$_}},
-#                                               sharedBus => VirtualSCSISharing->new('noSharing'),
-#                                               busNumber => $_);
-#           push @devs,VirtualDeviceConfigSpec->new(device => $dev,
-#                                               operation =>  VirtualDeviceConfigSpecOperation->new('add'));
-#                                                
-#       }
-#   }
+   if ($havescsidevs and not $havescsicontroller) { #need controllers to attach the disks to
+       foreach(0..$scsicontrollerkey) {
+           $dev=VirtualLsiLogicController->new(key => $_,
+                                               device => \@{$disktocont{$_}},
+                                               sharedBus => VirtualSCSISharing->new('noSharing'),
+                                               busNumber => $_);
+           push @devs,VirtualDeviceConfigSpec->new(device => $dev,
+                                               operation =>  VirtualDeviceConfigSpecOperation->new('add'));
+                                                
+       }
+   }
     return  @devs;
 #    my $ctlr = VirtualIDEController->new(
 }
