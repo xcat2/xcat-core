@@ -73,6 +73,7 @@ sub handled_commands{
 		rmvm => 'nodehm:mgt',
 		rinv => 'nodehm:mgt',
                 chvm => 'nodehm:mgt',
+        lsvm => 'hypervisor:type',
 		rmhypervisor => 'hypervisor:type',
 		#lsvm => 'nodehm:mgt', not really supported yet
 	};
@@ -135,7 +136,7 @@ sub preprocess_request {
 
 	my $vmtabhash = $vmtab->getNodesAttribs($noderange,['host']);
 	foreach my $node (@$noderange){
-        if ($command eq "rmhypervisor") {
+        if ($command eq "rmhypervisor" or $command eq 'lsvm') {
             $hyp_hash{$node}{nodes} = [$node];
         } else {
         my $ent = $vmtabhash->{$node}->[0];
@@ -420,6 +421,8 @@ sub do_cmd {
         generic_vm_operation(['config.name','config','runtime.host'],\&inv,@exargs);
     } elsif ($command eq 'rmhypervisor') {
         generic_hyp_operation(\&rmhypervisor,@exargs);
+    } elsif ($command eq 'lsvm') {
+        generic_hyp_operation(\&lsvm,@exargs);
     } elsif ($command eq 'mkvm') {
         generic_hyp_operation(\&mkvms,@exargs);
     } elsif ($command eq 'chvm') {
@@ -1400,6 +1403,19 @@ sub rmhypervisor_inmaintenance {
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
     }
+}
+
+sub lsvm {
+    my %args = @_;
+    my $hyp = $args{hyp};
+    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
+    use Data::Dumper;
+    my @vms = @{$hyphash{$hyp}->{hostview}->vm};
+    foreach (@vms) {
+        my $vmv = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$_);
+        sendmsg($vmv->name,$hyp);
+    }
+    return;
 }
 
 sub rmhypervisor {
