@@ -1,5 +1,11 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::dhcp;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
 use strict;
 use xCAT::Table;
 use Data::Dumper;
@@ -424,42 +430,134 @@ sub preprocess_request
     my $req = shift;
     $callback = shift;
     my $localonly;
+    #Exit if the packet has been preprocessed
+    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
+
     if (ref $req->{arg}) {
         @ARGV       = @{$req->{arg}};
         GetOptions('l' => \$localonly);
     }
-    #Exit if the packet has been preprocessed
-    if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
 
-    my @requests =
-      ({%$req});    #Start with a straight copy to reflect local instance
-    unless ($localonly) {
-        my @sn = xCAT::Utils->getSNList('dhcpserver');
-        foreach my $s (@sn)
-        {
-            my $reqcopy = {%$req};
-            $reqcopy->{'_xcatdest'} = $s;
-            $reqcopy->{_xcatpreprocessed}->[0] = 1;
-            push @requests, $reqcopy;
-        }
-    }
-    if (scalar(@requests) > 1)
-    {               #hierarchy detected, enforce more rigorous sanity
-        my $ntab = xCAT::Table->new('networks');
-        if ($ntab)
-        {
-            foreach (@{$ntab->getAllEntries()})
-            {
-                if ($_->{dynamicrange} and not $_->{dhcpserver})
-                {
-                    $callback->({error=>["Hierarchy requested, therefore networks.dhcpserver must be set for net=".$_->{net}.""],errorcode=>[1]});
-                    return [];
-                }
-            }
-        }
+   if(grep /-h/,@{$req->{arg}}) {
+        my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
+        $callback->({data => [$usage]});
+        return;
+    }  
+    
+    unless (($req->{arg} and (@{$req->{arg}}>0)) or $req->{node})
+    {
+	my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
+        $callback->({data => [$usage]});
+        return;
     }
 
+  
+    my $snonly=0;
+    my $sitetab = xCAT::Table->new('site');
+    if ($sitetab)
+    {
+        my $href;
+        ($href) = $sitetab->getAttribs({key => 'dhcpsnonly'}, 'value');
+        if ($href and $href->{value}) {
+	    $snonly=$href->{value};
+	}
+    }
+
+    my @requests=();
+    my $hasHierarchy=0;
+    if (($snonly == 1) && (! grep /-n/,@{$req->{arg}})) {
+	my @nodes=();
+	if ($req->{node}) {
+	    @nodes=@{$req->{node}};
+	}
+	elsif(grep /-a/,@{$req->{arg}}) {
+	    if (grep /-d$/, @{$req->{arg}})
+	    {
+		my $nodelist = xCAT::Table->new('nodelist');
+		my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
+		foreach (@entries)
+		{
+		    push @nodes, $_->{node};
+		}
+	    }
+	    else
+	    {
+		my $mactab  = xCAT::Table->new('mac');
+		my @entries=();
+		if ($mactab) {
+		    @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
+		}
+		foreach (@entries)
+		{
+		    push @nodes, $_->{node};
+		}
+	    }	    
+	}
+
+        if (@nodes > 0) {
+	    my $sn_hash =xCAT::Utils->getSNformattedhash(\@nodes,"xcat","MN"); 
+	    if ($localonly) {
+		#check if this node is the service node for any input node
+		my @hostinfo=xCAT::Utils->determinehostname();
+		my %iphash=();
+		foreach(@hostinfo) {$iphash{$_}=1;}
+		foreach(keys %$sn_hash) {
+		    if (exists($iphash{$_})) {
+			my $reqcopy = {%$req};
+			$reqcopy->{'node'}=$sn_hash->{$_};
+			$reqcopy->{'_xcatdest'} = $_;
+			$reqcopy->{_xcatpreprocessed}->[0] = 1;
+			push @requests, $reqcopy;
+		    }
+		}
+	    } else {
+		my @sn = xCAT::Utils->getSNList('dhcpserver');
+		if (@sn > 0) { $hasHierarchy=1;}
+
+		foreach(keys %$sn_hash) {
+		    my $reqcopy = {%$req};
+		    $reqcopy->{'node'}=$sn_hash->{$_};
+		    $reqcopy->{'_xcatdest'} = $_;
+		    $reqcopy->{_xcatpreprocessed}->[0] = 1;
+		    push @requests, $reqcopy;
+		}
+	    }
+	}
+    } else { #send the request to every dhservers
+	@requests = ({%$req});    #Start with a straight copy to reflect local instance
+	unless ($localonly) {
+	    my @sn = xCAT::Utils->getSNList('dhcpserver');
+	    if (@sn > 0) { $hasHierarchy=1; }
+
+	    foreach my $s (@sn)
+	    {
+		my $reqcopy = {%$req};
+		$reqcopy->{'_xcatdest'} = $s;
+		$reqcopy->{_xcatpreprocessed}->[0] = 1;
+		push @requests, $reqcopy;
+	    }
+	}
+    }
+
+    if ( $hasHierarchy)
+    {  
+        #hierarchy detected, enforce more rigorous sanity
+	my $ntab = xCAT::Table->new('networks');
+	if ($ntab)
+	{
+	    foreach (@{$ntab->getAllEntries()})
+	    {
+		if ($_->{dynamicrange} and not $_->{dhcpserver})
+		{
+		    $callback->({error=>["Hierarchy requested, therefore networks.dhcpserver must be set for net=".$_->{net}.""],errorcode=>[1]});
+		    return [];
+		}
+	    }
+	}
+    }
+    #print Dumper(@requests);
     return \@requests;
+
 }
 
 sub process_request
@@ -468,6 +566,29 @@ sub process_request
     $restartdhcp=0;
     my $req = shift;
     $callback = shift;
+    #print Dumper($req);
+
+    #if current node is a servicenode, make sure that it is also a dhcpserver
+    my $isok=1;
+    if (xCAT::Utils->isServiceNode()) {
+	$isok=0;
+	my @hostinfo=xCAT::Utils->determinehostname();
+	my %iphash=();
+	foreach(@hostinfo) {$iphash{$_}=1;}
+	my @sn = xCAT::Utils->getSNList('dhcpserver');
+	foreach my $s (@sn)
+	{
+	    if (exists($iphash{$s})) {
+		$isok=1;
+	    }
+	}
+    }
+    
+    if($isok == 0) { #do nothing if it is a service node, but not dhcpserver
+	print "Do nothing\n";
+	return;  
+    }
+
     my $sitetab = xCAT::Table->new('site');
     my %activenics;
     my $querynics = 1;
@@ -542,17 +663,8 @@ sub process_request
     }
 
     @dhcpconf = ();
-    unless ($req->{arg} or $req->{node})
-    {
-        $callback->({data => ["Usage: makedhcp <-n> <noderange>"]});
-        return;
-    }
     
-   if(grep /-h/,@{$req->{arg}}) {
-        my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
-        $callback->({data => [$usage]});
-        return;
-    }
+
 
    my $dhcplockfd;
    open($dhcplockfd,">","/tmp/xcat/dhcplock");
@@ -682,7 +794,7 @@ sub process_request
             addnic($_);
         }
     }
-    if (grep /^-a$/, @{$req->{arg}})
+    if ((!$req->{node}) && (grep /^-a$/, @{$req->{arg}}))
     {
         if (grep /-d$/, @{$req->{arg}})
         {
@@ -798,6 +910,7 @@ sub process_request
                 {
                     next;
                 }
+                #print "addnode $_\n";
                 addnode $_;
             }
         }
