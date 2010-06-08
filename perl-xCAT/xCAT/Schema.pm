@@ -671,6 +671,7 @@ site => {
    "                  specify different NICs for different nodes:\n".
    "                       mn|eth1,eth2;service|bond0.\n\n".
    " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n".
+   " disjointdhcps:  If set to '1', the .leases file on a service node only contains the nodes it manages. The default value is '0'.\n\n".
    " domain:  The DNS domain name used for the cluster.\n\n".
    " forwarders:  The DNS servers at your site that can provide names outside of the\n".
    "              cluster.  The DNS on the management node will forward requests it\n".

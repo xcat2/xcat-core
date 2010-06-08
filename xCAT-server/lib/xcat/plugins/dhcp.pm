@@ -457,7 +457,7 @@ sub preprocess_request
     if ($sitetab)
     {
         my $href;
-        ($href) = $sitetab->getAttribs({key => 'dhcpsnonly'}, 'value');
+        ($href) = $sitetab->getAttribs({key => 'disjointdhcps'}, 'value');
         if ($href and $href->{value}) {
 	    $snonly=$href->{value};
 	}
