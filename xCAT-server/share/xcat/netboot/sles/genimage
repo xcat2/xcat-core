@@ -453,26 +453,52 @@ if($ret > 0) {
 #If specified, that takes precedence.
 #if image has one, that is used
 #if all else fails, resort to uname -r like this script did before
-my @KVERS= <$rootimg_dir/boot/vmlinux-*>;
+my @KVERS= <$rootimg_dir/boot/vmlinu[xz]-*>;
+#as I know, s390x is using image-* as its kernel name
 unless (scalar(@KVERS)) {
-    @KVERS= <$rootimg_dir/boot/vmlinuz-*>;
+    @KVERS=<$rootimg_dir/boot/image-*>;
 }
 foreach (@KVERS) {
 	s/vmlinu.-//;
+    s/image-//;
 }
 unless (scalar(@KVERS)) {
 	@KVERS= <$rootimg_dir/lib/modules/*>;
 }
 if (scalar(@KVERS)) {
-    $basekernelver = basename(pop @KVERS);
+    foreach my $kver (@KVERS) {
+        if ($kver !~ m/.gz$/) {
+            $basekernelver = basename($kver);
+            last;
+        }
+    }
 }
 unless ($basekernelver) {
     $basekernelver = `uname -r`;
 }
-unless ($kernelver) {
+chomp($basekernelver);
+
+if ($kernelver) {
+    # if the kernelver is specified by "-k", 
+    # the kernel file should be in /boot
+    # the moudles should be in /lib/modules/$kernelver
+    if ( -e "/boot/vmlinux-$kernelver") {
+        copy("/boot/vmlinux-$kernelver", "$rootimg_dir/boot/");
+    }elsif ( -e "/boot/vmlinuz-$kernelver") {
+        copy("/boot/vmlinuz-$kernelver", "$rootimg_dir/boot/");
+    }elsif ( -e "/boot/image-$kernelver") {
+        copy("/boot/image-$kernelver", "$rootimg_dir/boot/");
+    }else {
+        xdie("couldn't find the kernel file matched $kernelver in /boot");
+    }
+    if ( -e "/lib/modules/$kernelver" ) {
+        copy("/lib/modules/$kernelver", "$rootimg_dir/lib/modules/");
+    } else {
+        xdie("couldn't find /lib/modules/$kernelver");
+    }
+} else {
     $kernelver=$basekernelver;
 }
-chomp($kernelver);
 
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
@@ -525,17 +551,17 @@ sub getlibs {
 
 sub mkinitrd {
     mkpath("/tmp/xcatinitrd.$$/bin");
-    if(-r "$rootimg_dir/boot/vmlinuz-$kernelver") {
-        copy("$rootimg_dir/boot/vmlinuz-$kernelver","$destdir/kernel");
-    } elsif(-r "$rootimg_dir/boot/vmlinux-$kernelver") {
+
+    if(-r "$rootimg_dir/boot/vmlinux-$kernelver") { # SLES use vmlinux-* as its name
         copy("$rootimg_dir/boot/vmlinux-$kernelver","$destdir/kernel");
-    } elsif(-r "/boot/vmlinuz-$kernelver") {
-        copy("/boot/vmlinuz-$kernelver","$destdir/kernel");
-    } elsif(-r "/boot/vmlinux-$kernelver") {#for SLES10,11
-    	copy("/boot/vmlinux-$kernelver","$destdir/kernel");
+    } elsif(-r "$rootimg_dir/boot/vmlinuz-$kernelver") { # OpenSuSE maight use vmlinuz-* as its name
+        copy("$rootimg_dir/boot/vmlinuz-$kernelver","$destdir/kernel");
+    } elsif(-r "$rootimg_dir/boot/image-$kernelver") { # SLES on s390x use image-* as its name
+        copy("$rootimg_dir/boot/image-$kernelver","$destdir/kernel");
     } else {
-      xdie("Cannot read /boot/vmlinuz-$kernelver");
+      xdie("Cannot find suitable kernel file for $kernelver");
     }
+
     symlink("bin","/tmp/xcatinitrd.$$/sbin");
     mkpath("/tmp/xcatinitrd.$$/usr/bin");
     mkpath("/tmp/xcatinitrd.$$/usr/sbin");
@@ -1210,34 +1236,6 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    if ($rc) {
       system("sed -i '".'s/^\(TARGETS = .*\)$/\1 gettyset/'."' $rootimg_dir/etc/init.d/.depend.start");
       system("ln -s ../gettyset $rootimg_dir/etc/init.d/rc3.d/S60gettyset");
-   }
-
-    # is the following necesary ? 
-    # it seems the kernel file will always be copied in the mkinitrd() subroutine
-   if(($osver =~ /sles11/) || ($osver =~ /sles10/)) {#for sles11,sles10
-        if($kernelver) {
-            if(-e <$rootimg_dir/boot/vmlinux-$kernelver>) {
-                copy(<$rootimg_dir/boot/vmlinux-$kernelver>,"$destdir/kernel");
-            } else {
-                print qq{Error: couldn't find the suitable kernel in $rootimg_dir/boot/ for $kernelver!};
-                exit 1;
-            }
-        } else {
-            my @files = <$rootimg_dir/boot/vmlinux-*>;
-            copy($files[0], "$destdir/kernel") if(scalar @files > 0);
-        }
-   }else { # is it necessary?
-        if($kernelver) {
-            if(-e <$rootimg_dir/boot/vmlinuz-$kernelver>) {
-                copy(<$rootimg_dir/boot/vmlinuz-*>,"$destdir/kernel");
-            } else {
-                print qq{Error: couldn't find the suitable kernel in $rootimg_dir/boot/ for $kernelver!};
-                exit 1;
-            }
-        } else {
-            my @files = <$rootimg_dir/boot/vmlinuz-*>;
-            copy($files[0], "$destdir/kernel") if (scalar @files > 0);
-        }
    }
 }
 
