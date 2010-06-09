@@ -735,7 +735,7 @@ sub setobjdefs
                         # make a new list without the one specified
                         my $first = 1;
                         my $newlist;
-                        foreach my $i (sort @currentList)
+                        foreach my $i (@currentList)
                         {
                             chomp $i;
                             if (!grep(/^$i$/, @minusList))
@@ -828,7 +828,7 @@ sub setobjdefs
                         # make a new list without the one specified
                         my $first = 1;
                         my $newlist;
-                        foreach my $i (sort @currentList)
+                        foreach my $i (@currentList)
                         {
                             chomp $i;
                             if (!grep(/^$i$/, @minusList))
@@ -1102,7 +1102,7 @@ sub setobjdefs
                     # make a new list without the one specified
                     my $first = 1;
                     my $newlist;
-                    foreach my $i (sort @currentList)
+                    foreach my $i (@currentList)
                     {
                         chomp $i;
                         if (!grep(/^\Q$i\E$/, @minusList))
