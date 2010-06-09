@@ -327,6 +327,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         if [ $mounted -eq 0 ]; then
 	    cd /xcatpost
 	    dir_no_ftproot=${OTHERPKGDIR#$INSTALLDIR/}
+            dir_no_ftproot=${dir_no_ftproot/\/*/}
             rm -f -R $dir_no_ftproot
         fi
     fi
