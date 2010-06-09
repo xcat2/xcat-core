@@ -106,6 +106,7 @@ sub setupSSH
         &runcmd("echo \"X11Forwarding yes\" >>$sshdconfig");
         &runcmd("echo \"MaxStartups 1024\" >>$sshdconfig");
         &runcmd("echo \"ListenAddress ::\" >>$sshdconfig");
+        &runcmd("echo \"ListenAddress 0.0.0.0\" >>$sshdconfig");
         #&runcmd("echo \"PasswordAuthentication no\" >>$sshdconfig");
         if (!(-e "$sshconfig.ORIG"))
         {
