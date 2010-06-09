@@ -452,7 +452,7 @@ sub process_servicenodes_xdcp
         }
         chop $badnodes;
         my $msg =
-          "\nThe following servicenodes: $badnodes have errors and cannot be updated\n Until the error is fixed, xdcp will not work to nodes serviced by these service nodes. Run xdsh <servicenode,...> -c ,  to clean up the xdcp servicenode directory, and run the command again.";
+          "\nThe following servicenodes: $badnodes have errors and cannot be updated\n Until the error is fixed, xdcp will not work to nodes serviced by these service nodes.";
         $rsp->{data}->[0] = $msg;
         xCAT::MsgUtils->message("D", $rsp, $callback);
     }
