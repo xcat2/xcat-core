@@ -5,6 +5,7 @@ use Data::Dumper;
 use Sys::Syslog;
 use Socket;
 use xCAT::Utils;
+use xCAT::NetworkUtils;
 use Getopt::Long;
 
 sub handled_commands
@@ -171,97 +172,180 @@ sub donets
 			return 1;
 		}
 
-		# do each ethernet interface
-		foreach my $i (@interfaces) {
+                my $master=xCAT::Utils->get_site_Master();
+                my $masterip = xCAT::NetworkUtils->getipaddr($master);  
+                if ($masterip =~ /:/) {
+                    # do each ethernet interface for ipv6
+	            foreach my $i (@interfaces) {
 
-			if ($i =~ /^en/) {
-				# "mktcpip -S en0" to get nm & gw
-				my $mkcmd = "mktcpip -S $i";
-				my @netinfo = xCAT::Utils->runcmd($mkcmd, 0);
-				if ($::RUNCMD_RC != 0) {
-					my $rsp;
-					push @{$rsp->{data}}, "Could not run \'$mkcmd\'.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					return 1;
-				}
+	               if ($i =~ /^en/) {
+	    
+                        # "ifconfig en0 |grep fe80" to get net and prefix length
+                        my $cmd = "ifconfig $i |grep -i inet6";
+                        my @netinfo = xCAT::Utils->runcmd($cmd, -1);
+                        if ($::RUNCMD_RC != 0) {
+                               # no ipv6 address configured 
+                               next;
+                        }
 
-				my $netmask;
-				my $ipaddr;
-				my @fields;
-				my $gateway;
-				foreach my $line (@netinfo) {
-					next if ($line =~ /^\s*#/);
+                        # only handle the ipv6 addr without %
+                        foreach my $line (@netinfo)
+                        {
+                            next if ($line =~ /\%/);
+                            
+                            my $gateway;
+                            my $netmask;
+                            my @fields;
 
-					@fields = split(/:/, $line);
-				}
-				$ipaddr = $fields[1];
-				$netmask = $fields[2];
-				$gateway = $fields[6];
+                            @fields = split(/ /, $line);
+                            ($gateway, $netmask) = split(/\//, $fields[1]);
 
-				# split interface IP
-                my ($ip1, $ip2, $ip3, $ip4) = split('\.', $ipaddr);
+                            my $eip = Net::IP::ip_expand_address ($gateway,6);
+                            my $bip = Net::IP::ip_iptobin($eip,6);
+                            my $bmask = Net::IP::ip_get_mask($netmask,6);
+                            my $bnet = $bip & $bmask;
+                            my $ipnet = Net::IP::ip_bintoip($bnet,6);
+                            my $net = Net::IP::ip_compress_address($ipnet,6);
 
-				# split mask
-                my ($m1, $m2, $m3, $m4) = split('\.', $netmask);
+                            my $netname = $net . "-" . $netmask;
 
-				# AND nm and ip to get net attribute
-				my $n1 = ((int $ip1) & (int $m1));
-                my $n2 = ((int $ip2) & (int $m2));
-                my $n3 = ((int $ip3) & (int $m3));
-                my $n4 = ((int $ip4) & (int $m4));
+                            # see if this network (or equivalent) is already defined
+                            # - compare net and prefix_len values
+                            my $foundmatch = 0;
+                            foreach my $netn (@netlist) {
+                                # get net and prefix_len
+                                my $dnet = $nethash{$netn}{'net'};
+                                my $dprefix_len = $nethash{$netn}{'mask'};
 
-				my $net = "$n1.$n2.$n3.$n4";
+                                if (($net == $dnet) && ($netmask == $dprefix_len))
+                                {
+                                    $foundmatch = 1;
+                                    last;
+                                }
+                            }
 
-				# use convention for netname attr
-				my $netn;
-				my $maskn;
-				($netn = $net) =~ s/\./\_/g;
-				($maskn = $netmask) =~ s/\./\_/g;
-				#  ( 1_2_3_4-255_255_255_192 - ugh!)
-				my $netname = $netn . "-" . $maskn;
+                            if ($::DISPLAY) {
+                                    my $rsp;
+                                    push @{$rsp->{data}}, "\n#From $host.";
+                pus    h @{$rsp->{data}}, "$netname:";
+                                    push @{$rsp->{data}}, "    objtype=network";
+                                    push @{$rsp->{data}}, "    net=$net";
+                                    push @{$rsp->{data}}, "    mask=$netmask";
+                                    push @{$rsp->{data}}, "    mgtifname=$i";
+                                    push @{$rsp->{data}}, "    gateway=$gateway\n";
+                                    if ($foundmatch) {
+                pus    h @{$rsp->{data}}, "# Note: An equivalent xCAT network definition already exists.\n";
+                                    }
+                xCA    T::MsgUtils->message("I", $rsp, $callback);
+                            } else {
 
-				# see if this network (or equivalent) is already defined
-				# - compare net and mask values
-				foreach my $netn (@netlist) {
-					# split definition mask
-					my ($dm1, $dm2, $dm3, $dm4) = split('\.', $nethash{$netn}{'mask'});
+                                    if ($foundmatch) {
+                                        next;
+                                    }
 
-					# split definition net addr
-					my ($dn1, $dn2, $dn3, $dn4) = split('\.', $nethash{$netn}{'net'});
+                                    # add new network def
+                                    $nettab->setAttribs({'net' => $net, 'mask' => $netmask}, {'netname' => $netname, 'gateway' => $gateway, 'mgtifname' => $i});
+                            }
+                        }
+                }  
+            }
+        } else {
+            # do each ethernet interface for ipv4
+            foreach my $i (@interfaces) {
+    
+                if ($i =~ /^en/) {
+    
+            		# "mktcpip -S en0" to get nm & gw
+            		my $mkcmd = "mktcpip -S $i";
+            		my @netinfo = xCAT::Utils->runcmd($mkcmd, 0);
+            		if ($::RUNCMD_RC != 0) {
+            			my $rsp;
+            			push @{$rsp->{data}}, "Could not run \'$mkcmd\'.\n";
+            			xCAT::MsgUtils->message("E", $rsp, $callback);
+            			return 1;
+            		}
+    
+            		my $netmask;
+            		my $ipaddr;
+            		my @fields;
+            		my $gateway;
+            		foreach my $line (@netinfo) {
+            			next if ($line =~ /^\s*#/);
+    
+            			@fields = split(/:/, $line);
+            		}
+            		$ipaddr = $fields[1];
+            		$netmask = $fields[2];
+            		$gateway = $fields[6];
+    
+            		# split interface IP
+                    my ($ip1, $ip2, $ip3, $ip4) = split('\.', $ipaddr);
+    
+            		# split mask
+                    my ($m1, $m2, $m3, $m4) = split('\.', $netmask);
+    
+            		# AND nm and ip to get net attribute
+            		my $n1 = ((int $ip1) & (int $m1));
+                    my $n2 = ((int $ip2) & (int $m2));
+                    my $n3 = ((int $ip3) & (int $m3));
+                    my $n4 = ((int $ip4) & (int $m4));
+    
+            		my $net = "$n1.$n2.$n3.$n4";
+    
+            		# use convention for netname attr
+            		my $netn;
+            		my $maskn;
+            		($netn = $net) =~ s/\./\_/g;
+            		($maskn = $netmask) =~ s/\./\_/g;
+            		#  ( 1_2_3_4-255_255_255_192 - ugh!)
+            		my $netname = $netn . "-" . $maskn;
+    
+            		# see if this network (or equivalent) is already defined
+            		# - compare net and mask values
+                            my $foundmatch = 0;
+            		foreach my $netn (@netlist) {
+            			# split definition mask
+            			my ($dm1, $dm2, $dm3, $dm4) = split('\.', $nethash{$netn}{'mask'});
+    
+            			# split definition net addr
+            			my ($dn1, $dn2, $dn3, $dn4) = split('\.', $nethash{$netn}{'net'});
+    
+            			# check for the same netmask and network address
+            			if ( ($n1 == $dn1) && ($n2 ==$dn2) && ($n3 == $dn3) && ($n4 == $dn4) ) {
+            				if ( ($m1 == $dm1) && ($m2 ==$dm2) && ($m3 == $dm3) && ($m4== $dm4) ) {
+            					$foundmatch=1;
+                                                    last;
+            				}
+            			}
+            		}
+    
+            		if ($::DISPLAY) {
+            			my $rsp;
+            			push @{$rsp->{data}}, "\n#From $host.";
+                		push @{$rsp->{data}}, "$netname:";
+            			push @{$rsp->{data}}, "    objtype=network";
+            			push @{$rsp->{data}}, "    net=$net";
+            			push @{$rsp->{data}}, "    mask=$netmask";
+            		        push @{$rsp->{data}}, "    mgtifname=$i";	
+            			push @{$rsp->{data}}, "    gateway=$gateway\n";
+            			if ($foundmatch) {
+                            push @{$rsp->{data}}, "# Note: An equivalent xCAT network definition already exists.\n";
+            			}
+                		xCAT::MsgUtils->message("I", $rsp, $callback);
+            		} else {
+    
+            			if ($foundmatch) {
+                            next;
+                        }
+    
+            			# add new network def 
+            			$nettab->setAttribs({'net' => $net, 'mask' => $netmask}, {'netname' => $netname, 'gateway' => $gateway, 'mgtifname' => $i});
+            		}
+    	        }
+            } # end foreach
+        } #end if ipv4
 
-					# check for the same netmask and network address
-					if ( ($n1 == $dn1) && ($n2 ==$dn2) && ($n3 == $dn3) && ($n4 == $dn4) ) {
-						if ( ($m1 == $dm1) && ($m2 ==$dm2) && ($m3 == $dm3) && ($m4== $dm4) ) {
-							$foundmatch=1;
-						}
-					}
-				}
-
-				if ($::DISPLAY) {
-					my $rsp;
-					push @{$rsp->{data}}, "\n#From $host.";
-            		push @{$rsp->{data}}, "$netname:";
-					push @{$rsp->{data}}, "    objtype=network";
-					push @{$rsp->{data}}, "    net=$net";
-					push @{$rsp->{data}}, "    mask=$netmask";
-					push @{$rsp->{data}}, "    gateway=$gateway\n";
-					if ($foundmatch) {
-                        push @{$rsp->{data}}, "# Note: An equivalent xCAT network definition already exists.\n";
-					}
-            		xCAT::MsgUtils->message("I", $rsp, $callback);
-				} else {
-
-					if ($foundmatch) {
-                        next;
-                    }
-
-					# add new network def 
-					$nettab->setAttribs({'net' => $net, 'mask' => $netmask}, {'netname' => $netname, 'gateway' => $gateway});
-				}
-			}
-		}
-
-	} else {
+      } else { 
 
 		# For Linux systems
     	my @rtable = split /\n/, `/bin/netstat -rn`;
