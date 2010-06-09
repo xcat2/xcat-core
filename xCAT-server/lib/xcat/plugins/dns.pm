@@ -397,7 +397,7 @@ sub update_namedconf {
 
                     } else {
                         my $zfilename = $currzone;
-                        $zfilename =~ s/\..*//;
+                        #$zfilename =~ s/\..*//;
                         push @newnamed,"\t};\n","\tfile \"db.$zfilename\";\n","};\n";
                     }
                 } else {
@@ -473,7 +473,7 @@ sub update_namedconf {
 
         } else {
             my $zfilename = $zone;
-            $zfilename =~ s/\..*//;
+            #$zfilename =~ s/\..*//;
             push @newnamed,"\t};\n","\tfile \"db.$zfilename\";\n","};\n";
         }
     }
@@ -485,7 +485,7 @@ sub update_namedconf {
             push @newnamed,"\t\t$_;\n";
         }
         my $zfilename = $zone;
-        $zfilename =~ s/\..*//;
+        #$zfilename =~ s/\..*//;
         push @newnamed,"\t};\n","\tfile \"db.$zfilename\";\n","};\n\n";
     }
     my $newnameconf;
