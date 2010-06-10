@@ -1778,6 +1778,12 @@ sub getGroupMembers
         my @whereattrs = keys %whereHash;
         my %nodeattrhash = xCAT::DBobjUtils->getobjdefs(\%tmphash, 0, \@whereattrs);
 
+        # The attribute 'node' can be used as a key of selection string,
+        # however, the 'node' attribute is not included in the getobjdefs hash
+        foreach my $objname (keys %nodeattrhash)
+        {
+            $nodeattrhash{$objname}{'node'} = $objname;
+        }
         my $first = 1;
         foreach my $objname (keys %nodeattrhash)
         {
