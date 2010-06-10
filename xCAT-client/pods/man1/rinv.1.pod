@@ -18,10 +18,16 @@ B<rinv> I<noderange> {B<bus>|B<config>|B<serial>|B<model>|B<firm>|B<all>}
 
 B<rinv> I<noderange> {B<mtm>|B<serial>|B<mac>|B<bios>|B<diag>|B<mprom>|B<mparom>|B<firm>|B<all>}
 
+=head2 VMware specific:
+
+B<rinv> I<noderange>
+
 =head1 B<Description>
 
 B<rinv>  retrieves  hardware  configuration  information from the on-board
 Service Processor for a single or range of nodes and groups.
+
+Calling B<rinv> for VMware will display the UUID/GUID, nuumber of CPUs, amount of memory, the MAC address and a list of Hard disks.  The output for each Hard disk includes the label, size and backing file location.
 
 =head1 B<Options>
 
@@ -130,6 +136,19 @@ To retrieve 'config' information from the HMC-managed LPAR node3, enter:
  node5: Machine Configuration Info
  node5: Number of Processors: 1
  node5: Total Memory (MB): 1024
+
+=item *
+
+To retrieve information about a VMware node vm1, enter:
+
+ rinv vm1
+ vm1: UUID/GUID: 42198f65-d579-fb26-8de7-3ae49e1790a7
+ vm1: CPUs: 1
+ vm1: Memory: 1536 MB
+ vm1: Network adapter 1: 36:1b:c2:6e:04:02
+ vm1: Hard disk 1 (d0): 9000 MB @ [nfs_192.168.68.21_vol_rc1storage_vmware] vm1_3/vm1.vmdk
+ vm1: Hard disk 2 (d4): 64000 MB @ [nfs_192.168.68.21_vol_rc1storage_vmware] vm1_3/vm1_5.vmdk
+
 
 =back
 
