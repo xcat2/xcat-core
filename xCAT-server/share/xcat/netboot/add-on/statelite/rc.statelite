@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # rc.statelite will grab all the mount points we need to check 
 # for keeping an image together.  This will have to do until unionfs
 # is ready.
