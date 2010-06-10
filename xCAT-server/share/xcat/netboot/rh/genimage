@@ -969,7 +969,7 @@ EOMS
      }
    }
    # add rsync for statelite
-   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod","sbin/mount.nfs","/usr/bin/rsync") {
+   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod", "bin/bash", "usr/sbin/chroot", "sbin/mount.nfs","/usr/bin/rsync") {
       getlibs($_);
       push @filestoadd,$_;
    }
@@ -1052,6 +1052,15 @@ sub isnetdriver {
 
 sub postscripts { # TODO: customized postscripts
    generic_post();
+
+   if ($mode eq "statelite") {
+        if( ! -d "$rootimg_dir/opt/xcat/") {
+                mkdir "$rootimg_dir/opt/xcat/";
+        }
+        copy ("$installroot/postscripts/xcatdsklspost", "$rootimg_dir/opt/xcat/");
+        chmod '0755', "$rootimg_dir/opt/xcat/xcatdsklspost";
+    }
+
    if (-d "$installroot/postscripts/hostkeys") {
       for my $key (<$installroot/postscripts/hostkeys/*key>) {
          copy ($key,"$rootimg_dir/etc/ssh/");
