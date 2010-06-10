@@ -61,7 +61,9 @@ my %usage = (
     PPC specific:
        rinv <noderange> [bus|config|serial|model|firm|all]
     Blade specific:
-       rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]",
+       rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]
+    VMware specific:
+       rinv <noderange>",
     "rsetboot" => 
 "Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose]
        rsetboot [-h|--help|-v|--version]",
@@ -146,9 +148,14 @@ my %usage = (
    PPC specific:
        lsvm <noderange> [-a|--all]",
     "chvm" => 
-"Usage: chvm <noderange> [-p profile][-V|--verbose] 
+"Usage:
+   Common:
        chvm [-h|--help|-v|--version]
-       chvm <noderange> <attr>=<val> [<attr>=<val>...]",
+   PPC specific:
+       chvm <noderange> [-p profile][-V|--verbose] 
+       chvm <noderange> <attr>=<val> [<attr>=<val>...]
+   VMware specific:
+       chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]",
     "rmvm" => 
 "Usage: rmvm <noderange> [--service][-V|--verbose] 
        rmvm [-h|--help|-v|--version]",
