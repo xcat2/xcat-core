@@ -379,6 +379,15 @@ sub process_request {
 
     liteMeNew($rootimg_dir, \%hashNew, $callback);
 
+    # now stick the rc file in:
+    # this is actually a pre-rc file because it gets run before the node boots up all the way.
+    $verbose && $callback->({info => ["put the statelite rc file to $rootimg_dir/etc/init.d/"]});
+    if ($osver =~ m/^rh/ and $arch eq "ppc64") {
+        system("cp -a $::XCATROOT/share/xcat/netboot/add-on/statelite/rc.statelite.ppc.redhat $rootimg_dir/etc/init.d/statelite");
+    }else {
+        system("cp -a $::XCATROOT/share/xcat/netboot/add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
+    }
+
 }
 
 sub liteMeNew {
@@ -409,10 +418,6 @@ sub liteMeNew {
     }
 
     # end loop, synclist should now all be in place.
-    # now stick the rc file in:
-    # this is actually a pre-rc file because it gets run before the node boots up all the way.
-    $verbose && $callback->({info => ["put the statelite rc file to $rootimg_dir/etc/init.d/"]});
-    system("cp -a $::XCATROOT/share/xcat/netboot/add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
 }
 
 
