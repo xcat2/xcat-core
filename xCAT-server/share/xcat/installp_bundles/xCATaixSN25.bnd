@@ -39,3 +39,8 @@ R:net-snmp-perl-5.4.2.1-1.aix5.3.ppc.rpm
 R:openslp-xcat-1.2.1-1.aix5.3.ppc.rpm
 R:perl-Crypt-SSLeay-0.57-1.aix5.3.ppc.rpm
 R:perl-DBD-mysql-4.007-1.aix5.3.ppc.rpm
+R:perl-Digest-SHA1-2.11-1.aix5.3.ppc.rpm
+R:perl-Digest-SHA-5.48-1.aix5.3.ppc.rpm
+R:perl-Digest-HMAC-1.01-1.aix5.3.ppc.rpm
+R:perl-Net-DNS-0.66-1.aix5.3.ppc.rpm
+R:perl-Net-IP-1.25-1.aix5.3.ppc.rpm
