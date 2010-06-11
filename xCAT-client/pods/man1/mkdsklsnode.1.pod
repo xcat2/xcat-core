@@ -47,6 +47,10 @@ Specifies the speed setting (optional). Used when defining the NIM machine. This
 
 Specifies the size in Megabytes of the paging space for the diskless node.(optional) Used when initializing the NIM machine. The minimum and default size is 64 MB of paging space. (ex. "psize=64")
 
+=item B<sparse_paging>
+
+Specifies that the paging file should be created as an AIX sparse file.
+
 =item B<dump_iscsi_port>
 
 The tcpip port number to use to communicate dump images from the client to the dump	resource server. Normally set by default. This port number is used by a dump resource server.
