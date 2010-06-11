@@ -40,7 +40,7 @@ Displays verbose messages.
 
 =item B<-i|--init>
 
-The init option is used to setup an installed MySQL database so that xCAT can use the database.  This involves creating the xcatdb database, the xcatadmin id, dllowing access to the xcatdb database by the Management Node. It customizes the my.cnf configuration file for xcat and starts the MySQL server.  It also backs up the current xCAT database and restores it into the newly setup xcatdb MySQL database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the MySQL database and restarts the xcatd daemon using the database. 
+The init option is used to setup an installed MySQL database so that xCAT can use the database.  This involves creating the xcatdb database, the xcatadmin id, allowing access to the xcatdb database by the Management Node. It customizes the my.cnf configuration file for xcat and starts the MySQL server.  It also backs up the current xCAT database and restores it into the newly setup xcatdb MySQL database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the MySQL database and restarts the xcatd daemon using the database. 
 On AIX, it additionally setup the mysql id and group and corrects the permissions in the MySQL install directories. For AIX, you should be using the MySQL rpms available from the xCAT website. For Linux, you should use the MySQL rpms shipped with the OS. You can chose the -f and/or the -o option, to run after the init. 
 
 =item B<-u|--update>
@@ -80,13 +80,13 @@ B<XCATMYSQLROOT_PW> - the password for the root id that will be assigned to the 
 
 =item *
 
-To setup MySQL for xCAT to run on the MySQL xcatd database :
+To setup MySQL for xCAT to run on the MySQL xcatdb database :
 
 B<mysqlsetup> I<-i>
 
 =item *
 
-To add hosts from /tmp/xcat/hostlist that can access the xcatd database in MySQL:
+To add hosts from /tmp/xcat/hostlist that can access the xcatdb database in MySQL:
 
 B<mysqlsetup> I<-u> I<-f /tmp/xcat/hostlist>
 
