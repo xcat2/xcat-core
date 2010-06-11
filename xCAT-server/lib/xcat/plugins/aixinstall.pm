@@ -1195,7 +1195,7 @@ srvnode.";
 
     # ok -then the spot can be updated
 	my $rsp;
-	push @{$rsp->{data}}, "Updating the NIM spot resource named \'$spot_name\'.\n";
+	push @{$rsp->{data}}, "Updating the NIM spot resource named \'$spot_name\'. This could take a while.\n";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
 
     #
@@ -3880,7 +3880,7 @@ sub rmnimimage
         {
 
             # if it's a defined resource name we can try to remove it
-            if (defined($resname) && grep(/^$resname$/, @nimresources))
+            if ($resname && grep(/^$resname$/, @nimresources))
             {
 
                 # is it allocated?
@@ -4488,7 +4488,7 @@ sub mkdumpres
     {
 
         #$cmd .= "-a location=/install/nim/$type/$res_name ";
-        $cmd .= "-a location=/install/nim/dump2/$res_name ";
+        $cmd .= "-a location=/install/nim/dump/$res_name ";
     }
 
     if (!$::dodumpold)
@@ -6911,7 +6911,7 @@ sub mkdsklsnode
         {
             my $rsp;
             push @{$rsp->{data}}, "$Sname: Creating NIM node definition.\n";
-            push @{$rsp->{data}}, "Running: \'$defcmd\'\n";
+            #push @{$rsp->{data}}, "Running: \'$defcmd\'\n";
             xCAT::MsgUtils->message("I", $rsp, $callback);
         }
         my $output = xCAT::Utils->runcmd("$defcmd", -1);
@@ -6981,7 +6981,7 @@ sub mkdsklsnode
         }
 
         # add any additional supported attrs from cmd line
-        @attrlist = ("configdump");
+        @attrlist = ("configdump", "sparse_paging");
         foreach my $attr (keys %attrs)
         {
             if (grep(/^$attr$/, @attrlist))
@@ -7029,9 +7029,9 @@ sub mkdsklsnode
           "$Sname: Initializing NIM machine \'$nim_name\'. This could take a while.\n";
         if ($::VERBOSE)
         {
-            push @{$rsp->{data}}, "Running: \'$initcmd\'\n";
+            #push @{$rsp->{data}}, "Running: \'$initcmd\'\n";
         }
-        xCAT::MsgUtils->message("I", $rsp, $callback);
+       # xCAT::MsgUtils->message("I", $rsp, $callback);
 
         $output = xCAT::Utils->runcmd("$initcmd", -1);
         if ($::RUNCMD_RC != 0)
