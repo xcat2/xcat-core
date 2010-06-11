@@ -1183,6 +1183,7 @@ sub writereport
         #print list of nodes
         @nodenames = @{$nodehash{$template}};
         my $nodelist = "";
+        @nodearray=();
         foreach my $nodenameline (@nodenames)
         {
 
