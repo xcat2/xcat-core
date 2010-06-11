@@ -902,7 +902,7 @@ sub setboot_timerdisabled {
     my $uefi=0;
     use Getopt::Long;
     unless(GetOptions(
-        'o' => \$persistent,
+        'p' => \$persistent,
         'u' => \$uefi,
         )) {
         sendmsg([1,"Error parsing arguments"],$sessdata->{node});
