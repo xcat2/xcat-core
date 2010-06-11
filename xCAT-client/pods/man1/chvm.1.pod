@@ -8,32 +8,55 @@ I<chvm [-h| --help]>
 
 I<chvm [-v| --version]>
 
-
+=head2 PPC specific:
 I<chvm [-V| --verbose] noderange [-p profile]>
-
 
 I<chvm [-V| --verbose] noderange attr=val [attr=val...]>
 
+=head2 VMware specific:
+I<chvm noderange [-a size] [-d disk] [-p disk] [--resize disk=size] [--cpus count] [--mem memory]>
 
 =head1 DESCRIPTION
+
+=head2 PPC specific:
 
 The chvm command modifies the partition profile for the partitions specified in noderange. A partitions current profile can be read using lsvm, modified, and piped into the chvm command, or changed with the -p flag. 
 
 This command also supports to change specific partition attributes by specifying one or more "attribute equals value" pairs in command line directly, without whole partition profile.
 
+=head2 VMware specific:
+
+The chvm command modifes the vm specified in noderange.  Calling with deregister or purge options at the same time as the resize option is not recommended.
+
 =head1 OPTIONS
 
+=head2 Common:
 
 B<-h>          Display usage message.
+
+B<-v>          Command Version.
+
+=head2 PPC specific:
 
 B<-p profile>  Name of an existing partition profile.
 
 B<attr=val>    Specifies one or more "attribute equals value" pairs, separated by spaces.
 
-B<-v>          Command Version.
-
 B<-V>          Verbose output.
 
+=head2 VMware specific:
+
+B<-a size> Add a new Hard disk with size defaulting to GB.  Multiple can be added with comma separated values.
+
+B<--cpus count> Set the number of CPUs.
+
+B<-d disk> Deregister the Hard disk but leave the backing files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
+
+B<--mem memory> Set the memory, defaults to MB.
+
+B<-p disk> Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
+
+B<--resize disk=size> Change the size of the Hard disk.  The disk can never be set to less than it's current size.  Multiple disks can be resized to I<size> by using comma separated values on the left side of B<=>.  The disks are specified by SCSI id.  Size defaults to GB.
 
 =head1 RETURN VALUE
 
@@ -42,6 +65,8 @@ B<-V>          Verbose output.
 1 An error has occurred.
 
 =head1 EXAMPLES
+
+=head2 PPC specific:
 
 1. To change the partition profile for lpar4 using the configuration data in the file /tmp/lparfile, enter:
 
@@ -66,6 +91,15 @@ I<chvm lpar4 max_mem=4096>
 Output is similar to:
 
 lpar4: Success
+
+=head2 VMware specific:
+
+I<chvm vm1 -a 8,16 --mem 512 --cpus 2>
+
+Output is similar to:
+
+vm1: node successfully changed
+
 
 =head1 FILES
 
