@@ -77,8 +77,7 @@ sub process_request {
 		return;
 	}
 	if ($help) {
-	#	$callback->({info=>["packimage -h \npackimage -v \npackimage [-p profile] [-a architecture] [-o OS] \npackimage imagename"]});
-		$callback->({info=>["imglite... prep an image to be lite"]});
+		$callback->({info=>["$cmdname -h # this help message\n$cmdname -v # version\n$cmdname -V # verbose\n$cmdname [-p profile] [-a architecture] [-o OS]\n$cmdname imagename"]});
 		return;
 	}
 
