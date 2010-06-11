@@ -77,7 +77,6 @@ my $timeout;
 my $port;
 my $debug;
 my $ndebug = 0;
-my @cmdargv;
 my $sock;
 my $noclose;
 my %sessiondata; #hold per session variables, in preparation for single-process strategy
@@ -450,7 +449,6 @@ sub on_bmc_connect {
     my $status = shift;
     my $sessdata = shift;
 	my $command = $sessdata->{command};
-    @cmdargv = @{$sessdata->{extraargs}};
     if ($status =~ /ERROR:/) {
         sendmsg([1,$status],$sessdata->{node});
         return;
@@ -886,7 +884,6 @@ sub setboot {
 sub setboot_timerdisabled {
     my $rsp = shift;
     my $sessdata = shift;
-    my $subcommand=$sessdata->{subcommand};
     if ($rsp->{error}) { 
         sendmsg([1,$rsp->{error}],$sessdata->{node});
         return;
@@ -900,25 +897,38 @@ sub setboot_timerdisabled {
         return;
     }
     my $error;
+    @ARGV=@{$sessdata->{extraargs}};
+    my $persistent=0;
+    my $uefi=0;
+    use Getopt::Long;
+    unless(GetOptions(
+        'o' => \$persistent,
+        'u' => \$uefi,
+        )) {
+        sendmsg([1,"Error parsing arguments"],$sessdata->{node});
+        return;
+    }
+    my $subcommand=shift @ARGV;
 
     my @cmd;
+    my $overbootflags=0x80 | $persistent<<6|$uefi << 5;
     if ($subcommand eq "net") {
-        @cmd=(0x5,0x80,0x4,0x0,0x0,0x0);
+        @cmd=(0x5,$overbootflags,0x4,0x0,0x0,0x0);
     }
     elsif ($subcommand eq "hd" ) {
-        @cmd=(0x5,0x80,0x8,0x0,0x0,0x0);
+        @cmd=(0x5,$overbootflags,0x8,0x0,0x0,0x0);
     }
     elsif ($subcommand eq "cd" ) {
-        @cmd=(0x5,0x80,0x14,0x0,0x0,0x0);
+        @cmd=(0x5,$overbootflags,0x14,0x0,0x0,0x0);
     }
     elsif ($subcommand eq "floppy" ) {
-        @cmd=(0x5,0x80,0x3c,0x0,0x0,0x0);
+        @cmd=(0x5,$overbootflags,0x3c,0x0,0x0,0x0);
     }
     elsif ($subcommand =~ m/^def/) {
         @cmd=(0x5,0x0,0x0,0x0,0x0,0x0);
     }
     elsif ($subcommand eq "setup" ) { #Not supported by BMCs I've checked so far..
-        @cmd=(0x5,0x18,0x0,0x0,0x0,0x0);
+        @cmd=(0x5,$overbootflags,0x18,0x0,0x0,0x0);
     }
     elsif ($subcommand =~ m/^stat/) {
         setboot_stat("NOQUERY",$sessdata);
