@@ -283,6 +283,10 @@ ProcessType () {
                 rm -Rf ${TARGET} 2>&1 >>$LOG
             fi
 
+            # mount it to ${TARGET}
+            echo "mount --bind ${PERSISTENT}${2} ${TARGET}" >>$LOG
+            mount --bind ${PERSISTENT}${2} ${TARGET}
+
             if [ "$isChild" = "0" ]; then
                 # finally make the tmpfs link point to the persistent file
 
