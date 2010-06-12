@@ -130,7 +130,21 @@ foreach my $interf (@interfaces) {
 
 sub fping_pping {
 	my $nodes = shift;
-	open (FPING, "fping ".join(' ',@$nodes). " 2>&1 |") or die("Cannot open fping pipe: $!");
+        my $master = xCAT::Utils->get_site_Master();
+        my $masterip = xCAT::NetworkUtils->getipaddr($master);
+        if ($masterip =~ /:/) #IPv6, needs fping6 support
+        {
+            if (!-x '/usr/bin/fping6')
+            {
+                print "fping6 is not availabe for IPv6 ping.\n";
+                exit 1;
+            }
+            open (FPING, "fping6 ".join(' ',@$nodes). " 2>&1 |") or die("Cannot open fping pipe: $!");
+        }
+        else
+        {
+	    open (FPING, "fping ".join(' ',@$nodes). " 2>&1 |") or die("Cannot open fping pipe: $!");
+        }
 	while (<FPING>) {
 	  if ($_ =~ /is unreachable/) {
 	    s/ is unreachable/: noping/;
