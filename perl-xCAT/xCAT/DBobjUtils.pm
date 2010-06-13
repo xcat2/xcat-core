@@ -1099,6 +1099,22 @@ sub setobjdefs
                       split(/$delim/, $DBattrvals{$objname}{$attr_name});
                     my @minusList = split(/$delim/, $objhash{$objname}{$attr_name});
 
+                    foreach my $em (@minusList)
+                    {
+                        if (!(grep {$_ eq $em} @currentList))
+                        {
+                            if (($::opt_t eq 'group') && ($DBattrvals{$objname}{'grouptype'} ne 'dynamic'))
+                            {
+                                my $rsp;
+			        $rsp->{data}->[0] = "$objname is not a member of \'$em\'.";
+			        xCAT::MsgUtils->message("W", $rsp, $::callback);
+                             } else {
+                                my $rsp;
+			        $rsp->{data}->[0] = "$em is not in the atrribute of \'$attr_name\' for the \'$objname\' definition.";
+			        xCAT::MsgUtils->message("W", $rsp, $::callback);
+                             }
+                        }
+                    }
                     # make a new list without the one specified
                     my $first = 1;
                     my $newlist;
