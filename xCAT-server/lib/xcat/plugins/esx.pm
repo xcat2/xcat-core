@@ -941,9 +941,9 @@ sub migrate_callback {
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&migrate_callback;
         $running_tasks{$task}->{conn} = $hyphash{$target}->{vcenter}->{conn};
-        $running_tasks{$task}->{data} = { offline=>1, target=>$target, skiptodeadsource=>1 };
+        $running_tasks{$task}->{data} = { offline=>1, src=>$parms->{src}, node=>$parms->{node}, target=>$target, skiptodeadsource=>1 };
 	} else { #it is completely gone, attempt a register_vm strategy
-           register_vm($target,$parms->{node},undef,\&migrate_callback,$parms);
+           register_vm($target,$parms->{node},undef,\&migrate_ok,{ nodes => [$parms->{node}], target=>$target, },"failonerror");
 	}
     } else {
         relay_vmware_err($task,"Migrating to ".$parms->{target}." ",$parms->{node});
