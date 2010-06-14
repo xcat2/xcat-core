@@ -102,8 +102,10 @@ else
   else
     /usr/bin/sed -i 's/log_file_size = .*/log_file_size = 2097152/g'  $installroot/etc/PNSD.cfg
   fi
-  stopsrc -s pnsd
-  startsrc -s pnsd
+  if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
+    stopsrc -s pnsd
+    startsrc -s pnsd
+  fi
 fi
 
 # Configure the poe.limits file
