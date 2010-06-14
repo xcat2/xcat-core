@@ -26,7 +26,7 @@ LOADL_DIR=$loadldir
 #  option from the line below
 #  Also, change the bin path below to the correct directory
 #### 
-linux_loadl_license_script=/opt/ibmll/LoadL/sbin/install_ll -c resmgr
+linux_loadl_license_script="/opt/ibmll/LoadL/sbin/install_ll -c resmgr"
 linux_loadl_bin=/opt/ibmll/LoadL/resmgr/full/bin
 
 ####
