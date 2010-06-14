@@ -45,11 +45,11 @@ Specifies the speed setting (optional). Used when defining the NIM machine. This
 
 =item B<psize>
 
-Specifies the size in Megabytes of the paging space for the diskless node.(optional) Used when initializing the NIM machine. The minimum and default size is 64 MB of paging space. (ex. "psize=64")
+Specifies the size in Megabytes of the paging space for the diskless node.(optional) Used when initializing the NIM machine. The minimum and default size is 64 MB of paging space. (ex. "psize=256")
 
 =item B<sparse_paging>
 
-Specifies that the paging file should be created as an AIX sparse file.
+Specifies that the paging file should be created as an AIX sparse file, (ex. "sparse_paging=yes").  The default is "no".
 
 =item B<dump_iscsi_port>
 
@@ -103,26 +103,29 @@ An error has occurred.
 
 =head1 EXAMPLES
 
-1) Initialize an xCAT node named "node01" as an AIX diskless machine.  The xCAT osimage named "61spot" should be used to boot the node.
+=over 3
 
-=over 5
+=item 1
+
+Initialize an xCAT node named "node01" as an AIX diskless machine.  The xCAT osimage named "61spot" should be used to boot the node.
 
 B<mkdsklsnode -i 61spot node01>
 
-=back
+=item 2
 
-2) Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "profile" attribute of the xCAT node definitions.
-
-=over 5
+Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "profile" attribute of the xCAT node definitions.
 
 B<mkdsklsnode aixnodes>
 
-=back
+=item 3
 
+Initialize diskless node "clstrn29" using the xCAT osimage called "61dskls".  Also set the paging size to be 128M and specify the paging file be an AIX sparse file.
 
-3) Initialize an xCAT node called "node02" as an AIX diskless node.  Create a new NIM machine definition name with the osimage as an extension to the xCAT node name.
+B<mkdsklsnode -i 61dskls clstrn29 psize=128 sparse_paging=yes>
 
-=over 5
+=item 4
+
+Initialize an xCAT node called "node02" as an AIX diskless node.  Create a new NIM machine definition name with the osimage as an extension to the xCAT node name.
 
 B<mkdsklsnode -n -i 61spot node02>
 
