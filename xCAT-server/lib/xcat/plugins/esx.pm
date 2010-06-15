@@ -2794,7 +2794,7 @@ sub mknetboot {
 		}
 
 		mkpath("$tftpdir/xcat/netboot/$osver/$arch/");
-        my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz cim.vgz oem.tgz license.tgz/; #Required modules for an image to be considered complete
+        my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz cim.vgz/; #Required modules for an image to be considered complete
         my %mods;
         foreach (@reqmods) {
             $mods{$_} = 1;
@@ -2838,10 +2838,6 @@ sub mknetboot {
         delete $mods{"sys.vgz"};
 		$append .= " --- $tp/cim.vgz";
         delete $mods{"cim.vgz"};
-		$append .= " --- $tp/oem.tgz";
-        delete $mods{"oem.tgz"};
-		$append .= " --- $tp/license.tgz";
-        delete $mods{"license.tgz"};
         if ($mods{"mod.tgz"}) {
 		    $append .= " --- $tp/mod.tgz";
             delete $mods{"mod.tgz"};
@@ -2889,12 +2885,8 @@ sub cpNetbootImages {
 		unless(   -r "$destDir/vmk.gz" 
 			and -r "$destDir/vmkboot.gz"
 			and -r "$destDir/sys.vgz"
-			and -r "$destDir/license.tgz"
-			and -r "$destDir/oem.tgz"
-			and -r "$destDir/pkgdb.tgz"
 			and -r "$destDir/cim.vgz"
 			and -r "$destDir/cimstg.tgz"
-			and -r "$destDir/boot.cfg"
 		){
             if (-r "$srcDir/image.tgz") { #it still may work without image.tgz if profile customization has everything replaced
 		    mkdir($tmpDir);
@@ -2926,7 +2918,6 @@ sub cpNetbootImages {
             }
 
             if (! -d $destDir) {
-                print "making $destDir\n";
                 mkpath($destDir);
             }
             
@@ -2939,16 +2930,34 @@ sub cpNetbootImages {
             system("umount /mnt/xcat");
             print "tempDir: $tmpDir\n";
             system("rm -rf $tmpDir");
+            } elsif (-r "$srcDir/cim.vgz" and -r "$srcDir/vmkernel.gz" and -r "$srcDir/vmkboot.gz" and -r "$srcDir/sys.vgz") {
+                use File::Basename;
+                if (! -d $destDir) {
+                    mkpath($destDir);
+                }
+                #In ESXI 4.1, the above breaks, this seems to work, much simpler too
+                foreach ("$srcDir/cim.vgz","$srcDir/vmkernel.gz","$srcDir/vmkboot.gz","$srcDir/sys.vgz","$srcDir/sys.vgz") {
+                    my $mod = scalar fileparse($_);
+                    if ($mod =~ /vmkernel.gz/) {
+                        copy($_,"$destDir/vmk.gz") or sendmsg([1,"Could not copy netboot contents from $_ to $destDir/$mod"]);
+                    } else {
+                        copy($_,"$destDir/$mod") or sendmsg([1,"Could not copy netboot contents from $_ to $destDir/$mod"]);
+                    }
+                }
+
             }
         }
         if (-d $overridedir) { #Copy over all modules 
             use File::Basename;
             foreach (glob "$overridedir/*") {
                 my $mod = scalar fileparse($_);
-                if ($mod =~ /gz\z/ and $mod !~ /pkgdb.tgz/) {
+                if ($mod =~ /gz\z/ and $mod !~ /pkgdb.tgz/ and $mod !~ /vmkernel.gz/) {
                     $modulestoadd->{$mod}=1;
+                    copy($_,"$destDir/$mod") or sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"]);
+                } elsif ($mod =~ /vmkernel.gz/) {
+                    $modulestoadd->{"vmk.gz"}=1;
+                    copy($_,"$destDir/vmk.gz") or sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"]);
                 }
-                copy($_,"$destDir/$mod") or sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"]);
             }
         }
 
