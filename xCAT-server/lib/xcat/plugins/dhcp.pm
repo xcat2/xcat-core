@@ -199,8 +199,10 @@ sub addnode
     }
     my @macs = split(/\|/, $ent->{mac});
     my $mace;
+    my $deflstaments=$lstatements;
     foreach $mace (@macs)
     {
+        $lstatements=$deflstaments; #force recalc on every entry
         my $mac;
         my $hname;
         $hname = "";
@@ -953,6 +955,49 @@ sub restart_dhcpd_aix
     return 1;
 }
 
+sub getzonesfornet {
+    my $net = shift;
+    my $mask = shift;
+    my @zones = ();
+    #return all in-addr reverse zones for a given mask and net
+    #for class a,b,c, the answer is easy
+    #for classless, identify the partial byte, do $netbyte | (0xff&~$maskbyte) to get the highest value
+    #return sequence from $net to value calculated above
+    #since old bind.pm only went as far as class c, we will carry that over for now (more people with smaller than class c complained
+    #and none hit the theoretical conflict.  FYI, the 'official' method in RFC 2317 seems cumbersome, but maybe one day it makes sense
+    #since this is dhcpv4 for now, we'll use the inet_aton, ntop functions to generate the answers (dhcpv6 omapi would be nice...)
+    my $netn = inet_aton($net);
+    my $maskn = inet_aton($mask);
+    unless ($netn and $mask) { return (); }
+    my $netnum = unpack('N',$netn);
+    my $masknum = unpack('N',$maskn);
+    if ($masknum >= 0xffffff00) { #treat all netmasks higher than 255.255.255.0 as class C
+        $netnum = $netnum & 0xffffff00;
+        $netn = pack('N',$netnum);
+        $net = inet_ntoa($netn);
+        return (join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.');
+    } elsif ($masknum >= 0xffff0000) { #class b (/16) to /23
+        my $tempnumber = ($netnum >> 8);
+        $masknum = $masknum >> 8;
+        my $highnet = $tempnumber | (0xffffff & ~$masknum);
+        foreach ($tempnumber..$highnet) {
+            $netnum = $_ << 8;
+            $net = inet_ntoa(pack('N',$netnum));
+            push @zones,join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.';
+        }
+        return @zones;
+    } elsif ($masknum >= 0xff000000) { #class a (/8) to /15, could have made it more flexible, for for only two cases, not worth in
+        my $tempnumber = ($netnum >> 16); #the last two bytes are insignificant, shift them off to make math easier
+        $masknum = $masknum >> 16;
+        my $highnet = $tempnumber | (0xffff & ~$masknum);
+        foreach ($tempnumber..$highnet) {
+            $netnum = $_ << 16; #convert back to the real network value
+            $net = inet_ntoa(pack('N',$netnum));
+            push @zones,join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.';
+        }
+        return @zones;
+    } #bigger than class a subnets have never been approved, so don't deal
+}
 
 sub putmyselffirst {
     my $srvlist = shift;
@@ -1171,6 +1216,12 @@ sub addnet
         push @netent, "zone $domain. {\n";
         push @netent, "   primary $ddnserver; key xcat_key; \n";
         push @netent, " }\n";
+        foreach getzonesfornet($net,$mask) {
+            push @netent, "zone $_. {\n";
+            push @netent, "   primary $ddnserver; key xcat_key; \n";
+            push @netent, " }\n";
+        }
+
         my $tmpmaskn = unpack("N", inet_aton($mask));
         my $maskbits = 32;
         while (not ($tmpmaskn & 1)) {
