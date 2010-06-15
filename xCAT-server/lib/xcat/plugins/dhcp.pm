@@ -1216,7 +1216,7 @@ sub addnet
         push @netent, "zone $domain. {\n";
         push @netent, "   primary $ddnserver; key xcat_key; \n";
         push @netent, " }\n";
-        foreach getzonesfornet($net,$mask) {
+        foreach (getzonesfornet($net,$mask)) {
             push @netent, "zone $_. {\n";
             push @netent, "   primary $ddnserver; key xcat_key; \n";
             push @netent, " }\n";
