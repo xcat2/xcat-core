@@ -2582,7 +2582,7 @@ sub copycd {
         open(LINE, $path . "/README.txt") or die "couldn't open!";
         while($line = <LINE>){
             chomp($line);
-            if($line =~ /VMware ESXi version 4\.(\d+)/){
+            if($line =~ /VMware ESXi(?: version)? 4\.(\d+)/){
                 $darch = "x86_64";
                 $distname = "esxi4";
                 if ($1) {
