@@ -18,9 +18,8 @@ key --skip
 # here so unless you clear all partitions first, this is
 # not guaranteed to work
 zerombr yes
-clearpart --initlabel --drives=dasda,dasdb
+clearpart --initlabel --drives=dasda
 part / --fstype ext3 --size=100 --grow --ondisk=dasda
-part /usr --fstype ext3 --size=100 --grow --ondisk=dasdb
 
 %packages
 @base

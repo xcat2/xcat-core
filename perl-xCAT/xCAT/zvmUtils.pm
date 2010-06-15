@@ -353,11 +353,11 @@ sub getIp {
 	my ( $class, $node ) = @_;
 
 	# Get IP address
-	# You need the extra space in the pattern, 
+	# You need the extra space in the pattern,
 	# else it will confuse gpok2 with gpok21
 	my $out   = `cat /etc/hosts | grep "$node "`;
 	my @parms = split( ' ', $out );
-	
+
 	return $parms[0];
 }
 
@@ -432,26 +432,47 @@ sub getIfcfgByNic {
 
 	# If it is Red Hat -- ifcfg-qeth file is in /etc/sysconfig/network-scripts
 	if ( $os =~ m/Red Hat/i ) {
-		$out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network-scripts/ifcfg-eth*"`;
+		$out   = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network-scripts/ifcfg-eth*"`;
 		@parms = split( '\n', $out );
-		
+
 		# Go through each line
-		foreach( @parms ) {
-			
+		foreach (@parms) {
+
 			# If the network file contains the NIC address
 			$out = `ssh -o ConnectTimeout=5 $node "cat $_" | grep "$nic"`;
-			if ( $out ) {
+			if ($out) {
+
 				# Return network file path
-				return ( $_ );
+				return ($_);
 			}
-		}				
+		}
 	}
 
-	# If it is SUSE -- ifcfg-qeth file is in /etc/sysconfig/network
-	elsif ( $os =~ m/SUSE/i ) {
+	# If it is SLES 10 -- ifcfg-qeth file is in /etc/sysconfig/network
+	elsif ( $os =~ m/SUSE Linux Enterprise Server 10/i ) {
 		$out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network/ifcfg-qeth*" | grep "$nic"`;
 		@parms = split( '\n', $out );
 		return ( $parms[0] );
+	}
+
+	# If it is SLES 11 -- ifcfg-qeth file is in /etc/sysconfig/network
+	elsif ( $os =~ m/SUSE Linux Enterprise Server 11/i ) {
+
+		# Returns the 1st ifcfg-eth file found
+		$out = `ssh -o ConnectTimeout=5 $node "ls /etc/sysconfig/network/ifcfg-eth*"`;
+		my @file = split( '\n', $out );
+
+		# Go through each network file
+		foreach (@file) {
+
+			# If the network file contains the NIC address
+			$out = `ssh -o ConnectTimeout=5 $node "cat $_" | grep "$nic"`;
+			if ($out) {
+
+				# Return network file path
+				return ($_);
+			}
+		}
 	}
 
 	# If no file is found -- Return nothing

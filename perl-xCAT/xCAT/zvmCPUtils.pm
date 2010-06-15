@@ -32,7 +32,7 @@ sub getUserId {
 	my ( $class, $node ) = @_;
 
 	# Get userId using VMCP
-	my $out = `ssh -o ConnectTimeout=5 $node "vmcp q userid"`;
+	my $out     = `ssh -o ConnectTimeout=5 $node "vmcp q userid"`;
 	my @results = split( ' ', $out );
 
 	return ( $results[0] );
@@ -187,7 +187,7 @@ sub getNetworkNames {
 	foreach (@lines) {
 
 		# Trim output
-		$_ = xCAT::zvmUtils->trimStr($_);
+		$_     = xCAT::zvmUtils->trimStr($_);
 		@parms = split( ' ', $_ );
 
 		# Get the network name
@@ -474,7 +474,7 @@ sub getNetworkLayer {
 
 	# Get node properties from 'zvm' table
 	my @propNames = ('hcp');
-	my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+	my $propVals  = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
 
 	# Get HCP
 	my $hcp = $propVals->{'hcp'};
@@ -483,7 +483,7 @@ sub getNetworkLayer {
 	}
 
 	# Get network name
-	my $out = `ssh -o ConnectTimeout=5 $node "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
+	my $out   = `ssh -o ConnectTimeout=5 $node "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
 	my @lines = split( '\n', $out );
 
 	# Go through each line and extract VSwitch and Lan names
@@ -551,8 +551,7 @@ sub getNetworkType {
 	my ( $class, $hcp, $netName ) = @_;
 
 	# Get network details
-	my $out =
-	  `ssh -o ConnectTimeout=5 $hcp "vmcp q lan $netName" | grep "Type"`;
+	my $out = `ssh -o ConnectTimeout=5 $hcp "vmcp q lan $netName" | grep "Type"`;
 
 	# Go through each line and determine network type
 	my @lines = split( '\n', $out );
@@ -596,8 +595,7 @@ sub defineCpu {
 	my ( $class, $node, $addr, $type ) = @_;
 
 	# Define processor(s)
-	my $out =
-	  `ssh -o ConnectTimeout=5 $node "vmcp define cpu $addr type $type"`;
+	my $out = `ssh -o ConnectTimeout=5 $node "vmcp define cpu $addr type $type"`;
 
 	return ($out);
 }

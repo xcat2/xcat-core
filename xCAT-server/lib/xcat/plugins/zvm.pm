@@ -34,16 +34,17 @@ use strict;
 #-------------------------------------------------------
 sub handled_commands {
 	return {
-		rpower     => 'nodehm:power,mgt',
-		rinv       => 'nodehm:mgt',
-		mkvm       => 'nodehm:mgt',
-		rmvm       => 'nodehm:mgt',
-		lsvm       => 'nodehm:mgt',
-		chvm       => 'nodehm:mgt',
-		rscan      => 'nodehm:mgt',
-		nodeset    => 'noderes:netboot',
-		getmacs    => 'nodehm:getmac,mgt',
-		rnetboot   => 'nodehm:mgt',
+		rpower   => 'nodehm:power,mgt',
+		rinv     => 'nodehm:mgt',
+		mkvm     => 'nodehm:mgt',
+		rmvm     => 'nodehm:mgt',
+		lsvm     => 'nodehm:mgt',
+		chvm     => 'nodehm:mgt',
+		rscan    => 'nodehm:mgt',
+		nodeset  => 'noderes:netboot',
+		getmacs  => 'nodehm:getmac,mgt',
+		rnetboot => 'nodehm:mgt',
+
 		# updatenode => 'nodehm:mgt',
 	};
 }
@@ -52,7 +53,7 @@ sub handled_commands {
 
 =head3  preprocess_request
 
-	Check and setup for hierarchy 
+	Check and setup for hierarchy
 
 =cut
 
@@ -98,8 +99,7 @@ sub preprocess_request {
 		# Input error
 		my %rsp;
 		my $rsp;
-		$rsp->{data}->[0] =
-		  "Input noderange missing. Useage: zvm <noderange> \n";
+		$rsp->{data}->[0] = "Input noderange missing. Useage: zvm <noderange> \n";
 		xCAT::MsgUtils->message( "I", $rsp, $callback, 0 );
 		return 1;
 	}
@@ -235,26 +235,10 @@ sub process_request {
 	# --- Remove a virtual server ---
 	elsif ( $command eq "rmvm" ) {
 		foreach (@nodes) {
-			$pid = xCAT::Utils->xfork();
 
-			# Parent process
-			if ($pid) {
-				push( @children, $pid );
-			}
-
-			# Child process
-			elsif ( $pid == 0 ) {
-				removeVM( $callback, $_ );
-
-				# Exit process
-				exit(0);
-			}
-			else {
-
-				# Ran out of resources
-				die "Error: Could not fork\n";
-			}
-
+			# Should be careful about async returns
+			# This method is synchronous for now
+			removeVM( $callback, $_ );
 		}    # End of foreach
 	}    # End of case
 
@@ -339,25 +323,10 @@ sub process_request {
 	# --- Set the boot state for a node ---
 	elsif ( $command eq "nodeset" ) {
 		foreach (@nodes) {
-			$pid = xCAT::Utils->xfork();
 
-			# Parent process
-			if ($pid) {
-				push( @children, $pid );
-			}
-
-			# Child process
-			elsif ( $pid == 0 ) {
-				nodeSet( $callback, $_, $args );
-
-				# Exit process
-				exit(0);
-			}
-			else {
-
-				# Ran out of resources
-				die "Error: Could not fork\n";
-			}
+			# Only one file can be punched to reader at a time
+			# Forking this process is not possible
+			nodeSet( $callback, $_, $args );
 
 		}    # End of foreach
 	}    # End of case
@@ -676,54 +645,55 @@ sub changeVM {
 		my $tgtAddr      = $args->[1];
 		my $srcNode      = $args->[2];
 		my $srcAddr      = $args->[3];
-		
+
 		# Get source userID
 		@propNames = ( 'hcp', 'userid' );
 		$propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $srcNode, @propNames );
 		my $sourceId = $propVals->{'userid'};
-		
+
 		# --- Link and copy disk ---
 		my $rc;
 		my $try;
 		my $srcDevNode;
 		my $tgtDevNode;
-	
+
 		# Link target disk to HCP
 		my $tgtLinkAddr;
 		$try = 10;
 		while ( $try > 0 ) {
-			
+
 			# New disk address
 			$tgtLinkAddr = $tgtAddr + 1000;
-	
+
 			# Check if new disk address is used (target)
 			$rc = xCAT::zvmUtils->isAddressUsed( $hcp, $tgtLinkAddr );
-	
+
 			# If disk address is used (target)
 			while ( $rc == 0 ) {
-	
+
 				# Generate a new disk address
 				# Sleep 5 seconds to let existing disk appear
 				sleep(5);
 				$tgtLinkAddr = $tgtLinkAddr + 1;
 				$rc = xCAT::zvmUtils->isAddressUsed( $hcp, $tgtLinkAddr );
 			}
-	
+
 			# Link target disk
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Linking target disk ($tgtAddr) as ($tgtLinkAddr)" );
-			$out = `ssh -o ConnectTimeout=5 $hcp "vmcp link $targetUserId $tgtAddr $tgtLinkAddr MR"`;			
-			
+			$out = `ssh -o ConnectTimeout=5 $hcp "vmcp link $targetUserId $tgtAddr $tgtLinkAddr MR"`;
+
 			# If link fails
 			if ( $out =~ m/not linked/i ) {
-				
+
 				# Wait before trying again
 				sleep(5);
-				
+
 				$try = $try - 1;
-			} else {
+			}
+			else {
 				last;
 			}
-		}	# End of while ( $try > 0 )
+		}    # End of while ( $try > 0 )
 
 		# If target disk is not linked
 		if ( $out =~ m/not linked/i ) {
@@ -733,44 +703,45 @@ sub changeVM {
 			# Exit
 			return;
 		}
-		
+
 		# Link source disk to HCP
 		my $srcLinkAddr;
 		$try = 10;
 		while ( $try > 0 ) {
-			
+
 			# New disk address
 			$srcLinkAddr = $srcAddr + 2000;
-	
+
 			# Check if new disk address is used (source)
 			$rc = xCAT::zvmUtils->isAddressUsed( $hcp, $srcLinkAddr );
-	
+
 			# If disk address is used (source)
 			while ( $rc == 0 ) {
-	
+
 				# Generate a new disk address
 				# Sleep 5 seconds to let existing disk appear
 				sleep(5);
 				$srcLinkAddr = $srcLinkAddr + 1;
 				$rc = xCAT::zvmUtils->isAddressUsed( $hcp, $srcLinkAddr );
 			}
-	
+
 			# Link source disk
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Linking source disk ($srcAddr) as ($srcLinkAddr)" );
-			$out = `ssh -o ConnectTimeout=5 $hcp "vmcp link $sourceId $srcAddr $srcLinkAddr MR"`;			
-			
+			$out = `ssh -o ConnectTimeout=5 $hcp "vmcp link $sourceId $srcAddr $srcLinkAddr MR"`;
+
 			# If link fails
 			if ( $out =~ m/not linked/i ) {
-				
+
 				# Wait before trying again
 				sleep(5);
-				
+
 				$try = $try - 1;
-			} else {
+			}
+			else {
 				last;
 			}
-		}	# End of while ( $try > 0 )
-		
+		}    # End of while ( $try > 0 )
+
 		# If source disk is not linked
 		if ( $out =~ m/not linked/i ) {
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Failed to link source disk ($srcAddr)" );
@@ -779,7 +750,7 @@ sub changeVM {
 			# Exit
 			return;
 		}
-		
+
 		# --- Use FLASHCOPY ---
 		xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcLinkAddr) to target disk ($tgtLinkAddr) using FLASHCOPY" );
 		$out = xCAT::zvmCPUtils->flashCopy( $hcp, $srcLinkAddr, $tgtLinkAddr );
@@ -795,13 +766,13 @@ sub changeVM {
 			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $srcLinkAddr );
 
 			# Determine source device node
-			$out = `ssh $hcp "cat /proc/dasd/devices" | grep ".$srcLinkAddr("`;
-			@words = split( ' ', $out );
+			$out        = `ssh $hcp "cat /proc/dasd/devices" | grep ".$srcLinkAddr("`;
+			@words      = split( ' ', $out );
 			$srcDevNode = $words[6];
 
 			# Determine target device node
-			$out = `ssh $hcp "cat /proc/dasd/devices" | grep ".$tgtLinkAddr("`;
-			@words = split( ' ', $out );
+			$out        = `ssh $hcp "cat /proc/dasd/devices" | grep ".$tgtLinkAddr("`;
+			@words      = split( ' ', $out );
 			$tgtDevNode = $words[6];
 
 			# Format target disk
@@ -826,15 +797,15 @@ sub changeVM {
 			$rc = xCAT::zvmUtils->checkOutput( $callback, $out );
 			if ( $rc == -1 ) {
 				xCAT::zvmUtils->printLn( $callback, "$tgtNode: $out" );
-				
+
 				# Disable disks
 				$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-d", $tgtLinkAddr );
 				$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-d", $srcLinkAddr );
-		
+
 				# Detatch disks from HCP
 				$out = `ssh $hcp "vmcp det $tgtLinkAddr"`;
 				$out = `ssh $hcp "vmcp det $srcLinkAddr"`;
-		
+
 				return;
 			}
 
@@ -845,7 +816,7 @@ sub changeVM {
 		# Disable disks
 		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-d", $tgtLinkAddr );
 		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-d", $srcLinkAddr );
-		
+
 		# Detatch disks from HCP
 		xCAT::zvmUtils->printLn( $callback, "$tgtNode: Detatching target disk ($tgtLinkAddr)" );
 		xCAT::zvmUtils->printLn( $callback, "$tgtNode: Detatching source disk ($srcLinkAddr)" );
@@ -876,48 +847,49 @@ sub changeVM {
 		my $tgtNode      = $node;
 		my $targetUserId = $userId;
 		my $tgtAddr      = $args->[1];
-		
+
 		# --- Link and format disk ---
 		my $rc;
 		my $try;
 		my $tgtDevNode;
-	
+
 		# Link target disk to HCP
 		my $tgtLinkAddr;
 		$try = 10;
 		while ( $try > 0 ) {
-			
+
 			# New disk address
 			$tgtLinkAddr = $tgtAddr + 1000;
-	
+
 			# Check if new disk address is used (target)
 			$rc = xCAT::zvmUtils->isAddressUsed( $hcp, $tgtLinkAddr );
-	
+
 			# If disk address is used (target)
 			while ( $rc == 0 ) {
-	
+
 				# Generate a new disk address
 				# Sleep 5 seconds to let existing disk appear
 				sleep(5);
 				$tgtLinkAddr = $tgtLinkAddr + 1;
 				$rc = xCAT::zvmUtils->isAddressUsed( $hcp, $tgtLinkAddr );
 			}
-	
+
 			# Link target disk
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Linking target disk ($tgtAddr) as ($tgtLinkAddr)" );
-			$out = `ssh -o ConnectTimeout=5 $hcp "vmcp link $targetUserId $tgtAddr $tgtLinkAddr MR"`;			
-			
+			$out = `ssh -o ConnectTimeout=5 $hcp "vmcp link $targetUserId $tgtAddr $tgtLinkAddr MR"`;
+
 			# If link fails
 			if ( $out =~ m/not linked/i ) {
-				
+
 				# Wait before trying again
 				sleep(5);
-				
+
 				$try = $try - 1;
-			} else {
+			}
+			else {
 				last;
 			}
-		}	# End of while ( $try > 0 )
+		}    # End of while ( $try > 0 )
 
 		# If target disk is not linked
 		if ( $out =~ m/not linked/i ) {
@@ -927,17 +899,17 @@ sub changeVM {
 			# Exit
 			return;
 		}
-		
+
 		# --- Format disk ---
 		my @words;
 		if ( $rc == -1 ) {
-			
+
 			# Enable disk
 			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $tgtLinkAddr );
 
 			# Determine target device node
-			$out = `ssh $hcp "cat /proc/dasd/devices" | grep ".$tgtLinkAddr("`;
-			@words = split( ' ', $out );
+			$out        = `ssh $hcp "cat /proc/dasd/devices" | grep ".$tgtLinkAddr("`;
+			@words      = split( ' ', $out );
 			$tgtDevNode = $words[6];
 
 			# Format target disk
@@ -957,7 +929,7 @@ sub changeVM {
 
 		# Disable disk
 		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-d", $tgtLinkAddr );
-		
+
 		# Detatch disk from HCP
 		xCAT::zvmUtils->printLn( $callback, "$tgtNode: Detatching target disk ($tgtLinkAddr)" );
 		$out = `ssh $hcp "vmcp det $tgtLinkAddr"`;
@@ -968,7 +940,7 @@ sub changeVM {
 	# grantvswitch [VSwitch]
 	elsif ( $args->[0] eq "--grantvswitch" ) {
 		my $vsw = $args->[1];
-		
+
 		$out = xCAT::zvmCPUtils->grantVSwitch( $callback, $hcp, $userId, $vsw );
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
@@ -976,7 +948,7 @@ sub changeVM {
 	# disconnectnic [address]
 	elsif ( $args->[0] eq "--disconnectnic" ) {
 		my $addr = $args->[1];
-		
+
 		$out = `ssh $hcp "$::DIR/disconnectnic $userId $addr"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
@@ -984,7 +956,7 @@ sub changeVM {
 	# removedisk [virtual device address]
 	elsif ( $args->[0] eq "--removedisk" ) {
 		my $addr = $args->[1];
-		
+
 		$out = `ssh $hcp "$::DIR/removemdisk $userId $addr"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
@@ -992,7 +964,7 @@ sub changeVM {
 	# removenic [address]
 	elsif ( $args->[0] eq "--removenic" ) {
 		my $addr = $args->[1];
-		
+
 		$out = `ssh $hcp "$::DIR/removenic $userId $addr"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
@@ -1000,7 +972,7 @@ sub changeVM {
 	# removeprocessor [address]
 	elsif ( $args->[0] eq "--removeprocessor" ) {
 		my $addr = $args->[1];
-		
+
 		$out = `ssh $hcp "$::DIR/removeprocessor $userId $addr"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
@@ -1033,7 +1005,7 @@ sub changeVM {
 		my $trgt      = $args->[1];
 		my $loadparms = $args->[2];
 		my $parms     = $args->[3];
-		
+
 		$out = `ssh $hcp "$::DIR/setipl $userId $trgt $loadparms $parms"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
@@ -1041,7 +1013,7 @@ sub changeVM {
 	# setpassword [password]
 	elsif ( $args->[0] eq "--setpassword" ) {
 		my $pw = $args->[1];
-		
+
 		$out = `ssh $hcp "$::DIR/setpassword $userId $pw"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
@@ -1108,9 +1080,15 @@ sub powerVM {
 
 	# Get the status (on|off)
 	elsif ( $args->[0] eq 'stat' ) {
-
-		# Output is different on SLES 11
 		$out = `ssh $hcp "vmcp q user $userId 2>/dev/null" | sed 's/HCPCQU045E.*/off/' | sed 's/$userId.*/on/'`;
+
+		# Wait for output
+		my $max = 0;
+		while ( !$out && $max < 10 ) {
+			$out = `ssh $hcp "vmcp q user $userId 2>/dev/null" | sed 's/HCPCQU045E.*/off/' | sed 's/$userId.*/on/'`;
+			$max++;
+		}
+
 		xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 	}
 
@@ -1121,7 +1099,8 @@ sub powerVM {
 		xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 
 		# Wait for output
-		while (	`vmcp q user $userId 2>/dev/null | sed 's/HCPCQU045E.*/Done/'` != "Done" ) {
+		while ( `vmcp q user $userId 2>/dev/null | sed 's/HCPCQU045E.*/Done/'` != "Done" ) {
+
 			# Do nothing
 		}
 
@@ -1129,8 +1108,7 @@ sub powerVM {
 		xCAT::zvmUtils->printLn( $callback, "$node: $out" );
 	}
 	else {
-		xCAT::zvmUtils->printLn( $callback,
-			"$node: (Error) Option not supported" );
+		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Option not supported" );
 	}
 	return;
 }
@@ -1174,7 +1152,6 @@ sub scanVM {
 	# [Node name]:
 	#	objtype=node
 	#   id=[userID]
-	#   os=[Operating system]
 	#   arch=[Architecture]
 	#   hcp=[HCP node name]
 	#   groups=[Group]
@@ -1183,7 +1160,6 @@ sub scanVM {
 	# gpok123:
 	#	objtype=node
 	#   id=LINUX123
-	#   os=SUSE Linux Enterprise Server 10 (s390x)
 	#   arch=s390x
 	#   hcp=gpok456.endicott.ibm.com
 	#   groups=all
@@ -1211,9 +1187,8 @@ sub scanVM {
 
 		# Get groups
 		@propNames = ('groups');
-		$propVals  =
-		  xCAT::zvmUtils->getNodeProps( 'nodelist', $managedNode, @propNames );
-		$groups = $propVals->{'groups'};
+		$propVals  = xCAT::zvmUtils->getNodeProps( 'nodelist', $managedNode, @propNames );
+		$groups    = $propVals->{'groups'};
 
 		# Load VMCP module
 		xCAT::zvmCPUtils->loadVmcp($managedNode);
@@ -1221,7 +1196,7 @@ sub scanVM {
 		# Get userID
 		$id = xCAT::zvmCPUtils->getUserId($managedNode);
 
-		# Get operating system
+		# Get operating system (not to be saved)
 		$os = xCAT::zvmUtils->getOs($managedNode);
 
 		# Get architecture
@@ -1231,7 +1206,6 @@ sub scanVM {
 		$str .= "$managedNode:\n";
 		$str .= "  objtype=node\n";
 		$str .= "  userid=$id\n";
-		$str .= "  os=$os\n";
 		$str .= "  arch=$arch\n";
 		$str .= "  hcp=$hcp\n";
 		$str .= "  groups=$groups\n";
@@ -1419,7 +1393,7 @@ sub listVM {
 	elsif ( $args->[0] eq "--diskpool" ) {
 		my $pool  = $args->[1];
 		my $space = $args->[2];
-		
+
 		$out = `ssh $hcp "$::DIR/getdiskpool $userId $pool $space"`;
 	}
 
@@ -1431,7 +1405,7 @@ sub listVM {
 	# Get network
 	elsif ( $args->[0] eq "--getnetwork" ) {
 		my $netName = $args->[1];
-		
+
 		$out = xCAT::zvmCPUtils->getNetwork( $hcp, $netName );
 	}
 
@@ -1492,7 +1466,7 @@ sub makeVM {
 	my $userEntry = $args->[0];
 
 	# Create virtual server
-	my $out;	
+	my $out;
 	my $target = "root@" . $hcp;
 	if ($userEntry) {
 
@@ -1513,13 +1487,36 @@ sub makeVM {
 			# If no MACID is found, get one
 			$macId = xCAT::zvmUtils->getMacID($hcp);
 			if ( !$macId ) {
-				xCAT::zvmUtils->printLn( $callback,
-					"$node: (Error) Could not generate MACID" );
+				xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not generate MACID" );
 				return;
 			}
 
 			# Set flag to generate new MACID after virtual server is created
 			$generateNew = 1;
+		}
+
+		# If the user entry contains a NICDEF statement
+		$out = `cat $userEntry | egrep -i "NICDEF"`;
+		my @lines;
+		my @words;
+		if ($out) {
+
+			# Get the network used by the HCP
+			$out   = `ssh $hcp "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
+			@lines = split( '\n', $out );
+
+			# There should only be one network
+			my $line = xCAT::zvmUtils->trimStr( $lines[0] );
+			@words = split( ' ', $line );
+			my $netName = $words[4];
+
+			# Find NICDEF statement
+			my $oldNicDef = `cat $userEntry | egrep -i "NICDEF" | egrep -i "$netName"`;
+			$oldNicDef = xCAT::zvmUtils->trimStr($oldNicDef);
+			my $nicDef = xCAT::zvmUtils->replaceStr( $oldNicDef, $netName, "$netName MACID $macId" );
+
+			# Append MACID at the end
+			$out = `sed --in-place -e "s,$oldNicDef,$nicDef,g" $userEntry`;
 		}
 
 		# SCP file over to HCP
@@ -1536,9 +1533,9 @@ sub makeVM {
 			# Get HCP MAC address
 			# The HCP should only have (1) network -- (1) MAC address
 			xCAT::zvmCPUtils->loadVmcp($hcp);
-			$out = `ssh -o ConnectTimeout=5 $hcp "vmcp q nic" | grep "MAC:"`;
-			my @lines = split( "\n", $out );
-			my @words = split( " ", $lines[0] );
+			$out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q nic" | grep "MAC:"`;
+			@lines = split( "\n", $out );
+			@words = split( " ", $lines[0] );
 
 			# Extract MAC prefix
 			my $prefix = $words[1];
@@ -1568,7 +1565,7 @@ sub makeVM {
 			if ( $generateNew == 1 ) {
 				$out = xCAT::zvmUtils->generateMacId($hcp);
 			}
-			
+
 			# Remove user entry file (on HCP)
 			$out = `ssh -o ConnectTimeout=5 $hcp "rm $userEntry"`;
 		}
@@ -1601,101 +1598,101 @@ sub cloneVM {
 
 	# Get inputs
 	my ( $callback, $nodes, $args ) = @_;
-	
+
 	# Get nodes
 	my @nodes = @$nodes;
-			
+
 	# Return code for each command
 	my $rc;
 	my $out;
 
 	# Child process IDs
 	my @children;
-	
+
 	# Process ID for xfork()
 	my $pid;
-	
+
 	# Get source node
 	my $sourceNode = $args->[0];
-	my @propNames = ( 'hcp', 'userid' );
-	my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $sourceNode, @propNames );
-	
+	my @propNames  = ( 'hcp', 'userid' );
+	my $propVals   = xCAT::zvmUtils->getNodeProps( 'zvm', $sourceNode, @propNames );
+
 	# Get HCP
 	my $srcHcp = $propVals->{'hcp'};
-	
+
 	# Get node userID
 	my $sourceId = $propVals->{'userid'};
-	
+
 	foreach (@nodes) {
 		xCAT::zvmUtils->printLn( $callback, "$_: Cloning $sourceNode" );
-		
+
 		# Exit if missing source node
 		if ( !$sourceNode ) {
 			xCAT::zvmUtils->printLn( $callback, "$_: (Error) Missing source node" );
 			return;
 		}
-		
+
 		# Exit if missing source HCP
 		if ( !$srcHcp ) {
 			xCAT::zvmUtils->printLn( $callback, "$_: (Error) Missing source node HCP" );
 			return;
 		}
-		
+
 		# Exit if missing source user ID
 		if ( !$sourceId ) {
 			xCAT::zvmUtils->printLn( $callback, "$_: (Error) Missing source node ID" );
 			return;
 		}
-		
+
 		# Get target node
 		@propNames = ( 'hcp', 'userid' );
 		$propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $_, @propNames );
-		
+
 		# Get target HCP
 		my $tgtHcp = $propVals->{'hcp'};
-	
+
 		# Get node userID
 		my $tgtId = $propVals->{'userid'};
-		
+
 		# Exit if missing target HCP
 		if ( !$tgtHcp ) {
 			xCAT::zvmUtils->printLn( $callback, "$_: (Error) Missing target node HCP" );
 			return;
 		}
-		
+
 		# Exit if missing target user ID
 		if ( !$tgtId ) {
 			xCAT::zvmUtils->printLn( $callback, "$_: (Error) Missing target node ID" );
 			return;
 		}
-		
+
 		# Exit if source and target HCP are not equal
-		if ($srcHcp ne $tgtHcp) {
+		if ( $srcHcp ne $tgtHcp ) {
 			xCAT::zvmUtils->printLn( $callback, "$_: (Error) Source and target HCP are not equal" );
 			return;
 		}
-		
+
 		# --- Get MAC address ---
 		my $targetMac;
 		my $macId;
 		my $generateNew = 0;    # Flag to generate new MACID
 		@propNames = ('mac');
 		$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $_, @propNames );
-		if (!$propVals) {
-	
+		if ( !$propVals ) {
+
 			# If no MACID is found, get one
 			$macId = xCAT::zvmUtils->getMacID($tgtHcp);
 			if ( !$macId ) {
 				xCAT::zvmUtils->printLn( $callback, "$_: (Error) Could not generate MACID" );
 				return;
 			}
-	
+
 			# Create MAC address (target)
 			$targetMac = xCAT::zvmUtils->createMacAddr( $_, $macId );
-	
+
 			# Save MAC address in 'mac' table
 			xCAT::zvmUtils->setNodeProp( 'mac', $_, 'mac', $targetMac );
-			
+
 			# Generate new MACID
 			$out = xCAT::zvmUtils->generateMacId($tgtHcp);
 		}
@@ -1707,129 +1704,167 @@ sub cloneVM {
 	my $addr;
 	my $srcMultiPw;
 	my $linkAddr;
-	
+
 	# Hash table of source disk addresses
 	# $srcLinkAddr[$addr] = $linkAddr
 	my %srcLinkAddr;
 	my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $sourceNode );
 	foreach (@srcDisks) {
-		
+
 		# Get disk address
-		@words = split( ' ', $_ );
-		$addr = $words[1];
+		@words      = split( ' ', $_ );
+		$addr       = $words[1];
 		$srcMultiPw = $words[9];
-		
+
 		# If source disk is not linked
 		my $try = 10;
 		while ( $try > 0 ) {
+
 			# New disk address
 			$linkAddr = $addr + 1000;
-			
+
 			# Check if new disk address is used (source)
 			$rc = xCAT::zvmUtils->isAddressUsed( $srcHcp, $linkAddr );
-			
+
 			# If disk address is used (source)
 			while ( $rc == 0 ) {
-		
+
 				# Generate a new disk address
 				# Sleep 5 seconds to let existing disk appear
 				sleep(5);
 				$linkAddr = $linkAddr + 1;
 				$rc = xCAT::zvmUtils->isAddressUsed( $srcHcp, $linkAddr );
 			}
-			
-			$srcLinkAddr { $addr } = $linkAddr;
-			
+
+			$srcLinkAddr{$addr} = $linkAddr;
+
 			# Link source disk to HCP
 			foreach (@nodes) {
 				xCAT::zvmUtils->printLn( $callback, "$_: Linking source disk ($addr) as ($linkAddr)" );
 			}
 			$out = `ssh -o ConnectTimeout=5 $srcHcp "vmcp link $sourceId $addr $linkAddr RR $srcMultiPw"`;
-			
+
 			if ( $out =~ m/not linked/i ) {
+
 				# Do nothing
-			} else {
-				last;	
 			}
-			
-			$try = $try - 1;	
-			
+			else {
+				last;
+			}
+
+			$try = $try - 1;
+
 			# Wait before next try
-			sleep (5);		
-		}	# End of while ( $try > 0 )
-		
+			sleep(5);
+		}    # End of while ( $try > 0 )
+
 		# If source disk is not linked
 		if ( $out =~ m/not linked/i ) {
 			foreach (@nodes) {
 				xCAT::zvmUtils->printLn( $callback, "$_: Failed" );
 			}
-			
+
 			# Exit
 			return;
 		}
-		
+
 		# Enable source disk
 		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $srcHcp, "-e", $linkAddr );
-		
-	}	# End of foreach (@srcDisks)
-		
+
+	}    # End of foreach (@srcDisks)
+
+	# Get the network name the HCP is on
+	$out = `ssh $srcHcp "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
+	my @lines = split( '\n', $out );
+	my $line = xCAT::zvmUtils->trimStr( $lines[0] );
+	@words = split( ' ', $line );
+	my $netName = $words[4];
+
+	# Get the NICDEF address of the network on the source node
+	my @tmp;
+	my $i;
+	my $netAddr;
+
+	xCAT::zvmCPUtils->loadVmcp($sourceNode);
+	$out   = `ssh $sourceNode "vmcp q v nic"`;
+	@lines = split( '\n', $out );
+
+	# Find the NIC address
+	for ( $i = 0 ; $i < @lines ; $i++ ) {
+		if ( $lines[$i] =~ m/$netName/i ) {
+			$line    = xCAT::zvmUtils->trimStr( $lines[ $i - 1 ] );
+			@words   = split( ' ', $line );
+			@tmp     = split( /\./, $words[1] );
+			$netAddr = $tmp[0];
+			last;
+		}
+	}
+
+	# Exit if network address is not found
+	if ( !$netAddr ) {
+		foreach (@nodes) {
+			xCAT::zvmUtils->printLn( $callback, "$_: (Error) Node is not on the same network ($netName) as the hardware control point" );
+		}
+		return;
+	}
+
 	# Get user entry of source node
 	my $srcUserEntry = "/tmp/$sourceNode.txt";
 	$out = `rm $srcUserEntry`;
 	$out = xCAT::zvmUtils->getUserEntryWODisk( $callback, $sourceNode, $srcUserEntry );
-	
+
 	# Check if user entry is valid
 	$out = `cat $srcUserEntry`;
 
 	# If output contains USER LINUX123, then user entry is good
 	if ( $out =~ m/USER $sourceId/i ) {
-		
+
 		# --- Clone source node	 ---
 		foreach (@nodes) {
 			$pid = xCAT::Utils->xfork();
-	
+
 			# Parent process
 			if ($pid) {
 				push( @children, $pid );
 			}
-	
+
 			# Child process
 			elsif ( $pid == 0 ) {
-				clone( $callback, $_, $args, \@srcDisks, \%srcLinkAddr );
-	
+				clone( $callback, $_, $args, \@srcDisks, \%srcLinkAddr, $netAddr, $netName );
+
 				# Exit process
 				exit(0);
 			}    # End of elsif
 			else {
-	
+
 				# Ran out of resources
 				die "Error: Could not fork\n";
 			}
-	
+
 		}    # End of foreach
-		
+
 		# Wait for all processes to end
 		foreach (@children) {
 			waitpid( $_, 0 );
 		}
-		
+
 		# Remove source user entry
 		$out = `rm $srcUserEntry`;
 	}
-		
+
 	# --- Detatch source disks ---
 	for $addr ( keys %srcLinkAddr ) {
-		$linkAddr = $srcLinkAddr { $addr };
-		
+		$linkAddr = $srcLinkAddr{$addr};
+
 		# Disable source disk
 		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $srcHcp, "-d", $linkAddr );
 		$out = `ssh -o ConnectTimeout=5 $srcHcp "vmcp det $linkAddr"`;
-		
+
 		foreach (@nodes) {
 			xCAT::zvmUtils->printLn( $callback, "$_: Detatching source disk ($addr) at ($linkAddr)" );
-		}		
+		}
 	}
-	
+
 	# --- Done ---
 	foreach (@nodes) {
 		xCAT::zvmUtils->printLn( $callback, "$_: Done" );
@@ -1848,35 +1883,37 @@ sub cloneVM {
     				Disk password (optional)
     				Source disks
     				Source disk link addresses
+    				NIC address
+    				Network name
     Returns		: Nothing
-    Example		: cloneVM($callback, $targetNode, $args);
+    Example		: cloneVM($callback, $tgtNode, $args, $srcDisksRef, $srcLinkAddrRef, $netAddr, $netName);
     
 =cut
 
 #-------------------------------------------------------
 sub clone {
-	
+
 	# Get inputs
-	my ( $callback, $tgtNode, $args, $srcDisksRef, $srcLinkAddrRef ) = @_;
-	
+	my ( $callback, $tgtNode, $args, $srcDisksRef, $srcLinkAddrRef, $netAddr, $netName ) = @_;
+
 	# Get source node properties from 'zvm' table
 	my $sourceNode = $args->[0];
-	my @propNames = ( 'hcp', 'userid' );
-	my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $sourceNode, @propNames );
-	
+	my @propNames  = ( 'hcp', 'userid' );
+	my $propVals   = xCAT::zvmUtils->getNodeProps( 'zvm', $sourceNode, @propNames );
+
 	# Get HCP
 	my $srcHcp = $propVals->{'hcp'};
-	
+
 	# Get node userID
 	my $sourceId = $propVals->{'userid'};
-	
+
 	# Get source disks
-	my @srcDisks = @$srcDisksRef;
+	my @srcDisks    = @$srcDisksRef;
 	my %srcLinkAddr = %$srcLinkAddrRef;
-			
+
 	# Return code for each command
 	my $rc;
-		
+
 	# Get node properties from 'zvm' table
 	@propNames = ( 'hcp', 'userid' );
 	$propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $tgtNode, @propNames );
@@ -1911,7 +1948,7 @@ sub clone {
 	my $out;
 	my @lines;
 	my @words;
-	
+
 	# Get disk pool and multi password
 	my $i;
 	my %inputs;
@@ -1929,62 +1966,29 @@ sub clone {
 	# Get disk pool
 	my $pool = $inputs{"pool"};
 	if ( !$pool ) {
-		xCAT::zvmUtils->printLn( $callback,
-			"$tgtNode: (Error) Missing pool ID" );
+		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing pool ID" );
 		return;
 	}
 
 	# Get multi password
 	# It is Ok not have a password
 	my $tgtPw = $inputs{"pw"};
-	
-	# Get the network name the HCP is on
-	$out = `ssh $hcp "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
-	@lines = split( '\n', $out );
-	my $line = xCAT::zvmUtils->trimStr($lines[0]);
-	@words = split( ' ', $line );
-	my $netName = $words[4];
-	
-	# Get the NICDEF address of the network on the source node
-	xCAT::zvmCPUtils->loadVmcp($sourceNode);
-	$out = `ssh $sourceNode "vmcp q v nic"`;
-	@lines = split( '\n', $out );
-	my $i;
-	my $netAddr;
-	my @tmp;
-	for ( $i = 0 ; $i < @lines ; $i++ ) {
-		if ( $lines[$i]  =~ m/$netName/i ) {			
-			$line = xCAT::zvmUtils->trimStr( $lines[$i - 1] );
-			@words = split( ' ', $line );
-			@tmp = split( /\./, $words[1] );
-			$netAddr = $tmp[0];
-			last;
-		}
-	}
-		
-	# Exit if network address is not found
-	if (!$netAddr) {
-		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Node is not on the same network ($netName) as the hardware control point" );
-		return;
-	}
-	
-	$netAddr = "0.0." . $netAddr;
-	
+
 	# Set IP address
 	my $sourceIp = xCAT::zvmUtils->getIp($sourceNode);
-			
+
 	# Save user directory entry as /tmp/hostname.txt
 	# The source user entry is retrieved in cloneVM()
-	my $userEntry = "/tmp/$tgtNode.txt";
+	my $userEntry    = "/tmp/$tgtNode.txt";
 	my $srcUserEntry = "/tmp/$sourceNode.txt";
 
 	# Remove existing user entry if any
 	$out = `rm $userEntry`;
 	$out = `ssh -o ConnectTimeout=5 $hcp "rm $userEntry"`;
-			
+
 	# Copy user entry of source node
 	$out = `cp $srcUserEntry $userEntry`;
-	
+
 	# Replace source userID with target userID
 	$out = `sed --in-place -e "s,$sourceId,$targetUserId,g" $userEntry`;
 
@@ -2001,38 +2005,79 @@ sub clone {
 		$macId     = $propVals->{'mac'};
 		$macId     = xCAT::zvmUtils->replaceStr( $macId, ":", "" );
 		$macId     = substr( $macId, 6 );
-	} else {
+	}
+	else {
 		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Missing target MAC address" );
 		return;
 	}
-		
+
+	# If the user entry contains a NICDEF statement
+	$out = `cat $userEntry | egrep -i "NICDEF"`;
+	my @lines;
+	my @words;
+	if ($out) {
+
+		# Get the network used by the HCP
+		$out   = `ssh $hcp "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
+		@lines = split( '\n', $out );
+
+		# There should only be one network
+		my $line = xCAT::zvmUtils->trimStr( $lines[0] );
+		@words = split( ' ', $line );
+		my $netName = $words[4];
+
+		# If the user entry contains a MACID
+		$out = `cat $userEntry | egrep -i "MACID"`;
+		if ($out) {
+			my $pos = rindex( $out, "MACID" );
+			my $oldMacId = substr( $out, $pos + 6, 12 );
+			$oldMacId = xCAT::zvmUtils->trimStr($oldMacId);
+
+			# Remove MACID
+			$out = `sed --in-place -e "s,$oldMacId,$macId,g" $userEntry`;
+		}
+		else {
+
+			# Find NICDEF statement
+			my $oldNicDef = `cat $userEntry | egrep -i "NICDEF" | egrep -i "$netName"`;
+			$oldNicDef = xCAT::zvmUtils->trimStr($oldNicDef);
+			my $nicDef = xCAT::zvmUtils->replaceStr( $oldNicDef, $netName, "$netName MACID $macId" );
+
+			# Append MACID at the end
+			$out = `sed --in-place -e "s,$oldNicDef,$nicDef,g" $userEntry`;
+		}
+	}
+
 	# SCP user entry file over to HCP
 	xCAT::zvmUtils->sendFile( $hcp, $userEntry, $userEntry );
-	
+
 	# --- Create new virtual server ---
 	my $try = 10;
-	while ($try > 0) {
-		if ($try > 9) {
+	while ( $try > 0 ) {
+		if ( $try > 9 ) {
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Creating user directory entry" );
-		} else {
+		}
+		else {
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to create user directory entry" );
 		}
 		$out = `ssh $hcp "$::DIR/createvs $targetUserId $userEntry"`;
-	
+
 		# Check if user entry is created
 		$out = `ssh $hcp "$::DIR/getuserentry $targetUserId"`;
-		$rc = xCAT::zvmUtils->checkOutput( $callback, $out );
-		
-		if ($rc == -1) {
+		$rc  = xCAT::zvmUtils->checkOutput( $callback, $out );
+
+		if ( $rc == -1 ) {
+
 			# Wait before trying again
 			sleep(5);
-			
+
 			$try = $try - 1;
-		} else {
+		}
+		else {
 			last;
 		}
 	}
-	
+
 	# Remove user entry
 	$out = `rm $userEntry`;
 	$out = `ssh -o ConnectTimeout=5 $hcp "rm $userEntry"`;
@@ -2042,7 +2087,7 @@ sub clone {
 		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Could not create user entry" );
 		return;
 	}
-		
+
 	# Load VMCP module on HCP and source node
 	xCAT::zvmCPUtils->loadVmcp($hcp);
 	xCAT::zvmCPUtils->loadVmcp($sourceNode);
@@ -2066,7 +2111,7 @@ sub clone {
 		}
 	}    # End of foreach (@vswitchId)
 
-	# --- Add MDisk to target user entry ---	
+	# --- Add MDisk to target user entry ---
 	my $addr;
 	my @tgtDisks;
 	my $type;
@@ -2079,7 +2124,7 @@ sub clone {
 		@words = split( ' ', $_ );
 		$addr = $words[1];
 		push( @tgtDisks, $addr );
-		$type = $words[2];
+		$type       = $words[2];
 		$mode       = $words[6];
 		$srcMultiPw = $words[9];
 
@@ -2087,7 +2132,7 @@ sub clone {
 		if ( $type eq '3390' ) {
 
 			# Get disk size (cylinders)
-			$out = `ssh -o ConnectTimeout=5 $sourceNode "vmcp q v dasd" | grep "DASD $addr"`;
+			$out   = `ssh -o ConnectTimeout=5 $sourceNode "vmcp q v dasd" | grep "DASD $addr"`;
 			@words = split( ' ', $out );
 			$cyl   = xCAT::zvmUtils->trimStr( $words[5] );
 
@@ -2095,9 +2140,10 @@ sub clone {
 			while ( $try > 0 ) {
 
 				# Add ECKD disk
-				if ($try > 9) {
+				if ( $try > 9 ) {
 					xCAT::zvmUtils->printLn( $callback, "$tgtNode: Adding minidisk ($addr)" );
-				} else {
+				}
+				else {
 					xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
 				}
 				$out = `ssh $hcp "$::DIR/add3390 $targetUserId $pool $addr $cyl $mode $tgtPw $tgtPw $tgtPw"`;
@@ -2105,11 +2151,12 @@ sub clone {
 				# Check output
 				$rc = xCAT::zvmUtils->checkOutput( $callback, $out );
 				if ( $rc == -1 ) {
+
 					# Wait before trying again
 					sleep(5);
-					
+
 					# One less try
-					$try = $try - 1;					
+					$try = $try - 1;
 				}
 				else {
 
@@ -2117,13 +2164,13 @@ sub clone {
 					last;
 				}
 			}    # End of while ( $try > 0 )
-			
+
 			# Exit on bad output
 			if ( $rc == -1 ) {
 				xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Could not create user entry" );
 				return;
 			}
-		}	# End of if ( $type eq '3390' )
+		}    # End of if ( $type eq '3390' )
 
 		# Add FBA disk
 		elsif ( $type eq '9336' ) {
@@ -2134,32 +2181,34 @@ sub clone {
 		}
 	}
 
-	# Check if the number of disks in target user entry 
+	# Check if the number of disks in target user entry
 	# is equal to the number of disks added
 	my @disks;
-	$try  = 10;
+	$try = 10;
 	while ( $try > 0 ) {
+
 		# Get disks within user entry
 		$out = `ssh $hcp "$::DIR/getuserentry $targetUserId" | grep "MDISK"`;
 		@disks = split( '\n', $out );
 		xCAT::zvmUtils->printLn( $callback, "$tgtNode: Disks added (" . @tgtDisks . "). Disks in user entry (" . @disks . ")" );
-		
-		if (@disks != @tgtDisks) {
+
+		if ( @disks != @tgtDisks ) {
 			$try = $try - 1;
-			
+
 			# Wait before trying again
 			sleep(5);
-		} else {
+		}
+		else {
 			last;
-		}		
+		}
 	}
-	
+
 	# Exit if all disks are not present
-	if (@disks != @tgtDisks) {
-		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Disks not present in user entry");
+	if ( @disks != @tgtDisks ) {
+		xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Disks not present in user entry" );
 		return;
 	}
-		
+
 	# --- Link, format, and copy source disks ---
 	my $srcAddr;
 	my $tgtAddr;
@@ -2170,39 +2219,40 @@ sub clone {
 		# --- Link target disk ---
 		$try = 10;
 		while ( $try > 0 ) {
-			
+
 			# New disk address
-			$srcAddr = $srcLinkAddr { $_ };
+			$srcAddr = $srcLinkAddr{$_};
 			$tgtAddr = $_ + 2000;
-	
+
 			# Check if new disk address is used (target)
 			$rc = xCAT::zvmUtils->isAddressUsed( $hcp, $tgtAddr );
-	
+
 			# If disk address is used (target)
 			while ( $rc == 0 ) {
-	
+
 				# Generate a new disk address
 				# Sleep 5 seconds to let existing disk appear
 				sleep(5);
 				$tgtAddr = $tgtAddr + 1;
 				$rc = xCAT::zvmUtils->isAddressUsed( $hcp, $tgtAddr );
 			}
-	
+
 			# Link target disk
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Linking target disk ($_) as ($tgtAddr)" );
-			$out = `ssh -o ConnectTimeout=5 $hcp "vmcp link $targetUserId $_ $tgtAddr MR $tgtPw"`;			
-			
+			$out = `ssh -o ConnectTimeout=5 $hcp "vmcp link $targetUserId $_ $tgtAddr MR $tgtPw"`;
+
 			# If link fails
 			if ( $out =~ m/not linked/i ) {
-				
+
 				# Wait before trying again
 				sleep(5);
-				
+
 				$try = $try - 1;
-			} else {
+			}
+			else {
 				last;
 			}
-		}	# End of while ( $try > 0 )
+		}    # End of while ( $try > 0 )
 
 		# If target disk is not linked
 		if ( $out =~ m/not linked/i ) {
@@ -2226,13 +2276,13 @@ sub clone {
 			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $tgtAddr );
 
 			# Determine source device node
-			$out = `ssh $hcp "cat /proc/dasd/devices" | grep ".$srcAddr("`;
-			@words = split( ' ', $out );
+			$out        = `ssh $hcp "cat /proc/dasd/devices" | grep ".$srcAddr("`;
+			@words      = split( ' ', $out );
 			$srcDevNode = $words[6];
 
 			# Determine target device node
-			$out = `ssh $hcp "cat /proc/dasd/devices" | grep ".$tgtAddr("`;
-			@words = split( ' ', $out );
+			$out        = `ssh $hcp "cat /proc/dasd/devices" | grep ".$tgtAddr("`;
+			@words      = split( ' ', $out );
 			$tgtDevNode = $words[6];
 
 			# Format target disk
@@ -2300,7 +2350,7 @@ sub clone {
 
 			# Get network configuration file
 			# Location of this file depends on the OS
-			my $ifcfg 	  = xCAT::zvmUtils->getIfcfgByNic( $sourceNode, $netAddr );			
+			my $ifcfg = xCAT::zvmUtils->getIfcfgByNic( $sourceNode, "0.0." . $netAddr );
 			my $ifcfgPath = $cloneMntPt;
 			$ifcfgPath .= $ifcfg;
 			$out = `ssh $hcp sed --in-place -e "s/$sourceNode/$tgtNode/g" \ -e "s/$sourceIp/$targetIp/g" $cloneMntPt/etc/hosts`;
@@ -2309,31 +2359,34 @@ sub clone {
 			# Set MAC address
 			my $networkFile = $tgtNode . "NetworkConfig";
 			if ( $os =~ m/Red Hat/i ) {
+
 				# Red Hat only
 				$out = `ssh $hcp "cat $ifcfgPath" | grep -v "MACADDR" > /tmp/$networkFile`;
 				$out = `echo "MACADDR='$targetMac'" >> /tmp/$networkFile`;
-			} else {
+			}
+			else {
+
 				# SuSE only
 				$out = `ssh $hcp "cat $ifcfgPath" | grep -v "LLADDR" | grep -v "UNIQUE" > /tmp/$networkFile`;
 				$out = `echo "LLADDR='$targetMac'" >> /tmp/$networkFile`;
 				$out = `echo "UNIQUE=''" >> /tmp/$networkFile`;
 			}
 			xCAT::zvmUtils->sendFile( $hcp, "/tmp/$networkFile", $ifcfgPath );
-			
+
 			# Remove network file from /tmp
 			$out = `rm /tmp/$networkFile`;
 
 			# Set to hardware configuration -- Only for layer 2
 			my $layer = xCAT::zvmCPUtils->getNetworkLayer($sourceNode);
 			if ( $layer == 2 ) {
-				
+
 				# --- Red Hat ---
 				if ( $os =~ m/Red Hat/i ) {
 					my $srcMac;
 
 					# Get source MAC address in 'mac' table
 					@propNames = ('mac');
-					$propVals  = xCAT::zvmUtils->getNodeProps( 'mac', $sourceNode, @propNames );
+					$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $sourceNode, @propNames );
 					if ($propVals) {
 
 						# Get MAC address
@@ -2357,7 +2410,7 @@ sub clone {
 					# Set MAC address
 					$out = `ssh $hcp sed --in-place -e "s/$srcMac/$targetMac/g" $ifcfgPath`;
 				}
-				
+
 				# --- SuSE ---
 				else {
 
@@ -2371,7 +2424,7 @@ sub clone {
 					$out = `ssh $hcp "cat $hwcfgPath" | grep -v "QETH_LAYER2_SUPPORT" > /tmp/$hardwareFile`;
 					$out = `echo "QETH_LAYER2_SUPPORT='1'" >> /tmp/$hardwareFile`;
 					xCAT::zvmUtils->sendFile( $hcp, "/tmp/$hardwareFile", $hwcfgPath );
-					
+
 					# Remove hardware file from /tmp
 					$out = `rm /tmp/$hardwareFile`;
 				}
@@ -2382,6 +2435,9 @@ sub clone {
 
 			# Unmount disk
 			$out = `ssh $hcp "umount $cloneMntPt"`;
+
+			# Remove mount point
+			$out = `ssh $hcp "rm -rf $cloneMntPt"`;
 		}
 
 		# Disable disks
@@ -2392,9 +2448,6 @@ sub clone {
 
 		sleep(5);
 	}    # End of foreach (@tgtDisks)
-
-	# Add node to DHCP
-	$out = `makedhcp -a`;
 
 	# Power on target virtual server
 	xCAT::zvmUtils->printLn( $callback, "$tgtNode: Powering on" );
@@ -2427,13 +2480,6 @@ sub nodeSet {
 	# Get inputs
 	my ( $callback, $node, $args ) = @_;
 
-	# Get action
-	my $action = $args->[0];
-	if ( !( $action eq "install" ) ) {
-		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Option not supported" );
-		return;
-	}
-
 	# Get node properties from 'zvm' table
 	my @propNames = ( 'hcp', 'userid' );
 	my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
@@ -2452,399 +2498,617 @@ sub nodeSet {
 		return;
 	}
 
-	# Get node root password
-	@propNames = ('password');
-	$propVals  = xCAT::zvmUtils->getTabPropsByKey( 'passwd', 'key', 'system', @propNames );
-	my $passwd = $propVals->{'password'};
-	if ( !$passwd ) {
-		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing root password for this node" );
-		return;
-	}
-
-	# Get Linux distribution
-	@propNames = ('current_osimage');
-	$propVals = xCAT::zvmUtils->getNodeProps( 'noderes', $node, @propNames );
-	my $distr = $propVals->{'current_osimage'};
-	if ( !$distr ) {
-		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing operating system to be deployed on this node" );
-		return;
-	}
-
-	# Get autoyast/kickstart template
-	@propNames = ('profile');
-	$propVals  = xCAT::zvmUtils->getTabPropsByKey( 'osimage', 'imagename', $distr, @propNames );
-	my $profile = $propVals->{'profile'};
-	if ( !$distr ) {
-		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing profile for this node" );
-		return;
-	}
-
-	# Get host IP and hostname from /etc/hosts
-	my $out      = `cat /etc/hosts | grep $node`;
-	my @words    = split( ' ', $out );
-	my $hostIP   = $words[0];
-	my $hostname = $words[2];
-	if ( !$hostIP || !$hostname ) {
-		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing IP for $node in /etc/hosts" );
-		return;
-	}
-
-	# Get the network name the HCP is on
-	$out = `ssh $hcp "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
-	my @lines = split( '\n', $out );
-	my $line = xCAT::zvmUtils->trimStr($lines[0]);
-	@words = split( ' ', $line );
-	my $netName = $words[4];
-	
-	# Get NIC address from user entry
-	$out = `ssh $hcp "$::DIR/getuserentry $userId" | grep "NICDEF" | grep "$netName"`;
-	if ( !$out ) {
-		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing NICDEF statement in user entry of node" );
-		return;
-	}
-
-	# Grab first NICDEF address
-	@lines = split( '\n', $out );
-	@words = split( ' ', $lines[0] );
-	my $readChannel  = "0.0.0" . ( $words[1] + 0 );
-	my $writeChannel = "0.0.0" . ( $words[1] + 1 );
-	my $dataChannel  = "0.0.0" . ( $words[1] + 2 );
-
-	# Get network type (Layer 2 or 3)
-	$out = `ssh $hcp "vmcp q lan $netName"`;
-	if ( !$out ) {
-		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing NICDEF statement in user entry of node" );
-		return;
-	}
-
-	# Go through each line
-	my $layer = 3;    # Default to layer 3
-	@lines = split( '\n', $out );
-	foreach (@lines) {
-
-		# If the line contains ETHERNET, then it is a layer 2 network
-		if ( $_ =~ m/ETHERNET/i ) {
-			$layer = 2;
-		}
-	}
-
-	# Get MAC address -- Only for layer 2
-	my $mac = "";
-	my @propNames;
-	my $propVals;
-	if ( $layer == 2 ) {
-
-		# Search 'mac' table for node
-		@propNames = ('mac');
-		$propVals  = xCAT::zvmUtils->getTabPropsByKey( 'mac', 'node', $node, @propNames );
-		$mac = $propVals->{'mac'};
-
-		# If no MAC address is found, exit
-		# MAC address should have been assigned to the node upon creation
-		if ( !$mac ) {
-			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing MAC address of node" );
-			return;
-		}
-	}
-
-	# Get domain from site table
-	my $siteTab    = xCAT::Table->new('site');
+	# Get install directory and domain from site table
+	my $siteTab        = xCAT::Table->new('site');
 	my $installDirHash = $siteTab->getAttribs( { key => "installdir" }, 'value' );
-	my $installDir = $installDirHash->{'value'};
-	my $domainHash = $siteTab->getAttribs( { key => "domain" }, 'value' );
-	my $domain     = $domainHash->{'value'};
+	my $installDir     = $installDirHash->{'value'};
+	my $domainHash     = $siteTab->getAttribs( { key => "domain" }, 'value' );
+	my $domain         = $domainHash->{'value'};
+	my $masterHash     = $siteTab->getAttribs( { key => "master" }, 'value' );
+	my $master         = $masterHash->{'value'};
+	my $xcatdPortHash  = $siteTab->getAttribs( { key => "xcatdport" }, 'value' );
+	my $xcatdPort      = $xcatdPortHash->{'value'};
 
-	# Get first 3 octets of node IP (IPv4)
-	@words = split( /\./, $hostIP );
-	my $octets = "$words[0].$words[1].$words[2]";
+	# Get node OS, arch, and profile from 'nodetype' table
+	@propNames = ( 'os', 'arch', 'profile' );
+	$propVals = xCAT::zvmUtils->getNodeProps( 'nodetype', $node, @propNames );
 
-	# Get networks in 'networks' table
-	my $entries = xCAT::zvmUtils->getAllTabEntries('networks');
+	my $os      = $propVals->{'os'};
+	my $arch    = $propVals->{'arch'};
+	my $profile = $propVals->{'profile'};
 
-	# Go through each network
-	my $network;
-	foreach (@$entries) {
-
-		# Get network
-		$network = $_->{'net'};
-
-		# If networks contains the first 3 octets of the node IP
-		if ( $network =~ m/$octets/i ) {
-
-			# Exit loop
-			last;
-		}
-		else {
-			$network = "";
-		}
-	}
-
-	# If no network found
-	if ( !$network ) {
+	# If no OS, arch, or profile is found
+	if ( !$os || !$arch || !$profile ) {
 
 		# Exit
-		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Node does not belong to any networks in the networks table" );
+		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node OS, arch, and profile in nodetype table" );
 		return;
 	}
 
-	@propNames = ( 'mask', 'gateway', 'tftpserver', 'nameservers' );
-	$propVals = xCAT::zvmUtils->getTabPropsByKey( 'networks', 'net', $network, @propNames );
-	my $mask       = $propVals->{'mask'};
-	my $gateway    = $propVals->{'gateway'};
-	my $ftp        = $propVals->{'tftpserver'};
-	my $nameserver = $propVals->{'nameservers'};
-	if ( !$network || !$mask || !$ftp || !$nameserver ) {
+	# Get action
+	my $action = $args->[0];
+	my $out;
+	if ( $action eq "install" ) {
 
-		# It is acceptable to not have a gateway
-		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing network information" );
-		return;
-	}
-
-	# Get broadcast address of NIC
-	my $ifcfg = xCAT::zvmUtils->getIfcfgByNic( $hcp, $readChannel );
-	$out = `cat $ifcfg | grep "BROADCAST"`;
-	@words = split( '=', $out );
-	my $broadcast = $words[1];
-	$broadcast = xCAT::zvmUtils->trimStr($broadcast);
-	$broadcast = xCAT::zvmUtils->replaceStr( $broadcast, "'", "" );
-
-	# Load VMCP module on HCP
-	xCAT::zvmCPUtils->loadVmcp($hcp);
-
-	# Sample paramter file exists in installation CD -- Use that as a guide
-	my $sampleParm;
-	my $parmHeader;
-	my $parms;
-	my $parmFile;
-	my $kernelFile;
-	my $initFile;
-
-	# If punch is successful -- Look for this string
-	my $searchStr = "created and transferred";
-
-	# Default parameters -- SLES
-	my $instNetDev   = "osa";   # Only OSA interface type is supported
-	my $osaInterface = "qdio";  # OSA interface = qdio or lcs
-	my $osaMedium    = "eth";   # OSA medium = eth (ethernet) or tr (token ring)
-
-	# Default parameters -- RHEL
-	my $netType  = "qeth";
-	my $portName = "FOOBAR";
-	my $portNo   = "0";
-
-	# SUSE installation
-	my $template;
-	if ( $distr =~ m/sles/i ) {
-
-		# Create directory in FTP root (/install) to hold template
-		$out = `mkdir -p $installDir/custom/install/sles`;
-
-		# Copy autoyast template
-		$template = "$installDir/custom/install/sles/" . $node . ".sles10.s390x.tmpl";
-		$out      = `cp /opt/xcat/share/xcat/install/sles/$profile $template`;
-
-		# Edit template
-		my $device  = "qeth-bus-ccw-$readChannel";
-		my $chanIds = "$readChannel $writeChannel $dataChannel";
-            
-        $out = `sed --in-place -e "s,replace_host_address,$hostIP,g" \ -e "s,replace_long_name,$hostname,g" \ -e "s,replace_short_name,$node,g" \ -e "s,replace_domain,$domain,g" \ -e "s,replace_hostname,$node,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_broadcast,$broadcast,g" \ -e "s,replace_device,$device,g" \ -e "s,replace_ipaddr,$hostIP,g" \ -e "s,replace_lladdr,$mac,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_network,$network,g" \ -e "s,replace_ccw_chan_ids,$chanIds,g" \ -e "s,replace_ccw_chan_mode,FOOBAR,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_root_password,$passwd,g" $template`;
-
-		# Read sample parmfile in /install/sles10.2/s390x/1/boot/s390x/
-		$sampleParm = "$installDir/$distr/s390x/1/boot/s390x/parmfile";
-		open( SAMPLEPARM, "<$sampleParm" );
-
-		# Search parmfile for -- ramdisk_size=65536 root=/dev/ram1 ro init=/linuxrc TERM=dumb
-		while (<SAMPLEPARM>) {
-
-			# If the line contains 'ramdisk_size'
-			if ( $_ =~ m/ramdisk_size/i ) {
-				$parmHeader = xCAT::zvmUtils->trimStr($_);
-			}
+		# Get node root password
+		@propNames = ('password');
+		$propVals = xCAT::zvmUtils->getTabPropsByKey( 'passwd', 'key', 'system', @propNames );
+		my $passwd = $propVals->{'password'};
+		if ( !$passwd ) {
+			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing root password for this node" );
+			return;
 		}
 
-		# Close sample parmfile
-		close(SAMPLEPARM);
+		# Get node OS base
+		my @tmp    = split( /\./, $os );
+		my $osBase = $tmp[0];
 
-		# Create parmfile -- Limited to 10 lines
-		# End result should be:
-		# 	ramdisk_size=65536 root=/dev/ram1 ro init=/linuxrc TERM=dumb
-		# 	HostIP=10.0.0.5 Hostname=gpok5.endicott.ibm.com
-		# 	Gateway=10.0.0.1 Netmask=255.255.255.0
-		# 	Broadcast=10.0.0.0 Layer2=1 OSAHWaddr=02:00:01:FF:FF:FF
-		# 	ReadChannel=0.0.0800  WriteChannel=0.0.0801  DataChannel=0.0.0802
-		# 	Nameserver=9.0.2.11 Portname=OSAPORT Portno=0
-		#	Install=ftp://10.0.0.1/sles10.2/s390x/1/
-		#	UseVNC=1  VNCPassword=123456
-		#	InstNetDev=osa OsaInterface=qdio OsaMedium=eth Manual=0
-		my $ay = "ftp://$ftp/custom/install/sles/" . $node . ".sles10.s390x.tmpl";
+		# Get autoyast/kickstart template
+		my $tmpl = "$profile.$osBase.$arch.tmpl";
 
-		$parms = $parmHeader . "\n";
-		$parms = $parms . "AutoYaST=$ay\n";
-		$parms = $parms . "HostIP=$hostIP Hostname=$hostname\n";
-		$parms = $parms . "Gateway=$gateway Netmask=$mask\n";
+		# Get host IP and hostname from /etc/hosts
+		$out = `cat /etc/hosts | grep $node`;
+		my @words    = split( ' ', $out );
+		my $hostIP   = $words[0];
+		my $hostname = $words[2];
+		if ( !$hostIP || !$hostname ) {
+			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing IP for $node in /etc/hosts" );
+			return;
+		}
 
-		# Set layer in autoyast profile
-		if ( $layer == 2 ) {
-			$parms = $parms . "Broadcast=$network Layer2=1 OSAHWaddr=$mac\n";
+		# Get the network name the HCP is on
+		$out = `ssh $hcp "vmcp q v nic" | egrep -i "VSWITCH|LAN"`;
+		my @lines = split( '\n', $out );
+		my $line = xCAT::zvmUtils->trimStr( $lines[0] );
+		@words = split( ' ', $line );
+		my $netName = $words[4];
+
+		# Get NIC address from user entry
+		my $userEntry = `ssh $hcp "$::DIR/getuserentry $userId"`;
+
+		# Check for user profile
+		my $userProfile = `echo "$userEntry" | grep "INCLUDE"`;
+		if ($userProfile) {
+			@words = split( ' ', xCAT::zvmUtils->trimStr($userProfile) );
+			$out = `ssh $hcp "$::DIR/getuserprofile $words[1]" | grep "NICDEF" | grep "$netName"`;
 		}
 		else {
-			$parms = $parms . "Broadcast=$network Layer2=0\n";
+			$out = `echo "$userEntry" | grep "NICDEF" | grep "$netName"`;
 		}
 
-		$parms = $parms . "ReadChannel=$readChannel WriteChannel=$writeChannel DataChannel=$dataChannel\n";
-		$parms = $parms . "Nameserver=$nameserver Portname=$portName Portno=0\n";
-		$parms = $parms . "Install=ftp://$ftp/$distr/s390x/1/\n";
-		$parms = $parms . "UseVNC=1 VNCPassword=123456\n";
-		$parms = $parms . "InstNetDev=$instNetDev OsaInterface=$osaInterface OsaMedium=$osaMedium Manual=0\n";
-
-		# Write to parmfile
-		$parmFile = "/tmp/" . $node . "Parm";
-		open( PARMFILE, ">$parmFile" );
-		print PARMFILE "$parms";
-		close(PARMFILE);
-
-		# Send kernel, parmfile, and initrd to reader to HCP
-		$kernelFile = "/tmp/" . $node . "Kernel";
-		$initFile = "/tmp/" . $node . "Initrd";
-		$out = `cp $installDir/$distr/s390x/1/boot/s390x/vmrdr.ikr $kernelFile`;
-		$out = `cp $installDir/$distr/s390x/1/boot/s390x/initrd $initFile`;
-		xCAT::zvmUtils->sendFile( $hcp, $kernelFile, $kernelFile );
-		xCAT::zvmUtils->sendFile( $hcp, $parmFile, $parmFile );
-		xCAT::zvmUtils->sendFile( $hcp, $initFile, $initFile );
-		
-		# Set the virtual unit record devices online on HCP
-		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", "c" );
-		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", "d" );
-
-		# Purge reader
-		$out = xCAT::zvmCPUtils->purgeReader( $hcp, $userId );
-		xCAT::zvmUtils->printLn( $callback, "$node: Purging reader... Done" );
-
-		# Punch kernel to reader on HCP
-		$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $kernelFile, "sles.kernel", "" );
-		xCAT::zvmUtils->printLn( $callback, "$node: Punching kernel to reader... $out" );
-		if ( $out =~ m/Failed/i ) {
+		# If no NICDEF is found, exit
+		if ( !$out ) {
+			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing NICDEF statement in user entry of node" );
 			return;
 		}
 
-		# Punch parm to reader on HCP
-		$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $parmFile, "sles.parm", "-t" );
-		xCAT::zvmUtils->printLn( $callback, "$node: Punching parm to reader... $out" );
-		if ( $out =~ m/Failed/i ) {
+		# Grab first NICDEF address
+		@lines = split( '\n', $out );
+		@words = split( ' ',  $lines[0] );
+		my $readChannel;
+		my $writeChannel;
+		my $dataChannel;
+
+		$readChannel = "0.0." . ( $words[1] + 0 );
+		if ( length($readChannel) < 8 ) {
+
+			# Prepend a zero
+			$readChannel = "0.0.0" . ( $words[1] + 0 );
+		}
+
+		$writeChannel = "0.0." . ( $words[1] + 1 );
+		if ( length($writeChannel) < 8 ) {
+
+			# Prepend a zero
+			$writeChannel = "0.0.0" . ( $words[1] + 1 );
+		}
+
+		$dataChannel = "0.0." . ( $words[1] + 2 );
+		if ( length($dataChannel) < 8 ) {
+
+			# Prepend a zero
+			$dataChannel = "0.0.0" . ( $words[1] + 2 );
+		}
+
+		# Get network type (Layer 2 or 3)
+		$out = `ssh $hcp "vmcp q lan $netName"`;
+		if ( !$out ) {
+			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing NICDEF statement in user entry of node" );
 			return;
 		}
 
-		# Punch initrd to reader on HCP
-		$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $initFile, "sles.initrd", "" );
-		xCAT::zvmUtils->printLn( $callback, "$node: Punching initrd to reader... $out" );
-		if ( $out =~ m/Failed/i ) {
-			return;
-		}
+		# Go through each line
+		my $layer = 3;    # Default to layer 3
+		@lines = split( '\n', $out );
+		foreach (@lines) {
 
-		# Remove kernel, parmfile, and initrd from /tmp
-		$out = `rm $parmFile $kernelFile $initFile`;
-		$out = `ssh -o ConnectTimeout=5 $hcp "rm $parmFile $kernelFile $initFile"`;
-		
-		xCAT::zvmUtils->printLn( $callback, "$node: Kernel, parm, and initrd punched to reader.  Ready for boot." );
-	}
-
-	# RHEL installation
-	elsif ( $distr =~ m/rhel/i ) {
-
-		# Create directory in FTP root (/install) to hold template
-		$out = `mkdir -p $installDir/custom/install/rh`;
-
-		# Copy kickstart template
-		$template = "$installDir/custom/install/rh/" . $node . ".rhel5.s390x.tmpl";
-		$out      = `cp /opt/xcat/share/xcat/install/rh/$profile $template`;
-
-		# Edit template
-		my $url = "ftp://$ftp/$distr/s390x/";
-		$out = `sed --in-place -e "s,replace_url,$url,g" \ -e "s,replace_ip,$hostIP,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_hostname,$hostname,g" \ -e "s,replace_rootpw,$passwd,g" $template`;
-
-		# Read sample parmfile in /install/rhel5.3/s390x/images
-		$sampleParm = "$installDir/$distr/s390x/images/generic.prm";
-		open( SAMPLEPARM, "<$sampleParm" );
-
-		# Search parmfile for -- root=/dev/ram0 ro ip=off ramdisk_size=40000
-		while (<SAMPLEPARM>) {
-
-			# If the line contains 'ramdisk_size'
-			if ( $_ =~ m/ramdisk_size/i ) {
-				$parmHeader = xCAT::zvmUtils->trimStr($_);
+			# If the line contains ETHERNET, then it is a layer 2 network
+			if ( $_ =~ m/ETHERNET/i ) {
+				$layer = 2;
 			}
 		}
 
-		# Close sample parmfile
-		close(SAMPLEPARM);
+		# Get MAC address -- Only for layer 2
+		my $mac = "";
+		my @propNames;
+		my $propVals;
+		if ( $layer == 2 ) {
 
-		# Get mdisk address
-		my @mdisks = xCAT::zvmUtils->getMdisks( $callback, $node );
-		my $dasd   = "";
-		my $i      = 0;
-		foreach (@mdisks) {
-			$i     = $i + 1;
-			@words = split( ' ', $_ );
+			# Search 'mac' table for node
+			@propNames = ('mac');
+			$propVals  = xCAT::zvmUtils->getTabPropsByKey( 'mac', 'node', $node, @propNames );
+			$mac       = $propVals->{'mac'};
 
-			# Do not put a comma at the end of the last disk address
-			if ( $i == @mdisks ) {
-				$dasd = $dasd . "0.0.$words[1]";
+			# If no MAC address is found, exit
+			# MAC address should have been assigned to the node upon creation
+			if ( !$mac ) {
+				xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing MAC address of node" );
+				return;
+			}
+		}
+
+		# Get first 3 octets of node IP (IPv4)
+		@words = split( /\./, $hostIP );
+		my $octets = "$words[0].$words[1].$words[2]";
+
+		# Get networks in 'networks' table
+		my $entries = xCAT::zvmUtils->getAllTabEntries('networks');
+
+		# Go through each network
+		my $network;
+		foreach (@$entries) {
+
+			# Get network
+			$network = $_->{'net'};
+
+			# If networks contains the first 3 octets of the node IP
+			if ( $network =~ m/$octets/i ) {
+
+				# Exit loop
+				last;
 			}
 			else {
-				$dasd = $dasd . "0.0.$words[1],";
+				$network = "";
 			}
 		}
 
-		# Create parmfile -- Limited to 80 characters/line, maximum of 11 lines
-		# End result should be:
-		#	ramdisk_size=40000 root=/dev/ram0 ro ip=off
-		# 	ks=ftp://10.0.0.1/rhel5.3/s390x/compute.rhel5.s390x.tmpl
-		#	RUNKS=1 cmdline
-		#	DASD=0.0.0100 HOSTNAME=gpok4.endicott.ibm.com
-		#	NETTYPE=qeth IPADDR=10.0.0.4
-		#	SUBCHANNELS=0.0.0800,0.0.0801,0.0.0800
-		#	NETWORK=10.0.0.0 NETMASK=255.255.255.0
-		#	SEARCHDNS=endicott.ibm.com BROADCAST=10.0.0.255
-		#	GATEWAY=10.0.0.1 DNS=9.0.2.11 MTU=1500
-		#	PORTNAME=UNASSIGNED PORTNO=0 LAYER2=0
-		#	vnc vncpassword=123456
-		my $ks = "ftp://$ftp/custom/install/rh/" . $node . ".rhel5.s390x.tmpl";
+		# If no network found
+		if ( !$network ) {
 
-		$parms = $parmHeader . "\n";
-		$parms = $parms . "ks=$ks\n";
-		$parms = $parms . "RUNKS=1 cmdline\n";
-		$parms = $parms . "DASD=$dasd HOSTNAME=$hostname\n";
-		$parms = $parms . "NETTYPE=$netType IPADDR=$hostIP\n";
-		$parms = $parms . "SUBCHANNELS=$readChannel,$writeChannel,$dataChannel\n";
-		$parms = $parms . "NETWORK=$network NETMASK=$mask\n";
-		$parms = $parms . "SEARCHDNS=$domain BROADCAST=$broadcast\n";
-		$parms = $parms . "GATEWAY=$gateway DNS=$nameserver MTU=1500\n";
+			# Exit
+			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Node does not belong to any networks in the networks table" );
+			return;
+		}
 
-		# Set layer in kickstart profile
-		if ( $layer == 2 ) {
-			$parms = $parms . "PORTNAME=$portName PORTNO=$portNo LAYER2=1 MACADDR=$mac\n";
+		@propNames = ( 'mask', 'gateway', 'tftpserver', 'nameservers' );
+		$propVals = xCAT::zvmUtils->getTabPropsByKey( 'networks', 'net', $network, @propNames );
+		my $mask       = $propVals->{'mask'};
+		my $gateway    = $propVals->{'gateway'};
+		my $ftp        = $propVals->{'tftpserver'};
+		my $nameserver = $propVals->{'nameservers'};
+		if ( !$network || !$mask || !$ftp || !$nameserver ) {
+
+			# It is acceptable to not have a gateway
+			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing network information" );
+			return;
+		}
+
+		# Get broadcast address of NIC
+		my $ifcfg = xCAT::zvmUtils->getIfcfgByNic( $hcp, $readChannel );
+		$out = `cat $ifcfg | grep "BROADCAST"`;
+		@words = split( '=', $out );
+		my $broadcast = $words[1];
+		$broadcast = xCAT::zvmUtils->trimStr($broadcast);
+		$broadcast = xCAT::zvmUtils->replaceStr( $broadcast, "'", "" );
+
+		# Load VMCP module on HCP
+		xCAT::zvmCPUtils->loadVmcp($hcp);
+
+		# Sample paramter file exists in installation CD -- Use that as a guide
+		my $sampleParm;
+		my $parmHeader;
+		my $parms;
+		my $parmFile;
+		my $kernelFile;
+		my $initFile;
+
+		# If punch is successful -- Look for this string
+		my $searchStr = "created and transferred";
+
+		# Default parameters -- SLES
+		my $instNetDev   = "osa";     # Only OSA interface type is supported
+		my $osaInterface = "qdio";    # OSA interface = qdio or lcs
+		my $osaMedium    = "eth";     # OSA medium = eth (ethernet) or tr (token ring)
+
+		# Default parameters -- RHEL
+		my $netType  = "qeth";
+		my $portName = "FOOBAR";
+		my $portNo   = "0";
+
+		# SUSE installation
+		my $customTmpl;
+		if ( $os =~ m/sles/i ) {
+
+			# Create directory in FTP root (/install) to hold template
+			$out = `mkdir -p $installDir/custom/install/sles`;
+
+			# Copy autoyast template
+			$customTmpl = "$installDir/custom/install/sles/" . $node . "." . $tmpl;
+			if ( -e "/opt/xcat/share/xcat/install/sles/$tmpl" ) {
+				$out = `cp /opt/xcat/share/xcat/install/sles/$tmpl $customTmpl`;
+			}
+			else {
+				xCAT::zvmUtils->printLn( $callback, "$node: An autoyast/kickstart template does not exist for $os" );
+			}
+
+			# Edit template
+			my $device;
+			my $chanIds = "$readChannel $writeChannel $dataChannel";
+
+			# SLES 11
+			if ( $os =~ m/sles11/i ) {
+				$device = "eth0";
+			}
+			else {
+
+				# SLES 10
+				$device = "qeth-bus-ccw-$readChannel";
+			}
+
+			$out =
+`sed --in-place -e "s,replace_host_address,$hostIP,g" \ -e "s,replace_long_name,$hostname,g" \ -e "s,replace_short_name,$node,g" \ -e "s,replace_domain,$domain,g" \ -e "s,replace_hostname,$node,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_broadcast,$broadcast,g" \ -e "s,replace_device,$device,g" \ -e "s,replace_ipaddr,$hostIP,g" \ -e "s,replace_lladdr,$mac,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_network,$network,g" \ -e "s,replace_ccw_chan_ids,$chanIds,g" \ -e "s,replace_ccw_chan_mode,FOOBAR,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_root_password,$passwd,g" \ -e "s,replace_nic_addr,$readChannel,g" $customTmpl`;
+
+			# Read sample parmfile in /install/sles10.2/s390x/1/boot/s390x/
+			$sampleParm = "$installDir/$os/s390x/1/boot/s390x/parmfile";
+			open( SAMPLEPARM, "<$sampleParm" );
+
+			# Search parmfile for -- ramdisk_size=65536 root=/dev/ram1 ro init=/linuxrc TERM=dumb
+			while (<SAMPLEPARM>) {
+
+				# If the line contains 'ramdisk_size'
+				if ( $_ =~ m/ramdisk_size/i ) {
+					$parmHeader = xCAT::zvmUtils->trimStr($_);
+				}
+			}
+
+			# Close sample parmfile
+			close(SAMPLEPARM);
+
+			# Create parmfile -- Limited to 10 lines
+			# End result should be:
+			# 	ramdisk_size=65536 root=/dev/ram1 ro init=/linuxrc TERM=dumb
+			# 	HostIP=10.0.0.5 Hostname=gpok5.endicott.ibm.com
+			# 	Gateway=10.0.0.1 Netmask=255.255.255.0
+			# 	Broadcast=10.0.0.0 Layer2=1 OSAHWaddr=02:00:01:FF:FF:FF
+			# 	ReadChannel=0.0.0800  WriteChannel=0.0.0801  DataChannel=0.0.0802
+			# 	Nameserver=9.0.2.11 Portname=OSAPORT Portno=0
+			#	Install=ftp://10.0.0.1/sles10.2/s390x/1/
+			#	UseVNC=1  VNCPassword=12345678
+			#	InstNetDev=osa OsaInterface=qdio OsaMedium=eth Manual=0
+			my $ay = "ftp://$ftp/custom/install/sles/" . $node . "." . $tmpl;
+
+			$parms = $parmHeader . "\n";
+			$parms = $parms . "AutoYaST=$ay\n";
+			$parms = $parms . "HostIP=$hostIP Hostname=$hostname\n";
+			$parms = $parms . "Gateway=$gateway Netmask=$mask\n";
+
+			# Set layer in autoyast profile
+			if ( $layer == 2 ) {
+				$parms = $parms . "Broadcast=$network Layer2=1 OSAHWaddr=$mac\n";
+			}
+			else {
+				$parms = $parms . "Broadcast=$network Layer2=0\n";
+			}
+
+			$parms = $parms . "ReadChannel=$readChannel WriteChannel=$writeChannel DataChannel=$dataChannel\n";
+			$parms = $parms . "Nameserver=$nameserver Portname=$portName Portno=0\n";
+			$parms = $parms . "Install=ftp://$ftp/$os/s390x/1/\n";
+			$parms = $parms . "UseVNC=1 VNCPassword=12345678\n";
+			$parms = $parms . "InstNetDev=$instNetDev OsaInterface=$osaInterface OsaMedium=$osaMedium Manual=0\n";
+
+			# Write to parmfile
+			$parmFile = "/tmp/" . $node . "Parm";
+			open( PARMFILE, ">$parmFile" );
+			print PARMFILE "$parms";
+			close(PARMFILE);
+
+			# Send kernel, parmfile, and initrd to reader to HCP
+			$kernelFile = "/tmp/" . $node . "Kernel";
+			$initFile   = "/tmp/" . $node . "Initrd";
+			$out        = `cp $installDir/$os/s390x/1/boot/s390x/vmrdr.ikr $kernelFile`;
+			$out        = `cp $installDir/$os/s390x/1/boot/s390x/initrd $initFile`;
+			xCAT::zvmUtils->sendFile( $hcp, $kernelFile, $kernelFile );
+			xCAT::zvmUtils->sendFile( $hcp, $parmFile,   $parmFile );
+			xCAT::zvmUtils->sendFile( $hcp, $initFile,   $initFile );
+
+			# Set the virtual unit record devices online on HCP
+			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", "c" );
+			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", "d" );
+
+			# Purge reader
+			$out = xCAT::zvmCPUtils->purgeReader( $hcp, $userId );
+			xCAT::zvmUtils->printLn( $callback, "$node: Purging reader... Done" );
+
+			# Punch kernel to reader on HCP
+			$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $kernelFile, "sles.kernel", "" );
+			xCAT::zvmUtils->printLn( $callback, "$node: Punching kernel to reader... $out" );
+			if ( $out =~ m/Failed/i ) {
+				return;
+			}
+
+			# Punch parm to reader on HCP
+			$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $parmFile, "sles.parm", "-t" );
+			xCAT::zvmUtils->printLn( $callback, "$node: Punching parm to reader... $out" );
+			if ( $out =~ m/Failed/i ) {
+				return;
+			}
+
+			# Punch initrd to reader on HCP
+			$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $initFile, "sles.initrd", "" );
+			xCAT::zvmUtils->printLn( $callback, "$node: Punching initrd to reader... $out" );
+			if ( $out =~ m/Failed/i ) {
+				return;
+			}
+
+			# Remove kernel, parmfile, and initrd from /tmp
+			$out = `rm $parmFile $kernelFile $initFile`;
+			$out = `ssh -o ConnectTimeout=5 $hcp "rm $parmFile $kernelFile $initFile"`;
+
+			xCAT::zvmUtils->printLn( $callback, "$node: Kernel, parm, and initrd punched to reader.  Ready for boot." );
+		}
+
+		# RHEL installation
+		elsif ( $os =~ m/rhel/i ) {
+
+			# Create directory in FTP root (/install) to hold template
+			$out = `mkdir -p $installDir/custom/install/rh`;
+
+			# Copy kickstart template
+			$customTmpl = "$installDir/custom/install/rh/" . $node . "." . $tmpl;
+			if ( -e "/opt/xcat/share/xcat/install/rh/$tmpl" ) {
+				$out = `cp /opt/xcat/share/xcat/install/rh/$tmpl $customTmpl`;
+			}
+			else {
+				xCAT::zvmUtils->printLn( $callback, "$node: An autoyast/kickstart template does not exist for $os" );
+			}
+
+			# Edit template
+			my $url = "ftp://$ftp/$os/s390x/";
+			$out =
+`sed --in-place -e "s,replace_url,$url,g" \ -e "s,replace_ip,$hostIP,g" \ -e "s,replace_netmask,$mask,g" \ -e "s,replace_gateway,$gateway,g" \ -e "s,replace_nameserver,$nameserver,g" \ -e "s,replace_hostname,$hostname,g" \ -e "s,replace_rootpw,$passwd,g" $customTmpl`;
+
+			# Read sample parmfile in /install/rhel5.3/s390x/images
+			$sampleParm = "$installDir/$os/s390x/images/generic.prm";
+			open( SAMPLEPARM, "<$sampleParm" );
+
+			# Search parmfile for -- root=/dev/ram0 ro ip=off ramdisk_size=40000
+			while (<SAMPLEPARM>) {
+
+				# If the line contains 'ramdisk_size'
+				if ( $_ =~ m/ramdisk_size/i ) {
+					$parmHeader = xCAT::zvmUtils->trimStr($_);
+				}
+			}
+
+			# Close sample parmfile
+			close(SAMPLEPARM);
+
+			# Get mdisk address
+			my @mdisks = xCAT::zvmUtils->getMdisks( $callback, $node );
+			my $dasd   = "";
+			my $i      = 0;
+			foreach (@mdisks) {
+				$i     = $i + 1;
+				@words = split( ' ', $_ );
+
+				# Do not put a comma at the end of the last disk address
+				if ( $i == @mdisks ) {
+					$dasd = $dasd . "0.0.$words[1]";
+				}
+				else {
+					$dasd = $dasd . "0.0.$words[1],";
+				}
+			}
+
+			# Create parmfile -- Limited to 80 characters/line, maximum of 11 lines
+			# End result should be:
+			#	ramdisk_size=40000 root=/dev/ram0 ro ip=off
+			# 	ks=ftp://10.0.0.1/rhel5.3/s390x/compute.rhel5.s390x.tmpl
+			#	RUNKS=1 cmdline
+			#	DASD=0.0.0100 HOSTNAME=gpok4.endicott.ibm.com
+			#	NETTYPE=qeth IPADDR=10.0.0.4
+			#	SUBCHANNELS=0.0.0800,0.0.0801,0.0.0800
+			#	NETWORK=10.0.0.0 NETMASK=255.255.255.0
+			#	SEARCHDNS=endicott.ibm.com BROADCAST=10.0.0.255
+			#	GATEWAY=10.0.0.1 DNS=9.0.2.11 MTU=1500
+			#	PORTNAME=UNASSIGNED PORTNO=0 LAYER2=0
+			#	vnc vncpassword=12345678
+			my $ks = "ftp://$ftp/custom/install/rh/" . $node . "." . $tmpl;
+
+			$parms = $parmHeader . "\n";
+			$parms = $parms . "ks=$ks\n";
+			$parms = $parms . "RUNKS=1 cmdline\n";
+			$parms = $parms . "DASD=$dasd HOSTNAME=$hostname\n";
+			$parms = $parms . "NETTYPE=$netType IPADDR=$hostIP\n";
+			$parms = $parms . "SUBCHANNELS=$readChannel,$writeChannel,$dataChannel\n";
+			$parms = $parms . "NETWORK=$network NETMASK=$mask\n";
+			$parms = $parms . "SEARCHDNS=$domain BROADCAST=$broadcast\n";
+			$parms = $parms . "GATEWAY=$gateway DNS=$nameserver MTU=1500\n";
+
+			# Set layer in kickstart profile
+			if ( $layer == 2 ) {
+				$parms = $parms . "PORTNAME=$portName PORTNO=$portNo LAYER2=1 MACADDR=$mac\n";
+			}
+			else {
+				$parms = $parms . "PORTNAME=$portName PORTNO=$portNo LAYER2=0\n";
+			}
+
+			$parms = $parms . "vnc vncpassword=12345678\n";
+
+			# Write to parmfile
+			$parmFile = "/tmp/" . $node . "Parm";
+			open( PARMFILE, ">$parmFile" );
+			print PARMFILE "$parms";
+			close(PARMFILE);
+
+			# Send kernel, parmfile, conf, and initrd to reader to HCP
+			$kernelFile = "/tmp/" . $node . "Kernel";
+			$initFile   = "/tmp/" . $node . "Initrd";
+
+			$out = `cp $installDir/$os/s390x/images/kernel.img $kernelFile`;
+			$out = `cp $installDir/$os/s390x/images/initrd.img $initFile`;
+			xCAT::zvmUtils->sendFile( $hcp, $kernelFile, $kernelFile );
+			xCAT::zvmUtils->sendFile( $hcp, $parmFile,   $parmFile );
+			xCAT::zvmUtils->sendFile( $hcp, $initFile,   $initFile );
+
+			# Set the virtual unit record devices online
+			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", "c" );
+			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", "d" );
+
+			# Purge reader
+			$out = xCAT::zvmCPUtils->purgeReader( $hcp, $userId );
+			xCAT::zvmUtils->printLn( $callback, "$node: Purging reader... Done" );
+
+			# Punch kernel to reader on HCP
+			$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $kernelFile, "rhel.kernel", "" );
+			xCAT::zvmUtils->printLn( $callback, "$node: Punching kernel to reader... $out" );
+			if ( $out =~ m/Failed/i ) {
+				return;
+			}
+
+			# Punch parm to reader on HCP
+			$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $parmFile, "rhel.parm", "-t" );
+			xCAT::zvmUtils->printLn( $callback, "$node: Punching parm to reader... $out" );
+			if ( $out =~ m/Failed/i ) {
+				return;
+			}
+
+			# Punch initrd to reader on HCP
+			$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $initFile, "rhel.initrd", "" );
+			xCAT::zvmUtils->printLn( $callback, "$node: Punching initrd to reader... $out" );
+			if ( $out =~ m/Failed/i ) {
+				return;
+			}
+
+			# Remove kernel, parmfile, and initrd from /tmp
+			$out = `rm $parmFile $kernelFile $initFile`;
+			$out = `ssh -o ConnectTimeout=5 $hcp "rm $parmFile $kernelFile $initFile"`;
+
+			xCAT::zvmUtils->printLn( $callback, "$node: Kernel, parm, and initrd punched to reader.  Ready for boot." );
+		}
+	}
+	elsif ( $action eq "statelite" ) {
+
+		# Get node group from 'nodelist' table
+		@propNames = ('groups');
+		$propVals = xCAT::zvmUtils->getTabPropsByKey( 'nodelist', 'node', $node, @propNames );
+		my $group = $propVals->{'groups'};
+
+		# Get node statemnt from 'statelite' table
+		@propNames = ('statemnt');
+		$propVals = xCAT::zvmUtils->getTabPropsByKey( 'statelite', 'node', $node, @propNames );
+		my $stateMnt = $propVals->{'statemnt'};
+		if ( !$stateMnt ) {
+			$propVals = xCAT::zvmUtils->getTabPropsByKey( 'statelite', 'node', $group, @propNames );
+			$stateMnt = $propVals->{'statemnt'};
+
+			if ( !$stateMnt ) {
+				xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node statemnt in statelite table" );
+				return;
+			}
+		}
+
+		# Netboot directory
+		my $netbootDir = "$installDir/netboot/$os/$arch/$profile";
+		my $kernelFile = "$netbootDir/kernel";
+		my $parmFile   = "$netbootDir/parm";
+		my $initFile   = "$netbootDir/initrd.gz";
+
+		# If parmfile exists
+		if ( -e $parmFile ) {
+
+			# Do nothing
 		}
 		else {
-			$parms = $parms . "PORTNAME=$portName PORTNO=$portNo LAYER2=0\n";
+			xCAT::zvmUtils->printLn( $callback, "$node: Creating parmfile" );
+
+			my $sampleParm;
+			my $parmHeader;
+			my $parms;
+			if ( $os =~ m/sles/i ) {
+
+				# Read sample parmfile in /install/sles11.1/s390x/1/boot/s390x/
+				$sampleParm = "$installDir/$os/s390x/1/boot/s390x/parmfile";
+			}
+			elsif ( $os =~ m/rhel/i ) {
+
+				# Read sample parmfile in /install/rhel5.3/s390x/images
+				$sampleParm = "$installDir/$os/s390x/images/generic.prm";
+			}
+
+			open( SAMPLEPARM, "<$sampleParm" );
+
+			# Search parmfile for -- ramdisk_size=65536 root=/dev/ram1 ro init=/linuxrc TERM=dumb
+			while (<SAMPLEPARM>) {
+
+				# If the line contains 'ramdisk_size'
+				if ( $_ =~ m/ramdisk_size/i ) {
+					$parmHeader = xCAT::zvmUtils->trimStr($_);
+				}
+			}
+
+			# Close sample parmfile
+			close(SAMPLEPARM);
+
+			# Create parmfile
+			# End result should be:
+			# 	ramdisk_size=65536 root=/dev/ram1 ro init=/linuxrc TERM=dumb
+			# 	NFSROOT=10.1.100.1:/install/netboot/sles11.1.1/s390x/compute
+			# 	STATEMNT=10.1.100.1:/lite/state XCAT=10.1.100.1:3001
+			$parms = $parmHeader . "\n";
+			$parms = $parms . "NFSROOT=$master:$netbootDir\n";
+			$parms = $parms . "STATEMNT=$stateMnt XCAT=$master:$xcatdPort\n";
+
+			# Write to parmfile
+			open( PARMFILE, ">$parmFile" );
+			print PARMFILE "$parms";
+			close(PARMFILE);
 		}
 
-		$parms = $parms . "vnc vncpassword=123456\n";
+		# Temporary kernel, parmfile, and initrd
+		my $tmpKernelFile = "/tmp/$os-kernel";
+		my $tmpParmFile   = "/tmp/$os-parm";
+		my $tmpInitFile   = "/tmp/$os-initrd.gz";
 
-		# Write to parmfile
-		$parmFile = "/tmp/" . $node . "Parm";
-		open( PARMFILE, ">$parmFile" );
-		print PARMFILE "$parms";
-		close(PARMFILE);
+		if (`ssh -o ConnectTimeout=5 $hcp "ls /tmp" | grep "$os-kernel"`) {
 
-		# Send kernel, parmfile, conf, and initrd to reader to HCP
-		$kernelFile = "/tmp/" . $node . "Kernel";
-		$initFile = "/tmp/" . $node . "Initrd";
-		
-		$out = `cp $installDir/$distr/s390x/images/kernel.img $kernelFile`;
-		$out = `cp $installDir/$distr/s390x/images/initrd.img $initFile`;
-		xCAT::zvmUtils->sendFile( $hcp, $kernelFile, $kernelFile );
-		xCAT::zvmUtils->sendFile( $hcp, $parmFile, $parmFile );
-		xCAT::zvmUtils->sendFile( $hcp, $initFile, $initFile );
+			# Do nothing
+		}
+		else {
+
+			# Send kernel to reader to HCP
+			xCAT::zvmUtils->sendFile( $hcp, $kernelFile, $tmpKernelFile );
+		}
+
+		if (`ssh -o ConnectTimeout=5 $hcp "ls /tmp" | grep "$os-parm"`) {
+
+			# Do nothing
+		}
+		else {
+
+			# Send parmfile to reader to HCP
+			xCAT::zvmUtils->sendFile( $hcp, $parmFile, $tmpParmFile );
+		}
+
+		if (`ssh -o ConnectTimeout=5 $hcp "ls /tmp" | grep "$os-initrd.gz"`) {
+
+			# Do nothing
+		}
+		else {
+
+			# Send initrd to reader to HCP
+			xCAT::zvmUtils->sendFile( $hcp, $initFile, $tmpInitFile );
+		}
 
 		# Set the virtual unit record devices online
 		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", "c" );
@@ -2854,32 +3118,33 @@ sub nodeSet {
 		$out = xCAT::zvmCPUtils->purgeReader( $hcp, $userId );
 		xCAT::zvmUtils->printLn( $callback, "$node: Purging reader... Done" );
 
+		# Kernel, parm, and initrd are in /install/netboot/<os>/<arch>/<profile>
 		# Punch kernel to reader on HCP
-		$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $kernelFile, "rhel.kernel", "" );
+		$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $tmpKernelFile, "sles.kernel", "" );
 		xCAT::zvmUtils->printLn( $callback, "$node: Punching kernel to reader... $out" );
 		if ( $out =~ m/Failed/i ) {
 			return;
 		}
 
 		# Punch parm to reader on HCP
-		$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $parmFile, "rhel.parm", "-t" );
+		$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $tmpParmFile, "sles.parm", "-t" );
 		xCAT::zvmUtils->printLn( $callback, "$node: Punching parm to reader... $out" );
 		if ( $out =~ m/Failed/i ) {
 			return;
 		}
 
 		# Punch initrd to reader on HCP
-		$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $initFile, "rhel.initrd", "" );
+		$out = xCAT::zvmCPUtils->punch2Reader( $hcp, $userId, $tmpInitFile, "sles.initrd", "" );
 		xCAT::zvmUtils->printLn( $callback, "$node: Punching initrd to reader... $out" );
 		if ( $out =~ m/Failed/i ) {
 			return;
 		}
 
-		# Remove kernel, parmfile, and initrd from /tmp
-		$out = `rm $parmFile $kernelFile $initFile`;
-		$out = `ssh -o ConnectTimeout=5 $hcp "rm $parmFile $kernelFile $initFile"`;
-		
 		xCAT::zvmUtils->printLn( $callback, "$node: Kernel, parm, and initrd punched to reader.  Ready for boot." );
+	}
+	else {
+		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Option not supported" );
+		return;
 	}
 
 	return;
@@ -3088,11 +3353,11 @@ sub updateNode {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
-	
+
 	# Get install directory
-	my $siteTab    = xCAT::Table->new('site');
+	my $siteTab        = xCAT::Table->new('site');
 	my $installDirHash = $siteTab->getAttribs( { key => "installdir" }, 'value' );
-	my $installDir = $installDirHash->{'value'};
+	my $installDir     = $installDirHash->{'value'};
 
 	# Get host IP and hostname from /etc/hosts
 	my $out      = `cat /etc/hosts | grep $node`;
@@ -3100,8 +3365,7 @@ sub updateNode {
 	my $hostIP   = $words[0];
 	my $hostname = $words[2];
 	if ( !$hostIP || !$hostname ) {
-		xCAT::zvmUtils->printLn( $callback,
-			"$node: (Error) Missing IP for $node in /etc/hosts" );
+		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing IP for $node in /etc/hosts" );
 		return;
 	}
 
@@ -3140,7 +3404,7 @@ sub updateNode {
 
 	# Get FTP server
 	@propNames = ('tftpserver');
-	$propVals  = xCAT::zvmUtils->getTabPropsByKey( 'networks', 'net', $network, @propNames );
+	$propVals = xCAT::zvmUtils->getTabPropsByKey( 'networks', 'net', $network, @propNames );
 	my $ftp = $propVals->{'tftpserver'};
 	if ( !$ftp ) {
 
@@ -3150,79 +3414,86 @@ sub updateNode {
 	}
 
 	# Update node operating system
-	if ( $args->[0] eq "--release" ) {		
+	if ( $args->[0] eq "--release" ) {
 		my $version = $args->[1];
 
 		if ( !$version ) {
 			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing operating system release" );
 			return;
 		}
-		
+
 		# Get node operating system
 		my $os = xCAT::zvmUtils->getOs($node);
-		
-		# Check node OS is the same as the version OS given 
+
+		# Check node OS is the same as the version OS given
 		# You do not want to update a SLES with a RHEL
-		if ( (($os =~ m/SUSE/i) && !($version =~ m/sles/i)) || (($os =~ m/Red Hat/i) && !($version =~ m/rhel/i)) ){
+		if ( ( ( $os =~ m/SUSE/i ) && !( $version =~ m/sles/i ) ) || ( ( $os =~ m/Red Hat/i ) && !( $version =~ m/rhel/i ) ) ) {
 			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Node operating system is different from the operating system given to upgrade to" );
 			return;
 		}
 
 		# Generate FTP path to operating system image
 		my $path;
-		if ($version =~ m/sles/i) {
+		if ( $version =~ m/sles/i ) {
+
+			# The following only applies to SLES 10
+			# SLES 11 requires zypper
+
 			# SuSE Enterprise Linux path - ftp://10.0.0.1/sles10.3/s390x/1/
 			$path = "ftp://$ftp/$version/s390x/1/";
-			
+
 			# Add installation source using rug
 			$out = `ssh $node "rug sa -t zypp $path $version"`;
 			xCAT::zvmUtils->printLn( $callback, "$node: $out" );
-			
+
 			# Subscribe to catalog
 			$out = `ssh $node "rug sub $version"`;
 			xCAT::zvmUtils->printLn( $callback, "$node: $out" );
-			
+
 			# Refresh services
 			$out = `ssh $node "rug ref"`;
 			xCAT::zvmUtils->printLn( $callback, "$node: $out" );
-			
+
 			# Update
 			$out = `ssh $node "rug up -y"`;
 			xCAT::zvmUtils->printLn( $callback, "$node: $out" );
-		} else {
+		}
+		else {
+
 			# Red Hat Enterprise Linux path - ftp://10.0.0.1/rhel5.4/s390x/Server/
 			$path = "ftp://$ftp/$version/s390x/Server/";
-			
+
 			# Check if file.repo already has this repository location
 			$out = `ssh $node "cat /etc/yum.repos.d/file.repo"`;
-			if ($out =~ m/[$version]/i) {
-				
+			if ( $out =~ m/[$version]/i ) {
+
 				# Send over release key
 				my $key = "$installDir/$version/s390x/RPM-GPG-KEY-redhat-release";
 				my $tmp = "/tmp/RPM-GPG-KEY-redhat-release";
-				xCAT::zvmUtils->sendFile($node, $key, $tmp);
-				
+				xCAT::zvmUtils->sendFile( $node, $key, $tmp );
+
 				# Import key
 				$out = `ssh $node "rpm --import /tmp/$key"`;
-				
+
 				# Upgrade
 				$out = `ssh $node "yum upgrade -y"`;
 				xCAT::zvmUtils->printLn( $callback, "$node: $out" );
-			} else {
-			
+			}
+			else {
+
 				# Create repository
 				$out = `ssh $node "echo [$version] >> /etc/yum.repos.d/file.repo"`;
 				$out = `ssh $node "echo baseurl=$path >> /etc/yum.repos.d/file.repo"`;
 				$out = `ssh $node "echo enabled=1 >> /etc/yum.repos.d/file.repo"`;
-				
+
 				# Send over release key
 				my $key = "$installDir/$version/s390x/RPM-GPG-KEY-redhat-release";
 				my $tmp = "/tmp/RPM-GPG-KEY-redhat-release";
-				xCAT::zvmUtils->sendFile($node, $key, $tmp);
-				
+				xCAT::zvmUtils->sendFile( $node, $key, $tmp );
+
 				# Import key
 				$out = `ssh $node "rpm --import $tmp"`;
-				
+
 				# Upgrade
 				$out = `ssh $node "yum upgrade -y"`;
 				xCAT::zvmUtils->printLn( $callback, "$node: $out" );

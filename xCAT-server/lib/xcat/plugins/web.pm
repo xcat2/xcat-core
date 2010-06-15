@@ -47,6 +47,8 @@ sub process_request
         'gettab' => \&web_gettab,
         'lsevent' => \&web_lsevent,
         'lsdef' => \&web_lsdef,
+		'unlock' => \&web_unlock,
+
         #'xdsh' => \&web_xdsh,
         #THIS list needs to be updated
     );
@@ -283,4 +285,26 @@ sub web_update {
     my ($file) =  grep(/^xCAT\-web/, @flist);
 
     system("rpm -Uvh $repo_dir/$file");#TODO:use runcmd() to replace it
+}
+
+#-------------------------------------------------------
+
+=head3   web_unlock
+
+	Description	: Unlock a node by exchanging its SSH keys
+    Arguments	: 	Node
+    				Password
+    Returns		: Nothing
+    
+=cut
+
+#-------------------------------------------------------
+sub web_unlock {
+	my ( $request, $callback, $sub_req ) = @_;
+	
+	my $node     = $request->{arg}->[1];
+	my $password = $request->{arg}->[2];
+	my $out      = `DSH_REMOTE_PASSWORD=$password xdsh $node -K`;
+	
+	$callback->( { data => $out } );
 }
