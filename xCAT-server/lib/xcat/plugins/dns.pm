@@ -99,7 +99,7 @@ sub get_reverse_zone_for_entity {
                     unshift(@zone,(shift @orig));
                 }
                 $rev = join('.',@zone);
-                $rev .= '.IN-ADDR.ARPA';
+                $rev .= '.IN-ADDR.ARPA.';
                 return $rev;
             }
         }
