@@ -975,6 +975,7 @@ sub getzonesfornet {
         $netnum = $netnum & 0xffffff00;
         $netn = pack('N',$netnum);
         $net = inet_ntoa($netn);
+        $net =~ s/\.[^\.]*$//;
         return (join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.');
     } elsif ($masknum > 0xffff0000) { #class b (/16) to /23
         my $tempnumber = ($netnum >> 8);
@@ -983,6 +984,7 @@ sub getzonesfornet {
         foreach ($tempnumber..$highnet) {
             $netnum = $_ << 8;
             $net = inet_ntoa(pack('N',$netnum));
+            $net =~ s/\.[^\.]*$//;
             push @zones,join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.';
         }
         return @zones;
@@ -993,6 +995,8 @@ sub getzonesfornet {
         foreach ($tempnumber..$highnet) {
             $netnum = $_ << 16; #convert back to the real network value
             $net = inet_ntoa(pack('N',$netnum));
+            $net =~ s/\.[^\.]*$//;
+            $net =~ s/\.[^\.]*$//;
             push @zones,join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.';
         }
         return @zones;
@@ -1003,6 +1007,9 @@ sub getzonesfornet {
         foreach ($tempnumber..$highnet) {
             $netnum = $_ << 24; #convert back to the real network value
             $net = inet_ntoa(pack('N',$netnum));
+            $net =~ s/\.[^\.]*$//;
+            $net =~ s/\.[^\.]*$//;
+            $net =~ s/\.[^\.]*$//;
             push @zones,join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.';
         }
         return @zones;
