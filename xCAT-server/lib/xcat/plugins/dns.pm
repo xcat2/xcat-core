@@ -194,7 +194,7 @@ sub process_request {
         $ctx->{nets}->{$_->{net}}->{mask} = $maskn;
         $ctx->{nets}->{$_->{net}}->{netn} = unpack("N",inet_aton($_->{net}));
         my $currzone;
-        foreach $currzone (getzonesfornet($_->{net},$_->{mask}) {
+        foreach $currzone (getzonesfornet($_->{net},$_->{mask})) {
             $ctx->{zonestotouch}->{$currzone} = 1;
         }
     }
