@@ -206,7 +206,6 @@ sub process_request {
 		# or create a NOLOG if no entry is provided
 		else {
 			foreach (@nodes) {
-
 				$pid = xCAT::Utils->xfork();
 
 				# Parent process
@@ -235,10 +234,26 @@ sub process_request {
 	# --- Remove a virtual server ---
 	elsif ( $command eq "rmvm" ) {
 		foreach (@nodes) {
+			$pid = xCAT::Utils->xfork();
 
-			# Should be careful about async returns
-			# This method is synchronous for now
-			removeVM( $callback, $_ );
+			# Parent process
+			if ($pid) {
+				push( @children, $pid );
+			}
+
+			# Child process
+			elsif ( $pid == 0 ) {
+				removeVM( $callback, $_ );
+
+				# Exit process
+				exit(0);
+			}
+			else {
+
+				# Ran out of resources
+				die "Error: Could not fork\n";
+			}
+
 		}    # End of foreach
 	}    # End of case
 

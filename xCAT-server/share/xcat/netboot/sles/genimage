@@ -214,6 +214,16 @@ if($mode eq "statelite") {
     push @ndrivers, "exportfs.ko";
     push @ndrivers, "nfsd.ko";
     push @ndrivers, "nfs.ko";
+
+	# Additional modules needed on s390x
+	if ($arch eq "s390x") {
+		push @ndrivers, "qdio.ko";
+		push @ndrivers, "ccwgroup.ko";
+		push @ndrivers, "af_packet.ko";
+		push @ndrivers, "qeth.ko";
+		push @ndrivers, "qeth_l2.ko";
+		push @ndrivers, "qeth_l3.ko";
+	}
 }
 
 my $osver_host;
@@ -454,6 +464,12 @@ if($ret > 0) {
 #if image has one, that is used
 #if all else fails, resort to uname -r like this script did before
 my @KVERS= <$rootimg_dir/boot/vmlinu[xz]-*>;
+
+# The kernel name is different on s390x, e.g. image-2.6.32.9-0.5-default
+if ($arch eq "s390x") {
+	@KVERS = <$rootimg_dir/boot/image-*>;	
+}
+	
 #as I know, s390x is using image-* as its kernel name
 unless (scalar(@KVERS)) {
     @KVERS=<$rootimg_dir/boot/image-*>;
@@ -476,6 +492,12 @@ if (scalar(@KVERS)) {
 unless ($basekernelver) {
     $basekernelver = `uname -r`;
 }
+
+# Extract the base kernel
+if ($arch eq "s390x") {
+	$basekernelver =~ s/image-//g;
+}
+
 chomp($basekernelver);
 
 if ($kernelver) {
@@ -551,7 +573,7 @@ sub getlibs {
 
 sub mkinitrd {
     mkpath("/tmp/xcatinitrd.$$/bin");
-
+    
     if(-r "$rootimg_dir/boot/vmlinux-$kernelver") { # SLES use vmlinux-* as its name
         copy("$rootimg_dir/boot/vmlinux-$kernelver","$destdir/kernel");
     } elsif(-r "$rootimg_dir/boot/vmlinuz-$kernelver") { # OpenSuSE maight use vmlinuz-* as its name
@@ -559,7 +581,7 @@ sub mkinitrd {
     } elsif(-r "$rootimg_dir/boot/image-$kernelver") { # SLES on s390x use image-* as its name
         copy("$rootimg_dir/boot/image-$kernelver","$destdir/kernel");
     } else {
-      xdie("Cannot find suitable kernel file for $kernelver");
+		xdie("Cannot find suitable kernel file for $kernelver");
     }
 
     symlink("bin","/tmp/xcatinitrd.$$/sbin");
@@ -725,6 +747,19 @@ if($mode eq "statelite") {
     print $inifile "# check and see if debug is specified on command line\n";
     print $inifile "grep '\(debug\)' /proc/cmdline > /dev/null && export DEBUG=1\n";
 }
+
+# Start udev on s390x
+if ($arch eq "s390x") {
+	print $inifile <<EOMS;
+# Start udev to find devices attached to node
+# This script can be found in /lib/mkinitrd
+echo "Creating device nodes with udev"
+echo `/sbin/udevd --daemon`
+echo `/sbin/udevadm trigger`
+echo `/sbin/udevadm settle --timeout=10`
+EOMS
+}
+
    print $inifile <<EOMS;
 netstart
 while ! ifconfig | grep inet; do
@@ -1018,6 +1053,14 @@ END
             getlibs($_); 
             push @filestoadd,$_;
         } 
+        
+        # 'sbin/udevd' and 'sbin/udevadm' needed on s390x 
+    	if ($arch eq "s390x") {
+    		foreach ("sbin/udevd", "sbin/udevadm") {
+    			getlibs($_); 
+            	push @filestoadd,$_;
+    		}
+    	} 
     }else {
         foreach ("sbin/ifconfig","usr/bin/clear", "usr/bin/grep","bin/cpio","bin/sleep","bin/mount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed") {
             getlibs($_); 
@@ -1079,6 +1122,14 @@ END
          chmod 0755,"/tmp/xcatinitrd.$$/".$_;
       }
    }
+
+	# Copy udev libraries on s390x
+	if ($arch eq "s390x") {
+		system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
+		system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
+		system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
+		system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
+	}
 
    #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
    system("cd /tmp/xcatinitrd.$$/bin/; ln -sf bash sh");	#neccessary for SLES11
@@ -1170,11 +1221,16 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\nSTARTMODE=auto\n";
       close($cfgfile);
    }
-   open($cfgfile,">>","$rootimg_dir/etc/securetty");
-   print $cfgfile "ttyS0\n";
-   print $cfgfile "ttyS1\n";
-   print $cfgfile "console\n";
-   close($cfgfile);
+   
+	# securetty not needed on s390x
+	if ($arch ne "s390x") {
+   		open( $cfgfile, ">>", "$rootimg_dir/etc/securetty" );
+   		print $cfgfile "ttyS0\n";
+   		print $cfgfile "ttyS1\n";
+   		print $cfgfile "console\n";
+   		close($cfgfile);
+   	}
+   
    my @passwd;
    open($cfgfile,"<","$rootimg_dir/etc/passwd");
    @passwd = <$cfgfile>;
@@ -1193,39 +1249,46 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       }
       copy $_,"$rootimg_dir/root/";
    }
-   open($cfgfile,">","$rootimg_dir/etc/init.d/gettyset");
-   print $cfgfile "#!/bin/bash\n";
-   print $cfgfile "### BEGIN INIT INFO\n";
-   print $cfgfile "# Provides: gettyset\n";
-   print $cfgfile "# Required-Start: sshd\n";
-   print $cfgfile "# Required-Stop:\n";
-   print $cfgfile "# Default-Start: 3\n";
-   print $cfgfile "# Default-Stop: 0 1 2 6\n";
-   print $cfgfile "# Short-Description: gettyset\n";
-   print $cfgfile "# Description:\n";
-   print $cfgfile "### END INIT INFO\n";
-   print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
-   print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
-   print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
-   print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n"; 
-   print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
-   print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
-   print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
-   print $cfgfile "        FLOWFLAG=\"-h\"\n";
-   print $cfgfile "     fi\n";
-   print $cfgfile "     echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
-   print $cfgfile "     init q\n";
-   print $cfgfile "  fi\n";
-   print $cfgfile "done\n";
-   print $cfgfile "/etc/init.d/boot.localnet start\n";
-    if($mode eq "statelite") {   
-        print $cfgfile "/opt/xcat/xcatdsklspost 4\n";
-    } else {
-        print $cfgfile "/opt/xcat/xcatdsklspost\n";
-    }
-   close($cfgfile);
-   chmod(0755,"$rootimg_dir/etc/init.d/gettyset");
-   system("chroot $rootimg_dir insserv gettyset");
+   
+	# gettyset is not found on s390x
+	if ($arch ne "s390x") {
+		open( $cfgfile, ">", "$rootimg_dir/etc/init.d/gettyset" );
+		print $cfgfile "#!/bin/bash\n";
+		print $cfgfile "### BEGIN INIT INFO\n";
+		print $cfgfile "# Provides: gettyset\n";
+		print $cfgfile "# Required-Start: sshd\n";
+		print $cfgfile "# Required-Stop:\n";
+		print $cfgfile "# Default-Start: 3\n";
+		print $cfgfile "# Default-Stop: 0 1 2 6\n";
+		print $cfgfile "# Short-Description: gettyset\n";
+		print $cfgfile "# Description:\n";
+		print $cfgfile "### END INIT INFO\n";
+		print $cfgfile "for i in `cat /proc/cmdline`; do\n";
+		print $cfgfile '  KEY=`echo $i|cut -d= -f 1`' . "\n";
+		print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
+		print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n";
+		print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
+		print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
+		print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
+		print $cfgfile "        FLOWFLAG=\"-h\"\n";
+		print $cfgfile "     fi\n";
+		print $cfgfile "     echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
+		print $cfgfile "     init q\n";
+		print $cfgfile "  fi\n";
+		print $cfgfile "done\n";
+		print $cfgfile "/etc/init.d/boot.localnet start\n";
+	
+		if ( $mode eq "statelite" ) {
+			print $cfgfile "/opt/xcat/xcatdsklspost 4\n";
+		}
+		else {
+			print $cfgfile "/opt/xcat/xcatdsklspost\n";
+		}
+		close($cfgfile);
+		chmod( 0755, "$rootimg_dir/etc/init.d/gettyset" );
+    	system("chroot $rootimg_dir insserv gettyset");
+	}
+	
    #link("$rootimg_dir/sbin/init","$rootimg_dir/init");
    my $rc = system("grep sshd $rootimg_dir/etc/init.d/.depend.start");
    if ($rc) {
