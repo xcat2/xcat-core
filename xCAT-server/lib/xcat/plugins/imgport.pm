@@ -452,7 +452,15 @@ sub make_bundle {
 		mkdir("$tpath/extra");
 		chmod 0755,"$tpath/extra";
 		foreach(@{ $attribs->{extra} }){
-			copy($_->{src}, "$tpath/extra");
+			my $fromf = $_->{src};
+			print " $fromf\n";
+			if(-d $fromf ){
+				print "fromf is a directory";
+				mkpath("$tpath/extra/$fromf");
+				`cp -a $fromf/* $tpath/extra/$fromf/`;
+			}else{
+				copy($fromf, "$tpath/extra");
+			}
 		}
 	}
 
@@ -783,7 +791,6 @@ sub make_files {
 
 		my $netdir = "$installroot/netboot/$os/$arch/$profile";
 		mkpath("$netdir", {verbose => 1, mode => 0755 });
-
 		# save the old one off
 		foreach my $f ($kernel, $ramdisk, $rootimg){
 			if(-r "$netdir/$kernel"){
@@ -798,18 +805,66 @@ sub make_files {
 	if($data->{extra}){
 		# have to copy extras
 		print "copying extras...\n" if $::VERBOSE;
-		foreach(@{ $data->{extra} }) {
-			my $f = basename($_->{src});
-			my $dest = $_->{dest};
-			print "cp $imgdir/extra/$f $dest\n" if $::VERBOSE;
-			if(-r "$dest/$f"){
-				$callback->( {data => ["Moving old $dest/$f to $dest/$f.ORIG..."]}) if $::VERBOSE;
-				move("$dest/$f", "$dest/$f.ORIG");
+		#if its just a hash then there is only one entry.
+		if (ref($data->{extra}) eq 'HASH'){
+			my $ex = $data->{extra};
+			#my $f = basename($ex->{src});
+			my $ff = $ex->{src};
+			my $dest = $ex->{dest};
+			unless(moveExtra($callback, $ff, $dest, $imgdir)){
+				return 0;
 			}
-			copy("$imgdir/extra/$f", $dest);
+		# if its an array go through each item.
+		}else{
+			foreach(@{ $data->{extra} }) {
+				#my $f = basename($_->{src});
+				my $ff = $_->{src};
+				my $dest = $_->{dest};
+				unless(moveExtra($callback, $ff, $dest, $imgdir)){
+					return 0;
+				}
+			}
 		}
 	}
 
 	# return 1 meant everything was successful!	
+	return 1;
+}
+
+
+sub moveExtra {
+	my $callback = shift;
+	my $ff = shift;
+	my $dest = shift;
+	my $imgdir = shift; 
+	my $f = basename($ff);
+
+	if(-r "$dest/$f"){
+		$callback->( {data => ["Moving old $dest/$f to $dest/$f.ORIG..."]}) if $::VERBOSE;
+		move("$dest/$f", "$dest/$f.ORIG");
+	}
+	# this extra file is a directory, so we are moving the directory over.
+	print "Is $imgdir/extra/$ff a directory or a file?\n";
+	if(-d "$imgdir/extra/$ff"){
+		print "This is a directory\n";
+		unless(-d $dest){
+			unless(mkpath($dest)){
+				$callback->( {error=>["Failed to create $dest"], errorcode => 1});
+				return 0;
+			}
+		}
+		unless(move("$imgdir/extra/$ff", $dest)){
+			$callback->( {error=>["Failed to move $imgdir/extra/$ff to $dest"], errorcode => 1});
+			return 0;
+		}
+
+	}else{
+		print "This is a file\n";
+		# this extra file is a file and we can just copy to the destination.
+		unless(copy("$imgdir/extra/$f", $dest)){
+			$callback->( {error=>["Failed to copy $imgdir/extra/$f to $dest"], errorcode => 1});
+			return 0;
+		}
+	}
 	return 1;
 }
