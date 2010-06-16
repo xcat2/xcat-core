@@ -137,7 +137,7 @@ while :; do
     while ! nextdestiny ; do
         echo "Retrying next destiny..."
     done
-    reboot -f
+    /bin/rebootnode
   fi
   if [ "$DEST" == "runcmd" ]; then
     while ! nextdestiny ; do
@@ -146,7 +146,7 @@ while :; do
     $TARG
   fi
   if [ "$DESTINY" == "install" -o "$DESTINY" == "netboot" ]; then
-    reboot -f #If script is here, kexec failed, reboot in case it wasn't a linux kernel and let the boot loader handle it instead
+    /bin/rebootnode #If script is here, kexec failed, reboot in case it wasn't a linux kernel and let the boot loader handle it instead
     IMGSERVER=`grep imgserver /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
     INITRD=`grep initrd /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
     KERNEL=`grep kernel /tmp/destiny | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
@@ -166,7 +166,7 @@ while :; do
         rmmod $mod
     done
     #kexec -f --append="$KCMD" --initrd=/tmp/initrd /tmp/kernel
-    reboot -f #If script is here, kexec failed, reboot in case it wasn't a linux kernel and let the boot loader handle it instead
+    /bin/rebootnode #If script is here, kexec failed, reboot in case it wasn't a linux kernel and let the boot loader handle it instead
   fi
   if [ "$DEST" == "runimage" ]; then
     mkdir /tmp/`basename $TARG`
