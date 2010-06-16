@@ -714,7 +714,15 @@ sub process_request
         }
     }
 	my $nettab = xCAT::Table->new("networks");
-	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
+	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange');
+    foreach (@vnets) {
+        my $trange = $_->{dynamicrange}; #temp range, the dollar sign makes it look strange
+        $trange =~ s/[,-]/ /g;
+        my $begin;
+        my $end;
+       ($begin,$end) = split / /,$trange;
+       $dynamicranges{$trange}=[unpack("N*",inet_aton($begin)),unpack("N*",inet_aton($end))];
+    }
     if ($^O eq 'aix')
     {
         @nrn = xCAT::Utils::get_subnet_aix();
@@ -1160,16 +1168,11 @@ sub addnet
             }
             if ($ent and $ent->{dynamicrange})
             {
-                my $trange = $ent->{dynamicrange}; #temp range, the dollar sign makes it look strange
-                $trange =~ s/[,-]/ /g;
-                my $begin;
-                my $end;
-                ($begin,$end) = split / /,$trange;
-                $dynamicranges{$trange}=[unpack("N*",inet_aton($begin)),unpack("N*",inet_aton($end))];
                 unless ($ent->{dhcpserver}
                         and xCAT::Utils->thishostisnot($ent->{dhcpserver}))
                 {    #If specific, only one dhcp server gets a dynamic range
-                    $range = $trange;
+                    $range = $ent->{dynamicrange};
+                    $range =~ s/[,-]/ /g;
                 }
             }
             else
