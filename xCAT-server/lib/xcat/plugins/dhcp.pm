@@ -37,6 +37,22 @@ my $iscsients;
 my $chainents;
 my $tftpdir = xCAT::Utils->getTftpDir();
 my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf'; 
+my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
+
+sub ipIsDynamic {
+    my $ip = shift;
+    $number = inet_aton($ip);
+    unless ($number) { # shouldn't be possible, but pessimistically presume it dynamically if so
+        return 1;
+    }
+    $number = unpack("N*",$number);
+    foreach (values %dynamicranges) {
+        if ($_->[0] <= $number and $_->[1] >= $number) {
+            return 1;
+        } 
+    }
+    return 0; #it isn't in any of the dynamic ranges we are aware of
+}
 
 sub handled_commands
 {
@@ -315,7 +331,7 @@ sub addnode
             }
             else
             {
-                if ($ip) {
+                if ($ip and not ipIsDynamic($ip)) {
                     print $omshell "set ip-address = $ip\n";
                 }
                 if ($lstatements)
@@ -1144,11 +1160,16 @@ sub addnet
             }
             if ($ent and $ent->{dynamicrange})
             {
+                my $trange = $ent->{dynamicrange}; #temp range, the dollar sign makes it look strange
+                $trange =~ s/[,-]/ /g;
+                my $begin;
+                my $end;
+                ($begin,$end) = split / /,$trange;
+                %dynamicranges{$trange}=[unpack("N*",inet_aton($begin)),unpack("N*",inet_aton($end))];
                 unless ($ent->{dhcpserver}
                         and xCAT::Utils->thishostisnot($ent->{dhcpserver}))
                 {    #If specific, only one dhcp server gets a dynamic range
-                    $range = $ent->{dynamicrange};
-                    $range =~ s/[,-]/ /g;
+                    $range = $trange;
                 }
             }
             else
