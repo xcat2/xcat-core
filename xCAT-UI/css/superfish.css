@@ -1,0 +1,149 @@
+.sf-menu,.sf-menu * {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.sf-menu {
+	line-height: 1.0;
+}
+
+.sf-menu ul {
+	position: absolute;
+	top: -999em;
+	width: 10em; /* left offset of submenus need to match (see below) */
+}
+
+.sf-menu ul li {
+	width: 100%;
+}
+
+.sf-menu li {
+	float: left;
+	position: relative;
+}
+
+.sf-menu a {
+	display: block;
+	position: relative;
+}
+
+.sf-menu li:hover ul,.sf-menu li.sfHover ul {
+	left: 0;
+	top: 2.5em; /* match top ul list item height */
+	z-index: 99;
+}
+
+ul.sf-menu li:hover li ul,ul.sf-menu li.sfHover li ul {
+	top: -999em;
+}
+
+ul.sf-menu li li:hover ul,ul.sf-menu li li.sfHover ul {
+	left: 10em; /* match ul width */
+	top: 0;
+}
+
+ul.sf-menu li li:hover li ul,ul.sf-menu li li.sfHover li ul {
+	top: -999em;
+}
+
+ul.sf-menu li li li:hover ul,ul.sf-menu li li li.sfHover ul {
+	left: 10em; /* match ul width */
+	top: 0;
+}
+
+/****************** Skin ******************/
+.sf-menu {
+	float: left;
+	margin-bottom: .5em;
+	border: solid 1px #BDBDBD;
+	-moz-border-radius: .5em;
+	-webkit-border-radius: .5em;
+	font-size: 12px;
+	background: #E6E6E6 url(images/ui-bg_glass_75_e6e6e6_1x400.png) 50% 50%
+		repeat-x;
+}
+
+/*** Sub menu ***/
+.sf-menu .sf-menu {
+	float: left;
+	margin-bottom: .5em;
+	border: solid 1px #BDBDBD;
+	-moz-border-radius: .5em;
+	-webkit-border-radius: .5em;
+	font-size: 12px;
+}
+
+.sf-menu a {
+	padding: .3em 1em;
+	text-decoration: none;
+}
+
+.sf-menu a,.sf-menu a:visited {
+	color: #424242;
+}
+
+/*** Hover ***/
+.sf-menu li:hover,.sf-menu li.sfHover {
+	background: url(../images/header-gloss-wave.png) 50% 50% repeat-x;
+	outline: 0;
+}
+
+.sf-menu li a:hover {
+	color: #424242;
+}
+
+/*** Arrows ***/
+.sf-menu a.sf-with-ul {
+	padding-right: 2.25em;
+	min-width: 1px;
+}
+
+.sf-sub-indicator {
+	position: absolute;
+	display: block;
+	right: .75em;
+	top: 1.05em; /* IE6 only */
+	width: 10px;
+	height: 10px;
+	text-indent: -999em;
+	overflow: hidden;
+	background: url('../images/arrows-ffffff.png') no-repeat -10px -100px;
+}
+
+a>.sf-sub-indicator { /* give all except IE6 the correct values */
+	top: .8em;
+	background-position: 0 -100px;
+	/* Use translucent arrow for modern browsers */
+}
+
+/*** Apply hovers to modern browsers ***/
+a:focus>.sf-sub-indicator,a:hover>.sf-sub-indicator,a:active>.sf-sub-indicator,li:hover>a>.sf-sub-indicator,li.sfHover>a>.sf-sub-indicator
+	{
+	background-position: -10px -100px;
+	/* Arrow hovers for modern browsers */
+}
+
+/*** Point right for anchors in subs ***/
+.sf-menu ul .sf-sub-indicator {
+	background-position: -10px 0;
+}
+
+.sf-menu ul a>.sf-sub-indicator {
+	background-position: 0 0;
+}
+
+/*** Apply hovers to modern browsers ***/
+.sf-menu ul a:focus>.sf-sub-indicator,.sf-menu ul a:hover>.sf-sub-indicator,.sf-menu ul a:active>.sf-sub-indicator,.sf-menu ul li:hover>a>.sf-sub-indicator,.sf-menu ul li.sfHover>a>.sf-sub-indicator
+	{
+	background-position: -10px 0; /* Arrow hovers for modern browsers */
+}
+
+/*** Shadows ***/
+.sf-shadow ul {
+	padding: 0 9px 9px 0;
+}
+
+.sf-shadow ul.sf-shadow-off {
+	background: transparent;
+}

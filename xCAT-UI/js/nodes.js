@@ -1,0 +1,1831 @@
+/**
+ * Global variables
+ */
+var nodesTabs; // Node tabs
+var nodesDataTable; // Datatable containing all nodes within a group
+
+/**
+ * Set the nodes tab
+ * 
+ * @param obj
+ *            Tab object
+ * @return Nothing
+ */
+function setNodesTab(obj) {
+	nodesTabs = obj;
+}
+
+/**
+ * Get the nodes tab
+ * 
+ * @param Nothing
+ * @return Tab object
+ */
+function getNodesTab() {
+	return nodesTabs;
+}
+
+/**
+ * Get the nodes datatable
+ * 
+ * @param Nothing
+ * @return Data table object
+ */
+function getNodesDataTable() {
+	return nodesDataTable;
+}
+
+/**
+ * Set the nodes datatable
+ * 
+ * @param table
+ *            Data table object
+ * @return Nothing
+ */
+function setNodesDataTable(table) {
+	nodesDataTable = table;
+}
+
+/**
+ * Load nodes page
+ * 
+ * @return Nothing
+ */
+function loadNodesPage() {
+	// If groups are not already loaded
+	if (!$('#groups').length) {
+		// Create a groups division
+		groupDIV = $('<div id="groups"></div>');
+		nodesDIV = $('<div id="nodes"></div>');
+		$('#nodes_page').append(groupDIV);
+		$('#nodes_page').append(nodesDIV);
+
+		// Create info bar
+		var info = createInfoBar('Select a group to view its nodes');
+		$('#nodes').append(info);
+
+		// Get groups
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'extnoderange',
+				tgt : '/.*',
+				args : 'subgroups',
+				msg : ''
+			},
+
+			success : loadGroups
+		});
+	}
+}
+
+/**
+ * Load groups
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return
+ */
+function loadGroups(data) {
+	var groups = data.rsp;
+	setGroupsCookies(data);
+
+	// Create a list of groups
+	var ul = $('<ul></ul>');
+	var item = $('<li><ins></ins><h3>Groups</h3></li>');
+	ul.append(item);
+	var subUL = $('<ul></ul>');
+	item.append(subUL);
+
+	// Create a link for each group
+	for ( var i = groups.length; i--;) {
+		var subItem = $('<li></li>');
+		var link = $('<a href="#"><ins></ins>' + groups[i] + '</a>');
+
+		subItem.append(link);
+		subUL.append(subItem);
+	}
+
+	// Turn groups list into a tree
+	$('#groups').append(ul);
+	$('#groups').tree( {
+		callback : {
+			// Open the group onclick
+		onselect : function(node, tree) {
+			var thisGroup = tree.get_text(node);
+			if (thisGroup) {
+				// Clear the nodes DIV
+				$('#nodes').children().remove();
+				// Create loader
+				var loader = $('<center></center>').append(createLoader());
+
+				// Create a tab for this group
+				var tab = new Tab();
+				setNodesTab(tab);
+				tab.init();
+				$('#nodes').append(tab.object());
+				tab.add('nodesTab', 'Nodes', loader);
+
+				// Get nodes within selected group
+				$.ajax( {
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'lsdef',
+						tgt : '',
+						args : thisGroup,
+						msg : thisGroup
+					},
+
+					success : loadNodes
+				});
+			} // End of if (thisGroup)
+		} // End of onselect
+	}
+// End of callback
+}   );
+}
+
+/**
+ * Load nodes belonging to a given group
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function loadNodes(data) {
+	// Data returned
+	var rsp = data.rsp;
+	// Group name
+	var group = data.msg;
+	// Node attributes hash
+	var attrs = new Object();
+	// Node attributes
+	var headers = new Object();
+
+	var node;
+	var args;
+	for ( var i in rsp) {
+		// Get the node
+		var pos = rsp[i].indexOf('Object name:');
+		if (pos > -1) {
+			var temp = rsp[i].split(': ');
+			node = jQuery.trim(temp[1]);
+
+			// Create a hash for the node attributes
+			attrs[node] = new Object();
+			i++;
+		}
+
+		// Get key and value
+		args = rsp[i].split('=');
+		var key = jQuery.trim(args[0]);
+		var val = jQuery.trim(args[1]);
+
+		// Create a hash table
+		attrs[node][key] = val;
+		headers[key] = 1;
+	}
+
+	// Sort headers
+	var sorted = new Array();
+	for ( var key in headers) {
+		sorted.push(key);
+	}
+	sorted.sort();
+
+	// Add column for check box, node, ping, and power
+	sorted.unshift('', 'node', 'ping', 'power');
+
+	// Create a datatable
+	var dTable = new DataTable('nodesDataTable');
+	dTable.init(sorted);
+
+	// Go through each node
+	for ( var node in attrs) {
+		// Create a row
+		var row = new Array();
+		// Create a check box
+		var checkBx = '<input type="checkbox" name="' + node + '"/>';
+		// Open node onclick
+		var nodeLink = $(
+			'<a class="node" id="' + node + '" href="#">' + node + '</a>')
+			.bind('click', loadNode);
+		row.push(checkBx, nodeLink, '', '');
+
+		// Go through each header
+		for ( var i = 4; i < sorted.length; i++) {
+			// Add the node attributes to the row
+			var key = sorted[i];
+			var val = attrs[node][key];
+			if (val) {
+				row.push(val);
+			} else {
+				row.push('');
+			}
+		}
+
+		// Add the row to the table
+		dTable.add(row);
+	}
+
+	// Clear the tab before inserting the table
+	$('#nodesTab').children().remove();
+
+	// Create action buttons
+	var actionBar = $('<div class="actionBar"></div>');
+
+	/**
+	 * The following actions are available to perform against a given node:
+	 * power, clone, delete, unlock, and advanced
+	 */
+
+	/*
+	 * Power
+	 */
+	var powerLnk = $('<a href="#">Power</a>');
+
+	/*
+	 * Power on
+	 */
+	var powerOnLnk = $('<a href="#">Power on</a>');
+	powerOnLnk.bind('click', function(event) {
+		var tgtNodes = '';
+
+		// Get node that was checked
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			tgtNodes += nodes.eq(i).attr('name');
+
+			// Add a comma in front of each node
+		if (i < nodes.length - 1) {
+			tgtNodes += ',';
+		}
+	}
+
+	if (tgtNodes) {
+		powerNode(tgtNodes, 'on');
+	}
+}   );
+
+	/*
+	 * Power off
+	 */
+	var powerOffLnk = $('<a href="#">Power off</a>');
+	powerOffLnk.bind('click', function(event) {
+		var tgtNodes = '';
+
+		// Get node that was checked
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			tgtNodes += nodes.eq(i).attr('name');
+
+			// Add a comma in front of each node
+		if (i < nodes.length - 1) {
+			tgtNodes += ',';
+		}
+	}
+
+	if (tgtNodes) {
+		powerNode(tgtNodes, 'off');
+	}
+}   );
+
+	/*
+	 * Clone
+	 */
+	var cloneLnk = $('<a href="#">Clone</a>');
+	cloneLnk.bind('click', function(event) {
+		// Get node that was checked
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			var node = nodes.eq(i).attr('name');
+
+			// Load clone page
+		if (node) {
+			var mgt = getNodeMgt(node);
+			if (mgt == 'zvm') {
+				loadZClonePage(node);
+			} else {
+				// TODO: Add clone for other platforms
+			}
+		}
+	}
+}   );
+
+	/*
+	 * Delete
+	 */
+	var deleteLnk = $('<a href="#">Delete</a>');
+	deleteLnk.bind('click', function(event) {
+		var tgtNodes = '';
+
+		// Get node that was checked
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			tgtNodes += nodes.eq(i).attr('name');
+
+			// Add a comma in front of each node
+		if (i < nodes.length - 1) {
+			tgtNodes += ',';
+		}
+	}
+
+	// Load delete page
+	if (tgtNodes) {
+		deleteNode(tgtNodes);
+	}
+}   );
+
+	/*
+	 * Unlock
+	 */
+	var unlockLnk = $('<a href="#">Unlock</a>');
+	unlockLnk.bind('click', function(event) {
+		var tgtNodes = '';
+
+		// Get node that was checked
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			tgtNodes += nodes.eq(i).attr('name');
+
+			// Add a comma in front of each node
+		if (i < nodes.length - 1) {
+			tgtNodes += ',';
+		}
+	}
+
+	// Load unlock page
+	if (tgtNodes) {
+		loadUnlockPage(tgtNodes);
+	}
+}   );
+
+	/*
+	 * Run script
+	 */
+	var scriptLnk = $('<a href="#">Run script</a>');
+	scriptLnk.bind('click', function(event) {
+		// Get node that was checked
+		var tgtNodes = '';
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			tgtNodes += nodes.eq(i).attr('name');
+
+			// Add a comma in front of each node
+		if (i < nodes.length - 1) {
+			tgtNodes += ',';
+		}
+	}
+
+	// Load script page
+	if (tgtNodes) {
+		loadScriptPage(tgtNodes);
+	}
+}   );
+
+	/*
+	 * Update node
+	 */
+	var updateLnk = $('<a href="#">Update</a>');
+	updateLnk.bind('click', function(event) {
+		// Get node that was checked
+		var tgtNodes = '';
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			tgtNodes += nodes.eq(i).attr('name');
+
+			// Add a comma in front of each node
+		if (i < nodes.length - 1) {
+			tgtNodes += ',';
+		}
+	}
+
+	// TODO: Load update page
+	if (tgtNodes) {
+
+	}
+}   );
+
+	/*
+	 * Set boot state
+	 */
+	var setBootStateLnk = $('<a href="#">Set boot state</a>');
+	setBootStateLnk.bind('click', function(event) {
+		// Get node that was checked
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			// Get node that was checked
+		var tgtNodes = '';
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			tgtNodes += nodes.eq(i).attr('name');
+
+			// Add a comma in front of each node
+			if (i < nodes.length - 1) {
+				tgtNodes += ',';
+			}
+		}
+
+		// Load nodeset page
+		if (tgtNodes) {
+			loadNodesetPage(tgtNodes);
+		}
+	}
+}   );
+
+	/*
+	 * Boot to network
+	 */
+	var boot2NetworkLnk = $('<a href="#">Boot to network</a>');
+	boot2NetworkLnk.bind('click', function(event) {
+		// Get node that was checked
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			// Get node that was checked
+		var mgt;
+		var tgtNodes = '';
+		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+		for ( var i = 0; i < nodes.length; i++) {
+			tgtNodes += nodes.eq(i).attr('name');
+
+			// Add a comma in front of each node
+			if (i < nodes.length - 1) {
+				tgtNodes += ',';
+			}
+
+			var node = nodes.eq(i).attr('name');
+			mgt = getNodeMgt(node);
+		}
+
+		// Load nodeset page
+		if (tgtNodes) {
+			if (mgt == 'zvm') {
+				loadZNetbootPage(tgtNodes);
+			} else {
+				// TODO: Add boot to network for other platforms
+			}
+		}
+	}
+}   );
+
+	/*
+	 * Advanced
+	 */
+	var advancedLnk = $('<a href="#">Advanced</a>');
+
+	// Power actions
+	var powerActions = [ powerOnLnk, powerOffLnk ];
+	var powerActionMenu = createMenu(powerActions);
+
+	// Advanced actions
+	var advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk,
+		updateLnk ];
+	var advancedActionMenu = createMenu(advancedActions);
+
+	/**
+	 * Create an action menu
+	 */
+	var actionsDIV = $('<div></div>');
+	var actions = [ [ powerLnk, powerActionMenu ], cloneLnk, deleteLnk,
+		unlockLnk, [ advancedLnk, advancedActionMenu ] ];
+	var actionMenu = createMenu(actions);
+	actionMenu.superfish();
+	actionsDIV.append(actionMenu);
+	actionBar.append(actionsDIV);
+
+	/*
+	 * Select all or none
+	 */
+	var selectDIV = $('<div></div>');
+	actionBar.append(selectDIV);
+
+	var selectLabel = $('<span>Select: </span>');
+	var selectAllLnk = $('<span><a href="#">All</a></span>');
+	selectAllLnk.bind('click', function(event) {
+		// Check all nodes
+		var nodes = $('#nodesDataTable input[type=checkbox]');
+		nodes.attr('checked', true);
+	});
+
+	var selectNoneLnk = $('<span><a href="#">None</a></span>');
+	selectNoneLnk.bind('click', function(event) {
+		// Check no nodes
+		var nodes = $('#nodesDataTable input[type=checkbox]');
+		nodes.attr('checked', false);
+	});
+
+	selectDIV.append(selectLabel);
+	selectDIV.append(selectAllLnk);
+	selectDIV.append(selectNoneLnk);
+
+	$('#nodesTab').append(actionBar);
+
+	// Insert table
+	$('#nodesTab').append(dTable.object());
+
+	// Turn table into a datatable
+	var myDataTable = $('#nodesDataTable').dataTable();
+	setNodesDataTable(myDataTable);
+
+	/**
+	 * Get power and ping status for each node
+	 */
+
+	// Get the power status
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'rpower',
+			tgt : group,
+			args : 'stat',
+			msg : ''
+		},
+
+		success : loadPowerStatus
+	});
+
+	// Get the ping status
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'pping ' + group,
+			msg : ''
+		},
+
+		success : loadPingStatus
+	});
+
+	/**
+	 * Only for zVM
+	 */
+
+	// Get the index of the HCP column
+	var i = $.inArray('hcp', sorted);
+	if (i) {
+		var rows = dTable.object().find('tbody tr');
+
+		// Get HCP
+		var hcps = new Object();
+		for ( var j = 0; j < rows.length; j++) {
+			var val = rows.eq(j).find('td').eq(i).html();
+			hcps[val] = 1;
+		}
+
+		var args;
+		for ( var h in hcps) {
+			// Get node without domain name
+			args = h.split('.');
+
+			// Get disk pools
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'lsvm',
+					tgt : args[0],
+					args : '--diskpoolnames',
+					msg : args[0]
+				},
+
+				success : setDiskPoolCookies
+			});
+
+			// Get network names
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'lsvm',
+					tgt : args[0],
+					args : '--getnetworknames',
+					msg : args[0]
+				},
+
+				success : setNetworkCookies
+			});
+		}
+	}
+}
+
+/**
+ * Load the power status for each node
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function loadPowerStatus(data) {
+	// Get datatable
+	var dTable = getNodesDataTable();
+
+	// Power state of each node
+	// where power[0] = nodeName and power[1] = state
+	var power = data.rsp;
+
+	var row, rowPos;
+	var node, nodeLink;
+	var status, statusLink;
+	var args;
+
+	// Get all nodes within the datatable
+	var rows = dTable.fnGetNodes();
+
+	for ( var i in power) {
+		args = power[i].split(':');
+
+		// Update the power status column
+		node = jQuery.trim(args[0]);
+		status = jQuery.trim(args[1]);
+
+		// Get the row containing the node
+		row = getNodeRow(node, rows);
+		rowPos = dTable.fnGetPosition(row);
+		dTable.fnUpdate(status, rowPos, 3);
+	}
+}
+
+/**
+ * Load the ping status for each node
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function loadPingStatus(data) {
+	// Get data table
+	var dTable = getNodesDataTable();
+
+	// Power state of each node
+	// where ping[0] = nodeName ping[1] = state
+	var ping = data.rsp;
+
+	var row, rowPos;
+	var node, nodeLink;
+	var status, statusLink;
+	var args;
+
+	// Get all nodes within the datatable
+	var rows = dTable.fnGetNodes();
+	for ( var i in ping) {
+		args = ping[i][0];
+
+		// Update the power status column
+		node = jQuery.trim(ping[i][0]);
+		status = jQuery.trim(ping[i][1]);
+
+		// Get the row containing the node
+		row = getNodeRow(node, rows);
+		rowPos = dTable.fnGetPosition(row);
+
+		// Update the power status column
+		status = jQuery.trim(ping[i][1]);
+		dTable.fnUpdate(status, rowPos, 2);
+	}
+}
+
+/**
+ * Load inventory for given node
+ * 
+ * @param e
+ *            Windows event
+ * @return Nothing
+ */
+function loadNode(e) {
+	if (!e) {
+		e = window.event;
+	}
+
+	// Get node that was clicked
+	var node = (e.target) ? e.target.id : e.srcElement.id;
+	var mgt = getNodeMgt(node);
+
+	// Get tab area where a new tab will be inserted
+	var myTab = getNodesTab();
+	var newTabId = node + 'Tab';
+
+	/**
+	 * Only for zVM
+	 */
+	if (mgt == 'zvm') {
+		// Reset node process
+		$.cookie(node + 'Processes', 0);
+
+		// Add new tab, only if one does not exist
+		if (!$('#' + newTabId).length) {
+			var loader = createLoader(node + 'TabLoader');
+			loader = $('<center></center>').append(loader);
+			myTab.add(newTabId, node, loader);
+
+			// Get node inventory
+			var msg = 'out=' + newTabId + ',node=' + node;
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'rinv',
+					tgt : node,
+					args : 'all',
+					msg : msg
+				},
+
+				success : loadZInventory
+			});
+		}
+	} else {
+		// Add new tab, only if one does not exist
+		if (!$('#' + newTabId).length) {
+			var p = $('<p>No supported</p>');
+			myTab.add(newTabId, node, p);
+
+			// TODO: Add inventory for other platforms
+		}
+	}
+
+	// Select new tab
+	myTab.select(newTabId);
+}
+
+/**
+ * Unlock a node by exchanging the SSH keys between the xCAT MN and the target
+ * node
+ * 
+ * @param tgtNodes
+ *            Nodes to unlock
+ * @return Nothing
+ */
+function loadUnlockPage(tgtNodes) {
+	// Get nodes tab
+	var tab = getNodesTab();
+
+	// Generate new tab ID
+	var instance = 0;
+	var newTabId = 'UnlockTab' + instance;
+	while ($('#' + newTabId).length) {
+		// If one already exists, generate another one
+		instance = instance + 1;
+		newTabId = 'UnlockTab' + instance;
+	}
+
+	var unlockForm = $('<div class="form"></div>');
+
+	// Create status bar, hide on load
+	var statBarId = 'UnlockStatusBar' + instance;
+	var statusBar = createStatusBar(statBarId).hide();
+	unlockForm.append(statusBar);
+
+	// Create loader
+	var loader = createLoader('');
+	statusBar.append(loader);
+
+	// Create info bar
+	var infoBar = createInfoBar('Give the root password for this node range to exchange its SSH keys');
+	unlockForm.append(infoBar);
+
+	unlockForm
+		.append('<div><label>Node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '"/></div>');
+	unlockForm
+		.append('<div><label>Password:</label><input type="password" id="password" name="password"/></div>');
+
+	/**
+	 * Ok
+	 */
+	var okBtn = createButton('Ok');
+	okBtn.bind('click', function(event) {
+		// If the form is complete
+		var ready = formComplete(newTabId);
+		if (ready) {
+			var password = $('#' + newTabId + ' input[name=password]').val();
+
+			// Exchange SSH keys
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'webrun',
+				tgt : '',
+				args : 'unlock;' + tgtNodes + ';' + password,
+				msg : 'out=' + statBarId + ';cmd=unlock;tgt=' + tgtNodes
+			},
+
+			success : updateStatusBar
+		});
+
+		// Show status bar
+		statusBar.show();
+
+		// Stop this function from executing again
+		// Unbind event
+		$(this).unbind(event);
+		$(this).css( {
+			'background-color' : '#F2F2F2',
+			'color' : '#BDBDBD'
+		});
+	}
+}   );
+
+	unlockForm.append(okBtn);
+	tab.add(newTabId, 'Unlock', unlockForm);
+	tab.select(newTabId);
+}
+
+/**
+ * Load script page
+ * 
+ * @param tgtNodes
+ *            Targets to run script against
+ * @return Nothing
+ */
+function loadScriptPage(tgtNodes) {
+	// Get nodes tab
+	var tab = getNodesTab();
+
+	// Generate new tab ID
+	var inst = 0;
+	var newTabId = 'scriptTab' + inst;
+	while ($('#' + newTabId).length) {
+		// If one already exists, generate another one
+		inst = inst + 1;
+		newTabId = 'scriptTab' + inst;
+	}
+
+	// Open new tab
+	// Create remote script form
+	var scriptForm = $('<div class="form"></div>');
+
+	// Create status bar
+	var barId = 'scriptStatusBar' + inst;
+	var statBar = createStatusBar(barId);
+	statBar.hide();
+	scriptForm.append(statBar);
+
+	// Create loader
+	var loader = createLoader('scriptLoader');
+	statBar.append(loader);
+
+	// Create info bar
+	var infoBar = createInfoBar('Run a script against this node range');
+	scriptForm.append(infoBar);
+
+	// Target node or group
+	var tgt = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
+	scriptForm.append(tgt);
+
+	// Upload file
+	var upload = $('<form action="lib/upload.php" method="post" enctype="multipart/form-data"></form>');
+	var label = $('<label for="file">Remote file:</label>');
+	var file = $('<input type="file" name="file" id="file"/>');
+	var subBtn = createButton('Load');
+	upload.append(label);
+	upload.append(file);
+	upload.append(subBtn);
+	scriptForm.append(upload);
+
+	// Script
+	var script = $('<div><label>Script:</label><textarea/>');
+	scriptForm.append(script);
+
+	// Ajax form options
+	var options = {
+		// Output to text area
+		target : '#' + newTabId + ' textarea'
+	};
+	upload.ajaxForm(options);
+
+	/**
+	 * Run
+	 */
+	var runBtn = createButton('Run');
+	runBtn.bind('click', function(event) {
+		var ready = true;
+
+		// Check script
+		var textarea = $('#' + newTabId + ' textarea');
+		for ( var i = 0; i < textarea.length; i++) {
+			if (!textarea.eq(i).val()) {
+				textarea.eq(i).css('border', 'solid #FF0000 1px');
+				ready = false;
+			} else {
+				textarea.eq(i).css('border', 'solid #424242 1px');
+			}
+		}
+
+		// If no inputs are empty
+		if (ready) {
+			// Run script
+			runScript(inst);
+
+			// Stop this function from executing again
+			// Unbind event
+			$(this).unbind(event);
+			$(this).css( {
+				'background-color' : '#F2F2F2',
+				'color' : '#424242'
+			});
+
+			// Show status bar
+			statBar.show();
+		} else {
+			alert('You are missing some values');
+		}
+	});
+	scriptForm.append(runBtn);
+
+	// Append to discover tab
+	tab.add(newTabId, 'Script', scriptForm);
+
+	// Select new tab
+	tab.select(newTabId);
+}
+
+/**
+ * Load nodeset page
+ * 
+ * @param trgtNodes
+ *            Targets to run nodeset against
+ * @return Nothing
+ */
+function loadNodesetPage(trgtNodes) {
+	// Get the OS images
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'tabdump',
+			tgt : '',
+			args : 'osimage',
+			msg : ''
+		},
+
+		success : setOSImageCookies
+	});
+
+	// Get nodes tab
+	var tab = getNodesTab();
+
+	// Generate new tab ID
+	var inst = 0;
+	var tabId = 'nodesetTab' + inst;
+	while ($('#' + tabId).length) {
+		// If one already exists, generate another one
+		inst = inst + 1;
+		tabId = 'nodesetTab' + inst;
+	}
+
+	// Open new tab
+	// Create nodeset form
+	var nodesetForm = $('<div class="form"></div>');
+
+	// Create status bar
+	var barId = 'nodesetStatusBar' + inst;
+	var statusBar = createStatusBar(barId);
+	statusBar.hide();
+	nodesetForm.append(statusBar);
+
+	// Create loader
+	var loader = createLoader('nodesetLoader');
+	statusBar.append(loader);
+
+	// Create info bar
+	var infoBar = createInfoBar('Set the boot state for a node range');
+	nodesetForm.append(infoBar);
+
+	// Target node or group
+	var tgt = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + trgtNodes + '"/></div>');
+	nodesetForm.append(tgt);
+
+	// Boot method (boot, install, stat, iscsiboot, netboot, statelite)
+	var method = $('<div></div>');
+	var methodLabel = $('<label for="method">Boot method:</label>');
+	var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
+	methodSelect.append('<option value="boot">boot</option>');
+	methodSelect.append('<option value="install">install</option>');
+	methodSelect.append('<option value="iscsiboot">iscsiboot</option>');
+	methodSelect.append('<option value="netboot">netboot</option>');
+	methodSelect.append('<option value="statelite">statelite</option>');
+	method.append(methodLabel);
+	method.append(methodSelect);
+	nodesetForm.append(method);
+
+	// Boot type (zvm, pxe, yaboot)
+	var type = $('<div></div>');
+	var typeLabel = $('<label for="type">Boot type:</label>');
+	var typeSelect = $('<select id="bootType" name="bootType"></select>');
+	typeSelect.append('<option value="zvm">zvm</option>');
+	typeSelect.append('<option value="install">pxe</option>');
+	typeSelect.append('<option value="iscsiboot">yaboot</option>');
+	type.append(typeLabel);
+	type.append(typeSelect);
+	nodesetForm.append(type);
+
+	// Operating system
+	var os = $('<div></div>');
+	var osLabel = $('<label for="os">Operating system:</label>');
+	var osInput = $('<input type="text" name="os"/>');
+
+	// Get the OS versions on-focus
+	var tmp;
+	osInput.focus(function() {
+		tmp = $.cookie('OSVers');
+
+		// If there are any, turn on auto-complete
+		if (tmp) {
+			$(this).autocomplete(tmp.split(','));
+		}
+	});
+	os.append(osLabel);
+	os.append(osInput);
+	nodesetForm.append(os);
+
+	// Architecture
+	var arch = $('<div></div>');
+	var archLabel = $('<label for="arch">Architecture:</label>');
+	var archInput = $('<input type="text" name="arch"/>');
+
+	// Get the OS architectures on-focus
+	archInput.focus(function() {
+		tmp = $.cookie('OSArchs');
+
+		// If there are any, turn on auto-complete
+		if (tmp) {
+			$(this).autocomplete(tmp.split(','));
+		}
+	});
+	arch.append(archLabel);
+	arch.append(archInput);
+	nodesetForm.append(arch);
+
+	// Profiles
+	var profile = $('<div></div>');
+	var profileLabel = $('<label for="profile">Profile:</label>');
+	var profileInput = $('<input type="text" name="profile"/>');
+
+	// Get the profiles on-focus
+	profileInput.focus(function() {
+		tmp = $.cookie('Profiles');
+
+		// If there are any, turn on auto-complete
+		if (tmp) {
+			$(this).autocomplete(tmp.split(','));
+		}
+	});
+	profile.append(profileLabel);
+	profile.append(profileInput);
+	nodesetForm.append(profile);
+
+	/**
+	 * Ok
+	 */
+	var okBtn = createButton('Ok');
+	okBtn.bind('click', function(event) {
+		var ready = true;
+
+		// Check state, OS, arch, and profile
+		var inputs = $('#' + tabId + ' input');
+		for ( var i = 0; i < inputs.length; i++) {
+			if (!inputs.eq(i).val() && inputs.eq(i).attr('name') != 'diskPw') {
+				inputs.eq(i).css('border', 'solid #FF0000 1px');
+				ready = false;
+			} else {
+				inputs.eq(i).css('border', 'solid #BDBDBD 1px');
+			}
+		}
+
+		// If no inputs are empty
+		if (ready) {
+			// Get nodes
+			var tgts = $('#' + tabId + ' input[name=target]').val();
+
+			// Get boot method
+			var method = $('#' + tabId + ' select[id=bootMethod]').val();
+
+			// Get boot type
+			var type = $('#' + tabId + ' select[id=bootType]').val();
+
+			// Get OS, arch, and profile
+			var os = $('#' + tabId + ' input[name=os]').val();
+			var arch = $('#' + tabId + ' input[name=arch]').val();
+			var profile = $('#' + tabId + ' input[name=profile]').val();
+
+			// Stop this function from executing again
+			// Unbind event
+			$(this).unbind(event);
+			$(this).css( {
+				'background-color' : '#F2F2F2',
+				'color' : '#424242'
+			});
+
+			/**
+			 * 1. Set the OS, arch, and profile
+			 */
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'nodeadd',
+					tgt : '',
+					args : tgts + ';noderes.netboot=' + type + ';nodetype.os='
+						+ os + ';nodetype.arch=' + arch + ';nodetype.profile='
+						+ profile,
+					msg : 'cmd=nodeadd;inst=' + inst
+				},
+
+				success : updateNodesetStatus
+			});
+
+			// Show status bar
+			statusBar.show();
+		} else {
+			alert('You are missing some values');
+		}
+	});
+	nodesetForm.append(okBtn);
+
+	// Append to discover tab
+	tab.add(tabId, 'Nodeset', nodesetForm);
+
+	// Select new tab
+	tab.select(tabId);
+}
+
+/**
+ * Sort a list
+ * 
+ * @return Sorted list
+ */
+jQuery.fn.sort = function() {
+	return this.pushStack( [].sort.apply(this, arguments), []);
+};
+
+function sortAlpha(a, b) {
+	return a.innerHTML > b.innerHTML ? 1 : -1;
+};
+
+/**
+ * Power on a given node
+ * 
+ * @param node
+ *            Node to power on or off
+ * @param power2
+ *            Power node to given state
+ * @return Nothing
+ */
+function powerNode(node, power2) {
+	node = node.replace('Power', '');
+
+	// Power on/off node
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'rpower',
+			tgt : node,
+			args : power2,
+			msg : node
+		},
+
+		success : updatePowerStatus
+	});
+}
+
+/**
+ * Delete a given node
+ * 
+ * @param tgtNodes
+ *            Nodes to delete
+ * @return Nothing
+ */
+function deleteNode(tgtNodes) {
+	// Get datatable
+	var myTab = getNodesTab();
+
+	// Generate new tab ID
+	var inst = 0;
+	newTabId = 'DeleteTab' + inst;
+	while ($('#' + newTabId).length) {
+		// If one already exists, generate another one
+		inst = inst + 1;
+		newTabId = 'DeleteTab' + inst;
+	}
+
+	// Create status bar, hide on load
+	var statBarId = 'DeleteStatusBar' + inst;
+	var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>')
+		.hide();
+
+	// Create loader
+	var loader = createLoader('');
+	statBar.append(loader);
+	statBar.hide();
+
+	// Create target nodes string
+	var tgtNodesStr = '';
+	var nodes = tgtNodes.split(',');
+	// Loop through each node
+	for ( var i in nodes) {
+		// If it is the 1st and only node
+		if (i == 0 && i == nodes.length - 1) {
+			tgtNodesStr += nodes[i];
+		}
+		// If it is the 1st node of many nodes
+		else if (i == 0 && i != nodes.length - 1) {
+			// Append a comma to the string
+			tgtNodesStr += nodes[i] + ', ';
+		} else {
+			// If it is the last node
+			if (i == nodes.length - 1) {
+				// Append nothing to the string
+				tgtNodesStr += nodes[i];
+			} else {
+				// For every 10 nodes, append a break
+				if ((i % 10) > 0) {
+					tgtNodesStr += nodes[i] + ', ';
+				} else {
+					tgtNodesStr += nodes[i] + ', <br>';
+				}
+			}
+		}
+	}
+
+	var deleteForm = $('<div class="form"></div>');
+	deleteForm.append(statBar);
+	deleteForm.append('<p>Do you want to delete ' + tgtNodesStr + '?</p>');
+
+	/**
+	 * Delete
+	 */
+	var deleteBtn = createButton('Delete');
+	deleteBtn.bind('click', function(event) {
+		// Delete the virtual server
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'rmvm',
+				tgt : tgtNodes,
+				args : '',
+				msg : 'out=' + statBarId + ';cmd=rmvm;tgt=' + tgtNodes
+			},
+
+			success : updateStatusBar
+		});
+
+		// Show status bar loader
+		statBar.show();
+
+		// Stop this function from executing again
+		// Unbind event
+		$(this).unbind(event);
+		$(this).css( {
+			'background-color' : '#F2F2F2',
+			'color' : '#BDBDBD'
+		});
+	});
+
+	deleteForm.append(deleteBtn);
+	myTab.add(newTabId, 'Delete', deleteForm);
+
+	myTab.select(newTabId);
+}
+
+/**
+ * Update nodeset status
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function updateNodesetStatus(data) {
+	var rsp = data.rsp;
+	var args = data.msg.split(';');
+	var cmd = args[0].replace('cmd=', '');
+
+	// Get nodeset instance
+	var inst = args[1].replace('inst=', '');
+	var statBarId = 'nodesetStatusBar' + inst;
+	var tabId = 'nodesetTab' + inst;
+
+	// Get nodes
+	var tgts = $('#' + tabId + ' input[name=target]').val();
+
+	// Get boot method
+	var method = $('#' + tabId + ' select[id=bootMethod]').val();
+
+	/**
+	 * 2. Update /etc/hosts
+	 */
+	if (cmd == 'nodeadd') {
+		// If no output, no errors occurred
+		if (rsp.length) {
+			$('#' + statBarId).append(
+				'<p>(Error) Failed to create node definition</p>');
+		} else {
+			// Create target nodes string
+			var tgtNodesStr = '';
+			var nodes = tgts.split(',');
+			// Loop through each node
+			for ( var i in nodes) {
+				// If it is the 1st and only node
+				if (i == 0 && i == nodes.length - 1) {
+					tgtNodesStr += nodes[i];
+				}
+				// If it is the 1st node of many nodes
+				else if (i == 0 && i != nodes.length - 1) {
+					// Append a comma to the string
+					tgtNodesStr += nodes[i] + ', ';
+				} else {
+					// If it is the last node
+					if (i == nodes.length - 1) {
+						// Append nothing to the string
+						tgtNodesStr += nodes[i];
+					} else {
+						// For every 10 nodes, append a break
+						if ((i % 10) > 0) {
+							tgtNodesStr += nodes[i] + ', ';
+						} else {
+							tgtNodesStr += nodes[i] + ', <br>';
+						}
+					}
+				}
+			}
+
+			$('#' + statBarId).append(
+				'<p>Node definition created for ' + tgtNodesStr + '</p>');
+		}
+
+		// Update /etc/hosts
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'makehosts',
+				tgt : '',
+				args : '',
+				msg : 'cmd=makehosts;inst=' + inst
+			},
+
+			success : updateNodesetStatus
+		});
+	}
+
+	/**
+	 * 4. Update DNS
+	 */
+	else if (cmd == 'makehosts') {
+		// If no output, no errors occurred
+		if (rsp.length) {
+			$('#' + statBarId).append(
+				'<p>(Error) Failed to update /etc/hosts</p>');
+		} else {
+			$('#' + statBarId).append('<p>/etc/hosts updated</p>');
+		}
+
+		// Update DNS
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'makedns',
+				tgt : '',
+				args : '',
+				msg : 'cmd=makedns;inst=' + inst
+			},
+
+			success : updateNodesetStatus
+		});
+	}
+
+	/**
+	 * 5. Update DHCP
+	 */
+	else if (cmd == 'makedns') {
+		// Separate output into lines
+		var p = $('<p></p>');
+		for ( var i = 0; i < rsp.length; i++) {
+			if (rsp[i]) {
+				p.append(rsp[i]);
+				p.append('<br>');
+			}
+		}
+
+		$('#' + statBarId).append(p);
+
+		// Update DHCP
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'makedhcp',
+				tgt : '',
+				args : '-a',
+				msg : 'cmd=makedhcp;inst=' + inst
+			},
+
+			success : updateNodesetStatus
+		});
+	}
+
+	/**
+	 * 6. Prepare node for boot
+	 */
+	else if (cmd == 'makedhcp') {
+		var failed = false;
+
+		// Separate output into lines
+		var p = $('<p></p>');
+		for ( var i = 0; i < rsp.length; i++) {
+			if (rsp[i]) {
+				// Find the node name and insert a break before it
+				rsp[i] = rsp[i].replace(new RegExp(node + ': ', 'g'), '<br>');
+
+				p.append(rsp[i]);
+				p.append('<br>');
+
+				// If the call failed
+				if (rsp[i].indexOf('Failed') > -1
+					|| rsp[i].indexOf('Error') > -1) {
+					failed = true;
+				}
+			}
+		}
+
+		$('#' + statBarId).append(p);
+
+		// Prepare node for boot
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'nodeset',
+				tgt : tgts,
+				args : method,
+				msg : 'cmd=nodeset;inst=' + inst
+			},
+
+			success : updateNodesetStatus
+		});
+	}
+
+	/**
+	 * 7. Boot node from network
+	 */
+	else if (cmd == 'nodeset') {
+		var tgtsArray = tgts.split(',');
+
+		// Separate output into lines
+		var p = $('<p></p>');
+		for ( var i = 0; i < rsp.length; i++) {
+			if (rsp[i]) {
+				// Find the node name and insert a break before it
+				for ( var j = 0; j < tgtsArray.length; j++) {
+					rsp[i] = rsp[i].replace(new RegExp(tgtsArray[j], 'g'),
+						'<br>' + tgtsArray[j]);
+				}
+
+				p.append(rsp[i]);
+				p.append('<br>');
+			}
+		}
+
+		$('#' + statBarId).append(p);
+
+		// Hide loader
+		$('#' + statBarId).find('img').hide();
+	}
+}
+
+/**
+ * Update the status bar
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function updateStatusBar(data) {
+	var rsp = data.rsp;
+	var args = data.msg.split(';');
+	var statBarId = args[0].replace('out=', '');
+	var cmd = args[1].replace('cmd=', '');
+	var tgts = args[2].replace('tgt=', '').split(',');
+
+	if (cmd == 'unlock') {
+		// Hide loader
+		$('#' + statBarId).find('img').hide();
+
+		// Separate output into lines
+		var p = $('<p></p>');
+		for ( var i = 0; i < rsp.length; i++) {
+			if (rsp[i]) {
+				p.append(rsp[i]);
+				p.append('<br>');
+			}
+		}
+
+		$('#' + statBarId).append(p);
+	} else if (cmd == 'rmvm') {
+		// Get data table
+		var dTable = getNodesDataTable();
+		var failed = false;
+
+		// Hide loader
+		$('#' + statBarId).find('img').hide();
+
+		// Separate output into lines
+		var p = $('<p></p>');
+		for ( var i = 0; i < rsp.length; i++) {
+			if (rsp[i]) {
+				// Determine if the command failed
+				if (rsp[i].indexOf("Error") > -1
+					|| rsp[i].indexOf("Failed") > -1) {
+					failed = true;
+				}
+
+				// Find the node name and insert a break before it
+				for ( var j = 0; j < tgts.length; j++) {
+					rsp[i] = rsp[i].replace(new RegExp(tgts[j] + ': ', 'g'),
+						'<br>');
+				}
+
+				p.append(rsp[i]);
+				p.append('<br>');
+			}
+		}
+
+		$('#' + statBarId).append(p);
+
+		// Update data table
+		for ( var i = 0; i < tgts.length; i++) {
+			if (!failed) {
+				// Get the row containing the node link and delete it
+				var row = $('#' + tgts[i]).parent().parent();
+				var rowPos = dTable.fnGetPosition(row.get(0));
+				dTable.fnDeleteRow(rowPos);
+			}
+		}
+	} else if (cmd == 'xdsh') {
+		// Hide loader
+		$('#' + statBarId).find('img').hide();
+
+		// Separate output into lines
+		var p = $('<p></p>');
+		for ( var i = 0; i < rsp.length; i++) {
+			if (rsp[i]) {
+				// Find the node name and insert a break before it
+				for ( var j = 0; j < tgts.length; j++) {
+					rsp[i] = rsp[i].replace(new RegExp(tgts[j], 'g'),
+						'<br>' + tgts[j]);
+				}
+
+				p.append(rsp[i]);
+				p.append('<br>');
+			}
+		}
+
+		$('#' + statBarId).append(p);
+	} else {
+		return;
+	}
+}
+
+/**
+ * Check the completeness of the form
+ * 
+ * @param tabId
+ *            Tab ID containing form
+ * @return True: If the form is complete, False: Otherwise
+ */
+function formComplete(tabId) {
+	var ready = true;
+
+	// Check all inputs within the form
+	var inputs = $('#' + tabId + ' input');
+	for ( var i = 0; i < inputs.length; i++) {
+		// If there is no value given in the input
+		if (!inputs.eq(i).val()) {
+			inputs.eq(i).css('border', 'solid #FF0000 1px');
+			// It is not complete
+			ready = false;
+		} else {
+			inputs.eq(i).css('border', 'solid #BDBDBD 1px');
+		}
+	}
+
+	return ready;
+}
+
+/**
+ * Update the power status of the node
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+function updatePowerStatus(data) {
+	// Get datatable
+	var dTable = getNodesDataTable();
+
+	// Get all nodes within the datatable
+	var rows = dTable.fnGetNodes();
+
+	// Get xCAT response
+	var rsp = data.rsp;
+	// Loop through each line
+	for ( var i = 0; i < rsp.length; i++) {
+		// Get the node
+		var node = rsp[i].split(":")[0];
+
+		// If there is no error
+		var status;
+		if (rsp[i].indexOf("Error") < 0 || rsp[i].indexOf("Failed") < 0) {
+			// Get the row containing the node link
+			var row = getNodeRow(node, rows);
+			var rowPos = dTable.fnGetPosition(row);
+
+			// If it was power on, then the data return would contain "Starting"
+			var strPos = rsp[i].indexOf("Starting");
+			if (strPos > -1) {
+				status = 'on';
+			} else {
+				status = 'off';
+			}
+
+			// Update the power status column
+			dTable.fnUpdate(status, rowPos, 3);
+		} else {
+			// Power on/off failed
+			alert(rsp[i]);
+		}
+	}
+}
+
+/**
+ * Run a script
+ * 
+ * @param inst
+ *            Remote script tab instance
+ * @return Nothing
+ */
+function runScript(inst) {
+	var tabId = 'scriptTab' + inst;
+
+	// Get node name
+	var tgts = $('#' + tabId + ' input[name=target]').val();
+	// Get script
+	var script = $('#' + tabId + ' textarea').val();
+
+	// Disable all fields
+	$('#' + tabId + ' input').attr('readonly', 'readonly');
+	$('#' + tabId + ' input').css( {
+		'background-color' : '#F2F2F2'
+	});
+
+	$('#' + tabId + ' textarea').attr('readonly', 'readonly');
+	$('#' + tabId + ' textarea').css( {
+		'background-color' : '#F2F2F2'
+	});
+
+	// Run script
+	$.ajax( {
+		url : 'lib/zCmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'xdsh',
+			tgt : tgts,
+			args : '-e',
+			att : script,
+			msg : 'out=scriptStatusBar' + inst + ';cmd=xdsh;tgt=' + tgts
+		},
+
+		success : updateStatusBar
+	});
+}
+
+/**
+ * Get the hardware management of a given node
+ * 
+ * @param node
+ *            The node
+ * @return The hardware management of the node
+ */
+function getNodeMgt(node) {
+	// Get the row
+	var row = $('#' + node).parent().parent();
+
+	// Search for the mgt column
+	var mgtCol = row.parent().parent().find('th:contains("mgt")');
+	// Get the mgt column index
+	var mgtIndex = mgtCol.index();
+
+	// Get the mgt for the given node
+	var mgt = row.find('td:eq(' + mgtIndex + ')');
+
+	return mgt.text();
+}
+
+/**
+ * Set a cookie for the OS images
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+function setOSImageCookies(data) {
+	var rsp = data.rsp;
+
+	var imageNames = new Array;
+	var profilesHash = new Object();
+	var osVersHash = new Object();
+	var osArchsHash = new Object();
+
+	for ( var i = 1; i < rsp.length; i++) {
+		// osimage table columns: imagename, profile, imagetype, provmethod,
+		// osname, osvers, osdistro, osarch, synclists, comments, disable
+		// e.g. sles11.1-s390x-statelite-compute, compute, linux, statelite,
+		// Linux, sles11.1, , s390x, , s,
+
+		// Get the image name
+		var cols = rsp[i].split(',');
+		var osImage = cols[0].replace(new RegExp('"', 'g'), '');
+		var profile = cols[1].replace(new RegExp('"', 'g'), '');
+		var osVer = cols[5].replace(new RegExp('"', 'g'), '');
+		var osArch = cols[7].replace(new RegExp('"', 'g'), '');
+		imageNames.push(osImage);
+		profilesHash[profile] = 1;
+		osVersHash[osVer] = 1;
+		osArchsHash[osArch] = 1;
+	}
+
+	// Save image names in a cookie
+	$.cookie('ImageNames', imageNames);
+
+	// Save profiles in a cookie
+	var tmp = new Array;
+	for ( var key in profilesHash) {
+		tmp.push(key);
+	}
+	$.cookie('Profiles', tmp);
+
+	// Save OS versions in a cookie
+	tmp = [];
+	for ( var key in osVersHash) {
+		tmp.push(key);
+	}
+	$.cookie('OSVers', tmp);
+
+	// Save OS architectures in a cookie
+	tmp = [];
+	for ( var key in osArchsHash) {
+		tmp.push(key);
+	}
+	$.cookie('OSArchs', tmp);
+}
+
+/**
+ * Set a cookie for the groups
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+function setGroupsCookies(data) {
+	var rsp = data.rsp;
+
+	// Save image names in a cookie
+	$.cookie('Groups', rsp);
+}
+
+/**
+ * Get the row element that contains the given node
+ * 
+ * @param tgtNode
+ *            Node to find
+ * @param rows
+ *            Rows within the datatable
+ * @return Row element
+ */
+function getNodeRow(tgtNode, rows) {
+	// Get nodes datatable
+	var dTable = getNodesDataTable();
+
+	// Find the row
+	for ( var i in rows) {
+		// Get all columns within the row
+		var cols = rows[i].children;
+		// Get the 1st column (node name)
+		var cont = cols[1].children;
+		var node = cont[0].innerHTML;
+
+		// If the node matches the target node
+		if (node == tgtNode) {
+			// Return the row
+			return rows[i];
+		}
+	}
+
+	return;
+}

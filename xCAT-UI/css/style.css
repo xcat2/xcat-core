@@ -1,0 +1,703 @@
+/***************** Login dialog *****************/
+#logdialog {
+	margin: 0px 10px 20px 10px;
+	padding: 0px;
+}
+
+#logdialog label,input,p {
+	font: 14px verdana, arial, helvetica, sans-serif;
+}
+
+#logdialog input {
+	border: solid 1px #BDBDBD;
+	font: 14px verdana, arial, helvetica, sans-serif;
+}
+
+/****************** Header ******************/
+#header {
+	width: 1000px;
+	margin: 0px auto;
+	background: url(../images/header-gloss-wave.png) 50% 50% repeat-x;
+	-moz-border-radius: .5em;
+	-webkit-border-radius: .5em;
+	border-radius: .5em;
+	margin: 0px auto;
+}
+
+#header ul {
+	list-style: none;
+	padding: 0 0 0 30px;
+	margin: 0;
+	height: 39px;
+	position: relative;
+}
+
+#header ul li {
+	display: block;
+	float: left;
+	position: relative;
+}
+
+#header ul li a {
+	text-decoration: none;
+	cursor: pointer;
+	float: left;
+	font: 14px verdana, arial, helvetica, sans-serif;
+	color: #424242;;
+	padding: 11px 30px;
+}
+
+#header ul a:hover {
+	background-color: #A9D0F5;
+}
+
+/****************** Content section ******************/
+body {
+	background-color: #1C1C1C;
+	font: 12px verdana, arial, helvetica, sans-serif;
+}
+
+.content {
+	-moz-border-radius: .5em;
+	-webkit-border-radius: .5em;
+	border-radius: .5em;
+	width: 1000px;
+	margin: 10px auto;
+	background-color: white;
+	overflow: auto;
+}
+
+/****************** Groups section ******************/
+#groups {
+	width: 150px;
+	vertical-align: top;
+	float: left;
+	position: relative;
+	margin: 15px 0px 15px 15px;
+}
+
+#groups ul {
+	list-style: none;
+}
+
+#groups ul h3 {
+	text-transform: uppercase;
+	font: 12px verdana, arial, helvetica, sans-serif;
+	display: inline-table;
+}
+
+#groups a {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	color: #0000FF;
+	display: block;
+	padding: 5px 15px 15px 5px;
+	text-decoration: none;
+	display: block;
+}
+
+#groups a:hover {
+	color: #FF0000;
+}
+
+/****************** Nodes section ******************/
+#nodes {
+	width: 700px;
+	margin: 20px;
+	display: inline-table;
+}
+
+/****************** Info bar ******************/
+.info {
+	font: 12px verdana, arial, helvetica, sans-serif;
+}
+
+span.ui-icon-info {
+	float: left;
+	margin-right: 0.3em;
+}
+
+.ui-button {
+	display: inline-block;
+	position: relative;
+	padding: 0;
+	margin: 5px;
+	text-decoration: none !important;
+	cursor: pointer;
+	text-align: center;
+	zoom: 1;
+	overflow: visible;
+	text-align: center
+}
+
+.ui-button:hover {
+	background: url(../images/header-gloss-wave.png) 50% 50% repeat-x;
+}
+
+/****************** Tabs section ******************/
+.tab {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border-style: none;
+	overflow: hidden;
+}
+
+.tab p {
+	font: 12px verdana, arial, helvetica, sans-serif;
+}
+
+.tab .ui-icon-close {
+	float: left;
+	margin: 0.4em 0.2em 0 0;
+	cursor: pointer;
+}
+
+/****************** Inventory and user entry ******************/
+.tab table {
+	border-width: 1px;
+	border-spacing: 0px;
+	border-style: solid;
+	border-color: #BDBDBD;
+	border-collapse: collapse;
+}
+
+.tab th {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	color: #424242;
+	padding: 10px;
+	background-color: #F2F2F2;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #BDBDBD;
+	vertical-align: middle;
+	text-align: center;
+}
+
+.tab td {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	color: #424242;
+	padding: 5px 15px;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #BDBDBD;
+	vertical-align: middle;
+}
+
+.tab span a {
+	text-decoration: none;
+	color: #0000FF;
+}
+
+.tab fieldset {
+	margin-bottom: 5px;
+	border-width: 1px 0 0 0;
+	border-style: solid none none none;
+	border-color: #D8D8D8;
+}
+
+.tab label {
+	color: #424242;
+	display: inline-block;
+	line-height: 1.5;
+	vertical-align: top;
+	width: 140px;
+}
+
+.tab legend {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	color: #424242;
+	font-weight: bold;
+	padding: 10px 15px;
+}
+
+.tab ol {
+	margin: 0;
+	padding: 0;
+}
+
+.tab li {
+	list-style: none;
+	padding: 5px;
+	margin: 0;
+}
+
+.tab a {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	text-decoration: none;
+	color: #0000FF;
+}
+
+.tab a:hover {
+	color: #FF0000;
+}
+
+.tab textarea {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 0px #BDBDBD;
+	padding: 5px;
+	display: inline-table;
+	width: 400px;
+	height: 300px;
+}
+
+/****************** Action bar (on nodes tab) ******************/
+.actionBar {
+	display: inline-table;
+}
+
+.actionBar div {
+	padding: 10px 0px;
+}
+
+.actionBar span {
+	padding: 0px 10px;
+}
+
+/****************** Status bar ******************/
+.statusBar {
+	border: solid 1px #F5D0A9;
+	-moz-border-radius: .5em;
+	-webkit-border-radius: .5em;
+	border-radius: .5em;
+	padding: 10px;
+	background: #F8ECE0;
+}
+
+.statusBar p {
+	font: 12px verdana, arial, helvetica, sans-serif;
+}
+
+/****************** Info bar ******************/
+.infoBar {
+	border: solid 1px #D8D8D8;
+	padding: 0px 10px;
+	background: #E0ECF8;
+}
+
+.infoBar span {
+	width: 20px;
+	display: inline-table;
+}
+
+.infoBar p {
+	padding: 0px 10px;
+	display: inline-table;
+}
+
+/****************** Data table ******************/
+.dataTables_wrapper {
+	overflow: auto;
+	width: 700px;
+	margin: 0px auto;
+}
+
+/*** Show X entries ***/
+.dataTables_length {
+	width: 40%;
+	float: left;
+	padding: 10px 20px;
+	text-align: left;
+}
+
+/*** Search ***/
+.dataTables_filter {
+	width: 50%;
+	display: block;
+	float: right;
+	text-align: right;
+	padding: 10px 10px;
+}
+
+.tab input,select {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 4px;
+}
+
+/*** Showing X to X of X entries ***/
+.dataTables_info {
+	padding: 10px 20px;
+	width: 40%;
+	float: left;
+}
+
+/*** < > buttons ***/
+.paginate_disabled_previous,.paginate_enabled_previous,.paginate_disabled_next,.paginate_enabled_next
+	{
+	height: 19px;
+	width: 19px;
+	margin-left: 2px;
+	float: left;
+}
+
+/*** Table ***/
+.datatable {
+	width: 660px;
+	border-width: 1px;
+	border-spacing: 0px;
+	border-style: solid;
+	border-color: #BDBDBD;
+	border-collapse: collapse;
+	display: inline-table;
+}
+
+.datatable th {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	color: #424242;
+	padding: 10px;
+	background-color: #F2F2F2;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #BDBDBD;
+	vertical-align: middle;
+	text-align: center;
+	min-width: 30px;
+}
+
+.datatable td {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	color: #424242;
+	padding: 6px 12px;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #BDBDBD;
+	vertical-align: middle;
+}
+
+/*** Row color (odd) ***/
+.datatable tr.odd {
+	background-color: #E0ECF8;
+}
+
+.datatable tr.odd td.sorting_1 {
+	background-color: #A9D0F5;
+}
+
+/*** Row color (even) ***/
+.datatable tr.even {
+	background-color: #EFF5FB;
+}
+
+.datatable tr.even td.sorting_1 {
+	background-color: #CEE3F6;
+}
+
+.datatable a {
+	text-decoration: none;
+	color: #000FF;
+}
+
+.datatable a:hover {
+	color: #FF0000;
+}
+
+/****************** Editable column ******************/
+.tab .datatable textarea {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+}
+
+.tab .datatable button {
+	border: solid 1px #BDBDBD;
+	-moz-border-radius: .5em;
+	-webkit-border-radius: .5em;
+	padding: 5px 10px;
+	margin: 0 10px;
+	background-color: #D8D8D8;
+	color: #424242;
+	font-size: 12px;
+}
+
+.tab .datatable button:hover {
+	background-color: #E6E6E6;
+}
+
+/****************** Prompts ******************/
+.cleanbluewarning .cleanblue {
+	background-color: #acb4c4;
+}
+
+.cleanbluefade {
+	position: absolute;
+	background-color: #aaaaaa;
+}
+
+div.cleanblue {
+	font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
+	position: absolute;
+	background-color: #ffffff;
+	width: 400px;
+	font-size: 11px;
+	text-align: left;
+	border: solid 1px #213e80;
+}
+
+div.cleanblue .cleanbluecontainer {
+	background-color: #ffffff;
+	border-top: solid 14px #213e80;
+	padding: 5px;
+	font-weight: bold;
+}
+
+div.cleanblue .cleanblueclose {
+	float: right;
+	width: 18px;
+	cursor: default;
+	margin: -19px -12px 0 0;
+	color: #ffffff;
+	font-weight: bold;
+}
+
+div.cleanblue .cleanbluemessage {
+	padding: 10px;
+	line-height: 20px;
+	font-size: 11px;
+	color: #333333;
+}
+
+div.cleanblue .cleanbluebuttons {
+	text-align: right;
+	padding: 5px 0 5px 0;
+	border: solid 1px #eeeeee;
+	background-color: #f4f4f4;
+}
+
+div.cleanblue button {
+	padding: 3px 10px;
+	margin: 0 10px;
+	background-color: #314e90;
+	border: solid 1px #f4f4f4;
+	color: #ffffff;
+	font-weight: bold;
+	font-size: 12px;
+}
+
+div.cleanblue button:hover {
+	border: solid 1px #d4d4d4;
+}
+
+/****************** Context menu ******************/
+.context-menu-theme-vista {
+	background: #FAFAFA url(../images/context-menu-bg.gif) repeat-y left top
+		;
+	border: 1px solid #868686;
+}
+
+.context-menu-theme-vista .context-menu-item {
+	text-align: left;
+	cursor: pointer;
+	color: black;
+	font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
+	font-size: 12px;
+}
+
+.context-menu-theme-vista .context-menu-separator {
+	margin: 0px 0px 0px 32px;
+	font-size: 0px;
+	border-top: 1px solid #C5C5C5;
+	border-bottom: 1px solid #F5F5F5;
+}
+
+.context-menu-theme-vista .context-menu-item-hover {
+	background: transparent url(../images/context-menu-item-hover.gif)
+		repeat-x left center;
+	border: 1px solid #D7D0B3;
+}
+
+.context-menu-theme-vista .context-menu-item .context-menu-item-inner {
+	padding: 4px 16px 4px 35px;
+	margin-left: 1px;
+	background-color: none;
+	background-repeat: no-repeat;
+	background-position: 3px center;
+	background-image: none;
+}
+
+.context-menu-theme-vista .context-menu-item-hover .context-menu-item-inner
+	{
+	padding: 3px 15px 3px 35px;
+	margin-left: 0px;
+}
+
+.context-menu-theme-vista .context-menu-item-disabled {
+	color: #A7A7A7;
+}
+
+/****************** Forms ******************/
+.form label {
+	color: #424242;
+	line-height: 1.5;
+	vertical-align: top;
+	width: 120px;
+	padding: 0px 0px 0px 20px;
+	display: inline-table;
+}
+
+.form div {
+	margin: 10px 0;
+	display: block;
+}
+
+.form input {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 5px;
+	display: inline-table;
+}
+
+.form textarea {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 5px;
+	display: inline-table;
+	width: 350px;
+	height: 150px;
+}
+
+.button {
+	padding: 3px 10px;
+	margin: 0 10px;
+	background-color: #314e90;
+	border: solid 1px #f4f4f4;
+	color: #ffffff;
+	font-weight: bold;
+	font-size: 12px;
+}
+
+.button:hover {
+	border: solid 1px #d4d4d4;
+}
+
+.form a {
+	text-decoration: none;
+	color: #0000FF;
+}
+
+.form a:hover {
+	color: #FF0000;
+}
+
+/****************** Provision disk table ******************/
+.provision table {
+	border-width: 1px;
+	border-spacing: 0px;
+	border-style: solid;
+	border-color: #BDBDBD;
+	border-collapse: collapse;
+	display: inline-table;
+}
+
+.provision input {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 3px;
+	width: 60px;
+}
+
+/****************** Provision and clone new nodes table ******************/
+.special table {
+	border-width: 1px;
+	border-spacing: 0px;
+	border-style: solid;
+	border-color: #BDBDBD;
+	border-collapse: collapse;
+	display: inline-table;
+}
+
+.special input {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 3px;
+}
+
+/****************** Provision form ******************/
+.provision label {
+	color: #424242;
+	line-height: 1.5;
+	vertical-align: top;
+	padding: 0px 0px 0px 20px;
+	display: inline-table;
+}
+
+.provision div {
+	margin: 10px 0;
+	display: block;
+}
+
+.provision input {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 5px;
+	display: inline-table;
+}
+
+.provision select {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 5px;
+	margin: 10px;
+	display: inline-table;
+}
+
+.provision textarea {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 5px;
+	display: inline-table;
+	width: 350px;
+	height: 150px;
+}
+
+.provision a {
+	text-decoration: none;
+	color: #0000FF;
+}
+
+.provision a:hover {
+	color: #FF0000;
+}
+
+/****************** Monitor form ******************/
+.monitor label {
+	color: #424242;
+	line-height: 1.5;
+	vertical-align: top;
+	padding: 0px 0px 0px 20px;
+	display: inline-table;
+}
+
+.monitor div {
+	margin: 10px 0;
+	display: block;
+}
+
+.monitor input {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 5px;
+	display: inline-table;
+}
+
+.monitor select {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 5px;
+	margin: 10px;
+	display: inline-table;
+}
+
+.monitor textarea {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	border: solid 1px #BDBDBD;
+	padding: 5px;
+	display: inline-table;
+	width: 350px;
+	height: 150px;
+}
+
+.monitor a {
+	text-decoration: none;
+	color: #0000FF;
+}
+
+.monitor a:hover {
+	color: #FF0000;
+}
