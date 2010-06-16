@@ -36,7 +36,7 @@ sub getzonesfornet {
         $netn = pack('N',$netnum);
         $net = inet_ntoa($netn);
         return (join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.');
-    } elsif ($masknum >= 0xffff0000) { #class b (/16) to /23
+    } elsif ($masknum > 0xffff0000) { #(/17) to /23
         my $tempnumber = ($netnum >> 8);
         $masknum = $masknum >> 8;
         my $highnet = $tempnumber | (0xffffff & ~$masknum);
@@ -46,7 +46,7 @@ sub getzonesfornet {
             push @zones,join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.';
         }
         return @zones;
-    } elsif ($masknum >= 0xff000000) { #class a (/8) to /15, could have made it more flexible, for for only two cases, not worth in
+    } elsif ($masknum > 0xff000000) { # (/9) to class b /16, could have made it more flexible, for for only two cases, not worth in
         my $tempnumber = ($netnum >> 16); #the last two bytes are insignificant, shift them off to make math easier
         $masknum = $masknum >> 16;
         my $highnet = $tempnumber | (0xffff & ~$masknum);
@@ -56,7 +56,17 @@ sub getzonesfornet {
             push @zones,join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.';
         }
         return @zones;
-    } #bigger than class a subnets have never been approved, so don't deal
+    } else { #class a (theoretically larger, but those shouldn't exist)
+        my $tempnumber = ($netnum >> 24); #the last two bytes are insignificant, shift them off to make math easier
+        $masknum = $masknum >> 24;
+        my $highnet = $tempnumber | (0xff & ~$masknum);
+        foreach ($tempnumber..$highnet) {
+            $netnum = $_ << 24; #convert back to the real network value
+            $net = inet_ntoa(pack('N',$netnum));
+            push @zones,join('.',reverse(split('\.',$net))).'.IN-ADDR.ARPA.';
+        }
+        return @zones;
+    }
 }
 sub get_reverse_zone_for_entity {
     my $ctx = shift;
