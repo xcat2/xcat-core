@@ -41,7 +41,7 @@ my %dynamicranges; #track dynamic ranges defined to see if a host that resolves 
 
 sub ipIsDynamic {
     my $ip = shift;
-    $number = inet_aton($ip);
+    my $number = inet_aton($ip);
     unless ($number) { # shouldn't be possible, but pessimistically presume it dynamically if so
         return 1;
     }
@@ -1165,7 +1165,7 @@ sub addnet
                 my $begin;
                 my $end;
                 ($begin,$end) = split / /,$trange;
-                %dynamicranges{$trange}=[unpack("N*",inet_aton($begin)),unpack("N*",inet_aton($end))];
+                $dynamicranges{$trange}=[unpack("N*",inet_aton($begin)),unpack("N*",inet_aton($end))];
                 unless ($ent->{dhcpserver}
                         and xCAT::Utils->thishostisnot($ent->{dhcpserver}))
                 {    #If specific, only one dhcp server gets a dynamic range
