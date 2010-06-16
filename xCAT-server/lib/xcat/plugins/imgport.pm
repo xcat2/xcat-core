@@ -853,8 +853,11 @@ sub moveExtra {
 				return 0;
 			}
 		}
-		unless(move("$imgdir/extra/$ff", $dest)){
-			$callback->( {error=>["Failed to move $imgdir/extra/$ff to $dest"], errorcode => 1});
+		# this could cause some problems.  This is one of the reasons we may not want to 
+		# allow copying of directories.  
+		system("cp -a $imgdir/extra/$ff/* $dest");
+		if($?){
+			$callback->( {error=>["Failed to cp -a $imgdir/extra/$ff/* to $dest"], errorcode => 1});
 			return 0;
 		}
 
