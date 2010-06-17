@@ -1,0 +1,80 @@
+=head1 NAME
+
+B<chkosimage> - Use this xCAT command to check an xCAT osimage.
+
+=head1 SYNOPSIS
+
+B<chkosimage [-h | --help ]>
+
+B<chkosimage [-V] osimage_name> 
+
+=head1 DESCRIPTION
+
+This command will is currently supported for AIX osimages only.
+
+Use this command to verify if the lpp_source directories contain all the 
+software that is specified in the "installp_bundle" and "otherpkgs" 
+attributes of the osimage definition. 
+
+This command should be run before using the osimage to install any 
+AIX cluster nodes.
+
+=head1 OPTIONS
+
+=over 3
+
+=item B<-h |--help>
+
+Display usage message.
+
+=item B<osimage_name>
+
+The name of the xCAT for AIX osimage definition. 
+
+=item B<-V |--verbose>
+
+Verbose mode.
+
+=back
+
+=head1 RETURN VALUE
+
+=over 3
+
+=item 0
+
+The command completed successfully.
+
+=item 1
+
+An error has occurred.
+
+=back
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1
+
+Check the XCAT osimage called "61dsklsimage" to verify that the lpp_source 
+directories contain all the software that is specified in the
+"installp_bundle" and "otherpkgs" attributes.
+
+B<chkosimage -V 61dsklsimage>
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/chkosimage
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+=head1 SEE ALSO
+
+L<mknimimage(1)|mknimimage.1>
+
+
