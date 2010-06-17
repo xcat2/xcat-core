@@ -1725,9 +1725,18 @@ sub mknimimage
             }
             #get the link local address for the primary nim interface
             my $linklocaladdr;
+            $nimcmd = qq~ifconfig $pif~;
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
             foreach my $line (split(/\n/,$nimout))
             {
-                if ($line =~ /$pif\s+\d+\s+(fe80.*?)\s+/)
+                #ignore the address fe80::1%2/64 
+                if ($line =~ /%/)
+                {
+                    next;
+                }
+                if ($line =~ /inet6\s+(fe80.*?)\//)
                 {
                     $linklocaladdr = $1;
                     last;
@@ -1844,7 +1853,7 @@ sub mknimimage
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
-            my $mask = xCAT::NetworkUtils->prefixtonetmask($prefixlength);
+            my $mask = xCAT::NetworkUtils->prefixtomask($prefixlength);
             $nimcmd = qq~nim -o define -t ent6 -a net_addr=$net -a snm=$mask -a routing1="default $gw" $netname~;
             if ($::VERBOSE)
             {
