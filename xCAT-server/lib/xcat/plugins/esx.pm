@@ -909,8 +909,15 @@ sub relocate_callback {
     my $parms = shift;
     my $state = $task->info->state->val;
     if ($state eq 'success') {
-        #my $vmtab = xCAT::Table->new('vm'); #TODO: update vm.storage?
-        #$vmtab->setNodeAttribs($parms->{node},{host=>$parms->{target}});
+        my $vmtab = xCAT::Table->new('vm'); #TODO: update vm.storage?
+        my $prevloc = $tablecfg{vm}->{$node}->[0]->{storage}; 
+        my $model;
+        ($prevloc,$model) = split /=/,$prevloc;
+        my $target = $parms->{target};
+        if ($prevloc) {
+            $target.="=$prevloc";
+        }
+        $vmtab->setNodeAttribs($parms->{node},{storage=>$target);
         sendmsg(":relocated to to ".$parms->{target},$parms->{node});
     } else {
         relay_vmware_err($task,"Relocating to ".$parms->{target}." ",$parms->{node});
