@@ -1439,7 +1439,7 @@ sub doAIXcopy
         	{
             	foreach $pkg (split(/,/, $imagedef{$img}{otherpkgs}))
             	{
-                	if (!grep(/^$&pkg$/, @pkglist))
+                	if (!grep(/^$pkg$/, @pkglist))
                 	{
                     	push(@pkglist, $pkg);
                 	}
@@ -1454,7 +1454,7 @@ sub doAIXcopy
                 	foreach my $pkg (@$list)
                 	{
                     	chomp $pkg;
-                    	if (!grep(/^$&pkg$/, @pkglist))
+                    	if (!grep(/^$pkg$/, @pkglist))
                     	{
                         	push(@pkglist, $pkg);
                     	}

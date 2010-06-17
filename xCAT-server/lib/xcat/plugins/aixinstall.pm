@@ -4,7 +4,7 @@
 #
 #  xCAT plugin package to handle the following commands.
 #	 mkdsklsnode, rmdsklsnode, mknimimage,
-#	 rmnimimage, nimnodecust,  & nimnodeset
+#	 rmnimimage, chkosimage, nimnodecust,  & nimnodeset
 #
 #####################################################
 
@@ -40,7 +40,7 @@ $Getopt::Long::ignorecase = 0;
 =head1    aixinstall
 
 This program module file supports the mkdsklsnode, rmdsklsnode,
-rmnimimage, mknimimage, nimnodecust, & nimnodeset commands.
+rmnimimage, chkosimage, mknimimage, nimnodecust, & nimnodeset commands.
 
 
 =cut
@@ -68,6 +68,7 @@ sub handled_commands
     return {
             mknimimage  => "aixinstall",
             rmnimimage  => "aixinstall",
+			chkosimage  => "aixinstall",
             mkdsklsnode => "aixinstall",
             rmdsklsnode => "aixinstall",
             nimnodeset  => "aixinstall",
@@ -195,6 +196,15 @@ sub preprocess_request
             return undef;
         }
     }
+
+	if ($command =~ /chkosimage/)
+	{
+		my $reqcopy = {%$req};
+		$reqcopy->{'_xcatdest'} = $nimprime;
+		push @requests, $reqcopy;
+
+		return \@requests;
+	}
 
     #
     # get the hash of service nodes - for the nodes that were provided
@@ -411,8 +421,11 @@ sub process_request
     elsif ($command eq "rmnimimage")
     {
         ($ret, $msg) = &rmnimimage($callback, $imagehash, $sub_req);
-
     }
+	elsif ($command eq "chkosimage")
+	{
+		($ret, $msg) = &chkosimage($callback, $imagehash, $sub_req);
+	}
     elsif ($command eq "rmdsklsnode")
     {
         ($ret, $msg) = &rmdsklsnode($callback, $nodes, $sub_req);
@@ -1362,6 +1375,253 @@ srvnode.";
     }
     return 0;
 }
+
+#----------------------------------------------------------------------------
+
+=head3   chkosimage
+
+		Checks an xCAT osimage
+
+		Arguments:
+		Returns:
+			0 - OK
+			1 - error
+																						Usage:
+																							chkosimage -h
+			chkosimage [-V] osimage_name
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub chkosimage
+{
+	my $callback = shift;
+	my $subreq   = shift;
+
+	my $image_name;
+
+	if (defined(@{$::args}))
+	{
+		@ARGV = @{$::args};
+	}
+	else
+	{
+		&chkosimage_usage($callback);
+		return 0;
+	}
+
+	Getopt::Long::Configure("no_pass_through");
+	if (
+		!GetOptions(
+					'h|help'       => \$::HELP,
+					'verbose|V'    => \$::VERBOSE,
+					'v|version'    => \$::VERSION,
+					)
+		)
+	{
+				&chkosimage_usage($callback);
+				return 0;
+	}
+
+	# display the usage if -h or --help is specified
+	if ($::HELP)
+	{
+		&chkosimage_usage($callback);
+		return 0;
+	}
+
+	# display the version statement if -v or --verison is specified
+	if ($::VERSION)
+	{
+		my $version = xCAT::Utils->Version();
+		my $rsp;
+		push @{$rsp->{data}}, "chkosimage $version\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		return 0;
+	}
+
+	# get this systems name as known by xCAT management node
+	my $Sname = xCAT::InstUtils->myxCATname();
+	chomp $Sname;
+
+	# get the name of the primary NIM server
+	#   - either the NIMprime attr of the site table or the management node
+	my $nimprime = xCAT::InstUtils->getnimprime();
+	chomp $nimprime;
+
+    #
+    # process @ARGV
+    #
+
+    # the first arg should be a noderange - the other should be attr=val
+    #  - put attr=val operands in %::attrres hash
+    while (my $a = shift(@ARGV))
+    {
+        if (!($a =~ /=/))
+        {
+            $image_name = $a;
+            chomp $image_name;
+        }
+        else
+        {
+
+            # if it has an "=" sign its an attr=val - we hope
+            # attr must be a NIM resource type and val must be a resource name
+            my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+            if (!defined($attr) || !defined($value))
+            {
+                my $rsp;
+                $rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 1;
+            }
+
+            # put attr=val in hash
+            $::attrres{$attr} = $value;
+        }
+    }
+
+	# get the xCAT image definition
+	my %objtype;
+	$objtype{$image_name} = 'osimage';
+	my %imagedef = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
+	if (!(%imagedef))
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not get xCAT image definition.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	#
+	# check to see if all the software is available in the lpp_source 
+	# 	directories
+	#
+
+	# create a list
+	my @pkglist;
+	my @install_list;
+
+	# start with otherpkgs
+	if ($imagedef{$image_name}{otherpkgs})
+	{
+		foreach my $pkg (split(/,/, $imagedef{$image_name}{otherpkgs}))
+		{
+			if (!grep(/^$pkg$/, @pkglist))
+			{
+				push(@pkglist, $pkg);
+			}
+		}
+	}
+
+	# add installp_bundle contents
+	if ($imagedef{$image_name}{installp_bundle})
+	{
+		my @bndlist = split(/,/, $imagedef{$image_name}{installp_bundle});
+		foreach my $bnd (@bndlist)
+		{
+			my ($rc, $list, $loc) = xCAT::InstUtils->readBNDfile($callback, $bnd, $nimprime, $subreq);
+			foreach my $pkg (@$list)
+			{
+				chomp $pkg;
+				if (!grep(/^$&pkg$/, @pkglist))
+				{
+					push(@pkglist, $pkg);
+				}
+			}
+		}
+	}
+
+	foreach my $pkg (@pkglist)
+	{
+		if (($pkg =~ /R:/) || ($pkg =~ /I:/) )
+		{
+			my ($junk, $pname) = split(/:/, $pkg);
+			push(@install_list, $pname);
+		} else {
+			push(@install_list, $pkg);
+		}
+	}
+
+	# get a list of software from the lpp_source dirs
+	my @srclist;
+
+	my $lpp_loc = xCAT::InstUtils->get_nim_attr_val($imagedef{$image_name}{lpp_source}, 'location', $callback, $nimprime, $subreq);
+
+	my $rpm_srcdir = "$lpp_loc/RPMS/ppc";
+	my $instp_srcdir = "$lpp_loc/installp/ppc";
+
+	# get rpm packages
+	my $rcmd = qq~/usr/bin/ls $rpm_srcdir 2>/dev/null~;
+	my @rlist = xCAT::Utils->runcmd("$rcmd", -1);
+	foreach my $f (@rlist) {
+		if ($f =~ /\.rpm/) {
+			if (!grep(/^$f$/, @srclist)) {
+				push (@srclist, $f);
+			}	
+		}
+	}
+
+	# get epkg files
+	# epkg files should go with installp filesets - I think?
+	my $ecmd = qq~/usr/bin/ls $instp_srcdir 2>/dev/null~;
+	my @elist = xCAT::Utils->runcmd("$ecmd", -1);
+	foreach my $f (@elist) {
+		if (($f =~ /epkg\.Z/)) {
+			if (!grep(/^$f$/, @srclist)) {
+				push (@srclist, $f);
+			}
+		}
+	}
+
+	# get installp filesets in this dir
+	my $icmd = qq~installp -L -d $instp_srcdir | /usr/bin/cut -f1 -d':' 2>/dev/null~;
+	my @ilist = xCAT::Utils->runcmd("$icmd", -1);
+	foreach my $f (@ilist) {
+		if (!grep(/^$f$/, @srclist)) {
+			push (@srclist, $f);
+		}
+	}
+	
+	my $error = 0;
+	# check for each one - give msg if missing
+	foreach my $file (@install_list) {
+
+		if ($::VERBOSE) {
+		#	my $rsp;
+		#	push @{$rsp->{data}}, "Check for \'$file\'.";
+		#	xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+		if (!grep(/^$file$/, @srclist))
+		{
+			my $rsp;
+			push @{$rsp->{data}}, "Could not find $file in $imagedef{$image_name}{lpp_source}.\n";
+			xCAT::MsgUtils->message("W", $rsp, $callback);
+			$error++;
+		} else {
+			if ($::VERBOSE) {
+				my $rsp;
+				push @{$rsp->{data}}, "Found \'$file\'.";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+		}
+	}
+
+	if ($error) {
+		my $rsp;
+		push @{$rsp->{data}}, "One or more software packages could not be found in $imagedef{$image_name}{lpp_source}.\n";
+		xCAT::MsgUtils->message("W", $rsp, $callback);
+		return 1;
+	} else {
+		my $rsp;
+		push @{$rsp->{data}}, "All the software packages were found in the lpp_source \'$imagedef{$image_name}{lpp_source}\'\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		return 0;
+	}
+
+	return 0;
+}
+
 
 #----------------------------------------------------------------------------
 
@@ -8244,6 +8504,27 @@ sub mknimimage_usage
       "\tmknimimage [-V] [-f|--force] [-t nimtype] [-m nimmethod]\n\t\t[-r|--sharedroot] [-D|--mkdumpres] [-l <location>]\n\t\t[-s image_source] [-i current_image] [-t nimtype] [-m nimmethod]\n\t\t[-n mksysbnode] [-b mksysbfile] osimage_name\n\t\t[attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  chkosimage_usage
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub chkosimage_usage
+{
+	my $callback = shift;
+
+	my $rsp;
+	push @{$rsp->{data}}, "\n  chkosimage - Check an xCAT osimage.";
+	push @{$rsp->{data}}, "  Usage: ";
+	push @{$rsp->{data}}, "\tchkosimage [-h | --help]";
+	push @{$rsp->{data}}, "or";
+	push @{$rsp->{data}}, "\tchkosimage [-V] image_name\n";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
+	return 0;
 }
 
 #----------------------------------------------------------------------------
