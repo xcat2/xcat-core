@@ -172,6 +172,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/imgimport
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/mkdsklsnode
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/rmdsklsnode
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/mknimimage
+ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/chkosimage
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/rmnimimage
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/nimnodeset
 ln -sf ../bin/xcatDBcmds $RPM_BUILD_ROOT/%{prefix}/bin/nimnodecust
