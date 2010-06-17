@@ -180,111 +180,118 @@ sub do_rnetboot {
     if (  exists( $opt->{o} )) {
         $cmd.= " -o";
     }
-    #######################################
-    # Network specified
-    #######################################
-    $cmd.= " -s auto -d auto -m $opt->{m} -S $opt->{S} -G $opt->{G} -C $opt->{C} -N $opt->{N}";
+
+    my $Rc = SUCCESS;
+    my @macs = split /,/, $opt->{m};
+    foreach my $mac ( @macs ) {
+        #######################################
+        # Network specified
+        #######################################
+        $cmd.= " -s auto -d auto -m $mac -S $opt->{S} -G $opt->{G} -C $opt->{C} -N $opt->{N}";
   
 
-    #######################################
-    # Get required attributes from master
-    # of the node if -I|--iscsiboot is
-    # specified
-    #######################################
-    if (  exists( $opt->{I} )) {
-        my $ret;
-        my $dump_target;
-        my $dump_lun;
-        my $dump_port;
-        my $noderestab = xCAT::Table->new('noderes');
-        unless ($noderestab)
-        {
-            xCAT::MsgUtils->message('S',
-                                "Unable to open noderes table.\n");
-            return 1;
-        }
-        my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
-        if ($et and $et->{'xcatmaster'})
-        {
-            $ret = xCAT::Utils->runxcmd(
+        #######################################
+        # Get required attributes from master
+        # of the node if -I|--iscsiboot is
+        # specified
+        #######################################
+        if (  exists( $opt->{I} )) {
+            my $ret;
+            my $dump_target;
+            my $dump_lun;
+            my $dump_port;
+            my $noderestab = xCAT::Table->new('noderes');
+            unless ($noderestab)
             {
-                command => ['xdsh'],
-                node    => [$et->{'xcatmaster'}],
-                arg     => [ 'cat /tftpboot/$node.info' ]
-            },
-            $subreq, 0, 0 );
-        } else {
-            $ret = `cat /tftpboot/$node.info`;
-        }
-        chomp($ret);
-        my @attrs = split /\n/, $ret;
-        foreach (@attrs)
-        {
-            if (/DUMP_TARGET=(.*)$/) {
-                $dump_target = $1;
-            } elsif (/DUMP_LUN=(.*)$/) {
-                $dump_lun = $1;
-                $dump_lun =~ s/^0x(.*)$/$1/g;
-            } elsif (/DUMP_PORT=(.*)$/) {
-                $dump_port =$1;
+                xCAT::MsgUtils->message('S',
+                                "Unable to open noderes table.\n");
+                return 1;
             }
-        }
-        if ( defined($dump_target) and defined($dump_lun) and defined($dump_port) ) {
-            $cmd.= " -T \"$dump_target\" -L \"$dump_lun\" -p \"$dump_port\"";
-        } else {
-            return( [RC_ERROR,"Unable to find DUMP_TARGET, DUMP_LUN, DUMP_PORT for iscsi dump"] );
-        }
-    }
-
-    if (  exists( $opt->{hfi} )) {
-        $cmd.= " -t hfi-ent";
-    } else {
-        $cmd.= " -t ent";
-    }
-
-    #######################################
-    # Add command options
-    #######################################
-    $cmd.= " -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
-
-    my $done = 0;
-    my $Rc = SUCCESS;
-    while ( $done < 2 ) {
-        #######################################
-        # Execute command
-        #######################################
-        my $pid = open( OUTPUT, "$cmd 2>&1 |");
-        $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
-            kill 9, $pid;
-            return( [RC_ERROR,"Received INT or TERM signal"] );
-        };
-        if ( !$pid ) {
-            return( [RC_ERROR,"$cmd fork error: $!"] );
-        }
-        #######################################
-        # Get command output
-        #######################################
-        while ( <OUTPUT> ) {
-            $result.=$_;
-        }
-        close OUTPUT;
-
-        #######################################
-        # Get command exit code
-        #######################################
-
-        foreach ( split /\n/, $result ) {
-            if ( /^lpar_netboot: / ) {
-                $Rc = RC_ERROR;
-                last;
+            my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
+            if ($et and $et->{'xcatmaster'})
+            {
+                $ret = xCAT::Utils->runxcmd(
+                {
+                    command => ['xdsh'],
+                    node    => [$et->{'xcatmaster'}],
+                    arg     => [ 'cat /tftpboot/$node.info' ]
+                },
+                $subreq, 0, 0 );
+            } else {
+                $ret = `cat /tftpboot/$node.info`;
+            }
+            chomp($ret);
+            my @attrs = split /\n/, $ret;
+            foreach (@attrs)
+            {
+                if (/DUMP_TARGET=(.*)$/) {
+                    $dump_target = $1;
+                } elsif (/DUMP_LUN=(.*)$/) {
+                    $dump_lun = $1;
+                    $dump_lun =~ s/^0x(.*)$/$1/g;
+                } elsif (/DUMP_PORT=(.*)$/) {
+                    $dump_port =$1;
+                }
+            }
+            if ( defined($dump_target) and defined($dump_lun) and defined($dump_port) ) {
+                $cmd.= " -T \"$dump_target\" -L \"$dump_lun\" -p \"$dump_port\"";
+            } else {
+                return( [RC_ERROR,"Unable to find DUMP_TARGET, DUMP_LUN, DUMP_PORT for iscsi dump"] );
             }
         }
 
+        if (  exists( $opt->{hfi} )) {
+            $cmd.= " -t hfi-ent";
+        } else {
+            $cmd.= " -t ent";
+        }
+
+        #######################################
+        # Add command options
+        #######################################
+        $cmd.= " -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
+
+        my $done = 0;
+        while ( $done < 2 ) {
+            #######################################
+            # Execute command
+            #######################################
+            my $pid = open( OUTPUT, "$cmd 2>&1 |");
+            $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
+                kill 9, $pid;
+                return( [RC_ERROR,"Received INT or TERM signal"] );
+            };
+            if ( !$pid ) {
+                return( [RC_ERROR,"$cmd fork error: $!"] );
+            }
+            #######################################
+            # Get command output
+            #######################################
+            while ( <OUTPUT> ) {
+                $result.=$_;
+            }
+            close OUTPUT;
+
+            #######################################
+            # Get command exit code
+            #######################################
+
+            foreach ( split /\n/, $result ) {
+                if ( /^lpar_netboot: / ) {
+                    $Rc = RC_ERROR;
+                    last;
+                }
+            }
+
+            if ( $Rc == SUCCESS ) {
+                $done = 2;
+            } else {
+                $done = $done + 1;
+                sleep 1;
+            }
+        }
         if ( $Rc == SUCCESS ) {
-            $done = 2;
-        } else {
-            $done = $done + 1;
-            sleep 1;
+            last;
         }
     }
     return( [$Rc,$result] );
