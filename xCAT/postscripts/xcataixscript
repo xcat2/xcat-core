@@ -88,7 +88,15 @@ if (!$installdir) {
 
 # get the contents of the $installdir/postscripts dir on the server
 #   - mount dir from server and copy files
-my $mcmd = "/bin/mkdir -p /xcatmnt; /usr/sbin/mount -o nolock $servnode:$installdir/postscripts /xcatmnt";
+# IPv6, should only use NFS version 4 mount
+my $mcmd;
+my $snipcmd = "host $servnode";
+if ((&runcmd($snipcmd) == 0) && ($::outref =~ /:/))
+{
+    $mcmd = "mkdir -p /xcatmnt; mount -o nolock -o vers=4 $servnode:$installdir/postscripts /xcatmnt";
+} else {
+    $mcmd = "mkdir -p /xcatmnt; mount -o nolock $servnode:$installdir/postscripts /xcatmnt";
+}
 if (&runcmd($mcmd) != 0) {
     print "$::sdate xcataixscript: Could not mount $installdir/postscripts from $servnode.\n";
     print $::LOG_FILE "$::sdate xcataixscript: Could not mount $installdir/postscripts from $servnode.\n";
