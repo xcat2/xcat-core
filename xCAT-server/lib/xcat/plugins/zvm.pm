@@ -1545,6 +1545,17 @@ sub makeVM {
 		my $rc = xCAT::zvmUtils->checkOutput( $callback, $out );
 		if ( $rc == 0 ) {
 
+			# Get VSwitch of HCP
+			my @vswId = xCAT::zvmCPUtils->getVswitchId($hcp);
+
+			# Grant access to VSwitch for Linux user
+			# GuestLan do not need permissions
+			foreach (@vswId) {
+				xCAT::zvmUtils->printLn( $callback, "$node: Granting VSwitch ($_) access for $userId" );
+				$out = xCAT::zvmCPUtils->grantVSwitch( $callback, $hcp, $userId, $_ );
+				xCAT::zvmUtils->printLn( $callback, "$node: $out" );
+			}
+
 			# Get HCP MAC address
 			# The HCP should only have (1) network -- (1) MAC address
 			xCAT::zvmCPUtils->loadVmcp($hcp);
@@ -2710,11 +2721,11 @@ sub nodeSet {
 
 		# Get broadcast address of NIC
 		my $ifcfg = xCAT::zvmUtils->getIfcfgByNic( $hcp, $readChannel );
-		$out = `cat $ifcfg | grep "BROADCAST"`;
+		$out = `ssh $hcp "cat $ifcfg" | grep "BROADCAST"`;
 		@words = split( '=', $out );
 		my $broadcast = $words[1];
 		$broadcast = xCAT::zvmUtils->trimStr($broadcast);
-		$broadcast = xCAT::zvmUtils->replaceStr( $broadcast, "'", "" );
+		$broadcast =~ s;"|';;g;
 
 		# Load VMCP module on HCP
 		xCAT::zvmCPUtils->loadVmcp($hcp);
