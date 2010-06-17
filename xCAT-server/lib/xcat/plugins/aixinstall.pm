@@ -1814,6 +1814,7 @@ sub mknimimage
 
             #6. Add ipv6 network
             my $net;
+            my $prefixlength;
             my $gw;
             my $netname;
             my $nettab = xCAT::Table->new('networks');
@@ -1830,6 +1831,7 @@ sub mknimimage
                 #use the first IPv6 network in networks table
                 if ($enet->{'net'} =~ /:/) { #ipv6
                     $net = $enet->{'net'};
+                    $prefixlength = $enet->{'mask'};
                     $gw = $enet->{'gateway'};
                     $netname = $enet->{'netname'};
                     last;
@@ -1842,7 +1844,8 @@ sub mknimimage
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
-            $nimcmd = qq~nim -o define -t ent6 -a net_addr=$net -a routing1="default $gw" $netname~;
+            my $mask = xCAT::NetworkUtils->prefixtonetmask($prefixlength);
+            $nimcmd = qq~nim -o define -t ent6 -a net_addr=$net -a snm=$mask -a routing1="default $gw" $netname~;
             if ($::VERBOSE)
             {
                 my $rsp;
@@ -4075,7 +4078,7 @@ sub update_rhosts
         #my $IP = inet_ntoa(inet_aton($node));
         my $IP = xCAT::NetworkUtils->getipaddr($node);
         chomp $IP;
-        unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
+        unless (($IP =~ /\d+\.\d+\.\d+\.\d+/) || ($IP =~ /:/))
         {
             my $rsp;
             push @{$rsp->{data}},
@@ -6819,7 +6822,7 @@ sub mkdsklsnode
         #my $IP = inet_ntoa(inet_aton($node));
         my $IP = xCAT::NetworkUtils->getipaddr($node);
         chomp $IP;
-        unless ($IP =~ /\d+\.\d+\.\d+\.\d+/)
+        unless (($IP =~ /\d+\.\d+\.\d+\.\d+/) || ($IP =~ /:/))
         {
             my $rsp;
             push @{$rsp->{data}},
@@ -6880,6 +6883,9 @@ sub mkdsklsnode
         }
 
         # define the node
+        my $mac_or_local_link_addr;
+        my $adaptertype;
+        my $netmask;
         my $defcmd = "/usr/sbin/nim -o define -t $type ";
         if ($::NEWNAME)
         {
@@ -6888,12 +6894,24 @@ sub mkdsklsnode
         else
         {
             $objhash{$node}{'mac'} =~ s/://g;    # strip out colons if any
+            if (xCAT::NetworkUtils->getipaddr($nodeshorthost) =~ /:/) #ipv6 node
+            {
+                $mac_or_local_link_addr = xCAT::NetworkUtils->linklocaladdr($objhash{$node}{'mac'});
+                $adaptertype = "ent6";
+                $netmask = xCAT::NetworkUtils->prefixtomask($nethash{$node}{'mask'});
+            } else {
+                $mac_or_local_link_addr = $objhash{$node}{'mac'};
+                # only support Ethernet for management interfaces
+                $adaptertype = "ent";
+                $netmask = $nethash{$node}{'mask'};
+            }
+               
             $defcmd .=
-              "-a if1='find_net $nodeshorthost $objhash{$node}{'mac'}' ";
+              "-a if1='find_net $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
         }
         $defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
         $defcmd .=
-          "-a net_definition='ent $nethash{$node}{'mask'} $nethash{$node}{'gateway'}' ";
+          "-a net_definition='$adaptertype $netmask $nethash{$node}{'gateway'}' ";
         $defcmd .= "-a net_settings1='$speed $duplex' ";
 
         # add any additional supported attrs from cmd line
