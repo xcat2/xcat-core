@@ -1440,10 +1440,6 @@ sub chkosimage
 		return 0;
 	}
 
-	# get this systems name as known by xCAT management node
-	my $Sname = xCAT::InstUtils->myxCATname();
-	chomp $Sname;
-
 	# get the name of the primary NIM server
 	#   - either the NIMprime attr of the site table or the management node
 	my $nimprime = xCAT::InstUtils->getnimprime();
@@ -1541,6 +1537,13 @@ sub chkosimage
 		} else {
 			push(@install_list, $pkg);
 		}
+	}
+
+	if ( scalar(@install_list) == 0) {
+		 my $rsp;
+		 push @{$rsp->{data}}, "\nThere was no additional software listed in the \'otherpkgs\' or \'installp_bundle\' attributes.\n";
+		 xCAT::MsgUtils->message("I", $rsp, $callback);
+		 return 0;
 	}
 
 	# get a list of software from the lpp_source dirs
