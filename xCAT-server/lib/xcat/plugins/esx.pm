@@ -632,7 +632,7 @@ sub chvm {
 			$ideUnit = getAvailUnit($ideCont->{key},$devices);
 		}
 		unless ($hyphash{$hyp}->{datastoremap}) { validate_datastore_prereqs([],$hyp); }
-    		push @devChanges, create_storage_devs($node,$hyphash{$hyp}->{datastoremap},$addSizes,$scsiCont,$scsiUnit,$ideCont,$ideUnit);
+    		push @devChanges, create_storage_devs($node,$hyphash{$hyp}->{datastoremap},$addSizes,$scsiCont,$scsiUnit,$ideCont,$ideUnit,$devices);
 	}
 
 	if(%resize) {
@@ -679,6 +679,19 @@ sub chvm {
 
 }
 
+sub getUsedUnits {
+  my $contKey = shift;
+  my $devices = shift;
+  my %usedids;
+  $usedids{7}=1;
+  $usedids{'7'}=1; #TODO: figure out which of these is redundant, the string or the number variant
+  for my $device (@$devices) {
+    if($device->{controllerKey} eq $contKey) {
+        $usedids{$device->{unitNumber}}=1;
+    }
+  }
+  return \%usedids;
+}
 sub getAvailUnit {
   my $contKey = shift;
   my $devices = shift;
@@ -1851,6 +1864,7 @@ sub create_storage_devs {
     my $scsiUnit = shift;
     my $existingIdeCont = shift;
     my $ideUnit = shift;
+    my $devices = shift; 
     my $scsicontrollerkey=0;
     my $idecontrollerkey=200; #IDE 'controllers' exist at 200 and 201 invariably, with no flexibility?
                               #Cannot find documentation that declares this absolute, but attempts to do otherwise
@@ -1863,14 +1877,18 @@ sub create_storage_devs {
     my $ideunitnum=0; 
     my $scsiunitnum=0;
     my $havescsicontroller=0;
+    my %usedideunits;
+    my %usedscsiunits=(7=>1,'7'=>1);
     if (defined $existingScsiCont) { 
     $havescsicontroller=1;
 	$scsicontrollerkey = $existingScsiCont->{key};
 	$scsiunitnum = $scsiUnit;
+    %usedscsiunits = %{getUsedUnits($scsicontrollerkey,$devices)};
     }
     if (defined $existingIdeCont) { 
 	$idecontrollerkey = $existingIdeCont->{key};
 	$ideunitnum = $ideUnit;
+    %usedideunits = %{getUsedUnits($idecontrollerkey,$devices)};
     }
     my $unitnum;
     my %disktocont;
@@ -1913,10 +1931,18 @@ sub create_storage_devs {
         my $controllerkey;
         if ($disktype eq 'ide') {
             $controllerkey = $idecontrollerkey;
-	    $unitnum = $ideunitnum++;
+	    $unitnum = 0;
+            while ($usedideunits{$unitnum}) {
+              $unitnum++;
+            }
+            $usedideunits{$unitnum}=1;
         } else {
             $controllerkey = $scsicontrollerkey;
-	    $unitnum = $scsiunitnum++;
+	    $unitnum = 0;
+            while ($usedscsiunits{$unitnum}) {
+              $unitnum++;
+            }
+            $usedscsiunits{$unitnum}=1;
             $havescsidevs=1;
         }
 
