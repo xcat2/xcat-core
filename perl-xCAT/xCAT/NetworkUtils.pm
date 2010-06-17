@@ -371,4 +371,46 @@ sub setup_ip_forwarding
     return 0;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3  prefixtomask
+    Convert the IPv6 prefix length(e.g. 64) to the netmask(e.g. ffff:ffff:ffff:ffff:0000:0000:0000:0000).
+    Till now, the netmask format ffff:ffff:ffff:: only works for AIX NIM
+
+    Arguments:
+       prefix length
+    Returns:
+       netmask - netmask like ffff:ffff:ffff:ffff:0000:0000:0000:0000 
+       0 - if the prefix length is not correct
+    Globals:
+    Error:
+        none
+    Example:
+        my #netmask = xCAT::NetworkUtils->prefixtomask($prefixlength);
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub prefixtomask {
+    my ($class, $prefixlength) = @_;
+
+    if (($prefixlength < 1) || ($prefixlength > 128))
+    {
+        return 0;
+    }
+    
+    # can not do this without Net::IP module
+    if (!$netipmodule)
+    {
+        return 0;
+    }
+
+    my $ip = new Net::IP ("fe80::/$prefixlength") or die (Net::IP::Error());
+
+    my $mask = $ip->mask();
+
+    return $mask;
+
+}
 1;
