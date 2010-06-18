@@ -53,6 +53,11 @@ foreach my $num ( @nums ) {
             print "Unsupported to config IB on this OS!\n";
             exit;
         }
+        if ( -f "/etc/sysctl.conf" )
+        {
+            runcmd("echo 'net.ipv4.conf.$nic.arp_filter=1' >> /etc/sysctl.conf");
+            runcmd("echo 'net.ipv4.conf.$nic.arp_ignore=1' >> /etc/sysctl.conf");
+        }
         if ( -f "/etc/infiniband/openib.conf" )
         {
             runcmd("/usr/bin/sed -i 's/SDP_LOAD=yes/SDP_LOAD=no/g' /etc/infiniband/openib.conf");
@@ -106,7 +111,10 @@ if ( $PLTFRM eq "Linux" ) {
     if ( $OS_name eq 'suse')
     {
         runcmd("echo 'options ib_ehca nr_ports=1' >> /etc/modprobe.conf");
+        runcmd("echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf");
     }
+
+    runcmd("sysctl -p");
 
     my $openibd_cmd = "/sbin/chkconfig --level 2345 openibd on";
     runcmd($openibd_cmd);
