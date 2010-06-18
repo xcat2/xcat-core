@@ -1683,7 +1683,7 @@ sub get_netcfg
         if ( !defined( $$form )) {
             return( [RC_ERROR,"'Network Configuration' form not found"] );
         } 
-    } else {
+   } elsif ( $$form->find_input('submit', 'submit', 1) ) {
         my $data = $$form->click('submit');
         $res = $ua->request( $data);
         $$form = HTML::Form->parse( $res->content, $res->base );
