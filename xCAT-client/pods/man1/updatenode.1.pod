@@ -43,6 +43,9 @@ which doing by "-S", "-P" and "-F" flags.
 If you wish to limit updatenode to one or two specific 
 actions you can use combinations of the "-S", "-P", and "-F" flags.
 
+If more than one actions doing by "-S", "-P" and "-F" need to be performed,
+the execution sequence is "-F", "-S" and then "-P".
+
 For example, If you just want to synchronize configuration file you could
 specify the "-F" flag.   If you want to synchronize files and update 
 software you would specify the "-F" and "-S" flags. See the descriptions 
