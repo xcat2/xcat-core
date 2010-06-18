@@ -21,6 +21,7 @@ use strict;
 use constant DEFAULT_LOG_FILE => "mktoolscenter.log"; 
 
 my $surrogate = 0;        
+my %proxy = ('host',"",'port',"",'user',"",'pw',"");
 my $nodels = "/opt/xcat/bin/nodels";
 my %Options = ('interactive',"yes",'warnings','','log',"yes",'dump',"yes");
 my @warnings;
@@ -133,11 +134,18 @@ sub question {
 # Begin main
 #
 
-GetOptions("s"=>\$surrogate, "l=s"=>\$logfile);
+GetOptions("s"=>\$surrogate, "l=s"=>\$logfile, 
+	"ph=s"=>\$proxy{host}, "pp=i"=>\$proxy{port}, 
+	"puser=s"=>\$proxy{user}, "ppw=s"=>\$proxy{pw});
 
 if (@ARGV > 0) {
-        open(IN,"<",@ARGV[0]) || die "cannot open input file @ARGV[0]";
+        open(IN,"<",@ARGV[0]) || die "Cannot open input file @ARGV[0]";
         $Options{interactive} = '';
+}
+
+if (($proxy{host} ne "") or ($proxy{port} ne "")) { # both or neither
+  die "Must specify both proxy host and port or neither"
+  unless (($proxy{host} ne "") and ($proxy{port} ne ""));
 }
 
 my $ARCH = `uname -m`;
@@ -283,7 +291,18 @@ if ( mkdir($path) or mkdir($sandbox) or system("cp $srcdir/$util $repo") or syst
   exit;
 }
 
-if ( system("chmod +x $repo/$util") or system("cd $repo; tar -zxf $asu") or system("cd $repo; ./$util --tui -m $machines")) {
+my $optstr = "";
+if ($proxy{host} ne "") {
+  $optstr = " --proxy-address $proxy{host} --proxy-port $proxy{port}";
+  if ($proxy{user} ne "") {
+    $optstr .= " --proxy-user $proxy{user}";
+  }
+  if ($proxy{pw} ne "") {
+    $optstr .= " --proxy-password $proxy{pw}";
+  }
+}
+
+if ( system("chmod +x $repo/$util") or system("cd $repo; tar -zxf $asu") or system("cd $repo; ./$util --tui -m $machines $optstr")) {
   output("Error executing $repo/$util");
   exit;
 }
