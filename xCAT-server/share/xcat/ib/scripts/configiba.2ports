@@ -55,17 +55,10 @@ foreach my $num ( @nums ) {
         }
         if ( -f "/etc/sysctl.conf" )
         {
-            runcmd("echo 'net.ipv4.conf.$nic.arp_filter=1' >> /etc/sysctl.conf");
-            runcmd("echo 'net.ipv4.conf.$nic.arp_ignore=1' >> /etc/sysctl.conf");
-        }
-        if ( -f "/etc/infiniband/openib.conf" )
-        {
-            runcmd("/usr/bin/sed -i 's/SDP_LOAD=yes/SDP_LOAD=no/g' /etc/infiniband/openib.conf");
-        }
-        if ( -f "/etc/modprobe.conf" )
-        {
-            runcmd("sed -i 's/options\ ib_ehca\ nr_ports=1//g' /etc/modprobe.conf");
-            runcmd("sed -i 's/options\ ib_ehca\ lock_hcalls=0//g' /etc/modprobe.conf");
+            updatefile("/etc/sysctl.conf", "net.ipv4.conf.$nic.arp_filter");
+            updatefile("/etc/sysctl.conf", "net.ipv4.conf.$nic.arp_ignore");
+            runcmd("echo 'net.ipv4.conf.$nic.arp_filter = 1' >> /etc/sysctl.conf");
+            runcmd("echo 'net.ipv4.conf.$nic.arp_ignore = 1' >> /etc/sysctl.conf");
         }
         # Write the info to the ifcfg file
         my $dir;
@@ -115,12 +108,23 @@ foreach my $num ( @nums ) {
 
 if ( $PLTFRM eq "Linux" ) {
 
-    runcmd("sysctl -p");
+    if ( -f "/etc/infiniband/openib.conf" )
+    {
+        updatefile("/etc/infiniband/openib.conf", "SDP_LOAD=yes", "SDP_LOAD=no");
+    }
+    if ( -f "/etc/modprobe.conf" )
+    {
+        updatefile("/etc/modprobe.conf", "options ib_ehca nr_ports=1");
+        updatefile("/etc/modprobe.conf", "options ib_ehca lock_hcalls=0");
+    }
+    runcmd("echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf");
 
     my $openibd_cmd = "/sbin/chkconfig --level 2345 openibd on";
     runcmd($openibd_cmd);
     my $openibd_start_cmd = "/sbin/service openibd restart";
     runcmd($openibd_start_cmd);
+
+    runcmd("sysctl -p");
 
     sleep(20);
     foreach my $nic ( @nics ) {
@@ -181,3 +185,33 @@ sub runcmd {
     }
 }
 
+sub updatefile {
+    my $fname = shift;
+    my $old   = shift;
+    my $new   = shift;
+    unless ( open( HOSTS,"<$fname" )) {
+        return undef;
+    }
+    my @rawdata = <HOSTS>;
+    my @newdata = ();
+    close( HOSTS );
+    chomp @rawdata;
+
+    foreach my $line ( @rawdata ) {
+        if ( $line =~ /^(.*)$old(.*)$/ ) {
+            if ( $new ) {
+                push @newdata, "$1$new$2";
+            }
+        } else {
+            push @newdata, $line;
+        }
+    }
+    unless ( open( HOSTS,">$fname" )) {
+        return undef;
+    }
+    for my $line (@newdata)
+    {
+        print HOSTS "$line\n";
+    }
+    close( HOSTS );
+}
