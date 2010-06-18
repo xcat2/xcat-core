@@ -1963,20 +1963,24 @@ sub do_resetnet {
     foreach my $host ( @hostslist ) {
         my $name = $host->{node};
         my $ip   = $host->{ip};
-        my $oi   = $host->{otherinterfaces};
+        my $oi;
 
         #####################################
         # Skip the node if the IP attributes
         # is same as otherinterfaces or ip
         # discovered
         #####################################
+        if ( $namehash->{$name} ) {
+            $oi = $namehash->{$name};
+            $hoststab->setNodeAttribs( $name,{otherinterfaces=>$namehash->{$name}} );
+        } else {
+            $oi = $host->{otherinterfaces};
+        }
+
         if ( !$reset_all ) {
             if ( $namehash->{$name} ) {
                 if ( !$ip or $ip eq $namehash->{$name} ) {
                     send_msg( $req, 0, "$name: same ip address, skipping network reset" );
-                    if ( $ip ne $oi) {
-                        $hoststab->setNodeAttribs( $name,{otherinterfaces=>$namehash->{$name}} );
-                    }
                     next;
                 }
             } else {
@@ -2003,16 +2007,16 @@ sub do_resetnet {
         # Make the target that will reset its
         # network interface
         #####################################
-        $targets->{$type->{nodetype}}->{$oi}->{'args'} = "0.0.0.0,$name";
-        $targets->{$type->{nodetype}}->{$oi}->{'mac'} = $mac->{mac};
-        $targets->{$type->{nodetype}}->{$oi}->{'name'} = $name;
-        $targets->{$type->{nodetype}}->{$oi}->{'ip'} = $oi;
-        $targets->{$type->{nodetype}}->{$oi}->{'type'} = $type->{nodetype};
+        $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'args'} = "0.0.0.0,$name";
+        $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'mac'} = $mac->{mac};
+        $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'name'} = $name;
+        $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'ip'} = $namehash->{$name};
+        $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'type'} = $type->{nodetype};
         if ( $type->{nodetype} !~ /^mm$/ ) {
-            my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$oi] );
-            $targets->{$type->{nodetype}}->{$oi}->{'args'} .= ",$netinfo{$oi}{'gateway'},$netinfo{$oi}{'mask'}";
+            my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$namehash->{$name}] );
+            $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'args'} .= ",$netinfo{$namehash->{$name}}{'gateway'},$netinfo{$oi}{'mask'}";
         }
-        $ip_host->{$oi} = $name;
+        $ip_host->{$namehash->{$name}} = $name;
     }
 
     $result = undef;
