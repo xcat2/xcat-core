@@ -1009,6 +1009,8 @@ proc ping_server { full_path_name phandle } {
         if { [string compare "$client_ip" "::1"] == 0  } {
             #set macaddr [get_mac_addr $phandle]
             set linklocal_ip [exec /opt/xcat/share/xcat/tools/mac2linklocal -m $mac_address]
+        } else {
+            set linklocal_ip $client_ip
         }
         set cmd(3) "ping $full_path_name:ipv6,$server_ip,$linklocal_ip,$gateway_ip\r"
     } else {
