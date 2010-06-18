@@ -836,7 +836,7 @@ if [ "\$NFSROOT" = "1" ]; then
 	# now that everything is mounted, lets do this
 	# hmmm, apparently I'm checking this twice... so I'd better
 	# be really sure the file is there.
-	while [ -z \$NEWROOT/etc/init.d/statelite ]
+	while [ ! -e \$NEWROOT/etc/init.d/statelite ]
 	do
 		echo "\$NEWROOT/etc/init.d/statelite does not exist in image!"
 		shell
