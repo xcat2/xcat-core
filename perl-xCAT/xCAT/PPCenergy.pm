@@ -218,7 +218,7 @@ sub renergy {
     # Check the existence of cim client
     if ( (! -f $::CIM_CLIENT_PATH)
       || (! -x $::CIM_CLIENT_PATH) ) {
-        return ([[$node, "ERROR: Cannot find the xCAT CIM Client [$::CIM_CLIENT_PATH] or it's NOT executable. Please install the xCAT-cimclient package correctly.", 1]]);
+        return ([[$node, "ERROR: Cannot find the Energy Management Plugin for xCAT [$::CIM_CLIENT_PATH] or it's NOT executable. Please install the xCAT-cimclient package correctly. Get more information from man page of renergy command.", 1]]);
     }
 
     # Generate the url path for CIM communication

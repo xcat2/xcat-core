@@ -95,11 +95,11 @@ gets and displays the current value. Otherwise, if specifying the attribute with
 'savingstatus=on', B<renergy> will set the attribute savingstatus to value 'on'. 
 
 The attributes listed in the B<SYNOPSIS> section are which ones can be handled by 
-B<renergy> command. But for each specific type of server, there are some attributes 
+B<renergy> command. But for each specific type of server, there are some attributes that
 are not supported. If user specifies an attribute which does not be supported by certain
 server, the return value of this attribute will be 'na'.
 
-The supported attributes for each specific hardware types are listed at following:
+The supported attributes for each specific hardware types are listed as follow:
 
 =over 2
 
@@ -156,11 +156,12 @@ will get response immediately.
 =head1 B<PREREQUISITE>
 
 For the system P CEC nodes, B<renergy> command depends 
-on a CIM client tool B<xCAT-cimclient> to 
+on the Energy Management Plugin for xCAT B<xCAT-cimclient> to 
 communicate with server. Then, before running the B<renergy> command, to
 check whether the B<xCAT-cimclient> package has been installed. 
 
-B<xCAT-cimclient> can be downloaded from IBM web site. 
+B<xCAT-cimclient> can be downloaded from IBM web site: 
+http://www14.software.ibm.com/webapp/set2/sas/f/xcat/energy.html
 
 
 =head1 B<OPTIONS>
@@ -168,7 +169,7 @@ B<xCAT-cimclient> can be downloaded from IBM web site.
 =over 4
 
 =item B<-h | --help>
-	
+
 Display the usage message.
 
 =item B<-v | --version>
@@ -176,10 +177,10 @@ Display the usage message.
 Display the version information.
 
 =item B<-V>
-				
+
 Verbose output.
 
-				
+
 =item B<all>
 
 Query all energy attributes which supported by the specific 
@@ -202,7 +203,7 @@ Query the current ambient temperature. (Unit is centigrade)
 =item B<availableDC>
 
 Query the total DC power available for the entire chassis.
- 
+
 =item B<averageAC>
 
 Query the average power consumed (Input). (Unit is watt)
@@ -234,7 +235,7 @@ enabled, phase 2 or higher
 
 dynamicPowerMeasurementWithPowerCapping: the module with power meter capability, 
 both measurement and capping enabled, phase 2 or higher"
-    
+
 =item B<cappingmaxmin>
 
 Query the maximum and minimum of power capping value 
@@ -251,7 +252,7 @@ from 0 to 100.
 
 Query the minimum value that can be assigned to power 
 capping without guaranteed enforceability. (Unit is watt)
-    
+
 =item B<cappingstatus>
 
 Query the power capping status. The result should be 'on' 
@@ -268,8 +269,8 @@ power capping function.
 Query the current power capping value. (Unit is watt)
 
 =item B<cappingwatt>=B<watt>
- 
-Set the power capping value base on the watt unit.  
+
+Set the power capping value base on the watt unit.
 
 If the 'watt' >  maximum of I<cappingmaxmin> or 'watt' 
 < minimum of I<cappingmaxmim>, the setting operation 
@@ -301,6 +302,9 @@ Set the dynamic power saving. The value must be 'on-norm',
 
 The dsavingstatus setting operation needs about 2 minutes 
 to take effect. (The used time depends on the hardware type)
+
+The B<dsavingstatus> only can be turned on when the 
+B<savingstatus> is in turn off status.
 
 =item B<exhausttemp>
 
@@ -396,11 +400,14 @@ and voltage will be dropped to a fixed value to save energy.
 The savingstatus setting operation needs about 2 minutes to 
 take effect. (The used time depends on the hardware type)
 
+The B<savingstatus> only can be turned on when the 
+B<dsavingstatus> is in turn off status.
+
 =item B<sysIPLtime>
 
 Query the time used from FSP standby to OS standby. 
 (Unit is Second)
-    
+
 =item B<syssbpower>
 
 Query the system power consumed prior to power on. 
@@ -431,6 +438,7 @@ Query all the attributes which CEC1,CEC2 supported.
 B<renergy> CEC1,CEC2 all
 
 The output of the query operation:
+
     CEC1: savingstatus: off
     CEC1: dsavingstatus: off
     CEC1: cappingstatus: off
@@ -464,6 +472,7 @@ Query all the attirbutes for management module node MM1. (For chassis)
 B<renergy> MM1 all
 
 The output of the query operation:
+
     mm1: availableDC: 5880W
     mm1: frontpaneltmp: 18.00 Centigrade
     mm1: inusedAC: 2848W
@@ -494,6 +503,7 @@ Query all the attirbutes for blade server node blade1.
 B<renergy> blade1 all
 
 The output of the query operation:
+
     blade1: capability: dynamicPowerMeasurement2
     blade1: capping: 349
     blade1: curalloc: 204W
@@ -510,6 +520,7 @@ and CPUspeed for server CEC1.
 B<renergy> CEC1 savingstatus cappingstatus CPUspeed
 
 The output of the query operation:
+
     CEC1: savingstatus: off
     CEC1: cappingstatus: on
     CEC1: CPUspeed: 3621 MHz
@@ -521,6 +532,7 @@ Turn on the power saving function of CEC1.
 B<renergy> CEC1 savingstatus=on
 
 The output of the setting operation:
+
     CEC1: Set savingstatus succeeded.         
     CEC1: This setting may need some minutes to take effect.   
 
@@ -536,8 +548,34 @@ minimum capping value of the CEC1 is 782w, the Power Capping
 value will be set as ((850-782)*50% + 782) = 816w.
 
 The output of the setting operation:
+
     CEC1: Set cappingperc succeeded.
     CEC1: cappingvalue: 816     
+
+=back
+
+
+=head1 B<REFERENCES>
+
+=over 3
+
+=item 1
+
+The more information of 'Power System Energy Management':
+
+    http://www-03.ibm.com/systems/power/software/energy/index.html
+
+=item 2
+
+EnergyScale white paper for Power6:
+
+    http://www-03.ibm.com/systems/power/hardware/whitepapers/energyscale.html
+
+=item 3
+
+EnergyScale white paper for Power7:
+
+    http://www-03.ibm.com/systems/power/hardware/whitepapers/energyscale7.html
 
 =back
 
