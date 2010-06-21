@@ -56,6 +56,7 @@ my %guestidmap = (
     "sles10.*" => "sles10_",
     "win2k8" => "winLonghorn",
     "win2k8r2" => "windows7Server",
+    "win7" => "windows7_",
     "win2k3" => "winNetStandard",
     "imagex" => "winNetStandard",
     "boottarget" => "otherLinux"
