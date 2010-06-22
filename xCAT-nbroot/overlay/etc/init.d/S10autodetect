@@ -91,8 +91,9 @@ fi
 NICSTOWAIT=`/sbin/ifconfig -a|grep HWaddr|grep ^eth|sed -e 's/ .*//'`
 #run udhcpc in two ways, to flush out leases with uid and leases without uid, and actually use the results of the more 'linux-like' lease, either way, on exit will release all to hold no leases
 for nic in $NICSTOWAIT; do
+    touch /tmp/ignorenic.$nic
 	ifconfig $nic up
-	(udhcpc -i $nic -R;kill `ps axf|grep "udhcpc -i $nic -R"|awk '{print $1}'`; sleep 1; udhcpc -i $nic -R -C) &
+	(udhcpc -i $nic -R;kill `ps axf|grep "udhcpc -i $nic -R"|awk '{print $1}'`; sleep 1; rm /tmp/ignorenic.$nic; udhcpc -i $nic -R -C) &
 done
 
 
@@ -102,7 +103,7 @@ until [ $extrat = 80 -o -z "$NICSTOWAIT" ]; do
    sleep 1
    extrat=$(($extrat+1))
    for nic in $NICSTOWAIT; do 
-      if ifconfig $nic|grep "inet addr"; then
+      if [ ! -f /tmp/ignorenic.$nic ] && ifconfig $nic|grep "inet addr"; then
          NICSTOWAIT=`echo $NICSTOWAIT|sed -e s/$nic//`
          if [ $extrat -gt 45 ]; then
             echo "Warning: $nic took more than 45 seconds to receive DHCP reply, spanning-tree may not be configured well, examine switch configuration" >> /etc/motd
