@@ -891,10 +891,13 @@ sub setboot_timerdisabled {
     if ($rsp->{code}) {
         if ($codes{$rsp->{code}}) {
             sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+            return;
+        } elsif ($rsp->{code} == 0x80) {
+            sendmsg("Unable to disable countdown timer, boot device may revert in 60 seconds",$sessdata->{node});
         } else {
             sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+            return;
         }
-        return;
     }
     my $error;
     @ARGV=@{$sessdata->{extraargs}};
