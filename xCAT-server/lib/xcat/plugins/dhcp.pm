@@ -1437,6 +1437,7 @@ sub newconfig
     push @dhcpconf, "option gpxe.no-pxedhcp code 176 = unsigned integer 8;\n";
     push @dhcpconf, "option iscsi-initiator-iqn code 203 = string;\n"; #Only via gPXE, not a standard
     push @dhcpconf, "ddns-update-style interim;\n";
+    push @dhcpconf, "ignore client-updates;\n"; #Windows clients like to do all caps, very un xCAT-like
     push @dhcpconf, "update-static-leases on;\n"; #makedns rendered optional
     push @dhcpconf,
       "option client-architecture code 93 = unsigned integer 16;\n";
