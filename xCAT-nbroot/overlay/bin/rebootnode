@@ -1,5 +1,6 @@
 for udhcpc in `ps axf|grep -i udhcpc|grep -v grep|awk '{print $1}'`; do
     kill -USR2 $udhcpc
 done
+sleep 5
 reboot -f
 
