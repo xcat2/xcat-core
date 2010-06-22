@@ -32,6 +32,9 @@ bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX% /create {bootmgr} /d "xCA
 bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX% /set {bootmgr} timeout 1
 bcdedit /store c:\WinPE_%SUFFiX%\pxe\Boot\BCD.%SUFFIX% /set {bootmgr} displayorder %GUID%
 bcdedit /store c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX%
+if [%ARCH%] EQU [x86] copy c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX% c:\WinPE_%SUFFIX%\pxe\Boot\B32
+if [%ARCH%] EQU [amd64]  copy c:\WinPE_%SUFFIX%\pxe\Boot\BCD.%SUFFIX% c:\WinPE_%SUFFIX%\pxe\Boot\BCD
+
 
 dism /mount-wim /wimfile:c:\WinPE_%SUFFIX%\pxe\Boot\winpe_%SUFFIX%.wim /index:1 /mountdir:c:\WinPE_%SUFFIX%\rootfs
 copy startnet.cmd c:\WinPE_%SUFFIX%\rootfs\Windows\system32
