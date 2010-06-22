@@ -1906,9 +1906,7 @@ sub do_makedhcp {
     $string = "Adding following nodes to dhcp server: \n$node\n";
     send_msg( $request, 0, $string );
 
-    my $outref = [];
-    @$outref = `makedhcp $node  2>&1`;
-    my $line = join("\n", @$outref);
+    my $line = `/opt/xcat/sbin/makedhcp $node 2>&1`;
     send_msg( $request, 0, $line);
 
     send_msg( $request, 0, "\nMakedhcp finished.\n" );
