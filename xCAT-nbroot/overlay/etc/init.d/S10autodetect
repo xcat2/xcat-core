@@ -92,7 +92,7 @@ NICSTOWAIT=`/sbin/ifconfig -a|grep HWaddr|grep ^eth|sed -e 's/ .*//'`
 #run udhcpc in two ways, to flush out leases with uid and leases without uid, and actually use the results of the more 'linux-like' lease, either way, on exit will release all to hold no leases
 for nic in $NICSTOWAIT; do
 	ifconfig $nic up
-	(udhcpc -i $nic -R -s /bin/true ;kill `ps axf|grep "udhcpc -i $nic -R"|awk '{print $1}'`; sleep 1; udhcpc -i $nic -R -C) &
+	(udhcpc -i $nic -R;kill `ps axf|grep "udhcpc -i $nic -R"|awk '{print $1}'`; sleep 1; udhcpc -i $nic -R -C) &
 done
 
 
