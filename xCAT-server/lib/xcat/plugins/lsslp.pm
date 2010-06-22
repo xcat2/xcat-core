@@ -1903,10 +1903,13 @@ sub do_makedhcp {
 
     my $node = join ",", @nodes;
 
-    $string = "Add following nodes to dhcp server: \n$node\n";
+    $string = "Adding following nodes to dhcp server: \n$node\n";
     send_msg( $request, 0, $string );
 
-    `makedhcp $node`;
+    my $outref = [];
+    @$outref = `makedhcp $node  2>&1`;
+    my $line = join("\n", @$outref);
+    send_msg( $request, 0, $line);
 
     send_msg( $request, 0, "\nMakedhcp finished.\n" );
 
