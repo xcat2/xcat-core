@@ -93,7 +93,7 @@ NICSTOWAIT=`/sbin/ifconfig -a|grep HWaddr|grep ^eth|sed -e 's/ .*//'`
 for nic in $NICSTOWAIT; do
     touch /tmp/ignorenic.$nic
 	ifconfig $nic up
-	(udhcpc -i $nic -R;kill -USR2 `ps axf|grep -v grep|grep "udhcpc -i $nic -R"|awk '{print $1}'`;kill `ps axf|grep -v grep|grep "udhcpc -i $nic -R"|awk '{print $1}'`; rm /tmp/ignorenic.$nic; udhcpc -i $nic -R -C) &
+	(udhcpc -i $nic -R;kill -USR2 `ps axf|grep -v grep|grep "udhcpc -i $nic -R"|awk '{print $1}'`;sleep 3;kill `ps axf|grep -v grep|grep "udhcpc -i $nic -R"|awk '{print $1}'`; rm /tmp/ignorenic.$nic; udhcpc -i $nic -R -C) &
 done
 
 
