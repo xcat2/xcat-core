@@ -73,6 +73,8 @@ sub mkimage {
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
     my $oshash = $ostab->getNodesAttribs(\@nodes,['profile','arch']);
+    my $vpdtab = xCAT::Table->new('vpd');
+    my $vpdhash = $vpdtab->getNodesAttribs(\@nodes,['uuid']);
     my $shandle;
     unless (-d "$installroot/autoinst") {
         mkpath "$installroot/autoinst";
@@ -114,7 +116,11 @@ sub mkimage {
         print $shandle ":END\r\n";
         print $shandle "pause\r\n";
         close($shandle);
-        mkwinlinks($node,$ent);
+        if ($vpdhash->{$node}) {
+            mkwinlinks($node,$ent,$vpdhash->{$node}->[0]->{uuid});
+        } else {
+            mkwinlinks($node,$ent);
+        }
     }
 }
 
@@ -122,9 +128,11 @@ sub mkwinlinks {
     my $installroot = "/install"; # for now put this, as it breaks for imagex
     my $node = shift;
     my $ent = shift;
+    my $uuid = shift;
     foreach (getips($node)) {
         link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd";
     }
+    if ($uuid) { link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$uuid.cmd"; }
 }
 
 sub winshell {
@@ -135,11 +143,17 @@ sub winshell {
     my $node;
     my $ostab = xCAT::Table->new('nodetype');
     my $oshash = $ostab->getNodesAttribs(\@nodes,['profile','arch']);
+    my $vpdtab = xCAT::Table->new('vpd');
+    my $vpdhash = $vpdtab->getNodesAttribs(\@nodes,['uuid']);
     foreach $node (@nodes) {
         open($shandle,">","$installroot/autoinst/$node.cmd");
         print $shandle $script;
         close $shandle;
-        mkwinlinks($node,$oshash->{$node}->[0]);
+        if ($vpdhash->{$node}) {
+            mkwinlinks($node,$oshash->{$node}->[0],$vpdhash->{$node}->[0]->{uuid});
+        } else {
+            mkwinlinks($node,$oshash->{$node}->[0]);
+        }
         my $bptab = xCAT::Table->new('bootparams',-create=>1);
         $bptab->setNodeAttribs(
                                 $node,
@@ -195,6 +209,8 @@ sub mkinstall
     my %doneimgs;
     my $bptab = xCAT::Table->new('bootparams',-create=>1);
     my $hmtab = xCAT::Table->new('nodehm');
+    my $vpdtab = xCAT::Table->new('vpd');
+    my $vpdhash = $vpdtab->getNodesAttribs(\@nodes,['uuid']);
     unless (-r "$tftpdir/Boot/pxeboot.0" ) {
        $callback->(
         {error => [ "The Windows netboot image is not created, consult documentation on how to add Windows deployment support to xCAT"],errorcode=>[1]
@@ -229,7 +245,11 @@ sub mkinstall
                      open($shandle,">","$installroot/autoinst/$node.cmd");
                      print $shandle $script;
                      close($shandle);
-                     mkwinlinks($node,$ent);
+                     if ($vpdhash->{$node}) {
+                        mkwinlinks($node,$ent,$vpdhash->{$node}->[0]->{uuid});
+                     } else {
+                        mkwinlinks($node,$ent);
+                     }
                     if ($arch =~ /x86_64/)
                     {
                         $bptab->setNodeAttribs(
@@ -382,8 +402,12 @@ sub mkinstall
         print $shandle "i:\\postscripts\\upflagx64 %XCATD% 3002 next\r\n";
         print $shandle ":END\r\n";
         close($shandle);
+        if ($vpdhash->{$node}) {
+            mkwinlinks($node,undef,$vpdhash->{$node}->[0]->{uuid});
+        } else {
+            mkwinlinks($node,undef);
+        }
         foreach (getips($node)) {
-            link "$installroot/autoinst/$node.cmd","$installroot/autoinst/$_.cmd";
             unlink "/tftpboot/Boot/BCD.$_";
             if ($arch =~ /64/) {
                 link "/tftpboot/Boot/BCD.64","/tftpboot/Boot/BCD.$_";
