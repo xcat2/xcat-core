@@ -301,6 +301,7 @@ sub makescript {
 	      if ($os =~ /rh.*/)    { $platform = "rh"; }
 	      elsif ($os =~ /centos.*/) { $platform = "centos"; }
 	      elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
+	      elsif ($os =~ /sl.*/) { $platform = "sl"; }
 	      elsif ($os =~ /sles.*/) { $platform = "sles"; }
 	      elsif ($os =~ /aix.*/) { $platform = "aix"; }
 	  }

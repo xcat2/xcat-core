@@ -75,9 +75,9 @@ sub handled_commands
 {
     return {
             copycd    => "anaconda",
-            mknetboot => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)",
-            mkinstall => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)",
-            mkstatelite => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)",
+            mknetboot => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)|(sl.*)",
+            mkinstall => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(sl.*)",
+            mkstatelite => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(sl.*)",
 	
             };
 }
@@ -948,6 +948,7 @@ sub copycd
     if (    $distname
         and $distname !~ /^centos/
         and $distname !~ /^fedora/
+        and $distname !~ /^sl/
         and $distname !~ /^rh/)
     {
 
@@ -984,6 +985,13 @@ sub copycd
         unless ($distname)
         {
             $distname = "centos5";
+        }
+    }
+    elsif ($desc =~ /^LTS$/)
+    {
+        unless ($distname)
+        {
+            $distname = "sl5";
         }
     }
     elsif ($desc =~ /^Fedora 8$/)
@@ -1127,6 +1135,10 @@ sub getplatform {
     elsif ($os =~ /fedora.*/)
     {
 	$platform = "fedora";
+    }
+    elsif ($os =~ /sl.*/)
+    {
+	$platform = "sl";
     }
     elsif ($os =~ /esx.*/)
     {
