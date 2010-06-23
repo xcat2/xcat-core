@@ -94,8 +94,13 @@ if [ "$OSNAME" == "AIX" ]; then
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 # xCAT on AIX - prerequisite install script
 cd `dirname $0`
-SHORTVER=`oslevel|cut -d. -f 1,2`
-rpm -Uvh $SHORTVER/*.rpm
+PERLVER=`perl -v|grep 'This is perl'|cut -d' ' -f 4`
+if [ "$PERLVER" == "v5.8.2" ]; then
+        OSVER='5.3'
+else
+        OSVER='6.1'
+fi
+rpm -Uvh $OSVER/*.rpm
 EOF
 
 	chmod +x instoss
