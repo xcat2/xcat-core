@@ -183,6 +183,10 @@ sub applyimagescript {
     if exist i:/images/$arch/$profile.prt copy i:/images/$arch/$profile.prt x:/xcat/diskprep.prt
     diskpart /s x:/xcat/diskprep.prt
     x:/windows/system32/imagex /apply i:/images/$arch/$profile.wim 1 c:
+    reg load HKLM\\csystem c:\\windows\\system32\\config\\system
+    reg copy HKLM\\system\\CurrentControlSet\\services\\TCPIP6\\parameters HKLM\\csystem\\ControlSet001\\services\\TCPIP6\\parameters
+    reg copy HKLM\\system\\CurrentControlSet\\services\\TCPIP6\\parameters HKLM\\csystem\\ControlSet002\\services\\TCPIP6\\parameters
+    reg unload HKLM\\csystem
     IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64
     IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64
     IF %PROCESSOR_ARCHITECTURE%==x86 GOTO x86
@@ -392,6 +396,10 @@ sub mkinstall
             print $shandle "i:\\$os\\$arch\\setup /unattend:i:\\autoinst\\$node /noreboot\r\n";
         }
         #print $shandle "i:\\postscripts\
+        print $shandle 'reg load HKLM\csystem c:\windows\system32\config\system'."\r\n"; #copy installer DUID to system before boot
+        print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet001\services\TCPIP6\parameters'."\r\n";
+        print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet002\services\TCPIP6\parameters'."\r\n";
+        print $shandle 'reg unload HKLM\csystem'."\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x86 GOTO x86\r\n";
