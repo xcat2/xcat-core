@@ -184,8 +184,8 @@ sub applyimagescript {
     diskpart /s x:/xcat/diskprep.prt
     x:/windows/system32/imagex /apply i:/images/$arch/$profile.wim 1 c:
     reg load HKLM\\csystem c:\\windows\\system32\\config\\system
-    reg copy HKLM\\system\\CurrentControlSet\\services\\TCPIP6\\parameters HKLM\\csystem\\ControlSet001\\services\\TCPIP6\\parameters
-    reg copy HKLM\\system\\CurrentControlSet\\services\\TCPIP6\\parameters HKLM\\csystem\\ControlSet002\\services\\TCPIP6\\parameters
+    reg copy HKLM\\system\\CurrentControlSet\\services\\TCPIP6\\parameters HKLM\\csystem\\ControlSet001\\services\\TCPIP6\\parameters /f
+    reg copy HKLM\\system\\CurrentControlSet\\services\\TCPIP6\\parameters HKLM\\csystem\\ControlSet002\\services\\TCPIP6\\parameters /f
     reg unload HKLM\\csystem
     IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64
     IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64
