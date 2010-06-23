@@ -893,6 +893,7 @@ sub mkvm_callback {
     my $task = shift;
     my $args = shift;
     my $node = $args->{node};
+    my $hyp = $args->{hyp};
     if ($task->info->state->val eq 'error') {
         my $error = $task->info->error->localizedMessage;
         sendmsg([1,$error],$node);
@@ -984,7 +985,7 @@ sub poweron_task_callback {
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
     }  elsif ($q and $q->text =~ /^msg.uuid.altered:/ and ($q->choice->choiceInfo->[0]->summary eq 'Cancel' and ($q->choice->choiceInfo->[0]->key eq '0'))) { #make sure it is what is what we have seen it to be
-        if ($parms->{forceon} and $q->choice->choiceInfo->[1]->summary eq 'I _moved it' and $q->choice->choiceInfo->[1]->key eq '1') { #answer the question as 'moved'
+        if ($parms->{forceon} and $q->choice->choiceInfo->[1]->summary eq 'I (_)?moved it' and $q->choice->choiceInfo->[1]->key eq '1') { #answer the question as 'moved'
             $vm->AnswerVM(questionId=>$q->id,answerChoice=>'1');
         } else {
             $vm->AnswerVM(questionId=>$q->id,answerChoice=>'0');
@@ -1724,7 +1725,7 @@ sub mknewvm {
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&mkvm_callback;
         $running_tasks{$task}->{hyp} = $hyp;
-        $running_tasks{$task}->{data} = { node => $node };
+        $running_tasks{$task}->{data} = { hyp=>$hyp, node => $node };
 }
 
 
@@ -1805,8 +1806,21 @@ sub build_cfgspec {
     #my $nodeos = $tablecfg{nodetype}->{$node}->[0]->{os};
     #my $nodearch = $tablecfg{nodetype}->{$node}->[0]->{arch};
     my $nodeos = getguestid($node); #nodeos=>$nodeos,nodearch=>$nodearch);
-
-
+    my $uuid;
+    if ($tablecfg{vpd}->{$node}->[0]->{uuid}) {
+        $uuid = $tablecfg{vpd}->{$node}->[0]->{uuid};
+    } else {
+        if ($tablecfg{mac}->{$node}->[0]->{mac}) { #a uuidv1 is possible, generate that for absolute uniqueness guarantee
+            my $mac = $tablecfg{mac}->{$node}->[0]->{mac};
+            $mac =~ s/\|.*//;
+            $mac =~ s/!.*//;
+            $uuid=xCAT::Utils::genUUID(mac=>$mac);
+        } else {
+            $uuid=xCAT::Utils::genUUID();
+        }
+        my $vpdtab = xCAT::Table->new('vpd');
+        $vpdtab->setNodeAttribs($node,{uuid=>$uuid});
+    }
     return VirtualMachineConfigSpec->new(
             name => $node,
             files => $vfiles,
@@ -1814,6 +1828,7 @@ sub build_cfgspec {
             memoryMB => $memory,
             numCPUs => $ncpus,
             deviceChange => \@devices,
+            uuid=>$uuid,
         );
 }
 
