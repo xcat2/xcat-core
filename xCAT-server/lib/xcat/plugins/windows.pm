@@ -397,8 +397,8 @@ sub mkinstall
         }
         #print $shandle "i:\\postscripts\
         print $shandle 'reg load HKLM\csystem c:\windows\system32\config\system'."\r\n"; #copy installer DUID to system before boot
-        print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet001\services\TCPIP6\parameters'."\r\n";
-        print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet002\services\TCPIP6\parameters'."\r\n";
+        print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet001\services\TCPIP6\parameters /f'."\r\n";
+        print $shandle 'reg copy HKLM\system\CurrentControlSet\services\TCPIP6\parameters HKLM\csystem\ControlSet002\services\TCPIP6\parameters /f'."\r\n";
         print $shandle 'reg unload HKLM\csystem'."\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==AMD64 GOTO x64\r\n";
         print $shandle "IF %PROCESSOR_ARCHITECTURE%==x64 GOTO x64\r\n";
