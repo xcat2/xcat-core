@@ -404,7 +404,7 @@ B<xdcp> I<compute -F /tmp/myrsync>
 
 =item *
 
-To rsync the all the files in /home/mikev to the  compute nodes: 
+To rsync all the files in /home/mikev to the  compute nodes: 
 
 Create a rsync file /tmp/myrsync, with this line:
 
