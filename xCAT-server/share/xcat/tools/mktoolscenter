@@ -286,7 +286,7 @@ while ($path) {
 };
 $path = $_;
 my $sandbox = "$repo/sandbox";
-if ( mkdir($path) or mkdir($sandbox) or system("cp $srcdir/$util $repo") or system("cp $asudir/$asu $repo")) {
+if ( mkpath($path) or mkpath($sandbox) or system("cp $srcdir/$util $repo") or system("cp $asudir/$asu $repo")) {
   output("Error making path or copying input file");
   exit;
 }
