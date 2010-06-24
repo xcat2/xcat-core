@@ -1266,8 +1266,8 @@ sub convey_response {
   }
   $resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
   #sanitize the response, to avoid being killed by non-printable bytes
-  #$resp =~ tr/\011-\177/?/c;
-  #seeing if using utf-8 offloads potential issues to client terminal
+  $resp =~ tr/\011-\177/?/c;
+  #seeing if using utf-8 offloads potential issues to client terminal, it didn't
   print $parent_fd $resp;
   yield; #parent must get timeslice anyway before an ack could possibly return
   my $parsel = new IO::Select;
