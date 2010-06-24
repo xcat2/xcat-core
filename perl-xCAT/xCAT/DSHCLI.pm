@@ -3683,7 +3683,7 @@ sub parse_and_run_dsh
 
     #printf " node list is $options{'nodes'}";
     # build arguments
-    
+
     # get the command from the argument list
     $options{'command'} = join ' ', @ARGV;
 
@@ -4224,6 +4224,7 @@ sub parse_and_run_dcp
 
     # Execute the dcp api
     @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
+
     #if ($::RUNCMD_RC)
     #{    # error from dcp
     #    my $rsp = {};
@@ -4231,7 +4232,7 @@ sub parse_and_run_dcp
     #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
 
     #}
-    $::FAILED_NODES=$::RUNCMD_RC;
+    $::FAILED_NODES = $::RUNCMD_RC;
     return (@results);
 
 }
@@ -4375,6 +4376,7 @@ sub rsync_to_image
         File format:
           /.../file1 ->  /.../dir1/filex
           /.../file1 ->  /.../dir1
+          /.../*     ->  /.../dir1
           /.../file1 /..../filex  -> /...../dir1
 
         Arguments:
@@ -4407,6 +4409,7 @@ sub parse_rsync_input_file_on_MN
     my ($nodes, $options, $input_file, $rsyncSN, $syncdir) = @_;
     my @dest_host    = @$nodes;
     my $process_line = 0;
+    my $destfileisdir;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
@@ -4425,15 +4428,23 @@ sub parse_rsync_input_file_on_MN
             my @srcfiles = (split ' ', $src_file);
             my $arraysize = scalar @srcfiles;    # of source files on the line
             my $dest_dir;
+            $destfileisdir = 0;
+            if ($dest_file =~ /\/$/)
+            {    #  ends in /
+                $destfileisdir = 1;
+            }
 
             # if more than one file on the line then
+            # or the destination file ends in /
+            #  /tmp/file1 -> /tmp/
             # the destination  is a directory
             # else assume a file
-            if ($arraysize > 1)
+            if (($arraysize > 1) || ($destfileisdir == 1))
             {
-                $dest_dir = $dest_file;
+                $dest_dir      = $dest_file;
+                $destfileisdir = 1;
             }
-            else    # only one file
+            else    # get the directory name
             {       # strip off the file
                 $dest_dir = dirname($dest_file);
             }
@@ -4464,30 +4475,14 @@ sub parse_rsync_input_file_on_MN
                     my $src_basename = basename($srcfile);    # get file name
 
                     my $dest_basename;    # destination file name
-                    if (-e $dest_file)
-                    {                     # if destination file  exist
-                        if (-d $dest_file)
-                        {    # if a directory, get filename from src
-                            $dest_basename = $src_basename;
-                        }
-                        else
-                        {    # get the file name from the destination
-                            $dest_basename = basename($dest_file);
-                        }
+                                          # determine path to the file
+                    if ($destfileisdir == 1)    # if a directory
+                    {
+                        $dest_basename = $src_basename;
                     }
                     else
-                    {        #destination does not exist, get filename from src
-                         # does not exist,  if only more than one file on the line
-                         # assume that the destination  is a directory
-                         # else assume a file
-                        if ($arraysize > 1)
-                        {
-                            $dest_basename = $src_basename;
-                        }
-                        else
-                        {
-                            $dest_basename = basename($dest_file);
-                        }
+                    {
+                        $dest_basename = basename($dest_file);
                     }
                     if ($rsyncSN == 1)    # dest file will be the same as src
                     {                     #  syncing the SN
@@ -4541,6 +4536,7 @@ sub parse_rsync_input_file_on_MN
         File format:
           /.../file1 ->  /.../dir1/filex
           /.../file1 ->  /.../dir1
+          /.../*     ->  /.../dir1
           /.../file1 /..../filex  -> /...../dir1
 
         Arguments:
@@ -4571,6 +4567,7 @@ sub parse_rsync_input_file_on_SN
     my ($nodes, $options, $input_file, $syncdir) = @_;
     my @dest_host    = @$nodes;
     my $process_line = 0;
+    my $destfileisdir;
     open(INPUTFILE, "< $input_file") || die "File $input_file does not exist\n";
     while (my $line = <INPUTFILE>)
     {
@@ -4580,17 +4577,25 @@ sub parse_rsync_input_file_on_SN
             $process_line = 1;
             my $src_file  = $1;
             my $dest_file = $2;
-            $dest_file =~ s/[\s;]//g;
+            $dest_file =~ s/[\s;]//g;    # remove blanks
+
+            # see if destination is a directory
+            $destfileisdir = 0;
+            if ($dest_file =~ /\/$/)
+            {                            #  ends in /
+                $destfileisdir = 1;
+            }
             my @srcfiles = (split ' ', $src_file);
             my $arraysize = scalar @srcfiles;    # of source files on the line
             my $dest_dir;
 
-            # if only more than one file on the line
+            # if only more than one file on the line or ends in /
             # then the destination  is a directory
             # else a file,
-            if ($arraysize > 1)
+            if (($arraysize > 1) || ($destfileisdir == 1))
             {
-                $dest_dir = $dest_file;
+                $dest_dir      = $dest_file;
+                $destfileisdir = 1;
             }
             else    # a file path
             {
@@ -4615,30 +4620,13 @@ sub parse_rsync_input_file_on_SN
                     my $src_basename = basename($newsrcfile);    # get file name
 
                     my $dest_basename;    # destination file name
-                    if (-e $dest_file)
-                    {                     # if destination file  exist
-                        if (-d $dest_file)
-                        {    # if a directory, get filename from src
-                            $dest_basename = $src_basename;
-                        }
-                        else
-                        {    # get the file name from the destination
-                            $dest_basename = basename($dest_file);
-                        }
+                    if ($destfileisdir == 1)    # is a directory
+                    {
+                        $dest_basename = $src_basename;
                     }
                     else
-                    {        #destination does not exist, get filename from src
-                         # does not exist,  if only more than one file on the line
-                         # assume that the destination  is a directory
-                         # else assume a file
-                        if ($arraysize > 1)
-                        {
-                            $dest_basename = $src_basename;
-                        }
-                        else
-                        {
-                            $dest_basename = basename($dest_file);
-                        }
+                    {
+                        $dest_basename = basename($dest_file);
                     }
                     $$options{'destDir_srcFile'}{$target_node}{$dest_dir} ||=
                       $dest_basename =~ s/[\s;]//g;
