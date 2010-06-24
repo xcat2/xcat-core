@@ -107,18 +107,27 @@ is not specified, a default fanout value of B<64> is used.
 Specifies the path to the file that will be used to  
 build the rsync command.
 The format of the input file is as follows, each line contains:
+
  <path to source file1> <path to source file2> ... ->  < path to destination file/directory>
 
 or
 
  <path to source file> -> <path to destination file>
 
+or
+
+ <path to source file> -> <path to destination directory ( must end in /)>
+
 For example:
   /etc/password /etc/hosts -> /etc
 
   /tmp/file2  ->  /tmp/file2
 
+  /tmp/file2  ->  /tmp/
+
   /tmp/filex  ->  /tmp/source/filey
+
+  /etc/*  ->  /etc/
 
 On Linux rsync always uses ssh remoteshell. On AIX, ssh or rsh is used depending on the site.useSSHonAIX attribute.
 
@@ -385,10 +394,25 @@ Create a rsync file /tmp/myrsync, with this line:
 
 /etc/hosts -> /etc/hosts
 
+or
+
+/etc/hosts -> /etc/    (last / is required)
+
 Run:
 
 B<xdcp> I<compute -F /tmp/myrsync>
 
+=item *
+
+To rsync the all the files in /home/mikev to the  compute nodes: 
+
+Create a rsync file /tmp/myrsync, with this line:
+
+/home/mikev/* -> /home/mikev/      (last / is required) 
+
+Run:
+
+B<xdcp> I<compute -F /tmp/myrsync>
 
 =item *
 
@@ -399,6 +423,10 @@ rsync the files to the  /var/xcat/syncfiles directory on the service nodes and t
 Create a rsync file /tmp/myrsync, with this line:
 
 /etc/hosts /etc/passwd -> /etc
+
+or 
+
+/etc/hosts /etc/passwd -> /etc/
 
 Run:
 
