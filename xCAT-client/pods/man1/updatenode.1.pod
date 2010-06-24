@@ -100,6 +100,7 @@ and the destination location for the files on the target node.
 The basic entry format looks like following:
 
   path_of_src_file1  -> path_of_dst_file1
+  path_of_src_file1  -> path_of_dst_directory ( must end in /)
   path_of_src_file1  path_of_src_file2 ... -> path_of_dst_directory
 
 The path_of_src_file* should be the full path of the source file 
@@ -122,6 +123,8 @@ the same file name. Note with one file, full path to file
 must be provide.
 
   /etc/file1 -> /etc/file1
+ or
+  /etc/file1 -> /etc/
 
 =item 2
 
@@ -146,6 +149,14 @@ multiple files are sync'd at one time).  If the directory does
 not exist, xdcp will create it.
 
   /etc/file1 /etc/file2 /etc/file3 -> /tmp/etc
+  or
+  /etc/file1 /etc/file2 /etc/file3 -> /tmp/etc/
+
+=item 5 
+
+sync all the files in /etc to /tmp/etc 
+
+  /etc/* -> /tmp/etc/
 
 =back
 
