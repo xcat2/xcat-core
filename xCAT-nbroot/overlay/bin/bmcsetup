@@ -33,15 +33,6 @@ while [ -z "$BMCIP" ]; do
         sleep 15
     fi
 
-    echo "Attempting to locate correct lan channel"
-
-    for LANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do 
-      if ipmitool channel info $LANCHAN | grep 802.3 > /dev/null; 
-        then break; 
-      fi; 
-    done
-    
-    echo "Using lan channel $LANCHAN"
 done
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
 IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
@@ -64,7 +55,24 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
             ipmitool raw 0xc 1 1 0xc0 $BMCPORT
         fi
     fi
+elif [ "$IPMIMFG" == 20301 ] ; then
+    XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
+    if [ "$XPROD" == "220" ]; then
+        BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    `    if [ ! -z "$BMCPORT" ]; then
+            ipmitool raw 0xc 1 1 0xc0 $BMCPORT
+        fi
+    fi
 fi
+echo -n "Auto detecting LAN channel."
+
+for LANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do 
+   if ipmitool channel info $LANCHAN 2> /dev/null | grep 802.3 >& /dev/null && ipmitool raw 0xc 2 $LANCHAN 5 0 0 >& /dev/null; 
+     then break; 
+   fi; 
+   echo -n "."
+done
+echo "Detected LAN channel $LANCHAN"
         
 TRIES=0
 while ! ipmitool lan set $LANCHAN ipsrc static; do
