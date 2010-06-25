@@ -14,6 +14,7 @@
 #
 allowcred.awk &
 CREDPID=$!
+sleep 1
 modprobe ipmi_si
 modprobe ipmi_devintf
 while [ -z "$BMCIP" ]; do
@@ -22,7 +23,6 @@ while [ -z "$BMCIP" ]; do
         echo "Retrying retrieval of IPMI settings from server"
     done
     TIMEOUT=15
-    kill $CREDPID
     BMCIP=`grep bmcip /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCGW=`grep gateway /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
     BMCNM=`grep netmask /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
@@ -32,39 +32,29 @@ while [ -z "$BMCIP" ]; do
         echo "FAILED TO RETRIEVE SETTINGS, RETRYING in 15 seconds"
         sleep 15
     fi
-
 done
+kill $CREDPID
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
 IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
 if [ "$IPMIMFG" == 2 ]; then #IBM
     IBMFAM=`ipmitool raw 0x3a 0x50 |head -n 1| awk '{print $1 $2 $3 $4}'`
     if [ "$IBMFAM" == "59554f4f" ]; then
-        #BMC YUOO family insists that username change on each set
-        if [ -z "$BMCUS" ]; then #blank user, set to foo first
-            ipmitool user set name 2 "foo";
-        else
-            TEMPUSER=`echo $BMCUS|sed -e \'s/'^.//'`
-            if [ -z "$TEMPUSER" ]; then #was one character, set it to foo first
-                ipmitool user set name 2 "foo";
-            else #still non blank, can use tempuser as safe temporary value
-                ipmitool user set name 2 $TEMPUSER
-            fi
-        fi
         BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
-            ipmitool raw 0xc 1 1 0xc0 $BMCPORT
+            ipmitool raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
         fi
     fi
 elif [ "$IPMIMFG" == 20301 ] ; then
     XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
     if [ "$XPROD" == "220" ]; then
+        LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
-            ipmitool raw 0xc 1 1 0xc0 $BMCPORT
+            ipmitool raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
         fi
     fi
 fi
-echo -n "Auto detecting LAN channel."
+echo -n "Auto detecting LAN channel..."
 
 for LANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do 
    if ipmitool channel info $LANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $LANCHAN 5 0 0 > /dev/null 2>&1; 
@@ -101,25 +91,27 @@ if [ ! -z "$BMCGW" ]; then
     done
     TRIES=0
 fi
-while ! ipmitool user disable 1; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+DISABLEUSERS="1 2 3 4"
+if [ ! -z "$LOCKEDUSERS" ]; then
+    USERSLOT=`ipmitool user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep " $BMCUS"|awk '{print $1}'`
+    if [ -z "$USERSLOT" ]; then
+        USERSLOT=4
+    fi
+else
+    USERSLOT=2
+fi
+CURRENTUSER=`ipmitool user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
+DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
+for user in $DISABLEUSERS; do
+    while ! ipmitool user disable $user; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+    TRIES=0
 done
 TRIES=0
-while ! ipmitool user disable 3; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
-TRIES=0
-while ! ipmitool user disable 4; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
-TRIES=0
-while ! ipmitool user enable 2; do
+while ! ipmitool user enable $USERSLOT; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -127,63 +119,67 @@ done
 TRIES=0
 # Last param in ipmitool user priv is the channel to set it on.
 # Penguin boxes are all channel 2
-while ! ipmitool user priv 2 4 $LANCHAN; do
+while ! ipmitool user priv $USERSLOT 4 $LANCHAN; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
 TRIES=0
-while ! ipmitool user set name 2 $BMCUS; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
+if [ "$CURRENTUSER" != "$BMCUS" ]; then
+    while ! ipmitool user set name $USERSLOT $BMCUS; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+fi
 TRIES=0
-while ! ipmitool user set password 2 $BMCPW; do
+while ! ipmitool user set password $USERSLOT $BMCPW; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
 TRIES=0
 echo "Set up following user table: "
-ipmitool user list 1
+ipmitool user list $LANCHAN
 
 
-echo "Enabling Channel $LANCHAN: "
-while ! ipmitool raw 0x6 0x40 $LANCHAN 0x42 0x44; do
+echo -n "Enabling Channel $LANCHAN: "
+while ! ipmitool raw 0x6 0x40 $LANCHAN 0x42 0x44 > /dev/null; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
 TRIES=0
-while ! ipmitool raw 0x6 0x40 $LANCHAN 0x82 0x84; do
+while ! ipmitool raw 0x6 0x40 $LANCHAN 0x82 0x84 > /dev/null; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 TRIES=0
 
 echo -n "Enabling ARP responses: "
-while ! ipmitool lan set $LANCHAN arp respond on; do
+while ! ipmitool lan set $LANCHAN arp respond on > /dev/null; do
     sleep 1
     let TRIES=TRIES+1
     echo -n .
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 TRIES=0
-echo
 
-echo "Enabling IPMI v 1.5 MD5 LAN access:"
-while ! ipmitool lan set $LANCHAN auth admin md5; do
+echo -n "Enabling IPMI v 1.5 MD5 LAN access:"
+while ! ipmitool lan set $LANCHAN auth admin md5 > /dev/null; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
+if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 TRIES=0
 if [ ! "$IPMIVER" == "1.5"  ]; then 
-    echo "Enabling IPMI v 2.0 LAN access:"
+    echo -n "Enabling IPMI v 2.0 LAN access:"
     SUPPORTEDSUITES=`ipmitool lan print $LANCHAN|grep Suites|awk -F: '{print $2}'|sed -e 's/ 0//'`
-    PRIVS="a"
+    PRIVS="X"
     for priv in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
         if echo $SUPPORTEDSUITES|grep $priv > /dev/null; then
             PRIVS="$PRIVS"a
@@ -191,37 +187,37 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
             PRIVS="$PRIVS"X
         fi
     done
-    while ! ipmitool lan set $LANCHAN cipher_privs $PRIVS; do
+    while ! ipmitool lan set $LANCHAN cipher_privs $PRIVS > /dev/null; do
         sleep 1
         let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
+    if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
     TRIES=0
 
-    echo "Enabling SOL for channel $LANCHAN"
-    while ! ipmitool raw 0xc 0x21 $LANCHAN 0x1 0x1; do
+    echo -n "Enabling SOL for channel $LANCHAN:"
+    while ! ipmitool raw 0xc 0x21 $LANCHAN 0x1 0x1 > /dev/null; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
+    if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
     TRIES=0
     
-    echo "Enabling SOL for user 2"
-    while ! ipmitool raw 6 0x4c $LANCHAN 2 2 0 0 0; do
+    echo -n "Enabling SOL for $BMCUS:"
+    while ! ipmitool raw 6 0x4c $LANCHAN $USERSLOT 2 0 0 0 > /dev/null; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
+    if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 fi
 
-allowcred.awk &
-CREDPID=$!
 #frume.awk
-kill $CREDPID
 
 echo "Lighting Identify Light"
 while :
     do ipmitool raw 0 4 10 > /dev/null
-    sleep 5
+    sleep 7
 done &
 
