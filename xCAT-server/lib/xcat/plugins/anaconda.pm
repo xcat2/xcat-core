@@ -59,12 +59,15 @@ my %distnames = (
                  "1210111941.792844" => "fedora9",
                  "1227147467.285093" => "fedora10",
                  "1227142402.812888" => "fedora10",
-		"1243981097.897160" => "fedora11", #x86_64 DVD ISO
-		"1257725234.740991" => "fedora12", #x86_64 DVD ISO
+                 "1243981097.897160" => "fedora11", #x86_64 DVD ISO
+                 "1257725234.740991" => "fedora12", #x86_64 DVD ISO
+                 "1273712675.937554" => "fedora13", #x86_64 DVD ISO
 
                  "1194512200.047708" => "rhas4.6",
                  "1194512327.501046" => "rhas4.6",
                  "1241464993.830723" => "rhas4.8", #x86-64
+
+		 "1273608367.051780" => "SL5.5", #x86_64 DVD ISO
                  );
 my %numdiscs = (
                 "1156364963.862322" => 4,
@@ -75,9 +78,9 @@ sub handled_commands
 {
     return {
             copycd    => "anaconda",
-            mknetboot => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)|(sl.*)",
-            mkinstall => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(sl.*)",
-            mkstatelite => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(sl.*)",
+            mknetboot => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
+            mkinstall => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
+            mkstatelite => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
 	
             };
 }
@@ -948,7 +951,7 @@ sub copycd
     if (    $distname
         and $distname !~ /^centos/
         and $distname !~ /^fedora/
-        and $distname !~ /^sl/
+        and $distname !~ /^SL/
         and $distname !~ /^rh/)
     {
 
@@ -987,13 +990,6 @@ sub copycd
             $distname = "centos5";
         }
     }
-    elsif ($desc =~ /^LTS$/)
-    {
-        unless ($distname)
-        {
-            $distname = "sl5";
-        }
-    }
     elsif ($desc =~ /^Fedora 8$/)
     {
         unless ($distname)
@@ -1022,6 +1018,14 @@ sub copycd
             $distname = "rhels5";
         }
     }
+    elsif ($desc =~ /^LTS$/)
+    {
+        unless ($distname)
+        {
+            $distname = "SL5";
+        }
+    }
+
 
     unless ($distname)
     {
@@ -1136,14 +1140,15 @@ sub getplatform {
     {
 	$platform = "fedora";
     }
-    elsif ($os =~ /sl.*/)
-    {
-	$platform = "sl";
-    }
     elsif ($os =~ /esx.*/)
     {
 	$platform = "esx";
     }
+    elsif ($os =~ /SL.*/)
+    {
+        $platform = "SL";
+    }
+
     return $platform;
 }
 

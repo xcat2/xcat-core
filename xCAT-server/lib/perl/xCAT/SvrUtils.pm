@@ -319,7 +319,7 @@ sub getsynclistfile()
 	      elsif ($os =~ /centos.*/) { $platform = "centos"; }
 	      elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
 	      elsif ($os =~ /sles.*/) { $platform = "sles"; }
-	      elsif ($os =~ /sl.*/) { $platform = "sl"; }
+	      elsif ($os =~ /SL.*/) { $platform = "SL"; }
 	      elsif ($os =~ /AIX.*/) { $platform = "AIX"; }
 	  }
 
@@ -344,6 +344,7 @@ sub getsynclistfile()
       elsif ($os =~ /centos.*/) { $platform = "centos"; }
       elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
       elsif ($os =~ /sles.*/) { $platform = "sles"; }
+      elsif ($os =~ /SL.*/) { $platform = "SL"; }
       elsif ($os =~ /AIX.*/) { $platform = "AIX"; }
       elsif ($os =~ /win/)  {$platform = "windows"; }
     }
