@@ -1,0 +1,97 @@
+=head1 NAME
+
+B<makeroutes> - add routes to connect the mn to the nodes via the service nodes.
+
+=head1 SYNOPSIS
+
+B<makeroutes> [B<-r>|B<--routename> I<r1>[I<,r2...>]] 
+
+B<makeroutes> B<-d>|B<--delete> [B<-r>|B<--routenames> I<r1>[I<,r2...>]]
+
+B<makeroutes> [B<-n>|B<--net> I<net>] [B<-g>|B<--gateway> I<gw>] [B<-m>|B<--mask> I<netmask>]
+
+B<makeroutes>  B<-d>|B<--delete> [B<-n>|B<--net> I<net>] [B<-g>|B<--gateway> I<gw>] [B<-m>|B<--mask> I<netmask>]
+
+B<makeroutes> [B<-h> B<--help>|B<-v>|B<--version>]
+
+=head1 DESCRIPTION
+
+The B<makeroutes> command adds routes to connect the mn to the nodes via the service nodes. It first reads the routing info from xCAT's B<routes> table and then adds the routes to the Kernel IP routing table for the os. It also gets all the gateways from the table. If a gateway is a service node, it sets b<servicenode.ipforward> to 1 and then goes to the service node to enable the ipforwarding.  
+
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-d|--delete>
+
+Specifies to delete the given routes. If not specified, the action is to add routes.
+
+=item B<-r|--routename>  
+
+Specifies a list of comma separated route names defined in the B<routes> table. If omitted, all routes defined in the B<routes> table will be used.
+
+=item B<-n|--net>
+
+Specifies the network address. 
+
+=item B<-g|--gateway>
+
+Specifies the gateway that routes the ip traffic from the mn to the nodes.
+
+=item B<-m|--mask>
+
+Specified the network mask.
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-v|--version>
+
+Command Version.
+
+
+=back
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To add all routes from the B<routes> table to the os route table:
+
+ makeroutes
+
+=item 2.
+
+To add route rr1 and rr2 to the os route table.
+
+ makeroutes -r rr1,rr2
+
+=item 3.
+
+To delete route rr1 and rr2 from the os route table.
+
+ makeroutes -d -r rr1,rr2
+
+=item 4.
+
+To add a specific route to the os route table.
+
+ makeroutes -n 10.0.1.0
+
+ The 10.0.1.0 netrwork must be defined in the xCAT's routes table.
+
+
+=back
+
+=head1 FILES
+
+/opt/xcat/sbin/makeroutes
+
+=head1 SEE ALSO
+
+
+

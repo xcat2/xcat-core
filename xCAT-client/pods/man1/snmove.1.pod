@@ -1,0 +1,77 @@
+=head1 NAME
+
+B<snmove> - move the nodes from one service node to another service node.
+
+=head1 SYNOPSIS
+
+B<snmove> I<noderange> B<-d>|B<--dest> I<sn2> B<-D>|B<--destn> I<sn2n> [B<-i>|B<--ignorenodes>]
+
+B<snmove> B<-s>|B<--source> I<sn1> [B<-S>|B<--sourcen> I<sn1n>] B<-d>|B<--dest> I<sn2> B<-D>|B<--destn> I<sn2n> [B<-i>|B<--ignorenodes>]
+
+B<snmove> [B<-h>|B<--help>|B<-v>|B<--version>]
+
+=head1 DESCRIPTION
+
+The B<snmove> command moves the nodes from one service nodes to another. It assumes that both service nodes can reach the nodes in terms of network. Both are configured as service nodes and listed in the B<noderes.servicenode> for the nodes. The source service node is the first in the list and also in B<noderes.xcatmaster>. This command will move the desination service node I<sn2> to the first in the list for B<noderes.servicenode> and also change <noderes.master> to match I<sn2>. It'll also change the services so that TFTP, NFS, serial console and DHCP will use the new server for the nodes. If -i is specified, the nodes themselves will be untouched. Otherwise, syslog and NTP will be changed to use the new service node as the master. The user can run other postscripts using updatenode command after this command is done to setup other applications such as monitoring. The destination service node <sn2> has to be up and running, but the source service node does not have to.  
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-s|--source>
+
+Specifies the hostname of the source service node adapter facing the management node. It can be found in the B<servicenode> table. 
+
+=item B<-S|--sourcen>
+
+Specifies the hostname of the source service node adapter facing the nodes.
+
+=item B<-d|--dest>
+
+Specifies the hostname of the destination service node adapter facing the management node. It can be found in the B<servicenode> table. 
+
+=item B<-D|--destn>
+
+Specifies the hostname of the destination service node adapter facing the nodes.
+
+=item B<-i|--ignorenodes>
+
+No action will be done on the nodes. If not specified, the syslog and setup ntp postscritps will be rerun on the nodes to switch the syslog and NTP server.
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-v|--version>
+
+Command Version.
+
+
+=back
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To move a groups of nodes from one server nodes to another:
+
+ snmove group1 -d xcatsn02 -D xcatsn02-eth1
+
+=item 2.
+
+To move all the nodes from one service nodes to another:
+
+ snmove -s xcatsn01 -S xcatsn01-eth1 -d xcatsn02 -D xcatsn02-eth1
+
+=back
+
+=head1 FILES
+
+/opt/xcat/sbin/snmove
+
+=head1 SEE ALSO
+
+L<noderange(3)|noderange.3>
+
