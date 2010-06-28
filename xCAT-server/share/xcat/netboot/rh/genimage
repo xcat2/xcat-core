@@ -658,6 +658,24 @@ EOS1
    print $inifile <<EOMS;
 # check and see if debug is specified on command line
 grep '\(debug\)' /proc/cmdline > /dev/null && export DEBUG=1
+
+IFACE=$prinic
+if [ -z "\$IFACE" ]; then
+    for i in `cat /proc/cmdline`; do
+       KEY=`echo \$i |awk -F= '{print \$1}'`
+       if [ "\$KEY" == 'netdev' ]; then
+          IFACE=`echo \$i |awk -F= '{print \$2}'`
+          break
+       fi
+       if [ "\$KEY" == 'BOOTIF' ]; then
+          VALUE=`echo \$i |awk -F= '{print \$2}'`
+          IFACE=`ifconfig -a|grep -i "hwaddr $VALUE"|awk '{print $1}'`
+       fi
+    done
+fi
+
+export IFACE=\$IFACE
+
 netstart
 while ! ifconfig | grep inet; do
     echo -e "\${RED}Failed to acquire address, retrying \${RESET}"
@@ -805,21 +823,6 @@ if [ "\$NFSROOT" = "1" ]; then
 	then
 		mkdir -p \$NEWROOT/\$RWDIR/tmpfs/var/lib/dhcp
 	fi
-    IFACE=$prinic
-    if [ -z "\$IFACE" ]; then
-        for i in `cat /proc/cmdline`; do
-           KEY=`echo \$i |awk -F= '{print \$1}'`
-           if [ "\$KEY" == 'netdev' ]; then
-              IFACE=`echo \$i |awk -F= '{print \$2}'`
-              break
-           fi
-           if [ "\$KEY" == 'BOOTIF' ]; then
-              VALUE=`echo \$i |awk -F= '{print \$2}'`
-              IFACE=`ifconfig -a|grep -i "hwaddr $VALUE"|awk '{print $1}'`
-           fi
-        done
-    fi
-
 
 	cp -fp /var/lib/dhclient/dhclient.leases \${NEWROOT}/\${RWDIR}/tmpfs/var/lib/dhclient/dhclient-\$IFACE.leases
 	cp -fp /var/lib/dhclient/dhclient.leases \${NEWROOT}/\${RWDIR}/tmpfs/var/lib/dhcp/dhclient-\$IFACE.leases
