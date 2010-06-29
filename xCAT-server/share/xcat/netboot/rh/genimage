@@ -195,7 +195,13 @@ if($mode eq "statelite"){
 	push @ndrivers,"lockd.ko";
 	push @ndrivers,"nfs_acl.ko";
 	push @ndrivers,"nfs.ko";
-
+	
+	# Additional modules needed on s390x
+	if ($arch eq "s390x") {
+		# The network drivers need to be loaded in this order
+		unshift @ndrivers,"ccwgroup.ko";
+		unshift @ndrivers,"qdio.ko";
+	}
 }
 
 
@@ -243,7 +249,7 @@ unless ($onlyinitrd) {
       print "Unable to find package list for $profile!";
       exit 1;
    }
-
+   
    my %pkg_hash=get_package_names($pkglist);
    my $index=1;
    my $pass;
@@ -355,10 +361,13 @@ unless ($onlyinitrd) {
 #If specified, that takes precedence.
 #if image has one, that is used
 #if all else fails, resort to uname -r like this script did before
+
+# Kernel name for s390x should be the same: vmlinuz-2.6.18-164.el5
 my @KVERS= <$rootimg_dir/boot/vmlinuz-*>;
 foreach (@KVERS) {
 	s/vmlinuz-//;
 }
+
 unless (scalar(@KVERS)) {
 	@KVERS= <$rootimg_dir/lib/modules/*>;
 }
@@ -524,9 +533,9 @@ sub mkinitrd {
 # start writing to the init script.
 	open($inifile,">","/tmp/xcatinitrd.$$/init");
 	print $inifile "#!/sbin/busybox.anaconda sh\n";
-
+	
 # add some functions
- 	print $inifile <<EOS1;
+ 	print $inifile <<EOS1; 	
 NEWROOT="/sysroot"
 SHELL="/bin/sh"
 RWDIR=".statelite"
@@ -653,8 +662,39 @@ EOS1
    print $inifile "mknod /dev/ttyS2 c 4 66\n";
    print $inifile "mknod /dev/ttyS3 c 4 67\n";
    foreach (@ndrivers) {
-      print $inifile "insmod /lib/$_\n";
+		print $inifile "insmod /lib/$_\n";
    }
+      
+      
+# Start udev on s390x
+if ($arch eq "s390x") {
+	print $inifile <<EOMS;
+# Start udev to find devices attached to node
+echo `/sbin/udevd --daemon`
+echo `/sbin/udevtrigger`
+echo `/sbin/udevsettle`
+sleep 1
+echo `/sbin/depmod`
+
+# Setup network scripts
+echo "NETWORKING=yes" > /etc/sysconfig/network
+
+echo "ONBOOT=yes" > /etc/sysconfig/network-scripts/ifcfg-$prinic
+echo "BOOTPROTO=dhcp" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
+echo "DEVICE=$prinic" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
+echo 'OPTIONS="layer2=1"' >> /etc/sysconfig/network-scripts/ifcfg-$prinic
+echo "SUBCHANNELS=0.0.0800,0.0.0801,0.0.0802" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
+
+# Turn on network devices
+echo 0.0.0800,0.0.0801,0.0.0802 > /sys/bus/ccwgroup/drivers/qeth/group
+echo 1 > /sys/bus/ccwgroup/drivers/qeth/0.0.0800/layer2
+echo 1 > /sys/bus/ccwgroup/drivers/qeth/0.0.0800/online
+echo "alias eth1 qeth" >> /etc/modprobe.conf
+echo `ifup eth1`
+sleep 4
+EOMS
+}
+
    print $inifile <<EOMS;
 # check and see if debug is specified on command line
 grep '\(debug\)' /proc/cmdline > /dev/null && export DEBUG=1
@@ -972,10 +1012,20 @@ EOMS
      }
    }
    # add rsync for statelite
-   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod", "bin/bash", "usr/sbin/chroot", "sbin/mount.nfs","/usr/bin/rsync") {
+   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod", "bin/bash", "usr/sbin/chroot", "sbin/mount.nfs", "/usr/bin/rsync") {
       getlibs($_);
       push @filestoadd,$_;
    }
+   
+	# Additional binaries needed for udev on s390x
+	if ($arch eq "s390x") {
+		foreach ("sbin/udevsettle", "sbin/udevtrigger", "sbin/udevd", "sbin/depmod") {
+			getlibs($_);
+			push @filestoadd,$_;
+		}
+	}
+  
+   
    if ($arch =~ /x86_64/) {
       push @filestoadd,"lib64/libnss_dns.so.2";
       push @filestoadd,"lib64/libresolv.so.2";
@@ -1023,6 +1073,30 @@ EOMS
       }
    }
 
+	# Copy udev and network scripts into initrd for s390x
+	if ($arch eq "s390x") {
+		# udev
+		system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
+		system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
+		system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
+		system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
+		system("mkdir -p /tmp/xcatinitrd.$$/proc/self");
+		system("cp -r /proc/self/oom_adj /tmp/xcatinitrd.$$/proc/self");
+		
+		# Network related scripts
+		system("mkdir -p /tmp/xcatinitrd.$$/etc/sysconfig");
+		system("cp -r $rootimg_dir/etc/sysconfig/* /tmp/xcatinitrd.$$/etc/sysconfig");
+		system("mkdir -p /tmp/xcatinitrd.$$/sbin");
+		system("cp -r $rootimg_dir/sbin/* /tmp/xcatinitrd.$$/sbin");
+		system("mkdir -p /tmp/xcatinitrd.$$/lib/modules/$kernelver");
+		system("cp -r $rootimg_dir/lib/modules/$kernelver/modules.dep /tmp/xcatinitrd.$$/lib/modules/$kernelver/modules.dep");
+		system("mkdir -p /tmp/xcatinitrd.$$/etc/init.d");
+		system("cp -r $rootimg_dir/etc/init.d/* /tmp/xcatinitrd.$$/etc/init.d");
+		system("mkdir -p /tmp/xcatinitrd.$$/lib64");
+		system("cp -r $rootimg_dir/lib64/* /tmp/xcatinitrd.$$/lib64");
+		system("mkdir -p /tmp/xcatinitrd.$$/var/run/netreport");
+	}
+	
    #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
    system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd.gz");
    system("rm -rf /tmp/xcatinitrd.$$");
@@ -1110,10 +1184,15 @@ sub generic_post { #This function is meant to leave the image in a state approxi
       print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$_\n";
       close($cfgfile);
    }
-   open($cfgfile,">>","$rootimg_dir/etc/securetty");
-   print $cfgfile "ttyS0\n";
-   print $cfgfile "ttyS1\n";
-   close($cfgfile);
+   
+	# securetty not needed on s390x
+	if ($arch ne "s390x") {
+		open($cfgfile,">>","$rootimg_dir/etc/securetty");
+		print $cfgfile "ttyS0\n";
+		print $cfgfile "ttyS1\n";
+		close($cfgfile);
+	}
+	
    my @passwd;
    open($cfgfile,"<","$rootimg_dir/etc/passwd");
    @passwd = <$cfgfile>;
@@ -1135,34 +1214,40 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    unless (  -r <$rootimg_dir/etc/rc3.d/S??network>) {
        symlink  "/etc/init.d/network","$rootimg_dir/etc/rc3.d/S10network";
    }
-   open($cfgfile,">","$rootimg_dir/etc/rc3.d/S60gettyset");
-   print $cfgfile "#!/bin/bash\n"; 
-   print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
-   print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
-   print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
-   print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n"; 
-   print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
-   print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
-   print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
-   print $cfgfile "        FLOWFLAG=\"-h\"\n";
-   print $cfgfile "     fi\n";
-   print $cfgfile "     if [ -x /sbin/initctl ]; then\n"; #Upstart style
-   print $cfgfile "        initctl emit --no-wait fedora.serial-console-available \$COTTY \$COSPEED\n";
-   print $cfgfile "     else\n";
-   print $cfgfile "       echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
-   print $cfgfile "        init q\n";
-   print $cfgfile "     fi\n";
-   print $cfgfile "  fi\n";
-   print $cfgfile "done\n";
-   chmod(0755,"$rootimg_dir/etc/rc3.d/S60gettyset");
-   #link("$rootimg_dir/sbin/init","$rootimg_dir/init");
-    #add postscript support for redhat
-   if($mode eq "statelite") {
-        print $cfgfile "/opt/xcat/xcatdsklspost 4\n";
-   } else {
-        print $cfgfile "/opt/xcat/xcatdsklspost\n";
-   }
-   close($cfgfile);
+   
+	# gettyset is not found on s390x
+	if ($arch ne "s390x") {
+		open($cfgfile,">","$rootimg_dir/etc/rc3.d/S60gettyset");
+		print $cfgfile "#!/bin/bash\n"; 
+		print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
+		print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
+		print $cfgfile "  if [ \"\$KEY\" == \"console\" -a \"\$i\" != \"console=tty0\" ]; then\n";
+		print $cfgfile "    VALUE=`echo \$i | cut -d= -f 2`\n"; 
+		print $cfgfile "     COTTY=`echo \$VALUE|cut -d, -f 1`\n";
+		print $cfgfile "     COSPEED=`echo \$VALUE|cut -d, -f 2|cut -dn -f 1`\n";
+		print $cfgfile "     if echo \$VALUE | grep n8r; then\n";
+		print $cfgfile "        FLOWFLAG=\"-h\"\n";
+		print $cfgfile "     fi\n";
+		print $cfgfile "     if [ -x /sbin/initctl ]; then\n";	# Upstart style
+		print $cfgfile "        initctl emit --no-wait fedora.serial-console-available \$COTTY \$COSPEED\n";
+		print $cfgfile "     else\n";
+		print $cfgfile "       echo xco:2345:respawn:/sbin/agetty \$FLOWFLAG \$COTTY \$COSPEED xterm >> /etc/inittab\n";
+		print $cfgfile "        init q\n";
+		print $cfgfile "     fi\n";
+		print $cfgfile "  fi\n";
+		print $cfgfile "done\n";
+		chmod(0755,"$rootimg_dir/etc/rc3.d/S60gettyset");
+		
+		#link("$rootimg_dir/sbin/init","$rootimg_dir/init");
+		#add postscript support for redhat
+		if($mode eq "statelite") {
+			print $cfgfile "/opt/xcat/xcatdsklspost 4\n";
+		} else {
+			print $cfgfile "/opt/xcat/xcatdsklspost\n";
+		}
+		
+		close($cfgfile);
+	}
    
    copy(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel"); } 
 
