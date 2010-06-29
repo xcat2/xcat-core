@@ -137,27 +137,32 @@ sub syncmount {
 	    my $image;
 	    my $ent;
 	    if($syncType !~ /image/){
-		$ent = $osents{$node}->[0];
+			$ent = $osents{$node}->[0];
+
+			if (xCAT::Utils->isAIX()) {
+				$image=$ent->{provmethod};
+			} else {
 		
-		unless($ent->{os} && $ent->{arch} && $ent->{profile}){
-		    $callback->({error=>["$node does not have os, arch, or profile defined in nodetype table"],errorcode=>[1]});
-		    $request = {};
-		    next;
-		}
+				unless($ent->{os} && $ent->{arch} && $ent->{profile}){
+					$callback->({error=>["$node does not have os, arch, or profile defined in nodetype table"],errorcode=>[1]});
+					$request = {};
+					next;
+				}
+
                 if ((!$ent->{provmethod}) ||  ($ent->{provmethod} eq 'statelite') || ($ent->{provmethod} eq 'netboot') || ($ent->{provmethod} eq 'install')) {
-		    $image = $ent->{os} . "-" . $ent->{arch} . "-statelite-" . $ent->{profile};
-		} elsif (($ent->{provmethod} ne 'netboot') && ($ent->{provmethod} ne 'install')) {
-			$image=$ent->{provmethod};
+					$image = $ent->{os} . "-" . $ent->{arch} . "-statelite-" . $ent->{profile};
+				} elsif (($ent->{provmethod} ne 'netboot') && ($ent->{provmethod} ne 'install')) {
+					$image=$ent->{provmethod};
+				}
+			}
+		} else {
+			$image=$node;
 		}
-	    } else {
-		$image=$node;
-	    }
-	    my $fData = getNodeData($syncType,$node,$image,$tab,$callback);	
-	    # now we go through each directory and search for the file.
-	    showSync($syncType,$callback, $node, $fData);	
+    	my $fData = getNodeData($syncType,$node,$image,$tab,$callback);	
+    	# now we go through each directory and search for the file.
+    	showSync($syncType,$callback, $node, $fData);	
 	}	
 }
-
 
 # In most cases the syncdir will be on the management node so 
 # want to make sure its not us before we mount things.
@@ -245,9 +250,9 @@ sub getNodeData {
 	my @imageInfo;
 	my @attrs;
 	if($type eq "dir"){
-		@attrs = ['priority', 'directory'];
+		@attrs = ('priority', 'directory');
 	}elsif($type =~ /file|image/){
-		@attrs = ['file','options'];
+		@attrs = ('file','options');
 	}else{
 		print "Yikes! error in the code litefile;getNodeData!";
 		exit 1;
