@@ -39,6 +39,11 @@ my $tftpdir = xCAT::Utils->getTftpDir();
 my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf'; 
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
 
+# dhcp 4.x will use /etc/dhcp/dhcpd.conf as the config file
+if ( $^O ne 'aix' and -d "/etc/dhcp" ) {
+    $dhcpconffile = '/etc/dhcp/dhcpd.conf';
+}
+
 sub ipIsDynamic {
     my $ip = shift;
     my $number = inet_aton($ip);
