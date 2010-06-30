@@ -294,16 +294,8 @@ if (($::INIT) && ($::xcatrunningpgsql == 0))
     #
     &restorexcatdb;
 
-    if ($::osname eq 'AIX')
-    {
-        xCAT::MsgUtils->message("I",
+    xCAT::MsgUtils->message("I",
                            "xCAT is now running on the PostgreSQL database.\n");
-    }
-    else
-    {
-        xCAT::MsgUtils->message("I",
-                             "xCAT is now running on the PostgreSQL database.");
-    }
 
 }    # end initialization
 
