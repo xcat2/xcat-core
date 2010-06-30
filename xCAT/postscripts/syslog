@@ -39,23 +39,25 @@ config_Rsyslog_C3()
   fi
 
   grep "xCAT settings" $conf_file 2>&1 1> /dev/null
-  if [ $? -gt 0 ]; then
+  if [ $? -eq 0 ]; then
+       sed -i "/# xCAT settings/,$ d" $2
+  fi
+
   echo "# xCAT settings" >> $2
-    #enable to receive remote logging
-    if [ $isReceiving -eq 1 ]; then
+  #enable to receive remote logging
+  if [ $isReceiving -eq 1 ]; then
       sed -i 's/^\#\(\s\)*\$ModLoad\(\s\)*imudp.so/\$ModLoad imudp.so/' $2
       sed -i 's/^\#\(\s\)*\$UDPServerRun/\$UDPServerRun/' $2
-    fi
+  fi
 
-    #enable to send the logging to master
-    if [ $isLocal -eq 1 ]; then
+  #enable to send the logging to master
+  if [ $isLocal -eq 1 ]; then
        touch  /var/log/messages  
-    else
+  else
       sed -i 's/^\(\*\..*\)/\#\1/' $2  
       sed -i 's/^\(news\|local7\|mail\|authpriv\|cron\|kern\)\./\#\1\./' $2  
       echo "*.* @$master" >> $2
-    fi 
-  fi
+  fi 
 }
 
 #echo "NTYPE=$NTYPE,OSVER=$OSVER,OSTYPE=$OSTYPE"
@@ -173,11 +175,13 @@ else
       fi
 
       grep "xCAT settings" $conf_file 2>&1 1> /dev/null
-      if [ $? -gt 0 ]; then
-        if [ $isLinux -eq 0 ]; then # aix
+      if [ $? -eq 0 ]; then
+	  sed -i "/# xCAT settings/,$ d" $conf_file
+      fi
+
+      if [ $isLinux -eq 0 ]; then # aix
           echo "# xCAT settings" >> $conf_file
           echo "*.debug   /var/log/messages  rotate 1024K files 5" >> $conf_file
-        fi
       fi
     fi
   else 
@@ -187,11 +191,12 @@ else
         cp -f $conf_file $conf_file.XCATORIG
       fi
       grep "xCAT settings" $conf_file 2>&1 1> /dev/null
-      if [ $? -gt 0 ]; then
-        echo "# xCAT settings" >> $conf_file
-        echo "destination loghost { udp(\"$master\"); };" >> $conf_file
-        echo 'log { source(src); destination(loghost); };' >> $conf_file
+      if [ $? -eq 0 ]; then
+	  sed -i "/# xCAT settings/,$ d" $conf_file
       fi
+      echo "# xCAT settings" >> $conf_file
+      echo "destination loghost { udp(\"$master\"); };" >> $conf_file
+      echo 'log { source(src); destination(loghost); };' >> $conf_file
     else 
       if [ -f $conf_file.XCATORIG ]; then 
         rm -f $conf_file 
