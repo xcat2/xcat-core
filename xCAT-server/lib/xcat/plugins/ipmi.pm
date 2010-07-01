@@ -1012,6 +1012,26 @@ sub getrvidparms {
     my $sessdata = shift;
     unless ($sessdata) { die "not fixed yet" }
 #check devide id
+    if ($sessdata->{mfg_id} == 20301 and $sessdata->{prod_id} == 220) {
+        my $browser = LWP::UserAgent->new();
+        my $message = "WEBVAR_USERNAME=".$sessdata->{ipmisession}->{userid}."&WEBVAR_PASSWORD=".$sessdata->{ipmisession}->{password};
+        $browser->cookie_jar({});
+        my $baseurl = "https://".$sessdata->{ipmisession}->{bmc}."/";
+        my $response = $browser->request(GET $baseurl."rpc/WEBSES/validate.asp");
+        $response = $browser->request(POST $baseurl."rpc/WEBSES/create.asp",'Content-Type'=>"application/x-www-form-urlencoded",Content=>$message);
+        $response = $response->content;
+        if ($response and $response =~ /SESSION_COOKIE' : '([^']*)'/) {
+            foreach (keys  %{$browser->cookie_jar->{COOKIES}}) {
+                $browser->cookie_jar()->set_cookie(1,"SessionCookie",$1,"/",$_);
+            }
+        }
+        $response = $browser->request(GET $baseurl."/Java/jviewer.jnlp?ext_ip=".$sessdata->{ipmisession}->{bmc});
+        $response = $response->content;
+        $response =~ s/<argument>0<\/argument>/<argument>7578<\/argument>/; #TODO: remove when fixed
+        sendmsg("method:imm",$sessdata->{node});
+        sendmsg("jnlp:$response",$sessdata->{node});
+        return;
+    }
     unless ($sessdata->{mfg_id} == 2) { #Only implemented for IBM servers
         sendmsg([1,"Remote video is not supported on this system"],$sessdata->{node});
         return;
