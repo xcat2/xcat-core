@@ -86,6 +86,74 @@ my %hyphash;
 my $node;
 my $vmtab;
 
+
+sub build_pool_xml {
+    my $url = shift;
+    my $currpools = shift;
+    my %usedindexes; #sadly, because we can't create new mountpoints via libvirt, we'll just use a simple number
+                    #and images will precreate maybe 1024 mountpoints
+    my $mntpoint;
+    my $pool;
+    foreach (@$currpools) {
+        $pool = XMLin($_->get_xml_description());
+        $mntpoint = $pool->{target}->{path};
+        $mntpoint =~ s/.*\///;
+        $usedindexes{$mntpoint}=1;
+    }
+    my $index=0;
+    while ($usedindexes{$index}) {
+        $index++;
+    }
+    my $host = $url;
+    $host =~ s/.*:\/\///;
+    $host =~ s/(\/.*)//;
+    my $srcpath = $1;
+    my $pooldesc = '<pool type="netfs">';
+    $pooldesc .= '<name>'.$url.'</name>';
+    $pooldesc .= '<source>';
+    $pooldesc .= '<host name="'.$host.'"/>';
+    $pooldesc .= '<dir path="'.$srcpath.'"/>';
+    $pooldesc .= '</source>';
+    $pooldesc .= '<target><path>/var/lib/xcat/pools/'.$index.'</path></target></pool>';
+    return $pooldesc;
+}
+
+
+
+sub get_filepath_by_url { #sadly, libvirt has opted for the 'enterprisey' way like another vendor
+                          #and provided an api to overcomplicate a straightforward request
+                          #using it to appease those who are anti-ssh
+                          #sshing in and checkning mount ourselves would be more
+                          #robust, flexible, and easier, but oh well
+                          #wouldn't be as bad if it weren't for the fact that it also has to be 
+                          #micromanaged..  I.e. the meat of the issue (mountpints/filenames) still must
+                          #be resolved, but we also are having to deal with an extra level of info
+    my $url = shift;
+    my $dev = shift;
+    my @currpools = $hypconn->list_storage_pools();
+    my $poolobj;
+    my $pool;
+    foreach my $poolo (@currpools) {
+        $poolobj = $poolo;
+        $pool = XMLin($poolobj->get_xml_description());
+        if ($pool->{name} eq $url) {
+            last;
+        }
+        $pool = undef;
+    }
+    unless ($pool) {
+        $poolobj = $hypconn->create_storage_pool(build_pool_xml($url,\@currpools));
+        $pool = XMLin($poolobj->get_xml_description());
+    }
+    #ok, now that we have the pool, we need the storage volume from the pool for the node/dev
+    my @volobjs = $poolobj->list_volumes();
+    my $desiredname = $host.$dev;
+    foreach (@volobjs) {
+        if ($_->get_name() eq $desiredname) {
+            return $_->get_path();
+        }
+    }
+}
 sub get_path_for_nfsuri {
     my $diskname = shift;
     $diskname =~ /nfs:\/\/([^\/]*)(\/.*)/;
@@ -185,7 +253,7 @@ sub build_diskstruct {
                 $diskhash->{type}='block';
                 $diskhash->{source}->{dev} = substr($disk_parts[0], 4);
             } elsif ($disk_parts[0] =~ m/^nfs:\/\/(.*)$/) {
-                $diskhash->{source}->{file} = "/var/lib/xcat/vmnt/nfs_".$1."/$node/".$diskhash->{target}->{dev};
+                $diskhash->{source}->{file} = get_filepath_by_url($disk_parts[0],$diskhash->{target}->{dev}); #"/var/lib/xcat/vmnt/nfs_".$1."/$node/".$diskhash->{target}->{dev};
             } else {
                 $diskhash->{source}->{file} = $disk_parts[0];
             }
