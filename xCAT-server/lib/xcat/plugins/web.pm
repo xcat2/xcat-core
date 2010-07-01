@@ -15,7 +15,7 @@ require xCAT::MsgUtils;
 
 use Getopt::Long;
 use Data::Dumper;
-
+use LWP::Simple;
 
 sub handled_commands
 {
@@ -270,21 +270,114 @@ sub web_pping {
 
 sub web_update {
     my ($request, $callback, $sub_req) = @_;
-    #update the xcat-web rpm package 
-    #TODO
-    #Note: this is not finished now!
-    my $repo_dir = "/root/svn/xcat-core/trunk/aix-core-snap";
-    my $REPO;
-    my @flist;
-    if( -d $repo_dir) {
-        opendir REPO, $repo_dir;
-        @flist = readdir REPO;
-    }
-    closedir REPO;
-    #get the name of xcat-web package
-    my ($file) =  grep(/^xCAT\-web/, @flist);
+    my $os = "unknow";
+    my $RpmNames = $request->{arg}->[1];
+    my $repository = $request->{arg}->[2];
+    my $FileHandle;
+    my $cmd;
+    my $ReturnInfo;
+    my $WebpageContent = undef;
+    my $RemoteRpmFilePath = undef;
+    my $LocalRpmFilePath = undef;
+    if (xCAT::Utils->isLinux())
+    {
+        $os = xCAT::Utils->osver();
+        #suse linux
+        if ($os =~ /sles.*/)
+        {
+            $RpmNames =~ s/,/ /g;
+            #create zypper command
+            $cmd = "zypper -t package -r " . $repository . $RpmNames;
+        }
+        #redhat
+        else
+        {
+            #check the yum config file, and delect it if exist.
+            if (-e "/tmp/xCAT_update.yum.conf")
+            {
+                unlink("/tmp/xCAT_update.yum.conf");
+            }
 
-    system("rpm -Uvh $repo_dir/$file");#TODO:use runcmd() to replace it
+            #create file, return error if failed.
+            unless ( open ($FileHandle, '>>', "/tmp/xCAT_update.yum.conf"))
+            {
+                $callback->({error=>"Create temp file eror!\n",errorcode=>[1]});
+                return;
+            }
+
+            #write the rpm path into config file.
+            print $FileHandle "[xcat_temp_update]\n";
+            print $FileHandle "name=temp prepository\n";
+            $repository = "baseurl=" . $repository . "\n";
+            print $FileHandle $repository;
+            print $FileHandle "enabled=1\n";
+            print $FileHandle "gpgcheck=0\n";
+            close($FileHandle);
+
+            #use system to run the cmd "yum -y -c config-file update rpm-names"
+            $RpmNames =~ s/,/ /g;
+            $cmd = "yum -y -c /tmp/xCAT_update.yum.conf update " . $RpmNames . "\n";
+        }
+
+        #run the command and return the result
+        if (0 == system($cmd))
+        {
+            $ReturnInfo = "update" . $RpmNames ."successful";
+            $callback->({info=>$ReturnInfo});
+        }
+        else
+        {
+            $ReturnInfo = "update " . $RpmNames . "failed. detail:" . $!;
+            $callback->({error=>$ReturnInfo, errorcode=>[1]});
+        }
+    }
+    #AIX
+    else
+    {
+        #open the rpmpath(may be error), and read the page's content
+        $WebpageContent = LWP::Simple::get($repository);
+        unless (defined($WebpageContent))
+        {
+            $callback->({error=>"open $repository error, please check!!", errorcode=>[1]});
+            return;
+        }
+
+        #must support for updating several rpms.
+        foreach (split (/,/, $RpmNames))
+        {
+            #find out rpms' corresponding rpm href on the web page
+            $WebpageContent =~ m/href="($_-.*?[ppc64|noarch].rpm)/i;
+            unless(defined($1))
+            {
+                next;
+            }
+            $RemoteRpmFilePath = $repository . $1;
+            $LocalRpmFilePath = '/tmp/' . $1;
+
+            #download rpm package to temp
+            unless(-e $LocalRpmFilePath)
+            {
+                $cmd = "wget -O " . $LocalRpmFilePath . " " . $RemoteRpmFilePath;
+                if(0 != system($cmd))
+                {
+                    $ReturnInfo = $ReturnInfo . "update " . $_ . " failed:" . $! . "\n";
+                    $callback->({error=>$ReturnInfo, errorcode=>[1]});
+                    return;
+                }
+            }
+
+            #update rpm by rpm packages.
+            $cmd = "rpm -U " . $LocalRpmFilePath;
+            if (0 != system($cmd))
+            {
+                $ReturnInfo = $ReturnInfo . "update " . $_ . " failed:" . $! . "\n";
+                $callback->({error=>$ReturnInfo, errorcode=>[1]});
+                return;
+            }
+            $ReturnInfo = $ReturnInfo . "update " . $_ . " successful.\n";
+        }
+        $callback->({info=>$cmd});
+    }
 }
 
 #-------------------------------------------------------
