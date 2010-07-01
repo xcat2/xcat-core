@@ -16,6 +16,8 @@ B<rpower> I<noderange> [B<--nodeps>] {B<of>}
 
 B<rpower> I<noderange> [B<onstandby>]
 
+B<rpower> I<noderange> [B<softoff>]
+
 =head2 Blade specific:
 
 B<rpower> I<noderange> [B<cycle>|B<softoff>] 
