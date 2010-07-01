@@ -866,7 +866,7 @@ sub getNodeMonServerPair {
     my $tmp2 = $tabdata->{$node}->[0];
     if ($tmp2 && $tmp2->{monserver}) {
         $pairs=$tmp2->{monserver}; 
-        $pairs =~ s/,/:/;  #for backward conmpatibility. used to be aa,bb not the format is aa:bb
+        $pairs =~ s/,/:/;  #for backward conmpatibility. used to be aa,bb now the format is aa:bb
         #when there is only one hostname specified in noderes.monserver, 
         #both monserver and monmaster take the same hostname.
         if ($pairs !~ /:/) { $pairs=$tmp2->{monserver}.':'.$tmp2->{monserver}; } 
@@ -875,13 +875,17 @@ sub getNodeMonServerPair {
     if (!$pairs) {
       if ($tmp2->{servicenode}) {  $monserver=$tmp2->{servicenode}; }
       if ($tmp2->{xcatmaster})  {  $monmaster=$tmp2->{xcatmaster}; } 
+      if ($monserver && $monmaster) {
+	  my @tmpa=split(/,/, $monserver);  #for service node pool and xcatmaster is set, 
+	  $monserver = $tmpa[0];            #use the first one from the servicenode as monserver
+      }
       if (!$monserver) { $monserver="noservicenode"; }
       if (!$monmaster) { $monmaster=$sitemaster; }
       $pairs="$monserver:$monmaster";
     } 
     #print "node=$node, pairs=$pairs\n";
 
-    if ($monserver =~ /,/) { #monserver in noderes table must be defined in the service node pool case
+    if ($monserver =~ /,/) { #monserver in noderes table must be defined in the service node pool case when xcatmaster is not set
 	return [1, "Please specify 'monserver' on the noderes table for the node $node because the service node pools are used."]; 
     }
 
@@ -968,12 +972,16 @@ sub getMonHierarchy {
       if (!$pairs) {
         if ($row2->{servicenode}) {  $monserver=$row2->{servicenode}; }
         if ($row2->{xcatmaster})  {  $monmaster=$row2->{xcatmaster}; } 
+	if ($monserver && $monmaster) {
+	    my @tmpa=split(/,/, $monserver);  #for service node pool and xcatmaster is set, 
+	    $monserver = $tmpa[0];            #use the first one from the servicenode as monserver
+	}
         if (!$monserver) { $monserver="noservicenode"; }
 	if(!$monmaster) { $monmaster=$sitemaster; }
         $pairs="$monserver:$monmaster";
       }
 
-      if ($monserver =~ /,/) { #monserver in noderes table must be defined in the service node pool case
+      if ($monserver =~ /,/) { #monserver in noderes table must be defined in the service node pool case when xcatmaster is not set
 	  return [1, "Please specify 'monserver' on the noderes table for the node $node because the service node pools are used."]; 
       }
 
