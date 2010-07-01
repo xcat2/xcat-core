@@ -55,6 +55,7 @@ my %powercmd = (
       sms   =>"chsysstate -r %s -m %s -o on --id %s -f %s -b sms",
       reset =>"chsysstate -r %s -m %s -o shutdown --id %s --immed --restart",
       off   =>"chsysstate -r %s -m %s -o shutdown --id %s --immed",
+      softoff   =>"chsysstate -r %s -m %s -o shutdown --id %s",
       boot  =>"undetermined" },
   sys  => { 
       reset =>"chsysstate -r %s -m %s -o off --immed --restart",
