@@ -23,6 +23,8 @@ use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use Socket;
 
+my $CALLBACK;
+my $RERUNPS4SECURITY;
 1;
 
 #-------------------------------------------------------------------------------
@@ -979,7 +981,7 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
 	    # do all the nodes for a particular server at once
 	    foreach my $snkey (keys %servernodes) {
 		my $nodestring = join(',', @{$servernodes{$snkey}});
-            	my $cmd;
+            	my $args;
                 my $mode;
                 if ($request->{rerunps4security} && $request->{rerunps4security}->[0] eq "yes") {
                     # for updatenode --security
@@ -989,58 +991,50 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
                     $mode = "1"; 
                 }
 		if ($::SETSERVER) {
-		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost $mode -M $snkey $postscripts 2>&1";
+		    $args1 = ["-s", "-e", "$installdir/postscripts/xcatdsklspost $mode -M $snkey $postscripts"];
 
 		} else {
 		    
-		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost $mode -m $snkey $postscripts 2>&1";
+		    $args1 = ["-s", "-e", "$installdir/postscripts/xcatdsklspost $mode -m $snkey $postscripts"];
 		}
 		
 
 		if ($::VERBOSE)
 		{
 		    my $rsp = {};
-		    $rsp->{data}->[0] = "  $localhostname: Internal call command: $cmd";
+		    $rsp->{data}->[0] = "  $localhostname: Internal call command: xdsh $nodestring $args1";
 		    $callback->($rsp);
 		}
-		
-		if (!open(CMD, "$cmd |"))
-		{
-		    my $rsp = {};
-		    $rsp->{data}->[0] = "$localhostname: Cannot run command $cmd";
-		    $callback->($rsp);
+               
+		#my  $output1 = xCAT::Utils->runxcmd({command => ["xdsh"], 
+		#				    node => $servernodes{$snkey}, 
+		#				    arg => $args1, 
+		#				    _xcatpreprocessed =>[1]}, 
+		#				   $subreq, 0, 1);
+		#
+
+                #if ($::RUNCMD_RC != 0)
+                #{
+                #    my $rsp;
+                #    push @{$rsp->{data}}, "Could not run postscripts $postscripts on nodes $nodestring \n";
+                #    xCAT::MsgUtils->message("E", $rsp, $callback);
+                #} 
+                $CALLBACK=$callback;
+		if ($request->{rerunps4security}) {
+		    $RERUNPS4SECURITY=$request->{rerunps4security}->[0];
+		} else {
+		    $RERUNPS4SECURITY="";
 		}
-		else
-		{
-                    my $rsp    = {};
-		    while (<CMD>)
-		    {
-			my $output = $_;
-			chomp($output);
-			$output =~ s/\\cM//;
-			if ($output =~ /returned from postscript/)
-			{
-			    $output =~
-				s/returned from postscript/Running of postscripts has completed./;
-			}
-                        if ($request->{rerunps4security} && $request->{rerunps4security}->[0] eq "yes") {
-                            if ($output =~ /Running of postscripts has completed/) {
-                                $output =~ s/Running of postscripts has completed/Redeliver certificates has completed/;
-                                push @{$rsp->{data}}, $output;
-                            } elsif ($output !~ /Running postscript|Error loading module/) {
-			        push @{$rsp->{data}}, "$output";
-                            }
-                        } elsif ($output !~ /Error loading module/) {
-			    push @{$rsp->{data}}, "$output";
-                        }
-		    }
-		    close(CMD);
-                    $callback->($rsp);
-		}
+		$subreq->({command => ["xdsh"], 
+			   node => $servernodes{$snkey}, 
+			   arg => $args1, 
+			   _xcatpreprocessed =>[1]},
+			  \&getdata);
+
 	    }
-        }
+	}
+    
+
 
         if (scalar(@$AIXnodes))
         {
@@ -1129,6 +1123,33 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
 
 
     return 0;
+}
+
+sub getdata {
+   my $response = shift;
+   my $rsp;
+   foreach my $type (keys %$response) {
+       foreach my $output (@{$response->{$type}}) {
+	   chomp($output);
+	   $output =~ s/\\cM//;
+	   if ($output =~ /returned from postscript/)
+	   {
+	       $output =~
+		   s/returned from postscript/Running of postscripts has completed./;
+	   }
+	   if ($RERUNPS4SECURITY && $RERUNPS4SECURITY eq "yes") {
+	       if ($output =~ /Running of postscripts has completed/) {
+		   $output =~ s/Running of postscripts has completed/Redeliver certificates has completed/;
+		   push @{$rsp->{$type}}, $output;
+	       } elsif ($output !~ /Running postscript|Error loading module/) {
+		   push @{$rsp->{$type}}, "$output";
+	       }
+	   } elsif ($output !~ /Error loading module/) {
+	       push @{$rsp->{$type}}, "$output";
+	   }
+       }
+   }
+   $CALLBACK->($rsp);
 }
 
 #-------------------------------------------------------------------------------
