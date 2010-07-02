@@ -360,7 +360,7 @@ sub web_update {
                 $cmd = "wget -O " . $LocalRpmFilePath . " " . $RemoteRpmFilePath;
                 if(0 != system($cmd))
                 {
-                    $ReturnInfo = $ReturnInfo . "update " . $_ . " failed:" . $! . "\n";
+                    $ReturnInfo = $ReturnInfo . "update " . $_ . " failed: can not download the rpm\n";
                     $callback->({error=>$ReturnInfo, errorcode=>[1]});
                     return;
                 }
@@ -368,15 +368,9 @@ sub web_update {
 
             #update rpm by rpm packages.
             $cmd = "rpm -U " . $LocalRpmFilePath;
-            if (0 != system($cmd))
-            {
-                $ReturnInfo = $ReturnInfo . "update " . $_ . " failed:" . $! . "\n";
-                $callback->({error=>$ReturnInfo, errorcode=>[1]});
-                return;
-            }
-            $ReturnInfo = $ReturnInfo . "update " . $_ . " successful.\n";
+            $ReturnInfo = $ReturnInfo . readpipe($cmd);
         }
-        $callback->({info=>$cmd});
+        $callback->({info=>$ReturnInfo});
     }
 }
 
