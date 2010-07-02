@@ -120,16 +120,8 @@ sub build_pool_xml {
 
 
 
-sub get_filepath_by_url { #sadly, libvirt has opted for the 'enterprisey' way like another vendor
-                          #and provided an api to overcomplicate a straightforward request
-                          #using it to appease those who are anti-ssh
-                          #sshing in and checkning mount ourselves would be more
-                          #robust, flexible, and easier, but oh well
-                          #wouldn't be as bad if it weren't for the fact that it also has to be 
-                          #micromanaged..  I.e. the meat of the issue (mountpints/filenames) still must
-                          #be resolved, but we also are having to deal with an extra level of info
+sub get_storage_pool_by_url {
     my $url = shift;
-    my $dev = shift;
     my @currpools = $hypconn->list_storage_pools();
     my $poolobj;
     my $pool;
@@ -141,29 +133,55 @@ sub get_filepath_by_url { #sadly, libvirt has opted for the 'enterprisey' way li
         }
         $pool = undef;
     }
-    unless ($pool) {
-        $poolobj = $hypconn->create_storage_pool(build_pool_xml($url,\@currpools));
-        $pool = XMLin($poolobj->get_xml_description());
+    if ($pool) { return $poolobj; }
+    print build_pool_xml($url,\@currpools);
+    $poolobj = $hypconn->create_storage_pool(build_pool_xml($url,\@currpools));
+    return $poolobj;
+}
+
+sub get_filepath_by_url { #sadly, libvirt has opted for the 'enterprisey' way like another vendor
+                          #and provided an api to overcomplicate a straightforward request
+                          #using it to appease those who are anti-ssh
+                          #sshing in and checkning mount ourselves would be more
+                          #robust, flexible, and easier, but oh well
+                          #wouldn't be as bad if it weren't for the fact that it also has to be 
+                          #micromanaged..  I.e. the meat of the issue (mountpints/filenames) still must
+                          #be resolved, but we also are having to deal with an extra level of info
+    my %args = @_;
+    my $url = $args{url};
+    my $dev = $args{dev};
+    my $create = $args{create};
+    my $force = $args{force};
+    my $format = $args{format};
+    unless ($format) {
+        $format = 'qcow2';
     }
     #ok, now that we have the pool, we need the storage volume from the pool for the node/dev
+    my $poolobj = get_storage_pool_by_url($url);
+    unless ($poolobj) { die "Could not get storage pool for $url"; }
     my @volobjs = $poolobj->list_volumes();
-    my $desiredname = $host.$dev;
+    my $desiredname = $node.'.'.$dev;
     foreach (@volobjs) {
         if ($_->get_name() eq $desiredname) {
-            return $_->get_path();
+            if ($create) {
+                if ($force) { #must destroy the storage
+                    $_->delete();
+                } else {
+                    die "Path already exists";
+                }
+            } else {
+                return $_->get_path();
+            }
         }
     }
-    return undef;
-}
-sub get_path_for_nfsuri {
-    my $diskname = shift;
-    $diskname =~ /nfs:\/\/([^\/]*)(\/.*)/;
-    my $server = $1;
-    my $path = $2;
-    if (xCAT::Utils::thishostisnot($server)) {
-        return [$server,$path];
-    } else { #I am the server
-        return $path;
+    if ($create) { 
+        if ($create =~ /^clone=/) {
+        } else {
+            my $vol = $poolobj->create_volume("<volume><name>".$desiredname."</name><target><format type='$format'/></target><capacity>".getUnits($create,"G",1)."</capacity><allocation>0</allocation></volume>");
+            if ($vol) { return $vol->get_path(); }
+        }
+    } else {
+        return undef;
     }
 }
 
@@ -244,9 +262,19 @@ sub build_diskstruct {
         foreach my $disk (@locations) {
             #Setting default values of a virtual disk backed by a file at hd*.
             my $diskhash;
+            $disk =~ s/=(.*)//;
+            my $model = $1;
+            unless ($model) { $model = 'ide'; }
+            my $prefix='hd';
+            if ($model eq 'virtio') {
+                $prefix='vd';
+            } elsif ($model eq 'scsi') {
+                $prefix='sd';
+            }
             $diskhash->{type} = 'file';
             $diskhash->{device} = 'disk';
-            $diskhash->{target}->{dev} = 'hd'.$suffixes[$suffidx];
+            $diskhash->{target}->{dev} = $prefix.$suffixes[$suffidx];
+            $diskhash->{target}->{bus} = $model;
 
             my @disk_parts = split(/,/, $disk);
             #Find host file and determine if it is a file or a block device.
@@ -254,7 +282,7 @@ sub build_diskstruct {
                 $diskhash->{type}='block';
                 $diskhash->{source}->{dev} = substr($disk_parts[0], 4);
             } elsif ($disk_parts[0] =~ m/^nfs:\/\/(.*)$/) {
-                $diskhash->{source}->{file} = get_filepath_by_url($disk_parts[0],$diskhash->{target}->{dev}); #"/var/lib/xcat/vmnt/nfs_".$1."/$node/".$diskhash->{target}->{dev};
+                $diskhash->{source}->{file} = get_filepath_by_url(url=>$disk_parts[0],dev=>$diskhash->{target}->{dev}); #"/var/lib/xcat/vmnt/nfs_".$1."/$node/".$diskhash->{target}->{dev};
                 unless ($diskhash->{source}->{file}) {
                     die "Unable to find ".$diskhash->{target}->{dev}." at ".$disk_parts[0];
                 }
@@ -688,17 +716,9 @@ sub xhrm_satisfy {
     if ($confdata->{vm}->{$node}->[0]->{nics}) {
         @nics = split /,/,$confdata->{vm}->{$node}->[0]->{nics};
     }
-    if ($confdata->{vm}->{$node}->[0]->{storage}) {
-        @storage = split /\|/,$confdata->{vm}->{$node}->[0]->{storage};
-    }
     foreach (@nics) {
         s/=.*//; #this code cares not about the model of virtual nic
         $rc |=system("ssh $hyp xHRM bridgeprereq $_");
-    }
-    foreach (@storage) {
-        if (/^nfs:\/\//) {
-            $rc |= system("ssh $hyp xHRM storageprereq $_");
-        }
     }
     return $rc;
 }
@@ -721,12 +741,13 @@ sub makedom {
 }
 
 sub createstorage {
+#svn rev 6638 held the older vintage of createstorage
     my $filename=shift;
     my $mastername=shift;
     my $size=shift;
     my $cfginfo = shift;
     my $force = shift;
-    my $diskstruct = shift;
+    #my $diskstruct = shift;
     my $node = $cfginfo->{node};
     my @flags = split /,/,$cfginfo->{virtflags};
     foreach (@flags) {
@@ -740,92 +761,31 @@ sub createstorage {
     my $pathappend;
 
 
-    my $storageserver;
     #for nfs paths and qemu-img, we do the magic locally only for now
     my $basename;
     my $dirname;
-    if ($filename =~ /^nfs:/) {
-        $filename = get_path_for_nfsuri($filename);
-        if (ref $filename) { #if we got a reference back instead of a string, it is a remote location
-            $storageserver = $filename->[0];
-            $filename = $filename->[1];
-        }
-	$filename =~ s/\/$//;
-        $mountpath = $filename;
-        $filename  .= "/$node/".fileparse($diskstruct->[0]->{source}->{file});
-	$pathappend = "/$node/";
-    }
-    ($basename,$dirname) = fileparse($filename);
-    unless ($storageserver) {
-        if (-f $filename) {
-            unless ($force) {
-                return 1,"Storage already exists, delete manually or use --force";
-            }
-            unlink $filename;
-        }
-    }
-    if ($storageserver and $mastername and $clonemethod eq 'reflink') {
-        my $rc=system("ssh $storageserver mkdir -p $dirname");
-        if ($rc) {
-            return 1,"Unable to manage storage on remote server $storageserver";
-        }
-    } elsif ($storageserver) {
-        my @mounts = `mount`;
-        my $foundmount;
-        foreach (@mounts) {
-          if (/^$storageserver:$mountpath/) {
-	     chomp;
-             s/^.* on (\S*) type nfs.*$/$1/;
-             $dirname = $_;
-             mkpath($dirname.$pathappend);
-             $foundmount=1;
-             last;
-          }
-        }
-        unless ($foundmount) {
-            return 1,"qemu-img cloning requires that the management server have the directory $mountpath from $storageserver mounted";
-        }
-    } else {
-        mkpath($dirname);
-    }
     if ($mastername and $size) {
-        return 1,"Can not specify both a master to clone and a size";
+        return 1,"Can not specify both a master to clone and size(s)";
+    }
+    $filename=~s/=(.*)//;
+    my $model=$1;
+    my $prefix='hd';
+    if ($model eq 'scsi') {
+        $prefix='sd';
+    } elsif ($model eq 'virtio') {
+        $prefix='vd';
+    }
+    my @suffixes=('a','b','d'..'z');
+    if ($filename =~ /^nfs:/) { #libvirt storage pool to be used for this
+        my @sizes = split /,/,$size;
+        foreach (@sizes) {
+            get_filepath_by_url(url=>$filename,dev=>$prefix.shift(@suffixes),create=>$_);
+        }
     }
     my $masterserver;
-    if ($mastername) {
-        unless ($mastername =~ /^\// or $mastername =~ /^nfs:/) {
-            $mastername = $xCAT_plugin::kvm::masterdir.'/'.$mastername;
-        }
-        if ($mastername =~ m!nfs://([^/]*)(/.*\z)!) {
-            $mastername = $2;
-            $masterserver = $1;
-        }
-        if ($masterserver ne $storageserver) {
-            return 1,"Not supporting cloning between $masterserver and $storageserver at this time, for now ensure master images and target VM images are on the same server";
-        }
-        my $rc;
-        if ($clonemethod eq 'qemu-img') {
-            my $dirn;
-            my $filn;
-            ($filn,$dirn) = fileparse($filename);
-            chdir($dirn);
-            $rc=system("qemu-img create -f qcow2 -b $mastername $filename");
-        } elsif ($clonemethod eq 'reflink') {
-            if ($storageserver) {
-                $rc=system("ssh $storageserver cp --reflink $mastername $filename");
-            } else {
-                $rc=system("cp --reflink $mastername $filename");
-            }
-        }
-        if ($rc) {
-            return $rc,"Failure creating image $filename from $mastername";
-        }
+    if ($mastername) { #cloning
     }
-    if ($size) {
-        my $rc = system("qemu-img create -f $imgfmt $filename ".getUnits($size,"g",1024));
-        if ($rc) {
-            return $rc,"Failure creating image $filename of size $size\n";
-        }
+    if ($size) {#new volume
     }
 }
 
@@ -843,8 +803,6 @@ sub mkvm {
     'size|s=s'=>\$disksize,
     'force|f'=>\$force
  );
- build_xmldesc($node);
- my $diskstruct = build_diskstruct();
  if (defined $confdata->{vm}->{$node}->[0]->{storage}) {
     my $diskname=$confdata->{vm}->{$node}->[0]->{storage};
     if ($diskname =~ /^phy:/) { #in this case, mkvm should have no argumens
@@ -853,7 +811,7 @@ sub mkvm {
         }
     }
     if ($mastername or $disksize) {
-       return createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force,$diskstruct);
+       return createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force);
     }
  } else {
      if ($mastername or $disksize) {
