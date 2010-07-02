@@ -153,6 +153,7 @@ sub get_filepath_by_url { #sadly, libvirt has opted for the 'enterprisey' way li
             return $_->get_path();
         }
     }
+    return undef;
 }
 sub get_path_for_nfsuri {
     my $diskname = shift;
@@ -254,6 +255,9 @@ sub build_diskstruct {
                 $diskhash->{source}->{dev} = substr($disk_parts[0], 4);
             } elsif ($disk_parts[0] =~ m/^nfs:\/\/(.*)$/) {
                 $diskhash->{source}->{file} = get_filepath_by_url($disk_parts[0],$diskhash->{target}->{dev}); #"/var/lib/xcat/vmnt/nfs_".$1."/$node/".$diskhash->{target}->{dev};
+                unless ($diskhash->{source}->{file}) {
+                    die "Unable to find ".$diskhash->{target}->{dev}." at ".$disk_parts[0];
+                }
             } else {
                 $diskhash->{source}->{file} = $disk_parts[0];
             }
