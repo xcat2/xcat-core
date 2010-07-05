@@ -984,4 +984,39 @@ function showxCATInfo() {
     echo "</div>";
 }
 
+function showUpdateRow($RpmName){
+    $ret = shell_exec("rpm -q " . $RpmName);
+
+    $aRpm = explode("\n",$ret);
+    foreach ($aRpm as $TempRpm)
+    {
+        if($TempRpm){
+            $verstr= substr($TempRpm, strlen($RpmName) + 1);
+            echo ("<tr>");
+            echo ("<td><input type=\"checkbox\" value=\"" . $RpmName . "\"></td>");
+            echo ("<td>" . $RpmName . "</td>");
+            echo ("<td>" . $verstr . "</td>");
+            echo ("</tr>");
+        }
+    }
+}
+
+
+function showUpdateInfo() {
+    echo "<div><table id=rpmtable style='margin-left: 30px'>";
+    echo "<tr>";
+    echo "<td><input type=\"checkbox\" id=\"selectall\" value=\"\" onclick=\"fun_js_select_all()\"></td>";
+    echo "<td>Package Name</td>";
+    echo "<td>Version</td>";
+    echo "</tr>";
+
+    showUpdateRow("xCAT-client");
+    showUpdateRow("perl-xCAT");
+    showUpdateRow("xCAT-server");
+    showUpdateRow("xCAT");
+    showUpdateRow("xCAT-rmc");
+    showUpdateRow("xCAT-UI");
+
+    echo '</table></div>';
+}
 ?>

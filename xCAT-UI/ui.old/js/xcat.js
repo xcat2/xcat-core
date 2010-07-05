@@ -498,5 +498,72 @@ function loadNodeStatus()
     });
 }
 
+function fun_js_select_all()
+{
+    var check_status = $('#selectall').attr('checked');
+    $('input:checkbox').attr('checked', check_status);
+}
+
+function fun_js_update()
+{
+    var rpm_path = $('input[type=radio]:checked').val();
+    var rpms = "";
+    var temp = "";
+
+    //select other and we should use the value in the input
+    if ("" == rpm_path)
+    {
+        //user input the repo, and we must stroe it in the cookie
+        rpm_path = $('#repositoryaddr').val() + "&remember=1";
+    }
+
+    $("input[type=checkbox]:checked").each(function(){
+        temp = $(this).val();
+        if("" == temp)
+        {
+            //continue;
+            return true;
+        }
+        var pattern = new RegExp("^" + temp + ",|," + temp + ",");;
+        if (pattern.test(rpms))
+        {
+            return true;
+        }
+        rpms = rpms + temp + ",";
+    });
+
+    if(0 < rpms.length)
+    {
+        rpms = rpms.slice(0, -1);
+    }
+
+    $('#updateProcess').empty().html('<img src="img/throbber.gif">');
+    $('#updateProcess').load("updateprocess.php?repo=" + rpm_path + "&rpmname=" + rpms);
+}
+
+function fun_js_lsdef_edit()
+{
+    $('.attrvalue').editable(function(value, settings){return value;},
+        {
+        indicator : "updating...",
+        type : 'text',
+        tooltip     : 'Click to edit...',
+        placeholder : '',
+        onblur      : 'submit'
+        }
+     );
+
+    $('.selected').editable(function(value, settings){
+                            $(this).next(".attrvalue").attr("id", "lsdef_" + value);
+                            },
+                  {
+                  loadurl : 'lsdefList.php',
+                  indicator : "updating...",
+                  type : 'select',
+                  tooltip        : 'Click to select...',
+                  placeholder    : '',
+                  onblur     : 'submit'
+                  });
+};
 // load progress bar
 myBar.loaded('xcat.js');
