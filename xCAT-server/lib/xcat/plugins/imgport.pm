@@ -747,8 +747,13 @@ sub make_files {
 	
 		if($os =~ /win/){
 			$os = 'windows';
-		}	
-		my $instdir = "$installroot/custom/$os/$arch"; 
+		}elsif($os =~ /centos/){
+			$os = 'centos';
+		}elsif($os =~ /rh/){
+			$os = 'rh';
+		}
+		
+		my $instdir = "$installroot/custom/install/$os/$arch"; 
 		#mkpath("$instdir", { verbose => 1, mode => 0755, error => \my $err });
 		mkpath("$instdir", { verbose => 1, mode => 0755 });
 
