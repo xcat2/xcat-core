@@ -753,7 +753,7 @@ sub make_files {
 			$os = 'rh';
 		}
 		
-		my $instdir = "$installroot/custom/install/$os/$arch"; 
+		my $instdir = "$installroot/custom/install/$os"; 
 		#mkpath("$instdir", { verbose => 1, mode => 0755, error => \my $err });
 		mkpath("$instdir", { verbose => 1, mode => 0755 });
 
