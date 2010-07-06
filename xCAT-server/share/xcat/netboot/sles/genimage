@@ -1173,21 +1173,6 @@ sub postscripts { # TODO: customized postscripts
         #system("$XCATROOT/share/xcat/netboot/add-on/statelite/add_passwd $rootimg_dir");
         #system("$XCATROOT/share/xcat/netboot/add-on/statelite/add_ssh $rootimg_dir");
     }
-   if (-d "$installroot/postscripts/hostkeys") {
-      for my $key (<$installroot/postscripts/hostkeys/*key>) {
-         copy ($key,"$rootimg_dir/etc/ssh/");
-      }
-      chmod 0600,<$rootimg_dir/etc/ssh/*key>;
-   }
-   if (-d "/$installroot/postscripts/.ssh") {
-      mkpath("$rootimg_dir/root/.ssh");
-      chmod(0700,"$rootimg_dir/root/.ssh/");
-      for my $file (</$installroot/postscripts/.ssh/*>) {
-         copy ($file,"$rootimg_dir/root/.ssh/");
-      }
-      chmod(0600,<$rootimg_dir/root/.ssh/*>);
-   }
-
 }
 
 sub generic_post { #This function is meant to leave the image in a state approximating a normal install
