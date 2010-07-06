@@ -139,14 +139,28 @@ sub get_storage_pool_by_url {
     return $poolobj;
 }
 
-sub get_filepath_by_url { #sadly, libvirt has opted for the 'enterprisey' way like another vendor
-                          #and provided an api to overcomplicate a straightforward request
-                          #using it to appease those who are anti-ssh
-                          #sshing in and checkning mount ourselves would be more
-                          #robust, flexible, and easier, but oh well
-                          #wouldn't be as bad if it weren't for the fact that it also has to be 
-                          #micromanaged..  I.e. the meat of the issue (mountpints/filenames) still must
-                          #be resolved, but we also are having to deal with an extra level of info
+sub get_multiple_paths_by_url {
+    my %args =@_;
+    my $url = $args{url};
+    my $node = $args{node};
+    my $poolobj = get_storage_pool_by_url($url);
+    unless ($poolobj) { die "Cound not get storage pool for $url"; }
+    my @volobjs = $poolobj->list_volumes();
+    my %paths;
+    foreach (@volobjs) {
+        if ($_->get_name() =~ /^$node\.(.*)$/) {
+            $paths{$_->get_path()} = $1;
+        }
+    }
+    return \%paths;
+}
+sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives the following capability:
+                          #mount, limited ls, and qemu-img
+                          #it does not frontend mkdir, and does not abstract away any nitty-gritty detail, you must know:
+                          #the real mountpoint, and the real full path to storage
+                          #in addition to this, subdirectories are not allowed, and certain extra metadata must be created
+                          #not a big fan compared to ssh and run the commands myself, but it's the most straightforward path
+                          #to avoid ssh for users who dislike that style access
     my %args = @_;
     my $url = $args{url};
     my $dev = $args{dev};
@@ -282,10 +296,28 @@ sub build_diskstruct {
                 $diskhash->{type}='block';
                 $diskhash->{source}->{dev} = substr($disk_parts[0], 4);
             } elsif ($disk_parts[0] =~ m/^nfs:\/\/(.*)$/) {
-                $diskhash->{source}->{file} = get_filepath_by_url(url=>$disk_parts[0],dev=>$diskhash->{target}->{dev}); #"/var/lib/xcat/vmnt/nfs_".$1."/$node/".$diskhash->{target}->{dev};
-                unless ($diskhash->{source}->{file}) {
-                    die "Unable to find ".$diskhash->{target}->{dev}." at ".$disk_parts[0];
+                my %disks = %{get_multiple_paths_by_url(url=>$disk_parts[0],node=>$node)};
+                unless (keys %disks) {
+                    die "Unable to find any persistent disks at ".$disk_parts[0];
                 }
+                foreach (keys %disks) {
+                    my $tdiskhash;
+                    $tdiskhash->{type};
+                    $tdiskhash->{device}='disk';
+                    $tdiskhash->{source}->{file}=$_;
+                    $tdiskhash->{target}->{dev} = $disks{$_};
+                    if ($disks{$_} =~ /^vd/) {
+                        $tdiskhash->{target}->{bus} = 'virtio';
+                    } elsif ($disks{$_} =~ /^hd/) {
+                        $tdiskhash->{target}->{bus} = 'ide';
+                    } elsif ($disks{$_} =~ /^sd/) {
+                        $tdiskhash->{target}->{bus} = 'scsi';
+                    }
+                    push @returns,$tdiskhash;
+
+                }
+                next; #nfs:// skips the other stuff
+                #$diskhash->{source}->{file} = get_filepath_by_url(url=>$disk_parts[0],dev=>$diskhash->{target}->{dev}); #"/var/lib/xcat/vmnt/nfs_".$1."/$node/".$diskhash->{target}->{dev};
             } else {
                 $diskhash->{source}->{file} = $disk_parts[0];
             }
