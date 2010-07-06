@@ -51,7 +51,7 @@ sub process_request {
 	@ARGV = @{$request->{arg}};
 	my $argc = scalar @ARGV;
 	if ($argc == 0) {
-		$callback->({info=>["$cmdname -h # this help message\n$cmdname -v # version\n$cmdname -V # verbose\n$cmdname [-p profile] [-a architecture] [-o OS]\n$cmdname imagename"]});
+		$callback->({info=>["$cmdname -h # this help message\n$cmdname -v # version\n$cmdname -V # verbose\n$cmdname -p <profile> -a <architecture> -o <OS>\n$cmdname imagename"]});
 		return;
 	}
 
