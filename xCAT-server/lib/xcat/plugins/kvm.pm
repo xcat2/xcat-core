@@ -823,6 +823,79 @@ sub createstorage {
 
 
 
+sub chvm {
+    shift;
+    my @addsizes;
+    my %resize;
+    my $cpucount;
+    my @purge;
+    my @derefdisks;
+    my $memory;
+    @ARGV=@_;
+    require Getopt::Long;
+    Getoptions(
+        "a=s"=>\@addsizes,
+        "d=s"=>\@derefdisks,
+        "mem=s"=>\$memory,
+        "p=s"=>\@purge,
+        "resize=s%" => \%resize,
+        "cpu=s" => \$cpucount,
+        );
+    my %useddisks;
+    if (defined $confdata->{vm}->{$node}->[0]->{storage}) {
+        my $store;
+        foreach $store (split /\|/, $confdata->{vm}->{$node}->[0]->{storage}) {
+            $store =~ s/,.*//;
+            $store =~ s/=.*//;
+            if ($store =~ /^nfs:\/\//) {
+                my %disks = %{get_multiple_paths_by_url(url=>$store,node=>$node)};
+                foreach (keys %disks) {
+                    $useddisks{$disks{$_}}=1;
+                }
+            }
+        }
+    }
+    if (@addsizes) { #need to add disks, first identify used devnames
+        my @diskstoadd;
+        my $location = $confdata->{vm}->{$node}->[0]->{storage};
+        $location =~ s/.*\|//; #use the rightmost location for making new devices
+        $location =~ s/,.*//; #no comma specified parameters are valid
+        $location =~ s/=(.*)//; #store model if specified here
+        my $model = $1;
+        my $prefix='hd';
+        if ($model eq 'scsi') {
+            $prefix='sd';
+        } elsif ($model eq 'virtio') {
+            $prefix='vd';
+        }
+        my @suffixes;
+        if ($prefix eq 'hd') { 
+            @suffixes=('a','b','d'..'z');
+        } else {
+            @suffixes=('a'..'z');
+        }
+        my @newsizes;
+        foreach (@addsizes) {
+            push @newsizes,split /,/,$_;
+        }
+        foreach (@newsizes) {
+            my $dev;
+            do {
+                $dev = $prefix.shift(@suffixes);
+            } while ($useddisks{$dev});
+            #ok, now I need a volume created to attach
+            push @diskstoadd,get_filepath_by_url(url=>$location,dev=>$dev,create=>$_);
+        }
+        #now that the volumes are made, must build xml for each and attempt attach if and only if the VM is live
+        my $dom = $hypconn->get_domain_by_name($node);
+        my $currstate=getpowstate($dom);
+        if ($currstate eq 'on') { #attempt live attach
+
+        }
+
+    }
+}
+
 sub mkvm {
  shift; #Throuw away first argument
  @ARGV=@_;
