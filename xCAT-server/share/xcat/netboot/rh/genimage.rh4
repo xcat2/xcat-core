@@ -535,29 +535,6 @@ shell() {
         echo -e " Exit shell to continue booting.\$RESET"
         \$SHELL
 }
-mountfile () {
-    snapshotfile=\${NEWROOT}/\${RWDIR}/\${2}\${1}
-    dir=`dirname \$snapshotfile`
-#
-#  Check if file already exists in snapshot directory.  If not attempt to copy
-#    from root directory to snapshot directory.
-#
-    if [ ! -e \$snapshotfile ]; then
-        mkdir -p \$dir || echo -e "\${RED}Can't make \$dir\${NORMAL}"
-        #echo -e "\${YELLOW} \${1} missing from client specific area.\${RESET}"
-        if [ -e \$NEWROOT/\${1} ] ; then
-            #echo "Copying \${1}"
-            rsync -a \$NEWROOT/\${1} \$snapshotfile
-        else
-            #echo "Creating \${1}"
-            touch \$snapshotfile
-        fi
-    fi
-#
-#  Mount the snapshotfile over the root file so the client will have r/w access
-#
-    mount -n -o bind \$NEWROOT/\$RWDIR/\${2}\${1} \$NEWROOT/\${1}
-}
 
 fancydisplay () {
         clear
