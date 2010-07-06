@@ -441,8 +441,13 @@ sub mknetboot
 			}
 		}
 
-		$kcmdline = 
-		"NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
+        # special case for redhat6,
+        # TODO: fedora 12 and 13 also need it
+        if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/) {
+            $kcmdline = "ip=dhcp root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
+        } else {
+            $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
+        }
 
         # add support for subVars in the value of "statemnt"
         my $statemnt = "";
