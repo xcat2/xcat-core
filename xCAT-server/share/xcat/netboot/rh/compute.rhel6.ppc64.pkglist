@@ -1,0 +1,17 @@
+bash 
+nfs-utils
+openssl
+dhclient 
+kernel 
+openssh-server 
+openssh-clients
+busybox
+wget
+anaconda
+vim-minimal
+ntp
+rsyslog
+rpm
+rsync
+ppc64-utils
+iputils
