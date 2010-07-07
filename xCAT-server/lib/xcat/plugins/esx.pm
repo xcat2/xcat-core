@@ -830,12 +830,15 @@ sub get_clusterview {
     if ($args{properties}) {
         $subargs{properties}=$args{properties};
     }
-    foreach (@{$args{conn}->find_entity_views(%subargs)}) {
-       if ($_->name eq "$clustname") {
-           return $_;
-           last;
-       }
-    }
+    $subargs{filter}={name=>$clustname};
+    my $view = $args{conn}->find_entity_view(%subargs);
+    return $view;
+   #foreach (@{$args{conn}->find_entity_views(%subargs)}) {
+   #   if ($_->name eq "$clustname") {
+   #       return $_;
+   #       last;
+   #   }
+   #}
 }
 
 sub get_hostview {
