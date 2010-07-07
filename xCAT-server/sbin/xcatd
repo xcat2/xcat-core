@@ -1194,9 +1194,11 @@ sub dispatch_request {
             last;
         }
      }
-     if ($numdests > 1 and not $request_satisfied) {
+     if (!(xCAT::Utils->isServiceNode()))  {  # not on a service node
+       if ($numdests > 1 and not $request_satisfied) {
 	    xCAT::MsgUtils->message("S","Error dispatching a request to all possible service nodes for request");
         dispatch_callback({error=>["Failed to dispatch command to any of the following service nodes: ".join(",",@xcatdests)],errorcode=>[1]}); 
+       }
      }
 
      xexit;
