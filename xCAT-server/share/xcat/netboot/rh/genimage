@@ -189,21 +189,22 @@ foreach (split /,/,$netdriver) {
    }
    push @ndrivers,$_;
 }
-if($mode eq "statelite"){
-	push @ndrivers,"fscache.ko";
-	push @ndrivers,"sunrpc.ko";
-	push @ndrivers,"lockd.ko";
-	push @ndrivers,"nfs_acl.ko";
-	push @ndrivers,"nfs.ko";
+unless (-d "$rootimg_dir/usr/share/dracut") { # dracut will handle the nfs-related kernel modules
+    if($mode eq "statelite"){
+	    push @ndrivers,"fscache.ko";
+	    push @ndrivers,"sunrpc.ko";
+	    push @ndrivers,"lockd.ko";
+	    push @ndrivers,"nfs_acl.ko";
+	    push @ndrivers,"nfs.ko";
 	
-	# Additional modules needed on s390x
-	if ($arch eq "s390x") {
-		# The network drivers need to be loaded in this order
-		unshift @ndrivers,"ccwgroup.ko";
-		unshift @ndrivers,"qdio.ko";
-	}
+	    # Additional modules needed on s390x
+	    if ($arch eq "s390x") {
+		    # The network drivers need to be loaded in this order
+		    unshift @ndrivers,"ccwgroup.ko";
+		    unshift @ndrivers,"qdio.ko";
+	    }
+    }
 }
-
 
 unless ($onlyinitrd) {
    @yumdirs=();
@@ -483,21 +484,81 @@ sub getlibs {
 }
 
 sub mkinitrd_dracut {
-    mkpath("$rootimg_dir/usr/share/dracut/modules.d/97xcat");
-    foreach (<$fullpath/dracut/*>) {
-        my $perm = (stat($_))[2];
-        cp($_,"$rootimg_dir/usr/share/dracut/modules.d/97xcat");
-        chmod($perm&07777,"$rootimg_dir/usr/share/dracut/modules.d/97xcat/".basename($_));
+    my $dracutmpath = "$rootimg_dir/usr/share/dracut/modules.d/97xcat";
+    mkpath($dracutmpath);
+
+    my $perm = (stat("$fullpath/dracut/check"))[2];
+    cp("$fullpath/dracut/check", $dracutmpath);
+    chmod($perm&07777, "$dracutmpath/check");
+
+    my $add_drivers = join(' ', @ndrivers);
+    my $DRACUTCONF;
+
+    if ($mode eq "statelite") {
+        # for statelite
+        cp("$fullpath/dracut/install.statelite","$dracutmpath/install");
+        $perm = (stat("$fullpath/dracut/install.statelite"))[2];
+        chmod($perm&07777, "$dracutmpath/install");
+
+        cp("$fullpath/dracut/xcat-prepivot.sh",$dracutmpath);
+        $perm = (stat("$fullpath/dracut/xcat-prepivot.sh"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-prepivot.sh");
+
+        # update etc/dracut.conf
+        open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
+        print $DRACUTCONF qq{dracutmodules+="xcat nfs base network"\n};
+        print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
+        print $DRACUTCONF qq{filesystems+="nfs"\n};
+        close $DRACUTCONF;
+        # TODO: modify etc/rc.sysinit, prevent remounting
+        my $SYSINITFILE;
+        my $TMPSYSINITFILE;
+        open($SYSINITFILE, "$rootimg_dir/etc/rc.sysinit");
+        open($TMPSYSINITFILE, '>', "/tmp/rc.sysinit.tmp");
+        # find the following lines,
+        # if remount_needed ; then
+        #   action $"Remounting root filesystem in read-write mode: " mount -n -o remount,rw /
+        # fi
+        # and change "if remount_needed ; then" to "if false; then"
+        while(<$SYSINITFILE>) {
+            if ($_ eq "if remount_needed ; then\n") {
+                $_ = "if false; then\n";
+            }
+            print $TMPSYSINITFILE $_;
+        }
+        close($SYSINITFILE);
+        close($TMPSYSINITFILE);
+        cp("/tmp/rc.sysinit.tmp", "$rootimg_dir/etc/rc.sysinit");
+    } else {
+        # for diskless
+        cp("$fullpath/dracut/install.netboot","$dracutmpath/install");
+        $perm = (stat("$fullpath/dracut/xcat-cmdline.sh"))[2];
+        chmod($perm&07777, "$dracutmpath/install");
+
+        if ($prinic) {
+            my $optspec;
+            open($optspec,'>>',"$dracutmpath/xcat-cmdline.sh");
+            print $optspec "IFACE=$prinic\n";
+            close $optspec;
+        }
+
+        cp("$fullpath/dracut/xcatroot","$dracutmpath/");
+        $perm = (stat("$fullpath/dracut/xcatroot"))[2];
+        chmod($perm&07777, "$dracutmpath/xcatroot");
+
+        cp("$fullpath/dracut/installkernel", "$dracutmpath/");
+        $perm = (stat("$fullpath/dracut/installkernel"))[2];
+        chmod($perm&07777, "$dracutmpath/installkernel");
+
+        # update etc/dracut.conf
+        open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
+        print $DRACUTCONF qq{dracutmodules+="xcat base network"\n};
+        print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
+        close $DRACUTCONF;
     }
-    if ($prinic) {
-        my $optspec;
-        open($optspec,'>>',"$rootimg_dir/usr/share/dracut/modules.d/97xcat/xcat-cmdline.sh");
-        print $optspec "IFACE=$prinic\n";
-        close($optspec);
-    }
-    foreach (@ndrivers) { s/\.ko$//; }
-    system("chroot '$rootimg_dir' dracut -d '".join(' ',@ndrivers)."' -m 'xcat base' /tmp/initrd.$$.gz $kernelver");
-    move("$rootimg_dir/tmp/initrd.$$.gz","$destdir/initrd.gz");
+    system("chroot '$rootimg_dir' dracut -f /tmp/initrd.$$.gz $kernelver");
+    print "the initial ramdisk is generated successfully.\n";
+    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd.gz");
 }
 
 sub mkinitrd {

@@ -1,0 +1,83 @@
+#!/bin/sh
+NEWROOT=/sysroot
+SERVER=${SERVER%%/*}
+SERVER=${SERVER%:}
+RWDIR=.statelite
+if [ ! -z $statemnt ]; then #btw, uri style might have left future options other than nfs open, will u    se // to detect uri in the future I guess
+    SNAPSHOTSERVER=${statemnt%:*}
+    SNAPSHOTROOT=${statemnt#*/}
+    # may be that there is not server and just a directory.
+    if [ -z $SNAPSHOTROOT ]; then
+        SNAPSHOTROOT=$SNAPSHOTSERVER
+        SNAPSHOTSERVER=
+    fi
+fi
+
+echo Setting up Statelite
+mkdir -p $NEWROOT
+
+# now we need to mount the rest of the system.  This is the read/write portions
+# echo Mounting snapshot directories
+
+MAXTRIES=7
+ITER=0
+if [ ! -e "$NEWROOT/$RWDIR" ]; then
+    echo ""
+    echo "This NFS root directory doesn't have a /$RWDIR directory for me to mount a rw filesystem.      You'd better create it... "
+    echo ""
+    /bin/sh
+fi
+
+if [ ! -e "$NEWROOT/etc/init.d/statelite" ]; then
+    echo ""
+    echo "$NEWROOT/etc/init.d/statelite doesn't exist.  Perhaps you didn't create this image with th    e -m statelite mode"
+    echo ""
+    /bin/sh
+fi
+
+mount -t tmpfs rw $NEWROOT/$RWDIR
+mkdir -p $NEWROOT/$RWDIR/tmpfs
+ME=`hostname`
+
+# mount the SNAPSHOT directory here for persistent use.
+if [ ! -z $SNAPSHOTSERVER ]; then
+    mkdir -p $NEWROOT/$RWDIR/persistent
+    MAXTRIES=5
+    ITER=0
+    while ! mount $SNAPSHOTSERVER:$SNAPSHOTROOT  $NEWROOT/$RWDIR/persistent -o nolock,rsize=32768,tc    p,nfsvers=3,timeo=14; do
+        ITER=$((ITER +1 ))
+        if [ "$ITER" == "$MAXTRIES" ]; then
+            echo "Your are dead, rpower $ME boot to play again."
+            echo "Possible problems:
+1.  $SNAPSHOTSERVER is not exporting $SNAPSHOTROOT ?
+2.  Is DNS set up?  Maybe that's why I can't mount $SNAPSHOTSERVER."
+            /bin/sh
+            exit
+        fi
+        RS= $(( $RANDOM % 20 ))
+        echo "Trying again in $RS seconds..."
+        sleep $RS
+    done
+fi
+
+# TODO: handle the dhclient/resolv.conf/ntp, etc
+echo "TODO: handle the dhclient/resolv/ntp, etc"
+$NEWROOT/etc/init.d/statelite
+READONLY=yes
+export READONLY
+fastboot=yes
+export fastboot
+keep_old_ip=yes
+export keep_old_ip
+mount -n --bind /dev $NREWROOT/dev
+mount -n --bind /proc $NEWROOT/proc
+mount -n --bind /sys $NEWROOT/sys
+
+if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
+    echo "SELINUX=disabled" >> "$NEWROOT/etc/sysconfig/selinux"
+fi
+
+# inject new exit_if_exists
+echo 'settle_exit_if_exists="--exit-if-exists=/dev/root"; rm "$job"' > /initqueue/xcat.sh
+# force udevsettle to break
+> /initqueue/work
