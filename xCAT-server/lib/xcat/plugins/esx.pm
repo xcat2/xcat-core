@@ -861,6 +861,19 @@ sub get_hostview {
     foreach (split /\s+/,$aliases) {
         push @matchvalues,$_;
     }
+    my $view;
+    $subargs{filter}={'name' =~ qr/$host(?:\.|\z)/};
+    $view = $args{conn}->find_entity_view(%subargs);
+    if ($view) { return $view; }
+    foreach (@matchvalues) {
+        $subargs{filter}={'name' =~ qr/$_(?:\.|\z)/};
+        $view = $args{conn}->find_entity_view(%subargs);
+        if ($view) { return $view; }
+    }
+    $subargs{filter}={'name' =~ qr/localhost(?:\.|\z)/};
+    $view = $args{conn}->find_entity_view(%subargs);
+    if ($view) { return $view; }
+    $subargs{filter}={'name' =~ qr/.*/};
     foreach (@{$args{conn}->find_entity_views(%subargs)}) {
        my $view = $_;
        if ($_->name =~ /$host(?:\.|\z)/ or $_->name =~ /localhost(?:\.|\z)/ or grep { $view->name =~ /$_(?:\.|\z)/ } @matchvalues) {
