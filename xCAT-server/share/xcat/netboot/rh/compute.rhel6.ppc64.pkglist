@@ -7,7 +7,8 @@ openssh-server
 openssh-clients
 busybox
 wget
-anaconda
+rsyslog
+dash
 vim-minimal
 ntp
 rsyslog
@@ -15,3 +16,5 @@ rpm
 rsync
 ppc64-utils
 iputils
+dracut
+dracut-network

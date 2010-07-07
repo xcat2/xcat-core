@@ -11,3 +11,4 @@ vim-minimal
 ntp
 rpm
 rsync
+rsyslog
