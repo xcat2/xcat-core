@@ -162,6 +162,31 @@ if (!$destdir)
 }
 $rootimg_dir="$destdir/rootimg";
 
+# Get the subchannels of the given interface
+my $subchn;
+my $readChn;
+my @chn;
+if ($arch eq "s390x") {
+	$subchn = `cat /etc/sysconfig/network-scripts/ifcfg-$prinic | grep "SUBCHANNELS"`;
+ 	
+ 	if (!$subchn) {
+ 		print "SUBCHANNELS need to be given in /etc/sysconfig/network-scripts/ifcfg-$prinic";
+ 		exit 1;
+ 	} else {
+ 		# Trim right
+		$subchn =~ s/\s*$//;
+
+		# Trim left
+		$subchn =~ s/^\s*//;
+		
+		# Extract subchannels
+ 		$subchn =~ s/SUBCHANNELS=//g;
+ 		
+ 		# Extract read channel
+ 		@chn = split( ",", $subchn );
+ 		$readChn = @chn[0];
+ 	}
+}
 
 unless ($osver and $profile) {
    print 'Usage: genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [-m <mode> [--permission <permission>]]'."\n";
@@ -727,14 +752,14 @@ echo "ONBOOT=yes" > /etc/sysconfig/network-scripts/ifcfg-$prinic
 echo "BOOTPROTO=dhcp" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
 echo "DEVICE=$prinic" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
 echo 'OPTIONS="layer2=1"' >> /etc/sysconfig/network-scripts/ifcfg-$prinic
-echo "SUBCHANNELS=0.0.0800,0.0.0801,0.0.0802" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
+echo "SUBCHANNELS=$subchn" >> /etc/sysconfig/network-scripts/ifcfg-$prinic
 
 # Turn on network devices
-echo 0.0.0800,0.0.0801,0.0.0802 > /sys/bus/ccwgroup/drivers/qeth/group
-echo 1 > /sys/bus/ccwgroup/drivers/qeth/0.0.0800/layer2
-echo 1 > /sys/bus/ccwgroup/drivers/qeth/0.0.0800/online
-echo "alias eth1 qeth" >> /etc/modprobe.conf
-echo `ifup eth1`
+echo $subchn > /sys/bus/ccwgroup/drivers/qeth/group
+echo 1 > /sys/bus/ccwgroup/drivers/qeth/$readChn/layer2
+echo 1 > /sys/bus/ccwgroup/drivers/qeth/$readChn/online
+echo "alias $prinic qeth" >> /etc/modprobe.conf
+echo `ifup $prinic`
 sleep 4
 EOMS
 }
