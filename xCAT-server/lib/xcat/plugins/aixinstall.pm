@@ -35,6 +35,10 @@ use File::Path;
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 
+
+my $errored = 0;
+
+
 #------------------------------------------------------------------------------
 
 =head1    aixinstall
@@ -52,6 +56,27 @@ rmnimimage, chkosimage, mknimimage, nimnodecust, & nimnodeset commands.
 =cut
 
 #------------------------------------------------------------------------------
+#----------------------------------------------------------------------------
+
+=head3  pass_along
+
+        The call back function for prescripts invocation
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub pass_along { 
+    my $resp = shift;
+    if ($resp and ($resp->{errorcode} and $resp->{errorcode}->[0]) or ($resp->{error} and $resp->{error}->[0])) {
+        $errored=1;
+    }
+    foreach (@{$resp->{node}}) {
+	if ($_->{error} or $_->{errorcode}) {
+	    $errored=1;
+	}
+    }
+    $::callback->($resp);
+}
 
 #----------------------------------------------------------------------------
 
@@ -564,6 +589,15 @@ sub nimnodeset
         }
     }
 
+    #now run the begin part of the prescripts
+    #the call is distrubuted to the service node already, so only need to handles my own children
+    $errored=0;
+    $subreq->({command=>['runbeginpre'],
+		node=>\@nodelist,
+		arg=>["standalone", '-l']},\&pass_along);
+    if ($errored) { return; }
+ 
+
     #
     #  Get a list of the defined NIM machines
     #
@@ -1002,6 +1036,7 @@ sub nimnodeset
         }
     }
 
+    my  $retcode=0;
     if ($error)
     {
         my $rsp;
@@ -1019,17 +1054,36 @@ sub nimnodeset
         }
 
         xCAT::MsgUtils->message("I", $rsp, $callback);
-        return 1;
+        $retcode = 1;
     }
     else
     {
         my $rsp;
         push @{$rsp->{data}}, "$Sname: AIX/NIM nodes were initialized.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
-
-        return 0;
     }
-    return 0;
+
+    #now run the end part of the prescripts
+    #the call is distrubuted to the service node already, so only need to handles my own children
+    $errored=0;
+    if (@nodesfailed > 0) {
+	my @good_nodes=();
+	foreach my $node (@nodelist) {
+	    if (!grep(/^$node$/, @nodesfailed)) {
+                 push(@good_nodes, $node);
+            }
+        }    
+        $subreq->({command=>['runendpre'],
+                      node=>\@good_nodes,
+                      arg=>["standalone", '-l']},\&pass_along);
+    } else {
+        $subreq->({command=>['runendpre'],
+                node=>\@nodelist,
+                arg=>["standalone", '-l']},\&pass_along);
+    }
+    if ($errored) { $retcode = 1; }
+
+    return  $retcode;
 }
 
 #----------------------------------------------------------------------------
@@ -6868,6 +6922,15 @@ sub mkdsklsnode
 	$rsp->{data}->[0] = "$Sname: Initializing AIX diskless nodes.  This could take a while.\n";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
 
+    #now run the begin part of the prescripts
+    #the call is distrubuted to the service node already, so only need to handles my own children
+    $errored=0;
+    $subreq->({command=>['runbeginpre'],
+		node=>\@nodelist,
+		arg=>["diskless", '-l']},\&pass_along);
+    if ($errored) { return; }
+
+
     #
     #  Get a list of the defined NIM machines
     #    these are machines defined on this server
@@ -7431,6 +7494,7 @@ sub mkdsklsnode
     #
     # process any errors
     #
+    my $retcode=0;
     if ($error)
     {
         my $rsp;
@@ -7448,7 +7512,7 @@ sub mkdsklsnode
         }
 
         xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
+	$retcode =  1;
     }
     else
     {
@@ -7456,11 +7520,31 @@ sub mkdsklsnode
         push @{$rsp->{data}},
           "$Sname: AIX/NIM diskless nodes were initialized.\n";
         xCAT::MsgUtils->message("I", $rsp, $callback);
-
-        return 0;
     }
 
-    return 0;
+    
+    #now run the end part of the prescripts
+    #the call is distrubuted to the service node already, so only need to handles my own children
+    $errored=0;
+    if (@nodesfailed > 0) {
+	my @good_nodes=();
+	foreach my $node (@nodelist) {
+	    if (!grep(/^$node$/, @nodesfailed)) {
+                 push(@good_nodes, $node);
+            }
+        }
+        $subreq->({command=>['runendpre'],
+                      node=>\@good_nodes,
+                      arg=>["diskless", '-l']},\&pass_along);
+    } else {
+        $subreq->({command=>['runendpre'],
+                      node=>\@nodelist,
+                      arg=>["diskless", '-l']},\&pass_along);
+    }
+    if ($errored) { $retcode = 1; }
+
+
+    return  $retcode;
 }
 
 #----------------------------------------------------------------------------
