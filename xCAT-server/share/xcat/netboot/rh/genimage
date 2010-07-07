@@ -534,8 +534,12 @@ sub mkinitrd_dracut {
     } else {
         # for diskless
         cp("$fullpath/dracut/install.netboot","$dracutmpath/install");
-        $perm = (stat("$fullpath/dracut/xcat-cmdline.sh"))[2];
+        $perm = (stat("$fullpath/dracut/install"))[2];
         chmod($perm&07777, "$dracutmpath/install");
+
+        cp("$fullpath/dracut/xcat-cmdline.sh","$dracutmpath/");
+        $perm = (stat("$fullpath/dracut/xcat-cmdline.sh"))[2];
+        chmod($perm&07777, "$dracutmpath/xcat-cmdline.sh");
 
         if ($prinic) {
             my $optspec;
