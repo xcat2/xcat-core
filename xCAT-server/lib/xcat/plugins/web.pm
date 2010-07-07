@@ -378,7 +378,7 @@ sub web_update {
 
 =head3   web_unlock
 
-	Description	: Unlock a node by exchanging its SSH keys
+	Description	: Unlock a node by setting up the SSH keys
     Arguments	: 	Node
     				Password
     Returns		: Nothing

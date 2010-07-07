@@ -42,7 +42,7 @@ sub getUserId {
 
 =head3   getHost
 
-	Description	: Get the z/VM host for a given node
+	Description	: Get the z/VM host of a given node
     Arguments	: Node
     Returns		: z/VM host
     Example		: my $host = xCAT::zvmCPUtils->getHost($node);
@@ -70,7 +70,7 @@ sub getHost {
 	Description	: Get the privilege class of a given node
     Arguments	: Node
     Returns		: Privilege class
-    Example		: my $memory = xCAT::zvmCPUtils->getPrivileges($node);
+    Example		: my $class = xCAT::zvmCPUtils->getPrivileges($node);
     
 =cut
 
@@ -166,7 +166,7 @@ sub getNic {
 
 =head3   getNetworkNames
 
-	Description	: Get a list of network names
+	Description	: Get a list of network names available to a given node
     Arguments	: Node
     Returns		: Network names
     Example		: my $lans = xCAT::zvmCPUtils->getNetworkNames($node);
@@ -203,7 +203,7 @@ sub getNetworkNames {
 
 =head3   getNetwork
 
-	Description	: Get the network configuration
+	Description	: Get the network info for a given node
     Arguments	: 	Node
     				Network name
     Returns		: Network configuration
@@ -217,7 +217,7 @@ sub getNetwork {
 	# Get inputs
 	my ( $class, $node, $netName ) = @_;
 
-	# Get network configuration
+	# Get network info
 	my $out;
 	if ( $netName eq "all" ) {
 		$out = `ssh -o ConnectTimeout=5 $node "vmcp q lan"`;
@@ -279,9 +279,9 @@ sub loadVmcp {
 
 =head3   getVswitchId
 
-	Description	: Get the VSWITCH ID(s) of given node
+	Description	: Get the VSwitch ID(s) of given node
     Arguments	: Node
-    Returns		: VSwitch IDs
+    Returns		: VSwitch ID(s)
     Example		: my @vswitch = xCAT::zvmCPUtils->getVswitchId($node);
     
 =cut
@@ -309,7 +309,7 @@ sub getVswitchId {
 
 =head3   grantVSwitch
 
-	Description	: Grant access to a virtual switch (VSWITCH) for given userID
+	Description	: Grant VSwitch access for a given userID 
     Arguments	: 	HCP node
     				User ID 
     				VSWITCH ID
@@ -328,7 +328,7 @@ sub grantVSwitch {
 	my $out = `ssh $hcp "vmcp set vswitch $vswitchId grant $userId"`;
 	$out = xCAT::zvmUtils->trimStr($out);
 
-	# If return string contains 'Command complete' -- Operation was successful
+	# If return string contains 'Command complete' - Operation was successful
 	my $retStr;
 	if ( $out =~ m/Command complete/i ) {
 		$retStr = "Done\n";
@@ -358,19 +358,20 @@ sub grantVSwitch {
 sub flashCopy {
 
 	# Get inputs
-	my ( $class, $node, $srcAddr, $targetAddr ) = @_;
+	my ( $class, $node, $srcAddr, $tgtAddr ) = @_;
 
 	# Flash copy
-	my $out = `ssh $node "vmcp flashcopy $srcAddr 0 end to $targetAddr 0 end"`;
+	my $out = `ssh $node "vmcp flashcopy $srcAddr 0 end to $tgtAddr 0 end synchronous"`;
 	$out = xCAT::zvmUtils->trimStr($out);
 
-	# If return string contains 'Command complete' -- Operation was successful
+	# If return string contains 'Command complete' - Operation was successful
 	my $retStr = "";
 	if ( $out =~ m/Command complete/i ) {
 		$retStr = "Done\n";
 	}
 	else {
-		$retStr = "Failed\n";
+		$out    = xCAT::zvmUtils->tabStr($out);
+		$retStr = "Failed\n$out";
 	}
 
 	return $retStr;
@@ -384,19 +385,19 @@ sub flashCopy {
     Arguments	: 	HCP node
     				UserID to receive file
     				Source file
-    				Target file name and type to be created by punch (e.g. sles.parm)
-    				Options (e.g. -t -- Convert EBCDIC to ASCII)
+    				Target file to be created by punch (e.g. sles.parm)
+    				Options, e.g. -t (Convert EBCDIC to ASCII)
     Returns		: Operation results (Done/Failed)
-    Example		: my $rc = xCAT::zvmCPUtils->punch2Reader($hcp, $userId, $srcFile, $trgtFile, $options);
+    Example		: my $rc = xCAT::zvmCPUtils->punch2Reader($hcp, $userId, $srcFile, $tgtFile, $options);
     
 =cut
 
 #-------------------------------------------------------
 sub punch2Reader {
-	my ( $class, $hcp, $userId, $srcFile, $trgtFile, $options ) = @_;
+	my ( $class, $hcp, $userId, $srcFile, $tgtFile, $options ) = @_;
 
 	# Punch to reader
-	my $out = `ssh -o ConnectTimeout=5 $hcp "vmur punch $options -u $userId -r $srcFile -N $trgtFile"`;
+	my $out = `ssh -o ConnectTimeout=5 $hcp "vmur punch $options -u $userId -r $srcFile -N $tgtFile"`;
 
 	# If punch is successful -- Look for this string
 	my $searchStr = "created and transferred";
@@ -416,7 +417,7 @@ sub punch2Reader {
 
 	Description	: 	Purge reader (Class D users only)
     Arguments	: 	HCP node
-    				UserID to purge reader for
+    				UserID to purge reader
     Returns		: 	Nothing
     Example		: my $rc = xCAT::zvmCPUtils->purgeReader($hcp, $userId);
     
@@ -461,9 +462,9 @@ sub sendCPCmd {
 	Description	: 	Get the network layer for a given node
     Arguments	: 	Node
     				Network name (Optional)
-    Returns		: 	2 	-- Layer 2
-    				3 	-- Layer 3
-    				-1 	-- Failed to get network layer
+    Returns		: 	2 	- Layer 2
+    				3 	- Layer 3
+    				-1 	- Failed to get network layer
     Example		: my $layer = xCAT::zvmCPUtils->getNetworkLayer($node);
     
 =cut
@@ -538,7 +539,7 @@ sub getNetworkLayer {
 
 =head3   getNetworkType
 
-	Description	: 	Get the network type for a given network name
+	Description	: 	Get the network type of a given network
     Arguments	: 	HCP node
     				Name of network
     Returns		: 	Network type (VSWITCH/HIPERS/QDIO)
