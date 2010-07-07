@@ -491,6 +491,8 @@ sub mkinitrd_dracut {
     cp("$fullpath/dracut/check", $dracutmpath);
     chmod($perm&07777, "$dracutmpath/check");
 
+    foreach (@ndrivers) { s/\.ko$//; }
+
     my $add_drivers = join(' ', @ndrivers);
     my $DRACUTCONF;
 
