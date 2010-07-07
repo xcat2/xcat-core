@@ -1466,12 +1466,6 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
                 vmview=>$mgdvms{$node},
                 exargs=>\@exargs
             );
-#REMINDER FOR RINV TO COME
-#     foreach (@nothing) { #@{$mgdvms{$node}->config->hardware->device}) {
-#           if (defined $_->{macAddress}) {
-#                  print "\nFound a mac: ".$_->macAddress."\n";
-#               }
-#           }
         }
     }
 }
