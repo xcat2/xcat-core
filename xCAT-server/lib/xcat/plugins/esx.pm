@@ -2043,45 +2043,49 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
         userName=>$hyphash{$hyp}->{username},
         force=>1,
         );
-    foreach  (@{$hyphash{$hyp}->{vcenter}->{conn}->find_entity_views(view_type=>'HostSystem',properties=>['summary.config.name','summary.runtime.connectionState','runtime.inMaintenanceMode','parent','configManager'])}) {
-        if ($_->{'summary.config.name'} =~ /^$hyp(?:\.|\z)/ or $_->{'summary.config.name'} =~ /^$name(?:\.|\z)/) { #Looks good, call the dependent function after declaring the state of vcenter to hypervisor as good
-            if ($_->{'summary.runtime.connectionState'}->val eq 'connected') {
-                enable_vmotion(hypname=>$hyp,hostview=>$_,conn=>$hyphash{$hyp}->{vcenter}->{conn});
+    my $hview;
+    $hview = $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type=>'HostSystem',properties=>['summary.config.name','summary.runtime.connectionState','runtime.inMaintenanceMode','parent','configManager'],filter=>{'summary.config.name'=>qr/^$hyp(?:\.|\z)/});
+    unless ($hview) {
+         $hview = $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type=>'HostSystem',properties=>['summary.config.name','summary.runtime.connectionState','runtime.inMaintenanceMode','parent','configManager'],filter=>{'summary.config.name'=>qr/^$name(?:\.|\z)/});
+    }
+    if ($hview) { 
+        if ($hview->{'summary.config.name'} =~ /^$hyp(?:\.|\z)/ or $hview->{'summary.config.name'} =~ /^$name(?:\.|\z)/) { #Looks good, call the dependent function after declaring the state of vcenter to hypervisor as good
+            if ($hview->{'summary.runtime.connectionState'}->val eq 'connected') {
+                enable_vmotion(hypname=>$hyp,hostview=>$hview,conn=>$hyphash{$hyp}->{vcenter}->{conn});
                 $vcenterhash{$vcenter}->{$hyp} = 'good';
                 $depfun->($depargs);
-                if ($_->parent->type eq 'ClusterComputeResource') { #if it is in a cluster, we can directly remove it
-                    $hyphash{$hyp}->{deletionref} = $_->{mo_ref}; 
-                } elsif ($_->parent->type eq 'ComputeResource') { #For some reason, we must delete the container instead
-                    $hyphash{$hyp}->{deletionref} = $_->{parent}; #save off a reference to delete hostview off just in case
+                if ($hview->parent->type eq 'ClusterComputeResource') { #if it is in a cluster, we can directly remove it
+                    $hyphash{$hyp}->{deletionref} = $hview->{mo_ref}; 
+                } elsif ($hview->parent->type eq 'ComputeResource') { #For some reason, we must delete the container instead
+                    $hyphash{$hyp}->{deletionref} = $hview->{parent}; #save off a reference to delete hostview off just in case
                 }
 
 
                 return 1;
             } else {
                 my $ref_to_delete;
-                if ($_->parent->type eq 'ClusterComputeResource') { #We are allowed to specifically kill a host in a cluster
-                    $ref_to_delete = $_->{mo_ref};
-                } elsif ($_->parent->type eq 'ComputeResource') { #For some reason, we must delete the container instead
-                    $ref_to_delete = $_->{parent};
+                if ($hview->parent->type eq 'ClusterComputeResource') { #We are allowed to specifically kill a host in a cluster
+                    $ref_to_delete = $hview->{mo_ref};
+                } elsif ($hview->parent->type eq 'ComputeResource') { #For some reason, we must delete the container instead
+                    $ref_to_delete = $hview->{parent};
                 }
                 my $task = $hyphash{$hyp}->{vcenter}->{conn}->get_view(mo_ref=>$ref_to_delete)->Destroy_Task();
                 $running_tasks{$task}->{task} = $task;
                 $running_tasks{$task}->{callback} = \&addhosttovcenter;
                 $running_tasks{$task}->{conn} = $hyphash{$hyp}->{vcenter}->{conn};
-                $running_tasks{$task}->{data} = { depfun => $depfun, depargs => $depargs, conn=>  $hyphash{$hyp}->{vcenter}->{conn}, connspec=>$connspec,hostview=>$_,hypname=>$hyp,vcenter=>$vcenter };
+                $running_tasks{$task}->{data} = { depfun => $depfun, depargs => $depargs, conn=>  $hyphash{$hyp}->{vcenter}->{conn}, connspec=>$connspec,hostview=>$hview,hypname=>$hyp,vcenter=>$vcenter };
                 return undef;
 #The rest would be shorter/ideal, but seems to be confused a lot by stateless
 #Maybe in a future VMWare technology level the following would work better
 #than it does today
-#               my $task = $_->ReconnectHost_Task(cnxSpec=>$connspec);
-#               my $task = $_->DisconnectHost_Task();
+#               my $task = $hview_->ReconnectHost_Task(cnxSpec=>$connspec);
+#               my $task = $hview->DisconnectHost_Task();
 #               $running_tasks{$task}->{task} = $task;
 #               $running_tasks{$task}->{callback} = \&disconnecthost_callback;
 #               $running_tasks{$task}->{conn} = $hyphash{$hyp}->{vcenter}->{conn};
-#               $running_tasks{$task}->{data} = { depfun => $depfun, depargs => $depargs, conn=>  $hyphash{$hyp}->{vcenter}->{conn}, connspec=>$connspec,hostview=>$_,hypname=>$hyp,vcenter=>$vcenter };
+#               $running_tasks{$task}->{data} = { depfun => $depfun, depargs => $depargs, conn=>  $hyphash{$hyp}->{vcenter}->{conn}, connspec=>$connspec,hostview=>$hview,hypname=>$hyp,vcenter=>$vcenter };
 #ADDHOST
             }
-            last;
         }
     }
     #If still in function, haven't found any likely host entries, make a new one
