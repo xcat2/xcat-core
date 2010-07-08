@@ -286,8 +286,11 @@ while ($path) {
 };
 $path = $_;
 my $sandbox = "$repo/sandbox";
-if ( mkpath($path) or mkpath($sandbox) or system("cp $srcdir/$util $repo") or system("cp $asudir/$asu $repo")) {
-  output("Error making path or copying input file");
+mkpath($path);
+mkpath($sandbox);
+
+if ( system("cp $srcdir/$util $repo") or system("cp $asudir/$asu $repo")) {
+  output("Error copying input file");
   exit;
 }
 
