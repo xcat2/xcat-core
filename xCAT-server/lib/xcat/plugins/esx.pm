@@ -1415,7 +1415,13 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
     foreach $hyp (keys %hyphash) {
         if ($viavcenterbyhyp->{$hyp}) {
             if ($vcviews{$hyphash{$hyp}->{vcenter}->{name}}) { next; }
-            $vcviews{$hyphash{$hyp}->{vcenter}->{name}} = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
+            my @localvcviews=();
+            my $node;
+    	    foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})){
+                push @localvcviews,$hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>$properties,filter=>{'config.name'=>qr/^$node/});
+            }
+            $vcviews{$hyphash{$hyp}->{vcenter}->{name}} = \@localvcviews;
+            #$vcviews{$hyphash{$hyp}->{vcenter}->{name}} = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
             foreach (@{$vcviews{$hyphash{$hyp}->{vcenter}->{name}}}) {
                 my $node = $_->{'config.name'};
                 unless (defined $tablecfg{vm}->{$node}) {
@@ -1452,7 +1458,12 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
         if ($viavcenterbyhyp->{$hyp}) { 
             $vmviews= $vcviews{$hyphash{$hyp}->{vcenter}->{name}}
         } else {
-		    $vmviews = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
+            $vmviews = [];
+            my $node;
+    	    foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})){
+    		    push @{$vmviews},$hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>$properties,filter=>{'config.name'=>qr/^$node/});
+            }
+		    #$vmviews = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
 	    }
         my %mgdvms; #sort into a hash for convenience
         foreach (@$vmviews) {
