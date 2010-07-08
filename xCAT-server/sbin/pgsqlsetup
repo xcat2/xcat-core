@@ -167,7 +167,7 @@ if (-e ("/etc/xcat/cfgloc"))    # check to see if xcat is using pgsql
         if ($::INIT)
         {
             my $message =
-              "The /opt/xcat/cfgloc file is already configured for PostgreSQL. xcat database initialization will not take place.";
+              "The /etc/xcat/cfgloc file is already configured for PostgreSQL. xcat database initialization will not take place.";
             xCAT::MsgUtils->message("I", "$message");
         }
         $::xcatrunningpgsql = 1;
@@ -177,8 +177,8 @@ if (-e ("/etc/xcat/cfgloc"))    # check to see if xcat is using pgsql
 #  if not just odbc update
 #  Get  admin password
 #
-if ($odbconly == 0)
-{    # not just updating the odbc
+if (($odbconly == 0)  && ($::xcatrunningpgsql == 0))
+{    # not just updating the odbc  and xcat not already running on pg
     my $msg = "Input the password for xcatadm userid: ";
     xCAT::MsgUtils->message('I', "$msg");
     `stty -echo`;
@@ -813,193 +813,6 @@ sub setupODBC
         xCAT::MsgUtils->message("E", " $cmd failed. $message");
         exit(1);
     }
-
-    # for aix and redhat
-    if (($::linuxos =~ /rh.*/) || ($::osname eq 'AIX'))
-    {
-        $cmd = "rpm -qa | grep mysql-connector-odbc";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $message =
-              "\nxcat-connector-odbc is not installed.  It should be first obtained from the xcat dependency tarballs and installed before running this command. If on Linux, install from the OS CDs.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
-            exit(1);
-        }
-    }
-    else    # sles
-    {
-        $cmd = "rpm -qa | grep mysql-client";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $message =
-              "\nmysql-client is not installed.  It should be first installed from the SLES CDs.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
-            exit(1);
-        }
-        $cmd = "rpm -qa | grep libmysqlclient";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $message =
-              "\nlibmysqlclient is not installed.  It should be first installed from the SLES CDs.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
-            exit(1);
-        }
-        $cmd = "rpm -qa | grep MyODBC-unixODBC";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $message =
-              "\n$cmd failed. MyODBC-unixODBC is not installed.  It should be first installed from the SLES CDs.";
-            xCAT::MsgUtils->message("E", "$message");
-            exit(1);
-        }
-    }    # end sles
-    my @rpmoutput;
-    my $odbcinstfile;
-    my $odbcfile;
-    my $message;
-
-    # configure the ODBC, again SLES different than the rest
-    my $xcatconfig       = "/etc/xcat/cfgloc";
-    my $xcatconfigbackup = "/etc/xcat/cfgloc.mysql";
-    if (!(-e ($xcatconfig)) && (!(-e ($xcatconfigbackup))))
-    {
-        $message =
-          "The $xcatconfig and $xcatconfigbackup files are missing. You need to configure xCAT for MySQL before setting up the ODBC.";
-        xCAT::MsgUtils->message("E", "$message");
-        exit(1);
-
-    }
-    $cmd = "fgrep -i  host $xcatconfig";
-    my @output;
-    @output = xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)    # then try backup
-    {
-        $cmd = "fgrep -i  host $xcatconfigbackup";
-        @output = xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)    # then try backup
-        {
-            $message =
-              "Cannot find host info in the cfgloc or cfgloc.mysql file. Configuration of ODBC cannot continue.";
-            xCAT::MsgUtils->message("E", " $cmd failed. $message");
-            exit(1);
-        }
-    }
-
-    # get host and password from cfgloc
-    (my $connstring, my $adminid, my $passwd) = split(/\|/, $output[0]);
-    (my $database,   my $id,      my $server) = split(/=/,  $connstring);
-
-    if (($::linuxos =~ /rh.*/) || ($::osname eq 'AIX'))
-    {
-        $odbcinstfile = "/etc/odbcinst.ini";
-        $odbcfile     = "/etc/odbc.ini";
-        $cmd          = "rpm -ql mysql-connector-odbc | grep libmyodbc..so";
-        @rpmoutput    = xCAT::Utils->runcmd($cmd, 0);
-    }
-    else
-    {    #sles
-        $odbcinstfile = "/etc/unixODBC/odbcinst.ini ";
-        $odbcfile     = "/etc/unixODBC/odbc.ini ";
-        $cmd          = "rpm -ql rpm -ql MyODBC-unixODBC | grep libmyodbc..so";
-        @rpmoutput    = xCAT::Utils->runcmd($cmd, 0);
-    }
-    if ($::RUNCMD_RC != 0)
-    {
-        my $message = "Cannot configure the ODBC.";
-        xCAT::MsgUtils->message("E", " $cmd failed. $message");
-        exit(1);
-    }
-
-    # setup the odbcinst.ini file
-    my $sharedlib = $rpmoutput[0];
-    $cmd = "fgrep -i  driver $odbcinstfile ";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)    # then driver entry not there
-    {
-        my $entry =
-          "[MySQL]\nDescription = ODBC for MySQL\nDriver      = $sharedlib";
-        $cmd = "echo \"$entry\" >> $odbcinstfile";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            $message = "$cmd failed. Could not setup ODBC.";
-            xCAT::MsgUtils->message("E", "$message");
-            exit(1);
-        }
-    }
-    else
-    {    # entry already there
-        $message = "$odbcinstfile already configured, will not change.";
-        xCAT::MsgUtils->message("I", "$message");
-    }
-
-    # setup the DSN odbc.ini file
-    $cmd = "fgrep -i  XCATDB $odbcfile";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)    # then xcat entry not there
-    {
-        my $entry =
-          "[xCATDB]\nDriver   = MySQL\nSERVER   = $server\nPORT     = 3306\nDATABASE = xcatdb";
-        $cmd = "echo \"$entry\" >> $odbcfile";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            $message = "$cmd failed. Could not setup ODBC DNS file.";
-            xCAT::MsgUtils->message("E", "$message");
-            exit(1);
-
-        }
-    }
-    else
-    {    # entry already there
-        $message = "$odbcfile already configured, will not change.";
-        xCAT::MsgUtils->message("I", "$message");
-    }
-
-    # setup $roothome/.odbc.ini so root will not have to specify password
-    # when accessing through ODBC
-
-    my $homedir      = xCAT::Utils->getHomeDir();
-    my $rootodbcfile = $homedir;
-    if ($::osname eq "AIX")
-    {
-        $rootodbcfile .= ".odbc.ini";
-    }
-    else
-    {
-        $rootodbcfile .= "/.odbc.ini";
-    }
-
-    # setup the DSN odbc.ini file
-    $cmd = "fgrep -i  XCATDB $rootodbcfile";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)    # then xcat entry not there
-    {
-        my $entry =
-          "[xCATDB]\nSERVER =$server\nDATABASE = xcatdb\nUSER     = xcatadm\nPASSWORD = $passwd";
-        $cmd = "echo \"$entry\" >> $rootodbcfile";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            $message = "$cmd failed. Could not setup root ODBC file.";
-            xCAT::MsgUtils->message("E", "$message");
-            exit(1);
-
-        }
-    }
-    else
-    {    # entry already there
-        $message = "$rootodbcfile already configured, will not change.";
-        xCAT::MsgUtils->message("I", "$message");
-    }
-
-    # allow readonly by root
-    chmod 0600, $rootodbcfile;
-
 }
 
 #-----------------------------------------------------------------------------
