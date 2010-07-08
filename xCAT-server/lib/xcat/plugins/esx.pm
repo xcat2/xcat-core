@@ -1109,6 +1109,7 @@ sub migrate {
             $running_tasks{$task}->{callback} = \&relocate_callback;
             $running_tasks{$task}->{hyp} = $args{hyp}; 
             $running_tasks{$task}->{data} = { node => $_, target=>$datastoredest }; 
+            process_tasks; #check for tasks needing followup actions before the task is forgotten (VMWare's memory is fairly short at times
         }
         return;
     }
@@ -1130,6 +1131,7 @@ sub migrate {
             $hyphash{$target}->{pool} = $hyphash{$target}->{conn}->get_view(mo_ref=>$dstview->parent,properties=>['resourcePool'])->resourcePool;
         }
         foreach (@nodes) {
+            process_tasks; #check for tasks needing followup actions before the task is forgotten (VMWare's memory is fairly short at times
             my $srcview = $hyphash{$target}->{conn}->find_entity_view(view_type=>'VirtualMachine',properties=>['config.name'],filter=>{name=>$_});
 	    if ($offline and not $srcview) { #we have a request to resurrect the dead..
            	register_vm($target,$_,undef,\&migrate_ok,{ nodes => [$_], exargs => $args{exargs}, target=>$target, hyp => $args{hyp}, offline => $offline },"failonerror");
@@ -1477,6 +1479,7 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
                 vmview=>$mgdvms{$node},
                 exargs=>\@exargs
             );
+            process_tasks; #check for tasks needing followup actions before the task is forgotten (VMWare's memory is fairly short at times
         }
     }
 }
@@ -1486,6 +1489,7 @@ sub generic_hyp_operation { #The general form of firing per-hypervisor requests 
     my @exargs = @_; #Store the rest to pass on
     my $hyp;
     foreach $hyp (keys %hyphash) {
+         process_tasks; #check for tasks needing followup actions before the task is forgotten (VMWare's memory is fairly short at times
         my @relevant_nodes = sort (keys %{$hyphash{$hyp}->{nodes}});
         unless (scalar @relevant_nodes) {
             next;
@@ -1596,6 +1600,7 @@ sub mkvms {
     $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
     my $cfg;
     foreach $node (@$nodes) {
+         process_tasks; #check for tasks needing followup actions before the task is forgotten (VMWare's memory is fairly short at times
         if ($hyphash{$hyp}->{conn}->find_entity_view(view_type=>"VirtualMachine",filter=>{name=>$node})) {
             sendmsg([1,"Virtual Machine already exists"],$node);
             next;
