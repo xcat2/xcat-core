@@ -191,8 +191,23 @@ sub daemonize {
 my %cmd_handlers;
 sub do_installm_service { 
   #This function servers as a handler for messages from installing nodes
-
 my $socket;
+  my $installpidfile;
+  my $retry=1;
+  $SIG{USR2} = sub { 
+       xCAT::MsgUtils->message("S","xcatd install monitor $$ quiescing");
+      unlink("/tmp/xcat/installservice.pid"); close($socket); $quit=1; };
+  if (open($installpidfile,"<","/tmp/xcat/installservice.pid")) {
+      my $pid = <$installpidfile>;
+      if ($pid) {
+          $retry=100; #grace period for old instance to get out of the way, 5 seconds
+          kill 12,$pid;
+          yield(); # let peer have a shot at closure
+      }
+      close($installpidfile);
+  }
+while (not $socket and $retry) {
+    $retry--;
 if ($inet6support) {
   $socket = IO::Socket::INET6->new(LocalPort=>$sport,
                                      Proto    => 'tcp',
@@ -204,6 +219,11 @@ if ($inet6support) {
                                      ReuseAddr => 1,
                                      Listen => 8192);
 }
+sleep 0.05; #up to 50 ms outage possible
+}
+  open($installpidfile,">","/tmp/xcat/installservice.pid"); #if here, everyone else has unlinked installservicepid or doesn't care
+  print $installpidfile $$;
+  close($installpidfile);
 
   unless ($socket) {
     xCAT::MsgUtils->message("S","xcatd unable to open install monitor services on $sport");
@@ -337,6 +357,13 @@ if ($inet6support) {
       }
     }
   }
+  if (open($installpidfile,"<","/tmp/xcat/installservice.pid")) {
+      my $pid = <$installpidfile>;
+      if ($pid == $$) { #if our pid, unlink the file, otherwise, we managed to see the pid after someone else created it
+          unlink("/tmp/xcat/installservice.pid");
+      }
+      close($installpidfile);
+  }
 }
     
 
@@ -349,8 +376,23 @@ sub do_udp_service { #This function opens up a UDP port
   #Explicitly, to handle whatever operations nodes periodically send during discover state
   #Could be used for heartbeating and such as desired
    $dispatch_requests=0;
-my $socket;
+  my $udppidfile;
+  my $retry=1;
+  my $socket;
+  $SIG{USR2} = sub { 
+       xCAT::MsgUtils->message("S","xcatd udp service $$ quiescing");
+      unlink("/tmp/xcat/udpservice.pid"); close($socket); $quit=1; };
+  if (open($udppidfile,"<","/tmp/xcat/udpservice.pid")) {
+      my $pid = <$udppidfile>;
+      if ($pid) {
+          $retry=100; #grace period for old instance to get out of the way, 5 seconds
+          kill 12,$pid;
+          yield(); # let peer have a shot at closure
+      }
+      close($udppidfile);
+  }
    my $select = new IO::Select;
+while (not $socket and $retry) {
 if ($inet6support) {
   $socket = IO::Socket::INET6->new(LocalPort => $port,
                                      Proto     => 'udp',
@@ -360,6 +402,11 @@ if ($inet6support) {
                                      Proto     => 'udp',
                                      Domain => AF_INET);
 }
+sleep 0.05;
+}
+  open($udppidfile,">","/tmp/xcat/udpservice.pid"); #if here, everyone else has unlinked udpservicepid or doesn't care
+  print $udppidfile $$;
+  close($udppidfile);
 
   openlog("xCAT UDP",'','local4');
   unless ($socket) {
@@ -435,6 +482,13 @@ if ($inet6support) {
         exit 1;
     }
   }
+  if (open($udppidfile,"<","/tmp/xcat/udpservice.pid")) {
+      my $pid = <$udppidfile>;
+      if ($pid == $$) { #if our pid, unlink the file, otherwise, we managed to see the pid after someone else created it
+          unlink("/tmp/xcat/udpservice.pid");
+      }
+      close($udppidfile);
+  }
 }
 
 
@@ -487,15 +541,19 @@ unless ($foreground) {
 
 $dbmaster=xCAT::Table::init_dbworker;
 my $CHILDPID=0; #Global for reapers
+my %immediatechildren;
 sub generic_reaper {
-   while (waitpid(-1,WNOHANG) > 0) {
+   while (($CHILDPID=waitpid(-1,WNOHANG)) > 0) {
       yield;
    }
    $SIG{CHLD} = \&generic_reaper;
 }
 
 sub ssl_reaper {
-   while (waitpid(-1,WNOHANG) > 0) {
+   while (($CHILDPID=waitpid(-1,WNOHANG)) > 0) {
+       if ($immediatechildren{$CHILDPID}) {
+           delete $immediatechildren{$CHILDPID};
+       }
       $sslclients--;
    }
    $SIG{CHLD} = \&ssl_reaper;
@@ -569,21 +627,51 @@ unless ($pid_MON) {
   xexit(0);
 }
 $$progname="xcatd: SSL listener";
+
+#setup signal in NotifHandler so that the cache can be updated
+xCAT::NotifHandler::setup($$, $dbmaster);
+
+#start the monitoring process
+xCAT_monitoring::monitorctrl::start($$);
+
+my $peername;
+my $ssltimeout;
+my $retry=1;
 openlog("xCAT SSL","","local4");
 my $listener;
-if ($inet6support) {
-    $listener = IO::Socket::INET6->new(
-        LocalPort => $port,
-        Listen => 8192,
-        Reuse => 1,
-        );
-} else {
-    $listener = IO::Socket::INET->new(
-        LocalPort => $port,
-        Listen => 8192,
-        Reuse => 1,
-        );
+my $mainpidfile;
+  $SIG{USR2} = sub { 
+       xCAT::MsgUtils->message("S","xcatd main service $$ quiescing");
+      unlink("/tmp/xcat/mainservice.pid"); close($listener); $quit=1; $listener=0; };
+  if (open($mainpidfile,"<","/tmp/xcat/mainservice.pid")) {
+      my $pid = <$mainpidfile>;
+      if ($pid) {
+          $retry=100; #grace period for old instance to get out of the way, 5 seconds
+          kill 12,$pid;
+          yield(); # let peer have a shot at closure
+      }
+      close($mainpidfile);
+  }
+while (not $listener and $retry) {
+    $retry--;
+    if ($inet6support) {
+        $listener = IO::Socket::INET6->new(
+            LocalPort => $port,
+            Listen => 8192,
+            Reuse => 1,
+            );
+    } else {
+        $listener = IO::Socket::INET->new(
+            LocalPort => $port,
+            Listen => 8192,
+            Reuse => 1,
+            );
+    }
+    sleep(0.05);
 }
+open($mainpidfile,">","/tmp/xcat/mainservice.pid"); #if here, everyone else has unlinked mainservicepid or doesn't care
+print $mainpidfile $$;
+close($mainpidfile);
 
 unless ($listener) {
   kill 2, $pid_UDP;
@@ -597,15 +685,6 @@ unless ($listener) {
   die "ERROR:Unable to start xCAT service on port $port.";
 }
 closelog();
-
-#setup signal in NotifHandler so that the cache can be updated
-xCAT::NotifHandler::setup($$, $dbmaster);
-
-#start the monitoring process
-xCAT_monitoring::monitorctrl::start($$);
-
-my $peername;
-my $ssltimeout;
 until ($quit) {
   $SIG{CHLD} = \&ssl_reaper; #set here to ensure that signal handler is not corrupted during loop
   next unless my $cnnection=$listener->accept;
@@ -614,6 +693,9 @@ until ($quit) {
       sleep 0.1; #Keep processor utilization down
   }
   my $child = xCAT::Utils->xfork(); #Yes we fork, IO::Socket::SSL is not threadsafe..
+  if ($child) {
+      $immediatechildren{$child}=1;
+  }
   
   unless (defined $child) {
     xCAT::MsgUtils->message("S","xCATd cannot fork");
@@ -691,7 +773,15 @@ if ($inet6support) {
   $sslclients++; #THROTTLE
   $cnnection->close();
 }
-$listener->close;
+  if (open($mainpidfile,"<","/tmp/xcat/mainservice.pid")) {
+      my $pid = <$mainpidfile>;
+      if ($pid == $$) { #if our pid, unlink the file, otherwise, we managed to see the pid after someone else created it
+          unlink("/tmp/xcat/mainservice.pid");
+      }
+      close($mainpidfile);
+  }
+if ($listener) { $listener->close; }
+while (keys %immediatechildren) { yield(); }
 xCAT::Table::shut_dbworker;
 if ($dbmaster) {
     kill 2, $dbmaster;
