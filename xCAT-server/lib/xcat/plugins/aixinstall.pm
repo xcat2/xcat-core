@@ -5751,6 +5751,7 @@ sub prenimnodeset
         !GetOptions(
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
+                    'hfi'       => \$::HFI,
                     'i=s'       => \$::OSIMAGE,
                     'n|new'     => \$::NEWNAME,
                     'verbose|V' => \$::VERBOSE,
@@ -6882,6 +6883,7 @@ sub mkdsklsnode
         !GetOptions(
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
+                    'hfi'       => \$::HFI,
                     'i=s'       => \$::OSIMAGE,
                     'n|new'     => \$::NEWNAME,
                     'verbose|V' => \$::VERBOSE,
@@ -7237,17 +7239,32 @@ sub mkdsklsnode
             } else {
                 $mac_or_local_link_addr = $objhash{$node}{'mac'};
                 # only support Ethernet for management interfaces
-                $adaptertype = "ent";
+                if ($::HFI)
+                {
+                    $adaptertype = "hfi0";
+                } else {
+                    $adaptertype = "ent";
+                }
                 $netmask = $nethash{$node}{'mask'};
             }
                
-            $defcmd .=
-              "-a if1='find_net $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
+            my $netname = $nethash{$node}{'netname'}; 
+            if (!$::HFI)
+            {
+                $defcmd .=
+                  "-a if1='find_net $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
+            } else {
+                $defcmd .=
+                   "-a if1='$netname $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
+            }
         }
         $defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
-        $defcmd .=
-          "-a net_definition='$adaptertype $netmask $nethash{$node}{'gateway'}' ";
-        $defcmd .= "-a net_settings1='$speed $duplex' ";
+        if (!$::HFI)
+        {
+            $defcmd .=
+                "-a net_definition='$adaptertype $netmask $nethash{$node}{'gateway'}' "; 
+            $defcmd .= "-a net_settings1='$speed $duplex' ";
+        }
 
         # add any additional supported attrs from cmd line
         my @attrlist = ("dump_iscsi_port");
