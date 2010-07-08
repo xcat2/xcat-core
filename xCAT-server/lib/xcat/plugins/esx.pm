@@ -877,7 +877,7 @@ sub get_hostview {
     $view = $args{conn}->find_entity_view(%subargs);
     if ($view) { return $view; }
     return undef; #rest of function should be obsoleted, going to run with that assumption for 2.5 at least
-    $subargs{filter}={'name' =~ qr/.*/};
+#    $subargs{filter}={'name' =~ qr/.*/};
 #   foreach (@{$args{conn}->find_entity_views(%subargs)}) {
 #      my $view = $_;
 #      if ($_->name =~ /$host(?:\.|\z)/ or $_->name =~ /localhost(?:\.|\z)/ or grep { $view->name =~ /$_(?:\.|\z)/ } @matchvalues) {
