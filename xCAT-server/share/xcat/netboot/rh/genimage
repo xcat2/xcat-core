@@ -5,12 +5,17 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 
+use lib "../imgutils";
+
 use File::Basename;
 use File::Path;
 use File::Copy qw/copy cp mv move/;
 use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
+
+use imgutils;
+
 #use strict;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -265,9 +270,9 @@ unless ($onlyinitrd) {
    mkpath("$rootimg_dir/var/lib/yum");
 
    if (!$imagename) {
-       $pkglist= get_profile_def_filename($customdir, "pkglist");
+       $pkglist= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "pkglist");
        if (!$pkglist) {
-	   $pkglist= get_profile_def_filename($pathtofiles, "pkglist");
+	   $pkglist= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "pkglist");
        }  
    }
 
@@ -297,8 +302,8 @@ unless ($onlyinitrd) {
 
    #Now let's handle extra packages
     if (!$imagename) {
-	$otherpkglist=get_profile_def_filename($customdir, "otherpkgs.pkglist");
-	if (!$otherpkglist) { $otherpkglist=get_profile_def_filename($pathtofiles, "otherpkgs.pkglist"); }
+	$otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
+	if (!$otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
     }
     my %extra_hash=();
     if ($otherpkglist) {
@@ -437,9 +442,9 @@ if (-d "$rootimg_dir/usr/share/dracut") {
 
 #-- run postinstall script
 if (!$imagename) {
-    $postinstall_filename= get_profile_def_filename($customdir, "postinstall");
+    $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "postinstall");
     if (!$postinstall_filename) {
-	$postinstall_filename= get_profile_def_filename($pathtofiles, "postinstall");
+	$postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "postinstall");
     }
 } 
 
@@ -1396,28 +1401,3 @@ sub include_file
 }
 
 
-
-sub get_profile_def_filename {
-   my $base=shift;
-   my $ext=shift;
-   my $dotpos = rindex($osver, ".");
-   my $osbase = substr($osver, 0, $dotpos);
-   if (-r "$base/$profile.$osver.$arch.$ext") {
-      return "$base/$profile.$osver.$arch.$ext";
-   } elsif (-r "$base/$profile.$osbase.$arch.$ext") {
-      return "$base/$profile.$osbase.$arch.$ext";
-   } elsif (-r "$base/$profile.$arch.$ext") {
-      return "$base/$profile.$arch.$ext";
-   } elsif (-r "$base/$profile.$osver.$ext") {
-      return "$base/$profile.$osver.$ext";
-   } elsif (-r "$base/$profile.$osbase.$ext") {
-      return "$base/$profile.$osbase.$ext";
-   } elsif (-r "$base/$profile.$ext") {
-      return "$base/$profile.$ext";
-   } 
-
-   return "";
-}
-
-
-	
