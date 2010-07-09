@@ -417,7 +417,7 @@ sub validate_licenses {
     }
     my @newlicenses;
     foreach (@{$tablecfg{prodkey}->{$hyp}}) {
-        if ($_->{product} eq 'esx') {
+        if (defined($_->{product}) and $_->{product} eq 'esx') {
             my $key = uc($_->{key});
             unless (grep /$key/,@licenses) {
                 push @newlicenses,$key;
@@ -1671,11 +1671,14 @@ sub register_vm {#Attempt to register existing instance of a VM
         $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
     }
 
+    # Try to add an existing VM to the machine folder
     my $success = eval {
         $task = $hyphash{$hyp}->{vmfolder}->RegisterVM_Task(path=>getcfgdatastore($node,$hyphash{$hyp}->{datastoremap})." /$node/$node.vmx",name=>$node,pool=>$hyphash{$hyp}->{pool},asTemplate=>0);
     };
+    # if we couldn't add it then it means it wasn't created yet.  So we create it.
     if ($@ or not $success) {
-        print $@;
+        #if (ref($@) eq 'SoapFault') {
+        # if (ref($@->detail) eq 'NotFound') {
         register_vm_callback(undef, {
             node => $node,
             disksize => $disksize,
@@ -1715,7 +1718,35 @@ sub register_vm_callback {
         $args->{blockedfun}->(%{$args->{blockedargs}});
     }
 }
-    
+   
+
+sub getURI {
+    my $method = shift;
+    my $location = shift;
+    my $uri = '';
+
+    if($method =~ /nfs/){
+
+        (my $server,my $path) = split/\//,$location,2;
+        $server =~ s/:$//; #tolerate habitual colons
+        my $servern = inet_aton($server);
+        unless ($servern) {
+            sendmsg([1,"could not resolve '$server' to an address from vm.storage/vm.cfgstore"]);
+        }
+        $server = inet_ntoa($servern);
+        $uri = "nfs://$server/$path";
+    }elsif($method =~ /vmfs/){
+        (my $name, undef) = split /\//,$location,2;
+        $name =~ s/:$//; #remove a : if someone put it in for some reason.  
+        $uri = "vmfs://$name";
+    }else{
+        sendmsg([1,"Unsupported VMware Storage Method: $method.  Please use 'vmfs or nfs'"]);
+    }
+
+    return $uri;
+}
+
+ 
 sub getcfgdatastore {
     my $node = shift;
     my $dses = shift;
@@ -1727,14 +1758,7 @@ sub getcfgdatastore {
     }
     $cfgdatastore =~ s/=.*//;
     (my $method,my $location) = split /:\/\//,$cfgdatastore,2;
-    (my $server,my $path) = split/\//,$location,2;
-    $server =~ s/:$//; #tolerate habitual colons
-    my $servern = inet_aton($server);
-    unless ($servern) {
-        sendmsg([1,"could not resolve '$server' to an address from vm.storage/vm.cfgstore"]);
-    }
-    $server = inet_ntoa($servern);
-    my $uri = "nfs://$server/$path";
+    my $uri = getURI($method,$location);
     $cfgdatastore = "[".$dses->{$uri}."]";
     #$cfgdatastore =~ s/,.*$//; #these two lines of code were kinda pointless
     #$cfgdatastore =~ s/\/$//;
@@ -1784,7 +1808,7 @@ sub getguestid {
     my $nodeos = $tablecfg{nodetype}->{$node}->[0]->{os};
     my $nodearch = $tablecfg{nodetype}->{$node}->[0]->{arch};
     foreach (keys %guestidmap) {
-        if ($nodeos =~ /$_/) {
+        if (defined($nodeos) and $nodeos =~ /$_/) {
             if ($nodearch eq 'x86_64') {
                 $nodeos=$guestidmap{$_}."64Guest";
             } else {
@@ -1797,7 +1821,7 @@ sub getguestid {
         }
     }
     unless ($osfound) {
-        if ($nodearch eq 'x86_64') {
+        if (defined($nodearch) and $nodearch eq 'x86_64') {
             $nodeos="otherGuest64";
         } else {
             $nodeos="otherGuest";
@@ -1845,8 +1869,9 @@ sub build_cfgspec {
         } else {
             $uuid=xCAT::Utils::genUUID();
         }
+	
         my $vpdtab = xCAT::Table->new('vpd');
-        $vpdtab->setNodeAttribs($node,{uuid=>$uuid});
+       	$vpdtab->setNodeAttribs($node,{uuid=>$uuid});
     }
     return VirtualMachineConfigSpec->new(
             name => $node,
@@ -1951,15 +1976,16 @@ sub create_storage_devs {
         }
         $storeloc =~ s/\/$//;
         (my $method,my $location) = split /:\/\//,$storeloc,2;
-        (my $server,my $path) = split/\//,$location,2;
-        $server =~ s/:$//; #tolerate habitual colons
-        my $servern = inet_aton($server);
-        unless ($servern) {
-            sendmsg([1,"could not resolve '$server' to an address from vm.storage"]);
-            return;
-        }
-        $server = inet_ntoa($servern);
-        my $uri = "nfs://$server/$path";
+        my $uri = getURI($method, $location);
+        #(my $server,my $path) = split/\//,$location,2;
+        #$server =~ s/:$//; #tolerate habitual colons
+        #my $servern = inet_aton($server);
+        #unless ($servern) {
+        #    sendmsg([1,"could not resolve '$server' to an address from vm.storage"]);
+        #    return;
+        #}
+        #$server = inet_ntoa($servern);
+        #my $uri = "nfs://$server/$path";
         $backingif = VirtualDiskFlatVer2BackingInfo->new(diskMode => 'persistent',
                                                            fileName => "[".$sdmap->{$uri}."]");
         if ($disktype eq 'ide' and $idecontrollerkey eq 1 and $ideunitnum eq 0) { #reserve a spot for CD
@@ -2392,6 +2418,8 @@ sub validate_datastore_prereqs {
     my $node;
     my $method;
     my $location;
+    # get all of the datastores that are currently available on this node.
+    # and put them into a hash
     if (defined $hostview->{datastore}) { # only iterate if it exists
         foreach (@{$hostview->datastore}) {
             my $dsv = $hypconn->get_view(mo_ref=>$_);
@@ -2407,10 +2435,18 @@ sub validate_datastore_prereqs {
                     $hyphash{$hyp}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
                     $hyphash{$hyp}->{datastorerefmap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$_;
                 } #TODO: care about SMB
-            } #TODO: care about VMFS
+            }elsif(defined $dsv->info->{vmfs}){
+                my $name = $dsv->info->vmfs->name;
+                $hyphash{$hyp}->{datastoremap}->{"vmfs://".$name} = $dsv->info->name;     
+                $hyphash{$hyp}->{datasotrerefmap}->{"vmfs://".$name} = $_;
+            }
         }
     }
     my $refresh_names=0;
+    # now go through the nodes and make sure that we have matching datastores.
+    # E.g.: if its NFS, then mount it (if not mounted)
+    # E.g.: if its VMFS, then create it if not created already.  Note:  VMFS will persist on 
+    # machine reboots, unless its destroyed by being overwritten.
     foreach $node (@$nodes) {
         my @storage = split /,/,$tablecfg{vm}->{$node}->[0]->{storage};
         if ($tablecfg{vm}->{$node}->[0]->{cfgstore}) {
@@ -2421,29 +2457,41 @@ sub validate_datastore_prereqs {
             s/\/$//; #Strip trailing slash if specified, to align to VMware semantics
             if (/:\/\//) {
                 ($method,$location) = split /:\/\//,$_,2;
-                (my $server, my $path) = split /\//,$location,2;
-                $server =~ s/:$//; #remove a : if someone put it in out of nfs mount habit
-                my $servern = inet_aton($server);
-                unless ($servern) {
-                    sendmsg([1,": Unable to resolve '$server' to an address, check vm.cfgstore/vm.storage"]);
-                    return 0;
-                }
-                $server = inet_ntoa($servern);
-                my $uri = "nfs://$server/$path";
-                unless ($method =~ /nfs/) {
+                if($method =~ /nfs/){
+                # go through and see if NFS is mounted, if not, then mount it.
+                    (my $server, my $path) = split /\//,$location,2;
+                    $server =~ s/:$//; #remove a : if someone put it in out of nfs mount habit
+                    my $servern = inet_aton($server);
+                    unless ($servern) {
+                        sendmsg([1,": Unable to resolve '$server' to an address, check vm.cfgstore/vm.storage"]);
+                        return 0;
+                    }
+                    $server = inet_ntoa($servern);
+                    my $uri = "nfs://$server/$path";
+                    unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, must mount it
+                        $refresh_names=1;
+                        ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=mount_nfs_datastore($hostview,$location);
+                    }
+                }elsif($method =~ /vmfs/){
+                    (my $name, undef) = split /\//,$location,2;
+                    $name =~ s/:$//; #remove a : if someone put it in for some reason.  
+                    my $uri = "vmfs://$name";
+                    # check and see if this vmfs is on the node.
+                    unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, try creating it.
+                        ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=create_vmfs_datastore($hostview,$name);
+                    }
+                }else{
                     sendmsg([1,": $method is unsupported at this time (nfs would be)"],$node);
                     return 0;
                 }
-                unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, must mount it
-                    $refresh_names=1;
-                    ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=mount_nfs_datastore($hostview,$location);
-                }
             } else {
-                sendmsg([1,": $_ not supported storage specification for ESX plugin, 'nfs://<server>/<path>' only currently supported vm.storage supported for ESX at the moment"],$node);
+                sendmsg([1,": $_ not supported storage specification for ESX plugin,\n\t'nfs://<server>/<path>'\n\t\tor\n\t'vmfs://<vmfs>'\n only currently supported vm.storage supported for ESX at the moment"],$node);
                 return 0;
             } #TODO: raw device mapping, VMFS via iSCSI, VMFS via FC?
         }
     }
+    # newdatastores are for migrations or changing vms.  
+    # TODO: make this work for VMFS.  Right now only NFS.
     if (ref $newdatastores) {
         foreach (keys %$newdatastores) {
             s/\/$//; #Strip trailing slash if specified, to align to VMware semantics
@@ -2551,6 +2599,29 @@ sub mount_nfs_datastore {
 
     return ($location,$dsref);
 }
+
+# create a VMFS data store on a node so that VMs can live locally instead of NFS
+sub create_vmfs_datastore {
+    my $hostview = shift; # VM object
+    my $name = shift; # name of storage we wish to create.
+    # call some VMware API here to create
+    my $hdss = $hostview->{vim}->get_view(mo_ref=>$hostview->configManager->datastoreSystem);
+    my $diskList = $hdss->QueryAvailableDisksForVmfs(); 
+    my $count = scalar(@$diskList); # get the number of disks available for formatting.  
+    unless($count >0){
+        die "No disks are available to create VMFS volume for $name";
+    }
+    foreach my $disk(@$diskList){
+        my $options = $hdss->QueryVmfsDatastoreCreateOptions(devicePath => $disk->devicePath);
+        @$options[0]->spec->vmfs->volumeName($name);
+        my $newDatastore = $hdss->CreateVmfsDatastore(spec => @$options[0]->spec );
+        #return $newDatastore; 
+        # create it on the first disk we see.  
+        return ($name, $newDatastore);
+    }
+    return 0;
+}
+
 
 
 sub build_more_info{
