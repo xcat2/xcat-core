@@ -367,7 +367,7 @@ sub web_update {
             }
 
             #update rpm by rpm packages.
-            $cmd = "rpm -U " . $LocalRpmFilePath;
+            $cmd = "rpm -U " . $LocalRpmFilePath . " 2>&1";
             $ReturnInfo = $ReturnInfo . readpipe($cmd);
         }
         $callback->({info=>$ReturnInfo});

@@ -57,13 +57,17 @@ if (!checkRpmPath($sRpmPath))
 }
 
 //set cookie must in front of any output
-if (isset($_REQUEST["remember"]))
+if (1 == $_REQUEST["remember"])
 {
-    setcookie("xcatrepository", $sRpmPath, time() + 864000, "/");
+    setcookie("xcatrepository", "1", time() + 864000, "/");
+}
+elseif(2 == $_REQUEST["remember"])
+{
+    setcookie("xcatrepository", "2", time() + 864000, "/");
 }
 else
 {
-    setcookie("xcatrepository", "", time() - 172800, "/");
+    setcookie("xcatrepository", $sRpmPath, time() + 864000, "/");
 }
 
 echo "<div class=\"mContent\">It will update <b>" . $sRpmNames ."</b> from <b>" . $sRpmPath . "</b>.<ul>";

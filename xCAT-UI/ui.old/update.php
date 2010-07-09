@@ -25,9 +25,20 @@
         $StableRepository = "http://xcat.sourceforge.net/yum/xcat-core/";
     }
 
-    echo "<input type=\"radio\" name= \"reporadio\" value=\"" . $DevelRepository . "\">" . $DevelRepository . "(<strong>Devel</strong>)<br/>";
-    echo "<input type=\"radio\" name=\"reporadio\" value=\"" . $StableRepository . "\">" . $StableRepository . "(<strong>Stable</strong>)<br/>";
-    if(isset($_COOKIE["xcatrepository"]))
+    echo "<input type='radio' ";
+    if (1 == $_COOKIE["xcatrepository"])
+    {
+        echo "checked='true'";
+    }
+    echo "name='reporadio' value='" . $DevelRepository . "'>" . $DevelRepository . "(<strong>Devel</strong>)<br/>";
+    echo "<input type='radio' ";
+    if (2 == $_COOKIE["xcatrepository"])
+    {
+        echo "checked='true'";
+    }
+    echo "name='reporadio' value='" . $StableRepository . "'>" . $StableRepository . "(<strong>Stable</strong>)<br/>";
+
+    if((1 != $_COOKIE["xcatrepository"]) && (2 != $_COOKIE["xcatrepository"]))
     {
         echo "<input type=\"radio\" checked=\"true\" name=\"reporadio\" value=\"\">Other:";
         echo "<input style=\"width: 500px\" id=repositoryaddr value=\"" . $_COOKIE["xcatrepository"] ."\"<br/>";
