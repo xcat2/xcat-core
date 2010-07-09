@@ -1992,6 +1992,7 @@ sub create_storage_devs {
         #$server = inet_ntoa($servern);
         #my $uri = "nfs://$server/$path";
         $backingif = VirtualDiskFlatVer2BackingInfo->new(diskMode => 'persistent',
+                                                          thinProvisioned => 1,
                                                            fileName => "[".$sdmap->{$uri}."]");
         if ($disktype eq 'ide' and $idecontrollerkey eq 1 and $ideunitnum eq 0) { #reserve a spot for CD
             $ideunitnum = 1;
