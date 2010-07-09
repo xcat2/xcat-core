@@ -70,14 +70,19 @@ fi
 
 case $1 in
 restart)
-  $0 stop
-  $0 start
+  echo -n "Restarting xCATd "
+   if [ -r /etc/profile.d/xcat.sh ]; then
+       . /etc/profile.d/xcat.sh
+  fi
+   xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 reload)
-  $0 stop
-  echo -n "(Reloading) "
+  echo -n "Reloading xCATd "
   export XCATRELOAD=yes 
-  $0 start
+   if [ -r /etc/profile.d/xcat.sh ]; then
+       . /etc/profile.d/xcat.sh
+  fi
+   xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 status)
   $STATUS
