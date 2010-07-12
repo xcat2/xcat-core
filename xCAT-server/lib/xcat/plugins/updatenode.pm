@@ -194,6 +194,7 @@ sub preprocess_updatenode
                     's|sn'             => \$::SETSERVER,
                     'P|scripts:s'      => \$::RERUNPS,
                     'k|security'       => \$::SECURITY,
+                    'o|os:s'           => \$::OS,
                     'user=s'           => \$::USER,
                     'devicetype=s'     => \$::DEVICETYPE,
         )
@@ -321,6 +322,15 @@ sub preprocess_updatenode
     my @nodes = @$nodes;
     my $postscripts;
 
+	# Handle updating operating system
+	if (defined($::OS)) {
+    	my $reqcopy = {%$request};
+        $reqcopy->{os}->[0] = "yes";
+        push @requests, $reqcopy;
+        
+		return \@requests;
+    }
+    
     # handle the validity of postscripts 
     if (defined($::RERUNPS))
     {
@@ -564,6 +574,13 @@ sub preprocess_updatenode
                 $reqcopy->{devicetype}->[0] = $::DEVICETYPE;
             }
         }
+        
+        #
+        # Handle updating OS
+        #
+		if (defined($::OS)) {
+			$reqcopy->{os}->[0] = "yes";
+		}
 
         push @requests, $reqcopy;
 
@@ -679,6 +696,7 @@ sub updatenode
                     's|sn'             => \$::SETSERVER,
                     'P|scripts:s'      => \$::RERUNPS,
                     'k|security'       => \$::SECURITY,
+                    'o|os:s'      	   => \$::OS,
                     'user=s'           => \$::USER,
                     'devicetype=s'     => \$::DEVICETYPE,
         )
@@ -1121,6 +1139,48 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
         }
     }
 
+
+	#
+	# Handle updating OS
+	#
+	if ($request->{os} && $request->{os}->[0] eq "yes") {
+		my $os = $::OS;
+		
+		# Process ID for xfork()
+		my $pid;
+
+		# Child process IDs
+		my @children;
+	
+		# Go through each node
+		foreach my $node (@$nodes) {
+			$pid = xCAT::Utils->xfork();
+
+			# Parent process
+			if ($pid) {
+				push( @children, $pid );
+			}
+
+			# Child process
+			elsif ( $pid == 0 ) {
+				# Update OS
+				updateOS($callback, $node, $os);
+
+				# Exit process
+				exit(0);
+			}
+			else {
+
+				# Ran out of resources
+				die "Error: Could not fork\n";
+			}
+		} # End of foreach
+		
+		# Wait for all processes to end
+		foreach (@children) {
+			waitpid( $_, 0 );
+		}
+	}
 
     return 0;
 }
@@ -2296,3 +2356,171 @@ sub updateAIXsoftware
     return 0;
 }
 
+#-------------------------------------------------------
+
+=head3   updateOS
+
+	Description	: Update the node operating system
+    Arguments	: 
+    Returns		: Nothing
+    Example		: updateOS($callback, $nodes, $os);
+    
+=cut
+
+#-------------------------------------------------------
+sub updateOS {
+
+	# Get inputs
+	my ( $callback, $node, $os ) = @_;
+	my $rsp; 
+	
+	# Get install directory
+	my $installDIR = xCAT::Utils->getInstallDir();
+		
+	# Get FTP server
+	my $ftp = xCAT::Utils->my_ip_facing($node);
+	if ( !$ftp ) {
+		push @{$rsp->{data}}, "$node: (Error) Missing FTP server";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		return;
+	}
+		
+	# Get OS to update to
+	my $update2os = $os;
+		
+	push @{$rsp->{data}}, "$node: Upgrading $node to $os";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
+	
+	# Get the OS that is installed on the node
+	my $arch = `ssh -o ConnectTimeout=5 $node "uname -m"`;
+	chomp($arch);
+	my $installOS;
+	my $version;
+	
+	# Red Hat Linux
+	if (`ssh -o ConnectTimeout=5 $node "test -f /etc/redhat-release && echo 'redhat'"`) {
+		$installOS = "rh";
+		chomp($version = `ssh $node "tr -d '.' < /etc/redhat-release" | head -n 1`);
+		$version =~ s/[^0-9]*([0-9]+).*/$1/;
+	}
+	
+	# SUSE Linux
+	elsif (`ssh -o ConnectTimeout=5 $node "test -f /etc/SuSE-release && echo 'SuSE'"`) {
+		$installOS = "sles";
+		chomp($version = `ssh $node "tr -d '.' < /etc/SuSE-release" | head -n 1`);
+		$version =~ s/[^0-9]*([0-9]+).*/$1/;
+	} 
+	
+	# Everything else
+	else {
+		$installOS = "Unknown";
+		
+		push @{$rsp->{data}}, "$node: (Error) Linux distribution not supported";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		return;
+	}
+			
+	# Is the installed OS and the update to OS of the same distributor
+	if (!($update2os =~ m/$installOS/i)) {
+		push @{$rsp->{data}}, "$node: (Error) Cannot not update $installOS$version to $os.  Linux distribution does not match";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		return;
+	}
+			
+	# Setup the repository for the node
+	my $path;
+	my $out;
+	if ( "$installOS$version" =~ m/sles10/i ) {		
+		# SUSE repository path - ftp://10.1.100.1/sles10.3/s390x/1/
+		$path = "ftp://$ftp/$os/$arch/1/";
+		if (!(-e "$installDIR/$os/$arch/1/")) {
+			push @{$rsp->{data}}, "$node: (Error) Missing install directory $installDIR/$os/$arch/1/";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+			return;
+		}
+
+		# Add installation source using rug
+		$out = `ssh $node "rug sa -t zypp $path $os"`;
+		push @{$rsp->{data}}, "$node: $out";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+
+		# Subscribe to catalog
+		$out = `ssh $node "rug sub $os"`;
+		push @{$rsp->{data}}, "$node: $out";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+
+		# Refresh services
+		$out = `ssh $node "rug ref"`;
+		push @{$rsp->{data}}, "$node: $out";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+
+		# Update
+		$out = `ssh $node "rug up -y"`;
+		push @{$rsp->{data}}, "$node: $out";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+	
+	elsif ( "$installOS$version" =~ m/sles11/i ) {		
+		# SUSE repository path - ftp://10.1.100.1/sles10.3/s390x/1/
+		$path = "ftp://$ftp/$os/$arch/1/";
+		if (!(-e "$installDIR/$os/$arch/1/")) {
+			push @{$rsp->{data}}, "$node: (Error) Missing install directory $installDIR/$os/$arch/1/";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+			return;
+		}
+		
+		# Add installation source using zypper
+		$out = `ssh $node "zypper ar $path $installOS$version"`;
+		push @{$rsp->{data}}, "$node: $out";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		
+		# Refresh services
+		$out = `ssh $node "zypper ref"`;
+		push @{$rsp->{data}}, "$node: $out";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+		
+		# Update
+		$out = `ssh $node "zypper --non-interactive update --auto-agree-with-licenses"`;
+		push @{$rsp->{data}}, "$node: $out";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+	
+	elsif ( "$installOS$version" =~ m/rh/i ) {		
+		# Red Hat repository path - ftp://10.0.0.1/rhel5.4/s390x/Server/
+		$path = "ftp://$ftp/$os/$arch/Server/";
+		if (!(-e "$installDIR/$os/$arch/Server/")) {
+			push @{$rsp->{data}}, "$node: (Error) Missing install directory $installDIR/$os/$arch/Server/";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+			return;
+		}
+		
+		# Create a yum repository file
+		my $exist = `ssh $node "test -e /etc/yum.repos.d/$os.repo && echo 'File exists'"`;
+		if (!$exist) {
+			$out = `ssh $node "echo [$os] >> /etc/yum.repos.d/$os.repo"`;
+			$out = `ssh $node "echo baseurl=$path >> /etc/yum.repos.d/$os.repo"`;
+			$out = `ssh $node "echo enabled=1 >> /etc/yum.repos.d/$os.repo"`;
+		}
+
+		# Send over release key
+		my $key = "$installDIR/$os/$arch/RPM-GPG-KEY-redhat-release";
+		my $tmp = "/tmp/RPM-GPG-KEY-redhat-release";
+		my $tgt = "root@" . $node;
+		$out = `scp $key $tgt:$tmp`;
+
+		# Import key
+		$out = `ssh $node "rpm --import $tmp"`;
+
+		# Upgrade
+		$out = `ssh $node "yum -y upgrade"`;
+		push @{$rsp->{data}}, "$node: $out";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+	
+	else {
+		push @{$rsp->{data}}, "$node: (Error) Could not update operating system";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+
+	return;
+}
