@@ -38,7 +38,7 @@
     }
     echo "name='reporadio' value='" . $StableRepository . "'>" . $StableRepository . "(<strong>Stable</strong>)<br/>";
 
-    if((1 != $_COOKIE["xcatrepository"]) && (2 != $_COOKIE["xcatrepository"]))
+    if(isset($_COOKIE["xcatrepository"]) && (1 != $_COOKIE["xcatrepository"]) && (2 != $_COOKIE["xcatrepository"]))
     {
         echo "<input type=\"radio\" checked=\"true\" name=\"reporadio\" value=\"\">Other:";
         echo "<input style=\"width: 500px\" id=repositoryaddr value=\"" . $_COOKIE["xcatrepository"] ."\"<br/>";

@@ -514,7 +514,18 @@ function fun_js_update()
     if ("" == rpm_path)
     {
         //user input the repo, and we must stroe it in the cookie
-        rpm_path = $('#repositoryaddr').val() + "&remember=1";
+        rpm_path = $('#repositoryaddr').val() + "&remember=3";
+    }
+    else
+    {
+        if(-1 == rpm_path.toLowerCase().indexOf("devel"))
+        {
+            rpm_path = rpm_path + "&remember=1";
+        }
+        else
+        {
+            rpm_path = rpm_path + "&remember=2";
+        }
     }
 
     $("input[type=checkbox]:checked").each(function(){
@@ -564,6 +575,6 @@ function fun_js_lsdef_edit()
                   placeholder    : '',
                   onblur     : 'submit'
                   });
-};
+}
 // load progress bar
 myBar.loaded('xcat.js');
