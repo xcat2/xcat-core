@@ -100,7 +100,56 @@ if [ "$PERLVER" == "v5.8.2" ]; then
 else
         OSVER='6.1'
 fi
-rpm -Uvh $OSVER/*.rpm
+# Have to install rpms 1 at a time, since some are already installed.
+# And have to install them in the correct order.
+#for i in `ls $OSVER/*.rpm`; do
+#	rpm -Uvh $i
+#done
+cd $OSVER
+rpm -Uvh perl-DBI-*.rpm
+rpm -Uvh bash-*.rpm
+rpm -Uvh perl-DBD-SQLite-*.rpm
+# don't try to install tcl, tk, or expect if they are already installed!
+lslpp -l | grep expect.base > /dev/null 2>&1
+if [ $? -gt 0 ]; then
+	if [ "$OSVER" == "6.1" ]; then
+		echo "The expect.base, tcl.base, and tk.base filesets must also be installed before installing the xCAT RPMs from xcat-core."
+	else
+   	 	rpm -Uvh tcl-*.rpm
+    	rpm -Uvh tk-*.rpm
+    	rpm -Uvh expect-*.rpm
+	fi
+fi
+rpm -Uvh popt-*.rpm
+rpm -Uvh rsync-*.rpm
+rpm -Uvh wget-*.rpm
+rpm -Uvh libxml2-*.rpm
+rpm -Uvh curl-*.rpm
+rpm -Uvh expat-*.rpm
+rpm -Uvh conserver-*.rpm
+rpm -Uvh perl-Expect-*.rpm
+rpm -Uvh perl-IO-Tty-*.rpm
+rpm -Uvh perl-IO-Stty-*.rpm
+rpm -Uvh perl-IO-Socket-SSL-*.rpm
+rpm -Uvh perl-Net_SSLeay.pm-*.rpm
+rpm -Uvh perl-Digest-SHA1-*.rpm
+rpm -Uvh perl-Digest-SHA-*.rpm
+rpm -Uvh perl-Digest-HMAC-*.rpm
+rpm -Uvh --nodeps perl-Net-DNS-*.rpm
+rpm -Uvh perl-Net-IP-*.rpm
+rpm -Uvh perl-Digest-MD5-*.rpm
+rpm -Uvh fping-*.rpm
+rpm -Uvh openslp-xcat-*.rpm
+rpm -Uvh perl-Crypt-SSLeay-*.rpm
+rpm -Uvh perl-Net-Telnet-*.rpm
+# this requires bash
+rpm -Uvh net-snmp-5*.rpm
+rpm -Uvh net-snmp-devel-*.rpm
+rpm -Uvh net-snmp-perl-*.rpm
+rpm -Uvh unixODBC-*.rpm
+if [ "$OSVER" == "6.1" ]; then
+	rpm -Uvh perl-version-*.rpm
+fi
 EOF
 
 	chmod +x instoss
