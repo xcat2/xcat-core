@@ -3,8 +3,8 @@
 # Run this script to sync the GPFS mmsdrfs file into the node images
 # Set the SOURCE, TARGETDIR, IMAGE, and SERVICE variables appropriately
 
-# Usage:  gpfs_mmsdrfs [packimage|liteimage] [syncinstall]
-#   For Linux, if packimage or liteimage specified, 
+# Usage:  gpfs_mmsdrfs [packimage|liteimg] [syncinstall]
+#   For Linux, if packimage or liteimg specified, 
 #     will run that command for the image if rsync updated any 
 #     destination files
 #   If syncinstall specified, and if site.install_loc is blank, 
@@ -12,7 +12,7 @@
 #     if rysnc updated any destination files
 #
 # To keep your diskless images current with any GPFS changes, run this
-# script periodically from cron using the packimage/liteimage and 
+# script periodically from cron using the packimage/liteimg and 
 # syncinstall options as required by your cluster 
 #
 
@@ -62,7 +62,7 @@ if [ "$r1" == ">" ]; then
   OS=`uname`
   packcmd=""
   syncinstall=""
-  if [ "$1" == "packimage" ] || [ "$1" == "liteimage" ]; then
+  if [ "$1" == "packimage" ] || [ "$1" == "liteimg" ]; then
     packcmd=$1
   fi
   if [ "$1" == "syncinstall" ] || [ "$2" == "syncinstall" ]; then
