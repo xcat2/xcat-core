@@ -1274,7 +1274,7 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    
 	# gettyset is not found on s390x
 	if ($arch ne "s390x") {
-		open($cfgfile,">","$rootimg_dir/etc/rc3.d/S60gettyset");
+		open($cfgfile,">","$rootimg_dir/etc/init.d/gettyset");
 		print $cfgfile "#!/bin/bash\n"; 
 		print $cfgfile "for i in `cat /proc/cmdline`; do\n"; 
 		print $cfgfile '  KEY=`echo $i|cut -d= -f 1`'."\n";
@@ -1293,17 +1293,14 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 		print $cfgfile "     fi\n";
 		print $cfgfile "  fi\n";
 		print $cfgfile "done\n";
-		chmod(0755,"$rootimg_dir/etc/rc3.d/S60gettyset");
+        close $cfgfile;
+
+		chmod(0755,"$rootimg_dir/etc/init.d/gettyset");
+        link "$rootimg_dir/etc/init.d/gettyset", "$rootimg_dir/etc/rc3.d/S60gettyset";
 		
-		#link("$rootimg_dir/sbin/init","$rootimg_dir/init");
-		#add postscript support for redhat
-		if($mode eq "statelite") {
-			print $cfgfile "/opt/xcat/xcatdsklspost 4\n";
-		} else {
-			print $cfgfile "/opt/xcat/xcatdsklspost\n";
-		}
-		
-		close($cfgfile);
+        copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
+        chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
+        link "$rootimg_dir/etc/init.d/xcatpostinit", "$rootimg_dir/etc/rc3.d/S61xcatpostinit";
 	}
    
    copy(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel"); } 

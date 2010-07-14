@@ -34,9 +34,35 @@ stop)
   logger -t xcat "nothing to stop"
   ;;
 start)
-  # run /opt/xcat/xcatdsklspost
-  if [ -r /opt/xcat/xcatdsklspost ]; then
-    /opt/xcat/xcatdsklspost
-  fi
+        # Node is stateless by default
+        STATELITE="No"
+
+        # Node is statelite if /proc/cmdline have flag `STATEMNT='
+        STATELITE_FLAG="STATEMNT="
+
+        # Script to direct further actions
+        SCRIPT="/opt/xcat/xcatdsklspost"
+
+        # Usefull information passed as kernel arguments
+        if [ -f "/proc/cmdline" ]; then
+            if grep --quiet --no-messages "$STATELITE_FLAG" "/proc/cmdline"; then
+                STATELITE="Yes"
+            fi
+        fi
+
+        # Test for script existance
+        if ! [ -x "$SCRIPT" ]; then
+            msg "can't locate executable $SCRIPT"
+            exit -1
+        fi
+
+        # Run $SCRIPT according to node type
+        if [ -n "$STATELITE" -a -z "${STATELITE/[yY][eE][sS]/}" ]; then
+            logger -t xCAT "Call $SCRIPT for statelite mode"
+            "$SCRIPT" 4
+        else
+            logger -t xCAT  "Call $SCRIPT for stateless mode"
+            "$SCRIPT"
+        fi
   ;;
 esac
