@@ -21,6 +21,7 @@ if [ ! -z "$imgurl" ]; then
 		SERVER=${SERVER%:}
 		ROOTDIR=/${ROOTDIR#*/} 
 	fi
+fi
 #echo 0 > /proc/sys/vm/zone_reclaim_mode #Avoid kernel bug
 
 # RAM root Hybrid with NFS root
