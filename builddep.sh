@@ -97,24 +97,33 @@ cd `dirname $0`
 PERLVER=`perl -v|grep 'This is perl'|cut -d' ' -f 4`
 if [ "$PERLVER" == "v5.8.2" ]; then
         OSVER='5.3'
-else
+elif [ "$PERLVER" == "v5.8.8" ]; then
         OSVER='6.1'
+elif [ "$PERLVER" == "v5.10.1" ]; then
+        OSVER='7.1'
+else
+        echo "Error: the perl version of '$PERLVER' is not one that instoss understands.  Exiting..."
+        exit 2
 fi
 cd $OSVER
-# Have to install rpms 1 at a time, since some are already installed.
+# Have to install rpms 1 at a time, since some may be already installed.
 # The only interdependency between the dep rpms so far is that net-snmp requires bash
 for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-'`; do
+	echo rpm -Uvh $i
 	rpm -Uvh $i
 done
 # don't try to install tcl, tk, or expect if they are already installed!
 lslpp -l | grep expect.base > /dev/null 2>&1
 if [ $? -gt 0 ]; then
-	if [ "$OSVER" == "6.1" ]; then
-		echo "The expect.base, tcl.base, and tk.base filesets must also be installed before installing the xCAT RPMs from xcat-core."
-	else
+	if [ "$OSVER" == "5.3" ]; then
+		echo rpm -Uvh tcl-*.rpm
 		rpm -Uvh tcl-*.rpm
+		echo rpm -Uvh tk-*.rpm
 		rpm -Uvh tk-*.rpm
+		echo rpm -Uvh expect-*.rpm
 		rpm -Uvh expect-*.rpm
+	else
+		echo "The expect.base, tcl.base, and tk.base filesets must also be installed before installing the xCAT RPMs from xcat-core."
 	fi
 fi
 # this is left over from Norms original instoss
