@@ -17,24 +17,24 @@ function loadPage(){
 			<link href="css/superfish.css" rel=stylesheet type="text/css">
 			<link href="css/tree.css" rel=stylesheet type="text/css">
 			<link href="css/style.css" rel=stylesheet type="text/css">
-			<script type="text/javascript" src="js/jquery-1.4.2.min.js"></script>
-			<script type="text/javascript" src="js/jquery-ui-1.8.custom.min.js"></script>
-			<script type="text/javascript" src="js/jquery.dataTables.min.js"></script>
-			<script type="text/javascript" src="js/jquery.form.js"></script>
-			<script type="text/javascript" src="js/jquery.jeditable.js"></script>
-			<script type="text/javascript" src="js/jquery.autocomplete.js"></script>
-			<script type="text/javascript" src="js/jquery.contextmenu.js"></script>
-			<script type="text/javascript" src="js/jquery.cookie.js"></script>
-			<script type="text/javascript" src="js/jquery-impromptu.3.0.min.js"></script>
-			<script type="text/javascript" src="js/superfish.js"></script>
-			<script type="text/javascript" src="js/hoverIntent.js"></script>
-			<script type="text/javascript" src="js/jquery.tree.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery-1.4.2.min.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery-ui-1.8.custom.min.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery.dataTables.min.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery.form.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery.jeditable.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery.autocomplete.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery.contextmenu.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery.cookie.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery-impromptu.3.0.min.js"></script>
+			<script type="text/javascript" src="js/jquery/superfish.js"></script>
+			<script type="text/javascript" src="js/jquery/hoverIntent.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery.tree.js"></script>
 			<script type="text/javascript" src="js/ui.js"></script>
-			<script type="text/javascript" src="js/configure.js"></script>
-			<script type="text/javascript" src="js/monitor.js"></script>
-			<script type="text/javascript" src="js/nodes.js"></script>
-			<script type="text/javascript" src="js/provision.js"></script>
-			<script type="text/javascript" src="js/zUtils.js"></script>
+			<script type="text/javascript" src="js/configure/configure.js"></script>
+			<script type="text/javascript" src="js/monitor/monitor.js"></script>
+			<script type="text/javascript" src="js/nodes/nodes.js"></script>
+			<script type="text/javascript" src="js/provision/provision.js"></script>
+			<script type="text/javascript" src="js/custom/zUtils.js"></script>
 		</head>';
 
 	// Header menu
@@ -93,7 +93,7 @@ function login() {
 	echo
 	'<script src="js/xcatauth.js" type="text/javascript"></script>
 	<div id=logdialog>
-		<p>Give the username and password configured in the passwd table</p>
+		<p>Give the user name and password for the xCAT management node</p>
 			<form id=loginform>
 				<table cellspacing=3>
 					<tr><td align=right><label for=username>User name:</label></td><td align=left><input id=username type=text name=username></td></tr>

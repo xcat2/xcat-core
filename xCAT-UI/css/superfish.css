@@ -60,7 +60,7 @@ ul.sf-menu li li li:hover ul,ul.sf-menu li li li.sfHover ul {
 	-moz-border-radius: .5em;
 	-webkit-border-radius: .5em;
 	font-size: 12px;
-	background: #E6E6E6 url(images/ui-bg_glass_75_e6e6e6_1x400.png) 50% 50%
+	background: #E6E6E6 url(../images/jquery/ui-bg_glass_75_e6e6e6_1x400.png) 50% 50%
 		repeat-x;
 }
 
