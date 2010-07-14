@@ -518,6 +518,12 @@ sub mknetboot
                 $kcmdline .= "n8r";
             }
         }
+
+        # turn off the selinux
+        if ($osver =~ m/fedora12/ || $osver =~ m/fedora13/) {
+            $kcmdline .= " selinux=0";
+        }
+
         # add the addkcmdline attribute  to the end
         # of the command, if it exists
         #my $addkcmd   = $addkcmdhash->{$node}->[0];
