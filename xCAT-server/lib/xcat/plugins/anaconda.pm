@@ -53,6 +53,7 @@ my %distnames = (
                  "1269262918.904535" => "rhels5.5", #ppc
                  "1269260915.992102" => "rhels5.5", #i386
                  "1269263646.691048" => "rhels5.5", #x86_64
+                 "1277237975.951114" => "rhels6.0", #x86_64
                  "1194015916.783841" => "fedora8",
                  "1194015385.299901" => "fedora8",
                  "1210112435.291709" => "fedora9",
@@ -441,10 +442,10 @@ sub mknetboot
 			}
 		}
 
-        # special case for redhat6,
-        # TODO: fedora 12 and 13 also need it
-        if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/) {
-            $kcmdline = "ip=dhcp root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
+        # special case for redhat6, fedora12/13
+        if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/ 
+            || $osver =~ m/fedora12/ || $osver =~ m/fedora13/ ) {
+            $kcmdline = "root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
         } else {
             $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
         }
