@@ -51,7 +51,6 @@ my $srcdir_otherpkgs;
 my $otherpkglist;
 my $postinstall_filename;
 my $rootimg_dir;
-my $rwfiles;    #these files are used by statelite for tmpfs rw
 my $mode;
 my $permission; #the permission works only for statelite mode currently
 
