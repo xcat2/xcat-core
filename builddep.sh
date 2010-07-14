@@ -109,23 +109,28 @@ cd $OSVER
 # Have to install rpms 1 at a time, since some may be already installed.
 # The only interdependency between the dep rpms so far is that net-snmp requires bash
 for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-'`; do
-	echo rpm -Uvh $i
-	rpm -Uvh $i
+	if [ "$i" == "perl-Net-DNS-0.66-1.aix5.3.ppc.rpm" ]; then
+		opts="--nodeps"
+	else
+		opts=""
+	fi
+	echo rpm -Uvh $opts $i
+	rpm -Uvh $opts $i
 done
 # don't try to install tcl, tk, or expect if they are already installed!
 lslpp -l | grep expect.base > /dev/null 2>&1
 if [ $? -gt 0 ]; then
 	if [ "$OSVER" == "5.3" ]; then
-		echo rpm -Uvh tcl-*.rpm
-		rpm -Uvh tcl-*.rpm
-		echo rpm -Uvh tk-*.rpm
-		rpm -Uvh tk-*.rpm
-		echo rpm -Uvh expect-*.rpm
-		rpm -Uvh expect-*.rpm
+		for i in tcl-*.rpm tk-*.rpm expect-*.rpm; do
+			echo rpm -Uvh $i
+			rpm -Uvh $i
+		done
 	else
 		echo "The expect.base, tcl.base, and tk.base filesets must also be installed before installing the xCAT RPMs from xcat-core."
 	fi
 fi
+EOF
+
 # this is left over from Norms original instoss
 #rpm -Uvh perl-DBI-*.rpm
 #rpm -Uvh bash-*.rpm
@@ -139,7 +144,7 @@ fi
 #rpm -Uvh conserver-*.rpm
 #rpm -Uvh perl-Expect-*.rpm
 #rpm -Uvh perl-IO-Tty-*.rpm
-#pm -Uvh perl-IO-Stty-*.rpm
+#rpm -Uvh perl-IO-Stty-*.rpm
 #rpm -Uvh perl-IO-Socket-SSL-*.rpm
 #rpm -Uvh perl-Net_SSLeay.pm-*.rpm
 #rpm -Uvh perl-Digest-SHA1-*.rpm
@@ -160,7 +165,6 @@ fi
 #if [ "$OSVER" == "6.1" ]; then
 #	rpm -Uvh perl-version-*.rpm
 #fi
-EOF
 
 	chmod +x instoss
 fi
