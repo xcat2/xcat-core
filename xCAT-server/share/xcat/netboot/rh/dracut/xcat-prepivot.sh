@@ -3,9 +3,11 @@ NEWROOT=/sysroot
 SERVER=${SERVER%%/*}
 SERVER=${SERVER%:}
 RWDIR=.statelite
-if [ ! -z $statemnt ]; then #btw, uri style might have left future options other than nfs open, will u    se // to detect uri in the future I guess
-    SNAPSHOTSERVER=${statemnt%:*}
-    SNAPSHOTROOT=${statemnt#*/}
+if [ ! -z $STATEMNT ]; then #btw, uri style might have left future options other than nfs open, will u    se // to detect uri in the future I guess
+    SNAPSHOTSERVER=${STATEMNT%:*}
+    SNAPSHOTROOT=${STATEMNT#*/}
+    echo $SNAPSHOTROOT
+    echo $SNAPSHOTSERVER
     # may be that there is not server and just a directory.
     if [ -z $SNAPSHOTROOT ]; then
         SNAPSHOTROOT=$SNAPSHOTSERVER
@@ -44,8 +46,8 @@ if [ ! -z $SNAPSHOTSERVER ]; then
     mkdir -p $NEWROOT/$RWDIR/persistent
     MAXTRIES=5
     ITER=0
-    while ! mount $SNAPSHOTSERVER:$SNAPSHOTROOT  $NEWROOT/$RWDIR/persistent -o nolock,rsize=32768,tc    p,nfsvers=3,timeo=14; do
-        ITER=$((ITER +1 ))
+    while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT  $NEWROOT/$RWDIR/persistent -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14; do
+        ITER=$(( ITER + 1 ))
         if [ "$ITER" == "$MAXTRIES" ]; then
             echo "Your are dead, rpower $ME boot to play again."
             echo "Possible problems:
