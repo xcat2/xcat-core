@@ -57,8 +57,8 @@ function loadNodesPage() {
 		// Create a groups division
 		groupDIV = $('<div id="groups"></div>');
 		nodesDIV = $('<div id="nodes"></div>');
-		$('#nodes_page').append(groupDIV);
-		$('#nodes_page').append(nodesDIV);
+		$('#content').append(groupDIV);
+		$('#content').append(nodesDIV);
 
 		// Create info bar
 		var info = createInfoBar('Select a group to view its nodes');

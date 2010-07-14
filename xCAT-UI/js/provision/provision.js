@@ -31,7 +31,7 @@ function getProvisionTab() {
  */
 function loadProvisionPage() {
 	// If the page is loaded
-	if ($('#provision_page').children().length) {
+	if ($('#content').children().length) {
 		// Do not load again
 		return;
 	}
@@ -43,7 +43,7 @@ function loadProvisionPage() {
 
 	// Create info bar
 	var infoBar = createInfoBar('Provision a node');
-	$('#provision_page').append(infoBar);
+	$('#content').append(infoBar);
 
 	// Create provision form
 	provForm = $('<div class="provision"></div>');
@@ -54,7 +54,7 @@ function loadProvisionPage() {
 	var tab = new Tab();
 	setProvisionTab(tab);
 	tab.init();
-	$('#provision_page').append(tab.object());
+	$('#content').append(tab.object());
 
 	// Create drop-down menu
 	// Hardware available to provision - ipmi, blade, hmc, ivm, fsp, and zvm

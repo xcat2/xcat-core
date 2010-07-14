@@ -56,7 +56,7 @@ function getConfigTab() {
  */
 function loadConfigPage() {
 	// If the configure page has already been loaded
-	if ($('#configure_page').children().length) {
+	if ($('#content').children().length) {
 		// Do not reload configure page
 		return;
 	}
@@ -65,7 +65,7 @@ function loadConfigPage() {
 	var tab = new Tab();
 	setConfigTab(tab);
 	tab.init();
-	$('#configure_page').append(tab.object());
+	$('#content').append(tab.object());
 
 	// Create loader
 	var loader = createLoader();

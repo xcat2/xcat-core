@@ -19,22 +19,7 @@ function loadPage(){
 			<link href="css/style.css" rel=stylesheet type="text/css">
 			<script type="text/javascript" src="js/jquery/jquery-1.4.2.min.js"></script>
 			<script type="text/javascript" src="js/jquery/jquery-ui-1.8.custom.min.js"></script>
-			<script type="text/javascript" src="js/jquery/jquery.dataTables.min.js"></script>
-			<script type="text/javascript" src="js/jquery/jquery.form.js"></script>
-			<script type="text/javascript" src="js/jquery/jquery.jeditable.js"></script>
-			<script type="text/javascript" src="js/jquery/jquery.autocomplete.js"></script>
-			<script type="text/javascript" src="js/jquery/jquery.contextmenu.js"></script>
-			<script type="text/javascript" src="js/jquery/jquery.cookie.js"></script>
-			<script type="text/javascript" src="js/jquery/jquery-impromptu.3.0.min.js"></script>
-			<script type="text/javascript" src="js/jquery/superfish.js"></script>
-			<script type="text/javascript" src="js/jquery/hoverIntent.js"></script>
-			<script type="text/javascript" src="js/jquery/jquery.tree.js"></script>
 			<script type="text/javascript" src="js/ui.js"></script>
-			<script type="text/javascript" src="js/configure/configure.js"></script>
-			<script type="text/javascript" src="js/monitor/monitor.js"></script>
-			<script type="text/javascript" src="js/nodes/nodes.js"></script>
-			<script type="text/javascript" src="js/provision/provision.js"></script>
-			<script type="text/javascript" src="js/custom/zUtils.js"></script>
 		</head>';
 
 	// Header menu
@@ -50,14 +35,8 @@ function loadPage(){
 			</ul>
 		</div>';
 
-	// Nodes section
-	echo '<div class="content" id="nodes_page"></div>';
-	// Configure section
-	echo '<div class="content" id="configure_page"></div>';
-	// Provision section
-	echo '<div class="content" id="provision_page"></div>';
-	// Monitor section
-	echo '<div class="content" id="monitor_page"></div>';
+	// Content
+	echo '<div class="content" id="content"></div>';
 
 	// End of page
 	echo

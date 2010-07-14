@@ -29,7 +29,7 @@ Tab.prototype.init = function() {
 	this.tab.append(tabList);
 
 	// Create a template
-	var $tabs = this.tab
+	var tabs = this.tab
 		.tabs( {
 			tabTemplate : "<li><a href=\"#{href}\">#{label}</a><span class=\"tab-close ui-icon ui-icon-close\"></span></li>"
 		});
@@ -42,11 +42,11 @@ Tab.prototype.init = function() {
 
 	// Append close button to tabs
 	$("#" + this.tabId + " span.tab-close").live("click", function() {
-		var index = $('li', $tabs).index($(this).parent());
+		var index = $('li', tabs).index($(this).parent());
 
 		// Do not remove first tab
 		if (index != 0) {
-			$tabs.tabs('remove', index);
+			tabs.tabs('remove', index);
 		}
 	});
 };
@@ -386,6 +386,23 @@ function createMenu(items) {
  * @return Nothing
  */
 function initPage() {
+	// Load javascripts
+	includeJs("js/jquery/jquery.dataTables.min.js");
+	includeJs("js/jquery/jquery.form.js");
+	includeJs("js/jquery/jquery.jeditable.js");
+	includeJs("js/jquery/jquery.autocomplete.js");
+	includeJs("js/jquery/jquery.contextmenu.js");
+	includeJs("js/jquery/jquery.cookie.js");
+	includeJs("js/jquery/jquery-impromptu.3.0.min.js");
+	includeJs("js/jquery/superfish.js");
+	includeJs("js/jquery/hoverIntent.js");
+	includeJs("js/jquery/jquery.tree.js");
+	includeJs("js/configure/configure.js");
+	includeJs("js/monitor/monitor.js");
+	includeJs("js/nodes/nodes.js");
+	includeJs("js/provision/provision.js");
+	includeJs("js/custom/zUtils.js");
+
 	// Get the page being loaded
 	var url = window.location.pathname;
 	var page = url.replace('/xcat/', '');
@@ -393,25 +410,20 @@ function initPage() {
 	var headers = $('#header ul li a');
 
 	// Show the page
-	$('div.content').hide();
+	$("#content").children().remove();
 	if (page == 'index.php') {
-		$("#nodes_page").show();
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
 	} else if (page == 'configure.php') {
-		$('#configure_page').show();
 		headers.eq(1).css('background-color', '#A9D0F5');
 		loadConfigPage();
 	} else if (page == 'provision.php') {
-		$('#provision_page').show();
 		headers.eq(2).css('background-color', '#A9D0F5');
 		loadProvisionPage();
 	} else if (page == 'monitor.php') {
-		$('#monitor_page').show();
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
 	} else {
-		$("#nodes_page").show();
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
 	}
@@ -424,8 +436,7 @@ function initPage() {
 
 		if (title == 'Nodes') {
 			link.bind('click', function(event) {
-				$('div.content').hide();
-				$('#nodes_page').show();
+				$("#content").children().remove();
 				headers.css('background-color', '');
 				$(this).css('background-color', '#A9D0F5');
 
@@ -433,8 +444,7 @@ function initPage() {
 			});
 		} else if (title == 'Configure') {
 			link.bind('click', function(event) {
-				$('div.content').hide();
-				$('#configure_page').show();
+				$("#content").children().remove();
 				headers.css('background-color', '');
 				$(this).css('background-color', '#A9D0F5');
 
@@ -442,8 +452,7 @@ function initPage() {
 			});
 		} else if (title == 'Provision') {
 			link.bind('click', function(event) {
-				$('div.content').hide();
-				$('#provision_page').show();
+				$("#content").children().remove();
 				headers.css('background-color', '');
 				$(this).css('background-color', '#A9D0F5');
 
@@ -451,8 +460,7 @@ function initPage() {
 			});
 		} else if (title == 'Monitor') {
 			link.bind('click', function(event) {
-				$('div.content').hide();
-				$('#monitor_page').show();
+				$("#content").children().remove();
 				headers.css('background-color', '');
 				$(this).css('background-color', '#A9D0F5');
 
@@ -460,4 +468,23 @@ function initPage() {
 			});
 		}
 	}
+}
+
+/**
+ * Include javascript file
+ * 
+ * @param file
+ *            File to include
+ * @return Nothing
+ */
+function includeJs(file) {
+	// Create script 
+	var script = $('<script></script>');
+	script.attr({
+		type : 'text/javascript',
+		src : file
+	})
+	
+	// Append to head
+	$('head').append(script);
 }

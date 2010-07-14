@@ -40,13 +40,13 @@ function loadMonitorPage() {
 	var tab = new Tab();
 	setConfigTab(tab);
 	tab.init();
-	$('#monitor_page').append(tab.object());
+	$('#content').append(tab.object());
 
 	// Create provision tab
 	var tab = new Tab();
 	setMonitorTab(tab);
 	tab.init();
-	$('#monitor_page').append(tab.object());
+	$('#content').append(tab.object());
 
 	/**
 	 * Monitor nodes
