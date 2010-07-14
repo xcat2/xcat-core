@@ -1245,18 +1245,14 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 		print $cfgfile "done\n";
 		print $cfgfile "/etc/init.d/boot.localnet start\n";
 	
-		if ( $mode eq "statelite" ) {
-			print $cfgfile "/opt/xcat/xcatdsklspost 4\n";
-		}
-		else {
-			print $cfgfile "/opt/xcat/xcatdsklspost\n";
-		}
 		close($cfgfile);
 		chmod( 0755, "$rootimg_dir/etc/init.d/gettyset" );
-    	system("chroot $rootimg_dir insserv gettyset");
 	}
+
+    copy("$installroot/postscripts/xcatpostinit", "$rootimg_dir/etc/init.d/xcatpostinit");
+    chmod(0755, "$rootimg_dir/etc/init.d/xcatpostinit");
+    system("chroot $rootimg_dir insserv gettyset xcatpostinit");
 	
-   #link("$rootimg_dir/sbin/init","$rootimg_dir/init");
    my $rc = system("grep sshd $rootimg_dir/etc/init.d/.depend.start");
    if ($rc) {
       system("sed -i '".'s/^\(TARGETS = .*\)$/\1 sshd/'."' $rootimg_dir/etc/init.d/.depend.start");
