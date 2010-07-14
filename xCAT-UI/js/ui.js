@@ -401,7 +401,7 @@ function initPage() {
 	includeJs("js/monitor/monitor.js");
 	includeJs("js/nodes/nodes.js");
 	includeJs("js/provision/provision.js");
-	includeJs("js/custom/zUtils.js");
+	includeJs("js/custom/zvm.js");
 
 	// Get the page being loaded
 	var url = window.location.pathname;
