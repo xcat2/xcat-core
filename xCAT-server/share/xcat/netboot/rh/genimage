@@ -480,6 +480,28 @@ if($mode eq "statelite"){
     		system("touch $rootimg_dir/var/lib/dhcp/dhclient-$prinic.leases");
     	}
     }
+
+    # modify etc/rc.sysinit, prevent remounting
+    my $SYSINITFILE;
+    my $TMPSYSINITFILE;
+    if (-f "$rootimg_dir/etc/rc.sysinit") {
+        open($SYSINITFILE, "$rootimg_dir/etc/rc.sysinit");
+        open($TMPSYSINITFILE, '>', "/tmp/rc.sysinit.tmp");
+        # find the following lines,
+        # if remount_needed ; then
+        #   action $"Remounting root filesystem in read-write mode: " mount -n -o remount,rw /
+        # fi
+        # and change "if remount_needed ; then" to "if false; then"
+        while(<$SYSINITFILE>) {
+            if ($_ eq "if remount_needed ; then\n") {
+                $_ = "if false; then\n";
+            }
+            print $TMPSYSINITFILE $_;
+        }
+        close($SYSINITFILE);
+        close($TMPSYSINITFILE);
+        cp("/tmp/rc.sysinit.tmp", "$rootimg_dir/etc/rc.sysinit");
+    }
 }   
 
 
@@ -541,29 +563,10 @@ sub mkinitrd_dracut {
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         print $DRACUTCONF qq{filesystems+="nfs"\n};
         close $DRACUTCONF;
-        # TODO: modify etc/rc.sysinit, prevent remounting
-        my $SYSINITFILE;
-        my $TMPSYSINITFILE;
-        open($SYSINITFILE, "$rootimg_dir/etc/rc.sysinit");
-        open($TMPSYSINITFILE, '>', "/tmp/rc.sysinit.tmp");
-        # find the following lines,
-        # if remount_needed ; then
-        #   action $"Remounting root filesystem in read-write mode: " mount -n -o remount,rw /
-        # fi
-        # and change "if remount_needed ; then" to "if false; then"
-        while(<$SYSINITFILE>) {
-            if ($_ eq "if remount_needed ; then\n") {
-                $_ = "if false; then\n";
-            }
-            print $TMPSYSINITFILE $_;
-        }
-        close($SYSINITFILE);
-        close($TMPSYSINITFILE);
-        cp("/tmp/rc.sysinit.tmp", "$rootimg_dir/etc/rc.sysinit");
     } else {
         # for diskless
         cp("$fullpath/dracut/install.netboot","$dracutmpath/install");
-        $perm = (stat("$fullpath/dracut/install"))[2];
+        $perm = (stat("$fullpath/dracut/install.netboot"))[2];
         chmod($perm&07777, "$dracutmpath/install");
 
         cp("$fullpath/dracut/xcat-cmdline.sh","$dracutmpath/");
