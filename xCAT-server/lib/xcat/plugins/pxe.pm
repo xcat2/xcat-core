@@ -68,6 +68,7 @@ sub setstate {
   my %bphash = %{shift()};
   my %chainhash = %{shift()};
   my %machash = %{shift()};
+  my %nthash = %{shift()};
   my $kern = $bphash{$node}->[0]; #$bptab->getNodeAttribs($node,['kernel','initrd','kcmdline']);
   if (not $addkcmdlinehandled->{$node} and $kern->{addkcmdline}) {
 
@@ -169,7 +170,12 @@ sub setstate {
     } else {
       print $pcfg "\n";
     }
-    print $pcfg "  IPAPPEND 2\n";
+    
+    # add the IPAPPEND flag
+    my $os = $nthash{$node}->[0]->{os};
+    if ($os !~ /fedora12|fedora13/) {
+        print $pcfg "  IPAPPEND 2\n";
+    }
     }
     close($pcfg);
     my $inetn = inet_aton($node);
@@ -443,9 +449,11 @@ sub process_request {
   my $bptab = xCAT::Table->new('bootparams',-create=>1);
   my $chaintab = xCAT::Table->new('chain');
   my $mactab = xCAT::Table->new('mac'); #to get all the hostnames
+  my $typetab = xCAT::Table->new('nodetype');
   my %bphash = %{$bptab->getNodesAttribs(\@nodes,[qw(kernel initrd kcmdline addkcmdline)])};
   my %chainhash = %{$chaintab->getNodesAttribs(\@nodes,[qw(currstate)])};
   my %machash = %{$mactab->getNodesAttribs(\@nodes,[qw(mac)])};
+  my %nthash = %{$typetab->getNodesAttribs(\@nodes,[qw(os)])};
   foreach (@nodes) {
     my %response;
     $response{node}->[0]->{name}->[0]=$_;
@@ -453,7 +461,7 @@ sub process_request {
       $response{node}->[0]->{data}->[0]= getstate($_);
       $callback->(\%response);
     } elsif ($args[0]) { #If anything else, send it on to the destiny plugin, then setstate
-      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash);
+      ($rc,$errstr) = setstate($_,\%bphash,\%chainhash,\%machash,\%nthash);
       if ($rc) {
         $response{node}->[0]->{errorcode}->[0]= $rc;
         $response{node}->[0]->{errorc}->[0]= $errstr;
