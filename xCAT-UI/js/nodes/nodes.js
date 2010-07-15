@@ -163,6 +163,8 @@ function loadNodes(data) {
 	var attrs = new Object();
 	// Node attributes
 	var headers = new Object();
+	// Plugins hash
+	var plugins = new Object();
 
 	var node;
 	var args;
@@ -186,6 +188,18 @@ function loadNodes(data) {
 		// Create a hash table
 		attrs[node][key] = val;
 		headers[key] = 1;
+
+		// Create a plugin hash
+		if (key == 'mgt') {
+			plugins[val] = 1;
+		}
+	}
+
+	// Load the plugin code
+	// Plugin code should be located under js/custom/
+	// Plugin names should be valid values of mgt
+	for ( var p in plugins) {
+		includeJs("js/custom/" + p + ".js");
 	}
 
 	// Sort headers
@@ -233,7 +247,7 @@ function loadNodes(data) {
 	// Clear the tab before inserting the table
 	$('#nodesTab').children().remove();
 
-	// Create action buttons
+	// Create action bar
 	var actionBar = $('<div class="actionBar"></div>');
 
 	/**
@@ -251,46 +265,22 @@ function loadNodes(data) {
 	 */
 	var powerOnLnk = $('<a href="#">Power on</a>');
 	powerOnLnk.bind('click', function(event) {
-		var tgtNodes = '';
-
-		// Get node that was checked
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			tgtNodes += nodes.eq(i).attr('name');
-
-			// Add a comma in front of each node
-		if (i < nodes.length - 1) {
-			tgtNodes += ',';
+		var tgtNodes = getNodesChecked();
+		if (tgtNodes) {
+			powerNode(tgtNodes, 'on');
 		}
-	}
-
-	if (tgtNodes) {
-		powerNode(tgtNodes, 'on');
-	}
-}   );
+	});
 
 	/*
 	 * Power off
 	 */
 	var powerOffLnk = $('<a href="#">Power off</a>');
 	powerOffLnk.bind('click', function(event) {
-		var tgtNodes = '';
-
-		// Get node that was checked
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			tgtNodes += nodes.eq(i).attr('name');
-
-			// Add a comma in front of each node
-		if (i < nodes.length - 1) {
-			tgtNodes += ',';
+		var tgtNodes = getNodesChecked();
+		if (tgtNodes) {
+			powerNode(tgtNodes, 'off');
 		}
-	}
-
-	if (tgtNodes) {
-		powerNode(tgtNodes, 'off');
-	}
-}   );
+	});
 
 	/*
 	 * Clone
@@ -319,48 +309,26 @@ function loadNodes(data) {
 	 */
 	var deleteLnk = $('<a href="#">Delete</a>');
 	deleteLnk.bind('click', function(event) {
-		var tgtNodes = '';
+		var tgtNodes = getNodesChecked();
 
-		// Get node that was checked
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			tgtNodes += nodes.eq(i).attr('name');
-
-			// Add a comma in front of each node
-		if (i < nodes.length - 1) {
-			tgtNodes += ',';
+		// Load delete page
+		if (tgtNodes) {
+			deleteNode(tgtNodes);
 		}
-	}
-
-	// Load delete page
-	if (tgtNodes) {
-		deleteNode(tgtNodes);
-	}
-}   );
+	});
 
 	/*
 	 * Unlock
 	 */
 	var unlockLnk = $('<a href="#">Unlock</a>');
 	unlockLnk.bind('click', function(event) {
-		var tgtNodes = '';
+		var tgtNodes = getNodesChecked();
 
-		// Get node that was checked
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			tgtNodes += nodes.eq(i).attr('name');
-
-			// Add a comma in front of each node
-		if (i < nodes.length - 1) {
-			tgtNodes += ',';
+		// Load unlock page
+		if (tgtNodes) {
+			loadUnlockPage(tgtNodes);
 		}
-	}
-
-	// Load unlock page
-	if (tgtNodes) {
-		loadUnlockPage(tgtNodes);
-	}
-}   );
+	});
 
 	/*
 	 * Run script
@@ -368,22 +336,13 @@ function loadNodes(data) {
 	var scriptLnk = $('<a href="#">Run script</a>');
 	scriptLnk.bind('click', function(event) {
 		// Get node that was checked
-		var tgtNodes = '';
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			tgtNodes += nodes.eq(i).attr('name');
+		var tgtNodes = getNodesChecked();
 
-			// Add a comma in front of each node
-		if (i < nodes.length - 1) {
-			tgtNodes += ',';
+		// Load script page
+		if (tgtNodes) {
+			loadScriptPage(tgtNodes);
 		}
-	}
-
-	// Load script page
-	if (tgtNodes) {
-		loadScriptPage(tgtNodes);
-	}
-}   );
+	});
 
 	/*
 	 * Update node
@@ -391,22 +350,13 @@ function loadNodes(data) {
 	var updateLnk = $('<a href="#">Update</a>');
 	updateLnk.bind('click', function(event) {
 		// Get node that was checked
-		var tgtNodes = '';
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			tgtNodes += nodes.eq(i).attr('name');
+		var tgtNodes = getNodesChecked();
 
-			// Add a comma in front of each node
-		if (i < nodes.length - 1) {
-			tgtNodes += ',';
+		// TODO: Load update page
+		if (tgtNodes) {
+
 		}
-	}
-
-	// TODO: Load update page
-	if (tgtNodes) {
-
-	}
-}   );
+	});
 
 	/*
 	 * Set boot state
@@ -414,26 +364,14 @@ function loadNodes(data) {
 	var setBootStateLnk = $('<a href="#">Set boot state</a>');
 	setBootStateLnk.bind('click', function(event) {
 		// Get node that was checked
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			// Get node that was checked
-		var tgtNodes = '';
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			tgtNodes += nodes.eq(i).attr('name');
-
-			// Add a comma in front of each node
-			if (i < nodes.length - 1) {
-				tgtNodes += ',';
-			}
-		}
+		var tgtNodes = getNodesChecked();
 
 		// Load nodeset page
 		if (tgtNodes) {
 			loadNodesetPage(tgtNodes);
 		}
-	}
-}   );
+
+	});
 
 	/*
 	 * Boot to network
@@ -1795,7 +1733,7 @@ function setOSImageCookies(data) {
 function setGroupsCookies(data) {
 	var rsp = data.rsp;
 
-	// Save image names in a cookie
+	// Save groups names in a cookie
 	$.cookie('Groups', rsp);
 }
 
@@ -1828,4 +1766,26 @@ function getNodeRow(tgtNode, rows) {
 	}
 
 	return;
+}
+
+/**
+ * Get the nodes that were checked in the nodes table
+ * 
+ * @return Nodes that were checked
+ */
+function getNodesChecked() {
+	var tgtNodes = '';
+
+	// Get nodes that were checked
+	var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+	for ( var i = 0; i < nodes.length; i++) {
+		tgtNodes += nodes.eq(i).attr('name');
+
+		// Add a comma in front of each node
+		if (i < nodes.length - 1) {
+			tgtNodes += ',';
+		}
+	}
+
+	return tgtNodes;
 }

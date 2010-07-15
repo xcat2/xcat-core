@@ -427,64 +427,26 @@ function initPage() {
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
 	}
-
-	// Bind each link to open the page on click
-	for ( var i = 0; i < headers.length; i++) {
-		var title = headers.eq(i).text();
-		var link = headers.eq(i);
-		link.attr('href', '#');
-
-		if (title == 'Nodes') {
-			link.bind('click', function(event) {
-				$("#content").children().remove();
-				headers.css('background-color', '');
-				$(this).css('background-color', '#A9D0F5');
-
-				loadNodesPage();
-			});
-		} else if (title == 'Configure') {
-			link.bind('click', function(event) {
-				$("#content").children().remove();
-				headers.css('background-color', '');
-				$(this).css('background-color', '#A9D0F5');
-
-				loadConfigPage();
-			});
-		} else if (title == 'Provision') {
-			link.bind('click', function(event) {
-				$("#content").children().remove();
-				headers.css('background-color', '');
-				$(this).css('background-color', '#A9D0F5');
-
-				loadProvisionPage();
-			});
-		} else if (title == 'Monitor') {
-			link.bind('click', function(event) {
-				$("#content").children().remove();
-				headers.css('background-color', '');
-				$(this).css('background-color', '#A9D0F5');
-
-				loadMonitorPage();
-			});
-		}
-	}
 }
 
 /**
- * Include javascript file
+ * Include javascript file in <head>
  * 
  * @param file
  *            File to include
  * @return Nothing
  */
 function includeJs(file) {
-	// Create script 
-	var script = $('<script></script>');
-	script.attr({
-		type : 'text/javascript',
-		src : file
-	})
-	
-	// Append to head
-	$('head').append(script);
+	var script = $("head script[src='" + file + "']");
+	if (!script.length) {
+		// Create script
+		var script = $('<script></script>');
+		script.attr( {
+			type : 'text/javascript',
+			src : file
+		})
+
+		// Append to <head>
+		$('head').append(script);
+	}
 }
