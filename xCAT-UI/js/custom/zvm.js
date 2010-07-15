@@ -1362,3 +1362,27 @@ function loadProvisionPage(tabId) {
 		});
 	provForm.append(provisionBtn);
 }
+
+/**
+ * Load the resources
+ * 
+ * @return Nothing
+ */
+function loadResources() {
+	// Reset resource table
+	setDiskDataTable('');
+	setNetworkDataTable('');
+	
+	// Get hardware control points
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'nodels',
+			tgt : 'mgt==zvm',
+			args : 'zvm.hcp',
+			msg : ''
+		},
+		success : getZResources
+	});
+}

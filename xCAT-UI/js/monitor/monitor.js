@@ -71,7 +71,7 @@ function loadMonitorPage() {
 	// Create info bar
 	var resrcInfoBar = createInfoBar('Select a hardware to view its resources');
 	resrcForm.append(resrcInfoBar);
-	
+
 	// Create drop-down menu
 	// Hardware available to provision - ipmi, blade, hmc, ivm, fsp, and zvm
 	var div = $('<div></div>');
@@ -104,32 +104,13 @@ function loadMonitorPage() {
 		// Generate new tab ID
 		var newTabId = hw + 'ResourceTab';
 		if (!$('#' + newTabId).length) {
-			var loader = createLoader('zvmResourceLoader');
+			var loader = createLoader(hw + 'ResourceLoader');
 			loader = $('<center></center>').append(loader);
 			tab.add(newTabId, hw, loader);
 
-			if (hw == 'zvm') {
-				// Reset resource table
-				setDiskDataTable('');
-				setNetworkDataTable('');
-
-				// Get hardware control points
-				$.ajax( {
-					url : 'lib/cmd.php',
-					dataType : 'json',
-					data : {
-						cmd : 'nodels',
-						tgt : 'mgt==zvm',
-						args : 'zvm.hcp',
-						msg : ''
-					},
-					success : getZResources
-				});
-			}
-			// TODO: Add other platforms to this section
-			else {
-				$('#' + newTabId).append();
-			}
+			// Load plugin code
+			includeJs("js/custom/" + hw + ".js");
+			loadResources();
 		}
 
 		// Select tab

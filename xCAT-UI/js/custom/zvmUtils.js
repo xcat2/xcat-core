@@ -924,6 +924,66 @@ function updateCloneStatus(data) {
 }
 
 /**
+ * Get the resources
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+function getZResources(data) {
+	// Do not set cookie if there is no output
+	if (data.rsp) {
+		// Loop through each line
+		var node, hcp;
+		var hcpHash = new Object();
+		for ( var i in data.rsp) {
+			node = data.rsp[i][0];
+			hcp = data.rsp[i][1];
+			hcpHash[hcp] = 1;
+		}
+
+		// Create an array for hardware control points
+		var hcps = new Array();
+		for ( var key in hcpHash) {
+			hcps.push(key);
+			// Get the short host name
+			hcp = key.split('.')[0];
+
+			// Get disk pools
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'lsvm',
+					tgt : hcp,
+					args : '--diskpoolnames',
+					msg : hcp
+				},
+
+				success : getDiskPool
+			});
+
+			// Get network names
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'lsvm',
+					tgt : hcp,
+					args : '--getnetworknames',
+					msg : hcp
+				},
+
+				success : getNetwork
+			});
+		}
+
+		// Set cookie
+		$.cookie('HCP', hcps);
+	}
+}
+
+/**
  * Get node attributes from HTTP request data
  * 
  * @param propNames
@@ -1284,66 +1344,6 @@ function setNetworkCookies(data) {
 		var node = data.msg;
 		var networks = data.rsp[0].split(node + ': ');
 		$.cookie(node + 'Networks', networks);
-	}
-}
-
-/**
- * Get the resources for ZVM
- * 
- * @param data
- *            Data from HTTP request
- * @return Nothing
- */
-function getZResources(data) {
-	// Do not set cookie if there is no output
-	if (data.rsp) {
-		// Loop through each line
-		var node, hcp;
-		var hcpHash = new Object();
-		for ( var i in data.rsp) {
-			node = data.rsp[i][0];
-			hcp = data.rsp[i][1];
-			hcpHash[hcp] = 1;
-		}
-
-		// Create an array for hardware control points
-		var hcps = new Array();
-		for ( var key in hcpHash) {
-			hcps.push(key);
-			// Get the short host name
-			hcp = key.split('.')[0];
-
-			// Get disk pools
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'lsvm',
-					tgt : hcp,
-					args : '--diskpoolnames',
-					msg : hcp
-				},
-
-				success : getDiskPool
-			});
-
-			// Get network names
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'lsvm',
-					tgt : hcp,
-					args : '--getnetworknames',
-					msg : hcp
-				},
-
-				success : getNetwork
-			});
-		}
-
-		// Set cookie
-		$.cookie('HCP', hcps);
 	}
 }
 
