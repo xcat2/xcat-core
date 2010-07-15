@@ -1,4 +1,5 @@
 # OS packages that are useful for all IBM HPC products
+#INCLUDE:/opt/xcat/share/xcat/netboot/sles/compute.sles11.ppc64.pkglist#
 
 systemtap
 kernel-source
@@ -28,6 +29,8 @@ gcc43
 gcc43-c++
 glibc-devel
 glibc-devel-32bit
+
+libstdc++33
 
 xorg-x11-libX11-32bit
 xorg-x11-libXp-32bit
