@@ -98,14 +98,12 @@ function loadProvisionPage() {
 
 		tab.add(newTabId, hw, '');
 
+		// Load plugin code
+		includeJs("js/custom/" + hw + ".js");
+		
 		// Select tab
 		tab.select(newTabId);
-		if (hw == 'zvm') {
-			loadZProvisionPage(newTabId);
-		} else {
-			// TODO: Add other platforms to this section
-			$('#' + newTabId).append('<p>Not supported</p>');
-		}
+		loadProvisionPage(newTabId);
 	});
 	provForm.append(okBtn);
 

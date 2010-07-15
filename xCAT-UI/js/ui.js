@@ -28,7 +28,7 @@ Tab.prototype.init = function() {
 	tabList.append(tabItem);
 	this.tab.append(tabList);
 
-	// Create a template
+	// Create a template with close button
 	var tabs = this.tab
 		.tabs( {
 			tabTemplate : "<li><a href=\"#{href}\">#{label}</a><span class=\"tab-close ui-icon ui-icon-close\"></span></li>"
@@ -40,7 +40,7 @@ Tab.prototype.init = function() {
 	// Hide tab
 	this.tab.hide();
 
-	// Append close button to tabs
+	// Close tab when close button is clicked
 	$("#" + this.tabId + " span.tab-close").live("click", function() {
 		var index = $('li', tabs).index($(this).parent());
 
@@ -387,6 +387,8 @@ function createMenu(items) {
  */
 function initPage() {
 	// Load javascripts
+	// TODO: We need to determine which page needs which script
+	// and load less
 	includeJs("js/jquery/jquery.dataTables.min.js");
 	includeJs("js/jquery/jquery.form.js");
 	includeJs("js/jquery/jquery.jeditable.js");
@@ -401,7 +403,6 @@ function initPage() {
 	includeJs("js/monitor/monitor.js");
 	includeJs("js/nodes/nodes.js");
 	includeJs("js/provision/provision.js");
-	includeJs("js/custom/zvm.js");
 
 	// Get the page being loaded
 	var url = window.location.pathname;
@@ -438,15 +439,45 @@ function initPage() {
  */
 function includeJs(file) {
 	var script = $("head script[src='" + file + "']");
+
+	// If <head> does not contain the javascript
 	if (!script.length) {
-		// Create script
+		// Append the javascript to <head>
 		var script = $('<script></script>');
 		script.attr( {
 			type : 'text/javascript',
 			src : file
 		})
 
-		// Append to <head>
 		$('head').append(script);
+	}
+}
+
+/**
+ * Reset the javascript files in <head> to its original content
+ * 
+ * @param file
+ *            File to include
+ * @return Nothing
+ */
+function resetJs() {
+	var scripts = $('head script');
+	for ( var i = 0; i < scripts.length; i++) {
+		var file = scripts.eq(i).attr('src');
+		
+		// Remove ipmi, blade, hmc, ivm, fsp javascripts
+		if (file == 'js/custom/ipmi.js') {
+			scripts.eq(i).remove();
+		} else if (file == 'js/custom/blade.js') {
+			scripts.eq(i).remove();
+		} else if (file == 'js/custom/hmc.js') {
+			scripts.eq(i).remove();
+		} else if (file == 'js/custom/ivm.js') {
+			scripts.eq(i).remove();
+		} else if (file == 'js/custom/fsp.js') {
+			scripts.eq(i).remove();
+		} else if (file == 'js/custom/zvm.js') {
+			scripts.eq(i).remove();
+		}
 	}
 }

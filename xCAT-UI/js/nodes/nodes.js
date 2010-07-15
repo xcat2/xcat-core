@@ -112,39 +112,38 @@ function loadGroups(data) {
 	$('#groups').tree( {
 		callback : {
 			// Open the group onclick
-		onselect : function(node, tree) {
-			var thisGroup = tree.get_text(node);
-			if (thisGroup) {
-				// Clear the nodes DIV
-				$('#nodes').children().remove();
-				// Create loader
-				var loader = $('<center></center>').append(createLoader());
-
-				// Create a tab for this group
-				var tab = new Tab();
-				setNodesTab(tab);
-				tab.init();
-				$('#nodes').append(tab.object());
-				tab.add('nodesTab', 'Nodes', loader);
-
-				// Get nodes within selected group
-				$.ajax( {
-					url : 'lib/cmd.php',
-					dataType : 'json',
-					data : {
-						cmd : 'lsdef',
-						tgt : '',
-						args : thisGroup,
-						msg : thisGroup
-					},
-
-					success : loadNodes
-				});
-			} // End of if (thisGroup)
-		} // End of onselect
-	}
-// End of callback
-}   );
+    		onselect : function(node, tree) {
+    			var thisGroup = tree.get_text(node);
+    			if (thisGroup) {
+    				// Clear the nodes DIV
+    				$('#nodes').children().remove();
+    				// Create loader
+    				var loader = $('<center></center>').append(createLoader());
+    
+    				// Create a tab for this group
+    				var tab = new Tab();
+    				setNodesTab(tab);
+    				tab.init();
+    				$('#nodes').append(tab.object());
+    				tab.add('nodesTab', 'Nodes', loader);
+    
+    				// Get nodes within selected group
+    				$.ajax( {
+    					url : 'lib/cmd.php',
+    					dataType : 'json',
+    					data : {
+    						cmd : 'lsdef',
+    						tgt : '',
+    						args : thisGroup,
+    						msg : thisGroup
+    					},
+    
+    					success : loadNodes
+    				});
+    			} // End of if (thisGroup)
+    		} // End of onselect
+    	} // End of callback
+    });
 }
 
 /**
@@ -189,7 +188,7 @@ function loadNodes(data) {
 		attrs[node][key] = val;
 		headers[key] = 1;
 
-		// Create a plugin hash
+		// Create a plugins hash
 		if (key == 'mgt') {
 			plugins[val] = 1;
 		}
@@ -199,6 +198,7 @@ function loadNodes(data) {
 	// Plugin code should be located under js/custom/
 	// Plugin names should be valid values of mgt
 	for ( var p in plugins) {
+		resetJs();
 		includeJs("js/custom/" + p + ".js");
 	}
 
@@ -287,22 +287,11 @@ function loadNodes(data) {
 	 */
 	var cloneLnk = $('<a href="#">Clone</a>');
 	cloneLnk.bind('click', function(event) {
-		// Get node that was checked
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			var node = nodes.eq(i).attr('name');
-
-			// Load clone page
-		if (node) {
-			var mgt = getNodeMgt(node);
-			if (mgt == 'zvm') {
-				loadZClonePage(node);
-			} else {
-				// TODO: Add clone for other platforms
-			}
+		var tgtNodes = getNodesChecked().split(',');
+		for ( var i = 0; i < tgtNodes.length; i++) {
+			loadClonePage(tgtNodes[i]);
 		}
-	}
-}   );
+	});
 
 	/*
 	 * Delete
@@ -310,8 +299,6 @@ function loadNodes(data) {
 	var deleteLnk = $('<a href="#">Delete</a>');
 	deleteLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked();
-
-		// Load delete page
 		if (tgtNodes) {
 			deleteNode(tgtNodes);
 		}
@@ -323,8 +310,6 @@ function loadNodes(data) {
 	var unlockLnk = $('<a href="#">Unlock</a>');
 	unlockLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked();
-
-		// Load unlock page
 		if (tgtNodes) {
 			loadUnlockPage(tgtNodes);
 		}
@@ -335,10 +320,7 @@ function loadNodes(data) {
 	 */
 	var scriptLnk = $('<a href="#">Run script</a>');
 	scriptLnk.bind('click', function(event) {
-		// Get node that was checked
 		var tgtNodes = getNodesChecked();
-
-		// Load script page
 		if (tgtNodes) {
 			loadScriptPage(tgtNodes);
 		}
@@ -349,10 +331,7 @@ function loadNodes(data) {
 	 */
 	var updateLnk = $('<a href="#">Update</a>');
 	updateLnk.bind('click', function(event) {
-		// Get node that was checked
 		var tgtNodes = getNodesChecked();
-
-		// TODO: Load update page
 		if (tgtNodes) {
 
 		}
@@ -363,10 +342,7 @@ function loadNodes(data) {
 	 */
 	var setBootStateLnk = $('<a href="#">Set boot state</a>');
 	setBootStateLnk.bind('click', function(event) {
-		// Get node that was checked
 		var tgtNodes = getNodesChecked();
-
-		// Load nodeset page
 		if (tgtNodes) {
 			loadNodesetPage(tgtNodes);
 		}
@@ -378,35 +354,11 @@ function loadNodes(data) {
 	 */
 	var boot2NetworkLnk = $('<a href="#">Boot to network</a>');
 	boot2NetworkLnk.bind('click', function(event) {
-		// Get node that was checked
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			// Get node that was checked
-		var mgt;
-		var tgtNodes = '';
-		var nodes = $('#nodesDataTable input[type=checkbox]:checked');
-		for ( var i = 0; i < nodes.length; i++) {
-			tgtNodes += nodes.eq(i).attr('name');
-
-			// Add a comma in front of each node
-			if (i < nodes.length - 1) {
-				tgtNodes += ',';
-			}
-
-			var node = nodes.eq(i).attr('name');
-			mgt = getNodeMgt(node);
-		}
-
-		// Load nodeset page
+		var tgtNodes = getNodesChecked();
 		if (tgtNodes) {
-			if (mgt == 'zvm') {
-				loadZNetbootPage(tgtNodes);
-			} else {
-				// TODO: Add boot to network for other platforms
-			}
+			loadNetbootPage(tgtNodes);
 		}
-	}
-}   );
+	});
 
 	/*
 	 * Advanced
@@ -418,16 +370,14 @@ function loadNodes(data) {
 	var powerActionMenu = createMenu(powerActions);
 
 	// Advanced actions
-	var advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk,
-		updateLnk ];
+	var advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk ];
 	var advancedActionMenu = createMenu(advancedActions);
 
 	/**
 	 * Create an action menu
 	 */
 	var actionsDIV = $('<div></div>');
-	var actions = [ [ powerLnk, powerActionMenu ], cloneLnk, deleteLnk,
-		unlockLnk, [ advancedLnk, advancedActionMenu ] ];
+	var actions = [ [ powerLnk, powerActionMenu ], cloneLnk, deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
 	var actionMenu = createMenu(actions);
 	actionMenu.superfish();
 	actionsDIV.append(actionMenu);
@@ -439,17 +389,17 @@ function loadNodes(data) {
 	var selectDIV = $('<div></div>');
 	actionBar.append(selectDIV);
 
+	// Select all
 	var selectLabel = $('<span>Select: </span>');
 	var selectAllLnk = $('<span><a href="#">All</a></span>');
 	selectAllLnk.bind('click', function(event) {
-		// Check all nodes
 		var nodes = $('#nodesDataTable input[type=checkbox]');
 		nodes.attr('checked', true);
 	});
 
+	// Select none
 	var selectNoneLnk = $('<span><a href="#">None</a></span>');
 	selectNoneLnk.bind('click', function(event) {
-		// Check no nodes
 		var nodes = $('#nodesDataTable input[type=checkbox]');
 		nodes.attr('checked', false);
 	});
@@ -457,7 +407,6 @@ function loadNodes(data) {
 	selectDIV.append(selectLabel);
 	selectDIV.append(selectAllLnk);
 	selectDIV.append(selectNoneLnk);
-
 	$('#nodesTab').append(actionBar);
 
 	// Insert table
@@ -647,51 +596,35 @@ function loadNode(e) {
 	var myTab = getNodesTab();
 	var newTabId = node + 'Tab';
 
-	/**
-	 * Only for zVM
-	 */
-	if (mgt == 'zvm') {
-		// Reset node process
-		$.cookie(node + 'Processes', 0);
+	// Reset node process
+	$.cookie(node + 'Processes', 0);
 
-		// Add new tab, only if one does not exist
-		if (!$('#' + newTabId).length) {
-			var loader = createLoader(node + 'TabLoader');
-			loader = $('<center></center>').append(loader);
-			myTab.add(newTabId, node, loader);
+	// Add new tab, only if one does not exist
+	var loader = createLoader(node + 'TabLoader');
+	loader = $('<center></center>').append(loader);
+	myTab.add(newTabId, node, loader);
 
-			// Get node inventory
-			var msg = 'out=' + newTabId + ',node=' + node;
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'rinv',
-					tgt : node,
-					args : 'all',
-					msg : msg
-				},
+	// Get node inventory
+	var msg = 'out=' + newTabId + ',node=' + node;
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'rinv',
+			tgt : node,
+			args : 'all',
+			msg : msg
+		},
 
-				success : loadZInventory
-			});
-		}
-	} else {
-		// Add new tab, only if one does not exist
-		if (!$('#' + newTabId).length) {
-			var p = $('<p>No supported</p>');
-			myTab.add(newTabId, node, p);
-
-			// TODO: Add inventory for other platforms
-		}
-	}
+		success : loadInventory
+	});
 
 	// Select new tab
 	myTab.select(newTabId);
 }
 
 /**
- * Unlock a node by exchanging the SSH keys between the xCAT MN and the target
- * node
+ * Unlock a node by setting the SSH keys
  * 
  * @param tgtNodes
  *            Nodes to unlock
@@ -722,13 +655,11 @@ function loadUnlockPage(tgtNodes) {
 	statusBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Give the root password for this node range to exchange its SSH keys');
+	var infoBar = createInfoBar('Give the root password for this node range to setup its SSH keys');
 	unlockForm.append(infoBar);
 
-	unlockForm
-		.append('<div><label>Node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '"/></div>');
-	unlockForm
-		.append('<div><label>Password:</label><input type="password" id="password" name="password"/></div>');
+	unlockForm.append('<div><label>Node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '"/></div>');
+	unlockForm.append('<div><label>Password:</label><input type="password" id="password" name="password"/></div>');
 
 	/**
 	 * Ok
@@ -740,32 +671,32 @@ function loadUnlockPage(tgtNodes) {
 		if (ready) {
 			var password = $('#' + newTabId + ' input[name=password]').val();
 
-			// Exchange SSH keys
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'webrun',
-				tgt : '',
-				args : 'unlock;' + tgtNodes + ';' + password,
-				msg : 'out=' + statBarId + ';cmd=unlock;tgt=' + tgtNodes
-			},
-
-			success : updateStatusBar
-		});
-
-		// Show status bar
-		statusBar.show();
-
-		// Stop this function from executing again
-		// Unbind event
-		$(this).unbind(event);
-		$(this).css( {
-			'background-color' : '#F2F2F2',
-			'color' : '#BDBDBD'
-		});
-	}
-}   );
+			// Setup SSH keys
+    		$.ajax( {
+    			url : 'lib/cmd.php',
+    			dataType : 'json',
+    			data : {
+    				cmd : 'webrun',
+    				tgt : '',
+    				args : 'unlock;' + tgtNodes + ';' + password,
+    				msg : 'out=' + statBarId + ';cmd=unlock;tgt=' + tgtNodes
+    			},
+    
+    			success : updateStatusBar
+    		});
+    
+    		// Show status bar
+    		statusBar.show();
+    
+    		// Stop this function from executing again
+    		// Unbind event
+    		$(this).unbind(event);
+    		$(this).css( {
+    			'background-color' : '#F2F2F2',
+    			'color' : '#BDBDBD'
+    		});
+    	}
+    });
 
 	unlockForm.append(okBtn);
 	tab.add(newTabId, 'Unlock', unlockForm);
@@ -1089,6 +1020,181 @@ function loadNodesetPage(trgtNodes) {
 
 	// Select new tab
 	tab.select(tabId);
+}
+
+/**
+ * Load netboot page
+ * 
+ * @param tgtNodes
+ *            Targets to run rnetboot against
+ * @return Nothing
+ */
+function loadNetbootPage(tgtNodes) {
+	// Get nodes tab
+	var tab = getNodesTab();
+
+	// Generate new tab ID
+	var inst = 0;
+	var newTabId = 'netbootTab' + inst;
+	while ($('#' + newTabId).length) {
+		// If one already exists, generate another one
+		inst = inst + 1;
+		newTabId = 'netbootTab' + inst;
+	}
+
+	// Open new tab
+	// Create nodeset form
+	var netbootForm = $('<div class="form"></div>');
+
+	// Create status bar
+	var barId = 'netbootStatusBar' + inst;
+	var statusBar = createStatusBar(barId);
+	statusBar.hide();
+	netbootForm.append(statusBar);
+
+	// Create loader
+	var loader = createLoader('netbootLoader');
+	statusBar.append(loader);
+
+	// Create info bar
+	var infoBar = createInfoBar('Cause the range of nodes to boot to network');
+	netbootForm.append(infoBar);
+
+	// Target node or group
+	var target = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
+	netbootForm.append(target);
+
+	// Create options
+	var optsDIV = $('<div></div>');
+	var optsLabel = $('<label>Options:</label>');	
+	var optsList = $('<ul></ul>');
+	var opt = $('<li></li>');
+	optsList.append(opt);
+	optsDIV.append(optsLabel);
+	optsDIV.append(optsList);
+	netbootForm.append(optsDIV);
+	
+	// Boot order
+	var bootOrderChkBox = $('<input type="checkbox" id="s" name="s"/>');
+	opt.append(bootOrderChkBox);
+	opt.append('Set the boot device order');
+	var bootOrder = $('<li><label for="bootOrder">Boot order:</label><input type="text" name="bootOrder"/></li>');
+	bootOrder.hide();
+	optsList.append(bootOrder);
+	// Force reboot
+	optsList.append('<li><input type="checkbox" id="F" name="F"/> Force reboot</li>');
+	// Force shutdown
+	optsList.append('<li><input type="checkbox" id="f" name="f"/> Force immediate shutdown of the partition</li>');
+	// Iscsi dump
+	optsList.append('<li><input type="checkbox" id="I" name="I"/> Do a iscsi dump on AIX</li>');
+	
+	// Show boot order when checkbox is checked
+	bootOrderChkBox.bind('click', function(event) {
+		if ($(this).is(':checked')) {
+			bootOrder.show();
+		} else {
+			bootOrder.hide();
+		}
+	});
+
+	// Determine plugin
+	var tmp = tgtNodes.split(',');
+	for ( var i = 0; i < tmp.length; i++) {
+		var mgt = getNodeMgt(tmp[i]);
+		// If it is zvm
+		if (mgt == 'zvm') {
+			// Add IPL input
+			netbootForm.append('<div><label for="ipl">IPL:</label><input type="text" name="ipl"/></div>');
+			break;
+		}
+	}
+
+	/**
+	 * Ok
+	 */
+	var okBtn = createButton('Ok');
+	okBtn.bind('click', function(event) {
+		var ready = true;
+
+		// Check inputs
+		var inputs = $("#" + newTabId + " input[type='text']:visible");
+		for ( var i = 0; i < inputs.length; i++) {
+			if (!inputs.eq(i).val()) {
+				inputs.eq(i).css('border', 'solid #FF0000 1px');
+				ready = false;
+			} else {
+				inputs.eq(i).css('border', 'solid #BDBDBD 1px');
+			}
+		}
+
+		// Generate arguments
+		var chkBoxes = $("#" + newTabId + " input[type='checkbox']:checked");
+		var optStr = '';
+		var opt;
+		for ( var i = 0; i < chkBoxes.length; i++) {
+			opt = chkBoxes.eq(i).attr('name');
+			optStr += '-' + opt;
+			
+			// If it is the boot order
+			if (opt == 's') {
+				// Get the boot order
+				optStr += ' ' + $('#' + newTabId + ' input[name=bootOrder]').val();
+			}
+			
+			// Append ; to end of string
+			if (i < (chkBoxes.length - 1)) {
+				optStr += ';';
+			}
+		}
+
+		// If no inputs are empty
+		if (ready) {
+			// Get nodes
+			var tgts = $('#' + newTabId + ' input[name=target]').val();
+
+			// Get IPL address
+			var ipl = $('#' + newTabId + ' input[name=ipl]');
+			if (ipl) {
+				optStr += 'ipl=' + ipl.val();
+			}
+
+			// Stop this function from executing again
+			// Unbind event
+			$(this).unbind(event);
+			$(this).css( {
+				'background-color' : '#F2F2F2',
+				'color' : '#424242'
+			});
+
+			/**
+			 * 1. Boot to network
+			 */
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'rnetboot',
+					tgt : tgts,
+					args : optStr,
+					msg : 'out=' + barId + ';cmd=rnetboot;tgt=' + tgts
+				},
+
+				success : updateStatusBar
+			});
+
+			// Show status bar
+			statusBar.show();
+		} else {
+			alert('You are missing some values');
+		}
+	});
+	netbootForm.append(okBtn);
+
+	// Append to discover tab
+	tab.add(newTabId, 'Netboot', netbootForm);
+
+	// Select new tab
+	tab.select(newTabId);
 }
 
 /**
@@ -1505,7 +1611,7 @@ function updateStatusBar(data) {
 				dTable.fnDeleteRow(rowPos);
 			}
 		}
-	} else if (cmd == 'xdsh') {
+	} else {
 		// Hide loader
 		$('#' + statBarId).find('img').hide();
 
@@ -1525,8 +1631,6 @@ function updateStatusBar(data) {
 		}
 
 		$('#' + statBarId).append(p);
-	} else {
-		return;
 	}
 }
 
@@ -1769,7 +1873,7 @@ function getNodeRow(tgtNode, rows) {
 }
 
 /**
- * Get the nodes that were checked in the nodes table
+ * Get the nodes that were checked in the nodes datatable
  * 
  * @return Nodes that were checked
  */
