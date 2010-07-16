@@ -44,7 +44,7 @@ sub include_file
        $file = $idir."/".$file;
    }
    
-   open(INCLUDE,$file) || \
+   open(INCLUDE,$file) || 
        return "#INCLUDEBAD:cannot open $file#";
    
    while(<INCLUDE>) {
