@@ -105,6 +105,21 @@ sub genUUID
         $mac = lc($mac);
         $uuid .= $mac;
         return $uuid;
+    } elsif ($args{url}) { #generate a UUIDv5 from URL
+        #6ba7b810-9dad-11d1-80b4-00c04fd430c8 is the uuid for URL namespace
+        my $sum = sha1('6ba7b810-9dad-11d1-80b4-00c04fd430c8'.$args{url});
+        my @data = unpack("C*",$sum);
+        splice @data,16;
+        $data[6] = $data[6] & 0xf;
+        $data[6] = $data[6] | (5<<4);
+        $data[8] = $data[8] & 127;
+        $data[8] = $data[8] | 64;
+        my $uuid = unpack("H*",pack("C*",splice @data,0,4));
+        $uuid .= "-". unpack("H*",pack("C*",splice @data,0,2));
+        $uuid .= "-". unpack("H*",pack("C*",splice @data,0,2));
+        $uuid .= "-". unpack("H*",pack("C*",splice @data,0,2));
+        $uuid .= "-". unpack("H*",pack("C*",@data));
+        return $uuid;
     }
     srand();    #Many note this as bad practice, however, forks are going on..
     my $uuid;
