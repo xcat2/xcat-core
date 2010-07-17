@@ -263,6 +263,7 @@ span.ui-icon-info {
 
 .statusBar p {
 	font: 12px verdana, arial, helvetica, sans-serif;
+	max-width: 700px;
 }
 
 /****************** Info bar ******************/
