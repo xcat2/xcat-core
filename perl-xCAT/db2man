@@ -172,7 +172,7 @@ The following example is for PostgreSQL:
 
 =item Pg:dbname=xcat;host=<mgmtnode>|<pgadminuserid>|<pgadminpasswd>
 
-where mgmtnode is the hostname of the management node adapter on the cluster side, and the pgadminuserid and pgadminpasswd is the database admin and password.
+where mgmtnode is the hostname of the management node adapter on the cluster side, and the pgadminuserid and pgadminpasswd are the database admin and password.
 
 =back
 
