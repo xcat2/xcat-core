@@ -161,16 +161,18 @@ xCAT allows the use of different database applications, depending on the needs o
 The default database is SQLite, which is a daemonless, zero-config database.  But you could instead
 choose to use something like postgresql for greater scalability and remote access in the
 hierarchical/service node case.  To use a different database or a different location, create
-the file /etc/xcat/cfgloc.  The first line of the file should contain something like one of the examples
-below:
+the file /etc/xcat/cfgloc. 
+ See the appropriate xCAT docuementation for the format of the file for the database you choose. 
+The following example is for PostgreSQL:
+
 
 =over 4
 
-=item SQLite:/var/xcat/cfg
+=item SQLite:/var/xcat/cfgloc
 
-=item Pg:dbname=xcat;host=<mgmtnode>|<pguserid>|<pgpasswd>
+=item Pg:dbname=xcat;host=<mgmtnode>|<pgadminuserid>|<pgadminpasswd>
 
-where mgmtnode is the hostname of the management node adapter on the cluster side
+where mgmtnode is the hostname of the management node adapter on the cluster side, and the pgadminuserid and pgadminpasswd is the database admin and password.
 
 =back
 
