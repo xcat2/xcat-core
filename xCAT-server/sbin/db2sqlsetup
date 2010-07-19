@@ -19,6 +19,9 @@
    It will interact for the password to assign to the xcatdb 
    for the Unix id and DB2 instance id,
    unless the XCATDB2PW env var is set to the password for the instance id. 
+   For Client setup, it will interact for the hostname or ip address
+   of the DB2 Server as known by the Service Node, unless the
+   XCATDB2SERVER  environement variable is set.
    See man db2setup for more information and the xCAT2SetupDB2.pdf 
    documentation. 
    The script will assume the default install paths of /opt/IBM/db2 for AIX and 
@@ -333,9 +336,11 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
     }
 
     # if setting up Client catalog the MN (db2 server address)
+    # and create /etc/xcat/cfgloc
     if ($::CLIENT)
     {
         &catalogServer;
+        &createcfgloc;
     }
 
     #
@@ -832,41 +837,28 @@ sub db2start
 sub catalogServer
 {
     xCAT::MsgUtils->message("I", "Cataloging the DB2 Server");
-    my $msg =
-      "Input the hostname or ip address of the Management Node as known by this Service node.  Should be the same as the site.master attribute: ";
     my $MN;
-    xCAT::MsgUtils->message('I', "$msg");
-    `stty -echo`;
-    chop($MN = <STDIN>);
-    `stty echo`;
-    my $cmd;
+    if ($ENV{'XCATDB2SERVER'}) {   # hostname or ip address supplied
+       $MN=$ENV{'XCATDB2SERVER'};
+    } else {
+      my $msg =
+      "Input the hostname or ip address of the Management Node as known by this Service node.  Should be the same as the site.master attribute: ";
+
+      xCAT::MsgUtils->message('I', "$msg");
+      chop($MN = <STDIN>);
+   }
+   my $cmd;
     my $rc = 0;
 
     # su to xcatdb and catalog the database server and database
     $cmd = "db2 catalog tcpip node mn  remote $MN server db2c_xcatdb  ";
     $rc  = &rundb2cmd($cmd);
-    if ($rc != 0)
-    {
-        xCAT::MsgUtils->message("I", " $cmd warning.");
-    }
     $cmd = "db2 terminate";    # refresh the cache
     $rc  = &rundb2cmd($cmd);
-    if ($rc != 0)
-    {
-        xCAT::MsgUtils->message("I", " $cmd warning.");
-    }
     $cmd = "db2 catalog db xcatdb  as xcatdb at node mn  ";
     $rc  = &rundb2cmd($cmd);
-    if ($rc != 0)
-    {
-        xCAT::MsgUtils->message("I", " $cmd warning.");
-    }
     $cmd = "db2 terminate";    # refresh the cache
     $rc  = &rundb2cmd($cmd);
-    if ($rc != 0)
-    {
-        xCAT::MsgUtils->message("I", " $cmd warning.");
-    }
 
 }
 
