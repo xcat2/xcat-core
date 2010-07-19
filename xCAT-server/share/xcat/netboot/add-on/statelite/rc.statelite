@@ -201,11 +201,11 @@ ProcessType () {
 	case "${3}" in 
 		tmpfs,rw)
             if [ -d ${TMPFS}${2} ]; then
-			    cp -a ${1}* ${TMPFS}${2}
-			    echo "cp -a ${1}* ${TMPFS}${2}" >>$LOG
+			    cp -r -a ${1}* ${TMPFS}${2}
+			    echo "cp -r -a ${1}* ${TMPFS}${2}" >>$LOG
             else
-                cp -a ${1} ${TMPFS}${2}
-                echo "cp -a ${1} ${TMPFS}${2}" >>$LOG
+                cp -r -a ${1} ${TMPFS}${2}
+                echo "cp -r -a ${1} ${TMPFS}${2}" >>$LOG
             fi
 			# the link will already be in place on the image, so nothing else to do!
 			#mount -n --bind ${TMPFS}${2} ${1}
@@ -220,11 +220,11 @@ ProcessType () {
             TARGET=`echo ${1}`
             
             if [ -d ${TMPFS}${2} ]; then
-                cp -a ${1}* ${TMPFS}${2}
-                echo "cp -a ${1}* ${TMPFS}${2}" >>$LOG
+                cp -r -a ${1}* ${TMPFS}${2}
+                echo "cp -r -a ${1}* ${TMPFS}${2}" >>$LOG
             else
-                cp -a ${1} ${TMPFS}${2}
-                echo "cp -a ${1} ${TMPFS}${2}" >>$LOG
+                cp -r -a ${1} ${TMPFS}${2}
+                echo "cp -r -a ${1} ${TMPFS}${2}" >>$LOG
             fi
             
             if [ "$isChild" = "0" ]; then
@@ -242,8 +242,8 @@ ProcessType () {
             # if the file doesn't exist, then copy it over to persistent
             if [ ! -e ${PERSISTENT}${2} ]
             then
-                echo "cp -a ${1} ${PERSISTENT}${2}" >>$LOG
-                cp -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
+                echo "cp -r -a ${1} ${PERSISTENT}${2}" >>$LOG
+                cp -r -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
             fi
 
             ORIG=`echo ${2} |  sed -e 's/\/$//'`
@@ -268,8 +268,8 @@ ProcessType () {
 			then
 				#ln -s ${1} ${PERSISTENT}/${2}
 				# if its not there, then take it from something else
-				echo "cp -a ${1} ${PERSISTENT}${2}" >>$LOG
-				cp -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
+				echo "cp -r -a ${1} ${PERSISTENT}${2}" >>$LOG
+				cp -r -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
 				
 				#mount -n --bind ${TMPFS}${2} ${1}
 			fi
@@ -376,5 +376,5 @@ ResolveLinks
 ln -sf /proc/mounts ${TMPFS}/etc/mtab
 
 # catch all hack for debugging:
-#cp -a ${DEFAULT}/* /.snapshot/tmpfs/
+#cp -r -a ${DEFAULT}/* /.snapshot/tmpfs/
 # foo

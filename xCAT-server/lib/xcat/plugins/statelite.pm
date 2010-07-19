@@ -275,8 +275,8 @@ sub process_request {
                 my $name = $rootimg_dir . $tmpc[2];
 
                 if (-e $name) {
-                    $verbose && $callback->({info=>["cp -a $name $rootimg_dir.statebackup$f"]});
-                    xCAT::Utils->runcmd("cp -a $name $rootimg_dir.statebackup$f");
+                    $verbose && $callback->({info=>["cp -r -a $name $rootimg_dir.statebackup$f"]});
+                    xCAT::Utils->runcmd("cp -r -a $name $rootimg_dir.statebackup$f");
                 }
             }
         }
@@ -302,7 +302,7 @@ sub process_request {
 
                     if ( -e $srcf ) {
                         $verbose && $callback->({info=>["recovering from $srcf to $destf"]});
-                        xCAT::Utils->runcmd("cp -a $destf $srcf", 0, 1);
+                        xCAT::Utils->runcmd("cp -r -a $destf $srcf", 0, 1);
                     }
 
                 }
@@ -468,8 +468,8 @@ sub liteMe {
         }
         
         # copy the file in place.
-        $verbose && $callback->({info=>["cp -a $rif $rootimg_dir/.default$d"]});
-        system("cp -a $rif $rootimg_dir/.default$d");
+        $verbose && $callback->({info=>["cp -r -a $rif $rootimg_dir/.default$d"]});
+        system("cp -r -a $rif $rootimg_dir/.default$d");
     }
 
 	# this loop creates symbolic links for each of the files in the sync list.
@@ -502,8 +502,8 @@ sub liteMe {
 					system("mkdir -p $rootimg_dir/.default$d");
 
 					# copy the file in place.
-					$verbose && $callback->({info=>["cp -a $rif $rootimg_dir/.default$d"]});
-					system("cp -a $rif $rootimg_dir/.default$d");
+					$verbose && $callback->({info=>["cp -r -a $rif $rootimg_dir/.default$d"]});
+					system("cp -r -a $rif $rootimg_dir/.default$d");
 
 					# remove the real file
 					$verbose && $callback->({info=>["rm -rf $rif"]});
@@ -716,7 +716,7 @@ sub recoverFiles {
                 xCAT::Utils->runcmd("rm -rf $target", 0, 1);
                 my $default = $rootimg_dir . "/.default" . $f;
                 if( -e $default) {
-                    xCAT::Utils->runcmd("cp -a $default $target", 0, 1);
+                    xCAT::Utils->runcmd("cp -r -a $default $target", 0, 1);
                 }else { # maybe someone deletes the copy in .default directory
                     xCAT::Utils->runcmd("touch $target", 0, 1);
                 }
@@ -729,7 +729,7 @@ sub recoverFiles {
                     xCAT::Utils->runcmd("rm -rf $target", 0, 1);
                     my $default = $rootimg_dir . "/.default" . $f;
                     if( -e $default) {
-                        xCAT::Utils->runcmd("cp -a $default $target", 0, 1);
+                        xCAT::Utils->runcmd("cp -r -a $default $target", 0, 1);
                     } else {
                         xCAT::Utils->runcmd("mkdir $target", 0, 1);
                     }
@@ -784,8 +784,8 @@ sub liteItem {
         }
         
         # copy the file to /.defaults
-        $verbose && $callback->({info=>["cp -a $rif $rootimg_dir/.default$d"]});
-        system("cp -a $rif $rootimg_dir/.default$d");
+        $verbose && $callback->({info=>["cp -r -a $rif $rootimg_dir/.default$d"]});
+        system("cp -r -a $rif $rootimg_dir/.default$d");
 
     }else {
         # 1.  copy original contents if they exist to .default directory
@@ -811,8 +811,8 @@ sub liteItem {
                     system("mkdir -p $rootimg_dir/.default$d");
                 
                     # copy the file in place.
-                    $verbose && $callback->({info=>["cp -a $rif $rootimg_dir/.default$d"]});
-                    system("cp -a $rif $rootimg_dir/.default$d");
+                    $verbose && $callback->({info=>["cp -r -a $rif $rootimg_dir/.default$d"]});
+                    system("cp -r -a $rif $rootimg_dir/.default$d");
 
                     # remove the real file
                     $verbose && $callback->({info=>["rm -rf $rif"]});
