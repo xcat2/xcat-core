@@ -1318,10 +1318,16 @@ sub process_request {
             $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
             return;
           }
-      } elsif ($command eq "mkvm") { #mkvm can happen devoid of any hypervisor, make a fake hypervisor entry to allow this to occur
-          foreach (keys %orphans) {
-              $hyphash{'!@!XCATDUMMYHYPERVISOR!@!'}->{nodes}->{$_}=1;
-          }
+      } elsif ($command eq "mkvm") { #must adopt to create
+            unless (adopt(\%orphans,\%hyphash)) {
+                $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
+                return 1;
+              }
+          #mkvm used to be able to happen devoid of any hypervisor, make a fake hypervisor entry to allow this to occur
+          #commenting that out for now
+#          foreach (keys %orphans) {
+#              $hyphash{'!@!XCATDUMMYHYPERVISOR!@!'}->{nodes}->{$_}=1;
+#          }
       } else {
           $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
           return;
