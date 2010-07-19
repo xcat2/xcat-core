@@ -203,7 +203,7 @@ function loadNodes(data) {
 
 	// Load the plugin code
 	// Plugin code should be located under js/custom/
-	// Plugin names should be valid values of mgt
+	// Plugin names should be valid values of nodehm.mgt
 	for ( var p in plugins) {
 		resetJs();
 		includeJs("js/custom/" + p + ".js");
@@ -858,14 +858,14 @@ function loadNodesetPage(trgtNodes) {
 	var nodesetForm = $('<div class="form"></div>');
 
 	// Create status bar
-	var barId = 'nodesetStatusBar' + inst;
-	var statusBar = createStatusBar(barId);
-	statusBar.hide();
-	nodesetForm.append(statusBar);
+	var statBarId = 'nodesetStatusBar' + inst;
+	var statBar = createStatusBar(statBarId);
+	statBar.hide();
+	nodesetForm.append(statBar);
 
 	// Create loader
 	var loader = createLoader('nodesetLoader');
-	statusBar.append(loader);
+	statBar.append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Set the boot state for a node range');
@@ -997,7 +997,7 @@ function loadNodesetPage(trgtNodes) {
 			});
 
 			/**
-			 * 1. Set the OS, arch, and profile
+			 * (1) Set the OS, arch, and profile
 			 */
 			$.ajax( {
 				url : 'lib/cmd.php',
@@ -1015,7 +1015,7 @@ function loadNodesetPage(trgtNodes) {
 			});
 
 			// Show status bar
-			statusBar.show();
+			statBar.show();
 		} else {
 			alert('You are missing some values');
 		}
@@ -1174,7 +1174,7 @@ function loadNetbootPage(tgtNodes) {
 			});
 
 			/**
-			 * 1. Boot to network
+			 * (1) Boot to network
 			 */
 			$.ajax( {
 				url : 'lib/cmd.php',
@@ -1431,7 +1431,7 @@ function loadUpdatenodePage(tgtNodes) {
 			});
 
 			/**
-			 * 1. Boot to network
+			 * (1) Boot to network
 			 */
 			$.ajax( {
 				url : 'lib/cmd.php',
@@ -1455,7 +1455,7 @@ function loadUpdatenodePage(tgtNodes) {
 	updatenodeForm.append(okBtn);
 
 	// Append to discover tab
-	tab.add(newTabId, 'updatenode', updatenodeForm);
+	tab.add(newTabId, 'Updatenode', updatenodeForm);
 
 	// Select new tab
 	tab.select(newTabId);
@@ -1625,7 +1625,7 @@ function updateNodesetStatus(data) {
 	var method = $('#' + tabId + ' select[id=bootMethod]').val();
 
 	/**
-	 * 2. Update /etc/hosts
+	 * (2) Update /etc/hosts
 	 */
 	if (cmd == 'nodeadd') {
 		// If no output, no errors occurred
@@ -1682,7 +1682,7 @@ function updateNodesetStatus(data) {
 	}
 
 	/**
-	 * 4. Update DNS
+	 * (4) Update DNS
 	 */
 	else if (cmd == 'makehosts') {
 		// If no output, no errors occurred
@@ -1709,7 +1709,7 @@ function updateNodesetStatus(data) {
 	}
 
 	/**
-	 * 5. Update DHCP
+	 * (5) Update DHCP
 	 */
 	else if (cmd == 'makedns') {
 		// Separate output into lines
@@ -1739,7 +1739,7 @@ function updateNodesetStatus(data) {
 	}
 
 	/**
-	 * 6. Prepare node for boot
+	 * (6) Prepare node for boot
 	 */
 	else if (cmd == 'makedhcp') {
 		var failed = false;
@@ -1780,7 +1780,7 @@ function updateNodesetStatus(data) {
 	}
 
 	/**
-	 * 7. Boot node from network
+	 * (7) Boot node from network
 	 */
 	else if (cmd == 'nodeset') {
 		var tgtsArray = tgts.split(',');
@@ -1808,7 +1808,7 @@ function updateNodesetStatus(data) {
 }
 
 /**
- * Update the status bar
+ * Update the status bar of a given tab
  * 
  * @param data
  *            Data returned from HTTP request
@@ -1848,8 +1848,7 @@ function updateStatusBar(data) {
 		for ( var i = 0; i < rsp.length; i++) {
 			if (rsp[i]) {
 				// Determine if the command failed
-				if (rsp[i].indexOf("Error") > -1
-					|| rsp[i].indexOf("Failed") > -1) {
+				if (rsp[i].indexOf("Error") > -1 || rsp[i].indexOf("Failed") > -1) {
 					failed = true;
 				}
 
@@ -1886,8 +1885,7 @@ function updateStatusBar(data) {
 			if (rsp[i]) {
 				// Find the node name and insert a break before it
 				for ( var j = 0; j < tgts.length; j++) {
-					rsp[i] = rsp[i].replace(new RegExp(tgts[j], 'g'),
-						'<br>' + tgts[j]);
+					rsp[i] = rsp[i].replace(new RegExp(tgts[j], 'g'), '<br>' + tgts[j]);
 				}
 
 				p.append(rsp[i]);
@@ -1900,7 +1898,7 @@ function updateStatusBar(data) {
 }
 
 /**
- * Check the completeness of the form
+ * Check if the form is complete
  * 
  * @param tabId
  *            Tab ID containing form
@@ -1915,6 +1913,7 @@ function formComplete(tabId) {
 		// If there is no value given in the input
 		if (!inputs.eq(i).val()) {
 			inputs.eq(i).css('border', 'solid #FF0000 1px');
+			
 			// It is not complete
 			ready = false;
 		} else {
@@ -1926,7 +1925,7 @@ function formComplete(tabId) {
 }
 
 /**
- * Update the power status of the node
+ * Update the power status of a node in the datatable
  * 
  * @param data
  *            Data from HTTP request

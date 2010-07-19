@@ -1,8 +1,8 @@
 /**
  * Global variables
  */
-var diskDataTable; // zVM datatable containing disks
-var networkDataTable; // zVM datatable containing networks
+var diskDatatable; // zVM datatable containing disks
+var networkDatatable; // zVM datatable containing networks
 
 /**
  * Get the disk datatable
@@ -11,7 +11,7 @@ var networkDataTable; // zVM datatable containing networks
  * @return Data table object
  */
 function getDiskDataTable() {
-	return diskDataTable;
+	return diskDatatable;
 }
 
 /**
@@ -22,7 +22,7 @@ function getDiskDataTable() {
  * @return Nothing
  */
 function setDiskDataTable(table) {
-	diskDataTable = table;
+	diskDatatable = table;
 }
 
 /**
@@ -32,7 +32,7 @@ function setDiskDataTable(table) {
  * @return Data table object
  */
 function getNetworkDataTable() {
-	return networkDataTable;
+	return networkDatatable;
 }
 
 /**
@@ -43,7 +43,7 @@ function getNetworkDataTable() {
  * @return Nothing
  */
 function setNetworkDataTable(table) {
-	networkDataTable = table;
+	networkDatatable = table;
 }
 
 /**
@@ -115,7 +115,9 @@ function loadUserEntry(data) {
 		cancelBtn.show();
 	});
 
-	// Save button
+	/**
+	 * Save
+	 */
 	var saveBtn = createButton('Save');
 	saveBtn.hide();
 	saveBtn.bind('click', function(event) {
@@ -144,7 +146,7 @@ function loadUserEntry(data) {
 		});
 
 		// Increment node process and save it in a cookie
-		incrementZNodeProcess(node);
+		incrementNodeProcess(node);
 
 		txtArea.attr('readonly', 'readonly');
 		txtArea.css( {
@@ -158,7 +160,9 @@ function loadUserEntry(data) {
 		cancelBtn.hide();
 	});
 
-	// Cancel button
+	/**
+	 * Cancel
+	 */
 	var cancelBtn = createButton('Cancel');
 	cancelBtn.hide();
 	cancelBtn.bind('click', function(event) {
@@ -188,20 +192,20 @@ function loadUserEntry(data) {
  *            Node to set cookie for
  * @return Nothing
  */
-function incrementZNodeProcess(node) {
+function incrementNodeProcess(node) {
 	// Set cookie for number actions performed against node
-	var actions = $.cookie(node + 'Processes');
-	if (actions) {
+	var procs = $.cookie(node + 'Processes');
+	if (procs) {
 		// One more process
-		actions = parseInt(actions) + 1;
-		$.cookie(node + 'Processes', actions);
+		procs = parseInt(procs) + 1;
+		$.cookie(node + 'Processes', procs);
 	} else {
 		$.cookie(node + 'Processes', 1);
 	}
 }
 
 /**
- * Update the provision status bar
+ * Update the provision status
  * 
  * @param data
  *            Data returned from HTTP request
@@ -235,10 +239,9 @@ function updateProvisionStatus(data) {
 	var osImage = $('#' + tabId + ' input[name=os]').val();
 
 	/**
-	 * 2. Update /etc/hosts
+	 * (2) Update /etc/hosts
 	 */
 	if (cmd == 'nodeadd') {
-
 		// If no output, no errors occurred
 		if (rsp.length) {
 			$('#' + statBarId).append(
@@ -264,7 +267,7 @@ function updateProvisionStatus(data) {
 	}
 
 	/**
-	 * 3. Update DNS
+	 * (3) Update DNS
 	 */
 	else if (cmd == 'makehosts') {
 		// If no output, no errors occurred
@@ -291,7 +294,7 @@ function updateProvisionStatus(data) {
 	}
 
 	/**
-	 * 4. Create user entry
+	 * (4) Create user entry
 	 */
 	else if (cmd == 'makedns') {
 		// Reset the number of tries
@@ -325,7 +328,7 @@ function updateProvisionStatus(data) {
 	}
 
 	/**
-	 * 5. Add disk and format disk
+	 * (5) Add disk
 	 */
 	else if (cmd == 'mkvm') {
 		var failed = false;
@@ -383,14 +386,12 @@ function updateProvisionStatus(data) {
 		}
 		// If there were no errors
 		else {
-
 			// Reset the number of tries
 			$.cookie('tries4' + tabId, 0);
 
 			// Set cookie for number of disks
 			var diskRows = $('#' + tabId + ' table tr');
 			$.cookie('zProvisionDisks2Add' + out2Id, diskRows.length);
-
 			if (diskRows.length > 0) {
 				for ( var i = 0; i < diskRows.length; i++) {
 					var diskArgs = diskRows.eq(i).find('td');
@@ -431,7 +432,7 @@ function updateProvisionStatus(data) {
 	}
 
 	/**
-	 * 6. Set the operating system for given node
+	 * (6) Set the operating system for given node
 	 */
 	else if (cmd == 'chvm') {
 		var failed = false;
@@ -550,7 +551,7 @@ function updateProvisionStatus(data) {
 	}
 
 	/**
-	 * 7. Update DHCP
+	 * (7) Update DHCP
 	 */
 	else if (cmd == 'noderes') {
 		// If no output, no errors occurred
@@ -578,7 +579,7 @@ function updateProvisionStatus(data) {
 	}
 
 	/**
-	 * 8. Prepare node for boot
+	 * (8) Prepare node for boot
 	 */
 	else if (cmd == 'makedhcp') {
 		var failed = false;
@@ -619,7 +620,7 @@ function updateProvisionStatus(data) {
 	}
 
 	/**
-	 * 9. Boot node from network
+	 * (9) Boot node to network
 	 */
 	else if (cmd == 'nodeset') {
 		var failed = false;
@@ -667,7 +668,7 @@ function updateProvisionStatus(data) {
 	}
 
 	/**
-	 * 10. Done
+	 * (10) Done
 	 */
 	else if (cmd == 'rnetboot') {
 		var failed = false;
@@ -705,7 +706,7 @@ function updateProvisionStatus(data) {
 }
 
 /**
- * Update node status bar
+ * Update zVM node status
  * 
  * @param data
  *            Data returned from HTTP request
@@ -720,13 +721,14 @@ function updateZNodeStatus(data) {
 	// One less process
 	actions = actions - 1;
 	$.cookie(node + 'Processes', actions);
+	
 	if (actions < 1) {
 		// Hide loader when there are no more processes
 		var statusBarLoaderId = node + 'StatusBarLoader';
 		$('#' + statusBarLoaderId).hide();
 	}
 
-	var statusId = node + 'StatusBar';
+	var statBarId = node + 'StatusBar';
 	var failed = false;
 
 	// Separate output into lines
@@ -746,11 +748,11 @@ function updateZNodeStatus(data) {
 		}
 	}
 
-	$('#' + statusId).append(p);
+	$('#' + statBarId).append(p);
 }
 
 /**
- * Update the clone status bar
+ * Update the clone status
  * 
  * @param data
  *            Data returned from HTTP request
@@ -766,7 +768,7 @@ function updateCloneStatus(data) {
 	var out2Id = args[2].replace('out=', '');
 
 	/**
-	 * 2. Update /etc/hosts
+	 * (2) Update /etc/hosts
 	 */
 	if (cmd == 'nodeadd') {
 		var node = args[3].replace('node=', '');
@@ -800,7 +802,7 @@ function updateCloneStatus(data) {
 	}
 
 	/**
-	 * 3. Update DNS
+	 * (3) Update DNS
 	 */
 	else if (cmd == 'makehosts') {
 		// If no output, no errors occurred
@@ -827,7 +829,7 @@ function updateCloneStatus(data) {
 	}
 
 	/**
-	 * 4. Clone
+	 * (4) Clone
 	 */
 	else if (cmd == 'makedns') {
 		// Separate output into lines
@@ -841,6 +843,8 @@ function updateCloneStatus(data) {
 
 		$('#' + out2Id).append(p);
 
+		// The tab must be opened for this to work
+		
 		// Get clone tab
 		var tabId = out2Id.replace('CloneStatusBar', 'CloneTab');
 
@@ -849,6 +853,7 @@ function updateCloneStatus(data) {
 		var tgtNodes = '';
 		if (tgtNodeRange.indexOf('-') > -1) {
 			var tmp = tgtNodeRange.split('-');
+			
 			// Get node base name
 			var nodeBase = tmp[0].match(/[a-zA-Z]+/);
 			// Get the starting index
@@ -867,9 +872,7 @@ function updateCloneStatus(data) {
 		} else {
 			tgtNodes = tgtNodeRange;
 		}
-
-		// The tab must be opened for this to work
-
+		
 		// Get other inputs
 		var srcNode = $('#' + tabId + ' input[name=srcNode]').val();
 		hcp = $('#' + tabId + ' input[name=newHcp]').val();
@@ -896,7 +899,7 @@ function updateCloneStatus(data) {
 	}
 
 	/**
-	 * 5. Done
+	 * (5) Done
 	 */
 	else if (cmd == 'mkvm') {
 		var failed = false;
@@ -924,14 +927,14 @@ function updateCloneStatus(data) {
 }
 
 /**
- * Get the resources
+ * Get zVM resources
  * 
  * @param data
  *            Data from HTTP request
  * @return Nothing
  */
 function getZResources(data) {
-	// Do not set cookie if there is no output
+	// Do not continue if there is no output
 	if (data.rsp) {
 		// Loop through each line
 		var node, hcp;
@@ -1007,7 +1010,6 @@ function getNodeAttrs(keys, propNames, data) {
 		// Loop through property keys
 		// Does this line contains one of the properties?
 		for ( var j = 0; j < keys.length; j++) {
-
 			// Find property name
 			if (data[i].indexOf(propNames[keys[j]]) > -1) {
 				attrs[keys[j]] = new Array();
@@ -1073,7 +1075,7 @@ function addProcessor(v, m, f) {
 		});
 
 		// Increment node process and save it in a cookie
-		incrementZNodeProcess(node);
+		incrementNodeProcess(node);
 
 		// Show loader
 		var statusId = node + 'StatusBar';
@@ -1122,7 +1124,7 @@ function addDisk(v, m, f) {
 			});
 
 			// Increment node process and save it in a cookie
-			incrementZNodeProcess(node);
+			incrementNodeProcess(node);
 
 			// Show loader
 			var statusId = node + 'StatusBar';
@@ -1200,7 +1202,7 @@ function addNic(v, m, f) {
 		}
 
 		// Increment node process and save it in a cookie
-		incrementZNodeProcess(node);
+		incrementNodeProcess(node);
 
 		// Show loader
 		var statusId = node + 'StatusBar';
@@ -1235,7 +1237,7 @@ function removeProcessor(node, address) {
 	});
 
 	// Increment node process and save it in a cookie
-	incrementZNodeProcess(node);
+	incrementNodeProcess(node);
 
 	// Show loader
 	var statusId = node + 'StatusBar';
@@ -1269,7 +1271,7 @@ function removeDisk(node, address) {
 	});
 
 	// Increment node process and save it in a cookie
-	incrementZNodeProcess(node);
+	incrementNodeProcess(node);
 
 	// Show loader
 	var statusId = node + 'StatusBar';
@@ -1306,7 +1308,7 @@ function removeNic(node, nic) {
 	});
 
 	// Set cookie for number actions performed against node
-	incrementZNodeProcess(node);
+	incrementNodeProcess(node);
 
 	// Show loader
 	var statusId = node + 'StatusBar';

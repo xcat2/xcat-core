@@ -95,7 +95,7 @@ if (isset($_GET["cmd"])) {
 		}
 	}
 
-	// Unlock virtual server
+	// Run shell script
 	// This is a typical command used by all platforms.  It is put here because
 	// most of the code needed are already here
 	else if (strncasecmp($cmd, "xdsh", 4) == 0) {

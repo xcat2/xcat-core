@@ -99,6 +99,7 @@ function loadProvisionPage() {
 		tab.add(newTabId, hw, '');
 
 		// Load plugin code
+		resetJs();
 		includeJs("js/custom/" + hw + ".js");
 		
 		// Select tab

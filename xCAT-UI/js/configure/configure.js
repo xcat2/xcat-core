@@ -2,7 +2,7 @@
  * Global variables
  */
 var configTabs; // Config tabs
-var configDataTables = new Object(); // Datatables on the config page
+var configDatatables = new Object(); // Datatables on the config page
 
 /**
  * Set the datatable
@@ -14,7 +14,7 @@ var configDataTables = new Object(); // Datatables on the config page
  * @return Nothing
  */
 function setConfigDatatable(id, obj) {
-	configDataTables[id] = obj;
+	configDatatables[id] = obj;
 }
 
 /**
@@ -25,7 +25,7 @@ function setConfigDatatable(id, obj) {
  * @return Datatable object
  */
 function getConfigDatatable(id) {
-	return configDataTables[id];
+	return configDatatables[id];
 }
 
 /**
@@ -71,7 +71,7 @@ function loadConfigPage() {
 	var loader = createLoader();
 	loader = $('<center></center>').append(loader);
 
-	// Configure xCAT tables
+	// Configure xCAT datable tables
 	tab.add('configTablesTab', 'Tables', loader);
 
 	// Get list of tables and their descriptions
@@ -90,7 +90,7 @@ function loadConfigPage() {
 }
 
 /**
- * Load xCAT table names and their descriptions
+ * Load xCAT database table names and their descriptions
  * 
  * @param data
  *            Data returned from HTTP request
@@ -105,7 +105,7 @@ function loadTableNames(data) {
 	$('#' + tabId).find('img').hide();
 
 	// Create a groups division
-	var tablesDIV = $('<div id="configure_table"></div>');
+	var tablesDIV = $('<div id="configTable"></div>');
 	$('#' + tabId).append(tablesDIV);
 
 	// Create info bar
@@ -167,7 +167,7 @@ function loadTableNames(data) {
 }
 
 /**
- * Load a given table
+ * Load a given database table
  * 
  * @param data
  *            Data returned from HTTP request
@@ -209,10 +209,10 @@ function loadTable(data) {
 	newCont[0] = tmp;
 
 	// Create a new datatable
-	var tableId = id + 'DataTable';
+	var tableId = id + 'Datatable';
 	var table = new DataTable(tableId);
 
-	// Add column for the remove button
+	// Add column for the remove row button
 	headers.unshift('');
 	table.init(headers);
 	headers.shift();
@@ -248,8 +248,7 @@ function loadTable(data) {
 		}
 
 		// Add remove button
-		cols
-			.unshift('<span class="ui-icon ui-icon-close" onclick="deleteRow(this)"></span>');
+		cols.unshift('<span class="ui-icon ui-icon-close" onclick="deleteRow(this)"></span>');
 
 		// Add row
 		table.add(cols);
@@ -274,15 +273,14 @@ function loadTable(data) {
 
 			return (value);
 		}, {
-			onblur : 'submit', // Clicking outside editable area submits
-			// changes
+			onblur : 'submit', // Clicking outside editable area submits changes
 			type : 'textarea',
 			height : '30px' // The height of the text area
 		});
 
 	// Turn table into datatable
-	dTable = $('#' + id + 'DataTable').dataTable();
-	setConfigDatatable(id + 'DataTable', dTable);
+	dTable = $('#' + id + 'Datatable').dataTable();
+	setConfigDatatable(id + 'Datatable', dTable);
 
 	// Create add row button
 	var addBar = $('<div></div>');
@@ -299,54 +297,50 @@ function loadTable(data) {
 	/**
 	 * Add row
 	 */
-	addRowBtn
-		.bind(
-			'click',
-			function(event) {
-				// Create an empty row
-				var row = new Array();
+	addRowBtn.bind('click',	function(event) {
+		// Create an empty row
+		var row = new Array();
 
-				/**
-				 * Remove button
-				 */
-				row
-					.push('<span class="ui-icon ui-icon-close" onclick="deleteRow(this)"></span>');
-				for ( var i = 0; i < headers.length; i++) {
-					row.push('');
-				}
+		/**
+		 * Remove button
+		 */
+		row.push('<span class="ui-icon ui-icon-close" onclick="deleteRow(this)"></span>');
+		for ( var i = 0; i < headers.length; i++) {
+			row.push('');
+		}
 
-				// Get tab ID
-				var tabId = $(this).parent().parent().attr('id');
-				// Get table name
-				var tableName = tabId.replace('Tab', '');
-				// Get table ID
-				var tableId = tableName + 'DataTable';
+		// Get tab ID
+		var tabId = $(this).parent().parent().attr('id');
+		// Get table name
+		var tableName = tabId.replace('Tab', '');
+		// Get table ID
+		var tableId = tableName + 'Datatable';
 
-				// Get datatable
-				var dTable = getConfigDatatable(tableId);
-				// Add the row to the data table
-				dTable.fnAddData(row);
+		// Get datatable
+		var dTable = getConfigDatatable(tableId);
+		// Add the row to the data table
+		dTable.fnAddData(row);
 
-				// Enable editable columns (again)
-				// Do not make 1st column editable
-				$('#' + tabId + ' td:not(td:nth-child(1))').editable(
-					function(value, settings) {
-						// Get column index
-						var colPos = this.cellIndex;
-						// Get row index
-						var rowPos = dTable.fnGetPosition(this.parentNode);
+		// Enable editable columns (again)
+		// Do not make 1st column editable
+		$('#' + tabId + ' td:not(td:nth-child(1))').editable(
+			function(value, settings) {
+				// Get column index
+				var colPos = this.cellIndex;
+				// Get row index
+				var rowPos = dTable.fnGetPosition(this.parentNode);
 
-						// Update datatable
-						dTable.fnUpdate(value, rowPos, colPos);
+				// Update datatable
+				dTable.fnUpdate(value, rowPos, colPos);
 
-						return (value);
-					}, {
-						onblur : 'submit', // Clicking outside editable area
-						// submits changes
-						type : 'textarea',
-						height : '30px' // The height of the text area
-					});
+				return (value);
+			}, {
+				onblur : 'submit', // Clicking outside editable area
+				// submits changes
+				type : 'textarea',
+				height : '30px' // The height of the text area
 			});
+	});
 
 	/**
 	 * Save changes
@@ -357,7 +351,7 @@ function loadTable(data) {
 		// Get table name
 		var tableName = tabId.replace('Tab', '');
 		// Get table ID
-		var tableId = tableName + 'DataTable';
+		var tableId = tableName + 'Datatable';
 
 		// Get datatable
 		var dTable = getConfigDatatable(tableId);
@@ -415,7 +409,7 @@ function loadTable(data) {
 		// Get table name
 		var tableName = tabId.replace('Tab', '');
 		// Get table ID
-		var tableId = tableName + 'DataTable';
+		var tableId = tableName + 'Datatable';
 
 		// Get datatable
 		var dTable = getConfigDatatable(tableId);
@@ -489,6 +483,5 @@ function deleteRow(obj) {
  * @return The number of occurrences
  */
 String.prototype.count = function(char) {
-	return (this.length - this.replace(new RegExp(char, "g"), '').length)
-		/ char.length;
+	return (this.length - this.replace(new RegExp(char, "g"), '').length)/char.length;
 };

@@ -1,13 +1,13 @@
 $(document).ready(function() {
-	// Include utility script
+	// Include utility scripts
 	includeJs("js/custom/zvmUtils.js");
 });
 
 /**
- * Load the clone page
+ * Load clone page
  * 
  * @param node
- *            Source node
+ *            Source node to clone
  * @return Nothing
  */
 function loadClonePage(node) {
@@ -31,9 +31,9 @@ function loadClonePage(node) {
 
 		// Get hardware control point
 		var nodeRow = $('#' + node).parent().parent();
-		var myDataTable = getNodesDataTable();
-		var rowPos = myDataTable.fnGetPosition(nodeRow.get(0));
-		var aData = myDataTable.fnGetData(rowPos);
+		var dTable = getNodesDataTable();
+		var rowPos = dTable.fnGetPosition(nodeRow.get(0));
+		var aData = dTable.fnGetData(rowPos);
 		var hcp = aData[hcpCol];
 
 		// Create status bar, hide on load
@@ -50,19 +50,15 @@ function loadClonePage(node) {
 		cloneForm.append(infoBar);
 
 		// Target node range
-		cloneForm
-			.append('<div><label>Target node range:</label><input type="text" id="tgtNode" name="tgtNode"/></div>');
+		cloneForm.append('<div><label>Target node range:</label><input type="text" id="tgtNode" name="tgtNode"/></div>');
 		// Target user ID range
-		cloneForm
-			.append('<div><label>Target user ID range:</label><input type="text" id="tgtUserId" name="tgtUserId"/></div>');
+		cloneForm.append('<div><label>Target user ID range:</label><input type="text" id="tgtUserId" name="tgtUserId"/></div>');
 
 		// Create the rest of the form
 		// Include clone source, hardware control point, group, disk pool, and
 		// disk password
-		cloneForm
-			.append('<div><label>Clone source:</label><input type="text" id="srcNode" name="srcNode" readonly="readonly" value="' + node + '"/></div>');
-		cloneForm
-			.append('<div><label>Hardware control point:</label><input type="text" id="newHcp" name="newHcp" readonly="readonly" value="' + hcp + '"/></div>');
+		cloneForm.append('<div><label>Clone source:</label><input type="text" id="srcNode" name="srcNode" readonly="readonly" value="' + node + '"/></div>');
+		cloneForm.append('<div><label>Hardware control point:</label><input type="text" id="newHcp" name="newHcp" readonly="readonly" value="' + hcp + '"/></div>');
 
 		// Group
 		var group = $('<div></div>');
@@ -78,7 +74,6 @@ function loadClonePage(node) {
 				$(this).autocomplete(groupNames.split(','));
 			}
 		});
-
 		group.append(groupLabel);
 		group.append(groupInput);
 		cloneForm.append(group);
@@ -96,142 +91,114 @@ function loadClonePage(node) {
 		poolDiv.append(poolInput);
 		cloneForm.append(poolDiv);
 
-		cloneForm
-			.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw"/></div>');
+		cloneForm.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw"/></div>');
 
 		/**
 		 * Clone
 		 */
 		var cloneBtn = createButton('Clone');
-		cloneBtn
-			.bind('click', function(event) {
-				var ready = true;
-				var errMsg = '';
+		cloneBtn.bind('click', function(event) {
+			var ready = true;
+			var errMsg = '';
 
-				// Check node name, userId, hardware control point, group,
-				// and password
-				var inputs = $('#' + newTabId + ' input');
-				for ( var i = 0; i < inputs.length; i++) {
-					if (!inputs.eq(i).val()
-						&& inputs.eq(i).attr('name') != 'diskPw'
-						&& inputs.eq(i).attr('name') != 'diskPool') {
-						inputs.eq(i).css('border', 'solid #FF0000 1px');
+			// Check node name, userId, hardware control point, group,
+			// and password
+			var inputs = $('#' + newTabId + ' input');
+			for ( var i = 0; i < inputs.length; i++) {
+				if (!inputs.eq(i).val()
+					&& inputs.eq(i).attr('name') != 'diskPw'
+					&& inputs.eq(i).attr('name') != 'diskPool') {
+					inputs.eq(i).css('border', 'solid #FF0000 1px');
+					ready = false;
+				} else {
+					inputs.eq(i).css('border', 'solid #BDBDBD 1px');
+				}
+			}
+
+			if (!ready) {
+				errMsg = errMsg + 'You are missing some inputs. ';
+			}
+
+			// Get target node
+			var nodeRange = $('#' + newTabId + ' input[name=tgtNode]').val();
+			// Get target user ID
+			var userIdRange = $('#' + newTabId + ' input[name=tgtUserId]').val();
+
+			// Is a node range given
+			if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
+				if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
+					errMsg = errMsg + 'A user ID range and node range needs to be given. ';
+					ready = false;
+				} else {
+					var tmp = nodeRange.split('-');
+
+					// Get node base name
+					var nodeBase = tmp[0].match(/[a-zA-Z]+/);
+					// Get the starting index
+					var nodeStart = parseInt(tmp[0].match(/\d+/));
+					// Get the ending index
+					var nodeEnd = parseInt(tmp[1]);
+
+					tmp = userIdRange.split('-');
+
+					// Get user ID base name
+					var userIdBase = tmp[0].match(/[a-zA-Z]+/);
+					// Get the starting index
+					var userIdStart = parseInt(tmp[0].match(/\d+/));
+					// Get the ending index
+					var userIdEnd = parseInt(tmp[1]);
+
+					// If the starting and ending index do not match
+					if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
+						// Not ready to provision
+						errMsg = errMsg + 'The node range and user ID range does not match. ';
 						ready = false;
-					} else {
-						inputs.eq(i).css('border', 'solid #BDBDBD 1px');
 					}
 				}
+			}
 
-				if (!ready) {
-					errMsg = errMsg + 'You are missing some inputs. ';
-				}
+			var srcNode = $('#' + newTabId + ' input[name=srcNode]').val();
+			hcp = $('#' + newTabId + ' input[name=newHcp]').val();
+			var group = $('#' + newTabId + ' input[name=newGroup]').val();
+			var diskPool = $('#' + newTabId + ' input[name=diskPool]').val();
+			var diskPw = $('#' + newTabId + ' input[name=diskPw]').val();
 
-				// Get target node
-				var nodeRange = $('#' + newTabId + ' input[name=tgtNode]')
-					.val();
-				// Get target user ID
-				var userIdRange = $('#' + newTabId + ' input[name=tgtUserId]')
-					.val();
+			// If a value is given for every input
+			if (ready) {
+				// Disable all inputs
+				var inputs = cloneForm.find('input');
+				inputs.attr('readonly', 'readonly');
+				inputs.css( {
+					'background-color' : '#F2F2F2'
+				});
 
-				// Is a node range given
-				if (nodeRange.indexOf('-') > -1
-					|| userIdRange.indexOf('-') > -1) {
-					if (nodeRange.indexOf('-') < 0
-						|| userIdRange.indexOf('-') < 0) {
-						errMsg = errMsg + 'A user ID range and node range needs to be given. ';
-						ready = false;
-					} else {
-						var tmp = nodeRange.split('-');
+				// If a node range is given
+				if (nodeRange.indexOf('-') > -1) {
+					var tmp = nodeRange.split('-');
 
-						// Get node base name
-						var nodeBase = tmp[0].match(/[a-zA-Z]+/);
-						// Get the starting index
-						var nodeStart = parseInt(tmp[0].match(/\d+/));
-						// Get the ending index
-						var nodeEnd = parseInt(tmp[1]);
+					// Get node base name
+					var nodeBase = tmp[0].match(/[a-zA-Z]+/);
+					// Get the starting index
+					var nodeStart = parseInt(tmp[0].match(/\d+/));
+					// Get the ending index
+					var nodeEnd = parseInt(tmp[1]);
 
-						tmp = userIdRange.split('-');
+					tmp = userIdRange.split('-');
 
-						// Get user ID base name
-						var userIdBase = tmp[0].match(/[a-zA-Z]+/);
-						// Get the starting index
-						var userIdStart = parseInt(tmp[0].match(/\d+/));
-						// Get the ending index
-						var userIdEnd = parseInt(tmp[1]);
+					// Get user ID base name
+					var userIdBase = tmp[0].match(/[a-zA-Z]+/);
+					// Get the starting index
+					var userIdStart = parseInt(tmp[0].match(/\d+/));
+					// Get the ending index
+					var userIdEnd = parseInt(tmp[1]);
 
-						// Does starting and ending index match
-						if (!(nodeStart == userIdStart)
-							|| !(nodeEnd == userIdEnd)) {
-							errMsg = errMsg + 'The node range and user ID range does not match. ';
-							ready = false;
-						}
-					}
-				}
+					for ( var i = nodeStart; i <= nodeEnd; i++) {
+						var node = nodeBase + i.toString();
+						var userId = userIdBase + i.toString();
+						var inst = i + '/' + nodeEnd;
 
-				var srcNode = $('#' + newTabId + ' input[name=srcNode]').val();
-				hcp = $('#' + newTabId + ' input[name=newHcp]').val();
-				var group = $('#' + newTabId + ' input[name=newGroup]').val();
-				var diskPool = $('#' + newTabId + ' input[name=diskPool]')
-					.val();
-				var diskPw = $('#' + newTabId + ' input[name=diskPw]').val();
-
-				// If a value is given for every input
-				if (ready) {
-					// Disable all inputs
-					var inputs = cloneForm.find('input');
-					inputs.attr('readonly', 'readonly');
-					inputs.css( {
-						'background-color' : '#F2F2F2'
-					});
-
-					// If a node range is given
-					if (nodeRange.indexOf('-') > -1) {
-						var tmp = nodeRange.split('-');
-
-						// Get node base name
-						var nodeBase = tmp[0].match(/[a-zA-Z]+/);
-						// Get the starting index
-						var nodeStart = parseInt(tmp[0].match(/\d+/));
-						// Get the ending index
-						var nodeEnd = parseInt(tmp[1]);
-
-						tmp = userIdRange.split('-');
-
-						// Get user ID base name
-						var userIdBase = tmp[0].match(/[a-zA-Z]+/);
-						// Get the starting index
-						var userIdStart = parseInt(tmp[0].match(/\d+/));
-						// Get the ending index
-						var userIdEnd = parseInt(tmp[1]);
-
-						for ( var i = nodeStart; i <= nodeEnd; i++) {
-							var node = nodeBase + i.toString();
-							var userId = userIdBase + i.toString();
-							var inst = i + '/' + nodeEnd;
-
-							/**
-							 * 1. Define node
-							 */
-							$.ajax( {
-								url : 'lib/cmd.php',
-								dataType : 'json',
-								data : {
-									cmd : 'nodeadd',
-									tgt : '',
-									args : node + ';zvm.hcp=' + hcp
-										+ ';zvm.userid=' + userId
-										+ ';nodehm.mgt=zvm' + ';groups='
-										+ group,
-									msg : 'cmd=nodeadd;inst=' + inst + ';out='
-										+ statBarId + ';node=' + node
-								},
-
-								success : updateCloneStatus
-							});
-						}
-					} else {
 						/**
-						 * 1. Define node
+						 * (1) Define node
 						 */
 						$.ajax( {
 							url : 'lib/cmd.php',
@@ -239,33 +206,54 @@ function loadClonePage(node) {
 							data : {
 								cmd : 'nodeadd',
 								tgt : '',
-								args : nodeRange + ';zvm.hcp=' + hcp
-									+ ';zvm.userid=' + userIdRange
-									+ ';nodehm.mgt=zvm' + ';groups=' + group,
-								msg : 'cmd=nodeadd;inst=1/1;out=' + statBarId
-									+ ';node=' + nodeRange
+								args : node + ';zvm.hcp=' + hcp
+									+ ';zvm.userid=' + userId
+									+ ';nodehm.mgt=zvm' + ';groups='
+									+ group,
+								msg : 'cmd=nodeadd;inst=' + inst + ';out='
+									+ statBarId + ';node=' + node
 							},
 
 							success : updateCloneStatus
 						});
 					}
-
-					// Create loader
-					var loader = createLoader('');
-					$('#' + statBarId).append(loader);
-					$('#' + statBarId).show();
-
-					// Stop this function from executing again
-					// Unbind event
-					$(this).unbind(event);
-					$(this).css( {
-						'background-color' : '#F2F2F2',
-						'color' : '#BDBDBD'
-					});
 				} else {
-					alert('(Error) ' + errMsg);
+					/**
+					 * (1) Define node
+					 */
+					$.ajax( {
+						url : 'lib/cmd.php',
+						dataType : 'json',
+						data : {
+							cmd : 'nodeadd',
+							tgt : '',
+							args : nodeRange + ';zvm.hcp=' + hcp
+								+ ';zvm.userid=' + userIdRange
+								+ ';nodehm.mgt=zvm' + ';groups=' + group,
+							msg : 'cmd=nodeadd;inst=1/1;out=' + statBarId
+								+ ';node=' + nodeRange
+						},
+
+						success : updateCloneStatus
+					});
 				}
-			});
+
+				// Create loader
+				var loader = createLoader('');
+				$('#' + statBarId).append(loader);
+				$('#' + statBarId).show();
+
+				// Stop this function from executing again
+				// Unbind event
+				$(this).unbind(event);
+				$(this).css( {
+					'background-color' : '#F2F2F2',
+					'color' : '#BDBDBD'
+				});
+			} else {
+				alert('(Error) ' + errMsg);
+			}
+		});
 		cloneForm.append(cloneBtn);
 
 		// Add clone tab
@@ -297,15 +285,15 @@ function loadInventory(data) {
 	$('#' + loaderId).remove();
 
 	// Create status bar
-	var statusBarId = node + 'StatusBar';
-	var statusBar = createStatusBar(statusBarId);
+	var statBarId = node + 'StatusBar';
+	var statBar = createStatusBar(statBarId);
 
 	// Add loader to status bar, but hide it
 	loaderId = node + 'StatusBarLoader';
 	var loader = createLoader(loaderId);
-	statusBar.append(loader);
+	statBar.append(loader);
 	loader.hide();
-	statusBar.hide();
+	statBar.hide();
 
 	// Create array of property keys
 	var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv',
@@ -345,7 +333,7 @@ function loadInventory(data) {
 		$('#' + invDivId).toggle();
 
 		// Create loader
-		loader = createLoader(node + 'TabLoader');
+		var loader = createLoader(node + 'TabLoader');
 		loader = $('<center></center>').append(loader);
 		ueDiv.append(loader);
 
@@ -378,7 +366,7 @@ function loadInventory(data) {
 	toggleLnkDiv.append(toggleLink);
 
 	/**
-	 * General inventory
+	 * General info
 	 */
 	var fieldSet = $('<fieldset></fieldset>');
 	var legend = $('<legend>General</legend>');
@@ -409,7 +397,7 @@ function loadInventory(data) {
 	invDiv.append(fieldSet);
 
 	/**
-	 * Hardware inventory
+	 * Hardware info
 	 */
 	var hwList, hwItem;
 	fieldSet = $('<fieldset></fieldset>');
@@ -495,14 +483,16 @@ function loadInventory(data) {
 			procTable.append(procTabRow);
 			var procType, procAddr, procId, procAff;
 
-			// Create context menu - Remove processor
-			var contextMenu = [ {
+			/**
+			 * Remove processor
+			 */
+			var contextMenu = [{
 				'Remove' : function(menuItem, menu) {
 					if (confirm('Are you sure?')) {
 						removeProcessor(node, $(this).text());
 					}
 				}
-			} ];
+			}];
 
 			// Loop through each processor
 			var closeBtn;
@@ -562,30 +552,27 @@ function loadInventory(data) {
 			 * Add processor
 			 */
 			var addProcLink = $('<a href="#">Add processor</a>');
-			addProcLink
-				.bind(
-					'click',
-					function(event) {
-						var procForm = '<div class="form">'
-							+ '<div><label for="procNode">Processor for:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="'
-							+ node
-							+ '"/></div>'
-							+ '<div><label for="procAddress">Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>'
-							+ '<div><label for="procType">Processor type:</label>'
-							+ '<select id="procType" name="procType">'
-							+ '<option>CP</option>' + '<option>IFL</option>'
-							+ '<option>ZAAP</option>' + '<option>ZIIP</option>'
-							+ '</select>' + '</div>' + '</div>';
-
-						$.prompt(procForm, {
-							callback : addProcessor,
-							buttons : {
-								Ok : true,
-								Cancel : false
-							},
-							prefix : 'cleanblue'
-						});
-					});
+			addProcLink.bind('click', function(event) {
+    			var procForm = '<div class="form">'
+    				+ '<div><label for="procNode">Processor for:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="'
+    				+ node
+    				+ '"/></div>'
+    				+ '<div><label for="procAddress">Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>'
+    				+ '<div><label for="procType">Processor type:</label>'
+    				+ '<select id="procType" name="procType">'
+    				+ '<option>CP</option>' + '<option>IFL</option>'
+    				+ '<option>ZAAP</option>' + '<option>ZIIP</option>'
+    				+ '</select>' + '</div>' + '</div>';
+    
+    			$.prompt(procForm, {
+    				callback : addProcessor,
+    				buttons : {
+    					Ok : true,
+    					Cancel : false
+    				},
+    				prefix : 'cleanblue'
+    			});
+    		});
 			procFooter.append(addProcLink);
 			procTable.append(procFooter);
 
@@ -605,14 +592,16 @@ function loadInventory(data) {
 			var dasdBody = $('<tbody></tbody>');
 			var dasdFooter = $('<tfoot></tfoot>');
 
-			// Create context menu - Remove disk
-			contextMenu = [ {
+			/**
+			 * Remove disk
+			 */
+			contextMenu = [{
 				'Remove' : function(menuItem, menu) {
 					if (confirm('Are you sure?')) {
 						removeDisk(node, $(this).text());
 					}
 				}
-			} ];
+			}];
 
 			// Table columns - Virtual Device, Type, VolID, Type of Access, and
 			// Size
@@ -654,46 +643,45 @@ function loadInventory(data) {
 			dasdTable.append(dasdBody);
 
 			/**
-			 * Add DASD
+			 * Add disk
 			 */
 			var addDasdLink = $('<a href="#">Add disk</a>');
-			addDasdLink
-				.bind('click', function(event) {
-					// Get list of disk pools
-					var temp = attrs['hcp'][0].split('.');
-					var cookie = $.cookie(temp[0] + 'DiskPools');
+			addDasdLink.bind('click', function(event) {
+				// Get list of disk pools
+				var temp = attrs['hcp'][0].split('.');
+				var cookie = $.cookie(temp[0] + 'DiskPools');
 
-					// Create drop down list for disk pool
-					var pools = cookie.split(',');
-					var selectPool = '<select id="diskPool" name="diskPool">';
-					for ( var i = 0; i < pools.length; i++) {
-						selectPool = selectPool + '<option>' + pools[i]
-							+ '</option>';
-					}
-					selectPool = selectPool + '</select>';
+				// Create drop down list for disk pool
+				var pools = cookie.split(',');
+				var selectPool = '<select id="diskPool" name="diskPool">';
+				for ( var i = 0; i < pools.length; i++) {
+					selectPool = selectPool + '<option>' + pools[i]
+						+ '</option>';
+				}
+				selectPool = selectPool + '</select>';
 
-					var dasdForm = '<div class="form">'
-						+ '<div><label for="diskNode">Disk for:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="'
-						+ node
-						+ '"/></div>'
-						+ '<div><label for="diskType">Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option></select></div>'
-						+ '<div><label for="diskAddress">Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>'
-						+ '<div><label for="diskSize">Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>'
-						+ '<div><label for="diskPool">Disk pool:</label>'
-						+ selectPool
-						+ '</div>'
-						+ '<div><label for="diskPassword">Disk password:</label><input type="password" id="diskPassword" name="diskPassword"/></div>'
-						+ '</div>';
+				var dasdForm = '<div class="form">'
+					+ '<div><label for="diskNode">Disk for:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="'
+					+ node
+					+ '"/></div>'
+					+ '<div><label for="diskType">Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option></select></div>'
+					+ '<div><label for="diskAddress">Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>'
+					+ '<div><label for="diskSize">Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>'
+					+ '<div><label for="diskPool">Disk pool:</label>'
+					+ selectPool
+					+ '</div>'
+					+ '<div><label for="diskPassword">Disk password:</label><input type="password" id="diskPassword" name="diskPassword"/></div>'
+					+ '</div>';
 
-					$.prompt(dasdForm, {
-						callback : addDisk,
-						buttons : {
-							Ok : true,
-							Cancel : false
-						},
-						prefix : 'cleanblue'
-					});
+				$.prompt(dasdForm, {
+					callback : addDisk,
+					buttons : {
+						Ok : true,
+						Cancel : false
+					},
+					prefix : 'cleanblue'
 				});
+			});
 			dasdFooter.append(addDasdLink);
 			dasdTable.append(dasdFooter);
 
@@ -713,8 +701,9 @@ function loadInventory(data) {
 			var nicBody = $('<tbody></tbody>');
 			var nicFooter = $('<tfoot></tfoot>');
 
-			// Create context menu - Remove NIC
-			contextMenu = [ {
+			/**
+			 * Remove NIC
+			 */contextMenu = [ {
 				'Remove' : function(menuItem, menu) {
 					if (confirm('Are you sure?')) {
 						removeNic(node, $(this).text());
@@ -769,120 +758,119 @@ function loadInventory(data) {
 			 * Add NIC
 			 */
 			var addNicLink = $('<a href="#">Add NIC</a>');
-			addNicLink
-				.bind('click', function(event) {
-					// Get network names
-					var temp = attrs['hcp'][0].split('.');
-					var networks = $.cookie(temp[0] + 'Networks').split(',');
+			addNicLink.bind('click', function(event) {
+				// Get network names
+				var temp = attrs['hcp'][0].split('.');
+				var networks = $.cookie(temp[0] + 'Networks').split(',');
 
-					// Create a drop down list
-					var gLans = '<select id="nicLanName" name="nicLanName">';
-					var vswitches = '<select id="nicVSwitchName" name="nicVSwitchName">';
-					for ( var i = 0; i < networks.length; i++) {
-						var network = networks[i].split(' ');
+				// Create a drop down list
+				var gLans = '<select id="nicLanName" name="nicLanName">';
+				var vswitches = '<select id="nicVSwitchName" name="nicVSwitchName">';
+				for ( var i = 0; i < networks.length; i++) {
+					var network = networks[i].split(' ');
 
-						// Get VSwitches
-						if (network[0] == 'VSWITCH') {
-							vswitches = vswitches + '<option>' + network[0]
-								+ ' ' + network[1] + '</option>';
+					// Get VSwitches
+					if (network[0] == 'VSWITCH') {
+						vswitches = vswitches + '<option>' + network[0]
+							+ ' ' + network[1] + '</option>';
+					}
+
+					// Get Guest LAN
+					else if (network[0] == 'LAN') {
+						gLans = gLans + '<option>' + network[0] + ' '
+							+ network[1] + '</option>';
+					}
+				}
+				vswitches = vswitches + '</select>';
+				gLans = gLans + '</select>';
+
+				var nicTypeForm = '<div class="form">'
+					+ '<div><label for="nicNode">NIC for:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="'
+					+ node
+					+ '"/></div>'
+					+ '<div><label for="nicAddress">NIC address:</label><input type="text" id="nicAddress" name="nicAddress"/></div>'
+					+ '<div><label for="nicType">NIC type:</label>'
+					+ '<select id="nicType" name="nicType">'
+					+ '<option>QDIO</option>'
+					+ '<option>HiperSocket</option>'
+					+ '</select>'
+					+ '</div>'
+					+ '<div><label for="nicNetworkType">Network type:</label>'
+					+ '<select id="nicNetworkType" name="nicNetworkType">'
+					+ '<option>Guest LAN</option>'
+					+ '<option>Virtual Switch</option>' + '</select>'
+					+ '</div>' + '</div>';
+				var configGuestLanForm = '<div class="form">'
+					+ '<div><label for="nicLanName">Guest LAN name:</label>'
+					+ gLans + '</div>' + '</div>';
+				var configVSwitchForm = '<div class="form">'
+					+ '<div><label for="nicVSwitchName">VSWITCH name:</label>'
+					+ vswitches + '</div>' + '</div>';
+
+				var states = {
+					// Select NIC type
+					type : {
+						html : nicTypeForm,
+						buttons : {
+							Ok : true,
+							Cancel : false
+						},
+						focus : 1,
+						prefix : 'cleanblue',
+						submit : function(v, m, f) {
+							if (!v) {
+								return true;
+							} else {
+								var networkType = f.nicNetworkType;
+								if (networkType == 'Guest LAN')
+									$.prompt.goToState('configGuestLan');
+								else
+									$.prompt.goToState('configVSwitch');
+								return false;
+							}
 						}
+					},
 
-						// Get Guest LAN
-						else if (network[0] == 'LAN') {
-							gLans = gLans + '<option>' + network[0] + ' '
-								+ network[1] + '</option>';
+					// Configure guest LAN
+					configGuestLan : {
+						html : configGuestLanForm,
+						callback : addNic,
+						buttons : {
+							Ok : true,
+							Cancel : false
+						},
+						focus : 1,
+						prefix : 'cleanblue',
+						submit : function(v, m, f) {
+							if (v) {
+								return true;
+							}
+						}
+					},
+
+					// Configure VSwitch
+					configVSwitch : {
+						html : configVSwitchForm,
+						callback : addNic,
+						buttons : {
+							Ok : true,
+							Cancel : false
+						},
+						focus : 1,
+						prefix : 'cleanblue',
+						submit : function(v, m, f) {
+							if (v) {
+								return true;
+							}
 						}
 					}
-					vswitches = vswitches + '</select>';
-					gLans = gLans + '</select>';
+				};
 
-					var nicTypeForm = '<div class="form">'
-						+ '<div><label for="nicNode">NIC for:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="'
-						+ node
-						+ '"/></div>'
-						+ '<div><label for="nicAddress">NIC address:</label><input type="text" id="nicAddress" name="nicAddress"/></div>'
-						+ '<div><label for="nicType">NIC type:</label>'
-						+ '<select id="nicType" name="nicType">'
-						+ '<option>QDIO</option>'
-						+ '<option>HiperSocket</option>'
-						+ '</select>'
-						+ '</div>'
-						+ '<div><label for="nicNetworkType">Network type:</label>'
-						+ '<select id="nicNetworkType" name="nicNetworkType">'
-						+ '<option>Guest LAN</option>'
-						+ '<option>Virtual Switch</option>' + '</select>'
-						+ '</div>' + '</div>';
-					var configGuestLanForm = '<div class="form">'
-						+ '<div><label for="nicLanName">Guest LAN name:</label>'
-						+ gLans + '</div>' + '</div>';
-					var configVSwitchForm = '<div class="form">'
-						+ '<div><label for="nicVSwitchName">VSWITCH name:</label>'
-						+ vswitches + '</div>' + '</div>';
-
-					var states = {
-						// Select NIC type
-						type : {
-							html : nicTypeForm,
-							buttons : {
-								Ok : true,
-								Cancel : false
-							},
-							focus : 1,
-							prefix : 'cleanblue',
-							submit : function(v, m, f) {
-								if (!v) {
-									return true;
-								} else {
-									var networkType = f.nicNetworkType;
-									if (networkType == 'Guest LAN')
-										$.prompt.goToState('configGuestLan');
-									else
-										$.prompt.goToState('configVSwitch');
-									return false;
-								}
-							}
-						},
-
-						// Configure guest LAN
-						configGuestLan : {
-							html : configGuestLanForm,
-							callback : addNic,
-							buttons : {
-								Ok : true,
-								Cancel : false
-							},
-							focus : 1,
-							prefix : 'cleanblue',
-							submit : function(v, m, f) {
-								if (v) {
-									return true;
-								}
-							}
-						},
-
-						// Configure VSwitch
-						configVSwitch : {
-							html : configVSwitchForm,
-							callback : addNic,
-							buttons : {
-								Ok : true,
-								Cancel : false
-							},
-							focus : 1,
-							prefix : 'cleanblue',
-							submit : function(v, m, f) {
-								if (v) {
-									return true;
-								}
-							}
-						}
-					};
-
-					$.prompt(states, {
-						callback : addNic,
-						prefix : 'cleanblue'
-					});
+				$.prompt(states, {
+					callback : addNic,
+					prefix : 'cleanblue'
 				});
+			});
 			nicFooter.append(addNicLink);
 			nicTable.append(nicFooter);
 
@@ -897,14 +885,14 @@ function loadInventory(data) {
 	invDiv.append(fieldSet);
 
 	// Append to tab
-	$('#' + tabId).append(statusBar);
+	$('#' + tabId).append(statBar);
 	$('#' + tabId).append(toggleLnkDiv);
 	$('#' + tabId).append(ueDiv);
 	$('#' + tabId).append(invDiv);
 }
 
 /**
- * Load zVM provision page
+ * Load provision page
  * 
  * @param tabId
  *            The provision tab ID
@@ -1128,169 +1116,90 @@ function loadProvisionPage(tabId) {
 	 * Provision
 	 */
 	var provisionBtn = createButton('Provision');
-	provisionBtn
-		.bind('click', function(event) {
-			var ready = true;
-			errMsg = '';
+	provisionBtn.bind('click', function(event) {
+		var ready = true;
+		errMsg = '';
 
-			// Get the tab ID
-			var thisTabId = $(this).parent().parent().attr('id');
-			var out2Id = thisTabId.replace('zvmProvisionTab', '');
+		// Get the tab ID
+		var thisTabId = $(this).parent().parent().attr('id');
+		var out2Id = thisTabId.replace('zvmProvisionTab', '');
 
-			// Check node name, userId, hardware control point, and
-			// group
-			var inputs = $('#' + thisTabId + ' input');
-			for ( var i = 0; i < inputs.length; i++) {
-				// Do not check OS or disk password
-				if (!inputs.eq(i).val() && inputs.eq(i).attr('name') != 'os'
-					&& inputs.eq(i).attr('type') != 'password') {
-					inputs.eq(i).css('border', 'solid #FF0000 1px');
-					ready = false;
-				} else {
-					inputs.eq(i).css('border', 'solid #BDBDBD 1px');
-				}
-			}
-
-			// Check user entry
-			var thisUserEntry = $('#' + thisTabId + ' textarea');
-			thisUserEntry.val(thisUserEntry.val().toUpperCase());
-			if (!thisUserEntry.val()) {
-				thisUserEntry.css('border', 'solid #FF0000 1px');
+		// Check node name, userId, hardware control point, and group
+		var inputs = $('#' + thisTabId + ' input');
+		for ( var i = 0; i < inputs.length; i++) {
+			// Do not check OS or disk password
+			if (!inputs.eq(i).val() && inputs.eq(i).attr('name') != 'os'
+				&& inputs.eq(i).attr('type') != 'password') {
+				inputs.eq(i).css('border', 'solid #FF0000 1px');
 				ready = false;
 			} else {
-				thisUserEntry.css('border', 'solid #BDBDBD 1px');
+				inputs.eq(i).css('border', 'solid #BDBDBD 1px');
 			}
+		}
 
-			// Check if user entry contains user ID
-			var thisUserId = $('#' + thisTabId + ' input[name=userId]');
-			var pos = thisUserEntry.val().indexOf(
-				'USER ' + thisUserId.val().toUpperCase());
-			if (pos < 0) {
-				errMsg = errMsg + 'The user entry does not contain the correct user ID. ';
+		// Check user entry
+		var thisUserEntry = $('#' + thisTabId + ' textarea');
+		thisUserEntry.val(thisUserEntry.val().toUpperCase());
+		if (!thisUserEntry.val()) {
+			thisUserEntry.css('border', 'solid #FF0000 1px');
+			ready = false;
+		} else {
+			thisUserEntry.css('border', 'solid #BDBDBD 1px');
+		}
+
+		// Check if user entry contains user ID
+		var thisUserId = $('#' + thisTabId + ' input[name=userId]');
+		var pos = thisUserEntry.val().indexOf(
+			'USER ' + thisUserId.val().toUpperCase());
+		if (pos < 0) {
+			errMsg = errMsg + 'The user entry does not contain the correct user ID. ';
+			ready = false;
+		}
+
+		// If no operating system is specified, create only user entry
+		os = $('#' + thisTabId + ' input[name=os]');
+
+		// Check number of disks
+		var diskRows = $('#' + thisTabId + ' table tr');
+		// If an OS is given, disks are needed
+		if (os.val() && (diskRows.length < 1)) {
+			errMsg = errMsg + 'You need to add at some disks. ';
+			ready = false;
+		}
+
+		// Check address, size, pool, and password
+		var diskArgs = $('#' + thisTabId + ' table input');
+		for ( var i = 0; i < diskArgs.length; i++) {
+			if (!diskArgs.eq(i).val()
+				&& diskArgs.eq(i).attr('type') != 'password') {
+				diskArgs.eq(i).css('border', 'solid #FF0000 1px');
 				ready = false;
+			} else {
+				diskArgs.eq(i).css('border', 'solid #BDBDBD 1px');
 			}
+		}
 
-			// If no operating system is specified, create only user
-			// entry
-			os = $('#' + thisTabId + ' input[name=os]');
-
-			// Check number of disks
-			var diskRows = $('#' + thisTabId + ' table tr');
-			// If an OS is given, disks are needed
-			if (os.val() && (diskRows.length < 1)) {
-				errMsg = errMsg + 'You need to add at some disks. ';
-				ready = false;
-			}
-
-			// Check address, size, pool, and password
-			var diskArgs = $('#' + thisTabId + ' table input');
-			for ( var i = 0; i < diskArgs.length; i++) {
-				if (!diskArgs.eq(i).val()
-					&& diskArgs.eq(i).attr('type') != 'password') {
-					diskArgs.eq(i).css('border', 'solid #FF0000 1px');
-					ready = false;
-				} else {
-					diskArgs.eq(i).css('border', 'solid #BDBDBD 1px');
+		if (ready) {
+			if (!os.val()) {
+				/*
+				 * If no OS is given, create a virtual server
+				 */
+				var msg = '';
+				if (diskRows.length > 0) {
+					msg = 'Do you want to create virtual server(s) without an operating system ?';
 				}
-			}
 
-			if (ready) {
-				if (!os.val()) {
-					/**
-					 * If no OS is given, create a virtual server
-					 */
-					var msg = '';
-					if (diskRows.length > 0) {
-						msg = 'Do you want to create virtual server(s) without an operating system ?';
-					}
+				// If no disks are given, create a virtual server (no disk)
+				else {
+					msg = 'Do you want to create virtual server(s) without an operating system or disk(s) ?';
+				}
 
-					// If no disks are given, create a virtual
-					// server (no disk)
-					else {
-						msg = 'Do you want to create virtual server(s) without an operating system or disk(s) ?';
-					}
-
-					// If the user clicks Ok
-					if (confirm(msg)) {
-						// Stop this function from executing again
-						// Unbind event
-						provisionBtn.unbind('click');
-						provisionBtn.css( {
-							'background-color' : '#F2F2F2',
-							'color' : '#BDBDBD'
-						});
-
-						// Show loader
-						$('#zProvisionStatBar' + out2Id).show();
-						$('#zProvisionLoader' + out2Id).show();
-
-						// Stop this function from executing again
-						// Unbind event
-						addDiskLink.unbind('click');
-						addDiskLink.css( {
-							'color' : '#BDBDBD'
-						});
-
-						// Disable close button on disk table
-						$('#' + thisTabId + ' table span').unbind('click');
-
-						// Disable all fields
-						var inputs = $('#' + thisTabId + ' input');
-						inputs.attr('readonly', 'readonly');
-						inputs.css( {
-							'background-color' : '#F2F2F2'
-						});
-
-						var textarea = $('#' + thisTabId + ' textarea');
-
-						// Add a new line at the end of the user entry
-						var tmp = jQuery.trim(textarea.val());
-						textarea.val(tmp + '\n');
-
-						textarea.attr('readonly', 'readonly');
-						textarea.css( {
-							'background-color' : '#F2F2F2'
-						});
-
-						// Get node name
-						var node = $('#' + thisTabId + ' input[name=nodeName]')
-							.val();
-						// Get userId
-						var userId = $('#' + thisTabId + ' input[name=userId]')
-							.val();
-						// Get hardware control point
-						var hcp = $('#' + thisTabId + ' input[name=hcp]').val();
-						// Get group
-						var group = $('#' + thisTabId + ' input[name=group]')
-							.val();
-
-						/**
-						 * 1. Define node
-						 */
-						$.ajax( {
-							url : 'lib/cmd.php',
-							dataType : 'json',
-							data : {
-								cmd : 'nodeadd',
-								tgt : '',
-								args : node + ';zvm.hcp=' + hcp
-									+ ';zvm.userid=' + userId
-									+ ';nodehm.mgt=zvm' + ';groups=' + group,
-								msg : 'cmd=nodeadd;out=' + out2Id
-							},
-
-							success : updateProvisionStatus
-						});
-					}
-				} else {
-					/**
-					 * Create a virtual server and install OS
-					 */
-
+				// If the user clicks Ok
+				if (confirm(msg)) {
 					// Stop this function from executing again
 					// Unbind event
-					$(this).unbind(event);
-					$(this).css( {
+					provisionBtn.unbind('click');
+					provisionBtn.css( {
 						'background-color' : '#F2F2F2',
 						'color' : '#BDBDBD'
 					});
@@ -1336,10 +1245,11 @@ function loadProvisionPage(tabId) {
 					// Get hardware control point
 					var hcp = $('#' + thisTabId + ' input[name=hcp]').val();
 					// Get group
-					var group = $('#' + thisTabId + ' input[name=group]').val();
+					var group = $('#' + thisTabId + ' input[name=group]')
+						.val();
 
 					/**
-					 * 1. Define node
+					 * (1) Define node
 					 */
 					$.ajax( {
 						url : 'lib/cmd.php',
@@ -1347,9 +1257,9 @@ function loadProvisionPage(tabId) {
 						data : {
 							cmd : 'nodeadd',
 							tgt : '',
-							args : node + ';zvm.hcp=' + hcp + ';zvm.userid='
-								+ userId + ';nodehm.mgt=zvm' + ';groups='
-								+ group,
+							args : node + ';zvm.hcp=' + hcp
+								+ ';zvm.userid=' + userId
+								+ ';nodehm.mgt=zvm' + ';groups=' + group,
 							msg : 'cmd=nodeadd;out=' + out2Id
 						},
 
@@ -1357,9 +1267,83 @@ function loadProvisionPage(tabId) {
 					});
 				}
 			} else {
-				alert('(Error) ' + errMsg);
+				/**
+				 * Create a virtual server and install OS
+				 */
+
+				// Stop this function from executing again
+				// Unbind event
+				$(this).unbind(event);
+				$(this).css( {
+					'background-color' : '#F2F2F2',
+					'color' : '#BDBDBD'
+				});
+
+				// Show loader
+				$('#zProvisionStatBar' + out2Id).show();
+				$('#zProvisionLoader' + out2Id).show();
+
+				// Stop this function from executing again
+				// Unbind event
+				addDiskLink.unbind('click');
+				addDiskLink.css( {
+					'color' : '#BDBDBD'
+				});
+
+				// Disable close button on disk table
+				$('#' + thisTabId + ' table span').unbind('click');
+
+				// Disable all fields
+				var inputs = $('#' + thisTabId + ' input');
+				inputs.attr('readonly', 'readonly');
+				inputs.css( {
+					'background-color' : '#F2F2F2'
+				});
+
+				var textarea = $('#' + thisTabId + ' textarea');
+
+				// Add a new line at the end of the user entry
+				var tmp = jQuery.trim(textarea.val());
+				textarea.val(tmp + '\n');
+
+				textarea.attr('readonly', 'readonly');
+				textarea.css( {
+					'background-color' : '#F2F2F2'
+				});
+
+				// Get node name
+				var node = $('#' + thisTabId + ' input[name=nodeName]')
+					.val();
+				// Get userId
+				var userId = $('#' + thisTabId + ' input[name=userId]')
+					.val();
+				// Get hardware control point
+				var hcp = $('#' + thisTabId + ' input[name=hcp]').val();
+				// Get group
+				var group = $('#' + thisTabId + ' input[name=group]').val();
+
+				/**
+				 * (1) Define node
+				 */
+				$.ajax( {
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'nodeadd',
+						tgt : '',
+						args : node + ';zvm.hcp=' + hcp + ';zvm.userid='
+							+ userId + ';nodehm.mgt=zvm' + ';groups='
+							+ group,
+						msg : 'cmd=nodeadd;out=' + out2Id
+					},
+
+					success : updateProvisionStatus
+				});
 			}
-		});
+		} else {
+			alert('(Error) ' + errMsg);
+		}
+	});
 	provForm.append(provisionBtn);
 }
 

@@ -1,5 +1,5 @@
 $(document).ready(function(){
-	// Include utility script
+	// Include utility scripts
 });
 
 /**
@@ -14,10 +14,10 @@ function loadInventory(data) {
 }
 
 /**
- * Load the clone page
+ * Load clone page
  * 
  * @param node
- *            Source node
+ *            Source node to clone
  * @return Nothing
  */
 function loadClonePage(node) {
@@ -25,12 +25,21 @@ function loadClonePage(node) {
 }
 
 /**
- * Load zVM provision page
+ * Load provision page
  * 
  * @param tabId
  *            The provision tab ID
  * @return Nothing
  */
 function loadProvisionPage(tabId) {
+	
+}
+
+/**
+ * Load resources
+ * 
+ * @return Nothing
+ */
+function loadResources() {
 	
 }

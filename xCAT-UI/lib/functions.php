@@ -111,7 +111,7 @@ function submit_request($req, $skipVerify){
  * 			$key
  * @return
  */
-function xorcrypt($data,$key) {
+function xorcrypt($data, $key) {
 	$datalen = strlen($data);
 	$keylen = strlen($key);
 	for ($i=0;$i<$datalen;$i++) {
@@ -142,7 +142,7 @@ function getpassword() {
 /**
  * Get the password splitting knowledge between server
  * and client side persistant storage.  Caller should regenerate
- * session id when contemplating a new user/password, to preclude
+ * session ID when contemplating a new user/password, to preclude
  * session fixation, though fixation is limited without the secret.
  *
  * @param 	$password	Password
@@ -161,7 +161,7 @@ function setpassword($password) {
 }
 
 /**
- * Get RAND characters.
+ * Get RAND characters
  *
  * @param 	$length		Length of characters
  * @return 	RAND characters
