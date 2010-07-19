@@ -108,8 +108,10 @@ sub build_pool_xml {
     $host =~ s/.*:\/\///;
     $host =~ s/(\/.*)//;
     my $srcpath = $1;
+    my $uuid = xCAT::Utils::genUUID(url=>$url);
     my $pooldesc = '<pool type="netfs">';
     $pooldesc .= '<name>'.$url.'</name>';
+    $pooldesc .= '<uuid>'.$uuid.'</uuid>>';
     $pooldesc .= '<source>';
     $pooldesc .= '<host name="'.$host.'"/>';
     $pooldesc .= '<dir path="'.$srcpath.'"/>';
