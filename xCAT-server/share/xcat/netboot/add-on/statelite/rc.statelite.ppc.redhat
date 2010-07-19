@@ -113,8 +113,8 @@ MountTrees () {
 				break
 				#exit 1
 			fi
-			TRIES=`expr $TRIES + 1`
-			S=`expr $RANDOM % 20`
+			TRIES=$[ $TRIES + 1 ]
+			S=$[ $RANDOM % 20 ]
 			echo "Can't mount $SERV:$MNT... Sleeping $S seconds then trying again" >/dev/console
 			sleep $S
 		done
@@ -139,7 +139,7 @@ ResolveLinks () {
     while read type path 
     do
         ELIST[$i]="$type $path";
-        i=`expr $i + 1`;
+        i=$[ $i + 1 ];
     done
 
     num=${#ELIST[@]}
@@ -162,10 +162,10 @@ ResolveLinks () {
     
         if [ "$efound" = "1" ]; then
             # put it into CLIST
-            CLIST[`expr ${#CLIST[@]}`]=${ELIST[$i]}
+            CLIST[$[ ${#CLIST[@]} ]]=${ELIST[$i]}
         else
             # put it into PLIST
-            PLIST[`expr ${#PLIST[@]}`]=${ELIST[$i]}
+            PLIST[$[ ${#PLIST[@]} ]]=${ELIST[$i]}
         fi  
     done
 
