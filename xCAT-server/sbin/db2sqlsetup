@@ -21,7 +21,7 @@
    unless the XCATDB2PW env var is set to the password for the instance id. 
    See man db2setup for more information and the xCAT2SetupDB2.pdf 
    documentation. 
-   If will assume the default install paths of /opt/IBM/db2 for AIX and 
+   The script will assume the default install paths of /opt/IBM/db2 for AIX and 
    /opt/ibm/db2 for Linux,  unless overridden with the XCATDB2INSPATH 
    environment variable. 
 =cut
