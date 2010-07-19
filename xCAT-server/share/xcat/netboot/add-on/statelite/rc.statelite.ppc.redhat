@@ -330,14 +330,17 @@ FindFile () {
 		if [ -e ${TREEMOUNT}/${DIR}${path} ]
 		then
 			FOUND=1  # we found it!
-			ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
-			if [ "${2}" = "con" ]
-			then
-				1
-			else
-				break
+            if [ -z $(ls ${TREEMOUNT}/${DIR}${path}) ]; then
+                FOUND=0
+            else
+			    ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
+			    if [ "${2}" = "con" ]
+			    then
+				    1
+			    else
+				    break
+			    fi
 			fi
-			
 		fi	
 	done
 
