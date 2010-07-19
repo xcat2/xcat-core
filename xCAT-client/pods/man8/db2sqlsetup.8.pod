@@ -1,0 +1,83 @@
+=head1 NAME
+
+B<db2sqlsetup> - Sets up the IBM DB2 for xCAT to use.  
+
+=head1 SYNOPSIS
+
+
+B<db2sqlsetup> {B<-h>|B<--help>}
+
+B<db2sqlsetup> {B<-v>|B<--version>}
+
+B<db2sqlsetup> {B<-i>|B<--init>}{<-S> | <-C>} [-o|--setupODBC]  [B<-V>|B<--verbose>]
+
+B<db2sqlsetup> {B<-o>|B<--setupODBC>} [-V|--verbose] 
+
+=head1 DESCRIPTION
+
+B<db2sqlsetup> - Sets up the IBM DB2 database for xCAT to use. The db2sqlsetup script is run on the Management Node, after the DB2 Server code has been installed, to setup the DB2 Server (-S). The db2sqlsetup script is run on each Service Node, after the DB2 Client code has been installed, to setup the DB2 Client (-C). The xcatd daemon will be stopped during migration on the MN.  No xCAT commands should be run during the init process, because we will be migrating the xCAT database to DB2 and restarting the xcatd daemon as well as the DB2 daemon. For full information on all the steps that will be done reference 
+http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/
+xCAT-client/share/doc/xCAT2SetupDB2.pdf. 
+One password must be supplied for the setup,  a password for the xcatdb unix id which will be used as the DB2 instance id and database name.  The password will be prompted for interactively or can be input with the XCATDB2PW  environment variable.  
+The hostname or ip address of the Management Node as known by the Service Node must be supplied when setting up the Client, unless the XCATDB2SERVER environment variable is set. 
+The script  will assume the default install paths of /opt/IBM/db2 for AIX and
+/opt/ibm/db2 for Linux,  unless overridden with the XCATDB2INSPATH
+environment variable.
+  
+
+=head1 OPTIONS
+
+=over 6
+
+=item B<-h|--help>
+
+Displays the usage message.
+
+=item B<-v|--version>
+
+Displays the release version of the code.
+
+=item B<-V|--verbose>
+
+Displays verbose messages.
+
+=item B<-i|--init>
+
+The init option is used to setup an installed DB2 database on AIX or Linux (p-Series) so that xCAT can use the database. This must be combined with either the -S or -C flag to indicate whether we are setting up the Server or the Client. With the -S flag, it involves creating the xcatdb database, the xcatdb instance id, allowing access to the xcatdb database by the Management Node. It also backs up the current xCAT database and restores it into the newly setup xcatdb DB2 database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the DB2 database and restarts the xcatd daemon using the database. 
+
+=item B<-S|-C>
+
+This options says whether to setup the Server (-S) on the Management Node, or the Client (-C) on the Service Nodes.
+
+
+=item B<-o|--setupODBC>
+
+This option sets up the ODBC  /etc/../odbcinst.ini, /etc/../odbc.ini and the .odbc.ini file in roots home directory will be created and initialized to run off the xcatdb DB2 database.
+
+=back
+
+=head1 ENVIRONMENT VARIABLES
+
+=head1 EXAMPLES
+
+=over 2
+
+=item *
+
+To setup DB2 Server for  xCAT to run on the DB2 xcatdb database, on the MN:
+
+B<db2sqlsetup> I<-i> I<-S>
+
+=item *
+
+To setup DB2 Client for  xCAT to run on the DB2 xcatdb database, on the SN:
+
+B<db2sqlsetup> I<-i> I<-C>
+
+=item * 
+
+To setup the ODBC for PostgreSQL xcatdb database access, on the MN or SN:
+
+B<db2sqlsetup> I<-o>
+
+=back
