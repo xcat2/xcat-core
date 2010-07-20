@@ -88,6 +88,7 @@ sub subvars {
   $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
   $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1,0,1)/eg;
   $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
+  $inc =~ s/#HOSTNAME#/$node/eg;
 
 
   if ($tmplerr) {
