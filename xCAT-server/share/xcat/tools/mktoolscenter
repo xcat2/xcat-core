@@ -357,7 +357,7 @@ chmod +x /tmp/media_check.sh
 
 cd /toolscenter/
 chmod -R +x * /dev/null 2>/dev/null
-dos2unix /toolscenter/bomc200.config > /dev/null 2>&1
+dos2unix /toolscenter/bomc*.config > /dev/null 2>&1
 
 #disable Crtl+z and Ctrl+c
 trap "" 2 20
@@ -366,16 +366,28 @@ BOMC_MENU=/toolscenter/menu/show_menu.sh
 BOMC_LOG_FILE=/tmp/bomc.log
 # Export the UXSPI_TIMEOUT environment to uxspi
 TIMEOUT=60
-if cat bomc200.config | grep IBM_SYSTEM_TIMEOUT > /dev/null 2>&1
+if cat bomc*.config | grep IBM_SYSTEM_TIMEOUT > /dev/null 2>&1
 then
-  TIMEOUT=`cat bomc200.config | grep IBM_SYSTEM_TIMEOUT | sed 's/IBM_SYSTEM_TIMEOUT=//'`
+  TIMEOUT=`cat bomc*.config | grep IBM_SYSTEM_TIMEOUT | sed 's/IBM_SYSTEM_TIMEOUT=//'`
 fi
 export UXSPI_TIMEOUT=${TIMEOUT}
 
-# setup a mount point
-mkdir -p /bomc
-MNTPOINT=/bomc
-mount -t nfs ${xcat_server}:#BOMCPATH# /bomc
+if [ -z "${xcat_server}" ]; then
+    xcat_server=$(cat /proc/cmdline|sed -e 's/.*xcat_server=\([^ ]*\) .*/\1/')
+fi
+if [ -z "${xcat_server}" ]; then
+    echo "WARNING: xcat_server seems to be missing from the command line which looks like:"
+    cat /proc/cmdline
+    sleep 600
+    reboot -f
+fi
+
+if [ "$1" != "serial-on" ]; then #if this terminal is a fake, don't use it, awkward structure, but oh well
+    # setup a mount point
+    mkdir -p /bomc
+    MNTPOINT=/bomc
+    mount -t nfs ${xcat_server}:#BOMCPATH# /bomc
+fi
 
 export UXSPI_BOOTABLE=/bomc
 
@@ -397,20 +409,20 @@ export DSA_CMD_CMD="xterm -geometry 168x58+5+5 +sb -e /toolscenter/dsa/start.sh 
 export DSA_TUI_CMD="/toolscenter/dsa/start.sh --cmd"
 
 # Export environment for exit script command
-if cat bomc200.config | grep "IBM_SYSTEM_MEDIA_EJECT=NO" > /dev/null 2>&1
+if cat bomc*.config | grep "IBM_SYSTEM_MEDIA_EJECT=NO" > /dev/null 2>&1
 then
         export BOMC_EXIT_CMD="/toolscenter/tcexit_noeject.sh"
 else
         export BOMC_EXIT_CMD="/toolscenter/tcexit.sh"
 fi
 # Export environment for UXSPI autorun command
-if cat bomc200.config | grep "IBM_SYSTEM_AUTORUN=uxspi" > /dev/null 2>&1
+if cat bomc*.config | grep "IBM_SYSTEM_AUTORUN=uxspi" > /dev/null 2>&1
 then
         export UXSPI_AUTORUN=1
 fi
 
 # Export the unattended mode environment variable
-UNATTD_FULLSTR=`cat bomc200.config | grep IBM_SYSTEM_UNATTENDED | sed 's/IBM_SYSTEM_UNATTENDED=//'`
+UNATTD_FULLSTR=`cat bomc*.config | grep IBM_SYSTEM_UNATTENDED | sed 's/IBM_SYSTEM_UNATTENDED=//'`
 if echo ${UNATTD_FULLSTR} | grep '[tftp://|ftp://|nfs://|smb://|usb:/]' > /dev/null 2>&1
 then
   echo "Unattended mode specified by user" >> ${BOMC_LOG_FILE}
@@ -468,7 +480,7 @@ if [ "${BOMC_UNATTENDED_MODE}" = "1" ]
 then
         # Shut down the system when it's unattended image
         ${BOMC_EXIT_CMD} shutdown
-elif cat bomc200.config | grep "IBM_SYSTEM_PXE_FILE=NULL" > /dev/null 2>&1
+elif cat bomc*.config | grep "IBM_SYSTEM_PXE_FILE=NULL" > /dev/null 2>&1
 then
         echo "Rebooting the system ..."
         ${BOMC_EXIT_CMD} reboot

@@ -231,7 +231,7 @@ sub mknetboot
             print $menush 'DIR=`dirname $0`'."\n";
             print $menush 'ERROR_FILE=/bomc/${hostname}/asu.error',"\n";
             print $menush 'LOG_FILE=/bomc/${hostname}/asu.log',"\n";
-            print $menush 'if [ ${cmos_file} != "" ]; then',"\n";
+            print $menush 'if [ "${cmos_file}" != "" ]; then',"\n";
             print $menush "  $asu",' batch ${cmos_file} >${LOG_FILE} 2>${ERROR_FILE}', "\n";
             print $menush "fi\n";
             print $menush '$DIR/calltoxcat.awk ${xcat_server} '."$xcatiport\n";
