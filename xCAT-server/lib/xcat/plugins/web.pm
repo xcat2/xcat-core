@@ -279,6 +279,7 @@ sub web_update {
     my $WebpageContent = undef;
     my $RemoteRpmFilePath = undef;
     my $LocalRpmFilePath = undef;
+    my @temp = undef;
     if (xCAT::Utils->isLinux())
     {
         $os = xCAT::Utils->osver();
@@ -316,20 +317,12 @@ sub web_update {
 
             #use system to run the cmd "yum -y -c config-file update rpm-names"
             $RpmNames =~ s/,/ /g;
-            $cmd = "yum -y -c /tmp/xCAT_update.yum.conf update " . $RpmNames . "\n";
+            $cmd = "yum -y -c /tmp/xCAT_update.yum.conf update " . $RpmNames . " 2>&1";
         }
-
         #run the command and return the result
-        if (0 == system($cmd))
-        {
-            $ReturnInfo = "update" . $RpmNames ."successful";
-            $callback->({info=>$ReturnInfo});
-        }
-        else
-        {
-            $ReturnInfo = "update " . $RpmNames . "failed. detail:" . $!;
-            $callback->({error=>$ReturnInfo, errorcode=>[1]});
-        }
+        $ReturnInfo = readpipe($cmd);
+        @temp = split(/\n/, $ReturnInfo);
+        $callback->({info=>$temp[-1]});
     }
     #AIX
     else
