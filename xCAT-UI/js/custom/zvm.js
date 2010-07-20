@@ -899,8 +899,6 @@ function loadInventory(data) {
  * @return Nothing
  */
 function loadProvisionPage(tabId) {
-	// Get tab area where new tab will go
-	var myTab = getProvisionTab();
 	var errMsg;
 
 	// Get the OS image names

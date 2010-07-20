@@ -63,25 +63,25 @@ function loadProvisionPage(tabId) {
 	});
 
 	// Generate new tab ID
-	var inst = tabId.replace('hmcProvisionTab', '');
+	var inst = tabId.replace('ipmiProvisionTab', '');
 
 	// Open new tab
 	// Create provision form
 	var provForm = $('<div class="form"></div>');
 
 	// Create status bar
-	var barId = 'hmcProvisionStatBar' + inst;
+	var barId = 'ipmiProvisionStatBar' + inst;
 	var statBar = createStatusBar(barId);
 	statBar.hide();
 	provForm.append(statBar);
 
 	// Create loader
-	var loader = createLoader('hmcProvisionLoader' + inst);
+	var loader = createLoader('ipmiProvisionLoader' + inst);
 	loader.hide();
 	statBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision a HMC node');
+	var infoBar = createInfoBar('Provision a IPMI node');
 	provForm.append(infoBar);
 
 	// Append to provision tab
