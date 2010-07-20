@@ -403,6 +403,7 @@ function initPage() {
 	includeJs("js/monitor/monitor.js");
 	includeJs("js/nodes/nodes.js");
 	includeJs("js/provision/provision.js");
+	includeJs("js/update/update.js");
 
 	// Get the page being loaded
 	var url = window.location.pathname;
@@ -424,6 +425,9 @@ function initPage() {
 	} else if (page == 'monitor.php') {
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
+	} else if (page == 'update.php') {
+		headers.eq(4).css('background-color', '#A9D0F5');
+		loadUpdatePage();
 	} else {
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
