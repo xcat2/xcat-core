@@ -13,7 +13,7 @@ my $callback;
 
 sub handled_commands
 {
-    return {"makedns" => "dns"};
+    return {"makedns" => "site:dnshandler"};
 }
 sub getzonesfornet {
     my $net = shift;
