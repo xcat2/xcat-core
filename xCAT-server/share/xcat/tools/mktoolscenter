@@ -383,6 +383,7 @@ if [ -z "${xcat_server}" ]; then
 fi
 
 if [ "$1" != "serial-on" ]; then #if this terminal is a fake, don't use it, awkward structure, but oh well
+    if [ ! -f /etc/resolv.conf ]; then cp /initrd/etc/resolv.conf /etc/resolv.conf; fi
     # setup a mount point
     mkdir -p /bomc
     MNTPOINT=/bomc
