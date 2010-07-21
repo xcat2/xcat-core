@@ -51,6 +51,15 @@ OID, and have the switch table port value match exactly the format suggested by 
          return 1;
      }
   }
+
+  # dell 6248 convention
+  if ( $namepersnmp =~ /^Unit \d Port (\d+)$/ ) {
+    if ( $1 eq $namepercfg ) {
+        return 1;
+    }
+  }
+
+
   unless ($namepersnmp =~ /[^0123456789]$namepercfg\z/)  {
     #Most common case, won't match at all
     return 0;
