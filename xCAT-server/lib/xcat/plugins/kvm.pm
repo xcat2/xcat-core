@@ -64,6 +64,7 @@ sub handled_commands {
   return {
     rpower => 'nodehm:power,mgt',
     mkvm => 'nodehm:power,mgt',
+    chvm => 'nodehm:power,mgt',
     rmigrate => 'nodehm:mgt',
     getcons => 'nodehm:mgt',
     #rvitals => 'nodehm:mgt',
@@ -89,34 +90,23 @@ my $vmtab;
 
 sub build_pool_xml {
     my $url = shift;
-    my $currpools = shift;
-    my %usedindexes; #sadly, because we can't create new mountpoints via libvirt, we'll just use a simple number
-                    #and images will precreate maybe 1024 mountpoints
-    my $mntpoint;
     my $pool;
-    foreach (@$currpools) {
-        $pool = XMLin($_->get_xml_description());
-        $mntpoint = $pool->{target}->{path};
-        $mntpoint =~ s/.*\///;
-        $usedindexes{$mntpoint}=1;
-    }
-    my $index=0;
-    while ($usedindexes{$index}) {
-        $index++;
-    }
     my $host = $url;
     $host =~ s/.*:\/\///;
     $host =~ s/(\/.*)//;
     my $srcpath = $1;
     my $uuid = xCAT::Utils::genUUID(url=>$url);
     my $pooldesc = '<pool type="netfs">';
-    $pooldesc .= '<name>'.$url.'</name>';
+    $pooldesc .= '<name>'.$url.'</name>'; #Hey, at least libvirt doesn't have stupid name restrictions...
     $pooldesc .= '<uuid>'.$uuid.'</uuid>>';
     $pooldesc .= '<source>';
     $pooldesc .= '<host name="'.$host.'"/>';
     $pooldesc .= '<dir path="'.$srcpath.'"/>';
     $pooldesc .= '</source>';
-    $pooldesc .= '<target><path>/var/lib/xcat/pools/'.$index.'</path></target></pool>';
+    $pooldesc .= '<target><path>/var/lib/xcat/pools/'.$uuid.'</path></target></pool>';
+    system("ssh $hyp mkdir -p /var/lib/xcat/pools/$uuid"); #ok, so not *technically* just building XML, but here is the cheapest
+                                                            #place to know uuid...  And yes, we must be allowed to ssh in
+                                                            #libvirt just isn't capable enough for this sort of usage
     return $pooldesc;
 }
 
@@ -136,7 +126,6 @@ sub get_storage_pool_by_url {
         $pool = undef;
     }
     if ($pool) { return $poolobj; }
-    print build_pool_xml($url,\@currpools);
     $poolobj = $hypconn->create_storage_pool(build_pool_xml($url,\@currpools));
     return $poolobj;
 }
@@ -320,7 +309,7 @@ sub build_diskstruct {
                 }
                 next; #nfs:// skips the other stuff
                 #$diskhash->{source}->{file} = get_filepath_by_url(url=>$disk_parts[0],dev=>$diskhash->{target}->{dev}); #"/var/lib/xcat/vmnt/nfs_".$1."/$node/".$diskhash->{target}->{dev};
-            } else {
+            } else { #currently, this would be a bare file to slap in as a disk
                 $diskhash->{source}->{file} = $disk_parts[0];
             }
 
@@ -835,7 +824,7 @@ sub chvm {
     my $memory;
     @ARGV=@_;
     require Getopt::Long;
-    Getoptions(
+    GetOptions(
         "a=s"=>\@addsizes,
         "d=s"=>\@derefdisks,
         "mem=s"=>\$memory,
@@ -892,9 +881,22 @@ sub chvm {
         my $dom = $hypconn->get_domain_by_name($node);
         my $currstate=getpowstate($dom);
         if ($currstate eq 'on') { #attempt live attach
-
+            foreach (@diskstoadd) {
+                my $suffix =$_;
+                my $bus;
+                $suffix =~ s/.*\.//;
+                if ($suffix =~ /^sd/) {
+                    $bus='scsi';
+                } elsif ($suffix =~ /^hd/) {
+                    sendmsg("Reboot required to add IDE drives",$node);
+                    next;
+                } elsif ($suffix =~ /vd/) {
+                    $bus='virtio';
+                }
+                my $xml = "<disk type='file' device='disk'><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
+                $dom->attach_device($xml);
+            }
         }
-
     }
 }
 
@@ -1002,6 +1004,8 @@ sub guestcmd {
     return power(@args);
   } elsif ($command eq "mkvm") {
       return mkvm($node,@args);
+  } elsif ($command eq "chvm") {
+      return chvm($node,@args);
   } elsif ($command eq "rmigrate") {
       return migrate($node,@args);
   } elsif ($command eq "getrvidparms") {
