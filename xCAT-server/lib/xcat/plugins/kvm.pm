@@ -897,7 +897,57 @@ sub chvm {
                 $dom->attach_device($xml);
             }
         }
+    } elsif (@purge) {
+        my $dom = $hypconn->get_domain_by_name($node);
+        my $vmxml=$dom->get_xml_description();
+        my $currstate=getpowstate($dom);
+        foreach (get_disks_by_userspecs(\@purge,$vmxml)) {
+            my $devxml=$_->[0];
+            my $file=$_->[1];
+            $file =~ m!/([^/]*)/($node\..*)\z!;
+            my $pooluuid=$1;
+            my $volname=$2;
+            #first, detach the device.
+            eval {
+            if ($currstate eq 'on') { $dom->detach_device($devxml); }
+            };
+            if ($@) {
+                sendmsg([1,"Unable to remove device"],$node);
+            } else {
+                #if that worked, remove the disk..
+                my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
+                if ($pool) {
+                    my $vol = $pool->get_volume_by_name($volname);
+                    if ($vol) {
+                        $vol->delete();
+                    }
+                }
+                
+            }
+
+        }
     }
+
+}
+sub get_disks_by_userspecs {
+    my $specs = shift;
+    my $xml = shift;
+    my $struct = XMLin($xml);
+    my @returnxmls;
+    foreach my $spec (@$specs) {
+        foreach (@{$struct->{devices}->{disk}}) {
+            if ($spec =~ /^.d./) { #vda, hdb, sdc, etc, match be equality to target->{dev}
+                if ($_->{target}->{dev} eq $spec) {
+                    push @returnxmls,[XMLout($_,RootName=>'disk'),$_->{source}->{file}];
+                }
+            } elsif ($spec =~ /^d(.*)/) { #delete by scsi unit number..
+            if ($_->{address}->{unit} == $1) {
+                    push @returnxmls,[XMLout($_,RootName=>"disk"),$_->{source}->{file}];
+                }
+            } #other formats TBD
+        }
+    }
+    return @returnxmls;
 }
 
 sub mkvm {
