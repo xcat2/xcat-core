@@ -1,4 +1,4 @@
-package xCAT_plugin::dns;
+package xCAT_plugin::ddns;
 use strict;
 use Getopt::Long;
 use Net::DNS;
