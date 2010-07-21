@@ -400,10 +400,10 @@ function initPage() {
 	includeJs("js/jquery/hoverIntent.js");
 	includeJs("js/jquery/jquery.tree.js");
 	includeJs("js/configure/configure.js");
+	includeJs("js/configure/update.js");
 	includeJs("js/monitor/monitor.js");
 	includeJs("js/nodes/nodes.js");
 	includeJs("js/provision/provision.js");
-	includeJs("js/update/update.js");
 
 	// Get the page being loaded
 	var url = window.location.pathname;

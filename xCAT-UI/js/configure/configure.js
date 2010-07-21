@@ -74,6 +74,9 @@ function loadConfigPage() {
 	// Configure xCAT datable tables
 	tab.add('configTablesTab', 'Tables', loader);
 
+	// Add the update tab
+	tab.add('updateTab', 'Update');
+
 	// Get list of tables and their descriptions
 	$.ajax( {
 		url : 'lib/cmd.php',
@@ -87,6 +90,8 @@ function loadConfigPage() {
 
 		success : loadTableNames
 	});
+
+	loadUpdatePage();
 }
 
 /**
