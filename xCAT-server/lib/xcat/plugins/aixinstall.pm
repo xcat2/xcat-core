@@ -169,6 +169,7 @@ sub preprocess_request
     #
 
     if ($command =~ /mknimimage/)
+
     {
 
         my $reqcopy = {%$req};
@@ -1632,7 +1633,7 @@ sub chkosimage
 	}
 
 	# get installp filesets in this dir
-	my $icmd = qq~installp -L -d $instp_srcdir | /usr/bin/cut -f1 -d':' 2>/dev/null~;
+	my $icmd = qq~installp -L -d $instp_srcdir | /usr/bin/cut -f2 -d':' 2>/dev/null~;
 	my @ilist = xCAT::Utils->runcmd("$icmd", -1);
 	foreach my $f (@ilist) {
 		if (!grep(/^$f$/, @srclist)) {
@@ -1644,12 +1645,26 @@ sub chkosimage
 	# check for each one - give msg if missing
 	foreach my $file (@install_list) {
 
+		$file =~ s/\*//g;		
+		$file =~ s/\s*//g;
+
 		if ($::VERBOSE) {
-		#	my $rsp;
-		#	push @{$rsp->{data}}, "Check for \'$file\'.";
-		#	xCAT::MsgUtils->message("I", $rsp, $callback);
+			my $rsp;
+			push @{$rsp->{data}}, "Check for \'$file\'.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
 		}
-		if (!grep(/^$file$/, @srclist))
+
+		my $foundit=0;
+		my $foundlist = "";
+
+		foreach my $lppfile (@srclist) {
+			if ($lppfile =~ /$file/) {
+				$foundit++;
+				$foundlist .= "$lppfile  ";
+			}
+		}
+
+		if (!$foundit)
 		{
 			my $rsp;
 			push @{$rsp->{data}}, "Could not find $file in $imagedef{$image_name}{lpp_source}.\n";
@@ -1658,7 +1673,7 @@ sub chkosimage
 		} else {
 			if ($::VERBOSE) {
 				my $rsp;
-				push @{$rsp->{data}}, "Found \'$file\'.";
+				push @{$rsp->{data}}, "Found \'$foundlist\'.\n";
 				xCAT::MsgUtils->message("I", $rsp, $callback);
 			}
 		}
@@ -2872,8 +2887,6 @@ sub mknimimage
         return 1;
     }
 
-
-#ndebug
 	#
 	# Set root password in diskless images
 	#
@@ -3079,10 +3092,10 @@ sub mk_lpp_source
                 }
             }
 
-            if ($::opt_l =~ /\/$/)
-            {
-                $::opt_l =~ s/\/$//; #remove tailing slash if provided
-            }
+			if ($::opt_l =~ /\/$/)
+			{
+				$::opt_l =~ s/\/$//; #remove tailing slash if provided
+			}
 
             my $loc;
             if ($::opt_l)
