@@ -4,16 +4,21 @@
  * @return Nothing
  */
  function loadUpdatePage() {
-
-    repositoryDiv = $('<div id="repository"></div>');
-    rpmDiv = $('<div id="rpm"></div>');
-    updateDiv = $('<div id="update"></div>');
-
+	 
+    var repositoryDiv = $('<div id="repository"></div>');
+    var rpmDiv = $('<div id="rpm"></div>');
+    var statusDiv = createStatusBar("update");
+    statusDiv.hide();
+    
     $('#updateTab').append(repositoryDiv);
     $('#updateTab').append(rpmDiv);
-    $('#updateTab').append(updateDiv);
+    $('#updateTab').append(statusDiv);
+    
+    var infoBar = createInfoBar('Select the Rpm and Repository, then press Update');
+    repositoryDiv.append(infoBar);
+    
 
-    repositoryDiv.append("<h2>Repository</h2>");
+    repositoryDiv.append("<fieldset><legend>Repository</legend></fieldset>");
 
     $.ajax( {
         url : 'lib/systemcmd.php',
@@ -25,7 +30,7 @@
         success : showRepository
     });
 
-    rpmDiv.append("<h2>xCAT Update Info</h2>");
+    rpmDiv.append("<fieldset></fieldset>");
 
     $.ajax({
         url: 'lib/systemcmd.php',
@@ -70,7 +75,7 @@ function showRepository(data) {
     Show = Show + "name='reporadio' value='" + DevelRepository + "'>";
     Show = Show + DevelRepository + "(<strong>Devel</strong>)<br/>";
 
-    $('#repository').append(Show);
+    $('#repository fieldset').append(Show);
 
     //dispaly the Stable Repository, remember user's last selection
     Show = "<input type='radio' ";
@@ -82,7 +87,7 @@ function showRepository(data) {
     Show = Show + "name='reporadio' value='" + StableRepository + "'>";
     Show = Show + StableRepository + "(<strong>Stable</strong>)<br/>";
 
-    $('#repository').append(Show);
+    $('#repository fieldset').append(Show);
 
     //dispaly the Input Repository, remember user's last selection
     if (($.cookie('xcatrepository'))
@@ -98,7 +103,7 @@ function showRepository(data) {
         Show += "<input style='width: 500px' id='repositoryaddr' value=''<br/>";
     }
 
-    $('#repository').append(Show);
+    $('#repository fieldset').append(Show);
 }
 
 function showRpmInfo(data)
@@ -109,7 +114,7 @@ function showRpmInfo(data)
     var temp = 0;
     if(null == data.rsp)
     {
-        $('#rpm').append("Get Rpm Info Error!");
+        $('#rpm fieldset').append("Get Rpm Info Error!");
         return;
     }
 
@@ -117,10 +122,14 @@ function showRpmInfo(data)
     //no rpm installed, return
     if (1 > Rpms.length)
     {
-        $('#rpm').append("No Rpm installed!");
+        $('#rpm fieldset').append("No Rpm installed!");
         return;
     }
 
+    //clear the old data
+    $('#rpm fieldset').children().remove();
+    $('#rpm fieldset').append("<legend>xCAT Rpm Info</legend>");
+    
     Show = "<table id=rpmtable >";
     Show += "<tr>";
     Show += "<td><input type='checkbox' id='selectall' value='' onclick='updateSelectAll()'></td>";
@@ -148,12 +157,12 @@ function showRpmInfo(data)
         Show += "</tr>";
     }
     Show += "</table>";
-    Show += "<br\>"
-    $('#rpm').append(Show);
+    Show += "<br\>";
+    $('#rpm fieldset').append(Show);
 
     //add the update button
     var updateButton = createButton('Update');
-    $('#rpm').append(updateButton);
+    $('#rpm fieldset').append(updateButton);
     updateButton.bind('click', function(){
     		updateRpm();
     	});
@@ -216,6 +225,7 @@ function updateRpm()
         rpms = rpms.slice(0, -1);
     }
 
+    $('#update').show();
     if ("" == rpms)
     {
         $('#update').empty();
@@ -236,6 +246,7 @@ function updateRpm()
     $('#update').empty();
     $('#update').append("<p>update <b>" + rpms + "</b> from <b>" + rpmPath + "</b></p>");
     $('#update').append("<img id='loadingpic' src='images/throbber.gif'>");
+    $('#rpm button').attr('disabled', 'true');
 
     // send the update command to server
     $.ajax( {
@@ -261,4 +272,18 @@ function ShowUpdateResult(data)
     {
         $('#update').append(data.rsp[temp] + "<br\>");
     }
+    
+    //update the rpm info
+    $.ajax({
+        url: 'lib/systemcmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'rpm -q xCAT-client perl-xCAT xCAT-server xCAT xCAT-rmc xCAT-UI'
+        },
+
+        success : showRpmInfo
+    });
+    
+    $('#rpm button').attr('disabled', '');
+    
 }
