@@ -169,8 +169,6 @@ function loadNodes(data) {
 	var attrs = new Object();
 	// Node attributes
 	var headers = new Object();
-	// Plugins hash
-	var plugins = new Object();
 
 	var node;
 	var args;
@@ -194,19 +192,6 @@ function loadNodes(data) {
 		// Create a hash table
 		attrs[node][key] = val;
 		headers[key] = 1;
-
-		// Create a plugins hash
-		if (key == 'mgt') {
-			plugins[val] = 1;
-		}
-	}
-
-	// Load the plugin code
-	// Plugin code should be located under js/custom/
-	// Plugin names should be valid values of nodehm.mgt
-	for ( var p in plugins) {
-		resetJs();
-		includeJs("js/custom/" + p + ".js");
 	}
 
 	// Sort headers
@@ -296,7 +281,32 @@ function loadNodes(data) {
 	cloneLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked().split(',');
 		for ( var i = 0; i < tgtNodes.length; i++) {
-			loadClonePage(tgtNodes[i]);
+			var mgt = getNodeMgt(tgtNodes[i]);
+			
+			// Create an instance of the plugin
+			var plugin;
+			switch(mgt) {
+				case "blade":
+		    		plugin = new blade();
+		    		break;
+				case "fsp":
+					plugin = new fsp();
+					break;
+				case "hmc":
+					plugin = new hmc();
+					break;
+				case "ipmi":
+					plugin = new ipmi();
+					break;		
+				case "ivm":
+					plugin = new ivm();
+					break;
+				case "zvm":
+					plugin = new zvm();
+					break;
+			}
+			
+			plugin.loadClonePage(tgtNodes[i]);
 		}
 	});
 
@@ -598,6 +608,29 @@ function loadNode(e) {
 	// Get node that was clicked
 	var node = (e.target) ? e.target.id : e.srcElement.id;
 	var mgt = getNodeMgt(node);
+	
+	// Create an instance of the plugin
+	var plugin;
+	switch(mgt) {
+		case "blade":
+    		plugin = new blade();
+    		break;
+		case "fsp":
+			plugin = new fsp();
+			break;
+		case "hmc":
+			plugin = new hmc();
+			break;
+		case "ipmi":
+			plugin = new ipmi();
+			break;		
+		case "ivm":
+			plugin = new ivm();
+			break;
+		case "zvm":
+			plugin = new zvm();
+			break;
+	}
 
 	// Get tab area where a new tab will be inserted
 	var myTab = getNodesTab();
@@ -623,7 +656,7 @@ function loadNode(e) {
 			msg : msg
 		},
 
-		success : loadInventory
+		success : plugin.loadInventory
 	});
 
 	// Select new tab

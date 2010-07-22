@@ -3,15 +3,60 @@ $(document).ready(function(){
 });
 
 /**
+ * Constructor
+ * 
+ * @return Nothing
+ */
+var hmc = function() {
+	
+};
+
+/**
  * Load node inventory
  * 
  * @param data
  *            Data from HTTP request
  * @return Nothing
  */
-function loadInventory(data) {
+hmc.prototype.loadInventory = function(data) {
+	var args = data.msg.split(',');
+
+	// Get tab ID
+	var tabId = args[0].replace('out=', '');
+	// Get node
+	var node = args[1].replace('node=', '');
+	// Get node inventory
+	var inv = data.rsp;
 	
-}
+	// Remove loader
+	var loaderId = node + 'TabLoader';
+	$('#' + loaderId).remove();
+	
+	// Create division to hold inventory
+	var invDivId = node + 'Inventory';
+	var invDiv = $('<div class="inventory" id="' + invDivId + '"></div>');
+	
+	var fieldSet = $('<fieldset></fieldset>');
+	var legend = $('<legend>Inventory</legend>');
+	fieldSet.append(legend);
+	var oList = $('<ol></ol>');
+	var item, label, input, args;
+
+	// Loop through each property
+	for ( var k = 0; k < inv.length; k++) {
+		if (inv[k] != '0' && inv[k].indexOf(node) < 0) {
+    		// Create a list item for each property
+    		item = $('<li></li>');
+    		item.append(inv[k]);
+    		oList.append(item);
+		}
+	}
+	
+	// Append to inventory form
+	fieldSet.append(oList);
+	invDiv.append(fieldSet);
+	$('#' + tabId).append(invDiv);
+};
 
 /**
  * Load clone page
@@ -20,9 +65,9 @@ function loadInventory(data) {
  *            Source node to clone
  * @return Nothing
  */
-function loadClonePage(node) {
+hmc.prototype.loadClonePage = function(node) {
 	
-}
+};
 
 /**
  * Load provision page
@@ -31,7 +76,7 @@ function loadClonePage(node) {
  *            The provision tab ID
  * @return Nothing
  */
-function loadProvisionPage(tabId) {
+hmc.prototype.loadProvisionPage = function(tabId) {
 	var errMsg;
 
 	// Get the OS image names
@@ -197,13 +242,13 @@ function loadProvisionPage(tabId) {
 		// Insert provision code here
 	});
 	provForm.append(provisionBtn);
-}
+};
 
 /**
  * Load resources
  * 
  * @return Nothing
  */
-function loadResources() {
+hmc.prototype.loadResources = function() {
 	
-}
+};

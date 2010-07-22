@@ -4,13 +4,22 @@ $(document).ready(function() {
 });
 
 /**
+ * Constructor
+ * 
+ * @return Nothing
+ */
+var zvm = function() {
+	
+};
+
+/**
  * Load clone page
  * 
  * @param node
  *            Source node to clone
  * @return Nothing
  */
-function loadClonePage(node) {
+zvm.prototype.loadClonePage = function(node) {
 	// Get nodes tab
 	var tab = getNodesTab();
 	var newTabId = node + 'CloneTab';
@@ -261,7 +270,7 @@ function loadClonePage(node) {
 	}
 
 	tab.select(newTabId);
-}
+};
 
 /**
  * Load node inventory
@@ -270,7 +279,7 @@ function loadClonePage(node) {
  *            Data from HTTP request
  * @return Nothing
  */
-function loadInventory(data) {
+zvm.prototype.loadInventory = function(data) {
 	var args = data.msg.split(',');
 
 	// Get tab ID
@@ -889,7 +898,7 @@ function loadInventory(data) {
 	$('#' + tabId).append(toggleLnkDiv);
 	$('#' + tabId).append(ueDiv);
 	$('#' + tabId).append(invDiv);
-}
+};
 
 /**
  * Load provision page
@@ -898,7 +907,7 @@ function loadInventory(data) {
  *            The provision tab ID
  * @return Nothing
  */
-function loadProvisionPage(tabId) {
+zvm.prototype.loadProvisionPage = function(tabId) {
 	var errMsg;
 
 	// Get the OS image names
@@ -1343,14 +1352,14 @@ function loadProvisionPage(tabId) {
 		}
 	});
 	provForm.append(provisionBtn);
-}
+};
 
 /**
  * Load the resources
  * 
  * @return Nothing
  */
-function loadResources() {
+zvm.prototype.loadResources = function() {
 	// Reset resource table
 	setDiskDataTable('');
 	setNetworkDataTable('');
@@ -1367,4 +1376,4 @@ function loadResources() {
 		},
 		success : getZResources
 	});
-}
+};

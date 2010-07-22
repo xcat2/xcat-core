@@ -3,15 +3,24 @@ $(document).ready(function(){
 });
 
 /**
+ * Constructor
+ * 
+ * @return Nothing
+ */
+var fsp = function() {
+	
+};
+
+/**
  * Load node inventory
  * 
  * @param data
  *            Data from HTTP request
  * @return Nothing
  */
-function loadInventory(data) {
+fsp.prototype.loadInventory = function(data) {
 	
-}
+};
 
 /**
  * Load clone page
@@ -20,9 +29,9 @@ function loadInventory(data) {
  *            Source node to clone
  * @return Nothing
  */
-function loadClonePage(node) {
+fsp.prototype.loadClonePage = function(node) {
 	
-}
+};
 
 /**
  * Load provision page
@@ -31,7 +40,7 @@ function loadClonePage(node) {
  *            The provision tab ID
  * @return Nothing
  */
-function loadProvisionPage(tabId) {
+fsp.prototype.loadProvisionPage = function(tabId) {
 	var errMsg;
 
 	// Get the OS image names
@@ -197,13 +206,13 @@ function loadProvisionPage(tabId) {
 		// Insert provision code here
 	});
 	provForm.append(provisionBtn);
-}
+};
 
 /**
  * Load resources
  * 
  * @return Nothing
  */
-function loadResources() {
+fsp.prototype.loadResources = function() {
 	
-}
+};

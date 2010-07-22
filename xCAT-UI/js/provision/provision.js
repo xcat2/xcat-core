@@ -98,13 +98,32 @@ function loadProvisionPage() {
 
 		tab.add(newTabId, hw, '');
 
-		// Load plugin code
-		resetJs();
-		includeJs("js/custom/" + hw + ".js");
+		// Create an instance of the plugin
+		var plugin;
+		switch(hw) {
+			case "blade":
+	    		plugin = new blade();
+	    		break;
+			case "fsp":
+				plugin = new fsp();
+				break;
+			case "hmc":
+				plugin = new hmc();
+				break;
+			case "ipmi":
+				plugin = new ipmi();
+				break;		
+			case "ivm":
+				plugin = new ivm();
+				break;
+			case "zvm":
+				plugin = new zvm();
+				break;
+		}
 		
 		// Select tab
 		tab.select(newTabId);
-		loadProvisionPage(newTabId);
+		plugin.loadProvisionPage(newTabId);
 	});
 	provForm.append(okBtn);
 

@@ -404,6 +404,14 @@ function initPage() {
 	includeJs("js/monitor/monitor.js");
 	includeJs("js/nodes/nodes.js");
 	includeJs("js/provision/provision.js");
+	
+	// Custom plugins
+	includeJs("js/custom/blade.js");
+	includeJs("js/custom/fsp.js");
+	includeJs("js/custom/hmc.js");
+	includeJs("js/custom/ipmi.js");
+	includeJs("js/custom/ivm.js");
+	includeJs("js/custom/zvm.js");
 
 	// Get the page being loaded
 	var url = window.location.pathname;
@@ -425,9 +433,6 @@ function initPage() {
 	} else if (page == 'monitor.php') {
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
-	} else if (page == 'update.php') {
-		headers.eq(4).css('background-color', '#A9D0F5');
-		loadUpdatePage();
 	} else {
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
@@ -451,37 +456,8 @@ function includeJs(file) {
 		script.attr( {
 			type : 'text/javascript',
 			src : file
-		})
+		});
 
 		$('head').append(script);
-	}
-}
-
-/**
- * Reset the javascript files in <head> to its original content
- * 
- * @param file
- *            File to include
- * @return Nothing
- */
-function resetJs() {
-	var scripts = $('head script');
-	for ( var i = 0; i < scripts.length; i++) {
-		var file = scripts.eq(i).attr('src');
-		
-		// Remove ipmi, blade, hmc, ivm, fsp javascripts
-		if (file == 'js/custom/ipmi.js') {
-			scripts.eq(i).remove();
-		} else if (file == 'js/custom/blade.js') {
-			scripts.eq(i).remove();
-		} else if (file == 'js/custom/hmc.js') {
-			scripts.eq(i).remove();
-		} else if (file == 'js/custom/ivm.js') {
-			scripts.eq(i).remove();
-		} else if (file == 'js/custom/fsp.js') {
-			scripts.eq(i).remove();
-		} else if (file == 'js/custom/zvm.js') {
-			scripts.eq(i).remove();
-		}
 	}
 }

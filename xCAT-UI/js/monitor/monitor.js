@@ -108,9 +108,30 @@ function loadMonitorPage() {
 			loader = $('<center></center>').append(loader);
 			tab.add(newTabId, hw, loader);
 
-			// Load plugin code
-			includeJs("js/custom/" + hw + ".js");
-			loadResources();
+			// Create an instance of the plugin
+			var plugin;
+			switch(hw) {
+				case "blade":
+		    		plugin = new blade();
+		    		break;
+				case "fsp":
+					plugin = new fsp();
+					break;
+				case "hmc":
+					plugin = new hmc();
+					break;
+				case "ipmi":
+					plugin = new ipmi();
+					break;		
+				case "ivm":
+					plugin = new ivm();
+					break;
+				case "zvm":
+					plugin = new zvm();
+					break;
+			}
+			
+			plugin.loadResources();
 		}
 
 		// Select tab
