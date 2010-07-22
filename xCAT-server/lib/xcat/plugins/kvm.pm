@@ -90,6 +90,8 @@ my $vmtab;
 
 sub build_pool_xml {
     my $url = shift;
+    my $mounthost = shift;
+    unless ($mounthost) { $mounthost = $hyp; }
     my $pool;
     my $host = $url;
     $host =~ s/.*:\/\///;
@@ -104,7 +106,7 @@ sub build_pool_xml {
     $pooldesc .= '<dir path="'.$srcpath.'"/>';
     $pooldesc .= '</source>';
     $pooldesc .= '<target><path>/var/lib/xcat/pools/'.$uuid.'</path></target></pool>';
-    system("ssh $hyp mkdir -p /var/lib/xcat/pools/$uuid"); #ok, so not *technically* just building XML, but here is the cheapest
+    system("ssh $mounthost mkdir -p /var/lib/xcat/pools/$uuid"); #ok, so not *technically* just building XML, but here is the cheapest
                                                             #place to know uuid...  And yes, we must be allowed to ssh in
                                                             #libvirt just isn't capable enough for this sort of usage
     return $pooldesc;
@@ -114,7 +116,10 @@ sub build_pool_xml {
 
 sub get_storage_pool_by_url {
     my $url = shift;
-    my @currpools = $hypconn->list_storage_pools();
+    my $virtconn = shift;
+    my $mounthost = shift;
+    unless ($virtconn) { $virtconn = $hypconn; }
+    my @currpools = $virtconn->list_storage_pools();
     my $poolobj;
     my $pool;
     foreach my $poolo (@currpools) {
@@ -126,7 +131,7 @@ sub get_storage_pool_by_url {
         $pool = undef;
     }
     if ($pool) { return $poolobj; }
-    $poolobj = $hypconn->create_storage_pool(build_pool_xml($url,\@currpools));
+    $poolobj = $virtconn->create_storage_pool(build_pool_xml($url,$mounthost));
     return $poolobj;
 }
 
@@ -671,6 +676,13 @@ sub migrate {
     }
     unless ($desthypconn) {
         return (1,"Unable to reach $targ to perform operation of $node, destination unusable.");
+    }
+    if (defined $confdata->{vm}->{$node}->[0]->{storage} and $confdata->{vm}->{$node}->[0]->{storage} =~ /^nfs:/) {
+        my $urls =  $confdata->{vm}->{$node}->[0]->{storage} and $confdata->{vm}->{$node}->[0]->{storage};
+        foreach (split /,/,$urls) {
+            s/=.*//;
+            get_storage_pool_by_url($_,$desthypconn,$targ);
+        }
     }
     my $sock = IO::Socket::INET->new(Proto=>'udp');
     my $ipa=inet_aton($node);
