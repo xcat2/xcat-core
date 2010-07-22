@@ -3079,6 +3079,11 @@ sub mk_lpp_source
                 }
             }
 
+            if ($::opt_l =~ /\/$/)
+            {
+                $::opt_l =~ s/\/$//; #remove tailing slash if provided
+            }
+
             my $loc;
             if ($::opt_l)
             {
