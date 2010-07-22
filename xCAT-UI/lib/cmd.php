@@ -64,22 +64,13 @@ if (isset($_GET["cmd"])) {
 	// Handle the typical output
 	else {
 		foreach ($xml->children() as $child) {
-			// Get the 1st level child
-			foreach ($child->children() as $level_one) {
-				if ($level_one->children()) {
-					// Get the 2nd level child
-					foreach ($level_one->children() as $level_two) {
-						if ($level_two->children()) {
-							// Get the 3rd level child
-							foreach ($level_two->children() as $level_three) {
-								array_push($rsp, "$level_three");
-							}
-						} else {
-							array_push($rsp, "$level_two");
-						}
-					}
-				} else {
-					array_push($rsp, "$level_one");
+			foreach ($child->children() as $data) {
+				if($data->name) {
+					$node = $data->name;
+					$cont = $data->data->contents;
+					array_push($rsp, "$node: $cont");
+				} else if(strlen("$data") > 2) {
+					array_push($rsp, "$data");
 				}
 			}
 		}

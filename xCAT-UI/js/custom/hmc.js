@@ -44,12 +44,10 @@ hmc.prototype.loadInventory = function(data) {
 
 	// Loop through each property
 	for ( var k = 0; k < inv.length; k++) {
-		if (inv[k] != '0' && inv[k].indexOf(node) < 0) {
-    		// Create a list item for each property
-    		item = $('<li></li>');
-    		item.append(inv[k]);
-    		oList.append(item);
-		}
+		// Create a list item for each property
+    	item = $('<li></li>');
+    	item.append(inv[k].replace(node + ': ', ''));
+    	oList.append(item);
 	}
 	
 	// Append to inventory form
