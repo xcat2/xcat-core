@@ -2112,7 +2112,7 @@ sub add_fruhash {
             my $err;
             ($err,$fruhash) = parsefru($sessdata->{currfrudata});
             if ($err) {
-                sendmsg([1,"Error reading fru area $err".$sessdata->{currfruid}]);
+                sendmsg([1,"Error reading fru area ".$sessdata->{currfruid}.": $err"]);
                 return;
             }
     }
