@@ -1,0 +1,59 @@
+# Software needed for xCAT on AIX Service Nodes
+
+# installp packages
+I:expect.base
+I:expect.man.en_US
+I:tcl.base
+I:tcl.man.en_US
+I:tk.base
+I:tk.man.en_US
+I:openssl.base
+I:openssl.license
+I:openssh.base
+I:openssh.license
+I:openssh.man.en_US
+I:openssh.msg.en_US
+I:bos.sysmgt.nim.master
+
+# RPMs
+# using Perl 5.10.1
+R:popt-1.7-2.aix5.1.ppc.rpm
+R:rsync-3.0.6-1.aix5.3.ppc.rpm
+R:bash-3.2-1.aix5.2.ppc.rpm
+R:conserver-8.1.16-2.aix5.3.ppc.rpm
+R:curl-7.19.6-1ssl.aix5.3.ppc.rpm
+R:expat-2.0.1-2.aix5.1.ppc.rpm
+R:fping-2.4b2_to-1.aix5.3.ppc.rpm
+R:libxml2-2.6.21-4.aix5.2.ppc.rpm
+R:net-snmp-5.4.2.1-3.aix7.1.ppc.rpm
+R:net-snmp-devel-5.4.2.1-3.aix7.1.ppc.rpm
+R:net-snmp-perl-5.4.2.1-3.aix7.1.ppc.rpm
+R:openslp-xcat-1.2.1-1.aix5.3.ppc.rpm
+R:perl-Crypt-SSLeay-0.57-3.aix7.1.ppc.rpm
+R:perl-DBD-SQLite-1.13-3.aix7.1.ppc.rpm
+R:perl-DBI-1.611-3.aix7.1.ppc.rpm
+R:perl-Digest-HMAC-1.02-2.aix7.1.ppc.rpm
+R:perl-Digest-MD5-2.39-2.aix7.1.ppc.rpm
+R:perl-Digest-SHA-5.48-3.aix7.1.ppc.rpm
+R:perl-Digest-SHA1-2.12-2.aix7.1.ppc.rpm
+R:perl-Expect-1.21-3.aix7.1.ppc.rpm
+R:perl-IO-Stty-0.03-2.aix7.1.ppc.rpm
+R:perl-IO-Tty-1.08-2.aix7.1.ppc.rpm
+R:perl-Net-DNS-0.66-3.aix7.1.ppc.rpm
+R:perl-Net-IP-1.25-3.aix7.1.ppc.rpm
+R:perl-Net-Telnet-3.03-3.aix7.1.ppc.rpm
+R:perl-Net_SSLeay.pm-1.30-3.aix7.1.ppc.rpm
+R:perl-version-0.82-2.aix7.1.ppc.rpm
+R:perl-Net_SSLeay.pm-1.30-3.aix7.1.ppc.rpm
+R:perl-IO-Socket-SSL-1.33-2.aix7.1.ppc.rpm
+R:unixODBC-2.2.15-32bit.aix5.3.ppc.rpm
+
+R:perl-xCAT-2.5*
+R:xCAT-client-2.5*
+R:xCAT-server-2.5*
+R:xCAT-rmc-2.5*
+R:xCATsn-2.5*
+
+# optional - needed if using Postgresql
+#R:xcat-postgresql-8.4-4.aix7.1.ppc.rpm
+#R:perl-DBD-Pg-2-17.2.aix7.1.ppc.rpm
