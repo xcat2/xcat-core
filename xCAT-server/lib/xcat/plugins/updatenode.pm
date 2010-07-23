@@ -388,7 +388,7 @@ sub preprocess_updatenode
     
     # figure out the diskless nodes list and non-diskless nodes
     foreach my $type (keys %insttype_node) {
-        if ($type eq "netboot" || $type eq "diskless") {
+        if ($type eq "netboot" || $type eq "statelite" || $type eq "diskless") {
             push @dsklsnodes, @{$insttype_node{$type}};
         } else {
             push @notdsklsnodes, @{$insttype_node{$type}};
@@ -836,12 +836,12 @@ sub updatenode
        	my $cmd;
 		if ($::SETSERVER) {
 		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost 2 -M $snkey otherpkgs 2>&1";
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost 2 -M $snkey ospkgs,otherpkgs 2>&1";
 
 		} else {
 		    
 		    $cmd =
-		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost 2 -m $snkey otherpkgs 2>&1";
+		    "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -e $installdir/postscripts/xcatdsklspost 2 -m $snkey ospkgs,otherpkgs 2>&1";
 		}
 
 		if ($::VERBOSE)
