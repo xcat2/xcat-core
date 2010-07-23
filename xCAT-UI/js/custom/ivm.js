@@ -7,7 +7,7 @@ $(document).ready(function(){
  * 
  * @return Nothing
  */
-var ivm = function() {
+var ivmPlugin = function() {
 	
 };
 
@@ -18,7 +18,7 @@ var ivm = function() {
  *            Data from HTTP request
  * @return Nothing
  */
-ivm.prototype.loadInventory = function(data) {
+ivmPlugin.prototype.loadInventory = function(data) {
 	
 };
 
@@ -29,7 +29,7 @@ ivm.prototype.loadInventory = function(data) {
  *            Source node to clone
  * @return Nothing
  */
-ivm.prototype.loadClonePage = function(node) {
+ivmPlugin.prototype.loadClonePage = function(node) {
 	
 };
 
@@ -40,7 +40,7 @@ ivm.prototype.loadClonePage = function(node) {
  *            The provision tab ID
  * @return Nothing
  */
-ivm.prototype.loadProvisionPage = function(tabId) {
+ivmPlugin.prototype.loadProvisionPage = function(tabId) {
 	var errMsg;
 
 	// Get the OS image names
@@ -213,6 +213,6 @@ ivm.prototype.loadProvisionPage = function(tabId) {
  * 
  * @return Nothing
  */
-ivm.prototype.loadResources = function() {
+ivmPlugin.prototype.loadResources = function() {
 	
 };

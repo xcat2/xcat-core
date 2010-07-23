@@ -7,7 +7,7 @@ $(document).ready(function(){
  * 
  * @return Nothing
  */
-var fsp = function() {
+var fspPlugin = function() {
 	
 };
 
@@ -18,7 +18,7 @@ var fsp = function() {
  *            Data from HTTP request
  * @return Nothing
  */
-fsp.prototype.loadInventory = function(data) {
+fspPlugin.prototype.loadInventory = function(data) {
 	
 };
 
@@ -29,7 +29,7 @@ fsp.prototype.loadInventory = function(data) {
  *            Source node to clone
  * @return Nothing
  */
-fsp.prototype.loadClonePage = function(node) {
+fspPlugin.prototype.loadClonePage = function(node) {
 	
 };
 
@@ -40,7 +40,7 @@ fsp.prototype.loadClonePage = function(node) {
  *            The provision tab ID
  * @return Nothing
  */
-fsp.prototype.loadProvisionPage = function(tabId) {
+fspPlugin.prototype.loadProvisionPage = function(tabId) {
 	var errMsg;
 
 	// Get the OS image names
@@ -213,6 +213,6 @@ fsp.prototype.loadProvisionPage = function(tabId) {
  * 
  * @return Nothing
  */
-fsp.prototype.loadResources = function() {
+fspPlugin.prototype.loadResources = function() {
 	
 };

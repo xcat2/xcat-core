@@ -7,7 +7,7 @@ $(document).ready(function(){
  * 
  * @return Nothing
  */
-var hmc = function() {
+var hmcPlugin = function() {
 	
 };
 
@@ -18,7 +18,7 @@ var hmc = function() {
  *            Data from HTTP request
  * @return Nothing
  */
-hmc.prototype.loadInventory = function(data) {
+hmcPlugin.prototype.loadInventory = function(data) {
 	var args = data.msg.split(',');
 
 	// Get tab ID
@@ -63,7 +63,7 @@ hmc.prototype.loadInventory = function(data) {
  *            Source node to clone
  * @return Nothing
  */
-hmc.prototype.loadClonePage = function(node) {
+hmcPlugin.prototype.loadClonePage = function(node) {
 	
 };
 
@@ -74,7 +74,7 @@ hmc.prototype.loadClonePage = function(node) {
  *            The provision tab ID
  * @return Nothing
  */
-hmc.prototype.loadProvisionPage = function(tabId) {
+hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	var errMsg;
 
 	// Get the OS image names
@@ -247,6 +247,6 @@ hmc.prototype.loadProvisionPage = function(tabId) {
  * 
  * @return Nothing
  */
-hmc.prototype.loadResources = function() {
+hmcPlugin.prototype.loadResources = function() {
 	
 };

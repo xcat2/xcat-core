@@ -7,7 +7,7 @@ $(document).ready(function(){
  * 
  * @return Nothing
  */
-var ipmi = function() {
+var ipmiPlugin = function() {
 	
 };
 
@@ -18,7 +18,7 @@ var ipmi = function() {
  *            Data from HTTP request
  * @return Nothing
  */
-ipmi.prototype.loadInventory = function(data) {
+ipmiPlugin.prototype.loadInventory = function(data) {
 	
 };
 
@@ -29,7 +29,7 @@ ipmi.prototype.loadInventory = function(data) {
  *            Source node to clone
  * @return Nothing
  */
-ipmi.prototype.loadClonePage = function(node) {
+ipmiPlugin.prototype.loadClonePage = function(node) {
 	
 };
 
@@ -40,7 +40,7 @@ ipmi.prototype.loadClonePage = function(node) {
  *            The provision tab ID
  * @return Nothing
  */
-ipmi.prototype.loadProvisionPage = function(tabId) {
+ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
 	var errMsg;
 
 	// Get the OS image names
@@ -213,6 +213,6 @@ ipmi.prototype.loadProvisionPage = function(tabId) {
  * 
  * @return Nothing
  */
-ipmi.prototype.loadResources = function() {
+ipmiPlugin.prototype.loadResources = function() {
 	
 };

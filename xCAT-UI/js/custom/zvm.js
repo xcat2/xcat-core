@@ -8,7 +8,7 @@ $(document).ready(function() {
  * 
  * @return Nothing
  */
-var zvm = function() {
+var zvmPlugin = function() {
 	
 };
 
@@ -19,7 +19,7 @@ var zvm = function() {
  *            Source node to clone
  * @return Nothing
  */
-zvm.prototype.loadClonePage = function(node) {
+zvmPlugin.prototype.loadClonePage = function(node) {
 	// Get nodes tab
 	var tab = getNodesTab();
 	var newTabId = node + 'CloneTab';
@@ -279,7 +279,7 @@ zvm.prototype.loadClonePage = function(node) {
  *            Data from HTTP request
  * @return Nothing
  */
-zvm.prototype.loadInventory = function(data) {
+zvmPlugin.prototype.loadInventory = function(data) {
 	var args = data.msg.split(',');
 
 	// Get tab ID
@@ -907,7 +907,7 @@ zvm.prototype.loadInventory = function(data) {
  *            The provision tab ID
  * @return Nothing
  */
-zvm.prototype.loadProvisionPage = function(tabId) {
+zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	var errMsg;
 
 	// Get the OS image names
@@ -1359,7 +1359,7 @@ zvm.prototype.loadProvisionPage = function(tabId) {
  * 
  * @return Nothing
  */
-zvm.prototype.loadResources = function() {
+zvmPlugin.prototype.loadResources = function() {
 	// Reset resource table
 	setDiskDataTable('');
 	setNetworkDataTable('');

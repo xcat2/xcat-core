@@ -7,7 +7,7 @@ $(document).ready(function(){
  * 
  * @return Nothing
  */
-var blade = function() {
+var bladePlugin = function() {
 	
 };
 
@@ -18,7 +18,7 @@ var blade = function() {
  *            Data from HTTP request
  * @return Nothing
  */
-blade.prototype.loadInventory = function(data) {
+bladePlugin.prototype.loadInventory = function(data) {
 	
 };
 
@@ -29,7 +29,7 @@ blade.prototype.loadInventory = function(data) {
  *            Source node to clone
  * @return Nothing
  */
-blade.prototype.loadClonePage = function(node) {
+bladePlugin.prototype.loadClonePage = function(node) {
 	
 };
 
@@ -40,7 +40,7 @@ blade.prototype.loadClonePage = function(node) {
  *            The provision tab ID
  * @return Nothing
  */
-blade.prototype.loadProvisionPage = function(tabId) {
+bladePlugin.prototype.loadProvisionPage = function(tabId) {
 	var errMsg;
 
 	// Get the OS image names
@@ -213,6 +213,6 @@ blade.prototype.loadProvisionPage = function(tabId) {
  * 
  * @return Nothing
  */
-blade.prototype.loadResources = function() {
+bladePlugin.prototype.loadResources = function() {
 	
 };

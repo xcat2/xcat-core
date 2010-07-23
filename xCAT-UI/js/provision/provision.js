@@ -102,22 +102,22 @@ function loadProvisionPage() {
 		var plugin;
 		switch(hw) {
 			case "blade":
-	    		plugin = new blade();
+	    		plugin = new bladePlugin();
 	    		break;
 			case "fsp":
-				plugin = new fsp();
+				plugin = new fspPlugin();
 				break;
 			case "hmc":
-				plugin = new hmc();
+				plugin = new hmcPlugin();
 				break;
 			case "ipmi":
-				plugin = new ipmi();
+				plugin = new ipmiPlugin();
 				break;		
 			case "ivm":
-				plugin = new ivm();
+				plugin = new ivmPlugin();
 				break;
 			case "zvm":
-				plugin = new zvm();
+				plugin = new zvmPlugin();
 				break;
 		}
 		
