@@ -277,13 +277,20 @@ sub makescript {
   }
 
   #get packge names for extra rpms
-  my $otherpkgdir;
   my $pkglist;
+  my $ospkglist;
   if (($^O =~ /^linux/i) && ($provmethod) && ( $provmethod ne "install") && ($provmethod ne "netboot") && ($provmethod ne "statelite")) {
       #this is the case where image from the osimage table is used
       my $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
-      (my $ref1) = $linuximagetab->getAttribs({imagename => $provmethod}, 'otherpkglist', 'otherpkgdir');
+      (my $ref1) = $linuximagetab->getAttribs({imagename => $provmethod}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir');
       if ($ref1) {
+	  if ($ref1->{'pkglist'}) {
+	      $ospkglist=$ref1->{'pkglist'};
+	      if ($ref1->{'pkgdir'}) {
+		  push @scriptd, "OSPKGDIR=". $ref1->{'pkgdir'} . "\n";
+		  push @scriptd, "export OSPKGDIR\n";
+	      }
+	  }
 	  if ($ref1->{'otherpkglist'}) {
 	      $pkglist=$ref1->{'otherpkglist'};
 	      if ($ref1->{'otherpkgdir'}) {
@@ -306,52 +313,40 @@ sub makescript {
 	      elsif ($os =~ /aix.*/) { $platform = "aix"; }
 	  }
 	  if (($nodesetstate) && ($nodesetstate eq "netboot")) { $stat="netboot";}
+
+	  $ospkglist=xCAT::SvrUtils->get_pkglist_file_name("$installroot/custom/$stat/$platform", $profile,  $os, $arch);
+	  if (!$ospkglist) { $ospkglist=xCAT::SvrUtils->get_pkglist_file_name("$::XCATROOT/share/xcat/$stat/$platform", $profile, $os, $arch); }
+
 	  $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("$installroot/custom/$stat/$platform", $profile,  $os, $arch);
 	  if (!$pkglist) { $pkglist=xCAT::SvrUtils->get_otherpkgs_pkglist_file_name("$::XCATROOT/share/xcat/$stat/$platform", $profile, $os, $arch); }
       }
   }
-#  print "pkglist=$pkglist\n";
+  print "pkglist=$pkglist\n";
+  print "ospkglist=$ospkglist\n";
+  if ($ospkglist) {
+      my $pkgtext=get_pkglist_tex($ospkglist);
+      if ($pkgtext) {
+	  push @scriptd, "OSPKGS=$pkgtext\n";
+	  push @scriptd, "export OSPKGS\n";
+      }
+  }   
+
   if ($pkglist) {
-      my @otherpkgs=();
-      if (open(FILE1, "<$pkglist")) {
-	  while (readline(FILE1)) {
-	      chomp($_); #remove newline
-	      s/\s+$//;  #remove trailing spaces
-              s/^\s*//;  #remove leading blanks
-	      next if /^\s*$/; #-- skip empty lines
-	      next if ( /^\s*#/ && 
-                        !/^\s*#INCLUDE:[^#^\n]+#/ &&
-                        !/^\s*#NEW_INSTALL_LIST#/ ); #-- skip comments
-	      push(@otherpkgs,$_);
-	  }
-	  close(FILE1);
-      } 
-      if ( @otherpkgs > 0) {
-	  my $pkgtext=join(',',@otherpkgs);
-	  
-	  #handle the #INCLUDE# tag recursively
-	  my $idir = dirname($pkglist);
-	  my $doneincludes=0;
-	  while (not $doneincludes) {
-	      $doneincludes=1;
-	      if ($pkgtext =~ /#INCLUDE:[^#^\n]+#/) {
-		  $doneincludes=0;
-		  $pkgtext =~ s/#INCLUDE:([^#^\n]+)#/includefile($1,$idir)/eg;
-	      }
-	  }
-          my @sublists = split('#NEW_INSTALL_LIST#',$pkgtext);
-          my $sl_index=0;
-          foreach (@sublists) {	  
-              $sl_index++;
+      my $pkgtext=get_pkglist_tex($pkglist);
+      if ($pkgtext) {
+	  my @sublists = split('#NEW_INSTALL_LIST#',$pkgtext);
+	  my $sl_index=0;
+	  foreach (@sublists) {	  
+	      $sl_index++;
 	      push @scriptd, "OTHERPKGS$sl_index=$_\n";
 	      push @scriptd, "export OTHERPKGS$sl_index\n";
-          }
-          if ($sl_index > 0) {
+	  }
+	  if ($sl_index > 0) {
 	      push @scriptd, "OTHERPKGS_INDEX=$sl_index\n";
 	      push @scriptd, "export OTHERPKGS_INDEX\n";
-          }
-      }    
-  }
+	  }
+      }
+  }   
 
   
   # check if there are sync files to be handled
@@ -485,6 +480,50 @@ sub makescript {
   return @scriptd;
 }
 
+
+
+#----------------------------------------------------------------------------
+
+=head3   get_pkglist_text
+
+        read the pkglist file, expand it and return the content.
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_pkglist_tex
+{
+   my $pkglist = shift;
+   my @otherpkgs=();
+   my $pkgtext;
+   if (open(FILE1, "<$pkglist")) {
+       while (readline(FILE1)) {
+	   chomp($_); #remove newline
+	   s/\s+$//;  #remove trailing spaces
+	   s/^\s*//;  #remove leading blanks
+	   next if /^\s*$/; #-- skip empty lines
+	   next if ( /^\s*#/ && 
+		     !/^\s*#INCLUDE:[^#^\n]+#/ &&
+		     !/^\s*#NEW_INSTALL_LIST#/ ); #-- skip comments
+	   push(@otherpkgs,$_);
+       }
+       close(FILE1);
+   } 
+   if ( @otherpkgs > 0) {
+       $pkgtext=join(',',@otherpkgs);
+	  
+       #handle the #INCLUDE# tag recursively
+       my $idir = dirname($pkglist);
+       my $doneincludes=0;
+       while (not $doneincludes) {
+	   $doneincludes=1;
+	   if ($pkgtext =~ /#INCLUDE:[^#^\n]+#/) {
+	       $doneincludes=0;
+	       $pkgtext =~ s/#INCLUDE:([^#^\n]+)#/includefile($1,$idir)/eg;
+	   }
+       }
+   }
+   return $pkgtext;
+}
 
 #----------------------------------------------------------------------------
 

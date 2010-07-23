@@ -1,0 +1,258 @@
+#!/bin/sh
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+#-------------------------------------------------------------------------------
+#=head1  ospkgs
+#=head2  Used on Linux only. It installs/updates the rpms thta are from OS distro. 
+#        The environment variable OSPKGS contains the rpms to be installed/updated.
+#        On MN, You need to:
+#        1. update the rpms under /install/os/arch/... directory where 'os' and 'arch'
+#           can be found in the nodetype table.
+#        2. put new package names to /install/custom/netboot(install)/platform or 
+#           /opt/xcat/share/xcat/netboot(install)/platform
+#           directory. The file name is one of the following:
+#              profile.os.arch.pkglist  
+#              profile.os.pkglist   
+#              profile.arch.pkglist  
+#              profile.pkglist
+#  You can run the following commands to install/update the rpms from os distro.
+#       updatenode noderange ospkgs 
+#       updatenode noderange -S    (this one intslls/updates rpms from os distro as well as otherpkgs)
+#   
+#=cut
+#-------------------------------------------------------------------------------
+debug=0
+
+# This command only runs by updatenode command
+if [[ $UPDATENODE -ne 1 ]]; then
+    echo "  Did not install any extra rpms."
+    exit 0
+fi 
+
+if [[ -z "$OSPKGS" ]]; then 
+  echo "$0: no extra rpms to install"
+  exit 0
+fi
+
+if [[ -z "$NFSSERVER" ]]; then
+    NFSSERVER=$MASTER
+fi
+
+if [[ -z "$INSTALLDIR" ]]; then
+    INSTALLDIR="/install"
+fi
+
+#check if /install is mounted on the server, we may need to add code to conver NFSSERVER to ip 
+mounted=0;
+result=`mount |grep /install |grep $NFSSERVER`
+if [ $? -eq 0 ]; then
+    NFSSERVER=$INSTALLDIR
+    mounted=1 
+fi
+
+if [[ -z "$OSPKGDIR" ]]; then
+    OSPKGDIR="$NFSSERVER/$OSVER/$ARCH"
+    if [[ $OSVER = sles* ]]; then
+	OSPKGDIR="$OSPKGDIR/1"
+    fi
+fi
+
+if [ $mounted -eq 0 ]; then
+    OSPKGDIR=${OSPKGDIR/#$INSTALLDIR/$NFSSERVER/}
+fi
+
+logger -t xcat "NFSSERVER=$NFSSERVER"
+logger -t xcat "OSPKGDIR=$OSPKGDIR"
+logger -t xcat "OSPKGS=$OSPKGS"
+
+if [ $debug -ne 0 ]; then
+    echo NFSSERVER=$NFSSERVER
+    echo OSPKGDIR=$OSPKGDIR
+    echo OSPKGS = $OSPKGS 
+fi
+
+pkgs=`echo $OSPKGS |tr ',' ' '`
+
+if [[ $OSVER = sles10* ]]; then
+    #check if zypper is installed
+    result=`rpm -q zypper`
+    if [ $? -ne 0 ]; then 
+	echo "Please install zypper on $NODE."
+	exit 1
+    fi
+
+    #remove old repo
+    old_repo=`zypper sl |grep -e "^[0-9]" | cut -f2 -d '|'`
+    for x in $old_repo
+    do
+        result=`zypper sd $x`
+    done
+    result=`zypper --non-interactive refresh 2>&1`
+    if [ $debug -ne 0 ]; then
+	echo "zypper --non-interactive refresh"
+	echo $result
+    fi
+
+    #add new repo
+    if [ $mounted -eq 0 ]; then
+	path="ftp://$OSPKGDIR"
+    else
+        path="file://$OSPKGDIR"
+    fi
+    result=`zypper sa $path $OSVER`
+    if [ $? -ne 0 ]; then 
+	logger -t xcat "ospkgs: zypper sa $path $OSVER\n    $result"
+	echo "ospkgs: zypper sa $path $OSVER\n    $result"
+    fi
+    result=`zypper --non-interactive refresh 2>&1` 
+    if [ $debug -ne 0 ]; then
+	echo "zypper --non-interactive refresh"
+	echo $result
+    fi
+
+    #upgrade existing rpms
+    result=`zypper --non-interactive update --auto-agree-with-licenses`
+    if [ $? -ne 0 ]; then 
+	logger -t xcat "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
+        echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
+    else
+	if [ $debug -ne 0 ]; then
+	    echo "zypper --non-interactive update --auto-agree-with-licenses"
+	    echo $result
+	fi
+    fi
+
+    #install new rpms if any
+    result=`zypper install -y $pkgs 2>&1`
+    if [ $? -ne 0 ]; then 
+	logger -t xcat "ospkgs: zypper install -y $pkgs\n    $result"
+	echo "ospkgs: zypper install -y $pkgs\n    $result"
+    else
+	if [ $debug -ne 0 ]; then
+	    echo "zypper install -y $pkgs"
+	    echo $result
+	fi
+	echo "ospkgs: OS rpms have been installed or upgraded."
+    fi
+
+elif [[ $OSVER = sles11* ]]; then
+    #check if zypper is installed
+    result=`rpm -q zypper`
+    if [ $? -ne 0 ]; then 
+	echo "Please install zypper on $NODE."
+	exit 1
+    fi
+    old_repo=`zypper lr |grep -e "^[0-9]" | cut -f2 -d '|'`
+    for x in $old_repo
+    do
+        result=`zypper rr $x`
+    done
+    result=`zypper --non-interactive refresh 2>&1`
+    if [ $debug -ne 0 ]; then
+	echo "zypper --non-interactive refresh"
+	echo $result
+    fi
+
+    if [ $mounted -eq 0 ]; then
+	path="ftp://$OSPKGDIR"
+    else
+        path="file://$OSPKGDIR"
+    fi
+    result=`zypper ar $path $OSVER`
+    if [ $? -ne 0 ]; then 
+	logger -t xcat "ospkgs: zypper ar $path $OSVER\n    $result"
+	echo "ospkgs: zypper ar $path $OSVER\n    $result"
+    fi
+    
+    result=`zypper --non-interactive refresh 2>&1` 
+    if [ $debug -ne 0 ]; then
+	echo "zypper --non-interactive refresh"
+	echo $result
+    fi
+
+    #upgrade the all existing rpms
+    result=`zypper --non-interactive update --auto-agree-with-licenses`
+    if [ $? -ne 0 ]; then 
+	logger -t xcat "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
+	echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
+    else
+	if [ $debug -ne 0 ]; then
+	    echo "zypper --non-interactive update --auto-agree-with-licenses"
+	    echo $result
+	fi
+    fi
+
+    #install new rpms if any
+    result=`zypper install -y $pkgs 2>&1`
+    if [ $? -ne 0 ]; then 
+	logger -t xcat "ospkgs: zypper install -y $pkgs\n    $result"
+	echo "ospkgs: zypper install -y $pkgs\n    $result"
+    else
+	if [ $debug -ne 0 ]; then
+	    echo "zypper install -y $pkgs "
+	    echo $result
+	fi
+	echo "ospkgs: OS rpms have been installed or upgraded."
+    fi
+else 
+    #check if yum is installed
+    result=`rpm -q yum`
+    if [ $? -ne 0 ]; then 
+	echo "Please install yum on $NODE."
+	exit 1;
+    fi
+
+    #remove old repo
+    mkdir -p /etc/yum.repos.d
+    result=`rm /etc/yum.repos.d/*.repo 2>&1`
+    result=`yum clean all`
+
+    #create new repo file
+    REPOFILE="/etc/yum.repos.d/$OSVER.repo"
+    echo "[$OSVER]" > $REPOFILE
+    echo "name=$OSVER" >> $REPOFILE
+    if [ $mounted -eq 0 ]; then
+	echo "baseurl=ftp://$OSPKGDIR" >> $REPOFILE
+    else
+	echo "baseurl=file://$OSPKGDIR" >> $REPOFILE
+    fi
+    echo "enabled=1" >> $REPOFILE
+    echo "gpgcheck=0" >> $REPOFILE
+
+    #import the release key?
+    #my $key = "$installDIR/$os/$arch/RPM-GPG-KEY-redhat-release";
+    #my $tmp = "/tmp/RPM-GPG-KEY-redhat-release";
+    #my $tgt = "root@" . $node;
+    #$out = `scp $key $tgt:$tmp`;
+    #$out = `ssh $node "rpm --import $tmp"`;
+
+
+    #upgrade the existing rpms
+    result=`yum -y upgrade 2>&1`
+    if [ $? -ne 0 ]; then 
+	logger -t xcat "ospkgs: yum -y upgrade\n    $result"
+	echo "ospkgs: yum -y upgrade\n    $result"
+    else
+	if [ $debug -ne 0 ]; then
+	    echo "yum -y upgrade"
+	    echo $result
+	fi
+    fi
+
+    #install new rpms if any
+    result=`yum -y install $pkgs 2>&1`
+    if [ $? -ne 0 ]; then 
+	logger -t xcat "ospkgs: yum -y install $pkgs\n    $result"
+	echo "ospkgs: yum -y install $pkgs\n    $result"
+    else
+	if [ $debug -ne 0 ]; then
+	    echo "yum -y install $pkgs"
+	    echo $result
+	fi
+	echo "ospkgs: OS rpms have been installed or upgraded."
+    fi
+fi
+
+exit 0
+
+
