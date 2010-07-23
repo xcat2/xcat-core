@@ -764,7 +764,7 @@ vpd => {
  },
   },
 nimimage  => {
- cols => [qw(imagename nimtype lpp_source spot root dump paging resolv_conf tmp home shared_home res_group nimmethod script bosinst_data installp_bundle mksysb fb_script shared_root otherpkgs comments disable)],
+ cols => [qw(imagename nimtype lpp_source spot root dump paging resolv_conf tmp home shared_home res_group nimmethod script bosinst_data installp_bundle mksysb fb_script shared_root otherpkgs image_data comments disable)],
  keys => [qw(imagename)],
     table_desc => 'All the info that specifies a particular AIX operating system image that can be used to deploy AIX nodes.',
  descriptions => {
