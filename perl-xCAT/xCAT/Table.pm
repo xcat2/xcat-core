@@ -2226,7 +2226,7 @@ sub getNodeAttribs_nosub
 
 =head3 getNodeAttribs_nosub_returnany
 
-    Description:
+    Description:  not used, kept for reference 
 
     Arguments:
 
@@ -2244,7 +2244,7 @@ sub getNodeAttribs_nosub
 =cut
 
 #--------------------------------------------------------------------------------
-sub getNodeAttribs_nosub_returnany
+sub getNodeAttribs_nosub_returnany_old
 {    #This is the original function
     my $self    = shift;
     my $node    = shift;
@@ -2291,6 +2291,130 @@ sub getNodeAttribs_nosub_returnany
     }
     return undef;    #Made it here, config has no good answer
 }
+
+sub getNodeAttribs_nosub_returnany
+{
+	my $self    = shift;
+    my $node    = shift;
+    my @attribs = @{shift()};
+    my %options = @_;
+    my @results;
+
+    my $nodekey = "node";
+    if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+        $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
+    };
+    @results = $self->getAttribs({$nodekey => $node}, @attribs);
+    
+    my %attribsToDo;
+    for(@attribs) {$attribsToDo{$_} = 0};
+    
+    my $attrib;
+    my $result;
+    
+    my $data = $results[0];
+    if(defined{$data}) #if there was some data for the node, loop through and check it
+    {
+	    foreach $result (@results)
+    	{
+    		foreach $attrib (keys %attribsToDo)
+    		{
+    			#check each item in the results to see which attributes were satisfied
+    			if(defined($result->{$attrib}) && $result->{$attrib} !~ /\+=NEXTRECORD$/)
+    			{
+    				delete $attribsToDo{$attrib};
+    			} 
+    		}   
+    	}
+    }
+    
+    #find the groups for this node
+    my ($nodeghash) = $self->{nodelist}->getAttribs({node => $node}, 'groups');
+    
+    #no groups for the node, we are done
+    unless (defined($nodeghash) && defined($nodeghash->{groups}))
+    {
+        return @results;
+    }
+    
+    my @nodegroups = split(/,/, $nodeghash->{groups});
+    my $group;
+    my @groupResults;
+    my $groupResult;
+    my $wasAdded; #used to keep track 
+    my %attribsDone;
+
+    foreach $group (@nodegroups)
+    {
+        @groupResults = $self->getAttribs({$nodekey => $group}, keys (%attribsToDo));
+	    $data = $groupResults[0];
+        if (defined($data))  #if some attributes came back from the query for this group
+        {
+            foreach $groupResult (@groupResults) {
+            	$wasAdded = 0;
+                if ($groupResult->{$nodekey}) { $groupResult->{$nodekey} = $node; }
+                if ($options{withattribution}) { $groupResult->{'!!xcatsourcegroup!!'} = $group; }
+                
+                foreach $attrib (%attribsToDo) #check each unfinished attribute against the results for this group
+                {
+                	if(defined($groupResult->{$attrib})){
+                		
+                		foreach $result (@results){ #loop through our existing results to add or modify the value for this attribute
+                			
+                			if(defined($result->{$attrib}) && $result->{$attrib} =~/\+=NEXTRECORD$/){ #if the attribute was there and the value should be added
+                				
+                				$result->{$attrib} =~ s/\+=NEXTRECORD$//; #pull out the existing next record string
+                				$result->{$attrib} .= " " . $groupResult->{$attrib}; #add the group result onto the end of the existing value
+						if($options{withattribution}) {
+							if(defined($result->{'!!xcatsourcegroup!!'})) {
+								$result->{'!!xcatsourcegroup!!'} .= " " . $group;
+							}
+							else {
+								$result->{'!!xcatsourcegroup!!'} = $group;
+							}
+						}
+                				$wasAdded = 1; #this group result was handled
+                				last;
+                			}
+                		
+                		}
+                		if(!$wasAdded){ #if there was not a value already in the results.  we know there is no entry for this
+                			push(@results, $groupResult);
+                		}
+           				if($groupResult->{$attrib} !~ /\+=NEXTRECORD$/){ #the attribute was satisfied if it does not expect to add the next record
+           					$attribsDone{$attrib} = 0;
+						#delete $attribsToDo{$attrib};
+           				}
+                	}
+                
+                }
+		foreach $attrib (%attribsDone) {
+			if(defined($attribsToDo{$attrib})) {
+				delete $attribsToDo{$attrib};
+			}
+		}
+            }
+        }
+        if((keys (%attribsToDo)) == 0) #if all of the attributes are satisfied, so stop looking at the groups
+        {
+        	last;
+        }
+    }
+    
+    my $element;
+    #run through the results and remove any "+=NEXTRECORD" ocurrances
+    foreach $result (@results)
+    {
+    	foreach $element ($result)
+    	{
+    		$result->{$element} =~ s/\+=NEXTRECORD$//;
+    	}
+    }
+    
+    #Don't need to 'correct' node attribute, considering result of the if that governs this code block?
+    return @results;
+}
+
 
 #--------------------------------------------------------------------------
 
