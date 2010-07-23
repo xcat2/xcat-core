@@ -23,6 +23,12 @@
 #-------------------------------------------------------------------------------
 debug=0
 
+if [[ $OSTYPE != linux* ]]; then
+    #not supported on AIX
+    echo "ospkgs script only runs on Linux."
+    exit 0
+fi
+
 # This command only runs by updatenode command
 if [[ $UPDATENODE -ne 1 ]]; then
     echo "  Did not install any extra rpms."
