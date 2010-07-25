@@ -203,6 +203,7 @@ function loadNodes(data) {
 
 	// Add column for check box, node, ping, and power
 	sorted.unshift('', 'node', 'ping', 'power');
+	sorted[0] = '<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">';
 
 	// Create a datatable
 	var dTable = new DataTable('nodesDataTable');
@@ -1627,8 +1628,14 @@ function deleteNode(tgtNodes) {
 			'color' : '#BDBDBD'
 		});
 	});
+	
+	var cancelBtn = createButton('Cancel');
+	cancelBtn.bind('click', function(){
+		myTab.remove($(this).parent().parent().attr('id'));
+	});
 
 	deleteForm.append(deleteBtn);
+	deleteForm.append(cancelBtn);
 	myTab.add(newTabId, 'Delete', deleteForm);
 
 	myTab.select(newTabId);
@@ -2148,9 +2155,6 @@ function setGroupsCookies(data) {
  * @return Row element
  */
 function getNodeRow(tgtNode, rows) {
-	// Get nodes datatable
-	var dTable = getNodesDataTable();
-
 	// Find the row
 	for ( var i in rows) {
 		// Get all columns within the row
@@ -2181,6 +2185,10 @@ function getNodesChecked() {
 	var nodes = $('#nodesDataTable input[type=checkbox]:checked');
 	for ( var i = 0; i < nodes.length; i++) {
 		tgtNodes += nodes.eq(i).attr('name');
+		
+		if ("" == tgtNodes){
+			continue;
+		}
 
 		// Add a comma in front of each node
 		if (i < nodes.length - 1) {
@@ -2189,4 +2197,10 @@ function getNodesChecked() {
 	}
 
 	return tgtNodes;
+}
+
+function selectAllCheckbox(event, obj){
+	var status = obj.attr('checked');
+	$('#nodesDataTable :checkbox').attr('checked', status);
+	event.stopPropagation();
 }

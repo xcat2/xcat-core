@@ -104,6 +104,10 @@ Tab.prototype.select = function(id) {
  */
 Tab.prototype.remove = function(id) {
 	// To be continued
+	var selectorStr = 'a[href="\#' + id + '"]';	
+	var selectTab = $(selectorStr, this.tab).parent();
+	var index = ($('li', this.tab).index(selectTab));
+	this.tab.tabs("remove", index);
 };
 
 /**
