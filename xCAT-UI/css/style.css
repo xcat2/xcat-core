@@ -264,6 +264,7 @@ span.ui-icon-info {
 .statusBar p {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	max-width: 700px;
+	word-wrap: break-word;
 }
 
 /****************** Info bar ******************/
@@ -281,6 +282,7 @@ span.ui-icon-info {
 .infoBar p {
 	padding: 0px 10px;
 	display: inline-table;
+	word-wrap: break-word;
 }
 
 /****************** Data table ******************/

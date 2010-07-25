@@ -1584,19 +1584,19 @@ function deleteNode(tgtNodes) {
 				// Append nothing to the string
 				tgtNodesStr += nodes[i];
 			} else {
-				// For every 10 nodes, append a break
-				if ((i % 10) > 0) {
-					tgtNodesStr += nodes[i] + ', ';
-				} else {
-					tgtNodesStr += nodes[i] + ', <br>';
-				}
+				// Append a comma to the string
+				tgtNodesStr += nodes[i] + ', ';
 			}
 		}
 	}
 
 	var deleteForm = $('<div class="form"></div>');
 	deleteForm.append(statBar);
-	deleteForm.append('<p>Do you want to delete ' + tgtNodesStr + '?</p>');
+	deleteForm.append(statBar);
+	
+	// Word wrap
+	var instr = $('<p>Do you want to delete ' + tgtNodesStr + '?</p>').css('word-wrap', 'break-word');
+	deleteForm.append(instr);
 
 	/**
 	 * Delete
