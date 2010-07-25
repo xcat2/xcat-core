@@ -118,7 +118,7 @@ sub fsp_api_action {
     #    $res = "Failed to get the $fsp_name\'s ip";
     #    return ([$node_name, $res, -1]);	
     #}
-    $fsp_ip = getNodeIPaddress( $fsp_name );
+    $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
     if(!defined($fsp_ip)) {
         $res = "Failed to get the $fsp_name\'s ip";
         return ([$node_name, $res, -1]);	
