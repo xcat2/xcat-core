@@ -290,7 +290,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 	var inv = data.rsp[0].split(node + ':');
 
 	// Remove loader
-	var loaderId = node + 'TabLoader';
+	var loaderId = tabId + 'TabLoader';
 	$('#' + loaderId).remove();
 
 	// Create status bar

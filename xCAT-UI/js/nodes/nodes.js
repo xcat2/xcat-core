@@ -634,14 +634,20 @@ function loadNode(e) {
 	}
 
 	// Get tab area where a new tab will be inserted
+	// the node name may contain special char(such as '.','#'), so we can not use the node name as a id.
 	var myTab = getNodesTab();
-	var newTabId = node + 'Tab';
-
+	var inst = 0;
+	var newTabId = 'NodeTab' + inst;
+	while ($('#' + newTabId).length) {
+		// If one already exists, generate another one
+		inst = inst + 1;
+		newTabId = 'NodeTab' + inst;
+	}
 	// Reset node process
 	$.cookie(node + 'Processes', 0);
 
 	// Add new tab, only if one does not exist
-	var loader = createLoader(node + 'TabLoader');
+	var loader = createLoader(newTabId + 'TabLoader');
 	loader = $('<center></center>').append(loader);
 	myTab.add(newTabId, node, loader);
 
@@ -661,6 +667,7 @@ function loadNode(e) {
 	});
 
 	// Select new tab
+	// tabid may contains special char, so we had to use the index
 	myTab.select(newTabId);
 }
 

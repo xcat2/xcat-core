@@ -29,7 +29,7 @@ hmcPlugin.prototype.loadInventory = function(data) {
 	var inv = data.rsp;
 	
 	// Remove loader
-	var loaderId = node + 'TabLoader';
+	var loaderId = tabId + 'TabLoader';
 	$('#' + loaderId).remove();
 	
 	// Create division to hold inventory
