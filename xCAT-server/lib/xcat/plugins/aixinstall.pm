@@ -3984,6 +3984,22 @@ sub prermnimimage
         return (1);
     }
 
+    #
+    #  get list of defined xCAT osimage objects
+    #
+    my @deflist = undef;
+    @deflist = xCAT::DBobjUtils->getObjectsOfType("osimage");
+
+    # check if the provided image is valid.
+    #
+    if (!grep(/^$image_name$/, @deflist))
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "\'$image_name\' is not a valid xCAT image name.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return (1);
+    } 
+
     # get the xCAT image definition
     my %objtype;
     $objtype{$image_name} = 'osimage';
