@@ -528,30 +528,20 @@ function loadNodes(data) {
 function loadPowerStatus(data) {
 	// Get datatable
 	var dTable = getNodesDataTable();
-
-	// Power state of each node
-	// where power[0] = nodeName and power[1] = state
 	var power = data.rsp;
-
-	var row, rowPos;
-	var node, nodeLink;
-	var status, statusLink;
-	var args;
-
-	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
+	var rowNum, node, status, args;
 
 	for ( var i in power) {
+		// node name and power status, where power[0] = nodeName and power[1] = state
 		args = power[i].split(':');
-
-		// Update the power status column
 		node = jQuery.trim(args[0]);
 		status = jQuery.trim(args[1]);
 
 		// Get the row containing the node
-		row = getNodeRow(node, rows);
-		rowPos = dTable.fnGetPosition(row);
-		dTable.fnUpdate(status, rowPos, 3);
+		rowNum = getRowNum(node);
+
+		//update the data in the 
+		dTable.fnUpdate(status, rowNum, 3);
 	}
 }
 
@@ -565,31 +555,20 @@ function loadPowerStatus(data) {
 function loadPingStatus(data) {
 	// Get data table
 	var dTable = getNodesDataTable();
-
-	// Power state of each node
-	// where ping[0] = nodeName ping[1] = state
 	var ping = data.rsp;
-
-	var row, rowPos;
-	var node, nodeLink;
-	var status, statusLink;
-	var args;
+	var rowPos, node, status;
 
 	// Get all nodes within the datatable
 	var rows = dTable.fnGetNodes();
 	for ( var i in ping) {
-		args = ping[i][0];
-
-		// Update the power status column
+		// where ping[0] = nodeName ping[1] = state
 		node = jQuery.trim(ping[i][0]);
 		status = jQuery.trim(ping[i][1]);
 
 		// Get the row containing the node
-		row = getNodeRow(node, rows);
-		rowPos = dTable.fnGetPosition(row);
+		rowPos = getRowNum(node);
 
 		// Update the power status column
-		status = jQuery.trim(ping[i][1]);
 		dTable.fnUpdate(status, rowPos, 2);
 	}
 }
@@ -2066,8 +2045,9 @@ function runScript(inst) {
  * @return The hardware management of the node
  */
 function getNodeMgt(node) {
-	// Get the row
-	var row = $('#' + node).parent().parent();
+	// Get the row, 
+	// may be node contain special char(such as '.' '#'),so we can not use $('#') directly
+	var row = $('[id=' + node + ']').parent().parent();
 
 	// Search for the mgt column
 	var mgtCol = row.parent().parent().find('th:contains("mgt")');
@@ -2206,6 +2186,36 @@ function getNodesChecked() {
 	return tgtNodes;
 }
 
+function getColNum(colName){
+	var temp;
+	var columns = $('table thead tr').children();
+	
+	for(temp = 1; temp < columns.length; temp++){
+		if (colName == columns[temp].innerHTML){
+			return temp;
+		}
+	}
+	return -1;
+}
+
+function getRowNum(nodeName){
+	// Get datatable
+	var dTable = getNodesDataTable();
+	
+	// Get all data from datatable
+	var data = dTable.fnGetData();
+	
+	var temp;
+	var nodeItem;
+			
+	for(temp = 0; temp < data.length; temp++){
+		nodeItem = data[temp][1];
+		if(nodeItem.indexOf('>' + nodeName + '<') > -1){
+			return temp;
+		}
+	}
+	return -1;
+}
 function selectAllCheckbox(event, obj){
 	var status = obj.attr('checked');
 	$('#nodesDataTable :checkbox').attr('checked', status);
