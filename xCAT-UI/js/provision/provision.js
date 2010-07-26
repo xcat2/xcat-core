@@ -61,7 +61,7 @@ function loadProvisionPage() {
 	var div = $('<div></div>');
 	provForm.append(div);
 
-	var label = $('<span>Select the hardware to provision:</span>');
+	var label = $('<span>Select a platform to provision:</span>');
 	var hw = $('<select></select>');
 	var ipmi = $('<option value="ipmi">ipmi</option>');
 	var blade = $('<option value="blade">blade</option>');

@@ -19,8 +19,8 @@ var hmcPlugin = function() {
  * @return Nothing
  */
 hmcPlugin.prototype.loadInventory = function(data) {
+	// Get arguments
 	var args = data.msg.split(',');
-
 	// Get tab ID
 	var tabId = args[0].replace('out=', '');
 	// Get node
@@ -33,26 +33,45 @@ hmcPlugin.prototype.loadInventory = function(data) {
 	$('#' + loaderId).remove();
 	
 	// Create division to hold inventory
-	var invDivId = node + 'Inventory';
+	var invDivId = tabId + 'Inventory';
 	var invDiv = $('<div class="inventory" id="' + invDivId + '"></div>');
 	
-	var fieldSet = $('<fieldset></fieldset>');
-	var legend = $('<legend>Inventory</legend>');
-	fieldSet.append(legend);
-	var oList = $('<ol></ol>');
-	var item, label, input, args;
-
-	// Loop through each property
+	var fieldSet, legend, oList, item;
+	
+	// Loop through each line
 	for ( var k = 0; k < inv.length; k++) {
-		// Create a list item for each property
-    	item = $('<li></li>');
-    	item.append(inv[k].replace(node + ': ', ''));
-    	oList.append(item);
+		// Remove the node name in front
+		var str = inv[k].replace(node + ': ', '');
+		
+		// If the string is a header
+		if (str.indexOf('I/O Bus Information') > -1 || str.indexOf('Machine Configuration Info') > -1) {			
+			// Create a fieldset
+			fieldSet = $('<fieldset></fieldset>');
+			legend = $('<legend>' + str + '</legend>');
+			fieldSet.append(legend);
+			oList = $('<ol></ol>');
+			fieldSet.append(oList);
+			invDiv.append(fieldSet);
+		} else {
+			// If no fieldset is defined
+			if (!fieldSet) {
+				// Define fieldset
+				fieldSet = $('<fieldset></fieldset>');
+				legend = $('<legend>General</legend>');
+				fieldSet.append(legend);
+				oList = $('<ol></ol>');
+				fieldSet.append(oList);
+				invDiv.append(fieldSet);
+			}
+			
+			// Append the string to a list
+			item = $('<li></li>');
+	    	item.append(str);
+	    	oList.append(item);
+		}
 	}
 	
 	// Append to inventory form
-	fieldSet.append(oList);
-	invDiv.append(fieldSet);
 	$('#' + tabId).append(invDiv);
 };
 

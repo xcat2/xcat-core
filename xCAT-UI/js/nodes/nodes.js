@@ -616,11 +616,11 @@ function loadNode(e) {
 	// the node name may contain special char(such as '.','#'), so we can not use the node name as a id.
 	var myTab = getNodesTab();
 	var inst = 0;
-	var newTabId = 'NodeTab' + inst;
+	var newTabId = 'nodeTab' + inst;
 	while ($('#' + newTabId).length) {
 		// If one already exists, generate another one
 		inst = inst + 1;
-		newTabId = 'NodeTab' + inst;
+		newTabId = 'nodeTab' + inst;
 	}
 	// Reset node process
 	$.cookie(node + 'Processes', 0);
@@ -2216,6 +2216,7 @@ function getRowNum(nodeName){
 	}
 	return -1;
 }
+
 function selectAllCheckbox(event, obj){
 	var status = obj.attr('checked');
 	$('#nodesDataTable :checkbox').attr('checked', status);

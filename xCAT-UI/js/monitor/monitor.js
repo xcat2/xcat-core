@@ -69,7 +69,7 @@ function loadMonitorPage() {
 	var resrcForm = $('<div class="monitor"></div>');
 
 	// Create info bar
-	var resrcInfoBar = createInfoBar('Select a hardware to view its resources');
+	var resrcInfoBar = createInfoBar('Select a platform to view its resources');
 	resrcForm.append(resrcInfoBar);
 
 	// Create drop-down menu
