@@ -77,6 +77,7 @@ ul.sf-menu li li li:hover ul,ul.sf-menu li li li.sfHover ul {
 .sf-menu a {
 	padding: .3em 1em;
 	text-decoration: none;
+	color: #424242;
 }
 
 .sf-menu a,.sf-menu a:visited {
