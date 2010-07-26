@@ -60,6 +60,7 @@ set +x
 %ifos linux
 cp -a share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 cp -a share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
+ln -sf ../rh/dracut $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/fedora/dracut
 %else
 cp -hpR share/xcat/install/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/install/
 cp -hpR share/xcat/netboot/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/netboot/
