@@ -963,13 +963,58 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	// Append to provision tab
 	$('#' + tabId).append(provForm);
 
+	/*
+	 * Begin creating the form
+	 */
+	
+	// Create drop-down menu for provision type
+	var provType = $('<div></div>');
+	var label = $('<label for="provType">Provision:</label>');
+	var type = $('<select></select>');
+	var newNode = $('<option value="new">New node</option>');
+	var existNode = $('<option value="existing">Existing node</option>');
+	type.append(newNode);
+	type.append(existNode);
+	provType.append(label);
+	provType.append(type);
+	provForm.append(provType);
+	
+	/*
+	 * Create provision new node DIV
+	 */
+	var provNew = $('<div></div>');
+	provForm.append(provNew);
+	
+	// Group
+	var group = $('<div></div>');
+	var groupLabel = $('<label for="group">Group:</label>');
+	var groupInput = $('<input type="text" name="group"/>');
+
+	// Get the groups on-focus
+	groupInput.focus(function() {
+		var groupNames = $.cookie('Groups');
+
+		// If there are groups, turn on auto-complete
+		if (groupNames) {
+			$(this).autocomplete(groupNames.split(','));
+		}
+	});
+
+	group.append(groupLabel);
+	group.append(groupInput);
+	provNew.append(group);
+		
 	// Node name
-	var nodeName = $('<div><label for="nodeName">Node:</label><input type="text" name="nodeName"/></div>');
-	provForm.append(nodeName);
+	var nodeName = $('<div></div>');
+	var nodeLabel = $('<label for="nodeName">Node:</label>');
+	var nodeInput = $('<input type="text" name="nodeName"/>');
+	nodeName.append(nodeLabel);
+	nodeName.append(nodeInput);
+	provNew.append(nodeName);
 
 	// User ID
 	var userId = $('<div><label for="userId">User ID:</label><input type="text" name="userId"/></div>');
-	provForm.append(userId);
+	provNew.append(userId);
 
 	// Hardware control point
 	var hcpDiv = $('<div></div>');
@@ -998,27 +1043,8 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 		}
 	});
 	hcpDiv.append(hcpInput);
-	provForm.append(hcpDiv);
-
-	// Group
-	var group = $('<div></div>');
-	var groupLabel = $('<label for="group">Group:</label>');
-	var groupInput = $('<input type="text" name="group"/>');
-
-	// Get the groups on-focus
-	groupInput.focus(function() {
-		var groupNames = $.cookie('Groups');
-
-		// If there are groups, turn on auto-complete
-		if (groupNames) {
-			$(this).autocomplete(groupNames.split(','));
-		}
-	});
-
-	group.append(groupLabel);
-	group.append(groupInput);
-	provForm.append(group);
-
+	provNew.append(hcpDiv);
+	
 	// Operating system image
 	var os = $('<div></div>');
 	var osLabel = $('<label for="os">Operating system image:</label>');
@@ -1036,11 +1062,11 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 
 	os.append(osLabel);
 	os.append(osInput);
-	provForm.append(os);
+	provNew.append(os);
 
 	// User entry
 	var userEntry = $('<div><label for="userEntry">User entry:</label><textarea/></textarea>');
-	provForm.append(userEntry);
+	provNew.append(userEntry);
 
 	// Create disk table
 	var diskDiv = $('<div class="provision"></div>');
@@ -1089,8 +1115,7 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 		diskRow.append(diskSize);
 
 		// Get list of disk pools
-		var thisTabId = $(this).parent().parent().parent().parent().parent()
-			.attr('id');
+		var thisTabId = $(this).parent().parent().parent().parent().parent().parent().attr('id');
 		var thisHcp = $('#' + thisTabId + ' input[name=hcp]').val();
 		var definedPools;
 		if (thisHcp) {
@@ -1117,8 +1142,8 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	diskTable.append(diskBody);
 	diskTable.append(diskFooter);
 	diskDiv.append(diskTable);
-	provForm.append(diskDiv);
-
+	provNew.append(diskDiv);
+	
 	/**
 	 * Provision
 	 */
@@ -1128,7 +1153,7 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 		errMsg = '';
 
 		// Get the tab ID
-		var thisTabId = $(this).parent().parent().attr('id');
+		var thisTabId = $(this).parent().parent().parent().attr('id');
 		var out2Id = thisTabId.replace('zvmProvisionTab', '');
 
 		// Check node name, userId, hardware control point, and group
@@ -1224,11 +1249,17 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 
 					// Disable close button on disk table
 					$('#' + thisTabId + ' table span').unbind('click');
-
+					
 					// Disable all fields
 					var inputs = $('#' + thisTabId + ' input');
-					inputs.attr('readonly', 'readonly');
+					inputs.attr('disabled', 'disabled');
 					inputs.css( {
+						'background-color' : '#F2F2F2'
+					});
+					
+					var selects = $('#' + thisTabId + ' select');
+					selects.attr('disabled', 'disabled');
+					selects.css( {
 						'background-color' : '#F2F2F2'
 					});
 
@@ -1302,8 +1333,14 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 
 				// Disable all fields
 				var inputs = $('#' + thisTabId + ' input');
-				inputs.attr('readonly', 'readonly');
+				inputs.attr('disabled', 'disabled');
 				inputs.css( {
+					'background-color' : '#F2F2F2'
+				});
+				
+				var selects = $('#' + thisTabId + ' select');
+				selects.attr('disabled', 'disabled');
+				selects.css( {
 					'background-color' : '#F2F2F2'
 				});
 
@@ -1351,7 +1388,27 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 			alert('(Error) ' + errMsg);
 		}
 	});
-	provForm.append(provisionBtn);
+	provNew.append(provisionBtn);
+	
+	/*
+	 * Create provision existing node DIV
+	 */
+	var provExisting = $('<div></div>').hide();
+	provForm.append(provExisting);
+	
+	// Toogle provision forms on select of provision type
+	type.change(function(){
+		var selected = $(this).val();
+		
+		// If the user wants to provision a new node
+		if (selected == 'new') {
+			provNew.toggle();
+			provExisting.toggle();
+		} else {
+			provNew.toggle();
+			provExisting.toggle();
+		}
+	});
 };
 
 /**
