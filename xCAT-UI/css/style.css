@@ -251,6 +251,10 @@ span.ui-icon-info {
 	padding: 0px 10px;
 }
 
+.actionBar a {
+	color: #424242;
+}
+
 /****************** Status bar ******************/
 .statusBar {
 	border: solid 1px #F5D0A9;
