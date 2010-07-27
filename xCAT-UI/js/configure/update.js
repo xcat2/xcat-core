@@ -10,9 +10,11 @@
     var statusDiv = createStatusBar("update");
     statusDiv.hide();
     
+    $('#updateTab').append(statusDiv);
+	$('#updateTab').append('<br>');
     $('#updateTab').append(repositoryDiv);
     $('#updateTab').append(rpmDiv);
-    $('#updateTab').append(statusDiv);
+    
     
     var infoBar = createInfoBar('Select the Rpm and Repository, then press Update');
     repositoryDiv.append(infoBar);
