@@ -1,0 +1,636 @@
+# IBM_PROLOG_BEGIN_TAG 
+# This is an automatically generated prolog. 
+#  
+# bos61J src/bos/usr/lpp/bosinst/image.template/image.template 1.23.1.39 
+#  
+# Licensed Materials - Property of IBM 
+#  
+# COPYRIGHT International Business Machines Corp. 1993,2009 
+# All Rights Reserved 
+#  
+# US Government Users Restricted Rights - Use, duplication or 
+# disclosure restricted by GSA ADP Schedule Contract with IBM Corp. 
+#  
+# @(#) 41 1.23.1.39 src/bos/usr/lpp/bosinst/image.template/image.template, bosinst, bos61J, 0935A_61J 8/12/09 12:53:55
+# IBM_PROLOG_END_TAG 
+#
+#   COMPONENT_NAME: BOSINST
+#
+#   FUNCTIONS: none
+#
+#   ORIGINS: 27
+#
+#
+#   (C) COPYRIGHT International Business Machines Corp. 1993
+#   All Rights Reserved
+#   Licensed Materials - Property of IBM
+#   US Government Users Restricted Rights - Use, duplication or
+#   disclosure restricted by GSA ADP Schedule Contract with IBM Corp.
+#
+#
+#
+#
+# This first section is the description of this file.  It contains comments and
+# descriptions of the stanzas and fields.
+#
+# NOTE:  After this first comment section ends, COMMENTS WILL NOT BE ALLOWED.
+#
+# NOTE: Stanzas follow these rules:
+#       1. Stanza names must be at the beginning of the line and end in a colon.
+#       2. Comments may be after the colon, but THAT'S THE ONLY PLACE!!!! other
+#          than here in the header.  Even then, don't expect those comments
+#          to be put back where they were after BOS install gets done processing
+#          this file.  We reserve the right to mangle and ignore all comments
+#          which are not placed in this header.
+#       3. Stanza fields are on lines following stanza names,  Stanza fields
+#          must NOT begin at the beginning of the line, but must have tabs or
+#          blanks in front of them.
+#       4. There can be no blank lines between field lines of the same stanza.
+#       5. A blank line MUST separate each stanza.  In other words, after the
+#          last field line of the stanza, a blank line must follow before the
+#          line containing the stanza name of the next stanza.
+#
+# NOTE: In this comment section, the values listed in the fields are the
+#       possible ones separated by a comma.  You must pick only one if you are
+#       creating stanzas after the comment section.  Field options listed in
+#       angle brackets (<...>) are descriptions of the field and not actually
+#       the values which would go in the field.
+#
+#
+# image_data stanza is used by BOS install to determine if product install or
+#  mksysb.
+# image_data:
+#     IMAGE_TYPE=
+#     DATE_TIME=
+#     UNAME_INFO=
+#     LICENSE_INFO=
+#     PRODUCT_TAPE= yes,no
+#     USERVG_LIST=
+#     OSLEVEL=
+#     CPU_ID=
+#
+#  Shrink or exact fit?  If EXACT_FIT is yes, the disks listed in the
+#  source_disk_data stanza MUST be the same in all respects (including location)
+#  as the disks found on the target machine during install.
+# logical_volume_policy:
+#     SHRINK=yes,no
+#     EXACT_FIT=yes,no
+#
+# ils_data:  # Used by BOS install to set language during BOS install.
+#     LANG=C,zh_TW,da_DK,nl_BE,nl_NL,en_GB,en_US,<etc...>
+#
+#
+# source_disk_data:  # Disks in rootvg before the mksysb backup.
+#     PVID=
+#     PHYSICAL_LOCATION=
+#     CONNECTION=
+#     LOCATION=
+#     SIZE_MB=
+#     HDISKNAME=
+#
+#
+# #Command used for vg_data: lsvg
+# For the default image.data file, the PPSIZE stanza MUST!!!!!!! be left blank.
+# If you are creating a custom one, you may fill it in if you know what size
+# you think you want.  Otherwise, BOS install will pick one.
+# vg_data:
+#     VGNAME= rootvg,<user-defined vg name>
+#     PPSIZE=
+#     VARYON= yes
+#     VG_SOURCE_DISK_LIST=<space separated list of disks in the volume group>
+#     QUORUM = <QUORUM from lsvg output>,1,2,... <optional field, 1 causes
+#               QUORUM checking to be disabled with chvg -Q n, all other values
+#               are ignored by BOS Install>
+#     ENH_CONC_CAPABLE= no,yes
+#     CONC_AUTO = no,yes <optional field, autovaryon volume group in concurrent mode>
+#     BIGVG= no,yes,svg <no - volume group supporting 32 phyiscal volumes,
+#            yes - creates a big vg volume group, up to 128 physical volumes,
+#            svg - creates scalable volume group that can accommodate more than
+#            128 physical volumes> cannot set to svg with rootvg, rootvg cannot
+#            accommodate more than 128 physical volumes
+#     TFACTOR=<changes limit of the number of physical partitions per physical
+#              volume, between 1 and 16 ( or between 1 and 64 for big vg format #              volume groups>
+#     # The following two (MAXLVS and MAXPPSPERVG) are only valid for
+#     # scalable-type volume groups.
+#     MAXLVS= 256,512,1024,2048,4096
+#     MAXPPSPERVG= 32,64,128,256,512,768,1024,2048
+#
+# #Command used for lv_data: lslv
+#  lv_data describes each logical volume.  There will be one for each lv
+#  to be created on the system.
+# lv_data:
+#     VOLUME_GROUP=rootvg,<user-defined-vg-name>
+#     LV_SOURCE_DISK_LIST=<list of disks which this lv should go into>
+#     LV_IDENTIFIER=<not used>
+#     LOGICAL_VOLUME=<name of logical volume; example: hd2 cannot contain /dev/>
+#     VG_STAT=
+#     TYPE=paging,jfslog,boot,jfs,<etc...>
+#     MAX_LPS=<maximum number of lps that can be in the lv>
+#     COPIES=1,2,3
+#     LPs=<number of logical partitions which should be in the lv>
+#     STALE_PPs=
+#     INTER_POLICY= minimum, maximum
+#     INTRA_POLICY= middle,center,edge,inner middle,inner edge
+#     MOUNT_POINT=<if TYPE = jfs, this is the mount point of the file system>
+#     MIRROR_WRITE_CONSISTENCY= off,on
+#     LV_SEPARATE_PV= yes,no
+#     PERMISSION=read/write,read/only,<etc...>
+#     LV_STATE=
+#     WRITE_VERIFY= off,on
+#     PP_SIZE=<physical partition size of the value listed in LPs = >
+#     SCHED_POLICY=
+#     PP=<number of physical partitions needed to create this lv (COPIES * LPS)>
+#     BB_POLICY=
+#     RELOCATABLE= yes,no
+#     UPPER_BOUND=
+#     LABEL=<essentially a comment area for this lv>
+#     MAPFILE=<full path name to a map file to be used in creating this lv>
+#     LV_MIN_LPS=<minimum number of LPs, based on FS_MIN_SIZE, for SHRINK=yes>
+#     STRIPE_WIDTH=<number of physical volumes being striped across>
+#     STRIPE_SIZE=<number of bytes per stripe. Must be a power of 2 between
+#                  4K and 128K, for example, 4K, 8K, 64K, 128K>
+#     SERIALIZE_IO= yes,no
+#     FS_TAG= <fs from logical volume control block (LVCB)>
+#     DEV_SUBTYP=<value of DS_LVZ indicates logical volume control block will
+#                 not occupy the first block of the logical volume>
+#
+# #Command used for fs_data: df, lsjfs
+# # fs_data is the stanza used in creating the file systems on top of the lvs.
+# # (I violated my own rule in the following stanza on the FS_MIN_SIZE field.
+# #  I put a new-line after the FS_MIN_SIZE field and more description.  This
+# #  would not normally be allowed.  If, for some reason the value extends
+# #  beyond the end of the screen, just let it wrap.  A new-line will mess up
+# #  the parser.)
+# fs_data:
+#     FS_NAME=<mount point of file system>
+#     FS_SIZE=< size in 512-byte blocks of the file system >
+#     FS_MIN_SIZE=< minimum size required to contain the files of the file
+#                   system.  This size is used when SHRINK = yes.>
+#     FS_LV=<name of logical volume: example: /dev/hd4, must contain /dev/>
+#
+# Specific to jfs (journaled file system)
+#     FS_FS=< fragmentation size of file system (optional) >
+#     FS_NBPI=< number of bytes per inode (optional) >
+#     FS_COMPRESS=LZ,no < LZ will compress file system (optional) >
+#     FS_BF= true,false,<filesystem enabled for > 2GB files>
+#     FS_AGSIZE= 8,16,32,64,<filesystem allocation group size>
+#
+# Specific to jfs2 (enhanced journaled file system)
+#     FS_JFS2_BS=<file system block size, can be 512,1024,2048, or 4096 bytes>
+#     FS_JFS2_SPARSE= yes,no
+#     FS_JFS2_INLINELOG= yes,no
+#     FS_JFS2_SIZEINLINELOG=<size of optional inline journal log>
+#     FS_JFS2_EAFORMAT= v1,v2
+#     FS_JFS2_QUOTA= no,userquota,groupquota <can be userquota,groupquota>
+#     FS_JFS2_DMAPI= yes,no
+#     FS_JFS2_VIX= yes,no
+#     FS_JFS2_EFS= yes,no
+#
+# file name of optional command to run after BOS install has completed.
+# post_install_data:
+#     BOSINST_FILE=<file name>
+#
+
+image_data:
+	IMAGE_TYPE=
+	DATE_TIME=
+	UNAME_INFO=
+	LICENSE_INFO=
+	PRODUCT_TAPE= yes
+	USERVG_LIST=
+	OSLEVEL=
+	CPU_ID=
+	LPAR_ID=
+
+
+logical_volume_policy:
+	SHRINK=
+	EXACT_FIT=
+
+
+ils_data:
+	LANG=
+
+
+source_disk_data:
+	PVID=
+	PHYSICAL_LOCATION=
+	CONNECTION=
+	HDISKNAME=
+	LOCATION=
+	SIZE_MB=
+
+
+vg_data:
+	VGNAME= rootvg
+	PPSIZE=
+	VARYON= yes
+	VG_SOURCE_DISK_LIST=
+
+
+lv_data:
+	VOLUME_GROUP= rootvg
+	LV_SOURCE_DISK_LIST=
+	LV_IDENTIFIER=
+	LOGICAL_VOLUME= hd6
+	VG_STAT= active/complete
+	TYPE= paging
+	MAX_LPS= 512
+	COPIES= 1
+	LPs= 128
+	STALE_PPs= 0
+	INTER_POLICY= minimum
+	INTRA_POLICY= middle
+	MOUNT_POINT=
+	MIRROR_WRITE_CONSISTENCY= off
+	LV_SEPARATE_PV= yes
+	PERMISSION= read/write
+	LV_STATE= opened/syncd
+	WRITE_VERIFY= off
+	PP_SIZE= 4
+	SCHED_POLICY= parallel
+	PP= 128
+	BB_POLICY= non-relocatable
+	RELOCATABLE= yes
+	UPPER_BOUND= 32
+	LABEL= None
+	MAPFILE=
+	LV_MIN_LPS=128
+	STRIPE_WIDTH=
+	STRIPE_SIZE=
+	SERIALIZE_IO=
+
+lv_data:
+	VOLUME_GROUP= rootvg
+	LV_SOURCE_DISK_LIST=
+	LV_IDENTIFIER=
+	LOGICAL_VOLUME= hd5
+	VG_STAT= active/complete
+	TYPE= boot
+	MAX_LPS= 512
+	COPIES= 1
+	LPs= 6
+	STALE_PPs= 0
+	INTER_POLICY= minimum
+	INTRA_POLICY= edge
+	MOUNT_POINT= /blv
+	MIRROR_WRITE_CONSISTENCY= on
+	LV_SEPARATE_PV= yes
+	PERMISSION= read/write
+	LV_STATE= closed/syncd
+	WRITE_VERIFY= off
+	PP_SIZE= 4
+	SCHED_POLICY= parallel
+	PP= 6
+	BB_POLICY= non-relocatable
+	RELOCATABLE= no
+	UPPER_BOUND= 32
+	LABEL= None
+	MAPFILE=
+	LV_MIN_LPS= 6
+	STRIPE_WIDTH=
+	STRIPE_SIZE=
+	SERIALIZE_IO=
+
+lv_data:
+	VOLUME_GROUP= rootvg
+	LV_SOURCE_DISK_LIST=
+	LV_IDENTIFIER=
+	LOGICAL_VOLUME= hd8
+	VG_STAT= active/complete
+	TYPE= jfslog
+	MAX_LPS= 512
+	COPIES= 1
+	LPs= 1
+	STALE_PPs= 0
+	INTER_POLICY= minimum
+	INTRA_POLICY= center
+	MOUNT_POINT=
+	MIRROR_WRITE_CONSISTENCY= off
+	LV_SEPARATE_PV= yes
+	PERMISSION= read/write
+	LV_STATE= opened/syncd
+	WRITE_VERIFY= off
+	PP_SIZE= 4
+	SCHED_POLICY= parallel
+	PP= 1
+	BB_POLICY= relocatable
+	RELOCATABLE= yes
+	UPPER_BOUND= 32
+	LABEL= None
+	MAPFILE=
+	LV_MIN_LPS= 1
+	STRIPE_WIDTH=
+	STRIPE_SIZE=
+	SERIALIZE_IO=
+
+lv_data:
+	VOLUME_GROUP= rootvg
+	LV_SOURCE_DISK_LIST=
+	LV_IDENTIFIER=
+	LOGICAL_VOLUME= hd4
+	VG_STAT= active/complete
+	TYPE= jfs
+	MAX_LPS= 512
+	COPIES= 1
+	LPs= 7680
+	STALE_PPs= 0
+	INTER_POLICY= minimum
+	INTRA_POLICY= center
+	MOUNT_POINT= /
+	MIRROR_WRITE_CONSISTENCY= on
+	LV_SEPARATE_PV= yes
+	PERMISSION= read/write
+	LV_STATE= opened/syncd
+	WRITE_VERIFY= off
+	PP_SIZE= 4
+	SCHED_POLICY= parallel
+	PP= 7680
+	BB_POLICY= relocatable
+	RELOCATABLE= yes
+	UPPER_BOUND= 32
+	LABEL= /
+	MAPFILE=
+	LV_MIN_LPS= 7680
+	STRIPE_WIDTH=
+	STRIPE_SIZE=
+	SERIALIZE_IO=
+
+lv_data:
+	VOLUME_GROUP= rootvg
+	LV_SOURCE_DISK_LIST=
+	LV_IDENTIFIER=
+	LOGICAL_VOLUME= hd2
+	VG_STAT= active/complete
+	TYPE= jfs
+	MAX_LPS= 32512
+	COPIES= 1
+	LPs= 1024
+	STALE_PPs= 0
+	INTER_POLICY= minimum
+	INTRA_POLICY= center
+	MOUNT_POINT= /usr
+	MIRROR_WRITE_CONSISTENCY= on
+	LV_SEPARATE_PV= yes
+	PERMISSION= read/write
+	LV_STATE= opened/syncd
+	WRITE_VERIFY= off
+	PP_SIZE= 4
+	SCHED_POLICY= parallel
+	PP= 1024
+	BB_POLICY= relocatable
+	RELOCATABLE= yes
+	UPPER_BOUND= 32
+	LABEL= /usr
+	MAPFILE=
+	LV_MIN_LPS= 1024
+	STRIPE_WIDTH=
+	STRIPE_SIZE=
+	SERIALIZE_IO=
+
+lv_data:
+	VOLUME_GROUP= rootvg
+	LV_SOURCE_DISK_LIST=
+	LV_IDENTIFIER=
+	LOGICAL_VOLUME= hd9var
+	VG_STAT= active/complete
+	TYPE= jfs
+	MAX_LPS= 512
+	COPIES= 1
+	LPs= 1280
+	STALE_PPs= 0
+	INTER_POLICY= minimum
+	INTRA_POLICY= center
+	MOUNT_POINT= /var
+	MIRROR_WRITE_CONSISTENCY= on
+	LV_SEPARATE_PV= yes
+	PERMISSION= read/write
+	LV_STATE= opened/syncd
+	WRITE_VERIFY= off
+	PP_SIZE= 4
+	SCHED_POLICY= parallel
+	PP= 1280
+	BB_POLICY= relocatable
+	RELOCATABLE= yes
+	UPPER_BOUND= 32
+	LABEL= /var
+	MAPFILE=
+	LV_MIN_LPS=1280
+	STRIPE_WIDTH=
+	STRIPE_SIZE=
+	SERIALIZE_IO=
+
+lv_data:
+	VOLUME_GROUP= rootvg
+	LV_SOURCE_DISK_LIST=
+	LV_IDENTIFIER=
+	LOGICAL_VOLUME= hd3
+	VG_STAT= active/complete
+	TYPE= jfs
+	MAX_LPS= 512
+	COPIES= 1
+	LPs= 17
+	STALE_PPs= 0
+	INTER_POLICY= minimum
+	INTRA_POLICY= center
+	MOUNT_POINT= /tmp
+	MIRROR_WRITE_CONSISTENCY= on
+	LV_SEPARATE_PV= yes
+	PERMISSION= read/write
+	LV_STATE= opened/syncd
+	WRITE_VERIFY= off
+	PP_SIZE= 4
+	SCHED_POLICY= parallel
+	PP= 17
+	BB_POLICY= relocatable
+	RELOCATABLE= yes
+	UPPER_BOUND= 32
+	LABEL= /tmp
+	MAPFILE=
+	LV_MIN_LPS= 17
+	STRIPE_WIDTH=
+	STRIPE_SIZE=
+	SERIALIZE_IO=
+
+lv_data:
+	VOLUME_GROUP= rootvg
+	LV_SOURCE_DISK_LIST=
+	LV_IDENTIFIER=
+	LOGICAL_VOLUME= hd1
+	VG_STAT= active/complete
+	TYPE= jfs
+	MAX_LPS= 512
+	COPIES= 1
+	LPs= 1
+	STALE_PPs= 0
+	INTER_POLICY= minimum
+	INTRA_POLICY= center
+	MOUNT_POINT= /home
+	MIRROR_WRITE_CONSISTENCY= on
+	LV_SEPARATE_PV= yes
+	PERMISSION= read/write
+	LV_STATE= opened/syncd
+	WRITE_VERIFY= off
+	PP_SIZE= 4
+	SCHED_POLICY= parallel
+	PP= 1
+	BB_POLICY= relocatable
+	RELOCATABLE= yes
+	UPPER_BOUND= 32
+	LABEL= /home
+	MAPFILE=
+	LV_MIN_LPS= 1
+	STRIPE_WIDTH=
+	STRIPE_SIZE=
+	SERIALIZE_IO=
+
+lv_data:
+	VOLUME_GROUP= rootvg
+	LV_SOURCE_DISK_LIST=
+	LV_IDENTIFIER=
+	LOGICAL_VOLUME= hd10opt
+	VG_STAT= active/complete
+	TYPE= jfs
+	MAX_LPS= 512
+	COPIES= 1
+	LPs= 2560
+	STALE_PPs= 0
+	INTER_POLICY= minimum
+	INTRA_POLICY= center
+	MOUNT_POINT= /opt
+	MIRROR_WRITE_CONSISTENCY= on
+	LV_SEPARATE_PV= yes
+	PERMISSION= read/write
+	LV_STATE= opened/syncd
+	WRITE_VERIFY= off
+	PP_SIZE= 4
+	SCHED_POLICY= parallel
+	PP= 2560
+	BB_POLICY= relocatable
+	RELOCATABLE= yes
+	UPPER_BOUND= 32
+	LABEL= /opt
+	MAPFILE=
+	LV_MIN_LPS= 2560
+	STRIPE_WIDTH=
+	STRIPE_SIZE=
+	SERIALIZE_IO=
+
+lv_data:
+	VOLUME_GROUP= rootvg
+	LV_SOURCE_DISK_LIST=
+	LV_IDENTIFIER=
+	LOGICAL_VOLUME= hd11admin
+	VG_STAT= active/complete
+	TYPE= jfs
+	MAX_LPS= 512
+	COPIES= 1
+	LPs= 32
+	STALE_PPs= 0
+	INTER_POLICY= minimum
+	INTRA_POLICY= center
+	MOUNT_POINT= /admin
+	MIRROR_WRITE_CONSISTENCY= on
+	LV_SEPARATE_PV= yes
+	PERMISSION= read/write
+	LV_STATE= opened/syncd
+	WRITE_VERIFY= off
+	PP_SIZE= 4
+	SCHED_POLICY= parallel
+	PP= 32
+	BB_POLICY= relocatable
+	RELOCATABLE= yes
+	UPPER_BOUND= 32
+	LABEL= /admin
+	MAPFILE=
+	LV_MIN_LPS= 32
+	STRIPE_WIDTH=
+	STRIPE_SIZE=
+	SERIALIZE_IO=
+
+fs_data:
+	FS_NAME= /
+	FS_SIZE= 31457280
+	FS_MIN_SIZE= 31457280
+	FS_LV= /dev/hd4
+	FS_FS=
+	FS_NBPI=2048
+	FS_COMPRESS=
+	FS_BF=
+	FS_AGSIZE=
+
+
+fs_data:
+	FS_NAME= /usr
+	FS_SIZE= 4194304
+	FS_MIN_SIZE= 4194304
+	FS_LV= /dev/hd2
+	FS_FS=
+	FS_NBPI=
+	FS_COMPRESS=
+	FS_BF=
+	FS_AGSIZE=
+
+
+fs_data:
+	FS_NAME= /var
+	FS_SIZE= 5242880
+	FS_MIN_SIZE= 5242880
+	FS_LV= /dev/hd9var
+	FS_FS=
+	FS_NBPI=4096
+	FS_COMPRESS=
+	FS_BF=true
+	FS_AGSIZE=64
+
+
+fs_data:
+	FS_NAME= /tmp
+	FS_SIZE= 3145728
+	FS_MIN_SIZE= 3145728
+	FS_LV= /dev/hd3
+	FS_FS=
+	FS_NBPI=
+	FS_COMPRESS=
+	FS_BF=
+	FS_AGSIZE=
+
+
+fs_data:
+	FS_NAME= /home
+	FS_SIZE= 8192
+	FS_MIN_SIZE= 8192
+	FS_LV= /dev/hd1
+	FS_FS= 512
+	FS_NBPI=
+	FS_COMPRESS=
+	FS_BF=
+	FS_AGSIZE=
+
+
+fs_data:
+	FS_NAME= /opt
+	FS_SIZE= 10485760
+	FS_MIN_SIZE= 10485760
+	FS_LV= /dev/hd10opt
+	FS_FS= 512
+	FS_NBPI=
+	FS_COMPRESS=
+	FS_BF=
+	FS_AGSIZE=
+
+fs_data:
+	FS_NAME= /admin
+	FS_SIZE= 262144
+	FS_MIN_SIZE= 262144
+	FS_LV= /dev/hd11admin
+	FS_FS=
+	FS_NBPI=
+	FS_COMPRESS=
+	FS_BF=
+	FS_AGSIZE=
+
+
+post_install_data:
+	BOSINST_FILE=
+
