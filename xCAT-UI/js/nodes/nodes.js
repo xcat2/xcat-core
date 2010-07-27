@@ -1738,17 +1738,10 @@ function updateNodesetStatus(data) {
 	 * (5) Update DHCP
 	 */
 	else if (cmd == 'makedns') {
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				p.append(rsp[i]);
-				p.append('<br>');
-			}
-		}
-
-		$('#' + statBarId).append(p);
-
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);	
+		
 		// Update DHCP
 		$.ajax( {
 			url : 'lib/cmd.php',
@@ -1768,27 +1761,9 @@ function updateNodesetStatus(data) {
 	 * (6) Prepare node for boot
 	 */
 	else if (cmd == 'makedhcp') {
-		var failed = false;
-
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				// Find the node name and insert a break before it
-				rsp[i] = rsp[i].replace(new RegExp(node + ': ', 'g'), '<br>');
-
-				p.append(rsp[i]);
-				p.append('<br>');
-
-				// If the call failed
-				if (rsp[i].indexOf('Failed') > -1
-					|| rsp[i].indexOf('Error') > -1) {
-					failed = true;
-				}
-			}
-		}
-
-		$('#' + statBarId).append(p);
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);	
 
 		// Prepare node for boot
 		$.ajax( {
@@ -1809,24 +1784,9 @@ function updateNodesetStatus(data) {
 	 * (7) Boot node from network
 	 */
 	else if (cmd == 'nodeset') {
-		var tgtsArray = tgts.split(',');
-
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				// Find the node name and insert a break before it
-				for ( var j = 0; j < tgtsArray.length; j++) {
-					rsp[i] = rsp[i].replace(new RegExp(tgtsArray[j], 'g'),
-						'<br>' + tgtsArray[j]);
-				}
-
-				p.append(rsp[i]);
-				p.append('<br>');
-			}
-		}
-
-		$('#' + statBarId).append(p);
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);	
 
 		// Hide loader
 		$('#' + statBarId).find('img').hide();
@@ -1851,16 +1811,9 @@ function updateStatusBar(data) {
 		// Hide loader
 		$('#' + statBarId).find('img').hide();
 
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				p.append(rsp[i]);
-				p.append('<br>');
-			}
-		}
-
-		$('#' + statBarId).append(p);
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);	
 	} else if (cmd == 'rmvm') {
 		// Get data table
 		var dTable = getNodesDataTable();
@@ -1869,27 +1822,15 @@ function updateStatusBar(data) {
 		// Hide loader
 		$('#' + statBarId).find('img').hide();
 
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				// Determine if the command failed
-				if (rsp[i].indexOf("Error") > -1 || rsp[i].indexOf("Failed") > -1) {
-					failed = true;
-				}
-
-				// Find the node name and insert a break before it
-				for ( var j = 0; j < tgts.length; j++) {
-					rsp[i] = rsp[i].replace(new RegExp(tgts[j] + ': ', 'g'),
-						'<br>');
-				}
-
-				p.append(rsp[i]);
-				p.append('<br>');
-			}
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);	
+		
+		// If there was an error
+		// Do not continue
+		if (prg.html().indexOf('Error') > -1) {
+			failed = true;
 		}
-
-		$('#' + statBarId).append(p);
 
 		// Update data table
 		var rows = dTable.fnGetNodes();
@@ -1905,21 +1846,9 @@ function updateStatusBar(data) {
 		// Hide loader
 		$('#' + statBarId).find('img').hide();
 
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				// Find the node name and insert a break before it
-				for ( var j = 0; j < tgts.length; j++) {
-					rsp[i] = rsp[i].replace(new RegExp(tgts[j], 'g'), '<br>' + tgts[j]);
-				}
-
-				p.append(rsp[i]);
-				p.append('<br>');
-			}
-		}
-
-		$('#' + statBarId).append(p);
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
+		$('#' + statBarId).append(prg);	
 	}
 }
 

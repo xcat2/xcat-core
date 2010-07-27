@@ -212,6 +212,7 @@ function incrementNodeProcess(node) {
  * @return Nothing
  */
 function updateProvisionNewStatus(data) {
+	// Get ajax response
 	var rsp = data.rsp;
 	var args = data.msg.split(';');
 
@@ -219,11 +220,9 @@ function updateProvisionNewStatus(data) {
 	var cmd = args[0].replace('cmd=', '');
 	// Get output ID
 	var out2Id = args[1].replace('out=', '');
-
+	// Get status bar and provision tab ID
 	var statBarId = 'zProvisionStatBar' + out2Id;
 	var tabId = 'zvmProvisionTab' + out2Id;
-
-	// The tab must be open in order to get these inputs
 
 	// Get node name
 	var node = $('#' + tabId + ' input[name=nodeName]').val();
@@ -244,11 +243,9 @@ function updateProvisionNewStatus(data) {
 	if (cmd == 'nodeadd') {
 		// If no output, no errors occurred
 		if (rsp.length) {
-			$('#' + statBarId).append(
-				'<p>(Error) Failed to create node definition</p>');
+			$('#' + statBarId).append('<p>(Error) Failed to create node definition</p>');
 		} else {
-			$('#' + statBarId).append(
-				'<p>Node definition created for ' + node + '</p>');
+			$('#' + statBarId).append('<p>Node definition created for ' + node + '</p>');
 		}
 
 		// Update /etc/hosts
@@ -300,16 +297,9 @@ function updateProvisionNewStatus(data) {
 		// Reset the number of tries
 		$.cookie('tries4' + tabId, 0);
 
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				p.append(rsp[i]);
-				p.append('<br>');
-			}
-		}
-
-		$('#' + statBarId).append(p);
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);
 
 		// Create user entry
 		$.ajax( {
@@ -331,30 +321,16 @@ function updateProvisionNewStatus(data) {
 	 * (5) Add disk
 	 */
 	else if (cmd == 'mkvm') {
-		var failed = false;
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);
 
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				// Find the node name and insert a break before it
-				rsp[i] = rsp[i].replace(new RegExp(node + ': ', 'g'), '<br>');
-
-				p.append(rsp[i]);
-				p.append('<br>');
-
-				// If the call failed
-				if (rsp[i].indexOf('Failed') > -1
-					|| rsp[i].indexOf('Error') > -1) {
-					failed = true;
-				}
-			}
-		}
-
-		$('#' + statBarId).append(p);
-
-		// If the call failed
-		if (failed) {
+		// If there was an error
+		// Do not continue
+		if (prg.html().indexOf('Error') > -1) {
+			var loaderId = 'zProvisionLoader' + inst;
+			$('#' + loaderId).remove();
+			
 			// Try again (at least 2 times)
 			var tries = parseInt($.cookie('tries4' + tabId));
 			if (tries < 2) {
@@ -435,30 +411,16 @@ function updateProvisionNewStatus(data) {
 	 * (6) Set the operating system for given node
 	 */
 	else if (cmd == 'chvm') {
-		var failed = false;
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);
 
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				// Find the node name and insert a break before it
-				rsp[i] = rsp[i].replace(new RegExp(node + ': ', 'g'), '<br>');
+		// If there was an error
+		// Do not continue
+		if (prg.html().indexOf('Error') > -1) {
+			var loaderId = 'zProvisionLoader' + inst;
+			$('#' + loaderId).remove();
 
-				p.append(rsp[i]);
-				p.append('<br>');
-
-				// If the call failed
-				if (rsp[i].indexOf('Failed') > -1
-					|| rsp[i].indexOf('Error') > -1) {
-					failed = true;
-				}
-			}
-		}
-
-		$('#' + statBarId).append(p);
-
-		// If the call failed
-		if (failed) {
 			// Try again (at least 2 times)
 			var tries = parseInt($.cookie('tries4' + tabId));
 			if (tries < 2) {
@@ -501,7 +463,6 @@ function updateProvisionNewStatus(data) {
 					$('#' + loaderId).hide();
 				}
 			} else {
-				// Failed - Do not continue
 				var loaderId = 'zProvisionLoader' + out2Id;
 				$('#' + loaderId).remove();
 			}
@@ -584,26 +545,10 @@ function updateProvisionNewStatus(data) {
 	else if (cmd == 'makedhcp') {
 		var failed = false;
 
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				// Find the node name and insert a break before it
-				rsp[i] = rsp[i].replace(new RegExp(node + ': ', 'g'), '<br>');
-
-				p.append(rsp[i]);
-				p.append('<br>');
-
-				// If the call failed
-				if (rsp[i].indexOf('Failed') > -1
-					|| rsp[i].indexOf('Error') > -1) {
-					failed = true;
-				}
-			}
-		}
-
-		$('#' + statBarId).append(p);
-
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);
+		
 		// Prepare node for boot
 		$.ajax( {
 			url : 'lib/cmd.php',
@@ -625,31 +570,16 @@ function updateProvisionNewStatus(data) {
 	else if (cmd == 'nodeset') {
 		var failed = false;
 
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				// Find the node name and insert a break before it
-				rsp[i] = rsp[i].replace(new RegExp(node + ': ', 'g'), '<br>');
-
-				p.append(rsp[i]);
-				p.append('<br>');
-
-				// If the call failed
-				if (rsp[i].indexOf('Failed') > -1
-					|| rsp[i].indexOf('Error') > -1) {
-					failed = true;
-				}
-			}
-		}
-
-		$('#' + statBarId).append(p);
-
-		// If the call failed
-		if (failed) {
-			// Failed - Do not continue
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);
+		
+		// If there was an error
+		// Do not continue
+		if (prg.html().indexOf('Error') > -1) {
 			var loaderId = 'zProvisionLoader' + out2Id;
 			$('#' + loaderId).remove();
+			failed = true;
 		} else {
 			// Boot node from network
 			$.ajax( {
@@ -673,31 +603,18 @@ function updateProvisionNewStatus(data) {
 	else if (cmd == 'rnetboot') {
 		var failed = false;
 
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				// Find the node name and insert a break before it
-				rsp[i] = rsp[i].replace(new RegExp(node + ': ', 'g'), '<br>');
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).append(prg);
 
-				p.append(rsp[i]);
-				p.append('<br>');
-
-				// If the call failed
-				if (rsp[i].indexOf('Failed') > -1
-					|| rsp[i].indexOf('Error') > -1) {
-					failed = true;
-				}
-			}
-		}
-
-		$('#' + statBarId).append(p);
-
-		// If the call was successful
-		if (!failed) {
-			$('#' + statBarId)
-				.append(
-					'<p>Open a VNC viewer to see the installation progress.  It might take a couple of minutes before you can connect.</p>');
+		// If there was an error
+		// Do not continue
+		if (prg.html().indexOf('Error') > -1) {
+			var loaderId = 'zProvisionLoader' + out2Id;
+			$('#' + loaderId).remove();
+			failed = true;
+		} else {
+			$('#' + statBarId).append('<p>Open a VNC viewer to see the installation progress.  It might take a couple of minutes before you can connect.</p>');
 		}
 
 		// Hide loader
@@ -729,7 +646,7 @@ function updateProvisionExistingStatus(data) {
 	/**
 	 * (2) Prepare node for boot
 	 */
-	if (cmd == 'chtab') {
+	if (cmd == 'nodeadd') {
 		// Get operating system
 		var bootMethod = $('#' + tabId + ' select[name=bootMethod]').val();
 		
@@ -757,7 +674,7 @@ function updateProvisionExistingStatus(data) {
 	 */
 	else if (cmd == 'nodeset') {
 		// Write ajax response to status bar
-		var prg = writeRsp(rsp);	
+		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).append(prg);
 
 		// If there was an error
@@ -765,6 +682,7 @@ function updateProvisionExistingStatus(data) {
 		if (prg.html().indexOf('Error') > -1) {
 			var loaderId = 'zProvisionLoader' + inst;
 			$('#' + loaderId).remove();
+			return;
 		}
 				
 		// Get nodes that were checked
@@ -791,7 +709,7 @@ function updateProvisionExistingStatus(data) {
 	 */
 	else if (cmd == 'rnetboot') {
 		// Write ajax response to status bar
-		var prg = writeRsp(rsp);	
+		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).append(prg);
 		
 		var loaderId = 'zProvisionLoader' + inst;
@@ -823,26 +741,10 @@ function updateZNodeStatus(data) {
 	}
 
 	var statBarId = node + 'StatusBar';
-	var failed = false;
-
-	// Separate output into lines
-	var p = $('<p></p>');
-	for ( var i = 0; i < rsp.length; i++) {
-		if (rsp[i]) {
-			// Find the node name and insert a break before it
-			rsp[i] = rsp[i].replace(new RegExp(node + ': ', 'g'), '<br>');
-
-			p.append(rsp[i]);
-			p.append('<br>');
-
-			// If the call failed
-			if (rsp[i].indexOf('Failed') > -1 || rsp[i].indexOf('Error') > -1) {
-				failed = true;
-			}
-		}
-	}
-
-	$('#' + statBarId).append(p);
+	
+	// Write ajax response to status bar
+	var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
+	$('#' + statBarId).append(prg);	
 }
 
 /**
@@ -926,19 +828,10 @@ function updateCloneStatus(data) {
 	 * (4) Clone
 	 */
 	else if (cmd == 'makedns') {
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				p.append(rsp[i]);
-				p.append('<br>');
-			}
-		}
-
-		$('#' + out2Id).append(p);
-
-		// The tab must be opened for this to work
-		
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + out2Id).append(prg);
+	
 		// Get clone tab
 		var tabId = out2Id.replace('CloneStatusBar', 'CloneTab');
 
@@ -996,25 +889,10 @@ function updateCloneStatus(data) {
 	 * (5) Done
 	 */
 	else if (cmd == 'mkvm') {
-		var failed = false;
-
-		// Separate output into lines
-		var p = $('<p></p>');
-		for ( var i = 0; i < rsp.length; i++) {
-			if (rsp[i]) {
-				p.append(rsp[i]);
-				p.append('<br>');
-
-				// If the call failed
-				if (rsp[i].indexOf('Failed') > -1
-					|| rsp[i].indexOf('Error') > -1) {
-					failed = true;
-				}
-			}
-		}
-
-		$('#' + out2Id).append(p);
-
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + out2Id).append(prg);
+		
 		// Hide loader
 		$('#' + out2Id).find('img').hide();
 	}
@@ -1657,27 +1535,11 @@ function connect2GuestLan(data) {
 	var lanOwner = args[3].replace('owner=', '');
 
 	var statusId = node + 'StatusBar';
-	var failed = false;
-
-	// Separate output into lines
-	var p = $('<p></p>');
-	for ( var i = 0; i < rsp.length; i++) {
-		if (rsp[i]) {
-			// Find the node name and insert a break before it
-			rsp[i] = rsp[i].replace(new RegExp(node + ': ', 'g'), '<br>');
-
-			p.append(rsp[i]);
-			p.append('<br>');
-
-			// If the call failed
-			if (rsp[i].indexOf('Failed') > -1 || rsp[i].indexOf('Error') > -1) {
-				failed = true;
-			}
-		}
-	}
-
-	$('#' + statusId).append(p);
-
+	
+	// Write ajax response to status bar
+	var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
+	$('#' + statBarId).append(prg);	
+		
 	// Connect NIC to Guest LAN
 	$.ajax( {
 		url : 'lib/cmd.php',
@@ -1708,27 +1570,11 @@ function connect2VSwitch(data) {
 	var address = args[1].replace('addr=', '');
 	var vswitchName = args[2].replace('vsw=', '');
 
-	var statusId = node + 'StatusBar';
-	var failed = false;
-
-	// Separate output into lines
-	var p = $('<p></p>');
-	for ( var i = 0; i < rsp.length; i++) {
-		if (rsp[i]) {
-			// Find the node name and insert a break before it
-			rsp[i] = rsp[i].replace(new RegExp(node + ': ', 'g'), '<br>');
-
-			p.append(rsp[i]);
-			p.append('<br>');
-
-			// If the call failed
-			if (rsp[i].indexOf('Failed') > -1 || rsp[i].indexOf('Error') > -1) {
-				failed = true;
-			}
-		}
-	}
-
-	$('#' + statusId).append(p);
+	var statBarId = node + 'StatusBar';
+	
+	// Write ajax response to status bar
+	var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
+	$('#' + statBarId).append(prg);	
 
 	// Connect NIC to VSwitch
 	$.ajax( {
@@ -1778,11 +1624,7 @@ function createZProvisionExisting(inst) {
 		group.append(groupSelect);
 		
 		// Create node datatable
-		groupSelect.change(function(){
-			// Create loader
-			var loader = createLoader('');
-			$('nodesDatatableDIV' + inst).append(loader);
-			
+		groupSelect.change(function(){			
 			// Get group selected
 			var thisGroup = $(this).val();
 			// If a valid group is selected
@@ -1816,10 +1658,7 @@ function createZProvisionExisting(inst) {
     					var attrs = new Object();
     					// Node attributes
     					var headers = new Object();
-    					
-    					// Remove loader
-    					$('#' + outId).find('img').remove();
-    					
+    					    					
     					// Clear nodes datatable division
     					$('#' + outId).children().remove();
 
@@ -1901,7 +1740,7 @@ function createZProvisionExisting(inst) {
 	// Create node input
 	var node = $('<div></div>');
 	var nodeLabel = $('<label for="nodeName">Nodes:</label>');
-	var nodeDatatable = $('<div class="indent" id="nodesDatatableDIV' + inst + '"></div>');
+	var nodeDatatable = $('<div class="indent" id="nodesDatatableDIV' + inst + '"><p>Select a group to view its nodes</p></div>');
 	node.append(nodeLabel);
 	node.append(nodeDatatable);
 	provExisting.append(node);
@@ -2001,9 +1840,9 @@ function createZProvisionExisting(inst) {
 				dataType : 'json',
 				data : {
 					cmd : 'nodeadd',
-					tgt : tgts,
-					args : 'noderes.netboot=zvm;nodetype.os=' + os + ';nodetype.arch=' + arch + ';nodetype.profile=' + profile,
-					msg : 'cmd=chtab;out=' + inst
+					tgt : '',
+					args : tgts + ';noderes.netboot=zvm;nodetype.os=' + os + ';nodetype.arch=' + arch + ';nodetype.profile=' + profile,
+					msg : 'cmd=nodeadd;out=' + inst
 				},
 
 				success : updateProvisionExistingStatus

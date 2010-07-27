@@ -471,15 +471,19 @@ function includeJs(file) {
  * 
  * @param rsp
  * 			Ajax response
- * @param replace
- * 			Boolean to replace the node name in front of each line
+ * @param pattern
+ * 			Pattern to insert a break in between
  * @return Paragraph containing ajax response
  */
-function writeRsp(rsp) {
+function writeRsp(rsp, pattern) {
 	// Create paragraph to hold ajax response
 	var prg = $('<p></p>');
 	for ( var i in rsp) {
-		if (rsp[i]) {						
+		if (rsp[i]) {
+			if (pattern) {
+				rsp[i] = rsp[i].replace(new RegExp(pattern, 'g'), '<br>');
+			}
+			
 			prg.append(rsp[i]);
 			prg.append('<br>');			
 		}
