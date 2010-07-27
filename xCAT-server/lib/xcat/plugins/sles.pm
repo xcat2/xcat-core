@@ -443,6 +443,7 @@ sub mkinstall
         my $profile;
         my $tmplfile;
         my $pkgdir;
+	my $pkglistfile;
         my $osinst;
         my $ent = $ntents->{$node}->[0];
 
@@ -462,13 +463,16 @@ sub mkinstall
 		    if (!$linuximagetab) {
 			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
 		    }
-		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir');
+		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist');
 		    if ($ref1) {
 			if ($ref1->{'template'}) {
 			    $img_hash{$imagename}->{template}=$ref1->{'template'};
 			}
 			if ($ref1->{'pkgdir'}) {
 			    $img_hash{$imagename}->{pkgdir}=$ref1->{'pkgdir'};
+			}
+			if ($ref1->{'pkglist'}) {
+			    $img_hash{$imagename}->{pkglist}=$ref1->{'pkglist'};
 			}
 		    }
 		} else {
@@ -488,6 +492,7 @@ sub mkinstall
 	    if (!$pkgdir) {
 		$pkgdir="$installroot/$os/$arch";
 	    }
+	    $pkglistfile=$ph->{pkglist};
 	}
 	else {
 	    $os = $ent->{os};
@@ -505,6 +510,10 @@ sub mkinstall
 	    }
 	    $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$plat", $profile, $os, $arch);
 	    if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$plat", $profile, $os, $arch); }
+
+	    $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$plat", $profile, $os, $arch);
+	    if (! $pkglistfile) { $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$plat", $profile, $os, $arch); }
+
 	    $pkgdir="$installroot/$os/$arch";
 	}
 	
@@ -533,17 +542,29 @@ sub mkinstall
             next;
         }
 
+        #substitute the tag #INCLUDE_DEFAULT_PKGS# with package file name
+	$new_tmplfile=$tmplfile;
+	if ($pkglistfile) {
+	    $pkglistfile =~ s/\//\\\//g;
+	    #print "pkglistfile=$pkglistfile\n";
+	    system("sed -e \"s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE_PKGLIST:$pkglistfile#/\" $tmplfile > /tmp/xcattemp.tmpl");
+            if ($? == 0) {
+		$new_tmplfile="/tmp/xcattemp.tmpl";
+	    }
+	}
+
         #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
         my $tmperr;
-        if (-r "$tmplfile")
+        if (-r "$new_tmplfile")
         {
             $tmperr =
               xCAT::Template->subvars(
-                         $tmplfile,
+                         $new_tmplfile,
                          "$installroot/autoinst/$node",
                          $node
                          );
         }
+	system("rm -f /tmp/xcattemp.tmpl");
 
         if ($tmperr)
         {
