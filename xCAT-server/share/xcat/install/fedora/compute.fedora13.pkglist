@@ -1,0 +1,7 @@
+ntp
+nfs-utils
+net-snmp
+rsync
+yp-tools
+openssh-server
+util-linux-ng

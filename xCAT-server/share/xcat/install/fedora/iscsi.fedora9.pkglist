@@ -1,0 +1,13 @@
+ntp
+rsh
+psacct
+nfs-utils
+net-snmp
+rsync
+yp-tools
+ypbind
+m4
+sendmail-cf
+gdb
+binutils
+openssh-server
