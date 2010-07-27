@@ -258,7 +258,7 @@ function loadNodes(data) {
 	 */
 	var powerOnLnk = $('<a href="#">Power on</a>');
 	powerOnLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked();
+		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
 			powerNode(tgtNodes, 'on');
 		}
@@ -269,7 +269,7 @@ function loadNodes(data) {
 	 */
 	var powerOffLnk = $('<a href="#">Power off</a>');
 	powerOffLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked();
+		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
 			powerNode(tgtNodes, 'off');
 		}
@@ -280,7 +280,7 @@ function loadNodes(data) {
 	 */
 	var cloneLnk = $('<a href="#">Clone</a>');
 	cloneLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked().split(',');
+		var tgtNodes = getNodesChecked('nodesDataTable').split(',');
 		for ( var i = 0; i < tgtNodes.length; i++) {
 			var mgt = getNodeMgt(tgtNodes[i]);
 			
@@ -316,7 +316,7 @@ function loadNodes(data) {
 	 */
 	var deleteLnk = $('<a href="#">Delete</a>');
 	deleteLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked();
+		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
 			deleteNode(tgtNodes);
 		}
@@ -327,7 +327,7 @@ function loadNodes(data) {
 	 */
 	var unlockLnk = $('<a href="#">Unlock</a>');
 	unlockLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked();
+		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
 			loadUnlockPage(tgtNodes);
 		}
@@ -338,7 +338,7 @@ function loadNodes(data) {
 	 */
 	var scriptLnk = $('<a href="#">Run script</a>');
 	scriptLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked();
+		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
 			loadScriptPage(tgtNodes);
 		}
@@ -349,7 +349,7 @@ function loadNodes(data) {
 	 */
 	var updateLnk = $('<a href="#">Update</a>');
 	updateLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked();
+		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
 			loadUpdatenodePage(tgtNodes);
 		}
@@ -360,7 +360,7 @@ function loadNodes(data) {
 	 */
 	var setBootStateLnk = $('<a href="#">Set boot state</a>');
 	setBootStateLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked();
+		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
 			loadNodesetPage(tgtNodes);
 		}
@@ -372,7 +372,7 @@ function loadNodes(data) {
 	 */
 	var boot2NetworkLnk = $('<a href="#">Boot to network</a>');
 	boot2NetworkLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked();
+		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
 			loadNetbootPage(tgtNodes);
 		}
@@ -926,7 +926,7 @@ function loadNodesetPage(trgtNodes) {
 
 	// Get the OS versions on-focus
 	var tmp;
-	osInput.focus(function() {
+	osInput.one('focus', function(){
 		tmp = $.cookie('OSVers');
 
 		// If there are any, turn on auto-complete
@@ -944,7 +944,7 @@ function loadNodesetPage(trgtNodes) {
 	var archInput = $('<input type="text" name="arch"/>');
 
 	// Get the OS architectures on-focus
-	archInput.focus(function() {
+	archInput.one('focus', function(){
 		tmp = $.cookie('OSArchs');
 
 		// If there are any, turn on auto-complete
@@ -962,7 +962,7 @@ function loadNodesetPage(trgtNodes) {
 	var profileInput = $('<input type="text" name="profile"/>');
 
 	// Get the profiles on-focus
-	profileInput.focus(function() {
+	profileInput.one('focus', function(){
 		tmp = $.cookie('Profiles');
 
 		// If there are any, turn on auto-complete
@@ -2161,29 +2161,31 @@ function getNodeRow(tgtNode, rows) {
 }
 
 /**
- * Get the nodes that were checked in the nodes datatable
+ * Get the nodes that are checked in a given datatable
  * 
+ * @param datatableId
+ * 				The datatable ID
  * @return Nodes that were checked
  */
-function getNodesChecked() {
-	var tgtNodes = '';
+function getNodesChecked(datatableId) {
+	var tgts = '';
 
 	// Get nodes that were checked
-	var nodes = $('#nodesDataTable input[type=checkbox]:checked');
+	var nodes = $('#' + datatableId + ' input[type=checkbox]:checked');
 	for ( var i = 0; i < nodes.length; i++) {
-		tgtNodes += nodes.eq(i).attr('name');
+		var tgtNode = nodes.eq(i).attr('name');
 		
-		if ("" == tgtNodes){
-			continue;
-		}
-
-		// Add a comma in front of each node
-		if (i < nodes.length - 1) {
-			tgtNodes += ',';
+		if (tgtNode){
+			tgts += tgtNode;
+			
+			// Add a comma at the end
+			if (i < nodes.length - 1) {
+				tgts += ',';
+			}
 		}
 	}
 
-	return tgtNodes;
+	return tgts;
 }
 
 function getColNum(colName){

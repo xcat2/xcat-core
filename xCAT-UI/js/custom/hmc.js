@@ -159,7 +159,7 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	var groupInput = $('<input type="text" name="group"/>');
 
 	// Get the groups on-focus
-	groupInput.focus(function() {
+	groupInput.one('focus', function(){
 		var groupNames = $.cookie('Groups');
 
 		// If there are groups, turn on auto-complete
@@ -203,7 +203,7 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 
 	// Get the OS versions on-focus
 	var tmp;
-	osInput.focus(function() {
+	osInput.one('focus', function(){
 		tmp = $.cookie('OSVers');
 
 		// If there are any, turn on auto-complete
@@ -221,7 +221,7 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	var archInput = $('<input type="text" name="arch"/>');
 
 	// Get the OS architectures on-focus
-	archInput.focus(function() {
+	archInput.one('focus', function(){
 		tmp = $.cookie('OSArchs');
 
 		// If there are any, turn on auto-complete
@@ -239,7 +239,7 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	var profileInput = $('<input type="text" name="profile"/>');
 
 	// Get the profiles on-focus
-	profileInput.focus(function() {
+	profileInput.one('focus', function(){
 		tmp = $.cookie('Profiles');
 
 		// If there are any, turn on auto-complete

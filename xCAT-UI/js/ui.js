@@ -465,3 +465,25 @@ function includeJs(file) {
 		$('head').append(script);
 	}
 }
+
+/**
+ * Write ajax response to a paragraph
+ * 
+ * @param rsp
+ * 			Ajax response
+ * @param replace
+ * 			Boolean to replace the node name in front of each line
+ * @return Paragraph containing ajax response
+ */
+function writeRsp(rsp) {
+	// Create paragraph to hold ajax response
+	var prg = $('<p></p>');
+	for ( var i in rsp) {
+		if (rsp[i]) {						
+			prg.append(rsp[i]);
+			prg.append('<br>');			
+		}
+	}
+
+	return prg;
+}

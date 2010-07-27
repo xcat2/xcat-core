@@ -75,7 +75,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		var groupInput = $('<input type="text" id="newGroup" name="newGroup"/>');
 
 		// Get the groups on-focus
-		groupInput.focus(function() {
+		groupInput.one('focus', function(){
 			var groupNames = $.cookie('Groups');
 
 			// If there are groups, turn on auto-complete
@@ -908,9 +908,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
  * @return Nothing
  */
 zvmPlugin.prototype.loadProvisionPage = function(tabId) {
-	var errMsg;
-
-	// Get the OS image names
+	// Get OS image names
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
@@ -938,16 +936,18 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 		success : setGroupsCookies
 	});
 
-	// Generate new tab ID
+	// Error message string
+	var errMsg;
+	
+	// zVM provision tab instance
 	var inst = tabId.replace('zvmProvisionTab', '');
 
-	// Open new tab
 	// Create provision form
 	var provForm = $('<div class="form"></div>');
 
 	// Create status bar
-	var barId = 'zProvisionStatBar' + inst;
-	var statBar = createStatusBar(barId);
+	var statBarId = 'zProvisionStatBar' + inst;
+	var statBar = createStatusBar(statBarId);
 	statBar.hide();
 	provForm.append(statBar);
 
@@ -963,444 +963,33 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	// Append to provision tab
 	$('#' + tabId).append(provForm);
 
-	/*
-	 * Begin creating the form
-	 */
-	
-	// Create drop-down menu for provision type
+	// Create provision type drop down
 	var provType = $('<div></div>');
-	var label = $('<label for="provType">Provision:</label>');
-	var type = $('<select></select>');
-	var newNode = $('<option value="new">New node</option>');
-	var existNode = $('<option value="existing">Existing node</option>');
-	type.append(newNode);
-	type.append(existNode);
-	provType.append(label);
-	provType.append(type);
+	var typeLabel = $('<label>Provision:</label>');
+	var typeSelect = $('<select></select>');
+	var provNewNode = $('<option value="new">New node</option>');
+	var provExistNode = $('<option value="existing">Existing node</option>');
+	typeSelect.append(provNewNode);
+	typeSelect.append(provExistNode);
+	provType.append(typeLabel);
+	provType.append(typeSelect);
 	provForm.append(provType);
 	
-	/*
-	 * Create provision new node DIV
+	/**
+	 * Create provision new node division
 	 */
-	var provNew = $('<div></div>');
+	var provNew = createZProvisionNew(inst);
 	provForm.append(provNew);
-	
-	// Group
-	var group = $('<div></div>');
-	var groupLabel = $('<label for="group">Group:</label>');
-	var groupInput = $('<input type="text" name="group"/>');
-
-	// Get the groups on-focus
-	groupInput.focus(function() {
-		var groupNames = $.cookie('Groups');
-
-		// If there are groups, turn on auto-complete
-		if (groupNames) {
-			$(this).autocomplete(groupNames.split(','));
-		}
-	});
-
-	group.append(groupLabel);
-	group.append(groupInput);
-	provNew.append(group);
 		
-	// Node name
-	var nodeName = $('<div></div>');
-	var nodeLabel = $('<label for="nodeName">Node:</label>');
-	var nodeInput = $('<input type="text" name="nodeName"/>');
-	nodeName.append(nodeLabel);
-	nodeName.append(nodeInput);
-	provNew.append(nodeName);
-
-	// User ID
-	var userId = $('<div><label for="userId">User ID:</label><input type="text" name="userId"/></div>');
-	provNew.append(userId);
-
-	// Hardware control point
-	var hcpDiv = $('<div></div>');
-	var hcpLabel = $('<label for="hcp">Hardware control point:</label>');
-	hcpDiv.append(hcpLabel);
-
-	var hcpInput = $('<input type="text" name="hcp"/>');
-	hcpInput.blur(function() {
-		// If there is a HCP
-		if (hcpInput.val()) {
-			var args = hcpInput.val().split('.');
-
-			// Get disk pools
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'lsvm',
-					tgt : args[0],
-					args : '--diskpoolnames',
-					msg : args[0]
-				},
-
-				success : setDiskPoolCookies
-			});
-		}
-	});
-	hcpDiv.append(hcpInput);
-	provNew.append(hcpDiv);
-	
-	// Operating system image
-	var os = $('<div></div>');
-	var osLabel = $('<label for="os">Operating system image:</label>');
-	var osInput = $('<input type="text" name="os"/>');
-
-	// Get the image names on-focus
-	osInput.focus(function() {
-		var imageNames = $.cookie('ImageNames');
-
-		// If there are image names, turn on auto-complete
-		if (imageNames) {
-			$(this).autocomplete(imageNames.split(','));
-		}
-	});
-
-	os.append(osLabel);
-	os.append(osInput);
-	provNew.append(os);
-
-	// User entry
-	var userEntry = $('<div><label for="userEntry">User entry:</label><textarea/></textarea>');
-	provNew.append(userEntry);
-
-	// Create disk table
-	var diskDiv = $('<div class="provision"></div>');
-	var diskLabel = $('<label>Disk(s):</label>');
-	diskDiv.append(diskLabel);
-	var diskTable = $('<table></table>');
-	var diskHeader = $('<thead> <th></th> <th>Type</th> <th>Address</th> <th>Size</th> <th>Pool</th> <th>Password</th> </thead>');
-	diskHeader.find('th').css( {
-		'width' : '80px'
-	});
-	diskHeader.find('th').eq(0).css( {
-		'width' : '20px'
-	});
-	var diskBody = $('<tbody></tbody>');
-	var diskFooter = $('<tfoot></tfoot>');
-
 	/**
-	 * Add disks
+	 * Create provision existing node division
 	 */
-	var addDiskLink = $('<a href="#">Add disk</a>');
-	addDiskLink.bind('click', function(event) {
-		var diskRow = $('<tr></tr>');
-
-		// Remove button
-		var removeBtn = $('<span class="ui-icon ui-icon-close"></span>');
-		removeBtn.bind('click', function(event) {
-			diskRow.remove();
-		});
-		var col = $('<td></td>').append(removeBtn);
-		diskRow.append(col);
-
-		// Disk type
-		var diskType = $('<td></td>');
-		var diskTypeSelect = $('<select></select>');
-		var diskType3390 = $('<option value="3390">3390</option>');
-		diskTypeSelect.append(diskType3390);
-		diskType.append(diskTypeSelect);
-		diskRow.append(diskType);
-
-		// Disk address
-		var diskAddr = $('<td><input type="text"/></td>');
-		diskRow.append(diskAddr);
-
-		// Disk size
-		var diskSize = $('<td><input type="text"/></td>');
-		diskRow.append(diskSize);
-
-		// Get list of disk pools
-		var thisTabId = $(this).parent().parent().parent().parent().parent().parent().attr('id');
-		var thisHcp = $('#' + thisTabId + ' input[name=hcp]').val();
-		var definedPools;
-		if (thisHcp) {
-			// Get node without domain
-			var temp = thisHcp.split('.');
-			definedPools = $.cookie(temp[0] + 'DiskPools');
-		}
-
-		// Set auto-complete for disk pool
-		var diskPoolInput = $('<input type="text"/>').autocomplete(
-			definedPools.split(','));
-		var diskPool = $('<td></td>').append(diskPoolInput);
-		diskRow.append(diskPool);
-
-		// Disk password
-		var diskPw = $('<td><input type="password"/></td>');
-		diskRow.append(diskPw);
-
-		diskBody.append(diskRow);
-	});
-	diskFooter.append(addDiskLink);
-
-	diskTable.append(diskHeader);
-	diskTable.append(diskBody);
-	diskTable.append(diskFooter);
-	diskDiv.append(diskTable);
-	provNew.append(diskDiv);
-	
-	/**
-	 * Provision
-	 */
-	var provisionBtn = createButton('Provision');
-	provisionBtn.bind('click', function(event) {
-		var ready = true;
-		errMsg = '';
-
-		// Get the tab ID
-		var thisTabId = $(this).parent().parent().parent().attr('id');
-		var out2Id = thisTabId.replace('zvmProvisionTab', '');
-
-		// Check node name, userId, hardware control point, and group
-		var inputs = $('#' + thisTabId + ' input');
-		for ( var i = 0; i < inputs.length; i++) {
-			// Do not check OS or disk password
-			if (!inputs.eq(i).val() && inputs.eq(i).attr('name') != 'os'
-				&& inputs.eq(i).attr('type') != 'password') {
-				inputs.eq(i).css('border', 'solid #FF0000 1px');
-				ready = false;
-			} else {
-				inputs.eq(i).css('border', 'solid #BDBDBD 1px');
-			}
-		}
-
-		// Check user entry
-		var thisUserEntry = $('#' + thisTabId + ' textarea');
-		thisUserEntry.val(thisUserEntry.val().toUpperCase());
-		if (!thisUserEntry.val()) {
-			thisUserEntry.css('border', 'solid #FF0000 1px');
-			ready = false;
-		} else {
-			thisUserEntry.css('border', 'solid #BDBDBD 1px');
-		}
-
-		// Check if user entry contains user ID
-		var thisUserId = $('#' + thisTabId + ' input[name=userId]');
-		var pos = thisUserEntry.val().indexOf(
-			'USER ' + thisUserId.val().toUpperCase());
-		if (pos < 0) {
-			errMsg = errMsg + 'The user entry does not contain the correct user ID. ';
-			ready = false;
-		}
-
-		// If no operating system is specified, create only user entry
-		os = $('#' + thisTabId + ' input[name=os]');
-
-		// Check number of disks
-		var diskRows = $('#' + thisTabId + ' table tr');
-		// If an OS is given, disks are needed
-		if (os.val() && (diskRows.length < 1)) {
-			errMsg = errMsg + 'You need to add at some disks. ';
-			ready = false;
-		}
-
-		// Check address, size, pool, and password
-		var diskArgs = $('#' + thisTabId + ' table input');
-		for ( var i = 0; i < diskArgs.length; i++) {
-			if (!diskArgs.eq(i).val()
-				&& diskArgs.eq(i).attr('type') != 'password') {
-				diskArgs.eq(i).css('border', 'solid #FF0000 1px');
-				ready = false;
-			} else {
-				diskArgs.eq(i).css('border', 'solid #BDBDBD 1px');
-			}
-		}
-
-		if (ready) {
-			if (!os.val()) {
-				/*
-				 * If no OS is given, create a virtual server
-				 */
-				var msg = '';
-				if (diskRows.length > 0) {
-					msg = 'Do you want to create virtual server(s) without an operating system ?';
-				}
-
-				// If no disks are given, create a virtual server (no disk)
-				else {
-					msg = 'Do you want to create virtual server(s) without an operating system or disk(s) ?';
-				}
-
-				// If the user clicks Ok
-				if (confirm(msg)) {
-					// Stop this function from executing again
-					// Unbind event
-					provisionBtn.unbind('click');
-					provisionBtn.css( {
-						'background-color' : '#F2F2F2',
-						'color' : '#BDBDBD'
-					});
-
-					// Show loader
-					$('#zProvisionStatBar' + out2Id).show();
-					$('#zProvisionLoader' + out2Id).show();
-
-					// Stop this function from executing again
-					// Unbind event
-					addDiskLink.unbind('click');
-					addDiskLink.css( {
-						'color' : '#BDBDBD'
-					});
-
-					// Disable close button on disk table
-					$('#' + thisTabId + ' table span').unbind('click');
-					
-					// Disable all fields
-					var inputs = $('#' + thisTabId + ' input');
-					inputs.attr('disabled', 'disabled');
-					inputs.css( {
-						'background-color' : '#F2F2F2'
-					});
-					
-					var selects = $('#' + thisTabId + ' select');
-					selects.attr('disabled', 'disabled');
-					selects.css( {
-						'background-color' : '#F2F2F2'
-					});
-
-					var textarea = $('#' + thisTabId + ' textarea');
-
-					// Add a new line at the end of the user entry
-					var tmp = jQuery.trim(textarea.val());
-					textarea.val(tmp + '\n');
-
-					textarea.attr('readonly', 'readonly');
-					textarea.css( {
-						'background-color' : '#F2F2F2'
-					});
-
-					// Get node name
-					var node = $('#' + thisTabId + ' input[name=nodeName]')
-						.val();
-					// Get userId
-					var userId = $('#' + thisTabId + ' input[name=userId]')
-						.val();
-					// Get hardware control point
-					var hcp = $('#' + thisTabId + ' input[name=hcp]').val();
-					// Get group
-					var group = $('#' + thisTabId + ' input[name=group]')
-						.val();
-
-					/**
-					 * (1) Define node
-					 */
-					$.ajax( {
-						url : 'lib/cmd.php',
-						dataType : 'json',
-						data : {
-							cmd : 'nodeadd',
-							tgt : '',
-							args : node + ';zvm.hcp=' + hcp
-								+ ';zvm.userid=' + userId
-								+ ';nodehm.mgt=zvm' + ';groups=' + group,
-							msg : 'cmd=nodeadd;out=' + out2Id
-						},
-
-						success : updateProvisionStatus
-					});
-				}
-			} else {
-				/**
-				 * Create a virtual server and install OS
-				 */
-
-				// Stop this function from executing again
-				// Unbind event
-				$(this).unbind(event);
-				$(this).css( {
-					'background-color' : '#F2F2F2',
-					'color' : '#BDBDBD'
-				});
-
-				// Show loader
-				$('#zProvisionStatBar' + out2Id).show();
-				$('#zProvisionLoader' + out2Id).show();
-
-				// Stop this function from executing again
-				// Unbind event
-				addDiskLink.unbind('click');
-				addDiskLink.css( {
-					'color' : '#BDBDBD'
-				});
-
-				// Disable close button on disk table
-				$('#' + thisTabId + ' table span').unbind('click');
-
-				// Disable all fields
-				var inputs = $('#' + thisTabId + ' input');
-				inputs.attr('disabled', 'disabled');
-				inputs.css( {
-					'background-color' : '#F2F2F2'
-				});
-				
-				var selects = $('#' + thisTabId + ' select');
-				selects.attr('disabled', 'disabled');
-				selects.css( {
-					'background-color' : '#F2F2F2'
-				});
-
-				var textarea = $('#' + thisTabId + ' textarea');
-
-				// Add a new line at the end of the user entry
-				var tmp = jQuery.trim(textarea.val());
-				textarea.val(tmp + '\n');
-
-				textarea.attr('readonly', 'readonly');
-				textarea.css( {
-					'background-color' : '#F2F2F2'
-				});
-
-				// Get node name
-				var node = $('#' + thisTabId + ' input[name=nodeName]')
-					.val();
-				// Get userId
-				var userId = $('#' + thisTabId + ' input[name=userId]')
-					.val();
-				// Get hardware control point
-				var hcp = $('#' + thisTabId + ' input[name=hcp]').val();
-				// Get group
-				var group = $('#' + thisTabId + ' input[name=group]').val();
-
-				/**
-				 * (1) Define node
-				 */
-				$.ajax( {
-					url : 'lib/cmd.php',
-					dataType : 'json',
-					data : {
-						cmd : 'nodeadd',
-						tgt : '',
-						args : node + ';zvm.hcp=' + hcp + ';zvm.userid='
-							+ userId + ';nodehm.mgt=zvm' + ';groups='
-							+ group,
-						msg : 'cmd=nodeadd;out=' + out2Id
-					},
-
-					success : updateProvisionStatus
-				});
-			}
-		} else {
-			alert('(Error) ' + errMsg);
-		}
-	});
-	provNew.append(provisionBtn);
-	
-	/*
-	 * Create provision existing node DIV
-	 */
-	var provExisting = $('<div></div>').hide();
+	var provExisting = createZProvisionExisting(inst);
 	provForm.append(provExisting);
-	
-	// Toogle provision forms on select of provision type
-	type.change(function(){
+
+	// Toggle provision new/existing on select
+	typeSelect.change(function(){
 		var selected = $(this).val();
-		
-		// If the user wants to provision a new node
 		if (selected == 'new') {
 			provNew.toggle();
 			provExisting.toggle();
