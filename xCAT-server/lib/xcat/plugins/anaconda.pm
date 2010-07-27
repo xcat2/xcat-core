@@ -567,6 +567,7 @@ sub mkinstall
 
     my $installroot;
     $installroot = "/install";
+
     if ($sitetab)
     {
         (my $ref) = $sitetab->getAttribs({key => 'installdir'}, 'value');
@@ -599,6 +600,7 @@ sub mkinstall
         my $profile;
         my $tmplfile;
         my $pkgdir;
+	my $pkglistfile;
 	my $imagename;
 	my $platform;
 
@@ -620,13 +622,16 @@ sub mkinstall
 		    if (!$linuximagetab) {
 			$linuximagetab=xCAT::Table->new('linuximage', -create=>1);
 		    }
-		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir');
+		    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkgdir', 'pkglist');
 		    if ($ref1) {
 			if ($ref1->{'template'}) {
 			    $img_hash{$imagename}->{template}=$ref1->{'template'};
 			}
 			if ($ref1->{'pkgdir'}) {
 			    $img_hash{$imagename}->{pkgdir}=$ref1->{'pkgdir'};
+			}
+			if ($ref1->{'pkglist'}) {
+			    $img_hash{$imagename}->{pkglist}=$ref1->{'pkglist'};
 			}
 		    }
 		    # if the install template wasn't found, then lets look for it in the default locations.
@@ -640,6 +645,19 @@ sub mkinstall
 			# if we managed to find it, put it in the hash:
 			if($tmplfile){
 			    $img_hash{$imagename}->{template}=$tmplfile;
+			}
+		    }
+                    #if the install pkglist wasn't found, then lets look for it in the default locations
+		    unless($img_hash{$imagename}->{pkglist}){
+	                my $pltfrm=xCAT_plugin::anaconda::getplatform($ref->{'osvers'});
+	    		my $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$pltfrm", 
+		 			$ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+	    		if (! $pkglistfile) { $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$pltfrm", 
+		 			$ref->{'profile'}, $ref->{'osvers'}, $ref->{'osarch'}, $ref->{'osvers'});
+					 }
+			# if we managed to find it, put it in the hash:
+			if($pkglistfile){
+			    $img_hash{$imagename}->{pkglist}=$pkglistfile;
 			}
 		    }
 		} else {
@@ -660,6 +678,7 @@ sub mkinstall
 	    if (!$pkgdir) {
 		$pkgdir="$installroot/$os/$arch";
 	    }
+	    $pkglistfile=$ph->{pkglist};
 	}
 	else {
 	    $os = $ent->{os};
@@ -681,6 +700,9 @@ sub mkinstall
 	    
 	    $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
 	    if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
+
+	    $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$platform", $profile, $os, $arch, $genos);
+	    if (! $pkglistfile) { $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$platform", $profile, $os, $arch, $genos); }
 
 	    $pkgdir="$installroot/$os/$arch";
 	}
@@ -723,6 +745,17 @@ sub mkinstall
             next;
         }
 
+        #substitute the tag #INCLUDE_DEFAULT_PKGS# with package file name
+	my $new_tmplfile=$tmplfile;
+	if ($pkglistfile) {
+	    $pkglistfile =~ s/\//\\\//g;
+	    #print "pkglistfile=$pkglistfile\n";
+	    system("sed -e \"s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE:$pkglistfile#/\" $tmplfile > /tmp/xcattemp.tmpl");
+            if ($? == 0) {
+		$new_tmplfile="/tmp/xcattemp.tmpl";
+	    }
+	}
+
         #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
         my $tmperr;
 	if ($imagename) {
@@ -730,16 +763,17 @@ sub mkinstall
 	} else {
           $tmperr="Unable to find template in /install/custom/install/$platform or $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arch combination)";
 	}
-        if (-r "$tmplfile")
+        if (-r "$new_tmplfile")
         {
             $tmperr =
               xCAT::Template->subvars(
-                    $tmplfile,
+                    $new_tmplfile,
                     "/$installroot/autoinst/" . $node,
                     $node
                     );
         }
-
+        system("rm -f /tmp/xcattemp.tmpl");
+ 
         if ($tmperr)
         {
             $callback->(
