@@ -1,0 +1,16 @@
+xntp
+rsync
+nmap
+perl-DBI
+vsftpd
+perl-DBD-mysql
+perl-IO-Socket-SSL
+perl-IO-Tty
+apache2
+nfs-utils
+nfs-kernel-server
+dhcp
+bind
+perl-Expect
+perl-SNMP
+dhcp-server
