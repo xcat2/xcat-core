@@ -569,6 +569,10 @@ sub  update_tables_with_templates
 	#get synclist file
 	my $synclistfile=xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
 	
+	#get the pkglist file
+	my $pkglistfile=get_pkglist_file_name($cuspath, $profile, $osver, $arch);
+	if (!$pkglistfile) { $pkglistfile=get_pkglist_file_name($defpath, $profile, $osver, $arch);}
+
 	#now update the db
 	if (!$osimagetab) { 
 	    $osimagetab=xCAT::Table->new('osimage',-create=>1); 
@@ -608,6 +612,7 @@ sub  update_tables_with_templates
 			my %key_col = (imagename=>$imagename);
 			my %tb_cols=(template=>$tmplfile, 
 				     pkgdir=>"$installroot/$osver/$arch",
+				     pkglist=>$pkglistfile,
 				     otherpkglist=>$otherpkgsfile,
 				     otherpkgdir=>"$installroot/post/otherpkgs/$osver/$arch");
 			$linuximagetab->setAttribs(\%key_col, \%tb_cols);
