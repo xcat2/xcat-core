@@ -754,7 +754,7 @@ function updateZNodeStatus(data) {
  *            Data returned from HTTP request
  * @return Nothing
  */
-function updateCloneStatus(data) {
+function updateZCloneStatus(data) {
 	var rsp = data.rsp;
 	var args = data.msg.split(';');
 	var cmd = args[0].replace('cmd=', '');
@@ -1534,12 +1534,12 @@ function connect2GuestLan(data) {
 	var lanName = args[2].replace('lan=', '');
 	var lanOwner = args[3].replace('owner=', '');
 
-	var statusId = node + 'StatusBar';
+	var statBarId = node + 'StatusBar';
 	
 	// Write ajax response to status bar
-	var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
+	var prg = writeRsp(rsp, node + ': ');	
 	$('#' + statBarId).append(prg);	
-		
+			
 	// Connect NIC to Guest LAN
 	$.ajax( {
 		url : 'lib/cmd.php',
@@ -1573,7 +1573,7 @@ function connect2VSwitch(data) {
 	var statBarId = node + 'StatusBar';
 	
 	// Write ajax response to status bar
-	var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
+	var prg = writeRsp(rsp, node + ': ');	
 	$('#' + statBarId).append(prg);	
 
 	// Connect NIC to VSwitch
@@ -1629,106 +1629,8 @@ function createZProvisionExisting(inst) {
 			var thisGroup = $(this).val();
 			// If a valid group is selected
 			if (thisGroup) {
-    			// Get group nodes
-    			$.ajax( {
-    				url : 'lib/cmd.php',
-    				dataType : 'json',
-    				data : {
-    					cmd : 'lsdef',
-    					tgt : '',
-    					args : thisGroup,
-    					msg : 'nodesDatatableDIV' + inst
-    				},
-    
-    				/**
-    				 * Load nodes datatable
-    				 * 
-    				 * @param data
-    				 * 			Data returned from HTTP request
-    				 * @return Nothing
-    				 */
-    				success : function(data) {	    					
-    					// Data returned
-    					var rsp = data.rsp;
-    					// Output ID
-    					var outId = data.msg;
-    					// Datatable ID
-    					var dTableId = outId.replace('nodesDatatableDIV', 'nodesDatatable');
-    					// Node attributes hash
-    					var attrs = new Object();
-    					// Node attributes
-    					var headers = new Object();
-    					    					
-    					// Clear nodes datatable division
-    					$('#' + outId).children().remove();
-
-    					// Create nodes datatable
-    					var node, args;
-    					for ( var i in rsp) {
-    						// Get node
-    						var pos = rsp[i].indexOf('Object name:');
-    						if (pos > -1) {
-    							var temp = rsp[i].split(': ');
-    							node = jQuery.trim(temp[1]);
-    
-    							// Create a hash for the node attributes
-    							attrs[node] = new Object();
-    							i++;
-    						}
-    
-    						// Get key and value
-    						args = rsp[i].split('=');
-    						var key = jQuery.trim(args[0]);
-    						var val = jQuery.trim(args[1]);
-    
-    						// Create hash table
-    						attrs[node][key] = val;
-    						headers[key] = 1;
-    					}
-    
-    					// Sort headers
-    					var sorted = new Array();
-    					for ( var key in headers) {
-    						sorted.push(key);
-    					}
-    					sorted.sort();
-    
-    					// Add column for check box and node
-    					sorted.unshift('Select', 'node');
-    					
-    					// Create nodes datatable
-    					var dTable = new DataTable(dTableId);
-    					dTable.init(sorted);
-    
-    					// Go through each node
-    					for ( var node in attrs) {
-    						// Create a row
-    						var row = new Array();
-    						// Create a check box
-    						var checkBx = '<input type="checkbox" name="' + node + '"/>';
-    						row.push(checkBx, node);
-    
-    						// Go through each header
-    						for ( var i = 2; i < sorted.length; i++) {
-    							// Add node attributes to the row
-    							var key = sorted[i];
-    							var val = attrs[node][key];
-    							if (val) {
-    								row.push(val);
-    							} else {
-    								row.push('');
-    							}
-    						}
-    
-    						// Add row to table
-    						dTable.add(row);
-    					}
-    					
-    					$('#' + outId).append(dTable.object());
-    					$('#' + dTableId).dataTable();
-    				} // End of function(data)
-				});
-			} // End of if (thisGroup)
+				createNodesDatatable(thisGroup, 'zNodesDatatableDIV' + inst);
+			}
 		});
 	} else {
 		// If no groups are cookied
@@ -1740,7 +1642,7 @@ function createZProvisionExisting(inst) {
 	// Create node input
 	var node = $('<div></div>');
 	var nodeLabel = $('<label for="nodeName">Nodes:</label>');
-	var nodeDatatable = $('<div class="indent" id="nodesDatatableDIV' + inst + '"><p>Select a group to view its nodes</p></div>');
+	var nodeDatatable = $('<div class="indent" id="zNodesDatatableDIV' + inst + '"><p>Select a group to view its nodes</p></div>');
 	node.append(nodeLabel);
 	node.append(nodeDatatable);
 	provExisting.append(node);

@@ -416,6 +416,7 @@ function initPage() {
 	includeJs("js/custom/ipmi.js");
 	includeJs("js/custom/ivm.js");
 	includeJs("js/custom/zvm.js");
+	includeJs("js/custom/customUtils.js");
 
 	// Get the page being loaded
 	var url = window.location.pathname;

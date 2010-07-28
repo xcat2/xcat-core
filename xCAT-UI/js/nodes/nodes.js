@@ -400,31 +400,6 @@ function loadNodes(data) {
 	actionMenu.superfish();
 	actionsDIV.append(actionMenu);
 	actionBar.append(actionsDIV);
-
-	/*
-	 * Select all or none
-	 */
-	var selectDIV = $('<div></div>');
-	actionBar.append(selectDIV);
-
-	// Select all
-	var selectLabel = $('<span>Select: </span>');
-	var selectAllLnk = $('<span><a href="#">All</a></span>');
-	selectAllLnk.bind('click', function(event) {
-		var nodes = $('#nodesDataTable input[type=checkbox]');
-		nodes.attr('checked', true);
-	});
-
-	// Select none
-	var selectNoneLnk = $('<span><a href="#">None</a></span>');
-	selectNoneLnk.bind('click', function(event) {
-		var nodes = $('#nodesDataTable input[type=checkbox]');
-		nodes.attr('checked', false);
-	});
-
-	selectDIV.append(selectLabel);
-	selectDIV.append(selectAllLnk);
-	selectDIV.append(selectNoneLnk);
 	$('#nodesTab').append(actionBar);
 
 	// Insert table
@@ -2148,8 +2123,20 @@ function getRowNum(nodeName){
 	return -1;
 }
 
-function selectAllCheckbox(event, obj){
+/**
+ * Select all checkboxes in a given datatable
+ * 
+ * @param event
+ *            Event on element
+ * @param obj
+ *            Object triggering event
+ * @return Nothing
+ */
+function selectAllCheckbox(event, obj) {
+	// Get datatable ID
+	// This will ascend from <input> <td> <tr> <thead> <table>
+	var datatableId = obj.parent().parent().parent().parent().attr('id');
 	var status = obj.attr('checked');
-	$('#nodesDataTable :checkbox').attr('checked', status);
+	$('#' + datatableId + ' :checkbox').attr('checked', status);
 	event.stopPropagation();
 }

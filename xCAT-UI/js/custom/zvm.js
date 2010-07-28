@@ -1,5 +1,8 @@
+/**
+ * Execute when the DOM is fully loaded
+ */
 $(document).ready(function() {
-	// Include utility scripts
+	// Load utility scripts
 	includeJs("js/custom/zvmUtils.js");
 });
 
@@ -24,7 +27,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 	var tab = getNodesTab();
 	var newTabId = node + 'CloneTab';
 
-	// If there is no existing clone tab for this node
+	// If there is no existing clone tab
 	if (!$('#' + newTabId).length) {
 		// Get table headers
 		var table = $('#' + node).parent().parent().parent().parent();
@@ -45,7 +48,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		var aData = dTable.fnGetData(rowPos);
 		var hcp = aData[hcpCol];
 
-		// Create status bar, hide on load
+		// Create status bar and hide it
 		var statBarId = node + 'CloneStatusBar';
 		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>')
 			.hide();
@@ -58,28 +61,23 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		cloneForm.append(statBar);
 		cloneForm.append(infoBar);
 
-		// Target node range
+		// Create target node range input
 		cloneForm.append('<div><label>Target node range:</label><input type="text" id="tgtNode" name="tgtNode"/></div>');
-		// Target user ID range
+		// Create target user ID range input
 		cloneForm.append('<div><label>Target user ID range:</label><input type="text" id="tgtUserId" name="tgtUserId"/></div>');
 
-		// Create the rest of the form
-		// Include clone source, hardware control point, group, disk pool, and
-		// disk password
+		// Create clone source and hardware control point inputs
 		cloneForm.append('<div><label>Clone source:</label><input type="text" id="srcNode" name="srcNode" readonly="readonly" value="' + node + '"/></div>');
 		cloneForm.append('<div><label>Hardware control point:</label><input type="text" id="newHcp" name="newHcp" readonly="readonly" value="' + hcp + '"/></div>');
 
-		// Group
+		// Create group input
 		var group = $('<div></div>');
 		var groupLabel = $('<label for="group">Group:</label>');
 		var groupInput = $('<input type="text" id="newGroup" name="newGroup"/>');
-
-		// Get the groups on-focus
 		groupInput.one('focus', function(){
 			var groupNames = $.cookie('Groups');
-
-			// If there are groups, turn on auto-complete
 			if (groupNames) {
+				// Turn on auto complete
 				$(this).autocomplete(groupNames.split(','));
 			}
 		});
@@ -87,31 +85,30 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		group.append(groupInput);
 		cloneForm.append(group);
 
-		// Get the list of disk pools
+		// Get list of disk pools
 		var temp = hcp.split('.');
 		var diskPools = $.cookie(temp[0] + 'DiskPools');
 
-		// Set autocomplete for disk pool
+		// Create disk pool input
 		var poolDiv = $('<div></div>');
 		var poolLabel = $('<label>Disk pool:</label>');
-		var poolInput = $('<input type="text" id="diskPool" name="diskPool"/>')
-			.autocomplete(diskPools.split(','));
+		var poolInput = $('<input type="text" id="diskPool" name="diskPool"/>').autocomplete(diskPools.split(','));
 		poolDiv.append(poolLabel);
 		poolDiv.append(poolInput);
 		cloneForm.append(poolDiv);
 
+		// Create disk password input
 		cloneForm.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw"/></div>');
 
 		/**
-		 * Clone
+		 * Clone node
 		 */
 		var cloneBtn = createButton('Clone');
 		cloneBtn.bind('click', function(event) {
 			var ready = true;
 			var errMsg = '';
 
-			// Check node name, userId, hardware control point, group,
-			// and password
+			// Check node name, userId, hardware control point, group, and password
 			var inputs = $('#' + newTabId + ' input');
 			for ( var i = 0; i < inputs.length; i++) {
 				if (!inputs.eq(i).val()
@@ -124,6 +121,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 				}
 			}
 
+			// Write error message
 			if (!ready) {
 				errMsg = errMsg + 'You are missing some inputs. ';
 			}
@@ -133,7 +131,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 			// Get target user ID
 			var userIdRange = $('#' + newTabId + ' input[name=tgtUserId]').val();
 
-			// Is a node range given
+			// Check node range and user ID range
 			if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
 				if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
 					errMsg = errMsg + 'A user ID range and node range needs to be given. ';
@@ -143,21 +141,21 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 
 					// Get node base name
 					var nodeBase = tmp[0].match(/[a-zA-Z]+/);
-					// Get the starting index
+					// Get starting index
 					var nodeStart = parseInt(tmp[0].match(/\d+/));
-					// Get the ending index
+					// Get ending index
 					var nodeEnd = parseInt(tmp[1]);
 
 					tmp = userIdRange.split('-');
 
 					// Get user ID base name
 					var userIdBase = tmp[0].match(/[a-zA-Z]+/);
-					// Get the starting index
+					// Get starting index
 					var userIdStart = parseInt(tmp[0].match(/\d+/));
-					// Get the ending index
+					// Get ending index
 					var userIdEnd = parseInt(tmp[1]);
 
-					// If the starting and ending index do not match
+					// If starting and ending index do not match
 					if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
 						// Not ready to provision
 						errMsg = errMsg + 'The node range and user ID range does not match. ';
@@ -166,8 +164,9 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 				}
 			}
 
+			// Get source node, hardware control point, group, disk pool, and disk password
 			var srcNode = $('#' + newTabId + ' input[name=srcNode]').val();
-			hcp = $('#' + newTabId + ' input[name=newHcp]').val();
+			var hcp = $('#' + newTabId + ' input[name=newHcp]').val();
 			var group = $('#' + newTabId + ' input[name=newGroup]').val();
 			var diskPool = $('#' + newTabId + ' input[name=diskPool]').val();
 			var diskPw = $('#' + newTabId + ' input[name=diskPw]').val();
@@ -175,32 +174,30 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 			// If a value is given for every input
 			if (ready) {
 				// Disable all inputs
-				var inputs = cloneForm.find('input');
-				inputs.attr('readonly', 'readonly');
-				inputs.css( {
-					'background-color' : '#F2F2F2'
-				});
-
+				var inputs = $('#' + newTabId + ' input');
+				inputs.attr('disabled', 'disabled');
+									
 				// If a node range is given
 				if (nodeRange.indexOf('-') > -1) {
 					var tmp = nodeRange.split('-');
 
 					// Get node base name
 					var nodeBase = tmp[0].match(/[a-zA-Z]+/);
-					// Get the starting index
+					// Get starting index
 					var nodeStart = parseInt(tmp[0].match(/\d+/));
-					// Get the ending index
+					// Get ending index
 					var nodeEnd = parseInt(tmp[1]);
 
 					tmp = userIdRange.split('-');
 
 					// Get user ID base name
 					var userIdBase = tmp[0].match(/[a-zA-Z]+/);
-					// Get the starting index
+					// Get starting index
 					var userIdStart = parseInt(tmp[0].match(/\d+/));
-					// Get the ending index
+					// Get ending index
 					var userIdEnd = parseInt(tmp[1]);
 
+					// Loop through each node in the node range
 					for ( var i = nodeStart; i <= nodeEnd; i++) {
 						var node = nodeBase + i.toString();
 						var userId = userIdBase + i.toString();
@@ -217,16 +214,17 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 								tgt : '',
 								args : node + ';zvm.hcp=' + hcp
 									+ ';zvm.userid=' + userId
-									+ ';nodehm.mgt=zvm' + ';groups='
-									+ group,
-								msg : 'cmd=nodeadd;inst=' + inst + ';out='
-									+ statBarId + ';node=' + node
+									+ ';nodehm.mgt=zvm' 
+									+ ';groups=' + group,
+								msg : 'cmd=nodeadd;inst=' + inst 
+									+ ';out=' + statBarId 
+									+ ';node=' + node
 							},
 
-							success : updateCloneStatus
+							success : updateZCloneStatus
 						});
 					}
-				} else {
+				} else {					
 					/**
 					 * (1) Define node
 					 */
@@ -238,12 +236,13 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 							tgt : '',
 							args : nodeRange + ';zvm.hcp=' + hcp
 								+ ';zvm.userid=' + userIdRange
-								+ ';nodehm.mgt=zvm' + ';groups=' + group,
+								+ ';nodehm.mgt=zvm' 
+								+ ';groups=' + group,
 							msg : 'cmd=nodeadd;inst=1/1;out=' + statBarId
 								+ ';node=' + nodeRange
 						},
 
-						success : updateCloneStatus
+						success : updateZCloneStatus
 					});
 				}
 
@@ -252,8 +251,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 				$('#' + statBarId).append(loader);
 				$('#' + statBarId).show();
 
-				// Stop this function from executing again
-				// Unbind event
+				// Disable clone button
 				$(this).unbind(event);
 				$(this).css( {
 					'background-color' : '#F2F2F2',
@@ -297,7 +295,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 	var statBarId = node + 'StatusBar';
 	var statBar = createStatusBar(statBarId);
 
-	// Add loader to status bar, but hide it
+	// Add loader to status bar and hide it
 	loaderId = node + 'StatusBarLoader';
 	var loader = createLoader(loaderId);
 	statBar.append(loader);
@@ -305,8 +303,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 	statBar.hide();
 
 	// Create array of property keys
-	var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv',
-		'memory', 'proc', 'disk', 'nic');
+	var keys = new Array('userId', 'host', 'os', 'arch', 'hcp', 'priv', 'memory', 'proc', 'disk', 'nic');
 
 	// Create hash table for property names
 	var attrNames = new Object();
@@ -364,18 +361,18 @@ zvmPlugin.prototype.loadInventory = function(data) {
 		// Change text
 		$(this).text('Show inventory');
 
-		// Stop this function from executing again
-		// Unbind event
+		// Disable toggle link
 		$(this).unbind(event);
 	});
 
+	// Align toggle link to the right
 	var toggleLnkDiv = $('<div class="toggle"></div>').css( {
 		'text-align' : 'right'
 	});
 	toggleLnkDiv.append(toggleLink);
 
 	/**
-	 * General info
+	 * General info section
 	 */
 	var fieldSet = $('<fieldset></fieldset>');
 	var legend = $('<legend>General</legend>');
@@ -400,13 +397,12 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
 		oList.append(item);
 	}
-
 	// Append to inventory form
 	fieldSet.append(oList);
 	invDiv.append(fieldSet);
 
 	/**
-	 * Hardware info
+	 * Hardware info section
 	 */
 	var hwList, hwItem;
 	fieldSet = $('<fieldset></fieldset>');
@@ -425,7 +421,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 		hwItem = $('<li></li>');
 
 		/**
-		 * Privilege
+		 * Privilege section
 		 */
 		if (keys[k] == 'priv') {
 			// Create a label - Property name
@@ -456,7 +452,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 		}
 
 		/**
-		 * Memory
+		 * Memory section
 		 */
 		else if (keys[k] == 'memory') {
 			// Create a label - Property name
@@ -475,7 +471,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 		}
 
 		/**
-		 * Processor
+		 * Processor section
 		 */
 		else if (keys[k] == 'proc') {
 			// Create a label - Property name
@@ -563,15 +559,17 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			var addProcLink = $('<a href="#">Add processor</a>');
 			addProcLink.bind('click', function(event) {
     			var procForm = '<div class="form">'
-    				+ '<div><label for="procNode">Processor for:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="'
-    				+ node
-    				+ '"/></div>'
-    				+ '<div><label for="procAddress">Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>'
-    				+ '<div><label for="procType">Processor type:</label>'
-    				+ '<select id="procType" name="procType">'
-    				+ '<option>CP</option>' + '<option>IFL</option>'
-    				+ '<option>ZAAP</option>' + '<option>ZIIP</option>'
-    				+ '</select>' + '</div>' + '</div>';
+        				+ '<div><label for="procNode">Processor for:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="' + node + '"/></div>'
+        				+ '<div><label for="procAddress">Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>'
+        				+ '<div><label for="procType">Processor type:</label>'
+            				+ '<select id="procType" name="procType">'
+                				+ '<option>CP</option>' 
+                				+ '<option>IFL</option>'
+                				+ '<option>ZAAP</option>' 
+                				+ '<option>ZIIP</option>'
+            				+ '</select>' 
+        				+ '</div>' 
+    				+ '</div>';
     
     			$.prompt(procForm, {
     				callback : addProcessor,
@@ -589,7 +587,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 		}
 
 		/**
-		 * Disk
+		 * Disk section
 		 */
 		else if (keys[k] == 'disk') {
 			// Create a label - Property name
@@ -612,8 +610,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 				}
 			}];
 
-			// Table columns - Virtual Device, Type, VolID, Type of Access, and
-			// Size
+			// Table columns - Virtual Device, Type, VolID, Type of Access, and Size
 			var dasdTabRow = $('<thead> <th>Virtual Device #</th> <th>Type</th> <th>VolID</th> <th>Type of Access</th> <th>Size</th> </thead>');
 			dasdTable.append(dasdTabRow);
 			var dasdVDev, dasdType, dasdVolId, dasdAccess, dasdSize;
@@ -670,17 +667,13 @@ zvmPlugin.prototype.loadInventory = function(data) {
 				selectPool = selectPool + '</select>';
 
 				var dasdForm = '<div class="form">'
-					+ '<div><label for="diskNode">Disk for:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="'
-					+ node
-					+ '"/></div>'
-					+ '<div><label for="diskType">Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option></select></div>'
-					+ '<div><label for="diskAddress">Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>'
-					+ '<div><label for="diskSize">Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>'
-					+ '<div><label for="diskPool">Disk pool:</label>'
-					+ selectPool
-					+ '</div>'
-					+ '<div><label for="diskPassword">Disk password:</label><input type="password" id="diskPassword" name="diskPassword"/></div>'
-					+ '</div>';
+    					+ '<div><label for="diskNode">Disk for:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="' + node + '"/></div>'
+    					+ '<div><label for="diskType">Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option></select></div>'
+    					+ '<div><label for="diskAddress">Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>'
+    					+ '<div><label for="diskSize">Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>'
+    					+ '<div><label for="diskPool">Disk pool:</label>' + selectPool + '</div>'
+    					+ '<div><label for="diskPassword">Disk password:</label><input type="password" id="diskPassword" name="diskPassword"/></div>'
+    				+ '</div>';
 
 				$.prompt(dasdForm, {
 					callback : addDisk,
@@ -698,7 +691,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 		}
 
 		/**
-		 * NIC
+		 * NIC section
 		 */
 		else if (keys[k] == 'nic') {
 			// Create a label - Property name
@@ -712,7 +705,8 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
 			/**
 			 * Remove NIC
-			 */contextMenu = [ {
+			 */
+			contextMenu = [ {
 				'Remove' : function(menuItem, menu) {
 					if (confirm('Are you sure?')) {
 						removeNic(node, $(this).text());
@@ -720,8 +714,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 				}
 			} ];
 
-			// Table columns - Virtual device, Adapter Type, Port Name, # of
-			// Devices, MAC Address, and LAN Name
+			// Table columns - Virtual device, Adapter Type, Port Name, # of Devices, MAC Address, and LAN Name
 			var nicTabRow = $('<th>Virtual Device #</th> <th>Adapter Type</th> <th>Port Name</th> <th># of Devices</th> <th>LAN Name</th>');
 			nicTable.append(nicTabRow);
 			var nicVDev, nicType, nicPortName, nicNumOfDevs, nicMacAddr, nicLanName;
@@ -730,8 +723,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			for (l = 0; l < attrs[keys[k]].length; l = l + 2) {
 				args = attrs[keys[k]][l].split(' ');
 
-				// Get NIC virtual device, type, port name, and number of
-				// devices
+				// Get NIC virtual device, type, port name, and number of devices
 				nicVDev = $('<td></td>');
 				nicLink = $('<a href="#">' + args[1] + '</a>');
 
@@ -780,41 +772,34 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
 					// Get VSwitches
 					if (network[0] == 'VSWITCH') {
-						vswitches = vswitches + '<option>' + network[0]
-							+ ' ' + network[1] + '</option>';
+						vswitches = vswitches + '<option>' + network[0] + ' ' + network[1] + '</option>';
 					}
 
 					// Get Guest LAN
 					else if (network[0] == 'LAN') {
-						gLans = gLans + '<option>' + network[0] + ' '
-							+ network[1] + '</option>';
+						gLans = gLans + '<option>' + network[0] + ' ' + network[1] + '</option>';
 					}
 				}
 				vswitches = vswitches + '</select>';
 				gLans = gLans + '</select>';
 
 				var nicTypeForm = '<div class="form">'
-					+ '<div><label for="nicNode">NIC for:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="'
-					+ node
-					+ '"/></div>'
+					+ '<div><label for="nicNode">NIC for:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="' + node + '"/></div>'
 					+ '<div><label for="nicAddress">NIC address:</label><input type="text" id="nicAddress" name="nicAddress"/></div>'
 					+ '<div><label for="nicType">NIC type:</label>'
-					+ '<select id="nicType" name="nicType">'
-					+ '<option>QDIO</option>'
-					+ '<option>HiperSocket</option>'
-					+ '</select>'
+    					+ '<select id="nicType" name="nicType">'
+        					+ '<option>QDIO</option>'
+        					+ '<option>HiperSocket</option>'
+    					+ '</select>'
 					+ '</div>'
 					+ '<div><label for="nicNetworkType">Network type:</label>'
-					+ '<select id="nicNetworkType" name="nicNetworkType">'
-					+ '<option>Guest LAN</option>'
-					+ '<option>Virtual Switch</option>' + '</select>'
-					+ '</div>' + '</div>';
-				var configGuestLanForm = '<div class="form">'
-					+ '<div><label for="nicLanName">Guest LAN name:</label>'
-					+ gLans + '</div>' + '</div>';
-				var configVSwitchForm = '<div class="form">'
-					+ '<div><label for="nicVSwitchName">VSWITCH name:</label>'
-					+ vswitches + '</div>' + '</div>';
+    					+ '<select id="nicNetworkType" name="nicNetworkType">'
+    						+ '<option>Guest LAN</option>'
+    						+ '<option>Virtual Switch</option>' + '</select>'
+    					+ '</div>' 
+					+ '</div>';
+				var configGuestLanForm = '<div class="form">' + '<div><label for="nicLanName">Guest LAN name:</label>' + gLans + '</div>' + '</div>';
+				var configVSwitchForm = '<div class="form">' + '<div><label for="nicVSwitchName">VSWITCH name:</label>' + vswitches + '</div>' + '</div>';
 
 				var states = {
 					// Select NIC type
@@ -939,7 +924,7 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	// Error message string
 	var errMsg;
 	
-	// zVM provision tab instance
+	// Get provision tab instance
 	var inst = tabId.replace('zvmProvisionTab', '');
 
 	// Create provision form

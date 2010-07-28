@@ -1,5 +1,8 @@
-$(document).ready(function(){
-	// Include utility scripts
+/**
+ * Execute when the DOM is fully loaded
+ */
+$(document).ready(function() {
+	// Load utility scripts
 });
 
 /**
@@ -8,7 +11,7 @@ $(document).ready(function(){
  * @return Nothing
  */
 var hmcPlugin = function() {
-	
+
 };
 
 /**
@@ -27,24 +30,23 @@ hmcPlugin.prototype.loadInventory = function(data) {
 	var node = args[1].replace('node=', '');
 	// Get node inventory
 	var inv = data.rsp;
-	
+
 	// Remove loader
 	var loaderId = tabId + 'TabLoader';
 	$('#' + loaderId).remove();
-	
+
 	// Create division to hold inventory
 	var invDivId = tabId + 'Inventory';
 	var invDiv = $('<div class="inventory" id="' + invDivId + '"></div>');
-	
-	var fieldSet, legend, oList, item;
-	
+
 	// Loop through each line
+	var fieldSet, legend, oList, item;
 	for ( var k = 0; k < inv.length; k++) {
-		// Remove the node name in front
+		// Remove node name in front
 		var str = inv[k].replace(node + ': ', '');
-		
-		// If the string is a header
-		if (str.indexOf('I/O Bus Information') > -1 || str.indexOf('Machine Configuration Info') > -1) {			
+
+		// If string is a header
+		if (str.indexOf('I/O Bus Information') > -1 || str.indexOf('Machine Configuration Info') > -1) {
 			// Create a fieldset
 			fieldSet = $('<fieldset></fieldset>');
 			legend = $('<legend>' + str + '</legend>');
@@ -55,7 +57,7 @@ hmcPlugin.prototype.loadInventory = function(data) {
 		} else {
 			// If no fieldset is defined
 			if (!fieldSet) {
-				// Define fieldset
+				// Define general fieldset
 				fieldSet = $('<fieldset></fieldset>');
 				legend = $('<legend>General</legend>');
 				fieldSet.append(legend);
@@ -63,14 +65,14 @@ hmcPlugin.prototype.loadInventory = function(data) {
 				fieldSet.append(oList);
 				invDiv.append(fieldSet);
 			}
-			
+
 			// Append the string to a list
 			item = $('<li></li>');
-	    	item.append(str);
-	    	oList.append(item);
+			item.append(str);
+			oList.append(item);
 		}
 	}
-	
+
 	// Append to inventory form
 	$('#' + tabId).append(invDiv);
 };
@@ -83,7 +85,7 @@ hmcPlugin.prototype.loadInventory = function(data) {
  * @return Nothing
  */
 hmcPlugin.prototype.loadClonePage = function(node) {
-	
+
 };
 
 /**
@@ -94,9 +96,7 @@ hmcPlugin.prototype.loadClonePage = function(node) {
  * @return Nothing
  */
 hmcPlugin.prototype.loadProvisionPage = function(tabId) {
-	var errMsg;
-
-	// Get the OS image names
+	// Get OS image names
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
@@ -124,16 +124,15 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 		success : setGroupsCookies
 	});
 
-	// Generate new tab ID
+	// Get provision tab instance
 	var inst = tabId.replace('hmcProvisionTab', '');
 
-	// Open new tab
 	// Create provision form
 	var provForm = $('<div class="form"></div>');
 
 	// Create status bar
-	var barId = 'hmcProvisionStatBar' + inst;
-	var statBar = createStatusBar(barId);
+	var statBarId = 'hmcProvisionStatBar' + inst;
+	var statBar = createStatusBar(statBarId);
 	statBar.hide();
 	provForm.append(statBar);
 
@@ -143,122 +142,47 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	statBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision a HMC node');
+	var infoBar = createInfoBar('Provision a hmc node');
 	provForm.append(infoBar);
 
 	// Append to provision tab
 	$('#' + tabId).append(provForm);
 
-	// Node name
-	var nodeName = $('<div><label for="nodeName">Node:</label><input type="text" name="nodeName"/></div>');
-	provForm.append(nodeName);
-	
-	// Group
-	var group = $('<div></div>');
-	var groupLabel = $('<label for="group">Group:</label>');
-	var groupInput = $('<input type="text" name="group"/>');
+	// Create provision type drop down
+	var provType = $('<div></div>');
+	var typeLabel = $('<label>Provision:</label>');
+	var typeSelect = $('<select></select>');
+	var provNewNode = $('<option value="new">New node</option>');
+	var provExistNode = $('<option value="existing">Existing node</option>');
+	typeSelect.append(provNewNode);
+	typeSelect.append(provExistNode);
+	provType.append(typeLabel);
+	provType.append(typeSelect);
+	provForm.append(provType);
 
-	// Get the groups on-focus
-	groupInput.one('focus', function(){
-		var groupNames = $.cookie('Groups');
-
-		// If there are groups, turn on auto-complete
-		if (groupNames) {
-			$(this).autocomplete(groupNames.split(','));
-		}
-	});
-
-	group.append(groupLabel);
-	group.append(groupInput);
-	provForm.append(group);
-		
-	// Boot method (boot, install, stat, iscsiboot, netboot, statelite)
-	var method = $('<div></div>');
-	var methodLabel = $('<label for="method">Boot method:</label>');
-	var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
-	methodSelect.append('<option value="boot">boot</option>');
-	methodSelect.append('<option value="install">install</option>');
-	methodSelect.append('<option value="iscsiboot">iscsiboot</option>');
-	methodSelect.append('<option value="netboot">netboot</option>');
-	methodSelect.append('<option value="statelite">statelite</option>');
-	method.append(methodLabel);
-	method.append(methodSelect);
-	provForm.append(method);
-	
-	// Boot type (zvm, pxe, yaboot)
-	var type = $('<div></div>');
-	var typeLabel = $('<label for="type">Boot type:</label>');
-	var typeSelect = $('<select id="bootType" name="bootType"></select>');
-	typeSelect.append('<option value="zvm">zvm</option>');
-	typeSelect.append('<option value="install">pxe</option>');
-	typeSelect.append('<option value="iscsiboot">yaboot</option>');
-	type.append(typeLabel);
-	type.append(typeSelect);
-	provForm.append(type);
-
-	// Operating system
-	var os = $('<div></div>');
-	var osLabel = $('<label for="os">Operating system:</label>');
-	var osInput = $('<input type="text" name="os"/>');
-
-	// Get the OS versions on-focus
-	var tmp;
-	osInput.one('focus', function(){
-		tmp = $.cookie('OSVers');
-
-		// If there are any, turn on auto-complete
-		if (tmp) {
-			$(this).autocomplete(tmp.split(','));
-		}
-	});
-	os.append(osLabel);
-	os.append(osInput);
-	provForm.append(os);
-
-	// Architecture
-	var arch = $('<div></div>');
-	var archLabel = $('<label for="arch">Architecture:</label>');
-	var archInput = $('<input type="text" name="arch"/>');
-
-	// Get the OS architectures on-focus
-	archInput.one('focus', function(){
-		tmp = $.cookie('OSArchs');
-
-		// If there are any, turn on auto-complete
-		if (tmp) {
-			$(this).autocomplete(tmp.split(','));
-		}
-	});
-	arch.append(archLabel);
-	arch.append(archInput);
-	provForm.append(arch);
-
-	// Profiles
-	var profile = $('<div></div>');
-	var profileLabel = $('<label for="profile">Profile:</label>');
-	var profileInput = $('<input type="text" name="profile"/>');
-
-	// Get the profiles on-focus
-	profileInput.one('focus', function(){
-		tmp = $.cookie('Profiles');
-
-		// If there are any, turn on auto-complete
-		if (tmp) {
-			$(this).autocomplete(tmp.split(','));
-		}
-	});
-	profile.append(profileLabel);
-	profile.append(profileInput);
-	provForm.append(profile);
-	
 	/**
-	 * Provision
+	 * Create provision new node division
 	 */
-	var provisionBtn = createButton('Provision');
-	provisionBtn.bind('click', function(event) {
-		// Insert provision code here
+	var provNew = createProvisionNew('hmc', inst);
+	provForm.append(provNew);
+
+	/**
+	 * Create provision existing node division
+	 */
+	var provExisting = createProvisionExisting('hmc', inst);
+	provForm.append(provExisting);
+
+	// Toggle provision new/existing on select
+	typeSelect.change(function() {
+		var selected = $(this).val();
+		if (selected == 'new') {
+			provNew.toggle();
+			provExisting.toggle();
+		} else {
+			provNew.toggle();
+			provExisting.toggle();
+		}
 	});
-	provForm.append(provisionBtn);
 };
 
 /**
@@ -267,5 +191,5 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
  * @return Nothing
  */
 hmcPlugin.prototype.loadResources = function() {
-	
+
 };
