@@ -11,6 +11,7 @@ sub handled_commands {
   $macmap = xCAT::MacMap->new();
   return {
     findme => 'switch',
+    findmac => 'switch',
   };
 }
 
@@ -18,6 +19,14 @@ sub process_request {
  my $req = shift;
  my $cb = shift;
  my $doreq = shift;
+ my $node;
+ my $mac = '';
+ if ($req->{command}->[0] eq 'findmac') {
+     $mac = $req->{arg}->[0];
+      $node = $macmap->find_mac($mac,0);
+      $cb->({node=>[{name=>$node,data=>$mac}]});
+    return;
+ }
  my $ip = $req->{'_xcat_clientip'};
  if (defined $req->{nodetype} and $req->{nodetype}->[0] eq 'virtual') {
  #Don't attempt switch discovery of a  VM Guest
@@ -28,7 +37,6 @@ sub process_request {
  #discovery working.  Food for thought.
      return;
  }
- my $mac = '';
  my $arptable = `/sbin/arp -n`;
  my @arpents = split /\n/,$arptable;
  foreach  (@arpents) {
@@ -37,7 +45,6 @@ sub process_request {
      last;
    }
  }
- my $node;
  my $firstpass=1;
  if ($mac) {
     $node = $macmap->find_mac($mac,$req->{cacheonly}->[0]);
