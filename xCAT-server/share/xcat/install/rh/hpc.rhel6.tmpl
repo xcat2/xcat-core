@@ -140,14 +140,7 @@ reboot
 #
 %packages
 @ ofed
-openmpi
-ntp
-nfs-utils
-net-snmp
-rsync
-yp-tools
-openssh-server
-util-linux-ng
+#INCLUDE_DEFAULT_PKGLIST#
 %pre
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh#
 %post

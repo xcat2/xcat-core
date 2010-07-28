@@ -1,0 +1,8 @@
+ntp
+nfs-utils
+sendmail-cf
+openssh-server
+util-linux
+screen
+bridge-utils
+dnsmasq
