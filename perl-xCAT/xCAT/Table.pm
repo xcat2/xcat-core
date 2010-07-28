@@ -2215,6 +2215,9 @@ sub getNodeAttribs_nosub_old
     }
     if ($return)
     {
+print "data array\n";
+print Dumper(@data);
+print "\n";
         return wantarray ? @data : $data[0];
     }
     else
@@ -2349,7 +2352,6 @@ sub getNodeAttribs_nosub_returnany
     my $groupResult;
     my $wasAdded; #used to keep track 
     my %attribsDone;
-    my %newEntry;
 
     foreach $group (@nodegroups)
     {
@@ -2407,16 +2409,22 @@ sub getNodeAttribs_nosub_returnany
         }
     }
     
+    my @condResults;
+    my %condHash;
+
     #run through the results and remove any "+=NEXTRECORD" ocurrances
     for $result (@results)
     {
     	for my $key (keys %$result)
     	{
-    	    $result->{$key} =~ s/\+=NEXTRECORD$//;
+    	    $result->{$key} =~ s/\+=NEXTRECORD//g;
+            $condHash{$key} = $result->{$key};
     	}
     }
+    push(@condResults, \%condHash);
+
     #Don't need to 'correct' node attribute, considering result of the if that governs this code block?
-    return @results;
+    return @condResults;
 }
 
 
