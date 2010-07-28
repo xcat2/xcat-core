@@ -2063,7 +2063,7 @@ sub getNodeAttribs
         @attribs = @_;
     }
     my $datum;
-    my @data = $self->getNodeAttribs_nosub($node, \@attribs,%options);
+    my @data = $self->getNodeAttribs_nosub_returnany($node, \@attribs,%options);
     #my ($datum, $extra) = $self->getNodeAttribs_nosub($node, \@attribs);
     #if ($extra) { return undef; }    # return (undef,"Ambiguous query"); }
     defined($data[0])
@@ -2171,7 +2171,7 @@ sub getNodeAttribs
 =cut
 
 #--------------------------------------------------------------------------------
-sub getNodeAttribs_nosub
+sub getNodeAttribs_nosub_old
 {
     my $self   = shift;
     my $node   = shift;
@@ -2197,18 +2197,19 @@ sub getNodeAttribs_nosub
            if ($options{withattribution} and $_ ne $nodekey) {
                $datum->{'!!xcatgroupattribution!!'}->{$_} = $tent->{'!!xcatsourcegroup!!'};
            }
-        } else { #attempt to fill in gapped attributes
-           unless (scalar(@$attref) <= 1) {
-             my $sent = $self->getNodeAttribs($node, [$_],%options);
-             if ($sent and defined($sent->{$_})) {
-                 $return = 1;
-                 $datum->{$_} = $sent->{$_};
-                if ($options{withattribution} and $_ ne $nodekey) {
-                   $datum->{'!!xcatgroupattribution!!'}->{$_} = $sent->{'!!xcatgroupattribution!!'}->{$_};
-               }
-             }
-           }
-        }
+        } 
+#else { #attempt to fill in gapped attributes
+           #unless (scalar(@$attref) <= 1) {
+             #my $sent = $self->getNodeAttribs_nos($node, [$_],%options);
+             #if ($sent and defined($sent->{$_})) {
+                 #$return = 1;
+                 #$datum->{$_} = $sent->{$_};
+                #if ($options{withattribution} and $_ ne $nodekey) {
+                   #$datum->{'!!xcatgroupattribution!!'}->{$_} = $sent->{'!!xcatgroupattribution!!'}->{$_};
+               #}
+             #}
+           #}
+        #}
       }
       push(@data,$datum);
     }
@@ -2327,7 +2328,11 @@ sub getNodeAttribs_nosub_returnany
     		}   
     	}
     }
-    
+    if((keys (%attribsToDo)) == 0) #if all of the attributes are satisfied, don't look at the groups
+    {
+        return @results;
+    }
+
     #find the groups for this node
     my ($nodeghash) = $self->{nodelist}->getAttribs({node => $node}, 'groups');
     
@@ -2337,12 +2342,14 @@ sub getNodeAttribs_nosub_returnany
         return @results;
     }
     
+
     my @nodegroups = split(/,/, $nodeghash->{groups});
     my $group;
     my @groupResults;
     my $groupResult;
     my $wasAdded; #used to keep track 
     my %attribsDone;
+    my %newEntry;
 
     foreach $group (@nodegroups)
     {
@@ -2357,10 +2364,9 @@ sub getNodeAttribs_nosub_returnany
                 
                 foreach $attrib (%attribsToDo) #check each unfinished attribute against the results for this group
                 {
-                	if(defined($groupResult->{$attrib})){
+                	if(!defined($attribsDone{$attrib}) && defined($groupResult->{$attrib})){
                 		
                 		foreach $result (@results){ #loop through our existing results to add or modify the value for this attribute
-                			
                 			if(defined($result->{$attrib}) && $result->{$attrib} =~/\+=NEXTRECORD$/){ #if the attribute was there and the value should be added
                 				
                 				$result->{$attrib} =~ s/\+=NEXTRECORD$//; #pull out the existing next record string
@@ -2379,10 +2385,10 @@ sub getNodeAttribs_nosub_returnany
                 		
                 		}
                 		if(!$wasAdded){ #if there was not a value already in the results.  we know there is no entry for this
-                			push(@results, $groupResult);
+                			push(@results, {$attrib => $groupResult->{$attrib}});
                 		}
            				if($groupResult->{$attrib} !~ /\+=NEXTRECORD$/){ #the attribute was satisfied if it does not expect to add the next record
-           					$attribsDone{$attrib} = 0;
+						$attribsDone{$attrib} = 0;
 						#delete $attribsToDo{$attrib};
            				}
                 	}
@@ -2401,16 +2407,14 @@ sub getNodeAttribs_nosub_returnany
         }
     }
     
-    my $element;
     #run through the results and remove any "+=NEXTRECORD" ocurrances
-    foreach $result (@results)
+    for $result (@results)
     {
-    	foreach $element ($result)
+    	for my $key (keys %$result)
     	{
-    		$result->{$element} =~ s/\+=NEXTRECORD$//;
+    	    $result->{$key} =~ s/\+=NEXTRECORD$//;
     	}
     }
-    
     #Don't need to 'correct' node attribute, considering result of the if that governs this code block?
     return @results;
 }
