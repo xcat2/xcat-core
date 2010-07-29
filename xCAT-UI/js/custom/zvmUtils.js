@@ -212,7 +212,7 @@ function incrementNodeProcess(node) {
  *            Data returned from HTTP request
  * @return Nothing
  */
-function updateProvisionNewStatus(data) {
+function updateZProvisionNewStatus(data) {
 	// Get ajax response
 	var rsp = data.rsp;
 	var args = data.msg.split(';');
@@ -253,7 +253,7 @@ function updateProvisionNewStatus(data) {
     				msg : 'cmd=makehosts;out=' + out2Id
     			},
     
-    			success : updateProvisionNewStatus
+    			success : updateZProvisionNewStatus
     		});
 		}
 	}
@@ -279,7 +279,7 @@ function updateProvisionNewStatus(data) {
 					msg : 'cmd=makedns;out=' + out2Id
 				},
 
-				success : updateProvisionNewStatus
+				success : updateZProvisionNewStatus
 			});
 		}		
 	}
@@ -310,7 +310,7 @@ function updateProvisionNewStatus(data) {
 				msg : 'cmd=mkvm;out=' + out2Id
 			},
 
-			success : updateProvisionNewStatus
+			success : updateZProvisionNewStatus
 		});
 	}
 
@@ -348,7 +348,7 @@ function updateProvisionNewStatus(data) {
 						msg : 'cmd=mkvm;out=' + out2Id
 					},
 
-					success : updateProvisionNewStatus
+					success : updateZProvisionNewStatus
 				});
 			} else {
 				$('#' + loaderId).hide();
@@ -358,7 +358,7 @@ function updateProvisionNewStatus(data) {
 			$.cookie('tries4' + tabId, 0);
 
 			// Set cookie for number of disks
-			var diskRows = $('#' + tabId + ' table tr');
+			var diskRows = $('#' + tabId + ' table:visible tr');
 			$.cookie('zProvisionDisks2Add' + out2Id, diskRows.length);
 			if (diskRows.length > 0) {
 				for ( var i = 0; i < diskRows.length; i++) {
@@ -384,10 +384,8 @@ function updateProvisionNewStatus(data) {
 								msg : 'cmd=chvm;out=' + out2Id
 							},
 
-							success : updateProvisionNewStatus
+							success : updateZProvisionNewStatus
 						});
-					} else {
-						$('#' + loaderId).hide();
 					}
 				}
 			} else {
@@ -419,7 +417,7 @@ function updateProvisionNewStatus(data) {
 				$.cookie('tries4' + tabId, tries);
 
 				// Set cookie for number of disks
-				var diskRows = $('#' + tabId + ' table tr');
+				var diskRows = $('#' + tabId + ' table:visible tr');	
 				$.cookie('zProvisionDisks2Add' + out2Id, diskRows.length);
 				if (diskRows.length > 0) {
 					for ( var i = 0; i < diskRows.length; i++) {
@@ -443,7 +441,7 @@ function updateProvisionNewStatus(data) {
 								msg : 'cmd=chvm;out=' + out2Id
 							},
 
-							success : updateProvisionNewStatus
+							success : updateZProvisionNewStatus
 						});
 					}
 				} else {
@@ -457,7 +455,7 @@ function updateProvisionNewStatus(data) {
 			$.cookie('tries4' + tabId, 0);
 			
 			// Get operating system image
-			var osImage = $('#' + tabId + ' input[name=os]').val();
+			var osImage = $('#' + tabId + ' input[name=os]:visible').val();
 			
 			// Get cookie for number of disks
 			var disks2add = $.cookie('zProvisionDisks2Add' + out2Id);
@@ -469,11 +467,10 @@ function updateProvisionNewStatus(data) {
 			// If an operating system image is given
 			if (osImage) {
 				var tmp = osImage.split('-');
-				
+
 				// Get operating system, architecture, provision method, and profile
 				var os = tmp[0];
 				var arch = tmp[1];
-				var provisionMethod = tmp[2];
 				var profile = tmp[3];
 
 				// If the last disk is added
@@ -490,7 +487,7 @@ function updateProvisionNewStatus(data) {
 							msg : 'cmd=noderes;out=' + out2Id
 						},
 
-						success : updateProvisionNewStatus
+						success : updateZProvisionNewStatus
 					});
 				}
 			} else {
@@ -520,7 +517,7 @@ function updateProvisionNewStatus(data) {
 					msg : 'cmd=makedhcp;out=' + out2Id
 				},
 
-				success : updateProvisionNewStatus
+				success : updateZProvisionNewStatus
 			});
 		}		
 	}
@@ -544,7 +541,7 @@ function updateProvisionNewStatus(data) {
 				msg : 'cmd=nodeset;out=' + out2Id
 			},
 
-			success : updateProvisionNewStatus
+			success : updateZProvisionNewStatus
 		});
 	}
 
@@ -571,7 +568,7 @@ function updateProvisionNewStatus(data) {
 					msg : 'cmd=rnetboot;out=' + out2Id
 				},
 
-				success : updateProvisionNewStatus
+				success : updateZProvisionNewStatus
 			});
 		}
 	}
@@ -599,7 +596,7 @@ function updateProvisionNewStatus(data) {
  *            Data returned from HTTP request
  * @return Nothing
  */
-function updateProvisionExistingStatus(data) {
+function updateZProvisionExistingStatus(data) {
 	// Get ajax response
 	var rsp = data.rsp;
 	var args = data.msg.split(';');
@@ -635,7 +632,7 @@ function updateProvisionExistingStatus(data) {
 				msg : 'cmd=nodeset;out=' + inst
 			},
 
-			success : updateProvisionExistingStatus
+			success : updateZProvisionExistingStatus
 		});
 	} 
 	
@@ -670,7 +667,7 @@ function updateProvisionExistingStatus(data) {
 				msg : 'cmd=rnetboot;out=' + inst
 			},
 
-			success : updateProvisionExistingStatus
+			success : updateZProvisionExistingStatus
 		});
 	} 
 	
@@ -1298,6 +1295,8 @@ function getDiskPool(data) {
 		// Get contents of each disk pool
 		for ( var i in pools) {
 			if (pools[i]) {
+				pools[i] = jQuery.trim(pools[i]);
+				      
 				// Get used space
 				$.ajax( {
 					url : 'lib/cmd.php',
@@ -1414,6 +1413,7 @@ function loadDiskPoolTable(data) {
 
 	// Skip index 0 and 1 because it contains nothing
 	for ( var i = 2; i < tmp.length; i++) {
+		tmp[i] = jQuery.trim(tmp[i]);
 		var diskAttrs = tmp[i].split(' ');
 		dTable.fnAddData( [ hcp, pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
 	}
@@ -1680,7 +1680,7 @@ function createZProvisionExisting(inst) {
 			$('#zProvisionLoader' + inst).show();
 
 			// Disable all inputs
-			var inputs = $('#' + thisTabId + ' input');
+			var inputs = $('#' + thisTabId + ' input:visible');
 			inputs.attr('disabled', 'disabled');
 						
 			// Disable all selects
@@ -1707,7 +1707,7 @@ function createZProvisionExisting(inst) {
 					msg : 'cmd=nodeadd;out=' + inst
 				},
 
-				success : updateProvisionExistingStatus
+				success : updateZProvisionExistingStatus
 			});
 		} else {
 			alert('(Error) ' + errMsg);
@@ -1898,7 +1898,7 @@ function createZProvisionNew(inst) {
 		var inst = thisTabId.replace('zvmProvisionTab', '');
 
 		// Check node name, userId, hardware control point, and group
-		var inputs = $('#' + thisTabId + ' input');
+		var inputs = $('#' + thisTabId + ' input:visible');
 		for ( var i = 0; i < inputs.length; i++) {
 			// Do not check OS or disk password
 			if (!inputs.eq(i).val() 
@@ -1931,7 +1931,7 @@ function createZProvisionNew(inst) {
 
 		// If no operating system is specified, create only user entry
 		os = $('#' + thisTabId + ' input[name=os]:visible');
-
+		
 		// Check number of disks
 		var diskRows = $('#' + thisTabId + ' table tr');
 		// If an OS is given, disks are needed
@@ -2029,7 +2029,7 @@ function createZProvisionNew(inst) {
 							msg : 'cmd=nodeadd;out=' + inst
 						},
 
-						success : updateProvisionNewStatus
+						success : updateZProvisionNewStatus
 					});
 				}
 			} else {
@@ -2104,7 +2104,7 @@ function createZProvisionNew(inst) {
 						msg : 'cmd=nodeadd;out=' + inst
 					},
 
-					success : updateProvisionNewStatus
+					success : updateZProvisionNewStatus
 				});
 			}
 		} else {

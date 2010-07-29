@@ -20,7 +20,7 @@ if (!isAuthenticated()) {
  * Test lib/cmd.php
  */
 function testCmdPhp() {
-	$xml = docmd('rinv', 'ca4dsls08', array('all'));
+	$xml = docmd('rinv', 'gpok6', array('all'));
 	$rsp = array();
 		
 	foreach ($xml->children() as $child) {
@@ -28,8 +28,10 @@ function testCmdPhp() {
 			if($data->name) {
 				$node = $data->name;
 				$cont = $data->data->contents;
+				$cont = str_replace(":|:", "\n", $cont);
 				array_push($rsp, "$node: $cont");				
 			} else if(strlen("$data") > 2) {
+				$data = str_replace(":|:", "\n", $data);
 				array_push($rsp, "$data");
 			}
 		}		

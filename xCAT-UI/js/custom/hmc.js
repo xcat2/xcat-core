@@ -44,6 +44,7 @@ hmcPlugin.prototype.loadInventory = function(data) {
 	for ( var k = 0; k < inv.length; k++) {
 		// Remove node name in front
 		var str = inv[k].replace(node + ': ', '');
+		str = jQuery.trim(str);
 
 		// If string is a header
 		if (str.indexOf('I/O Bus Information') > -1 || str.indexOf('Machine Configuration Info') > -1) {

@@ -286,7 +286,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 	var node = args[1].replace('node=', '');
 	// Get node inventory
 	var inv = data.rsp[0].split(node + ':');
-
+	
 	// Remove loader
 	var loaderId = tabId + 'TabLoader';
 	$('#' + loaderId).remove();
@@ -320,7 +320,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
 	// Create hash table for node attributes
 	var attrs = getNodeAttrs(keys, attrNames, inv);
-
+	
 	// Create division to hold user entry
 	var ueDivId = node + 'UserEntry';
 	var ueDiv = $('<div class="userEntry" id="' + ueDivId + '"></div>');
@@ -504,53 +504,55 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			var n, temp;
 			var procType, procAddr, procLink;
 			for (l = 0; l < attrs[keys[k]].length; l++) {
-				args = attrs[keys[k]][l].split(' ');
-
-				// Get processor type, address, ID, and affinity
-				n = 3;
-				temp = args[args.length - n];
-				while (!jQuery.trim(temp)) {
-					n = n + 1;
-					temp = args[args.length - n];
+				if (attrs[keys[k]][l]) {			
+    				args = attrs[keys[k]][l].split(' ');
+    				
+    				// Get processor type, address, ID, and affinity
+    				n = 3;
+    				temp = args[args.length - n];
+    				while (!jQuery.trim(temp)) {
+    					n = n + 1;
+    					temp = args[args.length - n];
+    				}
+    				procType = $('<td>' + temp + '</td>');
+    				procAddr = $('<td></td>');
+    				procLink = $('<a href="#">' + args[1] + '</a>');
+    				
+    				// Append context menu to link
+    				procLink.contextMenu(contextMenu, {
+    					theme : 'vista'
+    				});
+    				
+    				procAddr.append(procLink);
+    				procId = $('<td>' + args[5] + '</td>');
+    				procAff = $('<td>' + args[args.length - 1] + '</td>');
+    
+    				// Base processor
+    				if (args[6] == '(BASE)') {
+    					baseProc = $('<td>' + true + '</td>');
+    				} else {
+    					baseProc = $('<td>' + false + '</td>');
+    				}
+    
+    				// Dedicated processor
+    				if (args[args.length - 3] == 'DEDICATED') {
+    					dedicatedProc = $('<td>' + true + '</td>');
+    				} else {
+    					dedicatedProc = $('<td>' + false + '</td>');
+    				}
+    
+    				// Create a new row for each processor
+    				procTabRow = $('<tr></tr>');
+    				procTabRow.append(procType);
+    				procTabRow.append(procAddr);
+    				procTabRow.append(procId);
+    				procTabRow.append(baseProc);
+    				procTabRow.append(dedicatedProc);
+    				procTabRow.append(procAff);
+    				procBody.append(procTabRow);
 				}
-				procType = $('<td>' + temp + '</td>');
-				procAddr = $('<td></td>');
-				procLink = $('<a href="#">' + args[1] + '</a>');
-
-				// Append context menu to link
-				procLink.contextMenu(contextMenu, {
-					theme : 'vista'
-				});
-
-				procAddr.append(procLink);
-				procId = $('<td>' + args[5] + '</td>');
-				procAff = $('<td>' + args[args.length - 1] + '</td>');
-
-				// Base processor
-				if (args[6] == '(BASE)') {
-					baseProc = $('<td>' + true + '</td>');
-				} else {
-					baseProc = $('<td>' + false + '</td>');
-				}
-
-				// Dedicated processor
-				if (args[args.length - 3] == 'DEDICATED') {
-					dedicatedProc = $('<td>' + true + '</td>');
-				} else {
-					dedicatedProc = $('<td>' + false + '</td>');
-				}
-
-				// Create a new row for each processor
-				procTabRow = $('<tr></tr>');
-				procTabRow.append(procType);
-				procTabRow.append(procAddr);
-				procTabRow.append(procId);
-				procTabRow.append(baseProc);
-				procTabRow.append(dedicatedProc);
-				procTabRow.append(procAff);
-				procBody.append(procTabRow);
 			}
-
+			
 			procTable.append(procBody);
 
 			/**
@@ -617,33 +619,35 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
 			// Loop through each DASD
 			for (l = 0; l < attrs[keys[k]].length; l++) {
-				args = attrs[keys[k]][l].split(' ');
+				if (attrs[keys[k]][l]) {
+    				args = attrs[keys[k]][l].split(' ');
 
-				// Get DASD virtual device, type, volume ID, access, and size
-				dasdVDev = $('<td></td>');
-				dasdLink = $('<a href="#">' + args[1] + '</a>');
-
-				// Append context menu to link
-				dasdLink.contextMenu(contextMenu, {
-					theme : 'vista'
-				});
-
-				dasdVDev.append(dasdLink);
-
-				dasdType = $('<td>' + args[2] + '</td>');
-				dasdVolId = $('<td>' + args[3] + '</td>');
-				dasdAccess = $('<td>' + args[4] + '</td>');
-				dasdSize = $('<td>' + args[args.length - 9] + ' '
-					+ args[args.length - 8] + '</td>');
-
-				// Create a new row for each DASD
-				dasdTabRow = $('<tr></tr>');
-				dasdTabRow.append(dasdVDev);
-				dasdTabRow.append(dasdType);
-				dasdTabRow.append(dasdVolId);
-				dasdTabRow.append(dasdAccess);
-				dasdTabRow.append(dasdSize);
-				dasdBody.append(dasdTabRow);
+    				// Get DASD virtual device, type, volume ID, access, and size
+    				dasdVDev = $('<td></td>');
+    				dasdLink = $('<a href="#">' + args[1] + '</a>');
+    
+    				// Append context menu to link
+    				dasdLink.contextMenu(contextMenu, {
+    					theme : 'vista'
+    				});
+    
+    				dasdVDev.append(dasdLink);
+    
+    				dasdType = $('<td>' + args[2] + '</td>');
+    				dasdVolId = $('<td>' + args[3] + '</td>');
+    				dasdAccess = $('<td>' + args[4] + '</td>');
+    				dasdSize = $('<td>' + args[args.length - 9] + ' '
+    					+ args[args.length - 8] + '</td>');
+    
+    				// Create a new row for each DASD
+    				dasdTabRow = $('<tr></tr>');
+    				dasdTabRow.append(dasdVDev);
+    				dasdTabRow.append(dasdType);
+    				dasdTabRow.append(dasdVolId);
+    				dasdTabRow.append(dasdAccess);
+    				dasdTabRow.append(dasdSize);
+    				dasdBody.append(dasdTabRow);
+				}
 			}
 
 			dasdTable.append(dasdBody);
@@ -721,36 +725,38 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
 			// Loop through each NIC (Data contained in 2 lines)
 			for (l = 0; l < attrs[keys[k]].length; l = l + 2) {
-				args = attrs[keys[k]][l].split(' ');
-
-				// Get NIC virtual device, type, port name, and number of devices
-				nicVDev = $('<td></td>');
-				nicLink = $('<a href="#">' + args[1] + '</a>');
-
-				// Append context menu to link
-				nicLink.contextMenu(contextMenu, {
-					theme : 'vista'
-				});
-
-				nicVDev.append(nicLink);
-
-				nicType = $('<td>' + args[3] + '</td>');
-				nicPortName = $('<td>' + args[10] + '</td>');
-				nicNumOfDevs = $('<td>' + args[args.length - 1] + '</td>');
-
-				args = attrs[keys[k]][l + 1].split(' ');
-				nicLanName = $('<td>' + args[args.length - 2] + ' '
-					+ args[args.length - 1] + '</td>');
-
-				// Create a new row for each DASD
-				nicTabRow = $('<tr></tr>');
-				nicTabRow.append(nicVDev);
-				nicTabRow.append(nicType);
-				nicTabRow.append(nicPortName);
-				nicTabRow.append(nicNumOfDevs);
-				nicTabRow.append(nicLanName);
-
-				nicBody.append(nicTabRow);
+				if (attrs[keys[k]][l]) {
+    				args = attrs[keys[k]][l].split(' ');
+    
+    				// Get NIC virtual device, type, port name, and number of devices
+    				nicVDev = $('<td></td>');
+    				nicLink = $('<a href="#">' + args[1] + '</a>');
+    
+    				// Append context menu to link
+    				nicLink.contextMenu(contextMenu, {
+    					theme : 'vista'
+    				});
+    
+    				nicVDev.append(nicLink);
+    
+    				nicType = $('<td>' + args[3] + '</td>');
+    				nicPortName = $('<td>' + args[10] + '</td>');
+    				nicNumOfDevs = $('<td>' + args[args.length - 1] + '</td>');
+    
+    				args = attrs[keys[k]][l + 1].split(' ');
+    				nicLanName = $('<td>' + args[args.length - 2] + ' '
+    					+ args[args.length - 1] + '</td>');
+    
+    				// Create a new row for each DASD
+    				nicTabRow = $('<tr></tr>');
+    				nicTabRow.append(nicVDev);
+    				nicTabRow.append(nicType);
+    				nicTabRow.append(nicPortName);
+    				nicTabRow.append(nicNumOfDevs);
+    				nicTabRow.append(nicLanName);
+    
+    				nicBody.append(nicTabRow);
+				}
 			}
 
 			nicTable.append(nicBody);

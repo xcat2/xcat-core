@@ -68,8 +68,10 @@ if (isset($_GET["cmd"])) {
 				if($data->name) {
 					$node = $data->name;
 					$cont = $data->data->contents;
+					$cont = str_replace(":|:", "\n", $cont);
 					array_push($rsp, "$node: $cont");
 				} else if(strlen("$data") > 2) {
+					$data = str_replace(":|:", "\n", $data);
 					array_push($rsp, "$data");
 				}
 			}
@@ -98,6 +100,7 @@ function extractWebrun($xml) {
 			$name = $node->name;
 			// Get the content
 			$status = $node->data->contents;
+			$status = str_replace(":|:", "\n", $status);
 
 			// Add to return array
 			$rsp[$i] = array("$name", "$status");

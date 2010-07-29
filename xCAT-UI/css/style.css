@@ -400,6 +400,7 @@ span.ui-icon-info {
 .tab .datatable textarea {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border: solid 1px #BDBDBD;
+	overflow: hidden;
 }
 
 .tab .datatable button {

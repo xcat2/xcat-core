@@ -70,6 +70,7 @@ if (isset($_GET["cmd"])) {
 		$xml = docmd($cmd, $tgt, $arr);
 		foreach ($xml->children() as $child) {
 			foreach ($child->children() as $data) {
+				$data = str_replace(":|:", "\n", $data);
 				array_push($rsp, "$data");
 			}
 		}
@@ -90,6 +91,7 @@ if (isset($_GET["cmd"])) {
 		$xml = docmd($cmd, $tgt, $arr);
 		foreach ($xml->children() as $child) {
 			foreach ($child->children() as $data) {
+				$data = str_replace(":|:", "\n", $data);
 				array_push($rsp, "$data");
 			}
 		}
@@ -119,6 +121,7 @@ if (isset($_GET["cmd"])) {
 		$xml = docmd($cmd, $tgt, $arr);
 		foreach ($xml->children() as $child) {
 			foreach ($child->children() as $data) {
+				$data = str_replace(":|:", "\n", $data);
 				array_push($rsp, "$data");
 			}
 		}

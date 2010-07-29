@@ -868,8 +868,7 @@ function deleteNode(tgtNodes) {
 
 	// Create status bar, hide on load
 	var statBarId = 'DeleteStatusBar' + inst;
-	var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>')
-		.hide();
+	var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>').hide();
 
 	// Create loader
 	var loader = createLoader('');
@@ -931,8 +930,7 @@ function deleteNode(tgtNodes) {
 		// Show status bar loader
 		statBar.show();
 
-		// Stop this function from executing again
-		// Unbind event
+		// Disable delete button
 		$(this).unbind(event);
 		$(this).css( {
 			'background-color' : '#F2F2F2',

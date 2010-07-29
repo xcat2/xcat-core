@@ -67,7 +67,7 @@ function submit_request($req, $skipVerify){
 		fwrite($fp,$req->asXML());		// Send XML to xcatd
 		while(!feof($fp)){				// Read until there is no more
 			// Remove newlines and add it to the response
-			$response .= preg_replace('/\n/', '', fread($fp, 8192));
+			$response .= preg_replace('/\n/', ':|:', fread($fp, 8192));
 
 			// Look for serverdone response
 			$fullpattern = '/<xcatresponse>\s*<serverdone>\s*<\/serverdone>\s*<\/xcatresponse>/';
@@ -86,7 +86,7 @@ function submit_request($req, $skipVerify){
 			}
 		}
 		fclose($fp);
-	}else{
+	} else{
 		echo "<p>xCAT submit request socket error: $errno - $errstr</p>";
 	}
 
