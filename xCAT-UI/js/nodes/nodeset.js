@@ -229,6 +229,8 @@ function updateNodesetStatus(data) {
 		} else {
 			// Create target nodes string
 			var tgtNodesStr = '';
+			var nodes = tgts.split(',');
+			
 			// Loop through each node
 			for ( var i in nodes) {
 				// If it is the 1st and only node
@@ -252,21 +254,19 @@ function updateNodesetStatus(data) {
 			}
 			
 			$('#' + statBarId).append('<p>Node definition created for ' + tgtNodesStr + '</p>');
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'makehosts',
+					tgt : '',
+					args : '',
+					msg : 'cmd=makehosts;inst=' + inst
+				},
+
+				success : updateNodesetStatus
+			});
 		}
-
-		// Update /etc/hosts
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'makehosts',
-				tgt : '',
-				args : '',
-				msg : 'cmd=makehosts;inst=' + inst
-			},
-
-			success : updateNodesetStatus
-		});
 	}
 
 	/**
