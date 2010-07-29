@@ -1,0 +1,3 @@
+#image,file,options,comments,disable
+"sles11.1-ppc64-statelite-compute","/var/ct/","bind","for rsct",
+"sles11.1-ppc64-statelite-compute","/etc/objrepos/","bind","for rsct",
