@@ -29,10 +29,9 @@ Tab.prototype.init = function() {
 	this.tab.append(tabList);
 
 	// Create a template with close button
-	var tabs = this.tab
-		.tabs( {
-			tabTemplate : "<li><a href=\"#{href}\">#{label}</a><span class=\"tab-close ui-icon ui-icon-close\"></span></li>"
-		});
+	var tabs = this.tab.tabs( {
+		tabTemplate : "<li><a href=\"#{href}\">#{label}</a><span class=\"tab-close ui-icon ui-icon-close\"></span></li>"
+	});
 
 	// Remove dummy tab
 	this.tab.tabs("remove", 0);
@@ -103,7 +102,6 @@ Tab.prototype.select = function(id) {
  * @return Nothing
  */
 Tab.prototype.remove = function(id) {
-	// To be continued
 	var selectorStr = 'a[href="\#' + id + '"]';	
 	var selectTab = $(selectorStr, this.tab).parent();
 	var index = ($('li', this.tab).index(selectTab));
@@ -391,8 +389,6 @@ function createMenu(items) {
  */
 function initPage() {
 	// Load javascripts
-	// TODO: We need to determine which page needs which script
-	// and load less
 	includeJs("js/jquery/jquery.dataTables.min.js");
 	includeJs("js/jquery/jquery.form.js");
 	includeJs("js/jquery/jquery.jeditable.js");
@@ -427,6 +423,10 @@ function initPage() {
 	// Show the page
 	$("#content").children().remove();
 	if (page == 'index.php') {
+		includeJs("js/nodes/nodeset.js");
+		includeJs("js/nodes/rnetboot.js");
+		includeJs("js/nodes/updatenode.js");
+		
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
 	} else if (page == 'configure.php') {
@@ -473,7 +473,7 @@ function includeJs(file) {
  * @param rsp
  * 			Ajax response
  * @param pattern
- * 			Pattern to insert a break in between
+ * 			Pattern to replace with a break
  * @return Paragraph containing ajax response
  */
 function writeRsp(rsp, pattern) {
@@ -481,6 +481,8 @@ function writeRsp(rsp, pattern) {
 	var prg = $('<p></p>');
 	for ( var i in rsp) {
 		if (rsp[i]) {
+			// Create regular expression for given pattern
+			// Replace pattern with break
 			if (pattern) {
 				rsp[i] = rsp[i].replace(new RegExp(pattern, 'g'), '<br>');
 			}

@@ -38,8 +38,7 @@ function loadProvisionPage() {
 
 	// Create status bar, hide on load
 	var statBarId = 'ProvisionStatusBar';
-	var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>')
-		.hide();
+	var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>').hide();
 
 	// Create info bar
 	var infoBar = createInfoBar('Provision a node');
@@ -56,8 +55,7 @@ function loadProvisionPage() {
 	tab.init();
 	$('#content').append(tab.object());
 
-	// Create drop-down menu
-	// Hardware available to provision - ipmi, blade, hmc, ivm, fsp, and zvm
+	// Create drop down menu for platforms
 	var div = $('<div></div>');
 	provForm.append(div);
 

@@ -109,7 +109,6 @@ function loadGroups(data) {
 	for ( var i = groups.length; i--;) {
 		var subItem = $('<li></li>');
 		var link = $('<a href="#"><ins></ins>' + groups[i] + '</a>');
-
 		subItem.append(link);
 		subUL.append(subItem);
 	}
@@ -118,11 +117,11 @@ function loadGroups(data) {
 	$('#groups').append(ul);
 	$('#groups').tree( {
 		callback : {
-			// Open the group onclick
+			// Open group onclick
     		onselect : function(node, tree) {
     			var thisGroup = tree.get_text(node);
     			if (thisGroup) {
-    				// Clear the nodes DIV
+    				// Clear nodes division
     				$('#nodes').children().remove();
     				// Create loader
     				var loader = $('<center></center>').append(createLoader());
@@ -202,8 +201,7 @@ function loadNodes(data) {
 	sorted.sort();
 
 	// Add column for check box, node, ping, and power
-	sorted.unshift('', 'node', 'ping', 'power');
-	sorted[0] = '<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">';
+	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node', 'ping', 'power');
 
 	// Create a datatable
 	var dTable = new DataTable('nodesDataTable');
@@ -216,9 +214,7 @@ function loadNodes(data) {
 		// Create a check box
 		var checkBx = '<input type="checkbox" name="' + node + '"/>';
 		// Open node onclick
-		var nodeLink = $(
-			'<a class="node" id="' + node + '" href="#">' + node + '</a>')
-			.bind('click', loadNode);
+		var nodeLink = $('<a class="node" id="' + node + '" href="#">' + node + '</a>').bind('click', loadNode);
 		row.push(checkBx, nodeLink, '', '');
 
 		// Go through each header
@@ -442,15 +438,14 @@ function loadNodes(data) {
 	});
 
 	/**
-	 * Only for zVM
+	 * Additional ajax requests need to be made for zVM
 	 */
 
 	// Get the index of the HCP column
 	var i = $.inArray('hcp', sorted);
 	if (i) {
+		// Get hardware control point
 		var rows = dTable.object().find('tbody tr');
-
-		// Get HCP
 		var hcps = new Object();
 		for ( var j = 0; j < rows.length; j++) {
 			var val = rows.eq(j).find('td').eq(i).html();
@@ -494,7 +489,7 @@ function loadNodes(data) {
 }
 
 /**
- * Load the power status for each node
+ * Load power status for each node
  * 
  * @param data
  *            Data returned from HTTP request
@@ -521,7 +516,7 @@ function loadPowerStatus(data) {
 }
 
 /**
- * Load the ping status for each node
+ * Load ping status for each node
  * 
  * @param data
  *            Data returned from HTTP request
@@ -668,7 +663,7 @@ function loadUnlockPage(tgtNodes) {
 	 */
 	var okBtn = createButton('Ok');
 	okBtn.bind('click', function(event) {
-		// If the form is complete
+		// If form is complete
 		var ready = formComplete(newTabId);
 		if (ready) {
 			var password = $('#' + newTabId + ' input[name=password]').val();
@@ -690,8 +685,7 @@ function loadUnlockPage(tgtNodes) {
     		// Show status bar
     		statusBar.show();
     
-    		// Stop this function from executing again
-    		// Unbind event
+    		// Disable Ok button
     		$(this).unbind(event);
     		$(this).css( {
     			'background-color' : '#F2F2F2',
@@ -815,648 +809,6 @@ function loadScriptPage(tgtNodes) {
 }
 
 /**
- * Load nodeset page
- * 
- * @param trgtNodes
- *            Targets to run nodeset against
- * @return Nothing
- */
-function loadNodesetPage(trgtNodes) {
-	// Get the OS images
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'tabdump',
-			tgt : '',
-			args : 'osimage',
-			msg : ''
-		},
-
-		success : setOSImageCookies
-	});
-
-	// Get nodes tab
-	var tab = getNodesTab();
-
-	// Generate new tab ID
-	var inst = 0;
-	var tabId = 'nodesetTab' + inst;
-	while ($('#' + tabId).length) {
-		// If one already exists, generate another one
-		inst = inst + 1;
-		tabId = 'nodesetTab' + inst;
-	}
-
-	// Open new tab
-	// Create nodeset form
-	var nodesetForm = $('<div class="form"></div>');
-
-	// Create status bar
-	var statBarId = 'nodesetStatusBar' + inst;
-	var statBar = createStatusBar(statBarId);
-	statBar.hide();
-	nodesetForm.append(statBar);
-
-	// Create loader
-	var loader = createLoader('nodesetLoader');
-	statBar.append(loader);
-
-	// Create info bar
-	var infoBar = createInfoBar('Set the boot state for a node range');
-	nodesetForm.append(infoBar);
-
-	// Target node or group
-	var tgt = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + trgtNodes + '"/></div>');
-	nodesetForm.append(tgt);
-
-	// Boot method (boot, install, stat, iscsiboot, netboot, statelite)
-	var method = $('<div></div>');
-	var methodLabel = $('<label for="method">Boot method:</label>');
-	var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
-	methodSelect.append('<option value="boot">boot</option>');
-	methodSelect.append('<option value="install">install</option>');
-	methodSelect.append('<option value="iscsiboot">iscsiboot</option>');
-	methodSelect.append('<option value="netboot">netboot</option>');
-	methodSelect.append('<option value="statelite">statelite</option>');
-	method.append(methodLabel);
-	method.append(methodSelect);
-	nodesetForm.append(method);
-
-	// Boot type (zvm, pxe, yaboot)
-	var type = $('<div></div>');
-	var typeLabel = $('<label for="type">Boot type:</label>');
-	var typeSelect = $('<select id="bootType" name="bootType"></select>');
-	typeSelect.append('<option value="zvm">zvm</option>');
-	typeSelect.append('<option value="install">pxe</option>');
-	typeSelect.append('<option value="iscsiboot">yaboot</option>');
-	type.append(typeLabel);
-	type.append(typeSelect);
-	nodesetForm.append(type);
-
-	// Operating system
-	var os = $('<div></div>');
-	var osLabel = $('<label for="os">Operating system:</label>');
-	var osInput = $('<input type="text" name="os"/>');
-
-	// Get the OS versions on-focus
-	var tmp;
-	osInput.one('focus', function(){
-		tmp = $.cookie('OSVers');
-
-		// If there are any, turn on auto-complete
-		if (tmp) {
-			$(this).autocomplete(tmp.split(','));
-		}
-	});
-	os.append(osLabel);
-	os.append(osInput);
-	nodesetForm.append(os);
-
-	// Architecture
-	var arch = $('<div></div>');
-	var archLabel = $('<label for="arch">Architecture:</label>');
-	var archInput = $('<input type="text" name="arch"/>');
-
-	// Get the OS architectures on-focus
-	archInput.one('focus', function(){
-		tmp = $.cookie('OSArchs');
-
-		// If there are any, turn on auto-complete
-		if (tmp) {
-			$(this).autocomplete(tmp.split(','));
-		}
-	});
-	arch.append(archLabel);
-	arch.append(archInput);
-	nodesetForm.append(arch);
-
-	// Profiles
-	var profile = $('<div></div>');
-	var profileLabel = $('<label for="profile">Profile:</label>');
-	var profileInput = $('<input type="text" name="profile"/>');
-
-	// Get the profiles on-focus
-	profileInput.one('focus', function(){
-		tmp = $.cookie('Profiles');
-
-		// If there are any, turn on auto-complete
-		if (tmp) {
-			$(this).autocomplete(tmp.split(','));
-		}
-	});
-	profile.append(profileLabel);
-	profile.append(profileInput);
-	nodesetForm.append(profile);
-
-	/**
-	 * Ok
-	 */
-	var okBtn = createButton('Ok');
-	okBtn.bind('click', function(event) {
-		var ready = true;
-
-		// Check state, OS, arch, and profile
-		var inputs = $('#' + tabId + ' input');
-		for ( var i = 0; i < inputs.length; i++) {
-			if (!inputs.eq(i).val() && inputs.eq(i).attr('name') != 'diskPw') {
-				inputs.eq(i).css('border', 'solid #FF0000 1px');
-				ready = false;
-			} else {
-				inputs.eq(i).css('border', 'solid #BDBDBD 1px');
-			}
-		}
-
-		// If no inputs are empty
-		if (ready) {
-			// Get nodes
-			var tgts = $('#' + tabId + ' input[name=target]').val();
-
-			// Get boot method
-			var method = $('#' + tabId + ' select[id=bootMethod]').val();
-
-			// Get boot type
-			var type = $('#' + tabId + ' select[id=bootType]').val();
-
-			// Get OS, arch, and profile
-			var os = $('#' + tabId + ' input[name=os]').val();
-			var arch = $('#' + tabId + ' input[name=arch]').val();
-			var profile = $('#' + tabId + ' input[name=profile]').val();
-
-			// Stop this function from executing again
-			// Unbind event
-			$(this).unbind(event);
-			$(this).css( {
-				'background-color' : '#F2F2F2',
-				'color' : '#424242'
-			});
-
-			/**
-			 * (1) Set the OS, arch, and profile
-			 */
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'nodeadd',
-					tgt : '',
-					args : tgts + ';noderes.netboot=' + type + ';nodetype.os='
-						+ os + ';nodetype.arch=' + arch + ';nodetype.profile='
-						+ profile,
-					msg : 'cmd=nodeadd;inst=' + inst
-				},
-
-				success : updateNodesetStatus
-			});
-
-			// Show status bar
-			statBar.show();
-		} else {
-			alert('You are missing some values');
-		}
-	});
-	nodesetForm.append(okBtn);
-
-	// Append to discover tab
-	tab.add(tabId, 'Nodeset', nodesetForm);
-
-	// Select new tab
-	tab.select(tabId);
-}
-
-/**
- * Load netboot page
- * 
- * @param tgtNodes
- *            Targets to run rnetboot against
- * @return Nothing
- */
-function loadNetbootPage(tgtNodes) {
-	// Get nodes tab
-	var tab = getNodesTab();
-
-	// Generate new tab ID
-	var inst = 0;
-	var newTabId = 'netbootTab' + inst;
-	while ($('#' + newTabId).length) {
-		// If one already exists, generate another one
-		inst = inst + 1;
-		newTabId = 'netbootTab' + inst;
-	}
-
-	// Open new tab
-	// Create netboot form
-	var netbootForm = $('<div class="form"></div>');
-
-	// Create status bar
-	var barId = 'netbootStatusBar' + inst;
-	var statusBar = createStatusBar(barId);
-	statusBar.hide();
-	netbootForm.append(statusBar);
-
-	// Create loader
-	var loader = createLoader('netbootLoader');
-	statusBar.append(loader);
-
-	// Create info bar
-	var infoBar = createInfoBar('Cause the range of nodes to boot to network');
-	netbootForm.append(infoBar);
-
-	// Target node or group
-	var target = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
-	netbootForm.append(target);
-
-	// Create options
-	var optsDIV = $('<div></div>');
-	var optsLabel = $('<label>Options:</label>');	
-	var optsList = $('<ul></ul>');
-	var opt = $('<li></li>');
-	optsList.append(opt);
-	optsDIV.append(optsLabel);
-	optsDIV.append(optsList);
-	netbootForm.append(optsDIV);
-	
-	// Boot order
-	var bootOrderChkBox = $('<input type="checkbox" id="s" name="s"/>');
-	opt.append(bootOrderChkBox);
-	opt.append('Set the boot device order');
-	var bootOrder = $('<li><label for="bootOrder">Boot order:</label><input type="text" name="bootOrder"/></li>');
-	bootOrder.hide();
-	optsList.append(bootOrder);
-	// Force reboot
-	optsList.append('<li><input type="checkbox" id="F" name="F"/>Force reboot</li>');
-	// Force shutdown
-	optsList.append('<li><input type="checkbox" id="f" name="f"/>Force immediate shutdown of the partition</li>');
-	// Iscsi dump
-	optsList.append('<li><input type="checkbox" id="I" name="I"/>Do a iscsi dump on AIX</li>');
-	
-	// Show boot order when checkbox is checked
-	bootOrderChkBox.bind('click', function(event) {
-		if ($(this).is(':checked')) {
-			bootOrder.show();
-		} else {
-			bootOrder.hide();
-		}
-	});
-
-	// Determine plugin
-	var tmp = tgtNodes.split(',');
-	for ( var i = 0; i < tmp.length; i++) {
-		var mgt = getNodeMgt(tmp[i]);
-		// If it is zvm
-		if (mgt == 'zvm') {
-			// Add IPL input
-			netbootForm.append('<div><label for="ipl">IPL:</label><input type="text" name="ipl"/></div>');
-			break;
-		}
-	}
-
-	/**
-	 * Ok
-	 */
-	var okBtn = createButton('Ok');
-	okBtn.bind('click', function(event) {
-		var ready = true;
-
-		// Check inputs
-		var inputs = $("#" + newTabId + " input[type='text']:visible");
-		for ( var i = 0; i < inputs.length; i++) {
-			if (!inputs.eq(i).val()) {
-				inputs.eq(i).css('border', 'solid #FF0000 1px');
-				ready = false;
-			} else {
-				inputs.eq(i).css('border', 'solid #BDBDBD 1px');
-			}
-		}
-
-		// Generate arguments
-		var chkBoxes = $("#" + newTabId + " input[type='checkbox']:checked");
-		var optStr = '';
-		var opt;
-		for ( var i = 0; i < chkBoxes.length; i++) {
-			opt = chkBoxes.eq(i).attr('name');
-			optStr += '-' + opt;
-			
-			// If it is the boot order
-			if (opt == 's') {
-				// Get the boot order
-				optStr += ';' + $('#' + newTabId + ' input[name=bootOrder]').val();
-			}
-			
-			// Append ; to end of string
-			if (i < (chkBoxes.length - 1)) {
-				optStr += ';';
-			}
-		}
-
-		// If no inputs are empty
-		if (ready) {
-			// Get nodes
-			var tgts = $('#' + newTabId + ' input[name=target]').val();
-
-			// Get IPL address
-			var ipl = $('#' + newTabId + ' input[name=ipl]');
-			if (ipl) {
-				optStr += 'ipl=' + ipl.val();
-			}
-
-			// Stop this function from executing again
-			// Unbind event
-			$(this).unbind(event);
-			$(this).css( {
-				'background-color' : '#F2F2F2',
-				'color' : '#424242'
-			});
-
-			/**
-			 * (1) Boot to network
-			 */
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'rnetboot',
-					tgt : tgts,
-					args : optStr,
-					msg : 'out=' + barId + ';cmd=rnetboot;tgt=' + tgts
-				},
-
-				success : updateStatusBar
-			});
-
-			// Show status bar
-			statusBar.show();
-		} else {
-			alert('You are missing some values');
-		}
-	});
-	netbootForm.append(okBtn);
-
-	// Append to discover tab
-	tab.add(newTabId, 'Netboot', netbootForm);
-
-	// Select new tab
-	tab.select(newTabId);
-}
-
-/**
- * Load updatenode page
- * 
- * @param tgtNodes
- *            Targets to run updatenode against
- * @return Nothing
- */
-function loadUpdatenodePage(tgtNodes) {
-	// Get nodes tab
-	var tab = getNodesTab();
-
-	// Generate new tab ID
-	var inst = 0;
-	var newTabId = 'updatenodeTab' + inst;
-	while ($('#' + newTabId).length) {
-		// If one already exists, generate another one
-		inst = inst + 1;
-		newTabId = 'updatenodeTab' + inst;
-	}
-
-	// Open new tab
-	// Create updatenode form
-	var updatenodeForm = $('<div class="form"></div>');
-
-	// Create status bar
-	var statBarId = 'updatenodeStatusBar' + inst;
-	var statusBar = createStatusBar(statBarId);
-	statusBar.hide();
-	updatenodeForm.append(statusBar);
-
-	// Create loader
-	var loader = createLoader('updatenodeLoader');
-	statusBar.append(loader);
-
-	// Create info bar
-	var infoBar = createInfoBar('Update nodes in an xCAT environment');
-	updatenodeForm.append(infoBar);
-
-	// Target node or group
-	var target = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
-	updatenodeForm.append(target);
-
-	// Create options
-	var optsDIV = $('<div></div>');
-	var optsLabel = $('<label>Options:</label>');	
-	var optsList = $('<ul></ul>');
-	optsDIV.append(optsLabel);
-	optsDIV.append(optsList);
-	updatenodeForm.append(optsDIV);
-		
-	// Update all software
-	var updateAllChkBox = $('<input type="checkbox" id="A" name="A"/>');
-	var updateAllOpt = $('<li></li>');
-	optsList.append(updateAllOpt);
-	updateAllOpt.append(updateAllChkBox);
-	updateAllOpt.append('Install or update all software contained in the source directory');
-		
-	var allSwScrDirectory = $('<li><label for="allSwSrcDirectory">Alternate source directory:</label><input type="text" name="allSwSrcDirectory"/></li>');
-	allSwScrDirectory.hide();
-	optsList.append(allSwScrDirectory);
-			
-	// Show alternate source directory when checked
-	updateAllChkBox.bind('click', function(event) {
-		if ($(this).is(':checked')) {
-			allSwScrDirectory.show();
-		} else {
-			allSwScrDirectory.hide();
-		}
-	});
-	
-	// Update software
-	var updateChkBox = $('<input type="checkbox" id="S" name="S"/>');
-	var updateOpt = $('<li></li>');
-	optsList.append(updateOpt);
-	updateOpt.append(updateChkBox);
-	updateOpt.append('Update software');
-		
-	var scrDirectory = $('<li><label for="srcDirectory">Alternate source directory:</label><input type="text" name="srcDirectory"/></li>');
-	scrDirectory.hide();
-	optsList.append(scrDirectory);
-	
-	var otherPkgs = $('<li><label for="otherpkgs">otherpkgs:</label><input type="text" name="otherpkgs"/></li>');
-	otherPkgs.hide();
-	optsList.append(otherPkgs);
-	
-	var rpmFlags = $('<li><label for="rpm_flags">rpm_flags:</label><input type="text" name="rpm_flags"/></li>');
-	rpmFlags.hide();
-	optsList.append(rpmFlags);
-	
-	var installPFlags = $('<li><label for="installp_flags">installp_flags:</label><input type="text" name="installp_flags"/></li>');
-	installPFlags.hide();
-	optsList.append(installPFlags);
-	
-	// Show alternate source directory when checked
-	updateChkBox.bind('click', function(event) {
-		if ($(this).is(':checked')) {
-			scrDirectory.show();
-			otherPkgs.show();
-			rpmFlags.show();
-			installPFlags.show();
-		} else {
-			scrDirectory.hide();
-			otherPkgs.hide();
-			rpmFlags.hide();
-			installPFlags.hide();
-		}
-	});
-	
-	// Postscripts
-	var postChkBox = $('<input type="checkbox" id="P" name="P"/>');
-	var postOpt = $('<li></li>');
-	optsList.append(postOpt);
-	postOpt.append(postChkBox);
-	postOpt.append('Run postscripts');
-	var postscripts = $('<li><label for="postscripts">Postscripts:</label><input type="text" name="postscripts"/></li>');
-	postscripts.hide();
-	optsList.append(postscripts);
-	
-	// Show alternate source directory when checked
-	postChkBox.bind('click', function(event) {
-		if ($(this).is(':checked')) {
-			postscripts.show();
-		} else {
-			postscripts.hide();
-		}
-	});
-	
-	optsList.append('<li><input type="checkbox" id="F" name="F"/>Distribute and synchronize files</li>');
-	optsList.append('<li><input type="checkbox" id="k" name="k"/>Update the ssh keys and host keys for the service nodes and compute nodes</li>');
-	
-	// Update OS
-	var osChkBox = $('<input type="checkbox" id="o" name="o"/>');
-	var osOpt = $('<li></li>');
-	optsList.append(osOpt);
-	osOpt.append(osChkBox);
-	osOpt.append('Update the operating system');
-	var os = $('<li><label for="scripts">Operating system:</label><input type="text" name="os"/></li>');
-	os.hide();
-	optsList.append(os);
-	
-	// Show alternate source directory when checked
-	osChkBox.bind('click', function(event) {
-		if ($(this).is(':checked')) {
-			os.show();
-		} else {
-			os.hide();
-		}
-	});
-	
-	/**
-	 * Ok
-	 */
-	var okBtn = createButton('Ok');
-	okBtn.bind('click', function(event) {
-		var ready = true;
-		
-		// Generate arguments
-		var chkBoxes = $("#" + newTabId + " input[type='checkbox']:checked");
-		var optStr = '';
-		var opt;
-		for ( var i = 0; i < chkBoxes.length; i++) {
-			opt = chkBoxes.eq(i).attr('name');
-			optStr += '-' + opt;
-			
-			// If update all software is checked
-			if (opt == 'S') {
-				var srcDir = $('#' + newTabId + ' input[name=allSwSrcDirectory]').val();
-				if (srcDir) {
-					optStr += ';-d ' + srcDir;
-				}				
-			}
-			
-			// If update software is checked
-			if (opt == 'S') {
-				var srcDir = $('#' + newTabId + ' input[name=srcDirectory]').val();
-				if (srcDir) {
-					optStr += ';-d;' + srcDir;
-				}
-				
-				var otherpkgs = $('#' + newTabId + ' input[name=otherpkgs]').val();
-				if (otherpkgs) {
-					optStr += ';otherpkgs=' + otherpkgs;
-				}
-				
-				var rpm_flags = $('#' + newTabId + ' input[name=rpm_flags]').val();
-				if (rpm_flags) {
-					optStr += ';rpm_flags=' + rpm_flags;
-				}
-				
-				var installp_flags = $('#' + newTabId + ' input[name=installp_flags]').val();
-				if (installp_flags) {
-					optStr += ';installp_flags=' + installp_flags;
-				}
-			}
-			
-			// If postscripts is checked
-			if (opt == 'P') {
-				// Get postscripts
-				optStr += ';' + $('#' + newTabId + ' input[name=postscripts]').val();
-			}
-			
-			// If operating system is checked
-			if (opt == 'o') {
-				// Get the OS
-				optStr += ';' + $('#' + newTabId + ' input[name=os]').val();
-			}
-			
-			// Append ; to end of string
-			if (i < (chkBoxes.length - 1)) {
-				optStr += ';';
-			}
-		}
-		
-		// If no inputs are empty
-		if (ready) {
-			// Get nodes
-			var tgts = $('#' + newTabId + ' input[name=target]').val();
-
-			// Stop this function from executing again
-			// Unbind event
-			$(this).unbind(event);
-			$(this).css( {
-				'background-color' : '#F2F2F2',
-				'color' : '#424242'
-			});
-
-			/**
-			 * (1) Boot to network
-			 */
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'updatenode',
-					tgt : tgts,
-					args : optStr,
-					msg : 'out=' + statBarId + ';cmd=updatenode;tgt=' + tgts
-				},
-
-				success : updateStatusBar
-			});
-
-			// Show status bar
-			statusBar.show();
-		} else {
-			alert('You are missing some values');
-		}
-	});
-	updatenodeForm.append(okBtn);
-
-	// Append to discover tab
-	tab.add(newTabId, 'Updatenode', updatenodeForm);
-
-	// Select new tab
-	tab.select(newTabId);
-}
-
-/**
  * Sort a list
  * 
  * @return Sorted list
@@ -1480,8 +832,6 @@ function sortAlpha(a, b) {
  */
 function powerNode(node, power2) {
 	node = node.replace('Power', '');
-
-	// Power on/off node
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
@@ -1603,179 +953,14 @@ function deleteNode(tgtNodes) {
 }
 
 /**
- * Update nodeset status
- * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
- */
-function updateNodesetStatus(data) {
-	var rsp = data.rsp;
-	var args = data.msg.split(';');
-	var cmd = args[0].replace('cmd=', '');
-
-	// Get nodeset instance
-	var inst = args[1].replace('inst=', '');
-	var statBarId = 'nodesetStatusBar' + inst;
-	var tabId = 'nodesetTab' + inst;
-
-	// Get nodes
-	var tgts = $('#' + tabId + ' input[name=target]').val();
-
-	// Get boot method
-	var method = $('#' + tabId + ' select[id=bootMethod]').val();
-
-	/**
-	 * (2) Update /etc/hosts
-	 */
-	if (cmd == 'nodeadd') {
-		// If no output, no errors occurred
-		if (rsp.length) {
-			$('#' + statBarId).append(
-				'<p>(Error) Failed to create node definition</p>');
-		} else {
-			// Create target nodes string
-			var tgtNodesStr = '';
-			var nodes = tgts.split(',');
-			// Loop through each node
-			for ( var i in nodes) {
-				// If it is the 1st and only node
-				if (i == 0 && i == nodes.length - 1) {
-					tgtNodesStr += nodes[i];
-				}
-				// If it is the 1st node of many nodes
-				else if (i == 0 && i != nodes.length - 1) {
-					// Append a comma to the string
-					tgtNodesStr += nodes[i] + ', ';
-				} else {
-					// If it is the last node
-					if (i == nodes.length - 1) {
-						// Append nothing to the string
-						tgtNodesStr += nodes[i];
-					} else {
-						// For every 10 nodes, append a break
-						if ((i % 10) > 0) {
-							tgtNodesStr += nodes[i] + ', ';
-						} else {
-							tgtNodesStr += nodes[i] + ', <br>';
-						}
-					}
-				}
-			}
-
-			$('#' + statBarId).append(
-				'<p>Node definition created for ' + tgtNodesStr + '</p>');
-		}
-
-		// Update /etc/hosts
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'makehosts',
-				tgt : '',
-				args : '',
-				msg : 'cmd=makehosts;inst=' + inst
-			},
-
-			success : updateNodesetStatus
-		});
-	}
-
-	/**
-	 * (4) Update DNS
-	 */
-	else if (cmd == 'makehosts') {
-		// If no output, no errors occurred
-		if (rsp.length) {
-			$('#' + statBarId).append(
-				'<p>(Error) Failed to update /etc/hosts</p>');
-		} else {
-			$('#' + statBarId).append('<p>/etc/hosts updated</p>');
-		}
-
-		// Update DNS
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'makedns',
-				tgt : '',
-				args : '',
-				msg : 'cmd=makedns;inst=' + inst
-			},
-
-			success : updateNodesetStatus
-		});
-	}
-
-	/**
-	 * (5) Update DHCP
-	 */
-	else if (cmd == 'makedns') {
-		// Write ajax response to status bar
-		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);	
-		
-		// Update DHCP
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'makedhcp',
-				tgt : '',
-				args : '-a',
-				msg : 'cmd=makedhcp;inst=' + inst
-			},
-
-			success : updateNodesetStatus
-		});
-	}
-
-	/**
-	 * (6) Prepare node for boot
-	 */
-	else if (cmd == 'makedhcp') {
-		// Write ajax response to status bar
-		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);	
-
-		// Prepare node for boot
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'nodeset',
-				tgt : tgts,
-				args : method,
-				msg : 'cmd=nodeset;inst=' + inst
-			},
-
-			success : updateNodesetStatus
-		});
-	}
-
-	/**
-	 * (7) Boot node from network
-	 */
-	else if (cmd == 'nodeset') {
-		// Write ajax response to status bar
-		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);	
-
-		// Hide loader
-		$('#' + statBarId).find('img').hide();
-	}
-}
-
-/**
- * Update the status bar of a given tab
+ * Update status bar of a given tab
  * 
  * @param data
  *            Data returned from HTTP request
  * @return Nothing
  */
 function updateStatusBar(data) {
+	// Get ajax response
 	var rsp = data.rsp;
 	var args = data.msg.split(';');
 	var statBarId = args[0].replace('out=', '');
@@ -1855,7 +1040,7 @@ function formComplete(tabId) {
 }
 
 /**
- * Update the power status of a node in the datatable
+ * Update power status of a node in the datatable
  * 
  * @param data
  *            Data from HTTP request
@@ -2031,13 +1216,11 @@ function setOSImageCookies(data) {
  */
 function setGroupsCookies(data) {
 	var rsp = data.rsp;
-
-	// Save groups names in a cookie
 	$.cookie('Groups', rsp);
 }
 
 /**
- * Get the row element that contains the given node
+ * Get row element that contains given node
  * 
  * @param tgtNode
  *            Node to find
@@ -2065,7 +1248,7 @@ function getNodeRow(tgtNode, rows) {
 }
 
 /**
- * Get the nodes that are checked in a given datatable
+ * Get nodes that are checked in a given datatable
  * 
  * @param datatableId
  * 				The datatable ID

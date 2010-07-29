@@ -60,7 +60,7 @@ function loadUserEntry(data) {
 	var ueDivId = args[0].replace('out=', '');
 	// Get node
 	var node = args[1].replace('node=', '');
-	// Get node user entry
+	// Get user entry
 	var userEntry = data.rsp[0].split(node + ':');
 
 	// Remove loader
@@ -69,7 +69,7 @@ function loadUserEntry(data) {
 
 	var toggleLinkId = node + 'ToggleLink';
 	$('#' + toggleLinkId).click(function() {
-		// Get the text within this link
+		// Get text within this link
 		var lnkText = $(this).text();
 
 		// Toggle user entry division
@@ -114,11 +114,12 @@ function loadUserEntry(data) {
 		saveBtn.show();
 		cancelBtn.show();
 	});
-
+	
 	/**
 	 * Save
 	 */
 	var saveBtn = createButton('Save');
+	saveBtn.css('display', 'inline-table');
 	saveBtn.hide();
 	saveBtn.bind('click', function(event) {
 		// Show loader
@@ -153,8 +154,7 @@ function loadUserEntry(data) {
 			'border-width' : '0px'
 		});
 
-		// Stop this function from executing again
-		// Unbind event
+		// Disable save button
 		$(this).unbind(event);
 		$(this).hide();
 		cancelBtn.hide();
@@ -164,6 +164,7 @@ function loadUserEntry(data) {
 	 * Cancel
 	 */
 	var cancelBtn = createButton('Cancel');
+	cancelBtn.css('display', 'inline-table');
 	cancelBtn.hide();
 	cancelBtn.bind('click', function(event) {
 		txtArea.attr('readonly', 'readonly');
@@ -186,14 +187,14 @@ function loadUserEntry(data) {
 }
 
 /**
- * Set a cookie to track the number of processes for a given node
+ * Increment number of processes running against a node
  * 
  * @param node
- *            Node to set cookie for
+ *            Node to increment running processes
  * @return Nothing
  */
 function incrementNodeProcess(node) {
-	// Set cookie for number actions performed against node
+	// Get current processes
 	var procs = $.cookie(node + 'Processes');
 	if (procs) {
 		// One more process
@@ -205,7 +206,7 @@ function incrementNodeProcess(node) {
 }
 
 /**
- * Update the provision new node status
+ * Update provision new node status
  * 
  * @param data
  *            Data returned from HTTP request
@@ -220,87 +221,83 @@ function updateProvisionNewStatus(data) {
 	var cmd = args[0].replace('cmd=', '');
 	// Get output ID
 	var out2Id = args[1].replace('out=', '');
-	// Get status bar and provision tab ID
+	
+	// Get status bar ID
 	var statBarId = 'zProvisionStatBar' + out2Id;
+	// Get provision tab ID
 	var tabId = 'zvmProvisionTab' + out2Id;
+	// Get loader ID
+	var loaderId = 'zProvisionLoader' + out2Id;
 
 	// Get node name
 	var node = $('#' + tabId + ' input[name=nodeName]').val();
-	// Get userId
-	var userId = $('#' + tabId + ' input[name=userId]').val();
-	// Get hardware control point
-	var hcp = $('#' + tabId + ' input[name=hcp]').val();
-	// Get group
-	var group = $('#' + tabId + ' input[name=group]').val();
-	// Get user entry
-	var userEntry = $('#' + tabId + ' textarea').val();
-	// Get operating system
-	var osImage = $('#' + tabId + ' input[name=os]').val();
 
 	/**
 	 * (2) Update /etc/hosts
 	 */
 	if (cmd == 'nodeadd') {
-		// If no output, no errors occurred
+		// If there was an error
+		// Do not continue
 		if (rsp.length) {
+			$('#' + loaderId).hide();
 			$('#' + statBarId).append('<p>(Error) Failed to create node definition</p>');
 		} else {
 			$('#' + statBarId).append('<p>Node definition created for ' + node + '</p>');
+    		$.ajax( {
+    			url : 'lib/cmd.php',
+    			dataType : 'json',
+    			data : {
+    				cmd : 'makehosts',
+    				tgt : '',
+    				args : '',
+    				msg : 'cmd=makehosts;out=' + out2Id
+    			},
+    
+    			success : updateProvisionNewStatus
+    		});
 		}
-
-		// Update /etc/hosts
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'makehosts',
-				tgt : '',
-				args : '',
-				msg : 'cmd=makehosts;out=' + out2Id
-			},
-
-			success : updateProvisionNewStatus
-		});
 	}
 
 	/**
 	 * (3) Update DNS
 	 */
 	else if (cmd == 'makehosts') {
-		// If no output, no errors occurred
+		// If there was an error
+		// Do not continue
 		if (rsp.length) {
-			$('#' + statBarId).append(
-				'<p>(Error) Failed to update /etc/hosts</p>');
+			$('#' + loaderId).hide();
+			$('#' + statBarId).append('<p>(Error) Failed to update /etc/hosts</p>');
 		} else {
 			$('#' + statBarId).append('<p>/etc/hosts updated</p>');
-		}
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'makedns',
+					tgt : '',
+					args : '',
+					msg : 'cmd=makedns;out=' + out2Id
+				},
 
-		// Update DNS
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'makedns',
-				tgt : '',
-				args : '',
-				msg : 'cmd=makedns;out=' + out2Id
-			},
-
-			success : updateProvisionNewStatus
-		});
+				success : updateProvisionNewStatus
+			});
+		}		
 	}
 
 	/**
 	 * (4) Create user entry
 	 */
-	else if (cmd == 'makedns') {
-		// Reset the number of tries
+	else if (cmd == 'makedns') {		
+		// Reset number of tries
 		$.cookie('tries4' + tabId, 0);
 
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).append(prg);
 
+		// Get user entry
+		var userEntry = $('#' + tabId + ' textarea').val();
+		
 		// Create user entry
 		$.ajax( {
 			url : 'lib/zCmd.php',
@@ -320,7 +317,7 @@ function updateProvisionNewStatus(data) {
 	/**
 	 * (5) Add disk
 	 */
-	else if (cmd == 'mkvm') {
+	else if (cmd == 'mkvm') {		
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).append(prg);
@@ -328,10 +325,7 @@ function updateProvisionNewStatus(data) {
 		// If there was an error
 		// Do not continue
 		if (prg.html().indexOf('Error') > -1) {
-			var loaderId = 'zProvisionLoader' + inst;
-			$('#' + loaderId).remove();
-			
-			// Try again (at least 2 times)
+			// Try again
 			var tries = parseInt($.cookie('tries4' + tabId));
 			if (tries < 2) {
 				$('#' + statBarId).append('<p>Trying again</p>');
@@ -340,6 +334,8 @@ function updateProvisionNewStatus(data) {
 				// One more try
 				$.cookie('tries4' + tabId, tries);
 
+				// Get user entry
+				var userEntry = $('#' + tabId + ' textarea').val();
 				// Create user entry
 				$.ajax( {
 					url : 'lib/zCmd.php',
@@ -355,14 +351,10 @@ function updateProvisionNewStatus(data) {
 					success : updateProvisionNewStatus
 				});
 			} else {
-				// Failed - Do not continue
-				var loaderId = 'zProvisionLoader' + out2Id;
 				$('#' + loaderId).hide();
 			}
-		}
-		// If there were no errors
-		else {
-			// Reset the number of tries
+		} else {
+			// Reset number of tries
 			$.cookie('tries4' + tabId, 0);
 
 			// Set cookie for number of disks
@@ -370,6 +362,7 @@ function updateProvisionNewStatus(data) {
 			$.cookie('zProvisionDisks2Add' + out2Id, diskRows.length);
 			if (diskRows.length > 0) {
 				for ( var i = 0; i < diskRows.length; i++) {
+					// Get disk type, address, size, pool, and password
 					var diskArgs = diskRows.eq(i).find('td');
 					var type = diskArgs.eq(1).find('select').val();
 					var address = diskArgs.eq(2).find('input').val();
@@ -377,7 +370,7 @@ function updateProvisionNewStatus(data) {
 					var pool = diskArgs.eq(4).find('input').val();
 					var password = diskArgs.eq(5).find('input').val();
 
-					// Add disk and format disk
+					// Add disk
 					if (type == '3390') {
 						$.ajax( {
 							url : 'lib/cmd.php',
@@ -394,21 +387,17 @@ function updateProvisionNewStatus(data) {
 							success : updateProvisionNewStatus
 						});
 					} else {
-						// Virtual server created
-						var loaderId = 'zProvisionLoader' + out2Id;
 						$('#' + loaderId).hide();
 					}
 				}
 			} else {
-				// Virtual server created (no OS, no disks)
-				var loaderId = 'zProvisionLoader' + out2Id;
 				$('#' + loaderId).hide();
 			}
 		}
 	}
 
 	/**
-	 * (6) Set the operating system for given node
+	 * (6) Set operating system for given node
 	 */
 	else if (cmd == 'chvm') {
 		// Write ajax response to status bar
@@ -418,10 +407,9 @@ function updateProvisionNewStatus(data) {
 		// If there was an error
 		// Do not continue
 		if (prg.html().indexOf('Error') > -1) {
-			var loaderId = 'zProvisionLoader' + inst;
-			$('#' + loaderId).remove();
+			$('#' + loaderId).hide();
 
-			// Try again (at least 2 times)
+			// Try again
 			var tries = parseInt($.cookie('tries4' + tabId));
 			if (tries < 2) {
 				$('#' + statBarId).append('<p>Trying again</p>');
@@ -435,13 +423,14 @@ function updateProvisionNewStatus(data) {
 				$.cookie('zProvisionDisks2Add' + out2Id, diskRows.length);
 				if (diskRows.length > 0) {
 					for ( var i = 0; i < diskRows.length; i++) {
+						// Get disk type, address, size, pool, and password
 						var diskArgs = diskRows.eq(i).find('td');
 						var address = diskArgs.eq(1).find('input').val();
 						var size = diskArgs.eq(2).find('input').val();
 						var pool = diskArgs.eq(3).find('input').val();
 						var password = diskArgs.eq(4).find('input').val();
 
-						// Add disk and format disk
+						// Add disk
 						$.ajax( {
 							url : 'lib/cmd.php',
 							dataType : 'json',
@@ -458,18 +447,18 @@ function updateProvisionNewStatus(data) {
 						});
 					}
 				} else {
-					// Virtual server created (no OS, no disks)
-					var loaderId = 'zProvisionLoader' + out2Id;
 					$('#' + loaderId).hide();
 				}
 			} else {
-				var loaderId = 'zProvisionLoader' + out2Id;
-				$('#' + loaderId).remove();
+				$('#' + loaderId).hide();
 			}
 		} else {
-			// Reset the number of tries
+			// Reset number of tries
 			$.cookie('tries4' + tabId, 0);
-
+			
+			// Get operating system image
+			var osImage = $('#' + tabId + ' input[name=os]').val();
+			
 			// Get cookie for number of disks
 			var disks2add = $.cookie('zProvisionDisks2Add' + out2Id);
 			// One less disk to add
@@ -477,17 +466,18 @@ function updateProvisionNewStatus(data) {
 			// Set cookie for number of disks
 			$.cookie('zProvisionDisks2Add' + out2Id, disks2add);
 
-			// If an operating system is given
+			// If an operating system image is given
 			if (osImage) {
 				var tmp = osImage.split('-');
+				
+				// Get operating system, architecture, provision method, and profile
 				var os = tmp[0];
 				var arch = tmp[1];
 				var provisionMethod = tmp[2];
 				var profile = tmp[3];
 
-				// If this is the last disk added
+				// If the last disk is added
 				if (disks2add < 1) {
-					// Set operating system
 					$.ajax( {
 						url : 'lib/cmd.php',
 						dataType : 'json',
@@ -504,8 +494,6 @@ function updateProvisionNewStatus(data) {
 					});
 				}
 			} else {
-				// Virtual server created (no OS)
-				var loaderId = 'zProvisionLoader' + out2Id;
 				$('#' + loaderId).hide();
 			}
 		}
@@ -515,36 +503,32 @@ function updateProvisionNewStatus(data) {
 	 * (7) Update DHCP
 	 */
 	else if (cmd == 'noderes') {
-		// If no output, no errors occurred
+		// If there was an error
+		// Do not continue
 		if (rsp.length) {
-			$('#' + statBarId).append(
-				'<p>(Error) Failed to set operating system</p>');
+			$('#' + loaderId).hide();
+			$('#' + statBarId).append('<p>(Error) Failed to set operating system</p>');
 		} else {
-			$('#' + statBarId).append(
-				'<p>Operating system for ' + node + ' set</p>');
-		}
+			$('#' + statBarId).append('<p>Operating system for ' + node + ' set</p>');
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'makedhcp',
+					tgt : '',
+					args : '-a',
+					msg : 'cmd=makedhcp;out=' + out2Id
+				},
 
-		// Update DHCP
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'makedhcp',
-				tgt : '',
-				args : '-a',
-				msg : 'cmd=makedhcp;out=' + out2Id
-			},
-
-			success : updateProvisionNewStatus
-		});
+				success : updateProvisionNewStatus
+			});
+		}		
 	}
 
 	/**
 	 * (8) Prepare node for boot
 	 */
 	else if (cmd == 'makedhcp') {
-		var failed = false;
-
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).append(prg);
@@ -568,8 +552,6 @@ function updateProvisionNewStatus(data) {
 	 * (9) Boot node to network
 	 */
 	else if (cmd == 'nodeset') {
-		var failed = false;
-
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).append(prg);
@@ -577,11 +559,8 @@ function updateProvisionNewStatus(data) {
 		// If there was an error
 		// Do not continue
 		if (prg.html().indexOf('Error') > -1) {
-			var loaderId = 'zProvisionLoader' + out2Id;
-			$('#' + loaderId).remove();
-			failed = true;
+			$('#' + loaderId).hide();
 		} else {
-			// Boot node from network
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
@@ -601,24 +580,15 @@ function updateProvisionNewStatus(data) {
 	 * (10) Done
 	 */
 	else if (cmd == 'rnetboot') {
-		var failed = false;
-
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).append(prg);
-
-		// If there was an error
-		// Do not continue
-		if (prg.html().indexOf('Error') > -1) {
-			var loaderId = 'zProvisionLoader' + out2Id;
-			$('#' + loaderId).remove();
-			failed = true;
-		} else {
+		if (prg.html().indexOf('Error') < 0) {
 			$('#' + statBarId).append('<p>Open a VNC viewer to see the installation progress.  It might take a couple of minutes before you can connect.</p>');
 		}
 
 		// Hide loader
-		$('#' + statBarId).find('img').hide();
+		$('#' + loaderId).hide();
 	}
 }
 
@@ -748,19 +718,21 @@ function updateZNodeStatus(data) {
 }
 
 /**
- * Update the clone status
+ * Update clone status
  * 
  * @param data
  *            Data returned from HTTP request
  * @return Nothing
  */
 function updateZCloneStatus(data) {
+	// Get ajax response
 	var rsp = data.rsp;
 	var args = data.msg.split(';');
 	var cmd = args[0].replace('cmd=', '');
 
 	// Get provision instance
 	var inst = args[1].replace('inst=', '');
+	// Get output division ID
 	var out2Id = args[2].replace('out=', '');
 
 	/**
@@ -769,59 +741,57 @@ function updateZCloneStatus(data) {
 	if (cmd == 'nodeadd') {
 		var node = args[3].replace('node=', '');
 
-		// If no output, no errors occurred
+		// If there was an error
+		// Do not continue
 		if (rsp.length) {
-			$('#' + out2Id).append(
-				'<p>(Error) Failed to create node definition</p>');
+			$('#' + out2Id).find('img').hide();
+			$('#' + out2Id).append('<p>(Error) Failed to create node definition</p>');
 		} else {
-			$('#' + out2Id).append(
-				'<p>Node definition created for ' + node + '</p>');
-		}
+			$('#' + out2Id).append('<p>Node definition created for ' + node + '</p>');
+			
+			// If last node definition was created
+			var tmp = inst.split('/');
+			if (tmp[0] == tmp[1]) {
+				$.ajax( {
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'makehosts',
+						tgt : '',
+						args : '',
+						msg : 'cmd=makehosts;inst=' + inst + ';out=' + out2Id
+					},
 
-		// Is this the last instance
-		var tmp = inst.split('/');
-		if (tmp[0] == tmp[1]) {
-			// Update /etc/hosts
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'makehosts',
-					tgt : '',
-					args : '',
-					msg : 'cmd=makehosts;inst=' + inst + ';out=' + out2Id
-				},
-
-				success : updateCloneStatus
-			});
-		}
+					success : updateZCloneStatus
+				});
+			}
+		}		
 	}
 
 	/**
 	 * (3) Update DNS
 	 */
 	else if (cmd == 'makehosts') {
-		// If no output, no errors occurred
+		// If there was an error
+		// Do not continue
 		if (rsp.length) {
-			$('#' + out2Id)
-				.append('<p>(Error) Failed to update /etc/hosts</p>');
+			$('#' + out2Id).find('img').hide();
+			$('#' + out2Id).append('<p>(Error) Failed to update /etc/hosts</p>');
 		} else {
 			$('#' + out2Id).append('<p>/etc/hosts updated</p>');
-		}
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'makedns',
+					tgt : '',
+					args : '',
+					msg : 'cmd=makedns;inst=' + inst + ';out=' + out2Id
+				},
 
-		// Update DNS
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'makedns',
-				tgt : '',
-				args : '',
-				msg : 'cmd=makedns;inst=' + inst + ';out=' + out2Id
-			},
-
-			success : updateCloneStatus
-		});
+				success : updateZCloneStatus
+			});
+		}		
 	}
 
 	/**
@@ -847,7 +817,6 @@ function updateZCloneStatus(data) {
 			var nodeStart = parseInt(tmp[0].match(/\d+/));
 			// Get the ending index
 			var nodeEnd = parseInt(tmp[1]);
-
 			for ( var i = nodeStart; i <= nodeEnd; i++) {
 				// Do not append comma for last node
 				if (i == nodeEnd) {
@@ -881,7 +850,7 @@ function updateZCloneStatus(data) {
 				msg : 'cmd=mkvm;inst=' + inst + ';out=' + out2Id
 			},
 
-			success : updateCloneStatus
+			success : updateZCloneStatus
 		});
 	}
 
@@ -1046,7 +1015,7 @@ function addProcessor(v, m, f) {
 			success : updateZNodeStatus
 		});
 
-		// Increment node process and save it in a cookie
+		// Increment node process
 		incrementNodeProcess(node);
 
 		// Show loader
@@ -1095,7 +1064,7 @@ function addDisk(v, m, f) {
 				success : updateZNodeStatus
 			});
 
-			// Increment node process and save it in a cookie
+			// Increment node process
 			incrementNodeProcess(node);
 
 			// Show loader
@@ -1135,7 +1104,6 @@ function addNic(v, m, f) {
 			var lanName = temp[1];
 			var lanOwner = temp[0];
 
-			// Add NIC
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
@@ -1157,7 +1125,6 @@ function addNic(v, m, f) {
 			var temp = f.nicVSwitchName.split(' ');
 			var vswitchName = temp[1];
 
-			// Add NIC
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
@@ -1173,7 +1140,7 @@ function addNic(v, m, f) {
 			});
 		}
 
-		// Increment node process and save it in a cookie
+		// Increment node process
 		incrementNodeProcess(node);
 
 		// Show loader
@@ -1194,7 +1161,6 @@ function addNic(v, m, f) {
  * @return Nothing
  */
 function removeProcessor(node, address) {
-	// Remove processor
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
@@ -1208,7 +1174,7 @@ function removeProcessor(node, address) {
 		success : updateZNodeStatus
 	});
 
-	// Increment node process and save it in a cookie
+	// Increment node process
 	incrementNodeProcess(node);
 
 	// Show loader
@@ -1228,7 +1194,6 @@ function removeProcessor(node, address) {
  * @return Nothing
  */
 function removeDisk(node, address) {
-	// Remove disk
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
@@ -1242,7 +1207,7 @@ function removeDisk(node, address) {
 		success : updateZNodeStatus
 	});
 
-	// Increment node process and save it in a cookie
+	// Increment node process
 	incrementNodeProcess(node);
 
 	// Show loader
@@ -1265,7 +1230,6 @@ function removeNic(node, nic) {
 	var args = nic.split('.');
 	var address = args[0];
 
-	// Remove NIC
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
@@ -1279,7 +1243,7 @@ function removeNic(node, nic) {
 		success : updateZNodeStatus
 	});
 
-	// Set cookie for number actions performed against node
+	// Increment node process
 	incrementNodeProcess(node);
 
 	// Show loader
@@ -1290,14 +1254,13 @@ function removeNic(node, nic) {
 }
 
 /**
- * Set a cookie for the disk pool names of a given node
+ * Set a cookie for disk pool names of a given node
  * 
  * @param data
  *            Data from HTTP request
  * @return Nothing
  */
 function setDiskPoolCookies(data) {
-	// Do not set cookie if there is no output
 	if (data.rsp) {
 		var node = data.msg;
 		var pools = data.rsp[0].split(node + ': ');
@@ -1313,7 +1276,6 @@ function setDiskPoolCookies(data) {
  * @return Nothing
  */
 function setNetworkCookies(data) {
-	// Do not set cookie if there is no output
 	if (data.rsp) {
 		var node = data.msg;
 		var networks = data.rsp[0].split(node + ': ');
@@ -1322,7 +1284,7 @@ function setNetworkCookies(data) {
 }
 
 /**
- * Get the contents of each disk pool
+ * Get contents of each disk pool
  * 
  * @param data
  *            HTTP request data
@@ -1333,7 +1295,7 @@ function getDiskPool(data) {
 		var hcp = data.msg;
 		var pools = data.rsp[0].split(hcp + ': ');
 
-		// Get the contents of each disk pool
+		// Get contents of each disk pool
 		for ( var i in pools) {
 			if (pools[i]) {
 				// Get used space
@@ -1370,7 +1332,7 @@ function getDiskPool(data) {
 }
 
 /**
- * Get the details of each network
+ * Get details of each network
  * 
  * @param data
  *            HTTP request data
@@ -1381,7 +1343,7 @@ function getNetwork(data) {
 		var hcp = data.msg;
 		var networks = data.rsp[0].split(hcp + ': ');
 
-		// Get the network details
+		// Loop through each network
 		for ( var i = 1; i < networks.length; i++) {
 			var args = networks[i].split(' ');
 			var type = args[0];
@@ -1405,7 +1367,7 @@ function getNetwork(data) {
 }
 
 /**
- * Load the disk pool contents into a table
+ * Load disk pool contents into a table
  * 
  * @param data
  *            HTTP request data
@@ -1427,7 +1389,7 @@ function loadDiskPoolTable(data) {
 	// Resource tab ID
 	var tabID = 'zvmResourceTab';
 
-	// Get datatable (if any)
+	// Get datatable
 	var dTable = getDiskDataTable();
 	if (!dTable) {
 		// Create disks section
@@ -1439,8 +1401,7 @@ function loadDiskPoolTable(data) {
 		var tableID = 'zDiskDataTable';
 		var table = new DataTable(tableID);
 		// Resource headers: volume ID, device type, start address, and size
-		table.init( [ 'Hardware control point', 'Pool', 'Status', 'Volume ID',
-			'Device type', 'Start address', 'Size' ]);
+		table.init( [ 'Hardware control point', 'Pool', 'Status', 'Volume ID', 'Device type', 'Start address', 'Size' ]);
 
 		// Append datatable to tab
 		fieldSet.append(table.object());
@@ -1454,13 +1415,12 @@ function loadDiskPoolTable(data) {
 	// Skip index 0 and 1 because it contains nothing
 	for ( var i = 2; i < tmp.length; i++) {
 		var diskAttrs = tmp[i].split(' ');
-		dTable.fnAddData( [ hcp, pool, stat, diskAttrs[0], diskAttrs[1],
-			diskAttrs[2], diskAttrs[3] ]);
+		dTable.fnAddData( [ hcp, pool, stat, diskAttrs[0], diskAttrs[1], diskAttrs[2], diskAttrs[3] ]);
 	}
 }
 
 /**
- * Load the network details into a table
+ * Load network details into a table
  * 
  * @param data
  *            HTTP request data
@@ -1482,7 +1442,7 @@ function loadNetworkTable(data) {
 	// Resource tab ID
 	var tabID = 'zvmResourceTab';
 
-	// Get datatable (if any)
+	// Get datatable
 	var dTable = getNetworkDataTable();
 	if (!dTable) {
 		// Create networks section
