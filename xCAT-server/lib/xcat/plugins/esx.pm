@@ -462,10 +462,10 @@ sub inv {
   my $hyp = $args{hyp};
   if (not defined $args{vmview}) { #attempt one refresh
     $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
-  }
-  if (not defined $args{vmview}) { 
-    sendmsg([1,"VM does not appear to exist"],$node);
-    return;
+    if (not defined $args{vmview}) { 
+      sendmsg([1,"VM does not appear to exist"],$node);
+      return;
+    }
   }
   my $vmview = $args{vmview};
   my $uuid = $vmview->config->uuid;
@@ -504,11 +504,11 @@ sub chvm {
 		$args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',
 				properties=>['config.name','runtime.powerState'],
 				filter=>{name=>$node});
-	}
-	if (not defined $args{vmview}) {
+	  if (not defined $args{vmview}) {
 		sendmsg([1,"VM does not appear to exist"],$node);
 		return;
-	}
+	  }
+        }
 	@ARGV= @{$args{exargs}};
 	my @deregister;
 	my @purge;
@@ -1203,10 +1203,10 @@ sub rmvm {
     my $hyp = $args{hyp};
     if (not defined $args{vmview}) { #attempt one refresh
         $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
-    }
-    if (not defined $args{vmview}) { 
-        sendmsg([1,"VM does not appear to exist"],$node);
-        return;
+        if (not defined $args{vmview}) { 
+            sendmsg([1,"VM does not appear to exist"],$node);
+            return;
+        }
     }
     @ARGV= @{$args{exargs}};
     require Getopt::Long;
@@ -1286,6 +1286,10 @@ sub power {
     my $pretendop = $args{pretendop}; #to pretend a system was on for reset or boot when we have to turn it off internally for reconfig
     if (not defined $args{vmview}) { #attempt one refresh
         $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','config','runtime.powerState'],filter=>{name=>$node});
+        if (not defined $args{vmview}) { 
+            sendmsg([1,"VM does not appear to exist"],$node);
+            return;
+        }
     }
     @ARGV = @{$args{exargs}}; #for getoptions;
     my $forceon;
@@ -1627,6 +1631,10 @@ sub setboot {
     my $hyp = $args{hyp};
     if (not defined $args{vmview}) { #attempt one refresh
         $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name'],filter=>{name=>$node});
+        if (not defined $args{vmview}) { 
+            sendmsg([1,"VM does not appear to exist"],$node);
+            return;
+        }
     }
     my $bootorder = ${$args{exargs}}[0];
     #NOTE: VMware simply does not currently seem to allow programatically changing the boot
