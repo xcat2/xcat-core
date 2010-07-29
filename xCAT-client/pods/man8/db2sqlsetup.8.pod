@@ -11,7 +11,7 @@ B<db2sqlsetup> {B<-v>|B<--version>}
 
 B<db2sqlsetup> {B<-i>|B<--init>}{<-S> | <-C>} [-o|--setupODBC]  [B<-V>|B<--verbose>]
 
-B<db2sqlsetup> {B<-o>|B<--setupODBC>} [-V|--verbose] 
+B<db2sqlsetup> {B<-o>|B<--setupODBC>} {<-S> | <-C>} [-V|--verbose] 
 
 =head1 DESCRIPTION
 
@@ -74,10 +74,13 @@ To setup DB2 Client for  xCAT to run on the DB2 xcatdb database, on the SN:
 
 B<db2sqlsetup> I<-i> I<-C>
 
-=item * 
 
-To setup the ODBC for PostgreSQL xcatdb database access, on the MN or SN:
+To setup the ODBC for  DB2 xcatdb database access, on the MN :
 
-B<db2sqlsetup> I<-o>
+B<db2sqlsetup> I<-o> I<-S>
+
+To setup the ODBC for  DB2 xcatdb database access, on the SN :
+
+B<db2sqlsetup> I<-o> I<-C>
 
 =back
