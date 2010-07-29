@@ -114,8 +114,11 @@ for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-'`; do
 	else
 		opts=""
 	fi
-	echo rpm -Uvh $opts $i
-	rpm -Uvh $opts $i
+	# this next if stmt means: if i does not start with perl-DBD-DB2
+	if [ "${i#perl-DBD-DB2}" == "$i" ]; then
+		echo rpm -Uvh $opts $i
+		rpm -Uvh $opts $i
+	fi
 done
 # don't try to install tcl, tk, or expect if they are already installed!
 lslpp -l | grep expect.base > /dev/null 2>&1
