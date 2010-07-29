@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -vx
 
 # 
 # Sample script to accept licenses and install RSCT packages
@@ -20,17 +20,32 @@ fi
 
 
 if [ $OS != "AIX" ]; then
- #   if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ] ; then
+    #if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ] ; then
     #  Being run from a stateful install postscript
     #  Do nothing - use rsct.otherpkgs.pkglist to install the
     #  rsct rpms
-#    fi
+    #fi
+ 
 
     if [ $NODESETSTATE == "genimage" ]; then
     # Being called from <image>.postinstall script
     # Assume we are on the same machine
-        INUCLIENTS=1 INUBOSTYPE=1  rpm --root $installroot --force -Uvh $RSCT_DIR/src-* $RSCT_DIR/rsct.core-* $RSCT_DIR/rsct.core.utils-*
+        if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+        # For SLES, assume zypper is available on the system running genimage
+            # rsct don't need license. So not install and accept the rsct license on the MN
+            
+            # Install RSCT product rpms
+            INUCLIENTS=1 INUBOSTYPE=1 zypper -R $installroot install $RSCT_DIR/src-*.rpm $RSCT_DIR/rsct.core-*.rpm $RSCT_DIR/rsct.core.utils-*.rpm 
+        else
+        # For Redhat, etc., assume yum is available on the system running genimage
+            # rsct don't need license. So not install and accept the rsct license on the MN
+            # Install RSCT product rpms
+            INUCLIENTS=1 INUBOSTYPE=1 yum --installroot $installroot --nogpgcheck localupdate $RSCT_DIR/src-*.rpm $RSCT_DIR/rsct.core-*.rpm $RSCT_DIR/rsct.core.utils-*.rpm 
+        fi
     fi
+
+
+
 fi  
 
 
