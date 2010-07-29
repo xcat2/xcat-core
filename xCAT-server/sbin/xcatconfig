@@ -1710,6 +1710,8 @@ sub makenetworks
     {
         $cmd = "/etc/init.d/httpd stop; /etc/init.d/httpd start";
     }
+
+    $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E', "Could not restart httpd.");
