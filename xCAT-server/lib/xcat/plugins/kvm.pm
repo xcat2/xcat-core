@@ -145,8 +145,13 @@ sub get_multiple_paths_by_url {
     my @volobjs = $poolobj->list_volumes();
     my %paths;
     foreach (@volobjs) {
-        if ($_->get_name() =~ /^$node\.(.*)$/) {
-            $paths{$_->get_path()} = $1;
+        if ($_->get_name() =~ /^$node\.([^\.]*)\.([^\.]*)$/) {
+            $paths{$_->get_path()} = {device=>$1,format=>$2};
+        } elsif (($_->get_name() =~ /^$node\.([^\.]*)$/) {
+             $paths{$_->get_path()} = {device=>$1,format=>'raw'}; 
+             #this requires any current user of qcow2 to migrate, unfortunate to escape
+             #a vulnerability where raw user could write malicious qcow2 to header
+             #and use that to get at files on the hypervisor os with escalated privilege
         }
     }
     return \%paths;
@@ -172,7 +177,7 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
     unless ($poolobj) { die "Could not get storage pool for $url"; }
     $poolobj->refresh(); #if volumes change on nfs storage, libvirt is too dumb to notice
     my @volobjs = $poolobj->list_volumes();
-    my $desiredname = $node.'.'.$dev;
+    my $desiredname = $node.'.'.$dev.'.'.$format;
     foreach (@volobjs) {
         if ($_->get_name() eq $desiredname) {
             if ($create) {
@@ -302,8 +307,10 @@ sub build_diskstruct {
                     my $tdiskhash;
                     $tdiskhash->{type};
                     $tdiskhash->{device}='disk';
+                    $tdiskhash->{driver}->{name}='qemu';
+                    $tdiskhash->{driver}->{type}=$disks{$_}->{format};
                     $tdiskhash->{source}->{file}=$_;
-                    $tdiskhash->{target}->{dev} = $disks{$_};
+                    $tdiskhash->{target}->{dev} = $disks{$_}->{device};
                     if ($disks{$_} =~ /^vd/) {
                         $tdiskhash->{target}->{bus} = 'virtio';
                     } elsif ($disks{$_} =~ /^hd/) {
