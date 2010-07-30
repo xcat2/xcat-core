@@ -4,6 +4,7 @@
 # EPL license http://www.eclipse.org/legal/epl-v10.html
 #
 # Revision history:
+#   July, 2010 		vallard@sumavi.com comments added.
 #   August, 2009	blade.pm adapted to generate hpblade.pm
 #
 package xCAT_plugin::hpblade;
