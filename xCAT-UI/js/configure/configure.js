@@ -280,6 +280,7 @@ function loadTable(data) {
 		}, {
 			onblur : 'submit', // Clicking outside editable area submits changes
 			type : 'textarea',
+			placeholder: ' ',
 			height : '30px' // The height of the text area
 		});
 
@@ -340,9 +341,9 @@ function loadTable(data) {
 
 				return (value);
 			}, {
-				onblur : 'submit', // Clicking outside editable area
-				// submits changes
+				onblur : 'submit', // Clicking outside editable area submits changes
 				type : 'textarea',
+				placeholder: ' ',
 				height : '30px' // The height of the text area
 			});
 	});
@@ -373,9 +374,9 @@ function loadTable(data) {
 				var vals = new Object();
 				for ( var j = 1; j < cols.length; j++) {
 					var val = cols.item(j).firstChild.nodeValue;
-
+					
 					// Insert quotes
-					if (val == 'Click to edit') {
+					if (val == ' ') {
 						vals[j - 1] = '';
 					} else {
 						vals[j - 1] = val;
@@ -386,7 +387,7 @@ function loadTable(data) {
 				newCont[i + 1] = vals;
 			}
 		}
-
+		
 		// Update datatable
 		setConfigDatatable(tableId, dTable);
 
@@ -442,9 +443,9 @@ function loadTable(data) {
 
 				return (value);
 			}, {
-				onblur : 'submit', // Clicking outside editable area submits
-				// changes
+				onblur : 'submit', // Clicking outside editable area submits changes
 				type : 'textarea',
+				placeholder: ' ',
 				height : '30px' // The height of the text area
 			});
 	});
