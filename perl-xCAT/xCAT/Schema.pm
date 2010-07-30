@@ -866,14 +866,14 @@ prescripts => {
    " The format is:\n".
    "   [action1:]s1,s2...[|action2:s3,s4,s5...]\n".
    " where:\n".
-   "  - action1 and action2 are the nodeset actions specified in the command. \n" .
-   "    For AIX, the action is 'diskless' for mkdsklsnode command and 'standalone'\n" . 
-   "    for nimnodeset command. \n" .
+   "  - action1 and action2 for Linux are the nodeset actions specified in the command. \n" .
+   "    For AIX, action1 and action1 can be 'diskless' for mkdsklsnode command'\n" . 
+   "    and 'standalone for nimnodeset command. \n" .
    "  - s1 and s2 are the scripts to run for action1 in order.\n".
    "  - s3, s4, and s5 are the scripts to run for actions2.\n".
    " If actions are omitted, the scripts apply to all actions.\n".
    " Examples:\n".
-   "   myscript1,myscript2\n".
+   "   myscript1,myscript2  (all actions)\n".
    "   diskless:myscript1,myscript2   (AIX)\n".
    "   install:myscript1,myscript2|netboot:myscript3   (Linux)\n\n".
    " All the scripts should be copied to /install/prescripts directory.\n".
