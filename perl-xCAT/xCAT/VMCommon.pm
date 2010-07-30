@@ -121,7 +121,7 @@ sub requestMacAddresses {
                 if (not $macdata) {
                     $macdata = $macaddr;
                 } else {
-                    $macdata .= "|".$macaddr;
+                    $macdata .= "|".$macaddr."*NOIP*";
                 }
                 push @macs,$macaddr;
             }
@@ -185,7 +185,7 @@ sub getMacAddresses {
         if (not $macdata) {
             $macdata = $macaddr;
         } else {
-            $macdata .= "|".$macaddr;
+            $macdata .= "|".$macaddr."*NOIP*";
         }
         push @macs,$macaddr;
     }
