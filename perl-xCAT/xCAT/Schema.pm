@@ -861,8 +861,8 @@ prescripts => {
   # Do not put description text past column 88, so it displays well in a 100 char wide window.
   # ----------------------------------------------------------------------------------|
 	begin => 
-   "The scripts to be run at the beginning of the nodeset(Linux), nimnodeset(AIX)\n" .
-   " or mkdsklsnode(AIX) command.\n". 
+   "The scripts to be run at the beginning of the nodeset(Linux),\n" .
+   " nimnodeset(AIX) or mkdsklsnode(AIX) command.\n". 
    " The format is:\n".
    "   [action1:]s1,s2...[|action2:s3,s4,s5...]\n".
    " where:\n".
@@ -882,10 +882,11 @@ prescripts => {
    "   ACTION current nodeset action.\n\n".
    " If '#xCAT setting:MAX_INSTANCE=number' is specified in the script, the script\n".
    " will get invoked for each node in parallel, but no more than number of instances\n".
-   " will be invoked at at a time. If it is not sepcified, the script will be invoked\n".
+   " will be invoked at at a time. If it is not specified, the script will be invoked\n".
    " once for all the nodes.\n",
-    end => "The scripts to be run at the end of the nodeset(Linux), nimnodeset(AIX)\n" .
-   " or mkdsklsnode(AIX) command. The format is the same as the 'begin' column.",
+    end => "The scripts to be run at the end of the nodeset(Linux),\n". 
+   " nimnodeset(AIX),or mkdsklsnode(AIX) command. \n".
+   " The format is the same as the 'begin' column.",
 	comments => 'Any user-written notes.',
 	disable => "Set to 'yes' or '1' to comment out this row.",
     },
