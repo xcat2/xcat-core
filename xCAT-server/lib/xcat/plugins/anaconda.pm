@@ -80,7 +80,7 @@ sub handled_commands
     return {
             copycd    => "anaconda",
             mknetboot => "nodetype:os=(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
-            mkinstall => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
+            mkinstall => "nodetype:os=(esxi4.1)|(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
             mkstatelite => "nodetype:os=(esx[34].*)|(centos.*)|(rh.*)|(fedora.*)|(SL.*)",
 	
             };
@@ -793,6 +793,7 @@ sub mkinstall
         my $kernpath;
         my $initrdpath;
         my $maxmem;
+	my $esxi = 0;
 
         if (
             (
@@ -812,6 +813,16 @@ sub mkinstall
                          and -r "$pkgdir/isolinux/initrd.img"
                          and $initrdpath = "$pkgdir/isolinux/initrd.img"
                          and $maxmem="512M" #Have to give up linux room to make room for vmware hypervisor evidently
+                    ) or ( #Handle the case seen in VMware ESXi 4.1 media scripted installs.
+                         -r "$pkgdir/mboot.c32"
+                         and -r "$pkgdir/vmkboot.gz"
+                         and -r "$pkgdir/vmkernel.gz"
+                         and -r "$pkgdir/sys.vgz"
+                         and -r "$pkgdir/cim.vgz"
+                         and -r "$pkgdir/ienviron.vgz"
+                         and -r "$pkgdir/install.vgz"
+                         and $esxi = 'true'
+
                     )
             ) or (    $arch =~ /ppc/
                 and -r "$pkgdir/ppc/ppc64/vmlinuz"
@@ -825,8 +836,12 @@ sub mkinstall
             unless ($doneimgs{"$os|$arch"})
             {
                 mkpath("/tftpboot/xcat/$os/$arch");
-                copy($kernpath,"$tftpdir/xcat/$os/$arch");
-                copy($initrdpath,"$tftpdir/xcat/$os/$arch/initrd.img");
+                if($esxi){
+                    copyesxiboot($pkgdir, "$tftpdir/xcat/$os/$arch");		
+                }else{
+                    copy($kernpath,"$tftpdir/xcat/$os/$arch");
+                    copy($initrdpath,"$tftpdir/xcat/$os/$arch/initrd.img");
+                }
                 $doneimgs{"$os|$arch"} = 1;
             }
 
@@ -899,6 +914,9 @@ sub mkinstall
                         }
                         );
              }
+             if($esxi){
+                 $ksdev =~ s/eth/vmnic/g;
+             }
              $kcmdline .= " ksdevice=" . $ksdev;
 
             #TODO: dd=<url> for driver disks
@@ -934,15 +952,29 @@ sub mkinstall
             #        $kcmdline .= " ";
             #        $kcmdline .= $addkcmd->{'addkcmdline'};
             #}
+            my $k;
+            my $i;
+            if($esxi){
+                $k = "xcat/$os/$arch/mboot.c32";
+                $i = "";
+                my @addfiles = qw(vmkernel.gz sys.vgz cim.vgz ienviron.vgz install.vgz);
+		$kcmdline = "xcat/$os/$arch/vmkboot.gz " . $kcmdline;
+                foreach(@addfiles){
+                    $kcmdline .= " --- xcat/$os/$arch/$_";
+                }
+            }else{
+                $k = "xcat/$os/$arch/vmlinuz";
+                $i = "xcat/$os/$arch/initrd.img";
+            }
 
             $bptab->setNodeAttribs(
-                                   $node,
-                                   {
-                                    kernel   => "xcat/$os/$arch/vmlinuz",
-                                    initrd   => "xcat/$os/$arch/initrd.img",
-                                    kcmdline => $kcmdline
-                                   }
-                                   );
+                $node,
+                {
+                    kernel   => $k,
+                    initrd   => $i,
+                    kcmdline => $kcmdline
+                }
+            );
         }
         else
         {
@@ -1197,5 +1229,16 @@ sub getplatform {
 
     return $platform;
 }
+
+
+sub copyesxiboot {
+    my $srcdir = shift;
+    my $targetdir = shift;
+    my @files = qw(mboot.c32 vmkboot.gz vmkernel.gz sys.vgz cim.vgz ienviron.vgz install.vgz);
+    foreach my $f (@files){
+        copy("$srcdir/$f","$targetdir");
+    }
+}
+
 
 1;
