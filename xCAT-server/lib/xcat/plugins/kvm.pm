@@ -141,6 +141,7 @@ sub get_multiple_paths_by_url {
     my $node = $args{node};
     my $poolobj = get_storage_pool_by_url($url);
     unless ($poolobj) { die "Cound not get storage pool for $url"; }
+    $poolobj->refresh(); #if volumes change on nfs storage, libvirt is too dumb to notice
     my @volobjs = $poolobj->list_volumes();
     my %paths;
     foreach (@volobjs) {
@@ -169,6 +170,7 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
     #ok, now that we have the pool, we need the storage volume from the pool for the node/dev
     my $poolobj = get_storage_pool_by_url($url);
     unless ($poolobj) { die "Could not get storage pool for $url"; }
+    $poolobj->refresh(); #if volumes change on nfs storage, libvirt is too dumb to notice
     my @volobjs = $poolobj->list_volumes();
     my $desiredname = $node.'.'.$dev;
     foreach (@volobjs) {
@@ -929,6 +931,7 @@ sub chvm {
                 #if that worked, remove the disk..
                 my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
                 if ($pool) {
+                    $pool->refresh(); #Amazingly, libvirt maintains a cached view of the volume rather than scan on demand
                     my $vol = $pool->get_volume_by_name($volname);
                     if ($vol) {
                         $vol->delete();
