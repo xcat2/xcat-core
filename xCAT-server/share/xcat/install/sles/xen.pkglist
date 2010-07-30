@@ -1,3 +1,8 @@
+@base
+@x11
+@xen_server
+@xen_server-32bit
+@32bit
 xntp
 rsync
 xen

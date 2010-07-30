@@ -72,6 +72,10 @@ sub subvars {
       $doneincludes=0;
       $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1, 0, 1)/eg;
     }
+    if ($inc =~ /#INCLUDE_PTRNLIST:[^#^\n]+#/) {
+      $doneincludes=0;
+      $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1, 0, 2)/eg;
+    }
     if ($inc =~ /#INCLUDE:[^#^\n]+#/) {
       $doneincludes=0;
       $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
@@ -87,6 +91,7 @@ sub subvars {
   $inc =~ s/#COMMAND:([^#]+)#/command($1)/eg;
   $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
   $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1,0,1)/eg;
+  $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1,0,2)/eg;
   $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
   $inc =~ s/#HOSTNAME#/$node/eg;
 
@@ -176,7 +181,7 @@ sub includefile
 {
     my $file = shift;
     my $special=shift;
-    my $pkglist=shift;
+    my $pkglist=shift; #1 means package list, 2 means pattern list, pattern list starts with @
     my $text = "";
     unless ($file =~ /^\//) {
       $file = $idir."/".$file;
@@ -187,18 +192,32 @@ sub includefile
     my $pkgb = "";
     my $pkge = "";
     if ($pkglist) {
-      $pkgb = "<package>";
-      $pkge = "</package>";
-    }
+	if ($pkglist == 2) {
+	    $pkgb = "<pattern>";
+	    $pkge = "</pattern>";
+	} else {
+	    $pkgb = "<package>";
+	    $pkge = "</package>";
+	}
+    } 
     while(<INCLUDE>) {
-        if ($pkglist) {
+        if ($pkglist == 1) {
             s/#INCLUDE:/#INCLUDE_PKGLIST:/;
+        }  elsif ($pkglist == 2) {
+            s/#INCLUDE:/#INCLUDE_PTRNLIST:/;
         }
-        if (( $_ =~ /^\s*#/ ) || ( $_ =~ /^\s*$/ )) {
+
+        if (( $_ =~ /^\s*#/ ) || ( $_ =~ /^\s*$/ )) { 
 	    $text .= "$_";
         } else {
-            chomp;
-            s/\s*$//;
+            chomp;  #remove tailing spaces
+            s/\s*$//;  #removes leading spaces
+	    next if (($pkglist == 1) && (/^@/));  #for packge list, do not include the lines start with @
+	    if ($pkglist == 2) { #for pattern list, only include the lines start with @
+		if (/^@(.*)/) {
+		    $_=$1;
+		} else { next; }
+	    } 
 	    $text .= "$pkgb$_$pkge\n";
         }
     }

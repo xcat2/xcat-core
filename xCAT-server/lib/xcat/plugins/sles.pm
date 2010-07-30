@@ -542,14 +542,19 @@ sub mkinstall
             next;
         }
 
-        #substitute the tag #INCLUDE_DEFAULT_PKGS# with package file name
-	$new_tmplfile=$tmplfile;
+        #substitute the tag #INCLUDE_DEFAULT_PKGLIST# with package file name
+        #substitute the tag #INCLUDE_DEFAULT_PERNLIST# with package file name
+	my $new_tmplfile=$tmplfile;
 	if ($pkglistfile) {
 	    $pkglistfile =~ s/\//\\\//g;
 	    #print "pkglistfile=$pkglistfile\n";
-	    system("sed -e \"s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE_PKGLIST:$pkglistfile#/\" $tmplfile > /tmp/xcattemp.tmpl");
+	    system("sed -e \"s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE_PKGLIST:$pkglistfile#/\" $tmplfile > /tmp/xcattemp1.tmpl");
             if ($? == 0) {
-		$new_tmplfile="/tmp/xcattemp.tmpl";
+		$new_tmplfile="/tmp/xcattemp1.tmpl";
+	    }
+	    system("sed -e \"s/#INCLUDE_DEFAULT_PTRNLIST#/#INCLUDE_PTRNLIST:$pkglistfile#/\" $new_tmplfile > /tmp/xcattemp2.tmpl");
+            if ($? == 0) {
+		$new_tmplfile="/tmp/xcattemp2.tmpl";
 	    }
 	}
 
@@ -564,7 +569,8 @@ sub mkinstall
                          $node
                          );
         }
-	system("rm -f /tmp/xcattemp.tmpl");
+	system("rm -f /tmp/xcattemp1.tmpl");
+	system("rm -f /tmp/xcattemp2.tmpl");
 
         if ($tmperr)
         {

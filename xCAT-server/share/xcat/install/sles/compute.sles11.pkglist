@@ -1,2 +1,4 @@
+@base
+@x11
 xntp
 rsync

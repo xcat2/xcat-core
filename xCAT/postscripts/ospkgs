@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 # IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -77,25 +77,45 @@ if [ $debug -ne 0 ]; then
     echo OSPKGS = $OSPKGS 
 fi
 
-pkgs=`echo $OSPKGS |tr ',' ' '`
+pkgs=''  #packages
+groups=''   #groups
+pkgs_d=''   #packages to remove
+for x in `echo "$OSPKGS" | tr "," "\n"`
+do
+    echo x=$x
+    pos=`expr index  $x -`
+    if [ $pos -eq 1 ]; then 
+	pkgs_d="$pkgs_d ${x#-}"
+    else
+	pos=`expr index  $x @`
+	if [ $pos -eq 1 ]; then 
+	    groups="$groups ${x#@}"
+	else
+	    pkgs="$pkgs $x"
+	fi
+    fi
+done
+echo "pkgs=$pkgs"
+echo "groups=$groups"
+echo "remove pkgs=$pkgs_d"
 
 if [[ $OSVER = sles10* ]]; then
-    #check if zypper is installed
-    result=`rpm -q zypper`
+    #check if rug is installed
+    result=`rpm -q rug`
     if [ $? -ne 0 ]; then 
-	echo "Please install zypper on $NODE."
+	echo "Please install rug on $NODE."
 	exit 1
     fi
 
     #remove old repo
-    old_repo=`zypper sl |grep -e "^[0-9]" | cut -f2 -d '|'`
+    old_repo=`rug sl |grep -e "^[0-9]" | cut -f2 -d '|'`
     for x in $old_repo
     do
-        result=`zypper sd $x`
+        result=`rug sd $x`
     done
-    result=`zypper --non-interactive refresh 2>&1`
+    result=`rug  refresh 2>&1`
     if [ $debug -ne 0 ]; then
-	echo "zypper --non-interactive refresh"
+	echo "rug refresh"
 	echo $result
     fi
 
@@ -103,44 +123,83 @@ if [[ $OSVER = sles10* ]]; then
     if [ $mounted -eq 0 ]; then
 	path="ftp://$OSPKGDIR"
     else
-        path="file://$OSPKGDIR"
+        path="dir://$OSPKGDIR"
     fi
-    result=`zypper sa $path $OSVER`
+    result=`rug sa $path $OSVER`
     if [ $? -ne 0 ]; then 
-	logger -t xcat "ospkgs: zypper sa $path $OSVER\n    $result"
-	echo "ospkgs: zypper sa $path $OSVER\n    $result"
+	logger -t xcat "ospkgs: rug sa $path $OSVER\n    $result"
+	echo "ospkgs: rug sa $path $OSVER\n    $result"
     fi
-    result=`zypper --non-interactive refresh 2>&1` 
+    result=`rug sub $OSVER`
+    if [ $? -ne 0 ]; then 
+	logger -t xcat "ospkgs: rug sub $OSVER\n    $result"
+	echo "ospkgs: rug sub $OSVER\n    $result"
+    fi
+    result=`rug refresh 2>&1` 
     if [ $debug -ne 0 ]; then
-	echo "zypper --non-interactive refresh"
+	echo "rug refresh"
 	echo $result
     fi
 
-    #upgrade existing rpms
-    result=`zypper --non-interactive update --auto-agree-with-licenses`
+    result=`rug update -y --agree-to-third-party-licences`
     if [ $? -ne 0 ]; then 
-	logger -t xcat "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
-        echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
+	logger -t xcat "rug update -y --agree-to-third-party-licences\n    $result"
+        echo "ospkgs: rug update -y --agree-to-third-party-licences\n    $result"
     else
 	if [ $debug -ne 0 ]; then
-	    echo "zypper --non-interactive update --auto-agree-with-licenses"
+	    echo "rug update -y --agree-to-third-party-licences"
 	    echo $result
+	fi
+    fi
+
+
+    #install the new patterns if any
+    if [ -n "$groups" ]; then
+	cmd="rug install -y --agree-to-third-party-licences -t pattern $groups"
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then 
+	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    echo "ospkgs: $cmd"
+	    echo $result
+	else
+	    if [ $debug -ne 0 ]; then
+		echo "ospkgs: $cmd"
+		echo $result
+	    fi
 	fi
     fi
 
     #install new rpms if any
-    result=`zypper install -y $pkgs 2>&1`
-    if [ $? -ne 0 ]; then 
-	logger -t xcat "ospkgs: zypper install -y $pkgs\n    $result"
-	echo "ospkgs: zypper install -y $pkgs\n    $result"
-    else
-	if [ $debug -ne 0 ]; then
-	    echo "zypper install -y $pkgs"
+    if [ -n "$pkgs" ]; then
+	cmd="rug install -y --agree-to-third-party-licences $pkgs"
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then 
+	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    echo "ospkgs: $cmd"
 	    echo $result
+	else
+	    if [ $debug -ne 0 ]; then
+		echo "ospkgs: $cmd"
+		echo $result
+	    fi
 	fi
-	echo "ospkgs: OS rpms have been installed or upgraded."
     fi
 
+    #remove some packages if specified
+    if [ -n "$pkgs_d" ]; then
+	cmd="rug remove -y $pkgs_d"
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then 
+	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    echo "ospkgs: $cmd"
+	    echo $result
+	else
+	    if [ $debug -ne 0 ]; then
+		echo "ospkgs: $cmd"
+		echo $result
+	    fi
+	fi
+    fi
 elif [[ $OSVER = sles11* ]]; then
     #check if zypper is installed
     result=`rpm -q zypper`
@@ -183,22 +242,57 @@ elif [[ $OSVER = sles11* ]]; then
 	echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses\n    $result"
     else
 	if [ $debug -ne 0 ]; then
-	    echo "zypper --non-interactive update --auto-agree-with-licenses"
+	    echo "ospkgs: zypper --non-interactive update --auto-agree-with-licenses"
 	    echo $result
 	fi
     fi
 
-    #install new rpms if any
-    result=`zypper install -y $pkgs 2>&1`
-    if [ $? -ne 0 ]; then 
-	logger -t xcat "ospkgs: zypper install -y $pkgs\n    $result"
-	echo "ospkgs: zypper install -y $pkgs\n    $result"
-    else
-	if [ $debug -ne 0 ]; then
-	    echo "zypper install -y $pkgs "
+    #install the new patterns if any
+    if [ -n "$groups" ]; then
+	cmd="zypper install -y --auto-agree-with-licenses -t pattern $groups"
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then 
+	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    echo "ospkgs: $cmd"
 	    echo $result
+	else
+	    if [ $debug -ne 0 ]; then
+		echo "ospkgs: $cmd"
+		echo $result
+	    fi
 	fi
-	echo "ospkgs: OS rpms have been installed or upgraded."
+    fi
+
+    #install new rpms if any
+    if [ -n "$pkgs" ]; then
+	cmd="zypper install -y --auto-agree-with-licenses $pkgs"
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then 
+	    logger -t xcat "ospkgs: $cmd    $result"
+	    echo "ospkgs: $cmd"
+	    echo $result
+	else
+	    if [ $debug -ne 0 ]; then
+		echo "ospkgs: $cmd"
+		echo $result
+	    fi
+	fi
+    fi
+
+    #remove some packages if specified
+    if [ -n "$pkgs_d" ]; then
+	cmd="zypper remove -y $pkgs_d"
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then 
+	    logger -t xcat "ospkgs: $cmd    $result"
+	    echo "ospkgs: $cmd"
+	    echo $result
+	else
+	    if [ $debug -ne 0 ]; then
+		echo "ospkgs: $cmd"
+		echo $result
+	    fi
+	fi
     fi
 else 
     #check if yum is installed
@@ -245,17 +339,52 @@ else
 	fi
     fi
 
-    #install new rpms if any
-    result=`yum -y install $pkgs 2>&1`
-    if [ $? -ne 0 ]; then 
-	logger -t xcat "ospkgs: yum -y install $pkgs\n    $result"
-	echo "ospkgs: yum -y install $pkgs\n    $result"
-    else
-	if [ $debug -ne 0 ]; then
-	    echo "yum -y install $pkgs"
+    #install new groups if any
+    if [ -n "$groups" ]; then
+	cmd="yum -y groupinstall $groups"
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then 
+	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    echo "ospkgs: $cmd"
 	    echo $result
+	else
+	    if [ $debug -ne 0 ]; then
+		echo "ospkgs: $cmd"
+		echo $result
+	    fi
 	fi
-	echo "ospkgs: OS rpms have been installed or upgraded."
+    fi
+
+    #install new rpms if any
+    if [ -n "$pkgs" ]; then
+	cmd="yum -y install $pkgs"
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then 
+	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    echo "ospkgs: $cmd"
+	    echo $result
+	else
+	    if [ $debug -ne 0 ]; then
+		echo "ospkgs: $cmd"
+		echo $result
+	    fi
+	fi
+    fi
+
+    #remove some rpms if specified
+    if [ -n "$pkgs_d" ]; then
+	cmd="yum -y remove $pkgs_d"
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then 
+	    logger -t xcat "ospkgs: $cmd\n    $result"
+	    echo "ospkgs: $cmd"
+	    echo $result
+	else
+	    if [ $debug -ne 0 ]; then
+		echo "ospkgs: $cmd"
+		echo $result
+	    fi
+	fi
     fi
 fi
 

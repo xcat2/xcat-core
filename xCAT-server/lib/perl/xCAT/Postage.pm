@@ -504,6 +504,10 @@ sub get_pkglist_tex
 	   next if ( /^\s*#/ && 
 		     !/^\s*#INCLUDE:[^#^\n]+#/ &&
 		     !/^\s*#NEW_INSTALL_LIST#/ ); #-- skip comments
+           if (/^@(.*)/) {  #for groups that has space in name
+	       my $save=$1;
+	       if ($1 =~ / /) { $_ = "\@\'" . $save . "\'"; }
+	   }
 	   push(@otherpkgs,$_);
        }
        close(FILE1);
