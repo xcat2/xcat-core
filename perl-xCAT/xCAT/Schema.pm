@@ -577,8 +577,8 @@ postscripts => {
     table_desc => ' The scripts that should be run on each node after installation or diskless boot.',
  descriptions => {
   node => 'The node name or group name.',
-  postscripts => 'Comma separated list of scripts that should be run on this node after installation or diskless boot. xCAT automatically adds the syslog and remoteshell postscripts to the xcatdefaults row of the table. The default scripts will run first on the nodes after install. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboor but before the init.d process. For diskless deployment, the scripts will be run at the init.d time together with the scripts on the postbootscripts column.',
-  postbootscripts => 'Comma separated list of scripts that should be run on this node at the init.d time after installation or diskless boot. xCAT automatically adds the otherpkgs and syncfile postscripts to the xcatdefaults row of the table.',
+  postscripts => 'Comma separated list of scripts that should be run on this node after diskfull installation or diskless boot. xCAT automatically adds the postscripts from  the xcatdefaults.postscripts attribute of the table to run first on the nodes after install or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list.',
+  postbootscripts => 'Comma separated list of scripts that should be run on this node at the init.d time after diskfull installation reboot or diskless boot. xCAT automatically adds the scripts in the xcatdefaults.postbootscripts attribute to run first in the list.',
     comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
