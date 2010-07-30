@@ -147,7 +147,7 @@ sub get_multiple_paths_by_url {
     foreach (@volobjs) {
         if ($_->get_name() =~ /^$node\.([^\.]*)\.([^\.]*)$/) {
             $paths{$_->get_path()} = {device=>$1,format=>$2};
-        } elsif (($_->get_name() =~ /^$node\.([^\.]*)$/) {
+        } elsif ($_->get_name() =~ /^$node\.([^\.]*)$/) {
              $paths{$_->get_path()} = {device=>$1,format=>'raw'}; 
              #this requires any current user of qcow2 to migrate, unfortunate to escape
              #a vulnerability where raw user could write malicious qcow2 to header
