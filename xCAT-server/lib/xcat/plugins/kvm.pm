@@ -862,7 +862,7 @@ sub chvm {
             if ($store =~ /^nfs:\/\//) {
                 my %disks = %{get_multiple_paths_by_url(url=>$store,node=>$node)};
                 foreach (keys %disks) {
-                    $useddisks{$disks{$_}}=1;
+                    $useddisks{$disks{$_}->{device}}=1;
                 }
             }
         }
@@ -903,9 +903,16 @@ sub chvm {
         my $currstate=getpowstate($dom);
         if ($currstate eq 'on') { #attempt live attach
             foreach (@diskstoadd) {
-                my $suffix =$_;
+                my $suffix;
+                my $format;
+                if (/^[^\.]*\.([^\.]*)\.([^\.]*)/) {
+                    $suffix=$1;
+                    $format=$2;
+                } elsif (/^[^\.]*\.([^\.]*)/) {
+                    $suffix=$1;
+                    $format='raw';
+                }
                 my $bus;
-                $suffix =~ s/.*\.//;
                 if ($suffix =~ /^sd/) {
                     $bus='scsi';
                 } elsif ($suffix =~ /^hd/) {
@@ -914,7 +921,7 @@ sub chvm {
                 } elsif ($suffix =~ /vd/) {
                     $bus='virtio';
                 }
-                my $xml = "<disk type='file' device='disk'><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
+                my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
                 $dom->attach_device($xml);
             }
         }
