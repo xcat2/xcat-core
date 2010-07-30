@@ -1,0 +1,28 @@
+# Sample scripted installation file
+# edited and updated by vallard@sumavi.com
+
+# Accept the VMware End User License Agreement
+vmaccepteula
+
+# Set the root password for the DCUI and Tech Support Mode
+rootpw --iscrypted #CRYPT:passwd:key=system,username=root:password#
+
+# Choose the first disk (in channel/target/lun order) to install onto
+autopart --firstdisk --overwritevmfs
+
+# The install media is on the network.
+install url http://#TABLE:noderes:$NODE:nfsserver#/install/#TABLE:nodetype:$NODE:os#/#TABLE:nodetype:$NODE:arch#
+
+
+# Set the network to DHCP on the first network adapter
+#network --bootproto=dhcp --device=vmnic0
+network --bootproto=dhcp 
+
+# reboot automatically when we're done.
+reboot
+
+# A sample post-install script
+%post --unsupported --interpreter=python --ignorefailure=true
+import time
+stampFile = open('/finished.stamp', mode='w')
+stampFile.write( time.asctime() )
