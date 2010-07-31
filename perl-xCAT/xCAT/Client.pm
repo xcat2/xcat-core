@@ -173,8 +173,15 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
 
       #add ESC back
       foreach my $key (keys %$rsp) {
-	  if (ref($rsp->{$key}) eq 'ARRAY') { foreach my $text (@{$rsp->{$key}}) {  next unless defined $text; $text =~ s/xxxxESCxxxx/\e/g; } }
-	  else { $rsp->{$key} =~ s/xxxxESCxxxx/\e/g; }
+	  if (ref($rsp->{$key}) eq 'ARRAY') { 
+              foreach my $text (@{$rsp->{$key}}) {
+                  next unless defined $text;
+                  $text =~ s/xxxxESCxxxx/\e/g;
+              }
+          }
+	  else {
+              $rsp->{$key} =~ s/xxxxESCxxxx/\e/g;
+          }
       }
 	  
       $response='';
@@ -841,28 +848,58 @@ sub handle_response {
 #print "in handle_response\n";
   # Handle errors
   if ($rsp->{errorcode}) {
-    if (ref($rsp->{errorcode}) eq 'ARRAY') { foreach my $ecode (@{$rsp->{errorcode}}) { $xCAT::Client::EXITCODE |= $ecode; } }
-    else { $xCAT::Client::EXITCODE |= $rsp->{errorcode}; }   # assume it is a non-reference scalar
+    if (ref($rsp->{errorcode}) eq 'ARRAY') {
+      foreach my $ecode (@{$rsp->{errorcode}}) { 
+        $xCAT::Client::EXITCODE |= $ecode;
+      }
+    }
+    else {
+      $xCAT::Client::EXITCODE |= $rsp->{errorcode};
+    }   # assume it is a non-reference scalar
   }
   if ($rsp->{error}) {
 #print "printing error\n";
-  	if (ref($rsp->{error}) eq 'ARRAY') { foreach my $text (@{$rsp->{error}}) { print STDERR "Error: $text\n"; } }
-  	else { print ("Error: ".$rsp->{error}."\n"); }
+    if (ref($rsp->{error}) eq 'ARRAY') {
+      foreach my $text (@{$rsp->{error}}) {
+        print STDERR "Error: $text\n";
+      }
+    }
+    else {
+      print ("Error: ".$rsp->{error}."\n");
+    }
   }
   if ($rsp->{warning}) {
 #print "printing warning\n";
-  	if (ref($rsp->{warning}) eq 'ARRAY') { foreach my $text (@{$rsp->{warning}}) { print STDERR "Warning: $text\n"; } }
-  	else { print ("Warning: ".$rsp->{warning}."\n"); }
+    if (ref($rsp->{warning}) eq 'ARRAY') {
+      foreach my $text (@{$rsp->{warning}}) {
+        print STDERR "Warning: $text\n";
+      }
+    }
+    else {
+      print ("Warning: ".$rsp->{warning}."\n");
+    }
   }
   if ($rsp->{info}) {
 #print "printing info\n";
-  	if (ref($rsp->{info}) eq 'ARRAY') { foreach my $text (@{$rsp->{info}}) { print "$text\n"; } }
-  	else { print ($rsp->{info}."\n"); }
+    if (ref($rsp->{info}) eq 'ARRAY') {
+      foreach my $text (@{$rsp->{info}}) {
+        print "$text\n";
+      }
+    }
+    else {
+      print ($rsp->{info}."\n");
+    }
   }
 
   if ($rsp->{sinfo}) {
-  	if (ref($rsp->{sinfo}) eq 'ARRAY') { foreach my $text (@{$rsp->{sinfo}}) { print "$text\r"; $|++; } }
-  	else { print ($rsp->{sinfo}."\r"); $|++; }
+    if (ref($rsp->{sinfo}) eq 'ARRAY') {
+      foreach my $text (@{$rsp->{sinfo}}) {
+        print "$text\r"; $|++;
+      }
+    }
+    else {
+      print ($rsp->{sinfo}."\r"); $|++;
+    }
   }
 
 
@@ -876,8 +913,14 @@ sub handle_response {
     foreach $node (@$nodes) {
       my $desc=$node->{name}->[0];
       if ($node->{errorcode}) {
-        if (ref($node->{errorcode}) eq 'ARRAY') { foreach my $ecode (@{$node->{errorcode}}) { $xCAT::Client::EXITCODE |= $ecode; } }
-    	else { $xCAT::Client::EXITCODE |= $node->{errorcode}; }   # assume it is a non-reference scalar
+        if (ref($node->{errorcode}) eq 'ARRAY') {
+          foreach my $ecode (@{$node->{errorcode}}) {
+            $xCAT::Client::EXITCODE |= $ecode;
+          }
+        }
+    	else {
+          $xCAT::Client::EXITCODE |= $node->{errorcode};
+        }   # assume it is a non-reference scalar
       }
       if ($node->{error}) {
          $desc.=": Error: ".$node->{error}->[0];
