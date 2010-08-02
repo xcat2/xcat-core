@@ -541,6 +541,21 @@ sub mkdb2user
                 xCAT::MsgUtils->message("E", " $cmd failed.");
                 exit(1);
             }
+            # touch .profile to makesure it stays owned by xcatd
+            $cmd = "touch /var/lib/db2/.profile";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("E", " $cmd failed.");
+                exit(1);
+            }
+            $cmd = "chmod 777 /var/lib/db2/.profile";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("E", " $cmd failed.");
+                exit(1);
+            }
 
         }
 
