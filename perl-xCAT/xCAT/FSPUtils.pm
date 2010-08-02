@@ -248,6 +248,26 @@ sub fsp_state_action {
     return( [$Rc,@res] ); 
 }
 
+sub getTypeOfHcp
+{
+    my $class      = shift;
+    my $hcp        = shift;
+    
+    my $nodetypetab = xCAT::Table->new( 'nodetype');
+
+    xCAT::MsgUtils->message('E', "Failed to open table 'nodetype'.") if ( ! $nodetypetab);
+    my $nodetype_hash    = $nodetypetab->getNodeAttribs( $hcp,[qw(nodetype)]);
+    my $nodetype    = $nodetype_hash->{nodetype};
+    if ( !$nodetype) {
+	    xCAT::MsgUtils->message('E', "Not found the $hcp\'s  nodetype");	
+        return undef;
+    }
+    return $nodetype;    
+    
+}
+
+
+
 
 
 1;
