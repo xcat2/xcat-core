@@ -181,9 +181,11 @@ sub getmacs {
     my @emptynode;
 
     if ( $par =~ /^HASH/ ) {
-                    
-	return( [["","Please use -D -f options to getmacs through FSP directly",RC_ERROR]] );
-	
+        my $t = $request->{node};
+        foreach my $n (@$t) {
+	        return( [[$n,"Please use -D -f options to getmacs through FSP directly",RC_ERROR]] );
+	    }
+
         #########################################
         # Parse the filters specified by user
         #########################################
