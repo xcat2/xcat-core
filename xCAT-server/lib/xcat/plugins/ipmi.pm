@@ -1027,7 +1027,6 @@ sub getrvidparms {
         }
         $response = $browser->request(GET $baseurl."/Java/jviewer.jnlp?ext_ip=".$sessdata->{ipmisession}->{bmc});
         $response = $response->content;
-        $response =~ s/<argument>0<\/argument>/<argument>7578<\/argument>/; #TODO: remove when fixed
         sendmsg("method:imm",$sessdata->{node});
         sendmsg("jnlp:$response",$sessdata->{node});
         return;
