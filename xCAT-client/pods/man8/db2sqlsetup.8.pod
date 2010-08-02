@@ -23,7 +23,8 @@ The hostname or ip address of the Management Node as known by the Service Node m
 The script  will assume the default install paths of /opt/IBM/db2 for AIX and
 /opt/ibm/db2 for Linux,  unless overridden with the XCATDB2INSPATH
 environment variable.
-  
+
+Note: On AIX , root must be running ksh and on Linux,  bash shell.
 
 =head1 OPTIONS
 
