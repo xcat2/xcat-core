@@ -1116,5 +1116,224 @@ sub setupStatemnt {
     
 }
 
+#-------------------------------------------------------------------------------
+
+=head3  build_deps
+    Look up the "deps" table to generate the dependencies for the nodes
+    Arguments:
+        nodes: The nodes list in an array reference
+    Returns:
+        depset: dependencies hash reference 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $deps = xCAT::SvrUtils->build_deps($req->{node});
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub build_deps()
+{
+    my ($class, $nodes, $cmd) = @_;
+    my %depshash = ();
+
+    my $depstab  = xCAT::Table->new('deps');
+    if (!defined($depstab)) {
+        return undef;
+    }
+
+    my $depset = $depstab->getNodesAttribs($nodes,[qw(nodedep msdelay cmd)]);
+    if (!defined($depset))
+    {
+        return undef;
+    }
+    foreach my $node (@$nodes) {
+        # Delete the nodes without dependencies from the hash
+        if (!defined($depset->{$node}[0])) {
+            delete($depset->{$node});
+        } 
+    }
+
+    # the deps hash does not check the 'cmd',
+    # use the realdeps to reflect the 'cmd' also
+    my $realdep;
+    foreach my $node (@$nodes) {
+            foreach my $depent (@{$depset->{$node}}){
+                my @depcmd = split(/,/, $depent->{'cmd'});
+                #dependency match
+                if (grep(/^$cmd$/, @depcmd)) {
+                    #expand the noderange
+                    my @nodedep = xCAT::NodeRange::noderange($depent->{'nodedep'},1);
+                    my $depsnode = join(',', @nodedep);
+                    if ($depsnode) {
+                        $depent->{'nodedep'} = $depsnode;
+                        push @{$realdep->{$node}}, $depent;
+                    }
+                }
+            }
+        }
+    return $realdep;
+}
+
+
+#-------------------------------------------------------------------------------
+
+=head3  handle_deps
+    Group the nodes according to the deps hash returned from build_deps
+    Arguments:
+        deps: the dependencies hash reference
+        nodes: The nodes list in an array reference
+        $callback: sub request callback
+    Returns:
+        nodeseq: the nodes categorized based on dependencies
+                 returns 1 if runs into problem
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $deps = xCAT::SvrUtils->handle_deps($deps, $req->{node});
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub handle_deps()
+{
+    my ($class, $dephash, $nodes, $callback) = @_;
+
+    # a small subroutine to remove some specific node from a comma separated list
+    sub remove_node_from_list()
+    {
+        my ($string, $nodetoremove) = @_;
+        my @arr = split(',', $string);
+        my @newarr = ();
+        foreach my $tmp (@arr) {
+            if ($tmp ne $nodetoremove) {
+                push @newarr, $tmp;
+            }
+        }
+        return join(',', @newarr);
+    }
+
+    # This is an example of the deps hash ref
+    #  DB<3> x $deps
+    #0  HASH(0x239db47c)
+    #   'aixcn1' => ARRAY(0x23a26be0)
+    #      0  HASH(0x23a21968) 
+    #         'cmd' => 'off' 
+    #         'msdelay' => 10000 
+    #         'node' => 'aixcn1' 
+    #         'nodedep' => 'aixmn2' 
+    #   'aixsn1' => ARRAY(0x23a2219c)
+    #      0  HASH(0x23a21728) 
+    #         'cmd' => 'off' 
+    #         'msdelay' => 10000 
+    #         'node' => 'aixsn1' 
+    #         'nodedep' => 'aixcn1' 
+
+    #copy the dephash, do not manipulate the subroutine argument $dephash
+    my $deps;
+    foreach my $node (keys %{$dephash}) {
+        my $i = 0;
+        for ($i = 0; $i < scalar(@{$dephash->{$node}}); $i++) {
+            foreach my $attr (keys %{$dephash->{$node}->[$i]}) {
+                $deps->{$node}->[$i]->{$attr} = $dephash->{$node}->[$i]->{$attr};
+            }
+        }
+    }
+
+    #needs to search the nodes list a lot of times
+    #using hash will be more effective
+    my %nodelist;
+    foreach my $node (@{$nodes}) {
+        $nodelist{$node} = 1;
+    }
+
+
+    # check if any depnode is not in the nodelist,
+    # print warning message
+    my $depsnotinargs;
+    foreach my $node (keys %{$deps}){
+        my $keepnode = 0;
+        foreach my $depent (@{$deps->{$node}}){
+            # an autonomy dependency group?
+            foreach my $dep (split(/,/, $depent->{'nodedep'})) {
+                if (!defined($nodelist{$dep})) {
+                   $depsnotinargs->{$dep} = 1; 
+                   $depent->{'nodedep'} = &remove_node_from_list($depent->{'nodedep'}, $dep);
+                }       
+            }       
+            if ($depent->{'nodedep'}) {
+                $keepnode = 1;
+            }
+        }
+        if (!$keepnode) {
+            delete($deps->{$node});
+        }
+    }
+    if (scalar(keys %{$depsnotinargs}) > 0) {
+        my $n = join(',', keys %{$depsnotinargs});
+  
+        my %output;
+        $output{data} = ["The following nodes are dependencies for some nodes passed in through arguments, but not in the command arguments: $n, make sure these nodes are in correct state"]; 
+        $callback->( \%output );
+    }                                                            
+                                                                             
+
+
+    my $arrayindex = 0;                                                      
+    my $nodeseq;                                                             
+    #handle all the nodes
+    while (keys %nodelist) {                                                 
+
+       my @curnodes;
+       foreach my $node (keys %nodelist) {                                  
+            #no dependency                                                  
+           if (!defined($deps->{$node})) {                                  
+               $nodeseq->[$arrayindex]->{$node} = 1;                        
+               delete($nodelist{$node});                                    
+               push @curnodes, $node;
+           }                                                                
+       }                                                                    
+                                                                             
+       if (scalar(@curnodes) == 0) {
+           # no nodes in this loop at all,
+           # means infinite loop???
+           my %output;
+           my $nodesinlist = join(',', keys %nodelist);
+           $output{errorcode}=1;
+           $output{data} = ["Loop dependency, check your deps table, may be related to the following nodes: $nodesinlist"];
+           $callback->( \%output );
+           return 1;
+       }
+
+       # update deps for the next loop                              
+       # remove the node from the 'nodedep' attribute               
+       my $keepnode = 0;                                            
+       foreach my $nodeindeps (keys %{$deps}) {
+           my $keepnode = 0;
+           foreach my $depent (@{$deps->{$nodeindeps}}){                      
+                 #remove the curnodes from the 'nodedep'
+                 foreach my $nodetoremove (@curnodes) {
+                     $depent->{'nodedep'} = &remove_node_from_list($depent->{'nodedep'}, $nodetoremove);
+                 }
+                 if ($depent->{'nodedep'}) {
+                     $keepnode = 1;
+                 }
+            }
+            if (!$keepnode) {
+                delete($deps->{$nodeindeps});
+            }
+        }
+
+        # the round is over, jump to the next arrary entry
+        $arrayindex++;  
+    }                                                                  
+    return $nodeseq; 
+}
 
 1;

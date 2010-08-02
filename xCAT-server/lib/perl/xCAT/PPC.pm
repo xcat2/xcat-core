@@ -1295,6 +1295,7 @@ sub preprocess_request {
     #if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
     if ($req->{_xcatpreprocessed}->[0] == 1 ) { return [$req]; }
     my $callback = shift;
+    my $subreq = shift;
     my @requests;
 
     #####################################
@@ -1319,98 +1320,201 @@ sub preprocess_request {
     ####################################
     $package =~ s/xCAT_plugin:://;
 
-    ####################################
-    # Prompt for usage if needed and on MN
-    ####################################
-    my $noderange = $req->{node}; #Should be arrayref
+    my $deps;
+    my $nodeseq;
+    if (($req->{command}->[0] eq 'rpower') && (!grep(/^--nodeps$/, @{$req->{arg}}))
+        && (($req->{op}->[0] eq 'on') || ($req->{op}->[0] eq 'off') 
+        || ($req->{op}->[0] eq 'softoff') || ($req->{op}->[0] eq 'reset'))) {
+
+        $deps = xCAT::SvrUtils->build_deps($req->{node}, $req->{op}->[0]);
+
+        # no dependencies at all
+        if (!defined($deps)) {
+            foreach my $node (@{$req->{node}}) {
+                $nodeseq->[0]->{$node} = 1;
+            }
+        } else {
+            $nodeseq = xCAT::SvrUtils->handle_deps($deps, $req->{node}, $callback);
+        }
+    }
+
+    if ($nodeseq == 1) {
+        return undef;
+    }
+    # no dependency defined in deps table,
+    # generate the $nodeseq hash
+    if (!$nodeseq) {
+        foreach my $node (@{$req->{node}}) {
+            $nodeseq->[0]->{$node} = 1;
+        }
+    }
+
+    my $i = 0;
+    for ($i = 0; $i < scalar(@{$nodeseq}); $i++) { 
+        #reset the @requests for this loop
+        @requests = ();
+        ####################################
+        # Prompt for usage if needed and on MN
+        ####################################
+        my @dnodes = keys(%{$nodeseq->[$i]});
+    
+        if (scalar(@dnodes) == 0) {
+             next;
+        }
+        if (scalar(@{$nodeseq}) > 1) {
+            my %output;
+            my $cnodes = join(',', @dnodes);
+            $output{data} = ["Performing action against the following nodes: $cnodes"];
+            $callback->( \%output );
+        }
+        my $noderange = \@dnodes;
+        $req->{node} = \@dnodes; #Should be arrayref
+        #$req->{noderange} = \@dnodes; #Should be arrayref
         my $command = $req->{command}->[0];
-    my $extrargs = $req->{arg};
-    my @exargs=($req->{arg});
-    if (ref($extrargs)) {
-        @exargs=@$extrargs;
-    }
-    if ($ENV{'XCATBYPASS'}){
-        my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
-        if ($usage_string) {
-            $callback->({data=>[$usage_string]});
-            $req = {};
-            return ;
+        my $extrargs = $req->{arg};
+        my @exargs=($req->{arg});
+        if (ref($extrargs)) {
+            @exargs=@$extrargs;
         }
-        if (!$noderange) {
-            $usage_string="Missing noderange";
-            $callback->({data=>[$usage_string]});
-            $req = {};
-            return ;
+        if ($ENV{'XCATBYPASS'}){
+            my $usage_string=xCAT::Usage->parseCommand($command, @exargs);
+            if ($usage_string) {
+                $callback->({data=>[$usage_string]});
+                $req = {};
+                return ;
+            }
+            if (!$noderange) {
+                $usage_string="Missing noderange";
+                $callback->({data=>[$usage_string]});
+                $req = {};
+                return ;
+            }   
         }   
-    }   
-
-
-    ##################################################################
-    # get the HCPs for the LPARs in order to figure out which service 
-    # nodes to send the requests to
-    ###################################################################
-    my $hcptab_name = ($package eq "fsp" or $package eq "bpa") ? "ppcdirect" : "ppchcp";
-    my $hcptab  = xCAT::Table->new( $hcptab_name );
-    unless ($hcptab ) {
-        $callback->({data=>["Cannot open $hcptab_name table"]});
-        $req = {};
-        return;
-    }
-    # Check if each node is hcp 
-    my %hcp_hash=();
-    my @missednodes=();
-    foreach ( @$noderange ) {
-        my ($ent) = $hcptab->getAttribs( {hcp=>$_},"hcp" );
-        if ( !defined( $ent )) {
-            push @missednodes, $_;
-            next;
-        }
-        push @{$hcp_hash{$_}{nodes}}, $_;
-    }
-
-    #check if the left-over nodes are lpars
-    if (@missednodes > 0) {
-        my $ppctab = xCAT::Table->new("ppc");
-        unless ($ppctab) { 
-            $callback->({data=>["Cannot open ppc table"]});
+    
+  
+        ##################################################################
+        # get the HCPs for the LPARs in order to figure out which service 
+        # nodes to send the requests to
+        ###################################################################
+        my $hcptab_name = ($package eq "fsp" or $package eq "bpa") ? "ppcdirect" : "ppchcp";
+        my $hcptab  = xCAT::Table->new( $hcptab_name );
+        unless ($hcptab ) {
+            $callback->({data=>["Cannot open $hcptab_name table"]});
             $req = {};
             return;
         }
-        foreach my $node (@missednodes) {
-            my $ent=$ppctab->getNodeAttribs($node,['hcp']);
-            if (defined($ent->{hcp})) { push @{$hcp_hash{$ent->{hcp}}{nodes}}, $node;}
-            else { 
-                $callback->({data=>["The node $node is neither a hcp nor an lpar"]});
+        # Check if each node is hcp 
+        my %hcp_hash=();
+        my @missednodes=();
+        foreach ( @$noderange ) {
+            my ($ent) = $hcptab->getAttribs( {hcp=>$_},"hcp" );
+            if ( !defined( $ent )) {
+                push @missednodes, $_;
+                next;
+            }
+            push @{$hcp_hash{$_}{nodes}}, $_;
+        }
+    
+        #check if the left-over nodes are lpars
+        if (@missednodes > 0) {
+            my $ppctab = xCAT::Table->new("ppc");
+            unless ($ppctab) { 
+                $callback->({data=>["Cannot open ppc table"]});
                 $req = {};
                 return;
             }
+            foreach my $node (@missednodes) {
+                my $ent=$ppctab->getNodeAttribs($node,['hcp']);
+                if (defined($ent->{hcp})) { push @{$hcp_hash{$ent->{hcp}}{nodes}}, $node;}
+                else { 
+                    $callback->({data=>["The node $node is neither a hcp nor an lpar"]});
+                    $req = {};
+                    return;
+                }
+            }
+        }
+
+        # find service nodes for the HCPs
+        # build an individual request for each service node
+        my $service  = "xcat";
+        my @hcps=keys(%hcp_hash);
+        my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
+    
+        # build each request for each service node
+        foreach my $snkey (keys %$sn)
+        {
+            #$callback->({data=>["The service node $snkey "]});
+            my $reqcopy = {%$req};
+            $reqcopy->{'_xcatdest'} = $snkey;
+            $reqcopy->{_xcatpreprocessed}->[0] = 1;
+            my $hcps1=$sn->{$snkey};
+            my @nodes=();
+            foreach (@$hcps1) { 
+                push @nodes, @{$hcp_hash{$_}{nodes}};
+            }
+    	    @nodes = sort @nodes;
+            $reqcopy->{node} = \@nodes;
+            #print "nodes=@nodes\n";
+            push @requests, $reqcopy;
+        }
+    
+        # No dependency, use the original logic
+        if (scalar(@{$nodeseq}) == 1) {
+            return \@requests;
+        }
+
+        # do all the new request entries in this loop
+        my $j = 0;
+        for ($j = 0; $j < scalar(@requests); $j++) {
+            $subreq->(\%{$requests[$j]}, $callback);
+        }
+
+        # We can not afford waiting 'msdelay' for each node,
+        # for performance considerations,
+        # use the maximum msdelay for all nodes
+        my $delay = 0;
+        # do not need to calculate msdelay for the last loop
+        if ($i < scalar(@{$nodeseq})) {
+            foreach my $reqnode (@{$req->{node}}) {
+                foreach my $depnode (keys %{$deps}) {
+                    foreach my $depent (@{$deps->{$depnode}}) {
+                        # search if the 'nodedep' includes the $reqnode
+                        # do not use grep, performance problem!
+                        foreach my $depentnode (split(/,/, $depent->{'nodedep'})) {
+                            if ($depentnode eq $reqnode) {
+                                if ($depent->{'msdelay'} > $delay) {
+                                    $delay = $depent->{'msdelay'};
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if ($ENV{'XCATDEBUG'}) {
+            my %output;
+            $output{data} = ["delay = $delay"];
+            $callback->( \%output );
+        }
+        #convert from millisecond to second
+        $delay /= 1000.0;
+        if ($delay & ($i < scalar(@{$nodeseq}))) {
+            my %output;
+            $output{data} = ["Waiting $delay seconds for node dependencies\n"];
+            $callback->( \%output );
+            if ($ENV{'XCATDEBUG'}) {
+                $output{data} = ["Before sleep $delay seconds"];
+                $callback->( \%output );
+            }
+            Time::HiRes::sleep($delay);
+            if ($ENV{'XCATDEBUG'}) {
+                $output{data} = ["Wake up!"];
+                $callback->( \%output );
+            }
         }
     }
-
-    # find service nodes for the HCPs
-    # build an individual request for each service node
-    my $service  = "xcat";
-    my @hcps=keys(%hcp_hash);
-    my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
-
-    # build each request for each service node
-    foreach my $snkey (keys %$sn)
-    {
-        #$callback->({data=>["The service node $snkey "]});
-        my $reqcopy = {%$req};
-        $reqcopy->{'_xcatdest'} = $snkey;
-        $reqcopy->{_xcatpreprocessed}->[0] = 1;
-        my $hcps1=$sn->{$snkey};
-        my @nodes=();
-        foreach (@$hcps1) { 
-            push @nodes, @{$hcp_hash{$_}{nodes}};
-        }
-	@nodes = sort @nodes;
-        $reqcopy->{node} = \@nodes;
-        #print "nodes=@nodes\n";
-        push @requests, $reqcopy;
-    }
-    return \@requests;
+    return undef;
 }
 ####################################
 # Parse arguments
