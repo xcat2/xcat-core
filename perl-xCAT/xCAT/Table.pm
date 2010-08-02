@@ -1724,6 +1724,7 @@ sub setNodesAttribs {
     my %cols = ();
     my @orderedcols=();
     my $oldac = $self->{dbh}->{AutoCommit}; #save autocommit state
+    my $xcatcfg =get_xcatcfg();  # get current database 
     $self->{dbh}->{AutoCommit}=0; #turn off autocommit for performance
     my $hashrec;
     my $colsmatch=1;
@@ -1797,7 +1798,13 @@ sub setNodesAttribs {
     while (scalar @currnodes) {
         my %updatenodes=();
         my %insertnodes=();
-        my $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE $nodekey in (";#sort nodes into inserts and updates
+        my $qstring;
+        #sort nodes into inserts and updates
+        if ($xcatcfg =~ /^DB2:/){
+          $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \"$nodekey\" LIKE (";
+        } else {
+        $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE $nodekey in (";
+        }
         $qstring .= '?, ' x scalar(@currnodes);
         $qstring =~ s/, $/)/;
     	my $query = $self->{dbh}->prepare($qstring);
@@ -1843,12 +1850,20 @@ sub setNodesAttribs {
         if (not $upsth and keys %updatenodes) { #prepare an insert statement since one will be needed
             my $upstring = "UPDATE ".$self->{tabname}." set ";
             foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
-                $upstring .= "$col = ?, ";
+                 if ($xcatcfg =~ /^DB2:/){
+                   $upstring .= "\"$col\" = ?, ";
+                 } else {
+                   $upstring .= "$col = ?, ";
+                 }
             }
             if (grep { $_ eq $nodekey } @orderedcols) {
                 $upstring =~ s/, \z//;
             } else {
-                $upstring =~ s/, \z/ where $nodekey = ?/;
+                if ($xcatcfg =~ /^DB2:/){
+                  $upstring =~ s/, \z/ where \"$nodekey\" = ?/;
+                } else {
+                  $upstring =~ s/, \z/ where $nodekey = ?/;
+                }
             }
             $upsth = $self->{dbh}->prepare($upstring);
         }
