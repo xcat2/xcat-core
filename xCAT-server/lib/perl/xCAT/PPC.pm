@@ -6,6 +6,7 @@ use lib "/opt/xcat/lib/perl";
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::SvrUtils;
+use xCAT::FSPUtils;
 use xCAT::Usage;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
@@ -129,11 +130,15 @@ sub send_msg {
 sub process_command {
 
     my $request  = shift;
+    my $hcps_will= shift;
+    my $failed_nodes = shift;
+    my $failed_msg = shift;
     my %nodes    = ();
     my $callback = $request->{callback};
     my $sitetab  = xCAT::Table->new( 'site' );
     my @site     = qw(ppcmaxp ppctimeout maxssh ppcretry fsptimeout powerinterval); 
     my $start;
+    my $verbose = $request->{verbose};
 
     #######################################
     # Default site table attributes 
@@ -160,29 +165,29 @@ sub process_command {
     }
 
     #xCAT doesn't support FSPpower,FSPinv and FSPrflash by default
-    $request->{fsp_api} = 0;
+    #$request->{fsp_api} = 0;
     #######################################
     # FSPpower, FSPinv and FSPrflash handler
     #########################################
-    my $hwtype  = $request->{hwtype}; 
-    if ( $hwtype eq "fsp" or $hwtype eq "bpa") {
-	    my $fsp_api = check_fsp_api($request);
-	    if($fsp_api == 0 && 
-		    ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/
-                || $request->{command} =~ /^getmacs$/ || $request->{command} =~ /^rnetboot$/ || $request->{command} =~ /^rvitals$/  
-                || $request->{command} =~ /^mkhwconn$/ || $request->{command} =~ /^rmhwconn$/ || $request->{command} =~ /^lshwconn$/
-                || $request->{command} =~ /^rscan$/ || ($request->{command} =~ /^rspconfig$/ && $request->{method} =~ /^passwd$/)
-            )
-              ) {
+    #my $hwtype  = $request->{hwtype}; 
+    #if ( $hwtype eq "fsp" or $hwtype eq "bpa") {
+    #    my $fsp_api = check_fsp_api($request);
+    #    if($fsp_api == 0 && 
+    #	    ($request->{command} =~ /^(rpower)$/  ||  $request->{command} =~ /^rinv$/ || $request->{command} =~ /^rflash$/
+    #            || $request->{command} =~ /^getmacs$/ || $request->{command} =~ /^rnetboot$/ || $request->{command} =~ /^rvitals$/  
+    #            || $request->{command} =~ /^mkhwconn$/ || $request->{command} =~ /^rmhwconn$/ || $request->{command} =~ /^lshwconn$/
+    #            || $request->{command} =~ /^rscan$/ || ($request->{command} =~ /^rspconfig$/ && $request->{method} =~ /^passwd$/)
+    #        )
+    #          ) {
 	        #support FSPpower, FSPinv and FSPrflash 
-	        $request->{fsp_api} = 1;
-            }
-    } 
+    #        $request->{fsp_api} = 1;
+    #        }
+    #} 
 
     #######################################
     # Group nodes based on command
     #######################################
-    my $nodes = preprocess_nodes( $request );
+    my $nodes = preprocess_nodes( $request, $hcps_will );
     if ( !defined( $nodes )) {
         return(1);
     }
@@ -288,7 +293,7 @@ sub process_command {
         while ($hasnode) {
             while ( $children >= $request->{ppcmaxp} ) {
                 my $handlednodes={};
-                child_response( $callback, $fds, $handlednodes);
+                child_response( $callback, $fds, $handlednodes, $failed_nodes, $failed_msg, $verbose);
 
                 #update the node status to the nodelist.status table
                 if ($check) {
@@ -322,7 +327,7 @@ sub process_command {
                     $got_one = 1;
                 } else {
                     my $handlednodes={};
-                    child_response( $callback, $fds, $handlednodes);
+                    child_response( $callback, $fds, $handlednodes, $failed_nodes, $failed_msg, $verbose);
 
                     #update the node status to the nodelist.status table
                     if ($check) {
@@ -373,7 +378,7 @@ sub process_command {
  
                 while ( $children >= $request->{ppcmaxp} ) {
                     my $handlednodes={};
-                    child_response( $callback, $fds, $handlednodes);
+                    child_response( $callback, $fds, $handlednodes, $failed_nodes, $failed_msg, $verbose);
 
                     #update the node status to the nodelist.status table
                     if ($check) {
@@ -384,7 +389,7 @@ sub process_command {
                 }
                 if ( $hw->{@$hash[0]} >= $request->{maxssh} ) {
                     my $handlednodes={};
-                    child_response( $callback, $fds, $handlednodes);
+                    child_response( $callback, $fds, $handlednodes, $failed_nodes, $failed_msg, $verbose);
 
                     #update the node status to the nodelist.status table
                     if ($check) {
@@ -419,7 +424,7 @@ sub process_command {
         foreach ( @$nodes ) {
             while ( $children >= $request->{ppcmaxp} ) {
                 my $handlednodes={};
-                child_response( $callback, $fds, $handlednodes);
+                child_response( $callback, $fds, $handlednodes, $failed_nodes, $failed_msg, $verbose);
 
                 #update the node status to the nodelist.status table
                 if ($check) {
@@ -454,7 +459,7 @@ ENDOFFORK:
     #######################################
     while ( $fds->count > 0 or $children > 0 ) {
         my $handlednodes={};
-        child_response( $callback, $fds, $handlednodes);
+        child_response( $callback, $fds, $handlednodes, $failed_nodes, $failed_msg, $verbose);
 
         #update the node status to the nodelist.status table
         if ($check) {
@@ -468,7 +473,7 @@ ENDOFFORK:
     my $rc=1;
     while ( $rc>0 ) {
         my $handlednodes={};
-        $rc=child_response( $callback, $fds, $handlednodes);
+        $rc=child_response( $callback, $fds, $handlednodes, $failed_nodes, $failed_msg, $verbose);
         #update the node status to the nodelist.status table
         if ($check) {
             updateNodeStatus($handlednodes, \@allerrornodes);
@@ -537,6 +542,9 @@ sub child_response {
     my $callback = shift;
     my $fds = shift;
     my $errornodes=shift;
+    my $failed_nodes=shift;
+    my $failed_msg=shift;
+    my $verbose=shift;
     my @ready_fds = $fds->can_read(1);
     my $rc = @ready_fds;
 
@@ -565,11 +573,28 @@ sub child_response {
 	  		if ($nodename eq $_->{node}->[0]->{name}->[0]) {
                 		#save the nodes that has errors for node status monitoring
           			if ((exists($_->{errorcode})) && ($_->{errorcode} != 0))  {
-                     			if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; }
+                        push(@$failed_nodes, $nodename);
+					    if( defined( $failed_msg->{$nodename} )) {
+					        my $f = $failed_msg->{$nodename}; 
+					        my $c = scalar(@$f);
+					        $failed_msg->{$nodename}->[$c] = $_;
+					    } else {
+					        $failed_msg->{$nodename}->[0] = $_;
+					    }
+
+                        if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; }
+               			#if verbose, print all the message;
+			     		#if not, print successful mesg for success, or all the failed mesg for failed.
+				     	if ( $verbose ) {
+				            $callback->( $_ );
+					    }
+
+
                 		} else {
-                     			if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; }
+                     	     if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=1; }
+                             $callback->( $_ );
                 		}
-                		$callback->( $_ );
+                        #$callback->( $_ );
            		}
      		}
 	    }
@@ -637,6 +662,7 @@ sub resolve_hcp {
 sub preprocess_nodes {
 
     my $request   = shift;
+    my $hcps_will = shift;
     my $noderange = $request->{node};
     my $method    = $request->{method};
     my %nodehash  = ();
@@ -696,7 +722,9 @@ sub preprocess_nodes {
         ######################################
         # Get data values 
         ######################################
-        my $hcp  = @$d[3];
+        #my $hcp  = @$d[3];
+        my $hcp  = $hcps_will->{$node};
+        @$d[3] = $hcp;
         my $mtms = @$d[2];
  
         ######################################
@@ -1139,7 +1167,15 @@ sub invoke_cmd {
         # Error connecting 
         ####################################
         if ( ref($exp[0]) ne "LWP::UserAgent" ) {
-            send_msg( $request, 1, $exp[0] );
+            #send_msg( $request, 1, $exp[0] );
+      	    my %output;
+	        $output{node}->[0]->{name}->[0] = $host;
+	        $output{node}->[0]->{data}->[0]->{contents}->[0] = "(trying ASM   )$exp[0]";
+	        $output{errorcode} = 1;
+	        push @outhash, \%output;
+	        my $out = $request->{pipe};
+	        print $out freeze( [@outhash] );
+	        print $out "\nENDOFFREEZE6sK4ci\n";
             return;
         }
         my $result = xCAT::PPCfsp::handler( $host, $request, \@exp );
@@ -1238,8 +1274,17 @@ sub invoke_cmd {
     foreach ( @$result ) {
         my %output;
         $output{node}->[0]->{name}->[0] = @$_[0];
-        $output{node}->[0]->{data}->[0]->{contents}->[0] = @$_[1];
+        #$output{node}->[0]->{data}->[0]->{contents}->[0] = @$_[1];
         $output{errorcode} = @$_[2];
+    	if($output{errorcode} != 0) {
+	        if($request->{fsp_api} == 1) {
+	            $output{node}->[0]->{data}->[0]->{contents}->[0] = "(trying fsp-api)@$_[1]";
+	        } else {
+	            $output{node}->[0]->{data}->[0]->{contents}->[0] = "(trying HMC    )@$_[1]"; 
+	        }
+	    } else {
+                $output{node}->[0]->{data}->[0]->{contents}->[0] = @$_[1];	
+	    }
         push @outhash, \%output;
     }
     my $out = $request->{pipe};
@@ -1425,8 +1470,14 @@ sub preprocess_request {
             }
             foreach my $node (@missednodes) {
                 my $ent=$ppctab->getNodeAttribs($node,['hcp']);
-                if (defined($ent->{hcp})) { push @{$hcp_hash{$ent->{hcp}}{nodes}}, $node;}
-                else { 
+                #if (defined($ent->{hcp})) { push @{$hcp_hash{$ent->{hcp}}{nodes}}, $node;}
+                if (defined($ent->{hcp})) {
+		            #for multiple hardware control points, the hcps should be split to nodes
+		            my @h = split(",", $ent->{hcp}); 
+		            foreach my $hcp (@h) {
+                        push @{$hcp_hash{$hcp}{nodes}}, $node;
+		            }  
+                } else { 
                     $callback->({data=>["The node $node is neither a hcp nor an lpar"]});
                     $req = {};
                     return;
@@ -1453,6 +1504,8 @@ sub preprocess_request {
                 push @nodes, @{$hcp_hash{$_}{nodes}};
             }
     	    @nodes = sort @nodes;
+            my %hash = map{$_=>1} @nodes; #remove the repeated node for multiple hardware control points
+            @nodes =keys %hash;
             $reqcopy->{node} = \@nodes;
             #print "nodes=@nodes\n";
             push @requests, $reqcopy;
@@ -1606,7 +1659,119 @@ sub process_request {
     ####################################
     # Process remote command
     ####################################
-    process_command( $request );
+    #process_command( $request );
+    
+    #The following code supports for Multiple hardware control points.
+    #use @failed_nodes to store the nodes which need to be run.
+    #print "before process_command\n";
+    my %failed_msg = (); # store the error msgs
+    my $t = $request->{node};
+    my @failed_nodes = @$t;
+    #print "-------failed nodes-------\n";
+    #print Dumper(\@failed_nodes); 
+    my $hcps = getHCPsOfNodes(\@failed_nodes, $callback);
+    if( !defined($hcps)) {
+	#Not found the hcp for one node
+        $request = {};	
+        return;
+    }
+    #####################
+    #print Dumper($hcps);
+    #$VAR1 = {
+    #          'lpar01' => {
+    #                        'num' => 2,
+    #                        'hcp' => [
+    #                                   'Server-9110-51A-SN1075ECF',
+    #                                   'c76v2hmc02'
+    #                                 ]
+    #                       }
+    #         };
+    ######################
+    while(1)  {
+       my $lasthcp_type;
+       my %hcps_will = ();
+       my @next = ();
+       my $count; #to count the nodes who doesn't have hcp in the $hcps
+       if( @failed_nodes == 0 ) {
+           #all nodes succeeded --- no node in @$failed_nodes;
+	       return ;
+       }
+       
+       foreach my  $node (@failed_nodes)  {
+	       #for multiple, get the first hcp in the $hcps{$node}.
+	       my $hcp_list = $hcps->{$node}->{hcp};
+	       #print Dumper($hcp_list);
+	       my $thishcp=  shift( @$hcp_list );
+	       if(!defined($thishcp) ) {
+	          #if no hcp, count++; 
+	          $count++;
+	          if($count == @failed_nodes) {
+		      # all the hcps of the nodes are tried. But still failed. so output the error msg and exit.
+		      #print Dumper(\%failed_msg);
+		      #prompt all the error msg.
+		          foreach my $failed_node (@failed_nodes) {
+		              my $msg = $failed_msg{$failed_node};
+		              foreach my $item (@$msg) {
+		      	          if($item) {
+		                      #print Dumper($item);
+		                      $callback->($item);
+		                  } # end of if 
+	                  } # end of foreach
+		          }#end of foreach
+		          #output all the msgs of the failed nodes, so return
+	              return ;
+	           }#end of if
+	           #if $count != @failed_nodes, let's check next node
+	           next;
+	        }#end of if
+	        #print "thishcp:$thishcp\n";
+	        #get the nodetype of hcp:
+	        my $thishcp_type = xCAT::FSPUtils->getTypeOfHcp($thishcp, $callback);
+            if(!defined($thishcp_type)) {
+                $request = {};
+	            next;
+	         }
+	         #print "lasthcp_type:$lasthcp_type ;thishcp_type:$thishcp_type\n";
+	        if(defined($lasthcp_type)) { 
+                if ( $lasthcp_type ne $thishcp_type )  {   
+		            $callback->({data=>["the $node\'s hcp type is different from the other's in the specified noderange in the 'ppc' table."]}); 
+	               return;
+	             }
+	       }
+	  
+	      $lasthcp_type = $thishcp_type; 
+          $hcps_will{$node} = $thishcp;
+	      push(@next, $node);
+	  
+       } #end of foreach
+       my $request_new;
+       %$request_new =%$request;
+       $request_new->{node}  = \@next;
+       $request_new->{fsp_api} = 0;
+       if($lasthcp_type =~ /^(fsp|bpa)$/) {
+	       #my $fsp_api = check_fsp_api($request);
+	       #if($fsp_api == 0 ) {
+           $request_new->{fsp_api} = 1; 
+	       # }
+       }
+       $request_new->{hwtype}  = $lasthcp_type;
+       #print Dumper($request_new);
+       @failed_nodes = () ;
+       process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
+       #print "after result:\n";
+       #print Dumper(\@failed_nodes);
+       if($lasthcp_type =~ /^(fsp|bpa)$/) {
+	   #through asmi ......
+           $request_new->{fsp_api} = 0;
+	       if(@failed_nodes != 0) {
+	           my @temp = @failed_nodes;
+	           @failed_nodes = (); 
+	           $request_new->{node} = \@temp;
+               process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
+           }
+       }
+    } #end of while(1)
+      
 }
 
 ##########################################################################
@@ -1778,6 +1943,37 @@ sub check_fsp_api
     }
     
     return -1;
+}
+
+sub getHCPsOfNodes
+{
+    my $nodes    = shift;
+    my $callback = shift;
+    my %hcps     = ();
+    #get hcp from ppc.
+    foreach my $node( @$nodes) {
+        my $ppctab = xCAT::Table->new( 'ppc');
+        unless($ppctab) {
+            $callback->({data=>["Cannot open ppc table"]});	
+	    return undef;
+	}	
+	#xCAT::MsgUtils->message('E', "Failed to open table 'ppc'.") if ( ! $ppctab);
+        my $hcp_hash    = $ppctab->getNodeAttribs( $node,[qw(hcp)]);
+        my $hcp    = $hcp_hash->{hcp};
+        if ( !$hcp) {
+	    #xCAT::MsgUtils->message('E', "Not found the hcp of $node");	
+	    $callback->({data=>["Not found the hcp of $node"]});
+	    return undef;
+	}
+	#print "hcp:\n";
+	#print Dumper($hcp);
+	my @h = split(",", $hcp);
+	$hcps{$node}{hcp} = \@h;
+	$hcps{$node}{num} = @h;
+    }
+    #print "in getHCPsOfNodes\n";
+    #print Dumper(\%hcps);
+    return \%hcps;
 }
 
 
