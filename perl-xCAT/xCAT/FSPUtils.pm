@@ -88,22 +88,6 @@ sub fsp_api_action {
     $id = $$attrs[0];
     $fsp_name = $$attrs[3]; 
 
-    my %objhash = (); 
-    $objhash{$fsp_name} = "node";
-    my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
-#    my $password    = $myhash{$fsp_name}{"passwd.hscroot"};
-    my $password    = $myhash{$fsp_name}{"passwd.HMC"};
-    #print "fspname:$fsp_name password:$password\n";
-    if(!$password ) {
-	   $res = "The password.HMC of $fsp_name in ppcdirect table is empty";
-	   return ([$node_name, $res, -1]);
-    }
-    my $user = "HMC";
-    #my $user = "hscroot";
-#    my $cred = $request->{$fsp_name}{cred};
-#    my $user = @$cred[0];
-#    my $password = @$cred[1];
-     
     if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/) {
         $type = 0;
     } else { 
@@ -113,11 +97,6 @@ sub fsp_api_action {
     ############################
     # Get IP address
     ############################
-    #$fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
-    #if($fsp_ip == 0) {
-    #    $res = "Failed to get the $fsp_name\'s ip";
-    #    return ([$node_name, $res, -1]);	
-    #}
     $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
     if(!defined($fsp_ip)) {
         $res = "Failed to get the $fsp_name\'s ip";
@@ -133,9 +112,19 @@ sub fsp_api_action {
     
     my $cmd;
     if( $action =~ /^code_update$/) { 
-        $cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name: -d /install/packages_fw/";
+        $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name: -d /install/packages_fw/";
+    } elsif($action =~ /^add_connection$/) {
+        my $ppcdirecttab = xCAT::Table->new( 'ppcdirect');
+        if ( ! $ppcdirecttab) {
+            $res = "Failed to open table 'ppcdirect'.";	
+	    return ([$node_name, $res, -1]);
+	}	
+	my $password_hash    = $ppcdirecttab->getAttribs({'hcp'=> $fsp_name,'username'=>"HMC" } ,[qw(password)]);
+        my $user = "HMC";
+        my $password = $password_hash->{password};
+    	$cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
     } else {
-        $cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+        $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
     }
 
     #print "cmd: $cmd\n"; 
@@ -181,8 +170,6 @@ sub fsp_state_action {
     my $type_name  = shift;
     my $action     = shift;
     my $tooltype   = shift;
-#    my $user 	   = "HMC";
-#    my $password   = "abc123";
     my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api"; 
     my $id         = 0;
     my $fsp_name   = ();
@@ -219,11 +206,6 @@ sub fsp_state_action {
     ############################
     # Get IP address
     ############################
-    #$fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
-    #if($fsp_ip == 0) {
-    #    $res = "Failed to get the $fsp_name\'s ip";
-    #    return ([$node_name, $res, -1]);	
-    #}
     $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
     if(!defined($fsp_ip)) {
         $res[0] = ["Failed to get the $fsp_name\'s ip"];
