@@ -618,7 +618,7 @@ function updateZProvisionExistingStatus(data) {
 		var bootMethod = $('#' + tabId + ' select[name=bootMethod]').val();
 		
 		// Get nodes that were checked
-		var dTableId = 'nodesDatatable' + inst;
+		var dTableId = 'zNodesDatatable' + inst;
 		var tgts = getNodesChecked(dTableId);
 		
 		// Prepare node for boot
@@ -653,7 +653,7 @@ function updateZProvisionExistingStatus(data) {
 		}
 				
 		// Get nodes that were checked
-		var dTableId = 'nodesDatatable' + inst;
+		var dTableId = 'zNodesDatatable' + inst;
 		var tgts = getNodesChecked(dTableId);
 		
 		// Boot node from network
@@ -1650,7 +1650,7 @@ function createZProvisionExisting(inst) {
 		var inst = thisTabId.replace('zvmProvisionTab', '');
 		
 		// Get nodes that were checked
-		var dTableId = 'nodesDatatable' + inst;
+		var dTableId = 'zNodesDatatable' + inst;
 		var tgts = getNodesChecked(dTableId);
 		if (!tgts) {
 			errMsg = 'You need to select a node.';
