@@ -6,22 +6,45 @@ B<chkosimage> - Use this xCAT command to check an xCAT osimage.
 
 B<chkosimage [-h | --help ]>
 
-B<chkosimage [-V] osimage_name> 
+B<chkosimage [-V] [-c|--clean] osimage_name> 
 
 =head1 DESCRIPTION
 
-This command will is currently supported for AIX osimages only.
+This command is currently supported for AIX osimages only.
 
-Use this command to verify if the lpp_source directories contain all the 
-software that is specified in the "installp_bundle" and "otherpkgs" 
+Use this command to verify if the NIM lpp_source directories contain the 
+correct software.  The lpp_source directory must contain all the software
+that is specified in the "installp_bundle" and "otherpkgs" 
 attributes of the osimage definition. 
 
-This command should be run before using the osimage to install any 
-AIX cluster nodes.
+The command gets the name of the lpp_source resource from the xCAT osimage 
+definition and the location of the lpp_source directory from the NIM resource
+definition.
+
+In addition to checking for missing software the chkosimage command will
+also check to see if there are multiple matches.  This could happen 
+when you use wildcards in the software file names. For example,  if you
+have perl-xCAT* in a bundle file it could match multiple versions of the xCAT 
+rpm package saved in your lpp_source directory.
+
+If this happens you must remove the unwanted versions of the rpms.  If the
+extra rpms are not removed you will get install errors.
+
+To help with this process you can use the "-c|--clean" option.  This 
+option will keep the rpm package with the most recent timestamp and 
+remove the others.
+
+The chkosimage command should always be used to verify the lpp_source content
+before using the osimage to install any AIX cluster nodes.
 
 =head1 OPTIONS
 
 =over 3
+
+=item B<-c |--clean>
+
+Remove any older versions of the rpms.  Keep the version with the latest
+timestamp.
 
 =item B<-h |--help>
 
@@ -57,11 +80,18 @@ An error has occurred.
 
 =item 1
 
-Check the XCAT osimage called "61dsklsimage" to verify that the lpp_source 
+Check the XCAT osimage called "61image" to verify that the lpp_source 
 directories contain all the software that is specified in the
 "installp_bundle" and "otherpkgs" attributes.
 
-B<chkosimage -V 61dsklsimage>
+B<chkosimage -V 61image>
+
+=item 2
+
+Clean up the lpp_source directory for the osimage named "61img" by removing
+any older rpms with the same names but different versions.
+
+B<chkosimage -c 61img>
 
 =back
 
