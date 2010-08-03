@@ -319,7 +319,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 	attrNames['nic'] = 'NICs:';
 
 	// Create hash table for node attributes
-	var attrs = getNodeAttrs(keys, attrNames, inv);
+	var attrs = getAttrs(keys, attrNames, inv);
 	
 	// Create division to hold user entry
 	var ueDivId = node + 'UserEntry';

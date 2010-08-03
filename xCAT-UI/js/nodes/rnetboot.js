@@ -77,7 +77,7 @@ function loadNetbootPage(tgtNodes) {
 	// Determine plugin
 	var tmp = tgtNodes.split(',');
 	for ( var i = 0; i < tmp.length; i++) {
-		var mgt = getNodeMgt(tmp[i]);
+		var mgt = getNodeAttr(tmp[i], 'mgt');
 		// If it is zvm
 		if (mgt == 'zvm') {
 			// Add IPL input

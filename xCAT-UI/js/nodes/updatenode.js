@@ -18,6 +18,9 @@ function loadUpdatenodePage(tgtNodes) {
 		newTabId = 'updatenodeTab' + inst;
 	}
 
+	// Get node OS
+	// They could be AIX, rh*, centos*, fedora*, or sles*
+	
 	// Create updatenode form
 	var updatenodeForm = $('<div class="form"></div>');
 

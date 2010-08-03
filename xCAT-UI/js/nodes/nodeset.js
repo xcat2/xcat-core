@@ -1,11 +1,11 @@
 /**
  * Load nodeset page
  * 
- * @param trgtNodes
+ * @param tgtNodes
  *            Targets to run nodeset against
  * @return Nothing
  */
-function loadNodesetPage(trgtNodes) {
+function loadNodesetPage(tgtNodes) {
 	// Get OS images
 	$.ajax( {
 		url : 'lib/cmd.php',
@@ -51,7 +51,7 @@ function loadNodesetPage(trgtNodes) {
 	nodesetForm.append(infoBar);
 
 	// Create target node or group
-	var tgt = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + trgtNodes + '"/></div>');
+	var tgt = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
 	nodesetForm.append(tgt);
 
 	// Create boot method drop down

@@ -278,7 +278,7 @@ function loadNodes(data) {
 	cloneLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable').split(',');
 		for ( var i = 0; i < tgtNodes.length; i++) {
-			var mgt = getNodeMgt(tgtNodes[i]);
+			var mgt = getNodeAttr(tgtNodes[i], 'mgt');
 			
 			// Create an instance of the plugin
 			var plugin;
@@ -557,7 +557,7 @@ function loadNode(e) {
 
 	// Get node that was clicked
 	var node = (e.target) ? e.target.id : e.srcElement.id;
-	var mgt = getNodeMgt(node);
+	var mgt = getNodeAttr(node, 'mgt');
 	
 	// Create an instance of the plugin
 	var plugin;
@@ -1125,26 +1125,27 @@ function runScript(inst) {
 }
 
 /**
- * Get the hardware management of a given node
+ * Get an attribute of a given node
  * 
  * @param node
  *            The node
- * @return The hardware management of the node
+ * @param attrName
+ * 			  The attribute
+ * @return The attribute of the node
  */
-function getNodeMgt(node) {
-	// Get the row, 
-	// may be node contain special char(such as '.' '#'),so we can not use $('#') directly
+function getNodeAttr(node, attrName) {
+	// Get the row
 	var row = $('[id=' + node + ']').parent().parent();
 
-	// Search for the mgt column
-	var mgtCol = row.parent().parent().find('th:contains("mgt")');
-	// Get the mgt column index
-	var mgtIndex = mgtCol.index();
+	// Search for the column containing the attribute
+	var attrCol = row.parent().parent().find('th:contains("' + attrName + '")');
+	// Get the attribute column index
+	var attrIndex = attrCol.index();
 
-	// Get the mgt for the given node
-	var mgt = row.find('td:eq(' + mgtIndex + ')');
+	// Get the attribute for the given node
+	var attr = row.find('td:eq(' + attrIndex + ')');
 
-	return mgt.text();
+	return attr.text();
 }
 
 /**

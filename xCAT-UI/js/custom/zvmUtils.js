@@ -935,7 +935,7 @@ function getZResources(data) {
  *            Data from HTTP request
  * @return Hash table of property values
  */
-function getNodeAttrs(keys, propNames, data) {
+function getAttrs(keys, propNames, data) {
 	// Create hash table for property values
 	var attrs = new Object();
 
