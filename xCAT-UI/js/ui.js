@@ -29,9 +29,7 @@ Tab.prototype.init = function() {
 	this.tab.append(tabList);
 
 	// Create a template with close button
-	var tabs = this.tab.tabs( {
-		tabTemplate : "<li><a href=\"#{href}\">#{label}</a><span class=\"tab-close ui-icon ui-icon-close\"></span></li>"
-	});
+	var tabs = this.tab.tabs();
 
 	// Remove dummy tab
 	this.tab.tabs("remove", 0);
@@ -69,9 +67,11 @@ Tab.prototype.object = function() {
  *            New tab name
  * @param newTabCont
  *            New tab content
+ * @param closeable
+ * 			  New tab close button
  * @return Nothing
  */
-Tab.prototype.add = function(newTabId, newTabName, newTabCont) {
+Tab.prototype.add = function(newTabId, newTabName, newTabCont, closeable) {
 	// Show tab
 	if (this.tab.css("display") == "none") {
 		this.tab.show();
@@ -81,6 +81,12 @@ Tab.prototype.add = function(newTabId, newTabName, newTabCont) {
 	newTab.append(newTabCont);
 	this.tab.append(newTab);
 	this.tab.tabs("add", "#" + newTabId, newTabName);
+	
+	// Append close button
+	if (closeable) {
+		var header = this.tab.find('ul.ui-tabs-nav a[href="#' + newTabId +'"]').parent();
+		header.append('<span class=\"tab-close ui-icon ui-icon-close\"></span>');
+	}
 };
 
 /**

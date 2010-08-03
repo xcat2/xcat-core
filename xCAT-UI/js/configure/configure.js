@@ -72,10 +72,10 @@ function loadConfigPage() {
 	loader = $('<center></center>').append(loader);
 
 	// Configure xCAT datable tables
-	tab.add('configTablesTab', 'Tables', loader);
+	tab.add('configTablesTab', 'Tables', loader, false);
 
 	// Add the update tab
-	tab.add('updateTab', 'Update');
+	tab.add('updateTab', 'Update', '', false);
 
 	// Get list of tables and their descriptions
 	$.ajax( {
@@ -137,7 +137,7 @@ function loadTableNames(data) {
 			// Add a new tab for this table
 			var configTab = getConfigTab();
 			if (!$('#' + id + 'Tab').length) {
-				configTab.add(id + 'Tab', id, loader);
+				configTab.add(id + 'Tab', id, loader, true);
 
 				// Get contents of selected table
 				$.ajax( {

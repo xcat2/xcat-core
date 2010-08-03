@@ -131,7 +131,7 @@ function loadGroups(data) {
     				setNodesTab(tab);
     				tab.init();
     				$('#nodes').append(tab.object());
-    				tab.add('nodesTab', 'Nodes', loader);
+    				tab.add('nodesTab', 'Nodes', loader, false);
     
     				// Get nodes within selected group
     				$.ajax( {
@@ -598,7 +598,7 @@ function loadNode(e) {
 	// Add new tab, only if one does not exist
 	var loader = createLoader(newTabId + 'TabLoader');
 	loader = $('<center></center>').append(loader);
-	myTab.add(newTabId, node, loader);
+	myTab.add(newTabId, node, loader, true);
 
 	// Get node inventory
 	var msg = 'out=' + newTabId + ',node=' + node;
@@ -695,7 +695,7 @@ function loadUnlockPage(tgtNodes) {
     });
 
 	unlockForm.append(okBtn);
-	tab.add(newTabId, 'Unlock', unlockForm);
+	tab.add(newTabId, 'Unlock', unlockForm, true);
 	tab.select(newTabId);
 }
 
@@ -802,7 +802,7 @@ function loadScriptPage(tgtNodes) {
 	scriptForm.append(runBtn);
 
 	// Append to discover tab
-	tab.add(newTabId, 'Script', scriptForm);
+	tab.add(newTabId, 'Script', scriptForm, true);
 
 	// Select new tab
 	tab.select(newTabId);
@@ -945,7 +945,7 @@ function deleteNode(tgtNodes) {
 
 	deleteForm.append(deleteBtn);
 	deleteForm.append(cancelBtn);
-	myTab.add(newTabId, 'Delete', deleteForm);
+	myTab.add(newTabId, 'Delete', deleteForm, true);
 
 	myTab.select(newTabId);
 }

@@ -188,7 +188,7 @@ function loadNodesetPage(trgtNodes) {
 	nodesetForm.append(okBtn);
 
 	// Append to discover tab
-	tab.add(tabId, 'Nodeset', nodesetForm);
+	tab.add(tabId, 'Nodeset', nodesetForm, true);
 
 	// Select new tab
 	tab.select(tabId);

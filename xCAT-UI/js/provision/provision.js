@@ -89,7 +89,7 @@ function loadProvisionPage() {
 			newTabId = hw + 'ProvisionTab' + instance;
 		}
 
-		tab.add(newTabId, hw, '');
+		tab.add(newTabId, hw, '', true);
 
 		// Create an instance of the plugin
 		var plugin;
@@ -120,5 +120,5 @@ function loadProvisionPage() {
 	});
 	provForm.append(okBtn);
 
-	tab.add('provisionTab', 'Provision', provForm);
+	tab.add('provisionTab', 'Provision', provForm, false);
 }

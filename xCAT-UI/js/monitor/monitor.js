@@ -61,7 +61,7 @@ function loadMonitorPage() {
 	// Hardware available to provision - ipmi, blade, hmc, ivm, fsp, and zvm
 	var div = $('<div></div>');
 	monitorForm.append(div);
-	tab.add('monitorTab', 'Monitor', monitorForm);
+	tab.add('monitorTab', 'Monitor', monitorForm, false);
 
 	/**
 	 * Monitor resources
@@ -102,7 +102,7 @@ function loadMonitorPage() {
 		if (!$('#' + newTabId).length) {
 			var loader = createLoader(hw + 'ResourceLoader');
 			loader = $('<center></center>').append(loader);
-			tab.add(newTabId, hw, loader);
+			tab.add(newTabId, hw, loader, true);
 
 			// Create an instance of the plugin
 			var plugin;
@@ -135,5 +135,5 @@ function loadMonitorPage() {
 	});
 	resrcForm.append(okBtn);
 
-	tab.add('resourceTab', 'Resources', resrcForm);
+	tab.add('resourceTab', 'Resources', resrcForm, false);
 }

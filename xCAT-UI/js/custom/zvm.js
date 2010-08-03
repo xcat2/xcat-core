@@ -264,7 +264,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		cloneForm.append(cloneBtn);
 
 		// Add clone tab
-		tab.add(newTabId, 'Clone', cloneForm);
+		tab.add(newTabId, 'Clone', cloneForm, true);
 	}
 
 	tab.select(newTabId);
