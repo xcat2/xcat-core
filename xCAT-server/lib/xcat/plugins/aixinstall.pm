@@ -170,6 +170,7 @@ sub preprocess_request
 
     if ($command =~ /mknimimage/)
 
+
     {
 
         my $reqcopy = {%$req};
@@ -1468,6 +1469,7 @@ sub chkosimage
 	Getopt::Long::Configure("no_pass_through");
 	if (
 		!GetOptions(
+					'c|clean'	   => \$::CLEANLPP,
 					'h|help'       => \$::HELP,
 					'verbose|V'    => \$::VERBOSE,
 					'v|version'    => \$::VERSION,
@@ -1582,7 +1584,8 @@ sub chkosimage
 			}
 		}
 	}
-
+	
+	my %pkgtype;
 	foreach my $pkg (@pkglist)
 	{
 		if (($pkg =~ /R:/) || ($pkg =~ /I:/) )
@@ -1591,6 +1594,14 @@ sub chkosimage
 			push(@install_list, $pname);
 		} else {
 			push(@install_list, $pkg);
+		}
+
+		if (($pkg =~ /R:/)) {
+			# get a separate list of just the rpms - they must be preceded
+			#	by R:
+			my ($junk, $pname) = split(/:/, $pkg);
+			$pname =~ s/\*//g; # drop *
+			$pkgtype{$pname} = "rpm";
 		}
 	}
 
@@ -1636,17 +1647,19 @@ sub chkosimage
 	my $icmd = qq~installp -L -d $instp_srcdir | /usr/bin/cut -f2 -d':' 2>/dev/null~;
 	my @ilist = xCAT::Utils->runcmd("$icmd", -1);
 	foreach my $f (@ilist) {
-		if (!grep(/^$f$/, @srclist)) {
-			push (@srclist, $f);
-		}
+		chomp $f;
+		push (@srclist, $f);
 	}
 	
 	my $error = 0;
+	my $rpmerror = 0;
+	my $remlist;
 	# check for each one - give msg if missing
 	foreach my $file (@install_list) {
 
 		$file =~ s/\*//g;		
 		$file =~ s/\s*//g;
+		chomp $file;
 
 		if ($::VERBOSE) {
 			my $rsp;
@@ -1677,23 +1690,124 @@ sub chkosimage
 				xCAT::MsgUtils->message("I", $rsp, $callback);
 			}
 		}
+
+		# if this is an rpm & we got more then one match that
+		#   could be a problem
+		if ( ($foundit > 1) && (( $file =~ /\.rpm/) || ($pkgtype{$file} eq "rpm")) ){
+
+			if ($::CLEANLPP) {
+				my $ret = &clean_lpp($callback, $rpm_srcdir, $file);
+				if ($ret != 1) {
+					$remlist .= $ret;
+				}
+			} else {
+				my $rsp;
+				push @{$rsp->{data}}, "Found multiple matches for $file: ($foundlist)\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+				$rpmerror++;
+			}
+		}
+	}
+
+	if ($::CLEANLPP) {
+		my $rsp;
+		push @{$rsp->{data}}, "Removed the following duplicate rpms:\n$remlist\n";
+		xCAT::MsgUtils->message("I", $rsp, $callback);
 	}
 
 	if ($error) {
 		my $rsp;
-		push @{$rsp->{data}}, "One or more software packages could not be found in $imagedef{$image_name}{lpp_source}.\n";
+		push @{$rsp->{data}}, "One or more software packages could not be found in or selected from the $imagedef{$image_name}{lpp_source} resource.\n";
 		xCAT::MsgUtils->message("W", $rsp, $callback);
-		return 1;
 	} else {
 		my $rsp;
 		push @{$rsp->{data}}, "All the software packages were found in the lpp_source \'$imagedef{$image_name}{lpp_source}\'\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
-		return 0;
+	}
+
+	if ($rpmerror) {
+		my $rsp;
+		push @{$rsp->{data}}, "Found multiple matches for one or more rpm packages. This will cause installation errors. Remove the unwanted rpm packages from the lpp_source directory $rpm_srcdir.\n(Use the chkosimage -c option to remove all but the most recently added rpm.)\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+	}
+
+	if ( $rpmerror || $error) {
+		return 1;
 	}
 
 	return 0;
 }
 
+#----------------------------------------------------------------------------
+
+=head3   clean_lpp
+
+	Removes old versions of rpms from the lpp_resource.
+	Based on timestamps - just keep the latest version.
+
+	Arguments:
+	Returns:
+		0 - OK 
+		1 - error
+	Globals:
+	Example:
+	Usage:
+	Usage:
+	Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub clean_lpp
+{
+	my $callback      = shift;
+	my $dir_name      = shift;
+	my $file         = shift;
+
+	my @rpm_list;
+
+	my $removelist;
+
+	# if ends in * good else add one
+	if (!($file =~ /\*$/) ) {
+		$file .= "\*";
+	}
+
+	# get sorted list - most recent is first
+	my $cmd = qq~cd $dir_name; /bin/ls -t $file 2>/dev/null~;
+
+	@rpm_list = xCAT::Utils->runcmd("$cmd", -1);
+	if ($::RUNCMD_RC != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not get list of rpms in \'$dir_name\'";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	# remove all but the biggest
+	my $index = 0;
+	foreach my $rpm (@rpm_list) {
+		if ($index > 0) {
+			my $cmd = qq~cd $dir_name; /bin/rm $rpm 2>/dev/null~;
+			my $ret = xCAT::Utils->runcmd("$cmd", -1);
+			if ($::RUNCMD_RC != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Could not remove \'$rpm\'";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+			$removelist .= "$rpm\n"; 
+		}
+		$index++;
+	}
+	
+	if ($removelist) {
+		return $removelist;
+	}
+
+	return 1;
+}
 
 #----------------------------------------------------------------------------
 
