@@ -16,48 +16,45 @@ I:openssh.msg.en_US
 I:bos.sysmgt.nim.master
 
 # RPMs
-# using Perl 5.8.8
+# using Perl 5.8.2
+R:popt*
+R:rsync*
+R:bash*
+R:conserver*
+R:curl*
+R:expat*
+R:fping*
+R:libxml2*
+R:net-snmp-5.4.2.1-1*
+R:net-snmp-devel*
+R:net-snmp-perl*
+R:openslp-xcat*
+R:perl-Crypt-SSLeay*
+R:perl-DBD-SQLite*
+R:perl-DBI*
+R:perl-Digest-HMAC*
+R:perl-Digest-MD5*
+R:perl-Digest-SHA-5*
+R:perl-Digest-SHA1*
+R:perl-Expect*
 
-#R:tcl-8.4.7-3.aix5.1.ppc.rpm
-#R:tk-8.4.7-3.aix5.1.ppc.rpm
-#R:expect-5.42.1-3.aix5.1.ppc.rpm
+R:perl-IO-Stty*
+R:perl-IO-Tty*
+R:perl-Net-DNS*
+R:perl-Net-IP*
+R:perl-Net-Telnet*
+R:perl-Net_SSLeay.pm*
+R:perl-version-0.82-2*
+R:perl-Net_SSLeay.pm-1.30-3*
+R:perl-IO-Socket-SSL*
+R:unixODBC*
 
-R:bash-3.2-1.aix5.2.ppc.rpm
-R:conserver-8.1.16-2.aix5.3.ppc.rpm
-R:curl-7.19.6-1ssl.aix5.3.ppc.rpm
-R:expat-2.0.1-2.aix5.1.ppc.rpm
-R:fping-2.4b2_to-1.aix5.3.ppc.rpm
-R:libxml2-2.6.21-4.aix5.2.ppc.rpm
-R:net-snmp-5.4.2.1-1.aix5.3.ppc.rpm
-R:net-snmp-devel-5.4.2.1-1.aix5.3.ppc.rpm
-R:net-snmp-perl-5.4.2.1-1.aix5.3.ppc.rpm
-R:openslp-xcat-1.2.1-1.aix5.3.ppc.rpm
-R:perl-Crypt-SSLeay-0.57-1.aix5.3.ppc.rpm
-R:perl-DBD-SQLite-1.13-1.aix5.3.ppc.rpm
-R:perl-DBI-1.55-1.aix5.3.ppc.rpm
-R:perl-Digest-HMAC-1.01-1.aix5.3.ppc.rpm
-R:perl-Digest-MD5-2.36-1.aix5.3.ppc.rpm
-R:perl-Digest-SHA-5.48-1.aix5.3.ppc.rpm
-R:perl-Digest-SHA1-2.11-1.aix5.3.ppc.rpm
-R:perl-Expect-1.21-1.aix5.3.ppc.rpm
-R:perl-IO-Socket-SSL-1.06-1.aix5.3.ppc.rpm
-R:perl-IO-Stty-.02-1.aix5.3.ppc.rpm
-R:perl-IO-Tty-1.07-1.aix5.3.ppc.rpm
-R:perl-Net-DNS-0.66-1.aix5.3.ppc.rpm
-R:perl-Net-IP-1.25-1.aix5.3.ppc.rpm
-R:perl-Net-Telnet-3.03-1.2.aix5.3.ppc.rpm
-R:perl-Net_SSLeay.pm-1.30-1.aix5.3.ppc.rpm
-R:popt-1.7-2.aix5.1.ppc.rpm
-R:rsync-3.0.6-1.aix5.3.ppc.rpm
-R:unixODBC-2.2.15-32bit.aix5.3.ppc.rpm
-R:wget-1.9.1-1.aix5.1.ppc.rpm
-
-R:perl-xCAT-2.5*
-R:xCAT-client-2.5*
-R:xCAT-server-2.5*
-R:xCAT-rmc-2.5*
-R:xCATsn-2.5*
+R:perl-xCAT*
+R:xCAT-client*
+R:xCAT-server*
+R:xCAT-rmc*
+R:xCATsn*
 
 # optional - needed if using Postgresql
-R:xcat-postgresql-8.4-4.aix6.1.ppc.rpm
-R:perl-DBD-Pg-2-17.2.aix6.1.ppc.rpm
+#R:xcat-postgresql-8.4-4.aix6.1.ppc.rpm
+#R:perl-DBD-Pg-2-17.2.aix6.1.ppc.rpm

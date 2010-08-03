@@ -10,10 +10,10 @@ I:openssh.man.en_US
 I:openssh.msg.en_US
 
 # RPMs
-R:popt-1.7-2.aix5.1.ppc.rpm
-R:rsync-3.0.6-1.aix5.3.ppc.rpm
+R:popt*
+R:rsync*
 
 # built using Perl 5.8.8
-R:perl-Net_SSLeay.pm-1.30-2.aix6.1.ppc.rpm
-R:perl-IO-Socket-SSL-1.33-1.aix6.1.ppc.rpm
+R:perl-Net_SSLeay.pm-1.30-2*
+R:perl-IO-Socket-SSL*
 

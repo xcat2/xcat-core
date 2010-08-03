@@ -1,7 +1,0 @@
-# bundle file for openssl - installp package from AIX
-
-# installp packages
-I:rpm.rte
-I:openssl.base
-I:openssl.license
-
