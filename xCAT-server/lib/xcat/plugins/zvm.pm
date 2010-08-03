@@ -2843,7 +2843,7 @@ sub nodeSet {
 		my $tmpl = "$profile.$osBase.$arch.tmpl";
 
 		# Get host IP and hostname from /etc/hosts
-		$out = `cat /etc/hosts | grep $node`;
+		$out = `cat /etc/hosts | grep "$node "`;
 		my @words    = split( ' ', $out );
 		my $hostIP   = $words[0];
 		my $hostname = $words[2];
@@ -2975,7 +2975,7 @@ sub nodeSet {
 			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Node does not belong to any network in the networks table" );
 			return;
 		}
-
+				
 		@propNames = ( 'mask', 'gateway', 'tftpserver', 'nameservers' );
 		$propVals = xCAT::zvmUtils->getTabPropsByKey( 'networks', 'net', $network, @propNames );
 		my $mask       = $propVals->{'mask'};
@@ -2988,7 +2988,7 @@ sub nodeSet {
 			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing network information" );
 			return;
 		}
-
+		
 		# Get broadcast address of NIC
 		my $ifcfg = xCAT::zvmUtils->getIfcfgByNic( $hcp, $readChannel );
 		$out = `ssh $hcp "cat $ifcfg" | grep "BROADCAST"`;
