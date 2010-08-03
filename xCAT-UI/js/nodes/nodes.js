@@ -554,11 +554,11 @@ function loadNode(e) {
 	if (!e) {
 		e = window.event;
 	}
-
+	
 	// Get node that was clicked
 	var node = (e.target) ? e.target.id : e.srcElement.id;
 	var mgt = getNodeAttr(node, 'mgt');
-	
+		
 	// Create an instance of the plugin
 	var plugin;
 	switch(mgt) {
@@ -1138,14 +1138,30 @@ function getNodeAttr(node, attrName) {
 	var row = $('[id=' + node + ']').parent().parent();
 
 	// Search for the column containing the attribute
-	var attrCol = row.parent().parent().find('th:contains("' + attrName + '")');
-	// Get the attribute column index
-	var attrIndex = attrCol.index();
+	var attrCol;
+	var cols = row.parent().parent().find('th:contains("' + attrName + '")');
+	// Loop through each column
+	for (var i in cols) {
+		// Find column that matches the attribute
+		if (cols.eq(i).html() == attrName) {
+			attrCol = cols.eq(i);
+			break;
+		}
+	}
+	
+	
+	// If the column containing the attribute is found 
+	if (attrCol) {
+		// Get the attribute column index
+		var attrIndex = attrCol.index();
 
-	// Get the attribute for the given node
-	var attr = row.find('td:eq(' + attrIndex + ')');
+		// Get the attribute for the given node
+		var attr = row.find('td:eq(' + attrIndex + ')');
 
-	return attr.text();
+		return attr.text();
+	} else {
+		return '';
+	}
 }
 
 /**
