@@ -1709,7 +1709,7 @@ sub chkosimage
 		}
 	}
 
-	if ($::CLEANLPP) {
+	if ($::CLEANLPP && $remlist) {
 		my $rsp;
 		push @{$rsp->{data}}, "Removed the following duplicate rpms:\n$remlist\n";
 		xCAT::MsgUtils->message("I", $rsp, $callback);
