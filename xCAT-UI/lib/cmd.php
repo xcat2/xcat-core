@@ -67,12 +67,14 @@ if (isset($_GET["cmd"])) {
 			foreach ($child->children() as $data) {
 				if($data->name) {
 					$node = $data->name;
-				if($data->data->contents){
-					$cont = $data->data->contents;
-				}
-				else{
-					$cont = $data->data;
-				}
+					
+					if($data->data->contents){
+						$cont = $data->data->contents;
+					}
+					else{
+						$cont = $data->data;
+					}
+					
 					$cont = str_replace(":|:", "\n", $cont);
 					array_push($rsp, "$node: $cont");
 				} else if(strlen("$data") > 2) {
