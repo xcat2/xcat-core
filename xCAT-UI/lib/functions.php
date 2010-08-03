@@ -67,8 +67,8 @@ function submit_request($req, $skipVerify){
 		fwrite($fp,$req->asXML());		// Send XML to xcatd
 		while(!feof($fp)){				// Read until there is no more
 			// Remove newlines and add it to the response
-			$response .= preg_replace('/\n/', ':|:', fread($fp, 8192));
-
+			$response .= fread($fp, 8192);
+			$response = preg_replace('/>\n\s*</', '><', $response);
 			// Look for serverdone response
 			$fullpattern = '/<xcatresponse>\s*<serverdone>\s*<\/serverdone>\s*<\/xcatresponse>/';
 			$mixedpattern = '/<serverdone>\s*<\/serverdone>.*<\/xcatresponse>/';
@@ -80,6 +80,10 @@ function submit_request($req, $skipVerify){
 				$response = preg_replace($fullpattern,'', $response, -1, $count);		// 1st try to remove the long pattern
 				if (!$count) { $response = preg_replace($mixedpattern,'', $response) . '</xcatresponse>/'; }		// if its not there, then remove the short pattern
 				$response = "<xcat>$response</xcat>";
+				//delete the \n between '>' and '<'
+				$response = preg_replace('/>\n\s*</', '><', $response);
+				//replace the '\n' by ':|:' in the data area.
+				$response = preg_replace('/\n/', ':|:', $response);
 				$rsp = simplexml_load_string($response,'SimpleXMLElement', LIBXML_NOCDATA);
 				$cleanexit = 1;
 				break;
