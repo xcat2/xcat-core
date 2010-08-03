@@ -1800,10 +1800,14 @@ sub setNodesAttribs {
         my %insertnodes=();
         my $qstring;
         #sort nodes into inserts and updates
-        if ($xcatcfg =~ /^DB2:/){
-          $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \"$nodekey\" LIKE (";
+        if ($xcatcfg =~ /^mysql:/) {  #for mysql
+           $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \`$nodekey\` in (";
         } else {
-        $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE $nodekey in (";
+          if ($xcatcfg =~ /^DB2:/){
+            $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \"$nodekey\" LIKE (";
+          } else {
+           $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE $nodekey in (";
+          }
         }
         $qstring .= '?, ' x scalar(@currnodes);
         $qstring =~ s/, $/)/;
@@ -1850,19 +1854,27 @@ sub setNodesAttribs {
         if (not $upsth and keys %updatenodes) { #prepare an insert statement since one will be needed
             my $upstring = "UPDATE ".$self->{tabname}." set ";
             foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
-                 if ($xcatcfg =~ /^DB2:/){
-                   $upstring .= "\"$col\" = ?, ";
+                 if ($xcatcfg =~ /^mysql:/) {  #for mysql
+                     $upstring .= "\`$col\` = ?, ";
                  } else {
-                   $upstring .= "$col = ?, ";
+                   if ($xcatcfg =~ /^DB2:/){
+                     $upstring .= "\"$col\" = ?, ";
+                   } else {
+                     $upstring .= "$col = ?, ";
+                   }
                  }
             }
             if (grep { $_ eq $nodekey } @orderedcols) {
                 $upstring =~ s/, \z//;
             } else {
-                if ($xcatcfg =~ /^DB2:/){
-                  $upstring =~ s/, \z/ where \"$nodekey\" = ?/;
+                if ($xcatcfg =~ /^mysql:/) {  #for mysql
+                   $upstring =~ s/, \z/ where \`$nodekey\` = ?/;
                 } else {
-                  $upstring =~ s/, \z/ where $nodekey = ?/;
+                  if ($xcatcfg =~ /^DB2:/){
+                   $upstring =~ s/, \z/ where \"$nodekey\" = ?/;
+                  } else {
+                    $upstring =~ s/, \z/ where $nodekey = ?/;
+                  }
                 }
             }
             $upsth = $self->{dbh}->prepare($upstring);
