@@ -64,42 +64,38 @@ function loadMonitorPage() {
 	tab.add('monitorTab', 'Monitor', monitorForm);
 
 	/**
-	 * Resources
+	 * Monitor resources
 	 */
 	var resrcForm = $('<div class="monitor"></div>');
 
 	// Create info bar
-	var resrcInfoBar = createInfoBar('Select a platform to view its resources');
+	var resrcInfoBar = createInfoBar('Monitor resources');
 	resrcForm.append(resrcInfoBar);
 
-	// Create drop-down menu
-	// Hardware available to provision - ipmi, blade, hmc, ivm, fsp, and zvm
-	var div = $('<div></div>');
-	var label = $('<span>Select the hardware:</span>');
-	var hw = $('<select></select>');
-	var ipmi = $('<option value="ipmi">ipmi</option>');
-	var blade = $('<option value="blade">blade</option>');
-	var hmc = $('<option value="hmc">hmc</option>');
-	var ivm = $('<option value="ivm">ivm</option>');
-	var fsp = $('<option value="fsp">fsp</option>');
-	var zvm = $('<option value="zvm">zvm</option>');
-	hw.append(ipmi);
-	hw.append(blade);
-	hw.append(hmc);
-	hw.append(ivm);
-	hw.append(fsp);
-	hw.append(zvm);
-	div.append(label);
-	div.append(hw);
-	resrcForm.append(div);
+	// Create radio buttons for platforms
+	var hwList =$('<ol>Select a platform to view its resources:</ol>');
+	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>ipmi</li>');
+	var blade = $('<li><input type="radio" name="hw" value="blade"/>blade</li>');
+	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>hmc</li>');
+	var ivm = $('<li><input type="radio" name="hw" value="ivm"/>ivm</li>');
+	var fsp = $('<li><input type="radio" name="hw" value="fsp"/>fsp</li>');
+	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>zvm</li>');
 
+	hwList.append(ipmi);
+	hwList.append(blade);
+	hwList.append(hmc);
+	hwList.append(ivm);
+	hwList.append(fsp);
+	hwList.append(zvm);
+	resrcForm.append(hwList);
+	
 	/**
 	 * Ok
 	 */
 	var okBtn = createButton('Ok');
 	okBtn.bind('click', function(event) {
 		// Get hardware that was selected
-		var hw = $(this).parent().find('select').val();
+		var hw = $(this).parent().find('input[name="hw"]:checked').val();
 
 		// Generate new tab ID
 		var newTabId = hw + 'ResourceTab';
