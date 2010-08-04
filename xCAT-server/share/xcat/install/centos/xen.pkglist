@@ -1,3 +1,8 @@
+#Please make sure there is a space between @ and group name
+@ Network Servers
+@ System Tools
+@ X Window System
+@ Legacy Software Development
 autofs
 uucp
 xen
