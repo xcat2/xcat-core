@@ -1,3 +1,5 @@
+#Please make sure there is a space between @ and group name
+@ ofed
 openmpi
 ntp
 nfs-utils

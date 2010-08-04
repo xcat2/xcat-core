@@ -1,3 +1,6 @@
+@base
+@core
+@base-x
 fipscheck
 device-mapper-multipath
 sgpio

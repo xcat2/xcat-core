@@ -22,9 +22,6 @@ clearpart --initlabel --drives=dasda
 part / --fstype ext3 --size=100 --grow --ondisk=dasda
 
 %packages
-@base
-@core
-@base-x
 #INCLUDE_DEFAULT_PKGLIST#
 
 %post
