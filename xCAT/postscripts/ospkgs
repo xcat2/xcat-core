@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 # IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 #-------------------------------------------------------------------------------
@@ -80,24 +80,43 @@ fi
 pkgs=''  #packages
 groups=''   #groups
 pkgs_d=''   #packages to remove
+
+OIFS=$IFS
+IFS=$'\n'
 for x in `echo "$OSPKGS" | tr "," "\n"`
 do
-    echo x=$x
-    pos=`expr index  $x -`
+    #remove leading and trailing spaces
+    x=`echo $x |sed 's/^ *//;s/ *$//'`
+    #echo "x=$x"
+    pos=`expr index  "$x" -`
     if [ $pos -eq 1 ]; then 
 	pkgs_d="$pkgs_d ${x#-}"
     else
-	pos=`expr index  $x @`
+	pos=`expr index  "$x" @`
 	if [ $pos -eq 1 ]; then 
-	    groups="$groups ${x#@}"
+	    #remove leading @
+	    tmp=${x#@}
+            #remove leading and trailing spaces
+	    tmp=`echo $tmp |sed 's/^ *//;s/ *$//'`
+            #if there are spaces in the middle of the name, quote it
+	    pos=`expr index "$tmp" "\ "`
+	    if [ $pos -gt 0  ]; then
+		groups="$groups \"$tmp\""
+	    else
+		groups="$groups $tmp"
+	    fi
 	else
 	    pkgs="$pkgs $x"
 	fi
     fi
 done
-echo "pkgs=$pkgs"
-echo "groups=$groups"
-echo "remove pkgs=$pkgs_d"
+IFS=$OIFS
+
+if [ $debug -ne 0 ]; then
+    echo "pkgs=$pkgs"
+    echo "groups=$groups"
+    echo "remove pkgs=$pkgs_d"
+fi
 
 if [[ $OSVER = sles10* ]]; then
     #check if rug is installed
@@ -334,15 +353,15 @@ else
 	echo "ospkgs: yum -y upgrade\n    $result"
     else
 	if [ $debug -ne 0 ]; then
-	    echo "yum -y upgrade"
+	    echo "ospkgs: yum -y upgrade"
 	    echo $result
 	fi
     fi
 
     #install new groups if any
     if [ -n "$groups" ]; then
-	cmd="yum -y groupinstall $groups"
-	result=`$cmd 2>&1`
+	cmd="echo $groups| xargs yum -y groupinstall"
+	result=`echo $groups | xargs yum -y groupinstall 2>&1`
 	if [ $? -ne 0 ]; then 
 	    logger -t xcat "ospkgs: $cmd\n    $result"
 	    echo "ospkgs: $cmd"
