@@ -51,7 +51,7 @@ function loadNodesetPage(tgtNodes) {
 	nodesetForm.append(infoBar);
 
 	// Create target node or group
-	var tgt = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
+	var tgt = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
 	nodesetForm.append(tgt);
 
 	// Create boot method drop down

@@ -6,9 +6,20 @@
  * @return Nothing
  */
 function loadNetbootPage(tgtNodes) {
+	// Get node OS (AIX, rh*, centos*, fedora*, or sles*)
+	var osHash = new Object();
+	var nodes = tgtNodes.split(',');
+	for (var i in nodes) {
+		var os = getNodeAttr(nodes[i], 'os');
+		var osBase = os.match(/[a-zA-Z]+/);
+		if (osBase) {
+			nodes[osBase] = 1;
+		}
+	}
+	
 	// Get nodes tab
 	var tab = getNodesTab();
-
+	
 	// Generate new tab ID
 	var inst = 0;
 	var newTabId = 'netbootTab' + inst;
@@ -36,7 +47,7 @@ function loadNetbootPage(tgtNodes) {
 	netbootForm.append(infoBar);
 
 	// Create target node or group input
-	var target = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
+	var target = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
 	netbootForm.append(target);
 
 	// Create options
@@ -62,8 +73,10 @@ function loadNetbootPage(tgtNodes) {
 	optsList.append('<li><input type="checkbox" id="F" name="F"/>Force reboot</li>');
 	// Create force shutdown checkbox
 	optsList.append('<li><input type="checkbox" id="f" name="f"/>Force immediate shutdown of the partition</li>');
-	// Create iscsi dump checkbox
-	optsList.append('<li><input type="checkbox" id="I" name="I"/>Do a iscsi dump on AIX</li>');
+	if (osHash['AIX']) {
+		// Create iscsi dump checkbox
+		optsList.append('<li><input type="checkbox" id="I" name="I"/>Do a iscsi dump on AIX</li>');
+	}
 	
 	// Show boot order when checkbox is checked
 	bootOrderChkBox.bind('click', function(event) {

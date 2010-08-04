@@ -405,10 +405,7 @@ function initPage() {
 	includeJs("js/jquery/superfish.js");
 	includeJs("js/jquery/hoverIntent.js");
 	includeJs("js/jquery/jquery.tree.js");
-	includeJs("js/configure/configure.js");
-	includeJs("js/configure/update.js");
-	includeJs("js/monitor/xcatmon.js");
-	includeJs("js/monitor/rmcmon.js");
+	includeJs("js/configure/configure.js");	
 	includeJs("js/monitor/monitor.js");
 	includeJs("js/nodes/nodes.js");
 	includeJs("js/provision/provision.js");
@@ -438,12 +435,17 @@ function initPage() {
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
 	} else if (page == 'configure.php') {
+		includeJs("js/configure/update.js");
+		
 		headers.eq(1).css('background-color', '#A9D0F5');
 		loadConfigPage();
 	} else if (page == 'provision.php') {
 		headers.eq(2).css('background-color', '#A9D0F5');
 		loadProvisionPage();
 	} else if (page == 'monitor.php') {
+		includeJs("js/monitor/xcatmon.js");
+		includeJs("js/monitor/rmcmon.js");
+		
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
 	} else {

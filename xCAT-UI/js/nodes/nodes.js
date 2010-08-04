@@ -655,7 +655,7 @@ function loadUnlockPage(tgtNodes) {
 	var infoBar = createInfoBar('Give the root password for this node range to setup its SSH keys');
 	unlockForm.append(infoBar);
 
-	unlockForm.append('<div><label>Node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '"/></div>');
+	unlockForm.append('<div><label>Target node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '"/></div>');
 	unlockForm.append('<div><label>Password:</label><input type="password" id="password" name="password"/></div>');
 
 	/**
@@ -738,7 +738,7 @@ function loadScriptPage(tgtNodes) {
 	scriptForm.append(infoBar);
 
 	// Target node or group
-	var tgt = $('<div><label for="target">Target node or group:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
+	var tgt = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
 	scriptForm.append(tgt);
 
 	// Upload file
