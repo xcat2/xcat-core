@@ -4,25 +4,30 @@ package xCAT_schema::Sample;
 #################################################################################
 # This is a sample code that contains the user defined user database schema defination.
 # Here is a list of things you can do to add DB tables to xCAT database.
-#   1  copy this file to /opt/xcat/lib/perl/xCAT_schema directory, rename it.
-#   2  change the word Sample above to be the same as the file name.
+#   1  Copy this file to /opt/xcat/lib/perl/xCAT_schema directory, rename it
+#      to your chosen schema name. 
+#   2  Change the word Sample above to be the same as the file name you chose.
 #   3  Do NOT change the variable name "%tabspec".
-#   4  x_lljob and x_llnode are the table names. 
-#      jobid, status, node, jobstatus are the column names. 
+#   4  x_lljob and x_llnode are the sample table names. 
+#      jobid, status, node, jobstatus are the sample column names. 
 #      Change them to your like. Please make sure all table names start with "x_".
-#      Each table must have a 'disable' column.
+#      Each table must have a 'disable' and comments column.
 #      Please do not use SQL reserved words for your table names and column names.
 #      Use this site to check the reserved words: 
 #         http://www.petefreitag.com/tools/sql_reserved_words_checker/  
-#   5 change the keys.
-#   6 change the data types. The default data type is TEXT if not specified.
+#   5 Change the keys.
+#   6 Change the data types. For SQLite
+#           the  default data type is TEXT if not specified.
 #     The supported data types are: 
 #        REAL,CHAR,TEXT,DATE,TIME,FLOAT,BIGINT,DOUBLE,STRING,
 #        BINARY,DECIMAL,BOOLEAN,INTEGER,VARCHAR,SMALLINT,TIMESTAMP
 #     Please note that SQLight only supports: INTEGER, REAL, TEXT, BLOB. 
-#   7 change the table descriptions and column descriptions to your like.
-#   8 restart the the xcatd, the tables will be automatically generated. 
-#   9 copy your file to all the service nodes and restart the xcatd on all the service node. 
+#     xCAT support MySQL, PostgreSQL and DB2 also, supported data types
+#     depend on the database you are using. 
+#   7 Change the table descriptions and column descriptions to your like.
+#   8 Restart the the xcatd, the tables will be automatically generated. 
+#   9 If you have service nodes,  copy all the files to those also and restart
+#     the daemon.
 # 
 ###############################################################################
 %tabspec = (
