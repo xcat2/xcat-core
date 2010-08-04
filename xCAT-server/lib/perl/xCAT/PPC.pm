@@ -1726,7 +1726,7 @@ sub process_request {
 	        }#end of if
 	        #print "thishcp:$thishcp\n";
 	        #get the nodetype of hcp:
-	        my $thishcp_type = xCAT::FSPUtils->getTypeOfHcp($thishcp, $callback);
+	        my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($thishcp);
             if(!defined($thishcp_type)) {
                 $request = {};
 	            next;
@@ -1952,18 +1952,24 @@ sub getHCPsOfNodes
     my %hcps     = ();
     #get hcp from ppc.
     foreach my $node( @$nodes) {
-        my $ppctab = xCAT::Table->new( 'ppc');
-        unless($ppctab) {
-            $callback->({data=>["Cannot open ppc table"]});	
-	    return undef;
-	}	
-	#xCAT::MsgUtils->message('E', "Failed to open table 'ppc'.") if ( ! $ppctab);
-        my $hcp_hash    = $ppctab->getNodeAttribs( $node,[qw(hcp)]);
-        my $hcp    = $hcp_hash->{hcp};
-        if ( !$hcp) {
-	    #xCAT::MsgUtils->message('E', "Not found the hcp of $node");	
-	    $callback->({data=>["Not found the hcp of $node"]});
-	    return undef;
+        my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($node);
+        if( $thishcp_type eq "hmc") {
+            $hcps{$node}{hcp} = [$node];
+            $hcps{$node}{num} = 1;
+        } else {
+            my $ppctab = xCAT::Table->new( 'ppc');
+            unless($ppctab) {
+                $callback->({data=>["Cannot open ppc table"]});	
+	            return undef;
+	        }	
+	        #xCAT::MsgUtils->message('E', "Failed to open table 'ppc'.") if ( ! $ppctab);
+            my $hcp_hash    = $ppctab->getNodeAttribs( $node,[qw(hcp)]);
+            my $hcp    = $hcp_hash->{hcp};
+            if ( !$hcp) {
+	        #xCAT::MsgUtils->message('E', "Not found the hcp of $node");	
+	        $callback->({data=>["Not found the hcp of $node"]});
+	        return undef;
+        }
 	}
 	#print "hcp:\n";
 	#print Dumper($hcp);

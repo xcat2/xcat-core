@@ -4,10 +4,6 @@ package xCAT::FSPpower;
 use strict;
 #use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
-use xCAT::Usage;
-use xCAT::MsgUtils;
-use Data::Dumper;
-use xCAT::DBobjUtils;
 use xCAT::PPCpower;
 use xCAT::FSPUtils;
 ##########################################################################
@@ -387,7 +383,7 @@ sub state1 {
 	    if($$d[4] =~ /^fsp$/ || $$d[4] =~ /^bpa$/) {
 	        $action = "cec_state";		  
             } 
-            my $stat = xCAT::Utils::fsp_api_action ($node_name, $d, $action);
+            my $stat = xCAT::FSPUtils::fsp_api_action ($node_name, $d, $action);
             my $Rc = @$stat[2];
     	    my $data = @$stat[1];
             my $type = @$d[4];
