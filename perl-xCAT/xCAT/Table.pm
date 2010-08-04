@@ -547,15 +547,21 @@ sub get_datatype_string_db2 {
     my $types=shift;  #types field (eventlog)
     my $tablename=shift;  # tablename
     my $descr=shift;  # table schema
-    my $typedefined=0;
     my $ret = "varchar(512)";  # default for most attributes
     if (($types) && ($types->{$col})) {
 	if ($types->{$col} =~ /INTEGER AUTO_INCREMENT/) {
 		$ret = "INTEGER GENERATED ALWAYS AS IDENTITY";  
 	} else {
+          # if the column is a key 
+          if (isAKey(\@{$descr->{keys}}, $col)) { 
+            $ret = "VARCHAR(128) NOT NULL ";  
+          } else {
 	    $ret = $types->{$col};
+            if ($ret eq "TEXT") {  # text not in db2
+              $ret = "VARCHAR(512)";  
+	    }
+	  }
 	}
-     $typedefined=1; 
     }
     if ($col eq "disable") {
          
@@ -564,12 +570,6 @@ sub get_datatype_string_db2 {
     if ($col eq "rawdata") {  # from eventlog table
          
        $ret = "varchar(4098)";
-    }
-    # if the column is a key  and not already defined
-    if (isAKey(\@{$descr->{keys}}, $col)) { 
-       if ($typedefined == 0) {          
-          $ret = "VARCHAR(128) NOT NULL ";  
-       }
     }
     return $ret;
 }
