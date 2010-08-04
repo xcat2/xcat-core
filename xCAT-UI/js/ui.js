@@ -407,6 +407,8 @@ function initPage() {
 	includeJs("js/jquery/jquery.tree.js");
 	includeJs("js/configure/configure.js");
 	includeJs("js/configure/update.js");
+	includeJs("js/monitor/xcatmon.js");
+	includeJs("js/monitor/rmcmon.js");
 	includeJs("js/monitor/monitor.js");
 	includeJs("js/nodes/nodes.js");
 	includeJs("js/provision/provision.js");

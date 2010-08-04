@@ -54,13 +54,32 @@ function loadMonitorPage() {
 	var monitorForm = $('<div class="monitor"></div>');
 
 	// Create info bar
-	var monitorInfoBar = createInfoBar('Under construction');
+	var monitorInfoBar = createInfoBar('Select the Monitor Tool');
 	monitorForm.append(monitorInfoBar);
 
 	// Create drop-down menu
 	// Hardware available to provision - ipmi, blade, hmc, ivm, fsp, and zvm
-	var div = $('<div></div>');
-	monitorForm.append(div);
+
+	var monitorList = $('<ul></ul>');
+	var items = "<li><a href='#' name='xcatmon'>xCAT Monitor</a> : xcatmon provides node status " +
+			"monitoring using fping on AIX and nmap on Linux. It also provides application " +
+			"status monitoring. The status and the appstatus columns of the nodelist table " +
+			"will be updated periodically  with the latest status values for the nodes.<li>";
+	
+	items += "<li><a href='#' name='rmcmon'>RMC Monitor</a> : IBM's Resource Monitoring and Control (RMC) " +
+			"subsystem is our recommended software for monitoring xCAT clusters. It's is part " +
+			"of the IBM's Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive " +
+			"clustering environment for AIX and LINUX.<li>";
+	items += "<li><a href='#' name='gangliamon'>Ganglia Monitor</a> : <li>";
+	items += "<li><a href='#' name='pcpmon'>PCP Monitor</a> : <li>";
+	
+	monitorList.append(items);
+	
+	$('a', monitorList).click(function(){
+		loadMonitorTab($(this).attr('name'));
+	});
+	
+	monitorForm.append(monitorList);
 	tab.add('monitorTab', 'Monitor', monitorForm, false);
 
 	/**
@@ -136,4 +155,39 @@ function loadMonitorPage() {
 	resrcForm.append(okBtn);
 
 	tab.add('resourceTab', 'Resources', resrcForm, false);
+}
+
+function loadMonitorTab(monitorName){
+	//the tab is exist then we only need to select it
+	var tab = getMonitorTab();
+	if (0 != $("#" + monitorName).length){
+		tab.select(monitorName);
+		return;
+	}
+	
+	switch(monitorName){
+		case 'xcatmon':
+			tab.add(monitorName, 'xCAT Monitor', '', true);
+			loadXcatMon();
+			break;
+		case 'rmcmon':
+			tab.add(monitorName, 'RMC Monitor', '', true);
+			loadRmcMon();
+			break;
+		case 'gangliamon':
+			loadUnfinish(monitorName, tab);
+			break;
+		case 'pcpmon':
+			loadUnfinish(monitorName, tab);
+			break;
+	}
+	
+	tab.select(monitorName);
+}
+
+function loadUnfinish(monitorName, tab){
+	var unfinishPage = $('<div></div>');
+	unfinishPage.append(createInfoBar('under construction.'));
+
+	tab.add(monitorName, 'unfinish', unfinishPage, '', true);	
 }
