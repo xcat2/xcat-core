@@ -544,6 +544,7 @@ sub mkinstall
 
         #substitute the tag #INCLUDE_DEFAULT_PKGLIST# with package file name
         #substitute the tag #INCLUDE_DEFAULT_PERNLIST# with package file name
+        #substitute the tag #INCLUDE_DEFAULT_RMPKGLIST# with package file name
 	my $new_tmplfile=$tmplfile;
 	if ($pkglistfile) {
 	    $pkglistfile =~ s/\//\\\//g;
@@ -555,6 +556,10 @@ sub mkinstall
 	    system("sed -e \"s/#INCLUDE_DEFAULT_PTRNLIST#/#INCLUDE_PTRNLIST:$pkglistfile#/\" $new_tmplfile > /tmp/xcattemp2.tmpl");
             if ($? == 0) {
 		$new_tmplfile="/tmp/xcattemp2.tmpl";
+	    }
+	    system("sed -e \"s/#INCLUDE_DEFAULT_RMPKGLIST#/#INCLUDE_RMPKGLIST:$pkglistfile#/\" $new_tmplfile > /tmp/xcattemp3.tmpl");
+            if ($? == 0) {
+		$new_tmplfile="/tmp/xcattemp3.tmpl";
 	    }
 	}
 
@@ -571,6 +576,7 @@ sub mkinstall
         }
 	system("rm -f /tmp/xcattemp1.tmpl");
 	system("rm -f /tmp/xcattemp2.tmpl");
+	system("rm -f /tmp/xcattemp3.tmpl");
 
         if ($tmperr)
         {

@@ -76,6 +76,10 @@ sub subvars {
       $doneincludes=0;
       $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1, 0, 2)/eg;
     }
+    if ($inc =~ /#INCLUDE_RMPKGLIST:[^#^\n]+#/) {
+      $doneincludes=0;
+      $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1, 0, 3)/eg;
+    }
     if ($inc =~ /#INCLUDE:[^#^\n]+#/) {
       $doneincludes=0;
       $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
@@ -92,6 +96,7 @@ sub subvars {
   $inc =~ s/#INCLUDE_NOP:([^#^\n]+)#/includefile($1,1,0)/eg;
   $inc =~ s/#INCLUDE_PKGLIST:([^#^\n]+)#/includefile($1,0,1)/eg;
   $inc =~ s/#INCLUDE_PTRNLIST:([^#^\n]+)#/includefile($1,0,2)/eg;
+  $inc =~ s/#INCLUDE_RMPKGLIST:([^#^\n]+)#/includefile($1,0,3)/eg;
   $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
   $inc =~ s/#HOSTNAME#/$node/eg;
 
@@ -181,7 +186,9 @@ sub includefile
 {
     my $file = shift;
     my $special=shift;
-    my $pkglist=shift; #1 means package list, 2 means pattern list, pattern list starts with @
+    my $pkglist=shift; #1 means package list, 
+                       #2 means pattern list, pattern list starts with @, 
+                       #3 means remove package list, packages to be removed start with -.
     my $text = "";
     unless ($file =~ /^\//) {
       $file = $idir."/".$file;
@@ -205,20 +212,29 @@ sub includefile
             s/#INCLUDE:/#INCLUDE_PKGLIST:/;
         }  elsif ($pkglist == 2) {
             s/#INCLUDE:/#INCLUDE_PTRNLIST:/;
+        }  elsif ($pkglist == 3) {
+            s/#INCLUDE:/#INCLUDE_RMPKGLIST:/;
         }
 
         if (( $_ =~ /^\s*#/ ) || ( $_ =~ /^\s*$/ )) { 
 	    $text .= "$_";
         } else {
-            chomp;  #remove tailing spaces
-            s/\s*$//;  #removes leading spaces
-	    next if (($pkglist == 1) && (/^@/));  #for packge list, do not include the lines start with @
+	    my $tmp=$_;
+            chomp($tmp);  #remove return char
+            $tmp =~ s/\s*$//;  #removes trailing spaces
+	    next if (($pkglist == 1) && (($tmp=~/^\s*@/) || ($tmp=~/^\s*-/)));  #for packge list, do not include the lines start with @
 	    if ($pkglist == 2) { #for pattern list, only include the lines start with @
-		if (/^@(.*)/) {
-		    $_=$1;
+		if ($tmp =~/^\s*@(.*)/) {
+		    $tmp=$1;
+		    $tmp =~s/^\s*//;  #removes leading spaces
 		} else { next; }
-	    } 
-	    $text .= "$pkgb$_$pkge\n";
+	    } elsif ($pkglist == 3) { #for rmpkg list, only include the lines start with -
+		if ($tmp =~/^\s*-(.*)/) {
+		    $tmp=$1;
+		    $tmp =~s/^\s*//;  #removes leading spaces
+		} else { next; }
+	    }
+	    $text .= "$pkgb$tmp$pkge\n";
         }
     }
     
