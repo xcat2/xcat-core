@@ -965,7 +965,7 @@ function updateStatusBar(data) {
 	var cmd = args[1].replace('cmd=', '');
 	var tgts = args[2].replace('tgt=', '').split(',');
 
-	if (cmd == 'unlock') {
+	if (cmd == 'unlock' || cmd == 'updatenode') {
 		// Hide loader
 		$('#' + statBarId).find('img').hide();
 
