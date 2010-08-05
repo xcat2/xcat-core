@@ -51,11 +51,6 @@ function docmd($cmd, $nr, $args){
 	$socket->setBlocking(true);		// Set socket as blocking stream
 	$socket->write($request->asXML());	// Send xCAT request
 	$xml = $socket->readAll();			// Get xCAT response
-	$status = $socket->getStatus();
-	while ($status['unread_bytes']) {
-		// Do nothing
-		$status = $socket->getStatus();
-	}
 	$socket->disconnect();	// Close socket
 		
 	// submit_request() was the old way of sending the xCAT request
