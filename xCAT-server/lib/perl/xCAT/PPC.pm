@@ -1170,7 +1170,7 @@ sub invoke_cmd {
             #send_msg( $request, 1, $exp[0] );
       	    my %output;
 	        $output{node}->[0]->{name}->[0] = $host;
-	        $output{node}->[0]->{data}->[0]->{contents}->[0] = "(trying ASM   )$exp[0]";
+	        $output{node}->[0]->{data}->[0]->{contents}->[0] = "$exp[0]";
 	        $output{errorcode} = 1;
 	        push @outhash, \%output;
 	        my $out = $request->{pipe};
@@ -1278,9 +1278,11 @@ sub invoke_cmd {
         $output{errorcode} = @$_[2];
     	if($output{errorcode} != 0) {
 	        if($request->{fsp_api} == 1) {
-	            $output{node}->[0]->{data}->[0]->{contents}->[0] = "(trying fsp-api)@$_[1]";
+                #$output{node}->[0]->{data}->[0]->{contents}->[0] = "(trying fsp-api)@$_[1]";
+                $output{node}->[0]->{data}->[0]->{contents}->[0] = "@$_[1]";
 	        } else {
-	            $output{node}->[0]->{data}->[0]->{contents}->[0] = "(trying HMC    )@$_[1]"; 
+                #$output{node}->[0]->{data}->[0]->{contents}->[0] = "(trying HMC    )@$_[1]"; 
+	            $output{node}->[0]->{data}->[0]->{contents}->[0] = "@$_[1]"; 
 	        }
 	    } else {
                 $output{node}->[0]->{data}->[0]->{contents}->[0] = @$_[1];	
