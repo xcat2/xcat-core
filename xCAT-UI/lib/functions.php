@@ -2,6 +2,7 @@
 /**
  * Contains all common PHP functions needed by most pages
  */
+require_once "socket.php";
 
 // Retain session variables across page requests
 session_start();
@@ -28,6 +29,8 @@ function docmd($cmd, $nr, $args){
 		return simplexml_load_string('<xcat></xcat>', 'SimpleXMLElement', LIBXML_NOCDATA);
 	}
 
+	// Create xCAT request
+	// Add command, node range, and arguments to request
 	$request = simplexml_load_string('<xcatrequest></xcatrequest>');
 	$request->addChild('command', $cmd);
 	if(!empty($nr)) { $request->addChild('noderange', $nr); }
@@ -37,11 +40,26 @@ function docmd($cmd, $nr, $args){
 		}
 	}
 
+	// Add user and password to request
 	$usernode=$request->addChild('becomeuser');
 	$usernode->addChild('username',$_SESSION["username"]);
 	$usernode->addChild('password',getpassword());
 
-	$xml = submit_request($request,0);
+	// Open socket to submit request
+	$socket = new Net_Socket();
+	$socket->connect('ssl://localhost', 3001, true, 30);
+	// Set socket as non-blocking stream
+	$socket->setBlocking(false);
+	// Send xCAT request
+	$socket->write($request->asXML());
+	// Get xCAT response
+	$xml = $socket->readAll();
+	// Close socker
+	$socket->disconnect();
+	
+	// submit_request() was the old way of sending the xCAT request
+	// It is no longer needed
+	// $xml = submit_request($request,0);
 	return $xml;
 }
 
@@ -60,15 +78,14 @@ function submit_request($req, $skipVerify){
 
 	// Open a socket to xcatd
 	if($fp = stream_socket_client('ssl://'.$xcathost.':'.$port, $errno, $errstr, 30, STREAM_CLIENT_CONNECT)){
-
 		// The line below makes the call async
 		// stream_set_blocking($fp, 0);
-
 		fwrite($fp,$req->asXML());		// Send XML to xcatd
 		while(!feof($fp)){				// Read until there is no more
 			// Remove newlines and add it to the response
 			$response .= fread($fp, 8192);
 			$response = preg_replace('/>\n\s*</', '><', $response);
+			
 			// Look for serverdone response
 			$fullpattern = '/<xcatresponse>\s*<serverdone>\s*<\/serverdone>\s*<\/xcatresponse>/';
 			$mixedpattern = '/<serverdone>\s*<\/serverdone>.*<\/xcatresponse>/';

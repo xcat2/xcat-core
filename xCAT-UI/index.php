@@ -27,14 +27,21 @@ function testCmdPhp() {
 		foreach ($child->children() as $data) {
 			if($data->name) {
 				$node = $data->name;
-				$cont = $data->data->contents;
+				
+				if($data->data->contents){
+					$cont = $data->data->contents;
+				}
+				else{
+					$cont = $data->data;
+				}
+				
 				$cont = str_replace(":|:", "\n", $cont);
-				array_push($rsp, "$node: $cont");				
+				array_push($rsp, "$node: $cont");
 			} else if(strlen("$data") > 2) {
 				$data = str_replace(":|:", "\n", $data);
 				array_push($rsp, "$data");
 			}
-		}		
+		}
 	}
   	
 	$rtn = array("rsp" => $rsp, "msg" => '');
