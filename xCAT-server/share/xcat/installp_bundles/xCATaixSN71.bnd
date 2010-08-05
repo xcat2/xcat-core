@@ -15,6 +15,10 @@ I:openssh.man.en_US
 I:openssh.msg.en_US
 I:bos.sysmgt.nim.master
 
+# needed on service nodes to support system dumps
+#       for diskless compute nodes
+#I:devices.tmiscsw.rte
+
 # RPMs
 # using Perl 5.10.1
 R:popt*
@@ -57,3 +61,6 @@ R:xCATsn*
 # optional - needed if using Postgresql
 #R:xcat-postgresql*
 #R:perl-DBD-Pg*
+
+# optional - needed if using DB2
+#R:perl-DBD-DB2*
