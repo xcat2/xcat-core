@@ -1966,16 +1966,16 @@ sub getHCPsOfNodes
             my $hcp_hash    = $ppctab->getNodeAttribs( $node,[qw(hcp)]);
             my $hcp    = $hcp_hash->{hcp};
             if ( !$hcp) {
-	        #xCAT::MsgUtils->message('E', "Not found the hcp of $node");	
-	        $callback->({data=>["Not found the hcp of $node"]});
-	        return undef;
-        }
-	}
-	#print "hcp:\n";
-	#print Dumper($hcp);
-	my @h = split(",", $hcp);
-	$hcps{$node}{hcp} = \@h;
-	$hcps{$node}{num} = @h;
+	            #xCAT::MsgUtils->message('E', "Not found the hcp of $node");	
+	            $callback->({data=>["Not found the hcp of $node"]});
+	            return undef;
+            }
+	        #print "hcp:\n";
+	        #print Dumper($hcp);
+	        my @h = split(",", $hcp);
+	       $hcps{$node}{hcp} = \@h;
+	       $hcps{$node}{num} = @h;
+       }
     }
     #print "in getHCPsOfNodes\n";
     #print Dumper(\%hcps);
