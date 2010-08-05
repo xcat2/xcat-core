@@ -2404,15 +2404,17 @@ sub validate_network_prereqs {
                 }
                 $netsys->AddPortGroup(portgrp=>$hostgroupdef);
                 #$hyphash{$hyp}->{nets}->{$netname}=1;
-                $hostview->update_view_data(); #pull in changes induced by previous activity
-                if (defined $hostview->{network}) { #We load the new object references
-                    foreach (@{$hostview->network}) {
-                        my $nvw = $hypconn->get_view(mo_ref=>$_);
-                        if (defined $nvw->name) {
-                            $hyphash{$hyp}->{nets}->{$nvw->name}=$_;
+                while ((not defined $hyphash{$hyp}->{nets}->{$pgname}) and sleep 1) { #we will only sleep if we know something will be waiting for
+                    $hostview->update_view_data(); #pull in changes induced by previous activity
+                    if (defined $hostview->{network}) { #We load the new object references
+                        foreach (@{$hostview->network}) {
+                            my $nvw = $hypconn->get_view(mo_ref=>$_);
+                            if (defined $nvw->name) {
+                                $hyphash{$hyp}->{nets}->{$nvw->name}=$_;
+                            }
                         }
                     }
-                }
+                } #end while loop
             }
         }
     }
