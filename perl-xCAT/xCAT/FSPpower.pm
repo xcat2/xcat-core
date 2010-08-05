@@ -287,10 +287,10 @@ sub state {
         my $stat = enumerate( $h, $mtms );
         my $Rc = shift(@$stat);
         my $data = @$stat[0];
-        if($Rc != 0) {
-            push @result,[$mtms ,$$data[0],$Rc];
-            return(\@result);
-        }
+        #if($Rc != 0) {
+        #    push @result,[$mtms ,$$data[0],$Rc];
+        #    return(\@result);
+        #}
         while (my ($name,$d) = each(%$h) ) {
             ##################################
             # Look up by lparid 
