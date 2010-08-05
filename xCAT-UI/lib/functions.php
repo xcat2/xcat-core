@@ -48,15 +48,16 @@ function docmd($cmd, $nr, $args){
 	// Open socket to submit request
 	$socket = new Net_Socket();
 	$socket->connect('ssl://localhost', 3001, true, 30);
-	// Set socket as non-blocking stream
-	$socket->setBlocking(false);
-	// Send xCAT request
-	$socket->write($request->asXML());
-	// Get xCAT response
-	$xml = $socket->readAll();
-	// Close socker
-	$socket->disconnect();
-	
+	$socket->setBlocking(true);		// Set socket as blocking stream
+	$socket->write($request->asXML());	// Send xCAT request
+	$xml = $socket->readAll();			// Get xCAT response
+	$status = $socket->getStatus();
+	while ($status['unread_bytes']) {
+		// Do nothing
+		$status = $socket->getStatus();
+	}
+	$socket->disconnect();	// Close socket
+		
 	// submit_request() was the old way of sending the xCAT request
 	// It is no longer needed
 	// $xml = submit_request($request,0);
