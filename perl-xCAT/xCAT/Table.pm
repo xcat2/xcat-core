@@ -38,6 +38,7 @@ use Storable qw/freeze thaw/;
 use IO::Socket;
 use Data::Dumper;
 use POSIX qw/WNOHANG/;
+use Time::HiRes qw (sleep);
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -92,9 +93,11 @@ sub dbc_submit {
     my $data = freeze($request);
     $data.= "\nENDOFFREEZEQFVyo4Cj6Q0v\n";
     my $clisock;
-    while(!($clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120) ) ) {
+    my $tries=300;
+    while($tries and !($clisock = IO::Socket::UNIX->new(Peer => $dbsockpath, Type => SOCK_STREAM, Timeout => 120) ) ) {
         #print "waiting for clisock to be available\n";
         sleep 0.1;
+        $tries--;
     }
     unless ($clisock) {
         use Carp qw/cluck/;
