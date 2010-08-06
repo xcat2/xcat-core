@@ -324,7 +324,8 @@ sub mkinstall
               xCAT::Template->subvars(
                          $tmplfile,
                          "/install/autoinst/$node",
-                         $node
+                         $node,
+                         0
                          );
         }
         

@@ -745,16 +745,6 @@ sub mkinstall
             next;
         }
 
-        #substitute the tag #INCLUDE_DEFAULT_PKGS# with package file name
-	my $new_tmplfile=$tmplfile;
-	if ($pkglistfile) {
-	    $pkglistfile =~ s/\//\\\//g;
-	    #print "pkglistfile=$pkglistfile\n";
-	    system("sed -e \"s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE:$pkglistfile#/\" $tmplfile > /tmp/xcattemp.tmpl");
-            if ($? == 0) {
-		$new_tmplfile="/tmp/xcattemp.tmpl";
-	    }
-	}
 
         #Call the Template class to do substitution to produce a kickstart file in the autoinst dir
         my $tmperr;
@@ -763,16 +753,16 @@ sub mkinstall
 	} else {
           $tmperr="Unable to find template in /install/custom/install/$platform or $::XCATROOT/share/xcat/install/$platform (for $profile/$os/$arch combination)";
 	}
-        if (-r "$new_tmplfile")
+        if (-r "$tmplfile")
         {
             $tmperr =
               xCAT::Template->subvars(
-                    $new_tmplfile,
+                    $tmplfile,
                     "/$installroot/autoinst/" . $node,
-                    $node
+                    $node,
+		    $pkglistfile
                     );
         }
-        system("rm -f /tmp/xcattemp.tmpl");
  
         if ($tmperr)
         {

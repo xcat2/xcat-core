@@ -27,6 +27,8 @@ sub subvars {
   my $inf = shift;
   my $outf = shift;
   $node = shift;
+  my $pkglistfile=shift;
+
   my $outh;
   my $inh;
   $idir = dirname($inf);
@@ -64,7 +66,19 @@ sub subvars {
   #replace the env with the right value so that correct include files can be found
   $inc =~ s/#ENV:([^#]+)#/envvar($1)/eg;
 
-  #FIRST, do *all* includes, recursive and all
+  if ($pkglistfile) {
+      #substitute the tag #INCLUDE_DEFAULT_PKGLIST# with package file name (for full install of  rh, centos,SL, esx fedora)
+      $inc =~ s/#INCLUDE_DEFAULT_PKGLIST#/#INCLUDE:$pkglistfile#/g;
+            
+      #substitute the tag #INCLUDE_DEFAULT_PKGLIST_S# with package file name (for full install of sles)
+      #substitute the tag #INCLUDE_DEFAULT_PERNLIST_S# with package file name (for full install sles
+      #substitute the tag #INCLUDE_DEFAULT_RMPKGLIST_S# with package file name (for full install sles)
+      $inc =~ s/#INCLUDE_DEFAULT_PKGLIST_S#/#INCLUDE_PKGLIST:$pkglistfile#/g;
+      $inc =~ s/#INCLUDE_DEFAULT_PTRNLIST_S#/#INCLUDE_PTRNLIST:$pkglistfile#/g;
+      $inc =~ s/#INCLUDE_DEFAULT_RMPKGLIST_S#/#INCLUDE_RMPKGLIST:$pkglistfile#/g;
+  }
+
+  #do *all* includes, recursive and all
   my $doneincludes=0;
   while (not $doneincludes) {
     $doneincludes=1;
