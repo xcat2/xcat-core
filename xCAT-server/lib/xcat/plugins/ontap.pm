@@ -19,6 +19,7 @@ BEGIN
 use lib "$::XCATROOT/lib/perl";
 use warnings "all";
 use xCAT::Table;
+use xCAT::SvrUtils;
 my $output_handler;
 my $newiqns;
 my $domain;
@@ -45,49 +46,12 @@ sub handled_commands {
 }
 my %iscsicfg;
 
-sub sendmsg { #TODO: common code
-    my $callback = $output_handler;
-    my $text = shift;
-    my $node = shift;
-    my $descr;
-    my $rc;
-    if (ref $text eq 'HASH') {
-        return $callback->($text);
-    } elsif (ref $text eq 'ARRAY') {
-        $rc = $text->[0];
-        $text = $text->[1];
-    }
-    if ($text =~ /:/) {
-        ($descr,$text) = split /:/,$text,2;
-    }
-    $text =~ s/^ *//;
-    $text =~ s/ *$//;
-    my $msg;
-    my $curptr;
-    if ($node) {
-        $msg->{node}=[{name => [$node]}];
-        $curptr=$msg->{node}->[0];
-    } else {
-        $msg = {};
-        $curptr = $msg;
-    }
-    if ($rc) {
-        $curptr->{errorcode}=[$rc];
-        $curptr->{error}=[$text];
-        $curptr=$curptr->{error}->[0];
-    } else {
-        $curptr->{data}=[{contents=>[$text]}];
-        $curptr=$curptr->{data}->[0];
-        if ($descr) { $curptr->{desc}=[$descr]; }
-    }
-    $callback->($msg);
-}
 sub process_request {
     my $request = shift;
     $output_handler = shift;
     $iscsitab = xCAT::Table->new('iscsi');
     unless ($iscsitab) {
-        sendmsg([1,"iSCSI configuration lacking from the iscsi table"]);
+        xCAT::SvrUtils::sendmsg([1,"iSCSI configuration lacking from the iscsi table"], $output_handler);
         return;
     }
     my @nodes = @{$request->{node}};
@@ -97,12 +61,12 @@ sub process_request {
         $domain = $dent->{value};
         $domain = join(".",reverse(split(/\./,$domain)));
     } else {
-        sendmsg([1,"Cannot determine domain name for iqn generation from site table"]);
+        xCAT::SvrUtils::sendmsg([1,"Cannot determine domain name for iqn generation from site table"], $output_handler);
         return;
     }
     my $nodetype =xCAT::Table->new('nodetype',-create=>0);
     unless ($nodetype) {
-        sendmsg([1,"ONTAP plugin requires nodetype table to be populated"]);
+        xCAT::SvrUtils::sendmsg([1,"ONTAP plugin requires nodetype table to be populated"], $output_handler);
         return;
     }
     $nodetypeinfo = $nodetype->getNodesAttribs(\@nodes,['os']);
@@ -246,7 +210,7 @@ sub create_new_lun {
         imagex => 'windows'
     );
     unless ($nodetypeinfo->{$gname}->[0]->{os}) {
-        sendmsg([1,"nodetype.os must be set for ONTAP plugin to create a lun"]);
+        xCAT::SvrUtils::sendmsg([1,"nodetype.os must be set for ONTAP plugin to create a lun"], $output_handler);
     }
     my $ltype;
     my $ost=$nodetypeinfo->{$gname}->[0]->{os};
@@ -265,7 +229,7 @@ sub create_new_lun {
 
     my $output;
     unless (($lunsize or $mspec) and $ltype and $file and $gtype) { #TODO etc
-        sendmsg([1,"Insufficient data"]);
+        xCAT::SvrUtils::sendmsg([1,"Insufficient data"], $output_handler);
     }
     if ($lunsize) {
         my $size = getUnits($lunsize,'g',1048576);

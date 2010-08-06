@@ -450,7 +450,7 @@ sub on_bmc_connect {
     my $sessdata = shift;
 	my $command = $sessdata->{command};
     if ($status =~ /ERROR:/) {
-        sendmsg([1,$status],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,$status],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     #ok, detect some common prereqs here, notably:
@@ -474,7 +474,7 @@ sub on_bmc_connect {
         }
     }
 	if($command eq "ping") {
-		sendmsg("ping",$sessdata->{node});
+		xCAT::SvrUtils::sendmsg("ping",$callback,$sessdata->{node},%allerrornodes);
 		return;
 	}
 	if ($command eq "rpower") {
@@ -598,17 +598,17 @@ sub resetedbmc {
     my $rsp = shift;
     my $sessdata = shift;
 	if ($rsp->{error}) {
-        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
 	} else {
         if ($rsp->{code}) {
             if ($codes{$rsp->{code}}) {
-                sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+                xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
             } else {
-                sendmsg([1,sprintf("Unknown error %02xh",$rsp->{code})],$sessdata->{node});
+                xCAT::SvrUtils::sendmsg([1,sprintf("Unknown error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
             }
             return;
         } 
-        sendmsg("BMC reset",$sessdata->{node});
+        xCAT::SvrUtils::sendmsg("BMC reset",$callback,$sessdata->{node},%allerrornodes);
         $sessdata->{ipmisession} = undef; #throw away now unusable session
 	}
 }
@@ -699,14 +699,14 @@ sub netinfo_set {
     my $rsp = shift;
     my $sessdata = shift;
     if ($rsp->{error}) { 
-        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     if ($rsp->{code}) {
         if ($codes{$rsp->{code}}) {
-            sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
         } else {
-            sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+            xCAT::SvrUtils::sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
         }
         return;
     }
@@ -791,14 +791,14 @@ sub getnetinfo_response {
     my $subcommand = $sessdata->{subcommand};
     $sessdata->{subcommand} = shift @{$sessdata->{extraargs}};
     if ($rsp->{error}) { 
-        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     if ($rsp->{code}) {
         if ($codes{$rsp->{code}}) {
-            sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
         } else {
-            sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+            xCAT::SvrUtils::sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
         }
         return;
     }
@@ -809,50 +809,50 @@ sub getnetinfo_response {
 	my $format = "%-25s";
 	if($subcommand eq "garp") {
 			my $code = $returnd[2] / 2;
-				sendmsg(sprintf("$format %d","Gratuitous ARP seconds:",$code),$sessdata->{node});
+				xCAT::SvrUtils::sendmsg(sprintf("$format %d","Gratuitous ARP seconds:",$code),$callback,$sessdata->{node},%allerrornodes);
 	}
     elsif($subcommand eq "alert") {
         if ($returnd[3] & 0x8) { 
-           sendmsg("SP Alerting: enabled",$sessdata->{node});
+           xCAT::SvrUtils::sendmsg("SP Alerting: enabled",$callback,$sessdata->{node},%allerrornodes);
         } else {
-           sendmsg("SP Alerting: disabled",$sessdata->{node});
+           xCAT::SvrUtils::sendmsg("SP Alerting: disabled",$callback,$sessdata->{node},%allerrornodes);
         }
      }
 	elsif($subcommand =~ m/^snmpdest(\d+)/ ) {
-			sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
 				"SP SNMP Destination $1:",
 				$returnd[5],
 				$returnd[6],
 				$returnd[7],
-				$returnd[8]),$sessdata->{node});
+				$returnd[8]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "ip") {
-			sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
 				"BMC IP:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
-				$returnd[5]),$sessdata->{node});
+				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "netmask") {
-			sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
 				"BMC Netmask:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
-				$returnd[5]),$sessdata->{node});
+				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "gateway") {
-			sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
 				"BMC Gateway:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
-				$returnd[5]),$sessdata->{node});
+				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "backupgateway") {
-			sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
 				"BMC Backup Gateway:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
-				$returnd[5]),$sessdata->{node});
+				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif ($subcommand eq "community") {
 			my $text = sprintf("$format ","SP SNMP Community:");
 			my $l = 2;
@@ -864,7 +864,7 @@ sub getnetinfo_response {
 				$text = $text . sprintf("%c",$returnd[$i]);
 				$i = $i + 1;
 			}
-            sendmsg($text,$sessdata->{node});
+            xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
 	}
     if ($sessdata->{subcommand}) {
         if ($sessdata->{subcommand} =~ /=/) {
@@ -885,17 +885,17 @@ sub setboot_timerdisabled {
     my $rsp = shift;
     my $sessdata = shift;
     if ($rsp->{error}) { 
-        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     if ($rsp->{code}) {
         if ($codes{$rsp->{code}}) {
-            sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
             return;
         } elsif ($rsp->{code} == 0x80) {
-            sendmsg("Unable to disable countdown timer, boot device may revert in 60 seconds",$sessdata->{node});
+            xCAT::SvrUtils::sendmsg("Unable to disable countdown timer, boot device may revert in 60 seconds",$callback,$sessdata->{node},%allerrornodes);
         } else {
-            sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+            xCAT::SvrUtils::sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
             return;
         }
     }
@@ -908,7 +908,7 @@ sub setboot_timerdisabled {
         'p' => \$persistent,
         'u' => \$uefi,
         )) {
-        sendmsg([1,"Error parsing arguments"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"Error parsing arguments"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     my $subcommand=shift @ARGV;
@@ -938,7 +938,7 @@ sub setboot_timerdisabled {
         return;
     }
     else {
-        sendmsg([1,"unsupported command setboot $subcommand"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"unsupported command setboot $subcommand"],$callback,$sessdata->{node},%allerrornodes);
     }
     $sessdata->{ipmisession}->subcmd(netfn=>0,command=>8,data=>\@cmd,callback=>\&setboot_stat,callback_args=>$sessdata);
 }
@@ -946,12 +946,12 @@ sub setboot_stat {
     my $rsp = shift;
     my $sessdata = shift;
     if (ref $rsp) {
-        if ($rsp->{error}) { sendmsg([1,$rsp->{error}],$sessdata->{node}); }
+        if ($rsp->{error}) { xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes); }
         elsif ($rsp->{code}) {
         if ($codes{$rsp->{code}}) {
-            sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
         } else {
-            sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+            xCAT::SvrUtils::sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
         }
         return;
         }
@@ -961,12 +961,12 @@ sub setboot_stat {
 sub setboot_gotstat {
     my $rsp = shift;
     my $sessdata = shift;
-    if ($rsp->{error}) { sendmsg([1,$rsp->{error}],$sessdata->{node}); }
+    if ($rsp->{error}) { xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes); }
     elsif ($rsp->{code}) {
     if ($codes{$rsp->{code}}) {
-        sendmsg([1,$codes{$rsp->{code}}],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback,$sessdata->{node},%allerrornodes);
     } else {
-        sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,sprintf("Unknown ipmi error %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
     }
     return;
     }
@@ -980,11 +980,11 @@ sub setboot_gotstat {
     );
     my @returnd = ($rsp->{code},@{$rsp->{data}});
     unless ($returnd[3] & 0x80) {
-        sendmsg("boot override inactive",$sessdata->{node});
+        xCAT::SvrUtils::sendmsg("boot override inactive",$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     my $boot=($returnd[4] & 0x3C) >> 2;
-    sendmsg($bootchoices{$boot},$sessdata->{node});
+    xCAT::SvrUtils::sendmsg($bootchoices{$boot},$callback,$sessdata->{node},%allerrornodes);
     return;
 }
 
@@ -1027,12 +1027,12 @@ sub getrvidparms {
         }
         $response = $browser->request(GET $baseurl."/Java/jviewer.jnlp?ext_ip=".$sessdata->{ipmisession}->{bmc});
         $response = $response->content;
-        sendmsg("method:imm",$sessdata->{node});
-        sendmsg("jnlp:$response",$sessdata->{node});
+        xCAT::SvrUtils::sendmsg("method:imm",$callback,$sessdata->{node},%allerrornodes);
+        xCAT::SvrUtils::sendmsg("jnlp:$response",$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     unless ($sessdata->{mfg_id} == 2) { #Only implemented for IBM servers
-        sendmsg([1,"Remote video is not supported on this system"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"Remote video is not supported on this system"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     #TODO: use get bmc capabilities to see if rvid is actually supported before bothering the client java app
@@ -1042,14 +1042,14 @@ sub check_rsp_errors { #TODO: pass in command-specfic error code translation tab
     my $rsp = shift;
     my $sessdata = shift;
 	if($rsp->{error}) { #non ipmi error
-        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
         return 1;
 	}
     if ($rsp->{code}) { #ipmi error
         if ($codes{$rsp->{code}}) {
-            sendmsg([1,$codes{$rsp->{code}}]);
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback);
         } else {
-             sendmsg([1,sprintf("Unknown error code %02xh",$rsp->{code})],$sessdata->{node});
+             xCAT::SvrUtils::sendmsg([1,sprintf("Unknown error code %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
         }
         return 1;
     }
@@ -1063,7 +1063,7 @@ sub getrvidparms_with_buildid {
     my $sessdata = shift;
     my @build_id = (0,@{$rsp->{data}});
     unless ($build_id[1]==0x59 and $build_id[2]==0x55 and $build_id[3]==0x4f and $build_id[4]==0x4f) { #Only know how to cope with yuoo builds
-        sendmsg([1,"Remote video is not supported on this system"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"Remote video is not supported on this system"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     #wvid should be a possiblity, time to do the http...
@@ -1073,7 +1073,7 @@ sub getrvidparms_with_buildid {
     my $baseurl = "http://".$sessdata->{ipmisession}->{bmc}."/";
     my $response = $browser->request(POST $baseurl."/session/create",'Content-Type'=>"text/xml",Content=>$message);
     unless ($response->content eq "ok") {
-        sendmsg ([1,"Server returned unexpected data"],$sessdata->{node});
+        sendmsg ([1,"Server returned unexpected data"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
 
@@ -1081,16 +1081,16 @@ sub getrvidparms_with_buildid {
     $response = $browser->request(GET $baseurl."/kvm/kvm/jnlp");
     my $jnlp = $response->content;
     if ($jnlp =~ /This advanced option requires the purchase and installation/) {
-        sendmsg ([1,"Node does not have feature key for remote video"],$sessdata->{node});
+        sendmsg ([1,"Node does not have feature key for remote video"],$sessdata->{node},%allerrornodes);
     }
     my $currnode = $sessdata->{node};
     $jnlp =~ s!argument>title=.*Video Viewer</argument>!argument>title=$currnode wvid</argument>!;
-    sendmsg("method:imm",$sessdata->{node});
-    sendmsg("jnlp:$jnlp",$sessdata->{node});
+    xCAT::SvrUtils::sendmsg("method:imm",$callback,$sessdata->{node},%allerrornodes);
+    xCAT::SvrUtils::sendmsg("jnlp:$jnlp",$callback,$sessdata->{node},%allerrornodes);
     my @cmdargv = @{$sessdata->{extraargs}};
     if (grep /-m/,@cmdargv) {
         $response = $browser->request(GET $baseurl."/kvm/vm/jnlp");
-        sendmsg("mediajnlp:".$response->content,$sessdata->{node});;
+        xCAT::SvrUtils::sendmsg("mediajnlp:".$response->content,$callback,$sessdata->{node},%allerrornodes);;
     }
     return;
 }
@@ -1113,21 +1113,21 @@ sub power_with_context {
 	my $sessdata = shift;
 	my $text="";
 	if ($rsp->{error}) {
-		sendmsg([1,$rsp->{error}],$sessdata->{node});
+		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
 		return;
 	}
 	if ($rsp->{code} != 0) {
 		$text = $codes{$rsp->{code}};
 		unless ($text) { $text = sprintf("Unknown error code %02xh",$rsp->{code}); }
-		sendmsg([1,$text],$sessdata->{node});
+		xCAT::SvrUtils::sendmsg([1,$text],$callback,$sessdata->{node},%allerrornodes);
 		return;
 	}
 	$sessdata->{powerstatus} = ($rsp->{data}->[0] & 1 ? "on" : "off");
 	if ($sessdata->{subcommand} eq "stat" or $sessdata->{subcommand} eq "state" or $sessdata->{subcommand} eq "status") { 
         if ($sessdata->{powerstatprefix}) {
-		    sendmsg($sessdata->{powerstatprefix}.$sessdata->{powerstatus},$sessdata->{node});
+		    xCAT::SvrUtils::sendmsg($sessdata->{powerstatprefix}.$sessdata->{powerstatus},$callback,$sessdata->{node},%allerrornodes);
         } else {
-		    sendmsg($sessdata->{powerstatus},$sessdata->{node});
+		    xCAT::SvrUtils::sendmsg($sessdata->{powerstatus},$callback,$sessdata->{node},%allerrornodes);
         }
         if ($sessdata->{sensorstoread} and scalar @{$sessdata->{sensorstoread}}) { #if we are in an rvitals path, hook back into good graces
             $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
@@ -1150,18 +1150,18 @@ sub power_with_context {
 		);
 	if($subcommand eq "on") {
 		if ($sessdata->{powerstatus} eq "on") {
-			sendmsg("on",$sessdata->{node});
+			xCAT::SvrUtils::sendmsg("on",$callback,$sessdata->{node},%allerrornodes);
             $allerrornodes{$sessdata->{node}}=1;
 			return; # don't bother sending command
 		}
 	} elsif ($subcommand eq "softoff" or $subcommand eq "off" or $subcommand eq "reset") {
 		if ($sessdata->{powerstatus} eq "off") {
-			sendmsg("off",$sessdata->{node});
+			xCAT::SvrUtils::sendmsg("off",$callback,$sessdata->{node},%allerrornodes);
             $allerrornodes{$sessdata->{node}}=1;
 			return;
 		}
 	} elsif (not $argmap{$subcommand}) {
-		sendmsg([1,"unsupported command power $subcommand"]);
+		xCAT::SvrUtils::sendmsg([1,"unsupported command power $subcommand"],$callback);
 		return;
 	}
 
@@ -1171,16 +1171,16 @@ sub power_response {
 	my $rsp = shift;
 	my $sessdata = shift;
 	if($rsp->{error}) {
-		sendmsg([1,$rsp->{error}],$sessdata->{node});
+		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
 		return;
 	}
 	my @returnd = ($rsp->{code},@{$rsp->{data}});
 	if ($rsp->{code}) {
 		my $text = $codes{$rsp->{code}};
 		unless ($text) { $text = sprintf("Unknown response %02xh",$rsp->{code}); }
-		sendmsg([1,$text],$sessdata->{node});
+		xCAT::SvrUtils::sendmsg([1,$text],$callback,$sessdata->{node},%allerrornodes);
 	}
-	sendmsg($sessdata->{subcommand},$sessdata->{node});
+	xCAT::SvrUtils::sendmsg($sessdata->{subcommand},$callback,$sessdata->{node},%allerrornodes);
 }
 
 sub generic {
@@ -1253,7 +1253,7 @@ sub beacon {
         $ipmiv2 = 1;
     }
 	if($subcommand ne "on" and $subcommand ne "off"){
-                sendmsg([1,"please specify on or off for ipmi nodes (stat impossible)"],$sessdata->{node});
+                xCAT::SvrUtils::sendmsg([1,"please specify on or off for ipmi nodes (stat impossible)"],$callback,$sessdata->{node},%allerrornodes);
      }
 
     #if stuck with 1.5, say light for 255 seconds.  In 2.0, specify to turn it on forever
@@ -1280,18 +1280,18 @@ sub beacon_answer {
     my $sessdata = shift;
 
 	if($rsp->{error}) { #non ipmi error
-        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
         return;
 	}
     if ($rsp->{code}) { #ipmi error
         if ($codes{$rsp->{code}}) {
-            sendmsg([1,$codes{$rsp->{code}}]);
+            xCAT::SvrUtils::sendmsg([1,$codes{$rsp->{code}}],$callback);
         } else {
-             sendmsg([1,sprintf("Unknown error code %02xh",$rsp->{code})],$sessdata->{node});
+             xCAT::SvrUtils::sendmsg([1,sprintf("Unknown error code %02xh",$rsp->{code})],$callback,$sessdata->{node},%allerrornodes);
         }
         return;
     }
-    sendmsg($sessdata->{subcommand},$sessdata->{node});
+    xCAT::SvrUtils::sendmsg($sessdata->{subcommand},$callback,$sessdata->{node},%allerrornodes);
 }
 
 sub inv {
@@ -1364,7 +1364,7 @@ sub fru_initted {
         my $type;
         foreach $type (split /,/,$fru->rec_type) {
     		if(grep {$_ eq $type} @types) {
-    			sendmsg(sprintf($format,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$sessdata->{node});
+    			xCAT::SvrUtils::sendmsg(sprintf($format,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$callback,$sessdata->{node},%allerrornodes);
                 last;
             }
         }
@@ -1521,7 +1521,7 @@ sub get_uefi_version_with_xid {
     my $sessdata = shift;
     my @data = @{$rsp->{data}};
     if ($data[2] != 0 or $data[3] != 5 or $data[4] != 0x44) {
-        sendmsg([1,"Error1 retrieving UEFI build version"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"Error1 retrieving UEFI build version"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     splice @data,0,5;
@@ -1537,7 +1537,7 @@ sub waitfor_openxid {
     my $sessdata = shift;
     my @data = @{$rsp->{data}};
     if ($data[2] != 0) {
-        sendmsg([1,"Error2 retrieving UEFI build version"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"Error2 retrieving UEFI build version"],$callback,$sessdata->{node},%allerrornodes);
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
         return;
     }
@@ -1555,7 +1555,7 @@ sub got_uefi_buildid {
     my $sessdata = shift;
     my @data = @{$rsp->{data}};
     if ($data[2] != 0) {
-        sendmsg([1,"Error3 retrieving UEFI build version"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"Error3 retrieving UEFI build version"],$callback,$sessdata->{node},%allerrornodes);
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
         return;
     }
@@ -1572,7 +1572,7 @@ sub got_uefi_buildversion {
     my $sessdata = shift;
     my @data = @{$rsp->{data}};
     if ($data[2] != 0) {
-        sendmsg([1,"Error4 retrieving UEFI build version"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"Error4 retrieving UEFI build version"],$callback,$sessdata->{node},%allerrornodes);
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
         return;
     }
@@ -1589,7 +1589,7 @@ sub got_uefi_builddate {
     my $sessdata = shift;
     my @data = @{$rsp->{data}};
     if ($data[2] != 0) {
-        sendmsg([1,"Error5 retrieving UEFI build version"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"Error5 retrieving UEFI build version"],$callback,$sessdata->{node},%allerrornodes);
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xf0,data=>[0x4,0,0,0x05,0x44,@{$sessdata->{fmapixid}}],callback=>\&fmapi_xid_closed,callback_args=>$sessdata);
         return;
     }
@@ -2111,7 +2111,7 @@ sub add_fruhash {
             my $err;
             ($err,$fruhash) = parsefru($sessdata->{currfrudata});
             if ($err) {
-                sendmsg([1,":Error reading fru area ".$sessdata->{currfruid}.": $err"]);
+                xCAT::SvrUtils::sendmsg([1,":Error reading fru area ".$sessdata->{currfruid}.": $err"],$callback);
                 return;
             }
     }
@@ -2162,7 +2162,7 @@ sub readcurrfrudevice {
         }
         my @data = @{$rsp->{data}};
         if ($data[0] != $sessdata->{currfruchunk}) {
-            sendmsg([1,"Received incorrect data from BMC"],$sessdata->{node});
+            xCAT::SvrUtils::sendmsg([1,"Received incorrect data from BMC"],$callback,$sessdata->{node},%allerrornodes);
             return;
         }
         shift @data;
@@ -2472,7 +2472,7 @@ sub extractfield { #idx is location of the type/length byte, returns something a
     my $language=shift;
     my $data;
     if ($idx >= scalar @$area)  {
-        sendmsg([1,"Error parsing FRU data from BMC"]);
+        xCAT::SvrUtils::sendmsg([1,"Error parsing FRU data from BMC"],$callback);
         return 1,undef,undef;
     }
     my $size = $area->[$idx] & 0b00111111;
@@ -2873,20 +2873,20 @@ sub eventlog_with_selinfo {
 
 	my $sel_version = $returnd[1];
 	if($sel_version != 0x51) {
-		sendmsg(sprintf("SEL version 51h support only, version reported: %x",$sel_version),$sessdata->{node});
+		xCAT::SvrUtils::sendmsg(sprintf("SEL version 51h support only, version reported: %x",$sel_version),$callback,$sessdata->{node},%allerrornodes);
 		return;
 	}
 
     hexdump(\@returnd);
 	my $num_entries = ($returnd[3]<<8) + $returnd[2];
 	if($num_entries <= 0) {
-		sendmsg("no SEL entries",$sessdata->{node});
+		xCAT::SvrUtils::sendmsg("no SEL entries",$callback,$sessdata->{node},%allerrornodes);
         return;
 	}
 
 	my $canres = $returnd[14] & 0b00000010;
 	if(!$canres) {
-        sendmsg([1,"SEL reservation not supported"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"SEL reservation not supported"],$callback,$sessdata->{node},%allerrornodes);
         return;
 	}
 
@@ -2939,7 +2939,7 @@ sub got_sel {
                 $text.=" With additional data:\n".$sessdata->{auxloginfo}->{$entry};
             }
             if ($sessdata->{fullsel}) {
-               sendmsg($text,$sessdata->{node});
+               xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
             } else {
 			    push(@{$sessdata->{selentries}},$text);
             }
@@ -3062,9 +3062,9 @@ sub got_sel {
         if ($sessdata->{auxloginfo} and $sessdata->{auxloginfo}->{$entry}) {
              $text.=" with additional data:";
              if ($sessdata->{fullsel}) {
-                sendmsg($text,$sessdata->{node});
+                xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
                 foreach (split /\n/,$sessdata->{auxloginfo}->{$entry}) {
-                    sendmsg(0,$_,$sessdata->{node});
+                    xCAT::SvrUtils::sendmsg($_,$sessdata->{node});
                 }
              } else {
         		push(@{$sessdata->{selentries}},$text);
@@ -3073,7 +3073,7 @@ sub got_sel {
 
         } else {
             if ($sessdata->{fullsel}) {
-                sendmsg($text,$sessdata->{node});
+                xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
             } else {
         		push(@{$sessdata->{selentries}},$text);
             }
@@ -3122,7 +3122,7 @@ sub wait_for_selerase {
     my $sessdata = shift;
     my @returnd = (0,@{$rsp->{data}});
 	my $erase_status = $returnd[1] & 0b00000001;
-    sendmsg("SEL cleared",$sessdata->{node});
+    xCAT::SvrUtils::sendmsg("SEL cleared",$callback,$sessdata->{node},%allerrornodes);
 }
 
 #commenting out usless 'while 0' loop.
@@ -3666,7 +3666,7 @@ sub ieminitted {
 sub readenergy {
     my $sessdata = shift;
     unless ($iem_support) { 
-        sendmsg([1,"IBM::EnergyManager package required for this value"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"IBM::EnergyManager package required for this value"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
     my @entries;
@@ -3688,7 +3688,7 @@ sub got_ac_energy {
 sub got_ac_energy_with_precision {
     my $sessdata=shift;
     $sessdata->{iemtextdata} .= sprintf(" +/-%.1f%%",$sessdata->{iem}->energy_ac_precision()*0.1); #note while \x{B1} would be cool, it's non-trivial to support
-    sendmsg($sessdata->{iemtextdata},$sessdata->{node});
+    xCAT::SvrUtils::sendmsg($sessdata->{iemtextdata},$callback,$sessdata->{node},%allerrornodes);
     $sessdata->{iem}->prep_get_dc_energy();
     $sessdata->{iemcallback} = \&got_dc_energy;
     process_data_from_iem($sessdata);
@@ -3696,7 +3696,7 @@ sub got_ac_energy_with_precision {
 sub got_dc_energy {
     my $sessdata = shift;
     $sessdata->{iemtextdata} .= sprintf(" +/-%.1f%%",$sessdata->{iem}->energy_dc_precision()*0.1);
-    sendmsg($sessdata->{iemtextdata},$sessdata->{node});
+    xCAT::SvrUtils::sendmsg($sessdata->{iemtextdata},$callback,$sessdata->{node},%allerrornodes);
     if (scalar @{$sessdata->{sensorstoread}}) {
         $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
         readsensor($sessdata); #next sensor
@@ -3773,7 +3773,7 @@ sub checkleds {
 	my $mfg_id=$sessdata->{mfg_id};
 #TODO device id
 	if ($mfg_id != 2) {
-		sendmsg("LED status not supported on this system",$sessdata->{node});
+		xCAT::SvrUtils::sendmsg("LED status not supported on this system",$callback,$sessdata->{node},%allerrornodes);
         return;
 	}
 	
@@ -3808,7 +3808,7 @@ sub checkleds {
         $sessdata->{current_led_sdr} = pop @{$sessdata->{doled}};
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xc0,data=>$sessdata->{doled},callback=>\&did_led,callback_args=>$sessdata);
     } else {
-        sendmsg("No supported LEDs found in system",$sessdata->{node});
+        xCAT::SvrUtils::sendmsg("No supported LEDs found in system",$callback,$sessdata->{node},%allerrornodes);
     }
 #	if ($#output==-1) {
 #		push(@output,"No active error LEDs detected");
@@ -3843,19 +3843,19 @@ sub did_led {
 		if ($returnd[2]) { # != 0) {
 			#It's on...
 			if ($returnd[6] == 4) {
-				sendmsg(sprintf("BIOS or admininstrator has %s lit",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$sessdata->{node});
+				xCAT::SvrUtils::sendmsg(sprintf("BIOS or admininstrator has %s lit",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
 			}
 			elsif ($returnd[6] == 3) {
-				sendmsg(sprintf("A user has manually requested LED 0x%04x (%s) be active",$sdr->led_id,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$sessdata->{node});
+				xCAT::SvrUtils::sendmsg(sprintf("A user has manually requested LED 0x%04x (%s) be active",$sdr->led_id,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
 			}
 			elsif ($returnd[6] == 1 && $sdr->led_id !=0) {
-				sendmsg(sprintf("LED 0x%02x%02x (%s) active to indicate LED 0x%02x%02x (%s) is active",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds"),$returnd[4],$returnd[5],getsensorname($mfg_id,$prod_id,($returnd[4]<<8)+$returnd[5],"ibmleds")),$sessdata->{node});
+				xCAT::SvrUtils::sendmsg(sprintf("LED 0x%02x%02x (%s) active to indicate LED 0x%02x%02x (%s) is active",$led_id_ms,$led_id_ls,getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds"),$returnd[4],$returnd[5],getsensorname($mfg_id,$prod_id,($returnd[4]<<8)+$returnd[5],"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
 			}
 			elsif ($sdr->led_id ==0) {
-				sendmsg(sprintf("LED 0x0000 (%s) active to indicate system error condition.",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$sessdata->{node});
+				xCAT::SvrUtils::sendmsg(sprintf("LED 0x0000 (%s) active to indicate system error condition.",getsensorname($mfg_id,$prod_id,$sdr->led_id,"ibmleds")),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
 			}
 			elsif ($returnd[6] == 2) {
@@ -3873,7 +3873,7 @@ sub did_led {
 		                        }
 		                }
 				#push(@output,sprintf("Sensor 0x%02x (%s) has activated LED 0x%04x",$sensor_num,$sensor_desc,$sdr->led_id));
-				sendmsg(sprintf("LED 0x%02x%02x active to indicate Sensor 0x%02x (%s) error.",$led_id_ms,$led_id_ls,$sensor_num,$sensor_desc),$sessdata->{node});
+				xCAT::SvrUtils::sendmsg(sprintf("LED 0x%02x%02x active to indicate Sensor 0x%02x (%s) error.",$led_id_ms,$led_id_ls,$sensor_num,$sensor_desc),$callback,$sessdata->{node},%allerrornodes);
             $sessdata->{activeleds}=1;
 		        } else { #an LED is on for some other reason
                     print "DEBUG: unknown LED reason code ".$returnd[6]."\n";
@@ -3886,7 +3886,7 @@ sub did_led {
         $sessdata->{current_led_sdr} = pop @{$sessdata->{doled}};
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0xc0,data=>$sessdata->{doled},callback=>\&did_led,callback_args=>$sessdata);
     } elsif (not $sessdata->{activeleds}) {
-        sendmsg("No active error LEDs detected",$sessdata->{node});
+        xCAT::SvrUtils::sendmsg("No active error LEDs detected",$callback,$sessdata->{node},%allerrornodes);
     }
     if (scalar @{$sessdata->{sensorstoread}}) {
         $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
@@ -3916,19 +3916,19 @@ sub renergy_withiem {
     my @settable_keys = qw/savingstatus cappingstatus cappingwatt cappingvalue/;
     my $directive = shift (@{$sessdata->{directives}});
     if ($sessdata->{iemtextdata}) {
-        sendmsg($sessdata->{iemtextdata},$sessdata->{node});
+        xCAT::SvrUtils::sendmsg($sessdata->{iemtextdata},$callback,$sessdata->{node},%allerrornodes);
         $sessdata->{iemtextdata}="";
     }
     if ($sessdata->{gotcapstatus}) {
         $sessdata->{gotcapstatus}=0;
         my $capenabled = $sessdata->{iem}->capping_enabled();
-        sendmsg("cappingstatus: ".($capenabled ? "on" : "off"),$sessdata->{node});
+        xCAT::SvrUtils::sendmsg("cappingstatus: ".($capenabled ? "on" : "off"),$callback,$sessdata->{node},%allerrornodes);
     }
     if ($sessdata->{gothistogram}) {
         $sessdata->{gothistogram}=0;
         my @histdata = $sessdata->{iem}->extract_relative_histogram;
         foreach (sort { $a <=> $b } keys %{$histdata[0]}) {
-            sendmsg("$_: ".$histdata[0]->{$_},$sessdata->{node});
+            xCAT::SvrUtils::sendmsg("$_: ".$histdata[0]->{$_},$callback,$sessdata->{node},%allerrornodes);
         }
     }
 
@@ -4037,7 +4037,7 @@ sub vitals {
         $sensor_filters{leds}=1;
 	}
 	unless (keys %sensor_filters) {
-        sendmsg([1,"Unrecognized rvitals arguments ".join(" ",@{$sessdata->{extraargs}})],$sessdata->{node});;
+        xCAT::SvrUtils::sendmsg([1,"Unrecognized rvitals arguments ".join(" ",@{$sessdata->{extraargs}})],$callback,$sessdata->{node},%allerrornodes);;
 	}
 
     $sessdata->{sensorstoread} = [];
@@ -4070,7 +4070,7 @@ sub vitals {
         if ($iem_support) {
             push @{$sessdata->{sensorstoread}},"energy";
         } elsif (not $doall) {
-            sendmsg([1,"Energy data requires additional IBM::EnergyManager plugin in conjunction with IMM managed IBM equipment"],$sessdata->{node});
+            xCAT::SvrUtils::sendmsg([1,"Energy data requires additional IBM::EnergyManager plugin in conjunction with IMM managed IBM equipment"],$callback,$sessdata->{node},%allerrornodes);
         }
         #my @energies;
         #($rc,@energies)=readenergy();
@@ -4107,7 +4107,7 @@ sub sensorformat {
 	if ($extext) {
 		$text="$text ($extext)";
 	}
-    sendmsg($text,$sessdata->{node});
+    xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
     if (scalar @{$sessdata->{sensorstoread}}) {
         $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
         readsensor($sessdata); #next
@@ -4129,7 +4129,7 @@ sub readsensor {
             readenergy($sessdata);
             return;
         } else {
-        sendmsg([1,"TODO: make ".$sessdata->{currsdr}." work again"],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,"TODO: make ".$sessdata->{currsdr}." work again"],$callback,$sessdata->{node},%allerrornodes);
         }
         return;
     }
@@ -4141,7 +4141,7 @@ sub sensor_was_read {
     my $rsp = shift;
     my $sessdata = shift;
     if ($rsp->{error}) {
-        sendmsg([1,$rsp->{error}],$sessdata->{node});
+        xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
     }
     if ($rsp->{code}) {
         my $text = $codes{$rsp->{code}};
@@ -5476,7 +5476,7 @@ sub donode {
       subcommand => $exargs[0],
   };
   if ($sessiondata{$node}->{ipmisession}->{error}) {
-      sendmsg([1,$sessiondata{$node}->{ipmisession}->{error}],$node);
+      xCAT::SvrUtils::sendmsg([1,$sessiondata{$node}->{ipmisession}->{error}],$callback,$node,%allerrornodes);
   } else {
     my ($rc,@output) = ipmicmd($sessiondata{$node});
     sendoutput($rc,@output);
@@ -5487,50 +5487,6 @@ sub donode {
  # print $outfd $msgtoparent;
 }
 
-sub sendmsg {
-#    my $callback = $output_handler;
-    my $text = shift;
-    my $node = shift;
-    my $descr;
-    my $rc;
-    if (ref $text eq 'HASH') {
-        die "not right now";
-    } elsif (ref $text eq 'ARRAY') {
-        $rc = $text->[0];
-        $text = $text->[1];
-    }
-    if ($text =~ /:/) {
-        ($descr,$text) = split /:/,$text,2;
-    }
-    $text =~ s/^ *//;
-    $text =~ s/ *$//;
-    my $msg;
-    my $curptr;
-    if ($node) {
-        $msg->{node}=[{name => [$node]}];
-        $curptr=$msg->{node}->[0];
-    } else {
-        $msg = {};
-        $curptr = $msg;
-    }
-    if ($rc) {
-        $curptr->{errorcode}=[$rc];
-        $curptr->{error}=[$text];
-        $curptr=$curptr->{error}->[0];
-        if (defined $node) {
-            $allerrornodes{$node}=1;
-        }
-    } else {
-        $curptr->{data}=[{contents=>[$text]}];
-        $curptr=$curptr->{data}->[0];
-        if ($descr) { $curptr->{desc}=[$descr]; }
-    }
-#        print $outfd freeze([$msg]);
-#        print $outfd "\nENDOFFREEZE6sK4ci\n";
-#        yield;
-#        waitforack($outfd);
-    $callback->($msg);
-}
 sub sendoutput {
     my $rc=shift;
     foreach (@_) {

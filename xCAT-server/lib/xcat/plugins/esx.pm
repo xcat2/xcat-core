@@ -251,7 +251,7 @@ sub process_request {
         };
     }
     unless ($vmwaresdkdetect) {
-        sendmsg([1,"VMWare SDK required for operation, but not installed"]);
+        xCAT::SvrUtils::sendmsg([1,"VMWare SDK required for operation, but not installed"], $output_handler);
         return;
     }
 
@@ -347,7 +347,7 @@ sub process_request {
                 };
                 if ($@) { 
                       $vcenterhash{$vcenter}->{conn} = undef;
-                      sendmsg([1,"Unable to reach $vcenter vCenter server to manage $hyp: $@"]);
+                      xCAT::SvrUtils::sendmsg([1,"Unable to reach $vcenter vCenter server to manage $hyp: $@"], $output_handler);
                       next;
                 }
             }
@@ -366,7 +366,7 @@ sub process_request {
             }; 
             if ($@) {
 	       $hyphash{$hyp}->{conn} = undef;
-	       sendmsg([1,"Unable to reach $hyp to perform operation"]);
+	       xCAT::SvrUtils::sendmsg([1,"Unable to reach $hyp to perform operation"], $output_handler);
                 $hypready{$hyp} = -1;
 	       next;
             }
@@ -387,13 +387,13 @@ sub process_request {
                 push @badhypes,$_;
                 my @relevant_nodes = sort (keys %{$hyphash{$_}->{nodes}});
                 foreach (@relevant_nodes) {
-                    sendmsg([1,": hypervisor unreachable"],$_);
+                    xCAT::SvrUtils::sendmsg([1,": hypervisor unreachable"], $output_handler,$_);
                 }
                 delete $hyphash{$_};
             }
         }
         if (@badhypes) { 
-            sendmsg([1,": The following hypervisors failed to become ready for the operation: ".join(',',@badhypes)]);
+            xCAT::SvrUtils::sendmsg([1,": The following hypervisors failed to become ready for the operation: ".join(',',@badhypes)], $output_handler);
         }
     } 
     do_cmd($command,@exargs);
@@ -463,17 +463,17 @@ sub inv {
   if (not defined $args{vmview}) { #attempt one refresh
     $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
     if (not defined $args{vmview}) { 
-      sendmsg([1,"VM does not appear to exist"],$node);
+      xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $output_handler,$node);
       return;
     }
   }
   my $vmview = $args{vmview};
   my $uuid = $vmview->config->uuid;
-  sendmsg("UUID/GUID:  $uuid",$node);
+  xCAT::SvrUtils::sendmsg("UUID/GUID:  $uuid", $output_handler,$node);
   my $cpuCount = $vmview->config->hardware->numCPU;
-  sendmsg("CPUs:  $cpuCount",$node);
+  xCAT::SvrUtils::sendmsg("CPUs:  $cpuCount", $output_handler,$node);
   my $memory = $vmview->config->hardware->memoryMB;
-  sendmsg("Memory:  $memory MB",$node);
+  xCAT::SvrUtils::sendmsg("Memory:  $memory MB", $output_handler,$node);
   my $devices = $vmview->config->hardware->device;
   my $label;
   my $size;
@@ -486,9 +486,9 @@ sub inv {
         $label .= " (d".$device->unitNumber.")";
       $size = $device->capacityInKB / 1024;
       $fileName = $device->backing->fileName;
-      sendmsg("$label:  $size MB @ $fileName",$node);
+      xCAT::SvrUtils::sendmsg("$label:  $size MB @ $fileName", $output_handler,$node);
     } elsif ($label =~ /Network/) {
-        sendmsg("$label: ".$device->macAddress,$node);
+        xCAT::SvrUtils::sendmsg("$label: ".$device->macAddress, $output_handler,$node);
     }
   }
 }
@@ -505,7 +505,7 @@ sub chvm {
 				properties=>['config.name','runtime.powerState'],
 				filter=>{name=>$node});
 	  if (not defined $args{vmview}) {
-		sendmsg([1,"VM does not appear to exist"],$node);
+		xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $output_handler,$node);
 		return;
 	  }
         }
@@ -520,7 +520,7 @@ sub chvm {
 
 	require Getopt::Long;
 	$SIG{__WARN__} = sub {
-		sendmsg([1,"Could not parse options, ".shift()]);
+		xCAT::SvrUtils::sendmsg([1,"Could not parse options, ".shift()], $output_handler);
 	};
 	my $rc = GetOptions(
 		"d=s"       => \@deregister,
@@ -533,7 +533,7 @@ sub chvm {
 	$SIG{__WARN__} = 'DEFAULT';
 
 	if(@ARGV) {
-		sendmsg("Invalid arguments:  @ARGV");
+		xCAT::SvrUtils::sendmsg("Invalid arguments:  @ARGV", $output_handler);
 		return;
 	}
 
@@ -542,12 +542,12 @@ sub chvm {
 	}
 
 	#use Data::Dumper;
-	#sendmsg("dereg = ".Dumper(\@deregister));
-	#sendmsg("purge = ".Dumper(\@purge));
-	#sendmsg("add = ".Dumper(\@add));
-	#sendmsg("resize = ".Dumper(\%resize));
-	#sendmsg("cpus = $cpuCount");
-	#sendmsg("mem = ".getUnits($memory,"K",1024));
+	#xCAT::SvrUtils::sendmsg("dereg = ".Dumper(\@deregister));
+	#xCAT::SvrUtils::sendmsg("purge = ".Dumper(\@purge));
+	#xCAT::SvrUtils::sendmsg("add = ".Dumper(\@add));
+	#xCAT::SvrUtils::sendmsg("resize = ".Dumper(\%resize));
+	#xCAT::SvrUtils::sendmsg("cpus = $cpuCount");
+	#xCAT::SvrUtils::sendmsg("mem = ".getUnits($memory,"K",1024));
 
 
 	my %conargs;
@@ -582,10 +582,10 @@ sub chvm {
 		for $disk (@deregister) {
 			$device = getDiskByLabel($disk, $devices);
 			unless($device) {
-				sendmsg([1,"Disk:  $disk does not exist"],$node);
+				xCAT::SvrUtils::sendmsg([1,"Disk:  $disk does not exist"], $output_handler,$node);
 				return;
 			}
-			#sendmsg(Dumper($device));
+			#xCAT::SvrUtils::sendmsg(Dumper($device));
 			push @devChanges, VirtualDeviceConfigSpec->new(
 						device => $device,
 						operation =>  VirtualDeviceConfigSpecOperation->new('remove'));
@@ -597,10 +597,10 @@ sub chvm {
 		for $disk (@purge) {
 			$device = getDiskByLabel($disk, $devices);
 			unless($device) {
-				sendmsg([1,"Disk:  $disk does not exist"],$node);
+				xCAT::SvrUtils::sendmsg([1,"Disk:  $disk does not exist"], $output_handler,$node);
 				return;
 			}
-			#sendmsg(Dumper($device));
+			#xCAT::SvrUtils::sendmsg(Dumper($device));
 			push @devChanges, VirtualDeviceConfigSpec->new(
 						device => $device,
 						operation =>  VirtualDeviceConfigSpecOperation->new('remove'),
@@ -643,7 +643,7 @@ sub chvm {
 				my $disk = $device;
 				$device = getDiskByLabel($disk, $devices);
 				unless($device) {
-					sendmsg([1,"Disk:  $disk does not exist"],$node);
+					xCAT::SvrUtils::sendmsg([1,"Disk:  $disk does not exist"], $output_handler,$node);
 					return;
 				}
                 if ($value =~ /^\+(.+)/) {
@@ -671,7 +671,7 @@ sub chvm {
 
 	my $reconfigspec = VirtualMachineConfigSpec->new(%conargs);
 	
-	#sendmsg("reconfigspec = ".Dumper($reconfigspec));
+	#xCAT::SvrUtils::sendmsg("reconfigspec = ".Dumper($reconfigspec));
 	my $task = $vmview->ReconfigVM_Task(spec=>$reconfigspec);
 	$running_tasks{$task}->{task} = $task;
 	$running_tasks{$task}->{callback} = \&generic_task_callback;
@@ -820,7 +820,7 @@ sub connecthost_callback {
                 $error.=$_->message;
             }
         }
-        sendmsg([1,$error]); #,$node);
+        xCAT::SvrUtils::sendmsg([1,$error], $output_handler); #,$node);
         $hypready{$args->{hypname}} = -1; #Impossible for this hypervisor to ever be ready
         $vcenterhash{$args->{vcenter}}->{$args->{hypname}} = 'bad';
     }
@@ -906,7 +906,7 @@ sub enable_vmotion {
             $nicmgr->SelectVnicForNicType(nicType=>"vmotion",device=>$qnc->candidateVnic->[0]->device);
             return 1;
         } else {
-            sendmsg([1,"TODO: use configuration to pick the nic ".$args{hypname}]);
+            xCAT::SvrUtils::sendmsg([1,"TODO: use configuration to pick the nic ".$args{hypname}], $output_handler);
         }
         return 0;
     }
@@ -918,7 +918,7 @@ sub mkvm_callback {
     my $hyp = $args->{hyp};
     if ($task->info->state->val eq 'error') {
         my $error = $task->info->error->localizedMessage;
-        sendmsg([1,$error],$node);
+        xCAT::SvrUtils::sendmsg([1,$error], $output_handler,$node);
     }
 }
 
@@ -934,10 +934,10 @@ sub relay_vmware_err {
     }
     if (@nodes) {
         foreach (@nodes) {
-            sendmsg([1,$extratext.$error],$_);
+            xCAT::SvrUtils::sendmsg([1,$extratext.$error], $output_handler,$_);
         }
     }else {
-            sendmsg([1,$extratext.$error]);
+            xCAT::SvrUtils::sendmsg([1,$extratext.$error], $output_handler);
     }
 }
 
@@ -955,7 +955,7 @@ sub relocate_callback {
             $target.="=$model";
         }
         $vmtab->setNodeAttribs($parms->{node},{storage=>$target});
-        sendmsg(":relocated to to ".$parms->{target},$parms->{node});
+        xCAT::SvrUtils::sendmsg(":relocated to to ".$parms->{target}, $output_handler,$parms->{node});
     } else {
         relay_vmware_err($task,"Relocating to ".$parms->{target}." ",$parms->{node});
     }
@@ -964,7 +964,7 @@ sub migrate_ok { #look like a successful migrate, callback for registering a vm
      my %args = @_;
      my $vmtab = xCAT::Table->new('vm');
      $vmtab->setNodeAttribs($args{nodes}->[0],{host=>$args{target}});
-     sendmsg("migrated to ".$args{target},$args{nodes}->[0]);
+     xCAT::SvrUtils::sendmsg("migrated to ".$args{target}, $output_handler,$args{nodes}->[0]);
 }
 sub migrate_callback {
     my $task = shift;
@@ -973,7 +973,7 @@ sub migrate_callback {
     if (not $parms->{skiptodeadsource} and $state eq 'success') {
         my $vmtab = xCAT::Table->new('vm');
         $vmtab->setNodeAttribs($parms->{node},{host=>$parms->{target}});
-        sendmsg("migrated to ".$parms->{target},$parms->{node});
+        xCAT::SvrUtils::sendmsg("migrated to ".$parms->{target}, $output_handler,$parms->{node});
     } elsif($parms->{offline}) { #try a forceful RegisterVM instead
         my $target = $parms->{target};
         my $hostview = $hyphash{$target}->{conn}->find_entity_view(view_type=>'VirtualMachine',properties=>['config.name'],filter=>{name=>$parms->{node}});
@@ -1003,7 +1003,7 @@ sub poweron_task_callback {
     my $node = $parms->{node};
     my $intent = $parms->{successtext};
     if ($state eq 'success') {
-        sendmsg($intent,$node);
+        xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
     }  elsif ($q and $q->text =~ /^msg.uuid.altered:/ and ($q->choice->choiceInfo->[0]->summary eq 'Cancel' and ($q->choice->choiceInfo->[0]->key eq '0'))) { #make sure it is what is what we have seen it to be
@@ -1011,13 +1011,13 @@ sub poweron_task_callback {
             $vm->AnswerVM(questionId=>$q->id,answerChoice=>'1');
         } else {
             $vm->AnswerVM(questionId=>$q->id,answerChoice=>'0');
-            sendmsg([1,"Failure powering on VM, it mismatched against the hypervisor.  If positive VM is not running on another hypervisor, use -f to force VM on"],$node);
+            xCAT::SvrUtils::sendmsg([1,"Failure powering on VM, it mismatched against the hypervisor.  If positive VM is not running on another hypervisor, use -f to force VM on"], $output_handler,$node);
         }
     } elsif ($q) {
         if ($q->choice->choiceInfo->[0]->summary eq 'Cancel') {
-            sendmsg([1,":Cancelling due to unexpected question executing task: ".$q->text],$node);
+            xCAT::SvrUtils::sendmsg([1,":Cancelling due to unexpected question executing task: ".$q->text], $output_handler,$node);
         } else {
-            sendmsg([1,":Task hang due to unexpected question executing task, need to use VMware tools to clean up the mess for now: ".$q->text],$node);
+            xCAT::SvrUtils::sendmsg([1,":Task hang due to unexpected question executing task, need to use VMware tools to clean up the mess for now: ".$q->text], $output_handler,$node);
         }
     }
 
@@ -1029,50 +1029,11 @@ sub generic_task_callback {
     my $node = $parms->{node};
     my $intent = $parms->{successtext};
     if ($state eq 'success') {
-        sendmsg($intent,$node);
+        xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
     }
 }
-
-sub sendmsg {
-    my $callback = $output_handler;
-    my $text = shift;
-    my $node = shift;
-    my $descr;
-    my $rc;
-    if (ref $text eq 'HASH') {
-        return $callback->($text);
-    } elsif (ref $text eq 'ARRAY') {
-        $rc = $text->[0];
-        $text = $text->[1];
-    }
-    if ($text =~ /:/) {
-        ($descr,$text) = split /:/,$text,2;
-    }
-    $text =~ s/^ *//;
-    $text =~ s/ *$//;
-    my $msg;
-    my $curptr;
-    if ($node) {
-        $msg->{node}=[{name => [$node]}];
-        $curptr=$msg->{node}->[0];
-    } else {
-        $msg = {};
-        $curptr = $msg;
-    }
-    if ($rc) {
-        $curptr->{errorcode}=[$rc];
-        $curptr->{error}=[$text];
-        $curptr=$curptr->{error}->[0];
-    } else {
-        $curptr->{data}=[{contents=>[$text]}];
-        $curptr=$curptr->{data}->[0];
-        if ($descr) { $curptr->{desc}=[$descr]; }
-    }
-    $callback->($msg);
-}
-
 
 sub migrate {
     my %args = @_;
@@ -1086,22 +1047,22 @@ sub migrate {
         's=s' => \$datastoredest,
         'f' => \$offline,
         )) {
-        sendmsg([1,"Error parsing arguments"]);
+        xCAT::SvrUtils::sendmsg([1,"Error parsing arguments"], $output_handler);
         return;
     }
     my $target=$hyp; #case for storage migration
     if ($datastoredest and scalar @ARGV) {
-        sendmsg([1,"Unable to mix storage migration and processing of arguments ".join(' ',@ARGV)]);
+        xCAT::SvrUtils::sendmsg([1,"Unable to mix storage migration and processing of arguments ".join(' ',@ARGV)], $output_handler);
         return;
     } elsif (@ARGV) {
         $target=shift @ARGV;
         if (@ARGV) {
-            sendmsg([1,"Unrecognized arguments ".join(' ',@ARGV)]);
+            xCAT::SvrUtils::sendmsg([1,"Unrecognized arguments ".join(' ',@ARGV)], $output_handler);
             return;
         }
     } elsif ($datastoredest) { #storage migration only
         unless (validate_datastore_prereqs([],$hyp,{$datastoredest=>\@nodes})) {
-            sendmsg([1,"Unable to find/mount target datastore $datastoredest"]);
+            xCAT::SvrUtils::sendmsg([1,"Unable to find/mount target datastore $datastoredest"], $output_handler);
             return;
         }
         foreach (@nodes) {
@@ -1119,16 +1080,16 @@ sub migrate {
         return;
     }
     if ((not $offline and $vcenterhash{$vcenter}->{$hyp} eq 'bad') or $vcenterhash{$vcenter}->{$target} eq 'bad') {
-        sendmsg([1,"Unable to migrate ".join(',',@nodes)." to $target due to inability to validate vCenter connectivity"]);
+        xCAT::SvrUtils::sendmsg([1,"Unable to migrate ".join(',',@nodes)." to $target due to inability to validate vCenter connectivity"], $output_handler);
         return;
     }
     if (($offline or $vcenterhash{$vcenter}->{$hyp} eq 'good') and $vcenterhash{$vcenter}->{$target} eq 'good') {
         unless (validate_datastore_prereqs(\@nodes,$target)) {
-            sendmsg([1,"Unable to verify storage state on target system"]);
+            xCAT::SvrUtils::sendmsg([1,"Unable to verify storage state on target system"], $output_handler);
             return;
         }
         unless (validate_network_prereqs(\@nodes,$target)) {
-            sendmsg([1,"Unable to verify target network state"]);
+            xCAT::SvrUtils::sendmsg([1,"Unable to verify target network state"], $output_handler);
             return;
         }
         my $dstview = get_hostview(conn=>$hyphash{$target}->{conn},hypname=>$target,properties=>['name','parent']);
@@ -1145,7 +1106,7 @@ sub migrate {
                 $srcview = $hyphash{$hyp}->{conn}->find_entity_view(view_type=>'VirtualMachine',properties=>['config.name'],filter=>{name=>$_});
 	    }
 	    unless ($srcview) {
-		sendmsg([1,"Unable to locate node in vCenter"],$_);
+		xCAT::SvrUtils::sendmsg([1,"Unable to locate node in vCenter"], $output_handler,$_);
 		next;
 	    }
 		
@@ -1159,7 +1120,7 @@ sub migrate {
             $running_tasks{$task}->{data} = { node => $_, src=>$hyp, target=>$target, offline => $offline }; 
         }
     } else {
-        #sendmsg("Waiting for BOTH to be 'good'");
+        #xCAT::SvrUtils::sendmsg("Waiting for BOTH to be 'good'");
         return; #One of them is still 'pending'
     }
 }
@@ -1204,7 +1165,7 @@ sub rmvm {
     if (not defined $args{vmview}) { #attempt one refresh
         $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
         if (not defined $args{vmview}) { 
-            sendmsg([1,"VM does not appear to exist"],$node);
+            xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $output_handler,$node);
             return;
         }
     }
@@ -1226,7 +1187,7 @@ sub rmvm {
             $running_tasks{$task}->{data} = { node => $node, args=>\%args }; 
             return;
         } else {
-            sendmsg([1,"Cannot rmvm active guest (use -f argument to force)"],$node);
+            xCAT::SvrUtils::sendmsg([1,"Cannot rmvm active guest (use -f argument to force)"], $output_handler,$node);
             return;
         }
     }
@@ -1287,7 +1248,7 @@ sub power {
     if (not defined $args{vmview}) { #attempt one refresh
         $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','config','runtime.powerState'],filter=>{name=>$node});
         if (not defined $args{vmview}) { 
-            sendmsg([1,"VM does not appear to exist"],$node);
+            xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $output_handler,$node);
             return;
         }
     }
@@ -1308,7 +1269,7 @@ sub power {
            my $reconfigspec;
            if ($reconfigspec = getreconfigspec(node=>$node,view=>$args{vmview})) {
                if ($currstat eq 'poweredOff') {
-                   #sendmsg("Correcting guestId because $currid and $rightid are not the same...");#DEBUG
+                   #xCAT::SvrUtils::sendmsg("Correcting guestId because $currid and $rightid are not the same...");#DEBUG
                     my $task = $args{vmview}->ReconfigVM_Task(spec=>$reconfigspec);
                     $running_tasks{$task}->{task} = $task;
                     $running_tasks{$task}->{callback} = \&reconfig_callback;
@@ -1316,7 +1277,7 @@ sub power {
                     $running_tasks{$task}->{data} = { node => $node, reconfig_fun=>\&power, reconfig_args=>\%args }; 
                 return;
                } elsif (grep /$subcmd/,qw/reset boot/) { #going to have to do a 'cycle' and present it up normally..
-                    #sendmsg("DEBUG: forcing a cycle");
+                    #xCAT::SvrUtils::sendmsg("DEBUG: forcing a cycle");
                     $task = $args{vmview}->PowerOffVM_Task();
                     $running_tasks{$task}->{task} = $task;
                     $running_tasks{$task}->{callback} = \&repower;
@@ -1325,7 +1286,7 @@ sub power {
                     return; #we have to wait
                }
 #TODO: fixit
-           #sendmsg("I see vm has $currid and I want it to be $rightid");
+           #xCAT::SvrUtils::sendmsg("I see vm has $currid and I want it to be $rightid");
            }
        }
     } else {
@@ -1339,7 +1300,7 @@ sub power {
                 $currstat = 'suspend';
             }
             if ($subcmd =~ /^stat/) {
-                sendmsg($currstat,$node);
+                xCAT::SvrUtils::sendmsg($currstat, $output_handler,$node);
                 return;
             }
             if ($subcmd =~ /boot/) {
@@ -1362,7 +1323,7 @@ sub power {
                         $task = $args{vmview}->PowerOnVM_Task(host=>$hyphash{$hyp}->{hostview});
                     };
                     if ($@) {
-                        sendmsg([1,":".$@],$node);
+                        xCAT::SvrUtils::sendmsg([1,":".$@], $output_handler,$node);
                         return;
                     }
                     $running_tasks{$task}->{task} = $task;
@@ -1370,7 +1331,7 @@ sub power {
                     $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
                     $running_tasks{$task}->{data} = { node => $node, successtext => $intent.'on', forceon=>$forceon };
                 } else {
-                    sendmsg($currstat,$node);
+                    xCAT::SvrUtils::sendmsg($currstat, $output_handler,$node);
                 }
             } elsif ($subcmd =~ /off/) {
                 if ($currstat eq 'on') {
@@ -1380,7 +1341,7 @@ sub power {
                     $running_tasks{$task}->{hyp} = $args{hyp}; 
                     $running_tasks{$task}->{data} = { node => $node, successtext => 'off' }; 
                 } else {
-                    sendmsg($currstat,$node);
+                    xCAT::SvrUtils::sendmsg($currstat, $output_handler,$node);
                 }
             } elsif ($subcmd =~ /suspend/) {
                 if ($currstat eq 'on') {
@@ -1390,7 +1351,7 @@ sub power {
                     $running_tasks{$task}->{hyp} = $args{hyp}; 
                     $running_tasks{$task}->{data} = { node => $node, successtext => 'suspend' }; 
                 } else {
-                    sendmsg("off",$node);
+                    xCAT::SvrUtils::sendmsg("off", $output_handler,$node);
                 }
             } elsif ($subcmd =~ /reset/) {
                 if ($currstat eq 'on') {
@@ -1404,7 +1365,7 @@ sub power {
                         $task = $args{vmview}->PowerOnVM_Task(host=>$hyphash{$hyp}->{hostview});
                     };
                     if ($@) {
-                        sendmsg([1,":".$@],$node);
+                        xCAT::SvrUtils::sendmsg([1,":".$@], $output_handler,$node);
                         return;
                     }
                     $running_tasks{$task}->{task} = $task;
@@ -1412,7 +1373,7 @@ sub power {
                     $running_tasks{$task}->{hyp} = $args{hyp}; 
                     $running_tasks{$task}->{data} = { node => $node, successtext => $intent.'reset' }; 
                 } else {
-                    sendmsg($currstat,$node);
+                    xCAT::SvrUtils::sendmsg($currstat, $output_handler,$node);
                 }
             }
 }
@@ -1571,7 +1532,7 @@ sub lsvm {
     }
     foreach (@$vms) {
         my $vmv = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$_);
-        sendmsg($vmv->name,$hyp);
+        xCAT::SvrUtils::sendmsg($vmv->name, $output_handler,$hyp);
     }
     return;
 }
@@ -1611,7 +1572,7 @@ sub mkvms {
     foreach $node (@$nodes) {
          process_tasks; #check for tasks needing followup actions before the task is forgotten (VMWare's memory is fairly short at times
         if ($hyphash{$hyp}->{conn}->find_entity_view(view_type=>"VirtualMachine",filter=>{name=>$node})) {
-            sendmsg([1,"Virtual Machine already exists"],$node);
+            xCAT::SvrUtils::sendmsg([1,"Virtual Machine already exists"], $output_handler,$node);
             next;
         } else {
             register_vm($hyp,$node,$disksize);
@@ -1632,7 +1593,7 @@ sub setboot {
     if (not defined $args{vmview}) { #attempt one refresh
         $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name'],filter=>{name=>$node});
         if (not defined $args{vmview}) { 
-            sendmsg([1,"VM does not appear to exist"],$node);
+            xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $output_handler,$node);
             return;
         }
     }
@@ -1647,7 +1608,7 @@ sub setboot {
     my $reconfigspec;
     if ($bootorder =~ /setup/) {
         unless ($bootorder eq 'setup') {
-            sendmsg([1,"rsetboot parameter may not contain 'setup' with other items, assuming vm.bootorder is just 'setup'"],$node);
+            xCAT::SvrUtils::sendmsg([1,"rsetboot parameter may not contain 'setup' with other items, assuming vm.bootorder is just 'setup'"], $output_handler,$node);
         }
         $reconfigspec = VirtualMachineConfigSpec->new(
             bootOptions=>VirtualMachineBootOptions->new(enterBIOSSetup=>1),
@@ -1725,7 +1686,7 @@ sub register_vm_callback {
         } elsif ($args->{errregister}) {
             relay_vmware_err($task,"",$args->{node});
         } else {
-            sendmsg([1,"mkvm must be called before use of this function"],$args->{node});
+            xCAT::SvrUtils::sendmsg([1,"mkvm must be called before use of this function"], $output_handler,$args->{node});
         }
     } elsif (defined $args->{blockedfun}) { #If there is a blocked function, call it here) 
         $args->{blockedfun}->(%{$args->{blockedargs}});
@@ -1744,7 +1705,7 @@ sub getURI {
         $server =~ s/:$//; #tolerate habitual colons
         my $servern = inet_aton($server);
         unless ($servern) {
-            sendmsg([1,"could not resolve '$server' to an address from vm.storage/vm.cfgstore"]);
+            xCAT::SvrUtils::sendmsg([1,"could not resolve '$server' to an address from vm.storage/vm.cfgstore"], $output_handler);
         }
         $server = inet_ntoa($servern);
         $uri = "nfs://$server/$path";
@@ -1753,7 +1714,7 @@ sub getURI {
         $name =~ s/:$//; #remove a : if someone put it in for some reason.  
         $uri = "vmfs://$name";
     }else{
-        sendmsg([1,"Unsupported VMware Storage Method: $method.  Please use 'vmfs or nfs'"]);
+        xCAT::SvrUtils::sendmsg([1,"Unsupported VMware Storage Method: $method.  Please use 'vmfs or nfs'"], $output_handler);
     }
 
     return $uri;
@@ -1994,7 +1955,7 @@ sub create_storage_devs {
         #$server =~ s/:$//; #tolerate habitual colons
         #my $servern = inet_aton($server);
         #unless ($servern) {
-        #    sendmsg([1,"could not resolve '$server' to an address from vm.storage"]);
+        #    xCAT::SvrUtils::sendmsg([1,"could not resolve '$server' to an address from vm.storage"]);
         #    return;
         #}
         #$server = inet_ntoa($servern);
@@ -2075,7 +2036,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
         }
     }
     unless ($hyphash{$hyp}->{vcenter}->{conn}) {
-        sendmsg([1,": Unable to reach vCenter server managing $hyp"]);
+        xCAT::SvrUtils::sendmsg([1,": Unable to reach vCenter server managing $hyp"], $output_handler);
         return undef;
     }
 
@@ -2145,7 +2106,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
         	$hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
         };
         if ($@) {
-    		sendmsg([1,": Failed to communicate with $hyp"]);
+    		xCAT::SvrUtils::sendmsg([1,": Failed to communicate with $hyp"], $output_handler);
                      $hyphash{$hyp}->{conn} = undef;
                     return "failed";
         }
@@ -2186,7 +2147,7 @@ sub  addhosttovcenter {
     if ($tablecfg{hypervisor}->{$hyp}->[0]->{cluster}) {
         my $cluster = get_clusterview(clustname=>$tablecfg{hypervisor}->{$hyp}->[0]->{cluster},conn=>$hyphash{$hyp}->{vcenter}->{conn});
         unless ($cluster) {
-            sendmsg([1,$tablecfg{hypervisor}->{$hyp}->[0]->{cluster}. " is not a known cluster to the vCenter server."]);
+            xCAT::SvrUtils::sendmsg([1,$tablecfg{hypervisor}->{$hyp}->[0]->{cluster}. " is not a known cluster to the vCenter server."], $output_handler);
             $hypready{$hyp}=-1; #Declare impossiblility to be ready
             return;
         }
@@ -2268,7 +2229,7 @@ sub get_switchname_for_portdesc {
         $description = 'vsw'.$portdesc;
     }
     unless ($description) {
-        sendmsg([1,": Invalid format for hypervisor.netmap detected for $hyp"]);
+        xCAT::SvrUtils::sendmsg([1,": Invalid format for hypervisor.netmap detected for $hyp"], $output_handler);
         return undef;
     }
     my %requiredports;
@@ -2289,7 +2250,7 @@ sub get_switchname_for_portdesc {
         }
     }
     if (keys %requiredports) {
-        sendmsg([1,":Unable to locate the following nics on $hyp: ".join(',',keys %requiredports)]);
+        xCAT::SvrUtils::sendmsg([1,":Unable to locate the following nics on $hyp: ".join(',',keys %requiredports)], $output_handler);
         return undef;
     }
     my $foundmatchswitch;
@@ -2310,7 +2271,7 @@ sub get_switchname_for_portdesc {
     }
     if ($foundmatchswitch) {
         if ($cfgmismatch) {
-            sendmsg([1,": Aggregation mismatch detected, request nic is aggregated with a nic not requested"]);
+            xCAT::SvrUtils::sendmsg([1,": Aggregation mismatch detected, request nic is aggregated with a nic not requested"], $output_handler);
             return undef;
         }
         unless (keys %portkeys) {
@@ -2446,7 +2407,7 @@ sub validate_datastore_prereqs {
                      $mnthost = inet_ntoa($mnthost);
                     } else {
                         $mnthost = $dsv->info->nas->remoteHost;
-                        sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"]);
+                        xCAT::SvrUtils::sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"], $output_handler);
                     }
                     $hyphash{$hyp}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
                     $hyphash{$hyp}->{datastorerefmap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$_;
@@ -2479,7 +2440,7 @@ sub validate_datastore_prereqs {
                     $server =~ s/:$//; #remove a : if someone put it in out of nfs mount habit
                     my $servern = inet_aton($server);
                     unless ($servern) {
-                        sendmsg([1,": Unable to resolve '$server' to an address, check vm.cfgstore/vm.storage"]);
+                        xCAT::SvrUtils::sendmsg([1,": Unable to resolve '$server' to an address, check vm.cfgstore/vm.storage"], $output_handler);
                         return 0;
                     }
                     $server = inet_ntoa($servern);
@@ -2497,11 +2458,11 @@ sub validate_datastore_prereqs {
                         ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=create_vmfs_datastore($hostview,$name);
                     }
                 }else{
-                    sendmsg([1,": $method is unsupported at this time (nfs would be)"],$node);
+                    xCAT::SvrUtils::sendmsg([1,": $method is unsupported at this time (nfs would be)"], $output_handler,$node);
                     return 0;
                 }
             } else {
-                sendmsg([1,": $_ not supported storage specification for ESX plugin,\n\t'nfs://<server>/<path>'\n\t\tor\n\t'vmfs://<vmfs>'\n only currently supported vm.storage supported for ESX at the moment"],$node);
+                xCAT::SvrUtils::sendmsg([1,": $_ not supported storage specification for ESX plugin,\n\t'nfs://<server>/<path>'\n\t\tor\n\t'vmfs://<vmfs>'\n only currently supported vm.storage supported for ESX at the moment"], $output_handler,$node);
                 return 0;
             } #TODO: raw device mapping, VMFS via iSCSI, VMFS via FC?
         }
@@ -2517,14 +2478,14 @@ sub validate_datastore_prereqs {
                 $server =~ s/:$//; #remove a : if someone put it in out of nfs mount habit
                 my $servern = inet_aton($server);
                 unless ($servern) {
-                    sendmsg([1,": Unable to resolve '$server' to an address, check vm.cfgstore/vm.storage"]);
+                    xCAT::SvrUtils::sendmsg([1,": Unable to resolve '$server' to an address, check vm.cfgstore/vm.storage"], $output_handler);
                     return 0;
                 }
                 $server = inet_ntoa($servern);
                 my $uri = "nfs://$server/$path";
                 unless ($method =~ /nfs/) {
                     foreach (@{$newdatastores->{$_}}) {
-                        sendmsg([1,": $method is unsupported at this time (nfs would be)"],$_);
+                        xCAT::SvrUtils::sendmsg([1,": $method is unsupported at this time (nfs would be)"], $output_handler,$_);
                     }
                     return 0;
                 }
@@ -2534,7 +2495,7 @@ sub validate_datastore_prereqs {
                 }
             } else {
                 foreach (@{$newdatastores->{$_}}) {
-                    sendmsg([1,": $_ not supported storage specification for ESX plugin, 'nfs://<server>/<path>' only currently supported vm.storage supported for ESX at the moment"],$_);
+                    xCAT::SvrUtils::sendmsg([1,": $_ not supported storage specification for ESX plugin, 'nfs://<server>/<path>' only currently supported vm.storage supported for ESX at the moment"], $output_handler,$_);
                 }
                 return 0;
             } #TODO: raw device mapping, VMFS via iSCSI, VMFS via FC?
@@ -2552,7 +2513,7 @@ sub validate_datastore_prereqs {
                          $mnthost = inet_ntoa($mnthost);
                         } else {
                             $mnthost = $dsv->info->nas->remoteHost;
-                            sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"]);
+                            xCAT::SvrUtils::sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"], $output_handler);
                         }
                         $hyphash{$hyp}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
                         $hyphash{$hyp}->{datastorerefmap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$_;
@@ -2757,7 +2718,7 @@ sub copycd {
                 }
                 $found = 1;
                 if( $arch and $arch ne $darch){
-                    sendmsg([1, "Requested distribution architecture $arch, but media is $darch"]);
+                    xCAT::SvrUtils::sendmsg([1, "Requested distribution architecture $arch, but media is $darch"], $output_handler);
                     return;
                 }	
                 $arch = $darch;
@@ -2766,7 +2727,7 @@ sub copycd {
         }
         close(LINE);
         unless($found){
-            sendmsg([1,"I don't recognize this VMware ESX DVD"]);
+            xCAT::SvrUtils::sendmsg([1,"I don't recognize this VMware ESX DVD"], $output_handler);
             return; # doesn't seem to be a valid DVD or CD
         }
     } elsif (-r $path . "/vmkernel.gz" and -r $path . "/isolinux.cfg"){
@@ -2784,7 +2745,7 @@ sub copycd {
     }
 
     unless ($found) { return; } #not our media
-	sendmsg("Copying media to $installroot/$distname/$arch/");
+	xCAT::SvrUtils::sendmsg("Copying media to $installroot/$distname/$arch/", $output_handler);
     my $omask = umask 0022;
     mkpath("$installroot/$distname/$arch");
     umask $omask;
@@ -2805,7 +2766,7 @@ sub copycd {
     my $child = open($KID, "|-");
     unless (defined $child)
     {
-        sendmsg([1,"Media copy operation fork failure"]);
+        xCAT::SvrUtils::sendmsg([1,"Media copy operation fork failure"], $output_handler);
         return;
     }
     if ($child)
@@ -2824,7 +2785,7 @@ sub copycd {
         nice 10;
         my $c = "nice -n 20 cpio -vdump $installroot/$distname/$arch";
         my $k2 = open(PIPE, "$c 2>&1 |") ||
-            sendmsg([1,"Media copy operation fork failure"]);
+            xCAT::SvrUtils::sendmsg([1,"Media copy operation fork failure"], $output_handler);
         push @cpiopid, $k2;
         my $copied = 0;
         my ($percent, $fout);
@@ -2841,12 +2802,12 @@ sub copycd {
 	#chdir "/tmp";
 	chmod 0755, "$installroot/$distname/$arch";
 	if ($rc != 0){
-        sendmsg([1,"Media copy operation failed, status $rc"]);
+        xCAT::SvrUtils::sendmsg([1,"Media copy operation failed, status $rc"], $output_handler);
 	}else{
-	    sendmsg("Media copy operation successful");
+	    xCAT::SvrUtils::sendmsg("Media copy operation successful", $output_handler);
 	    my @ret=xCAT::SvrUtils->update_tables_with_templates($distname, $arch);
 	    if ($ret[0] != 0) {
-		sendmsg("Error when updating the osimage tables: " . $ret[1]);
+		xCAT::SvrUtils::sendmsg("Error when updating the osimage tables: " . $ret[1], $output_handler);
 	    }
 	
 
@@ -2944,7 +2905,7 @@ sub mknetboot {
 		my $profile = $ent->{'profile'};
 		my $osver = $ent->{'os'};
 		#if($arch ne 'x86'){	
-		#	sendmsg([1,"VMware ESX hypervisors are x86, please change the nodetype.arch value to x86 instead of $arch for $node before proceeding:
+		#	xCAT::SvrUtils::sendmsg([1,"VMware ESX hypervisors are x86, please change the nodetype.arch value to x86 instead of $arch for $node before proceeding:
         #e.g: nodech $node nodetype.arch=x86\n"]);
 		#	return;
 		#}
@@ -2957,7 +2918,7 @@ sub mknetboot {
             -r "$custprofpath/vmkboot.gz"
 			or	-r "$installroot/$osver/$arch/mboot.c32"
 			or -r "$installroot/$osver/$arch/install.tgz" ){
-			sendmsg([1,"Please run copycds first for $osver or create custom image in $custprofpath/"]);
+			xCAT::SvrUtils::sendmsg([1,"Please run copycds first for $osver or create custom image in $custprofpath/"], $output_handler);
 		}
 
 		mkpath("$tftpdir/xcat/netboot/$osver/$arch/");
@@ -2988,7 +2949,7 @@ sub mknetboot {
         my $bail=0;
         foreach (@reqmods) {
             unless (-r "$tftpdir/$tp/$_") { 
-                sendmsg([1,"$_ is missing from the target destination, ensure that either copycds has been run or that $custprofpath contains this file"]);
+                xCAT::SvrUtils::sendmsg([1,"$_ is missing from the target destination, ensure that either copycds has been run or that $custprofpath contains this file"], $output_handler);
                 $bail=1; #only flag to bail, present as many messages as possible to user
             }
         }
@@ -3058,17 +3019,17 @@ sub cpNetbootImages {
             if (-r "$srcDir/image.tgz") { #it still may work without image.tgz if profile customization has everything replaced
 		    mkdir($tmpDir);
 		    chdir($tmpDir);
-            sendmsg("extracting netboot files from OS image.  This may take about a minute or two...hopefully you have ~1GB free in your /tmp dir\n");
+            xCAT::SvrUtils::sendmsg("extracting netboot files from OS image.  This may take about a minute or two...hopefully you have ~1GB free in your /tmp dir\n", $output_handler);
             my $cmd = "tar zxvf $srcDir/image.tgz";
             print "\n$cmd\n";
             if(system("tar zxf $srcDir/image.tgz")){
-                sendmsg([1,"Unable to extract $srcDir/image.tgz\n"]); 
+                xCAT::SvrUtils::sendmsg([1,"Unable to extract $srcDir/image.tgz\n"], $output_handler); 
             }
             # this has the big image and may take a while.
             # this should now create:
             # /tmp/xcat.1234/usr/lib/vmware/installer/VMware-VMvisor-big-164009-x86_64.dd.bz2 or some other version.  We need to extract partition 5 from it.
             system("bunzip2 $tmpDir/usr/lib/vmware/installer/*bz2");
-            sendmsg("finished extracting, now copying files...\n");
+            xCAT::SvrUtils::sendmsg("finished extracting, now copying files...\n", $output_handler);
 	
             # now we need to get partition 5 which has the installation goods in it.
             my $scmd = "fdisk -lu $tmpDir/usr/lib/vmware/installer/*dd 2>&1 | grep dd5 | awk '{print \$2}'";
@@ -3080,7 +3041,7 @@ sub cpNetbootImages {
             my $mntcmd = "mount $tmpDir/usr/lib/vmware/installer/*dd  /mnt/xcat -o loop,offset=$offset";
             print "$mntcmd\n";
             if(system($mntcmd)){
-                sendmsg([1,"unable to mount partition 5 of the ESX netboot image to /mnt/xcat"]);
+                xCAT::SvrUtils::sendmsg([1,"unable to mount partition 5 of the ESX netboot image to /mnt/xcat"], $output_handler);
                 return;
             }
 
@@ -3089,7 +3050,7 @@ sub cpNetbootImages {
             }
             
             if(system("cp /mnt/xcat/* $destDir/")){
-                sendmsg([1,"Could not copy netboot contents to $destDir"]);
+                xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents to $destDir"], $output_handler);
                 system("umount /mnt/xcat");
                 return;
             }
@@ -3106,9 +3067,9 @@ sub cpNetbootImages {
                 foreach ("$srcDir/cim.vgz","$srcDir/vmkernel.gz","$srcDir/vmkboot.gz","$srcDir/sys.vgz","$srcDir/sys.vgz") {
                     my $mod = scalar fileparse($_);
                     if ($mod =~ /vmkernel.gz/) {
-                        copy($_,"$destDir/vmk.gz") or sendmsg([1,"Could not copy netboot contents from $_ to $destDir/$mod"]);
+                        copy($_,"$destDir/vmk.gz") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $_ to $destDir/$mod"], $output_handler);
                     } else {
-                        copy($_,"$destDir/$mod") or sendmsg([1,"Could not copy netboot contents from $_ to $destDir/$mod"]);
+                        copy($_,"$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $_ to $destDir/$mod"], $output_handler);
                     }
                 }
 
@@ -3120,17 +3081,17 @@ sub cpNetbootImages {
                 my $mod = scalar fileparse($_);
                 if ($mod =~ /gz\z/ and $mod !~ /pkgdb.tgz/ and $mod !~ /vmkernel.gz/) {
                     $modulestoadd->{$mod}=1;
-                    copy($_,"$destDir/$mod") or sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"]);
+                    copy($_,"$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"], $output_handler);
                 } elsif ($mod =~ /vmkernel.gz/) {
                     $modulestoadd->{"vmk.gz"}=1;
-                    copy($_,"$destDir/vmk.gz") or sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"]);
+                    copy($_,"$destDir/vmk.gz") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"], $output_handler);
                 }
             }
         }
 
 
 	}else{
-			sendmsg([1,"VMware $osver is not supported for netboot"]);
+			xCAT::SvrUtils::sendmsg([1,"VMware $osver is not supported for netboot"], $output_handler);
 	}
 
 }

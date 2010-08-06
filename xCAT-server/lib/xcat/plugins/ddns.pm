@@ -5,6 +5,7 @@ use Net::DNS;
 use xCAT::Table;
 use Sys::Hostname;
 use MIME::Base64;
+use xCAT::SvrUtils;
 use Socket;
 use Fcntl qw/:flock/;
 #This is a rewrite of DNS management using nsupdate rather than direct zone mangling
@@ -123,7 +124,7 @@ sub process_request {
             'a|all' => \$allnodes,
             'n|new' => \$zapfiles,
             )) {
-            sendmsg([1,"TODO: makedns Usage message"]);
+            xCAT::SvrUtils::sendmsg([1,"TODO: makedns Usage message"], $callback);
             return;
         }
     }
@@ -131,7 +132,7 @@ sub process_request {
     my $sitetab = xCAT::Table->new('site');
     my $stab = $sitetab->getAttribs({key=>'domain'},['value']);
     unless ($stab and $stab->{value}) {
-        sendmsg([1,"domain not defined in site table"]);
+        xCAT::SvrUtils::sendmsg([1,"domain not defined in site table"], $callback);
         return;
     }
     $ctx->{domain} = $stab->{value};
@@ -163,11 +164,11 @@ sub process_request {
             next unless ($_); #skip empty lines
             ($addr,$names) = split /[ \t]+/,$_,2;
             if ($addr !~ /^\d+\.\d+\.\d+\.\d+$/) {
-                sendmsg(":Ignoring line $_ in /etc/hosts, only IPv4 format entries are supported currently");
+                xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, only IPv4 format entries are supported currently", $callback);
                 next;
             }
             unless ($names =~ /^[a-z0-9\. \t\n-]+$/i) {
-                sendmsg(":Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'");
+                xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, names  $names contain invalid characters (valid characters include a through z, numbers and the '-', but not '_'", $callback);
                 next;
             }
             ($canonical,$aliasstr)  = split /[ \t]+/,$names,2;
@@ -204,7 +205,7 @@ sub process_request {
     }
     $ctx->{nodes} = \@nodes;
     my $networkstab = xCAT::Table->new('networks',-create=>0);
-    unless ($networkstab) { sendmsg([1,'Unable to enumerate networks, try to run makenetworks']); }
+    unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
     my @networks = $networkstab->getAllAttribs('net','mask');
     foreach (@networks) {
         my $maskn = unpack("N",inet_aton($_->{mask}));
@@ -270,14 +271,14 @@ sub process_request {
         update_namedconf($ctx); 
         update_zones($ctx);
         if ($ctx->{restartneeded}) {
-            sendmsg("Restarting named");
+            xCAT::SvrUtils::sendmsg("Restarting named", $callback);
             system("/sbin/service named start");
             system("/sbin/service named reload");
-            sendmsg("Restarting named complete");
+            xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
         }
     } else {
         unless ($ctx->{privkey}) {
-            sendmsg([1,"Unable to update DNS due to lack of credentials in passwd to communicate with remote server"]);
+            xCAT::SvrUtils::sendmsg([1,"Unable to update DNS due to lack of credentials in passwd to communicate with remote server"], $callback);
         }
     }
     #now we stick to Net::DNS style updates, with TSIG if possible.  TODO: kerberized (i.e. Windows) DNS server support, maybe needing to use nsupdate -g....
@@ -331,13 +332,13 @@ sub update_zones {
     if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
         $ip = $ctx->{hoststab}->{$node}->[0]->{ip};
         unless (isvalidip($ip)) {
-            sendmsg([1,"The hosts table entry for $node indicates $ip as an ip address, which is not a valid address"]);
+            xCAT::SvrUtils::sendmsg([1,"The hosts table entry for $node indicates $ip as an ip address, which is not a valid address"], $callback);
             next;
         }
     } else {
         unless ($ip = inet_aton($ip)) {
             print "Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts";
-            sendmsg([1,"Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts"]);
+            xCAT::SvrUtils::sendmsg([1,"Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts"], $callback);
             next;
         }
         $ip = inet_ntoa($ip);
@@ -571,7 +572,7 @@ sub add_records {
         if ($pent and $pent->{password}) { 
             $ctx->{privkey} = $pent->{password};
         } else {
-            sendmsg([1,"Unable to find omapi key in passwd table"]);
+            xCAT::SvrUtils::sendmsg([1,"Unable to find omapi key in passwd table"], $callback);
         }
     }
     my $node;
@@ -590,7 +591,7 @@ sub add_records {
             $ip = $ctx->{hoststab}->{$node}->[0]->{ip};
         } else {
             unless ($ip = inet_aton($ip)) {
-                sendmsg([1,"Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts"]);
+                xCAT::SvrUtils::sendmsg([1,"Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts"], $callback);
                 next;
             }
             $ip = inet_ntoa($ip);
@@ -621,7 +622,7 @@ sub add_records {
                 $numreqs=300;
                 my $reply = $resolver->send($update);
                 if ($reply->header->rcode ne 'NOERROR') {
-                    sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode]);
+                    xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
                 }
                 $update =  Net::DNS::Update->new($zone); #new empty request
             }
@@ -673,58 +674,17 @@ sub find_nameserver_for_dns {
            last;
        } else { #we have it defined, but zero, means search higher domains.  Possible to shortcut further by pointing to the right domain, maybe later
             if ($zone !~ /\./) {
-               sendmsg([1,"Unable to find reverse zone to hold $node"],$node);
+               xCAT::SvrUtils::sendmsg([1,"Unable to find reverse zone to hold $node"], $callback,$node);
                last;
             }
 
            $zone =~ s/^[^\.]*\.//; #strip all up to and including first dot
            unless ($zone) {
-               sendmsg([1,"Unable to find zone to hold $node"],$node);
+               xCAT::SvrUtils::sendmsg([1,"Unable to find zone to hold $node"], $callback,$node);
                last;
            }
        }
     }
-}
-sub sendmsg {
-#    my $callback = $output_handler;
-    my $text = shift;
-    my $node = shift;
-    my $descr;
-    my $rc;
-    if (ref $text eq 'HASH') {
-        die "not right now";
-    } elsif (ref $text eq 'ARRAY') {
-        $rc = $text->[0];
-        $text = $text->[1];
-    }
-    if ($text =~ /:/) {
-        ($descr,$text) = split /:/,$text,2;
-    }
-    $text =~ s/^ *//;
-    $text =~ s/ *$//;
-    my $msg;
-    my $curptr;
-    if ($node) {
-        $msg->{node}=[{name => [$node]}];
-        $curptr=$msg->{node}->[0];
-    } else {
-        $msg = {};
-        $curptr = $msg;
-    }
-    if ($rc) {
-        $curptr->{errorcode}=[$rc];
-        $curptr->{error}=[$text];
-        $curptr=$curptr->{error}->[0];
-    } else {
-        $curptr->{data}=[{contents=>[$text]}];
-        $curptr=$curptr->{data}->[0];
-        if ($descr) { $curptr->{desc}=[$descr]; }
-    }
-#        print $outfd freeze([$msg]);
-#        print $outfd "\nENDOFFREEZE6sK4ci\n";
-#        yield;
-#        waitforack($outfd);
-    $callback->($msg);
 }
 sub genpassword
 {

@@ -1116,8 +1116,59 @@ sub setupStatemnt {
     
 }
 
-#-------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------
+# Common method to send info back to the client
+# The last two args are optional, though $allerrornodes will unlikely be there without $node
+# TODO: investigate possibly removing this and using MsgUtils instead
+#
+#--------------------------------------------------------------------------------------------
+sub sendmsg {
+    my $text = shift;
+    my $callback = shift;
+    my $node = shift;
+    my %allerrornodes = shift;
+    my $descr;
+    my $rc;
+    if (ref $text eq 'HASH') {
+        die "not right now";
+    } elsif (ref $text eq 'ARRAY') {
+        $rc = $text->[0];
+        $text = $text->[1];
+    }
+    if ($text =~ /:/) {
+        ($descr,$text) = split /:/,$text,2;
+    }
+    $text =~ s/^ *//;
+    $text =~ s/ *$//;
+    my $msg;
+    my $curptr;
+    if ($node) {
+        $msg->{node}=[{name => [$node]}];
+        $curptr=$msg->{node}->[0];
+    } else {
+        $msg = {};
+        $curptr = $msg;
+    }
+    if ($rc) {
+        $curptr->{errorcode}=[$rc];
+        $curptr->{error}=[$text];
+        $curptr=$curptr->{error}->[0];
+        if (defined $node && %allerrornodes) {
+            $allerrornodes{$node}=1;
+        }
+    } else {
+        $curptr->{data}=[{contents=>[$text]}];
+        $curptr=$curptr->{data}->[0];
+        if ($descr) { $curptr->{desc}=[$descr]; }
+    }
+#        print $outfd freeze([$msg]);
+#        print $outfd "\nENDOFFREEZE6sK4ci\n";
+#        yield;
+#        waitforack($outfd);
+    $callback->($msg);
+}
 
+#-------------------------------------------------------------------------------
 =head3  build_deps
     Look up the "deps" table to generate the dependencies for the nodes
     Arguments:
@@ -1336,4 +1387,5 @@ sub handle_deps()
     return $nodeseq; 
 }
 
+>>>>>>> .r6990
 1;

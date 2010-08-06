@@ -9,6 +9,7 @@ use lib "$::XCATROOT/lib/perl";
 use Getopt::Long;
 use xCAT::ADUtils;
 use Net::DNS;
+use xCAT::SvrUtils;
 use strict;
 
 sub handled_commands { 
@@ -50,7 +51,7 @@ sub process_request {
     my $passtab = xCAT::Table->new('passwd');
     my $adpent = $passtab->getAttribs({key=>'activedirectory'},[qw/username password/]);
     unless ($adpent and $adpent->{username} and $adpent->{password}) {
-        sendmsg([1,"activedirectory entry missing from passwd table"]);
+        xCAT::SvrUtils::sendmsg([1,"activedirectory entry missing from passwd table"], $callback);
         return 1;
     }
     if ($server and $server->{value}) {
@@ -64,7 +65,7 @@ sub process_request {
             }
         }
         unless ($server) {
-            sendmsg([1,"Unable to determine a directory server to communicate with, try site.directoryserver"]);
+            xCAT::SvrUtils::sendmsg([1,"Unable to determine a directory server to communicate with, try site.directoryserver"], $callback);
             return;
         }
     }
@@ -81,12 +82,12 @@ sub process_request {
             }
         }
          unless ($domain and $realm) {
-             sendmsg([1,"Unable to determine domain from arguments or site table"]);
+             xCAT::SvrUtils::sendmsg([1,"Unable to determine domain from arguments or site table"], $callback);
              return undef;
          }
          my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
          if ($err) {
-             sendmsg([1,"Error authenticating to Active Directory"]);
+             xCAT::SvrUtils::sendmsg([1,"Error authenticating to Active Directory"], $callback);
              return 1;
          }
          my $accounts = xCAT::ADUtils::list_user_accounts(
@@ -101,22 +102,22 @@ sub process_request {
                      $textout .= $accounts->{$account}->{$_}.":";
                  }
                  $textout =~ s/:$//;
-                 sendmsg($textout);
+                 xCAT::SvrUtils::sendmsg($textout, $callback);
              }
          } else {
              my $account;
              foreach $account (keys %$accounts) {
-                 sendmsg($account);
+                 xCAT::SvrUtils::sendmsg($account, $callback);
              }
          }
     } elsif ($command =~ /hostaccountlist/) {
          unless ($domain and $realm) {
-             sendmsg([1,"Unable to determine domain from arguments or site table"]);
+             xCAT::SvrUtils::sendmsg([1,"Unable to determine domain from arguments or site table"], $callback);
              return undef;
          }
          my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
          if ($err) {
-             sendmsg([1,"Error authenticating to Active Directory"]);
+             xCAT::SvrUtils::sendmsg([1,"Error authenticating to Active Directory"], $callback);
              return 1;
          }
          my $accounts = xCAT::ADUtils::list_host_accounts(
@@ -125,7 +126,7 @@ sub process_request {
          );
          my $account;
          foreach $account (keys %$accounts) {
-             sendmsg($account);
+             xCAT::SvrUtils::sendmsg($account, $callback);
          }
     } elsif ($command =~ /hostaccountdel/) {
          my $accountname;
@@ -139,7 +140,7 @@ sub process_request {
                  $domain = lc($domain);
              } 
               unless ($domain) {
-                 sendmsg([1,"Unable to determine domain from arguments or site table"]);
+                 xCAT::SvrUtils::sendmsg([1,"Unable to determine domain from arguments or site table"], $callback);
                  return undef;
              }
              #my $domainstab = xCAT::Table->new('domains');
@@ -152,7 +153,7 @@ sub process_request {
              unless ($loggedrealms{$realm}) {
                 my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
                  if ($err) {
-                     sendmsg([1,"Error authenticating to Active Directory"],$accountname);
+                     xCAT::SvrUtils::sendmsg([1,"Error authenticating to Active Directory"], $callback,$accountname);
                      next;
                  }
                  $loggedrealms{$realm}=1;
@@ -177,7 +178,7 @@ sub process_request {
              $domain = lc($domain);
          } 
          unless ($domain) {
-             sendmsg([1,"Unable to determine domain from arguments or site table"]);
+             xCAT::SvrUtils::sendmsg([1,"Unable to determine domain from arguments or site table"], $callback);
              return undef;
          }
 
@@ -191,7 +192,7 @@ sub process_request {
 
          my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
          if ($err) {
-             sendmsg([1,"Error authenticating to Active Directory"]);
+             xCAT::SvrUtils::sendmsg([1,"Error authenticating to Active Directory"], $callback);
              return 1;
          }
          my %args = (
@@ -228,7 +229,7 @@ sub process_request {
              $domain = lc($domain);
          } 
          unless ($domain) {
-             sendmsg([1,"Unable to determine domain from arguments or site table"]);
+             xCAT::SvrUtils::sendmsg([1,"Unable to determine domain from arguments or site table"], $callback);
              return undef;
          }
 
@@ -241,7 +242,7 @@ sub process_request {
 
          my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
          if ($err) {
-             sendmsg([1,"Error authenticating to Active Directory"]);
+             xCAT::SvrUtils::sendmsg([1,"Error authenticating to Active Directory"], $callback);
              return 1;
          }
          my %args = ( 
@@ -262,7 +263,7 @@ sub process_request {
          if (defined $homedir) { $args{homedir} = $homedir };
          my $ret = xCAT::ADUtils::add_user_account(%args);
          if (ref $ret and $ret->{error}) {
-             sendmsg([1,$ret->{error}]);
+             xCAT::SvrUtils::sendmsg([1,$ret->{error}], $callback);
          }
     } elsif ($command =~ /hostaccountadd$/) { #user management command, adding
         my $ou;
@@ -284,7 +285,7 @@ sub process_request {
                  $domain = lc($domain);
              } 
              unless ($domain) {
-                 sendmsg([1,"Unable to determine domain from arguments or site table"]);
+                 xCAT::SvrUtils::sendmsg([1,"Unable to determine domain from arguments or site table"], $callback);
                  return undef;
              }
     
@@ -297,7 +298,7 @@ sub process_request {
              unless ($loggedrealms{$realm}) {
                 my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
                  if ($err) {
-                     sendmsg([1,"Error authenticating to Active Directory"],$nodename);
+                     xCAT::SvrUtils::sendmsg([1,"Error authenticating to Active Directory"], $callback,$nodename);
                      next;
                  }
                  $loggedrealms{$realm}=1;
@@ -315,52 +316,12 @@ sub process_request {
              }
              my $ret = xCAT::ADUtils::add_host_account(%args);
              if (ref $ret and $ret->{error}) {
-                 sendmsg([1,$ret->{error}]);
+                 xCAT::SvrUtils::sendmsg([1,$ret->{error}], $callback);
              } elsif (ref $ret)  {
-                 sendmsg($ret->{password},$nodename);
+                 xCAT::SvrUtils::sendmsg($ret->{password}, $callback,$nodename);
              }
         }
     }
 }
 
-sub sendmsg {
-    my $text = shift;
-    my $node = shift;
-    my $descr;
-    my $rc;
-    if (ref $text eq 'HASH') {
-        die "not right now";
-    } elsif (ref $text eq 'ARRAY') {
-        $rc = $text->[0];
-        $text = $text->[1];
-    }
-    if ($text =~ /:/) {
-        ($descr,$text) = split /:/,$text,2;
-    }
-    $text =~ s/^ *//;
-    $text =~ s/ *$//;
-    my $msg;
-    my $curptr;
-    if ($node) {
-        $msg->{node}=[{name => [$node]}];
-        $curptr=$msg->{node}->[0];
-    } else {
-        $msg = {};
-        $curptr = $msg;
-    }
-    if ($rc) {
-        $curptr->{errorcode}=[$rc];
-        $curptr->{error}=[$text];
-        $curptr=$curptr->{error}->[0];
-    } else {
-        $curptr->{data}=[{contents=>[$text]}];
-        $curptr=$curptr->{data}->[0];
-        if ($descr) { $curptr->{desc}=[$descr]; }
-    }
-#        print $outfd freeze([$msg]);
-#        print $outfd "\nENDOFFREEZE6sK4ci\n";
-#        yield;
-#        waitforack($outfd);
-    $callback->($msg);
-}
 1;
