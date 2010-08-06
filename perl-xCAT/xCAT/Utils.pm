@@ -4561,11 +4561,16 @@ sub osver
     my $ver   = '';
     my $line  = '';
     my @lines;
+    my $relfile;
     if (-f "/etc/redhat-release")
     {
-        chomp($line = `head -n 1 /etc/redhat-release`);
+        open($relfile,"<","/etc/redhat-release");
+        $line = <$relfile>;
+        close($relfile);
+        chomp($line);
         $os = "rh";
-        chomp($ver = `tr -d '.' < /etc/redhat-release | head -n 1`);
+        $ver=$line;
+        $ver=~ tr/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
         if    ($line =~ /AS/)     { $os = 'rhas' }
         elsif ($line =~ /ES/)     { $os = 'rhes' }
@@ -4576,10 +4581,14 @@ sub osver
     }
     elsif (-f "/etc/SuSE-release")
     {
-        chomp(@lines = `cat /etc/SuSE-release`);
+        open($relfile,"<","/etc/SuSE-release");
+        @lines = <$relfile>;
+        close($relfile);
+        chomp(@lines);
         if (grep /SLES|Enterprise Server/, @lines) { $os = "sles" }
         if (grep /SLEC/, @lines) { $os = "slec" }
-        chomp($ver = `tr -d '.' < /etc/SuSE-release | head -n 1 `);
+        $ver = $lines[0];
+        $ver =~ tr/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
 
         #print "ver: $ver\n";
@@ -4588,7 +4597,10 @@ sub osver
     {
 
         $os = "ul";
-        chomp($ver = `tr -d '.' < /etc/UnitedLinux-release | head -n 1 `);
+        open($relfile,"<","/etc/UnitedLinux-release");
+        $ver = <$relfile>;
+        close($relfile);
+        $ver =~ tr/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
     }
     $os = "$os" . "$ver";
