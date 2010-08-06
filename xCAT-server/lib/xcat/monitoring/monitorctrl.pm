@@ -715,7 +715,7 @@ sub refreshProductList {
   my $table=xCAT::Table->new("monitoring", -create =>1);
   if ($table) {
     my @tmp1=$table->getAllAttribs(('name','nodestatmon'));
-    if (defined(@tmp1) && (@tmp1 > 0)) {
+    if (@tmp1 && (@tmp1 > 0)) {
       foreach(@tmp1) {
         my $pname=$_->{name};
 
