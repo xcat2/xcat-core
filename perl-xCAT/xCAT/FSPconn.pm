@@ -5,8 +5,8 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
-use Data::Dumper;
-use xCAT::Utils;
+#use Data::Dumper;
+use xCAT::FSPUtils;
 
 ##############################################
 # Globals
@@ -160,11 +160,11 @@ sub mkhwconn_parse_args
         return ( usage("Attribute nodetype.nodetype cannot be found for node(s) $tmp_nodelist"));
     }
 
-    if (scalar(@bpa_ctrled_nodes))
-    {
-        my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
-        return ( usage("Node(s) $tmp_nodelist is(are) controlled by BPA."));
-    }
+    #if (scalar(@bpa_ctrled_nodes))
+    #{
+    #    my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
+    #    return ( usage("Node(s) $tmp_nodelist is(are) controlled by BPA."));
+    #}
     
     if ( scalar( @frame_members))
     {
@@ -443,7 +443,7 @@ sub mkhwconn
 
             }
 
-            my $res = xCAT::Utils::fsp_api_action( $node_name, $d, "add_connection", $tooltype );
+            my $res = xCAT::FSPUtils::fsp_api_action( $node_name, $d, "add_connection", $tooltype );
             $Rc = @$res[2];
 	    if( @$res[1] ne "") {
                 push @value, [$node_name, @$res[1], $Rc];
@@ -474,7 +474,7 @@ sub lshwconn
          {    
 	      my $d = $node_hash->{$node_name};
 	      my $action = "query_connection";
-	      my $res = xCAT::Utils::fsp_api_action ($node_name, $d, $action);
+	      my $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, $action);
 	      #print "in lshwconn:\n";
 	      #print Dumper($res);
 	      my $Rc = @$res[2];
@@ -553,7 +553,7 @@ sub rmhwconn
 
             my ( undef,undef,undef,undef,$type) = @$d;
 
-	    my $res = xCAT::Utils::fsp_api_action( $node_name, $d, "rm_connection", $tooltype );
+	    my $res = xCAT::FSPUtils::fsp_api_action( $node_name, $d, "rm_connection", $tooltype );
             $Rc = @$res[2];
 	    if( @$res[1] ne "") {
                 push @value, [$node_name, @$res[1], $Rc];
