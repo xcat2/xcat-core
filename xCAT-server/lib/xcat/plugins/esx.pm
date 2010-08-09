@@ -789,7 +789,7 @@ sub connecthost_callback {
     if ($state eq "success") {
         $hypready{$args->{hypname}}=1; #declare readiness
         enable_vmotion(hypname=>$args->{hypname},hostview=>$args->{hostview},conn=>$args->{conn});
-        $vcenterhash{$args->{vcenter}}->{$args->{hypname}} = 'good';
+        $vcenterhash{$args->{vcenter}}->{goodhyps}->{$args->{hypname}} = 1;
         if (defined $args->{depfun}) { #If a function is waiting for the host connect to go valid, call it
             $args->{depfun}->($args->{depargs});
         }
@@ -822,7 +822,7 @@ sub connecthost_callback {
         }
         xCAT::SvrUtils::sendmsg([1,$error], $output_handler); #,$node);
         $hypready{$args->{hypname}} = -1; #Impossible for this hypervisor to ever be ready
-        $vcenterhash{$args->{vcenter}}->{$args->{hypname}} = 'bad';
+        $vcenterhash{$args->{vcenter}}->{badhyps}->{$args->{hypname}} = 1;
     }
 }
 
@@ -1079,11 +1079,11 @@ sub migrate {
         }
         return;
     }
-    if ((not $offline and $vcenterhash{$vcenter}->{$hyp} eq 'bad') or $vcenterhash{$vcenter}->{$target} eq 'bad') {
+    if ((not $offline and $vcenterhash{$vcenter}->{badhyps}->{$hyp}) or $vcenterhash{$vcenter}->{badhyps}->{$target}) {
         xCAT::SvrUtils::sendmsg([1,"Unable to migrate ".join(',',@nodes)." to $target due to inability to validate vCenter connectivity"], $output_handler);
         return;
     }
-    if (($offline or $vcenterhash{$vcenter}->{$hyp} eq 'good') and $vcenterhash{$vcenter}->{$target} eq 'good') {
+    if (($offline or $vcenterhash{$vcenter}->{goodhyps}->{$hyp}) and $vcenterhash{$vcenter}->{goodhyps}->{$target}) {
         unless (validate_datastore_prereqs(\@nodes,$target)) {
             xCAT::SvrUtils::sendmsg([1,"Unable to verify storage state on target system"], $output_handler);
             return;
@@ -2063,7 +2063,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
         if ($hview->{'summary.config.name'} =~ /^$hyp(?:\.|\z)/ or $hview->{'summary.config.name'} =~ /^$name(?:\.|\z)/) { #Looks good, call the dependent function after declaring the state of vcenter to hypervisor as good
             if ($hview->{'summary.runtime.connectionState'}->val eq 'connected') {
                 enable_vmotion(hypname=>$hyp,hostview=>$hview,conn=>$hyphash{$hyp}->{vcenter}->{conn});
-                $vcenterhash{$vcenter}->{$hyp} = 'good';
+                $vcenterhash{$vcenter}->{goodhyps}->{$hyp} = 1;
                 $depfun->($depargs);
                 if ($hview->parent->type eq 'ClusterComputeResource') { #if it is in a cluster, we can directly remove it
                     $hyphash{$hyp}->{deletionref} = $hview->{mo_ref}; 
@@ -2138,7 +2138,7 @@ sub  addhosttovcenter {
     if ($hyphash{$args->{hypname}}->{offline}) { #let it stay offline
         $hypready{$args->{hypname}}=1; #declare readiness
         #enable_vmotion(hypname=>$args->{hypname},hostview=>$args->{hostview},conn=>$args->{conn});
-        $vcenterhash{$args->{vcenter}}->{$args->{hypname}} = 'good';
+        $vcenterhash{$args->{vcenter}}->{goodhyps}->{$args->{hypname}} = 1;
         if (defined $args->{depfun}) { #If a function is waiting for the host connect to go valid, call it
             $args->{depfun}->($args->{depargs});
         }
