@@ -6,7 +6,8 @@ use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use xCAT::PPCinv;
-use Data::Dumper;
+use xCAT::FSPUtils;
+#use Data::Dumper;
 
 ##########################################
 # Maps fsp-api attributes to text
@@ -86,7 +87,7 @@ sub firmware {
 		        @$d[4] = "fsp";
 			    @$d[0] = 0;
 	       }
-           my $values = xCAT::Utils::fsp_api_action( $name, $d, "list_firmware_level");
+           my $values = xCAT::FSPUtils::fsp_api_action( $name, $d, "list_firmware_level");
            my $Rc = @$values[2];
    	       my $data = @$values[1];
            #print "values";
