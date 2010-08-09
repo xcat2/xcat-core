@@ -11,8 +11,8 @@ use xCAT::Table;
 use Getopt::Long;
 use File::Spec;
 use xCAT::PPCrflash;
-use Data::Dumper;
-use xCAT::Utils;
+#use Data::Dumper;
+use xCAT::FSPUtils;
 use xCAT::FSPinv;
 use POSIX "WNOHANG";
 use Storable qw(freeze thaw);
@@ -320,7 +320,7 @@ sub fork_cmd {
         close( $parent );
         $pipe = $child;
 
-        $res = xCAT::Utils::fsp_api_action( $node_name, $attrs, $action );
+        $res = xCAT::FSPUtils::fsp_api_action( $node_name, $attrs, $action );
 	print "res\n";
 	print Dumper($res);
 	my %output;
@@ -423,7 +423,7 @@ sub rflash {
 	    if($flag2 > 1) {
 	        last;	
  	    }
-            my $values  = xCAT::Utils::fsp_api_action( $name, $d, "list_firmware_level"); 
+            my $values  = xCAT::FSPUtils::fsp_api_action( $name, $d, "list_firmware_level"); 
 	    # my $level = xCAT::PPCcli::lslic( $exp, $d, $timeout );
             my $Rc = @$values[2];
 	    my $level = @$values[1];
