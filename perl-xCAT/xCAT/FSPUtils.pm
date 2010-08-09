@@ -57,7 +57,7 @@ my $utildata; #data to persist locally
     Error:
         none
     Example:
-        my $res = xCAT::Utils::fsp_api_action( $node_name, $d, "add_connection", $tooltype );
+        my $res = xCAT::FSPUtils::fsp_api_action( $node_name, $d, "add_connection", $tooltype );
     Comments:
 
 =cut
@@ -159,7 +159,7 @@ sub fsp_api_action {
     Error:
         none
     Example:
-        my $res = xCAT::Utils::fsp_state_action( $cec_bpa, $type, $action, $tooltype );
+        my $res = xCAT::FSPUtils::fsp_state_action( $cec_bpa, $type, $action, $tooltype );
     Comments:
 
 =cut
@@ -187,15 +187,6 @@ sub fsp_state_action {
 
     $fsp_name = $node_name; 
 
-    #my %objhash = (); 
-    #$objhash{$fsp_name} = "node";
-    #my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
-    #my $password    = $myhash{$fsp_name}{"passwd.HMC"};
-    #if(!$password ) { 
-    #   $res = "The password.HMC of $fsp_name in ppcdirect table is empty";
-    #	   return ([$node_name, $res, -1]);
-    #}
-    #my $user = "HMC";
      
     if($type_name =~ /^fsp$/ || $type_name =~ /^lpar$/) {
         $type = 0;
