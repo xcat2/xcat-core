@@ -1400,8 +1400,8 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
                     $node =~ s/\..*//; #try the short name;
                 }
                 if (defined $tablecfg{vm}->{$node}) { #see if the host pointer requires a refresh 
-                    my $host = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$_->{'runtime.host'});
-                    $host = $host->summary->config->name;
+                    my $host = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$_->{'runtime.host'},properties=>['summary.config.name']);
+                    $host = $host->{'summary.config.name'};
                     if ( $tablecfg{vm}->{$node}->[0]->{host} eq "$host" ) { next; }
                     my $newnhost = inet_aton($host);
                     my $oldnhost = inet_aton($tablecfg{vm}->{$node}->[0]->{host});
