@@ -186,15 +186,7 @@ sub invoke_cmd {
 
     my $fsp_name   = $att->{hcp};
     my $id = $att->{id};
-    my %objhash = (); 
-    $objhash{$fsp_name} = "node";
-    my %myhash      = xCAT::DBobjUtils->getobjdefs(\%objhash);
-    my $password    = $myhash{$fsp_name}{"passwd.HMC"};
-    if(!$password ) {
-   	    return "The password.HMC of $fsp_name in ppcdirect table is empty"; 
-    }
-    
-    my $username = "hscroot";	
+
 #    my $fsp_api ="/opt/xcat/sbin/fsp-api";
     my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api";
     my $action = "console";
@@ -202,20 +194,12 @@ sub invoke_cmd {
     my $fsp_ip = ();
     my $Rc = 0;
     
-    my $hosttab  = xCAT::Table->new( 'hosts' );
-    if ( $hosttab) {
-        my $node_ip_hash = $hosttab->getNodeAttribs( $fsp_name,[qw(ip)]);
-    	$fsp_ip = $node_ip_hash->{ip};
-    }
-    if (!$fsp_ip) {
-	my $ip_tmp_res  = xCAT::Utils::toIP($fsp_name);
-	($Rc, $fsp_ip) = @$ip_tmp_res;
-	if ( $Rc ) {
-   	     return "Failed to get the $fsp_name\'s ip";
-        }
+    $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
+    if(!defined($fsp_ip)) {
+        return "Failed to get the $fsp_name\'s ip";
     }
     
-    my $cmd = "$fsp_api -a $action -u $username -p $password -t $type:$fsp_ip:$id:$node:\r";
+    my $cmd = "$fsp_api -a $action -t $type:$fsp_ip:$id:$node:\r";
 #    print "cmd: $cmd\n";
     my $running_failed_code = "Reason code: 0x1000000";
     my $fsp_standby_msg = "Reason code: 0x1300";
