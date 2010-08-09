@@ -1387,5 +1387,4 @@ sub handle_deps()
     return $nodeseq; 
 }
 
->>>>>>> .r6990
 1;
