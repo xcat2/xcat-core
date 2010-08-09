@@ -5199,7 +5199,7 @@ sub updatespot
         }
         if (!xCAT::InstUtils->is_me($nimprime))
         {
-            $cmd = "xdcp  $nimprime $odmscript_mn $odmscript";
+            $cmd = "$::XCATROOT/bin/xdcp  $nimprime $odmscript_mn $odmscript";
         }
         else
         {
@@ -5330,7 +5330,7 @@ sub update_dd_boot
     my $cmd;
     if (!xCAT::InstUtils->is_me($nimprime))
     {
-        $cmd             = "xdcp $nimprime -P $dd_boot_file /tmp";
+        $cmd             = "$::XCATROOT/bin/xdcp $nimprime -P $dd_boot_file /tmp";
         $dd_boot_file_mn = "/tmp/rc.dd_boot._$nimprime";
     }
     else
@@ -5416,7 +5416,7 @@ sub update_dd_boot
             }
             if (!xCAT::InstUtils->is_me($nimprime))
             {
-                $cmd = "xdcp $nimprime $dd_boot_file_mn $dd_boot_file";
+                $cmd = "$::XCATROOT/bin/xdcp $nimprime $dd_boot_file_mn $dd_boot_file";
             }
             else
             {
@@ -5594,7 +5594,7 @@ sub prenimnodecust
             my $cmdstr;
             if (!xCAT::InstUtils->is_me($nimprime))
             {
-                $cmdstr = "xdsh $nimprime ";
+                $cmdstr = "$::XCATROOT/bin/xdsh $nimprime ";
             }
             else
             {
@@ -5609,7 +5609,7 @@ sub prenimnodecust
                 {
 
                     $rcpcmd =
-                      "$cmdstr 'xdcp $snkey $rpm_srcdir/$pkg $rpm_srcdir'";
+                      "$cmdstr '$::XCATROOT/bin/xdcp $snkey $rpm_srcdir/$pkg $rpm_srcdir'";
 
                     my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
                     if ($::RUNCMD_RC != 0)
@@ -5624,7 +5624,7 @@ sub prenimnodecust
                 else
                 {
                     $rcpcmd .=
-                      "$cmdstr 'xdcp $snkey $instp_srcdir/$pkg $instp_srcdir'";
+                      "$cmdstr '$::XCATROOT/bin/xdcp $snkey $instp_srcdir/$pkg $instp_srcdir'";
 
                     my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
                     if ($::RUNCMD_RC != 0)
@@ -5644,7 +5644,7 @@ sub prenimnodecust
     my $cmdstr;
     if (!xCAT::InstUtils->is_me($nimprime))
     {
-        $cmdstr = "xdsh $nimprime ";
+        $cmdstr = "$::XCATROOT/bin/xdsh $nimprime ";
     }
     else
     {
@@ -5666,7 +5666,7 @@ sub prenimnodecust
                 {
                     my $bnd_file_loc = $bndloc{$bnd};
                     my $bnddir       = dirname($bnd_file_loc);
-                    my $cmd = "$cmdstr 'xdcp $snkey $bnd_file_loc $bnddir'";
+                    my $cmd = "$cmdstr '$::XCATROOT/bin/xdcp $snkey $bnd_file_loc $bnddir'";
                     my $output = xCAT::Utils->runcmd("$cmd", -1);
                     if ($::RUNCMD_RC != 0)
                     {
@@ -6513,7 +6513,7 @@ sub copyres
     chomp $dir;
 
     # make sure the directory loc is created on the SN
-    my $cmd = "xdsh $dest '/usr/bin/mkdir -m 644 -p $dir'";
+    my $cmd = "$::XCATROOT/bin/xdsh $dest '/usr/bin/mkdir -m 644 -p $dir'";
 
     my $output = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC != 0)
@@ -6529,7 +6529,7 @@ sub copyres
     }
 
     # how much free space is available on the SN ($dest)?
-    my $dfcmd = qq~xdsh $dest /usr/bin/df -m $dir |/usr/bin/awk '(NR==2)'~;
+    my $dfcmd = qq~$::XCATROOT/bin/xdsh $dest /usr/bin/df -m $dir |/usr/bin/awk '(NR==2)'~;
 
     $output = xCAT::Utils->runcmd("$dfcmd", -1);
     if ($::RUNCMD_RC != 0)
@@ -6585,7 +6585,7 @@ sub copyres
         # how much should we increase FS?
         $addsize = int($needspace - $free_space);
         my $sizeattr = "-a size=+$addsize" . "M";
-        my $chcmd    = "xdsh $dest /usr/sbin/chfs $sizeattr $FSname";
+        my $chcmd    = "$::XCATROOT/bin/xdsh $dest /usr/sbin/chfs $sizeattr $FSname";
 
         my $output;
         $output = xCAT::Utils->runcmd("$chcmd", -1);
@@ -6614,7 +6614,7 @@ sub copyres
     {
 
         # if NIM primary is another system
-        $cpcmd = "xdsh $nimprime ";
+        $cpcmd = "$::XCATROOT/bin/xdsh $nimprime ";
     }
     else
     {
@@ -6648,7 +6648,7 @@ sub copyres
         }
 
         # copy the file to the SN
-        $cpcmd .= "xdcp $dest $bkfile $dir 2>/dev/null";
+        $cpcmd .= "$::XCATROOT/bin/xdcp $dest $bkfile $dir 2>/dev/null";
     }
     elsif ($restype eq 'spot')
     {
@@ -6676,7 +6676,7 @@ sub copyres
         }
 
         # copy the file to the SN
-        $cpcmd .= "xdcp $dest $bkfile $dir 2>/dev/null";
+        $cpcmd .= "$::XCATROOT/bin/xdcp $dest $bkfile $dir 2>/dev/null";
 
     }
     else
@@ -6686,7 +6686,7 @@ sub copyres
         # covers- bosinst_data, script, resolv_conf, installp_bundle, mksysb
         # - the NIM location includes the actual file name
         my $dir = dirname($resloc);
-        $cpcmd .= "xdcp $dest $resloc $dir 2>/dev/null";
+        $cpcmd .= "$::XCATROOT/bin/xdcp $dest $resloc $dir 2>/dev/null";
     }
 
     $output = xCAT::Utils->runcmd("$cpcmd", -1);
@@ -6793,10 +6793,10 @@ sub doSNcopy
             {
                 my $rsp;
                 push @{$rsp->{data}},
-                  "Running: \'xdcp $snkey /etc/hosts /etc\'\n";
+                  "Running: \'$::XCATROOT/bin/xdcp $snkey /etc/hosts /etc\'\n";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
-            my $rcpcmd = "xdcp $snkey /etc/hosts /etc ";
+            my $rcpcmd = "$::XCATROOT/bin/xdcp $snkey /etc/hosts /etc ";
             my $output = xCAT::Utils->runcmd("$rcpcmd", -1);
 
             if ($::RUNCMD_RC != 0)
@@ -6807,14 +6807,14 @@ sub doSNcopy
             }
 
             # update the postscripts on the SN
-            my $lscmd = "xdsh $snkey 'ls /install/postscripts' >/dev/null 2>&1";
+            my $lscmd = "$::XCATROOT/bin/xdsh $snkey 'ls /install/postscripts' >/dev/null 2>&1";
             $output = xCAT::Utils->runcmd("$lscmd", -1);
             if ($::RUNCMD_RC == 0)
             {
 
                 # if the dir exists then we can update it
                 my $cpcmd =
-                  "xdcp $snkey -p -R /install/postscripts/* /install/postscripts ";
+                  "$::XCATROOT/bin/xdcp $snkey -p -R /install/postscripts/* /install/postscripts ";
                 if ($::VERBOSE)
                 {
                     my $rsp;
@@ -6822,7 +6822,7 @@ sub doSNcopy
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
                 $cpcmd =
-                  "xdcp $snkey -p -R /install/postscripts/* /install/postscripts ";
+                  "$::XCATROOT/bin/xdcp $snkey -p -R /install/postscripts/* /install/postscripts ";
                 $output = xCAT::Utils->runcmd("$cpcmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
@@ -6839,7 +6839,7 @@ sub doSNcopy
 
             # get a list of the resources that are defined on the SN
             my $cmd =
-              qq~xdsh $snkey "/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' '"~;
+              qq~$::XCATROOT/bin/xdsh $snkey "/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' '"~;
 
             my @resources = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC != 0)
