@@ -7902,7 +7902,15 @@ sub checkNIMnetworks
                 return 1;
             }
 
-            my ($junk1, $junk2, $adapterhost) = split(':', $ifone);
+            my $junk1;
+            my $junk2;
+            my $adapterhost;
+            my @ifcontent = split('\n',$ifone);
+            foreach my $line (@ifcontent) {
+                next if (/#/);
+                ($junk1, $junk2, $adapterhost) = split(':', $line);
+                last;
+            }
 
             #my $adapterIP = inet_ntoa(inet_aton($adapterhost));
 
