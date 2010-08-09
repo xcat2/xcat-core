@@ -1394,15 +1394,25 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
     my $hyp; 
     my $vmviews;
     my %vcviews; #views populated once per vcenter server for improved performance
+    my $node;
+    foreach $hyp (keys %hyphash) {
+        if ($viavcenterbyhyp->{$hyp}) {
+    	    foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})){
+                $vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{vms}->{$node}=1;
+            }
+        }
+    }
+    my $currentvcenter;
+    foreach $currentvcenter (keys %vcenterhash) {
+        #retrieve all vm views in one gulp
+        my $vmsearchstring = join(")|(",keys %{$vcenterhash{$currentvcenter}->{vms}});
+        $vmsearchstring = '^(('.$vmsearchstring.'))(\z|\.)';
+        my $regex = qr/$vmsearchstring/o;
+        $vcviews{$currentvcenter} = $vcenterhash{$currentvcenter}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties,filter=>{'config.name'=>$regex});
+    }
     foreach $hyp (keys %hyphash) {
         if ($viavcenterbyhyp->{$hyp}) {
             if ($vcviews{$hyphash{$hyp}->{vcenter}->{name}}) { next; }
-            my @localvcviews=();
-            my $node;
-    	    foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})){
-                push @localvcviews,$hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>$properties,filter=>{'config.name'=>qr/^$node/});
-            }
-            $vcviews{$hyphash{$hyp}->{vcenter}->{name}} = \@localvcviews;
             #$vcviews{$hyphash{$hyp}->{vcenter}->{name}} = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
             foreach (@{$vcviews{$hyphash{$hyp}->{vcenter}->{name}}}) {
                 my $node = $_->{'config.name'};
@@ -1431,7 +1441,6 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
                     } #else {
                       #  $vmtab->setNodeAttribs($node,{host=>$host});
                     #}
-
                 }
             }
         }
