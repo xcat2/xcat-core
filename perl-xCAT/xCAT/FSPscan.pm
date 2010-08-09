@@ -12,7 +12,8 @@ use xCAT::PPCscan;
 use xCAT::GlobalDef;
 use xCAT::Usage;
 use xCAT::NetworkUtils;
-use Data::Dumper;
+use xCAT::FSPUtils;
+#use Data::Dumper;
 
 ##############################################
 # Globals
@@ -99,7 +100,7 @@ sub enumerate {
                 push @output, [$node_name,$data,$Rc];
                 next;
             }  
-            my $stat = xCAT::Utils::fsp_api_action ($node_name, $d, "query_connection");
+            my $stat = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "query_connection");
             my $Rc = @$stat[2];
     	    my $data = @$stat[1];
 	    
@@ -136,7 +137,7 @@ sub enumerate {
 	    #####################################
             # Enumerate LPARs 
             #####################################
-            $stat = xCAT::Utils::fsp_api_action ($node_name, $d, "get_lpar_info");
+            $stat = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "get_lpar_info");
             $Rc = @$stat[2];
     	    $data = @$stat[1];
 	    
