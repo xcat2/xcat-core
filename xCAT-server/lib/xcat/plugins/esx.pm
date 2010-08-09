@@ -443,7 +443,7 @@ sub do_cmd {
     my $command = shift;
     my @exargs = @_;
     if ($command eq 'rpower') {
-        generic_vm_operation(['config.name','config','runtime.powerState','runtime.host'],\&power,@exargs);
+        generic_vm_operation(['config.name','config.guestId','config.hardware.memoryMB','config.hardware.numCPU','runtime.powerState','runtime.host'],\&power,@exargs);
     } elsif ($command eq 'rmvm') {
         generic_vm_operation(['config.name','runtime.powerState','runtime.host'],\&rmvm,@exargs);
     } elsif ($command eq 'rsetboot') {
@@ -1218,7 +1218,7 @@ sub getreconfigspec {
     my %args = @_;
     my $node = $args{node};
     my $vmview = $args{view};
-    my $currid=$args{view}->config->guestId();
+    my $currid=$args{view}->{'config.guestId'};
     my $rightid=getguestid($node);
     my %conargs;
     my $reconfigneeded=0;
@@ -1228,7 +1228,7 @@ sub getreconfigspec {
     }
     my $newmem;
     if ($newmem = getUnits($tablecfg{vm}->{$node}->[0]->{memory},"M",1048576)) {
-        my $currmem = $vmview->config->hardware->memoryMB;
+        my $currmem = $vmview->{'config.hardware.memoryMB'};
         if ($newmem ne $currmem) {
             $conargs{memoryMB} = $newmem;
             $reconfigneeded=1;
@@ -1236,7 +1236,7 @@ sub getreconfigspec {
     }
     my $newcpus;
     if ($newcpus = $tablecfg{vm}->{$node}->[0]->{cpus}) {
-        my $currncpu = $vmview->config->hardware->numCPU;
+        my $currncpu = $vmview->{'config.hardware.numCPU'};
         if ($newcpus ne $currncpu) {
             $conargs{numCPUs} = $newcpus;
             $reconfigneeded=1;
@@ -1256,7 +1256,7 @@ sub power {
     my $hyp = $args{hyp};
     my $pretendop = $args{pretendop}; #to pretend a system was on for reset or boot when we have to turn it off internally for reconfig
     if (not defined $args{vmview}) { #attempt one refresh
-        $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','config','runtime.powerState'],filter=>{name=>$node});
+        $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','config.guestId','config.hardware.memoryMB','config.hardware.numCPU','runtime.powerState'],filter=>{name=>$node});
         if (not defined $args{vmview}) { 
             xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $output_handler,$node);
             return;
