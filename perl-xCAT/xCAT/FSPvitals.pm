@@ -7,6 +7,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::FSPpower;
 use xCAT::Usage;
 use xCAT::PPCvitals;
+use xCAT::FSPUtils;
 
 ##########################################################################
 # Parse the command line for options and operands
@@ -75,7 +76,7 @@ sub enumerate_lcds {
 	    $action = "cec_query_lcds"; 
     }
     
-    my $values = xCAT::Utils::fsp_api_action ($name, $d, $action);
+    my $values = xCAT::FSPUtils::fsp_api_action ($name, $d, $action);
     $Rc =  @$values[2];
     my $data = @$values[1];
     $data =~ /\|(\w*)/ ;
