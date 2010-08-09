@@ -330,7 +330,9 @@ sub process_request {
         my @hypes = keys %hyphash;
         $tablecfg{prodkey} = $keytab->getNodesAttribs(\@hypes,[qw/product key/]);
     }
-	foreach my $hyp (sort(keys %hyphash)){
+    my $hyp;
+    my %needvcentervalidation;
+	foreach $hyp (sort(keys %hyphash)){
 		#if($pid == 0){
         if ($viavcenter or (defined $tablecfg{hypervisor}->{$hyp}->[0]->{mgr} and not $tablecfg{hypervisor}->{$hyp}->[0]->{preferdirect})) {
 	    $viavcenterbyhyp->{$hyp}=1;
@@ -353,12 +355,8 @@ sub process_request {
             }
             $hyphash{$hyp}->{conn} = $vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{conn};
             $hyphash{$hyp}->{vcenter}->{conn} = $vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{conn};
-            if (validate_vcenter_prereqs($hyp, \&declare_ready, {
-                hyp=>$hyp,
-                vcenter=>$vcenter
-                }) eq "failed") {
-                $hypready{$hyp} = -1;
-            }
+            $needvcentervalidation{$hyp}=$vcenter;
+            $vcenterhash{$vcenter}->{allhyps}->{$hyp}=1;
         } else {
             eval { 
               $hyphash{$hyp}->{conn} = Vim->new(service_url=>"https://$hyp/sdk");
@@ -376,6 +374,18 @@ sub process_request {
 		#	$esx_comm_pids{$pid} = 1;
 		#}
 	}
+    foreach $hyp (keys %needvcentervalidation) {
+        my $vcenter = $needvcentervalidation{$hyp};
+        if (not defined $vcenterhash{$vcenter}->{hostviews}) {
+           populate_vcenter_hostviews($vcenter);
+        }
+        if (validate_vcenter_prereqs($hyp, \&declare_ready, {
+                hyp=>$hyp,
+                vcenter=>$vcenter
+                }) eq "failed") {
+                $hypready{$hyp} = -1;
+        }
+    }
     while (grep { $_ == 0 } values %hypready) {
         wait_for_tasks();
         sleep (1); #We'll check back in every second.  Unfortunately, we have to poll since we are in web service land
@@ -2021,6 +2031,55 @@ sub declare_ready {
     $hypready{$args{hyp}}=1;
 }
 
+sub populate_vcenter_hostviews {
+    my $vcenter = shift;
+    my @hypervisors;
+    my %nametohypmap;
+    my $iterations=1;
+    if ($usehostnamesforvcenter and $usehostnamesforvcenter !~ /no/i) {
+        $iterations=2; #two passes possible
+        my $hyp;
+        foreach $hyp (keys %{$vcenterhash{$vcenter}->{allhyps}}) {
+
+            if ($tablecfg{hosts}->{$hyp}->[0]->{hostnames}) {
+                $nametohypmap{$tablecfg{hosts}->{$hyp}->[0]->{hostnames}}=$hyp;
+            }
+        }
+        @hypervisors = keys %nametohypmap;
+    } else {
+        @hypervisors = keys %{$vcenterhash{$vcenter}->{allhyps}};
+    }
+    while ($iterations and scalar(@hypervisors)) {
+        my $hosts = join(")|(",@hypervisors);
+        $hosts = '^(('.$hosts.'))(\z|\.)';
+        my $search = qr/$hosts/o;
+        my @hypviews = @{$vcenterhash{$vcenter}->{conn}->find_entity_views(view_type=>'HostSystem',properties=>['summary.config.name','summary.runtime.connectionState','runtime.inMaintenanceMode','parent','configManager'],filter=>{'summary.config.name'=>$search})};
+        foreach (@hypviews) {
+            my $hypname = $_->{'summary.config.name'};
+            if ($vcenterhash{$vcenter}->{allhyps}->{$hypname}) { #simplest case, config.name is exactly the same as node name
+                $vcenterhash{$vcenter}->{hostviews}->{$hypname} = $_;
+            } elsif ($nametohypmap{$hypname}) { #second case, there is a name mapping this to a real name
+                $vcenterhash{$vcenter}->{hostviews}->{$nametohypmap{$hypname}} = $_;
+            } else { #name as-is doesn't work, start stripping domain and hope for the best
+                $hypname =~ s/\..*//;
+                if ($vcenterhash{$vcenter}->{allhyps}->{$hypname}) { #shortname is a node
+                    $vcenterhash{$vcenter}->{hostviews}->{$hypname} = $_;
+                } elsif ($nametohypmap{$hypname}) { #alias for node
+                    $vcenterhash{$vcenter}->{hostviews}->{$nametohypmap{$hypname}} = $_;
+                }
+            }
+        }
+        $iterations--;
+        @hypervisors=();
+        if ($usehostnamesforvcenter and $usehostnamesforvcenter !~ /no/i) { #check for hypervisors by native node name if missed above
+            foreach my $hyp (keys %{$vcenterhash{$vcenter}->{allhyps}}) {
+                unless ($vcenterhash{$vcenter}->{hostviews}->{$hyp}) {
+                    push @hypervisors,$hyp;
+                }
+            }
+        }
+    }
+}
 sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is added correctly to a vCenter instance when an operation requires it
     my $hyp = shift;
     my $depfun = shift;
@@ -2055,10 +2114,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
         force=>1,
         );
     my $hview;
-    $hview = $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type=>'HostSystem',properties=>['summary.config.name','summary.runtime.connectionState','runtime.inMaintenanceMode','parent','configManager'],filter=>{'summary.config.name'=>qr/^$hyp(?:\.|\z)/});
-    unless ($hview) {
-         $hview = $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type=>'HostSystem',properties=>['summary.config.name','summary.runtime.connectionState','runtime.inMaintenanceMode','parent','configManager'],filter=>{'summary.config.name'=>qr/^$name(?:\.|\z)/});
-    }
+    $hview = $vcenterhash{$vcenter}->{hostviews}->{$hyp};
     if ($hview) { 
         if ($hview->{'summary.config.name'} =~ /^$hyp(?:\.|\z)/ or $hview->{'summary.config.name'} =~ /^$name(?:\.|\z)/) { #Looks good, call the dependent function after declaring the state of vcenter to hypervisor as good
             if ($hview->{'summary.runtime.connectionState'}->val eq 'connected') {
