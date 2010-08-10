@@ -947,7 +947,7 @@ sub mkinstall
             if($esxi){
                 $k = "xcat/$os/$arch/mboot.c32";
                 $i = "";
-                my @addfiles = qw(vmkernel.gz sys.vgz cim.vgz ienviron.vgz install.vgz);
+                my @addfiles = qw(vmkernel.gz sys.vgz cim.vgz ienviron.vgz install.vgz );
 		$kcmdline = "xcat/$os/$arch/vmkboot.gz " . $kcmdline;
                 foreach(@addfiles){
                     $kcmdline .= " --- xcat/$os/$arch/$_";
@@ -1224,6 +1224,10 @@ sub getplatform {
 sub copyesxiboot {
     my $srcdir = shift;
     my $targetdir = shift;
+    # this just does the same thing that the stateless version does.
+    unless(-f "$targetdir/mod.tgz"){
+        xCAT_plugin::esx::makecustomizedmod('esxi', $targetdir);
+    }
     my @files = qw(mboot.c32 vmkboot.gz vmkernel.gz sys.vgz cim.vgz ienviron.vgz install.vgz);
     foreach my $f (@files){
         copy("$srcdir/$f","$targetdir");
