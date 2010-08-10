@@ -2249,9 +2249,6 @@ sub getNodeAttribs_nosub_old
     }
     if ($return)
     {
-print "data array\n";
-print Dumper(@data);
-print "\n";
         return wantarray ? @data : $data[0];
     }
     else
