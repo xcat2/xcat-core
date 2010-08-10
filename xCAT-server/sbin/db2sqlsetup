@@ -903,7 +903,7 @@ sub catalogServer
 sub createxcatdb
 {
     xCAT::MsgUtils->message("I",
-                 "Creating the xCAT database. This can take serveral minutes.");
+                 "Creating the xCAT database. This can take several minutes.");
     my $cmd;
     my $rc = 0;
 
