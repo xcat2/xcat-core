@@ -552,7 +552,8 @@ sub process_request_nmap {
           }
           delete $deadnodes{$currnode};
       } elsif ($currnode) {
-          if (/^MAC/) {
+          #if (/^MAC/) {  #oops not all nmap records end with MAC
+          if (/^$/) {     #search for blank line instead
               my $status = join ',',sort keys %states ;
               my $appsd="";
               foreach my $portnum(keys %portservices) {
