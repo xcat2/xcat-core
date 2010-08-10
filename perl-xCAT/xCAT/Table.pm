@@ -565,6 +565,10 @@ sub get_datatype_string_db2 {
 	    }
 	  }
 	}
+    } else {  # type not specifically define
+          if (isAKey(\@{$descr->{keys}}, $col)) { 
+            $ret = "VARCHAR(128) NOT NULL ";  
+          }
     }
     if ($col eq "disable") {
          
