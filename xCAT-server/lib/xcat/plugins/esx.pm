@@ -1257,10 +1257,9 @@ sub power {
     my $pretendop = $args{pretendop}; #to pretend a system was on for reset or boot when we have to turn it off internally for reconfig
     if (not defined $args{vmview}) { #attempt one refresh
         $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','config.guestId','config.hardware.memoryMB','config.hardware.numCPU','runtime.powerState'],filter=>{name=>$node});
-        if (not defined $args{vmview}) { 
-            xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $output_handler,$node);
-            return;
-        }
+        #vmview not existing now is not an issue, this function
+        #is designed to handle that and correct if reasonably possible
+        #comes into play particularly in a stateless context
     }
     @ARGV = @{$args{exargs}}; #for getoptions;
     my $forceon;
