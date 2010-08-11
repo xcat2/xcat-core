@@ -333,6 +333,10 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
     # On server, xcat not already configured to run DB2 add xCAT database
     if (($::SERVER) && ($::xcatrunningdb2 == 0))
     {
+        #
+        # update DBM config 
+        #
+        &updateDBM;
 
         #
         # Create the xcatdb database
@@ -722,7 +726,13 @@ sub setupinstance
             }
 
             # su to xcatdb and run more setup
-            $cmd = "db2set -all ";
+            $cmd = "echo \"EXTSHM=ON\" >> /var/lib/db2/sqllib/db2profile ";
+            $rc  = &rundb2cmd($cmd);
+            if ($rc != 0)
+            {
+                xCAT::MsgUtils->message("I", " $cmd warning.");
+            }
+            $cmd = "echo \"export EXTSHM\" >>/var/lib/db2/sqllib/db2profile ";
             $rc  = &rundb2cmd($cmd);
             if ($rc != 0)
             {
@@ -739,6 +749,20 @@ sub setupinstance
                 xCAT::MsgUtils->message("E", " $cmd failed.");
                 exit(1);
             }
+            # su to xcatdb and run more setup
+            $cmd = "echo \"EXTSHM=ON\" >> /var/lib/db2/sqllib/db2profile ";
+            $rc  = &rundb2cmd($cmd);
+            if ($rc != 0)
+            {
+                xCAT::MsgUtils->message("I", " $cmd warning.");
+            }
+            $cmd = "echo \"export EXTSHM\" >>/var/lib/db2/sqllib/db2profile ";
+            $rc  = &rundb2cmd($cmd);
+            if ($rc != 0)
+            {
+                xCAT::MsgUtils->message("I", " $cmd warning.");
+            }
+
         }
     }
 }
@@ -792,6 +816,7 @@ sub setupdb2env
             open(FILE, ">>/etc/profile")
               or die "cannot open file /etc/profile\n";
             print FILE "export DB2INSTANCE=xcatdb \n";
+            print FILE "export EXTSHM=ON \n";
             close FILE;
         }
 
@@ -805,6 +830,7 @@ sub setupdb2env
             open(FILE, ">>/etc/profile.d/xcat.sh")
               or die "cannot open file /etc/profile.d/xcat.sh\n";
             print FILE "export DB2INSTANCE=xcatdb \n";
+            print FILE "export EXTSHM=ON \n";
             close FILE;
         }
         my $cmd = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcat.csh";
@@ -814,6 +840,7 @@ sub setupdb2env
             open(FILE, ">>/etc/profile.d/xcat.csh")
               or die "cannot open file /etc/profile.d/xcat.csh\n";
             print FILE "setenv DB2INSTANCE \"xcatdb\" \n";
+            print FILE "setenv EXTSHM \"ON\" \n";
             close FILE;
 
         }
@@ -887,8 +914,35 @@ sub catalogServer
     $rc  = &rundb2cmd($cmd);
 
 }
+#-----------------------------------------------------------------------------
+
+=head3   updateDBM 
+
+	
+   Setup configuration requirements for the DBM 
+
+=cut
 
 #-----------------------------------------------------------------------------
+
+sub updateDBM 
+{
+    xCAT::MsgUtils->message("I",
+                 "Updating the DBM.");
+    my $cmd;
+    my $rc = 0;
+
+    # su to xcatdb to update the DBM 
+    $cmd = "db2 -tvf  /opt/xcat/share/xcat/tools/updateDBM.sql ";
+    $rc  = &rundb2cmd($cmd);
+    if ($rc != 0)
+    {
+        xCAT::MsgUtils->message("I", " $cmd warning.");
+    }
+
+
+}
+
 #-----------------------------------------------------------------------------
 
 =head3   createxcatdb 
