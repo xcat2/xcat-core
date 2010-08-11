@@ -8782,7 +8782,7 @@ sub chkosimage_usage
 	push @{$rsp->{data}}, "  Usage: ";
 	push @{$rsp->{data}}, "\tchkosimage [-h | --help]";
 	push @{$rsp->{data}}, "or";
-	push @{$rsp->{data}}, "\tchkosimage [-V] image_name\n";
+	push @{$rsp->{data}}, "\tchkosimage [-V] [-c|--clean] image_name\n";
 	xCAT::MsgUtils->message("I", $rsp, $callback);
 	return 0;
 }
