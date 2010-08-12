@@ -31,7 +31,8 @@ sub handled_commands {
       mkhwconn  => 'AAAusage',
       rmhwconn  => 'AAAusage',
       lshwconn  => 'AAAusage',
-      renergy   => 'AAAusage'
+      renergy   => 'AAAusage',
+      nodeset   => 'AAAusage'
   };
 }
 
