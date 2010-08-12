@@ -411,6 +411,21 @@ unless ($kernelver) {
     $kernelver=$basekernelver;
 }
 chomp($kernelver);
+
+
+# Load driver update disk, and copy them to the root image
+my @dd_drivers = &load_dd();
+
+# Push the drivers into the @ndrivers base on the order
+my @new_order = ();
+foreach my $dd (@dd_drivers) {
+    unless (grep { $_ eq $dd} @ndrivers) {
+        push @new_order, $dd;
+    }
+    print "Added driver $dd from driver update disk.\n";
+}
+@ndrivers = (@new_order, @ndrivers);
+
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
 my @checkdeps = @ndrivers;
@@ -590,7 +605,7 @@ sub mkinitrd_dracut {
 
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        print $DRACUTCONF qq{dracutmodules+="xcat base network"\n};
+        print $DRACUTCONF qq{dracutmodules+="xcat base network kernel-modules"\n};
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         close $DRACUTCONF;
     }
@@ -1308,4 +1323,127 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 	}
    
    copy(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel"); } 
+
+
+my $driver_name;
+my $real_path;
+sub get_path ()
+{
+    if ($File::Find::name =~ /\/$driver_name/) {
+        $real_path = $File::Find::name;
+    }
+}
+
+#load the driver update disk, and return the driver names by loading order
+sub load_dd ()
+{
+    # Get the Driver Update Disk images, it can be .img or .iso
+    if (! -d "$installroot/driverdisk/$osver/$arch") {
+        return ();
+    }
+
+    my @dd_list = `find $installroot/driverdisk/$osver/$arch -type f`;
+    chomp(@dd_list);
+
+    if (! @dd_list) {
+        return ();
+    }
+
+    # Create the work space for initrd hack
+    my $dd_dir = "/tmp/dd_tmp";
+
+    # If $dd_dir was not cleaned, try to umount mnt first
+    if (-d "$dd_dir/mnt") {
+        system ("umount $dd_dir/mnt >/dev/null 2>&1");
+    }
+    if( -d "$dd_dir") {
+        rmtree "$dd_dir";
+    }
+    mkpath "$dd_dir";
+    mkpath "$dd_dir/mnt";
+    mkpath "$dd_dir/mods";
+    
+    my @dd_drivers = ();    #dirver name
+    
+    # Loading drivers from each Driver Disk
+    foreach my $dd (@dd_list) {
+        my $rc = system ("mount -o loop $dd $dd_dir/mnt");
+        if ($rc) {
+            print "mount the Driver Disk $dd failed.\n";
+            next;
+        }
+    
+        if (! (-f "$dd_dir/mnt/rhdd" || -f "$dd_dir/mnt/modinfo"
+                || -f "$dd_dir/mnt/modules.dep" || -f "$dd_dir/mnt/modules.cgz")) {
+            print "The Driver Disk $dd has not correct format.\n";
+            system ("umount -f $dd_dir/mnt");
+            next;
+        }
+    
+        # Load the modinfo
+        open($modinfo, "<", "$dd_dir/mnt/modinfo");
+        my @modinfo_lines = <$modinfo>;
+        my $mod_ver = shift @modinfo_lines;
+        chomp($mod_ver);
+        if ($mod_ver !~ /^Version 0/) {
+            print "The Driver Disk $dd has unknown version.\n";
+            system ("umount -f $dd_dir/mnt");
+            next;
+        }
+    
+        foreach my $line (@modinfo_lines) {
+            if ($line !~ /^Version/ && $line =~ /^(\w+)/) {
+                chomp($line);
+                if ($line =~ /^\s*$/) { next; }
+                $line =~ s/$/\.ko/;
+                push @dd_drivers, $line;
+            }
+        }
+        close($modinfo);
+   
+        # Copy the firmware 
+        if (-d "$dd_dir/mnt/firmware") {
+            system ("cp -rf $dd_dir/mnt/firmware $rootimg_dir/lib/firmware");
+        } 
+
+        # Load the modules.cgz
+        system ("cd $dd_dir/mods; gunzip -c $dd_dir/mnt/modules.cgz |cpio -id");
+        if (! -d "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk") {
+            mkpath "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk";
+        }
+
+        # Copy the drivers to the root image
+        my @drivers = `find $dd_dir/mods/$kernelver/$arch/ -type f`;
+
+        foreach my $d (@drivers) {
+            chomp($d);
+            $driver_name = $d;
+            $driver_name =~ s/.*\///;
+            $real_path = "";
+            find (\&get_path, <$rootimg_dir/lib/modules/$kernelver/*>);
+            if ($real_path eq "") {
+                system ("cp $d $rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk");
+            } else {
+                system ("cp $d $real_path");
+            }
+        }
+
+        rmtree "$dd_dir/mods/*";
+    
+        my $rc = system ("umount -f $dd_dir/mnt");
+        if ($rc) {
+            print "umount the directory $dd_dir/mnt failed\n";
+            exit 1;
+        }
+    }
+
+    # Generate the dependency relationship
+    system ("chroot '$rootimg_dir' depmod $kernelver");
+
+    # Clean the env
+    rmtree "$dd_dir";
+
+    return @dd_drivers;
+}
+
 
