@@ -19,7 +19,7 @@ use xCAT::DBobjUtils;
 use xCAT_monitoring::monitorctrl;
 use Thread qw(yield);
 use xCAT::PPCdb;
-
+#use Data::Dumper;
 
 ##########################################
 # Globals
@@ -1666,6 +1666,7 @@ sub process_request {
     #The following code supports for Multiple hardware control points.
     #use @failed_nodes to store the nodes which need to be run.
     #print "before process_command\n";
+    #print Dumper($request);
     my %failed_msg = (); # store the error msgs
     my $t = $request->{node};
     my @failed_nodes = @$t;
@@ -1763,15 +1764,22 @@ sub process_request {
        #print "after result:\n";
        #print Dumper(\@failed_nodes);
        if($lasthcp_type =~ /^(fsp|bpa)$/) {
-	   #through asmi ......
-           $request_new->{fsp_api} = 0;
-	       if(@failed_nodes != 0) {
-	           my @temp = @failed_nodes;
-	           @failed_nodes = (); 
-	           $request_new->{node} = \@temp;
-               process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
-           }
-       }
+	   my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
+	   if (defined($enableASMI[0])) {
+                $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
+		if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES"))
+		{
+	            #through asmi ......
+                    $request_new->{fsp_api} = 0;
+	            if(@failed_nodes != 0) {
+	                my @temp = @failed_nodes;
+	                @failed_nodes = (); 
+	                $request_new->{node} = \@temp;
+                        process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
+                    } #end of if
+		} # end of if
+           } #end of if  
+       } #end of if
     } #end of while(1)
       
 }
