@@ -257,6 +257,11 @@ Options:
 "Usage:
     mkflexnode [-h|--help|-v|--version]
     mkflexnode <noderange>",
+  "nodeset" =>
+"Usage:
+   Common:
+      nodeset [-h|--help|-v|--version]
+      nodeset <noderange> [install|shell|boot|runcmd=bmcsetup|netboot|iscsiboot|osimage=<imagename>|statelite]",
   "rmflexnode" =>
 "Usage:
     rmflexnode [-h|--help|-v|--version]
@@ -285,6 +290,7 @@ my %version = (
     "lsflexnode" => "$vers",
     "mkflexnode" => "$vers",
     "rmflexnode" => "$vers",
+    "nodeset" => "$vers"
 );
 
 #--------------------------------------------------------------------------------
