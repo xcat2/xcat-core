@@ -86,6 +86,7 @@ my $doreq;
 my %hyphash;
 my $node;
 my $vmtab;
+my $kvmdatatab;
 
 
 sub build_pool_xml {
@@ -506,6 +507,7 @@ sub refresh_vm {
     my $dom = shift;
 
     my $newxml=XMLin($dom->get_xml_description());
+    $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
     my $vncport=$newxml->{devices}->{graphics}->{port};
     my $stty=$newxml->{devices}->{console}->{tty};
     $updatetable->{vm}->{$node}={vncport=>$vncport,textconsole=>$stty};
@@ -770,7 +772,12 @@ sub makedom {
     my $node=shift;
     my $cdloc = shift;
     my $dom;
-    my $xml=build_xmldesc($node,$cdloc);
+    my $xml;
+    if ($confdata->{kvmnodedata}->{$node}) {
+        $xml = $confdata->{kvmnodedata}->{$node}->[0];
+    } else {
+        $xml = build_xmldesc($node,$cdloc);
+    }
     my $errstr;
     eval { $dom=$hypconn->create_domain($xml); };
     if ($@) { $errstr = $@; }
@@ -924,6 +931,9 @@ sub chvm {
                 my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
                 $dom->attach_device($xml);
             }
+            my $newxml=XMLin($dom->get_xml_description());
+            $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
+        } else { #TODO: chvm to modify offline xml structure
         }
     } elsif (@purge) {
         my $dom = $hypconn->get_domain_by_name($node);
@@ -937,7 +947,13 @@ sub chvm {
             my $volname=$2;
             #first, detach the device.
             eval {
-            if ($currstate eq 'on') { $dom->detach_device($devxml); }
+            if ($currstate eq 'on') { 
+                $dom->detach_device($devxml); 
+                my $newxml=XMLin($dom->get_xml_description());
+                $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
+            } else {
+                #TODO: manipulate offline xml data
+            }
             };
             if ($@) {
                 sendmsg([1,"Unable to remove device"],$node);
@@ -1347,6 +1363,12 @@ sub process_request {
   $vmtab = xCAT::Table->new("vm");
   $confdata={};
   xCAT::VMCommon::grab_table_data($noderange,$confdata,$callback);
+  $kvmdatatab = xCAT::Table->new("kvm_nodedata",-create=>0); #grab any pertinent pre-existing xml
+  if ($kvmdatatab) {
+      $confdata->{kvmnodedata} = $kvmdatatab->getNodesAttribs($noderange,[qw/xml/]);
+  } else {
+      confdata->{kvmnodedata} = {};
+  }
   if ($command eq 'mkvm' or $command eq 'rpower' and (grep { "$_" eq "on"  or $_ eq "boot" or $_ eq "reset" } @exargs)) {
       xCAT::VMCommon::requestMacAddresses($confdata,$noderange);
       my @dhcpnodes;
