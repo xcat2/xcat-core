@@ -2880,6 +2880,9 @@ sub copycd {
 sub  makecustomizedmod {
     my $osver = shift;
     my $dest = shift;
+    # if it already exists, do not overwrite it because it may be someone
+    # else's custom image
+    if(-f "$dest/mod.tgz"){ return 1; }
     my $passtab = xCAT::Table->new('passwd');
     my $tmp;
     my $password;
