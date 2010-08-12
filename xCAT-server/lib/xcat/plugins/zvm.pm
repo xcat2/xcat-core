@@ -1590,7 +1590,7 @@ sub makeVM {
 		my $generateNew = 0;
 		@propNames = ('mac');
 		$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $node, @propNames );
-		if ($propVals) {
+		if ($propVals->{'mac'}) {
 
 			# Get MAC suffix (MACID)
 			$macId = $propVals->{'mac'};
@@ -3503,7 +3503,7 @@ sub getMacs {
 	@propNames = ('mac');
 	$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $node, @propNames );
 	my $mac;
-	if ($propVals) {
+	if ($propVals->{'mac'}) {
 
 		# Get MAC address
 		$mac = $propVals->{'mac'};
