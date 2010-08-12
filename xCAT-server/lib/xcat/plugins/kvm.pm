@@ -1367,7 +1367,7 @@ sub process_request {
   if ($kvmdatatab) {
       $confdata->{kvmnodedata} = $kvmdatatab->getNodesAttribs($noderange,[qw/xml/]);
   } else {
-      confdata->{kvmnodedata} = {};
+      $confdata->{kvmnodedata} = {};
   }
   if ($command eq 'mkvm' or $command eq 'rpower' and (grep { "$_" eq "on"  or $_ eq "boot" or $_ eq "reset" } @exargs)) {
       xCAT::VMCommon::requestMacAddresses($confdata,$noderange);
