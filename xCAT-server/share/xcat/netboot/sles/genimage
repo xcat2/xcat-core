@@ -802,10 +802,10 @@ if [ "\$NFSROOT" = "1" ]; then
     # for loop back mounting capability!
     mknod /dev/loop0 b 7 0
     mkdir -p \$NEWROOT
-    MAXTRIES=5
+    MAXTRIES=15
     ITER=0
     ME=`hostname`
-    while ! mount.nfs \${SERVER}:\${ROOTDIR}/rootimg \$NEWROOT -r -n -o nolock,rsize=32768,udp,nfsvers=3,timeo=14
+    while ! mount.nfs \${SERVER}:\${ROOTDIR}/rootimg \$NEWROOT -r -n -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14
     do
         ITER=\$(expr \$ITER + 1)
         if [ "\$ITER" == "\$MAXTRIES" ]
@@ -859,7 +859,7 @@ if [ "\$NFSROOT" = "1" ]; then
         mkdir -p \$NEWROOT/\$RWDIR/persistent
         MAXTRIES=5
         ITER=0
-        while ! mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT  \$NEWROOT/\$RWDIR/persistent -o nolock
+        while ! mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT  \$NEWROOT/\$RWDIR/persistent -o nolock,tcp
         do
             ITER=\$(expr \$ITER + 1)
             if [ "\$ITER" == "\$MAXTRIES" ]
