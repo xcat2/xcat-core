@@ -1794,6 +1794,19 @@ sub setNodesAttribs {
        $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
     };
     @orderedcols = keys %cols; #pick a specific column ordering explicitly to assure consistency
+    my @sqlorderedcols=();
+    # must quote to protect from reserved DB keywords
+    foreach my $col (@orderedcols) {
+       if ($xcatcfg =~ /^mysql:/) {
+          push @sqlorderedcols, "\`$col\`"; 
+       } else {
+          if ($xcatcfg =~ /^DB2:/){
+            push @sqlorderedcols, "\"$col\""; 
+          } else{
+            push @sqlorderedcols, $col; 
+          }
+       }
+    }
     use Data::Dumper;
     my $nodesatatime = 999; #the update case statement will consume '?' of which we are allowed 999 in the most restricted DB we support
     #ostensibly, we could do 999 at a time for the select statement, and subsequently limit the update aggregation only
@@ -1837,15 +1850,23 @@ sub setNodesAttribs {
             my $bindhooks="";
             $havenodecol = defined $cols{$nodekey};
             unless ($havenodecol) {
-                $columns = "$nodekey, ";
-                $bindhooks="?, ";
+              if ($xcatcfg =~ /^mysql:/) {
+                $columns = "\`$nodekey\`, ";
+              } else {
+                if ($xcatcfg =~ /^DB2:/){
+                  $columns = "\"$nodekey\", ";
+                } else {
+                  $columns = "$nodekey, ";
+                }
+              }
+              $bindhooks="?, ";
             }
-            $columns .= join(", ",@orderedcols);
-            $bindhooks .= "?, " x scalar @orderedcols;
+            $columns .= join(", ",@sqlorderedcols);
+            $bindhooks .= "?, " x scalar @sqlorderedcols;
             $bindhooks =~ s/, $//;
             $columns =~ s/, $//;
             my $instring = "INSERT INTO ".$self->{tabname}." ($columns) VALUES ($bindhooks)";
-            print $instring;
+            #print $instring;
             $insertsth = $self->{dbh}->prepare($instring);
         }
         foreach my $node (keys %insertnodes) {
@@ -1860,16 +1881,8 @@ sub setNodesAttribs {
         }
         if (not $upsth and keys %updatenodes) { #prepare an insert statement since one will be needed
             my $upstring = "UPDATE ".$self->{tabname}." set ";
-            foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
-                 if ($xcatcfg =~ /^mysql:/) {  #for mysql
-                     $upstring .= "\`$col\` = ?, ";
-                 } else {
-                   if ($xcatcfg =~ /^DB2:/){
-                     $upstring .= "\"$col\" = ?, ";
-                   } else {
-                     $upstring .= "$col = ?, ";
-                   }
-                 }
+            foreach my $col (@sqlorderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
+              $upstring .= "$col = ?, ";
             }
             if (grep { $_ eq $nodekey } @orderedcols) {
                 $upstring =~ s/, \z//;
@@ -1891,7 +1904,7 @@ sub setNodesAttribs {
             foreach my $node (keys %updatenodes) {
                 my @args=();
                 foreach my $col (@orderedcols) { #try aggregating requests.  Could also see about single prepare, multiple executes instead
-                    push @args,$hashrec->{$node}->{$col};
+                   push @args,$hashrec->{$node}->{$col};
                 }
                 push @args,$node;
                 $upsth->execute(@args);
