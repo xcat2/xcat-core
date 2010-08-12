@@ -526,6 +526,20 @@ if ($kernelver) {
     $kernelver=$basekernelver;
 }
 
+
+# Load driver update disk, and copy them to the root image
+my @dd_drivers = &load_dd();
+
+# Push the drivers into the @ndrivers base on the order
+my @new_order = ();
+foreach my $dd (@dd_drivers) {
+    unless (grep { $_ eq $dd} @ndrivers) {
+        push @new_order, $dd;
+    }
+    print "Added driver $dd from driver update disk.\n";
+}
+@ndrivers = (@new_order, @ndrivers);
+
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
 my @checkdeps = @ndrivers;
@@ -1266,3 +1280,174 @@ sub generic_post { #This function is meant to leave the image in a state approxi
 }
 
 
+my $driver_name;
+my $real_path;
+sub get_path ()
+{
+    if ($File::Find::name =~ /\/$driver_name/) {
+        $real_path = $File::Find::name;
+    }
+}
+
+#load the driver update disk, and return the driver names by loading order
+sub load_dd()
+{
+    # check the Driver Update Disk images, it can be .img or .iso
+    if (! -d "$installroot/driverdisk/$osver/$arch") {
+        return ();
+    }
+
+    my @dd_list = `find $installroot/driverdisk/$osver/$arch -type f`;
+    chomp(@dd_list);
+
+    if (! @dd_list) {
+        return ();
+    }
+
+    # Create the work space, it should be cleaned at end of genimage
+    my $dd_dir = "/tmp/dd_tmp";
+
+    
+    # If $dd_dir was not cleaned, try to unmount mnt first
+    if (-d "$dd_dir/mnt") {
+        system ("umount $dd_dir/mnt >/dev/null 2>&1");
+    }
+    if( -d "$dd_dir") {
+        rmtree "$dd_dir";
+    }
+    
+    mkpath "$dd_dir";
+    mkpath "$dd_dir/mnt";
+    mkpath "$dd_dir/mods";
+
+    my @dd_drivers = ();    #dirver names
+    
+    # Load drivers from each Driver Disk
+    # For multiple dd, if want to make it has order, rename the dd with a number
+    # ahead of the name like 0_xx, 1_xx
+    foreach my $dd (sort(@dd_list)) {
+        my $rc = system ("mount -o loop $dd $dd_dir/mnt");
+        if ($rc) {
+            print "mount the Driver Disk $dd failed.\n";
+            next;
+        }
+    
+        mkpath "$dd_dir/full";
+        
+        # Copy out the drivers
+        opendir(DIR, "$dd_dir/mnt") || die "Cannot open dir $dd_dir/mnt";
+        while (my $dir = readdir(DIR)) {
+            if ($dir =~ /^\./) { next; }
+
+            # Every driver update disk can have multiple directories, each directory
+            # has the directory format like /linux/[distribution]/[architechture]-[version]/
+            # If the directory name is numeric, then it will be used as order to load the  
+            # the dirviers inside.
+            # For the directory name which is not numeric, copy them to directory 0. It will be 
+            # loaled first.
+            if ($dir !~ /^\d*$/) {  
+                mkpath "$dd_dir/full/0";
+                system ("cp -rf $dd_dir/mnt/$dir $dd_dir/full/0");
+            } else {
+                system ("cp -rf $dd_dir/mnt/$dir $dd_dir/full/");
+            }
+        }
+        closedir(DIR);
+    
+        # Get all the kernel modules base on the order of directory name.
+        
+        # The structure of dd: <order>/linux/[distribution]/[architechture]-[version]/
+
+        # The supported arch: i386, ia64, ppc, ppc64, s390, s390x sparc or x86_64.
+        my $darch = $arch;
+        if ($darch =~ /^x86$/) {
+            $darch = "i386";
+        }
+        
+        # If the version is os version. If the os is "sles11.1", the possible os version
+        # could be "sles11.1", "11.1", "11", "sles11"
+        my @distro = ($osver);
+        my $distro1 = $osver;
+        $distro1 =~ s/[^\d]*//;
+        push @distro,$distro1;
+        my $distro2 = $distro1;
+        $distro2 =~ s/\..*//;
+        push @distro,$distro2;
+        my $distro3 = $osver;
+        $distro3 =~ s/\..*//;
+        push @distro,$distro3;
+
+        opendir (FDIR, "$dd_dir/full") || die "Cannot open dir $dd_dir/full";
+        my @fulldir = readdir(FDIR);
+        closedir (FDIR);
+
+        # Create the directory for drivers from driver disk
+        if (! -d "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk") {
+            mkpath "$rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk";
+        }
+
+        # Copy the drivers to the root image and get the driver loading order
+        foreach my $dir (sort(@fulldir)) {
+            if ($dir =~ /^\./) { next; }
+            my $vdir;
+            foreach (@distro) {
+                if (-d "$dd_dir/full/$dir/linux/suse/$darch-$_") {
+                    $vdir = "$dd_dir/full/$dir/linux/suse/$darch-$_";
+                }
+            }
+            if (! $vdir) { next; }
+
+            # Use the module_order if it has
+            if (-f "$vdir/modules/module.order") {
+                open(ORDER, "<", "$vdir/modules/module.order");
+                while (my $file = <ORDER>) {
+                    chomp ($file);
+                    if (-f "$vdir/modules/$file") {
+                        $driver_name = $file;
+                        $real_path = "";
+                        find(\&get_path, <$rootimg_dir/lib/modules/$kernelver/*>);
+                        if ($real_path eq "") {
+                            system ("cp $vdir/modules/$file $rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk");
+                        } else {
+                            system ("cp $vdir/modules/$file $real_path");
+                        }
+                        
+                        push @dd_drivers, $file;
+                    }
+                }
+            } else {
+                opendir (MDIR, "$vdir/modules") || die "Cannot open dir $vdir/modules";
+                while (my $file = readdir(MDIR)) {
+                    if (-f "$vdir/modules/$file" && $file =~ /\.ko/) {
+                        $driver_name = $file;
+                        $real_path = "";
+                        find(\&get_path, <$rootimg_dir/lib/modules/$kernelver/*>);
+                        if ($real_path eq "") {
+                            system ("cp $vdir/modules/$file $rootimg_dir/lib/modules/$kernelver/kernel/drivers/driverdisk");
+                        } else {
+                            system ("cp $vdir/modules/$file $real_path");
+                        }
+                        
+                        push @dd_drivers, $file;
+                    }
+                }
+            }
+        }
+    
+        rmtree "$dd_dir/full";
+    
+        my $rc = system ("umount -f $dd_dir/mnt");
+        if ($rc) {
+            print "umount the directory $dd_dir/mnt failed\n";
+            exit 1;
+        }
+    }
+
+    # Generate the dependency relationship
+    system ("chroot '$rootimg_dir' depmod $kernelver");
+
+    # Clean the env
+    rmtree "$dd_dir";
+
+    return @dd_drivers;
+}
