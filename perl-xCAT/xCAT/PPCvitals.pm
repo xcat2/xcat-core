@@ -115,7 +115,7 @@ sub enumerate_temp {
     ####################################
     # Expect error
     ####################################
-    if ( $Rc == EXPECT_ERROR ) {
+    if ( $Rc == EXPECT_ERROR || $Rc == RC_ERROR ) {
         return( [$Rc,@$cages[0]] );
     }
     ####################################
