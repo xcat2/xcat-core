@@ -591,6 +591,9 @@ sub mkinstall
           )
         {
 
+            # Define a variable for driver update list
+            my @dd_drivers;
+
             #TODO: driver slipstream, targetted for network.
             unless ($doneimgs{"$os|$arch"})
             {
@@ -601,16 +604,19 @@ sub mkinstall
                          "/tftpboot/xcat/$os/$arch/");
                     copy("$pkgdir/1/boot/$arch/loader/initrd",
                          "/tftpboot/xcat/$os/$arch/");
+                    @dd_drivers = &insert_dd($callback, $os, $arch, "/tftpboot/xcat/$os/$arch/initrd");
                 } elsif ($arch =~ /x86/) {
                     copy("$pkgdir/1/boot/i386/loader/linux",
                          "/tftpboot/xcat/$os/$arch/");
                     copy("$pkgdir/1/boot/i386/loader/initrd",
                          "/tftpboot/xcat/$os/$arch/");
+                    @dd_drivers = &insert_dd($callback, $os, $arch, "/tftpboot/xcat/$os/$arch/initrd");
                 }
                 elsif ($arch =~ /ppc/)
                 {
                     copy("$pkgdir/1/suseboot/inst64",
                          "/tftpboot/xcat/$os/$arch");
+                    @dd_drivers = &insert_dd($callback, $os, $arch, "/tftpboot/xcat/$os/$arch/inst64");
                 }
                 $doneimgs{"$os|$arch"} = 1;
             }
@@ -717,7 +723,11 @@ sub mkinstall
                 }
             }
 
-            #TODO: driver disk handling should in SLES case be a mod of the install source, nothing to see here
+            # Add the kernel paramets for driver update disk loading
+            foreach (@dd_drivers) {
+                $kcmdline .= " dud=file:/cus_driverdisk/$_";
+            }
+
             if (defined $sent->{serialport})
             {
                 unless ($sent->{serialspeed})
@@ -1039,6 +1049,120 @@ sub copycd
 	}
 
     }
+}
+
+# Get the driver update disk from /install/driverdisk/<os>/<arch>
+# Take out the drivers from driver update disk and insert them
+# into the initrd
+
+sub insert_dd {
+    my $callback = shift;
+    my $os = shift;
+    my $arch = shift;
+    my $img = shift;
+
+    my $dd_dir = "/tmp/dd_tmp";
+    my $install_dir = xCAT::Utils->getInstallDir();
+
+    # Find out the dirver disk which need to be insert into initrd
+    if (! -d "$install_dir/driverdisk/$os/$arch") {
+	return ();
+    }
+    my $cmd = "find $install_dir/driverdisk/$os/$arch -type f";
+    my @dd_list = xCAT::Utils->runcmd($cmd, -1);
+    chomp(@dd_list);
+    if (!@dd_list) {
+        return undef;
+    }
+
+    # Create the tmp dir for dd hack
+    if (-d $dd_dir) {
+        rmtree "$dd_dir";
+    }
+    mkpath "$dd_dir/initrd_img";
+
+    
+    my $pkgdir="$install_dir/$os/$arch";
+    # Unzip the original initrd
+    if ($arch =~ /x86/) {
+        $cmd = "gunzip --quiet -c $img > $dd_dir/initrd";
+    } elsif ($arch =~/ppc/) {
+        $cmd = "gunzip --quiet -c $pkgdir/1/suseboot/initrd64 > $dd_dir/initrd";
+    }
+    xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Handle the driver update disk failed. Could not gunzip the initial initrd.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return ();
+    }
+    
+    # Unpack the initrd
+    $cmd = "cd $dd_dir/initrd_img; cpio -id --quiet < $dd_dir/initrd";
+    xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Handle the driver update disk failed. Could not extract files from the initial initrd.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return ();
+    }
+    
+    # Create the dir for driver update disk
+    $cmd = "mkdir -p $dd_dir/initrd_img/cus_driverdisk";
+    xCAT::Utils->runcmd($cmd, -1);
+
+    # insert the driver update disk into the cus_driverdisk dir
+    foreach my $dd (@dd_list) {
+        copy($dd, "$dd_dir/initrd_img/cus_driverdisk");
+    }
+    
+    # Repack the initrd
+    # In order to avoid the runcmd add the '2>&1' at end of the cpio
+    # cmd, the echo cmd is added at the end
+    $cmd = "cd $dd_dir/initrd_img; find . -print | cpio -H newc -o > $dd_dir/initrd | echo";
+    xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC != 0) {
+        my $rsp;
+        push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked initrd.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return ();
+    }
+    
+    # zip the initrd
+    #move ("$dd_dir/initrd.new", "$dd_dir/initrd");
+    $cmd = "gzip -f $dd_dir/initrd";
+    xCAT::Utils->runcmd($cmd, -1);
+
+    if ($arch =~ /x86/) {
+        copy ("$dd_dir/initrd.gz", "$img");
+    } elsif ($arch =~/ppc/) {
+        # make sure the src kernel existed
+        $cmd = "gunzip -c $pkgdir/1/suseboot/linux64.gz > $dd_dir/kernel";
+        xCAT::Utils->runcmd($cmd, -1);
+        
+        # create the zimage
+        $cmd = "env -u POSIXLY_CORRECT /lib/lilo/scripts/make_zimage_chrp.sh --vmlinux $dd_dir/kernel --initrd $dd_dir/initrd.gz --output $img";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0) {
+            my $rsp;
+            push @{$rsp->{data}}, "Handle the driver update disk failed. Could not pack the hacked initrd.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return ();
+        }
+    }
+
+    my $rsp;
+    push @{$rsp->{data}}, "Inserted the driver update disk:".join(',', sort(@dd_list)).".";
+    xCAT::MsgUtils->message("I", $rsp, $callback);
+
+    my @dd_files = ();
+    foreach my $dd (sort(@dd_list)) {
+        chomp($dd);
+	$dd =~ s/^.*\///;
+	push @dd_files, $dd;
+    }
+
+    return sort(@dd_files);    
 }
 
 #sub get_tmpl_file_name {
