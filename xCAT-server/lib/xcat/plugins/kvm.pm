@@ -773,8 +773,8 @@ sub makedom {
     my $cdloc = shift;
     my $dom;
     my $xml;
-    if ($confdata->{kvmnodedata}->{$node}) {
-        $xml = $confdata->{kvmnodedata}->{$node}->[0];
+    if ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
+        $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
     } else {
         $xml = build_xmldesc($node,$cdloc);
     }
