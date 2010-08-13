@@ -1751,33 +1751,33 @@ sub process_request {
        %$request_new =%$request;
        $request_new->{node}  = \@next;
        $request_new->{fsp_api} = 0;
-       if($lasthcp_type =~ /^(fsp|bpa)$/) {
+       if($lasthcp_type =~ /^(fsp|bpa)$/  && $request->{hwtype} ne 'hmc' ) {
 	       #my $fsp_api = check_fsp_api($request);
 	       #if($fsp_api == 0 ) {
            $request_new->{fsp_api} = 1; 
+           $request_new->{hwtype}  = $lasthcp_type;
 	       # }
        }
-       $request_new->{hwtype}  = $lasthcp_type;
        #print Dumper($request_new);
        @failed_nodes = () ;
        process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
        #print "after result:\n";
        #print Dumper(\@failed_nodes);
-       if($lasthcp_type =~ /^(fsp|bpa)$/) {
-	   my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
-	   if (defined($enableASMI[0])) {
+       if($lasthcp_type =~ /^(fsp|bpa)$/  && $request->{hwtype} ne 'hmc' ) {
+	       my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
+	       if (defined($enableASMI[0])) {
                 $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
-		if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES"))
-		{
+		        if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES"))
+		        {
 	            #through asmi ......
                     $request_new->{fsp_api} = 0;
-	            if(@failed_nodes != 0) {
-	                my @temp = @failed_nodes;
-	                @failed_nodes = (); 
-	                $request_new->{node} = \@temp;
+	                if(@failed_nodes != 0) {
+	                    my @temp = @failed_nodes;
+	                    @failed_nodes = (); 
+	                    $request_new->{node} = \@temp;
                         process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
                     } #end of if
-		} # end of if
+		         } # end of if
            } #end of if  
        } #end of if
     } #end of while(1)
