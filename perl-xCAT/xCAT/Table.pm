@@ -2325,7 +2325,7 @@ sub getNodeAttribs_nosub_returnany_old
             {
                 foreach (@results) {
                    if ($_->{$nodekey}) { $_->{$nodekey} = $node; }
-                   if ($options{withattribution}) { $_->{'!!xcatsourcegroup!!'} = $group; }
+                   if ($options{withattribution}) { $_->{'!!xcatgroupattribution!!'} = $group; }
                 };
                 return @results;
             }
@@ -2340,135 +2340,137 @@ sub getNodeAttribs_nosub_returnany_old
     return undef;    #Made it here, config has no good answer
 }
 
+my $nextRecordAtEnd = qr/\+=NEXTRECORD$/;
+my $nextRecord = qr/\+=NEXTRECORD/;
+
 sub getNodeAttribs_nosub_returnany
 {
-	my $self    = shift;
-    my $node    = shift;
-    my @attribs = @{shift()};
-    my %options = @_;
-    my @results;
+  my $self    = shift;
+  my $node    = shift;
+  my @attribs = @{shift()};
+  my %options = @_;
+  my @results;
 
-    my $nodekey = "node";
-    if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
-        $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
-    };
-    @results = $self->getAttribs({$nodekey => $node}, @attribs);
+  my $nodekey = "node";
+  if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+    $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
+  };
+  @results = $self->getAttribs({$nodekey => $node}, @attribs);
     
-    my %attribsToDo;
-    for(@attribs) {$attribsToDo{$_} = 0};
+  my %attribsToDo;
+  for(@attribs) {
+    $attribsToDo{$_} = 0
+  };
     
-    my $attrib;
-    my $result;
+  my $attrib;
+  my $result;
     
-    my $data = $results[0];
-    if(defined{$data}) #if there was some data for the node, loop through and check it
-    {
-	    foreach $result (@results)
-    	{
-    		foreach $attrib (keys %attribsToDo)
-    		{
-    			#check each item in the results to see which attributes were satisfied
-    			if(defined($result->{$attrib}) && $result->{$attrib} !~ /\+=NEXTRECORD$/)
-    			{
-    				delete $attribsToDo{$attrib};
-    			} 
-    		}   
-    	}
+  my $data = $results[0];
+  if(defined{$data}) { #if there was some data for the node, loop through and check it 
+    foreach $result (@results) {
+      foreach $attrib (keys %attribsToDo) {
+        #check each item in the results to see which attributes were satisfied
+        if(defined($result) && defined($result->{$attrib}) && $result->{$attrib} !~ $nextRecordAtEnd) {
+          delete $attribsToDo{$attrib};
+        } 
+      }   
     }
-    if((keys (%attribsToDo)) == 0) #if all of the attributes are satisfied, don't look at the groups
-    {
-        return @results;
-    }
+  }
+  if((keys (%attribsToDo)) == 0) { #if all of the attributes are satisfied, don't look at the groups
+    return @results;
+  }
 
-    #find the groups for this node
-    my ($nodeghash) = $self->{nodelist}->getAttribs({node => $node}, 'groups');
+  #find the groups for this node
+  my ($nodeghash) = $self->{nodelist}->getAttribs({node => $node}, 'groups');
     
-    #no groups for the node, we are done
-    unless (defined($nodeghash) && defined($nodeghash->{groups}))
-    {
-        return @results;
-    }
+  #no groups for the node, we are done
+  unless (defined($nodeghash) && defined($nodeghash->{groups})) {
+    return @results;
+  }
     
-
-    my @nodegroups = split(/,/, $nodeghash->{groups});
-    my $group;
-    my @groupResults;
-    my $groupResult;
-    my $wasAdded; #used to keep track 
-    my %attribsDone;
-
-    foreach $group (@nodegroups)
-    {
-        @groupResults = $self->getAttribs({$nodekey => $group}, keys (%attribsToDo));
-	    $data = $groupResults[0];
-        if (defined($data))  #if some attributes came back from the query for this group
-        {
-            foreach $groupResult (@groupResults) {
-            	$wasAdded = 0;
-                if ($groupResult->{$nodekey}) { $groupResult->{$nodekey} = $node; }
-                if ($options{withattribution}) { $groupResult->{'!!xcatsourcegroup!!'} = $group; }
-                
-                foreach $attrib (%attribsToDo) #check each unfinished attribute against the results for this group
-                {
-                	if(!defined($attribsDone{$attrib}) && defined($groupResult->{$attrib})){
-                		
-                		foreach $result (@results){ #loop through our existing results to add or modify the value for this attribute
-                			if(defined($result->{$attrib}) && $result->{$attrib} =~/\+=NEXTRECORD$/){ #if the attribute was there and the value should be added
-                				
-                				$result->{$attrib} =~ s/\+=NEXTRECORD$//; #pull out the existing next record string
-                				$result->{$attrib} .= " " . $groupResult->{$attrib}; #add the group result onto the end of the existing value
-						if($options{withattribution}) {
-							if(defined($result->{'!!xcatsourcegroup!!'})) {
-								$result->{'!!xcatsourcegroup!!'} .= " " . $group;
-							}
-							else {
-								$result->{'!!xcatsourcegroup!!'} = $group;
-							}
-						}
-                				$wasAdded = 1; #this group result was handled
-                				last;
-                			}
-                		
-                		}
-                		if(!$wasAdded){ #if there was not a value already in the results.  we know there is no entry for this
-                			push(@results, {$attrib => $groupResult->{$attrib}});
-                		}
-           				if($groupResult->{$attrib} !~ /\+=NEXTRECORD$/){ #the attribute was satisfied if it does not expect to add the next record
-						$attribsDone{$attrib} = 0;
-						#delete $attribsToDo{$attrib};
-           				}
-                	}
-                
+  my @nodegroups = split(/,/, $nodeghash->{groups});
+  my $group;
+  my @groupResults;
+  my $groupResult;
+  my $wasAdded; #used to keep track 
+  my %attribsDone;
+#print "After node results, still missing ".Dumper(\%attribsToDo)."\n";
+#print "groups are ".Dumper(\@nodegroups);
+  foreach $group (@nodegroups) {
+    @groupResults = $self->getAttribs({$nodekey => $group}, keys (%attribsToDo));
+#print "group results for $group are ".Dumper(\@groupResults)."\n";
+    $data = $groupResults[0];
+    if (defined($data)) { #if some attributes came back from the query for this group
+#print "group $group \n".Dumper(\@groupResults)."\n";
+      foreach $groupResult (@groupResults) {
+        my %toPush;
+        foreach $attrib (keys %attribsToDo) { #check each unfinished attribute against the results for this group
+#print "looking for attrib $attrib\n";
+          if(defined($groupResult->{$attrib})){
+#print "found attrib $attrib\n";
+            foreach $result (@results){ #loop through our existing results to add or modify the value for this attribute
+              if(defined($result) && defined($result->{$attrib}) && $result->{$attrib} =~$nextRecordAtEnd){ #if the attribute was there and the value should be added
+                $result->{$attrib} =~ s/$nextRecordAtEnd//; #pull out the existing next record string
+                $result->{$attrib} .= $groupResult->{$attrib}; #add the group result onto the end of the existing value
+                if($options{withattribution} && $attrib ne $nodekey) {
+                  if(defined($result->{'!!xcatgroupattribution!!'})) {
+                    if(defined($result->{'!!xcatgroupattribution!!'}->{$attrib})) {
+                      $result->{'!!xcatgroupattribution!!'}->{$attrib} .= "," . $group;
+                    }
+                    else {
+                      $result->{'!!xcatgroupattribution!!'}->{$attrib} = $node.",".$group;
+                    }
+                  }
+                  else {
+                    $result->{'!!xcatgroupattribution!!'}->{$attrib} = $node.",".$group;
+                  }
                 }
-		foreach $attrib (%attribsDone) {
-			if(defined($attribsToDo{$attrib})) {
-				delete $attribsToDo{$attrib};
-			}
-		}
+                $wasAdded = 1; #this group result was handled
+#print "attrib $attrib was joined with value $groupResult->{$attrib}\n";
+              }
             }
+            if(!$wasAdded){ #if there was not a value already in the results.  we know there is no entry for this
+#print "attrib $attrib was added with value $groupResult->{$attrib}\n";
+              $toPush{$attrib} = $groupResult->{$attrib};
+              if($options{withattribution} && $attrib ne $nodekey){
+                $toPush{'!!xcatgroupattribution!!'}->{$attrib} = $group;
+              }
+            }
+            if($groupResult->{$attrib} !~ $nextRecordAtEnd){ #the attribute was satisfied if it does not expect to add the next record
+              $attribsDone{$attrib} = 0;
+            }
+          }
+          $wasAdded = 0; #reset
         }
-        if((keys (%attribsToDo)) == 0) #if all of the attributes are satisfied, so stop looking at the groups
-        {
-        	last;
+        if(keys(%toPush) != 0) {
+          if ($groupResult->{$nodekey}) {
+            $toPush{$nodekey} = $node;
+          }
+#print "pushing ".Dumper(\%toPush)."\n";
+          push(@results,\%toPush);
         }
+      }
+      foreach $attrib (keys %attribsDone) {
+        if(defined($attribsToDo{$attrib})) {
+          delete $attribsToDo{$attrib};
+        }
+      }
+      if((keys (%attribsToDo)) == 0) { #all of the attributes are satisfied, so stop looking at the groups
+        last;
+      }
     }
+  }
     
-    my @condResults;
-    my %condHash;
-
-    #run through the results and remove any "+=NEXTRECORD" ocurrances
-    for $result (@results)
-    {
-    	for my $key (keys %$result)
-    	{
-    	    $result->{$key} =~ s/\+=NEXTRECORD//g;
-            $condHash{$key} = $result->{$key};
-    	}
+#print "results ".Dumper(\@results);
+#run through the results and remove any "+=NEXTRECORD" ocurrances
+  for $result (@results) {
+    for my $key (keys %$result) {
+      $result->{$key} =~ s/\+=NEXTRECORD//g;
     }
-    push(@condResults, \%condHash);
+  }
 
-    #Don't need to 'correct' node attribute, considering result of the if that governs this code block?
-    return @condResults;
+  #Don't need to 'correct' node attribute, considering result of the if that governs this code block?
+  return @results;
 }
 
 
