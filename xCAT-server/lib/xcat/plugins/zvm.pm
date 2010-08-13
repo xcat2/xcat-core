@@ -1805,7 +1805,7 @@ sub cloneVM {
 		my $generateNew = 0;    # Flag to generate new MACID
 		@propNames = ('mac');
 		$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $_, @propNames );
-		if ( !$propVals ) {
+		if ( !$propVals->{'mac'} ) {
 
 			# If no MACID is found, get one
 			$macId = xCAT::zvmUtils->getMacID($tgtHcp);
@@ -1970,7 +1970,7 @@ sub cloneVM {
 	my $srcMac;
 	@propNames = ('mac');
 	$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $sourceNode, @propNames );
-	if ($propVals) {
+	if ($propVals->{'mac'}) {
 
 		# Get MAC address
 		$srcMac = $propVals->{'mac'};
