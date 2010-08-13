@@ -772,11 +772,11 @@ sub xhrm_satisfy {
 sub makedom {
     my $node=shift;
     my $cdloc = shift;
+    my $xml = shift;
     my $dom;
-    my $xml;
-    if ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
+    if (not $xml and $confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
         $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
-    } else {
+    } elsif (not $xml) {
         $xml = build_xmldesc($node,$cdloc);
     }
     my $errstr;
@@ -1059,21 +1059,27 @@ sub power {
         }
     } elsif ($subcommand eq 'off') {
         if ($dom) {
+            my $newxml=$dom->get_xml_description();
+            $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
             $dom->destroy();
             undef $dom;
         } else { $retstring .= "$status_noop"; }
     } elsif ($subcommand eq 'softoff') {
         if ($dom) {
+            my $newxml=$dom->get_xml_description();
+            $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
             $dom->shutdown();
         } else { $retstring .= "$status_noop"; } 
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
+            my $newxml=$dom->get_xml_description();
+            $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
             $dom->destroy();
             undef $dom;
             if ($use_xhrm) {
                 xhrm_satisfy($node,$hyp);
             }
-            ($dom,$errstr) = makedom($node,$cdloc);
+            ($dom,$errstr) = makedom($node,$cdloc,$newxml);
             if ($errstr) { return (1,$errstr); }
             $retstring.="reset";
         } else { $retstring .= "$status_noop"; } 
