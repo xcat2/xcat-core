@@ -275,8 +275,8 @@ sub process_request {
                 my $name = $rootimg_dir . $tmpc[2];
 
                 if (-e $name) {
-                    $verbose && $callback->({info=>["cp -r -a $name $rootimg_dir.statebackup$f"]});
-                    xCAT::Utils->runcmd("cp -r -a $name $rootimg_dir.statebackup$f");
+                    $verbose && $callback->({info=>["cp -r -a $name $rootimg_dir/.statebackup$f"]});
+                    xCAT::Utils->runcmd("cp -r -a $name $rootimg_dir/.statebackup$f");
                 }
             }
         }
@@ -294,7 +294,7 @@ sub process_request {
                     my @entry;
 
                     my $destf = $rootimg_dir . $name;
-                    my $srcf = $rootimg_dir . ".statebackup" . $name;
+                    my $srcf = $rootimg_dir . "/.statebackup" . $name;
                     if ( -e $destf ) {
                         $verbose && $callback->({info => ["rm -rf $destf"]});
                         xCAT::Utils->runcmd("rm -rf $destf", 0, 1);
@@ -302,7 +302,7 @@ sub process_request {
 
                     if ( -e $srcf ) {
                         $verbose && $callback->({info=>["recovering from $srcf to $destf"]});
-                        xCAT::Utils->runcmd("cp -r -a $destf $srcf", 0, 1);
+                        xCAT::Utils->runcmd("cp -r -a $srcf $destf", 0, 1);
                     }
 
                 }
@@ -410,7 +410,6 @@ sub liteMeNew {
         liteItem($rootimg_dir, $line, 0, $callback);
         if($hashNewRef->{$line}) { # there're children 
             my $childrenRef = $hashNewRef->{$line};
-            print Dumper($childrenRef);
             foreach my $child (@{$childrenRef}) {
                 liteItem($rootimg_dir, $child, 1, $callback);
             }
@@ -807,8 +806,10 @@ sub liteItem {
                 # if its already a link then leave it alone.
                 unless(-l $rif){
                     # mk the directory if it doesn't exist:
-                    $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
-                    system("mkdir -p $rootimg_dir/.default$d");
+                    unless ( -d "$rootimg_dir/.default$d" ) {
+                        $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
+                        system("mkdir -p $rootimg_dir/.default$d");
+                    }
                 
                     # copy the file in place.
                     $verbose && $callback->({info=>["cp -r -a $rif $rootimg_dir/.default$d"]});
@@ -884,8 +885,10 @@ sub liteItem {
                 unless ( -d "$rootimg_dir/.default$fdir") {
                     xCAT::Utils->runcmd("mkdir -p $rootimg_dir/.default$fdir", 0, 1);
                 }
-                $verbose && $callback->({info=>["touch $rootimg_dir/.default$f"]});
-                xCAT::Utils->runcmd("touch $rootimg_dir/.default$f", 0, 1);
+                unless( -e "$rootimg_dir/.default$f") {
+                    $verbose && $callback->({info=>["touch $rootimg_dir/.default$f"]});
+                    xCAT::Utils->runcmd("touch $rootimg_dir/.default$f", 0, 1);
+                }
             }
         }
     }
