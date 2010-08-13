@@ -815,7 +815,7 @@ nimimage  => {
  },
   },
 performance => {
-    cols => [qw(timestamp node attrname attrvalue)],
+    cols => [qw(timestamp node attrname attrvalue comments disable)],
     keys => [qw(timestamp node attrname)],
     table_desc => 'Describes the system performance every interval unit of time.',
  descriptions => {
