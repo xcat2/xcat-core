@@ -70,6 +70,7 @@ sub handled_commands {
     #rvitals => 'nodehm:mgt',
     #rinv => 'nodehm:mgt',
     getrvidparms => 'nodehm:mgt',
+    lsvm => 'hypervisor:type',
     rbeacon => 'nodehm:mgt',
     revacuate => 'hypervisor:type',
     vmstatenotify => 'hypervisor:type',
@@ -1095,6 +1096,16 @@ sub power {
     return (0,$retstring);
 }
 
+sub lsvm {
+    my $node = shift;
+    my @doms = $hypconn->list_domains();
+    my @vms;
+    foreach (@doms) {
+        push @vms,$_->get_name();
+    }
+    return (0,@vms);
+}
+
 
 sub guestcmd {
   $hyp = shift;
@@ -1114,6 +1125,8 @@ sub guestcmd {
       return getrvidparms($node,@args);
   } elsif ($command eq "getcons") {
       return getcons($node,@args);
+  } elsif ($command eq "lsvm") {
+      return lsvm($node,@args);
   }
 =cut
   } elsif ($command eq "rvitals") {
@@ -1401,11 +1414,15 @@ sub process_request {
   my $inputs = new IO::Select;;
   my $sub_fds = new IO::Select;
   %hyphash=();
-  foreach (keys %{$confdata->{vm}}) {
-      if ($confdata->{vm}->{$_}->[0]->{host}) {
-          $hyphash{$confdata->{vm}->{$_}->[0]->{host}}->{nodes}->{$_}=1;
-      } else {
-          $orphans{$_}=1;
+  if ($command eq 'lsvm') { #command intended for hypervisors, not guests
+      foreach(@$noderange) { $hyphash{$_}->{nodes}->{$_}=1; }
+  } else {
+      foreach (keys %{$confdata->{vm}}) {
+          if ($confdata->{vm}->{$_}->[0]->{host}) {
+              $hyphash{$confdata->{vm}->{$_}->[0]->{host}}->{nodes}->{$_}=1;
+          } else {
+              $orphans{$_}=1;
+          }
       }
   }
   if (keys %orphans) {
