@@ -23,8 +23,7 @@ declare -a CLIST
 declare -a PLIST 
 
 
-if [ ! -d $MNTDIR ]
-then
+if [ ! -d $MNTDIR ]; then
 	echo "statelite is only to be run in initrdfs"
 	exit 1
 fi
@@ -35,8 +34,7 @@ GetSyncInfo () {
 
 	# who is our xCAT server?  He's most likely our dhcp identifier.
 	
-	if [ ! -x ${MNTDIR}/usr/bin/openssl ]
-	then
+	if [ ! -x ${MNTDIR}/usr/bin/openssl ]; then
 		echo "Image does not include openssl!"  
 		exit 1
 	fi
@@ -63,6 +61,10 @@ GetSyncInfo () {
 		exit 1
 	fi
 
+    # add one random sleeping time
+    SLI=$(( $RANDOM%30 ))
+    SLI=$(( $SLI + 20 ))
+    sleep $SLI
 	# request the list of files from xCAT:
 	xCATCmd $XCATSERVER litefile  \
 		| sed  -e 's/<[^>]*>//g' \
@@ -72,14 +74,61 @@ GetSyncInfo () {
 		| sed -e 's/^ *//' \
 		>  $SYNCLIST
 
+    MAX_RETRIES=15
+    RETRY=0
+    while [ ! -s $SYNCLIST ]; do
+        # the file is empty, we should retry several times
+        RETRY=$(( $RETRY+1 ))
+        if [ $RETRY -eq $MAX_RETRIES ]; then
+            break
+        fi
+
+        SLI=$(( $RANDOM%30 ))
+        SLI=$(( $SLI+20 ))
+        sleep $SLI
+
+    	xCATCmd $XCATSERVER litefile  \
+		| sed  -e 's/<[^>]*>//g' \
+		| egrep -v '^ *$' 	\
+		| sed -e 's/^ *//' \
+		| awk -F: '{print $2}' \
+		| sed -e 's/^ *//' \
+		>  $SYNCLIST
+    done
+
 	# files will now be inside /.snapshot/tmpfs/synclist in the form:
 	# options path
+    
+    SLI=$(( $RANDOM%30 ))
+    SLI=$(( $SLI + 20 ))
+    sleep $SLI
+
 	xCATCmd $XCATSERVER litetree  \
 		| sed  -e 's/<[^>]*>//g' \
 		| egrep -v '^ *$' \
 		| sed -e 's/^ *//' \
 		| awk '{print $2}' \
 		> $SYNCTREE
+
+    RETRY=0
+    while [ ! -s $SYNCTREE ]; do
+        # the file is empty, we should retry several times
+        RETRY=$(( $RETRY + 1 ))
+        if [ $RETRY -eq $MAX_RETRIES ]; then
+            break
+        fi
+
+        SLI=$(( $RAMDOM % 30 ))
+        SLI=$(( $SLI + 20 ))
+        sleep $SLI
+    	xCATCmd $XCATSERVER litetree  \
+		| sed  -e 's/<[^>]*>//g' \
+		| egrep -v '^ *$' \
+		| sed -e 's/^ *//' \
+		| awk '{print $2}' \
+		> $SYNCTREE
+
+    done
 }
 
 xCATCmd () {
@@ -93,8 +142,7 @@ xCATCmd () {
 
 MountTrees () {
 	mkdir -p $TREEMOUNT
-	if [ -z $SYNCTREE ]
-	then
+	if [ -z $SYNCTREE ]; then
 		echo "Can't read $SYNCTREE.  Something is wrong with this image..." >/dev/console
 		exit 1
 	fi
@@ -103,12 +151,11 @@ MountTrees () {
 		SERV=`echo $i | awk -F: '{print $1}'`  # SERV is (SERV):/blah/blah/blah
 		MNT=`echo $i | awk -F: '{print $2}'`   # MNT is server:(/blah/blah/blah)
 		mkdir -p ${TREEMOUNT}${MNT}
-		MAX=5
+		MAX=15
 		TRIES=1
-		while ! mount $SERV:$MNT ${TREEMOUNT}${MNT} -r -n -o nolock
+		while ! mount $SERV:$MNT ${TREEMOUNT}${MNT} -r -n -o nolock,tcp
 		do
-			if [ "$TRIES" = "$MAX" ]
-			then
+			if [ "$TRIES" = "$MAX" ]; then
 				echo "Can't mount $i.  I give up.. ">/dev/console
 				break
 				#exit 1
@@ -191,11 +238,12 @@ ProcessType () {
 	#TYPE=$3		# type of file
     #isChild=$4     # child = 1, parent = 0
 	
+    PPATH=`dirname ${2}`
+
 	# every type has to have a base dir in tmpfs
-	if [ ! -d ${TMPFS}`dirname ${2}` ]
-	then
-		mkdir -p ${TMPFS}`dirname ${2}`
-		echo "mkdir -p ${TMPFS}`dirname ${2}`" >>$LOG
+	if [ ! -d ${TMPFS}${PPATH} ] && [ ! -L ${TMPFS}${PPATH} ]; then
+		mkdir -p ${TMPFS}${PPATH}
+		echo "mkdir -p ${TMPFS}${PPATH}" >>$LOG
 	fi	
 	
 	case "${3}" in 
@@ -208,7 +256,6 @@ ProcessType () {
                 echo "cp -r -a ${1} ${TMPFS}${2}" >>$LOG
             fi
 			# the link will already be in place on the image, so nothing else to do!
-			#mount -n --bind ${TMPFS}${2} ${1}
 			;;
 		con)
 			# cons go in tmpfs
@@ -233,15 +280,13 @@ ProcessType () {
             fi
             ;;
         bind,persistent)
-            if [ ! -d ${PERSISTENT}`dirname ${2}` ]
-            then
-                mkdir -p ${PERSISTENT}`dirname ${2}`
-                echo "mkdir -p ${PERSISTENT}`dirname ${2}`" >>$LOG
+            if [ ! -d ${PERSISTENT}${PPATH} ]; then
+                mkdir -p ${PERSISTENT}${PPATH}
+                echo "mkdir -p ${PERSISTENT}${PPATH}" >>$LOG
             fi
 
             # if the file doesn't exist, then copy it over to persistent
-            if [ ! -e ${PERSISTENT}${2} ]
-            then
+            if [ ! -e ${PERSISTENT}${2} ]; then
                 echo "cp -r -a ${1} ${PERSISTENT}${2}" >>$LOG
                 cp -r -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
             fi
@@ -257,37 +302,49 @@ ProcessType () {
 			# so have tmpfs point to persistent
 
 			# make tree in persistent and tmpfs
-			if [ ! -d ${PERSISTENT}`dirname ${2}` ]
-			then
-				mkdir -p ${PERSISTENT}`dirname ${2}`
-				echo "mkdir -p ${PERSISTENT}`dirname ${2}`" >>$LOG
-			fi
+            # need to check whether the option of its parent direcotry is persistent or not
+            if [ "$isChild" = "1" ]; then
+                num=${#PLIST[@]}
+                for ((i=0;i<$num; i++)); do
+                    set -- ${PLIST[$i]}
+                    itype=$1
+                    ipath=$2
+                    if [ "$PPATH" = "$ipath" ]; then
+                        if [[ ! "$itype" =~ "persistent*" ]]; then
+                            if [ ! -e ${PERSISTENT}${2} ]; then
+                                echo "cp -r -a ${1} ${PERSISTENT}${2}" >>$LOG
+                                cp -r -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
+                            fi
+                            # mount it to ${TARGET}
+                            echo "mount --bind ${PERSISTENT}${2} ${TARGET}" >>$LOG
+                            mount --bind ${PERSISTENT}${2} ${TARGET}
+                        fi
+                    fi
+                done
+            else
+			    if [ ! -d ${PERSISTENT}${PPATH} ] && [! -d `readlink -m ${PERSISTENT}${PPERS}`]; then
+                    # unless the entry is one directory or one link to the directory
+                    rm -rf ${PERSISTENT}${PPERS}
+				    mkdir -p ${PERSISTENT}${PPERS}
+				    echo "mkdir -p ${PERSISTENT}${PPERS}" >>$LOG
+			    fi
 	
-			# if the file doesn't exist, then copy it over to persistent
-			if [ ! -e ${PERSISTENT}${2} ]
-			then
-				#ln -s ${1} ${PERSISTENT}/${2}
-				# if its not there, then take it from something else
-				echo "cp -r -a ${1} ${PERSISTENT}${2}" >>$LOG
-				cp -r -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
+			    # if the file doesn't exist, then copy it over to persistent
+			    if [ ! -e ${PERSISTENT}${2} ]; then
+				    # if its not there, then take it from something else
+				    echo "cp -r -a ${1} ${PERSISTENT}${2}" >>$LOG
+				    cp -r -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
 				
-				#mount -n --bind ${TMPFS}${2} ${1}
-			fi
-            #if target is a directory, then remove it first,
-            #otherwise, the link will be created under this dir instead of replacing it.
-            # whack of trailing / for persistent directories:
-            TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
-            if [ -d ${TARGET} ]
-            then
-                echo "rm -Rf ${TARGET}" >>$LOG
-                rm -Rf ${TARGET} 2>&1 >>$LOG
-            fi
+			    fi
+                #if target is a directory, then remove it first,
+                #otherwise, the link will be created under this dir instead of replacing it.
+                # whack of trailing / for persistent directories:
+                TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
+                if [ -d ${TARGET} ]; then
+                    echo "rm -Rf ${TARGET}" >>$LOG
+                    rm -Rf ${TARGET} 2>&1 >>$LOG
+                fi
 
-            # mount it to ${TARGET}
-            echo "mount --bind ${PERSISTENT}${2} ${TARGET}" >>$LOG
-            mount --bind ${PERSISTENT}${2} ${TARGET}
-
-            if [ "$isChild" = "0" ]; then
                 # finally make the tmpfs link point to the persistent file
 
 			    # you have to get rid of the /sysroot in the beginning 
@@ -297,12 +354,12 @@ ProcessType () {
 			    echo "ln -sf ${LINK} ${TARGET}" >>$LOG
 			    ln -sf ${LINK} ${TARGET}        >>$LOG 2>&1
             fi
+
 			;;
 		ro)
 			# need to make sure directory exists:
-			if [ ! -d ${TMPFS}`dirname ${2}` ]
-			then
-				mkdir -p ${TMPFS}`dirname ${2}` >>$LOG 2>&1
+			if [ ! -d ${TMPFS}${PPATH} ]; then
+				mkdir -p ${TMPFS}${PPATH} >>$LOG 2>&1
 			fi
 			TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
 			#LINK=`echo ${1} | sed -e "s/^${MNTDIR}//"`
@@ -327,15 +384,13 @@ FindFile () {
 	FOUND=0
 	for DIR in `cat ${SYNCTREE} | sed 's/[^\/]*//'`
 	do
-		if [ -e ${TREEMOUNT}/${DIR}${path} ]
-		then
+		if [ -e ${TREEMOUNT}/${DIR}${path} ]; then
 			FOUND=1  # we found it!
             if [ -z $(ls ${TREEMOUNT}/${DIR}${path}) ]; then
                 FOUND=0
             else
 			    ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
-			    if [ "${2}" = "con" ]
-			    then
+			    if [ "${2}" = "con" ]; then
 				    1
 			    else
 				    break
@@ -346,10 +401,8 @@ FindFile () {
 
 
 	## Default behavior is to get from the image
-	if [ "$FOUND" = "0"  ]
-	then
-		if [ -e "${DEFAULT}${path}" ]
-		then
+	if [ "$FOUND" = "0"  ]; then
+		if [ -e "${DEFAULT}${path}" ]; then
 			ProcessType ${DEFAULT}${path} ${path} ${type} ${isChild}
 		else
 			echo "Could not find ${path} in defaults or any other place" >/dev/console
