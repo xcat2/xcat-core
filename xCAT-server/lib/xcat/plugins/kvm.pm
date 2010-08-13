@@ -506,8 +506,9 @@ sub build_xmldesc {
 sub refresh_vm {
     my $dom = shift;
 
-    my $newxml=XMLin($dom->get_xml_description());
+    my $newxml=$dom->get_xml_description();
     $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
+    $newxml = XMLin($newxml);
     my $vncport=$newxml->{devices}->{graphics}->{port};
     my $stty=$newxml->{devices}->{console}->{tty};
     $updatetable->{vm}->{$node}={vncport=>$vncport,textconsole=>$stty};
@@ -931,7 +932,7 @@ sub chvm {
                 my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
                 $dom->attach_device($xml);
             }
-            my $newxml=XMLin($dom->get_xml_description());
+            my $newxml=$dom->get_xml_description();
             $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
         } else { #TODO: chvm to modify offline xml structure
         }
@@ -949,7 +950,7 @@ sub chvm {
             eval {
             if ($currstate eq 'on') { 
                 $dom->detach_device($devxml); 
-                my $newxml=XMLin($dom->get_xml_description());
+                my $newxml=$dom->get_xml_description();
                 $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
             } else {
                 #TODO: manipulate offline xml data
