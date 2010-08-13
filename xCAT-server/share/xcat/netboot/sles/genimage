@@ -1073,12 +1073,7 @@ END
     # cross-platfrom support on power6&7 etc
     # ldd can't handle such one scenario: mn is power6, the target platform is power7
    if ($arch =~ /ppc64/) {
-      my @archs = ("power6", "power6x", "power7", "ppc-cell-be");
-      foreach my $arch (@archs) {
-          if(-d "$rootimg_dir/lib64/$arch") {
-              system("cp -a $rootimg_dir/lib64/$arch /tmp/xcatinitrd.$$/lib64/");
-          }
-      }
+      system("cp -a -r $rootimg_dir/lib64/* /tmp/xcatinitrd.$$/lib64/");
    }
 
 
