@@ -222,17 +222,17 @@ sub process_request {
         if ($hashNew{$entry}) {
             foreach my $child ( @{$hashNew{$entry}} ) {
                 my @tmpc = split (/\s+/, $child);
-                my $f = $tmp[2];
-                my $fc = $tmpc[2];
-                if ($tmp[1] =~ m/bind/ && $tmpc[1] !~ m/bind/) {
+                my $f = $tmp[1];
+                my $fc = $tmpc[1];
+                if ($tmp[0] =~ m/bind/ && $tmpc[0] !~ m/bind/) {
                     $callback->({error=>["$fc should have bind options like $f "], errorcode=> [ 1]});
                     return;
                 }
-                if ($tmp[1] =~ m/tmpfs/ && $tmpc[1] =~ m/bind/) {
+                if ($tmp[0] =~ m/tmpfs/ && $tmpc[0] =~ m/bind/) {
                     $callback->({error=>["$fc shouldnot use bind options "], errorcode=> [ 1]});
                     return;
                 }
-                if ($tmp[1] =~ m/persistent/ && $tmpc[1] !~ m/persistent/) {
+                if ($tmp[0] =~ m/persistent/ && $tmpc[0] !~ m/persistent/) {
                     $callback->({error=>["$fc should have persistent option like $f "], errorcode=> [ 1]});
                     return;
                 }
@@ -253,7 +253,7 @@ sub process_request {
     # recovery the files in litefile.save if necessary
     foreach my $line (keys %hashSaved) {
         my @oldentry = split(/\s+/, $line);
-        my $f = $oldentry[2];
+        my $f = $oldentry[1];
 
         my @newentries = grep /\s+$f$/, @{$listNew};
         my @entry;
@@ -272,7 +272,7 @@ sub process_request {
             }
             foreach my $child (@{$childrenRef}) {
                 my @tmpc = split(/\s+/, $child);
-                my $name = $rootimg_dir . $tmpc[2];
+                my $name = $rootimg_dir . $tmpc[1];
 
                 if (-e $name) {
                     $verbose && $callback->({info=>["cp -r -a $name $rootimg_dir/.statebackup$f"]});
@@ -281,7 +281,7 @@ sub process_request {
             }
         }
 
-        unless ($entry[1] eq $oldentry[1]) {
+        unless ($entry[0] eq $oldentry[0]) {
             recoverFiles($rootimg_dir, \@oldentry, $callback);
             if ($hashSaved{$line}) {
                 $verbose && $callback->({info=>["$f has sub items in the litefile table."]});
@@ -289,7 +289,7 @@ sub process_request {
                 foreach my $child (@{$childrenRef}) {
                     # recover them from .statebackup to $rootimg_dir
                     my @tmpc = split (/\s+/, $child);
-                    my $name = $tmpc[2];
+                    my $name = $tmpc[1];
                     my @newentries = grep /\s+$name$/, @{listNew};
                     my @entry;
 
@@ -315,14 +315,14 @@ sub process_request {
             my $childrenRef = $hashSaved{$line};
             foreach my $child (@{$childrenRef}) {
                 my @tmpc = split (/\s+/, $child);
-                my $name = $tmpc[2];
+                my $name = $tmpc[1];
                 my @newentries = grep /\s+$name$/, @{listNew};
                 my @entry;
                 
                 if (scalar @newentries == 1) {
                     @entry = split(/\s+/, $newentries[0]);
                 }
-                unless($tmpc[1] eq $entry[1]) {
+                unless($tmpc[0] eq $entry[0]) {
                     recoverFiles($rootimg_dir, \@tmpc, $callback);
                 }
             }
@@ -630,14 +630,14 @@ my @entries = (
 );
 Then, one hash will generated as:
 %hashentries = {
-          'imagename bind,persistent /var/' => [
-                                                 'imagename bind /var/tmp/',
-                                                 'imagename bind /var/run/'
+          'bind,persistent /var/' => [
+                                                 'bind /var/tmp/',
+                                                 'bind /var/run/'
                                                ],
-          'imagename bind /etc/resolv.conf' => undef,
-          'imagename tmpfs,rw /root/' => [
-                                           'imagename tmpfs,rw /root/.bashrc',
-                                           'imagename tmpfs,rw /root/test/'
+          'bind /etc/resolv.conf' => undef,
+          'tmpfs,rw /root/' => [
+                                           'tmpfs,rw /root/.bashrc',
+                                           'tmpfs,rw /root/test/'
                                          ]
         };
 
@@ -659,7 +659,9 @@ sub parseLiteFiles {
     foreach (@entries) {
         my $entry = $_;
         my @str = split /\s+/, $entry;
-        my $file = $str[2];
+        shift @str;
+        $entry = join "\t", @str;
+        my $file = $str[1];
         chop $file if ($file =~ m{/$});
         unless (exists $dhref->{"$entry"}) {
             my $parent = dirname($file);
@@ -675,6 +677,10 @@ sub parseLiteFiles {
 
             if($found eq 1) { # $parent is found in @entries
                 #$verbose && print "+++$parent is found+++\n";
+		        # handle $res[0];
+		        my @tmpresentry=split /\s+/, $res[0];
+		        shift @tmpresentry;
+		        $res[0] = join "\t", @tmpresentry;
                 chop $parent;
                 my @keys = keys %{$dhref};
                 my $kfound = grep {$_ =~ m/\Q$res[0]\E$/} @keys;
@@ -747,18 +753,16 @@ sub recoverFiles {
 =cut
 
 sub liteItem {
-    my $rootimg_dir = shift;
-    my $item = shift;
-    my $isChild = shift;
-    my $callback = shift;
+    my ($rootimg_dir, $item, $isChild, $callback) = @_;
 
     my @entry = split (/\s+/, $item);
-    my $f = $entry[2];
+
+    my $f = $entry[1];
 
     my $rif = $rootimg_dir . $f;
     my $d = dirname($f);
 
-    if($entry[1] =~ m/bind/) {
+    if($entry[0] =~ m/bind/) {
 
         # if no such file like $rif, create one
         unless ( -e "$rif" ) {
