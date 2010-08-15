@@ -822,7 +822,9 @@ performance => {
    timestamp => 'The time at which the metric was captured.',
    node => 'The node name.',
    attrname => 'The metric name.',
-   attrvalue => 'The metric value.'
+   attrvalue => 'The metric value.',
+   comments => 'Any user-provided notes.',
+   disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
 
