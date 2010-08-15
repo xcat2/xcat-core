@@ -1103,7 +1103,7 @@ EOMS
      }
    }
    # add rsync for statelite
-   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod", "bin/bash", "usr/sbin/chroot", "sbin/mount.nfs", "/usr/bin/rsync") {
+   foreach ("bin/cpio","sbin/nash","sbin/busybox.anaconda","sbin/rmmod", "bin/bash", "usr/sbin/chroot", "sbin/mount.nfs", "usr/bin/rsync", "usr/bin/wc") {
       getlibs($_);
       push @filestoadd,$_;
    }

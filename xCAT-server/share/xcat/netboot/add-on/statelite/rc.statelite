@@ -386,7 +386,7 @@ FindFile () {
 	do
 		if [ -e ${TREEMOUNT}/${DIR}${path} ]; then
 			FOUND=1  # we found it!
-            if [ -z $(ls ${TREEMOUNT}/${DIR}${path}) ]; then
+            if [ -d ${TREEMOUNT}/${DIR}${path} ] && [ "0" -eq `ls -A ${TREEMOUNT}/${DIR}${path} |wc -l` ]; then
                 FOUND=0
             else
 			    ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}

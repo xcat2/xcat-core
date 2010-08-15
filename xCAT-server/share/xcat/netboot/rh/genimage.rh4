@@ -968,6 +968,7 @@ chmod(0755,"/tmp/xcatinitrd.$$/init");
         "usr/bin/dirname",
         "bin/ln",
         "bin/chmod",
+        "usr/bin/wc",
         "bin/uname" # hostname will use it
     );
 

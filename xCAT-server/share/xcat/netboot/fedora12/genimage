@@ -922,7 +922,7 @@ EOMS
      }
    }
    # add rsync for statelite
-   foreach ("bin/cpio","bin/mkdir","sbin/insmod","sbin/nash","bin/sleep","sbin/ifconfig","bin/grep","sbin/dhclient","bin/dash","bin/mount","bin/mknod","usr/bin/wget","sbin/rmmod","sbin/mount.nfs","/usr/bin/rsync") {
+   foreach ("bin/cpio","bin/mkdir","sbin/insmod","sbin/nash","bin/sleep","sbin/ifconfig","bin/grep","sbin/dhclient","bin/dash","bin/mount","bin/mknod","usr/bin/wget","sbin/rmmod","sbin/mount.nfs","usr/bin/rsync", "usr/bin/wc") {
       getlibs($_);
       push @filestoadd,$_;
    }
