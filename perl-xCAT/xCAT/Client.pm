@@ -157,6 +157,9 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
   }
   my $msg=XMLout($request,RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
   if ($ENV{XCATXMLTRACE}) { print $msg; }
+  if($ENV{XCATXMLWARNING}) {
+    validateXML($msg);
+  }
   $SIG{TERM} =  $SIG{INT} = sub { print $client XMLout({abortcommand=>1},RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]); exit 0; };
   print $client $msg;
   my $response;
@@ -168,8 +171,11 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
       #replace ESC with xxxxESCxxx because XMLin cannot handle it
       $response =~ s/\e/xxxxESCxxxx/g;
 
-       if ($ENV{XCATXMLTRACE}) { print $response; }
+      if ($ENV{XCATXMLTRACE}) { print $response; }
       $rsp = XMLin($response,SuppressEmpty=>undef,ForceArray=>1);
+      if($ENV{XCATXMLWARNING}) {
+        validateXML($response);
+      }
 
       #add ESC back
       foreach my $key (keys %$rsp) {
@@ -195,6 +201,35 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
   unless ($cleanexit) {
      print STDERR "ERROR/WARNING: communication with the xCAT server seems to have been ended prematurely\n";
   }
+
+sub validateXML {
+  my $xml = shift;
+  my @lines = split /\n/, $xml;
+  my $invalidNewline = 0;
+  my $contentsColon = 0;
+  my $contentsLine;
+
+  foreach (@lines) {
+    if(!$invalidNewline) {
+      if( ($_ =~ /<contents>/ && $_ !~ /<\/contents>/) ||
+          ($_ =~ /<desc>/ && $_ !~ /<\/desc>/)) {
+        $invalidNewline = 1;
+        print "Possible invalid XML using newlines found:  \n$xml\n";
+      }
+    }
+    if($_ =~ /<contents>.+:.+<\/contents>/) {
+      $contentsColon = 1;
+      $contentsLine = $_;
+    }
+    if($_ =~ /<desc>.+<\/desc>/) {
+      $contentsColon = 0;
+    }
+    if($contentsColon && $_ =~ /<desc><\/desc>/) {
+      print "Possible invalid XML found(data contents using colon and blank description):  \n$contentsLine\n$_\n";
+      $contentsColon = 0;
+    }
+  }
+}
 
 ###################################
 # scan_plugins
