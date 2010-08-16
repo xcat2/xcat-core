@@ -119,12 +119,15 @@ done
 TRIES=0
 # Last param in ipmitool user priv is the channel to set it on.
 # Penguin boxes are all channel 2
-while ! ipmitool user priv $USERSLOT 4 $LANCHAN; do
-    sleep 1
-    let TRIES=TRIES+1
+CURRPRIV=`ipmitool user list 1|grep ^$USERSLOT|awk '{print $6}'`
+if [ "$CURRPRIV" != "ADMINISTRATOR" ]; then 
+    while ! ipmitool user priv $USERSLOT 4 $LANCHAN; do
+        sleep 1
+        let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
-done
-TRIES=0
+    done
+    TRIES=0
+fi
 if [ "$CURRENTUSER" != "$BMCUS" ]; then
     while ! ipmitool user set name $USERSLOT $BMCUS; do
         sleep 1
