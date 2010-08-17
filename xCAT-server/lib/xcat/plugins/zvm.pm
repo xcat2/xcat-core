@@ -2836,7 +2836,12 @@ sub nodeSet {
 		}
 
 		# Get node OS base
-		my @tmp    = split( /\./, $os );
+		my @tmp;
+		if ( $os =~ m/sp/i ) {
+			@tmp = split( /sp/, $os );
+		} else {
+			@tmp = split( /\./, $os );
+		}
 		my $osBase = $tmp[0];
 
 		# Get autoyast/kickstart template
@@ -3102,7 +3107,7 @@ sub nodeSet {
 			$parms = $parms . "Install=ftp://$ftp/$os/s390x/1/\n";
 			$parms = $parms . "UseVNC=1 VNCPassword=12345678\n";
 			$parms = $parms . "InstNetDev=$instNetDev OsaInterface=$osaInterface OsaMedium=$osaMedium Manual=0\n";
-
+			
 			# Write to parmfile
 			$parmFile = "/tmp/" . $node . "Parm";
 			open( PARMFILE, ">$parmFile" );
