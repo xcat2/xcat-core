@@ -86,11 +86,15 @@ sub process_request
     unless ($client) { #Not able to do host authentication, abort
        return;
     }
-    unless ($request->{'callback_port'} and $request->{'callback_port'}->[0] and $request->{'callback_port'}->[0] < 1024) {
-       print "WT\n";
+    my $credcheck;
+    if ($request->{'callback_port'} and $request->{'callback_port'}->[0] and $request->{'callback_port'}->[0] < 1024) {
+        $credcheck=[0,request->{'callback_port'}->[0]];
+    } elsif ($request->{'callback_https_port'} and $request->{'callback_https_port'}->[0] and $request->{'callback_https_port'}->[0] < 1024) {
+        $credcheck=[1,$request->{'callback_https_port'}->[0]];
+    } else {
        return;
     }
-    unless (ok_with_node($client,$request->{'callback_port'}->[0])) {
+    unless (ok_with_node($client,$credcheck)) {
        return;
     }
 
@@ -203,30 +207,51 @@ sub process_request
 
 sub ok_with_node {
    my $node = shift;
-   #Here we connect to the node on a privileged port (in the clear) and ask the
+   #Here we connect to the node on a privileged port and ask the
    #node if it just asked us for credential.  It's convoluted, but it is 
    #a convenient way to see if root on the ip has approved requests for
    #credential retrieval.  Given the nature of the situation, it is only ok
    #to assent to such requests before users can log in.  During postscripts
    #stage in stateful nodes and during the rc scripts of stateless boot
+   #This is about equivalent to host-based authentication in Unix world
+   #Generally good to move on to more robust mechanisms, but in an unattended context
+   #this proves difficult to do robustly.
+   #one TODO would be a secure mode where we make use of TPM modules to enhance in some way
    my $select = new IO::Select;
    #sleep 0.5; # gawk script race condition might exist, try to lose just in case
-   my $sock = new IO::Socket::INET(PeerAddr=>$node,
-                                     Proto => "tcp",
-                                     PeerPort => shift);
-   my $rsp;
-   unless ($sock) {return 0};
-   $select->add($sock);
-   print $sock "CREDOKBYYOU?\n";
-   unless ($select->can_read(5)) { #wait for data for up to five seconds
-      return 0;
+   my $parms = shift;
+   my $method=$parms->[0];
+   my $port = $parms->[1];
+   if ($method == 0) { #PLAIN
+       my $sock = new IO::Socket::INET(PeerAddr=>$node,
+                                         Proto => "tcp",
+                                         PeerPort => $port);
+       my $rsp;
+       unless ($sock) {return 0};
+       $select->add($sock);
+       print $sock "CREDOKBYYOU?\n";
+       unless ($select->can_read(5)) { #wait for data for up to five seconds
+          return 0;
+       }
+       my $response = <$sock>;
+       chomp($response);
+       if ($response eq "CREDOKBYME") {
+          return 1;
+       }
+   } elsif ($method == 1) { #HTTPS
+       use LWP;
+       use HTTP::Request::Common;
+       my $browser = LWP::UserAgent->new();
+       $browser->timeout(10);
+       $SIG{ALRM} = sub {}; #just need to interrupt the system call
+       alarm(10);
+       my $response = $browser->request(GET "https://$node:$port/");
+       alarm(0);
+       if ($response->is_success) {
+           return 1;
+       }
    }
-   my $response = <$sock>;
-   chomp($response);
-   if ($response eq "CREDOKBYME") {
-      return 1;
-   }
-   return 0;
+   return 0;#if here, something wrong happened, return false
 }
                                     
    
