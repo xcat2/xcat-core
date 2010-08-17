@@ -16,7 +16,17 @@ sub get_profile_def_filename {
    
    my $base=shift;
    my $ext=shift;
-   my $dotpos = rindex($osver, ".");
+   
+   my $dotpos;
+   
+   # OS version on s390x can contain 'sp', e.g. sles11sp1
+   # If OS version contains 'sp', get the index of 'sp' instead of '.'
+   if ($osver =~ /sles/ && $osver =~ /sp/) {
+      $dotpos = rindex($osver, "sp");
+   } else {
+      $dotpos = rindex($osver, ".");
+   }
+   
    my $osbase = substr($osver, 0, $dotpos);
    if (-r "$base/$profile.$osver.$arch.$ext") {
       return "$base/$profile.$osver.$arch.$ext";

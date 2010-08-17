@@ -161,6 +161,12 @@ if($osfamily =~ /rh/){
 	$osfamily = "rh";
 }
 
+# OS version on s390x can contain 'sp', e.g. sles11sp1
+# If the $osfamily contains 'sles' and 'sp', the $osfamily = sles
+if ($osfamily =~ /sles/ && $osfamily =~ /sp/) {
+	$osfamily = "sles";
+}
+
 #print "OSfamily: $osfamily\n";
 $profDir = "$::XCATROOT/share/xcat/netboot/$osfamily";
 unless(-d $profDir){
