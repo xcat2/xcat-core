@@ -205,15 +205,6 @@ sub showSync {
 				# we have a server and need to make sure we can mount them under unique names
 				if($mnts->{$first} eq '' ){  # if the first mount point doesn't have a server then leave it.
 					$mnts->{$first} = $server;
-				}else{
-					# they may just have the name in twice:
-					unless($server eq $mnts->{$first}){ 
-						my $msg = "# " . $mnts->{$first} . " and $server both mount /$first.  This not supported.";
-						$callback->({info => $msg});
-						return;	
-					}else{
-						$mntpnt = "";  # only mount it once, so get rid of the directory
-					}
 				}
 			}	
 			$mntpnt .= $dir;

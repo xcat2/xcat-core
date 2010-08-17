@@ -150,10 +150,10 @@ MountTrees () {
 	do
 		SERV=`echo $i | awk -F: '{print $1}'`  # SERV is (SERV):/blah/blah/blah
 		MNT=`echo $i | awk -F: '{print $2}'`   # MNT is server:(/blah/blah/blah)
-		mkdir -p ${TREEMOUNT}${MNT}
+		mkdir -p ${TREEMOUNT}/${SERV}/${MNT}
 		MAX=15
 		TRIES=1
-		while ! mount $SERV:$MNT ${TREEMOUNT}${MNT} -r -n -o nolock,tcp
+		while ! mount $SERV:$MNT ${TREEMOUNT}/${SERV}/${MNT} -r -n -o nolock,tcp
 		do
 			if [ "$TRIES" = "$MAX" ]; then
 				echo "Can't mount $i.  I give up.. ">/dev/console
@@ -382,8 +382,9 @@ FindFile () {
 	type=$2
     isChild=$3
 	FOUND=0
-	for DIR in `cat ${SYNCTREE} | sed 's/[^\/]*//'`
+	for DIR in `cat ${SYNCTREE}`
 	do
+        DIR=${DIR/:/}
 		if [ -e ${TREEMOUNT}/${DIR}${path} ]; then
 			FOUND=1  # we found it!
             if [ -d ${TREEMOUNT}/${DIR}${path} ] && [ "0" -eq `ls -A ${TREEMOUNT}/${DIR}${path} |wc -l` ]; then
@@ -391,7 +392,7 @@ FindFile () {
             else
 			    ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
 			    if [ "${2}" = "con" ]; then
-				    1
+				    continue
 			    else
 				    break
 			    fi
