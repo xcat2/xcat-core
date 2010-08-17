@@ -50,7 +50,7 @@ package xCAT_schema::Sample;
     x_llnode => {     
         cols => [qw(node jobid jobstatus cpu_usage comments disable)],
         keys => [qw(node)],
-        foreignkeys => [qw(node) REFERENCES x_lljob(node) ON DELETE CASCADE)],
+        foreignkeys => [qw((node) REFERENCES x_lljob(node) ON DELETE CASCADE)],
         required => [qw(node jobid)],
         types => {
 	    jobid => 'INTEGER',
