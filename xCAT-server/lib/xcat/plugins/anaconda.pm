@@ -205,6 +205,11 @@ sub mknetboot
         {
             $xcatdport = $ref->{value};
         }
+        ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
+        if ($ref and $ref->{value})
+        {
+            $tftpdir = $ref->{value};
+        }
     }
     my %donetftp=();
     my %oents = %{$ostab->getNodesAttribs(\@nodes,[qw(os arch profile provmethod)])};
@@ -566,7 +571,9 @@ sub mkinstall
     my %img_hash=();
 
     my $installroot;
+    my $tftpdir;
     $installroot = "/install";
+    $tftpdir = "/tftpboot";
 
     if ($sitetab)
     {
@@ -574,6 +581,11 @@ sub mkinstall
         if ($ref and $ref->{value})
         {
             $installroot = $ref->{value};
+        }
+        ($ref) = $sitetab->getAttribs({key => 'tftpdir'}, 'value');
+        if ($ref and $ref->{value})
+        {
+            $tftpdir = $ref->{value};
         }
     }
 
@@ -775,7 +787,7 @@ sub mkinstall
             next;
         }
         #my $installdir="/install"; #TODO: not hardcode installdir
-        my $tftpdir = "/tftpboot";
+        #my $tftpdir = "/tftpboot";
 
         # create the node-specific post scripts
         #mkpath "/install/postscripts/";
@@ -825,7 +837,7 @@ sub mkinstall
             #TODO: driver slipstream, targetted for network.
             unless ($doneimgs{"$os|$arch"})
             {
-                mkpath("/tftpboot/xcat/$os/$arch");
+                mkpath("$tftpdir/xcat/$os/$arch");
                 if($esxi){
                     copyesxiboot($pkgdir, "$tftpdir/xcat/$os/$arch");		
                 }else{
