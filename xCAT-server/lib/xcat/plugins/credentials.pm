@@ -247,7 +247,8 @@ sub ok_with_node {
        alarm(10);
        my $response = $browser->request(GET "https://$node:$port/");
        alarm(0);
-       if ($response->is_success) {
+       if ($response->is_success and $response->{'_content'} =~ /Ciphers supported in s_server binary/) { 
+            #We are looking for openssl s_server running with -http, not settling for just any https response
            return 1;
        }
    }
