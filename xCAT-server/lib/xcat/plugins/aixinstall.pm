@@ -171,6 +171,7 @@ sub preprocess_request
     if ($command =~ /mknimimage/)
 
 
+
     {
 
         my $reqcopy = {%$req};
@@ -710,10 +711,7 @@ sub nimnodeset
         ($shorthost = $node) =~ s/\..*$//;
         chomp $shorthost;
 
-#ndebug  
-# bug - need to pass in server name - below
-        #my $cstate = xCAT::InstUtils->get_nim_attr_val($shorthost, "Cstate", $callback, "", $subreq);
-
+		# need to pass in this server name
 		my $cstate = xCAT::InstUtils->get_nim_attr_val($shorthost, "Cstate", $callback, "$Sname", $subreq);
 
         if (defined($cstate) && (!($cstate =~ /ready/)))
@@ -1654,6 +1652,7 @@ sub chkosimage
 		if (($f =~ /epkg\.Z/)) {
 			if (!grep(/^$f$/, @srclist)) {
 				push (@srclist, $f);
+
 			}
 		}
 	}
@@ -4788,6 +4787,7 @@ sub chkFSspace
             push @{$rsp->{data}},
               "Could not increase file system size for \'$FSname\'. Additonal $addsize MB is needed.\n";
             if ($::VERBOSE)
+
             {
                 push @{$rsp->{data}}, "$output";
             }
@@ -6641,6 +6641,7 @@ sub copyres
     #        my $rsp;
     #        push @{$rsp->{data}}, "Space available on $dest=$free_space, space needed=$needspace, amount of space that will be added is \'$addsize\'\n";
     #        xCAT::MsgUtils->message("I", $rsp, $callback);
+
     #    }
 
     # do copy from NIM primary
@@ -6744,6 +6745,7 @@ sub copyres
 
     return 0;
 }
+
 
 #----------------------------------------------------------------------------
 
