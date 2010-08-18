@@ -29,12 +29,25 @@ if (-p STDIN) {
   $cmdref->{stdin}->[0]=$data;
 }
 
-# Consider the 1st non-hyphen arg to be the noderange.  All others (before and after) go on the arg list.
-my $arg=shift(@ARGV);
-while ($arg =~ /^-/) {
-  push (@{$cmdref->{arg}}, $arg);
-  $arg=shift(@ARGV);
+my $arg;
+my @tmpargv = @ARGV;
+
+# lslite needs to handle imagename besides noderange
+# so do not fill {noderange} if imagename given
+my $str = join(',', @tmpargv);
+if (($bname =~ /lslite/) && $str =~ /-i/)
+{
+    $arg = "NO_NODE_RANGE";
 }
+else
+{   # Consider the 1st non-hyphen arg to be the noderange.  All others (before and after) go on the arg list.
+    $arg=shift(@ARGV);
+    while ($arg =~ /^-/) {
+        push (@{$cmdref->{arg}}, $arg);
+        $arg=shift(@ARGV);
+    }
+}
+
 if ($arg ne "NO_NODE_RANGE") {
   # The noderange can be specified through a noderange file,
   # the noderange file can be a relative path,
