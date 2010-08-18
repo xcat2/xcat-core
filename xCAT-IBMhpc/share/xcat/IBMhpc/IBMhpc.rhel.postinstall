@@ -1,0 +1,76 @@
+#!/bin/sh
+#--
+#-- IBMhpc.postinstall
+#--    Run this script from your <profile>.postinstall to perform the following
+#--    general setup in your diskless image for your HPC cluster:
+#--        - create entries in /etc/fstab for basic filesystems 
+#--        - enables the "cons" entry in /etc/inittab
+#--        - create initial copies of /etc/passwd and other files in the image
+#--        - turn on the "at" service
+#--        - turn on xinetd
+#--        - 
+#--
+#-- it gets these arguments:
+#--
+#-- $1 = install root (chroot directory for profile)
+#-- $2 = OS version
+#-- $3 = architecture
+#-- $4 = profile name
+#-- $5 = work dir (where genimage is located)
+#--
+#--
+installroot=$1
+osver=$2
+arch=$3
+profile=$4
+workdir=$5
+
+#-- Generate /etc/fstab automatically during image generation:
+#--    adjust filesystem sizes as needed for your cluster
+cat <<END >$installroot/etc/fstab
+proc            /proc    proc   rw 0 0
+sysfs           /sys     sysfs  rw 0 0
+devpts          /dev/pts devpts rw,gid=5,mode=620 0 0
+#${profile}_${arch}      /        tmpfs  rw 0 1
+none            /tmp     tmpfs  defaults,size=3g 0 2
+none            /var/tmp tmpfs  defaults,size=1g 0 2
+END
+
+#-- Uncomment the "cons" entry in /etc/inittab
+#cons:12345:respawn:/sbin/smart_agetty -L 38400 console
+TMP_inittab=`sed 's/\(#\)\(cons:12345.*\)$/\2/' $installroot/etc/inittab`
+echo "$TMP_inittab" > $installroot/etc/inittab
+
+# Create initial copies of /etc/passwd and others in case they are needed
+# by other postscripts
+# If you would like xCAT to keep these up to date,
+# use the xCAT syncfiles function which runs during 
+# packimage/liteimg and at other times
+cp -p /etc/passwd $installroot/etc/passwd
+cp -p /etc/group $installroot/etc/group
+cp -p /etc/shadow $installroot/etc/shadow
+cp -p /etc/hosts $installroot/etc/hosts
+
+# Turn on 'at' service
+chroot $installroot chkconfig atd on
+
+# Turn on xinetd
+chroot $installroot chkconfig xinetd on
+
+
+# Modify some ulimits
+if [ ! -f $installroot/etc/security/limits.conf ]; then
+    cp -p /etc/security/limits.conf $installroot/etc/security/limits.conf
+fi
+if [ ! -f $installroot/etc/security/limits.conf.XCAT_BAK ]; then
+   cp -p $installroot/etc/security/limits.conf $installroot/etc/security/limits.conf.XCAT_BAK
+fi
+# max locked memory
+#/usr/bin/sed -i 's/HARDLOCKLIMIT=.*/HARDLOCKLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
+#/usr/bin/sed -i 's/SOFTLOCKLIMIT=.*/SOFTLOCKLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
+# max memory size
+#/usr/bin/sed -i 's/HARDRESIDENTLIMIT=.*/HARDRESIDENTLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
+#/usr/bin/sed -i 's/SOFTRESIDENTLIMIT=.*/SOFTRESIDENTLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
+
+
+
