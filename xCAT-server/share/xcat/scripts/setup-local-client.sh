@@ -25,7 +25,7 @@ if [ -z "$2" ]; then
   if [ -x /usr/bin/getent ];then
    USERHOME=`getent passwd $1|awk -F: '{print $6}'`
   else
-    USERHOME=`lsuser -a home root | cut -d'=' -f2` 
+    USERHOME=`grep ^$1: /etc/passwd | cut -d: -f6` 
   fi
 else
   CNA="$1"
