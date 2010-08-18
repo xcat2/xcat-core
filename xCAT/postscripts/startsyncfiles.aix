@@ -31,18 +31,20 @@ print $remote "</xcatrequest>\n";
 
 my $response='';
 my $rsp;
+my $rc;
 while (<$remote>) {
   $response .= $_;
   if ($response =~ m/<\/xcatresponse>/) {
     $rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
     if ($rsp->{serverdone}) {
       close $remote;
-      exit 1;
+      exit !$rc;
     }
 
-    if ($rsp->{errorcode} || $rsp->{error}) {
-      close $remote;
-      exit 0;
+    if ($rsp->{errorcode}) {
+      $rc = $rsp->{errorcode}[0];
+    } elsif ($rsp->{error}) {
+      $rc = $rsp->{error}[0];
     }
     $response='';
   }
