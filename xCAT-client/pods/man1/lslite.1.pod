@@ -1,0 +1,95 @@
+=head1 NAME
+
+B<lslite> - Display a summary of the statelite information.
+
+=head1 SYNOPSIS
+
+B<lslite> [-h | --help]
+
+B<lslite> [-V | --verbose] [-i imagename] | [noderange]
+
+=head1 DESCRIPTION
+
+The B<lslite> command displays a summary of the statelite information that has been defined for a noderange or an image.
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-V|--verbose>
+
+Verbose mode.
+
+=item B<-i imagename>
+
+The name of an existing xCAT osimage definition.
+
+=item B<noderange>
+
+A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To list the statelite information for an xCAT node named "node01".
+
+B<lslite node01>
+
+Output is similar to:
+
+>>>Node: node01
+
+Osimage: 61img
+
+Persistent directory (statelite table):
+        xcatmn1:/statelite
+
+Litefiles (litefile table):
+        tmpfs,rw      /etc/adjtime
+        tmpfs,rw      /etc/lvm/.cache
+        tmpfs,rw      /etc/mtab
+        ........
+
+Litetree path (litetree table):
+        1,MN:/etc
+        2,server1:/etc
+
+=item 2.
+
+To list the statelite information for an xCAT osimage named "osimage01".
+
+B<lslite -i osimage01>
+
+Output is similar to:
+
+        tmpfs,rw      /etc/adjtime
+        tmpfs,rw      /etc/lvm/.cache
+        tmpfs,rw      /etc/mtab
+        ........
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/lslite
+
+=head1 SEE ALSO
+
+L<noderange(3)|noderange.3>, L<tabdump(8)|tabdump.8>
+
+
