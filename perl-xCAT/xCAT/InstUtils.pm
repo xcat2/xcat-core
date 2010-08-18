@@ -180,6 +180,7 @@ sub myxCATname
 #-----------------------------------------------------------------------------
 
 sub is_me
+
 {
     my ($class, $name) = @_;
 
@@ -215,6 +216,86 @@ sub is_me
         }
     }
     return 0;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  get_nim_attrs
+
+		Use the lsnim command to get the NIM attributes and values of
+		a resource.
+
+		Arguments:
+		Returns:
+			hash ref - OK
+			undef - error
+		Globals:
+
+		Error:
+
+		Example:
+
+			$attrvals = xCAT::InstUtils->
+				get_nim_attrs($res, $callback, $nimprime, $subreq);
+
+
+		Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_nim_attrs
+{
+    my $class    = shift;
+	my $resname  = shift;
+	my $callback = shift;
+	my $target   = shift;
+	my $sub_req  = shift;
+
+	my %attrvals = undef;
+
+	if (!$target)
+	{
+		$target = xCAT::InstUtils->getnimprime();
+	}
+	chomp $target;
+
+	my $cmd  = "/usr/sbin/lsnim -l $resname 2>/dev/null";
+
+	my @nout = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $target, $cmd, 1);
+	if ($::RUNCMD_RC != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return undef;
+	}
+
+	foreach my $line (@nout) {
+
+		chomp $line;
+		my $junk;
+		my $attrval;
+		if ($line =~ /.*$target:(.*)/) {
+			($junk, $attrval) = split(/:/, $line);
+		} else {
+			$attrval = $line;
+		}
+
+		if ($attrval =~ /=/) {
+
+			my ($attr, $val) = $attrval =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+
+			if ($attr && $val) {
+				$attrvals{$attr} = $val;
+			}
+		}
+	}
+
+	if (%attrvals) {
+		return \%attrvals;
+	} else {
+		return undef;
+	}
 }
 
 #----------------------------------------------------------------------------
