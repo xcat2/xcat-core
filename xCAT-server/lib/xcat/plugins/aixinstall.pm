@@ -245,8 +245,10 @@ sub preprocess_request
     # these commands might be merged some day??
     if (($command =~ /nimnodeset/) || ($command =~ /mkdsklsnode/))
     {
-        my ($rc, $nodehash, $nethash, $imagehash, $lochash, $attrs) =
+        my ($rc, $nodehash, $nethash, $imagehash, $lochash, $attrs, $nimhash) =
           &prenimnodeset($cb, $command, $sub_req);
+
+
 
         if ($rc)
         {    # either error or -h was processed etc.
@@ -300,7 +302,13 @@ sub preprocess_request
             {
                 $reqcopy->{'attrval'} = $attrs;
             }
-            push @requests, $reqcopy;
+
+			if ($nimhash)
+			{
+				xCAT::InstUtils->taghash($nimhash);
+				$reqcopy->{'nimhash'} = $nimhash;
+			}
+			push @requests, $reqcopy;
         }
         return \@requests;
     }
@@ -404,7 +412,6 @@ sub preprocess_request
 
 sub process_request
 {
-
     my $request  = shift;
     my $callback = shift;
 
@@ -432,6 +439,7 @@ sub process_request
     my $imagehash = $flatreq->{'imagehash'};
     my $lochash   = $flatreq->{'lochash'};
     my $attrval   = $flatreq->{'attrval'};
+	my $nimhash   = $flatreq->{'nimhash'};
     my $nodes     = $flatreq->{node};
 
     # figure out which cmd and call the subroutine to process
@@ -439,7 +447,7 @@ sub process_request
     {
         ($ret, $msg) =
           &mkdsklsnode($callback,  $nodes,   $nodehash, $nethash,
-                       $imagehash, $lochash, $sub_req);
+                       $imagehash, $lochash, $nimhash, $sub_req);
     }
     elsif ($command eq "mknimimage")
     {
@@ -461,7 +469,7 @@ sub process_request
     {
         ($ret, $msg) =
           &nimnodeset($callback,  $nodes,   $nodehash, $nethash,
-                      $imagehash, $lochash, $sub_req);
+                      $imagehash, $lochash, $nimhash, $sub_req);
     }
 
     elsif ($command eq "nimnodecust")
@@ -517,6 +525,7 @@ sub nimnodeset
     my $nethash  = shift;
     my $imaghash = shift;
     my $locs     = shift;
+	my $nimres   = shift;
     my $subreq   = shift;
 
     my %lochash   = %{$locs};
@@ -524,6 +533,7 @@ sub nimnodeset
     my %nethash   = %{$nethash};
     my %imagehash = %{$imaghash};    # osimage definition
     my @nodelist  = @$nodes;
+	my %nimhash   = %{$nimres};
 
     my $error = 0;
     my @nodesfailed;
@@ -699,9 +709,13 @@ sub nimnodeset
         my $shorthost;
         ($shorthost = $node) =~ s/\..*$//;
         chomp $shorthost;
-        my $cstate =
-          xCAT::InstUtils->get_nim_attr_val($shorthost, "Cstate", $callback, "",
-                                            $subreq);
+
+#ndebug  
+# bug - need to pass in server name - below
+        #my $cstate = xCAT::InstUtils->get_nim_attr_val($shorthost, "Cstate", $callback, "", $subreq);
+
+		my $cstate = xCAT::InstUtils->get_nim_attr_val($shorthost, "Cstate", $callback, "$Sname", $subreq);
+
         if (defined($cstate) && (!($cstate =~ /ready/)))
         {
             if ($::FORCE)
@@ -1601,6 +1615,7 @@ sub chkosimage
 			#	by R:
 			my ($junk, $pname) = split(/:/, $pkg);
 			$pname =~ s/\*//g; # drop *
+#print "pname = \'$pname\'\n";
 			$pkgtype{$pname} = "rpm";
 		}
 	}
@@ -4438,10 +4453,10 @@ sub rmnimimage
             }
             else
             {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "$Sname: A NIM resource named \'$resname\' is not defined.\n";
-                xCAT::MsgUtils->message("W", $rsp, $callback);
+               # my $rsp;
+               # push @{$rsp->{data}},
+               #   "$Sname: A NIM resource named \'$resname\' is not defined.\n";
+               # xCAT::MsgUtils->message("W", $rsp, $callback);
             }
         }
     }
@@ -4926,7 +4941,8 @@ sub enoughspace
         Globals:
 
         Example:
-			$rc = &mkdumpres($res_name, \%attrs, $callback, $location);
+			$rc = &mkdumpres($res_name, \%attrs, $callback, $location, 
+				\%nimres);
 
         Comments:
 =cut
@@ -4938,8 +4954,16 @@ sub mkdumpres
     my $attrs    = shift;
     my $callback = shift;
     my $location = shift;
+	my $nimres   = shift;
 
-    my %attrvals = %{$attrs};    # cmd line attr=val pairs
+    my %attrvals; # cmd line attr=val pairs (from mknimimage)
+	if ($attrs) {
+		%attrvals = %{$attrs};   
+	}
+	my %nimhash; # NIM res attrs (from mkdsklsnode or nimnodeset)
+	if ($nimres) {
+		%nimhash  = %{$nimres};
+	}
 
     if ($::VERBOSE)
     {
@@ -4949,8 +4973,19 @@ sub mkdumpres
     }
 
     my $type = 'dump';
+	my @validattrs = ("dumpsize", "max_dumps", "notify", "snapcollect", "verbose");
 
     my $cmd = "/usr/sbin/nim -o define -t $type -a server=master ";
+
+	# add additional attributes - if provided - from the NIM definition on the 
+	#		NIM primary - (when replicating on a service node)
+	if (%nimhash) {
+		foreach my $attr (keys %{$nimhash{$res_name}}) {
+			if (grep(/^$attr$/, @validattrs) ) {
+				$cmd .= "-a $attr=$nimhash{$res_name}{$attr} ";	
+			}
+		}
+	}
 
     if ($::NFSV4)
     {
@@ -4959,36 +4994,28 @@ sub mkdumpres
     # where to put it - the default is /install
     if ($location)
     {
-        $cmd .= "-a location=$location ";
+        $cmd .= "-a location=$location "; 
     }
     else
     {
-
-        #$cmd .= "-a location=/install/nim/$type/$res_name ";
         $cmd .= "-a location=/install/nim/dump/$res_name ";
     }
 
     if (!$::dodumpold)
     {
-
         # add any additional supported attrs  from cmd line
-        my @attrlist = ("dumpsize", "max_dumps", "notify", "snapcollect");
-        foreach my $attr (keys %attrvals)
-        {
-            if (grep(/^$attr$/, @attrlist))
-            {
-                $cmd .= "-a $attr=$attrvals{$attr} ";
-            }
+		if (%attrvals) {
+        	foreach my $attr (keys %attrvals)
+        	{
+            	if (grep(/^$attr$/, @validattrs))
+            	{
+                	$cmd .= "-a $attr=$attrvals{$attr} ";
+            	}
+			}
         }
     }
 
     $cmd .= "$res_name  2>&1";
-    if ($::VERBOSE)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Running command: \'$cmd\'.\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }
     my $output = xCAT::Utils->runcmd("$cmd", -1);
     if ($::RUNCMD_RC != 0)
     {
@@ -5199,7 +5226,7 @@ sub updatespot
         }
         if (!xCAT::InstUtils->is_me($nimprime))
         {
-            $cmd = "$::XCATROOT/bin/xdcp  $nimprime $odmscript_mn $odmscript";
+            $cmd = "$::XCATROOT/bin/xdcp $nimprime $odmscript_mn $odmscript";
         }
         else
         {
@@ -5959,6 +5986,7 @@ sub prenimnodeset
     my %objtype;
     my %objhash;
     my %attrs;
+	my %nimhash;
 
     # the first arg should be a noderange - the other should be attr=val
     #  - put attr=val operands in %attrs hash
@@ -6176,6 +6204,7 @@ sub prenimnodeset
             # it exists so see if it's in the correct location
             my $loc =
               xCAT::InstUtils->get_nim_attr_val('xcataixscript', 'location',
+
                                                 $callback, $nimprime, $subreq);
 
             # see if it's in the wrong place
@@ -6290,6 +6319,12 @@ sub prenimnodeset
 
                 # add to hash
                 $lochash{$res} = "$loc";
+
+				# new subr
+				 my $attrvals = xCAT::InstUtils->get_nim_attrs($res, $callback, $nimprime, $subreq);
+				 if (defined($attrvals)) {
+					%{$nimhash{$res}} = %{$attrvals};
+				}
             }
         }
     }
@@ -6351,7 +6386,7 @@ sub prenimnodeset
     }
 
     # pass this along to the process_request routine
-    return (0, \%objhash, \%nethash, \%imghash, \%lochash, \%attrs);
+    return (0, \%objhash, \%nethash, \%imghash, \%lochash, \%attrs, \%nimhash);
 }
 
 #----------------------------------------------------------------------------
@@ -6980,6 +7015,7 @@ sub mkdsklsnode
     my $nethash  = shift;
     my $imaghash = shift;
     my $locs     = shift;
+	my $nimres   = shift;
     my $subreq   = shift;
 
     my %lochash   = %{$locs};
@@ -6987,6 +7023,11 @@ sub mkdsklsnode
     my %nethash   = %{$nethash};
     my %imagehash = %{$imaghash};
     my @nodelist  = @$nodes;
+
+	my %nimhash;
+	if ($nimres) {
+		%nimhash   = %{$nimres};
+	}
 
     my $error = 0;
     my @nodesfailed;
@@ -7145,7 +7186,7 @@ sub mkdsklsnode
     if (!xCAT::InstUtils->is_me($nimprime))
     {
         &make_SN_resource($callback,   \@nodelist, \@image_names,
-                          \%imagehash, \%lochash,  \%nethash);
+                          \%imagehash, \%lochash,  \%nethash, \%nimhash);
     }
     else
     {
@@ -7902,17 +7943,15 @@ sub checkNIMnetworks
                 return 1;
             }
 
-            my $junk1;
-            my $junk2;
-            my $adapterhost;
-            my @ifcontent = split('\n',$ifone);
-            foreach my $line (@ifcontent) {
-                next if (/#/);
-                ($junk1, $junk2, $adapterhost) = split(':', $line);
-                last;
-            }
-
-            #my $adapterIP = inet_ntoa(inet_aton($adapterhost));
+			my $junk1;
+			my $junk2;
+			my $adapterhost;
+			my @ifcontent = split('\n',$ifone);
+			foreach my $line (@ifcontent) {
+				next if (/#/);
+				($junk1, $junk2, $adapterhost) = split(':', $line);
+				last;
+			}
 
             # create static routes between the networks
             my $rtgcmd =
@@ -7967,12 +8006,14 @@ sub make_SN_resource
     my $imghash  = shift;
     my $lhash    = shift;
     my $nethash  = shift;
+	my $nimres 	 = shift;
 
     my @nodelist    = @{$nodes};
     my @image_names = @{$images};
     my %imghash;    # hash of osimage defs
     my %lochash;    # hash of res locations
     my %nethash;
+	my %nimhash;
     if ($imghash)
     {
         %imghash = %{$imghash};
@@ -7985,6 +8026,35 @@ sub make_SN_resource
     {
         %nethash = %{$nethash};
     }
+	if ($nimres) 
+	{
+		%nimhash = %{$nimres};
+	}
+
+	my %attrs;
+	if (defined(@{$::args}))
+	{
+		@ARGV = @{$::args};
+	}
+	while (my $a = shift(@ARGV))
+	{
+		if ($a =~ /=/)
+		{
+
+			# if it has an "=" sign its an attr=val - we hope
+			my ($attr, $value) = $a =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
+			if (!defined($attr) || !defined($value))
+			{
+				my $rsp;
+				$rsp->{data}->[0] = "Incorrect \'attr=val\' pair - $a\n";
+				xCAT::MsgUtils->message("E", $rsp, $::callback);
+				return 1;
+			}
+
+			# put attr=val in hash
+			$attrs{$attr} = $value;
+		}
+	}
 
     my $cmd;
 
@@ -8177,13 +8247,22 @@ sub make_SN_resource
                     next;
                 }
 
-                # if root, shared_root, tmp, home, shared_home, dump,
+				# if dump res
+				if (($restype eq "dump") && ($imghash{$image}{"nimtype"} eq 'diskless')) {
+					my $loc = $lochash{$imghash{$image}{$restype}};
+					chomp $loc;
+					if (&mkdumpres( $imghash{$image}{$restype}, \%attrs, $callback, $loc, \%nimhash) != 0 ) {
+						next;
+					}
+				}
+
+                # if root, shared_root, tmp, home, shared_home, 
                 #	paging then
                 # 	these dont require copying anything from the nim primary
                 my @dir_res = (
                                "root",        "shared_root",
                                "tmp",         "home",
-                               "shared_home", "dump",
+                               "shared_home", 
                                "paging"
                                );
                 if (grep(/^$restype$/, @dir_res))
@@ -8936,6 +9015,7 @@ sub getNodesetStates
         $nimtab->close();
     }
     return (0, "");
+
 }
 
 #-------------------------------------------------------------------------------
