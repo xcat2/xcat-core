@@ -456,6 +456,16 @@ sub buildcreatestmt
         }
         $retv .= ",\n  ";
     }
+    # if there are foreign keys
+    my $fkey=$descr->{foreignkeys};
+    if ($fkey) {
+
+      $retv .= "FOREIGN KEY ";
+
+      $retv .=  $fkey;  
+      $retv .=  ",\n  ";  
+    }
+    
     if ($retv =~ /PRIMARY KEY/) {
 	$retv =~ s/,\n  $/\n)/;
     } else {
@@ -471,9 +481,7 @@ sub buildcreatestmt
 	}
 	$retv =~ s/,$/)\n)/;
     }
-        #if ($xcatcfg =~ /^DB2:/) {  # for DB2 add tablespace
-	 #  $retv .= " IN XCATTBS16K";
-        #} 
+    $retv =~ s/,$/)\n)/;
 	#print "retv=$retv\n";
     return $retv; 
 }
