@@ -15,7 +15,7 @@ package xCAT_schema::Sample;
 #      Please do not use SQL reserved words for your table names and column names.
 #      Use this site to check the reserved words: 
 #         http://www.petefreitag.com/tools/sql_reserved_words_checker/  
-#   5 Change the keys. Foreign keys are optional
+#   5 Change the keys.
 #   6 Change the data types. For SQLite
 #           the  default data type is TEXT if not specified.
 #     The supported data types are: 
@@ -50,7 +50,7 @@ package xCAT_schema::Sample;
     x_llnode => {     
         cols => [qw(node jobid jobstatus cpu_usage comments disable)],
         keys => [qw(node)],
-        foreignkeys => [qw((node) REFERENCES x_lljob(node) ON DELETE CASCADE)],
+        foreignkeys => [qw(("node") REFERENCES x_lljob("node") ON DELETE CASCADE)],  # double quote are for db2,  use backtics for mysql, noquotes for postgresal and sqlite
         required => [qw(node jobid)],
         types => {
 	    jobid => 'INTEGER',
