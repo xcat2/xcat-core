@@ -19,6 +19,7 @@ use strict;
 
 my $syncdirTab = "litetree";
 my $syncfileTab = "litefile";
+my $synclocTab = "statelite";
 my $errored = 0;
 
 
@@ -27,7 +28,8 @@ sub handled_commands {
 	return {
 		litetree => "litetree",
 		litefile => "litetree",
-		ilitefile => "litetree"
+		ilitefile => "litetree",
+		lslite => "litetree"
 	}
 }
 
@@ -99,6 +101,16 @@ sub process_request {
 				return 1;
 			}
 			return syncmount("image",$request, $callback,$request->{arg});
+	}elsif($command eq "lslite"){
+	    if (defined $noderange)
+	    {
+	        &lslite($request, $callback, $noderange);
+	    }
+	    else
+	    {
+	        &lslite($request, $callback, undef);
+	    }
+	    return;
 	}else{
 		$callback->({error=>["error in code..."], errorcode=>[127]});
 		$request = {};
@@ -121,6 +133,8 @@ sub syncmount {
 		$tab = xCAT::Table->new($syncdirTab,-create=>1);
 	}elsif($syncType =~ /file|image/ ){
 		$tab = xCAT::Table->new($syncfileTab,-create=>1);
+	}elsif($syncType =~ /location/){
+	    $tab = xCAT::Table->new($synclocTab,-create=>1);
 	}else{
 		$callback->({error=>["error in code..."], errorcode=>[127]});
 		$request = {};
@@ -209,17 +223,61 @@ sub showSync {
 			}	
 			$mntpnt .= $dir;
 			# ok, now we have all the mount points.  Let's go through them all?
-			$callback->({info => "$node: $mntpnt"});
+			if ($::from_lslite == 1)
+			{
+			    $callback->({info => "        $priority, $mntpnt"});
+			}
+			else
+			{
+    			    $callback->({info => "$node: $mntpnt"});
+			}
 		}
 
 	}elsif($syncType =~ /file|image/){
 		foreach my $file (sort keys %$dirs){
 			my $options	= $dirs->{$file};
 			# persistent,rw
-			my $out = sprintf("%s: %-13s %s", $node, $options, $file);
+			my $out;
+			if ($::from_lslite == 1)
+			{
+    			    $out = sprintf("        %-13s %s", $options, $file);
+			}
+			else
+			{
+    			    $out = sprintf("%s: %-13s %s", $node, $options, $file);
+			}
+			
 			$callback->({info => $out});
 		}
-	}
+	}elsif($syncType =~ /location/){
+	    foreach my $node (sort keys %$dirs){
+            my $location = $dirs->{$node};
+
+            my ($server, $dir) = split(/:/, $location);
+
+            if(grep /\$|#CMD/, $dir)
+            {
+                $dir = xCAT::SvrUtils->subVars($dir,$node,'dir',$callback);
+                $dir =~ s/\/\//\//g;
+            }
+
+            if(grep /\$/, $server)
+            {
+                $server = xCAT::SvrUtils->subVars($server,$node,'server',$callback);
+            }
+
+            $location = $server . ":" . $dir;
+            	
+            if ($::from_lslite == 1)
+            {
+                $callback->({info => "        $location"});
+            }
+            else
+            {
+                $callback->({info => "$node: $location"});
+            }
+        }
+    }
 
 }
 
@@ -244,16 +302,27 @@ sub getNodeData {
 		@attrs = ('priority', 'directory');
 	}elsif($type =~ /file|image/){
 		@attrs = ('file','options');
+	}elsif($type =~ /location/){
+	    @attrs = ('node','statemnt');
 	}else{
 		print "Yikes! error in the code litefile;getNodeData!";
 		exit 1;
 	}
-	# get the directories with no names
-	push @imageInfo, $tab->getAttribs({image => ''}, @attrs);
-	# get the ALL directories
-	push @imageInfo, $tab->getAttribs({image => 'ALL'}, @attrs);
-	# get for the image specific directories
-	push @imageInfo, $tab->getAttribs({image => $image}, @attrs);
+
+	if ($type eq "location")
+	{
+	    # get locations with specific nodes
+	    push @imageInfo, $tab->getAttribs({node => $node}, @attrs);
+	}
+	else
+	{
+        # get the directories with no names
+        push @imageInfo, $tab->getAttribs({image => ''}, @attrs);
+        # get the ALL directories
+        push @imageInfo, $tab->getAttribs({image => 'ALL'}, @attrs);
+        # get for the image specific directories
+        push @imageInfo, $tab->getAttribs({image => $image}, @attrs);
+	}
 	# pass back a reference to the directory
 
 	# now we need to sort them
@@ -286,6 +355,13 @@ sub mergeArrays {
 			#}
 			$attrs->{$_->{file}} = $o;
 		}
+	}elsif($type =~ /location/){
+	    foreach(@$arr)
+	    {
+	        if($_->{statemnt} eq '') {next;}
+	        $attrs->{$_->{node}} = $_->{statemnt};
+	    }
+	
 	}else{
 		print "Yikes!  Error in the code in mergeArrays!\n";
 		exit 1;
@@ -293,6 +369,167 @@ sub mergeArrays {
 	#print "mergeArrays...\n";
 	#print Dumper($attrs);
 	return $attrs;
+}
+
+#----------------------------------------------------------------------------
+
+=head3  lslite_usage
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub lslite_usage
+{
+    my $callback = shift;
+
+    my $rsp;
+    push @{$rsp->{data}},
+      "\n  lslite - Display a summary of the statelite information \n\t\tthat has been defined for a noderange or an image.";
+    push @{$rsp->{data}}, "  Usage: ";
+    push @{$rsp->{data}}, "\tlslite [-h | --help]";
+    push @{$rsp->{data}}, "or";
+    push @{$rsp->{data}}, "\tlslite [-V | --verbose] [-i imagename] | [noderange]";
+    
+    xCAT::MsgUtils->message("I", $rsp, $callback);
+    return 0;
+}
+
+sub lslite {
+    my $request = shift;
+    my $callback = shift;
+    my $noderange = shift;
+    my @image;
+    $::from_lslite = 1; # to control the output format
+
+    unless($request->{arg} || defined $noderange)
+    {
+        &lslite_usage($callback);
+        return 1;
+    }
+
+    # parse the options
+    Getopt::Long::Configure("no_pass_through");
+    Getopt::Long::Configure("bundling");
+    
+    if ($request->{arg})
+    {
+        @ARGV = @{$request->{arg}};
+        
+        if (
+            !GetOptions(
+                        'h|help'    => \$::HELP,
+                        'i=s'       => \$::OSIMAGE,
+                        'V|verbose' => \$::VERBOSE,
+            )
+          )
+        {
+            &lslite_usage($callback);
+            return 1;
+        }
+    }
+
+    if ($::HELP)
+    {
+        &lslite_usage($callback);
+        return 0;
+    }
+    
+    # handle "lslite -i image1"
+    # use the logic for ilitefile
+    if ($::OSIMAGE)
+    {
+        # make sure the osimage is defined
+        my @imglist = xCAT::DBobjUtils->getObjectsOfType('osimage');
+        if (!grep(/^$::OSIMAGE$/, @imglist))
+        {
+            $callback->({error=>["The osimage named \'$::OSIMAGE\' is not defined."],errorcode=>[1]});
+            return 1;
+        }
+        
+        @image = join(',', $::OSIMAGE);
+        syncmount("image", $request, $callback, \@image);
+        return 0;
+    }
+
+    # handle "lslite node1"
+    my @nodes;
+    if (defined $noderange)
+    {
+        @nodes = @{$noderange};
+        
+        if (scalar @nodes)
+        {
+            # get node's osimage/profile
+            my $nttab  = xCAT::Table->new('nodetype');
+            my $nttabdata = $nttab->getNodesAttribs(\@nodes, ['node', 'profile', 'os', 'arch', 'provmethod']);
+        
+            foreach my $node (@nodes)
+            {
+                my $image;
+                my $data = $nttabdata->{$node}->[0];
+
+                if (xCAT::Utils->isAIX())
+                {
+                    if (defined ($data->{provmethod}))
+                    {
+                        $image = $data->{provmethod};
+                    }
+                    else
+                    {
+                        $callback->({error=>["no provmethod defined for node $node."],errorcode=>[1]});
+                    }
+                }
+                else
+                {
+                    if ((!$data->{provmethod}) ||  ($data->{provmethod} eq 'statelite') || ($data->{provmethod} eq 'netboot') || ($data->{provmethod} eq 'install')) 
+                    {
+                        $image = $data->{os} . "-" . $data->{arch} . "-statelite-" . $data->{profile};
+                    }
+                    else
+                    {
+                        $image = $data->{provmethod};
+                    }                
+                }
+
+                $callback->({info => ">>>Node: $node\n"});
+                $callback->({info => "Osimage: $image\n"});
+
+                # structure node as ARRAY
+                my @tmpnode = join(',', $node);
+
+                my @types = ("location", "file", "dir");
+                foreach my $type (@types)
+                {
+                    if($type eq "location")
+                    {
+                        # show statelite table
+                        $callback->({info => "Persistent directory (statelite table):"});                    }
+                    elsif($type eq "file")
+                    {
+                        # show litefile table
+                        $callback->({info => "Litefiles (litefile table):"});
+                    }
+                    elsif($type eq "dir")
+                    {
+                        # show litetree table
+                        $callback->({info => "Litetree path (litetree table):"});
+                    }
+                    else
+                    {
+                        $callback->({error=>["Invalid type."],errorcode=>[1]});
+                        return 1;
+                    }
+
+                    syncmount($type, $request, $callback, \@tmpnode);  
+                    $callback->({info => "\n"});
+                }
+            }
+        }
+    }
+
+return;
+
 }
 
 1;
