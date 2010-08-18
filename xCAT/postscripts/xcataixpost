@@ -445,10 +445,19 @@ sub  updateflag {
     my $state="booted";
  
     my $port = "3002";
-    my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servnode, PeerPort  => $port, );
+    my $servip = `host $servnode | awk '{print \$3}'`;
+    chomp($servip);
+    my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servip, PeerPort  => $port, Timeout => 0);
+
+    my $try = 10;
+    while (!$remote && $try-- > 0) {
+        sleep 1;
+        $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servip, PeerPort  => $port, Timeout => 0);
+        print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servip\'\n";
+    }
     unless ($remote) { 
-        print "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
-        print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servnode\'\n";
+        print "$::sdate  xcataixpost: Cannot connect to host \'$servip\'\n";
+        print $::LOG_FILE "$::sdate  xcataixpost: Cannot connect to host \'$servip\'\n";
 	return 1;
     }
     $remote->autoflush(1);
