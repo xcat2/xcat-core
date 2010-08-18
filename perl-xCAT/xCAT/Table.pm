@@ -2351,6 +2351,8 @@ sub getNodeAttribs_nosub_returnany_old
 my $nextRecordAtEnd = qr/\+=NEXTRECORD$/;
 my $nextRecord = qr/\+=NEXTRECORD/;
 
+#this evolved a bit and i intend to rewrite it into something a bit cleaner at some point - cjhardee
+#looks for all of the requested attributes, looking into the groups of the node if needed
 sub getNodeAttribs_nosub_returnany
 {
   my $self    = shift;
@@ -2384,6 +2386,7 @@ sub getNodeAttribs_nosub_returnany
       }   
     }
   }
+
   if((keys (%attribsToDo)) == 0) { #if all of the attributes are satisfied, don't look at the groups
     return @results;
   }
@@ -2400,64 +2403,92 @@ sub getNodeAttribs_nosub_returnany
   my $group;
   my @groupResults;
   my $groupResult;
-  my $wasAdded; #used to keep track 
   my %attribsDone;
 #print "After node results, still missing ".Dumper(\%attribsToDo)."\n";
 #print "groups are ".Dumper(\@nodegroups);
   foreach $group (@nodegroups) {
+    use Storable qw(dclone);
+    my @prevResCopy = @{dclone(\@results)};
+    my @expandedResults;
     @groupResults = $self->getAttribs({$nodekey => $group}, keys (%attribsToDo));
 #print "group results for $group are ".Dumper(\@groupResults)."\n";
     $data = $groupResults[0];
     if (defined($data)) { #if some attributes came back from the query for this group
-#print "group $group \n".Dumper(\@groupResults)."\n";
+      
       foreach $groupResult (@groupResults) {
         my %toPush;
         foreach $attrib (keys %attribsToDo) { #check each unfinished attribute against the results for this group
 #print "looking for attrib $attrib\n";
           if(defined($groupResult->{$attrib})){
-#print "found attrib $attrib\n";
+            $attribsDone{$attrib} = 0;
+#print "found attArib $attrib = $groupResult->{$attrib}\n";
+#print "and results look like this:  \n".Dumper(\@results)."\n\n\n";
             foreach $result (@results){ #loop through our existing results to add or modify the value for this attribute
-              if(defined($result) && defined($result->{$attrib}) && $result->{$attrib} =~$nextRecordAtEnd){ #if the attribute was there and the value should be added
-                $result->{$attrib} =~ s/$nextRecordAtEnd//; #pull out the existing next record string
-                $result->{$attrib} .= $groupResult->{$attrib}; #add the group result onto the end of the existing value
-                if($options{withattribution} && $attrib ne $nodekey) {
-                  if(defined($result->{'!!xcatgroupattribution!!'})) {
-                    if(defined($result->{'!!xcatgroupattribution!!'}->{$attrib})) {
-                      $result->{'!!xcatgroupattribution!!'}->{$attrib} .= "," . $group;
+              if(defined($result)) {
+                if(defined($result->{$attrib})) {
+                  if($result->{$attrib} =~$nextRecordAtEnd){ #if the attribute value should be added
+                    $result->{$attrib} =~ s/$nextRecordAtEnd//; #pull out the existing next record string
+                    $result->{$attrib} .= $groupResult->{$attrib}; #add the group result onto the end of the existing value
+                    if($groupResult->{$attrib} =~ $nextRecordAtEnd && defined($attribsDone{$attrib})){
+                      delete $attribsDone{$attrib};
                     }
-                    else {
-                      $result->{'!!xcatgroupattribution!!'}->{$attrib} = $node.",".$group;
+                    if($options{withattribution} && $attrib ne $nodekey) {
+                      if(defined($result->{'!!xcatgroupattribution!!'})) {
+                        if(defined($result->{'!!xcatgroupattribution!!'}->{$attrib})) {
+                          $result->{'!!xcatgroupattribution!!'}->{$attrib} .= "," . $group;
+                        }
+                        else {
+                          $result->{'!!xcatgroupattribution!!'}->{$attrib} = $node.",".$group;
+                        }
+                      }
+                      else {
+                        $result->{'!!xcatgroupattribution!!'}->{$attrib} = $node.",".$group;
+                      }
                     }
-                  }
-                  else {
-                    $result->{'!!xcatgroupattribution!!'}->{$attrib} = $node.",".$group;
                   }
                 }
-                $wasAdded = 1; #this group result was handled
-#print "attrib $attrib was joined with value $groupResult->{$attrib}\n";
-              }
-            }
-            if(!$wasAdded){ #if there was not a value already in the results.  we know there is no entry for this
+                else {#attribute did not already have an entry
 #print "attrib $attrib was added with value $groupResult->{$attrib}\n";
-              $toPush{$attrib} = $groupResult->{$attrib};
-              if($options{withattribution} && $attrib ne $nodekey){
-                $toPush{'!!xcatgroupattribution!!'}->{$attrib} = $group;
+                  $result->{$attrib} = $groupResult->{$attrib};
+                  if($options{withattribution} && $attrib ne $nodekey){
+                    $result->{'!!xcatgroupattribution!!'}->{$attrib} = $group;
+                  }
+                  if($groupResult->{$attrib} =~ $nextRecordAtEnd && defined($attribsDone{$attrib})){
+                    delete $attribsDone{$attrib};
+                  }
+                }
+              }
+              else {#no results in the array so far
+#print "pushing for the first time.  attr=$attrib groupResults=$groupResult->{$attrib}\n";
+                $toPush{$attrib} = $groupResult->{$attrib};
+                if($options{withattribution} && $attrib ne $nodekey){
+                    $toPush{'!!xcatgroupattribution!!'}->{$attrib} = $group;
+                }
+                if($groupResult->{$nodekey}) {
+                  $toPush{$nodekey} = $node;
+                }  
+                if($groupResult->{$attrib} =~ $nextRecordAtEnd && defined($attribsDone{$attrib})){
+                  delete $attribsDone{$attrib};
+                }
               }
             }
-            if($groupResult->{$attrib} !~ $nextRecordAtEnd){ #the attribute was satisfied if it does not expect to add the next record
-              $attribsDone{$attrib} = 0;
-            }
           }
-          $wasAdded = 0; #reset
         }
-        if(keys(%toPush) != 0) {
-          if ($groupResult->{$nodekey}) {
-            $toPush{$nodekey} = $node;
-          }
+        if(keys(%toPush) > 0) {
 #print "pushing ".Dumper(\%toPush)."\n";
+          if(!defined($results[0])) {
+            shift(@results);
+          }
           push(@results,\%toPush);
         }
+#print "pushing results into expanded results\n";
+#print "results= ".Dumper(\@results)."\n";
+        push(@expandedResults, @results);
+#print "expandedResults= ".Dumper(\@expandedResults)."\n";
+#print "setting results to previous:\n".Dumper(\@prevResCopy)."\n\n\n";
+        @results = @{dclone(\@prevResCopy)};
       }
+      @results = @expandedResults;
       foreach $attrib (keys %attribsDone) {
         if(defined($attribsToDo{$attrib})) {
           delete $attribsToDo{$attrib};
@@ -2477,10 +2508,8 @@ sub getNodeAttribs_nosub_returnany
     }
   }
 
-  #Don't need to 'correct' node attribute, considering result of the if that governs this code block?
   return @results;
 }
-
 
 #--------------------------------------------------------------------------
 
