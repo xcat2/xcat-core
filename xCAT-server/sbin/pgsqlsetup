@@ -190,8 +190,6 @@ if (($odbconly == 0)  && ($::xcatrunningpgsql == 0))
 if (($::INIT) && ($::xcatrunningpgsql == 0))
 {
 
-    # shutdown the xcatd daemon while migrating
-    &shutdownxcatd;
 
     #
     # Backup current database
@@ -208,6 +206,9 @@ if (($::INIT) && ($::xcatrunningpgsql == 0))
     }
 
     &backupxcatdb;
+
+    # shutdown the xcatd daemon while migrating
+    &shutdownxcatd;
 
     #
     #  Get MN name from site.master in backed up database
@@ -415,7 +416,7 @@ sub backupxcatdb
         }
 
         # back it up
-        my $cmd = "XCATBYPASS=1 dumpxCATdb -p $::backupdir";
+        my $cmd = " dumpxCATdb -p $::backupdir";
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
