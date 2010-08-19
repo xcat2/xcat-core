@@ -120,7 +120,7 @@ then
   #echo -e "y\ny\ny" | %{prefix}/share/xcat/scripts/setup-local-client.sh $apacheuser
   #XCATROOT=%{prefix} %{prefix}/sbin/chtab priority=5 policy.name=$apacheuser policy.rule=allow
 
-  echo "To use xCAT-UI, point your browser to http://"`hostname`"/xcat"
+  echo "To use xCAT-UI, point your browser to http://"`hostname -f`"/xcat"
 fi
 
 if [ "$1" = 1 ] || [ "$1" = 2 ]        # initial install, or upgrade and this is the newer rpm
