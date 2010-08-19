@@ -40,7 +40,7 @@ if [ $OS != "AIX" ]; then
         # For Redhat, etc., assume yum is available on the system running genimage
             # rsct don't need license. So not install and accept the rsct license on the MN
             # Install RSCT product rpms
-            INUCLIENTS=1 INUBOSTYPE=1 yum --installroot $installroot --nogpgcheck localupdate $RSCT_DIR/src-*.rpm $RSCT_DIR/rsct.core-*.rpm $RSCT_DIR/rsct.core.utils-*.rpm 
+            INUCLIENTS=1 INUBOSTYPE=1 yum --installroot $installroot --nogpgcheck install $RSCT_DIR/src-*.rpm $RSCT_DIR/rsct.core-*.rpm $RSCT_DIR/rsct.core.utils-*.rpm 
         fi
     fi
 
