@@ -12,7 +12,7 @@ if [ ! -z "$MACADDR" ]; then
     esxcfg-vswitch -a vSwitch0:64
     esxcfg-vswitch -A "Management Network" vSwitch0
     esxcfg-vswitch -L $NIC vSwitch0
-    esxcfg-vmknic -a -i DHCP -P -p "Management Network"
+    esxcfg-vmknic -a -i DHCP -i DHCPV6 -P -p "Management Network"
     esxcfg-init -R $MACADDR -K vmk0
 fi
 
