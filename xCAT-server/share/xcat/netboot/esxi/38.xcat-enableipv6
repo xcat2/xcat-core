@@ -1,8 +1,8 @@
 #!/bin/sh
-
 retval=${SUCCESS}
-
-
-Exec esxcfg-advcfg -S 1 -U IPv6ConfigSet
-Exec esxcfg-module -s "ipv6=1" tcpip3
+if [  `uname -r` == '4.1.0' ]; then
+    Exec esxcfg-advcfg -S 1 -U IPv6ConfigSet
+    Exec esxcfg-module -s "ipv6=1" tcpip3
+fi
+return $retval
 
