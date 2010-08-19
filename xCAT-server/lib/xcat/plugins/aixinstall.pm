@@ -3051,9 +3051,9 @@ sub mknimimage
 		chomp $rootpw;
 		my $pwcmd;
 		if ($method) {
-			$pwcmd = qq~xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -e -c" >/dev/null 2>&1~;
+			$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -e -c" >/dev/null 2>&1~;
 		} else {
-			$pwcmd = qq~xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -c" >/dev/null 2>&1~;
+			$pwcmd = qq~$::XCATROOT/bin/xcatchroot -i $spot_name "/usr/bin/echo root:$rootpw | /usr/bin/chpasswd -c" >/dev/null 2>&1~;
 		}
 
 		my $out = xCAT::Utils->runcmd("$pwcmd", -1);
