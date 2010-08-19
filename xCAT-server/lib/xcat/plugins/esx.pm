@@ -2913,9 +2913,15 @@ sub  makecustomizedmod {
         copy( "$::XCATROOT/share/xcat/netboot/esxi/38.xcat-enableipv6",$tempdir."/etc/vmware/init/init.d/38.xcat-enableipv6");
     }
     if (-e "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking") {
-        mkpath($tempdir."/etc/vmware/init/init.d");
         copy( "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking",$tempdir."/etc/vmware/init/init.d/47.xcat-networking");
     }
+    if (-e "$::XCATROOT/share/xcat/netboot/esxi/xcatsplash") {
+        copy( "$::XCATROOT/share/xcat/netboot/esxi/xcatsplash",$tempdir."/etc/vmware/welcome");
+    }
+    my $tfile;
+    mkpath($tempdir."/var/run/vmware");
+    open $tfile,">",$tempdir."/var/run/vmware/show-tech-support-login";
+    close($tfile);
     #TODO: auto-enable ssh and request boot-time customization rather than on-demand?
     require Cwd;
     my $dir=Cwd::cwd();
