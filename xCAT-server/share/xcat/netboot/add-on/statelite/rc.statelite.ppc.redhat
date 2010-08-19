@@ -303,6 +303,13 @@ ProcessType () {
 
 			# make tree in persistent and tmpfs
             # need to check whether the option of its parent direcotry is persistent or not
+
+            TMPDIR=`dirname ${2}`
+            if [ ! -e ${PERSISTENT}${TMPDIR} ]; then
+                mkdir -p ${PERSISTENT}${TMPDIR}
+                echo "mkdir -p ${PERSISTENT}${TMPDIR}" >>$LOG
+            fi
+
             if [ "$isChild" = "1" ]; then
                 num=${#PLIST[@]}
                 for ((i=0;i<$num; i++)); do
