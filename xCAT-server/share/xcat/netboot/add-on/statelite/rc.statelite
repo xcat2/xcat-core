@@ -9,12 +9,10 @@
 # get all the database files.
 #set -x
 SL=".statelite"
-ME=`hostname -s`
 MNTDIR="/sysroot"
 SYNCTREE="${MNTDIR}/$SL/litetree" 	# the list of directories to sync from
 SYNCLIST="${MNTDIR}/$SL/litefile" 	# the list of files to sync
 TREEMOUNT="${MNTDIR}/$SL/mnt"  	# where I mount all the trees.
-PERSISTENT="${MNTDIR}/$SL/persistent/$ME"
 TMPFS="${MNTDIR}/$SL/tmpfs"
 DEFAULT="${MNTDIR}/.default"
 LOG="${MNTDIR}/${SL}/statelite.log"
@@ -22,6 +20,16 @@ ELIST=[]    # entry list, each entry will contain the type and the path
 declare -a CLIST 
 declare -a PLIST 
 
+# hostname -s does not work on boot for SUSE
+# You get this error: 
+# 	hostname: Unknown server error
+if [ -e "${MNTDIR}/etc/SuSE-release" ]; then
+	ME=`hostname`
+else
+	ME=`hostname -s`
+fi
+
+PERSISTENT="${MNTDIR}/$SL/persistent/$ME"
 
 if [ ! -d $MNTDIR ]; then
 	echo "statelite is only to be run in initrdfs"
@@ -53,8 +61,14 @@ GetSyncInfo () {
 		fi
 	done
 
-    hn=`hostname -s`
-	
+	# hostname -s does not work on boot for SUSE
+	# You get this error: 
+	# 	hostname: Unknown server error
+    if [ -e "${MNTDIR}/etc/SuSE-release" ]; then
+		hn=`hostname`
+	else
+		hn=`hostname -s`
+	fi
 
 	if [ -z $XCATSERVER ]; then
 		echo "Cannot find the xCAT server for node $hn"
