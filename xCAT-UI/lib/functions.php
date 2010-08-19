@@ -2,7 +2,6 @@
 /**
  * Contains all common PHP functions needed by most pages
  */
-require_once "socket.php";
 
 // Retain session variables across page requests
 session_start();
@@ -45,17 +44,7 @@ function docmd($cmd, $nr, $args){
 	$usernode->addChild('username',$_SESSION["username"]);
 	$usernode->addChild('password',getpassword());
 
-	// Open socket to submit request
-	$socket = new Net_Socket();
-	$socket->connect('ssl://localhost', 3001, true, 30);
-	$socket->setBlocking(true);		// Set socket as blocking stream
-	$socket->write($request->asXML());	// Send xCAT request
-	$xml = $socket->readAll();			// Get xCAT response
-	$socket->disconnect();	// Close socket
-		
-	// submit_request() was the old way of sending the xCAT request
-	// It is no longer needed
-	// $xml = submit_request($request,0);
+	$xml = submit_request($request,0);
 	return $xml;
 }
 
