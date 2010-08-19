@@ -203,7 +203,12 @@ foreach (split /,/,$netdriver) {
    if (/^$/) {
       next;
    }
-   push @ndrivers,$_;
+	
+	# Do not include qeth module here
+	# This module is included later on
+	if (!($_ =~ m/qeth/i)) {
+   		push @ndrivers, $_;
+	}
 }
 unless (grep /af_packet/,@ndrivers) {
    unshift(@ndrivers,"af_packet.ko");
@@ -223,7 +228,10 @@ if($mode eq "statelite") {
 	if ($arch eq "s390x") {
 		push @ndrivers, "qdio.ko";
 		push @ndrivers, "ccwgroup.ko";
-		push @ndrivers, "af_packet.ko";
+
+		# af_packet is already included above 
+		# push @ndrivers, "af_packet.ko";
+
 		push @ndrivers, "qeth.ko";
 		push @ndrivers, "qeth_l2.ko";
 		push @ndrivers, "qeth_l3.ko";
@@ -1052,7 +1060,7 @@ END
         
         # 'sbin/udevd' and 'sbin/udevadm' needed on s390x 
     	if ($arch eq "s390x") {
-    		foreach ("sbin/udevd", "sbin/udevadm") {
+    		foreach ("sbin/udevd", "sbin/udevadm", "usr/bin/readlink") {
     			getlibs($_); 
             	push @filestoadd,$_;
     		}
@@ -1118,6 +1126,16 @@ END
 	if ($arch eq "s390x") {
 		system("mkdir -p /tmp/xcatinitrd.$$/etc/udev");
 		system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
+		
+		# Copy rules for network adapter
+		my $name = `cat /etc/sysconfig/network/ifcfg-$prinic | grep NAME`;
+		my $nic = '';
+		if ($name =~ m/(\d+\.\d+\.\d+)/g) {
+			$nic = $&;
+		}
+		system("cp -r /etc/udev/rules.d/*$nic.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
+		system("cp -r /etc/udev/rules.d/*persistent-net.rules /tmp/xcatinitrd.$$/etc/udev/rules.d");
+		
 		system("mkdir -p /tmp/xcatinitrd.$$/lib/udev");
 		system("cp -r $rootimg_dir/lib/udev/* /tmp/xcatinitrd.$$/lib/udev");
 	}

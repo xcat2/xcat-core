@@ -323,7 +323,7 @@ ProcessType () {
                     fi
                 done
             else
-			    if [ ! -d ${PERSISTENT}${PPATH} ] && [! -d `readlink -m ${PERSISTENT}${PPERS}`]; then
+			    if [[ ! -d ${PERSISTENT}${PPATH} && ! -d `readlink -m ${PERSISTENT}${PPERS}` ]]; then
                     # unless the entry is one directory or one link to the directory
                     rm -rf ${PERSISTENT}${PPERS}
 				    mkdir -p ${PERSISTENT}${PPERS}
