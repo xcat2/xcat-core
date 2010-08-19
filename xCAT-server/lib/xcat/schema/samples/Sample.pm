@@ -28,6 +28,7 @@ package xCAT_schema::Sample;
 #   8 Restart the the xcatd, the tables will be automatically generated. 
 #   9 If you have service nodes,  copy all the files to those also and restart
 #     the daemon.
+#
 # 
 ###############################################################################
 %tabspec = (
@@ -50,7 +51,7 @@ package xCAT_schema::Sample;
     x_llnode => {     
         cols => [qw(node jobid jobstatus cpu_usage comments disable)],
         keys => [qw(node)],
-        foreignkeys => [qw(("node") REFERENCES x_lljob("node") ON DELETE CASCADE)],  # double quote are for db2,  use backtics for mysql, noquotes for postgresal and sqlite
+        foreignkeys => [qw(("node") REFERENCES x_lljob("node") ON DELETE CASCADE)],  # double quote are for db2,  use backtics for mysql, noquotes for postgresal and sqlite. Tables with a Foreign key must not point to tables with a Foreign key  or the tables may not be created in the correct order. Only one Foreign key per table is supported.  
         required => [qw(node jobid)],
         types => {
 	    jobid => 'INTEGER',
