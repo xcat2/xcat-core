@@ -654,73 +654,48 @@ sub mkinstall
               . $ent->{nfsserver}
               . "$pkgdir/1";
 
-            my $mgtref = $hmtab->getNodeAttribs($node, ['mgt']);
-            #special case for system P machines, which is mgted by hmc or ivm
-            #mac address is used to identify the netdevice
-            if( ($mgtref->{mgt} eq "hmc" || $mgtref->{mgt} eq "ivm") && $arch =~ /ppc/) 
+            my $netdev = "";
+            if ($ent->{installnic})
             {
-                my $mactab = xCAT::Table->new("mac");
-                my $macref = $mactab->getNodeAttribs($node, ['mac']);
-
-                if (defined $macref->{mac}) 
+                if ($ent->{installnic} eq "mac")
                 {
-                    $kcmdline .= " netdevice=" . $macref->{mac};
-                }
-                else 
+                    my $mactab = xCAT::Table->new("mac");
+                    my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                    $netdev = $macref->{mac};
+                 }
+                else
                 {
-                    $callback->(
-                        {
-                            error => ["No mac.mac for $node defined"],
-                            errorcode => [1]
-                        }
-                    );
+                    $netdev = $ent->{installnic};
                 }
-            } 
-            else 
+            }
+            elsif ($ent->{primarynic})
             {
-                my $netdev = "";
-                if ($ent->{installnic})
+                if ($ent->{primarynic} eq "mac")
                 {
-                    if ($ent->{installnic} eq "mac")
-                    {
-                        my $mactab = xCAT::Table->new("mac");
-                        my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                        $netdev = $macref->{mac};
-                     }
-                    else
-                    {
-                        $netdev = $ent->{installnic};
-                    }
-                }
-                elsif ($ent->{primarynic})
-                {
-                    if ($ent->{primarynic} eq "mac")
-                    {
-                        my $mactab = xCAT::Table->new("mac");
-                        my $macref = $mactab->getNodeAttribs($node, ['mac']);
-                        $netdev = $macref->{mac};
-                    }
-                    else
-                    {
-                        $netdev = $ent->{primarynic};
-                    }
+                    my $mactab = xCAT::Table->new("mac");
+                    my $macref = $mactab->getNodeAttribs($node, ['mac']);
+                    $netdev = $macref->{mac};
                 }
                 else
                 {
-                    $netdev = "bootif";
+                    $netdev = $ent->{primarynic};
                 }
-                if ($netdev eq "") #why it is blank, no mac defined?
-                {
-                    $callback->(
-                        {
-                            error => ["No mac.mac for $node defined"],
-                            errorcode => [1]
-                        }
-                    );
-                }
-                unless ($netdev eq "bootif") { #if going by bootif, BOOTIF will suffice
-                    $kcmdline .= " netdevice=" . $netdev;
-                }
+            }
+            else
+            {
+                $netdev = "bootif";
+            }
+            if ($netdev eq "") #why it is blank, no mac defined?
+            {
+                $callback->(
+                    {
+                        error => ["No mac.mac for $node defined"],
+                        errorcode => [1]
+                    }
+                );
+            }
+            unless ($netdev eq "bootif") { #if going by bootif, BOOTIF will suffice
+                $kcmdline .= " netdevice=" . $netdev;
             }
 
             # Add the kernel paramets for driver update disk loading
