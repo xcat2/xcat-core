@@ -48,6 +48,7 @@ my $vmwaresdkdetect = eval {
 
 
 my %guestidmap = (
+    "rhel.6.*" => "rhel6_",
     "rhel.5.*" => "rhel5_",
     "rhel4.*" => "rhel4_",
     "centos5.*" => "rhel5_",
