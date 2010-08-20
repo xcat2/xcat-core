@@ -47,6 +47,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/image_data
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/sles
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_plugin
@@ -87,6 +88,7 @@ cp share/xcat/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/scripts
 cp share/xcat/tools/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 cp share/xcat/rollupdate/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/rollupdate
 cp share/xcat/installp_bundles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/installp_bundles
+cp share/xcat/image_data/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/image_data
 cp share/xcat/cons/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/cons
 cp share/xcat/ib/scripts/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/scripts
 cp share/xcat/ib/netboot/sles/* $RPM_BUILD_ROOT/%{prefix}/share/xcat/ib/netboot/sles
