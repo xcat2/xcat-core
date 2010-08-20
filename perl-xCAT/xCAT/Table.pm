@@ -456,15 +456,6 @@ sub buildcreatestmt
         }
         $retv .= ",\n  ";
     }
-    # if there are foreign keys
-    my $fkey=$descr->{foreignkeys};
-    if ($fkey) {
-
-      $retv .= "FOREIGN KEY ";
-
-      $retv .=  $fkey;  
-      $retv .=  ",\n  ";  
-    }
     
     if ($retv =~ /PRIMARY KEY/) {
 	$retv =~ s/,\n  $/\n)/;
