@@ -1,0 +1,366 @@
+#!/usr/bin/perl
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+#
+###################################################################
+#
+# Description:
+#     The xcatsnap command gathers configuration, log and trace information
+#     about the xCAT components that are installed. This command only collects
+#     the data on the local node on which this command is run.
+#
+#     This command is typically executed when a problem is encountered with
+#     any of these components in order to provide service information to the
+#     IBM Support Center.
+#
+#     This command should only be executed at the instruction of the IBM
+#     Support Center.
+# Syntax:
+#       perl xcatsnap [-h] [-v] [-B] [-d output_directory]
+#
+# Flags:
+#       -h displays the usage of this command to standard output.
+#       -v displays the version of this tool.
+#       -B Bypass mode.
+#       -d is used to specify the output directory,
+#          otherwise the default directory is /tmp/xcatsnap
+#
+# Ouput:
+#     tar file : xcatsnap.host_name.nnnnnnnn.tar.gz
+#     log file : xcatsnap.host_name.nnnnnnnn.log
+#     (where host_name is the base name of the host name of the
+#     node on which the command is running; nnnnnnnn is a timestamp).
+#
+# Exit Status:
+#     0 - Command ran successfully
+#     1 - error occured
+#
+# Security:
+#     This command can only be run by a root user.
+#
+####################################################################
+
+use File::Spec;
+use Getopt::Long;
+my $OSname;
+my @Commands_array;
+my $Command_name;
+my $Command;
+my $currentDirectory;
+my $logDirectory="/tmp/xcatsnap";
+my $output_dir;
+my @files_array;
+my @file_list;
+my $TarFile;
+my $LogFile;
+my $INSTALLDIR;
+my $circular = 0;
+
+##############################FUNCTIONS##################################
+
+################### usage:Display usage message ##########################
+
+sub usage {
+    print "Usage: xcatsnap [-h][-v][-B][-d output_directory]";
+    print "\n       -h Display this usage statement.";
+    print "\n       -v Display the version.";
+    print "\n       -B Run in bypass mode. Use if xcatd hung";
+    print "\n       -d Output directory (default:/tmp/xcatsnap)\n";
+}
+
+######### valid dir: Converts relative path to an absolute path #############
+
+sub valid_dir {
+    $logDirectory = File::Spec->rel2abs($logDirectory);
+    my $Dir_last_char = substr $logDirectory, -1, 1;
+    if ( $Dir_last_char eq "/" ) {
+        chop($logDirectory);
+
+    }
+}
+
+######################### run_cmd: Runs Commands ###############################
+
+sub run_cmd {
+    my @output;
+    $Command_name = $Command;#Constructing the output file name from the command
+    $Command_name =~ s/ /_/g;
+    $Command_name =~ s/-//g;
+    $Command_name =~ s/tabdump_//g;
+    $Command_name =~ s/\//_/g;
+    
+    print "$Command -> $Command_name.out";
+    print "\n\tExecuting: $Command \n";
+    eval {
+        local $SIG{ALRM} = sub { die "Timeout\n" };
+        alarm 60;
+        @output = `$Command`;
+        alarm 0;
+    };
+    if ($@) {
+        print "\t$Command  timed out.\n";
+        @output = "$Command timed out.\n";
+    }
+    
+        print "\tExecution Complete :$Command.\n";    #Writing command output into a file
+        my $outfile = $output_dir . $Command_name . ".out";
+        open( MYFILE, ">", $outfile );
+        print MYFILE @output;
+        close(MYFILE);
+    
+}
+
+######################## Tar it: Tars files and folders #############################
+
+sub Tar_it {
+
+    print "\n Processing $file ..\n";
+    $last = substr $file, -1, 1;
+    if ( $last eq "*" ) {
+        @file_list = `ls $file 2>/dev/null`;
+        foreach $i (@file_list) {
+            print "\tProcessing $i";
+        }
+    }
+    if ( -l $file ) {
+
+        check_symbolic_link();    # Checking Symbolic links
+    }
+    if ( $circular != 1 ) {
+        if ( -e $TarFile ) {
+            `cd /; tar -uf $TarFile .$file 2>/dev/null`;
+        }
+        else {
+            `cd /; tar -cf $TarFile .$file 2>/dev/null`;
+        }
+    }
+    $circular = 0;
+    print "\n$file processed...\n";
+}
+
+################ check_symbolic_link: Checks symoblic links #####################
+
+sub check_symbolic_link {
+
+    my $max_link_count = 32;
+    my $i              = 0;
+    while ( defined( my $link = readlink $file ) && $i <= $max_link_count ) {
+        $file = $link;
+        $i++;
+    }
+    if ( $i >= $max_link_count ) {
+        $circular = 1;
+        print
+"Either the link is circular or the symbolic link count exceeds max_link_count";
+    }
+}
+
+############## make_output_dir: Creates output directory #######################
+
+sub make_output_dir {
+    if ( -d $output_dir ) {
+        `rm -rf $output_dir`;
+    }
+    `mkdir  $output_dir`;
+}
+
+##################### snap_it:Does the main job ###########################
+
+sub snap_it {
+    print "Collecting files ...\n";
+    chop( $INSTALLDIR =
+          `tabdump site | grep installdir | cut -f2 -d ,` );
+    $INSTALLDIR =~ s/"//g;
+    if ( $OSname eq "AIX" ) {
+        
+        @files_array = (
+            "/etc/xcat/*",               "$INSTALLDIR/autoinst/*",
+            "$INSTALLDIR/postscripts/*", "$INSTALLDIR/prescripts/*",
+            "/tftpboot/*",               "/var/log/consoles/*",
+            "/tmp/spot.out.*",           "/var/lib/dhcpd/dhcpd.leases",
+            "/etc/hosts",                "/etc/conserver.cf",
+            "/var/log/conserver",        "/etc/db_file.cr",
+            "/etc/dhcpsd.cnf",           "/var/adm/ras/nimlog",
+            "/var/log/messages");
+    }
+
+    elsif ( $OSname eq "Linux" ) {
+        
+        @files_array = (
+            "/etc/xcat/*",                 "$INSTALLDIR/autoinst/*",
+            "$INSTALLDIR/postscripts/*",   "$INSTALLDIR/prescripts/*",
+            "/tftpboot/*",                 "/var/log/consoles/*",
+            "/etc/*-release",              "/etc/dhcpd.conf",
+            "/var/lib/dhcpd/dhcpd.leases", "/etc/hosts",
+            "/etc/conserver.cf",           "/var/log/conserver",
+            "/etc/nsswitch.conf",          "/var/log/messages");
+        print("@files_array \n");
+    }
+            foreach $item (@files_array) {
+            $file = $item;
+            Tar_it();
+        }
+    print "Done collecting files ...\n\n";
+    print "Gathering system configuration...\n\n";
+    $output_dir = "$logDirectory/commands_output/";
+    my $xcatroot=$ENV{'XCATROOT'};
+    make_output_dir();
+    if ( $OSname eq "AIX" ) {
+        @Commands_array = (
+            "uname -a","ifconfig -a","netstat -in","netstat -rn","env",
+            "reventlog -a","lsmod","/sbin/lspci","lssrc -a","rpm -qa",
+            "ls -lR $installdir","ls -lR /tftpboot","ls -lR $xcatroot",
+            "arp -a","ps -edlf","ps -aux","ulimit -a","df -k","oslevel",
+            "netstat -A","errpt -a","/usr/sbin/instfix -i",
+            "/usr/sbin/lsnim -l","lssrc -l -s dhcpsd","lslpp -hac");
+    }
+    elsif ( $OSname eq "Linux" ) {
+        @Commands_array = (
+            "uname -a","ifconfig -a","netstat -in","netstat -rn","env",
+            "reventlog -a","lsmod","/sbin/lspci","lssrc -a","rpm -qa",
+            "ls $installdir","ls -lR /tftpboot","ls -lR $xcatroot",
+            "arp -a","ps -edlf","ps -aux","ulimit -a","df -k",
+            "cat /etc/issue");
+    }
+    foreach $item (@Commands_array) {
+        $Command = $item;
+        run_cmd;
+    }
+    print "Done gathering system configuration...\n\n";
+
+    if ( -d "/opt/xcat/" ) {
+        print "Capturing xCAT specific information...\n\n";
+        print "Gathering management node configurations...\n";
+        @Commands_array = (
+            "lsdef -t site -l","lsdef -t group -l","lsdef -t osimage -l",
+            "nodels","lsdef -t node -l","rpower all stat","nodestat all",
+            "nodels all groups","monls -a","lsvm all","rinv all all",
+            "rvitals all all");
+        foreach $item (@Commands_array) {
+            $Command = $item;
+            run_cmd;
+        }
+        print "Done gathering managment node configuration...\n\n";
+        print "Retrieving xCAT database...\n";
+        $output_dir = "$logDirectory/xcat-database/";
+        make_output_dir();
+        `dumpxCATdb -p $output_dir`;
+        print "xCAT database retrieved.\n";
+    }
+}    
+
+############################# Main Section ####################################
+
+my $userid = `id -ru`;    #Checking if the user is root
+if ( $userid != 0 ) {
+    print "You must be root to run the xcatsnap tool";
+    exit 1;
+}
+
+`export PATH=/opt/xcat/bin:/opt/xcat/sbin:/bin:/sbin:/usr/bin:/usr/sbin:`;
+
+#Checking the program arguments
+
+if (
+    !GetOptions(
+                'd|dir=s'        => \$::DIRECTORY,
+                'B|bypass'     => \$::BYPASS,
+                'h|help'       => \$::HELP,
+                'v|version'    => \$::VERSION,
+    )
+  )
+{
+    &usage;
+    exit(1);
+}
+if ($::HELP ) {
+    usage();
+    exit 0;
+}
+if ($::VERSION) {
+    print " xcatsnap tool version 1.0\n";
+    exit 0;
+
+}
+if ($::BYPASS)
+{
+    $ENV{XCATBYPASS} = "yes";  # bypass xcatd
+}
+
+
+if (!($::DIRECTORY)) {
+    print " Log Directory will be /tmp/xcatsnap/\n";
+}
+else  {
+    $logDirectory = $::DIRECTORY ;
+    valid_dir();
+}
+unless ( -d $logDirectory ) {   #Create the output directory if it doesn't exist
+    `mkdir -p $logDirectory`;
+     if ($?!=0) {  
+       print " Could not create $logDirectory\n";
+       exit 1;
+     }  
+  
+    valid_dir();
+}
+
+chop( $OSname   = `uname` );
+chop( $hostname = `hostname -s` );
+( $sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst ) =
+  localtime(time);
+$mon = $mon + 1;
+my @date_array = ( $mon, $mday, $hour, $min );
+foreach $item (@date_array) {
+    $item =
+      sprintf( "%2d", $item );    #Formatting the date for dispaly in file name
+    $item =~ tr/ /0/;
+}
+my $logdate = $date_array[0] . $date_array[1] . $date_array[2] . $date_array[3];
+$LogFile = $logDirectory . "/xcatsnap." . $hostname . "." . $logdate . ".log";
+$TarFile = $logDirectory . "/xcatsnap." . $hostname . "." . $logdate . ".tar";
+
+open( STDOUT, "| tee  $LogFile" );
+print "Time Stamp:" . `date`;
+print "Log Directory: $logDirectory \n";
+print "Preparation Complete...\n";
+snap_it(); # Calling the main function that gathers files,command output and MN database
+print "Compiling Information...\n";
+`cd $logDirectory;tar -uf $TarFile "./commands_output" 2>/dev/null`;
+`cd $logDirectory;tar -uf $TarFile "./xcat-database" 2>/dev/null`;
+`rm -rf $logDirectory/commands_output/`;
+`rm -rf $logDirectory/xcat-database/`;
+
+print "Information compiled...\n";
+`chmod 400 $LogFile`;    # Processing the log file
+print "Send $LogFile to IBM Support.\n";
+
+if ( `which gunzip` == 0 ) {    # Compressing the tar file
+    `gzip -f $TarFile`;
+}
+elsif ( `which compress` == 0 ) {
+    `compress -f $TarFile`;
+}
+else {
+    print
+"gzip and compress are not available. The tar file $TarFile will not be compressed";
+}
+
+if (-e $TarFile ){
+    rm $TarFile;
+}
+
+if ( -e $TarFile . ".gz" ) {
+    `chmod 400 $TarFile".gz"`;
+    print "Send $TarFile.gz to IBM Support.\n";
+}
+elsif ( -e $TarFile . ".z" ) {
+    `chmod 400 $TarFile".z"`;
+    print "Send $TarFile.z to IBM Support.\n";
+}
+elsif ( -e $TarFile ) {
+    `chmod 400 $TarFile`;
+    print "Send $TarFile to IBM Support.\n";
+}
+close(STDOUT);
+exit 0;
