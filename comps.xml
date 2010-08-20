@@ -1,0 +1,18 @@
+<comps>
+<group>
+    <id>xcatmaster</id>
+    <name>xCAT Master Server </name>
+    <default>true</default>
+    <description>RPMs required for an xCAT installation on a master server</description>
+    <uservisible>true</uservisible>
+    <packagelist>
+        <packagereq type="required">xCAT</packagereq>
+        <packagereq type="required">xCAT-server</packagereq>
+        <packagereq type="required">xCAT-client</packagereq>
+        <packagereq type="required">perl-xCAT</packagereq>
+        <packagereq type="required">xCAT-nbroot-core-x86_64</packagereq>
+        <packagereq type="required">xCAT-nbroot-core-x86</packagereq>
+        <packagereq type="optional">xCAT-nbroot-core-ppc64</packagereq>
+    </packagelist>
+</group>
+</comps>
