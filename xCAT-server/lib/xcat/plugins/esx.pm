@@ -2923,7 +2923,7 @@ sub  makecustomizedmod {
         my $umask = umask(0077);#don't remember if dropbear is picky, but just in case
         mkpath($tempdir."/.ssh";
         copy("/root/.ssh/id_rsa.pub",$tempdir."/.ssh/authorized_keys");
-        umask($umask;
+        umask($umask);
     }
     my $tfile;
     mkpath($tempdir."/var/run/vmware");
