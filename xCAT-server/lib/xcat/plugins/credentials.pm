@@ -24,6 +24,7 @@
 
 #-------------------------------------------------------
 package xCAT_plugin::credentials;
+use strict;
 use xCAT::Table;
 use Data::Dumper;
 use xCAT::NodeRange;
@@ -78,7 +79,7 @@ sub process_request
     if ($request->{'_xcat_clienthost'}) {
        $client = $request->{'_xcat_clienthost'}->[0];
     }
-    my %rsp;
+    my $rsp;
     # do your processing here
     # return info
 
@@ -88,7 +89,7 @@ sub process_request
     }
     my $credcheck;
     if ($request->{'callback_port'} and $request->{'callback_port'}->[0] and $request->{'callback_port'}->[0] < 1024) {
-        $credcheck=[0,request->{'callback_port'}->[0]];
+        $credcheck=[0,$request->{'callback_port'}->[0]];
     } elsif ($request->{'callback_https_port'} and $request->{'callback_https_port'}->[0] and $request->{'callback_https_port'}->[0] < 1024) {
         $credcheck=[1,$request->{'callback_https_port'}->[0]];
     } else {
