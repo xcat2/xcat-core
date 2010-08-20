@@ -2921,7 +2921,7 @@ sub  makecustomizedmod {
     }
     if (-r "/root/.ssh/id_rsa.pub") {
         my $umask = umask(0077);#don't remember if dropbear is picky, but just in case
-        mkpath($tempdir."/.ssh";
+        mkpath($tempdir."/.ssh");
         copy("/root/.ssh/id_rsa.pub",$tempdir."/.ssh/authorized_keys");
         umask($umask);
     }
