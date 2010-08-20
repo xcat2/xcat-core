@@ -62,10 +62,12 @@ B<For node of blade server:>
 
 =over 4
 
-B<renergy> I<noderange> [-V] { all | { [averageAC] [cappingmaxmin] 
-[capability] [cappingvalue] [CPUspeed] [maxCPUspeed] } }
+B<renergy> I<noderange> [-V] { all | { [averageAC]  
+[capability] [cappingvalue] [CPUspeed] [maxCPUspeed] 
+[savingstatus] [dsavingstatus] } }
 
-B<renergy> I<noderange> [-V] { cappingwatt}=watt }
+B<renergy> I<noderange> [-V] { {savingstatus}={on | off} 
+ | {dsavingstatus}={on-norm | on-maxp | off} }
 
 =back
 
@@ -202,7 +204,7 @@ Query the current ambient temperature. (Unit is centigrade)
 
 =item B<availableDC>
 
-Query the total DC power available for the entire chassis.
+Query the total DC power available for the entire blade center chassis.
 
 =item B<averageAC>
 
@@ -210,6 +212,11 @@ Query the average power consumed (Input). (Unit is watt)
 
 Note: For 9125-F2A server, the value of attribute 
 averageAC is the aggregate for all of the servers in a rack.
+
+Note: For Blade Center, the value of attribute 
+averageAC is the total AC power being consumed by all modules
+ in the chassis. It also includes power consumed by the Chassis 
+Cooling Devices for BCH chassis.
 
 =item B<averageDC>
 
@@ -234,7 +241,7 @@ dynamicPowerMeasurement2: the module with power meter capability, measurement
 enabled, phase 2 or higher
 
 dynamicPowerMeasurementWithPowerCapping: the module with power meter capability, 
-both measurement and capping enabled, phase 2 or higher"
+both measurement and capping enabled, phase 2 or higher
 
 =item B<cappingmaxmin>
 
@@ -415,7 +422,8 @@ Query the system power consumed prior to power on.
 
 =item B<thermaloutput>
 
-Query the thermal output (load) in BTUs per hour for the chassis.
+Query the thermal output (load) in BTUs per hour for the blade 
+center chassis.
 
 =back
 
@@ -504,13 +512,13 @@ B<renergy> blade1 all
 
 The output of the query operation:
 
+    blade1: CPUspeed: 4204MHZ
+    blade1: averageDC: 227W
     blade1: capability: dynamicPowerMeasurement2
-    blade1: capping: 349
-    blade1: curalloc: 204W
-    blade1: effCPU: 4005MHZ
-    blade1: maxCPU: 4005MHZ
-    blade1: maxalloc: 349W
-    blade1: minalloc: 285W
+    blade1: cappingvalue: 315W
+    blade1: dsavingstatus: off
+    blade1: maxCPUspeed: 4204MHZ
+    blade1: savingstatus: off
 
 =item 4
 
