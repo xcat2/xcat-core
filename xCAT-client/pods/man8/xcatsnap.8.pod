@@ -32,7 +32,7 @@ Displays the release version of the code.
 
 Runs in bypass mode, use if the xcatd daemon is hung.
 
-=item B<-d|--directory>
+=item B<-d|--dir>
 
 The directory to put the snap information.  Default is /tmp/xcatsnap.
 
@@ -46,7 +46,7 @@ The directory to put the snap information.  Default is /tmp/xcatsnap.
 
 =item *
 
-To run the xcatsnap routine in bypass mode and put info in /tmp/mydir :
+Run the xcatsnap routine in bypass mode and put info in /tmp/mydir :
 
 B<xcatsnap> I<-B> I<-d> /tmp/mydir
 
