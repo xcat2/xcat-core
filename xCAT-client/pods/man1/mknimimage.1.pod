@@ -142,6 +142,13 @@ An administrator supplied script that will be invoked when a new dump is capture
 
 Indicates that after a dump is collected then snap data should be collected. The snap data will be collected in the clients dump resource directory.  Values are "yes" or "no". The default is "no".
 
+=item B<nfs_vers>
+
+Value Specifies the NFS protocol version required for NFS access.
+
+=item B<nfs_sec>
+
+Value Specifies the security method required for NFS access.
 
 =back
 
