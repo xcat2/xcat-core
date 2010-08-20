@@ -1626,7 +1626,7 @@ sub readFileInput
             push(@::fileobjnames, $objectname);
 
         }
-        elsif (($l =~ /^\s*(.*)\s*=\s*(.*)\s*/) && (!$look_for_colon))
+        elsif (($l =~ /^\s*(.*?)\s*=\s*(.*)\s*/) && (!$look_for_colon))
         {
             my $attr = $1;
             my $val  = $2;
