@@ -2919,7 +2919,9 @@ sub  makecustomizedmod {
     if (-e "$::XCATROOT/share/xcat/netboot/esxi/xcatsplash") {
         copy( "$::XCATROOT/share/xcat/netboot/esxi/xcatsplash",$tempdir."/etc/vmware/welcome");
     }
+    my $dossh=0;
     if (-r "/root/.ssh/id_rsa.pub") {
+        $dossh=1;
         my $umask = umask(0077);#don't remember if dropbear is picky, but just in case
         mkpath($tempdir."/.ssh");
         copy("/root/.ssh/id_rsa.pub",$tempdir."/.ssh/authorized_keys");
@@ -2936,7 +2938,11 @@ sub  makecustomizedmod {
     if (-e "$dest/mod.tgz") {
         unlink("$dest/mod.tgz");
     }
-    system("tar czf $dest/mod.tgz *");
+    if ($dossh) {
+        system("tar czf $dest/mod.tgz * .ssh");
+    } else {
+        system("tar czf $dest/mod.tgz *");
+    }
     chdir($dir);
     rmtree($tempdir);
     return 1;
