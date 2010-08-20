@@ -1,4 +1,4 @@
 #image,file,options,comments,disable
 "ALL","/home/",,"for user management, PE,LL use non-root user",
-"compute","/var/loadl/","persistent","used by LL log, spool and exec",
+"ALL","/var/loadl/","persistent","used by LL log, spool and exec",
 
