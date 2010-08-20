@@ -1773,16 +1773,16 @@ sub beacon {
 
 
 # The oids which are used in the renergy command
-my $bladetype_oid = "1.3.6.1.4.1.2.3.51.2.2.21.1.1.1.0";    #bladeCenterVpdMachineType
+my $bladetype_oid = ".1.3.6.1.4.1.2.3.51.2.2.21.1.1.1.0";    #bladeCenterVpdMachineType
 
-my $pdstatus_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.3";    #fuelGaugeStatus
-my $pdpolicy_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.6";    #fuelGaugePowerManagementPolicySetting
-my $pdmodule1_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.4";    #fuelGaugeFirstPowerModule
-my $pdmodule2_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.5";    #fuelGaugeSecondPowerModule
-my $pdavailablepower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.7";    #fuelGaugeTotalPower
-my $pdreservepower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.8";    #fuelGaugeAllocatedPower
-my $pdremainpower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.9";    #fuelGaugeRemainingPower
-my $pdinused_oid = "1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.10";    #fuelGaugePowerInUsed
+my $pdstatus_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.3";    #fuelGaugeStatus
+my $pdpolicy_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.6";    #fuelGaugePowerManagementPolicySetting
+my $pdmodule1_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.4";    #fuelGaugeFirstPowerModule
+my $pdmodule2_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.5";    #fuelGaugeSecondPowerModule
+my $pdavailablepower_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.7";    #fuelGaugeTotalPower
+my $pdreservepower_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.8";    #fuelGaugeAllocatedPower
+my $pdremainpower_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.9";    #fuelGaugeRemainingPower
+my $pdinused_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.1.1.1.10";    #fuelGaugePowerInUsed
 
 my $chassisDCavailable_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.5.1.1.0";    #chassisTotalDCPowerAvailable
 my $chassisACinused_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.5.1.2.0";    #chassisTotalACPowerInUsed
@@ -1791,17 +1791,19 @@ my $chassisThermalOutput_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.5.1.3.0";    #chassis
 my $chassisFrontTmp_oid = ".1.3.6.1.4.1.2.3.51.2.2.1.5.1.0";    #frontPanelTemp
 my $mmtemp_oid = ".1.3.6.1.4.1.2.3.51.2.2.1.1.2.0";    #mmTemp
 
-my $bladewidth_oid = "1.3.6.1.4.1.2.3.51.2.22.1.5.1.1.15";    #bladeWidth
+my $bladewidth_oid = ".1.3.6.1.4.1.2.3.51.2.22.1.5.1.1.15";    #bladeWidth
 
-my $curallocpower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.7";    #pd1ModuleAllocatedPowerCurrent
-my $maxallocpower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.8";    #pd1ModuleAllocatedPowerMax
-my $minallocpower_oid = "1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.9";    #pd1ModuleAllocatedPowerMin
-my $powercapability_oid = "1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.12";    #pd1ModulePowerCapabilities
+my $curallocpower_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.7";    #pd1ModuleAllocatedPowerCurrent
+my $maxallocpower_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.8";    #pd1ModuleAllocatedPowerMax
+my $minallocpower_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.9";    #pd1ModuleAllocatedPowerMin
+my $powercapability_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.pdnum.1.1.12";    #pd1ModulePowerCapabilities
 
-my $powercapping_oid = "1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.3";    #bladeDetailsMaxPowerConfig
-my $effCPU_oid = "1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.4";    #bladeDetailsEffectiveClockRate
-my $maxCPU_oid = "1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.5";    #bladeDetailsMaximumClockRate
-my $savingstatus_oid = "1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.6";    #bladeDetailsPowerSaverMode
+my $powercapping_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.3";    #bladeDetailsMaxPowerConfig
+my $effCPU_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.4";    #bladeDetailsEffectiveClockRate
+my $maxCPU_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.5";    #bladeDetailsMaximumClockRate
+my $savingstatus_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.6";    #bladeDetailsPowerSaverMode
+my $dsavingstatus_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.7";    #bladeDetailsDynamicPowerSaver
+my $dsperformance_oid = ".1.3.6.1.4.1.2.3.51.2.2.10.4.1.1.1.8";    #bladeDetailsDynamicPowerFavorPerformanceOverPower
 
 # The meaning of obj fuelGaugePowerManagementPolicySetting
 my %pdpolicymap = (
@@ -1855,17 +1857,18 @@ my %mm_valid_items = (
 );
 my %blade_valid_items = (
     'all' => 1,
-    'averageAC' => 1,
-    'cappingmaxmin' => 1,
-    'cappingmax' => 1,
-    'cappingmin' => 1,
+    'averageDC' => 1,
+    'cappingmaxmin' => 0,
+    'cappingmax' => 0,
+    'cappingmin' => 0,
     'capability' => 1,
     'cappingvalue' => 1,
-    'cappingwatt' => 2,
+    'cappingwatt' => 0,
+    'cappingperc' => 0,
     'CPUspeed' => 1,
     'maxCPUspeed' => 1,
-    'savingstatus' => 2,
-    'dsavingstatus' => 2,
+    'savingstatus' => 3,
+    'dsavingstatus' => 3,
 );
 
 
@@ -1927,7 +1930,7 @@ sub renergy {
     if (!$mpa) {
         return (1, "The attribute [mpa] needs to be set for the node $node.");
     }
-    if (!$slot) {
+    if (!$slot && ($mpa ne $node)) {
         return (1, "The attribute [id] needs to be set for the node $node.");
     }
 
@@ -1937,6 +1940,7 @@ sub renergy {
     #check the validity of all the attributes
     my @readlist = ();
     my %writelist = ();
+    my @r4wlist = ();
     foreach my $item (@items) {
         if (!$item) {
             next;
@@ -1952,8 +1956,7 @@ sub renergy {
                     'availableDC','averageAC','thermaloutput','ambienttemp',
                     'mmtemp');
             } else {
-                push @readlist, ('averageAC','cappingmax','cappingmin','capability', 
-                    'cappingvalue','CPUspeed','maxCPUspeed','savingstatus'.'dsavingstatus');
+                push @readlist, ('averageDC','capability','cappingvalue','CPUspeed','maxCPUspeed','savingstatus','dsavingstatus');
             }
         } elsif ($item =~ /^pd1all$/) {
             push @readlist, ('pd1status','pd1policy','pd1powermodule1',
@@ -1978,6 +1981,9 @@ sub renergy {
                 }
             }
             $writelist{$name} = $value;
+            #if ($name eq "cappingwatt" || $name eq "cappingperc") {
+            #    push @r4wlist, ('cappingmin','cappingmax');
+            #}
         } else {
             if ($mpa eq $node) {
                 if ($mm_valid_items{$item} != 1 && $mm_valid_items{$item} != 3) {
@@ -1997,8 +2003,16 @@ sub renergy {
         return (1, "Cannot handle read and write in one command.");
     }
 
+    if (scalar(keys %writelist) > 1) {
+        return (1, "renergy cannot set multiple attributes at one command.");
+    }
+
     if (! (@readlist || %writelist) ) {
         return (1, "Does not get any valid attributes.");
+    }
+
+    if ((!@readlist) && %writelist) {
+        push @readlist, @r4wlist;
     }
 
     # get the blade center type first
@@ -2006,7 +2020,6 @@ sub renergy {
         $bc_type =$session->get([$bladetype_oid]);
         if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
     }
-
 
     my @output = ();
     foreach my $item (sort(@readlist)) {
@@ -2052,17 +2065,15 @@ sub renergy {
         } elsif ($item eq "mmtemp") {
             $oid = $mmtemp_oid;
         } elsif ($item eq "averageAC") {
-            if ($mpa eq $node) {
-                # for management module
-                $oid = $chassisACinused_oid;
-            } else {
-                # for server blade
-                my ($pdnum, $pdbay) = getpdbayinfo($bc_type, $slot);
-                $oid = $curallocpower_oid;
-                $pdnum++;
-                $oid =~ s/pdnum/$pdnum/;
-                $oid = $oid.".".$pdbay;
-            }
+            # just for management module
+            $oid = $chassisACinused_oid;
+        } elsif ($item eq "averageDC") {
+            # just for server blade
+            my ($pdnum, $pdbay) = getpdbayinfo($bc_type, $slot);
+            $oid = $curallocpower_oid;
+            $pdnum++;
+            $oid =~ s/pdnum/$pdnum/;
+            $oid = $oid.".".$pdbay;
         } elsif ($item eq "cappingmax") {
             my ($pdnum, $pdbay) = getpdbayinfo($bc_type, $slot);
             $oid = $maxallocpower_oid;
@@ -2088,11 +2099,11 @@ sub renergy {
         } elsif ($item eq "maxCPUspeed") {
             $oid = $maxCPU_oid.".".$slot;
         } elsif ($item eq "savingstatus") {
-            $oid = "";
-            push @output, "$item: not support now.";
+            $oid = $savingstatus_oid.".".$slot;
         } elsif ($item eq "dsavingstatus") {
-            $oid = "";
-            push @output, "$item: not support now.";
+            $oid = $dsavingstatus_oid.".".$slot;
+        } else {
+            push @output, "$item is NOT a valid attribute.";
         } 
 
         if ($oid ne "") {
@@ -2106,24 +2117,46 @@ sub renergy {
                     push @output, "$item: $pdpolicymap{$data}";
                 } elsif ($item eq "capability") {
                     push @output, "$item: $capabilitymap{$data}";
-                } elsif ($item eq "cappingvalue") {
-                    if ($data eq "0") {
+                } elsif ($item =~/cappingvalue|averageDC|cappingmax|cappingmin/) {
+                    if ($item eq "cappingvalue" && $data eq "0") {
                         push @output,"$item: na";
                     } else {
+                        my $bladewidth = $session->get([$bladewidth_oid.".$slot"]);
+                        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                        $data =~ s/W$//;
+                        foreach (1..$bladewidth-1) {
+                            $oid =~ /(\d+)$/;
+                            my $next = $1+$_;
+                            $oid =~ s/(\d+)$/$next/;
+                            my $nextdata=$session->get([$oid]);
+                            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                            $nextdata =~ s/W$//;
+                            $data += $nextdata;
+                        }
                         push @output, "$item: $data"."W";
                     }
-                } elsif ($item =~/averageAC|cappingmax|cappingmin/) {
-                    my $bladewidth = $session->get([$bladewidth_oid.".$slot"]);
-                    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-                    foreach (1..$bladewidth-1) {
-                        $oid =~ /(\d+)$/;
-                        my $next = $1+$_;
-                        $oid =~ s/(\d+)$/$next/;
-                        my $nextdata=$session->get([$oid]);
-                        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-                        $data += $nextdata;
+                } elsif ($item eq "savingstatus") {
+                    if ($data eq "0") {
+                        push @output,"$item: off";
+                    } elsif ($data eq "1") {
+                        push @output, "$item: on";
+                    } else {
+                        push @output,"$item: na";
                     }
-                    push @output, "$item: $data";
+                } elsif ($item eq "dsavingstatus") {
+                    # get the favor performance
+                    my $pdata=$session->get([$dsperformance_oid.".".$slot]);
+                    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                    
+                    if ($data eq "0") {
+                        push @output,"$item: off";
+                    } elsif ($data eq "1" && $pdata eq "0") {
+                        push @output, "$item: on-norm";
+                    } elsif ($data eq "1" && $pdata eq "1") {
+                        push @output, "$item: on-maxp";
+                    } else {
+                        push @output,"$item: na";
+                    }
                 } else {
                     push @output,"$item: $data";
                 }
@@ -2133,15 +2166,205 @@ sub renergy {
         }
     }
 
+    # save the values gotten for setting
+    my @setneed;
+    if (scalar(keys %writelist)) {
+        @setneed = @output;
+        @output = ();
+    }
+
+    # Handle the setting operation
     foreach my $item (keys %writelist) {
         my $oid = "";
-        if ($item eq "cappingvalue") {
-            $oid = $powercapping_oid;
+        my $svalue;
+
+        my $capmax;
+        my $capmin;
+        if ($item eq "cappingwatt" || $item eq "cappingperc") {
+            if (0) {
+            foreach my $i (@setneed) {
+                if ($i =~ /^cappingmax: (\d*)W/) {
+                    $capmax = $1;
+                } elsif ($i =~ /^cappingmin: (\d*)W/) {
+                    $capmin = $1;
+                }
+            }
+
+            if (! (defined ($capmax) && defined ($capmin))) {
+                return (1, "Cannot get the value of cappingmin or cappingmax.");
+            }
+
+            if ($item eq "cappingwatt" && ($writelist{$item} > $capmax || $writelist{$item} < $capmin)) {
+                return (1, "The set value should be in the range $capmin - $capmax.");
+            }
+
+            if ($item eq "cappingperc") {
+                if ($writelist{$item} > 100 || $writelist{$item} < 0) {
+                    return (1, "The percentage value should be in the range 0 - 100");
+                }
+                $writelist{$item} = int (($capmax-$capmin)*$writelist{$item}/100 + $capmin);
+            }
+            }
+
+            my $data = $session->set(new SNMP::Varbind([$powercapping_oid, $slot, $writelist{$item} ,'INTEGER']));
+            unless ($data) { return (1,$session->{ErrorStr}); }
+
+            my $ndata=$session->get([$powercapping_oid.".".$slot]);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            if ($ndata ne $writelist{$item}) {
+                return (1, "$item: set operation failed.");
+            }
+        } elsif ($item eq "savingstatus") {
+            if ($writelist{$item} eq "on") {
+                $svalue = "1";
+            } elsif ($writelist{$item} eq "off") {
+                $svalue = "0";
+            } else {
+                return (1, "The setting value should be on|off.");
+            }
+            
+            # static power saving and dynamic power saving cannot be turn on at same time
+            if ($svalue eq "1") {
+                my $gdata = $session->get([$dsavingstatus_oid.".".$slot]);
+                if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+                if ($gdata eq "1") {
+                    return (1, "The attributes savingstatus and dsavingstatus cannot be turn on at same time.");
+                }
+            }
+
+            # get the attribute static power save
+            my $data=$session->get([$savingstatus_oid.".".$slot]);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            if ($data eq "NOSUCHINSTANCE" || $data eq "notApplicable" || $data eq "255") {
+                return (1, "Does not supported by this blade server.");
+            }
+            if ($data ne $svalue) {
+                
+                # set it  
+                my $sdata = $session->set(new SNMP::Varbind([$savingstatus_oid, $slot, $svalue ,'INTEGER']));
+                unless ($sdata) { return (1,$session->{ErrorStr}); }
+
+                my $ndata=$session->get([$savingstatus_oid.".".$slot]);
+                if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                if ($ndata ne $svalue) {
+                    return (1, "Set operation failed.");
+                }
+            }
+        } elsif ($item eq "dsavingstatus") {
+            if ($writelist{$item} eq "on-norm") {
+                $svalue = "1";
+            } elsif ($writelist{$item} eq "on-maxp") {
+                $svalue = "2";
+            } elsif ($writelist{$item} eq "off") {
+                $svalue = "0";
+            } else {
+                return (1, "The setting value should be one of on-norm|on-maxp|off.");
+            }
+
+            # static power saving and dynamic power saving cannot be turn on at same time
+            if ($svalue gt "0") {
+                my $gdata = $session->get([$savingstatus_oid.".".$slot]);
+                if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+
+                if ($gdata eq "1") {
+                    return (1, "The attributes savingstatus and dsavingstatus cannot be turn on at same time.");
+                }
+            }
+
+            # get the attribute dynamic power save
+            my $data = $session->get([$dsavingstatus_oid.".".$slot]);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            if ($data eq "NOSUCHINSTANCE" || $data eq "notApplicable" || $data eq "255") {
+                return (1, "Does not supported by this blade server.");
+            }
+
+            # get the attribute favor performance 
+            my $pdata = $session->get([$dsperformance_oid.".".$slot]);
+            if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+            if ($pdata eq "NOSUCHINSTANCE" || $pdata eq "notApplicable" || $pdata eq "255") {
+                $pdata = "255";
+            }
+
+            # turn off the dynamic power save
+            if ($svalue eq "0" && ($data eq "1" || $pdata eq "1")) {
+                if ($data eq "1") {
+                    my $sdata = $session->set(new SNMP::Varbind([$dsavingstatus_oid, $slot, "0" ,'INTEGER']));
+                    unless ($sdata) { return (1,$session->{ErrorStr}); }
+
+                    my $ndata=$session->get([$dsavingstatus_oid.".".$slot]);
+                    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                    if ($ndata ne "0") {
+                        return (1, "Set operation failed.");
+                    }
+                }
+                if ($pdata eq "1") {
+                    my $sdata = $session->set(new SNMP::Varbind([$dsperformance_oid, $slot, "0" ,'INTEGER']));
+                    unless ($sdata) { return (1,$session->{ErrorStr}); }
+
+                    my $ndata=$session->get([$dsperformance_oid.".".$slot]);
+                    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                    if ($ndata ne "0") {
+                        return (1, "Set operation failed.");
+                    }
+                }
+            }
+
+            # trun on the dynamic power save but trun off the favor performance
+            if ($svalue eq "1" && ($data eq "0" || $pdata eq "1")) {
+                if ($data eq "0") {
+                    my $sdata = $session->set(new SNMP::Varbind([$dsavingstatus_oid, $slot, "1" ,'INTEGER']));
+                    unless ($sdata) { return (1,$session->{ErrorStr}); }
+
+                    my $ndata=$session->get([$dsavingstatus_oid.".".$slot]);
+                    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                    if ($ndata ne "1") {
+                        return (1, "Set operation failed.");
+                    }
+                }
+
+                if ($pdata eq "1") {
+                    my $sdata = $session->set(new SNMP::Varbind([$dsperformance_oid, $slot, "0" ,'INTEGER']));
+                    unless ($sdata) { return (1,$session->{ErrorStr}); }
+
+                    my $ndata=$session->get([$dsperformance_oid.".".$slot]);
+                    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                    if ($ndata ne "0") {
+                        return (1, "Set operation failed.");
+                    }
+                }
+            }
+
+            # trun on the dynamic power save and trun on the favor performance
+            if ($svalue eq "2" && $pdata eq "255") {
+                return (1, "The on-maxp is NOT supported.");
+            }
+            if ($svalue eq "2" && ($data eq "0" || $pdata eq "0")) {
+                if ($data eq "0") {
+                    my $sdata = $session->set(new SNMP::Varbind([$dsavingstatus_oid, $slot, "1" ,'INTEGER']));
+                    unless ($sdata) { return (1,$session->{ErrorStr}); }
+
+                    my $ndata=$session->get([$dsavingstatus_oid.".".$slot]);
+                    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                    if ($ndata ne "1") {
+                        return (1, "Set operation failed.");
+                    }
+                }
+
+                if ($pdata eq "0") {
+                    my $sdata = $session->set(new SNMP::Varbind([$dsperformance_oid, $slot, "1" ,'INTEGER']));
+                    unless ($sdata) { return (1,$session->{ErrorStr}); }
+
+                    my $ndata=$session->get([$dsperformance_oid.".".$slot]);
+                    if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+                    if ($ndata ne "1") {
+                        return (1, "Set operation failed.");
+                    }
+                }
+            }
         }
 
-        my $data = $session->set(new SNMP::Varbind([".".$oid, $slot, $writelist{$item} ,'INTEGER']));
-        unless ($data) { return (1,$session->{ErrorStr}); }
-        push @output, "$item: set value to $writelist{$item}";
+        push @output, "$item: Set operation succeeded.";
     }
 
     return (0, @output);
