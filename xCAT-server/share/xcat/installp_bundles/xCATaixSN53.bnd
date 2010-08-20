@@ -58,3 +58,6 @@ R:xCATsn*
 # optional - needed if using Postgresql
 #R:xcat-postgresql-8.4-4.aix6.1.ppc.rpm
 #R:perl-DBD-Pg-2-17.2.aix6.1.ppc.rpm
+
+# optional - needed if using MySql
+#R:perl-DBD-mysql*

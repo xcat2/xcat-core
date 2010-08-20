@@ -67,3 +67,6 @@ R:xCATsn*
 
 # optional - needed if using DB2
 #R:perl-DBD-DB2*
+
+# optional - needed if using MySql
+#R:perl-DBD-mysql*
