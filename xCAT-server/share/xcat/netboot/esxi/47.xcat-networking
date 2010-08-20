@@ -12,8 +12,9 @@ if [ ! -z "$MACADDR" ]; then
     esxcfg-vswitch -a vSwitch0:64
     esxcfg-vswitch -A "Management Network" vSwitch0
     esxcfg-vswitch -L $NIC vSwitch0
-    esxcfg-vmknic -a -i DHCP -i DHCPV6 -P -p "Management Network"
+    esxcfg-vmknic -a -i DHCP -P -p "Management Network"
     esxcfg-init -R $MACADDR -K vmk0
+    esxcfg-vmknic -i DHCPV6 "Management Network"
 fi
 
 sed -ie 's/#ssh/ssh/' /etc/inetd.conf #ssh is too nice not to have

@@ -1,6 +1,19 @@
 #!/bin/sh
 retval=${SUCCESS}
 if [  `uname -r` == '4.1.0' ]; then
+    #duid=default-duid "\000\001\000\001LnC\304\000\020\030^\340\334";
+    duid='default-duid "\000\004';
+
+    for i in `vsish -e get /hardware/machineUUID|grep \\\[|sed -e 's/.*://'|sed -e ':a;N;$!ba;s/\n//g'`; do
+        num=`printf "%d" $i`
+        tnum=`printf "\\%03o" $i`
+        if [ $num -lt 127 -a $num -gt 31 ]; then
+            tnum=`printf $tnum`
+        fi
+        duid=$duid$tnum
+    done
+    duid=$duid'";'
+    echo $duid > /etc/dhclient6-vmk0.leases
     Exec esxcfg-advcfg -S 1 -U IPv6ConfigSet
     Exec esxcfg-module -s "ipv6=1" tcpip3
 fi
