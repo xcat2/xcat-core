@@ -3452,6 +3452,86 @@ sub getAutoIncrementColumns {
     }
     return @ret;
 }
+#--------------------------------------------------------------------------
+
+=head3   
+
+    Description: get_filelist 
+
+    Arguments:
+             directory,filelist,type 
+    Returns:
+            The list of sql files to be processed which consists of all the
+			files with <name>.sql  and <name>.<databasename>.sql
+		        or 	
+			files with <name>.pm  and <name>.<databasename>.pm
+    Globals:
+
+    Error:
+
+    Example:
+	my @filelist =get_filelist($directory,$filelist,$type);
+            where type = "sql" or "pm"
+
+=cut
+
+#--------------------------------------------------------------------------------
+
+sub get_filelist
+
+{
+    use File::Basename; 
+    my $self=shift;
+    my $directory = shift;
+    my $files     = shift;
+    my $ext       = shift;
+    my $dbname    = "sqlite";
+    my $xcatcfg   = get_xcatcfg();
+
+    if ($xcatcfg =~ /^DB2:/)
+    {
+        $dbname = "db2";
+    }
+    else
+    {
+        if ($xcatcfg =~ /^mysql:/)
+        {
+            $dbname = "mysql";
+        }
+        else
+        {
+            if ($xcatcfg =~ /^Pg:/)
+            {
+                $dbname = "pgsql";
+            }
+        }
+    }
+    $directory .= "/";
+
+    my @filelist = ();
+
+    # my @dblist = glob($directory . "*.$dbname.$ext"); # current database
+    my @list = glob($directory . "*.$ext");    # all files
+    foreach my $file (@list)
+    {
+        my $filename= basename($file);  # strip filename
+        my($name,$ext1,$ext2) = split '\.', $filename;
+        if ($ext1 eq $dbname)
+        {
+            push @filelist, $file;
+        }
+        else
+        {
+            if ($ext2 eq "")
+            {
+                push @filelist, $file;
+            }
+        }
+         $ext2 = "";
+         $ext1 = "";
+    }
+    return \@filelist;
+}
 
 1;
 
