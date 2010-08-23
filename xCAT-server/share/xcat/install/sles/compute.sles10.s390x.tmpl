@@ -880,28 +880,6 @@
   <!-- Scripts (post-script) -->
   <configure>
     <scripts>
-		<post-scripts config:type="list">
-			<script>
-				<filename>post.sh</filename>
-				<interpreter>shell</interpreter>
-				<source>
-					<![CDATA[
-					#!/bin/sh
-	
-					# Set MAC address
-					cat /etc/sysconfig/network/ifcfg-replace_device | grep -v "LLADDR" | grep -v "UNIQUE" > /tmp/ifcfg-replace_device
-					echo "LLADDR='replace_lladdr'" >> /tmp/ifcfg-replace_device
-					echo "UNIQUE=''" >> /tmp/ifcfg-replace_device
-					cat /tmp/ifcfg-replace_device > /etc/sysconfig/network/ifcfg-replace_device
-					
-					# Set layer = 2
-					cat /etc/sysconfig/hardware/hwcfg-replace_device | grep -v "QETH_LAYER2_SUPPORT" > /tmp/hwcfg-replace_device
-					echo "QETH_LAYER2_SUPPORT='1'" >> /tmp/hwcfg-replace_device
-					cat /tmp/hwcfg-replace_device > /etc/sysconfig/hardware/hwcfg-replace_device
-					]]>
-				</source>
-			</script>
-		</post-scripts>
     </scripts>
   </configure>
 </profile>

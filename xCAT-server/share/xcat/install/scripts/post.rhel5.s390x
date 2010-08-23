@@ -1,0 +1,1 @@
+echo ARP=no >> /etc/sysconfig/network-scripts/ifcfg-eth0

@@ -3026,6 +3026,19 @@ sub nodeSet {
 		my $portName = "FOOBAR";
 		my $portNo   = "0";
 
+		# Get postscript content
+		my $postScript;
+		if ( $os =~ m/sles10/i ) {
+			$postScript = "/opt/xcat/share/xcat/install/scripts/post.sles10.s390x";
+		} elsif ( $os =~ m/sles11/i ) {
+			$postScript = "/opt/xcat/share/xcat/install/scripts/post.sles11.s390x";
+		} elsif ( $os =~ m/rhel5/i ) {
+			$postScript = "/opt/xcat/share/xcat/install/scripts/post.rhel5.s390x";
+		} else {
+			xCAT::zvmUtils->printLn( $callback, "$node: (Error) No postscript available for $os" );
+			return;
+		}
+			
 		# SUSE installation
 		my $customTmpl;
 		if ( $os =~ m/sles/i ) {
@@ -3039,10 +3052,13 @@ sub nodeSet {
 				$out = `cp $installDir/custom/install/sles/$tmpl $customTmpl`;
 			}
 			else {
-				xCAT::zvmUtils->printLn( $callback, "$node: (Error) An autoyast template does not exist for $os" );
+				xCAT::zvmUtils->printLn( $callback, "$node: (Error) An autoyast template does not exist for $os in $installDir/custom/install/sles/" );
 				return;
 			}
-
+			
+			# Copy postscript into template
+			$out = `sed --in-place -e "/<scripts>/r $postScript" $customTmpl`;
+						
 			# Edit template
 			my $device;
 			my $chanIds = "$readChannel $writeChannel $dataChannel";
@@ -3171,10 +3187,13 @@ sub nodeSet {
 				$out = `cp $installDir/custom/install/rh/$tmpl $customTmpl`;
 			}
 			else {
-				xCAT::zvmUtils->printLn( $callback, "$node: (Error) An kickstart template does not exist for $os" );
+				xCAT::zvmUtils->printLn( $callback, "$node: (Error) An kickstart template does not exist for $os in $installDir/custom/install/rh/" );
 				return;
 			}
-
+			
+			# Copy postscript into template
+			$out = `sed --in-place -e "/%post/r $postScript" $customTmpl`;
+			
 			# Edit template
 			my $url = "ftp://$ftp/$os/s390x/";
 			$out =
