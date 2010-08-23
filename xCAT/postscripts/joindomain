@@ -8,7 +8,7 @@ authconfig --update --krb5realm=$UPDNSDOMAIN --enablekrb5kdcdns --enablekrb5
 (echo $TEMPHOSTPASS;echo $MYPASS;echo $MYPASS)|kpasswd $HOSTPRINC
 (echo $MYPASS)|kinit $HOSTPRINC
 KVNO=`kvno $HOSTPRINC|awk '{print $NF}'`
-(echo add_entry -password -p vs99 -k $KVNO -e des;echo $MYPASS|wkt /etc/host.keytab)|ktutil
+(echo add_entry -password -p $HOSTPRINC -k $KVNO -e des;echo $MYPASS;wkt /etc/host.keytab)|ktutil
 
 
 #ok, time for ldap
