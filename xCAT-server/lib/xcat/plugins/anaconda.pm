@@ -20,6 +20,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
+use File::Temp qw/mkdtemp/;
 
 use Socket;
 
@@ -1271,10 +1272,7 @@ sub insert_dd {
     }
 
     # Create the tmp dir for dd hack
-    my $dd_dir = "/tmp/dd_tmp";
-    if (-d $dd_dir) {
-        rmtree "$dd_dir";
-    }
+    my $dd_dir = mkdtemp("/tmp/ddtmpXXXXXXX");
     mkpath "$dd_dir/initrd_img"; # The dir for the new initrd
 
     # unzip the initrd image

@@ -19,6 +19,7 @@ Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use File::Path;
 use File::Copy;
+use File::Temp qw/mkdtemp/;
 
 use Socket;
 
@@ -1036,7 +1037,6 @@ sub insert_dd {
     my $arch = shift;
     my $img = shift;
 
-    my $dd_dir = "/tmp/dd_tmp";
     my $install_dir = xCAT::Utils->getInstallDir();
 
     # Find out the dirver disk which need to be insert into initrd
@@ -1051,9 +1051,7 @@ sub insert_dd {
     }
 
     # Create the tmp dir for dd hack
-    if (-d $dd_dir) {
-        rmtree "$dd_dir";
-    }
+    my $dd_dir = mkdtemp("/tmp/ddtmpXXXXXXX");
     mkpath "$dd_dir/initrd_img";
 
     

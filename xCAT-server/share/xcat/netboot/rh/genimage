@@ -13,6 +13,7 @@ use File::Copy qw/copy cp mv move/;
 use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
+use File::Temp qw/mkdtemp/;
 
 use imgutils;
 
@@ -1350,16 +1351,7 @@ sub load_dd ()
     }
 
     # Create the work space for initrd hack
-    my $dd_dir = "/tmp/dd_tmp";
-
-    # If $dd_dir was not cleaned, try to umount mnt first
-    if (-d "$dd_dir/mnt") {
-        system ("umount $dd_dir/mnt >/dev/null 2>&1");
-    }
-    if( -d "$dd_dir") {
-        rmtree "$dd_dir";
-    }
-    mkpath "$dd_dir";
+    my $dd_dir = mkdtemp("/tmp/ddtmpXXXXXXX");
     mkpath "$dd_dir/mnt";
     mkpath "$dd_dir/mods";
     
