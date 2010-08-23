@@ -3,20 +3,140 @@
 				<filename>post.sh</filename>
 				<interpreter>shell</interpreter>
 				<source>
-					<![CDATA[
-					#!/bin/sh
+<![CDATA[
+#!/bin/sh
+
+# Set MAC address
+cat /etc/sysconfig/network/ifcfg-replace_device | grep -v "LLADDR" | grep -v "UNIQUE" > /tmp/ifcfg-replace_device
+echo "LLADDR='replace_lladdr'" >> /tmp/ifcfg-replace_device
+echo "UNIQUE=''" >> /tmp/ifcfg-replace_device
+cat /tmp/ifcfg-replace_device > /etc/sysconfig/network/ifcfg-replace_device
+
+# Set layer = 2
+cat /etc/sysconfig/hardware/hwcfg-replace_device | grep -v "QETH_LAYER2_SUPPORT" > /tmp/hwcfg-replace_device
+echo "QETH_LAYER2_SUPPORT='1'" >> /tmp/hwcfg-replace_device
+cat /tmp/hwcfg-replace_device > /etc/sysconfig/hardware/hwcfg-replace_device
+
+# Get node hostname
+HOSTNAME=$(hostname -s)
+
+# These variables are set by nodeset
+export MASTER_IPS=( replace_master )
+
+for i in $(seq 1 20)
+do
+	GOTIT=0
 	
-					# Set MAC address
-					cat /etc/sysconfig/network/ifcfg-replace_device | grep -v "LLADDR" | grep -v "UNIQUE" > /tmp/ifcfg-replace_device
-					echo "LLADDR='replace_lladdr'" >> /tmp/ifcfg-replace_device
-					echo "UNIQUE=''" >> /tmp/ifcfg-replace_device
-					cat /tmp/ifcfg-replace_device > /etc/sysconfig/network/ifcfg-replace_device
-					
-					# Set layer = 2
-					cat /etc/sysconfig/hardware/hwcfg-replace_device | grep -v "QETH_LAYER2_SUPPORT" > /tmp/hwcfg-replace_device
-					echo "QETH_LAYER2_SUPPORT='1'" >> /tmp/hwcfg-replace_device
-					cat /tmp/hwcfg-replace_device > /etc/sysconfig/hardware/hwcfg-replace_device
-					]]>
+	# Loop through the master/service nodes
+	for i in $MASTER_IPS
+	do
+		# Download postscripts from FTP server
+		wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
+		if [ "$?" = "0" ]; then
+			# Exit if openssl is not executable
+			if [ ! -x /usr/bin/openssl ]; then 
+            			exit 1
+			fi
+		
+			# Get xcat server
+			XCATSERVER=$i:3001
+			export XCATSERVER
+			USEOPENSSLFORXCAT=1 
+			export USEOPENSSLFORXCAT
+
+			# Move postscritps into /xcatpost
+			mv $i/postscripts /xcatpost
+			# Remove postscritps
+			rm -rf $i
+			# Make postscripts executable
+			chmod +x /xcatpost/*
+
+			# Get postscript to run on this node from xcat server
+			/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+			MYCONT=`grep MASTER /tmp/mypostscript`
+			MAX_RETRIES=10
+			RETRY=0
+			while [ -z "$MYCONT" ]; do
+				RETRY=$(($RETRY+1))
+				if [ $RETRY -eq $MAX_RETRIES ]; then
+					break
+				fi
+
+				# Sleep a couple of seconds before trying again			
+				let SLI=$RANDOM%10+10
+				sleep $SLI
+
+				# Get postscript to run on this node from xcat server
+				/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+				MYCONT=`grep MASTER /tmp/mypostscript`
+			done
+         
+			# Make executable
+			chmod +x /tmp/mypostscript
+			GOTIT=1
+			break
+		fi
+	done
+	
+	# If postscripts for this node are found
+	if [ "$GOTIT" = "1" ]; then
+		# Save the master/service node to /opt/xcat/xcatinfo file
+		if [ ! -f /opt/xcat/xcatinfo ]; then
+			mkdir -p /opt/xcat
+			touch /opt/xcat/xcatinfo
+		fi
+
+		echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
+	    break
+	fi
+
+	# Sleep for a couple of seconds
+	RAND=$(perl -e 'print int(rand(5)). "\n"')
+	sleep $RAND
+done
+
+PATH=/xcatpost:$PATH
+export PATH
+
+# Save post boot scripts to /tmp/mypostscript.post
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript.post
+chmod 755 /tmp/mypostscript.post
+
+# Create post init
+cat >/etc/init.d/xcatpostinit1 << 'EOF'
+# Install directory variable is set by nodeset
+replace_install_dir/postscripts/xcatpostinit1
+EOF
+# Change permissions
+chmod 755 /etc/init.d/xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc3.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc4.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc5.d/S84xcatpostinit1
+
+# Create post install 
+mkdir -p /opt/xcat
+cat >/opt/xcat/xcatinstallpost << 'EOF'
+# Install directory variable is set by nodeset
+replace_install_dir/postscripts/xcatinstallpost
+chkconfig xcatpostinit1 off
+EOF
+# Change permissions
+chmod 755 /opt/xcat/xcatinstallpost
+
+chkconfig --add xcatpostinit1
+
+# Only run prebooot scripts here
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript
+
+# Run postscripts
+/tmp/mypostscript
+
+# Master node is set by nodeset
+updateflag.awk replace_master 3002
+cd /
+]]>
 				</source>
 			</script>
 		</post-scripts>
