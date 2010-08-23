@@ -85,6 +85,7 @@ sub process_request {
              xCAT::SvrUtils::sendmsg([1,"Unable to determine domain from arguments or site table"], $callback);
              return undef;
          }
+         $ENV{KRB5CCNAME}="/tmp/xcat/krbcache.$realm.$$";
          my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
          if ($err) {
              xCAT::SvrUtils::sendmsg([1,"Error authenticating to Active Directory"], $callback);
@@ -115,6 +116,7 @@ sub process_request {
              xCAT::SvrUtils::sendmsg([1,"Unable to determine domain from arguments or site table"], $callback);
              return undef;
          }
+         $ENV{KRB5CCNAME}="/tmp/xcat/krbcache.$realm.$$";
          my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
          if ($err) {
              xCAT::SvrUtils::sendmsg([1,"Error authenticating to Active Directory"], $callback);
@@ -239,6 +241,7 @@ sub process_request {
             $realm = uc($domain);
             $realm =~ s/\.$//; #remove trailing dot if provided
          }
+         $ENV{KRB5CCNAME}="/tmp/xcat/krbcache.$realm.$$";
 
          my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
          if ($err) {
@@ -295,6 +298,7 @@ sub process_request {
                 $realm = uc($domain);
                 $realm =~ s/\.$//; #remove trailing dot if provided
              }
+             $ENV{KRB5CCNAME}="/tmp/xcat/krbcache.$realm.$$";
              unless ($loggedrealms{$realm}) {
                 my $err = xCAT::ADUtils::krb_login(username=>$adpent->{username},password=>$adpent->{password},realm=>$realm);
                  if ($err) {
