@@ -48,6 +48,7 @@ my $EXITCODE;     # save the bitmask of all exit codes returned by calls to hand
 #################################
 # submit_request will take an xCAT command and pass it to the xCAT
 #   server for execution.
+#  Note must not put a require or use for Utils.pm in the non-bypass path
 #
 # If the XCATBYPASS env var is set, the connection to the server/daemon
 #   will be bypassed and the plugin will be called directly.  If it is
@@ -84,10 +85,12 @@ sub submit_request {
   my $keyfile = shift;
   my $certfile = shift;
   my $cafile = shift;
-  require xCAT::Utils;
-  unless ($keyfile) { $keyfile = xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem"; }
-  unless ($certfile) { $certfile = xCAT::Utils->getHomeDir()."/.xcat/client-cred.pem"; }
-  unless ($cafile) { $cafile  = xCAT::Utils->getHomeDir()."/.xcat/ca.pem"; }
+  # get home directory
+  my  @user = getpwuid($>);
+  my $homedir=$user[7];
+  unless ($keyfile) { $keyfile = $homedir."/.xcat/client-cred.pem"; }
+  unless ($certfile) { $certfile = $homedir."/.xcat/client-cred.pem"; }
+  unless ($cafile) { $cafile  = $homedir."/.xcat/ca.pem"; }
   $xCAT::Client::EXITCODE = 0;    # clear out exit code before invoking the plugin
 $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
 # If XCATBYPASS is set, invoke the plugin process_request method directly
@@ -581,6 +584,7 @@ sub plugin_command {
 ###################################
 sub dispatch_request {
 #  %dispatched_children=();
+   require xCAT::Utils;
    my $req = shift;
    $dispatch_cb = shift;
 
