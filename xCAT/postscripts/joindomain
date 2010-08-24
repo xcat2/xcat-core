@@ -26,9 +26,10 @@ if [ "$OSVER" = "rhels6" ]; then
     echo sasl_mech GSSAPI >> /etc/nslcd.conf
     echo sasl_secprops maxssf=0 >> /etc/nslcd.conf
     echo krb5_ccname /var/run/ldap_krb5cc >> /etc/nslcd.conf
+    sed -i '/# Mappings for Active Directory/,/^[^#]/ s/^#\([^ ]\)/\1/' /etc/nslcd.conf
     authconfig --update --enableldap --ldapserver=$LDAPSRV --ldapbasedn=$LDAPBASEDN
-    echo 'kinit -c /var/run/ldap_krb5cc < /etc/krb5.hostpass' >> /etc/rc.local
-    echo 'kinit -c /var/run/ldap_krb5cc < /etc/krb5.hostpass' >> /etc/cron.hourly/nslcdkrb.cron
+    echo 'kinit '$HOSTPRINC'-c /var/run/ldap_krb5cc < /etc/krb5.hostpass >& /dev/null' >> /etc/rc.local
+    echo 'kinit '$HOSTPRINC'-c /var/run/ldap_krb5cc < /etc/krb5.hostpass >& /dev/null' >> /etc/cron.hourly/nslcdkrb.cron
     chmod +x /etc/cron.hourly/nslcdkrb.cron
 fi
 #TODO: SLES/maybe RHEL5.  Uncomfortable with libnss_ldap without root_krb5_ccname, ldap needs diff credentials per user
