@@ -3462,9 +3462,9 @@ sub getAutoIncrementColumns {
              directory,filelist,type 
     Returns:
             The list of sql files to be processed which consists of all the
-			files with <name>.sql  and <name>.<databasename>.sql
+			files with <name>.sql  and <name>_<databasename>.sql
 		        or 	
-			files with <name>.pm  and <name>.<databasename>.pm
+			files with <name>.pm  and <name>_<databasename>.pm
     Globals:
 
     Error:
@@ -3510,13 +3510,13 @@ sub get_filelist
 
     my @filelist = ();
 
-    # my @dblist = glob($directory . "*.$dbname.$ext"); # current database
     my @list = glob($directory . "*.$ext");    # all files
     foreach my $file (@list)
     {
         my $filename= basename($file);  # strip filename
-        my($name,$ext1,$ext2) = split '\.', $filename;
-        if ($ext1 eq $dbname)
+        my($name,$ext1) = split '\.', $filename;
+        my($name,$ext2) = split '\_', $name;
+        if ($ext2 eq $dbname)
         {
             push @filelist, $file;
         }
