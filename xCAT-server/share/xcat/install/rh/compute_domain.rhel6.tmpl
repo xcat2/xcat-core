@@ -140,6 +140,8 @@ reboot
 #
 %packages
 #INCLUDE_DEFAULT_PKGLIST#
+pam_krb5
+nss-pam-ldapd
 %pre
 #INCLUDE:#ENV:XCATROOT#/share/xcat/install/scripts/pre.rh#
 %post
