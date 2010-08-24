@@ -31,5 +31,7 @@ if [ "$OSVER" = "rhels6" ]; then
     echo 'kinit -c /var/run/ldap_krb5cc < /etc/krb5.hostpass' >> /etc/cron.hourly/nslcdkrb.cron
     chmod +x /etc/cron.hourly/nslcdkrb.cron
 fi
+#TODO: SLES/maybe RHEL5.  Uncomfortable with libnss_ldap without root_krb5_ccname, ldap needs diff credentials per user
+# or else the host private key must be wide open...
 
 
