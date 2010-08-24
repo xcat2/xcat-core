@@ -3530,7 +3530,7 @@ sub get_filelist
          $ext2 = "";
          $ext1 = "";
     }
-    return \@filelist;
+    return @filelist;
 }
 
 1;
