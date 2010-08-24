@@ -39,6 +39,8 @@ use IO::Socket;
 use Data::Dumper;
 use POSIX qw/WNOHANG/;
 use Time::HiRes qw (sleep);
+use Safe;
+my $evalcpt = new Safe;
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
@@ -2066,6 +2068,18 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     $self->{_use_cache} = $oldusecache; #Restore setting to previous value
     $self->{_cachestamp} = time;
 }
+# This is a utility function to create a number out of a string, useful for things like round robin algorithms on unnumbered nodes
+sub mknum {
+    my $string = shift;
+    my $number=0;
+    foreach (unpack("C*",$string)) { #do big endian, then it would make 'fred' and 'free' be one number apart
+        $number += $_;
+    }
+    return $number;
+}
+
+$evalcpt->share('&mknum');
+$evalcpt->permit('require');
 #--------------------------------------------------------------------------
 
 =head3 getNodeAttribs
@@ -2162,18 +2176,10 @@ sub getNodeAttribs
             {
 
                 #my $next = $comps[0];
-                if ($curr =~ /^[\{\}()\-\+\/\%\*\$\d]+$/ or $curr =~ /^\(sprintf\(["'%\dcsduoxefg]+,\s*[\{\}()\-\+\/\%\*\$\d]+\)\)$/ )
-                {
-                    use integer
-                      ; #We only allow integer operations, they are the ones that make sense for the application
-                    my $value = $node;
-                    $value =~ s/$parts[0]/$curr/ee;
-                    $retval = $prev . $value . $next;
-                }
-                else
-                {
-                    print "$curr is bad\n";
-                }
+                my $value = $node;
+                $value =~ s/$parts[0]/$curr/;
+                $value = $evalcpt->reval('use integer;'.$value);
+                $retval = $prev . $value . $next;
                 ($curr, $next, $prev) =
                   extract_bracketed($retval, '()', qr/[^()]*/);
             }
