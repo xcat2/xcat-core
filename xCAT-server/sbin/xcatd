@@ -513,7 +513,7 @@ sub scan_plugins {
       } else {
           @modulehandlerinfos=($cmd_adds->{$_});
       }
-      unless (defined($cmd_handlers{$_}) {
+      unless (defined($cmd_handlers{$_})) {
         $cmd_handlers{$_} = [ ];
       }
       # Add every plugin registration to cmd_handlers
