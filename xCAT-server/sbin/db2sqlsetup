@@ -321,12 +321,12 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         if ($::SERVER)
         {
             &db2start;
-        }
 
-        #
-        # Setup DB2 to restart on reboot  (TBD)
-        #
-        #&db2reboot;
+          #
+          # Setup DB2 to restart on reboot  
+          #
+          &db2reboot;
+        }
 
     }
 
@@ -1006,7 +1006,7 @@ sub createxcatdb
 =head3   db2reboot 
 
 	
-    Setup for db2 to start on reboot  (TBD)
+    Setup for db2 to start on reboot  
 
 =cut
 
@@ -1014,8 +1014,17 @@ sub createxcatdb
 
 sub db2reboot
 {
+    xCAT::MsgUtils->message("I", "Setting up DB2 to start on reboot");
     my $cmd;
 
+    # su to xcatdb 
+    $cmd = "db2iauto -on xcatdb ";
+    my $rc = &rundb2cmd($cmd);
+    if ($rc != 0)
+    {
+        xCAT::MsgUtils->message("W", " $cmd failed.");
+
+    }
 }
 
 #-----------------------------------------------------------------------------
