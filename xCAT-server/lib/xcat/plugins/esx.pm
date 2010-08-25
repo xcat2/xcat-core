@@ -1955,6 +1955,8 @@ sub create_storage_devs {
     my %disktocont;
     my $dev;
     my @storelocs = split /,/,$tablecfg{vm}->{$node}->[0]->{storage};
+    my $globaldisktype = $tablecfg{vm}->{$node}->[0]->{storagemodel};
+    unless ($globaldisktype) { $globaldisktype='ide'; }
     #number of devices is the larger of the specified sizes (TODO: masters) or storage pools to span
     my $numdevs = (scalar @storelocs > scalar @sizes ? scalar @storelocs : scalar @sizes);
     while ($numdevs-- > 0) {
@@ -1963,7 +1965,7 @@ sub create_storage_devs {
         my $disksize = shift @sizes;
         unless (scalar @sizes) { @sizes = ($disksize); } #if we emptied the array, stick the last entry back on to allow it to specify all remaining disks
         $disksize = getUnits($disksize,'G',1024);
-        $disktype = 'ide';
+        $disktype = $globaldisktype;
         if ($storeloc =~ /=/) {
             ($storeloc,$disktype) = split /=/,$storeloc;
         }

@@ -283,7 +283,11 @@ sub build_diskstruct {
             my $diskhash;
             $disk =~ s/=(.*)//;
             my $model = $1;
-            unless ($model) { $model = 'ide'; }
+            unless ($model) {
+                #if not defined, model will stay undefined like above
+                $model = $confdata->{vm}->{$node}->[0]->{storagemodel}
+                unless ($model) { $model = 'ide'; } #if still not defined, ide
+            }
             my $prefix='hd';
             if ($model eq 'virtio') {
                 $prefix='vd';
@@ -427,6 +431,9 @@ sub build_nicstruct {
         }
         $nic =~ s/.*://; #the detail of how the bridge was built is of no
                         #interest to this segment of code
+        if ($confdata->{vm}->{$node}->[0]->{nicmodel}) {
+            $type = $confdata->{vm}->{$node}->[0]->{nicmodel};
+        }
         if ($nic =~ /=/) {
             ($nic,$type) = split /=/,$nic,2;
         }
@@ -822,6 +829,10 @@ sub createstorage {
     }
     $filename=~s/=(.*)//;
     my $model=$1;
+    unless ($model) {
+        #if not defined, model will stay undefined like above
+        $model = $cfginfo->{storagemodel};
+    }
     my $prefix='hd';
     if ($model eq 'scsi') {
         $prefix='sd';
@@ -883,6 +894,10 @@ sub chvm {
         $location =~ s/,.*//; #no comma specified parameters are valid
         $location =~ s/=(.*)//; #store model if specified here
         my $model = $1;
+        unless ($model) {
+            #if not defined, model will stay undefined like above
+            $model = $confdata->{vm}->{$node}->[0]->{storagemodel}
+        }
         my $prefix='hd';
         if ($model eq 'scsi') {
             $prefix='sd';

@@ -25,7 +25,7 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
   if ($vpdtab) {
       $cfghash->{vpd} = $vpdtab->getNodesAttribs($noderange,['uuid']);
   }
-  $cfghash->{vm} = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','cfgstore','storage','memory','cpus','nics','bootorder','virtflags']);
+  $cfghash->{vm} = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','cfgstore','storage','storagemodel','memory','cpus','nics','nicmodel','bootorder','virtflags']);
   my $mactab = xCAT::Table->new("mac",-create=>1);
   my $nrtab= xCAT::Table->new("noderes",-create=>1);
   $cfghash->{mac} = $mactab->getAllNodeAttribs(['mac'],1);
