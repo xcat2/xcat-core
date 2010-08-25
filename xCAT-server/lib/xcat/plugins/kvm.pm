@@ -12,6 +12,8 @@ use xCAT::VMCommon;
 use xCAT_monitoring::monitorctrl;
 
 use xCAT::Table;
+use XML::LibXML; #now that we are in the business of modifying xml data, need something capable of preserving more of the XML structure
+#TODO: convert all uses of XML::Simple to LibXML?  Using both seems wasteful in a way..
 use XML::Simple qw(XMLout);
 use Thread qw(yield);
 use File::Basename qw/fileparse/;
@@ -27,6 +29,7 @@ my %vm_comm_pids;
 my %offlinehyps;
 my %hypstats;
 my %offlinevms;
+my $parser;
 my @destblacklist;
 my $updatetable; #when a function is performing per-node operations, it can queue up a table update by populating parts of this hash
 my $confdata; #a reference to serve as a common pointer betweer VMCommon functions and this plugin
@@ -953,10 +956,20 @@ sub chvm {
         } else { #TODO: chvm to modify offline xml structure
         }
     } elsif (@purge) {
-        my $dom = $hypconn->get_domain_by_name($node);
-        my $vmxml=$dom->get_xml_description();
+        my $dom;
+        eval {
+            $dom = $hypconn->get_domain_by_name($node);
+        };
+        my $vmxml;
+        if ($dom) {
+            $vmxml=$dom->get_xml_description();
+        } else {
+            $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
+        }
         my $currstate=getpowstate($dom);
-        foreach (get_disks_by_userspecs(\@purge,$vmxml)) {
+        my @disklist=get_disks_by_userspecs(\@purge,$vmxml,'returnmoddedxml');
+        my $moddedxml = shift @disklist;
+        foreach (@disklist) {
             my $devxml=$_->[0];
             my $file=$_->[1];
             $file =~ m!/([^/]*)/($node\..*)\z!;
@@ -969,10 +982,11 @@ sub chvm {
                 my $newxml=$dom->get_xml_description();
                 $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
             } else {
-                #TODO: manipulate offline xml data
+                $updatetable->{kvm_nodedata}->{$node}={xml=>$moddedxml};
             }
             };
             if ($@) {
+                print $@;
                 sendmsg([1,"Unable to remove device"],$node);
             } else {
                 #if that worked, remove the disk..
@@ -994,20 +1008,33 @@ sub chvm {
 sub get_disks_by_userspecs {
     my $specs = shift;
     my $xml = shift;
+    my $returnmoddedxml=shift;
     my $struct = XMLin($xml,forcearray=>1);
+    my $dominf = $parser->parse_string($xml);
+    my @disknodes = $dominf->findnodes('/domain/devices/disk');
     my @returnxmls;
     foreach my $spec (@$specs) {
-        foreach (@{$struct->{devices}->[0]->{disk}}) {
+        my $disknode;
+        foreach $disknode (@disknodes) {
             if ($spec =~ /^.d./) { #vda, hdb, sdc, etc, match be equality to target->{dev}
-                if ($_->{target}->[0]->{dev} eq $spec) {
-                    push @returnxmls,[XMLout($_,RootName=>'disk'),$_->{source}->[0]->{file}];
+                if ($disknode->findnodes('./target')->[0]->getAttribute("dev") eq $spec) {
+                    push @returnxmls,[$disknode->toString(),$disknode->findnodes('./source')->[0]->getAttribute('file')];
+                    if ($returnmoddedxml) { 
+                        $disknode->parentNode->removeChild($disknode);
+                    }
                 }
             } elsif ($spec =~ /^d(.*)/) { #delete by scsi unit number..
-            if ($_->{address}->{unit} == $1) {
-                    push @returnxmls,[XMLout($_,RootName=>"disk"),$_->{source}->{file}];
+                if ($disknode->findnodes('./address')->[0]->getAttribute('unit') == $1) {
+                    push @returnxmls,[$disknode->toString(),$disknode->findnodes('./source')->[0]->getAttribute('file')];
+                    if ($returnmoddedxml) { 
+                        $disknode->parentNode->removeChild($disknode);
+                    }
                 }
             } #other formats TBD
         }
+    }
+    if ($returnmoddedxml) {#there are list entries to delete
+        unshift @returnxmls,$dominf->toString();
     }
     return @returnxmls;
 }
@@ -1254,6 +1281,9 @@ sub process_request {
      }
      exit 0;
   };
+  unless ($parser) {
+      $parser = XML::LibXML->new();
+  }
   %offlinehyps=();
   %hypstats=();
   %offlinevms=();
