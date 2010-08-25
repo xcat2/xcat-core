@@ -1241,9 +1241,16 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    print $cfgfile "proc    /proc    proc     defaults       0 0\n";
    print $cfgfile "sysfs   /sys     sysfs    defaults       0 0\n";
    if ($tmplimit) {
-      print $cfgfile "tmpfs   /tmp     tmpfs    defaults       0 0\n";
-      print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults       0 0\n";
+      print $cfgfile "tmpfs   /tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
+      print $cfgfile "tmpfs   /var/tmp     tmpfs    defaults,size=$tmplimit       0 2\n";
    }
+   if ($mode ne "statelite") {
+        my $rootfs_name=$profile."_".$arch;
+        print $cfgfile "$rootfs_name    /   tmpfs   rw  0 1\n";
+   } else {
+        print $cfgfile "sunrpc          /var/lib/nfs/rpc_pipefs rpc_pipefs  rw  0   0\n";
+   }
+
    close($cfgfile);
    open($cfgfile,">","$rootimg_dir/etc/sysconfig/network");
    print $cfgfile "NETWORKING=yes\n";
