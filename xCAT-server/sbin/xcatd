@@ -507,11 +507,18 @@ sub scan_plugins {
     my $cmd_adds=${"xCAT_plugin::".$modname."::"}{handled_commands}->();
     foreach (keys %$cmd_adds) {
       my $value = $_;
-      if (defined($cmd_handlers{$_})) {
-        # Add every plugin registration to cmd_handlers
-        push @{$cmd_handlers{$_}},[$modname,$cmd_adds->{$_}]; 
+      my @modulehandlerinfos;
+      if (ref $cmd_adds->{$_}) {
+          @modulehandlerinfos=@{$cmd_adds->{$_}};
       } else {
-        $cmd_handlers{$_} = [ [$modname,$cmd_adds->{$_}] ];
+          @modulehandlerinfos=($cmd_adds->{$_});
+      }
+      unless (defined($cmd_handlers{$_}) {
+        $cmd_handlers{$_} = [ ];
+      }
+      # Add every plugin registration to cmd_handlers
+      foreach (@modulehandlerinfos) {
+        push @{$cmd_handlers{$_}},[$modname,$_]; 
       }
     }
   }
