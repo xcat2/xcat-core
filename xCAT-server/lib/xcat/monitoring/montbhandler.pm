@@ -5,8 +5,8 @@ BEGIN
 {
   $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
 }
-use lib "$::XCATROOT/lib/perl";
 
+use lib "$::XCATROOT/lib/perl";
 use xCAT::Table;
 use xCAT::MsgUtils;
 use xCAT::Utils;
@@ -72,7 +72,7 @@ sub unregMonitoringNotif {
   my $tab = xCAT::Table->new('notification');
   my $regged=0;
   if ($tab) {
-    (my $ref) = $tab->getAttribs({filename => qw(montbhandler.pm)}, tables);
+    (my $ref) = $tab->getAttribs({filename => qw(montbhandler.pm)}, "tables");
     if ($ref and $ref->{tables}) {
        $regged=1;
     }
