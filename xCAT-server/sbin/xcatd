@@ -509,16 +509,16 @@ sub scan_plugins {
       my $value = $_;
       my @modulehandlerinfos;
       if (ref $cmd_adds->{$_}) {
-          @modulehandlerinfos=@{$cmd_adds->{$_}};
+          @modulehandlerinfos=@{$cmd_adds->{$value}};
       } else {
-          @modulehandlerinfos=($cmd_adds->{$_});
+          @modulehandlerinfos=($cmd_adds->{$value});
       }
-      unless (defined($cmd_handlers{$_})) {
-        $cmd_handlers{$_} = [ ];
+      unless (defined($cmd_handlers{$value})) {
+        $cmd_handlers{$value} = [ ];
       }
       # Add every plugin registration to cmd_handlers
       foreach (@modulehandlerinfos) {
-        push @{$cmd_handlers{$_}},[$modname,$_]; 
+        push @{$cmd_handlers{$value}},[$modname,$_]; 
       }
     }
   }
