@@ -117,17 +117,20 @@ sub process_request {
     my $hadargs=0;
     my $allnodes;
     my $zapfiles;
+    my $deletemode=0;
     if ($request->{arg}) {
         $hadargs=1;
         @ARGV=@{$request->{arg}};
         if (!GetOptions(
             'a|all' => \$allnodes,
             'n|new' => \$zapfiles,
+            'd|delete' => \$deletemode,
             )) {
             xCAT::SvrUtils::sendmsg([1,"TODO: makedns Usage message"], $callback);
             return;
         }
     }
+    $ctx->{deletemode}=$deletemode;
         
     my $sitetab = xCAT::Table->new('site');
     my $stab = $sitetab->getAttribs({key=>'domain'},['value']);
@@ -283,7 +286,7 @@ sub process_request {
     }
     #now we stick to Net::DNS style updates, with TSIG if possible.  TODO: kerberized (i.e. Windows) DNS server support, maybe needing to use nsupdate -g....
     $ctx->{resolver} = Net::DNS::Resolver->new();
-    add_records($ctx);
+    add_or_delete_records($ctx);
 }
 
 sub get_dbdir {
@@ -564,7 +567,7 @@ sub update_namedconf {
     chown (scalar(getpwnam('root')),scalar(getgrnam('named')),$namedlocation);
 }
 
-sub add_records {
+sub add_or_delete_records {
     my $ctx = shift;
     unless ($ctx->{privkey}) {
         my $passtab = xCAT::Table->new('passwd');
@@ -615,7 +618,11 @@ sub add_records {
         my $numreqs = 300; # limit to 300 updates in a payload, something broke at 644 on a certain sample, choosing 300 for now
         my $update = Net::DNS::Update->new($zone);
         foreach $entry (@{$ctx->{updatesbyzone}->{$zone}}) {
-            $update->push(update=>rr_add($entry));
+            if ($ctx->{deletemode}) {
+                $update->push(update=>rr_del($entry));
+            } else {
+                $update->push(update=>rr_add($entry));
+            }
             $numreqs -= 1;
             if ($numreqs == 0) {
                 $update->sign_tsig("xcat_key",$ctx->{privkey});
