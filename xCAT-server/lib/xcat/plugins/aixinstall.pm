@@ -173,6 +173,7 @@ sub preprocess_request
 
 
 
+
     {
 
         my $reqcopy = {%$req};
@@ -1614,6 +1615,7 @@ sub chkosimage
 			#	by R:
 			my ($junk, $pname) = split(/:/, $pkg);
 			$pname =~ s/\*//g; # drop *
+#print "pname = \'$pname\'\n";
 			$pkgtype{$pname} = "rpm";
 		}
 	}
@@ -2567,6 +2569,7 @@ sub mknimimage
         #
 
         $spot_name = &mk_spot($lpp_source_name, \%::attrres, $callback);
+
         chomp $spot_name;
         $newres{spot} = $spot_name;
         if (!defined($spot_name))
@@ -2602,11 +2605,9 @@ sub mknimimage
         # if we don't have a root/shared_root then
         #	we may need to create one
         if (!$root_name)
-
         {
-
             # use naming convention
-            if ($::SHAREDROOT)
+            if ($::SHAREDROOT || ($::imagedef{$::opt_i}{shared_root}))
             {
                 $root_name = $::image_name . "_shared_root";
             }
@@ -2630,7 +2631,7 @@ sub mknimimage
                 # it doesn't exist so create it
 
                 my $type;
-                if ($::SHAREDROOT)
+                if ($::SHAREDROOT || ($::imagedef{$::opt_i}{shared_root}))
                 {
                     $type = "shared_root";
                 }
@@ -2638,12 +2639,8 @@ sub mknimimage
                 {
                     $type = "root";
                 }
-                if (
-                    &mknimres(
-                              $root_name, $type, $callback,
-                              $::opt_l, $spot_name, \%::attrres 
-                    ) != 0
-                  )
+
+                if (&mknimres($root_name, $type, $callback, $::opt_l, $spot_name, \%::attrres) != 0 )
                 {
                     my $rsp;
                     push @{$rsp->{data}},
@@ -2654,7 +2651,7 @@ sub mknimimage
             }
         }    # end root res
 
-        if ($::SHAREDROOT)
+        if ($::SHAREDROOT || ($::imagedef{$::opt_i}{shared_root}))
         {
             $newres{shared_root} = $root_name;
         }
@@ -6841,6 +6838,7 @@ sub copyres
 
         # ex. /install/nim/lpp_source
         my $bkfile = $dir . "/" . $resname . ".bk";
+
         if (!grep(/^$resname$/, @::resbacked))
         {
             $bkfile = &bkupNIMresources($callback, $bkdir, $resname);
@@ -7606,7 +7604,12 @@ sub mkdsklsnode
         }
                
         my $netname = $nethash{$node}{'netname'}; 
-        if (!$::HFI)
+
+		if ($::NEWNAME)
+        {
+            $defcmd .= "-a if1='find_net $nodeshorthost 0' ";
+
+        } elsif (!$::HFI)
         {
             $defcmd .=
                   "-a if1='find_net $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
@@ -7614,7 +7617,6 @@ sub mkdsklsnode
             $defcmd .=
                    "-a if1='$netname $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
         }
-
 
         $defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
 
