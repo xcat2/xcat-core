@@ -76,8 +76,7 @@ GetSyncInfo () {
 	fi
 
     # add one random sleeping time
-    SLI=$(( $RANDOM%30 ))
-    SLI=$(( $SLI + 20 ))
+    SLI=$(( $RANDOM%50 ))
     sleep $SLI
 	# request the list of files from xCAT:
 	xCATCmd $XCATSERVER litefile  \
@@ -94,11 +93,11 @@ GetSyncInfo () {
         # the file is empty, we should retry several times
         RETRY=$(( $RETRY+1 ))
         if [ $RETRY -eq $MAX_RETRIES ]; then
-            break
+            echo "FATAL error: could not get the entries from litefile table..."
+            /bin/bash
         fi
 
-        SLI=$(( $RANDOM%30 ))
-        SLI=$(( $SLI+20 ))
+        SLI=$(( $RANDOM%50 ))
         sleep $SLI
 
     	xCATCmd $XCATSERVER litefile  \
@@ -113,8 +112,7 @@ GetSyncInfo () {
 	# files will now be inside /.snapshot/tmpfs/synclist in the form:
 	# options path
     
-    SLI=$(( $RANDOM%30 ))
-    SLI=$(( $SLI + 20 ))
+    SLI=$(( $RANDOM%50 ))
     sleep $SLI
 
 	xCATCmd $XCATSERVER litetree  \
@@ -129,11 +127,11 @@ GetSyncInfo () {
         # the file is empty, we should retry several times
         RETRY=$(( $RETRY + 1 ))
         if [ $RETRY -eq $MAX_RETRIES ]; then
-            break
+            echo "FATAL error: could not get the entries from litetree table..."
+            /bin/bash
         fi
 
-        SLI=$(( $RAMDOM % 30 ))
-        SLI=$(( $SLI + 20 ))
+        SLI=$(( $RAMDOM % 50 ))
         sleep $SLI
     	xCATCmd $XCATSERVER litetree  \
 		| sed  -e 's/<[^>]*>//g' \
