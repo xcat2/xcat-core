@@ -285,7 +285,7 @@ sub build_diskstruct {
             my $model = $1;
             unless ($model) {
                 #if not defined, model will stay undefined like above
-                $model = $confdata->{vm}->{$node}->[0]->{storagemodel}
+                $model = $confdata->{vm}->{$node}->[0]->{storagemodel};
                 unless ($model) { $model = 'ide'; } #if still not defined, ide
             }
             my $prefix='hd';
