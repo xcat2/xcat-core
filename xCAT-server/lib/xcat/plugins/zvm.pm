@@ -644,7 +644,7 @@ sub changeVM {
 		my $writePw = $args->[7];
 		my $multiPw = $args->[8];
 
-		$out = `ssh $hcp "$::DIR/add9336 $userId $pool $addr $mode $blksize $blks $readPw $writePw $multiPw"`;
+		$out = `ssh $hcp "$::DIR/add9336 $userId $pool $addr $blksize $blks $mode $readPw $writePw $multiPw"`;
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
 
