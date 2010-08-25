@@ -777,7 +777,7 @@ sub getMacID {
 		else {
 
 			# Create next_macid file
-			$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_macid"`;
+			$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
 		}
 	}
 	else {
@@ -785,7 +785,7 @@ sub getMacID {
 		# Create /opt/zhcp/conf directory
 		# Create next_mac - Contains next MAC address to use
 		$out = `ssh -o ConnectTimeout=5 $hcp "mkdir /opt/zhcp/conf"`;
-		$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_macid"`;
+		$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
 	}
 
 	# Read /opt/zhcp/conf/next_macid file
@@ -823,7 +823,7 @@ sub generateMacId {
 		else {
 
 			# Create next_macid file
-			$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_macid"`;
+			$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
 		}
 	}
 	else {
@@ -831,7 +831,7 @@ sub generateMacId {
 		# Create /opt/zhcp/conf directory
 		# Create next_mac - Contains next MAC address to use
 		$out = `ssh -o ConnectTimeout=5 $hcp "mkdir /opt/zhcp/conf"`;
-		$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFFF' > /opt/zhcp/conf/next_macid"`;
+		$out = `ssh -o ConnectTimeout=5 $hcp "echo 'FFFFF0' > /opt/zhcp/conf/next_macid"`;
 	}
 
 	# Read /opt/zhcp/conf/next_macid file
