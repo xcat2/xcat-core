@@ -3478,6 +3478,8 @@ sub getAutoIncrementColumns {
     Example:
 	my @filelist =get_filelist($directory,$filelist,$type);
             where type = "sql" or "pm"
+         Note either input a directory path in $directory of an array of
+          full path to filenames in $filelist.  See runsqlcmd for example. 
 
 =cut
 
@@ -3493,7 +3495,6 @@ sub get_filelist
     my $ext       = shift;
     my $dbname    = "sqlite";
     my $xcatcfg   = get_xcatcfg();
-
     if ($xcatcfg =~ /^DB2:/)
     {
         $dbname = "db2";
@@ -3513,28 +3514,32 @@ sub get_filelist
         }
     }
     $directory .= "/";
-
+    my @list;
+    # check whether input files or a directory
+    if (@$files) {
+        @list=@$files;
+    } else {
+         @list = glob($directory . "*.$ext");    # all files
+    }   
     my @filelist = ();
-
-    my @list = glob($directory . "*.$ext");    # all files
     foreach my $file (@list)
     {
-        my $filename= basename($file);  # strip filename
-        my($name,$ext1) = split '\.', $filename;
-        my($name,$ext2) = split '\_', $name;
-        if ($ext2 eq $dbname)
-        {
+          my $filename= basename($file);  # strip filename
+          my($name,$ext1) = split '\.', $filename;
+          my($name,$ext2) = split '\_', $name;
+          if ($ext2 eq $dbname)
+          {
             push @filelist, $file;
-        }
-        else
-        {
+          }
+          else
+          {
             if ($ext2 eq "")
             {
                 push @filelist, $file;
             }
-        }
-         $ext2 = "";
-         $ext1 = "";
+          }
+           $ext2 = "";
+           $ext1 = "";
     }
     return @filelist;
 }
