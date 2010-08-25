@@ -994,13 +994,13 @@ sub chvm {
 sub get_disks_by_userspecs {
     my $specs = shift;
     my $xml = shift;
-    my $struct = XMLin($xml);
+    my $struct = XMLin($xml,forcearray=>1);
     my @returnxmls;
     foreach my $spec (@$specs) {
-        foreach (@{$struct->{devices}->{disk}}) {
+        foreach (@{$struct->{devices}->[0]->{disk}}) {
             if ($spec =~ /^.d./) { #vda, hdb, sdc, etc, match be equality to target->{dev}
-                if ($_->{target}->{dev} eq $spec) {
-                    push @returnxmls,[XMLout($_,RootName=>'disk'),$_->{source}->{file}];
+                if ($_->{target}->[0]->{dev} eq $spec) {
+                    push @returnxmls,[XMLout($_,RootName=>'disk'),$_->{source}->[0]->{file}];
                 }
             } elsif ($spec =~ /^d(.*)/) { #delete by scsi unit number..
             if ($_->{address}->{unit} == $1) {
