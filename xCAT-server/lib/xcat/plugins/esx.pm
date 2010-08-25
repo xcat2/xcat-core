@@ -75,8 +75,8 @@ sub handled_commands{
 		rmvm => 'nodehm:mgt',
 		rinv => 'nodehm:mgt',
                 chvm => 'nodehm:mgt',
-        lsvm => 'hypervisor:type',
-		rmhypervisor => 'hypervisor:type',
+        lsvm => ['hypervisor:type','nodetype:os=(esx.*)'],
+		rmhypervisor => ['hypervisor:type','nodetype:os=(esx.*)'],
 		#lsvm => 'nodehm:mgt', not really supported yet
 	};
 }
