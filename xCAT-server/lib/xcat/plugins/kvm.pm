@@ -69,6 +69,7 @@ sub handled_commands {
     rpower => 'nodehm:power,mgt',
     mkvm => 'nodehm:power,mgt',
     chvm => 'nodehm:power,mgt',
+    rmvm => 'nodehm:power,mgt',
     rmigrate => 'nodehm:mgt',
     getcons => 'nodehm:mgt',
     #rvitals => 'nodehm:mgt',
@@ -859,6 +860,53 @@ sub createstorage {
 
 
 
+sub rmvm {
+    shift;
+    @ARGV=@_;
+    my $force;
+    my $purge;
+    GetOptions(
+        'f' => \$force,
+        'p' => \$purge,
+    );
+    my $dom;
+    eval {
+       $dom = $hypconn->get_domain_by_name($node);
+    };
+    my $currstate=getpowstate($dom);
+    my $currxml;
+    if ($currstate eq 'on') {
+        if ($force) {
+            $currxml=$dom->get_xml_description();
+            $dom->destroy();
+        } else {
+            xCAT::SvrUtils::sendmsg([1,"Cannot rmvm active guest (use -f argument to force)"], $callback,$node);
+            return;
+        }
+    } else {
+        $currxml  =$confdata->{kvmnodedata}->{$node}->[0]->{xml};
+    }
+    if ($purge and $currxml) {
+        my $deadman = $parser->parse_string($currxml);
+        my @purgedisks = $deadman->findnodes("/domain/devices/disk/source");
+        my $disk;
+        foreach $disk (@purgedisks) {
+            my $file = $disk->getAttribute("file");
+            $file =~ m!/([^/]*)/($node\..*)\z!;
+            my $pooluuid=$1;
+            my $volname=$2;
+            my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
+            if ($pool) {
+                $pool->refresh(); #Amazingly, libvirt maintains a cached view of the volume rather than scan on demand
+                my $vol = $pool->get_volume_by_name($volname);
+                if ($vol) {
+                    $vol->delete();
+                }
+            }
+        }
+    }
+    $updatetable->{kvm_nodedata}->{'!*XCATNODESTODELETE*!'}->{$node}=1;
+}
 sub chvm {
     shift;
     my @addsizes;
@@ -1175,6 +1223,8 @@ sub guestcmd {
       return mkvm($node,@args);
   } elsif ($command eq "chvm") {
       return chvm($node,@args);
+  } elsif ($command eq "rmvm") {
+      return rmvm($node,@args);
   } elsif ($command eq "rmigrate") {
       return migrate($node,@args);
   } elsif ($command eq "getrvidparms") {
@@ -1790,6 +1840,13 @@ sub dohyp {
   }
   foreach (keys %$updatetable) {
       my $tabhandle = xCAT::Table->new($_,-create=>1);
+      my $updates = $updatetable->{$_};
+      if ($updates->{'!*XCATNODESTODELETE*!'}) {
+          foreach (keys %{$updates->{'!*XCATNODESTODELETE*!'}}) {
+              if ($_) { $tabhandle->delEntries({node=>$_}); }
+          }
+          delete $updates->{'!*XCATNODESTODELETE*!'};
+      }
       $tabhandle->setNodesAttribs($updatetable->{$_});
   }
   #my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
