@@ -163,7 +163,6 @@ sub rundb2cmd
     my @output = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-        my $rsp = {};
         xCAT::MsgUtils->message("SE", "$cmd failed");
         return;
     }
@@ -173,7 +172,6 @@ sub rundb2cmd
     @output = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-        my $rsp = {};
         xCAT::MsgUtils->message("SE", "$cmd failed");
         return;
     }
@@ -183,6 +181,7 @@ sub rundb2cmd
     $cmd .= "$tmpfile";
     $cmd .= ' 2>&1';
     $cmd .= "\'";
+    xCAT::MsgUtils->message("SI", "Running su - xcatdb -c $cmd ");
     system("su - xcatdb -c $cmd");
 
     if ($? > 0)    # error
@@ -195,7 +194,6 @@ sub rundb2cmd
     @output = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-        my $rsp = {};
         xCAT::MsgUtils->message("SE", "$cmd failed");
         return;
     }
@@ -225,6 +223,7 @@ sub runmysqlcmd
     my $rc  = 0;
     my $cmd =
       "mysql --user=$admin --password=$passwd --host=$hostname $dbname \< $file   ";
+    xCAT::MsgUtils->message("SI", "Running mysql --user=$admin --host=$hostname $dbname $file ");
     system("$cmd");
 
     if ($? > 0)    # error
@@ -259,6 +258,7 @@ sub runpgsqlcmd
     my $rc  = 0;
     my $cmd =
       "PGPASSWORD=$passwd psql -d $dbname -h $hostname -U $admin -f $file   ";
+    xCAT::MsgUtils->message("SI", "Running psql -d $dbname -h $hostname -U $admin -f $file ");
     system("$cmd");
 
     if ($? > 0)    # error
