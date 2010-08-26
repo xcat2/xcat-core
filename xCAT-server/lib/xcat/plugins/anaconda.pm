@@ -751,6 +751,7 @@ sub mkinstall
                          error => [
                                    "No $platform kickstart template exists for "
                                      . $profile
+                                     . " in directory $installroot/custom/install/$platform or $::XCATROOT/share/xcat/install/$platform"
                          ],
                          errorcode => [1]
                         }

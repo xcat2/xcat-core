@@ -447,6 +447,7 @@ sub mkinstall
 	my $pkglistfile;
         my $osinst;
         my $ent = $ntents->{$node}->[0];
+	my $plat = "";
 
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
 	    my $imagename=$ent->{provmethod};
@@ -499,7 +500,6 @@ sub mkinstall
 	    $os = $ent->{os};
 	    $arch    = $ent->{arch};
 	    $profile = $ent->{profile};
-	    my $plat = "";
 	    if($os =~/sles.*/){
 		$plat = "sles";
 	    }elsif($os =~/suse.*/){
@@ -536,7 +536,7 @@ sub mkinstall
             $callback->(
                       {
                        error =>
-                         ["No AutoYaST template exists for " . $ent->{profile}],
+                         ["No AutoYaST template exists for " . $ent->{profile} . " in directory $installroot/custom/install/$plat or $::XCATROOT/share/xcat/install/$plat"],
                        errorcode => [1]
                       }
                       );
