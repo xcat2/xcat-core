@@ -59,6 +59,7 @@ my $vmmaxp=64;
 my $mactab;
 my %usedmacs;
 my $status_noop="XXXno-opXXX";
+my $callback;
 
 sub handled_commands {
   #unless ($libvirtsupport) {
@@ -892,6 +893,11 @@ sub chvm {
     }
     if (@addsizes) { #need to add disks, first identify used devnames
         my @diskstoadd;
+        my $dom;
+        eval {
+           $dom = $hypconn->get_domain_by_name($node);
+        };
+        my $currstate=getpowstate($dom);
         my $location = $confdata->{vm}->{$node}->[0]->{storage};
         $location =~ s/.*\|//; #use the rightmost location for making new devices
         $location =~ s/,.*//; #no comma specified parameters are valid
@@ -906,6 +912,10 @@ sub chvm {
             $prefix='sd';
         } elsif ($model eq 'virtio') {
             $prefix='vd';
+        }
+        if ($prefix eq 'hd' and $currstate eq 'on') {
+            xCAT::SvrUtils::sendmsg("VM must be powered off to add IDE drives",$callback,$node);
+            next;
         }
         my @suffixes;
         if ($prefix eq 'hd') { 
@@ -926,34 +936,39 @@ sub chvm {
             push @diskstoadd,get_filepath_by_url(url=>$location,dev=>$dev,create=>$_);
         }
         #now that the volumes are made, must build xml for each and attempt attach if and only if the VM is live
-        my $dom = $hypconn->get_domain_by_name($node);
-        my $currstate=getpowstate($dom);
-        if ($currstate eq 'on') { #attempt live attach
-            foreach (@diskstoadd) {
-                my $suffix;
-                my $format;
-                if (/^[^\.]*\.([^\.]*)\.([^\.]*)/) {
-                    $suffix=$1;
-                    $format=$2;
-                } elsif (/^[^\.]*\.([^\.]*)/) {
-                    $suffix=$1;
-                    $format='raw';
-                }
-                my $bus;
-                if ($suffix =~ /^sd/) {
-                    $bus='scsi';
-                } elsif ($suffix =~ /^hd/) {
-                    sendmsg("Reboot required to add IDE drives",$node);
-                    next;
-                } elsif ($suffix =~ /vd/) {
-                    $bus='virtio';
-                }
-                my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
-                $dom->attach_device($xml);
+        foreach (@diskstoadd) {
+            my $suffix;
+            my $format;
+            if (/^[^\.]*\.([^\.]*)\.([^\.]*)/) {
+                $suffix=$1;
+                $format=$2;
+            } elsif (/^[^\.]*\.([^\.]*)/) {
+                $suffix=$1;
+                $format='raw';
             }
-            my $newxml=$dom->get_xml_description();
+            my $bus;
+            if ($suffix =~ /^sd/) {
+                $bus='scsi';
+            } elsif ($suffix =~ /hd/) {
+                $bus='ide';
+            } elsif ($suffix =~ /vd/) {
+                $bus='virtio';
+            }
+            my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
+            my $newxml;
+            if ($currstate eq 'on') { #attempt live attach
+              $dom->attach_device($xml);
+              $newxml=$dom->get_xml_description();
+            } elsif ($confdata->{kvmnodedata}->{$node}->[0]->{xml}) { 
+                my $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
+                my $disknode = $parser->parse_balanced_chunk($xml);
+                my $vmdoc = $parser->parse_string($vmxml);
+                my $devicesnode = $vmdoc->findnodes("/domain/devices")->[0];
+                $devicesnode->appendChild($disknode);
+                $newxml=$vmdoc->toString();
+            }
             $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
-        } else { #TODO: chvm to modify offline xml structure
+
         }
     } elsif (@purge) {
         my $dom;
@@ -986,8 +1001,7 @@ sub chvm {
             }
             };
             if ($@) {
-                print $@;
-                sendmsg([1,"Unable to remove device"],$node);
+                xCAT::SvrUtils::sendmsg([1,"Unable to remove device"],$callback,$node);
             } else {
                 #if that worked, remove the disk..
                 my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
@@ -1288,7 +1302,7 @@ sub process_request {
   %hypstats=();
   %offlinevms=();
   my $request = shift;
-  my $callback = shift;
+  $callback = shift;
   unless ($libvirtsupport) {
       $libvirtsupport = eval { 
       require Sys::Virt; 
