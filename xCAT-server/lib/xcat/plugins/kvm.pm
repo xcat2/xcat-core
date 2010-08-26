@@ -520,7 +520,7 @@ sub refresh_vm {
     my $dom = shift;
 
     my $newxml=$dom->get_xml_description();
-    $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
+    $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
     $newxml = XMLin($newxml);
     my $vncport=$newxml->{devices}->{graphics}->{port};
     my $stty=$newxml->{devices}->{console}->{tty};
@@ -1015,7 +1015,7 @@ sub chvm {
                 $devicesnode->appendChild($disknode);
                 $newxml=$vmdoc->toString();
             }
-            $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
+            $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
 
         }
     } elsif (@purge) {
@@ -1043,9 +1043,9 @@ sub chvm {
             if ($currstate eq 'on') { 
                 $dom->detach_device($devxml); 
                 my $newxml=$dom->get_xml_description();
-                $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
+                $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
             } else {
-                $updatetable->{kvm_nodedata}->{$node}={xml=>$moddedxml};
+                $updatetable->{kvm_nodedata}->{$node}->{xml}=$moddedxml;
             }
             };
             if ($@) {
@@ -1121,7 +1121,13 @@ sub mkvm {
         }
     }
     if ($mastername or $disksize) {
-       return createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force);
+       my @return= createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force);
+         unless ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
+             my $xml;
+             $xml = build_xmldesc($node);
+             $updatetable->{kvm_nodedata}->{$node}->{xml}=$xml;
+         }
+         return @return;
     }
  } else {
      if ($mastername or $disksize) {
@@ -1165,20 +1171,20 @@ sub power {
     } elsif ($subcommand eq 'off') {
         if ($dom) {
             my $newxml=$dom->get_xml_description();
-            $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
+            $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
             $dom->destroy();
             undef $dom;
         } else { $retstring .= "$status_noop"; }
     } elsif ($subcommand eq 'softoff') {
         if ($dom) {
             my $newxml=$dom->get_xml_description();
-            $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
+            $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
             $dom->shutdown();
         } else { $retstring .= "$status_noop"; } 
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
             my $newxml=$dom->get_xml_description();
-            $updatetable->{kvm_nodedata}->{$node}={xml=>$newxml};
+            $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
             $dom->destroy();
             undef $dom;
             if ($use_xhrm) {
