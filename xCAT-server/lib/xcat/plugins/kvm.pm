@@ -200,7 +200,22 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
         }
     }
     if ($create) { 
-        if ($create =~ /^clone=/) {
+        if ($create =~ /^clone=(.*)$/) {
+            my $src = $1;
+            my $fmt='raw';
+            if ($src =~ /\.qcow2$/) {
+                $fmt='qcow2';
+            }
+            my $vol = $poolobj->create_volume("<volume><name>".$desiredname."</name><target><format type='$format'/></target><capacity>100</capacity><backingStore><path>$src</path><format type='$fmt'/></backingStore></volume>");
+            #ok, this is simply hinting, not the real deal, so to speak
+            #  1)  sys::virt complains if capacity isn't defined.  We say '100', knowing full well it will be promptly ignored down the code.  This is aggravating
+            #      and warrants recheck with the RHEL6 stack
+            #  2) create_volume with backingStore is how we do the clone from master (i.e. a thin clone, a la qemu-img create)
+            #     note how backing store is full path, allowing cross-pool clones
+            #  3) clone_volume is the way to invoke qemu-img convert (i.e. to 'promote' and flatten a vm image to a standalone duplicate volume
+            #     incidentally, promote to master will be relatively expensive compared to the converse operation, as expected
+            #     will have to verify as it is investigated whether this can successfully cross pools (hope so)
+            #  4) qemu-img was so much more transparent and easy to figure out than this
         } else {
             my $vol = $poolobj->create_volume("<volume><name>".$desiredname."</name><target><format type='$format'/></target><capacity>".getUnits($create,"G",1)."</capacity><allocation>0</allocation></volume>");
             if ($vol) { return $vol->get_path(); }
