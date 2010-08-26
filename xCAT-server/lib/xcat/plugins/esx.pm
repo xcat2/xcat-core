@@ -494,10 +494,18 @@ sub inv {
     $label = $device->deviceInfo->label;
 
     if($label =~ /^Hard disk/) {
-        $label .= " (d".$device->unitNumber.")";
+        $label .= " (d".$device->controllerKey.":".$device->unitNumber.")";
       $size = $device->capacityInKB / 1024;
       $fileName = $device->backing->fileName;
-      xCAT::SvrUtils::sendmsg("$label:  $size MB @ $fileName", $output_handler,$node);
+      $output_handler->({
+          node=>{
+              name=>$node,
+              data=>{
+                  desc=>$label,
+                  contents=>"$size MB @ $fileName"
+              }
+          }
+      });
     } elsif ($label =~ /Network/) {
         xCAT::SvrUtils::sendmsg("$label: ".$device->macAddress, $output_handler,$node);
     }
@@ -628,24 +636,34 @@ sub chvm {
 		my $ideCont;
 		my $ideUnit;
 		my $label;
+        my $idefull=0;
+        my $scsifull=0;
 		foreach $device (@$devices) {
 			$label = $device->deviceInfo->label;
 			if($label =~ /^SCSI controller/) {
-				$scsiCont = $device;
-			}
-			if($label =~ /^IDE/) {
-				$ideCont = $device;
-			}
+				my $tmpu=getAvailUnit($device->{key},$devices,maxnum=>15);
+                if ($tmpu > 0) {
+                    $scsiCont = $device;
+                    $scsiUnit=$tmpu;
+                } else {
+                    $scsifull=1;
+                }
+                    #ignore scsiControllers that are full, problem still remains if trying to add across two controllers in one go
+            }
+			if($label =~ /^IDE/ and not $ideCont) {
+				my $tmpu=getAvailUnit($device->{key},$devices,maxnum=>1);
+				print "$tmpu for ".$device->{key}."\n";
+                                if ($tmpu >= 0) {
+				    $ideCont = $device;
+                                    $ideUnit = $tmpu;
+				} elsif ($device->{key} == 201) {
+                    $idefull=1;
+                }
+            }
 		}
-		if($scsiCont) {
-			$scsiUnit = getAvailUnit($scsiCont->{key},$devices);
-		}
-		if($ideCont) {
-			$ideUnit = getAvailUnit($ideCont->{key},$devices);
-		}
-		unless ($hyphash{$hyp}->{datastoremap}) { validate_datastore_prereqs([],$hyp); }
-    		push @devChanges, create_storage_devs($node,$hyphash{$hyp}->{datastoremap},$addSizes,$scsiCont,$scsiUnit,$ideCont,$ideUnit,$devices);
-	}
+        unless ($hyphash{$hyp}->{datastoremap}) { validate_datastore_prereqs([],$hyp); }
+        push @devChanges, create_storage_devs($node,$hyphash{$hyp}->{datastoremap},$addSizes,$scsiCont,$scsiUnit,$ideCont,$ideUnit,$devices,idefull=>$idefull,scsifull=>$scsifull);
+    }
 
 	if(%resize) {
 		while( my ($key, $value) = each(%resize) ) {
@@ -707,6 +725,11 @@ sub getUsedUnits {
 sub getAvailUnit {
   my $contKey = shift;
   my $devices = shift;
+  my %args = @_;
+  my $maxunit=-1;
+  if (defined $args{maxnum}) {
+     $maxunit=$args{maxnum};
+  }
   my %usedids;
   $usedids{7}=1;
   $usedids{'7'}=1; #TODO: figure out which of these is redundant, the string or the number variant
@@ -717,6 +740,9 @@ sub getAvailUnit {
   }
   my $highestUnit=0;
   while ($usedids{$highestUnit}) {
+      if ($highestUnit == $maxunit) {
+         return -1;
+      }
       $highestUnit++;
   }
   return $highestUnit;
@@ -735,8 +761,15 @@ sub getDiskByLabel {
 
     if($cmdLabel eq $label) {
       return $device;
-    } elsif (($label =~ /^Hard disk/) and ($cmdLabel =~ /^d(\d+)/)) {
-        if ($device->unitNumber == $1) {
+    } elsif (($label =~ /^Hard disk/) and ($cmdLabel =~ /^d(.*)/)) {
+        my $desc = $1;
+        if ($desc =~ /(.*):(.*)/) {#specific
+            my $controller=$1;
+            my $unit=$2;
+            if ($device->unitNumber == $unit and $device->controllerKey == $controller) {
+                return $device;
+            }
+        } elsif ($desc =~ /\d+/ and $device->unitNumber == $desc) { #not specific
             return $device;
         }
     }
@@ -1926,6 +1959,7 @@ sub create_storage_devs {
     my $existingIdeCont = shift;
     my $ideUnit = shift;
     my $devices = shift; 
+    my %args=@_;
     my $scsicontrollerkey=0;
     my $idecontrollerkey=200; #IDE 'controllers' exist at 200 and 201 invariably, with no flexibility?
                               #Cannot find documentation that declares this absolute, but attempts to do otherwise
@@ -1969,6 +2003,14 @@ sub create_storage_devs {
         if ($storeloc =~ /=/) {
             ($storeloc,$disktype) = split /=/,$storeloc;
         }
+        if ($disktype eq 'ide' and $args{idefull}) {
+            xCAT::SvrUtils::sendmsg([1,"VM is at capacity for IDE devices, a drive was not added"], $output_handler,$node);
+            return;
+        } elsif ($disktype eq 'scsi' and $args{scsifull}) {
+            xCAT::SvrUtils::sendmsg([1,"SCSI Controller at capacity, a drive was not added"], $output_handler,$node);
+            return;
+        }
+
         $storeloc =~ s/\/$//;
         (my $method,my $location) = split /:\/\//,$storeloc,2;
         my $uri = getURI($method, $location);
@@ -1984,9 +2026,9 @@ sub create_storage_devs {
         $backingif = VirtualDiskFlatVer2BackingInfo->new(diskMode => 'persistent',
                                                           thinProvisioned => 1,
                                                            fileName => "[".$sdmap->{$uri}."]");
-        if ($disktype eq 'ide' and $idecontrollerkey eq 1 and $ideunitnum eq 0) { #reserve a spot for CD
+        if ($disktype eq 'ide' and $idecontrollerkey == 1 and $ideunitnum == 0) { #reserve a spot for CD
             $ideunitnum = 1;
-        } elsif ($disktype eq 'ide' and $ideunitnum eq 2) { #go from current to next ide 'controller'
+        } elsif ($disktype eq 'ide' and $ideunitnum == 2) { #go from current to next ide 'controller'
             $idecontrollerkey++;
             $ideunitnum=0;
         }
