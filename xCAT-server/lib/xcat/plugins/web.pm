@@ -16,6 +16,9 @@ require xCAT::MsgUtils;
 use Getopt::Long;
 use Data::Dumper;
 use LWP::Simple;
+use xCAT::Table;
+use xCAT::NodeRange;
+use xCAT_monitoring::rmcmon;
 
 sub handled_commands
 {
@@ -48,6 +51,8 @@ sub process_request
         'lsevent' => \&web_lsevent,
         'lsdef' => \&web_lsdef,
 		'unlock' => \&web_unlock,
+		'rmcstart' => \&web_rmcmonStart,
+		'rmcshow' => \&web_rmcmonShow,
 
         #'xdsh' => \&web_xdsh,
         #THIS list needs to be updated
@@ -268,6 +273,18 @@ sub web_pping {
     }
 }
 
+#-------------------------------------------------------
+
+=head3   web_update
+
+	Description	: Update the xCAT associate RPM on manangement node
+    Arguments	: RPM Name
+    			  Repository address
+    Returns		: Nothing
+    
+=cut
+
+#-------------------------------------------------------
 sub web_update {
     my ($request, $callback, $sub_req) = @_;
     my $os = "unknow";
@@ -387,4 +404,224 @@ sub web_unlock {
 	my $out      = `DSH_REMOTE_PASSWORD=$password xdsh $node -K`;
 	
 	$callback->( { data => $out } );
+}
+
+#-------------------------------------------------------
+
+=head3   web_rmcStart
+
+	Description	: Start the RMC monitoring on management node
+    Arguments	: Nothing
+    Returns		: Nothing
+    
+=cut
+
+#-------------------------------------------------------
+sub web_rmcmonStart{
+	my ( $request, $callback, $sub_req ) = @_;
+	my $nodeRange = $request->{arg}->[1];
+	my $table;
+	my $retData = "";
+	my $output;
+
+	#check the running status
+	$table = xCAT::Table->new('monitoring');
+	my $rmcWorkingStatus = $table->getAttribs({name => 'rmcmon'}, 'disable');
+	$table.close();
+	
+	#the rmc monitoring is running so return directly
+	if($rmcWorkingStatus){
+		if ($rmcWorkingStatus->{disable} =~ /0|No|no|NO|N|n/){
+			$callback->({info=>'RMC Monitoring is running now.'});
+			return;
+		}
+	}	
+
+	$retData .= "RMC is not running, start it now.\n";
+
+	#check the monsetting table rmc's montype contains "performance"
+	$table = xCAT::Table->new('monsetting');
+	my $rmcmonType = $table->getAttribs({name=>'rmcmon', key=>'montype'}, 'value');
+	$table.close();
+	
+	#the rmc monitoring is not configure right we should configure it again
+	#there is no rmcmon in monsetting table
+	if (!$rmcmonType){
+		$output = xCAT::Utils->runcmd('monadd rmcmon -s [montype=perf]', -1, 1);
+		foreach (@$output){
+			$retData .= ($_ . "\n");
+		};
+		$retData .= "Add the rmcmon to monsetting table complete.\n";
+	}
+	
+	#configure before but there is not performance monitoring, so change the table
+	else {
+		if (!($rmcmonType->{value} =~ /perf/)){
+			$output = xCAT::Utils->runcmd('chtab name=rmcmon,key=montype monsetting.value=perf', -1, 1);
+			foreach (@$output){
+				$retData .= ($_ . "\n");
+			};
+			$retData .= "Change the rmcmon configure in monsetting table finish.\n";
+		}
+	}
+
+	#run the rmccfg command to add all nodes into local RMC configuration
+	$output = xCAT::Utils->runcmd("moncfg rmcmon $nodeRange", -1, 1);
+	foreach (@$output){
+		$retData .= ($_ . "\n");
+	};
+	
+	#run the rmccfg command to add all nodes into remote RMC configuration
+	$output = xCAT::Utils->runcmd("moncfg rmcmon $nodeRange -r", -1, 1);
+	foreach (@$output){
+		$retData .= ($_ . "\n");
+	};
+
+	#check the monfiguration
+	#use lsrsrc -a IBM.Host Name. compare the command's return and the noderange, then decide witch node should be refrsrc
+
+	#start the rmc monitor
+	$output = xCAT::Utils->runcmd("monstart rmcmon", -1, 1);
+	foreach (@$output){
+		$retData .= ($_ . "\n");
+	};
+	
+	$callback->({info=>$retData});
+	return;
+	#configure the rmc monitoring
+}
+
+sub web_rmcmonShow(){
+	my ( $request, $callback, $sub_req ) = @_;
+	my $nodeRange = $request->{arg}->[1];
+	my @nodes;
+	my $retInfo;
+	my $retHash = {};
+	my $output;
+	my $activeNodes;
+	my $inactiveNodes;
+	my @rmcNodes;
+	my $tempNodes;
+	my $temp = "";
+
+	#only get the system rmc info
+	#like this PctTotalTimeIdle=>"10.0000, 20.0000, 12.0000, 30.0000"
+	if ('summary' eq $nodeRange){
+		$output = xCAT::Utils->runcmd("monshow rmcmon -s -t 10 -a PctTotalTimeIdle,PctTotalTimeWait,PctTotalTimeUser,PctTotalTimeKernel,PctRealMemFree", -1, 1);
+		foreach $temp (@$output){
+			
+			#the attribute name
+			if ($temp =~ /Pct/){
+				$temp =~ s/ //g;
+				#the first one
+				if ("" eq $retInfo){
+					$retInfo .= ($temp . ':');
+				}
+				else{
+					$retInfo =~ s/,$/;/;
+					$retInfo .= ($temp . ':');
+				}
+				next;
+			}
+
+			#the content of the attribute
+			$temp =~ m/\s+(\d+\.\d{4})/;
+			if (defined($1)){
+				$retInfo .= ($1 . ',');
+			}
+		}
+
+		#return the rmc info 
+		$retInfo =~ s/,$//;
+		$callback->({info=>$retInfo});
+		return;
+	}
+
+
+	if ('lpar' eq $nodeRange){
+		#get nodes detail containt
+		@nodes = xCAT::NodeRange::noderange($nodeRange);
+		my %nodesStatus = xCAT_monitoring::rmcmon->pingNodeStatus(@nodes);
+		$inactiveNodes = $nodesStatus{$::STATUS_INACTIVE};
+		$activeNodes = $nodesStatus{$::STATUS_ACTIVE};
+
+		#non-accessable
+		foreach (@$inactiveNodes){
+			push(@{$retHash->{node}},{name=>$_, data=>'NA'});
+		}
+
+		if (@$activeNodes < 1){
+			$callback->($retHash);
+			return;
+		}
+
+		$tempNodes = join(',', @$activeNodes);
+		$output = xCAT::Utils->runcmd("xdsh $tempNodes rpm -q rsct.core", -1, 1);
+		#non-installed
+		foreach(@$output){
+			my @temp = split(/:/, $_);
+			if(@temp[1] =~ /not installed/){
+				push(@{$retHash->{node}},{name=>@temp[0], data=>'NI'});
+			}
+			else{
+				push(@rmcNodes, @temp[0]);
+			}
+		}
+
+		#there are not rmc nodes, so we should return directly
+		if (@rmcNodes < 1){
+			$callback->($retHash);
+			return;
+		}
+
+		$tempNodes = join(',', @rmcNodes);
+		$output = xCAT::Utils->runcmd("xdsh $tempNodes \"/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep\" | /bin/awk '{print \$1\$9}'", -1, 1);
+		foreach(@$output){
+			my @temp = split(/:/, $_);
+			if(@temp[1] =~ /rmcd/){
+				push(@{$retHash->{node}},{name=>@temp[0], data=>'OK'});
+			}
+			#not running
+			else{
+				push(@{$retHash->{node}},{name=>@temp[0], data=>'NR'});
+			}
+		}
+
+		$callback->($retHash);
+		return;
+	}
+	
+	my $attrName = "";
+	my @attrValue = ();
+	$output = xCAT::Utils->runcmd("monshow rmcmon $nodeRange -t 60 -a PctTotalTimeIdle,PctTotalTimeWait,PctTotalTimeUser,PctTotalTimeKernel,PctRealMemFree", -1, 1);
+	foreach(@$output){
+		$temp = $_;
+		if ($temp =~ /\t/){
+			$temp =~ s/\t/ /g;
+			chomp($temp);
+		}
+
+		#the attribute name
+		if ($temp =~ m/\s+(Pct.*)\s+/){
+			$temp = $1;
+			#the first one
+			if ("" ne $attrName){
+				push(@{$retHash->{node}}, {name=>$attrName, data=>join(',', @attrValue)});
+				$attrName = "";
+				@attrValue = ();
+			}
+			$attrName = $temp;
+			next;
+		}
+		
+		#the content of the attribute
+		$temp =~ m/\s+(\d+\.\d{4})\s*$/;
+		if (defined($1)){
+			push(@attrValue, $1);
+		}
+	}
+	
+	#push the last attribute name and values.
+	push(@{$retHash->{node}}, {name=>$attrName, data=>join(',', @attrValue)});
+	$callback->($retHash);
 }
