@@ -152,9 +152,14 @@ $progname = \$0;
 
 #create the user defined external database tables if they do not exist.
 #update the tables if there are schema changes.
+# runsqlcmd runs sql scripts provided by the user in
+# /opt/xcat/lib/perl/xCAT_schema
+
 if (xCAT::Utils->isMN()) {
     xCAT::ExtTab->updateTables();
+    `$::XCATROOT/sbin/runsqlcmd`;
 }
+
 
 sub daemonize {
   chdir('/');
