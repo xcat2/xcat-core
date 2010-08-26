@@ -713,3 +713,15 @@ div.cleanblue button:hover {
 .monitor a:hover {
 	color: #FF0000;
 }
+
+.monitorsumdiv{
+	width : 300px;
+	height : 150px;
+	float : left;
+	margin : 0px 0px 10px 0px;
+}
+
+.monitornodediv{
+	width : 240px;
+	height : 120px;
+}
