@@ -70,6 +70,7 @@ sub handled_commands {
     mkvm => 'nodehm:power,mgt',
     chvm => 'nodehm:power,mgt',
     rmvm => 'nodehm:power,mgt',
+    rinv => 'nodehm:power,mgt',
     rmigrate => 'nodehm:mgt',
     getcons => 'nodehm:mgt',
     #rvitals => 'nodehm:mgt',
@@ -860,6 +861,111 @@ sub createstorage {
 
 
 
+sub rinv {
+    shift;
+    my $dom;
+    eval {
+       $dom = $hypconn->get_domain_by_name($node);
+    };
+    my $currstate=getpowstate($dom);
+    my $currxml;
+    if ($currstate eq 'on') {
+        $currxml=$dom->get_xml_description();
+    } else {
+        $currxml  =$confdata->{kvmnodedata}->{$node}->[0]->{xml};
+    }
+    unless ($currxml) {
+        xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $callback,$node);
+        return;
+    }
+    my $domain=$parser->parse_string($currxml);
+    my $uuid = $domain->findnodes('/domain/uuid')->[0]->to_literal;
+    xCAT::SvrUtils::sendmsg("UUID/GUID: $uuid", $callback,$node);
+    my $cpus = $domain->findnodes('/domain/vcpu')->[0]->to_literal;
+    xCAT::SvrUtils::sendmsg("CPUs: $cpus", $callback,$node);
+    my $memnode = $domain->findnodes('/domain/currentMemory')->[0];
+    unless ($memnode) {
+        $memnode = $domain->findnodes('/domain/memory')->[0];
+    }
+    if ($memnode) {
+        my $mem = $memnode->to_literal;
+        $mem=$mem/1024;
+        xCAT::SvrUtils::sendmsg("Memory: $mem MB", $callback,$node);
+    }
+    invstorage($domain);
+    invnics($domain);
+}
+sub invstorage {
+    my $domain = shift;
+    my @disks = $domain->findnodes('/domain/devices/disk');
+    my $disk;
+    foreach $disk (@disks) {
+        my $name = $disk->findnodes('./target')->[0]->getAttribute("dev");
+        my $xref = "";
+        my $addr =  $disk->findnodes('./address')->[0];
+        if ($addr) {
+            if ($name =~ /^vd/) {
+                $xref = " (v".$addr->getAttribute("bus").":".$addr->getAttribute('slot').".".$addr->getAttribute("function").")";
+                $xref =~ s/0x//g;
+            } else {
+                $xref = " (d".$addr->getAttribute("controller").":".$addr->getAttribute("bus").":".$addr->getAttribute("unit").")";
+            }
+        }
+
+        my $file = $disk->findnodes('./source')->[0]->getAttribute('file');
+        $file =~ m!/([^/]*)/($node\..*)\z!;
+        my $pooluuid=$1;
+        my $volname=$2;
+        my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
+        my $poolname = $pool->get_name();
+        my $vol = $pool->get_volume_by_name($volname);
+        my $size;
+        if ($vol) {
+            my %info = %{$vol->get_info()};
+            if ($info{capacity}) {
+                $size = $info{capacity};
+                $size = $size/1048576; #convert to MB
+            }
+        }
+        $callback->({
+            node=>{
+                name=>$node,
+                data=>{
+                    desc=>"Disk $name$xref",
+                    contents=>"$size MB @ [$poolname] $volname",
+                }
+            }
+        });
+    }
+}
+sub invnics {
+    my $domain=shift;
+    my @nics = $domain->findnodes('/domain/devices/interface');
+    my $nic;
+    foreach $nic (@nics) {
+        my $mac = $nic->findnodes('./mac')->[0]->getAttribute('address');
+        my $addr = $nic->findnodes('./address')->[0];
+        my $loc;
+        if ($addr) {
+            my $bus = $addr->getAttribute('bus');
+            $bus =~ s/^0x//;
+            my $slot = $addr->getAttribute('slot');
+            $slot =~ s/^0x//;
+            my $function = $addr->getAttribute('function');
+            $function =~ s/^0x//;
+            $loc=" at $bus:$slot.$function";
+        }
+        $callback->({
+            node=>{
+                name=>$node,
+                data=>{
+                    desc=>"Network adapter$loc",
+                    contents=>$mac,
+                }
+            }
+        });
+    }
+}
 sub rmvm {
     shift;
     @ARGV=@_;
@@ -1108,7 +1214,35 @@ sub get_disks_by_userspecs {
                     }
                 }
             } elsif ($spec =~ /^d(.*)/) { #delete by scsi unit number..
-                if ($disknode->findnodes('./address')->[0]->getAttribute('unit') == $1) {
+                my $loc=$1;
+                my $addr = $disknode->findnodes('./address')->[0];
+                if ($loc =~ /:/) { #controller, bus, unit
+                    my $controller;
+                    my $bus;
+                    my $unit;
+                    ($controller,$bus,$unit) = split /:/,$loc;
+                    if (hex($addr->getAttribute('controller')) == hex($controller) and ($addr->getAttribute('bus')) == hex($bus) and ($addr->getAttribute('unit')) == hex($unit)) {
+                        push @returnxmls,[$disknode->toString(),$disknode->findnodes('./source')->[0]->getAttribute('file')];
+                        if ($returnmoddedxml) { 
+                            $disknode->parentNode->removeChild($disknode);
+                        }
+                    }
+                    
+                } else { #match just on unit number, not helpful on ide as much generally, but whatever
+                    if (hex($addr->getAttribute('unit')) == hex($loc)) {
+                        push @returnxmls,[$disknode->toString(),$disknode->findnodes('./source')->[0]->getAttribute('file')];
+                        if ($returnmoddedxml) { 
+                            $disknode->parentNode->removeChild($disknode);
+                        }
+                    }
+                }
+            } elsif ($spec =~ /^v(.*)/) { #virtio pci selector
+                my $slot=$1;
+                $slot =~ s/^(.*)://; #remove pci bus number (not used for now)
+                my $bus=$1;
+                $slot =~ s/\.0$//;
+                my $addr=$disknode->findnodes('./address')->[0];
+                if (hex($addr->getAttribute('slot')) == hex($slot) and hex($addr->getAttribute('bus') == hex($bus))) {
                     push @returnxmls,[$disknode->toString(),$disknode->findnodes('./source')->[0]->getAttribute('file')];
                     if ($returnmoddedxml) { 
                         $disknode->parentNode->removeChild($disknode);
@@ -1253,6 +1387,8 @@ sub guestcmd {
       return chvm($node,@args);
   } elsif ($command eq "rmvm") {
       return rmvm($node,@args);
+  } elsif ($command eq "rinv") {
+      return rinv($node,@args);
   } elsif ($command eq "rmigrate") {
       return migrate($node,@args);
   } elsif ($command eq "getrvidparms") {
