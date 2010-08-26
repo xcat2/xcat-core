@@ -1,0 +1,328 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+
+#-----------------------------------------------------------------------------
+
+=head1   runsqlcmd 
+
+
+
+ This script is called to run the sql statements found in the files
+   in either the default /opt/xcat/lib/perl/xCAT_schema  or the
+   directory input with the -d flag.
+   For more information see man runsqlcmd and the
+   developers guide:
+   http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/xCAT-client/share/doc/xCAT2DevGuide.pdf
+
+=cut
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATDIR  = $ENV{'XCATDIR'}  ? $ENV{'XCATDIR'}  : '/etc/xcat';
+}
+
+use lib "$::XCATROOT/lib/perl";
+use xCAT::Utils;
+use Getopt::Long;
+use xCAT::MsgUtils;
+use xCAT::Table;
+use File::Path;
+use strict;
+
+#-----------------------------------------------------------------------------
+# Main
+
+$::progname = "runsqlcmd";
+my $args = join ' ', @ARGV;
+$::command = "$0 $args";
+Getopt::Long::Configure("bundling");
+$Getopt::Long::ignorecase = 0;
+my ($directory, $help, $version, $filelist);
+$directory = "$::XCATROOT/lib/perl/xCAT_schema";    # default
+
+# parse the options
+if (
+    !GetOptions(
+                'd|dir=s'   => \$directory,
+                'f|files=s' => \$filelist,
+                'h|help'    => \$help,
+                'v|version' => \$version,
+    )
+  )
+{
+    &usage;
+    exit(1);
+}
+
+# display the usage if -h or --help is specified
+if ($help)
+{
+    &usage;
+    exit(0);
+}
+
+# display the version statement if -v or --version is specified
+if ($version)
+{
+    my $version = xCAT::Utils->Version();
+    xCAT::MsgUtils->message("I", $version);
+    exit 0;
+}
+my @filearray;
+if ($filelist)
+{    # use filelist
+    $directory = "";                              #Get rid of the default
+    @filearray = &process_file_list($filelist);
+}
+else
+{
+
+    if (!(-e $directory))
+    {
+        xCAT::MsgUtils->message("E",
+                                "The $directory directory does not exist.");
+        exit 1;
+    }
+}
+my @sqlfilelist = xCAT::Table->get_filelist($directory, \@filearray, "sql");
+
+# determine database
+my $xcatcfg = xCAT::Table->get_xcatcfg();
+foreach my $file (@sqlfilelist)
+{
+    if ($xcatcfg =~ /^DB2:/)
+    {
+        &rundb2cmd($file);
+    }
+    if ($xcatcfg =~ /^mysql:/)
+    {
+        &runmysqlcmd($file, $xcatcfg);
+    }
+    if ($xcatcfg =~ /^Pg:/)
+    {
+        &runpgsqlcmd($file, $xcatcfg);
+    }
+    if ($xcatcfg =~ /^SQLite:/)
+    {
+        &runsqlitecmd($file,$xcatcfg);
+    }
+
+}
+
+exit;
+
+#####################################
+#  subroutines
+#####################################
+
+#-----------------------------------------------------------------------------
+
+=head3    usage 
+	
+	Displays message for -h option
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub usage
+{
+    xCAT::MsgUtils->message(
+        'I',
+        "Usage:\nrunsqlcmd - runs the sql commands in files located in /opt/xcat/lib/perl/xCAT_schema by default or the directory input with -d or the list of files input with the -f flag."
+        );
+    my $msg =
+      "runsqlcmd <-h|--help>\n            <-v|--version>\n            <-d|--dir>\n            <-f|--files>\n";
+
+    xCAT::MsgUtils->message('I', "$msg");
+}
+
+#-----------------------------------------------------------------------------
+
+=head3   rundb2cmd  
+
+	
+  Run a commmand as the xcatdb instance id 
+  Input: command 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub rundb2cmd
+{
+    use File::Basename;
+    my $file     = shift;
+    my $rc       = 0;
+    my $filename = basename($file);                # strip filename
+    my $tmpfile  = "/tmp/" . $filename . ".tmp";
+
+    # must add connect to database to file
+    my $cmd = "echo \"connect to xcatdb;\" >  $tmpfile";
+    my @output = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp = {};
+        xCAT::MsgUtils->message("SE", "$cmd failed");
+        return;
+    }
+
+    # now add contents of sql file.
+    $cmd = "cat $file >>  $tmpfile";
+    @output = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp = {};
+        xCAT::MsgUtils->message("SE", "$cmd failed");
+        return;
+    }
+
+    $cmd = "\'";
+    $cmd .= " db2 -tvf  ";
+    $cmd .= "$tmpfile";
+    $cmd .= ' 2>&1';
+    $cmd .= "\'";
+    system("su - xcatdb -c $cmd");
+
+    if ($? > 0)    # error
+    {
+        $rc = $? >> 8;
+        xCAT::MsgUtils->message("SE",
+                                "The command $cmd had errors. Return=$rc");
+    }
+    $cmd = "rm  $tmpfile";
+    @output = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp = {};
+        xCAT::MsgUtils->message("SE", "$cmd failed");
+        return;
+    }
+    return;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3   runmysqlcmd  
+
+	
+  Run a sql commmand  
+  Input: command 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub runmysqlcmd
+{
+    my $file    = shift;
+    my $xcatcfg = shift;
+    my ($front,  $back)   = split('\;', $xcatcfg);
+    my ($prefix, $dbname) = split('=',  $front);
+    my ($host, $admin, $passwd) = split('\|', $back);
+    my ($hostind, $hostname) = split('=', $host);
+
+    my $rc  = 0;
+    my $cmd =
+      "mysql --user=$admin --password=$passwd --host=$hostname $dbname \< $file   ";
+    system("$cmd");
+
+    if ($? > 0)    # error
+    {
+        $rc = $? >> 8;
+        xCAT::MsgUtils->message("SE",
+                                "The command $cmd had errors. Return=$rc");
+    }
+    return;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3   runpgsqlcmd  
+
+	
+  Run a sql commmand  
+  Input: command 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub runpgsqlcmd
+{
+    my $file    = shift;
+    my $xcatcfg = shift;
+    my ($front,  $back)   = split('\;', $xcatcfg);
+    my ($prefix, $dbname) = split('=',  $front);
+    my ($host, $admin, $passwd) = split('\|', $back);
+    my ($hostind, $hostname) = split('=', $host);
+
+    my $rc  = 0;
+    my $cmd =
+      "PGPASSWORD=$passwd psql -d $dbname -h $hostname -U $admin -f $file   ";
+    system("$cmd");
+
+    if ($? > 0)    # error
+    {
+        $rc = $? >> 8;
+        xCAT::MsgUtils->message("SE",
+                                "The command $cmd had errors. Return=$rc");
+    }
+    return;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3   runsqlitecmd  
+
+	
+  Run a sql commmand  
+  Input: command 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub runsqlitecmd
+{
+    my $file    = shift;
+    my $xcatcfg = shift;
+    my ($front,  $back)   = split('\;', $xcatcfg);
+    my ($prefix, $dbname) = split('=',  $front);
+    my ($host, $admin, $passwd) = split('\|', $back);
+    my ($hostind, $hostname) = split('=', $host);
+
+    return;
+}
+
+#-----------------------------------------------------------------------------
+
+=head3   process_file_list  
+
+	
+  Expands all wildcards in file list and builds an array 
+  Input: filelist 
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub process_file_list
+{
+
+    my $filelist = shift;
+    my @filearray;
+    push my @tmparray, split /,/, $filelist;
+
+    # need to expand wildcards
+    foreach my $file (@tmparray)
+    {
+        if ($file =~ tr/*/*/)
+        {    # if wildcard add all the file
+            my @files = glob("$file.sql");
+            push(@filearray, @files);
+        }
+        else
+        {    # else just the file
+            push(@filearray, $file);
+        }
+    }
+    return @filearray;
+}
