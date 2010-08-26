@@ -263,7 +263,7 @@ sub build_diskstruct {
     my $cdloc=shift;
     my @returns=();
     my $currdev;
-    my @suffixes=('a','b','d'..'z');
+    my @suffixes=('a','b','d'..'zzz');
     my $suffidx=0;
     if ($cdloc) {
         my $cdhash;
@@ -844,7 +844,7 @@ sub createstorage {
     } elsif ($model eq 'virtio') {
         $prefix='vd';
     }
-    my @suffixes=('a','b','d'..'z');
+    my @suffixes=('a','b','d'..'zzz');
     if ($filename =~ /^nfs:/) { #libvirt storage pool to be used for this
         my @sizes = split /,/,$size;
         foreach (@sizes) {
@@ -967,9 +967,9 @@ sub chvm {
         }
         my @suffixes;
         if ($prefix eq 'hd') { 
-            @suffixes=('a','b','d'..'z');
+            @suffixes=('a','b','d'..'zzz');
         } else {
-            @suffixes=('a'..'z');
+            @suffixes=('a'..'zzz');
         }
         my @newsizes;
         foreach (@addsizes) {
@@ -1005,7 +1005,29 @@ sub chvm {
             my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
             my $newxml;
             if ($currstate eq 'on') { #attempt live attach
+              eval {
               $dom->attach_device($xml);
+              };
+              if ($@) {
+                my $err=$@;
+                if ($err =~ /No more available PCI addresses/) {
+                    xCAT::SvrUtils::sendmsg([1,"Exhausted Virtio limits trying to add $_"],$callback,$node);
+                } else {
+                    xCAT::SvrUtils::sendmsg([1,"Unable to attach $_ because of ".$err],$callback,$node);
+                }
+                my $file = $_;
+                $file =~ m!/([^/]*)/($node\..*)\z!;
+                my $pooluuid=$1;
+                my $volname=$2;
+                my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
+                if ($pool) {
+                    $pool->refresh(); #Amazingly, libvirt maintains a cached view of the volume rather than scan on demand
+                    my $vol = $pool->get_volume_by_name($volname);
+                    if ($vol) {
+                        $vol->delete();
+                    }
+                }
+              }
               $newxml=$dom->get_xml_description();
             } elsif ($confdata->{kvmnodedata}->{$node}->[0]->{xml}) { 
                 my $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
