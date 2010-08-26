@@ -405,6 +405,7 @@ function initPage() {
 	includeJs("js/jquery/superfish.js");
 	includeJs("js/jquery/hoverIntent.js");
 	includeJs("js/jquery/jquery.tree.js");
+	includeJs("js/jquery/jquery.flot.js");
 	includeJs("js/configure/configure.js");	
 	includeJs("js/monitor/monitor.js");
 	includeJs("js/nodes/nodes.js");
