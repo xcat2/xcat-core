@@ -23,6 +23,7 @@ use Socket;
 use strict;
 use warnings "all";
 my $netipmodule = eval {require Net::IP;};
+my $socket6support = eval { require Socket6 };
 
 our @ISA       = qw(Exporter);
 
@@ -110,8 +111,6 @@ sub gethostname()
        }
    }
    
-    my $socket6support = eval { require Socket6 };
-
     if (($iporhost !~ /\d+\.\d+\.\d+\.\d+/) && ($iporhost !~ /:/))
     {
         #why you do so? pass in a hostname and only want a hostname??
@@ -186,7 +185,6 @@ sub getipaddr()
            return undef;
        }
    }
-    my $socket6support = eval { require Socket6 };
 
     if (($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/))
     {
