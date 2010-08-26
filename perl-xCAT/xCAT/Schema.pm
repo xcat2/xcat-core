@@ -547,7 +547,7 @@ osimage  => {
  },
   },
 linuximage  => {
- cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir comments disable)],
+ cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir netdrivers kernelver comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
  descriptions => {
@@ -560,6 +560,8 @@ linuximage  => {
   exlist => 'The fully qualified name of the file that stores the file names and directory names that will be excluded from the image during packimage command.  It is used for diskless image only.',
   postinstall => 'The fully qualified name of the script file that will be run at the end of the packimage command. It is used for diskless image only.',
   rootimgdir => 'The directory name where the image is stored.  It is used for diskless image only.',
+  netdrivers => 'the ethernet device drivers of the nodes which will use this linux image, at least the device driver for the nodes\' installnic should be included',
+  kernelver => 'the version of linux kernel used in the linux image. If the kernel version is not set, the default kernel in rootimgdir will be used',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1774,6 +1776,16 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'linuximage.rootimgdir',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
+ {attr_name => 'netdrivers',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.netdrivers',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                },
+ {attr_name => 'kernelver',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.kernelver',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                },
 ####################
 # nimimage table#
 ####################
