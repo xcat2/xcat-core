@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<mkvm> - Creates HMC- and IVM-managed partitions.
+B<mkvm> - Creates HMC- and IVM-managed partitions or other virtual machines.
 
 =head1 SYNOPSIS
 

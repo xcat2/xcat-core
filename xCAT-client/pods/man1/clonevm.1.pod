@@ -1,0 +1,70 @@
+=head1 NAME
+
+B<clonevm> - Create masters from virtual machines and virtual machines from masters.
+
+=head1 SYNOPSIS
+
+I<clonevm noderange [ -t <mastertobemade> | -b <master to base vms upon> ]  -d|--detached -f|--force>
+
+=head1 DESCRIPTION
+
+Command to promote a VM's current configuration and storage to a master as well as 
+performing the converse operation of creating VMs based on a master.
+
+By default, attempting to create a master from a running VM will produce an error. 
+The force argument will request that a master be made of the VM anyway.
+
+Also, by default a VM that is used to create a master will be rebased as a thin 
+clone of that master. If the force argument is used to create a master of a powered
+on vm, this will not be done.  Additionally, the detached option can be used to 
+explicitly request that a clone not be tethered to a master image, allowing the 
+clones to not be tied to the health of a master, at the cost of additional storage.
+
+When promoting a VM's current state to master, all rleated virtual disks will be 
+copied and merged with any prerequisite images.  A master will not be tethered to
+other masters.
+
+=head1 OPTIONS
+
+
+B<-h|--help>       Display usage message.
+
+B<-b>              The master to base the clones upon
+
+B<-t>              The target master to copy a single VM's state to
+
+B<-d>              Explicitly request that the noderange be untethered from any masters.
+
+B<-f>              Force cloning of a powered on VM.  Implies -d if the VM is on.
+
+B<-v|--version>    Command Version.
+
+B<-V|--verbose>    Verbose output.
+
+
+=head1 RETURN VALUE
+
+0: The command completed successfully.
+
+Any other value: An error has occurred.
+
+=head1 EXAMPLES
+
+Creating a master named appserver from a node called vm1:
+I<clonevm vm1 -t appserver>
+
+Cleating 30 VMs from a master named appserver:
+I<clonevm vm1-vm30 -b appserver>
+
+=head1 FILES
+
+/opt/xcat/bin/clonevm
+
+
+=head1 SEE ALSO
+
+L<chvm(1)|chvm.1>, L<lsvm(1)|lsvm.1>, L<rmvm(1)|rmvm.1>, L<mkvm(1)|mkvm.1>, L<vmmaster(5)|vmmaster.5>
+
+
+
+
