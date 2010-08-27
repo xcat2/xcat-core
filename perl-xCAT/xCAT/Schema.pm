@@ -70,7 +70,7 @@ domain => {
 	},
 },
 ###############################################################################
-# This is a table for kvm plugin to use to maintain persistent config data
+# The next two are for kvm plugin to use to maintain persistent config data
 # not feasibly determined from contextual data
 ###############################################################################
 kvm_nodedata => {      
@@ -87,6 +87,19 @@ kvm_nodedata => {
 	    comments => 'Any user-written notes.',
 	    disable => "Set to 'yes' or '1' to comment out this row.",
 	},
+},
+kvm_masterdata => {
+    cols => [qw(name xml comments disable)],
+    keys => [qw(name)],
+    table_desc=>'Persistant store for KVM plugin for masters',
+    types => {
+        xml => 'VARCHAR(16000)', 
+    },
+    descriptions => {
+        name => 'The name of the relevant master',
+        xml => 'The XML description to be customized for clones of this master',
+        disable => "Set to 'yes' or '1' to comment out this row.",
+    },
 },
 
 

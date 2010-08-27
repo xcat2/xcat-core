@@ -16,7 +16,8 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
       $cfghash->{nodehm}  = $hmtab->getNodesAttribs($noderange,['serialspeed']);
   }
   if ($nttab) {
-      $cfghash->{nodetype}  = $nttab->getNodesAttribs($noderange,['os','arch']); #allow us to guess RTC config
+      $cfghash->{nodetype}  = $nttab->getNodesAttribs($noderange,['os','arch','profile']); #allow us to guess RTC config
+      #also needed for vmware guestid and also data for vmmaster
   }
   unless ($vmtab) { 
     $callback->({data=>["Cannot open vm table"]});

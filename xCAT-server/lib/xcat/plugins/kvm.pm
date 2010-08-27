@@ -60,6 +60,7 @@ my $mactab;
 my %usedmacs;
 my $status_noop="XXXno-opXXX";
 my $callback;
+my $requester; #used to track the user
 
 sub handled_commands {
   #unless ($libvirtsupport) {
@@ -1410,6 +1411,79 @@ sub get_disks_by_userspecs {
     return @returnxmls;
 }
 
+sub clonevm {
+    shift; #throw away node
+    @ARGV=@_;
+    my $target;
+    my $base;
+    my $detach;
+    my $force;
+    GetOptions(
+        'f' => \$force,
+        'b=s' => \$base,
+        't=s' => \$target,
+        'd' => \$detach,
+    );
+    if ($base and $target) {
+        xCAT::SvrUtils::sendmsg([1,"Cannot specify both base (-b) and target (-t)"], $callback,$node);
+        return;
+    }
+    if ($target) { #we need to take a single vm and create a master out of it
+        unless ($target =~ /^nfs:\/\//) {
+            xCAT::SvrUtils::sendmsg([1,"KVM plugin only has nfs://<server>/<path>/<mastername> support at this moment"], $callback,$node);
+            return;
+        }
+        my $dom;
+        eval {
+         $dom = $hypconn->get_domain_by_name($node);
+        };
+        if ($dom and not $force) {
+            xCAT::SvrUtils::sendmsg([1,"VM shut be shut down before attempting to clone (-f to copy unclean disks)"], $callback,$node);
+            return;
+        }
+        my $xml;
+        if ($dom) {
+            $xml = $dom->get_xml_description();
+        } else {
+            $xml = $confdata->{kvm_nodedata}->{$node}->[0]->{xml};
+        }
+        unless ($xml) {
+            xCAT::SvrUtils::sendmsg([1,"VM must be created before it can be cloned"], $callback,$node);
+            return;
+        }
+        my $parsedxml = $parser->parse_string($xml);
+        my $tmpnod = $parsedxml->findnodes('/domain/uuid')->[0]; #get rid of the VM specific uuid
+        $tmpnod->parentNode->removeChild($tmpnod);
+
+        $target =~ /^(.*)\/([^\/]*)\z/;
+        my $directory=$1;
+        my $mastername=$2;
+
+        $tmpnod = $parsedxml->findnodes('/domain/name')->[0];
+        $tmpnod->setData($mastername); #name the xml whatever the master name is to be
+        my $poolobj = get_storage_pool_by_url($directory);
+        unless ($poolobj) {
+            xCAT::SvrUtils::sendmsg([1,"unable to reach $directory from hypervisor"], $callback,$node);
+            return;
+        }
+        #arguments validated, on with our lives
+        my $xmltemplate = 
+        my $mastertabentry={};
+        foreach (qw/os arch profile/) {
+            if (defined ($confdata->{nodetype}->{$node}->[0]->{$_})) {
+                $mastertabentry->{$_}=$confdata->{nodetype}->{$node}->[0]->{$_};
+            }
+        }
+        foreach (qw/storagemodel nics/) {
+            if (defined ($confdata->{vm}->{$node}->[0]->{$_})) {
+                $mastertabentry->{$_}=$confdata->{vm}->{$node}->[0]->{$_};
+            }
+        }
+        $mastertabentry->{vintage}=localtime;
+        $mastertabentry->{originator}=$requester;
+    }
+}
+
 sub mkvm {
  shift; #Throuw away first argument
  @ARGV=@_;
@@ -1677,6 +1751,9 @@ sub process_request {
   %hypstats=();
   %offlinevms=();
   my $request = shift;
+  if ($request->{_xcat_authname}->[0]) {
+      $requester=$request->{_xcat_authname}->[0];
+  }
   $callback = shift;
   unless ($libvirtsupport) {
       $libvirtsupport = eval { 
