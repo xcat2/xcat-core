@@ -18,7 +18,6 @@ use Data::Dumper;
 use LWP::Simple;
 use xCAT::Table;
 use xCAT::NodeRange;
-use xCAT_monitoring::rmcmon;
 
 sub handled_commands
 {
@@ -498,8 +497,7 @@ sub web_rmcmonShow(){
 	my $retInfo;
 	my $retHash = {};
 	my $output;
-	my $activeNodes;
-	my $inactiveNodes;
+	my @activeNodes;
 	my @rmcNodes;
 	my $tempNodes;
 	my $temp = "";
@@ -541,21 +539,31 @@ sub web_rmcmonShow(){
 	if ('lpar' eq $nodeRange){
 		#get nodes detail containt
 		@nodes = xCAT::NodeRange::noderange($nodeRange);
-		my %nodesStatus = xCAT_monitoring::rmcmon->pingNodeStatus(@nodes);
-		$inactiveNodes = $nodesStatus{$::STATUS_INACTIVE};
-		$activeNodes = $nodesStatus{$::STATUS_ACTIVE};
+		if ((@nodes)&& (@nodes > 0)) {
+		    #get all the active nodes
+		    $temp= join(' ', @nodes);
+		    $output =`fping -a $temp 2> /dev/null`;
+		    chomp($output);
+		    @activeNodes = split(/\n/, $output);
 
-		#non-accessable
-		foreach (@$inactiveNodes){
-			push(@{$retHash->{node}},{name=>$_, data=>'NA'});
-		}
+		    #get all the inactive nodes by substracting the active nodes from all.
+		    my %temp2;
+	      	foreach(@activeNodes) { 
+		      	$temp2{$_}=1;
+		    }
+	        foreach(@nodes) {
+	         	if (!$temp2{$_}) { 
+	         		push(@{$retHash->{node}},{name=>$_, data=>'NA'});
+	         	}
+	        }
+	  	}
 
-		if (@$activeNodes < 1){
+		if (@activeNodes < 1){
 			$callback->($retHash);
 			return;
 		}
 
-		$tempNodes = join(',', @$activeNodes);
+		$tempNodes = join(',', @activeNodes);
 		$output = xCAT::Utils->runcmd("xdsh $tempNodes rpm -q rsct.core", -1, 1);
 		#non-installed
 		foreach(@$output){
