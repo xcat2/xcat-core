@@ -261,7 +261,7 @@ sub fixbootorder {
     my @bootdevs = $domdesc->findnodes("/domain/os/boot");
     my $needfixin=0;
     if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
-        my @expectedorder = split(/[:,]/,$confdata->{vm}->{$node}->[0]->{bootorder};
+        my @expectedorder = split(/[:,]/,$confdata->{vm}->{$node}->[0]->{bootorder});
         foreach (@expectedorder) { #this loop will check for changes and fix 'n' and 'net'
             my $currdev = shift @bootdevs;
             unless ($currdev) { $needfixin=1; }
@@ -922,7 +922,9 @@ sub createstorage {
         foreach (@sizes) {
             get_filepath_by_url(url=>$filename,dev=>$prefix.shift(@suffixes),create=>$_);
         }
-    }
+    }else{
+        oldCreateStorage($filename, $mastername, $size, $cfginfo, $force);
+    } 
     my $masterserver;
     if ($mastername) { #cloning
     }
@@ -930,7 +932,100 @@ sub createstorage {
     }
 }
 
-
+sub oldCreateStorage {
+    my $filename=shift;
+    my $mastername=shift;
+    my $size=shift;
+    my $cfginfo = shift;
+    my $force = shift;
+    my $node = $cfginfo->{node};
+    my @flags = split /,/,$cfginfo->{virtflags};
+    foreach (@flags) {
+        if (/^imageformat=(.*)\z/) {
+            $imgfmt=$1;
+        } elsif (/^clonemethod=(.*)\z/) {
+            $clonemethod=$1;
+        }
+    }
+    my $mountpath;
+    my $pathappend;
+    my $storageserver;
+    #for nfs paths and qemu-img, we do the magic locally only for now
+    my $basename;
+    my $dirname;
+    ($basename,$dirname) = fileparse($filename);
+    unless ($storageserver) {
+        if (-f $filename) {
+            unless ($force) {
+                return 1,"Storage already exists, delete manually or use --force";
+            }
+            unlink $filename;
+        }
+    }
+    if ($storageserver and $mastername and $clonemethod eq 'reflink') {
+        my $rc=system("ssh $storageserver mkdir -p $dirname");
+        if ($rc) {
+            return 1,"Unable to manage storage on remote server $storageserver";
+        }
+    } elsif ($storageserver) {
+        my @mounts = `mount`;
+        my $foundmount;
+        foreach (@mounts) {
+          if (/^$storageserver:$mountpath/) {
+	     chomp;
+             s/^.* on (\S*) type nfs.*$/$1/;
+             $dirname = $_;
+             mkpath($dirname.$pathappend);
+             $foundmount=1;
+             last;
+          }
+        }
+        unless ($foundmount) {
+            return 1,"qemu-img cloning requires that the management server have the directory $mountpath from $storageserver mounted";
+        }
+    } else {
+        mkpath($dirname);
+    }
+    if ($mastername and $size) {
+        return 1,"Can not specify both a master to clone and a size";
+    }
+    my $masterserver;
+    if ($mastername) {
+        unless ($mastername =~ /^\// or $mastername =~ /^nfs:/) {
+            $mastername = $xCAT_plugin::kvm::masterdir.'/'.$mastername;
+        }
+        if ($mastername =~ m!nfs://([^/]*)(/.*\z)!) {
+            $mastername = $2;
+            $masterserver = $1;
+        }
+        if ($masterserver ne $storageserver) {
+            return 1,"Not supporting cloning between $masterserver and $storageserver at this time, for now ensure master images and target VM images are on the same server";
+        }
+        my $rc;
+        if ($clonemethod eq 'qemu-img') {
+            my $dirn;
+            my $filn;
+            ($filn,$dirn) = fileparse($filename);
+            chdir($dirn);
+            $rc=system("qemu-img create -f qcow2 -b $mastername $filename");
+        } elsif ($clonemethod eq 'reflink') {
+            if ($storageserver) {
+                $rc=system("ssh $storageserver cp --reflink $mastername $filename");
+            } else {
+                $rc=system("cp --reflink $mastername $filename");
+            }
+        }
+        if ($rc) {
+            return $rc,"Failure creating image $filename from $mastername";
+        }
+    }
+    if ($size) {
+        my $rc = system("qemu-img create -f $imgfmt $filename ".getUnits($size,"g",1024));
+        if ($rc) {
+            return $rc,"Failure creating image $filename of size $size\n";
+        }
+    }
+}
 
 sub rinv {
     shift;
