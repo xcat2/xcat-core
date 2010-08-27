@@ -48,7 +48,7 @@ Comma separated list of files (full path), wildcard (*) can be used.
 
 The files must be of the form <name>.sql or <name>_<database>.sql  where
 
-<database>  is mysql,pgsql, or db2.  
+<database>  is mysql,pgsql, or db2. Files must have permission 0755.  
 
 
 =back
