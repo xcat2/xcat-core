@@ -216,6 +216,7 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
             #     incidentally, promote to master will be relatively expensive compared to the converse operation, as expected
             #     will have to verify as it is investigated whether this can successfully cross pools (hope so)
             #  4) qemu-img was so much more transparent and easy to figure out than this
+            #  additionally, when mastering a powered down node, we should rebase the node to be a cow clone of the master it just spawned
         } else {
             my $vol = $poolobj->create_volume("<volume><name>".$desiredname."</name><target><format type='$format'/></target><capacity>".getUnits($create,"G",1)."</capacity><allocation>0</allocation></volume>");
             if ($vol) { return $vol->get_path(); }
@@ -795,6 +796,13 @@ sub xhrm_satisfy {
     foreach (@nics) {
         s/=.*//; #this code cares not about the model of virtual nic
         $rc |=system("ssh $hyp xHRM bridgeprereq $_");
+        #TODO: surprise! there is relatively undocumented libvirt capability for this...
+        #./tests/interfaceschemadata/ will have to do in lieu of documentation..
+        #note that RHEL6 is where that party starts
+        #of course, they don't have a clean 'migrate from normal interface to bridge' capability
+        #consequently, would have to have some init script at least pre-bridge it up..
+        #even then, may not be able to intelligently modify the bridge remotely, so may still not be feasible for our use..
+        #this is sufficiently hard, punting to 2.6 at least..
     }
     return $rc;
 }
@@ -804,6 +812,7 @@ sub makedom {
     my $xml = shift;
     my $dom;
     if (not $xml and $confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
+#TODO: in this case, build_diskstruct won't be called to do storage validation
         $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
     } elsif (not $xml) {
         $xml = build_xmldesc($node,$cdloc);
@@ -1321,6 +1330,8 @@ sub power {
 			return (1,"Failure satisfying networking and storage requirements on $hyp for $node");
 		} 
             }
+#TODO: here, storage validation is not necessarily performed, consequently, must explicitly do storage validation
+#this worked before I started doing the offline xml store because every rpower on tried to rebuild
             ($dom,$errstr) = makedom($node,$cdloc);
             if ($errstr) { return (1,$errstr); }
         } else {
