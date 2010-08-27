@@ -161,6 +161,7 @@ vmmaster => {
         'nics' => 'The nic configuration and relationship to vlans/bonds/etc',
         'vintage' => "When this image was created",
         'originator' => 'The user who created the image',
+        'virttype' => 'The type of virtualization this image pertains to (e.g. vmware, kvm, etc)',
     }
 },
 vm => {
