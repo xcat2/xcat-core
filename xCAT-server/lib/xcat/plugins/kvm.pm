@@ -928,12 +928,20 @@ sub invstorage {
         }
 
         my $file = $disk->findnodes('./source')->[0]->getAttribute('file');
+        #we'll attempt to map file path to pool name and volume name
+        #fallback to just reporting filename if not feasible
+        #libvirt lacks a way to lookup a storage pool by path, so we'll only do so if using the 'default' xCAT scheme with uuid in the path
         $file =~ m!/([^/]*)/($node\..*)\z!;
         my $pooluuid=$1;
         my $volname=$2;
-        my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
-        my $poolname = $pool->get_name();
-        my $vol = $pool->get_volume_by_name($volname);
+        my $vollocation=$file;
+        eval {
+            my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
+            my $poolname = $pool->get_name();
+            $vollocation = "[$poolname] $volname";
+        };
+        #at least I get to skip the whole pool mess here
+        my $vol = $hypconn->get_storage_volume_by_path($file);
         my $size;
         if ($vol) {
             my %info = %{$vol->get_info()};
@@ -947,7 +955,7 @@ sub invstorage {
                 name=>$node,
                 data=>{
                     desc=>"Disk $name$xref",
-                    contents=>"$size MB @ [$poolname] $volname",
+                    contents=>"$size MB @ $vollocation",
                 }
             }
         });
@@ -1013,16 +1021,9 @@ sub rmvm {
         my $disk;
         foreach $disk (@purgedisks) {
             my $file = $disk->getAttribute("file");
-            $file =~ m!/([^/]*)/($node\..*)\z!;
-            my $pooluuid=$1;
-            my $volname=$2;
-            my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
-            if ($pool) {
-                $pool->refresh(); #Amazingly, libvirt maintains a cached view of the volume rather than scan on demand
-                my $vol = $pool->get_volume_by_name($volname);
-                if ($vol) {
-                    $vol->delete();
-                }
+            my $vol = $hypconn->get_storage_volume_by_path($file);
+            if ($vol) {
+                $vol->delete();
             }
         }
     }
@@ -1137,16 +1138,9 @@ sub chvm {
                     xCAT::SvrUtils::sendmsg([1,"Unable to attach $_ because of ".$err],$callback,$node);
                 }
                 my $file = $_;
-                $file =~ m!/([^/]*)/($node\..*)\z!;
-                my $pooluuid=$1;
-                my $volname=$2;
-                my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
-                if ($pool) {
-                    $pool->refresh(); #Amazingly, libvirt maintains a cached view of the volume rather than scan on demand
-                    my $vol = $pool->get_volume_by_name($volname);
-                    if ($vol) {
-                        $vol->delete();
-                    }
+                my $vol = $hypconn->get_storage_volume_by_path($file);
+                if ($vol) {
+                    $vol->delete();
                 }
               }
               $newxml=$dom->get_xml_description();
@@ -1179,8 +1173,6 @@ sub chvm {
             my $devxml=$_->[0];
             my $file=$_->[1];
             $file =~ m!/([^/]*)/($node\..*)\z!;
-            my $pooluuid=$1;
-            my $volname=$2;
             #first, detach the device.
             eval {
             if ($currstate eq 'on') { 
@@ -1195,15 +1187,10 @@ sub chvm {
                 xCAT::SvrUtils::sendmsg([1,"Unable to remove device"],$callback,$node);
             } else {
                 #if that worked, remove the disk..
-                my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
-                if ($pool) {
-                    $pool->refresh(); #Amazingly, libvirt maintains a cached view of the volume rather than scan on demand
-                    my $vol = $pool->get_volume_by_name($volname);
-                    if ($vol) {
-                        $vol->delete();
-                    }
+                my $vol = $hypconn->get_storage_volume_by_path($file);
+                if ($vol) {
+                    $vol->delete();
                 }
-                
             }
 
         }
