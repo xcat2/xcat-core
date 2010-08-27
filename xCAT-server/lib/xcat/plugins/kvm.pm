@@ -254,6 +254,42 @@ sub waitforack {
     }
 }
 
+sub fixbootorder {
+    $node=shift;
+    my $xml = shift;
+    my $domdesc = $parser->parse_string($xml);
+    my @bootdevs = $domdesc->findnodes("/domain/os/boot");
+    my $needfixin=0;
+    if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
+        my @expectedorder = split(/[:,]/,$confdata->{vm}->{$node}->[0]->{bootorder};
+        foreach (@expectedorder) { #this loop will check for changes and fix 'n' and 'net'
+            my $currdev = shift @bootdevs;
+            unless ($currdev) { $needfixin=1; }
+            if ("net" eq $_ or "n" eq $_) {
+                $_ = "network";
+            }
+            unless ($currdev->getAttribute("dev") eq $_) {
+                $needfixin=1;
+            }
+        }
+        if (scalar(@bootdevs)) {
+            $needfixin=1;
+        }
+        unless ($needfixin) { return 0; }
+        #ok, we need to remove all 'boot' nodes from current xml, and put in new ones in the order we like
+        foreach (@bootdevs) {
+            $_->parentNode->removeChild($_);
+        }
+        #now to add what we want...
+        my $osnode = $domdesc->findnodes("/domain/os")->[0];
+        foreach (@expectedorder) {
+            my $fragment = $parser->parse_balanced_chunk('<boot dev="'.$_.'"/>');
+            $osnode->appendChild($fragment);
+        }
+        return $domdesc->toString();
+    } else { return 0; }
+}
+
 sub build_oshash {
     my %rethash;
     $rethash{type}->{content}='hvm';
@@ -812,8 +848,19 @@ sub makedom {
     my $xml = shift;
     my $dom;
     if (not $xml and $confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
-#TODO: in this case, build_diskstruct won't be called to do storage validation
+        #we do this to trigger storage prereq fixup
+        if (defined $confdata->{vm}->{$node}->[0]->{storage} and $confdata->{vm}->{$node}->[0]->{storage} =~ /^nfs:/) {
+            my $urls =  $confdata->{vm}->{$node}->[0]->{storage} and $confdata->{vm}->{$node}->[0]->{storage};
+            foreach (split /,/,$urls) {
+                s/=.*//;
+                get_storage_pool_by_url($_);
+            }
+        }
         $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
+        my $newxml = fixbootorder($node,$xml);
+        if ($newxml) {
+            $xml=$newxml;
+        }
     } elsif (not $xml) {
         $xml = build_xmldesc($node,$cdloc);
     }
@@ -1352,15 +1399,21 @@ sub power {
         } else { $retstring .= "$status_noop"; } 
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
-            my $newxml=$dom->get_xml_description();
-            $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
-            $dom->destroy();
-            undef $dom;
-            if ($use_xhrm) {
-                xhrm_satisfy($node,$hyp);
+            my $oldxml=$dom->get_xml_description();
+            my $newxml=fixbootorder($node,$oldxml);
+            #This *was* to be clever, but libvirt doesn't even frontend the capability, great...
+            unless ($newxml) { $newxml=$oldxml; } #TODO: remove this when the 'else' line can be sanely filled out
+            if ($newxml) { #need to destroy and repower..
+                $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
+                $dom->destroy();
+                undef $dom;
+                if ($use_xhrm) {
+                    xhrm_satisfy($node,$hyp);
+                }
+                ($dom,$errstr) = makedom($node,$cdloc,$newxml);
+                if ($errstr) { return (1,$errstr); }
+            } else { #no changes, just restart the domain TODO when possible, stupid lack of feature...
             }
-            ($dom,$errstr) = makedom($node,$cdloc,$newxml);
-            if ($errstr) { return (1,$errstr); }
             $retstring.="reset";
         } else { $retstring .= "$status_noop"; } 
     } else { 
