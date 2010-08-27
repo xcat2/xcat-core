@@ -40,7 +40,6 @@ $::command = "$0 $args";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 my ($directory, $help, $version, $filelist);
-$directory = "$::XCATROOT/lib/perl/xCAT_schema";    # default
 
 # parse the options
 if (
@@ -62,7 +61,6 @@ if ($help)
     &usage;
     exit(0);
 }
-
 # display the version statement if -v or --version is specified
 if ($version)
 {
@@ -70,6 +68,17 @@ if ($version)
     xCAT::MsgUtils->message("I", $version);
     exit 0;
 }
+if (($filelist) && ($directory))
+{
+    xCAT::MsgUtils->message("E","Cannot enter both the -f and -d flags.");
+    exit 1;
+}
+if (!($filelist)) { # if no file list and no directory set default
+   if (!($directory)) {
+      $directory = "$::XCATROOT/lib/perl/xCAT_schema";  
+   }
+}
+
 my @filearray;
 if ($filelist)
 {    # use filelist
