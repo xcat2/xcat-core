@@ -13,7 +13,7 @@ B<runsqlcmd> {B<-v>|B<--version>}
 
 B<runsqlcmd> {B<-d>|B<--dir> I<directory_path>} 
 
-B<runsqlcmd> {B<-f>|B<--files> I<list of filename>} 
+B<runsqlcmd> {B<-f>|B<--files> I<list of files>} 
 
 
 =head1 DESCRIPTION
@@ -32,6 +32,8 @@ If a comma separated list of files is input with the -f flag, those files will b
 Displays the usage message.
 
 =item B<-v|--version>
+
+Displays current code version.
 
 =item B<-d|--dir>
 
