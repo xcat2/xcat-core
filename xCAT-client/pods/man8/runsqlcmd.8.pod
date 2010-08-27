@@ -1,0 +1,84 @@
+=head1 NAME
+
+B<runsqlcmd> -Runs sql command files against the current xCAT database.  
+
+=head1 SYNOPSIS
+
+
+B<runsqlcmd> 
+
+B<runsqlcmd> {B<-h>|B<--help>}
+
+B<runsqlcmd> {B<-v>|B<--version>}
+
+B<runsqlcmd> {B<-d>|B<--dir> I<directory_path>} 
+
+B<runsqlcmd> {B<-f>|B<--files> I<list of filename>} 
+
+
+=head1 DESCRIPTION
+
+The runsqlcmd routine,  runs the sql statements contained in the *.sql files as input to the command against the current running xCAT database. Only DB2,MySQL and PostgreSQL databases are supported.  SQLite is not supported.  
+If no directory or filelist is provided,  the default /opt/xcat/lib/perl/xCAT_schema directory is used.
+If the directory is input with the -d flag,  that directory will be used.
+If a comma separated list of files is input with the -f flag, those files will be used. 
+
+=head1 OPTIONS
+
+=over 6
+
+=item B<-h|--help>
+
+Displays the usage message.
+
+=item B<-v|--version>
+
+=item B<-d|--dir>
+
+To use a directory other than the default directory,  enter the directory path here.  
+
+=item B<-f|--files>
+
+Comma separated list of files (full path), wildcard (*) can be used.
+
+
+=item B<File format>
+
+The files must be of the form <name>.sql or <name>_<database>.sql  where
+
+<database>  is mysql,pgsql, or db2.  
+
+
+=back
+
+=head1 EXAMPLES
+
+=over 2
+
+=item *
+
+To run the database appropriate *.sql files in /opt/xcat/lib/perl/xCAT_schema :
+
+B<runsqlcmd> 
+
+=item *
+
+To run the database appropriate *.sql files in /tmp/mysql:
+
+B<runsqlcmd> I<-d> I</tmp/mysql>
+
+
+=item *
+
+To run the database appropriate *.sql files in the input list:
+
+B<runsqlcmd> I<-f> I<"/tmp/mysql/test*,/tmp/mysql/test1*">
+
+=item *
+
+To checkout one DB2 sql file: 
+
+B<runsqlcmd> I<-f> I</tmp/db2/test_db2.sql>
+
+
+=back
