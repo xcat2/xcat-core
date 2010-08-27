@@ -140,8 +140,31 @@ litefile => {
         }
 },
 
+vmmaster => {
+#will add columns as approriate, for now:
+#os arch profile to populate the corresponding nodetype fields of a cloned vm
+#storage to indicate where the master data is actually stored (i.e. virtual disk images)
+#storagemodel to allow chvm on a clone to be consistent with the master by default
+#nics to track the network mapping that may not be preserved by the respective plugin's specific cfg info
+#nicmodel same as storagemodel, except omitting for now until chvm actually does nics...
+    cols => [qw(name os arch profile storage storagemodel nics vintage originator comments disable)],
+    keys => [qw(name)],
+    nodecol => 'name', #don't anticipate this usage, but just in case...
+    table_desc => 'Inventory of virtualization images for use with clonevm.  Manual intervention in this table is not intended.',
+    descriptions => {
+        'name' => 'The name of a master',
+        'os' => 'The value of nodetype.os at the time the master was captured',
+        'arch' => 'The value of nodetype.arch at the time of capture',
+        'profile' => 'The value of nodetype.profile at time of capture',
+        'storage' => 'The storage location of bulk master information',
+        'storagemodel' => 'The default storage style to use when modifying a vm cloned from this master',
+        'nics' => 'The nic configuration and relationship to vlans/bonds/etc',
+        'vintage' => "When this image was created",
+        'originator' => 'The user who created the image',
+    }
+},
 vm => {
-    cols => [qw(node host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags vncport textconsole powerstate beacon comments disable)],
+    cols => [qw(node host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon comments disable)],
     keys => [qw(node)],
     table_desc => 'Virtualization parameters',
     descriptions => {
@@ -152,6 +175,7 @@ vm => {
         'storagemodel' => 'Model of storage devices to provide to guest',
         'cfgstore' => 'Optional location for persistant storage separate of emulated hard drives for virtualization solutions that require persistant store to place configuration data',
         'memory' => 'Megabytes of memory the VM currently should be set to.',
+        'master' => 'The name of a master image, if any, this virtual machine is linked to.  This is generally set by clonevm and indicates the deletion of a master that would invalidate the storage of this virtual machine',
         'cpus' => 'Number of CPUs the node should see.',
         'nics' => 'Network configuration parameters.  Of the general form [physnet:]interface,.. Generally, interface describes the vlan entity (default for native, tagged for tagged, vl[number] for a specific vlan.  physnet is a virtual switch name or port description that is used for some virtualization technologies to construct virtual switches.  hypervisor.netmap can map names to hypervisor specific layouts, or the descriptions described there may be used directly here where possible.',
         'nicmodel' => 'Model of NICs that will be provided to VMs (i.e. e1000, rtl8139, virtio, etc)',
