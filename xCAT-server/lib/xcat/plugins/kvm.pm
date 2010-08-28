@@ -763,6 +763,7 @@ sub migrate {
             s/=.*//;
             get_storage_pool_by_url($_,$desthypconn,$targ);
         }
+        #TODO: VMCLONE if vm.master is set, got to vmmaster.storage for that master and add it to prereq resolution here
     }
     my $sock = IO::Socket::INET->new(Proto=>'udp');
     my $ipa=inet_aton($node);
@@ -857,6 +858,7 @@ sub makedom {
                 s/=.*//;
                 get_storage_pool_by_url($_);
             }
+            #TODO: VMCLONE if vm.master is set, got to vmmaster.storage for that master and add it to prereq resolution here
         }
         $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
         my $newxml = fixbootorder($node,$xml);
@@ -1063,6 +1065,22 @@ sub rinv {
     invstorage($domain);
     invnics($domain);
 }
+sub get_pool_for_volume {
+#attempts to get pool for a volume, returns false on failure
+#TODO: build and use a total map of source paths to volume names.  Then we could do more than just ones that end in uuid..
+    my $vol = shift;
+    my $file = $vol->get_path();
+    $file =~ m!/([^/]*)/($node\..*)\z!;
+    my $pooluuid=$1;
+    my $volname=$2;
+    my $pool;
+    my $vollocation=$file;
+    eval {
+         $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
+    };
+    return $pool;
+}
+
 sub invstorage {
     my $domain = shift;
     my @disks = $domain->findnodes('/domain/devices/disk');
@@ -1446,6 +1464,7 @@ sub clonevm {
         my $xml;
         if ($dom) {
             $xml = $dom->get_xml_description();
+            $detach=1; #can't rebase if vm is on
         } else {
             $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
         }
@@ -1504,10 +1523,12 @@ sub clonevm {
         foreach (keys %volclonemap) {
             my $sourcevol = $volclonemap{$_}->[0];
             my $targname = $volclonemap{$_}->[1];
+            my $format;
             $targname =~ /([^\.]*)$/;
+            $format=$1;
             my $newvol;
             my %sourceinfo = %{$sourcevol->get_info()};
-            my $targxml = "<volume><name>$targname</name><target><format type='$1'/></target><capacity>".$sourceinfo{capacity}."</capacity></volume>";
+            my $targxml = "<volume><name>$targname</name><target><format type='$format'/></target><capacity>".$sourceinfo{capacity}."</capacity></volume>";
             xCAT::SvrUtils::sendmsg("Cloning ".$sourcevol->get_name()." (currently is ".($sourceinfo{allocation}/1048576)." MB and has a capacity of ".($sourceinfo{capacity}/1048576)."MB)",$callback,$node);
             eval {
                 $newvol =$poolobj->clone_volume($targxml,$sourcevol);
@@ -1515,7 +1536,27 @@ sub clonevm {
             if ($newvol) {
                 %sourceinfo = %{$newvol->get_info()};
                 xCAT::SvrUtils::sendmsg("Cloning of ".$sourcevol->get_name()." complete (clone uses ".($sourceinfo{allocation}/1048576)." for a disk size of ".($sourceinfo{capacity}/1048576)."MB)",$callback,$node);
-                #TODO: rebase $sourcevol to have a backingStore of $newvol
+                unless ($detach) {
+                    my $rebasepath = $sourcevol->get_path();
+                    my $rebasename = $sourcevol->get_name();
+                    my $rebasepool = get_pool_for_volume($sourcevol);
+                    unless ($rebasepool) {
+                        xCAT::SvrUtils::sendmsg([1,"Skipping rebase of $rebasename, unable to find correct storage pool"],$callback,$node);
+                        next;
+                    }
+                    xCAT::SvrUtils::sendmsg("Rebasing $rebasename from master",$callback,$node);
+                    $sourcevol->delete();
+                    my $newbasexml="<volume><name>$rebasename</name><target><format type='$format'/></target><capacity>".$sourceinfo{capacity}."</capacity><backingStore><path>".$newvol->get_path()."</path><format type='$format'/></backingStore></volume>";
+                    my $newbasevol;
+                    eval {
+                        $newbasevol = $rebasepool->create_volume($newbasexml);
+                    };
+                    if ($newbasevol) {
+                        xCAT::SvrUtils::sendmsg("Rebased $rebasename from master",$callback,$node);
+                    } else {
+                        xCAT::SvrUtils::sendmsg([1,"Critical failure, rebasing process failed halfway through, source VM trashed"],$callback,$node);
+                    }
+                }
             } else {
                 xCAT::SvrUtils::sendmsg([1,"Cloning of ".$sourcevol->get_name()." failed due to ". $@],$callback,$node);
                 return;
