@@ -91,6 +91,7 @@ kvm_nodedata => {
 kvm_masterdata => {
     cols => [qw(name xml comments disable)],
     keys => [qw(name)],
+    nodecol => 'name', 
     table_desc=>'Persistant store for KVM plugin for masters',
     types => {
         xml => 'VARCHAR(16000)', 
@@ -162,7 +163,7 @@ vmmaster => {
 #nicmodel same as storagemodel, except omitting for now until chvm actually does nics...
     cols => [qw(name os arch profile storage storagemodel nics vintage originator comments disable)],
     keys => [qw(name)],
-    nodecol => 'name', #don't anticipate this usage, but just in case...
+    nodecol => 'name', #well what do you know, I used it...
     table_desc => 'Inventory of virtualization images for use with clonevm.  Manual intervention in this table is not intended.',
     descriptions => {
         'name' => 'The name of a master',
