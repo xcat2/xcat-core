@@ -1463,6 +1463,9 @@ sub clonevm {
 
         $tmpnod = $parsedxml->findnodes('/domain/name/text()')->[0];
         $tmpnod->setData($mastername); #name the xml whatever the master name is to be
+        foreach ($parsedxml->findnodes("/domain/devices/interface/mac")) { #clear all mac addresses 
+            if ($_->hasAttribute("address")) { $_->setAttribute("address"=>''); }
+        }
         my $poolobj = get_storage_pool_by_url($directory);
         unless ($poolobj) {
             xCAT::SvrUtils::sendmsg([1,"Unable to reach $directory from hypervisor"], $callback,$node);
