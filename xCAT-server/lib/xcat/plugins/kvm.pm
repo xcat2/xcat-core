@@ -1512,6 +1512,7 @@ sub clonevm {
             if ($newvol) {
                 %sourceinfo = %{$newvol->get_info()};
                 xCAT::SvrUtils::sendmsg("Cloning of ".$sourcevol->get_name()." complete (clone uses ".($sourceinfo{allocation}/1048576)." for a disk size of ".($sourceinfo{capacity}/1048576)."MB)",$callback,$node);
+                #TODO: rebase $sourcevol to have a backingStore of $newvol
             } else {
                 xCAT::SvrUtils::sendmsg([1,"Cloning of ".$sourcevol->get_name()." failed due to ". $@],$callback,$node);
                 return;
