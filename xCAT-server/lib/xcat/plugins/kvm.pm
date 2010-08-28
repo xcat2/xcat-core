@@ -69,6 +69,7 @@ sub handled_commands {
   return {
     rpower => 'nodehm:power,mgt',
     mkvm => 'nodehm:power,mgt',
+    clonevm => 'nodehm:power,mgt',
     chvm => 'nodehm:power,mgt',
     rmvm => 'nodehm:power,mgt',
     rinv => 'nodehm:power,mgt',
@@ -1097,9 +1098,10 @@ sub invstorage {
         my $size;
         if ($vol) {
             my %info = %{$vol->get_info()};
-            if ($info{capacity}) {
-                $size = $info{capacity};
+            if ($info{allocation} and $info{capacity}) {
+                $size = $info{allocation};
                 $size = $size/1048576; #convert to MB
+                $size .= "/".($info{capacity}/1048576);
             }
         }
         $callback->({
@@ -1445,7 +1447,7 @@ sub clonevm {
         if ($dom) {
             $xml = $dom->get_xml_description();
         } else {
-            $xml = $confdata->{kvm_nodedata}->{$node}->[0]->{xml};
+            $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
         }
         unless ($xml) {
             xCAT::SvrUtils::sendmsg([1,"VM must be created before it can be cloned"], $callback,$node);
@@ -1459,14 +1461,62 @@ sub clonevm {
         my $directory=$1;
         my $mastername=$2;
 
-        $tmpnod = $parsedxml->findnodes('/domain/name')->[0];
+        $tmpnod = $parsedxml->findnodes('/domain/name/text()')->[0];
         $tmpnod->setData($mastername); #name the xml whatever the master name is to be
         my $poolobj = get_storage_pool_by_url($directory);
         unless ($poolobj) {
-            xCAT::SvrUtils::sendmsg([1,"unable to reach $directory from hypervisor"], $callback,$node);
+            xCAT::SvrUtils::sendmsg([1,"Unable to reach $directory from hypervisor"], $callback,$node);
             return;
         }
         #arguments validated, on with our lives
+#first order of business, calculate all the image names to be created and ensure none will conflict.
+        my @disks = $parsedxml->findnodes('/domain/devices/disk/source');
+        my %volclonemap;
+        foreach (@disks) {
+            my $filename = $_->getAttribute('file');
+            my $volname = $filename;
+            $volname =~ s!.*/!!; #perl is greedy by default
+            $volname =~ s/^$node/$mastername/;
+            my $novol;
+            eval {
+                $poolobj->refresh();
+                $novol = $poolobj->get_volume_by_name($volname);
+            };
+            if ($novol) {
+                xCAT::SvrUtils::sendmsg([1,"$volname already exists in target storage pool"], $callback,$node);
+                return;
+            }
+            my $sourcevol;
+            eval {
+                $sourcevol = $hypconn->get_storage_volume_by_path($filename);
+            };
+            unless ($sourcevol) {
+                xCAT::SvrUtils::sendmsg([1,"Unable to access $filename to clone"], $callback,$node);
+                return;
+            }
+            $volclonemap{$filename}=[$sourcevol,$volname];
+            $filename =~ s/^$node/$mastername/;
+            $_->setAttribute(file=>$filename);
+        }
+        foreach (keys %volclonemap) {
+            my $sourcevol = $volclonemap{$_}->[0];
+            my $targname = $volclonemap{$_}->[1];
+            $targname =~ /([^\.]*)$/;
+            my $newvol;
+            my %sourceinfo = %{$sourcevol->get_info()};
+            my $targxml = "<volume><name>$targname</name><target><format type='$1'/></target><capacity>".$sourceinfo{capacity}."</capacity></volume>";
+            xCAT::SvrUtils::sendmsg("Cloning ".$sourcevol->get_name()." (currently is ".($sourceinfo{allocation}/1048576)." MB and has a capacity of ".($sourceinfo{capacity}/1048576)."MB)",$callback,$node);
+            eval {
+                $newvol =$poolobj->clone_volume($targxml,$sourcevol);
+            };
+            if ($newvol) {
+                %sourceinfo = %{$newvol->get_info()};
+                xCAT::SvrUtils::sendmsg("Cloning of ".$sourcevol->get_name()." complete (clone uses ".($sourceinfo{allocation}/1048576)." for a disk size of ".($sourceinfo{capacity}/1048576),$callback,$node);
+            } else {
+                xCAT::SvrUtils::sendmsg([1,"Cloning of ".$sourcevol->get_name()." failed due to ". $@],$callback,$node);
+                return;
+            }
+        }
         my $mastertabentry={};
         foreach (qw/os arch profile/) {
             if (defined ($confdata->{nodetype}->{$node}->[0]->{$_})) {
@@ -1480,6 +1530,8 @@ sub clonevm {
         }
         $mastertabentry->{vintage}=localtime;
         $mastertabentry->{originator}=$requester;
+        $updatetable->{vmmaster}->{$mastername}=$mastertabentry;
+        $updatetable->{kvm_masterdata}->{$mastername}->{xml} = $parsedxml->toString();
     }
 }
 
@@ -1617,6 +1669,8 @@ sub guestcmd {
     return power(@args);
   } elsif ($command eq "mkvm") {
       return mkvm($node,@args);
+  } elsif ($command eq "clonevm") {
+      return clonevm($node,@args);
   } elsif ($command eq "chvm") {
       return chvm($node,@args);
   } elsif ($command eq "rmvm") {
