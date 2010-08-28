@@ -1495,7 +1495,7 @@ sub clonevm {
                 return;
             }
             $volclonemap{$filename}=[$sourcevol,$volname];
-            $filename =~ s/^$node/$mastername/;
+            $filename =~ s/(.*\/)$node\./$1$mastername\./;
             $_->setAttribute(file=>$filename);
         }
         foreach (keys %volclonemap) {
