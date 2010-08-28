@@ -1467,7 +1467,6 @@ sub clonevm {
             return;
         }
         #arguments validated, on with our lives
-        my $xmltemplate = 
         my $mastertabentry={};
         foreach (qw/os arch profile/) {
             if (defined ($confdata->{nodetype}->{$node}->[0]->{$_})) {
