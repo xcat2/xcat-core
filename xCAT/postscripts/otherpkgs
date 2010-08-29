@@ -157,8 +157,8 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         else
 	    fn=`basename $x`
 	    path=`dirname $x`
-	    #whole_path=$OTHERPKGDIR/$path
-	    whole_path=$OTHERPKGDIR
+	    whole_path=$OTHERPKGDIR/$path
+	    #whole_path=$OTHERPKGDIR
 	
             #find out if this path has already handled
 	    try_repo=1
