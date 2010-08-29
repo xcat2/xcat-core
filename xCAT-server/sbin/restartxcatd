@@ -52,6 +52,9 @@ my $current_userid = getpwuid($>);
 my $rsp = {};
 my $host=`hostname`;
 $host=~ s/\s*//g; # remove blanks
+# check the arguments
+&parse_args($cmd);
+
 $rsp->{syslogdata}->[0] ="restartxcatd invoked by $current_userid.\n";
 $rsp->{userid} ->[0] = $current_userid;
 $rsp->{clientname} -> [0] = $host;
@@ -59,7 +62,6 @@ $rsp->{clienttype} -> [0]= "cli";
 $rsp->{command} -> [0] = $cmd;
 $rsp->{status} -> [0] = "allowed";
 xCAT::MsgUtils->message("SA",$rsp); # syslog and auditlog
-&parse_args($cmd);
 
 # Check whether the xcatd subsystem has been created
 $cmd = "/usr/bin/lssrc -s xcatd | grep \"xcatd Subsystem is not on file\"";
@@ -194,10 +196,20 @@ while ($check_num > 0) {
 if ($check_num <= 0) {
     xCAT::MsgUtils->message("E", "Error: Cannot start the xcatd subsystem correctly.\n");
     exit 1;
-} else {
-    if ($::VERBOSE) {
+}
+
+# now see if we can really talk to the database, up to a minute
+$wait = 60;
+while ($wait > 0) {
+   sleep 10;
+   $wait = $wait -10;
+   xCAT::Utils->runcmd("$::XCATROOT/sbin/tabdump site",-1);
+   if ($::RUNCMD_RC == 0) {
+            $wait=0;
+   }
+}
+if ($::VERBOSE) {
         xCAT::MsgUtils->message("I", "Started the xcatd subsystem.\n");
-    }
 }
 
 exit 0;
