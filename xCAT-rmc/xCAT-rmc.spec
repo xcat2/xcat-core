@@ -84,6 +84,7 @@ rm -rf $RPM_BUILD_ROOT
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd -r
   fi
 %endif
+exit 0
 
 
 
