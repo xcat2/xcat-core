@@ -54,6 +54,7 @@ foreach my $table (@output)
     }
 
 }
+xCAT::MsgUtils->message("I", "Backup Complete.");
 exit $rc;
 
 #-----------------------------------------------------------------------------

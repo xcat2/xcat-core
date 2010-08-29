@@ -70,6 +70,7 @@ foreach my $table (@files)
     }
 }
 closedir DIRPATH;
+xCAT::MsgUtils->message("I", "Restore of Database Complete.");
 exit $rc;
 
 #-----------------------------------------------------------------------------
