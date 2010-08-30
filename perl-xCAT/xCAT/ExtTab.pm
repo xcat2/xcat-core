@@ -260,7 +260,6 @@ sub get_xcatcfg
             }
         }
     }
-    ($xcatcfg =~ /^$/) && die "Can't locate xCAT configuration";
     unless ($xcatcfg =~ /:/)
     {
         $xcatcfg = "SQLite:" . $xcatcfg;
