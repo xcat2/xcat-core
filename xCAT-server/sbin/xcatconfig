@@ -998,7 +998,7 @@ sub initDB
                   "$::XCATROOT/sbin/chtab node=xcatdefaults postscripts.postscripts='syslog,aixremoteshell,otherpkgs,syncfiles';";
             }
             $chtabcmds .=
-               "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='servicenode'";
+               "$::XCATROOT/sbin/chtab node=service postscripts.postscripts='' postscripts.postbootscripts='servicenode'";
 
         }
         else     # linux
