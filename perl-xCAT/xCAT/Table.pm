@@ -558,7 +558,8 @@ sub get_datatype_string_db2 {
 	} else {
           # if the column is a key 
           if (isAKey(\@{$descr->{keys}}, $col)) { 
-            $ret = "VARCHAR(128) NOT NULL ";  
+	    $ret = $types->{$col};
+            $ret .= " NOT NULL ";  
           } else {
 	    $ret = $types->{$col};
             if ($ret eq "TEXT") {  # text not in db2
