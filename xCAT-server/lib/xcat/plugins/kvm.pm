@@ -462,54 +462,13 @@ sub getNodeUUID {
 sub build_nicstruct {
     my $rethash;
     my $node = shift;
-    my @macs=();
     my @nics=();
     if ($confdata->{vm}->{$node}->[0]->{nics}) {
         @nics = split /,/,$confdata->{vm}->{$node}->[0]->{nics};
     } else {
         @nics = ('virbr0');
     }
-    if ($confdata->{mac}->{$node}->[0]->{mac}) {
-        my $macdata=$confdata->{mac}->{$node}->[0]->{mac};
-        foreach my $macaddr (split /\|/,$macdata) {
-            $macaddr =~ s/\!.*//;
-            push @macs,$macaddr;
-        }
-    }
-    unless (scalar(@macs) >= scalar(@nics)) {
-        #TODO: MUST REPLACE WITH VMCOMMON CODE
-        my $neededmacs=scalar(@nics) - scalar(@macs);
-        my $macstr;
-        my $tmac;
-        my $leading;
-        srand;
-        while ($neededmacs--) {
-            my $allbutmult = 65279; # & mask for bitwise clearing of the multicast bit of mac
-            my $localad=512; # | to set the bit for locally admnistered mac address
-            $leading=int(rand(65535)); 
-            $leading=$leading|512;
-            $leading=$leading&65279;
-            my $n=inet_aton($node);
-            my $tail;
-            if ($n) {
-               $tail=unpack("N",$n);
-            }
-            unless ($tail) {
-                $tail=int(rand(4294967295));
-            }
-            $tmac = sprintf("%04x%08x",$leading,$tail);
-            $tmac =~ s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
-	    if ($usedmacs{$tmac}) { #If we have a collision we can actually perceive, retry the generation of this mac
-		$neededmacs++;
-		next;
-            }
-            $usedmacs{$tmac}=1;
-            push @macs,$tmac;
-        }
-        #$mactab->setNodeAttribs($node,{mac=>join('|',@macs)});
-        #$nrtab->setNodeAttribs($node,{netboot=>'pxe'});
-        #$doreq->({command=>['makedhcp'],node=>[$node]});
-    }
+    my @macs=xCAT::VMCommon::getMacAddresses($confdata,$node,scalar @nics);
     my @rethashes;
     foreach (@macs) {
         my $rethash;
