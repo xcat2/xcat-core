@@ -1103,7 +1103,7 @@ sub get_storage_pool_by_path {
 #attempts to get pool for a volume, returns false on failure
     my $file = shift;
     my $pool;
-    eval {
+    return eval {
         my @currpools = $hypconn->list_storage_pools();
         push @currpools,$hypconn->list_defined_storage_pools();
         foreach $pool (@currpools) {
@@ -1113,9 +1113,9 @@ sub get_storage_pool_by_path {
                 return $pool;
             }
         }
+        return undef;
         # $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
     };
-    return undef;
 }
 
 sub invstorage {
@@ -1467,6 +1467,140 @@ sub get_disks_by_userspecs {
     return @returnxmls;
 }
 
+sub promote_vm_to_master {
+    my %args=@_;
+    my $target=$args{target};
+    my $force=$args{force};
+    my $detach=$args{detach};
+    unless ($target =~ /^nfs:\/\//) {
+        xCAT::SvrUtils::sendmsg([1,"KVM plugin only has nfs://<server>/<path>/<mastername> support at this moment"], $callback,$node);
+        return;
+    }
+    my $dom;
+    eval {
+     $dom = $hypconn->get_domain_by_name($node);
+    };
+    if ($dom and not $force) {
+        xCAT::SvrUtils::sendmsg([1,"VM shut be shut down before attempting to clone (-f to copy unclean disks)"], $callback,$node);
+        return;
+    }
+    my $xml;
+    if ($dom) {
+        $xml = $dom->get_xml_description();
+        $detach=1; #can't rebase if vm is on
+    } else {
+        $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
+    }
+    unless ($xml) {
+        xCAT::SvrUtils::sendmsg([1,"VM must be created before it can be cloned"], $callback,$node);
+        return;
+    }
+    my $parsedxml = $parser->parse_string($xml);
+    my $tmpnod = $parsedxml->findnodes('/domain/uuid')->[0]; #get rid of the VM specific uuid
+    $tmpnod->parentNode->removeChild($tmpnod);
+
+    $target =~ /^(.*)\/([^\/]*)\z/;
+    my $directory=$1;
+    my $mastername=$2;
+
+    $tmpnod = $parsedxml->findnodes('/domain/name/text()')->[0];
+    $tmpnod->setData($mastername); #name the xml whatever the master name is to be
+    foreach ($parsedxml->findnodes("/domain/devices/interface/mac")) { #clear all mac addresses 
+        if ($_->hasAttribute("address")) { $_->setAttribute("address"=>''); }
+    }
+    my $poolobj = get_storage_pool_by_url($directory);
+    unless ($poolobj) {
+        xCAT::SvrUtils::sendmsg([1,"Unable to reach $directory from hypervisor"], $callback,$node);
+        return;
+    }
+    #arguments validated, on with our lives
+#firrder of business, calculate all the image names to be created and ensure none will conflict.
+    my @disks = $parsedxml->findnodes('/domain/devices/disk/source');
+    my %volclonemap;
+    foreach (@disks) {
+        my $filename = $_->getAttribute('file');
+        my $volname = $filename;
+        $volname =~ s!.*/!!; #perl is greedy by default
+        $volname =~ s/^$node/$mastername/;
+        my $novol;
+        eval {
+            $poolobj->refresh();
+            $novol = $poolobj->get_volume_by_name($volname);
+        };
+        if ($novol) {
+            xCAT::SvrUtils::sendmsg([1,"$volname already exists in target storage pool"], $callback,$node);
+            return;
+        }
+        my $sourcevol;
+        eval {
+            $sourcevol = $hypconn->get_storage_volume_by_path($filename);
+        };
+        unless ($sourcevol) {
+            xCAT::SvrUtils::sendmsg([1,"Unable to access $filename to clone"], $callback,$node);
+            return;
+        }
+        $volclonemap{$filename}=[$sourcevol,$volname];
+        $filename =~ s/(.*\/)$node\./$1$mastername\./;
+        $_->setAttribute(file=>$filename);
+    }
+    foreach (keys %volclonemap) {
+        my $sourcevol = $volclonemap{$_}->[0];
+        my $targname = $volclonemap{$_}->[1];
+        my $format;
+        $targname =~ /([^\.]*)$/;
+        $format=$1;
+        my $newvol;
+        my %sourceinfo = %{$sourcevol->get_info()};
+        my $targxml = "<volume><name>$targname</name><target><format type='$format'/></target><capacity>".$sourceinfo{capacity}."</capacity></volume>";
+        xCAT::SvrUtils::sendmsg("Cloning ".$sourcevol->get_name()." (currently is ".($sourceinfo{allocation}/1048576)." MB and has a capacity of ".($sourceinfo{capacity}/1048576)."MB)",$callback,$node);
+        eval {
+            $newvol =$poolobj->clone_volume($targxml,$sourcevol);
+        };
+        if ($newvol) {
+            %sourceinfo = %{$newvol->get_info()};
+            xCAT::SvrUtils::sendmsg("Cloning of ".$sourcevol->get_name()." complete (clone uses ".($sourceinfo{allocation}/1048576)." for a disk size of ".($sourceinfo{capacity}/1048576)."MB)",$callback,$node);
+            unless ($detach) {
+                my $rebasepath = $sourcevol->get_path();
+                my $rebasename = $sourcevol->get_name();
+                my $rebasepool = get_storage_pool_by_volume($sourcevol);
+                unless ($rebasepool) {
+                    xCAT::SvrUtils::sendmsg([1,"Skipping rebase of $rebasename, unable to find correct storage pool"],$callback,$node);
+                    next;
+                }
+                xCAT::SvrUtils::sendmsg("Rebasing $rebasename from master",$callback,$node);
+                $sourcevol->delete();
+                my $newbasexml="<volume><name>$rebasename</name><target><format type='$format'/></target><capacity>".$sourceinfo{capacity}."</capacity><backingStore><path>".$newvol->get_path()."</path><format type='$format'/></backingStore></volume>";
+                my $newbasevol;
+                eval {
+                    $newbasevol = $rebasepool->create_volume($newbasexml);
+                };
+                if ($newbasevol) {
+                    xCAT::SvrUtils::sendmsg("Rebased $rebasename from master",$callback,$node);
+                } else {
+                    xCAT::SvrUtils::sendmsg([1,"Critical failure, rebasing process failed halfway through, source VM trashed"],$callback,$node);
+                }
+            }
+        } else {
+            xCAT::SvrUtils::sendmsg([1,"Cloning of ".$sourcevol->get_name()." failed due to ". $@],$callback,$node);
+            return;
+        }
+    }
+    my $mastertabentry={};
+    foreach (qw/os arch profile/) {
+        if (defined ($confdata->{nodetype}->{$node}->[0]->{$_})) {
+            $mastertabentry->{$_}=$confdata->{nodetype}->{$node}->[0]->{$_};
+        }
+    }
+    foreach (qw/storagemodel nics/) {
+        if (defined ($confdata->{vm}->{$node}->[0]->{$_})) {
+            $mastertabentry->{$_}=$confdata->{vm}->{$node}->[0]->{$_};
+        }
+    }
+    $mastertabentry->{vintage}=localtime;
+    $mastertabentry->{originator}=$requester;
+    $updatetable->{vmmaster}->{$mastername}=$mastertabentry;
+    $updatetable->{kvm_masterdata}->{$mastername}->{xml} = $parsedxml->toString();
+}
 sub clonevm {
     shift; #throw away node
     @ARGV=@_;
@@ -1485,137 +1619,59 @@ sub clonevm {
         return;
     }
     if ($target) { #we need to take a single vm and create a master out of it
-        unless ($target =~ /^nfs:\/\//) {
-            xCAT::SvrUtils::sendmsg([1,"KVM plugin only has nfs://<server>/<path>/<mastername> support at this moment"], $callback,$node);
-            return;
-        }
-        my $dom;
-        eval {
-         $dom = $hypconn->get_domain_by_name($node);
-        };
-        if ($dom and not $force) {
-            xCAT::SvrUtils::sendmsg([1,"VM shut be shut down before attempting to clone (-f to copy unclean disks)"], $callback,$node);
-            return;
-        }
-        my $xml;
-        if ($dom) {
-            $xml = $dom->get_xml_description();
-            $detach=1; #can't rebase if vm is on
-        } else {
-            $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
-        }
-        unless ($xml) {
-            xCAT::SvrUtils::sendmsg([1,"VM must be created before it can be cloned"], $callback,$node);
-            return;
-        }
-        my $parsedxml = $parser->parse_string($xml);
-        my $tmpnod = $parsedxml->findnodes('/domain/uuid')->[0]; #get rid of the VM specific uuid
-        $tmpnod->parentNode->removeChild($tmpnod);
-
-        $target =~ /^(.*)\/([^\/]*)\z/;
-        my $directory=$1;
-        my $mastername=$2;
-
-        $tmpnod = $parsedxml->findnodes('/domain/name/text()')->[0];
-        $tmpnod->setData($mastername); #name the xml whatever the master name is to be
-        foreach ($parsedxml->findnodes("/domain/devices/interface/mac")) { #clear all mac addresses 
-            if ($_->hasAttribute("address")) { $_->setAttribute("address"=>''); }
-        }
-        my $poolobj = get_storage_pool_by_url($directory);
-        unless ($poolobj) {
-            xCAT::SvrUtils::sendmsg([1,"Unable to reach $directory from hypervisor"], $callback,$node);
-            return;
-        }
-        #arguments validated, on with our lives
-#first order of business, calculate all the image names to be created and ensure none will conflict.
-        my @disks = $parsedxml->findnodes('/domain/devices/disk/source');
-        my %volclonemap;
-        foreach (@disks) {
-            my $filename = $_->getAttribute('file');
-            my $volname = $filename;
-            $volname =~ s!.*/!!; #perl is greedy by default
-            $volname =~ s/^$node/$mastername/;
-            my $novol;
-            eval {
-                $poolobj->refresh();
-                $novol = $poolobj->get_volume_by_name($volname);
-            };
-            if ($novol) {
-                xCAT::SvrUtils::sendmsg([1,"$volname already exists in target storage pool"], $callback,$node);
-                return;
-            }
-            my $sourcevol;
-            eval {
-                $sourcevol = $hypconn->get_storage_volume_by_path($filename);
-            };
-            unless ($sourcevol) {
-                xCAT::SvrUtils::sendmsg([1,"Unable to access $filename to clone"], $callback,$node);
-                return;
-            }
-            $volclonemap{$filename}=[$sourcevol,$volname];
-            $filename =~ s/(.*\/)$node\./$1$mastername\./;
-            $_->setAttribute(file=>$filename);
-        }
-        foreach (keys %volclonemap) {
-            my $sourcevol = $volclonemap{$_}->[0];
-            my $targname = $volclonemap{$_}->[1];
-            my $format;
-            $targname =~ /([^\.]*)$/;
-            $format=$1;
-            my $newvol;
-            my %sourceinfo = %{$sourcevol->get_info()};
-            my $targxml = "<volume><name>$targname</name><target><format type='$format'/></target><capacity>".$sourceinfo{capacity}."</capacity></volume>";
-            xCAT::SvrUtils::sendmsg("Cloning ".$sourcevol->get_name()." (currently is ".($sourceinfo{allocation}/1048576)." MB and has a capacity of ".($sourceinfo{capacity}/1048576)."MB)",$callback,$node);
-            eval {
-                $newvol =$poolobj->clone_volume($targxml,$sourcevol);
-            };
-            if ($newvol) {
-                %sourceinfo = %{$newvol->get_info()};
-                xCAT::SvrUtils::sendmsg("Cloning of ".$sourcevol->get_name()." complete (clone uses ".($sourceinfo{allocation}/1048576)." for a disk size of ".($sourceinfo{capacity}/1048576)."MB)",$callback,$node);
-                unless ($detach) {
-                    my $rebasepath = $sourcevol->get_path();
-                    my $rebasename = $sourcevol->get_name();
-                    my $rebasepool = get_storage_pool_by_volume($sourcevol);
-                    unless ($rebasepool) {
-                        xCAT::SvrUtils::sendmsg([1,"Skipping rebase of $rebasename, unable to find correct storage pool"],$callback,$node);
-                        next;
-                    }
-                    xCAT::SvrUtils::sendmsg("Rebasing $rebasename from master",$callback,$node);
-                    $sourcevol->delete();
-                    my $newbasexml="<volume><name>$rebasename</name><target><format type='$format'/></target><capacity>".$sourceinfo{capacity}."</capacity><backingStore><path>".$newvol->get_path()."</path><format type='$format'/></backingStore></volume>";
-                    my $newbasevol;
-                    eval {
-                        $newbasevol = $rebasepool->create_volume($newbasexml);
-                    };
-                    if ($newbasevol) {
-                        xCAT::SvrUtils::sendmsg("Rebased $rebasename from master",$callback,$node);
-                    } else {
-                        xCAT::SvrUtils::sendmsg([1,"Critical failure, rebasing process failed halfway through, source VM trashed"],$callback,$node);
-                    }
-                }
-            } else {
-                xCAT::SvrUtils::sendmsg([1,"Cloning of ".$sourcevol->get_name()." failed due to ". $@],$callback,$node);
-                return;
-            }
-        }
-        my $mastertabentry={};
-        foreach (qw/os arch profile/) {
-            if (defined ($confdata->{nodetype}->{$node}->[0]->{$_})) {
-                $mastertabentry->{$_}=$confdata->{nodetype}->{$node}->[0]->{$_};
-            }
-        }
-        foreach (qw/storagemodel nics/) {
-            if (defined ($confdata->{vm}->{$node}->[0]->{$_})) {
-                $mastertabentry->{$_}=$confdata->{vm}->{$node}->[0]->{$_};
-            }
-        }
-        $mastertabentry->{vintage}=localtime;
-        $mastertabentry->{originator}=$requester;
-        $updatetable->{vmmaster}->{$mastername}=$mastertabentry;
-        $updatetable->{kvm_masterdata}->{$mastername}->{xml} = $parsedxml->toString();
+        return promote_vm_to_master(target=>$target,force=>$force,detach=>$detach);
+    } elsif ($base) {
+        return clone_vm_from_master(base=>$base);
     }
 }
 
+sub clone_vm_from_master {
+=cut
+    my %args = @_;
+    my $base=$args{base};
+    my $vmmastertab=xCAT::Table->new('vmmaster',-create=>0);
+    my $kvmmastertab = xCAT::Table->new('kvm_masterdata',-create=>0);
+    unless ($vmmastertab and $kvmmastertab) {
+        xCAT::SvrUtils::sendmsg([1,"No KVM master images in tables"], $callback,$node);
+        return;
+    }
+    my $mastername=$base;
+    $mastername=~s!.*/!!; #shouldn't be needed, as storage is in there, but just in case
+    my $masteref=$vmmastertab->getAttribs({name=>$mastername},[qw/os arch profile storage storagemodel nics/]);
+    my $kvmmasteref=$kvmmastertab->getAttribs({name=>$mastername},['xml']);
+    unless ($masteref and $kvmmasteref) {
+        xCAT::SvrUtils::sendmsg([1,"KVM master $mastername not found in tables"], $callback,$node);
+        return;
+    }
+    my $newnodexml = $parser->parse_string($kvmmasteref->{xml});
+    if ($masterref->{nics} and $masterref->{nics} ne $confdata->{vm}->{$node}->[0]->{nics}) {
+        $confdata->{vm}->{$node}->[0]->{nics}=$masterref->{nics};
+        $updatetable->{vm}->{$node}->{nics}=$masterref->{nics};
+    }
+
+    $confdata->{vm}->{$node}->[0]->{nics}=$masteref->{nics};
+
+}
+    sub build_nicstruct {
+    if ($confdata->{vm}->{$node}->[0]->{nics}) {
+
+......
+    my $parsedxml = $parser->parse_string($xml);
+    my $tmpnod = $parsedxml->findnodes('/domain/uuid')->[0]; #get rid of the VM specific uuid
+    $tmpnod->parentNode->removeChild($tmpnod);
+
+    $target =~ /^(.*)\/([^\/]*)\z/;
+    my $directory=$1;
+    my $mastername=$2;
+
+    $tmpnod = $parsedxml->findnodes('/domain/name/text()')->[0];
+    $tmpnod->setData($mastername); #name the xml whatever the master name is to be
+    foreach ($parsedxml->findnodes("/domain/devices/interface/mac")) { #clear all mac addresses 
+        if ($_->hasAttribute("address")) { $_->setAttribute("address"=>''); }
+    }
+=cut
+
+}
 sub mkvm {
  shift; #Throuw away first argument
  @ARGV=@_;
