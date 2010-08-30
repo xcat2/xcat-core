@@ -313,7 +313,7 @@ if (@ARGV<1) {
   }
 } else {
   #called by updatenode, infrom user it is done
-  print "returned from postscript";
+  print "returned from postscript\n";
   print $::LOG_FILE "$::sdate  xcataixpost: returned from postscript.\n";
 }
 
@@ -340,7 +340,7 @@ $nodesetstat =~ s/'|"//g;
 if ($nodesetstat eq 'standalone') {
     # see if it is already there
     my $lsicmd = "/usr/sbin/lsitab xcat > /dev/null 2>&1";
-    if (&runcmd($lsicmd) == 0) {
+    if (&runcmd($lsicmd, 0) == 0) {
         # ok - remove the entry
         my $rmitab_cmd = 'rmitab "xcat"  > /dev/null 2>&1';
         if (&runcmd($rmitab_cmd) != 0) {
@@ -478,11 +478,20 @@ sub  updateflag {
 #####################################################
 #
 # run the command
+# the first argument is the command string
+# the second argument is the log flag, 
+#  0 - does NOT log error message
+#  1 - log error message
+#  if it is not specified, it equals to 1
 #
 #####################################################
 sub runcmd
 {
-    my ($cmd) = @_;
+    my ($cmd, $logerr) = @_;
+
+    if(! defined($logerr)) {
+        $logerr = 1;
+    }
     my $rc=0;
     $cmd .= ' 2>&1' ;
     $::outref = [];
@@ -490,10 +499,10 @@ sub runcmd
     if ($?)
     {
         $rc = $? >> 8;
-        if ($rc > 0)
+        if ($rc > 0 && $logerr)
         {
-		print "$::sdate  xcataixpost: $::outref\n";
-		print $::LOG_FILE "$::sdate  xcataixpost: $::outref\n";
+		print "$::sdate  xcataixpost: run: $cmd - $::outref\n";
+		print $::LOG_FILE "$::sdate  xcataixpost: run: $cmd - $::outref\n";
         }
     }
  return $rc;
