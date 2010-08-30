@@ -1312,9 +1312,10 @@ if (0) {
             my $commit_manually = 0;
             my %node_updates;
             OBJ: foreach my $obj (keys %{$allupdates{$table}}) {
+                my %keyhash;
+                my %updates;
+                my $firsttime = 1;
                 ROW: foreach my $row (keys %{$allupdates{$table}{$obj}}) {
-                    my %keyhash;
-                    my %updates;
                     # make sure we have a value for each key
                     foreach my $k (@$keys) {
                         if (!$allupdates{$table}{$obj}{$row}{'lookup_attrs'}) {
@@ -1326,10 +1327,27 @@ if (0) {
                         }
                     }
                     
-                    # lookup keys in %hashkey
-                    # ex. $keyhash{'hcp'} = node1
-                    foreach my $key (keys %{$allupdates{$table}{$obj}{$row}{'lookup_attrs'}}) {
-                        $keyhash{$key} = $allupdates{$table}{$obj}{$row}{'lookup_attrs'}{$key};
+                    if ($firsttime) {
+                        # lookup keys in %hashkey
+                        # ex. $keyhash{'hcp'} = node1
+                        foreach my $key (keys %{$allupdates{$table}{$obj}{$row}{'lookup_attrs'}}) {
+                            $keyhash{$key} = $allupdates{$table}{$obj}{$row}{'lookup_attrs'}{$key};
+                        }
+                        $firsttime = 0;
+                    } else {
+                        # check if the look_attrs is the same as the %keyhash
+                        foreach my $key (keys %{$allupdates{$table}{$obj}{$row}{'lookup_attrs'}}) {
+                            # The lookup_attrs should be the same for all the attributes of one object
+                            if ((scalar(keys %keyhash) != scalar(keys %{$allupdates{$table}{$obj}{$row}{'lookup_attrs'}})) 
+                               || !defined($keyhash{$key}) 
+                               ||($keyhash{$key} ne $allupdates{$table}{$obj}{$row}{'lookup_attrs'}{$key})) {
+                                my $rsp;
+                                $rsp->{data}->[0] = "\nMultiple selection criteria for the \'$obj\' is not supported.";
+                                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                                $ret = 1;
+                                next OBJ;
+                            }
+                        }
                     }
                     
                     # set values in %updates
@@ -1342,12 +1360,12 @@ if (0) {
                         }
                     }
 
-                    # only uses the setAttribs to set attribute one by one when the obj type is NOT 'node'
-                    if (%updates) {
-                        $commit_manually = 1;
-                        my ($rc, $str) = $thistable->setAttribs(\%keyhash, \%updates);
-                    }
                 } #end foreach my $row
+                # only uses the setAttribs to set attribute one by one when the obj type is NOT 'node'
+                if (%updates) {
+                    $commit_manually = 1;
+                    my ($rc, $str) = $thistable->setAttribs(\%keyhash, \%updates);
+                }
             } #end foreach my $obj
             if ($commit_manually) {
                 $thistable->commit;
