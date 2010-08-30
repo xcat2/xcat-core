@@ -151,7 +151,6 @@ sub get_storage_pool_by_url {
             #ok, it is netfs, now check source..
             my $checkhost = $pool->findnodes("/pool/source/host")->[0]->getAttribute("name");
             my $checkpath = $pool->findnodes("/pool/source/dir")->[0]->getAttribute("path");
-            print "$checkhost eq $host and $checkpath eq $path\n"; #) { #TODO: check name resolution to see if they match really even if not strictly the same
             if ($checkhost eq $host and $checkpath eq $path) { #TODO: check name resolution to see if they match really even if not strictly the same
                 last;
             }
@@ -1455,8 +1454,7 @@ sub promote_vm_to_master {
         return;
     }
     my $parsedxml = $parser->parse_string($xml);
-    my $tmpnod = $parsedxml->findnodes('/domain/uuid')->[0]; #get rid of the VM specific uuid
-    $tmpnod->parentNode->removeChild($tmpnod);
+    my $tmpnod = $parsedxml->findnodes('/domain/uuid/text()')->[0]->setData("none"); #get rid of the VM specific uuid
 
     $target =~ /^(.*)\/([^\/]*)\z/;
     my $directory=$1;
@@ -1555,6 +1553,7 @@ sub promote_vm_to_master {
             $mastertabentry->{$_}=$confdata->{vm}->{$node}->[0]->{$_};
         }
     }
+    $mastertabentry->{storage}=$directory;
     $mastertabentry->{vintage}=localtime;
     $mastertabentry->{originator}=$requester;
     $updatetable->{vmmaster}->{$mastername}=$mastertabentry;
@@ -1585,7 +1584,6 @@ sub clonevm {
 }
 
 sub clone_vm_from_master {
-=cut
     my %args = @_;
     my $base=$args{base};
     my $vmmastertab=xCAT::Table->new('vmmaster',-create=>0);
@@ -1603,33 +1601,94 @@ sub clone_vm_from_master {
         return;
     }
     my $newnodexml = $parser->parse_string($kvmmasteref->{xml});
-    if ($masterref->{nics} and $masterref->{nics} ne $confdata->{vm}->{$node}->[0]->{nics}) {
-        $confdata->{vm}->{$node}->[0]->{nics}=$masterref->{nics};
-        $updatetable->{vm}->{$node}->{nics}=$masterref->{nics};
+    $newnodexml->findnodes("/domain/name/text()")->[0]->setData($node); #set name correctly
+    my $uuid=getNodeUUID($node);
+    $newnodexml->findnodes("/domain/uuid/text()")->[0]->setData($uuid); #put in correct uuid
+    #set up mac addresses and such right...
+    fixup_clone_network(mastername=>$mastername,mastertableentry=>$masteref,kvmmastertableentry=>$kvmmasteref,xmlinprogress=>$newnodexml);
+    #ok, now the fun part, storage...
+    my $disk;
+    my $url;
+    if ($confdata->{vm}->{$node}->[0]->{storage}) {
+        unless ($confdata->{vm}->{$node}->[0]->{storage} =~ /^nfs:/) {
+            die "not implemented";
+        }
+        $url = $confdata->{vm}->{$node}->[0]->{storage};
+    } else {
+        $url = $masteref->{storage};
+        $updatetable->{vm}->{$node}->{storage}=$url;
     }
-
-    $confdata->{vm}->{$node}->[0]->{nics}=$masteref->{nics};
+    if ($masteref->{storagemodel} and not $confdata->{vm}->{$node}->[0]->{storagemodel}) {
+        $updatetable->{vm}->{$node}->{storagemodel}=$masteref->{storagemodel};
+    }
+    $url =~ s/,.*//;
+    my $destinationpool = get_storage_pool_by_url($url);
+    foreach $disk ($newnodexml->findnodes("/domain/devices/disk")) {
+        my $srcfilename = $disk->findnodes("./source")->[0]->getAttribute("file");
+        my $filename = $srcfilename;
+        $filename =~ s/^.*$mastername/$node/;
+        $filename =~ m!\.([^\.]*)\z!;
+        my $format=$1;
+        my $newbasexml="<volume><name>$filename</name><target><format type='$format'/></target><capacity>0</capacity><backingStore><path>$srcfilename</path><format type='$format'/></backingStore></volume>";
+        my $newvol = $destinationpool->create_volume($newbasexml);
+        my $newfilename=$newvol->get_path();
+        $disk->findnodes("./source")->[0]->setAttribute("file"=>$newfilename);
+    }
+    my $textxml=$newnodexml->toString();
+    $updatetable->{kvm_nodedata}->{$node}->{xml}=$textxml;
 
 }
-    sub build_nicstruct {
-    if ($confdata->{vm}->{$node}->[0]->{nics}) {
 
-......
-    my $parsedxml = $parser->parse_string($xml);
-    my $tmpnod = $parsedxml->findnodes('/domain/uuid')->[0]; #get rid of the VM specific uuid
-    $tmpnod->parentNode->removeChild($tmpnod);
-
-    $target =~ /^(.*)\/([^\/]*)\z/;
-    my $directory=$1;
-    my $mastername=$2;
-
-    $tmpnod = $parsedxml->findnodes('/domain/name/text()')->[0];
-    $tmpnod->setData($mastername); #name the xml whatever the master name is to be
-    foreach ($parsedxml->findnodes("/domain/devices/interface/mac")) { #clear all mac addresses 
-        if ($_->hasAttribute("address")) { $_->setAttribute("address"=>''); }
+sub fixup_clone_network {
+    my %args = @_;
+    my $newnodexml = $args{xmlinprogress};
+    my $mastername=$args{mastername};
+    my $masteref=$args{mastertableentry};
+    my $kvmmasteref=$args{kvmmastertableentry};
+    unless (ref ($confdata->{vm}->{$node})) {
+        $confdata->{vm}->{$node}=[{nics=>$masteref->{nics}}];
+        $updatetable->{vm}->{$node}->{nics}=$masteref->{nics};
     }
-=cut
-
+    unless ($confdata->{vm}->{$node}->[0]->{nics}) { #if no nic configuration yet, take the one stored in the master
+        $confdata->{vm}->{$node}->[0]->{nics}=$masteref->{nics};
+        $updatetable->{vm}->{$node}->{nics}=$masteref->{nics};
+    }
+    my @nics;
+    if ($confdata->{vm}->{$node}->[0]->{nics}) { #could still be empty if it came from master that way
+        @nics = split /,/,$confdata->{vm}->{$node}->[0]->{nics};
+    } else {
+        @nics = ('virbr0');
+    }
+    my @nicsinmaster = $newnodexml->findnodes("/domain/devices/interface");
+    if (scalar @nicsinmaster > scalar @nics) { #we don't have enough places to attach nics to..
+        xCAT::SvrUtils::sendmsg([1,"KVM master $mastername has ".scalar @nicsinmaster." but this vm only has ".scalar @nics." defined"], $callback,$node);
+        return;
+    }
+    my $nicstruct;
+    my @macs=xCAT::VMCommon::getMacAddresses($confdata,$node,scalar @nics);
+    foreach $nicstruct (@nicsinmaster) {
+        my $bridge = shift @nics;
+        $bridge =~ s/.*://;
+        $bridge =~ s/=.*//;
+        $nicstruct->findnodes("./mac")->[0]->setAttribute("address"=>shift @macs);
+        $nicstruct->findnodes("./source")->[0]->setAttribute("bridge"=>$bridge);
+    }
+    my $nic;
+    my $deviceroot=$newnodexml->findnodes("/domain/devices")->[0];
+    foreach $nic (@nics) { #need more xml to throw at it..
+        my $type = 'e1000'; #better default fake nic than rtl8139, relevant to most
+        $nic =~ s/.*://; #the detail of how the bridge was built is of no
+                        #interest to this segment of code
+        if ($confdata->{vm}->{$node}->[0]->{nicmodel}) {
+            $type = $confdata->{vm}->{$node}->[0]->{nicmodel};
+        }
+        if ($nic =~ /=/) {
+            ($nic,$type) = split /=/,$nic,2;
+        }
+        my $xmlsnippet = "<interface type='bridge'><mac address='".(shift @macs)."'/><source bridge='".$nic."'/><model type='$type'/></interface>";
+        my $chunk = $parser->parse_balanced_chunk($xmlsnippet);
+        $deviceroot->appendChild($chunk);
+    }
 }
 sub mkvm {
  shift; #Throuw away first argument
@@ -2107,7 +2166,7 @@ sub process_request {
             $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
             return;
           }
-      } elsif ($command eq "mkvm") { #must adopt to create
+      } elsif ($command eq "mkvm" or $command eq "clonevm") { #must adopt to create
             unless (adopt(\%orphans,\%hyphash)) {
                 $callback->({error=>"Can't find ".join(",",keys %orphans),errorcode=>[1]});
                 return 1;
