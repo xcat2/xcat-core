@@ -108,15 +108,20 @@ sub build_pool_xml {
     $host =~ s/(\/.*)//;
     my $srcpath = $1;
     my $uuid = xCAT::Utils::genUUID(url=>$url);
+#first, we make a pool desc that won't have slashes in them
     my $pooldesc = '<pool type="netfs">';
-    $pooldesc .= '<name>'.$url.'</name>'; #Hey, at least libvirt doesn't have stupid name restrictions...
+    my $name=$url;
+    $name=~ s!nfs://!nfs_!;
+    $name =~ s/\//_/g; #though libvirt considers / kosher, sometimes it wants to create a local xml file using name for filename...
+    $pooldesc .= '<name>'.$name.'</name>';
     $pooldesc .= '<uuid>'.$uuid.'</uuid>>';
     $pooldesc .= '<source>';
     $pooldesc .= '<host name="'.$host.'"/>';
     $pooldesc .= '<dir path="'.$srcpath.'"/>';
     $pooldesc .= '</source>';
     $pooldesc .= '<target><path>/var/lib/xcat/pools/'.$uuid.'</path></target></pool>';
-    system("ssh $mounthost mkdir -p /var/lib/xcat/pools/$uuid"); #ok, so not *technically* just building XML, but here is the cheapest
+    #turns out we can 'define', then 'build', then 'create' on the poolobj instead of 'create', to get mkdir -p like function
+    #system("ssh $mounthost mkdir -p /var/lib/xcat/pools/$uuid"); #ok, so not *technically* just building XML, but here is the cheapest
                                                             #place to know uuid...  And yes, we must be allowed to ssh in
                                                             #libvirt just isn't capable enough for this sort of usage
     return $pooldesc;
@@ -130,18 +135,42 @@ sub get_storage_pool_by_url {
     my $mounthost = shift;
     unless ($virtconn) { $virtconn = $hypconn; }
     my @currpools = $virtconn->list_storage_pools();
+    push @currpools,$virtconn->list_defined_storage_pools();
     my $poolobj;
     my $pool;
     foreach my $poolo (@currpools) {
         $poolobj = $poolo;
-        $pool = XMLin($poolobj->get_xml_description());
-        if ($pool->{name} eq $url) {
+        $pool = $parser->parse_string($poolobj->get_xml_description()); #XMLin($poolobj->get_xml_description());
+        if ($url =~ /^nfs:\/\/([^\/]*)(\/.*)$/) { #check the essence of the pool rather than the name
+            my $host=$1;
+            my $path=$2;
+            unless ($pool->findnodes("/pool")->[0]->getAttribute("type") eq "netfs") {
+                $pool=undef;
+                next;
+            }
+            #ok, it is netfs, now check source..
+            my $checkhost = $pool->findnodes("/pool/source/host")->[0]->getAttribute("name");
+            my $checkpath = $pool->findnodes("/pool/source/dir")->[0]->getAttribute("path");
+            print "$checkhost eq $host and $checkpath eq $path\n"; #) { #TODO: check name resolution to see if they match really even if not strictly the same
+            if ($checkhost eq $host and $checkpath eq $path) { #TODO: check name resolution to see if they match really even if not strictly the same
+                last;
+            }
+        } elsif ($pool->findnodes('/pool/name/text()')->[0]->data eq $url) { #$pool->{name} eq $url) {
             last;
         }
         $pool = undef;
     }
-    if ($pool) { return $poolobj; }
-    $poolobj = $virtconn->create_storage_pool(build_pool_xml($url,$mounthost));
+    if ($pool) { 
+        my $inf=$poolobj->get_info();
+        if ($inf->{state} == 0) { #Sys::Virt::StoragePool::STATE_INACTIVE) { #if pool is currently inactive, bring it up
+            $poolobj->build();
+            $poolobj->create();
+        }
+        return $poolobj; 
+    }
+    $poolobj = $virtconn->define_storage_pool(build_pool_xml($url,$mounthost));
+    $poolobj->build();
+    $poolobj->create();
     return $poolobj;
 }
 
@@ -1065,20 +1094,28 @@ sub rinv {
     invstorage($domain);
     invnics($domain);
 }
-sub get_pool_for_volume {
-#attempts to get pool for a volume, returns false on failure
-#TODO: build and use a total map of source paths to volume names.  Then we could do more than just ones that end in uuid..
+sub get_storage_pool_by_volume {
     my $vol = shift;
-    my $file = $vol->get_path();
-    $file =~ m!/([^/]*)/($node\..*)\z!;
-    my $pooluuid=$1;
-    my $volname=$2;
+    my $path=$vol->get_path();
+    return get_storage_pool_by_path($path);
+}
+sub get_storage_pool_by_path {
+#attempts to get pool for a volume, returns false on failure
+    my $file = shift;
     my $pool;
-    my $vollocation=$file;
     eval {
-         $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
+        my @currpools = $hypconn->list_storage_pools();
+        push @currpools,$hypconn->list_defined_storage_pools();
+        foreach $pool (@currpools) {
+            my $parsedpool = $parser->parse_string($pool->get_xml_description());
+            my $currpath = $parsedpool->findnodes("/pool/target/path/text()")->[0]->data;
+            if ($currpath eq $file or $file =~ /^$currpath\/[^\/]*$/) {
+                return $pool;
+            }
+        }
+        # $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
     };
-    return $pool;
+    return undef;
 }
 
 sub invstorage {
@@ -1103,11 +1140,10 @@ sub invstorage {
         #fallback to just reporting filename if not feasible
         #libvirt lacks a way to lookup a storage pool by path, so we'll only do so if using the 'default' xCAT scheme with uuid in the path
         $file =~ m!/([^/]*)/($node\..*)\z!;
-        my $pooluuid=$1;
         my $volname=$2;
         my $vollocation=$file;
         eval {
-            my $pool = $hypconn->get_storage_pool_by_uuid($pooluuid);
+            my $pool = get_storage_pool_by_path($file);
             my $poolname = $pool->get_name();
             $vollocation = "[$poolname] $volname";
         };
@@ -1539,7 +1575,7 @@ sub clonevm {
                 unless ($detach) {
                     my $rebasepath = $sourcevol->get_path();
                     my $rebasename = $sourcevol->get_name();
-                    my $rebasepool = get_pool_for_volume($sourcevol);
+                    my $rebasepool = get_storage_pool_by_volume($sourcevol);
                     unless ($rebasepool) {
                         xCAT::SvrUtils::sendmsg([1,"Skipping rebase of $rebasename, unable to find correct storage pool"],$callback,$node);
                         next;
