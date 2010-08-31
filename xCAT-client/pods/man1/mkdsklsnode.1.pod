@@ -6,7 +6,7 @@ B<mkdsklsnode> - Use this xCAT command to define and initialize AIX/NIM diskless
 
 B<mkdsklsnode [-h|--help ]>
 
-B<mkdsklsnode [-V] [-f|--force] [-n|--newname] [-i osimage_name] noderange [attr=val [attr=val ...]]>
+B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 

@@ -6,7 +6,7 @@ B<nimnodeset> - Use this xCAT command to initialize AIX/NIM standalone machines.
 
 B<nimnodeset [-h|--help ]>
 
-B<nimnodeset [-V] [-f|--force] [-i osimage_name] noderange [attr=val [attr=val ...]]>
+B<nimnodeset [-V|--verbose] [-f|--force] [-i osimage_name] noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 

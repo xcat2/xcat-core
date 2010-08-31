@@ -6,7 +6,7 @@ B<rmdsklsnode> - Use this xCAT command to remove AIX/NIM diskless machine defini
 
 B<rmdsklsnode [-h | --help ]>
 
-B<rmdsklsnode [-V] [-f|--force] [-i image_name] noderange>
+B<rmdsklsnode [-V|--verbose] [-f|--force] [-i image_name] noderange>
 
 =head1 DESCRIPTION
 
