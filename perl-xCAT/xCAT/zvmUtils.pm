@@ -725,6 +725,39 @@ sub checkOutput {
 
 #-------------------------------------------------------
 
+=head3   getDeviceNode
+
+	Description	: 	Get the device node for a given address
+    Arguments	: 	Node
+    				Disk address
+    Returns		: 	Device node
+    Example		: my $devNode = xCAT::zvmUtils->getDeviceNode($node, $tgtAddr);
+    
+=cut
+
+#-------------------------------------------------------
+sub getDeviceNode {
+	my ( $class, $node, $tgtAddr ) = @_;
+
+	# Determine device node
+	my $out = `ssh $node "cat /proc/dasd/devices" | grep ".$tgtAddr("`;
+	my @words = split( ' ', $out );
+	my $tgtDevNode;
+	
+	# /proc/dasd/devices look similar to this:
+	# 0.0.0100(ECKD) at ( 94: 0) is dasda : active at blocksize: 4096, 1802880 blocks, 7042 MB
+	# Look for the string 'is'
+	my $i = 0;
+	while ($tgtDevNode ne 'is') {
+		$tgtDevNode = $words[$i];
+		$i++;
+	}
+
+	return $words[$i];
+}
+
+#-------------------------------------------------------
+
 =head3   isAddressUsed
 
 	Description	: 	Check if a given address is used

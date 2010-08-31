@@ -885,14 +885,10 @@ sub changeVM {
 			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $srcLinkAddr );
 
 			# Determine source device node
-			$out = `ssh $hcp "cat /proc/dasd/devices" | grep ".$srcLinkAddr("`;
-			my @words = split( ' ', $out );
-			$srcDevNode = $words[6];
+			$srcDevNode = xCAT::zvmUtils->getDeviceNode($hcp, $srcLinkAddr);
 
 			# Determine target device node
-			$out        = `ssh $hcp "cat /proc/dasd/devices" | grep ".$tgtLinkAddr("`;
-			@words      = split( ' ', $out );
-			$tgtDevNode = $words[6];
+			$tgtDevNode = xCAT::zvmUtils->getDeviceNode($hcp, $tgtLinkAddr);
 
 			# Format target disk
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Formating target disk ($tgtDevNode)" );
@@ -1023,9 +1019,7 @@ sub changeVM {
 			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $tgtLinkAddr );
 
 			# Determine target device node
-			$out        = `ssh $hcp "cat /proc/dasd/devices" | grep ".$tgtLinkAddr("`;
-			@words      = split( ' ', $out );
-			$tgtDevNode = $words[6];
+			$tgtDevNode = xCAT::zvmUtils->getDeviceNode($hcp, $tgtLinkAddr);
 
 			# Format target disk
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Formating target disk ($tgtDevNode)" );
@@ -1590,7 +1584,7 @@ sub makeVM {
 		my $generateNew = 0;
 		@propNames = ('mac');
 		$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $node, @propNames );
-		if ($propVals->{'mac'}) {
+		if ( $propVals->{'mac'} ) {
 
 			# Get MAC suffix (MACID)
 			$macId = $propVals->{'mac'};
@@ -1840,6 +1834,11 @@ sub cloneVM {
 	# $srcLinkAddr[$addr] = $linkAddr
 	my %srcLinkAddr;
 	my %srcDiskSize;
+
+	# Hash table of source disk type
+	# $srcLinkAddr[$addr] = $type
+	my %srcDiskType;
+
 	my @srcDisks = xCAT::zvmUtils->getMdisks( $callback, $sourceNode );
 	foreach (@srcDisks) {
 
@@ -1849,21 +1848,15 @@ sub cloneVM {
 		$type       = $words[2];
 		$srcMultiPw = $words[9];
 
+		# Get disk type
+		$srcDiskType{$addr} = $type;
+
 		# Get disk size (cylinders or blocks)
-		# ECKD disk
-		if ( $type eq '3390' ) {
-
-			# Get disk size (cylinders)
-			$out = `ssh -o ConnectTimeout=5 $sourceNode "vmcp q v dasd" | grep "DASD $addr"`;
-			@words = split( ' ', $out );
-			my $cyl = xCAT::zvmUtils->trimStr( $words[5] );
-			$srcDiskSize{$addr} = $cyl;
-		}
-
-		# FBA disk
-		elsif ( $type eq '9336' ) {
-
-			# To be supported
+		# ECKD or FBA disk
+		if ( $type eq '3390' || $type eq '9336' ) {
+			$out                = `ssh -o ConnectTimeout=5 $sourceNode "vmcp q v dasd" | grep "DASD $addr"`;
+			@words              = split( ' ', $out );
+			$srcDiskSize{$addr} = xCAT::zvmUtils->trimStr( $words[5] );
 		}
 
 		# If source disk is not linked
@@ -1970,7 +1963,7 @@ sub cloneVM {
 	my $srcMac;
 	@propNames = ('mac');
 	$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $sourceNode, @propNames );
-	if ($propVals->{'mac'}) {
+	if ( $propVals->{'mac'} ) {
 
 		# Get MAC address
 		$srcMac = $propVals->{'mac'};
@@ -2018,8 +2011,9 @@ sub cloneVM {
 			elsif ( $pid == 0 ) {
 
 				clone(
-					$callback,   $_,           $args,  \@srcDisks, \%srcLinkAddr,    \%srcDiskSize, $hcpNicAddr,
-					$hcpNetName, \@srcVswitch, $srcOs, $srcMac,    $srcRootPartAddr, $srcIfcfg,     $srcHwcfg
+					$callback, $_, $args, \@srcDisks, \%srcLinkAddr, \%srcDiskSize, \%srcDiskType, 
+					$hcpNicAddr, $hcpNetName, \@srcVswitch, $srcOs, $srcMac, $srcRootPartAddr, $srcIfcfg, 
+					$srcHwcfg
 				);
 
 				# Exit process
@@ -2116,8 +2110,8 @@ sub clone {
 
 	# Get inputs
 	my (
-		$callback,   $tgtNode,       $args,  $srcDisksRef, $srcLinkAddrRef,  $srcDiskSizeRef, $hcpNicAddr,
-		$hcpNetName, $srcVswitchRef, $srcOs, $srcMac,      $srcRootPartAddr, $srcIfcfg,       $srcHwcfg
+		$callback, $tgtNode, $args, $srcDisksRef, $srcLinkAddrRef, $srcDiskSizeRef, $srcDiskTypeRef, 
+		$hcpNicAddr, $hcpNetName, $srcVswitchRef, $srcOs, $srcMac, $srcRootPartAddr, $srcIfcfg, $srcHwcfg
 	  )
 	  = @_;
 
@@ -2136,6 +2130,7 @@ sub clone {
 	my @srcDisks    = @$srcDisksRef;
 	my %srcLinkAddr = %$srcLinkAddrRef;
 	my %srcDiskSize = %$srcDiskSizeRef;
+	my %srcDiskType = %$srcDiskTypeRef;
 	my @srcVswitch  = @$srcVswitchRef;
 
 	# Return code for each command
@@ -2394,10 +2389,45 @@ sub clone {
 		# Add FBA disk
 		elsif ( $type eq '9336' ) {
 
-			#*** To be supported ***
 			# Get disk size (blocks)
-			# Add disk
-		}
+			my $blkSize = '512';
+			my $blks    = $srcDiskSize{$addr};
+
+			$try = 10;
+			while ( $try > 0 ) {
+
+				# Add FBA disk
+				if ( $try > 9 ) {
+					xCAT::zvmUtils->printLn( $callback, "$tgtNode: Adding minidisk ($addr)" );
+				}
+				else {
+					xCAT::zvmUtils->printLn( $callback, "$tgtNode: Trying again ($try) to add minidisk ($addr)" );
+				}
+				$out = `ssh $hcp "$::DIR/add9336 $tgtUserId $pool $addr $blkSize $blks $mode $tgtPw $tgtPw $tgtPw"`;
+
+				# Check output
+				$rc = xCAT::zvmUtils->checkOutput( $callback, $out );
+				if ( $rc == -1 ) {
+
+					# Wait before trying again
+					sleep(5);
+
+					# One less try
+					$try = $try - 1;
+				}
+				else {
+
+					# If output is good, exit loop
+					last;
+				}
+			}    # End of while ( $try > 0 )
+
+			# Exit on bad output
+			if ( $rc == -1 ) {
+				xCAT::zvmUtils->printLn( $callback, "$tgtNode: (Error) Could not create user entry" );
+				return;
+			}
+		}    # End of elsif ( $type eq '9336' )
 	}
 
 	# Check if the number of disks in target user entry
@@ -2433,6 +2463,7 @@ sub clone {
 	my $tgtAddr;
 	my $srcDevNode;
 	my $tgtDevNode;
+	my $tgtDiskType;
 	foreach (@tgtDisks) {
 
 		#*** Link target disk ***
@@ -2481,10 +2512,14 @@ sub clone {
 			# Exit
 			return;
 		}
-
+		
+		# Get disk type (3390 or 9336)
+		$tgtDiskType = $srcDiskType{$_};
+		
 		#*** Use flashcopy ***
+		# Flashcopy only supports ECKD volumes
 		$out = `ssh $hcp "vmcp flashcopy"`;
-		if ( $out =~ m/HCPNFC026E/i ) {
+		if ( ($out =~ m/HCPNFC026E/i) && ($tgtDiskType eq '3390')) {
 
 			# Flashcopy is supported
 			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr) using FLASHCOPY" );
@@ -2544,33 +2579,45 @@ sub clone {
 			$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $tgtAddr );
 
 			# Determine source device node
-			$out        = `ssh $hcp "cat /proc/dasd/devices" | grep ".$srcAddr("`;
-			@words      = split( ' ', $out );
-			$srcDevNode = $words[6];
+			$srcDevNode = xCAT::zvmUtils->getDeviceNode($hcp, $srcAddr);
 
 			# Determine target device node
-			$out        = `ssh $hcp "cat /proc/dasd/devices" | grep ".$tgtAddr("`;
-			@words      = split( ' ', $out );
-			$tgtDevNode = $words[6];
+			$tgtDevNode = xCAT::zvmUtils->getDeviceNode($hcp, $tgtAddr);
 
 			# Format target disk
-			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Formating target disk ($tgtAddr)" );
-			$out = `ssh $hcp "dasdfmt -b 4096 -y -f /dev/$tgtDevNode"`;
+			# Only ECKD disks need to be formated
+			if ($tgtDiskType eq '3390') {
+				xCAT::zvmUtils->printLn( $callback, "$tgtNode: Formating target disk ($tgtAddr)" );
+				$out = `ssh $hcp "dasdfmt -b 4096 -y -f /dev/$tgtDevNode"`;
 
-			# Check for errors
-			$rc = xCAT::zvmUtils->checkOutput( $callback, $out );
-			if ( $rc == -1 ) {
-				xCAT::zvmUtils->printLn( $callback, "$tgtNode: $out" );
-				return;
+				# Check for errors
+				$rc = xCAT::zvmUtils->checkOutput( $callback, $out );
+				if ( $rc == -1 ) {
+					xCAT::zvmUtils->printLn( $callback, "$tgtNode: $out" );
+					return;
+				}
+	
+				# Sleep 2 seconds to let the system settle
+				sleep(2);
+			
+				# Copy source disk to target disk
+				xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr)" );
+				$out = `ssh $hcp "dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096"`;
+			} else {
+				# Copy source disk to target disk
+				# Block size = 512
+				xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr)" );
+				$out = `ssh $hcp "dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=512"`;
+				
+				# Force Linux to re-read partition table
+				xCAT::zvmUtils->printLn( $callback, "$tgtNode: Forcing Linux to re-read partition table" );
+				$out = 
+`ssh $hcp "cat<<EOM | fdisk /dev/$tgtDevNode
+p
+w
+EOM"`;
 			}
-
-			# Sleep 2 seconds to let the system settle
-			sleep(2);
-
-			# Copy source disk to target disk
-			xCAT::zvmUtils->printLn( $callback, "$tgtNode: Copying source disk ($srcAddr) to target disk ($tgtAddr)" );
-			$out = `ssh $hcp "dd if=/dev/$srcDevNode of=/dev/$tgtDevNode bs=4096"`;
-
+						
 			# Check for error
 			$rc = xCAT::zvmUtils->checkOutput( $callback, $out );
 			if ( $rc == -1 ) {
@@ -2587,9 +2634,7 @@ sub clone {
 		$out = xCAT::zvmUtils->disableEnableDisk( $callback, $hcp, "-e", $tgtAddr );
 
 		# Determine target device node (it might have changed)
-		$out        = `ssh $hcp "cat /proc/dasd/devices" | grep ".$tgtAddr("`;
-		@words      = split( ' ', $out );
-		$tgtDevNode = $words[6];
+		$tgtDevNode = xCAT::zvmUtils->getDeviceNode($hcp, $tgtAddr);
 
 		# Get disk address that is the root partition (/)
 		if ( $_ eq $srcRootPartAddr ) {
@@ -2980,7 +3025,7 @@ sub nodeSet {
 			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Node does not belong to any network in the networks table" );
 			return;
 		}
-				
+
 		@propNames = ( 'mask', 'gateway', 'tftpserver', 'nameservers' );
 		$propVals = xCAT::zvmUtils->getTabPropsByKey( 'networks', 'net', $network, @propNames );
 		my $mask       = $propVals->{'mask'};
@@ -2993,7 +3038,7 @@ sub nodeSet {
 			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing network information" );
 			return;
 		}
-		
+
 		# Get broadcast address of NIC
 		my $ifcfg = xCAT::zvmUtils->getIfcfgByNic( $hcp, $readChannel );
 		$out = `ssh $hcp "cat $ifcfg" | grep "BROADCAST"`;
@@ -3038,7 +3083,7 @@ sub nodeSet {
 			xCAT::zvmUtils->printLn( $callback, "$node: (Error) No postscript available for $os" );
 			return;
 		}
-			
+
 		# SUSE installation
 		my $customTmpl;
 		if ( $os =~ m/sles/i ) {
@@ -3055,10 +3100,10 @@ sub nodeSet {
 				xCAT::zvmUtils->printLn( $callback, "$node: (Error) An autoyast template does not exist for $os in $installDir/custom/install/sles/" );
 				return;
 			}
-			
+
 			# Copy postscript into template
 			$out = `sed --in-place -e "/<scripts>/r $postScript" $customTmpl`;
-						
+
 			# Edit template
 			my $device;
 			my $chanIds = "$readChannel $writeChannel $dataChannel";
@@ -3123,7 +3168,7 @@ sub nodeSet {
 			$parms = $parms . "Install=ftp://$ftp/$os/s390x/1/\n";
 			$parms = $parms . "UseVNC=1 VNCPassword=12345678\n";
 			$parms = $parms . "InstNetDev=$instNetDev OsaInterface=$osaInterface OsaMedium=$osaMedium Manual=0\n";
-			
+
 			# Write to parmfile
 			$parmFile = "/tmp/" . $node . "Parm";
 			open( PARMFILE, ">$parmFile" );
@@ -3190,10 +3235,10 @@ sub nodeSet {
 				xCAT::zvmUtils->printLn( $callback, "$node: (Error) An kickstart template does not exist for $os in $installDir/custom/install/rh/" );
 				return;
 			}
-			
+
 			# Copy postscript into template
 			$out = `sed --in-place -e "/%post/r $postScript" $customTmpl`;
-			
+
 			# Edit template
 			my $url = "ftp://$ftp/$os/s390x/";
 			$out =
@@ -3527,7 +3572,7 @@ sub getMacs {
 	@propNames = ('mac');
 	$propVals = xCAT::zvmUtils->getNodeProps( 'mac', $node, @propNames );
 	my $mac;
-	if ($propVals->{'mac'}) {
+	if ( $propVals->{'mac'} ) {
 
 		# Get MAC address
 		$mac = $propVals->{'mac'};
