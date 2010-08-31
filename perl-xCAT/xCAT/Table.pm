@@ -999,9 +999,40 @@ sub updateschema
                  $tmpcol="\`$dcol\`";
               }
             }
+            my $tablespace;
             my $stmt =
                   "ALTER TABLE " . $self->{tabname} . " ADD $tmpcol $datatype";
             $self->{dbh}->do($stmt);
+	    if ($self->{dbh}->errstr) {
+	        xCAT::MsgUtils->message("S", "Error adding columns for table " . $self->{tabname} .":" . $self->{dbh}->errstr);
+                if ($xcatcfg =~ /^DB2:/){  # see if table space error
+                  my $error = $self->{dbh}->errstr;
+                  if ($error =~ /54010/) {
+                  # move the table to the next tablespace
+                    if ($error =~ /USERSPACE1/) {
+                      $tablespace="XCATTBS16K";
+                    } else { 
+                      $tablespace="XCATTBS32K";
+                    }
+                    my $tablename=$self->{tabname};
+                    $tablename=~ tr/a-z/A-Z/; # convert to upper
+                    my $msg="Moving table $self->{tabname} to $tablespace"; 
+	            xCAT::MsgUtils->message("S", $msg);
+                    my $stmt2="Call sysproc.admin_move_table('XCATDB',\'$tablename\',\'$tablespace\',\'$tablespace\',\'$tablespace\','','','','','','MOVE')";
+                    $self->{dbh}->do($stmt2);
+	            if ($self->{dbh}->errstr) {
+	             xCAT::MsgUtils->message("S", "Error on tablespace move  for table " . $self->{tabname} .":" . $self->{dbh}->errstr);
+                    } else {  # tablespace move try column add again
+                       if (!$self->{dbh}->{AutoCommit}) { # commit tbsp move
+                         $self->{dbh}->commit;
+                       }
+                        $self->{dbh}->do($stmt);
+                    }
+
+                  }  # if tablespace error
+                  
+	        } # if db2
+	     }  # error on add column
         }
     }
 
