@@ -73,6 +73,7 @@ sub handled_commands{
 		rmigrate => 'nodehm:power,mgt',
 		mkvm => 'nodehm:mgt',
 		rmvm => 'nodehm:mgt',
+        clonevm => 'nodehm:mgt',
 		rinv => 'nodehm:mgt',
                 chvm => 'nodehm:mgt',
         lsvm => ['hypervisor:type','nodetype:os=(esx.*)'],
@@ -455,6 +456,8 @@ sub do_cmd {
         generic_hyp_operation(\&rmhypervisor,@exargs);
     } elsif ($command eq 'lsvm') {
         generic_hyp_operation(\&lsvm,@exargs);
+    } elsif ($command eq 'clonevm') {
+        generic_hyp_operation(\&clonevms,@exargs);
     } elsif ($command eq 'mkvm') {
         generic_hyp_operation(\&mkvms,@exargs);
     } elsif ($command eq 'chvm') {
@@ -1603,6 +1606,109 @@ sub rmhypervisor {
     return;
 }
 
+sub clonevms {
+    my %args=@_;
+    my $nodes = $args{nodes};
+    my $hyp = $args{hyp};
+    @ARGV = @{$args{exargs}}; #for getoptions;
+    my $base;
+    my $force;
+    my $detach;
+    my $target;
+    require Getopt::Long;
+    GetOptions(
+        'b=s' => \$base,
+        'f' => \$force,
+        'd' => \$detach,
+        't=s' => \$target,
+        );
+    if ($base and $target) {
+        foreach my $node (@$nodes) {
+            xCAT::SvrUtils::sendmsg([1,"Cannot specify both base (-b) and target (-t)"], $output_handler,$node);
+        }
+        return;
+    }
+    unless ($base or $target) {
+        foreach my $node (@$nodes) {
+            xCAT::SvrUtils::sendmsg([1,"Must specify one of base (-b) or target (-t)"], $output_handler,$node);
+        }
+        return;
+    }
+    if ($target and (scalar @{$nodes} != 1)) {
+        foreach my $node (@$nodes) {
+            xCAT::SvrUtils::sendmsg([1,"Cannot specify mulitple nodes to create a master from"], $output_handler,$node);
+        }
+        return;
+    }
+    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn});
+    my $newdatastores;
+    my $mastername;
+    my $url;
+    if ($base) { #if base, we need to pull in the target datastores
+        my $mastertab=xCAT::Table->new('vmmaster');
+        my $masterref=$mastertab->getAttribs(name=>$base);
+        unless ($masterref) {
+            foreach my $node (@$nodes) {
+                xCAT::SvrUtils::sendmsg([1,"Cannot find master $base in vmmaster table"], $output_handler,$node);
+            }
+            return;
+        }
+        foreach (@$nodes) {
+            my $url;
+            if ($tablecfg{vm}->{$_}->[0]->{storage}) {
+                $url=$tablecfg{vm}->{$_}->[0]->{storage};
+            } else {
+                $url=$masterref->{storage};
+            }
+            unless ($url) { die "Shouldn't be possible"; }
+            if (ref $newdatastores->{$_}) {
+                push @{$newdatastores->{$url}},$_;
+            } else {
+               $newdatastores->{$url}=[$_];
+            }
+        }
+    } elsif ($target) {
+        $url=$target;
+        $url =~ s!/([^/]*)\z!!;
+        $mastername=$1;
+        $newdatastores->{$url}=[$nodes->[0]];
+    }
+    unless (validate_datastore_prereqs($nodes,$hyp,$newdatastores)) {
+        return;
+    }
+    $hyphash{$hyp}->{vmfolder} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'])->vmFolder);
+    if ($target) {
+        return promote_vm_to_master(node=>$nodes->[0],target=>$target,force=>$force,detach=>$detach,hyp=>$hyp,url=>$url,mastername=>$mastername);
+    } elsif ($base) {
+        return clone_vms_from_master(nodes=>$nodes,base=>$base,detach=>$detach,hyp=>$hyp);
+    }
+}
+sub promote_vm_to_master {
+    my %args = @_;
+    my $node=$args{node};
+    my $hyp=$args{hyp};
+    my $regex=qr/^$node(\z|\.)/;
+    my $nodeviews = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
+    if (scalar(@$nodeviews) != 1) {
+        xCAT::SvrUtils::sendmsg([1,"Cannot find $node in VMWare infrastructure"], $output_handler,$node);
+        return;
+    }
+    my $nodeview = shift @$nodeviews;
+       print Dumper($hyphash{$hyp}->{datastorerefmap});
+    my $relocatespec = VirtualMachineRelocateSpec->new(
+       datastore=>$hyphash{$hyp}->{datastorerefmap}->{$args{url}},
+    );
+    my $clonespec = VirtualMachineCloneSpec->new(
+        location=>$relocatespec,
+        template=>1,
+        powerOn=>0
+        );
+    my $task = $nodeview->CloneVM_Task(folder=>$hyphash{$hyp}->{vmfolder},name=>$args{mastername},spec=>$clonespec);
+    $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully copied to '.$args{mastername} };
+    $running_tasks{$task}->{task} = $task;
+    $running_tasks{$task}->{callback} = \&generic_task_callback;
+    $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
+}
 sub mkvms {
     my %args = @_;
     my $nodes = $args{nodes};
@@ -2580,6 +2686,7 @@ sub validate_datastore_prereqs {
     # TODO: make this work for VMFS.  Right now only NFS.
     if (ref $newdatastores) {
         foreach (keys %$newdatastores) {
+            my $origurl=$_;
             s/\/$//; #Strip trailing slash if specified, to align to VMware semantics
             if (/:\/\//) {
                 ($method,$location) = split /:\/\//,$_,2;
@@ -2602,9 +2709,12 @@ sub validate_datastore_prereqs {
                     $refresh_names=1;
                     ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=mount_nfs_datastore($hostview,$location);
                 }
+                $hyphash{$hyp}->{datastoremap}->{$origurl}=$hyphash{$hyp}->{datastoremap}->{$uri};
+                $hyphash{$hyp}->{datastorerefmap}->{$origurl}=$hyphash{$hyp}->{datastorerefmap}->{$uri};
             } else {
+                my $datastore=$_;
                 foreach (@{$newdatastores->{$_}}) {
-                    xCAT::SvrUtils::sendmsg([1,": $_ not supported storage specification for ESX plugin, 'nfs://<server>/<path>' only currently supported vm.storage supported for ESX at the moment"], $output_handler,$_);
+                    xCAT::SvrUtils::sendmsg([1,": $datastore not supported storage specification for ESX plugin, 'nfs://<server>/<path>' only currently supported vm.storage supported for ESX at the moment"], $output_handler,$_);
                 }
                 return 0;
             } #TODO: raw device mapping, VMFS via iSCSI, VMFS via FC?
