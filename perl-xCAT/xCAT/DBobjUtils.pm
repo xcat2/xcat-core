@@ -200,8 +200,9 @@ sub getobjattrs
                 my $thistable = xCAT::Table->new($table, -create => 1, -autocommit => 0);
                 if (!$thistable) {
                     my $rsp;
-                    $rsp->{data}->[0] = "Could not get the \'$thistable\' table.";
+                    $rsp->{data}->[0] = "Could not open the \'$table\' table.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    next;
                 }
             
                 my @objlist = @{$objtypelist{$objtype}};
