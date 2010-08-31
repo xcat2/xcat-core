@@ -1005,60 +1005,68 @@ sub updateschema
         }
     }
 
-    #for existing columns that are new keys now,
+    #for existing columns that are new keys now
+    # note new keys can only be created from existing columns 
+    # since keys cannot be null, the copy from the backup table will fail if
+    # the old value was null.
+
     my @new_dbkeys=@{$descr->{keys}};
     my @old_dbkeys=keys %dbkeys;
     #print "new_dbkeys=@new_dbkeys;  old_dbkeys=@old_dbkeys; columns=@columns\n";
     my $change_keys=0;
+    #Add the new key columns to the table
     foreach my $dbkey (@new_dbkeys) {
         if (! exists($dbkeys{$dbkey})) { 
 	    $change_keys=1; 
             #for my sql, we do not have to recreate table, but we have to make sure the type is correct, 
-            #TEXT is not a valid type for a primary key
             my $datatype;
-	    if (($xcatcfg =~ /^mysql:/) || ($xcatcfg =~ /^DB2:/)) {  
-               if ($xcatcfg =~ /^mysql:/) { 
-		 $datatype=get_datatype_string($dbkey, $xcatcfg, $types);
-               } else {   # db2 
-		 $datatype=get_datatype_string_db2($dbkey, $types, $tn,$descr);
-               }
-               if ($datatype eq "TEXT") { 
+            if ($xcatcfg =~ /^mysql:/) { 
+	      $datatype=get_datatype_string($dbkey, $xcatcfg, $types);
+            } else {   # db2 
+	      $datatype=get_datatype_string_db2($dbkey, $types, $tn,$descr);
+            }
+            if ($datatype eq "TEXT") { 
 		    if (isAKey(\@{$descr->{keys}}, $dbkey)) {   # keys need defined length
 		        $datatype = "VARCHAR(128) ";
 		    }
-		}
+            }
 		
-		if (grep /^$dbkey$/, @{$descr->{required}})
-		{
-		    $datatype .= " NOT NULL";
-		}
-		my $stmt =
-		    "ALTER TABLE " . $self->{tabname} . " MODIFY COLUMN $dbkey $datatype";
-		print "stmt=$stmt\n";
-		$self->{dbh}->do($stmt);
-		if ($self->{dbh}->errstr) {
+            my $tmpkey=$dbkey; # for sqlite
+            if ($xcatcfg =~ /^DB2:/){
+                  $tmpkey="\"$dbkey\"";
+                  # get rid of NOT NULL, cannot modify with NOT NULL
+                  my ($tmptype,$nullvalue)= split('NOT NULL',$datatype );
+                  $datatype=$tmptype; 
+                   
+            } else {
+               if ($xcatcfg =~ /^mysql:/) {
+                    $tmpkey="\`$dbkey\`";
+               } 
+            } 
+	    my $stmt;
+            if ($xcatcfg =~ /^DB2:/){
+	     $stmt =
+		    "ALTER TABLE " . $self->{tabname} . " ALTER COLUMN $tmpkey SET DATA TYPE $datatype";
+            } else {
+	     $stmt =
+		    "ALTER TABLE " . $self->{tabname} . " MODIFY COLUMN $tmpkey $datatype";
+            } 
+	     xCAT::MsgUtils->message("S", $stmt);
+	     #print "stmt=$stmt\n";
+  	     $self->{dbh}->do($stmt);
+	     if ($self->{dbh}->errstr) {
 		    xCAT::MsgUtils->message("S", "Error changing the keys for table " . $self->{tabname} .":" . $self->{dbh}->errstr);
-		}
-	    }
+	     }
         }
     }
-    #check for cloumns that used to be keys but now are not
-    if (!$change_keys) {
-	foreach(keys %dbkeys) {
-	    if (! isAKey(\@new_dbkeys, $_)) { 
-		$change_keys=1;
-		last;
-	    }
-	}
-    }
 
-    #finally drop the old keys and add the new keys
+    #finally  add the new keys
     if ($change_keys) {
 	if ($xcatcfg =~ /^mysql:/) {  #for mysql, just alter the table
 	    my $tmp=join(',',@new_dbkeys); 
 	    my $stmt =
 	        "ALTER TABLE " . $self->{tabname} . " DROP PRIMARY KEY, ADD PRIMARY KEY ($tmp)";
-	    print "stmt=$stmt\n";
+	    #print "stmt=$stmt\n";
 	    $self->{dbh}->do($stmt);
             if ($self->{dbh}->errstr) {
 		xCAT::MsgUtils->message("S", "Error changing the keys for table " . $self->{tabname} .":" . $self->{dbh}->errstr);
@@ -1068,15 +1076,28 @@ sub updateschema
             my $btn=$tn . "_xcatbackup";
             
             #remove the backup table just in case;
+            # gets error if not there
             #my $str="DROP TABLE $btn";
 	    #$self->{dbh}->do($str);
 
+	    # Call tabdump plugin to create a CSV file
 	    #rename the table name to name_xcatbackup
-	    my $str = "ALTER TABLE $tn RENAME TO $btn";
+            my $str;
+            if ($xcatcfg =~ /^DB2:/){
+	        $str = "RENAME TABLE $tn TO $btn";
+            } else {
+	        $str = "ALTER TABLE $tn RENAME TO $btn";
+            }
 	    $self->{dbh}->do($str);
+            if (!$self->{dbh}->{AutoCommit}) {
+                 $self->{dbh}->commit;
+            }
 	    if ($self->{dbh}->errstr) {
 		xCAT::MsgUtils->message("S", "Error renaming the table from $tn to $btn:" . $self->{dbh}->errstr);
 	    }
+            if (!$self->{dbh}->{AutoCommit}) {
+                 $self->{dbh}->commit;
+            }
 
 	    #create the table again
 	    $str = 
@@ -1087,6 +1108,9 @@ sub updateschema
 	    if ($self->{dbh}->errstr) {
 		xCAT::MsgUtils->message("S", "Error recreating table $tn:" . $self->{dbh}->errstr);
 	    }
+            if (!$self->{dbh}->{AutoCommit}) {
+                 $self->{dbh}->commit;
+            }
 
             #copy the data from backup to the table
             $str = "INSERT INTO $tn SELECT * FROM $btn";
