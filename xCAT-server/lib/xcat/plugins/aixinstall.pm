@@ -6104,7 +6104,15 @@ sub prenimnodeset
         )
       )
     {
-        return (1);
+        if ($command eq 'mkdsklsnode')
+        {
+            &mkdsklsnode_usage($callback);
+        }
+        else
+        {
+            &nimnodeset_usage($callback);
+        }
+        return;
     }
 
     if ($::HELP)
@@ -8835,6 +8843,7 @@ sub prermdsklsnode
     }
 
     # parse the options
+    Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
                     'f|force'   => \$::FORCE,
@@ -8846,7 +8855,7 @@ sub prermdsklsnode
       )
     {
         &rmdsklsnode_usage($callback);
-        return 1;
+        return;
     }
 
     if ($::HELP)
@@ -9151,7 +9160,7 @@ sub mkdsklsnode_usage
     push @{$rsp->{data}}, "\tmkdsklsnode [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tmkdsklsnode [-V] [-f|--force] [-n|--newname] \n\t\t[-i image_name] noderange [attr=val [attr=val ...]]\n";
+      "\tmkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] \n\t\t[-i image_name] noderange [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
@@ -9174,7 +9183,7 @@ sub rmdsklsnode_usage
     push @{$rsp->{data}}, "\trmdsklsnode [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\trmdsklsnode [-V] [-f|--force] {-i image_name} noderange";
+      "\trmdsklsnode [-V|--verbose] [-f|--force] {-i image_name} noderange";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
@@ -9293,7 +9302,7 @@ sub nimnodeset_usage
     push @{$rsp->{data}}, "\tnimnodeset [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tnimnodeset [-V] [-f|--force] [ -i osimage_name]\n\t\tnoderange [attr=val [attr=val ...]]\n";
+      "\tnimnodeset [-V|--verbose] [-f|--force] [ -i osimage_name]\n\t\tnoderange [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
