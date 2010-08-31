@@ -750,7 +750,19 @@ sub migrate {
             s/=.*//;
             get_storage_pool_by_url($_,$desthypconn,$targ);
         }
-        #TODO: VMCLONE if vm.master is set, got to vmmaster.storage for that master and add it to prereq resolution here
+        if ($confdata->{vm}->{$node}->[0]->{master}) {
+            my $vmmastertab=xCAT::Table->new('vmmaster',-create=>0);
+            my $masterent;
+            if ($vmmastertab) {
+               $masterent=$vmmastertab->getAttribs({name=>$confdata->{vm}->{$node}->[0]->{master}},['storage']);
+            }
+            if ($masterent and $masterent->{storage}) {
+                 foreach (split /,/,$masterent->{storage}) {
+                     s/=.*//;
+                     get_storage_pool_by_url($_,$desthypconn,$targ);
+                 }
+            }
+        }
     }
     my $sock = IO::Socket::INET->new(Proto=>'udp');
     my $ipa=inet_aton($node);
@@ -845,7 +857,19 @@ sub makedom {
                 s/=.*//;
                 get_storage_pool_by_url($_);
             }
-            #TODO: VMCLONE if vm.master is set, got to vmmaster.storage for that master and add it to prereq resolution here
+            if ($confdata->{vm}->{$node}->[0]->{master}) {
+                my $vmmastertab=xCAT::Table->new('vmmaster',-create=>0);
+                my $masterent;
+                if ($vmmastertab) {
+                   $masterent=$vmmastertab->getAttribs({name=>$confdata->{vm}->{$node}->[0]->{master}},['storage']);
+                }
+                if ($masterent and $masterent->{storage}) {
+                     foreach (split /,/,$masterent->{storage}) {
+                         s/=.*//;
+                         get_storage_pool_by_url($_);
+                     }
+                }
+            }
         }
         $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
         my $newxml = fixbootorder($node,$xml);
