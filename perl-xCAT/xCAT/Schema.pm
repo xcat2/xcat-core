@@ -79,7 +79,7 @@ kvm_nodedata => {
         required => [qw(node)],
 	table_desc => 'Persistant store for KVM plugin, not intended for manual modification.',
     types => {
-	xml => 'VARCHAR(16000)', #I like text...  
+	xml => 'VARCHAR(16000)',   
     },
 	descriptions => {
         node => 'The node corresponding to the virtual machine',
@@ -991,9 +991,6 @@ firmware => {
         cols => [qw(node cfgfile comments disable)], 
         keys => [qw(node)],
         required => [qw(node)],
-        types => {
-            node => 'TEXT',
-        },
         table_desc => 'Maps node to firmware values to be used for setup at node discovery or later',
         descriptions => {
             node => 'The node id.',
