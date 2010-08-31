@@ -862,7 +862,11 @@ sub new
 
 =head3  updateschema
 
-    Description: Alters table schema
+    Description: Alters table info in the database based on Schema changes
+                 Handles adding attributes
+                 Handles removing attributes but does not really remove them
+                 from the database.
+                 Handles adding keys  
 
     Arguments: Hash containing Database and Table Handle and schema
 
@@ -976,18 +980,27 @@ sub updateschema
             } else{
              $datatype=get_datatype_string($dcol, $xcatcfg, $types);
             }
-            if ($datatype eq "TEXT") { 
-	 	       if (isAKey(\@{$descr->{keys}}, $dcol)) {   # keys 
-		         $datatype = "VARCHAR(128) ";
-		       }
+            if ($datatype eq "TEXT") {   # keys cannot be TEXT
+	      if (isAKey(\@{$descr->{keys}}, $dcol)) {   # keys 
+	         $datatype = "VARCHAR(128) ";
+	      }
 	    }
 
 	    if (grep /^$dcol$/, @{$descr->{required}})
 	    {
 	 	    $datatype .= " NOT NULL";
 	    }
+            my $tmpcol=$dcol; # for sqlite
+            if ($xcatcfg =~ /^DB2:/){
+              $tmpcol="\"$dcol\"";
+              
+            } else {
+              if ($xcatcfg =~ /^mysql:/) {
+                 $tmpcol="\`$dcol\`";
+              }
+            }
             my $stmt =
-                  "ALTER TABLE " . $self->{tabname} . " ADD $dcol $datatype";
+                  "ALTER TABLE " . $self->{tabname} . " ADD $tmpcol $datatype";
             $self->{dbh}->do($stmt);
         }
     }
