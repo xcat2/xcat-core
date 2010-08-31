@@ -1580,6 +1580,9 @@ sub promote_vm_to_master {
     $mastertabentry->{storage}=$directory;
     $mastertabentry->{vintage}=localtime;
     $mastertabentry->{originator}=$requester;
+    unless ($detach) {
+        $udatetable->{vm}->{$node}->{master}=$mastername;
+    }
     $updatetable->{vmmaster}->{$mastername}=$mastertabentry;
     $updatetable->{kvm_masterdata}->{$mastername}->{xml} = $parsedxml->toString();
 }
@@ -1666,6 +1669,7 @@ sub clone_vm_from_master {
         } else {
             my $newbasexml="<volume><name>$filename</name><target><format type='$format'/></target><capacity>0</capacity><backingStore><path>$srcfilename</path><format type='$format'/></backingStore></volume>";
            $newvol = $destinationpool->create_volume($newbasexml);
+           $updatetable->{vm}->{$node}->{master}=$mastername;
         }
         my $newfilename=$newvol->get_path();
         $disk->findnodes("./source")->[0]->setAttribute("file"=>$newfilename);
