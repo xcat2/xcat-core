@@ -225,14 +225,23 @@ sub getTypeOfNode
 {
     my $class      = shift;
     my $node        = shift;
+    my $callback   = shift;
     
     my $nodetypetab = xCAT::Table->new( 'nodetype');
 
-    xCAT::MsgUtils->message('E', "Failed to open table 'nodetype'.") if ( ! $nodetypetab);
+    if (!$nodetypetab) {
+        my $rsp;
+        $rsp->{errorcode}->[0] = [1];
+        $rsp->{data}->[0]= "Failed to open table 'nodetype'";
+        xCAT::MsgUtils->message('E', $rsp, $callback);
+    }
     my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
     my $nodetype    = $nodetype_hash->{nodetype};
     if ( !$nodetype) {
-	    xCAT::MsgUtils->message('E', "Not found the $node\'s  nodetype");	
+        my $rsp;
+        $rsp->{errorcode}->[0] = [1];
+        $rsp->{data}->[0]= "Not found the $node\'s nodetype";
+        xCAT::MsgUtils->message('E', $rsp, $callback);
         return undef;
     }
     return $nodetype;    
