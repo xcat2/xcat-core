@@ -791,6 +791,8 @@ site => {
    " useNmapfromMN:  When set to yes, nodestat command should obtain the node status\n".
    "                 using nmap (if available) from the management node instead of the\n".
    "                 service node. This will improve the performance in a flat network.\n\n".
+   " enableASMI:  (yes/1 or no/0). If yes, ASMI method will be used after fsp-api. If no,\n".
+   "               when fsp-api is used, ASMI method will not be used. Default is no.\n\n".
    " xcatconfdir:  Where xCAT config data is (default /etc/xcat).\n\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
    " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
