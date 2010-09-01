@@ -669,13 +669,25 @@ zvmPlugin.prototype.loadInventory = function(data) {
 						+ '</option>';
 				}
 				selectPool = selectPool + '</select>';
-
+				
+				// Create drop down list for disk mode
+				var selectMode = '<select id="diskMode" name="diskMode">';
+				selectMode = selectMode + '<option>R</option>';
+				selectMode = selectMode + '<option>RR</option>';
+				selectMode = selectMode + '<option>W</option>';
+				selectMode = selectMode + '<option>WR</option>';
+				selectMode = selectMode + '<option>M</option>';
+				selectMode = selectMode + '<option>MR</option>';
+				selectMode = selectMode + '<option>MW</option>';
+				selectMode = selectMode + '</select>';
+				
 				var dasdForm = '<div class="form">'
     					+ '<div><label for="diskNode">Disk for:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="' + node + '"/></div>'
-    					+ '<div><label for="diskType">Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option></select></div>'
+    					+ '<div><label for="diskType">Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option><option value="9336">9336</option></select></div>'
     					+ '<div><label for="diskAddress">Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>'
     					+ '<div><label for="diskSize">Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>'
     					+ '<div><label for="diskPool">Disk pool:</label>' + selectPool + '</div>'
+    					+ '<div><label for="diskMode">Disk mode:</label>' + selectMode + '</div>'
     					+ '<div><label for="diskPassword">Disk password:</label><input type="password" id="diskPassword" name="diskPassword"/></div>'
     				+ '</div>';
 

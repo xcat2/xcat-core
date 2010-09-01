@@ -362,31 +362,41 @@ function updateZProvisionNewStatus(data) {
 			$.cookie('zProvisionDisks2Add' + out2Id, diskRows.length);
 			if (diskRows.length > 0) {
 				for ( var i = 0; i < diskRows.length; i++) {
-					// Get disk type, address, size, pool, and password
+					// Get disk type, address, size, mode, pool, and password
 					var diskArgs = diskRows.eq(i).find('td');
 					var type = diskArgs.eq(1).find('select').val();
 					var address = diskArgs.eq(2).find('input').val();
 					var size = diskArgs.eq(3).find('input').val();
-					var pool = diskArgs.eq(4).find('input').val();
-					var password = diskArgs.eq(5).find('input').val();
+					var mode = diskArgs.eq(4).find('select').val();
+					var pool = diskArgs.eq(5).find('input').val();
+					var password = diskArgs.eq(6).find('input').val();
+					
+					// Create ajax arguments
+					var args = '';
+					if (type == '3390') {
+						args = '--add' + type + ';' + pool + ';' + address
+							+ ';' + size + ';' + mode + ';' + password + ';'
+							+ password + ';' + password;
+					} else if (type == '9336') {
+						var blkSize = '512';
+						args = '--add' + type + ';' + pool + ';' + address + ';' 
+							+ blkSize + ';' + size + ';' + mode + ';' + password + ';'
+							+ password + ';' + password;
+					}
 
 					// Add disk
-					if (type == '3390') {
-						$.ajax( {
-							url : 'lib/cmd.php',
-							dataType : 'json',
-							data : {
-								cmd : 'chvm',
-								tgt : node,
-								args : '--add3390;' + pool + ';' + address
-									+ ';' + size + ';MR;' + password + ';'
-									+ password + ';' + password,
-								msg : 'cmd=chvm;out=' + out2Id
-							},
+					$.ajax( {
+						url : 'lib/cmd.php',
+						dataType : 'json',
+						data : {
+							cmd : 'chvm',
+							tgt : node,
+							args : args,
+							msg : 'cmd=chvm;out=' + out2Id
+						},
 
-							success : updateZProvisionNewStatus
-						});
-					}
+						success : updateZProvisionNewStatus
+					});
 				}
 			} else {
 				$('#' + loaderId).hide();
@@ -423,10 +433,25 @@ function updateZProvisionNewStatus(data) {
 					for ( var i = 0; i < diskRows.length; i++) {
 						// Get disk type, address, size, pool, and password
 						var diskArgs = diskRows.eq(i).find('td');
-						var address = diskArgs.eq(1).find('input').val();
-						var size = diskArgs.eq(2).find('input').val();
-						var pool = diskArgs.eq(3).find('input').val();
-						var password = diskArgs.eq(4).find('input').val();
+						var type = diskArgs.eq(1).find('select').val();
+						var address = diskArgs.eq(2).find('input').val();
+						var size = diskArgs.eq(3).find('input').val();
+						var mode = diskArgs.eq(4).find('select').val();
+						var pool = diskArgs.eq(5).find('input').val();
+						var password = diskArgs.eq(6).find('input').val();
+						
+						// Create ajax arguments
+						var args = '';
+						if (type == '3390') {
+							args = '--add' + type + ';' + pool + ';' + address
+								+ ';' + size + ';' + mode + ';' + password + ';'
+								+ password + ';' + password;
+						} else if (type == '9336') {
+							var blkSize = '512';
+							args = '--add' + type + ';' + pool + ';' + address + ';' 
+								+ blkSize + ';' + size + ';' + mode + ';' + password + ';'
+								+ password + ';' + password;
+						}
 
 						// Add disk
 						$.ajax( {
@@ -435,9 +460,7 @@ function updateZProvisionNewStatus(data) {
 							data : {
 								cmd : 'chvm',
 								tgt : node,
-								args : '--add3390;' + pool + ';' + address
-									+ ';' + size + ';MR;' + password + ';'
-									+ password + ';' + password,
+								args : args,
 								msg : 'cmd=chvm;out=' + out2Id
 							},
 
@@ -1043,6 +1066,7 @@ function addDisk(v, m, f) {
 		var address = f.diskAddress;
 		var size = f.diskSize;
 		var pool = f.diskPool;
+		var mode = f.diskMode;
 		var password = f.diskPassword;
 
 		// Add disk
@@ -1054,7 +1078,33 @@ function addDisk(v, m, f) {
 					cmd : 'chvm',
 					tgt : node,
 					args : '--add3390;' + pool + ';' + address + ';' + size
-						+ ';MR;' + password + ';' + password + ';' + password,
+						+ ';' + mode + ';' + password + ';' + password + ';' + password,
+					msg : node
+				},
+
+				success : updateZNodeStatus
+			});
+
+			// Increment node process
+			incrementNodeProcess(node);
+
+			// Show loader
+			var statusId = node + 'StatusBar';
+			var statusBarLoaderId = node + 'StatusBarLoader';
+			$('#' + statusBarLoaderId).show();
+			$('#' + statusId).show();
+		} else if (type == '9336') {
+			// Default block size for FBA volumes = 512
+			var blkSize = '512';
+			
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'chvm',
+					tgt : node,
+					args : '--add9336;' + pool + ';' + address + ';' + blkSize + ';' + size
+						+ ';' + mode + ';' + password + ';' + password + ';' + password,
 					msg : node
 				},
 
@@ -1808,7 +1858,7 @@ function createZProvisionNew(inst) {
 	var diskDiv = $('<div class="provision"></div>');
 	var diskLabel = $('<label>Disks:</label>');
 	var diskTable = $('<table></table>');
-	var diskHeader = $('<thead> <th></th> <th>Type</th> <th>Address</th> <th>Size</th> <th>Pool</th> <th>Password</th> </thead>');
+	var diskHeader = $('<thead> <th></th> <th>Type</th> <th>Address</th> <th>Size</th> <th>Mode</th> <th>Pool</th> <th>Password</th> </thead>');
 	// Adjust header width
 	diskHeader.find('th').css( {
 		'width' : '80px'
@@ -1839,7 +1889,9 @@ function createZProvisionNew(inst) {
 		var diskType = $('<td></td>');
 		var diskTypeSelect = $('<select></select>');
 		var diskType3390 = $('<option value="3390">3390</option>');
+		var diskType9336 = $('<option value="9336">9336</option>');
 		diskTypeSelect.append(diskType3390);
+		diskTypeSelect.append(diskType9336);
 		diskType.append(diskTypeSelect);
 		diskRow.append(diskType);
 
@@ -1850,6 +1902,19 @@ function createZProvisionNew(inst) {
 		// Create disk size input
 		var diskSize = $('<td><input type="text"/></td>');
 		diskRow.append(diskSize);
+		
+		// Create disk mode input
+		var diskMode = $('<td></td>');
+		var diskModeSelect = $('<select></select>');
+		diskModeSelect.append('<option value="R">R</option>');
+		diskModeSelect.append('<option value="RR">RR</option>');
+		diskModeSelect.append('<option value="W">W</option>');
+		diskModeSelect.append('<option value="WR">WR</option>');
+		diskModeSelect.append('<option value="M">M</option>');
+		diskModeSelect.append('<option value="MR">MR</option>');
+		diskModeSelect.append('<option value="MW">MW</option>');
+		diskMode.append(diskModeSelect);
+		diskRow.append(diskMode);
 
 		// Get list of disk pools
 		var thisTabId = $(this).parent().parent().parent().parent().parent().parent().attr('id');
@@ -1940,7 +2005,7 @@ function createZProvisionNew(inst) {
 			ready = false;
 		}
 
-		// Check address, size, pool, and password
+		// Check address, size, mode, pool, and password
 		var diskArgs = $('#' + thisTabId + ' table input:visible');
 		for ( var i = 0; i < diskArgs.length; i++) {
 			if (!diskArgs.eq(i).val()
