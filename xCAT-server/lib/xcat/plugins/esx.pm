@@ -1658,7 +1658,7 @@ sub clonevms {
             }
             return;
         }
-        $newdatastores{$masterref->{storage}}=[]; #make sure that the master datastore is mounted...
+        $newdatastores->{$masterref->{storage}}=[]; #make sure that the master datastore is mounted...
         foreach (@$nodes) {
             my $url;
             if ($tablecfg{vm}->{$_}->[0]->{storage}) {
@@ -1692,6 +1692,7 @@ sub clonevms {
 sub clone_vms_from_master {
     my %args = @_;
     my $mastername=$args{mastername};
+    my $hyp = $args{hyp};
     my $regex=qr/^mastername\z/;
     my @nodes=@{$args{nodes}};
     my $node;
@@ -1705,7 +1706,7 @@ sub clone_vms_from_master {
     my $masterview=$masterviews->[0];
     my $masterent=$args{masterent};
     foreach $node (@nodes) {
-        my $destination=$tabecfg{vm}->{$node}->[0]->{storage};
+        my $destination=$tablecfg{vm}->{$node}->[0]->{storage};
         my $nodetypeent;
         my $vment;
         foreach (qw/os arch profile/) {
@@ -1728,7 +1729,7 @@ sub clone_vms_from_master {
             template=>0,
             powerOn=>0
             );
-        my $task = $nodeview->CloneVM_Task(folder=>$hyphash{$hyp}->{vmfolder},name=>$node,spec=>$clonespec);
+        my $task = $masterview->CloneVM_Task(folder=>$hyphash{$hyp}->{vmfolder},name=>$node,spec=>$clonespec);
         $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully cloned from '.$args{mastername}, mastername=>$args{mastername}, nodetypeent=>$nodetypeent,vment=>$vment };
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&clone_task_callback;
@@ -1746,8 +1747,8 @@ sub clone_task_callback {
         xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
         my $nodetype=xCAT::Table->new('nodetype',-create=>1);
         my $vm=xCAT::Table->new('vm',-create=>1);
-        $vm->setAttribs({node=>$node},$args{vment});
-        $nodetype->setAttribs({node=>$node},$args{nodetypeent});
+        $vm->setAttribs({node=>$node},$parms->{vment});
+        $nodetype->setAttribs({node=>$node},$parms->{nodetypeent});
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
     }
@@ -1804,7 +1805,7 @@ sub promote_task_callback {
         }
         my $vmmastertab=xCAT::Table->new('vmmaster',-create=>1);
         my $date=scalar(localtime);
-        $vmmastertab->setAttribs({name=>$parms->{mastername},$mastertabentry);
+        $vmmastertab->setAttribs({name=>$parms->{mastername}},$mastertabentry);
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
     }
