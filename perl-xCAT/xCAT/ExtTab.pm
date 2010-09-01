@@ -113,7 +113,7 @@ foreach (@extSchema) {
 
      It is called by xcatd to generate the user-defined tables 
   if they do not exist, it also updates the tables if there is 
-  Schmea change. 
+  a schema change. 
 
 
 =cut
@@ -124,7 +124,9 @@ sub updateTables
     #print "\nupdateTables\n";
     #print "\n";
     foreach (keys %ext_tabspec) {
-	my $table= xCAT::Table->new($_,-create=>1,-autocommit=>1);
+	my $table= xCAT::Table->new($_,-create=>1);
+        my $rc=$table->updateschema();
+        $table->close();
     }
 }
 #--------------------------------------------------------------------------

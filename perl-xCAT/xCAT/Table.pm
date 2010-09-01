@@ -844,7 +844,6 @@ sub new
          } # end Generic DBI
 
 
-       updateschema($self, $xcatcfg);
     } #END DB ACCESS SPECIFIC SECTION
     if ($self->{tabname} eq 'nodelist')
     {
@@ -876,11 +875,10 @@ sub new
 
     Error:
 
-    Example:
-		  $self->{tabname} = shift;
-          $self->{schema}   = $xCAT::Schema::tabspec{$self->{tabname}};
-          $self->{colnames} = \@{$self->{schema}->{cols}};
-          updateschema($self);
+    Example: my $nodelisttab=xCAT::Table->new('nodelist');
+             $nodelisttab->updateschema(); 
+	     $nodelisttab->close();
+ 
     Comments:
         none
 
@@ -892,10 +890,12 @@ sub updateschema
 
     #This determines alter table statements required..
     my $self = shift;
-    my $xcatcfg = shift;
     my $descr=$xCAT::Schema::tabspec{$self->{tabname}};
     my $tn=$self->{tabname};
     my $xcatdb2schema;
+    my $xcatcfg=get_xcatcfg();
+    my $rc=0;
+    my $msg;
     if ($xcatcfg =~ /^DB2:/) {  # for DB2 , get schema name
       my @parts =  split ( '\|', $xcatcfg);
       $xcatdb2schema = $parts[1];
@@ -1003,6 +1003,8 @@ sub updateschema
             my $stmt =
                   "ALTER TABLE " . $self->{tabname} . " ADD $tmpcol $datatype";
             $self->{dbh}->do($stmt);
+            $msg="updateschema: Running $stmt"; 
+	    xCAT::MsgUtils->message("S", $msg);
 	    if ($self->{dbh}->errstr) {
 	        xCAT::MsgUtils->message("S", "Error adding columns for table " . $self->{tabname} .":" . $self->{dbh}->errstr);
                 if ($xcatcfg =~ /^DB2:/){  # see if table space error
@@ -1016,7 +1018,7 @@ sub updateschema
                     }
                     my $tablename=$self->{tabname};
                     $tablename=~ tr/a-z/A-Z/; # convert to upper
-                    my $msg="Moving table $self->{tabname} to $tablespace"; 
+                    $msg="Moving table $self->{tabname} to $tablespace"; 
 	            xCAT::MsgUtils->message("S", $msg);
                     my $stmt2="Call sysproc.admin_move_table('XCATDB',\'$tablename\',\'$tablespace\',\'$tablespace\',\'$tablespace\','','','','','','MOVE')";
                     $self->{dbh}->do($stmt2);
@@ -1033,6 +1035,9 @@ sub updateschema
                   
 	        } # if db2
 	     }  # error on add column
+             if (!$self->{dbh}->{AutoCommit}) { # commit add column 
+                $self->{dbh}->commit;
+             }
         }
     }
 
@@ -1082,7 +1087,8 @@ sub updateschema
 	     $stmt =
 		    "ALTER TABLE " . $self->{tabname} . " MODIFY COLUMN $tmpkey $datatype";
             } 
-	     xCAT::MsgUtils->message("S", $stmt);
+             $msg="updateschema: Running $stmt"; 
+	     xCAT::MsgUtils->message("S", $msg);
 	     #print "stmt=$stmt\n";
   	     $self->{dbh}->do($stmt);
 	     if ($self->{dbh}->errstr) {
@@ -1099,6 +1105,8 @@ sub updateschema
 	        "ALTER TABLE " . $self->{tabname} . " DROP PRIMARY KEY, ADD PRIMARY KEY ($tmp)";
 	    #print "stmt=$stmt\n";
 	    $self->{dbh}->do($stmt);
+            $msg="updateschema: Running $stmt"; 
+	    xCAT::MsgUtils->message("S", $msg);
             if ($self->{dbh}->errstr) {
 		xCAT::MsgUtils->message("S", "Error changing the keys for table " . $self->{tabname} .":" . $self->{dbh}->errstr);
 	    }
@@ -1123,6 +1131,8 @@ sub updateschema
             if (!$self->{dbh}->{AutoCommit}) {
                  $self->{dbh}->commit;
             }
+            $msg="updateschema: Running $str"; 
+	    xCAT::MsgUtils->message("S", $msg);
 	    if ($self->{dbh}->errstr) {
 		xCAT::MsgUtils->message("S", "Error renaming the table from $tn to $btn:" . $self->{dbh}->errstr);
 	    }
@@ -1146,6 +1156,8 @@ sub updateschema
             #copy the data from backup to the table
             $str = "INSERT INTO $tn SELECT * FROM $btn";
 	    $self->{dbh}->do($str);
+            $msg="updateschema: Running $str"; 
+	    xCAT::MsgUtils->message("S", $msg);
 	    if ($self->{dbh}->errstr) {
 		xCAT::MsgUtils->message("S", "Error copying data from table $btn to $tn:" . $self->{dbh}->errstr);
 	    } else {
@@ -1160,6 +1172,7 @@ sub updateschema
 
 	}
     }
+    return $rc;
 }
 
 #--------------------------------------------------------------------------
