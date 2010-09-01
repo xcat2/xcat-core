@@ -149,14 +149,24 @@ $SIG{PIPE} = sub {
 };
 $progname = \$0;
 
-
+#create and update any xCAt tables
 #create the user defined external database tables if they do not exist.
 #update the tables if there are schema changes.
 # runsqlcmd runs sql scripts provided by the user in
 # /opt/xcat/lib/perl/xCAT_schema
 
 if (xCAT::Utils->isMN()) {
+    # update schema for xCAT tables
+    my %int_tabspec;
+    %int_tabspec = xCAT::Table->getTableList;
+    foreach  my $tablename (keys %int_tabspec) {
+       my $tablelisttab=xCAT::Table->new($tablename,-create=>1);
+       my $rc= $tablelisttab->updateschema();
+       $tablelisttab->close;
+   }
+    # update schema for user tables
     xCAT::ExtTab->updateTables();
+    # run any sql commands
     `$::XCATROOT/sbin/runsqlcmd`;
 }
 
