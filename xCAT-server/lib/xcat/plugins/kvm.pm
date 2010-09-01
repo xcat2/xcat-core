@@ -1581,7 +1581,7 @@ sub promote_vm_to_master {
     $mastertabentry->{vintage}=localtime;
     $mastertabentry->{originator}=$requester;
     unless ($detach) {
-        $udatetable->{vm}->{$node}->{master}=$mastername;
+        $updatetable->{vm}->{$node}->{master}=$mastername;
     }
     $updatetable->{vmmaster}->{$mastername}=$mastertabentry;
     $updatetable->{kvm_masterdata}->{$mastername}->{xml} = $parsedxml->toString();
