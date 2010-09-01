@@ -2016,7 +2016,7 @@ sub renergy {
     }
 
     # get the blade center type first
-    if (grep (/^averageAC|cappingmax|cappingmin|capability$/, @readlist)) {
+    if (grep (/^averageAC|averageDC|cappingmax|cappingmin|capability$/, @readlist)) {
         $bc_type =$session->get([$bladetype_oid]);
         if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
     }
@@ -2109,7 +2109,7 @@ sub renergy {
         if ($oid ne "") {
             my $data=$session->get([$oid]);
             if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
-            
+
             if ($data ne "" 
                 && $data ne "NOSUCHINSTANCE"
                 && $data ne "notApplicable" ) {
