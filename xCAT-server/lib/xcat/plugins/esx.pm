@@ -2029,17 +2029,23 @@ sub create_nic_devs {
                             connected=>0,
                             startConnected => 1
                             );
+    my $model=$tablecfg{vm}->{$node}->{nicmodel};
+    unless ($model) {
+        $model='e1000';
+    }
     foreach (@networks) {
         my $pgname = $hyphash{$hyp}->{pgnames}->{$_};
         s/.*://;
-        s/=.*//;
+        s/=(.*)$//;
+        my $tmpmodel=$model;
+        if ($1) { $tmpmodel=$1; }
         my $netname = $_;
         #print Dumper($netmap);
         my $backing = VirtualEthernetCardNetworkBackingInfo->new(
             network => $netmap->{$pgname},
             deviceName=>$pgname,
         );
-        my $newcard=VirtualE1000->new(
+        my %newcardargs=(
             key=>0,#3, #$currkey++,
             backing=>$backing,
             addressType=>"manual",
@@ -2047,6 +2053,22 @@ sub create_nic_devs {
             connectable=>$connprefs,
             wakeOnLanEnabled=>1, #TODO: configurable in tables?
             );
+        my $newcard;
+        if ($tmpmodel eq 'e1000') {
+            $newcard=VirtualE1000->new(%newcardargs);
+        } elsif ($tmpmodel eq 'vmxnet3') {
+            $newcard=VirtualVmxnet3->new(%newcardargs);
+        } elsif ($tmpmodel eq 'pcnet32') {
+            $newcard=VirtualPCNet32->new(%newcardargs);
+        } elsif ($tmpmodel eq 'vmxnet2') {
+            $newcard=VirtualVmxnet2->new(%newcardargs);
+        } elsif ($tmpmodel eq 'vmxnet') {
+            $newcard=VirtualVmxnet->new(%newcardargs);
+        } else {
+            xCAT::SvrUtils::sendmsg([1,"$tmpmodel not a recognized nic type, falling back to e1000 (vmxnet3, e1000, pcnet32, vmxnet2, vmxnet are recognized"], $output_handler,$node);
+            $newcard=VirtualE1000->new(%newcardargs);
+        }
+            
         push @devs,VirtualDeviceConfigSpec->new(device => $newcard,
                                                 operation =>  VirtualDeviceConfigSpecOperation->new('add'));
         $idx++;
