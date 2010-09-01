@@ -1648,15 +1648,17 @@ sub clonevms {
     my $newdatastores;
     my $mastername;
     my $url;
+    my $masterref;
     if ($base) { #if base, we need to pull in the target datastores
         my $mastertab=xCAT::Table->new('vmmaster');
-        my $masterref=$mastertab->getAttribs(name=>$base);
+        $masterref=$mastertab->getAttribs(name=>$base);
         unless ($masterref) {
             foreach my $node (@$nodes) {
                 xCAT::SvrUtils::sendmsg([1,"Cannot find master $base in vmmaster table"], $output_handler,$node);
             }
             return;
         }
+        $newdatastores{$masterref->{storage}}=[]; #make sure that the master datastore is mounted...
         foreach (@$nodes) {
             my $url;
             if ($tablecfg{vm}->{$_}->[0]->{storage}) {
@@ -1684,9 +1686,73 @@ sub clonevms {
     if ($target) {
         return promote_vm_to_master(node=>$nodes->[0],target=>$target,force=>$force,detach=>$detach,hyp=>$hyp,url=>$url,mastername=>$mastername);
     } elsif ($base) {
-        return clone_vms_from_master(nodes=>$nodes,base=>$base,detach=>$detach,hyp=>$hyp);
+        return clone_vms_from_master(nodes=>$nodes,base=>$base,detach=>$detach,hyp=>$hyp,mastername=>$mastername,masterent=>$masterref);
     }
 }
+sub clone_vms_from_master {
+    my %args = @_;
+    my $mastername=$args{mastername};
+    my $regex=qr/^mastername\z/;
+    my @nodes=@{$args{nodes}};
+    my $node;
+    my $masterviews =  $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
+    if (scalar(@$masterviews) != 1) { 
+        foreach $node (@nodes) {
+            xCAT::SvrUtils::sendmsg([1,"Unable to find master $mastername in VMWare infrastructure"], $output_handler,$node);
+        }
+        return;
+    }
+    my $masterview=$masterviews->[0];
+    my $masterent=$args{masterent};
+    foreach $node (@nodes) {
+        my $destination=$tabecfg{vm}->{$node}->[0]->{storage};
+        my $nodetypeent;
+        my $vment;
+        foreach (qw/os arch profile/) {
+            $nodetypeent->{$_}=$masterent->{$_};
+        }
+        foreach (qw/storagemodel nics/) {
+            $vment->{$_}=$masterent->{$_};
+        }
+        $vment->{master}=$args{mastername};
+        unless ($destination) {
+            $destination=$masterent->{storage};
+            $vment->{storage}=$destination;
+        }
+        my $relocatespec = VirtualMachineRelocateSpec->new(
+           datastore=>$hyphash{$hyp}->{datastorerefmap}->{$destination},
+           diskMoveType=>"createNewChildDiskBacking",
+        );
+        my $clonespec = VirtualMachineCloneSpec->new(
+            location=>$relocatespec,
+            template=>0,
+            powerOn=>0
+            );
+        my $task = $nodeview->CloneVM_Task(folder=>$hyphash{$hyp}->{vmfolder},name=>$node,spec=>$clonespec);
+        $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully cloned from '.$args{mastername}, mastername=>$args{mastername}, nodetypeent=>$nodetypeent,vment=>$vment };
+        $running_tasks{$task}->{task} = $task;
+        $running_tasks{$task}->{callback} = \&clone_task_callback;
+        $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
+    }
+}
+
+sub clone_task_callback {
+    my $task = shift;
+    my $parms = shift;
+    my $state = $task->info->state->val;
+    my $node = $parms->{node};
+    my $intent = $parms->{successtext};
+    if ($state eq 'success') {
+        xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
+        my $nodetype=xCAT::Table->new('nodetype',-create=>1);
+        my $vm=xCAT::Table->new('vm',-create=>1);
+        $vm->setAttribs({node=>$node},$args{vment});
+        $nodetype->setAttribs({node=>$node},$args{nodetypeent});
+    } elsif ($state eq 'error') {
+        relay_vmware_err($task,"",$node);
+    }
+}
+
 sub promote_vm_to_master {
     my %args = @_;
     my $node=$args{node};
