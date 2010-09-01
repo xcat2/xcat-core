@@ -38,6 +38,7 @@ my $executerequest;
 my $usehostnamesforvcenter;
 my %tablecfg; #to hold the tables
 my $currkey;
+my $requester;
 my $viavcenter;
 my $viavcenterbyhyp;
 my $vmwaresdkdetect = eval {
@@ -231,6 +232,9 @@ sub process_request {
 	my $request = shift;
 	$output_handler = shift;
 	$executerequest = shift;
+    if ($request->{_xcat_authname}->[0]) {
+        $requester=$request->{_xcat_authname}->[0];
+    }
 	my $level = shift;
 	my $distname = undef;
 	my $arch = undef;
@@ -1704,10 +1708,40 @@ sub promote_vm_to_master {
         powerOn=>0
         );
     my $task = $nodeview->CloneVM_Task(folder=>$hyphash{$hyp}->{vmfolder},name=>$args{mastername},spec=>$clonespec);
-    $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully copied to '.$args{mastername} };
+    $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully copied to '.$args{mastername}, mastername=>$args{mastername}, url=>$args{url} };
     $running_tasks{$task}->{task} = $task;
-    $running_tasks{$task}->{callback} = \&generic_task_callback;
+    $running_tasks{$task}->{callback} = \&promote_task_callback;
     $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
+}
+sub promote_task_callback {
+    my $task = shift;
+    my $parms = shift;
+    my $state = $task->info->state->val;
+    my $node = $parms->{node};
+    my $intent = $parms->{successtext};
+    if ($state eq 'success') {
+        xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
+        my $mastertabentry = {
+            originator=>$requester,
+            vintage=>localtime,
+            storage=>$parms->{url},
+        };
+        foreach (qw/os arch profile/) {
+            if (defined ($tablecfg{nodetype}->{$node}->[0]->{$_})) {
+                $mastertabentry->{$_}=$tablecfg{nodetype}->{$node}->[0]->{$_};
+            }
+        }
+        foreach (qw/storagemodel nics/) {
+            if (defined ($tablecfg{vm}->{$node}->[0]->{$_})) {
+                $mastertabentry->{$_}=$tablecfg{vm}->{$node}->[0]->{$_};
+            }
+        }
+        my $vmmastertab=xCAT::Table->new('vmmaster',-create=>1);
+        my $date=scalar(localtime);
+        $vmmastertab->setAttribs({name=>$parms->{mastername},$mastertabentry);
+    } elsif ($state eq 'error') {
+        relay_vmware_err($task,"",$node);
+    }
 }
 sub mkvms {
     my %args = @_;
