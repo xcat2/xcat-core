@@ -13,7 +13,7 @@ B<xdsh> I<noderange>  [B<-K>]
 
 B<xdsh> I<noderange>  [B<-K>] [B<-l>  I<userID>]  
 
-B<xdsh> [B<-i> I<image path>] I<command_list>
+B<xdsh> [B<-i> I<image path | nim image name>] I<command_list>
 
 B<xdsh> I<servicenoderange>  [B<-c>] 
 
@@ -223,9 +223,10 @@ Displays usage information.
 
 =item B<-i>|B<--rootimg> I<install image>
 
-
-Specifies the path to the install image on the local node. 
-xdsh will chroot to this path and run the xdsh command against the
+For Linux, Specifies the path to the install image on the local node.
+For AIX, specifies the name of the osimage on the local node. Run lsnim 
+for valid names.
+xdsh will chroot (xcatchroot for AIX) to this path and run the xdsh command against the
 install image.  No other xdsh flags, environment variables apply with 
 this input.  A noderange is not accepted. Only runs on the local host, 
 normally the Management Node. 
@@ -512,7 +513,7 @@ B<xdsh> I<-i /install/netboot/fedora9/x86_64/service/rootimg "rpm -qa | grep xCA
 To run on AIX, the xdsh command "lslpp -l | grep bos"  
 on the NIM 611dskls spot, enter:
 
-B<xdsh> I<-i /install/nim/spot/611dskls "/usr/bin/lslpp -l | grep bos">
+B<xdsh> I<-i 611dskls "/usr/bin/lslpp -l | grep bos">
 
 =item *
 
