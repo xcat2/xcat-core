@@ -3458,7 +3458,7 @@ sub usage_dsh
       [--devicetype type_of_device] [-f fanout]\n";
     my $usagemsg3 = "      [-l user_ID] [-L]  ";
     my $usagemsg4 = "[-m] [-o options][-q] [-Q] [-r remote_shell]
-      [-i image path] [-s] [-S ksh | csh] [-t timeout]\n";
+      [-i image] [-s] [-S ksh | csh] [-t timeout]\n";
     my $usagemsg5 = "      [-T] [-X environment variables] [-v] [-z]\n";
     my $usagemsg6 = "      <command_list>";
     my $usagemsg .= $usagemsg1 .= $usagemsg1a .= $usagemsg2 .= $usagemsg3 .=
