@@ -99,11 +99,6 @@ my @sqlfilelist = xCAT::Table->get_filelist($directory, \@filearray, "sql");
 
 # determine database
 my $xcatcfg = xCAT::Table->get_xcatcfg();
-if ($xcatcfg =~ /^SQLite:/)
-{
-    xCAT::MsgUtils->message("SE",
-      "The runsqlcmd does not support the SQLite database.");
-}
 foreach my $file (@sqlfilelist)
 {
     if ($xcatcfg =~ /^DB2:/)
@@ -121,7 +116,8 @@ foreach my $file (@sqlfilelist)
     if ($xcatcfg =~ /^SQLite:/)
     {
         # not supported but will leave routine in case we change our mind 
-        &runsqlitecmd($file,$xcatcfg);
+        xCAT::MsgUtils->message("SE", "The runsqlcmd does not support the SQLite database.");
+        #&runsqlitecmd($file,$xcatcfg);
         exit 1;
     }
 
