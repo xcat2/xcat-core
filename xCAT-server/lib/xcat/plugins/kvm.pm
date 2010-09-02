@@ -289,25 +289,27 @@ sub fixbootorder {
     my $xml = shift;
     my $domdesc = $parser->parse_string($xml);
     my @bootdevs = $domdesc->findnodes("/domain/os/boot");
+    my @oldbootdevs;
     my $needfixin=0;
     if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
         my @expectedorder = split(/[:,]/,$confdata->{vm}->{$node}->[0]->{bootorder});
         foreach (@expectedorder) { #this loop will check for changes and fix 'n' and 'net'
             my $currdev = shift @bootdevs;
-            unless ($currdev) { $needfixin=1; }
             if ("net" eq $_ or "n" eq $_) {
                 $_ = "network";
             }
-            unless ($currdev->getAttribute("dev") eq $_) {
+            unless ($currdev and $currdev->getAttribute("dev") eq $_) {
                 $needfixin=1;
             }
+            push @oldbootdevs,$currdev;
         }
         if (scalar(@bootdevs)) {
             $needfixin=1;
+            push @oldbootdevs,@bootdevs;
         }
         unless ($needfixin) { return 0; }
         #ok, we need to remove all 'boot' nodes from current xml, and put in new ones in the order we like
-        foreach (@bootdevs) {
+        foreach (@oldbootdevs) {
             $_->parentNode->removeChild($_);
         }
         #now to add what we want...
