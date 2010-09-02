@@ -3646,14 +3646,16 @@ sub parse_and_run_dsh
     if (defined($options{'rootimg'}))
     {    # running against local host
             # diskless image
-
-        if (!(-e ($options{'rootimg'})))
-        {    # directory does not exist
+        # need directory for Linux,  just osimage name for AIX
+        if (xCAT::Utils->isLinux()) {
+         if (!(-e ($options{'rootimg'})))
+         {    # directory does not exist
             my $rsp = ();
             $rsp->{data}->[0] =
               "Input image directory $options{'rootimg'} does not exist.";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
+         }
         }
 
         # since we have no input nodes for running xdsh against the image
@@ -4689,7 +4691,12 @@ sub parse_rsync_input_file_on_SN
 sub runlocal_on_rootimg
 {
     my ($class, $options, $imagename) = @_;
-    my $cmd = "chroot $$options{'rootimg'} $$options{'command'}";
+    my $cmd;
+    if (xCAT::Utils->isAIX()) {   # use xcatchroot
+     $cmd = "$::XCATROOT/bin/xcatchroot -i $$options{'rootimg'} \"$$options{'command'}\"";
+    } else {
+     $cmd = "chroot $$options{'rootimg'} $$options{'command'}";
+    }
     my @output = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
