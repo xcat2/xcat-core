@@ -8557,8 +8557,7 @@ sub make_SN_resource
 
                             # define the local resource
                             my $cmd; 
-							$cmd = "/usr/sbin/nim -Fo define -t $restype -a
-server=master -a location=$lochash{$res} ";
+							$cmd = "/usr/sbin/nim -Fo define -t $restype -a server=master -a location=$lochash{$res} ";
 							my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "source", "dest_dir", "group");
 
 							my %cmdattrs;
