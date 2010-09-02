@@ -34,7 +34,8 @@ my $profDir; # root where you do ./genimage from
 my $help;
 my $match = 0;
 my $color = 0;
-my $method;
+my $imagename;
+my $arch;
 
 #-----------------------------------------------------------------------------
 
@@ -47,23 +48,25 @@ sub print_usage
 {
    print "Usage: genimage -h\n";
    print "       genimage -v\n";
-   print "       genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <additional_nics>]\n                [-o <os>] [-p <profile>] [-k <kernal_version>] [-m <statelite>]\n";
+   print "       genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <additional_nics>]\n                [-o <os>] [-p <profile>] [-k <kernal_version>]\n";
+   print "       genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <additional_nics>]\n                [-k <kernal_version>] image_name\n";
    print "Examples:\n";
    print " genimage -i eth0 -n igb,e1000e,bnx2 -o centos5.4 -p compute\n";
    print " genimage -o suse11\n";
    print " genimage\n";
-   return;
+   print " genimage -i eth0 -n igb,e1000e,bnx2 myimage\n";
+   print " genimage myimage\n";
 }
 if (!GetOptions(
 	'o=s' => \$os,
 	'i=s' => \$interface,
+	'a=s' => \$arch,
 	'p=s' => \$profile,
 	'n=s' => \$drivers,
 	'k=s' => \$kernel,
 	'r=s' => \$otherInterfaces,
 	'h|help' => \$help,
 	'v|version' => \$version,
-	'm=s' => \$method,
 	'c' => \$color
 	
 )) {
@@ -83,74 +86,179 @@ if ($version){
         exit 0;
 
 }
-unless($os){
-	# get the install directory
-	my $installdir = `gettab key=installdir site.value`;
-	chomp($installdir);
-	# lots of error checking to make sure it exists.
-	if($installdir eq ''){
-		print "Could not get install directory from site table.  Assuming your OSes are stored in '/install'\n";
-		$installdir = "/install";
-	}
+if (@ARGV > 0) {
+    $imagename=$ARGV[0];
+}
 
-	unless(-d $installdir){
-		print "The directory where your OS distributions resides: $installdir does not exist.  Please check site table\n";
-		exit 1;	
-	}
-	my @dircontents = `ls $installdir`;
-	chomp(@dircontents);
-	foreach (@dircontents) {
-		if($_ =~ /(rhel|fedora|sl|centos|suse)/){
-			push @oses,$_;
-		}
-	} 
-
-	if($#oses eq -1){
-		print "There are no OS repositories in $installdir.  Please run copycds for the OS first.\n";
-		exit 1;
-	}
-
-	# now they have the OSes, make sure they select one that is available
-	$match = 0;
-	while(1){
-		print color("bold");
-		print "Available OSes: \n";
-		print color("reset");
-		foreach(@oses){
+if ((!$imagename) && (!$profile) && (!$os) && (!$arch)) {
+    my $tmpimgs=`lsdef -t osimage -w provmethod=~'/statelite|netboot/' |cut -d' ' -f1`;
+    if ($? == 0) {
+	if (($tmpimgs) && ($tmpimgs !~ /^Could/)) { #Could is returned when the osimage table is empty
+	    my @images=split('\n', $tmpimgs);
+	    print color("reset");
+	    print "Do you want to re-genarate an existing image from the osimage table? ";
+	    print color("bold"), "[y/n] ",color("reset");
+	    my $conf = <stdin>;
+	    chomp($conf);
+	    if($conf ne "" && $conf !~/N|n|[Nn][Oo]/) {
+		$match = 0;
+		while(1){
+		    print color("bold");
+		    print "Available images: \n";
+		    print color("reset");
+		    foreach(sort @images){
 			$color && print color("green" );
-			print  "$_\n";
+			print  "   $_\n";
 			$color && print color("reset");	
-		}
-		# default is the first OS cause in many cases, they'll only have 1.
-		print "Which OS to you want to build a netboot image for? [";
-		print color("bold"),  $oses[0] , color("reset");
-		print "] ";
-	
-		$os = <stdin>;
-		chomp($os);
-		if($os eq ""){
-			$os = @oses[0];
+		    } 
+		    # default is the first image cause in many cases
+		    print "Which image do you want to re-generate? [";
+		    print color("bold"),  $images[0] , color("reset");
+		    print "] ";
+		    
+		    my $img = <stdin>;
+		    chomp($img);
+		    if($img eq ""){
+			$imagename = @images[0];
 			last;
-		}
-		foreach(@oses){
-			if($os eq $_){
-				$match = 1;
+		    }
+		    foreach(@images){
+			if($img eq $_){
+			    $imagename=$img;
+			    $match = 1;
 			}	
-		}
-	
-		if($match){
+		    }
+		    if ($match) {
 			last;
-		}else{
-			print color("red bold"), "$os is not found in '$installdir'\n", color("reset");
+		    } else {
+			print color("red bold"), "$img is not found in the osimage table.\n", color("reset");
+		    }
 		}
+	    } 
 	}
+    }
+}
 
+if ($imagename) {
+    if ($os or $profile or $arch) {
+	print "-o, -a and -p options are not allowed when a image name is specified.\n";
+        exit 1;
+    }
+    #load the module in memory
+    eval {require("$::XCATROOT/lib/perl/xCAT/Table.pm")};
+    if ($@) {
+	print $@;
+	exit 1;
+    }
+   
+    #get the info from the osimage and linuximage tables 
+    my $osimagetab=xCAT::Table->new('osimage', -create=>1);
+    if (!$osimagetab) {
+	print "The osimage table cannot be opened.\n";
+	exit 1;
+    }
+    my $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
+    if (!$linuximagetab) {
+	print "The linuximage table cannot be opened.\n";
+	exit 1;
+    }
+
+    (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+    if (!$ref) {
+	print "Cannot find image \'$imagename\' from the osimage table.\n";
+	exit 1;
+    }
+    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'netdrivers', 'kernelver');
+    if (!$ref1) {
+	print "Cannot find $imagename from the linuximage table\n";
+	exit 1;
+    }
+
+    $os=$ref->{'osvers'};
+    $arch=$ref->{'osarch'};
+    $profile=$ref->{'profile'};
+    my $provmethod=$ref->{'provmethod'};
+    
+    unless ($os and $profile) {
+	print"osimage.osvers and osimage.profile must be specified for the image $imagename in the database.\n";
+	exit 1;
+    }
+
+    $drivers=$ref1->{'netdrivers'};
+    $kernel=$ref1->{'kernelver'};
+} 
+
+
+
+# get the install directory
+my $installdir = `gettab key=installdir site.value`;
+chomp($installdir);
+# lots of error checking to make sure it exists.
+if($installdir eq ''){
+    print "Could not get install directory from site table.  Assuming your OSes are stored in '/install'\n";
+    $installdir = "/install";
+}
+    
+unless(-d $installdir){
+    print "The directory where your OS distributions resides: $installdir does not exist.  Please check site table\n";
+    exit 1;	
+}
+
+unless($os){
+    my @dircontents = `ls $installdir`;
+    chomp(@dircontents);
+    foreach (@dircontents) {
+	if($_ =~ /(rhel|fedora|sl|centos|suse)/){
+	    push @oses,$_;
+	}
+    } 
+    
+    if($#oses eq -1){
+	print "There are no OS repositories in $installdir.  Please run copycds for the OS first.\n";
+	exit 1;
+    }
+    
+    # now they have the OSes, make sure they select one that is available
+    $match = 0;
+    while(1){
+	print color("bold");
+	print "Available OSes: \n";
+	print color("reset");
+	foreach(@oses){
+	    $color && print color("green" );
+	    print  "   $_\n";
+	    $color && print color("reset");	
+	}
+	# default is the first OS cause in many cases, they'll only have 1.
+	print "Which OS do you want to build a image for? [";
+	print color("bold"),  $oses[0] , color("reset");
+	print "] ";
+	
+	$os = <stdin>;
 	chomp($os);
+	if($os eq ""){
+	    $os = @oses[0];
+	    last;
+	}
+	foreach(@oses){
+	    if($os eq $_){
+		$match = 1;
+	    }	
+	}
+	
+	if($match){
+	    last;
+	}else{
+	    print color("red bold"), "$os is not found in '$installdir'\n", color("reset");
+	}
+    }
+    
+    chomp($os);
 }
 $color && print color("cyan"); 
-print "os: $os\n";
+print "  OS: $os\n";
 $color && print  color("reset");
- 
+
 
 
 ### Get the Profile ####
@@ -158,260 +266,236 @@ my $osfamily = $os;
 $osfamily  =~ s/\d+//g;
 $osfamily  =~ s/\.//g;
 if($osfamily =~ /rh/){
-	$osfamily = "rh";
+  $osfamily = "rh";
 }
 
 # OS version on s390x can contain 'sp', e.g. sles11sp1
 # If the $osfamily contains 'sles' and 'sp', the $osfamily = sles
 if ($osfamily =~ /sles/ && $osfamily =~ /sp/) {
-	$osfamily = "sles";
+    $osfamily = "sles";
 }
 
 #print "OSfamily: $osfamily\n";
 $profDir = "$::XCATROOT/share/xcat/netboot/$osfamily";
 unless(-d $profDir){
-	print color("red bold") , "Unable to find profiles in $profDir\n", color("reset");
-	exit 1;
+    print color("red bold") , "Unable to find genimage script in $profDir\n", color("reset");
+    exit 1;
 }
 
 unless($profile){
-	my @proList = `ls $profDir/*.pkglist`;
-	my %seen = ();
-	foreach (@proList) {
-		my $f = basename($_);
-		$f =~ s/([^\.]*).*/$1/;
-		chomp($f);
-		$seen{$f}++;
-	} 
-	@profiles = keys %seen;
-	if($#profiles eq -1){
-		print color("red bold"), "There are no profiles in $::XCATROOT/share/xcat/netboot/$osfamily.\n", color("reset");
-		exit 1;
+    my $profDir2 = "$installdir/custom/netboot/$osfamily";
+    my @proList = `ls $profDir/*.pkglist`;
+    if (-d $profDir2) {
+	@proList = (@proList, `ls $profDir2/*.pkglist`);
+    }
+    my %seen = ();
+    foreach (@proList) {
+	my $f = basename($_);
+	$f =~ s/([^\.]*).*/$1/;
+	chomp($f);
+	$seen{$f}++;
+    } 
+    @profiles = sort keys %seen;
+    if($#profiles eq -1){
+	print color("red bold"), "There are no profiles in $::XCATROOT/share/xcat/netboot/$osfamily.\n", color("reset");
+	exit 1;
+    }
+    $match = 0;
+    while(1){
+	print color("bold"), "Available Profiles for $os: \n", color("reset");
+	foreach(@profiles){
+	    $color && print color("green");  
+	    print "   $_\n"; 
+	    $color && print color("reset");	
 	}
-	$match = 0;
-	while(1){
-		print color("bold"), "Available Profiles for $os: \n", color("reset");
-		foreach(@profiles){
-			$color && print color("green");  
-			print "$_\n"; 
-			$color && print color("reset");	
-		}
-		# default is the first OS cause in many cases, they'll only have 1.
-		print "Which profile do you want to use for $os?  [";
-		print color("bold"),  $profiles[0] , color("reset");
-		print "] ";
+	# default is the first OS cause in many cases, they'll only have 1.
+	print "Which profile do you want to use for $os?  [";
+	print color("bold"),  $profiles[0] , color("reset");
+	print "] ";
 	
-		$profile = <stdin>;
-		chomp($profile);
-		if($profile eq ""){
-			$profile = $profiles[0];
-			last;
-		}
-		foreach(@profiles){
-			if($profile eq $_){
-				$match = 1;
-			}	
-		}
-		if($match eq 1){
-			last;
-		}
+	$profile = <stdin>;
+	chomp($profile);
+	if($profile eq ""){
+	    $profile = $profiles[0];
+	    last;
 	}
+	foreach(@profiles){
+	    if($profile eq $_){
+		$match = 1;
+	    }	
+	}
+	if($match eq 1){
+	    last;
+	}
+    }
 }
 $color && print color("cyan");
-print  "profile: $profile\n";
+print  "  Profile: $profile\n";
 $color && print  color("reset");
 
 # get the interface
 unless($interface){
-	while(1){
-		print "Which network interface do you want the image to boot from? [";
-		print color("bold"), "eth0" ,color("reset");
-		print "] ";
-		$interface = <stdin>;
-		chomp($interface);
-		if($interface eq ""){
-				$interface = "eth0";
-			last;
-		}else{
-			print "You want your stateless machines to boot off of ";
-			$color && print color("cyan");
-			print "$interface";
-			$color && print color("reset");
-			print "? ";
-			print color("bold"),"[Y/n] ", color("reset");
-			my $conf = <stdin>;
-			chomp($conf);
-			if($conf eq ""){
-				last;
-			}
-			if($conf =~ /Y|y|[Yy][Ee][Ss]/){
-				last;
-			}	
-		}
+    while(1){
+	print "Which network interface do you want the image to boot from? [";
+	print color("bold"), "eth0" ,color("reset");
+	print "] ";
+	$interface = <stdin>;
+	chomp($interface);
+	if($interface eq ""){
+	    $interface = "eth0";
+	    last;
+	}else{
+	    print "You want your stateless machines to boot off of ";
+	    $color && print color("cyan");
+	    print "$interface";
+	    $color && print color("reset");
+	    print "? ";
+	    print color("bold"),"[Y/n] ", color("reset");
+	    my $conf = <stdin>;
+	    chomp($conf);
+	    if($conf eq ""){
+		last;
+	    }
+	    if($conf =~ /Y|y|[Yy][Ee][Ss]/){
+		last;
+	    }	
 	}
+    }
 }
 $color && print color("cyan");
-print "interface: $interface\n";
+print "  Interface: $interface\n";
 $color && print color("reset");
 
 
 # get drivers
 unless($drivers){
-	while(1){
-		print "Which network drivers will you need? (press enter if you're not sure) ";
-		print color("bold"), "\n[igb,e1000e,e1000,bnx2,tg3] ", color("reset");
-
-		$drivers = <stdin>;
-		chomp($drivers);
-		if($drivers eq ""){
-			$drivers = "igb,e1000e,e1000,bnx2,tg3";
-			last;
-		}else{
-			print "You want to use the following driver(s): ";
-			$color && print color("cyan");
-			print  $drivers;
-			$color && color("reset");
-			print "? ";
-			print color("bold"),"[Y/n] ", color("reset");
-			my $conf = <stdin>;
-			chomp($conf);
-			if($conf eq ""){
-				last;
-			}
-			if($conf =~ /Y|y|[Yy][Ee][Ss]/){
-				last;
-			}	
-		}
+    while(1){
+	print "Which network drivers will you need? (press enter if you're not sure) ";
+	print color("bold"), "\n[igb,e1000e,e1000,bnx2,tg3] ", color("reset");
+	
+	$drivers = <stdin>;
+	chomp($drivers);
+	if($drivers eq ""){
+	    $drivers = "igb,e1000e,e1000,bnx2,tg3";
+	    last;
+	}else{
+	    print "You want to use the following driver(s): ";
+	    $color && print color("cyan");
+	    print  $drivers;
+	    $color && color("reset");
+	    print "? ";
+	    print color("bold"),"[Y/n] ", color("reset");
+	    my $conf = <stdin>;
+	    chomp($conf);
+	    if($conf eq ""){
+		last;
+	    }
+	    if($conf =~ /Y|y|[Yy][Ee][Ss]/){
+		last;
+	    }	
 	}
+    }
 }
 $color && print color("cyan");
-print  "$drivers\n";
+print  "  Network drivers: $drivers\n";
 $color && print  color("reset");
-
+    
 # get other interfaces
 unless($otherInterfaces){
-	while(1){
-		print "Do you need to set up other interfaces? ";
-		print color("bold"), "[y/N] ",color("reset");
-		my $conf = <stdin>;
-		chomp($conf);
-		if($conf eq "" || $conf =~/N|n|[Nn][Oo]/){
-			$otherInterfaces ="";
-			last;
-		}else{
-			$otherInterfaces = "eth1";
-			if($otherInterfaces eq $interface){
-				$otherInterfaces = "eth0";
-			}
-			print "What other interface do you need? [";
-			print color("bold"), $otherInterfaces, color("reset"); 
-			print "] ";
-			my $tmp = <stdin>;
-			chomp($tmp);
-			if($tmp eq ""){
-				last;
-			}else{
-				print "You want to also set up: ";
-				$color && print color("cyan"); 
-				print $tmp;
-				$color && print color("reset");
-				print "? ";
-				print color("bold"),"[Y/n] ", color("reset");
-				my $conf = <stdin>;
-				chomp($conf);
-				if($conf eq ""){
-					$otherInterfaces = $tmp;
-					last;
-				}
-					if($conf =~ /Y|y|[Yy][Ee][Ss]/){
-					last;
-				}	
-				
-			} #end confirmation
-		} # end part where they don't want default
-	} # end question loop
+    my $first=1;
+    while(1){
+        if ($first) {
+	    print "Do you need to set up other interfaces? ";
+	    $first = 0;
+	} else {
+	    print "Do you need to set up more interfaces besides $otherInterfaces? ";
+	}
+	print color("bold"), "[y/n] ",color("reset");
+	my $conf = <stdin>;
+	chomp($conf);
+	if($conf eq "" || $conf =~/N|n|[Nn][Oo]/){
+	    last;
+	}else{
+	    print "What other interface do you need? ";
+	    my $tmp = <stdin>;
+	    chomp($tmp);
+	    if($tmp eq ""){
+		last;
+	    }else{
+		if ($otherInterfaces) {
+		    $otherInterfaces = "$otherInterfaces,$tmp";
+		} else {
+		    $otherInterfaces=$tmp;
+		}
+	    } #end confirmation
+	} # end part where they don't want default
+    } # end question loop
 } # end getting other interfaces
 if($otherInterfaces){
-	$color && print color("cyan");
-	print "Other Interfaces: $otherInterfaces\n"; 
-	$color && color("reset");
-}
-
+    $color && print color("cyan");
+    print "  Other Interfaces: $otherInterfaces\n"; 
+    $color && color("reset");
+}   
 
 # get kernel info 
 unless($kernel){
-	while(1){
-		print "Which kernel do you want to use? [";
-		print color("bold"), "default" , color("reset");
-		print "] ";
-		$kernel = <stdin>;
-		chomp($kernel);
-		if($kernel eq ""){
-			# special case of RHEL5.4 where kenrel must be specified or you 
-			# get some other one
-			if($os =~ /rhels5.4|centos5.4|rhel5.4|sl5.4/){
-				$kernel = "2.6.18-164.el5";
-			}
-			last;	
-		}else{
-			print "You want to use: ";
-			$color && print color("cyan");
-			print $kernel;
-			$color && print color("reset");
-			print "? ";
-			print color("bold"),"[Y/n] ", color("reset");
-			my $conf = <stdin>;
-			chomp($conf);
-			if($conf eq ""){
-				last;
-			}
-			if($conf =~ /Y|y|[Yy][Ee][Ss]/){
-				last;
-			}	
-		}
+    while(1){
+	print "Which kernel do you want to use? [";
+	print color("bold"), "default" , color("reset");
+	print "] ";
+	$kernel = <stdin>;
+	chomp($kernel);
+	if($kernel eq ""){
+	    # special case of RHEL5.4 where kenrel must be specified or you 
+	    # get some other one
+	    if($os =~ /rhels5.4|centos5.4|rhel5.4|sl5.4/){
+		$kernel = "2.6.18-164.el5";
+	    }
+	    last;	
+	}else{
+	    print "You want to use: ";
+	    $color && print color("cyan");
+	    print $kernel;
+	    $color && print color("reset");
+	    print "? ";
+	    print color("bold"),"[Y/n] ", color("reset");
+	    my $conf = <stdin>;
+	    chomp($conf);
+	    if($conf eq ""){
+		last;
+	    }
+	    if($conf =~ /Y|y|[Yy][Ee][Ss]/){
+		last;
+	    }	
 	}
+    }
 } # end unless kernel
-
-
-unless($method){
-	while(1){
-		print "Do you want the image to be statelite? [";
-		print color("bold"), '[y/N] ', color("reset");
-		my $conf = <stdin>;
-		chomp($conf);
-		if($conf =~ /^Y|^y|[Yy][Ee][Ss]/){
-			$method = "statelite";
-			last;
-		}
-		if($conf eq ""){ last; }
-		if($conf =~ /N|n|[Nn][Oo]/){
-			last;	
-		}
-
-	}
-}
-
-
-
 if($kernel){
-	$color && print color("blue"); 
-	print "kernel: $kernel\n";
-	$color && print  color("reset");
+    $color && print color("blue"); 
+    print "  Kernel: $kernel\n";
+    $color && print  color("reset");
 }
+   
 
 print "Generating image:\n";
-my $cmd = "./genimage -i $interface -n $drivers -o $os -p $profile ";
-if($kernel){
-	$cmd .= " -k $kernel";
+my $cmd;
+if ($imagename) {
+    $cmd = "./genimage -i $interface -n $drivers $imagename";
+} else {
+    $cmd = "./genimage -i $interface -n $drivers -o $os -p $profile ";
 }
+
+if ($kernel) {
+    $cmd .= " -k $kernel";
+}
+
 if($otherInterfaces){
-	$cmd .= " -r $otherInterfaces";
+    $cmd .= " -r $otherInterfaces";
 }
-if($method){
-	$cmd .= " -m $method";
-}
+
 $color && print color("cyan");
 print  "cd $profDir\n";
 print  "$cmd\n"; 
 $color && print color("reset");
 exec("cd $profDir; $cmd");
+    
