@@ -1686,14 +1686,14 @@ sub clonevms {
     if ($target) {
         return promote_vm_to_master(node=>$nodes->[0],target=>$target,force=>$force,detach=>$detach,hyp=>$hyp,url=>$url,mastername=>$mastername);
     } elsif ($base) {
-        return clone_vms_from_master(nodes=>$nodes,base=>$base,detach=>$detach,hyp=>$hyp,mastername=>$mastername,masterent=>$masterref);
+        return clone_vms_from_master(nodes=>$nodes,base=>$base,detach=>$detach,hyp=>$hyp,mastername=>$base,masterent=>$masterref);
     }
 }
 sub clone_vms_from_master {
     my %args = @_;
     my $mastername=$args{mastername};
     my $hyp = $args{hyp};
-    my $regex=qr/^mastername\z/;
+    my $regex=qr/^$mastername\z/;
     my @nodes=@{$args{nodes}};
     my $node;
     my $masterviews =  $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
