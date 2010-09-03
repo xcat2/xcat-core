@@ -2130,7 +2130,7 @@ sub create_nic_devs {
                             connected=>0,
                             startConnected => 1
                             );
-    my $model=$tablecfg{vm}->{$node}->{nicmodel};
+    my $model=$tablecfg{vm}->{$node}->[0]->{nicmodel};
     unless ($model) {
         $model='e1000';
     }
