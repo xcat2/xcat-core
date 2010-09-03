@@ -1651,7 +1651,7 @@ sub clonevms {
     my $masterref;
     if ($base) { #if base, we need to pull in the target datastores
         my $mastertab=xCAT::Table->new('vmmaster');
-        $masterref=$mastertab->getAttribs(name=>$base);
+        $masterref=$mastertab->getAttribs({name=>$base},[qw/storage os arch profile storagemodel nics/]);
         unless ($masterref) {
             foreach my $node (@$nodes) {
                 xCAT::SvrUtils::sendmsg([1,"Cannot find master $base in vmmaster table"], $output_handler,$node);
