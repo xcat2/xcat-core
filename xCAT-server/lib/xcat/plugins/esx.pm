@@ -1790,7 +1790,7 @@ sub promote_task_callback {
         xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
         my $mastertabentry = {
             originator=>$requester,
-            vintage=>localtime,
+            vintage=>scalar(localtime),
             storage=>$parms->{url},
         };
         foreach (qw/os arch profile/) {
