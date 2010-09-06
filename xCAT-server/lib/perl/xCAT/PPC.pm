@@ -1740,7 +1740,7 @@ sub process_request {
 	         }
 	         #print "lasthcp_type:$lasthcp_type ;thishcp_type:$thishcp_type\n";
 	        if(defined($lasthcp_type)) { 
-                if ( $lasthcp_type ne $thishcp_type )  {   
+                if ( ($lasthcp_type =~ /^(hmc)$/ &&  $thishcp_type =~ /^(fsp|bpa)$/) or (($lasthcp_type =~ /^(fsp|bpa)$/ ) && ($thishcp_type =~ /^(hmc)$/ )) )  {   
 		            $callback->({data=>["the $node\'s hcp type is different from the other's in the specified noderange in the 'ppc' table."]}); 
 	               return;
 	             }
