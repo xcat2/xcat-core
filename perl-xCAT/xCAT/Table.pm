@@ -1054,6 +1054,15 @@ sub updateschema
     foreach my $dbkey (@new_dbkeys) {
         if (! exists($dbkeys{$dbkey})) { 
 	    $change_keys=1; 
+            # Call tabdump plugin to create a CSV file
+            # can be used in case the restore fails
+            # put in /tmp/<tablename.csv.pid>
+            my $backuptable="/tmp/$tn.csv.$$";
+            my $cmd="$::XCATROOT/sbin/tabdump $tn > $backuptable";
+            `$cmd`;
+             $msg="updateschema: Backing up table before key change, $cmd"; 
+	     xCAT::MsgUtils->message("S", $msg);
+ 
             #for my sql, we do not have to recreate table, but we have to make sure the type is correct, 
             my $datatype;
             if ($xcatcfg =~ /^mysql:/) { 
@@ -1119,7 +1128,6 @@ sub updateschema
             #my $str="DROP TABLE $btn";
 	    #$self->{dbh}->do($str);
 
-	    # Call tabdump plugin to create a CSV file
 	    #rename the table name to name_xcatbackup
             my $str;
             if ($xcatcfg =~ /^DB2:/){
