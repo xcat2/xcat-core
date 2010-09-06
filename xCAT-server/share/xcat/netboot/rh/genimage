@@ -240,7 +240,6 @@ unless ($onlyinitrd) {
    @yumdirs=();
    find(\&isyumdir, <$installroot/$osver/$arch/>);
    unless (scalar(@yumdirs)) {
-   #unless ( -d $srcdir."/repodata" ) {
       print "Need $installroot/$osver/$arch/ available from a system that has ran copycds on $osver $arch\n";
       exit 1;
    }
@@ -384,34 +383,56 @@ unless ($onlyinitrd) {
    $rc = system("$yumcmd_update");
    # ignore any return code
 
+    # Default to the first kernel found in the install image if nothing specified explicitly.
+    # A more accurate guess than whatever the image build server happens to be running
+    # If specified, that takes precedence.
+    # if image has one, that is used
+    # if all else fails, resort to uname -r like this script did before
+
+    # Kernel name for s390x should be the same: vmlinuz-2.6.18-164.el5
+    my @KVERS= <$rootimg_dir/boot/vmlinuz-*>;
+    foreach (@KVERS) {
+	    s/vmlinuz-//;
+    }
+
+    unless (scalar(@KVERS)) {
+	    @KVERS= <$rootimg_dir/lib/modules/*>;
+    }
+    if (scalar(@KVERS)) {
+        $basekernelver = basename(pop @KVERS);
+    }
+    unless ($basekernelver) {
+        $basekernelver = `uname -r`;
+    }
+    unless ($kernelver) {
+        $kernelver=$basekernelver;
+    }
+    chomp($kernelver);
+
+    if ($kernelver ne $basekernelver) {
+        # the kernelver is specified by "-k",
+        # the kernel file should be in /boot
+        # the moudles should be in /lib/modules/$kernelver
+        if ( -e "/boot/vmlinux-$kernelver") {
+            copy("/boot/vmlinux-$kernelver", "$rootimg_dir/boot/");
+        } elsif ( -e "/boot/vmlinuz-$kernelver") {
+            copy("/boot/vmlinuz-$kernelver", "$rootimg_dir/boot/");
+        } elsif ( -e "/boot/image-$kernelver" ) {
+            copy("/boot/image-$kernelver", "$rootimg_dir/boot/");
+        } else {
+            xdie("couldn't find the kernel file matched $kernelver in /boot");
+        }
+
+        if ( -e "/lib/modules/$kernelver" ) {
+            system("cp -r -a /lib/modules/$kernelver $rootimg_dir/lib/modules/");
+        } else {
+            xdie("couldn't find /lib/modules/$kernelver");
+        }
+    }
 
    postscripts(); #run 'postscripts'
 }
-#Default to the first kernel found in the install image if nothing specified explicitly.
-#A more accurate guess than whatever the image build server happens to be running
-#If specified, that takes precedence.
-#if image has one, that is used
-#if all else fails, resort to uname -r like this script did before
 
-# Kernel name for s390x should be the same: vmlinuz-2.6.18-164.el5
-my @KVERS= <$rootimg_dir/boot/vmlinuz-*>;
-foreach (@KVERS) {
-	s/vmlinuz-//;
-}
-
-unless (scalar(@KVERS)) {
-	@KVERS= <$rootimg_dir/lib/modules/*>;
-}
-if (scalar(@KVERS)) {
-    $basekernelver = basename(pop @KVERS);
-}
-unless ($basekernelver) {
-    $basekernelver = `uname -r`;
-}
-unless ($kernelver) {
-    $kernelver=$basekernelver;
-}
-chomp($kernelver);
 
 
 # Load driver update disk, and copy them to the root image
@@ -520,6 +541,8 @@ if($mode eq "statelite"){
     }
 }   
 
+# before mkinitrd, run depmod to generate modules.dep 
+system("chroot $rootimg_dir depmod $kernelver");
 
 
 if ($dracutmode) {
@@ -617,20 +640,8 @@ sub mkinitrd_dracut {
 
 sub mkinitrd {
 	mkpath("/tmp/xcatinitrd.$$/bin");
-	if($basekernelver eq $kernelver) {
-		copy(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel");
-	}
-	else {
-		if(-r "$rootimg_dir/boot/vmlinuz-$kernelver") {
-			copy("$rootimg_dir/boot/vmlinuz-$kernelver","$destdir/kernel");
-        } elsif(-r "/boot/vmlinuz-$kernelver") {
-			copy("/boot/vmlinuz-$kernelver","$destdir/kernel");
-		}
-		else {
-			xdie("Cannot read /boot/vmlinuz-$kernelver");
-		}
-	}
-	symlink("bin","/tmp/xcatinitrd.$$/sbin");
+	
+    symlink("bin","/tmp/xcatinitrd.$$/sbin");
 	mkpath("/tmp/xcatinitrd.$$/usr/bin");
 	mkpath("/tmp/xcatinitrd.$$/usr/sbin");
 	mkpath("/tmp/xcatinitrd.$$/usr/lib");
@@ -1330,7 +1341,13 @@ sub generic_post { #This function is meant to leave the image in a state approxi
         system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
 	}
    
-   copy(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel"); } 
+   if ( -e "$rootimg_dir/boot/vmlinuz-$kernelver" ) {
+        copy("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
+   } else {
+        xdie "couldn't find vmlinuz-$kernelver under $rootimg/boot.";
+   }
+
+} 
 
 
 my $driver_name;
