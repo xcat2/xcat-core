@@ -3,6 +3,7 @@
 
 at
 xinetd
+rsh-server.ppc64
 
 compat-libstdc++-33.ppc64
 libXmu.ppc64
