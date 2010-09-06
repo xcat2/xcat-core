@@ -4278,7 +4278,7 @@ sub prermnimimage
     }
     elsif ($::SERVERLIST)
     {
-        @servicenodes = split(',', $::SERVERLIST);
+        @servicenodes = xCAT::NodeRange::noderange($::SERVERLIST, 1);
     }
     else
     {
@@ -4407,7 +4407,7 @@ sub rmnimimage
     #  should not need the next two checks???
     if ($::SERVERLIST)
     {
-        @servernodelist = xCAT::NodeRange::noderange($::SERVERLIST);
+        @servernodelist = xCAT::NodeRange::noderange($::SERVERLIST, 1);
         if (!grep(/^$Sname$/, @servernodelist))
         {
 
