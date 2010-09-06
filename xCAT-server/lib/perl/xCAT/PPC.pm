@@ -1755,12 +1755,15 @@ sub process_request {
        %$request_new =%$request;
        $request_new->{node}  = \@next;
        $request_new->{fsp_api} = 0;
-       if($lasthcp_type =~ /^(fsp|bpa)$/  && $request->{hwtype} ne 'hmc' ) {
+       if($lasthcp_type =~ /^(fsp|bpa)$/ ) {
 	       #my $fsp_api = check_fsp_api($request);
 	       #if($fsp_api == 0 ) {
            $request_new->{fsp_api} = 1; 
-           $request_new->{hwtype}  = $lasthcp_type;
 	       # }
+       }
+       #For mkhwconn ....
+       if( $request->{hwtype} ne 'hmc' ) {
+           $request_new->{hwtype}  = $lasthcp_type;
        }
        #print Dumper($request_new);
        @failed_nodes = () ;
