@@ -2594,7 +2594,7 @@ sub preprocess_request {
     my %sv_hash=();
     my @all = xCAT::Utils::getAllSN();
     foreach (@all) {
-	    if ($_->{servicenode}) {$sv_hash{$_->{servicenode}}=1;}
+	    $sv_hash{$_}=1;
     }
     ###########################################
     # build each request for each service node
