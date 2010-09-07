@@ -793,6 +793,42 @@ sub modify_by_attr {
     my $attrstr= $opt->{a};
     my @values;
 
+    # attrstr will be in stdin for "cat vmdef | chvm nodename"
+    if (!defined($attrstr) && defined($request->{stdin})) {
+        my $tempattr = $request->{stdin};
+        $tempattr =~ s/\s+$//;
+        $tempattr =~ s/^[\w]+: //;
+        my $newcfg = strip_profile( $tempattr, $hwtype );
+        $newcfg =~ s/,*lpar_env=[^,]+|$//;
+        $newcfg =~ s/,*all_resources=[^,]+|$//;
+        $newcfg =~ s/,*lpar_name=[^,]+|$//;
+        $newcfg =~ s/\\\"/\"/g;
+        my @cfgarray = split /,/, $newcfg;
+        ##########################################
+        # Repair those lines splitted incorrectly
+        ##########################################
+        my @newcfgarray;
+        my $full_line;
+        while (my $line = shift( @cfgarray))
+        {
+            if ( !$full_line)
+            {
+                $full_line = $line;
+            }
+            else
+            {
+                $full_line = "$full_line,$line";
+            }
+            if ( $full_line =~ /^[^\"]/ or $full_line =~ /^\".+\"$/)
+            {
+                $full_line =~ s/^\"(.+)\"$/$1/;
+                push @newcfgarray, $full_line;
+                $full_line = undef;
+                next;
+            }
+        }
+        $attrstr = \@newcfgarray;
+    }
     if ( defined( $attrstr )) { 
         ###################################
         # Get LPAR active profiles 
