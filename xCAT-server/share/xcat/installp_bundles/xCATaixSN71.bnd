@@ -46,7 +46,6 @@ R:perl-IO-Tty*
 R:perl-Net-DNS*
 R:perl-Net-IP*
 R:perl-Net-Telnet*
-R:perl-Net_SSLeay.pm*
 R:perl-version-0.82-2*
 R:perl-Net_SSLeay.pm-1.30-3*
 R:perl-IO-Socket-SSL*
