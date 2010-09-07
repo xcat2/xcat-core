@@ -122,8 +122,10 @@ GetSyncInfo () {
 		| awk '{print $2}' \
 		> $SYNCTREE
 
+    RETCODE=$?
+
     RETRY=0
-    while [ ! -s $SYNCTREE ]; do
+    while [ ! -s $SYNCTREE ] && [ "$RETCODE" -ne "0" ] ; do
         # the file is empty, we should retry several times
         RETRY=$(( $RETRY + 1 ))
         if [ $RETRY -eq $MAX_RETRIES ]; then
@@ -140,6 +142,7 @@ GetSyncInfo () {
 		| awk '{print $2}' \
 		> $SYNCTREE
 
+        RETCODE=$?
     done
 }
 

@@ -9,7 +9,7 @@
 # get all the database files.
 #set -x
 SL=".statelite"
-ME=`hostname -s`
+ME=`hostname`
 MNTDIR="/sysroot"
 SYNCTREE="${MNTDIR}/$SL/litetree" 	# the list of directories to sync from
 SYNCLIST="${MNTDIR}/$SL/litefile" 	# the list of files to sync
@@ -53,7 +53,7 @@ GetSyncInfo () {
 		fi
 	done
 
-    hn=`hostname -s`
+    hn=`hostname`
 	
 
 	if [ -z $XCATSERVER ]; then
@@ -62,8 +62,7 @@ GetSyncInfo () {
 	fi
 
     # add one random sleeping time
-    SLI=$(( $RANDOM%30 ))
-    SLI=$(( $SLI + 20 ))
+    SLI=$(( $RANDOM%50 ))
     sleep $SLI
 	# request the list of files from xCAT:
 	xCATCmd $XCATSERVER litefile  \
@@ -109,8 +108,10 @@ GetSyncInfo () {
 		| awk '{print $2}' \
 		> $SYNCTREE
 
+    RETCODE=$?
+
     RETRY=0
-    while [ ! -s $SYNCTREE ]; do
+    while [ ! -s $SYNCTREE ] && [ "$RETCODE" -ne "0" ]; do
         # the file is empty, we should retry several times
         RETRY=$(( $RETRY + 1 ))
         if [ $RETRY -eq $MAX_RETRIES ]; then
@@ -118,7 +119,7 @@ GetSyncInfo () {
             /bin/bash
         fi
 
-        SLI=$(( $RAMDOM % 50 ))
+        SLI=$(( $RANDOM%50 ))
         sleep $SLI
     	xCATCmd $XCATSERVER litetree  \
 		| sed  -e 's/<[^>]*>//g' \
@@ -127,6 +128,7 @@ GetSyncInfo () {
 		| awk '{print $2}' \
 		> $SYNCTREE
 
+        RETCODE=$?
     done
 }
 
