@@ -9500,6 +9500,12 @@ sub update_spot_sw
         }
     }    # end - checking bundles
 
+# It's decided to handle install_bundle file by xCAT itself, not using nim -o cust anymore
+# nim installs RPMs first then installp fileset, it causes perl-Net_SSLeay.pm pre-install
+# verification failed due to openssl not installed.
+
+if (0)
+{
     #  do installp_bundles - if any
     #  cust operation can only do one bnd at a time!!!!
     if (scalar(@bndlnames) > 0)
@@ -9544,7 +9550,193 @@ sub update_spot_sw
 
         }
     }    # end - bndls
+}
 
+    # do installp_bundles - if any
+    # install installp/RPM without nim, use xcatchroot
+
+    # need pkg source
+    my $spotloc = &get_res_loc($spotname, $callback);
+    if (!defined($spotloc))
+    {
+        my $rsp;
+        push @{$rsp->{data}},
+          "Could not get the location for $spotloc.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    # get lpp_source location in chroot env
+    # such as /install/nim/spot/61Ldskls_test/usr/lpp/bos/inst_root/lpp_source
+    my $chroot_lpploc = $spotloc . "/lpp/bos/inst_root/lpp_source";
+      
+    if ($::VERBOSE)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "NIM lpp_resource location in chroot env: \'$chroot_lpploc\'.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
+    
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}},
+          "Could not get NIM lpp_source resource location in chroot env.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+      
+    if (scalar(@bndlnames) > 0)
+    {
+        # do installp/RPM install for each bndls
+        foreach my $bndl (@bndlnames)
+        {
+            # generate installp list from bndl file
+
+            # get bndl location
+            my $bndlloc = &get_res_loc($bndl, $callback);
+            if (!defined($bndlloc))
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not get the location for $bndl.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+            # construct tmp file to hold the pkg list.
+            my ($tmp_installp, $tmp_rpm) = gen_list_file($callback, $bndlloc);
+
+            # use xcatchroot to install sw in SPOT on nimprime.
+            
+    # install installp with file first.
+            my $icmd = "/usr/sbin/installp ";
+
+            # set flags
+            my $flags;
+            if (defined($iflags))
+            {
+                $flags = $iflags;
+            }
+            else
+            {
+                # -Y to accept license.
+                $flags = "-agQXY ";
+            }
+
+            # these installp flags can be used with -d
+            if ($flags =~ /l|L|i|A|a/)
+            {
+                $icmd .= "-d $chroot_lpploc ";
+            }
+
+            $icmd .= "$flags -f $tmp_installp";
+
+            # run icmd!
+            my $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$icmd"~;
+
+            my $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not install installp packages in SPOT $spotname.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+            # remove tmp file
+            $cmd = qq~/usr/bin/rm -f $tmp_installp~;
+            
+            $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not run command: $cmd.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+        	# - run updtvpkg to make sure installp software
+			#       is registered with rpm
+			#
+			$cmd   = qq~$::XCATROOT/bin/xcatchroot -i $spotname "/usr/sbin/updtvpkg"~;
+			
+            $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not run command: $cmd.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+    # then to install RPMs.
+            # set the default rpm flags
+            # if rpm_flags is supported, need to update here.
+            $flags = " -Uvh --replacepkgs ";
+
+            unless (open(RFILE, "<$tmp_rpm"))
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not open $tmp_rpm for reading.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+            my @rlist = <RFILE>;
+            close(RFILE);
+
+            my $rpmpkgs;
+            foreach my $line (@rlist)
+            {
+                chomp $line;
+                $rpmpkgs .= "$line ";
+                
+            }
+            
+            my $chroot_rpmloc = $chroot_lpploc . "/RPMS/ppc";
+
+            my $cdcmd = qq~cd $chroot_rpmloc;~;
+            $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd /usr/bin/rpm $flags $rpmpkgs"~;
+
+            $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not install rpm packages in SPOT $spotname.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+            
+            # remove tmp file
+            $cmd = qq~/usr/bin/rm -f $tmp_rpm~;
+
+            $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not run command: $cmd.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+        }
+    }
+    
     # do the otherpkgs - if any
     if (defined($otherpkgs))
     {
@@ -9759,6 +9951,101 @@ sub sync_spot_files
 
     close SYNCFILE;
     return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   gen_list_file
+
+	generate tmp files for installp filesets and RPMs separately 
+	based on NIM installp_bundles
+	
+	/tmp/tmp_installp, /tmp/tmp_rpm
+
+   	Arguments:
+   	callback, installp_bundle location
+
+  	Returns:
+	  installp list file, rpm list file
+
+ 	Comments:
+ 	  my ($tmp_installp, $tmp_rpm) = gen_list_file($bndlloc);
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub gen_list_file
+{
+    my $callback = shift;
+    my $bndfile = shift;
+
+    # open bundle file
+    unless (open(BNDL, "<$bndfile"))
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not open $bndfile.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;                
+    }
+
+    # put installp/rpm into an array
+    my @ilist;
+    my @rlist;
+
+    while (my $line = <BNDL>)
+    {
+        chomp $line;
+        
+        if ($line =~ /^I:/)
+        {
+            my ($junk, $iname) = split(/:/, $line);
+            push (@ilist, $iname);
+        }
+        elsif ($line =~ /^R:/)
+        {
+            my ($junk, $rname) = split(/:/, $line);
+            push (@rlist, $rname);
+        }
+    }
+
+    close(BNDL);
+
+    # put installp list into tmp file
+    my $tmp_installp = "/tmp/tmp_installp";
+    my $tmp_rpm = "/tmp/tmp_rpm";
+
+    unless (open(IFILE, ">$tmp_installp"))
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not open $tmp_installp for writing.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    foreach (@ilist)
+    {
+        print IFILE $_ . "\n";
+    }
+    close(IFILE);
+
+    # put rpm list into tmp file
+    unless (open(RFILE, ">$tmp_rpm"))
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not open $tmp_rpm for writing.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+    
+    foreach (@rlist)
+    {
+        print RFILE $_ . "\n";
+    }
+    close(RFILE);
+
+    return ($tmp_installp, $tmp_rpm);
+    
 }
 
 1;
