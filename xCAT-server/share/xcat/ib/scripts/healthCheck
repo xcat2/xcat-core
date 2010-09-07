@@ -583,7 +583,6 @@ sub procsrCheckLinux()
     {
         print "Command failed: $checkCmd.\n";
         print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
-        return $::NOK;
     }
     
     my $host;
@@ -662,7 +661,6 @@ sub procsrCheckAIX()
     {
         print "Command failed: $checkCmd.\n";
         print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
-        return $::NOK;
     }
     
     my $host;
@@ -762,7 +760,6 @@ sub ifCheck()
         {
             print "Command failed: $checkCmd.\n";
             print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
-            return $::NOK;
         }
         
         #Record whether the next line is the beginning of a new section
@@ -835,7 +832,6 @@ sub ifCheck()
         {
             print "Command failed: $checkCmd.\n";
             print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
-            return $::NOK;
         }
         my $host;
         my $prevhost;
@@ -931,7 +927,6 @@ sub memCheckLinux()
     {
         print "Command failed: $checkCmd.\n";
         print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
-        return $::NOK;
     }
     
     my $host;
@@ -1014,7 +1009,6 @@ sub memCheckAIX()
     {
         print "Command failed: $checkCmd.\n";
         print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
-        return $::NOK;
     }
     
     my $host;
@@ -1047,7 +1041,7 @@ sub memCheckAIX()
                 print $::LOG_FILE_HANDLE "$host Free large page is $freelp. UNEXPECTED small size\n";
             }
         }
-        elsif ($line =~ /(\S*):.*lcpu=(\d+)\s+mem=(\d+)MB/ && defined($::MIN_MEMORY) && $abnormalmem != 1)
+        elsif ($line =~ /(\S*):.*lcpu=(\d+)\s+mem=(\d+)MB/ && defined($::MIN_MEMORY))
         {
             # Get node hostname and memory size
             $host = $1;
@@ -1106,7 +1100,6 @@ sub HCACheckAIX()
     {
         print "Command failed: $checkCmd.\n";
         print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
-        return $::NOK;
     }
     
     my $host;
@@ -1278,7 +1271,6 @@ sub HCACheckLinux()
     {
         print "Command failed: $checkCmd.\n";
         print $::LOG_FILE_HANDLE "Command failed: $checkCmd.\n";
-        return $::NOK;
     }
     
     my $host;
