@@ -447,6 +447,7 @@ sub  updateflag {
     my $port = "3002";
     my $servip = `host $servnode | awk '{print \$3}'`;
     chomp($servip);
+    $servip =~ s/,$//; # remove trailing comma
     my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servip, PeerPort  => $port, Timeout => 0);
 
     my $try = 10;
