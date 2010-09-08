@@ -231,6 +231,7 @@ sub processArgs
                     'long|l'    => \$::opt_l,
                     'short|s'    => \$::opt_s,
                     'm|minus'   => \$::opt_m,
+                    'n=s'       => \$::opt_n,
                     'o=s'       => \$::opt_o,
                     'p|plus'    => \$::opt_p,
                     't=s'       => \$::opt_t,
@@ -1451,6 +1452,81 @@ sub defch
     #
     # check options unique to this command
     #
+    if ($::opt_n) {
+        # check the option for changing object name
+        if ($::opt_n && ($::opt_d || $::opt_p || $::opt_m || $::opt_z || $::opt_w)) {
+            my $rsp;
+            $rsp->{data}->[0] = "Cannot combine \'-n\' and \'-d\',\'-p\',\'-m\',\'-z\',\'-w\' options.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            &defch_usage;
+            return 1;
+        }
+
+        if (scalar (@::clobjnames) > 1) {
+            my $rsp;
+            $rsp->{data}->[0] =
+              "The \'-n\' option (changing object name) can only work on one object.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            &defch_usage;
+            return 1;
+        }
+
+        my %objhash = ($::clobjnames[0] => $::clobjtypes[0]);
+
+        my @validnode = xCAT::DBobjUtils->getObjectsOfType($::clobjtypes[0]);
+        if (! grep /^$::clobjnames[0]$/, @validnode) {
+            my $rsp;
+            $rsp->{data}->[0] =
+              "The $::clobjnames[0] is not a valid object.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 1;
+        }
+
+        # Use the getobjdefs function to get a hash which including
+        # all the records in the table that should be changed
+        my %chnamehash = ();
+        xCAT::DBobjUtils->getobjdefs(\%objhash, $::VERBOSE, undef, \%chnamehash);
+
+        foreach my $tb (keys %chnamehash) {
+            my $tab = xCAT::Table->new( $tb);
+            unless ( $tab) {
+                my $rsp;
+                push @{$rsp->{data}}, "Unable to open $tb table.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 1;
+            }
+            
+            my $index = 0;
+            my @taben = @{$chnamehash{$tb}};
+            # In the @taben, there are several pair of value for 
+            # changing the key value of a table entry
+            my @keystrs = ();
+            while ($taben[$index]) {
+                # Make a key word string to avoid that changing 
+                # one table record multiple times
+                my $keystr;
+                foreach my $key (sort(keys %{$taben[$index]})) {
+                    $keystr .= "$key:$taben[$index]{$key}:";
+                }
+                if (grep /^$keystr$/, @keystrs) {
+                    $index += 2;
+                    next;
+                }
+                push @keystrs, $keystr;
+
+                my %chname = ($taben[$index+1] => $::opt_n);
+                $tab->setAttribs($taben[$index], \%chname);
+                $index += 2;
+            }
+        }
+
+        my $rsp;
+        push @{$rsp->{data}}, "Changed the object name from $::clobjnames[0] to $::opt_n.";
+        xCAT::MsgUtils->message("I", $rsp, $::callback);
+        
+        return 0;
+    }
+
     if ($::opt_f)
     {
 
@@ -3172,15 +3248,16 @@ sub defch_usage
     $rsp->{data}->[0] =
       "\nUsage: chdef - Change xCAT data object definitions.\n";
     $rsp->{data}->[1] = "  chdef [-h | --help ] [-t object-types]\n";
-    $rsp->{data}->[2] =
-      "  chdef [-V | --verbose] [-t object-types] [-o object-names] [-d | --dynamic]";
+    $rsp->{data}->[2] = "  chdef [-t object-types] [-o object-names] [-n new-name] [node]\n";
     $rsp->{data}->[3] =
-      "    [-z | --stanza] [-m | --minus] [-p | --plus]";
+      "  chdef [-V | --verbose] [-t object-types] [-o object-names] [-d | --dynamic]";
     $rsp->{data}->[4] =
-      "    [-w attr==val [-w attr=~val] ... ] [noderange] [attr=val [attr=val...]]\n";
+      "    [-z | --stanza] [-m | --minus] [-p | --plus]";
     $rsp->{data}->[5] =
+      "    [-w attr==val [-w attr=~val] ... ] [noderange] [attr=val [attr=val...]]\n";
+    $rsp->{data}->[6] =
       "\nThe following data object types are supported by xCAT.\n";
-    my $n = 6;
+    my $n = 7;
 
     foreach my $t (sort(keys %{xCAT::Schema::defspec}))
     {
