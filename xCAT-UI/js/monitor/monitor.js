@@ -88,11 +88,11 @@ function loadMonitorPage() {
 	var resrcForm = $('<div class="monitor"></div>');
 
 	// Create info bar
-	var resrcInfoBar = createInfoBar('Monitor resources');
+	var resrcInfoBar = createInfoBar('View current resources');
 	resrcForm.append(resrcInfoBar);
 
 	// Create radio buttons for platforms
-	var hwList =$('<ol>Select a platform to view its resources:</ol>');
+	var hwList =$('<ol>Select a platform to view its current resources:</ol>');
 	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>ipmi</li>');
 	var blade = $('<li><input type="radio" name="hw" value="blade"/>blade</li>');
 	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>hmc</li>');
