@@ -3626,6 +3626,11 @@ sub get_filelist
             if ($ext2 eq "")
             {
                 push @filelist, $file;
+            } else { # if not one of the databases, they just have _ in
+                     # the file name
+               if ($ext2 ne "db2" && $ext2 ne "mysql" && $ext2 ne "pgsql" && $ext2 ne "sqlite" ) {
+                    push @filelist, $file;
+               }
             }
           }
            $ext2 = "";

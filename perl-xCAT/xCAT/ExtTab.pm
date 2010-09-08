@@ -194,17 +194,22 @@ sub get_filelist
         my $filename= basename($file);  # strip filename
         my($name,$ext1) = split '\.', $filename;
         my($name,$ext2) = split '\_', $name;
-        if ($ext2 eq $dbname)
+        if ($ext2 eq $dbname)   # matches the database
         {
             push @filelist, $file;
         }
         else
         {
-            if ($ext2 eq "")
+            if ($ext2 eq "") # no database designated
             {
                 push @filelist, $file;
+            } else { # if not one of the databases, they just have _ in
+                     # the file name
+               if ($ext2 ne "db2" && $ext2 ne "mysql" && $ext2 ne "pgsql" && $ext2 ne "sqlite" ) {
+                    push @filelist, $file;
+               }
             }
-        }
+        } 
          $ext2 = "";
          $ext1 = "";
     }
