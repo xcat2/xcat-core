@@ -239,6 +239,7 @@ sub getobjattrs
                 $verbose: optional
                 $attrs_ref: only get the specific attributes,
                             this can be useful especially for performance considerations
+                $chname_ref: used to get the table entries for changing the object name
         Arguments:
         Returns:
                 undef - error
@@ -260,7 +261,7 @@ sub getobjattrs
 #-----------------------------------------------------------------------------
 sub getobjdefs
 {
-    my ($class, $hash_ref, $verbose, $attrs_ref) = @_;
+    my ($class, $hash_ref, $verbose, $attrs_ref, $chname_ref) = @_;
     my %objhash;
     my %typehash = %$hash_ref;
     my %tabhash;
@@ -473,6 +474,9 @@ sub getobjdefs
                                 {
                                     $objhash{$objname}{$attr} = $tabhash{$lookup_table}{$objname}{$tabattr};
                                 }
+                                if (defined $chname_ref) {
+                                    push @{$chname_ref->{$lookup_table}}, ($tabentry{'lookup_attrs'}, $lookup_attr);
+                                }
                                 $intabhash = 1;
                                 last;
                             } elsif (! defined($tabhash{$lookup_table}{$objname}{"$tabattr"."_hassearched"})) {
@@ -514,6 +518,9 @@ sub getobjdefs
                                      else 
                                      {
                                          $objhash{$objname}{$attr} = $rowent->{$tabattr};
+                                     }
+                                     if (defined $chname_ref) {
+                                         push @{$chname_ref->{$lookup_table}}, ($tabentry{'lookup_attrs'}, (keys %{$tabentry{'lookup_attrs'}}) [0]);
                                      }
                                  } #end if ($match...
                             } #end foreach
