@@ -42,7 +42,6 @@ set -x
 
 %files
 %defattr(-,root,root)
-# %defattr( 555, root, root, 755 )
 %{prefix}/ui
 
 %pre
@@ -84,11 +83,6 @@ fi
 if [ -e "/etc/redhat-release" ]; then
   	apachedaemon='httpd'
   	apacheuser='apache'
-
-	# Note: this was for sudo with xcat 1.3
-	#echo "Updating apache userid to allow logins..."
-	#cp /etc/passwd /etc/passwd.orig
-	#perl -e 'while (<>) { s,^apache:(.*):/sbin/nologin$,apache:$1:/bin/bash,; print $_; }' /etc/passwd.orig >/etc/passwd
 else    # SuSE
 
   	apachedaemon='apache2'
@@ -98,27 +92,11 @@ fi
 if [ "$1" = 1 ]    # initial install
 then
   # Update the apache config
-  #echo "Updating $apachedaemon configuration for xCAT..."
   /bin/rm -f /etc/$apachedaemon/conf.d/xcat-ui.conf
   /bin/ln -s %{prefix}/ui/etc/apache2/conf.d/xcat-ui.conf /etc/$apachedaemon/conf.d/xcat-ui.conf
   /etc/init.d/$apachedaemon reload
   # automatically put the encrypted passwd into the xcat passwd db
   %{prefix}/sbin/chtab key=xcat,username=root passwd.password=`grep root /etc/shadow|cut -d : -f 2`
-
-  # Link to the grpattr cmd.  Note: this was for xcat 1.3.  Do not use this anymore.
-  #/bin/rm -f %{prefix}/bin/grpattr
-  #mkdir -p %{prefix}/bin
-  #/bin/ln -s %{prefix}/ui/cmds/grpattr %{prefix}/bin/grpattr
-
-  # Config sudo.  Note: this was for xcat 1.3.  Do not use this anymore.
-  #if ! egrep -q "^$apacheuser ALL=\(ALL\) NOPASSWD:ALL" /etc/sudoers; then
-  	#echo "Configuring sudo for $apacheuser..."
-  	#echo "$apacheuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-  #fi
-
-  # Authorize the apacheuser to xcatd
-  #echo -e "y\ny\ny" | %{prefix}/share/xcat/scripts/setup-local-client.sh $apacheuser
-  #XCATROOT=%{prefix} %{prefix}/sbin/chtab priority=5 policy.name=$apacheuser policy.rule=allow
 
   echo "To use xCAT-UI, point your browser to http://"`hostname -f`"/xcat"
 fi
@@ -165,11 +143,6 @@ then
   if [ -e "/etc/redhat-release" ]; then
   	apachedaemon='httpd'
   	apacheuser='apache'
-
-	# Undo change we made to passwd file.  Todo: change this when switch to xcat 2
-	#echo "Undoing apache userid login..."
-	#cp /etc/passwd /etc/passwd.tmp
-	#perl -e 'while (<>) { s,^apache:(.*):/bin/bash$,apache:$1:/sbin/nologin,; print $_; }' /etc/passwd.tmp >/etc/passwd
   else    # SuSE
   	apachedaemon='apache2'
   	apacheuser='wwwrun'
@@ -179,16 +152,6 @@ then
   echo "Undoing $apachedaemon configuration for xCAT..."
   /bin/rm -f /etc/$apachedaemon/conf.d/xcat-ui.conf
   /etc/init.d/$apachedaemon reload
-  #/bin/rm -f %{prefix}/bin/grpattr
-
-  # Remove change we made to sudoers config.  Todo: remove this when switch to xcat 2
-  #if egrep -q "^$apacheuser ALL=\(ALL\) NOPASSWD:ALL" /etc/sudoers; then
-  	#echo "Undoing sudo configuration for $apacheuser..."
-  	#cp -f /etc/sudoers /etc/sudoers.tmp
-  	#egrep -v "^$apacheuser ALL=\(ALL\) NOPASSWD:ALL" /etc/sudoers.tmp > /etc/sudoers
-  	#rm -f /etc/sudoers.tmp
-  #fi
-
 fi
 %else   #for AIX
 # Remove links made during the post install script
