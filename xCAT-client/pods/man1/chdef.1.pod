@@ -6,6 +6,8 @@ B<chdef> - Change xCAT data object definitions.
 
 B<chdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
+B<chdef> [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-n> I<new-name>] [I<node>] 
+
 B<chdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
 [B<-d>|B<--dynamic>] [B<-p>|B<--plus>] [B<-m>|B<--minus>] [B<-z>|B<--stanza>]
 [[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>] [I<attr>=I<val> [I<attr>=I<val...>]]
@@ -13,6 +15,8 @@ B<chdef> [B<-V>|B<--verbose>] [B<-t> I<object-types>] [B<-o> I<object-names>]
 =head1 DESCRIPTION
 
 This command is used to change xCAT object definitions which are stored in the xCAT database.  The default is to replace any existing attribute value with the one specified on the command line. The command will also create a new definition if one doesn't exist.
+
+This command also can be used to change the xCAT object name to a new name. Note: the site,monitoring types can NOT be supported.
 
 =head1 OPTIONS
 
@@ -33,6 +37,12 @@ Display usage message.
 =item B<-m|--minus>
 
 If the value of the attribute is a list then this option may be used to remove one or more items from the list.
+
+=item B<-n> I<new-name>
+
+Change the current object name to the new-name which is specified by the -n option.
+The object of site, monitoring types cannot be supported.
+Note: For the B<-n> option, only one node can be handled.
 
 =item I<noderange>
 
@@ -131,6 +141,12 @@ To update a set of definitions based on information contained in the stanza file
 To update a dynamic node group definition to add the cons=hmc wherevals pair.
 
  chdef -t group -o dyngrp -d -p -w cons==hmc
+
+=item 9.
+
+To change the node object name from node1 to node2.
+
+ chdef -t node -o node1 -n node2
 
 =back
 
