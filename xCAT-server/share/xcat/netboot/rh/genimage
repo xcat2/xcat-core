@@ -83,49 +83,49 @@ if (@ARGV > 0) {
     #load the module in memory
     eval {require("$::XCATROOT/lib/perl/xCAT/Table.pm")};
     if ($@) {
-	print $@;
-	exit 1;
+        print $@;
+        exit 1;
     }
    
     #get the info from the osimage and linux 
     my $osimagetab=xCAT::Table->new('osimage', -create=>1);
     if (!$osimagetab) {
-	print "The osimage table cannot be opened.\n";
-	exit 1;
+        print "The osimage table cannot be opened.\n";
+        exit 1;
     }
     my $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
     if (!$linuximagetab) {
-	print "The linuximage table cannot be opened.\n";
-	exit 1;
+        print "The linuximage table cannot be opened.\n";
+        exit 1;
     }
     (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
     if (!$ref) {
-	print "Cannot find image \'$imagename\' from the osimage table.\n";
-	exit 1;
+        print "Cannot find image \'$imagename\' from the osimage table.\n";
+        exit 1;
     }
-    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir');
+    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission');
     if (!$ref1) {
-	print "Cannot find $imagename from the linuximage table\n";
-	exit 1;
+        print "Cannot find $imagename from the linuximage table\n";
+        exit 1;
     }
 
     $osver=$ref->{'osvers'};
     $arch=$ref->{'osarch'};
     $profile=$ref->{'profile'};
-    my $provmethod=$ref->{'provmethod'};
-    
+    my $provmethod=$ref->{'provmethod'}; # TODO: necessary?
+  
     unless ($osver and $arch and $profile and $provmethod) {
-	print"osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database.\n";
-	exit 1;
+        print"osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database.\n";
+        exit 1;
     }
 
-    if ($provmethod ne 'netboot') {
-	print "\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot'.";
-	exit 1;
+    unless ($provmethod eq 'netboot' || $provmethod eq 'statelite') {
+        print "\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot'.";
+        exit 1;
     }
 
     if (! $ref1->{'pkglist'}) {
-	print"A .pkglist file must be specified for image \'$imagename\' in the linuximage table.\n";
+        print"A .pkglist file must be specified for image \'$imagename\' in the linuximage table.\n";
         exit 0;
     }
     $pkglist =$ref1->{'pkglist'};
@@ -135,9 +135,61 @@ if (@ARGV > 0) {
     $otherpkglist=$ref1->{'otherpkglist'};
     $postinstall_filename=$ref1->{'postinstall'};
     $destdir=$ref1->{'rootimgdir'};
+
+    # TODO: how can we do if the user specifies one wrong value to the following attributes?
+    # currently, one message is output to indicate the users there will be some updates
+    my %keyhash = ();
+    $keyhash{'imagename'} = $imagename;
+    my %updates = ();
+    if ($prinic) {
+        if ($prinic ne $ref1->{'nodebootif'}) {
+            # update the prinic value to linuximage table
+            print "The primary nic is different from the value in linuximage table, will update it\n";
+            $updates{'nodebootif'} = $prinic;
+        }
+    } else {
+        $prinic = $ref1->{'nodebootif'};
+    }
+    if ($othernics) {
+        if ($othernics ne $ref1->{'otherifce'}) {
+            # update 
+            print "The other ifces are different from  the value in linuximage table, will update it\n";
+            $updates{'otherifce'} = $othernics;
+        }
+    } else {
+        $othernics = $ref1->{'otherifce'};
+    }
+    if ($kernelver) {
+        if ($kernelver ne $ref1->{'kernelver'}) {
+            print "The kernelver is different from the value in linuximage table, will update it\n";
+            $updates{'kernelver'} = $kernelver;
+        }
+    } else {
+        $kernelver = $ref1->{'kernelver'};
+    }
+    if ($ndrivers) {
+        if ($ndrivers ne $ref1->{'netdrivers'}) {
+            print "The netdrivers are different from the value in linuximage table, will update it\n";
+            $updates{'netdrivers'} = $ndrivers;
+        }
+    } else {
+        $ndrivers =  $ref1->{'netdrivers'};
+    }
+    if ($permission) {
+        if ($permission ne $ref1->{'permission'}) {
+            print "The permission value is different from the value in linuximage table, will update it\n";
+            $updates{'permission'} = $permission;
+        }
+    } else {
+        $permission = $ref1->{'permission'};
+    }
+
+    # update the Attributes
+    $linuximagetab->setAttribs(\%keyhash, \%updates); 
+    $linuximagetab->commit;
 }
 
-$permission = "755" if (! $permission);
+$permission = "755" unless ($permission);
 
 unless ($arch) {
     $arch = `uname -m`;
@@ -145,17 +197,9 @@ unless ($arch) {
 	$arch = "x86" if ($arch =~ /i.86$/);
 }
 
-unless ($srcdir) { 
-    $srcdir="$installroot/$osver/$arch";
-}
-
-unless ($srcdir_otherpkgs) { 
-    $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch";
-}
-
-unless ($destdir) {
-    $destdir="$installroot/netboot/$osver/$arch/$profile";
-}
+$srcdir="$installroot/$osver/$arch" unless ($srcdir);
+$srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs);
+$destdir="$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
 $rootimg_dir="$destdir/rootimg";
 
 # Get the subchannels of the given interface
@@ -187,7 +231,7 @@ if ($arch eq "s390x") {
 unless ($osver and $profile) {
    print 'Usage: genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [--permission <permission>]'."\n";
    print '       genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -k <KERNELVER> <imagename>'."\n";
-   print "       --permission only works when '-m statelite' is set\n";
+   print "       --permission only works with statelite mode\n";
    print "Examples:\n";
    print " genimage -i eth0 -n tg3 -o centos5.1 -p compute\n";
    print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
