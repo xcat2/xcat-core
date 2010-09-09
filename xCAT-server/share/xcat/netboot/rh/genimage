@@ -74,45 +74,60 @@ GetOptions(
    'k=s' => \$kernelver,
    'permission=s' => \$permission
 );
-if (@ARGV > 0) {
-    $imagename=$ARGV[0];
-    if ($arch or $osver or $profile) {
-	print "-o, -p and -a options are not allowed when a image name is specified.\n";
-        exit 1;
-    }
-    #load the module in memory
-    eval {require("$::XCATROOT/lib/perl/xCAT/Table.pm")};
-    if ($@) {
-        print $@;
-        exit 1;
-    }
-   
+
+# if "Table.pm" can be found here, the attributes in linuximage and osimage will be updated
+my $needUpdateTable = 0;
+my %keyhash = ();
+my %updates = ();
+
+my $osimagetab;
+my $linuximagetab;
+my $ref_linuximage_tab;
+my $ref_osimage_tab;
+
+# load the module in memory
+eval { require("$::XCATROOT/lib/perl/xCAT/Table.pm") };
+unless ($@) {
+    # Table.pm is there, we can update the xCAT tables
+    $needUpdateTable = 1;
+
     # get the info from the osimage and linux 
-    my $osimagetab=xCAT::Table->new('osimage', -create=>1);
-    if (!$osimagetab) {
+    $osimagetab = xCAT::Table->new('osimage', -create=>1);
+    unless ($osimagetab) {
         print "The osimage table cannot be opened.\n";
         exit 1;
     }
-    my $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
-    if (!$linuximagetab) {
+
+    $linuximagetab = xCAT::Table->new('linuximage', -create=>1);
+    unless ($linuximagetab) {
         print "The linuximage table cannot be opened.\n";
         exit 1;
     }
-    (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
-    if (!$ref) {
+}
+
+if (@ARGV > 0 and $needUpdateTable eq 1) {
+    $imagename=$ARGV[0];
+    if ($arch or $osver or $profile) {
+        print "-o, -p and -a options are not allowed when a image name is specified.\n";
+        exit 1;
+    }
+
+    ($ref_osimage_tab) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+    unless ($ref_osimage_tab) {
         print "Cannot find image \'$imagename\' from the osimage table.\n";
         exit 1;
     }
-    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission');
-    if (!$ref1) {
+
+    ($ref_linuximage_tab) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission');
+    unless ($ref_linuximage_tab) {
         print "Cannot find $imagename from the linuximage table\n";
         exit 1;
     }
 
-    $osver=$ref->{'osvers'};
-    $arch=$ref->{'osarch'};
-    $profile=$ref->{'profile'};
-    my $provmethod=$ref->{'provmethod'}; # TODO: not necessary; and need to update both statelite and stateless modes
+    $osver = $ref_osimage_tab->{'osvers'};
+    $arch = $ref_osimage_tab->{'osarch'};
+    $profile = $ref_osimage_tab->{'profile'};
+    my $provmethod = $ref_osimage_tab->{'provmethod'}; # TODO: not necessary; and need to update both statelite and stateless modes
   
     unless ($osver and $arch and $profile and $provmethod) {
         print"osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database.\n";
@@ -124,78 +139,68 @@ if (@ARGV > 0) {
         exit 1;
     }
 
-    unless ( $ref1->{'pkglist'} ) {
+    unless ( $ref_linuximage_tab->{'pkglist'} ) {
         print"A .pkglist file must be specified for image \'$imagename\' in the linuximage table.\n";
         exit 0;
     }
-    $pkglist =$ref1->{'pkglist'};
+    $pkglist = $ref_linuximage_tab->{'pkglist'};
 
-    $srcdir=$ref1->{'pkgdir'};
-    $srcdir_otherpkgs=$ref1->{'otherpkgdir'};
-    $otherpkglist=$ref1->{'otherpkglist'};
-    $postinstall_filename=$ref1->{'postinstall'};
-    $destdir=$ref1->{'rootimgdir'};
+    $srcdir= $ref_linuximage_tab->{'pkgdir'};
+    $srcdir_otherpkgs = $ref_linuximage_tab->{'otherpkgdir'};
+    $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
+    $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
+    $destdir = $ref_linuximage_tab->{'rootimgdir'};
 
     # TODO: how can we do if the user specifies one wrong value to the following attributes?
     # currently, one message is output to indicate the users there will be some updates
-    my %keyhash = ();
-    $keyhash{'imagename'} = $imagename;
-    my %updates = ();
     if ($prinic) {
-        if ($prinic ne $ref1->{'nodebootif'}) {
-            # update the prinic value to linuximage table
+        if ($prinic ne $ref_linuximage_tab->{'nodebootif'}) {
             print "The primary nic is different from the value in linuximage table, will update it\n";
             $updates{'nodebootif'} = $prinic;
         }
     } else {
-        $prinic = $ref1->{'nodebootif'};
+        $prinic = $ref_linuximage_tab->{'nodebootif'};
     }
     if ($othernics) {
-        if ($othernics ne $ref1->{'otherifce'}) {
-            # update 
+        if ($othernics ne $ref_linuximage_tab->{'otherifce'}) {
             print "The other ifces are different from  the value in linuximage table, will update it\n";
             $updates{'otherifce'} = $othernics;
         }
     } else {
-        $othernics = $ref1->{'otherifce'};
+        $othernics = $ref_linuximage_tab->{'otherifce'};
     }
     if ($kernelver) {
-        if ($kernelver ne $ref1->{'kernelver'}) {
+        if ($kernelver ne $ref_linuximage_tab->{'kernelver'}) {
             print "The kernelver is different from the value in linuximage table, will update it\n";
             $updates{'kernelver'} = $kernelver;
         }
     } else {
-        $kernelver = $ref1->{'kernelver'};
+        $kernelver = $ref_linuximage_tab->{'kernelver'};
     }
     if ($ndrivers) {
-        if ($ndrivers ne $ref1->{'netdrivers'}) {
+        if ($ndrivers ne $ref_linuximage_tab->{'netdrivers'}) {
             print "The netdrivers are different from the value in linuximage table, will update it\n";
             $updates{'netdrivers'} = $ndrivers;
         }
     } else {
-        $ndrivers =  $ref1->{'netdrivers'};
+        $ndrivers =  $ref_linuximage_tab->{'netdrivers'};
     }
     if ($permission) {
-        if ($permission ne $ref1->{'permission'}) {
+        if ($permission ne $ref_linuximage_tab->{'permission'}) {
             print "The permission value is different from the value in linuximage table, will update it\n";
             $updates{'permission'} = $permission;
         }
     } else {
-        $permission = $ref1->{'permission'};
+        $permission = $ref_linuximage_tab->{'permission'};
     }
 
-    # update the Attributes
-    $linuximagetab->setAttribs(\%keyhash, \%updates); 
-    $linuximagetab->commit;
-}
-
-# if "Table.pm" can be found here, the attributes in linuximage and osimage will be updated
-eval { require("$::XCATROOT/lib/perl/xCAT/Table.pm") };
-unless ($@) {
-    # Table.pm is there, we can update the xCAT tables
+    # TODO: update the Attributes, put it later
+    #$linuximagetab->setAttribs(\%keyhash, \%updates); 
+    #$linuximagetab->commit;
 }
 
 $permission = "755" unless ($permission);
+$updates{'permission'} = $permission if ( $needUpdateTable );
 
 unless ($arch) {
     $arch = `uname -m`;
@@ -204,8 +209,14 @@ unless ($arch) {
 }
 
 $srcdir="$installroot/$osver/$arch" unless ($srcdir);
+$updates{'srcdir'} = $srcdir if ($needUpdateTable);
+
 $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs);
+$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($needUpdateTable);
+
 $destdir="$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
+$updates{'rootimgdir'} = $destdir if ($needUpdateTable);
+
 $rootimg_dir="$destdir/rootimg";
 
 # Get the subchannels of the given interface
@@ -255,10 +266,8 @@ foreach (split /,/,$netdriver) {
    unless (/\.ko$/) {
       s/$/.ko/;
    }
-   if (/^$/) {
-      next;
-   }
-   push @ndrivers,$_;
+   next if (/^$/);
+   push @ndrivers, $_;
 }
 
 unless ($onlyinitrd) {
@@ -293,16 +302,18 @@ unless ($onlyinitrd) {
    $yumcmd .= "install ";
    mkpath("$rootimg_dir/var/lib/yum");
 
-   if (!$imagename) {
+   unless ($imagename) {
        $pkglist= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "pkglist");
-       if (!$pkglist) {
-	   $pkglist= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "pkglist");
+       unless ($pkglist) {
+           $pkglist= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "pkglist");
        }  
    }
 
-   if (!$pkglist) {
-      print "Unable to find package list for $profile!";
-      exit 1;
+   if ($pkglist) {
+       $updates{'pkglist'} = $pkglist if ($needUpdateTable);
+   } else {
+       print "Unable to find package list for $profile!";
+       exit 1;
    }
    
    my %pkg_hash=imgutils::get_package_names($pkglist);
@@ -326,12 +337,13 @@ unless ($onlyinitrd) {
 
    #Now let's handle extra packages
     unless ($imagename) {
-        $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
-        if (!$otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
+        $otherpkglist = imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
+        unless ($otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
     }
     my %extra_hash=();
     if ($otherpkglist) {
-       %extra_hash=imgutils::get_package_names($otherpkglist);
+        $updates{'otherpkglist'} = $otherpkglist if ($needUpdateTable);
+        %extra_hash = imgutils::get_package_names($otherpkglist);
     }
     my %extrapkgnames; 
 
@@ -380,7 +392,7 @@ unless ($onlyinitrd) {
           $yumcmd =~ s/ $/\n/;
     
           # debug
-          print "yumcmd=$yumcmd\n";
+          #print "yumcmd=$yumcmd\n";
           #my $repo=`cat /tmp/genimage.$$.yum.conf`;
           #print "repo=$repo";
       
