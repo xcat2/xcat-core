@@ -78,7 +78,8 @@ GetOptions(
 # if "Table.pm" can be found here, the attributes in linuximage and osimage will be updated
 my $needUpdateTable = 0;
 my %keyhash = ();
-my %updates = ();
+my %updates_os = (); # the hash for updating osimage table
+my %updates = (); # the hash for updating linuximage table
 
 my $osimagetab;
 my $linuximagetab;
@@ -259,8 +260,17 @@ unless ($osver and $profile) {
 }
 
 my @ndrivers;
-unless ($netdriver) {
-    @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en/;
+if ($netdriver) {
+    if ( ($updates{'netdrivers'} ne $netdriver) and ($needUpdateTable) ) {
+        $updates{'netdrivers'} = $netdriver;
+    }
+} else {
+    if ($arch eq 'x86' or $arch eq 'x86_64') {
+        @ndrivers = qw/tg3 bnx2 bnx2x e1000 e1000e igb mlx_en/;
+    } elsif ($arch eq 'ppc64') {
+        @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
+    }
+    # TODO: need to set the default network drivers for s390x ?
 }
 foreach (split /,/,$netdriver) {
    unless (/\.ko$/) {
@@ -432,19 +442,16 @@ unless ($onlyinitrd) {
 	    s/vmlinuz-//;
     }
 
-    unless (scalar(@KVERS)) {
-	    @KVERS= <$rootimg_dir/lib/modules/*>;
-    }
-    if (scalar(@KVERS)) {
-        $basekernelver = basename(pop @KVERS);
-    }
-    unless ($basekernelver) {
-        $basekernelver = `uname -r`;
-    }
-    unless ($kernelver) {
-        $kernelver=$basekernelver;
-    }
+    @KVERS= <$rootimg_dir/lib/modules/*> unless (scalar(@KVERS));
+
+    $basekernelver = basename(pop @KVERS) if (scalar(@KVERS));
+
+    $basekernelver = `uname -r` unless ($basekernelver);
+
+    $kernelver = $basekernelver unless ($kernelver);
     chomp($kernelver);
+
+    $updates{'kernelver'} = $kernelver if ($needUpdateTable);
 
     if ($kernelver ne $basekernelver) {
         # the kernelver is specified by "-k",
@@ -510,18 +517,21 @@ while (scalar @checkdeps) {
 close($moddeps);
 unlink "/tmp/genimage.$$.yum.conf";
 if (-d "$rootimg_dir/usr/share/dracut") {
-    $dracutmode=1;
+    $dracutmode = 1;
 }
 
 #-- run postinstall script
-if (!$imagename) {
+unless ($imagename) {
     $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "postinstall");
-    if (!$postinstall_filename) {
-	$postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "postinstall");
+    unless ($postinstall_filename) {
+        $postinstall_filename= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "postinstall");
     }
 } 
 
 if (($postinstall_filename) && (-x $postinstall_filename)) {
+
+    $updates{'postinstall'} = $postinstall_filename if ($needUpdateTable);
+
     my $rc = system($postinstall_filename, $rootimg_dir,$osver,$arch,$profile);
     if($rc) {
         print "postinstall script failed\n";
@@ -529,6 +539,47 @@ if (($postinstall_filename) && (-x $postinstall_filename)) {
     }
 }
 
+if ($needUpdateTable) {
+    # all the attributes have been gathered
+    # now, update the linuximage and osimage tables
+    # TODO: do statelite and stateless share the same attributes?
+    if ($imagename) {
+        $keyhash{'imagename'} = $imagename;
+
+        $linuximagetab->setAttribs(\%keyhash, \%updates);
+        $linuximagetab->commit;
+    } else {
+    
+        # update the imagename for diskless
+        $keyhash{'imagename'} = "$osver-$arch-netboot-$profile";
+
+        $updates_os{'profile'} = $profile;
+        $updates_os{'imagetype'} = 'linux';
+        $updates_os{'provmethod'} = 'netboot';
+        $updates_os{'osname'} = 'Linux';
+        $updates_os{'osvers'} = $osver;
+        $updates_os{'osdistro'} = 'rh'; # it is not used currently
+        $updates_os{'osarch'} = $arch;
+
+        $osimagetab->setAttribs(\%keyhash, \%updates_os);
+        $osimagetab->commit;
+
+        $linuximagetab->setAttribs(\%keyhash, \%updates);
+        $linuximagetab->commit;
+
+        # update the imagename for netboot
+        $keyhash{'imagename'} = "$osver-$arch-statelite-$profile";
+
+        $updates_os{'provmethod'} = 'statelite';
+
+        $osimagetab->setAttribs(\%keyhash, \%updates_os);
+        $osimagetab->commit;
+
+        $linuximagetab->setAttribs(\%keyhash, \%updates);
+        $linuximagetab->commit;
+
+    }
+}
 
 # statelite .statelite directory added here.
 # this is where tmpfs will be created.
@@ -537,9 +588,9 @@ mkpath "$rootimg_dir/.statelite";  # create place for NFS mounts.
 
 # this script will get the directories.	
 # TODO: the file is re-copied in liteimg.pm
-unless(-f "../add-on/statelite/rc.statelite"){
+unless (-f "../add-on/statelite/rc.statelite") {
 	print "Can't find ../add-on/statelite/rc.statelite!\n";
-	exit;
+	exit 1;
 }
 
 system("cp ../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
@@ -547,12 +598,12 @@ system("cp ../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
 # may have already been made into a symbolic link, if so ignore it
 
 unless ($dracutmode) { #in dracut mode, we delegate all this activity
-    unless(-l "$rootimg_dir/var/lib/dhclient" ){
+    unless (-l "$rootimg_dir/var/lib/dhclient" ) {
     	mkpath "$rootimg_dir/var/lib/dhclient/";
     	system("touch $rootimg_dir/var/lib/dhclient/dhclient-$prinic.leases");
     }
     
-    unless(-l "$rootimg_dir/var/lib/dhcp" ){
+    unless (-l "$rootimg_dir/var/lib/dhcp" ) {
     	mkpath "$rootimg_dir/var/lib/dhcp/";
     	system("touch $rootimg_dir/var/lib/dhcp/dhclient-$prinic.leases");
     }
@@ -615,7 +666,7 @@ sub getlibs {
 			next;
 		}
       $temp1 =~ s/^\///;
-		$libhash{$temp1}=1;
+      $libhash{$temp1}=1;
    }
 }
 
