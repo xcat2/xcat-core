@@ -60,17 +60,33 @@ function submit_request($req, $skipVerify){
 	$rsp = FALSE;
 	$response = '';
 	$cleanexit = 0;
+	
+	// Open syslog, include the process ID and also send
+	// the log to standard error, and use a user defined
+	// logging mechanism
+	openlog("xCAT-UI", LOG_PID | LOG_PERROR, LOG_LOCAL0);
 
 	// Open a socket to xcatd
+	syslog(LOG_INFO, "Opening socket to xcatd...");
 	if($fp = stream_socket_client('ssl://'.$xcathost.':'.$port, $errno, $errstr, 30, STREAM_CLIENT_CONNECT)){
-		// The line below makes the call async
-		// stream_set_blocking($fp, 0);
+		$reqXML = $req->asXML();
+		$nr = $req->noderange;
+		$cmd = $req->command;
+		
+		syslog(LOG_INFO, "Sending request: $cmd $nr");
+		stream_set_blocking($fp, 0);	// Set as non-blocking
 		fwrite($fp,$req->asXML());		// Send XML to xcatd
-		while(!feof($fp)){				// Read until there is no more
+		set_time_limit(900);			// Set 15 minutes timeout (for long running requests) 
+										// The default is 30 seconds which is too short for some requests
+		
+		while(!feof($fp)) {				// Read until there is no more	
 			// Remove newlines and add it to the response
-			$response .= fread($fp, 8192);
-			$response = preg_replace('/>\n\s*</', '><', $response);
-			
+			$str = fread($fp, 8192);
+			if ($str) {
+				$response .= preg_replace('/>\n\s*</', '><', $str);
+				// syslog(LOG_INFO, "($nr) Reading partial response: $response");
+			}
+							
 			// Look for serverdone response
 			$fullpattern = '/<xcatresponse>\s*<serverdone>\s*<\/serverdone>\s*<\/xcatresponse>/';
 			$mixedpattern = '/<serverdone>\s*<\/serverdone>.*<\/xcatresponse>/';
@@ -90,19 +106,24 @@ function submit_request($req, $skipVerify){
 				$cleanexit = 1;
 				break;
 			}
-		}
+		} // End of while(!feof($fp))
+		
+		syslog(LOG_INFO, "($cmd $nr) Response: $response");
 		fclose($fp);
-	} else{
+	} else {
 		echo "<p>xCAT submit request socket error: $errno - $errstr</p>";
 	}
 
-	if(! $cleanexit){
+	// Close syslog
+	closelog();
+	
+	if(! $cleanexit) {
 		if (preg_match('/^\s*<xcatresponse>.*<\/xcatresponse>\s*$/',$response)) {
 			// Probably an error message
 			$response = "<xcat>$response</xcat>";
 			$rsp = simplexml_load_string($response,'SimpleXMLElement', LIBXML_NOCDATA);
 		}
-		elseif(!$skipVerify){
+		elseif(!$skipVerify) {
 			echo "<p>(Error) xCAT response ended prematurely: ", htmlentities($response), "</p>";
 			$rsp = FALSE;
 		}
