@@ -622,7 +622,7 @@ sub mkinitrd_dracut {
 
     system("chroot $rootimg_dir dracut -f /tmp/initrd.$$.gz $kernelver");
     print "the initial ramdisk is generated successfully.\n";
-    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd.gz");
+    move("$rootimg_dir/tmp/initrd.$$.gz", "$destdir/initrd-$mode.gz");
 }
 
 sub mkinitrd {
@@ -1177,7 +1177,7 @@ EOMS
 	}
 	
    #copy("$rootimg_dir/lib/modules/*d","/tmp/xcatinitrd.$$/$_");
-   system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd.gz");
+   system("cd /tmp/xcatinitrd.$$;find .|cpio -H newc -o|gzip -9 -c - > $destdir/initrd-$mode.gz");
    system("rm -rf /tmp/xcatinitrd.$$");
 
 }
