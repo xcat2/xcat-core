@@ -368,8 +368,22 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
                                 "xCAT is now running on the DB2 database.\n");
 
     }
-    else
+    else  # client
     {
+        #
+        # start the daemon
+        #
+        my $xcmd;
+        if ($::osname eq 'AIX')
+        {
+          $xcmd = "startsrc -s xcatd";
+
+        }
+        else
+        {
+          $xcmd = "service xcatd start";
+        }
+        system($xcmd);
         xCAT::MsgUtils->message("I", "xCAT DB2 Client setup is complete.\n");
     }
 }    # end initialization
