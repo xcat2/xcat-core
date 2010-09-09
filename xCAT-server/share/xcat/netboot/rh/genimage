@@ -87,7 +87,7 @@ if (@ARGV > 0) {
         exit 1;
     }
    
-    #get the info from the osimage and linux 
+    # get the info from the osimage and linux 
     my $osimagetab=xCAT::Table->new('osimage', -create=>1);
     if (!$osimagetab) {
         print "The osimage table cannot be opened.\n";
@@ -112,7 +112,7 @@ if (@ARGV > 0) {
     $osver=$ref->{'osvers'};
     $arch=$ref->{'osarch'};
     $profile=$ref->{'profile'};
-    my $provmethod=$ref->{'provmethod'}; # TODO: necessary?
+    my $provmethod=$ref->{'provmethod'}; # TODO: not necessary; and need to update both statelite and stateless modes
   
     unless ($osver and $arch and $profile and $provmethod) {
         print"osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database.\n";
@@ -124,7 +124,7 @@ if (@ARGV > 0) {
         exit 1;
     }
 
-    if (! $ref1->{'pkglist'}) {
+    unless ( $ref1->{'pkglist'} ) {
         print"A .pkglist file must be specified for image \'$imagename\' in the linuximage table.\n";
         exit 0;
     }
@@ -187,6 +187,12 @@ if (@ARGV > 0) {
     # update the Attributes
     $linuximagetab->setAttribs(\%keyhash, \%updates); 
     $linuximagetab->commit;
+}
+
+# if "Table.pm" can be found here, the attributes in linuximage and osimage will be updated
+eval { require("$::XCATROOT/lib/perl/xCAT/Table.pm") };
+unless ($@) {
+    # Table.pm is there, we can update the xCAT tables
 }
 
 $permission = "755" unless ($permission);
@@ -319,9 +325,9 @@ unless ($onlyinitrd) {
    }
 
    #Now let's handle extra packages
-    if (!$imagename) {
-	$otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
-	if (!$otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
+    unless ($imagename) {
+        $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
+        if (!$otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
     }
     my %extra_hash=();
     if ($otherpkglist) {
@@ -334,64 +340,64 @@ unless ($onlyinitrd) {
       my $index=1;
       foreach $pass (sort (keys(%extra_hash))) {
         foreach (keys(%{$extra_hash{$pass}})) {
-	  if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
-	  print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
-	  $index++;
-	  my $pa=$extra_hash{$pass}{$_};
-	  $extrapkgnames{$pass} .= " " . join(' ', @$pa);
+            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
+            print $yumconfig "[otherpkgs$index]\nname=otherpkgs$index\nbaseurl=file://$srcdir_otherpkgs/$_\ngpgpcheck=0\n\n";
+            $index++;
+            my $pa=$extra_hash{$pass}{$_};
+            $extrapkgnames{$pass} .= " " . join(' ', @$pa);
         }
       }
       close($yumconfig);
       $index--;
       $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir/ --disablerepo=* ";
       foreach (0..$repnum) {
-	  $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
+          $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
       }
       for (1..$index) {
-	  $yumcmd .= "--enablerepo=otherpkgs$_ ";
+          $yumcmd .= "--enablerepo=otherpkgs$_ ";
       } 
 
       foreach $pass (sort (keys(%extra_hash))) {
-      #remove the packages that are specified in the otherpkgs.list files with leading '-'
+          # remove the packages that are specified in the otherpkgs.list files with leading '-'
           my $yumcmd_remove= "$yumcmd erase ";
           if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
-	      my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
-	      my $rm_packges= join(' ', @$pa);
-	      if ($rm_packges) {
+              my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
+              my $rm_packges= join(' ', @$pa);
+              if ($rm_packges) {
                   print "$yumcmd_remove $rm_packges\n";
-	          $rc = system("$yumcmd_remove $rm_packges");
-	      }
+                  $rc = system("$yumcmd_remove $rm_packges");
+              }
           }
 
 
-      #install extra packages
+          # install extra packages
           my $yumcmd_base = $yumcmd;
           $yumcmd .= "install ";
-          #append extra pkg names to yum command 
+          # append extra pkg names to yum command 
           if ($extrapkgnames{$pass}) {
-	      $yumcmd .= " $extrapkgnames{$pass} ";
+              $yumcmd .= " $extrapkgnames{$pass} ";
           }   
           $yumcmd =~ s/ $/\n/;
     
-          #debug
+          # debug
           print "yumcmd=$yumcmd\n";
           #my $repo=`cat /tmp/genimage.$$.yum.conf`;
           #print "repo=$repo";
       
           my $rc = system($yumcmd);
           if ($rc) { 
-	      print "yum invocation failed\n";
-	      exit 1;
+              print "yum invocation failed\n";
+              exit 1;
           }
 	
-      #remove the packages that are specified in the otherpkgs.list files with leading '--'
+          # remove the packages that are specified in the otherpkgs.list files with leading '--'
           if (exists ($extra_hash{$pass}{'POST_REMOVE'})) {
-	      my $pa=$extra_hash{$pass}{'POST_REMOVE'};
-	      my $rm_packges= join(' ', @$pa);
-	      if ($rm_packges) {
+              my $pa=$extra_hash{$pass}{'POST_REMOVE'};
+              my $rm_packges= join(' ', @$pa);
+              if ($rm_packges) {
                   print "$yumcmd_remove $rm_packges\n";
-	          $rc = system("$yumcmd_remove $rm_packges");
-	      }
+                  $rc = system("$yumcmd_remove $rm_packges");
+              }
           }
       }
    }
