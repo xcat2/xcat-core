@@ -4497,9 +4497,23 @@ sub rmnimimage
             {
 
                 # is it allocated?
-                my $alloc_count =
-                  xCAT::InstUtils->get_nim_attr_val($resname, "alloc_count",
+                my $alloc_count;
+                # only change the logic for -s flag,
+                # keep the original logic for other scenarios
+                if ($::SERVERLIST)
+                {
+                    # get local hostname as target
+                    my $hn = `hostname`;
+                    $alloc_count =
+                      xCAT::InstUtils->get_nim_attr_val($resname, "alloc_count",
+                                                    $callback, $hn, $subreq);
+                }
+                else
+                {
+                    $alloc_count =
+                      xCAT::InstUtils->get_nim_attr_val($resname, "alloc_count",
                                                     $callback, "", $subreq);
+                }
 
                 if (defined($alloc_count) && ($alloc_count != 0))
                 {
