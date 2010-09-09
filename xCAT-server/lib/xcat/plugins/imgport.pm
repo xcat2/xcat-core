@@ -1,4 +1,3 @@
-
 # Sumavi Inc (C) 2010
 
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
@@ -8,6 +7,11 @@
 # This will make it so that you can easily share your images with others.
 # All your images are belong to us!
 package xCAT_plugin::imgport;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
 use strict;
 use warnings;
 #use xCAT::Table;
@@ -22,6 +26,7 @@ use File::Temp;
 use File::Copy;
 use File::Path qw/mkpath/;
 use File::Basename;
+use xCAT::NodeRange;
 use Cwd;
 my $requestcommand;
 $::VERBOSE = 0;
@@ -81,15 +86,17 @@ sub ximport {
 	my $callback = shift;
 	my %rsp;	# response
 	my $help;
+        my $nodes;
+        my $new_profile;
 
 	my $xusage = sub {
-		my $ec = shift;
-		push@{ $rsp{data} }, "imgimport: Takes in an xCAT image bundle and defines it to xCAT so you can use it"; 
-		push@{ $rsp{data} }, "Usage: ";
-		push@{ $rsp{data} }, "\timgimport [-h|--help] - displays this help message";
-		push@{ $rsp{data} }, "\timgimport <image name> - imports image.  Image should be an xCAT bundle";
-		if($ec){ $rsp{errorcode} = $ec; }
-		$callback->(\%rsp);
+	    my $ec = shift;
+	    push@{ $rsp{data} }, "imgimport: Takes in an xCAT image bundle and defines it to xCAT so you can use it"; 
+	    push@{ $rsp{data} }, "Usage: ";
+	    push@{ $rsp{data} }, "\timgimport [-h|--help]";
+	    push@{ $rsp{data} }, "\timgimport <bundle_file_name> [-p|--postscripts <nodelist>] [-f|--profile <new_profile>] [-v]";
+	    if($ec){ $rsp{errorcode} = $ec; }
+	    $callback->(\%rsp);
 	};
 	unless(defined($request->{arg})){ $xusage->(1); return; }
 	@ARGV = @{ $request->{arg}};
@@ -101,6 +108,8 @@ sub ximport {
 	GetOptions(
 		'h|?|help' => \$help,
 		'v|verbose' => \$::VERBOSE,
+	        'p|postscripts=s' => \$nodes,
+	        'f|profile=s' => \$new_profile,
 	);
 
 	if($help){
@@ -109,7 +118,7 @@ sub ximport {
 	}
 
 	# first extract the bundle	
-	extract_bundle($request, $callback);
+	extract_bundle($request, $callback,$nodes,$new_profile);
 	
 }
 
@@ -123,11 +132,14 @@ sub xexport {
 	my %rsp;	# response
 	my $help;
 	my @extra;
+        my $node;
 
 	my $xusage = sub {
 		my $ec = shift;
-		push@{ $rsp{data} }, "imgexport: Creates a tarball of an existing xCAT image";
-		push@{ $rsp{data} }, "Usage: imgexport [-f] <image name> [directory] [[--extra <file:dir> ] ... ]";
+		push@{ $rsp{data} }, "imgexport: Creates a tarball (bundle) of an existing xCAT image";
+		push@{ $rsp{data} }, "Usage: ";
+		push@{ $rsp{data} }, "\timgexport [-h|--help]";
+		push@{ $rsp{data} }, "\timgexport <image_name> [directory] [[-e|--extra <file:dir> ] ... ] [-p|--postscripts <node_name>] [-v]";
 		if($ec){ $rsp{errorcode} = $ec; }
 		$callback->(\%rsp);
 	};
@@ -140,7 +152,8 @@ sub xexport {
 
 	GetOptions(
 		'h|?|help' => \$help,
-		'extra=s' => \@extra,
+	        'p|postscripts=s' => \$node,
+		'e|extra=s' => \@extra,
 		'v|verbose' => \$::VERBOSE
 	);
 
@@ -157,11 +170,11 @@ sub xexport {
 
 	$callback->( {data => ["Exporting $img_name to $cwd..."]});
 	# check if all files are in place
-	my $attrs = get_image_info($img_name, $callback, @extra);
+	my $attrs = get_image_info($img_name, $callback, $node, @extra);
 	#print Dumper($attrs);
 
 	unless($attrs){
-		return 1;
+	    return 1;
 	}	
 
 	# make manifest and tar it up.
@@ -177,6 +190,7 @@ sub xexport {
 sub get_image_info {
 	my $imagename = shift;
 	my $callback = shift;
+	my $node = shift;
 	my @extra = @_;
 	my $errors = 0;
 	
@@ -253,9 +267,73 @@ sub get_image_info {
 		}
 	}
 
+        #get postscripts
+        if ($node) {
+	    $attrs = get_postscripts($node, $callback, $attrs)
+	}
+
+
 	# if we get nothing back, then we couldn't find the files.  How sad, return nuthin'
 	return $attrs;	
 
+}
+
+sub get_postscripts {
+    my $node = shift;
+    my $errors = 0;
+    my $callback = shift;
+    my $attrs = shift; 
+    my @nodes = noderange($node);
+    if (@nodes > 0) { $node = $nodes[0]; }
+    else {
+	$callback->(
+	    {error => ["Unable to get postscripts, $node is not a valide node."],errorcode=>1}
+	    );
+	return 0;
+    }
+    my $postscripts;
+    my $postbootscripts;
+    my $ptab = new xCAT::Table('postscripts', -create=>1);
+    unless($ptab){
+	$callback->(
+	    {error => ["Unable to open table 'postscripts'."],errorcode=>1}
+	    );
+	return 0;
+    }
+    
+    my $ent = $ptab->getNodeAttribs($node, ['postscripts', 'postbootscripts']);
+    if ($ent)  
+    {
+	if ($ent->{postscripts}) { $postscripts = $ent->{postscripts}; }
+	if ($ent->{postbootscripts}) { $postbootscripts = $ent->{postbootscripts}; }
+	
+    }
+    
+    (my $attrs1) = $ptab->getAttribs({node => "xcatdefaults"}, 'postscripts', 'postbootscripts');
+    if ($attrs1) {
+	if ($attrs1->{postscripts}) {
+	    if ($postscripts) {
+		$postscripts = $attrs1->{postscripts} . ",$postscripts";
+	    } else {
+		$postscripts = $attrs1->{postscripts};
+	    }
+	}
+	if ($attrs1->{postbootscripts}) {
+	    if ($postbootscripts) {
+		$postbootscripts = $attrs1->{postbootscripts} . ",$postbootscripts";
+	    } else {
+		$postbootscripts = $attrs1->{postbootscripts};
+	    }
+	}
+	
+    }
+    if ($postscripts) {
+	$attrs->{postscripts} = $postscripts;
+    }
+    if ($postbootscripts) {
+	$attrs->{postbootscripts} = $postbootscripts;
+    }
+    return $attrs;
 }
 
 
@@ -545,108 +623,120 @@ sub make_bundle {
 }
 
 sub extract_bundle {
-	my $request = shift;
-	#print Dumper($request);
-	my $callback = shift;
-	@ARGV = @{ $request->{arg} };
-	my $xml;
-	my $data;
-	my $datas;
-	my $error = 0;
+    my $request = shift;
+    #print Dumper($request);
+    my $callback = shift;
+    my $nodes=shift;
+    my $new_profile=shift;
+    
+    @ARGV = @{ $request->{arg} };
+    my $xml;
+    my $data;
+    my $datas;
+    my $error = 0;
+    
+    my $bundle = shift @ARGV;
+    # extract the image in temp path in cwd
+    my $dir = $request->{cwd}; #getcwd;
+    $dir = $dir->[0];
+    #print Dumper($dir);
+    unless(-r $bundle){
+	$bundle = "$dir/$bundle";
+    }
+    
+    unless(-r $bundle){
+	$callback->({error => ["Can not find $bundle"],errorcode=>[1]});
+	return;
+    }
+    
+    my $tpath = mkdtemp("$dir/imgimport.$$.XXXXXX");
+    
+    $callback->({data=>["Unbundling image..."]});
+    my $rc;
+    if($::VERBOSE){
+	$callback->({data=>["tar zxvf $bundle -C $tpath"]});
+	$rc = system("tar zxvf $bundle -C $tpath");
+	$rc = system("tar zxvf $bundle -C $tpath");
+    }else{
+	$rc = system("tar zxf $bundle -C $tpath");
+    }
+    if($rc){
+	$callback->({error => ["Failed to extract bundle $bundle"],errorcode=>[1]});
+    }
+
+    # get all the files in the tpath.  These should be all the image names.
+    my @files = < $tpath/* >;
+    # go through each image directory.  Find the XML and put it into the array.  If there are any 
+    # errors then the whole thing is over and we error and leave.
+    foreach my $imgdir (@files){
+	#print "$imgdir \n";
+	unless(-r "$imgdir/manifest.xml"){
+	    $callback->({error=>["Failed to find manifest.xml file in image bundle"],errorcode=>[1]});
+	    return;
+	}
+	$xml = new XML::Simple;
+	# get the data!
+	# put it in an eval string so that it 
+	$data = eval { $xml->XMLin("$imgdir/manifest.xml") };
+	if($@){
+	    $callback->({error=>["invalid manifest.xml file inside the bundle.  Please verify the XML"],errorcode=>[1]});
+	    #my $foo = $@;
+	    #$foo =~ s/\n//;
+	    #$callback->({error=>[$foo],errorcode=>[1]});
+	    #foreach($@){
+	    #	last;
+	    #}
+	    return;
+	}
+	#print Dumper($data);
+	#push @{$datas}, $data;
 	
-	my $bundle = shift @ARGV;
-	# extract the image in temp path in cwd
-	my $dir = $request->{cwd}; #getcwd;
-	$dir = $dir->[0];
-	#print Dumper($dir);
-	unless(-r $bundle){
-		$bundle = "$dir/$bundle";
+	# now we need to import the files...
+	unless(verify_manifest($data, $callback)){
+	    $error++;
+	    next;		
 	}
-
-	unless(-r $bundle){
-		$callback->({error => ["Can not find $bundle"],errorcode=>[1]});
-		return;
-	}
-
-	my $tpath = mkdtemp("$dir/imgimport.$$.XXXXXX");
 	
-	$callback->({data=>["Unbundling image..."]});
-	my $rc;
-	if($::VERBOSE){
-		$callback->({data=>["tar zxvf $bundle -C $tpath"]});
-		$rc = system("tar zxvf $bundle -C $tpath");
-		$rc = system("tar zxvf $bundle -C $tpath");
-	}else{
-		$rc = system("tar zxf $bundle -C $tpath");
+	# check media first
+	unless(check_media($data, $callback)){
+	    $error++;
+	    next;		
 	}
-	if($rc){
-		$callback->({error => ["Failed to extract bundle $bundle"],errorcode=>[1]});
+	
+	#import manifest.xml into xCAT database
+	unless(set_config($data, $callback)){
+	    $error++;
+	    next;
 	}
-
-	# get all the files in the tpath.  These should be all the image names.
-	my @files = < $tpath/* >;
-	# go through each image directory.  Find the XML and put it into the array.  If there are any 
-	# errors then the whole thing is over and we error and leave.
-	foreach my $imgdir (@files){
-		#print "$imgdir \n";
-		unless(-r "$imgdir/manifest.xml"){
-			$callback->({error=>["Failed to find manifest.xml file in image bundle"],errorcode=>[1]});
-			return;
-		}
-		$xml = new XML::Simple;
-		# get the data!
-		# put it in an eval string so that it 
-		$data = eval { $xml->XMLin("$imgdir/manifest.xml") };
-		if($@){
-			$callback->({error=>["invalid manifest.xml file inside the bundle.  Please verify the XML"],errorcode=>[1]});
-			#my $foo = $@;
-			#$foo =~ s/\n//;
-			#$callback->({error=>[$foo],errorcode=>[1]});
-			#foreach($@){
-			#	last;
-			#}
-			return;
-		}
-		#print Dumper($data);
-		#push @{$datas}, $data;
-		
-		# now we need to import the files...
-		unless(verify_manifest($data, $callback)){
-			$error++;
-			next;		
-		}
-
-		# check media first
-		unless(check_media($data, $callback)){
-			$error++;
-			next;		
-		}
-
-		#import manifest.xml into xCAT database
-		unless(set_config($data, $callback)){
-			$error++;
-			next;
-		}
-		
-		# now place files in appropriate directories.
-		unless(make_files($data, $imgdir, $callback)){
-			$error++;
-			next;
-		}
-
-		my $osimage = $data->{imagename};	
-		$callback->({data=>["Successfully imported $osimage"]});
-		
+	
+	# now place files in appropriate directories.
+	unless(make_files($data, $imgdir, $callback)){
+	    $error++;
+	    next;
 	}
-
-	# remove temp file only if there were no problems.
-	unless($error){
-		#$rc = system("rm -rf $tpath");
-		if ($rc) {
-			$callback->({error=>["Failed to clean up temp space $tpath"],errorcode=>[1]});
-			return;
-		}	
+	
+	# put postscripts in the postsctipts table
+	if ($nodes) {
+	    unless(set_postscripts($data, $callback, $nodes)){
+		$error++;
+		next;
+	    }
 	}
+	
+	
+	my $osimage = $data->{imagename};	
+	$callback->({data=>["Successfully imported $osimage"]});
+	
+    }
+    
+    # remove temp file only if there were no problems.
+    unless($error){
+	$rc = system("rm -rf $tpath");
+	if ($rc) {
+	    $callback->({error=>["Failed to clean up temp space $tpath"],errorcode=>[1]});
+	    return;
+	}	
+    }
 
 }
 
@@ -674,6 +764,90 @@ sub check_media {
 	return $rc;
 }
 
+
+sub set_postscripts {
+    my $data = shift;
+    my $callback = shift;
+    my $nodes=shift;
+
+    $callback->({data=>["Adding postscripts..."]});
+
+    my @good_nodes=noderange($nodes);
+
+    if (@good_nodes > 0) {
+	my @missed = nodesmissed();
+	if (@missed > 0) {
+	    $callback->(
+		{warning => ["The following nodes will be skipped because they are not in the nodelist table.\n  " . join(',', @missed)],errorcode=>1}
+		);
+	}
+    } else    {
+	$callback->(
+	    {error => ["The nodes $nodes are not defined in xCAT DB."],errorcode=>1}
+	    );
+	return 0;
+    }
+
+    my $ptab = xCAT::Table->new('postscripts',-create => 1,-autocommit => 0);
+    unless($ptab){
+	$callback->(
+	    {error => ["Unable to open table 'postscripts'"],errorcode=>1}
+	    );
+	return 0;
+    }
+
+
+    # get xcatdefaults settings
+    my @a1=();
+    my @a2=();
+    (my $attrs1) = $ptab->getAttribs({node => "xcatdefaults"}, 'postscripts', 'postbootscripts');
+    if ($attrs1) {
+	if ($attrs1->{postscripts}) {
+	    @a1=split(',', $attrs1->{postscripts});
+	}
+	if ($attrs1->{postbootscripts}) {
+	    @a2=split(',', $attrs1->{postbootscripts});
+	}
+    }    
+
+    #remove the script if it is already in xcatdefaults
+    my @a3=();
+    my @a4=();
+    my $postscripts = $data->{postscripts};
+    my $postbootscripts = $data->{postbootscripts};
+    if ($postscripts) { @a3 = split(',', $postscripts); }
+    if ($postbootscripts) { @a4 = split(',', $postbootscripts); }
+
+    my @a30;
+    my @a40;
+    if (@a1>0 && @a3>0) {
+	foreach my $tmp1 (@a3) {
+	    if (! grep /^$tmp1$/, @a1) {
+		push(@a30, $tmp1);
+	    }
+	}
+	$postscripts=join(',', @a30);
+    }
+    if (@a2>0 && @a4>0) {
+	foreach my $tmp2 (@a4) {
+	    if (! grep /^$tmp2$/, @a2) {
+		push(@a40, $tmp2);
+	    }
+	}
+        $postbootscripts=join(',', @a40);
+    }
+    
+    #now save to the db
+    my %keyhash;
+    if ($postscripts || $postbootscripts) {
+	$keyhash{postscripts} = $postscripts;
+	$keyhash{postbootscripts} = $postbootscripts;
+	$ptab->setNodesAttribs(\@good_nodes, \%keyhash );
+	$ptab->commit;
+    }
+
+    return 1;
+}
 
 sub set_config {
 	my $data = shift;
