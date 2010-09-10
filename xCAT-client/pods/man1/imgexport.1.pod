@@ -6,28 +6,57 @@ B<imgexport> - Exports an xCAT image.
 
 B<imgexport [-h| --help]>
 
-B<imgexport [-v| --verbose] imagename exported_file_name >
-B<imgexport> I<imagename> 
+B<imgexport image_name [destination] [[-e|--extra file:dir] ... ] [-p|--postscripts node_name] [-v|--verbose]>
 
 
 =head1 DESCRIPTION
 
-The imgexport command will export an image that is being used by xCAT.  To export images, you must have the images defined in the osimage table. 
-The following columns must be filled out for an image to be exported:
-osimage.imagename
-osimage.profile
-osimage.provmethod
-osimage.osvers
-osimage.osarch
+The imgexport command will export an image that is being used by xCAT.  To export images, you must have the images defined in the I<osimage> table. All the columns in the I<osimage> and I<linuximage> tables will be exported. In addition, the following files will also be exported.
+
+For statefull:
+  x.pkglist
+  x.otherpkgs.pkglist
+  x.tmpl
+  x.synclist
+
+For stateless:
+  kernel
+  intied.gz
+  rootimg.gz
+  x.pkglist
+  x.otherpkgs.pkglist
+  x.synclist
+  x.postinstall
+  x.exlist
+
+
+For statelite:
+  intied.gz
+  x.pkglist
+  x.synclist
+  x.otherpkgs.pkglist
+  x.postinstall
+  x.exlist
+
+where x is the name of the profile.
+
+Any files specified by the -e flag will also be exported. If -p flag is specified, the postscripts and the postbootscripts for the given node will be exported. 
 
 =head1 OPTIONS
 
 
-B<-h>          Display usage message.
+B<-e|--extra> I<srcfile:destdir>    Pack up extra files. If I<destdir> is omitted, the destination directory will be the same as the source directory. 
 
-B<-v>          Verbose output.
+B<-h|--help>                      Display usage message.
+  
+B<-p|--postscripts> I<node_name>    Get the postscripts for the given node and pack it into the image. 
 
-B<-extra srcfile:destdir>      Pack up extra files
+B<-v|--verbose>                   Verbose output.
+
+I<image_name>                     The name of the image. Use I<lsdef -t> osimage to find out all the image names. 
+
+I<destination>                    The output bundle file name. 
+
 
 =head1 RETURN VALUE
 
@@ -41,17 +70,19 @@ B<-extra srcfile:destdir>      Pack up extra files
 
 B<imgexport foo>
 
-foo.tgz will be built in the current working directory.  Make sure that you have enough space in the directory
-that you are in to run imgexport if you have a big image to tar up.
+foo.tgz will be built in the current working directory.  Make sure that you have enough space in the directory that you are in to run imgexport if you have a big image to tar up.
 
 2. To include extra files with your image:
 
-B<imgexport Default_Stateless_1265981465 foo.tgz --extra=/opt/xcat/share/xcat/netboot/centos/compute.centos5.4.pkglist:/install/custom/netboot/centos --extra=/opt/xcat/share/xcat/netboot/centos/compute.exlist:/install/custom/netboot/centos>
+B<imgexport Default_Stateless_1265981465 foo.tgz -e /install/postscripts/myscript1  -e /tmp/mydir:/usr/mydir>
 
-This will export the image Default_stateless_1265981465 into a file called foo.tgz.  In addition, it will package up extra files as well:
- compute.centos5.4.pkglist
- compute.exlist
-It will also place the contents of the file in the manifest.xml file that is part of the bundle.
+In addition to all the default files, this will export I</install/postscripts/myscript1> and the whole directory I</tmp/dir> into the file called foo.tgz.  And when imgimport is called  I</install/postscripts/myscript1> will be copied into the same directory and I</tmp/mydir> will be copied to I</usr/mydir>. 
+
+3. To include postscripts with your image:
+
+B<imgexport Default_Stateless_1265981465 foo.tgz -p node1>
+
+The I<postscripts> and the I<postbootscripts> specified in the I<postscripts> table for node1 will be exported into the image.
 
 =head1 FILES
 
