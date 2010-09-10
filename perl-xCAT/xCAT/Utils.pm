@@ -3383,6 +3383,14 @@ sub get_ServiceNode
     	chomp $nimprime;
 	}
 
+	# $master and $nimprime is possible to be the same (MN)
+	# but $master is IP addr, $nimprime is short hostname
+	# this results in %snhash may have two keys duplicated.
+	# so use ip for nimprime.
+
+	my $nimprimeip = xCAT::NetworkUtils->getipaddr($nimprime);
+    $nimprime = $nimprimeip;
+
     $noderestab = xCAT::Table->new('noderes');
 	$nodetab = xCAT::Table->new('nodetype');
 
