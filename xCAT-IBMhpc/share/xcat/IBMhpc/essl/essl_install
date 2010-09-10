@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh 
 
 # 
 # Sample script to accept licenses and install ESSL and PESSL packages
@@ -47,12 +47,13 @@ if [ $OS != "AIX" ]; then
         tmpdir=tmpessl
         mkdir $installroot/$tmpdir
         cp -p $ESSL_DIR/* $installroot/$tmpdir
-        rpm --root $installroot -Uvh $installroot/$tmpdir/essl.license*.rpm
+        #rpm --root $installroot -Uvh $installroot/$tmpdir/essl.license*.rpm
+        IBM_ESSL_LICENSE_ACCEPT=yes rpm --root $installroot -Uvh $installroot/$tmpdir/essl*.rpm
         cd $installroot
-        install_essl=`find opt/ibmmath/essl -name install_essl -print`
-        if [ -n "$install_essl" ] ; then
-            chroot $installroot /$install_essl -y -nodocs -d /$tmpdir
-        fi
+        #install_essl=`find opt/ibmmath/essl -name install_essl -print`
+        #if [ -n "$install_essl" ] ; then
+        #    chroot $installroot /$install_essl -y -nodocs -d /$tmpdir
+        #fi
         rpm --root  $installroot -Uvh $installroot/$tmpdir/pessl.license*.rpm
         install_pessl=`find opt/ibmmath/pessl -name install_pessl -print`
         if [ -n "$install_pessl" ] ; then
