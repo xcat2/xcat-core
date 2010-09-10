@@ -1,4 +1,4 @@
 #image,file,options,comments,disable
 "ALL","/home/",,"for user management, PE,LL use non-root user",
-"compute","/etc/PNSD.cfg",,"for PE",
-"compute","/etc/objrepos/",,"For SRC, used by PE",
+"ALL","/etc/PNSD.cfg",,"for PE",
+"ALL","/etc/objrepos/",,"For SRC, used by PE",
