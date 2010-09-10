@@ -1,4 +1,4 @@
 #image,file,options,comments,disable
-"compute","/var/mmfs/","persistent","for GPFS",
-"compute","/var/adm/ras/","persistent","for GPFS",
-"compute","/gpfs/",,"for GPFS",
+"ALL","/var/mmfs/","persistent","for GPFS",
+"ALL","/var/adm/ras/","persistent","for GPFS",
+"ALL","/gpfs/",,"for GPFS",
