@@ -1342,10 +1342,23 @@ srvnode.";
         $otherpkgs = $attrvals{otherpkgs};
     }
 
-    my $installp_flags = undef;
+    my $installp_flags = "-agQXY ";
     if ($attrvals{installp_flags})
     {
         $installp_flags = $attrvals{installp_flags};
+    }
+
+    my $rpm_flags = "-Uvh --replacepkgs";
+    if ($attrvals{rpm_flags})
+    {
+        $rpm_flags = $attrvals{rpm_flags};
+    }
+
+    # no default flag for emgr
+    my $emgr_flags = undef;
+    if ($attrvals{emgr_flags})
+    {
+        $emgr_flags = $attrvals{emgr_flags};
     }
 
     # if have bundles or otherpkgs then then add software
@@ -1357,7 +1370,7 @@ srvnode.";
 
         $rc =
           &update_spot_sw($callback, $spot_name, $lpp_name, $nimprime, $bundles,
-                          $otherpkgs, $installp_flags, $subreq);
+                          $otherpkgs, $installp_flags, $rpm_flags, $emgr_flags, $subreq);
         if ($rc != 0)
         {
             my $rsp;
@@ -9476,6 +9489,8 @@ sub update_spot_sw
     my $bndls     = shift;
     my $otherpkgs = shift;
     my $iflags    = shift;
+    my $rflags    = shift;
+    my $eflags    = shift;
     my $subreq    = shift;
 
     my @bndlnames;
@@ -9518,54 +9533,6 @@ sub update_spot_sw
 # nim installs RPMs first then installp fileset, it causes perl-Net_SSLeay.pm pre-install
 # verification failed due to openssl not installed.
 
-if (0)
-{
-    #  do installp_bundles - if any
-    #  cust operation can only do one bnd at a time!!!!
-    if (scalar(@bndlnames) > 0)
-    {
-
-        # do separate cust for each bndl
-        foreach my $bndl (@bndlnames)
-        {
-            my $opt_string = "";
-            $opt_string .= "-a installp_bundle=$bndl ";
-            if (defined($iflags))
-            {
-                $opt_string .= "-a installp_flags=$iflags ";
-            }
-
-            # construct the cmd
-            my $custcmd =
-              "/usr/sbin/nim -o cust -a lpp_source=$lppsource $opt_string $spotname";
-
-            # run it! - make sure output goes in error message
-            if ($::VERBOSE)
-            {
-                my $rsp;
-                push @{$rsp->{data}}, "Running \'$custcmd\' on $nimprime.\n";
-                xCAT::MsgUtils->message("I", $rsp, $callback);
-            }
-            my $output =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime,
-                                    $custcmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "Could not update the NIM SPOT called \'$spotname\' on $nimprime.";
-                if ($::VERBOSE)
-                {
-                    push @{$rsp->{data}}, "$output";
-                }
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
-
-        }
-    }    # end - bndls
-}
-
     # do installp_bundles - if any
     # install installp/RPM without nim, use xcatchroot
 
@@ -9583,6 +9550,7 @@ if (0)
     # get lpp_source location in chroot env
     # such as /install/nim/spot/61Ldskls_test/usr/lpp/bos/inst_root/lpp_source
     my $chroot_lpploc = $spotloc . "/lpp/bos/inst_root/lpp_source";
+    my $chroot_rpmloc = $chroot_lpploc . "/RPMS/ppc";
       
     if ($::VERBOSE)
     {
@@ -9619,52 +9587,23 @@ if (0)
             }
 
             # construct tmp file to hold the pkg list.
-            my ($tmp_installp, $tmp_rpm) = gen_list_file($callback, $bndlloc);
+            my ($tmp_installp, $tmp_rpm) = parse_installp_bundle($callback, $bndlloc);
 
             # use xcatchroot to install sw in SPOT on nimprime.
             
     # install installp with file first.
-            my $icmd = "/usr/sbin/installp ";
-
-            # set flags
-            my $flags;
-            if (defined($iflags))
+            my $rc = update_spot_installp($callback, $chroot_lpploc, $tmp_installp,
+                                          $iflags, $spotname, $nimprime, $subreq);
+            if ($rc)
             {
-                $flags = $iflags;
-            }
-            else
-            {
-                # -Y to accept license.
-                $flags = "-agQXY ";
-            }
-
-            # these installp flags can be used with -d
-            if ($flags =~ /l|L|i|A|a/)
-            {
-                $icmd .= "-d $chroot_lpploc ";
-            }
-
-            $icmd .= "$flags -f $tmp_installp";
-
-            # run icmd!
-            my $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$icmd"~;
-
-            my $output =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
-
-            if ($::RUNCMD_RC != 0)
-            {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "Could not install installp packages in SPOT $spotname.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
+                #failed to update installp
                 return 1;
             }
 
             # remove tmp file
-            $cmd = qq~/usr/bin/rm -f $tmp_installp~;
+            my $cmd = qq~/usr/bin/rm -f $tmp_installp~;
             
-            $output =
+            my $output =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
 
             if ($::RUNCMD_RC != 0)
@@ -9694,10 +9633,6 @@ if (0)
             }
 
     # then to install RPMs.
-            # set the default rpm flags
-            # if rpm_flags is supported, need to update here.
-            $flags = " -Uvh --replacepkgs ";
-
             unless (open(RFILE, "<$tmp_rpm"))
             {
                 my $rsp;
@@ -9708,29 +9643,12 @@ if (0)
 
             my @rlist = <RFILE>;
             close(RFILE);
-
-            my $rpmpkgs;
-            foreach my $line (@rlist)
-            {
-                chomp $line;
-                $rpmpkgs .= "$line ";
-                
-            }
             
-            my $chroot_rpmloc = $chroot_lpploc . "/RPMS/ppc";
-
-            my $cdcmd = qq~cd $chroot_rpmloc;~;
-            $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd /usr/bin/rpm $flags $rpmpkgs"~;
-
-            $output =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
-
-            if ($::RUNCMD_RC != 0)
+            $rc = update_spot_rpm($callback, $chroot_rpmloc, \@rlist,
+                                          $rflags, $spotname, $nimprime, $subreq);
+            if ($rc)
             {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "Could not install rpm packages in SPOT $spotname.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
+                #failed to update RPM
                 return 1;
             }
             
@@ -9752,50 +9670,113 @@ if (0)
     }
     
     # do the otherpkgs - if any
+    # otherpkgs may include installp, rpm and epkg.
     if (defined($otherpkgs))
     {
-        my $fsets      = "";
-        my $opt_string = "";
-        foreach (split /,/, $otherpkgs)
-        {
-            chomp $_;
-            $fsets .= "$_ ";
-        }
-        $opt_string .= qq~-a filesets=\"$fsets\" ~;
+        # get pkg list to be updated
+        my ($i_pkgs, $r_pkgs, $epkgs) = parse_otherpkgs($callback, $otherpkgs);
 
-        if (defined($iflags))
+        # 1. update installp in spot
+        if (scalar @$i_pkgs)
         {
-            $opt_string .= "-a installp_flags=$iflags ";
-        }
+            # put installp list into tmp file
+            my $tmp_installp = "/tmp/tmp_installp";
 
-        # construct the cmd
-        my $custcmd =
-          "/usr/sbin/nim -o cust -a lpp_source=$lppsource $opt_string $spotname";
-
-        # run it! - output goes in error message
-        if ($::VERBOSE)
-        {
-            my $rsp;
-            push @{$rsp->{data}}, "Running \'$custcmd\' on $nimprime.\n";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
-
-        my $output =
-          xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $custcmd,
-                                0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp;
-            push @{$rsp->{data}},
-              "Could not update the NIM SPOT called \'$spotname\' on $nimprime.";
-            if ($::VERBOSE)
+            unless (open(IFILE, ">$tmp_installp"))
             {
-                push @{$rsp->{data}}, "$output";
+                my $rsp;
+                push @{$rsp->{data}}, "Could not open $tmp_installp for writing.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
             }
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
+
+            foreach (@$i_pkgs)
+            {
+                print IFILE $_ . "\n";
+            }
+            close(IFILE);
+
+            my $rc = update_spot_installp($callback, $chroot_lpploc, $tmp_installp,
+                                          $iflags, $spotname, $nimprime, $subreq);
+            if ($rc)
+            {
+                #failed to update installp
+                return 1;
+            }
+
+            # remove tmp file
+            my $cmd = qq~/usr/bin/rm -f $tmp_installp~;
+            
+            my $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not run command: $cmd.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
         }
-    }    # end otherpkgs
+        
+        # 2. update rpm in spot
+        if (scalar @$r_pkgs)
+        {
+            my $rc = update_spot_rpm($callback, $chroot_rpmloc, \@$r_pkgs,
+                                          $rflags, $spotname, $nimprime, $subreq);
+            if ($rc)
+            {
+                #failed to update RPM
+                return 1;
+            }
+        }
+        
+        # 3. update epkg in spot
+        if (scalar @$epkgs)
+        {
+            # put epkg list into tmp file
+            my $tmp_epkg = "/tmp/tmp_epkg";
+
+            unless (open(FILE, ">$tmp_epkg"))
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not open $tmp_epkg for writing.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+            foreach (@$epkgs)
+            {
+                print FILE $_ . "\n";
+            }
+            close(FILE);
+
+            my $rc = update_spot_epkg($callback, $chroot_lpploc, $tmp_epkg,
+                                          $eflags, $spotname, $nimprime, $subreq);
+            if ($rc)
+            {
+                #failed to update epkgs
+                return 1;
+            }
+
+            # remove tmp file
+            my $cmd = qq~/usr/bin/rm -f $tmp_epkg~;
+            
+            my $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not run command: $cmd.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+        }
+    }
+    # end otherpkgs
 
     return 0;
 }
@@ -9969,7 +9950,7 @@ sub sync_spot_files
 
 #-------------------------------------------------------------------------------
 
-=head3   gen_list_file
+=head3   parse_installp_bundle
 
 	generate tmp files for installp filesets and RPMs separately 
 	based on NIM installp_bundles
@@ -9983,13 +9964,13 @@ sub sync_spot_files
 	  installp list file, rpm list file
 
  	Comments:
- 	  my ($tmp_installp, $tmp_rpm) = gen_list_file($bndlloc);
+ 	  my ($tmp_installp, $tmp_rpm) = parse_installp_bundle($callback, $bndlloc);
 
 =cut
 
 #-------------------------------------------------------------------------------
 
-sub gen_list_file
+sub parse_installp_bundle
 {
     my $callback = shift;
     my $bndfile = shift;
@@ -10060,6 +10041,298 @@ sub gen_list_file
 
     return ($tmp_installp, $tmp_rpm);
     
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   parse_otherpkgs
+
+    parse the "otherpkgs" string and separate installp/rpm/epkg
+	return the ref of each array.
+
+   	Arguments:
+   	callback, otherpkgs string
+
+  	Returns:
+	  @installp_pkgs, @rpm_pkgs, @epkgs, or undef
+
+ 	Comments:
+ 	  my ($i_pkgs, $r_pkgs, $epkgs) = parse_otherpkgs($callback, $otherpkgs);
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub parse_otherpkgs
+{
+    my $callback = shift;
+    my $otherpkgs = shift;
+
+    my @installp_pkgs;
+    my @rpm_pkgs;
+    my @epkgs;
+
+    my @pkglist = split(/,/, $otherpkgs);
+
+    unless(scalar(@pkglist))
+    {
+        if ($::VERBOSE)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "No otherpkgs to update.\n";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }    
+        return (undef,undef,undef);
+    }
+
+    my ($junk, $pname);
+    foreach my $p (@pkglist)
+    {
+        chomp $p;
+        if (($p =~ /\.rpm/) || ($p =~ /R:/))
+        {
+            if ($p =~ /:/)
+            {
+                ($junk, $pname) = split(/:/, $p);
+            }
+            else
+            {
+                $pname = $p;
+            }
+            push @rpm_pkgs, $pname;    
+        }
+        elsif (($p =~ /epkg\.Z/))
+        {
+            push @epkgs, $p;
+        }
+        else
+        {
+            if ($p =~ /:/)
+            {
+                ($junk, $pname) = split(/:/, $p);
+            }
+            else
+            {
+                $pname = $p;
+            }
+            push @installp_pkgs, $pname;    
+        }
+        
+    }
+
+    return (\@installp_pkgs, \@rpm_pkgs, \@epkgs);
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   update_spot_installp
+
+	   			Update the NIM spot resource for diskless images
+				- on NIM primary only
+				- install installp filesets included in a listfile
+				- use installp flags if specified
+
+   Arguments:
+   callback, source_dir, listfile, installp_flags, spotname, niprime, subreq
+		   
+   Returns:
+			0 - OK
+			1 - error
+
+   Comments:
+			This uses "xcatchroot" and "installp" commands directly.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub update_spot_installp
+{
+    my $callback   = shift;
+    my $source_dir = shift;
+    my $listfile   = shift;
+    my $installp_flags = shift;
+    my $spotname   = shift;
+    my $nimprime   = shift;
+    my $subreq     = shift;
+
+    if ($::VERBOSE)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Installing installp filesets in SPOT $spotname.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }    
+
+    my $icmd = "/usr/sbin/installp ";
+
+    # these installp flags can be used with -d
+    if ($installp_flags =~ /l|L|i|A|a/)
+    {
+        $icmd .= "-d $source_dir ";
+    }
+
+    $icmd .= "$installp_flags -f $listfile";
+
+    # run icmd!
+    my $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$icmd"~;
+
+    my $output =
+      xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}},
+          "Could not install installp packages in SPOT $spotname.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    if ($::VERBOSE)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Completed Installing installp filesets in SPOT $spotname.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }    
+
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   update_spot_rpm
+
+	   			Update the NIM spot resource for diskless images
+				- on NIM primary only
+				- install rpm pkgs included in an array
+				- use rpm flags if specified
+
+   Arguments:
+   callback, source_dir, ref_rlist, rpm_flags, spotname, niprime, subreq
+		   
+   Returns:
+			0 - OK
+			1 - error
+
+   Comments:
+			This uses "xcatchroot" and "rpm" commands directly.
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub update_spot_rpm
+{
+    my $callback   = shift;
+    my $source_dir = shift;
+    my $ref_rlist  = shift;
+    my $rpm_flags  = shift;
+    my $spotname   = shift;
+    my $nimprime    = shift;
+    my $subreq     = shift;
+
+    if ($::VERBOSE)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Installing RPM packages in SPOT $spotname.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }    
+    
+    my $rpmpkgs;
+    foreach my $line (@$ref_rlist)
+    {
+        chomp $line;
+        $rpmpkgs .= "$line ";
+        
+    }
+    
+    my $cdcmd = qq~cd $source_dir;~;
+    my $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd /usr/bin/rpm $rpm_flags $rpmpkgs"~;
+
+    my $output =
+      xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}},
+          "Could not install rpm packages in SPOT $spotname.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    if ($::VERBOSE)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Completed Installing RPM packages in SPOT $spotname.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }    
+
+    return 0;
+}
+
+#-------------------------------------------------------------------------------
+
+=head3   update_spot_epkg
+
+	   			Update the NIM spot resource for diskless images
+				- on NIM primary only
+				- install epkgs included in an array
+				- use emgr flags if specified
+
+   Arguments:
+   callback, source_dir, $listfile, eflags, spotname, niprime, subreq
+		   
+   Returns:
+			0 - OK
+			1 - error
+
+   Comments:
+			This uses "xcatchroot" and "emgr" commands directly.
+   Note: assume the *.epkg.Z is copied to lpp_source dir already!	
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub update_spot_epkg
+{
+    my $callback   = shift;
+    my $source_dir = shift;
+    my $listfile  = shift;
+    my $eflags  = shift;
+    my $spotname   = shift;
+    my $nimprime    = shift;
+    my $subreq     = shift;
+    
+    if ($::VERBOSE)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Installing the interim fix in SPOT $spotname.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }
+    
+    my $cdcmd = qq~cd $source_dir;~;
+    my $ecmd  = qq~/usr/sbin/emgr $eflags -f $listfile~;
+    my $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd $ecmd"~;
+
+    my $output =
+      xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}},
+          "Could not install the interim fix in SPOT $spotname.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    if ($::VERBOSE)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Completed Installing the interim fixes in SPOT $spotname.\n";
+        xCAT::MsgUtils->message("I", $rsp, $callback);
+    }    
+
+    return 0;
 }
 
 1;
