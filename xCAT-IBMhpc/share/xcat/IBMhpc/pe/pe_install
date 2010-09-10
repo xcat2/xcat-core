@@ -1,4 +1,4 @@
-#!/bin/sh -vx
+#!/bin/sh 
 #
 #
 # Sample script to customize options for PE
