@@ -21,7 +21,7 @@ For statefull:
 
 For stateless:
   kernel
-  intied.gz
+  initrd.gz
   rootimg.gz
   x.pkglist
   x.otherpkgs.pkglist
@@ -31,7 +31,7 @@ For stateless:
 
 
 For statelite:
-  intied.gz
+  initrd.gz
   x.pkglist
   x.synclist
   x.otherpkgs.pkglist

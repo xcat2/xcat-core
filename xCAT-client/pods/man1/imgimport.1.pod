@@ -20,7 +20,7 @@ For statefull, the following files will be copied to the appropriate directories
 
 For stateless, the following files will be copied to the appropriate directories.
   kernel
-  intied.gz
+  initrd.gz
   rootimg.gz
   x.pkglist
   x.otherpkgs.pkglist
@@ -29,7 +29,7 @@ For stateless, the following files will be copied to the appropriate directories
   x.exlist
 
 For statelite, the following files will be copied to the appropriate directories.
-  intied.gz
+  initrd.gz
   x.pkglist
   x.synclist
   x.otherpkgs.pkglist
