@@ -36,17 +36,12 @@ function loadProvisionPage() {
 		return;
 	}
 
-	// Create status bar, hide on load
-	var statBarId = 'ProvisionStatusBar';
-	var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>').hide();
-
 	// Create info bar
 	var infoBar = createInfoBar('Provision a node');
 	$('#content').append(infoBar);
 
 	// Create provision form
 	provForm = $('<div class="provision"></div>');
-	provForm.append(statBar);
 	provForm.append(infoBar);
 
 	// Create provision tab

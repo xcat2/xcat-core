@@ -620,8 +620,8 @@ div.cleanblue button:hover {
 	padding: 3px;
 }
 
-/****************** Provision form ******************/
-.provision label {
+/****************** Provision and monitor forms ******************/
+.provision label, .monitor label {
 	color: #424242;
 	line-height: 1.5;
 	vertical-align: top;
@@ -629,19 +629,19 @@ div.cleanblue button:hover {
 	display: inline-table;
 }
 
-.provision div {
+.provision div, .monitor div {
 	margin: 10px 0;
 	display: block;
 }
 
-.provision input {
+.provision input, .monitor input {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 5px;
 	display: inline-table;
 }
 
-.provision select {
+.provision select, .monitor select {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 5px;
@@ -649,7 +649,7 @@ div.cleanblue button:hover {
 	display: inline-table;
 }
 
-.provision textarea {
+.provision textarea, .monitor textarea {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 5px;
@@ -658,59 +658,12 @@ div.cleanblue button:hover {
 	height: 150px;
 }
 
-.provision a {
+.provision a, .monitor a {
 	text-decoration: none;
 	color: #0000FF;
 }
 
-.provision a:hover {
-	color: #FF0000;
-}
-
-/****************** Monitor form ******************/
-.monitor label {
-	color: #424242;
-	line-height: 1.5;
-	vertical-align: top;
-	padding: 0px 0px 0px 20px;
-	display: inline-table;
-}
-
-.monitor div {
-	margin: 10px 0;
-	display: block;
-}
-
-.monitor input {
-	font: 12px verdana, arial, helvetica, sans-serif;
-	border: solid 1px #BDBDBD;
-	padding: 5px;
-	display: inline-table;
-}
-
-.monitor select {
-	font: 12px verdana, arial, helvetica, sans-serif;
-	border: solid 1px #BDBDBD;
-	padding: 5px;
-	margin: 10px;
-	display: inline-table;
-}
-
-.monitor textarea {
-	font: 12px verdana, arial, helvetica, sans-serif;
-	border: solid 1px #BDBDBD;
-	padding: 5px;
-	display: inline-table;
-	width: 350px;
-	height: 150px;
-}
-
-.monitor a {
-	text-decoration: none;
-	color: #0000FF;
-}
-
-.monitor a:hover {
+.provision a:hover, .monitor a:hover {
 	color: #FF0000;
 }
 
