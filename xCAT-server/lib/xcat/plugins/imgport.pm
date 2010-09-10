@@ -702,6 +702,11 @@ sub extract_bundle {
 	    $error++;
 	    next;		
 	}
+
+        #change profile name if needed
+        if ($new_profile) {
+	    $data=change_profile($data, $callback, $new_profile, $imgdir);
+	}
 	
 	#import manifest.xml into xCAT database
 	unless(set_config($data, $callback)){
@@ -738,6 +743,55 @@ sub extract_bundle {
 	}	
     }
 
+}
+
+sub change_profile {
+    my $data = shift;	
+    my $callback = shift;
+    my $new_profile=shift;
+    my $srcdir=shift;
+
+    $data->{profile}=$new_profile;
+    my $installdir = xCAT::Utils->getInstallDir();
+    unless($installdir){
+	$installdir = '/install';
+    }
+    if ($data->{rootimgdir}) {
+	$data->{rootimgdir}="$installdir/netboot/" . $data->{osvers} . "/" . $data->{osarch} . "/$new_profile";
+    
+	for my $a ("kernel", "ramdisk", "rootimg") {
+	    if ($data->{$a}) {
+		my $fn=basename($data->{$a});
+		$data->{$a}=$data->{rootimgdir} . "/$fn";
+	    }
+	}
+    }
+
+    my $prov="netboot";
+    if ($data->{provmethod} eq "install") { $prov = "install"; }
+    my $platform;
+    my $os=$data->{osvers};
+    if ($os) {
+      if ($os =~ /rh.*/)    { $platform = "rh"; }
+      elsif ($os =~ /centos.*/) { $platform = "centos"; }
+      elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
+      elsif ($os =~ /sles.*/) { $platform = "sles"; }
+      elsif ($os =~ /SL.*/) { $platform = "SL"; }
+      elsif ($os =~ /win/)  {$platform = "windows"; }
+    }
+
+    
+    for my $a ("template", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist")   {
+	if ($data->{$a}) {
+	    my $fn=basename($data->{$a});
+	    my $oldfn=$fn;
+	    $fn =~ s/^([^\.]+)\.(.*)$/$new_profile.$2/;
+	    move("$srcdir/$oldfn", "$srcdir/$fn");
+	    $data->{$a}= "$installdir/custom/$prov/$platform/$fn";
+	}
+    }
+
+    return $data;
 }
 
 # return 1 for true 0 for false.
