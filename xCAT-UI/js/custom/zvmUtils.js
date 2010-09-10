@@ -1402,7 +1402,7 @@ function getNetwork(data) {
 		for ( var i = 1; i < networks.length; i++) {
 			var args = networks[i].split(' ');
 			var type = args[0];
-			var name = args[1];
+			var name = args[2];
 
 			// Get network details
 			$.ajax( {
