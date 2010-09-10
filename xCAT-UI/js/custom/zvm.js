@@ -783,23 +783,22 @@ zvmPlugin.prototype.loadInventory = function(data) {
 				var networks = $.cookie(temp[0] + 'Networks').split(',');
 
 				// Create a drop down list
-				var gLans = '<select id="nicLanName" name="nicLanName">';
+				var gLansQdio = '<select id="nicLanQdioName" name="nicLanQdioName">';
+				var gLansHipers = '<select id="nicLanHipersName" name="nicLanHipersName">';
 				var vswitches = '<select id="nicVSwitchName" name="nicVSwitchName">';
 				for ( var i = 0; i < networks.length; i++) {
 					var network = networks[i].split(' ');
-
-					// Get VSwitches
 					if (network[0] == 'VSWITCH') {
-						vswitches = vswitches + '<option>' + network[0] + ' ' + network[1] + '</option>';
-					}
-
-					// Get Guest LAN
-					else if (network[0] == 'LAN') {
-						gLans = gLans + '<option>' + network[0] + ' ' + network[1] + '</option>';
+						vswitches = vswitches + '<option>' + network[1] + ' ' + network[2] + '</option>';
+					} else if (network[0] == 'LAN:QDIO') {
+						gLansQdio = gLansQdio + '<option>' + network[1] + ' ' + network[2] + '</option>';
+					} else if (network[0] == 'LAN:HIPERS') {
+						gLansHipers = gLansHipers + '<option>' + network[1] + ' ' + network[2] + '</option>';
 					}
 				}
 				vswitches = vswitches + '</select>';
-				gLans = gLans + '</select>';
+				gLansQdio = gLansQdio + '</select>';
+				gLansHipers = gLansHipers + '</select>';
 
 				var nicTypeForm = '<div class="form">'
 					+ '<div><label for="nicNode">NIC for:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="' + node + '"/></div>'
@@ -807,7 +806,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 					+ '<div><label for="nicType">NIC type:</label>'
     					+ '<select id="nicType" name="nicType">'
         					+ '<option>QDIO</option>'
-        					+ '<option>HiperSocket</option>'
+        					+ '<option>HiperSockets</option>'
     					+ '</select>'
 					+ '</div>'
 					+ '<div><label for="nicNetworkType">Network type:</label>'
@@ -816,8 +815,10 @@ zvmPlugin.prototype.loadInventory = function(data) {
     						+ '<option>Virtual Switch</option>' + '</select>'
     					+ '</div>' 
 					+ '</div>';
-				var configGuestLanForm = '<div class="form">' + '<div><label for="nicLanName">Guest LAN name:</label>' + gLans + '</div>' + '</div>';
-				var configVSwitchForm = '<div class="form">' + '<div><label for="nicVSwitchName">VSWITCH name:</label>' + vswitches + '</div>' + '</div>';
+				var configGuestLanQdioForm = '<div class="form"><div><label for="nicLanQdioName">Guest LAN name:</label>' + gLansQdio + '</div></div>';
+				var configGuestLanHipersForm = '<div class="form"><div><label for="nicLanHipersName">Guest LAN name:</label>' + gLansHipers + '</div></div>';
+				var configVSwitchForm = '<div class="form"><div><label for="nicVSwitchName">VSWITCH name:</label>' + vswitches + '</div></div>';
+				var notSupportedForm = '<div class="form"><p>The requested operation is not supported</p></div>';
 
 				var states = {
 					// Select NIC type
@@ -833,19 +834,41 @@ zvmPlugin.prototype.loadInventory = function(data) {
 							if (!v) {
 								return true;
 							} else {
+								var nicType = f.nicType;
 								var networkType = f.nicNetworkType;
-								if (networkType == 'Guest LAN')
-									$.prompt.goToState('configGuestLan');
-								else
+								if (networkType == 'Guest LAN' && nicType == 'QDIO')
+									$.prompt.goToState('configGuestLanQdio');
+								else if (networkType == 'Guest LAN' && nicType == 'HiperSockets')
+									$.prompt.goToState('configGuestLanHipers');
+								else if (networkType == 'Virtual Switch' && nicType == 'QDIO')
 									$.prompt.goToState('configVSwitch');
+								else
+									$.prompt.goToState('notSupported');
 								return false;
 							}
 						}
 					},
 
-					// Configure guest LAN
-					configGuestLan : {
-						html : configGuestLanForm,
+					// Configure QDIO guest LAN page
+					configGuestLanQdio : {
+						html : configGuestLanQdioForm,
+						callback : addNic,
+						buttons : {
+							Ok : true,
+							Cancel : false
+						},
+						focus : 1,
+						prefix : 'cleanblue',
+						submit : function(v, m, f) {
+							if (v) {
+								return true;
+							}
+						}
+					},
+					
+					// Configure HIPERS guest LAN page
+					configGuestLanHipers : {
+						html : configGuestLanHipersForm,
 						callback : addNic,
 						buttons : {
 							Ok : true,
@@ -860,13 +883,28 @@ zvmPlugin.prototype.loadInventory = function(data) {
 						}
 					},
 
-					// Configure VSwitch
+					// Configure VSwitch page
 					configVSwitch : {
 						html : configVSwitchForm,
 						callback : addNic,
 						buttons : {
 							Ok : true,
 							Cancel : false
+						},
+						focus : 1,
+						prefix : 'cleanblue',
+						submit : function(v, m, f) {
+							if (v) {
+								return true;
+							}
+						}
+					},
+					
+					// Not supported page
+					notSupported : {
+						html : notSupportedForm,
+						buttons : {
+							Ok : false
 						},
 						focus : 1,
 						prefix : 'cleanblue',

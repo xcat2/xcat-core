@@ -1142,15 +1142,21 @@ function addNic(v, m, f) {
 		var nicType = f.nicType;
 		var networkType = f.nicNetworkType;
 		var address = f.nicAddress;
-
+		
 		/**
 		 * Add guest LAN
 		 */
 		if (networkType == 'Guest LAN') {
-			var temp = f.nicLanName.split(' ');
-			var lanName = temp[1];
+			var temp;
+			if (nicType == 'QDIO') {
+				temp = f.nicLanQdioName.split(' ');
+			} else {
+				temp = f.nicLanHipersName.split(' ');
+			}
+			
 			var lanOwner = temp[0];
-
+			var lanName = temp[1];
+			
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
