@@ -1,0 +1,11 @@
+##libibverbs.ppc
+##libibverbs.ppc64
+glibc-devel.ppc
+libgcc.ppc
+libstdc++.ppc
+libstdc++-devel.ppc
+glibc-devel.ppc64
+libgcc.ppc64
+libstdc++.ppc64
+libstdc++-devel.ppc64
+ksh.ppc64

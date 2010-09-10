@@ -1,3 +1,5 @@
+#!/bin/sh -vx
+#
 #
 # Sample script to customize options for PE
 # For AIX:
@@ -73,15 +75,17 @@ if [ $OS != "AIX" ]; then
             if [ ! -d /etc/opt/ibmhpc/license ] ; then
             # Install and accept PE license on the MN
                 IBM_PE_LICENSE_PROMPT=N yum --nogpgcheck localupdate  $PE_DIR/IBM_pe_license*.rpm
+                #IBM_PE_LICENSE_PROMPT=N yum --nogpgcheck install  $PE_DIR/IBM_pe_license*.rpm
             fi
             # Install PE license rpm into image, BUT DO NOT ACCEPT
             # The java process fails when you try to run in chroot
-            yum --installroot $installroot --nogpgcheck localupdate  $PE_DIR/IBM_pe_license*.rpm
+            yum --installroot $installroot --nogpgcheck install  $PE_DIR/IBM_pe_license*.rpm
             # Copy license files from MN into the image
             mkdir -p $installroot/etc/opt/ibmhpc/license
             cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
+ 	    #chroot $installroot /opt/ibmhpc/install/sbin/accept_ppe_license.sh
             # Install PE product rpms
-            yum --installroot $installroot --nogpgcheck localupdate $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
+            INUCLIENTS=1 INUBOSTYPE=1 yum --installroot $installroot --nogpgcheck install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
         fi
     fi
 fi
@@ -100,7 +104,7 @@ else
     /usr/bin/sed -e 's/log_file_size = .*/log_file_size = 2097152/g'  $installroot/etc/PNSD.cfg > $installroot/etc/PNSD.cfg.new
     mv  $installroot/etc/PNSD.cfg.new  $installroot/etc/PNSD.cfg
   else
-    /usr/bin/sed -i 's/log_file_size = .*/log_file_size = 2097152/g'  $installroot/etc/PNSD.cfg
+    /bin/sed -i 's/log_file_size = .*/log_file_size = 2097152/g'  $installroot/etc/PNSD.cfg
   fi
   if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
     stopsrc -s pnsd
@@ -116,7 +120,7 @@ else
     /usr/bin/sed -e 's/MP_POE_LAUNCH=.*/MP_POE_LAUNCH=all/g'  $installroot/etc/poe.limits > $installroot/etc/poe.limits.new
    mv $installroot/etc/poe.limits.new $installroot/etc/poe.limits
   else
-    /usr/bin/sed -i 's/MP_POE_LAUNCH=.*/MP_POE_LAUNCH=all/g'  $installroot/etc/poe.limits
+    /bin/sed -i 's/MP_POE_LAUNCH=.*/MP_POE_LAUNCH=all/g'  $installroot/etc/poe.limits
   fi
 fi
 
@@ -127,7 +131,7 @@ if [ "$OS" == "AIX" ]; then
   mv /etc/inetd.conf.new /etc/inetd.conf
   refresh -s inetd
 else
-  /usr/bin/sed -i 's/disable.*/disable = no/g'  $installroot/etc/xinetd.d/rsh
+  /bin/sed -i 's/disable.*/disable = no/g'  $installroot/etc/xinetd.d/rsh
   if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
      service xinetd restart
   fi
