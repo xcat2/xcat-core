@@ -185,14 +185,23 @@ sub getNetworkNames {
 	my @parms;
 	my $names;
 	foreach (@lines) {
-
+		
 		# Trim output
 		$_     = xCAT::zvmUtils->trimStr($_);
 		@parms = split( ' ', $_ );
-
+		
 		# Get the network name
-		if ( $parms[0] eq "LAN" || $parms[0] eq "VSWITCH" ) {
-			$names .= $parms[0] . " " . $parms[2] . "\n";
+		if ( $parms[0] eq "LAN" ) {
+			
+			# Determine if this network is a hipersocket
+			# Only hipersocket guest LANs are supported
+			if ( $_ =~ m/Type: HIPERS/i ) {
+				$names .= $parms[0] . ":HIPERS " . $parms[1] . " " . $parms[2] . "\n";
+			} else {
+				$names .= $parms[0] . ":QDIO " . $parms[1] . " " . $parms[2] . "\n";
+			}
+		} elsif ( $parms[0] eq "VSWITCH" ) {
+			$names .= $parms[0] . " " . $parms[1] . " " . $parms[2] . "\n";
 		}
 	}
 
