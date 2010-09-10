@@ -40,7 +40,7 @@ where x is the profile name.
 
 Any extra files, included by --extra flag in the imgexport command, will also be copied to the appropriate directories.
 
-If -p flag is specified, the I<postscripts> table will be updated with the postscripts and the postbootscripts from the image for the nodes given by this flag.
+If -p flag is specified, the I<postscripts> table will be updated with the postscripts and the postbootscripts names from the image for the nodes given by this flag.
 
 If -f flag is not specified, all the files will be copied to the same directories as the source. If it is specified, the old profile name x will be changed to the new and the files will be copied to the appropriate directores for the new profiles. For example, I</opt/xcat/share/xcat/netboot/sles/x.pkglist> will be copied to I</install/custom/netboot/sles/compute_new.pkglist> and I</install/netboot/sles11/ppc64/x/kernel> will be copied to I</install/netboot/sles11/ppc64/compute_new/kernel>. This flag is commonly used when you want to copy the image on the same xCAT mn so you can make modification on the new one. 
 
@@ -85,9 +85,11 @@ B<-v|--verbose>                  Verbose output.
 I<imgimport foo.gz>
 
 
-2. Import the image with postscripts
+2. Import the image with postscript names. 
 
 I<imgimport foo.gz -p node1,node2>
+
+The I<postscripts> table will be updated with the name of the I<postscripts> and the I<postbootscripts> for node1 and node2.
 
 
 3. Import the image with a new profile name 
