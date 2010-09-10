@@ -739,16 +739,15 @@ sub setupinstance
                 xCAT::MsgUtils->message("E", " $cmd failed.");
             }
 
-            # su to xcatdb and run more setup
             $cmd = "echo \"EXTSHM=ON\" >> /var/lib/db2/sqllib/db2profile ";
-            $rc  = &rundb2cmd($cmd);
-            if ($rc != 0)
+            xCAT::Utils->runcmd($cmd,0);
+            if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message("I", " $cmd warning.");
             }
             $cmd = "echo \"export EXTSHM\" >>/var/lib/db2/sqllib/db2profile ";
-            $rc  = &rundb2cmd($cmd);
-            if ($rc != 0)
+            xCAT::Utils->runcmd($cmd,0);
+            if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message("I", " $cmd warning.");
             }
@@ -763,16 +762,15 @@ sub setupinstance
                 xCAT::MsgUtils->message("E", " $cmd failed.");
                 exit(1);
             }
-            # su to xcatdb and run more setup
             $cmd = "echo \"EXTSHM=ON\" >> /var/lib/db2/sqllib/db2profile ";
-            $rc  = &rundb2cmd($cmd);
-            if ($rc != 0)
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message("I", " $cmd warning.");
             }
             $cmd = "echo \"export EXTSHM\" >>/var/lib/db2/sqllib/db2profile ";
-            $rc  = &rundb2cmd($cmd);
-            if ($rc != 0)
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message("I", " $cmd warning.");
             }
