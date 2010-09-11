@@ -41,7 +41,7 @@ function loadProvisionPage() {
 	$('#content').append(infoBar);
 
 	// Create provision form
-	provForm = $('<div class="provision"></div>');
+	provForm = $('<div class="form"></div>');
 	provForm.append(infoBar);
 
 	// Create provision tab

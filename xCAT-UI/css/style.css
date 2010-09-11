@@ -544,6 +544,17 @@ div.cleanblue button:hover {
 	display: block;
 }
 
+.form ol {
+	margin: 0;
+	padding: 0;
+}
+
+.form li {
+	list-style: none;
+	padding: 5px 5px 5px 20px;
+	margin: 0;
+}
+
 .form .indent {
 	display: inline-table;
 }
@@ -576,15 +587,6 @@ div.cleanblue button:hover {
 
 .button:hover {
 	border: solid 1px #d4d4d4;
-}
-
-.form a {
-	text-decoration: none;
-	color: #0000FF;
-}
-
-.form a:hover {
-	color: #FF0000;
 }
 
 /****************** Provision disk table ******************/
@@ -621,32 +623,9 @@ div.cleanblue button:hover {
 }
 
 /****************** Provision and monitor forms ******************/
-.provision label, .monitor label {
-	color: #424242;
-	line-height: 1.5;
-	vertical-align: top;
-	padding: 0px 0px 0px 20px;
-	display: inline-table;
-}
-
 .provision div, .monitor div {
 	margin: 10px 0;
 	display: block;
-}
-
-.provision input, .monitor input {
-	font: 12px verdana, arial, helvetica, sans-serif;
-	border: solid 1px #BDBDBD;
-	padding: 5px;
-	display: inline-table;
-}
-
-.provision select, .monitor select {
-	font: 12px verdana, arial, helvetica, sans-serif;
-	border: solid 1px #BDBDBD;
-	padding: 5px;
-	margin: 10px;
-	display: inline-table;
 }
 
 .provision textarea, .monitor textarea {
@@ -656,15 +635,6 @@ div.cleanblue button:hover {
 	display: inline-table;
 	width: 350px;
 	height: 150px;
-}
-
-.provision a, .monitor a {
-	text-decoration: none;
-	color: #0000FF;
-}
-
-.provision a:hover, .monitor a:hover {
-	color: #FF0000;
 }
 
 .monitorsumdiv{

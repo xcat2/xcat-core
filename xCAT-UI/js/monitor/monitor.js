@@ -51,7 +51,7 @@ function loadMonitorPage() {
 	/**
 	 * Monitor nodes
 	 */
-	var monitorForm = $('<div class="monitor"></div>');
+	var monitorForm = $('<div class="form"></div>');
 
 	// Create info bar
 	var monitorInfoBar = createInfoBar('Select the Monitor Tool');
@@ -60,7 +60,7 @@ function loadMonitorPage() {
 	// Create drop-down menu
 	// Hardware available to provision - ipmi, blade, hmc, ivm, fsp, and zvm
 
-	var monitorList = $('<ul></ul>');
+	var monitorList = $('<ol></ol>');
 	var items = "<li><a href='#' name='xcatmon'>xCAT Monitor</a> : xcatmon provides node status " +
 			"monitoring using fping on AIX and nmap on Linux. It also provides application " +
 			"status monitoring. The status and the appstatus columns of the nodelist table " +
@@ -85,7 +85,7 @@ function loadMonitorPage() {
 	/**
 	 * Monitor resources
 	 */
-	var resrcForm = $('<div class="monitor"></div>');
+	var resrcForm = $('<div class="form"></div>');
 
 	// Create info bar
 	var resrcInfoBar = createInfoBar('View current resources');
