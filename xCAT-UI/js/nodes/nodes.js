@@ -100,7 +100,7 @@ function loadGroups(data) {
 
 	// Create a list of groups
 	var ul = $('<ul></ul>');
-	var item = $('<li><ins></ins><h3>Groups</h3></li>');
+	var item = $('<li><h3>Groups</h3></li>');
 	ul.append(item);
 	var subUL = $('<ul></ul>');
 	item.append(subUL);
@@ -108,7 +108,7 @@ function loadGroups(data) {
 	// Create a link for each group
 	for ( var i = groups.length; i--;) {
 		var subItem = $('<li></li>');
-		var link = $('<a href="#"><ins></ins>' + groups[i] + '</a>');
+		var link = $('<a href="#">' + groups[i] + '</a>');
 		subItem.append(link);
 		subUL.append(subItem);
 	}
