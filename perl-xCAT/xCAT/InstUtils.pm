@@ -22,6 +22,8 @@ require xCAT::Table;
 use POSIX qw(ceil);
 use Socket;
 use Sys::Hostname;
+use File::Basename;
+use File::Path;
 use strict;
 require xCAT::Schema;
 use xCAT::NetworkUtils;
@@ -97,6 +99,7 @@ sub getnimprime
         chomp $shorthost;
         return $shorthost;
     }
+
 
     return undef;
 }
@@ -180,7 +183,6 @@ sub myxCATname
 #-----------------------------------------------------------------------------
 
 sub is_me
-
 {
     my ($class, $name) = @_;
 
@@ -285,7 +287,15 @@ sub get_nim_attrs
 
 			my ($attr, $val) = $attrval =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
 
+
+#ndebug
+#my $rsp;
+#push @{$rsp->{data}}, "attr= $attr, val= $val.\n";
+#xCAT::MsgUtils->message("I", $rsp, $callback);
+
+
 			if ($attr && $val) {
+		#		$attrvals{$resname}{$attr} = $val;
 				$attrvals{$attr} = $val;
 			}
 		}
@@ -734,6 +744,351 @@ sub get_server_nodes
     }
 
 	return \%servernodes;
+}
+
+#----------------------------------------------------------------------------
+
+=head3   dolitesetup
+
+        Update a spot with the statelite configuration
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Example:
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------
+sub dolitesetup
+{
+	my $class = shift;
+	my $imagename = shift;
+	my $imagehash = shift;
+	my $nodes     = shift;
+    my $callback = shift;
+	my $subreq   = shift;
+#SL
+	my @litefiles;  # lists of entries in the litefile table
+
+    my %imghash;
+    if ($imagehash)
+    {
+        %imghash = %$imagehash;
+    }
+
+	my @nodelist;
+	my @nl;
+    if ($nodes) {
+        @nl = @$nodes;
+		foreach my $n (@nl) {
+			push(@nodelist, xCAT::NodeRange::noderange($n));
+		}
+    }
+
+	# the node list is always "all" nodes.  There is only one version of the
+	#  statelite, litefile and litetree files in an image and these files
+	#	must always contain all the info from the corresponding database
+	#	table.
+
+	my $noderange = join(',',@nodelist);
+
+	# get spot inst_root loc
+	my $spotloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{spot}, 'location', $callback, "", $subreq);
+
+	my $instrootloc = $spotloc . "/lpp/bos/inst_root";
+
+	# get the statelite info - put each table into it's own file
+	my $statelitetab = xCAT::Table->new('statelite', -create=>1);
+	my $litefiletab = xCAT::Table->new('litefile');
+	my $litetreetab = xCAT::Table->new('litetree');
+
+	# these will wind up in the root dir on the node ("/")
+	my $statelitetable = "$instrootloc/statelite.table";
+	my $litefiletable = "$instrootloc/litefile.table";
+	my $litetreetable = "$instrootloc/litetree.table";
+
+	# get rid of any old files
+	if (-e $statelitetable) {
+		my $rc = xCAT::Utils->runcmd("rm $statelitetable", -1);
+		if ($::RUNCMD_RC != 0)
+    	{
+        	my $rsp;
+        	push @{$rsp->{data}}, "Could not remove existing $statelitetable file.";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return 1;
+    	}
+	}
+
+	if (-e $litefiletable) {
+		my $rc = xCAT::Utils->runcmd("rm $litefiletable", -1);
+		if ($::RUNCMD_RC != 0)
+    	{
+        	my $rsp;
+        	push @{$rsp->{data}}, "Could not remove existing $litefiletable file.";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return 1;
+    	}
+	}
+
+	if (-e $litetreetab) {
+		my $rc = xCAT::Utils->runcmd("rm $litetreetab", -1);
+		if ($::RUNCMD_RC != 0)
+    	{
+        	my $rsp;
+        	push @{$rsp->{data}}, "Could not remove existing $litetreetab file.";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return 1;
+    	}
+	}
+
+	#
+	# create files for each statelite table.  add them to the SPOT. 
+	#	use the "|" as a separator, remove all blanks from the entries.
+	#	put them in $instrootloc location. they will be available as soon
+	#	as the root dir is mounted during the  boot process.
+
+	my $foundstatelite=0;
+	unless (open(STATELITE, ">$statelitetable"))
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not open $statelitetable.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	my $stateHash = $statelitetab->getNodesAttribs(\@nodelist, ['statemnt']);
+	foreach my $node (@nodelist) {
+
+		# process statelite entry
+		# add line to file for each node
+		# note: if statement is xcatmn:/nodedata
+    	# 	/nodedata is mounted to /.statelite/persistent
+    	# 	then - on node - a nodename subdir is created
+
+		my $statemnt="";
+        if (exists($stateHash->{$node})) {
+            $statemnt = $stateHash->{$node}->[0]->{statemnt};
+            my ($server, $dir) = split(/:/, $statemnt);
+
+            #if server is blank, then its the directory
+            unless($dir) {
+                $dir = $server;
+                $server = '';
+            }
+
+			$dir = xCAT::SvrUtils->subVars($dir, $node, 'dir', $callback);
+			$dir =~ s/\/\//\//g;
+
+            if($server) {
+                $server = xCAT::SvrUtils->subVars($server, $node, 'server', $callback);
+				$server =~ s/\///g;    # remove "/" - bug in subVars??
+				my $serverIP = xCAT::NetworkUtils->getipaddr($server);
+				$statemnt = $serverIP . "|" . $dir;
+            } else {
+              	$statemnt = $dir;
+			}
+		}
+
+		my $entry = qq~$node|$statemnt~;
+		$entry =~ s/\s*//g; #remove blanks
+		if ($statemnt) {
+			print STATELITE $entry . "\n";
+		}
+	}
+	close(STATELITE);
+
+	unless (open(LITEFILE, ">$litefiletable"))
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not open $litefiletable.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	my @filelist = xCAT::Utils->runcmd("litefile $noderange", -1);
+	foreach my $l (@filelist) {
+		$l =~ s/://g;  # remove ":"'s
+		$l =~ s/\s+/|/g;  # change separator to "|"
+		print LITEFILE $l . "\n";
+		push (@litefiles, $l);
+		$foundstatelite++;
+	}
+    close(LITEFILE);
+
+
+	unless (open(LITETREE, ">$litetreetable"))
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not open $litetreetable.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+	my @treelist = xCAT::Utils->runcmd("litetree $noderange", -1);
+	foreach my $l (@treelist) {
+
+		my ($p, $serv, $dir) = split (/:/, $l);
+		$p =~ s/\s*//g;
+		$serv =~ s/\s*//g;
+		$dir =~ s/\s*//g;
+        my $serverIP = xCAT::NetworkUtils->getipaddr($serv);
+		my $entry = "$p|$serverIP|$dir";
+        print LITETREE $entry . "\n";
+		$foundstatelite++;
+    }
+    close(LITETREE);
+
+	# if there is no statelite info then just return
+	if (!$foundstatelite) {
+		return 1;
+	}
+
+	#
+	# ok -  do more statelite setup
+	#
+
+	# create some local directories in the SPOT
+	# 	create .default, .statelite, 
+	my $mcmd = qq~/bin/mkdir -m 644 -p $instrootloc/.default; /bin/mkdir -m 644 -p $instrootloc/.statelite ~;
+	my $output = xCAT::Utils->runcmd("$mcmd", -1); 
+   	if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+		push @{$rsp->{data}}, "Could not create directories.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+	}
+
+	# populate the .defaults dir with files and dirs from the image - if any
+	my $default="$instrootloc/.default";
+
+	# read the litefile and try to copy into $default
+	# everything in the litefile command output should be processed
+
+	my @copiedfiles;
+	foreach my $line (@litefiles) {
+
+		# $file could be full path file name or dir name
+		# ex. /foo/bar/  or /etc/lppcfg
+		my ($node, $option, $file) = split (/\|/, $line);
+
+		# ex. /foo or /etc
+		my $filedir = dirname($file);
+
+		# ex. .../inst_root/foo/bar/  or .../inst_root/etc/lppcfg
+		my $instrootfile = $instrootloc . $file;
+
+		my $cpcmd;
+
+		if (-e $instrootfile) {
+
+			if (!grep (/^$instrootfile$/, @copiedfiles)) {
+				# don't copy same file twice
+				push (@copiedfiles, $instrootfile);
+				if (-d $instrootfile) {
+					# it's a dir so copy everything in it
+					# ex. mkdir -p ../inst_root/.default/foo/bar
+					# ex. cp -r .../inst_root/foo/bar/ ../inst_root/.default/foo/bar
+					$cpcmd = qq~mkdir -p $default$file; cp -r $instrootfile* $default$file~;
+
+				} else {
+					# copy file
+					# ex. mkdir -p ../inst_root/.default/etc
+					# ex. cp .../inst_root/etc/lppcfg ../inst_root/.default/etc
+					$cpcmd = qq~mkdir -p $default$filedir; cp $instrootfile $default$filedir~;
+
+				}
+
+				my $output = xCAT::Utils->runcmd("$cpcmd", -1);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not copy $instrootfile to $default subdirectory.";
+					if ($::VERBOSE)
+                	{
+                    	push @{$rsp->{data}}, "$output\n";
+                	}
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+				}	
+			}
+	
+		} else {
+
+			# could not find file or dir in ../inst_root (spot dir)
+			# so create empty file or dir
+			my $mkcmd;
+
+			# check if it's a dir
+			if(grep /\/$/, $file) {
+				# create dir in .default
+				$mkcmd = qq~mkdir -p $default$file~;
+			} else {
+				# create dir and touch file in .default
+				my $dir = dirname($instrootfile);
+				$mkcmd = qq~mkdir -p $dir; touch $default$file~;
+			}
+			my $output = xCAT::Utils->runcmd("$mkcmd", -1);
+			if ($::RUNCMD_RC != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Could not create $default$file.\n";
+				if ($::VERBOSE)
+				{
+					push @{$rsp->{data}}, "$output\n";
+				}
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+			
+		}
+
+	}
+
+	# add aixlitesetup to ..inst_root/aixlitesetup
+	# this will wind up in the root dir on the node ("/")
+	my $cpcmd = "/bin/cp /install/postscripts/aixlitesetup $instrootloc/aixlitesetup; chmod +x $instrootloc/aixlitesetup";
+	my $out = xCAT::Utils->runcmd("$cpcmd", -1);
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not copy aixlitesetup.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	# if this is an update then we need to copy the new files to
+	#   the shared_root location
+	#		???  - maybe we should try this all the time????
+	if ($::UPDATE) {
+		# if we have a shared_root resource
+		if ($imghash{$imagename}{shared_root} ) {
+			my $nimprime = xCAT::InstUtils->getnimprime();
+    		chomp $nimprime;
+			# get the location of the shared_root directory
+			my $SRloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{shared_root}, 'location', $callback, $nimprime, $subreq);
+
+			# copy the statelite table file to the shared root location
+			# this will not effect any running nodes that are using 
+			#	this shared_root resource.  However the new table will
+			#	include any info need for existing nodes - for when they 
+			#	need to be rebooted
+
+			if (-d $SRloc) {
+				my $ccmd = "/bin/cp $statelitetable $litefiletable $litetreetable $instrootloc/aixlitesetup $SRloc";
+				my $out = xCAT::Utils->runcmd("$ccmd", -1);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not copy statelite files to $SRloc.";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					return 1;
+				}
+			}
+		}
+	}
+	return 0;
 }
 
 
