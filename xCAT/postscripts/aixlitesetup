@@ -1,0 +1,288 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+
+################################################################################
+#
+#	aixlitesetup
+#		- This script is used to configure the xCAT statelite support 
+#			for AIX
+#
+###############################################################################
+
+ME=`hostname -s`
+SL="/.statelite"
+ROOTDIR="/"  
+
+MOUNTDIR="$SL/mnt"   # where I mount all the trees.
+PERSISTENT="$SL/persistent"
+TMPDIR="$SL/tmpdir"
+DEFAULT="/.default"
+
+# statelite table files are in "/"
+# /statelite.table, /litefile.table, /litetree.table
+STATELITE="/statelite.table"
+LITEFILE="/litefile.table"
+LITETREE="/litetree.table"
+LOG="${ROOTDIR}/${SL}/statelite.log"
+
+# check the statelite.table file to see if we have
+#       a persistent dir to mount.
+ProcessStatelite () {
+
+	for i in `cat $STATELITE | grep -v '^#' | grep $ME`
+	do
+
+		SERVER=`echo $i | awk -F'|' '{print $2}'`
+		TOMNT=`echo $i | awk -F'|' '{print $3}'`
+
+		# /.statelite/tmpdir
+		mkdir -p ${TMPDIR}
+
+		# /.statelite/persistent
+		mkdir -p ${PERSISTENT}
+
+		# mount 10.2.0.200:/nodedata /.statelite/persistent
+		mount $SERVER:$TOMNT ${PERSISTENT}
+
+		# make a node subdir
+		# /.statelite/persistent/<nodename>
+		mkdir -p ${PERSISTENT}/${ME}
+
+	done
+}
+
+# process the litefile table
+ProcessLitefile () {
+	for i in `cat $LITEFILE | grep $ME`
+	do
+		type=`echo $i | awk -F'|' '{print $2}'`
+		path=`echo $i | awk -F'|' '{print $3}'`
+
+		FindFile ${path} ${type}
+	done
+
+}
+
+MountTrees () {
+	# ex. /.statelite/mnt
+	mkdir -p $MOUNTDIR
+
+	for i in `cat $LITETREE | grep -v '^#' | grep $ME`
+	do
+
+		NODE=`echo $i | awk -F'|' '{print $1}'`
+		SERV=`echo $i | awk -F'|' '{print $2}'`
+		DIR=`echo $i | awk -F'|' '{print $3}'`
+
+		# ex. /.statelite/mnt/10.2.0.200/etc/
+		mkdir -p ${MOUNTDIR}/${SERV}${DIR}
+
+		MAX=5
+        TRIES=1
+
+		# ex. 10.2.0.200:/etc/ /.statelite/mnt/10.2.0.200/etc/
+        while ! mount $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR} 
+        do
+            if [ "$TRIES" = "$MAX" ]
+            then
+                echo "Cannot mount $i." >/dev/console
+                break
+            fi
+            TRIES=`expr $TRIES + 1`
+            S=`expr $RANDOM % 20`
+            echo "Can't mount $SERV:$MNT... Sleeping $S seconds then trying agai
+n" >/dev/console
+            sleep $S
+        done
+	done
+}
+
+
+ProcessType () {
+	#MOUNT=$1  	#  where this is (ex. /.statelite/mnt/10.2.0.200/etc/FScfg)
+	#PATH=$2	  	# file (ex. /etc/FScfg)
+	#TYPE=$3		# type of file (ex. rw)
+    #isChild=$4     # child = 1, parent = 0
+
+    PPATH=`dirname ${2}` # ex. /etc
+	
+	case "${3}" in 
+		rw)
+			# item is copied from litetree dir or .default location ($1)
+			#	into local file
+
+
+			# the local name of the file or directory
+			LOCAL=`echo ${2} |  sed -e 's/\/$//'`
+
+			# copy to local file or dir
+            if [ -d ${1} ]; then
+				# if it's a dir then copy all contents to local
+				if [ ! -e ${LOCAL} ]; then
+					mkdir -p ${LOCAL}
+				fi
+				if [ "0" -ne `ls -A ${1} | wc -l` ]; then
+			    	cp -r ${1}* ${LOCAL}
+			    	echo "cp -r ${1}* ${LOCAL}" 2>&1 >>$LOG
+				fi
+            else
+				# if file just copy
+				if [ ! -e ${LOCAL} ]; then
+					FDIR=`dirname ${2}`
+                    mkdir -p ${FDIR}
+                    touch ${LOCAL}
+				fi
+                cp -r ${1} ${LOCAL}
+                echo "cp -r ${1} ${LOCAL}" 2>&1 >>$LOG
+            fi
+			;;
+
+        persistent)
+			# the item is copied to the /.statelite/persistent subdir
+			#  from wherever it is found ( $1 above )
+			#	the /.statelite/persistent/blah is then mounted 
+			#	over the local /blah
+			# ex. /.statelite/persistent/compute02/etc
+            if [ ! -d ${PERSISTENT}/${ME}${PPATH} ]; then
+                mkdir -p ${PERSISTENT}/${ME}${PPATH}
+                echo "mkdir -p ${PERSISTENT}/${ME}${PPATH}" >>$LOG
+            fi
+
+            # if the file doesn't exist, then copy it over to persistent
+            if [ ! -e ${PERSISTENT}/${ME}${2} ]; then
+                echo "cp -r ${1} ${PERSISTENT}/${ME}${2}" >>$LOG
+                cp -r ${1} ${PERSISTENT}/${ME}${2} 2>&1 >>$LOG
+            fi
+
+            LOCAL=`echo ${2} |  sed -e 's/\/$//'`
+            SOURCE=`echo ${PERSISTENT}/${ME}${2}`
+
+			if [ ! -e ${LOCAL} ]; then
+
+                if [ -d ${SOURCE} ]; then
+                    # need to create local dir
+                    echo "mkdir -p ${LOCAL}" >>$LOG
+                    mkdir -p ${LOCAL}
+                else
+                    # need to create local file
+					FDIR=`dirname ${2}`
+                    mkdir -p ${FDIR}
+                    touch ${LOCAL}
+
+                fi
+            fi
+	
+			# ex. mount  /.statelite/persistent/<nodename>/blah /blah
+			# note: the dir from the statelite table is mounted over
+			#	/.statelite/persistent
+
+			# make sure we don't get duplicate mounts
+			umount ${LOCAL}>>$LOG 2>&1
+
+            echo "mount ${SOURCE} ${LOCAL}" >>$LOG
+            mount ${SOURCE} ${LOCAL}>>$LOG 2>&1
+            ;;
+
+		ro)
+			# mounted file or dir is overmounted over local version
+
+			# $1 - mounted file or directory or default(?)
+			# $2 - file or dir name
+
+			# ex. /etc/lppcfg
+			LOCAL=`echo ${2} |  sed -e 's/\/$//'`
+
+			# ex. /.statelite/mnt/<server>/etc/lppcfg
+			SOURCE=`echo ${1} |  sed -e 's/\/$//'`
+
+			if [ ! -e ${LOCAL} ]; then
+
+				if [ -d ${SOURCE} ]; then
+					# need to create local dir
+					echo "mkdir -p ${LOCAL}" >>$LOG
+            		mkdir -p ${LOCAL}
+				else			
+					# need to create local file
+					touch ${LOCAL}
+				fi
+			fi
+			# make sure we don't get duplicate mounts
+			umount ${LOCAL}>>$LOG 2>&1
+
+			echo "mount -o ro ${SOURCE} ${LOCAL}" >>$LOG 2>&1
+			# ex. mount -o /.statelite/mnt/<server>/etc/lppcfg /etc/lppcfg
+			mount -o ro ${SOURCE} ${LOCAL}>>$LOG 2>&1
+			;;
+		*)
+			;;
+	esac
+}
+
+
+FindFile () {
+	# $1 = Pathname to locate
+	# $2 = Type of file
+    # $3 = 0 or 1: 0 means parent, 1 means child
+	path=$1
+	type=$2
+    isChild=$3
+	FOUND=0
+
+	# this assumes the dir are already in priority order
+	for i in `cat $LITETREE | grep -v '^#' | grep $ME`
+    do
+
+		SERVER=`echo $i | awk -F'|' '{print $2}'`
+		DIR=`echo $i | awk -F'|' '{print $3}'`
+
+		NAME=`basename ${1}` 
+
+
+		SRC=`echo ${MOUNTDIR}/${SERVER}${DIR}/${NAME} |  sed -e 's/\/\//\//'`
+
+		# ex. /.statelite/mnt/10.2.0.200/etc/FScfg
+		if [ -e ${SRC} ]; then
+
+
+				FOUND=1
+			    ProcessType ${SRC} ${path} ${type} ${isChild}
+			    break
+		fi	
+	done
+
+	# Default behavior is to get from the image
+	if [ "$FOUND" = "0"  ]; then
+
+		if [ -e "${DEFAULT}${path}" ]; then
+
+
+			ProcessType ${DEFAULT}${path} ${path} ${type} ${isChild}
+		else
+
+			echo "Could not find ${path} in defaults or any other place" >/dev/console
+		fi
+	fi
+}
+
+
+
+
+
+###########################################################################
+# Start / MAIN / main
+###########################################################################
+
+# mount the persistent dir - if provided
+ProcessStatelite
+ 
+# mount all the dirs from the litetree table. 
+MountTrees
+
+# process the litefile table
+ProcessLitefile
+
+# Unmount dirs no longer needed - TBD
+#UnmountTrees
+
+exit 0
