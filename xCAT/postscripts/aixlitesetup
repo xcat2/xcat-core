@@ -13,7 +13,6 @@
 ME=`hostname -s`
 SL="/.statelite"
 ROOTDIR="/"  
-
 MOUNTDIR="$SL/mnt"   # where I mount all the trees.
 PERSISTENT="$SL/persistent"
 TMPDIR="$SL/tmpdir"
