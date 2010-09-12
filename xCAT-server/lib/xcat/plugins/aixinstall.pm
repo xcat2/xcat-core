@@ -1105,8 +1105,7 @@ sub nimnodeset
 #----------------------------------------------------------------------------
 
 =head3	spot_updates
-			Update a NIM SPOT resource on the NIM primary and
-				any service nodes that have the SPOT defined.
+			Update a NIM SPOT resource on the NIM primary 
 
 		Arguments:
 		Returns:
@@ -1260,7 +1259,7 @@ srvnode.";
                     my $rsp;
 
                     push @{$rsp->{data}},
-                      "The resource named \'$spot_name\' iscurrently allocated on service node \'$srvnode\'.\n";
+                      "The resource named \'$spot_name\' is currently allocated on service node \'$srvnode\'.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     return 1;
                 }
@@ -1426,6 +1425,19 @@ srvnode.";
             }
         }
     }
+
+	#
+	#   check/do statelite setup
+	#
+	my $statelite=0;
+	if ($imagedef{$image_name}{shared_root}) {
+
+		# if this has a shared_root resource then
+		#   it might need statelite setup
+		# For now check all the nodes in the group??  - TBD
+		my @nodes = ('all');
+		$statelite=xCAT::InstUtils->dolitesetup($image_name, \%imagedef, \@nodes, $callback, $subreq);
+	}
 
     #
     # if this is an update then check each SN and remove the spot if it exists
@@ -1628,7 +1640,6 @@ sub chkosimage
 			#	by R:
 			my ($junk, $pname) = split(/:/, $pkg);
 			$pname =~ s/\*//g; # drop *
-#print "pname = \'$pname\'\n";
 			$pkgtype{$pname} = "rpm";
 		}
 	}
@@ -3031,7 +3042,7 @@ sub mknimimage
 	#
 	my $rootpw;
 	my $method;
-	if (($::NIMTYPE eq "diskless") | ($::NIMTYPE eq "dataless"))
+	if (($::NIMTYPE eq "diskless") || ($::NIMTYPE eq "dataless"))
 	{
 		my $passwdtab = xCAT::Table->new('passwd');
 		unless ( $passwdtab) {
@@ -5308,10 +5319,24 @@ sub mknimres
 #-----------------------------------------------------------------------------
 sub updatespot
 {
-    my $spot_name  = shift;
-    my $lppsrcname = shift;
-    my $callback   = shift;
-    my $subreq     = shift;
+	my $image      = shift;
+	my $imagehash  = shift;
+	my $nodes      = shift;
+	my $callback   = shift;
+	my $subreq     = shift;
+
+	my %imghash;  # osimage def
+	if ($imagehash) {
+		%imghash = %{$imagehash};
+	}
+
+	my @nodelist;
+	if ($nodes) {
+		@nodelist = @$nodes;
+	}
+
+	my $spot_name = $imghash{$image}{spot};
+	my $lppsrcname = $imghash{$image}{lpp_source};
 
     my $spot_loc;
 
@@ -5437,9 +5462,16 @@ sub updatespot
         }
     }
 
+	# if we have a shared_root res then modify dd_boot to call
+	#   aixlitesetup - still might not have statelite files but won't hurt
+	my $statelite=0;
+	if ($imghash{$image}{shared_root}) {
+		$statelite=1;
+	}
+
     # Modify the rc.dd-boot script to set the ODM correctly
     my $boot_file = "$spot_loc/lib/boot/network/rc.dd_boot";
-    if (&update_dd_boot($boot_file, $callback, $subreq) != 0)
+    if (&update_dd_boot($boot_file, $callback, $statelite, $subreq) != 0)
     {
         my $rsp;
         push @{$rsp->{data}},
@@ -5462,13 +5494,6 @@ sub updatespot
     # copy the script
     my $cpcmd =
       "mkdir -m 644 -p $spot_loc/lpp/bos/inst_root/opt/xcat; cp /install/postscripts/xcataixpost $spot_loc/lpp/bos/inst_root/opt/xcat/xcataixpost; chmod +x $spot_loc/lpp/bos/inst_root/opt/xcat/xcataixpost";
-
-    if ($::VERBOSE)
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Running: \'$cpcmd\'\n";
-        xCAT::MsgUtils->message("I", $rsp, $callback);
-    }
 
     my @result =
       xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cpcmd, 1);
@@ -5541,6 +5566,7 @@ sub update_dd_boot
 
     my $dd_boot_file = shift;
     my $callback     = shift;
+	my $statelite    = shift;
     my $subreq       = shift;
 
     my $nimprime = xCAT::InstUtils->getnimprime();
@@ -5577,7 +5603,9 @@ sub update_dd_boot
             }
 
             my $patch =
-              qq~\n\t# xCAT support\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
+              qq~\n\t# xCAT support - 1\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
+
+			my $scripthook = qq~\n\t# xCAT support - 2\n\t# do statelite setup if needed\n\t/aixlitesetup\n\n~;
 
             if (open(DDBOOT, "<$dd_boot_file_mn"))
             {
@@ -5623,6 +5651,10 @@ sub update_dd_boot
                         # add the patch
                         print DDBOOT $patch;
                     }
+					if (($l =~ /slibclean/) && (!$dontupdate)) {
+						# add the aixlitesetup hook
+						print DDBOOT $scripthook;
+					}
                     print DDBOOT $l;
                 }
                 close(DDBOOT);
@@ -6541,10 +6573,7 @@ sub prenimnodeset
         {
 
             # must be diskless or dataless so update spot
-            my $rc =
-              &updatespot($imghash{$i}{'spot'},
-                          $imghash{$i}{'lpp_source'},
-                          $callback, $subreq);
+			my $rc = &updatespot($i, \%imghash, \@nodelist, $callback, $subreq);
             if ($rc != 0)
             {
                 my $rsp;
