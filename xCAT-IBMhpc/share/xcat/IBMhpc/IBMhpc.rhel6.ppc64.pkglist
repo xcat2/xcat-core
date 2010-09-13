@@ -1,12 +1,23 @@
 # OS packages that are useful for all IBM HPC products
 #INCLUDE:/opt/xcat/share/xcat/netboot/rh/compute.rhel6.ppc64.pkglist#
 
-at
 xinetd
-rsh-server.ppc64
+rsh
+rsh-server
+
 
 compat-libstdc++-33.ppc64
 libXmu.ppc64
 libXtst.ppc64
 libXp.ppc64
+libXp.ppc
 libXScrnSaver.ppc64
+
+gcc
+gcc-c++
+compat-libstdc++-33.ppc
+libstdc++
+libstdc++-devel
+glibc-devel
+libXp-1.0.0-15.1.el6
+libibverbs-1.1.3-4.el6
