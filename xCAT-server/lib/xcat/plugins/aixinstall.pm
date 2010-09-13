@@ -5661,7 +5661,7 @@ sub update_dd_boot
                         # add the patch
                         print DDBOOT $patch;
                     }
-					if (($l =~ /slibclean/) && (!$dontupdate)) {
+					if (($l =~ /configure nfso option/) && (!$dontupdate)) {
 						# add the aixlitesetup hook
 						print DDBOOT $scripthook;
 					}
