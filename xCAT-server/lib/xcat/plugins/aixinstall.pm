@@ -1426,19 +1426,6 @@ srvnode.";
         }
     }
 
-	#
-	#   check/do statelite setup
-	#
-	my $statelite=0;
-	if ($imagedef{$image_name}{shared_root}) {
-
-		# if this has a shared_root resource then
-		#   it might need statelite setup
-		# For now check all the nodes in the group??  - TBD
-		my @nodes = ('all');
-		$statelite=xCAT::InstUtils->dolitesetup($image_name, \%imagedef, \@nodes, $callback, $subreq);
-	}
-
     #
     # if this is an update then check each SN and remove the spot if it exists
     #
@@ -5472,14 +5459,20 @@ sub updatespot
         }
     }
 
-	# if we have a shared_root res then modify dd_boot to call
-	#   aixlitesetup - still might not have statelite files but won't hurt
-	my $statelite=0;
+	#
+	#   check/do statelite setup
+	#
 	if ($imghash{$image}{shared_root}) {
-		$statelite=1;
+
+		# if this has a shared_root resource then
+		#   it might need statelite setup
+		# For now check all the nodes in the group??  - TBD
+		my @nodes = ('all');
+		my $rc=xCAT::InstUtils->dolitesetup($image, \%imghash, \@nodes, $callback, $subreq);
 	}
 
     # Modify the rc.dd-boot script to set the ODM correctly
+	my $statelite=1;
     my $boot_file = "$spot_loc/lib/boot/network/rc.dd_boot";
     if (&update_dd_boot($boot_file, $callback, $statelite, $subreq) != 0)
     {
