@@ -2811,19 +2811,23 @@ sub getAllNodeAttribs
     my %donenodes
       ; #Remember those that have been done once to not return same node multiple times
     my $query;
+    my $nodekey = "node";
+    if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
+        $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
+    };
     if ($xcatcfg =~ /^mysql:/) {  #for mysql
-         $query = $self->{dbh}->prepare('SELECT node FROM '
+         $query = $self->{dbh}->prepare('SELECT '.$nodekey.' FROM '
              . $self->{tabname}
         . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
       } else {   
           if ($xcatcfg =~ /^DB2:/) {  #for DB2
-            my $qstring = "Select \"node\" FROM ";
+            my $qstring = "Select \"$nodekey\" FROM ";
             $qstring  .= $self->{tabname};
             $qstring  .=  " WHERE \"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR  \"disable\" LIKE 'NO' OR  \"disable\" LIKE 'No' OR  \"disable\" LIKE 'nO'";
             $query =  $self->{dbh}->prepare($qstring); 
           } else {  # for other dbs 
              $query =
-             $self->{dbh}->prepare('SELECT node FROM '
+             $self->{dbh}->prepare('SELECT '.$nodekey.' FROM '
               . $self->{tabname}
               . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
           }
@@ -2841,11 +2845,14 @@ sub getAllNodeAttribs
     while (my $data = $query->fetchrow_hashref())
     {
 
-        unless ($data->{node} =~ /^$/ || !defined($data->{node}))
+        unless ($data->{$nodekey} =~ /^$/ || !defined($data->{$nodekey}))
         {    #ignore records without node attrib, not possible?
             my @nodes =
-              xCAT::NodeRange::noderange($data->{node})
+              xCAT::NodeRange::noderange($data->{$nodekey})
               ;    #expand node entry, to make groups expand
+            unless (@nodes) { #in the event of an entry not in nodelist, use entry value verbatim
+                @nodes = ($data->{$nodekey});
+            }
             #my $localhash = $self->getNodesAttribs(\@nodes,$attribq); #NOTE:  This is stupid, rebuilds the cache for every entry, FIXME
             foreach (@nodes)
             {
@@ -2866,7 +2873,7 @@ sub getAllNodeAttribs
                  #populate node attribute by default, this sort of expansion essentially requires it.
                 #$attrs->{node} = $_;
 		foreach my $att (@attrs) {
-			$att->{node} = $_;
+			$att->{$nodekey} = $_;
 		}
                 $donenodes{$_} = 1;
 

@@ -138,7 +138,7 @@ sub refresh_table {
   $self->{mactable}={};
   $self->{switchtab} = xCAT::Table->new('switch', -create => 1);
   $self->{switchestab} = xCAT::Table->new('switches', -create => 1);
-  my @switchentries=$self->{switchestab}->getAllAttribs(qw(switch snmpversion username password privacy auth));
+  my @switchentries=$self->{switchestab}->getAllNodeAttribs([qw(switch snmpversion username password privacy auth)]);
   $self->{switchparmhash}={};
   my $community = "public";
   $self->{sitetab} = xCAT::Table->new('site');
