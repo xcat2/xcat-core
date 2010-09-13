@@ -25,7 +25,7 @@ If a I<imagename> is specified, this command will get all the necessary os image
 
 =head1 Parameters
 
-I<imagename> specifies the name of a os image definition to be used. The specification for the image is storted in the I<osimage> table and I<linuximage> table.
+I<imagename> specifies the name of a os image definition to be used. The specification for the image is stored in the I<osimage> table and I<linuximage> table.
 
 =head1 OPTIONS
 
