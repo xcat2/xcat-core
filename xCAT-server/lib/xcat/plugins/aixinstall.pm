@@ -9590,6 +9590,7 @@ sub update_spot_sw
     # such as /install/nim/spot/61Ldskls_test/usr/lpp/bos/inst_root/lpp_source
     my $chroot_lpploc = $spotloc . "/lpp/bos/inst_root/lpp_source";
     my $chroot_rpmloc = $chroot_lpploc . "/RPMS/ppc";
+    my $chroot_epkgloc = $chroot_lpploc . "/emgr/ppc";
       
     if ($::VERBOSE)
     {
@@ -9791,7 +9792,7 @@ sub update_spot_sw
             }
             close(FILE);
 
-            my $rc = update_spot_epkg($callback, $chroot_lpploc, $tmp_epkg,
+            my $rc = update_spot_epkg($callback, $chroot_epkgloc, $tmp_epkg,
                                           $eflags, $spotname, $nimprime, $subreq);
             if ($rc)
             {
