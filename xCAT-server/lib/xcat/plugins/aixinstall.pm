@@ -2830,19 +2830,9 @@ sub mknimimage
         chomp $paging_name;
         $newres{paging} = $paging_name;
 
-        # update spot with additional software and sync files
-        if (
-            &spot_updates(
-                          $callback,   $::image_name, \%imagedef,
-                          \%::attrres, $lpp_source_name
-            ) != 0
-          )
-        {
-
-            # error - could not update spots
-            return 1;
-        }
-
+        # need to update spot if needed
+        # but put it later, after xcat osimage obj defined since xcatchroot needs it.
+        
         #
         # end diskless section
         #
@@ -3036,6 +3026,26 @@ sub mknimimage
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 1;
     }
+
+    # put diskless spot update after xcat obj def
+    # since xcatchroot needs osimage defined first
+
+    if (($::NIMTYPE eq "diskless") || ($::NIMTYPE eq "dataless"))
+    {
+        # update spot with additional software and sync files
+        if (
+            &spot_updates(
+                          $callback,   $::image_name, \%imagedef,
+                          \%::attrres, $lpp_source_name
+            ) != 0
+          )
+        {
+
+            # error - could not update spots
+            return 1;
+        }
+    }    
+
 
 	#
 	# Set root password in diskless images
