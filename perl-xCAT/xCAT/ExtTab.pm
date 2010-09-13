@@ -193,7 +193,7 @@ sub get_filelist
     {
         my $filename= basename($file);  # strip filename
         my($name,$ext1) = split '\.', $filename;
-        my($name,$ext2) = split '\_', $name;
+        my($tmpname,$ext2) = split '\_', $name;
         if ($ext2 eq $dbname)   # matches the database
         {
             push @filelist, $file;
