@@ -7679,17 +7679,13 @@ sub mkdsklsnode
                
         my $netname = $nethash{$node}{'netname'}; 
 
-		if ($::NEWNAME)
+        if ($::NEWNAME)
         {
             $defcmd .= "-a if1='find_net $nodeshorthost 0' ";
-
-        } elsif (!$::HFI)
+        } else
         {
             $defcmd .=
                   "-a if1='find_net $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
-        } else {
-            $defcmd .=
-                   "-a if1='$netname $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
         }
 
         $defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
@@ -8090,8 +8086,15 @@ sub checkNIMnetworks
 
             # create new nim network def
             # use the same network name as xCAT uses
+            my $devtype;
+            if ($::HFI) 
+            {
+                $devtype = "hfi";
+            } else {
+                $devtype = "ent";
+            }
             my $cmd =
-              qq~/usr/sbin/nim -o define -t ent -a net_addr=$nethash{$node}{net} -a snm=$nethash{$node}{mask} -a routing1='default $nethash{$node}{gateway}' $nethash{$node}{netname} 2>/dev/null~;
+              qq~/usr/sbin/nim -o define -t $devtype -a net_addr=$nethash{$node}{net} -a snm=$nethash{$node}{mask} -a routing1='default $nethash{$node}{gateway}' $nethash{$node}{netname} 2>/dev/null~;
 
             my $output1 = xCAT::Utils->runcmd("$cmd", -1);
             if ($::RUNCMD_RC != 0)
@@ -8194,7 +8197,7 @@ sub checkNIMnetworks
 			my $adapterhost;
 			my @ifcontent = split('\n',$ifone);
 			foreach my $line (@ifcontent) {
-				next if (/#/);
+				next if ($line =~ /^#/);
 				($junk1, $junk2, $adapterhost) = split(':', $line);
 				last;
 			}
