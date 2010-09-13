@@ -771,7 +771,6 @@ sub dolitesetup
 	my $nodes     = shift;
     my $callback = shift;
 	my $subreq   = shift;
-#SL
 	my @litefiles;  # lists of entries in the litefile table
 
     my %imghash;
@@ -919,7 +918,6 @@ sub dolitesetup
 	}
     close(LITEFILE);
 
-
 	unless (open(LITETREE, ">$litetreetable"))
     {
         my $rsp;
@@ -1061,7 +1059,7 @@ sub dolitesetup
 	# if this is an update then we need to copy the new files to
 	#   the shared_root location
 	#		???  - maybe we should try this all the time????
-	if ($::UPDATE) {
+	if (1) {
 		# if we have a shared_root resource
 		if ($imghash{$imagename}{shared_root} ) {
 			my $nimprime = xCAT::InstUtils->getnimprime();
