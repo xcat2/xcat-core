@@ -1,4 +1,4 @@
-#!/bin/sh -vx
+#!/bin/sh 
 
 # 
 # Sample script to accept licenses and install RSCT packages
