@@ -319,13 +319,53 @@ function parseRmcData(returnData){
 
 function showNodeDetail(){
 	var nodeChat;
-	//remember how many nodes parsed, used for adding new table row
-	var parseNum = 0;
-	var detailTable = $('<table><tbody></tbody></table>');
-	var detailRow;
+	var select;
 	
+	var detailFilter = $('<div id="detailFilter"></div>');
+		
 	$('#rmcMonStatus').empty().append("RMC Monitoring Show");
 	$('#rmcmonDetail').empty().append('<h3>Detail</h3><hr />');
+	$('#rmcmonDetail').append(detailFilter);
+	
+	select = $('<select id="metric"></select>');
+	for(var node in globalNodesDetail){
+		for(var attr in globalNodesDetail[node]){
+			select.append('<option value="' + attr + '">' + attr + '</option>');
+		}
+		break;
+	}
+	
+	detailFilter.append('<b>Metric:&nbsp;</b>');
+	detailFilter.append(select);
+	detailFilter.append('&nbsp;&nbsp;&nbsp;&nbsp;');
+	
+	//sort type
+	select = $('<select id="sortType"></select>');
+	select.append('<option value="1">ascend</option>');
+	select.append('<option value="2">descend</option>');
+	select.append('<option value="3">node name</option>');
+	
+	detailFilter.append('<b>Sort:&nbsp;</b>');
+	detailFilter.append(select);
+	detailFilter.append('&nbsp;&nbsp;&nbsp;&nbsp;');
+	
+	var filterButton = createButton('Filter');
+	detailFilter.append(filterButton);
+	filterButton.bind('click', function(){
+		var attr = $('#metric').val();
+		var type = $('#sortType').val();
+		showAllNodes(attr, type);
+	});
+}
+
+function showAllNodes(attrName, type){
+	$('#rmcmonDetail table').remove();
+	var detailTable = $('<table><tbody></tbody></table>');
+	//remember how many nodes parsed, used for adding new table row
+	var parseNum = 0;
+	var detailRow;
+	var sortArray = new Array();
+
 	$('#rmcmonDetail').append(detailTable);
 	
 	for (var nodeName in globalErrNodes){
@@ -354,7 +394,8 @@ function showNodeDetail(){
 		tempTd.append('<center>' + nodeName + '</center>');
 	}
 	
-	for (var nodeName in globalNodesDetail){
+	filterSort(attrName, type, sortArray);
+	for (var sortIndex in sortArray){
 		var tempTd = $('<td style="border:0px;padding:1px 1px;"></td>');
 		if (0 == (parseNum % 4)){
 			detailRow = $('<tr></tr>');
@@ -365,15 +406,66 @@ function showNodeDetail(){
 		nodeChat = $('<div class="monitornodediv"></div>');
 		tempTd.append(nodeChat);
 		
-		for (var attrName in globalNodesDetail[nodeName]){
-			var tempData = globalNodesDetail[nodeName][attrName].split(',');
-			var tempArray = [];
-			for (var i in tempData){
-				tempArray.push([i, tempData[i]]);				
-			}
-			$.plot(nodeChat, [tempArray]);
-			break;
+
+		var tempData = sortArray[sortIndex]['value'].split(',');
+		var tempArray = [];
+		for (var i in tempData){
+			tempArray.push([i, tempData[i]]);				
 		}
-		tempTd.append('<center>' + nodeName + '</center>');
+		$.plot(nodeChat, [tempArray]);
+
+		tempTd.append('<center>' + sortArray[sortIndex]['name'] + '</center>');
+	}
+}
+
+function filterSort(attrName, sortType, retArray){
+	var tempObj = {};
+	
+	for(var node in globalNodesDetail){
+		tempObj['name'] = node; 
+		tempObj['value'] = globalNodesDetail[node][attrName];
+		retArray.push(tempObj);
+	}
+	
+	//by node name
+	if(3 == sortType){
+		retArray.sort(sortName);
+	}
+	//desend
+	else if(2 == sortType){
+		retArray.sort(sortDes);
+	}
+	//ascend
+	else{
+		retArray.sort(sortAsc);
+	}
+	
+	return;
+}
+
+function sortAsc(x, y){
+	if(x['value'] > y['value']){
+		return 1;
+	}
+	else{
+		return -1;
+	}
+}
+
+function sortDes(x, y){
+	if(x['value'] > y['value']){
+		return -1;
+	}
+	else{
+		return 1;
+	}
+}
+
+function sortName(x, y){
+	if(x['name'] > y['name']){
+		return 1;
+	}
+	else{
+		return -1;
 	}
 }
