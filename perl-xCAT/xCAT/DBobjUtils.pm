@@ -1345,15 +1345,20 @@ if (0) {
                     } else {
                         # check if the look_attrs is the same as the %keyhash
                         foreach my $key (keys %{$allupdates{$table}{$obj}{$row}{'lookup_attrs'}}) {
-                            # The lookup_attrs should be the same for all the attributes of one object
+                            # The lookup_attrs can be different for tables with more than one keys such as ppcdirect
                             if ((scalar(keys %keyhash) != scalar(keys %{$allupdates{$table}{$obj}{$row}{'lookup_attrs'}})) 
                                || !defined($keyhash{$key}) 
                                ||($keyhash{$key} ne $allupdates{$table}{$obj}{$row}{'lookup_attrs'}{$key})) {
-                                my $rsp;
-                                $rsp->{data}->[0] = "\nMultiple selection criteria for the \'$obj\' is not supported.";
-                                xCAT::MsgUtils->message("E", $rsp, $::callback);
-                                $ret = 1;
-                                next OBJ;
+                                # different keys, set the existing attributes into database
+                                # update the %keyhash and clean up the %updates hash
+                                if (%updates) {
+                                    $commit_manually = 1;
+                                    my ($rc, $str) = $thistable->setAttribs(\%keyhash, \%updates);
+                                }
+                                foreach my $key (keys %{$allupdates{$table}{$obj}{$row}{'lookup_attrs'}}) {
+                                    $keyhash{$key} = $allupdates{$table}{$obj}{$row}{'lookup_attrs'}{$key};
+                                }
+                                %updates = ();
                             }
                         }
                     }
