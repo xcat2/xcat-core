@@ -63,7 +63,7 @@ I<clonevm vm1-vm30 -b appserver>
 
 =head1 SEE ALSO
 
-L<chvm(1)|chvm.1>, L<lsvm(1)|lsvm.1>, L<rmvm(1)|rmvm.1>, L<mkvm(1)|mkvm.1>, L<vmmaster(5)|vmmaster.5>
+L<chvm(1)|chvm.1>, L<lsvm(1)|lsvm.1>, L<rmvm(1)|rmvm.1>, L<mkvm(1)|mkvm.1>
 
 
 
