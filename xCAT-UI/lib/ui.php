@@ -32,9 +32,14 @@ function loadPage(){
 				<li><a href="configure.php" class="top_link">Configure</a></li>
 				<li><a href="provision.php" class="top_link">Provision</a></li>
 				<li><a href="monitor.php" class="top_link">Monitor</a></li>
-			</ul>
-		</div>';
+			</ul>';
+			
+	 if (isset($_SESSION['username'])){
+	 	echo "<div id='musername'>user: <span> {$_SESSION['username']}</span>".
+			 "<br><a href='lib/logout.php'>log out</a></div>";
+	 }
 
+	echo '</div>';
 	// Content
 	echo '<div class="content" id="content"></div>';
 
