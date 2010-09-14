@@ -40,6 +40,7 @@ package xCAT_schema::Sample;
         types => {
 	    jobid => 'INTEGER',  
 	},
+        engine => 'InnoDB',
 	table_desc => 'Stores jobs.',
 	descriptions => {
 	    jobid => 'The job id.',
