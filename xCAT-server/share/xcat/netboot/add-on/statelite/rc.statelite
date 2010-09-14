@@ -133,7 +133,7 @@ GetSyncInfo () {
             /bin/bash
         fi
 
-        SLI=$(( $RAMDOM % 50 ))
+        SLI=$(( $RANDOM % 50 ))
         sleep $SLI
     	xCATCmd $XCATSERVER litetree  \
 		| sed  -e 's/<[^>]*>//g' \
