@@ -179,7 +179,7 @@ vmmaster => {
     }
 },
 vm => {
-    cols => [qw(node host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon comments disable)],
+    cols => [qw(node host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter comments disable)],
     keys => [qw(node)],
     table_desc => 'Virtualization parameters',
     descriptions => {
@@ -207,11 +207,12 @@ vm => {
         'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
         'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
         'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
-        'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM."
+        'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
+        'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
     }
 },
 hypervisor => {
-        cols => [qw(node type mgr netmap defaultnet cluster preferdirect comments disable)],
+        cols => [qw(node type mgr netmap defaultnet cluster datacenter preferdirect comments disable)],
         keys => [qw(node)],
         table_desc => 'Hypervisor parameters',
         descriptions => {
@@ -221,6 +222,7 @@ hypervisor => {
             'netmap' => 'Optional mapping of useful names to relevant physical ports.  For example, 10ge=vmnic_16.0&vmnic_16.1,ge=vmnic1 would be requesting two virtual switches to be created, one called 10ge with vmnic_16.0 and vmnic_16.1 bonded, and another simply connected to vmnic1.  Use of this allows abstracting guests from network differences amongst hypervisors',
             'defaultnet' => 'Optionally specify a default network entity for guests to join to if they do not specify.',
             'cluster' => 'Specify to the underlying virtualization infrastructure a cluster membership for the hypervisor.',
+            'datacenter' => 'Optionally specify a datacenter for the hypervisor to exist in (only applicable to VMWare)',
             'preferdirect' => 'If a mgr is declared for a hypervisor, xCAT will default to using the mgr for all operations.  If this is field is set to yes or 1, xCAT will prefer to directly communicate with the hypervisor if possible'
         }
 },
