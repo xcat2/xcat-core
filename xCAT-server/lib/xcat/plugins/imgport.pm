@@ -417,54 +417,87 @@ sub get_files{
 	# ramdisk
 	# the kernel
 	# the rootimg.gz
-	if($osvers =~ /esx/){
-		# don't do anything because these files don't exist for ESX stateless.
-	} elsif($provmethod =~ /netboot/){
-	    @arr = ("$installroot/custom/netboot", "$xcatroot/share/xcat/netboot");
-	    #get .pkglist file
-	    if ((! $attrs->{pkglist}) || (! -f $attrs->{pkglist})) {
-		# we need to get the .pkglist for this one!
-		my $temp = look_for_file('pkglist', $callback, $attrs, @arr);
-		unless($temp){
+	if($osvers !~ /esx/){
+	    # don't do anything because these files don't exist for ESX stateless.
+	    if($provmethod =~ /netboot/){
+		@arr = ("$installroot/custom/netboot", "$xcatroot/share/xcat/netboot");
+		#get .pkglist file
+		if ((! $attrs->{pkglist}) || (! -f $attrs->{pkglist})) {
+		    # we need to get the .pkglist for this one!
+		    my $temp = look_for_file('pkglist', $callback, $attrs, @arr);
+		    unless($temp){
 			$callback->({error=>["Couldn't find pkglist file for $imagename"],errorcode=>[1]});
 			$errors++;
-		}else{
+		    }else{
 			$attrs->{pkglist} = $temp;
+		    }
 		}
-	    }
-	    
-	    @arr = ("$installroot/netboot");
-	    
-	    # look for ramdisk
-	    my $ramdisk = look_for_file('initrd.gz', $callback, $attrs, @arr);
-	    unless($ramdisk){
-		$callback->({error=>["Couldn't find ramdisk (initrd.gz) for  $imagename"],errorcode=>[1]});
-		$errors++;
-	    }else{
-		$attrs->{ramdisk} = $ramdisk;
-	    }
-	    
-	    # look for kernel
-	    my $kernel = look_for_file('kernel', $callback, $attrs, @arr);
-	    unless($kernel){
-		$callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
-		$errors++;
-	    }else{
-		$attrs->{kernel} = $kernel;
-	    }
-	    
-	    # look for rootimg.gz
-	    my $rootimg = look_for_file('rootimg.gz', $callback, $attrs, @arr);
-	    unless($rootimg){
-		$callback->({error=>["Couldn't find rootimg (rootimg.gz) for  $imagename"],errorcode=>[1]});
-		$errors++;
-	    }else{
-		$attrs->{rootimg} = $rootimg;
-	    }
-	}
-	
-
 		
+		@arr = ("$installroot/netboot");
+		
+		# look for ramdisk
+		my $ramdisk = look_for_file('initrd-diskless.gz', $callback, $attrs, @arr);
+		unless($ramdisk){
+		    $callback->({error=>["Couldn't find ramdisk (initrd-diskless.gz) for  $imagename"],errorcode=>[1]});
+		    $errors++;
+		}else{
+		    $attrs->{ramdisk} = $ramdisk;
+		}
+		
+		# look for kernel
+		my $kernel = look_for_file('kernel', $callback, $attrs, @arr);
+		unless($kernel){
+		    $callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
+		    $errors++;
+		}else{
+		    $attrs->{kernel} = $kernel;
+		}
+		
+		# look for rootimg.gz
+		my $rootimg = look_for_file('rootimg.gz', $callback, $attrs, @arr);
+		unless($rootimg){
+		    $callback->({error=>["Couldn't find rootimg (rootimg.gz) for  $imagename"],errorcode=>[1]});
+		    $errors++;
+		}else{
+		    $attrs->{rootimg} = $rootimg;
+		}
+
+	    } elsif ($provmethod =~ /statelite/) {
+		@arr = ("$installroot/custom/netboot", "$xcatroot/share/xcat/netboot");
+		#get .pkglist file
+		if ((! $attrs->{pkglist}) || (! -f $attrs->{pkglist})) {
+		    # we need to get the .pkglist for this one!
+		    my $temp = look_for_file('pkglist', $callback, $attrs, @arr);
+		    unless($temp){
+			$callback->({error=>["Couldn't find pkglist file for $imagename"],errorcode=>[1]});
+			$errors++;
+		    }else{
+			$attrs->{pkglist} = $temp;
+		    }
+		}
+		
+		@arr = ("$installroot/netboot");
+		
+		# look for kernel
+		my $kernel = look_for_file('kernel', $callback, $attrs, @arr);
+		unless($kernel){
+		    $callback->({error=>["Couldn't find kernel (kernel) for  $imagename"],errorcode=>[1]});
+		    $errors++;
+		}else{
+		    $attrs->{kernel} = $kernel;
+		}
+
+		# look for ramdisk
+		my $ramdisk = look_for_file('initrd-statelite.gz', $callback, $attrs, @arr);
+		unless($ramdisk){
+		    $callback->({error=>["Couldn't find ramdisk (initrd-statelite.gz) for  $imagename"],errorcode=>[1]});
+		    $errors++;
+		}else{
+		    $attrs->{ramdisk} = $ramdisk;
+		}
+	    } 
+	}
+      	
 
 	if($errors){
 	    $attrs = 0;
@@ -527,99 +560,141 @@ sub look_for_file {
 
 # here's where we make the tarball
 sub make_bundle {
-	my $imagename = shift;
-	my $dest = shift;
-	my $attribs = shift;
-	my $callback = shift;
+    my $imagename = shift;
+    my $dest = shift;
+    my $attribs = shift;
+    my $callback = shift;
+    
+    # tar ball is made in local working directory.  Sometimes doing this in /tmp 
+    # is bad.  In the case of my development machine, the / filesystem was nearly full.
+    # so doing it in cwd is easy and predictable.
+    my $dir = shift;
+    #my $dir = getcwd;
+    
+    # get rid of spaces and put in underlines.  
+    $imagename =~ s/\s+/_/g;	
+    
+    
+    # we may find that cwd doesn't work, so we use the request cwd.
+    my $ttpath = mkdtemp("$dir/imgexport.$$.XXXXXX");
+    $callback->({data=>["Creating $ttpath..."]}) if $::VERBOSE;
+    my $tpath = "$ttpath/$imagename";
+    mkdir("$tpath");
+    chmod 0755,$tpath;
+    
 
-	# tar ball is made in local working directory.  Sometimes doing this in /tmp 
-	# is bad.  In the case of my development machine, the / filesystem was nearly full.
-	# so doing it in cwd is easy and predictable.
-	my $dir = shift;
-	#my $dir = getcwd;
+    #for statelite
+    if ($attribs->{provmethod} eq 'statelite') {
+	#copy the rootimgdir over
+	my $rootimgdir=$attribs->{rootimgdir};
+	if ($rootimgdir) {
+	    $callback->({data=>["Packing root image. It will take a while"]});
+	    system("cd $rootimgdir; find rootimg |cpio -H newc -o | gzip -c - > $tpath/rootimgtree.gz");
+	    $attribs->{'rootimgtree'} = "$rootimgdir/rootimg/rootimgtree.gz";
+	} else {
+	    $callback->({error=>["Couldn't locate the root image directory. "],errorcode=>[1]});
+	    return 0;
+	}
 
-	# get rid of spaces and put in underlines.  
-	$imagename =~ s/\s+/_/g;	
+        #get litefile table setting for the image
+        my $lftab= xCAT::Table->new("litefile" ,-create=>1);
+	if (!$lftab) {
+	    $callback->({error=>["Could not open the litefile table."],errorcode=>[1]});
+	    return 0;
+	}
 
-
-	# we may find that cwd doesn't work, so we use the request cwd.
-	my $ttpath = mkdtemp("$dir/imgexport.$$.XXXXXX");
-	$callback->({data=>["Creating $ttpath..."]}) if $::VERBOSE;
-	my $tpath = "$ttpath/$imagename";
-	mkdir("$tpath");
-	chmod 0755,$tpath;
-
-	# make manifest.xml file.  So easy!  This is why we like XML.  I didn't like
-	# the idea at first though.
-	my $xml = new XML::Simple(RootName =>'xcatimage');	
-	open(FILE,">$tpath/manifest.xml") or die "Could not open $tpath/manifest.xml";
-	print FILE  $xml->XMLout($attribs, noattr => 1, xmldecl => '<?xml version="1.0"?>');
-	#print $xml->XMLout($attribs, noattr => 1, xmldecl => '<?xml version="1.0">');
+	$callback->({data=>["Getting litefile settings"]});
+	my @imageInfo;
+        # get the directories with no names
+        push @imageInfo, $lftab->getAttribs({image => ''}, ('file','options'));
+        # get the ALL directories
+        push @imageInfo, $lftab->getAttribs({image => 'ALL'}, ('file','options'));
+        # get for the image specific directories
+        push @imageInfo, $lftab->getAttribs({image => $imagename}, ('file','options'));
+	open(FILE,">$tpath/litefile.csv") or die "Could not open $tpath/litefile.csv";
+	foreach(@imageInfo){
+	    my $file=$_->{file};
+	    if(!$file){ next; }
+	    my $o = $_->{options};
+	    if(!$o){
+		$o = "tmpfs,rw";
+	    }
+	    print FILE  "\"$imagename\",\"$file\",\"$o\",,\n";
+	}
 	close(FILE);
+	$attribs->{'litefile'} = "$rootimgdir/litefile.csv";
+   }
 
-
-	# these are the only files we copy in.  (unless you have extras)
-	for my $a ("kernel", "template", "ramdisk", "rootimg", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist"){
-	    my $fn=$attribs->{$a};
-	    if($fn) {
-		$callback->({data => ["$fn"]});
-		if (-r $fn) {
-		    system("cp $fn $tpath");
-		} else {
-		    $callback->({error=>["Couldn't find file $fn for $imagename. Skip."],errorcode=>[1]});
-		}
+    # make manifest.xml file.  So easy!  This is why we like XML.  I didn't like
+    # the idea at first though.
+    my $xml = new XML::Simple(RootName =>'xcatimage');	
+    open(FILE,">$tpath/manifest.xml") or die "Could not open $tpath/manifest.xml";
+    print FILE  $xml->XMLout($attribs, noattr => 1, xmldecl => '<?xml version="1.0"?>');
+    #print $xml->XMLout($attribs, noattr => 1, xmldecl => '<?xml version="1.0">');
+    close(FILE);
+    
+    
+    # these are the only files we copy in.  (unless you have extras)
+    for my $a ("kernel", "template", "ramdisk", "rootimg", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist"){
+	my $fn=$attribs->{$a};
+	if($fn) {
+	    $callback->({data => ["$fn"]});
+	    if (-r $fn) {
+		system("cp $fn $tpath");
+	    } else {
+		$callback->({error=>["Couldn't find file $fn for $imagename. Skip."],errorcode=>[1]});
 	    }
 	}
-
-
-	# extra files get copied in the extra directory.
-	if($attribs->{extra}){
-	    mkdir("$tpath/extra");
-	    chmod 0755,"$tpath/extra";
-	    foreach(@{ $attribs->{extra} }){
-		my $fromf = $_->{src};
-		print " $fromf\n";
-		if(-d $fromf ){
-		    print "fromf is a directory";
-		    mkpath("$tpath/extra/$fromf");
-		    `cp -a $fromf/* $tpath/extra/$fromf/`;
-		}else{
-		    `cp $fromf $tpath/extra`;
-		}
+    }
+        
+    # extra files get copied in the extra directory.
+    if($attribs->{extra}){
+	mkdir("$tpath/extra");
+	chmod 0755,"$tpath/extra";
+	foreach(@{ $attribs->{extra} }){
+	    my $fromf = $_->{src};
+	    print " $fromf\n";
+	    if(-d $fromf ){
+		print "fromf is a directory";
+		mkpath("$tpath/extra/$fromf");
+		`cp -a $fromf/* $tpath/extra/$fromf/`;
+	    }else{
+		`cp $fromf $tpath/extra`;
 	    }
 	}
-
-	# now get right below all this stuff and tar it up.
-	chdir($ttpath);
-	$callback->( {data => ["Inside $ttpath."]});
-	unless($dest){ 
-	    $dest = "$dir/$imagename.tgz";
-	}
-
-	# if no absolute path specified put it in the cwd
-	unless($dest =~ /^\//){
-	    $dest = "$dir/$dest";			
-	}
-
-	$callback->( {data => ["Compressing $imagename bundle.  Please be patient."]});
-	my $rc;
-	if($::VERBOSE){
-		 $callback->({data => ["tar czvf $dest . "]});	
-		 $rc = system("tar czvf $dest . ");	
-	}else{
-		 $rc = system("tar czf $dest . ");	
-	}
-	$callback->( {data => ["Done!"]});
-	if($rc) {
-		$callback->({error=>["Failed to compress archive!  (Maybe there was no space left?)"],errorcode=>[1]});
-		return;
-	}
-	chdir($dir);	
-	$rc = system("rm -rf $ttpath");
-	if ($rc) {
-		$callback->({error=>["Failed to clean up temp space $ttpath"],errorcode=>[1]});
-		return;
-	}	
+    }
+    
+    # now get right below all this stuff and tar it up.
+    chdir($ttpath);
+    $callback->( {data => ["Inside $ttpath."]});
+    unless($dest){ 
+	$dest = "$dir/$imagename.tgz";
+    }
+    
+    # if no absolute path specified put it in the cwd
+    unless($dest =~ /^\//){
+	$dest = "$dir/$dest";			
+    }
+    
+    $callback->( {data => ["Compressing $imagename bundle.  Please be patient."]});
+    my $rc;
+    if($::VERBOSE){
+	$callback->({data => ["tar czvf $dest . "]});	
+	$rc = system("tar czvf $dest . ");	
+    }else{
+	$rc = system("tar czf $dest . ");	
+    }
+    $callback->( {data => ["Done!"]});
+    if($rc) {
+	$callback->({error=>["Failed to compress archive!  (Maybe there was no space left?)"],errorcode=>[1]});
+	return;
+    }
+    chdir($dir);	
+    $rc = system("rm -rf $ttpath");
+    if ($rc) {
+	$callback->({error=>["Failed to clean up temp space $ttpath"],errorcode=>[1]});
+	return;
+    }	
 }
 
 sub extract_bundle {
@@ -730,7 +805,7 @@ sub extract_bundle {
 	
 	
 	my $osimage = $data->{imagename};	
-	$callback->({data=>["Successfully imported $osimage"]});
+	$callback->({data=>["Successfully imported the image."]});
 	
     }
     
@@ -759,7 +834,7 @@ sub change_profile {
     if ($data->{rootimgdir}) {
 	$data->{rootimgdir}="$installdir/netboot/" . $data->{osvers} . "/" . $data->{osarch} . "/$new_profile";
     
-	for my $a ("kernel", "ramdisk", "rootimg") {
+	for my $a ("kernel", "ramdisk", "rootimg", "rootimgtree", "litefile") {
 	    if ($data->{$a}) {
 		my $fn=basename($data->{$a});
 		$data->{$a}=$data->{rootimgdir} . "/$fn";
@@ -790,6 +865,9 @@ sub change_profile {
 	    $data->{$a}= "$installdir/custom/$prov/$platform/$fn";
 	}
     }
+
+    #change the image name
+    $data->{imagename}=$data->{osvers} . "-" . $data->{osarch} . "-" . $data->{provmethod} . "-$new_profile";
 
     return $data;
 }
@@ -824,7 +902,7 @@ sub set_postscripts {
     my $callback = shift;
     my $nodes=shift;
 
-    $callback->({data=>["Adding postscripts..."]});
+    $callback->({data=>["Adding postscripts."]});
 
     my @good_nodes=noderange($nodes);
 
@@ -980,7 +1058,7 @@ sub set_config {
 	};
         $linuxtab->setAttribs({imagename => $osimage }, \%keyhash );
         $linuxtab->commit;
-	
+
 	return 1;
 }
 
@@ -1033,7 +1111,7 @@ sub verify_manifest {
 		$callback->({info => ['this is an esx image']});
 		# do nothing for ESX
 		1;
-	}elsif($data->{provmethod} =~ /netboot|statelite/){
+	}elsif($data->{provmethod} =~ /netboot/){
 		unless($data->{ramdisk}){
 			$callback->({error=>["The 'ramdisk' field is not defined in manifest.xml."],errorcode=>[1]});
 			$errors++;
@@ -1047,7 +1125,21 @@ sub verify_manifest {
 			$errors++;
 		}
 	
-	}	
+	}elsif($data->{provmethod} =~ /statelite/){
+		unless($data->{kernel}){
+			$callback->({error=>["The 'kernel' field is not defined in manifest.xml."],errorcode=>[1]});
+			$errors++;
+		}
+		unless($data->{ramdisk}){
+			$callback->({error=>["The 'ramdisk' field is not defined in manifest.xml."],errorcode=>[1]});
+			$errors++;
+		}
+		unless($data->{'rootimgtree'}){
+			$callback->({error=>["The 'rootimgtree' field is not defined in manifest.xml."],errorcode=>[1]});
+			$errors++;
+		}
+	
+	}		
 	
 	if($errors){
 		# we had problems, error and exit.
@@ -1087,7 +1179,7 @@ sub make_files {
     #$VAR1 = { 
     #          'provmethod' => 'netboot',
     #          'profile' => 'compute',
-    #          'ramdisk' => '/install/netboot/centos5.4/x86_64/compute/initrd.gz',
+    #          'ramdisk' => '/install/netboot/centos5.4/x86_64/compute/initrd-diskless.gz',
     #          'kernel' => '/install/netboot/centos5.4/x86_64/compute/kernel',
     #          'imagename' => 'Default_Stateless_1265981465',
     #          'osarch' => 'x86_64',
@@ -1109,8 +1201,34 @@ sub make_files {
     #          'osvers' => 'centos5.4',
     #          'rootimg' => '/install/netboot/centos5.4/x86_64/compute/rootimg.gz'
     #        };
+    # data will look something like this for statelite:
+    #$VAR1 = { 
+    #          'provmethod' => 'statelite',
+    #          'profile' => 'compute',
+    #          'ramdisk' => '/install/netboot/centos5.4/x86_64/compute/initrd-statelite.gz',
+    #          'kernel' => '/install/netboot/centos5.4/x86_64/compute/kernel',
+    #          'imagename' => 'Default_Stateless_1265981465',
+    #          'osarch' => 'x86_64',
+    #          'pkglist' => '/opt/xcat/share/xcat/install/centos/compute.pkglist',
+    #          'otherpkglist' => '/opt/xcat/share/xcat/install/centos/compute.othetpkgs.pkglist',
+    #          'synclists' => '/opt/xcat/share/xcat/install/centos/compute.othetpkgs.synclist',
+    #          'exlist' => '/opt/xcat/share/xcat/install/centos/compute.exlist',
+    #          'postinstall' => '/opt/xcat/share/xcat/install/centos/compute.postinstall',
+    #          'extra' => [
+    #                     { 
+    #                       'dest' => '/install/custom/netboot/centos',
+    #                       'src' => '/opt/xcat/share/xcat/netboot/centos/compute.centos5.4.pkglist'
+    #                     },
+    #                     { 
+    #                       'dest' => '/install/custom/netboot/centos',
+    #                       'src' => '/opt/xcat/share/xcat/netboot/centos/compute.exlist'
+    #                     }
+    #                   ],
+    #          'osvers' => 'centos5.4',
+    #          'rootimgtree' => '/install/netboot/centos5.4/x86_64/compute/rootimg/rootimgtree.gz'
+    #        };
 	
-    for my $a ("kernel", "template", "ramdisk", "rootimg", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist") {
+    for my $a ("kernel", "template", "ramdisk", "rootimg", "rootimgtree", "litefile", "pkglist", "synclists", "otherpkglist", "postinstall", "exlist") {
 	my $fn=$data->{$a};
 	if($fn) {
 	    $callback->({data => ["$fn"]});
@@ -1120,16 +1238,28 @@ sub make_files {
 		mkpath("$dirname", { verbose => 1, mode => 0755 });
 	    } 
 	    if (-r $fn) {
-		$callback->( {data => ["  Moving old $fn to $fn.ORIG..."]});
+		$callback->( {data => ["  Moving old $fn to $fn.ORIG."]});
 		move("$fn", "$fn.ORIG");
 	    }
 	    move("$imgdir/$basename",$fn);
 	}
     }
+
+    #unpack the rootimgtree.gz for statelite
+    my $fn=$data->{'rootimgtree'};
+    if($fn) {
+	if (-r $fn) {
+	    my $basename=basename($fn);
+	    my $dirname=dirname($fn);
+	    #print "dirname=$dirname, basename=$basename\n";
+	    $callback->({data => ["Extracting rootimgtree.gz. It will take a while."]});
+	    system("mkdir -p $dirname; cd $dirname; zcat $basename |cpio -idum; rm $basename");
+	}
+    }
        
     if($data->{extra}){
 	# have to copy extras
-	print "copying extras...\n" if $::VERBOSE;
+	print "copying extras\n" if $::VERBOSE;
 	#if its just a hash then there is only one entry.
 	if (ref($data->{extra}) eq 'HASH'){
 	    my $ex = $data->{extra};
@@ -1151,6 +1281,42 @@ sub make_files {
 	    }
 	}
     }
+
+    
+    #litefile table for statelite
+    if ($data->{provmethod} eq 'statelite') {
+	$callback->( {data => ["Updating the litefile table."]});
+	my $fn=$data->{litefile};
+	if (!$fn) {
+	    $callback->({error=>["Could not find liefile.csv."],errorcode=>[1]});
+	    return 1;
+	} elsif (! -r $fn) {
+	    $callback->({error=>["Could not find $fn."],errorcode=>[1]});
+	    return 1;
+	}
+	
+        my $lftab= xCAT::Table->new("litefile" ,-create=>1);
+	if (!$lftab) {
+	    $callback->({error=>["Could not open the litefile table."],errorcode=>[1]});
+	    return 0;
+	}
+        open(FILE,"$fn") or die "Could not open $fn.";
+	foreach my $line (<FILE>) {
+	    chomp($line);
+	    print "$line\n";
+	    my @tmp=split('"', $line);
+	    my %keyhash;
+	    my %updates;
+	    $keyhash{image}=$data->{imagename};
+	    $keyhash{file}=$tmp[3];
+	    $updates{options}=$tmp[5];
+	    $lftab->setAttribs(\%keyhash, \%updates );
+	}
+	close(FILE);
+        $lftab->commit;
+
+	$callback->( {data => ["The litetree and statelite talbes are untouched. You can update them if needed."]});
+    } 
     
     # return 1 meant everything was successful!	
     return 1;
@@ -1187,7 +1353,7 @@ sub moveExtra {
 	# this extra file is a file and we can just copy to the destination.
 	$callback->( {data => ["$dest/$f"]}) ;
 	if(-r "$dest/$f"){
-	    $callback->( {data => ["  Moving old $dest/$f to $dest/$f.ORIG..."]}); 
+	    $callback->( {data => ["  Moving old $dest/$f to $dest/$f.ORIG."]}); 
 	    move("$dest/$f", "$dest/$f.ORIG");
 	}
         `cp $imgdir/extra/$f $dest`;
