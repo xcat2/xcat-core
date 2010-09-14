@@ -156,15 +156,15 @@ sub process_request
         ($ret, $msg) = &defrm;
     }
 
-	my $rsp;
+    my $rsp;
     if ($msg)
     {
         $rsp->{data}->[0] = $msg;
-        $::callback->($rsp);
     }
-	if ($ret > 0) {
-		$rsp->{errorcode}->[0] = $ret;
-	}
+    if ($ret > 0) {
+        $rsp->{errorcode}->[0] = $ret;
+    }
+    $::callback->($rsp);
 }
 
 #----------------------------------------------------------------------------
