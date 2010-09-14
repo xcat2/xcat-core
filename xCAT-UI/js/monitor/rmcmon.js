@@ -22,7 +22,7 @@ function loadRmcMon(){
 		else{
 			$('#rmcMonConfig').hide();
 		}
-	});		
+	});
 	rmcMonTab.append(configButton);
 	
 	//add configure div
@@ -33,7 +33,8 @@ function loadRmcMon(){
 	loadRmcMonConfigure();
 	
 	//add the content of the rmcmon, id = 'rmcMonTab'
-	rmcMonTab.append("<div id='rmcMonShow'><div id='rmcmonSummary'></div><div id='rmcmonDetail'></div></div>");
+	rmcMonTab.append("<div id='rmcMonShow'><div id='rmcmonSummary'></div><div id='rmcmonDetail'></div><div id='nodeDetail'></div></div>");
+	$('#nodeDetail').hide();
 	
 	//check the software work status by platform(linux and aix)
 	$.ajax( {
@@ -284,7 +285,7 @@ function parseRmcData(returnData){
 			globalErrNodes[nodeName] = nodeStatus;
 			globalFinishNodesNum ++;
 			if (globalFinishNodesNum == globalAllNodesNum){
-				showNodeDetail();
+				showDetail();
 			}
 			continue;
 		}
@@ -310,14 +311,14 @@ function parseRmcData(returnData){
 				globalNodesDetail[data.msg] = tempObject;
 				globalFinishNodesNum++;
 				if (globalFinishNodesNum == globalAllNodesNum){
-					showNodeDetail();
+					showDetail();
 				}
 			}		
 		});
 	}	
 }
 
-function showNodeDetail(){
+function showDetail(){
 	var nodeChat;
 	var select;
 	
@@ -356,6 +357,8 @@ function showNodeDetail(){
 		var type = $('#sortType').val();
 		showAllNodes(attr, type);
 	});
+	
+	filterButton.trigger('click');
 }
 
 function showAllNodes(attrName, type){
@@ -415,6 +418,51 @@ function showAllNodes(attrName, type){
 		$.plot(nodeChat, [tempArray]);
 
 		tempTd.append('<center>' + sortArray[sortIndex]['name'] + '</center>');
+		tempTd.css('cursor', 'pointer');
+		tempTd.bind('click', function(){
+			showNode($('center', $(this)).html());
+		});		
+	}
+}
+
+function showNode(nodeName){
+	var nodeTable = $('<table><tbody></tbody></table>');
+	var backButton = createButton('Go back to all nodes');
+	var nodeRow;
+	var parseNum = 0;
+	
+	$('#rmcmonDetail').hide();
+	$('#nodeDetail').empty().show();
+	$('#nodeDetail').append('<h3>' + nodeName +' Detail</h3><hr />');
+	$('#nodeDetail').append(backButton);
+	backButton.bind('click', function(){
+		$('#nodeDetail').hide();
+		$('#rmcmonDetail').show();
+	});
+
+	
+	$('#nodeDetail').append(nodeTable);
+	
+	for(var attr in globalNodesDetail[nodeName]){
+		var tempTd = $('<td style="border:0px;padding:1px 1px;"></td>');
+		var attrChat = $('<div class="monitornodediv"></div>');
+		if (0 == parseNum % 4){
+			nodeRow = $('<tr></tr>');
+			nodeTable.append(nodeRow);
+		}
+		nodeRow.append(tempTd);
+		parseNum++;
+		
+		//data
+		tempTd.append(attrChat);
+		var tempData = globalNodesDetail[nodeName][attr].split(',');
+		var tempArray = [];
+		for (var i in tempData){
+			tempArray.push([i, tempData[i]]);				
+		}
+		
+		$.plot(attrChat, [tempArray]);
+		attrChat.append('<center>' + attr +'</center>');
 	}
 }
 
