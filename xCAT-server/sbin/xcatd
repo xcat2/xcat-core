@@ -327,11 +327,6 @@ if ($inet6support) {
             plugin_command({command=>['syncfiles'],_xcat_clienthost=>[$node]},undef,\&build_response);
             print $conn "syncfiles done\n";
             close($conn);
-    } elsif ($text =~ /^rebootnodes/) {
-        my @cmdargs = split(/\s+/,$text);
-        my $rebootcmd = shift(@cmdargs);
-        close($conn);
-        plugin_command({command=>[$rebootcmd],arg=>\@cmdargs,_xcat_clienthost=>[$node]},undef,\&build_response);
 	} elsif ($text =~ /^setiscsiparms/) { 
 	    $text =~ s/^setiscsiparms\s+//;
 	    my $kname;

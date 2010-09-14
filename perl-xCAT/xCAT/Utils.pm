@@ -5878,5 +5878,139 @@ sub setupAIXconserver
     return $rc;
 }
 
+#-------------------------------------------------------------------------------
+
+=head3  setAppStatus
+    Description:
+        Set an AppStatus value for a specific application in the nodelist
+        appstatus attribute for a list of nodes
+    Arguments:
+        @nodes
+        $application
+        $status
+    Returns:
+        Return result of call to setNodesAttribs
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        xCAT::Utils::setAppStatus(\@nodes,$application,$status);
+    Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub setAppStatus
+{
+
+    my ($class, $nodes_ref, $application, $status) = @_;
+    my @nodes = @$nodes_ref;
+
+    #get current local time to set in appstatustime attribute
+    my (
+        $sec,  $min,  $hour, $mday, $mon,
+        $year, $wday, $yday, $isdst
+        )
+        = localtime(time);
+    my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
+                           $mon + 1, $mday, $year + 1900,
+                           $hour, $min, $sec);
+
+    my $nltab = xCAT::Table->new('nodelist');
+    my $nodeappstat = $nltab->getNodesAttribs(\@nodes,['appstatus']);
+
+    my %new_nodeappstat;
+    foreach my $node (keys %$nodeappstat) {
+        my $new_appstat = "";
+        my $changed = 0;
+
+        # Search current appstatus and change if app entry exists
+        my $cur_appstat = $nodeappstat->{$node}->[0]->{appstatus};
+        if ($cur_appstat) {
+            my @appstatus_entries = split(/,/,$cur_appstat);
+            foreach my $appstat (@appstatus_entries) {
+                my ($app, $stat) = split(/=/,$appstat);
+                if ($app eq $application) {
+                   $new_appstat .= ",$app=$status";
+                   $changed = 1;
+                } else {
+                   $new_appstat .= ",$appstat";
+                }
+            }
+        }
+        # If no app entry exists, add it
+        if (!$changed){
+           $new_appstat .= ",$application=$status";
+        }
+        $new_appstat =~ s/^,//;
+        $new_nodeappstat{$node}->{appstatus} = $new_appstat;
+        $new_nodeappstat{$node}->{appstatustime} = $currtime;
+    }
+
+    return $nltab->setNodesAttribs(\%new_nodeappstat);
+
+}
+
+
+
+#-------------------------------------------------------------------------------
+
+=head3  getAppStatus
+    Description:
+        Get an AppStatus value for a specific application from the
+        nodelist appstatus attribute for a list of nodes
+    Arguments:
+        @nodes
+        $application
+    Returns:
+        a hashref of nodes set to application status value
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $appstatus = $xCAT::Utils::getAppStatus(\@nodes,$application);
+       my $node1_status = $appstatus->{node1};
+    Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub getAppStatus
+{
+
+    my ($class, $nodes_ref, $application) = @_;
+    my @nodes = @$nodes_ref;
+
+    my $nltab = xCAT::Table->new('nodelist');
+    my $nodeappstat = $nltab->getNodesAttribs(\@nodes,['appstatus']);
+
+    my $ret_nodeappstat;
+    foreach my $node (keys %$nodeappstat) {
+        my $cur_appstat = $nodeappstat->{$node}->[0]->{appstatus};
+        my $found = 0;
+        if ($cur_appstat) {
+            my @appstatus_entries = split(/,/,$cur_appstat);
+            foreach my $appstat (@appstatus_entries) {
+                my ($app, $stat) = split(/=/,$appstat);
+                if ($app eq $application) {
+                   $ret_nodeappstat->{$node} = $stat;
+                   $found = 1;
+                }
+            }
+        }
+        # If no app entry exists, return empty
+        if (!$found){
+           $ret_nodeappstat->{$node} = "";
+        }
+    }
+
+    return $ret_nodeappstat;
+
+}
+
 
 1;

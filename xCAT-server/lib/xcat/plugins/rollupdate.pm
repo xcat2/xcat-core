@@ -8,6 +8,11 @@
 
 package xCAT_plugin::rollupdate;
 
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
 require xCAT::NodeRange;
 require xCAT::NameRange;
 require xCAT::Table;
@@ -31,9 +36,9 @@ $::LOGFILE="rollupdate.log";
 This program module file supports the cluster rolling update functions.
 
 Supported commands:
-    rollupdate - Create scheduler job command files and submit the jobs
-	rebootnodes - Reboot the updategroup in response to request from scheduler 
-				  job
+   rollupdate - Create scheduler job command files and submit the jobs
+   runrollupdate - Reboot the updategroup in response to request from scheduler 
+                  job
 
 If adding to this file, please take a moment to ensure that:
 
@@ -67,7 +72,7 @@ If adding to this file, please take a moment to ensure that:
 sub handled_commands {
     return {
              rollupdate  => "rollupdate",
-             rebootnodes => "rollupdate"
+             runrollupdate => "rollupdate"
     };
 }
 
@@ -140,8 +145,8 @@ sub process_request {
     if ( $::command eq "rollupdate" ) {
         $ret = &rollupdate($::request);
     }
-    elsif ( $::command eq "rebootnodes" ) {
-        $ret = &rebootnodes($::request);
+    elsif ( $::command eq "runrollupdate" ) {
+        $ret = &runrollupdate($::request);
     }
 
     return $ret;
@@ -179,6 +184,37 @@ sub rollupdate_usage {
     return 0;
 }
 
+
+#----------------------------------------------------------------------------
+
+=head3  runrollupdate_usage
+
+        Arguments:
+        Returns:
+        Globals:
+
+        Error:
+
+        Example:
+
+        Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+
+# display the usage
+sub runrollupdate_usage {
+    my $rsp;
+    push @{ $rsp->{data} },
+      "\nUsage: runrollupdate - Run submitted cluster rolling update job \n";
+    push @{ $rsp->{data} }, "  runrollupdate [-h | --help | -?] \n";
+    push @{ $rsp->{data} },
+      "  runrollupdate [-V | --verbose] [-v | --version] scheduler datafile \n ";
+    push @{ $rsp->{data} },
+    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+    return 0;
+}
+
 #----------------------------------------------------------------------------
 
 =head3   processArgs
@@ -190,7 +226,7 @@ sub rollupdate_usage {
         Returns:
                 0 - OK
                 1 - just print usage
-                                2 - error
+                2 - error
         Globals:
 
         Error:
@@ -234,10 +270,12 @@ sub processArgs {
 
     #  opt_t not yet supported
     if ( defined($::opt_t) ) {
-        my $rsp;
-        push @{ $rsp->{data} }, "The \'-t\' option is not yet implemented.";
-        xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-        return 2;
+        $::test = 1;
+        $::TEST = 1;
+       # my $rsp;
+       # push @{ $rsp->{data} }, "The \'-t\' option is not yet implemented.";
+       # xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+       # return 2;
     }
 
     # Option -v for version
@@ -255,26 +293,34 @@ sub processArgs {
         $::VERBOSE = 1;
     }
 
-    # process @ARGV
-    #while (my $a = shift(@ARGV))
-    #{
-    #  no args for command yet
-    #}
 
-    # process the <stdin> input file
-    if ( defined($::stdindata) ) {
-        my $rc = readFileInput($::stdindata);
-        if ($rc) {
-            my $rsp;
-            push @{ $rsp->{data} }, "Could not process file input data.\n";
-            xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-            return 1;
+    if ( $::command eq "rollupdate" ) {
+        # process @ARGV
+        #while (my $a = shift(@ARGV))
+        #{
+        #  no args for command yet
+        #}
+
+        # process the <stdin> input file
+        if ( defined($::stdindata) ) {
+            my $rc = readFileInput($::stdindata);
+            if ($rc) {
+                my $rsp;
+                push @{ $rsp->{data} }, "Could not process file input data.\n";
+                xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                return 1;
+            }
+        }
+        else {
+            # No <stdin> stanza file, print usage
+            return 2;
         }
     }
-    else {
-
-        # No <stdin> stanza file, print usage
-        return 2;
+    elsif ( $::command eq "runrollupdate" ) {
+        # process @ARGV
+        $::scheduler = shift(@ARGV);
+        $::datafile = shift(@ARGV);
+        $::ll_reservation_id = shift(@ARGV);
     }
 
     return 0;
@@ -306,6 +352,7 @@ sub readFileInput {
 
     my @lines = split /\n/, $filedata;
 
+    my $prev_attr = "";
     foreach my $l (@lines) {
 
         # skip blank and comment lines
@@ -321,8 +368,21 @@ sub readFileInput {
             $val  =~ s/^\s*//;
             $val  =~ s/\s*$//;
 
+            # Convert the following values to lowercase
+            if ( ($attr eq 'scheduler') ||
+                 ($attr eq 'updateall') ||
+                 ($attr eq 'shutdownrequired') ) {
+                $val =~ tr/A-Z/a-z/;   
+            }
             # set the value in the hash for this entry
             push( @{ $::FILEATTRS{$attr} }, $val );
+            if (($prev_attr eq "prescript") && ($attr ne "prescriptnodes")) {
+                push ( @{ $::FILEATTRS{'prescriptnodes'} }, 'ALL_NODES_IN_UPDATEGROUP' );
+            }
+            if (($prev_attr eq "outofbandcmd") && ($attr ne "outofbandnodes")) {
+                push ( @{ $::FILEATTRS{'outofbandnodes'} }, 'ALL_NODES_IN_UPDATEGROUP' );
+            }
+            $prev_attr = $attr;
         }
     }    # end while - go to next line
 
@@ -365,51 +425,86 @@ sub rollupdate {
         }
         return ( $rc - 1 );
     }
+    if ($::VERBOSE) {
+        my $rsp;
+        push @{ $rsp->{data} }, "Running rollupdate command... ";
+        xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG "\n\n";
+        print RULOG localtime()." Running rollupdate command...\n";
+        close (RULOG);
+    }
 
     #
     # Build updategroup nodelists
     #
     my %updategroup;
-    foreach my $ugline ( @{ $::FILEATTRS{'updategroup'} } ) {
-        my ( $ugname, $ugval ) = split( /\(/, $ugline );
-        $ugval =~ s/\)$//;    # remove trailing ')'
-        @{ $updategroup{$ugname} } = xCAT::NodeRange::noderange($ugval);
-        if ( xCAT::NodeRange::nodesmissed() ) {
+    if ( defined($::FILEATTRS{updateall}[0])  &&
+     ( ($::FILEATTRS{updateall}[0] eq 'yes') ||
+       ($::FILEATTRS{updateall}[0] eq 'y'  ) ) ) {
+        if ( defined($::FILEATTRS{updateall_nodes}[0])){
+            my $ugname = "UPDATEALL".time();
+            my $ugval = $::FILEATTRS{updateall_nodes}[0];
+            @{ $updategroup{$ugname} } = xCAT::NodeRange::noderange($ugval);
+        } else {
             my $rsp;
-            push @{ $rsp->{data} }, "Error processing stanza line: ";
-            push @{ $rsp->{data} }, "updategroup=" . $ugline;
-            push @{ $rsp->{data} }, "Invalid nodes in noderange: "
-              . join( ',', xCAT::NodeRange::nodesmissed() );
+            push @{ $rsp->{data} },
+"Error processing stanza input:  updateall=yes but no updateall_nodes specified. ";
             xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
             return 1;
         }
-		if ($::VERBOSE) {
-			my $rsp;
-			push @{ $rsp->{data} }, "Creating update group $ugname with nodes: ";
-			push @{ $rsp->{data} }, join(',',@{$updategroup{$ugname}});
-           	xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-		}
-    }
-
-    foreach my $mgline ( @{ $::FILEATTRS{'mapgroups'} } ) {
-        my @ugnamelist = xCAT::NameRange::namerange( $mgline, 0 );
-        foreach my $ugname (@ugnamelist) {
-            @{ $updategroup{$ugname} } = xCAT::NodeRange::noderange($ugname);
+    } else {
+        foreach my $ugline ( @{ $::FILEATTRS{'updategroup'} } ) {
+            my ( $ugname, $ugval ) = split( /\(/, $ugline );
+            $ugval =~ s/\)$//;    # remove trailing ')'
+            @{ $updategroup{$ugname} } = xCAT::NodeRange::noderange($ugval);
             if ( xCAT::NodeRange::nodesmissed() ) {
                 my $rsp;
                 push @{ $rsp->{data} }, "Error processing stanza line: ";
-                push @{ $rsp->{data} }, "mapgroups=" . $mgline;
-                push @{ $rsp->{data} }, "Invalid nodes in group $ugname: "
+                push @{ $rsp->{data} }, "updategroup=" . $ugline;
+                push @{ $rsp->{data} }, "Invalid nodes in noderange: "
                   . join( ',', xCAT::NodeRange::nodesmissed() );
                 xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
                 return 1;
             }
-			if ($::VERBOSE) {
-				my $rsp;
-				push @{ $rsp->{data} }, "Creating update group $ugname with nodes: ";
-				push @{ $rsp->{data} }, join(',',@{$updategroup{$ugname}});
-           		xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-			}
+            if ($::VERBOSE) {
+                my $rsp;
+                my $prt_ugn = join(',',@{$updategroup{$ugname}});
+                push @{ $rsp->{data} }, "Creating update group $ugname with nodes: ";
+                push @{ $rsp->{data} }, $prt_ugn;
+                xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." Creating update group $ugname with nodes: \n";
+                print RULOG  "$prt_ugn\n";
+                close (RULOG);
+            }
+        }
+
+        foreach my $mgline ( @{ $::FILEATTRS{'mapgroups'} } ) {
+            my @ugnamelist = xCAT::NameRange::namerange( $mgline, 0 );
+            foreach my $ugname (@ugnamelist) {
+                @{ $updategroup{$ugname} } = xCAT::NodeRange::noderange($ugname);
+                if ( xCAT::NodeRange::nodesmissed() ) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Error processing stanza line: ";
+                    push @{ $rsp->{data} }, "mapgroups=" . $mgline;
+                    push @{ $rsp->{data} }, "Invalid nodes in group $ugname: "
+                      . join( ',', xCAT::NodeRange::nodesmissed() );
+                    xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                    return 1;
+                }
+                if ($::VERBOSE) {
+                    my $rsp;
+                    my $prt_ugn = join(',',@{$updategroup{$ugname}});
+                    push @{ $rsp->{data} }, "Creating update group $ugname with nodes: ";
+                    push @{ $rsp->{data} }, $prt_ugn;
+                    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                    open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                    print RULOG localtime()." Creating update group $ugname with nodes: \n";
+                    print RULOG  "$prt_ugn\n";
+                    close (RULOG);
+                }
+            }
         }
     }
     unless (%updategroup) {
@@ -424,7 +519,6 @@ sub rollupdate {
     # Build and submit scheduler jobs
     #
     my $scheduler = $::FILEATTRS{'scheduler'}[0];
-    $scheduler =~ tr/A-Z/a-z/;
     if (    ( !$scheduler )
          || ( $scheduler eq "loadleveler" ) )
     {
@@ -469,11 +563,33 @@ sub ll_jobs {
     my $updategroup = shift;
     my $rc          = 0;
 
-	if ($::VERBOSE) {
-		my $rsp;
-		push @{ $rsp->{data} }, "Creating LL job command files ";
-   		xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-	}
+    if ($::VERBOSE) {
+        my $rsp;
+        push @{ $rsp->{data} }, "Creating LL job command files ";
+        xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Creating LL job command files \n";
+        close (RULOG);
+     }
+
+    $::updateall=0;
+    $::updateall_numperupdate=1;
+    if ( defined($::FILEATTRS{updateall}[0])  &&
+         ( ($::FILEATTRS{updateall}[0] eq 'yes') ||
+           ($::FILEATTRS{updateall}[0] eq 'y'  ) ) ) {
+        $::updateall=1;
+        if ( defined($::FILEATTRS{updateall_numperupdate}[0]) ) {
+            $::updateall_numperupdate=$::FILEATTRS{updateall_numperupdate}[0];
+        }
+    }
+
+
+    # Create LL floating resources for mutual exclusion support
+    #   and max_updates
+    if (&create_LL_mutex_resources > 0) {
+        return 1;
+    }
+
     #
     # Load job command file template
     #
@@ -494,27 +610,39 @@ sub ll_jobs {
         xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
         return 1;
     }
-	if ($::VERBOSE) {
-		my $rsp;
-		push @{ $rsp->{data} }, "Reading LL job template file $tmpl_file_name ";
-   		xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-	}
+    if ($::VERBOSE) {
+        my $rsp;
+        push @{ $rsp->{data} }, "Reading LL job template file $tmpl_file_name ";
+        xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Reading LL job template file $tmpl_file_name \n";
+        close (RULOG);
+    }
     my @lines = <$TMPL_FILE>;
     close $TMPL_FILE;
 
     # Query LL for list of machines and their status
-    my $cmd = "llstatus -r %n %sta 2>/dev/null";
-	if ($::VERBOSE) {
-		my $rsp;
-		push @{ $rsp->{data} }, "Running command: $cmd ";
-   		xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-	}
+###  LL BUG WORKAROUND -- MUST SET LOADL_STATUS_LEVEL=MACHINE
+    my $cmd = "LOADL_STATUS_LEVEL=MACHINE llstatus -r %n %sta 2>/dev/null";
+#    my $cmd = "llstatus -r %n %sta 2>/dev/null";
+    if ($::VERBOSE) {
+        my $rsp;
+        push @{ $rsp->{data} }, "Running command: $cmd ";
+        xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Running command: $cmd  \n";
+        close (RULOG);
+    }
     my @llstatus = xCAT::Utils->runcmd( $cmd, 0 );
     if ( $::RUNCMD_RC != 0 ) {
         my $rsp;
         push @{ $rsp->{data} }, "Could not run llstatus command.";
         push @{ $rsp->{data} }, @llstatus;
         xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Could not run llstatus command.  \n";
+        print RULOG @llstatus;
+        close (RULOG);
         return 1;
     }
     my %machines;
@@ -545,10 +673,18 @@ sub ll_jobs {
     unless ( defined($uid) ) {
         my $rsp;
         push @{ $rsp->{data} },
-"Error processing stanza input:  scheduser userid $lluser not in passwd file. ";
+"Error processing stanza input:  scheduser userid $lluser not defined in system. ";
         xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
         return 1;
     }
+    if ( &check_policy($lluser,'runrollupdate') ) {
+        my $rsp;
+        push @{ $rsp->{data} },
+          "Error processing stanza input:  scheduser userid $lluser not listed in xCAT policy table for runrollupdate command.  Add to policy table and ensure userid has ssh credentials for running xCAT commands. ";
+        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+        return 1;
+    }
+
     my $lljobs_dir = $::FILEATTRS{jobdir}[0];
     unless ( defined($lljobs_dir) ) {
         my $rsp;
@@ -573,45 +709,53 @@ sub ll_jobs {
         }
     }
 
-    my $run_if_down = $::FILEATTRS{update_if_down}[0];
-    $run_if_down =~ tr/[A-Z]/[a-z]/;
-    if ( $run_if_down eq 'y' ) { $run_if_down = 'yes'; }
+    my $nodestatus = $::FILEATTRS{bringupstatus}[0];
+    my $appstatus = $::FILEATTRS{bringupappstatus}[0];
+    my $df_statusline = "";
+    if ( defined($appstatus) ) {
+        $df_statusline = "bringupappstatus=$appstatus\n";
+    } elsif ( defined($nodestatus) ) {
+        $df_statusline = "bringupstatus=$nodestatus\n";
+    } else {
+        $df_statusline = "bringupstatus=booted\n";
+    }
 
-    # TODO - need to handle hierarchy here
-    #  one idea:  build a node-to-server mapping that gets passed to
-    #		the executable script so that it can figure out dynamically
-    #		which service node to contact based on which node LL selects
-    #		as the master node for the parallel job.
-    #  don't forget to handle service node pools.  a couple ideas:
-    #		pass in all service nodes on network and just keep trying to
-    #		connect until we get a response from one of them
-    #		OR do something similar to what we do with installs and
-    #		find who the initial DHCP server for this node was (supposed
-    #		to be stored somewhere on the node -- needs investigation)
-    my $sitetab = xCAT::Table->new('site');
-    my ($tmp) = $sitetab->getAttribs( { 'key' => 'master' }, 'value' );
-    my $xcatserver = $tmp->{value};
-    ($tmp) = $sitetab->getAttribs( { 'key' => 'xcatiport' }, 'value' );
-    my $xcatport = $tmp->{value};
+    my $run_if_down = "cancel";
+    if ( defined($::FILEATTRS{update_if_down}[0]) ) {
+        $run_if_down = $::FILEATTRS{update_if_down}[0];
+        $run_if_down =~ tr/[A-Z]/[a-z]/;
+        if ( $run_if_down eq 'y' ) { $run_if_down = 'yes'; }
+        if ( $::updateall && ($run_if_down eq 'yes') ) { 
+            $run_if_down = 'cancel'; 
+            my $rsp;
+            push @{ $rsp->{data} }, "update_all=yes, but update_if_down is yes which is not allowed.  update_if_down=cancel will be assumed. ";
+            xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+        }
+    }
 
     my @calldirectly;
   ugloop: foreach my $ugname ( keys %{$updategroup} ) {
 
-        # Build substitution strings
+        $::updateall_feature = " ";
+        if ($::updateall) { $::updateall_feature = "XCAT_$ugname"; }
+        # Build node substitution strings
         my ( $nodelist, $machinelist );
         my $machinecount = 0;
         foreach my $node ( @{ $updategroup->{$ugname} } ) {
             if ( defined( $machines{$node} )
-                 && ( $machines{$node}{'mstatus'} eq "1" ) )
-            {
-                $machinelist .= " \"$machines{$node}{'mname'}\"";
+                 && ( $machines{$node}{'mstatus'} eq "1" ) ) {
+                $machinelist .= " $machines{$node}{'mname'}";
                 $machinecount++;
                 $nodelist .= ",$node";
-            }
-            elsif ( $run_if_down eq 'yes' ) {
+            } elsif ( $run_if_down eq 'yes' ) {
+                if ( defined( $machines{$node} ) ) {
+                   # llmkres -D will allow reserving down nodes as long
+                   # as they are present in the machine list
+                    $machinelist .= " $machines{$node}{'mname'}";
+                    $machinecount++;
+                }
                 $nodelist .= ",$node";
-            }
-            elsif ( $run_if_down eq 'cancel' ) {
+            } elsif ( $run_if_down eq 'cancel' ) {
                 my $rsp;
                 push @{ $rsp->{data} },
 "Node $node is not active in LL and \"update_if_down=cancel\".  Update for updategroup $ugname is canceled.";
@@ -620,21 +764,162 @@ sub ll_jobs {
                 next ugloop;
             }
         }
-        if ( defined($nodelist) ) { $nodelist =~ s/^\,//; }
 
-        if ( defined($machinelist) ) {
-            $machinelist =~ s/^\s+//;
+        if ( defined($nodelist) ) { $nodelist =~ s/^\,//; }
+        # Build updategroup data file 
+        my @ugdflines;
+        push (@ugdflines, "# xCAT Rolling Update data file for update group $ugname \n");
+        push (@ugdflines, "\n");
+        push (@ugdflines, "updategroup=$ugname\n");
+        if ($::updateall){
+            push (@ugdflines, "updatefeature=$::updateall_feature\n");
+        } else { 
+            push (@ugdflines, "nodelist=$nodelist\n");
+        }
+        if (defined($::FILEATTRS{oldfeature}[0])){
+            push (@ugdflines, "oldfeature=$::FILEATTRS{oldfeature}[0]\n");
+        } 
+        if (defined($::FILEATTRS{newfeature}[0])){
+            push (@ugdflines, "newfeature=$::FILEATTRS{newfeature}[0]\n");
+        } 
+        push (@ugdflines, "\n");
+        push (@ugdflines, &get_prescripts($nodelist));
+        if (defined($::FILEATTRS{shutdowntimeout}[0])){
+            push (@ugdflines, "shutdowntimeout=$::FILEATTRS{shutdowntimeout}[0]\n");
+        } 
+        push (@ugdflines, &get_outofband($nodelist));
+        push (@ugdflines, &get_bringuporder($nodelist));
+        push (@ugdflines, $df_statusline);
+        if (defined($::FILEATTRS{bringuptimeout}[0])){
+            push (@ugdflines, "bringuptimeout=$::FILEATTRS{bringuptimeout}[0]\n");
+        } 
+        my $ugdf_file = $lljobs_dir . "/rollupdate_" . $ugname . ".data";
+        my $UGDFFILE;
+        unless ( open( $UGDFFILE, ">$ugdf_file" ) ) {
+            my $rsp;
+            push @{ $rsp->{data} }, "Could not open file $ugdf_file";
+            xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+            return 1;
+        }
+        if ($::VERBOSE) {
+            my $rsp;
+            push @{ $rsp->{data} }, "Writing xCAT rolling update data file $ugdf_file ";
+            xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." Writing xCAT rolling update data file $ugdf_file \n";
+            close (RULOG);
+        }
+        print $UGDFFILE @ugdflines;
+        close($UGDFFILE);
+        chown( $uid, $gid, $ugdf_file );
+
+        if ( defined($machinelist) || $::updateall ) {
+            my $llhl_file;
+            if ( !$::updateall ) {
+                $machinelist =~ s/^\s+//;
+
+                # Build LL hostlist file
+                my $hllines = $machinelist;
+                $hllines =~ s/"//g;
+                $hllines =~ s/\s+/\n/g;
+                $hllines .= "\n";
+                $llhl_file = $lljobs_dir . "/rollupdate_" . $ugname . ".hostlist";
+                my $HLFILE;
+                unless ( open( $HLFILE, ">$llhl_file" ) ) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Could not open file $llhl_file";
+                    xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                    return 1;
+                }
+                if ($::VRBOSE) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Writing LL hostlist file $llhl_file ";
+                       xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                }
+                print $HLFILE $hllines;
+                close($HLFILE);
+                chown( $uid, $gid, $llhl_file );
+            }           
+
+            # Build reservation callback script 
+            my @rcblines;
+            my $rcbcmd = $::FILEATTRS{'reservationcallback'}[0];
+            if (!defined($rcbcmd)){ $rcbcmd = "$::XCATROOT/bin/runrollupdate"; }
+            push (@rcblines, "#!/bin/sh \n");
+            push (@rcblines, "# LL Reservation Callback script for xCAT Rolling Update group $ugname \n");
+            push (@rcblines, "\n");
+            push (@rcblines, "if [ \"\$2\"  ==  \"RESERVATION_ACTIVE\"  ] ; then\n");
+            my $send_verbose = "";
+            if ($::VERBOSE) {$send_verbose="--verbose";}
+            push (@rcblines, "    $rcbcmd $send_verbose loadleveler $ugdf_file \$1 &\n");
+            push (@rcblines, "fi \n");
+            push (@rcblines, "\n");
+            my $llrcb_file = $lljobs_dir . "/rollupdate_" . $ugname . ".rsvcb";
+            my $RCBFILE;
+            unless ( open( $RCBFILE, ">$llrcb_file" ) ) {
+                my $rsp;
+                push @{ $rsp->{data} }, "Could not open file $llrcb_file";
+                xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                return 1;
+            }
+            if ($::VERBOSE) {
+                my $rsp;
+                push @{ $rsp->{data} }, "Writing LL reservation callback script $llrcb_file ";
+                xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." Writing xCAT rolling update data file $ugdf_file \n";
+                close (RULOG);
+            }
+            print $RCBFILE @rcblines;
+            close($RCBFILE);
+            chown( $uid, $gid, $llrcb_file );
+            chmod( 0700, $llrcb_file );
 
             # Build output file
+            my $mutex_string = &get_mutex($ugname);
+            my $lastcount = 0;
+            my $llcount = $machinecount;
+            if ($::updateall) {
+                $lastcount = $machinecount % $::updateall_numperupdate;
+                $llcount = $::updateall_numperupdate;
+            }
             my @jclines;
+            my @jclines2;
             foreach my $line (@lines) {
                 my $jcline = $line;
+                my $jcline2;
                 $jcline =~ s/\[\[NODESET\]\]/$ugname/;
-                $jcline =~ s/\[\[XNODELIST\]\]/$nodelist/;
-                $jcline =~ s/\[\[XCATSERVER\]\]/$xcatserver/;
-                $jcline =~ s/\[\[XCATPORT\]\]/$xcatport/;
-                $jcline =~ s/\[\[LLMACHINES\]\]/$machinelist/;
-                $jcline =~ s/\[\[LLCOUNT\]\]/$machinecount/;
+                $jcline =~ s/\[\[JOBDIR\]\]/$lljobs_dir/;
+                if (defined($nodelist)){
+                    $jcline =~ s/\[\[XNODELIST\]\]/$nodelist/;
+                } else {
+                    $jcline =~ s/\[\[XNODELIST\]\]//;
+                }
+                if (defined($llhl_file)){
+                    $jcline =~ s/\[\[LLHOSTFILE\]\]/$llhl_file/;
+                } else {
+                    $jcline =~ s/\[\[LLHOSTFILE\]\]//;
+                }
+                if (defined($::FILEATTRS{oldfeature}[0])){
+                    $jcline =~ s/\[\[OLDFEATURE\]\]/$::FILEATTRS{oldfeature}[0]/;
+                } else {
+                    $jcline =~ s/\[\[OLDFEATURE\]\]//;
+                }
+                $jcline =~ s/\[\[UPDATEALLFEATURE\]\]/$::updateall_feature/;
+                $jcline =~ s/\[\[MUTEXRESOURCES\]\]/$mutex_string/;
+                # LL is VERY picky about extra blanks in Feature string
+                if ( $jcline =~ /Feature/ ) {
+                    $jcline =~ s/\"\s+/\"/g;
+                    $jcline =~ s/\s+\"/\"/g;
+                }
+                if ($lastcount) {
+                    $jcline2 = $jcline;
+                    $jcline2 =~ s/\[\[LLCOUNT\]\]/$lastcount/;
+                    push( @jclines2, $jcline2 );
+                }
+                if ( $jcline =~ /\[\[LLCOUNT\]\]/ ) {
+                   $jcline =~ s/\[\[LLCOUNT\]\]/$llcount/;
+                }
                 push( @jclines, $jcline );
             }
             my $lljob_file = $lljobs_dir . "/rollupdate_" . $ugname . ".cmd";
@@ -645,97 +930,696 @@ sub ll_jobs {
                 xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
                 return 1;
             }
-			if ($::VERBOSE) {
-				my $rsp;
-				push @{ $rsp->{data} }, "Writing LL job command file $lljob_file ";
-   				xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-			}
+            if ($::VERBOSE) {
+                my $rsp;
+                push @{ $rsp->{data} }, "Writing LL job command file $lljob_file ";
+                xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." Writing LL job command file $lljob_file \n";
+                close (RULOG);
+            }
             print $JOBFILE @jclines;
             close($JOBFILE);
             chown( $uid, $gid, $lljob_file );
+            my $lljob_file2 = $lljobs_dir . "/rollupdate_LAST_" . $ugname . ".cmd";
+            if ($lastcount) {
+                my $JOBFILE2;
+                unless ( open( $JOBFILE2, ">$lljob_file2" ) ) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Could not open file $lljob_file2";
+                    xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                    return 1;
+                }
+                if ($::VERBOSE) {
+                    my $rsp;
+                    push @{ $rsp->{data} }, "Writing LL job command file $lljob_file2 ";
+                    xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                    open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                    print RULOG localtime()." Writing LL job command file $lljob_file2 \n";
+                    close (RULOG);
+                }
+                print $JOBFILE2 @jclines2;
+                close($JOBFILE2);
+                chown( $uid, $gid, $lljob_file2 );
+            }
 
-			# Need to change status before actually submittly LL jobs
-			# If LL jobs happen to run right away, the update code checking
-			# for the status may run before we've had a chance to actually update it
+            if ($::updateall) {
+                &set_LL_feature($machinelist,$::updateall_feature);
+###
+### DEBUG -- let llconfig catch up
+sleep 3;
+            }
+
+            # Need to change status before actually submitting LL jobs
+            # If LL jobs happen to run right away, the update code checking
+            # for the status may run before we've had a chance to actually update it
             my $nltab = xCAT::Table->new('nodelist');
             my @nodes = split( /\,/, $nodelist );
-            $nltab->setNodesAttribs(
-                                     \@nodes,
-                                     {
-                                        appstatus =>
-                                          "ROLLUPDATE-update_job_submitted"
-                                     }
-            );
-            # Submit LL job
-            my $cmd = qq~su - $lluser "-c llsubmit $lljob_file"~;
-			if ($::VERBOSE) {
-				my $rsp;
-				push @{ $rsp->{data} }, "Running command: $cmd ";
-   				xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-			}
-            my @llsubmit = xCAT::Utils->runcmd( "$cmd", 0 );
-            if ( $::RUNCMD_RC != 0 ) {
+            xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","update_job_submitted");
+            # Submit LL reservation
+            my $downnodes = "-D";
+            if ($::updateall){$downnodes = " ";}
+            my $cmd = qq~su - $lluser "-c llmkres -x -d $::FILEATTRS{'reservationduration'}[0] -f $lljob_file -p $llrcb_file $downnodes "~;
+            my $cmd2 = qq~su - $lluser "-c llmkres -x -d $::FILEATTRS{'reservationduration'}[0] -f $lljob_file2 -p $llrcb_file $downnodes "~;
+            if ($::VERBOSE) {
                 my $rsp;
-                push @{ $rsp->{data} }, "Could not run llsubmit command.";
-                push @{ $rsp->{data} }, @llsubmit;
-                xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-                return 1;
+                push @{ $rsp->{data} }, "Running command: $cmd ";
+                xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." Running command: $cmd  \n";
+                close (RULOG);
             }
+            my @llsubmit; 
+            if ($::TEST) {
+                my $rsp;
+                push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: $cmd ";
+                   xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                $::RUNCMD_RC = 0;
+            } else {
+                my $submit_count = 1;
+                if ($::updateall){ 
+                   $submit_count = $machinecount / $::updateall_numperupdate;
+                }
+                for (1..$submit_count) {
+                    @llsubmit = xCAT::Utils->runcmd( "$cmd", 0 );
+                    if ( $::RUNCMD_RC != 0 ) {
+                        my $rsp;
+                        push @{ $rsp->{data} }, "Could not run llmkres command.";
+                        push @{ $rsp->{data} }, @llsubmit;
+                        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                        return 1;
+                    }
+                    if ( $::VERBOSE ) {
+                        my $rsp;
+                        push @{ $rsp->{data} }, @llsubmit;
+                        xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                        print RULOG @llsubmit;
+                        close (RULOG);
+                    }
+                }
+                if ($lastcount) {
+                    if ($::VERBOSE) {
+                        my $rsp;
+                        push @{ $rsp->{data} }, "Running command: $cmd2 ";
+                        xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                        print RULOG localtime()." Running command: $cmd2  \n";
+                        close (RULOG);
+                    }
+                    @llsubmit = xCAT::Utils->runcmd( "$cmd2", 0 );
+                    if ( $::RUNCMD_RC != 0 ) {
+                        my $rsp;
+                        push @{ $rsp->{data} }, "Could not run llmkres command.";
+                        push @{ $rsp->{data} }, @llsubmit;
+                        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                        print RULOG @llsubmit;
+                        close (RULOG);
+                        return 1;
+                    }
+                    if ( $::VERBOSE ) {
+                        my $rsp;
+                        push @{ $rsp->{data} }, @llsubmit;
+                        xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                        print RULOG @llsubmit;
+                        close (RULOG);
+                    }
+                }
+            } 
         }
         elsif ( defined($nodelist) ) {
 
             # No nodes in LL to submit job to -- not able to schedule.
             # Call xCAT directly for all other nodes.
             # TODO - this will serialize updating the updategroups
-            #		 is this okay, or do we want forked child processes?
+            #         is this okay, or do we want forked child processes?
             push @calldirectly, $ugname;
         }
-    }
+    } # end ugloop
 
     if ( scalar(@calldirectly) > 0 ) {
-		my @children;
+        my @children;
         foreach my $ugname (@calldirectly) {
             my $nodelist = join( ',', @{ $updategroup->{$ugname} } );
+            my $ugdf = $lljobs_dir . "/rollupdate_" . $ugname . ".data";
             my $rsp;
             push @{ $rsp->{data} },
               "No active LL nodes in update group $ugname";
             push @{ $rsp->{data} },
 "These nodes will be updated now.  This will take a few minutes...";
             xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+            if ($::VERBOSE) {
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." No active LL nodes in update group $ugname.  These nodes will be updated now.\n";
+                close (RULOG);
+            }
             my $nltab = xCAT::Table->new('nodelist');
             my @nodes = split( /\,/, $nodelist );
-            $nltab->setNodesAttribs(
-                                     \@nodes,
-                                     {
-                                        appstatus =>
-                                          "ROLLUPDATE-update_job_submitted"
-                                     }
-            );
-			my $childpid = rebootnodes( { command => ['rebootnodes'],
-                           _xcat_clienthost => [ $nodes[0] ],
-                           arg 				=> [ "loadleveler", $nodelist ]
-                          });
-			if (defined($childpid) && ($childpid != 0)) {
-				push (@children, $childpid);
-			}
+            xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","update_job_submitted");
+            my $childpid = runrollupdate( { command => ['runrollupdate'],
+                                                arg => [ 'internal','loadleveler', $ugdf ]
+                                           });
+            if (defined($childpid) && ($childpid != 0)) {
+                push (@children, $childpid);
+            }
         }
-		# wait until all the children are finished before returning
-		foreach my $child (@children) {
-			if ($::VERBOSE) {
-				my $rsp;
-				push @{ $rsp->{data} }, "Waiting for child PID $child to complete ";
-   				xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-			}
-			waitpid($child,0);  
-		}	
+        # wait until all the children are finished before returning
+        foreach my $child (@children) {
+            if ($::VERBOSE) {
+                my $rsp;
+                push @{ $rsp->{data} }, "Waiting for child PID $child to complete ";
+                xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." Waiting for child PID $child to complete \n";
+                close (RULOG);
+            }
+            waitpid($child,0);  
+        }    
     }
 
     return $rc;
 }
 
+
+
 #----------------------------------------------------------------------------
 
-=head3   rebootnodes
+=head3   check_policy
+
+        Check the policy table to see if userid is authorized to run command
+
+        Arguments:  userid, command
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub check_policy {
+  my $userid = shift;
+  my $xcatcmd = shift;
+
+  my $policytable = xCAT::Table->new('policy');
+  unless ($policytable) {
+    return 1;
+  }
+
+  my $policies = $policytable->getAllEntries;
+  $policytable->close;
+  foreach my $rule (@$policies) {
+    if ( $rule->{name} && 
+        (($rule->{name} eq "*")  || ($rule->{name} eq $userid)) ) {
+      if ( $rule->{commands} &&
+          (($rule->{commands} eq "*") || ($rule->{commands} =~ /$xcatcmd/)) ){
+        return 0;  # match found
+      } 
+    }
+  }
+  return 1;  # no match found
+}
+
+
+
+#----------------------------------------------------------------------------
+
+=head3   set_LL_feature
+
+        Sets the specified feature for the list of LL machines
+
+        Arguments:  $machinelist - blank delimited list of LL machines
+                    $feature - feature value to set
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub set_LL_feature {
+    my $machinelist = shift;
+    my $feature = shift;
+
+    # Query current feature
+    my $cmd = "llconfig -h $machinelist -d FEATURE";
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Running command \'$cmd\'\n";
+        close (RULOG);
+    }
+    my @llcfgoutput = xCAT::Utils->runcmd( $cmd, 0 );
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
+        close (RULOG);
+    }
+
+    my %set_features;
+    my %had_cfg;
+    foreach my $llcfgout (@llcfgoutput) {
+        my @llfeatures;
+        my $haveit = 0;
+        if ( $llcfgout !~ /^No configured value/ ) {
+            my ($stuff,$newfeature_string) = split(/=/,$llcfgout);
+            my ($machine,$morestuff) = split(/:/,$stuff);
+            @llfeatures = split(/\s+/,$newfeature_string);
+            foreach my $f (@llfeatures) {
+                if ($f eq $feature){
+                   $haveit = 1;
+                }
+            }
+            if ( !$haveit) {
+                $newfeature_string .= " $feature";
+            }
+            $set_features{$newfeature_string} .= " $machine";
+            $had_cfg{$machine} = 1;
+        }
+    }
+    foreach my $m (split(/\s+/,$machinelist)){
+        if (! $had_cfg{$m} ){
+            $set_features{$feature} .= " $m";
+        }
+    }
+
+    # Change in LL database
+    foreach my $sf (keys %set_features) {
+        if ($set_features{$sf} !~ /^\s*$/){
+            $cmd = "llconfig -h $set_features{$sf}  -c FEATURE=\"$sf\"";
+            if ($::VERBOSE) {
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." Running command \'$cmd\'\n";
+                close (RULOG);
+            }
+            if ($::TEST) {
+                my $rsp;
+                push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: $cmd ";
+                xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                $::RUNCMD_RC = 0;
+            } else {
+                xCAT::Utils->runcmd( $cmd, 0 );
+                if ($::VERBOSE) {
+                    open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                    print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
+                    close (RULOG);
+                }
+            }
+        }
+    }
+
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   get_prescripts
+
+        Generate the prescripts for this nodelist
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_prescripts {
+    my $nodelist = shift;
+    my @nl = split(/,/, $nodelist);
+
+    my @datalines;
+    my $psindex=0;
+    foreach my $psl ( @{ $::FILEATTRS{'prescript'} } ) {
+        my $psline = $psl;   
+        if ($::updateall) {
+            push (@datalines, "prescript=".$psline."\n");
+            $psindex++;
+            next;
+        }
+        my $psnoderange = $::FILEATTRS{'prescriptnodes'}[$psindex];
+        my $executenodelist = "";
+        if ($psnoderange eq "ALL_NODES_IN_UPDATEGROUP") {
+           $executenodelist = $nodelist;
+        } else {
+            my @psns = xCAT::NodeRange::noderange($psnoderange);
+            unless (@psns) { $psindex++; next; }
+            my @executenodes;
+            foreach my $node (@nl) {
+                push (@executenodes, grep (/^$node$/,@psns));                 
+            }
+            $executenodelist = join(',',@executenodes);
+        }
+        if ($executenodelist ne "") {
+            $psline =~ s/\$NODELIST/$executenodelist/g;
+            push (@datalines, "prescript=".$psline."\n");
+        } 
+        $psindex++;
+    }
+    return @datalines;
+}
+
+
+
+#----------------------------------------------------------------------------
+
+=head3   get_outofband
+
+        Generate the out of band scripts for this nodelist
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_outofband {
+    my $nodelist = shift;
+    my @nl = split(/,/, $nodelist);
+
+    my @datalines;
+    my $obindex=0;
+    foreach my $obl ( @{ $::FILEATTRS{'outofbandcmd'} } ) {
+        my $obline = $obl;
+        if ($::updateall) {
+            push (@datalines, "outofbandcmd=".$obline."\n");
+            $obindex++;
+            next;
+        }
+        my $obnoderange = $::FILEATTRS{'outofbandnodes'}[$obindex];
+        my $executenodelist = "";
+        if ($obnoderange eq "ALL_NODES_IN_UPDATEGROUP") {
+           $executenodelist = $nodelist;
+        } else {
+            my @obns = xCAT::NodeRange::noderange($obnoderange);
+            unless (@obns) { $obindex++; next; }
+            my @executenodes;
+            foreach my $node (@nl) {
+                push (@executenodes, grep (/^$node$/,@obns));                 
+            }
+            $executenodelist = join(',',@executenodes);
+        }
+        if ($executenodelist ne "") {
+            $obline =~ s/\$NODELIST/$executenodelist/g;
+            push (@datalines, "outofbandcmd=".$obline."\n");
+        } 
+        $obindex++;
+    }
+    return @datalines;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   get_bringuporder
+
+        Generate the bringup order for this nodelist
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_bringuporder {
+    my $nodelist = shift;
+    my @nl = split(/,/, $nodelist);
+
+    my @datalines;
+    if ($::updateall) {
+        $datalines[0]="\n";
+        return @datalines;
+    }
+    foreach my $buline ( @{ $::FILEATTRS{'bringuporder'} } ) {
+        my @buns = xCAT::NodeRange::noderange($buline);
+        unless (@buns) { next; }
+        my @bringupnodes;
+        foreach my $node (@nl) {
+            if (defined($node)) {
+                (my $found) =  grep (/^$node$/,@buns);
+                if ($found) {
+                    push (@bringupnodes, $found);
+                    undef $node;  # don't try to use this node again
+                }
+            }
+        }
+        my $bringupnodelist = join(',',@bringupnodes);
+        if ($bringupnodelist ne "") {
+            push (@datalines, "bringuporder=".$bringupnodelist."\n");
+        } 
+    }
+    return @datalines;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   get_mutex
+
+        Generate the list of LL mutual exclusion resources for this 
+        update group
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_mutex {
+    my $ugname = shift;
+
+    my $mutex_string = "";
+
+    my $max_updates = $::FILEATTRS{'maxupdates'}[0];
+    if ( defined($max_updates)  && ($max_updates ne 'all') ) {
+         $mutex_string .= "XCATROLLINGUPDATE_MAXUPDATES(1) ";
+    }
+
+    if ($::updateall){
+        return $mutex_string;
+    }
+
+    my $mutex_count = scalar @::MUTEX;
+    if ( $mutex_count > 0 ) {
+        foreach my $row (0..($mutex_count-1)) {
+            foreach my $ugi (0..(@{$::MUTEX[$row]} - 1)) {
+                if ( defined($::MUTEX[$row][$ugi]) && ($ugname eq $::MUTEX[$row][$ugi]) ) {
+                    $mutex_string .= "XCATROLLINGUPDATE_MUTEX".$row."(1) ";
+                    last;
+                }
+            }
+        }
+    }
+    return $mutex_string;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   create_LL_mutex_resources
+
+        Create all required LL mutex resources
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments: Reads the mutex entries in $::FILEATTRS and
+                  sets the global array $::MUTEX
+                  which is a multi-dimensional array:
+                  Each row is an array of mutually exclusive update
+                   group names
+                 A LL Floating Resource will be created for each
+                 row of the array.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub create_LL_mutex_resources {
+
+
+    $::LL_MUTEX_RESOURCES_CREATED = 0;
+    my $mxindex=0;
+    foreach my $mxline ( @{ $::FILEATTRS{'mutex'} } ) {
+        my @mxparts = split(/,/,$mxline);
+        if ( scalar @mxparts < 2 ) {
+            my $rsp;
+            push @{ $rsp->{data} }, "Error processing stanza line: ";
+            push @{ $rsp->{data} }, "mutex=" . $mxline;
+            push @{ $rsp->{data} }, "Value must contain at least 2 update groups";
+            xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+            return 1; 
+        }
+
+        my $mxpi = 0;
+        my $mxindexmax = $mxindex;
+        my @ugnames;
+        foreach my $mxpart ( @mxparts ) {
+            my $mxindex2 = $mxindex;
+            my @ugnamelist = xCAT::NameRange::namerange( $mxpart, 0 );
+            foreach my $ugname (@ugnamelist) {
+                $::MUTEX[$mxindex2][$mxpi] = $ugname;
+                $mxindex2++;
+            }
+            $mxindexmax = ($mxindex2 > $mxindexmax) ? $mxindex : $mxindexmax;
+            $mxpi++;
+        }
+        $mxindex = $mxindexmax;
+     }
+
+     my $resource_string = "";
+     my $max_updates = $::FILEATTRS{'maxupdates'}[0];
+     if ( ! defined($max_updates)  || ($max_updates eq 'all') ) {
+         $max_updates = 0;
+     } else {
+         $resource_string .= "XCATROLLINGUPDATE_MAXUPDATES($max_updates) ";
+     }
+
+     my $mutex_count = scalar @::MUTEX;
+     if ( $mutex_count > 0 ) {
+        foreach my $row (0..($mutex_count-1)) {
+ # TODO -- UNCOMMENT/REPLACE WHEN LL PROVIDES RESERVATION RESOURCES
+             $resource_string .= "XCATROLLINGUPDATE_MUTEX".$row."(1) ";
+        }
+    }
+
+     if ( $resource_string ) {
+        my $cmd = "llconfig -d FLOATING_RESOURCES SCHEDULE_BY_RESOURCES CENTRAL_MANAGER_LIST RESOURCE_MGR_LIST";
+        my @llcfg_d = xCAT::Utils->runcmd( $cmd, 0 );
+        my $curSCHED = "";
+        my $curFLOAT = "";
+        my $llcms = "";
+        my $llrms = "";
+        foreach my $cfgo (@llcfg_d) {
+            chomp $cfgo;
+            my($llattr,$llval) = split (/ = /,$cfgo);
+            if ( $llattr =~ /SCHEDULE_BY_RESOURCES/ ) {
+                $curSCHED = $llval; }
+            if ( $llattr =~ /FLOATING_RESOURCES/ ) {
+                $curFLOAT = $llval; }
+            if ( $llattr =~ /CENTRAL_MANAGER_LIST/ ) {
+                $llcms = $llval; }
+            if ( $llattr =~ /RESOURCE_MGR_LIST/ ) {
+                $llrms = $llval; }
+        }
+        $cmd = "llconfig -c ";
+        my $updateFLOAT = 0;
+        my $updateSCHED = 0;
+        foreach my $float (split(/\s+/,$resource_string)) {
+            $float =~ s/\(/./g;
+            $float =~ s/\)/./g;
+            if ( $curFLOAT !~ /$float/ ) {
+                $updateFLOAT = 1;
+                last;
+            }
+        }
+        if ($updateFLOAT) {
+            $curFLOAT =~ s/XCATROLLINGUPDATE_MUTEX(\d)*\((\d)*\)//g;
+            $curFLOAT =~ s/XCATROLLINGUPDATE_MAXUPDATES(\d)*\((\d)*\)//g;
+            $curFLOAT .= $resource_string;
+            $cmd .= "FLOATING_RESOURCES=\"$curFLOAT\" ";
+        }
+        $resource_string =~ s/\((\d)*\)//g;
+        foreach my $sched (split(/\s+/,$resource_string)) {
+            if ( $curSCHED !~ /$sched/ ) {
+                $updateSCHED = 1;
+                last;
+            }
+        }
+        if ($updateSCHED) {
+            $curSCHED =~ s/XCATROLLINGUPDATE_MUTEX(\d)*//g;
+            $curSCHED =~ s/XCATROLLINGUPDATE_MAXUPDATES(\d)*//g;
+            $curSCHED .= $resource_string;
+            $cmd .= "SCHEDULE_BY_RESOURCES=\"$curSCHED\" ";
+        }
+        if ( $updateFLOAT || $updateSCHED ) {
+# TODO -- WAITING ON LLCONFIG OPTION TO NOT SEND CFG CMD TO ALL
+####          NODES.  NEED TO CHANGE CMD WHEN AVAILABLE.
+            my @llcfg_c;
+            if ($::TEST) {
+                my $rsp;
+                push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: $cmd ";
+                   xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                $::RUNCMD_RC = 0;
+            } else {
+                @llcfg_c = xCAT::Utils->runcmd( $cmd, 0 );
+            }
+            $cmd = "llrctl reconfig";
+            my @llms = split(/\s+/,$llcms." ".$llrms);
+            my %have = ();
+            my @llnodes;
+            foreach my $m (@llms) {
+               my ($sm,$rest) = split(/\./,$m);
+               push(@llnodes, $sm) unless $have{$sm}++;
+            }
+            if ($::TEST) {
+                my $rsp;
+                push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: xdsh <llcm,llrm> $cmd ";
+                   xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+                $::RUNCMD_RC = 0;
+            } else {
+                xCAT::Utils->runxcmd(
+                          { command => ['xdsh'],
+                             node    => \@llnodes,
+                             arg     => [ "-v", $cmd ]
+                          },
+                          $::SUBREQ, -1);
+            }
+        }
+    }
+ 
+    $::LL_MUTEX_RESOURCES_CREATED = 1;
+    return 0;
+}
+
+
+
+
+#----------------------------------------------------------------------------
+
+=head3   runrollupdate
 
         Reboot updategroup in response to request from scheduler job
 
@@ -750,155 +1634,187 @@ sub ll_jobs {
         Example:
 
         Comments:
-			Note that since this command only gets called from the daemon
-			through a port request from a node, there is no active callback
-			to return messages to.  Log only critical errors to the system log.
+            Note that since this command only gets called from the daemon
+            through a port request from a node, there is no active callback
+            to return messages to.  Log only critical errors to the system log.
 
-			This subroutine will fork a child process to do the actual
-			work of shutting down and rebooting nodes.  The parent will return
-			immediately to the caller so that other reboot requests can be
-			handled in parallel.  It is the caller's responsibility to ensure
-			the parent process does not go away and take these children down
-			with it.  (Not a problem when called from xcatd, since that is
-			"long-running".)
+            This subroutine will fork a child process to do the actual
+            work of shutting down and rebooting nodes.  The parent will return
+            immediately to the caller so that other reboot requests can be
+            handled in parallel.  It is the caller's responsibility to ensure
+            the parent process does not go away and take these children down
+            with it.  (Not a problem when called from xcatd, since that is
+            "long-running".)
 =cut
 
 #-----------------------------------------------------------------------------
 
-sub rebootnodes {
-	my $reboot_request = shift;
-    my $nodes     = $reboot_request->{node};
-    my $command   = $reboot_request->{command}->[0];
-	my @reboot_args = @{$reboot_request->{arg}};
-    my $scheduler = shift @reboot_args;
-	if (($scheduler eq "-V") || ($scheduler eq "--verbose")) {
-		$::VERBOSE=1;
-		$scheduler = shift @reboot_args;
-	}
-    my $hostlist  = shift @reboot_args;
-    my $rc;
+sub runrollupdate {
 
-	if ($::VERBOSE) { 
-		unless (-d $::LOGDIR) { File::Path::mkpath($::LOGDIR); } 
-		open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-		print RULOG localtime()." rebootnodes request for $hostlist\n";
-		close (RULOG);
-	}
+    my $reboot_request = shift;
+    my @reboot_args = @{$reboot_request->{arg}};
+    my $internal = 0;
+    if ( $reboot_args[0] eq "internal" ) { $internal = 1; }
 
-    my $client;
-    if ( defined( $reboot_request->{'_xcat_clienthost'} ) ) {
-        $client = $reboot_request->{'_xcat_clienthost'}->[0];
+    my $rc    = 0;
+    my $error = 0;
+
+    # process the command line
+    if ( $internal ) {
+        $::scheduler = $reboot_args[1];
+        $::datafile = $reboot_args[2];
+        $::ll_reservation_id = "";
+    } else {
+        $rc = &processArgs;
+        if ( $rc != 0 ) {
+
+            # rc: 0 - ok, 1 - return, 2 - help, 3 - error
+            if ( $rc != 1 ) {
+                &runrollupdate_usage;
+            }
+            return ( $rc - 1 );
+        }
     }
-    if ( defined($client) ) { ($client) = xCAT::NodeRange::noderange($client) }
-    unless ( defined($client) ) {  #Not able to do identify the host in question
-        return;
+    $::scheduler =~ tr/[A-Z]/[a-z]/;
+
+
+    if ($::VERBOSE) { 
+        unless (-d $::LOGDIR) { File::Path::mkpath($::LOGDIR); } 
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()."runrollupdate request for $::scheduler $::datafile $::ll_reservation_id \n";
+        close (RULOG);
     }
 
-	my $childpid = xCAT::Utils->xfork();
+    my $childpid = xCAT::Utils->xfork();
     unless (defined $childpid)  { die "Fork failed" };
     if ($childpid != 0) {
-		# This is the parent process, just return and let the child do all
-		# the work.
-		return $childpid;
-	}
+        # This is the parent process, just return and let the child do all
+        # the work.
+        return $childpid;
+    }
 
-	# This is now the child process
-
+    # This is now the child process
+    
+    # Load the datafile 
+    &readDataFile($::datafile);
+    $::ug_name =  $::DATAATTRS{updategroup}[0];
+    my ($statusattr,$statusval,$statustimeout);
+    if (defined($::DATAATTRS{bringupappstatus}[0])) {
+        $statusattr = "appstatus";
+        $statusval = $::DATAATTRS{bringupappstatus}[0];
+    } elsif (defined($::DATAATTRS{bringupstatus}[0])) {
+        $statusattr="status";
+        $statusval = $::DATAATTRS{bringupstatus}[0];
+    } else {
+        $statusattr="status";
+        $statusval = "booted";
+    }
+    if (defined($::DATAATTRS{bringuptimeout}[0])) {
+        $statustimeout = $::DATAATTRS{bringuptimeout}[0];
+    } else {
+        $statustimeout = 10;
+    }
 
     # make sure nodes are in correct state
-    my @nodes = split( /\,/, $hostlist );
+    my $hostlist = &get_hostlist;
+    if (! $hostlist ) {
+        if ($::VERBOSE) { 
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()."$::ug_name:  Cannot determine nodelist for this request.  \n"; 
+            close (RULOG);
+        }
+        my $rsp;
+        xCAT::MsgUtils->message( "S",
+"rollupdate failure:  $::ug_name: Cannot determine nodelist for this request.  ");
+        exit(1);
+    }
+
     my $nltab = xCAT::Table->new('nodelist');
+    my @nodes = split( /\,/, $hostlist );
+    my $appstatus=xCAT::Utils->getAppStatus(\@nodes,"RollingUpdate");
     foreach my $node (@nodes) {
-        my ($ent) = $nltab->getAttribs( { node => $node }, "appstatus" );
-        unless ( defined($ent)
-                 && ( $ent->{appstatus} eq "ROLLUPDATE-update_job_submitted" ) )
+        unless ( defined($appstatus->{$node})
+                 && ( $appstatus->{$node} eq "update_job_submitted" ) )
         {
-			if ($::VERBOSE) { 
-				open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-				print RULOG localtime()." Node $node appstatus not in valid state for rolling update\n";
-				print RULOG "The following nodelist will not be processed:\n $hostlist \n";
-				close (RULOG);
-			}
+            if ($::VERBOSE) { 
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." $::ug_name:  Node $node appstatus not in valid state for rolling update\n";
+                print RULOG "The following nodelist will not be processed:\n $hostlist \n";
+                close (RULOG);
+            }
             my $rsp;
             xCAT::MsgUtils->message(
                 "S",
-"ROLLUPDATE failure: Node $node appstatus not in valid state for rolling update "
+"ROLLUPDATE failure: $::ug_name:  Node $node appstatus not in valid state for rolling update "
             );
             exit(1);
         }
     }
 
-    # my $nltab = xCAT::Table->new('nodelist');
-    $nltab->setNodesAttribs( \@nodes, { appstatus => "ROLLUPDATE-shutting_down" } );
-
-    # remove nodes from LL
-    $scheduler =~ tr/[A-Z]/[a-z]/;
-    if ( $scheduler eq 'loadleveler' ) {
-
-        # Query LL for list of machines and their status
-        my $cmd = "llstatus -r %n %sta 2>/dev/null";
-		if ($::VERBOSE) { 
-			open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-			print RULOG localtime()." Running command \'$cmd\'\n";
-			close (RULOG);
-		}
-        my @llstatus = xCAT::Utils->runcmd( $cmd, 0 );
-        my %machines;
-        foreach my $machineline (@llstatus) {
-            my ( $mlong, $mshort, $mstatus );
-            ( $mlong, $mstatus ) = split( /\!/, $machineline );
-            ($mshort) = split( /\./, $mlong );
-            $machines{$mlong} = { mname => $mlong, mstatus => $mstatus };
-            if ( !( $mlong eq $mshort ) ) {
-                $machines{$mshort} = { mname => $mlong, mstatus => $mstatus };
-            }
+    # Run prescripts for this update group
+    xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","running_prescripts");
+    foreach my $psline ( @{ $::DATAATTRS{'prescript'} } ) {
+        $psline =~ s/\$NODELIST/$hostlist/g;
+        # Run the command
+        if ($::VERBOSE) {
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." $::ug_name:  Running prescript \'$psline\'\n";
+                close (RULOG);
         }
-        foreach my $node (@nodes) {
-            if ( defined( $machines{$node} )
-                 && ( $machines{$node}{'mstatus'} eq "1" ) )
-            {
-                #my $cmd = "llctl -h $node drain";
-                my $cmd = "llctl -h $node flush startd";
-				if ($::VERBOSE) { 
-					open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-					print RULOG localtime()." Running command \'$cmd\'\n";
-					close (RULOG);
-				}
-                xCAT::Utils->runcmd( $cmd, 0 );
-            }
+        my @psoutput;
+        if ($::TEST) {
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run prescript \'$psline\'\n";
+                close (RULOG);
+        } else {
+           @psoutput = xCAT::Utils->runcmd( $psline, 0 );
         }
-		# give LL a chance to catch up
-		sleep 15;
+        if ($::VERBOSE) {
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." Prescript output:\n";
+            foreach my $psoline (@psoutput) {
+                print RULOG $psoline."\n";
+            }
+            close (RULOG);
+        }
     }
+    
 
     # Shutdown the nodes
     # FUTURE:  Replace if we ever develop cluster shutdown function
+    xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","shutting_down");
     my $shutdown_cmd = "shutdown -F &";
-	if ($::VERBOSE) { 
-		open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-		print RULOG localtime()." Running command \'xdsh $hostlist -v $shutdown_cmd\' \n";
-		close (RULOG);
-	}
-    xCAT::Utils->runxcmd(
-                          {
-                             command => ['xdsh'],
-                             node    => \@nodes,
-                             arg     => [ "-v", $shutdown_cmd ]
-                          },
-                          $::SUBREQ,
-                          -1
-    );
+    if ($::VERBOSE) { 
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." $::ug_name:   Running command \'xdsh $hostlist -v $shutdown_cmd\' \n";
+        close (RULOG);
+    }
+    if ($::TEST) { 
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run command \'xdsh $hostlist -v $shutdown_cmd\' \n";
+        close (RULOG);
+    } else {
+        xCAT::Utils->runxcmd( { command => ['xdsh'],
+                                node    => \@nodes,
+                                arg     => [ "-v", $shutdown_cmd ]
+                          }, $::SUBREQ, -1);
+    }
     my $slept    = 0;
     my $alldown  = 1;
     my $nodelist = join( ',', @nodes );
+    if (! $::TEST) { 
     do {
         $alldown = 1;
+        my $shutdownmax = 5;
+        if ( defined($::DATAATTRS{shutdowntimeout}[0] ) ) {
+            $shutdownmax = $::DATAATTRS{shutdowntimeout}[0];
+        }
         my $pwrstat_cmd = "rpower $nodelist stat";
-		if ($::VERBOSE) { 
-			open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-			print RULOG localtime()." Running command \'$pwrstat_cmd\' \n";
-			close (RULOG);
-		}
+        if ($::VERBOSE) { 
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." $::ug_name:  Running command \'$pwrstat_cmd\' \n";
+            close (RULOG);
+        }
         my $pwrstat = xCAT::Utils->runxcmd( $pwrstat_cmd, $::SUBREQ, -1, 1 );
         foreach my $pline (@{$pwrstat}) {
             my ( $pnode, $pstat, $rest ) = split( /\s+/, $pline );
@@ -907,15 +1823,16 @@ sub rebootnodes {
                  || ( $pstat eq "on" ) )
             {
 
-                # give up on shutdown after 5 minutes and force the
+                # give up on shutdown after requested wait time and force the
                 # node off
-                if ( $slept >= 300 ) {
+                if ( $slept >= ($shutdownmax * 60) ) {
+                    $pnode =~ s/://g;
                     my $pwroff_cmd = "rpower $pnode off";
-					if ($::VERBOSE) { 
-						open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-						print RULOG localtime()." Running command \'$pwroff_cmd\' \n";
-						close (RULOG);
-					}
+                    if ($::VERBOSE) { 
+                        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                        print RULOG localtime()." $::ug_name:  Running command \'$pwroff_cmd\' \n";
+                        close (RULOG);
+                    }
                     xCAT::Utils->runxcmd( $pwroff_cmd, $::SUBREQ, -1 );
                 }
                 else {
@@ -931,55 +1848,517 @@ sub rebootnodes {
             $slept += 20;
         }
     } until ($alldown);
+    } # end not TEST
 
-    # Run any out-of-band commands here
-    # TODO - need to figure what to run
-    #		maybe use custom directory and run script based on updategroup name
-    #		or something?
+    # Run out-of-band commands for this update group
+    xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","running_outofbandcmds");
+    foreach my $obline ( @{ $::DATAATTRS{'outofbandcmd'} } ) {
+        $obline =~ s/\$NODELIST/$hostlist/g;
+        # Run the command
+        if ($::VERBOSE) {
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." $::ug_name:  Running out-of-band command  \'$obline\'\n";
+                close (RULOG);
+        }
+        my @oboutput;
+        if ($::TEST) {
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run out-of-band command  \'$obline\'\n";
+                close (RULOG);
+        } else {
+            @oboutput = xCAT::Utils->runcmd( $obline, 0 );
+        }
+        if ($::VERBOSE) {
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." $::ug_name:  Out-of-band command output:\n";
+            foreach my $oboline (@oboutput) {
+                print RULOG $oboline."\n";
+            }
+            close (RULOG);
+        }
+    }
+    
+
 
     # reboot the nodes
-    # reboot command determined by nodehm power/mgt attributes
-    my $hmtab = xCAT::Table->new('nodehm');
-    my @rpower_nodes;
-    my @rnetboot_nodes;
-    my $hmtab_entries =
-      $hmtab->getNodesAttribs( \@nodes, [ 'node', 'mgt', 'power' ] );
-    foreach my $node (@nodes) {
-        my $pwr = $hmtab_entries->{$node}->[0]->{power};
-        unless ( defined($pwr) ) { $pwr = $hmtab_entries->{$node}->[0]->{mgt}; }
-        if ( $pwr eq 'hmc' ) {
-            push( @rnetboot_nodes, $node );
-        }
-        else {
-            push( @rpower_nodes, $node );
-        }
+    #   Use bringuporder defined in datafile
+    
+    my $numboots = 0;
+    if ( defined($::DATAATTRS{bringuporder}[0]) ) {
+        $numboots = scalar( @{$::DATAATTRS{bringuporder}} );
     }
+    my @remaining_nodes = @nodes;
+    foreach my $bootindex (0..$numboots){
+        my @bootnodes;
+        if (defined($::DATAATTRS{bringuporder}[$bootindex])) {
+            @bootnodes = split(/,/,$::DATAATTRS{bringuporder}[$bootindex]);
+            foreach my $rn (@remaining_nodes) {
+                if ((defined($rn)) && (grep(/^$rn$/,@bootnodes))) {
+                    undef($rn);
+                }
+            }
+        } else {
+            foreach my $rn (@remaining_nodes) {
+                if (defined($rn)) {
+                    push (@bootnodes,$rn);
+                }
+            }
+        }
+        if (!scalar (@bootnodes)) { next; } 
 
-    # my $nltab = xCAT::Table->new('nodelist');
-    $nltab->setNodesAttribs( \@nodes, { appstatus => "ROLLUPDATE-rebooting" } );
-    if ( scalar(@rnetboot_nodes) > 0 ) {
-        my $rnb_nodelist = join( ',', @rnetboot_nodes );
-        # my $cmd = "rnetboot $rnb_nodelist -f";
-        my $cmd = "rpower $rnb_nodelist on";
-		if ($::VERBOSE) { 
-			open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-			print RULOG localtime()." Running command \'$cmd\' \n";
-			close (RULOG);
-		}
-        xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
+        # reboot command determined by nodehm power/mgt attributes
+         my $hmtab = xCAT::Table->new('nodehm');
+         my @rpower_nodes;
+         my @rnetboot_nodes;
+         my $hmtab_entries =
+           $hmtab->getNodesAttribs( \@bootnodes, [ 'node', 'mgt', 'power' ] );
+         foreach my $node (@bootnodes) {
+             my $pwr = $hmtab_entries->{$node}->[0]->{power};
+             unless ( defined($pwr) ) { $pwr = $hmtab_entries->{$node}->[0]->{mgt}; }
+             if ( $pwr eq 'hmc' ) {
+                 push( @rnetboot_nodes, $node );
+             }
+             else {
+                 push( @rpower_nodes, $node );
+             }
+         }
+
+         xCAT::Utils->setAppStatus(\@bootnodes,"RollingUpdate","rebooting");
+         if ( scalar(@rnetboot_nodes) > 0 ) {
+             my $rnb_nodelist = join( ',', @rnetboot_nodes );
+             # my $cmd = "rnetboot $rnb_nodelist -f";
+####  TODO:  DO WE STILL NEED 2 LISTS?
+####         RUNNING rpower FOR ALL BOOTS NOW!  MUCH FASTER!!!
+             my $cmd = "rpower $rnb_nodelist on";
+             if ($::VERBOSE) { 
+                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                 print RULOG localtime()." $::ug_name:  Running command \'$cmd\' \n";
+                 close (RULOG);
+             }
+             if ($::TEST) { 
+                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                 print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run command \'$cmd\' \n";
+                 close (RULOG);
+             } else {
+                 xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
+             }
+         } elsif ( scalar(@rpower_nodes) > 0 ) {
+             my $rp_nodelist = join( ',', @rpower_nodes );
+             my $cmd = "rpower $rp_nodelist boot";
+             if ($::VERBOSE) { 
+                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                 print RULOG localtime()." $::ug_name:  Running command \'$cmd\' \n";
+                 close (RULOG);
+             }
+             if ($::TEST) { 
+                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                 print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run command \'$cmd\' \n";
+                 close (RULOG);
+             } else {
+                 xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
+             }
+         }
+
+         # wait for bringupstatus to be set
+        my $not_done = 1;
+        my $totalwait = 0;
+        while ($not_done && $totalwait < ($statustimeout * 60)) {
+           if ($::VERBOSE) { 
+                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                 print RULOG localtime()." $::ug_name:  Checking xCAT database $statusattr for value $statusval \n";
+                 close (RULOG);
+           }
+           my $nltab_stats =
+               $nltab->getNodesAttribs( \@bootnodes, [ 'node', $statusattr ] );
+            my %ll_res;
+            $not_done = 0;
+            foreach my $bn (@bootnodes) {
+                if ( $nltab_stats->{$bn}->[0]->{$statusattr} !~ /$statusval/ ) {
+                    $not_done = 1;
+                } else {
+                  $ll_res{$bn}{remove}=1;
+                }
+            }
+            if (($::scheduler eq "loadleveler") &&
+                ($::ll_reservation_id)){ 
+                my @remove_res;
+                foreach my $bn (keys %ll_res) {
+                    if ($ll_res{$bn}{remove} && ! $ll_res{$bn}{removed} ){
+                        push (@remove_res,$bn);
+                        $ll_res{$bn}{removed} = 1;
+                    }
+                }
+                if (@remove_res) {
+                    &remove_LL_reservations(\@remove_res);
+                    xCAT::Utils->setAppStatus(\@remove_res,"RollingUpdate","update_complete");
+                }
+            }
+            if ($not_done) {
+                sleep(20);
+                $totalwait += 20;
+            }
+        }
+        if ($not_done) { 
+             open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+             print RULOG "\n";
+             print RULOG localtime()." ERROR:  Update group $::ug_name:  Reached bringuptimeout before all nodes completed bringup.  Some nodes may not have been updated. \n";
+            print RULOG "\n";
+            close (RULOG);
+            last;
+        }
+
     }
-    elsif ( scalar(@rpower_nodes) > 0 ) {
-        my $rp_nodelist = join( ',', @rpower_nodes );
-        my $cmd = "rpower $rp_nodelist boot";
-		if ($::VERBOSE) { 
-			open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-			print RULOG localtime()." Running command \'$cmd\' \n";
-			close (RULOG);
-		}
-        xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
+    if ($::VERBOSE) { 
+          open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+          print RULOG localtime()." $::ug_name:  Rolling update complete.\n\n";
+          close (RULOG);
     }
 
     exit(0);
 }
+
+#----------------------------------------------------------------------------
+
+=head3   readDataFile
+
+        Process the command line input piped in from a stanza file.
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+                        Set  %::DATAATTRS
+                                (i.e.- $::DATAATTRS{attr}=[val])
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub readDataFile {
+    my $filedata = shift;
+
+    my $DF;
+    unless ( open( $DF, "<", $filedata ) ) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." runrollupdate cannot open datafile $filedata\n";
+        close (RULOG);
+        return 1;
+    }
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." runrollupdate reading datafile $filedata\n";
+        close (RULOG);
+    }
+    my @lines = <$DF>;
+    close $DF;
+
+    foreach my $l (@lines) {
+
+        # skip blank and comment lines
+        next if ( $l =~ /^\s*$/ || $l =~ /^\s*#/ );
+
+        # process a real line
+        if ( $l =~ /^\s*(\w+)\s*=\s*(.*)\s*/ ) {
+            my $attr = $1;
+            my $val  = $2;
+            $attr =~ s/^\s*//;       # Remove any leading whitespace
+            $attr =~ s/\s*$//;       # Remove any trailing whitespace
+            $attr =~ tr/A-Z/a-z/;    # Convert to lowercase
+            $val  =~ s/^\s*//;
+            $val  =~ s/\s*$//;
+
+            # set the value in the hash for this entry
+            push( @{ $::DATAATTRS{$attr} }, $val );
+        }
+    }    # end while - go to next line
+
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   get_hostlist
+
+        Returns a comma-delimited hostlist string for this updategroup
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub get_hostlist {
+    if ( defined($::DATAATTRS{nodelist}[0]) ){
+       return $::DATAATTRS{nodelist}[0];
+    }
+    my $cmd;
+    if ($::VERBOSE) {
+        $cmd = "llqres -r -s -R $::ll_reservation_id 2>>$::LOGDIR/$::LOGFILE";
+    } else {
+        $cmd = "llqres -r -s -R $::ll_reservation_id";
+    }
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." $::ug_name:  Running command \'$cmd\'\n";
+        close (RULOG);
+    }
+    my ($llstatus) = xCAT::Utils->runcmd( $cmd, 0 );
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
+        print RULOG localtime()." $llstatus \n";
+        close (RULOG);
+    }
+    my @status_fields = split(/!/,$llstatus);
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Hostlist:  $status_fields[22] \n";
+        close (RULOG);
+    }
+    return $status_fields[22];
+}
+
+
+
+#----------------------------------------------------------------------------
+
+=head3   remove_LL_reservations
+
+        Changes the LL feature for nodes from oldfeature to newfeature
+        Remove nodes from LL reservation
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub remove_LL_reservations {
+    my $nodes = shift;
+
+    my $cmd;
+    if ($::VERBOSE) {
+        $cmd = "llqres -r -s -R $::ll_reservation_id 2>>$::LOGDIR/$::LOGFILE";
+    } else {
+        $cmd = "llqres -r -s -R $::ll_reservation_id";
+    }
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        my $nl = join(",",@{$nodes});
+        print RULOG localtime()." $::ug_name:  remove_LL_reservations for $nl \n";
+        print RULOG localtime()." $::ug_name:  Running command \'$cmd\'\n";
+        close (RULOG);
+    }
+    my ($llstatus) = xCAT::Utils->runcmd( $cmd, 0 );
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
+        print RULOG localtime()." $llstatus \n";
+        close (RULOG);
+    }
+#    if ( $::RUNCMD_RC != 0 ) {
+#        return 0;
+#    }
+    my @status_fields = split(/!/,$llstatus);
+    my $llnodelist = $status_fields[22];
+    my @llnodes = split(/,/,$llnodelist);
+    my $llnode_count = scalar (@llnodes);
+    my $remove_count = 0;
+    my $remove_reservation = 0;
+    my $remove_cmd = "llchres -R $::ll_reservation_id -h -";
+
+    foreach my $n (@{$nodes}) {
+        if ( grep(/^$n$/,@llnodes) ) {
+            $remove_count++;
+            # change features for this node
+            &change_LL_feature($n);
+###
+### DEBUG -- let llconfig catch up
+sleep 3;
+            if ( $remove_count < $llnode_count ) {
+              $remove_cmd .= " $n";
+            } else {
+              $remove_reservation = 1;
+              last;
+            }
+        }
+    }
+   #  Verify that the config change has been registerd and that updatefeature 
+   #  has been removed according to what the LL daemons report 
+     if (defined($::DATAATTRS{updatefeature}[0])) {
+         my $machinelist = join(" ",@{$nodes});
+         my $llset;
+         my $statrun = 0;
+         do {
+            sleep 1;
+            my $llstatus = "llstatus -Lmachine -h $machinelist -l | grep -i feature | grep -i \" $::DATAATTRS{updatefeature}[0] \"";
+            if ($::VERBOSE) {
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." Running command \'$llstatus\'\n";
+                close (RULOG);
+            }
+            my @stat_out = xCAT::Utils->runcmd( $llstatus, 0 );
+            if ($::VERBOSE) {
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
+                close (RULOG);
+            }
+            # Are there any nodes with this feature still set?
+            $llset = $stat_out[0];
+### DEBUG - print output to see what's going on
+if ($llset) {
+   open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+   print RULOG localtime()." llset:  $llset\n";
+   close (RULOG);
+}
+### end DEBUG
+            $statrun ++;
+         } until ((! $llset) || ($statrun > 10) );
+    }
+
+    if ($remove_reservation) {
+        $cmd = "llrmres -R $::ll_reservation_id";
+    } elsif ( $remove_count > 0 ) {
+        $cmd = $remove_cmd;
+    } else {
+        return 0;  # no LL nodes to remove
+    }
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." $::ug_name:  Running command \'$cmd\'\n";
+        close (RULOG);
+    }
+#    if ($::TEST) { 
+#        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+#        print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run command \'$cmd\' \n";
+#        close (RULOG);
+#    } else {
+        xCAT::Utils->runcmd( $cmd, 0 );
+        if ( $::RUNCMD_RC != 0 ) {
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." $::ug_name:  Error running command \'$cmd\'\n";
+            print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
+            close (RULOG);
+            return 1;
+        }
+#    }
+
+    return 0;
+}
+
+
+#----------------------------------------------------------------------------
+
+=head3   change_LL_feature
+
+        Changes the LL feature for the node from oldfeature to newfeature
+           and removes updatefeature
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub change_LL_feature {
+    my $node = shift;
+
+    if (!defined($::DATAATTRS{updatefeature}[0]) && 
+        !defined($::DATAATTRS{oldfeature}[0]) && 
+        !defined($::DATAATTRS{newfeature}[0]) ) {
+        return 0;
+    }
+    # Query current feature
+    my $cmd = "llconfig -h $node -d FEATURE";
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." $::ug_name:  Running command \'$cmd\'\n";
+        close (RULOG);
+    }
+    my ($llcfgout) = xCAT::Utils->runcmd( $cmd, 0 );
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
+        close (RULOG);
+    }
+
+    # Remove old feature 
+    my $newfeature_string = "";
+    my @llfeatures;
+    if ( $llcfgout !~ /^No configured value/ ) {
+        my ($stuff,$curfeature_string) = split(/=/,$llcfgout);
+        @llfeatures = split(/\s+/,$curfeature_string);
+        my $oldfeature = " ";
+        my $updateallfeature = " ";
+        if (defined($::DATAATTRS{oldfeature}[0])) {
+           $oldfeature = $::DATAATTRS{oldfeature}[0];
+        }
+        if (defined($::DATAATTRS{updatefeature}[0])) {
+           $updateallfeature = $::DATAATTRS{updatefeature}[0];
+        }
+        foreach my $f (@llfeatures) {
+            if (($f eq $oldfeature) || ($f eq $updateallfeature)) {
+               $f = " "; 
+            }
+        }
+        $newfeature_string = join(" ",@llfeatures);
+    }
+
+    # Add new feature
+    if ( defined($::DATAATTRS{newfeature}[0]) ) {
+        my $haveit = 0;
+        foreach my $f (@llfeatures) {
+            if ($f eq $::DATAATTRS{newfeature}[0]){
+               $haveit = 1;
+            }
+        }
+        if ( !$haveit) {
+            $newfeature_string .= " $::DATAATTRS{newfeature}[0]";
+        }
+    }
+    # Change in LL database
+    $cmd = "llconfig -h $node -c FEATURE=\"$newfeature_string\"";
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." $::ug_name:  Running command \'$cmd\'\n";
+        close (RULOG);
+    }
+    xCAT::Utils->runcmd( $cmd, 0 );
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
+        close (RULOG);
+    }
+
+    return 0;
+}
+
+
 
 1;

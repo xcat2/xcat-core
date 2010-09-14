@@ -1,84 +1,259 @@
 #
 #
 #  Sample stanza file used as input to the rollupdate command
+#  This sample uses explicit update groups and allows mutual exclusion
+#  in updates between nodes and other functions.
+#
+#  For an example of simple updates using the updateall feature instead of
+#  update groups, see the sample file rollupdate_all.input.sample
+#
+#  Unless otherwise noted in the descriptions below, if multiple stanza
+#  lines are specified for the same keyword, only the FIRST entry will be
+#  used and all others will be ignored.
+#
 #
 
-#
-#scheduler:  The job scheduler used to submit the rolling update jobs
-#            Currently only LoadLeveler is supported
+
+
+# scheduler:  The job scheduler used to submit the rolling update jobs
+#    Currently only LoadLeveler is supported
 scheduler=loadleveler
 
-#
-#scheduser:  The userid with authority to submit scheduler jobs
-#            Note:  LL does not allow jobs to be submitted by root
-scheduser=lluser
+
+# scheduser:  The userid with authority to submit scheduler jobs
+#             Note:  LL does not allow jobs to be submitted by root
+scheduser=loadl
+
+
+
+# Scheduler Feature values 
+#    Node feature values that will be changed in the scheduler during the
+#    update process.  These features can be used if users need to run jobs
+#    on only old nodes or only new nodes, but cannot have the job span both
+#    old and new nodes due to software incompatibilities.
+# oldfeature:  This feature value will be removed from the node definition
+#    in the scheduler after the node has been updated
+oldfeature=oldvalue
+
+# newfeature:  A new feature value that will be set in the scheduler for each
+#    node after it has been updated.  
+newfeature=newvalue
+
+
 
 #
-#updategroup:  A set of nodes to be updated as a single group
-#    updategroup = name(noderange)
-# where "name" is the name to be assigned to the updategroup and 
-# "noderange" is any valid xCAT noderange syntax (see noderange man page)
-#updategroup=ns01(c4lpar201-c4lpar204)
+# updategroup:  A set of nodes to be updated as a single group
+#        updategroup = name(noderange)
+#    where "name" is the name to be assigned to the updategroup and 
+#    "noderange" is any valid xCAT noderange syntax (see noderange man page)
+#    You may list multiple updategroup stanzas in this file and all of them will
+#    be processed.
+updategroup=ns01(c4lpar201-c4lpar204)
 updategroup=ns11(c4lpar211-c4lpar214)
 
-#
-#mapgroups:  Many updategroups can also be defined through a 
-# single statement using nodegroup mappings.    
-#    mapgroups=nodegroup_range
-# Where nodegroup_range is processed in the same way xCAT handles node name
-# ranges to generate a set of nodegroup names.  Each nodegroup will be
-# mapped to an updategroup with the same name.
+# mapgroups:  Many updategroups can also be defined through a 
+#    single statement using nodegroup mappings.    
+#        mapgroups=nodegroup_range
+#    Where nodegroup_range is processed in the same way xCAT handles node name
+#    ranges to generate a set of nodegroup names.  Each nodegroup will be
+#    mapped to an updategroup with the same name.
+# You may list multiple mapgroups stanzas in this file and all of them will
+#    be processed.
 # For example, the following will create 10 updategroups from the 10
-# nodegroups named block01 to block10.
-#mapgroups=block[01-10]
-mapgroups=lpar03-lpar04
-mapgroups=lpar05
+#    nodegroups named block01 to block10.
+mapgroups=block[01-10]
 
-#TODO -- mutex is not supported yet.  This will be ignored! 
-#mutex:  identify updategroups that are mutually exclusive and must not be 
-# updated at the same time in order to maintain active resources within
-# the cluster. Only 1 updategroup will be updated at a time
-#    mutex=updategroup,updategroup,...
-# For example, the update jobs for ns1 and for ns2 will not be allowed to run at
-# the same time:
-#mutex=ns1,ns2
-#
+
+
+# mutex:  Identify updategroups that are mutually exclusive and must not be 
+#    updated at the same time in order to maintain active resources within
+#    the cluster. Only 1 updategroup listed in the entry will be updated at 
+#    a time.
+#        mutex=updategroup,updategroup,...
+#    For example, the update jobs for ns1 and for ns2 will not be allowed 
+#    to run at the same time:
+mutex=ns1,ns2
+
+# You may list multiple mutex stanzas in this file to identify different
+#    sets of mutual exclusion.  
 # Multiple mutually exclusive sets can be specified using updategroup name 
-# ranges. For example, the following:
+#    ranges. For example, the following:
 #mutex=block[1-3]a,block[1-3]b,block[1-3]c
 # would be equivalent to:
-#mutex=block1a,block1b,block1a
+#mutex=block1a,block1b,block1c
 #mutex=block2a,block2b,block2c
 #mutex=block3a,block3b,block3c
 
-#
-#jobtemplate:  Scheduler job template file.  See sample LoadLeveler file for details
-#   on how the template will be processed:
+
+
+# maxupdates:  Maximum number of updategroups that can be updated at one time 
+#    This allows you to ensure you will always have enough computing
+#    resources in your cluster and that not all nodes will attempt to
+#    be updated at once.
+#    A value of "all" specifies that there is no restriction
+# maxupdates=16
+maxupdates=all
+
+
+
+# jobtemplate:  Scheduler job template file.  See this sample LoadLeveler file 
+#     for details on how the template will be processed:
 jobtemplate=/opt/xcat/share/xcat/rollupdate/ll.tmpl
 
-#
-#jobdir:  Directory to write the job command files to
-#	  For LL, this directory needs to be on a filesystem available
-#	  to all nodes
-jobdir=/u/lluser/rollupdate_jobs
 
+
+#jobdir:  Directory to write the job command files and other data files to.
+#    For LL, this directory needs to be on a filesystem available to all nodes.
+jobdir=/u/loadl/rollupdate_jobs
+
+
+
+#reservationcallback:  INTERNAL KEYWORD used for development only.
+#    This is the reservation notify or callback command.  
+#    For Loadleveler, this script must reside on the LoadLeveler central
+#    manager and will be called when the reservation for an updategroup
+#    becomes active.
+#    The default is:
+#reservationcallback=/opt/xcat/bin/runrollupdate
 #
+
+
+#reservationduration:  Maximum time to hold a LoadLeveler reservation for 
+#    the update process.  This value in minutes should be longer than the 
+#    expected time to shutdown, update, and reboot all the nodes in an update 
+#    group.  xCAT will release the nodes from the reservation as they come 
+#    back up, and will cancel the reservation when the last node has completed.
+reservationduration=15
+
+
+
 #update_if_down:  If set to "yes", also attempt the update for any node in an 
-# updategroup that is down or not active/available in the scheduler
-# (useful if you have nodes that are not part of your scheduler's cluster).
+#    updategroup that is down or not active/available in the scheduler
+#    (useful if you have nodes that are not part of your scheduler's cluster).
 # If set to "no", any node in an updategroup that is not active in the 
-# scheduler will be skipped.
+#    scheduler will be skipped.
 # If set to "cancel", if any node in an updategroup is not active,
-# the entire updategroup will be skipped.
+#    the entire updategroup will be skipped.
 update_if_down=yes
 #update_if_down=no
 #update_if_down=cancel
 
+
+
+# prescript
+# prescriptnodes
+#     (optional) Command to be run on the xCAT management node before issuing
+#     the shutdown command for the nodes in the updategroup.
+# If prescriptnodes is also specified, the command will only be run for
+#     nodes being from the updategroup that are also included in that xCAT
+#     noderange.
+# If prescriptnodes is not specified, the command will be run for all
+#    nodes in the updategroup.
+# For prescript, you may specify the string $NODELIST if you would like the
+#    comma-delimited list of xCAT nodenames passed into your command.
+#    This can be used to run operations such as shutting down the global
+#    filesystem on all the nodes, or moving critical services
+#    to a backup server for specific nodes.
+# Multiple prescript entries or prescript/prescriptnodes pairs of entries may
+#    be specified. Each command will be run in order. 
 #
-#TODO - Out-of-band operations are not supported yet.  This will be ignored.
-#oob_op:  Out-of-band command to run on the xCAT management node once the node
-# has been shutdown but before it is rebooted.
+#prescript=/u/admin/bin/shutdownGPFS $NODELIST
+#
+#prescript=/u/admin/bin/moveGPFSconfigserver $NODELIST
+#prescriptnodes=gpfsconfig
+#
+#prescript=/u/admin/bin/moveLLscheduler $NODELIST
+#prescriptnodes=llsched
+#
+#prescript=/u/admin/bin/moveXCATservicenode $NODELIST
+#prescriptnodes=service
+
+
+
+# NOT IMPLEMENTED YET! FUTURE SUPPORT FOR ROLLING UPDATE OF DISKFULL NODES
+# shutdownrequired:  Should a shutdown command be sent to the nodes.  
+#    Shutdown is required for diskless nodes.  For diskfull nodes, simple 
+#    updates may be applied to the nodes through prescripts, and a node 
+#    reboot may not be required. 
+# Default is "yes".
+shutdownrequired=yes
+
+
+
+# NOT IMPLEMENTED YET!  FUTURE SUPPORT...
+# shutdownorder:  (optional) The order that nodes within an updategroup
+#    will be shut down.  The value is any valid xCAT noderange.  
+#    Multiple shutdownorder entries may be specified, and they will be 
+#    processed as entered in this file.  If more than one node in the 
+#    updategroup matches a shutdownorder entry, they will be shutdown at 
+#    the same time.  xCAT will wait until the node is completely shutdown
+#    before proceeding to the next nodes.  Any nodes in the updategroup not 
+#    listed will be shutdown at the end.
+#shutdownorder=compute
+#shutdownorder=gpfsio
+#shutdownorder=service
+
+
+
+# shutdowntimeout:  (optional) The number of minutes xCAT should wait for
+#    an OS shutdown to complete before giving up and issuing a hard power off
+#    command and continuing with the rolling update process.
+shutdowntimeout=5
+
+
+
+# outofbandcmd
+# outofbandnodes
+#    (optional) Out-of-band command to run on the xCAT management
+#    node once the node has been shutdown but before it is rebooted.
+# If outofbandnodes is also specified, the command will only be run for
+#    nodes from the updategroup that are also included in that xCAT noderange.
+# If outofbandnodes is not specified, the command will be run for all
+#    nodes in the updategroup.
 # You may specify the string $NODELIST if you would like the
-# comma-delimited list of xCAT nodenames passed into your command.
-# This is where we plan to support operations such as firmware updates.
-#oob_op=/u/admin/bin/myfirmwareupdates $NODELIST
+#    comma-delimited list of xCAT nodenames passed into your command.
+#    This can be used to run operations such as firmware updates.
+# Multiple outofbandcmd entries or outofbandcmd/outofbandnodes pairs of
+#    entries can be specified. Each command will be run in order. 
+#
+#outofbandcmd=/u/admin/bin/myfirmwareupdates $NODELIST
+#
+#outofbandcmd=/u/admin/bin/IOsubsystemupdates $NODELIST
+#outofbandnodes=gpfsio
+
+
+
+# bringuporder:  (optional) The order that nodes within an updategroup
+#    will be brought up  The value is any valid xCAT noderange.  
+# Multiple bringuporder entries may be specified, and they will be processed
+#    as entered in this file.  If more than one node in the updategroup
+#    matches a bringuporder entry, they will be brought up at the same time.
+#    xCAT will wait until the node is completely shutdown before proceeding
+#    to the next set of nodes.  Any nodes in the updategroup not listed will be
+#    brought up at the end.
+#bringuporder=service
+#bringuporder=gpfsio
+#bringuporder=compute
+
+
+
+# bringupstatus:  
+#  OR
+# bringupappstatus:  
+#    The xCAT database node status or appstatus value that xCAT will check and 
+#    will wait for to determine that the node is up.  Once this status is
+#    reached, xCAT will continue bringing up more nodes (if bringuporder is set)
+#    and will release this node from the scheduler reservation.
+# If both attributes are set, only bringupappstatus will be used.
+#bringupappstatus="gpfs=ready"
+bringupstatus=booted
+
+
+
+# bringuptimeout:  (optional) The maximum number of minutes xCAT should wait
+#    after issuing the rpower on command for the nodes to reach bringupstatus 
+#    before giving up.  If using bringuporder and this timeout is reached for
+#    one set of nodes, no additional nodes will be attempted to be brought up.  
+#    The scheduler reservation will be cancelled. 
+bringuptimeout=10
+

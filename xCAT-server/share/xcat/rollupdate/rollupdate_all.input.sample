@@ -1,0 +1,206 @@
+#
+#
+#  Sample stanza file used as input to the rollupdate command
+#  This sample assumes that you have a simple set of updates that can
+#  be applied to all nodes in any order.  Only the list of all nodes needs
+#  to be specified.  You do not need to specify individual update groups.
+#
+#  For more complex updates, see the sample file rollupdate.input.sample
+#
+#  Unless otherwise noted in the descriptions below, if multiple stanza
+#  lines are specified for the same keyword, only the FIRST entry will be
+#  used and all others will be ignored.
+#
+#
+
+
+
+# scheduler:  The job scheduler used to submit the rolling update jobs
+#    Currently only LoadLeveler is supported
+scheduler=loadleveler
+
+
+# scheduser:  The userid with authority to submit scheduler jobs
+#             Note:  LL does not allow jobs to be submitted by root
+scheduser=loadl
+
+
+
+# updateall:  Allows you to apply updates to all nodes without specifying
+#    specific update groups.  This should be used for simple compute node
+#    updates that have no special dependencies on other nodes and update order
+#    is not important. Only those nodes that are currently active in
+#    in the scheduler will be updated.
+# For LoadLeveler reservation jobs, you can control which nodes will be
+#    updated by specifying different machine requirements, classes, or other
+#    controls that LL allows you in the LL job template that you provide.
+# If updateall is used, the following entries MUST be specified in this file:
+#       updateall_nodes  
+#       updateall_numperupdate
+#       job_template
+#       job_dir
+# If updateall is used, the following entries can also be used:
+#       maxupdates
+#       oldfeature
+#       newfeature
+#       reservationduration
+#       update_if_down
+#       prescript (but NO prescriptnodes)
+#       shutdowntimeout
+#       outofbandcmd (but NO outofbandnodes)
+#       bringupstatus,bringupappstatus
+#       bringuptimeout
+# All other entries in this file will be ignored
+updateall=yes
+
+
+# updateall_nodes:  The xCAT noderange of the nodes to be updated.
+updateall_nodes=compute
+
+
+# updateall_numperupdate:  The number of nodes that will be reserved at one time
+#    in the scheduler and updated together.  The smaller the number, the more
+#    scheduler reservation jobs that will be submitted.
+# NOTE:  LoadLeveler performance decreases with large numbers of 
+#        reservations.  Do not set this value so low that you will exceed
+#        the maximum number of reservations allowed for your cluster or
+#        that you will degrade LL performance for your production jobs.
+updateall_numperupdate=3
+
+
+
+# Scheduler Feature values 
+#    Node feature values that will be changed in the scheduler during the
+#    update process.  These features can be used if users need to run jobs
+#    on only old nodes or only new nodes, but cannot have the job span both
+#    old and new nodes due to software incompatibilities.
+# oldfeature:  This feature value will be removed from the node definition
+#    in the scheduler after the node has been updated
+oldfeature=oldvalue
+
+# newfeature:  A new feature value that will be set in the scheduler for each
+#    node after it has been updated.  
+newfeature=newvalue
+
+
+
+# maxupdates:  Maximum number of updategroups that can be updated at one time 
+#    This allows you to ensure you will always have enough computing
+#    resources in your cluster and that not all nodes will attempt to
+#    be updated at once.
+#    A value of "all" specifies that there is no restriction
+#maxupdates=all
+maxupdates=16
+
+
+
+#jobtemplate:  Scheduler job template file.  See this sample LoadLeveler file 
+#    for details on how the template will be processed:
+jobtemplate=/opt/xcat/share/xcat/rollupdate/llall.tmpl
+
+
+ 
+#jobdir:  Directory to write the job command files to
+#    For LL, this directory needs to be on a filesystem available to all nodes.
+jobdir=/u/loadl/rollupdate_jobs
+
+
+#reservationcallback:  INTERNAL KEYWORD used for development only.
+#    This is the reservation notify or callback command.
+#    For Loadleveler, this script must reside on the LoadLeveler central
+#    manager and will be called when the reservation for an updategroup
+#    becomes active.
+#    The default is:
+#reservationcallback=/opt/xcat/bin/runrollupdate
+#
+
+
+
+#reservationduration:  Maximum time to hold a LoadLeveler reservation for
+#    the update process.  This value in minutes should be longer than the
+#    expected time to shutdown, update, and reboot all the nodes in an update
+#    group.  xCAT will release the nodes from the reservation as they come
+#    back up, and will cancel the reservation when the last node has completed.
+reservationduration=15
+
+
+
+#update_if_down:  If set to "yes", also attempt the update for any node in an
+#    updategroup that is down or not active/available in the scheduler
+#    (useful if you have nodes that are not part of your scheduler's cluster).
+# If set to "no", any node in an updategroup that is not active in the
+#    scheduler will be skipped.
+# If set to "cancel", if any node in an updategroup is not active,
+#    the entire updategroup will be skipped.
+# NOTE:  For updateall operation, update_if_down must be "no" or "cancel".
+#        If set to "yes", "cancel" will be assumed.
+#update_if_down=yes
+update_if_down=no
+#update_if_down=cancel
+
+
+
+
+# prescript
+#    (optional) Command to be run on the xCAT management node before issuing
+#    the shutdown command for the nodes in the updategroup.
+# NOTE:  For updateall operation, prescriptnodes are not supported.  
+#        Prescripts will be run for all nodes.
+#    You may specify the string $NODELIST if you would like the
+#    comma-delimited list of xCAT nodenames passed into your command.
+#    Multiple prescript entries can be specified. Each command will be run in 
+#    order. 
+#prescript=/u/admin/bin/shutdownGPFS $NODELIST
+
+
+
+# NOT IMPLEMENTED YET! FUTURE SUPPORT FOR ROLLING UPDATE OF DISKFULL NODES
+# shutdownrequired:  Should a shutdown command be sent to the nodes.
+#    Shutdown is required for diskless nodes.  For diskfull nodes, simple
+#    updates may be applied to the nodes through prescripts, and a node
+#    reboot may not be required.
+# Default is "yes".
+shutdownrequired=yes
+
+
+
+# shutdowntimeout:  (optional) The number of minutes xCAT should wait for
+#    an OS shutdown to complete before giving up and issuing a hard power off
+#    command and continuing with the rolling update process.
+shutdowntimeout=5
+
+
+
+# outofbandcmd
+#   (optional) Out-of-band command to run on the xCAT management
+#    node once the node has been shutdown but before it is rebooted.
+# NOTE:  For updateall operation, outofbandnodes are not supported.  
+#        Out-of-band commands will be run for all nodes.
+#    You may specify the string $NODELIST if you would like the
+#    comma-delimited list of xCAT nodenames passed into your command.
+# Multiple outofbandcmd (with optional outofbandnodes) entries can be 
+#    specified. Each command will be run in order. 
+#outofbandcmd=/u/admin/bin/myfirmwareupdates $NODELIST
+
+
+
+# bringupstatus:
+#  OR
+# bringupappstatus:
+#    The xCAT database node status or appstatus value that xCAT will check and
+#    will wait for to determine that the node is up.  Once this status is
+#    reached, xCAT will continue bringing up more nodes (if bringuporder is set)
+#    and will release this node from the scheduler reservation.
+# If both attributes are set, only bringupappstatus will be used.
+#bringupappstatus="gpfs=ready"
+bringupstatus=booted
+
+
+
+# bringuptimeout:  (optional) The maximum number of minutes xCAT should wait
+#    after issuing the rpower on command for the nodes to reach bringupstatus
+#    before giving up.  If using bringuporder and this timeout is reached for
+#    one set of nodes, no additional nodes will be attempted to be brought up.
+#    The scheduler reservation will be cancelled.
+bringuptimeout=10
+
