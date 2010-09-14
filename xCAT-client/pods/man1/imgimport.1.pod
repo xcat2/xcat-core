@@ -29,7 +29,9 @@ For stateless, the following files will be copied to the appropriate directories
   x.exlist
 
 For statelite, the following files will be copied to the appropriate directories.
+  kernel
   initrd.gz
+  root image tree
   x.pkglist
   x.synclist
   x.otherpkgs.pkglist
@@ -38,7 +40,9 @@ For statelite, the following files will be copied to the appropriate directories
 
 where x is the profile name. 
 
-Any extra files, included by --extra flag in the imgexport command, will also be copied to the appropriate directories.
+Any extra files, included by --extra flag in the imgexport command, will also be copied to the appropriate directories. 
+
+For statelite, the litefile table will be updated for the image. The litetree and statelite tables are not imported.
 
 If -p flag is specified, the I<postscripts> table will be updated with the postscripts and the postbootscripts names from the image for the nodes given by this flag.
 
