@@ -54,7 +54,7 @@ if [ $OS != "AIX" ]; then
     #  Being run from a stateful install postscript
     #  Copy rpms directly from the xCAT management node and install
         groupadd $loadl_group
-        useradd -G $loadl_group $loadl_admin
+        useradd -g $loadl_group $loadl_admin
         mkdir -p /tmp/loadl
         rm -f -R /tmp/loadl/*
         cd /tmp/loadl
