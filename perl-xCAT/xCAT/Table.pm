@@ -475,6 +475,12 @@ sub buildcreatestmt
 	$retv =~ s/,$/)\n)/;
     }
     $retv =~ s/,$/)\n)/;
+    # allow engine change for mysql
+    if ($descr->{engine}) {
+       if ($xcatcfg =~ /^mysql:/) {  #for mysql
+	  $retv .= " ENGINE=$descr->{engine} ";
+       }
+    }
 	#print "retv=$retv\n";
     return $retv; 
 }
