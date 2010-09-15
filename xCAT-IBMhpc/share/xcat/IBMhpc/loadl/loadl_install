@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh  
 
 #
 # Sample script to accept license and install LoadLeveler resmgr package
@@ -27,6 +27,7 @@ LOADL_DIR=$loadldir
 #  Also, change the bin path below to the correct directory
 #### 
 linux_loadl_license_script="/opt/ibmll/LoadL/sbin/install_ll -c resmgr"
+#linux_loadl_license_script="/opt/ibmll/LoadL/sbin/install_ll"
 linux_loadl_bin=/opt/ibmll/LoadL/resmgr/full/bin
 
 ####
@@ -52,6 +53,8 @@ if [ $OS != "AIX" ]; then
     if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
     #  Being run from a stateful install postscript
     #  Copy rpms directly from the xCAT management node and install
+        groupadd $loadl_group
+        useradd -G $loadl_group $loadl_admin
         mkdir -p /tmp/loadl
         rm -f -R /tmp/loadl/*
         cd /tmp/loadl
