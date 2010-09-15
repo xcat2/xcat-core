@@ -10,7 +10,6 @@ I:tk.man.en_US
 I:openssl.base
 I:openssl.license
 I:openssh.base
-I:openssh.license
 I:openssh.man.en_US
 I:openssh.msg.en_US
 I:bos.sysmgt.nim.master
