@@ -704,11 +704,11 @@ sub parseLiteFiles {
 
 sub recoverFiles {
     my ($rootimg_dir, $oldentry, $callback) = @_;
-    $f = $oldentry->[2];
+    $f = $oldentry->[1];
     
     #$callback->({info => ["! updating $f ..."]});
 
-    if ($oldentry->[1] =~ m/bind/) {
+    if ($oldentry->[0] =~ m/bind/) {
         # shouldn't copy back from /.default, maybe the user has replaced the file/directory in .postinstall file
         my $default = $rootimg_dir . $f;
         xCAT::Utils->runcmd("rm -rf $default", 0, 1);   # not sure whether it's necessary right now
