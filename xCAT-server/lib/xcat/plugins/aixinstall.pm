@@ -170,10 +170,6 @@ sub preprocess_request
 
     if ($command =~ /mknimimage/)
 
-
-
-
-
     {
 
         my $reqcopy = {%$req};
@@ -1907,6 +1903,7 @@ sub mknimimage
                     't=s'          => \$::NIMTYPE,
                     'm=s'          => \$::METHOD,
                     'n=s'          => \$::MKSYSBNODE,
+					'p|cplpp'      => \$::opt_p,
                     'u|update'     => \$::UPDATE,
                     'verbose|V'    => \$::VERBOSE,
                     'v|version'    => \$::VERSION,
@@ -1935,6 +1932,13 @@ sub mknimimage
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return 0;
     }
+
+	if ($::opt_p  && !$::opt_i) {
+		my $rsp;
+		push @{$rsp->{data}}, "The \'-p\' option is only valid when using the \-i\' option.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
 
     if ($::SHAREDROOT)
     {
@@ -3180,20 +3184,154 @@ sub mk_lpp_source
     elsif ($::opt_i)
     {
 
-        # if we have lpp_source name in osimage def then use that
-        if ($::imagedef{$::opt_i}{lpp_source})
-        {
-            $lppsrcname = $::imagedef{$::opt_i}{lpp_source};
-        }
-        else
-        {
+		# if -p then also make a copy of the lpp_source
+		if ($::opt_p) {
+
+			# create a new lpp_source - with new name
+			#  copy one from opt_i image to new location and define
+
+			# get name of lpp provided
+			# if we have lpp_source name in osimage def then use that
+			my $origlpp;
+            if ($::imagedef{$::opt_i}{lpp_source})
+            {
+                $origlpp = $::imagedef{$::opt_i}{lpp_source};
+            }
+            else
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                "The $::opt_i image definition did not contain a value for lpp_source.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return undef;
+            }
+
+			#   make a new name using the convention 
+			#		and check if it already exists
+			$lppsrcname = $::image_name . "_lpp_source";
+			if (grep(/^$lppsrcname$/, @lppresources))
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Cannot create $lppsrcname. It already exists.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+
+			# get location of orig lpp_source
+			my $nimprime = xCAT::InstUtils->getnimprime();
+			my $origloc;
+			$origloc = xCAT::InstUtils->get_nim_attr_val($::imagedef{$::opt_i}{lpp_source}, 'location', $callback, $nimprime);
+
+			# get new location
+			if ($::opt_l =~ /\/$/)
+            {
+                $::opt_l =~ s/\/$//; #remove tailing slash if needed
+            }
+
+            my $loc;
+            if ($::opt_l)
+            {
+                $loc = "$::opt_l/lpp_source/$lppsrcname";
+            }
+            else
+            {
+                $loc = "/install/nim/lpp_source/$lppsrcname";
+            }
+
+			# create resource location
+            my $cmd = "/usr/bin/mkdir -p $loc";
+            my $output = xCAT::Utils->runcmd("$cmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not create $loc.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$output\n";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return undef;
+            }
+
+			# check the file system space needed ????
+            #  about 1500 MB for a basic lpp_source???
+            my $lppsize = 1500;
+            if (&chkFSspace($loc, $lppsize, $callback) != 0)
+            {
+                return undef;
+            }
+
+			# copy original lpp_source
+            my $cpcmd = qq~mkdir -m 644 -p $loc; cp -r $origloc/* $loc~;
+			$output = xCAT::Utils->runcmd("$cpcmd", -1);
+			if ($::RUNCMD_RC != 0)
+			{
+				my $rsp;
+				push @{$rsp->{data}}, "Could not copy $origloc to $loc.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			}
+
+            # build an lpp_source
             my $rsp;
             push @{$rsp->{data}},
-              "The $::opt_i image definition did not contain a value for lpp_source.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return undef;
-        }
+              "Creating a NIM lpp_source resource called \'$lppsrcname\'.  This could take a while.\n";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+			# make cmd
+            my $lpp_cmd =
+              "/usr/sbin/nim -Fo define -t lpp_source -a server=master ";
 
+            # check for relevant cmd line attrs
+            my %cmdattrs;
+            if ( ($::NFSV4) && (!$attrres{nfs_vers}) )
+            {
+                $cmdattrs{nfs_vers}=4;
+            }
+
+            if (%attrres) {
+                foreach my $attr (keys %attrres) {
+                    if (grep(/^$attr$/, @validattrs) ) {
+                        $cmdattrs{$attr} = $attrres{$attr};
+                    }
+                }
+            }
+
+			if (%cmdattrs) {
+                foreach my $attr (keys %cmdattrs) {
+                    $lpp_cmd .= "-a $attr=$cmdattrs{$attr} ";
+                }
+            }
+
+            # where to put it - the default is /install
+            $lpp_cmd .= "-a location=$loc $lppsrcname";
+
+			# don't need source since the lpp dirs/file have already 
+			#	been created in the location
+
+            $output = xCAT::Utils->runcmd("$lpp_cmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "Could not run command \'$lpp_cmd\'. (rc = $::RUNCMD_RC)\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return undef;
+            }
+
+		} else {
+
+        	# if we have lpp_source name in osimage def then use that
+        	if ($::imagedef{$::opt_i}{lpp_source})
+        	{
+            	$lppsrcname = $::imagedef{$::opt_i}{lpp_source};
+        	}
+        	else
+        	{
+            	my $rsp;
+            	push @{$rsp->{data}},
+              	"The $::opt_i image definition did not contain a value for lpp_source.\n";
+            	xCAT::MsgUtils->message("E", $rsp, $callback);
+            	return undef;
+        	}
+		}
     }
     elsif ($::opt_s)
     {
@@ -3342,6 +3480,10 @@ sub mk_lpp_source
 
     return $lppsrcname;
 }
+
+
+
+
 
 #----------------------------------------------------------------------------
 
@@ -5462,6 +5604,7 @@ sub updatespot
 	#
 	#   check/do statelite setup
 	#
+	my $statelite=0;
 	if ($imghash{$image}{shared_root}) {
 
 		# if this has a shared_root resource then
@@ -5471,8 +5614,8 @@ sub updatespot
 		my $rc=xCAT::InstUtils->dolitesetup($image, \%imghash, \@nodes, $callback, $subreq);
 	}
 
-    # Modify the rc.dd-boot script to set the ODM correctly
-	my $statelite=1;
+    # Modify the rc.dd-boot script 
+	$statelite=1;
     my $boot_file = "$spot_loc/lib/boot/network/rc.dd_boot";
     if (&update_dd_boot($boot_file, $callback, $statelite, $subreq) != 0)
     {
@@ -9270,7 +9413,7 @@ sub mknimimage_usage
       "\tmknimimage [-V] -u osimage_name [attr=val [attr=val ...]]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tmknimimage [-V] [-f|--force] [-t nimtype] [-m nimmethod]\n\t\t[-r|--sharedroot] [-D|--mkdumpres] [-l <location>]\n\t\t[-s image_source] [-i current_image] [-t nimtype] [-m nimmethod]\n\t\t[-n mksysbnode] [-b mksysbfile] osimage_name\n\t\t[attr=val [attr=val ...]]\n";
+      "\tmknimimage [-V] [-f|--force] [-t nimtype] [-m nimmethod]\n\t\t[-r|--sharedroot] [-D|--mkdumpres] [-l <location>]\n\t\t[-s image_source] [-i current_image] [-p|--cplpp] [-t nimtype]\n\t\t[-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name\n\t\t[attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
@@ -9426,6 +9569,7 @@ sub getNodesetStates
                     if (defined($tmp)) {
                         $nimimage{$profile} = $tmp->{nimtype};
                     }
+
                     else { $nimimage{$profile} = "undefined"; }
                 }
                 $stat = $nimimage{$profile};
