@@ -965,9 +965,7 @@ sub ll_jobs {
 
             if ($::updateall) {
                 &set_LL_feature($machinelist,$::updateall_feature);
-###
-### DEBUG -- let llconfig catch up
-sleep 3;
+
             }
 
             # Need to change status before actually submitting LL jobs
@@ -1191,7 +1189,7 @@ sub set_LL_feature {
     foreach my $llcfgout (@llcfgoutput) {
         my @llfeatures;
         my $haveit = 0;
-        if ( $llcfgout !~ /^No configured value/ ) {
+        if ( $llcfgout =~ /:FEATURE =/ ) {
             my ($stuff,$newfeature_string) = split(/=/,$llcfgout);
             my ($machine,$morestuff) = split(/:/,$stuff);
             @llfeatures = split(/\s+/,$newfeature_string);
@@ -1229,6 +1227,10 @@ sub set_LL_feature {
                 $::RUNCMD_RC = 0;
             } else {
                 xCAT::Utils->runcmd( $cmd, 0 );
+###
+### DEBUG -- llconfig problem
+###          workaround - sleep to let ll daemons catch up
+sleep 3;
                 if ($::VERBOSE) {
                     open (RULOG, ">>$::LOGDIR/$::LOGFILE");
                     print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
@@ -1237,7 +1239,21 @@ sub set_LL_feature {
             }
         }
     }
-
+###
+### DEBUG -- llconfig problem
+###          need to send a manual reconfig to at least one node to have it 
+###          register in LL daemons
+###  not working - try sleep above instead
+#sleep 3;
+#  my @rcfns = split(/\s+/,$machinelist);
+#  my @rcfg = `ssh $rcfns[0] llrctl reconfig`;
+#  if ($::VERBOSE) {
+#     open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+#     print RULOG localtime()." llconfig workaround, run \"ssh $rcfns[0] llrctl reconfig \",  output: \n";
+#     print RULOG @rcfg;
+#     close (RULOG);
+#  }
+### end DEBUG
     return 0;
 }
 
@@ -2191,9 +2207,6 @@ sub remove_LL_reservations {
             $remove_count++;
             # change features for this node
             &change_LL_feature($n);
-###
-### DEBUG -- let llconfig catch up
-sleep 3;
             if ( $remove_count < $llnode_count ) {
               $remove_cmd .= " $n";
             } else {
@@ -2202,6 +2215,21 @@ sleep 3;
             }
         }
     }
+###
+### DEBUG -- llconfig problem
+###          need to send a manual reconfig to at least one node to have it 
+###          register in LL daemons
+###  not working - try sleep instead
+sleep 3;
+#  my $n1 = $nodes->[0];
+#  my @rcfg = `ssh $n1 llrctl reconfig`;
+#  if ($::VERBOSE) {
+#     open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+#     print RULOG localtime()." llconfig workaround, run \"ssh $n1 llrctl reconfig \",  output: \n";
+#     print RULOG @rcfg;
+#     close (RULOG);
+#  }
+### end DEBUG
    #  Verify that the config change has been registerd and that updatefeature 
    #  has been removed according to what the LL daemons report 
      if (defined($::DATAATTRS{updatefeature}[0])) {
@@ -2311,7 +2339,7 @@ sub change_LL_feature {
     # Remove old feature 
     my $newfeature_string = "";
     my @llfeatures;
-    if ( $llcfgout !~ /^No configured value/ ) {
+    if ( $llcfgout =~ /:FEATURE =/ ) {
         my ($stuff,$curfeature_string) = split(/=/,$llcfgout);
         @llfeatures = split(/\s+/,$curfeature_string);
         my $oldfeature = " ";
