@@ -8,7 +8,7 @@ B<mknimimage [-h | --help ]>
 
 B<mknimimage [-V] -u osimage_name [attr=val [attr=val ...]]>
 
-B<mknimimage [-V] [-f|--force] [-r|--sharedroot] [-D|--mkdumpres] [-l location] [-s image_source] [-i current_image] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
+B<mknimimage [-V] [-f|--force] [-r|--sharedroot] [-D|--mkdumpres] [-l location] [-s image_source] [-i current_image] [-p|--cplpp] [-t nimtype] [-m nimmethod] [-n mksysbnode] [-b mksysbfile] osimage_name [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -20,9 +20,13 @@ The naming convention for the NIM SPOT resource definition is to use the same na
 
 When creating a mksysb image definition you must specify either the "-n" or the "-b" option. The "-n" option can be used to create a mksysb image from an existing NIM client machine.  The "-b" option can be used to specify an existing mksysb backup file.
 
+B<Adding software and configuration files to the osimage.>
+
 When creating a diskless osimage definition you also have the option of automatically updating the NIM SPOT resource.  You can have additional software installed or you can have configuration files added or updated.  To have software installed you must provide either the names of NIM installp_bundle resources or fileset names on the command line using the "attr=val" option. You may also supply the installp flags, RPM flags, emgr flags to use when installing the software. 
 
 To have configuration files updated you must provide the full path name of a "synclists" file which contains the the list of actual files to update.  The xCAT osimage definition that is created will contain the installp_bundle, otherpkgs, and synclists files that are provided on the command line.
+
+B<Updating an existing xCAT osimage>
 
 If you wish to update an existing diskless image after it has already been created you can use the "-u" (update) option.  In this case the xCAT osimage definition will not be updated. 
 
@@ -32,15 +36,36 @@ You can update the osimage definition and run the B<mknimimage> command with no 
 
 Or, you could do a more ad hoc update by providing one or more of the "installp_bundle", "otherpkgs", or "synclists" values on the command line. If any of these values are provided the B<mknimimage> command will use those values only. The osimage definition will not be used or updated.
 
-To change the xCAT osimage definition you can use the xCAT B<chdef> command.
+B<Copying an xCAT osimage.>
+
+You can use the "-i" and "-p" options to copy an existing diskless osimage.   To do this you must supply the name of an existing xCAT osimage definition and the name of the new osimage you wish to create. The B<mknimimage> command will do the following:
+
+- create a new xCAT osimage definition using the new name that was specified.
+
+- copy the NIM SPOT resource to a new location and define it to NIM using a new name.
+
+- if the original osimage included a NIM "shared_root" resource then a new shared_root resource will be created for the new SPOT.
+
+- any other resources (or attributes) included in the original osimage will be included in the new osimage definition.
+
+- if the "-p" option is specified then the original NIM lpp_source resource will be copied to a new location and redfined to NIM. (The default would be to use the original lpp_source - to save file system space.)
+
+
+B<Additional information>
+
+IMPORTANT:  The NIM lpp_source and SPOT resources can get quite large. Always make sure that you have sufficient file system space available before running the B<mknimimage> command.
 
 To list the contents of the xCAT osimage definition use the xCAT B<lsdef> command ("lsdef -t osimage -l -o <osimage_name>").
 
-To remove an xCAT osimage definition along with the associated NIM resource definitions use the rmnimimage command. Be careful not to accidently remove NIM resources if they are still needed.
+To check the validity of a SPOT or lpp_source resource
+
+To remove an xCAT osimage definition along with the associated NIM resource definitions use the B<rmnimimage> command. Be careful not to accidently remove NIM resources if they are still needed.
 
 To list a NIM resource definition use the AIX B<lsnim> command ("lsnim -l <resource_name>").
 
-To remove specific NIM resource definitons use the AIX nim command.
+To check the validity of a SPOT or lpp_source resource use the AIX B<nim> command ("nim -o check <resourec-name>").
+
+To remove specific NIM resource definitons use the AIX B<nim> command. ("nim -o remove <resource-name>").
 
 =head1 OPTIONS
 
@@ -198,6 +223,10 @@ Used to specify the NIM installation method to use. The possible values are "rte
 
 The xCAT node to use to create a mksysb image.  The node must be a defined as a NIM client machine.
 
+=item B<-p|--cplpp>
+
+Use this option when copying existing diskless osimages to indicate that you also wish to have the lpp_resource copied.  This option is only valid when using the "-i" option.
+
 =item B<-r|--sharedroot>
 
 Use this option to specify that a NIM "shared_root" resource be created for the AIX diskless nodes.  The default is to create a NIM "root" resource.  This feature is only available when using AIX version 6.1.4 or beyond. See the AIX/NIM documentation for a description of the "root" and "shared_root" resources.
@@ -277,6 +306,10 @@ The "snapcollect" attribute specifies that AIX "snap" data should be include whe
 8) Create a new diskless image by copying an existing image.
 
 B<mknimimage -t diskless -i 61cosi 61cosi_updt1>
+
+Note:  If you also wish to have the original lpp_source copied and defined use the -p option.
+
+B<mknimimage -t diskless -i 61cosi -p 61cosi_updt1>
 
 9) Create a diskless image using an existing lpp_source resource named "61cosi_lpp_source" and include NIM tmp and home resources.  This assumes that the "mytmp" and "myhome" NIM resources have already been created by using NIM commands.
 
