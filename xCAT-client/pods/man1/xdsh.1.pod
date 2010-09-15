@@ -11,7 +11,7 @@ I<node_options>] [B<-Q>] [B<-r> I<node_remote_shell>] [B<-s>] [B<-S> B<csh>|B<ks
 
 B<xdsh> I<noderange>  [B<-K>] 
 
-B<xdsh> I<noderange>  [B<-K>] [B<-l>  I<userID>]  
+B<xdsh> I<noderange>  [B<-K>] [B<-l>  I<userID>] B<--devicetype> I<type_of_device> 
 
 B<xdsh> [B<-i> I<image path | nim image name>] I<command_list>
 
