@@ -157,9 +157,9 @@ $progname = \$0;
 
 if (xCAT::Utils->isMN()) {
     # update schema for xCAT tables
-    my %int_tabspec;
-    %int_tabspec = xCAT::Table->getTableList;
-    foreach  my $tablename (keys %int_tabspec) {
+    my @table;
+    push @table,xCAT::Table->getTableList();
+    foreach  my $tablename (@table) {
        my $tablelisttab=xCAT::Table->new($tablename,-create=>1);
        my $rc= $tablelisttab->updateschema();
        $tablelisttab->close;
