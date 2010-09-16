@@ -617,7 +617,7 @@ sub make_bundle {
 	    if(!$file){ next; }
 	    my $o = $_->{options};
 	    if(!$o){
-		$o = "tmpfs,rw";
+		$o = "tmpfs";
 	    }
 	    print FILE  "\"$imagename\",\"$file\",\"$o\",,\n";
 	}
