@@ -1,0 +1,201 @@
+=head1 NAME
+
+B<xcatsetup> - Prime the xCAT database using naming conventions specified in a config file.
+
+=head1 SYNOPSIS
+
+B<xcatsetup> [I<cluster-config-file>]
+
+B<xcatsetup> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
+
+=head1 DESCRIPTION
+
+The B<xcatsetup> command reads the specified config file that contains general information about the cluster being set up,
+and naming conventions and IP addresses that you want to use.  It then defines the basic objects in the xCAT database
+representing this cluster configuration.  The B<xcatsetup> command prepares the database for the step of discovering
+the hardware that is connected to the service and cluster networks.
+
+The B<xcatsetup> command is intended as a quick way to fill out the database for a cluster that has very regular
+naming patterns.  The only thing is done is fill in database attributes.  If your cluster does not follow consistent
+naming patterns, or has some other special configuration, you should define attribute values manually instead of using
+B<xcatsetup>.
+
+Note:  currently the B<xcatsetup> command has only been implemented and tested for system p servers.
+
+The B<config file> is organized in stanza format and supports the keywords in the sample file below.  Comment lines
+begin with "#".  Stanzas can be ommitted if you do not want to define that type of object.
+
+  xcat-site:
+   domain = cluster.com
+
+  xcat-hmcs:
+   hostname-range = hmc1-hmc3
+   starting-ip = 10.201.0.1
+
+  xcat-frames:
+   # these are the connections to the BPCs
+   hostname-range = bpc1-bpc6
+   starting-ip = 10.202.0.1
+   num-frames-per-hmc = 2
+   vpd-file = vpd.stanza
+
+  xcat-cecs:
+   # these are the connections to the FSPs
+   hostname-range = cec01-cec60
+   starting-ip = 10.203.0.1
+   supernode-list = supernodelist.txt
+
+  xcat-building-blocks:
+   num-frames-per-bb = 2
+   num-cecs-per-bb = 20
+
+  xcat-lpars:
+   num-lpars-per-cec = 8
+
+   num-service-nodes-per-bb = 2
+   # this is for the ethernet NIC on each SN
+   service-node-hostname-range = sn1-sn6
+   service-node-starting-ip = 10.200.1.1
+   # this value is the same format as the hosts.otherinterfaces attribute except 
+   # the IP addresses are starting IP addresses
+   service-node-otherinterfaces = -hf0:10.10.1.1,-hf1:10.11.1.1,-hf2:10.12.1.1,-hf3:10.13.1.1
+
+   num-storage-nodes-per-bb = 3
+   storage-node-hostname-range = stor01-stor09
+   storage-node-starting-ip = 10.20.1.1
+   storage-node-aliases = -hf0
+   storage-node-otherinterfaces = -hf1:10.21.1.1,-hf2:10.22.1.1,-hf3:10.23.1.1
+
+   num-compute-nodes-per-bb = 155
+   compute-node-hostname-range = n001-n465
+   compute-node-starting-ip = 10.30.1.1
+   compute-node-aliases = -hf0
+   # ml0 is for aix.  For linux, use bond0 instead.
+   compute-node-otherinterfaces = -hf1:10.31.1.1,-hf2:10.32.1.1,-hf3:10.33.1.1,-ml0:10.34.1.1
+
+The B<vpd-file> specifies the following vpd table attributes for the BPCs (frame power supplies):  node,
+serial, mtm, side.  Use the same stanza format that accepted by the L<chdef(1)|chdef.1> command, as documented
+in L<xcatstanzafile(5)|xcatstanzafile.5>.  Here is a sample file:
+
+  bpc01:
+    objtype=node
+    serial=99200G1
+    mtm=9A00-100
+    side=A
+
+  bpc02:
+    objtype=node
+    serial=99200D1
+    mtm=9A00-100
+    side=A
+
+The supernode-list file lists what supernode numbers should be given to each CEC in each frame.
+Here is a sample file:
+
+  bpc01: 0, 1, 16
+  bpc02: 17, 32
+  bpc03: 33, 48, 49
+  bpc04: 64 , 65, 80
+  bpc05: 81, 96
+  bpc06: 97(1), 112(1), 113(1)
+
+The name before the colon is the node name of the frame BPC.  The numbers after the colon are the supernode numbers
+to assign to the groups of CECs in that frame from bottom to top.  Each supernode contains 4 CECs, unless it is immediately
+followed by "(#)", in which case the number in parenthesis indicates how many CECs are in this supernode.
+
+The following lists which database attributes are filled in for each stanza:
+
+=over 15
+
+=item B<xcat-site>
+
+site table:  domain, nameservers
+
+=item B<xcat-hmcs>
+
+nodelist table:  node, groups
+
+hosts table:  node, ip
+
+ppc table:  node, comments
+
+nodetype table:  node, nodetype
+
+=item B<xcat-frames>
+
+nodelist table:  node, groups
+
+hosts table:  node, ip
+
+ppc table:  node, id, hcp
+
+nodetype table:  node, nodetype
+
+nodehm table:  node, mgt
+
+vpd table:  node, serial, mtm, side
+
+=item B<xcat-cecs>
+
+nodelist table:  node, groups
+
+hosts table:  node, ip
+
+ppc table:  node, supernode
+
+nodetype table:  node, nodetype
+
+nodehm table:  node, mgt
+
+=item B<xcat-building-blocks>
+
+site table:  sharedtftp
+
+ppc table:  node, parent (for frame)
+
+=item B<xcat-lpars>
+
+nodelist table:  node, groups
+
+hosts table:  node, ip, hostnames, otherinterfaces
+
+ppc table:  node, id
+
+nodetype table:  node, nodetype, arch
+
+nodehm table:  node, mgt, cons
+
+noderes table:  netboot
+
+servicenode table:  node, nameserver, dhcpserver, tftpserver, nfsserver, conserver, monserver, ftpserver, nimserver, ipforward
+
+=back
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-v|--version>
+
+Command Version.
+
+=item B<-?|-h|--help>
+
+Display usage message.
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 FILES
+
+/opt/xcat/sbin/xcatsetup
+
+=head1 SEE ALSO
+
+L<mkdef(1)|mkdef.1>, L<chdef(1)|chdef.1>, L<xcatstanzafile(5)|xcatstanzafile.5>, L<noderange(3)|noderange.3>, L<nodeadd(8)|nodeadd.8>, L<lsdef(1)|lsdef.1>
+

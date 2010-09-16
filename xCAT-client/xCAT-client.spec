@@ -151,6 +151,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/rmimage
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/sbin/makedns
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/gettab
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/nodeadd
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/xcatsetup
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makenetworks
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/copycds
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/regnotif
