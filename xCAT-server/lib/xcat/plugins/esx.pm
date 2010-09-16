@@ -3177,6 +3177,7 @@ sub  makecustomizedmod {
     my $tempdir = tempdir("/tmp/xcat/esxmodcustXXXXXXXX");
     my $shadow;
     mkpath($tempdir."/etc/");
+    my $oldmask=umask(0077);
     open($shadow,">",$tempdir."/etc/shadow");
     $password = crypt($password,'$1$'.xCAT::Utils::genpassword(8));
     my $dayssince1970 = int(time()/86400); #Be truthful about /etc/shadow
@@ -3186,6 +3187,7 @@ sub  makecustomizedmod {
         print $shadow "$_:*:$dayssince1970:0:99999:7:::\n";
     }
     close($shadow);
+    umask($oldmask);
     if (-e "$::XCATROOT/share/xcat/netboot/esxi/38.xcat-enableipv6") {
         mkpath($tempdir."/etc/vmware/init/init.d");
         copy( "$::XCATROOT/share/xcat/netboot/esxi/38.xcat-enableipv6",$tempdir."/etc/vmware/init/init.d/38.xcat-enableipv6");

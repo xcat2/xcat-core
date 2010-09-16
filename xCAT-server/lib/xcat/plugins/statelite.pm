@@ -144,6 +144,7 @@ sub process_request {
 	    (my $pent) = $passtab->getAttribs({key=>'system',username=>'root'},'password');
 	    if ($pent and defined ($pent->{password})) {
 		my $pass = $pent->{password};
+        my $oldmask=umask(0077);
 		my $shadow;
 		open($shadow,"<","$rootimg_dir/etc/shadow");
 		my @shadents = <$shadow>;
@@ -159,6 +160,7 @@ sub process_request {
 		    }
 		}
 		close($shadow);
+        umask($oldmask);
 	    }
 	}
 
