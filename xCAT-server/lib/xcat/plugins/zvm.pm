@@ -2768,6 +2768,9 @@ EOM"`;
 				}
 			}    # End of if ( $layer == 2 )
 
+			# Remove old SSH keys
+			$out = `ssh $hcp "rm -f $cloneMntPt/etc/ssh/ssh_host_*"`;
+
 			# Flush disk
 			$out = `ssh $hcp "sync"`;
 
