@@ -6,6 +6,7 @@ use strict;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCpower;
 use xCAT::FSPUtils;
+#use Data::Dumper;
 ##########################################################################
 # Parse the command line for options and operands
 ##########################################################################
@@ -304,6 +305,11 @@ sub state {
             if ( $Rc != SUCCESS ) {
                 push @result, [$name, "$prefix$data",$Rc];
                 next;
+            }
+            #print Dumper($data); 
+            my @k = keys(%$data); 
+            if( grep(/all/, @k) == 1 ) {
+                 $data->{$id} = $data->{all};
             }
             ##################################
             # Node not found 
