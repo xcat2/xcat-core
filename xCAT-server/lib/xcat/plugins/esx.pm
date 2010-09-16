@@ -1720,9 +1720,13 @@ sub clone_vms_from_master {
             $destination=$masterent->{storage};
             $vment->{storage}=$destination;
         }
+        unless (defined $hyphash{$hyp}->{pool}) {
+            $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
+        }
         my $relocatespec = VirtualMachineRelocateSpec->new(
            datastore=>$hyphash{$hyp}->{datastorerefmap}->{$destination},
-           diskMoveType=>"createNewChildDiskBacking",
+           #diskMoveType=>"createNewChildDiskBacking", #fyi, requires a snapshot, which isn't compatible with templates, moveChildMostDiskBacking would potentially be fine, but either way is ha incopmatible and limited to 8, arbitrary limitations hard to work around...
+           pool=>$hyphash{$hyp}->{pool},
         );
         my $clonespec = VirtualMachineCloneSpec->new(
             location=>$relocatespec,
