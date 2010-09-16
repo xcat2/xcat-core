@@ -1,0 +1,207 @@
+#!/bin/sh
+#set -x
+#-----------------------------------------------------------------------------
+#  createFS 
+#
+# This script is used to create new FS on xCAT Service Node to hold the nim
+# resources. Currently it support AIX system, will support Linux later.
+#
+# By default, the new FS is created as 5G based on rootvg. But it can be 
+# customized, the options are compatible with AIX crfs command.
+#
+# If we need to create multiple file systems, then we need to call "create_FS" 
+# multiple times at the bottom of this script, passing it different parameters.
+#
+# For example:
+# FS1 = ("/install", "jfs2", "rootvg","" , "yes", "size=5G");
+# FS2 = ("/install", "jfs2", "datavg", "hdisk2 hdisk3", "yes", "size=5G frag=512 nbpi=1024");
+#
+# create_FS $FS1
+# create_FS $FS2
+#
+#-----------------------------------------------------------------------------
+
+# For AIX system
+# MountPiont, VfsType, VolumeGroup, harddisks, AutoMount, Attributes 
+FS1="/install,jfs2,rootvg,,yes,size=5G"
+#FS2="/install,jfs2,datavg,hdisk2 hdisk3,yes,size=5G frag=512 nbpi=1024"
+
+# To-DO
+# For Linux system
+# MountPiont, VfsType, fs-options 
+
+#-----------------------------------------------------------------------------
+create_FS(){
+
+    fs=$1
+    os=`uname`
+    if [[ $os = AIX* ]]; then
+        echo "To create File System on AIX"
+        create_FS_AIX $fs
+    else
+        echo "To create File System on Linux"
+        create_FS_Linux $fs
+    fi
+}
+
+#----------------------------------------------
+create_FS_AIX(){
+
+    aixfs=$1
+
+    # parse input
+    IFS=','
+    set $aixfs
+
+    mp=$1
+    vfs=$2
+    vg=$3
+    hd=$4
+    mnt=$5
+    attrs=$6
+    
+    unset IFS
+
+    echo "MountPiont: $mp, VfsType: $vfs, VolumeGroup: $vg, harddisks: $hd, AutoMount: $mnt, Attributes: $attrs"
+
+    # First, check if mp is already FS
+    old_mp=`df -m $mp |tail -1|awk '{print $7}' 2>/dev/null`
+
+    if [ "$old_mp" != "" ] && [ $old_mp = $mp ]; then
+        echo "$mp is already a file system, will not create it."
+        exit 0
+    fi
+
+    if [ "$vg" != "" ]; then
+
+        # check if vg exists
+        result=`lsvg |grep $vg`
+        if [ $? -eq 0 ]; then
+            # vg exists
+            # check if "harddisks" is provided
+            if [ "$hd" != "" ]; then
+                # harddisk provided
+                # check if hardisk is the same with current ones
+                old_hd=`lsvg -p $vg|grep 'hd'|awk '{print $1}'|tr "\n" " "`
+                
+                if [ "$old_hd" = "$hd" ]; then
+                    # use the existed vg
+                    tocr_fs=1
+                else
+                    # extendvg
+                    result=`extendvg $vg $hd`
+                    if [ $? -eq 0 ]; then
+                        # to create fs
+                        tocr_fs=1
+                    else
+                        echo "Can not extend VG $vg with hard disk $hd"
+                        exit 1
+                    fi
+                fi
+            else
+                # use the provided vg
+                tocr_fs=1
+            fi
+        else
+            # not exist
+            # check if "harddisks" is provided
+            if [ "$hd" != "" ]; then
+                # harddisk provided
+                # create VG first, then FS
+                tocr_vg=1
+                tocr_fs=1
+            else
+                # no vg, no hd, give error msg and exit
+                echo "No harddisks provided, can not create VG and FS."
+                exit 1
+            fi
+        fi
+    else
+        echo "use rootvg to create FS $mp"
+        $vg="rootvg"
+    fi
+
+    # create VG if needed
+    if [ "$tocr_vg" = "1" ]; then
+        result=`mkvg -y $vg $hd`
+        if [ $? -ne 0 ]; then
+            echo "Can not make VG $vg using harddisk $hd."
+            exit 1
+        fi
+    fi
+
+    # create FS if needed
+    if [ "$tocr_fs" = "1" ]; then
+        # if /install exists, then back up first
+        result=`ls $mp 2>/dev/null`
+        if [ $? -eq 0 ]; then
+            # exist
+            # do backup first
+            tmp_mp="/install_createFS"
+            echo "Running command: mv $mp $tmp_mp"
+            result=`mv $mp $tmp_mp`
+            if [ $? -ne 0 ]; then
+                echo "Can not back up $mp to $tmp_mp"
+                exit 1
+            fi
+            echo "Back up $mp to $tmp_mp"
+            bakup=1
+        fi
+        
+        # create fs
+        cmd="crfs"
+        if [ "$vfs" != "" ]; then
+            cmd="$cmd -v $vfs"
+        fi
+
+        if [ "$vg" != "" ]; then
+            cmd="$cmd -g $vg"
+        fi
+
+        if [ "$mp" != "" ]; then
+            cmd="$cmd -m $mp"
+        fi
+
+        if [ "$mnt" != "" ]; then
+            cmd="$cmd -A $mnt"
+        fi
+
+        if [ "$attrs" != "" ]; then
+            cmd="$cmd -a $attrs"
+        fi
+        
+        echo "Running command: $cmd"
+        result=`$cmd`
+        if [ $? -ne 0 ]; then
+            echo "Can not create file system $mp"
+            exit 1
+        fi
+
+        result=`mount $mp`
+        if [ $? -ne 0 ]; then
+            echo "Can not mount file system $mp"
+            exit 1
+        fi
+        
+        # restore /install to FS
+        if [ "$bakup" = "1" ]; then
+            echo "Restore $tmp_mp to new FS $mp"
+            
+            result=`cd $tmp_mp;find . -print | cpio -pdlvu $mp`
+            if [ $? -ne 0 ]; then
+                echo "Can not restore $tmp_install to file system $mp"
+                exit 1
+            fi
+
+            result=`rm -rf $tmp_mp`
+            if [ $? -ne 0 ]; then
+                echo "Can not remove $tmp_mp"
+                exit 1
+            fi
+        fi    
+    fi
+}
+
+# main
+create_FS $FS1
+
