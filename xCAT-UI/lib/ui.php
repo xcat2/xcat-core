@@ -34,10 +34,14 @@ function loadPage(){
 				<li><a href="monitor.php" class="top_link">Monitor</a></li>
 			</ul>';
 			
-	 if (isset($_SESSION['username'])){
-	 	echo "<div id='musername'>user: <span> {$_SESSION['username']}</span>".
-			 "<br><a href='lib/logout.php'>log out</a></div>";
-	 }
+	// User name and log out section
+	if (isset($_SESSION['username'])){
+		echo 
+			"<div>
+				<span>User: {$_SESSION['username']}</span>
+				<a href='lib/logout.php'>Log out</a>
+			</div>";
+	}
 
 	echo '</div>';
 	// Content

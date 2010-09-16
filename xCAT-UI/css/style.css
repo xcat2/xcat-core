@@ -45,7 +45,7 @@
 	cursor: pointer;
 	float: left;
 	font: 14px verdana, arial, helvetica, sans-serif;
-	color: #424242;;
+	color: #424242;
 	padding: 11px 30px;
 }
 
@@ -53,20 +53,27 @@
 	background-color: #A9D0F5;
 }
 
-/* for usernamed login */
-#header div {
-	float: right;
-	margin-right: 10px;
-	padding-right: 5px;
-	text-align: right;
-	font-size: 1em; 
-}
+/* User name and log out */	
 #header div span {
-	color: yellow;
+	color: #424242;
+	padding: 2px 15px 0px 2px; /* Top right left bottom*/
+	text-align: right;
+	text-decoration: none;
+	display: block;
 }
+
 #header div a {
-	color: #ddd;
+	padding: 2px 15px 0px 2px; /* Top right left bottom*/
+	text-align: right;
+	color: #0000FF;
+	text-decoration: none;
+	display: block;
 }
+
+#header div a:hover {
+	color: #FF0000;
+}
+
 /****************** Content section ******************/
 body {
 	background-color: #1C1C1C;
