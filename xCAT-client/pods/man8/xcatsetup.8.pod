@@ -24,9 +24,11 @@ Note:  currently the B<xcatsetup> command has only been implemented and tested f
 
 The B<config file> is organized in stanza format and supports the keywords in the sample file below.  Comment lines
 begin with "#".  Stanzas can be ommitted if you do not want to define that type of object.
+Note that currently hostname ranges must have simple <alphachars><integer> format, like the examples in this sample file.
 
   xcat-site:
    domain = cluster.com
+   use-direct-fsp-control = 1
 
   xcat-hmcs:
    hostname-range = hmc1-hmc3
@@ -103,7 +105,8 @@ The name before the colon is the node name of the frame BPC.  The numbers after 
 to assign to the groups of CECs in that frame from bottom to top.  Each supernode contains 4 CECs, unless it is immediately
 followed by "(#)", in which case the number in parenthesis indicates how many CECs are in this supernode.
 
-The following lists which database attributes are filled in for each stanza:
+The following lists which database attributes are filled in as a result of each stanza.  Note that depending on the values
+in the stanza, some attributes might not be filled in.
 
 =over 15
 
@@ -141,7 +144,7 @@ nodelist table:  node, groups
 
 hosts table:  node, ip
 
-ppc table:  node, supernode
+ppc table:  node, supernode, hcp
 
 nodetype table:  node, nodetype
 

@@ -273,16 +273,26 @@ sub writeframe {
 	
 	# Using the frame group, write: nodetype.nodetype, nodehm.mgt
 	$tables{'nodetype'}->setNodeAttribs('frame', {nodetype => 'bpa'});
-	$tables{'nodehm'}->setNodeAttribs('frame', {mgt => 'hmc'});
 	
 	# Using the frame group, num-frames-per-hmc, hmc hostname-range, write regex for: ppc.node, ppc.hcp, ppc.id
 	# The frame # should come from the nodename
 	my $idregex = '|\D+(\d+)|(0+$1)|';
+	my %hash = (id => $idregex);
+
+	if ($STANZAS{'xcat-site'}->{'use-direct-fsp-control'}) {
+		$tables{'nodehm'}->setNodeAttribs('frame', {mgt => 'fsp'});
+		my $hcpregex = '|(.+)|($1)|';		# its managed by itself
+		$hash{hcp} = $hcpregex;
+	}
+	else {
+		$tables{'nodehm'}->setNodeAttribs('frame', {mgt => 'hmc'});
+		# let lsslp fill in the hcp
+	}
+	
 	# Calculate which hmc manages this frame by dividing by num-frames-per-hmc
-	my $framesperhmc = $STANZAS{'xcat-frames'}->{'num-frames-per-hmc'};
-	#todo: this is wrong!  Switch frames and cecs over to direct attach
-	my $hmcregex = '|\D+(\d+)|((($1-1)/' . $framesperhmc . ')+1)|';
-	$tables{'ppc'}->setNodeAttribs('frame', {id => $idregex, hcp => $hmcregex});
+	#my $framesperhmc = $STANZAS{'xcat-frames'}->{'num-frames-per-hmc'};
+	
+	$tables{'ppc'}->setNodeAttribs('frame', \%hash);
 	
 	# Write vpd-file to vpd table
 	my $filename = fullpath($STANZAS{'xcat-frames'}->{'vpd-file'}, $cwd);
@@ -330,9 +340,17 @@ sub writecec {
 	
 	# Using the cec group, write: nodetype.nodetype, nodehm.mgt
 	$tables{'nodetype'}->setNodeAttribs('cec', {nodetype => 'fsp'});
-	$tables{'nodehm'}->setNodeAttribs('cec', {mgt => 'hmc'});
 	
-	# Do we need to write regex for ppc.hcp and ppc.parent?  Of will lsslp do all that?
+	# Write regex for ppc.hcp.  lsslp will fill in parent.
+	if ($STANZAS{'xcat-site'}->{'use-direct-fsp-control'}) {
+		$tables{'nodehm'}->setNodeAttribs('cec', {mgt => 'fsp'});
+		my $hcpregex = '|(.+)|($1)|';		# its managed by itself
+		$tables{'ppc'}->setNodeAttribs('cec', {hcp => $hcpregex});
+	}
+	else {
+		$tables{'nodehm'}->setNodeAttribs('cec', {mgt => 'hmc'});
+		# let lsslp fill in the hcp
+	}
 	
 	# Write supernode-list in ppc.supernode
 	#todo: handle the !sequential option
