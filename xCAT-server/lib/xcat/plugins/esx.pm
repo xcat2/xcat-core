@@ -31,6 +31,7 @@ our @ISA = 'xCAT::Common';
 #my %esx_comm_pids;
 my %hyphash; #A data structure to hold hypervisor-wide variables (i.e. the current resource pool, virtual machine folder, connection object
 my %vcenterhash; #A data structure to reflect the state of vcenter connectivity to hypervisors
+my %vmhash; #store per vm info of interest
 my %hypready; #A structure for hypervisor readiness to be tracked before proceeding to normal operations
 my %running_tasks; #A struct to track this processes
 my $output_handler; #Pointer to the function to drive results to client
@@ -317,7 +318,7 @@ sub process_request {
     my $hyptab = xCAT::Table->new('hypervisor',create=>0);
     if ($hyptab) {
         my @hyps = keys %hyphash;
-        $tablecfg{hypervisor} = $hyptab->getNodesAttribs(\@hyps,['mgr','netmap','defaultnet','cluster','preferdirect']);
+        $tablecfg{hypervisor} = $hyptab->getNodesAttribs(\@hyps,['mgr','netmap','defaultnet','cluster','preferdirect','datacenter']);
     }
     my $hoststab = xCAT::Table->new('hosts',create=>0);
     if ($hoststab) {
@@ -1750,11 +1751,34 @@ sub clonevms {
     unless (validate_datastore_prereqs($nodes,$hyp,$newdatastores)) {
         return;
     }
-    $hyphash{$hyp}->{vmfolder} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'])->vmFolder);
+    sortoutdatacenters(nodes=>$nodes,hyp=>$hyp);
     if ($target) {
         return promote_vm_to_master(node=>$nodes->[0],target=>$target,force=>$force,detach=>$detach,hyp=>$hyp,url=>$url,mastername=>$mastername);
     } elsif ($base) {
         return clone_vms_from_master(nodes=>$nodes,base=>$base,detach=>$detach,hyp=>$hyp,mastername=>$base,masterent=>$masterref);
+    }
+}
+sub sortoutdatacenters { #figure out all the vmfolders for all the nodes passed in
+    my %args=@_;
+    my $nodes=$args{nodes};
+    my $hyp=$args{hyp};
+    my %nondefaultdcs;
+    unless (defined $hyphash{$hyp}->{vmfolder}) {
+        $hyphash{$hyp}->{vmfolder} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'])->vmFolder);
+    }
+    foreach (@$nodes) {
+        if ($tablecfg{vm}->{$_}->[0]->{datacenter}) {
+            $nondefaultdcs{$tablecfg{vm}->{$_}->[0]->{datacenter}}->{$_}=1;
+        } else {
+            $vmhash{$_}->{vmfolder}=$hyphash{$hyp}->{vmfolder};
+        }
+    }
+    my $datacenter;
+    foreach $datacenter (keys %nondefaultdcs) {
+        my $vmfolder= $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'],filter=>{name=>$datacenter})->vmFolder,filter=>{name=>$datacenter});
+        foreach (keys %{$nondefaultdcs{$datacenter}}) {
+            $vmhash{$_}->{vmfolder}=$vmfolder;
+        }
     }
 }
 sub clone_vms_from_master {
@@ -1801,7 +1825,8 @@ sub clone_vms_from_master {
             template=>0,
             powerOn=>0
             );
-        my $task = $masterview->CloneVM_Task(folder=>$hyphash{$hyp}->{vmfolder},name=>$node,spec=>$clonespec);
+        my $vmfolder = $vmhash{$node}->{vmfolder};
+        my $task = $masterview->CloneVM_Task(folder=>$vmfolder,name=>$node,spec=>$clonespec);
         $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully cloned from '.$args{mastername}, mastername=>$args{mastername}, nodetypeent=>$nodetypeent,vment=>$vment };
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&clone_task_callback;
@@ -1846,7 +1871,8 @@ sub promote_vm_to_master {
         template=>1,
         powerOn=>0
         );
-    my $task = $nodeview->CloneVM_Task(folder=>$hyphash{$hyp}->{vmfolder},name=>$args{mastername},spec=>$clonespec);
+    my $vmfolder=$vmhash{$node}->{vmfolder};
+    my $task = $nodeview->CloneVM_Task(folder=>$vmfolder,name=>$args{mastername},spec=>$clonespec);
     $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully copied to '.$args{mastername}, mastername=>$args{mastername}, url=>$args{url} };
     $running_tasks{$task}->{task} = $task;
     $running_tasks{$task}->{callback} = \&promote_task_callback;
@@ -1901,7 +1927,7 @@ sub mkvms {
     unless (validate_datastore_prereqs($nodes,$hyp)) {
         return;
     }
-    $hyphash{$hyp}->{vmfolder} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'])->vmFolder);
+    sortoutdatacenters(nodes=>$nodes,hyp=>$hyp);
     $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
     my $cfg;
     foreach $node (@$nodes) {
@@ -1974,16 +2000,14 @@ sub register_vm {#Attempt to register existing instance of a VM
     unless (defined $hyphash{$hyp}->{datastoremap} or validate_datastore_prereqs([keys %{$hyphash{$hyp}->{nodes}}],$hyp)) {
         die "unexpected condition";
     }
-    unless (defined $hyphash{$hyp}->{vmfolder}) {
-        $hyphash{$hyp}->{vmfolder} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'])->vmFolder);
-    }
+    sortoutdatacenters(nodes=>[$node],hyp=>$hyp);
     unless (defined $hyphash{$hyp}->{pool}) {
         $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
     }
 
     # Try to add an existing VM to the machine folder
     my $success = eval {
-        $task = $hyphash{$hyp}->{vmfolder}->RegisterVM_Task(path=>getcfgdatastore($node,$hyphash{$hyp}->{datastoremap})." /$node/$node.vmx",name=>$node,pool=>$hyphash{$hyp}->{pool},asTemplate=>0);
+        $task = $vmhash{$node}->{vmfolder}->RegisterVM_Task(path=>getcfgdatastore($node,$hyphash{$hyp}->{datastoremap})." /$node/$node.vmx",name=>$node,pool=>$hyphash{$hyp}->{pool},asTemplate=>0);
     };
     # if we couldn't add it then it means it wasn't created yet.  So we create it.
     if ($@ or not $success) {
@@ -2086,7 +2110,7 @@ sub mknewvm {
         my $hyp=shift;
         my $otherargs=shift;
         my $cfg = build_cfgspec($node,$hyphash{$hyp}->{datastoremap},$hyphash{$hyp}->{nets},$disksize,$hyp,$otherargs);
-        my $task = $hyphash{$hyp}->{vmfolder}->CreateVM_Task(config=>$cfg,pool=>$hyphash{$hyp}->{pool},host=>$hyphash{$hyp}->{hostview});
+        my $task = $vmhash{$node}->{vmfolder}->CreateVM_Task(config=>$cfg,pool=>$hyphash{$hyp}->{pool},host=>$hyphash{$hyp}->{hostview});
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&mkvm_callback;
         $running_tasks{$task}->{hyp} = $hyp;
