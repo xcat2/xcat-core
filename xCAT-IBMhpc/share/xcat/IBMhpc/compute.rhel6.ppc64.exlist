@@ -1,0 +1,5 @@
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.rhel6.ppc64.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.exlist#
+

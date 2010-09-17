@@ -38,8 +38,9 @@ END
 
 #-- Uncomment the "cons" entry in /etc/inittab
 #cons:12345:respawn:/sbin/smart_agetty -L 38400 console
-TMP_inittab=`sed 's/\(#\)\(cons:12345.*\)$/\2/' $installroot/etc/inittab`
-echo "$TMP_inittab" > $installroot/etc/inittab
+#TMP_inittab=`sed 's/\(#\)\(cons:12345.*\)$/\2/' $installroot/etc/inittab`
+#echo "$TMP_inittab" > $installroot/etc/inittab
+echo "co:2345:respawn:/sbin/agetty -L 38400 console" >> $installroot/etc/inittab
 
 # Create initial copies of /etc/passwd and others in case they are needed
 # by other postscripts
