@@ -178,13 +178,13 @@ if (@ARGV > 0 and $needUpdateTable eq 1) {
     } else {
         $kernelver = $ref_linuximage_tab->{'kernelver'};
     }
-    if ($ndrivers) {
-        if ($ndrivers ne $ref_linuximage_tab->{'netdrivers'}) {
+    if ($netdriver) {
+        if ($netdriver ne $ref_linuximage_tab->{'netdrivers'}) {
             print "The netdrivers are different from the value in linuximage table, will update it\n";
-            $updates{'netdrivers'} = $ndrivers;
+            $updates{'netdrivers'} = $netdriver;
         }
     } else {
-        $ndrivers =  $ref_linuximage_tab->{'netdrivers'};
+        $netdriver =  $ref_linuximage_tab->{'netdrivers'};
     }
     if ($permission) {
         if ($permission ne $ref_linuximage_tab->{'permission'}) {

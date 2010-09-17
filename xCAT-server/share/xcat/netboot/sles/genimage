@@ -198,13 +198,13 @@ if (@ARGV > 0 and $needUpdateTable eq 1) {
         $kernelver = $ref_linuximage_tab->{'kernelver'};
     }
 
-    if ($ndrivers) {
-        if ($ndrivers ne $ref_linuximage_tab->{'netdrivers'}) {
+    if ($netdriver) {
+        if ($netdriver ne $ref_linuximage_tab->{'netdrivers'}) {
             print "The netdrivers are different from the value in linuximage table, will update it\n";
-            $updates{'netdrivers'} = $ndrivers;
+            $updates{'netdrivers'} = $netdriver;
         }
     } else {
-        $ndrivers = $ref_linuximage_tab->{'netdrivers'};
+        $netdriver = $ref_linuximage_tab->{'netdrivers'};
     }
     
     if ($permission) {
@@ -238,8 +238,7 @@ $updates{'rootimgdir'} = $destdir if ($needUpdateTable);
 
 $rootimg_dir="$destdir/rootimg";
 
-
-unless ($osver and $profile and $netdriver and $prinic) {
+unless ($osver and $profile) {
    print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -k <KERNELVER> -o <OSVER> -p <PROFILE> [-a <ARCH>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n";
    print '       genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-k <KERNELVER>] [-o <OSVER>] [-p <PROFILE>] [-a <ARCH>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]  <imagename>'."\n";
    print "       --permission is used for statelite only\n";
