@@ -32,6 +32,7 @@ our @ISA = 'xCAT::Common';
 my %hyphash; #A data structure to hold hypervisor-wide variables (i.e. the current resource pool, virtual machine folder, connection object
 my %vcenterhash; #A data structure to reflect the state of vcenter connectivity to hypervisors
 my %vmhash; #store per vm info of interest
+my %clusterhash;
 my %hypready; #A structure for hypervisor readiness to be tracked before proceeding to normal operations
 my %running_tasks; #A struct to track this processes
 my $output_handler; #Pointer to the function to drive results to client
@@ -116,6 +117,7 @@ sub preprocess_request {
 	my $extraargs = $request->{arg};
 	my @exargs=($request->{arg});	
 	my %hyp_hash = ();
+    my %cluster_hash=();
 
 # Get nodes from mp table and assign nodes to mp hash.
     my $passtab = xCAT::Table->new('passwd');
@@ -140,7 +142,7 @@ sub preprocess_request {
 		return;
 	}
 
-	my $vmtabhash = $vmtab->getNodesAttribs($noderange,['host']);
+	my $vmtabhash = $vmtab->getNodesAttribs($noderange,['host','migrationdest']);
 	foreach my $node (@$noderange){
         if ($command eq "rmhypervisor" or $command eq 'lsvm' or $command eq 'rshutdown') {
             $hyp_hash{$node}{nodes} = [$node];
@@ -148,8 +150,10 @@ sub preprocess_request {
         my $ent = $vmtabhash->{$node}->[0];
 		if(defined($ent->{host})) {
 			push @{$hyp_hash{$ent->{host}}{nodes}}, $node;
+		} elsif (defined($ent->{migrationdest})) {
+            $cluster_hash{$ent->{migrationdest}}->{nodes}->{$node}=1;
 		} else {
-			$callback->({data=>["no host defined for guest $node"]});
+			$callback->({data=>["no host or cluster defined for guest $node"]});
 			$request = {};
 			return;
 		}
@@ -179,7 +183,10 @@ sub preprocess_request {
         }
     }
     #TODO: per hypervisor table password lookup
-	my $sn = xCAT::Utils->get_ServiceNode(\@hyps, $service, "MN");
+    my @allnodes;
+    push @allnodes,@hyps;
+    push @allnodes,@$noderange;
+	my $sn = xCAT::Utils->get_ServiceNode(\@allnodes, $service, "MN");
     #vmtabhash was from when we had vm.host do double duty for hypervisor data
     #$vmtabhash = $vmtab->getNodesAttribs(\@hyps,['host']);
     #We now use hypervisor fields to be unambiguous
@@ -200,7 +207,9 @@ sub preprocess_request {
 		my @nodes=();
 		foreach (@$hyps1) { #This preserves the constructed data to avoid redundant table lookup
 			my $cfgdata;
-            if ($hyp_hash{$_}{nodes}) {
+            if (not $hyp_hash{$_}) { #a vm, skip it
+                next;
+            } elsif ($hyp_hash{$_}{nodes}) {
 			    push @nodes, @{$hyp_hash{$_}{nodes}};
                 $cfgdata = "[$_][".join(',',@{$hyp_hash{$_}{nodes}})."][$username][$password][$vusername][$vpassword]"; #TODO: not use vm.host?
             } else {
@@ -213,6 +222,16 @@ sub preprocess_request {
             }
 			push @moreinfo, $cfgdata; #"[$_][".join(',',@{$hyp_hash{$_}{nodes}})."][$username][$password]";
 		}
+        foreach (keys %cluster_hash) {
+            my $cluster;
+            my $vcenter;
+            if (/@/) {
+                ($cluster,$vcenter) = split /@/,$_,2;
+            } else {
+                die "TODO: implement default vcenter (for now, user, do vm.migratiodest=cluster".'@'."vcentername)";
+            }
+            push @moreinfo,"[CLUSTER:$_][".join(',',keys %{$cluster_hash{$_}->{nodes}}),"][$username][$password][$vusername][$vpassword][$vcenter]";
+        }
 		$reqcopy->{node} = \@nodes;
 		#print "nodes=@nodes\n";
 		$reqcopy->{moreinfo}=\@moreinfo;
@@ -292,6 +311,16 @@ sub process_request {
 		my @nodes=split(',', $2);
         my $username = $3;
         my $password = $4;
+        if ($hyp =~ /^CLUSTER:/) { #a cluster, not a host.
+            $hyp =~ s/^CLUSTER://;
+            $clusterhash{$hyp}->{vcenter}->{name} = $7;
+            $clusterhash{$hyp}->{vcenter}->{username} = $5;
+            $clusterhash{$hyp}->{vcenter}->{password} = $6;
+            foreach (@nodes) {
+                $clusterhash{$hyp}->{nodes}->{$_}=1;
+            }
+            next;
+        }
         $hyphash{$hyp}->{vcenter}->{name} = $7;
         $hyphash{$hyp}->{vcenter}->{username} = $5;
         $hyphash{$hyp}->{vcenter}->{password} = $6;
@@ -340,6 +369,26 @@ sub process_request {
     }
     my $hyp;
     my %needvcentervalidation;
+    my $cluster;
+    foreach $cluster (keys %clusterhash) {
+        my $vcenter = $clusterhash{$cluster}->{vcenter}->{name};
+        unless ($vcenterhash{$vcenter}->{conn}) {
+            eval {
+                $vcenterhash{$vcenter}->{conn} = Vim->new(service_url=>"https://$vcenter/sdk");
+                $vcenterhash{$vcenter}->{conn}->login(user_name => $clusterhash{$cluster}->{vcenter}->{username},
+                                                       password => $clusterhash{$cluster}->{vcenter}->{password});
+            };
+            if ($@) { 
+                 $vcenterhash{$vcenter}->{conn} = undef;
+                 xCAT::SvrUtils::sendmsg([1,"Unable to reach $vcenter vCenter server to manage cluster $cluster: $@"], $output_handler);
+                 next;
+            }
+            my $clusternode;
+        }
+        foreach my $clusternode (keys %{$clusterhash{$cluster}->{nodes}}) {
+            $vmhash{$clusternode}->{conn}=$vcenterhash{$vcenter}->{conn};
+        }
+    }
 	foreach $hyp (sort(keys %hyphash)){
 		#if($pid == 0){
         if ($viavcenter or (defined $tablecfg{hypervisor}->{$hyp}->[0]->{mgr} and not $tablecfg{hypervisor}->{$hyp}->[0]->{preferdirect})) {
@@ -361,6 +410,10 @@ sub process_request {
                       next;
                 }
             }
+            my $hypnode;
+            foreach $hypnode (keys %{$hyphash{$hyp}->{nodes}}) {
+                $vmhash{$hypnode}->{conn}=$vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{conn};
+            }
             $hyphash{$hyp}->{conn} = $vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{conn};
             $hyphash{$hyp}->{vcenter}->{conn} = $vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{conn};
             $needvcentervalidation{$hyp}=$vcenter;
@@ -372,9 +425,13 @@ sub process_request {
             }; 
             if ($@) {
 	       $hyphash{$hyp}->{conn} = undef;
-	       xCAT::SvrUtils::sendmsg([1,"Unable to reach $hyp to perform operation"], $output_handler);
+	       xCAT::SvrUtils::sendmsg([1,"Unable to reach $hyp to perform operation due to $@"], $output_handler);
                 $hypready{$hyp} = -1;
 	       next;
+            }
+            my $localnode;
+            foreach $localnode (keys %{$hyphash{$hyp}->{nodes}}) {
+                $vmhash{$localnode}->{conn}=$hyphash{$hyp}->{conn};
             }
               validate_licenses($hyp);
         }
@@ -416,14 +473,14 @@ sub process_request {
     } 
     do_cmd($command,@exargs);
     foreach (@badhypes) { delete $hyphash{$_}; }
-    foreach my $hyp (sort(keys %hyphash)){
-      $hyphash{$hyp}->{conn}->logout();
+    foreach my $vm (sort(keys %vmhash)){
+      $vmhash{$vm}->{conn}->logout();
     }
 }
 
 sub validate_licenses {
     my $hyp = shift;
-    my $conn = $hyphash{$hyp}->{conn};
+    my $conn = $hyphash{$hyp}->{conn}; #This can't possibly be called via a cluster stack, so hyphash is appropriate here
     unless ($tablecfg{prodkey}->{$hyp}) { #if no license specified, no-op
         return;
     }
@@ -483,7 +540,7 @@ sub inv {
   my $node = $args{node};
   my $hyp = $args{hyp};
   if (not defined $args{vmview}) { #attempt one refresh
-    $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
+    $args{vmview} = $vmhash{$node}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
     if (not defined $args{vmview}) { 
       xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $output_handler,$node);
       return;
@@ -531,7 +588,7 @@ sub chvm {
 	my $node = $args{node};
 	my $hyp = $args{hyp};
 	if (not defined $args{vmview}) { #attempt one refresh
-		$args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',
+		$args{vmview} = $vmhash{$node}->{conn}->find_entity_view(view_type => 'VirtualMachine',
 				properties=>['config.name','runtime.powerState'],
 				filter=>{name=>$node});
 	  if (not defined $args{vmview}) {
@@ -804,8 +861,13 @@ sub process_tasks {
             my $curcon;
             if (defined $running_tasks{$_}->{conn}) {
                 $curcon = $running_tasks{$_}->{conn};
+            } elsif ($running_tasks{$_}->{hyp}) {
+                $curcon = $hyphash{$running_tasks{$_}->{hyp}}->{conn}; 
+            } elsif ($running_tasks{$_}->{vm}) {
+                $curcon = $vmhash{$running_tasks{$_}->{vm}}->{conn}; 
             } else {
-                $curcon = $hyphash{$running_tasks{$_}->{hyp}}->{conn};
+                use Carp qw/confess/;
+                confess "This stack trace indicates a cluster unfriendly path";
             }
             my $curt = $curcon->get_view(mo_ref=>$running_tasks{$_}->{task});
             my $state = $curt->info->state->val;
@@ -1241,7 +1303,7 @@ sub rmvm {
     my $node = $args{node};
     my $hyp = $args{hyp};
     if (not defined $args{vmview}) { #attempt one refresh
-        $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
+        $args{vmview} = $vmhash{$node}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','runtime.powerState'],filter=>{name=>$node});
         if (not defined $args{vmview}) { 
             xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $output_handler,$node);
             return;
@@ -1262,6 +1324,7 @@ sub rmvm {
             $running_tasks{$task}->{task} = $task;
             $running_tasks{$task}->{callback} = \&retry_rmvm,
             $running_tasks{$task}->{hyp} = $args{hyp}; 
+            $running_tasks{$task}->{vm} = $node;
             $running_tasks{$task}->{data} = { node => $node, args=>\%args }; 
             return;
         } else {
@@ -1275,6 +1338,7 @@ sub rmvm {
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&generic_task_callback;
         $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
+        $running_tasks{$task}->{vm} = $node;
     } else {
         $task = $args{vmview}->UnregisterVM();
     }
@@ -1324,7 +1388,7 @@ sub power {
     my $hyp = $args{hyp};
     my $pretendop = $args{pretendop}; #to pretend a system was on for reset or boot when we have to turn it off internally for reconfig
     if (not defined $args{vmview}) { #attempt one refresh
-        $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','config.guestId','config.hardware.memoryMB','config.hardware.numCPU','runtime.powerState'],filter=>{name=>$node});
+        $args{vmview} = $vmhash{$node}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name','config.guestId','config.hardware.memoryMB','config.hardware.numCPU','runtime.powerState'],filter=>{name=>$node});
         #vmview not existing now is not an issue, this function
         #is designed to handle that and correct if reasonably possible
         #comes into play particularly in a stateless context
@@ -1351,6 +1415,7 @@ sub power {
                     $running_tasks{$task}->{task} = $task;
                     $running_tasks{$task}->{callback} = \&reconfig_callback;
                     $running_tasks{$task}->{hyp} = $args{hyp}; 
+                    $running_tasks{$task}->{vm} = $node;
                     $running_tasks{$task}->{data} = { node => $node, reconfig_fun=>\&power, reconfig_args=>\%args }; 
                 return;
                } elsif (grep /$subcmd/,qw/reset boot/) { #going to have to do a 'cycle' and present it up normally..
@@ -1359,6 +1424,7 @@ sub power {
                     $running_tasks{$task}->{task} = $task;
                     $running_tasks{$task}->{callback} = \&repower;
                     $running_tasks{$task}->{hyp} = $args{hyp}; 
+                    $running_tasks{$task}->{vm} = $node;
                     $running_tasks{$task}->{data} = { node => $node, power_args=>\%args}; 
                     return; #we have to wait
                }
@@ -1397,7 +1463,11 @@ sub power {
                         return; #We'll pick it up on the retry if it gets registered
                     } 
                     eval {
-                        $task = $args{vmview}->PowerOnVM_Task(host=>$hyphash{$hyp}->{hostview});
+                        if ($hyp) {
+                            $task = $args{vmview}->PowerOnVM_Task(host=>$hyphash{$hyp}->{hostview});
+                        } else {
+                            $task = $args{vmview}->PowerOnVM_Task(); #DRS may have it's way with me
+                        }
                     };
                     if ($@) {
                         xCAT::SvrUtils::sendmsg([1,":".$@], $output_handler,$node);
@@ -1406,6 +1476,7 @@ sub power {
                     $running_tasks{$task}->{task} = $task;
                     $running_tasks{$task}->{callback} = \&poweron_task_callback;
                     $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
+                    $running_tasks{$task}->{vm} = $node;
                     $running_tasks{$task}->{data} = { node => $node, successtext => $intent.'on', forceon=>$forceon };
                 } else {
                     xCAT::SvrUtils::sendmsg($currstat, $output_handler,$node);
@@ -1423,6 +1494,7 @@ sub power {
                     $running_tasks{$task}->{task} = $task;
                     $running_tasks{$task}->{callback} = \&generic_task_callback;
                     $running_tasks{$task}->{hyp} = $args{hyp}; 
+                    $running_tasks{$task}->{vm} = $node;
                     $running_tasks{$task}->{data} = { node => $node, successtext => 'off' }; 
                 } else {
                     xCAT::SvrUtils::sendmsg($currstat, $output_handler,$node);
@@ -1433,6 +1505,7 @@ sub power {
                     $running_tasks{$task}->{task} = $task;
                     $running_tasks{$task}->{callback} = \&generic_task_callback;
                     $running_tasks{$task}->{hyp} = $args{hyp}; 
+                    $running_tasks{$task}->{vm} = $node;
                     $running_tasks{$task}->{data} = { node => $node, successtext => 'suspend' }; 
                 } else {
                     xCAT::SvrUtils::sendmsg("off", $output_handler,$node);
@@ -1443,10 +1516,15 @@ sub power {
                     $running_tasks{$task}->{task} = $task;
                     $running_tasks{$task}->{callback} = \&generic_task_callback;
                     $running_tasks{$task}->{hyp} = $args{hyp}; 
+                    $running_tasks{$task}->{vm} = $node;
                     $running_tasks{$task}->{data} = { node => $node, successtext => $intent.'reset' }; 
                 } elsif ($args{pretendop}) { #It is off, but pretend it was on
                     eval {
-                        $task = $args{vmview}->PowerOnVM_Task(host=>$hyphash{$hyp}->{hostview});
+                        if ($hyp) {
+                            $task = $args{vmview}->PowerOnVM_Task(host=>$hyphash{$hyp}->{hostview});
+                        } else {
+                            $task = $args{vmview}->PowerOnVM_Task(); #allow DRS
+                        }
                     };
                     if ($@) {
                         xCAT::SvrUtils::sendmsg([1,":".$@], $output_handler,$node);
@@ -1455,6 +1533,7 @@ sub power {
                     $running_tasks{$task}->{task} = $task;
                     $running_tasks{$task}->{callback} = \&generic_task_callback;
                     $running_tasks{$task}->{hyp} = $args{hyp}; 
+                    $running_tasks{$task}->{vm} = $node;
                     $running_tasks{$task}->{data} = { node => $node, successtext => $intent.'reset' }; 
                 } else {
                     xCAT::SvrUtils::sendmsg($currstat, $output_handler,$node);
@@ -1471,9 +1550,15 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
     my $node;
     foreach $hyp (keys %hyphash) {
         if ($viavcenterbyhyp->{$hyp}) {
-    	    foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})){
+    	    foreach $node (keys %{$hyphash{$hyp}->{nodes}}){
                 $vcenterhash{$hyphash{$hyp}->{vcenter}->{name}}->{vms}->{$node}=1;
             }
+        }
+    }
+    my $cluster;
+    foreach $cluster (keys %clusterhash) {
+        foreach $node (keys %{$clusterhash{$cluster}->{nodes}}) {
+            $vcenterhash{$clusterhash{$cluster}->{vcenter}->{name}}->{vms}->{$node}=1;
         }
     }
     my $currentvcenter;
@@ -1487,6 +1572,7 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
     foreach $hyp (keys %hyphash) {
         if ($viavcenterbyhyp->{$hyp}) {
             if ($vcviews{$hyphash{$hyp}->{vcenter}->{name}}) { next; }
+            confess "I didn't expect this at all...\n"; #remove if hit, but want to see if this actually goes further..
             #$vcviews{$hyphash{$hyp}->{vcenter}->{name}} = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
             foreach (@{$vcviews{$hyphash{$hyp}->{vcenter}->{name}}}) {
                 my $node = $_->{'config.name'};
@@ -1519,30 +1605,52 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
             }
         }
     }
-    foreach $hyp (keys %hyphash) {
-        if ($viavcenterbyhyp->{$hyp}) { 
-            $vmviews= $vcviews{$hyphash{$hyp}->{vcenter}->{name}}
-        } else {
-            $vmviews = [];
-            my $node;
-    	    foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})){
-    		    push @{$vmviews},$hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>$properties,filter=>{'config.name'=>qr/^$node/});
+    my @entitylist;
+    push @entitylist,keys %hyphash;
+    push @entitylist,keys %clusterhash;
+    foreach my $entity (@entitylist) {
+        if ($hyphash{$entity}) {
+            $hyp=$entity; #save some retyping...
+            if ($viavcenterbyhyp->{$hyp}) { 
+                $vmviews= $vcviews{$hyphash{$hyp}->{vcenter}->{name}}
+            } else {
+                $vmviews = [];
+                my $node;
+        	    foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})){
+        		    push @{$vmviews},$hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>$properties,filter=>{'config.name'=>qr/^$node/});
+                }
+    		    #$vmviews = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
+    	    }
+            my %mgdvms; #sort into a hash for convenience
+            foreach (@$vmviews) {
+                 $mgdvms{$_->{'config.name'}} = $_;
             }
-		    #$vmviews = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties);
-	    }
-        my %mgdvms; #sort into a hash for convenience
-        foreach (@$vmviews) {
-         $mgdvms{$_->{'config.name'}} = $_;
-        }
-        my $node;
-    	foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})){
-            $function->(
-                node=>$node,
-                hyp=>$hyp,
-                vmview=>$mgdvms{$node},
-                exargs=>\@exargs
-            );
+            my $node;
+        	foreach $node (sort (keys %{$hyphash{$hyp}->{nodes}})){
+                $function->(
+                    node=>$node,
+                    hyp=>$hyp,
+                    vmview=>$mgdvms{$node},
+                    exargs=>\@exargs
+                );
             process_tasks; #check for tasks needing followup actions before the task is forgotten (VMWare's memory is fairly short at times
+        }
+        } else { #a cluster.
+                $vmviews= $vcviews{$clusterhash{$entity}->{vcenter}->{name}};
+                my %mgdvms; #sort into a hash for convenience
+                foreach (@$vmviews) {
+                     $mgdvms{$_->{'config.name'}} = $_;
+                }
+                my $node;
+                foreach $node (sort (keys %{$clusterhash{$entity}->{nodes}})){
+                $function->(
+                    node=>$node,
+                    cluster=>$entity,
+                    vm=>$node,
+                    vmview=>$mgdvms{$node},
+                    exargs=>\@exargs
+                    );
+            }
         }
     }
 }
@@ -1577,6 +1685,14 @@ sub generic_hyp_operation { #The general form of firing per-hypervisor requests 
 #               }
 #           }
 #        }
+    }
+    foreach $hyp (keys %clusterhash) { #clonevm, mkvm, rmigrate could land here in clustered mode with DRS/HA
+        process_tasks;
+        my @relevant_nodes = sort (keys %{$clusterhash{$hyp}->{nodes}});
+        unless (scalar @relevant_nodes) {
+            next;
+        }
+        $function->(nodes => \@relevant_nodes,cluster=>$hyp,exargs => \@exargs);
     }
 }
 
@@ -1683,6 +1799,7 @@ sub clonevms {
     my %args=@_;
     my $nodes = $args{nodes};
     my $hyp = $args{hyp};
+    my $cluster = $args{cluster};
     @ARGV = @{$args{exargs}}; #for getoptions;
     my $base;
     my $force;
@@ -1713,7 +1830,9 @@ sub clonevms {
         }
         return;
     }
-    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn});
+    if ($hyp) {
+        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn});
+    }
     my $newdatastores;
     my $mastername;
     my $url;
@@ -1748,34 +1867,51 @@ sub clonevms {
         $mastername=$1;
         $newdatastores->{$url}=[$nodes->[0]];
     }
-    unless (validate_datastore_prereqs($nodes,$hyp,$newdatastores)) {
-        return;
+    if ($hyp) {
+        unless (validate_datastore_prereqs($nodes,$hyp,$newdatastores)) {
+            return;
+        }
+    } else { #need to build datastore map for cluster
+        refreshclusterdatastoremap($cluster);
     }
-    sortoutdatacenters(nodes=>$nodes,hyp=>$hyp);
+    sortoutdatacenters(nodes=>$nodes,hyp=>$hyp,cluster=>$cluster);
     if ($target) {
-        return promote_vm_to_master(node=>$nodes->[0],target=>$target,force=>$force,detach=>$detach,hyp=>$hyp,url=>$url,mastername=>$mastername);
+        return promote_vm_to_master(node=>$nodes->[0],target=>$target,force=>$force,detach=>$detach,cluster=>$cluster,hyp=>$hyp,url=>$url,mastername=>$mastername);
     } elsif ($base) {
-        return clone_vms_from_master(nodes=>$nodes,base=>$base,detach=>$detach,hyp=>$hyp,mastername=>$base,masterent=>$masterref);
+        return clone_vms_from_master(nodes=>$nodes,base=>$base,detach=>$detach,cluster=>$cluster,hyp=>$hyp,mastername=>$base,masterent=>$masterref);
     }
 }
 sub sortoutdatacenters { #figure out all the vmfolders for all the nodes passed in
     my %args=@_;
     my $nodes=$args{nodes};
     my $hyp=$args{hyp};
+    my $cluster=$args{cluster};
     my %nondefaultdcs;
-    unless (defined $hyphash{$hyp}->{vmfolder}) {
-        $hyphash{$hyp}->{vmfolder} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'])->vmFolder);
+    my $deffolder;
+    my $conn;
+    if ($hyp) {
+        unless (defined $hyphash{$hyp}->{vmfolder}) {
+            $hyphash{$hyp}->{vmfolder} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'])->vmFolder);
+        }
+        $conn= $hyphash{$hyp}->{conn};
+        $deffolder=$hyphash{$hyp}->{vmfolder};
+    } else { #clustered
+        unless (defined $clusterhash{$cluster}->{vmfolder}) {
+            $clusterhash{$cluster}->{vmfolder} = $clusterhash{$cluster}->{conn}->get_view(mo_ref=>$clusterhash{$cluster}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'])->vmFolder);
+        }
+        $deffolder=$clusterhash{$cluster}->{vmfolder};
+        $conn= $clusterhash{$cluster}->{conn};
     }
     foreach (@$nodes) {
         if ($tablecfg{vm}->{$_}->[0]->{datacenter}) {
             $nondefaultdcs{$tablecfg{vm}->{$_}->[0]->{datacenter}}->{$_}=1;
         } else {
-            $vmhash{$_}->{vmfolder}=$hyphash{$hyp}->{vmfolder};
+            $vmhash{$_}->{vmfolder}=$deffolder;
         }
     }
     my $datacenter;
     foreach $datacenter (keys %nondefaultdcs) {
-        my $vmfolder= $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'],filter=>{name=>$datacenter})->vmFolder,filter=>{name=>$datacenter});
+        my $vmfolder= $conn->get_view(mo_ref=>$conn->find_entity_view(view_type=>'Datacenter',properties=>['vmFolder'],filter=>{name=>$datacenter})->vmFolder,filter=>{name=>$datacenter});
         foreach (keys %{$nondefaultdcs{$datacenter}}) {
             $vmhash{$_}->{vmfolder}=$vmfolder;
         }
@@ -1785,10 +1921,17 @@ sub clone_vms_from_master {
     my %args = @_;
     my $mastername=$args{mastername};
     my $hyp = $args{hyp};
+    my $cluster=$args{cluster};
     my $regex=qr/^$mastername\z/;
     my @nodes=@{$args{nodes}};
     my $node;
-    my $masterviews =  $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
+    my $conn;
+    if ($hyp) {
+        $conn=$hyphash{$hyp}->{conn};
+    } else {
+        $conn=$clusterhash{$cluster}->{conn};
+    }
+    my $masterviews =  $conn->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
     if (scalar(@$masterviews) != 1) { 
         foreach $node (@nodes) {
             xCAT::SvrUtils::sendmsg([1,"Unable to find master $mastername in VMWare infrastructure"], $output_handler,$node);
@@ -1812,13 +1955,27 @@ sub clone_vms_from_master {
             $destination=$masterent->{storage};
             $vment->{storage}=$destination;
         }
-        unless (defined $hyphash{$hyp}->{pool}) {
-            $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
+        my $pool;
+        my $dstore;
+        if ($hyp) {
+          unless (defined $hyphash{$hyp}->{pool}) {
+                $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
+            }
+            $pool=$hyphash{$hyp}->{pool};
+            $dstore=$hyphash{$hyp}->{datastorerefmap}->{$destination},
+        } else {#clustered...
+            unless (defined $clusterhash{$cluster}->{pool}) {
+                my $cview = get_clusterview(clustname=>$cluster,conn=>$clusterhash{$cluster}->{conn});
+                $clusterhash{$cluster}->{pool}=$cview->resourcePool;
+            }
+            $pool=$clusterhash{$cluster}->{pool};
+            $dstore=$clusterhash{$cluster}->{datastorerefmap}->{$destination},
         }
+
         my $relocatespec = VirtualMachineRelocateSpec->new(
-           datastore=>$hyphash{$hyp}->{datastorerefmap}->{$destination},
+           datastore=>$dstore, #$hyphash{$hyp}->{datastorerefmap}->{$destination},
            #diskMoveType=>"createNewChildDiskBacking", #fyi, requires a snapshot, which isn't compatible with templates, moveChildMostDiskBacking would potentially be fine, but either way is ha incopmatible and limited to 8, arbitrary limitations hard to work around...
-           pool=>$hyphash{$hyp}->{pool},
+           pool=>$pool,
         );
         my $clonespec = VirtualMachineCloneSpec->new(
             location=>$relocatespec,
@@ -1831,6 +1988,7 @@ sub clone_vms_from_master {
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&clone_task_callback;
         $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
+        $running_tasks{$task}->{vm} = $node; #$hyp_conns->{$hyp};
     }
 }
 
@@ -1855,16 +2013,28 @@ sub promote_vm_to_master {
     my %args = @_;
     my $node=$args{node};
     my $hyp=$args{hyp};
+    my $cluster=$args{cluster};
     my $regex=qr/^$node(\z|\.)/;
-    my $nodeviews = $hyphash{$hyp}->{conn}->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
+    my $conn;
+    if ($hyp) {
+        $conn=$hyphash{$hyp}->{conn};
+    } else {
+        $conn=$clusterhash{$cluster}->{conn};
+    }
+    my $nodeviews = $conn->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
     if (scalar(@$nodeviews) != 1) {
         xCAT::SvrUtils::sendmsg([1,"Cannot find $node in VMWare infrastructure"], $output_handler,$node);
         return;
     }
     my $nodeview = shift @$nodeviews;
-       print Dumper($hyphash{$hyp}->{datastorerefmap});
+    my $dstore;
+    if ($hyp) {
+       $dstore=$hyphash{$hyp}->{datastorerefmap}->{$args{url}},
+    } else {
+       $dstore=$clusterhash{$cluster}->{datastorerefmap}->{$args{url}},
+    }
     my $relocatespec = VirtualMachineRelocateSpec->new(
-       datastore=>$hyphash{$hyp}->{datastorerefmap}->{$args{url}},
+       datastore=>$dstore,
     );
     my $clonespec = VirtualMachineCloneSpec->new(
         location=>$relocatespec,
@@ -1877,6 +2047,7 @@ sub promote_vm_to_master {
     $running_tasks{$task}->{task} = $task;
     $running_tasks{$task}->{callback} = \&promote_task_callback;
     $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
+    $running_tasks{$task}->{vm}=$node;
 }
 sub promote_task_callback {
     my $task = shift;
@@ -1909,6 +2080,7 @@ sub promote_task_callback {
     }
 }
 sub mkvms {
+    #TODO: DRS friendlyness..
     my %args = @_;
     my $nodes = $args{nodes};
     my $hyp = $args{hyp};
@@ -1952,7 +2124,7 @@ sub setboot {
     my $node = $args{node};
     my $hyp = $args{hyp};
     if (not defined $args{vmview}) { #attempt one refresh
-        $args{vmview} = $hyphash{$hyp}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name'],filter=>{name=>$node});
+        $args{vmview} = $vmhash{$node}->{conn}->find_entity_view(view_type => 'VirtualMachine',properties=>['config.name'],filter=>{name=>$node});
         if (not defined $args{vmview}) { 
             xCAT::SvrUtils::sendmsg([1,"VM does not appear to exist"], $output_handler,$node);
             return;
@@ -2110,7 +2282,12 @@ sub mknewvm {
         my $hyp=shift;
         my $otherargs=shift;
         my $cfg = build_cfgspec($node,$hyphash{$hyp}->{datastoremap},$hyphash{$hyp}->{nets},$disksize,$hyp,$otherargs);
-        my $task = $vmhash{$node}->{vmfolder}->CreateVM_Task(config=>$cfg,pool=>$hyphash{$hyp}->{pool},host=>$hyphash{$hyp}->{hostview});
+        my $task;
+        if ($hyp) {
+          $task = $vmhash{$node}->{vmfolder}->CreateVM_Task(config=>$cfg,pool=>$hyphash{$hyp}->{pool},host=>$hyphash{$hyp}->{hostview});
+        } else {
+          $task = $vmhash{$node}->{vmfolder}->CreateVM_Task(config=>$cfg,pool=>$hyphash{$hyp}->{pool}); #drs away
+        }
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&mkvm_callback;
         $running_tasks{$task}->{hyp} = $hyp;
@@ -2569,7 +2746,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
         	$hyphash{$hyp}->{conn}->login(user_name=>$hyphash{$hyp}->{username},password=>$hyphash{$hyp}->{password});
         };
         if ($@) {
-    		xCAT::SvrUtils::sendmsg([1,": Failed to communicate with $hyp"], $output_handler);
+    		xCAT::SvrUtils::sendmsg([1,": Failed to communicate with $hyp due to $@"], $output_handler);
                      $hyphash{$hyp}->{conn} = undef;
                     return "failed";
         }
@@ -2713,7 +2890,7 @@ sub get_switchname_for_portdesc {
 
     my $hostview = $hyphash{$hyp}->{hostview};
     unless ($hostview) {
-        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
+        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']);  #clustered can't run here, hyphash conn reference good
         $hostview = $hyphash{$hyp}->{hostview};
     }
     foreach (@{$hostview->config->network->pnic}) {
@@ -2770,7 +2947,7 @@ sub create_vswitch {
         numPorts=>64
     );
     my $hostview = $hyphash{$hyp}->{hostview};
-    my $netman=$hyphash{$hyp}->{conn}->get_view(mo_ref=>$hostview->configManager->networkSystem);
+    my $netman=$hyphash{$hyp}->{conn}->get_view(mo_ref=>$hostview->configManager->networkSystem); #can't run in clustered mode, fine path..
     $netman->AddVirtualSwitch(
         vswitchName=>$description,
         spec=>$vswspec
@@ -2781,7 +2958,7 @@ sub create_vswitch {
 sub validate_network_prereqs {
     my $nodes = shift;
     my $hyp  = shift;
-    my $hypconn = $hyphash{$hyp}->{conn};
+    my $hypconn = $hyphash{$hyp}->{conn}; #this function can't work in clustered mode anyway, so this is appropriote.
     my $hostview = $hyphash{$hyp}->{hostview};
     if ($hostview) {
         $hostview->update_view_data(); #pull in changes induced by previous activity
@@ -2854,6 +3031,35 @@ sub validate_network_prereqs {
     }
     return 1;
 
+}
+sub refreshclusterdatastoremap {
+    my $cluster = shift;
+    my $conn=$clusterhash{$cluster}->{conn};
+    my $cview = get_clusterview(clustname=>$cluster,conn=>$conn);
+    if (defined $cview->{datastore}) {
+        foreach (@{$cview->datastore}) {
+             my $dsv = $conn->get_view(mo_ref=>$_);
+             if (defined $dsv->info->{nas}) {
+                 if ($dsv->info->nas->type eq 'NFS') {
+                     my $mnthost = inet_aton($dsv->info->nas->remoteHost);
+                     if ($mnthost) {
+                         $mnthost = inet_ntoa($mnthost);
+                     } else {
+                         $mnthost = $dsv->info->nas->remoteHost;
+                         xCAT::SvrUtils::sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"], $output_handler);
+                     }
+                     $clusterhash{$cluster}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
+                     $clusterhash{$cluster}->{datastorerefmap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$_;
+                } #TODO: care about SMB
+            }elsif(defined $dsv->info->{vmfs}){
+                my $name = $dsv->info->vmfs->name;
+                $clusterhash{$cluster}->{datastoremap}->{"vmfs://".$name} = $dsv->info->name;     
+                $clusterhash{$cluster}->{datasotrerefmap}->{"vmfs://".$name} = $_;
+            }
+        }
+    }
+    #that's... about it... not doing any of the fancy mounting and stuff, if you do it cluster style, you are on your own.  It's simply too terrifying to try to fixup
+    #a whole cluster instead of chasing one host, a whole lot slower.  One would hope vmware would've done this, but they don't
 }
 sub validate_datastore_prereqs {
     my $nodes = shift;
