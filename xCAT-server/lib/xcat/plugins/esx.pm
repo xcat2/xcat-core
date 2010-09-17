@@ -2155,12 +2155,12 @@ sub build_cfgspec {
     my $ncpus;
     my $updatehash;
     if ($otherargs->{memory}) {
-        $memory=$otherargs->{memory};
+        $memory=getUnits($otherargs->{memory},"M",1048576);
         if ($tablecfg{vm}->{$node}->[0]->{memory}) {
             $updatehash->{memory}=$memory;
         }
     } elsif ($tablecfg{vm}->{$node}->[0]->{memory}) {
-        $memory = getUnits($tablecfg{vm}->{$node}->[0]->{memory},"M",1048576) 
+        $memory = getUnits($tablecfg{vm}->{$node}->[0]->{memory},"M",1048576);
     } else {
         $memory = 512;
     }
@@ -3061,7 +3061,7 @@ sub build_more_info{
     if (defined($ent->{mpa})) { push @{$mpa_hash{$ent->{mpa}}{nodes}}, $node;}
     else {
       $callback->({data=>["no mpa defined for node $node"]});
-      return @moreinfo;;
+      return @moreinfo;
     }
     if (defined($ent->{id})) { push @{$mpa_hash{$ent->{mpa}}{ids}}, $ent->{id};}
     else { push @{$mpa_hash{$ent->{mpa}}{ids}}, "";}
