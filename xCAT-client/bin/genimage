@@ -36,6 +36,7 @@ my $match = 0;
 my $color = 0;
 my $imagename;
 my $arch;
+my $permission;
 
 #-----------------------------------------------------------------------------
 
@@ -168,7 +169,7 @@ if ($imagename) {
 	print "Cannot find image \'$imagename\' from the osimage table.\n";
 	exit 1;
     }
-    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'netdrivers', 'kernelver');
+    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'nodebootif', 'otherifce', 'netdrivers', 'kernelver', 'permission');
     if (!$ref1) {
 	print "Cannot find $imagename from the linuximage table\n";
 	exit 1;
@@ -186,6 +187,9 @@ if ($imagename) {
 
     $drivers=$ref1->{'netdrivers'};
     $kernel=$ref1->{'kernelver'};
+    $interface=$ref1->{'nodebootif'};
+    $otherInterfaces=$ref1->{'otherifce'};
+    $permission=$ref1->{'permission'};
 } 
 
 
@@ -204,7 +208,7 @@ unless(-d $installdir){
     exit 1;	
 }
 
-unless($os){
+if ((!$imagename) && (!$os)){
     my @dircontents = `ls $installdir`;
     chomp(@dircontents);
     foreach (@dircontents) {
@@ -282,7 +286,7 @@ unless(-d $profDir){
     exit 1;
 }
 
-unless($profile){
+if ((!$imagename) && (!$profile)){
     my $profDir2 = "$installdir/custom/netboot/$osfamily";
     my @proList = `ls $profDir/*.pkglist`;
     if (-d $profDir2) {
@@ -334,7 +338,7 @@ print  "  Profile: $profile\n";
 $color && print  color("reset");
 
 # get the interface
-unless($interface){
+if ((!$imagename) && (!$interface)){
     while(1){
 	print "Which network interface do you want the image to boot from? [";
 	print color("bold"), "eth0" ,color("reset");
@@ -368,7 +372,7 @@ $color && print color("reset");
 
 
 # get drivers
-unless($drivers){
+if ((!$imagename) && (!$drivers)) {
     while(1){
 	print "Which network drivers will you need? (press enter if you're not sure) ";
 	print color("bold"), "\n[igb,e1000e,e1000,bnx2,tg3] ", color("reset");
@@ -400,8 +404,8 @@ $color && print color("cyan");
 print  "  Network drivers: $drivers\n";
 $color && print  color("reset");
     
-# get other interfaces
-unless($otherInterfaces){
+# get other interfac
+if ((!$imagename) && (!$otherInterfaces)) {
     my $first=1;
     while(1){
         if ($first) {
@@ -438,7 +442,7 @@ if($otherInterfaces){
 }   
 
 # get kernel info 
-unless($kernel){
+if ((!$imagename) && (!$kernel)) {
     while(1){
 	print "Which kernel do you want to use? [";
 	print color("bold"), "default" , color("reset");
@@ -480,17 +484,17 @@ if($kernel){
 print "Generating image:\n";
 my $cmd;
 if ($imagename) {
-    $cmd = "./genimage -i $interface -n $drivers $imagename";
+    $cmd = "./genimage $imagename";
 } else {
     $cmd = "./genimage -i $interface -n $drivers -o $os -p $profile ";
-}
 
-if ($kernel) {
-    $cmd .= " -k $kernel";
-}
+    if ($kernel) {
+	$cmd .= " -k $kernel";
+    }
 
-if($otherInterfaces){
-    $cmd .= " -r $otherInterfaces";
+    if($otherInterfaces){
+	$cmd .= " -r $otherInterfaces";
+    }
 }
 
 $color && print color("cyan");
