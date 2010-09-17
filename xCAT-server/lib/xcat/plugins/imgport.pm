@@ -249,7 +249,7 @@ sub get_image_info {
 	}
 	
         #from linuximage table
-	(my $attrs1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'exlist', 'postinstall', 'rootimgdir', 'netdrivers', 'kernelver');
+	(my $attrs1) = $linuximagetab->getAttribs({imagename => $imagename}, 'template', 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'exlist', 'postinstall', 'rootimgdir', 'nodebootif', 'otherifce', 'netdrivers', 'kernelver');
 	if (!$attrs1) {
 		$callback->({error=>["Cannot find image \'$imagename\' from the linuximage table."],errorcode=>[1]});
 		return 0;
@@ -1055,6 +1055,12 @@ sub set_config {
 	};
         if ($data->{kernelver}) {
 	    $keyhash{kernelver} = $data->{kernelver};
+	};
+        if ($data->{nodebootif}) {
+	    $keyhash{nodebootif} = $data->{nodebootif};
+	};
+        if ($data->{otherifce}) {
+	    $keyhash{otherifce} = $data->{otherifce};
 	};
         $linuxtab->setAttribs({imagename => $osimage }, \%keyhash );
         $linuxtab->commit;
