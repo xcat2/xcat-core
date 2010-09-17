@@ -83,7 +83,15 @@ sub mknetboot
         $statetab = xCAT::Table->new('statelite', -create=>1);
         $stateHash = $statetab->getNodesAttribs(\@nodes, ['statemnt']);
     }
-   
+
+    # TODO: following the redhat change, get the necessary attributes before the next foreach
+    # get the mac addresses for all the nodes
+    my $mactab = xCAT::Table->new('mac');
+    my $machash = $mactab->getNodesAttribs(\@nodes, ['interface', 'mac']);
+
+    my $restab = xCAT::Table->new('noderes');
+    my $reshash = $restab->getNodesAttribs(\@nodes, ['primarynic', 'tftpserver', 'xcatmaster', 'nfsserver', 'nfsdir', 'installdir']);
+
     my %donetftp=();
     foreach my $node (@nodes)
     {
@@ -91,6 +99,8 @@ sub mknetboot
         my $arch;
         my $profile;
         my $rootimgdir;
+        my $nodebootif; # nodebootif will be used if noderes.installnic is not set
+        my $installnic; # the noderes.installnic value
 	
 	    my $ent= $ntents->{$node}->[0];
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
@@ -109,10 +119,13 @@ sub mknetboot
 		            if (!$linuximagetab) {
 			            $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
 		            }
-		            (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir');
+		            (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif');
 		            if (($ref1) && ($ref1->{'rootimgdir'})) {
 			            $img_hash{$imagename}->{rootimgdir}=$ref1->{'rootimgdir'};
 		            }
+                    if (($ref1) && ($ref1->{'nodebootif'})) {
+                        $img_hash{$imagename}->{nodebootif} = $ref1->{'nodebootif'};
+                    }
 		        } else {
 		            $callback->(
 			            {error     => ["The os image $imagename does not exists on the osimage table for $node"],
@@ -125,9 +138,9 @@ sub mknetboot
 	        $arch  = $ph->{osarch};
 	        $profile = $ph->{profile};
 	
-	        $rootimgdir=$ph->{rootimgdir};
-	        if (!$rootimgdir) {
-		        $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
+	        $rootimgdir = $ph->{rootimgdir};
+	        unless ($rootimgdir) {
+		        $rootimgdir = "$installroot/netboot/$osver/$arch/$profile";
 	        }
 	    }
 	    else {
@@ -153,7 +166,7 @@ sub mknetboot
         if ($osver =~ /sles.*/)
         {
             $platform = "sles";
-            #TODO: should get the $pkgdir value from the linuximage table
+            # TODO: should get the $pkgdir value from the linuximage table
             $pkgdir = "$installroot/$osver/$arch";
         }elsif($osver =~ /suse.*/){
             $platform = "sles";
@@ -164,65 +177,72 @@ sub mknetboot
         {
             $suffix = 'sfs';
         }
-        if (-r "$rootimgdir/rootimg.nfs")
-        {
-            $suffix = 'nfs';
-        }
         #statelite images are not packed
-        unless (
-                (
-                    -r "$rootimgdir/rootimg.gz"
-                 or -r "$rootimgdir/rootimg.sfs"
-                 or -r "$rootimgdir/rootimg.nfs"
-                 or $statelite
-                )
-                and -r "$rootimgdir/kernel"
-                and -r "$rootimgdir/initrd.gz"
-          )
-        {
-            if($statelite) {
-                # TODO: maybe the $osver-$arch-statelite-$profile record doesn't exist in osimage, but it the statelite rootimg can exist
-                $callback->({error=> ["$node: statelite image $osver-$arch-statelite-$profile doesn't exist; or kernel/initrd.gz doesn't exist"], errorcode => [1]});
-            } else {
-                $callback->(
-                {
-                 error => [
-                     "No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (i.e.  packimage -o $osver -p $profile -a $arch"
-                 ],
-                 errorcode => [1]
-                }
-                );
+
+        if ($statelite) {
+            unless ( -r "$rootimgdir/kernel" and -r "$rootimgdir/initrd-statelite.gz") {
+                $callback->({
+                    error=>[qq{Did you run "genimage" before running "liteimg"? kernel or initrd-statelite.gz cannot be found}],
+                    errorcode => [1]
+                });
+                next;
             }
-            next;
+        } else {
+            unless ( -r "$rootimgdir/kernel" and -r "$rootimgdir/initrd-stateless.gz" ) {
+                $callback->({
+                    error=>[qq{Did you run "genimage" before running "packimage"? kernel or initrd-stateless.gz cannot be found}],
+                    errorcode=>[1]
+                });
+                next;
+            }
+
+            unless ( -r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.sfs" ) {
+                $callback->({
+                    error=>[qq{No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage before nodeset}],
+                    errorcode=>[1]
+                });
+                next;
+            }
         }
 
         mkpath("/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
 
         #TODO: only copy if newer...
         unless ($donetftp{$osver,$arch,$profile}) {
-        copy("$rootimgdir/kernel",
-             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
-        copy("$rootimgdir/initrd.gz",
-             "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            copy("$rootimgdir/kernel", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            if ($statelite) {
+                copy("$rootimgdir/initrd-statelite.gz", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            } else {
+                copy("$rootimgdir/initrd-stateless.gz", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+            }
             $donetftp{$osver,$arch,$profile} = 1;
         }
-        unless (    -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel"
-                and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd.gz")
-        {
-            $callback->(
-                {
-                 error => [
-                     "Copying to /$tftpdir/xcat/netboot/$osver/$arch/$profile failed"
-                 ],
-                 errorcode => [1]
-                }
-                );
-            next;
+
+        if ($statelite) {
+            unless ( -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" 
+                    and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz") {
+                $callback->({
+                    error=>[qq{copying to /$tftpdir/xcat/netboot/$osver/$arch/$profile failed}],
+                    errorcode=>[1]
+                });
+                next;
+            }
+        } else {
+            unless ( -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel" 
+                    and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz") {
+                $callback->({
+                    error=>[qq{copying to /$tftpdir/xcat/netboot/$osver/$arch/$profile failed}],
+                    errorcode=>[1]
+                });
+                next;
+            }
         }
+
+        # TODO: move the table operations out of the foreach loop
         my $restab = xCAT::Table->new('noderes');
         my $bptab  = xCAT::Table->new('bootparams',-create=>1);
         my $hmtab  = xCAT::Table->new('nodehm');
-        $ent    = $restab->getNodeAttribs($node, ['primarynic']);
+        $ent    = $restab->getNodeAttribs($node, ['primarynic', 'installnic']);
         my $sent   =
           $hmtab->getNodeAttribs($node,
                                  ['serialport', 'serialspeed', 'serialflow']);
@@ -281,12 +301,7 @@ sub mknetboot
             next;
         }
         my $kcmdline;
-        if ($suffix eq "nfs")
-        {
-            $kcmdline =
-              "imgurl=nfs://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg ";
-        }
-        elsif ($statelite) 
+        if ($statelite) 
         {
             # get entry for nfs root if it exists;
             # have to get nfssvr, nfsdir and xcatmaster from noderes table
@@ -329,9 +344,6 @@ sub mknetboot
             $kcmdline .= $statemnt . " ";
             # get "xcatmaster" value from the "noderes" table
             
-            $kcmdline .=
-                "XCAT=$xcatmaster:$xcatdport ";
-
             #BEGIN service node 
             my $isSV = xCAT::Utils->isServiceNode();
             my $res = xCAT::Utils->runcmd("hostname", 0);
@@ -352,6 +364,32 @@ sub mknetboot
             $kcmdline =
               "imgurl=http://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg.$suffix ";
         }
+        $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
+
+        # add the kernel-booting parameter: netdev=<eth0>, or BOOTIF=<mac>
+        my $netdev = "";
+        my $mac = $machash->{$node}->[0]->{mac};
+
+        if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic}) {
+            if ($reshash->{$node}->[0]->{installnic} ne "mac") {
+                $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{installnic} . " ";
+            }
+        } elsif ($nodebootif) {
+            $kcmdline .=  "netdev=" . $nodebootif . " ";
+        } elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic}) {
+            $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
+        } else {
+            if ($mac) {
+                $kcmdline .=  "BOOTIF=" . $mac . " ";
+            } else {
+                $callback->({
+                    error=>[qq{"cannot get the mac address for $node in mac table"}],
+                    errorcode=>[1]
+                });
+            }
+        }
+
+
         if (defined $sent->{serialport})
         {
 
@@ -375,11 +413,14 @@ sub mknetboot
                 $kcmdline .= "n8r";
             }
         }
+
+        my $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
+        $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz" if ($statelite);
         $bptab->setNodeAttribs(
                       $node,
                       {
                        kernel => "xcat/netboot/$osver/$arch/$profile/kernel",
-                       initrd => "xcat/netboot/$osver/$arch/$profile/initrd.gz",
+                       initrd => $initrdstr,
                        kcmdline => $kcmdline
                       }
                       );

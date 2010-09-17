@@ -367,11 +367,9 @@ sub mergeArrays {
 		}
 	}elsif($type =~ /file|image/){
 		foreach(@$arr){
-			if($_->{file} eq ''){ next; }
+			next if($_->{file} eq '');
 			my $o = $_->{options};
-			if(!$o){
-				$o = "tmpfs,rw";
-			}
+            $o = "bind" unless ($o);
 			# TODO: put some logic in here to make sure that ro is alone.
 			# if type is ro and con, then this is wrong silly!
 			#if($p eq "ro" and $t eq "con"){

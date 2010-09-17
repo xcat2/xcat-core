@@ -222,19 +222,23 @@ sub process_request {
     foreach my $entry (keys %hashNew) {
         my @tmp = split (/\s+/, $entry);
         if ($hashNew{$entry}) {
+            if ( $tmp[0] eq "ro"  or $tmp[0] eq "con") {
+                $callback->({error=>[qq{the parent directory should not be with "ro" or "con" as its option}], errorcode=>[1]});
+                return;
+            }
             foreach my $child ( @{$hashNew{$entry}} ) {
                 my @tmpc = split (/\s+/, $child);
                 my $f = $tmp[1];
                 my $fc = $tmpc[1];
-                if ($tmp[0] =~ m/bind/ && $tmpc[0] !~ m/bind/) {
-                    $callback->({error=>["$fc should have bind options like $f "], errorcode=> [ 1]});
+                if ( ($tmp[0] eq "tmpfs,rw") and ( $tmpc[0] ne "tmpfs,rw"  or $tmpc[0] ne "ro") ) {
+                    $callback->({error=>[qq{$fc can only use "tmpfs,rw" or "ro" as its option based on the option of $f}], errorcode=> [ 1]});
                     return;
                 }
-                if ($tmp[0] =~ m/tmpfs/ && $tmpc[0] =~ m/bind/) {
-                    $callback->({error=>["$fc shouldnot use bind options "], errorcode=> [ 1]});
+                if ( ($tmp[0] ne  "tmpfs,rw") and ($tmpc[0] eq "tmpfs,rw" or $tmpc[0] eq "ro") ) {
+                    $callback->({error=>[qq{$fc shouldnot use "tmpfs,rw" options }], errorcode=> [ 1]});
                     return;
                 }
-                if ($tmp[0] =~ m/persistent/ && $tmpc[0] !~ m/persistent/) {
+                if ( ($tmp[0] eq  qq{persistent}) and ($tmpc[0] ne qq{persistent}) ) {
                     $callback->({error=>["$fc should have persistent option like $f "], errorcode=> [ 1]});
                     return;
                 }
@@ -283,7 +287,7 @@ sub process_request {
             }
         }
 
-        unless ($entry[0] eq $oldentry[0]) {
+        unless ($entry[1] eq $oldentry[0]) {
             recoverFiles($rootimg_dir, \@oldentry, $callback);
             if ($hashSaved{$line}) {
                 $verbose && $callback->({info=>["$f has sub items in the litefile table."]});
@@ -293,7 +297,6 @@ sub process_request {
                     my @tmpc = split (/\s+/, $child);
                     my $name = $tmpc[1];
                     my @newentries = grep /\s+$name$/, @{listNew};
-                    my @entry;
 
                     my $destf = $rootimg_dir . $name;
                     my $srcf = $rootimg_dir . "/.statebackup" . $name;
@@ -324,7 +327,7 @@ sub process_request {
                 if (scalar @newentries == 1) {
                     @entry = split(/\s+/, $newentries[0]);
                 }
-                unless($tmpc[0] eq $entry[0]) {
+                unless($tmpc[0] eq $entry[1]) {
                     recoverFiles($rootimg_dir, \@tmpc, $callback);
                 }
             }
@@ -343,43 +346,8 @@ sub process_request {
         print SAVED "$line\n";
     }
     close SAVED;
-    
-=head3
-    # then the @synclist
-    # We need to consider the characteristics of the file if the option is "persistent,bind" or "bind"
-	my @files;
-    my @bindedFiles;
-	foreach my $line (@synclist){
-		foreach (@{$line}){
-            my @entry = split(/\s+/, $_);
-            # $entry[0] => imgname or nodename
-            # $entry[1] => option value
-            # $entry[2] => file/directory name
-            my $f = $entry[2];
-            if($entry[1] =~ m/bind/) {
-                if($f =~ /^\//) {
-                    push @bindedFiles, $f;
-                }else {
-                    # make sure each file begins with "/"
-                    $callback->({error=>["$f in litefile does not begin with absolute path!  Need a '/' in the beginning"],errorcode=>[1]});
-                    return;
-                }
-            } else {
-			    if($f =~ /^\//){
-				    push @files, $f;
-			    }else{
-				    # make sure each file begins with "/"
-				    $callback->({error=>["$f in litefile does not begin with absolute path!  Need a '/' in the beginning"],errorcode=>[1]});
-				    return;
-			    }
-            }
-		}
-	}
-	
-	liteMe($rootimg_dir,\@files, \@bindedFiles, $callback);
-=cut
 
-    liteMeNew($rootimg_dir, \%hashNew, $callback);
+    liteMe($rootimg_dir, \%hashNew, $callback);
 
     # now stick the rc file in:
     # this is actually a pre-rc file because it gets run before the node boots up all the way.
@@ -392,7 +360,7 @@ sub process_request {
 
 }
 
-sub liteMeNew {
+sub liteMe {
     my $rootimg_dir = shift;
     my $hashNewRef = shift;
     my $callback = shift;
@@ -419,184 +387,6 @@ sub liteMeNew {
     }
 
     # end loop, synclist should now all be in place.
-}
-
-
-sub liteMe {
-	# Arg 1:  root image dir: /install/netboot/centos5.3/x86_64/compute/rootimg
-	my $rootimg_dir = shift; 
-	my $files = shift;
-    my $bindedFiles = shift;
-	# Arg 2: callback ref to make comments...
-	my $callback = shift;	
-	unless(-d $rootimg_dir){
-		$callback->({error=>["no rootimage dir"],errorcode=>[1]});
-		return;
-	}
-	# snapshot directory for tmpfs and persistent data.	
-	$callback->({info=>["creating $rootimg_dir/$statedir"]});
-	mkpath("$rootimg_dir/$statedir/tmpfs");
-	# now make a place for all the files.	
-
-    # this loop uses "mount --bind" to mount files instead of creating symbolic links for 
-    # each of the files in the @$bindedFiles sync list;
-    # 1.  copy original contents if they exist to .default directory
-    foreach my $f (@$bindedFiles) {
-        # copy the file to /.defaults
-        my $rif = $rootimg_dir . $f;
-        my $d = dirname($f);
-
-        # if no such file like $rif, create one
-        unless ( -e "$rif" ) {
-            if($f =~ m{/$}) {
-                $verbose && $callback->({info=>["mkdir -p $rif"]});
-                system("mkdir -p $rif");
-            } else {
-                # check whether its directory exists or not
-                my $rifdir = dirname($rif);
-                unless( -e $rifdir ) {
-                    $verbose && $callback->({info => ["mkdir $rifdir"]});
-                    mkdir($rifdir);
-                }
-                $verbose && $callback->({info=>["touch $rif"]});
-                system("touch $rif");
-            }
-        }
-
-        unless ( -e "$rootimg_dir/.default$d" ) {
-            $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
-            system("mkdir -p $rootimg_dir/.default$d");
-        }
-        
-        # copy the file in place.
-        $verbose && $callback->({info=>["cp -r -a $rif $rootimg_dir/.default$d"]});
-        system("cp -r -a $rif $rootimg_dir/.default$d");
-    }
-
-	# this loop creates symbolic links for each of the files in the sync list.
-	# 1.  copy original contents if they exist to .default directory
-	# 2.  remove file 
-	# 3.  create symbolic link to .statelite
-
-	my $sym = "1"; # sym = 0 means no symlinks, just bindmount
-	if($sym){
-		foreach my $f (@$files){
-            #check if the file has been moved to .default by its parent or by last liteimg, if yes, then do nothing
-            my $ret=`readlink -m $rootimg_dir$f`;
-            if ($? == 0) {
-                if ($ret =~ /$rootimg_dir\/.default/)
-                {
-                    $verbose && $callback->({info=>["do nothing for file $f"]});
-                    next;
-                }
-            }
-
-
-			# copy the file to /.defaults
-			my $rif = $rootimg_dir . $f;
-			my $d = dirname($f);
-			if( -f "$rif" or -d "$rif"){
-				# if its already a link then leave it alone.
-				unless(-l $rif){
-					# mk the directory if it doesn't exist:
-					$verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
-					system("mkdir -p $rootimg_dir/.default$d");
-
-					# copy the file in place.
-					$verbose && $callback->({info=>["cp -r -a $rif $rootimg_dir/.default$d"]});
-					system("cp -r -a $rif $rootimg_dir/.default$d");
-
-					# remove the real file
-					$verbose && $callback->({info=>["rm -rf $rif"]});
-					system("rm -rf $rif");
-
-				}
-	
-			}else{
-			
-				# in this case the file doesn't exist in the image so we create something to it.
-				# here we're modifying the read/only image
-				unless(-d "$rootimg_dir$d"){
-					$verbose && $callback->({info=>["mkdir -p $rootimg_dir$d"]});
-					system("mkdir -p $rootimg_dir$d");	
-				}
-
-				unless(-d "$rootimg_dir/.default$d"){
-					$verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
-					system("mkdir -p $rootimg_dir/.default$d");	
-				}
-				
-				# now make touch the file:	
-				if($f =~ /\/$/){
-					# if its a directory, make the directory in .default
-					$verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$f"]});
-					system("mkdir -p $rootimg_dir/.default$f");
-				}else{
-					# if its just a file then link it.
-					$verbose && $callback->({info=>["touch $rootimg_dir/.default$f"]});
-					system("touch $rootimg_dir/.default$f");
-				}
-			}
-
-			# now create the spot in tmpfs
-			$verbose && $callback->({info=>["mkdir -p $rootimg_dir/$statedir/tmpfs$d"]});
-			system("mkdir -p $rootimg_dir/$statedir/tmpfs$d");
-
-			# now for each file, create a symbollic link to /.statelite/tmpfs/
-			# strip the last / if its a directory for linking, but be careful!
-			# doing ln -sf ../../tmp <blah>../tmp when tmp is a directory creates 50 levels of links.
-			# have to do:
-			# ln -sf ../../tmp <blah>../../tmp/ <- note the / on the end!
-			if($f =~ /\/$/){
-				$f =~ s/\/$//g;
-			}
-			# now do the links.
-			# link the .default file to the .statelite file and the real file to the .statelite file.
-
-			# ../ for tmpfs
-			# ../ for .statelite
-			# the rest are for the paths in the file.	
-			my $l = getRelDir($f);	
-			$verbose && $callback->({info=>["ln -sf ../../$l/.default$f $rootimg_dir/$statedir/tmpfs$f"]});
-			system("ln -sfn ../../$l/.default$f $rootimg_dir/$statedir/tmpfs/$f");
-
-			$verbose && $callback->({info=>["ln -sf $l/$statedir/tmpfs$f $rootimg_dir$f"]});
-			system("ln -sfn $l/$statedir/tmpfs$f $rootimg_dir$f");
-				
-		}	
-	}else{
-		# if we go the bindmount method, create some files
-		foreach my $f (@$files){
-			my $rif = $rootimg_dir . $f;
-			my $d = dirname($rif);
-			unless(-e "$rif"){
-				# if it doesn't exist, create it on base image:
-				unless(-d $d){
-					#$callback->({info=>["mkdir -p $d"]});
-					system("mkdir -p $d");
-				}
-				if($rif =~ /\/$/){
-					#$callback->({info=>["mkdir -p $rif"]});
-					system("mkdir -p $rif");
-				}else{
-					#$callback->({info=>["touch $rif"]});
-					system("touch $rif");
-				}
-			}	
-			else {
-					#$callback->({info=>["$rif exists"]});
-			}
-				
-		}
-
-	}
-		
-	# end loop, synclist should now all be in place.
-
-	# now stick the rc files in:
-	# this is actually a pre-rc file because it gets run before the node boots up all the way.
-	system("cp -a $::XCATROOT/share/xcat/netboot/add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
-	
 }
 
 sub getRelDir {
@@ -671,14 +461,11 @@ sub parseLiteFiles {
             unless ($parent =~ m/\/$/) {
                 $parent .= "/";
             }
-            #$verbose && print "+++$parent+++\n";
             #my $found = grep $_ =~ m/\Q$parent\E$/, @entries;
             my @res = grep {$_ =~ m/\Q$parent\E$/} @entries;
             my $found = scalar @res;
-            #$verbose && print "+++found = $found+++\n";
 
             if($found eq 1) { # $parent is found in @entries
-                #$verbose && print "+++$parent is found+++\n";
 		        # handle $res[0];
 		        my @tmpresentry=split /\s+/, $res[0];
 		        shift @tmpresentry;
@@ -710,11 +497,7 @@ sub recoverFiles {
     
     #$callback->({info => ["! updating $f ..."]});
 
-    if ($oldentry->[0] =~ m/bind/) {
-        # shouldn't copy back from /.default, maybe the user has replaced the file/directory in .postinstall file
-        my $default = $rootimg_dir . $f;
-        xCAT::Utils->runcmd("rm -rf $default", 0, 1);   # not sure whether it's necessary right now
-    } else {
+    if ($oldentry->[0] eq "tmpfs,rw" or $oldentry->[0] eq "ro" ) {
         my $target = $rootimg_dir . $f;
         if (-l $target) {   #not one directory
             my $location = readlink $target;
@@ -745,6 +528,10 @@ sub recoverFiles {
         }
         $target = $rootimg_dir . "/.statelite/tmpfs" . $f;
         xCAT::Utils->runcmd("rm -rf $target", 0, 1);
+    } else {
+        # shouldn't copy back from /.default, maybe the user has replaced the file/directory in .postinstall file
+        my $default = $rootimg_dir . $f;
+        xCAT::Utils->runcmd("rm -rf $default", 0, 1);   # TODO: not sure whether it's necessary right now
     }
 
     return 0;
@@ -764,35 +551,7 @@ sub liteItem {
     my $rif = $rootimg_dir . $f;
     my $d = dirname($f);
 
-    if($entry[0] =~ m/bind/) {
-
-        # if no such file like $rif, create one
-        unless ( -e "$rif" ) {
-            if ($f =~ m{/$}) {
-                $verbose && $callback->({info=>["mkdir -p $rif"]});
-                system("mkdir -p $rif");
-            } else {
-                # check whether its directory exists or not
-                my $rifdir = $rootimg_dir . $d;
-                unless (-e $rifdir) {
-                    $verbose && $callback->({info => ["mkdir $rifdir"]});
-                    mkdir($rifdir);
-                }
-                $verbose && $callback->({info=>["touch $rif"]});
-                system("touch $rif");
-            }
-        }
-
-        unless ( -e "$rootimg_dir/.default$d" ) {
-            $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
-            system("mkdir -p $rootimg_dir/.default$d");
-        }
-        
-        # copy the file to /.defaults
-        $verbose && $callback->({info=>["cp -r -a $rif $rootimg_dir/.default$d"]});
-        system("cp -r -a $rif $rootimg_dir/.default$d");
-
-    }else {
+    if (($entry[0] eq "tmpfs,rw") or ($entry[0] eq "ro")) {
         # 1.  copy original contents if they exist to .default directory
         # 2.  remove file
         # 3.  create symbolic link to .statelite
@@ -897,8 +656,33 @@ sub liteItem {
                 }
             }
         }
-    }
+    } else {
+        # if no such file like $rif, create one
+        unless ( -e "$rif" ) {
+            if ($f =~ m{/$}) {
+                $verbose && $callback->({info=>["mkdir -p $rif"]});
+                system("mkdir -p $rif");
+            } else {
+                # check whether its directory exists or not
+                my $rifdir = $rootimg_dir . $d;
+                unless (-e $rifdir) {
+                    $verbose && $callback->({info => ["mkdir $rifdir"]});
+                    mkdir($rifdir);
+                }
+                $verbose && $callback->({info=>["touch $rif"]});
+                system("touch $rif");
+            }
+        }
 
+        unless ( -e "$rootimg_dir/.default$d" ) {
+            $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$d"]});
+            system("mkdir -p $rootimg_dir/.default$d");
+        }
+        
+        # copy the file to /.defaults
+        $verbose && $callback->({info=>["cp -r -a $rif $rootimg_dir/.default$d"]});
+        system("cp -r -a $rif $rootimg_dir/.default$d");
+    }
 }
 
 

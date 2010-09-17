@@ -20,14 +20,7 @@ ELIST=[]    # entry list, each entry will contain the type and the path
 declare -a CLIST 
 declare -a PLIST 
 
-# hostname -s does not work on boot for SUSE
-# You get this error: 
-# 	hostname: Unknown server error
-if [ -e "${MNTDIR}/etc/SuSE-release" ]; then
-	ME=`hostname`
-else
-	ME=`hostname -s`
-fi
+ME=`hostname`
 
 PERSISTENT="${MNTDIR}/$SL/persistent/$ME"
 
@@ -61,14 +54,7 @@ GetSyncInfo () {
 		fi
 	done
 
-	# hostname -s does not work on boot for SUSE
-	# You get this error: 
-	# 	hostname: Unknown server error
-    if [ -e "${MNTDIR}/etc/SuSE-release" ]; then
-		hn=`hostname`
-	else
-		hn=`hostname -s`
-	fi
+    hn=`hostname`
 
 	if [ -z $XCATSERVER ]; then
 		echo "Cannot find the xCAT server for node $hn"
@@ -183,18 +169,6 @@ MountTrees () {
 	done
 }
 
-
-ResolveLinksOld () {
-
-	# go through each file and do the right thing to it.
-	cat $SYNCLIST | grep -v "^#" | \
-	while read type path
-	do
-		FindFile ${path} ${type}
-	done
-}
-
-
 ResolveLinks () {
     exec <$SYNCLIST
     i=0 
@@ -273,7 +247,7 @@ ProcessType () {
 			# the link will already be in place on the image, so nothing else to do!
 			;;
 		con)
-			# cons go in tmpfs
+			# cons go in bind  # TODO ???
 			cat ${1} >>${TMPFS}${2}
 			echo "cat ${1} >>${TMPFS}${2}" >>$LOG
 			;;	
@@ -294,7 +268,7 @@ ProcessType () {
                 mount --bind ${TMPFS}${2} /sysroot${ORIG}>>$LOG 2>&1           
             fi
             ;;
-        bind,persistent)
+        persistent)
             if [ ! -d ${PERSISTENT}${PPATH} ]; then
                 mkdir -p ${PERSISTENT}${PPATH}
                 echo "mkdir -p ${PERSISTENT}${PPATH}" >>$LOG
@@ -312,71 +286,6 @@ ProcessType () {
             echo "mount --bind ${TARGET} /sysroot/${ORIG}" >>$LOG
             mount --bind ${TARGET} /sysroot/${ORIG}>>$LOG 2>&1
             ;;
-		persistent*)
-			# everything from root image points to tmpfs	
-			# so have tmpfs point to persistent
-
-			# make tree in persistent and tmpfs
-            # need to check whether the option of its parent direcotry is persistent or not
-
-            TMPDIR=`dirname ${2}`
-            if [ ! -e ${PERSISTENT}${TMPDIR} ]; then
-                mkdir -p ${PERSISTENT}${TMPDIR}
-                echo "mkdir -p ${PERSISTENT}${TMPDIR}" >>$LOG
-            fi
-            
-            if [ "$isChild" = "1" ]; then
-                num=${#PLIST[@]}
-                for ((i=0;i<$num; i++)); do
-                    set -- ${PLIST[$i]}
-                    itype=$1
-                    ipath=$2
-                    if [ "$PPATH" = "$ipath" ]; then
-                        if [[ ! "$itype" =~ "persistent*" ]]; then
-                            if [ ! -e ${PERSISTENT}${2} ]; then
-                                echo "cp -r -a ${1} ${PERSISTENT}${2}" >>$LOG
-                                cp -r -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
-                            fi
-                            # mount it to ${TARGET}
-                            echo "mount --bind ${PERSISTENT}${2} ${TARGET}" >>$LOG
-                            mount --bind ${PERSISTENT}${2} ${TARGET}
-                        fi
-                    fi
-                done
-            else
-			    if [[ ! -d ${PERSISTENT}${PPATH} && ! -d `readlink -m ${PERSISTENT}${PPERS}` ]]; then
-                    # unless the entry is one directory or one link to the directory
-                    rm -rf ${PERSISTENT}${PPERS}
-				    mkdir -p ${PERSISTENT}${PPERS}
-				    echo "mkdir -p ${PERSISTENT}${PPERS}" >>$LOG
-			    fi
-	
-			    # if the file doesn't exist, then copy it over to persistent
-			    if [ ! -e ${PERSISTENT}${2} ]; then
-				    # if its not there, then take it from something else
-				    echo "cp -r -a ${1} ${PERSISTENT}${2}" >>$LOG
-				    cp -r -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
-				
-			    fi
-                #if target is a directory, then remove it first,
-                #otherwise, the link will be created under this dir instead of replacing it.
-                # whack of trailing / for persistent directories:
-                TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
-                if [ -d ${TARGET} ]; then
-                    echo "rm -Rf ${TARGET}" >>$LOG
-                    rm -Rf ${TARGET} 2>&1 >>$LOG
-                fi
-
-                # finally make the tmpfs link point to the persistent file
-
-			    # you have to get rid of the /sysroot in the beginning 
-			    # so that when the chroot happens the link is valid.	
-                LINK=`echo ${PERSISTENT}${2} | sed -e 's/^\/sysroot//'`
-
-			    echo "ln -sf ${LINK} ${TARGET}" >>$LOG
-			    ln -sf ${LINK} ${TARGET}        >>$LOG 2>&1
-            fi
-			;;
 		ro)
 			# need to make sure directory exists:
 			if [ ! -d ${TMPFS}${PPATH} ]; then
@@ -412,7 +321,7 @@ FindFile () {
                 FOUND=0
             else
 			    ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
-			    if [ "${2}" = "con" ]; then
+			    if [[ "${2}" =~ "con" ]]; then
 				    continue
 			    else
 				    break

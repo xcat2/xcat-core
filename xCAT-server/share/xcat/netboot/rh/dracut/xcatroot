@@ -1,5 +1,8 @@
 #!/bin/sh
 NEWROOT=$3
+
+XCATMASTER=$XCAT
+
 if [ ! -z "$imgurl" ]; then
 	if [ xhttp = x${imgurl%:*} ]; then
 		NFS=0
@@ -24,32 +27,7 @@ if [ ! -z "$imgurl" ]; then
 fi
 #echo 0 > /proc/sys/vm/zone_reclaim_mode #Avoid kernel bug
 
-# RAM root Hybrid with NFS root
-if [ "$NFS" = "1" ]; then
-  echo Setting up nfs with ram overlay.
-  modprobe nfs
-  mknod /dev/loop0 b 7 0
-  mkdir -p /ro
-  mkdir -p /rw
-  #NOTE: should prob have max count
-  while [ ! -d /ro/bin ]; do
-    echo mounting $SERVER:$ROOTDIR on /ro
-    mount.nfs $SERVER:$ROOTDIR /ro -r -n -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14
-    ST=`expr $RANDOM % 5`
-    sleep $ST
-  done
-  mount -t tmpfs rw /rw
-  mkdir -p /rw/etc
-  mkdir -p /rw/var/lib/dhclient
-  cp /etc/resolv.conf /rw/etc/
-  mount -t aufs -o dirs=/rw:/ro mergedroot  $NEWROOT
-  mkdir -p $NEWROOT/ro
-  mkdir -p $NEWROOT/rw
-  mount --move /ro $NEWROOT/ro
-  mount --move /rw $NEWROOT/rw
-  cp /etc/resolv.conf $NEWROOT/etc/
-  echo xcatfs / aufs rw,_netdev 0 0 >> $NEWROOT/etc/fstab
-elif [ -r /rootimg.sfs ]; then
+if [ -r /rootimg.sfs ]; then
   echo Setting up squashfs with ram overlay.
   mknod /dev/loop0 b 7 0
   mkdir -p /ro
@@ -62,14 +40,14 @@ elif [ -r /rootimg.sfs ]; then
   mount --move /ro $NEWROOT/ro
   mount --move /rw $NEWROOT/rw
 elif [ -r /rootimg.gz ]; then
-echo Setting up RAM-root tmpfs.
+  echo Setting up RAM-root tmpfs.
   mount -t tmpfs rootfs $NEWROOT
   cd $NEWROOT
   echo -n "Extracting root filesystem:"
   if [ -x /bin/cpio ]; then
-  gzip -cd /rootimg.gz |/bin/cpio -idum
+    gzip -cd /rootimg.gz |/bin/cpio -idum
   else
-  gzip -cd /rootimg.gz |cpio -idum
+    gzip -cd /rootimg.gz |cpio -idum
   fi
   echo Done
 else
