@@ -52,6 +52,7 @@ sub process_request
 		'unlock' => \&web_unlock,
 		'rmcstart' => \&web_rmcmonStart,
 		'rmcshow' => \&web_rmcmonShow,
+		'gangliaStart' => \&web_gangliamonStart,
 
         #'xdsh' => \&web_xdsh,
         #THIS list needs to be updated
@@ -433,7 +434,7 @@ sub web_rmcmonStart{
 			$callback->({info=>'RMC Monitoring is running now.'});
 			return;
 		}
-	}	
+	}
 
 	$retData .= "RMC is not running, start it now.\n";
 
@@ -631,4 +632,43 @@ sub web_rmcmonShow(){
 	#push the last attribute name and values.
 	push(@{$retHash->{node}}, {name=>$attrName, data=>join(',', @attrValue)});
 	$callback->($retHash);
+}
+
+sub web_gangliamonStart(){
+	my ( $request, $callback, $sub_req ) = @_;
+	my $table;
+	my $retInfo;
+	my $output;
+
+	#check the running status
+	$table = xCAT::Table->new('monitoring');
+	my $gangWorkingStatus = $table->getAttribs({name => 'gangliamon'}, 'disable');
+	$table.close();
+	
+	#the rmc monitoring is running so return directly
+	if($gangWorkingStatus){
+		if ($gangWorkingStatus->{disable} =~ /0|No|no|NO|N|n/){
+			$callback->({info=>'Ganglia Monitoring is running now.'});
+			return;
+		}
+	}
+
+	#run configure commands
+	$output = xCAT::Utils->runcmd('monadd gangliamon', -1, 1);
+	foreach($output){
+		$retInfo .= ($_ . "\n");
+	}
+
+	$output = xCAT::Utils->runcmd('moncfg gangliamon -r', -1, 1);
+	foreach($output){
+		$retInfo .= ($_ . "\n");
+	}
+
+	$output = xCAT::Utils->runcmd('monstart gangliamon -r', -1, 1);
+	foreach($output){
+		$retInfo .= ($_ . "\n");
+	}
+
+	$callback->({info=>$retInfo});
+	return;
 }

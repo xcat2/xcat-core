@@ -70,7 +70,8 @@ function loadMonitorPage() {
 			"subsystem is our recommended software for monitoring xCAT clusters. It's is part " +
 			"of the IBM's Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive " +
 			"clustering environment for AIX and LINUX.<li>";
-	items += "<li><a href='#' name='gangliamon'>Ganglia Monitor</a> : <li>";
+	items += "<li><a href='#' name='gangliamon'>Ganglia Monitor</a> : Ganglia is a scalable distributed " + 
+			"monitoring system for high-performance computing systems such as clusters and Grids.<li>";
 	items += "<li><a href='#' name='pcpmon'>PCP Monitor</a> : <li>";
 	
 	monitorList.append(items);
@@ -175,7 +176,8 @@ function loadMonitorTab(monitorName){
 			loadRmcMon();
 			break;
 		case 'gangliamon':
-			loadUnfinish(monitorName, tab);
+			tab.add(monitorName, 'Ganglia Monitor', '', true);
+			loadGangliaMon();
 			break;
 		case 'pcpmon':
 			loadUnfinish(monitorName, tab);
@@ -189,5 +191,5 @@ function loadUnfinish(monitorName, tab){
 	var unfinishPage = $('<div></div>');
 	unfinishPage.append(createInfoBar('under construction.'));
 
-	tab.add(monitorName, 'unfinish', unfinishPage, '', true);	
+	tab.add(monitorName, 'unfinish', unfinishPage, true);	
 }

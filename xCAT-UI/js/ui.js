@@ -446,7 +446,7 @@ function initPage() {
 	} else if (page == 'monitor.php') {
 		includeJs("js/monitor/xcatmon.js");
 		includeJs("js/monitor/rmcmon.js");
-		
+		includeJs("js/monitor/gangliamon.js");
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
 	} else {
