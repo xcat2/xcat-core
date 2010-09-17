@@ -304,7 +304,7 @@ sub web_update {
         {
             $RpmNames =~ s/,/ /g;
             #create zypper command
-            $cmd = "zypper -t package -r " . $repository . $RpmNames;
+            $cmd = "zypper -n -p " . $repository . " update " . $RpmNames;
         }
         #redhat
         else
