@@ -516,18 +516,29 @@ sub getUnits {
 
 sub build_xmldesc {
     my $node = shift;
-    my $cdloc=shift;
+    my %args=@_;
+    my $cdloc=$args{cd};
     my %xtree=();
     $xtree{type}='kvm';
     $xtree{name}->{content}=$node;
     $xtree{uuid}->{content}=getNodeUUID($node);
     $xtree{os} = build_oshash();
-    if (defined $confdata->{vm}->{$node}->[0]->{memory}) {
+    if ($args{memory}) {
+        $xtree{memory}->{content}=getUnits($args{memory},"M",1024);
+        if ($confdata->{vm}->{$node}->[0]->{memory}) {
+            $updatetable->{vm}->{$node}->{memory}=$args{memory};
+        }
+    } elsif (defined $confdata->{vm}->{$node}->[0]->{memory}) {
         $xtree{memory}->{content}=getUnits($confdata->{vm}->{$node}->[0]->{memory},"M",1024);
     } else {
         $xtree{memory}->{content}=524288;
     }
-    if (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
+    if ($args{cpus}) {
+        $xtree{vcpu}->{content}=$args{cpus};
+        if ($confdata->{vm}->{$node}->[0]->{cpus}) {
+            $updatetable->{vm}->{$node}->{cpus}=$args{cpus};
+        }
+    } elsif (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
         $xtree{vcpu}->{content}=$confdata->{vm}->{$node}->[0]->{cpus};
     } else {
         $xtree{vcpu}->{content}=1;
@@ -879,7 +890,7 @@ sub makedom {
             $xml=$newxml;
         }
     } elsif (not $xml) {
-        $xml = build_xmldesc($node,$cdloc);
+        $xml = build_xmldesc($node,cd=>$cdloc);
     }
     my $errstr;
     eval { $dom=$hypconn->create_domain($xml); };
@@ -1235,9 +1246,9 @@ sub chvm {
         "a=s"=>\@addsizes,
         "d=s"=>\@derefdisks,
         "mem=s"=>\$memory,
+        "cpus=s" => \$cpucount,
         "p=s"=>\@purge,
         "resize=s%" => \%resize,
-        "cpu=s" => \$cpucount,
         );
     my %useddisks;
     if (defined $confdata->{vm}->{$node}->[0]->{storage}) {
@@ -1739,9 +1750,13 @@ sub mkvm {
  my $mastername;
  my $force=0;
  require Getopt::Long;
+ my $memory;
+ my $cpucount;
  GetOptions(
     'master|m=s'=>\$mastername,
     'size|s=s'=>\$disksize,
+    "mem=s"=>\$memory,
+    "cpus=s" => \$cpucount,
     'force|f'=>\$force
  );
  if (defined $confdata->{vm}->{$node}->[0]->{storage}) {
@@ -1755,10 +1770,15 @@ sub mkvm {
        my @return= createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force);
          unless ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
              my $xml;
-             $xml = build_xmldesc($node);
+             $xml = build_xmldesc($node,cpus=>$cpucount,memory=>$memory);
              $updatetable->{kvm_nodedata}->{$node}->{xml}=$xml;
          }
          return @return;
+    }
+    unless ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
+         my $xml;
+         $xml = build_xmldesc($node,cpus=>$cpucount,memory=>$memory);
+         $updatetable->{kvm_nodedata}->{$node}->{xml}=$xml;
     }
  } else {
      if ($mastername or $disksize) {
