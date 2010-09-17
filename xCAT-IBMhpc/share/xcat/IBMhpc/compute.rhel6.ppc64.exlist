@@ -3,4 +3,5 @@
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.exlist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.exlist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/rsct.exlist#
 
