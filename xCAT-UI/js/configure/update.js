@@ -246,7 +246,7 @@ function updateRpm()
     $.cookie('xcatrepository', rpmPathType, { path: '/xcat', expires: 10 });
 
     $('#update').empty();
-    $('#update').append("<p>update <b>" + rpms + "</b> from <b>" + rpmPath + "</b></p>");
+    $('#update').append("<p>Updating <b>" + rpms + "</b> from <b>" + rpmPath + "</b></p>");
     $('#update').append("<img id='loadingpic' src='images/throbber.gif'>");
     $('#rpm button').attr('disabled', 'true');
 
@@ -269,10 +269,27 @@ function ShowUpdateResult(data)
 {
     var temp = 0;
 	$('#loadingpic').remove();
-    $('#update').append("Update finished.<br\>");
-    for (temp = 0; temp < data.rsp.length; temp++)
+    
+    var resArray = data.rsp[0].split(/\n/);
+    if (('' == resArray[resArray.length - 1]) && (resArray.length > 1)){
+    	$('#update').append(resArray[resArray.length - 2]);
+    }
+    else{
+    	$('#update').append(resArray[resArray.length - 1]);
+    }
+
+    $('#update').append('<br\><a>Response Detail:</a>');
+    $('#update a').bind('click', function(){
+    	$('#resDetail').show();
+    });
+    
+    var resDetail = $('<div id="resDetail"></div>');
+    resDetail.hide();
+    $('#update').append(resDetail);
+    
+    for (temp = 0; temp < resArray.length; temp++)
     {
-        $('#update').append(data.rsp[temp] + "<br\>");
+    	resDetail.append(resArray[temp] + "<br\>");
     }
     
     //update the rpm info

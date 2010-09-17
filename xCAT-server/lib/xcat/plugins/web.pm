@@ -295,7 +295,7 @@ sub web_update {
     my $WebpageContent = undef;
     my $RemoteRpmFilePath = undef;
     my $LocalRpmFilePath = undef;
-    my @temp = undef;
+
     if (xCAT::Utils->isLinux())
     {
         $os = xCAT::Utils->osver();
@@ -318,7 +318,7 @@ sub web_update {
             #create file, return error if failed.
             unless ( open ($FileHandle, '>>', "/tmp/xCAT_update.yum.conf"))
             {
-                $callback->({error=>"Create temp file eror!\n",errorcode=>[1]});
+                $callback->({error=>"Create temp file error!\n",errorcode=>[1]});
                 return;
             }
 
@@ -337,8 +337,7 @@ sub web_update {
         }
         #run the command and return the result
         $ReturnInfo = readpipe($cmd);
-        @temp = split(/\n/, $ReturnInfo);
-        $callback->({info=>$temp[-1]});
+        $callback->({info=>$ReturnInfo});
     }
     #AIX
     else
