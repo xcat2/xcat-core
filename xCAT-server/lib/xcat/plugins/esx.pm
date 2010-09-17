@@ -2621,6 +2621,7 @@ sub  addhosttovcenter {
         $running_tasks{$task}->{data} = { depfun => $depfun, depargs=> $depargs, conn=>  $hyphash{$hyp}->{vcenter}->{conn}, connspec=>$connspec, cluster=>$cluster, hypname=>$hyp, vcenter=>$vcenter };
     } else {
         my $datacenter = validate_datacenter_prereqs($hyp);
+        unless ($datacenter) { return; }
         my $hfolder =  $datacenter->hostFolder; #$hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type=>'Datacenter',properties=>['hostFolder'])->hostFolder;
         $hfolder = $hyphash{$hyp}->{vcenter}->{conn}->get_view(mo_ref=>$hfolder);
         $task = $hfolder->AddStandaloneHost_Task(spec=>$connspec,addConnected=>1);
@@ -2636,7 +2637,16 @@ sub  addhosttovcenter {
 sub validate_datacenter_prereqs {
     my ($hyp) = @_;
 
-    my $datacenter = $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type => 'Datacenter', properties=>['hostFolder']);
+    my $datacenter;
+    if ($tablecfg{hypervisor}->{$hyp}->[0]->{datacenter}) {
+        $datacenter = $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type => 'Datacenter', properties=>['hostFolder'],filter=>{name=>$tablecfg{hypervisor}->{$hyp}->[0]->{datacenter}});
+        unless ($datacenter) {
+            xCAT::SvrUtils::sendmsg([1,": Unable to find requested datacenter (hypervisor.datacenter for $hyp is ".$tablecfg{hypervisor}->{$hyp}->[0]->{datacenter}.")"], $output_handler);
+            return;
+        }
+    } else {
+        $datacenter = $hyphash{$hyp}->{vcenter}->{conn}->find_entity_view(view_type => 'Datacenter', properties=>['hostFolder']);
+    }
 
     if (!defined $datacenter) {
         my $vconn = $hyphash{$hyp}->{vcenter}->{conn};
