@@ -142,11 +142,11 @@ if (@ARGV > 0 and $needUpdateTable eq 1) {
         exit 1;
     }
 
-    $osver=$ref->{'osvers'};
-    $arch=$ref->{'osarch'};
-    $profile=$ref->{'profile'};
-    my $provmethod=$ref->{'provmethod'}; # TODO: not necessary, and need to update both statelite and stateless modes
-    
+    $osver=$ref_osimage_tab->{'osvers'};
+    $arch=$ref_osimage_tab->{'osarch'};
+    $profile=$ref_osimage_tab->{'profile'};
+    my $provmethod=$ref_osimage_tab->{'provmethod'}; # TODO: not necessary, and need to update both statelite and stateless modes
+ 
     unless ($osver and $arch and $profile and $provmethod) {
         print"osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database.\n";
         exit 1;
