@@ -375,6 +375,17 @@ function loadNodes(data) {
 	});
 
 	/*
+	 * Open the Rcons page
+	 */
+	var rcons = $('<a href="#">Open Rcons</a>');
+	rcons.bind('click', function(event){
+		var tgtNodes = getNodesChecked('nodesDataTable');
+		if (tgtNodes) {
+			loadRoncsPage(tgtNodes);
+		}
+	});
+
+	/*
 	 * Advanced
 	 */
 	var advancedLnk = $('<a href="#">Advanced</a>');
@@ -384,7 +395,14 @@ function loadNodes(data) {
 	var powerActionMenu = createMenu(powerActions);
 
 	// Advanced actions
-	var advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk ];
+	var advancedActions;
+	if ('compute' == group){
+		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons ];
+	}
+	else{
+		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk ];
+	}
+
 	var advancedActionMenu = createMenu(advancedActions);
 
 	/**
@@ -1337,4 +1355,24 @@ function selectAllCheckbox(event, obj) {
 	var status = obj.attr('checked');
 	$('#' + datatableId + ' :checkbox').attr('checked', status);
 	event.stopPropagation();
+}
+
+function loadRoncsPage(tgtNodes){
+	var hostName = window.location.host;
+	var urlPath = window.location.pathname;
+	var redirectUrl = 'https://';
+	var pos = 0;
+	//we only support one node
+	if (-1 != tgtNodes.indexOf(',')){
+		alert("Sorry, the Rcons Page only support one node.");
+		return;
+	}
+	
+	redirectUrl += hostName;
+	pos = urlPath.lastIndexOf('/');
+	redirectUrl += urlPath.substring(0, pos + 1);
+	redirectUrl += 'rconsShow.php';
+	
+	//open the rcons page
+	window.open(redirectUrl + "?rconsnd=" + tgtNodes, '', "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,width=670,height=436");
 }

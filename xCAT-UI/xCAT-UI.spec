@@ -38,6 +38,7 @@ mkdir -p $RPM_BUILD_ROOT%{prefix}/ui
 set +x
 cp -r * $RPM_BUILD_ROOT%{prefix}/ui
 chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
+chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/lib/AJAXTERM/*.py
 set -x
 
 %files
