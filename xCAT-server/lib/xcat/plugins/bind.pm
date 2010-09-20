@@ -915,8 +915,6 @@ sub FIXUP
         my $nothing;
         open($nothing, ">>", $DBDir . "db.cache");
     }
-    my $nothing;
-    open($nothing, ">>", $DBDir . "db.cache");
     close($nothing);
     printf $file "%-30s\tIN  PTR   localhost.\n", &REVERSE("127.0.0.1");
     close($file);
