@@ -151,9 +151,34 @@ function loadGroups(data) {
     	} // End of callback
     });
 	
-	// Add nodes link
-	var groupsAction = $('<a href="#">Add node</a>');
-	$('#groups').append(groupsAction);
+	// Create link to add nodes
+	var addNodeLink = $('<a href="#">Add node</a>');
+	addNodeLink.bind('click', function(event) {
+		var nodeForm = '<div class="form">'
+				+ '<div><label for="node">Node name:</label><input type="text" id="node" name="node"/></div>'
+				+ '<div><label for="group">Group:</label><input type="text" id="group" name="group"/></div>'
+				+ '<div><label for="mgt">Hardware management:</label>'
+    				+ '<select id="mgt" name="mgt">'
+        				+ '<option>ipmi</option>' 
+        				+ '<option>blade</option>'
+        				+ '<option>hmc</option>' 
+        				+ '<option>ivm</option>'
+        				+ '<option>fsp</option>'
+        				+ '<option>zvm</option>'
+    				+ '</select>' 
+				+ '</div>' 
+			+ '</div>';
+
+		$.prompt(nodeForm, {
+			callback : addNode,
+			buttons : {
+				Ok : true,
+				Cancel : false
+			},
+			prefix : 'cleanblue'
+		});
+	});
+	$('#groups').append(addNodeLink);
 }
 
 /**
@@ -385,7 +410,7 @@ function loadNodes(data) {
 	rcons.bind('click', function(event){
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
-			loadRoncsPage(tgtNodes);
+			loadRconsPage(tgtNodes);
 		}
 	});
 
@@ -1312,18 +1337,32 @@ function getNodesChecked(datatableId) {
 	return tgts;
 }
 
+/**
+ * Get the column index for a given column name
+ * 
+ * @param colName
+ * 				The column name to search
+ * @return The index containing the column name
+ */
 function getColNum(colName){
-	var temp;
+	var colNum;
 	var columns = $('table thead tr').children();
 	
-	for(temp = 1; temp < columns.length; temp++){
-		if (colName == columns[temp].innerHTML){
-			return temp;
+	for(colNum = 1; colNum < columns.length; colNum++){
+		if (colName == columns[colNum].innerHTML){
+			return colNum;
 		}
 	}
 	return -1;
 }
 
+/**
+ * Get the row index for a given node name
+ * 
+ * @param nodeName
+ * 				Node name
+ * @return The row index containing the node name
+ */
 function getRowNum(nodeName){
 	// Get datatable
 	var dTable = getNodesDataTable();
@@ -1331,13 +1370,13 @@ function getRowNum(nodeName){
 	// Get all data from datatable
 	var data = dTable.fnGetData();
 	
-	var temp;
+	var row;
 	var nodeItem;
 			
-	for(temp = 0; temp < data.length; temp++){
-		nodeItem = data[temp][1];
+	for(row = 0; row < data.length; row++){
+		nodeItem = data[row][1];
 		if(nodeItem.indexOf('>' + nodeName + '<') > -1){
-			return temp;
+			return row;
 		}
 	}
 	return -1;
@@ -1361,7 +1400,14 @@ function selectAllCheckbox(event, obj) {
 	event.stopPropagation();
 }
 
-function loadRoncsPage(tgtNodes){
+/**
+ * Load rcons page
+ * 
+ * @param tgtNodes
+ *            Targets to run rcons against
+ * @return Nothing
+ */
+function loadRconsPage(tgtNodes){
 	var hostName = window.location.host;
 	var urlPath = window.location.pathname;
 	var redirectUrl = 'https://';
@@ -1379,4 +1425,24 @@ function loadRoncsPage(tgtNodes){
 	
 	//open the rcons page
 	window.open(redirectUrl + "?rconsnd=" + tgtNodes, '', "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,width=670,height=436");
+}
+
+/**
+ * Add node
+ * 
+ * @param v
+ *            Value of the button clicked
+ * @param m
+ *            jQuery object of the message within the active state when the user
+ *            clicked the button
+ * @param f
+ *            Key/value pairs of the form values
+ * 
+ * @return Nothing
+ */
+function addNode(v, m, f) {
+	// If user clicks Ok, add processor
+	if (v) {
+
+	}
 }
