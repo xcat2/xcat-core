@@ -157,11 +157,6 @@ sub preprocess_request {
 			$request = {};
 			return;
 		}
-		if(defined($ent->{id})) {
-			push @{$hyp_hash{$ent->{host}}{ids}},$ent->{id};
-		}else{
- 			push @{$hyp_hash{$ent->{host}}{ids}}, "";
-		}
         }
 	}
 
@@ -230,7 +225,7 @@ sub preprocess_request {
             } else {
                 die "TODO: implement default vcenter (for now, user, do vm.migratiodest=cluster".'@'."vcentername)";
             }
-            push @moreinfo,"[CLUSTER:$_][".join(',',keys %{$cluster_hash{$_}->{nodes}}),"][$username][$password][$vusername][$vpassword][$vcenter]";
+            push @moreinfo,"[CLUSTER:$_][".join(',',keys %{$cluster_hash{$_}->{nodes}})."][$username][$password][$vusername][$vpassword][$vcenter]";
         }
 		$reqcopy->{node} = \@nodes;
 		#print "nodes=@nodes\n";
@@ -311,19 +306,22 @@ sub process_request {
 		my @nodes=split(',', $2);
         my $username = $3;
         my $password = $4;
+        my $tmpvcname=$7;
+        my $tmpvcuname=$5;
+        my $tmpvcpass=$6;
         if ($hyp =~ /^CLUSTER:/) { #a cluster, not a host.
             $hyp =~ s/^CLUSTER://;
-            $clusterhash{$hyp}->{vcenter}->{name} = $7;
-            $clusterhash{$hyp}->{vcenter}->{username} = $5;
-            $clusterhash{$hyp}->{vcenter}->{password} = $6;
+            $clusterhash{$hyp}->{vcenter}->{name} = $tmpvcname;
+            $clusterhash{$hyp}->{vcenter}->{username} = $tmpvcuname;
+            $clusterhash{$hyp}->{vcenter}->{password} = $tmpvcpass;
             foreach (@nodes) {
                 $clusterhash{$hyp}->{nodes}->{$_}=1;
             }
             next;
         }
-        $hyphash{$hyp}->{vcenter}->{name} = $7;
-        $hyphash{$hyp}->{vcenter}->{username} = $5;
-        $hyphash{$hyp}->{vcenter}->{password} = $6;
+        $hyphash{$hyp}->{vcenter}->{name} = $tmpvcname;
+        $hyphash{$hyp}->{vcenter}->{username} = $tmpvcuname;
+        $hyphash{$hyp}->{vcenter}->{password} = $tmpvcpass;
 		$hyphash{$hyp}->{username}=$username;# $nodeid;
 		$hyphash{$hyp}->{password}=$password;# $nodeid;
         unless ($hyphash{$hyp}->{vcenter}->{password}) {
@@ -353,6 +351,7 @@ sub process_request {
     if ($hoststab) {
         my @hyps = keys %hyphash;
         $tablecfg{hosts} = $hoststab->getNodesAttribs(\@hyps,['hostnames']);
+
     }
 
 	#my $children = 0;
@@ -385,6 +384,7 @@ sub process_request {
             }
             my $clusternode;
         }
+        $clusterhash{$cluster}->{conn}=$vcenterhash{$vcenter}->{conn};
         foreach my $clusternode (keys %{$clusterhash{$cluster}->{nodes}}) {
             $vmhash{$clusternode}->{conn}=$vcenterhash{$vcenter}->{conn};
         }
@@ -720,7 +720,6 @@ sub chvm {
             }
 			if($label =~ /^IDE/ and not $ideCont) {
 				my $tmpu=getAvailUnit($device->{key},$devices,maxnum=>1);
-				print "$tmpu for ".$device->{key}."\n";
                                 if ($tmpu >= 0) {
 				    $ideCont = $device;
                                     $ideUnit = $tmpu;
