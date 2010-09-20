@@ -852,16 +852,29 @@ sub FIXUP
         {
             print BOOT $line;
         }
-        unless (@forwarders)
+
+        # hint zone is also needed for DNS forwarders on AIX
+        if (xCAT::Utils->isAIX())
         {
             print BOOT
               qq|zone "." in {\n\ttype hint;\n\tfile "db.cache";\n};\n\n|;
         }
+        else
+        {
+            unless (@forwarders)
+            {
+                print BOOT
+                  qq|zone "." in {\n\ttype hint;\n\tfile "db.cache";\n};\n\n|;
+            }
+        }
+        
         if (-r "spcl.boot")
         {
             print BOOT qq|include "spcl.boot";\n\n|;
         }
     }
+
+    close(BOOT);
 
     # Go ahead and start creating files and making SOA's
     my $x1;
@@ -875,6 +888,33 @@ sub FIXUP
 
     my $file = "DB.127.0.0.1";
     &MAKE_SOA($callback, $DBDir . "db.127.0.0", $file);
+    if (xCAT::Utils->isAIX())
+    {
+        # if forwarders is set, we need to create the hint file for root name servers.
+        if (@forwarders)
+        {
+            my $tmpfile = $DBDir . "db.cache";
+            my $cmd = qq~dig @"$forwarders[0]" . ns > $tmpfile~;
+            my $outref = xCAT::Utils->runcmd("$cmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Could not run command: $cmd.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+                exit 1;
+            }
+        }
+        else
+        {
+            my $nothing;
+            open($nothing, ">>", $DBDir . "db.cache");
+        }
+    }
+    else
+    {
+        my $nothing;
+        open($nothing, ">>", $DBDir . "db.cache");
+    }
     my $nothing;
     open($nothing, ">>", $DBDir . "db.cache");
     close($nothing);
