@@ -178,9 +178,9 @@ sub process_request {
             my $filename = $tmp[1];
             my $fileopt = $tmp[0];
 
-            if ($fileopt eq  "tmpfs,rw" or $fileopt eq "ro") {
+            if ($fileopt =~ m/link/) {
                 # backup them into .statebackup dirctory
-                # restore the files with "tmpfs" options
+                # restore the files with "link" options
                 if ($filename =~ m/\/$/) {
                     chop $filename;
                 }
@@ -378,7 +378,7 @@ sub process_request {
             my @tmp = split /\s+/, $entry;
             my $filename = $tmp[1];
             my $fileopt = $tmp[0];
-            if ($fileopt eq "tmpfs,rw" or $fileopt eq "ro") {
+            if ($fileopt =~ m/link/) {
                 chop $filename if ($filename =~ m/\/$/);
                 xCAT::Utils->runcmd("rm -rf $rootimg_dir$filename", 0, 1);
                 xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup$filename $rootimg_dir$filename", 0, 1);

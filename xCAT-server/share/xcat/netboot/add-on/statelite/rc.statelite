@@ -236,7 +236,7 @@ ProcessType () {
 	fi	
 	
 	case "${3}" in 
-		tmpfs,rw)
+		link)       # the previous name is tmpfs,rw
             if [ -d ${TMPFS}${2} ]; then
 			    cp -r -a ${1}* ${TMPFS}${2}
 			    echo "cp -r -a ${1}* ${TMPFS}${2}" >>$LOG
@@ -246,12 +246,111 @@ ProcessType () {
             fi
 			# the link will already be in place on the image, so nothing else to do!
 			;;
+        link,ro)
+ 			# need to make sure directory exists:
+			if [ ! -d ${TMPFS}${PPATH} ]; then
+				mkdir -p ${TMPFS}${PPATH} >>$LOG 2>&1
+			fi
+			TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
+			LINK=`echo ${1} | sed -e "s/^\/sysroot//"`
+			
+			echo "ln -sf ${LINK} ${TARGET}" >>$LOG 2>&1
+			ln -sf ${LINK} ${TARGET} >>$LOG 2>&1
+            ;;
+        link,persistent)
+            # everything from root image points to tmpfs
+            # so have tmpfs point to persistent
+
+            # make tree in persistent and tmpfs
+            # need to check whether the option of its parent direcotry is persistent or not
+
+            TMPDIR=`dirname ${2}`
+            if [ ! -e ${PERSISTENT}${TMPDIR} ]; then
+                mkdir -p ${PERSISTENT}${TMPDIR} >>$LOG 2>&1
+                echo "mkdir -p ${PERSISTENT}${TMPDIR}" >>$LOG 2>&1
+            fi
+
+            if [ "$isChild" = "1" ]; then
+                num=${#PLIST[@]}
+                for ((i=0;i<$num; i++)); do
+                    set -- ${PLIST[$i]}
+                    itype=$1
+                    ipath=$2
+                    if [ "$PPATH" = "$ipath" ]; then
+                        if [[ ! "$itype" =~ "persistent*" ]]; then
+                            if [ ! -e ${PERSISTENT}${2} ]; then
+                                echo "cp -r -a ${1} ${PERSISTENT}${2}" >>$LOG 2>&1
+                                cp -r -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG
+                            fi
+                            # mount it to ${TARGET}
+                            echo "mount --bind ${PERSISTENT}${2} ${TARGET}" >>$LOG 2>&1
+                            mount --bind ${PERSISTENT}${2} ${TARGET}
+                        fi
+                    fi
+                done
+            else
+                if [[ ! -d ${PERSISTENT}${PPATH} && ! -d `readlink -m ${PERSISTENT}${PPERS}` ]]; then
+                    # unless the entry is one directory or one link to the directory
+                    rm -rf ${PERSISTENT}${PPERS} >>$LOG 2>&1
+                    mkdir -p ${PERSISTENT}${PPERS} >>$LOG 2>&1
+                    echo "mkdir -p ${PERSISTENT}${PPERS}" >>$LOG 2>&1
+                fi
+                # if the file doesn't exist, then copy it over to persistent
+                if [ ! -e ${PERSISTENT}${2} ]; then
+                    # if its not there, then take it from something else
+                    echo "cp -r -a ${1} ${PERSISTENT}${2}" >>$LOG 2>&1
+                    cp -r -a ${1} ${PERSISTENT}${2} 2>&1 >>$LOG 2>&1
+                fi
+                # if target is a directory, then remove it first,
+                # otherwise, the link will be created under this dir instead of replacing it.
+                # whack of trailing / for persistent directories:
+                TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
+                if [ -d ${TARGET} ]; then
+                    echo "rm -Rf ${TARGET}" >>$LOG 2>&1
+                    rm -Rf ${TARGET} 2>&1 >>$LOG
+                fi
+                # finally make the tmpfs link point to the persistent file
+                # you have to get rid of the /sysroot in the beginning
+                # so that when the chroot happens the link is valid.
+                LINK=`echo ${PERSISTENT}${2} | sed -e 's/^\/sysroot//'`
+                echo "ln -sf ${LINK} ${TARGET}" >>$LOG
+                ln -sf ${LINK} ${TARGET}        >>$LOG 2>&1
+            fi
+            ;;
+        link,con)
+            echo "cat ${1} >>${TMPFS}${2}" >>$LOG 2>&1
+            cat ${1} >>${TMPFS}${2} >>$LOG 2>&1
+            ;;
 		con)
 			# cons go in bind  # TODO ???
-			cat ${1} >>${TMPFS}${2}
-			echo "cat ${1} >>${TMPFS}${2}" >>$LOG
+            # there's one more option to indicate the con is at the end
+            if [ "${5}" -eq "1" ]; then
+                # mount the file with "--bind" option
+                echo "mount --bind ${TMPFS}${2} /sysroot${2}" >>$LOG
+                mount --bind ${TMPFS}${2} /sysroot${2} >> $LOG 2>&1
+            else
+			    echo "cat ${1} >>${TMPFS}${2}" >>$LOG 2>&1
+			    cat ${1} >>${TMPFS}${2} >>$LOG 2>&1
+            fi
 			;;	
-        bind)
+        tempfs)         # the default option, same as "tempfs" and "NULL"
+            ORIG=`echo ${2} |  sed -e 's/\/$//'`
+            TARGET=`echo ${1}`
+            
+            if [ -d ${TMPFS}${2} ]; then
+                cp -r -a ${1}* ${TMPFS}${2}
+                echo "cp -r -a ${1}* ${TMPFS}${2}" >>$LOG
+            else
+                cp -r -a ${1} ${TMPFS}${2}
+                echo "cp -r -a ${1} ${TMPFS}${2}" >>$LOG
+            fi
+            
+            if [ "$isChild" = "0" ]; then
+                echo "mount --bind ${TMPFS}${2} /sysroot${ORIG}" >>$LOG
+                mount --bind ${TMPFS}${2} /sysroot${ORIG}>>$LOG 2>&1           
+            fi
+            ;;
+       rw)         # the default option, same as "tempfs" and "NULL"
             ORIG=`echo ${2} |  sed -e 's/\/$//'`
             TARGET=`echo ${1}`
             
@@ -286,17 +385,19 @@ ProcessType () {
             echo "mount --bind ${TARGET} /sysroot/${ORIG}" >>$LOG
             mount --bind ${TARGET} /sysroot/${ORIG}>>$LOG 2>&1
             ;;
-		ro)
+		ro)     # TODO: change to bind style
 			# need to make sure directory exists:
 			if [ ! -d ${TMPFS}${PPATH} ]; then
 				mkdir -p ${TMPFS}${PPATH} >>$LOG 2>&1
 			fi
 			TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
 			#LINK=`echo ${1} | sed -e "s/^${MNTDIR}//"`
-			LINK=`echo ${1} | sed -e "s/^\/sysroot//"`
+			DEST=`echo ${1} | sed -e "s/^\/sysroot//"`
 			
-			echo "ln -sf ${LINK} ${TARGET}" >>$LOG 2>&1
-			ln -sf ${LINK} ${TARGET} >>$LOG 2>&1
+			#echo "ln -sf ${LINK} ${TARGET}" >>$LOG 2>&1
+			#ln -sf ${LINK} ${TARGET} >>$LOG 2>&1
+            echo "mout --bind -o ro ${TARGET} ${DEST}" >>$LOG 2>&1
+            mount --bind -o ro ${TARGET} ${DEST} >>$LOG 2>&1
 			;;
 		*)
 			;;
@@ -305,41 +406,45 @@ ProcessType () {
 
 
 FindFile () {
-	# $1 = Pathname to locate
-	# $2 = Type of file
+    # $1 = Pathname to locate
+    # $2 = Type of file
     # $3 = 0 or 1: 0 means parent, 1 means child
-	path=$1
-	type=$2
+    path=$1
+    type=$2
     isChild=$3
-	FOUND=0
-	for DIR in `cat ${SYNCTREE}`
-	do
+    FOUND=0
+    for DIR in `cat ${SYNCTREE}` ;do
         DIR=${DIR/:/}
-		if [ -e ${TREEMOUNT}/${DIR}${path} ]; then
-			FOUND=1  # we found it!
+        if [ -e ${TREEMOUNT}/${DIR}${path} ]; then
+            FOUND=1  # we found it!
             if [ -d ${TREEMOUNT}/${DIR}${path} ] && [ "0" -eq `ls -A ${TREEMOUNT}/${DIR}${path} |wc -l` ]; then
                 FOUND=0
             else
-			    ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
-			    if [[ "${2}" =~ "con" ]]; then
-				    continue
-			    else
-				    break
-			    fi
+                ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
+                if [[ "${2}" -eq "link,con" ]]; then
+                    continue
+                else
+                    break
+                fi
             fi
-		fi	
-	done
+        fi	
+    done
+
+    ## for "con" option
+    if [[ "$FOUND" -eq "1" ]] && [[ "${type}" -eq "con" ]]; then
+        ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild} 1
+    fi
 
 
-	## Default behavior is to get from the image
-	if [ "$FOUND" = "0"  ]; then
-		if [ -e "${DEFAULT}${path}" ]; then
-			ProcessType ${DEFAULT}${path} ${path} ${type} ${isChild}
-		else
-			echo "Could not find ${path} in defaults or any other place" >/dev/console
-		fi
-		# if it wasn't found, mount rw in tmpfs
-	fi
+    ## Default behavior is to get from the image
+    if [ "$FOUND" = "0"  ]; then
+        if [ -e "${DEFAULT}${path}" ]; then
+            ProcessType ${DEFAULT}${path} ${path} ${type} ${isChild}
+        else
+            echo "Could not find ${path} in defaults or any other place" >/dev/console
+        fi
+        # if it wasn't found, mount rw in tmpfs
+    fi
 }
 
 

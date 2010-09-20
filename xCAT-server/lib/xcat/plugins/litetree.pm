@@ -369,7 +369,7 @@ sub mergeArrays {
 		foreach(@$arr){
 			next if($_->{file} eq '');
 			my $o = $_->{options};
-            $o = "bind" unless ($o);
+            $o = "tempfs" unless ($o);
 			# TODO: put some logic in here to make sure that ro is alone.
 			# if type is ro and con, then this is wrong silly!
 			#if($p eq "ro" and $t eq "con"){

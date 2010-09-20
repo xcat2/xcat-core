@@ -222,7 +222,7 @@ sub process_request {
     foreach my $entry (keys %hashNew) {
         my @tmp = split (/\s+/, $entry);
         if ($hashNew{$entry}) {
-            if ( $tmp[0] eq "ro"  or $tmp[0] eq "con") {
+            if ( $tmp[0] =~ m/ro/  or $tmp[0] =~ m/con/) {
                 $callback->({error=>[qq{the parent directory should not be with "ro" or "con" as its option}], errorcode=>[1]});
                 return;
             }
@@ -230,12 +230,12 @@ sub process_request {
                 my @tmpc = split (/\s+/, $child);
                 my $f = $tmp[1];
                 my $fc = $tmpc[1];
-                if ( ($tmp[0] eq "tmpfs,rw") and ( $tmpc[0] ne "tmpfs,rw"  or $tmpc[0] ne "ro") ) {
-                    $callback->({error=>[qq{$fc can only use "tmpfs,rw" or "ro" as its option based on the option of $f}], errorcode=> [ 1]});
+                if ( ($tmp[0] =~ m/link/) and ( $tmpc[0] !~ m/link/) ) {
+                    $callback->({error=>[qq{Based on the option of $f, $fc can only use "link"-headed options}], errorcode=> [ 1]});
                     return;
                 }
-                if ( ($tmp[0] ne  "tmpfs,rw") and ($tmpc[0] eq "tmpfs,rw" or $tmpc[0] eq "ro") ) {
-                    $callback->({error=>[qq{$fc shouldnot use "tmpfs,rw" options }], errorcode=> [ 1]});
+                if ( ($tmp[0] !~ m/link/) and ($tmpc[0] =~ m/link/) ) {
+                    $callback->({error=>[qq{$fc shouldnot use "link"-headed options }], errorcode=> [ 1]});
                     return;
                 }
                 if ( ($tmp[0] eq  qq{persistent}) and ($tmpc[0] ne qq{persistent}) ) {
@@ -551,7 +551,7 @@ sub liteItem {
     my $rif = $rootimg_dir . $f;
     my $d = dirname($f);
 
-    if (($entry[0] eq "tmpfs,rw") or ($entry[0] eq "ro")) {
+    if ($entry[0] =~ m/link/) {
         # 1.  copy original contents if they exist to .default directory
         # 2.  remove file
         # 3.  create symbolic link to .statelite
