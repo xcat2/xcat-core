@@ -1961,11 +1961,13 @@ sub clone_vms_from_master {
         my $placement_resources=get_placement_resources(hyp=>$hyp,cluster=>$cluster,destination=>$destination);
         my $pool=$placement_resources->{pool};
         my $dstore=$placement_resources->{datastore};
-        my $relocatespec = VirtualMachineRelocateSpec->new(
+        my %relocatespecargs =  (
            datastore=>$dstore, #$hyphash{$hyp}->{datastorerefmap}->{$destination},
-           #diskMoveType=>"createNewChildDiskBacking", #fyi, requires a snapshot, which isn't compatible with templates, moveChildMostDiskBacking would potentially be fine, but either way is ha incopmatible and limited to 8, arbitrary limitations hard to work around...
            pool=>$pool,
-        );
+           #diskMoveType=>"createNewChildDiskBacking", #fyi, requires a snapshot, which isn't compatible with templates, moveChildMostDiskBacking would potentially be fine, but either way is ha incopmatible and limited to 8, arbitrary limitations hard to work around...
+           );
+        if ($hyp) { $relocatespecargs{host}=$hyphash{$hyp}->{hostview} }
+        my $relocatespec = VirtualMachineRelocateSpec->new(%relocatespecargs);
         my $clonespec = VirtualMachineCloneSpec->new(
             location=>$relocatespec,
             template=>0,
