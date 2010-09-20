@@ -1,0 +1,12 @@
+start:nodeset_stat
+os:Linux
+cmd:nodeset $$CN stat
+check:rc==0
+check:output=~$$CN:\s+[discover|boot|reboot|install|netboot|shell|standby]
+end
+start:nodeset_noderange
+os:Linux
+cmd:nodeset $$CN test
+check:rc!=0
+check:output=~Error
+end

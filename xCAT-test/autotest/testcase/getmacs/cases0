@@ -1,0 +1,34 @@
+start:getmacs_noderange
+cmd:tabdump mac > /tmp/mac.csv
+cmd:chtab -d node=$$CN mac
+cmd:getmacs $$CN
+check:rc==0
+check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
+cmd:tabdump mac | grep $$CN
+check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
+cmd:tabrestore /tmp/mac.csv
+cmd:rm /tmp/mac.csv
+end
+start:getmacs_d
+cmd:tabdump mac > /tmp/mac.csv
+cmd:chtab -d node=$$CN mac
+cmd:getmacs $$CN -d
+check:rc==0
+check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
+cmd:tabdump mac | grep $$CN
+check:output!~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
+cmd:tabrestore /tmp/mac.csv
+cmd:rm /tmp/mac.csv
+end
+start:getmacs_f_D
+cmd:tabdump mac > /tmp/mac.csv
+cmd:chtab -d node=$$CN mac
+cmd:getmacs $$CN -f -D
+check:rc==0
+check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
+cmd:tabdump mac | grep $$CN
+check:output=~[a-f0-9A-F]{12}|[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}:[a-f0-9A-F]{2}
+cmd:tabrestore /tmp/mac.csv
+cmd:rm /tmp/mac.csv
+cmd:rpower $$CN on
+end

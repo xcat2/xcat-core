@@ -1,0 +1,40 @@
+start:rvitals_temp
+cmd:rvitals $$CN temp
+check:rc==0
+check:output=~System Temperature
+end
+start:rvitals_voltage
+hcp:hmc,ivm,fsp,ipmi
+cmd:rvitals $$CN voltage
+check:rc==0
+check:output=~Frame Voltages
+end
+start:rvitals_power
+cmd:rvitals $$CN power
+check:rc==0
+check:output=~Current Power Status:\s*(on|off)
+end
+start:rvitals_state
+cmd:rvitals $$CN state
+check:rc==0
+check:output=~System State:
+end
+start:rvitals_lcds
+hcp:hmc,ivm,fsp,ipmi
+cmd:rvitals $$CN lcds
+check:rc==0
+check:output=~Current LCD
+end
+start:rvitals_all
+cmd:rvitals $$CN all
+check:rc==0
+check:output=~System Temperature
+check:output=~Frame Voltages
+check:output=~Current Power Status:\s*(on|off)
+check:output=~System State:
+end
+start:rvitals_noderange_err
+cmd:rvitals testnode 
+check:rc!=0
+check:output=~Error
+end

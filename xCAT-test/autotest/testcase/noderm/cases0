@@ -1,0 +1,12 @@
+start:noderm_noderange
+cmd:nodeadd testnode1,testnode2 groups=all
+check:rc==0
+cmd:lsdef -t node testnode1,testnode2
+check:output=~testnode1
+check:output=~testnode2
+cmd:noderm testnode1,testnode2
+check:rc==0
+cmd:lsdef -t node testnode1,testnode2
+check:output=~Could not find an object named 'testnode1' of type 'node'.
+check:output=~Could not find an object named 'testnode2' of type 'node'.
+end

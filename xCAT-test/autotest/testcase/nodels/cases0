@@ -1,0 +1,39 @@
+start:nodels_null
+cmd:chdef -t node -o testnode groups="all,aix"
+check:rc==0
+cmd:nodels | grep testnode
+check:rc==0
+check:output=~testnode
+cmd:rmdef -t node -o testnode
+end
+
+start:nodels_H
+cmd:chdef -t node -o testnode groups="all,aix" mgt="hmc"
+check:rc==0
+cmd:nodels -H all groups mgt | grep testnode
+check:rc==0
+check:output=~groups:\s*all,aix
+check:output=~mgt:\s*hmc
+cmd:rmdef -t node -o testnode
+end
+
+start:nodels_noderange
+cmd:chdef -t node -o testnode groups="all,aix"
+check:rc==0
+cmd:nodels testnode
+check:rc==0
+check:output==testnode
+cmd:rmdef -t node -o testnode
+end
+
+start:nodels_err_symbol
+cmd:nodels -H all unknown
+check:rc!=0
+check:output=~Error
+end
+
+start:nodels_err_noderange
+cmd:nodels douniwan
+check:rc!=0
+check:output=~Error
+end

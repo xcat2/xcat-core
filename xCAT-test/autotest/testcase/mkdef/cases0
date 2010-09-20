@@ -1,0 +1,52 @@
+start:mkdef_null
+cmd:mkdef
+check:rc!=0
+check:output=~Usage
+end
+start:mkdef_t_o_attr
+cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
+check:rc==0
+cmd:lsdef -i groups testnode
+check:rc==0
+check:output=~groups=all,aix
+cmd:lsdef -i groups testnode1
+check:rc==0
+check:output=~groups=all,aix
+cmd:rmdef -t node -o testnode,testnode1
+end
+start:mkdef_f_t_o_attr
+cmd:mkdef -t node -o testnode groups=all,aix
+check:rc==0
+cmd:mkdef -f -t node -o testnode nodetype=lpar,osi groups=all
+check:rc==0
+cmd:lsdef -i groups,nodetype testnode
+check:rc==0
+check:output=~nodetype=lpar,osi
+check:output!=aix
+cmd:rmdef -t node -o testnode
+end	
+start:mkdef_z
+cmd:mkdef -t node -o orignode mgt=fsp cons=hmc pprofile=orignode groups=lpar,all
+check:rc==0
+cmd:lsdef -l orignode -z > /tmp/orignode.stanza
+check:rc==0
+cmd:perl -pi -e 's/orignode/testnode/g' /tmp/orignode.stanza
+cmd:cat /tmp/orignode.stanza | mkdef -z
+check:rc==0
+cmd:lsdef -l testnode -z > /tmp/testnode.stanza
+check:rc==0
+cmd:diff /tmp/orignode.stanza /tmp/testnode.stanza
+check:rc==0
+cmd:rm -f /tmp/orignode.stanza
+cmd:rm -f /tmp/testnode.stanza
+cmd:rmdef -t node testnode
+cmd:rmdef -t node orignode
+end
+start:mkdef_t_o_error
+cmd:mkdef -t testtype -o testnode groups=all,aix
+check:rc!=0
+check:output=~Usage
+end
+
+
+

@@ -1,0 +1,101 @@
+start:lsdef_null
+cmd:mkdef -t node -o testnode groups=all
+cmd:lsdef
+check:rc==0
+check:output=~testnode\s*\(node\)
+cmd:rmdef testnode
+end
+start:lsdef_a
+cmd:mkdef -t node -o testnode groups=all
+check:rc==0
+cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
+check:rc==0
+cmd:lsdef -a
+check:output=~testnode
+check:output=~testnetwork
+cmd:lsdef --all
+check:output=~testnode
+check:output=~testnetwork
+cmd:rmdef -t network testnetwork
+cmd:rmdef -t node testnode
+end
+start:lsdef_t_o_l
+cmd:mkdef -t node -o testnode groups=all
+check:rc==0
+cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
+check:rc==0
+cmd:lsdef -t node -l testnode
+check:rc==0
+check:output=~groups=all
+check:output!~testnetwork
+cmd:lsdef -t network -l testnetwork
+check:rc==0
+check:output=~net=1.2.3.0
+check:output=~mask=255.255.255.0
+check:output!~testnode
+cmd:rmdef -t network testnetwork
+cmd:rmdef -t node testnode
+end
+start:lsdef_t_o_l_z
+cmd:mkdef -t node -o testnode groups=all
+check:rc==0
+cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
+check:rc==0
+cmd:lsdef -t node -l testnode -z
+check:rc==0
+check:output=~testnode:
+check:output=~objtype=node
+check:output=~groups=all
+cmd:lsdef -t network -l testnetwork -z
+check:output=~testnetwork:
+check:output=~objtype=network
+check:output=~mask=255.255.255.0
+check:output=~net=1.2.3.0
+cmd:rmdef -t network testnetwork
+cmd:rmdef -t node testnode
+end
+start:lsdef_t
+cmd:mkdef -t node -o testnode groups=all
+check:rc==0
+cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
+check:rc==0
+cmd:lsdef -t network
+check:rc==0
+check:output=~testnetwork
+check:output!~testnode
+cmd:rmdef -t network testnetwork
+cmd:rmdef -t node testnode
+end
+start:lsdef_t_i_o
+cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
+check:rc==0
+cmd:lsdef -t network -i net
+check:rc==0
+check:output=~net=1.2.3.0
+check:output!~mask
+cmd:rmdef -t network testnetwork
+end
+start:lsdef_t_w
+cmd:mkdef -t node -o testnode1-testnode2 cons=hmc groups=all
+check:rc==0
+cmd:mkdef -t node -o testnode3-testnode4 cons=ipmi groups=linux
+check:rc==0
+cmd:lsdef -t node -w cons==ipmi
+check:rc==0
+check:output=~testnode3
+check:output=~testnode4
+check:output!=testnode1
+check:output!=testnode2
+cmd:lsdef -t node -w cons!~hmc
+check:rc==0
+check:output=~testnode3
+check:output=~testnode4
+check:output!=testnode1
+check:output!=testnode2
+cmd:rmdef -t node testnode1-testnode4
+end
+start:lsdef_t_err
+cmd:lsdef -t test -o test
+check:rc!=0
+check:output=~Error
+end

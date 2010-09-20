@@ -1,0 +1,42 @@
+#Need to test later
+start:rspconfig_autopower
+hcp:fsp
+cmd:rspconfig $$CEC autopower
+check:rc==0
+check:output=~$$CEC: autopower: \w+
+end
+start:rspconfig_iocap
+hcp:fsp
+cmd:rspconfig $$CEC iocap
+check:rc==0
+check:output=~$$CEC: iocap: \w+
+end
+start:
+start:rspconfig_time
+hcp:fsp
+cmd:rspconfig $$CEC time
+check:rc==0
+check:output=~$$CEC: Time: \d\d:\d\d:\d\d
+end
+start:rspconfig_date
+hcp:fsp
+cmd:rspconfig $$CEC date
+check:rc==0
+check:output=~$$CEC: Date: \d\d-\d\d-\d\d\d\d
+end
+start:rspconfig_decfg
+hcp:fsp
+cmd:rspconfig $$CEC decfg
+check:rc==0
+check:output=~$$CEC
+check:output=~floating point unit
+check:output=~predictive
+check:output=~system bus
+check:output=~functional
+end
+start:rspconfig_sshcfg
+hcp:hmc
+cmd:rspconfig __GETNODEATTR($$CN,hcp)__ sshcfg
+check:rc==0
+check:output=~__GETNODEATTR($$CN,hcp)__: \w+
+end

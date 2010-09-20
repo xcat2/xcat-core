@@ -1,0 +1,53 @@
+start:aix_diskless_installation_flat
+os:AIX
+cmd:mknimimage -V -r -t diskless -s $$SOURCE autotestcosi
+check:rc==0
+cmd:lsnim | grep autotestcosi
+check:rc==0
+check:output=~lpp_source
+check:output=~spot
+check:output=~paging
+check:output=~shared_root
+cmd:nim -o update -a packages=all -a source=$$SSHPKG autotestcosi_lpp_source
+check:rc==0
+cmd:mkdir -p /install/nim/installp_bundle
+cmd:cp $$SSHPKG/xCATaixCN.bnd /install/nim/installp_bundle/
+check:rc==0
+cmd:nim -o define -t installp_bundle -a server=master -a location=/install/nim/installp_bundle/xCATaixCN.bnd xCATaixCN
+cmd:chdef -t osimage -o autotestcosi installp_bundle="xCATaixCN"
+check:rc==0
+cmd:xcatchroot -i autotestcosi "/usr/bin/echo root:cluster|/usr/bin/chpasswd -c"
+check:rc==0
+cmd:mknimimage -u autotestcosi
+check:rc==0
+cmd:rscan __GETNODEATTR($$CN, hcp)__ -w
+check:rc==0
+cmd:makeconservercf
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:getmacs $$CN -f -D
+check:rc==0
+cmd:mkdsklsnode -i autotestcosi $$CN
+check:rc==0
+cmd:lsnim | grep $$CN
+check:output=~machines
+cmd:lsnim -l $$CN
+check:output=~diskless or dataless boot is enabled
+cmd:cat /etc/bootptab | grep $$CN
+check:output=~__GETNODEATTR($$CN, mac)__
+cmd:ls -l /tftpboot/$$CN*
+check:output=~$$CN
+cmd:cat /etc/exports | grep $$CN
+check:output=~autotestcosi_shared_root
+check:output=~spot/autotestcosi/usr
+check:output=~autotestcosi_paging
+cmd:rnetboot $$CN
+check:rc==0
+cmd:sleep 300
+cmd:lsdef -l $$CN| grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+end

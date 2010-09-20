@@ -1,0 +1,10 @@
+start:tabdump_table
+cmd:tabdump site | grep xcatiport
+check:rc==0
+check:output=="xcatiport","3002",,
+end
+start:tabdump_d
+cmd:tabdump -d site | grep xcatiport
+check:rc==0
+check:output=~xcatiport
+end

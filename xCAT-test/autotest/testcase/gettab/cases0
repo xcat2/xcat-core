@@ -1,0 +1,5 @@
+start:gettab_key_table
+cmd:gettab key=xcatdport site.value
+check:rc==0
+check:output==3001
+end

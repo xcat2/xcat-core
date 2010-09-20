@@ -1,0 +1,40 @@
+start:Linux_full_installation_flat
+os:Linux
+cmd:rscan __GETNODEATTR($$CN,hcp)__ -w
+check:rc==0
+cmd:makedns
+check:rc==0
+cmd:service named restart
+check:rc==0
+cmd:nslookup $$CN
+check:rc==0
+check:output=~Address:\s+\d+.\d+.\d+.\d+
+cmd:makeconservercf
+check:rc==0
+cmd:cat /etc/conserver.cf | grep $$CN
+check:output=~$$CN
+cmd:getmacs $$CN -f -D
+check:rc==0
+cmd:makedhcp -n
+check:rc==0
+cmd:makedhcp -a
+check:rc==0
+cmd:service dhcpd restart
+check:rc==0
+cmd:cat /var/lib/dhcpd/dhcpd.leases| grep lpar5
+check:output=~lpar5
+cmd:copycds $$ISO
+check:rc==0
+cmd:nodeset $$CN install
+check:rc==0
+cmd:rnetboot $$CN
+check:rc==0
+cmd:sleep 1200
+cmd:ping $$CN -c 3
+check:output=~64 bytes from $$CN
+cmd:lsdef -l $$CN | grep status
+check:output=~booted
+cmd:xdsh $$CN date
+check:rc==0
+check:output=~\d\d:\d\d:\d\d
+end

@@ -1,0 +1,31 @@
+start:makeconservercf_null
+cmd:chdef -t node -o testnode cons=hmc
+cmd:makeconservercf
+check:rc==0
+cmd:cat /etc/conserver.cf
+check:output=~console testnode {
+check:output=~ exec /opt/xcat/share/xcat/cons/hmc testnode;
+check:output=~}
+cmd:rmdef -t node testnode
+end
+start:makeconservercf_noderange
+cmd:chdef -t node -o testnode cons=hmc
+cmd:makeconservercf testnode
+check:rc==0
+cmd:cat /etc/conserver.cf
+check:output=~console testnode {
+check:output=~ exec /opt/xcat/share/xcat/cons/hmc testnode;
+check:output=~}
+cmd:rmdef -t node testnode
+end
+start:makeconservercf_d
+cmd:chdef -t node -o testnode cons=hmc
+cmd:makeconservercf testnode
+check:rc==0
+cmd:makeconservercf -d testnode
+check:rc==0
+cmd:cat /etc/conserver.cf | grep testnode
+check:output!~testnode
+cmd:rmdef -t node testnode
+end
+

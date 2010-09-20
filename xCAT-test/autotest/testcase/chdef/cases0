@@ -1,0 +1,77 @@
+start:chdef_null
+cmd:chdef
+check:rc==0
+check:output=~Usage
+end
+start:chdef_t_o_attr
+cmd:chdef -t network -o testnetwork net=111.222.33.0 mask=255.255.255.254
+check:rc==0
+cmd:lsdef -t network -l testnetwork
+check:rc==0
+check:output=~net=111.222.33.0
+check:output=~mask=255.255.255.254
+cmd:chdef -t network -o testnetwork net=111.222.34.0 mask=255.255.255.254 gateway=111.222.34.1
+check:rc==0
+cmd:lsdef -t network -l testnetwork
+check:rc==0
+check:output=~net=111.222.34.0
+check:output=~mask=255.255.255.254
+check:output=~gateway=111.222.34.1
+cmd:rmdef -t network testnetwork
+end
+start:chdef_p_t_o_attr
+cmd:mkdef -t node -o testnode groups=all
+check:rc==0
+cmd:chdef -p -t node -o testnode groups=aix
+check:rc==0
+cmd:lsdef -t node -l testnode 
+check:output=~groups=all,aix
+cmd:rmdef -t node testnode
+end
+start:chdef_m_t_o_attr
+cmd:mkdef -t node -o testnode groups=all,testgroup
+check:rc==0
+cmd:chdef -m -t node -o testnode groups=testgroup
+check:rc==0
+cmd:lsdef -t node -l testnode 
+check:output!~testgroup
+cmd:rmdef -t node testnode
+end
+start:chdef_z
+cmd:mkdef -t node -o testnode groups=all
+check:rc==0
+cmd:lsdef -l $$CN -z > /tmp/testnode.stanza
+check:rc==0
+cmd:perl -pi -e 's/$$CN/testnode/g' /tmp/testnode.stanza
+cmd:cat /tmp/testnode.stanza | chdef -z
+check:rc==0
+cmd:lsdef -l testnode -z > /tmp/testnode1.stanza
+check:rc==0
+cmd:diff /tmp/testnode.stanza /tmp/testnode1.stanza
+check:rc==0
+cmd:rm -f /tmp/testnode1.stanza
+cmd:rm -f /tmp/testnode.stanza
+cmd:rmdef -t node testnode
+end
+start:chdef_t_o_attr_noderange
+cmd:chdef -t node -o orignode mgt=fsp cons=hmc pprofile=orignode groups=lpar,all
+check:rc==0
+cmd:lsdef -l orignode -z > /tmp/orignode.stanza
+check:rc==0
+cmd:perl -pi -e 's/orignode/testnode/g' /tmp/orignode.stanza
+cmd:cat /tmp/orignode.stanza | chdef -z
+check:rc==0
+cmd:lsdef -l testnode -z > /tmp/testnode.stanza
+check:rc==0
+cmd:diff /tmp/orignode.stanza /tmp/testnode.stanza
+check:rc==0
+cmd:rm -f /tmp/orignode.stanza
+cmd:rm -f /tmp/testnode.stanza
+cmd:rmdef -t node testnode
+cmd:rmdef -t node orignode
+end
+start:chdef_t_o_error
+cmd:chdef -t testtype -o testnode groups=all,aix
+check:rc!=0
+check:output=~Usage
+end

@@ -1,0 +1,55 @@
+start:rinv_null
+cmd:rinv
+check:rc!=0
+check:output=~Usage
+end
+start:rinv_bus
+arch:ppc
+cmd:rinv $$CN bus
+check:rc==0
+check:output=~I/O Bus Information
+end
+start:rinv_config
+arch:ppc
+cmd:rinv $$CN config
+check:rc==0
+check:output=~Machine Configuration Info
+check:output=~Number of Processors:\s*\d+
+check:output=~Total Memory \(\w+\):\s*\d+
+end
+start:rinv_serial
+arch:ppc
+cmd:rinv $$CN serial
+check:rc==0
+check:output=~Serial Number:\s*\w{7}
+end
+start:rinv_model
+arch:ppc
+cmd:rinv $$CN model
+check:rc==0
+check:output=~Machine Type/Model\s*:\s*\w{4}-\w{3}
+end
+start:rinv_firm
+arch:ppc
+cmd:rinv $$CN firm
+check:rc==0
+check:output=~Release Level\s*:\s*\w+
+end
+start:rinv_all
+arch:ppc
+cmd:rinv $$CN all
+check:rc==0
+check:output=~I/O Bus Information
+check:output=~Machine Configuration Info
+check:output=~Number of Processors:\s*\d+
+check:output=~Total Memory \(\w+\):\s*\d+
+check:output=~Serial Number:\s*\w{7}
+check:output=~Machine Type/Model\s*:\s*\w{4}-\w{3}
+check:output=~Release Level\s*:\s*\w+
+end
+start:rinv_noderange_err
+cmd:rinv testnode
+check:rc!=0
+check:output=~Error
+end
+

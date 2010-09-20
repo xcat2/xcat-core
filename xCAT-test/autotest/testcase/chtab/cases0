@@ -1,0 +1,29 @@
+start:chtab_null
+cmd:chtab
+check:rc!=0
+check:output=~Usage
+end
+start:chtab_delete
+cmd:chtab key=rsh_test site.value=/opt/xcat/bin/rcp site.comments="the rcp command" site.disable=no
+check:rc==0
+cmd:tabdump site | grep rsh_test
+check:output=~/opt/xcat/bin/rcp
+cmd:chtab -d key=rsh_test site
+check:rc==0
+cmd:tabdump site | grep rsh_test
+check:output!=rsh_test
+end
+start:chtab_modify
+cmd:chtab key=rsh_test site.value=/opt/xcat/bin/rcp site.comments="the rcp command" site.disable=no
+check:rc==0
+cmd:tabdump site | grep rsh_test
+check:output=~/opt/xcat/bin/rcp
+check:output=~no
+check:output=~the rcp command
+cmd:chtab key=rsh_test site.value=/opt/xcat/bin/scp site.disable=yes
+check:rc==0
+cmd:tabdump site | grep rsh_test
+check:output=~/opt/xcat/bin/scp
+check:output=~yes
+cmd:chtab -d key=rsh_test site
+end

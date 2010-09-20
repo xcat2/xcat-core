@@ -1,0 +1,74 @@
+start:nodech_noderange_table
+cmd:chdef -t node -o testnode groups=all,rhels5.4
+check:rc==0
+cmd:nodech testnode groups=all,rhels5.5 nodetype.os=rhels5.5 nodehm.mgt=hmc
+check:rc==0
+cmd:lsdef -t node -i groups,os,mgt testnode
+check:output=~groups=all,rhels5.5
+check:output=~os=rhels5.5
+check:output=~mgt=hmc
+cmd:rmdef -t node testnode
+end
+start:nodech_noderange_table_comma
+cmd:chdef -t node -o testnode groups=all
+check:rc==0
+cmd:nodech testnode groups,=rhels5.5
+check:rc==0
+cmd:lsdef -t node -i groups testnode
+check:output=~groups=rhels5.5,all
+cmd:rmdef -t node testnode
+end
+start:nodech_noderange_table_arrow
+cmd:chdef -t node -o testnode groups=all,rhels5.5
+check:rc==0
+cmd:nodech testnode groups^=rhels5.5
+check:rc==0
+cmd:lsdef -t node -i groups testnode
+check:output!=rhels5.5
+cmd:rmdef -t node testnode
+end
+start:nodech_noderanage_table_at
+cmd:chdef -t node -o testnode os=hello
+check:rc==0
+cmd:nodech testnode nodetype.os=@=helloworld
+check:rc==0
+cmd:lsdef -t node -i os testnode
+check:output=~os==helloworld
+cmd:rmdef -t node testnode
+end
+start:nodech_delete
+cmd:chdef -t node -o testnode os=hello
+check:rc==0
+cmd:nodech -d testnode nodetype
+check:rc==0
+cmd:tabdump nodetype | grep testnode
+check:output!~testnode
+cmd:rmdef -t node testnode
+end
+start:nodech_delete_error
+cmd:chdef -t node -o testnode os=hello
+check:rc==0
+cmd:nodech --delete
+check:rc!=0
+check:output=~Usage
+cmd:nodech -d
+check:rc!=0
+check:output=~Usage
+cmd:rmdef -t node testnode
+end
+start:nodech_error_node
+cmd:chdef -t node -o testnode groups=all,rhels5.4
+check:rc==0
+cmd:nodech testnode1 groups=all,rhels5.5 nodetype.os=rhels5.5 nodehm.mgt=hmc
+check:rc!=0
+check:output=~Error
+cmd:rmdef -t node testnode
+end
+start:nodech_error_table
+cmd:chdef -t node -o testnode groups=all,rhels5.4
+check:rc==0
+cmd:nodech testnode groups=all,rhels5.5 nodetypes.os=rhels5.5 nodehm.mgt=hmc
+check:rc!=0
+check:output=~Error
+cmd:rmdef -t node testnode
+end

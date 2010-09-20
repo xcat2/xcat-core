@@ -1,0 +1,72 @@
+start:rpower_off
+cmd:rpower $$CN stat
+check:ouptut=~Running
+cmd:rpower $$CN off
+check:rc==0
+check:output=~Success
+cmd:sleep 30
+cmd:rpower $$CN stat
+check:output=~Not Activated
+cmd:rpower $$CN on
+cmd:sleep 300
+end
+start:rpower_stat
+cmd:rpower $$CN stat
+check:rc==0
+check:output=~Running
+cmd:rpower $$CN state
+check:rc==0
+check:output=~Running
+end
+start:rpower_boot
+cmd:rpower $$CN off
+cmd:sleep 30
+cmd:rpower $$CN stat
+check:output=~Not Activated
+cmd:rpower $$CN boot
+check:rc==0
+check:output=~Success
+cmd:sleep 30
+cmd:rpower $$CN stat
+check:output=~Running
+cmd:sleep 300
+end
+start:rpower_on
+cmd:rpower $$CN off
+cmd:sleep 30
+cmd:rpower $$CN stat
+check:output=~Not Activated
+cmd:rpower $$CN on
+check:rc==0
+check:output=~Success
+cmd:sleep 30
+cmd:rpower $$CN stat
+check:output=~Running
+cmd:sleep 300
+end
+start:rpower_reset
+cmd:rpower $$CN stat
+check:ouptut=~Running
+cmd:rpower $$CN reset
+check:rc==0
+check:output=~Success
+cmd:sleep 30
+cmd:rpower $$CN stat
+check:output=~Running
+cmd:sleep 300
+end
+start:rpower_noderange
+cmd:rpower $$CN
+check:rc!=0
+check:output=~Usage
+end
+start:rpower_noderange_nodeps
+cmd:rpower $$CN --nodeps
+check:rc!=0
+check:output=~Usage
+end
+start:rpower_err_noderange
+cmd:rpower testnode stat
+check:rc!=0
+check:output=~Error
+end

@@ -1,0 +1,23 @@
+start:rmvm_noderange
+hcp:hmc
+cmd:mkdef -t node -o testnode1,testnode2 mgt=hmc groups=all
+cmd:mkvm testnode1,testnode2 -i $$MaxLparID -l $$CN
+check:rc==0
+cmd:lsvm testnode1,testnode2
+check:rc==0
+check:output=~testnode1:
+check:output=~testnode2:
+cmd:rmvm testnode1,testnode2
+check:rc==0
+check:output=~testnode1:\s*Success
+check:output=~testnode2:\s*Success
+cmd:lsvm testnode1
+check:output=~Invalid nodes
+cmd:lsvm testnode2
+check:output=~Invalid nodes
+cmd:lsdef | grep testnode1
+check:output!~testnode1
+cmd:lsdef | grep testnode2
+check:output!=testnode2
+end
+

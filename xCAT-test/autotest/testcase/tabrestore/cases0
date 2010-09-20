@@ -1,0 +1,13 @@
+start:tabrestore_table
+cmd:tabdump site > /tmp/site.csv
+check:rc==0
+cmd:chtab key=xcatdport site.value=3333
+check:rc==0
+cmd:tabrestore /tmp/site.csv
+check:rc==0
+cmd:tabdump site > /tmp/site1.csv
+check:rc==0
+cmd:diff /tmp/site1.csv /tmp/site.csv
+check:rc==0
+cmd:rm -f /tmp/site.csv /tmp/site1.csv
+end

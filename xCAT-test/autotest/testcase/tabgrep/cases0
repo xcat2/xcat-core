@@ -1,0 +1,8 @@
+start:tabgrep_node
+cmd:mkdef -t node testnode groups=all
+check:rc==0
+cmd:tabgrep testnode
+check:rc==0
+check:output=~nodelist
+cmd:rmdef -t node testnode
+end

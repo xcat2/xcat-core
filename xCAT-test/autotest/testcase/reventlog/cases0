@@ -1,0 +1,22 @@
+start:reventlog_null
+cmd:reventlog
+check:rc!=0
+check:output=~Usage
+end
+start:reventlog_all
+cmd:reventlog $$CN all
+check:rc==0
+check:output=~$$CN\s*:\s*.*\d\d/\d\d/\d\d\s*\S+
+end
+start:reventlog_clear
+cmd:reventlog $$CN clear
+check:rc==0
+check:output=~$$CN\s*:\s*clear
+end
+start:reventlog_numofentries
+cmd:reventlog $$CN 5
+check:rc==0
+check:output=~$$CN\s*:\s*.*\d\d/\d\d/\d\d\s*\S+
+cmd:reventlog $$CN 3 | wc -l
+check:output=~\s*3\s*
+end

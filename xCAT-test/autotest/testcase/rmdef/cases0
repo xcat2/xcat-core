@@ -1,0 +1,43 @@
+start:rmdef_null
+cmd:rmdef
+check:rc!=0
+check:output=~Usage
+end
+start:rmdef_t_o_attr
+cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
+check:rc==0
+cmd:lsdef -t node testnode,testnode1
+check:output=~testnode
+check:output=~testnode1
+cmd:rmdef -t node -o testnode,testnode1
+check:rc==0
+cmd:lsdef -t node testnode,testnode1
+check:output=~Could not find an object named 'testnode' of type 'node'.
+check:output=~Could not find an object named 'testnode1' of type 'node'.
+end
+start:rmdef_f_all
+cmd:mkdir -p /tmp/db
+cmd:dumpxCATdb -p /tmp/db
+check:rc==0
+cmd:rmdef -f -a
+check:rc==0
+cmd:XCATBYPASS=yes lsdef -a
+check:rc==0
+check:output!~group
+check:output!~node
+check:output!~network
+check:output!~osimage
+check:output!~policy
+check:output!~notification
+check:output!~eventlog
+check:output!~boottarget
+check:output!~firmware
+check:output!~monitoring
+cmd:XCATBYPASS=yes restorexCATdb -a -p /tmp/db
+check:rc==0
+end
+start:rmdef_t_err
+cmd:rmdef -t testtype -o testnode
+check:rc!=0
+check:output=~Usage
+end

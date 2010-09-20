@@ -1,0 +1,14 @@
+start:mkvm_i_l
+hcp:hmc
+cmd:mkdef -t node -o testnode1,testnode2 mgt=hmc groups=all
+cmd:mkvm testnode1,testnode2 -i $$MaxLparID -l $$CN
+check:rc==0
+check:output=~testnode1\s*:\s*Success\ntestnode2\s*:\s*Success
+cmd:lsvm testnode1
+check:rc==0
+check:output=~testnode1:.*lpar_name=testnode1,lpar_id=$$MaxLparID
+cmd:lsvm testnode2
+check:rc==0
+check:output=~testnode2:.*lpar_name=testnode2,lpar_id=__INC($$MaxLparID)__
+cmd:rmvm testnode1,testnode2
+end

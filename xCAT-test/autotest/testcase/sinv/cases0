@@ -1,0 +1,17 @@
+start:sinv_c_p_t_r_o
+cmd:xdsh $$CN rpm -qa | xdshbak > /tmp/sinv.template
+check:rc==0
+cmd:sinv $$CN -c "xdsh $$CN rpm -qa" -p /tmp/sinv.template -t 2 -r -o /tmp/sinv.output
+check:rc==0
+cmd:cat /tmp/sinv.output
+check:output=~$$CN
+cmd:rm -f /tmp/sinv.template /tmp/sinv.output
+end
+start:sinv_c_s_p_t_o
+cmd:sinv $$CN -c "xdsh $$CN rpm -qa" -s $$CN -p /tmp/sinv.template -t 2 -o /tmp/sinv.output
+check:rc==0
+cmd:cat /tmp/sinv.output
+check:output=~$$CN
+cmd:rm -f /tmp/sinv.template /tmp/sinv.output
+end
+

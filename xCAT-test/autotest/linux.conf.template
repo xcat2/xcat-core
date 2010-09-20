@@ -1,0 +1,81 @@
+#Table configuration
+[Table_passwd]
+key=system
+username=root
+password=cluster
+
+[Table_site]
+key=nameservers
+value=192.168.10.1
+key=forwarders
+value=9.114.1.1
+key=domain
+value=ppd.pok.ibm.com
+[Object_network]
+Name=autotest_ent
+net=192.168.10.0
+mask=255.255.255.0
+gateway=192.168.10.3
+
+#Object configuration
+[Object_node]
+Name=w1v3hmc05.ppd.pok.ibm.com
+groups=hmc,all
+nodetype=hmc
+mgt=hmc
+username=hscroot
+password=abc123
+
+[Object_node]
+Name=Server-9117-MMA-SN10F6F3D
+nodetype=fsp
+mtm=9117-MMA
+serial=10F6F3D
+side=A
+hcp=9.114.47.165
+groups=fsp,all
+mgt=hmc
+
+[Object_node]
+Name=lpar5
+hcp=w1v3hmc05.ppd.pok.ibm.com
+netboot=yaboot
+tftpserver=192.168.10.1
+nfsserver=192.168.10.1
+monserver=192.168.10.1
+xcatmaster=192.168.10.1
+installnic=eth1
+primarynic=eth0
+arch=ppc64
+profile=compute
+os=rhels5.4
+
+#system varible for autotest
+[System]
+CN=lpar5
+ISO=/iso/RHEL5.4-Server-20090819.0-ppc-DVD.iso
+NETDRIVER=ibmveth     #network infterface card driver used by diskless installation
+NETBOOTDIR=/opt/xcat/share/xcat/netboot/rh       #path of netboot directory, used by diskless installation
+MaxLparID=32
+[Custom]
+
+#commands run before test
+[Script_Prev]
+rpm -e xCAT xCAT-server xCAT-client perl-xCAT
+rm -rf /etc/xcat
+rm -rf /root/.xcat
+rm -rf /root/.ssh
+rm -rf /install/autoinst
+rm -rf /install/postscripts
+wget http://xcat.sourceforge.net/yum/devel/core-rpms-snap.tar.bz2
+tar jxf core-rpms-snap.tar.bz2
+./xcat-core/mklocalrepo.sh
+mount -o loop /iso/RHEL5.4-Server-20090819.0-ppc-DVD.iso /iso/1 -t iso9660
+yum -y install xCAT
+umount /iso/1
+rm -f core-rpms-snap.tar.bz2
+rm -rf xcat-core
+
+#commands run after test
+[Script_Post]
+

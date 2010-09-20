@@ -1,0 +1,20 @@
+start:nodeadd_noderange
+cmd:nodeadd testnode1-testnode2 groups="lpar,all" nodetype.nodetype="lpar,osi"
+check:rc==0
+cmd:lsdef -i groups,nodetype testnode1
+check:rc==0
+check:output=~testnode1
+check:output=~groups=lpar,all
+check:output=~nodetype=lpar,osi
+cmd:lsdef -i groups,nodetype testnode2
+check:rc==0
+check:output=~testnode2
+check:output=~groups=lpar,all
+check:output=~nodetype=lpar,osi
+cmd:rmdef -t node -o testnode1-testnode2
+end
+start:nodeadd_err_symbol
+cmd:nodeadd testnode magt=unknown
+check:rc!=0
+check:output=~Error
+end

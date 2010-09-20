@@ -1,0 +1,7 @@
+start:restartxcatd
+os:AIX
+cmd:restartxcatd
+check:rc==0
+check:output=~The xcatd Subsystem was requested to stop
+check:output=~The xcatd Subsystem has been started. Subsystem PID is \d+
+end

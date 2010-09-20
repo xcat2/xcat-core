@@ -1,0 +1,20 @@
+start:xdcp_src_dst
+cmd:xdsh $$CN rm -f /tmp/hosts
+cmd:xdcp $$CN /etc/hosts /tmp/hosts
+check:rc==0
+cmd:xdsh $$CN cat /tmp/hosts > /tmp/hosts
+cmd:perl -pi -e 's/$$CN: //g' /tmp/hosts
+cmd:diff /tmp/hosts /etc/hosts
+check:rc==0
+cmd:xdsh $$CN rm -f /tmp/hosts
+cmd:rm -f /tmp/hosts
+end
+start:xdcp_P
+cmd:xdcp $$CN -P /etc/inittab /tmp/
+check:rc==0
+cmd:xdsh $$CN cat /etc/inittab > /tmp/inittab1
+cmd:perl -pi -e 's/$$CN: //g' /tmp/inittab1
+cmd:diff /tmp/inittab._$$CN /tmp/inittab1
+check:rc==0
+cmd:rm -f /tmp/inittab._$$CN /tmp/inittab1
+end
