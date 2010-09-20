@@ -225,9 +225,11 @@ sub preprocess_request {
             } else {
                 die "TODO: implement default vcenter (for now, user, do vm.migratiodest=cluster".'@'."vcentername)";
             }
-            push @moreinfo,"[CLUSTER:$_][".join(',',keys %{$cluster_hash{$_}->{nodes}})."][$username][$password][$vusername][$vpassword][$vcenter]";
+            push @moreinfo,"[CLUSTER:$cluster][".join(',',keys %{$cluster_hash{$_}->{nodes}})."][$username][$password][$vusername][$vpassword][$vcenter]";
         }
-		$reqcopy->{node} = \@nodes;
+        if (scalar @nodes) {
+    		$reqcopy->{node} = \@nodes;
+        }
 		#print "nodes=@nodes\n";
 		$reqcopy->{moreinfo}=\@moreinfo;
 		push @requests, $reqcopy;
@@ -1691,7 +1693,7 @@ sub generic_hyp_operation { #The general form of firing per-hypervisor requests 
         unless (scalar @relevant_nodes) {
             next;
         }
-        $function->(nodes => \@relevant_nodes,cluster=>$hyp,exargs => \@exargs);
+        $function->(nodes => \@relevant_nodes,cluster=>$hyp,exargs => \@exargs,conn=>$clusterhash{$hyp}->{conn});
     }
 }
 
@@ -1970,7 +1972,6 @@ sub clone_vms_from_master {
             $pool=$clusterhash{$cluster}->{pool};
             $dstore=$clusterhash{$cluster}->{datastorerefmap}->{$destination},
         }
-
         my $relocatespec = VirtualMachineRelocateSpec->new(
            datastore=>$dstore, #$hyphash{$hyp}->{datastorerefmap}->{$destination},
            #diskMoveType=>"createNewChildDiskBacking", #fyi, requires a snapshot, which isn't compatible with templates, moveChildMostDiskBacking would potentially be fine, but either way is ha incopmatible and limited to 8, arbitrary limitations hard to work around...
@@ -2083,6 +2084,7 @@ sub mkvms {
     my %args = @_;
     my $nodes = $args{nodes};
     my $hyp = $args{hyp};
+    my $cluster = $args{cluster};
     @ARGV = @{$args{exargs}}; #for getoptions;
     my $disksize;
     require Getopt::Long;
@@ -2094,11 +2096,13 @@ sub mkvms {
 		"mem=s"     => \$memory
         );
     my $node;
-    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
-    unless (validate_datastore_prereqs($nodes,$hyp)) {
-        return;
+    if ($hyp) {
+        $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
+        unless (validate_datastore_prereqs($nodes,$hyp)) {
+            return;
+        }
     }
-    sortoutdatacenters(nodes=>$nodes,hyp=>$hyp);
+    sortoutdatacenters(nodes=>$nodes,hyp=>$hyp,cluster=>$cluster);
     $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
     my $cfg;
     foreach $node (@$nodes) {
@@ -3040,13 +3044,14 @@ sub refreshclusterdatastoremap {
              my $dsv = $conn->get_view(mo_ref=>$_);
              if (defined $dsv->info->{nas}) {
                  if ($dsv->info->nas->type eq 'NFS') {
-                     my $mnthost = inet_aton($dsv->info->nas->remoteHost);
-                     if ($mnthost) {
-                         $mnthost = inet_ntoa($mnthost);
-                     } else {
-                         $mnthost = $dsv->info->nas->remoteHost;
-                         xCAT::SvrUtils::sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"], $output_handler);
-                     }
+                     my $mnthost = $dsv->info->nas->remoteHost;
+             #        my $mnthost = inet_aton($dsv->info->nas->remoteHost);
+             #        if ($mnthost) {
+             #            $mnthost = inet_ntoa($mnthost);
+             #        } else {
+             #            $mnthost = $dsv->info->nas->remoteHost;
+             #            xCAT::SvrUtils::sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"], $output_handler);
+             #        }
                      $clusterhash{$cluster}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
                      $clusterhash{$cluster}->{datastorerefmap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$_;
                 } #TODO: care about SMB
