@@ -116,10 +116,9 @@ body {
 #groups a {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	color: #0000FF;
-	display: block;
+	display: inline-table;
 	padding: 5px 15px 15px 5px;
 	text-decoration: none;
-	display: block;
 }
 
 #groups a:hover {

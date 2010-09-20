@@ -22,7 +22,7 @@
 	if (isset($_POST['f'])){
 		$pythonProcess = exec('ps -aef | grep -v grep | grep ajaxterm.py');
 		if ('' == $pythonProcess){
-			exec('nohup ' . dirname(__FILE__) . '/AJAXTERM/ajaxterm.py >/dev/null 2>&1 &');
+			exec('nohup ' . dirname(__FILE__) . '/ajaxterm/ajaxterm.py >/dev/null 2>&1 &');
 		}
 		
 		sleep(1);

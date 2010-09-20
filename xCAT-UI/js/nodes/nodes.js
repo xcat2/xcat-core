@@ -150,6 +150,10 @@ function loadGroups(data) {
     		} // End of onselect
     	} // End of callback
     });
+	
+	// Add nodes link
+	var groupsAction = $('<a href="#">Add node</a>');
+	$('#groups').append(groupsAction);
 }
 
 /**
