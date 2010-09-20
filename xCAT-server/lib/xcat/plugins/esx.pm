@@ -866,6 +866,8 @@ sub process_tasks {
                 $curcon = $hyphash{$running_tasks{$_}->{hyp}}->{conn}; 
             } elsif ($running_tasks{$_}->{vm}) {
                 $curcon = $vmhash{$running_tasks{$_}->{vm}}->{conn}; 
+            } elsif ($running_tasks{$_}->{cluster}) {
+                 $curcon = $clusterhash{$running_tasks{$_}->{cluster}}->{conn};
             } else {
                 use Carp qw/confess/;
                 confess "This stack trace indicates a cluster unfriendly path";
@@ -1956,22 +1958,9 @@ sub clone_vms_from_master {
             $destination=$masterent->{storage};
             $vment->{storage}=$destination;
         }
-        my $pool;
-        my $dstore;
-        if ($hyp) {
-          unless (defined $hyphash{$hyp}->{pool}) {
-                $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
-            }
-            $pool=$hyphash{$hyp}->{pool};
-            $dstore=$hyphash{$hyp}->{datastorerefmap}->{$destination},
-        } else {#clustered...
-            unless (defined $clusterhash{$cluster}->{pool}) {
-                my $cview = get_clusterview(clustname=>$cluster,conn=>$clusterhash{$cluster}->{conn});
-                $clusterhash{$cluster}->{pool}=$cview->resourcePool;
-            }
-            $pool=$clusterhash{$cluster}->{pool};
-            $dstore=$clusterhash{$cluster}->{datastorerefmap}->{$destination},
-        }
+        my $placement_resources=get_placement_resources(hyp=>$hyp,cluster=>$cluster,destination=>$destination);
+        my $pool=$placement_resources->{pool};
+        my $dstore=$placement_resources->{datastore};
         my $relocatespec = VirtualMachineRelocateSpec->new(
            datastore=>$dstore, #$hyphash{$hyp}->{datastorerefmap}->{$destination},
            #diskMoveType=>"createNewChildDiskBacking", #fyi, requires a snapshot, which isn't compatible with templates, moveChildMostDiskBacking would potentially be fine, but either way is ha incopmatible and limited to 8, arbitrary limitations hard to work around...
@@ -1989,6 +1978,32 @@ sub clone_vms_from_master {
         $running_tasks{$task}->{callback} = \&clone_task_callback;
         $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
         $running_tasks{$task}->{vm} = $node; #$hyp_conns->{$hyp};
+    }
+}
+sub get_placement_resources {
+    my %args = @_;
+    my $pool;
+    my $dstore;
+    my $hyp = $args{hyp};
+    my $cluster = $args{cluster};
+    my $destination=$args{destination};
+    if ($hyp) {
+      unless (defined $hyphash{$hyp}->{pool}) {
+            $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
+        }
+        $pool=$hyphash{$hyp}->{pool};
+        if ($destination) { $dstore=$hyphash{$hyp}->{datastorerefmap}->{$destination} };
+    } else {#clustered...
+        unless (defined $clusterhash{$cluster}->{pool}) {
+            my $cview = get_clusterview(clustname=>$cluster,conn=>$clusterhash{$cluster}->{conn});
+            $clusterhash{$cluster}->{pool}=$cview->resourcePool;
+        }
+        $pool=$clusterhash{$cluster}->{pool};
+        if ($destination) { $dstore=$clusterhash{$cluster}->{datastorerefmap}->{$destination} };
+    }
+    return {
+        pool=>$pool,
+        datastore=>$dstore,
     }
 }
 
@@ -2080,7 +2095,6 @@ sub promote_task_callback {
     }
 }
 sub mkvms {
-    #TODO: DRS friendlyness..
     my %args = @_;
     my $nodes = $args{nodes};
     my $hyp = $args{hyp};
@@ -2096,22 +2110,28 @@ sub mkvms {
 		"mem=s"     => \$memory
         );
     my $node;
+    my $conn;
     if ($hyp) {
         $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
         unless (validate_datastore_prereqs($nodes,$hyp)) {
             return;
         }
+        $conn=$hyphash{$hyp}->{conn};
+    } else {
+        refreshclusterdatastoremap($cluster);
+        $conn=$clusterhash{$cluster}->{conn};
     }
     sortoutdatacenters(nodes=>$nodes,hyp=>$hyp,cluster=>$cluster);
-    $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
+    my $placement_resources=get_placement_resources(hyp=>$hyp,cluster=>$cluster);
+    #$hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
     my $cfg;
     foreach $node (@$nodes) {
          process_tasks; #check for tasks needing followup actions before the task is forgotten (VMWare's memory is fairly short at times
-        if ($hyphash{$hyp}->{conn}->find_entity_view(view_type=>"VirtualMachine",filter=>{name=>$node})) {
+        if ($conn->find_entity_view(view_type=>"VirtualMachine",filter=>{name=>$node})) {
             xCAT::SvrUtils::sendmsg([1,"Virtual Machine already exists"], $output_handler,$node);
             next;
         } else {
-            register_vm($hyp,$node,$disksize,undef,undef,undef,cpus=>$cpuCount,memory=>$memory);
+            register_vm($hyp,$node,$disksize,undef,undef,undef,cpus=>$cpuCount,memory=>$memory,cluster=>$cluster);
         }
     }
     my @dhcpnodes;
@@ -2171,20 +2191,28 @@ sub register_vm {#Attempt to register existing instance of a VM
     my $failonerr = shift;
     my %args=@_; #ok, went overboard with positional arguments, from now on, named arguments
     my $task;
-    validate_network_prereqs([keys %{$hyphash{$hyp}->{nodes}}],$hyp);
-    unless (defined $hyphash{$hyp}->{datastoremap} or validate_datastore_prereqs([keys %{$hyphash{$hyp}->{nodes}}],$hyp)) {
-        die "unexpected condition";
+    if ($hyp) {
+        validate_network_prereqs([keys %{$hyphash{$hyp}->{nodes}}],$hyp);
+        unless (defined $hyphash{$hyp}->{datastoremap} or validate_datastore_prereqs([keys %{$hyphash{$hyp}->{nodes}}],$hyp)) {
+            die "unexpected condition";
+        }
+    } else {
+        scan_cluster_networks($args{cluster});
     }
-    sortoutdatacenters(nodes=>[$node],hyp=>$hyp);
-    unless (defined $hyphash{$hyp}->{pool}) {
-        $hyphash{$hyp}->{pool} = $hyphash{$hyp}->{conn}->get_view(mo_ref=>$hyphash{$hyp}->{hostview}->parent,properties=>['resourcePool'])->resourcePool;
-    }
+
+    sortoutdatacenters(nodes=>[$node],hyp=>$hyp,cluster=>$args{cluster});
+    my $placement_resources=get_placement_resources(hyp=>$hyp,cluster=>$args{cluster});
 
     # Try to add an existing VM to the machine folder
     my $success = eval {
-        $task = $vmhash{$node}->{vmfolder}->RegisterVM_Task(path=>getcfgdatastore($node,$hyphash{$hyp}->{datastoremap})." /$node/$node.vmx",name=>$node,pool=>$hyphash{$hyp}->{pool},asTemplate=>0);
+        if ($hyp) {
+            $task = $vmhash{$node}->{vmfolder}->RegisterVM_Task(path=>getcfgdatastore($node,$hyphash{$hyp}->{datastoremap})." /$node/$node.vmx",name=>$node,pool=>$hyphash{$hyp}->{pool},asTemplate=>0);
+        } else {
+            $task = $vmhash{$node}->{vmfolder}->RegisterVM_Task(path=>getcfgdatastore($node,$clusterhash{$args{cluster}}->{datastoremap})." /$node/$node.vmx",name=>$node,pool=>$placement_resources->{pool},asTemplate=>0);
+        }
     };
     # if we couldn't add it then it means it wasn't created yet.  So we create it.
+    my $cluster=$args{cluster};
     if ($@ or not $success) {
         #if (ref($@) eq 'SoapFault') {
         # if (ref($@->detail) eq 'NotFound') {
@@ -2196,13 +2224,15 @@ sub register_vm {#Attempt to register existing instance of a VM
             errregister=>$failonerr,
             cpus=>$args{cpus},
             memory=>$args{memory},
-            hyp => $hyp
+            hyp => $hyp,
+            cluster=>$cluster,
         });
     }
     if ($task) {
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&register_vm_callback;
         $running_tasks{$task}->{hyp} = $hyp;
+        $running_tasks{$task}->{cluster} = $cluster;
         $running_tasks{$task}->{data} = { 
             node => $node,
             disksize => $disksize,
@@ -2211,7 +2241,8 @@ sub register_vm {#Attempt to register existing instance of a VM
             errregister=>$failonerr,
             cpus=>$args{cpus},
             memory=>$args{memory},
-            hyp => $hyp
+            hyp => $hyp,
+            cluster=>$cluster,
         };
     }
 }
@@ -2271,7 +2302,10 @@ sub getcfgdatastore {
     }
     $cfgdatastore =~ s/=.*//;
     (my $method,my $location) = split /:\/\//,$cfgdatastore,2;
-    my $uri = getURI($method,$location);
+    my $uri = $cfgdatastore;
+    unless ($dses->{$uri}) {  #don't call getURI if map works out fine already
+        $uri = getURI($method,$location);
+    }
     $cfgdatastore = "[".$dses->{$uri}."]";
     #$cfgdatastore =~ s/,.*$//; #these two lines of code were kinda pointless
     #$cfgdatastore =~ s/\/$//;
@@ -2284,17 +2318,26 @@ sub mknewvm {
         my $disksize=shift;
         my $hyp=shift;
         my $otherargs=shift;
-        my $cfg = build_cfgspec($node,$hyphash{$hyp}->{datastoremap},$hyphash{$hyp}->{nets},$disksize,$hyp,$otherargs);
+        my $cluster=$otherargs->{cluster};
+        my $placement_resources=get_placement_resources(hyp=>$hyp,cluster=>$cluster);
+        my $pool=$placement_resources->{pool};
+        my $cfg;
+        if ($hyp) {
+           $cfg = build_cfgspec($node,$hyphash{$hyp}->{datastoremap},$hyphash{$hyp}->{nets},$disksize,$hyp,$otherargs);
+        } else { #cluster based..
+           $cfg = build_cfgspec($node,$clusterhash{$cluster}->{datastoremap},$clusterhash{$cluster}->{nets},$disksize,$hyp,$otherargs);
+        }
         my $task;
         if ($hyp) {
           $task = $vmhash{$node}->{vmfolder}->CreateVM_Task(config=>$cfg,pool=>$hyphash{$hyp}->{pool},host=>$hyphash{$hyp}->{hostview});
         } else {
-          $task = $vmhash{$node}->{vmfolder}->CreateVM_Task(config=>$cfg,pool=>$hyphash{$hyp}->{pool}); #drs away
+          $task = $vmhash{$node}->{vmfolder}->CreateVM_Task(config=>$cfg,pool=>$pool); #drs away
         }
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&mkvm_callback;
         $running_tasks{$task}->{hyp} = $hyp;
-        $running_tasks{$task}->{data} = { hyp=>$hyp, node => $node };
+        $running_tasks{$task}->{cluster} = $cluster;
+        $running_tasks{$task}->{data} = { hyp=>$hyp, cluster=>$cluster, node => $node };
 }
 
 
@@ -2440,13 +2483,15 @@ sub create_nic_devs {
         $model='e1000';
     }
     foreach (@networks) {
-        my $pgname = $hyphash{$hyp}->{pgnames}->{$_};
+        my $pgname=$_;
+        if ($hyp) {
+           $pgname = $hyphash{$hyp}->{pgnames}->{$_};
+        }
         s/.*://;
         s/=(.*)$//;
         my $tmpmodel=$model;
         if ($1) { $tmpmodel=$1; }
         my $netname = $_;
-        #print Dumper($netmap);
         my $backing = VirtualEthernetCardNetworkBackingInfo->new(
             network => $netmap->{$pgname},
             deviceName=>$pgname,
@@ -2547,7 +2592,10 @@ sub create_storage_devs {
 
         $storeloc =~ s/\/$//;
         (my $method,my $location) = split /:\/\//,$storeloc,2;
-        my $uri = getURI($method, $location);
+        my $uri = $storeloc;
+        unless ($sdmap->{$uri}) {  #don't call getURI if map works out fine already
+            $uri = getURI($method,$location);
+        }
         #(my $server,my $path) = split/\//,$location,2;
         #$server =~ s/:$//; #tolerate habitual colons
         #my $servern = inet_aton($server);
@@ -2958,6 +3006,20 @@ sub create_vswitch {
     return $description;
 }
 
+sub scan_cluster_networks {
+    my $cluster = shift;
+    use Data::Dumper;
+    my $conn = $clusterhash{$cluster}->{conn};
+    my $cview = get_clusterview(clustname=>$cluster,conn=>$conn);
+    if (defined $cview->{network}) {
+        foreach (@{$cview->network}) {
+            my $nvw = $conn->get_view(mo_ref=>$_);
+            if (defined $nvw->name) {
+                $clusterhash{$cluster}->{nets}->{$nvw->name}=$_;
+            }
+        }
+    }
+}
 sub validate_network_prereqs {
     my $nodes = shift;
     my $hyp  = shift;
