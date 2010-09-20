@@ -54,6 +54,10 @@
 }
 
 /* User name and log out */	
+#header div {
+	float: right;
+}
+	
 #header div span {
 	color: #424242;
 	padding: 2px 15px 0px 2px; /* Top right left bottom*/
