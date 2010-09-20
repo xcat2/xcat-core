@@ -376,7 +376,7 @@ sub makeconservercf {
         }
         if ( $type{$_->{node}} !~ /fsp|bpa|hmc|ivm/ ) {
           if (donodeent($_,\@filecontent) eq "BADCFG") {
-              $cb->({node=>[{name=>$_,error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
+              $cb->({node=>[{name=>$_->{node},error=>"Bad configuration, check attributes under the nodehm category",errorcode=>1}]});
           }
         }
       }
