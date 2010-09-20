@@ -777,6 +777,22 @@ sub setupinstance
 
         }
     }
+    # for either client or server update
+    # su to xcatdb and run more setup
+    $cmd = "export EXTSHM=ON ";
+    $rc  = &rundb2cmd($cmd);
+    if ($rc != 0)
+    {
+      xCAT::MsgUtils->message("I", " $cmd warning.");
+    }
+    $cmd = "db2set DB2ENVLIST=EXTSHM  ";
+    $rc  = &rundb2cmd($cmd);
+    if ($rc != 0)
+    {
+      xCAT::MsgUtils->message("I", " $cmd warning.");
+    }
+
+    
 }
 
 #-----------------------------------------------------------------------------
