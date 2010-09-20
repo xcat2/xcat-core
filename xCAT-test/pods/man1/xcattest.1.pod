@@ -2,7 +2,7 @@
 
 B<xcattest> - Run xcat test cases. 
 
-=head1 B<SYNOPSIS>
+=head1 SYNOPSIS
 
 B<xcattest> [B<-?|-h>] 
 
@@ -12,32 +12,43 @@ B<xcattest> [B<-f> I<configure file>] [B<-t> I<case list>] [B<--restore>]
 
 B<xcattest> [B<-f> I<configure file>] [B<-c> I<cmd list>] [B<-l>] [B<--restore>]
 
-=head1 B<DESCRIPTION>
+=head1 DESCRIPTION
 
 This command is used to run xCAT automated test and output the result to /opt/xcat/share/xcat/tool/xcat/result. All test cases is in the directory /opt/xcat/share/xcat/tools/autotest. Now there are some cases for basic function of xCAT. Each case has a unique case name. The cases for I<command> is place in directory /opt/xcat/share/xcat/tools/autotest/I<command>. When xcattest is run with -c , it will run all cases in the specified directory. User can add custom cases in the corresponding directory or add new directory if there is no corresponding directory.
 
 =head1 OPTIONS
 
-B<-?|-h>       	Display usage message.
+=over 10
 
-B<-f> I<configure file>
+=item B<-?|-h>
 
-             	Read configuration information from the configure file, default configure file is  /opt/xcat/share/xcat/tools/autotest/default.conf. See /opt/xcat/share/xcat/tools/autotest/*.conf.template for example.
+Display usage message.
+
+=item B<-f> I<configure file>
+
+Read configuration information from the configure file, default configure file is  /opt/xcat/share/xcat/tools/autotest/default.conf. See /opt/xcat/share/xcat/tools/autotest/*.conf.template for example.
              	
-B<-b> I<case bundle list>
-             	Comma separated list of file which contains cases which will be run. Default to run all cases.
+=item B<-b> I<case bundle list>
+
+Comma separated list of file which contains cases which will be run. Default to run all cases.
              	
-B<-t> I<case list>
-		Comma separated list of cases which will be run. Default to run all cases.
+=item B<-t> I<case list>
+
+Comma separated list of cases which will be run. Default to run all cases.
 							
-B<-c> I<cmd list>
-            	Comma separated list of commands which the related cases will be run. Default to run all cases.
+=item B<-c> I<cmd list>
 
-B<-l>
-            	Display all available cases.
+Comma separated list of commands which the related cases will be run. Default to run all cases.
+
+=item B<-l>
+
+Display all available cases.
             	 
-B<--restore>
-            	Restore test environment after test.
+=item B<--restore>
+
+Restore test environment after test.
+
+=back
             
 =head1 RETURN VALUE
 
@@ -48,61 +59,72 @@ B<--restore>
 =head1 TEST CASE
 
 The cases is specified as:
-	#required, case name
-	B<start>:case name
-	#optional, precondition
-	B<os>:AIX|Linux
-	#optional, precondition
-	B<arch>:ppc/x86
-	#optional, precondition
-	B<hcp>:hmc/mm/bmc/fsp
-	#required, command need to run
-	B<cmd>:comand
-	#optional, check return code of last executed command
-	B<check:rc> == or != <I>return code
-	#optional, check output of last executed command
-	B<check:output>== or != or =~ or !~ I<output check string>
-	end
+
+  #required, case name
+  start:case name
+  #optional, precondition
+  os:AIX/Linux
+  #optional, precondition
+  arch:ppc/x86
+  #optional, precondition
+  hcp:hmc/mm/bmc/fsp
+  #required, command need to run
+  cmd:comand
+  #optional, check return code of last executed command
+  check:rc == or != return code
+  #optional, check output of last executed command
+  check:output== or != or =~ or !~ output check string
+  end
+
 The I<output check string> can be regular expression.
 
 =head1 EXAMPLES
 
-1. To run all  test cases related command rpower:
+=over 4
 
-	B<xcattest -c /tmp/config -c rpower>
+=item 1.
+
+To run all  test cases related command rpower:
+
+  xcattest -c /tmp/config -c rpower
 	
-2. To run custom bundle:
+=item 2. 
 
-	B<xcattest -l  > /tmp/custom.bundle>
+To run custom bundle:
+
+  xcattest -l  > /tmp/custom.bundle
+  edit custom.bundle
+  xcattest -b custom.bundle
 	
-	B<edit custom.bundle>
-	
-	B<xcattest -b custom.bundle>
-	
-3. To run specified test cases, and restore test environment after test.
+=item 3.
 
-	B<xcattest -t lsdef_t_o_l_z --restore>
+To run specified test cases, and restore test environment after test.
 
-4. To add a new case to test chvm. In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases. 
+  xcattest -t lsdef_t_o_l_z --restore
 
-	B<add a new file filename in /opt/xcat/share/xcat/tools/autotest/chvm>
+=item 4.
 
-	B<edit filename>
-	I<start:chvm_custom>
-	I<hcp:hmc>
-	I<cmd:lsvm $$CN > /tmp/autotest.profile>
-	I<check:rc==0>
-	I<cmd:mkdef -t node -o testnode mgt=hmc groups=all>
-	I<cmd:mkvm testnode -i $$MaxLparID -l $$CN>
-	I<check:rc==0>
-	I<cmd:perl -pi -e 's/min_mem=\d+/min_mem=16/g' /tmp/autotest.profile>
-	I<cmd:cat /tmp/autotest.profile|chvm testnode>
-	I<check:rc==0>
-	I<cmd:lsvm testnode>
-	I<check:output=~min_mem=16>
-	I<cmd:rmvm testnode>
-	I<cmd:rm -f /tmp/autotest.profile>
-	I<end>
+To add a new case to test chvm. In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases. 
+
+  add a new file filename in /opt/xcat/share/xcat/tools/autotest/chvm
+  edit filename
+  start:chvm_custom
+  hcp:hmc
+  cmd:lsvm $$CN > /tmp/autotest.profile
+  check:rc==0
+  cmd:mkdef -t node -o testnode mgt=hmc groups=all
+  cmd:mkvm testnode -i $$MaxLparID -l $$CN
+  check:rc==0
+  cmd:perl -pi -e 's/min_mem=\d+/min_mem=16/g' /tmp/autotest.profile
+  cmd:cat /tmp/autotest.profile|chvm testnode
+  check:rc==0
+  cmd:lsvm testnode
+  check:output=~min_mem=16
+  cmd:rmvm testnode
+  cmd:rm -f /tmp/autotest.profile
+  end
+
+=back
 
 =head1 INLINE FUNCTION
 
