@@ -379,7 +379,9 @@ sub mknetboot
         } elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic}) {
             $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
         } else {
-            if ($mac) {
+            if ($arch =~ /x86/) {
+                #do nothing, we'll let pxe/xnba work their magic
+            } elsif ($mac) {
                 $kcmdline .=  "BOOTIF=" . $mac . " ";
             } else {
                 $callback->({
