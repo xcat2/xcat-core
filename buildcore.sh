@@ -186,6 +186,16 @@ fi
 # Note: not putting xCAT-rmc into instxcat for aix here, because it has to be installed
 #		after xCAT.
 
+if $GREP xCAT-test $SVNUP; then
+   UPLOAD=1
+   ./maketestrpm
+   rm -f $DESTDIR/xCAT-test*rpm
+   rm -f $SRCDIR/xCAT-test*rpm
+   mv $source/RPMS/$NOARCH/xCAT-test-$VER*rpm $DESTDIR
+   mv $source/SRPMS/xCAT-test-$VER*rpm $SRCDIR
+fi
+# Note: not putting xCAT-test into instxcat for aix, because it is optional
+
 if [ "$OSNAME" != "AIX" ]; then
 	if $GREP xCAT-nbroot $SVNUP; then
 	   UPLOAD=1
