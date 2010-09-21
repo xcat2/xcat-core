@@ -894,7 +894,7 @@ sub FIXUP
         if (@forwarders)
         {
             my $tmpfile = $DBDir . "db.cache";
-            my $cmd = qq~dig @"$forwarders[0]" . ns > $tmpfile~;
+            my $cmd = qq~dig @"$forwarders[0]" . ns >> $tmpfile~;
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -908,14 +908,17 @@ sub FIXUP
         {
             my $nothing;
             open($nothing, ">>", $DBDir . "db.cache");
+            close($nothing);
+
         }
     }
     else
     {
         my $nothing;
         open($nothing, ">>", $DBDir . "db.cache");
+        close($nothing);
+
     }
-    close($nothing);
     printf $file "%-30s\tIN  PTR   localhost.\n", &REVERSE("127.0.0.1");
     close($file);
 }
