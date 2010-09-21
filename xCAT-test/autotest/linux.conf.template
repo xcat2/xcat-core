@@ -61,20 +61,20 @@ MaxLparID=32
 
 #commands run before test
 [Script_Prev]
-rpm -e xCAT xCAT-server xCAT-client perl-xCAT
-rm -rf /etc/xcat
-rm -rf /root/.xcat
-rm -rf /root/.ssh
-rm -rf /install/autoinst
-rm -rf /install/postscripts
-wget http://xcat.sourceforge.net/yum/devel/core-rpms-snap.tar.bz2
-tar jxf core-rpms-snap.tar.bz2
-./xcat-core/mklocalrepo.sh
-mount -o loop /iso/RHEL5.4-Server-20090819.0-ppc-DVD.iso /iso/1 -t iso9660
-yum -y install xCAT
-umount /iso/1
-rm -f core-rpms-snap.tar.bz2
-rm -rf xcat-core
+#rpm -e xCAT xCAT-server xCAT-client perl-xCAT
+#rm -rf /etc/xcat
+#rm -rf /root/.xcat
+#rm -rf /root/.ssh
+#rm -rf /install/autoinst
+#rm -rf /install/postscripts
+#wget http://xcat.sourceforge.net/yum/devel/core-rpms-snap.tar.bz2
+#tar jxf core-rpms-snap.tar.bz2
+#./xcat-core/mklocalrepo.sh
+#mount -o loop /iso/RHEL5.4-Server-20090819.0-ppc-DVD.iso /iso/1 -t iso9660
+#yum -y install xCAT
+#umount /iso/1
+#rm -f core-rpms-snap.tar.bz2
+#rm -rf xcat-core
 
 #commands run after test
 [Script_Post]
