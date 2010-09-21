@@ -154,8 +154,9 @@ function loadGroups(data) {
 	// Create link to add nodes
 	var addNodeLink = $('<a href="#">Add node</a>');
 	addNodeLink.bind('click', function(event) {
-		var nodeForm = '<div class="form">'
-				+ '<div><label for="node">Node name:</label><input type="text" id="node" name="node"/></div>'
+		// Create form to give node range, group, and hardware management
+		var mgtForm = '<div class="form">'
+				+ '<div><label for="node">Node range:</label><input type="text" id="node" name="node"/></div>'
 				+ '<div><label for="group">Group:</label><input type="text" id="group" name="group"/></div>'
 				+ '<div><label for="mgt">Hardware management:</label>'
     				+ '<select id="mgt" name="mgt">'
@@ -165,18 +166,189 @@ function loadGroups(data) {
         				+ '<option>ivm</option>'
         				+ '<option>fsp</option>'
         				+ '<option>zvm</option>'
-    				+ '</select>' 
+    				+ '</select>'
 				+ '</div>' 
 			+ '</div>';
+			
+		// Create form for ipmi plugin
+		var ipmiForm = '<div class="form">'
+				+ '<div>Under contruction</div>'
+			+ '</div>';
+			
+		// Create form for blade plugin
+		var bladeForm = '<div class="form">'
+				+ '<div>Under contruction</div>'
+			+ '</div>';
+			
+		// Create form for hmc plugin
+		var hmcForm = '<div class="form">'
+				+ '<div>Under contruction</div>'
+			+ '</div>';
+			
+		// Create form for ivm plugin
+		var ivmForm = '<div class="form">'
+				+ '<div>Under contruction</div>'
+			+ '</div>';
+			
+		// Create form for fsp plugin
+		var fspForm = '<div class="form">'
+				+ '<div>Under contruction</div>'
+			+ '</div>';
+			
+		// Create form for zvm plugin
+		var zvmForm = '<div class="form">'
+				+ '<div><label for="userId">User ID range:</label><input type="text" id="userId" name="userId"/></div>'
+				+ '<div><label for="hcp">Hardware control point:</label><input type="text" id="hcp" name="hcp"/></div>'
+			+ '</div>';
 
-		$.prompt(nodeForm, {
-			callback : addNode,
-			buttons : {
-				Ok : true,
-				Cancel : false
+		var states = {
+			mgt : {
+				html : mgtForm,
+				buttons : {
+					Ok : true,
+					Cancel : false
+				},
+				focus : 1,
+				prefix : 'cleanblue',
+				submit : function(v, m, f) {
+					if (!v) {
+						return true;
+					} else {
+						// Get the hardware management selected
+						var mgt = f.mgt;
+						switch(mgt) {
+            				case "blade":
+            		    		$.prompt.goToState("blade");
+            		    		break;
+            				case "fsp":
+            					$.prompt.goToState("fsp");
+            					break;
+            				case "hmc":
+            					$.prompt.goToState("hmc");
+            					break;
+            				case "ipmi":
+            					$.prompt.goToState("ipmi");
+            					break;		
+            				case "ivm":
+            					$.prompt.goToState("ivm");
+            					break;
+            				case "zvm":
+            					$.prompt.goToState("zvm");
+            					break;
+            			}
+
+						return false;
+					} // End of else
+				} // End of submit
 			},
+
+			// Show blade form
+			blade : {
+				html : bladeForm,
+				callback : addNode,
+				buttons : {
+					Ok : true,
+					Cancel : false
+				},
+				focus : 1,
+				prefix : 'cleanblue',
+				submit : function(v, m, f) {
+					if (v) {
+						return true;
+					}
+				}
+			},
+			
+			// Show fsp form
+			fsp : {
+				html : fspForm,
+				callback : addNode,
+				buttons : {
+					Ok : true,
+					Cancel : false
+				},
+				focus : 1,
+				prefix : 'cleanblue',
+				submit : function(v, m, f) {
+					if (v) {
+						return true;
+					}
+				}
+			},
+			
+			// Show hmc form
+			hmc : {
+				html : hmcForm,
+				callback : addNode,
+				buttons : {
+					Ok : true,
+					Cancel : false
+				},
+				focus : 1,
+				prefix : 'cleanblue',
+				submit : function(v, m, f) {
+					if (v) {
+						return true;
+					}
+				}
+			},
+			
+			// Show ipmi form
+			ipmi : {
+				html : ipmiForm,
+				callback : addNode,
+				buttons : {
+					Ok : true,
+					Cancel : false
+				},
+				focus : 1,
+				prefix : 'cleanblue',
+				submit : function(v, m, f) {
+					if (v) {
+						return true;
+					}
+				}
+			},
+			
+			// Show ivm form
+			ivm : {
+				html : ivmForm,
+				callback : addNode,
+				buttons : {
+					Ok : true,
+					Cancel : false
+				},
+				focus : 1,
+				prefix : 'cleanblue',
+				submit : function(v, m, f) {
+					if (v) {
+						return true;
+					}
+				}
+			},
+			
+			// Show zvm form
+			zvm : {
+				html : zvmForm,
+				callback : addNode,
+				buttons : {
+					Ok : true,
+					Cancel : false
+				},
+				focus : 1,
+				prefix : 'cleanblue',
+				submit : function(v, m, f) {
+					if (v) {
+						return true;
+					}
+				}
+			}
+		};
+
+		$.prompt(states, {
 			prefix : 'cleanblue'
 		});
+
 	});
 	$('#groups').append(addNodeLink);
 }
