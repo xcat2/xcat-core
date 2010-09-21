@@ -827,7 +827,7 @@ sub rundb2cmd
 =head3   setupdb2env  
 
 	
-  Setup the db2 environment variables for root 
+  Setup the db2 environment variables and libpaths
 
 =cut
 
@@ -872,6 +872,22 @@ sub setupdb2env
             close FILE;
 
         }
+        my $path = $::installdb2dir;
+        $path .="\/lib64";
+        # add path of db2 libraries to ld.so.conf
+        my $cmd = "egrep -i \"V9.7\" /etc/ld.so.conf";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0)
+        {    # if not already there
+            open(FILE, ">>/etc/ld.so.conf")
+              or die "cannot open file /etc/ld.so.conf\n";
+            print FILE "$path\n";
+            close FILE;
+            $cmd = "ldconfig";
+            xCAT::Utils->runcmd($cmd);
+
+        }
+
     }
 }
 
