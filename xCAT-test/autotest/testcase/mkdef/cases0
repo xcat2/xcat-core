@@ -3,6 +3,7 @@ cmd:mkdef
 check:rc!=0
 check:output=~Usage
 end
+
 start:mkdef_t_o_attr
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
@@ -14,6 +15,7 @@ check:rc==0
 check:output=~groups=all,aix
 cmd:rmdef -t node -o testnode,testnode1
 end
+
 start:mkdef_f_t_o_attr
 cmd:mkdef -t node -o testnode groups=all,aix
 check:rc==0
@@ -25,6 +27,7 @@ check:output=~nodetype=lpar,osi
 check:output!=aix
 cmd:rmdef -t node -o testnode
 end	
+
 start:mkdef_z
 cmd:mkdef -t node -o orignode mgt=fsp cons=hmc pprofile=orignode groups=lpar,all
 check:rc==0
@@ -42,6 +45,7 @@ cmd:rm -f /tmp/testnode.stanza
 cmd:rmdef -t node testnode
 cmd:rmdef -t node orignode
 end
+
 start:mkdef_t_o_error
 cmd:mkdef -t testtype -o testnode groups=all,aix
 check:rc!=0
