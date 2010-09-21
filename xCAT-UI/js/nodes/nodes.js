@@ -402,7 +402,7 @@ function loadNodes(data) {
 	sorted.sort();
 
 	// Add column for check box, node, ping, and power
-	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node', 'ping', 'power');
+	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node', '<a href="#">ping</a>', '<a href="#">power</a>');
 
 	// Create a datatable
 	var dTable = new DataTable('nodesDataTable');
@@ -623,7 +623,22 @@ function loadNodes(data) {
 	// Turn table into a datatable
 	var myDataTable = $('#nodesDataTable').dataTable();
 	setNodesDataTable(myDataTable);
-
+	
+	// Do not sort ping and power column
+	var pingCol = $('#nodesDataTable thead tr th').eq(2);
+	var powerCol = $('#nodesDataTable thead tr th').eq(3);
+	pingCol.unbind('click');
+	powerCol.unbind('click');
+	
+	// Instead refresh the ping status and power status
+	pingCol.bind('click', function(event) {
+		refreshPingStatus(group);
+	});
+	
+	powerCol.bind('click', function(event) {
+		refreshPowerStatus(group);
+	});
+	
 	/**
 	 * Get power and ping status for each node
 	 */
@@ -735,6 +750,29 @@ function loadPowerStatus(data) {
 }
 
 /**
+ * Refresh power status for each node
+ * 
+ * @param group
+ *            Group name
+ * @return Nothing
+ */
+function refreshPowerStatus(group) {
+	// Get the power status
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'rpower',
+			tgt : group,
+			args : 'stat',
+			msg : ''
+		},
+
+		success : loadPowerStatus
+	});
+}
+
+/**
  * Load ping status for each node
  * 
  * @param data
@@ -760,6 +798,29 @@ function loadPingStatus(data) {
 		// Update the power status column
 		dTable.fnUpdate(status, rowPos, 2);
 	}
+}
+
+/**
+ * Refresh ping status for each node
+ * 
+ * @param group
+ *            Group name
+ * @return Nothing
+ */
+function refreshPingStatus(group) {
+	// Get the ping status
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'pping ' + group,
+			msg : ''
+		},
+
+		success : loadPingStatus
+	});
 }
 
 /**
@@ -1615,6 +1676,6 @@ function loadRconsPage(tgtNodes){
 function addNode(v, m, f) {
 	// If user clicks Ok
 	if (v) {
-
+		
 	}
 }
