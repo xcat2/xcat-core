@@ -1250,7 +1250,28 @@ sub chvm {
         "p=s"=>\@purge,
         "resize=s%" => \%resize,
         );
+    if (@derefdisks) {
+        xCAT::SvrUtils::sendmsg([1,"Detach without purge TODO for kvm"],$callback,$node);
+        return;
+    }
+    if (@addsizes and @purge) {
+        xCAT::SvrUtils::sendmsg([1,"Currently adding and purging concurrently is not supported"],$callback,$node);
+        return;
+    }
+
+
     my %useddisks;
+    my $dom;
+    eval {
+        $dom = $hypconn->get_domain_by_name($node);
+    };
+    my $vmxml;
+    if ($dom) {
+        $vmxml=$dom->get_xml_description();
+    } else {
+        $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
+    }
+    my $currstate=getpowstate($dom);
     if (defined $confdata->{vm}->{$node}->[0]->{storage}) {
         my $store;
         foreach $store (split /\|/, $confdata->{vm}->{$node}->[0]->{storage}) {
@@ -1266,11 +1287,6 @@ sub chvm {
     }
     if (@addsizes) { #need to add disks, first identify used devnames
         my @diskstoadd;
-        my $dom;
-        eval {
-           $dom = $hypconn->get_domain_by_name($node);
-        };
-        my $currstate=getpowstate($dom);
         my $location = $confdata->{vm}->{$node}->[0]->{storage};
         $location =~ s/.*\|//; #use the rightmost location for making new devices
         $location =~ s/,.*//; #no comma specified parameters are valid
@@ -1328,7 +1344,6 @@ sub chvm {
                 $bus='virtio';
             }
             my $xml = "<disk type='file' device='disk'><driver name='qemu' type='$format'/><source file='$_'/><target dev='$suffix' bus='$bus'/></disk>";
-            my $newxml;
             if ($currstate eq 'on') { #attempt live attach
               eval {
               $dom->attach_device($xml);
@@ -1346,17 +1361,16 @@ sub chvm {
                     $vol->delete();
                 }
               }
-              $newxml=$dom->get_xml_description();
+              $vmxml=$dom->get_xml_description();
             } elsif ($confdata->{kvmnodedata}->{$node}->[0]->{xml}) { 
                 my $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
                 my $disknode = $parser->parse_balanced_chunk($xml);
                 my $vmdoc = $parser->parse_string($vmxml);
                 my $devicesnode = $vmdoc->findnodes("/domain/devices")->[0];
                 $devicesnode->appendChild($disknode);
-                $newxml=$vmdoc->toString();
+                $vmxml=$vmdoc->toString();
             }
-            $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
-
+            $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
         }
     } elsif (@purge) {
         my $dom;
@@ -1380,11 +1394,11 @@ sub chvm {
             eval {
             if ($currstate eq 'on') { 
                 $dom->detach_device($devxml); 
-                my $newxml=$dom->get_xml_description();
-                $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
+                $vmxml=$dom->get_xml_description();
             } else {
-                $updatetable->{kvm_nodedata}->{$node}->{xml}=$moddedxml;
+                $vmxml=$moddedxml;
             }
+            $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
             };
             if ($@) {
                 xCAT::SvrUtils::sendmsg([1,"Unable to remove device"],$callback,$node);
@@ -1396,6 +1410,33 @@ sub chvm {
                 }
             }
 
+        }
+    } 
+    if ($cpucount or  $memory) {
+        if ($currstate eq 'on') {
+            xCAT::SvrUtils::sendmsg([1,"Hot add of cpus or memory not supported"],$callback,$node);
+            if ($cpucount) {
+                #$dom->set_vcpus($cpucount); this didn't work out as well as I hoped..
+                #xCAT::SvrUtils::sendmsg([1,"Hot add of cpus not supported"],$callback,$node);
+            }
+            if ($memory) {
+                #$dom->set_max_memory(getUnits($memory,"M",1024));
+            }
+        } else { #offline xml edits
+            my $parsed=$parser->parse_string($vmxml); #TODO: should only do this once, oh well
+            if ($cpucount) {
+                $parsed->findnodes("/domain/vcpu/text()")->[0]->setData($cpucount);
+            }
+            if ($memory) {
+                $parsed->findnodes("/domain/memory/text()")->[0]->setData(getUnits($memory,"M",1024));
+                my @currmem = $parsed->findnodes("/domain/currentMemory/text()");
+                foreach (@currmem) {
+                    $_->setData(getUnits($memory,"M",1024));
+                }
+
+            }
+            $vmxml=$parsed->toString;
+            $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
         }
     }
 
