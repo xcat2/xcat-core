@@ -512,34 +512,36 @@ sub mknetboot
         # add one parameter: ifname=<eth0>:<mac address>
         # which is used for dracut
         # the redhat5.x os will ignore it
-        $kcmdline .= "ifname=";
+        my $useifname=0;
         if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic}) {
             if ($reshash->{$node}->[0]->{installnic} ne "mac") {
-                $kcmdline .= $reshash->{$node}->[0]->{installnic} . ":";
+                $useifname=1;
+                $kcmdline .= "ifname=".$reshash->{$node}->[0]->{installnic} . ":";
             }
         } elsif ($nodebootif) {
-            $kcmdline .= "$nodebootif:";
+            $useifname=1;
+            $kcmdline .= "ifname=$nodebootif:";
         } elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic}) {
-            $kcmdline .= "$primarynic:";
+            $useifname=1;
+            $kcmdline .= "ifname=".$reshash->{$node}->[0]->{primarynic}.":";
         }
-        else {
-            $kcmdline .="eth0:";
-            print "eth0 is used as the default booting network devices...\n";
-        }
+        #else { #no, we autodetect and don't presume anything
+        #    $kcmdline .="eth0:";
+        #    print "eth0 is used as the default booting network devices...\n";
+        #}
         # append the mac address
         my $mac;
-        if($machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
+        if($useifname && $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
             # TODO: currently, only "mac" attribute with classic style is used, the "|" delimited string of "macaddress!hostname" format is not used
             $mac = $machash->{$node}->[0]->{'mac'};
             if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
-                $kcmdline .= "$mac";
+                $kcmdline .= "$mac ";
             } else {
-                print qq{In the "mac" table, the "|" delimited string of "macaddress!hostname" format is not supported by "nodeset <nr> netboot|statelite".};
+                die qq{In the "mac" table, the "|" delimited string of "macaddress!hostname" format is not supported by "nodeset <nr> netboot|statelite if installnic/primarynic is set".};
             }
-        } else { # it should never happen
-            $callback->({error=>["cannot find the mac address for $node in mac table"], errorcode=>[1]});
+        #} else { # it should never happen, but we don't always do it this way
+        #    $callback->({error=>["cannot find the mac address for $node in mac table"], errorcode=>[1]});
         }
-        $kcmdline .= " ";
 
         # add "netdev=<eth0>" or "BOOTIF=<mac>"
         my $netdev = "";
