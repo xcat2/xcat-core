@@ -707,7 +707,7 @@ sub dispatch_request {
             $SIG{CHLD}='DEFAULT';
 #           ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_callback,\&do_request);
 #----- changed in Client.pm -----#
-            ${"xCAT_plugin::".$modname."::"}{process_request}->($_,\&dispatch_cb,\&do_request);
+            ${"xCAT_plugin::".$modname."::"}{process_request}->($_,$dispatch_cb,\&do_request);
 #----- end changed in Client.pm -----#
             last;
         }
