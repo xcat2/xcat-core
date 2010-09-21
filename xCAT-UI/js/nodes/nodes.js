@@ -1613,7 +1613,7 @@ function loadRconsPage(tgtNodes){
  * @return Nothing
  */
 function addNode(v, m, f) {
-	// If user clicks Ok, add processor
+	// If user clicks Ok
 	if (v) {
 
 	}
