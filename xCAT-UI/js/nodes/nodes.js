@@ -627,6 +627,10 @@ function loadNodes(data) {
 	pingCol.unbind('click');
 	powerCol.unbind('click');
 	
+	// Create enough space for loader to be displayed
+	$('#nodesDataTable tbody tr td:nth-child(3)').css('min-width', '60px');
+	$('#nodesDataTable tbody tr td:nth-child(4)').css('min-width', '60px');
+	
 	// Instead refresh the ping status and power status
 	pingCol.bind('click', function(event) {
 		refreshPingStatus(group);
