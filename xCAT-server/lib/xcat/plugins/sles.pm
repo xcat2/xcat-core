@@ -180,22 +180,48 @@ sub mknetboot
         #statelite images are not packed
 
         if ($statelite) {
-            unless ( -r "$rootimgdir/kernel" and -r "$rootimgdir/initrd-statelite.gz") {
+            unless ( -r "$rootimgdir/kernel") {
                 $callback->({
-                    error=>[qq{Did you run "genimage" before running "liteimg"? kernel or initrd-statelite.gz cannot be found}],
+                    error=>[qq{Did you run "genimage" before running "liteimg"? kernel cannot be found}],
                     errorcode => [1]
                 });
                 next;
-            }
-        } else {
-            unless ( -r "$rootimgdir/kernel" and -r "$rootimgdir/initrd-stateless.gz" ) {
-                $callback->({
-                    error=>[qq{Did you run "genimage" before running "packimage"? kernel or initrd-stateless.gz cannot be found}],
-                    errorcode=>[1]
-                });
-                next;
-            }
+            } 
 
+	    if (!-r "$rootimgdir/initrd-statelite.gz") {
+                if (! -r "$rootimgdir/initrd.gz") {
+                    $callback->({
+                        error=>[qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found}],
+                        errorcode=>[1]
+				});
+                    next;
+                }
+		else {
+		    copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-statelite.gz");
+                }
+	    }
+	    
+        } else {
+            unless ( -r "$rootimgdir/kernel") {
+                $callback->({
+                    error=>[qq{Did you run "genimage" before running "packimage"? kernel cannot be found}],
+                    errorcode=>[1]
+			    });
+                next;
+	    }
+	    if (!-r "$rootimgdir/initrd-stateless.gz") {
+                if (! -r "$rootimgdir/initrd.gz") {
+                    $callback->({
+                        error=>[qq{Did you run "genimage" before running "packimage"? initrd.gz or initrd-stateless.gz cannot be found}],
+                        errorcode=>[1]
+				});
+                    next;
+                }
+		else {
+		    copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
+                }
+            }
+	    
             unless ( -r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.sfs" ) {
                 $callback->({
                     error=>[qq{No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage before nodeset}],
