@@ -436,9 +436,9 @@ sub get_files{
 		@arr = ("$installroot/netboot");
 		
 		# look for ramdisk
-		my $ramdisk = look_for_file('initrd-diskless.gz', $callback, $attrs, @arr);
+		my $ramdisk = look_for_file('initrd-stateless.gz', $callback, $attrs, @arr);
 		unless($ramdisk){
-		    $callback->({error=>["Couldn't find ramdisk (initrd-diskless.gz) for  $imagename"],errorcode=>[1]});
+		    $callback->({error=>["Couldn't find ramdisk (initrd-stateless.gz) for  $imagename"],errorcode=>[1]});
 		    $errors++;
 		}else{
 		    $attrs->{ramdisk} = $ramdisk;
@@ -1188,7 +1188,7 @@ sub make_files {
     #$VAR1 = { 
     #          'provmethod' => 'netboot',
     #          'profile' => 'compute',
-    #          'ramdisk' => '/install/netboot/centos5.4/x86_64/compute/initrd-diskless.gz',
+    #          'ramdisk' => '/install/netboot/centos5.4/x86_64/compute/initrd-stateless.gz',
     #          'kernel' => '/install/netboot/centos5.4/x86_64/compute/kernel',
     #          'imagename' => 'Default_Stateless_1265981465',
     #          'osarch' => 'x86_64',
