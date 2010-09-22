@@ -893,18 +893,12 @@ for i in `cat /proc/cmdline`; do
     if [ "\$KEY" == 'netdev' ]; then
         NETDEV=`echo \$i |awk -F= '{print \$2}'`
     elif [ "\$KEY" == 'BOOTIF' ]; then
-        VALUE=`echo \$i |awk -F= '{print \$2}'`
-        BOOTIF=`ifconfig -a|grep -i "hwaddr $VALUE"|awk '{print $1}'`
-        if [ ! -z "\$XCATSERVER" ]; then
-            break
-        fi
+        VALUE=`echo \$i |awk -F= '{print \$2}'|sed -e s/^01-// -e s/-/:/g`
+        BOOTIF=`ifconfig -a|grep -i "hwaddr \$VALUE"|awk '{print \$1}'`
     elif [ "\$KEY" == 'XCAT' ]; then
         VALUE=`echo \$i |awk -F= '{print \$2}'`
         # format: XCAT=xcatmaster:xcatdport
         XCATSERVER=\$VALUE
-        if [ ! -z "\$BOOTIF" ]; then
-            break
-        fi
     fi
 done
 

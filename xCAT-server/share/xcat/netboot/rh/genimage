@@ -939,18 +939,12 @@ for i in `cat /proc/cmdline`; do
     if [ "\$KEY" == 'netdev' ]; then
         NETDEV=`echo \$i |awk -F= '{print \$2}'`
     elif [ "\$KEY" == 'BOOTIF' ]; then
-        VALUE=`echo \$i |awk -F= '{print \$2}'`
-        BOOTIF=`ifconfig -a|grep -i "hwaddr $VALUE"|awk '{print $1}'`
-        if [ ! -z "\$XCATSERVER" ]; then
-            break
-        fi
+        VALUE=`echo \$i |awk -F= '{print \$2}'|sed -e s/^01-// -e s/-/:/g`
+        BOOTIF=`ifconfig -a|grep -i "hwaddr \$VALUE"|awk '{print \$1}'`
     elif [ "\$KEY" == 'XCAT' ]; then
         VALUE=`echo \$i |awk -F= '{print \$2}'`
         # format: XCAT=xcatmaster:3001
         XCATSERVER=\$VALUE
-        if [ ! -z "\$BOOTIF" ]; then
-            break
-        fi
     fi
 done
 
@@ -970,11 +964,11 @@ fi
 
 export IFACE=\$IFACE
 
-netstart \$IFACE
+netstart
 while ! ifconfig | grep inet; do
     echo -e "\${RED}Failed to acquire address, retrying \${RESET}"
     sleep 5
-    netstart \$IFACE
+    netstart
 done
 ifconfig lo 127.0.0.1
 ifconfig lo up
@@ -1225,7 +1219,7 @@ EOMS
 
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/sbin/nash\n";
-   print $inifile "network --device \${1} --bootproto dhcp\n";
+   print $inifile "network --device \$IFACE --bootproto dhcp\n";
    close($inifile);
    chmod(0755,"/tmp/xcatinitrd.$$/init");
    chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
