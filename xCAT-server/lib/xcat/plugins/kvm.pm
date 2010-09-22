@@ -1532,14 +1532,19 @@ sub promote_vm_to_master {
         return;
     }
     my $parsedxml = $parser->parse_string($xml);
-    my $tmpnod = $parsedxml->findnodes('/domain/uuid/text()')->[0]->setData("none"); #get rid of the VM specific uuid
+    my ($tmpnod) = $parsedxml->findnodes('/domain/uuid/text()');
+    if ($tmpnod) {
+        $tmpnod->setData("none"); #get rid of the VM specific uuid
+    }
 
     $target =~ /^(.*)\/([^\/]*)\z/;
     my $directory=$1;
     my $mastername=$2;
 
-    $tmpnod = $parsedxml->findnodes('/domain/name/text()')->[0];
-    $tmpnod->setData($mastername); #name the xml whatever the master name is to be
+    ($tmpnod) = $parsedxml->findnodes('/domain/name/text()');
+    if ($tmpnod) {
+        $tmpnod->setData($mastername); #name the xml whatever the master name is to be
+    }
     foreach ($parsedxml->findnodes("/domain/devices/interface/mac")) { #clear all mac addresses 
         if ($_->hasAttribute("address")) { $_->setAttribute("address"=>''); }
     }
