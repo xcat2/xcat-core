@@ -278,12 +278,8 @@ function loadUpdatenodePage(tgtNodes) {
 			var tgts = $('#' + newTabId + ' input[name=target]').val();
 
 			// Disable Ok button
-			$(this).unbind(event);
-			$(this).css( {
-				'background-color' : '#F2F2F2',
-				'color' : '#424242'
-			});
-
+			$(this).attr('disabled', 'true');
+			
 			/**
 			 * (1) Boot to network
 			 */

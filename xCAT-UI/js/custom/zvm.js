@@ -252,11 +252,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 				$('#' + statBarId).show();
 
 				// Disable clone button
-				$(this).unbind(event);
-				$(this).css( {
-					'background-color' : '#F2F2F2',
-					'color' : '#BDBDBD'
-				});
+				$(this).attr('disabled', 'true');
 			} else {
 				alert('(Error) ' + errMsg);
 			}

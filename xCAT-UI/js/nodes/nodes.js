@@ -635,7 +635,7 @@ function loadNodes(data) {
 	powerCol.bind('click', function(event) {
 		refreshPowerStatus(group);
 	});
-		
+
 	/**
 	 * Get power and ping status for each node
 	 */
@@ -979,11 +979,7 @@ function loadUnlockPage(tgtNodes) {
     		statusBar.show();
     
     		// Disable Ok button
-    		$(this).unbind(event);
-    		$(this).css( {
-    			'background-color' : '#F2F2F2',
-    			'color' : '#BDBDBD'
-    		});
+    		$(this).attr('disabled', 'true');
     	}
     });
 
@@ -1213,11 +1209,7 @@ function deleteNode(tgtNodes) {
 		statBar.show();
 
 		// Disable delete button
-		$(this).unbind(event);
-		$(this).css( {
-			'background-color' : '#F2F2F2',
-			'color' : '#BDBDBD'
-		});
+		$(this).attr('disabled', 'true');
 	});
 	
 	var cancelBtn = createButton('Cancel');

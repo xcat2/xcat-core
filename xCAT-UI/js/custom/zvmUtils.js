@@ -155,7 +155,6 @@ function loadUserEntry(data) {
 		});
 
 		// Disable save button
-		$(this).unbind(event);
 		$(this).hide();
 		cancelBtn.hide();
 	});
@@ -1725,12 +1724,8 @@ function createZProvisionExisting(inst) {
 		// If all inputs are valid, ready to provision
 		if (ready) {			
 			// Disable provision button
-			$(this).unbind(event);
-			$(this).css( {
-				'background-color' : '#F2F2F2',
-				'color' : '#BDBDBD'
-			});
-
+			$(this).attr('disabled', 'true');
+			
 			// Show loader
 			$('#zProvisionStatBar' + inst).show();
 			$('#zProvisionLoader' + inst).show();
@@ -2040,22 +2035,15 @@ function createZProvisionNew(inst) {
 				// If user clicks Ok
 				if (confirm(msg)) {
 					// Disable provision button
-					$(this).unbind('click');
-					$(this).css( {
-						'background-color' : '#F2F2F2',
-						'color' : '#BDBDBD'
-					});
-
+					$(this).attr('disabled', 'true');
+					
 					// Show loader
 					$('#zProvisionStatBar' + inst).show();
 					$('#zProvisionLoader' + inst).show();
 
 					// Disable add disk button
-					addDiskLink.unbind('click');
-					addDiskLink.css( {
-						'color' : '#BDBDBD'
-					});
-
+					addDiskLink.attr('disabled', 'true');
+					
 					// Disable close button on disk table
 					$('#' + thisTabId + ' table span').unbind('click');
 					
@@ -2109,22 +2097,15 @@ function createZProvisionNew(inst) {
 				 */
 
 				// Disable provision button
-				$(this).unbind(event);
-				$(this).css( {
-					'background-color' : '#F2F2F2',
-					'color' : '#BDBDBD'
-				});
-
+				$(this).attr('disabled', 'true');
+				
 				// Show loader
 				$('#zProvisionStatBar' + inst).show();
 				$('#zProvisionLoader' + inst).show();
 
 				// Disable add disk button
-				addDiskLink.unbind('click');
-				addDiskLink.css( {
-					'color' : '#BDBDBD'
-				});
-
+				addDiskLink.attr('disabled', 'true');
+				
 				// Disable close button on disk table
 				$('#' + thisTabId + ' table span').unbind('click');
 
