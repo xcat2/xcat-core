@@ -1023,7 +1023,7 @@ function loadScriptPage(tgtNodes) {
 	scriptForm.append(statBar);
 
 	// Create loader
-	var loader = createLoader('scriptLoader');
+	var loader = createLoader('scriptLoader' + inst);
 	statBar.append(loader);
 
 	// Create info bar
@@ -1077,17 +1077,6 @@ function loadScriptPage(tgtNodes) {
 		if (ready) {
 			// Run script
 			runScript(inst);
-
-			// Stop this function from executing again
-			// Unbind event
-			$(this).unbind(event);
-			$(this).css( {
-				'background-color' : '#F2F2F2',
-				'color' : '#424242'
-			});
-
-			// Show status bar
-			statBar.show();
 		} else {
 			alert('You are missing some values');
 		}
@@ -1293,10 +1282,24 @@ function updateStatusBar(data) {
 				dTable.fnDeleteRow(rowPos);
 			}
 		}
+	} else if (cmd == 'xdsh') {
+		// Hide loader
+		$('#' + statBarId).find('img').hide();
+		
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
+		$('#' + statBarId).append(prg);	
+		
+		// Enable fields
+		$('#' + statBarId).parent().find('input').removeAttr('disabled');
+		$('#' + statBarId).parent().find('textarea').removeAttr('disabled');
+		
+		// Enable buttons
+		$('#' + statBarId).parent().find('button').removeAttr('disabled');
 	} else {
 		// Hide loader
 		$('#' + statBarId).find('img').hide();
-
+		
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
 		$('#' + statBarId).append(prg);	
@@ -1384,22 +1387,23 @@ function updatePowerStatus(data) {
  */
 function runScript(inst) {
 	var tabId = 'scriptTab' + inst;
-
+	
 	// Get node name
 	var tgts = $('#' + tabId + ' input[name=target]').val();
 	// Get script
 	var script = $('#' + tabId + ' textarea').val();
+	
+	var statBarId = 'scriptStatusBar' + inst;
+	$('#' + statBarId).show();					// Show status bar
+	$('#' + statBarId + ' img').show();			// Show loader
+	$('#' + statBarId + ' p').remove();	// Clear status bar
 
 	// Disable all fields
-	$('#' + tabId + ' input').attr('readonly', 'readonly');
-	$('#' + tabId + ' input').css( {
-		'background-color' : '#F2F2F2'
-	});
-
-	$('#' + tabId + ' textarea').attr('readonly', 'readonly');
-	$('#' + tabId + ' textarea').css( {
-		'background-color' : '#F2F2F2'
-	});
+	$('#' + tabId + ' input').attr('disabled', 'true');
+	$('#' + tabId + ' textarea').attr('disabled', 'true');
+	
+	// Disable buttons
+	$('#' + tabId + ' button').attr('disabled', 'true');
 
 	// Run script
 	$.ajax( {
