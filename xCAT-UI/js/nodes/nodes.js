@@ -750,10 +750,8 @@ function loadPowerStatus(data) {
 		dTable.fnUpdate(status, rowNum, 3);
 	}
 	
-	// Hide ping and power loader
-	var pingCol = $('#nodesDataTable thead tr th').eq(2);
+	// Hide power loader
 	var powerCol = $('#nodesDataTable thead tr th').eq(3);
-	pingCol.find('img').hide();
 	powerCol.find('img').hide();
 }
 
@@ -811,11 +809,9 @@ function loadPingStatus(data) {
 		dTable.fnUpdate(status, rowPos, 2);
 	}
 	
-	// Hide ping and power loader
+	// Hide ping loader
 	var pingCol = $('#nodesDataTable thead tr th').eq(2);
-	var powerCol = $('#nodesDataTable thead tr th').eq(3);
 	pingCol.find('img').hide();
-	powerCol.find('img').hide();
 }
 
 /**
