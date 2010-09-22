@@ -21,6 +21,8 @@
 # Usage:  buildcore.sh [attr=value attr=value ...]
 #		PROMOTE=1 - if the attribute "PROMOTE" is specified, means an official dot release.
 #					Otherwise, and snap build is assumed.
+#		PREGA=1 - means this is a branch that has not been released yet, so during the promote, copy the
+#					xcat-core tarball to the SF web site instead of the FRS area.
 # 		UP=0 or UP=1 - override the default upload behavior 
 # 		SVNUP=<filename> - control which rpms get built by specifying a coresvnup file
 
@@ -379,7 +381,7 @@ while ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:htdocs/$
 do : ; done
 
 # Upload the tarball to sourceforge
-if [ "$PROMOTE" = 1 -a "$REL" != "devel" ]; then
+if [ "$PROMOTE" = 1 -a "$REL" != "devel" -a "$PREGA" != 1 ]; then
 	# upload tarball to FRS area
 	#scp $TARNAME $UPLOADUSER@web.sourceforge.net:uploads/
 	while ! rsync -v $TARNAME $UPLOADUSER,xcat@web.sourceforge.net:/home/frs/project/x/xc/xcat/xcat/$REL.x_$OSNAME/
