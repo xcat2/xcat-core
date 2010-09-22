@@ -402,7 +402,9 @@ function loadNodes(data) {
 	sorted.sort();
 
 	// Add column for check box, node, ping, and power
-	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node', '<a href="#">ping</a>', '<a href="#">power</a>');
+	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node', 
+		'<a href="#">ping</a><img src="images/loader.gif"></img>', 
+		'<a href="#">power</a><img src="images/loader.gif"></img>');
 
 	// Create a datatable
 	var dTable = new DataTable('nodesDataTable');
@@ -638,7 +640,7 @@ function loadNodes(data) {
 	powerCol.bind('click', function(event) {
 		refreshPowerStatus(group);
 	});
-	
+		
 	/**
 	 * Get power and ping status for each node
 	 */
@@ -747,6 +749,12 @@ function loadPowerStatus(data) {
 		//update the data in the 
 		dTable.fnUpdate(status, rowNum, 3);
 	}
+	
+	// Hide ping and power loader
+	var pingCol = $('#nodesDataTable thead tr th').eq(2);
+	var powerCol = $('#nodesDataTable thead tr th').eq(3);
+	pingCol.find('img').hide();
+	powerCol.find('img').hide();
 }
 
 /**
@@ -757,6 +765,10 @@ function loadPowerStatus(data) {
  * @return Nothing
  */
 function refreshPowerStatus(group) {
+	// Show power loader
+	var powerCol = $('#nodesDataTable thead tr th').eq(3);
+	powerCol.find('img').show();
+	
 	// Get the power status
 	$.ajax( {
 		url : 'lib/cmd.php',
@@ -798,6 +810,12 @@ function loadPingStatus(data) {
 		// Update the power status column
 		dTable.fnUpdate(status, rowPos, 2);
 	}
+	
+	// Hide ping and power loader
+	var pingCol = $('#nodesDataTable thead tr th').eq(2);
+	var powerCol = $('#nodesDataTable thead tr th').eq(3);
+	pingCol.find('img').hide();
+	powerCol.find('img').hide();
 }
 
 /**
@@ -808,6 +826,10 @@ function loadPingStatus(data) {
  * @return Nothing
  */
 function refreshPingStatus(group) {
+	// Show ping loader
+	var pingCol = $('#nodesDataTable thead tr th').eq(2);
+	pingCol.find('img').show();
+	
 	// Get the ping status
 	$.ajax( {
 		url : 'lib/cmd.php',
