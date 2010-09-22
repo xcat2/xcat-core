@@ -351,7 +351,7 @@ sub mknetboot
             }
 	    unless ( -r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.sfs" ) {
                 $callback->({
-                    error=>["No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (i.e.  packimage -o $osver -p $profile -a $arch"],
+                    error=>["No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
                     errorcode => [1]});
                 next;
             }
