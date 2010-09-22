@@ -194,3 +194,14 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 hmcPlugin.prototype.loadResources = function() {
 
 };
+
+/**
+ * Add node
+ * 
+ * @param f
+ * 			Key/value pairs of the form values
+ * @return Nothing
+ */
+hmcPlugin.prototype.addNode = function(f) {
+	
+};

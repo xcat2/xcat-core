@@ -141,3 +141,14 @@ bladePlugin.prototype.loadProvisionPage = function(tabId) {
 bladePlugin.prototype.loadResources = function() {
 
 };
+
+/**
+ * Add node
+ * 
+ * @param f
+ * 			Key/value pairs of the form values
+ * @return Nothing
+ */
+bladePlugin.prototype.addNode = function(f) {
+	
+};

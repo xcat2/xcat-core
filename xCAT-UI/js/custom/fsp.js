@@ -141,3 +141,14 @@ fspPlugin.prototype.loadProvisionPage = function(tabId) {
 fspPlugin.prototype.loadResources = function() {
 
 };
+
+/**
+ * Add node
+ * 
+ * @param f
+ * 			Key/value pairs of the form values
+ * @return Nothing
+ */
+fspPlugin.prototype.addNode = function(f) {
+	
+};

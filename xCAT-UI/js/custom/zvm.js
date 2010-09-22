@@ -1064,3 +1064,183 @@ zvmPlugin.prototype.loadResources = function() {
 		success : getZResources
 	});
 };
+
+/**
+ * Add node
+ * 
+ * @param f
+ * 			Key/value pairs of the form values
+ * @return Nothing
+ */
+zvmPlugin.prototype.addNode = function(f) {
+	var nodeRange = f.node;
+	var group = f.group;
+	var hcp = f.hcp;
+	var userIdRange = f.userId;
+	
+	// Check node range and user ID range
+	var errMsg = '';
+	var ready = true;
+	if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
+		if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
+			errMsg = errMsg + 'A user ID range and node range needs to be given. ';
+			ready = false;
+		} else {
+			var tmp = nodeRange.split('-');
+
+			// Get node base name
+			var nodeBase = tmp[0].match(/[a-zA-Z]+/);
+			// Get starting index
+			var nodeStart = parseInt(tmp[0].match(/\d+/));
+			// Get ending index
+			var nodeEnd = parseInt(tmp[1]);
+
+			tmp = userIdRange.split('-');
+
+			// Get user ID base name
+			var userIdBase = tmp[0].match(/[a-zA-Z]+/);
+			// Get starting index
+			var userIdStart = parseInt(tmp[0].match(/\d+/));
+			// Get ending index
+			var userIdEnd = parseInt(tmp[1]);
+
+			// If starting and ending index do not match
+			if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
+				// Not ready
+				errMsg = errMsg + 'The node range and user ID range does not match. ';
+				ready = false;
+			}
+		}
+	}
+	
+	// If there are no errors catched
+	if (ready) {
+    	// If a node range is given
+    	if (nodeRange.indexOf('-') > -1 && userIdRange.indexOf('-') > -1) {
+    		var tmp = nodeRange.split('-');
+    
+    		// Get node base name
+    		var nodeBase = tmp[0].match(/[a-zA-Z]+/);
+    		// Get starting index
+    		var nodeStart = parseInt(tmp[0].match(/\d+/));
+    		// Get ending index
+    		var nodeEnd = parseInt(tmp[1]);
+    
+    		tmp = userIdRange.split('-');
+    
+    		// Get user ID base name
+    		var userIdBase = tmp[0].match(/[a-zA-Z]+/);
+    		// Get starting index
+    		var userIdStart = parseInt(tmp[0].match(/\d+/));
+    		// Get ending index
+    		var userIdEnd = parseInt(tmp[1]);
+    
+    		// Loop through each node in the node range
+    		for ( var i = nodeStart; i <= nodeEnd; i++) {
+    			var node = nodeBase + i.toString();
+    			var userId = userIdBase + i.toString();
+    			var inst = i + '/' + nodeEnd;
+    
+    			/**
+    			 * (1) Define node
+    			 */
+    			$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'nodeadd',
+    					tgt : '',
+    					args : node + ';zvm.hcp=' + hcp
+    						+ ';zvm.userid=' + userId
+    						+ ';nodehm.mgt=zvm' + ';groups=' + group,
+    					msg : 'cmd=addnewnode;inst=' + inst + ';noderange=' + nodeRange
+    				},
+    
+    				/**
+    				 * Return function on successful AJAX call
+    				 * 
+    				 * @param data
+    				 *            Data returned from HTTP request
+    				 * @return Nothing
+    				 */
+    				success : function (data) {
+    					// Get ajax response
+    					var rsp = data.rsp;
+    					var args = data.msg.split(';');
+    
+    					// Get command invoked
+    					var cmd = args[0].replace('cmd=', '');
+    					var inst = args[1].replace('inst=', '');    					
+    					var nodeRange = args[2].replace('noderange=', '');
+    					
+    					// If the last node was added
+    					var tmp = inst.split('/');
+    					if (tmp[0] == tmp[1]) {
+        					// If there was an error, do not continue
+        					var msg;
+        					if (rsp.length) {
+        						msg = '<p>(Error) Failed to create node definition</p>';					
+        					} else {
+        						msg = '<p>Node definitions created for ' + nodeRange + '</p>';	
+        					}
+        					
+        					$.prompt(msg, {
+        						buttons: { Ok: true },
+        						prefix: 'cleanblue'
+        					});
+    					}
+    				}
+    			});
+    		}
+    	} else {
+    		$.ajax( {
+    			url : 'lib/cmd.php',
+    			dataType : 'json',
+    			data : {
+    				cmd : 'nodeadd',
+    				tgt : '',
+    				args : nodeRange + ';zvm.hcp=' + hcp
+    					+ ';zvm.userid=' + userIdRange
+    					+ ';nodehm.mgt=zvm' + ';groups=' + group,
+    				msg : 'cmd=addnewnode;node=' + nodeRange
+    			},
+    
+    			/**
+    			 * Return function on successful AJAX call
+    			 * 
+    			 * @param data
+    			 *            Data returned from HTTP request
+    			 * @return Nothing
+    			 */
+    			success : function (data) {
+    				// Get ajax response
+    				var rsp = data.rsp;
+    				var args = data.msg.split(';');
+    
+    				// Get command invoked
+    				var cmd = args[0].replace('cmd=', '');
+    				var node = args[1].replace('node=', '');
+    				
+    				// If there was an error, do not continue
+    				var msg;
+    				if (rsp.length) {
+    					msg = '<p>(Error) Failed to create node definition</p>';					
+    				} else {
+    					msg = '<p>Node definition created for ' + node + '</p>';	
+    				}
+    				
+    				$.prompt(msg, {
+    					buttons: { Ok: true },
+    					prefix: 'cleanblue'
+    				});
+    			}
+    		});
+    	}
+	} else {
+		// Prompt an error message
+		$.prompt('<p>' + errMsg + '</p>', {
+			buttons: { Ok: true },
+			prefix: 'cleanblue'
+		});
+	}
+};

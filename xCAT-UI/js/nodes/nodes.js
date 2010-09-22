@@ -245,7 +245,6 @@ function loadGroups(data) {
 			// Show blade form
 			blade : {
 				html : bladeForm,
-				callback : addNode,
 				buttons : {
 					Ok : true,
 					Cancel : false
@@ -262,7 +261,6 @@ function loadGroups(data) {
 			// Show fsp form
 			fsp : {
 				html : fspForm,
-				callback : addNode,
 				buttons : {
 					Ok : true,
 					Cancel : false
@@ -279,7 +277,6 @@ function loadGroups(data) {
 			// Show hmc form
 			hmc : {
 				html : hmcForm,
-				callback : addNode,
 				buttons : {
 					Ok : true,
 					Cancel : false
@@ -296,7 +293,6 @@ function loadGroups(data) {
 			// Show ipmi form
 			ipmi : {
 				html : ipmiForm,
-				callback : addNode,
 				buttons : {
 					Ok : true,
 					Cancel : false
@@ -313,7 +309,6 @@ function loadGroups(data) {
 			// Show ivm form
 			ivm : {
 				html : ivmForm,
-				callback : addNode,
 				buttons : {
 					Ok : true,
 					Cancel : false
@@ -330,7 +325,6 @@ function loadGroups(data) {
 			// Show zvm form
 			zvm : {
 				html : zvmForm,
-				callback : addNode,
 				buttons : {
 					Ok : true,
 					Cancel : false
@@ -346,6 +340,7 @@ function loadGroups(data) {
 		};
 
 		$.prompt(states, {
+			callback : addNode,
 			prefix : 'cleanblue'
 		});
 
@@ -1694,6 +1689,29 @@ function loadRconsPage(tgtNodes){
 function addNode(v, m, f) {
 	// If user clicks Ok
 	if (v) {
+		var mgt = f.mgt;
+		var plugin;
+		switch(mgt) {
+    		case "blade":
+        		plugin = new bladePlugin();
+        		break;
+    		case "fsp":
+    			plugin = new fspPlugin();
+    			break;
+    		case "hmc":
+    			plugin = new hmcPlugin();
+    			break;
+    		case "ipmi":
+    			plugin = new ipmiPlugin();
+    			break;		
+    		case "ivm":
+    			plugin = new ivmPlugin();
+    			break;
+    		case "zvm":
+    			plugin = new zvmPlugin();
+    			break;
+    	}
 		
-	}
+		plugin.addNode(f);
+	} // End of if
 }
