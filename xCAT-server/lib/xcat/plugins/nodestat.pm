@@ -527,8 +527,30 @@ sub process_request_nmap {
    my $installquerypossible=0;
    my @nodesetnodes=();
    while (<$fping>) {
-      if (/Interesting ports on ([^ ]*) /) {
-          $currnode=$1;
+      if (/Interesting ports on ([^ ]*) / or /Nmap scan report for ([^ ]*)/) {
+          my $tmpnode=$1;
+          if ($currnode) {     #search for blank line instead
+              my $status = join ',',sort keys %states ;
+              my $appsd="";
+              foreach my $portnum(keys %portservices) {
+                  my $app_t=$portservices{$portnum};
+		  if ($states{$app_t}) {$appsd .= $app_t . "=up,";}
+		  else {$appsd .= $app_t . "=down,";}
+	      }
+	      $appsd =~ s/,$//;
+
+              unless ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
+                 push @nodesetnodes,$currnode; #Aggregate call to nodeset
+                 next;
+              }
+              $ret->{$currnode}->{'status'}="ping";
+              $ret->{$currnode}->{'appstatus'}=$status;
+              $ret->{$currnode}->{'appsd'}=$appsd;
+              $currnode="";
+              %states=();
+              next;
+          }
+          $currnode=$tmpnode;
           my $nip;
           if ($nip = xCAT::NetworkUtils->getipaddr($currnode)) { #reverse lookup may not resemble the nodename, key by ip
               if ($nodebyip{$nip}) {
@@ -553,27 +575,6 @@ sub process_request_nmap {
           delete $deadnodes{$currnode};
       } elsif ($currnode) {
           #if (/^MAC/) {  #oops not all nmap records end with MAC
-          if (/^$/) {     #search for blank line instead
-              my $status = join ',',sort keys %states ;
-              my $appsd="";
-              foreach my $portnum(keys %portservices) {
-                  my $app_t=$portservices{$portnum};
-		  if ($states{$app_t}) {$appsd .= $app_t . "=up,";}
-		  else {$appsd .= $app_t . "=down,";}
-	      }
-	      $appsd =~ s/,$//;
-
-              unless ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
-                 push @nodesetnodes,$currnode; #Aggregate call to nodeset
-                 next;
-              }
-              $ret->{$currnode}->{'status'}="ping";
-              $ret->{$currnode}->{'appstatus'}=$status;
-              $ret->{$currnode}->{'appsd'}=$appsd;
-              $currnode="";
-              %states=();
-              next;
-          }
           if (/^PORT/) { next; }
           ($port,$state) = split;
           if ($port =~ /^(\d*)\// and $state eq 'open') {
