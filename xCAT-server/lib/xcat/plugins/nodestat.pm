@@ -529,7 +529,7 @@ sub process_request_nmap {
    while (<$fping>) {
       if (/Interesting ports on ([^ ]*) / or /Nmap scan report for ([^ ]*)/) {
           my $tmpnode=$1;
-          if ($currnode) {     #search for blank line instead
+          if ($currnode) {     #if still thinking about last node, flush him out
               my $status = join ',',sort keys %states ;
               my $appsd="";
               foreach my $portnum(keys %portservices) {
@@ -539,16 +539,15 @@ sub process_request_nmap {
 	      }
 	      $appsd =~ s/,$//;
 
-              unless ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
+              if ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
+                  $ret->{$currnode}->{'status'}="ping";
+                  $ret->{$currnode}->{'appstatus'}=$status;
+                  $ret->{$currnode}->{'appsd'}=$appsd;
+                  $currnode="";
+                  %states=();
+              } else {
                  push @nodesetnodes,$currnode; #Aggregate call to nodeset
-                 next;
               }
-              $ret->{$currnode}->{'status'}="ping";
-              $ret->{$currnode}->{'appstatus'}=$status;
-              $ret->{$currnode}->{'appsd'}=$appsd;
-              $currnode="";
-              %states=();
-              next;
           }
           $currnode=$tmpnode;
           my $nip;
@@ -586,6 +585,24 @@ sub process_request_nmap {
           }
       } 
     }
+              my $status = join ',',sort keys %states ;
+              my $appsd="";
+              foreach my $portnum(keys %portservices) {
+                  my $app_t=$portservices{$portnum};
+		  if ($states{$app_t}) {$appsd .= $app_t . "=up,";}
+		  else {$appsd .= $app_t . "=down,";}
+	      }
+	      $appsd =~ s/,$//;
+
+              if ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
+                  $ret->{$currnode}->{'status'}="ping";
+                  $ret->{$currnode}->{'appstatus'}=$status;
+                  $ret->{$currnode}->{'appsd'}=$appsd;
+                  $currnode="";
+                  %states=();
+              } else {
+                 push @nodesetnodes,$currnode; #Aggregate call to nodeset
+              }
     if (@nodesetnodes) {
         $doreq->({command=>['nodeset'],
                   node=>\@nodesetnodes,
