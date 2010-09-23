@@ -144,7 +144,7 @@ nodelist table:  node, groups
 
 hosts table:  node, ip
 
-ppc table:  node, supernode, hcp
+ppc table:  node, supernode, hcp, id, parent
 
 nodetype table:  node, nodetype
 

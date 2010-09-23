@@ -13,6 +13,7 @@
 # - hostname ranges must have simple <alphachars><integer> format
 # - IP address incrementing for ranges must currently be confined to the last field
 # - the supernode-list file must contain all frames and the frame nodenames must sort correctly
+# - do not yet support redundant bpcs or fsps
 #
 #####################################################
 package xCAT_plugin::setup;
@@ -352,8 +353,8 @@ sub writecec {
 		# let lsslp fill in the hcp
 	}
 	
-	# Write supernode-list in ppc.supernode
-	#todo: handle the !sequential option
+	# Write supernode-list in ppc.supernode.  While we are at it, also assign the cage id and parent.
+	#todo: handle the !sequential option?
 	$nodes = [noderange($cecrange, 0)];		# the setNodesAttribs() function blanks out the nodes array
 	my %framesupers;
 	my $filename = fullpath($STANZAS{'xcat-cecs'}->{'supernode-list'}, $cwd);
@@ -364,6 +365,7 @@ sub writecec {
 	foreach my $k (sort keys %framesupers) {
 		my $f = $framesupers{$k};	# $f is a ptr to an array of super node numbers
 		if (!$f) { next; }		# in case some frame nums did not get filled in by user
+		my $cageid = 0;
 		foreach my $s (@$f) {	# loop thru the supernode nums in this frame
 			my $supernum = $s;
 			my $numnodes = 4;
@@ -371,7 +373,7 @@ sub writecec {
 			for (my $j=0; $j<$numnodes; $j++) {		# assign the next few nodes to this supernode num
 				my $nodename = $$nodes[$i++];
 				#print "Setting $nodename supernode attribute to $supernum,$j\n";
-				$nodehash{$nodename} = { supernode => "$supernum,$j" };
+				$nodehash{$nodename} = { supernode => "$supernum,$j", id => $cageid++, parent => $k };
 			}
 		}
 	}
