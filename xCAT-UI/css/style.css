@@ -1,16 +1,15 @@
-/***************** Login dialog *****************/
-#logdialog {
-	margin: 0px 10px 20px 10px;
-	padding: 0px;
-}
-
-#logdialog label,input,p {
-	font: 14px verdana, arial, helvetica, sans-serif;
-}
-
-#logdialog input {
+/***************** Dialogs *****************/
+.ui-dialog input {
 	border: solid 1px #BDBDBD;
-	font: 14px verdana, arial, helvetica, sans-serif;
+	font: 12px verdana, arial, helvetica, sans-serif;
+}
+
+.ui-dialog label, input, p, button {
+	font: 12px verdana, arial, helvetica, sans-serif;
+}
+
+.ui-widget {
+	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
 /****************** Header ******************/
@@ -133,13 +132,13 @@ body {
 }
 
 /****************** Info bar ******************/
-.info {
-	font: 12px verdana, arial, helvetica, sans-serif;
-}
-
 span.ui-icon-info {
 	float: left;
 	margin-right: 0.3em;
+}
+
+.ui-icon {
+	float: left;
 }
 
 .ui-button {
@@ -393,6 +392,7 @@ span.ui-icon-info {
 	border-style: solid;
 	border-color: #BDBDBD;
 	vertical-align: middle;
+	text-align: center;
 }
 
 /*** Row color (odd) ***/
@@ -442,70 +442,6 @@ span.ui-icon-info {
 
 .tab .datatable button:hover {
 	background-color: #E6E6E6;
-}
-
-/****************** Prompts ******************/
-.cleanbluewarning .cleanblue {
-	background-color: #acb4c4;
-}
-
-.cleanbluefade {
-	position: absolute;
-	background-color: #aaaaaa;
-}
-
-div.cleanblue {
-	font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
-	position: absolute;
-	background-color: #ffffff;
-	width: 400px;
-	font-size: 11px;
-	text-align: left;
-	border: solid 1px #213e80;
-}
-
-div.cleanblue .cleanbluecontainer {
-	background-color: #ffffff;
-	border-top: solid 14px #213e80;
-	padding: 5px;
-	font-weight: bold;
-}
-
-div.cleanblue .cleanblueclose {
-	float: right;
-	width: 18px;
-	cursor: default;
-	margin: -19px -12px 0 0;
-	color: #ffffff;
-	font-weight: bold;
-}
-
-div.cleanblue .cleanbluemessage {
-	padding: 10px;
-	line-height: 20px;
-	font-size: 11px;
-	color: #333333;
-}
-
-div.cleanblue .cleanbluebuttons {
-	text-align: right;
-	padding: 5px 0 5px 0;
-	border: solid 1px #eeeeee;
-	background-color: #f4f4f4;
-}
-
-div.cleanblue button {
-	padding: 3px 10px;
-	margin: 0 10px;
-	background-color: #314e90;
-	border: solid 1px #f4f4f4;
-	color: #ffffff;
-	font-weight: bold;
-	font-size: 12px;
-}
-
-div.cleanblue button:hover {
-	border: solid 1px #d4d4d4;
 }
 
 /****************** Context menu ******************/
@@ -585,7 +521,7 @@ div.cleanblue button:hover {
 	display: inline-table;
 }
 
-.form input {
+.form input, textarea, select {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 5px;
@@ -593,10 +529,6 @@ div.cleanblue button:hover {
 }
 
 .form textarea {
-	font: 12px verdana, arial, helvetica, sans-serif;
-	border: solid 1px #BDBDBD;
-	padding: 5px;
-	display: inline-table;
 	width: 350px;
 	height: 150px;
 }

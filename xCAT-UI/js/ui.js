@@ -320,10 +320,25 @@ function createStatusBar(barId) {
  */
 function createInfoBar(msg) {
 	var infoBar = $('<div class="ui-state-highlight ui-corner-all">');
-	var msg = $('<p class="info"><span class="ui-icon ui-icon-info"></span>' + msg + '</p>');
+	var msg = $('<p><span class="ui-icon ui-icon-info"></span>' + msg + '</p>');
 	infoBar.append(msg);
 
 	return infoBar;
+}
+
+/**
+ * Create warning bar
+ * 
+ * @param msg
+ *            Warning message
+ * @return Warning bar
+ */
+function createWarnBar(msg) {
+	var warnBar = $('<div class="ui-state-error ui-corner-all">');
+	var msg = $('<p><span class="ui-icon ui-icon-alert"></span>' + msg + '</p>');
+	warnBar.append(msg);
+
+	return warnBar;
 }
 
 /**
@@ -504,4 +519,29 @@ function writeRsp(rsp, pattern) {
 	}
 
 	return prg;
+}
+
+/**
+ * Open a dialog and show given message
+ * 
+ * @param msg
+ * 			Message to show
+ * @return Nothing
+ */
+function openDialog(msg) {
+	// If there was an error, do not continue
+	var div = $('<div><p>' + msg + '</p></div>');
+		
+	// Create dialog
+	div.dialog({
+		position: 'top',
+		modal: true,
+		width: 400,
+		buttons: {
+			"Ok": function(){ 
+				// Close dialog
+				$(this).dialog("close");
+			}
+		}
+	});
 }

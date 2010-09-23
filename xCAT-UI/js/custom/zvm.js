@@ -556,28 +556,9 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			 */
 			var addProcLink = $('<a href="#">Add processor</a>');
 			addProcLink.bind('click', function(event) {
-    			var procForm = '<div class="form">'
-        				+ '<div><label for="procNode">Processor for:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="' + node + '"/></div>'
-        				+ '<div><label for="procAddress">Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>'
-        				+ '<div><label for="procType">Processor type:</label>'
-            				+ '<select id="procType" name="procType">'
-                				+ '<option>CP</option>' 
-                				+ '<option>IFL</option>'
-                				+ '<option>ZAAP</option>' 
-                				+ '<option>ZIIP</option>'
-            				+ '</select>' 
-        				+ '</div>' 
-    				+ '</div>';
-    
-    			$.prompt(procForm, {
-    				callback : addProcessor,
-    				buttons : {
-    					Ok : true,
-    					Cancel : false
-    				},
-    				prefix : 'cleanblue'
-    			});
-    		});
+				createAddProcDialog(node);
+			});
+			
 			procFooter.append(addProcLink);
 			procTable.append(procFooter);
 
@@ -653,48 +634,8 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			 */
 			var addDasdLink = $('<a href="#">Add disk</a>');
 			addDasdLink.bind('click', function(event) {
-				// Get list of disk pools
-				var temp = attrs['hcp'][0].split('.');
-				var cookie = $.cookie(temp[0] + 'DiskPools');
-
-				// Create drop down list for disk pool
-				var pools = cookie.split(',');
-				var selectPool = '<select id="diskPool" name="diskPool">';
-				for ( var i = 0; i < pools.length; i++) {
-					selectPool = selectPool + '<option>' + pools[i]
-						+ '</option>';
-				}
-				selectPool = selectPool + '</select>';
-				
-				// Create drop down list for disk mode
-				var selectMode = '<select id="diskMode" name="diskMode">';
-				selectMode = selectMode + '<option>R</option>';
-				selectMode = selectMode + '<option>RR</option>';
-				selectMode = selectMode + '<option>W</option>';
-				selectMode = selectMode + '<option>WR</option>';
-				selectMode = selectMode + '<option>M</option>';
-				selectMode = selectMode + '<option>MR</option>';
-				selectMode = selectMode + '<option>MW</option>';
-				selectMode = selectMode + '</select>';
-				
-				var dasdForm = '<div class="form">'
-    					+ '<div><label for="diskNode">Disk for:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="' + node + '"/></div>'
-    					+ '<div><label for="diskType">Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option><option value="9336">9336</option></select></div>'
-    					+ '<div><label for="diskAddress">Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>'
-    					+ '<div><label for="diskSize">Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>'
-    					+ '<div><label for="diskPool">Disk pool:</label>' + selectPool + '</div>'
-    					+ '<div><label for="diskMode">Disk mode:</label>' + selectMode + '</div>'
-    					+ '<div><label for="diskPassword">Disk password:</label><input type="password" id="diskPassword" name="diskPassword"/></div>'
-    				+ '</div>';
-
-				$.prompt(dasdForm, {
-					callback : addDisk,
-					buttons : {
-						Ok : true,
-						Cancel : false
-					},
-					prefix : 'cleanblue'
-				});
+				var hcp = attrs['hcp'][0].split('.');
+				createAddDiskDialog(node, hcp[0]);
 			});
 			dasdFooter.append(addDasdLink);
 			dasdTable.append(dasdFooter);
@@ -774,148 +715,8 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			 */
 			var addNicLink = $('<a href="#">Add NIC</a>');
 			addNicLink.bind('click', function(event) {
-				// Get network names
-				var temp = attrs['hcp'][0].split('.');
-				var networks = $.cookie(temp[0] + 'Networks').split(',');
-
-				// Create a drop down list
-				var gLansQdio = '<select id="nicLanQdioName" name="nicLanQdioName">';
-				var gLansHipers = '<select id="nicLanHipersName" name="nicLanHipersName">';
-				var vswitches = '<select id="nicVSwitchName" name="nicVSwitchName">';
-				for ( var i = 0; i < networks.length; i++) {
-					var network = networks[i].split(' ');
-					if (network[0] == 'VSWITCH') {
-						vswitches = vswitches + '<option>' + network[1] + ' ' + network[2] + '</option>';
-					} else if (network[0] == 'LAN:QDIO') {
-						gLansQdio = gLansQdio + '<option>' + network[1] + ' ' + network[2] + '</option>';
-					} else if (network[0] == 'LAN:HIPERS') {
-						gLansHipers = gLansHipers + '<option>' + network[1] + ' ' + network[2] + '</option>';
-					}
-				}
-				vswitches = vswitches + '</select>';
-				gLansQdio = gLansQdio + '</select>';
-				gLansHipers = gLansHipers + '</select>';
-
-				var nicTypeForm = '<div class="form">'
-					+ '<div><label for="nicNode">NIC for:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="' + node + '"/></div>'
-					+ '<div><label for="nicAddress">NIC address:</label><input type="text" id="nicAddress" name="nicAddress"/></div>'
-					+ '<div><label for="nicType">NIC type:</label>'
-    					+ '<select id="nicType" name="nicType">'
-        					+ '<option>QDIO</option>'
-        					+ '<option>HiperSockets</option>'
-    					+ '</select>'
-					+ '</div>'
-					+ '<div><label for="nicNetworkType">Network type:</label>'
-    					+ '<select id="nicNetworkType" name="nicNetworkType">'
-    						+ '<option>Guest LAN</option>'
-    						+ '<option>Virtual Switch</option>' + '</select>'
-    					+ '</div>' 
-					+ '</div>';
-				var configGuestLanQdioForm = '<div class="form"><div><label for="nicLanQdioName">Guest LAN name:</label>' + gLansQdio + '</div></div>';
-				var configGuestLanHipersForm = '<div class="form"><div><label for="nicLanHipersName">Guest LAN name:</label>' + gLansHipers + '</div></div>';
-				var configVSwitchForm = '<div class="form"><div><label for="nicVSwitchName">VSWITCH name:</label>' + vswitches + '</div></div>';
-				var notSupportedForm = '<div class="form"><p>The requested operation is not supported</p></div>';
-
-				var states = {
-					// Select NIC type
-					type : {
-						html : nicTypeForm,
-						buttons : {
-							Ok : true,
-							Cancel : false
-						},
-						focus : 1,
-						prefix : 'cleanblue',
-						submit : function(v, m, f) {
-							if (!v) {
-								return true;
-							} else {
-								var nicType = f.nicType;
-								var networkType = f.nicNetworkType;
-								if (networkType == 'Guest LAN' && nicType == 'QDIO')
-									$.prompt.goToState('configGuestLanQdio');
-								else if (networkType == 'Guest LAN' && nicType == 'HiperSockets')
-									$.prompt.goToState('configGuestLanHipers');
-								else if (networkType == 'Virtual Switch' && nicType == 'QDIO')
-									$.prompt.goToState('configVSwitch');
-								else
-									$.prompt.goToState('notSupported');
-								return false;
-							}
-						}
-					},
-
-					// Configure QDIO guest LAN page
-					configGuestLanQdio : {
-						html : configGuestLanQdioForm,
-						callback : addNic,
-						buttons : {
-							Ok : true,
-							Cancel : false
-						},
-						focus : 1,
-						prefix : 'cleanblue',
-						submit : function(v, m, f) {
-							if (v) {
-								return true;
-							}
-						}
-					},
-					
-					// Configure HIPERS guest LAN page
-					configGuestLanHipers : {
-						html : configGuestLanHipersForm,
-						callback : addNic,
-						buttons : {
-							Ok : true,
-							Cancel : false
-						},
-						focus : 1,
-						prefix : 'cleanblue',
-						submit : function(v, m, f) {
-							if (v) {
-								return true;
-							}
-						}
-					},
-
-					// Configure VSwitch page
-					configVSwitch : {
-						html : configVSwitchForm,
-						callback : addNic,
-						buttons : {
-							Ok : true,
-							Cancel : false
-						},
-						focus : 1,
-						prefix : 'cleanblue',
-						submit : function(v, m, f) {
-							if (v) {
-								return true;
-							}
-						}
-					},
-					
-					// Not supported page
-					notSupported : {
-						html : notSupportedForm,
-						buttons : {
-							Ok : false
-						},
-						focus : 1,
-						prefix : 'cleanblue',
-						submit : function(v, m, f) {
-							if (v) {
-								return true;
-							}
-						}
-					}
-				};
-
-				$.prompt(states, {
-					callback : addNic,
-					prefix : 'cleanblue'
-				});
+				var hcp = attrs['hcp'][0].split('.');
+				createAddNicDialog(node, hcp[0]);
 			});
 			nicFooter.append(addNicLink);
 			nicTable.append(nicFooter);
@@ -1064,179 +865,197 @@ zvmPlugin.prototype.loadResources = function() {
 /**
  * Add node
  * 
- * @param f
- * 			Key/value pairs of the form values
  * @return Nothing
  */
-zvmPlugin.prototype.addNode = function(f) {
-	var nodeRange = f.node;
-	var group = f.group;
-	var hcp = f.hcp;
-	var userIdRange = f.userId;
-	
-	// Check node range and user ID range
-	var errMsg = '';
-	var ready = true;
-	if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
-		if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
-			errMsg = errMsg + 'A user ID range and node range needs to be given. ';
-			ready = false;
-		} else {
-			var tmp = nodeRange.split('-');
-
-			// Get node base name
-			var nodeBase = tmp[0].match(/[a-zA-Z]+/);
-			// Get starting index
-			var nodeStart = parseInt(tmp[0].match(/\d+/));
-			// Get ending index
-			var nodeEnd = parseInt(tmp[1]);
-
-			tmp = userIdRange.split('-');
-
-			// Get user ID base name
-			var userIdBase = tmp[0].match(/[a-zA-Z]+/);
-			// Get starting index
-			var userIdStart = parseInt(tmp[0].match(/\d+/));
-			// Get ending index
-			var userIdEnd = parseInt(tmp[1]);
-
-			// If starting and ending index do not match
-			if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
-				// Not ready
-				errMsg = errMsg + 'The node range and user ID range does not match. ';
-				ready = false;
-			}
-		}
-	}
-	
-	// If there are no errors catched
-	if (ready) {
-    	// If a node range is given
-    	if (nodeRange.indexOf('-') > -1 && userIdRange.indexOf('-') > -1) {
-    		var tmp = nodeRange.split('-');
+zvmPlugin.prototype.addNode = function() {
+	var info = createInfoBar('Add a new node');
+	var addNodeForm = $('<div class="form"></div>');
+	addNodeForm.append(info);	
+	addNodeForm.append('<div><label for="node">Node range:</label><input type="text" id="node" name="node"/></div>');
+	addNodeForm.append('<div><label for="userId">User ID range:</label><input type="text" id="userId" name="userId"/></div>');
+	addNodeForm.append('<div><label for="hcp">Hardware control point:</label><input type="text" id="hcp" name="hcp"/></div>');
+	addNodeForm.append('<div><label for="group">Group:</label><input type="text" id="group" name="group"/></div>');
+					
+	// Create add node dialog
+	addNodeForm.dialog({
+		position: 'top',
+		modal: true,
+		width: 400,
+		buttons: {
+        	"Cancel": function(){
+        		// Close dialog
+        		$(this).dialog( "close" );
+        	},
+			"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Get inputs
+				var nodeRange = $(this).find('input[name=node]').val();
+				var userIdRange = $(this).find('input[name=userId]').val();				
+				var group = $(this).find('input[name=group]').val();
+				var hcp = $(this).find('input[name=hcp]').val();
+								
+				if (!nodeRange || !userIdRange || !group || !hcp) {
+					var warn = createWarnBar('Missing values');
+					warn.prependTo($(this));
+        		} else {
+    				// Check node range and user ID range
+    				var errMsg = '';
+    				var ready = true;
+    				if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
+    					if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
+    						errMsg = errMsg + 'A user ID range and node range needs to be given. ';
+    						ready = false;
+    					} else {
+    						var tmp = nodeRange.split('-');
     
-    		// Get node base name
-    		var nodeBase = tmp[0].match(/[a-zA-Z]+/);
-    		// Get starting index
-    		var nodeStart = parseInt(tmp[0].match(/\d+/));
-    		// Get ending index
-    		var nodeEnd = parseInt(tmp[1]);
+    						// Get node base name
+    						var nodeBase = tmp[0].match(/[a-zA-Z]+/);
+    						// Get starting index
+    						var nodeStart = parseInt(tmp[0].match(/\d+/));
+    						// Get ending index
+    						var nodeEnd = parseInt(tmp[1]);
     
-    		tmp = userIdRange.split('-');
+    						tmp = userIdRange.split('-');
     
-    		// Get user ID base name
-    		var userIdBase = tmp[0].match(/[a-zA-Z]+/);
-    		// Get starting index
-    		var userIdStart = parseInt(tmp[0].match(/\d+/));
-    		// Get ending index
-    		var userIdEnd = parseInt(tmp[1]);
+    						// Get user ID base name
+    						var userIdBase = tmp[0].match(/[a-zA-Z]+/);
+    						// Get starting index
+    						var userIdStart = parseInt(tmp[0].match(/\d+/));
+    						// Get ending index
+    						var userIdEnd = parseInt(tmp[1]);
     
-    		// Loop through each node in the node range
-    		for ( var i = nodeStart; i <= nodeEnd; i++) {
-    			var node = nodeBase + i.toString();
-    			var userId = userIdBase + i.toString();
-    			var inst = i + '/' + nodeEnd;
-    
-    			/**
-    			 * (1) Define node
-    			 */
-    			$.ajax( {
-    				url : 'lib/cmd.php',
-    				dataType : 'json',
-    				data : {
-    					cmd : 'nodeadd',
-    					tgt : '',
-    					args : node + ';zvm.hcp=' + hcp
-    						+ ';zvm.userid=' + userId
-    						+ ';nodehm.mgt=zvm' + ';groups=' + group,
-    					msg : 'cmd=addnewnode;inst=' + inst + ';noderange=' + nodeRange
-    				},
-    
-    				/**
-    				 * Return function on successful AJAX call
-    				 * 
-    				 * @param data
-    				 *            Data returned from HTTP request
-    				 * @return Nothing
-    				 */
-    				success : function (data) {
-    					// Get ajax response
-    					var rsp = data.rsp;
-    					var args = data.msg.split(';');
-    
-    					// Get command invoked
-    					var cmd = args[0].replace('cmd=', '');
-    					var inst = args[1].replace('inst=', '');    					
-    					var nodeRange = args[2].replace('noderange=', '');
-    					
-    					// If the last node was added
-    					var tmp = inst.split('/');
-    					if (tmp[0] == tmp[1]) {
-        					// If there was an error, do not continue
-        					var msg;
-        					if (rsp.length) {
-        						msg = '<p>(Error) Failed to create node definition</p>';					
-        					} else {
-        						msg = '<p>Node definitions created for ' + nodeRange + '</p>';	
-        					}
-        					
-        					$.prompt(msg, {
-        						buttons: { Ok: true },
-        						prefix: 'cleanblue'
-        					});
+    						// If starting and ending index do not match
+    						if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
+    							// Not ready
+    							errMsg = errMsg + 'The node range and user ID range does not match. ';
+    							ready = false;
+    						}
     					}
     				}
-    			});
-    		}
-    	} else {
-    		$.ajax( {
-    			url : 'lib/cmd.php',
-    			dataType : 'json',
-    			data : {
-    				cmd : 'nodeadd',
-    				tgt : '',
-    				args : nodeRange + ';zvm.hcp=' + hcp
-    					+ ';zvm.userid=' + userIdRange
-    					+ ';nodehm.mgt=zvm' + ';groups=' + group,
-    				msg : 'cmd=addnewnode;node=' + nodeRange
-    			},
-    
-    			/**
-    			 * Return function on successful AJAX call
-    			 * 
-    			 * @param data
-    			 *            Data returned from HTTP request
-    			 * @return Nothing
-    			 */
-    			success : function (data) {
-    				// Get ajax response
-    				var rsp = data.rsp;
-    				var args = data.msg.split(';');
-    
-    				// Get command invoked
-    				var cmd = args[0].replace('cmd=', '');
-    				var node = args[1].replace('node=', '');
     				
-    				// If there was an error, do not continue
-    				var msg;
-    				if (rsp.length) {
-    					msg = '<p>(Error) Failed to create node definition</p>';					
+    				// If there are no errors
+    				if (ready) {
+    			    	// If a node range is given
+    			    	if (nodeRange.indexOf('-') > -1 && userIdRange.indexOf('-') > -1) {
+    			    		var tmp = nodeRange.split('-');
+    			    
+    			    		// Get node base name
+    			    		var nodeBase = tmp[0].match(/[a-zA-Z]+/);
+    			    		// Get starting index
+    			    		var nodeStart = parseInt(tmp[0].match(/\d+/));
+    			    		// Get ending index
+    			    		var nodeEnd = parseInt(tmp[1]);
+    			    
+    			    		tmp = userIdRange.split('-');
+    			    
+    			    		// Get user ID base name
+    			    		var userIdBase = tmp[0].match(/[a-zA-Z]+/);
+    			    		// Get starting index
+    			    		var userIdStart = parseInt(tmp[0].match(/\d+/));
+    			    		// Get ending index
+    			    		var userIdEnd = parseInt(tmp[1]);
+    			    
+    			    		// Loop through each node in the node range
+    			    		for ( var i = nodeStart; i <= nodeEnd; i++) {
+    			    			var node = nodeBase + i.toString();
+    			    			var userId = userIdBase + i.toString();
+    			    			var inst = i + '/' + nodeEnd;
+    			    
+    			    			/**
+    			    			 * (1) Define node
+    			    			 */
+    			    			$.ajax( {
+    			    				url : 'lib/cmd.php',
+    			    				dataType : 'json',
+    			    				data : {
+    			    					cmd : 'nodeadd',
+    			    					tgt : '',
+    			    					args : node + ';zvm.hcp=' + hcp
+    			    						+ ';zvm.userid=' + userId
+    			    						+ ';nodehm.mgt=zvm' + ';groups=' + group,
+    			    					msg : 'cmd=addnewnode;inst=' + inst + ';noderange=' + nodeRange
+    			    				},
+    			    
+    			    				/**
+    			    				 * Return function on successful AJAX call
+    			    				 * 
+    			    				 * @param data
+    			    				 *            Data returned from HTTP request
+    			    				 * @return Nothing
+    			    				 */
+    			    				success : function (data) {
+    			    					// Get ajax response
+    			    					var rsp = data.rsp;
+    			    					var args = data.msg.split(';');
+    			    
+    			    					// Get command invoked
+    			    					var cmd = args[0].replace('cmd=', '');
+    			    					var inst = args[1].replace('inst=', '');    					
+    			    					var nodeRange = args[2].replace('noderange=', '');
+    			    					
+    			    					// If the last node was added
+    			    					var tmp = inst.split('/');
+    			    					if (tmp[0] == tmp[1]) {
+    			        					// If there was an error, do not continue
+    			        					if (rsp.length) {
+    			        						openDialog('(Error) Failed to create node definition');		
+    			        					} else {
+    			        						openDialog('Node definitions created for ' + nodeRange);	
+    			        					}
+    			    					}
+    			    				}
+    			    			});
+    			    		}
+    			    	} else {
+    			    		$.ajax( {
+    			    			url : 'lib/cmd.php',
+    			    			dataType : 'json',
+    			    			data : {
+    			    				cmd : 'nodeadd',
+    			    				tgt : '',
+    			    				args : nodeRange + ';zvm.hcp=' + hcp
+    			    					+ ';zvm.userid=' + userIdRange
+    			    					+ ';nodehm.mgt=zvm' + ';groups=' + group,
+    			    				msg : 'cmd=addnewnode;node=' + nodeRange
+    			    			},
+    			    
+    			    			/**
+    			    			 * Return function on successful AJAX call
+    			    			 * 
+    			    			 * @param data
+    			    			 *            Data returned from HTTP request
+    			    			 * @return Nothing
+    			    			 */
+    			    			success : function (data) {
+    			    				// Get ajax response
+    			    				var rsp = data.rsp;
+    			    				var args = data.msg.split(';');
+    			    
+    			    				// Get command invoked
+    			    				var cmd = args[0].replace('cmd=', '');
+    			    				var node = args[1].replace('node=', '');
+    			    				
+    			    				// If there was an error, do not continue
+    			    				if (rsp.length) {
+    									openDialog('(Error) Failed to create node definition');		
+    								} else {
+    									openDialog('Node definitions created for ' + node);	
+    								}    				
+    			    			}
+    			    		});
+    			    	}
+    			    	
+    			    	// Close dialog
+    					$(this).dialog( "close" );
     				} else {
-    					msg = '<p>Node definition created for ' + node + '</p>';	
-    				}
-    				
-    				$.prompt(msg, {
-    					buttons: { Ok: true },
-    					prefix: 'cleanblue'
-    				});
+    					// Show warning message
+    					var warn = createWarnBar(errMsg);
+    					warn.prependTo($(this));
+    				}				
     			}
-    		});
-    	}
-	} else {
-		// Prompt an error message
-		$.prompt('<p>' + errMsg + '</p>', {
-			buttons: { Ok: true },
-			prefix: 'cleanblue'
-		});
-	}
+        	}
+		}
+	});
 };

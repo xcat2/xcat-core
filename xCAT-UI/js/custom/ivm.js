@@ -145,10 +145,8 @@ ivmPlugin.prototype.loadResources = function() {
 /**
  * Add node
  * 
- * @param f
- * 			Key/value pairs of the form values
  * @return Nothing
  */
-ivmPlugin.prototype.addNode = function(f) {
+ivmPlugin.prototype.addNode = function() {
 	
 };

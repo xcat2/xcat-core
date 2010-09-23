@@ -154,194 +154,62 @@ function loadGroups(data) {
 	// Create link to add nodes
 	var addNodeLink = $('<a href="#">Add node</a>');
 	addNodeLink.bind('click', function(event) {
-		// Create form to give node range, group, and hardware management
-		var mgtForm = '<div class="form">'
-				+ '<div><label for="node">Node range:</label><input type="text" id="node" name="node"/></div>'
-				+ '<div><label for="group">Group:</label><input type="text" id="group" name="group"/></div>'
-				+ '<div><label for="mgt">Hardware management:</label>'
-    				+ '<select id="mgt" name="mgt">'
-        				+ '<option>ipmi</option>' 
-        				+ '<option>blade</option>'
-        				+ '<option>hmc</option>' 
-        				+ '<option>ivm</option>'
-        				+ '<option>fsp</option>'
-        				+ '<option>zvm</option>'
-    				+ '</select>'
-				+ '</div>' 
-			+ '</div>';
-			
-		// Create form for ipmi plugin
-		var ipmiForm = '<div class="form">'
-				+ '<div>Under contruction</div>'
-			+ '</div>';
-			
-		// Create form for blade plugin
-		var bladeForm = '<div class="form">'
-				+ '<div>Under contruction</div>'
-			+ '</div>';
-			
-		// Create form for hmc plugin
-		var hmcForm = '<div class="form">'
-				+ '<div>Under contruction</div>'
-			+ '</div>';
-			
-		// Create form for ivm plugin
-		var ivmForm = '<div class="form">'
-				+ '<div>Under contruction</div>'
-			+ '</div>';
-			
-		// Create form for fsp plugin
-		var fspForm = '<div class="form">'
-				+ '<div>Under contruction</div>'
-			+ '</div>';
-			
-		// Create form for zvm plugin
-		var zvmForm = '<div class="form">'
-				+ '<div><label for="userId">User ID range:</label><input type="text" id="userId" name="userId"/></div>'
-				+ '<div><label for="hcp">Hardware control point:</label><input type="text" id="hcp" name="hcp"/></div>'
-			+ '</div>';
-
-		var states = {
-			mgt : {
-				html : mgtForm,
-				buttons : {
-					Ok : true,
-					Cancel : false
-				},
-				focus : 1,
-				prefix : 'cleanblue',
-				submit : function(v, m, f) {
-					if (!v) {
-						return true;
-					} else {
-						// Get the hardware management selected
-						var mgt = f.mgt;
-						switch(mgt) {
-            				case "blade":
-            		    		$.prompt.goToState("blade");
-            		    		break;
-            				case "fsp":
-            					$.prompt.goToState("fsp");
-            					break;
-            				case "hmc":
-            					$.prompt.goToState("hmc");
-            					break;
-            				case "ipmi":
-            					$.prompt.goToState("ipmi");
-            					break;		
-            				case "ivm":
-            					$.prompt.goToState("ivm");
-            					break;
-            				case "zvm":
-            					$.prompt.goToState("zvm");
-            					break;
-            			}
-
-						return false;
-					} // End of else
-				} // End of submit
-			},
-
-			// Show blade form
-			blade : {
-				html : bladeForm,
-				buttons : {
-					Ok : true,
-					Cancel : false
-				},
-				focus : 1,
-				prefix : 'cleanblue',
-				submit : function(v, m, f) {
-					if (v) {
-						return true;
-					}
-				}
-			},
-			
-			// Show fsp form
-			fsp : {
-				html : fspForm,
-				buttons : {
-					Ok : true,
-					Cancel : false
-				},
-				focus : 1,
-				prefix : 'cleanblue',
-				submit : function(v, m, f) {
-					if (v) {
-						return true;
-					}
-				}
-			},
-			
-			// Show hmc form
-			hmc : {
-				html : hmcForm,
-				buttons : {
-					Ok : true,
-					Cancel : false
-				},
-				focus : 1,
-				prefix : 'cleanblue',
-				submit : function(v, m, f) {
-					if (v) {
-						return true;
-					}
-				}
-			},
-			
-			// Show ipmi form
-			ipmi : {
-				html : ipmiForm,
-				buttons : {
-					Ok : true,
-					Cancel : false
-				},
-				focus : 1,
-				prefix : 'cleanblue',
-				submit : function(v, m, f) {
-					if (v) {
-						return true;
-					}
-				}
-			},
-			
-			// Show ivm form
-			ivm : {
-				html : ivmForm,
-				buttons : {
-					Ok : true,
-					Cancel : false
-				},
-				focus : 1,
-				prefix : 'cleanblue',
-				submit : function(v, m, f) {
-					if (v) {
-						return true;
-					}
-				}
-			},
-			
-			// Show zvm form
-			zvm : {
-				html : zvmForm,
-				buttons : {
-					Ok : true,
-					Cancel : false
-				},
-				focus : 1,
-				prefix : 'cleanblue',
-				submit : function(v, m, f) {
-					if (v) {
-						return true;
-					}
-				}
+		var info = createInfoBar('Select the hardware management for the new node range');
+		var addNodeForm = $('<div class="form"></div>');
+		addNodeForm.append(info);
+		addNodeForm.append('<div><label for="mgt">Hardware management:</label>'
+    			+ '<select id="mgt" name="mgt">'
+    			+ '<option>ipmi</option>' 
+    			+ '<option>blade</option>'
+    			+ '<option>hmc</option>' 
+    			+ '<option>ivm</option>'
+    			+ '<option>fsp</option>'
+    			+ '<option>zvm</option>'
+    		+ '</select>'
+    	+ '</div>' );
+					
+		// Create add processor dialog
+		addNodeForm.dialog({
+			position: 'top',
+			modal: true,
+			width: 400,
+			buttons: {
+        		"Cancel": function(){
+        			// Close dialog
+        			$(this).dialog( "close" );
+        		},
+				"Ok": function(){
+					// Get processor properties
+					var mgt = $(this).find('select[name=mgt]').val();					
+					
+					var plugin;
+					switch(mgt) {
+			    		case "blade":
+			        		plugin = new bladePlugin();
+			        		break;
+			    		case "fsp":
+			    			plugin = new fspPlugin();
+			    			break;
+			    		case "hmc":
+			    			plugin = new hmcPlugin();
+			    			break;
+			    		case "ipmi":
+			    			plugin = new ipmiPlugin();
+			    			break;		
+			    		case "ivm":
+			    			plugin = new ivmPlugin();
+			    			break;
+			    		case "zvm":
+			    			plugin = new zvmPlugin();
+			    			break;
+			    	}
+					
+					plugin.addNode();
+					
+					// Close dialog
+					$(this).dialog( "close" );
+				}				
 			}
-		};
-
-		$.prompt(states, {
-			callback : addNode,
-			prefix : 'cleanblue'
 		});
 
 	});
@@ -1671,47 +1539,4 @@ function loadRconsPage(tgtNodes){
 	
 	//open the rcons page
 	window.open(redirectUrl + "?rconsnd=" + tgtNodes, '', "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,width=670,height=436");
-}
-
-/**
- * Add node
- * 
- * @param v
- *            Value of the button clicked
- * @param m
- *            jQuery object of the message within the active state when the user
- *            clicked the button
- * @param f
- *            Key/value pairs of the form values
- * 
- * @return Nothing
- */
-function addNode(v, m, f) {
-	// If user clicks Ok
-	if (v) {
-		var mgt = f.mgt;
-		var plugin;
-		switch(mgt) {
-    		case "blade":
-        		plugin = new bladePlugin();
-        		break;
-    		case "fsp":
-    			plugin = new fspPlugin();
-    			break;
-    		case "hmc":
-    			plugin = new hmcPlugin();
-    			break;
-    		case "ipmi":
-    			plugin = new ipmiPlugin();
-    			break;		
-    		case "ivm":
-    			plugin = new ivmPlugin();
-    			break;
-    		case "zvm":
-    			plugin = new zvmPlugin();
-    			break;
-    	}
-		
-		plugin.addNode(f);
-	} // End of if
 }

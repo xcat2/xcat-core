@@ -1001,206 +1001,433 @@ function getAttrs(keys, propNames, data) {
 }
 
 /**
- * Add processor
+ * Create add processor dialog
  * 
- * @param v
- *            Value of the button clicked
- * @param m
- *            jQuery object of the message within the active state when the user
- *            clicked the button
- * @param f
- *            Key/value pairs of the form values
- * 
+ * @param node
+ * 			Node to add processor to
  * @return Nothing
  */
-function addProcessor(v, m, f) {
-	// If user clicks Ok, add processor
-	if (v) {
-		var node = f.procNode;
-		var type = f.procType;
-		var address = f.procAddress;
-
-		// Add processor
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'chvm',
-				tgt : node,
-				args : '--addprocessoractive;' + address + ';' + type,
-				msg : node
-			},
-
-			success : updateZNodeStatus
-		});
-
-		// Increment node process
-		incrementNodeProcess(node);
-
-		// Show loader
-		var statusId = node + 'StatusBar';
-		var statusBarLoaderId = node + 'StatusBarLoader';
-		$('#' + statusBarLoaderId).show();
-		$('#' + statusId).show();
-	}
-}
-
-/**
- * Add disk
- * 
- * @param v
- *            Value of the button clicked
- * @param m
- *            jQuery object of the message within the active state when the user
- *            clicked the button
- * @param f
- *            Key/value pairs of the form values
- * @return Nothing
- */
-function addDisk(v, m, f) {
-	// If user clicks Ok, add disk
-	if (v) {
-		var node = f.diskNode;
-		var type = f.diskType;
-		var address = f.diskAddress;
-		var size = f.diskSize;
-		var pool = f.diskPool;
-		var mode = f.diskMode;
-		var password = f.diskPassword;
-
-		// Add disk
-		if (type == '3390') {
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'chvm',
-					tgt : node,
-					args : '--add3390;' + pool + ';' + address + ';' + size
-						+ ';' + mode + ';' + password + ';' + password + ';' + password,
-					msg : node
-				},
-
-				success : updateZNodeStatus
-			});
-
-			// Increment node process
-			incrementNodeProcess(node);
-
-			// Show loader
-			var statusId = node + 'StatusBar';
-			var statusBarLoaderId = node + 'StatusBarLoader';
-			$('#' + statusBarLoaderId).show();
-			$('#' + statusId).show();
-		} else if (type == '9336') {
-			// Default block size for FBA volumes = 512
-			var blkSize = '512';
-			
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'chvm',
-					tgt : node,
-					args : '--add9336;' + pool + ';' + address + ';' + blkSize + ';' + size
-						+ ';' + mode + ';' + password + ';' + password + ';' + password,
-					msg : node
-				},
-
-				success : updateZNodeStatus
-			});
-
-			// Increment node process
-			incrementNodeProcess(node);
-
-			// Show loader
-			var statusId = node + 'StatusBar';
-			var statusBarLoaderId = node + 'StatusBarLoader';
-			$('#' + statusBarLoaderId).show();
-			$('#' + statusId).show();
-		}
-	}
-}
-
-/**
- * Add NIC
- * 
- * @param v
- *            Value of the button clicked
- * @param m
- *            jQuery object of the message within the active state when the user
- *            clicked the button
- * @param f
- *            Key/value pairs of the form values
- * @return Nothing
- */
-function addNic(v, m, f) {
-	// If user clicks Ok, add NIC
-	if (v) {
-		var node = f.nicNode;
-		var nicType = f.nicType;
-		var networkType = f.nicNetworkType;
-		var address = f.nicAddress;
-		
-		/**
-		 * Add guest LAN
-		 */
-		if (networkType == 'Guest LAN') {
-			var temp;
-			if (nicType == 'QDIO') {
-				temp = f.nicLanQdioName.split(' ');
-			} else {
-				temp = f.nicLanHipersName.split(' ');
+function createAddProcDialog(node) {
+	// Create info bar
+	var info = createInfoBar('Add a processor');
+	
+	// Create add processor form
+	var addProcForm = $('<div class="form"></div>');
+	addProcForm.append(info);
+	addProcForm.append('<div><label for="procNode">Processor for:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="' + node + '"/></div>');
+	addProcForm.append('<div><label for="procAddress">Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>');
+	
+	// Create drop down for processor type
+	var procType = $('<div></div>');
+	procType.append('<label for="procType">Processor type:</label>');
+	var typeSelect = $('<select id="procType" name="procType"></select>');
+	typeSelect.append('<option>CP</option>');
+	typeSelect.append('<option>IFL</option>');
+	typeSelect.append('<option>ZAAP</option>');
+	typeSelect.append('<option>ZIIP</option>');
+	procType.append(typeSelect);
+	addProcForm.append(procType);
+	
+	// Create add processor dialog
+	addProcForm.dialog({
+		position: 'top',
+		modal: true,
+		width: 400,
+		buttons: {
+        	"Cancel": function() {
+        		// Close dialog
+        		$(this).dialog( "close" );
+        	},
+			"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Get processor properties
+				var node = $(this).find('input[name=procNode]').val();
+				var address = $(this).find('input[name=procAddress]').val();
+				var type = $(this).find('select[name=procType]').val();
+				
+				if (!node || !address || !type) {
+					var warn = createWarnBar('Missing values');
+					warn.prependTo($(this));
+				} else {
+    				// Add processor
+    				$.ajax( {
+    					url : 'lib/cmd.php',
+    					dataType : 'json',
+    					data : {
+    						cmd : 'chvm',
+    						tgt : node,
+    						args : '--addprocessoractive;' + address + ';' + type,
+    						msg : node
+    					},
+    
+    					success : updateZNodeStatus
+    				});
+    
+    				// Increment node process
+    				incrementNodeProcess(node);
+    
+    				// Show loader
+    				var statusId = node + 'StatusBar';
+    				var statusBarLoaderId = node + 'StatusBarLoader';
+    				$('#' + statusBarLoaderId).show();
+    				$('#' + statusId).show();
+    				
+    				// Close dialog
+    				$(this).dialog( "close" );
+				}
 			}
-			
-			var lanOwner = temp[0];
-			var lanName = temp[1];
-			
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'chvm',
-					tgt : node,
-					args : '--addnic;' + address + ';' + nicType + ';3',
-					msg : 'node=' + node + ';addr=' + address + ';lan='
-						+ lanName + ';owner=' + lanOwner
-				},
-				success : connect2GuestLan
-			});
 		}
+	});
+}
 
-		/**
-		 * Add virtual switch
-		 */
-		else if (networkType == 'Virtual Switch') {
-			var temp = f.nicVSwitchName.split(' ');
-			var vswitchName = temp[1];
-
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'chvm',
-					tgt : node,
-					args : '--addnic;' + address + ';' + nicType + ';3',
-					msg : 'node=' + node + ';addr=' + address + ';vsw='
-						+ vswitchName
-				},
-
-				success : connect2VSwitch
-			});
-		}
-
-		// Increment node process
-		incrementNodeProcess(node);
-
-		// Show loader
-		var statusId = node + 'StatusBar';
-		var statusBarLoaderId = node + 'StatusBarLoader';
-		$('#' + statusBarLoaderId).show();
-		$('#' + statusId).show();
+/**
+ * Create add disk dialog
+ * 
+ * @param node
+ * 			Node to add disk to
+ * @param hcp
+ * 			Hardware control point of node
+ * @return Nothing
+ */
+function createAddDiskDialog(node, hcp) {
+	// Get list of disk pools
+	var cookie = $.cookie(hcp + 'DiskPools');
+	var pools = cookie.split(',');
+	
+	// Create info bar
+	var info = createInfoBar('Add a disk');
+	
+	// Create add disk form
+	var addDiskForm = $('<div class="form"></div>');
+	addDiskForm.append(info);
+	addDiskForm.append('<div><label for="diskNode">Disk for:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="' + node + '"/></div>');
+	addDiskForm.append('<div><label for="diskType">Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option><option value="9336">9336</option></select></div>');
+	addDiskForm.append('<div><label for="diskAddress">Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>');
+	addDiskForm.append('<div><label for="diskSize">Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>');
+	
+	// Create drop down for disk pool
+	var diskPool = $('<div></div>');
+	diskPool.append('<label for="diskPool">Disk pool:</label>');
+	var poolSelect = $('<select id="diskPool" name="diskPool"></select>');
+	for ( var i = 0; i < pools.length; i++) {
+		poolSelect.append('<option>' + pools[i] + '</option>');
 	}
+	diskPool.append(poolSelect);
+	addDiskForm.append(diskPool);
+
+	// Create drop down for disk mode
+	var diskMode = $('<div></div>');
+	diskMode.append('<label for="diskMode">Disk mode:</label>');
+	var modeSelect = $('<select id="diskMode" name="diskMode"></select>');
+	modeSelect.append('<option>R</option>');
+	modeSelect.append('<option>RR</option>');
+	modeSelect.append('<option>W</option>');
+	modeSelect.append('<option>WR</option>');
+	modeSelect.append('<option>M</option>');
+	modeSelect.append('<option>MR</option>');
+	modeSelect.append('<option>MW</option>');
+	diskMode.append(modeSelect);
+	addDiskForm.append(diskMode);
+
+	addDiskForm.append('<div><label for="diskPassword">Disk password:</label><input type="password" id="diskPassword" name="diskPassword"/></div>');
+
+	// Create add disk dialog
+	addDiskForm.dialog({
+		position: 'top',
+		modal: true,
+		width: 400,
+		buttons: {
+        	"Cancel": function() {
+        		// Close dialog
+        		$(this).dialog( "close" );
+        	},
+			"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				// Get disk properties
+				var node = $(this).find('input[name=diskNode]').val();
+        		var type = $(this).find('select[name=diskType]').val();
+        		var address = $(this).find('input[name=diskAddress]').val();
+        		var size = $(this).find('input[name=diskSize]').val();
+        		var pool = $(this).find('select[name=diskPool]').val();
+        		var mode = $(this).find('select[name=diskMode]').val();
+        		var password = $(this).find('input[name=diskPassword]').val();
+        		
+        		if (!node || !type || !address || !size || !pool || !mode) {
+					var warn = createWarnBar('Missing values');
+					warn.prependTo($(this));
+        		} else {
+            		// Add disk
+            		if (type == '3390') {
+            			$.ajax( {
+            				url : 'lib/cmd.php',
+            				dataType : 'json',
+            				data : {
+            					cmd : 'chvm',
+            					tgt : node,
+            					args : '--add3390;' + pool + ';' + address + ';' + size
+            						+ ';' + mode + ';' + password + ';' + password + ';' + password,
+            					msg : node
+            				},
+    
+            				success : updateZNodeStatus
+            			});
+    
+            			// Increment node process
+            			incrementNodeProcess(node);
+    
+            			// Show loader
+            			var statusId = node + 'StatusBar';
+            			var statusBarLoaderId = node + 'StatusBarLoader';
+            			$('#' + statusBarLoaderId).show();
+            			$('#' + statusId).show();
+            		} else if (type == '9336') {
+            			// Default block size for FBA volumes = 512
+            			var blkSize = '512';
+            			
+            			$.ajax( {
+            				url : 'lib/cmd.php',
+            				dataType : 'json',
+            				data : {
+            					cmd : 'chvm',
+            					tgt : node,
+            					args : '--add9336;' + pool + ';' + address + ';' + blkSize + ';' + size
+            						+ ';' + mode + ';' + password + ';' + password + ';' + password,
+            					msg : node
+            				},
+    
+            				success : updateZNodeStatus
+            			});
+    
+            			// Increment node process
+            			incrementNodeProcess(node);
+    
+            			// Show loader
+            			var statusId = node + 'StatusBar';
+            			var statusBarLoaderId = node + 'StatusBarLoader';
+            			$('#' + statusBarLoaderId).show();
+            			$('#' + statusId).show();
+            		}
+    				
+    				// Close dialog
+    				$(this).dialog( "close" );
+        		} // End of else
+			}
+		}
+	});
+}
+
+/**
+ * Create add NIC dialog
+ * 
+ * @param node
+ * 			Node to add NIC to
+ * @param hcp
+ * 			Hardware control point of node
+ * @return Nothing
+ */
+function createAddNicDialog(node, hcp) {
+	// Get network names
+	var networks = $.cookie(hcp + 'Networks').split(',');
+
+	// Create info bar
+	var info = createInfoBar('Add a NIC');
+		
+	// Create add NIC form
+	var addNicForm = $('<div class="form"></div>');
+	addNicForm.append(info);
+	addNicForm.append('<div><label for="nicNode">NIC for:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="' + node + '"/></div>');
+	addNicForm.append('<div><label for="nicAddress">NIC address:</label><input type="text" id="nicAddress" name="nicAddress"/></div>');
+	
+	// Create drop down for NIC types
+	var nicType = $('<div></div>');
+	nicType.append('<label for="nicType">NIC type:</label>');
+	var nicTypeSelect = $('<select id="nicType" name="nicType"></select>');
+	nicTypeSelect.append('<option></option>');
+	nicTypeSelect.append('<option>QDIO</option>');
+	nicTypeSelect.append('<option>HiperSockets</option>');
+	nicType.append(nicTypeSelect);
+	addNicForm.append(nicType);
+		
+	// Create drop down for network types
+	var networkType = $('<div></div>');
+	networkType.append('<label for="nicNetworkType">Network type:</label>');
+	var networkTypeSelect = $('<select id="nicNetworkType" name="nicNetworkType"></select>');
+	networkTypeSelect.append('<option></option>');
+	networkTypeSelect.append('<option>Guest LAN</option>');
+	networkTypeSelect.append('<option>Virtual Switch</option>');
+	networkType.append(networkTypeSelect);
+	addNicForm.append(networkType);
+			
+	// Create drop down for network names
+	var gLansQdioSelect = $('<select id="nicLanQdioName" name="nicLanQdioName"></select>');
+	var gLansHipersSelect = $('<select id="nicLanHipersName" name="nicLanHipersName"></select>');
+	var vswitchSelect = $('<select id="nicVSwitchName" name="nicVSwitchName"></select>');
+	for ( var i = 0; i < networks.length; i++) {
+		var network = networks[i].split(' ');
+		var networkOption = $('<option>' + network[1] + ' ' + network[2] + '</option>');
+		if (network[0] == 'VSWITCH') {
+			vswitchSelect.append(networkOption);
+		} else if (network[0] == 'LAN:QDIO') {
+			gLansQdioSelect.append(networkOption);
+		} else if (network[0] == 'LAN:HIPERS') {
+			gLansHipersSelect.append(networkOption);
+		}
+	}
+	
+	var guestLanQdio = $('<div></div>').hide();
+	guestLanQdio.append('<label for="nicLanQdioName">Guest LAN name:</label>');
+	guestLanQdio.append(gLansQdioSelect);
+	addNicForm.append(guestLanQdio);
+	
+	var guestLanHipers = $('<div></div>').hide();
+	guestLanHipers.append('<label for="nicLanHipersName">Guest LAN name:</label>');
+	guestLanHipers.append(gLansHipersSelect);
+	addNicForm.append(guestLanHipers);
+	
+	var vswitch = $('<div></div>').hide();
+	vswitch.append('<label for="nicVSwitchName">VSWITCH name:</label>');
+	vswitch.append(vswitchSelect);
+	addNicForm.append(vswitch);
+	
+	// Show network names on change
+	networkTypeSelect.change(function(){
+		// Remove any warning messages
+		$(this).parent().parent().find('.ui-state-error').remove();
+		
+		var nicType = nicTypeSelect.val();
+		var networkType = $(this).val();
+				
+		guestLanQdio.hide();
+		guestLanHipers.hide();
+		vswitch.hide();
+		
+		if (networkType == 'Guest LAN' && nicType == 'QDIO')
+			guestLanQdio.show();
+		else if (networkType == 'Guest LAN' && nicType == 'HiperSockets')
+			guestLanHipers.show();
+		else if (networkType == 'Virtual Switch' && nicType == 'QDIO')
+			vswitch.show();
+		else if (networkType == 'Virtual Switch' && nicType != 'QDIO') {
+			var warn = createWarnBar('The selected choices are not valid');
+			warn.prependTo($(this).parent().parent());
+		}
+	});
+	
+	nicTypeSelect.change(function(){
+		// Remove any warning messages
+		$(this).parent().parent().find('.ui-state-error').remove();
+		
+		var nicType = $(this).val();
+		var networkType = networkTypeSelect.val();
+
+		guestLanQdio.hide();
+		guestLanHipers.hide();
+		vswitch.hide();
+		
+		if (networkType == 'Guest LAN' && nicType == 'QDIO')
+			guestLanQdio.show();
+		else if (networkType == 'Guest LAN' && nicType == 'HiperSockets')
+			guestLanHipers.show();
+		else if (networkType == 'Virtual Switch' && nicType == 'QDIO')
+			vswitch.show();
+		else if (networkType == 'Virtual Switch' && nicType != 'QDIO') {
+			var warn = createWarnBar('The selected choices are not valid');
+			warn.prependTo($(this).parent().parent());	
+		}
+	});
+	
+	// Create add NIC dialog
+	addNicForm.dialog({
+		position: 'top',
+		modal: true,
+		width: 400,
+		buttons: {
+        	"Cancel": function(){
+        		// Close dialog
+        		$(this).dialog( "close" );
+        	},
+			"Ok": function(){
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+				var node = $(this).find('input[name=nicNode]').val();
+				var nicType = $(this).find('select[name=nicType]').val();
+				var networkType = $(this).find('select[name=nicNetworkType]').val();
+				var address = $(this).find('input[name=nicAddress]').val();
+        		        		
+				if (!node || !nicType || !networkType || !address) {
+					var warn = createWarnBar('Missing values');
+					warn.prependTo($(this));
+        		} else {
+            		/**
+            		 * Add guest LAN
+            		 */
+            		if (networkType == 'Guest LAN') {
+            			var temp;
+            			if (nicType == 'QDIO') {
+            				temp = $(this).find('select[name=nicLanQdioName]').val().split(' ');
+            			} else {
+            				temp = $(this).find('select[name=nicLanHipersName]').val().split(' ');
+            			}
+            			
+            			var lanOwner = temp[0];
+            			var lanName = temp[1];
+            			
+            			$.ajax( {
+            				url : 'lib/cmd.php',
+            				dataType : 'json',
+            				data : {
+            					cmd : 'chvm',
+            					tgt : node,
+            					args : '--addnic;' + address + ';' + nicType + ';3',
+            					msg : 'node=' + node + ';addr=' + address + ';lan='
+            						+ lanName + ';owner=' + lanOwner
+            				},
+            				success : connect2GuestLan
+            			});
+            		}
+            
+            		/**
+            		 * Add virtual switch
+            		 */
+            		else if (networkType == 'Virtual Switch' && nicType == 'QDIO') {
+            			var temp = $(this).find('select[name=nicVSwitchName]').val().split(' ');
+            			var vswitchName = temp[1];
+            
+            			$.ajax( {
+            				url : 'lib/cmd.php',
+            				dataType : 'json',
+            				data : {
+            					cmd : 'chvm',
+            					tgt : node,
+            					args : '--addnic;' + address + ';' + nicType + ';3',
+            					msg : 'node=' + node + ';addr=' + address + ';vsw='
+            						+ vswitchName
+            				},
+            
+            				success : connect2VSwitch
+            			});
+            		} 
+            		        		        		
+            		// Increment node process
+            		incrementNodeProcess(node);
+            
+            		// Show loader
+            		var statusId = node + 'StatusBar';
+            		var statusBarLoaderId = node + 'StatusBarLoader';
+            		$('#' + statusBarLoaderId).show();
+            		$('#' + statusId).show();
+    		
+    				// Close dialog
+    				$(this).dialog( "close" );
+        		} // End of else
+			}
+		}
+	});
 }
 
 /**
