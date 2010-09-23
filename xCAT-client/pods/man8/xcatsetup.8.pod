@@ -13,7 +13,39 @@ B<xcatsetup> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 The B<xcatsetup> command reads the specified config file that contains general information about the cluster being set up,
 and naming conventions and IP addresses that you want to use.  It then defines the basic objects in the xCAT database
 representing this cluster configuration.  The B<xcatsetup> command prepares the database for the step of discovering
-the hardware that is connected to the service and cluster networks.
+the hardware that is connected to the service and cluster networks.  The typical steps of setting up a system p cluster are:
+
+=over 3
+
+=item *
+
+Install the xCAT software on the management node
+
+=item *
+
+Create the cluster config file and run xcatsetup
+
+=item *
+
+Put hardware control passwords in the ppchcp or ppcdirect database table
+
+=item *
+
+Run the discovery commands (lsslp, mkhwconn, rspconfig) as described in the System P Hardware Management cookbook.
+
+=item *
+
+Configure and start the services using makehosts, makedns, makedhcp, mkconserver.cf, etc.
+
+=item *
+
+Create the images that should be installed or booted on the nodes
+
+=item *
+
+Run nodeset and rpower/rnetboot to boot up the nodes.
+
+=back
 
 The B<xcatsetup> command is intended as a quick way to fill out the database for a cluster that has very regular
 naming patterns.  The only thing is done is fill in database attributes.  If your cluster does not follow consistent

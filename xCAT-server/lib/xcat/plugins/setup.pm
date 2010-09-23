@@ -219,6 +219,9 @@ sub writesite {
 		$tables{'site'}->setAttribs({key => 'nameservers'}, {value => $ref->{value} });
 	}
 	$tables{'site'}->close();
+	
+	#todo: put dynamic range in networks table
+	#todo: set site.dhcpinterfaces
 }
 
 
@@ -365,7 +368,7 @@ sub writecec {
 	foreach my $k (sort keys %framesupers) {
 		my $f = $framesupers{$k};	# $f is a ptr to an array of super node numbers
 		if (!$f) { next; }		# in case some frame nums did not get filled in by user
-		my $cageid = 0;
+		my $cageid = 1;
 		foreach my $s (@$f) {	# loop thru the supernode nums in this frame
 			my $supernum = $s;
 			my $numnodes = 4;
@@ -373,7 +376,8 @@ sub writecec {
 			for (my $j=0; $j<$numnodes; $j++) {		# assign the next few nodes to this supernode num
 				my $nodename = $$nodes[$i++];
 				#print "Setting $nodename supernode attribute to $supernum,$j\n";
-				$nodehash{$nodename} = { supernode => "$supernum,$j", id => $cageid++, parent => $k };
+				$nodehash{$nodename} = { supernode => "$supernum,$j", id => $cageid, parent => $k };
+				$cageid += 2;
 			}
 		}
 	}
