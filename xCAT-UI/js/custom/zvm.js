@@ -938,7 +938,7 @@ zvmPlugin.prototype.addNode = function() {
 						
 				// Show warning message if inputs are not complete
 				if (!nodeRange || !userIdRange || !group || !hcp) {
-					var warn = createWarnBar('Missing values');
+					var warn = createWarnBar('You are missing inputs.');
 					warn.prependTo($(this));
         		} else {
     				// Check node range and user ID range
