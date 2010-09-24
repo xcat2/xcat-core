@@ -1,0 +1,50 @@
+=head1 NAME
+
+B<xcatd> - The xCAT daemon 
+
+=head1 SYNOPSIS
+
+B<xcatd>
+
+=head1 DESCRIPTION
+
+The heart of the xCAT architecture is the xCAT daemon B<xcatd> on the management node. This receives requests from the client, validates the requests, and then invokes the operation. The xcatd daemon also receives status and inventory info from the nodes as they are being discovered and installed/booted.
+
+Errors and information are reported through syslog to the /var/log/messages file.   You can search for xCAT in those messages.
+
+For further information:  See https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_2_Architecture.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To start/stop/restart  xcatd on Linux, enter:
+
+ service xcatd start 
+
+ service xcatd stop 
+
+ service xcatd restart 
+
+=item 2.
+
+To start/stop/restart  xcatd on AIX, enter:
+
+ restartxcatd
+
+   or
+
+ startsrc -s xcatd
+
+ stopsrc -s xcatd 
+
+
+=head1 FILES
+
+/opt/xcat/sbin/xcatd
+
+=head1 SEE ALSO
+
+
