@@ -67,7 +67,7 @@ function showRepository(data) {
         StableRepository = "http://xcat.sourceforge.net/yum/xcat-core/";
     }
 
-    //dispaly the Devel Repository, remember user's last selection
+    //display the Devel Repository, remember user's last selection
     Show = Show + "<input type='radio' ";
     if(1 == $.cookie('xcatrepository'))
     {
@@ -79,7 +79,7 @@ function showRepository(data) {
 
     $('#repository fieldset').append(Show);
 
-    //dispaly the Stable Repository, remember user's last selection
+    //display the Stable Repository, remember user's last selection
     Show = "<input type='radio' ";
     if(2 == $.cookie('xcatrepository'))
     {
@@ -91,7 +91,7 @@ function showRepository(data) {
 
     $('#repository fieldset').append(Show);
 
-    //dispaly the Input Repository, remember user's last selection
+    //display the Input Repository, remember user's last selection
     if (($.cookie('xcatrepository'))
         && (1 != $.cookie('xcatrepository'))
         && (2 != $.cookie('xcatrepository')))

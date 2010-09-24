@@ -57,9 +57,6 @@ function loadMonitorPage() {
 	var monitorInfoBar = createInfoBar('Select the Monitor Tool');
 	monitorForm.append(monitorInfoBar);
 
-	// Create drop-down menu
-	// Hardware available to provision - ipmi, blade, hmc, ivm, fsp, and zvm
-
 	var monitorList = $('<ol></ol>');
 	var items = "<li><a href='#' name='xcatmon'>xCAT Monitor</a> : xcatmon provides node status " +
 			"monitoring using fping on AIX and nmap on Linux. It also provides application " +

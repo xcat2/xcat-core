@@ -60,13 +60,8 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		var cloneForm = $('<div class="form"></div>');
 		cloneForm.append(statBar);
 		cloneForm.append(infoBar);
-
-		// Create target node range input
 		cloneForm.append('<div><label>Target node range:</label><input type="text" id="tgtNode" name="tgtNode"/></div>');
-		// Create target user ID range input
 		cloneForm.append('<div><label>Target user ID range:</label><input type="text" id="tgtUserId" name="tgtUserId"/></div>');
-
-		// Create clone source and hardware control point inputs
 		cloneForm.append('<div><label>Clone source:</label><input type="text" id="srcNode" name="srcNode" readonly="readonly" value="' + node + '"/></div>');
 		cloneForm.append('<div><label>Hardware control point:</label><input type="text" id="newHcp" name="newHcp" readonly="readonly" value="' + hcp + '"/></div>');
 
@@ -97,7 +92,6 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		poolDiv.append(poolInput);
 		cloneForm.append(poolDiv);
 
-		// Create disk password input
 		cloneForm.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw"/></div>');
 
 		/**
@@ -105,6 +99,9 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		 */
 		var cloneBtn = createButton('Clone');
 		cloneBtn.bind('click', function(event) {
+			// Remove any warning messages
+    		$(this).parent().parent().find('.ui-state-error').remove();
+    		
 			var ready = true;
 			var errMsg = '';
 
@@ -123,7 +120,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 
 			// Write error message
 			if (!ready) {
-				errMsg = errMsg + 'You are missing some inputs. ';
+				errMsg = errMsg + 'You are missing some inputs.<br>';
 			}
 
 			// Get target node
@@ -134,7 +131,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 			// Check node range and user ID range
 			if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
 				if (nodeRange.indexOf('-') < 0 || userIdRange.indexOf('-') < 0) {
-					errMsg = errMsg + 'A user ID range and node range needs to be given. ';
+					errMsg = errMsg + 'A user ID range and node range needs to be given.<br>';
 					ready = false;
 				} else {
 					var tmp = nodeRange.split('-');
@@ -158,7 +155,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 					// If starting and ending index do not match
 					if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
 						// Not ready to provision
-						errMsg = errMsg + 'The node range and user ID range does not match. ';
+						errMsg = errMsg + 'The node range and user ID range does not match.<br>';
 						ready = false;
 					}
 				}
@@ -254,7 +251,9 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 				// Disable clone button
 				$(this).attr('disabled', 'true');
 			} else {
-				alert('(Error) ' + errMsg);
+				// Show warning message
+				var warn = createWarnBar(errMsg);
+				warn.prependTo($(this).parent().parent());
 			}
 		});
 		cloneForm.append(cloneBtn);
@@ -329,7 +328,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 	 * Show user entry
 	 */
 	var toggleLinkId = node + 'ToggleLink';
-	var toggleLink = $('<a id="' + toggleLinkId + '" href="#">Show user entry</a>');
+	var toggleLink = $('<a id="' + toggleLinkId + '" href="#">Show directory entry</a>');
 	toggleLink.one('click', function(event) {
 		// Toggle inventory division
 		$('#' + invDivId).toggle();
@@ -556,7 +555,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			 */
 			var addProcLink = $('<a href="#">Add processor</a>');
 			addProcLink.bind('click', function(event) {
-				createAddProcDialog(node);
+				openAddProcDialog(node);
 			});
 			
 			procFooter.append(addProcLink);
@@ -635,7 +634,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			var addDasdLink = $('<a href="#">Add disk</a>');
 			addDasdLink.bind('click', function(event) {
 				var hcp = attrs['hcp'][0].split('.');
-				createAddDiskDialog(node, hcp[0]);
+				openAddDiskDialog(node, hcp[0]);
 			});
 			dasdFooter.append(addDasdLink);
 			dasdTable.append(dasdFooter);
@@ -716,7 +715,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			var addNicLink = $('<a href="#">Add NIC</a>');
 			addNicLink.bind('click', function(event) {
 				var hcp = attrs['hcp'][0].split('.');
-				createAddNicDialog(node, hcp[0]);
+				openAddNicDialog(node, hcp[0]);
 			});
 			nicFooter.append(addNicLink);
 			nicTable.append(nicFooter);
@@ -863,27 +862,27 @@ zvmPlugin.prototype.loadResources = function() {
 };
 
 /**
- * Add node
+ * Add node range
  * 
  * @return Nothing
  */
 zvmPlugin.prototype.addNode = function() {
-	var info = createInfoBar('Add a new node');
+	// Create form to add node range
 	var addNodeForm = $('<div class="form"></div>');
-	addNodeForm.append(info);	
+	var info = createInfoBar('Add a node range');
+	addNodeForm.append(info);
 	addNodeForm.append('<div><label for="node">Node range:</label><input type="text" id="node" name="node"/></div>');
 	addNodeForm.append('<div><label for="userId">User ID range:</label><input type="text" id="userId" name="userId"/></div>');
 	addNodeForm.append('<div><label for="hcp">Hardware control point:</label><input type="text" id="hcp" name="hcp"/></div>');
 	addNodeForm.append('<div><label for="group">Group:</label><input type="text" id="group" name="group"/></div>');
 					
-	// Create add node dialog
+	// Open form as a dialog
 	addNodeForm.dialog({
 		position: 'top',
 		modal: true,
 		width: 400,
 		buttons: {
         	"Cancel": function(){
-        		// Close dialog
         		$(this).dialog( "close" );
         	},
 			"Ok": function(){
@@ -895,7 +894,8 @@ zvmPlugin.prototype.addNode = function() {
 				var userIdRange = $(this).find('input[name=userId]').val();				
 				var group = $(this).find('input[name=group]').val();
 				var hcp = $(this).find('input[name=hcp]').val();
-								
+						
+				// Show warning message if inputs are not complete
 				if (!nodeRange || !userIdRange || !group || !hcp) {
 					var warn = createWarnBar('Missing values');
 					warn.prependTo($(this));
@@ -1053,9 +1053,9 @@ zvmPlugin.prototype.addNode = function() {
     					// Show warning message
     					var warn = createWarnBar(errMsg);
     					warn.prependTo($(this));
-    				}				
-    			}
-        	}
+    				}		
+    			} // End of else
+        	} // End of function() 
 		}
 	});
 };

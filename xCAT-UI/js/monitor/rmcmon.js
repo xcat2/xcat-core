@@ -191,6 +191,7 @@ function rmcWorkingCheck(){
 		}
 	});
 }
+
 function loadRmcMonShow(){
 	$('#rmcMonStatus').empty().append("Getting monitoring Data.");
 	$('#rmcMonStatus').append(createLoader());

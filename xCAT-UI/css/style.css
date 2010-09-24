@@ -4,7 +4,7 @@
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
-.ui-dialog label, input, p, button {
+.ui-dialog label, .ui-dialog input, .ui-dialog p, .ui-dialog button {
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
@@ -131,7 +131,7 @@ body {
 	display: inline-table;
 }
 
-/****************** Info bar ******************/
+/****************** Info/warning bar ******************/
 span.ui-icon-info {
 	float: left;
 	margin-right: 0.3em;
@@ -158,7 +158,7 @@ span.ui-icon-info {
 	background: url(../images/header-gloss-wave.png) 50% 50% repeat-x;
 }
 
-/****************** Tabs section ******************/
+/****************** Tabs ******************/
 .tab {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border-style: none;
@@ -263,7 +263,7 @@ span.ui-icon-info {
 	height: 300px;
 }
 
-/****************** Action bar (on nodes tab) ******************/
+/****************** Action bar ******************/
 .actionBar {
 	display: inline-table;
 }
@@ -314,7 +314,7 @@ span.ui-icon-info {
 	word-wrap: break-word;
 }
 
-/****************** Data table ******************/
+/****************** Datatable ******************/
 .dataTables_wrapper {
 	overflow: auto;
 	width: 700px;
@@ -521,7 +521,7 @@ span.ui-icon-info {
 	display: inline-table;
 }
 
-.form input, textarea, select {
+.form input, .form textarea, .form select {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 5px;
@@ -564,7 +564,7 @@ span.ui-icon-info {
 	width: 60px;
 }
 
-/****************** Provision and clone new nodes table ******************/
+/****************** Provision and clone table ******************/
 .special table {
 	border-width: 1px;
 	border-spacing: 0px;

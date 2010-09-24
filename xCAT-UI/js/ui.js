@@ -416,7 +416,6 @@ function initPage() {
 	includeJs("js/jquery/jquery.autocomplete.js");
 	includeJs("js/jquery/jquery.contextmenu.js");
 	includeJs("js/jquery/jquery.cookie.js");
-	includeJs("js/jquery/jquery-impromptu.3.0.min.js");
 	includeJs("js/jquery/superfish.js");
 	includeJs("js/jquery/hoverIntent.js");
 	includeJs("js/jquery/jquery.tree.js");
@@ -529,17 +528,15 @@ function writeRsp(rsp, pattern) {
  * @return Nothing
  */
 function openDialog(msg) {
-	// If there was an error, do not continue
 	var div = $('<div><p>' + msg + '</p></div>');
 		
-	// Create dialog
+	// Open dialog
 	div.dialog({
 		position: 'top',
 		modal: true,
 		width: 400,
 		buttons: {
 			"Ok": function(){ 
-				// Close dialog
 				$(this).dialog("close");
 			}
 		}

@@ -73,6 +73,7 @@ function addGangLink(){
 		window.open('../ganglia/');
 	});
 }
+
 function gangRpmCheck(data){
 	var rpmStatus = data.rsp.split(/\n/);
 	var stopFlag = false;

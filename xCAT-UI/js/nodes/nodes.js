@@ -168,18 +168,17 @@ function loadGroups(data) {
     		+ '</select>'
     	+ '</div>' );
 					
-		// Create add processor dialog
+		// Open dialog to add node
 		addNodeForm.dialog({
 			position: 'top',
 			modal: true,
 			width: 400,
 			buttons: {
         		"Cancel": function(){
-        			// Close dialog
         			$(this).dialog( "close" );
         		},
 				"Ok": function(){
-					// Get processor properties
+					// Get hardware management
 					var mgt = $(this).find('select[name=mgt]').val();					
 					
 					var plugin;
@@ -205,8 +204,6 @@ function loadGroups(data) {
 			    	}
 					
 					plugin.addNode();
-					
-					// Close dialog
 					$(this).dialog( "close" );
 				}				
 			}
@@ -462,10 +459,9 @@ function loadNodes(data) {
 
 	// Advanced actions
 	var advancedActions;
-	if ('compute' == group){
+	if ('compute' == group) {
 		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons ];
-	}
-	else{
+	} else {
 		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk ];
 	}
 
@@ -605,7 +601,7 @@ function loadPowerStatus(data) {
 	var rowNum, node, status, args;
 
 	for ( var i in power) {
-		// node name and power status, where power[0] = nodeName and power[1] = state
+		// power[0] = nodeName and power[1] = state
 		args = power[i].split(':');
 		node = jQuery.trim(args[0]);
 		status = jQuery.trim(args[1]);
@@ -613,7 +609,7 @@ function loadPowerStatus(data) {
 		// Get the row containing the node
 		rowNum = getRowNum(node);
 
-		//update the data in the 
+		// Update the power status column
 		dTable.fnUpdate(status, rowNum, 3);
 	}
 	
@@ -665,14 +661,14 @@ function loadPingStatus(data) {
 	// Get all nodes within the datatable
 	var rows = dTable.fnGetNodes();
 	for ( var i in ping) {
-		// where ping[0] = nodeName ping[1] = state
+		// ping[0] = nodeName and ping[1] = state
 		node = jQuery.trim(ping[i][0]);
 		status = jQuery.trim(ping[i][1]);
 
 		// Get the row containing the node
 		rowPos = getRowNum(node);
 
-		// Update the power status column
+		// Update the ping status column
 		dTable.fnUpdate(status, rowPos, 2);
 	}
 	
@@ -748,7 +744,7 @@ function loadNode(e) {
 	}
 
 	// Get tab area where a new tab will be inserted
-	// the node name may contain special char(such as '.','#'), so we can not use the node name as a id.
+	// The node name may contain special char(such as '.','#'), so we can not use the node name as a id.
 	var myTab = getNodesTab();
 	var inst = 0;
 	var newTabId = 'nodeTab' + inst;
@@ -781,7 +777,7 @@ function loadNode(e) {
 	});
 
 	// Select new tab
-	// tabid may contains special char, so we had to use the index
+	// Tab ID may contains special char, so we had to use the index
 	myTab.select(newTabId);
 }
 
@@ -828,6 +824,9 @@ function loadUnlockPage(tgtNodes) {
 	 */
 	var okBtn = createButton('Ok');
 	okBtn.bind('click', function(event) {
+		// Remove any warning messages
+		$(this).parent().parent().find('.ui-state-error').remove();
+		
 		// If form is complete
 		var ready = formComplete(newTabId);
 		if (ready) {
@@ -852,6 +851,10 @@ function loadUnlockPage(tgtNodes) {
     
     		// Disable Ok button
     		$(this).attr('disabled', 'true');
+    	} else {
+    		// Show warning message
+			var warn = createWarnBar('You are missing some values');
+			warn.prependTo($(this).parent().parent());
     	}
     });
 
@@ -928,6 +931,9 @@ function loadScriptPage(tgtNodes) {
 	 */
 	var runBtn = createButton('Run');
 	runBtn.bind('click', function(event) {
+		// Remove any warning messages
+		$(this).parent().parent().find('.ui-state-error').remove();
+		
 		var ready = true;
 
 		// Check script
@@ -946,7 +952,9 @@ function loadScriptPage(tgtNodes) {
 			// Run script
 			runScript(inst);
 		} else {
-			alert('You are missing some values');
+			// Show warning message
+			var warn = createWarnBar('You are missing some values');
+			warn.prependTo($(this).parent().parent());
 		}
 	});
 	scriptForm.append(runBtn);
@@ -1130,8 +1138,7 @@ function updateStatusBar(data) {
 		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).append(prg);	
 		
-		// If there was an error
-		// Do not continue
+		// If there was an error, do not continue
 		if (prg.html().indexOf('Error') > -1) {
 			failed = true;
 		}
@@ -1309,7 +1316,6 @@ function getNodeAttr(node, attrName) {
 			break;
 		}
 	}
-	
 	
 	// If the column containing the attribute is found 
 	if (attrCol) {

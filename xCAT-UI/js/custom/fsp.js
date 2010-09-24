@@ -143,7 +143,7 @@ fspPlugin.prototype.loadResources = function() {
 };
 
 /**
- * Add node
+ * Add node range
  * 
  * @return Nothing
  */

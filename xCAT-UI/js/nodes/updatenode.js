@@ -155,6 +155,7 @@ function loadUpdatenodePage(tgtNodes) {
 	var postscripts = $('<li><label for="postscripts">Postscripts:</label><input type="text" name="postscripts"/></li>');
 	postscripts.hide();
 	optsList.append(postscripts);
+	
 	// Show alternate source directory when checked
 	postChkBox.bind('click', function(event) {
 		if ($(this).is(':checked')) {
@@ -203,6 +204,8 @@ function loadUpdatenodePage(tgtNodes) {
 	 */
 	var okBtn = createButton('Ok');
 	okBtn.bind('click', function(event) {
+		// Remove any warning messages
+		$(this).parent().parent().find('.ui-state-error').remove();
 		var ready = true;
 		
 		// Generate arguments
@@ -218,9 +221,9 @@ function loadUpdatenodePage(tgtNodes) {
 				var srcDir = $('#' + newTabId + ' input[name=allSwSrcDirectory]').val();
 				if (srcDir) {
 					optStr += ';-d ' + srcDir;
-				}				
+				}
 			}
-			
+
 			// If update software is checked
 			if (opt == 'S') {
 				// Get source directory
@@ -299,7 +302,9 @@ function loadUpdatenodePage(tgtNodes) {
 			// Show status bar
 			statusBar.show();
 		} else {
-			alert('You are missing some values');
+			// Show warning message
+			var warn = createWarnBar('You are missing some values');
+			warn.prependTo($(this).parent().parent());
 		}
 	});
 	updatenodeForm.append(okBtn);

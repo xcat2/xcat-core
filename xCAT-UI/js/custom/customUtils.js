@@ -174,11 +174,12 @@ function createProvisionExisting(plugin, inst) {
 	var method = $('<div></div>');
 	var methodLabel = $('<label for="method">Boot method:</label>');
 	var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
-	methodSelect.append('<option value="boot">boot</option>');
-	methodSelect.append('<option value="install">install</option>');
-	methodSelect.append('<option value="iscsiboot">iscsiboot</option>');
-	methodSelect.append('<option value="netboot">netboot</option>');
-	methodSelect.append('<option value="statelite">statelite</option>');
+	methodSelect.append('<option value="boot">boot</option>'
+		+ '<option value="install">install</option>'
+		+ '<option value="iscsiboot">iscsiboot</option>'
+		+ '<option value="netboot">netboot</option>'
+		+ '<option value="statelite">statelite</option>'
+	);
 	method.append(methodLabel);
 	method.append(methodSelect);
 	provExisting.append(method);
@@ -187,9 +188,10 @@ function createProvisionExisting(plugin, inst) {
 	var type = $('<div></div>');
 	var typeLabel = $('<label for="type">Boot type:</label>');
 	var typeSelect = $('<select id="bootType" name="bootType"></select>');
-	typeSelect.append('<option value="pxe">pxe</option>');
-	typeSelect.append('<option value="iscsiboot">yaboot</option>');
-	typeSelect.append('<option value="zvm">zvm</option>');
+	typeSelect.append('<option value="pxe">pxe</option>'
+		+ '<option value="iscsiboot">yaboot</option>'
+		+ '<option value="zvm">zvm</option>'
+	);
 	type.append(typeLabel);
 	type.append(typeSelect);
 	provExisting.append(type);
@@ -285,11 +287,12 @@ function createProvisionNew(plugin, inst) {
 	var method = $('<div></div>');
 	var methodLabel = $('<label for="method">Boot method:</label>');
 	var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
-	methodSelect.append('<option value="boot">boot</option>');
-	methodSelect.append('<option value="install">install</option>');
-	methodSelect.append('<option value="iscsiboot">iscsiboot</option>');
-	methodSelect.append('<option value="netboot">netboot</option>');
-	methodSelect.append('<option value="statelite">statelite</option>');
+	methodSelect.append('<option value="boot">boot</option>'
+		+ '<option value="install">install</option>'
+		+ '<option value="iscsiboot">iscsiboot</option>'
+		+ '<option value="netboot">netboot</option>'
+		+ '<option value="statelite">statelite</option>'
+	);
 	method.append(methodLabel);
 	method.append(methodSelect);
 	provNew.append(method);
@@ -298,9 +301,10 @@ function createProvisionNew(plugin, inst) {
 	var type = $('<div></div>');
 	var typeLabel = $('<label for="type">Boot type:</label>');
 	var typeSelect = $('<select id="bootType" name="bootType"></select>');
-	typeSelect.append('<option value="install">pxe</option>');
-	typeSelect.append('<option value="iscsiboot">yaboot</option>');
-	typeSelect.append('<option value="zvm">zvm</option>');
+	typeSelect.append('<option value="install">pxe</option>'
+		+ '<option value="iscsiboot">yaboot</option>'
+		+ '<option value="zvm">zvm</option>'
+	);
 	type.append(typeLabel);
 	type.append(typeSelect);
 	provNew.append(type);
