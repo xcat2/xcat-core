@@ -1,4 +1,4 @@
-#!/usr/bin/python2.3
+#!/usr/bin/env python
 #
 # vim:set et ts=4 fdc=0 fdn=2 fdl=0:
 #
