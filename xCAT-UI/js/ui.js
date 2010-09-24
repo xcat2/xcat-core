@@ -319,7 +319,7 @@ function createStatusBar(barId) {
  * @return Info bar
  */
 function createInfoBar(msg) {
-	var infoBar = $('<div class="ui-state-highlight ui-corner-all">');
+	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>');
 	var msg = $('<p><span class="ui-icon ui-icon-info"></span>' + msg + '</p>');
 	infoBar.append(msg);
 
@@ -334,7 +334,7 @@ function createInfoBar(msg) {
  * @return Warning bar
  */
 function createWarnBar(msg) {
-	var warnBar = $('<div class="ui-state-error ui-corner-all">');
+	var warnBar = $('<div class="ui-state-error ui-corner-all"></div>');
 	var msg = $('<p><span class="ui-icon ui-icon-alert"></span>' + msg + '</p>');
 	warnBar.append(msg);
 
@@ -523,15 +523,28 @@ function writeRsp(rsp, pattern) {
 /**
  * Open a dialog and show given message
  * 
+ * @param type
+ * 			Type of dialog, i.e. warn or info
  * @param msg
  * 			Message to show
  * @return Nothing
  */
-function openDialog(msg) {
-	var div = $('<div><p>' + msg + '</p></div>');
-		
+function openDialog(type, msg) {
+	var msgDialog; 
+	if (type == "warn") {
+		// Create warning message 
+		msgDialog = $('<div class="ui-state-error ui-corner-all">'
+				+ '<p><span class="ui-icon ui-icon-alert"></span>' + msg + '</p>'
+			+ '</div>');
+	} else {
+		// Create info message
+		msgDialog = $('<div class="ui-state-highlight ui-corner-all">' 
+				+ '<p><span class="ui-icon ui-icon-info"></span>' + msg + '</p>'
+			+'</div>');
+	}
+	
 	// Open dialog
-	div.dialog({
+	msgDialog.dialog({
 		modal: true,
 		width: 400,
 		buttons: {

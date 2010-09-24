@@ -491,7 +491,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 					var addr = $(this).text();
 				
 					// Open dialog to confirm
-    				var confirmDialog = $('<div><p>Are you sure?</p></div>');   				
+    				var confirmDialog = $('<div><p>Are you sure you want to remove this processor?</p></div>');   				
     				confirmDialog.dialog({
     					modal: true,
     					width: 300,
@@ -599,7 +599,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     				var addr = $(this).text();
     				
     				// Open dialog to confirm
-    				var confirmDialog = $('<div><p>Are you sure?</p></div>');   				
+    				var confirmDialog = $('<div><p>Are you sure you want to remove this disk?</p></div>');   				
     				confirmDialog.dialog({
     					modal: true,
     					width: 300,
@@ -691,7 +691,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     				var addr = $(this).text();
     				
     				// Open dialog to confirm
-    				var confirmDialog = $('<div><p>Are you sure?</p></div>');   				
+    				var confirmDialog = $('<div><p>Are you sure you want to remove this NIC?</p></div>');   				
     				confirmDialog.dialog({
     					modal: true,
     					width: 300,
@@ -1041,15 +1041,16 @@ zvmPlugin.prototype.addNode = function() {
     			    					if (tmp[0] == tmp[1]) {
     			        					// If there was an error, do not continue
     			        					if (rsp.length) {
-    			        						openDialog('(Error) Failed to create node definition');		
+    			        						openDialog('warn', '(Error) Failed to create node definitions');		
     			        					} else {
-    			        						openDialog('Node definitions created for ' + nodeRange);	
+    			        						openDialog('info', 'Node definitions created for ' + nodeRange);	
     			        					}
     			    					}
     			    				}
     			    			});
     			    		}
     			    	} else {
+    			    		// Only one node to add
     			    		$.ajax( {
     			    			url : 'lib/cmd.php',
     			    			dataType : 'json',
@@ -1079,10 +1080,10 @@ zvmPlugin.prototype.addNode = function() {
     			    				var node = args[1].replace('node=', '');
     			    				
     			    				// If there was an error, do not continue
-    			    				if (rsp.length) {
-    									openDialog('(Error) Failed to create node definition');		
+    			    				if (rsp.length) {s
+    									openDialog('warn', '(Error) Failed to create node definition');		
     								} else {
-    									openDialog('Node definitions created for ' + node);	
+    									openDialog('info', 'Node definitions created for ' + node);	
     								}    				
     			    			}
     			    		});

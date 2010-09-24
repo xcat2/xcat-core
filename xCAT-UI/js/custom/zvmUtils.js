@@ -1298,10 +1298,13 @@ function openAddNicDialog(node, hcp) {
 		$(this).parent().parent().find('.ui-state-error').remove();
 		
 		// Get NIC type and network type
-		var nicType = nicTypeSelect.val();
+		var nicType = $(this).parent().parent().find('select[name=nicType]').val();
 		var networkType = $(this).val();
 				
 		// Hide network name drop downs
+		var guestLanQdio = $(this).parent().parent().find('select[name=nicLanQdioName]').parent();
+		var guestLanHipers = $(this).parent().parent().find('select[name=nicLanHipersName]').parent();
+		var vswitch = $(this).parent().parent().find('select[name=nicVSwitchName]').parent();
 		guestLanQdio.hide();
 		guestLanHipers.hide();
 		vswitch.hide();
@@ -1329,9 +1332,12 @@ function openAddNicDialog(node, hcp) {
 		
 		// Get NIC type and network type
 		var nicType = $(this).val();
-		var networkType = networkTypeSelect.val();
+		var networkType = $(this).parent().parent().find('select[name=nicNetworkType]').val();
 
 		// Hide network name drop downs
+		var guestLanQdio = $(this).parent().parent().find('select[name=nicLanQdioName]').parent();
+		var guestLanHipers = $(this).parent().parent().find('select[name=nicLanHipersName]').parent();
+		var vswitch = $(this).parent().parent().find('select[name=nicVSwitchName]').parent();
 		guestLanQdio.hide();
 		guestLanHipers.hide();
 		vswitch.hide();
