@@ -457,7 +457,7 @@ sub getNodeUUID {
     } else {
         $updatetable->{vpd}->{$node}={uuid=>xCAT::Utils::genUUID()};
     }
-    return $updatetable->{vpd}->{$node};
+    return $updatetable->{vpd}->{$node}->{uuid};
 
 }
 sub build_nicstruct {
