@@ -1718,7 +1718,7 @@ sub clone_vm_from_master {
         my $format=$1;
         my $newvol;
         if ($detach) {
-            my $sourcevol = $hypconn->get_volume_by_path($srcfilename);
+            my $sourcevol = $hypconn->get_storage_volume_by_path($srcfilename);
             my %sourceinfo = %{$sourcevol->get_info()};
             my $targxml = "<volume><name>$filename</name><target><format type='$format'/></target><capacity>".$sourceinfo{capacity}."</capacity></volume>";
             xCAT::SvrUtils::sendmsg("Cloning ".$sourcevol->get_name()." (currently is ".($sourceinfo{allocation}/1048576)." MB and has a capacity of ".($sourceinfo{capacity}/1048576)."MB)",$callback,$node);
@@ -1726,7 +1726,9 @@ sub clone_vm_from_master {
              $newvol =$destinationpool->clone_volume($targxml,$sourcevol);
             };
         } else {
-            my $newbasexml="<volume><name>$filename</name><target><format type='$format'/></target><capacity>0</capacity><backingStore><path>$srcfilename</path><format type='$format'/></backingStore></volume>";
+            my $sourcevol = $hypconn->get_storage_volume_by_path($srcfilename);
+            my %sourceinfo = %{$sourcevol->get_info()};
+            my $newbasexml="<volume><name>$filename</name><target><format type='$format'/></target><capacity>".$sourceinfo{capacity}."</capacity><backingStore><path>$srcfilename</path><format type='$format'/></backingStore></volume>";
            $newvol = $destinationpool->create_volume($newbasexml);
            $updatetable->{vm}->{$node}->{master}=$mastername;
         }
