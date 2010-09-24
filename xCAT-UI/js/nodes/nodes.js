@@ -170,7 +170,6 @@ function loadGroups(data) {
 					
 		// Open dialog to add node
 		addNodeForm.dialog({
-			position: 'top',
 			modal: true,
 			width: 400,
 			buttons: {

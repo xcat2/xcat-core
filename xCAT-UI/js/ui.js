@@ -532,7 +532,6 @@ function openDialog(msg) {
 		
 	// Open dialog
 	div.dialog({
-		position: 'top',
 		modal: true,
 		width: 400,
 		buttons: {

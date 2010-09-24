@@ -1026,7 +1026,6 @@ function openAddProcDialog(node) {
 	
 	// Open dialog to add processor
 	addProcForm.dialog({
-		position: 'top',
 		modal: true,
 		width: 400,
 		buttons: {
@@ -1131,7 +1130,6 @@ function openAddDiskDialog(node, hcp) {
 
 	// Open dialog to add disk
 	addDiskForm.dialog({
-		position: 'top',
 		modal: true,
 		width: 400,
 		buttons: {
@@ -1356,7 +1354,6 @@ function openAddNicDialog(node, hcp) {
 	
 	// Open dialog to add NIC
 	addNicForm.dialog({
-		position: 'top',
 		modal: true,
 		width: 400,
 		buttons: {

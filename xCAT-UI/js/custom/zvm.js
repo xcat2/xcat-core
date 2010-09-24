@@ -878,7 +878,6 @@ zvmPlugin.prototype.addNode = function() {
 					
 	// Open form as a dialog
 	addNodeForm.dialog({
-		position: 'top',
 		modal: true,
 		width: 400,
 		buttons: {
