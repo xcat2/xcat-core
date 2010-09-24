@@ -2284,73 +2284,83 @@ function createZProvisionNew(inst) {
 				// If no OS is given, create a virtual server
 				var msg = '';
 				if (diskRows.length > 0) {
-					msg = 'Do you want to create a virtual server without an operating system ?';
+					msg = 'Do you want to create a virtual server without an operating system?';
+				} else {
+					// If no disks are given, create a virtual server (no disk)
+					msg = 'Do you want to create a virtual server without an operating system or disks?';
 				}
 
-				// If no disks are given, create a virtual server (no disk)
-				else {
-					msg = 'Do you want to create a virtual server without an operating system or disks ?';
-				}
-
-				// If user clicks Ok
-				if (confirm(msg)) {
-					// Disable provision button
-					$(this).attr('disabled', 'true');
-					
-					// Show loader
-					$('#zProvisionStatBar' + inst).show();
-					$('#zProvisionLoader' + inst).show();
-
-					// Disable add disk button
-					addDiskLink.attr('disabled', 'true');
-					
-					// Disable close button on disk table
-					$('#' + thisTabId + ' table span').unbind('click');
-					
-					// Disable all inputs
-					var inputs = $('#' + thisTabId + ' input');
-					inputs.attr('disabled', 'disabled');
-										
-					// Disable all selects
-					var selects = $('#' + thisTabId + ' select');
-					selects.attr('disabled', 'disabled');
-										
-					// Add a new line at the end of the user entry
-					var textarea = $('#' + thisTabId + ' textarea');
-					var tmp = jQuery.trim(textarea.val());
-					textarea.val(tmp + '\n');
-					textarea.attr('readonly', 'readonly');
-					textarea.css( {
-						'background-color' : '#F2F2F2'
-					});
-
-					// Get node name
-					var node = $('#' + thisTabId + ' input[name=nodeName]').val();
-					// Get userId
-					var userId = $('#' + thisTabId + ' input[name=userId]').val();
-					// Get hardware control point
-					var hcp = $('#' + thisTabId + ' input[name=hcp]').val();
-					// Get group
-					var group = $('#' + thisTabId + ' input[name=group]').val();
-
-					/**
-					 * (1) Define node
-					 */
-					$.ajax( {
-						url : 'lib/cmd.php',
-						dataType : 'json',
-						data : {
-							cmd : 'nodeadd',
-							tgt : '',
-							args : node + ';zvm.hcp=' + hcp
-								+ ';zvm.userid=' + userId
-								+ ';nodehm.mgt=zvm' + ';groups=' + group,
-							msg : 'cmd=nodeadd;out=' + inst
+				// Open dialog to confirm
+				var confirmDialog = $('<div><p>' + msg + '</p></div>');   				
+				confirmDialog.dialog({
+					modal: true,
+					width: 400,
+					buttons: {
+						"Cancel": function() {
+							$(this).dialog("close");
 						},
+						"Ok": function(){
+							// Disable provision button
+							provisionBtn.attr('disabled', 'true');
+							
+							// Show loader
+							$('#zProvisionStatBar' + inst).show();
+							$('#zProvisionLoader' + inst).show();
 
-						success : updateZProvisionNewStatus
-					});
-				}
+							// Disable add disk button
+							addDiskLink.attr('disabled', 'true');
+							
+							// Disable close button on disk table
+							$('#' + thisTabId + ' table span').unbind('click');
+							
+							// Disable all inputs
+							var inputs = $('#' + thisTabId + ' input');
+							inputs.attr('disabled', 'disabled');
+												
+							// Disable all selects
+							var selects = $('#' + thisTabId + ' select');
+							selects.attr('disabled', 'disabled');
+												
+							// Add a new line at the end of the user entry
+							var textarea = $('#' + thisTabId + ' textarea');
+							var tmp = jQuery.trim(textarea.val());
+							textarea.val(tmp + '\n');
+							textarea.attr('readonly', 'readonly');
+							textarea.css( {
+								'background-color' : '#F2F2F2'
+							});
+
+							// Get node name
+							var node = $('#' + thisTabId + ' input[name=nodeName]').val();
+							// Get userId
+							var userId = $('#' + thisTabId + ' input[name=userId]').val();
+							// Get hardware control point
+							var hcp = $('#' + thisTabId + ' input[name=hcp]').val();
+							// Get group
+							var group = $('#' + thisTabId + ' input[name=group]').val();
+
+							/**
+							 * (1) Define node
+							 */
+							$.ajax( {
+								url : 'lib/cmd.php',
+								dataType : 'json',
+								data : {
+									cmd : 'nodeadd',
+									tgt : '',
+									args : node + ';zvm.hcp=' + hcp
+										+ ';zvm.userid=' + userId
+										+ ';nodehm.mgt=zvm' + ';groups=' + group,
+									msg : 'cmd=nodeadd;out=' + inst
+								},
+
+								success : updateZProvisionNewStatus
+							});
+														
+							$(this).dialog("close");
+						} // End of function()
+					}
+				});	
 			} else {
 				/**
 				 * Create a virtual server and install OS

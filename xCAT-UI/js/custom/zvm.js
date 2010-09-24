@@ -488,9 +488,23 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			 */
 			var contextMenu = [{
 				'Remove' : function(menuItem, menu) {
-					if (confirm('Are you sure?')) {
-						removeProcessor(node, $(this).text());
-					}
+					var addr = $(this).text();
+				
+					// Open dialog to confirm
+    				var confirmDialog = $('<div><p>Are you sure?</p></div>');   				
+    				confirmDialog.dialog({
+    					modal: true,
+    					width: 300,
+    					buttons: {
+    						"Cancel": function() {
+    							$(this).dialog("close");
+    						},
+    						"Ok": function(){
+    							removeProcessor(node, addr);
+    							$(this).dialog("close");
+    						}
+    					}
+    				});					
 				}
 			}];
 
@@ -582,9 +596,23 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			 */
 			contextMenu = [{
 				'Remove' : function(menuItem, menu) {
-					if (confirm('Are you sure?')) {
-						removeDisk(node, $(this).text());
-					}
+    				var addr = $(this).text();
+    				
+    				// Open dialog to confirm
+    				var confirmDialog = $('<div><p>Are you sure?</p></div>');   				
+    				confirmDialog.dialog({
+    					modal: true,
+    					width: 300,
+    					buttons: {
+    						"Cancel": function() {
+    							$(this).dialog("close");
+    						},
+    						"Ok": function(){
+    							removeDisk(node, addr);
+    							$(this).dialog("close");
+    						}
+    					}
+    				});	
 				}
 			}];
 
@@ -660,9 +688,23 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			 */
 			contextMenu = [ {
 				'Remove' : function(menuItem, menu) {
-					if (confirm('Are you sure?')) {
-						removeNic(node, $(this).text());
-					}
+    				var addr = $(this).text();
+    				
+    				// Open dialog to confirm
+    				var confirmDialog = $('<div><p>Are you sure?</p></div>');   				
+    				confirmDialog.dialog({
+    					modal: true,
+    					width: 300,
+    					buttons: {
+    						"Cancel": function() {
+    							$(this).dialog("close");
+    						},
+    						"Ok": function(){
+    							removeNic(node, addr);
+    							$(this).dialog("close");
+    						}
+    					}
+    				});
 				}
 			} ];
 
