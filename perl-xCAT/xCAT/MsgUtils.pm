@@ -459,7 +459,11 @@ sub message
         eval {
             openlog("xCAT", '', 'local4');
             setlogsock(["tcp", "unix", "stream"]);
-            syslog("err", $rsp);
+            if ($sev eq 'SE') {
+              syslog("err", $rsp);
+            } else {
+              syslog("info", $rsp);
+            }
             closelog();
         };
         my $errstr = $@;
