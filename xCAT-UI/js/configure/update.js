@@ -271,14 +271,16 @@ function ShowUpdateResult(data)
 	$('#loadingpic').remove();
     
     var resArray = data.rsp[0].split(/\n/);
-    if (('' == resArray[resArray.length - 1]) && (resArray.length > 1)){
-    	$('#update').append(resArray[resArray.length - 2]);
-    }
-    else{
-    	$('#update').append(resArray[resArray.length - 1]);
+    if (0 < resArray.length){
+        if (('' == resArray[resArray.length - 1]) && (resArray.length > 1)){
+        	$('#update').append(resArray[resArray.length - 2]);
+        }
+        else{
+        	$('#update').append(resArray[resArray.length - 1]);
+        }
     }
 
-    $('#update').append('<br\><a>Response Detail:</a>');
+    $('#update').append('<br\><a href="#">Response Detail:</a>');
     $('#update a').bind('click', function(){
     	$('#resDetail').show();
     });
