@@ -179,12 +179,13 @@ sub getmacs {
     my $result;
     my $name;
     my @emptynode;
-
+    my $res;
+    
     if ( $par =~ /^HASH/ ) {
-        my $t = $request->{node};
-        foreach my $n (@$t) {
-	        return( [[$n,"Please use -D -f options to getmacs through FSP directly",RC_ERROR]] );
-	    }
+	#my $t = $request->{node};
+	#foreach my $n (@$t) {
+	#        return( [[$n,"Please use -D -f options to getmacs through FSP directly",RC_ERROR]] );
+	#    }
 
         #########################################
         # Parse the filters specified by user
@@ -215,22 +216,28 @@ sub getmacs {
         foreach my $hcp ( keys %$par ) {
             my $hash = $par->{$hcp};
             my $cmd; 
-
+            my @lpar_name = keys(%$hash);
+	    $name = $lpar_name[0];
+	    my $d = $$hash{$name};
             #########################################
             # Achieve virtual ethernet MAC address
             #########################################
-            @$cmd[0] = ["lpar","virtualio","","eth"];
-            @$cmd[1] = ["port","hea","","logical"];
-            @$cmd[2] = ["port","hea","","phys"];
-
+	    #@$cmd[0] = ["lpar","virtualio","","eth"];
+	    #@$cmd[1] = ["port","hea","","logical"];
+	    #@$cmd[2] = ["port","hea","","phys"];
+            my @cmd = ("lpar_veth_mac","lpar_lhea_mac","lpar_hfi_mac");
             #########################################
             # Parse the output of lshwres command
             #########################################
             for ( my $stat = 0; $stat < 3; $stat++ ) {
-                my $output = xCAT::PPCcli::lshwres( $exp, @$cmd[$stat], $hcp);
-                my $macs; 
-
-                foreach my $line ( @$output ) {
+		#my $output = xCAT::PPCcli::lshwres( $exp, @$cmd[$stat], $hcp);
+                my $output  = xCAT::FSPUtils::fsp_api_action($name, $d, $cmd[$stat]);
+		my $macs; 
+                my $res = $$output[1];
+		chomp($res);
+		my @op  = split("\n", $res);
+		#print Dumper(\@op);
+                foreach my $line ( @op ) {
                     if ( $line =~ /^.*lpar\_id=(\d+),.*$/ ) {
                         #########################################
                         # For the first two commands
@@ -293,7 +300,7 @@ sub getmacs {
                 # Put all the attributes required
                 # together
                 #########################################
-                push @$value,"\n#Type  Phys_Port_Loc  MAC_Address  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed";
+                push @$value,"\n#Type  Phys_Port_Loc  MAC_Address  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed\n";
 
                 for ( my $num = 1; $num <= $mac_count; $num++ ) {
                     my $mac_addr        = $nodeatt{$mtms}{$id}{$num}{'mac_addr'};
@@ -311,8 +318,11 @@ sub getmacs {
                     } else {
                         $type = "virtualio";
                     }
-
+                    my $type        = $nodeatt{$mtms}{$id}{$num}{'type'};
                     my %att = ();
+		    if( $mac_addr ) {
+		        $mac_addr = format_mac($mac_addr);
+	            }
                     $att{'MAC_Address'}        = ($mac_addr) ? $mac_addr : "N/A";
                     $att{'Adapter'}            = ($adapter_id) ? $adapter_id : "N/A";
                     $att{'Port_Group'}         = ($port_group) ? $port_group : "N/A"; 
@@ -337,10 +347,10 @@ sub getmacs {
                             }
                         }
                         if ( $matched == 1 ) {
-                            push @$value,"$att{'Type'}  $att{'Phys_Port_Loc'}  $att{'MAC_Address'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}";
+                            push @$value,"$att{'Type'}  $att{'Phys_Port_Loc'}  $att{'MAC_Address'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}\n";
                         }
                     } else {
-                        push @$value,"$att{'Type'}  $att{'Phys_Port_Loc'}  $att{'MAC_Address'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}";
+                        push @$value,"$att{'Type'}  $att{'Phys_Port_Loc'}  $att{'MAC_Address'}  $att{'Adapter'}  $att{'Port_Group'}  $att{'Phys_Port'}  $att{'Logical_Port'}  $att{'VLan'}  $att{'VSwitch'}  $att{'Curr_Conn_Speed'}\n";
                     }
                 }
                 #########################################
@@ -352,29 +362,31 @@ sub getmacs {
 
 
                 if ( scalar(@$value) < 2 ) {
-                    my $filter = "lpar_id,curr_profile";
-                    my $prof   = xCAT::PPCcli::lssyscfg( $exp, "node", $mtms, $filter, $id );
-                    my $Rc = shift(@$prof);
+		    #my $filter = "lpar_id,curr_profile";
+		    #my $prof   = xCAT::PPCcli::lssyscfg( $exp, "node", $mtms, $filter, $id );
+		    #my $Rc = shift(@$prof);
 
                     #########################################
                     # Return error
                     #########################################
-                    if ( $Rc != SUCCESS ) {
-                        return( [[$node,@$prof[0],$Rc]] );
-                    }
+		    #if ( $Rc != SUCCESS ) {
+		    #    return( [[$node,@$prof[0],$Rc]] );
+		    #}
 
-                    foreach my $val ( @$prof ) {
-                        my ($lpar_id,$curr_profile) = split  /,/, $val;
-                        if ( !length($curr_profile) || ($curr_profile =~ /^none$/) ) {
-                            push @emptynode,$node;
-                        }
-                    }
+		    #foreach my $val ( @$prof ) {
+		    #    my ($lpar_id,$curr_profile) = split  /,/, $val;
+		    #    if ( !length($curr_profile) || ($curr_profile =~ /^none$/) ) {
+		    #        push @emptynode,$node;
+		    #    }
+		    #}
+		    return( [[$node,"get NO mac address from PHYP for $node",-1]]);
                 }
                 foreach ( @$value ) {
                     if ( /^#\s?Type/ ) {
                         $data.= "\n$_\n";
                     } else {
-                        $data.= format_mac( $_ );
+			#$data.= format_mac( $_ );
+			$data .= $_;
                     }
                 }
 
@@ -452,14 +464,33 @@ sub getmacs {
         }
         $sitetab->close;
         $Rc = shift(@$result);
-   
+  
+        my $data;
+        my $value;	
+        if ( $Rc == SUCCESS ) {
+	   foreach ( @$result ) {
+	      if ( /^#\s?Type/ ) {
+	         $data.= "\n$_\n";
+	         push @$value, "\n$_\n";
+	      } elsif ( /^ent\s+/ ||  /^hfi-ent\s+/ ) {
+	         my @fields = split /\s+/, $_;
+	         my $mac    = $fields[2];
+	         $mac    = format_mac( $mac );
+	         $fields[2] = $mac;
+	         $data  .= join(" ",@fields)."\n";
+	         push @$value, join(" ",@fields)."\n";
+	      }
+	   }
+	   push @$res,[$node,$data,0];
+       }
+        
         ##################################
         # Form string from array results 
         ##################################
         if ( exists($request->{verbose}) ) {
             if ( $Rc == SUCCESS ) {
                 if ( !exists( $opt->{d} )) { 
-                    writemac( $node, $result );
+                    writemac( $node, $value );
                 }
             }
             return( [[$node,join( '', @$result ),$Rc]] );
@@ -487,22 +518,23 @@ sub getmacs {
         #    ent U9117.MMA.10F6F3D-V5-C3-T1 1e0e122a930d /vdevice/l-lan@30000003
         #
         #####################################
-        my $data;
+	#my $data;
 
-        foreach ( @$result ) {
-            if ( /^#\s?Type/ ) {
-                $data.= "\n$_\n";
-            } elsif ( /^ent\s+/ or /^hfi-ent\s+/) {
-                $data.= format_mac( $_ );
-            }
-        }
+	#foreach ( @$result ) {
+	#    if ( /^#\s?Type/ ) {
+	#        $data.= "\n$_\n";
+	#    } elsif ( /^ent\s+/ or /^hfi-ent\s+/) {
+	#        $data.= format_mac( $_ );
+	#    }
+	#}
         #####################################
         # Write first valid adapter MAC to database
         #####################################
         if ( !exists( $opt->{d} )) {
-            writemac( $node, $result );
+            writemac( $node, $value );
         }
-        return( [[$node,$data,$Rc]] );
+	#return( [[$node,$data,$Rc]] );
+	return $res;
     }
 }
 
@@ -537,14 +569,15 @@ sub cal_mac {
 ##########################################################################
 sub format_mac {
 
-    my $data = shift;
+    my $mac = shift;
+    #my $data = shift;
 
     #####################################
     # Get adapter mac
     #####################################
-    $data =~ /^(\S+\s+\S+\s+)(\S+)(\s+.*)$/;
-    my $mac = $2;
-    my $save = $mac;
+    #$data =~ /^(\S+\s+\S+\s+)(\S+)(\s+.*)$/;
+    #my $mac = $2;
+    #my $save = $mac;
     #####################################
     # Currenlty HFI drivers don't support
     # broadcast, users need to fresh the
@@ -581,10 +614,11 @@ sub format_mac {
             $mac    = lc($mac);
             $mac    =~ s/(\w{2})/$1:/g;
             $mac    =~ s/:$//;
-            $data   =~ s/$save/$mac/;
+            #$data   =~ s/$save/$mac/;
         }
 #    }
-    return( "$data\n" );
+    #return( "$data\n" );
+    return( "$mac" );
 
 }
 
@@ -632,7 +666,7 @@ sub writemac {
                 $value = $_;
                 $ping_test = 0;
                 last;
-            } elsif ( /^hea\s+/ || /^virtualio\s+/ ) {
+            } elsif ( /^hea\s+/ || /^virtualio\s+/ ||  /^HFI\s+/ ) {
                 $value = $_;
                 $ping_test = 1;
                 last;
@@ -649,7 +683,7 @@ sub writemac {
     #####################################
     # Get adapter mac
     #####################################
-    $value = format_mac( $value ); 
+    #$value = format_mac( $value ); 
     @fields = split /\s+/, $value;
     $mac    = $fields[2];
 
