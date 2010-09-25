@@ -16,6 +16,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 
 BuildArch: noarch
 Provides: xCAT-UI = %{version}
+Requires: python >= 2.3
 
 %ifos linux
 # httpd is provided by apache2 on SLES and httpd on RHEL
