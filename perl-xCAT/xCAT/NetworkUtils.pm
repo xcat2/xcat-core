@@ -102,6 +102,11 @@ sub gethostname()
 {
     my ($class, $iporhost) = @_;
 
+   if (!defined($iporhost))
+   {
+       return undef;
+   }
+
    if (ref($iporhost) eq 'ARRAY')
    {
        $iporhost = @{$iporhost}[0];
@@ -176,6 +181,11 @@ sub gethostname()
 sub getipaddr()
 {
     my ($class, $iporhost) = @_;
+
+   if (!defined($iporhost))
+   {
+       return undef;
+   }
 
    if (ref($iporhost) eq 'ARRAY')
    {
