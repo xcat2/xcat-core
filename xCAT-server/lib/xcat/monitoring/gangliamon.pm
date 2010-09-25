@@ -262,11 +262,11 @@ sub confGmond
 	{
 		if ($callback){
 			my $resp={};
-			$resp->{data}->[0]="Please install the Ganglia.";
+			$resp->{data}->[0]="gangliamon: Please install the Ganglia.";
 			$callback->($resp);	
 		}
 		else{
-			xCAT::MsgUtils->message('E', "Please install the Ganglia. \n");
+			xCAT::MsgUtils->message('E', "gangliamon: Please install the Ganglia. \n");
 		}
 		return;
 	}
@@ -423,222 +423,125 @@ sub confGmetad
     }
     my $scope=shift;
     my $callback=shift;
-
+	my $configure_file = '';
     my $localhost=hostname();
 
     chomp(my $hostname = `hostname`);
-	if (-e "/etc/ganglia/gmetad.conf")
-	{ #opening if 3.1.0
-    `/bin/grep "xCAT gmetad settings done" /etc/ganglia/gmetad.conf`;
-      
-       if($?)
-        { #openinf if ?
-         if($callback) {
-         my $resp={};
-         $resp->{data}->[0]="$localhost: $?";
-         $callback->($resp);
-         } else {   xCAT::MsgUtils->message('S', "Gmetad not configured $? \n"); }
-          # backup the original file
-          `/bin/cp -f /etc/ganglia/gmetad.conf /etc/ganglia/gmetad.conf.orig`;
 
-          open(FILE1, "</etc/ganglia/gmetad.conf");
-          open(FILE, "+>/etc/ganglia/gmetad.conf.tmp");
-        
-          while (readline(FILE1))
-          {
-            # print STDERR "READ = $_\n";
-            s/data_source/#data_source/g;
-            # print STDERR "POST-READ = $_\n";
-            print FILE $_;
-          }
-          close(FILE1);
-          close(FILE);
-          `/bin/cp -f /etc/ganglia/gmetad.conf.tmp /etc/ganglia/gmetad.conf`;
-        
-          open(OUTFILE,"+>>/etc/ganglia/gmetad.conf")
-                  or die ("Cannot open file \n"); 
-          print(OUTFILE "# Setting up GMETAD configuration file \n");
-         
-          if (-e "/etc/xCATMN")
-          {
-           print(OUTFILE "data_source \"$hostname\" localhost \n");
-          }
-          my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
-	 if (ref($noderef) eq 'ARRAY') {
-	     if ($callback) {
-		 my $resp={};
-		 $resp->{data}->[0]=$noderef->[1];
-		 $callback->($resp);
-	     } else {
-		 xCAT::MsgUtils->message('S', "[mon]: " . $noderef->[1]);
-	     }
-	     return (1, "");	
-	 }
+    #version 3.1.0
+    if (-e "/etc/ganglia/gmond.conf"){
+    	$configure_file = '/etc/ganglia/gmond.conf';
+	}
+	#version 3.0.7
+	elsif (-e "/etc/gmond.conf"){
+		$configure_file = '/etc/gmond.conf';
+	}
+	#non should install
+	else
+	{
+		return;
+	}
+	
+	`/bin/grep "xCAT gmetad settings done" $configure_file`;
 
+	if($?)
+	{ #openinf if ?
+		if($callback) {
+			my $resp={};
+			$resp->{data}->[0]="$localhost: $?";
+			$callback->($resp);
+		} 
+		else {   
+			xCAT::MsgUtils->message('S', "Gmetad not configured $? \n"); 
+		}
+		
+		# backup the original file
+		`/bin/cp -f $configure_file $configure_file.orig`;
 
-          my @hostinfo=xCAT::Utils->determinehostname();
-          my $isSV=xCAT::Utils->isServiceNode();
-          my %iphash=();
-          foreach(@hostinfo) {$iphash{$_}=1;}
-          if (!$isSV) { $iphash{'noservicenode'}=1;}
+		open(FILE1, "<$configure_file");
+		open(FILE, "+>$configure_file.tmp");
 
-          my @children;
-          my $cluster;
-          foreach my $key (keys (%$noderef))
-           {
-            my @key_g=split(':', $key);
-             if (! $iphash{$key_g[0]}) { next;}
-             my $mon_nodes=$noderef->{$key};
-             my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
-             if ( $key_g[0]!~/$pattern/ )
-             { 
-               no warnings;
-               $cluster = $key_g[0];
-             }
-             foreach(@$mon_nodes)
-              {
-                my $node=$_->[0];
-                my $nodetype=$_->[1];
-                 if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
-                  {
-                    push(@children,$node);
-                  }
-              }
-  
-           }
-         my $num=@children;
-          if (-e "/etc/xCATSN")
-                {
-                 print ( OUTFILE "gridname \"$cluster\"\n");
-		 print ( OUTFILE "data_source \"$cluster\" localhost\n");
-		 my $master=xCAT::Utils->get_site_Master();
-		 print ( OUTFILE "trusted_hosts $master\n");
-#                 for (my $i = 0; $i < $num; $i++)
-#                  {
-#                   print ( OUTFILE "data_source \"$cluster\" $children[ $i ]  \n");
-#                  }
-                } 
-       
-             else
-              {
-                for (my $j = 0; $j < $num; $j++)
-                 {
-                  print ( OUTFILE "data_source \"$children[ $j ]\" $children[ $j ]:8651  \n");
-                 }
-              }
-       print(OUTFILE "# xCAT gmetad settings done \n");
-       close(OUTFILE);
-       
-        } #closing if? loop
-	  } # closing if 3.1.0 
-else 
+		while (readline(FILE1))
+		{
+			# print STDERR "READ = $_\n";
+			s/data_source/#data_source/g;
+			# print STDERR "POST-READ = $_\n";
+			print FILE $_;
+		}
+		close(FILE1);
+		close(FILE);
+		`/bin/cp -f $configure_file.tmp $configure_file`;
 
-   {#opening if 3.0.7
-		 `/bin/grep "xCAT gmetad settings done" /etc/gmetad.conf`;
-        if($?)
-        { #openinf if ?
-         if($callback) {
-         my $resp={};
-         $resp->{data}->[0]="$localhost: $?";
-         $callback->($resp);
-         } else {   xCAT::MsgUtils->message('S', "Gmetad not configured $? \n"); }
-          # backup the original file
-          `/bin/cp -f /etc/gmetad.conf /etc/gmetad.conf.orig`;
+		open(OUTFILE,"+>>$configure_file")
+		or die ("Cannot open file \n"); 
+		print(OUTFILE "# Setting up GMETAD configuration file \n");
 
-          open(FILE1, "</etc/gmetad.conf");
-          open(FILE, "+>/etc/gmetad.conf.tmp");
-        
-          while (readline(FILE1))
-          {
-            s/data_source/#data_source/g;
-            print FILE $_;
-          }
-          close(FILE1);
-          close(FILE);
-          `/bin/cp -f /etc/gmetad.conf.tmp /etc/gmetad.conf`;
-        
-          open(OUTFILE,"+>>/etc/gmetad.conf")
-                  or die ("Cannot open file \n"); 
-          print(OUTFILE "# Setting up GMETAD configuration file \n");
-         
-          if (-e "/etc/xCATMN")
-          {
-           print(OUTFILE "data_source \"$hostname\" localhost \n");
-          }
-          my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
-	 if (ref($noderef) eq 'ARRAY') {
-	     if ($callback) {
-		 my $resp={};
-		 $resp->{data}->[0]=$noderef->[1];
-		 $callback->($resp);
-	     } else {
-		 xCAT::MsgUtils->message('S', "[mon]: " . $noderef->[1]);
-	     }
-	     return (1, "");	
-	 }
-
-          my @hostinfo=xCAT::Utils->determinehostname();
-          my $isSV=xCAT::Utils->isServiceNode();
-          my %iphash=();
-          foreach(@hostinfo) {$iphash{$_}=1;}
-          if (!$isSV) { $iphash{'noservicenode'}=1;}
-
-          my @children;
-          my $cluster;
-          foreach my $key (keys (%$noderef))
-           {
-            my @key_g=split(':', $key);
-         #    print "a[0] is: $key_g[0] \n";
-             if (! $iphash{$key_g[0]}) { next;}
-             my $mon_nodes=$noderef->{$key};
-             my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
-             if ( $key_g[0]!~/$pattern/ )
-             { 
-               no warnings;
-               $cluster = $key_g[0];
-             }
-             foreach(@$mon_nodes)
-              {
-                my $node=$_->[0];
-                my $nodetype=$_->[1];
-                 if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
-                  {
-                    push(@children,$node);
-                  }
-              }
-  
-           }
-         my $num=@children;
-          if (-e "/etc/xCATSN")
-                {
-                 print ( OUTFILE "gridname \"$cluster\"\n");
-		 print ( OUTFILE "data_source \"$cluster\" localhost\n");
-		 my $master=xCAT::Utils->get_site_Master();
-		 print ( OUTFILE "trusted_hosts $master\n");
-
-#                 for (my $i = 0; $i < $num; $i++)
-#                  {
-#                   print ( OUTFILE "data_source \"$cluster\" $children[ $i ]  \n");
-#                  }
-                } 
-       
-             else
-              {
-                for (my $j = 0; $j < $num; $j++)
-                 {
-                  print ( OUTFILE "data_source \"$children[ $j ]\" $children[ $j ]:8651  \n");
-                 }
-              }
-       print(OUTFILE "# xCAT gmetad settings done \n");
-       close(OUTFILE);
-       
-     } #closing if? loop
-
-   } #closing if 3.0.7
+		if (-e "/etc/xCATMN")
+		{
+			print(OUTFILE "data_source \"$hostname\" localhost \n");
+		}
+		my $noderef=xCAT_monitoring::monitorctrl->getMonHierarchy();
+		if (ref($noderef) eq 'ARRAY') {
+			if ($callback) {
+				my $resp={};
+				$resp->{data}->[0]=$noderef->[1];
+				$callback->($resp);
+			} else {
+				xCAT::MsgUtils->message('S', "[mon]: " . $noderef->[1]);
+			}
+			return (1, "");	
+		}
 
 
+		my @hostinfo=xCAT::Utils->determinehostname();
+		my $isSV=xCAT::Utils->isServiceNode();
+		my %iphash=();
+		foreach(@hostinfo) {$iphash{$_}=1;}
+		if (!$isSV) { $iphash{'noservicenode'}=1;}
 
- } # closing subrouting
+		my @children;
+		my $cluster;
+		foreach my $key (keys (%$noderef))
+		{
+			my @key_g=split(':', $key);
+			if (! $iphash{$key_g[0]}) { next;}
+			my $mon_nodes=$noderef->{$key};
+			my $pattern = '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})';
+			if ( $key_g[0]!~/$pattern/ )
+			{ 
+				no warnings;
+				$cluster = $key_g[0];
+			}
+			foreach(@$mon_nodes)
+			{
+				my $node=$_->[0];
+				my $nodetype=$_->[1];
+				if (($nodetype) && ($nodetype =~ /$::NODETYPE_OSI/))
+				{
+					push(@children,$node);
+				}
+			}
+
+		}
+		my $num=@children;
+		if (-e "/etc/xCATSN")
+		{
+			print ( OUTFILE "gridname \"$cluster\"\n");
+			print ( OUTFILE "data_source \"$cluster\" localhost\n");
+			my $master=xCAT::Utils->get_site_Master();
+			print ( OUTFILE "trusted_hosts $master\n");
+		}
+		else
+		{
+			for (my $j = 0; $j < $num; $j++)
+			{
+				print ( OUTFILE "data_source \"$children[ $j ]\" $children[ $j ]:8651  \n");
+			}
+		}
+		print(OUTFILE "# xCAT gmetad settings done \n");
+		close(OUTFILE);
+	} #closing if?
+} # closing subrouting
 
 
 #--------------------------------------------------------------
