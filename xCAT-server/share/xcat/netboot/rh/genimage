@@ -426,54 +426,55 @@ unless ($onlyinitrd) {
    $rc = system("$yumcmd_update");
    # ignore any return code
 
-    # Default to the first kernel found in the install image if nothing specified explicitly.
-    # A more accurate guess than whatever the image build server happens to be running
-    # If specified, that takes precedence.
-    # if image has one, that is used
-    # if all else fails, resort to uname -r like this script did before
-
-    # Kernel name for s390x should be the same: vmlinuz-2.6.18-164.el5
-    my @KVERS= <$rootimg_dir/boot/vmlinuz-*>;
-    foreach (@KVERS) {
-	    s/vmlinuz-//;
-    }
-
-    @KVERS= <$rootimg_dir/lib/modules/*> unless (scalar(@KVERS));
-
-    $basekernelver = basename(pop @KVERS) if (scalar(@KVERS));
-
-    $basekernelver = `uname -r` unless ($basekernelver);
-
-    $kernelver = $basekernelver unless ($kernelver);
-    chomp($kernelver);
-
-    $updates{'kernelver'} = $kernelver if ($needUpdateTable);
-
-    if ($kernelver ne $basekernelver) {
-        # the kernelver is specified by "-k",
-        # the kernel file should be in /boot
-        # the moudles should be in /lib/modules/$kernelver
-        if ( -e "/boot/vmlinux-$kernelver") {
-            copy("/boot/vmlinux-$kernelver", "$rootimg_dir/boot/");
-        } elsif ( -e "/boot/vmlinuz-$kernelver") {
-            copy("/boot/vmlinuz-$kernelver", "$rootimg_dir/boot/");
-        } elsif ( -e "/boot/image-$kernelver" ) {
-            copy("/boot/image-$kernelver", "$rootimg_dir/boot/");
-        } else {
-            xdie("couldn't find the kernel file matched $kernelver in /boot");
-        }
-
-        if ( -e "/lib/modules/$kernelver" ) {
-            system("cp -r -a /lib/modules/$kernelver $rootimg_dir/lib/modules/");
-        } else {
-            xdie("couldn't find /lib/modules/$kernelver");
-        }
-    }
-
    postscripts(); #run 'postscripts'
 }
 
+# Default to the first kernel found in the install image if nothing specified explicitly.
+# A more accurate guess than whatever the image build server happens to be running
+# If specified, that takes precedence.
+# if image has one, that is used
+# if all else fails, resort to uname -r like this script did before
 
+# Kernel name for s390x should be the same: vmlinuz-2.6.18-164.el5
+my @KVERS= <$rootimg_dir/boot/vmlinuz-*>;
+foreach (@KVERS) {
+    s/vmlinuz-//;
+}
+
+@KVERS= <$rootimg_dir/lib/modules/*> unless (scalar(@KVERS));
+
+$basekernelver = basename(pop @KVERS) if (scalar(@KVERS));
+
+$basekernelver = `uname -r` unless ($basekernelver);
+
+$kernelver = $basekernelver unless ($kernelver);
+chomp($kernelver);
+
+$updates{'kernelver'} = $kernelver if ($needUpdateTable);
+
+if ($kernelver ne $basekernelver) {
+    # the kernelver is specified by "-k",
+    # the kernel file should be in /boot
+    # the moudles should be in /lib/modules/$kernelver
+    if ( -e "/boot/vmlinux-$kernelver") {
+        copy("/boot/vmlinux-$kernelver", "$rootimg_dir/boot/");
+    } elsif ( -e "/boot/vmlinuz-$kernelver") {
+        copy("/boot/vmlinuz-$kernelver", "$rootimg_dir/boot/");
+    } elsif ( -e "/boot/image-$kernelver" ) {
+        copy("/boot/image-$kernelver", "$rootimg_dir/boot/");
+    } else {
+        xdie("couldn't find the kernel file matched $kernelver in /boot");
+    }
+
+    if ( -e "/lib/modules/$kernelver" ) {
+        system("cp -r -a /lib/modules/$kernelver $rootimg_dir/lib/modules/");
+        if ($basekernelver) {
+            system("rm -rf $rootimg_dir/lib/modules/$basekernelver/");
+        }
+    } else {
+        xdie("couldn't find /lib/modules/$kernelver");
+    }
+}
 
 # Load driver update disk, and copy them to the root image
 my @dd_drivers = &load_dd();
@@ -635,11 +636,9 @@ if ($dracutmode) {
 # before mkinitrd, run depmod to generate modules.dep 
 system("chroot $rootimg_dir depmod $kernelver");
 
-# TODO: for the genimage-enchement, need to create two initial ramdisks,
+# for the genimage-enchement, need to create two initial ramdisks,
 # one is for stateless
 # the other one is for statelite
-# move the load_dd() and @ndrivers-related code here
-
 
 if ($dracutmode) {
     mkinitrd_dracut("statelite");

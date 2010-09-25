@@ -164,7 +164,6 @@ if (@ARGV > 0 and $needUpdateTable eq 1) {
     $pkglist = $ref_linuximage_tab->{'pkglist'};
 
     $srcdir = $ref_linuximage_tab->{'pkgdir'};
-    $srcdir = "$srcdir/1" if ($srcdir);
     $srcdir_otherpkgs = $ref_linuximage_tab->{'otherpkgdir'};
     $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
     $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
@@ -471,79 +470,80 @@ unless ($onlyinitrd) {
    $rc = system("$yumcmd_update");
    # ignore any return code
 
-
-    #$kernelver = $basekernelver unless($kernelver);
-    #$updates{'kernelver'} = $kernelver if ($needUpdateTable);
-
-    if ($kernelver) {
-        # if "-k" is specified, the kernel file should be in the "/boot" directory (not in the rootimg chroot environment)
-        # the modules should be in /lib/modules/$kernelver
-        if ( -e "/boot/vmlinux-$kernelver") {
-            copy("/boot/vmlinux-$kernelver", "$rootimg_dir/boot/");
-            system("cp -r /lib/modules/$kernelver $rootimg_dir/lib/modules/");
-        } elsif ( -e "/boot/vmlinuz-$kernelver") {
-            copy("/boot/vmlinuz-$kernelver", "$rootimg_dir/boot/");
-        } elsif ( -e "/boot/image-$kernelver") {
-            copy("/boot/image-$kernelver", "$rootimg_dir/boot/");
-        } else {
-            xdie "couldnot find the kernel file matched $kernelver in /boot!";
-        }
-        if ( -e "/lib/modules/$kernelver" ) {
-            system("cp -r /lib/modules/$kernelver $rootimg_dir/lib/modules/");
-        } else {
-            xdie "couldnot find /lib/modules/$kernelver!";
-        }
-    } else {
-        # default to the first kernel found in the install image if nothing specified explicitly.
-        # A more accurate guess than whatever the image build server happens to be running 
-        # If specified, that takes precedence.
-        # If image has one, that is used
-        # If all else fails, resort to uname -r like this script did before
-         
-        if ( -e "$rootimg_dir/boot/vmlinux" ) {
-            $basekernelver = basename(readlink "$rootimg_dir/boot/vmlinux");
-            if ($basekernelver eq "vmlinux") {
-                $basekernelver = "";
-            } else {
-                $basekernelver =~ s/vmlinu.-//;
-                $basekernelver =~ s/image-//;
-            }
-        }
-
-        unless ($basekernelver) {
-            my @KVERS = <$rootimg_dir/boot/vmlinu[xz]-*>;
-            
-            # The kernel name is different on s390x, e.g. image-2.6.32.9-0.5-default
-            @KVERS = <$rootimg_dir/boot/image-*> if $arch eq "s390x";
-            foreach (@KVERS) {
-                s/vmlinu.-//;
-                s/image-//;
-            }
-            unless (scalar @KVERS) {
-                @KVERS = <$rootimg_dir/lib/modules/*>;
-            }
-            if (scalar @KVERS) {
-                foreach my $kver (@KVERS) {
-                    unless ($kver =~ m/.gz$/) {
-                        $basekernelver = basename($kver);
-                        last;
-                    }
-                }
-            }
-
-            unless($basekernelver) {
-               xdie "couldnot find the kernel file in root image, please make sure kernel package is in your pkglist!"; 
-            }
-        }
-
-        chomp $basekernelver;
-        $kernelver = $basekernelver;
-        $updates{kernelver} = $kernelver if ($needUpdateTable);
-    }
-
    postscripts(); #run 'postscripts'
 }
 unlink "/tmp/genimage.$$.yum.conf";
+
+# default to the first kernel found in the install image if nothing specified explicitly.
+# A more accurate guess than whatever the image build server happens to be running 
+# If specified, that takes precedence.
+# If image has one, that is used
+# If all else fails, resort to uname -r like this script did before
+        
+if ( -e "$rootimg_dir/boot/vmlinux" ) {
+    $basekernelver = basename(readlink "$rootimg_dir/boot/vmlinux");
+    if ($basekernelver eq "vmlinux") {
+        $basekernelver = "";
+    } else {
+        $basekernelver =~ s/vmlinu.-//;
+        $basekernelver =~ s/image-//;
+    }
+}
+
+unless ($basekernelver) {
+    my @KVERS = <$rootimg_dir/boot/vmlinu[xz]-*>;
+      
+    # The kernel name is different on s390x, e.g. image-2.6.32.9-0.5-default
+    @KVERS = <$rootimg_dir/boot/image-*> if $arch eq "s390x";
+    foreach (@KVERS) {
+        s/vmlinu.-//;
+        s/image-//;
+    }
+    unless (scalar @KVERS) {
+        @KVERS = <$rootimg_dir/lib/modules/*>;
+    }
+    if (scalar @KVERS) {
+        foreach my $kver (@KVERS) {
+            unless ($kver =~ m/.gz$/) {
+                $basekernelver = basename($kver);
+                last;
+            }
+        }
+    }
+
+    @KVERS=<$rootimg_dir/lib/modules/*> unless (scalar @KVERS);
+    $basekernelver = basename(pop @KVERS) if (scalar @KVERS);
+    $basekernelver = `uname -r` unless ($basekernelver);
+
+    $kernelver = $basekernelver unless ($kernelver);
+    chomp $kernelver;
+    $updates{kernelver} = $kernelver if ($needUpdateTable);
+
+}
+
+
+if ($kernelver ne $basekernelver) {
+    # if "-k" is specified, the kernel file should be in the "/boot" directory (not in the rootimg chroot environment)
+    # the modules should be in /lib/modules/$kernelver
+    if ( -e "/boot/vmlinux-$kernelver") {
+        copy("/boot/vmlinux-$kernelver", "$rootimg_dir/boot/");
+        system("cp -r /lib/modules/$kernelver $rootimg_dir/lib/modules/");
+    } elsif ( -e "/boot/vmlinuz-$kernelver") {
+        copy("/boot/vmlinuz-$kernelver", "$rootimg_dir/boot/");
+    } elsif ( -e "/boot/image-$kernelver") {
+        copy("/boot/image-$kernelver", "$rootimg_dir/boot/");
+    } else {
+        xdie "couldnot find the kernel file matched $kernelver in /boot!";
+    }
+    if ( -e "/lib/modules/$kernelver" ) {
+        system("cp -r /lib/modules/$kernelver $rootimg_dir/lib/modules/");
+        if($basekernelver) {
+            system("rm -rf $rootimg_dir/lib/modules/$basekernelver/");
+        }
+    } else {
+        xdie "couldnot find /lib/modules/$kernelver!";
+    }
+}
 
 #-- run postinstall script
 unless ($imagename) {
