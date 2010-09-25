@@ -62,7 +62,7 @@ B<For node of blade server:>
 
 =over 4
 
-B<renergy> I<noderange> [-V] { all | { [averageAC]  
+B<renergy> I<noderange> [-V] { all | { [averageDC]  
 [capability] [cappingvalue] [CPUspeed] [maxCPUspeed] 
 [savingstatus] [dsavingstatus] } }
 
