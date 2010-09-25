@@ -4,20 +4,24 @@ B<geninitrd> - Regenerates the initrd for a stateless image to be used for a dis
 
 =head1 SYNOPSIS
 
-B<geninitrd> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> B<-o> I<OS> B<-p> I<profile> [B<-l> I<rootlimit>] [B<-k> I<kernel_version>]
+B<geninitrd> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-o> I<OS>] [B<-p>] [I<profile>] [B<-l> I<rootlimit>] [B<-k> I<kernel_version>] [B<--permission> I<permission>]
+
+B<geninitrd> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-o> I<OS>] [B<-p>] [I<profile>] [B<-l> I<rootlimit>] [B<-k> I<kernel_version>] [B<--permission> I<permission>] imagename
 
 B<geninitrd> [B<-h> | B<--help> | B<-v> | B<--version>]
 
 
 =head1 DESCRIPTION
 
-Regenerates the initrd that is part of a stateless image that is used to boot xCAT nodes in a diskless mode.
+Regenerates the initrd that is part of a stateless/statelite image that is used to boot xCAT nodes in a stateless/statelite mode.
 The generated initrd will be put in /install/netboot/<OS>/<arch>/<profile>.
 
 The B<geninitrd> command must be run on a system that is the same architecture as the nodes it will be
 used on.  If the management node is not the same architecture, copy the contents of
 /opt/xcat/share/xcat/netboot/<OS> to a system that is the proper architecture, and mount /install from
 the management node to that system.
+
+The B<geninitrd> command will generate two initial ramdisks, one is B<initrd-statelite.gz> for B<statelite> mode, the other one is B<initrd-stateless.gz> for B<stateless> mode.
 
 
 =head1 OPTIONS

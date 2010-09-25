@@ -4,9 +4,9 @@ B<genimage> - Generates a stateless image to be used for a diskless install.
 
 =head1 SYNOPSIS
 
-B<genimage> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> B<-o> I<OS> B<-p> I<profile> [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-m> I<mode>]
+B<genimage> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] B<-o> I<OS> B<-p> I<profile> [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<--permission> I<permission>]
 
-B<genimage> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<-o> I<OS>] [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] imagename
+B<genimage> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-o> I<OS>] [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] imagename
 
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -15,11 +15,13 @@ B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
 Generates a stateless image that can be used to boot xCAT nodes in a diskless mode.  
 If I<imagename> is not specified, the default packages included
-(and excluded) in the image are specified by /opt/xcat/share/xcat/netboot/<OS>/<profile>.pkglist and
+(and excluded) in the image are specified by /opt/xcat/share/xcat/netboot/<OS>/<profile>.<OS>.<arch>.pkglist and
 /opt/xcat/share/xcat/netboot/<OS>/<profile>.exlist. 
-Additional packages that are not from the os distro can be specified in a <profile>.otherpkgs.pkglist file.
+Additional packages that are not from the os distro can be specified in a <profile><OS>.<arch>.otherpkgs.pkglist file.
 Customized package list files can be specified under /install/custom/netboot/<OS> directory. The generated image will be put in /install/netboot/<OS>/<arch>/<profile>.
+
 If I<imagename> is specified, the package list files are specified in the I<osimage> table and I<linuximage> table. 
+If B<genimage> runs on the Management node, both the I<osimage> table and I<linuximage> table will be updated following the B<genimage> options. And, if there is no I<imagename> called <OS>-<arch>-netboot-<profile> or <OS>-<arch>-statelite-<profile>, the B<genimage> command will create them into I<linuximage> and I<osimage> tables.
 
 The B<genimage> command must be run on a system that is the same architecture as the nodes it will be
 used on.  If the management node is not the same architecture, copy the contents of
@@ -30,6 +32,8 @@ The B<genimage> command will run geninitrd automatically.  (You can run geninitr
 you want to rebuild the initrd.)  After your image is created, you can chroot to the
 image, install any additional software you would like, or make modifications to files, and then run
 B<packimage> to prepare the image for deployment.
+
+The B<genimage> and B<geninitrd> commands will generate two initial ramdisks for B<statelite> and B<stateless>, one is B<initrd-statelite.gz>, the other one is B<initrd-stateless.gz>.
 
 =head1 Parameters
 
@@ -55,9 +59,9 @@ the nodes' nodetype.profile attribute must be set to this same value.
 
 The network interface the diskless node will boot over (e.g. eth0).
 
-=item B<-m> I<mode>
+=item B<--permission> I<permission>
 
-The mode of diskless image, the valid value is statelite. Statelite provides an efficient and flexible diskless solution because most of the OS image is NFS mounted read-only, but a configurable list of directories and files can be read-write. The read-write files can either be persistent across reboots, or volatile (restoring to pristine state after reboot). The configuration can be  done through B<litefile>, B<litetree> and B<statelite> tables. If this option is not specified, regular non-statelite diskless image will be generated.
+The mount permission of B</.statelite> directory for B<statelite> mode, which is only used for B<statelite> mode, and the default permission is 755.
 
 =item B<-n> I<nodenetdrivers>
 
