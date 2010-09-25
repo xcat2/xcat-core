@@ -326,7 +326,6 @@ sub writecec {
 	my ($cecrange, $cwd) = @_;
 	infomsg('Defining CECs...');
 	my $nodes = [noderange($cecrange, 0)];
-	my ($cecstartnum) = $$nodes[0] =~/^\D+(\d+)$/;		# save this value for later
 	if (scalar(@$nodes)) {
 		#my %nodehash;
 		#foreach my $n (@$nodes) { print "n=$n\n"; $nodehash{$n} = { node => $n, groups => 'hmc,all' }; }
@@ -336,9 +335,13 @@ sub writecec {
 	# Using the cec group, write starting-ip in hosts table
 	my $cecstartip = $STANZAS{'xcat-cecs'}->{'starting-ip'};
 	if ($cecstartip) {
-		my ($ipbase, $ipstart) = $cecstartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
+		my ($ipbase, $ip3rd, $ip4th) = $cecstartip =~/^(\d+\.\d+)\.(\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
-		my $regex = '|\D+(\d+)|' . "$ipbase.($ipstart+" . '$1' . "-$cecstartnum)|";
+		my $cechash = parsenoderange($cecrange);
+		my $cecstartnum = $$cechash{'primary-start'};
+		# Math for 4th field:  (ip4th-1+cecnum-cecstartnum)%254 + 1
+		# Math for 3rd field:  (ip4th-1+cecnum-cecstartnum)/254 + ip3rd
+		my $regex = '|\D+(\d+)|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$cecstartnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$cecstartnum)%254+1)|";
 		$tables{'hosts'}->setNodeAttribs('cec', {ip => $regex});
 	}
 	
@@ -478,10 +481,18 @@ sub writesn {
 		$sntab->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>1});
 	}
 	
-	#todo: Write ppc.hcp and ppc.parent
-	#my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
-	#my $regex = '|\D+(\d+)|((($1-1)/' . $cecsperbb . ')+1)|';
-	#$tables{'ppc'}->setNodeAttribs('service', {parent => $regex});
+	# Write ppc.hcp and ppc.parent
+	# Math for SN in BB:  cecnum = ( ( (snnum-1) / snsperbb) * cecsperbb) + snpositioninbb
+	# Math for position:  snpositioninbb = ( ( (snnum-1) % snsperbb) * (cecsperbb-1) ) +  1
+	my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
+	my $snsperbb = $STANZAS{'xcat-lpars'}->{'num-service-nodes-per-bb'};
+	my $cechash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
+	my $base = $$cechash{'primary-base'};
+	my $start = $$cechash{'primary-start'};
+	my $len = length($$cechash{'primary-start'});
+	my $snpositioninbb = '((($1-1)%' . "$snsperbb)*($cecsperbb-1))+$start";
+	my $regex = '|\D+(\d+)|' . "$base(sprintf('%0${len}d'," . '((($1-1)/' . "$snsperbb)*$cecsperbb)+$snpositioninbb))|";
+	$tables{'ppc'}->setNodeAttribs('service', {hcp => $regex, parent => $regex});
 }
 
 
@@ -585,15 +596,61 @@ sub writecompute {
 	$tables{'nodehm'}->setNodeAttribs('compute', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('compute', {netboot => 'yaboot'});
 	
-	#todo: Write the lpar id
-	#$tables{'ppc'}->setNodeAttribs('compute', {id => '1'});
 	
 	#todo: Write regex for xcatmaster and servicenode to point it to its SN
 	
-	#todo: Write ppc.hcp and ppc.parent
-	#my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
-	#my $regex = '|\D+(\d+)|((($1-1)/' . $cecsperbb . ')+1)|';
-	#$tables{'ppc'}->setNodeAttribs('service', {parent => $regex});
+	# Write ppc.hcp and ppc.parent
+	my $lparspercec = $STANZAS{'xcat-lpars'}->{'num-lpars-per-cec'};
+	my $cechash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
+	my $base = $$cechash{'primary-base'};
+	my $start = $$cechash{'primary-start'};
+	my $len = length($$cechash{'primary-start'});
+	# Math:  cecnum = ( nodenum-1) / nodespercec) + cecstartnum 
+	my $regex = '|\D+(\d+)|' . "$base(sprintf('%0${len}d'," . '(($1-1)/' . "$lparspercec)+$start))|";
+	$tables{'ppc'}->setNodeAttribs('compute', {hcp => $regex, parent => $regex});
+	
+	# Write ppc.id (lpar id)
+	if ($lparspercec == 1) { $regex = '1'; }		# this will be faster than doing the calculation below
+	elsif ($lparspercec == 8) {
+		#todo: for now assume 8 means a p7 IH.  Make a different way to determine this is a p7 IH
+		# Math:  lparid = ( ( (nodenum-1) % nodespercec) *4) + 1 
+		$regex = '|\D+(\d+)|(((($1-1)%' . "$lparspercec)*4)+1)|";
+	}
+	else {
+		# Math:  lparid = ( (nodenum-1) % nodespercec) + 1 
+		$regex = '|\D+(\d+)|((($1-1)%' . "$lparspercec)+1)|";
+	}
+	$tables{'ppc'}->setNodeAttribs('compute', {id => $regex});
+}
+
+
+# Parse a noderange like n01-n20, n[01-20], or f[1-2]c[01-10].
+# Returns a hash that contains:  primary-base, primary-start, primary-end, primary-pad, secondary-base, secondary-start, secondary-end, secondary-pad
+sub parsenoderange {
+	my $nr = shift;
+	my $ret = {};
+	
+	# Check for a 2 square bracket range, e.g. f[1-2]c[01-10]
+	if ( $nr =~ /^\s*\S+\[\d+[\-\:]\d+\]\S+\[\d+[\-\:]\d+\]\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}) = $nr =~ /^\s*(\S+)\[(\d+)[\-\:](\d+)\](\S+)\[(\d+)[\-\:](\d+)\]\s*$/;
+		return $ret;
+	}
+	
+	# Check for a square bracket range, e.g. n[01-20]
+	if ( $nr =~ /^\s*\S+\[\d+[\-\:]\d+\]\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}) = $nr =~ /^\s*(\S+)\[(\d+)[\-\:](\d+)\]\s*$/;
+		return $ret;
+	}
+	
+	# Check for normal range, e.g. n01-n20
+	my $base2;
+	if ( $nr =~ /^\s*\D+\d+\-\D+\d+\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $base2, $$ret{'primary-end'}) = $nr =~ /^\s*(\D+)(\d+)\-(\D+)(\d+)\s*$/;
+		if ($$ret{'primary-base'} ne $base2) { return undef; }		# ill-formed range
+		return $ret;
+	}
+	
+	return undef;   # range did not match any of the cases above
 }
 
 

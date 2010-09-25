@@ -64,19 +64,19 @@ Note that currently hostname ranges must have simple <alphachars><integer> forma
 
   xcat-hmcs:
    hostname-range = hmc1-hmc3
-   starting-ip = 10.201.0.1
+   starting-ip = 10.201.1.1
 
   xcat-frames:
    # these are the connections to the BPCs
    hostname-range = bpc1-bpc6
-   starting-ip = 10.202.0.1
+   starting-ip = 10.202.1.1
    num-frames-per-hmc = 2
    vpd-file = vpd.stanza
 
   xcat-cecs:
    # these are the connections to the FSPs
    hostname-range = cec01-cec60
-   starting-ip = 10.203.0.1
+   starting-ip = 10.203.1.1
    supernode-list = supernodelist.txt
 
   xcat-building-blocks:
@@ -194,7 +194,7 @@ nodelist table:  node, groups
 
 hosts table:  node, ip, hostnames, otherinterfaces
 
-ppc table:  node, id
+ppc table:  node, id, hcp, parent
 
 nodetype table:  node, nodetype, arch
 
