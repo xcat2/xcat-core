@@ -3961,24 +3961,26 @@ sub mk_resolv_conf_file
         my $nameserverstr;
         foreach (split /,/, $nameservers)
         {
-            $nameserverstr .= "nameserver $_\n";
-        }
-        chomp($nameserverstr);
-        $cmd = qq~echo $nameserverstr >> $fullname~;
-        if ($::VERBOSE)
-        {
-            my $rsp;
-            push @{$rsp->{data}}, "Add $nameserverstr into $fullname";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
-        $output =
-          xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp;
-            push @{$rsp->{data}}, "Could not add nameservers into $fullname";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            return 1;
+            $nameserverstr = "nameserver $_";
+            chomp($nameserverstr);
+
+            $cmd = qq~echo $nameserverstr >> $fullname~;
+            if ($::VERBOSE)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Add $nameserverstr into $fullname";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+
+            $output =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not add nameservers into $fullname";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }   
         }
     }
     else
