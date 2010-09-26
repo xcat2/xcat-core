@@ -567,7 +567,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			/**
 			 * Add processor
 			 */
-			var addProcLink = $('<a href="#">Add processor</a>');
+			var addProcLink = $('<a href="#">Add temporary processor</a>');
 			addProcLink.bind('click', function(event) {
 				openAddProcDialog(node);
 			});

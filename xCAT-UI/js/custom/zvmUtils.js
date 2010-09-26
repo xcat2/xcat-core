@@ -1007,7 +1007,7 @@ function openAddProcDialog(node) {
 	// Create form to add processor
 	var addProcForm = $('<div class="form"></div>');
 	// Create info bar
-	var info = createInfoBar('Add a processor');
+	var info = createInfoBar('Add a temporary processor');
 	addProcForm.append(info);
 	addProcForm.append('<div><label for="procNode">Processor for:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="' + node + '"/></div>');
 	addProcForm.append('<div><label for="procAddress">Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>');
