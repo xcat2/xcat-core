@@ -1156,7 +1156,8 @@ sub addNodes {
 
   #let updatenode command to handle the normal nodes as a bulk
   if (@normal_nodes>0) {
-    my $nr=join(',',@normal_nodes); 
+    my $nr=join(',',@normal_nodes);
+    my $install_root = xCAT::Utils->getInstallDir();
 
     #get the fanout value
     my %settings=xCAT_monitoring::monitorctrl->getPluginSettings("rmcmon");
@@ -1182,12 +1183,12 @@ sub addNodes {
 	my $nr = join(',', @{$servernodes{$snkey}});
 	my $cmd;
 	if (xCAT::Utils->isLinux()) {
-	    $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcatdsklspost 2 -m $snkey configrmcnode 2>&1";
+	    $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e $install_root/postscripts/xcatdsklspost 2 -m $snkey configrmcnode 2>&1";
 	    print "$cmd\n";
 	}
 	else {
 	    #use -c 2 here to tell xcataixpost that there is only one postscript, download only it. It applies to AIX only     
-	    $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e /install/postscripts/xcataixpost -m $snkey -c 2 configrmcnode 2>&1";
+	    $cmd="XCATBYPASS=Y $fanout_string $::XCATROOT/bin/xdsh $nr -s -e $install_root/postscripts/xcataixpost -m $snkey -c 2 configrmcnode 2>&1";
 	}
 	if (! open (CMD, "$cmd |")) {
 	    reportError("Cannot run command $cmd", $callback);

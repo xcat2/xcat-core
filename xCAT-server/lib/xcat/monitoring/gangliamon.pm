@@ -243,6 +243,7 @@ sub confGmond
     if ($noderef =~ /xCAT_monitoring::gangliamon/) {
 		$noderef=shift;
     }
+
     my $scope=shift;
     my $callback=shift;
     my $configure_file = '';
@@ -345,6 +346,7 @@ sub confGmond
     if ($scope)
     {#opening if scope of confGmond
 		my @children;
+	    my $install_root = xCAT::Utils->getInstallDir();
 		foreach my $key (keys (%$pPairHash)) { #opening for each
 		    my @key_a=split(':', $key);
 		    if (! $iphash{$key_a[0]}) {  next; }
@@ -362,7 +364,7 @@ sub confGmond
 		    } #closing foreach2
 		    
 		    my $node = join(',',@children);
-		    my $res_cp = `XCATBYPASS=Y $::XCATROOT/bin/xdcp $node /install/postscripts/confGang /tmp 2>&1`;
+		    my $res_cp = `XCATBYPASS=Y $::XCATROOT/bin/xdcp $node $install_root/postscripts/confGang /tmp 2>&1`;
 		    if($?)
 		    { #openinf if ?
 				if($callback) {
