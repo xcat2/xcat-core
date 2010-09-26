@@ -2237,6 +2237,7 @@ function createZProvisionNew(inst) {
 				&& inputs.eq(i).attr('name') != 'os'
 				&& inputs.eq(i).attr('type') != 'password') {
 				inputs.eq(i).css('border', 'solid #FF0000 1px');
+				errMsg = errMsg + 'You are missing inputs.<br>';
 				ready = false;
 			} else {
 				inputs.eq(i).css('border', 'solid #BDBDBD 1px');
