@@ -2115,7 +2115,7 @@ function createZProvisionNew(inst) {
 	provNew.append(os);
 
 	// Create user entry input
-	var userEntry = $('<div><label for="userEntry">User entry:</label><textarea/></textarea>');
+	var userEntry = $('<div><label for="userEntry">Directory entry:</label><textarea/></textarea>');
 	provNew.append(userEntry);
 
 	// Create disk table
