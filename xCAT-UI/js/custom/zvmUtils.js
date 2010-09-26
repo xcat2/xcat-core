@@ -2237,7 +2237,6 @@ function createZProvisionNew(inst) {
 				&& inputs.eq(i).attr('name') != 'os'
 				&& inputs.eq(i).attr('type') != 'password') {
 				inputs.eq(i).css('border', 'solid #FF0000 1px');
-				errMsg = errMsg + 'You are missing inputs.<br>';
 				ready = false;
 			} else {
 				inputs.eq(i).css('border', 'solid #BDBDBD 1px');
@@ -2252,6 +2251,11 @@ function createZProvisionNew(inst) {
 			ready = false;
 		} else {
 			thisUserEntry.css('border', 'solid #BDBDBD 1px');
+		}
+		
+		// Show error message for missing inputs
+		if (!ready) {
+			errMsg = errMsg + 'You are missing inputs.<br>';
 		}
 
 		// Check if user entry contains user ID
