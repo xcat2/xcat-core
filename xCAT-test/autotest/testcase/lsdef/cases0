@@ -1,4 +1,5 @@
 start:lsdef_null
+description: lsdef without any flag
 cmd:mkdef -t node -o testnode groups=all
 cmd:lsdef
 check:rc==0
@@ -7,6 +8,7 @@ cmd:rmdef testnode
 end
 
 start:lsdef_a
+description: lsdef -a and lsdef --all
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
@@ -22,6 +24,7 @@ cmd:rmdef -t node testnode
 end
 
 start:lsdef_t_o_l
+description: lsdef -o -l
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
@@ -40,6 +43,7 @@ cmd:rmdef -t node testnode
 end
 
 start:lsdef_t_o_l_z
+description: lsdef -l -z
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
@@ -59,6 +63,7 @@ cmd:rmdef -t node testnode
 end
 
 start:lsdef_t
+description: lsdef -t
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
@@ -72,6 +77,14 @@ cmd:rmdef -t node testnode
 end
 
 start:lsdef_t_i_o
+description: lsdef -i
+cmd:mkdef -t node -o testnode groups=all
+check:rc==0
+cmd:lsdef -t node -o testnode -i groups
+check:rc==0
+check:output=~groups=all
+check:output=~testnode
+cmd:rmdef -t node testnode
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
 check:rc==0
 cmd:lsdef -t network -i net
@@ -98,7 +111,23 @@ check:output=~testnode3
 check:output=~testnode4
 check:output!=testnode1
 check:output!=testnode2
+cmd:lsdef -t node -w cons==ipmi -w groups==linux
+check:rc==0
+check:output=~testnode3
+check:output=~testnode4
+check:output!=testnode1
+check:output!=testnode2
 cmd:rmdef -t node testnode1-testnode4
+end
+
+start:lsdef_s
+description: lsdef -s
+cmd:mkdef -t node -o testnode groups=all
+check:rc==0
+cmd:lsdef -s testnode
+check:rc==0
+check:output=~testnode\s+\(node\)
+cmd:rmdef -t node testnode
 end
 
 start:lsdef_t_err

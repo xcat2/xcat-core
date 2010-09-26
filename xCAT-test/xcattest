@@ -434,6 +434,9 @@ sub loadcase
         while($line=<FILE>){
             $line = &trim($line);
             next if(length($line) == 0);
+            #description line is only a comment
+            next if($line =~ /^description\s*:/);
+
             if($line =~ /^start\s*:\s*(\w+)/){
                 $skip = 0;
                 my $name = $1;
