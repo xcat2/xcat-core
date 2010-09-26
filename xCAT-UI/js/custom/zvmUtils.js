@@ -2257,7 +2257,7 @@ function createZProvisionNew(inst) {
 		var thisUserId = $('#' + thisTabId + ' input[name=userId]:visible');
 		var pos = thisUserEntry.val().indexOf('USER ' + thisUserId.val().toUpperCase());
 		if (pos < 0) {
-			errMsg = errMsg + 'The user entry does not contain the correct user ID.<br>';
+			errMsg = errMsg + 'The directory entry does not contain the correct user ID.<br>';
 			ready = false;
 		}
 
