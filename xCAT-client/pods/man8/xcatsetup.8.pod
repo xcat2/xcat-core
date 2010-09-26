@@ -48,9 +48,21 @@ Run nodeset and rpower/rnetboot to boot up the nodes.
 =back
 
 The B<xcatsetup> command is intended as a quick way to fill out the database for a cluster that has very regular
-naming patterns.  The only thing is done is fill in database attributes.  If your cluster does not follow consistent
+naming patterns.  The only thing it does is fill in database attributes.  If your cluster does not follow consistent
 naming patterns, or has some other special configuration, you should define attribute values manually instead of using
-B<xcatsetup>.
+B<xcatsetup>.  The cluster config file is meant to be an easy way to prime the database; it is not meant to be a
+long living file that you update as the cluster changes.  If you do want to run xcatsetup again at a later time,
+because, for example, you added a lot of nodes, you should put the total list of nodes in the config file, not just
+the new ones.  This is because xcatsetup uses some regular expressions for groups (e.g. frame, cec, compute) that would
+be calculated incorrectly if the config file told xcatsetup about only the new nodes.
+
+Speaking of regular expressions, xcatsetup creates some pretty complicated regular expressions in the database.
+These are useful because they keep most of the tables small, even for large clusters.  But if you want to
+tweak them, they may be hard to understand.  If after running xcatsetup, you want to convert your database to
+use individual rows for every node, you can do the following:
+
+  lsdef -z all >tmp.stanza
+  cat tmp.stanza | chdef -z
 
 Note:  currently the B<xcatsetup> command has only been implemented and tested for system p servers.
 
@@ -123,7 +135,7 @@ in L<xcatstanzafile(5)|xcatstanzafile.5>.  Here is a sample file:
     mtm=9A00-100
     side=A
 
-The supernode-list file lists what supernode numbers should be given to each CEC in each frame.
+The B<supernode-list> file lists what supernode numbers should be given to each CEC in each frame.
 Here is a sample file:
 
   bpc01: 0, 1, 16

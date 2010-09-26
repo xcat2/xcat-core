@@ -556,7 +556,6 @@ sub writecompute {
 	my $range = shift;
 	infomsg('Defining compute nodes...');
 	my $nodes = [noderange($range, 0)];
-	my ($startnum) = $$nodes[0] =~/^\D+(\d+)$/;		# save this value for later
 	if (scalar(@$nodes)) {
 		$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'compute,all' });
 	}
@@ -564,9 +563,14 @@ sub writecompute {
 	# Write regex for: hosts.node, hosts.ip
 	my $startip = $STANZAS{'xcat-lpars'}->{'compute-node-starting-ip'};
 	if ($startip) {
-		my ($ipbase, $ipstart) = $startip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
+		my ($ipbase, $ip3rd, $ip4th) = $startip =~/^(\d+\.\d+)\.(\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
-		my $regex = '|\D+(\d+)|' . "$ipbase.($ipstart+" . '$1' . "-$startnum)|";
+		my $nodehash = parsenoderange($range);
+		my $startnum = $$nodehash{'primary-start'};
+		# Math for 4th field:  (ip4th-1+nodenum-startnum)%254 + 1
+		# Math for 3rd field:  (ip4th-1+nodenum-startnum)/254 + ip3rd
+		my $regex = '|\D+(\d+)|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$startnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$startnum)%254+1)|";
+		#my $regex = '|\D+(\d+)|' . "$ipbase.($ipstart+" . '$1' . "-$startnum)|";
 		my %hash = (ip => $regex);
 		my $otherint = $STANZAS{'xcat-lpars'}->{'compute-node-otherinterfaces'};
 		if ($otherint) {
@@ -574,8 +578,9 @@ sub writecompute {
 			my @ifs = split(/[\s,]+/, $otherint);
 			foreach my $if (@ifs) {
 				my ($nic, $startip) = split(/:/, $if);
-				($ipbase, $ipstart) = $startip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
-				$if = "$nic:$ipbase.($ipstart+" . '$1' . "-$startnum)";
+				($ipbase, $ip3rd, $ip4th) = $startip =~/^(\d+\.\d+)\.(\d+)\.(\d+)$/;
+				#$if = "$nic:$ipbase.($ipstart+" . '$1' . "-$startnum)";
+				$if = "$nic:$ipbase.((${ip4th}-1+" . '$1' . "-$startnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$startnum)%254+1)|";
 			}
 			$regex = '|\D+(\d+)|' . join(',', @ifs) . '|';
 			#print "regex=$regex\n";
