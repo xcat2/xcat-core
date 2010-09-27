@@ -468,12 +468,20 @@ if ($kernelver ne $basekernelver) {
 
     if ( -e "/lib/modules/$kernelver" ) {
         system("cp -r -a /lib/modules/$kernelver $rootimg_dir/lib/modules/");
-        if ($basekernelver) {
-            system("rm -rf $rootimg_dir/lib/modules/$basekernelver/");
-        }
     } else {
         xdie("couldn't find /lib/modules/$kernelver");
     }
+}
+
+# copy the kernel to $destdir
+if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
+    cp("$rootimg_dir/boot/vmlinux-$kernelver", "$destdir/kernel");
+} elsif ( -e "$rootimg_dir/boot/vmlinuz-$kernelver") {
+    cp("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
+} elsif ( -e "$rootimg_dir/boot/image-$kernelver") {
+    cp("$rootimg_dir/boot/image-$kernelver", "$destdir/kernel");
+} else {
+    xdie("couldn't find the kernel file matched $kernelver in $rootimg_dir/boot");
 }
 
 # Load driver update disk, and copy them to the root image
@@ -1454,12 +1462,6 @@ sub generic_post { #This function is meant to leave the image in a state approxi
         system("cd $rootimg_dir/etc/rc3.d; ln -sf ../init.d/xcatpostinit S61xcatpostinit");
 	}
    
-   if ( -e "$rootimg_dir/boot/vmlinuz-$kernelver" ) {
-        copy("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
-   } else {
-        xdie "couldn't find vmlinuz-$kernelver under $rootimg/boot.";
-   }
-
 } 
 
 

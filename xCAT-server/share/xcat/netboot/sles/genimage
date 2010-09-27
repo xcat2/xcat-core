@@ -9,7 +9,7 @@ use lib "../imgutils";
 
 use File::Basename;
 use File::Path;
-use File::Copy;
+use File::Copy qw/copy cp mv move/;
 use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
@@ -514,12 +514,12 @@ unless ($basekernelver) {
     @KVERS=<$rootimg_dir/lib/modules/*> unless (scalar @KVERS);
     $basekernelver = basename(pop @KVERS) if (scalar @KVERS);
     $basekernelver = `uname -r` unless ($basekernelver);
-
-    $kernelver = $basekernelver unless ($kernelver);
-    chomp $kernelver;
-    $updates{kernelver} = $kernelver if ($needUpdateTable);
-
 }
+
+$kernelver = $basekernelver unless ($kernelver);
+chomp $kernelver;
+$updates{kernelver} = $kernelver if ($needUpdateTable);
+
 
 
 if ($kernelver ne $basekernelver) {
@@ -527,7 +527,6 @@ if ($kernelver ne $basekernelver) {
     # the modules should be in /lib/modules/$kernelver
     if ( -e "/boot/vmlinux-$kernelver") {
         copy("/boot/vmlinux-$kernelver", "$rootimg_dir/boot/");
-        system("cp -r /lib/modules/$kernelver $rootimg_dir/lib/modules/");
     } elsif ( -e "/boot/vmlinuz-$kernelver") {
         copy("/boot/vmlinuz-$kernelver", "$rootimg_dir/boot/");
     } elsif ( -e "/boot/image-$kernelver") {
@@ -535,14 +534,23 @@ if ($kernelver ne $basekernelver) {
     } else {
         xdie "couldnot find the kernel file matched $kernelver in /boot!";
     }
+   
     if ( -e "/lib/modules/$kernelver" ) {
         system("cp -r /lib/modules/$kernelver $rootimg_dir/lib/modules/");
-        if($basekernelver) {
-            system("rm -rf $rootimg_dir/lib/modules/$basekernelver/");
-        }
     } else {
         xdie "couldnot find /lib/modules/$kernelver!";
     }
+}
+
+# copy the kernel to $destdir
+if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
+    copy("$rootimg_dir/boot/vmlinux-$kernelver", "$destdir/kernel");
+} elsif ( -e "$rootimg_dir/boot/vmlinuz-$kernelver") {
+    copy("$rootimg_dir/boot/vmlinuz-$kernelver", "$destdir/kernel");
+} elsif ( -e "$rootimg_dir/boot/image-$kernelver") {
+    copy("$rootimg_dir/boot/image-$kernelver", "$destdir/kernel");
+} else {
+    xdie "couldn't find the kernel file matched $kernelver in $rootimg_dir/boot !";
 }
 
 #-- run postinstall script
@@ -572,7 +580,7 @@ if ($needUpdateTable) {
     # now, update the linuximage and osimage tables
     # TODO: do statelite and stateless share the same attributes? currently, I will update both of them
     if ($imagename) {
-        $keychain{'imagename'} = $imagename;
+        $keyhash{'imagename'} = $imagename;
         $linuximagetab->setAttribs(\%keyhash, \%updates);
         $linuximagetab->commit;
     } else {
@@ -719,18 +727,6 @@ sub mkinitrd {
         push @ndrivers, qw{sunrpc.ko lockd.ko nfs_acl.ko fscache.ko auth_rpcgss.ko exportfs.ko nfsd.ko nfs.ko};
         
      }
-
-    if(-r "$rootimg_dir/boot/vmlinux-$kernelver") { # SLES use vmlinux-* as its name
-        copy("$rootimg_dir/boot/vmlinux-$kernelver","$destdir/kernel");
-    } elsif(-r "$rootimg_dir/boot/vmlinuz-$kernelver") { # OpenSuSE maight use vmlinuz-* as its name
-        copy("$rootimg_dir/boot/vmlinuz-$kernelver","$destdir/kernel");
-    } elsif(-r "$rootimg_dir/boot/image-$kernelver") { # SLES on s390x use image-* as its name
-        copy("$rootimg_dir/boot/image-$kernelver","$destdir/kernel");
-    } else {
-		xdie("Cannot find suitable kernel file for $kernelver");
-    }
-
-
 
     mkpath("/tmp/xcatinitrd.$$/bin");
     symlink("bin","/tmp/xcatinitrd.$$/sbin");
