@@ -1552,6 +1552,18 @@ sub rmobjdefs
                 foreach my $key (keys %{$tablehash{$table}{$obj}{$attr}})
                 {
 
+                    #multiple keys support
+                    if (defined($keyhash{$key}) && ($keyhash{$key} ne $tablehash{$table}{$obj}{$attr}{$key}))
+                    {
+                        my %tmpkeyhash;
+                        # copy hash
+                        foreach my $hashkey (keys %keyhash)
+                        {
+                            $tmpkeyhash{$hashkey} = $keyhash{$hashkey};
+                        }
+                        push @all_keyhash, \%tmpkeyhash;
+                        #$thistable->delEntries(\@all_keyhash);
+                    }
                     # ex. $keyhash{node}=c68m3hvp01
                     $keyhash{$key} = $tablehash{$table}{$obj}{$attr}{$key};
                 }
