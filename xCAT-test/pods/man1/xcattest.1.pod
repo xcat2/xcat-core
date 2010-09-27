@@ -1,20 +1,22 @@
 =head1 NAME
 
-B<xcattest> - Run xcat test cases. 
+B<xcattest> - Run xCAT test cases. 
 
 =head1 SYNOPSIS
 
 B<xcattest> [B<-?|-h>] 
 
-B<xcattest> [B<-f> I<configure file>] [B<-b> I<case bundle list>] [B<--restore>]
+B<xcattest> [B<-f> I<configure file>] [B<-b> I<case bundle list>] [B<-l>]
 
-B<xcattest> [B<-f> I<configure file>] [B<-t> I<case list>] [B<--restore>]
+B<xcattest> [B<-f> I<configure file>] [B<-t> I<case list>]
 
-B<xcattest> [B<-f> I<configure file>] [B<-c> I<cmd list>] [B<-l>] [B<--restore>]
+B<xcattest> [B<-f> I<configure file>] [B<-c> I<cmd list>] [B<-l>]
 
 =head1 DESCRIPTION
 
-This command is used to run xCAT automated test and output the result to /opt/xcat/share/xcat/tool/xcat/result. All test cases is in the directory /opt/xcat/share/xcat/tools/autotest. Now there are some cases for basic function of xCAT. Each case has a unique case name. The cases for I<command> is place in directory /opt/xcat/share/xcat/tools/autotest/I<command>. When xcattest is run with -c , it will run all cases in the specified directory. User can add custom cases in the corresponding directory or add new directory if there is no corresponding directory.
+The xcattest command runs test cases to verify the xCAT functionalities, it can be used when you want to verify the xCAT functionalities for whatever reason, for example, to ensure the code changes you made do not break the existing commands; to run acceptance test for new build you got; to verify the xCAT snapshot build or development build before putting it onto your production system. The xcattest command is part of the xCAT package xCAT-test.
+
+The root directory for the xCAT-test package is /opt/xcat/share/xcat/tools/autotest/. All test cases are in the sub directory I<testcase>, indexed by the xCAT command, you can add your own test cases according to the test cases format below. The subdirectory I<bundle> contains all the test cases bundles definition files, you can customize or create any test cases bundle file as required. The testing result information will be written into the subdirectory I<result>, the timestamps are used as the postfixes for all the result files. xCAT-test package ships two configuration files template I<aix.conf.template> and I<linux.conf.template> for AIX and Linux environment, you can use the template files as the start point of making your own configuration file.
 
 =head1 OPTIONS
 
@@ -26,47 +28,45 @@ Display usage message.
 
 =item B<-f> I<configure file>
 
-Read configuration information from the configure file, default configure file is  /opt/xcat/share/xcat/tools/autotest/default.conf. See /opt/xcat/share/xcat/tools/autotest/*.conf.template for example.
-             	
+Specifies the configuration file, if not specified, the default configure file is /opt/xcat/share/xcat/tools/autotest/default.conf.
+
 =item B<-b> I<case bundle list>
 
-Comma separated list of file which contains cases which will be run. Default to run all cases.
-             	
-=item B<-t> I<case list>
+Comma separated list of test cases bundle files, each test cases bundle can contain multiple lines and each line for one test case name. 
 
-Comma separated list of cases which will be run. Default to run all cases.
-							
+=item B<-t> I<cases list>
+
+Comma separated list of test cases that will be run. 
+
 =item B<-c> I<cmd list>
 
-Comma separated list of commands which the related cases will be run. Default to run all cases.
+Comma separated list of commands which will be tested, i.e., all the test cases under the command sub directory will be run.
 
 =item B<-l>
 
-Display all available cases.
-            	 
-=item B<--restore>
-
-Restore test environment after test.
+Display the test cases names specified by the flag -b, -t or -c.
 
 =back
-            
+
 =head1 RETURN VALUE
 
 0 The command completed successfully.
 
 1 An error has occurred.
 
-=head1 TEST CASE
+=head1 TEST CASE FORMAT
 
-The cases is specified as:
+The xCAT-test test cases are in flat text format, the testing framework will parse the test cases line by line, here is an example of the test case:
 
   #required, case name
   start:case name
-  #optional, precondition
+  #optional, description of the test case
+  description: what the test case is for?
+  #optional, environment requirements 
   os:AIX/Linux
-  #optional, precondition
+  #optional, environment requirements
   arch:ppc/x86
-  #optional, precondition
+  #optional, environment requirements
   hcp:hmc/mm/bmc/fsp
   #required, command need to run
   cmd:comand
@@ -76,37 +76,29 @@ The cases is specified as:
   check:output== or != or =~ or !~ output check string
   end
 
-The I<output check string> can be regular expression.
+B<Note>: Each test case can have more than one I<cmd> sections and each I<cmd> section can have more than one I<check:rc> sections and more than one I<check:output> sections, the I<output check string> can include regular expressions.
 
 =head1 EXAMPLES
 
 =over 4
 
-=item 1.
-
-To run all  test cases related command rpower:
+1. To run all  test cases related command rpower:
 
   xcattest -c /tmp/config -c rpower
 	
-=item 2. 
-
-To run custom bundle:
+2. To run customized bundle:
 
   xcattest -l  > /tmp/custom.bundle
-  edit custom.bundle
+  Modify custom.bundle
   xcattest -b custom.bundle
 	
-=item 3.
+3. To run specified test cases.
 
-To run specified test cases, and restore test environment after test.
+  xcattest -t lsdef_t_o_l_z 
 
-  xcattest -t lsdef_t_o_l_z --restore
+4. To add a new case to test chvm. In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases. 
 
-=item 4.
-
-To add a new case to test chvm. In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases. 
-
-  add a new file filename in /opt/xcat/share/xcat/tools/autotest/chvm
+  add a new test case file in /opt/xcat/share/xcat/tools/autotest/chvm
   edit filename
   start:chvm_custom
   hcp:hmc
@@ -126,17 +118,16 @@ To add a new case to test chvm. In the example, we assume that the min_mem shoul
 
 =back
 
-=head1 INLINE FUNCTION
+=head1 INLINE FUNCTIONS
 
-There are some inline functions in the automated test tool. The function can be called in test cases as __FUNCTIONNAME(PARAMTERLIST)__. The function can be used in I<command> and I<output check string>. 
-The functions are:
+The xCAT-test testing framework provides some inline functions. The inline functions can be called in test cases as __FUNCTIONNAME(PARAMTERLIST)__ to get some necessary attributes defined in the configuration file. The inline functions can be used in I<cmd> section and the I<check:output> section. 
 
 1. B<GETNODEATTR(nodename, attribute)> To get the value of specified node's attribute
 
 2. B<INC(digit)> To get value of digit+1.
 
 For example:
-      To run rscan command with hcp point of compute node specified in configuration file
+      To run rscan command against the hardware control point of compute node specified in configuration file
       cmd: rscan __GETNODEATTR($$CN, hcp)__ -z
       
 =head1 FILES
