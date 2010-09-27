@@ -66,8 +66,8 @@ while :; do
         SERIAL=`(/bin/vpddecode|grep "Box Serial" || echo "unknown unknown unknown: unknown")|awk '{print $4}'`
       fi
       if [ "$MTM" == "unknown" -a -x /bin/dmidecode ]; then #This gets a bit hackish... iDataplex
-        MTM=`dmidecode |grep -A4 "^System Information"|grep "Product Name"|awk -F'[' '{print $2}'|awk -F']' '{print $1}'`
-        SERIAL=`dmidecode |grep -A4 "^System Information"|grep "Serial Number"|awk -F: '{print $2}'`
+        MTM=`dmidecode |grep -A4 "^System Information"|grep "Product Name"|awk -F'[' '{print $2}'|awk -F']' '{print $1}'|head -n 1`
+        SERIAL=`dmidecode |grep -A4 "^System Information"|grep "Serial Number"|awk -F: '{print $2}'|head -n 1`
       fi
       if [ -r /proc/device-tree/model ]; then
         MTM=`cat /proc/device-tree/model |awk -F, '{print $2}'`
