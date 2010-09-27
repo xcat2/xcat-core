@@ -3,9 +3,9 @@
 ./usr/include*
 ./usr/lib/locale*
 ./usr/lib64/perl5/Encode/CN*
-./usr/lib/perl5/Encode/JP*
-./usr/lib/perl5/Encode/TW*
-./usr/lib/perl5/Encode/KR*
+./usr/lib64/perl5/Encode/JP*
+./usr/lib64/perl5/Encode/TW*
+./usr/lib64/perl5/Encode/KR*
 ./lib/kbd/keymaps/i386*
 ./lib/kbd/keymaps/mac*
 ./lib/kdb/keymaps/include*
