@@ -225,11 +225,16 @@ sub genMac { #Generates a mac address for a node, does NOT assure uniqueness, ca
         $tail =~ s/(..)(..)(..)/:$1:$2:$3/;
         return $prefix.$tail;
     }
-    my $allbutmult = 0xfeff; # to & with a number to ensure multicast bit is *not* set
-    my $locallyadministered = 0x200; # to | with the 16 MSBs to indicate a local mac
-    my $leading = int(rand(0xffff));
-    $leading = $leading & $allbutmult;
-    $leading = $leading | $locallyadministered;
+    #my $allbutmult = 0xfeff; # to & with a number to ensure multicast bit is *not* set
+    #my $locallyadministered = 0x200; # to | with the 16 MSBs to indicate a local mac
+    #my $leading = int(rand(0xffff));
+    #$leading = $leading & $allbutmult;
+    #$leading = $leading | $locallyadministered;
+    #for the header, we used to use all 14 possible bits, however, if a guest mac starts with 0xfe then libvirt will construct a bridge that looks identical
+    #First thought was to go to 13 bits, but by fixing our generated mac addresses to always start with the same byte and still be unique
+    #this induces libvirt to do unique TAP mac addresses
+    my $leading = int(rand(0xff));
+    $leading = $leading & 0x4200;
     #If this nodename is a resolvable name, we'll use that for the other 32 bits
     my $low32;
     my $n;
