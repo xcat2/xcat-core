@@ -1,0 +1,12 @@
+#  Sample package list for installing all IBM HPC products in a
+#  RHEL6 ppc64   minimal  diskless image
+
+#not INCLUDE:/opt/xcat/share/xcat/netboot/rh/compute.rhel6.ppc64.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/min-IBMhpc.rhel6.ppc64.pkglist#
+#not INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/min-compilers.pkglist#
+#not INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/min-essl.pkglist#
+#not INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/min-loadl.pkglist#
+#not INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/min-pe.pkglist#
+#not INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/rsct.pkglist#
+
+

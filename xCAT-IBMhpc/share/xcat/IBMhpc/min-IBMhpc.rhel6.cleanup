@@ -1,0 +1,35 @@
+#!/bin/sh
+# This script should be run as a postinstall script from genimage when
+#  creating minimal diskless images
+# It will remove various rpms from the image that are probably not needed
+#  for runtime compute nodes
+# Review this script carefully in case you need any of these rpms in your
+#  image
+#
+#-- $1 = install root (chroot directory for profile)
+#-- $2 = OS version
+#-- $3 = architecture
+#-- $4 = profile name
+#-- $5 = work dir (where genimage is located)
+#--
+#--
+installroot=$1
+osver=$2
+arch=$3
+profile=$4
+workdir=$5
+
+#uninstall the ibm-java2 and rpms pulled in by it
+rpm -e  --root $installroot ibm-java2-ppc64-jre.ppc64 libXp.ppc libXp.ppc64  
+
+#uninstall the rpms pulled in by LoadL_resmgr
+rpm -e --nodeps --root $installroot libX11.ppc libX11.ppc64  libX11-common libXext.ppc libXext.ppc64 libXScrnSaver.ppc64 libXau.ppc libXau.ppc64 libICE.ppc64 libSM.ppc64 libXmu.ppc64 libXt.ppc64 libXtst.ppc64 libXi.ppc64 libxcb.ppc libxcb.ppc64 libstdc++.ppc libstdc++.ppc64 
+
+#uninstall the rpms pulled in by vacpp.rte
+rpm -e --nodeps --root $installroot gcc.ppc64 gcc-c++.ppc64  cpp.ppc64 glibc-devel.ppc glibc-devel.ppc64 glibc-headers.ppc64  libstdc++-devel.ppc libstdc++-devel.ppc64   
+
+#uninstall rpms that should not be on a compute node
+#rpm -e --root $installroot libjpeg libtiff fontconfig freetype
+
+#uninstall yast2 rpms
+#rpm -e --root $installroot yast2 yast2-bootloader yast2-kdump yast2-packager yast2-storage yast2-branding-SLES yast2-core yast2-hardware-detection yast2-ncurses-pkg yast2-perl-bindings yast2-pkg-bindings yast2-theme-SLE yast2-transfer yast2-xml yast2-ycp-ui-bindings yast2-country-data yast2-libyui yast2-ncurses yast2-storage-lib
