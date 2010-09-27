@@ -234,7 +234,7 @@ sub genMac { #Generates a mac address for a node, does NOT assure uniqueness, ca
     #First thought was to go to 13 bits, but by fixing our generated mac addresses to always start with the same byte and still be unique
     #this induces libvirt to do unique TAP mac addresses
     my $leading = int(rand(0xff));
-    $leading = $leading & 0x4200;
+    $leading = $leading | 0x4200;
     #If this nodename is a resolvable name, we'll use that for the other 32 bits
     my $low32;
     my $n;
