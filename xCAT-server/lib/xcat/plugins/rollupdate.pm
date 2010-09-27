@@ -764,6 +764,14 @@ sub ll_jobs {
                 next ugloop;
             }
         }
+        if ( ($machinecount == 0) && ($::updateall) ) {
+            my $rsp;
+            push @{ $rsp->{data} },
+"\"updateall=yes\" and \"update_if_down=no\", but there are no nodes specifed in the updateall noderange that are currently active in LoadLeveler.  Update for updategroup $ugname is canceled.";
+            xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+            ++$rc;
+            next ugloop;
+        }
 
         if ( defined($nodelist) ) { $nodelist =~ s/^\,//; }
         # Build updategroup data file 
@@ -813,12 +821,11 @@ sub ll_jobs {
         close($UGDFFILE);
         chown( $uid, $gid, $ugdf_file );
 
-        if ( defined($machinelist) || $::updateall ) {
+        if ($machinecount > 0) {
             my $llhl_file;
             if ( !$::updateall ) {
-                $machinelist =~ s/^\s+//;
-
                 # Build LL hostlist file
+                $machinelist =~ s/^\s+//;
                 my $hllines = $machinelist;
                 $hllines =~ s/"//g;
                 $hllines =~ s/\s+/\n/g;
