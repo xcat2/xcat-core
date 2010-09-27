@@ -4,7 +4,7 @@ check:rc!=0
 check:output=~Usage
 end
 
-start:rmdef_t_o_attr
+start:rmdef_t_o_node
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
 cmd:lsdef -t node testnode,testnode1
@@ -15,6 +15,85 @@ check:rc==0
 cmd:lsdef -t node testnode,testnode1
 check:output=~Could not find an object named 'testnode' of type 'node'.
 check:output=~Could not find an object named 'testnode1' of type 'node'.
+end
+
+start:rmdef_t_node
+cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
+check:rc==0
+cmd:lsdef -t node testnode,testnode1
+check:output=~testnode
+check:output=~testnode1
+cmd:rmdef -t node testnode,testnode1
+check:rc==0
+cmd:lsdef -t node testnode,testnode1
+check:output=~Could not find an object named 'testnode' of type 'node'.
+check:output=~Could not find an object named 'testnode1' of type 'node'.
+end
+
+start:rmdef_node
+cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
+check:rc==0
+cmd:lsdef -t node testnode,testnode1
+check:output=~testnode
+check:output=~testnode1
+cmd:rmdef testnode,testnode1
+check:rc==0
+cmd:lsdef -t node testnode,testnode1
+check:output=~Could not find an object named 'testnode' of type 'node'.
+check:output=~Could not find an object named 'testnode1' of type 'node'.
+end
+
+start:rmdef_t_o_network
+cmd:mkdef -t network -o testnet net=1.2.3.0 mask=255.0.0.0 gateway=1.2.3.1 
+check:rc==0
+cmd:lsdef -t network
+check:output=~testnet
+cmd:rmdef -t network -o testnet
+check:rc==0
+cmd:lsdef -t network testnet
+check:output=~Could not find an object named 'testnet' of type 'network'.
+end
+
+start:rmdef_group
+description:rmdef to remove static node group
+cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
+check:rc==0
+cmd:mkdef -t group -o testgrp members=testnode1,testnode2
+check:rc==0
+cmd:lsdef -s testgrp
+check:rc==0
+check:output=~testnode1
+check:output=~testnode2
+cmd:rmdef -t node -o testgrp
+check:rc=0
+cmd:lsdef -t node testnode1,testnode2
+check:output=~Could not find an object named 'testnode1' of type 'node'.
+check:output=~Could not find an object named 'testnode2' of type 'node'.
+cmd:rmdef -t group -o testgrp
+check:rc==0
+cmd:lsdef -t group -o testgrp
+check:output=~Could not find an object named 'testgrp' of type 'group'.
+end
+
+start:rmdef_dynamic_group
+description:rmdef to remove dynamic node group
+cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
+check:rc==0
+cmd:mkdef -t group -o dyngrp -d -w mgt==hmc -w cons==hmc -w groups==all,systemp
+check:rc==0
+cmd:lsdef -s dyngrp
+check:rc==0
+check:output=~testnode1
+check:output=~testnode2
+cmd:rmdef -t node -o dyngrp
+check:rc=0
+cmd:lsdef -t node testnode1,testnode2
+check:output=~Could not find an object named 'testnode1' of type 'node'.
+check:output=~Could not find an object named 'testnode2' of type 'node'.
+cmd:rmdef -t group -o dyngrp
+check:rc==0
+cmd:lsdef -t group -o dyngrp
+check:output=~Could not find an object named 'dyngrp' of type 'group'.
 end
 
 start:rmdef_f_all
