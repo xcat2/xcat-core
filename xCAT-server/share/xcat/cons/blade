@@ -86,6 +86,7 @@ sub getans {
         $mm = $rsp->{node}->[0]->{mm}->[0];
         $username = $rsp->{node}->[0]->{username}->[0];
         $slot = $rsp->{node}->[0]->{slot}->[0];
+        $slot =~ s/-.*//; #remove range info if multi-wide blade
     }
 }
 my $cmdref={

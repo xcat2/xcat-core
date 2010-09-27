@@ -654,6 +654,10 @@ sub find_nameserver_for_dns {
             push @rrcontent,"$name IN A $_";
         }
     }
+    if ($ctx->{deletemode}) {
+        push @rrcontent,"$name TXT";
+        push @rrcontent,"$name A";
+    }
     if ($zone =~ /IN-ADDR.ARPA/) { #reverse style
         @rrcontent = ("$rname IN PTR $name");
     }
