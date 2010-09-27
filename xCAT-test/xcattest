@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Data::Dumper;
+use Term::ANSIColor;
 
 BEGIN
 {
@@ -114,7 +115,14 @@ sub log_this
         return;
     }
     print LOG join("\n", @_), "\n";
-    print join("\n", @_), "\n";
+    my $msg = join("\n", @_);
+    if ($msg =~ /\[Pass\]/) {
+        print color("green"), "$msg\n", color("reset");
+    } elsif ($msg =~ /\[Failed\]/) {
+        print color("red"), "$msg\n", color("reset");
+    } else {
+        print "$msg\n";
+    }
 }
 
 sub log_error
@@ -434,7 +442,9 @@ sub loadcase
         while($line=<FILE>){
             $line = &trim($line);
             next if(length($line) == 0);
-            #description line is only a comment
+            #skip comment lines
+            next if($line =~ /^\s*#/);
+            #TODO: description line is treated as a comment line for now
             next if($line =~ /^description\s*:/);
 
             if($line =~ /^start\s*:\s*(\w+)/){
