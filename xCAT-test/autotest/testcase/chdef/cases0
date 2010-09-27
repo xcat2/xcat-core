@@ -76,6 +76,108 @@ cmd:rmdef -t node testnode
 cmd:rmdef -t node orignode
 end
 
+start:chdef_group
+description:chdef with node group
+cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
+check:rc==0
+cmd:mkdef -t node -o testnode3-testnode4 mgt=ipmi cons=ipmi groups=all,systemx
+check:rc==0
+cmd:mkdef -t group -o testgrp members=testnode1,testnode3
+check:rc==0
+cmd:lsdef -s testgrp
+check:rc==0
+check:output=~testnode1
+check:output=~testnode3
+check:output!~testnode2
+check:output!~testnode4
+cmd:chdef -t group -o testgrp -p members=testnode2,testnode4
+check:rc==0
+cmd:lsdef -s testgrp
+check:rc==0
+check:output=~testnode1
+check:output=~testnode3
+check:output=~testnode2
+check:output=~testnode4
+cmd:chdef -t group -o testgrp -m members=testnode1,testnode2
+check:rc==0
+cmd:lsdef -s testgrp
+check:rc==0
+check:output!~testnode1
+check:output=~testnode3
+check:output!~testnode2
+check:output=~testnode4
+cmd:rmdef -t group testgrp
+check:rc==0
+cmd:rmdef -t node -o testnode1-testnode4
+check:rc==0
+end
+
+start:chdef_dynamic_group
+description:chdef with dynamic node group
+cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
+check:rc==0
+cmd:mkdef -t node -o testnode3-testnode4 mgt=hmc cons=ipmi groups=all,systemx
+check:rc==0
+cmd:mkdef -t group -o dyngrp -d -w cons==hmc
+check:rc==0
+cmd:lsdef -s dyngrp
+check:rc==0
+check:output=~testnode1
+check:output=~testnode2
+check:output!~testnode3
+check:output!~testnode4
+cmd:chdef -t group -o dyngrp -d -w mgt==hmc
+check:rc==0
+cmd:lsdef -s dyngrp
+check:rc==0
+check:output=~testnode1
+check:output=~testnode2
+check:output=~testnode3
+check:output=~testnode4
+cmd:chdef -t group -o dyngrp -d -p -w cons==hmc -w groups=~systemp
+check:rc==0
+cmd:lsdef -s dyngrp
+check:rc==0
+check:output=~testnode1
+check:output=~testnode2
+check:output!~testnode3
+check:output!~testnode4
+cmd:lsdef -t group -o dyngrp
+check:rc==0
+check:output=~wherevals=mgt==hmc::cons==hmc::groups=~systemp
+cmd:chdef -t group -o dyngrp -d -m -w cons==hmc -w groups=~systemp
+check:rc==0
+cmd:lsdef -s dyngrp
+check:output=~testnode1
+check:output=~testnode2
+check:output=~testnode3
+check:output=~testnode4
+cmd:rmdef -t group -o dyngrp
+check:rc==0
+cmd:rmdef -t node -o testnode1-testnode4
+check:rc==0
+end
+
+start:chdef_multiple_keys
+description:mkdef support for multiple keys in a table, such as ppcdirect
+cmd: mkdef -t node -o testfsp mgt=fsp cons=fsp groups=all,fsp nodetype=fsp passwd.HMC=abc123 passwd.general=abc123 passwd.admin=abc123
+check:rc==0
+cmd:lsdef testfsp
+check:rc==0
+check:output=~passwd.HMC=abc123
+check:output=~passwd.general=abc123
+check:output=~passwd.admin=abc123
+cmd:chdef -t node -o testfsp groups=fsp passwd.HMC=HMC passwd.general=general passwd.admin=admin
+check:rc==0
+cmd:lsdef testfsp
+check:rc==0
+check:output=~passwd.HMC=HMC
+check:output=~passwd.general=general
+check:output=~passwd.admin=admin
+cmd:rmdef -t node -o testfsp
+check:rc==0
+end
+
 start:chdef_t_o_error
 cmd:chdef -t testtype -o testnode groups=all,aix
 check:rc!=0
