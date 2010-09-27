@@ -321,8 +321,8 @@ sub fork_cmd {
         $pipe = $child;
 
         $res = xCAT::FSPUtils::fsp_api_action( $node_name, $attrs, $action );
-	print "res\n";
-	print Dumper($res);
+        #print "res\n";
+    #print Dumper($res);
 	my %output;
 	$output{node} = $node_name;
 	$output{ret} = @$res[2];
@@ -380,9 +380,9 @@ sub rflash {
     my %infor;
     my $role ; #0x01: BPC A, BPC B; 0x01: Primary or only FSP, 0x02: Backup FSP
  
-    print "in Directflash \n";
-    print Dumper($request);
-    print Dumper($hash);
+    #print "in Directflash \n";
+    #print Dumper($request);
+    #print Dumper($hash);
 
     ####################################
     # Power commands are grouped by hardware control point
@@ -472,7 +472,7 @@ sub rflash {
 	   dpush ( \@value, [$name, $msg]);
 	   }
 	   my $nodes = get_related_fsp_bpa( $mtm, $serial);
-	   print Dumper($nodes); 
+       #print Dumper($nodes); 
 	   my $i     = 0;
 	   my $flag  = 0;
 	   my $c = @$nodes;
@@ -540,7 +540,7 @@ sub rflash {
 			 } 
 			 my $resp = thaw($val);
 			 foreach my $t( @$resp ) {
-			    print Dumper($t);
+                #print Dumper($t);
 			    push @result, [$t->{node}, $t->{contents}, $t->{ret}];
 		         }
 			 next;
