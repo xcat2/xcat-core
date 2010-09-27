@@ -14,7 +14,7 @@ B<xcattest> [B<-f> I<configure file>] [B<-c> I<cmd list>] [B<-l>]
 
 =head1 DESCRIPTION
 
-The xcattest command runs test cases to verify the xCAT functionalities, it can be used when you want to verify the xCAT functionalities for whatever reason, for example, to ensure the code changes you made do not break the existing commands; to run acceptance test for new build you got; to verify the xCAT snapshot build or development build before putting it onto your production system. The xcattest command is part of the xCAT package xCAT-test.
+The xcattest command runs test cases to verify the xCAT functions, it can be used when you want to verify the xCAT functions for whatever reason, for example, to ensure the code changes you made do not break the existing commands; to run acceptance test for new build you got; to verify the xCAT snapshot build or development build before putting it onto your production system. The xcattest command is part of the xCAT package xCAT-test.
 
 The root directory for the xCAT-test package is /opt/xcat/share/xcat/tools/autotest/. All test cases are in the sub directory I<testcase>, indexed by the xCAT command, you can add your own test cases according to the test cases format below. The subdirectory I<bundle> contains all the test cases bundles definition files, you can customize or create any test cases bundle file as required. The testing result information will be written into the subdirectory I<result>, the timestamps are used as the postfixes for all the result files. xCAT-test package ships two configuration files template I<aix.conf.template> and I<linux.conf.template> for AIX and Linux environment, you can use the template files as the start point of making your own configuration file.
 
