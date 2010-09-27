@@ -2248,7 +2248,7 @@ sub process_request {
   } else {
       $confdata->{kvmnodedata} = {};
   }
-  if ($command eq 'mkvm' or $command eq 'rpower' and (grep { "$_" eq "on"  or $_ eq "boot" or $_ eq "reset" } @exargs)) {
+  if ($command eq 'mkvm' or ($command eq 'clonevm' and (grep { "$_" eq '-b' } @exargs)) or ($command eq 'rpower' and (grep { "$_" eq "on"  or $_ eq "boot" or $_ eq "reset" } @exargs))) {
       xCAT::VMCommon::requestMacAddresses($confdata,$noderange);
       my @dhcpnodes;
       foreach (keys %{$confdata->{dhcpneeded}}) {
