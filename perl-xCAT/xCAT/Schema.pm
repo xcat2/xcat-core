@@ -735,7 +735,7 @@ site => {
    "                   Linux, yes on AIX.\n\n".
    " db2installloc:  The location from which the service nodes should mount the \n".
    "                 the db2 code to install. Format hostname:/path.  If hostname is\n".
-   "                 omitted, it defaults to the management node. Default is mntdb2.\n\n".
+   "                 omitted, it defaults to the management node. Default is /mntdb2.\n\n".
    " defserialflow:  The default serial flow - currently only used by the mknb command.\n\n".
    " defserialport:  The default serial port - currently only used by mknb.\n\n".
    " defserialspeed:  The default serial speed - currently only used by mknb.\n\n".
