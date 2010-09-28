@@ -6,6 +6,7 @@ package xCAT::Common;
 
 use File::stat;
 use File::Copy;
+use xCAT::Usage;
 use Thread qw/yield/;
 
 BEGIN
