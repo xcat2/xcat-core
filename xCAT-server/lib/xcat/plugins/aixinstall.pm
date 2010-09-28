@@ -10356,7 +10356,7 @@ sub update_spot_installp
         xCAT::MsgUtils->message("I", $rsp, $callback);
     }    
 
-    my $icmd = "/usr/sbin/installp ";
+    my $icmd = "export INUCLIENTS=1;/usr/sbin/installp ";
 
     # these installp flags can be used with -d
     if ($installp_flags =~ /l|L|i|A|a/)
