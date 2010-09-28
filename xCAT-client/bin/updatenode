@@ -139,7 +139,9 @@ if ($::SECURITY) {
 }
 
 foreach (keys %ENV) {
-    push @{$cmdref->{environment}}, "$_=$ENV{$_}";
+    if (/^DSH_/ || /^XCAT/) {
+        push @{$cmdref->{environment}}, "$_=$ENV{$_}";
+    }
 }
 
 xCAT::Client::submit_request($cmdref,\&xCAT::Client::handle_response);
