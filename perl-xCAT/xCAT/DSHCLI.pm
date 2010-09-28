@@ -3716,7 +3716,7 @@ sub parse_and_run_dsh
         {
             my $rsp = ();
             $rsp->{data}->[0] =
-              "User password for ssh key exchange has not been supplied./n Cannot complete the -K command./n";
+              "User password for ssh key exchange has not been supplied.\n Cannot complete the -K command\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
 
@@ -3726,7 +3726,7 @@ sub parse_and_run_dsh
         {
             my $rsp = ();
             $rsp->{data}->[0] =
-              "Current Userid has not been supplied./n Cannot complete the -K command./n";
+              "Current Userid has not been supplied.\n Cannot complete the -K command.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
 
@@ -3737,7 +3737,7 @@ sub parse_and_run_dsh
         {
             my $rsp = ();
             $rsp->{data}->[0] =
-              "Logon  Userid has not been supplied./n Cannot complete the -K command./n";
+              "Logon  Userid has not been supplied.\n Cannot complete the -K command.\n";
             xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
             return;
 
