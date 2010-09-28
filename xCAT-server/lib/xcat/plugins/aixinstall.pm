@@ -1878,6 +1878,7 @@ sub mknimimage
     my $lpp_source_name;
     my $root_name;
     my $dump_name;
+    my $install_dir = xCAT::Utils->getInstallDir();
 
     if (defined(@{$::args}))
     {
@@ -2068,7 +2069,7 @@ sub mknimimage
 		if ($::opt_l) {
 			$loc=$::opt_l;
 		} else {
-			$loc = "/install/nim";
+			$loc = "$install_dir/nim";
 		}
 
         if ($::NFSV4)
@@ -3157,6 +3158,7 @@ sub mk_lpp_source
 
     my @lppresources;
     my $lppsrcname;
+    my $install_dir = xCAT::Utils->getInstallDir();
 
     #
     #  Get a list of the defined lpp_source resources
@@ -3235,7 +3237,7 @@ sub mk_lpp_source
             }
             else
             {
-                $loc = "/install/nim/lpp_source/$lppsrcname";
+                $loc = "$install_dir/nim/lpp_source/$lppsrcname";
             }
 
 			# create resource location
@@ -3398,7 +3400,7 @@ sub mk_lpp_source
             }
             else
             {
-                $loc = "/install/nim/lpp_source/$lppsrcname";
+                $loc = "$install_dir/nim/lpp_source/$lppsrcname";
             }
 
             # create resource location
@@ -3513,6 +3515,7 @@ sub mk_spot
 
     my $spot_name;
     my $currentimage;
+    my $install_dir = xCAT::Utils->getInstallDir();
 
     if ($::attrres{spot})
     {
@@ -3553,7 +3556,7 @@ sub mk_spot
             }
             else
             {
-                $cpcosi_cmd .= "-l /install/nim/spot  ";
+                $cpcosi_cmd .= "-l $install_dir/nim/spot  ";
             }
 
             $cpcosi_cmd .= "$spot_name  2>&1";
@@ -3648,8 +3651,8 @@ sub mk_spot
             }
             else
             {
-                $cmd .= "-a location=/install/nim/spot  ";
-                $loc = "/install/nim/spot";
+                $cmd .= "-a location=$install_dir/nim/spot  ";
+                $loc = "$install_dir/nim/spot";
             }
 
             # create resource location
@@ -3754,6 +3757,7 @@ sub mk_bosinst_data
     my $bosinst_data_name = $::image_name . "_bosinst_data";
 
 	my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "dest_dir", "group", "source");
+	my $install_dir = xCAT::Utils->getInstallDir();
 
     if ($attrres{bosinst_data})
     {
@@ -3793,7 +3797,7 @@ sub mk_bosinst_data
             }
             else
             {
-                $loc = "/install/nim/bosinst_data";
+                $loc = "$install_dir/nim/bosinst_data";
             }
 
             my $cmd = "mkdir -p $loc";
@@ -4020,6 +4024,7 @@ sub mk_resolv_conf
 	my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "dest_dir", "group", "source");
 
     my $resolv_conf_name = $::image_name . "_resolv_conf";
+    my $install_dir = xCAT::Utils->getInstallDir();
 
     if ($attrres{resolv_conf})
     {
@@ -4073,7 +4078,7 @@ sub mk_resolv_conf
                 }
                 else
                 {
-                    $loc = "/install/nim/resolv_conf/$resolv_conf_name";
+                    $loc = "$install_dir/nim/resolv_conf/$resolv_conf_name";
                 }
 
                 $fileloc = "$loc/resolv.conf";
@@ -4166,7 +4171,8 @@ sub mk_mksysb
 	my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "dest_dir", "group", "source", "size_preview", "exclude_files", "mksysb_flags", "mk_image");
 
     my $mksysb_name = $::image_name . "_mksysb";
-
+	my $install_dir = xCAT::Utils->getInstallDir();
+	
     if ($attrres{mksysb})
     {
 
@@ -4200,7 +4206,7 @@ sub mk_mksysb
                 }
                 else
                 {
-                    $loc = "/install/nim/mksysb/$::image_name";
+                    $loc = "$install_dir/nim/mksysb/$::image_name";
                 }
 
                 # create resource location for mksysb image
@@ -5277,6 +5283,7 @@ sub mkdumpres
 	my @validattrs = ("dumpsize", "max_dumps", "notify", "snapcollect", "verbose", "nfs_vers", "group");
 
     my $cmd = "/usr/sbin/nim -o define -t $type -a server=master ";
+    my $install_dir = xCAT::Utils->getInstallDir();
 
 	my %cmdattrs;
 
@@ -5317,7 +5324,7 @@ sub mkdumpres
     }
     else
     {
-        $cmd .= "-a location=/install/nim/dump/$res_name ";
+        $cmd .= "-a location=$install_dir/nim/dump/$res_name ";
     }
 
 
@@ -5379,6 +5386,7 @@ sub mknimres
 	@validattrs = ("nfs_vers", "verbose", "group");
 
     my $cmd = "/usr/sbin/nim -o define -t $type -a server=master ";
+    my $install_dir = xCAT::Utils->getInstallDir();
 
 	my %cmdattrs;
     if ($::NFSV4)
@@ -5424,7 +5432,7 @@ sub mknimres
     }
     else
     {
-        $cmd .= "-a location=/install/nim/$type/$res_name ";
+        $cmd .= "-a location=$install_dir/nim/$type/$res_name ";
     }
     $cmd .= "$res_name  2>&1";
     if ($::VERBOSE)
@@ -5641,8 +5649,9 @@ sub updatespot
     }
 
     # copy the script
+    my $install_dir = xCAT::Utils->getInstallDir();
     my $cpcmd =
-      "mkdir -m 644 -p $spot_loc/lpp/bos/inst_root/opt/xcat; cp /install/postscripts/xcataixpost $spot_loc/lpp/bos/inst_root/opt/xcat/xcataixpost; chmod +x $spot_loc/lpp/bos/inst_root/opt/xcat/xcataixpost";
+      "mkdir -m 644 -p $spot_loc/lpp/bos/inst_root/opt/xcat; cp $install_dir/postscripts/xcataixpost $spot_loc/lpp/bos/inst_root/opt/xcat/xcataixpost; chmod +x $spot_loc/lpp/bos/inst_root/opt/xcat/xcataixpost";
 
     my @result =
       xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cpcmd, 1);
@@ -6571,6 +6580,7 @@ sub prenimnodeset
     {    # if we have at least one standalone node
 
         my $createscript = 0;
+        my $install_dir = xCAT::Utils->getInstallDir();
 
         # see if it already exists
 
@@ -6595,7 +6605,7 @@ sub prenimnodeset
 
             # see if it's in the wrong place
             # TODO - how handle migration????
-            if ($loc ne "/install/nim/scripts/xcataixscript")
+            if ($loc ne "$install_dir/nim/scripts/xcataixscript")
             {
 
                 # need to remove this def and create a new one
@@ -6621,7 +6631,7 @@ sub prenimnodeset
 
             # copy file to /install/nim/scripts
             my $ccmd =
-              qq~mkdir -m 644 -p /install/nim/scripts; cp /install/postscripts/xcataixscript /install/nim/scripts 2>/dev/null; chmod +x /install/nim/scripts/xcataixscript~;
+              qq~mkdir -m 644 -p $install_dir/nim/scripts; cp $install_dir/postscripts/xcataixscript $install_dir/nim/scripts 2>/dev/null; chmod +x $install_dir/nim/scripts/xcataixscript~;
             my $out =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime,
                                     $ccmd, 0);
@@ -6637,11 +6647,11 @@ sub prenimnodeset
             my $dcmd;
             if ($::NFSV4)
             {
-              $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a nfs_vers=4 -a location=/install/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
+              $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a nfs_vers=4 -a location=$install_dir/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
             }
             else
             {
-              $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a location=/install/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
+              $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a location=$install_dir/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
             }
             $out =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime,
@@ -6658,7 +6668,7 @@ sub prenimnodeset
 
         # make sure we clean up the /etc/exports file of old post script
         my $ecmd =
-          qq~/usr/sbin/rmnfsexp -d /install/postscripts/xcataixpost -B 2>/dev/null~;
+          qq~/usr/sbin/rmnfsexp -d $install_dir/postscripts/xcataixpost -B 2>/dev/null~;
         $out =
           xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $ecmd,
                                 0);
@@ -7166,6 +7176,7 @@ sub doSNcopy
     my @nodelist    = @$nodes;
     my @nimrestypes = @$restypes;
     my %nodeosi     = %{$nosi};
+    my $install_dir = xCAT::Utils->getInstallDir();
 
     #
     #  Get a list of nodes for each service node
@@ -7226,14 +7237,14 @@ sub doSNcopy
             }
 
             # update the postscripts on the SN
-            my $lscmd = "$::XCATROOT/bin/xdsh $snkey 'ls /install/postscripts' >/dev/null 2>&1";
+            my $lscmd = "$::XCATROOT/bin/xdsh $snkey 'ls $install_dir/postscripts' >/dev/null 2>&1";
             $output = xCAT::Utils->runcmd("$lscmd", -1);
             if ($::RUNCMD_RC == 0)
             {
 
                 # if the dir exists then we can update it
                 my $cpcmd =
-                  "$::XCATROOT/bin/xdcp $snkey -p -R /install/postscripts/* /install/postscripts ";
+                  "$::XCATROOT/bin/xdcp $snkey -p -R $install_dir/postscripts/* $install_dir/postscripts ";
                 if ($::VERBOSE)
                 {
                     my $rsp;
@@ -7241,13 +7252,13 @@ sub doSNcopy
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
                 $cpcmd =
-                  "$::XCATROOT/bin/xdcp $snkey -p -R /install/postscripts/* /install/postscripts ";
+                  "$::XCATROOT/bin/xdcp $snkey -p -R $install_dir/postscripts/* $install_dir/postscripts ";
                 $output = xCAT::Utils->runcmd("$cpcmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
                     my $rsp;
                     push @{$rsp->{data}},
-                      "Could not copy /install/postscripts to $snkey.\n";
+                      "Could not copy $install_dir/postscripts to $snkey.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                 }
             }
