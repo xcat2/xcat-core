@@ -41,7 +41,7 @@ sub process_request
     my $arch     = undef;
     my $path     = undef;
     my $installroot;
-    $installroot = "/install";
+    $installroot = xCAT::Utils->getInstallDir();
     if ($request->{command}->[0] eq 'copycd')
     {
         return copycd($request, $callback, $doreq);
@@ -65,7 +65,7 @@ sub mkimage {
 #-If going to /audit, it's more useful than /oobe.  
 #  audit complains about incorrect password on first boot, without any login attempt
 #  audit causes a 'system preparation tool' dialog on first boot that I close
-    my $installroot = "/install";
+    my $installroot = xCAT::Utils->getInstallDir();
     my $request = shift;
     my $callback = shift;
     my $doreq = shift;
@@ -125,7 +125,7 @@ sub mkimage {
 }
 
 sub mkwinlinks {
-    my $installroot = "/install"; # for now put this, as it breaks for imagex
+    my $installroot = xCAT::Utils->getInstallDir(); # for now put this, as it breaks for imagex
     my $node = shift;
     my $ent = shift;
     my $uuid = shift;
@@ -136,7 +136,7 @@ sub mkwinlinks {
 }
 
 sub winshell {
-    my $installroot = "/install";
+    my $installroot = xCAT::Utils->getInstallDir();
     my $request = shift;
     my $script = "cmd";
     my @nodes    = @{$request->{node}};
@@ -202,7 +202,7 @@ ENDAPPLY
 sub mkinstall
 {
     my $installroot;
-    $installroot = "/install";
+    $installroot = xCAT::Utils->getInstallDir();
     my $request  = shift;
     my $callback = shift;
     my $doreq    = shift;
@@ -323,7 +323,7 @@ sub mkinstall
             $tmperr =
               xCAT::Template->subvars(
                          $tmplfile,
-                         "/install/autoinst/$node",
+                         "$installroot/autoinst/$node",
                          $node,
                          0
                          );

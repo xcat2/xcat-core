@@ -1069,7 +1069,7 @@ sub mkinstall
         {
             $callback->(
                     {
-                     error => ["Install image not found in /install/$os/$arch"],
+                     error => ["Install image not found in $installroot/$os/$arch"],
                      errorcode => [1]
                     }
                     );
