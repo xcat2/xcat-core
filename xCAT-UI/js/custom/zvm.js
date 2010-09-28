@@ -328,7 +328,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 	 * Show user entry
 	 */
 	var toggleLinkId = node + 'ToggleLink';
-	var toggleLink = $('<a id="' + toggleLinkId + '" href="#">Show directory entry</a>');
+	var toggleLink = $('<a id="' + toggleLinkId + '">Show directory entry</a>');
 	toggleLink.one('click', function(event) {
 		// Toggle inventory division
 		$('#' + invDivId).toggle();
@@ -525,7 +525,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     				}
     				procType = $('<td>' + temp + '</td>');
     				procAddr = $('<td></td>');
-    				procLink = $('<a href="#">' + args[1] + '</a>');
+    				procLink = $('<a>' + args[1] + '</a>');
     				
     				// Append context menu to link
     				procLink.contextMenu(contextMenu, {
@@ -567,7 +567,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			/**
 			 * Add processor
 			 */
-			var addProcLink = $('<a href="#">Add temporary processor</a>');
+			var addProcLink = $('<a>Add temporary processor</a>');
 			addProcLink.bind('click', function(event) {
 				openAddProcDialog(node);
 			});
@@ -628,7 +628,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
     				// Get DASD virtual device, type, volume ID, access, and size
     				dasdVDev = $('<td></td>');
-    				dasdLink = $('<a href="#">' + args[1] + '</a>');
+    				dasdLink = $('<a>' + args[1] + '</a>');
     
     				// Append context menu to link
     				dasdLink.contextMenu(contextMenu, {
@@ -659,7 +659,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			/**
 			 * Add disk
 			 */
-			var addDasdLink = $('<a href="#">Add disk</a>');
+			var addDasdLink = $('<a>Add disk</a>');
 			addDasdLink.bind('click', function(event) {
 				var hcp = attrs['hcp'][0].split('.');
 				openAddDiskDialog(node, hcp[0]);
@@ -720,7 +720,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     
     				// Get NIC virtual device, type, port name, and number of devices
     				nicVDev = $('<td></td>');
-    				nicLink = $('<a href="#">' + args[1] + '</a>');
+    				nicLink = $('<a>' + args[1] + '</a>');
     
     				// Append context menu to link
     				nicLink.contextMenu(contextMenu, {
@@ -754,7 +754,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 			/**
 			 * Add NIC
 			 */
-			var addNicLink = $('<a href="#">Add NIC</a>');
+			var addNicLink = $('<a>Add NIC</a>');
 			addNicLink.bind('click', function(event) {
 				var hcp = attrs['hcp'][0].split('.');
 				openAddNicDialog(node, hcp[0]);
@@ -1080,7 +1080,7 @@ zvmPlugin.prototype.addNode = function() {
     			    				var node = args[1].replace('node=', '');
     			    				
     			    				// If there was an error, do not continue
-    			    				if (rsp.length) {s
+    			    				if (rsp.length) {
     									openDialog('warn', '(Error) Failed to create node definition');		
     								} else {
     									openDialog('info', 'Node definitions created for ' + node);	

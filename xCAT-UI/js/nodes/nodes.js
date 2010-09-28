@@ -108,7 +108,7 @@ function loadGroups(data) {
 	// Create a link for each group
 	for ( var i = groups.length; i--;) {
 		var subItem = $('<li></li>');
-		var link = $('<a href="#">' + groups[i] + '</a>');
+		var link = $('<a>' + groups[i] + '</a>');
 		subItem.append(link);
 		subUL.append(subItem);
 	}
@@ -152,7 +152,7 @@ function loadGroups(data) {
     });
 	
 	// Create link to add nodes
-	var addNodeLink = $('<a href="#">Add node</a>');
+	var addNodeLink = $('<a>Add node</a>');
 	addNodeLink.bind('click', function(event) {
 		var info = createInfoBar('Select the hardware management for the new node range');
 		var addNodeForm = $('<div class="form"></div>');
@@ -262,8 +262,8 @@ function loadNodes(data) {
 
 	// Add column for check box, node, ping, and power
 	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node', 
-		'<a href="#">ping</a><img src="images/loader.gif"></img>', 
-		'<a href="#">power</a><img src="images/loader.gif"></img>');
+		'<a>ping</a><img src="images/loader.gif"></img>', 
+		'<a>power</a><img src="images/loader.gif"></img>');
 
 	// Create a datatable
 	var dTable = new DataTable('nodesDataTable');
@@ -276,7 +276,7 @@ function loadNodes(data) {
 		// Create a check box
 		var checkBx = '<input type="checkbox" name="' + node + '"/>';
 		// Open node onclick
-		var nodeLink = $('<a class="node" id="' + node + '" href="#">' + node + '</a>').bind('click', loadNode);
+		var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
 		row.push(checkBx, nodeLink, '', '');
 
 		// Go through each header
@@ -309,12 +309,12 @@ function loadNodes(data) {
 	/*
 	 * Power
 	 */
-	var powerLnk = $('<a href="#">Power</a>');
+	var powerLnk = $('<a>Power</a>');
 
 	/*
 	 * Power on
 	 */
-	var powerOnLnk = $('<a href="#">Power on</a>');
+	var powerOnLnk = $('<a>Power on</a>');
 	powerOnLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
@@ -325,7 +325,7 @@ function loadNodes(data) {
 	/*
 	 * Power off
 	 */
-	var powerOffLnk = $('<a href="#">Power off</a>');
+	var powerOffLnk = $('<a>Power off</a>');
 	powerOffLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
@@ -336,7 +336,7 @@ function loadNodes(data) {
 	/*
 	 * Clone
 	 */
-	var cloneLnk = $('<a href="#">Clone</a>');
+	var cloneLnk = $('<a>Clone</a>');
 	cloneLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable').split(',');
 		for ( var i = 0; i < tgtNodes.length; i++) {
@@ -372,7 +372,7 @@ function loadNodes(data) {
 	/*
 	 * Delete
 	 */
-	var deleteLnk = $('<a href="#">Delete</a>');
+	var deleteLnk = $('<a>Delete</a>');
 	deleteLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
@@ -383,7 +383,7 @@ function loadNodes(data) {
 	/*
 	 * Unlock
 	 */
-	var unlockLnk = $('<a href="#">Unlock</a>');
+	var unlockLnk = $('<a>Unlock</a>');
 	unlockLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
@@ -394,7 +394,7 @@ function loadNodes(data) {
 	/*
 	 * Run script
 	 */
-	var scriptLnk = $('<a href="#">Run script</a>');
+	var scriptLnk = $('<a>Run script</a>');
 	scriptLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
@@ -405,7 +405,7 @@ function loadNodes(data) {
 	/*
 	 * Update node
 	 */
-	var updateLnk = $('<a href="#">Update</a>');
+	var updateLnk = $('<a>Update</a>');
 	updateLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
@@ -416,7 +416,7 @@ function loadNodes(data) {
 	/*
 	 * Set boot state
 	 */
-	var setBootStateLnk = $('<a href="#">Set boot state</a>');
+	var setBootStateLnk = $('<a>Set boot state</a>');
 	setBootStateLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
@@ -428,7 +428,7 @@ function loadNodes(data) {
 	/*
 	 * Boot to network
 	 */
-	var boot2NetworkLnk = $('<a href="#">Boot to network</a>');
+	var boot2NetworkLnk = $('<a>Boot to network</a>');
 	boot2NetworkLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
@@ -439,7 +439,7 @@ function loadNodes(data) {
 	/*
 	 * Open the Rcons page
 	 */
-	var rcons = $('<a href="#">Open Rcons</a>');
+	var rcons = $('<a>Open Rcons</a>');
 	rcons.bind('click', function(event){
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
@@ -450,7 +450,7 @@ function loadNodes(data) {
 	/*
 	 * Advanced
 	 */
-	var advancedLnk = $('<a href="#">Advanced</a>');
+	var advancedLnk = $('<a>Advanced</a>');
 
 	// Power actions
 	var powerActions = [ powerOnLnk, powerOffLnk ];

@@ -123,7 +123,7 @@ function loadTableNames(data) {
 	for ( var i = 0; i < tables.length; i++) {
 		// Create a link for each table
 		var args = tables[i].split(':');
-		var link = $('<a href="#" id="' + args[0] + '">' + args[0] + '</a>');
+		var link = $('<a id="' + args[0] + '">' + args[0] + '</a>');
 
 		// Open table on click
 		link.bind('click', function(e) {

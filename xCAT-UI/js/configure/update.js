@@ -280,7 +280,7 @@ function ShowUpdateResult(data)
         }
     }
 
-    $('#update').append('<br\><a href="#">Response Detail:</a>');
+    $('#update').append('<br\><a>Response Detail:</a>');
     $('#update a').bind('click', function(){
     	$('#resDetail').show();
     });

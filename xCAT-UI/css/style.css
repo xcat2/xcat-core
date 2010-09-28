@@ -46,6 +46,7 @@
 	font: 14px verdana, arial, helvetica, sans-serif;
 	color: #424242;
 	padding: 11px 30px;
+	cursor: pointer;
 }
 
 #header ul a:hover {
@@ -71,6 +72,7 @@
 	color: #0000FF;
 	text-decoration: none;
 	display: block;
+	cursor: pointer;
 }
 
 #header div a:hover {
@@ -118,6 +120,7 @@ body {
 	display: inline-table;
 	padding: 5px 15px 15px 5px;
 	text-decoration: none;
+	cursor: pointer;
 }
 
 #groups a:hover {
@@ -248,6 +251,7 @@ span.ui-icon-info {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	text-decoration: none;
 	color: #0000FF;
+	cursor: pointer;
 }
 
 .tab a:hover {
@@ -278,6 +282,7 @@ span.ui-icon-info {
 
 .actionBar a {
 	color: #424242;
+	cursor: pointer;
 }
 
 /****************** Status bar ******************/
@@ -416,6 +421,7 @@ span.ui-icon-info {
 .datatable a {
 	text-decoration: none;
 	color: #000FF;
+	cursor: pointer;
 }
 
 .datatable a:hover {

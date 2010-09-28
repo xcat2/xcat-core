@@ -2136,7 +2136,7 @@ function createZProvisionNew(inst) {
 	/**
 	 * Add disks
 	 */
-	var addDiskLink = $('<a href="#">Add disk</a>');
+	var addDiskLink = $('<a>Add disk</a>');
 	addDiskLink.bind('click', function(event) {
 		// Create a row
 		var diskRow = $('<tr></tr>');
