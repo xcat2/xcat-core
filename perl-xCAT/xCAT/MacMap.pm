@@ -98,6 +98,18 @@ sub new {
   return $self;
 }
 
+sub rvlan {
+    #The Q-BRIDGE way:
+    #IF-MIB for ifName<->ifIndex (much like the find_mac code)
+    #BRIDGE-MIB for ifIndex<->BridgeIndex (again, familiar)
+    #Q-BRIDGE-MIB for vlanId<->vlanIndex
+    #             and vlanIndex<->dot1qVlanStaticUntaggedPorts
+    #             and vlanIndex<->dot1qVlanStaticEgressPorts (tagged allowed ports)
+    # for changing the PVID of a port, the current bitfields must be read, the offset into the bitfield of the correct bridge index must be zero everywhere but vlan 1, then must be 1 in the target vlan.  If it is zeroed in a vlan other than 1 without being 'oned' elsewhere, it reverts to vlan 1
+    #that is the documented steps for brocade
+    #some switches support vlan creation via qbridge, either via writing to the table or write to the row.  SMC has write to non-existent row and vlanId==vlanIndex, which is logical.  If a switches vlanIndex!=vlanId, QBridge doesnet' offer a clean injection point.
+    #QBridge also has dot1qPvid, but wasn't writable in Brocade..
+}
 sub find_mac {
 # This function is given a mac address, checks for given mac address
 # and returns undef if unable to find the node, and the nodename otherwise
