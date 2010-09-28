@@ -733,6 +733,9 @@ site => {
    " consoleondemand:  When set to 'yes', conserver connects and creates the console\n".
    "                   output only when the user opens the console. Default is no on\n".
    "                   Linux, yes on AIX.\n\n".
+   " db2installloc:  The location from which the service nodes should mount the \n".
+   "                 the db2 code to install. Format hostname:/path.  If hostname is\n".
+   "                 omitted, it defaults to the management node. Default is mntdb2.\n\n".
    " defserialflow:  The default serial flow - currently only used by the mknb command.\n\n".
    " defserialport:  The default serial port - currently only used by mknb.\n\n".
    " defserialspeed:  The default serial speed - currently only used by mknb.\n\n".
@@ -754,7 +757,7 @@ site => {
    " installdir:  The local directory name used to hold the node deployment packages.\n\n".
    " installloc:  The location from which the service nodes should mount the \n".
    "              deployment packages in the format hostname:/path.  If hostname is\n".
-   "              ommited, it defaults to the management node. The path must\n".
+   "              omitted, it defaults to the management node. The path must\n".
    "              match the path in the installdir attribute.\n\n".
    " ipmimaxp:  The max # of processes for ipmi hw ctrl.\n\n".
    " ipmiretries:  The # of retries to use when communicating with BMCs.\n\n".
