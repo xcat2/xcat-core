@@ -269,7 +269,8 @@ sub preprocess_for_rflash {
 	my $request      = shift;
 	my $opt = shift;	
     my $callback = $request->{callback}; 
- 	my $packages_fw = "/install/packages_fw";
+    my $install_dir = xCAT::Utils->getInstallDir();
+ 	my $packages_fw = "$install_dir/packages_fw";
 	my $c = 0;
     my $packages_d;
 #	foreach (@$exargs) {

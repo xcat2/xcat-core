@@ -111,8 +111,9 @@ sub fsp_api_action {
     #print "fsp ip: $fsp_ip\n";
     
     my $cmd;
+    my $install_dir = xCAT::Utils->getInstallDir();
     if( $action =~ /^code_update$/) { 
-        $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name: -d /install/packages_fw/";
+        $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name: -d $install_dir/packages_fw/";
     } elsif($action =~ /^add_connection$/) {
         my $ppcdirecttab = xCAT::Table->new( 'ppcdirect');
         if ( ! $ppcdirecttab) {

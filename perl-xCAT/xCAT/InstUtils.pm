@@ -1046,7 +1046,8 @@ sub dolitesetup
 
 	# add aixlitesetup to ..inst_root/aixlitesetup
 	# this will wind up in the root dir on the node ("/")
-	my $cpcmd = "/bin/cp /install/postscripts/aixlitesetup $instrootloc/aixlitesetup; chmod +x $instrootloc/aixlitesetup";
+	my $install_dir = xCAT::Utils->getInstallDir();
+	my $cpcmd = "/bin/cp $install_dir/postscripts/aixlitesetup $instrootloc/aixlitesetup; chmod +x $instrootloc/aixlitesetup";
 	my $out = xCAT::Utils->runcmd("$cpcmd", -1);
     if ($::RUNCMD_RC != 0)
     {
