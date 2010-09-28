@@ -6823,6 +6823,28 @@ sub bkupNIMresources
         }
     }
 
+    # verify FS size before creating new backup
+    # get bkdir size
+    my $ducmd = qq~/usr/bin/du -sm $bkdir | /usr/bin/awk '{print \$1}'~;
+    my $bksize = xCAT::Utils->runcmd("$ducmd", -1);
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not run: \'$ducmd\'\n";
+        if ($::VERBOSE)
+        {
+            push @{$rsp->{data}}, "$bksize";
+        }
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+    # check FS space, add it if needed
+    if (&chkFSspace($bkdir, $bksize, $callback) != 0)
+    {
+        return undef;
+    }
+
     # create a new backup file
     my $bkcmd = "find $bkdir -print |backup -ivqf $bkfile";
 
