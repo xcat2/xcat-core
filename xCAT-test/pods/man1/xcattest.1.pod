@@ -82,21 +82,29 @@ B<Note>: Each test case can have more than one I<cmd> sections and each I<cmd> s
 
 =over 4
 
-1. To run all  test cases related command rpower:
+=item 1.
+
+To run all  test cases related command rpower:
 
   xcattest -c /tmp/config -c rpower
-	
-2. To run customized bundle:
+
+=item 2.
+
+To run customized bundle:
 
   xcattest -l  > /tmp/custom.bundle
   Modify custom.bundle
   xcattest -b custom.bundle
-	
-3. To run specified test cases.
+
+=item 3.
+
+To run specified test cases.
 
   xcattest -t lsdef_t_o_l_z 
 
-4. To add a new case to test chvm. In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases. 
+=item 4.
+
+To add a new case to test chvm. In the example, we assume that the min_mem should not be equal to 16 in the lpar profile of computenode. The case name is chvm_custom. It create a test lpar named testnode firstly, that change the min_mem of the lpar to 16 using chvm, then check if min_mem have changed correctly. At last, the testnode be remove to ensure no garbage produced in the cases. 
 
   add a new test case file in /opt/xcat/share/xcat/tools/autotest/chvm
   edit filename
@@ -126,10 +134,10 @@ The xCAT-test testing framework provides some inline functions. The inline funct
 
 2. B<INC(digit)> To get value of digit+1.
 
-For example:
-      To run rscan command against the hardware control point of compute node specified in configuration file
-      cmd: rscan __GETNODEATTR($$CN, hcp)__ -z
-      
+For example, to run rscan command against the hardware control point of compute node specified in the configuration file:
+
+  rscan __GETNODEATTR($$CN, hcp)__ -z
+
 =head1 FILES
 
 /opt/xcat/bin/xcattest

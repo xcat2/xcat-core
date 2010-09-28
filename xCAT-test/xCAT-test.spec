@@ -41,6 +41,7 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/bin
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools/autotest
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/man/man1
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
 
 set +x
 
@@ -50,14 +51,8 @@ chmod 755 $RPM_BUILD_ROOT/%{prefix}/bin/*
 # These were built dynamically in the build phase
 cp share/man/man1/* $RPM_BUILD_ROOT/%{prefix}/share/man/man1
 chmod 444 $RPM_BUILD_ROOT/%{prefix}/share/man/man1/*
-
-#cp -r share/doc/* $RPM_BUILD_ROOT/%{prefix}/share/doc
-#chmod 755 $RPM_BUILD_ROOT/%{prefix}/share/doc/*
-# These were built dynamically during the build phase
-# cp share/doc/man1/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
-#chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/*
-#cp LICENSE.html $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-autotest
-#chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/packages/xCAT-autotest/*
+cp share/doc/man1/* $RPM_BUILD_ROOT/%{prefix}/share/doc/man1
+chmod 644 $RPM_BUILD_ROOT/%{prefix}/share/doc/man1/*
 
 cp -r autotest $RPM_BUILD_ROOT/%{prefix}/share/xcat/tools
 set -x
