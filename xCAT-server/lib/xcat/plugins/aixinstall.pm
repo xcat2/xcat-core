@@ -1337,7 +1337,8 @@ srvnode.";
         $otherpkgs = $attrvals{otherpkgs};
     }
 
-    my $installp_flags = "-agQXY ";
+    # -b as the default installp flag to prevent bosboot in SPOT update.
+    my $installp_flags = "-abgQXY ";
     if ($attrvals{installp_flags})
     {
         $installp_flags = $attrvals{installp_flags};
