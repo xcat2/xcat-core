@@ -102,19 +102,19 @@ sub gethostname()
 {
     my ($class, $iporhost) = @_;
 
-   if (!defined($iporhost))
-   {
-       return undef;
-   }
+    if (!defined($iporhost))
+    {
+        return undef;
+    }
 
-   if (ref($iporhost) eq 'ARRAY')
-   {
+    if (ref($iporhost) eq 'ARRAY')
+    {
        $iporhost = @{$iporhost}[0];
        if (!$iporhost)
        {
            return undef;
        }
-   }
+    }
    
     if (($iporhost !~ /\d+\.\d+\.\d+\.\d+/) && ($iporhost !~ /:/))
     {
@@ -196,14 +196,14 @@ sub getipaddr()
        }
    }
 
-    if (($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/))
+    if ($iporhost and ($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/))
     {
         #pass in an ip and only want an ip??
         return $iporhost;
     }
 
     #cache, do not lookup DNS each time
-    if (defined($::hostiphash{$iporhost}) && $::hostiphash{$iporhost})
+    if ($::hostiphash and defined($::hostiphash{$iporhost}) && $::hostiphash{$iporhost})
     {
         return $::hostiphash{$iporhost};
     }
@@ -222,7 +222,8 @@ sub getipaddr()
         {
              #return inet_ntoa(inet_aton($iporhost))
              #TODO, what if no scoket6 support, but passing in a IPv6 hostname?
-             my $packed_ip = inet_aton($iporhost);
+	     my $packed_ip;
+             $iporhost and $packed_ip = inet_aton($iporhost);
              if (!$packed_ip)
              {
                 return undef;
