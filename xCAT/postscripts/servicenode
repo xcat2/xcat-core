@@ -347,10 +347,16 @@ sub getcreds
 	if (defined ($response) ) {
 		# need to change entry to use the name of the server as
 		#       know by this node
-		my ($begin, $tmp) = split(';', $response);
-		my ($tmp2, $end, $end2) = split('\|', $tmp);
-		my ($tmp3, $oldserv) = split('=', $tmp2);
-		my $newstr = "$begin;$tmp3=$::servnode|$end|$end2";
+        # except for db2 which has a different format, no host
+        my $newstr;
+        if ($response =~ /^DB2:/){ 
+           $newstr = $response;
+        } else {
+		  my ($begin, $tmp) = split(';', $response);
+		  my ($tmp2, $end, $end2) = split('\|', $tmp);
+		  my ($tmp3, $oldserv) = split('=', $tmp2);
+	      $newstr = "$begin;$tmp3=$::servnode|$end|$end2";
+        }
 		my $fd;
 		my $filename = "/etc/xcat/cfgloc";
 		&runcmd("mkdir -p /etc/xcat");
