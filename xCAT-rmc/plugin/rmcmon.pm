@@ -487,15 +487,10 @@ sub config {
   my $version_string;
   if ($rsct_ver) {$version_string="RSCT_VER=$rsct_ver"; } 
 
-  my $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/sn 2>&1`;
-  if ($?) {
-    my $error= "Error when creating predefined resources on $localhostname:\n$result";
-    reportError($error, $callback);
-  }   
+  my $result;
   if ($isSV) {
-    $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/node 2>&1`; 
-  } else  {
-    $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/mn 2>&1`;
+      $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/sn 2>&1`;  } else  {
+	  $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/mn 2>&1`;
   }      
   if ($?) {
     my $error= "Error when creating predefined resources on $localhostname:\n$result";
