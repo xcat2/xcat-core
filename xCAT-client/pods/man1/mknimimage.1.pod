@@ -149,7 +149,7 @@ The name of the NIM tmp resource.
 
 =item B<installp_flags>
 
-The alternate flags to be passed along to the AIX installp command. (The default for installp_flags is "-agQX".)
+The alternate flags to be passed along to the AIX installp command. (The default for installp_flags is "-abgQXY".)
 
 =item B<rpm_flags>
 
