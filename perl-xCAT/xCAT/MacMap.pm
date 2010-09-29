@@ -281,6 +281,7 @@ sub walkoid {
 sub getsnmpsession {
 #gets an snmp v3 session appropriate for a switch using the switches table for guidance on the hows
 #arguments: switch => $switchname and optionally vlan=> $vid if needed for community string indexing
+    my $self = shift;
     my %args = @_;
     my $switch = $args{'switch'};
     my $vlanid = $args{'vlanid'};
@@ -329,9 +330,10 @@ sub refresh_switch {
   my $switch = shift;
 
   #if ($error) { die $error; }
-  $session = getsnmpsession('community'=>$community,'switch'=>$switch);
+  $session = $self->getsnmpsession('community'=>$community,'switch'=>$switch);
   unless ($session) { xCAT::MsgUtils->message("S","Failed to communicate with $switch"); return; }
   my $namemap = walkoid($session,'.1.3.6.1.2.1.31.1.1.1.1');
+    #namemap is the mapping of ifIndex->(human readable name)
   if ($namemap) {
      my $ifnamesupport=0; #Assume broken ifnamesupport until proven good... (Nortel switch)
      foreach (keys %{$namemap}) {
@@ -351,8 +353,9 @@ sub refresh_switch {
     return;
   }
   #Above is valid without community string indexing, on cisco, we need it on the next one and onward
-  my $iftovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.68.1.2.2.1.2',silentfail=>1);
+  my $iftovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.68.1.2.2.1.2',silentfail=>1); #use cisco vlan membership mib to ascertain vlan
   my $trunktovlanmap = walkoid($session,'.1.3.6.1.4.1.9.9.46.1.6.1.1.5',silentfail=>1); #for trunk ports, we are interested in the native vlan
+                                                                                        #so we need cisco vtp mib too
   my %vlans_to_check;
   if (defined($iftovlanmap) or defined($trunktovlanmap)) { #We have a cisco, the intelligent thing is to do SNMP gets on the ports 
 # that we can verify are populated per switch table
@@ -370,8 +373,10 @@ sub refresh_switch {
         }
         if (defined  $iftovlanmap->{$portid}) {
             $vlans_to_check{"".$iftovlanmap->{$portid}} = 1; #cast to string, may not be needed
+            $self->{nodeinfo}->{$self->{switches}->{$switch}->{$portname}}->{vlans}->{$portname}=$iftovlanmap->{$portid};
         } else { #given above if statement, brigetovlanmap *must* be defined*
             $vlans_to_check{"".$trunktovlanmap->{$portid}} = 1; #cast to string, may not be needed
+            $self->{nodeinfo}->{$self->{switches}->{$switch}->{$portname}}->{vlans}->{$portname}=$trunktovlanmap->{$portid};
         }
       }
     }
@@ -384,7 +389,7 @@ sub refresh_switch {
   foreach $vlan (sort keys %vlans_to_check) { #Sort, because if numbers, we want 1 first
     unless (not $vlan or $vlan eq 'NA' or $vlan eq '1') { #don't subject users to the context pain unless needed
         $iscisco=1;
-        $session = getsnmpsession('switch'=>$switch,'community'=>$community,'vlanid'=>$vlan);
+        $session = $self->getsnmpsession('switch'=>$switch,'community'=>$community,'vlanid'=>$vlan);
     }
     unless ($session) { return; } 
     my $bridgetoifmap = walkoid($session,'.1.3.6.1.2.1.17.1.4.1.2',ciscowarn=>$iscisco); # Good for all switches
@@ -410,7 +415,11 @@ sub refresh_switch {
             if ($mactoindexmap->{$_} == $bridgeport) {
               my @tmp = split /\./, $_;
               my @mac = @tmp[-6 .. -1];
-              printf $output  "%02x:%02x:%02x:%02x:%02x:%02x|%s\n",@mac,$self->{switches}->{$switch}->{$portname};
+              my $macstring=sprintf("%02x:%02x:%02x:%02x:%02x:%02x",@mac);
+              if ($output) {
+                printf $output  "$macstring|%s\n",@mac,$self->{switches}->{$switch}->{$portname};
+              }
+              push @{$self->{nodeinfo}->{$self->{switches}->{$switch}->{$portname}}->{macs}->{$portname}},$macstring; #this could be used as getmacs sort of deal
             }
           }
         }
