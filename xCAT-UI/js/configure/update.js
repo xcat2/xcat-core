@@ -67,45 +67,48 @@ function showRepository(data) {
         StableRepository = "http://xcat.sourceforge.net/yum/xcat-core/";
     }
 
+    var repoList = $('<ol></ol>');
+    
     //display the Devel Repository, remember user's last selection
-    Show = Show + "<input type='radio' ";
+    Show = Show + "<li><input type='radio' ";
     if(1 == $.cookie('xcatrepository'))
     {
         Show = Show + "checked='true'";
     }
 
     Show = Show + "name='reporadio' value='" + DevelRepository + "'>";
-    Show = Show + DevelRepository + "(<strong>Devel</strong>)<br/>";
+    Show = Show + DevelRepository + "(<strong>Devel</strong>)</li>";
 
-    $('#repository fieldset').append(Show);
+    repoList.append(Show);
 
     //display the Stable Repository, remember user's last selection
-    Show = "<input type='radio' ";
+    Show = "<li><input type='radio' ";
     if(2 == $.cookie('xcatrepository'))
     {
         Show = Show + "checked='true'";
     }
 
     Show = Show + "name='reporadio' value='" + StableRepository + "'>";
-    Show = Show + StableRepository + "(<strong>Stable</strong>)<br/>";
+    Show = Show + StableRepository + "(<strong>Stable</strong>)</li>";
 
-    $('#repository fieldset').append(Show);
+    repoList.append(Show);
 
     //display the Input Repository, remember user's last selection
     if (($.cookie('xcatrepository'))
         && (1 != $.cookie('xcatrepository'))
         && (2 != $.cookie('xcatrepository')))
     {
-        Show = "<input type='radio' checked='true' name='reporadio' value=''>Other:";
-        Show += "<input style='width: 500px' id='repositoryaddr' value='" + $.cookie('xcatrepository') + "'<br/>";
+        Show = "<li><input type='radio' checked='true' name='reporadio' value=''>Other: ";
+        Show += "<input style='width: 500px' id='repositoryaddr' value='" + $.cookie('xcatrepository') + "'</li>";
     }
     else
     {
-        Show = "<input type='radio' name='reporadio' value=''>Other:";
-        Show += "<input style='width: 500px' id='repositoryaddr' value=''<br/>";
+        Show = "<li><input type='radio' name='reporadio' value=''>Other: ";
+        Show += "<input style='width: 500px' id='repositoryaddr' value=''</li>";
     }
 
-    $('#repository fieldset').append(Show);
+    repoList.append(Show);
+    $('#repository fieldset').append(repoList);
 }
 
 function showRpmInfo(data)
@@ -133,10 +136,10 @@ function showRpmInfo(data)
     $('#rpm fieldset').append("<legend>xCAT Rpm Info</legend>");
     
     Show = "<table id=rpmtable >";
-    Show += "<tr>";
-    Show += "<td><input type='checkbox' id='selectall' value='' onclick='updateSelectAll()'></td>";
-    Show += "<td><b>Package Name</b></td><td><b>Version</b></td>";
-    Show += "</tr>";
+    Show += "<thead><tr>";
+    Show += "<th><input type='checkbox' id='selectall' value='' onclick='updateSelectAll()'></th>";
+    Show += "<th><b>Package Name</b></th><th><b>Version</b></th>";
+    Show += "</tr></thead>";
 
     for (temp = 0; temp < Rpms.length; temp++)
     {
@@ -178,6 +181,9 @@ function updateSelectAll()
 
 function updateRpm()
 {
+	// Remove any warning messages
+	$('#updateTab').find('.ui-state-error').remove();
+	
     var rpmPath = $('input[type=radio]:checked').val();
     var rpmPathType = "0";
     var rpms = "";
@@ -226,28 +232,31 @@ function updateRpm()
     {
         rpms = rpms.slice(0, -1);
     }
-
-    $('#update').show();
-    if ("" == rpms)
-    {
-        $('#update').empty();
-        $('#update').append("Please select the rpm!");
-        return;
+    
+    // Check RPM and repository
+    var errMsg = '';
+    if (!rpms) {
+    	errMsg = "Please select the rpm!<br>";
     }
 
-    if ("" == rpmPath)
-    {
-        $('#update').empty();
-        $('#update').append("Please select or input the repository!");
-        return;
+    if (!rpmPath) {
+        errMsg += "Please select or input the repository!";
+    }
+    
+    if (!rpms || !rpmPath) {
+    	// Show warning message
+    	var warn = createWarnBar(errMsg);
+    	warn.prependTo($('#updateTab'));
+    	return;
     }
 
     //remember users' choice and input
     $.cookie('xcatrepository', rpmPathType, { path: '/xcat', expires: 10 });
 
+    $('#update').show();
     $('#update').empty();
     $('#update').append("<p>Updating <b>" + rpms + "</b> from <b>" + rpmPath + "</b></p>");
-    $('#update').append("<img id='loadingpic' src='images/throbber.gif'>");
+    $('#update').append("<img id='loadingpic' src='images/loader.gif'>");
     $('#rpm button').attr('disabled', 'true');
 
     // send the update command to server
@@ -272,26 +281,34 @@ function ShowUpdateResult(data)
     
     var resArray = data.rsp[0].split(/\n/);
     if (0 < resArray.length){
+    	// Show last lines
         if (('' == resArray[resArray.length - 1]) && (resArray.length > 1)){
         	$('#update').append(resArray[resArray.length - 2]);
         }
         else{
         	$('#update').append(resArray[resArray.length - 1]);
         }
-    }
-
-    $('#update').append('<br\><a>Response Detail:</a>');
-    $('#update a').bind('click', function(){
-    	$('#resDetail').show();
-    });
-    
-    var resDetail = $('<div id="resDetail"></div>');
-    resDetail.hide();
-    $('#update').append(resDetail);
-    
-    for (temp = 0; temp < resArray.length; temp++)
-    {
-    	resDetail.append(resArray[temp] + "<br\>");
+        
+        // Create link to show details
+        $('#update').append('<br><a>Show details</a>');
+        $('#update a').bind('click', function(){
+        	// Toggle details and change text
+        	$('#resDetail').toggle();
+        	if ($('#update a').text() == 'Show details') {
+        		$('#update a').text('Hide details');
+        	} else {
+        		$('#update a').text('Show details');
+        	}
+        });
+        
+        var resDetail = $('<div id="resDetail"></div>');
+        resDetail.hide();
+        $('#update').append(resDetail);
+        
+        for (temp = 0; temp < resArray.length; temp++)
+        {
+        	resDetail.append(resArray[temp] + "<br>");
+        }
     }
     
     //update the rpm info
