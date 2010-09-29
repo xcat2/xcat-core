@@ -69,7 +69,7 @@ if [ $OS != "AIX" ]; then
             mkdir -p $installroot/etc/opt/ibmhpc/license
             cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
             # Install PE product rpms
-            zypper -R $installroot install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
+            INUCLIENTS=1 INUBOSTYPE=1 zypper -R $installroot install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
         else
         # For Redhat, etc., assume yum is available on the system running genimage
             if [ ! -d /etc/opt/ibmhpc/license ] ; then
