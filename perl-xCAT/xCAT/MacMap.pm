@@ -417,7 +417,7 @@ sub refresh_switch {
               my @mac = @tmp[-6 .. -1];
               my $macstring=sprintf("%02x:%02x:%02x:%02x:%02x:%02x",@mac);
               if ($output) {
-                printf $output  "$macstring|%s\n",@mac,$self->{switches}->{$switch}->{$portname};
+                printf $output  "$macstring|%s\n",$self->{switches}->{$switch}->{$portname};
               }
               push @{$self->{nodeinfo}->{$self->{switches}->{$switch}->{$portname}}->{macs}->{$portname}},$macstring; #this could be used as getmacs sort of deal
             }
