@@ -1570,6 +1570,45 @@ sub chkosimage
 	}
 
 	#
+	# check the diskless osimage def
+	#
+	if ($imagedef{$image_name}{nimtype} eq 'diskless') {
+		# must have spot, root or shared_root and paging
+
+		if (!$imagedef{$image_name}{spot} ) {
+            my $rsp;
+            push @{$rsp->{data}}, "A diskless osimage must include a spot resource.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
+
+        if (!$imagedef{$image_name}{paging} ) {
+            my $rsp;
+            push @{$rsp->{data}}, "A diskless osimage must include a paging resource.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
+
+		#
+        # make sure they have either a root or a shared_root - but not both
+        #
+
+		if (!$imagedef{$image_name}{root} && !$imagedef{$image_name}{shared_root} ) {
+            my $rsp;
+            push @{$rsp->{data}}, "A diskless osimage must include either a \'root\' or a 'shared_root\' resource.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
+
+		#
+    	# make sure they don't have both
+    	#
+		if ($imagedef{$image_name}{root} && $imagedef{$image_name}{shared_root} ) {
+			my $rsp;
+			push @{$rsp->{data}}, "Cannot have both a \'root\' and a \'shared_root\' resources.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+        }
+
+	}
+
+	#
 	# check to see if all the software is available in the lpp_source 
 	# 	directories
 	#
