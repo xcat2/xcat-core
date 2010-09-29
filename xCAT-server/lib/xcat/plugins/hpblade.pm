@@ -1656,10 +1656,11 @@ sub bootseq {
 
 	
 sub power {
+	my $slot = shift; # so we can check the stat after running commands.
 	my $subcommand = shift;
 	my $command2Send;
 	my $currPowerStat;
-	
+	my $ret; # return code.	
 	$currPowerStat = $getBladeStatusResponse->result->{powered};
 	
 	if($subcommand eq "stat" || $subcommand eq "state") {
@@ -1672,29 +1673,84 @@ sub power {
 	
 	if ($subcommand eq "on") {
 		if($currPowerStat eq "POWER_OFF") {
-			$command2Send = "MOMENTARY_PRESS";
+			while($currPowerStat eq "POWER_OFF"){
+				my $ps = runpowercmd('MOMENTARY_PRESS');
+				$getBladeStatusResponse = $hpoa->getBladeStatus('bayNumber' => $slot);
+				$currPowerStat = $getBladeStatusResponse->result->{powered};
+				#print $currPowerStat . "\n";
+				sleep 1;
+			}
+			if($currPowerStat eq "POWER_ON"){
+				return(0, "on");
+			}else{
+				return(1, $currPowerStat);
+			}
 		} else {
-			return(0, "");
+			# its already on
+			return(0, "on");
 		}
+
+
+	# power the node off
 	} elsif ($subcommand eq "off") {
 		if($currPowerStat eq "POWER_ON") {
-			$command2Send = "PRESS_AND_HOLD";
-		} else {
-			return(0, "");
+			while($currPowerStat eq "POWER_ON"){
+				my $ps = runpowercmd('PRESS_AND_HOLD');
+				$getBladeStatusResponse = $hpoa->getBladeStatus('bayNumber' => $slot);
+				$currPowerStat = $getBladeStatusResponse->result->{powered};
+				#print $currPowerStat . "\n";
+				sleep 1;
+			}
 		}
+		if($currPowerStat eq "POWER_OFF"){
+			return(0, "off");
+		}else{
+			return(1, $currPowerStat);
+		}
+
+	# reset command
 	} elsif ($subcommand eq "reset") {
 		$command2Send = "RESET";
+	
+	# cycle command
 	} elsif ($subcommand eq "cycle") {
 		if($currPowerStat eq "POWER_ON") {
 			power("off");
 		}
 		$command2Send = "MOMENTARY_PRESS";
+
 	} elsif ($subcommand eq "boot") {
-		if($currPowerStat eq "POWER_OFF") {
-			$command2Send = "MOMENTARY_PRESS";
-		} else {
-			$command2Send = "COLD_REBOOT";
+		my $rc = "";
+		# turn it off first
+		if($currPowerStat eq "POWER_ON"){
+			while($currPowerStat eq "POWER_ON"){
+				my $ps = runpowercmd('PRESS_AND_HOLD');
+				$getBladeStatusResponse = $hpoa->getBladeStatus('bayNumber' => $slot);
+				$currPowerStat = $getBladeStatusResponse->result->{powered};
+				#print $currPowerStat . "\n";
+				sleep 1;
+			}
+			$rc = "off ";
 		}
+
+		# power should be off if at this point.
+		if($currPowerStat eq "POWER_OFF"){
+			while($currPowerStat eq "POWER_OFF"){
+				runpowercmd('MOMENTARY_PRESS');
+				$getBladeStatusResponse = $hpoa->getBladeStatus('bayNumber' => $slot);
+				$currPowerStat = $getBladeStatusResponse->result->{powered};
+				if($currPowerStat eq "POWER_OFF"){
+					sleep 1;
+				}
+			}
+			$rc .= "on";
+		}
+		#if($currPowerStat eq "POWER_OFF") {
+		#	$command2Send = "MOMENTARY_PRESS";
+		#} else {
+		#	$command2Send = "COLD_REBOOT";
+		#}
+		return(0,$rc);
 	} elsif ($subcommand eq "softoff") {
 		if($currPowerStat eq "POWER_ON") {
 			$command2Send = "MOMENTARY_PRESS";
@@ -1707,11 +1763,32 @@ sub power {
 		if($pwrResult->fault) {
 			return(1, "Node $curn - Power command failed");
 		}
-		return(0, "");
+		$getBladeStatusResponse = $hpoa->getBladeStatus('bayNumber' => $slot);
+		$currPowerStat = $getBladeStatusResponse->result->{powered};
+		my $r;
+		if($currPowerStat eq "POWER_ON"){ 
+			$r = "on" 
+		}elsif($currPowerStat eq "POWER_OFF"){
+			$r = "off";
+		}else{
+			# don't know what this is:
+			$r = $currPowerStat;
+		}
+		return(0, $r);
 	}
 }
+
+# put this in here to make things more robust.	
+sub runpowercmd {
+	my $cmd = shift;
+	my $pwrResult = $hpoa->setBladePower('bayNumber' => $slot, 'power' => $cmd);
+	if($pwrResult->fault){
+		print $pwrResult->fault;
+	}
+	return $pwrResult;
+	#print Dumper($pwrResult);	
+}	
 	
-		
 
 sub bladecmd {
 	my $oa = shift;
@@ -1736,7 +1813,7 @@ sub bladecmd {
 	if ($command eq "rbeacon") {
 		return beacon(@args);
 	} elsif ($command eq "rpower") {
-		return power(@args);
+		return power($slot, @args);
 	} elsif ($command eq "rvitals") {
 		return vitals(@args);
 	} elsif ($command =~ /r[ms]preset/) {
