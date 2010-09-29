@@ -58,6 +58,7 @@ foreach my $podfile (@pods) {
 
 # Remove the dummy pods
 unlink @dummyPods;
+rmdir "$poddir/man7";
 
 exit;
 
@@ -68,7 +69,7 @@ exit;
 #	keep track of all dummy pods created, so they can be removed later
 sub createDummyPods {
 	my ($poddir, $pods) = @_;
-	my $cmd = "grep -r -E 'L<.+\\(5\\)\\|.+\\.5>' " . $poddir;
+	my $cmd = "grep -r -E 'L<.+\\([57]\\)\\|.+\\.[57]>' " . $poddir;
 	#print "Running cmd: ", $cmd, "\n";
 	my @lines = `$cmd`;
 	if ($?) { print "Error running:  $cmd\n"; print join('', @lines); }
@@ -77,11 +78,16 @@ sub createDummyPods {
 	my @dummyPods;
 	foreach my $l (@lines) {
 		#print "$l\n";
-		my @matches = $l =~ /L<([^\(]+)\(5\)\|\1\.5>/g;		# get all the matches in the line
-		foreach my $m (@matches) {
-			my $filename = "$poddir/man5/$m.5.pod";
+		my @matches = $l =~ /L<([^\(]+)\(([57])\)\|\1\.[57]>/g;		# get all the matches in the line
+		# The above line should create the array with every other entry being the man page name
+		# and every other entry is the section # (5 or 7)
+		my $cmd;
+		while ($cmd=shift @matches) {
+			#foreach my $m (@matches) {
+			my $section = shift @matches;
+			my $filename = "$poddir/man$section/$cmd.$section.pod";
 			#print "$filename\n";
-			if (!(grep /^$filename$/, @$pods)) { push @dummyPods, $filename; }
+			if (!(grep /^$filename$/, @$pods) && !(grep /^$filename$/, @dummyPods)) { push @dummyPods, $filename; }
 		}
 	}
 	
@@ -90,8 +96,9 @@ sub createDummyPods {
 	
 	# Create these empty files
 	print "Creating empty linked-to files: ", join(', ', @dummyPods), "\n";
+	mkdir "$poddir/man7";
 	foreach my $d (@dummyPods) {
-		if (!open(TMP, ">>$d")) { warn "Could not creaate dummy pod file $d ($!)\n"; }
+		if (!open(TMP, ">>$d")) { warn "Could not create dummy pod file $d ($!)\n"; }
 		else { close TMP; }
 	}
 	
@@ -142,7 +149,7 @@ OS diskful/diskfree deployment.
 
 =head1 XCAT DATABASE
 
-All of the cluster configuration information is in the xCAT database.  See B<xcatdb(5)> for
+All of the cluster configuration information is in the xCAT database.  See L<xcatdb(5)|xcatdb.5> for
 descriptions of every table in the database.
 
 =head1 XCAT COMMANDS
@@ -190,7 +197,7 @@ sub convertpod2html {
 	#TODO: use --css=<stylesheet> and --title=<pagetitle> to make the pages look better
 	pod2html($podfile,
 			"--outfile=$htmlfile",
-			"--podpath=man1:man3:man5:man8",
+			"--podpath=man1:man3:man5:man7:man8",
 			"--podroot=$poddir",
 			"--htmldir=$htmldir",
 			"--recurse",

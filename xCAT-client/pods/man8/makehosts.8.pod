@@ -56,4 +56,4 @@ IP addresses of 1.2.3.1, 1.2.3.2, etc.
 
 =head1 SEE ALSO
 
-hosts(5), L<makedns(8)|makedns.8>
+L<hosts(5)|hosts.5>, L<makedns(8)|makedns.8>

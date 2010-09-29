@@ -13,7 +13,7 @@ B<rmigrate> requests that a guest VM be moved from the current entity hosting it
 =head1 B<Files>
 
 B<vm> table -
-Table governing VM paramaters.  See B<vm(5)> for further details.
+Table governing VM paramaters.  See L<vm(5)|vm.5> for further details.
 This is used to determine the current host to migrate from.
 
 =head1 B<Examples>

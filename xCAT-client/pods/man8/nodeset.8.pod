@@ -19,7 +19,7 @@ take next.
 
 B<nodeset> will maniputale the boot configuration files of yaboot and pxelinux.0.
 
-Assume that /tftpboot is the root for tftpd (set in B<site(5)>).
+Assume that /tftpboot is the root for tftpd (set in L<site(5)|site.5>).
 
 B<nodeset> for pxe makes changes to /tftpboot/pxelinux.cfg/{node hex ip}
 
@@ -87,16 +87,16 @@ Print version.
 =head1 B<Files>
 
 B<noderes> table -
-xCAT  node  resources  file.   See  B<noderes(5)>  for  further
+xCAT  node  resources  file.   See  L<noderes(5)|noderes.5>  for  further
 details.
 
 B<nodetype> table -
-xCAT node installation type file.  See B<nodetype(5)> for  fur-
+xCAT node installation type file.  See L<nodetype(5)|nodetype.5> for  fur-
 ther  details.   This is used to determine the node installation
 image type.
 
 B<site> table -
-xCAT main  configuration  file.   See  B<site(5)>  for  further
+xCAT main  configuration  file.   See  L<site(5)|site.5>  for  further
 details.   This  is  used  to determine the location of the TFTP
 root directory and the TFTP xCAT  subdirectory.   /tftpboot  and
 /tftpboot/xcat is the default.
@@ -113,5 +113,5 @@ resource group.
 
 =head1 B<See> B<Also>
 
-L<noderange(3)|noderange.3>,   L<nodels(1)|nodels.1>,   L<nodestat(1)|nodestat.1>,   L<rinstall(8)|rinstall.8>,
-L<makedhcp(8)|makedhcp.8>
+L<noderange(3)|noderange.3>, L<nodels(1)|nodels.1>, L<nodestat(1)|nodestat.1>, L<rinstall(8)|rinstall.8>,
+L<makedhcp(8)|makedhcp.8>, L<osimage(7)|osimage.7>

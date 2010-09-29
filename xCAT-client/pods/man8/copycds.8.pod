@@ -61,4 +61,4 @@ B<copycds -n rhels5.3 -a x86_64 dvd.iso>
 
 =head1 SEE ALSO
 
-L<nodeset(8)|nodeset.8>, site(5), nodetype(5)
+L<nodeset(8)|nodeset.8>, L<site(5)|site.5>, L<nodetype(5)|nodetype.5>

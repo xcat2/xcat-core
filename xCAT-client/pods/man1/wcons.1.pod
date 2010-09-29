@@ -48,7 +48,7 @@ specified).
 =head1 B<Files>
 
 B<nodehm> table -
-xCAT  node hardware management table.  See B<nodehm(5)> for further details.  This is used  to  determine  the  console  access
+xCAT  node hardware management table.  See L<nodehm(5)|nodehm.5> for further details.  This is used  to  determine  the  console  access
 method.
 
 =head1 B<Examples>

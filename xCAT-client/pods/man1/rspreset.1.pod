@@ -45,4 +45,4 @@ Reset the service processor that controls node5:
 
 =head1 B<SEE ALSO>
 
-L<rpower(1)|rpower.1>, nodehm(5)
+L<rpower(1)|rpower.1>, L<nodehm(5)|nodehm.5>
