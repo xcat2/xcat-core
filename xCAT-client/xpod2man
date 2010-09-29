@@ -38,12 +38,7 @@ foreach my $podfile (@pods) {
     convertpod2man($podfile, $manfile, $section);
 }
 
-#TODO: to enable linking between the cmd man pages and the db man pages, need to:
-#	grep thru the cmd pods searching for references (L<>) to any section 5 man page
-#	if that pod does not exist, create a minimal one that will satisfy pod2html
-#	keep track of all dummy pods created
-#	convert all original pod pages
-#	remove the dummy pods
+my @dummyPods = createDummyPods($poddir, \@pods);
 
 # Build the html page for each pod.
 #mkdir($htmldir) or die "Error: could not create $htmldir.\n";
@@ -61,8 +56,47 @@ foreach my $podfile (@pods) {
     convertpod2html($podfile, $htmlfile, $poddir, $htmldir);
 }
 
+# Remove the dummy pods
+unlink @dummyPods;
+
 exit;
 
+
+# To enable linking between the cmd man pages and the db man pages, need to:
+#	grep thru the cmd pods searching for references (L<>) to any section 5 man page
+#	if that pod does not exist, create an empty one that will satisfy pod2html
+#	keep track of all dummy pods created, so they can be removed later
+sub createDummyPods {
+	my ($poddir, $pods) = @_;
+	my $cmd = "grep -r -E 'L<.+\\(5\\)\\|.+\\.5>' " . $poddir;
+	#print "Running cmd: ", $cmd, "\n";
+	my @lines = `$cmd`;
+	if ($?) { print "Error running:  $cmd\n"; print join('', @lines); }
+	#my @lines;
+	#system($cmd);
+	my @dummyPods;
+	foreach my $l (@lines) {
+		#print "$l\n";
+		my @matches = $l =~ /L<([^\(]+)\(5\)\|\1\.5>/g;		# get all the matches in the line
+		foreach my $m (@matches) {
+			my $filename = "$poddir/man5/$m.5.pod";
+			#print "$filename\n";
+			if (!(grep /^$filename$/, @$pods)) { push @dummyPods, $filename; }
+		}
+	}
+	
+	# Also add xcattest.1.pod, because the xcat.1.pod summary page refers to it
+	push @dummyPods, "$poddir/man1/xcattest.1.pod";
+	
+	# Create these empty files
+	print "Creating empty linked-to files: ", join(', ', @dummyPods), "\n";
+	foreach my $d (@dummyPods) {
+		if (!open(TMP, ">>$d")) { warn "Could not creaate dummy pod file $d ($!)\n"; }
+		else { close TMP; }
+	}
+	
+	return @dummyPods;
+}
 
 # Recursively get the list of pod man page files.
 sub getPodList {
@@ -136,6 +170,9 @@ foreach my $manpage (@_) {
 	$description =~ s/^-\s*//;		# if the description has a leading hypen, strip it off
 	print FILE "\n=item L<$cmd($sectionnum)|$cmd.$sectionnum>\n\n".$description."\n";
 }
+
+# Artificially add the xcattest cmd, because the xCAT-test rpm will add this
+print FILE "\n=item L<xcattest(1)|xcattest.1>\n\nRun automated xCAT test cases.\n";
 
 	print FILE <<"EOS3";
 

@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<xcattest> - Run xCAT test cases. 
+B<xcattest> - Run automated xCAT test cases. 
 
 =head1 SYNOPSIS
 
