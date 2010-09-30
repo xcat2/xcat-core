@@ -1137,6 +1137,8 @@ sub spot_updates
     my $spot_name = $image_name;
     chomp $spot_name;
 
+	my $SRname = $imagedef{$image_name}{shared_root};
+
     my @allservers;              # list of all service nodes
 
     #
@@ -1222,9 +1224,9 @@ sub spot_updates
 
             # get list of SPOTS
             my $lscmd = qq~/usr/sbin/lsnim -t spot | /usr/bin/cut -f1 -d' ' ~;
-            my @spots =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $srvnode,
-                                    $lscmd, 1);
+
+
+			my $spotlist = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $srvnode, $lscmd, 0);
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
@@ -1234,15 +1236,13 @@ srvnode.";
                 return 1;
             }
 
-            # see if spot defined
-            if (!grep(/$spot_name$/, @spots))
-            {
+			my @SNspots;
+			foreach my $line ( split(/\n/, $spotlist )) {
+				$line =~ s/$srvnode:\s+//;
+				push(@SNspots, $line);
+			}
 
-                # if not then check the next one
-                next;
-            }
-            else
-            {
+			if (grep(/$spot_name$/, @SNspots)) {
 
                 # ok - spot is defined on this SN
                 # 	- see if the spot is allocated
@@ -1255,7 +1255,7 @@ srvnode.";
                     my $rsp;
 
                     push @{$rsp->{data}},
-                      "The resource named \'$spot_name\' is currently allocated on service node \'$srvnode\'.\n";
+                      "The resource named \'$spot_name\' is currently allocated on service node \'$srvnode\' and cannot be removed.\n";
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     return 1;
                 }
@@ -1430,17 +1430,18 @@ srvnode.";
     {
         foreach my $sn (@SNlist)
         {
-
             # remove the spot
             if ($::VERBOSE)
             {
                 my $rsp;
                 $rsp->{data}->[0] =
-                  "Removing SPOT \'$spot_name\' on service node $sn.\n";
+                  "Removing SPOT \'$spot_name\' on service node $sn. This could take a while.\n";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
 
             my $rmcmd = qq~nim -o remove $spot_name 2>/dev/null~;
+#ndebug
+
             my $nout  =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $rmcmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -1450,8 +1451,43 @@ srvnode.";
                   "Could not remove $spot_name from service node $sn.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
             }
+
+
+			# if there is a shared_root then remove that also
+			#   - see if the shared_root exist and if it is allocated
+			my $alloc_count = xCAT::InstUtils->get_nim_attr_val($SRname, "alloc_count", $callback, $sn, $subreq);
+
+			if (defined($alloc_count)) {  # then the res exists
+ 				if ($alloc_count != 0) {
+                	my $rsp;
+                	push @{$rsp->{data}}, "The resource named \'$SRname\' is currently allocated on service node \'$sn\' and cannot be removed.\n";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+            	}
+            	else
+            	{
+
+                	# shared_root  exists and is not allocated
+                	#  so it can be removed 
+					if ($::VERBOSE)
+            		{
+                		my $rsp;
+                		$rsp->{data}->[0] =
+                  		"Removing shared_root \'$SRname\' on service node $sn.\n";
+                		xCAT::MsgUtils->message("I", $rsp, $callback);
+            		}
+
+            		my $rmcmd = qq~nim -o remove $SRname 2>/dev/null~;
+            		my $nout  = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $rmcmd, 0);
+            		if ($::RUNCMD_RC != 0)
+            		{
+                		my $rsp;
+               			push @{$rsp->{data}}, "Could not remove \'$SRname\' from service node $sn.\n";
+                		xCAT::MsgUtils->message("E", $rsp, $callback);
+            		}
+				}
+            }
         }
-    }
+    } # end UPDATE
     return 0;
 }
 
@@ -9846,81 +9882,85 @@ sub update_spot_sw
 
             # use xcatchroot to install sw in SPOT on nimprime.
             
-    # install installp with file first.
-            my $rc = update_spot_installp($callback, $chroot_lpploc, $tmp_installp,
-                                          $iflags, $spotname, $nimprime, $subreq);
-            if ($rc)
-            {
-                #failed to update installp
-                return 1;
-            }
+    		# install installp with file first.
+			if (defined($tmp_installp) ) {
+            	my $rc = update_spot_installp($callback, $chroot_lpploc, $tmp_installp, $iflags, $spotname, $nimprime, $subreq);
+            	if ($rc)
+            	{
+                	#failed to update installp
+                	return 1;
+            	}
 
-            # remove tmp file
-            my $cmd = qq~/usr/bin/rm -f $tmp_installp~;
+            	# remove tmp file
+            	my $cmd = qq~/usr/bin/rm -f $tmp_installp~;
             
-            my $output =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+            	my $output =
+              		xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
 
-            if ($::RUNCMD_RC != 0)
-            {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "Could not run command: $cmd.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
+            	if ($::RUNCMD_RC != 0)
+            	{
+                	my $rsp;
+                	push @{$rsp->{data}},
+                  	"Could not run command: $cmd.\n";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+                	return 1;
+            	}
 
-        	# - run updtvpkg to make sure installp software
-			#       is registered with rpm
-			#
-			$cmd   = qq~$::XCATROOT/bin/xcatchroot -i $spotname "/usr/sbin/updtvpkg"~;
+        		# - run updtvpkg to make sure installp software
+				#       is registered with rpm
+				#
+				$cmd   = qq~$::XCATROOT/bin/xcatchroot -i $spotname "/usr/sbin/updtvpkg"~;
 			
-            $output =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+            	$output =
+              		xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
 
-            if ($::RUNCMD_RC != 0)
-            {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "Could not run command: $cmd.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
+            	if ($::RUNCMD_RC != 0)
+            	{
+                	my $rsp;
+                	push @{$rsp->{data}},
+                  		"Could not run command: $cmd.\n";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+                	return 1;
+            	}
 
-    # then to install RPMs.
-            unless (open(RFILE, "<$tmp_rpm"))
-            {
-                my $rsp;
-                push @{$rsp->{data}}, "Could not open $tmp_rpm for reading.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
+			}
 
-            my @rlist = <RFILE>;
-            close(RFILE);
+			# then to install RPMs.
+			if (defined($tmp_rpm) ) {
+            	unless (open(RFILE, "<$tmp_rpm"))
+            	{
+                	my $rsp;
+                	push @{$rsp->{data}}, "Could not open $tmp_rpm for reading.\n";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+                	return 1;
+            	}
+
+            	my @rlist = <RFILE>;
+            	close(RFILE);
             
-            $rc = update_spot_rpm($callback, $chroot_rpmloc, \@rlist,
+            	my $rc = update_spot_rpm($callback, $chroot_rpmloc, \@rlist,
                                           $rflags, $spotname, $nimprime, $subreq);
-            if ($rc)
-            {
-                #failed to update RPM
-                return 1;
-            }
+            	if ($rc)
+            	{
+                	#failed to update RPM
+                	return 1;
+            	}
             
-            # remove tmp file
-            $cmd = qq~/usr/bin/rm -f $tmp_rpm~;
+            	# remove tmp file
+            	my $cmd = qq~/usr/bin/rm -f $tmp_rpm~;
 
-            $output =
-              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
+            	my $output =
+              		xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
 
-            if ($::RUNCMD_RC != 0)
-            {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "Could not run command: $cmd.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
+            	if ($::RUNCMD_RC != 0)
+            	{
+                	my $rsp;
+                	push @{$rsp->{data}},
+                  		"Could not run command: $cmd.\n";
+                	xCAT::MsgUtils->message("E", $rsp, $callback);
+                	return 1;
+            	}
+			}
         }
     }
     
@@ -10227,6 +10267,7 @@ sub sync_spot_files
 
 sub parse_installp_bundle
 {
+    
     my $callback = shift;
     my $bndfile = shift;
 
@@ -10265,34 +10306,42 @@ sub parse_installp_bundle
     my $tmp_installp = "/tmp/tmp_installp";
     my $tmp_rpm = "/tmp/tmp_rpm";
 
-    unless (open(IFILE, ">$tmp_installp"))
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Could not open $tmp_installp for writing.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-    }
+	if ( scalar @ilist) {
+    	unless (open(IFILE, ">$tmp_installp"))
+    	{
+        	my $rsp;
+        	push @{$rsp->{data}}, "Could not open $tmp_installp for writing.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return 1;
+    	}
 
-    foreach (@ilist)
-    {
-        print IFILE $_ . "\n";
-    }
-    close(IFILE);
+    	foreach (@ilist)
+    	{
+        	print IFILE $_ . "\n";
+    	}
+    	close(IFILE);
+	} else {
+		$tmp_installp=undef;
+	}
 
-    # put rpm list into tmp file
-    unless (open(RFILE, ">$tmp_rpm"))
-    {
-        my $rsp;
-        push @{$rsp->{data}}, "Could not open $tmp_rpm for writing.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
-    }
+	if ( scalar @rlist) {
+    	# put rpm list into tmp file
+    	unless (open(RFILE, ">$tmp_rpm"))
+    	{
+        	my $rsp;
+        	push @{$rsp->{data}}, "Could not open $tmp_rpm for writing.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+        	return 1;
+    	}
     
-    foreach (@rlist)
-    {
-        print RFILE $_ . "\n";
-    }
-    close(RFILE);
+    	foreach (@rlist)
+    	{
+        	print RFILE $_ . "\n";
+    	}
+    	close(RFILE);
+	} else {
+		$tmp_rpm=undef;
+	}
 
     return ($tmp_installp, $tmp_rpm);
     
