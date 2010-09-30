@@ -2224,6 +2224,9 @@ sub getNodeAttribs
     #if ($extra) { return undef; }    # return (undef,"Ambiguous query"); }
     defined($data[0])
       || return undef;    #(undef,"No matching entry found in configuration");
+    unless (scalar keys %{$data[0]}) {
+        return undef;
+    }
     my $attrib;
     foreach $datum (@data) {
     foreach $attrib (@attribs)
