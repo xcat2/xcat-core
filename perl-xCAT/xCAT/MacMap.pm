@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::MacMap;
+use strict;
 use xCAT::Table;
 use xCAT::Utils;
 use xCAT::MsgUtils;
@@ -8,6 +9,7 @@ use IO::Select;
 use IO::Handle;
 use Sys::Syslog;
 use Data::Dumper;
+use POSIX qw/WNOHANG/;
 use SNMP;
 my %cisco_vlans; #Special hash structure to reflect discovered VLANS on Cisco equip
 #use IF-MIB (1.3.6.1.2.1.2) for all switches
@@ -111,8 +113,61 @@ sub rvlan {
     #QBridge also has dot1qPvid, but wasn't writable in Brocade.. it is readable though, so can guide the read, mask out, mask in activity above
     #argument specification:
     #  nodes => [ list reference of nodes to query/set ]
-    #  operation => "pvid=<vid>" for now, addvlan= and delvlan= for tagged vlans, 'pvid' without = checks current value
-    my %args = %_;
+    #  operation => "pvid=<vid> or vlan=<vid>" for now, addvlan= and delvlan= for tagged vlans, 'pvid', vlan, or stat without = checks current value
+    my $self=shift;
+    my $community = "public";
+    $self->{sitetab} = xCAT::Table->new('site');
+    my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
+    if ($tmp and $tmp->{value}) { $community = $tmp->{value} }
+    my %args = @_;
+    my $op=$args{operation};
+    my $nodes=$args{nodes};
+    #first order of business is to identify the target switches
+    my $switchtab=xCAT::Table->new('switch',-create=>0);
+    unless ($switchtab) { return; }
+    my $switchents = $switchtab->getNodesAttribs($nodes,[qw/switch port/]);
+    my $node;
+    foreach $node (keys %$switchents) {
+        my $entry;
+        foreach $entry (@{$switchents->{$node}}) {
+            $self->{switches}->{$entry->{switch}}->{$entry->{port}} = $node;
+        }
+    } 
+    my $switches=[keys %{$self->{switches}}];
+    my $switchestab=xCAT::Table->new('switches',-create=>0);
+    my @switchesents;
+    if ($switchestab) {
+        foreach (values %{$switchestab->getNodesAttribs($switches,[qw(switch snmpversion username password privacy auth)])}) {
+            push @switchesents,@$_;
+        }
+    }
+    $self->fill_switchparms(community=>$community,switchesents=>\@switchesents);
+    my $switch;
+    foreach $switch (keys %{$self->{switches}}) { #first we'll extract the lay of the land...
+          $self->refresh_switch(undef,$community,$switch);
+          unless ($self->{switchinfo}->{$switch}->{vlanidtoindex}) { #need vlan id to vlanindex map for qbridge unless cisco
+            $self->scan_qbridge_vlans(switch=>$switch,community=>$community);
+          }
+    }
+    #print Dumper($self->{switchinfo});
+       #   $self->{switchinfo}->{$switch}->{bridgeidxtoifname}->{$boid}=$portname;
+       #   $self->{switchinfo}->{$switch}->{ifnametobridgeidx}->{$portname}=$boid;
+    $op =~ s/stat/pvid/;
+    $op =~ s/vlan/pvid/;
+    if ($op =~ /^addpvid/) { # add tagged vlan
+    } elsif ($op =~ /delpvid/) { #remove tagged vlan
+    } else { #native vlan query or set
+    }
+}
+sub scan_qbridge_vlans {
+    my $self = shift;
+    my %args = @_;
+    my $switch = $args{switch};
+    my $session = $self->{switchsessions}->{$switch};
+    $self->{switchinfo}->{vlanindextoid} = walkoid($session,'.1.3.6.1.2.1.17.7.1.4.2.1.3');
+    foreach (keys %{$self->{switchinfo}->{vlanindextoid}}) {
+#TODO: try to scan
+    }
 }
 sub find_mac {
 # This function is given a mac address, checks for given mac address
@@ -148,6 +203,33 @@ sub find_mac {
   return undef;
 }
 
+sub fill_switchparms {
+  my $self = shift;
+  my %args = @_;
+  my $community=$args{community};
+  $self->{switchparmhash}={};
+  my @switchentries = @{$args{switchesents}};
+  foreach (@switchentries) {
+     my $curswitch=$_->{switch};
+     $self->{switchparmhash}->{$curswitch}=$_;
+     if ($_->{snmpversion}) {
+          if ($_->{snmpversion} =~ /3/) { #clean up to accept things like v3 or ver3 or 3, whatever.
+              $self->{switchparmhash}->{$curswitch}->{snmpversion}=3;
+              unless ($_->{auth}) {
+                $self->{switchparmhash}->{$curswitch}->{auth}='md5'; #Default to md5 auth if not specified but using v3
+              }
+          } elsif ($_->{snmpversion} =~ /2/) {
+              $self->{switchparmhash}->{$curswitch}->{snmpversion}=2;
+          } else {
+              $self->{switchparmhash}->{$curswitch}->{snmpversion}=1; #Default to lowest common denominator, snmpv1
+          }
+     }
+     unless (defined $_->{password}) { #if no password set, inherit the community
+         $self->{switchparmhash}->{$curswitch}->{password}=$community;
+     }
+  }
+}
+
 sub refresh_table {
   my $self = shift;
   my $curswitch;
@@ -155,13 +237,13 @@ sub refresh_table {
   $self->{switchtab} = xCAT::Table->new('switch', -create => 1);
   $self->{switchestab} = xCAT::Table->new('switches', -create => 1);
   my @switchentries=$self->{switchestab}->getAllNodeAttribs([qw(switch snmpversion username password privacy auth)]);
-  $self->{switchparmhash}={};
   my $community = "public";
   $self->{sitetab} = xCAT::Table->new('site');
   my $tmp = $self->{sitetab}->getAttribs({key=>'snmpc'},'value');
   if ($tmp and $tmp->{value}) { $community = $tmp->{value} }
   else { #Would warn here.. 
   }
+  $self->{switchparmhash}={};
   foreach (@switchentries) {
       $curswitch=$_->{switch};
       $self->{switchparmhash}->{$curswitch}=$_;
@@ -185,7 +267,7 @@ sub refresh_table {
   my @entries = $self->{switchtab}->getAllNodeAttribs(['node','port','switch']);
   #Build hash of switch port names per switch
   $self->{switches} = {};
-  foreach $entry (@entries) {
+  foreach my $entry (@entries) {
     if (defined($entry->{switch}) and $entry->{switch} ne "" and defined($entry->{port}) and $entry->{port} ne "") {
     	if ( !$self->{switches}->{$entry->{switch}}->{$entry->{port}})
         {
@@ -202,7 +284,7 @@ sub refresh_table {
   my $children = 0;
   my $inputs = new IO::Select;
   $SIG{CHLD}= sub { while(waitpid(-1,WNOHANG) > 0) { $children-- } };
-  foreach $entry (@entries) {
+  foreach my $entry (@entries) {
     if ($checked_pairs{$entry->{switch}}) {
       next;
     }
@@ -211,7 +293,7 @@ sub refresh_table {
     $child->autoflush(1);
     $parent->autoflush(1);
     $children++;
-    $cpid = xCAT::Utils->xfork;
+    my $cpid = xCAT::Utils->xfork;
     unless (defined $cpid) { die "Cannot fork" };
     if ($cpid == 0) {
       close($child);
@@ -256,7 +338,7 @@ sub walkoid {
   $session->getnext($varbind);
   if ($session->{ErrorStr}) {
     unless ($namedargs{silentfail}) {
-        if ($namedargs{warncisco}) {
+        if ($namedargs{ciscowarn}) {
             xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}." (First attempt at indexing by VLAN failed, ensure that the switch has the vlan configured such that it appears in 'show vlan'): ".$session->{ErrorStr});
         } else {
             xCAT::MsgUtils->message("S","Error communicating with ".$session->{DestHost}.": ".$session->{ErrorStr});
@@ -330,7 +412,7 @@ sub refresh_switch {
   my $switch = shift;
 
   #if ($error) { die $error; }
-  $session = $self->getsnmpsession('community'=>$community,'switch'=>$switch);
+  my $session = $self->getsnmpsession('community'=>$community,'switch'=>$switch);
   unless ($session) { xCAT::MsgUtils->message("S","Failed to communicate with $switch"); return; }
   my $namemap = walkoid($session,'.1.3.6.1.2.1.31.1.1.1.1');
     #namemap is the mapping of ifIndex->(human readable name)
@@ -358,6 +440,7 @@ sub refresh_switch {
                                                                                         #so we need cisco vtp mib too
   my %vlans_to_check;
   if (defined($iftovlanmap) or defined($trunktovlanmap)) { #We have a cisco, the intelligent thing is to do SNMP gets on the ports 
+      $self->{switchinfo}->{$switch}->{vlanidtoindex}="NA";#mark this switch to ignore for qbridge scans
 # that we can verify are populated per switch table
     my $portid;
     foreach $portid (keys %{$namemap}) {
@@ -386,13 +469,14 @@ sub refresh_switch {
 
   my $vlan;
   my $iscisco=0;
-  foreach $vlan (sort keys %vlans_to_check) { #Sort, because if numbers, we want 1 first
+  foreach $vlan (sort keys %vlans_to_check) { #Sort, because if numbers, we want 1 first, because that vlan should not get communiy string indexed query
     unless (not $vlan or $vlan eq 'NA' or $vlan eq '1') { #don't subject users to the context pain unless needed
         $iscisco=1;
         $session = $self->getsnmpsession('switch'=>$switch,'community'=>$community,'vlanid'=>$vlan);
     }
     unless ($session) { return; } 
     my $bridgetoifmap = walkoid($session,'.1.3.6.1.2.1.17.1.4.1.2',ciscowarn=>$iscisco); # Good for all switches
+
     # my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.4.3.1.2'); 
     my $mactoindexmap = walkoid($session,'.1.3.6.1.2.1.17.7.1.2.2.1.2',silentfail=>1);
     unless (defined($mactoindexmap)) { #if no qbridge defined, try bridge mib, probably cisco
@@ -410,6 +494,10 @@ sub refresh_switch {
         #if still running, we have match
         foreach my $boid (keys %$bridgetoifmap) {
           unless ($bridgetoifmap->{$boid} == $ifindex) { next; }
+          $self->{switchinfo}->{$switch}->{bridgeidxtoifname}->{$boid}=$portname;
+          $self->{switchinfo}->{$switch}->{ifnametobridgeidx}->{$portname}=$boid;
+          $self->{nodeinfo}->{$self->{switches}->{$switch}->{$portname}}->{portnametobridgeindex}->{$portname}=$boid;
+          $self->{nodeinfo}->{$self->{switches}->{$switch}->{$portname}}->{bridgeindextoportname}->{$boid}=$portname;
           my $bridgeport = $boid;
           foreach (keys %$mactoindexmap) { 
             if ($mactoindexmap->{$_} == $bridgeport) {
@@ -426,6 +514,7 @@ sub refresh_switch {
       }
     }
   }
+  $self->{switchsessions}->{$switch}=$session; #save session for future use
 }
                 
 
