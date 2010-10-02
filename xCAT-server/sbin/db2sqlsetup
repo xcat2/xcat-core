@@ -1290,34 +1290,35 @@ sub setupODBC
     {
         my $db2clifile       = "/var/lib/db2/sqllib/cfg/db2cli.ini";
         my $db2clifilebackup = "/var/lib/db2/sqllib/cfg/db2cli.ini.org";
-        $cmd = "fgrep -i  XCATDB $db2clifile";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)    # then xcat entry not there
-        {
-            $cmd = "cp $db2clifile $db2clifilebackup ";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
+        if (-e ( $db2clifile)) {
+          $cmd = "fgrep -i  XCATDB $db2clifile";
+          xCAT::Utils->runcmd($cmd, -1);
+          if ($::RUNCMD_RC != 0)    # then xcat entry not there
+          {
+             $cmd = "cp $db2clifile $db2clifilebackup ";
+             xCAT::Utils->runcmd($cmd, 0);
+             if ($::RUNCMD_RC != 0)
+             {
                 $message = "$cmd failed. Could not setup ODBC.";
                 xCAT::MsgUtils->message("E", "$message");
                 exit(1);
 
-            }
-            my $entry = "\n[$instance]\nuid=$instance\npasswd=$passwd";
-            $cmd = "echo \"$entry\" >> $db2clifile";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                $message = "$cmd failed. Could not setup $db2clifile.";
-                xCAT::MsgUtils->message("E", "$message");
-                exit(1);
+             }
+             my $entry = "\n[$instance]\nuid=$instance\npasswd=$passwd";
+             $cmd = "echo \"$entry\" >> $db2clifile";
+             xCAT::Utils->runcmd($cmd, 0);
+             if ($::RUNCMD_RC != 0)
+             {
+                 $message = "$cmd failed. Could not setup $db2clifile.";
+                 xCAT::MsgUtils->message("E", "$message");
 
-            }
-        }
-        else
-        {    # entry already there
-            $message = "$db2clifile  already configured, will not change.";
-            xCAT::MsgUtils->message("I", "$message");
+             }
+         }
+         else
+         {    # entry already there
+             $message = "$db2clifile  already configured, will not change.";
+             xCAT::MsgUtils->message("I", "$message");
+         }
         }
     }
 }
