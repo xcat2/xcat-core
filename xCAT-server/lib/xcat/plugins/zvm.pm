@@ -3391,8 +3391,8 @@ sub nodeSet {
 		# Netboot directory
 		my $netbootDir = "$installDir/netboot/$os/$arch/$profile";
 		my $kernelFile = "$netbootDir/kernel";
-		my $parmFile   = "$netbootDir/parm";
-		my $initFile   = "$netbootDir/initrd.gz";
+		my $parmFile   = "$netbootDir/parm-statelite";
+		my $initFile   = "$netbootDir/initrd-statelite.gz";
 
 		# If parmfile exists
 		if ( -e $parmFile ) {
@@ -3461,8 +3461,8 @@ sub nodeSet {
 
 		# Temporary kernel, parmfile, and initrd
 		my $tmpKernelFile = "/tmp/$os-kernel";
-		my $tmpParmFile   = "/tmp/$os-parm";
-		my $tmpInitFile   = "/tmp/$os-initrd.gz";
+		my $tmpParmFile   = "/tmp/$os-parm-statelite";
+		my $tmpInitFile   = "/tmp/$os-initrd-statelite.gz";
 
 		if (`ssh -o ConnectTimeout=5 $hcp "ls /tmp" | grep "$os-kernel"`) {
 
@@ -3474,7 +3474,7 @@ sub nodeSet {
 			xCAT::zvmUtils->sendFile( $hcp, $kernelFile, $tmpKernelFile );
 		}
 
-		if (`ssh -o ConnectTimeout=5 $hcp "ls /tmp" | grep "$os-parm"`) {
+		if (`ssh -o ConnectTimeout=5 $hcp "ls /tmp" | grep "$os-parm-statelite"`) {
 
 			# Do nothing
 		}
@@ -3484,7 +3484,7 @@ sub nodeSet {
 			xCAT::zvmUtils->sendFile( $hcp, $parmFile, $tmpParmFile );
 		}
 
-		if (`ssh -o ConnectTimeout=5 $hcp "ls /tmp" | grep "$os-initrd.gz"`) {
+		if (`ssh -o ConnectTimeout=5 $hcp "ls /tmp" | grep "$os-initrd-statelite.gz"`) {
 
 			# Do nothing
 		}

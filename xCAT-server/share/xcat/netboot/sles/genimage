@@ -261,7 +261,7 @@ if ($netdriver) {
     } elsif ($arch eq 'ppc64') {
         @ndrivers = qw/e1000 e1000e igb ibmveth ehea/;
     } elsif ($arch eq "s390x") {
-        # TODO: put the default network drviers for s390x here
+        @ndrivers = qw/qdio ccwgroup qeth qeth_l2 qeth_l3/;
     }
 }
 
