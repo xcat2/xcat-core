@@ -559,6 +559,10 @@ sub mknetboot
             # TODO: currently, only "mac" attribute with classic style is used, the "|" delimited string of "macaddress!hostname" format is not used
             $mac = $machash->{$node}->[0]->{'mac'};
             if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
+               #convert to linux format
+                if ($mac !~ /:/) {
+                   $mac =~s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
+                }
                 $kcmdline .= "$mac ";
             } else {
                 die qq{In the "mac" table, the "|" delimited string of "macaddress!hostname" format is not supported by "nodeset <nr> netboot|statelite if installnic/primarynic is set".};
