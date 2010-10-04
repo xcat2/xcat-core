@@ -118,7 +118,7 @@ my $sitetab;
 my $retries = 0;
 # The database initialization may take some time in the system boot scenario
 # wait for a while for the database initialization
-while (!($sitetab=xCAT::Table->new('site')) && $retries < 20)
+while (!($sitetab=xCAT::Table->new('site')) && $retries < 200)
 {
     print ("Can not open basic site table for configuration, waiting the database to be initialized.\n");
     sleep 1;
