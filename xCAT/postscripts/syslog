@@ -74,7 +74,7 @@ if [[ $NTYPE = service ]]; then
 fi
 
 if [[ $OSTYPE = linux* ]]; then
-  if [[ $OSVER = fedora* ]] || [[ $OSVER = rhels5* ]] || [[ $OSVER = rhel6* ]] || [[ $OSVER = rhels6* ]] || [[ -f /etc/fedora-release ]]; then
+  if [[ $OSVER = fedora* ]] || [[ $OSVER = rhels5* ]] || [[ $OSVER = rhel6* ]] || [[ $OSVER = rhels6* ]] || [[ -f /etc/fedora-release ]] || [[ -f /etc/redhat-release ]]; then
     if [ -e /etc/rsyslog.conf ]; then
       conf_file="/etc/rsyslog.conf"
       sysconfig="/etc/sysconfig/rsyslog"
