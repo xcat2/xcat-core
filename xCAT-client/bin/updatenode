@@ -80,7 +80,9 @@ push (@{$cmdref->{arg}}, @ARGV);
 # to access the target node firstly
 if (
     !GetOptions(
+				'A|updateallsw'    => \$::ALLSW,
                 'c|cmdlineonly'    => \$::CMDLINE,
+				'd=s'              => \$::ALTSRC,
                 'h|help'           => \$::HELP,
                 'v|version'        => \$::VERSION,
                 'V|verbose'        => \$::VERBOSE,

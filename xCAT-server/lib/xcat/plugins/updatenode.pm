@@ -1933,7 +1933,6 @@ sub updateAIXsoftware
 			# $serv is the name of the nodes server as known by the node
 
 		  	if (scalar(@pkglist)) {
-#ndebug
             	foreach my $serv (@servers)
             	{
 
@@ -2063,6 +2062,7 @@ sub updateAIXsoftware
                         }
                     	xCAT::MsgUtils->message("I", $rsp, $callback);
                     	$error++;
+
                 	} elsif ($::VERBOSE)
                 	{
                     	my $rsp;
@@ -2111,43 +2111,45 @@ sub updateAIXsoftware
 
 				my $emgrcmd = qq~cd /xcatmnt; /usr/sbin/emgr~;
 				
-				if ( (scalar(@emgr_pkgs)) || $::ALLSW ) {
-					# call emgr with -f filename
-					$emgrcmd .= qq~ -f /xcatmnt/$emgr_file_name~; 
+				if ( (-e "/xcatmnt/$emgr_file_name") ) {
+					if ( (scalar(@emgr_pkgs)) || $::ALLSW ) {
+						# call emgr with -f filename
+						$emgrcmd .= qq~ -f /xcatmnt/$emgr_file_name~; 
+					}
+
+					if ($imagedefs{$img}{emgr_flags}) {
+						$emgrcmd .= qq~ $imagedefs{$img}{emgr_flags}~;
+					}
+
+               		if ($::VERBOSE)
+               		{
+                   		my $rsp;
+                   		push @{$rsp->{data}}, "Running: \'$emgrcmd\'.\n";
+                   		xCAT::MsgUtils->message("I", $rsp, $callback);
+               		}
+
+					my $output = xCAT::Utils->runxcmd({command => ["xdsh"], node => \@nodes, arg => [$emgrcmd]}, $subreq, -1, 1);
+
+               		if ($::RUNCMD_RC != 0)
+               		{
+                  		my $rsp;
+                   		push @{$rsp->{data}}, "Could not run emgr command.\n";
+						foreach my $o (@$output)
+                    	{
+                        	push @{$rsp->{data}}, "$o";
+                    	}
+                   		xCAT::MsgUtils->message("I", $rsp, $callback);
+                   		$error++;
+               		} elsif ($::VERBOSE)
+               		{
+                   		my $rsp;
+						foreach my $o (@$output)
+                    	{
+                        	push @{$rsp->{data}}, "$o";
+                    	}
+                   		xCAT::MsgUtils->message("I", $rsp, $callback);
+               		}
 				}
-
-				if ($imagedefs{$img}{emgr_flags}) {
-					$emgrcmd .= qq~ $imagedefs{$img}{emgr_flags}~;
-				}
-
-               	if ($::VERBOSE)
-               	{
-                   	my $rsp;
-                   	push @{$rsp->{data}}, "Running: \'$emgrcmd\'.\n";
-                   	xCAT::MsgUtils->message("I", $rsp, $callback);
-               	}
-
-				my $output = xCAT::Utils->runxcmd({command => ["xdsh"], node => \@nodes, arg => [$emgrcmd]}, $subreq, -1, 1);
-
-               	if ($::RUNCMD_RC != 0)
-               	{
-                  	my $rsp;
-                   	push @{$rsp->{data}}, "Could not run emgr command.\n";
-					foreach my $o (@$output)
-                    {
-                        push @{$rsp->{data}}, "$o";
-                    }
-                   	xCAT::MsgUtils->message("I", $rsp, $callback);
-                   	$error++;
-               	} elsif ($::VERBOSE)
-               	{
-                   	my $rsp;
-					foreach my $o (@$output)
-                    {
-                        push @{$rsp->{data}}, "$o";
-                    }
-                   	xCAT::MsgUtils->message("I", $rsp, $callback);
-               	}
 			}
 
 			#
@@ -2197,9 +2199,9 @@ sub updateAIXsoftware
 					my $rcmd;
 					if (scalar(@rpm_pkgs)) {
 						# didn't mount dir if there were no packages
-						$rcmd = qq~cd $dir; /usr/bin/rpm $flags $pkg_string~;
+						$rcmd = qq~cd $dir; /usr/bin/rpm $flags $pkg_string 2>/dev/null~;
 					} else {
-						$rcmd = qq~/usr/bin/rpm $flags $pkg_string~;
+						$rcmd = qq~cd $dir; /usr/bin/rpm $flags $pkg_string 2>/dev/null~;
 					}
 
                     if ($::VERBOSE)
@@ -2211,8 +2213,7 @@ sub updateAIXsoftware
 
 					my $output = xCAT::Utils->runxcmd({command => ["xdsh"], node => \@nodes, arg => [$rcmd]}, $subreq, -1, 1);
 
-                    if ($::RUNCMD_RC != 0)
-                    {
+                    if ( ($::RUNCMD_RC != 0) && (!$::ALLSW)) {
                         my $rsp;
                         push @{$rsp->{data}}, "Could not install RPMs.\n";
 						foreach my $o (@$output)
