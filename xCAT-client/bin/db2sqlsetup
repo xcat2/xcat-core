@@ -1319,6 +1319,28 @@ sub setupODBC
              $message = "$db2clifile  already configured, will not change.";
              xCAT::MsgUtils->message("I", "$message");
          }
+        } else { # file does not exist
+             my $entry = "[$instance]\nuid=$instance\npasswd=$passwd";
+             $cmd = "echo \"$entry\" > $db2clifile";
+             xCAT::Utils->runcmd($cmd, 0);
+             if ($::RUNCMD_RC != 0)
+             {
+                 $message = "$cmd failed. Could not setup $db2clifile.";
+                 xCAT::MsgUtils->message("E", "$message");
+
+             }
+            $cmd = "chown xcatdb $db2clifile";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("E", " $cmd failed.");
+            }
+            $cmd = "chmod 0600 $db2clifile";
+            xCAT::Utils->runcmd($cmd, 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message("E", " $cmd failed.");
+            }
         }
     }
 }
