@@ -17,3 +17,7 @@ gdb
 binutils
 openssh-server
 vsftpd
+unixODBC
+perl-DBD-MySQL
+mysql-connector-odbc
+perl-DBD-Pg

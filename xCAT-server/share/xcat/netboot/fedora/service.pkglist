@@ -19,3 +19,7 @@ wget
 vsftpd
 ntp
 rsync
+unixODBC
+perl-DBD-MySQL
+mysql-connector-odbc
+perl-DBD-Pg

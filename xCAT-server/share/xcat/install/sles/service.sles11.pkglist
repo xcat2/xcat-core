@@ -5,7 +5,6 @@ rsync
 nmap
 perl-DBI
 vsftpd
-perl-DBD-mysql
 perl-IO-Socket-SSL
 perl-IO-Tty
 apache2
@@ -16,3 +15,13 @@ bind
 perl-Expect
 perl-SNMP
 dhcp-server
+unixODBC
+perl-DBD-mysql
+mysql-client
+libmysqlclient15
+#   The following rpms are available on the SLES SDK
+#   You will need to locate and make these rpms available in your zypper
+#   repository for service node installs and uncomment the following lines:
+#MyODBC-unixODBC
+#perl-DBD-Pg
+

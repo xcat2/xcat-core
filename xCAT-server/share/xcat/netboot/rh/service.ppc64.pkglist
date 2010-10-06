@@ -31,3 +31,6 @@ ntp
 rsync
 ppc64-utils
 iputils
+unixODBC
+perl-DBD-MySQL
+mysql-connector-odbc

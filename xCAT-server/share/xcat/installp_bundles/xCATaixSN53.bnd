@@ -49,6 +49,9 @@ R:perl-Net_SSLeay.pm-1.30-3*
 R:perl-IO-Socket-SSL*
 R:unixODBC*
 
+R:perl-DBD-mysql*
+R:mysql-connector-odbc*
+
 R:perl-xCAT*
 R:xCAT-client*
 R:xCAT-server*
@@ -59,5 +62,3 @@ R:xCATsn*
 #R:xcat-postgresql-8.4-4.aix6.1.ppc.rpm
 #R:perl-DBD-Pg-2-17.2.aix6.1.ppc.rpm
 
-# optional - needed if using MySql
-#R:perl-DBD-mysql*

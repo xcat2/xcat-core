@@ -30,3 +30,7 @@ util-linux
 compat-libstdc++-33
 perl-DBD-MySQL
 perl-Socket6
+unixODBC
+perl-DBD-MySQL
+mysql-connector-odbc
+perl-DBD-Pg

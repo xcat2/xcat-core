@@ -30,3 +30,6 @@ perl-Net-Telnet
 net-snmp-perl
 ntp
 rsync
+unixODBC
+perl-DBD-MySQL
+mysql-connector-odbc

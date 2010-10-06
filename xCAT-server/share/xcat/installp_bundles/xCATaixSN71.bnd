@@ -50,18 +50,17 @@ R:perl-Net_SSLeay.pm-1.30-3*
 R:perl-IO-Socket-SSL*
 R:unixODBC*
 
+R:perl-DBD-DB2*
+R:perl-DBD-Pg*
+R:perl-DBD-mysql*
+R:mysql-connector-odbc*
+
+# optional - needed if using Postgresql
+#R:xcat-postgresql*
+
 R:perl-xCAT*
 R:xCAT-client*
 R:xCAT-server*
 R:xCAT-rmc*
 R:xCATsn*
 
-# optional - needed if using Postgresql
-#R:xcat-postgresql*
-#R:perl-DBD-Pg*
-
-# optional - needed if using DB2
-#R:perl-DBD-DB2*
-
-# optional - needed if using MySql
-#R:perl-DBD-mysql*

@@ -31,11 +31,18 @@ hal
 pam
 pam-modules
 timezone
-mysql-client
 perl-Expect
 openssl
 xCATsn
-perl-DBD-mysql
 portmap
 zypper
 rsync
+unixODBC
+perl-DBD-mysql
+mysql-client
+libmysqlclient15
+#   The following rpms are available on the SLES SDK
+#   You will need to locate and make these rpms available in your zypper
+#   repository for service node installs and uncomment the following lines:
+#MyODBC-unixODBC
+#perl-DBD-Pg

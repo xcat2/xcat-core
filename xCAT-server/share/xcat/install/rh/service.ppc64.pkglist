@@ -26,3 +26,7 @@ binutils
 openssh-server
 util-linux
 compat-libstdc++-33
+unixODBC
+perl-DBD-MySQL
+mysql-connector-odbc
+perl-DBD-Pg
