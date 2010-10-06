@@ -71,13 +71,25 @@ fi
 case $1 in
 restart)
   echo -n "Restarting xCATd "
-   if [ -r /etc/profile.d/xcat.sh ]; then
+  $STATUS >& /dev/null
+  if [ "$?" == "0" ]; then
+    if ! nodels --version |grep 'Version 2.6'; #upgrade or downgrade from another major release, stop it just in case
+        $0 stop
+    fi
+  fi
+  if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
   fi
    xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 reload)
   echo -n "Reloading xCATd "
+  $STATUS >& /dev/null
+  if [ "$?" == "0" ]; then
+    if ! nodels --version |grep 'Version 2.6'; #upgrade or downgrade from another major release, stop it just in case
+        $0 stop
+    fi
+  fi
   export XCATRELOAD=yes 
    if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
@@ -93,7 +105,7 @@ stop)
   if [ "$?" != "0" ]; then
     echo -n "xCATd not running, not stopping "
     $LOG_WARNING
-    exit 1
+    exit 0
   fi
   kill -TERM -`cat /var/run/xcatd.pid`
   let i=0;
@@ -109,7 +121,7 @@ stop)
   $STATUS >& /dev/null
   if [ "$?" == "0" ]; then
     $LOG_FAILURE
-    exit 1
+    exit 0
   fi
   $LOG_SUCCESS
   rm /var/run/xcatd.pid
