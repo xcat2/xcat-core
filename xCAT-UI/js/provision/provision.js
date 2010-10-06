@@ -51,7 +51,7 @@ function loadProvisionPage() {
 	$('#content').append(tab.object());
 
 	// Create radio buttons for platforms
-	var hwList =$('<ol>Select a platform to provision:</ol>');
+	var hwList =$('<ol>Select a platform to provision on:</ol>');
 	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>ipmi</li>');
 	var blade = $('<li><input type="radio" name="hw" value="blade"/>blade</li>');
 	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>hmc</li>');
