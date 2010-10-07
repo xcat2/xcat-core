@@ -22,7 +22,27 @@ var fspPlugin = function() {
  * @return Nothing
  */
 fspPlugin.prototype.loadInventory = function(data) {
+	// Get arguments
+	var args = data.msg.split(',');
+	// Get tab ID
+	var tabId = args[0].replace('out=', '');
+	// Get node
+	var node = args[1].replace('node=', '');
+	// Get node inventory
+	var inv = data.rsp;
 
+	// Remove loader
+	var loaderId = tabId + 'TabLoader';
+	$('#' + loaderId).remove();
+
+	// Create division to hold inventory
+	var invDivId = tabId + 'Inventory';
+	var invDiv = $('<div class="inventory" id="' + invDivId + '"></div>');
+	var info = createInfoBar('Under construction');
+	invDiv.append(info);
+	
+	// Append to inventory form
+	$('#' + tabId).append(invDiv);
 };
 
 /**
@@ -33,7 +53,30 @@ fspPlugin.prototype.loadInventory = function(data) {
  * @return Nothing
  */
 fspPlugin.prototype.loadClonePage = function(node) {
+	// Get nodes tab
+	var tab = getNodesTab();
+	var newTabId = node + 'CloneTab';
 
+	// If there is no existing clone tab
+	if (!$('#' + newTabId).length) {
+		// Create status bar and hide it
+		var statBarId = node + 'CloneStatusBar';
+		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>')
+			.hide();
+
+		// Create info bar
+		var infoBar = createInfoBar('Under construction');
+
+		// Create clone form
+		var cloneForm = $('<div class="form"></div>');
+		cloneForm.append(statBar);
+		cloneForm.append(infoBar);
+
+		// Add clone tab
+		tab.add(newTabId, 'Clone', cloneForm, true);
+	}
+	
+	tab.select(newTabId);
 };
 
 /**
@@ -111,12 +154,14 @@ fspPlugin.prototype.loadProvisionPage = function(tabId) {
 	/**
 	 * Create provision new node division
 	 */
+	// You should copy whatever is in this function here and customize it
 	var provNew = createProvisionNew('fsp', inst);
 	provForm.append(provNew);
 
 	/**
 	 * Create provision existing node division
 	 */
+	// You should copy whatever is in this function here and customize it
 	var provExisting = createProvisionExisting('fsp', inst);
 	provForm.append(provExisting);
 
@@ -148,5 +193,5 @@ fspPlugin.prototype.loadResources = function() {
  * @return Nothing
  */
 fspPlugin.prototype.addNode = function() {
-	
+	openDialog('info', 'Under construction');
 };

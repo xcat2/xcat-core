@@ -247,6 +247,7 @@ function createProvisionExisting(plugin, inst) {
 	var provisionBtn = createButton('Provision');
 	provisionBtn.bind('click', function(event) {
 		// TODO Insert provision code here
+		openDialog('info', 'Under construction');
 	});
 	provExisting.append(provisionBtn);
 
@@ -360,6 +361,7 @@ function createProvisionNew(plugin, inst) {
 	var provisionBtn = createButton('Provision');
 	provisionBtn.bind('click', function(event) {
 		// TODO Insert provision code here
+		openDialog('info', 'Under construction');
 	});
 	provNew.append(provisionBtn);
 
