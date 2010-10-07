@@ -496,11 +496,11 @@ zvmPlugin.prototype.loadInventory = function(data) {
     					modal: true,
     					width: 300,
     					buttons: {
-    						"Cancel": function() {
-    							$(this).dialog("close");
-    						},
     						"Ok": function(){
     							removeProcessor(node, addr);
+    							$(this).dialog("close");
+    						},
+    						"Cancel": function() {
     							$(this).dialog("close");
     						}
     					}
@@ -604,11 +604,11 @@ zvmPlugin.prototype.loadInventory = function(data) {
     					modal: true,
     					width: 300,
     					buttons: {
-    						"Cancel": function() {
-    							$(this).dialog("close");
-    						},
     						"Ok": function(){
     							removeDisk(node, addr);
+    							$(this).dialog("close");
+    						},
+    						"Cancel": function() {
     							$(this).dialog("close");
     						}
     					}
@@ -696,11 +696,11 @@ zvmPlugin.prototype.loadInventory = function(data) {
     					modal: true,
     					width: 300,
     					buttons: {
-    						"Cancel": function() {
-    							$(this).dialog("close");
-    						},
     						"Ok": function(){
     							removeNic(node, addr);
+    							$(this).dialog("close");
+    						},
+    						"Cancel": function() {
     							$(this).dialog("close");
     						}
     					}
@@ -923,10 +923,7 @@ zvmPlugin.prototype.addNode = function() {
 		modal: true,
 		width: 400,
 		buttons: {
-        	"Cancel": function(){
-        		$(this).dialog( "close" );
-        	},
-			"Ok": function(){
+        	"Ok": function(){
         		// Remove any warning messages
         		$(this).find('.ui-state-error').remove();
         		
@@ -1098,7 +1095,10 @@ zvmPlugin.prototype.addNode = function() {
     					warn.prependTo($(this));
     				}		
     			} // End of else
-        	} // End of function() 
+        	},
+        	"Cancel": function(){
+        		$(this).dialog( "close" );
+        	}
 		}
 	});
 };

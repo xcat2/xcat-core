@@ -173,10 +173,7 @@ function loadGroups(data) {
 			modal: true,
 			width: 400,
 			buttons: {
-        		"Cancel": function(){
-        			$(this).dialog( "close" );
-        		},
-				"Ok": function(){
+        		"Ok": function(){
 					// Get hardware management
 					var mgt = $(this).find('select[name=mgt]').val();					
 					
@@ -204,7 +201,10 @@ function loadGroups(data) {
 					
 					plugin.addNode();
 					$(this).dialog( "close" );
-				}				
+				},
+				"Cancel": function(){
+        			$(this).dialog( "close" );
+        		}
 			}
 		});
 

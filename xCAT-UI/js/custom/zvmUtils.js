@@ -1029,10 +1029,7 @@ function openAddProcDialog(node) {
 		modal: true,
 		width: 400,
 		buttons: {
-        	"Cancel": function() {
-        		$(this).dialog( "close" );
-        	},
-			"Ok": function(){
+        	"Ok": function(){
         		// Remove any warning messages
         		$(this).find('.ui-state-error').remove();
         		
@@ -1072,7 +1069,10 @@ function openAddProcDialog(node) {
     				// Close dialog
     				$(this).dialog( "close" );
 				}
-			}
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
 		}
 	});
 }
@@ -1133,10 +1133,7 @@ function openAddDiskDialog(node, hcp) {
 		modal: true,
 		width: 400,
 		buttons: {
-        	"Cancel": function() {
-        		$(this).dialog( "close" );
-        	},
-			"Ok": function(){
+        	"Ok": function(){
         		// Remove any warning messages
         		$(this).find('.ui-state-error').remove();
         		
@@ -1209,7 +1206,10 @@ function openAddDiskDialog(node, hcp) {
     				// Close dialog
     				$(this).dialog( "close" );
         		} // End of else
-			} // End of function()
+			},
+			"Cancel": function() {
+        		$(this).dialog( "close" );
+        	}
 		}
 	});
 }
@@ -1363,10 +1363,7 @@ function openAddNicDialog(node, hcp) {
 		modal: true,
 		width: 400,
 		buttons: {
-        	"Cancel": function(){
-        		$(this).dialog( "close" );
-        	},
-			"Ok": function(){
+        	"Ok": function(){
         		// Remove any warning messages
         		$(this).find('.ui-state-error').remove();
         		
@@ -1455,7 +1452,10 @@ function openAddNicDialog(node, hcp) {
     				// Close dialog
     				$(this).dialog( "close" );
         		} // End of else
-			} // End of function()
+			},
+			"Cancel": function(){
+        		$(this).dialog( "close" );
+        	}
 		}
 	});
 }
@@ -2315,9 +2315,6 @@ function createZProvisionNew(inst) {
 					modal: true,
 					width: 400,
 					buttons: {
-						"Cancel": function() {
-							$(this).dialog("close");
-						},
 						"Ok": function(){
 							// Disable provision button
 							provisionBtn.attr('disabled', 'true');
@@ -2377,7 +2374,10 @@ function createZProvisionNew(inst) {
 							});
 														
 							$(this).dialog("close");
-						} // End of function()
+						},
+						"Cancel": function() {
+							$(this).dialog("close");
+						}
 					}
 				});	
 			} else {
