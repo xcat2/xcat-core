@@ -1,4 +1,11 @@
 package xCAT_plugin::litetree;
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+
 use xCAT::NodeRange;
 use Data::Dumper;
 use xCAT::Utils;
@@ -369,7 +376,14 @@ sub mergeArrays {
 		foreach(@$arr){
 			next if($_->{file} eq '');
 			my $o = $_->{options};
-            $o = "tempfs" unless ($o);
+			unless ($o) {
+				if (xCAT::Utils->isAIX()) {
+					$o = "rw";  # default option if not provided
+				} else {
+					$o = "tempfs";
+				}
+			}
+
 			# TODO: put some logic in here to make sure that ro is alone.
 			# if type is ro and con, then this is wrong silly!
 			#if($p eq "ro" and $t eq "con"){
