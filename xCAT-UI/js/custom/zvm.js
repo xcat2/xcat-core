@@ -141,7 +141,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 					// Get starting index
 					var nodeStart = parseInt(tmp[0].match(/\d+/));
 					// Get ending index
-					var nodeEnd = parseInt(tmp[1]);
+					var nodeEnd = parseInt(tmp[1].match(/\d+/));
 
 					tmp = userIdRange.split('-');
 
@@ -150,7 +150,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 					// Get starting index
 					var userIdStart = parseInt(tmp[0].match(/\d+/));
 					// Get ending index
-					var userIdEnd = parseInt(tmp[1]);
+					var userIdEnd = parseInt(tmp[1].match(/\d+/));
 
 					// If starting and ending index do not match
 					if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
@@ -183,7 +183,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 					// Get starting index
 					var nodeStart = parseInt(tmp[0].match(/\d+/));
 					// Get ending index
-					var nodeEnd = parseInt(tmp[1]);
+					var nodeEnd = parseInt(tmp[1].match(/\d+/));
 
 					tmp = userIdRange.split('-');
 
@@ -192,7 +192,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 					// Get starting index
 					var userIdStart = parseInt(tmp[0].match(/\d+/));
 					// Get ending index
-					var userIdEnd = parseInt(tmp[1]);
+					var userIdEnd = parseInt(tmp[1].match(/\d+/));
 
 					// Loop through each node in the node range
 					for ( var i = nodeStart; i <= nodeEnd; i++) {
@@ -942,6 +942,7 @@ zvmPlugin.prototype.addNode = function() {
 					warn.prependTo($(this));
         		} else {
     				// Check node range and user ID range
+        			// Range can be given as gpok10-gpok20, gpok[10-20], or gpok10+10
     				var errMsg = '';
     				var ready = true;
     				if (nodeRange.indexOf('-') > -1 || userIdRange.indexOf('-') > -1) {
@@ -956,7 +957,7 @@ zvmPlugin.prototype.addNode = function() {
     						// Get starting index
     						var nodeStart = parseInt(tmp[0].match(/\d+/));
     						// Get ending index
-    						var nodeEnd = parseInt(tmp[1]);
+    						var nodeEnd = parseInt(tmp[1].match(/\d+/));
     
     						tmp = userIdRange.split('-');
     
@@ -965,7 +966,7 @@ zvmPlugin.prototype.addNode = function() {
     						// Get starting index
     						var userIdStart = parseInt(tmp[0].match(/\d+/));
     						// Get ending index
-    						var userIdEnd = parseInt(tmp[1]);
+    						var userIdEnd = parseInt(tmp[1].match(/\d+/));
     
     						// If starting and ending index do not match
     						if (!(nodeStart == userIdStart) || !(nodeEnd == userIdEnd)) {
@@ -987,7 +988,7 @@ zvmPlugin.prototype.addNode = function() {
     			    		// Get starting index
     			    		var nodeStart = parseInt(tmp[0].match(/\d+/));
     			    		// Get ending index
-    			    		var nodeEnd = parseInt(tmp[1]);
+    			    		var nodeEnd = parseInt(tmp[1].match(/\d+/));
     			    
     			    		tmp = userIdRange.split('-');
     			    
@@ -996,7 +997,7 @@ zvmPlugin.prototype.addNode = function() {
     			    		// Get starting index
     			    		var userIdStart = parseInt(tmp[0].match(/\d+/));
     			    		// Get ending index
-    			    		var userIdEnd = parseInt(tmp[1]);
+    			    		var userIdEnd = parseInt(tmp[1].match(/\d+/));
     			    
     			    		// Loop through each node in the node range
     			    		for ( var i = nodeStart; i <= nodeEnd; i++) {
