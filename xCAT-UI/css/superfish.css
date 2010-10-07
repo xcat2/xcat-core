@@ -80,18 +80,10 @@ ul.sf-menu li li li:hover ul,ul.sf-menu li li li.sfHover ul {
 	color: #2E6E9E;
 }
 
-.sf-menu a,.sf-menu a:visited {
-	color: #EB8724;
-}
-
 /*** Hover ***/
 .sf-menu li:hover,.sf-menu li.sfHover {
 	background: url(../images/jquery/ui-bg_inset-hard_100_f5f8f9_1x100.png) 50% 50% repeat-x;
 	outline: 0;
-}
-
-.sf-menu li a:hover {
-	color: #E17009;
 }
 
 /*** Arrows ***/
