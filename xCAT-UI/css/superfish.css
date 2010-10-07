@@ -56,11 +56,11 @@ ul.sf-menu li li li:hover ul,ul.sf-menu li li li.sfHover ul {
 .sf-menu {
 	float: left;
 	margin-bottom: .5em;
-	border: solid 1px #BDBDBD;
+	border: 1px solid #79B7E7;
 	-moz-border-radius: .5em;
 	-webkit-border-radius: .5em;
 	font-size: 12px;
-	background: #E6E6E6 url(../images/jquery/ui-bg_glass_75_e6e6e6_1x400.png) 50% 50%
+	background: #E6E6E6 url(../images/jquery/ui-bg_glass_85_dfeffc_1x400.png) 50% 50%
 		repeat-x;
 }
 
@@ -68,7 +68,7 @@ ul.sf-menu li li li:hover ul,ul.sf-menu li li li.sfHover ul {
 .sf-menu .sf-menu {
 	float: left;
 	margin-bottom: .5em;
-	border: solid 1px #BDBDBD;
+	border: 1px solid #79B7E7;
 	-moz-border-radius: .5em;
 	-webkit-border-radius: .5em;
 	font-size: 12px;
@@ -77,21 +77,21 @@ ul.sf-menu li li li:hover ul,ul.sf-menu li li li.sfHover ul {
 .sf-menu a {
 	padding: .3em 1em;
 	text-decoration: none;
-	color: #424242;
+	color: #2E6E9E;
 }
 
 .sf-menu a,.sf-menu a:visited {
-	color: #424242;
+	color: #EB8724;
 }
 
 /*** Hover ***/
 .sf-menu li:hover,.sf-menu li.sfHover {
-	background: url(../images/header-gloss-wave.png) 50% 50% repeat-x;
+	background: url(../images/jquery/ui-bg_inset-hard_100_f5f8f9_1x100.png) 50% 50% repeat-x;
 	outline: 0;
 }
 
 .sf-menu li a:hover {
-	color: #424242;
+	color: #E17009;
 }
 
 /*** Arrows ***/

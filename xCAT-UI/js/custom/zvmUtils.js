@@ -1702,6 +1702,10 @@ function loadDiskPoolTable(data) {
 	// Get datatable
 	var dTable = getDiskDataTable();
 	if (!dTable) {
+		// Create info bar
+		var info = createInfoBar('Shows DASD volume pools defined in the EXTENT CONTROL file.');
+		$('#' + tabID).append(info);
+		
 		// Create disks section
 		var fieldSet = $('<fieldset></fieldset>');
 		var legend = $('<legend>Disks</legend>');
@@ -1756,6 +1760,10 @@ function loadNetworkTable(data) {
 	// Get datatable
 	var dTable = getNetworkDataTable();
 	if (!dTable) {
+		// Create info bar
+		var info = createInfoBar('Shows LANs and VSWITCHes found by a given zHCP.');
+		$('#' + tabID).append(info);
+		
 		// Create networks section
 		var fieldSet = $('<fieldset></fieldset>');
 		var legend = $('<legend>Networks</legend>');

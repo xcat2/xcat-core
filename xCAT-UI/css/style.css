@@ -44,13 +44,15 @@
 	cursor: pointer;
 	float: left;
 	font: 14px verdana, arial, helvetica, sans-serif;
-	color: #424242;
+	font-weight: bold;
+	color: #2E6E9E;
 	padding: 11px 30px;
 	cursor: pointer;
 }
 
 #header ul a:hover {
 	background-color: #A9D0F5;
+	color: #E17009;
 }
 
 /* User name and log out */	
@@ -111,6 +113,8 @@ body {
 #groups ul h3 {
 	text-transform: uppercase;
 	font: 12px verdana, arial, helvetica, sans-serif;
+	font-weight: bold;
+	color: #424242;
 	display: inline-table;
 }
 
@@ -158,7 +162,7 @@ span.ui-icon-info {
 }
 
 .ui-button:hover {
-	background: url(../images/header-gloss-wave.png) 50% 50% repeat-x;
+	background: url(../images/jquery/ui-bg_inset-hard_100_fcfdfd_1x100.png) 50% 50% repeat-x;
 }
 
 /****************** Tabs ******************/
@@ -209,9 +213,9 @@ span.ui-icon-info {
 	vertical-align: middle;
 }
 
-.tab span a {
+.tab span a, .tab li a {
 	text-decoration: none;
-	color: #0000FF;
+	cursor: pointer;
 }
 
 .tab fieldset {
@@ -247,17 +251,6 @@ span.ui-icon-info {
 	margin: 0;
 }
 
-.tab a {
-	font: 12px verdana, arial, helvetica, sans-serif;
-	text-decoration: none;
-	color: #0000FF;
-	cursor: pointer;
-}
-
-.tab a:hover {
-	color: #FF0000;
-}
-
 .tab textarea {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border: solid 0px #BDBDBD;
@@ -281,7 +274,8 @@ span.ui-icon-info {
 }
 
 .actionBar a {
-	color: #424242;
+	color: #2E6E9E;
+	font-weight: bold;
 	cursor: pointer;
 }
 
@@ -537,6 +531,17 @@ span.ui-icon-info {
 .form textarea {
 	width: 350px;
 	height: 150px;
+}
+
+table a {
+	font: 12px verdana, arial, helvetica, sans-serif;
+	text-decoration: none;
+	color: #0000FF;
+	cursor: pointer;
+}
+
+table a:hover {
+	color: #FF0000;
 }
 
 .button {
