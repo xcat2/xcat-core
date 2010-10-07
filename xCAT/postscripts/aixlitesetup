@@ -238,12 +238,9 @@ FindFile () {
 		SERVER=`echo $i | awk -F'|' '{print $2}'`
 		DIR=`echo $i | awk -F'|' '{print $3}'`
 
-		NAME=`basename ${1}` 
+		SRC=`echo ${MOUNTDIR}/${SERVER}${DIR}${path} |  sed -e 's/\/\//\//'`
 
-
-		SRC=`echo ${MOUNTDIR}/${SERVER}${DIR}/${NAME} |  sed -e 's/\/\//\//'`
-
-		# ex. /.statelite/mnt/10.2.0.200/etc/FScfg
+		# ex. /.statelite/mnt/10.2.0.200/myfiles/etc/FScfg
 		if [ -e ${SRC} ]; then
 
 
