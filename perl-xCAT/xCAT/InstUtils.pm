@@ -908,7 +908,7 @@ sub dolitesetup
         return 1;
     }
 
-	my @filelist = xCAT::Utils->runcmd("litefile $noderange", -1);
+	my @filelist = xCAT::Utils->runcmd("/opt/xcat/bin/litefile $noderange", -1);
 	foreach my $l (@filelist) {
 		$l =~ s/://g;  # remove ":"'s
 		$l =~ s/\s+/|/g;  # change separator to "|"
@@ -925,7 +925,7 @@ sub dolitesetup
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
-	my @treelist = xCAT::Utils->runcmd("litetree $noderange", -1);
+	my @treelist = xCAT::Utils->runcmd("/opt/xcat/bin/litetree $noderange", -1);
 	foreach my $l (@treelist) {
 
 		my ($p, $serv, $dir) = split (/:/, $l);
