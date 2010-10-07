@@ -184,7 +184,20 @@ fspPlugin.prototype.loadProvisionPage = function(tabId) {
  * @return Nothing
  */
 fspPlugin.prototype.loadResources = function() {
+	var tabID = 'fspResourceTab';	// Resource tab ID
+	var loaderID = 'fspResourceLoader';	// Loader ID	
+	if ($('#' + loaderID).length) {
+		$('#' + loaderID).remove();	// Remove loader
+	}
+	
+	// Create info bar
+	var infoBar = createInfoBar('Under construction');
 
+	// Create resource form
+	var resrcForm = $('<div class="form"></div>');
+	resrcForm.append(infoBar);
+	
+	$('#' + tabID).append(resrcForm);
 };
 
 /**

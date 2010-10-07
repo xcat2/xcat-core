@@ -217,7 +217,20 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
  * @return Nothing
  */
 hmcPlugin.prototype.loadResources = function() {
+	var tabID = 'hmcResourceTab';	// Resource tab ID
+	var loaderID = 'hmcResourceLoader';	// Loader ID	
+	if ($('#' + loaderID).length) {
+		$('#' + loaderID).remove();	// Remove loader
+	}
+	
+	// Create info bar
+	var infoBar = createInfoBar('Under construction');
 
+	// Create resource form
+	var resrcForm = $('<div class="form"></div>');
+	resrcForm.append(infoBar);
+	
+	$('#' + tabID).append(resrcForm);
 };
 
 /**

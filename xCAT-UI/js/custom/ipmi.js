@@ -184,7 +184,20 @@ ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
  * @return Nothing
  */
 ipmiPlugin.prototype.loadResources = function() {
+	var tabID = 'ipmiResourceTab';	// Resource tab ID
+	var loaderID = 'ipmiResourceLoader';	// Loader ID	
+	if ($('#' + loaderID).length) {
+		$('#' + loaderID).remove();	// Remove loader
+	}
+	
+	// Create info bar
+	var infoBar = createInfoBar('Under construction');
 
+	// Create resource form
+	var resrcForm = $('<div class="form"></div>');
+	resrcForm.append(infoBar);
+	
+	$('#' + tabID).append(resrcForm);
 };
 
 /**

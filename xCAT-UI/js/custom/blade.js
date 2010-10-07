@@ -183,8 +183,21 @@ bladePlugin.prototype.loadProvisionPage = function(tabId) {
  * 
  * @return Nothing
  */
-bladePlugin.prototype.loadResources = function() {
+bladePlugin.prototype.loadResources = function() {	
+	var tabID = 'bladeResourceTab';	// Resource tab ID
+	var loaderID = 'bladeResourceLoader';	// Loader ID	
+	if ($('#' + loaderID).length) {
+		$('#' + loaderID).remove();	// Remove loader
+	}
+	
+	// Create info bar
+	var infoBar = createInfoBar('Under construction');
 
+	// Create resource form
+	var resrcForm = $('<div class="form"></div>');
+	resrcForm.append(infoBar);
+	
+	$('#' + tabID).append(resrcForm);
 };
 
 /**
