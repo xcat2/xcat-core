@@ -1157,7 +1157,15 @@ function updateStatusBar(data) {
 		$('#' + statBarId).find('img').hide();
 		
 		// Write ajax response to status bar
-		var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
+		var prg = $('<p></p>');
+		for (var i in rsp) {
+			for (var j in tgts) {
+				rsp[i] = rsp[i].replace(new RegExp(tgts[j] + ':', 'g'), '<br>');
+			}
+
+			prg.append(rsp[i]);
+			prg.append('<br>');	
+		}
 		$('#' + statBarId).append(prg);	
 		
 		// Enable fields
