@@ -175,6 +175,10 @@ span.ui-icon-info {
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
+.tab a {
+	cursor: pointer;
+}
+
 .tab .ui-icon-close {
 	float: left;
 	margin: 0.4em 0.2em 0 0;
