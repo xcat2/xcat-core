@@ -32,8 +32,7 @@ function loadNodesetPage(tgtNodes) {
 		tabId = 'nodesetTab' + inst;
 	}
 
-	// Open new tab
-	// Create nodeset form
+	// Open new tab & create nodeset form
 	var nodesetForm = $('<div class="form"></div>');
 
 	// Create status bar

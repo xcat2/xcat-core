@@ -50,8 +50,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 
 		// Create status bar and hide it
 		var statBarId = node + 'CloneStatusBar';
-		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>')
-			.hide();
+		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>').hide();
 
 		// Create info bar
 		var infoBar = createInfoBar('Clone a node');
@@ -640,8 +639,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
     				dasdType = $('<td>' + args[2] + '</td>');
     				dasdVolId = $('<td>' + args[3] + '</td>');
     				dasdAccess = $('<td>' + args[4] + '</td>');
-    				dasdSize = $('<td>' + args[args.length - 9] + ' '
-    					+ args[args.length - 8] + '</td>');
+    				dasdSize = $('<td>' + args[args.length - 9] + ' ' + args[args.length - 8] + '</td>');
     
     				// Create a new row for each DASD
     				dasdTabRow = $('<tr></tr>');

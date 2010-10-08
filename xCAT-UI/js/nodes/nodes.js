@@ -743,7 +743,7 @@ function loadNode(e) {
 	}
 
 	// Get tab area where a new tab will be inserted
-	// The node name may contain special char(such as '.','#'), so we can not use the node name as a id.
+	// The node name may contain special characters (e.g. '.','#'), so we can not use the node name as an ID.
 	var myTab = getNodesTab();
 	var inst = 0;
 	var newTabId = 'nodeTab' + inst;

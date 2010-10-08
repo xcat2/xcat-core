@@ -94,8 +94,7 @@ hmcPlugin.prototype.loadClonePage = function(node) {
 	if (!$('#' + newTabId).length) {
 		// Create status bar and hide it
 		var statBarId = node + 'CloneStatusBar';
-		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>')
-			.hide();
+		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>').hide();
 
 		// Create info bar
 		var infoBar = createInfoBar('Under construction');
@@ -187,14 +186,14 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	/**
 	 * Create provision new node division
 	 */
-	// You should copy whatever is in this function here and customize it
+	// You should copy whatever is in this function, put it here, and customize it
 	var provNew = createProvisionNew('hmc', inst);
 	provForm.append(provNew);
 
 	/**
 	 * Create provision existing node division
 	 */
-	// You should copy whatever is in this function here and customize it
+	// You should copy whatever is in this function, put it here, and customize it
 	var provExisting = createProvisionExisting('hmc', inst);
 	provForm.append(provExisting);
 
@@ -217,10 +216,12 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
  * @return Nothing
  */
 hmcPlugin.prototype.loadResources = function() {
-	var tabID = 'hmcResourceTab';	// Resource tab ID
-	var loaderID = 'hmcResourceLoader';	// Loader ID	
+	// Get resource tab ID
+	var tabID = 'hmcResourceTab';
+	// Get loader ID
+	var loaderID = 'hmcResourceLoader';
 	if ($('#' + loaderID).length) {
-		$('#' + loaderID).remove();	// Remove loader
+		$('#' + loaderID).remove();
 	}
 	
 	// Create info bar

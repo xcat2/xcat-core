@@ -61,8 +61,7 @@ fspPlugin.prototype.loadClonePage = function(node) {
 	if (!$('#' + newTabId).length) {
 		// Create status bar and hide it
 		var statBarId = node + 'CloneStatusBar';
-		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>')
-			.hide();
+		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>').hide();
 
 		// Create info bar
 		var infoBar = createInfoBar('Under construction');
@@ -154,14 +153,14 @@ fspPlugin.prototype.loadProvisionPage = function(tabId) {
 	/**
 	 * Create provision new node division
 	 */
-	// You should copy whatever is in this function here and customize it
+	// You should copy whatever is in this function, put it here, and customize it
 	var provNew = createProvisionNew('fsp', inst);
 	provForm.append(provNew);
 
 	/**
 	 * Create provision existing node division
 	 */
-	// You should copy whatever is in this function here and customize it
+	// You should copy whatever is in this function, put it here, and customize it
 	var provExisting = createProvisionExisting('fsp', inst);
 	provForm.append(provExisting);
 
@@ -184,10 +183,12 @@ fspPlugin.prototype.loadProvisionPage = function(tabId) {
  * @return Nothing
  */
 fspPlugin.prototype.loadResources = function() {
-	var tabID = 'fspResourceTab';	// Resource tab ID
-	var loaderID = 'fspResourceLoader';	// Loader ID	
+	// Get resource tab ID
+	var tabID = 'fspResourceTab';
+	// Get loader ID
+	var loaderID = 'fspResourceLoader';
 	if ($('#' + loaderID).length) {
-		$('#' + loaderID).remove();	// Remove loader
+		$('#' + loaderID).remove();
 	}
 	
 	// Create info bar

@@ -518,8 +518,7 @@ function updateZProvisionNewStatus(data) {
 	 * (7) Update DHCP
 	 */
 	else if (cmd == 'noderes') {
-		// If there was an error
-		// Do not continue
+		// If there was an error, do not continue
 		if (rsp.length) {
 			$('#' + loaderId).hide();
 			$('#' + statBarId).append('<p>(Error) Failed to set operating system</p>');
@@ -662,8 +661,7 @@ function updateZProvisionExistingStatus(data) {
 		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).append(prg);
 
-		// If there was an error
-		// Do not continue
+		// If there was an error, do not continue
 		if (prg.html().indexOf('Error') > -1) {
 			var loaderId = 'zProvisionLoader' + inst;
 			$('#' + loaderId).remove();
@@ -756,8 +754,7 @@ function updateZCloneStatus(data) {
 	if (cmd == 'nodeadd') {
 		var node = args[3].replace('node=', '');
 
-		// If there was an error
-		// Do not continue
+		// If there was an error, do not continue
 		if (rsp.length) {
 			$('#' + out2Id).find('img').hide();
 			$('#' + out2Id).append('<p>(Error) Failed to create node definition</p>');
@@ -787,8 +784,7 @@ function updateZCloneStatus(data) {
 	 * (3) Update DNS
 	 */
 	else if (cmd == 'makehosts') {
-		// If there was an error
-		// Do not continue
+		// If there was an error, do not continue
 		if (rsp.length) {
 			$('#' + out2Id).find('img').hide();
 			$('#' + out2Id).append('<p>(Error) Failed to update /etc/hosts</p>');

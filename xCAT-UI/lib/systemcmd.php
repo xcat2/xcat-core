@@ -6,8 +6,7 @@ require_once "$TOPDIR/lib/jsonwrapper.php";
 
 /**
  * Issue a xCAT command, e.g. rpm -qa xCAT
- * This will handle system commands.  If not, you can create your
- * own .php.  Look at zCmd.php for an example.
+ * This will handle system commands.
  *
  * @param 	$cmd	The system command
  * @return 	The system response.  Replies are in the form of JSON

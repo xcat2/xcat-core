@@ -30,9 +30,9 @@ function createNodesDatatable(group, outId) {
 			// Data returned
     		var rsp = data.rsp;
     
-    		// Output ID
+    		// Get output ID
     		var outId = data.msg;
-    		// Datatable ID
+    		// Get datatable ID
     		var dTableId = outId.replace('DIV', '');
     
     		// Node attributes hash

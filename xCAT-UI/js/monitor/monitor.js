@@ -156,7 +156,7 @@ function loadMonitorPage() {
 }
 
 function loadMonitorTab(monitorName){
-	//the tab is exist then we only need to select it
+	// If the tab exist, then we only need to select it
 	var tab = getMonitorTab();
 	if (0 != $("#" + monitorName).length){
 		tab.select(monitorName);

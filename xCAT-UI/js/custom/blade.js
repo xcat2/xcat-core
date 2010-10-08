@@ -61,8 +61,7 @@ bladePlugin.prototype.loadClonePage = function(node) {
 	if (!$('#' + newTabId).length) {
 		// Create status bar and hide it
 		var statBarId = node + 'CloneStatusBar';
-		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>')
-			.hide();
+		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>').hide();
 
 		// Create info bar
 		var infoBar = createInfoBar('Under construction');
@@ -154,14 +153,14 @@ bladePlugin.prototype.loadProvisionPage = function(tabId) {
 	/**
 	 * Create provision new node division
 	 */
-	// You should copy whatever is in this function here and customize it
+	// You should copy whatever is in this function, put it here, and customize it
 	var provNew = createProvisionNew('blade', inst);
 	provForm.append(provNew);
 
 	/**
 	 * Create provision existing node division
 	 */
-	// You should copy whatever is in this function here and customize it
+	// You should copy whatever is in this function, put it here, and customize it
 	var provExisting = createProvisionExisting('blade', inst);
 	provForm.append(provExisting);
 
@@ -183,11 +182,13 @@ bladePlugin.prototype.loadProvisionPage = function(tabId) {
  * 
  * @return Nothing
  */
-bladePlugin.prototype.loadResources = function() {	
-	var tabID = 'bladeResourceTab';	// Resource tab ID
-	var loaderID = 'bladeResourceLoader';	// Loader ID	
+bladePlugin.prototype.loadResources = function() {
+	// Get resource tab ID
+	var tabID = 'bladeResourceTab';
+	// Get loader ID
+	var loaderID = 'bladeResourceLoader';	
 	if ($('#' + loaderID).length) {
-		$('#' + loaderID).remove();	// Remove loader
+		$('#' + loaderID).remove();
 	}
 	
 	// Create info bar
