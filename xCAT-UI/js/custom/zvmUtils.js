@@ -827,7 +827,7 @@ function updateZCloneStatus(data) {
 			// Get the starting index
 			var nodeStart = parseInt(tmp[0].match(/\d+/));
 			// Get the ending index
-			var nodeEnd = parseInt(tmp[1]);
+			var nodeEnd = parseInt(tmp[1].match(/\d+/));
 			for ( var i = nodeStart; i <= nodeEnd; i++) {
 				// Do not append comma for last node
 				if (i == nodeEnd) {
