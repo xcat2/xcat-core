@@ -14,6 +14,8 @@ I<Examples:>
 
  node[14-56]
 
+ f[1-3]n[1-20]
+
  all,-node129-node256,-frame01-frame03
 
  /node.*
@@ -48,6 +50,7 @@ A range of nodes or groups:
  node[01-10]    (same as above)
  node01:node10  (same as above)
  node[01:10]    (same as above)
+ f[1-2]n[1-3]   (equivalent to: f1n1,f1n2,f1n3,f2n1,f2n2,f2n3)
  group1-group3  (equivalent to: group1,group2,group3)
  (all the permutations supported above for nodes are also supported for groups)
 
@@ -223,6 +226,12 @@ attribute.
  nodehm.cons==hmc
 
  nodehm.cons=~hmc 
+
+=item 9.
+
+Generate a list of nodes in the 1st two frames:
+
+ f[1-2]n[1-42]
 
 =back
 

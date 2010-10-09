@@ -277,20 +277,28 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
 		return(@nodes);
 	}
 
-	if ($atom =~ m/(.*)\[(.*)\](.*)/) { # square bracket range
-	#for the time being, we are only going to consider one [] per atom
-	#xcat 1.2 does no better
+	if ($atom =~ m/(.+?)\[(.+?)\](.*)/) { # square bracket range
+		# if there are more than 1 [], we picked off just the 1st.  if there is another, we will process it later
 		my @subelems = split(/([\,\-\:])/,$2);
 		my $subrange="";
         my $subelem;
+        my $start = $1;
+        my $ending = $3;
+        my $morebrackets = $ending =~ /\[.+?\]/;	# if there are more brackets, we have to expand just the 1st part, then add the 2nd part later
 		while (scalar @subelems) {
             my $subelem = shift @subelems;
 			my $subop=shift @subelems;
-			$subrange=$subrange."$1$subelem$3$subop";
+			$subrange=$subrange."$start$subelem" . ($morebrackets?'':$ending) . "$subop";
 		}
 		foreach (split /,/,$subrange) {
-			my @newnodes=expandatom($_,$verify);
-			@nodes=(@nodes,@newnodes);
+			my @newnodes=expandatom($_, ($morebrackets?0:$verify));
+			if (!$morebrackets) { push @nodes,@newnodes; }
+			else {
+				# for each of the new nodes, add the 2nd brackets and then expand
+				foreach my $n (@newnodes) {
+					push @nodes, expandatom("$n$ending", $verify);
+				}
+			}
 		}
 		return @nodes;
 	}
@@ -398,8 +406,8 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
       }
 	}
 
-    push @$missingnodes,$atom;
 	if ($verify) {
+    	push @$missingnodes,$atom;
 		return ();
 	} else {
 		return ($atom);
