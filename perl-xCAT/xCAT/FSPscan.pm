@@ -152,10 +152,12 @@ sub enumerate {
         #print "list\n";
         #print Dumper(\@list);
 	    foreach my $lpar (@list) {
-	         $lpar =~ /lparid:\s+(\d+),\s+state:/;
-		 my $name = "";
-		 my $lparid = $1;
-                 my $prof = ""; 
+	         $lpar =~ /lparname:\s+(\w+),\s+lparid:\s+(\d+),\s+state:/;
+		 my $name = $1;
+		 $name =~ s/\-//g;
+		 $name =~ tr/A-Z/a-z/;
+		 my $lparid = $2;
+                 my $prof = $1; 
 		 my $server = $fsp;
                  my $ips  = "";
           	 my $port = "";
