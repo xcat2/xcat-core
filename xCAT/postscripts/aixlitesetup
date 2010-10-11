@@ -133,8 +133,8 @@ ProcessType () {
 					/bin/chmod -R 755 ${LOCAL}
 				fi
 				if [ "0" -ne `ls -A ${1} | wc -l` ]; then
-			    	cp -r ${1}* ${LOCAL}
-			    	echo "cp -r ${1}* ${LOCAL}" 2>&1 >>$LOG
+			    	cp -r -p ${1}* ${LOCAL}
+			    	echo "cp -r -p ${1}* ${LOCAL}" 2>&1 >>$LOG
 				fi
             else
 				# if file just copy
@@ -144,8 +144,8 @@ ProcessType () {
 					/bin/chmod -R 755 ${FDIR}
                     touch ${LOCAL}
 				fi
-                cp -r ${1} ${LOCAL}
-                echo "cp -r ${1} ${LOCAL}" 2>&1 >>$LOG
+                cp -r -p ${1} ${LOCAL}
+                echo "cp -r -p ${1} ${LOCAL}" 2>&1 >>$LOG
             fi
 			;;
 
@@ -163,8 +163,8 @@ ProcessType () {
 
             # if the file doesn't exist, then copy it over to persistent
             if [ ! -e ${PERSISTENT}/${ME}${2} ]; then
-                echo "cp -r ${1} ${PERSISTENT}/${ME}${2}" >>$LOG
-                cp -r ${1} ${PERSISTENT}/${ME}${2} 2>&1 >>$LOG
+                echo "cp -r -p ${1} ${PERSISTENT}/${ME}${2}" >>$LOG
+                cp -r -p ${1} ${PERSISTENT}/${ME}${2} 2>&1 >>$LOG
             fi
 
             LOCAL=`echo ${2} |  sed -e 's/\/$//'`
