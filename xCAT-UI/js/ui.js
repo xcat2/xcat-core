@@ -36,16 +36,6 @@ Tab.prototype.init = function() {
 
 	// Hide tab
 	this.tab.hide();
-
-	// Close tab when close button is clicked
-	$("#" + this.tabId + " span.tab-close").live("click", function() {
-		var index = $('li', tabs).index($(this).parent());
-
-		// Do not remove first tab
-		if (index != 0) {
-			tabs.tabs('remove', index);
-		}
-	});
 };
 
 /**
@@ -86,6 +76,21 @@ Tab.prototype.add = function(newTabId, newTabName, newTabCont, closeable) {
 	if (closeable) {
 		var header = this.tab.find('ul.ui-tabs-nav a[href="#' + newTabId +'"]').parent();
 		header.append('<span class=\"tab-close ui-icon ui-icon-close\"></span>');
+	
+		// Get this tab
+		var tabs = this.tab;
+		var tabLink = 'a[href="\#' + newTabId + '"]';	
+		var thisTab = $(tabLink, tabs).parent();
+						
+		// Close tab when close button is clicked
+		thisTab.find('span.tab-close').bind('click', function(event) {
+			var tabIndex = ($('li', tabs).index(thisTab));
+			
+			// Do not remove first tab
+			if (tabIndex != 0) {			
+				tabs.tabs('remove', tabIndex);
+			}
+		});
 	}
 };
 
