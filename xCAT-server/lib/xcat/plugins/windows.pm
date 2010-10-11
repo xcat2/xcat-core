@@ -240,8 +240,9 @@ sub mkinstall
         my $arch    = $ent->{arch};
         my $profile = $ent->{profile};
         if ($os eq "imagex") {
-                     unless ( -r "$installroot/images/$arch/$profile.wim" ) {
-                        $callback->({error=>["$installroot/images/$profile.$arch.wim not found, run rimage on a node to capture first"],errorcode=>[1]});
+                    my $wimfile="$installroot/images/$arch/$profile.wim";
+                     unless ( -r $wimfile ) {
+                        $callback->({error=>["$wimfile not found, run rimage on a node to capture first"],errorcode=>[1]});
                          next;
                      }
                      my $script=applyimagescript($arch,$profile);
