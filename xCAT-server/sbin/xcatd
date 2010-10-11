@@ -776,7 +776,7 @@ if ($inet6support) {
         $peerhost && $peerhost =~ s/\.$domain\.*$//;
     } else {
         # otherwise just strip off whatever comes after the first dot
-        $peerhost && $peerhost =~ s/^.*?\.//;
+        $peerhost && $peerhost =~ s/\..*//;
     }
 
     $peerhost && $peerhost =~ s/-eth\d*$//;
