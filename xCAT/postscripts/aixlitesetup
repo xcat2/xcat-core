@@ -40,6 +40,7 @@ ProcessStatelite () {
 
 		# /.statelite/tmpdir
 		mkdir -p ${TMPDIR}
+		/bin/chmod -R 755 ${TMPDIR}
 
 		# /.statelite/persistent
 		mkdir -p ${PERSISTENT}
@@ -50,6 +51,9 @@ ProcessStatelite () {
 		# make a node subdir
 		# /.statelite/persistent/<nodename>
 		mkdir -p ${PERSISTENT}/${ME}
+
+		# make sure the perms are correct
+		/bin/chmod -R 755 ${PERSISTENT} 
 
 	done
 }
@@ -79,6 +83,9 @@ MountTrees () {
 
 		# ex. /.statelite/mnt/10.2.0.200/etc/
 		mkdir -p ${MOUNTDIR}/${SERV}${DIR}
+
+		# make sure the perms are correct
+        /bin/chmod -R 755 ${MOUNTDIR}
 
 		MAX=5
         TRIES=1
@@ -123,6 +130,7 @@ ProcessType () {
 				# if it's a dir then copy all contents to local
 				if [ ! -e ${LOCAL} ]; then
 					mkdir -p ${LOCAL}
+					/bin/chmod -R 755 ${LOCAL}
 				fi
 				if [ "0" -ne `ls -A ${1} | wc -l` ]; then
 			    	cp -r ${1}* ${LOCAL}
@@ -133,6 +141,7 @@ ProcessType () {
 				if [ ! -e ${LOCAL} ]; then
 					FDIR=`dirname ${2}`
                     mkdir -p ${FDIR}
+					/bin/chmod -R 755 ${FDIR}
                     touch ${LOCAL}
 				fi
                 cp -r ${1} ${LOCAL}
@@ -148,6 +157,7 @@ ProcessType () {
 			# ex. /.statelite/persistent/compute02/etc
             if [ ! -d ${PERSISTENT}/${ME}${PPATH} ]; then
                 mkdir -p ${PERSISTENT}/${ME}${PPATH}
+        		/bin/chmod -R 755 ${PERSISTENT}
                 echo "mkdir -p ${PERSISTENT}/${ME}${PPATH}" >>$LOG
             fi
 
@@ -166,10 +176,12 @@ ProcessType () {
                     # need to create local dir
                     echo "mkdir -p ${LOCAL}" >>$LOG
                     mkdir -p ${LOCAL}
+					/bin/chmod -R 755 ${LOCAL}
                 else
                     # need to create local file
 					FDIR=`dirname ${2}`
                     mkdir -p ${FDIR}
+					/bin/chmod -R 755 ${FDIR}
                     touch ${LOCAL}
 
                 fi
@@ -204,6 +216,7 @@ ProcessType () {
 					# need to create local dir
 					echo "mkdir -p ${LOCAL}" >>$LOG
             		mkdir -p ${LOCAL}
+					/bin/chmod -R 755 ${LOCAL}
 				else			
 					# need to create local file
 					touch ${LOCAL}
@@ -263,9 +276,6 @@ FindFile () {
 		fi
 	fi
 }
-
-
-
 
 
 ###########################################################################
