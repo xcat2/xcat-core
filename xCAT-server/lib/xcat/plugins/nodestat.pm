@@ -550,6 +550,7 @@ sub process_request_nmap {
               }
           }
           $currnode=$tmpnode;
+
           my $nip;
           if ($nip = xCAT::NetworkUtils->getipaddr($currnode)) { #reverse lookup may not resemble the nodename, key by ip
               if ($nodebyip{$nip}) {
@@ -584,25 +585,29 @@ sub process_request_nmap {
               }
           }
       } 
-    }
-              my $status = join ',',sort keys %states ;
-              my $appsd="";
-              foreach my $portnum(keys %portservices) {
-                  my $app_t=$portservices{$portnum};
-		  if ($states{$app_t}) {$appsd .= $app_t . "=up,";}
-		  else {$appsd .= $app_t . "=down,";}
-	      }
-	      $appsd =~ s/,$//;
+   }
 
-              if ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
-                  $ret->{$currnode}->{'status'}="ping";
-                  $ret->{$currnode}->{'appstatus'}=$status;
-                  $ret->{$currnode}->{'appsd'}=$appsd;
-                  $currnode="";
-                  %states=();
-              } else {
-                 push @nodesetnodes,$currnode; #Aggregate call to nodeset
-              }
+   if ($currnode) {
+       my $status = join ',',sort keys %states ;
+       my $appsd="";
+       foreach my $portnum(keys %portservices) {
+	   my $app_t=$portservices{$portnum};
+	   if ($states{$app_t}) {$appsd .= $app_t . "=up,";}
+	   else {$appsd .= $app_t . "=down,";}
+       }
+       $appsd =~ s/,$//;
+   
+       if ($status or ($installquerypossible and $status = installer_query($currnode))) { #pingable, but no *clue* as to what the state may be
+	   $ret->{$currnode}->{'status'}="ping";
+	   $ret->{$currnode}->{'appstatus'}=$status;
+	   $ret->{$currnode}->{'appsd'}=$appsd;
+	   $currnode="";
+	   %states=();
+       } else {
+	   push @nodesetnodes,$currnode; #Aggregate call to nodeset
+       }
+   }
+   
     if (@nodesetnodes) {
         $doreq->({command=>['nodeset'],
                   node=>\@nodesetnodes,
@@ -763,7 +768,7 @@ sub process_request {
    my $separator="XXXXXYYYYYZZZZZ";
 
    if ($command eq "nodestat_internal") {
-       
+      
        #if ( -x '/usr/bin/nmap' ) {
        #    my %portservices = (
        #	   '22' => 'sshd',
@@ -854,7 +859,6 @@ sub process_request {
 	       }    
 	   }
        }
-
        #nodestat_internal command the output, nodestat command will collect it
        foreach my $node1 (sort keys(%$status)) {
 	   my %rsp;
@@ -878,7 +882,7 @@ sub process_request {
        my $power=$request->{'power'}->[0];
        foreach my $tmpdata (@$ret) {
 	   if ($tmpdata =~ /([^:]+): (.*)$separator(.*)$separator(.*)/) {
-	      # print "node=$1, status=$2, appstatus=$3, appsd=$4\n";
+	      #print "node=$1, status=$2, appstatus=$3, appsd=$4\n";
                $status->{$1}->{'status'}=$2;
                $status->{$1}->{'appstatus'}=$3;
                $status->{$1}->{'appsd'}=$4;
