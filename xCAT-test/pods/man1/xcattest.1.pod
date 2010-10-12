@@ -137,6 +137,7 @@ The xCAT-test testing framework provides some inline functions. The inline funct
 For example, to run rscan command against the hardware control point of compute node specified in the configuration file:
 
   rscan __GETNODEATTR($$CN, hcp)__ -z
+3. B<GETTABLEVALUE(keyname, key, colname, table)> To get the value of column where keyname == key in specified table.
 
 =head1 FILES
 
