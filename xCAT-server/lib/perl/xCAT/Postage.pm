@@ -443,6 +443,12 @@ sub makescript {
   {
     push @scriptd, "setbootfromnet\n";
   }
+
+  # add setbootfromdisk if the nodesetstate is install and arch is ppc64
+  if (($nodesetstate) && ($nodesetstate eq "install") && ($arch eq "ppc64") ) {
+    push @scriptd, "setbootfromdisk\n";
+  }
+
   ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
   push @scriptd, "# postscripts-end-here\n";
 

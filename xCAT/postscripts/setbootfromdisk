@@ -1,0 +1,41 @@
+#!/bin/sh
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+
+#
+#-----------------------------------------------------------------------------
+#
+#setbootfromdisk
+#   The script is used to set harddisk(sda) to be the default bootup devices
+#   on Redhat-family OSes with POWER system
+#
+#-----------------------------------------------------------------------------
+
+OS=`uname`
+if [[ $OS = "Linux" ]]; then
+    if [[ $OSVER = fedora* ]] || [[ $OSVER = rhels5* ]] || [[ $OSVER = rhel6* ]] || [[ $OSVER=rhels6* ]] || [[ -f /etc/fedora-release ]] || [[ -f /etc/redhat-release ]]; then
+        if  [[ -f /usr/sbin/bootlist ]] ; then
+            # determine which harddisk should be the default one
+            # /dev/sda3 /boot ext4 rw,seclabel,relatime,barrier=1,data=ordered 0 0
+            BOOTENTRY=`cat /proc/mounts |grep /boot`
+
+            if [[ -z $BOOTENTRY ]]; then
+                BOOTENTRY=`mount |grep " / "`
+            fi
+
+            BOOTDEVICE=`echo $BOOTENTRY | awk '{print $1}'`
+            if [[ -z $BOOTDEVICE ]]; then
+                logger -t xcat setbootfromdisk: cannot find the booting device
+            else
+                logger -t xcat setbootfromdisk: Setting $BOOTDEVICE to be the default bootup device
+                echo "setbootfromdisk: setting up $BOOTDEVICE as the default bootup device"
+                bootlist -m normal $BOOTDEVICE 
+                exit 0
+            fi
+        else 
+            logger -t xcat Could not find /usr/sbin/bootlist
+            echo "setbootfromdisk: could not find /usr/sbin/bootlist"
+            exit -1
+        fi
+    fi
+fi
