@@ -269,8 +269,21 @@ sub getConfig
 
 sub init
 {
+    if($restore){
+        log_this("******************************");
+        log_this("Backup current xCAT database");
+        log_this("******************************");
+        &runcmd("mkdir -p /tmp/xCATdbbackup");
+        &runcmd("dumpxCATdb -p /tmp/xCATdbbackup");
+        if($::RUNCMD_RC != 0){
+            &log_this("Fail to backup xCAT database");
+            &runcmd("rm -rf /tmp/xCATdbbackup");
+            $restore = 0;
+            return 1;
+        }
+    }
     log_this("******************************");
-    log_this("initialize xCAT test evironment");
+    log_this("Initialize xCAT test evironment");
     log_this("******************************");
     my $cmd = undef;
     foreach $cmd (@{$config{script_prev}}){
@@ -353,41 +366,43 @@ sub uninit
     log_this("******************************");
     log_this("un-initialize xCAT test evironment");
     log_this("******************************");
-    my $cmd = undef;;
-    if(exists $config{object}){
-        foreach my $type (keys %{$config{object}}){
-            foreach my $name (keys %{$config{object}{$type}}){
-                $cmd = "rmdef -t $type -o $name";
-                log_this($cmd);
-                runcmd($cmd);
-                if($::RUNCMD_RC != 0){
-                    log_this("Fail to run $cmd");
-                    return 1;
-                }
-            }
-        }
-    }
-    if(exists $config{table}){
-        foreach my $type (keys %{$config{table}}){
-            foreach my $name (keys %{$config{table}{$type}}){
-                $cmd = "chtab -d $config{table}{$type}{$name}{__KEY__}=$name $type";
-                log_this($cmd);
-                runcmd($cmd);
-                if($::RUNCMD_RC != 0){
-                    log_this("Fail to run $cmd");
-                    return 1;
-                }
-            }
-        }
-    }
-    foreach $cmd (@{$config{script_post}}){
-        log_this($cmd);
-        runcmd($cmd);
-        if($::RUNCMD_RC != 0){
-            log_this("Fail to run $cmd");
-            return 1;
-        }
-    }
+#    my $cmd = undef;;
+#    if(exists $config{object}){
+#        foreach my $type (keys %{$config{object}}){
+#            foreach my $name (keys %{$config{object}{$type}}){
+#                $cmd = "rmdef -t $type -o $name";
+#                log_this($cmd);
+#                runcmd($cmd);
+#                if($::RUNCMD_RC != 0){
+#                    log_this("Fail to run $cmd");
+#                    return 1;
+#                }
+#            }
+#        }
+#    }
+#    if(exists $config{table}){
+#        foreach my $type (keys %{$config{table}}){
+#            foreach my $name (keys %{$config{table}{$type}}){
+#                $cmd = "chtab -d $config{table}{$type}{$name}{__KEY__}=$name $type";
+#                log_this($cmd);
+#                runcmd($cmd);
+#                if($::RUNCMD_RC != 0){
+#                    log_this("Fail to run $cmd");
+#                    return 1;
+#                }
+#            }
+#        }
+#    }
+#    foreach $cmd (@{$config{script_post}}){
+#        log_this($cmd);
+#        runcmd($cmd);
+#        if($::RUNCMD_RC != 0){
+#            log_this("Fail to run $cmd");
+#            return 1;
+#        }
+#    }
+    &runcmd("restorexCATdb -p /tmp/xCATdbbackup");
+    &runcmd("rm -rf /tmp/xCATdbbackup");
     return 0;
 }
 
@@ -542,6 +557,12 @@ sub getnodeattr
     }
     return "Unknown";
 }
+sub gettablevalue
+{
+    my($keyname, $key, $colname, $table) = @_;
+    my @output = runcmd("gettab $keyname=$key $table\.$colname");
+    return $output[0];
+}
 #to remove space and comment
 sub trim
 {
@@ -584,6 +605,8 @@ sub getfunc
             }
         }elsif($func eq "INC"){
             $value = $para[0] + 1;
+        }elsif($func eq "GETTABLEVALUE"){
+            $value= gettablevalue(@para);
         }
         $str =~ s/__$func\($parameter\)__/$value/g;
     }
