@@ -25,7 +25,7 @@ LOG="${ROOTDIR}/${SL}/statelite.log"
 
 # get this node name from the /etc/niminfo file
 INFO=`cat /etc/niminfo | grep 'NIM_HOSTNAME'`
-ME=`echo $INFO | awk -F= '{print $2}'`
+ME=`echo $INFO | awk -F= '{print $2}' | awk -F. '{print $1}'`
 
 # check the statelite.table file to see if we have
 #       a persistent dir to mount.
