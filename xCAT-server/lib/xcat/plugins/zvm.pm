@@ -1943,7 +1943,7 @@ sub cloneVM {
 	}
 
 	# Exit if network address is not found
-	if ( !$hcpNicAddr ) {
+	if ( $out && !$hcpNicAddr ) {
 		foreach (@nodes) {
 			xCAT::zvmUtils->printLn( $callback, "$_: (Error) Node is not on the same network ($hcpNetName) as the hardware control point" );
 		}
