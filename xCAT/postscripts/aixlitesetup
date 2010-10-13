@@ -1,7 +1,6 @@
 #!/bin/sh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-
 ################################################################################
 #
 #	aixlitesetup
@@ -26,7 +25,7 @@ LOG="${ROOTDIR}/${SL}/statelite.log"
 
 # get this node name from the /etc/niminfo file
 INFO=`cat /etc/niminfo | grep 'NIM_HOSTNAME'`
-ME=`echo $INFO | awk -F= '{print $2}' | awk -F. '{print $1}'`
+ME=`echo $INFO | awk -F= '{print $2}'`
 
 # check the statelite.table file to see if we have
 #       a persistent dir to mount.
@@ -39,21 +38,23 @@ ProcessStatelite () {
 		TOMNT=`echo $i | awk -F'|' '{print $3}'`
 
 		# /.statelite/tmpdir
-		mkdir -p ${TMPDIR}
-		/bin/chmod -R 755 ${TMPDIR}
+		if [ ! -d ${TMPDIR} ]; then
+			mkdir -m 755 -p ${TMPDIR}
+		fi
 
 		# /.statelite/persistent
-		mkdir -p ${PERSISTENT}
+		if [ ! -d ${PERSISTENT} ]; then
+			mkdir -m 755 -p ${PERSISTENT}
+		fi
 
 		# mount 10.2.0.200:/nodedata /.statelite/persistent
 		mount $SERVER:$TOMNT ${PERSISTENT}
 
 		# make a node subdir
 		# /.statelite/persistent/<nodename>
-		mkdir -p ${PERSISTENT}/${ME}
-
-		# make sure the perms are correct
-		/bin/chmod -R 755 ${PERSISTENT} 
+		if [ ! -d ${PERSISTENT}/${ME} ]; then
+			mkdir -m 755 -p ${PERSISTENT}/${ME}
+		fi
 
 	done
 }
@@ -72,7 +73,9 @@ ProcessLitefile () {
 
 MountTrees () {
 	# ex. /.statelite/mnt
-	mkdir -p $MOUNTDIR
+	if [ ! -d ${MOUNTDIR} ]; then
+		mkdir -m 755 -p $MOUNTDIR
+	fi
 
 	for i in `cat $LITETREE | grep -v '^#' | grep $ME`
 	do
@@ -81,11 +84,10 @@ MountTrees () {
 		SERV=`echo $i | awk -F'|' '{print $2}'`
 		DIR=`echo $i | awk -F'|' '{print $3}'`
 
-		# ex. /.statelite/mnt/10.2.0.200/etc/
-		mkdir -p ${MOUNTDIR}/${SERV}${DIR}
-
-		# make sure the perms are correct
-        /bin/chmod -R 755 ${MOUNTDIR}
+		if [ ! -d ${MOUNTDIR}/${SERV}${DIR} ]; then
+			# ex. /.statelite/mnt/10.2.0.200/etc/
+			mkdir -m 755 -p ${MOUNTDIR}/${SERV}${DIR}
+		fi
 
 		MAX=5
         TRIES=1
@@ -129,23 +131,21 @@ ProcessType () {
             if [ -d ${1} ]; then
 				# if it's a dir then copy all contents to local
 				if [ ! -e ${LOCAL} ]; then
-					mkdir -p ${LOCAL}
-					/bin/chmod -R 755 ${LOCAL}
+					mkdir -m 755 -p ${LOCAL}
 				fi
 				if [ "0" -ne `ls -A ${1} | wc -l` ]; then
-			    	cp -r -p ${1}* ${LOCAL}
-			    	echo "cp -r -p ${1}* ${LOCAL}" 2>&1 >>$LOG
+			    	cp -p -r ${1}* ${LOCAL}
+			    	echo "cp -p -r ${1}* ${LOCAL}" 2>&1 >>$LOG
 				fi
             else
 				# if file just copy
 				if [ ! -e ${LOCAL} ]; then
 					FDIR=`dirname ${2}`
-                    mkdir -p ${FDIR}
-					/bin/chmod -R 755 ${FDIR}
+                    mkdir -m 755 -p ${FDIR}
                     touch ${LOCAL}
 				fi
-                cp -r -p ${1} ${LOCAL}
-                echo "cp -r -p ${1} ${LOCAL}" 2>&1 >>$LOG
+                cp -p -r ${1} ${LOCAL}
+                echo "cp -p -r ${1} ${LOCAL}" 2>&1 >>$LOG
             fi
 			;;
 
@@ -156,15 +156,14 @@ ProcessType () {
 			#	over the local /blah
 			# ex. /.statelite/persistent/compute02/etc
             if [ ! -d ${PERSISTENT}/${ME}${PPATH} ]; then
-                mkdir -p ${PERSISTENT}/${ME}${PPATH}
-        		/bin/chmod -R 755 ${PERSISTENT}
+                mkdir -m 755 -p ${PERSISTENT}/${ME}${PPATH}
                 echo "mkdir -p ${PERSISTENT}/${ME}${PPATH}" >>$LOG
             fi
 
             # if the file doesn't exist, then copy it over to persistent
             if [ ! -e ${PERSISTENT}/${ME}${2} ]; then
-                echo "cp -r -p ${1} ${PERSISTENT}/${ME}${2}" >>$LOG
-                cp -r -p ${1} ${PERSISTENT}/${ME}${2} 2>&1 >>$LOG
+                echo "cp -p -r ${1} ${PERSISTENT}/${ME}${2}" >>$LOG
+                cp -p -r ${1} ${PERSISTENT}/${ME}${2} 2>&1 >>$LOG
             fi
 
             LOCAL=`echo ${2} |  sed -e 's/\/$//'`
@@ -174,14 +173,15 @@ ProcessType () {
 
                 if [ -d ${SOURCE} ]; then
                     # need to create local dir
-                    echo "mkdir -p ${LOCAL}" >>$LOG
-                    mkdir -p ${LOCAL}
-					/bin/chmod -R 755 ${LOCAL}
+                    echo "mkdir -m 755 -p ${LOCAL}" >>$LOG
+                    mkdir -m 755 -p ${LOCAL}
+
                 else
                     # need to create local file
 					FDIR=`dirname ${2}`
-                    mkdir -p ${FDIR}
-					/bin/chmod -R 755 ${FDIR}
+					if [ ! -d ${FDIR} ]; then
+                    	mkdir -m 755 -p ${FDIR}
+					fi
                     touch ${LOCAL}
 
                 fi
@@ -214,11 +214,14 @@ ProcessType () {
 
 				if [ -d ${SOURCE} ]; then
 					# need to create local dir
-					echo "mkdir -p ${LOCAL}" >>$LOG
-            		mkdir -p ${LOCAL}
-					/bin/chmod -R 755 ${LOCAL}
+					echo "mkdir  -m 755 -p ${LOCAL}" >>$LOG
+            		mkdir -m 755 -p ${LOCAL}
 				else			
 					# need to create local file
+					GDIR=`dirname ${2}`
+                    if [ ! -d ${GDIR} ]; then
+                        mkdir -m 755 -p ${GDIR}
+                    fi
 					touch ${LOCAL}
 				fi
 			fi
@@ -250,12 +253,10 @@ FindFile () {
 
 		SERVER=`echo $i | awk -F'|' '{print $2}'`
 		DIR=`echo $i | awk -F'|' '{print $3}'`
-
 		SRC=`echo ${MOUNTDIR}/${SERVER}${DIR}${path} |  sed -e 's/\/\//\//'`
 
-		# ex. /.statelite/mnt/10.2.0.200/myfiles/etc/FScfg
+		# ex. /.statelite/mnt/10.2.0.200/etc/FScfg
 		if [ -e ${SRC} ]; then
-
 
 				FOUND=1
 			    ProcessType ${SRC} ${path} ${type} ${isChild}
