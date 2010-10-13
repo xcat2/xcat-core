@@ -24,6 +24,51 @@ my %cisco_vlans; #Special hash structure to reflect discovered VLANS on Cisco eq
 #   1.3.6.1.2.1.17.7.1.2.2 - dot1qTpFdbTable 
 
 
+#now for the lldp fun.  lldp mib uses yet another index.  The mib states
+#that the index should correlate to dot1dbaseport, however
+#limits the index to 4096 while dot1dbaseport can go much higher
+#confirmed on various switches that this index cannot be numerically correlated
+#to if-mib in a reliable fashion immediately for all switches
+#LldpPortIdSubtype dictates the format
+#in order of preference on subtype:
+#if 5, then portid==ifName (my favorite, least work, no further lookups)
+#if 3, then may be able to link into IF-MIB via ifPhysAddress matching more reliably
+#if 7, then it may be anything at all, portDesc may be best option when encounterd, though occasionally looks like a 5.  In the cases where it looks like a 5,
+#portdesc seems usable too.
+#detailed switch by switch results below
+#on Force10, the following happens:
+#   -index violates mib by going over max value
+#   -subtype is 5, meaning portid should be == ifName, usable
+#   -lldpPortDesc is blank, cannot be used
+#on juniper:
+#   -index violates mib by not matching dot1dbaseport
+#   -lldpPortId is 'helpfully', the index in ascii form (gee thanks), useless example of type 7
+#   -lldpPortDesc looks like "ge-1/0/43.0",only hope.
+#bigiron, fcx, turboiron, :
+#   -lldpPortId is a 3 mac address
+#   --lldpportdesc looks useful 10GigabitEthernet6/6
+#netiron ces: no support
+#cisco ios:
+#   -the portid is == ifname
+#   subtype is 5 or 7, but either way it acts like 5
+#   -portdesc == ifdesc, useful for when 7 is seen for fallback
+#
+#voltaire 10ge: no support
+#
+#bnt g8124 and 8052
+#   -subtype of 7
+#   -the index, portid, and portdesc are all the same (i.e. 18="18"="18")
+
+#smc 8848:
+#   -subtype of 3, hex mac string
+#   -portdesc matches ifDesc, no mapping to ifName
+#smc 8126: no support for lldp mib
+#ibm b32l: no support
+
+#
+
+
+
 sub namesmatch {
 =pod
 
