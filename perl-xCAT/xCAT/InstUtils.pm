@@ -1026,7 +1026,7 @@ sub dolitesetup
 			} else {
 				# create dir and touch file in .default
 				my $dir = dirname($instrootfile);
-				$mkcmd = qq~mkdir -p $dir; touch $default$file~;
+				$mkcmd = qq~mkdir -p $default$filedir; touch $default$file~;
 			}
 			my $output = xCAT::Utils->runcmd("$mkcmd", -1);
 			if ($::RUNCMD_RC != 0)
