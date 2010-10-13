@@ -990,18 +990,19 @@ sub dolitesetup
 					# it's a dir so copy everything in it
 					# ex. mkdir -p ../inst_root/.default/foo/bar
 					# ex. cp -r .../inst_root/foo/bar/ ../inst_root/.default/foo/bar
-					$cpcmd = qq~mkdir -p $default$file; cp -r $instrootfile* $default$file~;
+					$cpcmd = qq~mkdir -p $default$file; cp -r $instrootfile* $default$file 2>/dev/null~;
 
 				} else {
 					# copy file
 					# ex. mkdir -p ../inst_root/.default/etc
 					# ex. cp .../inst_root/etc/lppcfg ../inst_root/.default/etc
-					$cpcmd = qq~mkdir -p $default$filedir; cp $instrootfile $default$filedir~;
+					$cpcmd = qq~mkdir -p $default$filedir; cp $instrootfile $default$filedir 2>/dev/null~;
 
 				}
 
 				my $output = xCAT::Utils->runcmd("$cpcmd", -1);
-				if ($::RUNCMD_RC != 0)
+#				if ($::RUNCMD_RC != 0)
+				if (0)
 				{
 					my $rsp;
 					push @{$rsp->{data}}, "Could not copy $instrootfile to $default subdirectory.";
