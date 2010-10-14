@@ -98,7 +98,9 @@ proc run_lssyscfg {} {
     set rc [catch $runcmd msg] 
     nc_msg "$PROGRAM Status: run_lssyscg : partition status : $msg\n"
     regexp "$node:\[ ]*(.*)" $msg tmp1 tmp
-    set msg $tmp
+    if { $tmp } {
+        set msg $tmp
+    }
     nc_msg "####msg:$msg#########\n"
 
 
