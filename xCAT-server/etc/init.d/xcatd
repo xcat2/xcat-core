@@ -71,29 +71,29 @@ fi
 case $1 in
 restart)
   echo -n "Restarting xCATd "
-  $STATUS >& /dev/null
-  if [ "$?" == "0" ]; then
-    if ! nodels --version |grep 'Version 2.6'; then  #upgrade or downgrade from another major release, stop it just in case
-        $0 stop
-    fi
-  fi
   if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
+  fi
+  $STATUS >& /dev/null
+  if [ "$?" == "0" ]; then
+    if ! nodels --version |grep -q 'Version 2.6'; then  #upgrade or downgrade from another major release, stop it just in case
+        $0 stop
+    fi
   fi
    xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 reload)
   echo -n "Reloading xCATd "
+   if [ -r /etc/profile.d/xcat.sh ]; then
+       . /etc/profile.d/xcat.sh
+  fi
   $STATUS >& /dev/null
   if [ "$?" == "0" ]; then
-    if ! nodels --version |grep 'Version 2.6'; then  #upgrade or downgrade from another major release, stop it just in case
+    if ! nodels --version |grep -q 'Version 2.6'; then  #upgrade or downgrade from another major release, stop it just in case
         $0 stop
     fi
   fi
   export XCATRELOAD=yes 
-   if [ -r /etc/profile.d/xcat.sh ]; then
-       . /etc/profile.d/xcat.sh
-  fi
    xcatd -p /var/run/xcatd.pid && $LOG_SUCCESS || $LOG_FAILURE
   ;;
 status)
