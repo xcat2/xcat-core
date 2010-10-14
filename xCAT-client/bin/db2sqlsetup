@@ -175,7 +175,7 @@ if (!(-e ($::installdb2dir)))
 {
     my $message =
       "\nDB2 is not installed. It should be first obtained and installed into $::installdb2dir.";
-    xCAT::MsgUtils->message("E", "$message");
+    xCAT::MsgUtils->message("SE", "$message");
     exit(1);
 }
 
@@ -376,15 +376,15 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         my $xcmd;
         if ($::osname eq 'AIX')
         {
-          $xcmd = "startsrc -s xcatd";
+          $xcmd = "$::XCATROOT/sbin/restartxcatd";
 
         }
         else
         {
-          $xcmd = "service xcatd start";
+          $xcmd = "service xcatd restart";
         }
         system($xcmd);
-        xCAT::MsgUtils->message("I", "xCAT DB2 Client setup is complete.\n");
+        xCAT::MsgUtils->message("SI", "xCAT DB2 Client setup is complete.\n");
     }
 }    # end initialization
 
@@ -542,7 +542,7 @@ sub mkdb2user
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
         }
@@ -556,7 +556,7 @@ sub mkdb2user
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
             # touch .profile to makesure it stays owned by xcatd
@@ -564,14 +564,14 @@ sub mkdb2user
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
             $cmd = "chmod 777 /var/lib/db2/.profile";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
 
@@ -583,7 +583,7 @@ sub mkdb2user
         if ($::RUNCMD_RC != 0)
         {
 
-            xCAT::MsgUtils->message("E", " $cmd failed.");
+            xCAT::MsgUtils->message("SE", " $cmd failed.");
             exit(1);
         }
     }
@@ -600,7 +600,7 @@ sub mkdb2user
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
         }
@@ -614,7 +614,7 @@ sub mkdb2user
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
 
@@ -626,7 +626,7 @@ sub mkdb2user
         if ($::RUNCMD_RC != 0)
         {
 
-            xCAT::MsgUtils->message("E", " $cmd failed.");
+            xCAT::MsgUtils->message("SE", " $cmd failed.");
             exit(1);
         }
     }
@@ -759,14 +759,14 @@ sub setupinstance
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {    # if error exit
-                xCAT::MsgUtils->message("E", " $cmd failed.");
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
             $cmd = "echo \"EXTSHM=ON\" >> /var/lib/db2/sqllib/db2profile ";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
-                xCAT::MsgUtils->message("I", " $cmd warning.");
+                xCAT::MsgUtils->message("SI", " $cmd warning.");
             }
             $cmd = "echo \"export EXTSHM\" >>/var/lib/db2/sqllib/db2profile ";
             xCAT::Utils->runcmd($cmd, 0);
@@ -783,13 +783,13 @@ sub setupinstance
     $rc  = &rundb2cmd($cmd);
     if ($rc != 0)
     {
-      xCAT::MsgUtils->message("I", " $cmd warning.");
+      xCAT::MsgUtils->message("SI", " $cmd warning.");
     }
     $cmd = "db2set DB2ENVLIST=EXTSHM  ";
     $rc  = &rundb2cmd($cmd);
     if ($rc != 0)
     {
-      xCAT::MsgUtils->message("I", " $cmd warning.");
+      xCAT::MsgUtils->message("SI", " $cmd warning.");
     }
 
     
@@ -1300,7 +1300,7 @@ sub setupODBC
              if ($::RUNCMD_RC != 0)
              {
                 $message = "$cmd failed. Could not setup ODBC.";
-                xCAT::MsgUtils->message("E", "$message");
+                xCAT::MsgUtils->message("SE", "$message");
                 exit(1);
 
              }
@@ -1310,7 +1310,7 @@ sub setupODBC
              if ($::RUNCMD_RC != 0)
              {
                  $message = "$cmd failed. Could not setup $db2clifile.";
-                 xCAT::MsgUtils->message("E", "$message");
+                 xCAT::MsgUtils->message("SE", "$message");
 
              }
          }
@@ -1326,7 +1326,7 @@ sub setupODBC
              if ($::RUNCMD_RC != 0)
              {
                  $message = "$cmd failed. Could not setup $db2clifile.";
-                 xCAT::MsgUtils->message("E", "$message");
+                 xCAT::MsgUtils->message("SE", "$message");
 
              }
             $cmd = "chown xcatdb $db2clifile";
@@ -1375,12 +1375,12 @@ sub createcfgloc
         }
     }
     my $db2entry = "DB2:xcatdb|xcatdb|$::adminpassword";
-    $cmd = "echo \"$db2entry\" >> $cfgloc";
+    $cmd = "echo \"$db2entry\" > $cfgloc";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
         $message = "$cmd failed. Could not setup cfgloc";
-        xCAT::MsgUtils->message("E", "$message");
+        xCAT::MsgUtils->message("SE", "$message");
         exit(1);
 
     }
