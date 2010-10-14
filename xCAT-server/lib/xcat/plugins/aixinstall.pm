@@ -5695,9 +5695,7 @@ sub updatespot
 
 		# if this has a shared_root resource then
 		#   it might need statelite setup
-		# For now check all the nodes in the group??  - TBD
-		my @nodes = ('all');
-		my $rc=xCAT::InstUtils->dolitesetup($image, \%imghash, \@nodes, $callback, $subreq);
+		my $rc=xCAT::InstUtils->dolitesetup($image, \%imghash, \@nodelist, $callback, $subreq);
 	}
 
     # Modify the rc.dd-boot script 
