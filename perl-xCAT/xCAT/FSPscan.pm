@@ -128,7 +128,8 @@ sub enumerate {
 	    my $model = $3;
 	    my $serial = $4;
             my $side = $6; 
-	    $server = $fsp; 
+	    $server = $fsp;
+	    $fname  = $fsp; 
             my $ips ="$7,$8";	    
             push @values, join( ",",
              "fsp",$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
