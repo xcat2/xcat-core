@@ -4,7 +4,7 @@ B<xcatsetup> - Prime the xCAT database using naming conventions specified in a c
 
 =head1 SYNOPSIS
 
-B<xcatsetup> [I<cluster-config-file>]
+B<xcatsetup> [B<-s|--stanzas> I<stanza-list>] I<cluster-config-file>
 
 B<xcatsetup> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -64,14 +64,35 @@ use individual rows for every node, you can do the following:
   lsdef -z all >tmp.stanza
   cat tmp.stanza | chdef -z
 
-Note:  currently the B<xcatsetup> command has only been implemented and tested for system p servers.
+=head2 Restrictions
+
+=over 3
+
+=item *
+
+The B<xcatsetup> command has only been implemented and tested for system p servers so far.
+
+=item *
+
+Redundant BPAs and FSPs are not yet supported.
+
+=item *
+
+Hostname ranges must start with 1 (or 01, etc.).  I.e. use node01-node80, instead of node03-node83.
+
+=back
+
+=head2 Configuration File
 
 The B<config file> is organized in stanza format and supports the keywords in the sample file below.  Comment lines
 begin with "#".  Stanzas can be ommitted if you do not want to define that type of object.
-Note that currently hostname ranges must have simple <alphachars><integer> format, like the examples in this sample file.
+The only hostname formats supported are those in this sample file, although you can change the base
+text and the numbers.  For example, hmc1-hmc3 could be changed to hwmgmt01-hwmgmt12.
+The hostnames specified must sort correctly.  I.e. use node01-node80, instead of node1-node80.
 
   xcat-site:
    domain = cluster.com
+   # currently only direct fsp control is supported
    use-direct-fsp-control = 1
 
   xcat-hmcs:
@@ -83,12 +104,15 @@ Note that currently hostname ranges must have simple <alphachars><integer> forma
    hostname-range = bpc1-bpc6
    starting-ip = 10.202.1.1
    num-frames-per-hmc = 2
+   # this lists which serial numbers go with which frame numbers
    vpd-file = vpd.stanza
 
   xcat-cecs:
-   # these are the connections to the FSPs
-   hostname-range = cec01-cec60
+   # these are the connections to the FSPs.  Either form of hostname is supported.
+   #hostname-range = cec01-cec60
+   hostname-range = f[1-6]c[01-10]
    starting-ip = 10.203.1.1
+   # lists the HFI supernode numbers for each group of cecs in each frame
    supernode-list = supernodelist.txt
 
   xcat-building-blocks:
@@ -98,30 +122,43 @@ Note that currently hostname ranges must have simple <alphachars><integer> forma
   xcat-lpars:
    num-lpars-per-cec = 8
 
+  xcat-service-nodes:
    num-service-nodes-per-bb = 2
+   # which cecs within the bldg block that the SNs are located in
+   cec-positions-in-bb = 1,20
    # this is for the ethernet NIC on each SN
-   service-node-hostname-range = sn1-sn6
-   service-node-starting-ip = 10.200.1.1
+   hostname-range = sn1-sn6
+   starting-ip = 10.200.1.1
    # this value is the same format as the hosts.otherinterfaces attribute except 
    # the IP addresses are starting IP addresses
-   service-node-otherinterfaces = -hf0:10.10.1.1,-hf1:10.11.1.1,-hf2:10.12.1.1,-hf3:10.13.1.1
+   otherinterfaces = -hf0:10.10.1.1,-hf1:10.11.1.1,-hf2:10.12.1.1,-hf3:10.13.1.1
 
+  xcat-storage-nodes:
    num-storage-nodes-per-bb = 3
-   storage-node-hostname-range = stor01-stor09
-   storage-node-starting-ip = 10.20.1.1
-   storage-node-aliases = -hf0
-   storage-node-otherinterfaces = -hf1:10.21.1.1,-hf2:10.22.1.1,-hf3:10.23.1.1
+   # which cecs within the bldg block that the storage nodes are located in
+   cec-positions-in-bb = 5,10,15
+   hostname-range = stor01-stor09
+   starting-ip = 10.20.1.1
+   aliases = -hf0
+   otherinterfaces = -hf1:10.21.1.1,-hf2:10.22.1.1,-hf3:10.23.1.1
 
+  xcat-compute-nodes:
    num-compute-nodes-per-bb = 155
-   compute-node-hostname-range = n001-n465
-   compute-node-starting-ip = 10.30.1.1
-   compute-node-aliases = -hf0
+   hostname-range = n001-n465
+   starting-ip = 10.30.1.1
+   aliases = -hf0
    # ml0 is for aix.  For linux, use bond0 instead.
-   compute-node-otherinterfaces = -hf1:10.31.1.1,-hf2:10.32.1.1,-hf3:10.33.1.1,-ml0:10.34.1.1
+   otherinterfaces = -hf1:10.31.1.1,-hf2:10.32.1.1,-hf3:10.33.1.1,-ml0:10.34.1.1
+
+=head2 VPD File for Frames
 
 The B<vpd-file> specifies the following vpd table attributes for the BPCs (frame power supplies):  node,
 serial, mtm, side.  Use the same stanza format that accepted by the L<chdef(1)|chdef.1> command, as documented
-in L<xcatstanzafile(5)|xcatstanzafile.5>.  Here is a sample file:
+in L<xcatstanzafile(5)|xcatstanzafile.5>.  The purpose of this file is to enable xCAT to match up BPCs found
+through L<lsslp(1)|lsslp.1> discovery with the database objects created by B<xcatsetup>.  All of the BPCs
+in the cluster must be specified (A-side only).
+
+Here is a sample file:
 
   bpc01:
     objtype=node
@@ -134,6 +171,8 @@ in L<xcatstanzafile(5)|xcatstanzafile.5>.  Here is a sample file:
     serial=99200D1
     mtm=9A00-100
     side=A
+
+=head2 Supernode Numbers for CECs
 
 The B<supernode-list> file lists what supernode numbers should be given to each CEC in each frame.
 Here is a sample file:
@@ -148,6 +187,8 @@ Here is a sample file:
 The name before the colon is the node name of the frame BPC.  The numbers after the colon are the supernode numbers
 to assign to the groups of CECs in that frame from bottom to top.  Each supernode contains 4 CECs, unless it is immediately
 followed by "(#)", in which case the number in parenthesis indicates how many CECs are in this supernode.
+
+=head2 Database Attributes Written
 
 The following lists which database attributes are filled in as a result of each stanza.  Note that depending on the values
 in the stanza, some attributes might not be filled in.
@@ -221,6 +262,14 @@ servicenode table:  node, nameserver, dhcpserver, tftpserver, nfsserver, conserv
 =head1 OPTIONS
 
 =over 10
+
+=item B<-s|--stanzas> I<stanza-list>
+
+A comma-separated list of stanza names that B<xcatsetup> should process in the configuration file.  If not specified, it will process
+all the stanzas that start with 'xcat' and some other stanzas that give xCAT hints about how to set up the HPC products.
+
+This option should only be specified if you have already run B<xcatsetup> earlier with the stanzas that occur before this in the
+configuration file.  Otherwise, objects will be created that refer back to other objects that do not exist in the database.
 
 =item B<-v|--version>
 
