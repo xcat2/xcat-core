@@ -73,7 +73,7 @@ restart)
   echo -n "Restarting xCATd "
   $STATUS >& /dev/null
   if [ "$?" == "0" ]; then
-    if ! nodels --version |grep 'Version 2.6'; #upgrade or downgrade from another major release, stop it just in case
+    if ! nodels --version |grep 'Version 2.6'; then  #upgrade or downgrade from another major release, stop it just in case
         $0 stop
     fi
   fi
@@ -86,7 +86,7 @@ reload)
   echo -n "Reloading xCATd "
   $STATUS >& /dev/null
   if [ "$?" == "0" ]; then
-    if ! nodels --version |grep 'Version 2.6'; #upgrade or downgrade from another major release, stop it just in case
+    if ! nodels --version |grep 'Version 2.6'; then  #upgrade or downgrade from another major release, stop it just in case
         $0 stop
     fi
   fi
