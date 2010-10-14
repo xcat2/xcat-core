@@ -594,7 +594,7 @@ sub fork_cmd {
     my $parent;
     my $child;
     pipe $parent, $child;
-    my $pid = fork;
+    my $pid = xCAT::Utils->xfork();
 
     if ( !defined($pid) ) {
         ###################################
