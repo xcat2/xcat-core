@@ -199,7 +199,6 @@ sub is_me
     if ($::RUNCMD_RC != 0)
     {
         my $rsp;
-
         #	push @{$rsp->{data}}, "Could not run $ifcmd.\n";
         #    xCAT::MsgUtils->message("E", $rsp, $callback);
         return 0;
@@ -780,19 +779,44 @@ sub dolitesetup
     }
 
 	my @nodelist;
+	my @nodel;
 	my @nl;
     if ($nodes) {
         @nl = @$nodes;
 		foreach my $n (@nl) {
-			push(@nodelist, xCAT::NodeRange::noderange($n));
+			push(@nodel, xCAT::NodeRange::noderange($n));
 		}
+    }
+
+	#
+	#   Need to set the "provmethod" attr of the node defs or the litetree 
+	#		cmd wil not get the info we need
+	#
+
+	my %nodeattrs;
+    foreach my $node (@nodel)
+    {
+		chomp $node;
+		$nodeattrs{$node}{objtype} = 'node';
+        $nodeattrs{$node}{os}      = "AIX";
+        $nodeattrs{$node}{profile}    = $imagename;
+        $nodeattrs{$node}{provmethod} = $imagename;
+    }
+	if (xCAT::DBobjUtils->setobjdefs(\%nodeattrs) != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not set the \'provmethod\' attribute for nodes.\n";
+        xCAT::MsgUtils->message("W", $rsp, $::callback);
     }
 
 	# the node list is always "all" nodes.  There is only one version of the
 	#  statelite, litefile and litetree files in an image and these files
 	#	must always contain all the info from the corresponding database
 	#	table.
-
+	my @nlist = ('all');
+	foreach my $n (@nlist) {
+        push(@nodelist, xCAT::NodeRange::noderange($n));
+    }
 	my $noderange = join(',',@nodelist);
 
 	# get spot inst_root loc
@@ -894,6 +918,7 @@ sub dolitesetup
 
 		my $entry = qq~$node|$statemnt~;
 		$entry =~ s/\s*//g; #remove blanks
+
 		if ($statemnt) {
 			print STATELITE $entry . "\n";
 		}
@@ -950,15 +975,27 @@ sub dolitesetup
 
 	# create some local directories in the SPOT
 	# 	create .default, .statelite, 
-	my $mcmd = qq~/bin/mkdir -m 644 -p $instrootloc/.default; /bin/mkdir -m 644 -p $instrootloc/.statelite ~;
-	my $output = xCAT::Utils->runcmd("$mcmd", -1); 
-   	if ($::RUNCMD_RC != 0)
-    {
-        my $rsp;
-		push @{$rsp->{data}}, "Could not create directories.";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
+	if ( ! -d "$instrootloc/.default" ) {
+		my $mcmd = qq~/bin/mkdir -m 644 -p $instrootloc/.default ~;
+		my $output = xCAT::Utils->runcmd("$mcmd", -1);
+		{
+			my $rsp;
+			push @{$rsp->{data}}, "Could not create $instrootloc/.default.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		}
 	}
+
+	if ( ! -d "$instrootloc/.statelite" ) {
+        my $mcmd = qq~/bin/mkdir -m 644 -p $instrootloc/.statelite ~;
+        my $output = xCAT::Utils->runcmd("$mcmd", -1);
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not create $instrootloc/.statelite.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+    }
 
 	# populate the .defaults dir with files and dirs from the image - if any
 	my $default="$instrootloc/.default";
@@ -980,75 +1017,106 @@ sub dolitesetup
 		my $instrootfile = $instrootloc . $file;
 
 		my $cpcmd;
+		my $mkdircmd;
+		my $output;
 
-		if (-e $instrootfile) {
+		if (!grep (/^$instrootfile$/, @copiedfiles)) {
+			# don't copy same file twice
+            push (@copiedfiles, $instrootfile);
 
-			if (!grep (/^$instrootfile$/, @copiedfiles)) {
-				# don't copy same file twice
-				push (@copiedfiles, $instrootfile);
+			if (-e $instrootfile) {
+
 				if (-d $instrootfile) {
 					# it's a dir so copy everything in it
 					# ex. mkdir -p ../inst_root/.default/foo/bar
 					# ex. cp -r .../inst_root/foo/bar/ ../inst_root/.default/foo/bar
-					$cpcmd = qq~mkdir -p $default$file; cp -r $instrootfile* $default$file 2>/dev/null~;
+
+					if ( ! -e "$default$file" ) { # do mkdir
+						$mkdircmd = qq~mkdir -p $default$file 2>/dev/null~;
+						$output = xCAT::Utils->runcmd("$mkdircmd", -1);
+						if ($::RUNCMD_RC != 0) {
+							my $rsp;
+                    		push @{$rsp->{data}}, "Could not copy create $default$file.";
+                    		if ($::VERBOSE)
+                    		{
+                        		push @{$rsp->{data}}, "$output\n";
+                    		}
+                    		xCAT::MsgUtils->message("E", $rsp, $callback);
+                		}
+					}
+
+					# ok  - do copy
+					$cpcmd = qq~cp -p -r $instrootfile* $default$file 2>/dev/null~;
+					$output = xCAT::Utils->runcmd("$cpcmd", -1);
 
 				} else {
 					# copy file
 					# ex. mkdir -p ../inst_root/.default/etc
 					# ex. cp .../inst_root/etc/lppcfg ../inst_root/.default/etc
-					$cpcmd = qq~mkdir -p $default$filedir; cp $instrootfile $default$filedir 2>/dev/null~;
-
+					$cpcmd = qq~mkdir -p $default$filedir; cp -p $instrootfile $default$filedir 2>/dev/null~;
 				}
-
-				my $output = xCAT::Utils->runcmd("$cpcmd", -1);
-#				if ($::RUNCMD_RC != 0)
-				if (0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not copy $instrootfile to $default subdirectory.";
-					if ($::VERBOSE)
-                	{
-                    	push @{$rsp->{data}}, "$output\n";
-                	}
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-				}	
-			}
-	
-		} else {
-
-			# could not find file or dir in ../inst_root (spot dir)
-			# so create empty file or dir
-			my $mkcmd;
-
-			# check if it's a dir
-			if(grep /\/$/, $file) {
-				# create dir in .default
-				$mkcmd = qq~mkdir -p $default$file~;
 			} else {
-				# create dir and touch file in .default
-				my $dir = dirname($instrootfile);
-				$mkcmd = qq~mkdir -p $default$filedir; touch $default$file~;
-			}
-			my $output = xCAT::Utils->runcmd("$mkcmd", -1);
-			if ($::RUNCMD_RC != 0)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not create $default$file.\n";
-				if ($::VERBOSE)
-				{
-					push @{$rsp->{data}}, "$output\n";
-				}
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-			}
-			
-		}
 
-	}
+				# could not find file or dir in ../inst_root (spot dir)
+				# so create empty file or dir
+				my $mkcmd;
+
+				# check if it's a dir
+				if(grep /\/$/, $file) {
+					# create dir in .default
+					if ( ! -d "$default$file" ) {
+						$mkcmd = qq~mkdir -p $default$file~;
+						$output = xCAT::Utils->runcmd("$mkcmd", -1);
+                		if ($::RUNCMD_RC != 0)
+                		{
+                    		my $rsp;
+                    		push @{$rsp->{data}}, "Could not create $default$file.\n";
+                    		if ($::VERBOSE)
+                    		{
+                        		push @{$rsp->{data}}, "$output\n";
+                    		}
+                		} 
+					}
+				} else {
+					# create dir and touch file in .default
+					my $dir = dirname($file);
+					if ( ! -d "$default$dir" ) {
+						$mkcmd = qq~mkdir -p $default$dir~;
+						$output = xCAT::Utils->runcmd("$mkcmd", -1);
+                        if ($::RUNCMD_RC != 0)
+                        {
+                            my $rsp;
+                            push @{$rsp->{data}}, "Could not create $default$dir.";
+                            if ($::VERBOSE)
+                            {
+                                push @{$rsp->{data}}, "$output\n";
+                            }
+                        }
+					}
+
+					# touch the file
+ 					my $tcmd = qq~touch $default$file~;
+					$output = xCAT::Utils->runcmd("$tcmd", -1);
+					if ($::RUNCMD_RC != 0)
+					{
+						my $rsp;
+						push @{$rsp->{data}}, "Could not create $default$file.\n";
+						if ($::VERBOSE)
+						{
+							push @{$rsp->{data}}, "$output\n";
+						}
+						xCAT::MsgUtils->message("E", $rsp, $callback);
+					}
+				}	
+			} # end - if not exist in spot
+		} # end - if not already copied
+	} # end - for each line in litefile
 
 	# add aixlitesetup to ..inst_root/aixlitesetup
 	# this will wind up in the root dir on the node ("/")
 	my $install_dir = xCAT::Utils->getInstallDir();
 	my $cpcmd = "/bin/cp $install_dir/postscripts/aixlitesetup $instrootloc/aixlitesetup; chmod +x $instrootloc/aixlitesetup";
+
 	my $out = xCAT::Utils->runcmd("$cpcmd", -1);
     if ($::RUNCMD_RC != 0)
     {
