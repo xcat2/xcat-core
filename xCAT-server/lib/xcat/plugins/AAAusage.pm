@@ -56,7 +56,7 @@ sub preprocess_request {
   if (ref($extrargs)) {
     @exargs=@$extrargs;
   }
-  if (($#exargs==-1) or (($#exargs==0) and ($exargs[0] =~ /^\s*$/)) or (!$noderange)) {
+  if (($#exargs==-1) or (($#exargs==0) and ($exargs[0] =~ /^\s*$/)) or (!$noderange and $command ne "lsslp")) {
      $exargs[0] = "--help";  # force help if no args
   }
 
