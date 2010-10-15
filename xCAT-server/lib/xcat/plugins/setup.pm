@@ -371,7 +371,7 @@ sub writecec {
 	# Using the cec group, write: nodetype.nodetype
 	$tables{'nodetype'}->setNodeAttribs('cec', {nodetype => 'fsp'});
 	
-	# Write regex for ppc.hcp, nodehm.mgt.  lsslp will fill in parent.
+	# Write regex for ppc.hcp, nodehm.mgt
 	if ($STANZAS{'xcat-site'}->{'use-direct-fsp-control'}) {
 		$tables{'nodehm'}->setNodeAttribs('cec', {mgt => 'fsp'});
 		my $hcpregex = '|(.+)|($1)|';		# its managed by itself
@@ -394,7 +394,7 @@ sub writecec {
 	foreach my $k (sort keys %framesupers) {
 		my $f = $framesupers{$k};	# $f is a ptr to an array of super node numbers
 		if (!$f) { next; }		# in case some frame nums did not get filled in by user
-		my $cageid = 1;
+		my $cageid = 3;		#todo: p7 ih starts at 3, but what about other models?
 		foreach my $s (@$f) {	# loop thru the supernode nums in this frame
 			my $supernum = $s;
 			my $numnodes = 4;
@@ -529,12 +529,11 @@ sub writesn {
 	$nodes = [noderange($range, 0)];
 	my %nodehash;
 	my %grouphash;
-	my $bbs = [noderange($STANZAS{'xcat-frames'}->{'hostname-range'}, 0)];
 	# Go thru each service node and calculate which cec it is in
 	for (my $i=0; $i<scalar(@$nodes); $i++) {
 		# figure out the BB num to add this node to that group
 		my $bbnum = int($i/$snsperbb) + 1;
-		my $bbname = $$bbs[$bbnum-1];
+		my $bbname = "bb$bbnum";
 		$grouphash{$$nodes[$i]} = {groups => "${bbname}service,service,all"};
 		# figure out the CEC num
 		my $snpositioninbb = $positions[$i % $snsperbb];		# the offset within the BB
@@ -626,12 +625,11 @@ sub writestorage {
 	my %nodehash;
 	my %grouphash;
 	my %nodereshash;
-	my $bbs = [noderange($STANZAS{'xcat-frames'}->{'hostname-range'}, 0)];
 	# Go thru each storage node and calculate which cec it is in
 	for (my $i=0; $i<scalar(@$nodes); $i++) {
 		# figure out the BB num to add this node to that group
 		my $bbnum = int($i/$snsperbb) + 1;
-		my $bbname = $$bbs[$bbnum-1];
+		my $bbname = "bb$bbnum";
 		$grouphash{$$nodes[$i]} = {groups => "${bbname}storage,storage,all"};
 		# figure out the CEC num
 		my $snpositioninbb = $positions[$i % $snsperbb];		# the offset within the BB
@@ -701,7 +699,7 @@ sub writecompute {
 				my ($nic, $startip) = split(/:/, $if);
 				($ipbase, $ip3rd, $ip4th) = $startip =~/^(\d+\.\d+)\.(\d+)\.(\d+)$/;
 				#$if = "$nic:$ipbase.($ipstart+" . '$1' . "-$startnum)";
-				$if = "$nic:$ipbase.((${ip4th}-1+" . '$1' . "-$startnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$startnum)%254+1)|";
+				$if = "$nic:$ipbase.((${ip4th}-1+" . '$1' . "-$startnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$startnum)%254+1)";
 			}
 			$regex = '|\D+(\d+)|' . join(',', @ifs) . '|';
 			#print "regex=$regex\n";

@@ -131,7 +131,7 @@ The hostnames specified must sort correctly.  I.e. use node01-node80, instead of
    starting-ip = 10.200.1.1
    # this value is the same format as the hosts.otherinterfaces attribute except 
    # the IP addresses are starting IP addresses
-   otherinterfaces = -hf0:10.10.1.1,-hf1:10.11.1.1,-hf2:10.12.1.1,-hf3:10.13.1.1
+   otherinterfaces = -hf0:10.10.1.1,-hf1:10.11.1.1,-hf2:10.12.1.1,-hf3:10.13.1.1,-ml0:10.14.1.1
 
   xcat-storage-nodes:
    num-storage-nodes-per-bb = 3
@@ -140,10 +140,9 @@ The hostnames specified must sort correctly.  I.e. use node01-node80, instead of
    hostname-range = stor01-stor09
    starting-ip = 10.20.1.1
    aliases = -hf0
-   otherinterfaces = -hf1:10.21.1.1,-hf2:10.22.1.1,-hf3:10.23.1.1
+   otherinterfaces = -hf1:10.21.1.1,-hf2:10.22.1.1,-hf3:10.23.1.1,-ml0:10.24.1.1
 
   xcat-compute-nodes:
-   num-compute-nodes-per-bb = 155
    hostname-range = n001-n465
    starting-ip = 10.30.1.1
    aliases = -hf0
