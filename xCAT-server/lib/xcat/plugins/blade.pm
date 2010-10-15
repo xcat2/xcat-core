@@ -3046,16 +3046,29 @@ sub httplogin {
        my $mpa = shift;
        my $user = shift;
        my $pass = shift;
+       my $prefix="http://";
        my $url="http://$mpa/shared/userlogin.php";
        $browser = LWP::UserAgent->new;
        $browser->cookie_jar({});
-       my $response = $browser->post($url,{userid=>$user,password=>$pass,login=>"Log In"});
-       $response = $browser->post("http://$mpa/shared/welcome.php",{timeout=>1,save=>""});
-       $response = $browser->post("http://$mpa/shared/welcomeright.php",{timeout=>1,save=>""});
+       my $response = $browser->post("$prefix$mpa/shared/userlogin.php",{userid=>$user,password=>$pass,login=>"Log In"});
+       if ($response->{_rc} eq '301') { #returned when https is enabled
+           $prefix="https://";
+           $response = $browser->post("$prefix$mpa/shared/userlogin.php",{userid=>$user,password=>$pass,login=>"Log In"});
+       }
+       $response = $browser->post("$prefix$mpa/shared/welcome.php",{timeout=>1,save=>""});
+       unless ($response->{_rc} =~ /^2.*/) { 
+           $response = $browser->post("$prefix$mpa/shared/welcomeright.php",{timeout=>1,save=>""});
+       }
+       unless ($response->{_rc} =~ /^2.*/) { 
+           return undef;
+       }
+       return $prefix;
+
 }
 sub get_kvm_params {
     my $mpa = shift;
-    my $response = $browser->get("http://$mpa/private/vnc_only.php");
+    my $method=shift;
+    my $response = $browser->get("$method$mpa/private/vnc_only.php");
     my $html = $response->{_content};
     my $destip;
     my $rbs;
@@ -3074,9 +3087,9 @@ sub get_kvm_params {
     }
     my $ba;
     unless (defined $destip and defined $rbs) { #Try another way
-        $response = $browser->get("http://$mpa/private/remotecontrol.js.php");
+        $response = $browser->get("$method$mpa/private/remotecontrol.js.php");
         if ($response->{_rc} == 404) { #In some firmwares, its "shared" instead of private
-            $response = $browser->get("http://$mpa/shared/remotecontrol.js.php");
+            $response = $browser->get("$method$mpa/shared/remotecontrol.js.php");
         }
         $html = $response->{_content};
         foreach (split /\n/,$html) {
@@ -3992,8 +4005,25 @@ sub dompa {
   if ($command eq "getrvidparms") {
       my $user = $mpahash->{$mpa}->{username};
       my $pass = $mpahash->{$mpa}->{password};
-      httplogin($mpa,$user,$pass);
-      (my $target, my $authtoken, my $fwrev, my $port, my $ba) = get_kvm_params($mpa);
+      my $method;
+      unless ($method=httplogin($mpa,$user,$pass)) {
+        foreach $node (sort (keys %{$mpahash->{$mpa}->{nodes}})) {
+          my %outh;
+          %outh = (
+            node=>[{
+                name=>[$node],
+                error=>["Unable to perform http login to $mpa"],
+                errorcode=>['3']
+          }]);
+          print $out freeze([\%outh]);
+          print $out "\nENDOFFREEZE6sK4ci\n";
+          yield;
+          waitforack($out);
+           %outh=();
+          }
+          return;
+      }
+      (my $target, my $authtoken, my $fwrev, my $port, my $ba) = get_kvm_params($mpa,$method);
       #an http logoff would invalidate the KVM token, so we can't do it here
       #For the instant in time, banking on the http session timeout to cleanup for us
       #It may be possible to provide the session id to client so it can logoff when done, but
@@ -4007,6 +4037,7 @@ sub dompa {
           push(@output,"authtoken:$authtoken");
           push(@output,"slot:$slot");
           push(@output,"fwrev:$fwrev");
+          push(@output,"prefix:$method");
           if ($port) {
             push(@output,"port:$port");
           }

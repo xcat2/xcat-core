@@ -9,7 +9,7 @@ if [ -z "$fwmaj" ]; then
 fi
 mkdir -p /tmp/xcat
 if [ ! -f /tmp/xcat/$rvid_server.remotekvm.jar ]; then 
-    wget -O /tmp/xcat/$rvid_server.remotekvm.jar http://$rvid_server/private/remotekvm.jar >& /dev/null
+    wget --no-check-certificate -O /tmp/xcat/$rvid_server.remotekvm.jar http://$rvid_server/private/remotekvm.jar >& /dev/null
 fi
 if [ $fwpref == 'BPET' ]; then
     if [ $fwmaj -ge 46 ]; then
