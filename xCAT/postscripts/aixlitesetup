@@ -260,12 +260,12 @@ FindFile () {
 		if [ -e ${SRC} ]; then
             PATHEND=${#path}
             CHAREND=`echo ${path} |cut -c${PATHEND}`
-            if [ ${CHAREND} -ne '/' ] && [ -d ${SRC} ]; then
+            if [ "${CHAREND}" = '/' ] && [ -d ${SRC} ]; then
                 FOUND=0
                 continue
             fi
 
-            if [ ${CHAREND} -eq "/" ] && [ -f ${SRC} ]; then
+            if [ "${CHAREND}" = "/" ] && [ -f ${SRC} ]; then
                 FOUND=0
                 continue
             fi
