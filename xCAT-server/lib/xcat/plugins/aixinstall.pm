@@ -5696,6 +5696,12 @@ sub updatespot
 		# if this has a shared_root resource then
 		#   it might need statelite setup
 		my $rc=xCAT::InstUtils->dolitesetup($image, \%imghash, \@nodelist, $callback, $subreq);
+        if ($rc eq 1) { # error
+            my $rsp;
+            push @{$rsp->{data}}, qq{There's one error when doing statelite setup, see the error message above};
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
 	}
 
     # Modify the rc.dd-boot script 

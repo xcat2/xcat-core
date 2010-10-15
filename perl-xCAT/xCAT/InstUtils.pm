@@ -978,6 +978,7 @@ sub dolitesetup
 	if ( ! -d "$instrootloc/.default" ) {
 		my $mcmd = qq~/bin/mkdir -m 644 -p $instrootloc/.default ~;
 		my $output = xCAT::Utils->runcmd("$mcmd", -1);
+        if ($::RUNCMD_RC != 0)
 		{
 			my $rsp;
 			push @{$rsp->{data}}, "Could not create $instrootloc/.default.\n";
@@ -989,6 +990,7 @@ sub dolitesetup
 	if ( ! -d "$instrootloc/.statelite" ) {
         my $mcmd = qq~/bin/mkdir -m 644 -p $instrootloc/.statelite ~;
         my $output = xCAT::Utils->runcmd("$mcmd", -1);
+        if ($::RUNCMD_RC != 0)
         {
             my $rsp;
             push @{$rsp->{data}}, "Could not create $instrootloc/.statelite.\n";
@@ -1002,6 +1004,41 @@ sub dolitesetup
 
 	# read the litefile and try to copy into $default
 	# everything in the litefile command output should be processed
+
+    foreach my $line (@litefiles) {
+        # $file could be full path file name or dir name
+        # ex. /foo/bar/  or /etc/lppcfg
+        my ($node, $option, $file) = split (/\|/, $line);
+        
+        # ex. .../inst_root/foo/bar/  or .../inst_root/etc/lppcfg
+        my $instrootfile = $instrootloc . $file;
+
+        # there's one scenario to be handled firstly
+        # in litefile table, there's one entry: /path/to/file, which is one file
+        # however, there's already one directory named "/path/to/file/"
+        # 
+        # Or:
+        # the entry in litefile is "/path/to/file/", which is one directory
+        # however, there's already one file named "/path/to/file"
+        # 
+        # in these cases,
+        # need to indicate the user there's already one existing file/directory in the spot
+        # then, exit
+
+        if ($file =~ m/\/$/ and -f $instrootfile)  {
+            my $rsp;
+            push @{$rsp->{data}}, qq{there is already one file named "$file", but the entry in litefile table is set to one directory, please check it};
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+        if ($file !~ m/\/$/ and -d $instrootfile) {
+            my $rsp;
+            push @{$rsp->{data}}, qq{there is already one directory named "$file", but the entry in litefile table is set to one file, please check it};
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+    }
+
 
 	my @copiedfiles;
 	foreach my $line (@litefiles) {

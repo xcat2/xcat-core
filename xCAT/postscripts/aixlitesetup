@@ -256,11 +256,22 @@ FindFile () {
 		SRC=`echo ${MOUNTDIR}/${SERVER}${DIR}${path} |  sed -e 's/\/\//\//'`
 
 		# ex. /.statelite/mnt/10.2.0.200/etc/FScfg
+        # ex. /.statelite/mnt/10.2.0.200/root/ssh/
 		if [ -e ${SRC} ]; then
+            PATHEND=`expr ${#path} - 1` # get the last char of the path
+            if [ ${path[${PATHEND}]} -ne '/' ] && [ -d ${SRC} ]; then
+                FOUND=0
+                continue
+            fi
 
-				FOUND=1
-			    ProcessType ${SRC} ${path} ${type} ${isChild}
-			    break
+            if [ ${path[${PATHEND}]} -eq "/" ] && [ -f ${SRC} ]; then
+                FOUND=0
+                continue
+            fi
+             
+			FOUND=1
+		    ProcessType ${SRC} ${path} ${type} ${isChild}
+		    break
 		fi	
 	done
 
