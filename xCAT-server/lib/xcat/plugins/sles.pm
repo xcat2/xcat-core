@@ -90,7 +90,7 @@ sub mknetboot
     my $machash = $mactab->getNodesAttribs(\@nodes, ['interface', 'mac']);
 
     my $restab = xCAT::Table->new('noderes');
-    my $reshash = $restab->getNodesAttribs(\@nodes, ['primarynic', 'tftpserver', 'xcatmaster', 'nfsserver', 'nfsdir', 'installdir']);
+    my $reshash = $restab->getNodesAttribs(\@nodes, ['primarynic', 'tftpserver', 'xcatmaster', 'nfsserver', 'nfsdir', 'installnic']);
 
     my %donetftp=();
     foreach my $node (@nodes)
@@ -100,7 +100,6 @@ sub mknetboot
         my $profile;
         my $rootimgdir;
         my $nodebootif; # nodebootif will be used if noderes.installnic is not set
-        my $installnic; # the noderes.installnic value
 	
 	    my $ent= $ntents->{$node}->[0];
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
@@ -137,6 +136,7 @@ sub mknetboot
 	        $osver = $ph->{osver};
 	        $arch  = $ph->{osarch};
 	        $profile = $ph->{profile};
+            $nodebootif = $ph->{nodebootif};
 	
 	        $rootimgdir = $ph->{rootimgdir};
 	        unless ($rootimgdir) {

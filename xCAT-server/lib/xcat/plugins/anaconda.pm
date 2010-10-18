@@ -241,7 +241,6 @@ sub mknetboot
         my $platform;
         my $rootimgdir;
         my $nodebootif; # nodebootif will be used if noderes.installnic is not set
-        my $installnic; # the noderes.installnic value
 
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
