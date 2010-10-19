@@ -966,7 +966,15 @@ sub dolitesetup
 
 	# if there is no statelite info then just return
 	if (!$foundstatelite) {
-		return 1;
+
+        if ($::VERBOSE)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Please update statlite,litefile,litetree tables if you want to use AIX statelite support.\n";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+        }	
+
+		return 2;
 	}
 
 	#
