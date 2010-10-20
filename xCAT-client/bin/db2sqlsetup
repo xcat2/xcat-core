@@ -70,7 +70,6 @@ $::command = "$0 $args";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
 $::databaseloc            = "/var/lib/db2";    # database loccation
-
 # parse the options
 if (
     !GetOptions(
@@ -1365,7 +1364,7 @@ sub createcfgloc
     my $message;
 
     # if they had an old cfgloc , save it
-    if ((-e ($cfgloc)) && (!(-e ($cfglocbackup))))
+    if (-e ($cfgloc)
     {
         $cmd = "mv $cfgloc $cfglocbackup";
         xCAT::Utils->runcmd($cmd, 0);
