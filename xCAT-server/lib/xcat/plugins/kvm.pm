@@ -2255,7 +2255,9 @@ sub process_request {
         push @dhcpnodes,$_;
         delete $confdata->{dhcpneeded}->{$_};
      }
-     $doreq->({command=>['makedhcp'],node=>\@dhcpnodes});
+     unless ($::XCATSITEVALS{'dhcpsetup'} and ($::XCATSITEVALS{'dhcpsetup'} =~ /^n/i or $::XCATSITEVALS{'dhcpsetup'} =~ /^d/i or $::XCATSITEVALS{'dhcpsetup'} eq '0')) {
+        $doreq->({command=>['makedhcp'],node=>\@dhcpnodes});
+     }
   }
 
   if ($command eq 'revacuate' or $command eq 'rmigrate') {

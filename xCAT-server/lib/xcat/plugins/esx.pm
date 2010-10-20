@@ -2142,7 +2142,9 @@ sub mkvms {
         push @dhcpnodes,$_;
         delete $tablecfg{dhcpneeded}->{$_};
     }
-    $executerequest->({command=>['makedhcp'],node=>\@dhcpnodes});
+    unless ($::XCATSITEVALS{'dhcpsetup'} and ($::XCATSITEVALS{'dhcpsetup'} =~ /^n/i or $::XCATSITEVALS{'dhcpsetup'} =~ /^d/i or $::XCATSITEVALS{'dhcpsetup'} eq '0')) {
+        $executerequest->({command=>['makedhcp'],node=>\@dhcpnodes});
+    }
 }
 
 sub setboot {
