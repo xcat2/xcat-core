@@ -1,0 +1,645 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+
+#
+
+#-----------------------------------------------------------------------------
+
+=head1   db2install 
+
+ This postscript installs and sets up db2 on a client machine, usually a Service Node
+ or a login node. This script can only be used to automatically install an
+ AIX 6.1 or 7.1,  or a Linux Redhat5 or Redhat6 Client. 
+ Note: the db2 code must be in a mountable directory  defined by the
+ db2installloc attribute in the site table.
+ The perl-DBD-DB2 code should have been installed during the xCAT install from 
+ the AIX or Linux xCAT deps package for AIX6.1 or 7.1 or Redhat5 or Redhat 6.
+ More information can be obtained from the xCAT http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/xCAT-client/share/doc/xCAT2SetupDB2.pdf.
+ Needs  export MASTER=site.master
+        export DB2INSTALLLOC=site.db2installlloc
+        export XCATDPORT=site.xcatdport
+        export NODE=<mynodename>
+ 
+=cut
+
+#-----------------------------------------------------------------------------
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+# if AIX - make sure we include perl 5.8.2 in INC path.
+#       Needed to find perl dependencies shipped in deps tarball.
+if ($^O =~ /^aix/i)
+{
+    use lib "/usr/opt/perl5/lib/5.8.2/aix-thread-multi";
+    use lib "/usr/opt/perl5/lib/5.8.2";
+    use lib "/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi";
+    use lib "/usr/opt/perl5/lib/site_perl/5.8.2";
+}
+
+use lib "$::XCATROOT/lib/perl";
+use strict;
+use IO::Socket;
+use File::Path;
+use Expect;
+use xCAT::Utils;
+use xCAT::NetworkUtils;
+use xCAT::MsgUtils;
+
+my $useSocketSSL = eval { require IO::Socket::SSL; };
+if ($useSocketSSL)
+{
+    require IO::Socket::SSL;
+}
+
+# MAIN
+
+my $rc  = 0;
+my $msg = "";
+my $cmd;
+
+# setup some important variable
+$::osname = `uname`;
+chomp $::osname;
+
+$::sdate = `/bin/date`;
+chomp $::sdate;
+
+$::hname = `hostname`;
+chomp $::hname;
+
+$::MN = $ENV{'MASTER'};    # as known by the node
+if ($::osname eq 'AIX')
+{
+    $::installdb2dir = "/opt/IBM/db2/V9.7";    # default
+}
+else
+{                                              # linux
+    $::installdb2dir = "/opt/ibm/db2/V9.7";    # default
+}
+my $msg;
+
+# check to see if db2 already installed and configured, if so
+# skip the install
+my $db2install = $::installdb2dir;
+$db2install .= "\/instance";
+if (!(-e ($db2install)))
+{                                              # already installed
+    $::db2installloc = $ENV{'DB2INSTALLLOC'};
+    if (!$::db2installloc)
+    {
+        $::db2installloc = "/mntdb2";
+    }
+    chomp $::db2installloc;
+    $::db2installloc =~
+      s/^(\'|\")(.*)(\"|\')$/$2/;              # remove any surrounding quotes
+
+    # mount the db2 directory to get to the db2 code to install
+    $rc = &mountdb2code;
+
+    # install db2
+    if ($rc == 0)
+    {
+        $rc = &installdb2code;
+        if ($rc != 0)
+        {
+            $msg = "Error installing DB2. \n";
+            `logger -t xcat $msg`;
+
+        }
+
+        # unmount the db2 directory install directory
+        &unmountdb2code;
+    }
+    else
+    {
+        $msg =
+          "Cannot mount the site.db2installloc directory to get to the\n db2 code to install. Setup cannot continue.\n";
+        `logger -t xcat $msg`;
+        exit(1);
+    }
+}
+else
+{
+    $msg = "DB2 is already installed. Will skip installation. \n";
+    `logger -t xcat $msg`;
+}
+my $getcfgloc = 1;    # get the cfgloc file from the MN
+if (-e ("/etc/xcat/cfgloc"))    # check to see if xcat is using DB2 already
+{                               # cfgloc exists
+    $cmd = "fgrep DB2 /etc/xcat/cfgloc";
+    xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC == 0)
+    {
+        my $msg =
+          "The /etc/xcat/cfgloc file is already configured for DB2. xCAT appears to be already running on DB2.  xcat database configuration will not take place.";
+        `logger -t xcat $msg`;
+        $getcfgloc = 0;         # do not get the cfgloc file
+
+    }
+}
+if ($getcfgloc == 1)
+{
+
+    # get the cfgloc file from the Management Node
+    $rc = &getcfgloc;
+    if ($rc != 0)
+    {                           # could not get the cfgloc file, cannot continue
+        $msg =
+          "Cannot get the cfgloc file from the MN.  Client setup cannot continue. \n";
+        `logger -t xcat $msg`;
+        exit 1;
+    }
+
+}
+# setup the db2 Client for xCAT and start xCAT on the DB2 database
+
+&rundb2sqlsetup;
+
+exit 0;
+
+#
+# Subroutines
+#
+
+# run the command
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc = 0;
+
+    $cmd .= ' 2>&1';
+
+    # my $outref = [];
+    # @$outref = `$cmd`;
+
+    $::outref = [];
+    $::outref = `$cmd`;
+    if ($?)
+    {
+        $rc = $? >> 8;
+        if ($rc > 0)
+        {
+            my $msg = "$cmd returned rc=$rc $::outref\n";
+            `logger -t xcat $msg`;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+#####################################################
+#
+#  getcfgloc
+#		Get  DB cfgloc file
+#
+#####################################################
+sub getcfgloc
+{
+    my $msg;
+    my $filename = "/etc/xcat/cfgloc";
+    my $response = &getresponse("xcat_cfgloc");
+    if (defined($response))
+    {
+        my $fd;
+        &runcmd("mkdir -p /etc/xcat");
+        open($fd, '>', $filename);
+        print $fd $response;
+        close($fd);
+
+        # set the permissions
+        my $cmd = "chmod 600 $filename > /dev/null 2>&1";
+        &runcmd($cmd);
+    }
+    else
+    {
+        $msg = "$::sdate db2install: Could not get cfgloc file.\n";
+        `logger -t xcat $msg`;
+        return 1;
+    }
+
+    # get the info
+    my $xcatcfg;
+    my $cfgl;
+    open($cfgl,"<",$filename);
+    $xcatcfg = <$cfgl>;
+    close($cfgl);
+    chomp $xcatcfg; 
+    my ($hdr, $instance, $password) = split('\|', $xcatcfg);
+    if ($hdr =~ /^DB2:/)
+    {
+        return 0;
+    }
+    else
+    {
+        $msg = "$::sdate db2install: cfgloc file not for DB2.\n";
+        `logger -t xcat $msg`;
+        return 1;
+    }
+    return 0;
+
+}
+#####################################################
+#
+#  mountdb2code
+#     mount the directory from the db2server that contains
+#     the db2 code
+#
+#####################################################
+sub mountdb2code
+{
+    my $msg;
+    my $rc;
+    my $server;
+    my $db2installloc = $ENV{'DB2INSTALLLOC'};
+    if (!($db2installloc))
+    {
+        $db2installloc = "/mntdb2";    # set default
+    }
+
+    # determine server and mount location
+    if (grep /:/, $db2installloc)
+    {
+        my ($hostname, $newinstallloc) = split ":", $db2installloc;
+        if ($hostname)
+        {                              # hostname set in /installloc attribute
+            $server       = $hostname;         # set server for mount
+            $::installloc = $newinstallloc;    #set path for mount point
+        }
+    }
+    else
+    {
+        $server       = $::MN;
+        $::installloc = $db2installloc;
+    }
+
+    # mount the install directory from the installloc location
+    # make the directory to mount on-- same name
+    if (!(-e $::installloc))
+    {
+        mkpath($::installloc);
+    }
+
+    # check to see if   already mounted
+
+    my $mounted = xCAT::Utils->isMounted($::installloc);
+    if ($mounted == 0)
+    {    # not mounted
+
+        # need to  mount the directory
+        my $cmd = "mount  $server:$::installloc $::installloc";
+        $rc = &runcmd($cmd);
+    }
+
+    return $rc;
+
+}
+#####################################################
+#
+#  installdb2code
+#     installs the db2 code from the mounted server
+#
+#####################################################
+sub installdb2code
+{
+    my $msg;
+    my $rc          = 0;
+    my $installcode = "$::installloc/ese/db2_install";
+
+    if (!(-e $installcode))
+    {
+        $msg = "$installcode does not exist. Cannot install DB2 code.\n";
+        `logger -t xcat $msg`;
+        exit 1;
+    }
+
+    my $expect_log = "/tmp/xcatexpect.log";
+    $msg =
+      "$::sdate Starting DB2 install. Monitor progress in $expect_log on the node. \n";
+    `logger -t xcat $msg`;
+    my $db2sql;
+    my $timeout = 1000;    #sets Expect default timeout, 0 accepts immediately
+    my $timeout;           # null says wait forever
+    my $pwd_sent       = 0;
+    my $dir_prompt     = 'Do you want';
+    my $product_prompt = " to exit";
+    my $debug          = 0;
+    if ($::VERBOSE)
+    {
+        $debug = 1;
+    }
+    $db2sql = new Expect;
+
+    #
+    # -re $dir_prompt
+    #    Installation of products - /opt/ibm/db2/V9.7
+    #
+    #    Do you want to choose a different directory to install [yes/no] ?
+    #
+    # -re $product_prompt
+    #     Specify one of the following keywords to install DB2 products.
+    #     ESE
+    #     CLIENT
+    #     RTCL
+    #
+    #
+
+    # disable command echoing
+    #$db2sql->slave->stty(qw(sane -echo));
+    # restart timeout
+    $db2sql->restart_timeout_upon_receive(1);
+
+    #
+    # exp_internal(1) sets exp_internal debugging
+    # to STDERR.
+    #
+    #$db2sql->exp_internal(1);
+    $db2sql->exp_internal($debug);
+
+    #
+    # log_stdout(0) prevent the program's output from being shown.
+    #
+    #$db2sql->log_stdout(1);
+    $db2sql->log_stdout($debug);
+
+    #
+    # log session
+    #
+    #$db2sql->log_file($expect_log);
+    $db2sql->log_file($expect_log);
+
+    my $spawncmd;
+    $spawncmd = "$installcode";
+    unless ($db2sql->spawn($spawncmd))
+    {
+        $msg = "Unable to run $spawncmd to create database.\n";
+        `logger -t xcat $msg`;
+        exit 1;
+
+    }
+
+    #
+    # setup input to db2_install
+    #
+
+    my @result = $db2sql->expect(
+        $timeout,
+        [
+         $dir_prompt,
+         sub {
+             $db2sql->send("no\r");
+             $db2sql->clear_accum();
+             $db2sql->exp_continue();
+           }
+        ],
+        [
+         $product_prompt,
+         sub {
+
+             $db2sql->send("CLIENT\r");
+             $db2sql->exp_continue();
+
+           }
+        ]
+        );
+    ##########################################
+    # Expect error - report and quit
+    ##########################################
+    if (defined($result[1]))
+    {
+        my $errmsg = $result[1];
+        $db2sql->soft_close();
+        $msg = "Installing DB2 results = $errmsg.\n";
+        `logger -t xcat $msg`;
+
+    }
+    $db2sql->soft_close();
+    $msg = "$::sdate Ending DB2 install.\n";
+    `logger -t xcat $msg`;
+    return $rc;
+
+}
+
+#####################################################
+#
+#  unmountdb2code
+#     unmounts the directory from the db2server that contains
+#     the db2 code
+#
+#####################################################
+sub unmountdb2code
+{
+    my $msg;
+    my $rc = 0;
+    my $cmd;
+
+    # need to  un mount the directory
+    if ($::osname eq 'AIX')
+    {
+        $cmd = "unmount $::installloc";
+    }
+    else
+    {
+        $cmd = "umount $::installloc";
+    }
+    $rc = &runcmd($cmd);
+
+    return $rc;
+
+}
+#####################################################
+#
+#  rundb2sqlsetup
+#     runs the db2sqlsetup script and sets up xCAT/DB2 Client
+#
+#####################################################
+sub rundb2sqlsetup
+{
+    my $msg;
+    my $rc = 0;
+    my $cmd;
+    my $filename = "/etc/xcat/cfgloc";
+    # get the info
+    my $xcatcfg;
+    my $cfgl;
+    open($cfgl,"<",$filename);
+    $xcatcfg = <$cfgl>;
+    close($cfgl);
+    chomp $xcatcfg;
+    my ($database, $instance, $password) = split('\|', $xcatcfg);
+    $cmd =
+      "XCATDB2SERVER=$::MN XCATDB2PW=$password $::XCATROOT/bin/db2sqlsetup -i -C";
+    $msg = "$::sdate Running Client setup. $::XCATROOT/bin/db2sqlsetup -i -C\n";
+    `logger -t xcat $msg`;
+
+    $rc = &runcmd($cmd);
+
+    $msg = "$::sdate Client setup finished.\n";
+    `logger -t xcat $msg`;
+
+    return $rc;
+
+}
+#####################################################
+#
+#  getresponse
+#       Request info from xcatd on the management node
+#
+#	- uses SSL socket on port 3001 to connect to MN xcatd
+#		to make the request for info
+#
+#####################################################
+sub getresponse
+{
+    my ($req) = @_;
+    my $msg;
+    my $port = $ENV{'XCATDPORT'}; 
+    my $node = $ENV{'NODE'};
+
+    # open listener connection to wait for check from management node
+    my $lpid = &openlistener();
+
+    # open a socket to request data
+    my $sock =
+      IO::Socket::SSL->new(
+                           PeerAddr => $::MN,
+                           PeerPort => $port,
+                           Proto    => 'tcp',
+                           );
+
+    # try a few more times
+    my $times = 1;
+    while (!$sock)
+    {
+        sleep(2);
+        $times++;
+        $sock =
+          IO::Socket::SSL->new(
+                               PeerAddr => $::MN,
+                               PeerPort => $port,
+                               Proto    => 'tcp',
+                               );
+        if ($times == 5)
+        {
+            last;
+        }
+    }
+
+    unless ($sock)
+    {
+        $msg = "db2install: Cannot connect to host \'$::MN\'\n";
+        `logger -t xcat $msg`;
+        print $msg;
+        return undef;
+    }
+
+    # request must be in XML format
+    print $sock "<xcatrequest>\n";
+    print $sock "   <command>getcredentials</command>\n";
+    print $sock "   <arg>$req</arg>\n";
+    print $sock "   <callback_port>300</callback_port>\n";
+    print $sock "</xcatrequest>\n";
+
+    #TODO - do we have to try again after waiting for a bit????
+    my $response = '';
+    my $line;
+    while (defined($line = <$sock>))
+    {
+
+        # skip xml tags
+        next if ($line =~ /^\s*</);
+
+        # once we get to serverdone we have the whole response
+        if ($line =~ m/<\/serverdone>/)
+        {
+          last:
+        }
+        $response .= $line;
+    }
+
+    close($sock);
+
+    #print "resp = \'$response\'\n";
+
+    kill 2, $lpid;
+    if ($response)
+    {
+        return $response;
+    }
+    return undef;
+}
+
+#####################################################
+#
+#  openlistener
+#   - fork a child process to respond to a check from the MN
+#
+#####################################################
+sub openlistener
+{
+    my $node = $ENV{'NODE'};
+
+
+    # fork a child process to open a socket to listen for communication
+    #	from the server
+    my $pid = xCAT::Utils->xfork;
+    unless (defined $pid)
+    {
+
+        # fork failed
+        $msg = "db2install: Could not fork process.\n";
+        `logger -t xcat $msg`;
+
+        #print $msg;
+        return undef;
+    }
+
+    if ($pid != 0)
+    {
+
+        # This is the parent process, just return
+        return $pid;
+    }
+
+    my $listener =
+      IO::Socket::INET->new(
+                            LocalPort => '300',
+                            Proto     => 'tcp',
+                            Listen    => '64',
+                            Reuse     => 1
+                            );
+
+    unless ($listener)
+    {
+        my $msg = "db2install: Cannot open socket on \'$node\'\n";
+        `logger -t xcat $msg`;
+        print $msg;
+        exit 1;
+    }
+
+    #	xcatd sends a quick req to see if we are really asking
+    #  	for info - this listener checks for the req and says ok
+    my $client;
+    while ($client = $listener->accept())
+    {
+
+        # $client is the new connection
+        my $text = <$client>;
+
+        #  see if we got "CREDOKBYYOU?"
+        if ($text =~ /CREDOKBYYOU?/)
+        {
+            print $client "CREDOKBYME";
+            close($client);
+            close($listener);
+            exit 0;
+        }
+        close($client);
+    }
+    close($client);
+    close($listener);
+    exit 0;
+}
