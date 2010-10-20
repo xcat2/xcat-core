@@ -1364,7 +1364,7 @@ sub createcfgloc
     my $message;
 
     # if they had an old cfgloc , save it
-    if (-e ($cfgloc)
+    if (-e ($cfgloc))
     {
         $cmd = "mv $cfgloc $cfglocbackup";
         xCAT::Utils->runcmd($cmd, 0);
