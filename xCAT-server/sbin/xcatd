@@ -1450,6 +1450,15 @@ sub becomeuser {
 #If here, unable to validate given credential
     return undef;
 }
+sub populate_site_hash {
+    my $sitetab = xCAT::Table->new('site',-create=>0);
+    unless ($sitetab) { return; }
+    my @records = $sitetab->getAllAttribs(qw/key value/);
+    foreach (@records) {
+        $::XCATSITEVALS{$_->{key}}=$_->{value};
+    }
+}
+
 
 sub service_connection {
   my $sock = shift;
@@ -1458,6 +1467,7 @@ sub service_connection {
   my $peerfqdn = shift;
   my $peerport = $sock->peerport;
   my %tables=();
+  populate_site_hash();
   #some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
   # -Well, minimally, ignore requests if requesting node is not in spconfig mode (stage3)
   # -Option to generate a random password per 'getipmi' request.  This reduces the exposure to a D.O.S. hopefully
