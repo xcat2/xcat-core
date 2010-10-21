@@ -592,7 +592,7 @@ if ($needUpdateTable) {
         $updates_os{'provmethod'} = 'netboot';
         $updates_os{'osname'} = 'Linux';
         $updates_os{'osvers'} = $osver;
-        $updates_os{'osdistro'} = 'rh'; # not used currently
+        $updates_os{'osdistro'} = 'sles'; # not used currently
         $updates_os{'osarch'} = $arch;
 
         $osimagetab->setAttribs(\%keyhash, \%updates_os);
@@ -607,6 +607,8 @@ if ($needUpdateTable) {
         $updates_os{'provmethod'} = 'statelite';
 
         $osimagetab->setAttribs(\%keyhash, \%updates_os);
+        $osimagetab->commit;
+
         $linuximagetab->setAttribs(\%keyhash, \%updates);
         $linuximagetab->commit;
     }

@@ -265,10 +265,8 @@ sub mknetboot
         }
 
         # TODO: move the table operations out of the foreach loop
-        my $restab = xCAT::Table->new('noderes');
         my $bptab  = xCAT::Table->new('bootparams',-create=>1);
         my $hmtab  = xCAT::Table->new('nodehm');
-        $ent    = $restab->getNodeAttribs($node, ['primarynic', 'installnic']);
         my $sent   =
           $hmtab->getNodeAttribs($node,
                                  ['serialport', 'serialspeed', 'serialflow']);
