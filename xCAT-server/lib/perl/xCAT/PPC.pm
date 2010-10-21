@@ -1558,7 +1558,7 @@ sub preprocess_request {
         }
         #convert from millisecond to second
         $delay /= 1000.0;
-        if ($delay & ($i < scalar(@{$nodeseq}))) {
+        if ($delay && ($i < scalar(@{$nodeseq}))) {
             my %output;
             $output{data} = ["Waiting $delay seconds for node dependencies\n"];
             $callback->( \%output );
