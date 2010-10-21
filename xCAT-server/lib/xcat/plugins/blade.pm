@@ -3383,13 +3383,18 @@ sub process_request {
     ($tmp)=$sitetab->getAttribs({'key'=>'blademaxp'},'value');
     if (defined($tmp)) { $blademaxp=$tmp->{value}; }
   }
+  if ($request->{environment}->[0]->{XCAT_BLADEUSER}) {
+      $bladeuser=$request->{environment}->[0]->{XCAT_BLADEUSER}->[0];
+      $bladepass=$request->{environment}->[0]->{XCAT_BLADEPASS}->[0];
+  } else {
   my $passtab = xCAT::Table->new('passwd');
-  if ($passtab) {
-    ($tmp)=$passtab->getAttribs({'key'=>'blade'},'username','password');
-    if (defined($tmp)) {
-      $bladeuser = $tmp->{username};
-      $bladepass = $tmp->{password};
-    }
+    if ($passtab) {
+        ($tmp)=$passtab->getAttribs({'key'=>'blade'},'username','password');
+        if (defined($tmp)) {
+          $bladeuser = $tmp->{username};
+          $bladepass = $tmp->{password};
+        }
+      }
   }
   if ($request->{command}->[0] eq "findme") {
     my $mptab = xCAT::Table->new("mp");
