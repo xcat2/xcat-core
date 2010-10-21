@@ -236,7 +236,6 @@ sub writehmc {
 	my $hmcrange = shift;
 	infomsg('Defining HMCs...');
 	my $nodes = [noderange($hmcrange, 0)];
-	my ($hmcstartnum) = $$nodes[0] =~/^\D+(\d+)$/;		# save this value for later
 	#print "$$nodes[0], $hmcstartnum\n";
 	if (scalar(@$nodes)) {
 		#my %nodehash;
@@ -247,9 +246,12 @@ sub writehmc {
 	#using hostname-range and starting-ip, write regex for: hosts.node, hosts.ip
 	my $hmcstartip = $STANZAS{'xcat-hmcs'}->{'starting-ip'};
 	if ($hmcstartip) {
+		my $hmchash = parsenoderange($hmcrange);
+		#print Dumper($hmchash), Dumper($hmcrange);
+		my $hmcstartnum = $$hmchash{'primary-start'};
 		my ($ipbase, $ipstart) = $hmcstartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
-		my $regex = '|\D+(\d+)|' . "$ipbase.($ipstart+" . '$1' . "-$hmcstartnum)|";
+		my $regex = '|\S+?(\d+)$|' . "$ipbase.($ipstart+" . '$1' . "-$hmcstartnum)|";
 		$tables{'hosts'}->setNodeAttribs('hmc', {ip => $regex});
 	}
 	
@@ -264,7 +266,6 @@ sub writeframe {
 	my ($framerange, $cwd) = @_;
 	infomsg('Defining frames...');
 	my $nodes = [noderange($framerange, 0)];
-	my ($framestartnum) = $$nodes[0] =~/^\D+(\d+)$/;		# save this value for later
 	#print "$$nodes[0], $framestartnum\n";
 	if (scalar(@$nodes)) {
 		#my %nodehash;
@@ -275,9 +276,11 @@ sub writeframe {
 	# Using the frame group, write starting-ip in hosts table
 	my $framestartip = $STANZAS{'xcat-frames'}->{'starting-ip'};
 	if ($framestartip) {
+		my $framehash = parsenoderange($framerange);
+		my $framestartnum = $$framehash{'primary-start'};
 		my ($ipbase, $ipstart) = $framestartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
-		my $regex = '|\D+(\d+)|' . "$ipbase.($ipstart+" . '$1' . "-$framestartnum)|";
+		my $regex = '|\S+?(\d+)$|' . "$ipbase.($ipstart+" . '$1' . "-$framestartnum)|";
 		$tables{'hosts'}->setNodeAttribs('frame', {ip => $regex});
 	}
 	
@@ -286,7 +289,7 @@ sub writeframe {
 	
 	# Using the frame group, num-frames-per-hmc, hmc hostname-range, write regex for: ppc.node, ppc.hcp, ppc.id
 	# The frame # should come from the nodename
-	my $idregex = '|\D+(\d+)|(0+$1)|';
+	my $idregex = '|\S+?(\d+)$|(0+$1)|';
 	my %hash = (id => $idregex);
 
 	if ($STANZAS{'xcat-site'}->{'use-direct-fsp-control'}) {
@@ -363,7 +366,7 @@ sub writecec {
 			my $cecstartnum = $$cechash{'primary-start'};
 			# Math for 4th field:  (ip4th-1+cecnum-cecstartnum)%254 + 1
 			# Math for 3rd field:  (ip4th-1+cecnum-cecstartnum)/254 + ip3rd
-			$regex = '|\D+(\d+)$|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$cecstartnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$cecstartnum)%254+1)|";
+			$regex = '|\S+?(\d+)$|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$cecstartnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$cecstartnum)%254+1)|";
 		}
 		$tables{'hosts'}->setNodeAttribs('cec', {ip => $regex});
 	}
@@ -458,7 +461,7 @@ sub writebb {
 	$tables{'site'}->setAttribs({key => 'sharedtftp'}, {value => 1});
 	
 	# Using num-frames-per-bb write ppc.parent (frame #) for bpas
-	my $bbregex = '|\D+(\d+)|((($1-1)/' . $framesperbb . ')+1)|';
+	my $bbregex = '|\S+?(\d+)$|((($1-1)/' . $framesperbb . ')+1)|';
 	$tables{'ppc'}->setNodeAttribs('frame', {parent => $bbregex});
 }
 
@@ -480,7 +483,7 @@ sub writesn {
 	if ($startip) {
 		my ($ipbase, $ipstart) = $startip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
-		my $regex = '|\D+(\d+)|' . "$ipbase.($ipstart+" . '$1' . "-$startnum)|";
+		my $regex = '|\S+?(\d+)$|' . "$ipbase.($ipstart+" . '$1' . "-$startnum)|";
 		my %hash = (ip => $regex);
 		my $otherint = $STANZAS{'xcat-service-nodes'}->{'otherinterfaces'};
 		if ($otherint) {
@@ -491,7 +494,7 @@ sub writesn {
 				($ipbase, $ipstart) = $startip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 				$if = "$nic:$ipbase.($ipstart+" . '$1' . "-$startnum)";
 			}
-			$regex = '|\D+(\d+)|' . join(',', @ifs) . '|';
+			$regex = '|\S+?(\d+)$|' . join(',', @ifs) . '|';
 			#print "regex=$regex\n";
 			$hash{otherinterfaces} = $regex;
 		}
@@ -573,7 +576,7 @@ sub writestorage {
 	if ($startip) {
 		my ($ipbase, $ipstart) = $startip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
-		my $regex = '|\D+(\d+)|' . "$ipbase.($ipstart+" . '$1' . "-$startnum)|";
+		my $regex = '|\S+?(\d+)$|' . "$ipbase.($ipstart+" . '$1' . "-$startnum)|";
 		my %hash = (ip => $regex);
 		my $otherint = $STANZAS{'xcat-storage-nodes'}->{'otherinterfaces'};
 		if ($otherint) {
@@ -584,7 +587,7 @@ sub writestorage {
 				($ipbase, $ipstart) = $startip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 				$if = "$nic:$ipbase.($ipstart+" . '$1' . "-$startnum)";
 			}
-			$regex = '|\D+(\d+)|' . join(',', @ifs) . '|';
+			$regex = '|\S+?(\d+)$|' . join(',', @ifs) . '|';
 			#print "regex=$regex\n";
 			$hash{otherinterfaces} = $regex;
 		}
@@ -688,7 +691,7 @@ sub writecompute {
 		my $startnum = $$nodehash{'primary-start'};
 		# Math for 4th field:  (ip4th-1+nodenum-startnum)%254 + 1
 		# Math for 3rd field:  (ip4th-1+nodenum-startnum)/254 + ip3rd
-		my $regex = '|\D+(\d+)|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$startnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$startnum)%254+1)|";
+		my $regex = '|\S+?(\d+)$|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$startnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$startnum)%254+1)|";
 		#my $regex = '|\D+(\d+)|' . "$ipbase.($ipstart+" . '$1' . "-$startnum)|";
 		my %hash = (ip => $regex);
 		my $otherint = $STANZAS{'xcat-compute-nodes'}->{'otherinterfaces'};
@@ -701,7 +704,7 @@ sub writecompute {
 				#$if = "$nic:$ipbase.($ipstart+" . '$1' . "-$startnum)";
 				$if = "$nic:$ipbase.((${ip4th}-1+" . '$1' . "-$startnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$startnum)%254+1)";
 			}
-			$regex = '|\D+(\d+)|' . join(',', @ifs) . '|';
+			$regex = '|\S+?(\d+)$|' . join(',', @ifs) . '|';
 			#print "regex=$regex\n";
 			$hash{otherinterfaces} = $regex;
 		}
@@ -786,26 +789,33 @@ sub parsenoderange {
 	my $ret = {};
 	
 	# Check for a 2 square bracket range, e.g. f[1-2]c[01-10]
-	if ( $nr =~ /^\s*\S+\[\d+[\-\:]\d+\]\S+\[\d+[\-\:]\d+\]\s*$/ ) {
-		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}) = $nr =~ /^\s*(\S+)\[(\d+)[\-\:](\d+)\](\S+)\[(\d+)[\-\:](\d+)\]\s*$/;
+	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}) = ($1, $2, $3, $4, $5, $6);
 		#print Dumper($ret);
 		return $ret;
 	}
 	
 	# Check for a square bracket range, e.g. n[01-20]
-	if ( $nr =~ /^\s*\S+\[\d+[\-\:]\d+\]\s*$/ ) {
-		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}) = $nr =~ /^\s*(\S+)\[(\d+)[\-\:](\d+)\]\s*$/;
+	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}) = ($1, $2, $3);
 		return $ret;
 	}
 	
 	# Check for normal range, e.g. n01-n20
 	my $base2;
-	if ( $nr =~ /^\s*\D+\d+\-\D+\d+\s*$/ ) {
-		($$ret{'primary-base'}, $$ret{'primary-start'}, $base2, $$ret{'primary-end'}) = $nr =~ /^\s*(\D+)(\d+)\-(\D+)(\d+)\s*$/;
+	if ( $nr =~ /^\s*(\S+?)(\d+)\-(\S+?)(\d+)\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $base2, $$ret{'primary-end'}) = ($1, $2, $3, $4);
 		if ($$ret{'primary-base'} ne $base2) { return undef; }		# ill-formed range
 		return $ret;
 	}
 	
+	# It may be a simple single nodename
+	if ( $nr =~ /^\s*([^\[\]\-\:\s]+?)(\d+)\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}) = ($1, $2, $2);
+		return $ret;
+	}
+	
+	errormsg("invalid noderange format: $nr", 5);
 	return undef;   # range did not match any of the cases above
 }
 
