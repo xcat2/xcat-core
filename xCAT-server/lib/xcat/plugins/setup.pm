@@ -293,7 +293,7 @@ sub writeframe {
 	my %hash = (id => $idregex);
 
 	if ($STANZAS{'xcat-site'}->{'use-direct-fsp-control'}) {
-		$tables{'nodehm'}->setNodeAttribs('frame', {mgt => 'fsp'});
+		$tables{'nodehm'}->setNodeAttribs('frame', {mgt => 'bpa'});
 		my $hcpregex = '|(.+)|($1)|';		# its managed by itself
 		$hash{hcp} = $hcpregex;
 	}
