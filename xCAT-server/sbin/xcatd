@@ -1451,7 +1451,7 @@ sub becomeuser {
     return undef;
 }
 sub populate_site_hash {
-    %::XCATSITEVALS{$_->{key}}=();
+    %::XCATSITEVALS=();
     my $sitetab = xCAT::Table->new('site',-create=>0);
     unless ($sitetab) { return; }
     my @records = $sitetab->getAllAttribs(qw/key value/);
