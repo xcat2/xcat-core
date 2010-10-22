@@ -1,0 +1,168 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+
+#
+
+#-----------------------------------------------------------------------------
+
+=head1   odbcsetup 
+
+ This postscript sets up the odbc for the database running on the Client 
+ machine usually the Service Node.
+ The xCAT service node client and the DB client should have already been
+ installed on the node, before this postscript is run. 
+=cut
+
+#-----------------------------------------------------------------------------
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+# if AIX - make sure we include perl 5.8.2 in INC path.
+#       Needed to find perl dependencies shipped in deps tarball.
+if ($^O =~ /^aix/i)
+{
+    use lib "/usr/opt/perl5/lib/5.8.2/aix-thread-multi";
+    use lib "/usr/opt/perl5/lib/5.8.2";
+    use lib "/usr/opt/perl5/lib/site_perl/5.8.2/aix-thread-multi";
+    use lib "/usr/opt/perl5/lib/site_perl/5.8.2";
+}
+
+use lib "$::XCATROOT/lib/perl";
+use strict;
+use xCAT::Utils;
+use xCAT::MsgUtils;
+
+# MAIN
+
+my $rc  = 0;
+my $cmd;
+
+# setup some important variable
+
+$::sdate = `/bin/date`;
+chomp $::sdate;
+
+
+my $msg;
+
+# check the /etc/xcat/cfgloc file to see if MySQL or DB2
+# if it is not here,  error out
+my $dbname = xCAT::Utils->get_DBName;
+if ($dbname eq "DB2")
+{
+    $msg = "Setting up ODBC for DB2";
+    `logger -t xcat $msg`;
+    &setupdb2odbc;
+
+}
+else
+{
+    if ($dbname eq "MYSQL")
+    {
+        $msg = "Setting up ODBC for MYSQL";
+        `logger -t xcat $msg`;
+        &setupmysqlodbc;
+    }
+    else
+    {
+        $msg =
+          "cfgloc file does not contain MySQL or DB2,  will not setup ODBC.";
+        `logger -t xcat $msg`;
+        exit 1;
+    }
+}
+
+exit 0;
+
+#
+# Subroutines
+#
+
+#####################################################
+#
+# setupdb2odbc
+#     runs the db2sqlsetup script and sets up the ODBC on the Client
+#
+#####################################################
+sub setupdb2odbc
+{
+    my $msg;
+    my $rc = 0;
+    my $cmd;
+    my $filename = "/etc/xcat/cfgloc";
+
+    # get the info
+    my $xcatcfg;
+    my $cfgl;
+    open($cfgl, "<", $filename);
+    $xcatcfg = <$cfgl>;
+    close($cfgl);
+    chomp $xcatcfg;
+    my ($database, $instance, $password) = split('\|', $xcatcfg);
+    $cmd = "$::XCATROOT/bin/db2sqlsetup -o -C";
+    $msg = "$::sdate Running Client ODBC setup. $cmd\n";
+    `logger -t xcat $msg`;
+
+    $rc = &runcmd($cmd);
+
+    $msg = "$::sdate Client ODBC setup finished.\n";
+    `logger -t xcat $msg`;
+
+    return $rc;
+
+}
+#####################################################
+#
+# setupmysqlodbc
+#     runs the mysqlsetup script and sets up the ODBC on the Client
+#
+#####################################################
+sub setupmysqlodbc
+{
+    my $msg;
+    my $rc = 0;
+    my $cmd;
+    $cmd = "$::XCATROOT/bin/mysqlsetup -o";
+    $msg = "$::sdate Running Client ODBC setup. $cmd\n";
+    `logger -t xcat $msg`;
+
+    $rc = &runcmd($cmd);
+
+    $msg = "$::sdate Client ODBC setup finished.\n";
+    `logger -t xcat $msg`;
+
+    return $rc;
+
+}
+
+#
+# run the command
+#
+sub runcmd
+{
+    my ($cmd) = @_;
+    my $rc = 0;
+
+    $cmd .= ' 2>&1';
+
+    # my $outref = [];
+    # @$outref = `$cmd`;
+
+    $::outref = [];
+    $::outref = `$cmd`;
+    if ($?)
+    {
+        $rc = $? >> 8;
+        if ($rc > 0)
+        {
+            my $msg = "$cmd returned rc=$rc $::outref\n";
+            `logger -t xcat $msg`;
+            return 1;
+        }
+    }
+    return 0;
+}
