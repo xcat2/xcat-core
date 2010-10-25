@@ -933,6 +933,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=useNmapfromMN site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=enableASMI site.value=no;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=db2installloc site.value=\/mntdb2;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=sshbetweennodes site.value=yes;";
 
         if ($::osname eq 'AIX')
         {
