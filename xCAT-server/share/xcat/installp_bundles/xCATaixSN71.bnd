@@ -53,7 +53,10 @@ R:unixODBC*
 R:perl-DBD-DB2*
 R:perl-DBD-Pg*
 R:perl-DBD-mysql*
-R:mysql-connector-odbc*
+
+# optional - needed if using mysql ODBC support (e.g. with LoadLeveler)
+#I:X11.base.lib
+#R:mysql-connector-odbc*
 
 # optional - needed if using Postgresql
 #R:xcat-postgresql*
