@@ -813,11 +813,17 @@ sub dolitesetup
 	#  statelite, litefile and litetree files in an image and these files
 	#	must always contain all the info from the corresponding database
 	#	table.
-	my @nlist = ('all');
-	foreach my $n (@nlist) {
-        push(@nodelist, xCAT::NodeRange::noderange($n));
-    }
-	my $noderange = join(',',@nodelist);
+	@nodelist= xCAT::DBobjUtils->getObjectsOfType('node');
+	my $noderange;
+	if (scalar(@nodelist) > 0)
+	{
+		$noderange = join(',',@nodelist);
+	} else {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not get list of xCAT nodes. No statelite configuration will be done.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 2;
+	}
 
 	# get spot inst_root loc
 	my $spotloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{spot}, 'location', $callback, "", $subreq);
