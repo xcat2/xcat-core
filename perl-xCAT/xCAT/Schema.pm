@@ -781,6 +781,11 @@ site => {
    " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
    " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
    "                 removing DHCP entries when noderm is executed)\n\n".
+   " sshbetweennodes:  Whether to enable passwordless root ssh between nodes\n".
+   "                   during node install, or xdsh -K. Default is yes.\n".
+   "                   Service Nodes are not affected by this attribute\n".
+   "                   they are always setup with\n".
+   "                   passwordless root access to nodes and other SN.\n\n".
    " sharedtftp:  Set to 0 or no, if xCAT should not assume the directory\n".
    "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n". 
    "              If value is set to a hostname, the directory in tftpdir\n".
