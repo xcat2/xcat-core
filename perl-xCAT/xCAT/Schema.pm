@@ -783,6 +783,7 @@ site => {
    "                 removing DHCP entries when noderm is executed)\n\n".
    " sshbetweennodes:  Whether to enable passwordless root ssh between nodes\n".
    "                   during node install, or xdsh -K. Default is yes.\n".
+   "                   Set to no, if you do not want enabled.\n".
    "                   Service Nodes are not affected by this attribute\n".
    "                   they are always setup with\n".
    "                   passwordless root access to nodes and other SN.\n\n".
