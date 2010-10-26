@@ -5158,7 +5158,7 @@ sub chkFSspace
     {
 
         $space_needed = int($size - $free_space);
-        my $addsize  = $space_needed + 10;
+        my $addsize  = $space_needed + 100;
         my $sizeattr = "-a size=+$addsize" . "M";
         my $chcmd    = "/usr/sbin/chfs $sizeattr $FSname";
 
