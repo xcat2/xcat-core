@@ -1756,7 +1756,12 @@ sub setAttribsWhere
     #update the rows
     for my $col (keys %$elems)
     {
-      $cols = $cols . $col . " = ?,";
+      my $DBname = xCAT::Utils->get_DBName;
+      if ($DBname =~ /^DB2/) {
+          $cols = $cols . "\"$col\"" . " = ?,";
+      } else {
+          $cols = $cols . $col . " = ?,";
+      }
       push @bind, (($$elems{$col} =~ /NULL/) ? undef: $$elems{$col});
     }
     chop($cols);

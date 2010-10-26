@@ -636,7 +636,16 @@ sub setNodeStatusAttributes {
       if (@$nodes > 0) {
         $updates{'status'} = $_;
         $updates{'statustime'} = $currtime;
-        my $where_clause="node in ('" . join("','", @$nodes) . "')";
+        my $where_clause;
+        my $DBname = xCAT::Utils->get_DBName;
+        if ($DBname =~ /^DB2/) {
+            foreach my $nd (@$nodes) {
+                $where_clause .= "\"node\" LIKE \'$nd\' OR"
+            }
+            $where_clause =~ s/OR$//;
+        } else {
+            $where_clause="node in ('" . join("','", @$nodes) . "')";
+        } 
         $tab->setAttribsWhere($where_clause, \%updates );
       }
     }
