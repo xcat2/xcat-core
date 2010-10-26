@@ -19,4 +19,7 @@ compilers/vacpp.cmp
 compilers/vacpp.help.pdf
 compilers/vacpp.samples
 compilers/vacpp.man
+# the following packages for xlf.cmp-13.1.0.0-100630.ppc64 and vac.cmp-11.1.0.0-100630.ppc64
+compilers/xlf.lic
+compilers/vac.lic
 
