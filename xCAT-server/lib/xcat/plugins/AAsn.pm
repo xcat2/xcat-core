@@ -645,7 +645,7 @@ sub setup_DHCP
     $cmdref->{command}->[0] = "makedhcp";
     $cmdref->{arg}->[0]     = "-l";
     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-    $cmdref->{arg}->[0]     = "-n";
+    $cmdref->{arg}->[1]     = "-n";
     no strict "refs";
     my $modname = "dhcp";
     ${"xCAT_plugin::" . $modname . "::"}{process_request}
@@ -660,7 +660,7 @@ sub setup_DHCP
     $cmdref->{command}->[0] = "makedhcp";
     $cmdref->{arg}->[0]     = "-l";
     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-    $cmdref->{arg}->[0]     = "-a";
+    $cmdref->{arg}->[1]     = "-a";
 
     my $modname = "dhcp";
     ${"xCAT_plugin::" . $modname . "::"}{process_request}
