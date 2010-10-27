@@ -1,0 +1,69 @@
+=head1 NAME
+
+B<lsxcatd> - lists xCAT daemon information.
+
+=head1 SYNOPSIS
+
+B<lsxcatd> [B<-h> | B<--help> | B<-v> | B<--version> | B<-d> | B<--database> | B<-a> | B<--all> ]
+
+=head1 DESCRIPTION
+
+The B<lsxcat> command lists important xCAT daemon (xcatd) information.
+
+=head1 OPTIONS
+
+=over 10
+
+=item B<-v|--version>
+
+Command Version.
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-d|--database>
+
+Displays information about the current database being used by xCAT. 
+Any user can run the command.
+
+=item B<-a|--all>
+
+Displays all information about the daemon supported by the command. 
+
+=back
+
+=head1 RETURN VALUE
+
+0  The command completed successfully.
+
+1  An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To display information about the current database:
+
+ lsxcatd -d 
+
+Output is similar to:
+
+  cfgloc=Pg:dbname=xcatdb;host=7.777.47.250|xcatadm
+  dbengine=Pg
+  dbname=xcatdb
+  dbhost=7.777.47.250
+  dbadmin=xcatadm
+
+
+=back
+
+=head1 FILES
+
+/opt/xcat/bin/lsxcatd
+
+=head1 SEE ALSO
+
+
