@@ -54,7 +54,7 @@ if (isset($_GET["cmd"])) {
 	// nodels output needs special handling
 	else if(strncasecmp($cmd, "nodels", 6) == 0) {
 		// Handle the output the same way as webrun
-		$rsp = extractWebrun($xml);
+		$rsp = extractNodels($xml);
 	}
 	// extnoderange output needs special handling
 	// This command gets the nodes and groups
@@ -111,6 +111,35 @@ function extractWebrun($xml) {
 
 			// Add to return array
 			$rsp[$i] = array("$name", "$status");
+			$i++;
+		}
+	}
+
+	return $rsp;
+}
+
+/**
+ * Extract the output for a nodels command
+ *
+ * @param	$xml 	The XML output from docmd()
+ * @return 	An array containing the output
+ */
+function extractNodels($xml) {
+	$rsp = array();
+	$i = 0;
+
+	// Extract data returned
+	foreach($xml->children() as $nodes){
+		foreach($nodes->children() as $node){
+			// Get the node name
+			$name = $node->name;
+			// Get the content
+			$status = $node->data->contents;
+			$status = str_replace(":|:", "\n", $status);
+
+			$description = $node->data->desc;
+			// Add to return array
+			$rsp[$i] = array("$name", "$status", "$description");
 			$i++;
 		}
 	}
