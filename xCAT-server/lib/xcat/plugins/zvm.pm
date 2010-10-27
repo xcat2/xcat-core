@@ -2920,6 +2920,9 @@ sub nodeSet {
 		if ($userProfile) {
 			@words = split( ' ', xCAT::zvmUtils->trimStr($userProfile) );
 			$out = `ssh $hcp "$::DIR/getuserprofile $words[1]" | grep "NICDEF" | grep "$hcpNetName"`;
+			if (!$out) {
+				$out = `echo "$userEntry" | grep "NICDEF" | grep "$hcpNetName"`;
+			}
 		}
 		else {
 			$out = `echo "$userEntry" | grep "NICDEF" | grep "$hcpNetName"`;
