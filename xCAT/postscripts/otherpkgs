@@ -232,6 +232,25 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
         fi
     done  
 
+    #now update all the existing rpms
+    if [ $hasyum -eq 1 ]; then 
+        echo "yum -y upgrade"
+        result=`yum -y upgrade 2>&1`
+        logger -t xcat "$result"
+        if [ $? -ne 0 ]; then 
+	    logger -t xcat "otherpkgs: $result"
+        fi
+        echo "$result"
+    elif [ $haszypper -eq 1 ]; then
+        echo "zypper --non-interactive update --auto-agree-with-license"
+	result=`zypper --non-interactive update --auto-agree-with-license 2>&1`
+        logger -t xcat "$result"
+	if [ $? -ne 0 ]; then 
+            logger -t xcat "otherpkgs: $result"
+	fi
+        echo "$result"
+    fi     
+
     #echo "repo_pkgs=$repo_pkgs,\nrepo_pkgs_preremove=$repo_pkgs_preremove,\nrepo_pkgs_postremove=$repo_pkgs_postremove"
     #echo "plain_pkgs=$plain_pkgs,\nplain_pkgs_preremove=$plain_pkgs_preremove,\nplain_pkgs_postremove=$plain_pkgs_postremove"
 
