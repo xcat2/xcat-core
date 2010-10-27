@@ -6,8 +6,8 @@ RWDIR=.statelite
 if [ ! -z $STATEMNT ]; then #btw, uri style might have left future options other than nfs open, will u    se // to detect uri in the future I guess
     SNAPSHOTSERVER=${STATEMNT%:*}
     SNAPSHOTROOT=${STATEMNT#*/}
-    echo $SNAPSHOTROOT
-    echo $SNAPSHOTSERVER
+    #echo $SNAPSHOTROOT
+    #echo $SNAPSHOTSERVER
     # may be that there is not server and just a directory.
     if [ -z $SNAPSHOTROOT ]; then
         SNAPSHOTROOT=$SNAPSHOTSERVER

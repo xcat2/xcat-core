@@ -319,18 +319,17 @@ ProcessType () {
             ;;
         link,con)
             echo "cat ${1} >>${TMPFS}${2}" >>$LOG 2>&1
-            cat ${1} >>${TMPFS}${2} >>$LOG 2>&1
+            cat ${1} >>${TMPFS}${2} 2>&1
             ;;
 		con)
-			# cons go in bind  # TODO ???
             # there's one more option to indicate the con is at the end
-            if [ "${5}" -eq "1" ]; then
+            if [ "${5}" = "1" ]; then
                 # mount the file with "--bind" option
                 echo "mount --bind ${TMPFS}${2} /sysroot${2}" >>$LOG
                 mount --bind ${TMPFS}${2} /sysroot${2} >> $LOG 2>&1
             else
 			    echo "cat ${1} >>${TMPFS}${2}" >>$LOG 2>&1
-			    cat ${1} >>${TMPFS}${2} >>$LOG 2>&1
+			    cat ${1} >>${TMPFS}${2} 2>&1
             fi
 			;;	
         tempfs)         # the default option, same as "tempfs" and "NULL"
@@ -385,19 +384,31 @@ ProcessType () {
             echo "mount --bind ${TARGET} /sysroot/${ORIG}" >>$LOG
             mount --bind ${TARGET} /sysroot/${ORIG}>>$LOG 2>&1
             ;;
-		ro)     # TODO: change to bind style
+		ro)  
 			# need to make sure directory exists:
 			if [ ! -d ${TMPFS}${PPATH} ]; then
 				mkdir -p ${TMPFS}${PPATH} >>$LOG 2>&1
 			fi
-			TARGET=`echo ${TMPFS}${2} |  sed -e 's/\/$//'`
-			#LINK=`echo ${1} | sed -e "s/^${MNTDIR}//"`
-			DEST=`echo ${1} | sed -e "s/^\/sysroot//"`
-			
-			#echo "ln -sf ${LINK} ${TARGET}" >>$LOG 2>&1
-			#ln -sf ${LINK} ${TARGET} >>$LOG 2>&1
-            echo "mout --bind -o ro ${TARGET} ${DEST}" >>$LOG 2>&1
-            mount --bind -o ro ${TARGET} ${DEST} >>$LOG 2>&1
+
+            # before mount, need to check whether it exists or not
+            STRPATH="${TMPFS}${2}"
+            STRLEN=${#STRPATH}
+            CHAREND=`echo ${STRPATH} | cut -c${STRLEN}`            
+
+            if [ "${CHAREND}" = "/" ]; then # it is one directory
+                if [ ! -d ${STRPATH} ]; then
+                    rm -rf ${STRPATH}
+                    mkdir ${STRPATH}
+                fi
+            else
+                if [ ! -f ${STRPATH} ]; then
+                    rm -rf ${STRPATH}
+                    touch ${STRPATH}
+                fi
+            fi
+
+            echo "mout --bind -o ro ${1} ${MNTDIR}${2}" >>$LOG 2>&1
+            mount --bind -o ro ${1} ${MNTDIR}${2} >>$LOG 2>&1
 			;;
 		*)
 			;;
@@ -421,7 +432,7 @@ FindFile () {
                 FOUND=0
             else
                 ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
-                if [[ "${2}" -eq "link,con" ]]; then
+                if [[ "${2}" -eq "link,con" ]] || [[ "${2}" -eq "con" ]]; then
                     continue
                 else
                     break
@@ -431,7 +442,7 @@ FindFile () {
     done
 
     ## for "con" option
-    if [[ "$FOUND" -eq "1" ]] && [[ "${type}" -eq "con" ]]; then
+    if [ "$FOUND" = "1" ] && [ "$type" = "con" ]; then
         ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild} 1
     fi
 
