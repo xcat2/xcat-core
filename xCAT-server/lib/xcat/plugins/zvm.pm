@@ -3095,7 +3095,7 @@ sub nodeSet {
 			$out = `mkdir -p $installDir/custom/install/sles`;
 
 			# Copy autoyast template
-			$customTmpl = "$installDir/custom/install/sles/" . $node . "." . $tmpl;
+			$customTmpl = "$installDir/custom/install/sles/" . $node . "." . $profile . ".tmpl";
 			if ( -e "$installDir/custom/install/sles/$tmpl" ) {
 				$out = `cp $installDir/custom/install/sles/$tmpl $customTmpl`;
 			}
@@ -3151,7 +3151,7 @@ sub nodeSet {
 			#	Install=ftp://10.0.0.1/sles10.2/s390x/1/
 			#	UseVNC=1  VNCPassword=12345678
 			#	InstNetDev=osa OsaInterface=qdio OsaMedium=eth Manual=0
-			my $ay = "ftp://$ftp/custom/install/sles/" . $node . "." . $tmpl;
+			my $ay = "ftp://$ftp/custom/install/sles/" . $node . "." . $profile . ".tmpl";
 
 			$parms = $parmHeader . "\n";
 			$parms = $parms . "AutoYaST=$ay\n";
@@ -3230,7 +3230,7 @@ sub nodeSet {
 			$out = `mkdir -p $installDir/custom/install/rh`;
 
 			# Copy kickstart template
-			$customTmpl = "$installDir/custom/install/rh/" . $node . "." . $tmpl;
+			$customTmpl = "$installDir/custom/install/rh/" . $node . "." . $profile . ".tmpl";
 			if ( -e "$installDir/custom/install/rh/$tmpl" ) {
 				$out = `cp $installDir/custom/install/rh/$tmpl $customTmpl`;
 			}
@@ -3293,7 +3293,7 @@ sub nodeSet {
 			#	GATEWAY=10.0.0.1 DNS=9.0.2.11 MTU=1500
 			#	PORTNAME=UNASSIGNED PORTNO=0 LAYER2=0
 			#	vnc vncpassword=12345678
-			my $ks = "ftp://$ftp/custom/install/rh/" . $node . "." . $tmpl;
+			my $ks = "ftp://$ftp/custom/install/rh/" . $node . "." . $profile . ".tmpl";
 
 			$parms = $parmHeader . "\n";
 			$parms = $parms . "ks=$ks\n";
