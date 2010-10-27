@@ -191,6 +191,7 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmhwconn
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/lshwconn
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/makeroutes
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/snmove
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/sbin/lsxcatd
 set -x
 
 
