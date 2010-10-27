@@ -1065,6 +1065,8 @@ sub initDB
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=2 policy.commands=getbmcconfig policy.rule=allow;";
             $chtabcmds .=
+              "$::XCATROOT/sbin/chtab priority=2.3 policy.commands=lsxcatd policy.rule=allow;";
+            $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=3 policy.commands=nextdestiny policy.rule=allow;";
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=4 policy.commands=getdestiny policy.rule=allow;";
