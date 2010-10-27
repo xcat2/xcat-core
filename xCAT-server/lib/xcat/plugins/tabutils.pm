@@ -35,6 +35,7 @@ sub handled_commands
     return {
             gettab     => "tabutils",
             tabdump    => "tabutils",
+            lsxcatd    => "tabutils",
             tabprune   => "tabutils",
             tabrestore => "tabutils",
             tabch      => "tabutils",     # not implemented yet
@@ -117,6 +118,10 @@ sub process_request
     elsif ($command eq "tabdump")
     {
         return tabdump($args, $callback);
+    }
+    elsif ($command eq "lsxcatd")
+    {
+        return lsxcatd($args, $callback);
     }
     elsif ($command eq "tabprune")
     {
@@ -551,6 +556,92 @@ sub tabdump
     }
     # Display all the rows of the table  the order of the columns in the schema
     output_table($table,$cb,$tabh,$recs); 
+}
+# Display information from the daemon.
+#  
+sub lsxcatd 
+{
+    my $args  = shift;
+    my $cb    = shift;
+    my $HELP;
+    my $VERSION;
+    my $DATABASE;
+    my $ALL;
+    my $rc=0;
+
+    my $lsxcatd_usage = sub {
+    	my $exitcode = shift @_;
+        my %rsp;
+        push @{$rsp{data}}, "       lsxcatd [-v|--version]";
+        push @{$rsp{data}}, "       lsxcatd [-h|--help]";
+        push @{$rsp{data}}, "       lsxcatd [-d|--database]";
+        push @{$rsp{data}}, "       lsxcatd [-a|--all]";
+        if ($exitcode) { $rsp{errorcode} = $exitcode; }
+        $cb->(\%rsp);
+    };
+
+	# Process arguments
+    if ($args) {
+        @ARGV = @{$args};
+    }
+    if (scalar(@ARGV)== 0) { $lsxcatd_usage->(1); return; }
+    if (!GetOptions('h|?|help' => \$HELP,
+                     'v|version' => \$VERSION,
+                     'a' => \$ALL,
+                     'd|database' => \$DATABASE))
+             { $lsxcatd_usage->(1); return; }
+
+    if ($HELP) { $lsxcatd_usage->(0); return; }
+    # Version
+    if ($VERSION) {
+        my %rsp;
+        my $version = xCAT::Utils->Version();
+        $rsp{data}->[0] = "$version";
+        $cb->(\%rsp);
+        return;
+    }
+    # no arguments error
+    my $xcatcfg;
+    my %rsp;
+    if ($DATABASE || $ALL) {
+        $xcatcfg =  xCAT::Table->get_xcatcfg();
+        
+        if ($xcatcfg =~ /^SQLite:/) {  # SQLite just return SQlite
+           $rsp{data}->[0] = "dbengine=SQLite";
+           $cb->(\%rsp);
+          
+        }   
+        if ($xcatcfg =~ /^DB2:/) {  # for DB2 , get schema name
+          my @parts =  split ( '\|', $xcatcfg);
+          my $cfgloc=$parts[0] ."|" . $parts[1] ;
+          my $instance;
+          $instance = $parts[1];
+          my ($db2,$databasename)= split(':',$parts[0]);
+          $rsp{data}->[0] = "cfgloc=$cfgloc";
+          $rsp{data}->[1] = "dbengine=$db2";
+          $rsp{data}->[3] = "dbname=$databasename";
+          $rsp{data}->[2] = "dbinstance=$instance";
+          $cb->(\%rsp);
+
+        }
+        if (($xcatcfg =~ /^mysql:/) ||($xcatcfg =~ /^Pg:/))  {
+            my @parts =  split ( '\|', $xcatcfg);
+            my $cfgloc=$parts[0] ."|". $parts[1] ;
+            my ($host,$addr) =  split('host=',$parts[0]);
+            my ($engine,$databasenamestr) = split(':',$host);
+            my ($db,$databasename) = split('=',$databasenamestr);
+            chop $databasename;
+            
+            $rsp{data}->[0] = "cfgloc=$cfgloc";
+            $rsp{data}->[1] = "dbengine=$engine";
+            $rsp{data}->[2] = "dbname=$databasename";
+            $rsp{data}->[3] = "dbhost=$addr";
+            $rsp{data}->[4] = "dbadmin=$parts[1]";
+            $cb->(\%rsp);
+        }
+     }
+
+    return $rc;
 }
 
 # Prune records from the eventlog or auditlog or all records.
