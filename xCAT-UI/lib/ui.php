@@ -11,6 +11,7 @@ function loadPage(){
 	'<html>
 		<head>
 			<title>xCAT Console</title>
+			<link rel="shortcut icon" href="favicon.ico">
 			<link href="css/jquery.autocomplete.css" rel=stylesheet type="text/css">
 			<link href="css/jquery-ui-1.8.custom.css" rel=stylesheet type="text/css">
 			<link href="css/jquery.dataTables.css" rel=stylesheet type="text/css">
