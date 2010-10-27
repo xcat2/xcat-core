@@ -514,7 +514,7 @@ sub genSSHRootKeys
     #
     if (!-d "$::INSTALLDIR/postscripts/_ssh")
     {
-        my $cmd = "/bin/mkdir -p $::INSTALLDIR/postscripts/_ssh";
+        my $cmd = "/bin/mkdir -m 755 -p $::INSTALLDIR/postscripts/_ssh";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
@@ -626,7 +626,7 @@ sub genSSHNodeHostKey
         #  create directories /etc/xcat/hostkeys and /install/postscripts/hostkeys
         if (!-d "$::INSTALLDIR/postscripts/hostkeys")    # directory for public keys
         {
-            my $cmd = "/bin/mkdir -p $::INSTALLDIR/postscripts/hostkeys";
+            my $cmd = "/bin/mkdir -m 755 -p $::INSTALLDIR/postscripts/hostkeys";
             my $outref = xCAT::Utils->runcmd("$cmd", 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -1263,7 +1263,7 @@ sub genCredentials
     #  copy to postscript directory  just non-sensitive files
     my $cmd    = "/bin/rm -rf $::INSTALLDIR/postscripts/ca >/dev/null 2>&1";
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    $cmd    = "/bin/mkdir -p $::INSTALLDIR/postscripts/ca";
+    $cmd    = "/bin/mkdir -m 755 -p $::INSTALLDIR/postscripts/ca";
     $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -1339,7 +1339,7 @@ sub genCredentials
     #  copy to postscript directory
     $cmd    = "/bin/rm -rf $::INSTALLDIR/postscripts/_xcat >/dev/null 2>&1";
     $outref = xCAT::Utils->runcmd("$cmd", 0);
-    $cmd    = "/bin/mkdir -p $::INSTALLDIR/postscripts/_xcat";
+    $cmd    = "/bin/mkdir -m 755 -p $::INSTALLDIR/postscripts/_xcat";
     $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
