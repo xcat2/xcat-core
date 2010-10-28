@@ -9072,7 +9072,7 @@ sub make_SN_resource
                     chomp $loc;
 
 					my $spotcmd;
-					$spotcmd = "/usr/lpp/bos.sysmgt/nim/methods/m_mkspot -o -a server=master -a location=$loc -a source=no ";
+					$spotcmd = "/usr/sbin/nim -o define -t spot -a server=master -a location=$loc ";
 	
 					my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "installp_flags", "auto_expand", "show_progress", "debug");
 
