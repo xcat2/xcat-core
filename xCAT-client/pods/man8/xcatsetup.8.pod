@@ -64,6 +64,9 @@ use individual rows for every node, you can do the following:
   lsdef -z all >tmp.stanza
   cat tmp.stanza | chdef -z
 
+If you want to delete all of the nodes that xcatsetup created, and start over, use L<rmdef(1)|rmdef.1> and give it all of the ranges
+specified in the config file.
+
 =head2 Restrictions
 
 =over 3
@@ -94,6 +97,8 @@ The hostnames specified must sort correctly.  I.e. use node01-node80, instead of
    domain = cluster.com
    # currently only direct fsp control is supported
    use-direct-fsp-control = 1
+   # ISR network topology.  For example, one of the following: 128D, 64D, 32D, 16D, 8D, 4D, 2D, 1D
+   topology = 32D
 
   xcat-hmcs:
    hostname-range = hmc1-hmc3
@@ -196,9 +201,11 @@ in the stanza, some attributes might not be filled in.
 
 =item B<xcat-site>
 
-site table:  domain, nameservers
+site table:  domain, nameservers, topology
 
 =item B<xcat-hmcs>
+
+site table:  ea_primary_hmc, ea_backup_hmc
 
 nodelist table:  node, groups
 
@@ -234,13 +241,15 @@ nodetype table:  node, nodetype
 
 nodehm table:  node, mgt
 
+nodegroup table:  groupname, grouptype, members, wherevals
+
 =item B<xcat-building-blocks>
 
 site table:  sharedtftp
 
 ppc table:  node, parent (for frame)
 
-=item B<xcat-lpars>
+=item B<xcat-service-nodes>
 
 nodelist table:  node, groups
 
@@ -255,6 +264,40 @@ nodehm table:  node, mgt, cons
 noderes table:  netboot
 
 servicenode table:  node, nameserver, dhcpserver, tftpserver, nfsserver, conserver, monserver, ftpserver, nimserver, ipforward
+
+nodegroup table:  groupname, grouptype, members, wherevals
+
+=item B<xcat-storage-nodes>
+
+nodelist table:  node, groups
+
+hosts table:  node, ip, hostnames, otherinterfaces
+
+ppc table:  node, id, hcp, parent
+
+nodetype table:  node, nodetype, arch
+
+nodehm table:  node, mgt, cons
+
+noderes table:  netboot, xcatmaster, servicenode
+
+=item B<xcat-compute-nodes>
+
+nodelist table:  node, groups
+
+hosts table:  node, ip, hostnames, otherinterfaces
+
+ppc table:  node, id, hcp, parent
+
+nodetype table:  node, nodetype, arch
+
+nodehm table:  node, mgt, cons
+
+noderes table:  netboot, xcatmaster, servicenode
+
+=item B<ll-config>
+
+postscripts: postscripts
 
 =back
 

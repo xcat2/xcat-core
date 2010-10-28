@@ -142,6 +142,7 @@ my %tables = ('site' => 0,
 			'nodetype' => 0,
 			'nodehm' => 0,
 			'noderes' => 0,
+			'postscripts' => 0,
 			);
 
 sub writedb {
@@ -170,7 +171,7 @@ sub writedb {
 	
 	# Write HMC info (hash key=xcat-hmcs)
 	my $hmcrange = $STANZAS{'xcat-hmcs'}->{'hostname-range'};
-	if ($hmcrange && (!scalar(keys(%$sections))||$$sections{'xcat-site'})) { writehmc($hmcrange); }
+	if ($hmcrange && (!scalar(keys(%$sections))||$$sections{'xcat-hmcs'})) { writehmc($hmcrange); }
 	
 	# Write frame info (hash key=xcat-frames)
 	my $framerange = $STANZAS{'xcat-frames'}->{'hostname-range'};
@@ -224,7 +225,11 @@ sub writesite {
 	if ($ref) {
 		$tables{'site'}->setAttribs({key => 'nameservers'}, {value => $ref->{value} });
 	}
-	$tables{'site'}->close();
+	
+	# set the HFI switch topology
+	if ($STANZAS{'xcat-site'}->{topology}) {
+		$tables{'site'}->setAttribs({key => 'topology'}, {value => $STANZAS{'xcat-site'}->{topology} });
+	}
 	
 	#todo: put dynamic range in networks table
 	#todo: set site.dhcpinterfaces
@@ -232,7 +237,7 @@ sub writesite {
 
 
 sub writehmc {
-	#using hostname-range, write: nodelist.node, nodelist.groups
+	# using hostname-range, write: nodelist.node, nodelist.groups
 	my $hmcrange = shift;
 	infomsg('Defining HMCs...');
 	my $nodes = [noderange($hmcrange, 0)];
@@ -243,7 +248,7 @@ sub writehmc {
 		$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'hmc,all' });
 	}
 	
-	#using hostname-range and starting-ip, write regex for: hosts.node, hosts.ip
+	# using hostname-range and starting-ip, write regex for: hosts.node, hosts.ip
 	my $hmcstartip = $STANZAS{'xcat-hmcs'}->{'starting-ip'};
 	if ($hmcstartip) {
 		my $hmchash = parsenoderange($hmcrange);
@@ -255,9 +260,14 @@ sub writehmc {
 		$tables{'hosts'}->setNodeAttribs('hmc', {ip => $regex});
 	}
 	
-	#using hostname-range, write regex for: ppc.node, nodetype.nodetype 
+	# using hostname-range, write regex for: ppc.node, nodetype.nodetype 
 	$tables{'ppc'}->setNodeAttribs('hmc', {comments => 'hmc'});
 	$tables{'nodetype'}->setNodeAttribs('hmc', {nodetype => 'hmc'});
+	
+	# Set the 1st two hmcs as the ones CNM should send service events to
+	$nodes = [noderange($hmcrange, 0)];
+	$tables{'site'}->setAttribs({key => 'ea_primary_hmc'}, {value => $$nodes[0]});
+	if (scalar(@$nodes) >= 2) { $tables{'site'}->setAttribs({key => 'ea_backup_hmc'}, {value => $$nodes[1]}); }
 }
 
 
@@ -416,6 +426,19 @@ sub writecec {
 		$tables{'ppc'}->setNodesAttribs(\%ppchash);
 		$tables{'nodelist'}->setNodesAttribs(\%nodehash);
 	}
+	
+	# Create dynamic groups for the nodes in each cec
+	my $ntab = xCAT::Table->new('nodegroup', -create=>1,-autocommit=>0);
+	if (!$ntab) { errormsg("Can not open nodegroup table in database.", 3); }
+	else {
+		$nodes = [noderange($cecrange, 0)];		# the setNodesAttribs() function blanks out the nodes array
+		foreach my $n (@$nodes) {
+			$ntab->setAttribs({groupname => "${n}nodes"}, {grouptype => 'dynamic', members => 'dynamic', wherevals => "parent==$n" });
+		}
+		$ntab->commit();
+		$ntab->close();
+	}
+	
 }
 
 # Read/parse the supernode-list file and return the values in a hash of arrays
@@ -512,6 +535,17 @@ sub writesn {
 	else {
 		$sntab->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>1});
 	}
+	if ($STANZAS{'ll-config'}->{'central_manager_list'}) {		# write the LL postscript for service nodes
+		my $ref = $tables{'postscripts'}->getNodeAttribs('service', 'postscripts');
+		#print Dumper($ref);
+		my $posts;
+		if ($ref && $ref->{postscripts}=~/\S/) {
+			$posts = $ref->{postscripts};
+			if ($posts !~ /(^|,)llserver\.sh(,|$)/) { $posts .= ",llserver.sh"; }
+		}
+		else { $posts = "llserver.sh"; }
+		$tables{'postscripts'}->setNodeAttribs('service', {postscripts => $posts });
+	}
 	
 	# Figure out what cec each sn is in and write ppc.hcp and ppc.parent
 	#todo: also write nodepos table
@@ -557,6 +591,18 @@ sub writesn {
 	}
 	$tables{'ppc'}->setNodesAttribs(\%nodehash);
 	$tables{'nodelist'}->setNodesAttribs(\%grouphash);
+	
+	# Create dynamic groups for the nodes in each cec
+	my $ntab = xCAT::Table->new('nodegroup', -create=>1,-autocommit=>0);
+	if (!$ntab) { errormsg("Can not open nodegroup table in database.", 3); }
+	else {
+		$nodes = [noderange($range, 0)];		# the setNodesAttribs() function blanks out the nodes array
+		foreach my $n (@$nodes) {
+			$ntab->setAttribs({groupname => "${n}nodes"}, {grouptype => 'dynamic', members => 'dynamic', wherevals => "xcatmaster==$n" });
+		}
+		$ntab->commit();
+		$ntab->close();
+	}
 }
 
 
@@ -722,6 +768,17 @@ sub writecompute {
 	$tables{'nodetype'}->setNodeAttribs('compute', {nodetype => 'osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('compute', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('compute', {netboot => 'yaboot'});
+	if ($STANZAS{'ll-config'}->{'central_manager_list'}) {		# write the LL postscript for compute nodes
+		my $ref = $tables{'postscripts'}->getNodeAttribs('compute', 'postscripts');
+		#print Dumper($ref);
+		my $posts;
+		if ($ref && $ref->{postscripts}=~/\S/) {
+			$posts = $ref->{postscripts};
+			if ($posts !~ /(^|,)llcompute\.sh(,|$)/) { $posts .= ",llcompute.sh"; }
+		}
+		else { $posts = "llcompute.sh"; }
+		$tables{'postscripts'}->setNodeAttribs('compute', {postscripts => $posts });
+	}
 	
 	# Figure out what cec each compute node is in and write ppc.hcp, ppc.parent, ppc.id, noderes.xcatmaster, noderes.servicenode
 	#todo: also write nodepos table
