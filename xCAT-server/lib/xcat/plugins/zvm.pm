@@ -1654,33 +1654,37 @@ sub makeVM {
 			# The HCP should only have (1) network and (1) MAC address
 			xCAT::zvmCPUtils->loadVmcp($hcp);
 			$out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q nic" | grep "MAC:"`;
-			@lines = split( "\n", $out );
-			@words = split( " ", $lines[0] );
+			if ($out) {
+				@lines = split( "\n", $out );
+				@words = split( " ", $lines[0] );
 
-			# Extract MAC prefix
-			my $prefix = $words[1];
-			$prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
-			$prefix = substr( $prefix, 0, 6 );
+				# Extract MAC prefix
+				my $prefix = $words[1];
+				$prefix = xCAT::zvmUtils->replaceStr( $prefix, "-", "" );
+				$prefix = substr( $prefix, 0, 6 );
 
-			# Generate MAC address
-			my $mac = $prefix . $macId;
+				# Generate MAC address
+				my $mac = $prefix . $macId;
 
-			# If length is less than 12, append a zero
-			if ( length($mac) != 12 ) {
-				$mac = "0" . $mac;
+				# If length is less than 12, append a zero
+				if ( length($mac) != 12 ) {
+					$mac = "0" . $mac;
+				}
+	
+				# Format MAC address
+				$mac =
+				    substr( $mac, 0, 2 ) . ":"
+				  . substr( $mac, 2,  2 ) . ":"
+				  . substr( $mac, 4,  2 ) . ":"
+				  . substr( $mac, 6,  2 ) . ":"
+				  . substr( $mac, 8,  2 ) . ":"
+				  . substr( $mac, 10, 2 );
+	
+				# Save MAC address in 'mac' table
+				xCAT::zvmUtils->setNodeProp( 'mac', $node, 'mac', $mac );
+			} else {
+				xCAT::zvmUtils->printLn( $callback, "$node: (Error) Could not find the MAC address of the zHCP" );
 			}
-
-			# Format MAC address
-			$mac =
-			    substr( $mac, 0, 2 ) . ":"
-			  . substr( $mac, 2,  2 ) . ":"
-			  . substr( $mac, 4,  2 ) . ":"
-			  . substr( $mac, 6,  2 ) . ":"
-			  . substr( $mac, 8,  2 ) . ":"
-			  . substr( $mac, 10, 2 );
-
-			# Save MAC address in 'mac' table
-			xCAT::zvmUtils->setNodeProp( 'mac', $node, 'mac', $mac );
 
 			# Generate new MACID
 			if ( $generateNew == 1 ) {
@@ -2914,18 +2918,14 @@ sub nodeSet {
 
 		# Get NIC address from user entry
 		my $userEntry = `ssh $hcp "$::DIR/getuserentry $userId"`;
-
-		# Check for user profile
-		my $userProfile = `echo "$userEntry" | grep "INCLUDE"`;
-		if ($userProfile) {
-			@words = split( ' ', xCAT::zvmUtils->trimStr($userProfile) );
-			$out = `ssh $hcp "$::DIR/getuserprofile $words[1]" | grep "NICDEF" | grep "$hcpNetName"`;
-			if (!$out) {
-				$out = `echo "$userEntry" | grep "NICDEF" | grep "$hcpNetName"`;
+		$out = `echo "$userEntry" | grep "NICDEF" | grep "$hcpNetName"`;
+		if (!$out) {
+			# Check for user profile
+			my $userProfile = `echo "$userEntry" | grep "INCLUDE"`;
+			if ($userProfile) {
+				@words = split( ' ', xCAT::zvmUtils->trimStr($userProfile) );
+				$out = `ssh $hcp "$::DIR/getuserprofile $words[1]" | grep "NICDEF" | grep "$hcpNetName"`;
 			}
-		}
-		else {
-			$out = `echo "$userEntry" | grep "NICDEF" | grep "$hcpNetName"`;
 		}
 
 		# If no NICDEF is found, exit
@@ -2941,25 +2941,28 @@ sub nodeSet {
 		my $writeChannel;
 		my $dataChannel;
 
-		$readChannel = "0.0." . ( $words[1] + 0 );
+		# Convert subchannel to decimal
+		my $channel = sprintf('%d', hex($words[1]));
+
+		$readChannel = "0.0." . ( sprintf('%X', $channel + 0) );
 		if ( length($readChannel) < 8 ) {
 
 			# Prepend a zero
-			$readChannel = "0.0.0" . ( $words[1] + 0 );
+			$readChannel = "0.0.0" . ( sprintf('%X', $channel + 0) );
 		}
 
-		$writeChannel = "0.0." . ( $words[1] + 1 );
+		$writeChannel = "0.0." . ( sprintf('%X', $channel + 1) );
 		if ( length($writeChannel) < 8 ) {
 
 			# Prepend a zero
-			$writeChannel = "0.0.0" . ( $words[1] + 1 );
+			$writeChannel = "0.0.0" . ( sprintf('%X', $channel + 1) );
 		}
 
-		$dataChannel = "0.0." . ( $words[1] + 2 );
+		$dataChannel = "0.0." . ( sprintf('%X', $channel + 2) );
 		if ( length($dataChannel) < 8 ) {
 
 			# Prepend a zero
-			$dataChannel = "0.0.0" . ( $words[1] + 2 );
+			$dataChannel = "0.0.0" . ( sprintf('%X', $channel + 2) );
 		}
 
 		# Get network type (Layer 2 or 3)
