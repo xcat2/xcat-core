@@ -1049,7 +1049,7 @@ sub mkinstall
             if($esxi){
                 $k = "xcat/$os/$arch/mboot.c32";
                 $i = "";
-                my @addfiles = qw(vmkernel.gz sys.vgz cim.vgz ienviron.vgz install.vgz );
+                my @addfiles = qw(vmkernel.gz sys.vgz cim.vgz ienviron.vgz install.vgz mod.tgz);
 		$kcmdline = "xcat/$os/$arch/vmkboot.gz " . $kcmdline;
                 foreach(@addfiles){
                     $kcmdline .= " --- xcat/$os/$arch/$_";
