@@ -42,6 +42,13 @@ $::INSTALLDIR = "/install";
 
 # Default TFTP dir location
 $::TFTPDIR = "/tftpboot";
+if (!(xCAT::Utils->isMN())) {    # if not on Management Node
+  xCAT::MsgUtils->message(
+            'E',
+            "xcatconfig should only be run on the Management Node."
+            );
+   exit 1;
+}
 
 # parse the options
 if (
@@ -1099,7 +1106,9 @@ sub initDB
         # setup Management Node policy to trusted
         my $chtabcmds;
         $chtabcmds =
-          "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$MNname policy.rule=trusted";
+          "$::XCATROOT/sbin/chtab priority=1.2 policy.name=$MNname policy.rule=trusted;";
+        $chtabcmds .=
+              "$::XCATROOT/sbin/chtab priority=2.3 policy.commands=lsxcatd policy.rule=allow;";
         my $outref = xCAT::Utils->runcmd("$chtabcmds", 0);
         if ($::RUNCMD_RC != 0)
         {
