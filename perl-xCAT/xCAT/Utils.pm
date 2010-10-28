@@ -705,7 +705,7 @@ sub list_all_node_groups
 #-----------------------------------------------------------------------
 
 =head3
- list_nodes_in_nodegroup
+ list_nodes_in_nodegroups
 
 	Arguments:  nodegroup
 
@@ -717,7 +717,7 @@ sub list_all_node_groups
 	Error:
 		undef
 	Example:
-	   @nodes=xCAT::Utils->list_nodes_in_nodegroup($group);
+	   @nodes=xCAT::Utils->list_nodes_in_nodegroups($group);
 	Comments:
 		none
 
@@ -731,6 +731,42 @@ sub list_nodes_in_nodegroups
     $req->{noderange}->[0] = $group;
     my @nodes = xCAT::NodeRange::noderange($req->{noderange}->[0]);
     return @nodes;
+}
+
+#-----------------------------------------------------------------------
+
+=head3
+ isMemberofGroup 
+
+	Arguments:  node,group
+
+	Returns:
+	   1 = is  a member
+           0 = not a member 
+
+	Globals:
+		none
+	Error:
+		undef
+	Example:
+	   $ismember=xCAT::Utils->isMemberofGroup($node,$group);
+	Comments:
+		none
+
+=cut
+
+#------------------------------------------------------------------------
+sub isMemberofGroup 
+{
+    my ($class, $node,$group ) = @_;
+    my $ismember;
+    my @nodes=xCAT::Utils->list_nodes_in_nodegroups($group); 
+    if (grep(/$node/, @nodes)) {
+      $ismember =1;
+    } else {
+      $ismember =0;
+    }
+    return $ismember;
 }
 
 #-----------------------------------------------------------------------
