@@ -11,7 +11,6 @@
 #
 # Todo: Limitations on the values in the config file:
 # - do not yet support redundant bpcs or fsps
-# - chk all primary/secondary start/end to make sure they are the same length
 #
 #####################################################
 package xCAT_plugin::setup;
@@ -143,11 +142,12 @@ my %tables = ('site' => 0,
 			'nodehm' => 0,
 			'noderes' => 0,
 			'postscripts' => 0,
+			'nodepos' => 0,
 			);
+my $CECPOSITIONS;	# a hash of the cec values in the nodepos table
 
 sub writedb {
 	my ($cwd, $sections) = @_;		# the current dir from the request and the stanzas that should be processed
-	#todo: add syntax checking for input values
 	
 	# Open some common tables that several of the stanzas need
 	foreach my $tab (keys %tables) {
@@ -171,44 +171,58 @@ sub writedb {
 	
 	# Write HMC info (hash key=xcat-hmcs)
 	my $hmcrange = $STANZAS{'xcat-hmcs'}->{'hostname-range'};
-	if ($hmcrange && (!scalar(keys(%$sections))||$$sections{'xcat-hmcs'})) { writehmc($hmcrange); }
+	if ($hmcrange && (!scalar(keys(%$sections))||$$sections{'xcat-hmcs'})) { 
+		unless (writehmc($hmcrange)) { closetables(); return; }
+	}
 	
 	# Write frame info (hash key=xcat-frames)
 	my $framerange = $STANZAS{'xcat-frames'}->{'hostname-range'};
-	if ($framerange && (!scalar(keys(%$sections))||$$sections{'xcat-frames'})) { writeframe($framerange, $cwd); }
+	if ($framerange && (!scalar(keys(%$sections))||$$sections{'xcat-frames'})) { 
+		unless (writeframe($framerange, $cwd)) { closetables(); return; }
+	}
 	
 	# Write CEC info (hash key=xcat-cecs)
 	my $cecrange = $STANZAS{'xcat-cecs'}->{'hostname-range'};
-	if ($cecrange && (!scalar(keys(%$sections))||$$sections{'xcat-cecs'})) { writecec($cecrange, $cwd); }
+	if ($cecrange && (!scalar(keys(%$sections))||$$sections{'xcat-cecs'})) { 
+		unless (writecec($cecrange, $cwd)) { closetables(); return; }
+	}
+	
+	# Save the CEC positions for all the node definitions later
+	if ($cecrange) {
+		$CECPOSITIONS = $tables{'nodepos'}->getNodesAttribs([noderange($cecrange)], ['rack','u']);
+		#print Dumper($CECPOSITIONS);
+	}
 	
 	# Write BB info (hash key=xcat-building-blocks)
 	my $framesperbb = $STANZAS{'xcat-building-blocks'}->{'num-frames-per-bb'};
-	if ($framesperbb && (!scalar(keys(%$sections))||$$sections{'xcat-building-blocks'})) { writebb($framesperbb); }
+	if ($framesperbb && (!scalar(keys(%$sections))||$$sections{'xcat-building-blocks'})) { 
+		unless (writebb($framesperbb)) { closetables(); return; }
+	}
 	
 	# Write lpar info in ppc, noderes, servicenode
 	my $snrange = $STANZAS{'xcat-service-nodes'}->{'hostname-range'};
-	if ($snrange && (!scalar(keys(%$sections))||$$sections{'xcat-service-nodes'})) { writesn($snrange); }
+	if ($snrange && (!scalar(keys(%$sections))||$$sections{'xcat-service-nodes'})) { 
+		unless (writesn($snrange)) { closetables(); return; }
+	}
 	
 	my $storagerange = $STANZAS{'xcat-storage-nodes'}->{'hostname-range'};
-	if ($storagerange && (!scalar(keys(%$sections))||$$sections{'xcat-storage-nodes'})) { writestorage($storagerange); }
+	if ($storagerange && (!scalar(keys(%$sections))||$$sections{'xcat-storage-nodes'})) { 
+		unless (writestorage($storagerange)) { closetables(); return; }
+	}
 	
 	my $computerange = $STANZAS{'xcat-compute-nodes'}->{'hostname-range'};
-	if ($computerange && (!scalar(keys(%$sections))||$$sections{'xcat-compute-nodes'})) { writecompute($computerange); }
-	
+	if ($computerange && (!scalar(keys(%$sections))||$$sections{'xcat-compute-nodes'})) { 
+		unless (writecompute($computerange)) { closetables(); return; }
+	}
+	closetables();
+}
+
+
+sub closetables {
 	# Close all the open common tables to finish up
 	foreach my $tab (keys %tables) {
 		if ($tables{$tab}) { $tables{$tab}->close(); }
 	}
-	
-	# Temporarily write out the contents of the hash
-	#foreach my $k (keys %STANZAS) {
-	#	my $stanza = $STANZAS{$k};
-	#	print "$k\n";
-	#	foreach my $attr (keys %$stanza) {
-	#		my $val = $$stanza{$attr};
-	#		print "  $attr=$val\n";
-	#	}
-	#}
 }
 
 
@@ -233,6 +247,7 @@ sub writesite {
 	
 	#todo: put dynamic range in networks table
 	#todo: set site.dhcpinterfaces
+	return 1;
 }
 
 
@@ -240,6 +255,8 @@ sub writehmc {
 	# using hostname-range, write: nodelist.node, nodelist.groups
 	my $hmcrange = shift;
 	infomsg('Defining HMCs...');
+	my $hmchash;
+	unless ($hmchash = parsenoderange($hmcrange)) { return 0; }
 	my $nodes = [noderange($hmcrange, 0)];
 	#print "$$nodes[0], $hmcstartnum\n";
 	if (scalar(@$nodes)) {
@@ -250,9 +267,7 @@ sub writehmc {
 	
 	# using hostname-range and starting-ip, write regex for: hosts.node, hosts.ip
 	my $hmcstartip = $STANZAS{'xcat-hmcs'}->{'starting-ip'};
-	if ($hmcstartip) {
-		my $hmchash = parsenoderange($hmcrange);
-		#print Dumper($hmchash), Dumper($hmcrange);
+	if ($hmcstartip && isIP($hmcstartip)) {
 		my $hmcstartnum = $$hmchash{'primary-start'};
 		my ($ipbase, $ipstart) = $hmcstartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
@@ -268,6 +283,7 @@ sub writehmc {
 	$nodes = [noderange($hmcrange, 0)];
 	$tables{'site'}->setAttribs({key => 'ea_primary_hmc'}, {value => $$nodes[0]});
 	if (scalar(@$nodes) >= 2) { $tables{'site'}->setAttribs({key => 'ea_backup_hmc'}, {value => $$nodes[1]}); }
+	return 1;
 }
 
 
@@ -285,7 +301,7 @@ sub writeframe {
 	
 	# Using the frame group, write starting-ip in hosts table
 	my $framestartip = $STANZAS{'xcat-frames'}->{'starting-ip'};
-	if ($framestartip) {
+	if ($framestartip && isIP($framestartip)) {
 		my $framehash = parsenoderange($framerange);
 		my $framestartnum = $$framehash{'primary-start'};
 		my ($ipbase, $ipstart) = $framestartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
@@ -318,9 +334,11 @@ sub writeframe {
 	$tables{'ppc'}->setNodeAttribs('frame', \%hash);
 	
 	# Write vpd-file to vpd table
-	my $filename = fullpath($STANZAS{'xcat-frames'}->{'vpd-file'}, $cwd);
-	readwritevpd($filename);
-	
+	if ($STANZAS{'xcat-frames'}->{'vpd-file'}) {
+		my $filename = fullpath($STANZAS{'xcat-frames'}->{'vpd-file'}, $cwd);
+		readwritevpd($filename);
+	}
+	return 1;
 }
 
 sub readwritevpd {
@@ -347,7 +365,7 @@ sub writecec {
 	my $nodes = [noderange($cecrange, 0)];
 	if ($$nodes[0] =~ /\[/) {
 		errormsg("hostname ranges with 2 sets of '[]' are not supported in xCAT 2.5 and below.", 21);
-		return;
+		return 0;
 	}
 	if (scalar(@$nodes)) {
 		#my %nodehash;
@@ -357,7 +375,7 @@ sub writecec {
 	
 	# Using the cec group, write starting-ip in hosts table
 	my $cecstartip = $STANZAS{'xcat-cecs'}->{'starting-ip'};
-	if ($cecstartip) {
+	if ($cecstartip && isIP($cecstartip)) {
 		my ($ipbase, $ip3rd, $ip4th) = $cecstartip =~/^(\d+\.\d+)\.(\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
 		my $cechash = parsenoderange($cecrange);
@@ -395,14 +413,28 @@ sub writecec {
 		# let lsslp fill in the hcp
 	}
 	
+	# Create dynamic groups for the nodes in each cec
+	my $ntab = xCAT::Table->new('nodegroup', -create=>1,-autocommit=>0);
+	if (!$ntab) { errormsg("Can not open nodegroup table in database.", 3); }
+	else {
+		$nodes = [noderange($cecrange, 0)];		# the setNodesAttribs() function blanks out the nodes array
+		foreach my $n (@$nodes) {
+			$ntab->setAttribs({groupname => "${n}nodes"}, {grouptype => 'dynamic', members => 'dynamic', wherevals => "parent==$n" });
+		}
+		$ntab->commit();
+		$ntab->close();
+	}
+	
 	# Write supernode-list in ppc.supernode.  While we are at it, also assign the cage id and parent.
 	$nodes = [noderange($cecrange, 0)];		# the setNodesAttribs() function blanks out the nodes array
 	my %framesupers;
+	if (!($STANZAS{'xcat-cecs'}->{'supernode-list'})) { return 1; }
 	my $filename = fullpath($STANZAS{'xcat-cecs'}->{'supernode-list'}, $cwd);
-	readsupers($filename, \%framesupers);
+	unless (readsupers($filename, \%framesupers)) { return; }
 	my $i=0;	# the index into the array of cecs
 	my %ppchash;
 	my %nodehash;
+	my %nodeposhash;
 	# Collect each nodes supernode num into a hash
 	foreach my $k (sort keys %framesupers) {
 		my $f = $framesupers{$k};	# $f is a ptr to an array of super node numbers
@@ -417,6 +449,8 @@ sub writecec {
 				#print "Setting $nodename supernode attribute to $supernum,$j\n";
 				$ppchash{$nodename} = { supernode => "$supernum,$j", id => $cageid, parent => $k };
 				$nodehash{$nodename} = { groups => "${k}cecs,cec,all" };
+				my ($framenum) = $k =~ /\S+?(\d+)$/;
+				$nodeposhash{$nodename} = { rack => $framenum+0, u => $cageid };
 				$cageid += 2;
 			}
 		}
@@ -425,20 +459,9 @@ sub writecec {
 	if (scalar(keys %framesupers)) {
 		$tables{'ppc'}->setNodesAttribs(\%ppchash);
 		$tables{'nodelist'}->setNodesAttribs(\%nodehash);
+		$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
 	}
-	
-	# Create dynamic groups for the nodes in each cec
-	my $ntab = xCAT::Table->new('nodegroup', -create=>1,-autocommit=>0);
-	if (!$ntab) { errormsg("Can not open nodegroup table in database.", 3); }
-	else {
-		$nodes = [noderange($cecrange, 0)];		# the setNodesAttribs() function blanks out the nodes array
-		foreach my $n (@$nodes) {
-			$ntab->setAttribs({groupname => "${n}nodes"}, {grouptype => 'dynamic', members => 'dynamic', wherevals => "parent==$n" });
-		}
-		$ntab->commit();
-		$ntab->close();
-	}
-	
+	return 1;
 }
 
 # Read/parse the supernode-list file and return the values in a hash of arrays
@@ -449,7 +472,7 @@ sub readsupers {
 	my $input;
     if (!open($input, $filename)) {
     	errormsg("Can not open file $filename.", 2);
-        return;
+        return 0;
     }
 	my $l;
 	my $linenum = 0;
@@ -464,15 +487,22 @@ sub readsupers {
         my ($frame, $supernums);
         if ( ($frame, $supernums) = $l =~ /^\s*(\S+)\s*:\s*([\s,\(\)\d]+)$/ ) {
         	#print "frame=$frame, supernums=$supernums\n";
-        	$$framesup{$frame} = [split(/[\s,]+/, $supernums)];
+        	my $supers = [split(/[\s,]+/, $supernums)];
+        	# check the format of the super number entries
+        	foreach my $s (@$supers) {
+        		unless ($s=~/^\d+$/ || $s=~/^\d+\(\d+\)$/) { errormsg("invalid supernode specification $s in supernode-list file line $linenum.",8); return 0; }
+        	}
+        	# store the entries
+        	$$framesup{$frame} = $supers;
         }
         
         else {
-        	errormsg("syntax error on line $linenum.", 3);
-        	return;
+        	errormsg("syntax error on supernode-list file line $linenum.", 3);
+        	return 0;
         }
     }    # end while - go to next line
     close($input);
+    return 1;
 }
 
 
@@ -484,8 +514,10 @@ sub writebb {
 	$tables{'site'}->setAttribs({key => 'sharedtftp'}, {value => 1});
 	
 	# Using num-frames-per-bb write ppc.parent (frame #) for bpas
+	if ($framesperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-frames-per-bb: $framesperbb", 7); return 0; }
 	my $bbregex = '|\S+?(\d+)$|((($1-1)/' . $framesperbb . ')+1)|';
 	$tables{'ppc'}->setNodeAttribs('frame', {parent => $bbregex});
+	return 1;
 }
 
 
@@ -503,7 +535,7 @@ sub writesn {
 	
 	# Write regex for: hosts.node, hosts.ip
 	my $startip = $STANZAS{'xcat-service-nodes'}->{'starting-ip'};
-	if ($startip) {
+	if ($startip && isIP($startip)) {
 		my ($ipbase, $ipstart) = $startip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
 		my $regex = '|\S+?(\d+)$|' . "$ipbase.($ipstart+" . '$1' . "-$startnum)|";
@@ -514,6 +546,7 @@ sub writesn {
 			my @ifs = split(/[\s,]+/, $otherint);
 			foreach my $if (@ifs) {
 				my ($nic, $startip) = split(/:/, $if);
+				if (!isIP($startip)) { next; }
 				($ipbase, $ipstart) = $startip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 				$if = "$nic:$ipbase.($ipstart+" . '$1' . "-$startnum)";
 			}
@@ -548,12 +581,13 @@ sub writesn {
 	}
 	
 	# Figure out what cec each sn is in and write ppc.hcp and ppc.parent
-	#todo: also write nodepos table
 	# Math for SN in BB:  cecnum = ( ( (snnum-1) / snsperbb) * cecsperbb) + cecstart-1 + snpositioninbb
 	my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
+	if ($cecsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-cecs-per-bb: $cecsperbb", 7); return 0; }
 	my $snsperbb = $STANZAS{'xcat-service-nodes'}->{'num-service-nodes-per-bb'};
+	if ($snsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-service-nodes-per-bb: $snsperbb", 7); return 0; }
 	my @positions = split(/[\s,]+/, $STANZAS{'xcat-service-nodes'}->{'cec-positions-in-bb'});
-	if (scalar(@positions) != $snsperbb) { errormsg("invalid number of positions specified for xcat-service-nodes:cec-positions-in-bb.", 3); return; }
+	if (scalar(@positions) != $snsperbb) { errormsg("invalid number of positions specified for xcat-service-nodes:cec-positions-in-bb.", 3); return 0; }
 	my $cechash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
 	my $cecbase = $$cechash{'primary-base'};
 	my $cecstart = $$cechash{'primary-start'};
@@ -565,6 +599,7 @@ sub writesn {
 	my $seclen = length($$cechash{'secondary-start'});
 	$nodes = [noderange($range, 0)];
 	my %nodehash;
+	my %nodeposhash;
 	my %grouphash;
 	# Go thru each service node and calculate which cec it is in
 	for (my $i=0; $i<scalar(@$nodes); $i++) {
@@ -588,9 +623,13 @@ sub writesn {
 		}
 		#print "sn=$$nodes[$i], cec=$cecname\n";
 		$nodehash{$$nodes[$i]} = {hcp => $cecname, parent => $cecname};
+		#print Dumper($CECPOSITIONS);
+		#print "cecname=$cecname\n";
+		$nodeposhash{$$nodes[$i]} = {rack => $CECPOSITIONS->{$cecname}->[0]->{rack}, u => $CECPOSITIONS->{$cecname}->[0]->{u}};
 	}
 	$tables{'ppc'}->setNodesAttribs(\%nodehash);
 	$tables{'nodelist'}->setNodesAttribs(\%grouphash);
+	$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
 	
 	# Create dynamic groups for the nodes in each cec
 	my $ntab = xCAT::Table->new('nodegroup', -create=>1,-autocommit=>0);
@@ -603,6 +642,7 @@ sub writesn {
 		$ntab->commit();
 		$ntab->close();
 	}
+	return 1;
 }
 
 
@@ -619,7 +659,7 @@ sub writestorage {
 	
 	# Write regex for: hosts.node, hosts.ip
 	my $startip = $STANZAS{'xcat-storage-nodes'}->{'starting-ip'};
-	if ($startip) {
+	if ($startip && isIP($startip)) {
 		my ($ipbase, $ipstart) = $startip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
 		my $regex = '|\S+?(\d+)$|' . "$ipbase.($ipstart+" . '$1' . "-$startnum)|";
@@ -630,6 +670,7 @@ sub writestorage {
 			my @ifs = split(/[\s,]+/, $otherint);
 			foreach my $if (@ifs) {
 				my ($nic, $startip) = split(/:/, $if);
+				if (!isIP($startip)) { next; }
 				($ipbase, $ipstart) = $startip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 				$if = "$nic:$ipbase.($ipstart+" . '$1' . "-$startnum)";
 			}
@@ -639,8 +680,10 @@ sub writestorage {
 		}
 		my $aliases = $STANZAS{'xcat-storage-nodes'}->{'aliases'};
 		if ($aliases) {
-			#todo: support more than 1 alias
-			$regex = '|(.+)|($1)' . "$aliases|";
+			# support more than 1 alias
+			my @alist = split(/[\s,]+/, $aliases);
+			foreach my $a (@alist) { $a = '($1)' . $a; }	# prepend the hostname
+			$regex = '|(.+)|' . join(',', @alist) . '|';
 			$hash{hostnames} = $regex;
 		}
 		
@@ -654,12 +697,13 @@ sub writestorage {
 	$tables{'noderes'}->setNodeAttribs('storage', {netboot => 'yaboot'});
 	
 	# Figure out what cec each storage node is in and write ppc.hcp, ppc.parent, noderes.xcatmaster, noderes.servicenode
-	#todo: also write nodepos table
 	# Math for SN in BB:  cecnum = ( ( (snnum-1) / snsperbb) * cecsperbb) + cecstart-1 + snpositioninbb
 	my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
+	if ($cecsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-cecs-per-bb: $cecsperbb", 7); return 0; }
 	my $snsperbb = $STANZAS{'xcat-storage-nodes'}->{'num-storage-nodes-per-bb'};
+	if ($snsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-storage-nodes-per-bb: $snsperbb", 7); return 0; }
 	my @positions = split(/[\s,]+/, $STANZAS{'xcat-storage-nodes'}->{'cec-positions-in-bb'});
-	if (scalar(@positions) != $snsperbb) { errormsg("invalid number of positions specified for xcat-storage-nodes:cec-positions-in-bb.", 3); return; }
+	if (scalar(@positions) != $snsperbb) { errormsg("invalid number of positions specified for xcat-storage-nodes:cec-positions-in-bb.", 3); return 0; }
 	my $cechash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
 	my $cecbase = $$cechash{'primary-base'};
 	my $cecstart = $$cechash{'primary-start'};
@@ -672,6 +716,7 @@ sub writestorage {
 	my $sns = [noderange($STANZAS{'xcat-service-nodes'}->{'hostname-range'}, 0)];
 	$nodes = [noderange($range, 0)];
 	my %nodehash;
+	my %nodeposhash;
 	my %grouphash;
 	my %nodereshash;
 	# Go thru each storage node and calculate which cec it is in
@@ -696,6 +741,7 @@ sub writestorage {
 		}
 		#print "sn=$$nodes[$i], cec=$cecname\n";
 		$nodehash{$$nodes[$i]} = {hcp => $cecname, parent => $cecname};
+		$nodeposhash{$$nodes[$i]} = {rack => $CECPOSITIONS->{$cecname}->[0]->{rack}, u => $CECPOSITIONS->{$cecname}->[0]->{u}};
 		
 		# Now determine the service node this compute node is under
 		#my $bbnum = int(($cecnum-1) / $cecsperbb) + 1;
@@ -716,6 +762,8 @@ sub writestorage {
 	$tables{'ppc'}->setNodesAttribs(\%nodehash);
 	$tables{'nodelist'}->setNodesAttribs(\%grouphash);
 	$tables{'noderes'}->setNodesAttribs(\%nodereshash);
+	$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
+	return 1;
 }
 
 
@@ -731,7 +779,7 @@ sub writecompute {
 	# Write regex for: hosts.node, hosts.ip
 	my $nodehash = parsenoderange($range);
 	my $startip = $STANZAS{'xcat-compute-nodes'}->{'starting-ip'};
-	if ($startip) {
+	if ($startip && isIP($startip)) {
 		my ($ipbase, $ip3rd, $ip4th) = $startip =~/^(\d+\.\d+)\.(\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
 		my $startnum = $$nodehash{'primary-start'};
@@ -746,6 +794,7 @@ sub writecompute {
 			my @ifs = split(/[\s,]+/, $otherint);
 			foreach my $if (@ifs) {
 				my ($nic, $startip) = split(/:/, $if);
+				if (!isIP($startip)) { next; }
 				($ipbase, $ip3rd, $ip4th) = $startip =~/^(\d+\.\d+)\.(\d+)\.(\d+)$/;
 				#$if = "$nic:$ipbase.($ipstart+" . '$1' . "-$startnum)";
 				$if = "$nic:$ipbase.((${ip4th}-1+" . '$1' . "-$startnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$startnum)%254+1)";
@@ -756,8 +805,10 @@ sub writecompute {
 		}
 		my $aliases = $STANZAS{'xcat-compute-nodes'}->{'aliases'};
 		if ($aliases) {
-			#todo: support more than 1 alias
-			$regex = '|(.+)|($1)' . "$aliases|";
+			# support more than 1 alias
+			my @alist = split(/[\s,]+/, $aliases);
+			foreach my $a (@alist) { $a = '($1)' . $a; }	# prepend the hostname
+			$regex = '|(.+)|' . join(',', @alist) . '|';
 			$hash{hostnames} = $regex;
 		}
 		
@@ -781,9 +832,10 @@ sub writecompute {
 	}
 	
 	# Figure out what cec each compute node is in and write ppc.hcp, ppc.parent, ppc.id, noderes.xcatmaster, noderes.servicenode
-	#todo: also write nodepos table
 	my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
+	if ($cecsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-cecs-per-bb: $cecsperbb", 7); return 0; }
 	my $lparspercec = $STANZAS{'xcat-lpars'}->{'num-lpars-per-cec'};
+	if ($lparspercec !~ /^\d+$/) { errormsg("invalid non-integer value for num-lpars-per-cec: $lparspercec", 7); return 0; }
 	my $snsperbb = $STANZAS{'xcat-service-nodes'}->{'num-service-nodes-per-bb'};
 	# store the positions of service and storage nodes, so we can avoid those
 	my %snpositions;
@@ -795,6 +847,7 @@ sub writecompute {
 	my $sns = [noderange($STANZAS{'xcat-service-nodes'}->{'hostname-range'}, 0)];
 	$nodes = [noderange($range, 0)];
 	my %nodehash;
+	my %nodeposhash;
 	my %nodereshash;
 	# set these incrementers to the imaginary position just before the 1st position
 	my $cecnum = 0;
@@ -818,6 +871,7 @@ sub writecompute {
 		}
 		#print "sn=$$nodes[$i], cec=$cecname\n";
 		$nodehash{$$nodes[$i]} = {hcp => $cecname, parent => $cecname, id => $id};
+		$nodeposhash{$$nodes[$i]} = {rack => $CECPOSITIONS->{$cecname}->[0]->{rack}, u => $CECPOSITIONS->{$cecname}->[0]->{u}};
 		
 		# Now determine the service node this compute node is under
 		my $bbnum = int(($cecnum-1) / $cecsperbb) + 1;
@@ -836,6 +890,8 @@ sub writecompute {
 	}
 	$tables{'ppc'}->setNodesAttribs(\%nodehash);
 	$tables{'noderes'}->setNodesAttribs(\%nodereshash);
+	$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
+	return 1;
 }
 
 
@@ -848,13 +904,16 @@ sub parsenoderange {
 	# Check for a 2 square bracket range, e.g. f[1-2]c[01-10]
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}) = ($1, $2, $3, $4, $5, $6);
-		#print Dumper($ret);
+		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
+		if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
 	
 	# Check for a square bracket range, e.g. n[01-20]
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}) = ($1, $2, $3);
+		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
+		if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
 	
@@ -862,7 +921,9 @@ sub parsenoderange {
 	my $base2;
 	if ( $nr =~ /^\s*(\S+?)(\d+)\-(\S+?)(\d+)\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $base2, $$ret{'primary-end'}) = ($1, $2, $3, $4);
-		if ($$ret{'primary-base'} ne $base2) { return undef; }		# ill-formed range
+		if ($$ret{'primary-base'} ne $base2) { errormsg("invalid noderange format: $nr", 5); return undef; }
+		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
+		if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
 	
@@ -874,6 +935,16 @@ sub parsenoderange {
 	
 	errormsg("invalid noderange format: $nr", 5);
 	return undef;   # range did not match any of the cases above
+}
+
+
+# Verify this is valid IP address format (ipv4 only for right now).
+# If not, print error msg and return 0.
+sub isIP {
+	my $ip = shift;
+	if ($ip =~ /^\d+\.\d+\.\d+\.\d+$/) { return 1; }
+	errormsg("invalid IP address format: $ip", 6);
+	return 0;
 }
 
 

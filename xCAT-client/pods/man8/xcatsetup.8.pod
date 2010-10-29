@@ -243,6 +243,8 @@ nodehm table:  node, mgt
 
 nodegroup table:  groupname, grouptype, members, wherevals
 
+nodepos:  rack, u
+
 =item B<xcat-building-blocks>
 
 site table:  sharedtftp
@@ -267,6 +269,8 @@ servicenode table:  node, nameserver, dhcpserver, tftpserver, nfsserver, conserv
 
 nodegroup table:  groupname, grouptype, members, wherevals
 
+nodepos:  rack, u
+
 =item B<xcat-storage-nodes>
 
 nodelist table:  node, groups
@@ -281,6 +285,8 @@ nodehm table:  node, mgt, cons
 
 noderes table:  netboot, xcatmaster, servicenode
 
+nodepos:  rack, u
+
 =item B<xcat-compute-nodes>
 
 nodelist table:  node, groups
@@ -294,6 +300,8 @@ nodetype table:  node, nodetype, arch
 nodehm table:  node, mgt, cons
 
 noderes table:  netboot, xcatmaster, servicenode
+
+nodepos:  rack, u
 
 =item B<ll-config>
 
