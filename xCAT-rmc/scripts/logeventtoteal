@@ -1,0 +1,119 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# This script is used by LogEventToTealEventLog response to put RMC events into 
+# the TEAL's x_tealeventlog table.  It handles both batch and non-batching events. 
+
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+use lib "$::XCATROOT/lib/perl";
+use strict;
+use Getopt::Std;
+use POSIX qw(strftime);
+use xCAT::Utils;
+use xCAT::MsgUtils;
+use IO::File;
+use TEAL::Semaphore;
+
+my $batch=0;
+if (exists($ENV{ERRM_COND_BATCH})) { $batch=$ENV{ERRM_COND_BATCH}; }
+my @a=();
+my $condname=$ENV{ERRM_COND_NAME};
+my $respname=$ENV{ERRM_ER_NAME};
+
+if (!$batch) { #handle single event
+    my $time=$ENV{ERRM_TIME};
+    my $nodenamelist=$ENV{ERRM_NODE_NAMELIST};
+    $nodenamelist =~ s/\{(.*)\}/$1/;
+    
+    my $event={
+	event_id => "XR000001",
+	time_occurred => convertTime($time),
+	src_comp => $ENV{ERRM_RSRC_CLASS_PNAME},
+	src_loc_type => "A",
+	src_loc => "$nodenamelist##" . $ENV{ERRM_RSRC_NAME},
+	rpt_comp => 'IBM.Condition',
+	rpt_loc_type =>"A",
+        rpt_loc => $ENV{ERRM_NODE_NAME} . "##" . $ENV{ERRM_COND_NAME},
+	raw_data => $ENV{ERRM_ATTR_PNAME} . "=" . $ENV{ERRM_VALUE},
+    }; 
+    
+    push(@a, $event);
+} else { #handle event batching
+    if ($ENV{ERRM_COND_BATCH_NUM} > 0) {
+        #check if event detail file exist
+        if (!exists($ENV{ERRM_EVENT_DETAIL_FILE})){
+	     xCAT::MsgUtils->message('S', "logeventtoteal: no event detail file specified in the response $respname for condition $condname.\n");
+             exit (1);
+	}
+	
+	my $filename=$ENV{ERRM_EVENT_DETAIL_FILE};
+	if (! -f $filename) {
+	    xCAT::MsgUtils->message('S', "logeventtoteal: cannot find event detail file $filename in response $respname for condition $condname.\n");
+            exit (1);
+	}
+
+	open(FILE1, "<$filename");
+        readline(FILE1);#skip first 2 lines
+        readline(FILE1);
+	my $line1=readline(FILE1);
+	my @aTemp=split(/=/, $line1);
+	my $num_events=$aTemp[1];
+	close(FILE1);
+
+	my $count;
+	for ($count = 1; $count <= $num_events; $count++) {
+	    my $content=`sed -n "/Event $count:/,/ERRM_COND_BATCH/ p" $filename`;
+	    
+	    my @content_array=split(/\n/, $content);
+	    pop(@content_array);  #get rid of last line
+	    shift(@content_array); #get rid of firt line
+    
+	    my %content_hash=();
+	    foreach(@content_array) {
+                /([^\=]+)\=(.*)/;
+		$content_hash{$1}=$2;
+	    }    
+
+	    my $time=$content_hash{ERRM_TIME};
+	    my $nodenamelist=$content_hash{ERRM_NODE_NAMELIST};
+	    $nodenamelist =~ s/\{(.*)\}/$1/;
+	    my $event={
+		event_id => "XR000001",
+		time_occurred => convertTime($time),
+		src_comp => $content_hash{ERRM_RSRC_CLASS_PNAME},
+		src_loc_type => "A",
+		src_loc => $nodenamelist . "##" . $content_hash{ERRM_RSRC_NAME},
+		rpt_comp => "IBM.Condition",
+		rpt_loc_type =>"A",
+		rpt_loc => $content_hash{ERRM_NODE_NAME} . "##" . $content_hash{ERRM_COND_NAME},
+		raw_data => $content_hash{ERRM_ATTR_PNAME} . "=" . $content_hash{ERRM_VALUE},
+	    }; 
+	    push(@a, $event);
+	}   
+    }
+}    
+
+my ($rc, $msg)=xCAT::Utils->logEventsToTealDatabase(\@a);
+if ($rc) {
+   xCAT::MsgUtils->message('S', "logeventtoteal:$msg. The condition is $condname. The response is $respname.\n");
+} else {
+    my $s = TEAL::Semaphore->new();
+    $s->post()
+}
+
+# convert time string that can be used for timestamp datatype for db
+sub convertTime {
+  my ($seconds, $micro) = split(/\,/, $_[0]);
+  #return strftime("%A %D %T", localtime($seconds));
+  my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)=localtime($seconds);
+  my $result=sprintf("%4d-%02d-%02d %02d:%02d:%02d.%06d", $year+1900,$mon+1,$mday,$hour,$min,$sec,$micro);
+  return $result;
+}
+
+
+exit $rc;
+
+
