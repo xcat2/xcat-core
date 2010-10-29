@@ -1653,7 +1653,7 @@ sub makeVM {
 			# Get HCP MAC address
 			# The HCP should only have (1) network and (1) MAC address
 			xCAT::zvmCPUtils->loadVmcp($hcp);
-			$out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q nic" | grep "MAC:"`;
+			$out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q v nic" | grep "MAC:"`;
 			if ($out) {
 				@lines = split( "\n", $out );
 				@words = split( " ", $lines[0] );
