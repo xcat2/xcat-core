@@ -424,7 +424,16 @@ sub getDescription {
     group -- the name of a node group that needs to get the application status from.
          If not specified, assume all the nodes in the nodelist table. 
          To specify more than one groups, use group=a,group=b format.
-    cmd -- the command will be run locally on mn or sn.
-    dcmd -- the command will be run distributed on the nodes (xdsh <nodes> ...).";
+    cmd -- the command that will be run locally on mn or sn.
+    lcmd -- the command that will be run locally on the mn only.
+    dcmd -- the command that will be run distributed on the nodes using xdsh.
+
+       For commands specified by 'cmd' and 'lcmd', the input of is a list of comma 
+       separated node names, the output must be in the following format:
+         node1:string1
+         node2:string2
+         ...
+       For the command specified by 'dcmd', no input is needed, the output can be a 
+       string.";
 
 }
