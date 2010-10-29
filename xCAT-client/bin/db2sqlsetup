@@ -1200,7 +1200,12 @@ sub setupODBC
     }
 
     # setup the odbcinst.ini file
-    my $sharedlib = "/var/lib/db2/sqllib/lib/libdb2.so";
+    my $sharedlib;
+    if ($::osname eq 'AIX') {
+        $sharedlib = "/var/lib/db2/sqllib/lib/libdb2.so";
+    } else {
+        $sharedlib="/var/lib/db2/sqllib/lib/libdb2o.so";
+    }
     $cmd = "fgrep -i  driver $odbcinstfile ";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)    # then driver entry not there
@@ -1233,6 +1238,16 @@ sub setupODBC
             xCAT::MsgUtils->message("E", "$message");
             exit(1);
         }
+        $entry = "Threading = 0";
+        $cmd   = "echo \"$entry\" >> $odbcinstfile";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            $message = "$cmd failed. Could not setup $odbcinstfile.";
+            xCAT::MsgUtils->message("E", "$message");
+            exit(1);
+        }
+
     }
     else
     {    # entry already there
