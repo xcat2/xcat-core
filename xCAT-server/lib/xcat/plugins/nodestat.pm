@@ -200,7 +200,7 @@ sub preprocess_request
 	    foreach my $app (keys(%apps)) {
                 if ($app eq 'APPS') { next; }
 		if (!exists($apps{$app}->{'group'})) { $apps{$app}->{'group'} = "ALL"; }
-		if (exists($apps{$app}->{'cmd'}) || exists($apps{$app}->{'dcmd'})) { next; }
+		if (exists($apps{$app}->{'cmd'}) || exists($apps{$app}->{'dcmd'}) || exists($apps{$app}->{'lcmd'})) { next; }
 		if (exists($apps{$app}->{'port'})) { next; }
 		#add port number in if nothing is specified
 		if (exists($default_ports{$app})) { $apps{$app}->{'port'} = $default_ports{$app}; }
@@ -250,6 +250,11 @@ sub preprocess_request
 	# build each request for each service node
         my $all_apps=$apps{'APPS'};
         my %all_porthash=(); #stores all the port apps if usenmapfrommn=1
+	my %lcmdhash=(); #('myapp2,myapp3'=> {
+	                 #       lcmd=>'/tmp/mycmd1,/usr/bin/date',
+	                 #       node=>[node1,node2]
+	                 #     }
+	                 #)
 	foreach my $snkey (keys %$sn)
 	{
 	    my $reqcopy = {%$req};
@@ -276,6 +281,7 @@ sub preprocess_request
                              #     }
                              #)
 	    my @nodes_for_sn=@{$sn->{$snkey}};
+           
             foreach my $node (@nodes_for_sn) {
 		my @ports;
                 my @portapps;
@@ -283,6 +289,8 @@ sub preprocess_request
                 my @cmdapps;
                 my @dcmds;
                 my @dcmdapps;
+		my @lcmdapps;
+		my @lcmds;
 		foreach my $app (keys %apps) {
 		    if ($app eq 'APPS') { next; }
 		    my $group=$apps{$app}->{'group'};
@@ -300,6 +308,10 @@ sub preprocess_request
 			    push @dcmds, $apps{$app}->{'dcmd'};
 			    push @dcmdapps, $app;
 			}
+			elsif (exists($apps{$app}->{'lcmd'})) {
+			    push @lcmds, $apps{$app}->{'lcmd'};
+			    push @lcmdapps, $app;
+			}
 		    }
 		}
 		#print "ports=@ports\n";
@@ -310,7 +322,7 @@ sub preprocess_request
                 #print "dcmdapps=@dcmdapps\n";
                 if (@portapps>0) {
                     my $tmpapps=join(',', @portapps);
-		    if (($usenmapfrommn==1) && (@cmdapps==0) && (@dcmdapps==0)) {
+		    if (($usenmapfrommn==1) && (@cmdapps==0) && (@dcmdapps==0) && (@lcmdapps==0)) {
 			#this is the case where mn handles ports for all nodes using nmap
                         #The current limitation is that when there are cmd or dcmd specified for the node
                         # nmap has to be done on the service node because if both mn and sn update the appstatus
@@ -352,12 +364,26 @@ sub preprocess_request
                         $dcmdhash{$tmpapps}->{'dcmd'}=join(',', @dcmds);
 		    }
 		}
+                if (@lcmdapps>0) {
+                    my $i=0;
+                    foreach my $lapp (@lcmdapps) {
+			if (exists($lcmdhash{$lapp})) {
+			    my $pa=$lcmdhash{$lapp}->{'node'};
+			    push @$pa, $node;
+			} else {
+			    $lcmdhash{$lapp}->{'node'}=[$node];
+			    $lcmdhash{$lapp}->{'lcmd'}=$lcmds[$i];
+			}
+                        $i++;
+		    }
+		}
 	    } #end foreach (@nodes_for_sn)
 
             #print Dumper(%porthash);
+            #print "cmdhash=" . Dumper(%cmdhash);
             #now push the settings into the requests
 	    my $i=1;
-            if ((keys(%porthash) == 0) && (keys(%cmdhash) == 0) && (keys(%dcmdhash) == 0)) { next; }
+            if ((keys(%porthash) == 0) && (keys(%cmdhash) == 0) && (keys(%dcmdhash) == 0) && (keys(%lcmdhash) == 0)) { next; }
             foreach my $tmpapps (keys %porthash) {
 		$reqcopy->{'portapps'}->[0]= scalar keys %porthash;
                 $reqcopy->{"portapps$i"}->[0]= $tmpapps;
@@ -385,7 +411,10 @@ sub preprocess_request
 
 	    #done
 	    push @requests, $reqcopy;
-	}
+	} #enf sn_key
+
+
+	#print "apps=" . Dumper(%apps);
 
         #mn handles all nmap when useNmapfromMN=1 on the site table
         if (($usenmapfrommn == 1) && (keys(%all_porthash) > 0)) {
@@ -436,7 +465,45 @@ sub preprocess_request
 	#	return \@requests; #do not distribute, nodestat seems to lose accuracy and slow down distributed, if using nmap
 	#    }
 	#}
-	
+
+        #now handle local commands
+	#print "lcmdhash=" . Dumper(%lcmdhash);
+        if (keys(%lcmdhash) > 0) {
+	    my @hostinfo=xCAT::Utils->determinehostname();
+	    my %iphash=();
+	    foreach(@hostinfo) {$iphash{$_}=1;}
+            my $handled=0;
+            foreach my $req (@requests) {
+		my $currsn=$req->{'_xcatdest'};
+		if (exists($iphash{$currsn}))  {
+		    my $i=1;
+		    foreach my $lapp (keys %lcmdhash) {
+			$req->{'lcmdapps'}->[0]= scalar keys %lcmdhash;
+			$req->{"lcmdapps$i"}->[0]= $lapp;
+			$req->{"lcmdapps$i" . "cmd"}->[0]= $lcmdhash{$lapp}->{'lcmd'};
+			$req->{"lcmdapps$i" . "node"} = $lcmdhash{$lapp}->{'node'};;
+                        $i++;
+		    }
+                    $handled=1;
+                    last;
+		}
+	    }
+
+	    if (!$handled) {
+		my $reqcopy = {%$req};
+		$reqcopy->{_xcatpreprocessed}->[0] = 1;
+		$reqcopy->{'allapps'}=$all_apps;
+		my $i=1;
+		foreach my $lapp (keys %lcmdhash) {
+		    $reqcopy->{'lcmdapps'}->[0]= scalar keys %lcmdhash;
+		    $reqcopy->{"lcmdapps$i"}->[0]= $lapp;
+		    $reqcopy->{"lcmdapps$i" . "cmd"}->[0]= $lcmdhash{$lapp}->{'lcmd'};
+		    $reqcopy->{"lcmdapps$i" . "node"} = $lcmdhash{$lapp}->{'node'};;
+                    $i++;
+		}
+		push @requests, $reqcopy;
+	    }
+	}	
     }
 
     return \@requests;
@@ -577,7 +644,7 @@ sub process_request_nmap {
           #if (/^MAC/) {  #oops not all nmap records end with MAC
           if (/^PORT/) { next; }
           ($port,$state) = split;
-          if ($port =~ /^(\d*)\// and $state eq 'open') {
+          if ($port and $port =~ /^(\d*)\// and $state eq 'open') {
               if ($1 eq "3001") {
                 $installquerypossible=1; #It is possible to actually query node
               } else {
@@ -694,6 +761,7 @@ sub process_request_local_command {
            foreach my $cmd (@cmds) {
                my $nodes_string=join(',', @nodes);
 	       my $ret=`$cmd $nodes_string`; 
+	       #print "ret=$ret\n";
 	       if (($? ==0) && ($ret)) {
 		   my @ret_array=split('\n', $ret);
                    foreach(@ret_array) {
@@ -801,8 +869,7 @@ sub process_request {
 	   }
        }
        
-       #print Dumper($status);
-       
+      
        #handle local commands
        if (exists($request->{'cmdapps'})) {
 	   for (my $i=1; $i<=$request->{'cmdapps'}->[0]; $i++) {
@@ -815,6 +882,37 @@ sub process_request {
 	       } 
 	       
 	       my $ret = process_request_local_command($request, $callback, $doreq, $nodes, \%cmdhash);
+	       #print Dumper($ret);
+
+	       foreach my $node1 (keys(%$ret)) {
+		   if (exists($status->{$node1})) {
+		       my $appstatus=$status->{$node1}->{'appstatus'};
+		       if ($appstatus) { $status->{$node1}->{'appstatus'} .= "," . $ret->{$node1}; }
+		       else { $status->{$node1}->{'appstatus'} = $ret->{$node1}; }
+		       my $appsd=$status->{$node1}->{'appsd'};
+		       if ($appsd) { $status->{$node1}->{'appsd'} .= "," . $ret->{$node1}; }
+		       else { $status->{$node1}->{'appsd'} = $ret->{$node1}; }
+		   } else {
+		       $status->{$node1}->{'appstatus'} = $ret->{$node1};
+		       $status->{$node1}->{'appsd'} = $ret->{$node1};
+		   }
+	       }    
+	   }
+       }
+
+       #handle local l commands 
+       if (exists($request->{'lcmdapps'})) {
+	   for (my $i=1; $i<=$request->{'lcmdapps'}->[0]; $i++) {
+	       my %cmdhash=();
+	       my @apps=split(',', $request->{"lcmdapps$i"}->[0]);
+	       my @cmds=split(',', $request->{"lcmdapps$i" . "cmd"}->[0]);
+	       my $nodes=$request->{"lcmdapps$i" . "node"};
+	       for (my $j=0; $j <@cmds; $j++) {
+		   $cmdhash{$cmds[$j]}=$apps[$j];
+	       } 
+	              
+	       my $ret = process_request_local_command($request, $callback, $doreq, $nodes, \%cmdhash);
+
 	       foreach my $node1 (keys(%$ret)) {
 		   if (exists($status->{$node1})) {
 		       my $appstatus=$status->{$node1}->{'appstatus'};
@@ -831,6 +929,7 @@ sub process_request {
 	       }    
 	   }
        }
+       
        
        #handle remote commands
        if (exists($request->{'dcmdapps'})) {
@@ -859,6 +958,8 @@ sub process_request {
 	       }    
 	   }
        }
+
+
        #nodestat_internal command the output, nodestat command will collect it
        foreach my $node1 (sort keys(%$status)) {
 	   my %rsp;
@@ -866,6 +967,9 @@ sub process_request {
 	   my $st=$status->{$node1}->{'status'};
 	   my $ast= $status->{$node1}->{'appstatus'};
            my $appsd = $status->{$node1}->{'appsd'};
+	   $st=$st?$st:'';
+	   $ast=$ast?$ast:'';
+	   $appsd=$appsd?$appsd:'';
 	   
 	   $rsp{data}->[0] = "$st$separator$ast$separator$appsd";
 	   $callback->({node=>[\%rsp]});
@@ -883,9 +987,21 @@ sub process_request {
        foreach my $tmpdata (@$ret) {
 	   if ($tmpdata =~ /([^:]+): (.*)$separator(.*)$separator(.*)/) {
 	      #print "node=$1, status=$2, appstatus=$3, appsd=$4\n";
-               $status->{$1}->{'status'}=$2;
-               $status->{$1}->{'appstatus'}=$3;
-               $status->{$1}->{'appsd'}=$4;
+	      if ($status->{$1}->{'status'}) {
+		  $status->{$1}->{'status'}=$status->{$1}->{'status'} . ",$2";
+	      } else {
+		  $status->{$1}->{'status'}=$2;
+	      }
+	      if ($status->{$1}->{'appstatus'}) {
+		  $status->{$1}->{'appstatus'}= $status->{$1}->{'appstatus'} . ",$3";
+	      } else {
+		  $status->{$1}->{'appstatus'}=$3;
+	      }
+	      if ($status->{$1}->{'appsd'}) {
+		  $status->{$1}->{'appsd'}=$status->{$1}->{'appsd'} . ",$4";
+	      } else {
+		  $status->{$1}->{'appsd'}=$4;
+	      }
                if (($power) && ($2 eq "noping")) {
 		   push(@noping_nodes, $1);
 	       }
@@ -896,6 +1012,7 @@ sub process_request {
            }
        }
 
+       #print Dumper($status);
        #get power status for noping nodes
        if (($power) && (@noping_nodes > 0)) {
 	   #print "noping_nodes=@noping_nodes\n";
