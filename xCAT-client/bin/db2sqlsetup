@@ -145,7 +145,7 @@ else
 if ($::RM)
 {
 	&remove;
-	eixt(0);
+	exit(0);
 }
 
 
