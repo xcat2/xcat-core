@@ -1557,6 +1557,7 @@ sub service_connection {
             if ($req->{transid}) {
               $resp{transid}=$req->{transid}->[0];
             }
+          xCAT::MsgUtils->message("S","Unsupported request: peername=$peername, peerhost=$peerhost,peerfqdn=$peerfqdn,peerport=$peerport, command=".$req->{command}->[0]);
             print $sock XMLout(\%resp,RootName => 'xcatresponse',NoAttr=>1);
             next;
           }
@@ -1566,6 +1567,7 @@ sub service_connection {
           if ($req->{transid}) {
             $resp{transid}=$req->{transid}->[0];
           }
+          xCAT::MsgUtils->message("S","Permission denied for request: peername=$peername, peerhost=$peerhost,peerfqdn=$peerfqdn,peerport=$peerport command= ".$req->{command}->[0]);
           my $response=XMLout(\%resp,RootName =>'xcatresponse',NoAttr => 1);
           print $sock $response;
           next;
@@ -1882,7 +1884,7 @@ sub validate {
     }
   } # end RULE
   #Reached end of policy table, reject by default.
-   xCAT::MsgUtils->message("S","Request matched no policy rule: ".$request->{command}->[0]);
+   xCAT::MsgUtils->message("S","Request matched no policy rule: peername=$peername, peerhost=$peerhost  ".$request->{command}->[0]);
   return 0;
 }
 
