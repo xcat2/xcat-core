@@ -9,11 +9,13 @@ B<mysqlsetup> {B<-h>|B<--help>}
 
 B<mysqlsetup> {B<-v>|B<--version>}
 
-B<mysqlsetup> {B<-i>|B<--init>} [B<-f>|B<--hostfile>] [-o|--setupODBC]  [B<-V>|B<--verbose>]
+B<mysqlsetup> {B<-i>|B<--init>} [B<-f>|B<--hostfile>] [-o|--odbc] [-L|--LL] [B<-V>|B<--verbose>]
 
-B<mysqlsetup> {B<-u>|B<--update>} [B<-f>|B<--hostfile>] [-o|--setupODBC]           [B<-V>|B<--verbose>]
+B<mysqlsetup> {B<-u>|B<--update>} [B<-f>|B<--hostfile>] [-o|--odbc] [-L|--LL]          [B<-V>|B<--verbose>]
 
-B<mysqlsetup> {B<-o>|B<--setupODBC>} [-V|--verbose] 
+B<mysqlsetup> {B<-o>|B<--odbc>} [-V|--verbose] 
+
+B<mysqlsetup> {B<-L>|B<--LL>} [-V|--verbose] 
 
 =head1 DESCRIPTION
 
@@ -51,9 +53,16 @@ To run the update option,  you must first have run the -i option and have xcat s
 
 This option runs during update, it will take all the host from the input file (provide a full path) and give them database access to the xcatdb in  MySQL for the xcatadmin id. Wildcards and ipaddresses may be used. xCAT  must have been previously successfully setup to use MySQL. xcatadmin and MySQL root password are required. 
 
-=item B<-o|--setupODBC>
+=item B<-o|--odbc>
 
 This option sets up the ODBC  /etc/../odbcinst.ini, /etc/../odbc.ini and the .odbc.ini file in roots home directory will be created and initialized to run off the xcatdb MySQL database.
+See "Add ODBC Support" in
+http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/
+xCAT-client/share/doc/xCAT2.SetupMySQL.pdf
+
+=item B<-L|--LL>
+
+Additional database configuration specifically for the LoadLeveler product. 
 See "Add ODBC Support" in
 http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/
 xCAT-client/share/doc/xCAT2.SetupMySQL.pdf
