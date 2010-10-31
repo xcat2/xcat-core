@@ -66,6 +66,7 @@ if (
                 'u|update'     => \$::UPDATE,
                 'f|hostfile=s' => \$::HOSTFILE,
                 'o|odbc'       => \$::SETUPODBC,
+                'L|LL'         => \$::SETUPLL,
                 'h|help'       => \$::HELP,
                 'v|version'    => \$::VERSION,
                 'V|verbose'    => \$::VERBOSE,
@@ -90,7 +91,7 @@ if ($::VERSION)
     xCAT::MsgUtils->message("I", $version);
     exit 0;
 }
-if ((!($::INIT)) && (!($::UPDATE)) && (!($::SETUPODBC)))
+if ((!($::INIT)) && (!($::UPDATE)) && (!($::SETUPODBC))&& (!($::SETUPLL)))
 {
     xCAT::MsgUtils->message("I", "Either -i or -u or -o flag must be chosen");
     &usage;
@@ -99,7 +100,7 @@ if ((!($::INIT)) && (!($::UPDATE)) && (!($::SETUPODBC)))
 
 # check to see if only odbc update,  no passwords needed
 my $odbconly = 0;
-if ((!($::INIT)) && (!($::UPDATE)) && ($::SETUPODBC))
+if ((!($::INIT)) && (!($::UPDATE))  && (!($::SETUPLL)) && ($::SETUPODBC))
 {
     $odbconly = 1;
 
@@ -362,6 +363,17 @@ if ($::SETUPODBC)
     &setupODBC;
 
 }
+if ($::SETUPLL)
+{
+
+    #
+    # Add special Loadleveler setup
+    #
+
+    &setupLL;
+
+}
+
 
 # if input a list of hosts to add to the database, to give access to MySQL
 if ($::HOSTFILE)
@@ -392,7 +404,7 @@ sub usage
         "Usage:\nmysqlsetup - Performs the setup of MySQL for xCAT to use as its database. See man mysqlsetup for more information."
         );
     my $msg =
-      "mysqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-f|hostfile] [-o|--setupODBC] [-V|--verbose]\n           <-u|--update> <-f|hostfile> [-o|--setupODBC] [-V|--verbose]\n           <-o|--setupODBC> [-V|--verbose]";
+      "mysqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> [-f|hostfile] [-o|--odbc] [-L|--LL] [-V|--verbose]\n           <-u|--update> <-f|hostfile> [-o|--odbc] [-L|--LL] [-V|--verbose]\n           <-o|--odbc> [-V|--verbose]\n           <-L|--LL> [-V|--verbose]";
 
     xCAT::MsgUtils->message('I', "$msg");
 }
@@ -999,7 +1011,7 @@ sub setupxcatdb
 
     #
     # log_stdout(0) prevent the program's output from being shown.
-    #
+    #  turn on if debugging error
     #$mysql->log_stdout(1);
     $mysql->log_stdout($debug);
 
@@ -1057,11 +1069,122 @@ sub setupxcatdb
         my $errmsg = $result[1];
         $mysql->soft_close();
         xCAT::MsgUtils->message("E",
-                               "Perl Expect failed creating database. $errmsg");
+                               "Failed creating database. $errmsg");
         exit(1);
 
     }
     $mysql->soft_close();
+
+}
+#-----------------------------------------------------------------------------
+
+=head3    setupLL 
+	
+      Adds special LoadLeveler setup in MySQL 
+	
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub setupLL
+
+{
+    my $mysql;
+    my $timeout  = 10;    # sets Expect default timeout, 0 accepts immediately
+    my $pwd_sent = 0;
+    my $pwd_prompt   = 'Enter password: ';
+    my $mysql_prompt = 'mysql> ';
+    my $expect_log   = undef;
+    my $debug        = 0;
+    if ($::VERBOSE)
+    {
+        $debug = 1;
+    }
+    $mysql = new Expect;
+    my $setLLfunction =
+      "SET GLOBAL log_bin_trust_function_creators=1;\r";
+
+    #
+    # -re $pwd_prompt
+    #     Enter the password for root
+    #
+    # -re $mysql_prompt
+    #   mysql> Enter the log_bin_trust_function_creators command and exit
+    #
+    #
+
+    # disable command echoing
+    #$mysql->slave->stty(qw(sane -echo));
+
+    #
+    # exp_internal(1) sets exp_internal debugging
+    # to STDERR.
+    #
+    #$mysql->exp_internal(1);
+    $mysql->exp_internal($debug);
+
+    #
+    # log_stdout(0) prevent the program's output from being shown.
+    # log_stdout shows output, turn on if debugging error
+    #$mysql->log_stdout(1);
+    $mysql->log_stdout($debug);
+
+    my $spawncmd;
+    if ($::osname eq 'AIX')
+    {
+        $spawncmd = "$::installdir/bin/mysql  -u root -p";
+    }
+    else
+    {
+        $spawncmd = "/usr/bin/mysql -u root -p";
+    }
+    unless ($mysql->spawn($spawncmd))
+    {
+        xCAT::MsgUtils->message("E",
+                      "Unable to run $spawncmd to add LL setup.");
+        return;
+
+    }
+
+    #
+    # setup SQL commands
+    #
+
+    my @result = $mysql->expect(
+        $timeout,
+        [
+         $pwd_prompt,
+         sub {
+             $mysql->send("$::rootpassword\r");
+             $mysql->clear_accum();
+             $mysql->exp_continue();
+           }
+        ],
+        [
+         $mysql_prompt,
+         sub {
+
+             $mysql->send("$setLLfunction");
+             $mysql->clear_accum();
+             $mysql->send("exit;\r");
+
+           }
+        ]
+        );
+    ##########################################
+    # Expect error - report and quit
+    ##########################################
+    if (defined($result[1]))
+    {
+        my $errmsg = $result[1];
+        $mysql->soft_close();
+        xCAT::MsgUtils->message("E",
+                               "Failed LoadLeveler setup. $errmsg");
+        exit(1);
+
+    }
+    $mysql->soft_close();
+    xCAT::MsgUtils->message("I", "LoadLeveler setup complete.");
 
 }
 
@@ -1134,7 +1257,7 @@ sub addhosts
 
         #
         # log_stdout(0) prevent the program's output from being shown.
-        #
+        # turn on to debug error
         #$mysql->log_stdout(1);
         $mysql->log_stdout($debug);
         my $spawncmd;
@@ -1189,7 +1312,7 @@ sub addhosts
             my $errmsg = $result[1];
             $mysql->soft_close();
             xCAT::MsgUtils->message("E",
-                                   "Perl Expect failed adding  hosts. $errmsg");
+                                   "Failed adding  hosts. $errmsg");
             exit(1);
 
         }
