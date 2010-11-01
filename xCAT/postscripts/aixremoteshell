@@ -37,6 +37,7 @@ my $rc = 0;
 my $usesshonaix = $ENV{'USESSHONAIX'};
 my $master      = $ENV{'MASTER'};
 my $node        = $ENV{'NODE'};
+my $enablesshbetweennodes  = $ENV{'ENABLESSHBETWEENNODES'};
 my $msg;
 my $home;
 my $cmd;
@@ -184,9 +185,10 @@ sub setupSSH
 	if ( -f "/etc/xCATSN") {
 		&runcmd("mkdir -p /etc/xcat/hostkeys; cp /etc/ssh/ssh* /etc/xcat/hostkeys/. > /dev/null 2>&1");
 	}
-
-	my $response=&getresponse("ssh_root_key");
-	if (defined ($response) ) {
+        # Decide whether to enable ssh between the nodes
+        if ($enablesshbetweennodes eq "YES") {
+	  my $response=&getresponse("ssh_root_key");
+	  if (defined ($response) ) {
 		my $fd;
 		my $filename = "/.ssh/id_rsa";
 		&runcmd("mkdir -p /.ssh");
@@ -202,11 +204,12 @@ sub setupSSH
 		if ( -f "/.ssh/id_rsa" ) {
 			&runcmd("ssh-keygen -y -f /.ssh/id_rsa > /.ssh/id_rsa.pub");
 		}
-	}
-	else {
-        $msg = "aixremoteshell: Could not get id_rsa file.\n";
-        `logger -t xcat $msg`;
-    }
+	  }
+	  else {
+            $msg = "aixremoteshell: Could not get id_rsa file.\n";
+            `logger -t xcat $msg`;
+          }
+        }
 
 	return 0;
 }
