@@ -85,7 +85,6 @@ if (
                 'v|version' => \$::VERSION,
                 'V|verbose' => \$::VERBOSE,
                 'r|rm'      => \$::RM,
-                's|sn'      => \$::SN,
     )
   )
 {
@@ -440,7 +439,7 @@ sub usage
         "Usage:\ndb2sqlsetup - Performs the setup of IBM DB2 for xCAT to use as its database. See man db2sqlsetup for more information."
         );
     my $msg =
-      "db2sqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> <-S|-C> [-o|--setupODBC] [-V|--verbose]\n           <-o|--setupODBC> <-S|-C> [-V|--verbose]\n           <-r|--rm> [-s|--sn]";
+      "db2sqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> <-S|-C> [-o|--setupODBC] [-V|--verbose]\n           <-o|--setupODBC> <-S|-C> [-V|--verbose]\n           <-r|--rm> <-S|-C> [-V|--verbose]";
 
     xCAT::MsgUtils->message('I', "$msg");
 }
@@ -1508,7 +1507,7 @@ sub remove
         if ($::RUNCMD_RC == 0)
         {  
             #if it is management node, need to backup database
-            if (!($::SN))
+            if (!($::Client))
             {
             	xCAT::MsgUtils->message("I","Begin to backup database, this would take a while");
             	
@@ -1586,7 +1585,7 @@ sub remove
             	exit(1);
             }
                 	
-            if (!($::SN))
+            if (!($::Client))
             {        	
                 my $cmd = "XCATBYPASS=1 restorexCATdb -p $backupdic";
                 xCAT::Utils->runcmd($cmd, -1);   
@@ -1628,7 +1627,7 @@ sub remove
             
 
     xCAT::MsgUtils->message("I", "Begin to remove DB2 \n");  
-    if (!($::SN))
+    if (!($::Client))
     { 
         #remove database
         my $cmd = "db2 force application all";
@@ -1690,20 +1689,25 @@ sub remove
     my $file1 = "/etc/services";
     if ($::RUNCMD_RC == 0)
     {  
-        #open(FH,"+<$file1") or die "cannot open file $file1 \n";
-        #while (<FH>)
-        #{
-        #    if(/xcatdb/)
-        #    {
-        #        my $pos=tell(FH);
-        #        seek(FH,$pos,0);
-        #        my $line="#";
-        #        print FH $line;
-        #     }
-        #}
-        #close(FH);
-        $cmd = "cat $file1 | sed s/.*xcatdb.*// > $file1";
-        xCAT::Utils->runcmd($cmd, -1);        
+        open(FH,"+<$file1") or die "cannot open file $file1 \n";   
+        $cmd = "touch /etc/services.back";
+        xCAT::Utils->runcmd($cmd, -1);
+        open(DH,"+</etc/services.back") or die "cannot open file services.back \n";  
+        foreach (<FH>)
+        {
+        	my $line = $_;
+            if($line =~ /xcatdb/)
+            {
+                $line =~ s/$line/# $line/;
+             }
+             print DH $line;
+        }
+        close(FH);
+        close(DH);
+        $cmd = "mv /etc/services.back $file1";
+        xCAT::Utils->runcmd($cmd, -1);          
+        #$cmd = "cat $file1 | sed s/.*xcatdb.*// > $file1";
+        #xCAT::Utils->runcmd($cmd, -1);        
     }
     
     
