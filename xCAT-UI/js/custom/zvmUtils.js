@@ -2171,11 +2171,11 @@ function createZProvisionNew(inst) {
 		diskRow.append(diskType);
 
 		// Create disk address input
-		var diskAddr = $('<td><input type="text"/></td>');
+		var diskAddr = $('<td><input type="text" title="You must give the virtual device address of the disk to be added"/></td>');
 		diskRow.append(diskAddr);
 
 		// Create disk size input
-		var diskSize = $('<td><input type="text"/></td>');
+		var diskSize = $('<td><input type="text" title="You must give the size of the disk to be created.  The size value is one of the following: cylinders or block size. "/></td>');
 		diskRow.append(diskSize);
 		
 		// Create disk mode input
@@ -2204,15 +2204,23 @@ function createZProvisionNew(inst) {
 
 		// Create disk pool input
 		// Turn on auto complete for disk pool
-		var diskPoolInput = $('<input type="text"/>').autocomplete(definedPools.split(','));
+		var diskPoolInput = $('<input type="text" title="You must give the group or region where the new image disk is to be created"/>').autocomplete(definedPools.split(','));
 		var diskPool = $('<td></td>').append(diskPoolInput);
 		diskRow.append(diskPool);
 
 		// Create disk password input
-		var diskPw = $('<td><input type="password"/></td>');
+		var diskPw = $('<td><input type="password" title="You must give the password that will be used for accessing the disk"/></td>');
 		diskRow.append(diskPw);
 
 		diskBody.append(diskRow);
+		
+		// Generate tooltips
+		diskBody.find('td input[title]').tooltip({
+			position: "top right",	// Place tooltip on the right edge
+			offset: [-4, 4],	// Moves tooltip upwards 4px and 4px to the right
+			effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+			opacity: 0.7		// Custom opacity setting
+		});
 	});
 	
 	// Create disk table
