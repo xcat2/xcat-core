@@ -496,6 +496,50 @@ sub process_request {
      }  
 
   }
+  #unlink the files for 'offline' command
+  if($args[0] eq 'offline') {
+    foreach my $node (@nodes) {
+      my %ipaddrs;
+      unless (inet_aton($node)) {
+        syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
+        return;
+      }
+      my $ip = inet_ntoa(inet_aton($node));;
+      unless ($ip) {
+        syslog("local1|err","xCAT unable to resolve IP in pxe plugin");
+        return;
+      }
+      $ipaddrs{$ip} = 1;
+      if ($mactab) {
+        my $ment = $machash{$node}->[0]; #$mactab->getNodeAttribs($node,['mac']);
+        if ($ment and $ment->{mac}) {
+          my @macs = split(/\|/,$ment->{mac});
+          foreach (@macs) {
+            if (/!(.*)/) {
+              if (inet_aton($1)) {
+                $ipaddrs{inet_ntoa(inet_aton($1))} = 1;
+              }
+            }
+          }
+        }
+      }
+      my $hassymlink = eval { symlink("",""); 1 };
+
+      unlink($tftpdir."/pxelinux.cfg/".$node);
+
+      foreach $ip (keys %ipaddrs) {
+        my @ipa=split(/\./,$ip);
+        my $pname = sprintf("%02X%02X%02X%02X",@ipa);
+        unlink($tftpdir."/pxelinux.cfg/".$pname);
+        #if ($hassymlink) {
+          #symlink($node,$tftpdir."/pxelinux.cfg/".$pname);
+        #} else {
+          #link($tftpdir."/pxelinux.cfg/".$node,$tftpdir."/pxelinux.cfg/".$pname);
+        #}
+      }
+    }
+  }
+
   #now run the end part of the prescripts
   unless ($args[0] eq 'stat') { # or $args[0] eq 'enact') 
       $errored=0;

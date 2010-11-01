@@ -509,6 +509,10 @@ sub process_request {
         $response{node}->[0]->{errorc}->[0]= $errstr;
         $callback->(\%response);
       }
+      if($args[0] eq 'offline') {
+        unlink($tftpdir."/xcat/xnba/nodes/".$node);
+        unlink($tftpdir."/xcat/xnba/nodes/".$node.".pxelinux");
+      }
     }
   }
 
