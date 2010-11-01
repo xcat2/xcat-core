@@ -1506,12 +1506,18 @@ sub lhea_adapter {
         $cfgdata  =~ /lhea_logical_ports=([^$delim]+)|$/;
                                               
         my @lhea = split ",", $1;
-        foreach ( @lhea ) {
-            if ( /(\w+)\/(\w+)$/ ) {
-                my $id = ($1 =~ /(\d+)/) ? $1+1 : $1;
-                s/(\w+)\/(\w+)$/$id\/$2/;
+        foreach ( @lhea ) 
+        {
+            if ( /^(\d+)\/(\d+)\/(\d+)\/(\d+)/) 
+            {
+                my $id = $4;
+                if($id =~ /\d+/) 
+                {
+                    $id = $id + 1;
+                }
+                s/^(\d+)\/(\d+)\/(\d+)\/(\d+)/$1\/$2\/$3\/$id/;
             } 
-        }
+        }        
         my $adapters = "lhea_logical_ports=".join( ",", @lhea );
         $cfgdata =~ s/lhea_logical_ports=[^$delim]+/$adapters/;
     }
