@@ -2050,7 +2050,7 @@ function createZProvisionNew(inst) {
 	// Create group input
 	var group = $('<div></div>');
 	var groupLabel = $('<label>Group:</label>');
-	var groupInput = $('<input type="text" name="group"/>');
+	var groupInput = $('<input type="text" name="group" title="You must give the group name that the node(s) will be placed under"/>');
 	// Get groups on-focus
 	groupInput.one('focus', function(){
 		var groupNames = $.cookie('Groups');
@@ -2066,19 +2066,19 @@ function createZProvisionNew(inst) {
 	// Create node input
 	var nodeName = $('<div></div>');
 	var nodeLabel = $('<label>Node:</label>');
-	var nodeInput = $('<input type="text" name="nodeName"/>');
+	var nodeInput = $('<input type="text" name="nodeName" title="You must give a node or a node range. A node range must be given as: node1-node9 or node[1-9]."/>');
 	nodeName.append(nodeLabel);
 	nodeName.append(nodeInput);
 	provNew.append(nodeName);
 
 	// Create user ID input
-	var userId = $('<div><label>User ID:</label><input type="text" name="userId"/></div>');
+	var userId = $('<div><label>User ID:</label><input type="text" name="userId" title="You must give a user ID or a user ID range. A user ID range must be given as: user1-user9 or user[1-9]."/></div>');
 	provNew.append(userId);
 
 	// Create hardware control point input
 	var hcpDiv = $('<div></div>');
 	var hcpLabel = $('<label for="hcp">Hardware control point:</label>');
-	var hcpInput = $('<input type="text" name="hcp"/>');
+	var hcpInput = $('<input type="text" name="hcp" title="You must give the System z hardware control point (zHCP) responsible for managing the node(s)"/>');
 	hcpInput.blur(function() {
 		if ($(this).val()) {
 			var args = $(this).val().split('.');
@@ -2105,7 +2105,7 @@ function createZProvisionNew(inst) {
 	// Create operating system image input
 	var os = $('<div></div>');
 	var osLabel = $('<label for="os">Operating system image:</label>');
-	var osInput = $('<input type="text" name="os"/>');
+	var osInput = $('<input type="text" name="os" title="You must give the operating system to install on this node or node range, e.g. rhel5.5-s390x-install-compute"/>');
 	// Get image names on focus
 	osInput.one('focus', function(){
 		var imageNames = $.cookie('ImageNames');
@@ -2216,6 +2216,14 @@ function createZProvisionNew(inst) {
 	diskDiv.append(diskLabel);
 	diskDiv.append(diskTable);
 	provNew.append(diskDiv);
+	
+	// Generate tooltips
+	provNew.find('div input[title]').tooltip({
+		position: "center right",	// Place tooltip on the right edge
+		offset: [-2, 10],	// A little tweaking of the position
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		opacity: 0.7		// Custom opacity setting
+	});
 	
 	/**
 	 * Provision new
