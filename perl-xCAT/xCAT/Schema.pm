@@ -781,8 +781,8 @@ site => {
    " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
    " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
    "                 removing DHCP entries when noderm is executed)\n\n".
-   " sshbetweennodes:  List of groups to enable passwordless root ssh \n".
-   "                   during install, or xdsh -K. Default is ALLGROUPS.\n".
+   " sshbetweennodes:  Comma separated list of groups to enable passwordless root \n".
+   "                   ssh during install, or xdsh -K. Default is ALLGROUPS.\n".
    "                   Set to NOGROUPS,if you do not wish to enabled any groups.\n".
    "                   Service Nodes are not affected by this attribute\n".
    "                   they are always setup with\n".
