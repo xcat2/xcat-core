@@ -166,6 +166,7 @@ ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monrm
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/monshow
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/sinv
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/rollupdate
+ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/runrollupdate
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/webrun
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/ilitefile
 ln -sf ../bin/xcatclientnnr $RPM_BUILD_ROOT/%{prefix}/bin/liteimg
