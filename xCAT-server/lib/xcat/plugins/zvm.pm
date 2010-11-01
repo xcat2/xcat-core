@@ -1109,6 +1109,20 @@ sub changeVM {
 		}
 	}
 
+	# resetsmapi
+	elsif ( $args->[0] eq "--resetsmapi" ) {		
+		# Force each worker machine off
+		my @workers = ('VSMWORK1', 'VSMWORK2', 'VSMWORK3', 'VSMREQIN', 'VSMREQIU');
+		foreach ( @workers ) {
+			$out = `ssh $hcp "vmcp force $_ logoff immediate"`;
+		}
+				
+		# Log on VSMWORK1
+		$out = `ssh $hcp "vmcp xautolog VSMWORK1"`;
+		
+		$out = "$node: Resetting SMAPI... Done";
+	}
+	
 	# setipl [ipl target] [load parms] [parms]
 	elsif ( $args->[0] eq "--setipl" ) {
 		my $trgt      = $args->[1];
