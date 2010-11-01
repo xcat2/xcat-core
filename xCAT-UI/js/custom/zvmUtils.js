@@ -1925,7 +1925,7 @@ function createZProvisionExisting(inst) {
 	// Create operating system image input
 	var os = $('<div></div>');
 	var osLabel = $('<label for="os">Operating system image:</label>');
-	var osInput = $('<input type="text" name="os"/>');
+	var osInput = $('<input type="text" name="os" title="You must give the operating system to install on this node or node range, e.g. rhel5.5-s390x-install-compute"/>');
 	// Get image names on focus
 	osInput.one('focus', function(){
 		var imageNames = $.cookie('ImageNames');
@@ -1951,6 +1951,14 @@ function createZProvisionExisting(inst) {
 	bootMethod.append(methoddLabel);
 	bootMethod.append(methodSelect);
 	provExisting.append(bootMethod);
+	
+	// Generate tooltips
+	provExisting.find('div input[title]').tooltip({
+		position: "center right",	// Place tooltip on the right edge
+		offset: [-2, 10],	// A little tweaking of the position
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		opacity: 0.7		// Custom opacity setting
+	});
 	
 	/**
 	 * Provision existing
