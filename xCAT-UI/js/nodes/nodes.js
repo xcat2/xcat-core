@@ -152,7 +152,7 @@ function loadGroups(data) {
     });
 	
 	// Create link to add nodes
-	var addNodeLink = $('<a>Add node</a>');
+	var addNodeLink = $('<a title="Add a node or a node range to xCAT">Add node</a>');
 	addNodeLink.bind('click', function(event) {
 		var info = createInfoBar('Select the hardware management for the new node range');
 		var addNodeForm = $('<div class="form"></div>');
@@ -209,6 +209,15 @@ function loadGroups(data) {
 		});
 
 	});
+	
+	// Generate tooltips
+	addNodeLink.tooltip({
+		position: "center right",	// Place tooltip on the right edge
+		offset: [-2, 10],	// A little tweaking of the position
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		opacity: 0.7		// Custom opacity setting
+	});
+	
 	$('#groups').append(addNodeLink);
 }
 
@@ -264,7 +273,7 @@ function loadNodes(data) {
 	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node', 
 		'<a>ping</a><img src="images/loader.gif"></img>', 
 		'<a>power</a><img src="images/loader.gif"></img>');
-
+		
 	// Create a datatable
 	var dTable = new DataTable('nodesDataTable');
 	dTable.init(sorted);
@@ -815,9 +824,17 @@ function loadUnlockPage(tgtNodes) {
 	var infoBar = createInfoBar('Give the root password for this node range to setup its SSH keys');
 	unlockForm.append(infoBar);
 
-	unlockForm.append('<div><label>Target node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '"/></div>');
-	unlockForm.append('<div><label>Password:</label><input type="password" id="password" name="password"/></div>');
+	unlockForm.append('<div><label>Target node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '" title="The node or node range to unlock"/></div>');
+	unlockForm.append('<div><label>Password:</label><input type="password" id="password" name="password" title="The root password to unlock this node"/></div>');
 
+	// Generate tooltips
+	unlockForm.find('div input[title]').tooltip({
+		position: "center right",	// Place tooltip on the right edge
+		offset: [-2, 10],	// A little tweaking of the position
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		opacity: 0.7		// Custom opacity setting
+	});
+	
 	/**
 	 * Ok
 	 */
@@ -901,7 +918,7 @@ function loadScriptPage(tgtNodes) {
 	scriptForm.append(infoBar);
 
 	// Target node or group
-	var tgt = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
+	var tgt = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to run a given script against"/></div>');
 	scriptForm.append(tgt);
 
 	// Upload file
@@ -913,6 +930,14 @@ function loadScriptPage(tgtNodes) {
 	upload.append(file);
 	upload.append(subBtn);
 	scriptForm.append(upload);
+	
+	// Generate tooltips
+	scriptForm.find('div input[title]').tooltip({
+		position: "center right",	// Place tooltip on the right edge
+		offset: [-2, 10],	// A little tweaking of the position
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		opacity: 0.7		// Custom opacity setting
+	});
 
 	// Script
 	var script = $('<div><label>Script:</label><textarea/>');

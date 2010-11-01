@@ -47,7 +47,7 @@ function loadNetbootPage(tgtNodes) {
 	netbootForm.append(infoBar);
 
 	// Create target node or group input
-	var target = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
+	var target = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to boot to network"/></div>');
 	netbootForm.append(target);
 
 	// Create options
@@ -94,11 +94,19 @@ function loadNetbootPage(tgtNodes) {
 		// If it is zvm
 		if (mgt == 'zvm') {
 			// Add IPL input
-			netbootForm.append('<div><label for="ipl">IPL:</label><input type="text" name="ipl"/></div>');
+			netbootForm.append('<div><label for="ipl">IPL:</label><input type="text" name="ipl" title="The virtual address to IPL"/></div>');
 			break;
 		}
 	}
 
+	// Generate tooltips
+	netbootForm.find('div input[title]').tooltip({
+		position: "center right",	// Place tooltip on the right edge
+		offset: [-2, 10],	// A little tweaking of the position
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		opacity: 0.7		// Custom opacity setting
+	});
+	
 	/**
 	 * Ok
 	 */

@@ -4,7 +4,7 @@
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
-.ui-dialog label, .ui-dialog input, .ui-dialog p, .ui-dialog button {
+.ui-dialog label,.ui-dialog input,.ui-dialog p,.ui-dialog button {
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
@@ -12,9 +12,24 @@
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
+/***************** Tooltip *****************/
+.tooltip {
+	background-color: #000;
+	border: 1px solid #fff;
+	padding: 10px 15px;
+	width: 200px;
+	display: none;
+	color: #fff;
+	text-align: left;
+	font-size: 10px;
+	/* Outline radius for firefox only */
+	-moz-box-shadow: 0 0 10px #000;
+	-webkit-box-shadow: 0 0 10px #000;
+}
+
 /****************** Header ******************/
 #header {
-	height : 40px;
+	height: 40px;
 	width: 1000px;
 	margin: 0px auto;
 	background: url(../images/header-gloss-wave.png) 50% 50% repeat-x;
@@ -25,7 +40,7 @@
 }
 
 #header ul {
-	float : left;
+	float: left;
 	list-style: none;
 	padding: 0 0 0 30px;
 	margin: 0;
@@ -54,11 +69,11 @@
 	background-color: #A9D0F5;
 }
 
-/* User name and log out */	
+/* User name and log out */
 #header div {
 	float: right;
 }
-	
+
 #header div span {
 	color: #424242;
 	padding: 2px 15px 0px 2px; /* Top right left bottom*/
@@ -161,7 +176,8 @@ span.ui-icon-info {
 }
 
 .ui-button:hover {
-	background: url(../images/jquery/ui-bg_inset-hard_100_fcfdfd_1x100.png) 50% 50% repeat-x;
+	background: url(../images/jquery/ui-bg_inset-hard_100_fcfdfd_1x100.png)
+		50% 50% repeat-x;
 }
 
 /****************** Tabs ******************/
@@ -216,7 +232,7 @@ span.ui-icon-info {
 	vertical-align: middle;
 }
 
-.tab span a, .tab li a {
+.tab span a,.tab li a {
 	text-decoration: none;
 	cursor: pointer;
 }
@@ -524,7 +540,7 @@ span.ui-icon-info {
 	display: inline-table;
 }
 
-.form input, .form textarea, .form select {
+.form input,.form textarea,.form select {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 5px;
@@ -595,12 +611,12 @@ table a:hover {
 }
 
 /****************** Provision and monitor forms ******************/
-.provision div, .monitor div {
+.provision div,.monitor div {
 	margin: 10px 0;
 	display: block;
 }
 
-.provision textarea, .monitor textarea {
+.provision textarea,.monitor textarea {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border: solid 1px #BDBDBD;
 	padding: 5px;
@@ -609,15 +625,15 @@ table a:hover {
 	height: 150px;
 }
 
-.monitorsumdiv{
-	width : 300px;
-	height : 150px;
-	float : left;
-	margin : 0px 0px 10px 0px;
+.monitorsumdiv {
+	width: 300px;
+	height: 150px;
+	float: left;
+	margin: 0px 0px 10px 0px;
 }
 
-.monitornodediv{
-	width : 240px;
-	height : 120px;
-	margin : 0px 0px 15px 0px;
+.monitornodediv {
+	width: 240px;
+	height: 120px;
+	margin: 0px 0px 15px 0px;
 }

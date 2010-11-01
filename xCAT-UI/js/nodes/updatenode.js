@@ -61,7 +61,7 @@ function loadUpdatenodePage(tgtNodes) {
 	updatenodeForm.append(infoBar);
 
 	// Create target node or group input
-	var target = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
+	var target = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to update"/></div>');
 	updatenodeForm.append(target);
 
 	// Create options
@@ -101,7 +101,7 @@ function loadUpdatenodePage(tgtNodes) {
 	updateOpt.append('Update existing software');
 		
 	// Create source directory input
-	var scrDirectory = $('<li><label for="srcDirectory">Source directory:</label><input type="text" name="srcDirectory"/></li>');
+	var scrDirectory = $('<li><label for="srcDirectory">Source directory:</label><input type="text" name="srcDirectory" title="You must give the source directory containing the updated software packages"/></li>');
 	scrDirectory.hide();
 	optsList.append(scrDirectory);
 	
@@ -152,7 +152,7 @@ function loadUpdatenodePage(tgtNodes) {
 	optsList.append(postOpt);
 	postOpt.append(postChkBox);
 	postOpt.append('Run postscripts');
-	var postscripts = $('<li><label for="postscripts">Postscripts:</label><input type="text" name="postscripts"/></li>');
+	var postscripts = $('<li><label for="postscripts">Postscripts:</label><input type="text" name="postscripts" title="You must give the postscript(s) to run"/></li>');
 	postscripts.hide();
 	optsList.append(postscripts);
 	
@@ -177,7 +177,7 @@ function loadUpdatenodePage(tgtNodes) {
     	
     	var os = $('<li></li>').hide();
     	var osLabel = $('<label for="os">Operating system:</label>');
-    	var osInput = $('<input type="text" name="os"/>');
+    	var osInput = $('<input type="text" name="os" title="You must give the operating system to upgrade to, e.g. rhel5.5"/>');
     	osInput.one('focus', function(){
     		var tmp = $.cookie('OSVers');
     		if (tmp) {
@@ -198,6 +198,14 @@ function loadUpdatenodePage(tgtNodes) {
     		}
     	});
 	}
+	
+	// Generate tooltips
+	updatenodeForm.find('div input[title]').tooltip({
+		position: "center right",	// Place tooltip on the right edge
+		offset: [-2, 10],	// A little tweaking of the position
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		opacity: 0.7		// Custom opacity setting
+	});
 	
 	/**
 	 * Ok

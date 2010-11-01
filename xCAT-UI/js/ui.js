@@ -414,7 +414,7 @@ function createMenu(items) {
  * @return Nothing
  */
 function initPage() {
-	// Load javascripts
+	// JQuery plugins
 	includeJs("js/jquery/jquery.dataTables.min.js");
 	includeJs("js/jquery/jquery.form.js");
 	includeJs("js/jquery/jquery.jeditable.js");
@@ -425,6 +425,9 @@ function initPage() {
 	includeJs("js/jquery/hoverIntent.js");
 	includeJs("js/jquery/jquery.tree.js");
 	includeJs("js/jquery/jquery.flot.js");
+	includeJs("js/jquery/tooltip.min.js");
+	
+	// Page plugins
 	includeJs("js/configure/configure.js");	
 	includeJs("js/monitor/monitor.js");
 	includeJs("js/nodes/nodes.js");

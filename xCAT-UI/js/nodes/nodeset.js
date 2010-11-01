@@ -50,7 +50,7 @@ function loadNodesetPage(tgtNodes) {
 	nodesetForm.append(infoBar);
 
 	// Create target node or group
-	var tgt = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '"/></div>');
+	var tgt = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to set the boot state for"/></div>');
 	nodesetForm.append(tgt);
 
 	// Create boot method drop down
@@ -82,7 +82,7 @@ function loadNodesetPage(tgtNodes) {
 	// Create operating system input
 	var os = $('<div></div>');
 	var osLabel = $('<label for="os">Operating system:</label>');
-	var osInput = $('<input type="text" name="os"/>');
+	var osInput = $('<input type="text" name="os" title="You must give the operating system of this node or node range, e.g. rhel5.5"/>');
 	osInput.one('focus', function(){
 		var tmp = $.cookie('OSVers');
 		if (tmp) {
@@ -97,7 +97,7 @@ function loadNodesetPage(tgtNodes) {
 	// Create architecture input
 	var arch = $('<div></div>');
 	var archLabel = $('<label for="arch">Architecture:</label>');
-	var archInput = $('<input type="text" name="arch"/>');
+	var archInput = $('<input type="text" name="arch" title="You must give the architecture of this node or node range, e.g. s390x"/>');
 	archInput.one('focus', function(){
 		var tmp = $.cookie('OSArchs');
 		if (tmp) {
@@ -112,7 +112,7 @@ function loadNodesetPage(tgtNodes) {
 	// Create profiles input
 	var profile = $('<div></div>');
 	var profileLabel = $('<label for="profile">Profile:</label>');
-	var profileInput = $('<input type="text" name="profile"/>');
+	var profileInput = $('<input type="text" name="profile" title="You must give the profile for this node or node range.  The typical default profile is: compute."/>');
 	profileInput.one('focus', function(){
 		tmp = $.cookie('Profiles');
 		if (tmp) {
@@ -124,6 +124,14 @@ function loadNodesetPage(tgtNodes) {
 	profile.append(profileInput);
 	nodesetForm.append(profile);
 
+	// Generate tooltips
+	nodesetForm.find('div input[title]').tooltip({
+		position: "center right",	// Place tooltip on the right edge
+		offset: [-2, 10],	// A little tweaking of the position
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		opacity: 0.7		// Custom opacity setting
+	});
+	
 	/**
 	 * Ok
 	 */

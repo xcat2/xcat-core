@@ -59,15 +59,15 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		var cloneForm = $('<div class="form"></div>');
 		cloneForm.append(statBar);
 		cloneForm.append(infoBar);
-		cloneForm.append('<div><label>Target node range:</label><input type="text" id="tgtNode" name="tgtNode"/></div>');
-		cloneForm.append('<div><label>Target user ID range:</label><input type="text" id="tgtUserId" name="tgtUserId"/></div>');
-		cloneForm.append('<div><label>Clone source:</label><input type="text" id="srcNode" name="srcNode" readonly="readonly" value="' + node + '"/></div>');
-		cloneForm.append('<div><label>Hardware control point:</label><input type="text" id="newHcp" name="newHcp" readonly="readonly" value="' + hcp + '"/></div>');
+		cloneForm.append('<div><label>Target node range:</label><input type="text" id="tgtNode" name="tgtNode" title="You must give a node or a node range. A node range must be given as: node1-node9 or node[1-9]."/></div>');
+		cloneForm.append('<div><label>Target user ID range:</label><input type="text" id="tgtUserId" name="tgtUserId" title="You must give a user ID or a user ID range. A user ID range must be given as: user1-user9 or user[1-9]."/></div>');
+		cloneForm.append('<div><label>Clone source:</label><input type="text" id="srcNode" name="srcNode" readonly="readonly" value="' + node + '" title="The source node to be cloned"/></div>');
+		cloneForm.append('<div><label>Hardware control point:</label><input type="text" id="newHcp" name="newHcp" readonly="readonly" value="' + hcp + '" title="The System z hardware control point (zHCP) responsible for managing the node(s). It must be the same as the source node."/></div>');
 
 		// Create group input
 		var group = $('<div></div>');
 		var groupLabel = $('<label for="group">Group:</label>');
-		var groupInput = $('<input type="text" id="newGroup" name="newGroup"/>');
+		var groupInput = $('<input type="text" id="newGroup" name="newGroup" title="You must give the group where the new node(s) will be placed under."/>');
 		groupInput.one('focus', function(){
 			var groupNames = $.cookie('Groups');
 			if (groupNames) {
@@ -86,13 +86,21 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		// Create disk pool input
 		var poolDiv = $('<div></div>');
 		var poolLabel = $('<label>Disk pool:</label>');
-		var poolInput = $('<input type="text" id="diskPool" name="diskPool"/>').autocomplete(diskPools.split(','));
+		var poolInput = $('<input type="text" id="diskPool" name="diskPool" title="You must give a disk pool. xCAT relies on DirMaint to allocate minidisks out of a pool of DASD volumes. These DASD volume pools are defined in the EXTENT CONTROL file."/>').autocomplete(diskPools.split(','));
 		poolDiv.append(poolLabel);
 		poolDiv.append(poolInput);
 		cloneForm.append(poolDiv);
 
-		cloneForm.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw"/></div>');
+		cloneForm.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw" title="The password that will be used for accessing the disk. This input is optional."/></div>');
 
+		// Generate tooltips
+		cloneForm.find('div input[title]').tooltip({
+			position: "center right",	// Place tooltip on the right edge
+			offset: [-2, 10],	// A little tweaking of the position
+			effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+			opacity: 0.7		// Custom opacity setting
+		});
+		
 		/**
 		 * Clone node
 		 */
@@ -915,7 +923,7 @@ zvmPlugin.prototype.addNode = function() {
 	addNodeForm.append('<div><label for="userId">User ID range:</label><input type="text" id="userId" name="userId"/></div>');
 	addNodeForm.append('<div><label for="hcp">Hardware control point:</label><input type="text" id="hcp" name="hcp"/></div>');
 	addNodeForm.append('<div><label for="group">Group:</label><input type="text" id="group" name="group"/></div>');
-					
+	
 	// Open form as a dialog
 	addNodeForm.dialog({
 		modal: true,
