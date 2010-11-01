@@ -110,11 +110,13 @@ umask 0077
 
 mkdir -p /root/.ssh/
 sleep 1
-getcredentials.awk ssh_root_key | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_key
+if [ $ENABLESSHBETWEENNODES = "YES" ];
+then 
+  getcredentials.awk ssh_root_key | grep -E -v '</{0,1}xcatresponse>|</{0,1}serverdone>'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /tmp/ssh_root_key
 
-#check whether the message is an error or not
-grep -E '<error>' /tmp/ssh_root_key
-if [ $? -ne 0 ]; then
+  #check whether the message is an error or not
+  grep -E '<error>' /tmp/ssh_root_key
+  if [ $? -ne 0 ]; then
 	#The message contains the data we request
 	cat /tmp/ssh_root_key | grep -E -v '</{0,1}data>|</{0,1}content>|</{0,1}desc>' > /root/.ssh/id_rsa
 	logger -t xCAT ssh_root_key
@@ -126,18 +128,19 @@ if [ $? -ne 0 ]; then
 		getcredentials.awk ssh_root_key | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.ssh/id_rsa
 		MYCONT=`cat /root/.ssh/id_rsa`
 	done
-else
+  else
 	#This is an error message
 	ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/ssh_root_key`
 	logger -t xCAT ssh_root_key Error: $ERR_MSG
-fi
-rm /tmp/ssh_root_key
+  fi
+  rm /tmp/ssh_root_key
 
-if ! grep "PRIVATE KEY" /root/.ssh/id_rsa > /dev/null 2>&1 ; then
-   rm /root/.ssh/id_rsa
-fi
-if [ -r /root/.ssh/id_rsa ]; then
-   ssh-keygen -y -f /root/.ssh/id_rsa > /root/.ssh/id_rsa.pub
+  if ! grep "PRIVATE KEY" /root/.ssh/id_rsa > /dev/null 2>&1 ; then
+     rm /root/.ssh/id_rsa
+  fi
+  if [ -r /root/.ssh/id_rsa ]; then
+     ssh-keygen -y -f /root/.ssh/id_rsa > /root/.ssh/id_rsa.pub
+  fi
 fi
 
 # start up the sshd for syncfiles postscript to do the sync work
