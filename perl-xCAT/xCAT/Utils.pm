@@ -6047,6 +6047,91 @@ sub getAppStatus
     return $ret_nodeappstat;
 
 }
+#-------------------------------------------------------------------------------
+
+=head3  enableSSH 
+    Description:
+        Reads the site.sshbetweennodes attribute and determines
+        if the input node should be enabled to ssh between nodes 
+    Arguments:
+        $node 
+    Returns:
+       1 = enable ssh
+       0 = do not enable ssh 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+        my $eable = $xCAT::Utils::enablessh($node);
+    Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub enablessh 
+{
+
+    my ($class, $node) = @_;
+    my $enablessh=1;
+    if (xCAT::Utils->isSN($node)) 
+    {
+             $enablessh=1;   # service nodes always enabled
+    }
+    else
+    {
+
+        # if not a service node we need to check, before enabling
+        my $sitetab    = xCAT::Table->new('site');
+        my $attr = "sshbetweennodes";
+        my $ref = $sitetab->getAttribs({key => $attr}, 'value');
+        if ($ref)
+        {
+            my $values = $ref->{value};
+            my @groups = split(/,/, $values);
+            if (grep(/^ALLGROUPS$/, @groups))
+            {
+              $enablessh=1;
+            }
+            else
+            {
+                if (grep(/^NOGROUPS$/, @groups))
+                {
+                      $enablessh=0;
+                }
+                else
+                {    # check to see if the node is a member of a group
+                    my $ismember = 0;
+                    foreach my $group (@groups)
+                    {
+                        $ismember = xCAT::Utils->isMemberofGroup($node, $group);
+                        if ($ismember == 1)
+                        {
+                            last;
+                        }
+                    }
+                    if ($ismember == 1)
+                    {
+                        $enablessh=1;
+                    }
+                    else
+                    {
+                        $enablessh=0;
+                    }
+                }
+            }
+        }
+        else
+        {    # does not exist, set default
+            $enablessh=1;
+
+        }
+    }
+
+    return $enablessh;
+
+}
 
 
 1;
