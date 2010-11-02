@@ -31,8 +31,8 @@
    environment variable. 
    
    -r flag will help you to remove DB2 from xCAT and uninstall DB2 from either
-   management node or service node. if you want to use -r flag on serivce node, 
-   you should also use -s flag together.
+   management node or service node. The flag -r and -S used together for 
+   management node, and -r and -C are used together for service node.
 =cut
 
 BEGIN
@@ -1507,7 +1507,7 @@ sub remove
         if ($::RUNCMD_RC == 0)
         {  
             #if it is management node, need to backup database
-            if (!($::Client))
+            if (!($::CLIENT))
             {
             	xCAT::MsgUtils->message("I","Begin to backup database, this would take a while");
             	
@@ -1585,7 +1585,7 @@ sub remove
             	exit(1);
             }
                 	
-            if (!($::Client))
+            if (!($::CLIENT))
             {        	
                 my $cmd = "XCATBYPASS=1 restorexCATdb -p $backupdic";
                 xCAT::Utils->runcmd($cmd, -1);   
@@ -1595,14 +1595,7 @@ sub remove
                 	xCAT::MsgUtils->message("E", "$message");
                 	exit(1);
                 }
-            	my $cmd = "rm -rf $backupdic";
-                xCAT::Utils->runcmd($cmd, -1);        	
-            	if ($::RUNCMD_RC !=0)
-            	{        	
-            		my $message = "can't remove $backupdic";
-            		xCAT::MsgUtils->message("E", "$message");        			
-            	    #exit(1);
-            	}                 
+                
             }
             
             
@@ -1627,7 +1620,7 @@ sub remove
             
 
     xCAT::MsgUtils->message("I", "Begin to remove DB2 \n");  
-    if (!($::Client))
+    if (!($::CLIENT))
     { 
         #remove database
         my $cmd = "db2 force application all";
@@ -1667,20 +1660,32 @@ sub remove
     {
    	     my $message = "can't drop DB2 instance \n";
    	     xCAT::MsgUtils->message("E", "$message");
-   	     #exit(1);
+   	     exit(1);
     }
     
-    #uninstall DB2
+    #check if all the instances have been removed
     $cmd = $::installdb2dir;
-    $cmd = $cmd."/install/db2_deinstall -a";        	    
+    $cmd = $cmd."/instance/db2ilist";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC !=0) 
     {
-   	    my $message = "can't uninstall DB2 \n";
-   	    xCAT::MsgUtils->message("E", "$message");
-   	    #exit(1);
-    }        	                                 
-    xCAT::MsgUtils->message("I", "Remove DB2 successfully, begin to cleanup the enviroment. \n");        
+   	     my $message = "there is still instance, can't uninstall DB2\n";
+   	     xCAT::MsgUtils->message("E", "$message");
+    }    
+    else
+    {
+        #uninstall DB2
+        $cmd = $::installdb2dir;
+        $cmd = $cmd."/install/db2_deinstall -a";        	    
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC !=0) 
+        {
+   	        my $message = "can't uninstall DB2 \n";
+   	        xCAT::MsgUtils->message("E", "$message");
+   	        #exit(1);
+        }        	                                 
+        xCAT::MsgUtils->message("I", "Remove DB2 successfully, begin to cleanup the enviroment. \n");
+    }        
     
       
     #unconfig enviroment
@@ -1732,7 +1737,7 @@ sub remove
     }
     else
     {
-        $cmd = "groupdel xcatd";
+        $cmd = "groupdel xcatdb";
     }    
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
@@ -1770,22 +1775,28 @@ sub remove
     }  
     
     
-    #open(FH,"+<$file2") or die "cannot open file $file2 \n";
-    #while (<FH>)
-    #{
-    #    if((/xcatdb/)||(/EXTSHM/))
-    #    {
-    #        my $pos=tell(FH);
-    #        seek(FH,$pos,0);
-    #        my $line="#";
-    #        print FH $line;
-    #     }        
-    #}
-    #close(FH); 
-    $cmd = "cat $file2 | sed s/.*xcatdb.*// > $file2";
+    open(FH,"+<$file2") or die "cannot open file $file2 \n";   
+    $cmd = "touch /etc/tmp.back";
     xCAT::Utils->runcmd($cmd, -1);
-    $cmd = "cat $file2 | sed s/.*EXTSHM.*// > $file2";        
-    xCAT::Utils->runcmd($cmd, -1);
+    open(DH,"+</etc/tmp.back") or die "cannot open file tmp.back \n";  
+    foreach (<FH>)
+    {
+    	my $line = $_;
+        if(($line =~ /xcatdb/) or ($line =~ /EXTSHM/))
+        {
+            $line =~ s/$line/# $line/;
+         }
+         print DH $line;
+    }
+    close(FH);
+    close(DH);
+    $cmd = "mv /etc/tmp.back $file2";
+    xCAT::Utils->runcmd($cmd, -1);   
+           
+    #$cmd = "cat $file2 | sed s/.*xcatdb.*// > $file2";
+    #xCAT::Utils->runcmd($cmd, -1);
+    #$cmd = "cat $file2 | sed s/.*EXTSHM.*// > $file2";        
+    #xCAT::Utils->runcmd($cmd, -1);
         
     xCAT::MsgUtils->message("I", "Cleanup completely finished. \n");        
     
