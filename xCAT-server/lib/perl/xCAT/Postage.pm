@@ -180,64 +180,14 @@ sub makescript
         }
     }    # end site table attributes
          # read the sshbetweennodes attribute and process
-    if (xCAT::Utils->isSN($node))
-    {
+    my $enablessh=xCAT::Utils->enablessh($node); 
+    if ($enablessh == 1) {
         push @scriptd, "ENABLESSHBETWEENNODES=YES\n";
         push @scriptd, "export ENABLESSHBETWEENNODES\n";
-    }
-    else
-    {
-
-        # if not a service node we need to check, before enabling
-        my $attr = "sshbetweennodes";
-        my $ref = $sitetab->getAttribs({key => $attr}, 'value');
-        if ($ref)
-        {
-            my $values = $ref->{value};
-            my @groups = split(/,/, $values);
-            if (grep(/^ALLGROUPS$/, @groups))
-            {
-                push @scriptd, "ENABLESSHBETWEENNODES=YES\n";
-                push @scriptd, "export ENABLESSHBETWEENNODES\n";
-            }
-            else
-            {
-                if (grep(/^NOGROUPS$/, @groups))
-                {
-                    push @scriptd, "ENABLESSHBETWEENNODES=NO\n";
-                    push @scriptd, "export ENABLESSHBETWEENNODES\n";
-                }
-                else
-                {    # check to see if the node is a member of a group
-                    my $ismember = 0;
-                    foreach my $group (@groups)
-                    {
-                        $ismember = xCAT::Utils->isMemberofGroup($node, $group);
-                        if ($ismember == 1)
-                        {
-                            last;
-                        }
-                    }
-                    if ($ismember == 1)
-                    {
-                        push @scriptd, "ENABLESSHBETWEENNODES=YES\n";
-                        push @scriptd, "export ENABLESSHBETWEENNODES\n";
-                    }
-                    else
-                    {
-                        push @scriptd, "ENABLESSHBETWEENNODES=NO\n";
-                        push @scriptd, "export ENABLESSHBETWEENNODES\n";
-                    }
-                }
-            }
-        }
-        else
-        {    # does not exist, set default
-            push @scriptd, "ENABLESSHBETWEENNODES=YES\n";
-            push @scriptd, "export ENABLESSHBETWEENNODES\n";
-
-        }
-    }
+    } else {
+        push @scriptd, "ENABLESSHBETWEENNODES=NO\n";
+        push @scriptd, "export ENABLESSHBETWEENNODES\n";
+    }      
 
     if ($masterset == 0)
     {
