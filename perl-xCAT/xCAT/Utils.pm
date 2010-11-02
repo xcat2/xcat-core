@@ -761,7 +761,7 @@ sub isMemberofGroup
     my ($class, $node,$group ) = @_;
     my $ismember;
     my @nodes=xCAT::Utils->list_nodes_in_nodegroups($group); 
-    if (grep(/$node/, @nodes)) {
+    if (grep(/^$node$/, @nodes)) {
       $ismember =1;
     } else {
       $ismember =0;
