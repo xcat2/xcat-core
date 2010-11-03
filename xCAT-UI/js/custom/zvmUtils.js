@@ -47,6 +47,129 @@ function setNetworkDataTable(table) {
 }
 
 /**
+ * Load HCP specific info
+ * 
+ * @param data
+ *            Data from HTTP request
+ * @return Nothing
+ */
+function loadHcpInfo(data) {
+	var args = data.msg.split(';');
+	
+	// Get group
+	var group = args[0].replace('group=', '');
+	// Get hardware control point
+	var hcp = args[1].replace('hcp=', '');
+	
+	// Get user directory entry
+	var userEntry = data.rsp;
+	if (userEntry) {
+    	// Get disk pools
+    	$.ajax( {
+    		url : 'lib/cmd.php',
+    		dataType : 'json',
+    		data : {
+    			cmd : 'lsvm',
+    			tgt : hcp,
+    			args : '--diskpoolnames',
+    			msg : hcp
+    		},
+    
+    		success : setDiskPoolCookies
+    	});
+    
+    	// Get network names
+    	$.ajax( {
+    		url : 'lib/cmd.php',
+    		dataType : 'json',
+    		data : {
+    			cmd : 'lsvm',
+    			tgt : hcp,
+    			args : '--getnetworknames',
+    			msg : hcp
+    		},
+    
+    		success : setNetworkCookies
+    	});
+	} else {
+		// Create warning dialog 		
+		var warnDialog = $('<div class="ui-state-error ui-corner-all">'
+			+ '<p><span class="ui-icon ui-icon-alert"></span>'
+			+ 'z/VM SMAPI is not responding to ' + hcp + '.  It needs to be reset.</p>'
+		+ '</div>');
+				
+		// Open dialog
+		warnDialog.dialog({
+			modal: true,
+			width: 400,
+			buttons: {
+				"Reset": function(){
+					$(this).dialog("close");	
+					
+					// Reset SMAPI
+			    	$.ajax( {
+			    		url : 'lib/cmd.php',
+			    		dataType : 'json',
+			    		data : {
+			    			cmd : 'chvm',
+			    			tgt : hcp,
+			    			args : '--resetsmapi',
+			    			msg : 'group=' + group + ';hcp=' + hcp
+			    		},
+			    
+			    		/**
+			    		 * Refresh group tab
+			    		 * 
+			    		 * @param data
+			    		 *            Data from HTTP request
+			    		 * @return Nothing
+			    		 */
+			    		success : function(data) {			    			
+			    			var args = data.msg.split(';');
+			    			
+			    			// Get group
+			    			var group = args[0].replace('group=', '');
+			    			// Get hardware control point
+			    			var hcp = args[1].replace('hcp=', '');
+			    			
+			    			// Clear nodes division
+		    				$('#nodes').children().remove();
+		    				// Create loader
+		    				var loader = $('<center></center>').append(createLoader());
+		    
+		    				// Create a tab for this group
+		    				var tab = new Tab();
+		    				setNodesTab(tab);
+		    				tab.init();
+		    				$('#nodes').append(tab.object());
+		    				tab.add('nodesTab', 'Nodes', loader, false);
+		    
+		    				// Get nodes within selected group
+		    				$.ajax( {
+		    					url : 'lib/cmd.php',
+		    					dataType : 'json',
+		    					data : {
+		    						cmd : 'lsdef',
+		    						tgt : '',
+		    						args : group,
+		    						msg : group
+		    					},
+		    
+		    					success : loadNodes
+		    				});
+			    		} // End of function
+			    	});
+				},
+		
+				"Ignore": function() {
+					$(this).dialog("close");
+				}
+			}
+		});
+	}
+}
+
+/**
  * Load user entry of a given node
  * 
  * @param data

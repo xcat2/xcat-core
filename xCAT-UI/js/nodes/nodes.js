@@ -563,36 +563,24 @@ function loadNodes(data) {
 		for ( var h in hcps) {
 			// Get node without domain name
 			args = h.split('.');
-
-			// Get disk pools
+			
+			// Check if SMAPI is online
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
 				data : {
 					cmd : 'lsvm',
 					tgt : args[0],
-					args : '--diskpoolnames',
-					msg : args[0]
+					args : '',
+					msg : 'group=' + group + ';hcp=' + args[0]
 				},
 
-				success : setDiskPoolCookies
-			});
-
-			// Get network names
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'lsvm',
-					tgt : args[0],
-					args : '--getnetworknames',
-					msg : args[0]
-				},
-
-				success : setNetworkCookies
-			});
-		}
-	}
+				// Load hardware control point (HCP) specific info
+				// Get disk pools and network names
+				success : loadHcpInfo
+			});			
+		} // End of for
+	} // End of if
 }
 
 /**
