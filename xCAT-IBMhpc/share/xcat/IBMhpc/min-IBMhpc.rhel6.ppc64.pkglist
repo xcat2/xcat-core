@@ -4,7 +4,7 @@
 xinetd
 rsh
 rsh-server
-
+sed.ppc64
 
 compat-libstdc++-33.ppc
 compat-libstdc++-33.ppc64
