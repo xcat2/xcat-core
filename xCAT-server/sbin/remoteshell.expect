@@ -24,6 +24,7 @@
 #                  to the node,  or generated and then obtained to send to the
 #                  node.
 #   DSH_TO_USERID - The userid on the node where the ssh keys will be updated. 
+#   DSH_ENABLE_SSH - Node to node root passwordless ssh will be setup. 
 #
 # Usage: remoteshell.expect 
 #   [-t remote_shell hostname]  test the remoteshell on the host
@@ -216,8 +217,9 @@ if { [llength $argv] != 0 } {
 						exec /bin/kill $pid
 					}
 				}
-				set pid [ spawn $scp  $directory/id_rsa $to_userid\@$node:/tmp/$to_userid/.ssh ] 
-				expect {
+	                        if { [info exists env(DSH_ENABLE_SSH)] } {
+				 set pid [ spawn $scp  $directory/id_rsa $to_userid\@$node:/tmp/$to_userid/.ssh ] 
+				 expect {
 					"Are you sure you want to continue connecting (yes/no)?" {
 						send "yes\r"
 						exp_continue
@@ -229,6 +231,7 @@ if { [llength $argv] != 0 } {
 					"Permission denied*" {
 						exec /bin/kill $pid
 					}
+			         }
 				}
 				set pid [ spawn $scp  $directory/copy.sh $to_userid\@$node:/tmp/$to_userid/.ssh ] 
 				expect {
