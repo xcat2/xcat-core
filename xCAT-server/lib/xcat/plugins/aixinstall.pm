@@ -8136,6 +8136,135 @@ sub mkdsklsnode
     }    # end - for each node
 
     #
+    # External NFS support:
+    #   For shared_root:
+    #       Update shared_root/etc/.client_data/hosts.<nodename>
+    #       Update shared_root/etc/.client_data/filesystems.<nodename>
+    #   For non-shared_root:
+    #       Update root/<nodename>/etc/hosts
+    #       Update root/<nodename>/etc/filesystems
+    #
+
+    # convert the @nodesfailed to hash for search performance considerations
+    my %fnhash = ();
+    foreach my $fnd (@nodesfailed)
+    {
+        $fnhash{$fnd} = 1;
+    }
+
+    # Only do the update for the successful nodes
+    my @snode = ();
+    foreach my $nd (@nodelist)
+    {
+        if(!defined($fnhash{$nd}) || ($fnhash{$nd} != 1))
+        {
+            push(@snode, $nd);
+        }
+    }
+
+    if(scalar(@snode) > 0)
+    {
+        my $nfshash;
+        my $restab = xCAT::Table->new('noderes');
+        if ($restab)
+        {
+            $nfshash = $restab->getNodesAttribs(\@nodelist, ['nfsserver']);
+        }
+        foreach my $snd (@snode)
+        {
+            # nfsserver defined for this node
+            if($nfshash->{$snd}->[0]->{'nfsserver'})
+            {
+                # if nfsserver is set to the service node itself, nothing needs to do
+                if(!xCAT::InstUtils->is_me($nfshash->{$snd}->[0]->{'nfsserver'}))
+                {
+                    my $osimg = $imagehash{$snd}{'profile'};
+                    #shared_root configuration
+                    my $hostfile;
+                    my $filesystemsfile;
+                    if($imagehash{$osimg}{'shared_root'})
+                    {
+                        my $imgsrdir = xCAT::InstUtils->get_nim_attr_val(
+                                                        $imagehash{$osimg}{'shared_root'}, 
+                                                        "location", $callback, "", $subreq);
+                        $hostfile = "$imgsrdir/etc/.client_data/hosts.$snd";
+                        $filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$snd";
+                    }
+                    else # non-shared_root configuration
+                    {
+                        my $imgrootdir = xCAT::InstUtils->get_nim_attr_val(
+                                                          $imagehash{$osimg}{'root'},
+                                                          "location", $callback, "", $subreq);
+                        $hostfile = "$imgrootdir/$snd/etc/hosts";
+                        $filesystemsfile = "$imgrootdir/$snd/etc/filesystems";
+                    }
+                    my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
+                    if (!$nfshost || !$nfsip)
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                    }
+                    
+                    #Update etc/hosts file in the shared_root or root
+                    my $line = "$nfsip    $nfshost";
+                    my $cmd = "echo  $line >> $hostfile";
+                    xCAT::Utils->runcmd($cmd, 0);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Can not update the NIM hosts file $hostfile for node $snd";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                    }
+
+                    #Update etc/filesystems file in the shared_root or root
+                    my $fscontent;
+                    unless (open(FSFILE, "<$filesystemsfile"))
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Can not open the filesystems file $filesystemsfile for node $snd";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                    }
+                    while (my $line = <FSFILE>)
+                    {
+                        $fscontent .= $line;
+                    }
+
+                    # Update the mount server for / and /usr
+                    $fscontent =~ s/(\/:\s*\n\s+nodename\s+=\s+)(.*)/$1$nfshost/;
+                    $fscontent =~ s/(\/usr:\s*\n\s+nodename\s+=\s+)(.*)/$1$nfshost/;
+                    close(FSFILE);
+
+                    my $tmpfile = $filesystemsfile . ".tmp";
+                    unless (open(FSTMPFILE, ">$tmpfile"))
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Can not open the file $tmpfile for writing";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                    }
+                    print FSTMPFILE $fscontent;
+                    close(FSTMPFILE);
+
+                    my $cpcmd = "cp $tmpfile $filesystemsfile";
+                    xCAT::Utils->runcmd($cpcmd, 0);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Can not update the NIM filesystems file $filesystemsfile for node $snd";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                    }
+
+
+                } #end if(!xCAT::InstUtils->is_me...
+            }
+        }
+    }
+    #
     # update the node definitions with the new osimage - if provided
     #
     my %nodeattrs;
