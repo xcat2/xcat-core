@@ -197,7 +197,9 @@ sub setdestiny {
     $errored=0;
     $subreq->({command=>["mk$state"],
               node=>$req->{node}}, \&relay_response);
-    if ($errored) { return; }
+    if ($errored) { 
+        $callback->({error=>"Some nodes failed to set up $state resources, aborting"});
+        return; }
      
     my $ntents = $nodetypetable->getNodesAttribs($req->{node},[qw(os arch profile)]);
     foreach (@{$req->{node}}) {

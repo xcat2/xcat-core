@@ -26,6 +26,7 @@ sub subvars {
   my $self = shift;
   my $inf = shift;
   my $outf = shift;
+  $tmplerr=undef; #clear tmplerr since we are starting fresh
   $node = shift;
   my $pkglistfile=shift;
 
