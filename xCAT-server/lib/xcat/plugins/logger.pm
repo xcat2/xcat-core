@@ -93,7 +93,7 @@ sub process_request {
 	}elsif($request->{'_xcat_clienthost'}){
 		$noderange = $request->{'_xcat_clienthost'};
 	}else{
-		$callback->({error=>["Well Kemosabi, I can't figure out who you are."],errorcode=>[1]});
+		$callback->({error=>["No node names are given. I can't figure out who you are."],errorcode=>[1]});
 		return;
 	}
 

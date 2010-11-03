@@ -84,7 +84,7 @@ sub process_request {
             $request->{node} = $noderange;
         }
 	}else{
-		$callback->({error=>["Well Kemosabi, I can't figure out who you are."],errorcode=>[1]});
+		$callback->({error=>["No node names are given, I cannot figure out who you are."],errorcode=>[1]});
 		return;
 	}
 
