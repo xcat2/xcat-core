@@ -371,17 +371,29 @@ sub readFileInput {
             # Convert the following values to lowercase
             if ( ($attr eq 'scheduler') ||
                  ($attr eq 'updateall') ||
-                 ($attr eq 'shutdownrequired') ) {
+                 ($attr eq 'skipshutdown') ) {
                 $val =~ tr/A-Z/a-z/;   
             }
-            # set the value in the hash for this entry
-            push( @{ $::FILEATTRS{$attr} }, $val );
+ 
+            # Set some required defaults if not specified
             if (($prev_attr eq "prescript") && ($attr ne "prescriptnodes")) {
                 push ( @{ $::FILEATTRS{'prescriptnodes'} }, 'ALL_NODES_IN_UPDATEGROUP' );
             }
             if (($prev_attr eq "outofbandcmd") && ($attr ne "outofbandnodes")) {
                 push ( @{ $::FILEATTRS{'outofbandnodes'} }, 'ALL_NODES_IN_UPDATEGROUP' );
             }
+            if (($prev_attr eq "mutex") && ($attr ne "mutex_count")) {
+                push ( @{ $::FILEATTRS{'mutex_count'} }, '1' );
+            }
+            if (($prev_attr eq "nodegroup_mutex") && ($attr eq "mutex_count")) {
+               $attr = "nodegroup_mutex_count";
+            }
+            if (($prev_attr eq "nodegroup_mutex") && ($attr ne "nodegroup_mutex_count")) {
+                push ( @{ $::FILEATTRS{'nodegroup_mutex_count'} }, '1' );
+            }
+
+            # set the value in the hash for this entry
+            push( @{ $::FILEATTRS{$attr} }, $val );
             $prev_attr = $attr;
         }
     }    # end while - go to next line
@@ -573,21 +585,23 @@ sub ll_jobs {
      }
 
     $::updateall=0;
-    $::updateall_numperupdate=1;
+    $::updateall_nodecount=1;
     if ( defined($::FILEATTRS{updateall}[0])  &&
          ( ($::FILEATTRS{updateall}[0] eq 'yes') ||
            ($::FILEATTRS{updateall}[0] eq 'y'  ) ) ) {
         $::updateall=1;
-        if ( defined($::FILEATTRS{updateall_numperupdate}[0]) ) {
-            $::updateall_numperupdate=$::FILEATTRS{updateall_numperupdate}[0];
+        if ( defined($::FILEATTRS{updateall_nodecount}[0]) ) {
+            $::updateall_nodecount=$::FILEATTRS{updateall_nodecount}[0];
         }
     }
 
 
     # Create LL floating resources for mutual exclusion support
     #   and max_updates
-    if (&create_LL_mutex_resources > 0) {
-        return 1;
+    if (!$::updateall) {
+        if (&create_LL_mutex_resources($updategroup) > 0) {
+            return 1;
+        }
     }
 
     #
@@ -622,9 +636,7 @@ sub ll_jobs {
     close $TMPL_FILE;
 
     # Query LL for list of machines and their status
-###  LL BUG WORKAROUND -- MUST SET LOADL_STATUS_LEVEL=MACHINE
-    my $cmd = "LOADL_STATUS_LEVEL=MACHINE llstatus -r %n %sta 2>/dev/null";
-#    my $cmd = "llstatus -r %n %sta 2>/dev/null";
+    my $cmd = "llstatus -r %n %sta 2>/dev/null";
     if ($::VERBOSE) {
         my $rsp;
         push @{ $rsp->{data} }, "Running command: $cmd ";
@@ -801,6 +813,9 @@ sub ll_jobs {
         if (defined($::FILEATTRS{bringuptimeout}[0])){
             push (@ugdflines, "bringuptimeout=$::FILEATTRS{bringuptimeout}[0]\n");
         } 
+        if (defined($::FILEATTRS{skipshutdown}[0])){
+            push (@ugdflines, "skipshutdown=$::FILEATTRS{skipshutdown}[0]\n");
+        } 
         my $ugdf_file = $lljobs_dir . "/rollupdate_" . $ugname . ".data";
         my $UGDFFILE;
         unless ( open( $UGDFFILE, ">$ugdf_file" ) ) {
@@ -838,7 +853,7 @@ sub ll_jobs {
                     xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
                     return 1;
                 }
-                if ($::VRBOSE) {
+                if ($::VERBOSE) {
                     my $rsp;
                     push @{ $rsp->{data} }, "Writing LL hostlist file $llhl_file ";
                        xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
@@ -887,8 +902,8 @@ sub ll_jobs {
             my $lastcount = 0;
             my $llcount = $machinecount;
             if ($::updateall) {
-                $lastcount = $machinecount % $::updateall_numperupdate;
-                $llcount = $::updateall_numperupdate;
+                $lastcount = $machinecount % $::updateall_nodecount;
+                $llcount = $::updateall_nodecount;
             }
             my @jclines;
             my @jclines2;
@@ -1003,7 +1018,7 @@ sub ll_jobs {
             } else {
                 my $submit_count = 1;
                 if ($::updateall){ 
-                   $submit_count = $machinecount / $::updateall_numperupdate;
+                   $submit_count = $machinecount / $::updateall_nodecount;
                 }
                 for (1..$submit_count) {
                     @llsubmit = xCAT::Utils->runcmd( "$cmd", 0 );
@@ -1460,9 +1475,9 @@ sub get_mutex {
         return $mutex_string;
     }
 
-    my $mutex_count = scalar @::MUTEX;
-    if ( $mutex_count > 0 ) {
-        foreach my $row (0..($mutex_count-1)) {
+    my $num_mutexes = scalar @::MUTEX;
+    if ( $num_mutexes > 0 ) {
+        foreach my $row (0..($num_mutexes-1)) {
             foreach my $ugi (0..(@{$::MUTEX[$row]} - 1)) {
                 if ( defined($::MUTEX[$row][$ugi]) && ($ugname eq $::MUTEX[$row][$ugi]) ) {
                     $mutex_string .= "XCATROLLINGUPDATE_MUTEX".$row."(1) ";
@@ -1502,10 +1517,13 @@ sub get_mutex {
 #-----------------------------------------------------------------------------
 sub create_LL_mutex_resources {
 
+    my $updategroup=shift;
 
     $::LL_MUTEX_RESOURCES_CREATED = 0;
     my $mxindex=0;
+    my $fileattrs_index=0;
     foreach my $mxline ( @{ $::FILEATTRS{'mutex'} } ) {
+        my $mx_count = $::FILEATTRS{'mutex_count'}[$fileattrs_index];
         my @mxparts = split(/,/,$mxline);
         if ( scalar @mxparts < 2 ) {
             my $rsp;
@@ -1526,12 +1544,62 @@ sub create_LL_mutex_resources {
                 $::MUTEX[$mxindex2][$mxpi] = $ugname;
                 $mxindex2++;
             }
-            $mxindexmax = ($mxindex2 > $mxindexmax) ? $mxindex : $mxindexmax;
+            $mxindexmax = ($mxindex2 > $mxindexmax) ? $mxindex2 : $mxindexmax;
             $mxpi++;
         }
+        my $mxc;
+        for ($mxc=$mxindex; $mxc < $mxindexmax; $mxc++) {
+            $::MUTEX_COUNT[$mxc] = $mx_count;
+        }
         $mxindex = $mxindexmax;
+        $fileattrs_index++;
      }
 
+    # If nodegroup_mutex entries are specified, we need to use the 
+    # list of all the nodes in each updategroup for this entire run.
+    # Then we need to get a list of all the nodes in the specified
+    # nodegroup and look for any intersections to create mutexes.
+    $fileattrs_index=0;
+    foreach my $mxnodegrp_range ( @{ $::FILEATTRS{'nodegroup_mutex'} } ) {
+        my $mx_count = $::FILEATTRS{'nodegroup_mutex_count'}[$fileattrs_index];
+
+        foreach my $mxnodegroup ( xCAT::NameRange::namerange( $mxnodegrp_range, 0 ) ) {
+            my $mxpi = 0;
+mxnode_loop: foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
+               foreach my $ugname ( keys %{$updategroup} ) {
+                  foreach my $node ( @{ $updategroup->{$ugname} } ) {
+                     if ($mxnode eq $node) {
+                     # found a match, add updategroup to this mutex if we
+                     # don't already have it listed
+                        my $chk = 0;
+                        while ( $chk < $mxpi ){
+                            if ($::MUTEX[$mxindex][$chk] eq $ugname) {
+                                # already have this one, skip to next
+                                next mxnode_loop;
+                            }
+                            $chk++;
+                        }
+                        $::MUTEX[$mxindex][$mxpi] = $ugname;
+                        $mxpi++;
+                        next mxnode_loop;
+                     } # end if found match 
+                  }  
+               }
+            } # end mxnode_loop
+            if ($mxpi == 1) {
+               # only one updategroup in this mutex, not valid -- ignore it
+               undef $::MUTEX[$mxindex];
+            } elsif ( $mxpi > 1 ) {
+                $::MUTEX_COUNT[$mxindex] = $mx_count;
+                $mxindex++;
+            }
+        }
+        $fileattrs_index++;
+    }
+
+
+     # Build the actual FLOATING_RESOURCES and SCHEDULE_BY_RESOURCES
+     # strings to write into the LL database 
      my $resource_string = "";
      my $max_updates = $::FILEATTRS{'maxupdates'}[0];
      if ( ! defined($max_updates)  || ($max_updates eq 'all') ) {
@@ -1540,13 +1608,12 @@ sub create_LL_mutex_resources {
          $resource_string .= "XCATROLLINGUPDATE_MAXUPDATES($max_updates) ";
      }
 
-     my $mutex_count = scalar @::MUTEX;
-     if ( $mutex_count > 0 ) {
-        foreach my $row (0..($mutex_count-1)) {
- # TODO -- UNCOMMENT/REPLACE WHEN LL PROVIDES RESERVATION RESOURCES
-             $resource_string .= "XCATROLLINGUPDATE_MUTEX".$row."(1) ";
+     my $num_mutexes = scalar @::MUTEX;
+     if ( $num_mutexes > 0 ) {
+        foreach my $row (0..($num_mutexes-1)) {
+             $resource_string .= "XCATROLLINGUPDATE_MUTEX".$row."($::MUTEX_COUNT[$row]) ";
         }
-    }
+     }
 
      if ( $resource_string ) {
         my $cmd = "llconfig -d FLOATING_RESOURCES SCHEDULE_BY_RESOURCES CENTRAL_MANAGER_LIST RESOURCE_MGR_LIST";
@@ -1568,68 +1635,47 @@ sub create_LL_mutex_resources {
                 $llrms = $llval; }
         }
         $cmd = "llconfig -c ";
-        my $updateFLOAT = 0;
-        my $updateSCHED = 0;
-        foreach my $float (split(/\s+/,$resource_string)) {
-            $float =~ s/\(/./g;
-            $float =~ s/\)/./g;
-            if ( $curFLOAT !~ /$float/ ) {
-                $updateFLOAT = 1;
-                last;
-            }
-        }
-        if ($updateFLOAT) {
-            $curFLOAT =~ s/XCATROLLINGUPDATE_MUTEX(\d)*\((\d)*\)//g;
-            $curFLOAT =~ s/XCATROLLINGUPDATE_MAXUPDATES(\d)*\((\d)*\)//g;
-            $curFLOAT .= $resource_string;
-            $cmd .= "FLOATING_RESOURCES=\"$curFLOAT\" ";
-        }
+        $curFLOAT =~ s/XCATROLLINGUPDATE_MUTEX(\d)*\((\d)*\)//g;
+        $curFLOAT =~ s/XCATROLLINGUPDATE_MAXUPDATES(\d)*\((\d)*\)//g;
+        $curFLOAT .= $resource_string;
+        $cmd .= "FLOATING_RESOURCES=\"$curFLOAT\" ";
+
         $resource_string =~ s/\((\d)*\)//g;
-        foreach my $sched (split(/\s+/,$resource_string)) {
-            if ( $curSCHED !~ /$sched/ ) {
-                $updateSCHED = 1;
-                last;
-            }
-        }
-        if ($updateSCHED) {
-            $curSCHED =~ s/XCATROLLINGUPDATE_MUTEX(\d)*//g;
-            $curSCHED =~ s/XCATROLLINGUPDATE_MAXUPDATES(\d)*//g;
-            $curSCHED .= $resource_string;
-            $cmd .= "SCHEDULE_BY_RESOURCES=\"$curSCHED\" ";
-        }
-        if ( $updateFLOAT || $updateSCHED ) {
+        $curSCHED =~ s/XCATROLLINGUPDATE_MUTEX(\d)*//g;
+        $curSCHED =~ s/XCATROLLINGUPDATE_MAXUPDATES(\d)*//g;
+        $curSCHED .= $resource_string;
+        $cmd .= "SCHEDULE_BY_RESOURCES=\"$curSCHED\" ";
 # TODO -- WAITING ON LLCONFIG OPTION TO NOT SEND CFG CMD TO ALL
 ####          NODES.  NEED TO CHANGE CMD WHEN AVAILABLE.
-            my @llcfg_c;
-            if ($::TEST) {
-                my $rsp;
-                push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: $cmd ";
-                   xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-                $::RUNCMD_RC = 0;
-            } else {
-                @llcfg_c = xCAT::Utils->runcmd( $cmd, 0 );
-            }
-            $cmd = "llrctl reconfig";
-            my @llms = split(/\s+/,$llcms." ".$llrms);
-            my %have = ();
-            my @llnodes;
-            foreach my $m (@llms) {
-               my ($sm,$rest) = split(/\./,$m);
-               push(@llnodes, $sm) unless $have{$sm}++;
-            }
-            if ($::TEST) {
-                my $rsp;
-                push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: xdsh <llcm,llrm> $cmd ";
-                   xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-                $::RUNCMD_RC = 0;
-            } else {
-                xCAT::Utils->runxcmd(
-                          { command => ['xdsh'],
-                             node    => \@llnodes,
-                             arg     => [ "-v", $cmd ]
-                          },
-                          $::SUBREQ, -1);
-            }
+        my @llcfg_c;
+        if ($::TEST) {
+            my $rsp;
+            push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: $cmd ";
+               xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+            $::RUNCMD_RC = 0;
+        } else {
+            @llcfg_c = xCAT::Utils->runcmd( $cmd, 0 );
+        }
+        $cmd = "llrctl reconfig";
+        my @llms = split(/\s+/,$llcms." ".$llrms);
+        my %have = ();
+        my @llnodes;
+        foreach my $m (@llms) {
+           my ($sm,$rest) = split(/\./,$m);
+           push(@llnodes, $sm) unless $have{$sm}++;
+        }
+        if ($::TEST) {
+            my $rsp;
+            push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: xdsh <llcm,llrm> $cmd ";
+               xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+            $::RUNCMD_RC = 0;
+        } else {
+            xCAT::Utils->runxcmd(
+                      { command => ['xdsh'],
+                         node    => \@llnodes,
+                         arg     => [ "-v", $cmd ]
+                      },
+                      $::SUBREQ, -1);
         }
     }
  
@@ -1720,6 +1766,7 @@ sub runrollupdate {
     
     # Load the datafile 
     &readDataFile($::datafile);
+    # set some defaults
     $::ug_name =  $::DATAATTRS{updategroup}[0];
     my ($statusattr,$statusval,$statustimeout);
     if (defined($::DATAATTRS{bringupappstatus}[0])) {
@@ -1737,6 +1784,13 @@ sub runrollupdate {
     } else {
         $statustimeout = 10;
     }
+    my $skipshutdown = 0;
+    if ((defined($::DATAATTRS{skipshutdown}[0])) && 
+               ( ($::DATAATTRS{skipshutdown}[0] eq "yes") ||
+                 ($::DATAATTRS{skipshutdown}[0] eq "y")   ||
+                 ($::DATAATTRS{skipshutdown}[0] eq "1") ) ) {
+        $skipshutdown = 1;
+    } 
 
     # make sure nodes are in correct state
     my $hostlist = &get_hostlist;
@@ -1804,102 +1858,107 @@ sub runrollupdate {
     
 
     # Shutdown the nodes
-    # FUTURE:  Replace if we ever develop cluster shutdown function
-    xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","shutting_down");
-    my $shutdown_cmd = "shutdown -F &";
-    if ($::VERBOSE) { 
-        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-        print RULOG localtime()." $::ug_name:   Running command \'xdsh $hostlist -v $shutdown_cmd\' \n";
-        close (RULOG);
-    }
-    if ($::TEST) { 
-        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-        print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run command \'xdsh $hostlist -v $shutdown_cmd\' \n";
-        close (RULOG);
-    } else {
-        xCAT::Utils->runxcmd( { command => ['xdsh'],
-                                node    => \@nodes,
-                                arg     => [ "-v", $shutdown_cmd ]
-                          }, $::SUBREQ, -1);
-    }
-    my $slept    = 0;
-    my $alldown  = 1;
-    my $nodelist = join( ',', @nodes );
-    if (! $::TEST) { 
-    do {
-        $alldown = 1;
-        my $shutdownmax = 5;
-        if ( defined($::DATAATTRS{shutdowntimeout}[0] ) ) {
-            $shutdownmax = $::DATAATTRS{shutdowntimeout}[0];
-        }
-        my $pwrstat_cmd = "rpower $nodelist stat";
+    if ( ! $skipshutdown ) {
+        xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","shutting_down");
+        my $shutdown_cmd;
+        if (xCAT::Utils->isAIX()) { $shutdown_cmd = "shutdown -F &"; }
+                             else { $shutdown_cmd = "shutdown -h now &"; }
+ 
+ 
         if ($::VERBOSE) { 
             open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-            print RULOG localtime()." $::ug_name:  Running command \'$pwrstat_cmd\' \n";
+            print RULOG localtime()." $::ug_name:   Running command \'xdsh $hostlist -v $shutdown_cmd\' \n";
             close (RULOG);
         }
-        my $pwrstat = xCAT::Utils->runxcmd( $pwrstat_cmd, $::SUBREQ, -1, 1 );
-        foreach my $pline (@{$pwrstat}) {
-            my ( $pnode, $pstat, $rest ) = split( /\s+/, $pline );
-            if (    ( $pstat eq "Running" )
-                 || ( $pstat eq "Shutting" )
-                 || ( $pstat eq "on" ) )
-            {
+        if ($::TEST) { 
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run command \'xdsh $hostlist -v $shutdown_cmd\' \n";
+            close (RULOG);
+        } else {
+            xCAT::Utils->runxcmd( { command => ['xdsh'],
+                                    node    => \@nodes,
+                                    arg     => [ "-v", $shutdown_cmd ]
+                              }, $::SUBREQ, -1);
+        }
+        my $slept    = 0;
+        my $alldown  = 1;
+        my $nodelist = join( ',', @nodes );
+        if (! $::TEST) { 
+        do {
+            $alldown = 1;
+            my $shutdownmax = 5;
+            if ( defined($::DATAATTRS{shutdowntimeout}[0] ) ) {
+                $shutdownmax = $::DATAATTRS{shutdowntimeout}[0];
+            }
+            my $pwrstat_cmd = "rpower $nodelist stat";
+            if ($::VERBOSE) { 
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." $::ug_name:  Running command \'$pwrstat_cmd\' \n";
+                close (RULOG);
+            }
+            my $pwrstat = xCAT::Utils->runxcmd( $pwrstat_cmd, $::SUBREQ, -1, 1 );
+            foreach my $pline (@{$pwrstat}) {
+                my ( $pnode, $pstat, $rest ) = split( /\s+/, $pline );
+                if (    ( $pstat eq "Running" )
+                     || ( $pstat eq "Shutting" )
+                     || ( $pstat eq "on" ) )
+                {
 
-                # give up on shutdown after requested wait time and force the
-                # node off
-                if ( $slept >= ($shutdownmax * 60) ) {
-                    $pnode =~ s/://g;
-                    my $pwroff_cmd = "rpower $pnode off";
-                    if ($::VERBOSE) { 
-                        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-                        print RULOG localtime()." $::ug_name:  Running command \'$pwroff_cmd\' \n";
-                        close (RULOG);
+                    # give up on shutdown after requested wait time and force the
+                    # node off
+                    if ( $slept >= ($shutdownmax * 60) ) {
+                        $pnode =~ s/://g;
+                        my $pwroff_cmd = "rpower $pnode off";
+                        if ($::VERBOSE) { 
+                            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                            print RULOG localtime()." $::ug_name:  Running command \'$pwroff_cmd\' \n";
+                            close (RULOG);
+                        }
+                        xCAT::Utils->runxcmd( $pwroff_cmd, $::SUBREQ, -1 );
                     }
-                    xCAT::Utils->runxcmd( $pwroff_cmd, $::SUBREQ, -1 );
-                }
-                else {
-                    $alldown = 0;
-                    last;
+                    else {
+                        $alldown = 0;
+                        last;
+                    }
                 }
             }
-        }
+    
+            # If all nodes are not down yet, wait some more
+            unless ($alldown) {
+                sleep(20);
+                $slept += 20;
+            }
+        } until ($alldown);
+        } # end not TEST
 
-        # If all nodes are not down yet, wait some more
-        unless ($alldown) {
-            sleep(20);
-            $slept += 20;
-        }
-    } until ($alldown);
-    } # end not TEST
-
-    # Run out-of-band commands for this update group
-    xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","running_outofbandcmds");
-    foreach my $obline ( @{ $::DATAATTRS{'outofbandcmd'} } ) {
-        $obline =~ s/\$NODELIST/$hostlist/g;
-        # Run the command
-        if ($::VERBOSE) {
+        # Run out-of-band commands for this update group
+        xCAT::Utils->setAppStatus(\@nodes,"RollingUpdate","running_outofbandcmds");
+        foreach my $obline ( @{ $::DATAATTRS{'outofbandcmd'} } ) {
+            $obline =~ s/\$NODELIST/$hostlist/g;
+            # Run the command
+            if ($::VERBOSE) {
                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
                 print RULOG localtime()." $::ug_name:  Running out-of-band command  \'$obline\'\n";
                 close (RULOG);
-        }
-        my @oboutput;
-        if ($::TEST) {
-                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-                print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run out-of-band command  \'$obline\'\n";
-                close (RULOG);
-        } else {
-            @oboutput = xCAT::Utils->runcmd( $obline, 0 );
-        }
-        if ($::VERBOSE) {
-            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-            print RULOG localtime()." $::ug_name:  Out-of-band command output:\n";
-            foreach my $oboline (@oboutput) {
-                print RULOG $oboline."\n";
             }
-            close (RULOG);
+            my @oboutput;
+            if ($::TEST) {
+                    open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                    print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run out-of-band command  \'$obline\'\n";
+                    close (RULOG);
+            } else {
+                @oboutput = xCAT::Utils->runcmd( $obline, 0 );
+            }
+            if ($::VERBOSE) {
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG localtime()." $::ug_name:  Out-of-band command output:\n";
+                foreach my $oboline (@oboutput) {
+                    print RULOG $oboline."\n";
+                }
+                close (RULOG);
+            }
         }
-    }
+    } # end !$skipshutdown
     
 
 
@@ -1910,10 +1969,14 @@ sub runrollupdate {
     if ( defined($::DATAATTRS{bringuporder}[0]) ) {
         $numboots = scalar( @{$::DATAATTRS{bringuporder}} );
     }
+    if ( $skipshutdown ) {
+        $numboots = 0;
+    }
     my @remaining_nodes = @nodes;
     foreach my $bootindex (0..$numboots){
         my @bootnodes;
-        if (defined($::DATAATTRS{bringuporder}[$bootindex])) {
+        if ((!$skipshutdown) &&
+            (defined($::DATAATTRS{bringuporder}[$bootindex]))) {
             @bootnodes = split(/,/,$::DATAATTRS{bringuporder}[$bootindex]);
             foreach my $rn (@remaining_nodes) {
                 if ((defined($rn)) && (grep(/^$rn$/,@bootnodes))) {
@@ -1930,69 +1993,71 @@ sub runrollupdate {
         if (!scalar (@bootnodes)) { next; } 
 
         # reboot command determined by nodehm power/mgt attributes
-         my $hmtab = xCAT::Table->new('nodehm');
-         my @rpower_nodes;
-         my @rnetboot_nodes;
-         my $hmtab_entries =
-           $hmtab->getNodesAttribs( \@bootnodes, [ 'node', 'mgt', 'power' ] );
-         foreach my $node (@bootnodes) {
-             my $pwr = $hmtab_entries->{$node}->[0]->{power};
-             unless ( defined($pwr) ) { $pwr = $hmtab_entries->{$node}->[0]->{mgt}; }
-             if ( $pwr eq 'hmc' ) {
-                 push( @rnetboot_nodes, $node );
-             }
-             else {
-                 push( @rpower_nodes, $node );
-             }
-         }
+        if (!$skipshutdown) {
+            my $hmtab = xCAT::Table->new('nodehm');
+            my @rpower_nodes;
+            my @rnetboot_nodes;
+            my $hmtab_entries =
+              $hmtab->getNodesAttribs( \@bootnodes, [ 'node', 'mgt', 'power' ] );
+            foreach my $node (@bootnodes) {
+                my $pwr = $hmtab_entries->{$node}->[0]->{power};
+                unless ( defined($pwr) ) { $pwr = $hmtab_entries->{$node}->[0]->{mgt}; }
+                if ( $pwr eq 'hmc' ) {
+                    push( @rnetboot_nodes, $node );
+                }
+                else {
+                    push( @rpower_nodes, $node );
+                }
+            }
 
-         xCAT::Utils->setAppStatus(\@bootnodes,"RollingUpdate","rebooting");
-         if ( scalar(@rnetboot_nodes) > 0 ) {
-             my $rnb_nodelist = join( ',', @rnetboot_nodes );
-             # my $cmd = "rnetboot $rnb_nodelist -f";
+            xCAT::Utils->setAppStatus(\@bootnodes,"RollingUpdate","rebooting");
+            if ( scalar(@rnetboot_nodes) > 0 ) {
+                my $rnb_nodelist = join( ',', @rnetboot_nodes );
+                # my $cmd = "rnetboot $rnb_nodelist -f";
 ####  TODO:  DO WE STILL NEED 2 LISTS?
 ####         RUNNING rpower FOR ALL BOOTS NOW!  MUCH FASTER!!!
-             my $cmd = "rpower $rnb_nodelist on";
-             if ($::VERBOSE) { 
-                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-                 print RULOG localtime()." $::ug_name:  Running command \'$cmd\' \n";
-                 close (RULOG);
-             }
-             if ($::TEST) { 
-                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-                 print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run command \'$cmd\' \n";
-                 close (RULOG);
-             } else {
-                 xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
-             }
-         } elsif ( scalar(@rpower_nodes) > 0 ) {
-             my $rp_nodelist = join( ',', @rpower_nodes );
-             my $cmd = "rpower $rp_nodelist boot";
-             if ($::VERBOSE) { 
-                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-                 print RULOG localtime()." $::ug_name:  Running command \'$cmd\' \n";
-                 close (RULOG);
-             }
-             if ($::TEST) { 
-                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-                 print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run command \'$cmd\' \n";
-                 close (RULOG);
-             } else {
-                 xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
-             }
-         }
+                my $cmd = "rpower $rnb_nodelist on";
+                if ($::VERBOSE) { 
+                    open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                    print RULOG localtime()." $::ug_name:  Running command \'$cmd\' \n";
+                    close (RULOG);
+                }
+                if ($::TEST) { 
+                    open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                    print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run command \'$cmd\' \n";
+                    close (RULOG);
+                } else {
+                    xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
+                }
+            } elsif ( scalar(@rpower_nodes) > 0 ) {
+                my $rp_nodelist = join( ',', @rpower_nodes );
+                my $cmd = "rpower $rp_nodelist boot";
+                if ($::VERBOSE) { 
+                    open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                    print RULOG localtime()." $::ug_name:  Running command \'$cmd\' \n";
+                    close (RULOG);
+                }
+                if ($::TEST) { 
+                    open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                    print RULOG localtime()." $::ug_name:  In TEST mode.  Will NOT run command \'$cmd\' \n";
+                    close (RULOG);
+                } else {
+                    xCAT::Utils->runxcmd( $cmd, $::SUBREQ, 0 );
+                }
+            }
+        } # end !$skipshutdown
 
          # wait for bringupstatus to be set
         my $not_done = 1;
         my $totalwait = 0;
         while ($not_done && $totalwait < ($statustimeout * 60)) {
-           if ($::VERBOSE) { 
+            if ($::VERBOSE) { 
                  open (RULOG, ">>$::LOGDIR/$::LOGFILE");
                  print RULOG localtime()." $::ug_name:  Checking xCAT database $statusattr for value $statusval \n";
                  close (RULOG);
-           }
-           my $nltab_stats =
-               $nltab->getNodesAttribs( \@bootnodes, [ 'node', $statusattr ] );
+            }
+            my $nltab_stats =
+                $nltab->getNodesAttribs( \@bootnodes, [ 'node', $statusattr ] );
             my %ll_res;
             $not_done = 0;
             foreach my $bn (@bootnodes) {

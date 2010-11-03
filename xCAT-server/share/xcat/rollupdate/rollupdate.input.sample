@@ -40,7 +40,6 @@ oldfeature=oldvalue
 newfeature=newvalue
 
 
-
 #
 # updategroup:  A set of nodes to be updated as a single group
 #        updategroup = name(noderange)
@@ -65,14 +64,25 @@ mapgroups=block[01-10]
 
 
 
-# mutex:  Identify updategroups that are mutually exclusive and must not be 
+# mutex:  
+# mutex_count:
+#    Identify updategroups that are mutually exclusive and must not be 
 #    updated at the same time in order to maintain active resources within
-#    the cluster. Only 1 updategroup listed in the entry will be updated at 
-#    a time.
+#    the cluster. 
+#    If the mutex stanza is immediately followed by a mutex_count stanza,
+#    up to mutex_count updategroups may be updated at the same time. 
+#    If no mutex_count stanza is specified, only 1 updategroup listed  
+#    in the entry will be updated at a time.
 #        mutex=updategroup,updategroup,...
 #    For example, the update jobs for ns1 and for ns2 will not be allowed 
 #    to run at the same time:
 mutex=ns1,ns2
+
+#    In this example, at most any 2 of the 4 updategroups io1 to io4 may
+#    be updated at the same time:
+mutex=io1,io2,io3,io4
+mutex_count=2
+
 
 # You may list multiple mutex stanzas in this file to identify different
 #    sets of mutual exclusion.  
@@ -83,6 +93,35 @@ mutex=ns1,ns2
 #mutex=block1a,block1b,block1c
 #mutex=block2a,block2b,block2c
 #mutex=block3a,block3b,block3c
+
+# nodegroup_mutex=<nodegroup_name>
+# mutex_count=<count>
+#   (This gets more complicated...)  Mutual exclusion for any nodes in
+#   this xCAT nodegroup.  For each updategroup listed above, if any nodes
+#   in that group are a member of this xCAT nodegroup, add it to the mutex
+#   entry.
+#   For example, you specifiy:
+#      nodegroup_mutex=IOservers 
+#   Where your xCAT nodegroup is defined as:
+#      IOservers=n4,n8,n12
+#   And your updategroups specified above are:
+#      updategroup=CEC1(n1-n4)
+#      updategroup=CEC2(n5-n8)
+#      updategroup=CEC3(n9-n12)
+#      updategroup=CEC4(n13-n16)
+#  The following mutex will be created:
+#      mutex=CEC1,CEC2,CEC3
+#  With mutex_count working the same as above.
+#
+#  And, to make it even more powerful, you can list an xCAT nodegroup range
+#  to create multiple nodegroup_mutex stanzas.
+#  For example, this:
+#      nodegroup_mutex=block[1-3]IO
+#  would be equivalent to:
+#      nodegroup_mutex=block1IO
+#      nodegroup_mutex=block2IO
+#      nodegroup_mutex=block3IO
+
 
 
 
@@ -170,13 +209,16 @@ update_if_down=yes
 
 
 
-# NOT IMPLEMENTED YET! FUTURE SUPPORT FOR ROLLING UPDATE OF DISKFULL NODES
-# shutdownrequired:  Should a shutdown command be sent to the nodes.  
+# skipshutdown:  Should a shutdown command be sent to the nodes.  
 #    Shutdown is required for diskless nodes.  For diskfull nodes, simple 
 #    updates may be applied to the nodes through prescripts, and a node 
 #    reboot may not be required. 
-# Default is "yes".
-shutdownrequired=yes
+# If skipshutdown is set to "yes", outofbandcmd scripts will NOT be
+#    run and bringuporder will be ignored (since no bringup).  However,
+#    bringupstatus/bringupappstatus will still be checked to verify that
+#    the node update has completed.
+# Default is skipshutdown=no.
+skipshutdown=no
 
 
 
@@ -215,6 +257,7 @@ shutdowntimeout=5
 #    This can be used to run operations such as firmware updates.
 # Multiple outofbandcmd entries or outofbandcmd/outofbandnodes pairs of
 #    entries can be specified. Each command will be run in order. 
+# outofbandcmd scripts will not be run if "skipshutdown" is set to "yes".
 #
 #outofbandcmd=/u/admin/bin/myfirmwareupdates $NODELIST
 #
