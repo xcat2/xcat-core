@@ -1614,7 +1614,6 @@ sub setupSSH
         }
     }
     
-    # comment out authorized_keys2 setup
     # build the shell copy script, needed Perl not always there
     # for root and non-root ids
     open(FILE, ">$home/.ssh/copy.sh")
@@ -1671,13 +1670,60 @@ rmdir \"/tmp/$to_userid\"";
 
     # send the keys to the nodes   for root or some other id
     #
-    my $cmd = "$::REMOTESHELL_EXPECT -s $n_str";
-    my $rc  = system("$cmd") >> 8;
-    if ($rc)
-    {
-        $rsp->{data}->[0] = "remoteshell.expect failed sending keys.";
-        xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+    # This environment variable determines whether to setup 
+    # node to node ssh
+    # The nodes must be checked against the site.sshbetweennodes attribute
+    # For root user and not to devices only to nodes 
+    if (($from_userid eq "root") && (!($ENV{'DEVICETYPE'}))) {
+      my $enablenodes;
+      my $disablenodes;
+      my @nodelist=  split(",", $n_str);
+      foreach my $n (@nodelist)
+      {
+         my $enablessh=xCAT::Utils->enablessh($n);
+         if ($enablessh == 1) {
+           $enablenodes .= $n;
+           $enablenodes .= ","; 
+         } else {
+           $disablenodes .= $n;
+           $disablenodes .= ","; 
+         }
 
+      }
+      my $cmd;
+      if ($enablenodes) {  # node on list to setup nodetonodessh
+         chop $enablenodes;  # remove last comma
+         $ENV{'DSH_ENABLE_SSH'} = "YES";
+         $cmd = "$::REMOTESHELL_EXPECT -s $enablenodes";
+         my $rc  = system("$cmd") >> 8;
+         if ($rc)
+         {
+          $rsp->{data}->[0] = "remoteshell.expect failed sending keys to enablenodes.";
+          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+          }
+      }
+      if ($disablenodes) {  # node on list to setup nodetonodessh
+         chop $disablenodes;  # remove last comma
+         $cmd = "$::REMOTESHELL_EXPECT -s $disablenodes";
+         my $rc  = system("$cmd") >> 8;
+         if ($rc)
+         {
+          $rsp->{data}->[0] = "remoteshell.expect failed sending keys to disablenodes.";
+          xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+         }
+      }
+    } else { # from user is not root or it is a device , always send private key
+       $ENV{'DSH_ENABLE_SSH'} = "YES";
+       my $cmd = "$::REMOTESHELL_EXPECT -s $n_str";
+       my $rc  = system("$cmd") >> 8;
+       if ($rc)
+       {
+           $rsp->{data}->[0] = "remoteshell.expect failed sending keys.";
+           xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
+
+       }
     }
 
     # must always check to see if worked, run test
