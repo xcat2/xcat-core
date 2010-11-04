@@ -43,7 +43,7 @@ my $currkey;
 my $requester;
 my $viavcenter;
 my $viavcenterbyhyp;
-my $vcenterautoconnect=1;
+my $vcenterautojoin=1;
 my $vmwaresdkdetect = eval {
     require VMware::VIRuntime;
     VMware::VIRuntime->import();
@@ -298,11 +298,11 @@ sub process_request {
 		if ($ref and $ref->{value}) {
 			$usehostnamesforvcenter = $ref->{value};
 		}
-		($ref) = $sitetab->getAttribs({key => 'vcenterautoconnect'}, 'value');
-		if ($ref and $ref->{value}) {
-			$vcenterautoconnect = $ref->{value};
-            if ($vcenterautoconnect =~ /^n/ or $vcenterautoconnect =~ /^dis/) {
-                $vcenterautoconnect=0;
+		($ref) = $sitetab->getAttribs({key => 'vcenterautojoin'}, 'value');
+		if ($ref and defined $ref->{value}) {
+			$vcenterautojoin = $ref->{value};
+            if ($vcenterautojoin =~ /^n/ or $vcenterautojoin =~ /^dis/) {
+                $vcenterautojoin=0;
             }
 		}
 	}
@@ -2768,7 +2768,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
     if ($hview) { 
         if ($hview->{'summary.config.name'} =~ /^$hyp(?:\.|\z)/ or $hview->{'summary.config.name'} =~ /^$name(?:\.|\z)/) { #Looks good, call the dependent function after declaring the state of vcenter to hypervisor as good
             if ($hview->{'summary.runtime.connectionState'}->val eq 'connected') {
-                if ($vcenterautoconnect) { #admin has requested manual vcenter management, don't mess with vmotion settings
+                if ($vcenterautojoin) { #admin has requested manual vcenter management, don't mess with vmotion settings
                     enable_vmotion(hypname=>$hyp,hostview=>$hview,conn=>$hyphash{$hyp}->{vcenter}->{conn});
                 }
                 $vcenterhash{$vcenter}->{goodhyps}->{$hyp} = 1;
@@ -2781,7 +2781,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
 
 
                 return 1;
-            } elsif ($vcenterautoconnect) { #if allowed autoconnect and the current view seems corrupt, throw it away and rejoin
+            } elsif ($vcenterautojoin) { #if allowed autojoin and the current view seems corrupt, throw it away and rejoin
                 my $ref_to_delete;
                 if ($hview->parent->type eq 'ClusterComputeResource') { #We are allowed to specifically kill a host in a cluster
                     $ref_to_delete = $hview->{mo_ref};
@@ -2811,7 +2811,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
             }
         }
     }
-    unless ($vcenterautoconnect) {
+    unless ($vcenterautojoin) {
             	xCAT::SvrUtils::sendmsg([1,": Failed to communicate with $hyp, vCenter does not have it in inventory and xCAT is set to not autojoin"], $output_handler);
                     $hyphash{$hyp}->{conn} = undef;
                     return "failed";
