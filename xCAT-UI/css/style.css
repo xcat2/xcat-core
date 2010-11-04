@@ -146,7 +146,7 @@ body {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	color: #0000FF;
 	display: inline-table;
-	padding: 5px 15px 15px 5px;
+	padding: 5px 15px 5px 15px; /* Top right bottom left */
 	text-decoration: none;
 	cursor: pointer;
 }

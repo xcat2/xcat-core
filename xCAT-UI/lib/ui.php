@@ -16,7 +16,7 @@ function loadPage(){
 			<link href="css/jquery-ui-1.8.custom.css" rel=stylesheet type="text/css">
 			<link href="css/jquery.dataTables.css" rel=stylesheet type="text/css">
 			<link href="css/superfish.css" rel=stylesheet type="text/css">
-			<link href="css/tree.css" rel=stylesheet type="text/css">
+			<link href="css/jstree.css" rel=stylesheet type="text/css">
 			<link href="css/style.css" rel=stylesheet type="text/css">
 			<script type="text/javascript" src="js/jquery/jquery-1.4.2.min.js"></script>
 			<script type="text/javascript" src="js/jquery/jquery-ui-1.8.custom.min.js"></script>

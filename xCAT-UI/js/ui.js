@@ -423,7 +423,7 @@ function initPage() {
 	includeJs("js/jquery/jquery.cookie.js");
 	includeJs("js/jquery/superfish.js");
 	includeJs("js/jquery/hoverIntent.js");
-	includeJs("js/jquery/jquery.tree.js");
+	includeJs("js/jquery/jquery.jstree.js");
 	includeJs("js/jquery/jquery.flot.js");
 	includeJs("js/jquery/tooltip.min.js");
 	

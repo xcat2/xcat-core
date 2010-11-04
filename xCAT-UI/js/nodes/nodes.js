@@ -140,7 +140,7 @@ function loadGroups(data) {
 
 	// Create a list of groups
 	var ul = $('<ul></ul>');
-	var item = $('<li><h3>Groups</h3></li>');
+	var item = $('<li id="root"><h3>Groups</h3></li>');
 	ul.append(item);
 	var subUL = $('<ul></ul>');
 	item.append(subUL);
@@ -148,49 +148,54 @@ function loadGroups(data) {
 	// Create a link for each group
 	for ( var i = groups.length; i--;) {
 		var subItem = $('<li></li>');
-		var link = $('<a>' + groups[i] + '</a>');
+		var link = $('<a id="' + groups[i] + '">' + groups[i] + '</a>');
+		
+		// Open node table onclick
+		link.bind('click', function(event) {
+			var thisGroup = $(this).attr('id');
+			if (thisGroup) {
+				// Clear nodes division
+				$('#nodes').children().remove();
+				// Create loader
+				var loader = $('<center></center>').append(createLoader());
+
+				// Create a tab for this group
+				var tab = new Tab();
+				setNodesTab(tab);
+				tab.init();
+				$('#nodes').append(tab.object());
+				tab.add('nodesTab', 'Nodes', loader, false);
+
+				// Get nodes within selected group
+				$.ajax( {
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'lsdef',
+						tgt : '',
+						args : thisGroup,
+						msg : thisGroup
+					},
+
+					success : loadNodes
+				});
+			} // End of if (thisGroup)
+		});
 		subItem.append(link);
 		subUL.append(subItem);
 	}
 
 	// Turn groups list into a tree
 	$('#groups').append(ul);
-	$('#groups').tree( {
-		callback : {
-			// Open group onclick
-    		onselect : function(node, tree) {
-    			var thisGroup = tree.get_text(node);
-    			if (thisGroup) {
-    				// Clear nodes division
-    				$('#nodes').children().remove();
-    				// Create loader
-    				var loader = $('<center></center>').append(createLoader());
-    
-    				// Create a tab for this group
-    				var tab = new Tab();
-    				setNodesTab(tab);
-    				tab.init();
-    				$('#nodes').append(tab.object());
-    				tab.add('nodesTab', 'Nodes', loader, false);
-    
-    				// Get nodes within selected group
-    				$.ajax( {
-    					url : 'lib/cmd.php',
-    					dataType : 'json',
-    					data : {
-    						cmd : 'lsdef',
-    						tgt : '',
-    						args : thisGroup,
-    						msg : thisGroup
-    					},
-    
-    					success : loadNodes
-    				});
-    			} // End of if (thisGroup)
-    		} // End of onselect
-    	} // End of callback
-    });
-	
+	$('#groups').jstree( {
+		core : { "initially_open" : [ "root" ] },
+		themes : {
+			"theme" : "default",
+			"dots" : false,	// No dots
+			"icons" : false	// No icons
+		}
+	});
+
 	// Create link to add nodes
 	var addNodeLink = $('<a title="Add a node or a node range to xCAT">Add node</a>');
 	addNodeLink.bind('click', function(event) {

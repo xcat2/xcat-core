@@ -156,7 +156,13 @@ function createTree(bpa, fsp, area){
 	
 	tree_area.append('<ul><li><a href="#">BPA</a>' + bpaList + '</li><li><a href="#">FSP</a>' + cecList + '</li></ul>');
 	area.append(tree_area);
-	tree_area.tree({});
+	tree_area.jstree({
+		themes : {
+    		"theme" : "default",
+    		"dots" : false,	// No dots
+    		"icons" : false	// No icons
+		}
+	});
 }
 
 /**
