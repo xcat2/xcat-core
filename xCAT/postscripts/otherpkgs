@@ -145,7 +145,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
             elif [  $string_type -eq 1 ]; then
 	        plain_pkgs_postremove="$plain_pkgs_postremove $x"
 	    else
-	        plain_pkgs="$plain_pkgs $x-*"
+	        plain_pkgs="$plain_pkgs $x*"
 	    fi
 	    continue
         fi
@@ -226,7 +226,7 @@ while [ $op_index -le $OTHERPKGS_INDEX ]; do
 	        repo_pkgs="$repo_pkgs $fn"  
 	    else
                 #now no hope we have to use rpm command
-	        plain_pkgs="$plain_pkgs $x-*"
+	        plain_pkgs="$plain_pkgs $x*"
 	    fi
 	    handled_path[${#handled_path[*]}]=$path
         fi
