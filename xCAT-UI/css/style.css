@@ -348,7 +348,12 @@ legend {
 .tab ol {
 	margin: 0;
 	padding: 0;
+}
+
+.tab li {
 	list-style: none;
+	padding: 5px;
+	margin: 0;
 }
 
 .tab textarea {
