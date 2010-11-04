@@ -510,8 +510,8 @@ sub process_request {
         $callback->(\%response);
       }
       if($args[0] eq 'offline') {
-        unlink($tftpdir."/xcat/xnba/nodes/".$node);
-        unlink($tftpdir."/xcat/xnba/nodes/".$node.".pxelinux");
+        unlink($tftpdir."/xcat/xnba/nodes/".$_);
+        unlink($tftpdir."/xcat/xnba/nodes/".$_.".pxelinux");
       }
     }
   }
