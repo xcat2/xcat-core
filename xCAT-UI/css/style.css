@@ -162,7 +162,7 @@ body {
 	display: inline-table;
 }
 
-/****************** physical layout section ******************/
+/****************** Physical layout section ******************/
 .physicaltree {
 	width: 200px;
 	vertical-align: top;
@@ -491,6 +491,7 @@ legend {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	color: #424242;
 	padding: 6px 12px;
+	white-space: nowrap; /* Do not use word wrap */
 	border-width: 1px;
 	border-style: solid;
 	border-color: #BDBDBD;
