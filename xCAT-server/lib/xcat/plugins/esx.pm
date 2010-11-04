@@ -298,7 +298,7 @@ sub process_request {
 		if ($ref and $ref->{value}) {
 			$usehostnamesforvcenter = $ref->{value};
 		}
-		(my $ref) = $sitetab->getAttribs({key => 'vcenterautoconnect'}, 'value');
+		($ref) = $sitetab->getAttribs({key => 'vcenterautoconnect'}, 'value');
 		if ($ref and $ref->{value}) {
 			$vcenterautoconnect = $ref->{value};
             if ($vcenterautoconnect =~ /^n/ or $vcenterautoconnect =~ /^dis/) {
@@ -2811,11 +2811,10 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
             }
         }
     }
-    unless ($vcenterautojoin) {
+    unless ($vcenterautoconnect) {
             	xCAT::SvrUtils::sendmsg([1,": Failed to communicate with $hyp, vCenter does not have it in inventory and xCAT is set to not autojoin"], $output_handler);
                     $hyphash{$hyp}->{conn} = undef;
                     return "failed";
-            }
     }
     #If still in function, haven't found any likely host entries, make a new one
     unless ($hyphash{$hyp}->{offline}) {
