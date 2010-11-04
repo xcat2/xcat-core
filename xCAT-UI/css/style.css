@@ -20,6 +20,7 @@
 	display: none;
 	color: #fff;
 	text-align: left;
+	max-width: 300px;
 	font-size: 10px;
 	/* Outline radius for firefox only */
 	-moz-box-shadow: 0 0 10px #000;
