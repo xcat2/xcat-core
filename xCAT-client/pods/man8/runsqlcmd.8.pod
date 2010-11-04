@@ -15,6 +15,8 @@ B<runsqlcmd> {B<-d>|B<--dir> I<directory_path>}
 
 B<runsqlcmd> {B<-f>|B<--files> I<list of files>} 
 
+B<runsqlcmd> {B<sql statement>} 
+
 
 =head1 DESCRIPTION
 
@@ -43,13 +45,15 @@ To use a directory other than the default directory,  enter the directory path h
 
 Comma separated list of files (full path), wildcard (*) can be used.
 
-
 =item B<File format>
 
 The files must be of the form <name>.sql or <name>_<database>.sql  where
 
 <database>  is mysql,pgsql, or db2. Files must have permission 0755.  
 
+=item B<sql statement>
+
+Quoted sql statement syntax appropriate for the current database.
 
 =back
 
@@ -82,5 +86,10 @@ To checkout one DB2 sql file:
 
 B<runsqlcmd> I<-f> I</tmp/db2/test_db2.sql>
 
+=item *
+
+To run the following command to the database: 
+
+B<runsqlcmd> I<"Select * from site;">
 
 =back
