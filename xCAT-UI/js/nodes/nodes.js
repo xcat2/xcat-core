@@ -54,11 +54,36 @@ function setNodesDataTable(table) {
 function loadNodesPage() {
 	// If groups are not already loaded
 	if (!$('#groups').length) {
+		
+		var layoutSelectorDiv = $('<div id="layoutselector"></div>');
+		var logicalLayoutDiv = $('<div id="logicalLayout"></div>');
+		var physicalLayoutDiv = $('<div id="physicalLayout"></div>');
+		physicalLayoutDiv.hide();
+		
+		$('#content').append(layoutSelectorDiv);
+		$('#content').append(logicalLayoutDiv);
+		$('#content').append(physicalLayoutDiv);
+		// Create layout selector
+		var groupRadio = $('<input type="radio" name="layoutselector" checked="checked">Group</input>');
+		groupRadio.bind('click',function(){
+			$('#physicalLayout').hide();
+			$('#logicalLayout').show();
+		});
+		
+		var physicalRadio = $('<input type="radio" name="layoutselector">Graphical</input>');
+		physicalRadio.bind('click', function(){
+			$('#logicalLayout').hide();
+			$('#physicalLayout').show();
+		});
+		layoutSelectorDiv.append('<label>Layout:</label>');
+		layoutSelectorDiv.append(groupRadio);
+		layoutSelectorDiv.append(physicalRadio);
+		
 		// Create a groups division
 		groupDIV = $('<div id="groups"></div>');
 		nodesDIV = $('<div id="nodes"></div>');
-		$('#content').append(groupDIV);
-		$('#content').append(nodesDIV);
+		logicalLayoutDiv.append(groupDIV);
+		logicalLayoutDiv.append(nodesDIV);
 
 		// Create loader
 		var loader = createLoader();
@@ -80,6 +105,21 @@ function loadNodesPage() {
 			},
 
 			success : loadGroups
+		});
+		
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'nodels',
+				tgt : 'all',
+				args : 'nodetype.nodetype;ppc.parent;vpd.mtm;nodelist.status',
+				msg : ''
+			},
+
+			success : function(data){
+				createPhysicalLayout(data, $('#physicalLayout'));
+			}
 		});
 	}
 }
