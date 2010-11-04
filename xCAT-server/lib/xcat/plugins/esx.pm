@@ -557,6 +557,8 @@ sub inv {
     }
   }
   my $vmview = $args{vmview};
+  my $moref = $vmview->{mo_ref}->value;
+  xCAT::SvrUtils::sendmsg("Managed Object Reference: $moref", $output_handler,$node);
   my $uuid = $vmview->config->uuid;
   xCAT::SvrUtils::sendmsg("UUID/GUID:  $uuid", $output_handler,$node);
   my $cpuCount = $vmview->config->hardware->numCPU;
