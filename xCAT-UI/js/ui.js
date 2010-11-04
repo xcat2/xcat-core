@@ -455,6 +455,7 @@ function initPage() {
 		includeJs("js/nodes/rnetboot.js");
 		includeJs("js/nodes/updatenode.js");
 		includeJs("js/nodes/physical.js");
+		includeJs("js/nodes/mtm.js");
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
 	} else if (page == 'configure.php') {
