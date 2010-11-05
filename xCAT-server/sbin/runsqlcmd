@@ -37,7 +37,7 @@ use strict;
 $::progname = "runsqlcmd";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
-my ($directory, $help, $version, $filelist);
+my ($directory, $help, $version,$verbose, $filelist);
 
 # parse the options
 if (
@@ -46,6 +46,7 @@ if (
                 'f|files=s' => \$filelist,
                 'h|help'    => \$help,
                 'v|version' => \$version,
+                'V|verbose' => \$verbose,
     )
   )
 {
@@ -139,14 +140,18 @@ if (@sqlfilelist) {  # if anything to do
     if ($xcatcfg =~ /^SQLite:/)
     {
         # not supported but will leave routine in case we change our mind 
-        xCAT::MsgUtils->message("SE", "The runsqlcmd does not support the SQLite database.");
+        if ($verbose) {
+           xCAT::MsgUtils->message("SE", "The runsqlcmd does not support the SQLite database.");
+        }
         #&runsqlitecmd($file,$xcatcfg);
         exit 1;
     }
 
   }
 } else {
-        xCAT::MsgUtils->message("SE", "The runsqlcmd has no files to process in $directory .");
+     if ($verbose) {
+        xCAT::MsgUtils->message("SI", "The runsqlcmd has no files to process in $directory .");
+     }
 }
 if ($tempfile) {
      my $cmd = "rm $tempfile";
@@ -181,7 +186,7 @@ sub usage
         "Usage:\nRuns the sql commands in files located in /opt/xcat/lib/perl/xCAT_schema by default, or the directory input with -d, or the list of files input with the -f flag, or the command input on the command line. Supports DB2,PostgreSQL,MySQL."
         );
     my $msg =
-      "runsqlcmd  <-h|--help>\n           <-v|--version>\n           <-d|--dir>\n           <-f|--files>  \n           <sql command>";
+      "runsqlcmd  <-h|--help>\n           <-v|--version>\n           <-V|--verbose>\n           <-d|--dir>\n           <-f|--files>  \n           <sql command>";
 
     xCAT::MsgUtils->message('I', "$msg");
 }
