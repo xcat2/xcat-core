@@ -11,11 +11,11 @@ B<runsqlcmd> {B<-h>|B<--help>}
 
 B<runsqlcmd> {B<-v>|B<--version>}
 
-B<runsqlcmd> {B<-d>|B<--dir> I<directory_path>} 
+B<runsqlcmd> {B<-d>|B<--dir> I<directory_path>} {B<-V>|B<--verbose>} 
 
-B<runsqlcmd> {B<-f>|B<--files> I<list of files>} 
+B<runsqlcmd> {B<-f>|B<--files> I<list of files>} {B<-V>|B<--verbose>} 
 
-B<runsqlcmd> {B<sql statement>} 
+B<runsqlcmd> {B<-V>|B<--verbose>} {B<sql statement>} 
 
 
 =head1 DESCRIPTION
@@ -36,6 +36,10 @@ Displays the usage message.
 =item B<-v|--version>
 
 Displays current code version.
+
+=item B<-V|--verbose>
+
+Displays extra debug information.
 
 =item B<-d|--dir>
 
