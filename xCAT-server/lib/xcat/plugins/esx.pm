@@ -3735,7 +3735,10 @@ sub mknetboot {
 		# first make sure copycds was done:
         my $custprofpath = $profile;
         unless ($custprofpath =~ /^\//) {#If profile begins with a /, assume it already is a path
-            $custprofpath = $installroot."/custom/install/esxi/$arch/$profile";
+            $custprofpath = $installroot."/custom/install/$osver/$arch/$profile";
+            unless(-d $custprofpath) {
+                $custprofpath = $installroot."/custom/install/esxi/$arch/$profile";
+            }
         }
 		unless(
             -r "$custprofpath/vmkboot.gz"
