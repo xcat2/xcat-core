@@ -579,7 +579,7 @@ sub getNodeStatusFromNodesetState {
 =cut
 #--------------------------------------------------------------------------------
 sub setNodeStatusAttributes {
-  #print "monitorctrl::setNodeStatusAttributes called\n";
+  print "monitorctrl::setNodeStatusAttributes called\n";
   my $temp=shift;
   if ($temp =~ /xCAT_monitoring::monitorctrl/) {
     $temp=shift;
@@ -637,15 +637,12 @@ sub setNodeStatusAttributes {
         $updates{'status'} = $_;
         $updates{'statustime'} = $currtime;
         my $where_clause;
-        my $DBname = xCAT::Utils->get_DBName;
-        if ($DBname =~ /^DB2/) {
-            foreach my $nd (@$nodes) {
-                $where_clause .= "\"node\" LIKE \'$nd\' OR"
-            }
-            $where_clause =~ s/OR$//;
+        my $dbname=xCAT::Utils->get_DBName() ;
+        if ($dbname eq 'DB2') {
+             $where_clause="\"node\" in ('" . join("','", @$nodes) . "')";
         } else {
-            $where_clause="node in ('" . join("','", @$nodes) . "')";
-        } 
+             $where_clause="node in ('" . join("','", @$nodes) . "')";
+        }
         $tab->setAttribsWhere($where_clause, \%updates );
       }
     }
@@ -783,7 +780,15 @@ sub getPluginSettings {
   #get the monitoring plug-in list from the monitoring table
   my $table=xCAT::Table->new("monsetting", -create =>1);
   if ($table) {
-    my @tmp1=$table->getAllAttribsWhere("name in (\'$name\')", 'key','value');
+        my $where_clause;
+        my $dbname=xCAT::Utils->get_DBName() ;
+        if ($dbname eq 'DB2') {
+             $where_clause="\"name\" in (\'$name\')";
+        } else {
+             $where_clause="name in (\'$name\')";
+        }
+
+    my @tmp1=$table->getAllAttribsWhere($where_clause, 'key','value');
     if (@tmp1 > 0) {
       foreach(@tmp1) {
 	if ($_->{key}) {
