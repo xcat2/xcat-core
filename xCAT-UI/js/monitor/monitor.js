@@ -57,26 +57,25 @@ function loadMonitorPage() {
 	var monitorInfoBar = createInfoBar('Select the Monitor Tool');
 	monitorForm.append(monitorInfoBar);
 
+	// Create a list of monitoring tools
 	var monitorList = $('<ol></ol>');
-	var items = "<li><a href='#' name='xcatmon'>xCAT Monitor</a> : xcatmon provides node status " +
-			"monitoring using fping on AIX and nmap on Linux. It also provides application " +
-			"status monitoring. The status and the appstatus columns of the nodelist table " +
-			"will be updated periodically  with the latest status values for the nodes.<li>";
-	
-	items += "<li><a href='#' name='rmcmon'>RMC Monitor</a> : IBM's Resource Monitoring and Control (RMC) " +
-			"subsystem is our recommended software for monitoring xCAT clusters. It's is part " +
-			"of the IBM's Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive " +
-			"clustering environment for AIX and LINUX.<li>";
-	items += "<li><a href='#' name='gangliamon'>Ganglia Monitor</a> : Ganglia is a scalable distributed " + 
-			"monitoring system for high-performance computing systems such as clusters and Grids.<li>";
+	var items = "<li><a href='#' name='xcatmon'>xCAT Monitor</a> : xcatmon provides node status "
+		+ "monitoring using fping on AIX and nmap on Linux. It also provides application "
+		+ "status monitoring. The status and the appstatus columns of the nodelist table "
+		+ "will be updated periodically  with the latest status values for the nodes.<li>";
+	items += "<li><a href='#' name='rmcmon'>RMC Monitor</a> : IBM's Resource Monitoring and Control (RMC) "
+		+ "subsystem is our recommended software for monitoring xCAT clusters. It's is part "
+		+ "of the IBM's Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive " + "clustering environment for AIX and LINUX.<li>";
+	items += "<li><a href='#' name='gangliamon'>Ganglia Monitor</a> : Ganglia is a scalable distributed "
+		+ "monitoring system for high-performance computing systems such as clusters and Grids.<li>";
 	items += "<li><a href='#' name='pcpmon'>PCP Monitor</a> : <li>";
-	
 	monitorList.append(items);
-	
-	$('a', monitorList).click(function(){
+
+	// Open new tab for monitor tool
+	$('a', monitorList).click(function() {
 		loadMonitorTab($(this).attr('name'));
 	});
-	
+
 	monitorForm.append(monitorList);
 	tab.add('monitorTab', 'Monitor', monitorForm, false);
 
@@ -90,7 +89,7 @@ function loadMonitorPage() {
 	resrcForm.append(resrcInfoBar);
 
 	// Create radio buttons for platforms
-	var hwList =$('<ol>Select a platform to view its current resources:</ol>');
+	var hwList = $('<ol>Select a platform to view its current resources:</ol>');
 	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>ipmi</li>');
 	var blade = $('<li><input type="radio" name="hw" value="blade"/>blade</li>');
 	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>hmc</li>');
@@ -105,7 +104,7 @@ function loadMonitorPage() {
 	hwList.append(fsp);
 	hwList.append(zvm);
 	resrcForm.append(hwList);
-	
+
 	/**
 	 * Ok
 	 */
@@ -123,27 +122,27 @@ function loadMonitorPage() {
 
 			// Create an instance of the plugin
 			var plugin;
-			switch(hw) {
-				case "blade":
-		    		plugin = new bladePlugin();
-		    		break;
-				case "fsp":
-					plugin = new fspPlugin();
-					break;
-				case "hmc":
-					plugin = new hmcPlugin();
-					break;
-				case "ipmi":
-					plugin = new ipmiPlugin();
-					break;		
-				case "ivm":
-					plugin = new ivmPlugin();
-					break;
-				case "zvm":
-					plugin = new zvmPlugin();
-					break;
+			switch (hw) {
+			case "blade":
+				plugin = new bladePlugin();
+				break;
+			case "fsp":
+				plugin = new fspPlugin();
+				break;
+			case "hmc":
+				plugin = new hmcPlugin();
+				break;
+			case "ipmi":
+				plugin = new ipmiPlugin();
+				break;
+			case "ivm":
+				plugin = new ivmPlugin();
+				break;
+			case "zvm":
+				plugin = new zvmPlugin();
+				break;
 			}
-			
+
 			plugin.loadResources();
 		}
 
@@ -155,38 +154,53 @@ function loadMonitorPage() {
 	tab.add('resourceTab', 'Resources', resrcForm, false);
 }
 
-function loadMonitorTab(monitorName){
+/**
+ * Open a tab and load given monitoring tool
+ * 
+ * @param monitorName
+ *            Name of monitoring tool
+ * @return Nothing
+ */
+function loadMonitorTab(monitorName) {
 	// If the tab exist, then we only need to select it
 	var tab = getMonitorTab();
-	if (0 != $("#" + monitorName).length){
+	if ($("#" + monitorName).length) {
 		tab.select(monitorName);
 		return;
 	}
-	
-	switch(monitorName){
-		case 'xcatmon':
-			tab.add(monitorName, 'xCAT Monitor', '', true);
-			loadXcatMon();
-			break;
-		case 'rmcmon':
-			tab.add(monitorName, 'RMC Monitor', '', true);
-			loadRmcMon();
-			break;
-		case 'gangliamon':
-			tab.add(monitorName, 'Ganglia Monitor', '', true);
-			loadGangliaMon();
-			break;
-		case 'pcpmon':
-			loadUnfinish(monitorName, tab);
-			break;
+
+	switch (monitorName) {
+	case 'xcatmon':
+		tab.add(monitorName, 'xCAT', '', true);
+		loadXcatMon();
+		break;
+	case 'rmcmon':
+		tab.add(monitorName, 'RMC', '', true);
+		loadRmcMon();
+		break;
+	case 'gangliamon':
+		tab.add(monitorName, 'Ganglia', '', true);
+		loadGangliaMon();
+		break;
+	case 'pcpmon':
+		loadUnfinish(monitorName, tab);
+		break;
 	}
-	
+
 	tab.select(monitorName);
 }
 
-function loadUnfinish(monitorName, tab){
+/**
+ * Open a tab and show 'Under contruction'
+ * 
+ * @param monitorName
+ *            Name of monitoring tool
+ * @param tab
+ *            Tab area
+ * @return Nothing
+ */
+function loadUnfinish(monitorName, tab) {
 	var unfinishPage = $('<div></div>');
-	unfinishPage.append(createInfoBar('under construction.'));
-
-	tab.add(monitorName, 'unfinish', unfinishPage, true);	
+	unfinishPage.append(createInfoBar('Under construction'));
+	tab.add(monitorName, 'Unfinish', unfinishPage, true);
 }

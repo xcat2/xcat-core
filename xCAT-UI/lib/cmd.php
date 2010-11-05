@@ -47,8 +47,8 @@ if (isset($_GET["cmd"])) {
 	$xml = docmd($cmd, $tgt, $arr);
 	$rsp = array();
 
-	// webrun pping output needs special handling
-	if(strncasecmp($cmd, "webrun", 6) == 0 && stristr($args, "pping")) {
+	// webrun pping and gangliastatus output needs special handling
+	if(strncasecmp($cmd, "webrun", 6) == 0 && (stristr($args, "pping") || stristr($args, "gangliastatus"))) {
 		$rsp = extractWebrun($xml);
 	}
 	// nodels output needs special handling
@@ -105,8 +105,9 @@ function extractWebrun($xml) {
 		foreach($nodes->children() as $node){
 			// Get the node name
 			$name = $node->name;
+			
 			// Get the content
-			$status = $node->data->contents;
+			$status = $node->data;
 			$status = str_replace(":|:", "\n", $status);
 
 			// Add to return array
