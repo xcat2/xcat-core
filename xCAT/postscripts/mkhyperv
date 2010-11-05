@@ -53,6 +53,7 @@ TYPE=Bridge
 ONBOOT=yes
 BOOTPROTO=dhcp
 PEERDNS=yes
+DELAY=0
 EOF
 
 #disabled networking code in init.d/kvm
