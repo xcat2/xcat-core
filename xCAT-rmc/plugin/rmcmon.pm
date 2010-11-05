@@ -389,7 +389,7 @@ sub stop {
 =cut
 #--------------------------------------------------------------------------------
 sub config {
-  print "rmcmon:config called\n";
+  #print "rmcmon:config called\n";
   my $noderef=shift;
   if ($noderef =~ /xCAT_monitoring::rmcmon/) {
     $noderef=shift;
@@ -428,12 +428,6 @@ sub config {
   #enable remote client connection
   `/usr/bin/rmcctrl -p`;
   
-  my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
-  if (ref($pPairHash) eq 'ARRAY') {
-      reportError($pPairHash->[1], $callback);
-      return (1, "");	
-  }
-
  
   #the identification of this node
   my @hostinfo=xCAT::Utils->determinehostname();
@@ -441,6 +435,39 @@ sub config {
   my %iphash=();
   foreach(@hostinfo) {$iphash{$_}=1;}
   if (!$isSV) { $iphash{'noservicenode'}=1;}
+
+  #create conditions/responses/sensors on the service node or mn
+  my $result=`/usr/sbin/rsct/install/bin/ctversion`;
+  my $rsct_ver;
+  if (!$?) {
+      chomp($result);
+      my @tempa=split(/ /, $result); 
+      if (@tempa>1) {
+          $rsct_ver=$tempa[1]; 
+      }
+  }
+  my $version_string;
+  if ($rsct_ver) {$version_string="RSCT_VER=$rsct_ver"; } 
+
+  my $result;
+  if ($isSV) {
+      $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/sn 2>&1`;  } else  {
+	  $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/mn 2>&1`;
+  }      
+  if ($?) {
+    my $error= "Error when creating predefined resources on $localhostname:\n$result";
+    reportError($error, $callback);
+  }
+  if(!$isSV){
+    xCAT::Utils->runcmd("chtab key='rmetrics_IBM.Host' monsetting.name=rmcmon monsetting.value='PctTotalTimeIdle,PctTotalTimeWait,PctTotalTimeUser,PctTotalTimeKernel,PctRealMemFree:1'", 0);
+    xCAT::Utils->runcmd("chtab key='rmetrics_IBM.EthernetDevice' monsetting.name=rmcmon monsetting.value='RecByteRate,RecPacketRate,XmitByteRate,XmitPacketRate:1'", 0);
+  }
+
+  my $pPairHash=xCAT_monitoring::monitorctrl->getMonServer($noderef);
+  if (ref($pPairHash) eq 'ARRAY') {
+      reportError($pPairHash->[1], $callback);
+      return (1, "");	
+  }
 
   foreach my $key (keys (%$pPairHash)) {
     my @key_a=split(':', $key);
@@ -474,32 +501,6 @@ sub config {
     }
   }
 
-  #create conditions/responses/sensors on the service node or mn
-  my $result=`/usr/sbin/rsct/install/bin/ctversion`;
-  my $rsct_ver;
-  if (!$?) {
-      chomp($result);
-      my @tempa=split(/ /, $result); 
-      if (@tempa>1) {
-          $rsct_ver=$tempa[1]; 
-      }
-  }
-  my $version_string;
-  if ($rsct_ver) {$version_string="RSCT_VER=$rsct_ver"; } 
-
-  my $result;
-  if ($isSV) {
-      $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/sn 2>&1`;  } else  {
-	  $result=`$version_string $::XCATROOT/sbin/rmcmon/mkrmcresources $::XCATROOT/lib/perl/xCAT_monitoring/rmc/resources/mn 2>&1`;
-  }      
-  if ($?) {
-    my $error= "Error when creating predefined resources on $localhostname:\n$result";
-    reportError($error, $callback);
-  }
-  if(!$isSV){
-    xCAT::Utils->runcmd("chtab key='rmetrics_IBM.Host' monsetting.name=rmcmon monsetting.value='PctTotalTimeIdle,PctTotalTimeWait,PctTotalTimeUser,PctTotalTimeKernel,PctRealMemFree:1'", 0);
-    xCAT::Utils->runcmd("chtab key='rmetrics_IBM.EthernetDevice' monsetting.name=rmcmon monsetting.value='RecByteRate,RecPacketRate,XmitByteRate,XmitPacketRate:1'", 0);
-  }
 }
 
 #--------------------------------------------------------------------------------
