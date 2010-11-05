@@ -64,7 +64,7 @@ if [ $OS != "AIX" ]; then
             fi
             # Install PE license rpm into image, BUT DO NOT ACCEPT
             # The java process fails when you try to run in chroot
-            zypper -R $installroot install $PE_DIR/IBM_pe_license*.rpm
+            #zypper -R $installroot install $PE_DIR/IBM_pe_license*.rpm
             # Copy license files from MN into the image
             mkdir -p $installroot/etc/opt/ibmhpc/license
             cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
@@ -79,7 +79,7 @@ if [ $OS != "AIX" ]; then
             fi
             # Install PE license rpm into image, BUT DO NOT ACCEPT
             # The java process fails when you try to run in chroot
-            yum --installroot $installroot --nogpgcheck install  $PE_DIR/IBM_pe_license*.rpm
+            #yum --installroot $installroot --nogpgcheck install  $PE_DIR/IBM_pe_license*.rpm
             # Copy license files from MN into the image
             mkdir -p $installroot/etc/opt/ibmhpc/license
             cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
