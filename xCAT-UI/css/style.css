@@ -30,6 +30,10 @@
 .tooltip h3 {
 	margin : 0px;
 }
+.tooltip table{
+	font-size : 12px;
+	color: #fff;
+}
 /****************** Header ******************/
 #header {
 	height: 40px;

@@ -194,7 +194,8 @@ function createGraphical(bpa, fsp, area){
 			var fspName = bpa[bpaName][fspIndex];
 			usedFsp[fspName] = 1;
 			
-			frameDiv.append(createFspDiv(fspName, fsp[fspName]['mtm'], fsp));			
+			frameDiv.append(createFspDiv(fspName, fsp[fspName]['mtm'], fsp));
+			frameDiv.append(createFspTip(fspName, fsp[fspName]['mtm'], fsp));
 		}
 		td.append(frameDiv);
 		row.append(td);
@@ -234,7 +235,9 @@ function createGraphical(bpa, fsp, area){
 		}
 		elementNum ++;
 
-		var td = '<td style="vertical-align:top">' + createFspDiv(fspName, fsp[fspName]['mtm'], fsp) + '</td>';
+		var td = $('<td style="vertical-align:top"></td>');
+		td.append(createFspDiv(fspName, fsp[fspName]['mtm'], fsp));
+		td.append(createFspTip(fspName, fsp[fspName]['mtm'], fsp));
 		row.append(td);
 	}
 	
@@ -259,6 +262,23 @@ function createGraphical(bpa, fsp, area){
 	graphical_area.append(selectLparDiv);
 	graphical_area.append(graphField);
 	area.append(graphical_area);
+	
+	$('.tooltip input[type = checkbox]').bind('click', function(){
+		var lparName = $(this).attr('name');
+		if ('' == lparName){
+			return;
+		}
+		if (true == $(this).attr('checked')){
+			selectLpar[lparName] = 1;
+			$('#graphTable [name=' + lparName + ']').css('border-color', 'aqua');
+		}
+		else{
+			delete selectLpar[lparName];
+			$('#graphTable [name=' + lparName + ']').css('border-color', 'transparent');
+		}
+		
+		updateSelectLparDiv();
+	});
 	
 	$('.fspDiv2, .fspDiv4, .fspDiv42').tooltip({
 
@@ -293,10 +313,10 @@ function showSelectDialog(lpars){
 			var color = statusMap(lparList[lparName]);
 			
 			if (selectLpar[lparName]){
-				row.append('<td><input type="checkbox" checked="checked" id="' + lparName + '"></input></td>');
+				row.append('<td><input type="checkbox" checked="checked" name="' + lparName + '"></input></td>');
 			}
 			else{
-				row.append('<td><input type="checkbox" id="' + lparName + '"></input></td>');
+				row.append('<td><input type="checkbox" name="' + lparName + '"></input></td>');
 			}
 			row.append('<td>' + lparName + '</td>');
 			row.append('<td style="background-color:' + color + ';">' + lparList[lparName] + '</td>');
@@ -317,18 +337,18 @@ function showSelectDialog(lpars){
 		 			 },
 			ok : function(){
 	 				$('#selectLparTable input[type=checkbox]').each(function(){
-	 					var lparName = $(this).attr('id');
+	 					var lparName = $(this).attr('name');
 	 					if ('' == lparName){
 	 						//continue
 	 						return true;
 	 					}
 	 					if (true == $(this).attr('checked')){
 	 						selectLpar[lparName] = 1;
-	 						$('#graphTable #' + lparName).css('border-color', 'aqua');
+	 						$('#graphTable [name=' + lparName + ']').css('border-color', 'aqua');
 	 					}
 	 					else{
 	 						delete selectLpar[lparName];
-	 						$('#graphTable #' + lparName).css('border-color', 'transparent');
+	 						$('#graphTable [name=' + lparName + ']').css('border-color', 'transparent');
 	 					}
 	 				});
 	 				updateSelectLparDiv();
@@ -562,23 +582,16 @@ function createActionMenu(){
  *        fsp : all fsp and there related lpars
  *        fspinfo : all fsps' hardwareinfo
  * @return
- *        fspDiv's html
+ *       
  */
 function createFspDiv(fspName, mtm, fsp){
 	//create fsp title
-	var title = '<h3>' + fspName;
 	var lparStatusRow = '';
-	if (hardwareInfo[mtm]){
-		title += '(' + hardwareInfo[mtm][0] + ')';
-	}
-	
-	title += '</h3><br/>';
 	
 	for (var lparIndex in fsp[fspName]['children']){
 		var lparName = fsp[fspName]['children'][lparIndex];
 		var color = statusMap(lparList[lparName]);
-		title += lparName + '<br/>';
-		lparStatusRow += '<td class="lparStatus" style="background-color:' + color + ';color:' + color + ';" id="' + lparName + '">1</td>';
+		lparStatusRow += '<td class="lparStatus" style="background-color:' + color + ';color:' + color + ';" name="' + lparName + '">1</td>';
 	}
 	
 	//select the backgroud
@@ -591,11 +604,42 @@ function createFspDiv(fspName, mtm, fsp){
 	}
 		
 	//create return value
-	var retHtml = '<div value="' + fspName + '" class="' + divClass + '" title="' + title + '">';
-	retHtml += '<div class="lparDiv"><table><tbody><tr>' + lparStatusRow + '</tr></tbody></table></div>';
+	var retHtml = '<div value="' + fspName + '" class="' + divClass + '">';
+	retHtml += '<div class="lparDiv"><table><tbody><tr>' + lparStatusRow + '</tr></tbody></table></div></div>';
 	return retHtml;
 }
 
+/**
+ * create the physical graphical fsps' help witch could select the lpars. 
+ * 
+ * @param bpaName : fsp's key
+ *        fsp : all fsp and there related lpars
+ *        fspinfo : all fsps' hardwareinfo
+ * @return
+ *        
+ */
+function createFspTip(fspName, mtm, fsp){
+	var tip = $('<div class="tooltip"></div>');
+	var tempTable = $('<table><tbody></tbody></table>');
+	if (hardwareInfo[mtm]){
+		tip.append('<h3>' + fspName + '(' + hardwareInfo[mtm][0] + ')</h3><br/>');
+	}
+	else{
+		tip.append('<h3>' + fspName + '</h3><br/>');
+	}
+	
+	for (var lparIndex in fsp[fspName]['children']){
+		var lparName = fsp[fspName]['children'][lparIndex];
+		var color = statusMap(lparList[lparName]);
+		var row = '<tr><td><input type="checkbox" name="' + lparName + '"></td>';
+		row += '<td>'+ lparName + '</td>';
+		row += '<td style="background-color:' + color + ';">' + lparList[lparName] + '</td></tr>';
+		tempTable.append(row);
+	}
+	
+	tip.append(tempTable);
+	return tip;
+}
 /**
  * map the lpar's status into a color 
  * 
