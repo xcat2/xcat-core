@@ -17,60 +17,7 @@ function loadGangliaMon() {
 
 		success : checkGangliaRPMs
 	});
-	
-	// Check if ganglia is running on the xCAT MN
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'monls',
-			tgt : '',
-			args : 'gangliamon',
-			msg : ''
-		},
-
-		/**
-		 * Append warning message
-		 * 
-		 * @param data
-		 *            Data returned from HTTP request
-		 * @return Nothing
-		 */
-		success : function(data) {
-			if (data.rsp[0].indexOf("not-monitored") > -1) {
-				// Create link to start Ganglia
-				var startLnk = $('<a href="#">Click here</a>');
-				startLnk.css( {
-					'color' : 'blue',
-					'text-decoration' : 'none'
-				});
-				startLnk.click(function() {
-					// Turn on Ganglia for all nodes
-					monitorNode('', 'on');
-				});
-
-				// Create warning bar
-				var warningBar = $('<div class="ui-state-error ui-corner-all"></div>');
-				var msg = $('<p></p>');
-				msg.append('<span class="ui-icon ui-icon-alert"></span>');
-				msg.append('Please start Ganglia Monitoring on xCAT. ');
-				msg.append(startLnk);
-				msg.append(' to start Ganglia Monitoring.');
-				warningBar.append(msg);
-				warningBar.css('margin-bottom', '10px');
-				
-				// If there are any warning messages, append this warning after it
-				var curWarnings = $('#gangliamon').find('.ui-state-error');
-				var gangliaTab = $('#gangliamon');
-				if (curWarnings.length) {
-					curWarnings.after(warningBar);
-				} else {					
-					warningBar.prependTo(gangliaTab);
-				}
-			}
-		}
-	});
-	
+		
 	// Create groups and nodes DIV
 	var groups = $('<div id="groups"></div>');
 	var nodes = $('<div id="nodes"></div>');
@@ -127,7 +74,60 @@ function checkGangliaRPMs(data) {
 		var warningBar = createWarnBar(warningMsg);
 		warningBar.css('margin-bottom', '10px');
 		warningBar.prependTo(gangliaTab);
-	}		
+	} else {
+		// Check if ganglia is running on the xCAT MN
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'monls',
+				tgt : '',
+				args : 'gangliamon',
+				msg : ''
+			},
+
+			/**
+			 * Append warning message
+			 * 
+			 * @param data
+			 *            Data returned from HTTP request
+			 * @return Nothing
+			 */
+			success : function(data) {
+				if (data.rsp[0].indexOf("not-monitored") > -1) {
+					// Create link to start Ganglia
+					var startLnk = $('<a href="#">Click here</a>');
+					startLnk.css( {
+						'color' : 'blue',
+						'text-decoration' : 'none'
+					});
+					startLnk.click(function() {
+						// Turn on Ganglia for all nodes
+						monitorNode('', 'on');
+					});
+
+					// Create warning bar
+					var warningBar = $('<div class="ui-state-error ui-corner-all"></div>');
+					var msg = $('<p></p>');
+					msg.append('<span class="ui-icon ui-icon-alert"></span>');
+					msg.append('Please start Ganglia Monitoring on xCAT. ');
+					msg.append(startLnk);
+					msg.append(' to start Ganglia Monitoring.');
+					warningBar.append(msg);
+					warningBar.css('margin-bottom', '10px');
+					
+					// If there are any warning messages, append this warning after it
+					var curWarnings = $('#gangliamon').find('.ui-state-error');
+					var gangliaTab = $('#gangliamon');
+					if (curWarnings.length) {
+						curWarnings.after(warningBar);
+					} else {					
+						warningBar.prependTo(gangliaTab);
+					}
+				}
+			}
+		});		
+	}
 	return;
 }
 
