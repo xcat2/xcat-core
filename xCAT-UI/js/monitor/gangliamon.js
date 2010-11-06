@@ -181,9 +181,9 @@ function loadGroups4Ganglia(data) {
 				var msg = $('<p></p>');
 				msg.append('<span class="ui-icon ui-icon-info"></span>');
 				msg
-					.append('Review the nodes that are monitored.  If a node is not monitored, select it and click on Monitor.  Once you are satisfied with the nodes that you want to monitor, ');
+					.append('Review the nodes that are monitored by Ganglia.  You can turn on Ganglia monitoring on a node by selecting it and clicking on Monitor. If you are satisfied with the nodes you want to monitor, ');
 				msg.append(gangliaLnk);
-				msg.append(' to open Ganglia page');
+				msg.append(' to open Ganglia page.');
 				info.append(msg);
 				info.css('margin-bottom', '10px');
 				$('#nodes').append(info);
