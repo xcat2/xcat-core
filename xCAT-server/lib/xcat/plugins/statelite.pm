@@ -219,26 +219,36 @@ sub process_request {
         return;
     }
 
+    # validate the options for all litefile entries
+    # if there is any scenario not supported, the command  exits
     foreach my $entry (keys %hashNew) {
         my @tmp = split (/\s+/, $entry);
+        my $f = $tmp[1];
         if ($hashNew{$entry}) {
-            if ( $tmp[0] =~ m/ro/  or $tmp[0] =~ m/con/) {
-                $callback->({error=>[qq{the parent directory should not be with "ro" or "con" as its option}], errorcode=>[1]});
+            if ( $tmp[0] =~ m/ro$/  or $tmp[0] =~ m/con$/) {
+                $callback->({error=>[qq{the directory "$f" should not be with "ro" or "con" as its option}], errorcode=>[1]});
                 return;
             }
             foreach my $child ( @{$hashNew{$entry}} ) {
                 my @tmpc = split (/\s+/, $child);
-                my $f = $tmp[1];
                 my $fc = $tmpc[1];
-                if ( ($tmp[0] =~ m/link/) and ( $tmpc[0] !~ m/link/) ) {
-                    $callback->({error=>[qq{Based on the option of $f, $fc can only use "link"-headed options}], errorcode=> [ 1]});
-                    return;
+                if ($tmp[0] =~ m/link/) {
+                    if ($tmpc[0] eq "link,ro") {
+                        $callback->({error=>[qq{Based on the option of $f, $fc should not use "link,ro" as its option}], errorcode=> [1]});
+                        return;
+                    }
+                    if ($tmpc[0] !~ m/link/) {
+                        $callback->({error=>[qq{Based on the option of $f, $fc can only use "link"-based options}], errorcode=> [1]});
+                        return;
+                    }
+                } else {
+                    if ($tmpc[0] =~ m/link/) {
+                        $callback->({error=>[qq{Based on the option of $f, $fc should not use "link"-based options}], errorcode=>[1]});
+                        return;
+                    }
                 }
-                if ( ($tmp[0] !~ m/link/) and ($tmpc[0] =~ m/link/) ) {
-                    $callback->({error=>[qq{$fc shouldnot use "link"-headed options }], errorcode=> [ 1]});
-                    return;
-                }
-                if ( ($tmp[0] eq  qq{persistent}) and ($tmpc[0] ne qq{persistent}) ) {
+                if ( ($tmp[0] =~ m{persistent}) and ($tmpc[0] !~ m{persistent}) ) {
+                    # TODO: if the parent is "persistent", the child can be ro/persistent/rw/con
                     $callback->({error=>["$fc should have persistent option like $f "], errorcode=> [ 1]});
                     return;
                 }
@@ -287,10 +297,12 @@ sub process_request {
             }
         }
 
+        # there's one parent directory, whose option is different from the old one
         unless ($entry[1] eq $oldentry[0]) {
             recoverFiles($rootimg_dir, \@oldentry, $callback);
+            # if its children items exist, we need to copy the backup files from .statebackup to the rootfs, 
             if ($hashSaved{$line}) {
-                $verbose && $callback->({info=>["$f has sub items in the litefile table."]});
+                $verbose && $callback->({info=>["$f has child file/directory in the litefile table."]});
                 my $childrenRef = $hashSaved{$line};
                 foreach my $child (@{$childrenRef}) {
                     # recover them from .statebackup to $rootimg_dir
@@ -305,6 +317,13 @@ sub process_request {
                         xCAT::Utils->runcmd("rm -rf $destf", 0, 1);
                     }
 
+                    # maybe the dir of $destf doesn't exist, so we will create one
+                    my $dirDestf = dirname $destf;
+                    unless ( -d $dirDestf ) {
+                        $verbose && $callback->({info=>["mkdir -p $dirDestf"]});
+                        xCAT::Utils->runcmd("mkdir -p $dirDestf", 0, 1);
+                    }
+
                     if ( -e $srcf ) {
                         $verbose && $callback->({info=>["recovering from $srcf to $destf"]});
                         xCAT::Utils->runcmd("cp -r -a $srcf $destf", 0, 1);
@@ -316,7 +335,7 @@ sub process_request {
 
         # recover the children
         if ($hashSaved{$line}) {
-            $verbose && $callback->({info=>["$f has sub items in the litefile table."]});
+            $verbose && $callback->({info=>["$f has child file/directory in the litefile table."]});
             my $childrenRef = $hashSaved{$line};
             foreach my $child (@{$childrenRef}) {
                 my @tmpc = split (/\s+/, $child);
@@ -412,26 +431,28 @@ In order to handle such a scenario, one hash is generated to show the hirarachy 
 
 For example, one array with entry names is used as the input:
 my @entries = (
-    "imagename bind,persistent /var/",
-    "imagename bind /var/tmp/",
-    "imagename tmpfs,rw /root/",
-    "imagename tmpfs,rw /root/.bashrc",
-    "imagename tmpfs,rw /root/test/",
-    "imagename bind /etc/resolv.conf",
-    "imagename bind /var/run/"
+    "imagename persistent /var/",
+    "imagename tempfs /var/tmp/",
+    "imagename link /root/",
+    "imagename link /root/.bashrc",
+    "imagename link /root/test/",
+    "imagename link /root/second/third",
+    "imagename tempfs /etc/resolv.conf",
+    "imagename tempfs /var/run/"
 );
 Then, one hash will generated as:
 %hashentries = {
-          'bind,persistent /var/' => [
-                                                 'bind /var/tmp/',
-                                                 'bind /var/run/'
-                                               ],
-          'bind /etc/resolv.conf' => undef,
-          'tmpfs,rw /root/' => [
-                                           'tmpfs,rw /root/.bashrc',
-                                           'tmpfs,rw /root/test/'
-                                         ]
-        };
+    'persistent /var/' => [
+        'tempfs /var/tmp/',
+        'tempfs /var/run/'
+    ],
+    'tempfs /etc/resolv.conf' => undef,
+    'link /root/' => [
+        'link /root/.bashrc',
+        'link /root/test/',
+        'link /root/second/third"
+    ]
+};
 
 Arguments:
     one array with entrynames,
@@ -451,24 +472,27 @@ sub parseLiteFiles {
     foreach (@entries) {
         my $entry = $_;
         my @str = split /\s+/, $entry;
-        shift @str;
+        shift @str; # remove the imgname in @entries
         $entry = join "\t", @str;
         my $file = $str[1];
         chop $file if ($file =~ m{/$});
         unless (exists $dhref->{"$entry"}) {
-            my $parent = dirname($file);
-            # to see whether $parent exists in @entries or not
-            unless ($parent =~ m/\/$/) {
-                $parent .= "/";
+            my $parent = dirname $file;
+            my @res;
+            my $found = 0;
+            while($parent ne "/") {
+                # to see whether $parent exists in @entries or not
+                $parent .= "/" unless ($parent =~ m/\/$/);
+                @res = grep {$_ =~ m/\Q$parent\E$/} @entries;
+                $found = scalar @res;
+                last if ($found eq 1);
+                $parent = dirname $parent;
             }
-            #my $found = grep $_ =~ m/\Q$parent\E$/, @entries;
-            my @res = grep {$_ =~ m/\Q$parent\E$/} @entries;
-            my $found = scalar @res;
 
             if($found eq 1) { # $parent is found in @entries
 		        # handle $res[0];
 		        my @tmpresentry=split /\s+/, $res[0];
-		        shift @tmpresentry;
+		        shift @tmpresentry; # remove the imgname in @tmpresentry
 		        $res[0] = join "\t", @tmpresentry;
                 chop $parent;
                 my @keys = keys %{$dhref};
@@ -497,7 +521,7 @@ sub recoverFiles {
     
     #$callback->({info => ["! updating $f ..."]});
 
-    if ($oldentry->[0] eq "tmpfs,rw" or $oldentry->[0] eq "ro" ) {
+    if ($oldentry->[0] =~ m{^link}) {
         my $target = $rootimg_dir . $f;
         if (-l $target) {   #not one directory
             my $location = readlink $target;
@@ -546,9 +570,9 @@ sub liteItem {
 
     my @entry = split (/\s+/, $item);
 
-    my $f = $entry[1];
+    my $f = $entry[1]; # file name
 
-    my $rif = $rootimg_dir . $f;
+    my $rif = $rootimg_dir . $f; # the file's location in rootimg_dir
     my $d = dirname($f);
 
     if ($entry[0] =~ m/link/) {
@@ -636,7 +660,7 @@ sub liteItem {
 
         } else {
             # since its parent directory has been linked to .default and .statelite/tmpfs/, 
-            # what we only to do is to check it exists in .default directory
+            # what we need to do is only to check whether it exists in .default directory
             if($f =~ m{/$}) { # one directory
                 unless ( -d "$rootimg_dir/.default$f" ) {
                     if (-e "$rootimg_dir/.default$f") {
@@ -648,6 +672,7 @@ sub liteItem {
             }else { # only one file
                 my $fdir = dirname($f);
                 unless ( -d "$rootimg_dir/.default$fdir") {
+                    $verbose && $callback->({info=>["mkdir -p $rootimg_dir/.default$fdir"]});
                     xCAT::Utils->runcmd("mkdir -p $rootimg_dir/.default$fdir", 0, 1);
                 }
                 unless( -e "$rootimg_dir/.default$f") {
