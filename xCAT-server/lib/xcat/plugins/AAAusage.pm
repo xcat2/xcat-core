@@ -26,7 +26,7 @@ sub handled_commands {
       lsvm      => 'AAAusage',
       chvm      => 'AAAusage',
       rmvm      => 'AAAusage',
-      lsslp     => 'AAAusage',
+      #lsslp     => 'AAAusage',
       rflash    => 'AAAusage',
       mkhwconn  => 'AAAusage',
       rmhwconn  => 'AAAusage',
