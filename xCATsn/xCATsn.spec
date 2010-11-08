@@ -26,6 +26,9 @@ Conflicts: xCAT
 %ifos linux
 # yaboot-xcat is pulled in so any SN can manage ppc nodes
 Requires: dhcp httpd nfs-utils expect nmap fping bind perl-XML-Parser vsftpd
+%ifarch ppc64
+Requires: perl-IO-Stty
+%endif
 %ifarch s390x
 # No additional requires for zLinux right now
 %else
