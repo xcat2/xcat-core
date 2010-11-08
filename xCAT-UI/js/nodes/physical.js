@@ -194,7 +194,7 @@ function createGraphical(bpa, fsp, area){
 	
 	//there is not selected lpars, show the info bar
 	if (0 == temp){
-		selectLparDiv.append(createInfoBar('Click CEC and select lpars to do operations.'));
+		selectLparDiv.append(createInfoBar('Hover CEC and select lpars to do operations.'));
 	}
 	//show selected lpars
 	else{
@@ -202,9 +202,7 @@ function createGraphical(bpa, fsp, area){
 	}
 	
 	//add buttons
-	var tempDiv = $('<div class="actionBar"></div>');
-	tempDiv.append(createActionMenu());
-	area.append(tempDiv);
+	area.append(createActionMenu());
 	area.append(selectLparDiv);
 	area.append(graphTable);
 	
