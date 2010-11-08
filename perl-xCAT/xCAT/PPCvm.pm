@@ -1503,23 +1503,24 @@ sub lhea_adapter {
         # seperated list of adapters
         #####################################
         my $delim = ( $1 =~ /^\"/ ) ? "\\\\\"" : ","; 
-        $cfgdata  =~ /lhea_logical_ports=([^$delim]+)|$/;
-                                              
+        #$cfgdata  =~ /lhea_logical_ports=([^$delim]+)|$/;
+        $cfgdata  =~ /lhea_logical_ports=(.*)lhea_capabilities/;                                     
         my @lhea = split ",", $1;
         foreach ( @lhea ) 
         {
-            if ( /^(\d+)\/(\d+)\/(\d+)\/(\d+)/) 
+            if ( /(\d+)\/(\d+)\/(\d+)\/(\d+)/) 
             {
                 my $id = $4;
                 if($id =~ /\d+/) 
                 {
                     $id = $id + 1;
                 }
-                s/^(\d+)\/(\d+)\/(\d+)\/(\d+)/$1\/$2\/$3\/$id/;
+                s/(\d+)\/(\d+)\/(\d+)\/(\d+)/$1\/$2\/$3\/$id/;
             } 
         }        
         my $adapters = "lhea_logical_ports=".join( ",", @lhea );
-        $cfgdata =~ s/lhea_logical_ports=[^$delim]+/$adapters/;
+        #$cfgdata =~ s/lhea_logical_ports=[^$delim]+/$adapters/;
+        $cfgdata =~ s/lhea_logical_ports=(.*)lhea_capabilities/$adapters,lhea_capabilities/;        
     }
     return( $cfgdata );
 }
