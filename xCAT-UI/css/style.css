@@ -30,10 +30,7 @@
 .tooltip h3 {
 	margin : 0px;
 }
-.tooltip table{
-	font-size : 12px;
-	color: #fff;
-}
+
 /****************** Header ******************/
 #header {
 	height: 40px;
@@ -166,82 +163,6 @@ body {
 	margin: 20px;
 	display: inline-table;
 }
-
-/****************** Physical layout section ******************/
-.physicaltree {
-	width: 200px;
-	vertical-align: top;
-	float: left;
-	position: relative;
-	margin: 15px 0px 15px 15px;
-	overflow: auto;
-}
-
-.physicalview{
-	width : 700px;
-	display : inline-table;
-}
-
-.frameDiv{
-	width : 179px;
-	height : 500px;
-	font-size: 10px;
-	background :url(../images/bpa.jpg);
-	border-width:2px;
-}
-
-.fspDiv2{
-	margin: 0px 12px 2px 17px; 
-	font-size: 12px; 
-	height: 20px;
-	line-height : 20px;
-	width : 140px;
-	text-align: center;
-	background:url(../images/4ufsp.jpg);
-	border-style:solid;
-	border-width:1px;
-	cursor: pointer;
-}
-
-.fspDiv4{
-	margin: 0px 12px 2px 17px; 
-	font-size: 12px; 
-	height: 44px;
-	line-height : 44px;
-	width : 140px;
-	text-align: center;
-	background:url(../images/4ufsp.jpg);
-	border-style:solid;
-	border-width:1px;
-	cursor: pointer;
-}
-
-.fspDiv42{
-	width : 179px;
-	height : 500px;
-	font-size: 15px;
-	background :url(../images/42ufsp.jpg);
-	border-width:2px;
-	cursor: pointer;
-}
-
-.lparDiv{
-	margin: 5px 0px 0px 9px;
-	width : 80px;
-	height : 10px;
-	opacity: 1;
-}
-
-.lparStatus{
-	width : 5px;
-	height : 5px;
-	padding: 0px;
-	border-width: 1px;
-	border-color: transparent;
-	border-style: solid;
-	font-size:1
-}
-
 
 /****************** Info/warning bar ******************/
 span.ui-icon-info {
@@ -733,4 +654,60 @@ table a:hover {
 	width: 240px;
 	height: 120px;
 	margin: 0px 0px 15px 0px;
+}
+
+/****************** Physical layout section ******************/
+.frameDiv{
+	width : 179px;
+	height : 500px;
+	font-size: 10px;
+	background :url(../images/bpa.jpg);
+	border-width:2px;
+}
+
+.fspDiv2{
+	margin: 0px 12px 2px 17px; 
+	font-size: 12px; 
+	height: 20px;
+	line-height : 20px;
+	width : 140px;
+	text-align: center;
+	background:url(../images/4ufsp.jpg);
+	border-style:solid;
+	border-width:1px;
+	cursor: pointer;
+}
+
+.fspDiv4{
+	margin: 0px 12px 2px 17px; 
+	font-size: 12px; 
+	height: 44px;
+	line-height : 44px;
+	width : 140px;
+	text-align: center;
+	background:url(../images/4ufsp.jpg);
+	border-style:solid;
+	border-width:1px;
+	cursor: pointer;
+}
+
+.fspDiv42{
+	width : 179px;
+	height : 500px;
+	font-size: 15px;
+	background :url(../images/42ufsp.jpg);
+	border-width:2px;
+	cursor: pointer;
+}
+
+.lparDiv{
+	margin: 5px 0px 0px 9px;
+	width : 80px;
+	height : 10px;
+	opacity: 1;
+}
+
+.lparStatus{
+	width : 5px;
+	height : 5px;
 }

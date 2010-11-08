@@ -3,168 +3,114 @@
 var bpaList;
 var fspList;
 var lparList;
+var nodeList;
 var selectLpar = new Object();
 /**
- * Get all nodes' nodetype and parent, and create the physical layout div
+ * extract all nodes userful data into a hash, which is used for creating graphical
  * 
  * @param data: the response from xcat command "nodels all nodetype.nodetype ppc.parent ..." 
- *        area: the element to append tree and graphical layout
+ *
  * @return
  */
-function createPhysicalLayout(data, area){
+function extractGraphicalData(data){
 	var nodes = data.rsp;
-	var tempList = new Object();
-	bpaList = new Object();
-	fspList = new Object();
-	lparList = new Object();
+	nodeList = new Object();
 	
 	//extract useful info into tempList
 	for (var i = 0; i < nodes.length; i++){
 		var nodeName = nodes[i][0];
-		if (undefined == tempList[nodeName]){
-			tempList[nodeName] = new Object();
+		if (undefined == nodeList[nodeName]){
+			nodeList[nodeName] = new Object();
 		}
 		
 		switch(nodes[i][2]){
 			case 'nodetype.nodetype': {
-				tempList[nodeName]['type'] = nodes[i][1];
+				nodeList[nodeName]['type'] = nodes[i][1];
 			}
 			break;
 			case 'ppc.parent' : {
-				tempList[nodeName]['parent'] = nodes[i][1];
+				nodeList[nodeName]['parent'] = nodes[i][1];
 			}
 			break;
 			case 'nodelist.status': {
-				tempList[nodeName]['status'] = nodes[i][1];
+				nodeList[nodeName]['status'] = nodes[i][1];
 			}
 			break;
 			case 'vpd.mtm': {
-				tempList[nodeName]['mtm'] = nodes[i][1];
+				nodeList[nodeName]['mtm'] = nodes[i][1];
 			}
 			default :
 				break;
 		}
-	}
-	
-	for (var nodeName in tempList){
-		var parentName = tempList[nodeName]['parent'];
-		var mtm = tempList[nodeName]['mtm'];
-		var status = tempList[nodeName]['status'];
-		switch(tempList[nodeName]['type']){
-			case 'bpa': {
-				if (undefined == bpaList[nodeName]){
-					bpaList[nodeName] = new Array();
-				}
-			}
-			break;
-			case 'lpar,osi': {
-				if ('' == parentName){
-					break;
-				}
-				
-				if (undefined == fspList[parentName]){
-					fspList[parentName] = new Array();
-					//default is 4 units. so i select a 4u mtm randomly
-					fspList[parentName]['mtm'] = '8202-E4B';
-					fspList[nodeName]['children'] = new Array();
-				}
-				
-				fspList[parentName]['children'].push(nodeName);
-				lparList[nodeName] = status;
-			}
-			break;
-			case 'fsp': {
-				if (undefined == fspList[nodeName]){
-					fspList[nodeName] = new Array();
-					fspList[nodeName]['children'] = new Array();
-				}
-				
-				fspList[nodeName]['mtm'] = mtm;
-				
-				if ('' == parentName){
-					break;
-				}
-				
-				if (undefined == bpaList[parentName]){
-					bpaList[parentName] = new Array();
-				}
-				
-				bpaList[parentName].push(nodeName);
-			}
-			break;
-			default:
-				break;
-		}
-	}
-	
-	createTree(bpaList, fspList, area);
-	createGraphical(bpaList, fspList, area);
-	
+	}	
 }
 
-/**
- * create the physical tree layout 
- * 
- * @param bpa : all bpa and there related  fsps
- *        fsp : all fsp and there related lpars
- *        area: the element to append tree layout
- * @return
- */
-function createTree(bpa, fsp, area){
-	//create tree and layout
-	var usedFsp = new Object();
-	var bpaList = '<ul>';
-	for(var bpaName in bpa)
-	{
-		var fspList = '<ul>';
-		for(var fspIndex in bpa[bpaName])
-		{
-			var fspName = bpa[bpaName][fspIndex];
-			usedFsp[fspName] = 1;
-			var lparList = '<ul>';
-			for (var lparIndex in fsp[fspName]['children'])
-			{
-				lparList += '<li><ins>&nbsp;</ins>' + fsp[fspName]['children'][lparIndex] + '</li>';
-			}
-			lparList += '</ul>';
-			fspList += '<li><a href="#">' + fspName + '(' + fsp[fspName]['children'].length + ' lpars)</a>' + lparList + '</li>';
-
-		}
-		fspList += '</ul>';
-		bpaList += '<li><a href="#">' + bpaName + '(' + bpa[bpaName].length + ' fsps)</a>' + fspList + '</li>';
-	}
-	bpaList += '</ul>';
+function createPhysicalLayout(data){
+	bpaList = new Object();
+	fspList = new Object();
+	lparList = new Object();
 	
-	var cecList = '<ul>';
-	for (var fspName in fsp)
-	{
-		if (usedFsp[fspName])
-		{
+	$('#graphTab').empty();
+	for (var temp in data.rsp){
+		var nodeName = data.rsp[temp];
+		nodeName = nodeName.substring(0, nodeName.indexOf(' '));
+		if ('' == nodeName){
 			continue;
 		}
-		var lparList = '<ul>';
-		for (var lparIndex in fsp[fspName]['children'])
-		{
-			lparList += '<li><ins>&nbsp;</ins>' + fsp[fspName]['children'][lparIndex] + '</li>';
-		}
-		lparList += '</ul>';
-		cecList += '<li><a href="#">' + fspName + '(' + fsp[fspName]['children'].length + ' lpars)</a>' + lparList + '</li>';
+		fillList(nodeName);
 	}
-	cecList += '</ul>';
-	
-	var tree_area = $('<div class="physicaltree"></div>');
-	
-	tree_area.append('<ul><li><a href="#">BPA</a>' + bpaList + '</li><li><a href="#">FSP</a>' + cecList + '</li></ul>');
-	area.append(tree_area);
-	tree_area.jstree({
-		themes : {
-    		"theme" : "default",
-    		"dots" : false,	// No dots
-    		"icons" : false	// No icons
-		}
-	});
+	createGraphical(bpaList, fspList, $('#graphTab'));
 }
 
+function fillList(nodeName){
+	var parentName = nodeList[nodeName]['parent'];
+	var mtm = nodeList[nodeName]['mtm'];
+	var status = nodeList[nodeName]['status']; 
+	
+	switch(nodeList[nodeName]['type']){
+		case 'bpa': {
+			if (undefined == bpaList[nodeName]){
+				bpaList[nodeName] = new Array();
+			}
+		}
+		break;
+		case 'lpar,osi': {
+			if ('' == parentName){
+				break;
+			}
+			
+			if (undefined == fspList[parentName]){
+				fillList(parentName);
+			}
+			
+			fspList[parentName]['children'].push(nodeName);
+			lparList[nodeName] = status;
+		}
+		break;
+		case 'fsp': {
+			if (undefined != fspList[nodeName]){
+				break;
+			}
+			
+			fspList[nodeName] = new Array();
+			fspList[nodeName]['children'] = new Array();
+			fspList[nodeName]['mtm'] = mtm;
+			
+			if ('' == parentName){
+				break;
+			}
+			
+			if (undefined == bpaList[parentName]){
+				fillList(parentName);
+			}
+			
+			bpaList[parentName].push(nodeName);
+		}
+		break;
+		default:
+			break;
+	}
+}
 /**
  * create the physical graphical layout 
  * 
@@ -176,9 +122,7 @@ function createTree(bpa, fsp, area){
  */
 function createGraphical(bpa, fsp, area){
 	var usedFsp = new Object();
-	var graphField = $('<fieldset></fieldset>');
-	graphField.append('<legend>Graphical Layout</legend>');
-	var graphTable = $('<table id="graphTable"><tbody></tbody></table>');
+	var graphTable = $('<table id="graphTable" style="border-color: transparent;"><tbody></tbody></table>');
 	var elementNum = 0;
 	var row;
 	for (var bpaName in bpa){
@@ -187,7 +131,7 @@ function createGraphical(bpa, fsp, area){
 			graphTable.append(row);
 		}
 		elementNum ++;
-		var td = $('<td></td>');
+		var td = $('<td style="padding:0;border-color: transparent;"></td>');
 		var frameDiv = $('<div class="frameDiv"></div>');
 		frameDiv.append('<div style="height:27px;">' + bpaName + '</div>');
 		for (var fspIndex in bpa[bpaName]){
@@ -235,15 +179,12 @@ function createGraphical(bpa, fsp, area){
 		}
 		elementNum ++;
 
-		var td = $('<td style="vertical-align:top"></td>');
+		var td = $('<td style="vertical-align:top;border-color: transparent;"></td>');
 		td.append(createFspDiv(fspName, fsp[fspName]['mtm'], fsp));
 		td.append(createFspTip(fspName, fsp[fspName]['mtm'], fsp));
 		row.append(td);
 	}
 	
-	graphField.append(graphTable);
-	
-	var graphical_area = $('<div class="physicalview"></div>');
 	var selectLparDiv = $('<div id="selectLparDiv" style="margin: 20px;"></div>');
 	var temp = 0;
 	for (var i in selectLpar){
@@ -259,9 +200,13 @@ function createGraphical(bpa, fsp, area){
 	else{
 		updateSelectLparDiv();
 	}
-	graphical_area.append(selectLparDiv);
-	graphical_area.append(graphField);
-	area.append(graphical_area);
+	
+	//add buttons
+	var tempDiv = $('<div class="actionBar"></div>');
+	tempDiv.append(createActionMenu());
+	area.append(tempDiv);
+	area.append(selectLparDiv);
+	area.append(graphTable);
 	
 	$('.tooltip input[type = checkbox]').bind('click', function(){
 		var lparName = $(this).attr('name');
@@ -274,14 +219,17 @@ function createGraphical(bpa, fsp, area){
 		}
 		else{
 			delete selectLpar[lparName];
-			$('#graphTable [name=' + lparName + ']').css('border-color', 'transparent');
+			$('#graphTable [name=' + lparName + ']').css('border-color', '#BDBDBD');
 		}
 		
 		updateSelectLparDiv();
 	});
 	
 	$('.fspDiv2, .fspDiv4, .fspDiv42').tooltip({
-
+		position: "top center",
+		relative : true,
+		offset : [20, 40],
+		effect: "fade"
 	});
 	
 	$('.fspDiv2, .fspDiv4, .fspDiv42').bind('click', function(){
@@ -301,7 +249,7 @@ function showSelectDialog(lpars){
 	var diaDiv = $('<div class="tab" title=Select Lpars"></div>');
 	
 	if (0 == lpars.length){
-		diaDiv.append(createInfoBar('There is not any lpars defined.'));
+		diaDiv.append(createInfoBar('There is not any lpars be selected(defined).'));
 	}
 	else{
 		//add the dialog content
@@ -368,23 +316,10 @@ function showSelectDialog(lpars){
 function updateSelectLparDiv(){
 	var temp = 0;
 	$('#selectLparDiv').empty();
-	
-	for (var LparName in selectLpar){
-		temp ++;
-		break;
-	}
-	
-	if (0 == temp){
-		$('#selectLparDiv').append(createInfoBar('Click CEC and select lpars to do operations.'));
-		return;
-	}
-	
-	temp =0;
+
 	//add buttons
-	var tempDiv = $('<div class="actionBar"></div>');
-	tempDiv.append(createActionMenu());
-	$('#selectLparDiv').append(tempDiv);
-	$('#selectLparDiv').append('<br/>Lpars: ');
+	
+	$('#selectLparDiv').append('Lpars: ');
 	for(var lparName in selectLpar){
 		$('#selectLparDiv').append(lparName + ' ');
 		temp ++;
@@ -589,9 +524,13 @@ function createFspDiv(fspName, mtm, fsp){
 	var lparStatusRow = '';
 	
 	for (var lparIndex in fsp[fspName]['children']){
+		//show 8 lpars on one cec at most.
+		if (lparIndex >= 8){
+			break;
+		}
 		var lparName = fsp[fspName]['children'][lparIndex];
 		var color = statusMap(lparList[lparName]);
-		lparStatusRow += '<td class="lparStatus" style="background-color:' + color + ';color:' + color + ';" name="' + lparName + '">1</td>';
+		lparStatusRow += '<td class="lparStatus" style="background-color:' + color + ';color:' + color + ';padding: 0px;font-size:1;border-width: 1px;border-style: solid;" name="' + lparName + '">1</td>';
 	}
 	
 	//select the backgroud
@@ -632,8 +571,8 @@ function createFspTip(fspName, mtm, fsp){
 		var lparName = fsp[fspName]['children'][lparIndex];
 		var color = statusMap(lparList[lparName]);
 		var row = '<tr><td><input type="checkbox" name="' + lparName + '"></td>';
-		row += '<td>'+ lparName + '</td>';
-		row += '<td style="background-color:' + color + ';">' + lparList[lparName] + '</td></tr>';
+		row += '<td style="color:#fff">'+ lparName + '</td>';
+		row += '<td style="background-color:' + color + ';color:#fff">' + lparList[lparName] + '</td></tr>';
 		tempTable.append(row);
 	}
 	

@@ -54,36 +54,11 @@ function setNodesDataTable(table) {
 function loadNodesPage() {
 	// If groups are not already loaded
 	if (!$('#groups').length) {
-		
-		var layoutSelectorDiv = $('<div id="layoutselector"></div>');
-		var logicalLayoutDiv = $('<div id="logicalLayout"></div>');
-		var physicalLayoutDiv = $('<div id="physicalLayout"></div>');
-		physicalLayoutDiv.hide();
-		
-		$('#content').append(layoutSelectorDiv);
-		$('#content').append(logicalLayoutDiv);
-		$('#content').append(physicalLayoutDiv);
-		// Create layout selector
-		var groupRadio = $('<input type="radio" name="layoutselector" checked="checked">Group</input>');
-		groupRadio.bind('click',function(){
-			$('#physicalLayout').hide();
-			$('#logicalLayout').show();
-		});
-		
-		var physicalRadio = $('<input type="radio" name="layoutselector">Graphical</input>');
-		physicalRadio.bind('click', function(){
-			$('#logicalLayout').hide();
-			$('#physicalLayout').show();
-		});
-		layoutSelectorDiv.append('<label>Layout:</label>');
-		layoutSelectorDiv.append(groupRadio);
-		layoutSelectorDiv.append(physicalRadio);
-		
 		// Create a groups division
 		groupDIV = $('<div id="groups"></div>');
 		nodesDIV = $('<div id="nodes"></div>');
-		logicalLayoutDiv.append(groupDIV);
-		logicalLayoutDiv.append(nodesDIV);
+		$('#content').append(groupDIV);
+		$('#content').append(nodesDIV);
 
 		// Create loader
 		var loader = createLoader();
@@ -118,7 +93,7 @@ function loadNodesPage() {
 			},
 
 			success : function(data){
-				createPhysicalLayout(data, $('#physicalLayout'));
+				extractGraphicalData(data);
 			}
 		});
 	}
@@ -158,13 +133,14 @@ function loadGroups(data) {
 				$('#nodes').children().remove();
 				// Create loader
 				var loader = $('<center></center>').append(createLoader());
-
+				var loader2 = $('<center></center>').append(createLoader());
 				// Create a tab for this group
 				var tab = new Tab();
 				setNodesTab(tab);
 				tab.init();
 				$('#nodes').append(tab.object());
 				tab.add('nodesTab', 'Nodes', loader, false);
+				tab.add('graphTab', 'Graphical', loader2, false);
 
 				// Get nodes within selected group
 				$.ajax( {
@@ -178,6 +154,19 @@ function loadGroups(data) {
 					},
 
 					success : loadNodes
+				});
+				
+				$.ajax({
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'lsdef',
+						tgt : '',
+						args : thisGroup + ';-s',
+						msg : ''
+					},
+					
+					success : createPhysicalLayout
 				});
 			} // End of if (thisGroup)
 		});
