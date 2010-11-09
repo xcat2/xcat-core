@@ -230,6 +230,11 @@ function createGraphical(bpa, fsp, area){
 		effect: "fade"
 	});
 	
+	$('.tooltip a').bind('click', function(){
+		var lparName = $(this).html();
+		$('#nodesDataTable #' + lparName).trigger('click');
+	});
+	
 	$('.fspDiv2, .fspDiv4, .fspDiv42').bind('click', function(){
 		var fspName = $(this).attr('value');
 		showSelectDialog(fspList[fspName]['children']);
@@ -569,7 +574,7 @@ function createFspTip(fspName, mtm, fsp){
 		var lparName = fsp[fspName]['children'][lparIndex];
 		var color = statusMap(lparList[lparName]);
 		var row = '<tr><td><input type="checkbox" name="' + lparName + '"></td>';
-		row += '<td style="color:#fff">'+ lparName + '</td>';
+		row += '<td style="color:#fff"><a>'+ lparName + '</a></td>';
 		row += '<td style="background-color:' + color + ';color:#fff">' + lparList[lparName] + '</td></tr>';
 		tempTable.append(row);
 	}
