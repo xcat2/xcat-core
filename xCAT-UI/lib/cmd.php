@@ -48,7 +48,7 @@ if (isset($_GET["cmd"])) {
 	$rsp = array();
 
 	// webrun pping and gangliastatus output needs special handling
-	if(strncasecmp($cmd, "webrun", 6) == 0 && (stristr($args, "pping") || stristr($args, "gangliastatus"))) {
+	if(strncasecmp($cmd, "webrun", 6) == 0 && (stristr($args, "pping") || stristr($args, "gangliastatus") || stristr($args, "chtab"))) {
 		$rsp = extractWebrun($xml);
 	}
 	// nodels output needs special handling
