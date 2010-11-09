@@ -50,7 +50,7 @@ sub process_request {
 		'rmcstart'      => \&web_rmcmonStart,
 		'rmcshow'       => \&web_rmcmonShow,
 		'gangliastart'  => \&web_gangliastart,
-		'gangliastop'  => \&web_gangliastop,
+		'gangliastop'   => \&web_gangliastop,
 		'gangliastatus' => \&web_gangliastatus,
 
 		#'xdsh' => \&web_xdsh,
@@ -218,21 +218,6 @@ sub web_lscondresp {
 	foreach my $line (@ret) {
 		chomp $line;
 		$callback->( { data => $line } );
-	}
-}
-
-# currently, web_chtab only handle chtab for the table "monitoring"
-sub web_chtab {
-	my ( $request, $callback, $sub_req ) = @_;
-	split ' ', $request->{arg}->[0];
-	my $tmp_str = $_[2];
-	split '\.', $tmp_str;
-	my $table = $_[0];    #get the table name
-	if ( $table == "monitoring" ) {
-		system("$request->{arg}->[0]");
-	}
-	else {
-		$callback->( { error => "the table $table is not authorized!\n", errorcode => [1] } );
 	}
 }
 
@@ -443,8 +428,8 @@ sub web_gangliastatus {
 	my ( $request, $callback, $sub_req ) = @_;
 
 	# Get node range
-	my $nr = $request->{arg}->[1];
-	my $out  = `xdsh $nr "service gmond status"`;
+	my $nr  = $request->{arg}->[1];
+	my $out = `xdsh $nr "service gmond status"`;
 
 	# Parse output, and use $callback to send back to the web interface
 	# Output looks like:
@@ -488,10 +473,11 @@ sub web_gangliastatus {
 #-------------------------------------------------------
 sub web_gangliastart() {
 	my ( $request, $callback, $sub_req ) = @_;
-	
+
 	# Get node range
 	my $nr = $request->{arg}->[1];
-	if (!$nr) {
+	if ( !$nr ) {
+
 		# If no node range is given, then assume all nodes
 		$nr = '';
 	}
@@ -508,32 +494,32 @@ sub web_gangliastart() {
 			return;
 		}
 	}
-	
+
 	# Add gangliamon to the monitoring table
 	my $info;
 	my $output = `monadd gangliamon`;
-	my @lines = split('\n', $output);
-	foreach(@lines){
+	my @lines = split( '\n', $output );
+	foreach (@lines) {
 		if ($_) {
-			$info .= ($_ . "\n");
+			$info .= ( $_ . "\n" );
 		}
 	}
 
 	# Run the ganglia configuration script on node
 	$output = `moncfg gangliamon $nr -r`;
-	@lines = split('\n', $output);
-	foreach(@lines){
+	@lines = split( '\n', $output );
+	foreach (@lines) {
 		if ($_) {
-			$info .= ($_ . "\n");
+			$info .= ( $_ . "\n" );
 		}
 	}
 
 	# Start the gmond daemon on node
 	$output = `monstart gangliamon $nr -r`;
-	@lines = split('\n', $output);
-	foreach(@lines){
+	@lines = split( '\n', $output );
+	foreach (@lines) {
 		if ($_) {
-			$info .= ($_ . "\n");
+			$info .= ( $_ . "\n" );
 		}
 	}
 
@@ -554,25 +540,65 @@ sub web_gangliastart() {
 #-------------------------------------------------------
 sub web_gangliastop() {
 	my ( $request, $callback, $sub_req ) = @_;
-	
+
 	# Get node range
 	my $nr = $request->{arg}->[1];
-	if (!$nr) {
+	if ( !$nr ) {
 		$nr = '';
 	}
 
 	# Start the gmond daemon on node
 	my $info;
 	my $output = `monstop gangliamon $nr -r`;
-	my @lines = split('\n', $output);
-	foreach(@lines){
+	my @lines = split( '\n', $output );
+	foreach (@lines) {
 		if ($_) {
-			$info .= ($_ . "\n");
+			$info .= ( $_ . "\n" );
 		}
 	}
 
 	$callback->( { info => $info } );
 	return;
+}
+
+#-------------------------------------------------------
+
+=head3   web_chtab
+
+	Description	: Add, delete or update rows in the database tables
+    Arguments	: The chtab command to run
+    Returns		: Nothing
+    
+=cut
+
+#-------------------------------------------------------
+sub web_chtab {
+	my ( $request, $callback, $sub_req ) = @_;
+
+	# Get command
+	my $cmd = $request->{arg}->[0];
+	
+	# Get node name
+	my @args = split( ' ', $cmd );
+	my $node = $args[1];	
+	$node =~ s/node=//g;
+	
+	my $info;
+	if ( $args[0] =~ m/chtab/i ) {
+		# Take argument as command and run it
+		system($cmd);
+		$info = 'Tables updated';
+	}
+	else {
+		$info = 'Unsupported command';
+	}
+	
+	$callback->({
+		node => [{
+			name => [$node], 	# Node name
+			data => [$info]     # Output
+		}]
+	});
 }
 
 #-------------------------------------------------------
