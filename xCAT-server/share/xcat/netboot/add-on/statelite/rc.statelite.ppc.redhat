@@ -184,7 +184,7 @@ ResolveLinks () {
         type=$1
         path=$2
     
-        parent="`dirname $path`/"
+        parent="`/usr/bin/dirname $path`/"
         efound=0
         while [ "$parent" != "//" ]; do
             for ((j=0;j<$num;j++)); do
@@ -196,7 +196,7 @@ ResolveLinks () {
                     break 2
                 fi  
             done
-            parent="`dirname $parent`/"
+            parent="`/usr/bin/dirname $parent`/"
         done
     
         if [ "$efound" = "1" ]; then
@@ -344,7 +344,7 @@ ProcessType () {
 			    /bin/cat ${1} >>${TMPFS}${2} 2>&1
             fi
 			;;	
-        tempfs)         # the default option, same as "tempfs" and "NULL"
+        tempfs)         # "tempfs" is kept here for compatibility, "tmpfs" has replaced it
             ORIG=`echo ${2} |  /bin/sed -e 's/\/$//'`
             TARGET=`echo ${1}`
             
@@ -361,7 +361,24 @@ ProcessType () {
                 /bin/mount --bind ${TMPFS}${2} /sysroot${ORIG}>>$LOG 2>&1           
             fi
             ;;
-       rw)         # the default option, same as "tempfs" and "NULL"
+         tmpfs)         # the default option, same as "rw" and "NULL"
+            ORIG=`echo ${2} |  /bin/sed -e 's/\/$//'`
+            TARGET=`echo ${1}`
+            
+            if [ -d ${TMPFS}${2} ]; then
+                /bin/cp -r -a ${1}* ${TMPFS}${2}
+                echo "cp -r -a ${1}* ${TMPFS}${2}" >>$LOG
+            else
+                /bin/cp -r -a ${1} ${TMPFS}${2}
+                echo "cp -r -a ${1} ${TMPFS}${2}" >>$LOG
+            fi
+            
+            if [ "$isChild" = "0" ]; then
+                echo "mount --bind ${TMPFS}${2} /sysroot${ORIG}" >>$LOG
+                /bin/mount --bind ${TMPFS}${2} /sysroot${ORIG}>>$LOG 2>&1           
+            fi
+            ;;
+       rw)         # the default option, same as "tmpfs" and "NULL"
             ORIG=`echo ${2} |  /bin/sed -e 's/\/$//'`
             TARGET=`echo ${1}`
             
@@ -436,18 +453,38 @@ FindFile () {
     type=$2
     isChild=$3
     FOUND=0
+
+    cnum=${#CLIST[@]}
+
     for DIR in `/bin/cat ${SYNCTREE}` ;do
         DIR=${DIR/:/}
         if [ -e ${TREEMOUNT}/${DIR}${path} ]; then
-            FOUND=1  # we found it!
-            if [ -d ${TREEMOUNT}/${DIR}${path} ] && [ "0" -eq `/bin/ls -A ${TREEMOUNT}/${DIR}${path} |/usr/bin/wc -l` ]; then
-                FOUND=0
-            else
-                ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
-                if [ "${2}" = "link,con" ] || [ "${2}" = "con" ]; then
-                    continue
+            FOUND=1
+            if [ -d ${TREEMOUNT}/${DIR}${path} ] && [ "${isChild}" = "0" ]; then # the parent with children
+                for ((j=0;j<$cnum;j++)); do
+                    set -- ${CLIST[$j]}
+                    item=${2}
+                    itemDir="`/usr/bin/dirname ${item}`/"
+                    if [ "${itemDir}" = "${path}" ]; then
+                        if [ -e ${TREEMOUNT}/${DIR}${item} ]; then
+                            FOUND=0 # this nfs directory contains the children, so skip it when handling parent
+                            continue 2
+                        fi
+                    fi
+                done
+                if [ "0" -eq `/bin/ls -A ${TREEMOUNT}/${DIR}${path} |/usr/bin/wc -l` ]; then
+                    FOUND=0
                 else
-                    break
+                    ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
+                fi
+            else  # the children and the parents without any children
+                if [ -d ${TREEMOUNT}/${DIR}${path} ] && [ "0" -eq `/bin/ls -A ${TREEMOUNT}/${DIR}${path} |/usr/bin/wc -l` ]; then
+                    FOUND=0
+                else
+                    ProcessType ${TREEMOUNT}/${DIR}${path} ${path} ${type} ${isChild}
+                    if [ "${2}" != "link,con" ] && [ "${2}" != "con" ]; then
+                        break
+                    fi
                 fi
             fi
         fi	

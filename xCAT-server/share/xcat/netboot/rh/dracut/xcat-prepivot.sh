@@ -63,7 +63,6 @@ if [ ! -z $SNAPSHOTSERVER ]; then
 fi
 
 # TODO: handle the dhclient/resolv.conf/ntp, etc
-echo "TODO: handle the dhclient/resolv/ntp, etc"
 $NEWROOT/etc/init.d/statelite
 READONLY=yes
 export READONLY
@@ -71,7 +70,7 @@ fastboot=yes
 export fastboot
 keep_old_ip=yes
 export keep_old_ip
-mount -n --bind /dev $NREWROOT/dev
+mount -n --bind /dev $NEWROOT/dev
 mount -n --bind /proc $NEWROOT/proc
 mount -n --bind /sys $NEWROOT/sys
 
