@@ -4,7 +4,7 @@
 # Script to demonstrate how to parse out the event info that comes from a
 # Condition that is watching another Condition in a hierarchical cluster environment.
 
-# To use this script, create a Response that invokes this script with email address as the input.
+# To use this script, create a Response that invokes this script with user id as the input.
 # Then associate the Response with a Condition that is watching Conditions on other
 # nodes.  When the Conditions occur, this script will wall the relevant event information.
 
@@ -79,7 +79,7 @@ $msg .= "  MN Condition:  $ENV{ERRM_COND_NAME}\n";
 $msg .= "  SN Condition:  $ENV{ERRM_RSRC_NAME}\n";
 $msg .= "  SN:  $ENV{ERRM_NODE_NAME}\n";     # do we have to use $ERRM_NODE_NAMELIST here?
 $msg .= "  Node:  $NodeName\n";
-$msg .= "  Resource:  $ResourceName\n";
+$msg .= "  Resource Name:  $ResourceName\n";
 $msg .= "  Time:  " . convertTime($EventTime) . " \n";
 if (length($valuesMsg)) {
   $msg .= "  Attributes:\n";

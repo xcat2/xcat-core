@@ -8,7 +8,7 @@
 # and then send email to a user with the detailed info of the events in the batch file. 
 # The batch file will be then deleted if -d flag is set.
 
-# To use this script, create a Response that invokes this script with email address as the input.
+# To use this script, create a Response that invokes this script with user id as the input.
 # Then associate the Response with a Condition that is watching Conditions on other
 # nodes.  When the Conditions occur, this script will wall the relevant event information.
 
@@ -30,13 +30,13 @@ use POSIX qw(strftime);
 use File::Basename;
 use File::Path;
 
-my $user=shift;
-my $delete=shift;
-if (($delete) && ($delete eq '-d')) {
+my $where = join(' ', @ARGV);
+my $delete=0;
+if ($where =~ /-d/) {
     $delete=1;
-} else {
-    $delete=0;
 }
+
+$where =~ s/-d//;  #remove -d
 
 # Convert Severity and Type environment variables from integers to strings
 my @COND_SEVERITY = qw(Informational Warning Critical);
@@ -135,7 +135,7 @@ for ($count = 1; $count <= $num_events; $count++) {
 }   
     
 #send the mail out
-`echo "$msg"| mail -s "xxx$severity $type: $ENV{ERRM_COND_NAME}" $user`;
+my $rc = system(qq(echo "$msg" | write $where)) >> 8;
 
 #delete the batch file on the mn
 `rm $dirname/$bn`;
@@ -149,7 +149,7 @@ if ($delete) {
     }
 }
 
-exit;
+exit $rc;
 
 
 # convert time string
