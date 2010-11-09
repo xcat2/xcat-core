@@ -44,6 +44,7 @@ my $requester;
 my $viavcenter;
 my $viavcenterbyhyp;
 my $vcenterautojoin=1;
+my $reconfigreset=1;
 my $vmwaresdkdetect = eval {
     require VMware::VIRuntime;
     VMware::VIRuntime->import();
@@ -305,6 +306,14 @@ sub process_request {
                 $vcenterautojoin=0;
             }
 		}
+        ($ref) = $sitetab->getAttribs({key => 'vmwarereconfigonpower'},'value');
+        if ($ref and defined $ref->{value}) {
+            $reconfigreset=$ref->{value};
+            if ($reconfigreset =~ /^(n|d)/i) { #if no or disable, skip it
+                $reconfigreset=0;
+            }
+        }
+
 	}
 
 
@@ -1422,7 +1431,7 @@ sub power {
        $currstat = $args{vmview}->{'runtime.powerState'}->val;
        if (grep /$subcmd/,qw/on reset boot/) {
            my $reconfigspec;
-           if ($reconfigspec = getreconfigspec(node=>$node,view=>$args{vmview})) {
+           if ($reconfigreset and ($reconfigspec = getreconfigspec(node=>$node,view=>$args{vmview}))) {
                if ($currstat eq 'poweredOff') {
                    #xCAT::SvrUtils::sendmsg("Correcting guestId because $currid and $rightid are not the same...");#DEBUG
                     my $task = $args{vmview}->ReconfigVM_Task(spec=>$reconfigspec);
@@ -2382,6 +2391,9 @@ sub getUnits {
 sub getguestid {
     my $osfound=0;
     my $node = shift;
+    if ($tablecfg{vm}->{$node}->[0]->{guestostype}) { #if admin wants to skip derivation from nodetype.os value, let em
+        return $tablecfg{vm}->{$node}->[0]->{guestostype};
+    }
     my $nodeos = $tablecfg{nodetype}->{$node}->[0]->{os};
     my $nodearch = $tablecfg{nodetype}->{$node}->[0]->{arch};
     foreach (keys %guestidmap) {
