@@ -798,7 +798,7 @@ site => {
    " useSSHonAIX:  (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no,\n".
    "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
    " vcenterautojoin: When set to no, the VMWare plugin will not attempt to auto remove and add hypervisors while trying to perform operations.  If users or tasks outside of xCAT perform the joining this assures xCAT will not interfere.\n\n",
-   " vmwarereconfigonpower: When set to no, the VMWare plugin will make no effort to push vm.cpus/vm.memory updates from xCAT to VMWare\n",
+   " vmwarereconfigonpower: When set to no, the VMWare plugin will make no effort to push vm.cpus/vm.memory updates from xCAT to VMWare\n\n",
    " rsh:  This is no longer used. path to remote shell command for xdsh.\n\n".
    " rcp:  This is no longer used. path to remote copy command for xdcp.\n\n".
    " SNsyncfiledir:  The directory on the Service Node, where xdcp will copy the files\n".
