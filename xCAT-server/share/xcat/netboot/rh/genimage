@@ -1221,6 +1221,7 @@ EOMS
    print $inifile "cd /\n";
    print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-\$IFACE.leases\n";
    print $inifile "cp /var/lib/dhclient/dhclient.leases /sysroot/var/lib/dhclient/dhclient-\$IFACE.leases\n";
+   print $inifile 'if [ -z "$SNAPSHOTSERVER" ]; then cp /etc/resolv.conf /sysroot/etc/resolv.conf; fi'."\n";
    print $inifile "mknod /sysroot/dev/console c 5 1\n";
    print $inifile "exec switch_root -c /dev/console /sysroot /sbin/init\n";
    close($inifile);
