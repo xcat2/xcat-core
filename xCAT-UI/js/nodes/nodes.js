@@ -308,11 +308,13 @@ function loadNodes(data) {
 	}
 	sorted.sort();
 
-	// Add column for check box, node, ping, and power
-	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node', 
+	// Add column for check box, node, ping, power, and comments
+	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 
+		'node', 
 		'<a>ping</a><img src="images/loader.gif"></img>', 
-		'<a>power</a><img src="images/loader.gif"></img>');
-		
+		'<a>power</a><img src="images/loader.gif"></img>',
+		'comments');
+
 	// Create a datatable
 	var dTable = new DataTable('nodesDataTable');
 	dTable.init(sorted);
@@ -325,10 +327,13 @@ function loadNodes(data) {
 		var checkBx = '<input type="checkbox" name="' + node + '"/>';
 		// Open node onclick
 		var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
-		row.push(checkBx, nodeLink, '', '');
+		// Left align node link
+		nodeLink.css('text-align', 'left');		
+		// Push in checkbox, node link, ping, power, and notes
+		row.push(checkBx, nodeLink, '', '', '');
 
 		// Go through each header
-		for ( var i = 4; i < sorted.length; i++) {
+		for ( var i = 5; i < sorted.length; i++) {
 			// Add the node attributes to the row
 			var key = sorted[i];
 			var val = attrs[node][key];
@@ -553,8 +558,8 @@ function loadNodes(data) {
 	/**
 	 * Enable editable columns
 	 */
-	// Do not make 1st, 2nd, 3rd, or 4th column editable
-	$('#nodesDataTable td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4))').editable(
+	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
+	$('#nodesDataTable td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5))').editable(
 		function(value, settings) {			
 			// Change text color to red
 			$(this).css('color', 'red');
@@ -581,13 +586,13 @@ function loadNodes(data) {
 			return (value);
 		}, {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
-			type : 'textarea',	
+			type : 'textarea',
 			placeholder: ' ',
-			height : '25px' 	// The height of the text area
+			height : '30px' 	// The height of the text area
 		});
 	
 	/**
-	 * Get power and ping status for each node
+	 * Get power, ping, and comments for each node
 	 */
 
 	// Get power status
@@ -618,6 +623,20 @@ function loadNodes(data) {
 		success : loadPingStatus
 	});
 
+	// Get comments
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'nodels',
+			tgt : group,
+			args : 'nodelist.comments',
+			msg : ''
+		},
+
+		success : loadComments
+	});
+	
 	/**
 	 * Additional ajax requests need to be made for zVM
 	 */
@@ -1768,35 +1787,7 @@ function updateNodeAttrs(group) {
 		        			msg : ''
 		        		},
 
-		        		/**
-						 * Show chtab output
-						 * 
-						 * @param data
-						 *            Data returned from HTTP request
-						 * @return Nothing
-						 */
-		        		success : function(data) {
-		        			// Get chtab output
-		        			var chtabOut = data.rsp;
-		        			
-		        			// Find info bar on nodes tab, if any
-		        			var info = $('#nodesTab').find('.ui-state-highlight');
-		        			if (!info.length) {
-		        				// Create info bar if one does not exist
-			        			info = createInfoBar('');
-			        			$('#nodesTab').append(info);
-		        			}
-		        			
-		        			var node, status;
-		        			var pg = $('<p></p>');
-		        			for ( var i in chtabOut) {
-		        				// chtabOut[0] = nodeName and chtabOut[1] = status
-		        				node = jQuery.trim(chtabOut[i][0]);
-		        				status = jQuery.trim(chtabOut[i][1]);
-		        				pg.append(node + ': ' + status + '<br>');
-		        			}
-		        			info.append(pg);
-		        		}
+		        		success: showChtabOutput
 		        	});
 				} // End of if
 			} // End of for
@@ -1806,4 +1797,143 @@ function updateNodeAttrs(group) {
 			$.cookie('Nodes2Update', '');
 		} // End of function
 	});
+}
+
+/**
+ * Load comments belonging to a node
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function loadComments(data) {
+	// Get the output
+	var out = data.rsp;
+
+	// Get all nodes within the datatable
+	var dTable = getNodesDataTable();
+	
+	// Go through each node
+	var node, comments, icon, tipID, tip;
+	var rowPos, node, status;
+	for ( var i in out) {
+		// out[0][0] = node name and out[0][1] = comments
+		node = jQuery.trim(out[i][0]);
+		comments = jQuery.trim(out[i][1]);
+		
+		// If no comments exists, show "no comments"
+		if (!comments) {
+			comments = "No comments";
+		}
+				
+		// Create comments icon
+		tipID = node + 'Tip';
+		icon = $('<span id="' + tipID + '" class="ui-icon ui-icon-comment"></span>');						
+		// Create tooltip
+		tip = createCommentsToolTip(comments);
+					
+		// Get the row containing the node
+		rowPos = getRowNum(node);
+		
+		// Update the comments column
+		$('#nodesDataTable tbody tr:eq(' + rowPos + ') td:eq(4)').append(icon);
+		$('#nodesDataTable tbody tr:eq(' + rowPos + ') td:eq(4)').append(tip);
+		
+		// Generate tooltips
+		icon.tooltip({
+			position: "center right",	// Place tooltip on the right edge
+			offset: [-2, 10],			// A little tweaking of the position
+			relative: true,
+			effect: "fade",			// Use the built-in fadeIn/fadeOut effect			
+			opacity: 0.8			// Custom opacity setting
+		});
+	}
+}
+
+/**
+ * Create a tool tip for comments
+ * 
+ * @param comments
+ *            The comments to be placed in the tool tip
+ * @return Tool tip
+ */
+function createCommentsToolTip(comments) {
+	// Create tooltip container
+	var toolTip = $('<div class="tooltip"></div>');
+	// Create textarea to hold comments
+	var txtArea = $('<textarea>' + comments + '</textarea>').css({
+		'font-size': '12px',
+		'height': '50px',
+		'width': '200px',
+		'background-color': '#000',
+		'color': '#fff',
+		'border': '0px'
+	});
+	
+	// Create link to save changes
+	var saveLnk = $('<a>Save</a>').css('color', '#58ACFA');
+	saveLnk.hide();
+	saveLnk.bind('click', function(){
+		// Hide save link
+		$(this).hide();
+
+		// Get node and comments
+		var node = $(this).parent().parent().find('span').attr('id').replace('Tip', '');
+		var comments = $(this).parent().find('textarea').val();
+		
+		// Save comments
+		$.ajax( {
+    		url : 'lib/cmd.php',
+    		dataType : 'json',
+    		data : {
+    			cmd : 'webrun',
+    			tgt : '',
+    			args : 'chtab node=' + node + ' nodelist.comments="' + comments + '"',
+    			msg : ''
+    		},
+    		
+    		success: showChtabOutput
+		});
+	});
+	
+	// Show save link when comments is edited
+	txtArea.bind('click', function(){
+		saveLnk.show();
+	});
+		
+	toolTip.append(txtArea);
+	toolTip.append(saveLnk);
+	
+	return toolTip;
+}
+
+/**
+ * Show chtab output
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function showChtabOutput(data) {
+	// Get chtab output
+	var chtabOut = data.rsp;
+	
+	// Find info bar on nodes tab, if any
+	var info = $('#nodesTab').find('.ui-state-highlight');
+	if (!info.length) {
+		// Create info bar if one does not exist
+		info = createInfoBar('');
+		$('#nodesTab').append(info);
+	}
+	
+	var node, status;
+	var pg = $('<p></p>');
+	for ( var i in chtabOut) {
+		// chtabOut[0] = nodeName and chtabOut[1] = status
+		node = jQuery.trim(chtabOut[i][0]);
+		status = jQuery.trim(chtabOut[i][1]);
+		pg.append(node + ': ' + status + '<br>');
+	}
+	
+	info.append(pg);
 }
