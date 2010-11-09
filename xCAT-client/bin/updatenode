@@ -35,30 +35,31 @@ Getopt::Long::Configure("bundling");
 #             'v|version' => \$::VERSION);
 # display the usage if -h or --help is specified
 
-
-my $arg=shift(@ARGV);
-
-# Set the noderange
-if ($arg !~ /^-/) {
-  my @tempnr = ();
-  foreach my $nr (split(/,/, $arg)) {
-    if ($nr =~ /^\^(.*)$/) {
-      my $nrf = $1;
-      if ($nrf !~ /^\//) { #relative path
-        $nrf = Cwd::abs_path($nrf);
-      }
-      $nrf = "\^" . $nrf;
-      push @tempnr, $nrf;
-    } else {
-      push @tempnr, $nr;
+my $tmp=join(' ', @ARGV);
+if (!($tmp =~ /--help|-h|-v|--version/)) {
+  my $arg=shift(@ARGV);
+  # Set the noderange
+  if ($arg !~ /^-/) {
+    my @tempnr = ();
+    foreach my $nr (split(/,/, $arg)) {
+      if ($nr =~ /^\^(.*)$/) {
+        my $nrf = $1;
+        if ($nrf !~ /^\//) { #relative path
+          $nrf = Cwd::abs_path($nrf);
+        }
+        $nrf = "\^" . $nrf;
+        push @tempnr, $nrf;
+      } else {
+        push @tempnr, $nr;
+      }  
     }
+    $arg = join(',',@tempnr);
+    $cmdref->{noderange}->[0]=$arg;
+  } else {
+    print "The noderange should be the first argument.\n";
+    &updatenode_usage();
+    exit 1;
   }
-  $arg = join(',',@tempnr);
-  $cmdref->{noderange}->[0]=$arg;
-} else {
-  print "The noderange should be the first argument.\n";
-  &updatenode_usage();
-  exit 1;
 }
 
 push (@{$cmdref->{arg}}, @ARGV);
@@ -100,6 +101,7 @@ if ($::VERSION)
   print "$version\n";
   exit 0;
 }
+
 
 my $current_userid = getpwuid($>);
 $ENV{DSH_FROM_USERID} = $current_userid;
