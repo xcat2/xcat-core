@@ -1732,6 +1732,9 @@ function updateNodeAttrs(group) {
 		        	var row = getNodeRow(nodes[i], rows);
 		        	$(row).find('td').each(function (){
 		        		if ($(this).css('color') == 'red') {
+		        			// Change color back to normal
+		        			$(this).css('color', '');
+		        			
 		        			// Get column position
 		        			colPos = $(this).parent().children().index($(this));
 		        			// Get column value
@@ -1797,6 +1800,10 @@ function updateNodeAttrs(group) {
 		        	});
 				} // End of if
 			} // End of for
+			
+			// Clear cookie containing list of nodes where 
+			// their attributes need to be updated
+			$.cookie('Nodes2Update', '');
 		} // End of function
 	});
 }
