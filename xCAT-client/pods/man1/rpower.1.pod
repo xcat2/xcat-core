@@ -80,7 +80,7 @@ Note: if the "val" fields includes spaces or any other characters that will be p
 
 =item B<--nodeps>
 
-Do not use dependency table (default is to use dependency table). Valid only with on|off|boot|reset|cycle for blade power method.
+Do not use dependency table (default is to use dependency table). Valid only with on|off|boot|reset|cycle for blade power method and on|off|reset|softoff for hmc/fsp power method.
 
 =item B<-r retrycount>
 
