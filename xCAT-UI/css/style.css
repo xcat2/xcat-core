@@ -28,7 +28,7 @@
 }
 
 .tooltip h3 {
-	margin : 0px;
+	margin: 0px;
 }
 
 /****************** Header ******************/
@@ -99,7 +99,7 @@
 	color: #FF0000;
 }
 
-#layoutselector{
+#layoutselector {
 	padding: 2px 10px 0px 2px; /* Top right left bottom*/
 	text-align: right;
 	color: #FFC125;
@@ -315,6 +315,7 @@ legend {
 	padding: 5px;
 	margin: 0;
 }
+
 /****************** Status bar ******************/
 .statusBar {
 	border: solid 1px #F5D0A9;
@@ -657,57 +658,57 @@ table a:hover {
 }
 
 /****************** Physical layout section ******************/
-.frameDiv{
-	width : 179px;
-	height : 500px;
+.frameDiv {
+	width: 179px;
+	height: 500px;
 	font-size: 10px;
-	background :url(../images/bpa.jpg);
-	border-width:2px;
+	background: url(../images/bpa.jpg);
+	border-width: 2px;
 }
 
-.fspDiv2{
-	margin: 0px 12px 2px 17px; 
-	font-size: 12px; 
+.fspDiv2 {
+	margin: 0px 12px 2px 17px;
+	font-size: 12px;
 	height: 20px;
-	line-height : 20px;
-	width : 140px;
+	line-height: 20px;
+	width: 140px;
 	text-align: center;
-	background:url(../images/4ufsp.jpg);
-	border-style:solid;
-	border-width:1px;
+	background: url(../images/4ufsp.jpg);
+	border-style: solid;
+	border-width: 1px;
 	cursor: pointer;
 }
 
-.fspDiv4{
-	margin: 0px 12px 2px 17px; 
-	font-size: 12px; 
+.fspDiv4 {
+	margin: 0px 12px 2px 17px;
+	font-size: 12px;
 	height: 44px;
-	line-height : 44px;
-	width : 140px;
+	line-height: 44px;
+	width: 140px;
 	text-align: center;
-	background:url(../images/4ufsp.jpg);
-	border-style:solid;
-	border-width:1px;
+	background: url(../images/4ufsp.jpg);
+	border-style: solid;
+	border-width: 1px;
 	cursor: pointer;
 }
 
-.fspDiv42{
-	width : 179px;
-	height : 500px;
+.fspDiv42 {
+	width: 179px;
+	height: 500px;
 	font-size: 15px;
-	background :url(../images/42ufsp.jpg);
-	border-width:2px;
+	background: url(../images/42ufsp.jpg);
+	border-width: 2px;
 	cursor: pointer;
 }
 
-.lparDiv{
+.lparDiv {
 	margin: 5px 0px 0px 9px;
-	width : 80px;
-	height : 10px;
+	width: 80px;
+	height: 10px;
 	opacity: 1;
 }
 
-.lparStatus{
-	width : 5px;
-	height : 5px;
+.lparStatus {
+	width: 5px;
+	height: 5px;
 }

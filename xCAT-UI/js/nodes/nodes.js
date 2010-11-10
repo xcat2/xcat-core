@@ -1870,25 +1870,21 @@ function createCommentsToolTip(comments) {
 		'width': '200px',
 		'background-color': '#000',
 		'color': '#fff',
-		'border': '0px'
+		'border': '0px',
+		'display': 'block'
 	});
 	
 	// Create links to save and cancel changes
-	var saveLnk = $('<a>Save</a>');
-	saveLnk.css({
+	var lnkStyle = {
 		'color': '#58ACFA',
 		'font-size': '10px',
-		'display' : 'inline-block',
-		'padding' : '5px'
-	});
+		'display': 'inline-block',
+		'padding': '5px',
+		'float': 'right'
+	};
+	var saveLnk = $('<a>Save</a>').css(lnkStyle);
 	saveLnk.hide();
-	var cancelLnk = $('<a>Cancel</a>');
-	cancelLnk.css({
-		'color': '#58ACFA',
-		'font-size': '10px',
-		'display' : 'inline-block',
-		'padding' : '5px'
-	});
+	var cancelLnk = $('<a>Cancel</a>').css(lnkStyle);
 	cancelLnk.hide();
 	
 	// Save changes onclick
@@ -1934,8 +1930,8 @@ function createCommentsToolTip(comments) {
 	});
 		
 	toolTip.append(txtArea);
-	toolTip.append(saveLnk);
 	toolTip.append(cancelLnk);
+	toolTip.append(saveLnk);
 	
 	return toolTip;
 }
