@@ -1828,7 +1828,10 @@ function loadComments(data) {
 				
 		// Create comments icon
 		tipID = node + 'Tip';
-		icon = $('<span id="' + tipID + '" class="ui-icon ui-icon-comment"></span>');						
+		icon = $('<img id="' + tipID + '" src="images/ui-icon-comment.png"></img>').css({
+			'width': '18px',
+			'height': '18px'
+		});
 		// Create tooltip
 		tip = createCommentsToolTip(comments);
 					
@@ -1862,7 +1865,7 @@ function createCommentsToolTip(comments) {
 	var toolTip = $('<div class="tooltip"></div>');
 	// Create textarea to hold comments
 	var txtArea = $('<textarea>' + comments + '</textarea>').css({
-		'font-size': '12px',
+		'font-size': '10px',
 		'height': '50px',
 		'width': '200px',
 		'background-color': '#000',
@@ -1870,13 +1873,26 @@ function createCommentsToolTip(comments) {
 		'border': '0px'
 	});
 	
-	// Create link to save changes
-	var saveLnk = $('<a>Save</a>').css('color', '#58ACFA');
+	// Create links to save and cancel changes
+	var saveLnk = $('<a>Save</a>');
+	saveLnk.css({
+		'color': '#58ACFA',
+		'font-size': '10px',
+		'display' : 'inline-block',
+		'padding' : '5px'
+	});
 	saveLnk.hide();
+	var cancelLnk = $('<a>Cancel</a>');
+	cancelLnk.css({
+		'color': '#58ACFA',
+		'font-size': '10px',
+		'display' : 'inline-block',
+		'padding' : '5px'
+	});
+	cancelLnk.hide();
+	
+	// Save changes onclick
 	saveLnk.bind('click', function(){
-		// Hide save link
-		$(this).hide();
-
 		// Get node and comments
 		var node = $(this).parent().parent().find('span').attr('id').replace('Tip', '');
 		var comments = $(this).parent().find('textarea').val();
@@ -1894,15 +1910,32 @@ function createCommentsToolTip(comments) {
     		
     		success: showChtabOutput
 		});
+		
+		// Hide cancel and save links
+		$(this).hide();
+		cancelLnk.hide();
+	});
+		
+	// Cancel changes onclick
+	cancelLnk.bind('click', function(){
+		// Get original comments and put it back
+		var orignComments = $(this).parent().find('textarea').text();
+		$(this).parent().find('textarea').val(orignComments);
+		
+		// Hide cancel and save links
+		$(this).hide();
+		saveLnk.hide();
 	});
 	
 	// Show save link when comments is edited
 	txtArea.bind('click', function(){
 		saveLnk.show();
+		cancelLnk.show();
 	});
 		
 	toolTip.append(txtArea);
 	toolTip.append(saveLnk);
+	toolTip.append(cancelLnk);
 	
 	return toolTip;
 }
