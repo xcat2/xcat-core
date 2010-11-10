@@ -139,7 +139,8 @@ else
 if ($::osname eq 'AIX')
 {
     $::arch = `uname -p`;
-    $::root = "";
+    #$::root = "";
+    $::root = xCAT::Utils->getHomeDir();
 }
 else
 {
