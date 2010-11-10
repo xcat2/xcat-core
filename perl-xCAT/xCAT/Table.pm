@@ -1926,7 +1926,7 @@ sub setNodesAttribs {
            $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \`$nodekey\` in (";
         } else {
           if ($xcatcfg =~ /^DB2:/){
-            $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \"$nodekey\" LIKE (";
+            $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \"$nodekey\" in (";
           } else {
            $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE $nodekey in (";
           }
