@@ -1894,7 +1894,7 @@ function createCommentsToolTip(comments) {
 	// Save changes onclick
 	saveLnk.bind('click', function(){
 		// Get node and comments
-		var node = $(this).parent().parent().find('span').attr('id').replace('Tip', '');
+		var node = $(this).parent().parent().find('img').attr('id').replace('Tip', '');
 		var comments = $(this).parent().find('textarea').val();
 		
 		// Save comments
