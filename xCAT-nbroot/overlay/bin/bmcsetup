@@ -37,11 +37,20 @@ kill $CREDPID
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
 IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
 if [ "$IPMIMFG" == 2 ]; then #IBM
-    IBMFAM=`ipmitool raw 0x3a 0x50 |head -n 1| awk '{print $1 $2 $3 $4}'`
-    if [ "$IBMFAM" == "59554f4f" ]; then
+    XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
+    if [ "$XPROD" == "220" ]; then
+        LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
             ipmitool raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
+        fi
+    else
+        IBMFAM=`ipmitool raw 0x3a 0x50 |head -n 1| awk '{print $1 $2 $3 $4}'`
+        if [ "$IBMFAM" == "59554f4f" ]; then
+            BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+            if [ ! -z "$BMCPORT" ]; then
+                ipmitool raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
+            fi
         fi
     fi
 elif [ "$IPMIMFG" == 20301 ] ; then
