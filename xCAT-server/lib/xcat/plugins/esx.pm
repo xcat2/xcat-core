@@ -3914,20 +3914,24 @@ sub cpNetbootImages {
 
             }
         }
-        if (-d $overridedir) { #Copy over all modules 
-            use File::Basename;
-            foreach (glob "$overridedir/*") {
-                my $mod = scalar fileparse($_);
-                if ($mod =~ /gz\z/ and $mod !~ /pkgdb.tgz/ and $mod !~ /vmkernel.gz/) {
-                    $modulestoadd->{$mod}=1;
-                    copy($_,"$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"], $output_handler);
-                } elsif ($mod =~ /vmkernel.gz/) {
-                    $modulestoadd->{"vmk.gz"}=1;
-                    copy($_,"$destDir/vmk.gz") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"], $output_handler);
-                }
-            }
+
+        #this is the override directory if there is one, otherwise it's actually the default dir
+        if (-d $overridedir) {
+            mkdir($overridedir);
         }
 
+        #Copy over all modules 
+        use File::Basename;
+        foreach (glob "$overridedir/*") {
+            my $mod = scalar fileparse($_);
+            if ($mod =~ /gz\z/ and $mod !~ /pkgdb.tgz/ and $mod !~ /vmkernel.gz/) {
+                $modulestoadd->{$mod}=1;
+                copy($_,"$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"], $output_handler);
+            } elsif ($mod =~ /vmkernel.gz/) {
+                $modulestoadd->{"vmk.gz"}=1;
+                copy($_,"$destDir/vmk.gz") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $overridedir to $destDir"], $output_handler);
+            }
+        }
 
 	}else{
 			xCAT::SvrUtils::sendmsg([1,"VMware $osver is not supported for netboot"], $output_handler);
