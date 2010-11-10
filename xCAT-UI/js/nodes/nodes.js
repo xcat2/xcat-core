@@ -1807,10 +1807,10 @@ function updateNodeAttrs(group) {
  * @return Nothing
  */
 function loadComments(data) {
-	// Get the output
+	// Get output
 	var out = data.rsp;
 
-	// Get all nodes within the datatable
+	// Get all nodes within datatable
 	var dTable = getNodesDataTable();
 	
 	// Go through each node
@@ -1821,7 +1821,7 @@ function loadComments(data) {
 		node = jQuery.trim(out[i][0]);
 		comments = jQuery.trim(out[i][1]);
 		
-		// If no comments exists, show "no comments"
+		// If no comments exists, show 'No comments' and set icon image source
 		if (!comments) {
 			comments = 'No comments';
 			iconSrc = 'images/ui-icon-no-comment.png';
@@ -1838,10 +1838,10 @@ function loadComments(data) {
 		// Create tooltip
 		tip = createCommentsToolTip(comments);
 					
-		// Get the row containing the node
+		// Get row containing node
 		rowPos = getRowNum(node);
 		
-		// Update the comments column
+		// Update comments column
 		$('#nodesDataTable tbody tr:eq(' + rowPos + ') td:eq(4)').append(icon);
 		$('#nodesDataTable tbody tr:eq(' + rowPos + ') td:eq(4)').append(tip);
 		
@@ -1850,8 +1850,8 @@ function loadComments(data) {
 			position: "center right",	// Place tooltip on the right edge
 			offset: [-2, 10],			// A little tweaking of the position
 			relative: true,
-			effect: "fade",			// Use the built-in fadeIn/fadeOut effect			
-			opacity: 0.8			// Custom opacity setting
+			effect: "fade",				// Use the built-in fadeIn/fadeOut effect			
+			opacity: 0.8				// Custom opacity setting
 		});
 	}
 }
@@ -1885,10 +1885,8 @@ function createCommentsToolTip(comments) {
 		'padding': '5px',
 		'float': 'right'
 	};
-	var saveLnk = $('<a>Save</a>').css(lnkStyle);
-	saveLnk.hide();
-	var cancelLnk = $('<a>Cancel</a>').css(lnkStyle);
-	cancelLnk.hide();
+	var saveLnk = $('<a>Save</a>').css(lnkStyle).hide();
+	var cancelLnk = $('<a>Cancel</a>').css(lnkStyle).hide();
 	
 	// Save changes onclick
 	saveLnk.bind('click', function(){
@@ -1947,8 +1945,8 @@ function createCommentsToolTip(comments) {
  * @return Nothing
  */
 function showChtabOutput(data) {
-	// Get chtab output
-	var chtabOut = data.rsp;
+	// Get output
+	var out = data.rsp;
 	
 	// Find info bar on nodes tab, if any
 	var info = $('#nodesTab').find('.ui-state-highlight');
@@ -1957,13 +1955,14 @@ function showChtabOutput(data) {
 		info = createInfoBar('');
 		$('#nodesTab').append(info);
 	}
-	
+		
+	// Go through output and append to paragraph
 	var node, status;
 	var pg = $('<p></p>');
-	for ( var i in chtabOut) {
-		// chtabOut[0] = nodeName and chtabOut[1] = status
-		node = jQuery.trim(chtabOut[i][0]);
-		status = jQuery.trim(chtabOut[i][1]);
+	for ( var i in out) {
+		// out[0] = node name and out[1] = status
+		node = jQuery.trim(out[i][0]);
+		status = jQuery.trim(out[i][1]);
 		pg.append(node + ': ' + status + '<br>');
 	}
 	
