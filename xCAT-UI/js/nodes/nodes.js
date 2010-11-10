@@ -1814,7 +1814,7 @@ function loadComments(data) {
 	var dTable = getNodesDataTable();
 	
 	// Go through each node
-	var node, comments, icon, tipID, tip;
+	var node, comments, icon, iconSrc, tipID, tip;
 	var rowPos, node, status;
 	for ( var i in out) {
 		// out[0][0] = node name and out[0][1] = comments
@@ -1823,12 +1823,15 @@ function loadComments(data) {
 		
 		// If no comments exists, show "no comments"
 		if (!comments) {
-			comments = "No comments";
+			comments = 'No comments';
+			iconSrc = 'images/ui-icon-no-comment.png';
+		} else {
+			iconSrc = 'images/ui-icon-comment.png';
 		}
 				
 		// Create comments icon
 		tipID = node + 'Tip';
-		icon = $('<img id="' + tipID + '" src="images/ui-icon-comment.png"></img>').css({
+		icon = $('<img id="' + tipID + '" src="' + iconSrc + '"></img>').css({
 			'width': '18px',
 			'height': '18px'
 		});
