@@ -14,11 +14,11 @@ if (exists($ENV{RSCT_VER})) {
     } 
 }
 
-$RES::Condition{'NodeReachability_Batch'} = {
-	Name => q(NodeReachability_Batch),
+$RES::Condition{'NodeReachability_B'} = {
+	Name => q(NodeReachability_B),
 	ResourceClass => q(IBM.MngNode),
 	EventExpression => q(Status!=Status@P),
-	EventDescription => q(An event will be generated when a status changes),
+	EventDescription => q(An event will be generated when a status changes. This is a batch condition.),
 	ManagementScope => q(1),
 	EventBatchingInterval => q(60),
 	EventBatchingMaxEvents => q(200),

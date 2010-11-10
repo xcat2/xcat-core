@@ -1,0 +1,161 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Script to demonstrate how to parse out the event info that comes from a
+# Condition that is watching another Condition in a hierarchical cluster environment.
+# The condition that is being watched is a batch event. This script will go th the
+# node that has the watched condition, get the event batch file. And parse the file
+# and then send email to a user with the detailed info of the events in the batch file. 
+# The batch file will be then deleted if -d flag is set.
+
+# To use this script, create a Response that invokes this script with user id as the input.
+# Then associate the Response with a Condition that is watching Conditions on other
+# nodes.  When the Conditions occur, this script will wall the relevant event information.
+
+# This info that is passed into this sample is structured as follows:
+#  EMS Condition/Event:
+#   $ENV{ERRM_COND_NAME}
+#   $ENV{ERRM_TYPEID}
+#     ...
+#   $ENV{ERRM_NODE_NAME} -->  SN
+#   $ENV{ERRM_RSRC_NAME} -->  SN Condition
+#   $ENV{ERRM_VALUE}     -->  SN Event: LastBatchedEventFile
+#                              $Saved
+#                              $FileName
+#                              $Size
+
+use strict;
+use Getopt::Std;
+use POSIX qw(strftime);
+use File::Basename;
+use File::Path;
+
+my $logfn = join(' ', @ARGV);
+my $delete=0;
+if ($logfn =~ /-d/) {
+    $delete=1;
+}
+
+$logfn =~ s/-d//;  #remove -d
+
+# Convert Severity and Type environment variables from integers to strings
+my @COND_SEVERITY = qw(Informational Warning Critical);
+my @TYPE = ('event', 'rearm event');
+my $severity=$COND_SEVERITY[$ENV{ERRM_COND_SEVERITYID}];
+my $type=$TYPE[$ENV{ERRM_TYPEID }];
+
+
+# Parse the ERRM_VALUE attribute, which will contain the EventOccurred structured data variable from the Condition class
+# The fields in this structured data variable are documented below where we parse them out.
+my $event = $ENV{ERRM_VALUE};
+$event =~ s/^\[(.*)\]$/$1/;              # SD variables have square brackets around them
+
+# This parse the LastEvent
+my (                     # split the SD into the following fields:
+	$Saved,          # batch file has been saved
+	$filename,       # location of the batch file  
+	$Size,           # The size of the batch file
+   ) = split(/,/, $event);
+
+my $sn_condname=$ENV{ERRM_RSRC_NAME};
+my $sn_name=$ENV{ERRM_NODE_NAME}; 
+
+my (                    
+	$EventTime,          # Time of event expressed in seconds since 1/1/1970
+	$EventTimeMicros,    # Number of microseconds past EventTime
+    ) = split(/,/, $ENV{ERRM_TIME});
+
+my $msg="===================================================================\n";;
+$msg .= " Event Time:  " . convertTime($EventTime) . "\n";
+$msg .= " Condition name:  $ENV{ERRM_COND_NAME}\n";
+$msg .= " Event Type:  $type\n";
+$msg .= " Severiry: $severity\n";
+$msg .= " Condition being monitored:  $sn_condname\n";
+$msg .= " Node where the condition was monitored: $sn_name\n";     # do we have to use $ERRM_NODE_NAMELIST here?
+$msg .= " SN batch files name: $filename\n";
+
+#copy the batch file from sn to mn
+$filename =~ s/"//g;
+my $bn=basename($filename);
+
+#printf stderr "ful path :$filename\n";
+#printf stderr "base name:$bn\n";
+
+my $dirname="/tmp/batch_process/";
+if (! -d $dirname) {
+    mkdir($dirname);
+}
+
+my $cmd;
+my $isHMC=0;
+if ($filename =~ /\/home\/hscroot\/tmp/) {
+    $isHMC=1;
+    $cmd="scp hscroot\@$sn_name:$filename $dirname/$bn";
+}
+else {
+    $cmd="scp $sn_name:$filename $dirname/$bn";
+}
+my $rc=`$cmd 2>&1`;
+if ($? != 0) {
+    $msg .= "$rc\n";
+}
+
+#now process the batch file
+open(FILE1, "<$dirname/$bn");
+readline(FILE1);#skip first 2 lines
+readline(FILE1);
+my $line1=readline(FILE1);
+my @aTemp=split(/=/, $line1);
+my $num_events=$aTemp[1];
+close(FILE1);
+
+my $count;
+for ($count = 1; $count <= $num_events; $count++) {
+    my $content=`sed -n "/Event $count:/,/ERRM_COND_BATCH/ p" $dirname/$bn`;
+    
+    my @content_array=split(/\n/, $content);
+    pop(@content_array);  #get rid of last line
+    shift(@content_array); #get rid of firt line
+    
+    my %content_hash=();
+    foreach(@content_array) {
+	/([^\=]+)\=(.*)/;
+	$content_hash{$1}=$2;
+    }    
+    
+    my $event = "Event count: $count\n";
+    #$event .= "    Event time: " . $content_hash{ERRM_TIME} . "\n";
+    $event .= "    Node where the event occurred: " . $content_hash{ERRM_NODE_NAMELIST} . "\n";
+    $event .= "    Resource class: " . $content_hash{ERRM_RSRC_CLASS_PNAME} . "\n";
+    $event .= "    Resource name: " . $content_hash{ERRM_RSRC_NAME} . "\n";
+    $event .= "    Attribute name: " . $content_hash{ERRM_ATTR_PNAME} . "\n";
+    $event .= "    Attribute value: " . $content_hash{ERRM_VALUE} . "\n\n";
+    
+    $msg .= $event;
+}   
+    
+#log the events
+if (open (FILE, ">>$logfn")) {
+    print FILE "$msg\n";
+    close (FILE);
+} 
+#delete the batch file on the mn
+`rm $dirname/$bn`;
+
+#remove the batch file on the sn if needed
+if ($delete) {
+    if ($isHMC) {
+	`ssh -l hscroot $sn_name "rm $filename"`;
+    } else {
+	`ssh -l root $sn_name "rm $filename"`;
+    }
+}
+
+exit;
+
+
+# convert time string
+sub convertTime {
+  my ($seconds, $micro) = split(/\./, $_[0]);
+  return strftime("%A %D %T", localtime($seconds));
+}

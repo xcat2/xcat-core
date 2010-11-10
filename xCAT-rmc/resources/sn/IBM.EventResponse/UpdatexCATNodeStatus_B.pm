@@ -11,8 +11,8 @@ if (exists($ENV{RSCT_VER})) {
     if (xCAT::Utils->CheckVersion($rsct_ver, "2.3.5.0") < 0) {  exit 0;} 
 }
 
-$RES::EventResponse{'UpdatexCATNodeStatus_Batch'} = {
-	Name => q(UpdatexCATNodeStatus_Batch),
+$RES::EventResponse{'UpdatexCATNodeStatus_B'} = {
+	Name => q(UpdatexCATNodeStatus_B),
 	Locked => q(0),
         EventBatching => q(1),
 	Actions => q({[updatexCAT,{127},{0},{86400},/opt/xcat/sbin/rmcmon/updatexcatnodestatus,3,0,0,0,{},0]}),

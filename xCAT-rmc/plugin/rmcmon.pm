@@ -685,7 +685,7 @@ sub startNodeStatusMon {
   }
 
   if ($batch) {
-      my $result=`startcondresp NodeReachability_Batch UpdatexCATNodeStatus_Batch 2>&1`;
+      my $result=`startcondresp NodeReachability_B UpdatexCATNodeStatus_B 2>&1`;
       if (($?) && ($result !~ /2618-244|2618-008/)) { #started
 	  $retcode=$?;
 	  $retmsg="Error start node status monitoring: $result";

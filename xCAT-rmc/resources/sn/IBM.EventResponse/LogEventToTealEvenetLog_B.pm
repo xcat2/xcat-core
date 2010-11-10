@@ -11,10 +11,10 @@ if (exists($ENV{RSCT_VER})) {
     if (xCAT::Utils->CheckVersion($rsct_ver, "2.3.5.0") < 0) { exit 0;} 
 }
  
-$RES::EventResponse{'LogEventToxCATDatabase_Batch'} = {
-	Name => q(LogEventToxCATDatabase_Batch),
+$RES::EventResponse{'LogEventToTealEvenetLog_B'} = {
+	Name => q(LogEventToTealEvenetLog_B),
 	Locked => q(0),
         EventBatching => q(1),
-	Actions => q({[updatexCAT,{127},{0},{86400},/opt/xcat/sbin/rmcmon/logeventtoxcat,3,0,0,0,{},0]}),
+	Actions => q({[logToTeal,{127},{0},{86400},/opt/xcat/sbin/rmcmon/logeventtoteal,3,0,0,0,{},0]}),
 };
 1;
