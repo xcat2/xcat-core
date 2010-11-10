@@ -35,7 +35,7 @@ key --skip
 #No RAID
 #/boot really significant for this sort of setup nowadays?
 part None --fstype "PPC PReP Boot" --size 8
-part /boot --size 50 --fstype ext3
+#part /boot --size 50 --fstype ext3
 part swap --size 1024 
 part / --size 1 --grow --fstype ext3
 
