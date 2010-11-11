@@ -565,6 +565,24 @@ sub inv {
       return;
     }
   }
+
+  @ARGV= @{$args{exargs}};
+  require Getopt::Long;
+  my $tableUpdate;
+  my $rc = GetOptions(
+      't' => \$tableUpdate,
+  );
+  $SIG{__WARN__} = 'DEFAULT';
+
+  if(@ARGV) {
+    xCAT::SvrUtils::sendmsg("Invalid arguments:  @ARGV", $output_handler);
+    return;
+  }
+
+  if(!$rc) {
+    return;
+  }
+
   my $vmview = $args{vmview};
   my $moref = $vmview->{mo_ref}->value;
   xCAT::SvrUtils::sendmsg("Managed Object Reference: $moref", $output_handler,$node);
@@ -574,6 +592,12 @@ sub inv {
   xCAT::SvrUtils::sendmsg("CPUs:  $cpuCount", $output_handler,$node);
   my $memory = $vmview->config->hardware->memoryMB;
   xCAT::SvrUtils::sendmsg("Memory:  $memory MB", $output_handler,$node);
+
+  if($tableUpdate){
+    my $vm=xCAT::Table->new('vm',-create=>1);
+    $vm->setNodeAttribs($node,{cpus=>$cpuCount, memory=>$memory});
+  }
+
   my $devices = $vmview->config->hardware->device;
   my $label;
   my $size;

@@ -20,7 +20,7 @@ B<rinv> I<noderange> {B<mtm>|B<serial>|B<mac>|B<bios>|B<diag>|B<mprom>|B<mparom>
 
 =head2 VMware specific:
 
-B<rinv> I<noderange>
+B<rinv> I<noderange> [B<-t>]
 
 =head1 B<Description>
 
@@ -93,6 +93,10 @@ Print help.
 =item B<-v>|B<--version>
 
 Print version.
+
+=item B<-t>
+
+Set the values in the vm table to what vCenter has for the indicated nodes.
 
 =back
 
