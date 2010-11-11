@@ -263,7 +263,7 @@ function loadGroups(data) {
  *            Data returned from HTTP request
  * @return Nothing
  */
-function loadNodes(data) {		
+function loadNodes(data) {
 	// Data returned
 	var rsp = data.rsp;
 	// Group name
@@ -336,11 +336,11 @@ function loadNodes(data) {
 		row.push(checkBx, nodeLink, '', '');
 
 		// Put in comments
-		var comments = attrs[node]['usercomment'];
+		var comment = attrs[node]['usercomment'];
 		var iconSrc;
 		// If no comments exists, show 'No comments' and set icon image source
-		if (!comments) {
-			comments = 'No comments';
+		if (!comment) {
+			comment = 'No comments';
 			iconSrc = 'images/ui-icon-no-comment.png';
 		} else {
 			iconSrc = 'images/ui-icon-comment.png';
@@ -354,7 +354,8 @@ function loadNodes(data) {
 		});
 		
 		// Create tooltip
-		var tip = createCommentsToolTip(comments);
+		var tip = createCommentsToolTip(comment);
+		// Create container to put icon and comment in
 		var col = $('<span></span>').append(icon);
 		col.append(tip);
 		row.push(col);
@@ -372,6 +373,7 @@ function loadNodes(data) {
 		for ( var i = 5; i < sorted.length; i++) {
 			// Add the node attributes to the row
 			var key = sorted[i];
+			
 			// Do not put in comments twice
 			if (key != 'usercomment') {
     			var val = attrs[node][key];
@@ -575,11 +577,13 @@ function loadNodes(data) {
 	var myDataTable = $('#nodesDataTable').dataTable();
 	setNodesDataTable(myDataTable);
 	
-	// Do not sort ping and power column
+	// Do not sort ping, power, and comment column
 	var pingCol = $('#nodesDataTable thead tr th').eq(2);
 	var powerCol = $('#nodesDataTable thead tr th').eq(3);
+	var commentCol = $('#nodesDataTable thead tr th').eq(4);
 	pingCol.unbind('click');
 	powerCol.unbind('click');
+	commentCol.unbind('click');
 	
 	// Create enough space for loader to be displayed
 	$('#nodesDataTable tbody tr td:nth-child(3)').css('min-width', '60px');
@@ -631,7 +635,7 @@ function loadNodes(data) {
 		});
 	
 	/**
-	 * Get power, ping, and comments for each node
+	 * Get power and ping for each node
 	 */
 
 	// Get power status
@@ -1825,17 +1829,17 @@ function updateNodeAttrs(group) {
 }
 
 /**
- * Create a tool tip for comments
+ * Create a tool tip for comment
  * 
- * @param comments
+ * @param comment
  *            The comments to be placed in the tool tip
  * @return Tool tip
  */
-function createCommentsToolTip(comments) {
+function createCommentsToolTip(comment) {
 	// Create tooltip container
 	var toolTip = $('<div class="tooltip"></div>');
-	// Create textarea to hold comments
-	var txtArea = $('<textarea>' + comments + '</textarea>').css({
+	// Create textarea to hold comment
+	var txtArea = $('<textarea>' + comment + '</textarea>').css({
 		'font-size': '10px',
 		'height': '50px',
 		'width': '200px',
@@ -1858,11 +1862,11 @@ function createCommentsToolTip(comments) {
 	
 	// Save changes onclick
 	saveLnk.bind('click', function(){
-		// Get node and comments
+		// Get node and comment
 		var node = $(this).parent().parent().find('img').attr('id').replace('Tip', '');
 		var comments = $(this).parent().find('textarea').val();
 		
-		// Save comments
+		// Save comment
 		$.ajax( {
     		url : 'lib/cmd.php',
     		dataType : 'json',
@@ -1883,7 +1887,7 @@ function createCommentsToolTip(comments) {
 		
 	// Cancel changes onclick
 	cancelLnk.bind('click', function(){
-		// Get original comments and put it back
+		// Get original comment and put it back
 		var orignComments = $(this).parent().find('textarea').text();
 		$(this).parent().find('textarea').val(orignComments);
 		
@@ -1892,7 +1896,7 @@ function createCommentsToolTip(comments) {
 		saveLnk.hide();
 	});
 	
-	// Show save link when comments is edited
+	// Show save link when comment is edited
 	txtArea.bind('click', function(){
 		saveLnk.show();
 		cancelLnk.show();
