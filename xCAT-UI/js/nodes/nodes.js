@@ -304,7 +304,10 @@ function loadNodes(data) {
 	// Sort headers
 	var sorted = new Array();
 	for ( var key in headers) {
-		sorted.push(key);
+		// Do not put in comments twice
+		if (key != 'usercomment') {
+			sorted.push(key);
+		}
 	}
 	sorted.sort();
 
@@ -329,19 +332,55 @@ function loadNodes(data) {
 		var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
 		// Left align node link
 		nodeLink.css('text-align', 'left');		
-		// Push in checkbox, node link, ping, power, and notes
-		row.push(checkBx, nodeLink, '', '', '');
+		// Push in checkbox, node link, ping, and power
+		row.push(checkBx, nodeLink, '', '');
 
+		// Put in comments
+		var comments = attrs[node]['usercomment'];
+		var iconSrc;
+		// If no comments exists, show 'No comments' and set icon image source
+		if (!comments) {
+			comments = 'No comments';
+			iconSrc = 'images/ui-icon-no-comment.png';
+		} else {
+			iconSrc = 'images/ui-icon-comment.png';
+		}
+				
+		// Create comments icon
+		var tipID = node + 'Tip';
+		var icon = $('<img id="' + tipID + '" src="' + iconSrc + '"></img>').css({
+			'width': '18px',
+			'height': '18px'
+		});
+		
+		// Create tooltip
+		var tip = createCommentsToolTip(comments);
+		var col = $('<span></span>').append(icon);
+		col.append(tip);
+		row.push(col);
+		
+		// Generate tooltips
+		icon.tooltip({
+			position: "center right",	// Place tooltip on the right edge
+			offset: [-2, 10],			// A little tweaking of the position
+			relative: true,
+			effect: "fade",				// Use the built-in fadeIn/fadeOut effect			
+			opacity: 0.8				// Custom opacity setting
+		});
+		
 		// Go through each header
 		for ( var i = 5; i < sorted.length; i++) {
 			// Add the node attributes to the row
 			var key = sorted[i];
-			var val = attrs[node][key];
-			if (val) {
-				row.push(val);
-			} else {
-				row.push('');
-			}
+			// Do not put in comments twice
+			if (key != 'usercomment') {
+    			var val = attrs[node][key];
+    			if (val) {
+    				row.push(val);
+    			} else {
+    				row.push('');
+    			}
+			} // End of if
 		}
 
 		// Add the row to the table
@@ -621,20 +660,6 @@ function loadNodes(data) {
 		},
 
 		success : loadPingStatus
-	});
-
-	// Get comments
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'nodels',
-			tgt : group,
-			args : 'nodelist.comments',
-			msg : ''
-		},
-
-		success : loadComments
 	});
 	
 	/**
@@ -1797,63 +1822,6 @@ function updateNodeAttrs(group) {
 			$.cookie('Nodes2Update', '');
 		} // End of function
 	});
-}
-
-/**
- * Load comments belonging to a node
- * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
- */
-function loadComments(data) {
-	// Get output
-	var out = data.rsp;
-
-	// Get all nodes within datatable
-	var dTable = getNodesDataTable();
-	
-	// Go through each node
-	var node, comments, icon, iconSrc, tipID, tip;
-	var rowPos, node, status;
-	for ( var i in out) {
-		// out[0][0] = node name and out[0][1] = comments
-		node = jQuery.trim(out[i][0]);
-		comments = jQuery.trim(out[i][1]);
-		
-		// If no comments exists, show 'No comments' and set icon image source
-		if (!comments) {
-			comments = 'No comments';
-			iconSrc = 'images/ui-icon-no-comment.png';
-		} else {
-			iconSrc = 'images/ui-icon-comment.png';
-		}
-				
-		// Create comments icon
-		tipID = node + 'Tip';
-		icon = $('<img id="' + tipID + '" src="' + iconSrc + '"></img>').css({
-			'width': '18px',
-			'height': '18px'
-		});
-		// Create tooltip
-		tip = createCommentsToolTip(comments);
-					
-		// Get row containing node
-		rowPos = getRowNum(node);
-		
-		// Update comments column
-		$('#nodesDataTable tbody tr:eq(' + rowPos + ') td:eq(4)').append(icon);
-		$('#nodesDataTable tbody tr:eq(' + rowPos + ') td:eq(4)').append(tip);
-		
-		// Generate tooltips
-		icon.tooltip({
-			position: "center right",	// Place tooltip on the right edge
-			offset: [-2, 10],			// A little tweaking of the position
-			relative: true,
-			effect: "fade",				// Use the built-in fadeIn/fadeOut effect			
-			opacity: 0.8				// Custom opacity setting
-		});
-	}
 }
 
 /**
