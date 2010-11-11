@@ -55,6 +55,7 @@ my %distnames = (
                  "1269260915.992102" => "rhels5.5", #i386
                  "1269263646.691048" => "rhels5.5", #x86_64
                  "1285193176.460470" => "rhels6", #x86_64
+                 "1285193176.593806" => "rhelhpc6",
                  "1194015916.783841" => "fedora8",
                  "1194015385.299901" => "fedora8",
                  "1210112435.291709" => "fedora9",
@@ -787,7 +788,7 @@ sub mkinstall
 	    $platform=xCAT_plugin::anaconda::getplatform($os);
 	    my $genos = $os;
 	    $genos =~ s/\..*//;
-	    if ($genos =~ /rh.*s(\d*)/)
+	    if ($genos =~ /rh.*(\d+)\z/)
 	    {
 		unless (-r "$installroot/custom/install/$platform/$profile.$genos.$arch.tmpl"
 			or -r "/install/custom/install/$platform/$profile.$genos.tmpl"
