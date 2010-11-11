@@ -121,56 +121,8 @@ function loadGroups(data) {
 
 	// Create a link for each group
 	for ( var i = groups.length; i--;) {
-		var subItem = $('<li></li>');
-		var link = $('<a id="' + groups[i] + '">' + groups[i] + '</a>');
-		
-		// Open node table onclick
-		link.bind('click', function(event) {
-			var thisGroup = $(this).attr('id');
-			if (thisGroup) {
-				// Clear nodes division
-				$('#nodes').children().remove();
-				
-				// Create loader
-				var loader = $('<center></center>').append(createLoader());
-				var loader2 = $('<center></center>').append(createLoader());
-				
-				// Create a tab for this group
-				var tab = new Tab();
-				setNodesTab(tab);
-				tab.init();
-				$('#nodes').append(tab.object());
-				tab.add('nodesTab', 'Nodes', loader, false);
-				tab.add('graphTab', 'Graphical', loader2, false);
-
-				// Get nodes within selected group
-				$.ajax( {
-					url : 'lib/cmd.php',
-					dataType : 'json',
-					data : {
-						cmd : 'lsdef',
-						tgt : '',
-						args : thisGroup,
-						msg : thisGroup
-					},
-
-					success : loadNodes
-				});
-				
-				$.ajax({
-					url : 'lib/cmd.php',
-					dataType : 'json',
-					data : {
-						cmd : 'lsdef',
-						tgt : '',
-						args : thisGroup + ';-s',
-						msg : ''
-					},
-					
-					success : createPhysicalLayout
-				});
-			} // End of if (thisGroup)
-		});
+		var subItem = $('<li id="' + groups[i] + '"></li>');
+		var link = $('<a>' + groups[i] + '</a>');
 		subItem.append(link);
 		subUL.append(subItem);
 	}
@@ -185,7 +137,72 @@ function loadGroups(data) {
 			"icons" : false	// No icons
 		}
 	});
+	
+	// Load nodes onclick
+	$('#groups').bind('select_node.jstree', function(event, data) {
+		var thisGroup = jQuery.trim(data.rslt.obj.text());
+		if (thisGroup) {
+			// Clear nodes division
+			$('#nodes').children().remove();
+			
+			// Create loader
+			var loader = $('<center></center>').append(createLoader());
+			var loader2 = $('<center></center>').append(createLoader());
+			
+			// Create a tab for this group
+			var tab = new Tab();
+			setNodesTab(tab);
+			tab.init();
+			$('#nodes').append(tab.object());
+			tab.add('nodesTab', 'Nodes', loader, false);
+			tab.add('graphTab', 'Graphical', loader2, false);
 
+			// Get nodes within selected group
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'lsdef',
+					tgt : '',
+					args : thisGroup,
+					msg : thisGroup
+				},
+
+				success : loadNodes
+			});
+			
+			// Get subgroups within selected group
+			// only when this is the parent group and not a subgroup
+			if (data.rslt.obj.attr('id').indexOf('Subgroup') < 0) {
+    			$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'extnoderange',
+    					tgt : thisGroup,
+    					args : 'subgroups',
+    					msg : thisGroup
+    				},
+    
+    				success : loadSubgroups
+    			});
+			}
+			
+			$.ajax({
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'lsdef',
+					tgt : '',
+					args : thisGroup + ';-s',
+					msg : ''
+				},
+				
+				success : createPhysicalLayout
+			});
+		} // End of if (thisGroup)
+	});
+	
 	// Create link to add nodes
 	var addNodeLink = $('<a title="Add a node or a node range to xCAT">Add node</a>');
 	addNodeLink.bind('click', function(event) {
@@ -254,6 +271,32 @@ function loadGroups(data) {
 	});
 	
 	$('#groups').append(addNodeLink);
+}
+
+/**
+ * Load subgroups belonging to a given group
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function loadSubgroups(data) {
+	// Data returned
+	var rsp = data.rsp;
+	// Group name
+	var group = data.msg;
+	
+	// Go through each subgroup
+	for ( var i in rsp) {
+		// Do not put the same group in the subgroup
+		if (rsp[i] != group && $('#' + group).length) {
+			// Add subgroup inside group
+			$('#groups').jstree('create', $('#' + group), 'inside', {
+				'attr': {'id': rsp[i] + 'Subgroup'},
+				'data': rsp[i]}, 
+			'', true);
+		}
+	} // End of for
 }
 
 /**
@@ -562,7 +605,7 @@ function loadNodes(data) {
 	// Undo changes
 	var undoLnk = $('<a>Undo</a>');
 	undoLnk.bind('click', function(event){
-		// To be continued
+		// Reload table
 	});
 
 	/**
