@@ -1,0 +1,6 @@
+#Please make sure there is a space between @ and group name
+nfs-utils
+net-snmp
+rsync
+openssh-server
+util-linux-ng
