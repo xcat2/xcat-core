@@ -59,7 +59,9 @@ fi
 if [[ -z "$OSPKGDIR" ]]; then
     OSPKGDIR="$NFSSERVER/$OSVER/$ARCH"
     if [[ $OSVER = sles* ]]; then
-	OSPKGDIR="$OSPKGDIR/1"
+	    OSPKGDIR="$OSPKGDIR/1"
+    elif [[ $OSVER = rhel* ]]; then
+        OSPKGDIR="$OSPKGDIR/Server"
     fi
 fi
 
