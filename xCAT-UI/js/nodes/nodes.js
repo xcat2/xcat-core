@@ -3,6 +3,7 @@
  */
 var nodesTabs; 		// Node tabs
 var nodesDataTable; // Datatable containing all nodes within a group
+var origAttrs = new Object();	// Original node attributes
 
 /**
  * Set the nodes tab
@@ -319,6 +320,8 @@ function loadNodes(data) {
 	// Clear cookie containing list of nodes where 
 	// their attributes need to be updated
 	$.cookie('Nodes2Update', '');
+	// Clear hash table containing node attributes
+	origAttrs = '';
 
 	var node;
 	var args;
@@ -343,6 +346,9 @@ function loadNodes(data) {
 		attrs[node][key] = val;
 		headers[key] = 1;
 	}
+	
+	// Save attributes in hash table
+	origAttrs = attrs;
 
 	// Sort headers
 	var sorted = new Array();
@@ -605,7 +611,7 @@ function loadNodes(data) {
 	// Undo changes
 	var undoLnk = $('<a>Undo</a>');
 	undoLnk.bind('click', function(event){
-		// Reload table
+		restoreNodeAttrs();
 	});
 
 	/**
@@ -1812,7 +1818,7 @@ function updateNodeAttrs(group) {
 			
 			// Create the arguments
 			var args;
-			var colPos, value;
+			var row, colPos, value;
 			var attrName, tableName;
 			// Go through each node where an attribute was changed
 			for (var i = 0; i < nodes.length; i++) {
@@ -1820,7 +1826,7 @@ function updateNodeAttrs(group) {
 					args = '';
 					
 		        	// Get the row containing the node link
-		        	var row = getNodeRow(nodes[i], rows);
+		        	row = getNodeRow(nodes[i], rows);
 		        	$(row).find('td').each(function (){
 		        		if ($(this).css('color') == 'red') {
 		        			// Change color back to normal
@@ -1869,6 +1875,55 @@ function updateNodeAttrs(group) {
 			$.cookie('Nodes2Update', '');
 		} // End of function
 	});
+}
+
+/**
+ * Restore node attributes to their original content
+ * 
+ * @return Nothing
+ */
+function restoreNodeAttrs() {
+	// Get list of nodes to update
+	var nodesList = $.cookie('Nodes2Update');
+	var nodes = nodesList.split(';');
+	
+	// Get the nodes datatable
+	var dTable = getNodesDataTable();
+	// Get table headers
+	var headers = $('#nodesDataTable thead tr th');
+	// Get all nodes within the datatable
+	var rows = dTable.fnGetNodes();
+		
+	// Go through each node where an attribute was changed
+	var row, colPos;
+	var attrName, origVal;
+	for (var i = 0; i < nodes.length; i++) {
+		if (nodes[i]) {			
+			// Get the row containing the node link
+        	row = getNodeRow(nodes[i], rows);
+        	$(row).find('td').each(function (){
+        		if ($(this).css('color') == 'red') {
+        			// Change color back to normal
+        			$(this).css('color', '');
+        			
+        			// Get column position
+        			colPos = $(this).parent().children().index($(this));	        			
+        			// Get attribute name
+        			attrName = jQuery.trim(headers.eq(colPos).text());
+        			// Get original content
+        			origVal = origAttrs[nodes[i]][attrName];
+        			
+        			// Update column
+        			rowPos = getRowNum(nodes[i]);
+        			dTable.fnUpdate(origVal, rowPos, colPos);
+        		}
+        	});
+		} // End of if
+	} // End of for
+	
+	// Clear cookie containing list of nodes where 
+	// their attributes need to be updated
+	$.cookie('Nodes2Update', '');
 }
 
 /**
