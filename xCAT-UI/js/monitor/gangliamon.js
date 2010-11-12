@@ -141,7 +141,7 @@ function checkGangliaRPMs(data) {
 function loadGroups4Ganglia(data) {
 	// Remove loader
 	$('#groups').find('img').remove();
-
+	
 	var groups = data.rsp;
 	setGroupsCookies(data);
 
@@ -154,65 +154,8 @@ function loadGroups4Ganglia(data) {
 
 	// Create a link for each group
 	for ( var i = groups.length; i--;) {
-		var subItem = $('<li></li>');
-		var link = $('<a id="' + groups[i] + '">' + groups[i] + '</a>');
-
-		// Open node table onclick
-		link
-			.bind('click', function(event) {
-				var thisGroup = $(this).attr('id');
-				if (thisGroup) {
-					// Clear nodes division
-				$('#nodes').children().remove();
-
-				// Create link to Ganglia
-				var gangliaLnk = $('<a href="#">click here</a>');
-				gangliaLnk.css( {
-					'color' : 'blue',
-					'text-decoration' : 'none'
-				});
-				gangliaLnk.click(function() {
-					// Open a new window for Ganglia
-					window.open('../ganglia/');
-				});
-
-				// Create info bar
-				var info = $('<div class="ui-state-highlight ui-corner-all"></div>');
-				var msg = $('<p></p>');
-				msg.append('<span class="ui-icon ui-icon-info"></span>');
-				msg
-					.append('Review the nodes that are monitored by Ganglia.  You can turn on Ganglia monitoring on a node by selecting it and clicking on Monitor. If you are satisfied with the nodes you want to monitor, ');
-				msg.append(gangliaLnk);
-				msg.append(' to open Ganglia page.');
-				info.append(msg);
-				info.css('margin-bottom', '10px');
-				$('#nodes').append(info);
-
-				// Create loader
-				var loader = $('<center></center>').append(createLoader());
-
-				// Create a tab for this group
-				var tab = new Tab();
-				setNodesTab(tab);
-				tab.init();
-				$('#nodes').append(tab.object());
-				tab.add('nodesTab', 'Nodes', loader, false);
-
-				// Get nodes within selected group
-				$.ajax( {
-					url : 'lib/cmd.php',
-					dataType : 'json',
-					data : {
-						cmd : 'lsdef',
-						tgt : '',
-						args : thisGroup,
-						msg : thisGroup
-					},
-
-					success : loadNodes4Ganglia
-				});
-			} // End of if (thisGroup)
-		}   );
+		var subItem = $('<li id="' + groups[i] + '"></li>');
+		var link = $('<a>' + groups[i] + '</a>');
 		subItem.append(link);
 		subUL.append(subItem);
 	}
@@ -220,14 +163,84 @@ function loadGroups4Ganglia(data) {
 	// Turn groups list into a tree
 	$('#groups').append(ul);
 	$('#groups').jstree( {
-		core : {
-			"initially_open" : [ "root" ]
-		},
+		core : { "initially_open" : [ "root" ] },
 		themes : {
 			"theme" : "default",
-			"dots" : false, // No dots
-			"icons" : false // No icons
+			"dots" : false,	// No dots
+			"icons" : false	// No icons
 		}
+	});
+	
+	// Load nodes onclick
+	$('#groups').bind('select_node.jstree', function(event, data) {
+		var thisGroup = jQuery.trim(data.rslt.obj.text());
+		if (thisGroup) {
+			// Clear nodes division
+			$('#nodes').children().remove();
+			
+			// Create link to Ganglia
+			var gangliaLnk = $('<a href="#">click here</a>');
+			gangliaLnk.css( {
+				'color' : 'blue',
+				'text-decoration' : 'none'
+			});
+			gangliaLnk.click(function() {
+				// Open a new window for Ganglia
+				window.open('../ganglia/');
+			});
+
+			// Create info bar
+			var info = $('<div class="ui-state-highlight ui-corner-all"></div>');
+			var msg = $('<p></p>');
+			msg.append('<span class="ui-icon ui-icon-info"></span>');
+			msg.append('Review the nodes that are monitored by Ganglia.  You can turn on Ganglia monitoring on a node by selecting it and clicking on Monitor. If you are satisfied with the nodes you want to monitor, ');
+			msg.append(gangliaLnk);
+			msg.append(' to open Ganglia page.');
+			info.append(msg);
+			info.css('margin-bottom', '10px');
+			$('#nodes').append(info);
+
+			// Create loader
+			var loader = $('<center></center>').append(createLoader());
+
+			// Create a tab for this group
+			var tab = new Tab();
+			setNodesTab(tab);
+			tab.init();
+			$('#nodes').append(tab.object());
+			tab.add('nodesTab', 'Nodes', loader, false);
+			
+			// Get nodes within selected group
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'lsdef',
+					tgt : '',
+					args : thisGroup,
+					msg : thisGroup
+				},
+
+				success : loadNodes4Ganglia
+			});
+			
+			// Get subgroups within selected group
+			// only when this is the parent group and not a subgroup
+			if (data.rslt.obj.attr('id').indexOf('Subgroup') < 0) {
+    			$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'extnoderange',
+    					tgt : thisGroup,
+    					args : 'subgroups',
+    					msg : thisGroup
+    				},
+    
+    				success : loadSubgroups
+    			});
+			}
+		} // End of if (thisGroup)
 	});
 }
 
