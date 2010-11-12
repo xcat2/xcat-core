@@ -4,7 +4,7 @@ var bpaList;
 var fspList;
 var lparList;
 var nodeList;
-var selectLpar = new Object();
+var selectNode = new Object();
 /**
  * extract all nodes userful data into a hash, which is used for creating graphical
  * 
@@ -39,6 +39,11 @@ function extractGraphicalData(data){
 			case 'vpd.mtm': {
 				nodeList[nodeName]['mtm'] = nodes[i][1];
 			}
+			break;
+			case 'nodehm.mgt': {
+				nodeList[nodeName]['mgt'] = nodes[i][1];
+			}
+			break;
 			default :
 				break;
 		}
@@ -185,25 +190,25 @@ function createGraphical(bpa, fsp, area){
 		row.append(td);
 	}
 	
-	var selectLparDiv = $('<div id="selectLparDiv" style="margin: 20px;"></div>');
+	var selectNodeDiv = $('<div id="selectNodeDiv" style="margin: 20px;"></div>');
 	var temp = 0;
-	for (var i in selectLpar){
+	for (var i in selectNode){
 		temp ++;
 		break;
 	}
 	
 	//there is not selected lpars, show the info bar
 	if (0 == temp){
-		selectLparDiv.append(createInfoBar('Hover CEC and select lpars to do operations.'));
+		selectNodeDiv.append(createInfoBar('Hover CEC and select lpars to do operations.'));
 	}
 	//show selected lpars
 	else{
-		updateSelectLparDiv();
+		updateSelectNodeDiv();
 	}
 	
 	//add buttons
 	area.append(createActionMenu());
-	area.append(selectLparDiv);
+	area.append(selectNodeDiv);
 	area.append(graphTable);
 	
 	$('.tooltip input[type = checkbox]').bind('click', function(){
@@ -212,15 +217,15 @@ function createGraphical(bpa, fsp, area){
 			return;
 		}
 		if (true == $(this).attr('checked')){
-			selectLpar[lparName] = 1;
+			selectNode[lparName] = 1;
 			$('#graphTable [name=' + lparName + ']').css('border-color', 'aqua');
 		}
 		else{
-			delete selectLpar[lparName];
+			delete selectNode[lparName];
 			$('#graphTable [name=' + lparName + ']').css('border-color', '#BDBDBD');
 		}
 		
-		updateSelectLparDiv();
+		updateSelectNodeDiv();
 	});
 	
 	$('.fspDiv2, .fspDiv4, .fspDiv42').tooltip({
@@ -256,14 +261,14 @@ function showSelectDialog(lpars){
 	}
 	else{
 		//add the dialog content
-		var selectTable = $('<table id="selectLparTable"><tbody></tbody></table>');
+		var selectTable = $('<table id="selectNodeTable"><tbody></tbody></table>');
 		selectTable.append('<tr><th><input type="checkbox" onclick="selectAllLpars($(this))"></input></th><th>Name</th><th>Status</th></tr>');
 		for (var lparIndex in lpars){
 			var row = $('<tr></tr>');
 			var lparName = lpars[lparIndex];
 			var color = statusMap(lparList[lparName]);
 			
-			if (selectLpar[lparName]){
+			if (selectNode[lparName]){
 				row.append('<td><input type="checkbox" checked="checked" name="' + lparName + '"></input></td>');
 			}
 			else{
@@ -287,22 +292,22 @@ function showSelectDialog(lpars){
 			 			$(this).dialog('close');
 		 			 },
 			ok : function(){
-	 				$('#selectLparTable input[type=checkbox]').each(function(){
+	 				$('#selectNodeTable input[type=checkbox]').each(function(){
 	 					var lparName = $(this).attr('name');
 	 					if ('' == lparName){
 	 						//continue
 	 						return true;
 	 					}
 	 					if (true == $(this).attr('checked')){
-	 						selectLpar[lparName] = 1;
+	 						selectNode[lparName] = 1;
 	 						$('#graphTable [name=' + lparName + ']').css('border-color', 'aqua');
 	 					}
 	 					else{
-	 						delete selectLpar[lparName];
-	 						$('#graphTable [name=' + lparName + ']').css('border-color', 'transparent');
+	 						delete selectNode[lparName];
+	 						$('#graphTable [name=' + lparName + ']').css('border-color', '#BDBDBD');
 	 					}
 	 				});
-	 				updateSelectLparDiv();
+	 				updateSelectNodeDiv();
 			     	$(this).dialog('close');
 				 }
 		}
@@ -310,32 +315,32 @@ function showSelectDialog(lpars){
 }
 
 /**
- * update the lpars' background in cec, lpars area and  selectLpar
+ * update the lpars' background in cec, lpars area and  selectNode
  * 
  * @param 
  * @return
  *
  **/
-function updateSelectLparDiv(){
+function updateSelectNodeDiv(){
 	var temp = 0;
-	$('#selectLparDiv').empty();
+	$('#selectNodeDiv').empty();
 
 	//add buttons
 	
-	$('#selectLparDiv').append('Lpars: ');
-	for(var lparName in selectLpar){
-		$('#selectLparDiv').append(lparName + ' ');
+	$('#selectNodeDiv').append('Lpars: ');
+	for(var lparName in selectNode){
+		$('#selectNodeDiv').append(lparName + ' ');
 		temp ++;
 		if (6 < temp){
-			$('#selectLparDiv').append('...');
+			$('#selectNodeDiv').append('...');
 			break;
 		}
 	}
 	
 	var reselectButton = createButton('Reselect');
-	$('#selectLparDiv').append(reselectButton);
+	$('#selectNodeDiv').append(reselectButton);
 	reselectButton.bind('click', function(){
-		reselectLpars();
+		reselectNodes();
 	});
 	
 }
@@ -356,17 +361,11 @@ function createActionMenu(){
 	 * The following actions are available to perform against a given node:
 	 * power, clone, delete, unlock, and advanced
 	 */
-	/*
-	 * Power
-	 */
 	var powerLnk = $('<a>Power</a>');
-
-	/*
-	 * Power on
-	 */
+	//Power on
 	var powerOnLnk = $('<a>Power on</a>');
 	powerOnLnk.bind('click', function(event) {
-		var tgtNodes = getSelectLpars();
+		var tgtNodes = getSelectNodes();
 		$.ajax( {
 			url : 'lib/cmd.php',
 			dataType : 'json',
@@ -379,12 +378,10 @@ function createActionMenu(){
 		});
 	});
 
-	/*
-	 * Power off
-	 */
+	//Power off
 	var powerOffLnk = $('<a>Power off</a>');
 	powerOffLnk.bind('click', function(event) {
-		var tgtNodes = getSelectLpars();
+		var tgtNodes = getSelectNodes();
 		$.ajax( {
 			url : 'lib/cmd.php',
 			dataType : 'json',
@@ -397,14 +394,11 @@ function createActionMenu(){
 		});
 	});
 
-	/*
-	 * Clone
-	 */
+	//Clone
 	var cloneLnk = $('<a>Clone</a>');
 	cloneLnk.bind('click', function(event) {
-		var tgtNodes = getSelectLpars('nodesDataTable').split(',');
-		for ( var i = 0; i < tgtNodes.length; i++) {
-			var mgt = getNodeAttr(tgtNodes[i], 'mgt');
+		for (var name in selectNode) {
+			var mgt = nodeList[name]['mgt'];
 			
 			// Create an instance of the plugin
 			var plugin;
@@ -429,66 +423,73 @@ function createActionMenu(){
 					break;
 			}
 			
-			plugin.loadClonePage(tgtNodes[i]);
+			plugin.loadClonePage(name);
 		}
 	});
 
-	/*
-	 * Delete
-	 */
+	//Delete
 	var deleteLnk = $('<a>Delete</a>');
 	deleteLnk.bind('click', function(event) {
+		var tgtNodes = getSelectNodes();
+		if (tgtNodes) {
+			deleteNode(tgtNodes);
+		}
 	});
 
-	/*
-	 * Unlock
-	 */
+	//Unlock
 	var unlockLnk = $('<a>Unlock</a>');
 	unlockLnk.bind('click', function(event) {
+		var tgtNodes = getSelectNodes();
+		if (tgtNodes) {
+			loadUnlockPage(tgtNodes);
+		}
 	});
 
-	/*
-	 * Run script
-	 */
+	//Run script
 	var scriptLnk = $('<a>Run script</a>');
 	scriptLnk.bind('click', function(event) {
+		var tgtNodes = getSelectNodes();
+		if (tgtNodes) {
+			loadScriptPage(tgtNodes);
+		}
 	});
 
-	/*
-	 * Update node
-	 */
+	//Update node
 	var updateLnk = $('<a>Update</a>');
 	updateLnk.bind('click', function(event) {
+		var tgtNodes = getSelectNodes();
+		if (tgtNodes) {
+			loadUpdatenodePage(tgtNodes);
+		}
 	});
 
-	/*
-	 * Set boot state
-	 */
+	//Set boot state
 	var setBootStateLnk = $('<a>Set boot state</a>');
 	setBootStateLnk.bind('click', function(event) {
+		var tgtNodes = getSelectNodes();
+		if (tgtNodes) {
+			loadNodesetPage(tgtNodes);
+		}
 	});
 
-	/*
-	 * Boot to network
-	 */
+	//Boot to network
 	var boot2NetworkLnk = $('<a>Boot to network</a>');
 	boot2NetworkLnk.bind('click', function(event) {
+		var tgtNodes = getSelectNodes();
+		if (tgtNodes) {
+			loadNetbootPage(tgtNodes);
+		}
 	});
 
-	/*
-	 * Open the Rcons page
-	 */
+	//Open the Rcons page
 	var rcons = $('<a>Open Rcons</a>');
 	rcons.bind('click', function(event){
-		var tgtNodes = getSelectLpars();
+		var tgtNodes = getSelectNodes();
 		if (tgtNodes) {
 			loadRconsPage(tgtNodes);
 		}
 	});
 
-	/*
-	 * Advanced
-	 */
 	var advancedLnk = $('<a>Advanced</a>');
 
 	// Power actions
@@ -628,20 +629,20 @@ function statusMap(status){
  */
 function selectAllLpars(checkbox){
 	var temp = checkbox.attr('checked');
-	$('#selectLparTable input[type = checkbox]').attr('checked', temp);
+	$('#selectNodeTable input[type = checkbox]').attr('checked', temp);
 }
 
 /**
- * export all lpars' name from selectLpar 
+ * export all lpars' name from selectNode 
  * 
  * @param 
 
  * @return lpars' string
  *        
  */
-function getSelectLpars(){
+function getSelectNodes(){
 	var ret = '';
-	for (var lparName in selectLpar){
+	for (var lparName in selectNode){
 		ret += lparName + ',';
 	}
 	
@@ -655,10 +656,10 @@ function getSelectLpars(){
 
  * @return 
  */
-function reselectLpars(){
+function reselectNodes(){
 	var temp = new Array();
 	
-	for (var lparName in selectLpar){
+	for (var lparName in selectNode){
 		temp.push(lparName);
 	}
 	

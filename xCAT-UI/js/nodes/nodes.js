@@ -89,7 +89,7 @@ function loadNodesPage() {
 			data : {
 				cmd : 'nodels',
 				tgt : 'all',
-				args : 'nodetype.nodetype;ppc.parent;vpd.mtm;nodelist.status',
+				args : 'nodetype.nodetype;ppc.parent;vpd.mtm;nodelist.status;nodehm.mgt',
 				msg : ''
 			},
 
