@@ -108,7 +108,7 @@ function submit_request($req, $skipVerify){
 			}
 		} // End of while(!feof($fp))
 		
-		syslog(LOG_INFO, "($cmd $nr) Response: $response");
+		syslog(LOG_INFO, "($cmd $nr) Sending response");
 		fclose($fp);
 	} else {
 		echo "<p>xCAT submit request socket error: $errno - $errstr</p>";
