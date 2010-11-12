@@ -20,7 +20,7 @@ if [[ $OS = "Linux" ]]; then
             BOOTENTRY=`cat /proc/mounts |grep /boot`
 
             if [[ -z $BOOTENTRY ]]; then
-                BOOTENTRY=`mount |grep " / "`
+                BOOTENTRY=`grep ^\/dev /proc/mounts |grep " / "`
             fi
 
             BOOTDEVICE=`echo $BOOTENTRY | awk '{print $1}'`
