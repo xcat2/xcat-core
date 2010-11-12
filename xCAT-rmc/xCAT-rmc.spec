@@ -35,6 +35,7 @@ mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
 mkdir -p $RPM_BUILD_ROOT/install/postscripts/rmcmon/resources
 mkdir -p $RPM_BUILD_ROOT/install/postscripts/rmcmon/scripts
+mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/TEAL
 
 set +x
 cp plugin/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring
@@ -42,6 +43,9 @@ cp -r resources $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/rmc
 
 cp scripts/* $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
 chmod 755 $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon/*
+
+cp lib/perl/TEAL/* $RPM_BUILD_ROOT/%{prefix}/lib/perl/TEAL
+
 set -x
 
 cp scripts/configrmcnode $RPM_BUILD_ROOT/install/postscripts
