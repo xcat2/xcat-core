@@ -63,7 +63,7 @@ function loadHcpInfo(data) {
 	
 	// Get user directory entry
 	var userEntry = data.rsp;
-	if (userEntry) {
+	if (userEntry[0].indexOf('Failed') < 0) {
     	// Get disk pools
     	$.ajax( {
     		url : 'lib/cmd.php',
