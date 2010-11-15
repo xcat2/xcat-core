@@ -261,6 +261,8 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
     if ($::SERVER)
     {    # setting up server
 
+        # makesure the daemon is running 
+        &startxcatd;
         #
         # Backup current database
         #
@@ -309,6 +311,7 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         {
             xCAT::MsgUtils->message("E",
                                     "Hostname resolution for $hname failed.");
+            &startxcatd;
             exit(1);
         }
     }    # end setting up SERVER
@@ -389,17 +392,7 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         #
         # start the daemon
         #
-        my $xcmd;
-        if ($::osname eq 'AIX')
-        {
-          $xcmd = "$::XCATROOT/sbin/restartxcatd";
-
-        }
-        else
-        {
-          $xcmd = "service xcatd restart";
-        }
-        system($xcmd);
+        &startxcatd;
         xCAT::MsgUtils->message("SI", "xCAT DB2 Client setup is complete.\n");
     }
 }    # end initialization
@@ -442,6 +435,31 @@ sub usage
       "db2sqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> <-S|-C> [-o|--setupODBC] [-V|--verbose]\n           <-o|--setupODBC> <-S|-C> [-V|--verbose]\n           <-r|--rm> <-S|-C> [-V|--verbose]";
 
     xCAT::MsgUtils->message('I', "$msg");
+}
+#-----------------------------------------------------------------------------
+
+=head3    startxcatd 
+	
+  start the daemon 
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub startxcatd 
+
+{
+   my $xcmd;
+   if ($::osname eq 'AIX')
+   {
+      $xcmd = "$::XCATROOT/sbin/restartxcatd";
+
+   }
+   else
+   {
+     $xcmd = "service xcatd restart";
+   }
+   system($xcmd);
 }
 
 #-----------------------------------------------------------------------------
@@ -1460,17 +1478,7 @@ sub restorexcatdb
     #
     # start the daemon
     #
-    my $xcmd;
-    if ($::osname eq 'AIX')
-    {
-        $xcmd = "startsrc -s xcatd";
-
-    }
-    else
-    {
-        $xcmd = "service xcatd start";
-    }
-    system($xcmd);
+    &startxcatd;
 }
 
 #-----------------------------------------------------------------------------
