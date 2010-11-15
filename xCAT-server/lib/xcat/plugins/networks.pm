@@ -372,6 +372,16 @@ sub donets
         	}
     	}
     	splice @rtable, 0, 2;
+
+        my %netgw = ();
+    	foreach my $rtent (@rtable)
+        { 
+            my @entarr = split /\s+/, $rtent;
+            if ($entarr[3] eq 'UG')
+            {
+                $netgw{$entarr[0]}{$entarr[2]} = $entarr[1];
+            }
+        }
     	foreach (@rtable)
     	{ #should be the lines to think about, do something with U, and something else with UG
 
@@ -395,6 +405,12 @@ sub donets
             	$net       = $ent[0];
             	$mask      = $ent[2];
 				$mgtifname = $ent[7];
+                if (defined($netgw{$net}{$mask}))
+                {
+                    $gw =  $netgw{$net}{$mask}; #gateway for this network
+                } else {   
+                    $gw =  $netgw{'0.0.0.0'}{'0.0.0.0'}; #default gatetway
+                }
 
 				# use convention for netname attr
                 my $netn;
@@ -435,10 +451,14 @@ sub donets
 					push @{$rsp->{data}}, "    objtype=network";
                     push @{$rsp->{data}}, "    net=$net";
                     push @{$rsp->{data}}, "    mask=$mask";
+                    if ($gw)
+                    {
+                        push @{$rsp->{data}}, "    gateway=$gw";
+                    }
                     push @{$rsp->{data}}, "    mgtifname=$mgtifname";
 				} else {
 					if (!$foundmatch) {
-						$nettab->setAttribs({'net' => $net, 'mask' => $mask}, {'netname' => $netname, 'mgtifname' => $mgtifname});
+						$nettab->setAttribs({'net' => $net, 'mask' => $mask}, {'netname' => $netname, 'mgtifname' => $mgtifname, 'gateway' => $gw});
 					}
 				}
 
