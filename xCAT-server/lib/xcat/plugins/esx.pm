@@ -3883,9 +3883,9 @@ sub cpNetbootImages {
 		    mkdir($tmpDir);
 		    chdir($tmpDir);
             xCAT::SvrUtils::sendmsg("extracting netboot files from OS image.  This may take about a minute or two...hopefully you have ~1GB free in your /tmp dir\n", $output_handler);
-            my $cmd = "tar zxvf $srcDir/image.tgz";
+            my $cmd = "tar zxf $srcDir/image.tgz";
             print "\n$cmd\n";
-            if(system("tar zxf $srcDir/image.tgz")){
+            if(system($cmd)){
                 xCAT::SvrUtils::sendmsg([1,"Unable to extract $srcDir/image.tgz\n"], $output_handler); 
             }
             # this has the big image and may take a while.
