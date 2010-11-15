@@ -203,7 +203,7 @@ sub setstate {
             print $pcfg "imgfetch -n kernel http://".'${next-server}/tftpboot/'.$kern->{kernel}."\n";
             print $pcfg "imgload kernel\n";
             if ($kern->{kcmdline}) {
-                print $pcfg "imgargs kernel ".$kern->{kcmdline}.' BOOTIF=01-${netX/machyp}'."\n";
+                print $pcfg "imgargs kernel ".$kern->{kcmdline}.' BOOTIF=01-${netX/mac:hexhyp}'."\n";
             } else {
                 print $pcfg "imgargs kernel BOOTIF=".'${netX/mac}'."\n";
             }
