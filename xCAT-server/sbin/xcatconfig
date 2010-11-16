@@ -42,7 +42,7 @@ $::INSTALLDIR = "/install";
 
 # Default TFTP dir location
 $::TFTPDIR = "/tftpboot";
-if (!(xCAT::Utils->isMN())) {    # if not on Management Node
+if ((xCAT::Utils->isServiceNode())) {    # if not on Management Node
   xCAT::MsgUtils->message(
             'E',
             "xcatconfig should only be run on the Management Node."
