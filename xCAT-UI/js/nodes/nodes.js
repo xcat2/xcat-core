@@ -623,7 +623,9 @@ function loadNodes(data) {
 	actionsDIV.append(tableActionsMenu);
 
 	// Turn table into a datatable
-	var myDataTable = $('#nodesDataTable').dataTable();
+	var myDataTable = $('#nodesDataTable').dataTable({
+		'iDisplayLength': 50
+	});
 	setNodesDataTable(myDataTable);
 	
 	// Do not sort ping, power, and comment column
