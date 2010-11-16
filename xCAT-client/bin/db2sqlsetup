@@ -745,7 +745,10 @@ sub setupinstance
             if ($::RUNCMD_RC != 0)
             {                       # if error exit
                 xCAT::MsgUtils->message("E", " $cmd failed.");
+                # start the daemon
+                &startxcatd;
                 exit(1);
+    
             }
 
             # setup instance
