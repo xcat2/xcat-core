@@ -297,7 +297,7 @@ sub do_getmacs {
         my $table = "nodetype";
         my $intable = 0;
         my @TableRowArray = xCAT::DBobjUtils->getDBtable($table);
-        if ( defined(@TableRowArray) ) {
+        if ( @TableRowArray ) {
             foreach ( @TableRowArray ) {
                 my @nodelist = split(',', $_->{'node'});
                 my @oslist = split(',', $_->{'os'});
