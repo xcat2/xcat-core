@@ -199,7 +199,7 @@ function createGraphical(bpa, fsp, area){
 	
 	//there is not selected lpars, show the info bar
 	if (0 == temp){
-		selectNodeDiv.append(createInfoBar('Hover CEC and select lpars to do operations.'));
+		area.append(createInfoBar('Hover CEC and select lpars to do operations.'));
 	}
 	//show selected lpars
 	else{
