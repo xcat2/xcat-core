@@ -110,6 +110,16 @@ sub get_path_for_pool {
 }
 sub build_pool_xml {
     my $url = shift;
+    my $pooldesc;
+    my $name=$url;
+    $name=~ s!nfs://!nfs_!;
+    $name=~ s!dir://!dir_!;
+    $name =~ s/\//_/g; #though libvirt considers / kosher, sometimes it wants to create a local xml file using name for filename...
+    if ($url =~ /^dir:/) { #directory style..
+	my $path=$url;
+	$path =~ s/dir:\/\///g;
+	return "<pool type=\"dir\"><name>$name</name><target><path>$path</path></target></pool>";
+    }
     my $mounthost = shift;
     unless ($mounthost) { $mounthost = $hyp; }
     my $pool;
@@ -119,10 +129,7 @@ sub build_pool_xml {
     my $srcpath = $1;
     my $uuid = xCAT::Utils::genUUID(url=>$url);
 #first, we make a pool desc that won't have slashes in them
-    my $pooldesc = '<pool type="netfs">';
-    my $name=$url;
-    $name=~ s!nfs://!nfs_!;
-    $name =~ s/\//_/g; #though libvirt considers / kosher, sometimes it wants to create a local xml file using name for filename...
+    $pooldesc = '<pool type="netfs">';
     $pooldesc .= '<name>'.$name.'</name>';
     $pooldesc .= '<uuid>'.$uuid.'</uuid>>';
     $pooldesc .= '<source>';
@@ -163,6 +170,15 @@ sub get_storage_pool_by_url {
             my $checkpath = $pool->findnodes("/pool/source/dir")->[0]->getAttribute("path");
             if ($checkhost eq $host and $checkpath eq $path) { #TODO: check name resolution to see if they match really even if not strictly the same
                 last;
+            }
+        } elsif ($url =~ /^dir:\/\/(.*)\z/) {  #a directory, simple enough
+	    my $path = $1;
+            unless ($path =~ /^\//) {
+		$path = '/'.$path;
+	    }
+	    my $checkpath = $pool->findnodes("/pool/target/path/text()")->[0]->data;
+	    if ($checkpath eq $path) {
+		last;
             }
         } elsif ($pool->findnodes('/pool/name/text()')->[0]->data eq $url) { #$pool->{name} eq $url) {
             last;
@@ -408,7 +424,7 @@ sub build_diskstruct {
             if (substr($disk_parts[0], 0, 4) eq 'phy:') {
                 $diskhash->{type}='block';
                 $diskhash->{source}->{dev} = substr($disk_parts[0], 4);
-            } elsif ($disk_parts[0] =~ m/^nfs:\/\/(.*)$/) {
+            } elsif ($disk_parts[0] =~ m/^nfs:\/\/(.*)$/ or $disk_parts[0] =~ m/^dir:\/\/(.*)$/) {
                 my %disks = %{get_multiple_paths_by_url(url=>$disk_parts[0],node=>$node)};
                 unless (keys %disks) {
                     die "Unable to find any persistent disks at ".$disk_parts[0];
@@ -878,7 +894,8 @@ sub makedom {
     my $dom;
     if (not $xml and $confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
         #we do this to trigger storage prereq fixup
-        if (defined $confdata->{vm}->{$node}->[0]->{storage} and $confdata->{vm}->{$node}->[0]->{storage} =~ /^nfs:/) {
+        if (defined $confdata->{vm}->{$node}->[0]->{storage} and ($confdata->{vm}->{$node}->[0]->{storage} =~ /^nfs:/ or $confdata->{vm}->{$node}->[0]->{storage} =~ /^dir:/)) {
+	    print "going by urls\n";
             my $urls =  $confdata->{vm}->{$node}->[0]->{storage} and $confdata->{vm}->{$node}->[0]->{storage};
             foreach (split /,/,$urls) {
                 s/=.*//;
@@ -959,7 +976,7 @@ sub createstorage {
         $prefix='vd';
     }
     my @suffixes=('a','b','d'..'zzz');
-    if ($filename =~ /^nfs:/) { #libvirt storage pool to be used for this
+    if ($filename =~ /^nfs:/ or $filename =~ /^dir:/) { #libvirt storage pool to be used for this
         my @sizes = split /,/,$size;
         foreach (@sizes) {
             get_filepath_by_url(url=>$filename,dev=>$prefix.shift(@suffixes),create=>$_);
