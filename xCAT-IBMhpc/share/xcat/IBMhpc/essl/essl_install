@@ -28,11 +28,12 @@ if [ $OS != "AIX" ]; then
         cd /tmp/essl
         download_dir=`echo $ESSL_DIR | cut -d '/' -f3-`
         wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
-        rpm -Uvh essl.license*.rpm
-        install_essl=`find /opt/ibmmath/essl -name install_essl -print`
-        if [ -n "$install_essl" ] ; then
-            $install_essl -y -d . -nodocs
-        fi
+        #rpm -Uvh essl.license*.rpm
+        IBM_ESSL_LICENSE_ACCEPT=yes rpm -Uvh essl*.rpm
+        #install_essl=`find /opt/ibmmath/essl -name install_essl -print`
+        #if [ -n "$install_essl" ] ; then
+        #    $install_essl -y -d . -nodocs
+        #fi
         rpm -Uvh pessl.license*.rpm
         install_pessl=`find /opt/ibmmath/pessl -name install_pessl -print`
         if [ -n "$install_pessl" ] ; then
