@@ -374,6 +374,12 @@ sub readFileInput {
                  ($attr eq 'skipshutdown') ) {
                 $val =~ tr/A-Z/a-z/;   
             }
+
+            # Remove surrounding quotes in the following values
+            if ( ($attr eq 'bringupappstatus') ) {
+                $val =~ s/^['"]//;   
+                $val =~ s/['"]$//;   
+            }
  
             # Set some required defaults if not specified
             if (($prev_attr eq "prescript") && ($attr ne "prescriptnodes")) {
