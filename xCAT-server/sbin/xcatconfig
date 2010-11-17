@@ -42,13 +42,6 @@ $::INSTALLDIR = "/install";
 
 # Default TFTP dir location
 $::TFTPDIR = "/tftpboot";
-if ((xCAT::Utils->isServiceNode())) {    # if not on Management Node
-  xCAT::MsgUtils->message(
-            'E',
-            "xcatconfig should only be run on the Management Node."
-            );
-   exit 1;
-}
 
 # parse the options
 if (
@@ -122,6 +115,14 @@ if (($::INITIALINSTALL) && ($::UPDATEINSTALL))
       " The -i and -u flags may not be input to the command. Use one or the other. \n ";
     xCAT::MsgUtils->message("N", $warning);
     exit 1;
+}
+#If not asking to install and you are on the servicenode, then error
+if (!($::INITIALINSTALL) && (xCAT::Utils->isServiceNode())) { 
+  xCAT::MsgUtils->message(
+            'E',
+            "xcatconfig should only be run on the Management Node."
+            );
+   exit 1;
 }
 
 #
