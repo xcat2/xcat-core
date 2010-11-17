@@ -1146,6 +1146,13 @@ sub addNodes {
             if ($?) { reportError($result, $callback); }
 	  }
         }
+
+        #define AllServiceableEvents_B condition on the HMC
+	$result=`CT_MANAGEMENT_SCOPE=3 /usr/bin/mkrsrc-api IBM.Condition::Name::"AllServiceableEvents_B"::ResourceClass::"IBM.Sensor"::EventExpression::"String=?\\\"LSSVCEVENTS_ALL%\\\""::SelectionString::"Name=\\\"CSMServiceableEventSensor\\\""::NodeNameList::{\\\"$node\\\"}::EventBatchingInterval::1::BatchedEventRetentionPeriod::72 2>&1`;
+	if (($?) && ($result !~ /2618-201|2618-008|2636-050/)){ 
+	    reportError($result, $callback); 
+	}
+	
       }
     }
   } 
@@ -1273,8 +1280,21 @@ sub removeNodes {
 
   foreach my $node (@mon_nodes) {
     if ($rmcHash{$node}) {
+	my $result=0;
+	if ($flag && $scope && (!$inactiveHash{$node})) {  #remove AllServiceableEvents_B condition for HMC
+	    $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "lsrsrc-api -s IBM.Condition::\\\"Name='AllServiceableEvents_B'\\\" 2>&1"`;
+	    if ($?) {
+		if ($result !~ /2612-023/) {#2612-023 no resources found error
+		    reportError($result, $callback); 
+		} 
+	    }
+	    $result=`/usr/bin/rmcondition -f AllServiceableEvents_B:$node 2>&1`;
+	    if ($?) { reportError($result, $callback); }
+	}
+    
+
       #remove resource in IBM.MngNode class on server
-      my $result=`rmrsrc-api -s IBM.MngNode::"Name=\\\"\"$node\\\"\"" 2>&1`;
+      $result=`rmrsrc-api -s IBM.MngNode::"Name=\\\"\"$node\\\"\"" 2>&1`;
       if ($?) {  
         if ($result =~ m/2612-023/) { #resource not found
          next;
@@ -1301,6 +1321,7 @@ sub removeNodes {
       }
 
       if ($flag) { #hmc nodes
+	#remove the MCP
         $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "lsrsrc-api -s IBM.MCP::\\\"NodeID=0x$ms_node_id\\\" 2>&1"`;
         if ($?) {
           if ($result !~ /2612-023/) {#2612-023 no resources found error
@@ -1310,6 +1331,7 @@ sub removeNodes {
         }
         $result=`XCATBYPASS=Y $::XCATROOT/bin/xdsh $node -l hscroot "rmrsrc-api -s IBM.MCP::\\\"NodeID=0x$ms_node_id\\\" 2>&1"`;
         if ($?) { reportError($result, $callback); }
+
       } else { #normal nodes
         push(@normal_nodes, $node);
       }
