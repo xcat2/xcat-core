@@ -1,0 +1,22 @@
+#!/usr/bin/env perl
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+use strict;
+use locale;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+use Getopt::Std;
+use IPC::SysV qw(IPC_STAT S_IRWXU IPC_PRIVATE IPC_CREAT S_IRUSR S_IWUSR );
+use IPC::Msg;
+
+my $rc=`$::XCATROOT/bin/lsxcatd -a 2>&1`;
+if ($?) {
+    print "$rc";
+} else {
+    print "xcatd is ok";
+}
+
+exit 0;
+
