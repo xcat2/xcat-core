@@ -43,7 +43,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 
 		// Get hardware control point
 		var nodeRow = $('#' + node).parent().parent();
-		var dTable = getNodesDataTable();
+		var dTable = $('#nodesDataTable').dataTable();
 		var rowPos = dTable.fnGetPosition(nodeRow.get(0));
 		var aData = dTable.fnGetData(rowPos);
 		var hcp = aData[hcpCol];

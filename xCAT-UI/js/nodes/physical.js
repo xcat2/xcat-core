@@ -1,10 +1,9 @@
-
-
 var bpaList;
 var fspList;
 var lparList;
 var nodeList;
 var selectNode = new Object();
+
 /**
  * extract all nodes userful data into a hash, which is used for creating graphical
  * 

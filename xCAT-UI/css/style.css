@@ -1,4 +1,4 @@
-/***************** Dialogs *****************/
+/*--------------- Dialogs ---------------*/
 .ui-dialog input {
 	border: solid 1px #BDBDBD;
 	font: 12px verdana, arial, helvetica, sans-serif;
@@ -12,7 +12,7 @@
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
-/***************** Tooltip *****************/
+/*--------------- Tooltip ---------------*/
 .tooltip {
 	background-color: #000;
 	border: 1px solid #fff;
@@ -31,7 +31,7 @@
 	margin: 0px;
 }
 
-/****************** Header ******************/
+/*--------------- Header ---------------*/
 #header {
 	height: 40px;
 	width: 1000px;
@@ -107,7 +107,7 @@
 	display: block;
 }
 
-/****************** Content section ******************/
+/*--------------- Body and content ---------------*/
 body {
 	background-color: #1C1C1C;
 	font: 12px verdana, arial, helvetica, sans-serif;
@@ -124,7 +124,7 @@ body {
 	overflow: auto;
 }
 
-/****************** Groups section ******************/
+/*--------------- Groups ---------------*/
 #groups {
 	width: 150px;
 	vertical-align: top;
@@ -158,14 +158,14 @@ body {
 	color: #FF0000;
 }
 
-/****************** Nodes section ******************/
+/*--------------- Nodes section ---------------*/
 #nodes {
 	width: 700px;
 	margin: 20px;
 	display: inline-table;
 }
 
-/****************** Info/warning bar ******************/
+/*--------------- Info/warning bar ---------------*/
 span.ui-icon-info {
 	float: left;
 	margin-right: 0.3em;
@@ -193,7 +193,7 @@ span.ui-icon-info {
 		50% 50% repeat-x;
 }
 
-/****************** Tabs ******************/
+/*--------------- jQuery tabs ---------------*/
 .tab {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border-style: none;
@@ -214,7 +214,7 @@ span.ui-icon-info {
 	cursor: pointer;
 }
 
-/****************** Inventory and user entry ******************/
+/*--------------- Inventory and user entry ---------------*/
 .tab table {
 	border-width: 1px;
 	border-spacing: 0px;
@@ -292,7 +292,7 @@ legend {
 	height: 300px;
 }
 
-/****************** Action bar ******************/
+/*--------------- Actions bar ---------------*/
 .actionBar {
 	display: inline-table;
 }
@@ -317,7 +317,7 @@ legend {
 	margin: 0;
 }
 
-/****************** Status bar ******************/
+/*--------------- Status bar ---------------*/
 .statusBar {
 	border: solid 1px #F5D0A9;
 	-moz-border-radius: .5em;
@@ -333,7 +333,7 @@ legend {
 	word-wrap: break-word;
 }
 
-/****************** Info bar ******************/
+/*--------------- Info bar ---------------*/
 .infoBar {
 	border: solid 1px #D8D8D8;
 	padding: 0px 10px;
@@ -351,7 +351,7 @@ legend {
 	word-wrap: break-word;
 }
 
-/****************** Datatable ******************/
+/*--------------- jQuery datatable ---------------*/
 .dataTables_wrapper {
 	overflow: auto;
 	width: 700px;
@@ -461,7 +461,7 @@ legend {
 	color: #FF0000;
 }
 
-/****************** Editable column ******************/
+/*--------------- Editable column ---------------*/
 .tab .datatable textarea {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border: solid 1px #BDBDBD;
@@ -483,7 +483,7 @@ legend {
 	background-color: #E6E6E6;
 }
 
-/****************** Context menu ******************/
+/*--------------- jQuery context menu ---------------*/
 .context-menu-theme-vista {
 	background: #FAFAFA url(../images/context-menu-bg.gif) repeat-y left top
 		;
@@ -530,7 +530,7 @@ legend {
 	color: #A7A7A7;
 }
 
-/****************** Forms ******************/
+/*--------------- Forms ---------------*/
 .form label {
 	color: #424242;
 	line-height: 1.5;
@@ -597,7 +597,7 @@ table a:hover {
 	border: solid 1px #d4d4d4;
 }
 
-/****************** Provision disk table ******************/
+/*--------------- Provision disk table ---------------*/
 .provision table {
 	border-width: 1px;
 	border-spacing: 0px;
@@ -614,7 +614,7 @@ table a:hover {
 	width: 60px;
 }
 
-/****************** Provision and clone table ******************/
+/*--------------- Provision and clone table ---------------*/
 .special table {
 	border-width: 1px;
 	border-spacing: 0px;
@@ -630,7 +630,7 @@ table a:hover {
 	padding: 3px;
 }
 
-/****************** Provision and monitor forms ******************/
+/*--------------- Provision and monitor forms ---------------*/
 .provision div,.monitor div {
 	margin: 10px 0;
 	display: block;
@@ -658,7 +658,7 @@ table a:hover {
 	margin: 0px 0px 15px 0px;
 }
 
-/****************** Physical layout section ******************/
+/*--------------- Physical layout section ---------------*/
 .frameDiv {
 	width: 179px;
 	height: 500px;

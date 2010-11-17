@@ -37,7 +37,7 @@ function loadProvisionPage() {
 	}
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision a node');
+	var infoBar = createInfoBar('Provision or re-provision a node on a selected platform');
 	$('#content').append(infoBar);
 
 	// Create provision form
@@ -51,7 +51,7 @@ function loadProvisionPage() {
 	$('#content').append(tab.object());
 
 	// Create radio buttons for platforms
-	var hwList =$('<ol>Select a platform to provision on:</ol>');
+	var hwList = $('<ol>Select a platform to provision on:</ol>');
 	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>ipmi</li>');
 	var blade = $('<li><input type="radio" name="hw" value="blade"/>blade</li>');
 	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>hmc</li>');
@@ -74,7 +74,7 @@ function loadProvisionPage() {
 	okBtn.bind('click', function(event) {
 		// Get hardware that was selected
 		var hw = $(this).parent().find('input[name="hw"]:checked').val();
-		
+
 		// Generate new tab ID
 		var instance = 0;
 		var newTabId = hw + 'ProvisionTab' + instance;
@@ -88,27 +88,27 @@ function loadProvisionPage() {
 
 		// Create an instance of the plugin
 		var plugin;
-		switch(hw) {
-			case "blade":
-	    		plugin = new bladePlugin();
-	    		break;
-			case "fsp":
-				plugin = new fspPlugin();
-				break;
-			case "hmc":
-				plugin = new hmcPlugin();
-				break;
-			case "ipmi":
-				plugin = new ipmiPlugin();
-				break;		
-			case "ivm":
-				plugin = new ivmPlugin();
-				break;
-			case "zvm":
-				plugin = new zvmPlugin();
-				break;
+		switch (hw) {
+		case "blade":
+			plugin = new bladePlugin();
+			break;
+		case "fsp":
+			plugin = new fspPlugin();
+			break;
+		case "hmc":
+			plugin = new hmcPlugin();
+			break;
+		case "ipmi":
+			plugin = new ipmiPlugin();
+			break;
+		case "ivm":
+			plugin = new ivmPlugin();
+			break;
+		case "zvm":
+			plugin = new zvmPlugin();
+			break;
 		}
-		
+
 		// Select tab
 		tab.select(newTabId);
 		plugin.loadProvisionPage(newTabId);

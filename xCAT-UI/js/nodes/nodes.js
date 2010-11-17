@@ -2,7 +2,6 @@
  * Global variables
  */
 var nodesTabs; 		// Node tabs
-var nodesDataTable; // Datatable containing all nodes within a group
 var origAttrs = new Object();	// Original node attributes
 
 /**
@@ -24,27 +23,6 @@ function setNodesTab(obj) {
  */
 function getNodesTab() {
 	return nodesTabs;
-}
-
-/**
- * Get the nodes datatable
- * 
- * @param Nothing
- * @return Data table object
- */
-function getNodesDataTable() {
-	return nodesDataTable;
-}
-
-/**
- * Set the nodes datatable
- * 
- * @param table
- *            Data table object
- * @return Nothing
- */
-function setNodesDataTable(table) {
-	nodesDataTable = table;
 }
 
 /**
@@ -189,6 +167,7 @@ function loadGroups(data) {
     			});
 			}
 			
+			// Get physical layout
 			$.ajax({
 				url : 'lib/cmd.php',
 				dataType : 'json',
@@ -267,7 +246,7 @@ function loadGroups(data) {
 	addNodeLink.tooltip({
 		position: "center right",	// Place tooltip on the right edge
 		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
 		opacity: 0.7		// Custom opacity setting
 	});
 	
@@ -317,7 +296,7 @@ function loadNodes(data) {
 	// Node attributes
 	var headers = new Object();
 	
-	// Clear cookie containing list of nodes where 
+	// Clear cookie containing list of nodes where
 	// their attributes need to be updated
 	$.cookie('Nodes2Update', '');
 	// Clear hash table containing node attributes
@@ -414,7 +393,8 @@ function loadNodes(data) {
 			position: "center right",	// Place tooltip on the right edge
 			offset: [-2, 10],			// A little tweaking of the position
 			relative: true,
-			effect: "fade",				// Use the built-in fadeIn/fadeOut effect			
+			effect: "fade",				// Use the built-in fadeIn/fadeOut
+										// effect
 			opacity: 0.8				// Custom opacity setting
 		});
 		
@@ -626,7 +606,6 @@ function loadNodes(data) {
 	var myDataTable = $('#nodesDataTable').dataTable({
 		'iDisplayLength': 50
 	});
-	setNodesDataTable(myDataTable);
 	
 	// Do not sort ping, power, and comment column
 	var pingCol = $('#nodesDataTable thead tr th').eq(2);
@@ -662,7 +641,7 @@ function loadNodes(data) {
 			var colPos = this.cellIndex;
 						
 			// Get row index
-			var dTable = getNodesDataTable();
+			var dTable = $('#nodesDataTable').dataTable();
 			var rowPos = dTable.fnGetPosition(this.parentNode);
 			
 			// Update datatable
@@ -679,7 +658,8 @@ function loadNodes(data) {
 
 			return (value);
 		}, {
-			onblur : 'submit', 	// Clicking outside editable area submits changes
+			onblur : 'submit', 	// Clicking outside editable area submits
+								// changes
 			type : 'textarea',
 			placeholder: ' ',
 			height : '30px' 	// The height of the text area
@@ -765,7 +745,7 @@ function loadNodes(data) {
  */
 function loadPowerStatus(data) {
 	// Get datatable
-	var dTable = getNodesDataTable();
+	var dTable = $('#nodesDataTable').dataTable();
 	var power = data.rsp;
 	var rowNum, node, status, args;
 
@@ -823,7 +803,7 @@ function refreshPowerStatus(group) {
  */
 function loadPingStatus(data) {
 	// Get data table
-	var dTable = getNodesDataTable();
+	var dTable = $('#nodesDataTable').dataTable();
 	var ping = data.rsp;
 	var rowPos, node, status;
 
@@ -990,7 +970,7 @@ function loadUnlockPage(tgtNodes) {
 	unlockForm.find('div input[title]').tooltip({
 		position: "center right",	// Place tooltip on the right edge
 		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
 		opacity: 0.7		// Custom opacity setting
 	});
 	
@@ -1094,7 +1074,7 @@ function loadScriptPage(tgtNodes) {
 	scriptForm.find('div input[title]').tooltip({
 		position: "center right",	// Place tooltip on the right edge
 		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
 		opacity: 0.7		// Custom opacity setting
 	});
 
@@ -1311,7 +1291,7 @@ function updateStatusBar(data) {
 		$('#' + statBarId).append(prg);	
 	} else if (cmd == 'rmvm') {
 		// Get data table
-		var dTable = getNodesDataTable();
+		var dTable = $('#nodesDataTable').dataTable();
 		var failed = false;
 
 		// Hide loader
@@ -1404,7 +1384,7 @@ function formComplete(tabId) {
  */
 function updatePowerStatus(data) {
 	// Get datatable
-	var dTable = getNodesDataTable();
+	var dTable = $('#nodesDataTable').dataTable();
 
 	// Get all nodes within the datatable
 	var rows = dTable.fnGetNodes();
@@ -1489,7 +1469,7 @@ function runScript(inst) {
  * @param node
  *            The node
  * @param attrName
- * 			  The attribute
+ *            The attribute
  * @return The attribute of the node
  */
 function getNodeAttr(node, attrName) {
@@ -1508,7 +1488,7 @@ function getNodeAttr(node, attrName) {
 		}
 	}
 	
-	// If the column containing the attribute is found 
+	// If the column containing the attribute is found
 	if (attrCol) {
 		// Get the attribute column index
 		var attrIndex = attrCol.index();
@@ -1624,7 +1604,7 @@ function getNodeRow(tgtNode, rows) {
  * Get nodes that are checked in a given datatable
  * 
  * @param datatableId
- * 				The datatable ID
+ *            The datatable ID
  * @return Nodes that were checked
  */
 function getNodesChecked(datatableId) {
@@ -1652,7 +1632,7 @@ function getNodesChecked(datatableId) {
  * Get the column index for a given column name
  * 
  * @param colName
- * 				The column name to search
+ *            The column name to search
  * @return The index containing the column name
  */
 function getColNum(colName){
@@ -1671,12 +1651,12 @@ function getColNum(colName){
  * Get the row index for a given node name
  * 
  * @param nodeName
- * 				Node name
+ *            Node name
  * @return The row index containing the node name
  */
 function getRowNum(nodeName){
 	// Get datatable
-	var dTable = getNodesDataTable();
+	var dTable = $('#nodesDataTable').dataTable();
 	
 	// Get all data from datatable
 	var data = dTable.fnGetData();
@@ -1798,7 +1778,8 @@ function updateNodeAttrs(group) {
 					begin = out[i].indexOf('(') + 1;
 					end = out[i].indexOf(')');
 					
-					// Split the attribute, e.g. Table:nodetype - Key:node - Column:arch
+					// Split the attribute, e.g. Table:nodetype - Key:node -
+					// Column:arch
 					tmp = out[i].substring(begin, end).split('-');
 					key = jQuery.trim(tmp[2].replace('Column:', ''));
 					value = jQuery.trim(tmp[0].replace('Table:', ''));
@@ -1807,7 +1788,7 @@ function updateNodeAttrs(group) {
 			}
 			
 			// Get the nodes datatable
-			var dTable = getNodesDataTable();
+			var dTable = $('#nodesDataTable').dataTable();
 			// Get all nodes within the datatable
 			var rows = dTable.fnGetNodes();
 			
@@ -1872,7 +1853,7 @@ function updateNodeAttrs(group) {
 				} // End of if
 			} // End of for
 			
-			// Clear cookie containing list of nodes where 
+			// Clear cookie containing list of nodes where
 			// their attributes need to be updated
 			$.cookie('Nodes2Update', '');
 		} // End of function
@@ -1890,7 +1871,7 @@ function restoreNodeAttrs() {
 	var nodes = nodesList.split(';');
 	
 	// Get the nodes datatable
-	var dTable = getNodesDataTable();
+	var dTable = $('#nodesDataTable').dataTable();
 	// Get table headers
 	var headers = $('#nodesDataTable thead tr th');
 	// Get all nodes within the datatable
@@ -1923,7 +1904,7 @@ function restoreNodeAttrs() {
 		} // End of if
 	} // End of for
 	
-	// Clear cookie containing list of nodes where 
+	// Clear cookie containing list of nodes where
 	// their attributes need to be updated
 	$.cookie('Nodes2Update', '');
 }

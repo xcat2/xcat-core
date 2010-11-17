@@ -6,7 +6,7 @@
 function loadGangliaMon() {
 	// Get Ganglia tab
 	var gangliaTab = $('#gangliamon');
-		
+
 	// Check whether Ganglia RPMs are installed on the xCAT MN
 	$.ajax( {
 		url : 'lib/systemcmd.php',
@@ -17,7 +17,7 @@ function loadGangliaMon() {
 
 		success : checkGangliaRPMs
 	});
-		
+
 	// Create groups and nodes DIV
 	var groups = $('<div id="groups"></div>');
 	var nodes = $('<div id="nodes"></div>');
@@ -54,7 +54,7 @@ function loadGangliaMon() {
  */
 function checkGangliaRPMs(data) {
 	var gangliaTab = $('#gangliamon');
-	
+
 	// Get the list of Ganglia RPMs installed
 	var status = data.rsp.split(/\n/);
 	var gangliaRPMs = [ "rrdtool", "ganglia-gmetad", "ganglia-gmond", "ganglia-web" ];
@@ -66,11 +66,11 @@ function checkGangliaRPMs(data) {
 			missingRPMs = true;
 		}
 	}
-	
+
 	// Append Ganglia PDF
 	if (missingRPMs) {
 		warningMsg += ". Refer to <a href='http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/xCAT-client/share/doc/xCAT2-Monitoring.pdf'>xCAT2-Monitoring.pdf</a> for more information.";
-		
+
 		var warningBar = createWarnBar(warningMsg);
 		warningBar.css('margin-bottom', '10px');
 		warningBar.prependTo(gangliaTab);
@@ -96,37 +96,37 @@ function checkGangliaRPMs(data) {
 			success : function(data) {
 				if (data.rsp[0].indexOf("not-monitored") > -1) {
 					// Create link to start Ganglia
-					var startLnk = $('<a href="#">Click here</a>');
-					startLnk.css( {
-						'color' : 'blue',
-						'text-decoration' : 'none'
-					});
-					startLnk.click(function() {
-						// Turn on Ganglia for all nodes
-						monitorNode('', 'on');
-					});
+			var startLnk = $('<a href="#">Click here</a>');
+			startLnk.css( {
+				'color' : 'blue',
+				'text-decoration' : 'none'
+			});
+			startLnk.click(function() {
+				// Turn on Ganglia for all nodes
+				monitorNode('', 'on');
+			});
 
-					// Create warning bar
-					var warningBar = $('<div class="ui-state-error ui-corner-all"></div>');
-					var msg = $('<p></p>');
-					msg.append('<span class="ui-icon ui-icon-alert"></span>');
-					msg.append('Please start Ganglia Monitoring on xCAT. ');
-					msg.append(startLnk);
-					msg.append(' to start Ganglia Monitoring.');
-					warningBar.append(msg);
-					warningBar.css('margin-bottom', '10px');
-					
-					// If there are any warning messages, append this warning after it
-					var curWarnings = $('#gangliamon').find('.ui-state-error');
-					var gangliaTab = $('#gangliamon');
-					if (curWarnings.length) {
-						curWarnings.after(warningBar);
-					} else {					
-						warningBar.prependTo(gangliaTab);
-					}
-				}
+			// Create warning bar
+			var warningBar = $('<div class="ui-state-error ui-corner-all"></div>');
+			var msg = $('<p></p>');
+			msg.append('<span class="ui-icon ui-icon-alert"></span>');
+			msg.append('Please start Ganglia Monitoring on xCAT. ');
+			msg.append(startLnk);
+			msg.append(' to start Ganglia Monitoring.');
+			warningBar.append(msg);
+			warningBar.css('margin-bottom', '10px');
+
+			// If there are any warning messages, append this warning after it
+			var curWarnings = $('#gangliamon').find('.ui-state-error');
+			var gangliaTab = $('#gangliamon');
+			if (curWarnings.length) {
+				curWarnings.after(warningBar);
+			} else {
+				warningBar.prependTo(gangliaTab);
 			}
-		});		
+		}
+	}
+		});
 	}
 	return;
 }
@@ -141,7 +141,7 @@ function checkGangliaRPMs(data) {
 function loadGroups4Ganglia(data) {
 	// Remove loader
 	$('#groups').find('img').remove();
-	
+
 	var groups = data.rsp;
 	setGroupsCookies(data);
 
@@ -163,21 +163,24 @@ function loadGroups4Ganglia(data) {
 	// Turn groups list into a tree
 	$('#groups').append(ul);
 	$('#groups').jstree( {
-		core : { "initially_open" : [ "root" ] },
+		core : {
+			"initially_open" : [ "root" ]
+		},
 		themes : {
 			"theme" : "default",
-			"dots" : false,	// No dots
-			"icons" : false	// No icons
+			"dots" : false, // No dots
+			"icons" : false // No icons
 		}
 	});
-	
+
 	// Load nodes onclick
-	$('#groups').bind('select_node.jstree', function(event, data) {
-		var thisGroup = jQuery.trim(data.rslt.obj.text());
-		if (thisGroup) {
-			// Clear nodes division
+	$('#groups')
+		.bind('select_node.jstree', function(event, data) {
+			var thisGroup = jQuery.trim(data.rslt.obj.text());
+			if (thisGroup) {
+				// Clear nodes division
 			$('#nodes').children().remove();
-			
+
 			// Create link to Ganglia
 			var gangliaLnk = $('<a href="#">click here</a>');
 			gangliaLnk.css( {
@@ -193,7 +196,8 @@ function loadGroups4Ganglia(data) {
 			var info = $('<div class="ui-state-highlight ui-corner-all"></div>');
 			var msg = $('<p></p>');
 			msg.append('<span class="ui-icon ui-icon-info"></span>');
-			msg.append('Review the nodes that are monitored by Ganglia.  You can turn on Ganglia monitoring on a node by selecting it and clicking on Monitor. If you are satisfied with the nodes you want to monitor, ');
+			msg
+				.append('Review the nodes that are monitored by Ganglia.  You can turn on Ganglia monitoring on a node by selecting it and clicking on Monitor. If you are satisfied with the nodes you want to monitor, ');
 			msg.append(gangliaLnk);
 			msg.append(' to open Ganglia page.');
 			info.append(msg);
@@ -209,7 +213,7 @@ function loadGroups4Ganglia(data) {
 			tab.init();
 			$('#nodes').append(tab.object());
 			tab.add('nodesTab', 'Nodes', loader, false);
-			
+
 			// Get nodes within selected group
 			$.ajax( {
 				url : 'lib/cmd.php',
@@ -223,25 +227,25 @@ function loadGroups4Ganglia(data) {
 
 				success : loadNodes4Ganglia
 			});
-			
+
 			// Get subgroups within selected group
 			// only when this is the parent group and not a subgroup
 			if (data.rslt.obj.attr('id').indexOf('Subgroup') < 0) {
-    			$.ajax( {
-    				url : 'lib/cmd.php',
-    				dataType : 'json',
-    				data : {
-    					cmd : 'extnoderange',
-    					tgt : thisGroup,
-    					args : 'subgroups',
-    					msg : thisGroup
-    				},
-    
-    				success : loadSubgroups
-    			});
+				$.ajax( {
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'extnoderange',
+						tgt : thisGroup,
+						args : 'subgroups',
+						msg : thisGroup
+					},
+
+					success : loadSubgroups
+				});
 			}
 		} // End of if (thisGroup)
-	});
+	}   );
 }
 
 /**
@@ -342,9 +346,7 @@ function loadNodes4Ganglia(data) {
 	 */
 	var powerLnk = $('<a>Power</a>');
 
-	/*
-	 * Power on
-	 */
+	// Power on
 	var powerOnLnk = $('<a>Power on</a>');
 	powerOnLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -353,9 +355,7 @@ function loadNodes4Ganglia(data) {
 		}
 	});
 
-	/*
-	 * Power off
-	 */
+	// Power off
 	var powerOffLnk = $('<a>Power off</a>');
 	powerOffLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -378,10 +378,8 @@ function loadNodes4Ganglia(data) {
 
 		}
 	});
-	
-	/*
-	 * Turn monitoring on
-	 */
+
+	// Turn monitoring on
 	var monitorOnLnk = $('<a>Monitor on</a>');
 	monitorOnLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -390,9 +388,7 @@ function loadNodes4Ganglia(data) {
 		}
 	});
 
-	/*
-	 * Turn monitoring off
-	 */
+	// Turn monitoring off
 	var monitorOffLnk = $('<a>Monitor off</a>');
 	monitorOffLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -400,7 +396,7 @@ function loadNodes4Ganglia(data) {
 			monitorNode(tgtNodes, 'off');
 		}
 	});
-	
+
 	// Power actions
 	var monitorActions = [ monitorOnLnk, monitorOffLnk ];
 	var monitorActionMenu = createMenu(monitorActions);
@@ -480,7 +476,7 @@ function loadNodes4Ganglia(data) {
 
 		success : loadPingStatus
 	});
-	
+
 	// Get the status of Ganglia
 	$.ajax( {
 		url : 'lib/cmd.php',
@@ -505,7 +501,7 @@ function loadNodes4Ganglia(data) {
  */
 function loadGangliaStatus(data) {
 	// Get datatable
-	var dTable = getNodesDataTable();
+	var dTable = $('#nodesDataTable').dataTable();
 	var ganglia = data.rsp;
 	var rowNum, node, status, args;
 
@@ -520,7 +516,7 @@ function loadGangliaStatus(data) {
 		// Update the power status column
 		dTable.fnUpdate(status, rowNum, 4);
 	}
-	
+
 	// Hide Ganglia loader
 	var gangliaCol = $('#nodesDataTable thead tr th').eq(4);
 	gangliaCol.find('img').hide();
@@ -537,7 +533,7 @@ function refreshGangliaStatus(group) {
 	// Show ganglia loader
 	var gangliaCol = $('#nodesDataTable thead tr th').eq(4);
 	gangliaCol.find('img').show();
-	
+
 	// Get the status of Ganglia
 	$.ajax( {
 		url : 'lib/cmd.php',
@@ -564,7 +560,7 @@ function refreshGangliaStatus(group) {
  */
 function monitorNode(node, monitor) {
 	var args;
-	
+
 	if (monitor == 'on') {
 		// Append loader to warning bar
 		var gangliaLoader = createLoader('');
@@ -572,13 +568,13 @@ function monitorNode(node, monitor) {
 		if (warningBar.length) {
 			warningBar.append(gangliaLoader);
 		}
-				
+
 		if (node) {
 			args = 'gangliastart;' + node;
 		} else {
 			args = 'gangliastart';
 		}
-		
+
 		$.ajax( {
 			url : 'lib/cmd.php',
 			dataType : 'json',
@@ -600,7 +596,7 @@ function monitorNode(node, monitor) {
 		} else {
 			args = 'gangliastop';
 		}
-		
+
 		$.ajax( {
 			url : 'lib/cmd.php',
 			dataType : 'json',
