@@ -105,8 +105,20 @@
  */
 table.display {
 	margin: 0 auto;
-	width: 100%;
 	clear: both;
+	width: 100%;
+	/* Note Firefox 3.5 and before have a bug with border-collapse
+	 * ( https://bugzilla.mozilla.org/show%5Fbug.cgi?id=155955 ) 
+	 * border-spacing: 0; is one possible option. Conditional-css.com is
+	 * useful for this kind of thing
+	 *
+	 * Further note IE 6/7 has problems when calculating widths with border width.
+	 * It subtracts one px relative to the other browsers from the first column, and
+	 * adds one to the end...
+	 *
+	 * If you want that effect I'd suggest setting a border-top/left on th/td's and 
+	 * then filling in the gaps with other borders.
+	 */
 }
 
 table.display thead th {
@@ -118,7 +130,7 @@ table.display thead th {
 }
 
 table.display tfoot th {
-	padding: 3px 10px;
+	padding: 3px 18px 3px 10px;
 	border-top: 1px solid black;
 	font-weight: bold;
 }
@@ -171,14 +183,6 @@ table.display tr.even.gradeA {
 	background-color: #eeffee;
 }
 
-table.display tr.odd.gradeA {
-	background-color: #ddffdd;
-}
-
-table.display tr.even.gradeA {
-	background-color: #eeffee;
-}
-
 table.display tr.odd.gradeC {
 	background-color: #ddddff;
 }
@@ -214,6 +218,14 @@ tr.even {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Misc
  */
+.dataTables_scroll {
+	clear: both;
+}
+
+.dataTables_scrollBody { *
+	margin-top: -1px;
+}
+
 .top,.bottom {
 	padding: 15px;
 	background-color: #F5F5F5;
@@ -437,6 +449,38 @@ tr.even.gradeU td.sorting_3 {
 .ex_highlight #example tbody tr.odd:hover,#example tbody tr.odd td.highlighted
 	{
 	background-color: #E6FF99;
+}
+
+.ex_highlight_row #example tr.even:hover {
+	background-color: #ECFFB3;
+}
+
+.ex_highlight_row #example tr.even:hover td.sorting_1 {
+	background-color: #DDFF75;
+}
+
+.ex_highlight_row #example tr.even:hover td.sorting_2 {
+	background-color: #E7FF9E;
+}
+
+.ex_highlight_row #example tr.even:hover td.sorting_3 {
+	background-color: #E2FF89;
+}
+
+.ex_highlight_row #example tr.odd:hover {
+	background-color: #E6FF99;
+}
+
+.ex_highlight_row #example tr.odd:hover td.sorting_1 {
+	background-color: #D6FF5C;
+}
+
+.ex_highlight_row #example tr.odd:hover td.sorting_2 {
+	background-color: #E0FF84;
+}
+
+.ex_highlight_row #example tr.odd:hover td.sorting_3 {
+	background-color: #DBFF70;
 }
 
 /*
