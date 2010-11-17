@@ -951,6 +951,8 @@ sub db2start
     if ($rc != 0)
     {
         xCAT::MsgUtils->message("W", " $cmd failed.");
+        &startxcatd;
+        exit(1);
     }
 
 }
