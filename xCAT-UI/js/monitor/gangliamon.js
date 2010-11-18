@@ -176,6 +176,8 @@ function loadGroups4Ganglia(data) {
 	// Load nodes onclick
 	$('#groups')
 		.bind('select_node.jstree', function(event, data) {
+			// If there are subgroups, remove them
+			data.rslt.obj.children('ul').remove();
 			var thisGroup = jQuery.trim(data.rslt.obj.text());
 			if (thisGroup) {
 				// Clear nodes division
