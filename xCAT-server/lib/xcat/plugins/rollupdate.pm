@@ -176,7 +176,7 @@ sub rollupdate_usage {
       "\nUsage: rollupdate - Submit cluster rolling update jobs \n";
     push @{ $rsp->{data} }, "  rollupdate [-h | --help | -?] \n";
     push @{ $rsp->{data} },
-      "  rollupdate [-V | --verbose] [-v | --version] \n ";
+      "  rollupdate [-V | --verbose] [-v | --version] [-t | --test] \n ";
     push @{ $rsp->{data} },
 "      <STDIN> - stanza file, see /opt/xcat/share/xcat/rollupdate/rollupdate.input.sample";
     push @{ $rsp->{data} }, "                for example \n";
@@ -895,7 +895,7 @@ sub ll_jobs {
                 push @{ $rsp->{data} }, "Writing LL reservation callback script $llrcb_file ";
                 xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-                print RULOG localtime()." Writing xCAT rolling update data file $ugdf_file \n";
+                print RULOG localtime()." Writing LL reservation callback script $llrcb_file \n";
                 close (RULOG);
             }
             print $RCBFILE @rcblines;
