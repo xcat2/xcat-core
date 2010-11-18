@@ -1747,119 +1747,72 @@ function flagNode2Update(node) {
  * @return Nothing
  */
 function updateNodeAttrs(group) {
-	// Get header table names
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'lsdef',
-			tgt : '',
-			args : group + ';-l;-V',	// Long verbose
-			msg : ''
-		},
+	// Get the nodes datatable
+	var dTable = $('#nodesDataTable').dataTable();
+	// Get all nodes within the datatable
+	var rows = dTable.fnGetNodes();
+	
+	// Get table headers
+	var headers = $('#nodesDataTable thead tr th');
+							
+	// Get list of nodes to update
+	var nodesList = $.cookie('Nodes2Update');
+	var nodes = nodesList.split(';');
+	
+	// Create the arguments
+	var args;
+	var row, colPos, value;
+	var attrName;
+	// Go through each node where an attribute was changed
+	for (var i = 0; i < nodes.length; i++) {
+		if (nodes[i]) {
+			args = '';
+			
+        	// Get the row containing the node link
+        	row = getNodeRow(nodes[i], rows);
+        	$(row).find('td').each(function (){
+        		if ($(this).css('color') == 'red') {
+        			// Change color back to normal
+        			$(this).css('color', '');
+        			
+        			// Get column position
+        			colPos = $(this).parent().children().index($(this));
+        			// Get column value
+        			value = $(this).text();
+        			
+        			// Get attribute name
+        			attrName = jQuery.trim(headers.eq(colPos).text());
+        			
+        			// Build argument string
+        			if (args) {
+        				// Handle subsequent arguments
+        				args += ';' + attrName + '=' + value;
+        			} else {
+        				// Handle the 1st argument
+        				args += attrName + '=' + value;
+        			}		
+        		}
+        	});
+        	
+        	// Send command to change node attributes
+        	$.ajax( {
+        		url : 'lib/cmd.php',
+        		dataType : 'json',
+        		data : {
+        			cmd : 'chdef',
+        			tgt : '',
+        			args : '-t;node;-o;' + nodes[i] + ';' + args,
+        			msg : 'node=' + nodes[i]
+        		},
 
-		/**
-		 * Create a command to send to xCAT to update the nodes attributes
-		 * 
-		 * @param data
-		 *            Data returned from HTTP request
-		 * @return Nothing
-		 */
-		success : function(data){
-			// Get data returned
-			var out = data.rsp;
-
-			// Create hash table where key = attribute and value = table name
-			var attrTable = new Object();
-			var key, value;
-			var begin, end, tmp;
-			for (var i = 0; i < out.length; i++) {
-				// If the line contains "("
-				if (out[i].indexOf('(') > -1) {
-					// Get the index of "(" and ")"
-					begin = out[i].indexOf('(') + 1;
-					end = out[i].indexOf(')');
-					
-					// Split the attribute, e.g. Table:nodetype - Key:node -
-					// Column:arch
-					tmp = out[i].substring(begin, end).split('-');
-					key = jQuery.trim(tmp[2].replace('Column:', ''));
-					value = jQuery.trim(tmp[0].replace('Table:', ''));
-					attrTable[key] = value;
-				}
-			}
-			
-			// Get the nodes datatable
-			var dTable = $('#nodesDataTable').dataTable();
-			// Get all nodes within the datatable
-			var rows = dTable.fnGetNodes();
-			
-			// Get table headers
-			var headers = $('#nodesDataTable thead tr th');
-									
-			// Get list of nodes to update
-			var nodesList = $.cookie('Nodes2Update');
-			var nodes = nodesList.split(';');
-			
-			// Create the arguments
-			var args;
-			var row, colPos, value;
-			var attrName, tableName;
-			// Go through each node where an attribute was changed
-			for (var i = 0; i < nodes.length; i++) {
-				if (nodes[i]) {
-					args = '';
-					
-		        	// Get the row containing the node link
-		        	row = getNodeRow(nodes[i], rows);
-		        	$(row).find('td').each(function (){
-		        		if ($(this).css('color') == 'red') {
-		        			// Change color back to normal
-		        			$(this).css('color', '');
-		        			
-		        			// Get column position
-		        			colPos = $(this).parent().children().index($(this));
-		        			// Get column value
-		        			value = $(this).text();
-		        			
-		        			// Get attribute name
-		        			attrName = jQuery.trim(headers.eq(colPos).text());
-		        			// Get table name where attribute belongs in
-		        			tableName = attrTable[attrName];
-		        			
-		        			// Build argument string
-		        			if (args) {
-		        				// Handle subsequent arguments
-		        				args += ' ' + tableName + '.' + attrName + '="' + value + '"';
-		        			} else {
-		        				// Handle the 1st argument
-		        				args += tableName + '.' + attrName + '="' + value + '"';
-		        			}
-		        			        			
-		        		}
-		        	});
-		        	
-		        	// Send command to change node attributes
-		        	$.ajax( {
-		        		url : 'lib/cmd.php',
-		        		dataType : 'json',
-		        		data : {
-		        			cmd : 'webrun',
-		        			tgt : '',
-		        			args : 'chtab node=' + nodes[i] + ' ' + args,
-		        			msg : ''
-		        		},
-
-		        		success: showChtabOutput
-		        	});
-				} // End of if
-			} // End of for
-			
-			// Clear cookie containing list of nodes where
-			// their attributes need to be updated
-			$.cookie('Nodes2Update', '');
-		} // End of function
-	});
+        		success: showChdefOutput
+        	});
+		} // End of if
+	} // End of for
+	
+	// Clear cookie containing list of nodes where
+	// their attributes need to be updated
+	$.cookie('Nodes2Update', '');
 }
 
 /**
@@ -1954,13 +1907,13 @@ function createCommentsToolTip(comment) {
     		url : 'lib/cmd.php',
     		dataType : 'json',
     		data : {
-    			cmd : 'webrun',
+    			cmd : 'chdef',
     			tgt : '',
-    			args : 'chtab node=' + node + ' nodelist.comments="' + comments + '"',
-    			msg : ''
+    			args : '-t;node;-o;' + node + ';usercomment=' + comments,
+    			msg : 'node=' + node
     		},
     		
-    		success: showChtabOutput
+    		success: showChdefOutput
 		});
 		
 		// Hide cancel and save links
@@ -1993,15 +1946,16 @@ function createCommentsToolTip(comment) {
 }
 
 /**
- * Show chtab output
+ * Show chdef output
  * 
  * @param data
  *            Data returned from HTTP request
  * @return Nothing
  */
-function showChtabOutput(data) {
+function showChdefOutput(data) {
 	// Get output
 	var out = data.rsp;
+	var node = data.msg.replace('node=', '');
 	
 	// Find info bar on nodes tab, if any
 	var info = $('#nodesTab').find('.ui-state-highlight');
@@ -2015,10 +1969,7 @@ function showChtabOutput(data) {
 	var node, status;
 	var pg = $('<p></p>');
 	for ( var i in out) {
-		// out[0] = node name and out[1] = status
-		node = jQuery.trim(out[i][0]);
-		status = jQuery.trim(out[i][1]);
-		pg.append(node + ': ' + status + '<br>');
+		pg.append(node + ': ' + out[i] + '<br>');
 	}
 	
 	info.append(pg);
