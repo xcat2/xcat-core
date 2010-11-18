@@ -1163,10 +1163,13 @@ sub check_policy {
   foreach my $rule (@$policies) {
     if ( $rule->{name} && 
         (($rule->{name} eq "*")  || ($rule->{name} eq $userid)) ) {
-      if ( $rule->{commands} &&
-          (($rule->{commands} eq "*") || ($rule->{commands} =~ /$xcatcmd/)) ){
-        return 0;  # match found
-      } 
+      if ( $rule->{commands} ) {
+          if (($rule->{commands} eq "") || ($rule->{commands} eq "*") || ($rule->{commands} =~ /$xcatcmd/) ){
+            return 0;  # match found
+          }
+      } else {
+          return 0;  # default match if commands is unset
+      }
     }
   }
   return 1;  # no match found
