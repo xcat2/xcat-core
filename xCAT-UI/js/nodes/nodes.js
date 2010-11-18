@@ -1895,6 +1895,7 @@ function createCommentsToolTip(comment) {
 	};
 	var saveLnk = $('<a>Save</a>').css(lnkStyle).hide();
 	var cancelLnk = $('<a>Cancel</a>').css(lnkStyle).hide();
+	var infoSpan = $('<span>Click to edit</span>').css(lnkStyle);
 	
 	// Save changes onclick
 	saveLnk.bind('click', function(){
@@ -1930,17 +1931,20 @@ function createCommentsToolTip(comment) {
 		// Hide cancel and save links
 		$(this).hide();
 		saveLnk.hide();
+		infoSpan.show();
 	});
 	
 	// Show save link when comment is edited
 	txtArea.bind('click', function(){
 		saveLnk.show();
 		cancelLnk.show();
+		infoSpan.hide();
 	});
 		
 	toolTip.append(txtArea);
 	toolTip.append(cancelLnk);
 	toolTip.append(saveLnk);
+	toolTip.append(infoSpan);
 	
 	return toolTip;
 }
