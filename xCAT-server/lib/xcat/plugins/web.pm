@@ -482,19 +482,6 @@ sub web_gangliastart() {
 		$nr = '';
 	}
 
-	# Check the running status
-	my $table = xCAT::Table->new('monitoring');
-	my $gangWorkingStatus = $table->getAttribs( { name => 'gangliamon' }, 'disable' );
-	$table . close();
-
-	# Ganglia is running so return directly
-	if ($gangWorkingStatus) {
-		if ( $gangWorkingStatus->{disable} =~ /0|No|no|NO|N|n/ ) {
-			$callback->( { info => 'Ganglia Monitoring is running now.' } );
-			return;
-		}
-	}
-
 	# Add gangliamon to the monitoring table
 	my $info;
 	my $output = `monadd gangliamon`;
