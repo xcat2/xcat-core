@@ -419,7 +419,6 @@ function loadNodes4Ganglia(data) {
 
 	// Turn table into a datatable
 	var myDataTable = $('#nodesDataTable').dataTable();
-	setNodesDataTable(myDataTable);
 
 	// Do not sort ping and power column
 	var pingCol = $('#nodesDataTable thead tr th').eq(2);
