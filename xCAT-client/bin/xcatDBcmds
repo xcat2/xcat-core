@@ -53,12 +53,25 @@ else
 
 $cmdref->{cwd}->[0] = cwd();
 # get info from files piped in as stdin
-if (-p STDIN) {
-  my $data;
-  while ( <STDIN> ) {
-    $data.=$_;
-  }
-  $cmdref->{stdin}->[0]=$data;
+my $data;
+if (($^O =~ /^linux/i) && ($ENV{'SHELL'} =~ /\/ksh$/))
+{
+    my $rin="";
+    vec($rin,fileno(STDIN),1)=1;
+    my $nfound=select($rout=$rin,"","",1);
+    if ($nfound)
+    {
+        while ( <STDIN> ) { $data.=$_; }
+        $cmdref->{stdin}->[0]=$data;
+    }
+}
+else
+{
+    if (-p STDIN) {
+        while ( <STDIN> ) { $data.=$_; }
+        $cmdref->{stdin}->[0]=$data;
+    }
+}
 }
 # The noderange can be specified through a noderange file
 # the noderange file can be a relative path,
