@@ -209,13 +209,14 @@ sub process_request {
         }
     }
 
+    my $xcat_packimg_tmpfile = "/tmp/xcat_packimg.$$";
     my $excludestr = "find . ";
     my $includestr;
     if ($exlistloc) {
         my $exlist;
         my $excludetext;
         open($exlist,"<",$exlistloc);
-        system("echo -n > /tmp/xcat_packimg.txt");
+        system("echo -n > $xcat_packimg_tmpfile");
         while (<$exlist>) {
     	    $excludetext .= $_;
         }   
@@ -323,23 +324,23 @@ sub process_request {
             $excludestr = "find . |cpio -H newc -o | gzip -c - > ../rootimg.gz";
         }else {
             chdir("$rootimg_dir");
-            system("$excludestr >> /tmp/xcat_packimg.txt"); 
+            system("$excludestr >> $xcat_packimg_tmpfile"); 
             if ($includestr) {
-            	system("$includestr >> /tmp/xcat_packimg.txt"); 
+            	system("$includestr >> $xcat_packimg_tmpfile"); 
             }
             #$excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
-            $excludestr = "cat /tmp/xcat_packimg.txt|cpio -H newc -o | gzip -c - > ../rootimg.gz";
+            $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | gzip -c - > ../rootimg.gz";
         }
         $oldmask = umask 0077;
     } elsif ($method =~ /squashfs/) {
       $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
       chmod 0755,$temppath;
       chdir("$rootimg_dir");
-      system("$excludestr >> /tmp/xcat_packimg.txt"); 
+      system("$excludestr >> $xcat_packimg_tmpfile"); 
       if ($includestr) {
-	  system("$includestr >> /tmp/xcat_packimg.txt"); 
+	  system("$includestr >> $xcat_packimg_tmpfile"); 
       }
-      $excludestr = "cat /tmp/xcat_packimg.txt|cpio -dump $temppath"; 
+      $excludestr = "cat $xcat_packimg_tmpfile|cpio -dump $temppath"; 
     } else {
        $callback->({error=>["Invalid method '$method' requested"],errorcode=>[1]});
     }
@@ -371,7 +372,8 @@ sub process_request {
        }
        chmod(0644,"../rootimg.sfs");
     }
-
+   system("rm -f $xcat_packimg_tmpfile");
+    
     # move the files in /.statebackup back to rootimg_dir
     if ($rootimg_status) { #  statelite mode
         foreach my $entry (keys %liteHash) {
