@@ -33,3 +33,5 @@ rpm -e --nodeps --root $installroot gcc.ppc64 gcc-c++.ppc64  cpp.ppc64 glibc-dev
 
 #uninstall yast2 rpms
 #rpm -e --root $installroot yast2 yast2-bootloader yast2-kdump yast2-packager yast2-storage yast2-branding-SLES yast2-core yast2-hardware-detection yast2-ncurses-pkg yast2-perl-bindings yast2-pkg-bindings yast2-theme-SLE yast2-transfer yast2-xml yast2-ycp-ui-bindings yast2-country-data yast2-libyui yast2-ncurses yast2-storage-lib
+
+exit 0
