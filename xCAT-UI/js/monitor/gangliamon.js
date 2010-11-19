@@ -597,10 +597,15 @@ function monitorNode(node, monitor) {
 					for (var i in out) {
 						// If an RPM is not installed
 						if (out[i].indexOf('not installed') > -1) {
-							warningMsg += out[i] + '<br>';
 							warn = true;
-						}
-					}
+							
+							if (warningMsg) {
+								warningMsg += '<br>' + out[i];
+							} else {
+								warningMsg = out[i];
+							}
+						} // End of if
+					} // End of for
 					
 					// If there are warnings
 					if (warn) {
