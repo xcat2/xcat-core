@@ -52,6 +52,7 @@ sub process_request {
 		'gangliastart'  => \&web_gangliastart,
 		'gangliastop'   => \&web_gangliastop,
 		'gangliastatus' => \&web_gangliastatus,
+		'gangliacheck' => \&web_gangliacheck,
 
 		#'xdsh' => \&web_xdsh,
 		#THIS list needs to be updated
@@ -544,6 +545,33 @@ sub web_gangliastop() {
 		}
 	}
 
+	$callback->( { info => $info } );
+	return;
+}
+
+#-------------------------------------------------------
+
+=head3   web_gangliacheck
+
+	Description	: Check if ganglia RPMs are installed
+    Arguments	: Node range
+    Returns		: Nothing
+    
+=cut
+
+#-------------------------------------------------------
+sub web_gangliacheck() {
+	my ( $request, $callback, $sub_req ) = @_;
+
+	# Get node range
+	my $nr = $request->{arg}->[1];
+	if ( !$nr ) {
+		$nr = '';
+	}
+
+	# Check if ganglia RPMs are installed
+	my $info;
+	my $info = `xdsh $nr "rpm -q ganglia-gmond libganglia libconfuse"`;
 	$callback->( { info => $info } );
 	return;
 }
