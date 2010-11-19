@@ -560,8 +560,6 @@ function refreshGangliaStatus(group) {
  * @return Nothing
  */
 function monitorNode(node, monitor) {
-	var args;
-
 	if (monitor == 'on') {
 		// Append loader to warning bar
 		var gangliaLoader = createLoader('');
@@ -571,27 +569,84 @@ function monitorNode(node, monitor) {
 		}
 
 		if (node) {
-			args = 'gangliastart;' + node;
+			// Check if ganglia RPMs are installed
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'webrun',
+					tgt : '',
+					args : 'gangliacheck;' + node,
+					msg : node	// Node range will be passed along in data.msg
+				},
+
+				/**
+				 * Start ganglia on a given node range
+				 * 
+				 * @param data
+				 *            Data returned from HTTP request
+				 * @return Nothing
+				 */
+				success : function(data) {
+					// Get response
+					var out = data.rsp[0].split(/\n/);
+
+					// Go through each line
+					var warn = false;
+					var warningMsg = '';
+					for (var i in out) {
+						// If an RPM is not installed
+						if (out[i].indexOf('not installed') > -1) {
+							warningMsg += out[i] + '<br>';
+							warn = true;
+						}
+					}
+					
+					// If there are warnings
+					if (warn) {
+						// Create warning bar
+						var warningBar = createWarnBar(warningMsg);
+						warningBar.css('margin-bottom', '10px');
+						warningBar.prependTo($('#nodes'));
+					} else {
+						$.ajax( {
+							url : 'lib/cmd.php',
+							dataType : 'json',
+							data : {
+								cmd : 'webrun',
+								tgt : '',
+								args : 'gangliastart;' + data.msg,
+								msg : ''
+							},
+
+							success : function(data) {
+								// Remove any warnings
+								$('#nodes').find('.ui-state-error').remove();
+								$('#gangliamon').find('.ui-state-error').remove();
+							}
+						});
+					} // End of if (warn)
+				} // End of function(data)
+			});
 		} else {
-			args = 'gangliastart';
-		}
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'webrun',
+					tgt : '',
+					args : 'gangliastart',
+					msg : ''
+				},
 
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'webrun',
-				tgt : '',
-				args : args,
-				msg : ''
-			},
-
-			success : function(data) {
-				// Remove any warnings
-				$('#gangliamon').find('.ui-state-error').remove();
-			}
-		});
+				success : function(data) {
+					// Remove any warnings
+					$('#gangliamon').find('.ui-state-error').remove();
+				}
+			});
+		} // End of if (node)
 	} else {
+		var args;
 		if (node) {
 			args = 'gangliastop;' + node;
 		} else {
