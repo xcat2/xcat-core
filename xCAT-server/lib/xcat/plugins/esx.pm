@@ -1613,7 +1613,7 @@ sub generic_vm_operation { #The general form of firing per-vm requests to ESX hy
         #retrieve all vm views in one gulp
         my $vmsearchstring = join(")|(",keys %{$vcenterhash{$currentvcenter}->{vms}});
         $vmsearchstring = '^(('.$vmsearchstring.'))(\z|\.)';
-        my $regex = qr/$vmsearchstring/o;
+        my $regex = qr/$vmsearchstring/;
         $vcviews{$currentvcenter} = $vcenterhash{$currentvcenter}->{conn}->find_entity_views(view_type => 'VirtualMachine',properties=>$properties,filter=>{'config.name'=>$regex});
     }
     foreach $hyp (keys %hyphash) {
@@ -2739,7 +2739,7 @@ sub populate_vcenter_hostviews {
     while ($iterations and scalar(@hypervisors)) {
         my $hosts = join(")|(",@hypervisors);
         $hosts = '^(('.$hosts.'))(\z|\.)';
-        my $search = qr/$hosts/o;
+        my $search = qr/$hosts/;
         my @hypviews = @{$vcenterhash{$vcenter}->{conn}->find_entity_views(view_type=>'HostSystem',properties=>['summary.config.name','summary.runtime.connectionState','runtime.inMaintenanceMode','parent','configManager'],filter=>{'summary.config.name'=>$search})};
         foreach (@hypviews) {
             my $hypname = $_->{'summary.config.name'};
