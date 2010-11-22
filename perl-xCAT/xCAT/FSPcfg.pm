@@ -281,11 +281,19 @@ sub fsp_api_passwd {
     # Create command and run command
     #################################
     my $cmd;
-    $cmd = "$fsp_api -a set_fsp_pw -u $user -p $passwd -P $newpasswd -t $type:$fsp_ip:$id:$node_name: ";
-
+    if( $passwd ne "" ) {
+        $cmd = "$fsp_api -a set_fsp_pw -u $user -p $passwd -P $newpasswd -t $type:$fsp_ip:$id:$node_name: ";
+    } else {
+        $cmd = "$fsp_api -a set_fsp_pw -u $user -P $newpasswd -t $type:$fsp_ip:$id:$node_name: "; 
+    }
     $SIG{CHLD} = ();
     $res = xCAT::Utils->runcmd($cmd, -1);
     $Rc = $::RUNCMD_RC;
+
+    if($Rc == 0) {
+        $res = "Success";
+    }
+
 
     ##################
     # output the prompt
