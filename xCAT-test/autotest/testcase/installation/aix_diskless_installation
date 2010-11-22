@@ -26,6 +26,7 @@ cmd:makeconservercf
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
+cmd:sleep 60
 cmd:getmacs $$CN -f -D
 check:rc==0
 cmd:mkdsklsnode -i autotestcosi $$CN
