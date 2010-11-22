@@ -389,11 +389,11 @@ sub rmhwconn_parse_args
         return ( usage("Attribute nodetype.nodetype cannot be found for node(s) $tmp_nodelist"));
     }
 
-    if (scalar(@bpa_ctrled_nodes))
-    {
-        my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
-        return ( usage("Node(s) $tmp_nodelist is(are) controlled by BPA."));
-    }
+    #if (scalar(@bpa_ctrled_nodes))
+    #{
+    #    my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
+    #    return ( usage("Node(s) $tmp_nodelist is(are) controlled by BPA."));
+    #}
     
     if ( scalar( @frame_members))
     {
