@@ -72,7 +72,6 @@ else
         $cmdref->{stdin}->[0]=$data;
     }
 }
-}
 # The noderange can be specified through a noderange file
 # the noderange file can be a relative path,
 # convert the relative path to a full path.
