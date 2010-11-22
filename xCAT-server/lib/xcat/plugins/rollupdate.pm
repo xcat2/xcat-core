@@ -1221,10 +1221,16 @@ sub set_LL_feature {
         my @llfeatures;
         my $haveit = 0;
         if ( $llcfgout =~ /:FEATURE =/ ) {
-            my ($stuff,$newfeature_string) = split(/=/,$llcfgout);
+            my ($stuff,$curfeature_string) = split(/=/,$llcfgout);
+            my $newfeature_string = "";
             my ($machine,$morestuff) = split(/:/,$stuff);
-            @llfeatures = split(/\s+/,$newfeature_string);
+            @llfeatures = split(/\s+/,$curfeature_string);
             foreach my $f (@llfeatures) {
+                if ($f =~ /XCAT_UPDATEALL\d*/) {
+                    $f = "";
+                } else {
+                    $newfeature_string .= " $f";
+                }
                 if ($f eq $feature){
                    $haveit = 1;
                 }
