@@ -1251,7 +1251,7 @@ sub set_LL_feature {
     # Change in LL database
     foreach my $sf (keys %set_features) {
         if ($set_features{$sf} !~ /^\s*$/){
-            $cmd = "llconfig -h $set_features{$sf}  -c FEATURE=\"$sf\"";
+            $cmd = "llconfig -N -h $set_features{$sf}  -c FEATURE=\"$sf\"";
             if ($::VERBOSE) {
                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
                 print RULOG localtime()." Running command \'$cmd\'\n";
@@ -1264,10 +1264,6 @@ sub set_LL_feature {
                 $::RUNCMD_RC = 0;
             } else {
                 xCAT::Utils->runcmd( $cmd, 0 );
-###
-### DEBUG -- llconfig problem
-###          workaround - sleep to let ll daemons catch up
-sleep 3;
                 if ($::VERBOSE) {
                     open (RULOG, ">>$::LOGDIR/$::LOGFILE");
                     print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
@@ -1276,21 +1272,10 @@ sleep 3;
             }
         }
     }
-###
-### DEBUG -- llconfig problem
-###          need to send a manual reconfig to at least one node to have it 
-###          register in LL daemons
-###  not working - try sleep above instead
-#sleep 3;
-#  my @rcfns = split(/\s+/,$machinelist);
-#  my @rcfg = `ssh $rcfns[0] llrctl reconfig`;
-#  if ($::VERBOSE) {
-#     open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-#     print RULOG localtime()." llconfig workaround, run \"ssh $rcfns[0] llrctl reconfig \",  output: \n";
-#     print RULOG @rcfg;
-#     close (RULOG);
-#  }
-### end DEBUG
+
+    # Send LL reconfig to all central mgrs and resource mgrs
+    llreconfig();
+
     return 0;
 }
 
@@ -1635,8 +1620,6 @@ mxnode_loop: foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
         my @llcfg_d = xCAT::Utils->runcmd( $cmd, 0 );
         my $curSCHED = "";
         my $curFLOAT = "";
-        my $llcms = "";
-        my $llrms = "";
         foreach my $cfgo (@llcfg_d) {
             chomp $cfgo;
             my($llattr,$llval) = split (/ = /,$cfgo);
@@ -1644,12 +1627,8 @@ mxnode_loop: foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
                 $curSCHED = $llval; }
             if ( $llattr =~ /FLOATING_RESOURCES/ ) {
                 $curFLOAT = $llval; }
-            if ( $llattr =~ /CENTRAL_MANAGER_LIST/ ) {
-                $llcms = $llval; }
-            if ( $llattr =~ /RESOURCE_MGR_LIST/ ) {
-                $llrms = $llval; }
         }
-        $cmd = "llconfig -c ";
+        $cmd = "llconfig -N -c ";
         $curFLOAT =~ s/XCATROLLINGUPDATE_MUTEX(\d)*\((\d)*\)//g;
         $curFLOAT =~ s/XCATROLLINGUPDATE_MAXUPDATES(\d)*\((\d)*\)//g;
         $curFLOAT .= $resource_string;
@@ -1660,8 +1639,6 @@ mxnode_loop: foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
         $curSCHED =~ s/XCATROLLINGUPDATE_MAXUPDATES(\d)*//g;
         $curSCHED .= $resource_string;
         $cmd .= "SCHEDULE_BY_RESOURCES=\"$curSCHED\" ";
-# TODO -- WAITING ON LLCONFIG OPTION TO NOT SEND CFG CMD TO ALL
-####          NODES.  NEED TO CHANGE CMD WHEN AVAILABLE.
         my @llcfg_c;
         if ($::TEST) {
             my $rsp;
@@ -1671,27 +1648,9 @@ mxnode_loop: foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
         } else {
             @llcfg_c = xCAT::Utils->runcmd( $cmd, 0 );
         }
-        $cmd = "llrctl reconfig";
-        my @llms = split(/\s+/,$llcms." ".$llrms);
-        my %have = ();
-        my @llnodes;
-        foreach my $m (@llms) {
-           my ($sm,$rest) = split(/\./,$m);
-           push(@llnodes, $sm) unless $have{$sm}++;
-        }
-        if ($::TEST) {
-            my $rsp;
-            push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: xdsh <llcm,llrm> $cmd ";
-               xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-            $::RUNCMD_RC = 0;
-        } else {
-            xCAT::Utils->runxcmd(
-                      { command => ['xdsh'],
-                         node    => \@llnodes,
-                         arg     => [ "-v", $cmd ]
-                      },
-                      $::SUBREQ, -1);
-        }
+
+        # Send LL reconfig to all central mgrs and resource mgrs
+        llreconfig();
     }
  
     $::LL_MUTEX_RESOURCES_CREATED = 1;
@@ -2302,22 +2261,7 @@ sub remove_LL_reservations {
             }
         }
     }
-###
-### DEBUG -- llconfig problem
-###          need to send a manual reconfig to at least one node to have it 
-###          register in LL daemons
-###  not working - try sleep instead
-sleep 3;
-#  my $n1 = $nodes->[0];
-#  my @rcfg = `ssh $n1 llrctl reconfig`;
-#  if ($::VERBOSE) {
-#     open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-#     print RULOG localtime()." llconfig workaround, run \"ssh $n1 llrctl reconfig \",  output: \n";
-#     print RULOG @rcfg;
-#     close (RULOG);
-#  }
-### end DEBUG
-   #  Verify that the config change has been registerd and that updatefeature 
+   #  Verify that the config change has been registered and that updatefeature 
    #  has been removed according to what the LL daemons report 
      if (defined($::DATAATTRS{updatefeature}[0])) {
          my $machinelist = join(" ",@{$nodes});
@@ -2458,7 +2402,7 @@ sub change_LL_feature {
         }
     }
     # Change in LL database
-    $cmd = "llconfig -h $node -c FEATURE=\"$newfeature_string\"";
+    $cmd = "llconfig -N -h $node -c FEATURE=\"$newfeature_string\"";
     if ($::VERBOSE) {
         open (RULOG, ">>$::LOGDIR/$::LOGFILE");
         print RULOG localtime()." $::ug_name:  Running command \'$cmd\'\n";
@@ -2471,9 +2415,77 @@ sub change_LL_feature {
         close (RULOG);
     }
 
+    # Send LL reconfig to all central mgrs and resource mgrs
+    llreconfig();
+
     return 0;
 }
 
 
+
+
+#----------------------------------------------------------------------------
+
+=head3   llreconfig
+
+        Queries LoadLeveler for the list of central mgrs and resource mgrs
+           and sends a llrctl reconfig to those nodes
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub llreconfig {
+
+    # Send LL reconfig to all central mgrs and resource mgrs
+    my $cmd = "llconfig -d CENTRAL_MANAGER_LIST RESOURCE_MGR_LIST";
+    my @llcfg_d = xCAT::Utils->runcmd( $cmd, 0 );
+    my $llcms = "";
+    my $llrms = "";
+    foreach my $cfgo (@llcfg_d) {
+        chomp $cfgo;
+        my($llattr,$llval) = split (/ = /,$cfgo);
+        if ( $llattr =~ /CENTRAL_MANAGER_LIST/ ) {
+            $llcms = $llval; }
+        if ( $llattr =~ /RESOURCE_MGR_LIST/ ) {
+            $llrms = $llval; }
+    }
+    $cmd = "llrctl reconfig";
+    my @llms = split(/\s+/,$llcms." ".$llrms);
+    my %have = ();
+    my @llnodes;
+    foreach my $m (@llms) {
+       my ($sm,$rest) = split(/\./,$m);
+       push(@llnodes, $sm) unless $have{$sm}++;
+    }
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Running command \'xdsh $llcms $llrms $cmd\'\n";
+        close (RULOG);
+    }
+    if ($::TEST) {
+        my $rsp;
+        push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: xdsh <llcm,llrm> $cmd ";
+           xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+        $::RUNCMD_RC = 0;
+    } else {
+        xCAT::Utils->runxcmd(
+                  { command => ['xdsh'],
+                     node    => \@llnodes,
+                     arg     => [ "-v", $cmd ]
+                  },
+                  $::SUBREQ, -1);
+    }
+
+}
 
 1;
