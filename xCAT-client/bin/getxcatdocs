@@ -1,0 +1,93 @@
+#!/usr/bin/perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# Downloads/converts the xCAT docs on the sourceforge wiki to HTML and PDF
+
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+}
+use strict;
+use lib "$::XCATROOT/lib/perl";
+#use xCAT::Utils;
+use Getopt::Long;
+use Data::Dumper;
+
+my $VERSION;
+my $HELP;
+ 
+my $usage = sub {
+   	my $exitcode = shift @_;
+   	print "Usage: getxcatdocs [-v|--version] [-?|-h|--help] [<destination-dir>]\n";
+	exit $exitcode;
+};
+
+# Process the cmd line args
+Getopt::Long::Configure("bundling");
+#Getopt::Long::Configure("pass_through");
+Getopt::Long::Configure("no_pass_through");
+if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) { $usage->(1); }
+
+if ($HELP || (scalar(@ARGV)==0 && !$VERSION)) { $usage->(0); }
+
+if ($VERSION) {
+    #print xCAT::Utils->Version(), "\n";
+    exit;
+}
+
+#if (xCAT::Utils->isAIX()) { die "Error: this command is not yet supported on AIX.\n"; }
+if ($^O =~ /^aix/i) { die "Error: this command is not yet supported on AIX.\n"; }
+
+my $destdir = scalar(@ARGV) ? $ARGV[0] : '.';
+chdir($destdir);
+
+# Download the HTML
+mkdir('html');
+chdir('html');
+print "Downloading the xCAT wiki documentation...\n";
+my $wgetcmd = q(wget -rk -nv --progress=bar -l 1 --page-requisites -np -nH --cut-dirs=3 -e robots=off --post-data='printable=yes' --reject '*title=Special:*,*title=Talk:*,*title=-&*,*title=HowTos,*title=Main_Page,*title=Release_Notes,*title=Wish_List_for_xCAT_2,*&action=edit*,*&action=history*,*&printable=yes*,*&oldid=*,index.html,opensearch_desc.php,xcat' 'https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_Documentation');
+runwget($wgetcmd);
+
+# Get the list of files and convert to pdf
+opendir(DIR, '.') or die "Error: could not read the just created html directory.\n";
+my @dir = grep /^index.php\?title=/, readdir(DIR);		# /
+close(DIR);
+mkdir('../pdf');
+chdir('../pdf');
+if (system('which xhtml2pdf >/dev/null 2>&1')) { die "xhtml2pdf is not installed.  See http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .\n"; }
+
+foreach my $file (@dir) {
+	if ($file =~ /^index.php\?title=MediaWiki:/ || $file eq 'index.php?title=XCAT_Documentation') { next; }
+	my ($docname) = $file =~ /^index.php\?title=(.+)$/;
+	print "Converting $docname to PDF format...\n";
+	my $url = "https://sourceforge.net/apps/mediawiki/xcat/$file";
+	my $destfile = "$docname.pdf";
+	my $cmd = "xhtml2pdf $url $destfile";
+	runh2p($cmd);
+}
+
+# Run the wget cmd and filter out some of the silly output
+sub runwget {
+	my $cmd = shift;
+	#print "$cmd\n";
+	open(OUT, "$cmd 2>&1 |") || die "can't fork $cmd: $!\n";
+	while (<OUT>) {
+		if (/URL:https*:\/\/sourceforge\.net.+\s+->\s+\"(\S+)\"\s+\[/) { print "Downloaded $1.\n"; }
+		else { print; }
+	}
+	close OUT || die "Error running $cmd: $! $?";
+}
+
+# Run the xhtml2pdf cmd and filter out some of the silly output
+sub runh2p {
+	my $cmd = shift;
+	#print "$cmd\n";
+	open(OUT, "$cmd 2>&1 |") || die "can't fork $cmd: $!\n";
+	while (<OUT>) {
+		next if /DeprecationWarning:\sthe sets module is deprecated/;
+		next if /from sets import ImmutableSet/;
+		next if /^Converting\ssourceforge.net/;
+		print;
+	}
+	close OUT || die "Error running $cmd: $! $?";
+}
