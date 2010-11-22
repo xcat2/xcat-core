@@ -1,0 +1,22 @@
+#!/usr/bin/env perl
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+use strict;
+use locale;
+BEGIN
+{
+  $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+}
+
+use Getopt::Std;
+use IPC::SysV qw(IPC_STAT S_IRWXU IPC_PRIVATE IPC_CREAT S_IRUSR S_IWUSR );
+use IPC::Msg;
+
+my $rc=`lssrc -l -s inetd |grep " ftpd"|grep active 2>&1`;
+if ($? == 0) {
+    print "ftpd is active";
+} else {
+    print "ftpd is inoperative"
+}
+
+exit 0;
+
