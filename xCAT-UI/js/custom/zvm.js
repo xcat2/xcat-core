@@ -69,7 +69,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		var groupLabel = $('<label for="group">Group:</label>');
 		var groupInput = $('<input type="text" id="newGroup" name="newGroup" title="You must give the group where the new node(s) will be placed under."/>');
 		groupInput.one('focus', function(){
-			var groupNames = $.cookie('Groups');
+			var groupNames = $.cookie('groups');
 			if (groupNames) {
 				// Turn on auto complete
 				$(this).autocomplete(groupNames.split(','));
@@ -81,7 +81,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 
 		// Get list of disk pools
 		var temp = hcp.split('.');
-		var diskPools = $.cookie(temp[0] + 'DiskPools');
+		var diskPools = $.cookie(temp[0] + 'diskpools');
 
 		// Create disk pool input
 		var poolDiv = $('<div></div>');

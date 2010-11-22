@@ -317,13 +317,13 @@ function loadUserEntry(data) {
  */
 function incrementNodeProcess(node) {
 	// Get current processes
-	var procs = $.cookie(node + 'Processes');
+	var procs = $.cookie(node + 'processes');
 	if (procs) {
 		// One more process
 		procs = parseInt(procs) + 1;
-		$.cookie(node + 'Processes', procs);
+		$.cookie(node + 'processes', procs);
 	} else {
-		$.cookie(node + 'Processes', 1);
+		$.cookie(node + 'processes', 1);
 	}
 }
 
@@ -478,7 +478,7 @@ function updateZProvisionNewStatus(data) {
 
 			// Set cookie for number of disks
 			var diskRows = $('#' + tabId + ' table:visible tr');
-			$.cookie('zProvisionDisks2Add' + out2Id, diskRows.length);
+			$.cookie('disks2add' + out2Id, diskRows.length);
 			if (diskRows.length > 0) {
 				for ( var i = 0; i < diskRows.length; i++) {
 					// Get disk type, address, size, mode, pool, and password
@@ -546,7 +546,7 @@ function updateZProvisionNewStatus(data) {
 
 				// Set cookie for number of disks
 				var diskRows = $('#' + tabId + ' table:visible tr');	
-				$.cookie('zProvisionDisks2Add' + out2Id, diskRows.length);
+				$.cookie('disks2add' + out2Id, diskRows.length);
 				if (diskRows.length > 0) {
 					for ( var i = 0; i < diskRows.length; i++) {
 						// Get disk type, address, size, pool, and password
@@ -599,11 +599,11 @@ function updateZProvisionNewStatus(data) {
 			var osImage = $('#' + tabId + ' input[name=os]:visible').val();
 			
 			// Get cookie for number of disks
-			var disks2add = $.cookie('zProvisionDisks2Add' + out2Id);
+			var disks2add = $.cookie('disks2add' + out2Id);
 			// One less disk to add
 			disks2add = disks2add - 1;
 			// Set cookie for number of disks
-			$.cookie('zProvisionDisks2Add' + out2Id, disks2add);
+			$.cookie('disks2add' + out2Id, disks2add);
 
 			// If an operating system image is given
 			if (osImage) {
@@ -835,10 +835,10 @@ function updateZNodeStatus(data) {
 	var rsp = data.rsp;
 
 	// Get cookie for number processes performed against this node
-	var actions = $.cookie(node + 'Processes');
+	var actions = $.cookie(node + 'processes');
 	// One less process
 	actions = actions - 1;
-	$.cookie(node + 'Processes', actions);
+	$.cookie(node + 'processes', actions);
 	
 	if (actions < 1) {
 		// Hide loader when there are no more processes
@@ -1057,7 +1057,7 @@ function getZResources(data) {
 		}
 
 		// Set cookie
-		$.cookie('HCP', hcps);
+		$.cookie('hcp', hcps);
 	}
 }
 
@@ -1207,7 +1207,7 @@ function openAddProcDialog(node) {
  */
 function openAddDiskDialog(node, hcp) {
 	// Get list of disk pools
-	var cookie = $.cookie(hcp + 'DiskPools');
+	var cookie = $.cookie(hcp + 'diskpools');
 	var pools = cookie.split(',');
 	
 	// Create form to add disk
@@ -1344,7 +1344,7 @@ function openAddDiskDialog(node, hcp) {
  */
 function openAddNicDialog(node, hcp) {
 	// Get network names
-	var networks = $.cookie(hcp + 'Networks').split(',');
+	var networks = $.cookie(hcp + 'networks').split(',');
 		
 	// Create form to add NIC
 	var addNicForm = $('<div class="form"></div>');
@@ -1692,7 +1692,7 @@ function setDiskPoolCookies(data) {
 	if (data.rsp) {
 		var node = data.msg;
 		var pools = data.rsp[0].split(node + ': ');
-		$.cookie(node + 'DiskPools', pools);
+		$.cookie(node + 'diskpools', pools);
 	}
 }
 
@@ -1707,7 +1707,7 @@ function setNetworkCookies(data) {
 	if (data.rsp) {
 		var node = data.msg;
 		var networks = data.rsp[0].split(node + ': ');
-		$.cookie(node + 'Networks', networks);
+		$.cookie(node + 'networks', networks);
 	}
 }
 
@@ -2006,7 +2006,7 @@ function createZProvisionExisting(inst) {
 	group.append(groupLabel);
 	
 	// Turn on auto complete for group
-	var groupNames = $.cookie('Groups');
+	var groupNames = $.cookie('groups');
 	if (groupNames) {
 		// Split group names into an array
 		var tmp = groupNames.split(',');
@@ -2051,7 +2051,7 @@ function createZProvisionExisting(inst) {
 	var osInput = $('<input type="text" name="os" title="You must give the operating system to install on this node or node range, e.g. rhel5.5-s390x-install-compute"/>');
 	// Get image names on focus
 	osInput.one('focus', function(){
-		var imageNames = $.cookie('ImageNames');
+		var imageNames = $.cookie('imagenames');
 		if (imageNames) {
 			// Turn on auto complete
 			$(this).autocomplete(imageNames.split(','));
@@ -2184,7 +2184,7 @@ function createZProvisionNew(inst) {
 	var groupInput = $('<input type="text" name="group" title="You must give the group name that the node(s) will be placed under"/>');
 	// Get groups on-focus
 	groupInput.one('focus', function(){
-		var groupNames = $.cookie('Groups');
+		var groupNames = $.cookie('groups');
 		if (groupNames) {
 			// Turn on auto complete
 			$(this).autocomplete(groupNames.split(','));
@@ -2239,7 +2239,7 @@ function createZProvisionNew(inst) {
 	var osInput = $('<input type="text" name="os" title="You must give the operating system to install on this node or node range, e.g. rhel5.5-s390x-install-compute"/>');
 	// Get image names on focus
 	osInput.one('focus', function(){
-		var imageNames = $.cookie('ImageNames');
+		var imageNames = $.cookie('imagenames');
 		if (imageNames) {
 			// Turn on auto complete
 			$(this).autocomplete(imageNames.split(','));
@@ -2322,7 +2322,7 @@ function createZProvisionNew(inst) {
 		if (thisHcp) {
 			// Get node without domain name
 			var temp = thisHcp.split('.');
-			definedPools = $.cookie(temp[0] + 'DiskPools');
+			definedPools = $.cookie(temp[0] + 'diskpools');
 		}
 
 		// Create disk pool input

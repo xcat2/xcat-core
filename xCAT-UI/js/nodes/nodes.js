@@ -300,7 +300,7 @@ function loadNodes(data) {
 	
 	// Clear cookie containing list of nodes where
 	// their attributes need to be updated
-	$.cookie('Nodes2Update', '');
+	$.cookie('nodes2update', '');
 	// Clear hash table containing node attributes
 	origAttrs = '';
 
@@ -1538,28 +1538,28 @@ function setOSImageCookies(data) {
 	}
 
 	// Save image names in a cookie
-	$.cookie('ImageNames', imageNames);
+	$.cookie('imagenames', imageNames);
 
 	// Save profiles in a cookie
 	var tmp = new Array;
 	for ( var key in profilesHash) {
 		tmp.push(key);
 	}
-	$.cookie('Profiles', tmp);
+	$.cookie('profiles', tmp);
 
 	// Save OS versions in a cookie
 	tmp = [];
 	for ( var key in osVersHash) {
 		tmp.push(key);
 	}
-	$.cookie('OSVers', tmp);
+	$.cookie('osvers', tmp);
 
 	// Save OS architectures in a cookie
 	tmp = [];
 	for ( var key in osArchsHash) {
 		tmp.push(key);
 	}
-	$.cookie('OSArchs', tmp);
+	$.cookie('osarchs', tmp);
 }
 
 /**
@@ -1571,7 +1571,7 @@ function setOSImageCookies(data) {
  */
 function setGroupsCookies(data) {
 	var rsp = data.rsp;
-	$.cookie('Groups', rsp);
+	$.cookie('groups', rsp);
 }
 
 /**
@@ -1729,13 +1729,13 @@ function loadRconsPage(tgtNodes){
  */
 function flagNode2Update(node) {
 	// Get list containing current nodes to update
-	var nodes = $.cookie('Nodes2Update');
+	var nodes = $.cookie('nodes2update');
 
 	// If the node is not in the list
 	if (nodes.indexOf(node) == -1) {
 		// Add the new node to list
 		nodes += node + ';';
-		$.cookie('Nodes2Update', nodes);
+		$.cookie('nodes2update', nodes);
 	}
 }
 
@@ -1756,7 +1756,7 @@ function updateNodeAttrs(group) {
 	var headers = $('#nodesDataTable thead tr th');
 							
 	// Get list of nodes to update
-	var nodesList = $.cookie('Nodes2Update');
+	var nodesList = $.cookie('nodes2update');
 	var nodes = nodesList.split(';');
 	
 	// Create the arguments
@@ -1812,7 +1812,7 @@ function updateNodeAttrs(group) {
 	
 	// Clear cookie containing list of nodes where
 	// their attributes need to be updated
-	$.cookie('Nodes2Update', '');
+	$.cookie('nodes2update', '');
 }
 
 /**
@@ -1822,7 +1822,7 @@ function updateNodeAttrs(group) {
  */
 function restoreNodeAttrs() {
 	// Get list of nodes to update
-	var nodesList = $.cookie('Nodes2Update');
+	var nodesList = $.cookie('nodes2update');
 	var nodes = nodesList.split(';');
 	
 	// Get the nodes datatable
@@ -1861,7 +1861,7 @@ function restoreNodeAttrs() {
 	
 	// Clear cookie containing list of nodes where
 	// their attributes need to be updated
-	$.cookie('Nodes2Update', '');
+	$.cookie('nodes2update', '');
 }
 
 /**

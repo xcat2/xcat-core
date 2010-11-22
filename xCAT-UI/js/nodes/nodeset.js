@@ -84,7 +84,7 @@ function loadNodesetPage(tgtNodes) {
 	var osLabel = $('<label for="os">Operating system:</label>');
 	var osInput = $('<input type="text" name="os" title="You must give the operating system of this node or node range, e.g. rhel5.5"/>');
 	osInput.one('focus', function(){
-		var tmp = $.cookie('OSVers');
+		var tmp = $.cookie('osvers');
 		if (tmp) {
 			// Turn on auto complete
 			$(this).autocomplete(tmp.split(','));
@@ -99,7 +99,7 @@ function loadNodesetPage(tgtNodes) {
 	var archLabel = $('<label for="arch">Architecture:</label>');
 	var archInput = $('<input type="text" name="arch" title="You must give the architecture of this node or node range, e.g. s390x"/>');
 	archInput.one('focus', function(){
-		var tmp = $.cookie('OSArchs');
+		var tmp = $.cookie('osarchs');
 		if (tmp) {
 			// Turn on auto complete
 			$(this).autocomplete(tmp.split(','));
@@ -114,7 +114,7 @@ function loadNodesetPage(tgtNodes) {
 	var profileLabel = $('<label for="profile">Profile:</label>');
 	var profileInput = $('<input type="text" name="profile" title="You must give the profile for this node or node range.  The typical default profile is: compute."/>');
 	profileInput.one('focus', function(){
-		tmp = $.cookie('Profiles');
+		tmp = $.cookie('profiles');
 		if (tmp) {
 			// Turn on auto complete
 			$(this).autocomplete(tmp.split(','));

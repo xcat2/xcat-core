@@ -131,7 +131,7 @@ function createProvisionExisting(plugin, inst) {
 
 	// Turn on auto complete for group
 	var dTableDivId = plugin + 'NodesDatatableDIV' + inst;	// Division ID where nodes datatable will be appended
-	var groupNames = $.cookie('Groups');
+	var groupNames = $.cookie('groups');
 	if (groupNames) {
 		// Split group names into an array
 		var tmp = groupNames.split(',');
@@ -201,7 +201,7 @@ function createProvisionExisting(plugin, inst) {
 	var osLabel = $('<label for="os">Operating system:</label>');
 	var osInput = $('<input type="text" name="os"/>');
 	osInput.one('focus', function() {
-		var tmp = $.cookie('OSVers');		
+		var tmp = $.cookie('osvers');		
 		if (tmp) {
 			// Turn on auto complete
 			$(this).autocomplete(tmp.split(','));
@@ -216,7 +216,7 @@ function createProvisionExisting(plugin, inst) {
 	var archLabel = $('<label for="arch">Architecture:</label>');
 	var archInput = $('<input type="text" name="arch"/>');
 	archInput.one('focus', function() {
-		var tmp = $.cookie('OSArchs');
+		var tmp = $.cookie('osarchs');
 		if (tmp) {
 			// Turn on auto complete
 			$(this).autocomplete(tmp.split(','));
@@ -231,7 +231,7 @@ function createProvisionExisting(plugin, inst) {
 	var profileLabel = $('<label for="profile">Profile:</label>');
 	var profileInput = $('<input type="text" name="profile"/>');
 	profileInput.one('focus', function() {
-		var tmp = $.cookie('Profiles');
+		var tmp = $.cookie('profiles');
 		if (tmp) {
 			// Turn on auto complete
 			$(this).autocomplete(tmp.split(','));
@@ -274,7 +274,7 @@ function createProvisionNew(plugin, inst) {
 	var groupLabel = $('<label for="group">Group:</label>');
 	var groupInput = $('<input type="text" name="group"/>');
 	groupInput.one('focus', function() {
-		var groupNames = $.cookie('Groups');
+		var groupNames = $.cookie('groups');
 		if (groupNames) {
 			// Turn on auto complete
 			$(this).autocomplete(groupNames.split(','));
@@ -315,7 +315,7 @@ function createProvisionNew(plugin, inst) {
 	var osLabel = $('<label for="os">Operating system:</label>');
 	var osInput = $('<input type="text" name="os"/>');
 	osInput.one('focus', function() {
-		var tmp = $.cookie('OSVers');
+		var tmp = $.cookie('osvers');
 		if (tmp) {
 			// Turn on auto complete
 			$(this).autocomplete(tmp.split(','));
@@ -330,7 +330,7 @@ function createProvisionNew(plugin, inst) {
 	var archLabel = $('<label for="arch">Architecture:</label>');
 	var archInput = $('<input type="text" name="arch"/>');
 	archInput.one('focus', function() {
-		var tmp = $.cookie('OSArchs');
+		var tmp = $.cookie('osarchs');
 		if (tmp) {
 			// Turn on auto complete
 			$(this).autocomplete(tmp.split(','));
@@ -345,7 +345,7 @@ function createProvisionNew(plugin, inst) {
 	var profileLabel = $('<label for="profile">Profile:</label>');
 	var profileInput = $('<input type="text" name="profile"/>');
 	profileInput.one('focus', function() {
-		var tmp = $.cookie('Profiles');
+		var tmp = $.cookie('profiles');
 		if (tmp) {
 			// Turn on auto complete
 			$(this).autocomplete(tmp.split(','));
