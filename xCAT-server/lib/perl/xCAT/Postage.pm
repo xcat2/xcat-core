@@ -427,8 +427,8 @@ sub makescript
             }
         }
     }
-    print "pkglist=$pkglist\n";
-    print "ospkglist=$ospkglist\n";
+    #print "pkglist=$pkglist\n";
+    #print "ospkglist=$ospkglist\n";
     if ($ospkglist)
     {
         my $pkgtext = get_pkglist_tex($ospkglist);
@@ -584,7 +584,7 @@ sub makescript
         $osimgname = "$os-$arch-$provmethod-$profile";
     }
     my $et2 =
-      $ostab->getAttribs({'image' => "$osimgname"}, ['postscripts', 'postbootscripts']);
+      $ostab->getAttribs({'imagename' => "$osimgname"}, ['postscripts', 'postbootscripts']);
     $ps = $et2->{'postscripts'};
     if ($ps)
     {
