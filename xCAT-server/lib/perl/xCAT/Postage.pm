@@ -124,7 +124,7 @@ sub makescript
     my $typetab    = xCAT::Table->new('nodetype');
     my $posttab    = xCAT::Table->new('postscripts');
     my $sitetab    = xCAT::Table->new('site');
-    my $ostab    = xCAT::Table->new('ostab');
+    my $ostab    = xCAT::Table->new('osimage');
 
     my %rsp;
     my $rsp;
@@ -139,7 +139,7 @@ sub makescript
     }
     unless ($ostab){
         push @{$rsp->{data}},
-          "Unable to open os table (ostab)";
+          "Unable to open osimage table";
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return undef;
     }
