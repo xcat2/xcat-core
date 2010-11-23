@@ -645,8 +645,23 @@ sub makescript
         }
     }
 
+    # get postbootscripts for image
+    my $ips = $et2->{'postbootscripts'};
+    if ($ips)
+    {
+        foreach my $n (split(/,/, $ips))
+        {
+            if (!exists($postboot_hash{$n}))
+            {
+                $postboot_hash{$n} = 1;
+                push @scriptd, $n . "\n";
+            }
+        }
+    }
+
+
     # get postscripts
-    my $ps = $et1->{'postbootscripts'};
+    $ps = $et1->{'postbootscripts'};
     if ($ps)
     {
         foreach my $n (split(/,/, $ps))
