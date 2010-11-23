@@ -1487,6 +1487,9 @@ sub listVM {
 	# Get inputs
 	my ( $callback, $node, $args ) = @_;
 
+	# Set cache directory
+	my $cache = '/var/opt/zhcp/.vmapi/.cache';
+
 	# Get node properties from 'zvm' table
 	my @propNames = ( 'hcp', 'userid' );
 	my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
@@ -1509,7 +1512,28 @@ sub listVM {
 
 	# Get disk pool names
 	if ( $args->[0] eq "--diskpoolnames" ) {
-		$out = `ssh $hcp "$::DIR/getdiskpoolnames $userId"`;
+		my $file = "$cache/diskpoolnames";
+		
+		# If a cache for disk pool names exists
+		if (`ssh $hcp "ls $file"`) {
+			# Get current Epoch
+			my $curTime = time();
+			# Get time of last change as seconds since Epoch
+			my $fileTime = xCAT::zvmUtils->trimStr(`ssh $hcp "stat -c %Z $file"`);
+			
+			# If the current time is greater than 5 minutes of the file timestamp
+			my $interval = 300;		# 300 seconds = 5 minutes * 60 seconds/minute
+			if ($curTime > $fileTime + $interval) {
+				# Get disk pool names and save it in a file
+				$out = `ssh $hcp "$::DIR/getdiskpoolnames $userId > $file"`;
+			}
+		} else {
+			# Get disk pool names and save it in a file
+			$out = `ssh $hcp "$::DIR/getdiskpoolnames $userId > $file"`;
+		}
+		
+		# Print out the file contents
+		$out = `ssh $hcp "cat $file"`;
 	}
 
 	# Get disk pool configuration
@@ -2935,10 +2959,14 @@ sub nodeSet {
 		$out = `echo "$userEntry" | grep "NICDEF" | grep "$hcpNetName"`;
 		if (!$out) {
 			# Check for user profile
-			my $userProfile = `echo "$userEntry" | grep "INCLUDE"`;
-			if ($userProfile) {
-				@words = split( ' ', xCAT::zvmUtils->trimStr($userProfile) );
-				$out = `ssh $hcp "$::DIR/getuserprofile $words[1]" | grep "NICDEF" | grep "$hcpNetName"`;
+			my $profileName = `echo "$userEntry" | grep "INCLUDE"`;
+			if ($profileName) {
+				@words = split( ' ', xCAT::zvmUtils->trimStr($profileName) );
+				
+				# Get user profile
+				my $userProfile = xCAT::zvmUtils->getUserProfile($hcp, $words[1]);
+				# Get the NICDEF statement containing the HCP network
+				$out = `echo "$userProfile" | grep "NICDEF" | grep "$hcpNetName"`;
 			}
 		}
 

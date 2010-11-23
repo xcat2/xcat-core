@@ -743,12 +743,12 @@ sub getDeviceNode {
 	my $out = `ssh $node "cat /proc/dasd/devices" | grep ".$tgtAddr("`;
 	my @words = split( ' ', $out );
 	my $tgtDevNode;
-	
+
 	# /proc/dasd/devices look similar to this:
 	# 0.0.0100(ECKD) at ( 94: 0) is dasda : active at blocksize: 4096, 1802880 blocks, 7042 MB
 	# Look for the string 'is'
 	my $i = 0;
-	while ($tgtDevNode ne 'is') {
+	while ( $tgtDevNode ne 'is' ) {
 		$tgtDevNode = $words[$i];
 		$i++;
 	}
@@ -992,4 +992,59 @@ sub getArch {
 	my $arch = `ssh $node "uname -p"`;
 
 	return ( xCAT::zvmUtils->trimStr($arch) );
+}
+
+#-------------------------------------------------------
+
+=head3   getUserProfile
+
+	Description	: Get the user profile
+    Arguments	: Profile name
+    Returns		: User profile
+    Example		: my $profile = xCAT::zvmUtils->getUserProfile($hcp, $name);
+    
+=cut
+
+#-------------------------------------------------------
+sub getUserProfile {
+
+	# Get inputs
+	my ( $class, $hcp, $profile ) = @_;
+
+	# Set directory where executables are on zHCP
+	my $hcpDir = "/opt/zhcp/bin";
+
+	# Set directory for cache
+	my $cache = '/var/opt/zhcp/.vmapi/.cache';
+
+	# Set output file name
+	my $file = "$cache/$profile.profile";
+
+	# If a cache for the user profile exists
+	my $out;
+	if (`ssh $hcp "ls $file"`) {
+
+		# Get current Epoch
+		my $curTime = time();
+
+		# Get time of last change as seconds since Epoch
+		my $fileTime = xCAT::zvmUtils->trimStr(`ssh $hcp "stat -c %Z $file"`);
+
+		# If the current time is greater than 5 minutes of the file timestamp
+		my $interval = 300;    # 300 seconds = 5 minutes * 60 seconds/minute
+		if ( $curTime > $fileTime + $interval ) {
+
+			# Get user profiles and save it in a file
+			$out = `ssh $hcp "$hcpDir/getuserprofile $profile > $file"`;
+		}
+	}
+	else {
+
+		# Get user profiles and save it in a file
+		$out = `ssh $hcp "$hcpDir/getuserprofile $profile > $file"`;
+	}
+
+	# Return the file contents
+	$out = `ssh $hcp "cat $file"`;
+	return $out;
 }
