@@ -124,6 +124,7 @@ sub makescript
     my $typetab    = xCAT::Table->new('nodetype');
     my $posttab    = xCAT::Table->new('postscripts');
     my $sitetab    = xCAT::Table->new('site');
+    my $ostab    = xCAT::Table->new('ostab');
 
     my %rsp;
     my $rsp;
@@ -135,6 +136,12 @@ sub makescript
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return undef;
 
+    }
+    unless ($ostab){
+        push @{$rsp->{data}},
+          "Unable to open os table (ostab)";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return undef;
     }
 
     # read all attributes for the site table and write an export
@@ -551,7 +558,8 @@ sub makescript
     push @scriptd, "# postscripts-start-here\n";
 
     my %post_hash = ();    #used to reduce duplicates
-                           # get the xcatdefaults entry in the postscripts table
+    
+    # get the xcatdefaults entry in the postscripts table
     my $et        =
       $posttab->getAttribs({node => "xcatdefaults"},
                            'postscripts', 'postbootscripts');
@@ -568,8 +576,29 @@ sub makescript
             }
         }
     }
+    
+    # get postscripts for images
+    my $osimgname = $provmethod;
 
-    # get postscripts
+    if($osimgname =~ /install|netboot|statelite/){
+        $osimgname = "$os-$arch-$provmethod-$profile";
+    }
+    my $et2 =
+      $ostab->getAttribs({'image' => "$osimgname"}, ['postscripts', 'postbootscripts']);
+    $ps = $et2->{'postscripts'};
+    if ($ps)
+    {
+        foreach my $n (split(/,/, $ps))
+        {
+            if (!exists($post_hash{$n}))
+            {
+                $post_hash{$n} = 1;
+                push @scriptd, $n . "\n";
+            }
+        }
+    }
+
+    # get postscripts for node specific
     my $et1 =
       $posttab->getNodeAttribs($node, ['postscripts', 'postbootscripts']);
     $ps = $et1->{'postscripts'};
