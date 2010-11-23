@@ -573,7 +573,7 @@ notification => {
  },
   },
 osimage  => {
- cols => [qw(imagename profile imagetype provmethod osname osvers osdistro osarch synclists comments disable)],
+ cols => [qw(imagename profile imagetype provmethod osname osvers osdistro osarch synclists postscripts postbootscripts comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
  descriptions => {
@@ -586,6 +586,8 @@ osimage  => {
   osdistro => 'Not used.',
   osarch => 'Not used.',
   synclists => 'The fully qualified name of a file containing a list of files to synchronize on the nodes.',
+  postscripts => 'Comma separated list of scripts that should be run on this image after diskfull installation or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. Support will be added in the future for  the postscripts attribute to run the scripts before the reboot in AIX. ',
+  postbootscripts => 'Comma separated list of scripts that should be run on this after diskfull installation or diskless boot. On AIX these scripts are run during the processing of /etc/inittab.  On Linux they are run at the init.d time. xCAT automatically adds the scripts in the xcatdefaults.postbootscripts attri bute to run first in the list.',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
