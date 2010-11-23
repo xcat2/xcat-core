@@ -1792,6 +1792,14 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'osimage.synclists',
                  access_tabentry => 'osimage.imagename=attr:imagename',
                  },
+ {attr_name => 'postscripts',
+                 tabentry => 'osimage.postscripts',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
+ {attr_name => 'postbootscripts',
+                 tabentry => 'osimage.postbootscripts',
+                 access_tabentry => 'osimage.imagename=attr:imagename',
+                 },
 ####################
 # linuximage table#
 ####################
