@@ -1,6 +1,6 @@
 #!/bin/sh
 echo $drivers
-dracut_install wget cpio gzip dash  modprobe
+dracut_install wget cpio gzip dash  modprobe touch
 dracut_install grep ifconfig hostname awk egrep grep dirname
 inst "$moddir/xcatroot" "/sbin/xcatroot"
 inst_hook cmdline 10 "$moddir/xcat-cmdline.sh" 

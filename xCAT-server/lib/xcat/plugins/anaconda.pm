@@ -537,11 +537,9 @@ sub mknetboot
         # which is used for dracut
         # the redhat5.x os will ignore it
         my $useifname=0;
-        if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic}) {
-            if ($reshash->{$node}->[0]->{installnic} ne "mac") {
-                $useifname=1;
-                $kcmdline .= "ifname=".$reshash->{$node}->[0]->{installnic} . ":";
-            }
+        if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and $reshash->{$node}->[0]->{installnic} ne "mac") {
+            $useifname=1;
+            $kcmdline .= "ifname=".$reshash->{$node}->[0]->{installnic} . ":";
         } elsif ($nodebootif) {
             $useifname=1;
             $kcmdline .= "ifname=$nodebootif:";
@@ -555,7 +553,7 @@ sub mknetboot
         #}
         # append the mac address
         my $mac;
-        if($useifname && $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
+        if($machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
             # TODO: currently, only "mac" attribute with classic style is used, the "|" delimited string of "macaddress!hostname" format is not used
             $mac = $machash->{$node}->[0]->{'mac'};
             if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
@@ -563,20 +561,21 @@ sub mknetboot
                 if ($mac !~ /:/) {
                    $mac =~s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
                 }
-                $kcmdline .= "$mac ";
             } else {
-                die qq{In the "mac" table, the "|" delimited string of "macaddress!hostname" format is not supported by "nodeset <nr> netboot|statelite if installnic/primarynic is set".};
+                $callback->({ error=>[ qq{In the "mac" table, the "|" delimited string of "macaddress!hostname" format is not supported by "nodeset <nr> netboot|statelite if installnic/primarynic is set".}], errorcode=>[1]});
+                return;
             }
-        #} else { # it should never happen, but we don't always do it this way
-        #    $callback->({error=>["cannot find the mac address for $node in mac table"], errorcode=>[1]});
         }
 
-        # add "netdev=<eth0>" or "BOOTIF=<mac>"
+        if ($useifname && $mac) {
+            $kcmdline .= "$mac ";
+        }
+
+        # add "netdev=<eth0>" or "BOOTIF=<mac>" 
+        # which are used for other scenarios
         my $netdev = "";
-        if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic}) {
-            if ($reshash->{$node}->[0]->{installnic} ne "mac") {
-                $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{installnic} . " ";
-            }
+        if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and $reshash->{$node}->[0]->{installnic} ne "mac") {
+            $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{installnic} . " ";
         } elsif ($nodebootif) {
             $kcmdline .= "netdev=" . $nodebootif . " ";
         } elsif ( $reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic}) {

@@ -76,6 +76,28 @@ for lf in /tmp/dhclient.*.lease; do
     netif=${netif%.*}
     cp $lf  "$NEWROOT/var/lib/dhclient/dhclient-$netif.leases"
 done
+
+if [ ! -z "$ifname" ]; then
+    MACX=${ifname#*:}
+    ETHX=${ifname%:$MACX*}
+elif [ ! -z "$netdev" ]; then
+    ETHX=$netdev
+    MACX=`ip link show $netdev | grep ether | awk '{print $2}'`
+elif [ ! -z "$BOOTIF" ]; then
+    MACX=$BOOTIF
+    ETHX=`ifconfig |grep -i $BOOTIF | awk '{print $1}'`
+fi
+
+if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
+    if [ ! -e $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX ]; then
+        touch $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    fi
+    echo "DEVICE=$ETHX" > $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "BOOTPROTO=dhcp" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "HWADDR=$MACX" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "ONBOOT=yes" >> $NEWROOT/etc/sysconfig/network-scripts/ifcfg-$ETHX
+fi
+
 cp /etc/resolv.conf "$NEWROOT/etc/"
 
 if [ -d "$NEWROOT/etc/sysconfig" -a ! -e "$NEWROOT/etc/sysconfig/selinux" ]; then
