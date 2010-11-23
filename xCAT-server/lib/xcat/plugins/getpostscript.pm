@@ -26,7 +26,10 @@ Return list of commands handled by this plugin
 
 sub handled_commands
 {
-    return {'getpostscript' => "getpostscript"};
+    return { 
+               'getpostscript' => "getpostscript",
+               'postage' => "getpostscript"
+           };
 }
 
 
@@ -52,6 +55,11 @@ sub process_request
     my @nodes=@$nodes; 
     # do your processing here
     # return info
+
+    if($command eq 'postage'){
+        return postage($nodes, $callback);
+    }
+
     my $client;
     if ($request->{'_xcat_clienthost'}) {
       $client = $request->{'_xcat_clienthost'}->[0];
@@ -73,3 +81,39 @@ sub process_request
     $callback->($rsp);
 }
 
+sub postage {
+    my $nodes = shift;
+    my $callback = shift;
+    require xCAT::Postage;
+    foreach my $node (@$nodes){
+        my @scriptcontents = xCAT::Postage::makescript($node,'postscripts',$callback);
+        my $ps = 0;
+        my $pbs = 0;
+        foreach(@scriptcontents){
+            chomp($_);
+            if($_ =~ "postscripts-start-here"){
+                $ps = 1;
+                next;
+              
+            }
+            if($_ =~ "postscripts-end-here"){
+                $ps = 0;
+                next;
+            }
+            if($_ =~ "postbootscripts-start-here"){
+                $pbs = 1;
+                next;
+            }
+            if($_ =~ "postbootscripts-end-here"){
+                $pbs = 0;
+                next;
+            }
+            if($ps eq 1){ 
+                $callback->({info => ["$node: postscript: $_"]});
+            }
+            if($pbs eq 1){
+                $callback->({info => ["$node: postbootscript: $_"]});
+            }
+        }
+    }  
+}
