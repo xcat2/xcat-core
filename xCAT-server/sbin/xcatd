@@ -354,7 +354,19 @@ if ($inet6support) {
             plugin_command(\%request,undef,\&build_response);
             xexit(0);
           }
-	}
+	} elsif ($text =~ /hpcbootstatus/) {
+	  $text =~ s/hpcbootstatus //;
+          chomp $text;
+          my %request = (
+          command => [ 'updatenodeappstat' ],
+          node => [ $node ],
+          arg => [ "$text" ],
+          );
+          
+        plugin_command(\%request,undef,\&build_response);
+        close($conn);
+    }
+        
         alarm(2);
       }
       alarm(0);
