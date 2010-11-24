@@ -472,6 +472,10 @@ function initPage() {
 		includeJs("js/monitor/gangliamon.js");
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
+	} else if (page == 'discover.php'){
+		includeJs("js/discover/discover.js");
+		headers.eq(4).css('background-color', '#A9D0F5');
+		loadDiscoverPage();
 	} else {
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
