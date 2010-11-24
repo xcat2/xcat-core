@@ -431,7 +431,7 @@ function createActionMenu(){
 	deleteLnk.bind('click', function(event) {
 		var tgtNodes = getSelectNodes();
 		if (tgtNodes) {
-			deleteNode(tgtNodes);
+			loadDeletePage(tgtNodes);
 		}
 	});
 

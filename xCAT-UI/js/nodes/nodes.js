@@ -3,6 +3,7 @@
  */
 var nodesTabs; 		// Node tabs
 var origAttrs = new Object();	// Original node attributes
+var defAttrs; 	// Definable node attributes
 
 /**
  * Set the nodes tab
@@ -99,7 +100,7 @@ function loadGroups(data) {
 	item.append(subUL);
 
 	// Create a link for each group
-	for ( var i = groups.length; i--;) {
+	for (var i = groups.length; i--;) {
 		var subItem = $('<li id="' + groups[i] + '"></li>');
 		var link = $('<a>' + groups[i] + '</a>');
 		subItem.append(link);
@@ -269,7 +270,7 @@ function loadSubgroups(data) {
 	var group = data.msg;
 	
 	// Go through each subgroup
-	for ( var i in rsp) {
+	for (var i in rsp) {
 		// Do not put the same group in the subgroup
 		if (rsp[i] != group && $('#' + group).length) {
 			// Add subgroup inside group
@@ -303,10 +304,12 @@ function loadNodes(data) {
 	$.cookie('nodes2update', '');
 	// Clear hash table containing node attributes
 	origAttrs = '';
+	// Clear hash table containing definable node attributes
+	defAttrs = new Array();
 
 	var node;
 	var args;
-	for ( var i in rsp) {
+	for (var i in rsp) {
 		// Get the node
 		var pos = rsp[i].indexOf('Object name:');
 		if (pos > -1) {
@@ -333,7 +336,7 @@ function loadNodes(data) {
 
 	// Sort headers
 	var sorted = new Array();
-	for ( var key in headers) {
+	for (var key in headers) {
 		// Do not put in comments twice
 		if (key != 'usercomment') {
 			sorted.push(key);
@@ -353,7 +356,7 @@ function loadNodes(data) {
 	dTable.init(sorted);
 
 	// Go through each node
-	for ( var node in attrs) {
+	for (var node in attrs) {
 		// Create a row
 		var row = new Array();
 		// Create a check box
@@ -401,7 +404,7 @@ function loadNodes(data) {
 		});
 		
 		// Go through each header
-		for ( var i = 5; i < sorted.length; i++) {
+		for (var i = 5; i < sorted.length; i++) {
 			// Add the node attributes to the row
 			var key = sorted[i];
 			
@@ -459,7 +462,7 @@ function loadNodes(data) {
 	var cloneLnk = $('<a>Clone</a>');
 	cloneLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable').split(',');
-		for ( var i = 0; i < tgtNodes.length; i++) {
+		for (var i in tgtNodes) {
 			var mgt = getNodeAttr(tgtNodes[i], 'mgt');
 			
 			// Create an instance of the plugin
@@ -494,7 +497,7 @@ function loadNodes(data) {
 	deleteLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
 		if (tgtNodes) {
-			deleteNode(tgtNodes);
+			loadDeletePage(tgtNodes);
 		}
 	});
 
@@ -544,7 +547,6 @@ function loadNodes(data) {
 		}
 	});
 
-
 	// Remote console (rcons)
 	var rcons = $('<a>Open console</a>');
 	rcons.bind('click', function(event){
@@ -553,7 +555,16 @@ function loadNodes(data) {
 			loadRconsPage(tgtNodes);
 		}
 	});
-
+	
+	// Set node properties
+	var setProps = $('<a>Set node properties</a>');
+	setProps.bind('click', function(event){
+		var tgtNodes = getNodesChecked('nodesDataTable').split(',');
+		for (var i in tgtNodes) {
+			loadSetPropsPage(tgtNodes[i]);
+		}
+	});
+	
 	var advancedLnk = $('<a>Advanced</a>');
 
 	// Power actions
@@ -563,9 +574,9 @@ function loadNodes(data) {
 	// Advanced actions
 	var advancedActions;
 	if ('compute' == group) {
-		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons ];
+		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons, setProps ];
 	} else {
-		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk ];
+		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, setProps ];
 	}
 
 	var advancedActionMenu = createMenu(advancedActions);
@@ -699,6 +710,20 @@ function loadNodes(data) {
 		success : loadPingStatus
 	});
 	
+	// Get definable node attributes
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'lsdef',
+			tgt : '',
+			args : '-t;node;-h',
+			msg : ''
+		},
+
+		success : setDefAttrs
+	});
+	
 	/**
 	 * Additional ajax requests need to be made for zVM
 	 */
@@ -709,13 +734,13 @@ function loadNodes(data) {
 		// Get hardware control point
 		var rows = dTable.object().find('tbody tr');
 		var hcps = new Object();
-		for ( var j = 0; j < rows.length; j++) {
+		for (var j in rows) {
 			var val = rows.eq(j).find('td').eq(i).html();
 			hcps[val] = 1;
 		}
 
 		var args;
-		for ( var h in hcps) {
+		for (var h in hcps) {
 			// Get node without domain name
 			args = h.split('.');
 			
@@ -751,7 +776,7 @@ function loadPowerStatus(data) {
 	var power = data.rsp;
 	var rowNum, node, status, args;
 
-	for ( var i in power) {
+	for (var i in power) {
 		// power[0] = nodeName and power[1] = state
 		args = power[i].split(':');
 		node = jQuery.trim(args[0]);
@@ -811,7 +836,7 @@ function loadPingStatus(data) {
 
 	// Get all nodes within the datatable
 	var rows = dTable.fnGetNodes();
-	for ( var i in ping) {
+	for (var i in ping) {
 		// ping[0] = nodeName and ping[1] = state
 		node = jQuery.trim(ping[i][0]);
 		status = jQuery.trim(ping[i][1]);
@@ -1103,7 +1128,7 @@ function loadScriptPage(tgtNodes) {
 
 		// Check script
 		var textarea = $('#' + newTabId + ' textarea');
-		for ( var i = 0; i < textarea.length; i++) {
+		for (var i in textarea) {
 			if (!textarea.eq(i).val()) {
 				textarea.eq(i).css('border', 'solid #FF0000 1px');
 				ready = false;
@@ -1170,13 +1195,13 @@ function powerNode(node, power2) {
 }
 
 /**
- * Delete a given node
+ * Load delete node page
  * 
  * @param tgtNodes
  *            Nodes to delete
  * @return Nothing
  */
-function deleteNode(tgtNodes) {
+function loadDeletePage(tgtNodes) {
 	// Get datatable
 	var myTab = getNodesTab();
 
@@ -1202,7 +1227,7 @@ function deleteNode(tgtNodes) {
 	var tgtNodesStr = '';
 	var nodes = tgtNodes.split(',');
 	// Loop through each node
-	for ( var i in nodes) {
+	for (var i in nodes) {
 		// If it is the 1st and only node
 		if (i == 0 && i == nodes.length - 1) {
 			tgtNodesStr += nodes[i];
@@ -1310,7 +1335,7 @@ function updateStatusBar(data) {
 
 		// Update data table
 		var rows = dTable.fnGetNodes();
-		for ( var i = 0; i < tgts.length; i++) {
+		for (var i in tgts) {
 			if (!failed) {
 				// Get the row containing the node link and delete it
 				var row = getNodeRow(tgts[i], rows);
@@ -1362,7 +1387,7 @@ function formComplete(tabId) {
 
 	// Check all inputs within the form
 	var inputs = $('#' + tabId + ' input');
-	for ( var i = 0; i < inputs.length; i++) {
+	for (var i in inputs) {
 		// If there is no value given in the input
 		if (!inputs.eq(i).val()) {
 			inputs.eq(i).css('border', 'solid #FF0000 1px');
@@ -1394,7 +1419,7 @@ function updatePowerStatus(data) {
 	// Get xCAT response
 	var rsp = data.rsp;
 	// Loop through each line
-	for ( var i = 0; i < rsp.length; i++) {
+	for (var i in rsp) {
 		// Get the node
 		var node = rsp[i].split(":")[0];
 
@@ -1519,7 +1544,7 @@ function setOSImageCookies(data) {
 	var osVersHash = new Object();
 	var osArchsHash = new Object();
 
-	for ( var i = 1; i < rsp.length; i++) {
+	for (var i = 1; i < rsp.length; i++) {
 		// osimage table columns: imagename, profile, imagetype, provmethod,
 		// osname, osvers, osdistro, osarch, synclists, comments, disable
 		// e.g. sles11.1-s390x-statelite-compute, compute, linux, statelite,
@@ -1542,21 +1567,21 @@ function setOSImageCookies(data) {
 
 	// Save profiles in a cookie
 	var tmp = new Array;
-	for ( var key in profilesHash) {
+	for (var key in profilesHash) {
 		tmp.push(key);
 	}
 	$.cookie('profiles', tmp);
 
 	// Save OS versions in a cookie
 	tmp = [];
-	for ( var key in osVersHash) {
+	for (var key in osVersHash) {
 		tmp.push(key);
 	}
 	$.cookie('osvers', tmp);
 
 	// Save OS architectures in a cookie
 	tmp = [];
-	for ( var key in osArchsHash) {
+	for (var key in osArchsHash) {
 		tmp.push(key);
 	}
 	$.cookie('osarchs', tmp);
@@ -1585,7 +1610,7 @@ function setGroupsCookies(data) {
  */
 function getNodeRow(tgtNode, rows) {
 	// Find the row
-	for ( var i in rows) {
+	for (var i in rows) {
 		// Get all columns within the row
 		var cols = rows[i].children;
 		// Get the 1st column (node name)
@@ -1614,7 +1639,7 @@ function getNodesChecked(datatableId) {
 
 	// Get nodes that were checked
 	var nodes = $('#' + datatableId + ' input[type=checkbox]:checked');
-	for ( var i = 0; i < nodes.length; i++) {
+	for (var i in nodes) {
 		var tgtNode = nodes.eq(i).attr('name');
 		
 		if (tgtNode){
@@ -1764,7 +1789,7 @@ function updateNodeAttrs(group) {
 	var row, colPos, value;
 	var attrName;
 	// Go through each node where an attribute was changed
-	for (var i = 0; i < nodes.length; i++) {
+	for (var i in nodes) {
 		if (nodes[i]) {
 			args = '';
 			
@@ -1802,7 +1827,7 @@ function updateNodeAttrs(group) {
         			cmd : 'chdef',
         			tgt : '',
         			args : '-t;node;-o;' + nodes[i] + ';' + args,
-        			msg : 'node=' + nodes[i]
+        			msg : 'out=nodesTab;node=' + nodes[i]
         		},
 
         		success: showChdefOutput
@@ -1835,7 +1860,7 @@ function restoreNodeAttrs() {
 	// Go through each node where an attribute was changed
 	var row, colPos;
 	var attrName, origVal;
-	for (var i = 0; i < nodes.length; i++) {
+	for (var i in nodes) {
 		if (nodes[i]) {			
 			// Get the row containing the node link
         	row = getNodeRow(nodes[i], rows);
@@ -1911,7 +1936,7 @@ function createCommentsToolTip(comment) {
     			cmd : 'chdef',
     			tgt : '',
     			args : '-t;node;-o;' + node + ';usercomment=' + comments,
-    			msg : 'node=' + node
+    			msg : 'out=nodesTab;node=' + node
     		},
     		
     		success: showChdefOutput
@@ -1959,10 +1984,12 @@ function createCommentsToolTip(comment) {
 function showChdefOutput(data) {
 	// Get output
 	var out = data.rsp;
-	var node = data.msg.replace('node=', '');
+	var args = data.msg.split(';');
+	var tabID = args[0].replace('out=', '');
+	var node = args[1].replace('node=', '');
 	
 	// Find info bar on nodes tab, if any
-	var info = $('#nodesTab').find('.ui-state-highlight');
+	var info = $('#' + tabID).find('.ui-state-highlight');
 	if (!info.length) {
 		// Create info bar if one does not exist
 		info = createInfoBar('');
@@ -1972,9 +1999,188 @@ function showChdefOutput(data) {
 	// Go through output and append to paragraph
 	var node, status;
 	var pg = $('<p></p>');
-	for ( var i in out) {
+	for (var i in out) {
 		pg.append(node + ': ' + out[i] + '<br>');
 	}
 	
 	info.append(pg);
+}
+
+/**
+ * Set definable node attributes
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function setDefAttrs(data) {
+	// Get definable attributes
+	var attrs = data.rsp[2].split(/\n/);
+
+	// Go through each line
+	var attr, key, descr;
+	for (var i in attrs) {
+		attr = attrs[i];
+		
+		// If the line is not empty
+		if (attr) {
+			// If the line has the attribute name 
+			if (attr.indexOf(':') && attr.indexOf(' ')) {
+    			// Get attribute name and description
+    			key = jQuery.trim(attr.substring(0, attr.indexOf(':')));
+    			descr = jQuery.trim(attr.substring(attr.indexOf(':') + 1));
+    			
+    			// Set hash table where key = attribute name and value = description
+        		defAttrs[key] = descr;
+			} else {				
+				// Append description to hash table
+				defAttrs[key] = defAttrs[key] + '\n' + attr;
+			}
+		} // End of if
+	} // End of for
+}
+
+/**
+ * Load set node properties page
+ * 
+ * @param tgtNode
+ *            Target node to set properties
+ * @return Nothing
+ */
+function loadSetPropsPage(tgtNode) {
+	// Get nodes tab
+	var tab = getNodesTab();
+
+	// Generate new tab ID
+	var inst = 0;
+	var newTabId = 'setPropsTab' + inst;
+	while ($('#' + newTabId).length) {
+		// If one already exists, generate another one
+		inst = inst + 1;
+		newTabId = 'setPropsTab' + inst;
+	}
+
+	// Open new tab
+	// Create set properties form
+	var setPropsForm = $('<div class="form"></div>');
+
+	// Create status bar
+	var barId = 'setPropsStatusBar' + inst;
+	var statBar = createStatusBar(barId);
+	statBar.hide();
+	setPropsForm.append(statBar);
+
+	// Create loader
+	var loader = createLoader('setPropsLoader' + inst);
+	statBar.append(loader);
+
+	// Create info bar
+	var infoBar = createInfoBar('Choose the properties you wish to change on the node. When you are finished, click Save.');
+	setPropsForm.append(infoBar);
+
+	// Create an input for each definable attribute
+	var div, label, input, descr, value;
+	// Set node attribute
+	origAttrs[tgtNode]['node'] = tgtNode;
+	for (var key in defAttrs) {
+		// If an attribute value exists
+		if (origAttrs[tgtNode][key]) {
+			// Set the value
+			value = origAttrs[tgtNode][key];
+		} else {
+			value = '';
+		}
+		
+		// Create label and input for attribute
+		div = $('<div></div>').css('display', 'inline');
+		label = $('<label>' + key + ':</label>').css('vertical-align', 'middle');
+		input = $('<input type="text" value="' + value + '" title="' + defAttrs[key] + '"/>').css('margin-top', '5px');
+		
+		// Change border to blue onchange
+		input.bind('change', function(event) {
+			$(this).css('border-color', 'blue');
+		});
+		
+		div.append(label);
+		div.append(input);
+		setPropsForm.append(div);
+	}
+	
+	// Change style for last division
+	div.css({
+		'display': 'block',
+		'margin': '0px 0px 10px 0px'
+	});
+	
+	// Generate tooltips
+	setPropsForm.find('div input[title]').tooltip({
+		position: "center right",	// Place tooltip on the right edge
+		offset: [-2, 10],	// A little tweaking of the position
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
+		opacity: 0.8		// Custom opacity setting
+	});
+
+	/**
+	 * Save
+	 */
+	var saveBtn = createButton('Save');
+	saveBtn.bind('click', function(event) {	
+		// Get all inputs
+		var inputs = $('#' + newTabId + ' input');
+		
+		// Go through each input
+		var args = '';
+		var attrName, attrVal;
+		inputs.each(function(){
+			// If the border color is blue
+			if ($(this).css('border-left-color') == 'rgb(0, 0, 255)') {
+				// Change border color back to normal
+				$(this).css('border-color', '');
+				
+				// Get attribute name and value
+    			attrName = $(this).parent().find('label').text().replace(':', '');
+    			attrVal = $(this).val();
+    			
+    			// Build argument string
+    			if (args) {
+    				// Handle subsequent arguments
+    				args += ';' + attrName + '=' + attrVal;
+    			} else {
+    				// Handle the 1st argument
+    				args += attrName + '=' + attrVal;
+    			}
+    		}
+		});
+		
+		// Send command to change node attributes
+    	$.ajax( {
+    		url : 'lib/cmd.php',
+    		dataType : 'json',
+    		data : {
+    			cmd : 'chdef',
+    			tgt : '',
+    			args : '-t;node;-o;' + tgtNode + ';' + args,
+    			msg : 'out=' + newTabId + ';node=' + tgtNode
+    		},
+
+    		success: showChdefOutput
+    	});
+	});
+	setPropsForm.append(saveBtn);
+	
+	/**
+	 * Cancel
+	 */
+	var cancelBtn = createButton('Cancel');
+	cancelBtn.bind('click', function(event) {
+		// Close the tab
+		tab.remove($(this).parent().parent().attr('id'));
+	});
+	setPropsForm.append(cancelBtn);
+
+	// Append to discover tab
+	tab.add(newTabId, 'Properties', setPropsForm, true);
+
+	// Select new tab
+	tab.select(newTabId);
 }
