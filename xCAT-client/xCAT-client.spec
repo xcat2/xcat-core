@@ -17,7 +17,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 %endif
 
-Provides: xCAT-client = %{version}
+Provides: xCAT-client = %{epoch}:%{version}
 
 # fping or nmap is needed by pping (in case xCAT-client is installed by itself on a remote client)
 %ifos linux

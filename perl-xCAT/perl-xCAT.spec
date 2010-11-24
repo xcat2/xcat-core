@@ -16,7 +16,7 @@ BuildArch: noarch
 Requires: perl-SOAP-Lite
 %endif
 
-Provides: perl(xCAT) = %{version}
+Provides: perl-xCAT = %{epoch}:%{version}
 
 %description
 Provides perl xCAT libraries for core functionality.  Required for all xCAT installations.
