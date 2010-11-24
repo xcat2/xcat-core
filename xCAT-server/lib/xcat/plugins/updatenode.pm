@@ -51,7 +51,8 @@ sub handled_commands
 {
     return {
             updatenode     => "updatenode",
-            updatenodestat => "updatenode"
+            updatenodestat => "updatenode",
+            updatenodeappstat => "updatenode"
             };
 }
 
@@ -81,6 +82,10 @@ sub preprocess_request
         return &preprocess_updatenode($request, $callback, $::subreq);
     }
     elsif ($command eq "updatenodestat")
+    {
+        return [$request];
+    }
+    elsif ($command eq "updatenodeappstat")
     {
         return [$request];
     }
@@ -126,6 +131,10 @@ sub process_request
     elsif ($command eq "updatenodestat")
     {
         return updatenodestat($request, $callback);
+    }
+    elsif ($command eq "updatenodeappstat")
+    {
+        return updatenodeappstat($request, $callback);
     }
     else
     {
@@ -2525,3 +2534,54 @@ sub updateOS {
 
 	return;
 }
+
+#-------------------------------------------------------------------------------
+
+=head3   updatenodeappstat
+    This subroutine is used to handle the messages reported by 
+    HPCbootstatus postscript. Update appstatus node attribute.
+
+    Arguments:
+    Returns:
+        0 - for success.
+        1 - for error.
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub updatenodeappstat
+{
+    my $request  = shift;
+    my $callback = shift;
+    my @nodes    = ();
+    my @args     = ();
+    if (ref($request->{node}))
+    {
+        @nodes = @{$request->{node}};
+    }
+    else
+    {
+        if ($request->{node}) { @nodes = ($request->{node}); }
+    }
+    if (ref($request->{arg}))
+    {
+        @args = @{$request->{arg}};
+    }
+    else
+    {
+        @args = ($request->{arg});
+    }
+
+    if ((@nodes > 0) && (@args > 0))
+    {
+        # format: apps=status
+        my $appstat = $args[0];
+        my ($apps, $newstatus) = split(/=/,$appstat);
+
+        xCAT::Utils->setAppStatus(\@nodes, $apps, $newstatus);
+
+    }   
+    
+    return 0;
+}
+
