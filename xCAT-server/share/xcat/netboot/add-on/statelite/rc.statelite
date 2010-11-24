@@ -61,9 +61,6 @@ GetSyncInfo () {
 		exit 1
 	fi
 
-    # add one random sleeping time
-    SLI=$(( $RANDOM%50 ))
-    sleep $SLI
 	# request the list of files from xCAT:
 	xCATCmd $XCATSERVER litefile  \
 		| sed  -e 's/<[^>]*>//g' \
@@ -98,9 +95,6 @@ GetSyncInfo () {
 	# files will now be inside /.snapshot/tmpfs/synclist in the form:
 	# options path
     
-    SLI=$(( $RANDOM%50 ))
-    sleep $SLI
-
 	xCATCmd $XCATSERVER litetree  \
 		| sed  -e 's/<[^>]*>//g' \
 		| egrep -v '^ *$' \
@@ -135,7 +129,7 @@ GetSyncInfo () {
 xCATCmd () {
 # $1 is the xCAT server
 # $2 is the command
-	echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | LD_LIBRARY_PATH=/sysroot/lib64:/sysroot/usr/lib64 /sysroot/usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
+	echo "<xcatrequest>\n<command>${2}</command>\n</xcatrequest>" | LD_LIBRARY_PATH=${MNTDIR}/lib64:${MNTDIR}/usr/lib64 ${MNTDIR}/usr/bin/openssl s_client -quiet -connect ${1} -rand /bin/nice 2>/dev/null
 
 }
 
@@ -266,7 +260,7 @@ ProcessType () {
 
             if [ "${4}" = "0" ]; then
 			    TARGET=`echo ${TMPFS}${2} |  /bin/sed -e 's/\/$//'`
-			    LINK=`echo ${1} | /bin/sed -e "s/^\/sysroot//"`
+			    LINK=`echo ${1} | /bin/sed -e "s|^${MNTDIR}||"`
 			    
 			    echo "ln -sf ${LINK} ${TARGET}" >>$LOG 2>&1
 			    /bin/ln -sf ${LINK} ${TARGET} >>$LOG 2>&1
@@ -322,9 +316,9 @@ ProcessType () {
                 done
             else
                 # finally make the tmpfs link point to the persistent file
-                # you have to get rid of the /sysroot in the beginning
+                # you have to get rid of the ${MNTDIR} directory in the beginning
                 # so that when the chroot happens the link is valid.
-                LINK=`echo ${PERSISTENT}${PATH} | /bin/sed -e 's/^\/sysroot//'`
+                LINK=`echo ${PERSISTENT}${PATH} | /bin/sed -e "s|^${MNTDIR}||"`
                 echo "ln -sf ${LINK} ${TARGET}" >>$LOG
                 /bin/ln -sf ${LINK} ${TARGET}        >>$LOG 2>&1
             fi
@@ -337,8 +331,8 @@ ProcessType () {
             # there's one more option to indicate the con is at the end
             if [ "${5}" = "1" ]; then
                 # mount the file with "--bind" option
-                echo "mount --bind ${TMPFS}${2} /sysroot${2}" >>$LOG
-                /bin/mount --bind ${TMPFS}${2} /sysroot${2} >> $LOG 2>&1
+                echo "mount --bind ${TMPFS}${2} ${MNTDIR}${2}" >>$LOG
+                /bin/mount --bind ${TMPFS}${2} ${MNTDIR}${2} >> $LOG 2>&1
             else
 			    echo "cat ${1} >>${TMPFS}${2}" >>$LOG 2>&1
 			    /bin/cat ${1} >>${TMPFS}${2} 2>&1
@@ -357,8 +351,8 @@ ProcessType () {
             fi
             
             if [ "$isChild" = "0" ]; then
-                echo "mount --bind ${TMPFS}${2} /sysroot${ORIG}" >>$LOG
-                /bin/mount --bind ${TMPFS}${2} /sysroot${ORIG}>>$LOG 2>&1           
+                echo "mount --bind ${TMPFS}${2} ${MNTDIR}${ORIG}" >>$LOG
+                /bin/mount --bind ${TMPFS}${2} ${MNTDIR}${ORIG}>>$LOG 2>&1           
             fi
             ;;
          tmpfs)         # the default option, same as "rw" and "NULL"
@@ -374,8 +368,8 @@ ProcessType () {
             fi
             
             if [ "$isChild" = "0" ]; then
-                echo "mount --bind ${TMPFS}${2} /sysroot${ORIG}" >>$LOG
-                /bin/mount --bind ${TMPFS}${2} /sysroot${ORIG}>>$LOG 2>&1           
+                echo "mount --bind ${TMPFS}${2} ${MNTDIR}${ORIG}" >>$LOG
+                /bin/mount --bind ${TMPFS}${2} ${MNTDIR}${ORIG}>>$LOG 2>&1           
             fi
             ;;
        rw)         # the default option, same as "tmpfs" and "NULL"
@@ -391,8 +385,8 @@ ProcessType () {
             fi
             
             if [ "$isChild" = "0" ]; then
-                echo "mount --bind ${TMPFS}${2} /sysroot${ORIG}" >>$LOG
-                /bin/mount --bind ${TMPFS}${2} /sysroot${ORIG}>>$LOG 2>&1           
+                echo "mount --bind ${TMPFS}${2} ${MNTDIR}${ORIG}" >>$LOG
+                /bin/mount --bind ${TMPFS}${2} ${MNTDIR}${ORIG}>>$LOG 2>&1           
             fi
             ;;
         persistent)
@@ -410,8 +404,8 @@ ProcessType () {
             ORIG=`echo ${2} |  /bin/sed -e 's/\/$//'`
             TARGET=`echo ${PERSISTENT}${2}`
 
-            echo "mount --bind ${TARGET} /sysroot/${ORIG}" >>$LOG
-            /bin/mount --bind ${TARGET} /sysroot/${ORIG}>>$LOG 2>&1
+            echo "mount --bind ${TARGET} ${MNTDIR}/${ORIG}" >>$LOG
+            /bin/mount --bind ${TARGET} ${MNTDIR}/${ORIG}>>$LOG 2>&1
             ;;
 		ro)  
 			# need to make sure directory exists:
