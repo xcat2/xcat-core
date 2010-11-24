@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# Sample postscript to check appstatus for GPFS,LAPI and LoadL
+# Report the appstatus to xcatd on MN.
+
+# See HPCbootstatus.aix and HPCbootstatus.linux for more information.
+
+OS=`uname`
+
+if [ $OS = AIX ]; then
+    echo "HPCbootstatus: query appstatus on AIX system."
+    HPCbootstatus.aix
+else
+    echo "HPCbootstatus: query appstatus on Linux system."
+    HPCbootstatus.linux
+fi

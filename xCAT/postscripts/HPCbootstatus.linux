@@ -1,0 +1,88 @@
+#!/bin/sh 
+
+#
+# Sample postscript to check appstatus for GPFS,LAPI and LoadL on Linux system.
+# Report the appstatus to xcatd on MN.
+
+# Set the default timeout to 5 mins.
+TIMEOUT=300
+INTERVAL=15
+PASSED=0
+
+# The number of items to check, currently including:
+# gpfs-daemon, gpfs-quorum, gpfs-filesystem, lapi-pnsd, loadl-schedd, loadl-startd
+ITEMNUM=6
+
+gpfsd="hpcbootstatus gpfs-daemon=up"
+gpfsq="hpcbootstatus gpfs-quorum=achieved"
+
+# Use a loop
+while [ true ]; do
+
+    COUNT=0
+	# Query gpfs-daemon,mmfsd
+	# Check 1191 port
+	port=`netstat -An|grep 1191`
+    if [ "$port" != "" ]; then
+        # Sent message to xcatd
+        updateflag.awk $MASTER 3002 "$gpfsd"
+        echo "HPCbootstatus.linux: Reporting $gpfsd to xcatd on $MASTER!"
+        let COUNT=$COUNT+1
+    fi
+
+    # Query gpfs-quorum
+    quorum=`/usr/lpp/mmfs/bin/mmgetstate -s|grep achieved`
+    if [ "$quorum" != "" ]; then
+        # Sent message to xcatd
+        updateflag.awk $MASTER 3002 "$gpfsq"
+        echo "HPCbootstatus.linux: Reporting $gpfsq to xcatd on $MASTER!"
+        let COUNT=$COUNT+1
+    fi
+
+	# Query gpfs-filesystem
+	fs=`/usr/sbin/mount |grep mmfs |awk '{print $2}'|tr '\n' '!'`
+    if [ "$fs" != "" ]; then        
+        # Sent message to xcatd
+        updateflag.awk $MASTER 3002 "hpcbootstatus gfsp-filesystem=$fs"
+        echo "HPCbootstatus.linux: Reporting gfsp-filesystem=$fs to xcatd on $MASTER!"
+        let COUNT=$COUNT+1
+    fi
+
+	# Query lapi-pnsd
+	lapi=`/usr/bin/lssrc -s pnsd |/usr/bin/awk '(NR==2){print $3}'`
+    if [ "$lapi" != "" ]; then        
+        # Sent message to xcatd
+        updateflag.awk $MASTER 3002 "hpcbootstatus lapi-pnsd=$lapi"
+        echo "HPCbootstatus.linux: Reporting lapi-pnsd=$lapi to xcatd on $MASTER!"
+        let COUNT=$COUNT+1
+    fi
+    
+	# Query loadl-schedd
+	hn=`hostname`
+	llsc=`/usr/bin/llrstatus -h $hn -r %sca %scs`
+    if [ "$llsc" != "" ]; then        
+        # Sent message to xcatd
+        updateflag.awk $MASTER 3002 "hpcbootstatus loadl-schedd=$llsc"
+        echo "HPCbootstatus.linux: Reporting loadl-schedd=$llsc to xcatd on $MASTER!"
+        let COUNT=$COUNT+1
+    fi
+	
+	# Query loadl-startd
+	llst=`/usr/bin/llrstatus -h $hn -r %sta %sts`
+    if [ "$llst" != "" ]; then        
+        # Sent message to xcatd
+        updateflag.awk $MASTER 3002 "hpcbootstatus loadl-startd=$llst"
+        echo "HPCbootstatus.linux: Reporting loadl-startd=$llst to xcatd on $MASTER!"
+        let COUNT=$COUNT+1
+    fi
+
+    if [ $COUNT = $ITEMNUM ] || [ $PASSED -gt $TIMEOUT ]; then
+		exit
+	fi
+
+    let PASSED=$PASSED+$INTERVAL
+    sleep $INTERVAL
+    echo "HPCbootstatus.linux: passed $PASSED" 
+	
+done
+

@@ -1,0 +1,175 @@
+#!/usr/bin/perl
+
+use IO::Socket;
+
+# Sample postscript to check appstatus for GPFS,LAPI and LoadL on AIX system
+# Report the appstatus to xcatd on MN.
+
+my $timeout = 300;
+# The number of items to check, currently including:
+# gpfs-daemon, gpfs-quorum, gpfs-filesystem, lapi-pnsd, loadl-schedd, loadl-startd
+my $itemnum = 6;
+my $passed = 0;
+# Set sleep time
+my $interval = 15;
+
+my $master = "192.168.5.128";
+
+my $gpfsd = "hpcbootstatus gpfs-daemon=up";
+my $gpfsq = "hpcbootstatus gpfs-quorum=achieved";
+
+while (1)
+{
+    my $count= 0;
+    
+    # Check gpfs-daemon via port 1191.
+    my $cmd = "netstat -nA|grep 1191";
+    my $rc = `$cmd`;
+
+    if($rc)
+    {
+        # send message to xcatd
+        if (&updateflag($master,$gpfsd) != 0)
+        {
+            print "HPCbootstatus.aix: Failed to report $gpfsd to xcatd on $master!\n";
+        }
+        $count++;
+    }
+
+    # Check gpfs-quorum via /usr/lpp/mmfs/bin/mmgetstate
+    $cmd = "/usr/lpp/mmfs/bin/mmgetstate -s|grep achieved";
+    $rc = `$cmd`;
+    
+    if($rc)
+    {
+        # send message to xcatd
+        if (&updateflag($master,$gpfsq) != 0)
+        {
+            print "HPCbootstatus.aix: Failed to report $gpfsq to xcatd on $master!\n";
+        }
+        $count++;
+    }
+
+    # Check gpfs-filesystem via /usr/sbin/mount
+    $cmd = "cat /tmp/mount |grep mmfs |awk '{print \$2}'";
+    my @fs = `$cmd`;
+    my $new = "";
+
+    if(scalar @fs)
+    {
+        foreach my $line (@fs)
+        {
+            chomp $line;
+            $new .= $line;
+            $new .= "!";
+        }
+
+        # send message to xcatd
+        my $gpfsf = "hpcbootstatus gfsp-filesystem=$new";
+        if (&updateflag($master,$gpfsf) != 0)
+        {
+            print "HPCbootstatus.aix: Failed to report $gpfsq to xcatd on $master!\n";
+        }
+        $count++;
+    }
+    
+    # Check LAPI via lssrc
+    $cmd = "/usr/bin/lssrc -s pnsd |/usr/bin/awk '(NR==2){print \$3}'";
+    $rc = `$cmd`;
+
+    if($rc)
+    {
+        # send message to xcatd
+        chomp $rc;
+        my $lapi = "hpcbootstatus lapi-pnsd=$rc";
+        if (&updateflag($master,$lapi) != 0)
+        {
+            print "HPCbootstatus.aix: Failed to report $lapi to xcatd on $master!\n";
+        }
+        $count++;
+    }
+
+    # Check loadl-schedd via llrstatus
+    $cmd = "/usr/bin/llrstatus -h `hostname` -r %sca %scs";
+    $rc = `$cmd`;
+
+    if($rc)
+    {
+        # send message to xcatd
+        chomp $rc;
+        my $llsc = "hpcbootstatus loadl-schedd=$rc";
+        if (&updateflag($master,$llsc) != 0)
+        {
+            print "HPCbootstatus.aix: Failed to report $llsc to xcatd on $master!\n";
+        }
+        $count++;
+    }
+
+    # Check loadl-startd via llrstatus
+    $cmd = "/usr/bin/llrstatus -h `hostname` -r %sta %sts";
+    $rc = `$cmd`;
+
+    if($rc)
+    {
+        # send message to xcatd
+        chomp $rc;
+        my $llst = "hpcbootstatus loadl-startd=$rc";
+        if (&updateflag($master,$llst) != 0)
+        {
+            print "HPCbootstatus.aix: Failed to report $llst to xcatd on $master!\n";
+        }
+        $count++;
+    }
+
+    # All is done or timeout?
+    if (($count == $itemnum ) || ($passed >= $timeout))
+    {
+        last;
+    }
+
+    $passed += $interval;
+    sleep $interval;
+}
+
+############################################################
+#
+#   updateflag
+#     Tells xCAT on the server about the appstatus. 
+#     e.g. $status = "hpcbootstatus loadl-schedd=1!Avail";
+#
+############################################################
+sub  updateflag {
+    my $server = shift;
+    my $status = shift;
+
+    my $port = "3002";  #by default
+    
+    my $servip = `host $server | awk '{print \$3}'`;
+    chomp($servip);
+    $servip =~ s/,$//; # remove trailing comma
+    my $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servip, PeerPort  => $port, Timeout => 0);
+
+    my $try = 10;
+    while (!$remote && $try-- > 0) {
+        sleep 1;
+        $remote = IO::Socket::INET->new( Proto => "tcp", PeerAddr  => $servip, PeerPort  => $port, Timeout => 0);
+        print "HPCbootstatus.aix: Cannot connect to host \'$servip\'\n";
+    }
+    unless ($remote) { 
+        print "HPCbootstatus.aix: Cannot connect to host \'$servip\'\n";
+	return 1;
+    }
+    $remote->autoflush(1);
+
+    my $line;
+    while (defined ($line = <$remote>)) {
+        chomp $line;
+        if ($line eq "ready") {
+           print $remote "$status\n";
+        } elsif ($line eq "done") {
+	    last;
+        }
+    }
+    close $remote;
+    return 0;
+}
