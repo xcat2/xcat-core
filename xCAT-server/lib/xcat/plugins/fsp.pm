@@ -22,6 +22,8 @@ sub handled_commands {
       getmacs   => 'nodehm:mgt',
       rnetboot  => 'nodehm:mgt',
       rvitals   => 'nodehm:mgt',
+      mkvm      => 'nodehm:mgt',
+      lsvm      => 'nodehm:mgt',
       rscan     => 'nodehm:mgt'
 
   };
