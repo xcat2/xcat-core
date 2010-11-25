@@ -22,7 +22,7 @@ while [ true ]; do
     COUNT=0
 	# Query gpfs-daemon,mmfsd
 	# Check 1191 port
-	port=`netstat -An|grep 1191`
+	port=`netstat -an|grep 1191`
     if [ "$port" != "" ]; then
         # Sent message to xcatd
         updateflag.awk $MASTER 3002 "$gpfsd"
@@ -40,7 +40,7 @@ while [ true ]; do
     fi
 
 	# Query gpfs-filesystem
-	fs=`/usr/sbin/mount |grep mmfs |awk '{print $2}'|tr '\n' '!'`
+	fs=`/bin/mount |grep "type gpfs"|awk '{print $3}'|tr '\n' '!'`
     if [ "$fs" != "" ]; then        
         # Sent message to xcatd
         updateflag.awk $MASTER 3002 "hpcbootstatus gfsp-filesystem=$fs"
@@ -58,7 +58,7 @@ while [ true ]; do
     fi
     
 	# Query loadl-schedd
-	hn=`hostname`
+	hn=`hostname| tr '[A-Z]' '[a-z]'`
 	llsc=`/usr/bin/llrstatus -h $hn -r %sca %scs`
     if [ "$llsc" != "" ]; then        
         # Sent message to xcatd
