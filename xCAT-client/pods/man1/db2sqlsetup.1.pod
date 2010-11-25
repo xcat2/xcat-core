@@ -13,6 +13,8 @@ B<db2sqlsetup> {B<-i>|B<--init>}{<-S> | <-C>} [-o|--setupODBC]  [B<-V>|B<--verbo
 
 B<db2sqlsetup> {B<-o>|B<--setupODBC>} {<-S> | <-C>} [-V|--verbose] 
 
+B<db2sqlsetup> {B<-r>|B<--removal>}{<-S> | <-C>} [B<-V>|B<--verbose>]
+
 =head1 DESCRIPTION
 
 B<db2sqlsetup> - Sets up the IBM DB2 database for xCAT to use. The db2sqlsetup script is run on the Management Node, after the DB2 Server code has been installed, to setup the DB2 Server (-S). The db2sqlsetup script is run on each Service Node, after the DB2 Client code has been installed, to setup the DB2 Client (-C). The xcatd daemon will be stopped during migration on the MN.  No xCAT commands should be run during the init process, because we will be migrating the xCAT database to DB2 and restarting the xcatd daemon as well as the DB2 daemon. For full information on all the steps that will be done reference 
@@ -45,6 +47,10 @@ Displays verbose messages.
 =item B<-i|--init>
 
 The init option is used to setup an installed DB2 database on AIX or Linux (p-Series) so that xCAT can use the database. This must be combined with either the -S or -C flag to indicate whether we are setting up the Server or the Client. With the -S flag, it involves creating the xcatdb database, the xcatdb instance id, allowing access to the xcatdb database by the Management Node. It also backs up the current xCAT database and restores it into the newly setup xcatdb DB2 database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the DB2 database and restarts the xcatd daemon using the database. 
+
+=item B<-r|--removal>
+
+The removal option is used to remove DB2 from xCAT and uninstall DB2 from either management node or service node. This must be combined with either the -S or -C flag. It not only remove the configuration of DB2 but also un-install DB2.
 
 =item B<-S|-C>
 
@@ -83,5 +89,17 @@ B<db2sqlsetup> I<-o> I<-S>
 To setup the ODBC for  DB2 xcatdb database access, on the SN :
 
 B<db2sqlsetup> I<-o> I<-C>
+
+=item *
+
+To remove DB2 from xCAT MN:
+
+B<db2sqlsetup> I<-r> I<-S>
+
+=item *
+
+To remove DB2 from xCAT MN:
+
+B<db2sqlsetup> I<-r> I<-C>
 
 =back
