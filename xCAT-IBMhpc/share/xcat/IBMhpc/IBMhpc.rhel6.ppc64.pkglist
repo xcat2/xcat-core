@@ -7,6 +7,7 @@ rsh-server
 at.ppc64
 sed.ppc64
 ksh.ppc64
+sudo.ppc64
 
 compat-libstdc++-33.ppc
 compat-libstdc++-33.ppc64
