@@ -1228,9 +1228,9 @@ sub setupODBC
     } else {
         $sharedlib="/var/lib/db2/sqllib/lib/libdb2o.so";
     }
-    $cmd = "fgrep -i  driver $odbcinstfile ";
+    $cmd = "fgrep -i  DB2 $odbcinstfile ";
     xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)    # then driver entry not there
+    if ($::RUNCMD_RC != 0)    # then DB2 entry not there
     {
         my $entry =
           "[DB2]\nDescription = ODBC for DB2\nDriver      = $sharedlib";
@@ -1278,7 +1278,7 @@ sub setupODBC
     }
 
     # setup the Database and instance Name in the  odbc.ini file
-    $cmd = "fgrep -i  XCATDB $odbcfile";
+    $cmd = "fgrep -i  DB2 $odbcfile";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)    # then xcat entry not there
     {
@@ -1331,7 +1331,7 @@ sub setupODBC
     }
     else
     {    # entry already there
-        $message = "$rootodbcfile already configured, will not change.";
+        $message = "$rootodbcfile already configured, will not change. Check to see if rootid and password are correct for DB2";
         xCAT::MsgUtils->message("I", "$message");
     }
 

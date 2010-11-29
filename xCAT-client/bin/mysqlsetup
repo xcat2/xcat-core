@@ -1451,7 +1451,7 @@ sub setupODBC
 
     # setup the odbcinst.ini file
     my $sharedlib = $rpmoutput[0];
-    $cmd = "fgrep -i  driver $odbcinstfile ";
+    $cmd = "fgrep -i  MySQL $odbcinstfile ";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)    # then driver entry not there
     {
@@ -1473,7 +1473,7 @@ sub setupODBC
     }
 
     # setup the DSN odbc.ini file
-    $cmd = "fgrep -i  XCATDB $odbcfile";
+    $cmd = "fgrep -i MySQL $odbcfile";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)    # then xcat entry not there
     {
@@ -1528,7 +1528,7 @@ sub setupODBC
     }
     else
     {    # entry already there
-        $message = "$rootodbcfile already configured, will not change.";
+        $message = "$rootodbcfile already configured, will not change. Make sure the userid and password are correct for MySQL";
         xCAT::MsgUtils->message("I", "$message");
     }
 
