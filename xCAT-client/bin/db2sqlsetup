@@ -1747,17 +1747,13 @@ sub remove
     if ($::osname eq 'AIX')
     {
         $cmd = "rmgroup xcatdb";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC != 0)
+        {
+   	        my $message = "can't remove group xcatdb \n";
+   	        xCAT::MsgUtils->message("E", "$message");
+        }  
     }
-    else
-    {
-        $cmd = "groupdel xcatdb";
-    }    
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)
-    {
-   	    my $message = "can't remove group xcatdb \n";
-   	    xCAT::MsgUtils->message("E", "$message");
-    }  
    
    
     $cmd = "rm -rf ";
