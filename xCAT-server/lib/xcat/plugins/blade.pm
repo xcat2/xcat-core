@@ -3541,7 +3541,9 @@ sub telnetcmds {
         next;
       }
       my ($command,$value) = split /=/,$cmd;
-      if (grep(/^$command$/,@tcmds)) {
+
+      #$command =~ /^swnet/) allows for swnet1, swnet2, etc.
+      if (grep(/^$command$/,@tcmds) || $command =~ /^swnet/) {
         $handled{$command} = $value;
         next;
       }
@@ -3584,7 +3586,7 @@ sub telnetcmds {
     if (/^snmpcfg/)     { $result = snmpcfg($t,$handled{$_},$user,$pass,$mm); }
     elsif (/^sshcfg$/)  { $result = sshcfg($t,$handled{$_},$user,$mm); }
     elsif (/^network$/) { $result = network($t,$handled{$_},$mpa,$mm); }
-    elsif (/^swnet$/)   { $result = swnet($t,$handled{$_}); }
+    elsif (/^swnet/)   { $result = swnet($t,$_,$handled{$_}); }
     elsif (/^pd1|pd2$/) { $result = pd($t,$_,$handled{$_}); }
     elsif (/^textid$/)  { $result = mmtextid($t,$mpa,$handled{$_},$mm); }
     elsif (/^network_reset$/) { $result = network($t,$handled{$_},$mpa,$mm,1); }
@@ -3710,12 +3712,21 @@ sub network {
 sub swnet {
 
   my $t = shift;
+  my $command = shift;
   my $value = shift;
   my @result;
   my ($ip,$gateway,$mask);
 
+  #default is switch[1].  if the user specificed a number, use it instead
+  my $switch = "switch[1]";
+  if ($command !~ /^swnet$/) {
+    my $switchNum = $command;
+    $switchNum =~ s/swnet//;
+    $switch = "switch[$switchNum]";
+  }
+
   if (!$value) {
-    my @data = $t->cmd("ifconfig -T system::switch[1]");
+    my @data = $t->cmd("ifconfig -T system::$switch");
     my $s = join('',@data);
     if ($s =~ /-i\s+(\S+)/) { $ip = $1; }
     if ($s =~ /-g\s+(\S+)/) { $gateway = $1; }
@@ -3723,7 +3734,7 @@ sub swnet {
   }
   else {
     my $cmd =
-       "ifconfig -em disabled -ep enabled -pip enabled -T system:switch[1]";
+       "ifconfig -em disabled -ep enabled -pip enabled -T system:$switch";
     ($ip,$gateway,$mask) = split /,/,$value;
 
     if (!$ip and !$gateway and !$mask) {
