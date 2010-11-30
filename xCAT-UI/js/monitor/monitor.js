@@ -68,7 +68,7 @@ function loadMonitorPage() {
 		+ "of the IBM's Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive " + "clustering environment for AIX and LINUX.<li>";
 	items += "<li><a href='#' name='gangliamon'>Ganglia Monitor</a> : Ganglia is a scalable distributed "
 		+ "monitoring system for high-performance computing systems such as clusters and Grids.<li>";
-	items += "<li><a href='#' name='pcpmon'>PCP Monitor</a> : <li>";
+	items += "<li><a href='#' name='pcpmon'>PCP Monitor</a> : Under construction.<li>";
 	monitorList.append(items);
 
 	// Open new tab for monitor tool
