@@ -1500,6 +1500,7 @@ sub remove
 {
 	my $cmd;
 	my @output;
+	my $error = 0;
 	#see if DB2 is installed
 	if (!(-e ($::installdb2dir)))
     {
@@ -1529,6 +1530,7 @@ sub remove
             	if ($::RUNCMD_RC !=0)
             	{
             		my $message = "can't make a directory $backupdic, try again";
+            		$error += 1;
             		xCAT::MsgUtils->message("E", "$message");
             		$backupdic = "/xCATbackupDB";
             		xCAT::Utils->runcmd($cmd, -1);
@@ -1536,6 +1538,7 @@ sub remove
             		{
             			my $message = "fail again, can not make a direcorty $backupdic";
             			xCAT::MsgUtils->message("E", "$message");
+            			$error += 1;
             			exit(1);
             		}
             	}
@@ -1556,18 +1559,20 @@ sub remove
             	    if ($::RUNCMD_RC !=0)
             	    {
             	    	my $message = "can't start xcatd";
+            	    	$error += 1;
             	    	xCAT::MsgUtils->message("E", "$message");
             	    	exit(1);
             	    }
                 } 	        	
             	
             	
-            	my $cmd = "dumpxCATdb -p $backupdic";
+            	$cmd = "dumpxCATdb -p $backupdic";
                 xCAT::Utils->runcmd($cmd, -1);        	
             	if ($::RUNCMD_RC !=0)
             	{        	
             		my $message = "can't dump xcatdb";
-            		xCAT::MsgUtils->message("E", "$message");        			
+            		xCAT::MsgUtils->message("E", "$message");  
+            		$error += 1;      			
             	    exit(1);
             	}           	            	
             }
@@ -1585,6 +1590,7 @@ sub remove
             {
             	my $message = "can't stop xcatd";
             	xCAT::MsgUtils->message("E", "$message");
+            	$error += 1;
             	exit(1);
             }
                 	
@@ -1595,6 +1601,7 @@ sub remove
             {
             	my $message = "can't remove cfgloc file";
             	xCAT::MsgUtils->message("E", "$message");
+            	$error += 1;
             	exit(1);
             }
                 	
@@ -1606,6 +1613,7 @@ sub remove
                 {     	
                 	my $message = "can't restore xcat database";
                 	xCAT::MsgUtils->message("E", "$message");
+                	$error += 1;
                 	exit(1);
                 }
                 
@@ -1625,6 +1633,7 @@ sub remove
             {
             	my $message = "can't start xcatd";
             	xCAT::MsgUtils->message("E", "$message");
+            	$error += 1;
             }
 
             xCAT::MsgUtils->message("I", "Have remove DB2 from xCAT. \n");              
@@ -1641,14 +1650,16 @@ sub remove
         if ($rc != 0)
         {
             xCAT::MsgUtils->message("W", " $cmd failed. \n");
+            $error += 1;
             #exit(1);
         }
         
-        my $cmd = "db2 drop database xcatdb";
+        $cmd = "db2 drop database xcatdb";
         $rc = &rundb2cmd($cmd);
         if ($rc != 0)
         {
             xCAT::MsgUtils->message("W", " $cmd failed.\n");
+            $error += 1;
             #exit(1);
         }
         else
@@ -1656,11 +1667,12 @@ sub remove
             xCAT::MsgUtils->message("W", "db2 stop \n.");
         }
         
-        my $cmd = "db2stop";
+        $cmd = "db2stop";
         $rc = &rundb2cmd($cmd);
         if ($rc != 0)
         {
             xCAT::MsgUtils->message("W", " $cmd failed. \n");
+            $error += 1;
             #exit(1);
         } 
         
@@ -1684,6 +1696,7 @@ sub remove
     {
    	     my $message = "there is still instance, can't uninstall DB2\n";
    	     xCAT::MsgUtils->message("E", "$message");
+   	     $error += 1;
     }    
     else
     {
@@ -1695,6 +1708,7 @@ sub remove
         {
    	        my $message = "can't uninstall DB2 \n";
    	        xCAT::MsgUtils->message("E", "$message");
+   	        $error += 1;
    	        #exit(1);
         }        	                                 
         xCAT::MsgUtils->message("I", "Remove DB2 successfully, begin to cleanup the enviroment. \n");
@@ -1714,11 +1728,10 @@ sub remove
         foreach (<FH>)
         {
         	my $line = $_;
-            if($line =~ /xcatdb/)
+            if($line !~ /xcatdb/)
             {
-                $line =~ s/$line/# $line/;
+                print DH $line;   
              }
-             print DH $line;
         }
         close(FH);
         close(DH);
@@ -1742,6 +1755,7 @@ sub remove
     {
    	    my $message = "can't remove user xcatdb \n";
    	    xCAT::MsgUtils->message("E", "$message");
+   	    $error += 1;
     }                 	
 
     if ($::osname eq 'AIX')
@@ -1752,6 +1766,7 @@ sub remove
         {
    	        my $message = "can't remove group xcatdb \n";
    	        xCAT::MsgUtils->message("E", "$message");
+   	        $error += 1;
         }  
     }
    
@@ -1763,6 +1778,7 @@ sub remove
     {
    	    my $message = "can't remove the directory $::installdb2dir  /db2/V9.7 \n";
    	    xCAT::MsgUtils->message("E", "$message");
+   	    $error += 1;
     }
    
     $cmd = "rm -rf /var/lib/db2/*";	
@@ -1771,43 +1787,87 @@ sub remove
     {
    	    my $message = "can't remove the directory /var/lib/db2 \n*";
    	    xCAT::MsgUtils->message("E", "$message");
+   	    $error += 1;
     }
    
     my $file2;
     if ($::osname eq 'AIX')
     {
     	$file2 = "/etc/profile";
+        open(FH,"+<$file2") or die "cannot open file $file2 \n";   
+        $cmd = "touch /etc/tmp.back";
+        xCAT::Utils->runcmd($cmd, -1);
+        open(DH,"+</etc/tmp.back") or die "cannot open file tmp.back \n";  
+        foreach (<FH>)
+        {
+        	my $line = $_;
+            if(($line !~ /xcatdb/) and ($line !~ /EXTSHM/))
+            {
+                print DH $line;
+             }
+        }
+        close(FH);
+        close(DH);
+        $cmd = "mv /etc/tmp.back $file2";
+        xCAT::Utils->runcmd($cmd, -1);      	
     }
     else
     {   
     	$file2 = "/etc/profile.d/xcat.sh";
+        $cmd = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcat.sh";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC == 0)   
+        { 	
+            open(FH,"+<$file2") or die "cannot open file $file2 \n";   
+            $cmd = "touch /etc/tmp.back";
+            xCAT::Utils->runcmd($cmd, -1);
+            open(DH,"+</etc/tmp.back") or die "cannot open file tmp.back \n";  
+            foreach (<FH>)
+            {
+            	my $line = $_;
+                if(($line !~ /xcatdb/) and ($line !~ /EXTSHM/))
+                {
+                    print DH $line;
+                 }
+            }
+            close(FH);
+            close(DH);
+            $cmd = "mv /etc/tmp.back $file2";
+            xCAT::Utils->runcmd($cmd, -1);  
+        }  
+        
+    	$file2 = "/etc/profile.d/xcat.csh";
+        $cmd = "egrep -i \"DB2INSTANCE\" /etc/profile.d/xcat.csh";
+        xCAT::Utils->runcmd($cmd, -1);
+        if ($::RUNCMD_RC == 0)   
+        { 	
+            open(FH,"+<$file2") or die "cannot open file $file2 \n";   
+            $cmd = "touch /etc/tmp.back";
+            xCAT::Utils->runcmd($cmd, -1);
+            open(DH,"+</etc/tmp.back") or die "cannot open file tmp.back \n";  
+            foreach (<FH>)
+            {
+            	my $line = $_;
+                if(($line !~ /xcatdb/) and ($line !~ /EXTSHM/))
+                {
+                    print DH $line;
+                 }
+            }
+            close(FH);
+            close(DH);
+            $cmd = "mv /etc/tmp.back $file2";
+            xCAT::Utils->runcmd($cmd, -1);  
+        }           	
     }  
     
-    
-    open(FH,"+<$file2") or die "cannot open file $file2 \n";   
-    $cmd = "touch /etc/tmp.back";
-    xCAT::Utils->runcmd($cmd, -1);
-    open(DH,"+</etc/tmp.back") or die "cannot open file tmp.back \n";  
-    foreach (<FH>)
-    {
-    	my $line = $_;
-        if(($line =~ /xcatdb/) or ($line =~ /EXTSHM/))
-        {
-            $line =~ s/$line/# $line/;
-         }
-         print DH $line;
-    }
-    close(FH);
-    close(DH);
-    $cmd = "mv /etc/tmp.back $file2";
-    xCAT::Utils->runcmd($cmd, -1);   
-           
     #$cmd = "cat $file2 | sed s/.*xcatdb.*// > $file2";
     #xCAT::Utils->runcmd($cmd, -1);
     #$cmd = "cat $file2 | sed s/.*EXTSHM.*// > $file2";        
     #xCAT::Utils->runcmd($cmd, -1);
         
-    xCAT::MsgUtils->message("I", "Cleanup completely finished. \n");        
+    xCAT::MsgUtils->message("I", "Cleanup completely finished. $error errors have got. \n");        
     
 }
+
+
 
