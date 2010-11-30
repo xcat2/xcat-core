@@ -8186,7 +8186,7 @@ sub mkdsklsnode
                     {
                         my $imgsrdir = xCAT::InstUtils->get_nim_attr_val(
                                                         $imagehash{$osimg}{'shared_root'}, 
-                                                        "location", $callback, "", $subreq);
+                                                        "location", $callback, $Sname, $subreq);
                         $hostfile = "$imgsrdir/etc/.client_data/hosts.$snd";
                         $filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$snd";
                     }
@@ -8194,7 +8194,7 @@ sub mkdsklsnode
                     {
                         my $imgrootdir = xCAT::InstUtils->get_nim_attr_val(
                                                           $imagehash{$osimg}{'root'},
-                                                          "location", $callback, "", $subreq);
+                                                          "location", $callback, $Sname, $subreq);
                         $hostfile = "$imgrootdir/$snd/etc/hosts";
                         $filesystemsfile = "$imgrootdir/$snd/etc/filesystems";
                     }
