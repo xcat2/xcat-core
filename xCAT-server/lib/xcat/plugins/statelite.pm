@@ -213,6 +213,19 @@ sub process_request {
 
     my $listNew = $synclist[0]; 
 
+    # the directory/file in litefile table must be the absolute path ("/***")
+    foreach my $entry (@$listNew) {
+        my @tmp = split (/\s+/, $entry);
+        unless ($tmp[2] =~ m{^/}) {
+            $callback->({error=>[qq{ $tmp[2] is not one absolute path. }], errorcode=>[1]});
+            return;
+        }
+        if ($tmp[1] =~ m{con} and $tmp[2] =~ m{/$}) {
+            $callback->({error=>[qq{ $tmp[2] is directory, don't use "con" as its option }], errorcode=>[1]});
+            return;
+        }
+    }
+
     my %hashNew = ();
     if ( parseLiteFiles($listNew, \%hashNew) ) {
         $callback->({error=>["parseLiteFiles failed for listNew!"]});
@@ -224,6 +237,7 @@ sub process_request {
     foreach my $entry (keys %hashNew) {
         my @tmp = split (/\s+/, $entry);
         my $f = $tmp[1];
+
         if ($hashNew{$entry}) {
             if ( $tmp[0] =~ m/ro$/  or $tmp[0] =~ m/con$/) {
                 $callback->({error=>[qq{the directory "$f" should not be with "ro" or "con" as its option}], errorcode=>[1]});
