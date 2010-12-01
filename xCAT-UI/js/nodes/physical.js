@@ -241,7 +241,32 @@ function createGraphical(bpa, fsp, area){
 	
 	$('.fspDiv2, .fspDiv4, .fspDiv42').bind('click', function(){
 		var fspName = $(this).attr('value');
-		showSelectDialog(fspList[fspName]['children']);
+		var selectCount = 0;
+		for (var lparIndex in fspList[fspName]['children']){
+			var lparName = fspList[fspName]['children'][lparIndex];
+			if (selectNode[lparName]){
+				selectCount ++;
+			}
+		}
+		
+		//all the lpars are selected, so unselect nodes
+		if (selectCount == fspList[fspName]['children'].length){
+			for (var lparIndex in fspList[fspName]['children']){
+				var lparName = fspList[fspName]['children'][lparIndex];
+				delete selectNode[lparName];
+				$('#graphTable [name=' + lparName + ']').css('border-color', '#BDBDBD');
+			}
+		}
+		//not select all lpars on the cec, so add all lpars into selectNode Hash.
+		else{
+			for (var lparIndex in fspList[fspName]['children']){
+				var lparName = fspList[fspName]['children'][lparIndex];
+				selectNode[lparName] = 1;
+				$('#graphTable [name=' + lparName + ']').css('border-color', 'aqua');
+			}
+		}
+		
+		updateSelectNodeDiv();
 	});
 }
 
