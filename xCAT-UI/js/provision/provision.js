@@ -38,11 +38,10 @@ function loadProvisionPage() {
 
 	// Create info bar
 	var infoBar = createInfoBar('Provision or re-provision a node on a selected platform');
-	$('#content').append(infoBar);
-
-	// Create provision form
-	provForm = $('<div class="form"></div>');
-	provForm.append(infoBar);
+	
+	// Create provision page
+	var provPg = $('<div class="form"></div>');
+	provPg.append(infoBar);
 
 	// Create provision tab
 	var tab = new Tab();
@@ -65,7 +64,7 @@ function loadProvisionPage() {
 	hwList.append(ivm);
 	hwList.append(fsp);
 	hwList.append(zvm);
-	provForm.append(hwList);
+	provPg.append(hwList);
 
 	/**
 	 * Ok
@@ -113,7 +112,13 @@ function loadProvisionPage() {
 		tab.select(newTabId);
 		plugin.loadProvisionPage(newTabId);
 	});
-	provForm.append(okBtn);
+	provPg.append(okBtn);
 
-	tab.add('provisionTab', 'Provision', provForm, false);
+	// Add provision tab
+	tab.add('provisionTab', 'Provision', provPg, false);
+	
+	// Add image tab
+	var loader = $('<center></center>').append(createLoader(''));
+	tab.add('imagesTab', 'Images', loader, false);
+	loadImagesPage();
 }

@@ -363,8 +363,6 @@ function loadNodes(data) {
 		var checkBx = '<input type="checkbox" name="' + node + '"/>';
 		// Open node onclick
 		var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
-		// Left align node link
-		nodeLink.css('text-align', 'left');		
 		// Push in checkbox, node link, ping, and power
 		row.push(checkBx, nodeLink, '', '');
 
@@ -632,6 +630,11 @@ function loadNodes(data) {
 	$('#nodesDataTable tbody tr td:nth-child(3)').css('min-width', '60px');
 	$('#nodesDataTable tbody tr td:nth-child(4)').css('min-width', '60px');
 	
+	// Center align power, ping, and comments
+	$('#nodesDataTable tbody tr td:nth-child(3)').css('text-align', 'center');
+	$('#nodesDataTable tbody tr td:nth-child(4)').css('text-align', 'center');
+	$('#nodesDataTable tbody tr td:nth-child(5)').css('text-align', 'center');
+	
 	// Instead refresh the ping status and power status
 	pingCol.bind('click', function(event) {
 		refreshPingStatus(group);
@@ -640,7 +643,7 @@ function loadNodes(data) {
 	powerCol.bind('click', function(event) {
 		refreshPowerStatus(group);
 	});
-		
+	
 	/**
 	 * Enable editable columns
 	 */
@@ -1202,7 +1205,7 @@ function powerNode(node, power2) {
  * @return Nothing
  */
 function loadDeletePage(tgtNodes) {
-	// Get datatable
+	// Get nodes tab
 	var myTab = getNodesTab();
 
 	// Generate new tab ID
@@ -1993,7 +1996,7 @@ function showChdefOutput(data) {
 	if (!info.length) {
 		// Create info bar if one does not exist
 		info = createInfoBar('');
-		$('#nodesTab').append(info);
+		$('#' + tabID).append(info);
 	}
 		
 	// Go through output and append to paragraph
