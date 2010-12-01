@@ -17,6 +17,8 @@ I:bos.sysmgt.nim.master
 # needed on service nodes to support system dumps
 #		for diskless compute nodes
 #I:devices.tmiscsw.rte
+#I:bos.sysmgt.nim.spot
+#I:bos.rte.serv_aid
 
 # RPMs
 # using Perl 5.8.8
