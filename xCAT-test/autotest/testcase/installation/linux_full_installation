@@ -22,8 +22,8 @@ cmd:makedhcp -a
 check:rc==0
 cmd:service dhcpd restart
 check:rc==0
-cmd:cat /var/lib/dhcpd/dhcpd.leases| grep lpar5
-check:output=~lpar5
+cmd:cat /var/lib/dhcpd/dhcpd.leases| grep $$CN
+check:output=~$$CN
 cmd:copycds $$ISO
 check:rc==0
 cmd:nodeset $$CN install
