@@ -2,6 +2,7 @@ var globalErrNodes;
 var globalNodesDetail;
 var globalAllNodesNum = 0;
 var globalFinishNodesNum = 0;
+var globalSelectedAttributes = '';
 
 function loadRmcMon(){
 	//find the rmcmon tab
@@ -95,6 +96,12 @@ function loadRmcMonConfigure(){
 		});
 	});
 	
+	//add the attributes button
+	var attrButton = createButton('Attribute Select');
+	rmcmonCfgDiv.append(attrButton);
+	attrButton.bind('click',function(){
+		showConfigureDia();
+	});
 	//add the cancel button
 	var cancelButton = createButton('Cancel');
 	rmcmonCfgDiv.append(cancelButton);
@@ -193,8 +200,16 @@ function rmcWorkingCheck(){
 }
 
 function loadRmcMonShow(){
-	$('#rmcMonStatus').empty().append("Getting monitoring Data.");
+	$('#rmcMonStatus').empty().append("Getting monitoring Data(This step may take a long time).");
 	$('#rmcMonStatus').append(createLoader());
+	
+	//init the selected Attributes string
+	if ($.cookie('rmcmonattr')){
+		globalSelectedAttributes = $.cookie('rmcmonattr');
+	}
+	else{
+		globalSelectedAttributes = 'PctTotalTimeIdle,PctTotalTimeWait,PctTotalTimeUser,PctTotalTimeKernel,PctRealMemFree';
+	}
 	
 	//load the rmc status summary
 	$.ajax({
@@ -203,7 +218,7 @@ function loadRmcMonShow(){
 		data : {
 			cmd : 'webrun',
 			tgt : '',
-			args : 'rmcshow;summary',
+			args : 'rmcshow;summary;' + globalSelectedAttributes,
 			msg : ''
 		},
 
@@ -219,7 +234,7 @@ function loadRmcMonShow(){
 		data : {
 			cmd : 'webrun',
 			tgt : '',
-			args : 'rmcshow;lpar',
+			args : 'rmcshow;lpar;' + globalSelectedAttributes,
 			msg : ''
 		},
 		
@@ -298,7 +313,7 @@ function parseRmcData(returnData){
 			data : {
 				cmd : 'webrun',
 				tgt : '',
-				args : 'rmcshow;' + nodeName,
+				args : 'rmcshow;' + nodeName + ';' + globalSelectedAttributes,
 				msg : nodeName
 			},
 			
@@ -517,4 +532,84 @@ function sortName(x, y){
 	else{
 		return -1;
 	}
+}
+
+function showConfigureDia(){
+	var diaDiv = $('<div class="tab" title="Monitor Attributes Select"></div>');
+	var tempArray = globalSelectedAttributes.split(',');
+	var selectedAttrHash = new Object();
+	var wholeAttrArray = new Array('PctTotalTimeIdle','PctTotalTimeWait','PctTotalTimeUser','PctTotalTimeKernel','PctRealMemFree');
+	
+	//init the selectedAttrHash
+	for (var i in tempArray){
+		selectedAttrHash[tempArray[i]] = 1;
+	}
+	var attrTable = $('<table id="rmcAttrTable"></table>');
+	for (var i in wholeAttrArray){
+		var name = wholeAttrArray[i];
+		var tempString = '<tr>';
+		if(selectedAttrHash[name]){
+			tempString += '<td><input type="checkbox" name="' + name + '" checked="checked"></td>';
+		}
+		else{
+			tempString += '<td><input type="checkbox" name="' + name + '"></td>';
+		}
+		
+		tempString += '<td>' + name + '</td></tr>';
+		attrTable.append(tempString);		
+	}
+		
+	var selectAllButton = createButton('Select All');
+	selectAllButton.bind('click', function(){
+		$('#rmcAttrTable input[type=checkbox]').attr('checked', true);
+	});
+	diaDiv.append(selectAllButton);
+	
+	var unselectAllButton = createButton('Unselect All');
+	unselectAllButton.bind('click', function(){
+		$('#rmcAttrTable input[type=checkbox]').attr('checked', false);
+	});
+	diaDiv.append(unselectAllButton);
+	
+	diaDiv.append(attrTable);
+	
+	diaDiv.dialog({
+		modal: true,
+		width: 400,
+		close: function(event, ui){
+				$(this).remove();
+		},
+		buttons: {
+			cancel : function(){
+			 			$(this).dialog('close');
+		 			 },
+			ok : function(){
+		 			//collect all attibutes' name
+		 			var str = '';
+		 			$('#rmcAttrTable input:checked').each(function(){
+		 				if('' == str){
+		 					str += $(this).attr('name');
+		 				}
+		 				else{
+		 					str += ',' + $(this).attr('name');
+		 				}
+		 			});
+		 			
+		 			//if no attribute is selected, alert the information.
+		 			if ('' == str){
+		 				alert('Please select one attribute at lease!');
+		 				return;
+		 			}
+		 			
+		 			//new selected attributes is different from the old, update the cookie and reload this tab
+		 			if ($.cookie('rmcmonattr') != str){
+		 				$.cookie('rmcmonattr', str, {path : '/xcat', expires : 10});
+		 				//todo reload the tab
+		 				$('#rmcmon').empty();
+		 				loadRmcMon();
+		 			}
+			     	$(this).dialog('close');
+				 }
+		}
+	});
 }
