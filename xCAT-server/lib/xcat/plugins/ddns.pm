@@ -2,6 +2,7 @@ package xCAT_plugin::ddns;
 use strict;
 use Getopt::Long;
 use Net::DNS;
+use File::Path;
 use xCAT::Table;
 use Sys::Hostname;
 use MIME::Base64;
@@ -11,6 +12,8 @@ use Fcntl qw/:flock/;
 #This is a rewrite of DNS management using nsupdate rather than direct zone mangling
 
 my $callback;
+my $service="named";
+
 
 sub handled_commands
 {
@@ -259,24 +262,24 @@ sub process_request {
                 $ctx->{dnsupdaters} = \@nservers;
         }
         if ($zapfiles) { #here, we unlink all the existing files to start fresh
-            system("/sbin/service named stop"); #named may otherwise hold on to stale journal filehandles
-            unlink "/etc/named.conf";
-            foreach (</var/named/db.*>) {
-                unlink $_;
-            }
-            foreach (</var/lib/named/db.*>) {
+            system("/sbin/service $service stop"); #named may otherwise hold on to stale journal filehandles
+            my $conf = get_conf();
+            unlink $conf;
+            my $DBDir = get_dbdir();
+            foreach (<$DBDir/db.*>) {
                 unlink $_;
             }
         }
         #We manipulate local namedconf
         $ctx->{dbdir} = get_dbdir();
+        $ctx->{zonesdir} = get_zonesdir();
         chmod 0775, $ctx->{dbdir}; # assure dynamic dns can actually execute against the directory
         update_namedconf($ctx); 
         update_zones($ctx);
         if ($ctx->{restartneeded}) {
-            xCAT::SvrUtils::sendmsg("Restarting named", $callback);
-            system("/sbin/service named start");
-            system("/sbin/service named reload");
+            xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
+            system("/sbin/service $service start");
+            system("/sbin/service $service reload");
             xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
         }
     } else {
@@ -289,13 +292,74 @@ sub process_request {
     add_or_delete_records($ctx);
 }
 
+sub get_zonesdir {
+    my $ZonesDir = get_dbdir();
+
+    my $sitetab = xCAT::Table->new('site');
+
+    unless ($sitetab)
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "No site table found.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    }
+
+    if ($sitetab) {
+        ($ref) = $sitetab->getAttribs({key => 'bindzones'}, 'value');
+        if ($ref and $ref->{value}) {
+            $ZonesDir= $ref->{value};
+        }
+    }
+
+    return "$ZonesDir";
+}
+
+sub get_conf {
+    my $conf="/etc/named.conf";
+
+    my $sitetab = xCAT::Table->new('site');
+
+    unless ($sitetab)
+    {
+        my $rsp = {};
+        $rsp->{data}->[0] = "No site table found.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    }
+
+    if ($sitetab) {
+        ($ref) = $sitetab->getAttribs({key => 'bindconf'}, 'value');
+        if ($ref and $ref->{value}) {
+            $conf= $ref->{value};
+        }
+    }
+
+    return "$conf";
+}
+
 sub get_dbdir {
-    if (-d "/var/named") {
+    my $DBDir;
+
+    my $sitetab = xCAT::Table->new('site');
+    unless ($sitetab) {
+        my $rsp = {};
+        $rsp->{data}->[0] = "No site table found.\n";
+        xCAT::MsgUtils->message("E", $rsp, $callback, 1);
+    }
+
+    if ($sitetab) {
+        (my $ref) = $sitetab->getAttribs({key => 'binddir'}, 'value');
+        if ($ref and $ref->{value}) {
+            $DBDir = $ref->{value};
+        }
+    }
+
+    if ( -d "$DBDir" ) {
+        return "$DBDir"
+    } elsif (-d "/var/named") {
         return "/var/named/";
     } elsif (-d "/var/lib/named") {
         return "/var/lib/named/";
     } else {
-        use File::Path;
         mkpath "/var/named/";
         chown(scalar(getpwnam('named')),scalar(getgrnam('named')),"/var/named");
         return "/var/named/";
@@ -385,7 +449,7 @@ sub update_zones {
 
 sub update_namedconf {
     my $ctx = shift;
-    my $namedlocation = '/etc/named.conf';
+    my $namedlocation = get_conf();
     my $nameconf;
     my @newnamed;
     my $gotoptions=0;
@@ -506,7 +570,7 @@ sub update_namedconf {
         }
     }
     unless ($gotoptions) {
-        push @newnamed,"options {\n","\tdirectory \"".$ctx->{dbdir}."\";\n";
+        push @newnamed,"options {\n","\tdirectory \"".$ctx->{zonesdir}."\";\n";
         if ($ctx->{forwarders}) {
             push @newnamed,"\tforwarders {\n";
             foreach (@{$ctx->{forwarders}}) {
