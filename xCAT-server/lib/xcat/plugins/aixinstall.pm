@@ -8178,7 +8178,7 @@ sub mkdsklsnode
                 # if nfsserver is set to the service node itself, nothing needs to do
                 if(!xCAT::InstUtils->is_me($nfshash->{$snd}->[0]->{'nfsserver'}))
                 {
-                    my $osimg = $imagehash{$snd}{'profile'};
+                    my $osimg = $nodeosi{$snd};
                     #shared_root configuration
                     my $hostfile;
                     my $filesystemsfile;
