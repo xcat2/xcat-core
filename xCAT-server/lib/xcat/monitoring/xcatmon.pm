@@ -411,22 +411,22 @@ sub getDescription {
     xcatmon provides node status monitoring using fping on AIX and nmap on Linux. 
     It also provides application status monitoring. The status and the appstatus 
     columns of the nodelist table will be  updated periodically  with the latest 
-    status values for the nodes.   Use  command  'monstart xcatmon -n'  to start 
-    monitoring. 
+    status values for the nodes.   Use  command 'monadd xcatmon -n' and then 
+    'monstart xcatmon'  to start monitoring. 
   Settings:
-    ping - interval:  the number of minutes between each fping operation. 
+    ping-interval:  the number of minutes between each fping operation. 
         The default value is 3.
-    apps -- a list of comma separated application names whose status will be queried. 
+    apps: a list of comma separated application names whose status will be queried. 
         For how to get the status of each app, look for app name in the key filed 
         in a different row.
-    port -- the application daemon port number, if not specified, use internal list, 
+    port: the application daemon port number, if not specified, use internal list, 
         then /etc/services.
-    group -- the name of a node group that needs to get the application status from.
+    group:  the name of a node group that needs to get the application status from.
          If not specified, assume all the nodes in the nodelist table. 
          To specify more than one groups, use group=a,group=b format.
-    cmd -- the command that will be run locally on mn or sn.
-    lcmd -- the command that will be run locally on the mn only.
-    dcmd -- the command that will be run distributed on the nodes using xdsh.
+    cmd: the command that will be run locally on mn or sn.
+    lcmd: the command that will be run locally on the mn only.
+    dcmd: the command that will be run distributed on the nodes using xdsh.
 
        For commands specified by 'cmd' and 'lcmd', the input of is a list of comma 
        separated node names, the output must be in the following format:
