@@ -713,37 +713,38 @@ table a:hover {
 	height: 5px;
 }
 
-.discoverstep{
-	width : 200px;
+/*--------------- Discovery section ---------------*/
+.discoverstep {
+	width: 200px;
 	vertical-align: top;
 	float: left;
 	position: relative;
 	margin: 15px 0px 15px 15px;
 	overflow: auto;
-	background-color : #CCCCFF;
-	padding : 10px 0px 0px 5px;
+	background-color: #CCCCFF;
+	padding: 10px 0px 0px 5px;
 	-moz-border-radius: .5em;
 	-webkit-border-radius: .5em;
 	border-radius: .5em;
 }
 
-.discoverstep span{
-	font: normal bold 13px/35px verdana, arial, helvetica, sans-serif;
+.discoverstep span {
+	font: normal bold 13px/ 35px verdana, arial, helvetica, sans-serif;
 	margin: 0px 0px 10px 0px;
 }
 
-.discovercontent{
-	width : 700px;
-	display : inline-table;
-	padding : 20px;
+.discovercontent {
+	width: 700px;
+	display: inline-table;
+	padding: 20px;
 }
 
-.discovercontent td{
+.discovercontent td {
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
-.discovercontent th{
-	font : normal bold 15px verdana, arial, helvetica, sans-serif;
+.discovercontent th {
+	font: normal bold 15px verdana, arial, helvetica, sans-serif;
 	text-align: center;
-	padding : 20px 0px 10px 0px;
+	padding: 20px 0px 10px 0px;
 }

@@ -1,11 +1,13 @@
 <?php
-
+/**
+ * Browse the server directory
+ */
 $path = $_POST["path"];
 $result = array();
 
 if(false && !isset($path)) {
 	$element = array();
-	$element["name"] = "path should be specified";
+	$element["name"] = "Path should be specified";
 	$element["isFolder"] = false;
 	$element["isError"] = true;
 	$result[$file] = $element;
@@ -25,5 +27,4 @@ if(false && !isset($path)) {
 }
 
 echo json_encode($result);
-
 ?>
