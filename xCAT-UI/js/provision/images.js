@@ -529,7 +529,13 @@ function loadSetImagePropsPage(tgtImage) {
 		position: "center right",	// Place tooltip on the right edge
 		offset: [-2, 10],	// A little tweaking of the position
 		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
-		opacity: 0.8		// Custom opacity setting
+		opacity: 0.8,		// Custom opacity setting
+		events: {
+		  def:     "mouseover,mouseout",
+		  input:   "mouseover,mouseout",
+		  widget:  "focus mouseover,blur mouseout",
+		  tooltip: "mouseover,mouseout"
+		}
 	});
 
 	/**

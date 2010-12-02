@@ -202,6 +202,33 @@ function loadGroups(data) {
     			+ '<option>zvm</option>'
     		+ '</select>'
     	+ '</div>' );
+		
+		// Create advanced link to set advanced node properties
+		var advanced = $('<div></div>');
+		var advancedLnk = $('<a>Advanced</a>').css('cursor', 'pointer');
+		advancedLnk.bind('click', function(event) {
+			// Get definable node attributes
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'lsdef',
+					tgt : '',
+					args : '-t;node;-h',
+					msg : ''
+				},
+
+				success : function(data) {
+					setDefAttrs(data);
+					openSetPropsDialog();
+				}
+			});
+			
+			// Close dialog
+			addNodeForm.dialog( "close" );
+		});
+		advanced.append(advancedLnk);
+		addNodeForm.append(advanced);
 					
 		// Open dialog to add node
 		addNodeForm.dialog({
@@ -304,9 +331,7 @@ function loadNodes(data) {
 	$.cookie('nodes2update', '');
 	// Clear hash table containing node attributes
 	origAttrs = '';
-	// Clear hash table containing definable node attributes
-	defAttrs = new Array();
-
+	
 	var node;
 	var args;
 	for (var i in rsp) {
@@ -713,19 +738,21 @@ function loadNodes(data) {
 		success : loadPingStatus
 	});
 	
-	// Get definable node attributes
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'lsdef',
-			tgt : '',
-			args : '-t;node;-h',
-			msg : ''
-		},
-
-		success : setDefAttrs
-	});
+	if (!defAttrs.length) {
+    	// Get definable node attributes
+    	$.ajax( {
+    		url : 'lib/cmd.php',
+    		dataType : 'json',
+    		data : {
+    			cmd : 'lsdef',
+    			tgt : '',
+    			args : '-t;node;-h',
+    			msg : ''
+    		},
+    
+    		success : setDefAttrs
+    	});
+	}
 	
 	/**
 	 * Additional ajax requests need to be made for zVM
@@ -2017,6 +2044,9 @@ function showChdefOutput(data) {
  * @return Nothing
  */
 function setDefAttrs(data) {
+	// Clear hash table containing definable node attributes
+	defAttrs = new Array();
+	
 	// Get definable attributes
 	var attrs = data.rsp[2].split(/\n/);
 
@@ -2120,7 +2150,15 @@ function loadSetPropsPage(tgtNode) {
 		position: "center right",	// Place tooltip on the right edge
 		offset: [-2, 10],	// A little tweaking of the position
 		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
-		opacity: 0.8		// Custom opacity setting
+		opacity: 0.8,		// Custom opacity setting
+		delay: 0,
+		predelay: 800,
+		events: {
+			  def:     "mouseover,mouseout",
+			  input:   "mouseover,mouseout",
+			  widget:  "focus mouseover,blur mouseout",
+			  tooltip: "mouseover,mouseout"
+		}
 	});
 
 	/**
@@ -2186,4 +2224,153 @@ function loadSetPropsPage(tgtNode) {
 
 	// Select new tab
 	tab.select(newTabId);
+}
+
+/**
+ * Open set node properties dialog
+ * 
+ * @return Nothing
+ */
+function openSetPropsDialog() {
+	// Open new tab
+	// Create set properties form
+	var setPropsForm = $('<div class="form"></div>');
+
+	// Create info bar
+	var infoBar = createInfoBar('Choose the properties you wish to change on the node. When you are finished, click Save.');
+	setPropsForm.append(infoBar);
+	
+	// Create an input for each definable attribute
+	var div, label, input, descr, value;
+	for (var key in defAttrs) {
+		value = '';
+		
+		// Create label and input for attribute
+		div = $('<div></div>').css('display', 'inline');
+		label = $('<label>' + key + ':</label>').css('vertical-align', 'middle');
+		input = $('<input type="text" value="' + value + '" title="' + defAttrs[key] + '"/>').css('margin-top', '5px');
+		
+		// Change border to blue onchange
+		input.bind('change', function(event) {
+			$(this).css('border-color', 'blue');
+		});
+		
+		div.append(label);
+		div.append(input);
+		setPropsForm.append(div);
+	}
+	
+	// Change style for last division
+	div.css({
+		'display': 'block',
+		'margin': '0px 0px 10px 0px'
+	});
+	
+	// Generate tooltips
+	setPropsForm.find('div input[title]').tooltip({
+		position: "center right",	// Place tooltip on the right edge
+		offset: [-2, 10],	// A little tweaking of the position
+		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
+		opacity: 0.8,		// Custom opacity setting
+		delay: 0,
+		predelay: 800,
+		events: {
+			  def:     "mouseover,mouseout",
+			  input:   "mouseover,mouseout",
+			  widget:  "focus mouseover,blur mouseout",
+			  tooltip: "mouseover,mouseout"
+		},
+
+		// Change z index to show tooltip in front
+		onBeforeShow: function() {
+			this.getTip().css('z-index', $.topZIndex());
+		}
+	});
+	
+	// Enable vertical scroll
+	setPropsForm.css('overflow', 'auto');
+		
+	// Open form as a dialog
+	setPropsForm.dialog({
+		modal: true,
+		height: 400,
+		width: 650,
+		buttons: {
+        	"Save": function() {
+        		// Remove any warning messages
+        		$(this).find('.ui-state-error').remove();
+        		
+        		// Get all inputs
+        		var inputs = $(this).find('input');
+        		
+        		// Go through each input
+        		var args = '';
+        		var tgtNode, attrName, attrVal;
+        		inputs.each(function(){
+        			// If the border color is blue
+        			if ($(this).css('border-left-color') == 'rgb(0, 0, 255)') {
+        				// Change border color back to normal
+        				$(this).css('border-color', '');
+        				
+        				// Get attribute name and value
+            			attrName = $(this).parent().find('label').text().replace(':', '');
+            			attrVal = $(this).val();
+            			
+            			// Get node name
+            			if (attrName == 'node') {
+            				tgtNode = attrVal;
+            			} else {
+                			// Build argument string
+                			if (args) {
+                				// Handle subsequent arguments
+                				args += ';' + attrName + '=' + attrVal;
+                			} else {
+                				// Handle the 1st argument
+                				args += attrName + '=' + attrVal;
+                			}
+            			}
+            		}
+        		});
+        		
+        		// Send command to change node attributes
+            	$.ajax( {
+            		url : 'lib/cmd.php',
+            		dataType : 'json',
+            		data : {
+            			cmd : 'chdef',
+            			tgt : '',
+            			args : '-t;node;-o;' + tgtNode + ';' + args,
+            			msg : 'node=' + tgtNode
+            		},
+
+            		/**
+            		 * Show results
+            		 */
+            		success: function(data) {
+            			// Get output
+            			var out = data.rsp;
+            			var node = data.msg.replace('node=', '');
+            			
+            			// Go through output and append to paragraph
+            			var msg = '';
+            			for (var i in out) {
+            				if (!msg) {
+            					msg = node + ': ' + out[i];
+            				} else {
+            					msg += '<br>' + node + ': ' + out[i];
+            				}
+            			}
+            			
+            			openDialog('info', msg);
+            		}
+            	});
+            	
+            	// Close dialog
+            	$(this).dialog( "close" );
+        	},
+        	"Cancel": function(){
+        		$(this).dialog( "close" );
+        	}
+		}
+	});
 }

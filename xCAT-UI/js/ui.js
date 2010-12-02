@@ -427,6 +427,7 @@ function initPage() {
 	includeJs("js/jquery/jquery.flot.js");
 	includeJs("js/jquery/tooltip.min.js");
 	includeJs("js/jquery/jquery.serverBrowser.js");
+	includeJs("js/jquery/jquery.topzindex.min.js");
 	
 	// Page plugins
 	includeJs("js/configure/configure.js");	
@@ -560,7 +561,7 @@ function openDialog(type, msg) {
 	// Open dialog
 	msgDialog.dialog({
 		modal: true,
-		width: 400,
+		width: 500,
 		buttons: {
 			"Ok": function(){ 
 				$(this).dialog("close");
