@@ -108,8 +108,10 @@ if (!(-e ($db2install)))
         $rc = &installdb2code;
         if ($rc != 0)
         {
-            $msg = "Error installing DB2. \n";
+            $msg = "Error installing DB2. Cannot continue. \n";
             `logger -t xcat $msg`;
+             &unmountdb2code;
+             exit(1);
 
         }
 
@@ -129,34 +131,17 @@ else
     $msg = "DB2 is already installed. Will skip installation. \n";
     `logger -t xcat $msg`;
 }
-my $getcfgloc = 1;    # get the cfgloc file from the MN
-if (-e ("/etc/xcat/cfgloc"))    # check to see if xcat is using DB2 already
-{                               # cfgloc exists
-    $cmd = "fgrep DB2 /etc/xcat/cfgloc";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC == 0)
-    {
-        my $msg =
-          "The /etc/xcat/cfgloc file is already configured for DB2. xCAT appears to be already running on DB2.  xcat database configuration will not take place.";
+
+# get the cfgloc file from the Management Node
+$rc = &getcfgloc;
+if ($rc != 0)
+{                           # could not get the cfgloc file, cannot continue
+      $msg =
+    "Cannot get the cfgloc file from the MN.  Client setup cannot continue. \n";
         `logger -t xcat $msg`;
-        $getcfgloc = 0;         # do not get the cfgloc file
-
-    }
+      exit 1;
 }
-if ($getcfgloc == 1)
-{
 
-    # get the cfgloc file from the Management Node
-    $rc = &getcfgloc;
-    if ($rc != 0)
-    {                           # could not get the cfgloc file, cannot continue
-        $msg =
-          "Cannot get the cfgloc file from the MN.  Client setup cannot continue. \n";
-        `logger -t xcat $msg`;
-        exit 1;
-    }
-
-}
 # setup the db2 Client for xCAT and start xCAT on the DB2 database
 
 &rundb2sqlsetup;
