@@ -12,12 +12,21 @@ use Socket;
 my $PLTFRM = `uname`;
 chomp $PLTFRM;
 
+my $OS_name;
+my $ib_driver;
+if ( $ENV{OSVER} && ($ENV{OSVER} =~ /rhe(\D+)(\d+)(\.\d+)?/)  ) {
+    if ( $2 > 5 ) {
+        $ib_driver = "rdma"
+    } else {
+        $ib_driver = "openibd"
+    }
+}
+
 my $HOST = `hostname -s`;
 chomp $HOST;
 
 my @nums = (0..1);
 my @nics;
-my $OS_name;
 foreach my $num ( @nums ) {
     # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
     my $nic = "ib$num";
@@ -107,10 +116,14 @@ foreach my $num ( @nums ) {
 
 if ( $PLTFRM eq "Linux" ) {
 
-    if ( -f "/etc/infiniband/openib.conf" )
+    if ( -f "/etc/rdma/rdma.conf" )
+    {
+        updatefile("/etc/rdma/rdma.conf", "SDP_LOAD=yes", "SDP_LOAD=no");
+    } elsif ( -f "/etc/infiniband/openib.conf" )
     {
         updatefile("/etc/infiniband/openib.conf", "SDP_LOAD=yes", "SDP_LOAD=no");
     }
+
 
     if ( $OS_name eq 'suse')
     {
@@ -120,9 +133,9 @@ if ( $PLTFRM eq "Linux" ) {
         runcmd("echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf");
     }
 
-    my $openibd_cmd = "/sbin/chkconfig --level 2345 openibd on";
+    my $openibd_cmd = "/sbin/chkconfig --level 2345 $ib_driver on";
     runcmd($openibd_cmd);
-    my $openibd_start_cmd = "/sbin/service openibd restart";
+    my $openibd_start_cmd = "/sbin/service $ib_driver restart";
     runcmd($openibd_start_cmd);
 
     runcmd("sysctl -p");

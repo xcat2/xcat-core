@@ -12,6 +12,16 @@ use Socket;
 my $PLTFRM = `uname`;
 chomp $PLTFRM;
 
+my $OS_name;
+my $ib_driver;
+if ( $ENV{OSVER} && ($ENV{OSVER} =~ /rhe(\D+)(\d+)(\.\d+)?/)  ) {
+    if ( $2 > 5 ) {
+        $ib_driver = "rdma"
+    } else {
+        $ib_driver = "openibd"
+    }
+}
+
 my $HOST = `hostname -s`;
 chomp $HOST;
 
@@ -38,8 +48,7 @@ foreach my $num ( @nums ) {
     my $gateway = "$first.$second.255.254";
 
     if ( $PLTFRM eq "Linux" ) {
-        # Issue openibd for Linux at boot time
-        my $OS_name;
+        # Issue rdma for Linux at boot time
         if ( -f '/etc/redhat-release' )
         {
             $OS_name = "redhat";
@@ -108,21 +117,26 @@ foreach my $num ( @nums ) {
 
 if ( $PLTFRM eq "Linux" ) {
 
-    if ( -f "/etc/infiniband/openib.conf" )
+    if ( -f "/etc/rdma/rdma.conf" )
+    {
+        updatefile("/etc/rdma/rdma.conf", "SDP_LOAD=yes", "SDP_LOAD=no");
+    } elsif ( -f "/etc/infiniband/openib.conf" )
     {
         updatefile("/etc/infiniband/openib.conf", "SDP_LOAD=yes", "SDP_LOAD=no");
     }
+
     if ( -f "/etc/modprobe.conf" )
     {
         updatefile("/etc/modprobe.conf", "options ib_ehca nr_ports=1");
         updatefile("/etc/modprobe.conf", "options ib_ehca lock_hcalls=0");
     }
+
     runcmd("echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf");
 
-    my $openibd_cmd = "/sbin/chkconfig --level 2345 openibd on";
-    runcmd($openibd_cmd);
-    my $openibd_start_cmd = "/sbin/service openibd restart";
-    runcmd($openibd_start_cmd);
+    my $rdma_cmd = "/sbin/chkconfig --level 2345 $ib_driver on";
+    runcmd($rdma_cmd);
+    my $rdma_start_cmd = "/sbin/service $ib_driver restart";
+    runcmd($rdma_start_cmd);
 
     runcmd("sysctl -p");
 
