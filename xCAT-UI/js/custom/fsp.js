@@ -132,7 +132,7 @@ fspPlugin.prototype.loadProvisionPage = function(tabId) {
 	statBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision a fsp node');
+	var infoBar = createInfoBar('Provision a fsp node.');
 	provForm.append(infoBar);
 
 	// Append to provision tab

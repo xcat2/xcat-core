@@ -118,7 +118,7 @@ function loadTableNames(data) {
 	$('#' + tabId).append(tablesDIV);
 
 	// Create info bar
-	var infoBar = createInfoBar('Select a table to view or edit');
+	var infoBar = createInfoBar('Select a table to view or edit.');
 	tablesDIV.append(infoBar);
 
 	// Create a list for the tables

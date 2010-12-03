@@ -48,8 +48,6 @@ function loadImages(data) {
 	$.cookie('images2update', '');
 	// Clear hash table containing image attributes
 	origAttrs = '';
-	// Clear hash table containing definable image attributes
-	defAttrs = new Array();
 
 	var image;
 	var args;
@@ -128,58 +126,58 @@ function loadImages(data) {
 	var actionBar = $('<div class="actionBar"></div>');
 
 	/**
-	 * The following actions are available to perform against a given image:
-	 * copy CD and set properties
+	 * The following actions are available for images:
+	 * copy Linux distribution and edit image properties
 	 */
 
-	// Copy CDs
-	var copyCdLnk = $('<a>Copy CDs</a>');
-	copyCdLnk.bind('click', function(event) {
-		loadCopyCdsPage();
+	// Create copy Linux button
+	var copyLinuxBtn = createButton('Copy Linux');
+	copyLinuxBtn.bind('click', function(event) {
+		loadCopyLinuxPage();
 	});
 	
-	// Set image properties
-	var setProps = $('<a>Set properties</a>');
-	setProps.bind('click', function(event){
+	// Create edit button
+	var editBtn = createButton('Edit');
+	editBtn.bind('click', function(event){
 		var tgtImages = getNodesChecked('imagesDataTable').split(',');
 		for (var i in tgtImages) {
-			 loadSetImagePropsPage(tgtImages[i]);
+			 loadEditImagePage(tgtImages[i]);
 		}
 	});
 	
-	/**
-	 * Create an action menu
-	 */
-	var actionsDiv = $('<div></div>');
-	var actions = [ copyCdLnk, setProps ];
-	var actionMenu = createMenu(actions);
-	actionMenu.superfish();
-	actionsDiv.append(actionMenu);
-	actionBar.append(actionsDiv);
-	$('#imagesTab').append(actionBar);
-	
-	// Insert table
-	$('#imagesTab').append(dTable.object());
-	
-	// Save changes
-	var saveLnk = $('<a>Save</a>');
-	saveLnk.bind('click', function(event){
+	// Create save button
+	var saveBtn = createButton('Save');
+	// Do not show button until table is edited
+	saveBtn.css({
+		'display': 'inline',
+		'margin-left': '550px'
+	}).hide();
+	saveBtn.bind('click', function(event){
 		updateImageAttrs();
 	});
 	
-	// Undo changes
-	var undoLnk = $('<a>Undo</a>');
-	undoLnk.bind('click', function(event){
+	// Create undo button
+	var undoBtn = createButton('Undo');
+	// Do not show button until table is edited
+	undoBtn.css({
+		'display': 'inline'
+	}).hide();
+	undoBtn.bind('click', function(event){
 		restoreImageAttrs();
 	});
-
+	
 	/**
-	 * Create menu to save and undo table changes
+	 * Create an action bar
 	 */
-	// It will be hidden until a change is made
-	var tableActionsMenu = createMenu([saveLnk, undoLnk]).hide();
-	tableActionsMenu.css('margin-left', '490px');
-	actionsDiv.append(tableActionsMenu);
+	var actionsBar = $('<div></div>').css('margin', '10px 0px');
+	actionsBar.append(copyLinuxBtn);
+	actionsBar.append(editBtn);
+	actionsBar.append(saveBtn);
+	actionsBar.append(undoBtn);
+	$('#imagesTab').append(actionsBar);
+	
+	// Insert table
+	$('#imagesTab').append(dTable.object());
 
 	// Turn table into a datatable
 	var myDataTable = $('#imagesDataTable').dataTable({
@@ -218,13 +216,13 @@ function loadImages(data) {
 			flagImage2Update(image);
 			
 			// Show table menu actions
-			tableActionsMenu.show();
+			saveBtn.show();
+			undoBtn.show();
 
 			return (value);
 		}, {
-			onblur : 'submit', 	// Clicking outside editable area submits
-								// changes
-			type : 'textarea',
+			onblur : 'submit', 	// Clicking outside editable area submits changes
+			type : 'textarea',	// Input type to use
 			placeholder: ' ',
 			height : '30px' 	// The height of the text area
 		});
@@ -283,7 +281,7 @@ function updateImageAttrs() {
 		
 	// Create the arguments
 	var args;
-	var row, colPos, value;
+	var rowPos, colPos, value;
 	var attrName;
 	// Go through each node where an attribute was changed
 	for (var i in images) {
@@ -291,8 +289,8 @@ function updateImageAttrs() {
 			args = '';
 			
         	// Get the row containing the image name
-        	row = getImageRow(images[i], rows);
-        	$(row).find('td').each(function (){
+        	rowPos = findRowIndexUsingCol(images[i], '#imagesDataTable', 1);
+        	$(rows[rowPos]).find('td').each(function (){
         		if ($(this).css('color') == 'red') {
         			// Change color back to normal
         			$(this).css('color', '');
@@ -324,7 +322,7 @@ function updateImageAttrs() {
         			cmd : 'chdef',
         			tgt : '',
         			args : '-t;osimage;-o;' + images[i] + ';' + args,
-        			msg : 'out=imagesTab;node=' + images[i]
+        			msg : 'out=imagesTab;tgt=' + images[i]
         		},
 
         		success: showChdefOutput
@@ -355,13 +353,13 @@ function restoreImageAttrs() {
 	var rows = dTable.fnGetNodes();
 		
 	// Go through each node where an attribute was changed
-	var row, colPos;
+	var rowPos, colPos;
 	var attrName, origVal;
 	for (var i in images) {
 		if (images[i]) {			
 			// Get the row containing the image name
-        	row = getImageRow(images[i], rows);
-        	$(row).find('td').each(function (){
+			rowPos = findRowIndexUsingCol(images[i], '#imagesDataTable', 1);
+        	$(rows[rowPos]).find('td').each(function (){
         		if ($(this).css('color') == 'red') {
         			// Change color back to normal
         			$(this).css('color', '');
@@ -374,7 +372,6 @@ function restoreImageAttrs() {
         			origVal = origAttrs[images[i]][attrName];
         			
         			// Update column
-        			rowPos = findRowIndexUsingCol(images[i], '#imagesDataTable', 1);
         			dTable.fnUpdate(origVal, rowPos, colPos);
         		}
         	});
@@ -387,38 +384,6 @@ function restoreImageAttrs() {
 }
 
 /**
- * Find the row index using a column search value
- * 
- * @param searchStr
- *            String to search for
- * @param table
- *            Table to check
- * @param col
- *            Column to find string under
- * @return The row index containing the image name
- */
-function findRowIndexUsingCol(searchStr, table, col){
-	var dTable, rows, cols;
-	
-	// Get datatable
-	dTable = $(table).dataTable();
-	rows = dTable.fnGetData();
-	
-	// Loop through each row
-	for (var i = 0; i < rows.length; i++) {
-		// Get columns in row
-		cols = dTable.fnGetData(i);
-		// If column contains string
-		if ( cols[col] == searchStr ) {
-			// Return index
-			return i;
-		}
-	}
-	
-	return -1;
-}
-
-/**
  * Set definable image attributes
  * 
  * @param data
@@ -426,6 +391,9 @@ function findRowIndexUsingCol(searchStr, table, col){
  * @return Nothing
  */
 function setImageDefAttrs(data) {
+	// Clear hash table containing definable image attributes
+	defAttrs = new Array();
+	
 	// Get definable attributes
 	var attrs = data.rsp[2].split(/\n/);
 
@@ -459,32 +427,22 @@ function setImageDefAttrs(data) {
  *            Target image to set properties
  * @return Nothing
  */
-function loadSetImagePropsPage(tgtImage) {
+function loadEditImagePage(tgtImage) {
 	// Get nodes tab
 	var tab = getProvisionTab();
 
 	// Generate new tab ID
 	var inst = 0;
-	var newTabId = 'setImagePropsTab' + inst;
+	var newTabId = 'editImageTab' + inst;
 	while ($('#' + newTabId).length) {
 		// If one already exists, generate another one
 		inst = inst + 1;
-		newTabId = 'setImagePropsTab' + inst;
+		newTabId = 'editImageTab' + inst;
 	}
 
 	// Open new tab
 	// Create set properties form
 	var setPropsForm = $('<div class="form"></div>');
-
-	// Create status bar
-	var barId = 'setImagePropsStatusBar' + inst;
-	var statBar = createStatusBar(barId);
-	statBar.hide();
-	setPropsForm.append(statBar);
-
-	// Create loader
-	var loader = createLoader('setImagePropsLoader' + inst);
-	statBar.append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Choose the properties you wish to change on the node. When you are finished, click Save.');
@@ -526,10 +484,10 @@ function loadSetImagePropsPage(tgtImage) {
 	
 	// Generate tooltips
 	setPropsForm.find('div input[title]').tooltip({
-		position: "center right",	// Place tooltip on the right edge
-		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
-		opacity: 0.8,		// Custom opacity setting
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",
+		opacity: 0.8,
 		events: {
 		  def:     "mouseover,mouseout",
 		  input:   "mouseover,mouseout",
@@ -570,7 +528,7 @@ function loadSetImagePropsPage(tgtImage) {
     		}
 		});
 		
-		// Send command to change node attributes
+		// Send command to change image attributes
     	$.ajax( {
     		url : 'lib/cmd.php',
     		dataType : 'json',
@@ -578,7 +536,7 @@ function loadSetImagePropsPage(tgtImage) {
     			cmd : 'chdef',
     			tgt : '',
     			args : '-t;osimage;-o;' + tgtImage + ';' + args,
-    			msg : 'out=' + newTabId + ';node=' + tgtImage
+    			msg : 'out=' + newTabId + ';tgt=' + tgtImage
     		},
 
     		success: showChdefOutput
@@ -597,37 +555,10 @@ function loadSetImagePropsPage(tgtImage) {
 	setPropsForm.append(cancelBtn);
 
 	// Append to discover tab
-	tab.add(newTabId, 'Properties', setPropsForm, true);
+	tab.add(newTabId, 'Edit', setPropsForm, true);
 
 	// Select new tab
 	tab.select(newTabId);
-}
-
-/**
- * Get row element that contains given image
- * 
- * @param tgtImage
- *            Image to find
- * @param rows
- *            Rows within the datatable
- * @return Row element
- */
-function getImageRow(tgtImage, rows) {
-	// Find the row
-	for (var i in rows) {
-		// Get all columns within the row
-		var cols = rows[i].children;
-		// Get the 1st column (image name)
-		var image = cols[1].innerHTML;
-
-		// If the node matches the target node
-		if (image == tgtImage) {
-			// Return the row
-			return rows[i];
-		}
-	}
-
-	return;
 }
 
 /**
@@ -635,33 +566,33 @@ function getImageRow(tgtImage, rows) {
  * 
  * @return Nothing
  */
-function loadCopyCdsPage() {
+function loadCopyLinuxPage() {
 	// Get provision tab
 	var tab = getProvisionTab();
 
 	// Generate new tab ID
 	var inst = 0;
-	newTabId = 'copyCdsTab' + inst;
+	newTabId = 'copyLinuxTab' + inst;
 	while ($('#' + newTabId).length) {
 		// If one already exists, generate another one
 		inst = inst + 1;
-		newTabId = 'copyCdsTab' + inst;
+		newTabId = 'copyLinuxTab' + inst;
 	}
 	
 	// Create info bar
-	var infoBar = createInfoBar('Copy Linux distributions and service levels from CDs/DVDs to install directory');
+	var infoBar = createInfoBar('Copy Linux distributions and service levels from CDs or DVDs to the install directory.');
 
-	// Create copy CDs form
-	var copyCdsForm = $('<div class="form"></div>');
-	copyCdsForm.append(infoBar);
+	// Create copy Linux form
+	var copyLinuxForm = $('<div class="form"></div>');
+	copyLinuxForm.append(infoBar);
 	
-	// Create file input
+	// Create Linux distribution input
 	var file = $('<div></div>');
-	var label = $('<label>File:</label>').css('vertical-align', 'middle');
+	var label = $('<label>Linux image:</label>').css('vertical-align', 'middle');
 	var input = $('<input type="text" id="file" name="file"/>').css('width', '300px');
 	file.append(label);
 	file.append(input);
-	copyCdsForm.append(file);
+	copyLinuxForm.append(file);
 	
 	// Create select button
 	var selectBtn = createButton('Select');
@@ -689,16 +620,20 @@ function loadCopyCdsPage() {
 	
 	// Create copy button
 	var copyBtn = createButton('Copy');
-	copyCdsForm.append(copyBtn);
+	copyLinuxForm.append(copyBtn);
+	copyBtn.bind('click', function(event) {
+		// Run Linux to install directory
+		tab.remove($(this).parent().parent().attr('id'));
+	});
 	
 	// Create cancel button
 	var cancelBtn = createButton('Cancel');
-	copyCdsForm.append(cancelBtn);
+	copyLinuxForm.append(cancelBtn);
 	cancelBtn.bind('click', function(event) {
 		// Close the tab
 		tab.remove($(this).parent().parent().attr('id'));
 	});
 
-	tab.add(newTabId, 'Copy', copyCdsForm, true);
+	tab.add(newTabId, 'Copy', copyLinuxForm, true);
 	tab.select(newTabId);
 }

@@ -201,10 +201,10 @@ function loadUpdatenodePage(tgtNodes) {
 	
 	// Generate tooltips
 	updatenodeForm.find('div input[title]').tooltip({
-		position: "center right",	// Place tooltip on the right edge
-		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
-		opacity: 0.7		// Custom opacity setting
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",
+		opacity: 0.7
 	});
 	
 	/**

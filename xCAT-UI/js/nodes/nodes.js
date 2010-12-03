@@ -3,7 +3,7 @@
  */
 var nodesTabs; 		// Node tabs
 var origAttrs = new Object();	// Original node attributes
-var defAttrs; 	// Definable node attributes
+var defAttrs; 		// Definable node attributes
 
 /**
  * Set the nodes tab
@@ -45,7 +45,7 @@ function loadNodesPage() {
 		groupDIV.append(loader);
 		
 		// Create info bar
-		var info = createInfoBar('Select a group to view its nodes');
+		var info = createInfoBar('Select a group to view its nodes.');
 		$('#nodes').append(info);
 
 		// Get groups
@@ -218,6 +218,13 @@ function loadGroups(data) {
 					msg : ''
 				},
 
+				/**
+				 * Set definable node attributes and open dialog
+				 * 
+				 * @param data
+				 *            Data returned from HTTP request
+				 * @return Nothing
+				 */
 				success : function(data) {
 					setDefAttrs(data);
 					openSetPropsDialog();
@@ -274,10 +281,10 @@ function loadGroups(data) {
 	
 	// Generate tooltips
 	addNodeLink.tooltip({
-		position: "center right",	// Place tooltip on the right edge
-		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
-		opacity: 0.7		// Custom opacity setting
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",
+		opacity: 0.7
 	});
 	
 	$('#groups').append(addNodeLink);
@@ -418,12 +425,12 @@ function loadNodes(data) {
 		
 		// Generate tooltips
 		icon.tooltip({
-			position: "center right",	// Place tooltip on the right edge
-			offset: [-2, 10],			// A little tweaking of the position
+			position: "center right",
+			offset: [-2, 10],
+			effect: "fade",	
+			opacity: 0.8,
 			relative: true,
-			effect: "fade",				// Use the built-in fadeIn/fadeOut
-										// effect
-			opacity: 0.8				// Custom opacity setting
+			delay: 500
 		});
 		
 		// Go through each header
@@ -463,7 +470,7 @@ function loadNodes(data) {
 
 	var powerLnk = $('<a>Power</a>');
 	
-	// Power on (rpower)
+	// Power on
 	var powerOnLnk = $('<a>Power on</a>');
 	powerOnLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -472,7 +479,7 @@ function loadNodes(data) {
 		}
 	});
 	
-	// Power off (rpower)
+	// Power off
 	var powerOffLnk = $('<a>Power off</a>');
 	powerOffLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -515,7 +522,7 @@ function loadNodes(data) {
 		}
 	});
 
-	// Delete (rmvm)
+	// Delete
 	var deleteLnk = $('<a>Delete</a>');
 	deleteLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -533,7 +540,7 @@ function loadNodes(data) {
 		}
 	});
 
-	// Run script (xdsh)
+	// Run script
 	var scriptLnk = $('<a>Run script</a>');
 	scriptLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -542,7 +549,7 @@ function loadNodes(data) {
 		}
 	});
 
-	// Update (updatenode)
+	// Update
 	var updateLnk = $('<a>Update</a>');
 	updateLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -551,7 +558,7 @@ function loadNodes(data) {
 		}
 	});
 
-	// Set boot state (nodeset)
+	// Set boot state
 	var setBootStateLnk = $('<a>Set boot state</a>');
 	setBootStateLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -561,7 +568,7 @@ function loadNodes(data) {
 
 	});
 
-	// Boot to network (rnetboot)
+	// Boot to network
 	var boot2NetworkLnk = $('<a>Boot to network</a>');
 	boot2NetworkLnk.bind('click', function(event) {
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -570,7 +577,7 @@ function loadNodes(data) {
 		}
 	});
 
-	// Remote console (rcons)
+	// Remote console
 	var rcons = $('<a>Open console</a>');
 	rcons.bind('click', function(event){
 		var tgtNodes = getNodesChecked('nodesDataTable');
@@ -579,12 +586,12 @@ function loadNodes(data) {
 		}
 	});
 	
-	// Set node properties
-	var setProps = $('<a>Set node properties</a>');
-	setProps.bind('click', function(event){
+	// Edit properties
+	var editProps = $('<a>Edit properties</a>');
+	editProps.bind('click', function(event){
 		var tgtNodes = getNodesChecked('nodesDataTable').split(',');
 		for (var i in tgtNodes) {
-			loadSetPropsPage(tgtNodes[i]);
+			loadEditPropsPage(tgtNodes[i]);
 		}
 	});
 	
@@ -597,11 +604,10 @@ function loadNodes(data) {
 	// Advanced actions
 	var advancedActions;
 	if ('compute' == group) {
-		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons, setProps ];
+		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons, editProps ];
 	} else {
-		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, setProps ];
+		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, editProps ];
 	}
-
 	var advancedActionMenu = createMenu(advancedActions);
 
 	/**
@@ -664,7 +670,6 @@ function loadNodes(data) {
 	pingCol.bind('click', function(event) {
 		refreshPingStatus(group);
 	});
-	
 	powerCol.bind('click', function(event) {
 		refreshPowerStatus(group);
 	});
@@ -709,7 +714,6 @@ function loadNodes(data) {
 	/**
 	 * Get power and ping for each node
 	 */
-
 	// Get power status
 	$.ajax( {
 		url : 'lib/cmd.php',
@@ -738,26 +742,23 @@ function loadNodes(data) {
 		success : loadPingStatus
 	});
 	
-	if (!defAttrs.length) {
-    	// Get definable node attributes
-    	$.ajax( {
-    		url : 'lib/cmd.php',
-    		dataType : 'json',
-    		data : {
-    			cmd : 'lsdef',
-    			tgt : '',
-    			args : '-t;node;-h',
-    			msg : ''
-    		},
-    
-    		success : setDefAttrs
-    	});
-	}
+	// Get definable node attributes
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'lsdef',
+			tgt : '',
+			args : '-t;node;-h',
+			msg : ''
+		},
+
+		success : setDefAttrs
+	});
 	
 	/**
 	 * Additional ajax requests need to be made for zVM
 	 */
-
 	// Get index of HCP column
 	var i = $.inArray('hcp', sorted);
 	if (i) {
@@ -773,7 +774,6 @@ function loadNodes(data) {
 		for (var h in hcps) {
 			// Get node without domain name
 			args = h.split('.');
-			
 			// Check if SMAPI is online
 			$.ajax( {
 				url : 'lib/cmd.php',
@@ -788,7 +788,7 @@ function loadNodes(data) {
 				// Load hardware control point (HCP) specific info
 				// Get disk pools and network names
 				success : loadHcpInfo
-			});			
+			});		
 		} // End of for
 	} // End of if
 }
@@ -804,19 +804,18 @@ function loadPowerStatus(data) {
 	// Get datatable
 	var dTable = $('#nodesDataTable').dataTable();
 	var power = data.rsp;
-	var rowNum, node, status, args;
+	var rowPos, node, status, args;
 
 	for (var i in power) {
 		// power[0] = nodeName and power[1] = state
 		args = power[i].split(':');
 		node = jQuery.trim(args[0]);
 		status = jQuery.trim(args[1]);
-
 		// Get the row containing the node
-		rowNum = getRowNum(node);
+		rowPos = findRowIndexUsingCol(node, '#nodesDataTable', 1);
 
 		// Update the power status column
-		dTable.fnUpdate(status, rowNum, 3);
+		dTable.fnUpdate(status, rowPos, 3);
 	}
 	
 	// Hide power loader
@@ -865,14 +864,12 @@ function loadPingStatus(data) {
 	var rowPos, node, status;
 
 	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
 	for (var i in ping) {
 		// ping[0] = nodeName and ping[1] = state
 		node = jQuery.trim(ping[i][0]);
 		status = jQuery.trim(ping[i][1]);
-
 		// Get the row containing the node
-		rowPos = getRowNum(node);
+		rowPos = findRowIndexUsingCol(node, '#nodesDataTable', 1);
 
 		// Update the ping status column
 		dTable.fnUpdate(status, rowPos, 2);
@@ -998,11 +995,11 @@ function loadUnlockPage(tgtNodes) {
 
 	// Generate new tab ID
 	var instance = 0;
-	var newTabId = 'UnlockTab' + instance;
+	var newTabId = 'unlockTab' + instance;
 	while ($('#' + newTabId).length) {
 		// If one already exists, generate another one
 		instance = instance + 1;
-		newTabId = 'UnlockTab' + instance;
+		newTabId = 'unlockTab' + instance;
 	}
 
 	var unlockForm = $('<div class="form"></div>');
@@ -1017,7 +1014,7 @@ function loadUnlockPage(tgtNodes) {
 	statusBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Give the root password for this node range to setup its SSH keys');
+	var infoBar = createInfoBar('Give the root password for this node range to setup its SSH keys.');
 	unlockForm.append(infoBar);
 
 	unlockForm.append('<div><label>Target node range:</label><input type="text" id="node" name="node" readonly="readonly" value="' + tgtNodes + '" title="The node or node range to unlock"/></div>');
@@ -1025,10 +1022,10 @@ function loadUnlockPage(tgtNodes) {
 
 	// Generate tooltips
 	unlockForm.find('div input[title]').tooltip({
-		position: "center right",	// Place tooltip on the right edge
-		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
-		opacity: 0.7		// Custom opacity setting
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",
+		opacity: 0.7
 	});
 	
 	/**
@@ -1065,7 +1062,7 @@ function loadUnlockPage(tgtNodes) {
     		$(this).attr('disabled', 'true');
     	} else {
     		// Show warning message
-			var warn = createWarnBar('You are missing some values');
+			var warn = createWarnBar('You are missing some values!');
 			warn.prependTo($(this).parent().parent());
     	}
     });
@@ -1110,7 +1107,7 @@ function loadScriptPage(tgtNodes) {
 	statBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Run a script against this node range');
+	var infoBar = createInfoBar('Load a script to run against this node range.');
 	scriptForm.append(infoBar);
 
 	// Target node or group
@@ -1129,10 +1126,10 @@ function loadScriptPage(tgtNodes) {
 	
 	// Generate tooltips
 	scriptForm.find('div input[title]').tooltip({
-		position: "center right",	// Place tooltip on the right edge
-		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
-		opacity: 0.7		// Custom opacity setting
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",
+		opacity: 0.7
 	});
 
 	// Script
@@ -1237,11 +1234,11 @@ function loadDeletePage(tgtNodes) {
 
 	// Generate new tab ID
 	var inst = 0;
-	newTabId = 'DeleteTab' + inst;
+	newTabId = 'deleteTab' + inst;
 	while ($('#' + newTabId).length) {
 		// If one already exists, generate another one
 		inst = inst + 1;
-		newTabId = 'DeleteTab' + inst;
+		newTabId = 'deleteTab' + inst;
 	}
 
 	// Create status bar, hide on load
@@ -1283,7 +1280,7 @@ function loadDeletePage(tgtNodes) {
 	deleteForm.append(statBar);
 	
 	// Word wrap
-	var instr = $('<p>Do you want to delete ' + tgtNodesStr + '?</p>').css('word-wrap', 'break-word');
+	var instr = $('<p>Are you sure you want to delete ' + tgtNodesStr + '?</p>').css('word-wrap', 'break-word');
 	deleteForm.append(instr);
 
 	/**
@@ -1364,12 +1361,11 @@ function updateStatusBar(data) {
 		}
 
 		// Update data table
-		var rows = dTable.fnGetNodes();
+		var rowPos;
 		for (var i in tgts) {
 			if (!failed) {
 				// Get the row containing the node link and delete it
-				var row = getNodeRow(tgts[i], rows);
-				var rowPos = dTable.fnGetPosition(row);
+				rowPos = findRowIndexUsingCol(tgts[i], '#nodesDataTable', 1);
 				dTable.fnDeleteRow(rowPos);
 			}
 		}
@@ -1443,25 +1439,21 @@ function updatePowerStatus(data) {
 	// Get datatable
 	var dTable = $('#nodesDataTable').dataTable();
 
-	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
-
 	// Get xCAT response
 	var rsp = data.rsp;
 	// Loop through each line
+	var node, status, rowPos, strPos;
 	for (var i in rsp) {
 		// Get the node
-		var node = rsp[i].split(":")[0];
+		node = rsp[i].split(":")[0];
 
 		// If there is no error
-		var status;
 		if (rsp[i].indexOf("Error") < 0 || rsp[i].indexOf("Failed") < 0) {
 			// Get the row containing the node link
-			var row = getNodeRow(node, rows);
-			var rowPos = dTable.fnGetPosition(row);
+			rowPos = findRowIndexUsingCol(node, '#nodesDataTable', 1);
 
 			// If it was power on, then the data return would contain "Starting"
-			var strPos = rsp[i].indexOf("Starting");
+			strPos = rsp[i].indexOf("Starting");
 			if (strPos > -1) {
 				status = 'on';
 			} else {
@@ -1575,11 +1567,6 @@ function setOSImageCookies(data) {
 	var osArchsHash = new Object();
 
 	for (var i = 1; i < rsp.length; i++) {
-		// osimage table columns: imagename, profile, imagetype, provmethod,
-		// osname, osvers, osdistro, osarch, synclists, comments, disable
-		// e.g. sles11.1-s390x-statelite-compute, compute, linux, statelite,
-		// Linux, sles11.1, , s390x, , s,
-
 		// Get the image name
 		var cols = rsp[i].split(',');
 		var osImage = cols[0].replace(new RegExp('"', 'g'), '');
@@ -1630,34 +1617,6 @@ function setGroupsCookies(data) {
 }
 
 /**
- * Get row element that contains given node
- * 
- * @param tgtNode
- *            Node to find
- * @param rows
- *            Rows within the datatable
- * @return Row element
- */
-function getNodeRow(tgtNode, rows) {
-	// Find the row
-	for (var i in rows) {
-		// Get all columns within the row
-		var cols = rows[i].children;
-		// Get the 1st column (node name)
-		var cont = cols[1].children;
-		var node = cont[0].innerHTML;
-
-		// If the node matches the target node
-		if (node == tgtNode) {
-			// Return the row
-			return rows[i];
-		}
-	}
-
-	return;
-}
-
-/**
  * Get nodes that are checked in a given datatable
  * 
  * @param datatableId
@@ -1686,47 +1645,34 @@ function getNodesChecked(datatableId) {
 }
 
 /**
- * Get the column index for a given column name
+ * Find the row index using a column search value
  * 
- * @param colName
- *            The column name to search
- * @return The index containing the column name
+ * @param searchStr
+ *            String to search for
+ * @param table
+ *            Table to check
+ * @param col
+ *            Column to find string under
+ * @return The row index containing the search string
  */
-function getColNum(colName){
-	var colNum;
-	var columns = $('table thead tr').children();
+function findRowIndexUsingCol(searchStr, table, col){
+	var dTable, rows, cols;
 	
-	for(colNum = 1; colNum < columns.length; colNum++){
-		if (colName == columns[colNum].innerHTML){
-			return colNum;
-		}
-	}
-	return -1;
-}
-
-/**
- * Get the row index for a given node name
- * 
- * @param nodeName
- *            Node name
- * @return The row index containing the node name
- */
-function getRowNum(nodeName){
 	// Get datatable
-	var dTable = $('#nodesDataTable').dataTable();
-	
-	// Get all data from datatable
-	var data = dTable.fnGetData();
-	
-	var row;
-	var nodeItem;
-			
-	for(row = 0; row < data.length; row++){
-		nodeItem = data[row][1];
-		if(nodeItem.indexOf('>' + nodeName + '<') > -1){
-			return row;
+	dTable = $(table).dataTable();
+	rows = dTable.fnGetData();
+
+	// Loop through each row
+	for (var i = 0; i < rows.length; i++) {
+		// Get columns in row
+		cols = dTable.fnGetData(i);
+		// If column contains string
+		if ( cols[col].indexOf(searchStr) > -1 ) {
+			// Return index
+			return i;
 		}
 	}
+	
 	return -1;
 }
 
@@ -1760,9 +1706,10 @@ function loadRconsPage(tgtNodes){
 	var urlPath = window.location.pathname;
 	var redirectUrl = 'https://';
 	var pos = 0;
+	
 	// We only support one node
 	if (-1 != tgtNodes.indexOf(',')){
-		alert("Sorry, the Rcons Page only support one node.");
+		alert("You can only open one console at a time!");
 		return;
 	}
 	
@@ -1816,7 +1763,7 @@ function updateNodeAttrs(group) {
 	
 	// Create the arguments
 	var args;
-	var row, colPos, value;
+	var rowPos, colPos, value;
 	var attrName;
 	// Go through each node where an attribute was changed
 	for (var i in nodes) {
@@ -1824,8 +1771,8 @@ function updateNodeAttrs(group) {
 			args = '';
 			
         	// Get the row containing the node link
-        	row = getNodeRow(nodes[i], rows);
-        	$(row).find('td').each(function (){
+        	rowPos = findRowIndexUsingCol(nodes[i], '#nodesDataTable', 1);
+        	$(rows[rowPos]).find('td').each(function (){
         		if ($(this).css('color') == 'red') {
         			// Change color back to normal
         			$(this).css('color', '');
@@ -1857,7 +1804,7 @@ function updateNodeAttrs(group) {
         			cmd : 'chdef',
         			tgt : '',
         			args : '-t;node;-o;' + nodes[i] + ';' + args,
-        			msg : 'out=nodesTab;node=' + nodes[i]
+        			msg : 'out=nodesTab;tgt=' + nodes[i]
         		},
 
         		success: showChdefOutput
@@ -1888,13 +1835,13 @@ function restoreNodeAttrs() {
 	var rows = dTable.fnGetNodes();
 		
 	// Go through each node where an attribute was changed
-	var row, colPos;
+	var rowPos, colPos;
 	var attrName, origVal;
 	for (var i in nodes) {
 		if (nodes[i]) {			
 			// Get the row containing the node link
-        	row = getNodeRow(nodes[i], rows);
-        	$(row).find('td').each(function (){
+        	rowPos = findRowIndexUsingCol(tgts[i], '#nodesDataTable', 1);
+        	$(rows[rowPos]).find('td').each(function (){
         		if ($(this).css('color') == 'red') {
         			// Change color back to normal
         			$(this).css('color', '');
@@ -1907,7 +1854,6 @@ function restoreNodeAttrs() {
         			origVal = origAttrs[nodes[i]][attrName];
         			
         			// Update column
-        			rowPos = getRowNum(nodes[i]);
         			dTable.fnUpdate(origVal, rowPos, colPos);
         		}
         	});
@@ -1966,7 +1912,7 @@ function createCommentsToolTip(comment) {
     			cmd : 'chdef',
     			tgt : '',
     			args : '-t;node;-o;' + node + ';usercomment=' + comments,
-    			msg : 'out=nodesTab;node=' + node
+    			msg : 'out=nodesTab;tgt=' + node
     		},
     		
     		success: showChdefOutput
@@ -2016,7 +1962,7 @@ function showChdefOutput(data) {
 	var out = data.rsp;
 	var args = data.msg.split(';');
 	var tabID = args[0].replace('out=', '');
-	var node = args[1].replace('node=', '');
+	var tgt = args[1].replace('tgt=', '');
 	
 	// Find info bar on nodes tab, if any
 	var info = $('#' + tabID).find('.ui-state-highlight');
@@ -2027,13 +1973,12 @@ function showChdefOutput(data) {
 	}
 		
 	// Go through output and append to paragraph
-	var node, status;
-	var pg = $('<p></p>');
+	var prg = $('<p></p>');
 	for (var i in out) {
-		pg.append(node + ': ' + out[i] + '<br>');
+		prg.append(tgt + ': ' + out[i] + '<br>');
 	}
 	
-	info.append(pg);
+	info.append(prg);
 }
 
 /**
@@ -2080,36 +2025,26 @@ function setDefAttrs(data) {
  *            Target node to set properties
  * @return Nothing
  */
-function loadSetPropsPage(tgtNode) {
+function loadEditPropsPage(tgtNode) {
 	// Get nodes tab
 	var tab = getNodesTab();
 
 	// Generate new tab ID
 	var inst = 0;
-	var newTabId = 'setPropsTab' + inst;
+	var newTabId = 'editPropsTab' + inst;
 	while ($('#' + newTabId).length) {
 		// If one already exists, generate another one
 		inst = inst + 1;
-		newTabId = 'setPropsTab' + inst;
+		newTabId = 'editPropsTab' + inst;
 	}
 
 	// Open new tab
 	// Create set properties form
-	var setPropsForm = $('<div class="form"></div>');
-
-	// Create status bar
-	var barId = 'setPropsStatusBar' + inst;
-	var statBar = createStatusBar(barId);
-	statBar.hide();
-	setPropsForm.append(statBar);
-
-	// Create loader
-	var loader = createLoader('setPropsLoader' + inst);
-	statBar.append(loader);
+	var editPropsForm = $('<div class="form"></div>');
 
 	// Create info bar
 	var infoBar = createInfoBar('Choose the properties you wish to change on the node. When you are finished, click Save.');
-	setPropsForm.append(infoBar);
+	editPropsForm.append(infoBar);
 
 	// Create an input for each definable attribute
 	var div, label, input, descr, value;
@@ -2136,9 +2071,9 @@ function loadSetPropsPage(tgtNode) {
 		
 		div.append(label);
 		div.append(input);
-		setPropsForm.append(div);
+		editPropsForm.append(div);
 	}
-	
+
 	// Change style for last division
 	div.css({
 		'display': 'block',
@@ -2146,11 +2081,11 @@ function loadSetPropsPage(tgtNode) {
 	});
 	
 	// Generate tooltips
-	setPropsForm.find('div input[title]').tooltip({
-		position: "center right",	// Place tooltip on the right edge
-		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
-		opacity: 0.8,		// Custom opacity setting
+	editPropsForm.find('div input[title]').tooltip({
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",
+		opacity: 0.8,
 		delay: 0,
 		predelay: 800,
 		events: {
@@ -2201,13 +2136,13 @@ function loadSetPropsPage(tgtNode) {
     			cmd : 'chdef',
     			tgt : '',
     			args : '-t;node;-o;' + tgtNode + ';' + args,
-    			msg : 'out=' + newTabId + ';node=' + tgtNode
+    			msg : 'out=' + newTabId + ';tgt=' + tgtNode
     		},
 
     		success: showChdefOutput
     	});
 	});
-	setPropsForm.append(saveBtn);
+	editPropsForm.append(saveBtn);
 	
 	/**
 	 * Cancel
@@ -2217,10 +2152,10 @@ function loadSetPropsPage(tgtNode) {
 		// Close the tab
 		tab.remove($(this).parent().parent().attr('id'));
 	});
-	setPropsForm.append(cancelBtn);
+	editPropsForm.append(cancelBtn);
 
 	// Append to discover tab
-	tab.add(newTabId, 'Properties', setPropsForm, true);
+	tab.add(newTabId, 'Edit', editPropsForm, true);
 
 	// Select new tab
 	tab.select(newTabId);
@@ -2268,10 +2203,10 @@ function openSetPropsDialog() {
 	
 	// Generate tooltips
 	setPropsForm.find('div input[title]').tooltip({
-		position: "center right",	// Place tooltip on the right edge
-		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect
-		opacity: 0.8,		// Custom opacity setting
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",
+		opacity: 0.8,
 		delay: 0,
 		predelay: 800,
 		events: {

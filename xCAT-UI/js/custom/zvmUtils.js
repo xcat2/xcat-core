@@ -64,33 +64,35 @@ function loadHcpInfo(data) {
 	// Get user directory entry
 	var userEntry = data.rsp;
 	if (userEntry[0].indexOf('Failed') < 0) {
-    	// Get disk pools
-    	$.ajax( {
-    		url : 'lib/cmd.php',
-    		dataType : 'json',
-    		data : {
-    			cmd : 'lsvm',
-    			tgt : hcp,
-    			args : '--diskpoolnames',
-    			msg : hcp
-    		},
-    
-    		success : setDiskPoolCookies
-    	});
-    
-    	// Get network names
-    	$.ajax( {
-    		url : 'lib/cmd.php',
-    		dataType : 'json',
-    		data : {
-    			cmd : 'lsvm',
-    			tgt : hcp,
-    			args : '--getnetworknames',
-    			msg : hcp
-    		},
-    
-    		success : setNetworkCookies
-    	});
+		if (hcp) {
+        	// Get disk pools
+        	$.ajax( {
+        		url : 'lib/cmd.php',
+        		dataType : 'json',
+        		data : {
+        			cmd : 'lsvm',
+        			tgt : hcp,
+        			args : '--diskpoolnames',
+        			msg : hcp
+        		},
+        
+        		success : setDiskPoolCookies
+        	});
+        
+        	// Get network names
+        	$.ajax( {
+        		url : 'lib/cmd.php',
+        		dataType : 'json',
+        		data : {
+        			cmd : 'lsvm',
+        			tgt : hcp,
+        			args : '--getnetworknames',
+        			msg : hcp
+        		},
+        
+        		success : setNetworkCookies
+        	});
+		} // End of if (hcp)
 	} else {
 		// Create warning dialog 		
 		var warnDialog = $('<div class="ui-state-error ui-corner-all">'
@@ -2077,10 +2079,10 @@ function createZProvisionExisting(inst) {
 	
 	// Generate tooltips
 	provExisting.find('div input[title]').tooltip({
-		position: "center right",	// Place tooltip on the right edge
-		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
-		opacity: 0.7		// Custom opacity setting
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",		
+		opacity: 0.7
 	});
 	
 	/**
@@ -2339,10 +2341,10 @@ function createZProvisionNew(inst) {
 		
 		// Generate tooltips
 		diskBody.find('td input[title]').tooltip({
-			position: "top right",	// Place tooltip on the right edge
-			offset: [-4, 4],	// Moves tooltip upwards 4px and 4px to the right
-			effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
-			opacity: 0.7		// Custom opacity setting
+			position: "top right",
+			offset: [-4, 4],
+			effect: "fade",
+			opacity: 0.7
 		});
 	});
 	
@@ -2358,10 +2360,10 @@ function createZProvisionNew(inst) {
 	
 	// Generate tooltips
 	provNew.find('div input[title]').tooltip({
-		position: "center right",	// Place tooltip on the right edge
-		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
-		opacity: 0.7		// Custom opacity setting
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",
+		opacity: 0.7
 	});
 	
 	/**

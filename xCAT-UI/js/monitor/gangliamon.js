@@ -429,9 +429,10 @@ function loadNodes4Ganglia(data) {
 	gangliaCol.unbind('click');
 
 	// Create enough space for loader to be displayed
-	$('#nodesDataTable tbody tr td:nth-child(3)').css('min-width', '60px');
-	$('#nodesDataTable tbody tr td:nth-child(4)').css('min-width', '60px');
-	$('#nodesDataTable tbody tr td:nth-child(5)').css('min-width', '80px');
+	var style = {'min-width': '60px', 'text-align': 'center'};
+	$('#nodesDataTable tbody tr td:nth-child(3)').css(style);
+	$('#nodesDataTable tbody tr td:nth-child(4)').css(style);
+	$('#nodesDataTable tbody tr td:nth-child(5)').css(style);
 
 	// Instead refresh the ping status and power status
 	pingCol.bind('click', function(event) {
@@ -512,7 +513,7 @@ function loadGangliaStatus(data) {
 		status = jQuery.trim(ganglia[i][1]);
 
 		// Get the row containing the node
-		rowNum = getRowNum(node);
+		rowNum = findRowIndexUsingCol(node, '#nodesDataTable', 1);
 
 		// Update the power status column
 		dTable.fnUpdate(status, rowNum, 4);

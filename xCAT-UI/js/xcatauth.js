@@ -45,10 +45,11 @@ $(document).ready(function() {
  * 
  * @param data
  *            Data returned from AJAX call
- * @param textstatus
+ * @param txtStatus
+ *            Status of login
  * @return
  */
-function onlogin(data, textstatus) {
+function onlogin(data, txtStatus) {
 	// Clear password field regardless of what happens
 	$("#password").val("");
 	if (data.authenticated == "yes") {

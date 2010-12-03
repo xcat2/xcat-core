@@ -165,7 +165,7 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	statBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision a hmc node');
+	var infoBar = createInfoBar('Provision an hmc node.');
 	provForm.append(infoBar);
 
 	// Append to provision tab

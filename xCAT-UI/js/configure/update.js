@@ -14,11 +14,10 @@ function loadUpdatePage() {
 	$('#updateTab').append(repositoryDiv);
 	$('#updateTab').append(rpmDiv);
 
-	var infoBar = createInfoBar('Select the RPM and repository, then press Update');
+	var infoBar = createInfoBar('Select the repository to use and the RPMs to update, then click Update.');
 	repositoryDiv.append(infoBar);
 
 	repositoryDiv.append("<fieldset><legend>Repository</legend></fieldset>");
-
 	$.ajax( {
 		url : 'lib/systemcmd.php',
 		dataType : 'json',
@@ -30,7 +29,6 @@ function loadUpdatePage() {
 	});
 
 	rpmDiv.append("<fieldset></fieldset>");
-
 	$.ajax( {
 		url : 'lib/systemcmd.php',
 		dataType : 'json',
@@ -50,53 +48,48 @@ function loadUpdatePage() {
  * @return Nothing
  */
 function showRepository(data) {
-	var DevelRepository = "";
-	var StableRepository = "";
-	var Show = "";
+	var develRepository = "";
+	var stableRepository = "";
+	var show = "";
 
 	// get the corresponding repository by OS Type
 	if ("aix" == data.rsp) {
-		DevelRepository = "http://xcat.sourceforge.net/aix/devel/xcat-core/";
-		StableRepository = "http://xcat.sourceforge.net/aix/xcat-core/";
+		develRepository = "http://xcat.sourceforge.net/aix/devel/xcat-core/";
+		stableRepository = "http://xcat.sourceforge.net/aix/xcat-core/";
 	} else {
-		DevelRepository = "http://xcat.sourceforge.net/yum/devel/xcat-core/";
-		StableRepository = "http://xcat.sourceforge.net/yum/xcat-core/";
+		develRepository = "http://xcat.sourceforge.net/yum/devel/xcat-core/";
+		stableRepository = "http://xcat.sourceforge.net/yum/xcat-core/";
 	}
 
 	var repoList = $('<ol></ol>');
 
 	// display the Devel Repository, remember user's last selection
-	Show = Show + "<li><input type='radio' ";
+	show = show + "<li><input type='radio' ";
 	if (1 == $.cookie('xcatrepository')) {
-		Show = Show + "checked='true'";
+		show = show + "checked='true'";
 	}
-
-	Show = Show + "name='reporadio' value='" + DevelRepository + "'>";
-	Show = Show + DevelRepository + "(<strong>Devel</strong>)</li>";
-
-	repoList.append(Show);
+	show = show + "name='reporadio' value='" + develRepository + "'>";
+	show = show + develRepository + "(<strong>Devel</strong>)</li>";
+	repoList.append(show);
 
 	// display the Stable Repository, remember user's last selection
-	Show = "<li><input type='radio' ";
+	show = "<li><input type='radio' ";
 	if (2 == $.cookie('xcatrepository')) {
-		Show = Show + "checked='true'";
+		show = show + "checked='true'";
 	}
-
-	Show = Show + "name='reporadio' value='" + StableRepository + "'>";
-	Show = Show + StableRepository + "(<strong>Stable</strong>)</li>";
-
-	repoList.append(Show);
+	show = show + "name='reporadio' value='" + stableRepository + "'>";
+	show = show + stableRepository + "(<strong>Stable</strong>)</li>";
+	repoList.append(show);
 
 	// display the Input Repository, remember user's last selection
 	if (($.cookie('xcatrepository')) && (1 != $.cookie('xcatrepository')) && (2 != $.cookie('xcatrepository'))) {
-		Show = "<li><input type='radio' checked='true' name='reporadio' value=''>Other: ";
-		Show += "<input style='width: 500px' id='repositoryaddr' value='" + $.cookie('xcatrepository') + "'</li>";
+		show = "<li><input type='radio' checked='true' name='reporadio' value=''>Other: ";
+		show += "<input style='width: 500px' id='repositoryaddr' value='" + $.cookie('xcatrepository') + "'</li>";
 	} else {
-		Show = "<li><input type='radio' name='reporadio' value=''>Other: ";
-		Show += "<input style='width: 500px' id='repositoryaddr' value=''</li>";
+		show = "<li><input type='radio' name='reporadio' value=''>Other: ";
+		show += "<input style='width: 500px' id='repositoryaddr' value=''</li>";
 	}
-
-	repoList.append(Show);
+	repoList.append(show);
 	$('#repository fieldset').append(repoList);
 }
 
@@ -108,52 +101,50 @@ function showRepository(data) {
  * @return Nothing
  */
 function showRpmInfo(data) {
-	var Rpms = null;
-	var Show = "";
-	var RpmNames = new Array("xCAT-client", "perl-xCAT", "xCAT-server", "xCAT", "xCAT-rmc", "xCAT-UI");
+	var rpms = null;
+	var show = "";
+	var rpmNames = new Array("xCAT-client", "perl-xCAT", "xCAT-server", "xCAT", "xCAT-rmc", "xCAT-UI");
 	var temp = 0;
 	if (null == data.rsp) {
-		$('#rpm fieldset').append("Get Rpm Info Error!");
+		$('#rpm fieldset').append("Error getting RPMs!");
 		return;
 	}
 
-	Rpms = data.rsp.split(/\n/);
+	rpms = data.rsp.split(/\n/);
 	// no rpm installed, return
-	if (1 > Rpms.length) {
-		$('#rpm fieldset').append("No Rpm installed!");
+	if (1 > rpms.length) {
+		$('#rpm fieldset').append("No RPMs installed!");
 		return;
 	}
 
 	// clear the old data
 	$('#rpm fieldset').children().remove();
-	$('#rpm fieldset').append("<legend>xCAT Rpm Info</legend>");
-
-	Show = "<table id=rpmtable >";
-	Show += "<thead><tr>";
-	Show += "<th><input type='checkbox' id='selectall' value='' onclick='updateSelectAll()'></th>";
-	Show += "<th><b>Package Name</b></th><th><b>Version</b></th>";
-	Show += "</tr></thead>";
-
-	for (temp = 0; temp < Rpms.length; temp++) {
+	$('#rpm fieldset').append("<legend>xCAT RPMs</legend>");
+	show = "<table id=rpmtable >";
+	show += "<thead><tr>";
+	show += "<th><input type='checkbox' id='selectall' value='' onclick='updateSelectAll()'></th>";
+	show += "<th><b>Package Name</b></th><th><b>Version</b></th>";
+	show += "</tr></thead>";
+	for (temp = 0; temp < rpms.length; temp++) {
 		// empty line continue
-		if ("" == Rpms[temp]) {
+		if ("" == rpms[temp]) {
 			continue;
 		}
 
 		// the rpm is not installed, continue
-		if (-1 != Rpms[temp].indexOf("not")) {
+		if (-1 != rpms[temp].indexOf("not")) {
 			continue;
 		}
 
 		// show the version in table
-		Show += "<tr>";
-		Show += "<td><input type='checkbox' value='" + RpmNames[temp] + "'></td>";
-		Show += "<td>" + RpmNames[temp] + "</td><td>" + Rpms[temp].substr(RpmNames[temp].length + 1) + "</td>";
-		Show += "</tr>";
+		show += "<tr>";
+		show += "<td><input type='checkbox' value='" + rpmNames[temp] + "'></td>";
+		show += "<td>" + rpmNames[temp] + "</td><td>" + rpms[temp].substr(rpmNames[temp].length + 1) + "</td>";
+		show += "</tr>";
 	}
-	Show += "</table>";
-	Show += "<br\>";
-	$('#rpm fieldset').append(Show);
+	show += "</table>";
+	show += "<br\>";
+	$('#rpm fieldset').append(show);
 
 	// add the update button
 	var updateButton = createButton('Update');
@@ -201,7 +192,6 @@ function updateRpm() {
 			rpmPathType = "2";
 		} else {
 			rpmPathType = "1";
-			;
 		}
 	}
 
@@ -212,7 +202,6 @@ function updateRpm() {
 		}
 
 		var pattern = new RegExp("^" + temp + ",|," + temp + ",");
-
 		if (pattern.test(rpms)) {
 			return true;
 		}
@@ -226,11 +215,11 @@ function updateRpm() {
 	// Check RPM and repository
 	var errMsg = '';
 	if (!rpms) {
-		errMsg = "Please select the rpm!<br>";
+		errMsg = "Please select an RPM!<br>";
 	}
 
 	if (!rpmPath) {
-		errMsg += "Please select or input the repository!";
+		errMsg += "Please select or input a repository!";
 	}
 
 	if (!rpms || !rpmPath) {
@@ -302,7 +291,6 @@ function ShowUpdateResult(data) {
 		var resDetail = $('<div id="resDetail"></div>');
 		resDetail.hide();
 		$('#update').append(resDetail);
-
 		for (temp = 0; temp < resArray.length; temp++) {
 			resDetail.append(resArray[temp] + "<br>");
 		}

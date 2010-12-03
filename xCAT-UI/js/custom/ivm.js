@@ -132,7 +132,7 @@ ivmPlugin.prototype.loadProvisionPage = function(tabId) {
 	statBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision a ivm node');
+	var infoBar = createInfoBar('Provision a ivm node.');
 	provForm.append(infoBar);
 
 	// Append to provision tab

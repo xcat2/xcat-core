@@ -46,7 +46,7 @@ function loadNodesetPage(tgtNodes) {
 	statBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Set the boot state for a node range');
+	var infoBar = createInfoBar('Set the boot state for a node range.');
 	nodesetForm.append(infoBar);
 
 	// Create target node or group
@@ -126,10 +126,10 @@ function loadNodesetPage(tgtNodes) {
 
 	// Generate tooltips
 	nodesetForm.find('div input[title]').tooltip({
-		position: "center right",	// Place tooltip on the right edge
-		offset: [-2, 10],	// A little tweaking of the position
-		effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
-		opacity: 0.7		// Custom opacity setting
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",
+		opacity: 0.7
 	});
 	
 	/**

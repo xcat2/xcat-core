@@ -200,7 +200,7 @@ function rmcWorkingCheck(){
 }
 
 function loadRmcMonShow(){
-	$('#rmcMonStatus').empty().append("Getting monitoring Data(This step may take a long time).");
+	$('#rmcMonStatus').empty().append("Getting monitoring Data (This step may take a long time).");
 	$('#rmcMonStatus').append(createLoader());
 	
 	//init the selected Attributes string

@@ -37,7 +37,7 @@ function loadProvisionPage() {
 	}
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision or re-provision a node on a selected platform');
+	var infoBar = createInfoBar('Select a platform to provision or re-provision a node on, then click Ok.');
 	
 	// Create provision page
 	var provPg = $('<div class="form"></div>');
@@ -50,7 +50,7 @@ function loadProvisionPage() {
 	$('#content').append(tab.object());
 
 	// Create radio buttons for platforms
-	var hwList = $('<ol>Select a platform to provision on:</ol>');
+	var hwList = $('<ol>Platforms available:</ol>');
 	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>ipmi</li>');
 	var blade = $('<li><input type="radio" name="hw" value="blade"/>blade</li>');
 	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>hmc</li>');

@@ -132,7 +132,7 @@ bladePlugin.prototype.loadProvisionPage = function(tabId) {
 	statBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision a blade node');
+	var infoBar = createInfoBar('Provision a blade node.');
 	provForm.append(infoBar);
 
 	// Append to provision tab

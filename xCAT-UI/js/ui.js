@@ -51,35 +51,35 @@ Tab.prototype.object = function() {
 /**
  * Add a new tab
  * 
- * @param newTabId
- *            New tab ID
- * @param newTabName
- *            New tab name
- * @param newTabCont
- *            New tab content
+ * @param tabId
+ *            Tab ID
+ * @param tabName
+ *            Tab name
+ * @param tabCont
+ *            Tab content
  * @param closeable
- * 			  New tab close button
+ * 			  Is tab closeable
  * @return Nothing
  */
-Tab.prototype.add = function(newTabId, newTabName, newTabCont, closeable) {
+Tab.prototype.add = function(tabId, tabName, tabCont, closeable) {
 	// Show tab
 	if (this.tab.css("display") == "none") {
 		this.tab.show();
 	}
 
-	var newTab = $('<div class="tab" id="' + newTabId + '"></div>');
-	newTab.append(newTabCont);
+	var newTab = $('<div class="tab" id="' + tabId + '"></div>');
+	newTab.append(tabCont);
 	this.tab.append(newTab);
-	this.tab.tabs("add", "#" + newTabId, newTabName);
+	this.tab.tabs("add", "#" + tabId, tabName);
 	
 	// Append close button
 	if (closeable) {
-		var header = this.tab.find('ul.ui-tabs-nav a[href="#' + newTabId +'"]').parent();
+		var header = this.tab.find('ul.ui-tabs-nav a[href="#' + tabId +'"]').parent();
 		header.append('<span class=\"tab-close ui-icon ui-icon-close\"></span>');
 	
 		// Get this tab
 		var tabs = this.tab;
-		var tabLink = 'a[href="\#' + newTabId + '"]';	
+		var tabLink = 'a[href="\#' + tabId + '"]';	
 		var thisTab = $(tabLink, tabs).parent();
 						
 		// Close tab when close button is clicked
@@ -312,7 +312,7 @@ NodesTable.prototype.remove = function(id) {
  * @return Status bar
  */
 function createStatusBar(barId) {
-	var statusBar = $('<div class="statusBar" id="' + barId + '"><div>');
+	var statusBar = $('<div class="ui-state-highlight ui-corner-all" id="' + barId + '"></div>').css('padding', '10px');
 	return statusBar;
 }
 
@@ -327,7 +327,6 @@ function createInfoBar(msg) {
 	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>');
 	var msg = $('<p><span class="ui-icon ui-icon-info"></span>' + msg + '</p>');
 	infoBar.append(msg);
-
 	return infoBar;
 }
 
@@ -342,7 +341,6 @@ function createWarnBar(msg) {
 	var warnBar = $('<div class="ui-state-error ui-corner-all"></div>');
 	var msg = $('<p><span class="ui-icon ui-icon-alert"></span>' + msg + '</p>');
 	warnBar.append(msg);
-
 	return warnBar;
 }
 
@@ -426,9 +424,7 @@ function initPage() {
 	includeJs("js/jquery/jquery.jstree.js");
 	includeJs("js/jquery/jquery.flot.js");
 	includeJs("js/jquery/tooltip.min.js");
-	includeJs("js/jquery/jquery.serverBrowser.js");
-	includeJs("js/jquery/jquery.topzindex.min.js");
-	
+		
 	// Page plugins
 	includeJs("js/configure/configure.js");	
 	includeJs("js/monitor/monitor.js");
@@ -453,6 +449,7 @@ function initPage() {
 	// Show the page
 	$("#content").children().remove();
 	if (page == 'index.php') {
+		includeJs("js/jquery/jquery.topzindex.min.js");
 		includeJs("js/nodes/nodeset.js");
 		includeJs("js/nodes/rnetboot.js");
 		includeJs("js/nodes/updatenode.js");
@@ -466,6 +463,7 @@ function initPage() {
 		headers.eq(1).css('background-color', '#A9D0F5');
 		loadConfigPage();
 	} else if (page == 'provision.php') {
+		includeJs("js/jquery/jquery.serverBrowser.js");
 		includeJs("js/provision/images.js");
 		headers.eq(2).css('background-color', '#A9D0F5');
 		loadProvisionPage();
@@ -522,10 +520,11 @@ function writeRsp(rsp, pattern) {
 			// Replace pattern with break
 			if (pattern) {
 				rsp[i] = rsp[i].replace(new RegExp(pattern, 'g'), '<br>');
-			}
-			
-			prg.append(rsp[i]);
-			prg.append('<br>');			
+				prg.append(rsp[i]);
+			} else {
+				prg.append(rsp[i]);
+				prg.append('<br>');
+			}			
 		}
 	}
 

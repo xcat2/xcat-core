@@ -53,7 +53,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>').hide();
 
 		// Create info bar
-		var infoBar = createInfoBar('Clone a node');
+		var infoBar = createInfoBar('Clone a zvm node.');
 
 		// Create clone form
 		var cloneForm = $('<div class="form"></div>');
@@ -94,11 +94,17 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		cloneForm.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw" title="The password that will be used for accessing the disk. This input is optional."/></div>');
 
 		// Generate tooltips
-		cloneForm.find('div input[title]').tooltip({
-			position: "center right",	// Place tooltip on the right edge
-			offset: [-2, 10],	// A little tweaking of the position
-			effect: "fade",		// Use the built-in fadeIn/fadeOut effect			
-			opacity: 0.7		// Custom opacity setting
+		cloneForm.find('div input[title]').tooltip( {
+			position : "center right",
+			offset : [ -2, 10 ],
+			effect : "fade",
+			opacity : 0.7,
+			events : {
+				def : "mouseover,mouseout",
+				input : "mouseover,mouseout",
+				widget : "focus mouseover,blur mouseout",
+				tooltip : "mouseover,mouseout"
+			}
 		});
 		
 		/**

@@ -132,7 +132,7 @@ ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
 	statBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision a ipmi node');
+	var infoBar = createInfoBar('Provision a ipmi node.');
 	provForm.append(infoBar);
 
 	// Append to provision tab
