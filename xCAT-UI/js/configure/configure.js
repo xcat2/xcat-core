@@ -76,6 +76,9 @@ function loadConfigPage() {
 
 	// Add the update tab
 	tab.add('updateTab', 'Update', '', false);
+	
+	// Add the discover tab
+	tab.add('discoverTab', 'Discover', '', false);
 
 	// Get list of tables and their descriptions
 	$.ajax( {
@@ -92,6 +95,7 @@ function loadConfigPage() {
 	});
 
 	loadUpdatePage();
+	loadDiscoverPage();
 }
 
 /**

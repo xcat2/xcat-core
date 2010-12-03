@@ -462,6 +462,7 @@ function initPage() {
 		loadNodesPage();
 	} else if (page == 'configure.php') {
 		includeJs("js/configure/update.js");
+		includeJs("js/configure/discover.js");
 		headers.eq(1).css('background-color', '#A9D0F5');
 		loadConfigPage();
 	} else if (page == 'provision.php') {
@@ -474,10 +475,6 @@ function initPage() {
 		includeJs("js/monitor/gangliamon.js");
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
-	} else if (page == 'discover.php'){
-		includeJs("js/discover/discover.js");
-		headers.eq(4).css('background-color', '#A9D0F5');
-		loadDiscoverPage();
 	} else {
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();

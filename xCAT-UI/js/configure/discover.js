@@ -39,10 +39,10 @@ var discoverEnv;
 function loadDiscoverPage(){
 	currentStep = 0;
 	discoverEnv = new Object();
-	$('#content').append('<div class="discoverstep" id="discoverStepDiv"></div>');
+	$('#discoverTab').append('<div class="discoverstep" id="discoverStepDiv"></div>');
 	updateDiscoverStep();
 	
-	$('#content').append('<div class="discovercontent" id="discoverContentDiv"><div>');
+	$('#discoverTab').append('<div class="discovercontent" id="discoverContentDiv"><div>');
 	initSelectPlatform();
 }
 
@@ -79,7 +79,7 @@ function createDiscoverButtons(){
 	var nextButton = createNextButton();
 	var cancelButton = createButton('Cancel');
 	cancelButton.bind('click', function(){
-		$('#content').empty();
+		$('#discoverTab').empty();
 		for (var name in discoverEnv){
 			delete discoverEnv[name];
 		}

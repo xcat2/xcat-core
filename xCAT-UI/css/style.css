@@ -719,7 +719,6 @@ table a:hover {
 	vertical-align: top;
 	float: left;
 	position: relative;
-	margin: 15px 0px 15px 15px;
 	overflow: auto;
 	background-color: #CCCCFF;
 	padding: 10px 0px 0px 5px;
@@ -736,15 +735,19 @@ table a:hover {
 .discovercontent {
 	width: 700px;
 	display: inline-table;
-	padding: 20px;
+	padding: 0 0 0 20px;
+}
+
+.discovercontent table{
+	border : none;
 }
 
 .discovercontent td {
-	font: 12px verdana, arial, helvetica, sans-serif;
+	border : none;
 }
 
 .discovercontent th {
 	font: normal bold 15px verdana, arial, helvetica, sans-serif;
 	text-align: center;
-	padding: 20px 0px 10px 0px;
+	border: none;
 }
