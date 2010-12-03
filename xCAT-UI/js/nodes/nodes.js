@@ -1840,7 +1840,7 @@ function restoreNodeAttrs() {
 	for (var i in nodes) {
 		if (nodes[i]) {			
 			// Get the row containing the node link
-        	rowPos = findRowIndexUsingCol(tgts[i], '#nodesDataTable', 1);
+        	rowPos = findRowIndexUsingCol(nodes[i], '#nodesDataTable', 1);
         	$(rows[rowPos]).find('td').each(function (){
         		if ($(this).css('color') == 'red') {
         			// Change color back to normal
