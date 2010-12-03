@@ -1488,7 +1488,7 @@ sub listVM {
 	my ( $callback, $node, $args ) = @_;
 
 	# Set cache directory
-	my $cache = '/var/opt/zhcp/.vmapi/.cache';
+	my $cache = '/var/opt/zhcp/cache';
 
 	# Get node properties from 'zvm' table
 	my @propNames = ( 'hcp', 'userid' );
@@ -1512,6 +1512,12 @@ sub listVM {
 
 	# Get disk pool names
 	if ( $args->[0] eq "--diskpoolnames" ) {
+		# If the cache directory does not exist
+		if (!(`ssh $hcp "test -d $cache && echo Exists"`)) {
+			# Create cache directory
+			$out = `ssh $hcp "mkdir -p $cache"`;
+		}
+		
 		my $file = "$cache/diskpoolnames";
 		
 		# If a cache for disk pool names exists

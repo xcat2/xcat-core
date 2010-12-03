@@ -1014,14 +1014,20 @@ sub getUserProfile {
 	# Set directory where executables are on zHCP
 	my $hcpDir = "/opt/zhcp/bin";
 
+	my $out;
+
 	# Set directory for cache
-	my $cache = '/var/opt/zhcp/.vmapi/.cache';
+	my $cache = '/var/opt/zhcp/cache';
+	# If the cache directory does not exist
+	if (!(`ssh $hcp "test -d $cache && echo Exists"`)) {
+		# Create cache directory
+		$out = `ssh $hcp "mkdir -p $cache"`;
+	}
 
 	# Set output file name
 	my $file = "$cache/$profile.profile";
 
 	# If a cache for the user profile exists
-	my $out;
 	if (`ssh $hcp "ls $file"`) {
 
 		# Get current Epoch
