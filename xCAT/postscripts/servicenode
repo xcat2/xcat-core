@@ -78,11 +78,7 @@ if ($ENV{UPDATESECURITY} && $ENV{UPDATESECURITY} eq "1") {
     }
 
     # copy the certificates
-    if (&runcmd("$::XCATROOT/sbin/copycerts") != 0) {
-        $msg = "$::sdate servicenode: Could not run copycerts.\n";
-        `logger -t xcat $msg`;
-    }
-
+      &copycerts;
     if ($::osname eq 'AIX') {
         # get the xCAT credentials from the server
         # the credenticals and certificates copy will be done in xcatclient and xcatserver postscripts
@@ -126,7 +122,7 @@ else
         my $arch=$ENV{'ARCH'};
         &runcmd("OTHERPKGS=xcat/xcat-core/xCATsn,xcat/xcat-dep/$osver/$arch/conserver /xcatpost/otherpkgs");
     }
-	&runcmd("$::XCATROOT/sbin/copycerts");
+         &copycerts;
 }
 
 `logger -t xcat rc=$rc`;
@@ -200,11 +196,7 @@ sub setupAIXsn
 	}
 
 	# call copycerts
-    if (&runcmd("$::XCATROOT/sbin/copycerts") != 0) {
-        $msg = "$::sdate servicenode: Could not run copycerts.\n";
-        `logger -t xcat $msg`;
-    }
-
+        &copycerts;
 	# get the xCAT credentials from the server
 	&getcreds;
 
@@ -515,4 +507,81 @@ sub openlistener
 	close($client);
 	close($listener);
 	exit 0;
+}
+#####################################################
+#
+# copycerts 
+#Copy from the mounted /xcatpost/ directory to the MS /install/postscripts
+# directory the /install/postscripts/ca  install/postscripts/cert and
+# /install/postscripts/_xcat into the local file system.  These certificate are
+# needed for the postresql and mysql db setup for the service node
+# to be able to access
+# the DB from the service node.
+#
+#
+#####################################################
+
+sub copycerts
+{
+    my $rc = 0;
+    `touch /etc/xCATSN`;
+    # get roots home directory
+    my @user= getpwuid($>);
+    $homedir=$user[7];
+    if (-d "/xcatpost/_xcat")
+    {
+        if (!(-d "$homedir/.xcat"))
+        {
+            `mkdir -p $homedir/.xcat`;
+            `chmod 0600 $homedir/.xcat`;
+        }
+        `cp -f -rp /xcatpost/_xcat/* $homedir/.xcat`;
+        `chmod 0600 $homedir/.xcat/*`;
+    }
+    else
+    {
+        $msg = "/xcatpost/_xcat directory does not exist\n";
+        `logger -t xcat $msg`;
+
+    }
+    if (-d "/xcatpost/ca")
+    {
+        if (!(-d "/etc/xcat"))
+        {
+            mkdir("/etc/xcat", 0755);
+        }
+        if (!(-d "/etc/xcat/ca"))
+        {
+            mkdir("/etc/xcat/ca", 0755);
+        }
+        `cp -f -rp /xcatpost/ca/* /etc/xcat/ca`;
+        `chmod 0600 /etc/xcat/ca/*`;
+    }
+    else
+    {
+        $msg = "/xcatpost/ca directory does not exist\n";
+        `logger -t xcat $msg`;
+
+    }
+    if ($^O =~ /^aix/i)  {
+      if (-d "/xcatpost/_xcat")
+      {
+        if (!(-d "/etc/xcat"))
+        {
+            mkdir("/etc/xcat", 0755);
+        }
+        if (!(-d "/etc/xcat/cert"))
+        {
+            mkdir("/etc/xcat/cert", 0755);
+        }
+        `cp -f -rp /xcatpost/_xcat/* /etc/xcat/cert`;
+        `chmod 0600 /etc/xcat/cert/*`;
+      }
+      else
+      {
+        $msg = "/xcatpost/_xcat directory does not exist\n";
+        `logger -t xcat $msg`;
+      }
+    }
+    return $rc;
 }
