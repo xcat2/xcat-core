@@ -16,10 +16,12 @@ my $OS_name;
 my $ib_driver;
 if ( $ENV{OSVER} && ($ENV{OSVER} =~ /rhe(\D+)(\d+)(\.\d+)?/)  ) {
     if ( $2 > 5 ) {
-        $ib_driver = "rdma"
+        $ib_driver = "rdma";
     } else {
-        $ib_driver = "openibd"
+        $ib_driver = "openibd";
     }
+} else {
+    $ib_driver = "openibd";
 }
 
 my $HOST = `hostname -s`;
