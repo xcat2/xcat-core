@@ -55,7 +55,7 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t T=i p=s P=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t T=s p=s P=s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -70,6 +70,18 @@ sub mkhwconn_parse_args
         return( usage('Flags -P can only be used when flag -p is specified.'));
     }
 
+    if( ! exists $opt{T} )
+    {
+        return( usage('Missing -T option. The value can be lpar or fnm.'));
+    }
+    
+    if(  $opt{T} eq "lpar") {
+        $opt{T} = 0;   
+    } elsif($opt{T} eq "fnm") {
+        $opt{T} = 1;   
+    } else {
+        return( usage('Wrong value of  -T option. The value can be lpar or fnm.'));
+    }
     
     ##########################################
     # Check if CECs are controlled by a frame
@@ -244,10 +256,24 @@ sub lshwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
+    
+    if( ! exists $opt{T} )
+    {
+        return( usage('Missing -T option. The value can be lpar or fnm.'));
+    }
+    
+    if(  $opt{T} eq "lpar") {
+        $opt{T} = 0;   
+    } elsif($opt{T} eq "fnm") {
+        $opt{T} = 1;   
+    } else {
+        return( usage('Wrong value of  -T option. The value can be lpar or fnm.'));
+    }
+    
 
     #############################################
     # Process command-line arguments
@@ -323,10 +349,24 @@ sub rmhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help T=i) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
+    
+    if( ! exists $opt{T} )
+    {
+        return( usage('Missing -T option. The value can be lpar or fnm.'));
+    }
+    
+    if(  $opt{T} eq "lpar") {
+        $opt{T} = 0;   
+    } elsif($opt{T} eq "fnm") {
+        $opt{T} = 1;   
+    } else {
+        return( usage('Wrong value of  -T option. The value can be lpar or fnm.'));
+    }
+    
 
     #############################################
     # Process command-line arguments
@@ -417,7 +457,8 @@ sub mkhwconn
     my $opt     = $request->{opt};
     my @value   = ();
     my $Rc      = undef;
-    my $tooltype = $opt->{T};
+    my $tooltype= $opt->{T};
+    
     
     for my $cec_bpa ( keys %$hash)
     {
@@ -466,6 +507,7 @@ sub lshwconn
     my @value   = ();
     my $Rc      = undef;
     my $res    = undef;
+    my $tooltype = $opt->{T};
 
     for my $cec_bpa ( keys %$hash)
     {
@@ -474,7 +516,7 @@ sub lshwconn
          {    
 	      my $d = $node_hash->{$node_name};
 	      my $action = "query_connection";
-	      my $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, $action);
+	      my $res = xCAT::FSPUtils::fsp_api_action ($node_name, $d, $action, $tooltype);
 	      #print "in lshwconn:\n";
 	      #print Dumper($res);
 	      my $Rc = @$res[2];
