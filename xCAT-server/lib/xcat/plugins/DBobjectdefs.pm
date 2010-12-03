@@ -2590,6 +2590,10 @@ sub defls
                      {
                          $myhash{$obj}{postscripts} = $xcatdefaultsps;
                      }
+                     if($::opt_V && ($myhash{$obj}{postscripts} eq $xcatdefaultsps))
+                     {
+                         $myhash{$obj}{postscripts} .= "     (Table:postscripts - Key:node - Column:postscripts)";
+                     }
                  }
                  if($xcatdefaultspbs)
                  {
@@ -2600,6 +2604,10 @@ sub defls
                      else
                      {
                          $myhash{$obj}{postbootscripts} = $xcatdefaultspbs;
+                     }
+                     if($::opt_V && ($myhash{$obj}{postbootscripts} eq $xcatdefaultspbs))
+                     {
+                         $myhash{$obj}{postbootscripts} .= "       (Table:postscripts - Key:node - Column:postbootscripts)";
                      }
                  }
              }
