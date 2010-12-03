@@ -726,7 +726,7 @@ site => {
     table_desc => "Global settings for the whole cluster.  This table is different from the \nother tables in that each attribute is just named in the key column, rather \nthan having a separate column for each attribute. The following is a list of \nthe attributes currently used by xCAT.\n",
  descriptions => {
   # Do not put description text past column 88, so it displays well in a 100 char wide window.
-  # ----------------------------------------------------------------------------------|
+  # ----------------------------------------------------------------------------------|----------
   key => "Attribute Name:  Description\n\n".
    " auditskipcmds: List of commands that will not be written to the auditlog table.\n".
    "                ALL - means all cmds will be skipped. If attribute null, all\n".
@@ -748,8 +748,17 @@ site => {
    "                  specify different NICs for different nodes:\n".
    "                       mn|eth1,eth2;service|bond0.\n\n".
    " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n".
-   " disjointdhcps:  If set to '1', the .leases file on a service node only contains the nodes it manages. The default value is '0'.\n\n".
+   " disjointdhcps:  If set to '1', the .leases file on a service node only contains\n".
+   "                 the nodes it manages. The default value is '0'.\n\n".
    " domain:  The DNS domain name used for the cluster.\n\n".
+   " ea_primary_hmc:  The hostname of the HMC that the Integrated Switch Network\n".
+   "                  Management Event Analysis should send hardware serviceable\n".
+   "                  events to for processing and potentially sending to IBM.\n\n".
+   " ea_backup_hmc:  The hostname of the HMC that the Integrated Switch Network\n".
+   "                  Management Event Analysis should send hardware serviceable\n".
+   "                  events to if the primary HMC is down.\n\n".
+   " enableASMI:  (yes/1 or no/0). If yes, ASMI method will be used after fsp-api. If no,\n".
+   "               when fsp-api is used, ASMI method will not be used. Default is no.\n\n".
    " forwarders:  The DNS servers at your site that can provide names outside of the\n".
    "              cluster.  The DNS on the management node will forward requests it\n".
    "              does not know to these servers.\n\n".
@@ -777,43 +786,46 @@ site => {
    "              the node deployment, node discovery and power operations.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
    "              xCAT management node.\n\n".
-   " powerinterval:  The time of seconds that rpower command will wait \n                 between performing action on each target object.\n".
-   "                 It is used for controlling the cluster boot up speed
-                 in large p-Series clusters. Default is 0\n\n".
+   " powerinterval:  The time of seconds that rpower command will wait between\n".
+   "                 performing action on each target object.\n".
+   "                 It is used for controlling the cluster boot up speed\n".
+   "                 in large clusters. Default is 0.\n\n".
    " ppcmaxp:  The max # of processes for PPC hw ctrl.\n\n".
    " ppcretry:  The max # of PPC hw connection attempts before failing.\n\n".
    " ppctimeout:  The timeout, in milliseconds, to use when communicating with PPC hw.\n\n".
    " pruneservices:  Whether to enable service pruning when noderm is run (i.e.\n".
    "                 removing DHCP entries when noderm is executed)\n\n".
+   " rsh:  This is no longer used. path to remote shell command for xdsh.\n\n".
+   " rcp:  This is no longer used. path to remote copy command for xdcp.\n\n".
+   " sharedtftp:  Set to 0 or no, if xCAT should not assume the directory\n".
+   "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n". 
+   "              If value is set to a hostname, the directory in tftpdir\n".
+   "              will be mounted from that hostname on the SN\n\n". 
+   " SNsyncfiledir:  The directory on the Service Node, where xdcp will copy the files\n".
+   "                 from the MN that will eventually be copied to the compute nodes.\n\n".
+   " snmpc:  The snmp community string that xcat should use when communicating with the\n".
+   "         switches.\n\n".
    " sshbetweennodes:  Comma separated list of groups to enable passwordless root \n".
    "                   ssh during install, or xdsh -K. Default is ALLGROUPS.\n".
    "                   Set to NOGROUPS,if you do not wish to enabled any groups.\n".
    "                   Service Nodes are not affected by this attribute\n".
    "                   they are always setup with\n".
    "                   passwordless root access to nodes and other SN.\n\n".
-   " sharedtftp:  Set to 0 or no, if xCAT should not assume the directory\n".
-   "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n". 
-   "              If value is set to a hostname, the directory in tftpdir\n".
-   "              will be mounted from that hostname on the SN\n\n". 
-   " timezone:  (e.g. America/New_York)\n\n".
-   " tftpdir:  tftp directory path. Default is /tftpdir\n\n".
-   " useSSHonAIX:  (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no,\n".
-   "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
-   " vcenterautojoin: When set to no, the VMWare plugin will not attempt to auto remove and add hypervisors while trying to perform operations.  If users or tasks outside of xCAT perform the joining this assures xCAT will not interfere.\n\n".
-   " vmwarereconfigonpower: When set to no, the VMWare plugin will make no effort to push vm.cpus/vm.memory updates from xCAT to VMWare\n\n".
-   " rsh:  This is no longer used. path to remote shell command for xdsh.\n\n".
-   " rcp:  This is no longer used. path to remote copy command for xdcp.\n\n".
-   " SNsyncfiledir:  The directory on the Service Node, where xdcp will copy the files\n".
-   "                 from the MN that will eventually be copied to the compute nodes.\n\n".
-   " snmpc:  The snmp community string that xcat should use when communicating with the\n".
-   "         switches.\n\n".
    " svloglocal:  if set to 1, syslog on the service node will not get forwarded to the\n".
    "              mgmt node.\n\n".
+   " timezone:  (e.g. America/New_York)\n\n".
+   " tftpdir:  tftp directory path. Default is /tftpdir\n\n".
    " useNmapfromMN:  When set to yes, nodestat command should obtain the node status\n".
    "                 using nmap (if available) from the management node instead of the\n".
    "                 service node. This will improve the performance in a flat network.\n\n".
-   " enableASMI:  (yes/1 or no/0). If yes, ASMI method will be used after fsp-api. If no,\n".
-   "               when fsp-api is used, ASMI method will not be used. Default is no.\n\n".
+   " useSSHonAIX:  (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no,\n".
+   "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
+   " vcenterautojoin:  When set to no, the VMWare plugin will not attempt to auto remove\n".
+   "                   and add hypervisors while trying to perform operations.  If users\n".
+   "                   or tasks outside of xCAT perform the joining this assures xCAT\n".
+   "                   will not interfere.\n\n".
+   " vmwarereconfigonpower:  When set to no, the VMWare plugin will make no effort to\n".
+   "                         push vm.cpus/vm.memory updates from xCAT to VMWare.\n\n".
    " xcatconfdir:  Where xCAT config data is (default /etc/xcat).\n\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
    " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
