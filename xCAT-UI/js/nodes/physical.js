@@ -2,7 +2,7 @@ var bpaList;
 var fspList;
 var lparList;
 var nodeList;
-var selectNode = new Object();
+var selectNode;
 
 /**
  * extract all nodes userful data into a hash, which is used for creating graphical
@@ -53,6 +53,7 @@ function createPhysicalLayout(data){
 	bpaList = new Object();
 	fspList = new Object();
 	lparList = new Object();
+	selectNode = new Object();
 	
 	$('#graphTab').empty();
 	for (var temp in data.rsp){
@@ -216,12 +217,10 @@ function createGraphical(bpa, fsp, area){
 			return;
 		}
 		if (true == $(this).attr('checked')){
-			selectNode[lparName] = 1;
-			$('#graphTable [name=' + lparName + ']').css('border-color', 'aqua');
+			changeNode(lparName, 'select');
 		}
 		else{
-			delete selectNode[lparName];
-			$('#graphTable [name=' + lparName + ']').css('border-color', '#BDBDBD');
+			changeNode(lparName, 'unselect');
 		}
 		
 		updateSelectNodeDiv();
@@ -253,16 +252,14 @@ function createGraphical(bpa, fsp, area){
 		if (selectCount == fspList[fspName]['children'].length){
 			for (var lparIndex in fspList[fspName]['children']){
 				var lparName = fspList[fspName]['children'][lparIndex];
-				delete selectNode[lparName];
-				$('#graphTable [name=' + lparName + ']').css('border-color', '#BDBDBD');
+				changeNode(lparName, 'unselect');
 			}
 		}
 		//not select all lpars on the cec, so add all lpars into selectNode Hash.
 		else{
 			for (var lparIndex in fspList[fspName]['children']){
 				var lparName = fspList[fspName]['children'][lparIndex];
-				selectNode[lparName] = 1;
-				$('#graphTable [name=' + lparName + ']').css('border-color', 'aqua');
+				changeNode(lparName, 'select');
 			}
 		}
 		
@@ -323,12 +320,10 @@ function showSelectDialog(lpars){
 	 						return true;
 	 					}
 	 					if (true == $(this).attr('checked')){
-	 						selectNode[lparName] = 1;
-	 						$('#graphTable [name=' + lparName + ']').css('border-color', 'aqua');
+	 						changeNode(lparName, 'select');
 	 					}
 	 					else{
-	 						delete selectNode[lparName];
-	 						$('#graphTable [name=' + lparName + ']').css('border-color', '#BDBDBD');
+	 						changeNode(lparName, 'unselect');
 	 					}
 	 				});
 	 				updateSelectNodeDiv();
@@ -688,4 +683,25 @@ function reselectNodes(){
 	}
 	
 	showSelectDialog(temp);
+}
+
+/**
+ * when the node is selected or unselected, then update the area on cec, update the global
+ * list and update the tooltip table 
+ * 
+ * @param 
+
+ * @return 
+ */
+function changeNode(lparName, status){
+	if ('select' == status){
+		selectNode[lparName] = 1;
+		$('#graphTable [name=' + lparName + ']').css('border-color', 'aqua');
+		$('.tooltip input[name="' + lparName + '"]').attr('checked', true);
+	}
+	else{
+		delete selectNode[lparName];
+		$('#graphTable [name=' + lparName + ']').css('border-color', '#BDBDBD');
+		$('.tooltip input[name="' + lparName + '"]').attr('checked', false);
+	}
 }
