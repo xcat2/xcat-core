@@ -54,7 +54,7 @@ function loadMonitorPage() {
 	var monitorForm = $('<div class="form"></div>');
 
 	// Create info bar
-	var monitorInfoBar = createInfoBar('Select the Monitor Tool');
+	var monitorInfoBar = createInfoBar('Select a monitoring tool to use.');
 	monitorForm.append(monitorInfoBar);
 
 	// Create a list of monitoring tools
@@ -85,11 +85,11 @@ function loadMonitorPage() {
 	var resrcForm = $('<div class="form"></div>');
 
 	// Create info bar
-	var resrcInfoBar = createInfoBar('View current resources');
+	var resrcInfoBar = createInfoBar('Select a platform to view its current resources.');
 	resrcForm.append(resrcInfoBar);
 
 	// Create radio buttons for platforms
-	var hwList = $('<ol>Select a platform to view its current resources:</ol>');
+	var hwList = $('<ol>Platform to view:</ol>');
 	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>ipmi</li>');
 	var blade = $('<li><input type="radio" name="hw" value="blade"/>blade</li>');
 	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>hmc</li>');
