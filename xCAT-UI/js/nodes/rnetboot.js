@@ -187,7 +187,7 @@ function loadNetbootPage(tgtNodes) {
 	netbootForm.append(okBtn);
 
 	// Append to discover tab
-	tab.add(newTabId, 'Netboot', netbootForm, true);
+	tab.add(newTabId, 'Boot', netbootForm, true);
 
 	// Select new tab
 	tab.select(newTabId);

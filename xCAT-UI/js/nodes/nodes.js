@@ -1025,7 +1025,13 @@ function loadUnlockPage(tgtNodes) {
 		position: "center right",
 		offset: [-2, 10],
 		effect: "fade",
-		opacity: 0.7
+		opacity: 0.7,
+		events : {
+			def : "mouseover,mouseout",
+			input : "mouseover,mouseout",
+			widget : "focus mouseover,blur mouseout",
+			tooltip : "mouseover,mouseout"
+		}
 	});
 	
 	/**
@@ -1036,11 +1042,9 @@ function loadUnlockPage(tgtNodes) {
 		// Remove any warning messages
 		$(this).parent().parent().find('.ui-state-error').remove();
 		
-		// If form is complete
-		var ready = formComplete(newTabId);
-		if (ready) {
-			var password = $('#' + newTabId + ' input[name=password]').val();
-
+		// If a password is given
+		var password = $('#' + newTabId + ' input[name=password]').css('border', 'solid #BDBDBD 1px');
+		if (password.val()) {
 			// Setup SSH keys
     		$.ajax( {
     			url : 'lib/cmd.php',
@@ -1048,7 +1052,7 @@ function loadUnlockPage(tgtNodes) {
     			data : {
     				cmd : 'webrun',
     				tgt : '',
-    				args : 'unlock;' + tgtNodes + ';' + password,
+    				args : 'unlock;' + tgtNodes + ';' + password.val(),
     				msg : 'out=' + statBarId + ';cmd=unlock;tgt=' + tgtNodes
     			},
     
@@ -1064,6 +1068,7 @@ function loadUnlockPage(tgtNodes) {
     		// Show warning message
 			var warn = createWarnBar('You are missing some values!');
 			warn.prependTo($(this).parent().parent());
+			password.css('border', 'solid #FF0000 1px');
     	}
     });
 
@@ -1129,7 +1134,13 @@ function loadScriptPage(tgtNodes) {
 		position: "center right",
 		offset: [-2, 10],
 		effect: "fade",
-		opacity: 0.7
+		opacity: 0.7,
+		events : {
+			def : "mouseover,mouseout",
+			input : "mouseover,mouseout",
+			widget : "focus mouseover,blur mouseout",
+			tooltip : "mouseover,mouseout"
+		}
 	});
 
 	// Script
@@ -1151,27 +1162,18 @@ function loadScriptPage(tgtNodes) {
 		// Remove any warning messages
 		$(this).parent().parent().find('.ui-state-error').remove();
 		
-		var ready = true;
-
-		// Check script
-		var textarea = $('#' + newTabId + ' textarea');
-		for (var i in textarea) {
-			if (!textarea.eq(i).val()) {
-				textarea.eq(i).css('border', 'solid #FF0000 1px');
-				ready = false;
-			} else {
-				textarea.eq(i).css('border', 'solid #424242 1px');
-			}
-		}
-
+		// Get script to run
+		var textarea = $('#' + newTabId + ' textarea').css('border', 'solid #BDBDBD 1px');
+		
 		// If no inputs are empty
-		if (ready) {
+		if (textarea.val()) {
 			// Run script
 			runScript(inst);
 		} else {
 			// Show warning message
 			var warn = createWarnBar('You are missing some values');
 			warn.prependTo($(this).parent().parent());
+			textarea.css('border', 'solid #FF0000 1px');
 		}
 	});
 	scriptForm.append(runBtn);
@@ -1399,33 +1401,6 @@ function updateStatusBar(data) {
 		var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
 		$('#' + statBarId).append(prg);	
 	}
-}
-
-/**
- * Check if the form is complete
- * 
- * @param tabId
- *            Tab ID containing form
- * @return True: If the form is complete, False: Otherwise
- */
-function formComplete(tabId) {
-	var ready = true;
-
-	// Check all inputs within the form
-	var inputs = $('#' + tabId + ' input');
-	for (var i in inputs) {
-		// If there is no value given in the input
-		if (!inputs.eq(i).val()) {
-			inputs.eq(i).css('border', 'solid #FF0000 1px');
-			
-			// It is not complete
-			ready = false;
-		} else {
-			inputs.eq(i).css('border', 'solid #BDBDBD 1px');
-		}
-	}
-
-	return ready;
 }
 
 /**

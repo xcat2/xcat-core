@@ -317,7 +317,7 @@ function loadUpdatenodePage(tgtNodes) {
 	updatenodeForm.append(okBtn);
 
 	// Append to discover tab
-	tab.add(newTabId, 'Updatenode', updatenodeForm, true);
+	tab.add(newTabId, 'Update', updatenodeForm, true);
 
 	// Select new tab
 	tab.select(newTabId);
