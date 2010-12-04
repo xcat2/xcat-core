@@ -848,7 +848,7 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 	statBar.append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision a zVM node');
+	var infoBar = createInfoBar('Provision a zVM node.');
 	provForm.append(infoBar);
 
 	// Append to provision tab
