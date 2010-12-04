@@ -49,7 +49,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		var hcp = aData[hcpCol];
 
 		// Create status bar and hide it
-		var statBarId = node + 'cloneStatusBar';
+		var statBarId = node + 'CloneStatusBar';
 		var statBar = createStatusBar(statBarId).hide();
 
 		// Create info bar
