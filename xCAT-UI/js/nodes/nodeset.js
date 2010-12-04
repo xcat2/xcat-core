@@ -128,7 +128,13 @@ function loadNodesetPage(tgtNodes) {
 		position: "center right",
 		offset: [-2, 10],
 		effect: "fade",
-		opacity: 0.7
+		opacity: 0.7,
+		events : {
+			def : "mouseover,mouseout",
+			input : "mouseover,mouseout",
+			widget : "focus mouseover,blur mouseout",
+			tooltip : "mouseover,mouseout"
+		}
 	});
 	
 	/**

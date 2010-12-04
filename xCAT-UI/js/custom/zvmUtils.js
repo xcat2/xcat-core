@@ -1819,14 +1819,17 @@ function loadDiskPoolTable(data) {
 
 	// Resource tab ID
 	var tabID = 'zvmResourceTab';
+	var info = $('#' + tabID).find('.ui-state-highlight');
+	// If there is no info bar
+	if (!info.length) {
+		// Create info bar
+		info = createInfoBar('Below are disks and networks found by the hardware control point.  It shows disk pools defined in the EXTENT CONTROL file and LANs|VSWITCHes available to use.');
+		$('#' + tabID).append(info);
+	}
 
 	// Get datatable
 	var dTable = getDiskDataTable();
 	if (!dTable) {
-		// Create info bar
-		var info = createInfoBar('Shows DASD volume pools defined in the EXTENT CONTROL file.');
-		$('#' + tabID).append(info);
-		
 		// Create disks section
 		var fieldSet = $('<fieldset></fieldset>');
 		var legend = $('<legend>Disks</legend>');
@@ -1877,14 +1880,17 @@ function loadNetworkTable(data) {
 
 	// Resource tab ID
 	var tabID = 'zvmResourceTab';
+	var info = $('#' + tabID).find('.ui-state-highlight');
+	// If there is no info bar
+	if (!info.length) {
+		// Create info bar
+		info = createInfoBar('Below are disks and networks found by the hardware control point.  It shows disk pools defined in the EXTENT CONTROL file and LANs|VSWITCHes available to use.');
+		$('#' + tabID).append(info);
+	}
 
 	// Get datatable
 	var dTable = getNetworkDataTable();
-	if (!dTable) {
-		// Create info bar
-		var info = createInfoBar('Shows LANs and VSWITCHes found by a given zHCP.');
-		$('#' + tabID).append(info);
-		
+	if (!dTable) {		
 		// Create networks section
 		var fieldSet = $('<fieldset></fieldset>');
 		var legend = $('<legend>Networks</legend>');
