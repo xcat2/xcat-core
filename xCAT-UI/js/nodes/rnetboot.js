@@ -34,8 +34,7 @@ function loadNetbootPage(tgtNodes) {
 
 	// Create status bar
 	var barId = 'netbootStatusBar' + inst;
-	var statusBar = createStatusBar(barId);
-	statusBar.hide();
+	var statusBar = createStatusBar(barId).hide();
 	netbootForm.append(statusBar);
 
 	// Create loader

@@ -48,8 +48,7 @@ function loadUpdatenodePage(tgtNodes) {
 
 	// Create status bar
 	var statBarId = 'updatenodeStatusBar' + inst;
-	var statusBar = createStatusBar(statBarId);
-	statusBar.hide();
+	var statusBar = createStatusBar(statBarId).hide();
 	updatenodeForm.append(statusBar);
 
 	// Create loader

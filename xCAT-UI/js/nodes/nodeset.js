@@ -37,8 +37,7 @@ function loadNodesetPage(tgtNodes) {
 
 	// Create status bar
 	var statBarId = 'nodesetStatusBar' + inst;
-	var statBar = createStatusBar(statBarId);
-	statBar.hide();
+	var statBar = createStatusBar(statBarId).hide();
 	nodesetForm.append(statBar);
 
 	// Create loader

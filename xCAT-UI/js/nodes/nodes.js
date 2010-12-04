@@ -1005,7 +1005,7 @@ function loadUnlockPage(tgtNodes) {
 	var unlockForm = $('<div class="form"></div>');
 
 	// Create status bar, hide on load
-	var statBarId = 'UnlockStatusBar' + instance;
+	var statBarId = 'unlockStatusBar' + instance;
 	var statusBar = createStatusBar(statBarId).hide();
 	unlockForm.append(statusBar);
 
@@ -1242,8 +1242,8 @@ function loadDeletePage(tgtNodes) {
 	}
 
 	// Create status bar, hide on load
-	var statBarId = 'DeleteStatusBar' + inst;
-	var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>').hide();
+	var statBarId = 'deleteStatusBar' + inst;
+	var statBar = createStatusBar(statBarId).hide();
 
 	// Create loader
 	var loader = createLoader('');
