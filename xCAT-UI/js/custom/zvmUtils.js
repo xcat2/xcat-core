@@ -301,7 +301,7 @@ function loadUserEntry(data) {
 	});
 
 	// Create info bar
-	var infoBar = createInfoBar('Double click on the directory entry to edit');
+	var infoBar = createInfoBar('Double click on the directory entry to edit it.');
 
 	// Append user entry into division
 	$('#' + ueDivId).append(infoBar);
@@ -1128,9 +1128,9 @@ function openAddProcDialog(node) {
 	// Create form to add processor
 	var addProcForm = $('<div class="form"></div>');
 	// Create info bar
-	var info = createInfoBar('Add a temporary processor');
+	var info = createInfoBar('Add a temporary processor to this virtual server.');
 	addProcForm.append(info);
-	addProcForm.append('<div><label for="procNode">Processor for:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="' + node + '"/></div>');
+	addProcForm.append('<div><label for="procNode">Node:</label><input type="text" readonly="readonly" id="procNode" name="procNode" value="' + node + '"/></div>');
 	addProcForm.append('<div><label for="procAddress">Processor address:</label><input type="text" id="procAddress" name="procAddress"/></div>');
 	
 	// Create drop down for processor type
@@ -1215,9 +1215,9 @@ function openAddDiskDialog(node, hcp) {
 	// Create form to add disk
 	var addDiskForm = $('<div class="form"></div>');
 	// Create info bar
-	var info = createInfoBar('Add a disk');
+	var info = createInfoBar('Add a ECKD|3390 or FBA|9336 disk to this virtual server.');
 	addDiskForm.append(info);
-	addDiskForm.append('<div><label for="diskNode">Disk for:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="' + node + '"/></div>');
+	addDiskForm.append('<div><label for="diskNode">Node:</label><input type="text" readonly="readonly" id="diskNode" name="diskNode" value="' + node + '"/></div>');
 	addDiskForm.append('<div><label for="diskType">Disk type:</label><select id="diskType" name="diskType"><option value="3390">3390</option><option value="9336">9336</option></select></div>');
 	addDiskForm.append('<div><label for="diskAddress">Disk address:</label><input type="text" id="diskAddress" name="diskAddress"/></div>');
 	addDiskForm.append('<div><label for="diskSize">Disk size:</label><input type="text" id="diskSize" name="diskSize"/></div>');
@@ -1351,9 +1351,9 @@ function openAddNicDialog(node, hcp) {
 	// Create form to add NIC
 	var addNicForm = $('<div class="form"></div>');
 	// Create info bar
-	var info = createInfoBar('Add a NIC');
+	var info = createInfoBar('Add a NIC to this virtual server.');
 	addNicForm.append(info);
-	addNicForm.append('<div><label for="nicNode">NIC for:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="' + node + '"/></div>');
+	addNicForm.append('<div><label for="nicNode">Node:</label><input type="text" readonly="readonly" id="nicNode" name="nicNode" value="' + node + '"/></div>');
 	addNicForm.append('<div><label for="nicAddress">NIC address:</label><input type="text" id="nicAddress" name="nicAddress"/></div>');
 	
 	// Create drop down for NIC types
