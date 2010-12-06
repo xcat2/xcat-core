@@ -687,11 +687,11 @@ sub new
     my $create = 1;
     if (exists($otherargs{'-create'}) && ($otherargs{'-create'}==0)) {$create = 0;}
     $self->{autocommit} = $otherargs{'-autocommit'};
+    $self->{realautocommit} = $self->{autocommit}; #Assume we let the DB do the work, i.e. the autocommit is either not used or is not emulated by Table.pm
     unless (defined($self->{autocommit}))
     {
         $self->{autocommit} = 1;
     }
-    $self->{realautocommit} = $self->{autocommit}; #Assume we let the DB do the work, i.e. the autocommit is either not used or is not emulated by Table.pm
     my $class = ref($proto) || $proto;
     if ($dbworkerpid) {
         my $request = { 
