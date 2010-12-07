@@ -25,6 +25,8 @@ use constant {
     P6_SERVICE       => "service:management-hardware.IBM",
     SERVICE_FSP      => "cec-service-processor",
     SERVICE_BPA      => "bulk-power-controller",
+    SERVICE_CEC      => "null",
+    SERVICE_FRAME    => "null",
     SERVICE_HMC      => "hardware-management-console",
     SERVICE_IVM      => "integrated-virtualization-manager",
     SERVICE_MM       => "management-module",
@@ -38,6 +40,8 @@ use constant {
     TYPE_HMC         => "HMC",
     TYPE_IVM         => "IVM",
     TYPE_FSP         => "FSP",
+    TYPE_CEC         => "CEC",
+    TYPE_FRAME       => "FRAME",    
     IP_ADDRESSES     => 4,
     TEXT             => 0,
     FORMAT           => 1,
@@ -49,13 +53,15 @@ use constant {
 # Globals
 #######################################
 my %service_slp = (
-    @{[ SERVICE_FSP  ]} => TYPE_FSP,
-    @{[ SERVICE_BPA  ]} => TYPE_BPA,
-    @{[ SERVICE_HMC  ]} => TYPE_HMC,
-    @{[ SERVICE_IVM  ]} => TYPE_IVM,
-    @{[ SERVICE_MM   ]} => TYPE_MM,
-    @{[ SERVICE_RSA  ]} => TYPE_RSA,
-    @{[ SERVICE_RSA2 ]} => TYPE_RSA
+    @{[ SERVICE_FSP    ]} => TYPE_FSP,
+    @{[ SERVICE_BPA    ]} => TYPE_BPA,
+    @{[ SERVICE_CEC    ]} => TYPE_CEC,
+    @{[ SERVICE_FRAME  ]} => TYPE_FRAME,    
+    @{[ SERVICE_HMC    ]} => TYPE_HMC,
+    @{[ SERVICE_IVM    ]} => TYPE_IVM,
+    @{[ SERVICE_MM     ]} => TYPE_MM,
+    @{[ SERVICE_RSA    ]} => TYPE_RSA,
+    @{[ SERVICE_RSA2   ]} => TYPE_RSA
 );
 
 #######################################
@@ -70,30 +76,32 @@ my @header = (
     ["hostname",      "%s"]
 );
 
-#######################################
-# Hardware specific SLP attributes
-#######################################
-my %exattr = (
-  @{[ SERVICE_FSP ]} => [
-      "bpc-machinetype-model",
-      "bpc-serial-number",
-      "cage-number"
-    ],
-  @{[ SERVICE_BPA ]} => [
-      "frame-number"
-    ]
-);
+########################################
+## Hardware specific SLP attributes
+########################################
+#my %exattr = (
+#  @{[ SERVICE_FSP ]} => [
+#      "bpc-machinetype-model",
+#      "bpc-serial-number",
+#      "cage-number"
+#    ],
+#  @{[ SERVICE_BPA ]} => [
+#      "frame-number"
+#    ]
+#);
 
 #######################################
 # Power methods
 #######################################
 my %mgt = (
-    lc(TYPE_FSP) => "fsp",
-    lc(TYPE_BPA) => "bpa",
-    lc(TYPE_MM)  => "blade",
-    lc(TYPE_HMC) => "hmc",
-    lc(TYPE_IVM) => "ivm",
-    lc(TYPE_RSA) => "blade"
+    lc(TYPE_FSP)   => "fsp",
+    lc(TYPE_BPA)   => "bpa",
+    lc(TYPE_CEC)   => "cec",
+    lc(TYPE_FRAME) => "frame",    
+    lc(TYPE_MM)    => "blade",
+    lc(TYPE_HMC)   => "hmc",
+    lc(TYPE_IVM)   => "ivm",
+    lc(TYPE_RSA)   => "blade"
 );
 
 my @attribs    = qw(nodetype mtm serial side otherinterfaces groups mgt id parent mac);
@@ -160,12 +168,14 @@ sub parse_args {
     my $args     = $request->{arg};
     my $cmd      = $request->{command};
     my %services = (
-        HMC => SOFTWARE_SERVICE.":".SERVICE_HMC.":",
-        IVM => SOFTWARE_SERVICE.":".SERVICE_IVM.":",
-        BPA => HARDWARE_SERVICE.":".SERVICE_BPA,
-        FSP => HARDWARE_SERVICE.":".SERVICE_FSP,
-        RSA => HARDWARE_SERVICE.":".SERVICE_RSA.":",
-        MM  => HARDWARE_SERVICE.":".SERVICE_MM.":"
+        HMC   => SOFTWARE_SERVICE.":".SERVICE_HMC.":",
+        IVM   => SOFTWARE_SERVICE.":".SERVICE_IVM.":",
+        BPA   => HARDWARE_SERVICE.":".SERVICE_BPA,
+        FSP   => HARDWARE_SERVICE.":".SERVICE_FSP,
+        CEC   => HARDWARE_SERVICE.":".SERVICE_CEC,
+        FRAME => HARDWARE_SERVICE.":".SERVICE_FRAME, 
+        RSA   => HARDWARE_SERVICE.":".SERVICE_RSA.":",
+        MM    => HARDWARE_SERVICE.":".SERVICE_MM.":"
     );
     #############################################
     # Responds with usage statement
@@ -285,10 +295,11 @@ sub parse_args {
 
     #############################################
     # Check the validation of -M option
-    #############################################
-    if ( exists( $opt{M} ) and ($opt{M} !~ /^vpd$/) and ($opt{M} !~ /^switchport$/) ) {
-        return( usage("Invalid value for '-M' option. Acceptable value is 'vpd' or 'switchport'") );
-    }
+    #############################################  
+    #modified by yinle, use matching vpd as the default match table.
+    #if ( exists( $opt{M} ) and ($opt{M} !~ /^vpd$/) and ($opt{M} !~ /^switchport$/) ) {
+    #    return( usage("Invalid value for '-M' option. Acceptable value is 'vpd' or 'switchport'") );
+    #}
 
     return(0);
 }
@@ -1026,7 +1037,7 @@ sub format_output {
     # -w flag for write to xCat database
     ###########################################
     if ( exists( $opt{w} )) {
-        xCATdB( $outhash );
+        #xCATdB( $outhash );
     }
 
     ###########################################
@@ -1180,7 +1191,8 @@ sub gethost_from_url {
     #######################################
     # Get hostname from vpd table
     #######################################
-    if ( exists($opt{M}) and ($opt{M} =~ /^vpd$/) ) {
+    #if ( exists($opt{M}) and ($opt{M} =~ /^vpd$/) ) {    #modified by yinle, use matching vpd as default.    
+    if ( exists($opt{M}) and ($opt{M} !~ /^switchport$/) )  {   
         $host = match_vpdtable($type, $mtm, $sn, $side, $bpc_machinetype, $bpc_serial, $frame_number, $cage_number);
     }
 
@@ -1215,18 +1227,19 @@ sub match_vpdtable
 
     #######################################
     # Cache ppc table
-    #######################################
-    if ( !%::PPC_TAB_CACHE) {
-        my $ppctab = xCAT::Table->new( 'ppc' );
-        my @entries = $ppctab->getAllNodeAttribs(['node','parent','id']);
-        for my $entry ( @entries ) {
-            if ( $entry->{mtm} and $entry->{serial} and defined( $entry->{side} ) ) {
-            }
-        }
-    }
+    ####################################### 
+    #removed by yinle, no use
+    #if ( !%::PPC_TAB_CACHE) {
+    #    my $ppctab = xCAT::Table->new( 'ppc' );
+    #    my @entries = $ppctab->getAllNodeAttribs(['node','parent','id']);
+    #    for my $entry ( @entries ) {
+    #        if ( $entry->{mtm} and $entry->{serial} and defined( $entry->{side} ) ) {
+    #        }
+    #    }
+    #}
 
     #######################################
-    # Cache vpd table
+    # Cache vpd table, now xCAT support defining Frame and CEC with mtms by user.
     #######################################
     if ( !%::VPD_TAB_CACHE ) {
         my $vpdtab  = xCAT::Table->new( 'vpd' );
@@ -1577,197 +1590,141 @@ sub parse_responses {
                 push @result, $val; 
             }
         }
+        #modified by yinle     
+        if ( $type eq SERVICE_BPA or $type eq SERVICE_FSP ) {
+          
+            ###########################################
+            #  extract ip, use ip as the hostname of the fsp/bpa
+            #  don't care if they are valid                 
+            ###########################################               
+            my (@severnode1, @severnode2);
+            my @ips = split/,/, $result[4];
 
-        ###########################################
-        # Get host directly from URL
-        ###########################################
-        if ( $type eq SERVICE_HMC or $type eq SERVICE_BPA 
-                or $type eq SERVICE_FSP or $type eq SERVICE_MM ) {
+            foreach (@result) {
+            	push @severnode1, $_;
+            }         
+            $severnode1[3] = $severnode1[3].'-p0';  
+            $severnode1[4] = $ips[0];
+            $severnode1[0] = $service_slp{$type};
+            push @severnode1, $rsp;
+            $outhash{$ips[0]} = \@severnode1; 
+                                    
+            foreach (@result) {
+            	push @severnode2, $_;
+            }
+            $severnode2[3] = $severnode2[3].'-p1';              
+            $severnode2[4] = $ips[1];
+            $severnode2[0] = $service_slp{$type};
+            push @severnode2, $rsp;
+            $outhash{$ips[1]} = \@severnode2;         
+           
+            ###########################################        
+            # match vpd table and define CEC/Frame
+            ###########################################    
+            if ( exists($opt{M}) and ($opt{M} =~ /^switchport$/) )  {   
+                $host = match_vpdtable($type, $result[1], $result[2],$result[3], $result[5], $result[6], $result[7], $result[8]);
+            }
+            $host = undef;
+            unless ($host) {
+            	$host = "Server-$result[1]-SN$result[2]";
+            }
+            unless ( exists( $outhash{$host} ))
+            {
+                if ( $type eq SERVICE_BPA )
+                {
+                	$result[0] = TYPE_FRAME;
+                }
+                else
+                {
+                	$result[0] = TYPE_CEC;
+                }
+                
+                # side of frame and cec should be null 
+                $result[4] = "";
+                
+                # IP of frame and cec should be null
+                $result[3] = "";
+                
+                push @result, $rsp;            
+                $outhash{$host} = \@result;    
+            }        
+        } else   {
+        	
+            ###########################################        
+            # for HMC
+            ###########################################  
+            
             $host = gethost_from_url( $request, $rsp, @result);
             if ( !defined( $host )) {
                 next;
             }
+
+            ###########################################
+            # Strip commas from IP list
+            ###########################################
+            $result[4] =~ s/,/ /g;
+            my $ip     = $result[4];
+            
+            ###########################################
+            # Save longest IP for formatting purposes
+            ###########################################
+            if ( length( $ip ) > $$length ) {
+                $$length = length( $ip );
+            }
+            
+            push @result, $rsp;
+            
+            $result[0] = $service_slp{$type};
+            $outhash{$host} = \@result;
+            
         }
-
-        ###########################################
-        # Strip commas from IP list
-        ###########################################
-        $result[4] =~ s/,/ /g;
-        my $ip     = $result[4];
-
-        ###########################################
-        # Save longest IP for formatting purposes
-        ###########################################
-        if ( length( $ip ) > $$length ) {
-            $$length = length( $ip );
-        }
-
-        push @result, $rsp;
- 
-        $result[0] = $service_slp{$type};
-        $outhash{$host} = \@result;
     }
     
     ##########################################################
-    # Correct BPA node name because both side
-    # have the same MTMS and may get the same factory name
-    # If there are same factory name for 2 BPA (should be 2 sides
-    # on one frame), change them to like <bpa>_1 and <bpa>_2
-    # Also, remove those nodes that have same IP addresses and
-    # give a warning message.
-    ##########################################################
-    my %ip_record;
-    for my $h ( keys %outhash ) {
-        my ($name, $ip);
-        if ( $h =~ /^([^\(]+)\(([^\)]+)\)$/ ) {
-            $name = $1;
-            $ip   = $2;
-
-        } else {
-            next;
-        }
-
-        if ( ! $ip_record{$ip} ) {
-            $ip_record{$ip} = $h;
-        } else {
-            my $response;
-            $response->{data}->[0] =  "IP address of node $h is conflicting to node $ip_record{$ip}. Remove node $h from discovery result.";
-            xCAT::MsgUtils->message("W", $response, $request->{callback});
-            delete $outhash{$h};
-        }
-    }
-
-    my %vpd_table_hash;
-    my $vpdtab  = xCAT::Table->new( 'vpd' );
-    my @entries = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
-    for my $entry ( @entries ) {
-        if ( $entry->{mtm} and $entry->{serial} ) {
-            $vpd_table_hash{$entry->{mtm} . '*' . $entry->{serial} . '-' . $entry->{side}} = $entry->{ 'node'};
-        }
-    }
-
-    my %nodehm_table_hash;
-    my $nodehm_tab  = xCAT::Table->new('nodehm');
-    my @nodehm_entries = $nodehm_tab->getAllNodeAttribs(['node','mgt']);
-    for my $entry ( @nodehm_entries ) {
-        if ( $entry->{'mgt'} ) {
-            $nodehm_table_hash{$entry->{'node'}} = $entry->{ 'mgt'};
-        }
-    }
-
+    # Find the parent and mac and set them as the 10th and 11th 
+    # of the attribute of the server nodes
+    ##########################################################  
     my %hash = ();
-    for my $h ( keys %outhash ) {
-        my $data = $outhash{$h};
-        my $type = @$data[0];
-        my $mtm  = @$data[1];
-        my $sn   = @$data[2];
-        my $side = @$data[3];
-        my $frame;
+    my $mac;
+    my $parent;  
+    foreach my $h ( keys %outhash ) {
+        my $data    = $outhash{$h};
+        my $type    = @$data[0];
+        my $mtm     = @$data[1];
+        my $sn      = @$data[2];        
+        my $ip0     = @$data[4];
+        my $bpamtm  = @$data[5];
+        my $bpasn   = @$data[6];          
+        foreach my $h1 ( keys %outhash ) {
+        	my $data1 = $outhash{$h1};
+            my $type1 = @$data1[0];
+            my $mtm1  = @$data1[1];
+            my $sn1   = @$data1[2];
+            if ( $type1 eq TYPE_FRAME and ($type eq TYPE_BPA or $type eq TYPE_CEC) and $mtm1 eq $bpamtm and $sn1 eq $bpasn ) {
+            	$parent = $h1;       # BPA and CEC's parent is Frame
+            	last;
+            } elsif ( $type1 eq TYPE_CEC and $type eq TYPE_FSP and $mtm1 eq $mtm and $sn1 eq $sn ) {
+            	$parent = $h1;       # FSP's parent is CEC
+            	last;
+            }
+        }
+        unless ( $parent ) {
+            $parent = "undef";   # for HMC there is no parent
+        }
+        push @$data, $parent;
 
-        my ($name, $ip);
-        if ( $h =~ /^([^\(]+)\(([^\)]+)\)$/ ) {
-            $name = $1;
-            $ip   = $2;
+        
+        #find the mac address
+        if ( $type ne TYPE_FRAME and $type ne TYPE_CEC )  {# the ips of frame and cec are null
+            $mac = match_ip_mac( $ip0 ); 
         } else {
-            $name = $h;
-            $ip   = @$data[4];
+        	$mac = "undef";
         }
-
-        ############################################################
-        # -n flag to skip the existing node
-        ############################################################
-        if ( exists( $opt{n} ) ) {
-            if ( exists $vpd_table_hash{$mtm . '*' . $sn . '-' . $side} ) {
-                my $existing_node = $vpd_table_hash{$mtm . '*' . $sn . '-' . $side};
-                if ( exists $nodehm_table_hash{$existing_node} ) {
-                    next;
-                }
-            }
-        }
-
-        if ( $type =~ /^FSP$/ ) {
-            ############################################################
-            # For HE machine, there are 2 FSPs, but only one FSP have the
-            # BPA information. We need to go through the outhash and
-            # find its BPA
-            ############################################################
-            if ((@$data[5] eq "0" ) and ( @$data[6] eq "0" )) {
-                for my $he_node ( keys %outhash ) {
-                    if ( $mtm eq $outhash{$he_node}->[1] and
-                         $sn eq $outhash{$he_node}->[2] and
-                         $outhash{$he_node}->[5] and
-                         $outhash{$he_node}->[6]
-                        ) {
-                        @$data[5] = $outhash{$he_node}->[5];
-                        @$data[6] = $outhash{$he_node}->[6];
-                        @$data[8] = $outhash{$he_node}->[8];
-                    }
-                }
-            }
-
-            ########################################
-            # Find the parent for this FSP
-            ########################################
-            if (( @$data[5] ne "0" ) and ( @$data[6] ne "0" )) {
-                if ( exists $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-A'} ) {
-                    $frame = $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-A'};
-                } elsif ( exists $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-B'} ) {
-                    $frame = $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-B'};
-                } elsif ( exists $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-'} ) {
-                    $frame = $vpd_table_hash{@$data[5] . '*' . @$data[6] . '-'};
-                } else {
-                    $frame = "Server-@$data[5]-SN@$data[6]";
-                }
-            } else {
-                $frame = undef;
-            }
-        } elsif ( $type =~ /^BPA$/ ) {
-            $frame = undef;
-        }
-
-        push @$data, $frame;
-
-        ########################################
-        # Get the Mac address
-        ########################################
-        my $mac = match_ip_mac( $ip );
-        push @$data, $mac;
-
-        #######################################
-        # Get hostname from switch table
-        #######################################
-        my $host;
-        if ( $mac and exists($opt{M}) and ($opt{M} =~ /^switchport$/) ) {
-            my $type       = @$data[0];
-            my $mtm        = @$data[1];
-            my $serial     = @$data[2];
-
-            if ( $type =~ /^BPA$/ or $type =~ /^FSP$/ ) {
-                my $bpc_model  = @$data[5];
-                my $bpc_serial = @$data[6];
-                my $frame_number = @$data[7];
-                my $cage_number  = @$data[8];
-                my $side         = @$data[3];
-
-                $host = match_switchtable($ip, $mac, $type, $bpc_model, $bpc_serial, $frame_number, $cage_number, $side, $mtm, $serial);
-            } else {
-                my $bpc_model  = undef;
-                my $bpc_serial = undef;
-                my $frame_number = undef;
-                my $cage_number  = undef;
-                my $side         = @$data[3];
-
-                $host = match_switchtable($ip, $mac, $type, $bpc_model, $bpc_serial, $frame_number, $cage_number, $side, $mtm, $serial);
-            }
- 
-            if ( $host ) {
-                $h = "$host($ip)";
-            }
-        }
-
-        $hash{$h} = $data;
+        push @$data, $mac;        
+        
+        $hash{$h} = $data; 
     }
-
+        
     return( \%hash );
 }
 
@@ -1781,64 +1738,64 @@ sub xCATdB {
     my %sn_node = ();
 
     foreach my $hostname ( keys %$outhash ) {
-        my $data = $outhash->{$hostname};
-        my $type = @$data[0];
-        my $ip   = @$data[4];
-        my $name = $hostname;
+        my $data       = $outhash->{$hostname};
+        my $name       = $hostname;
+        my $type       = @$data[0];
+        my $model      = @$data[1];
+        my $serial     = @$data[2];
+        my $side       = @$data[3];
+        my $ip         = @$data[4];
+        my $id         = @$data[7];
+        my $cageid     = @$data[8];
+        my $mac        = @$data[11];
+        my $prof       = "";        
+        my $frame  = "";        
+
+        #######################################
+        # FSP/BPA don't need to be in host table, 
+        # CEC/FRAME have no ip so don't need neither
+        # only HMC need to be and could be writen to host table
+        #######################################
         if ( $hostname =~ /^([^\(]+)\(([^\)]+)\)$/)
         {
             $name = $1;
             $ip  = $2;
         }
-
+        
         ########################################
-        # Write result to hosts table
+        # Update hosts table
         ########################################
         if ( exists($opt{updatehosts}) ) {
             my $hostip = writehost($name,$ip);
         }
 
+        ########################################
+        # Write result to every tables,
+        # every entry write once, time-consuming!
+        ########################################   
         if ( $type =~ /^BPA$/ ) {
-            my $model  = @$data[1];
-            my $serial = @$data[2];
-            my $side   = @$data[3];
-            my $id     = @$data[7];
-            my $mac    = @$data[11];
-
-            ####################################
-            # N/A Values
-            ####################################
-            my $prof  = "";
-            my $frame = "";
-
+            ########################################
+            # BPA: name=hostname, id=slotid, mtms=mtms
+            # side=side, prof=null, frame=parent,
+            # ip=ip, mac=mac
+            ########################################               
             my $values = join( ",",
                lc($type),$name,$id,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
             xCAT::PPCdb::add_ppc( lc($type), [$values], 0, 1 );
         } elsif ( $type =~ /^(HMC|IVM)$/ ) {
-            my $mac    = @$data[11];
-
+            ########################################
+            # HMC: name=hostname, ip=ip, mac=mac
+            ########################################           	
             xCAT::PPCdb::add_ppchcp( lc($type), "$name,$mac,$ip",1 );
         }
         elsif ( $type =~ /^FSP$/ ) {
             ########################################
-            # BPA frame this CEC is in
+            # FSP: name=hostname, id=cageid, mtms=mtms, 
+            # side=side, prof=null, frame=parent, 
+            # ip=ip, mac=mac
             ########################################
-            my $frame      = "";
-            my $model      = @$data[1];
-            my $serial     = @$data[2];
-            my $side       = @$data[3];
-            my $bpc_model  = @$data[5];
-            my $bpc_serial = @$data[6];
-            my $cageid     = @$data[8];
             my $frame      = @$data[10];
-            my $mac        = @$data[11];
-
-            ########################################
-            # N/A Values
-            ########################################
-            my $prof   = "";
-            my $server = "";
-
+        
             my $values = join( ",",
                lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
             xCAT::PPCdb::add_ppc( "fsp", [$values], 0, 1 );
@@ -1846,6 +1803,34 @@ sub xCATdB {
         elsif ( $type =~ /^(RSA|MM)$/ ) {
             xCAT::PPCdb::add_systemX( $type, $name, $data );
         }
+        elsif ( $type =~ /^FRAME$/ ) {
+            ########################################
+            # Frame: type=frame, name=hostname, cageid=0,
+            # mtms=mtms, side=null, prof=null, frame=itself,
+            # ip=null, mac=null
+            ########################################
+            my $frame      = @$data[10];
+            my $mac        = "";
+            my $side       = "";
+            my $ip        = "";
+            my $values = join( ",",
+               lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
+            xCAT::PPCdb::add_ppc( "frame", [$values], 0, 1 );   
+        }
+        elsif ( $type =~ /^CEC$/ ) {	
+            ########################################
+            # CEC: type=cec, name=hostname, cageid=cageid
+            # mtms=mtms, side=side, prof=null,frame=parent
+            # mac=mac
+            ########################################
+            my $frame      = @$data[10];
+            my $mac        = "";
+            my $ip        = "";
+            my $side       = "";
+            my $values = join( ",",
+               lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
+            xCAT::PPCdb::add_ppc( "cec", [$values], 0, 1 );   
+        }        	
     }
 }
 
