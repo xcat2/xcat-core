@@ -1527,7 +1527,7 @@ sub remove
         if ($::RUNCMD_RC == 0)
         {  
             #if it is management node, need to backup database
-            if (!($::CLIENT))
+            if ($::SERVER)
             {
             	xCAT::MsgUtils->message("I","Begin to backup database, this would take a while");
             	
@@ -1611,7 +1611,7 @@ sub remove
             	exit(1);
             }
                 	
-            if (!($::CLIENT))
+            if ($::SERVER)
             {        	
                 my $cmd = "XCATBYPASS=1 restorexCATdb -p $backupdic";
                 xCAT::Utils->runcmd($cmd, -1);   
@@ -1648,7 +1648,7 @@ sub remove
             
 
     xCAT::MsgUtils->message("I", "Begin to remove DB2 \n");  
-    if (!($::CLIENT))
+    if ($::SERVER)
     { 
         #remove database
         my $cmd = "db2 force application all";
@@ -1787,7 +1787,7 @@ sub remove
    	    $error += 1;
     }
    
-    $cmd = "rm -rf /var/lib/db2/*";	
+    $cmd = "rm -rf /var/lib/db2/";	
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
     {
