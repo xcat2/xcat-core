@@ -10,30 +10,38 @@ use xCAT::GlobalDef;
 # Factory defaults
 ###########################################
 my %logon = (
-    hmc => ["hscroot","abc123"],
-    ivm => ["padmin", "padmin"],
-    fsp => ["admin",  "admin"],
-    bpa => ["admin",  "admin"]
+    hmc   => ["hscroot","abc123"],
+    ivm   => ["padmin", "padmin"],
+    fsp   => ["admin",  "admin"],
+    bpa   => ["admin",  "admin"],
+    frame => ["admin",  "admin"],    
+    cec   => ["admin",  "admin"], 
 );
 
 ###########################################
 # Tables based on HW Type
 ###########################################
 my %hcptab = (
-    hmc => "ppchcp",
-    ivm => "ppchcp",
-    fsp => "ppcdirect",
-    bpa => "ppcdirect"
+    hmc   => "ppchcp",
+    ivm   => "ppchcp",
+    fsp   => "ppcdirect",
+    bpa   => "ppcdirect",
+    frame => "ppcdirect",
+    cec   => "ppcdirect",
+    
 );
 
 ###########################################
 # The default groups of hcp
 ###########################################
 my %defaultgrp = (
-    hmc => "hmc",
-    ivm => "ivm",
-    fsp => "fsp",
-    bpa => "bpa"
+    hmc   => "hmc",
+    ivm   => "ivm",
+    fsp   => "fsp",
+    bpa   => "bpa",
+    frame => "frame",
+    cec   => "cec",
+    
 );
 
 
@@ -49,11 +57,13 @@ sub add_ppc {
     my @tabs     = qw(ppc vpd nodehm nodelist nodetype hosts mac); 
     my %db       = ();
     my %nodetype = (
-        fsp  => $::NODETYPE_FSP,
-        bpa  => $::NODETYPE_BPA,
-        lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI",
-        hmc  => $::NODETYPE_HMC,
-        ivm  => $::NODETYPE_IVM,
+        fsp   => $::NODETYPE_FSP,
+        bpa   => $::NODETYPE_BPA,
+        lpar  =>"$::NODETYPE_LPAR,$::NODETYPE_OSI",
+        hmc   => $::NODETYPE_HMC,
+        ivm   => $::NODETYPE_IVM,
+        frame => $::NODETYPE_FRAME,
+        cec   => $::NODETYPE_CEC,
     );
 
     ###################################
@@ -84,7 +94,7 @@ sub add_ppc {
         ###############################
         # Update nodetype table
         ###############################
-        if ( $type =~ /^(fsp|bpa|lpar|hmc|ivm)$/ ) {
+        if ( $type =~ /^(fsp|bpa|lpar|hmc|ivm|frame|cec)$/ ) {
             $db{nodetype}->setNodeAttribs( $name,{nodetype=>$nodetype{$type}} );
             $db{nodetype}{commit} = 1;
         }
@@ -121,7 +131,7 @@ sub add_ppc {
         ###############################
         # Update ppc table
         ###############################
-        if ( $type =~ /^(fsp|bpa|lpar)$/ ) {
+        if ( $type =~ /^(fsp|bpa|lpar|frame|cec)$/ ) {
             $db{ppc}->setNodeAttribs( $name,
                { hcp=>$server,
                  id=>$id,
@@ -149,7 +159,7 @@ sub add_ppc {
         ###############################
         # Update vpd table
         ###############################
-        if ( $type =~ /^(fsp|bpa)$/ ) {
+        if ( $type =~ /^(fsp|bpa|frame|cec)$/ ) {
             $db{vpd}->setNodeAttribs( $name, 
                 { mtm=>$model,
                   serial=>$serial,
