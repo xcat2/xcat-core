@@ -31,6 +31,17 @@ if (-f "/etc/xcatinfo") {
 my $gpfsd = "hpcbootstatus gpfs-daemon=up";
 my $gpfsq = "hpcbootstatus gpfs-quorum=achieved";
 
+# add HPCbootstatus.aix to /etc/inittab for diskful node reboot
+# see if it is already there
+my $cmd = "/usr/sbin/lsitab hpcbootstatus > /dev/null 2>&1";
+my $rc = system("$cmd") >>8;
+if ($rc != 0)
+{
+    # add new entry
+    my $mkcmd = '/usr/sbin/mkitab "hpcbootstatus:2:wait:/xcatpost/HPCbootstatus.aix > /dev/console 2>&1"';
+    system("$mkcmd");
+}
+
 while (1)
 {
     my $count= 0;
