@@ -13,7 +13,20 @@ my $passed = 0;
 # Set sleep time
 my $interval = 15;
 
-my $master = "192.168.5.128";
+my $master;
+
+# Get server IP from xcatinfo file
+if (-f "/etc/xcatinfo") {
+	# if this file exists assume it has the correct server name
+	my $cmd = "cat /etc/xcatinfo | grep 'XCATSERVER'";
+	my $SNline = `$cmd`;
+	my ($junk, $servnode) =  split(/=/, $SNline);
+	chomp $servnode; 
+	$servnode =~ s/^\s*//;
+	if ($servnode) {
+		$master = $servnode;
+	}
+}
 
 my $gpfsd = "hpcbootstatus gpfs-daemon=up";
 my $gpfsq = "hpcbootstatus gpfs-quorum=achieved";

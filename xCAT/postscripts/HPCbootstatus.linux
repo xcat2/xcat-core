@@ -16,6 +16,17 @@ ITEMNUM=6
 gpfsd="hpcbootstatus gpfs-daemon=up"
 gpfsq="hpcbootstatus gpfs-quorum=achieved"
 
+# Get server IP from xcatinfo file
+if [ -f /opt/xcat/xcatinfo ]; then
+    SIP=`cut -d= -f2 /opt/xcat/xcatinfo`
+    if [ -n "$SIP" ]; then
+        MASTER=$SIP
+    fi
+else
+    echo "xCAT management server IP can't be determined.\nexiting..."
+    exit
+fi
+
 # Use a loop
 while [ true ]; do
 
