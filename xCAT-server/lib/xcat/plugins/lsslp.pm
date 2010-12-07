@@ -1747,9 +1747,9 @@ sub xCATdB {
         my $ip         = @$data[4];
         my $id         = @$data[7];
         my $cageid     = @$data[8];
+        my $frame      = @$data[10];        
         my $mac        = @$data[11];
         my $prof       = "";        
-        my $frame  = "";        
 
         #######################################
         # FSP/BPA don't need to be in host table, 
@@ -1794,8 +1794,6 @@ sub xCATdB {
             # side=side, prof=null, frame=parent, 
             # ip=ip, mac=mac
             ########################################
-            my $frame      = @$data[10];
-        
             my $values = join( ",",
                lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
             xCAT::PPCdb::add_ppc( "fsp", [$values], 0, 1 );
@@ -1809,10 +1807,9 @@ sub xCATdB {
             # mtms=mtms, side=null, prof=null, frame=itself,
             # ip=null, mac=null
             ########################################
-            my $frame      = @$data[10];
             my $mac        = "";
             my $side       = "";
-            my $ip        = "";
+            my $ip         = "";
             my $values = join( ",",
                lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
             xCAT::PPCdb::add_ppc( "frame", [$values], 0, 1 );   
@@ -1820,12 +1817,11 @@ sub xCATdB {
         elsif ( $type =~ /^CEC$/ ) {	
             ########################################
             # CEC: type=cec, name=hostname, cageid=cageid
-            # mtms=mtms, side=side, prof=null,frame=parent
-            # mac=mac
+            # mtms=mtms, side=null, prof=null,frame=parent
+            # ip=null,mac=mac
             ########################################
-            my $frame      = @$data[10];
             my $mac        = "";
-            my $ip        = "";
+            my $ip         = "";
             my $side       = "";
             my $values = join( ",",
                lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
