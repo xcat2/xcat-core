@@ -1,0 +1,40 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# chkconfig: 345 84 59
+# description: init for HPCbootstatus on linux
+# processname: HPCbootstatus.linuxinit
+
+### BEGIN INIT INFO
+# Provides: HPCbootstatus.linuxinit
+# Default-Start: 3 4 5
+# Default-stop: 0 1 2 6
+# Required-Start: $network $syslog
+# Required-Stop:
+# Short-Description: HPCbootstatus.linuxinit
+# Description: init for HPCbootstatus on linux
+### END INIT INFO
+
+# Source function library.
+if [ -x /etc/rc.d/init.d/functions ]; then
+  . /etc/rc.d/init.d/functions
+fi
+
+case $1 in
+restart)
+  $0 stop
+  $0 start
+  ;;
+status)
+  echo -n "HPCbootstatus.linuxinit runs only at boot"
+  ;;
+stop)
+  echo -n "nothing to stop "
+  ;;
+start)
+  # run /xcatpost/HPCbootstatus.linux
+  if [ -r /xcatpost/HPCbootstatus.linux ]; then
+    /xcatpost/HPCbootstatus.linux
+  fi
+  ;;
+esac
+
