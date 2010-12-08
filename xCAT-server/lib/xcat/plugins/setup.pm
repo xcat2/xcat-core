@@ -27,6 +27,8 @@ use xCAT::DBobjUtils;
 
 my $CALLBACK;
 my %STANZAS;
+my $SUB_REQ;
+my $DELETENODES;
 
 sub handled_commands {
     return( { xcatsetup => "setup" } );
@@ -41,6 +43,7 @@ sub process_request
 
     my $request  = shift;
     $CALLBACK = shift;
+    $SUB_REQ = shift;
     #my $nodes    = $request->{node};
     #my $command  = $request->{command}->[0];
     my $args     = $request->{arg};
@@ -52,7 +55,7 @@ sub process_request
     my $setup_usage = sub {
     	my $exitcode = shift @_;
     	my %rsp;
-    	push @{$rsp{data}}, "Usage: xcatsetup [-v|--version] [-?|-h|--help] <cluster-config-file>";
+    	push @{$rsp{data}}, "Usage: xcatsetup [-v|--version] [-?|-h|--help] [-s|--stanzas stanza-list] [--yesreallydeletenodes] <cluster-config-file>";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $CALLBACK->(\%rsp);
     };
@@ -60,9 +63,9 @@ sub process_request
 	# Process the cmd line args
     if ($args) { @ARGV = @{$args}; }
     else { @ARGV = (); }
-    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION, 's|stanzas=s' => \$SECT) ) { $setup_usage->(1); return; }
+    if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION, 's|stanzas=s' => \$SECT, 'yesreallydeletenodes' => \$DELETENODES) ) { $setup_usage->(1); return; }
 
-    if ($HELP || scalar(@ARGV)==0) { $setup_usage->(0); return; }
+    if ($HELP || (scalar(@ARGV)==0 && !$VERSION)) { $setup_usage->(0); return; }
 
     if ($VERSION) {
         my %rsp;
@@ -227,6 +230,7 @@ sub closetables {
 
 
 sub writesite {
+	if ($DELETENODES) { return 1; }
 	#write: domain, nameservers=<MN>
 	my $domain = shift;
 	infomsg('Defining site attributes...');
@@ -254,15 +258,18 @@ sub writesite {
 sub writehmc {
 	# using hostname-range, write: nodelist.node, nodelist.groups
 	my $hmcrange = shift;
-	infomsg('Defining HMCs...');
+	if ($DELETENODES) { deletenodes('HMCs', $hmcrange); return 1; }
 	my $hmchash;
 	unless ($hmchash = parsenoderange($hmcrange)) { return 0; }
 	my $nodes = [noderange($hmcrange, 0)];
 	#print "$$nodes[0], $hmcstartnum\n";
+	infomsg('Defining HMCs...');
 	if (scalar(@$nodes)) {
 		#my %nodehash;
 		#foreach my $n (@$nodes) { print "n=$n\n"; $nodehash{$n} = { node => $n, groups => 'hmc,all' }; }
+		#print "here\n";
 		$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'hmc,all' });
+		#print "here2\n";
 	}
 	
 	# using hostname-range and starting-ip, write regex for: hosts.node, hosts.ip
@@ -290,6 +297,7 @@ sub writehmc {
 sub writeframe {
 	# write hostname-range in nodelist table
 	my ($framerange, $cwd) = @_;
+	if ($DELETENODES) { deletenodes('frames', $framerange); return 1; }
 	infomsg('Defining frames...');
 	my $nodes = [noderange($framerange, 0)];
 	#print "$$nodes[0], $framestartnum\n";
@@ -361,6 +369,7 @@ sub readwritevpd {
 sub writecec {
 	# write hostname-range in nodelist table
 	my ($cecrange, $cwd) = @_;
+	if ($DELETENODES) { deletenodes('CECs', $cecrange); return 1; }
 	infomsg('Defining CECs...');
 	my $nodes = [noderange($cecrange, 0)];
 	if ($$nodes[0] =~ /\[/) {
@@ -375,10 +384,10 @@ sub writecec {
 	
 	# Using the cec group, write starting-ip in hosts table
 	my $cecstartip = $STANZAS{'xcat-cecs'}->{'starting-ip'};
+	my $cechash = parsenoderange($cecrange);
 	if ($cecstartip && isIP($cecstartip)) {
 		my ($ipbase, $ip3rd, $ip4th) = $cecstartip =~/^(\d+\.\d+)\.(\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
-		my $cechash = parsenoderange($cecrange);
 		#print Dumper($cechash);
 		my $regex;
 		if (defined($$cechash{'secondary-start'})) {
@@ -432,20 +441,26 @@ sub writecec {
 	my $filename = fullpath($STANZAS{'xcat-cecs'}->{'supernode-list'}, $cwd);
 	unless (readsupers($filename, \%framesupers)) { return; }
 	my $i=0;	# the index into the array of cecs
+	#my $maxcageid=0;	# check to see if all frames have same # of cecs if they are using f1c1 type name
+	#my $alreadywarned=0;
+	my $numcecs;		# how many cecs in a frame we have assigned supernode nums to
 	my %ppchash;
 	my %nodehash;
 	my %nodeposhash;
+	my @nonexistant;		# if there are less cecs in some frames, we may need to delete them
 	# Collect each nodes supernode num into a hash
 	foreach my $k (sort keys %framesupers) {
 		my $f = $framesupers{$k};	# $f is a ptr to an array of super node numbers
 		if (!$f) { next; }		# in case some frame nums did not get filled in by user
 		my $cageid = 3;		#todo: p7 ih starts at 3, but what about other models?
+		my $numcecs = 0;
 		foreach my $s (@$f) {	# loop thru the supernode nums in this frame
 			my $supernum = $s;
 			my $numnodes = 4;
 			if ($s =~ /\(\d+\)/) { ($supernum, $numnodes) = $s =~ /^(\d+)\((\d+)\)/; }
 			for (my $j=0; $j<$numnodes; $j++) {		# assign the next few nodes to this supernode num
 				my $nodename = $$nodes[$i++];
+				$numcecs++;
 				#print "Setting $nodename supernode attribute to $supernum,$j\n";
 				$ppchash{$nodename} = { supernode => "$supernum,$j", id => $cageid, parent => $k };
 				$nodehash{$nodename} = { groups => "${k}cecs,cec,all" };
@@ -454,12 +469,30 @@ sub writecec {
 				$cageid += 2;
 			}
 		}
+		if (defined($$cechash{'secondary-start'}) && $numcecs != ($$cechash{'secondary-end'}-$$cechash{'secondary-start'}+1)) {
+			# There are some cecs in this frame that did not get assigned supernode nums - maybe they do not exist
+			#infomsg("Warning: the xcat-cecs:hostname-range of $cecrange appears to be using frame and CEC numbers in the CEC hostnames, but there is not the same number of CECs in each frame (according to the supernodelist).  This causes the supernode numbers to be assigned to the wrong CECs.");
+			my $totalcecs = $$cechash{'secondary-end'}-$$cechash{'secondary-start'}+1;
+			#print "skipping cecs ", $numcecs+1, "-$totalcecs\n";
+			if ($STANZAS{'xcat-cecs'}->{'delete-unused-cecs'}) {
+				# mark to be delete the unused cecs that do not have supernode nums specified
+				for (my $l=1; $l<=($totalcecs-$numcecs); $l++) { push @nonexistant, $$nodes[$i++]; }
+			}
+			else {
+				$i += ($totalcecs - $numcecs);		# fast-forward over the cecs in this frame that do not have supernode nums
+			}
+		}
 	}
-	# Now write all of the supernode values to the ppc table
+	# Now write all of the attribute values to the tables
 	if (scalar(keys %framesupers)) {
 		$tables{'ppc'}->setNodesAttribs(\%ppchash);
 		$tables{'nodelist'}->setNodesAttribs(\%nodehash);
 		$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
+		if (scalar(@nonexistant)) {
+			my $nr = join(',', @nonexistant);
+			print "deleting $nr\n";
+			my $ret = xCAT::Utils->runxcmd({ command => ['rmdef'], arg => [$nr,'-t','node'] }, $SUB_REQ, 0, 1);
+		}
 	}
 	return 1;
 }
@@ -631,7 +664,7 @@ sub writesn {
 	$tables{'nodelist'}->setNodesAttribs(\%grouphash);
 	$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
 	
-	# Create dynamic groups for the nodes in each cec
+	# Create dynamic groups for the nodes in each service node
 	my $ntab = xCAT::Table->new('nodegroup', -create=>1,-autocommit=>0);
 	if (!$ntab) { errormsg("Can not open nodegroup table in database.", 3); }
 	else {
@@ -901,6 +934,14 @@ sub parsenoderange {
 	my $nr = shift;
 	my $ret = {};
 	
+	# Check for a 3 square bracket range, e.g. f[1-2]c[01-10]p[1-8]
+	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'tertiary-base'}, $$ret{'tertiary-start'}, $$ret{'tertiary-end'}) = ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) || (length($$ret{'tertiary-start'}) != length($$ret{'tertiary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
+		if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) || ($$ret{'tertiary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		return $ret;
+	}
+	
 	# Check for a 2 square bracket range, e.g. f[1-2]c[01-10]
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}) = ($1, $2, $3, $4, $5, $6);
@@ -942,7 +983,7 @@ sub parsenoderange {
 # If not, print error msg and return 0.
 sub isIP {
 	my $ip = shift;
-	if ($ip =~ /^\d+\.\d+\.\d+\.\d+$/) { return 1; }
+	if ($ip =~ /^\s*\d+\.\d+\.\d+\.\d+\s*$/) { return 1; }
 	errormsg("invalid IP address format: $ip", 6);
 	return 0;
 }
@@ -970,6 +1011,17 @@ sub fullpath {
 	my ($filename, $cwd) = @_;
 	if ($filename =~ /^\s*\//) { return $filename; }		# it was already a full path
 	return xCAT::Utils->full_path($filename, $cwd);
+}
+
+sub deletenodes {
+	my ($name, $range) = @_;
+	if ($range !~ /\S/) { return; }
+	infomsg("Deleting $name...");
+	#my $nr = [$hmcrange];
+	my $ret = xCAT::Utils->runxcmd({ command => ['rmdef'], arg => [$range,'-t','node'] }, $SUB_REQ, 0, 1);
+	#xCAT::MsgUtils->message('D', {data=>$ret}, $CALLBACK);
+	#$CALLBACK->({data=>$ret});
+	return;
 }
 
 1;

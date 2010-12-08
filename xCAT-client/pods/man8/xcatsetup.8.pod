@@ -4,7 +4,7 @@ B<xcatsetup> - Prime the xCAT database using naming conventions specified in a c
 
 =head1 SYNOPSIS
 
-B<xcatsetup> [B<-s|--stanzas> I<stanza-list>] I<cluster-config-file>
+B<xcatsetup> [B<-s|--stanzas> I<stanza-list>] [B<--yesreallydeletenodes>] I<cluster-config-file>
 
 B<xcatsetup> [B<-?> | B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -116,6 +116,10 @@ The hostnames specified must sort correctly.  I.e. use node01-node80, instead of
    # these are the connections to the FSPs.  Either form of hostname is supported.
    #hostname-range = cec01-cec60
    hostname-range = f[1-6]c[01-10]
+   # If you use the frame/cec hostname scheme above, but do not have a consistent
+   # number of cecs in each frame, xcat can delete the cecs that do not get
+   # supernode numbers assigned to them.
+   delete-unused-cecs = 1
    starting-ip = 10.203.1.1
    # lists the HFI supernode numbers for each group of cecs in each frame
    supernode-list = supernodelist.txt
@@ -207,7 +211,7 @@ site table:  domain, nameservers, topology
 
 site table:  ea_primary_hmc, ea_backup_hmc
 
-nodelist table:  node, groups
+nodelist table:  node, groups (all HMCs (hmc) )
 
 hosts table:  node, ip
 
@@ -217,7 +221,7 @@ nodetype table:  node, nodetype
 
 =item B<xcat-frames>
 
-nodelist table:  node, groups
+nodelist table:  node, groups (all frames (frame) )
 
 hosts table:  node, ip
 
@@ -231,7 +235,7 @@ vpd table:  node, serial, mtm, side
 
 =item B<xcat-cecs>
 
-nodelist table:  node, groups
+nodelist table:  node, groups (all CECs (cec), all CECs in a frame (<frame>cec) )
 
 hosts table:  node, ip
 
@@ -241,7 +245,7 @@ nodetype table:  node, nodetype
 
 nodehm table:  node, mgt
 
-nodegroup table:  groupname, grouptype, members, wherevals
+nodegroup table:  groupname, grouptype, members, wherevals (all nodes in a CEC (<cec>nodes) )
 
 nodepos:  rack, u
 
@@ -253,7 +257,7 @@ ppc table:  node, parent (for frame)
 
 =item B<xcat-service-nodes>
 
-nodelist table:  node, groups
+nodelist table:  node, groups (all service nodes (service), all service nodes in a BB (bb<num>service) )
 
 hosts table:  node, ip, hostnames, otherinterfaces
 
@@ -267,13 +271,13 @@ noderes table:  netboot
 
 servicenode table:  node, nameserver, dhcpserver, tftpserver, nfsserver, conserver, monserver, ftpserver, nimserver, ipforward
 
-nodegroup table:  groupname, grouptype, members, wherevals
+nodegroup table:  groupname, grouptype, members, wherevals (all nodes under a service node (<servicenode>nodes) )
 
 nodepos:  rack, u
 
 =item B<xcat-storage-nodes>
 
-nodelist table:  node, groups
+nodelist table:  node, groups (all storage nodes (storage), all storage nodes in a BB (bb<num>storage) )
 
 hosts table:  node, ip, hostnames, otherinterfaces
 
@@ -289,7 +293,7 @@ nodepos:  rack, u
 
 =item B<xcat-compute-nodes>
 
-nodelist table:  node, groups
+nodelist table:  node, groups (all compute nodes (compute) )
 
 hosts table:  node, ip, hostnames, otherinterfaces
 
@@ -328,6 +332,14 @@ Command Version.
 =item B<-?|-h|--help>
 
 Display usage message.
+
+=item B<--yesreallydeletenodes>
+
+Delete the nodes represented in the cluster config file, instead of creating them.  This is useful if your first attempt with the cluster
+config file wasn't quite right and you want to start over.  But use this option with extreme caution, because it will potentially delete
+a lot of nodes.  If the only thing you have done so far in your database is add nodes by running B<xcatsetup>, then it is safe to use this
+option to start over.  If you have made other changes to your database, you should first back it up using L<dumpxCATdb(1)|dumpxCATdb.1> before
+using this option.
 
 =back
 
