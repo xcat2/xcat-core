@@ -369,8 +369,8 @@ function loadNodes(data) {
 	// Sort headers
 	var sorted = new Array();
 	for (var key in headers) {
-		// Do not put in comments twice
-		if (key != 'usercomment') {
+		// Do not put comments and status in twice
+		if (key != 'usercomment' && key.indexOf('status') < 0) {
 			sorted.push(key);
 		}
 	}
@@ -379,7 +379,7 @@ function loadNodes(data) {
 	// Add column for check box, node, ping, power, and comments
 	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 
 		'node', 
-		'<a>ping</a><img src="images/loader.gif"></img>', 
+		'<a>status</a><img src="images/loader.gif"></img>', 
 		'<a>power</a><img src="images/loader.gif"></img>',
 		'comments');
 
@@ -438,8 +438,8 @@ function loadNodes(data) {
 			// Add the node attributes to the row
 			var key = sorted[i];
 			
-			// Do not put in comments twice
-			if (key != 'usercomment') {
+			// Do not put comments and status in twice
+			if (key != 'usercomment' && key.indexOf('status') < 0) {
     			var val = attrs[node][key];
     			if (val) {
     				row.push(val);
@@ -666,9 +666,9 @@ function loadNodes(data) {
 	$('#nodesDataTable tbody tr td:nth-child(4)').css('text-align', 'center');
 	$('#nodesDataTable tbody tr td:nth-child(5)').css('text-align', 'center');
 	
-	// Instead refresh the ping status and power status
+	// Instead refresh the node status and power status
 	pingCol.bind('click', function(event) {
-		refreshPingStatus(group);
+		refreshNodeStatus(group);
 	});
 	powerCol.bind('click', function(event) {
 		refreshPowerStatus(group);
@@ -728,18 +728,18 @@ function loadNodes(data) {
 		success : loadPowerStatus
 	});
 
-	// Get ping status
+	// Get node status
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
-			cmd : 'webrun',
-			tgt : '',
-			args : 'pping ' + group,
+			cmd : 'nodestat',
+			tgt : group,
+			args : '',
 			msg : ''
 		},
 
-		success : loadPingStatus
+		success : loadNodeStatus
 	});
 	
 	// Get definable node attributes
@@ -851,23 +851,24 @@ function refreshPowerStatus(group) {
 }
 
 /**
- * Load ping status for each node
+ * Load node status for each node
  * 
  * @param data
  *            Data returned from HTTP request
  * @return Nothing
  */
-function loadPingStatus(data) {
+function loadNodeStatus(data) {
 	// Get data table
 	var dTable = $('#nodesDataTable').dataTable();
-	var ping = data.rsp;
-	var rowPos, node, status;
+	var rsp = data.rsp;
+	var args, rowPos, node, status;
 
 	// Get all nodes within the datatable
-	for (var i in ping) {
-		// ping[0] = nodeName and ping[1] = state
-		node = jQuery.trim(ping[i][0]);
-		status = jQuery.trim(ping[i][1]);
+	for (var i in rsp) {
+		args = rsp[i].split(':');
+		// args[0] = node and args[1] = status
+		node = jQuery.trim(args[0]);
+		status = jQuery.trim(args[1]).replace('sshd', 'ping');
 		// Get the row containing the node
 		rowPos = findRowIndexUsingCol(node, '#nodesDataTable', 1);
 
@@ -875,9 +876,9 @@ function loadPingStatus(data) {
 		dTable.fnUpdate(status, rowPos, 2);
 	}
 	
-	// Hide ping loader
-	var pingCol = $('#nodesDataTable thead tr th').eq(2);
-	pingCol.find('img').hide();
+	// Hide status loader
+	var statCol = $('#nodesDataTable thead tr th').eq(2);
+	statCol.find('img').hide();
 }
 
 /**
@@ -887,23 +888,23 @@ function loadPingStatus(data) {
  *            Group name
  * @return Nothing
  */
-function refreshPingStatus(group) {
+function refreshNodeStatus(group) {
 	// Show ping loader
 	var pingCol = $('#nodesDataTable thead tr th').eq(2);
 	pingCol.find('img').show();
 	
-	// Get the ping status
+	// Get the node status
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
-			cmd : 'webrun',
-			tgt : '',
-			args : 'pping ' + group,
+			cmd : 'nodestat',
+			tgt : group,
+			args : '',
 			msg : ''
 		},
 
-		success : loadPingStatus
+		success : loadNodeStatus
 	});
 }
 

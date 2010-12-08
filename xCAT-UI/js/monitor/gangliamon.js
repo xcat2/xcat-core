@@ -436,7 +436,7 @@ function loadNodes4Ganglia(data) {
 
 	// Instead refresh the ping status and power status
 	pingCol.bind('click', function(event) {
-		refreshPingStatus(group);
+		refreshNodeStatus(group);
 	});
 
 	powerCol.bind('click', function(event) {
@@ -465,18 +465,18 @@ function loadNodes4Ganglia(data) {
 		success : loadPowerStatus
 	});
 
-	// Get the ping status
+	// Get the node status
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
-			cmd : 'webrun',
-			tgt : '',
-			args : 'pping ' + group,
+			cmd : 'nodestat',
+			tgt : group,
+			args : '',
 			msg : ''
 		},
 
-		success : loadPingStatus
+		success : loadNodeStatus
 	});
 
 	// Get the status of Ganglia
