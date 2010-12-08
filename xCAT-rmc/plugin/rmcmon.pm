@@ -1552,7 +1552,7 @@ sub showmetrix($rrddir, $attrs, $start_time, $end_time)
 					if(! grep {/$timestamp/} @timelist){
 						push @timelist, $timestamp;
 					}
-					$hash{$name}{$timestamp} = sprintf "%.4f", $sum/$num;
+					$hash{$name}{$timestamp} = sprintf "%.4f", $sum;
 				} elsif ($line =~ /^(\d+): (\S+)/){
 					$timestamp = $1;
 					$sum = $2;

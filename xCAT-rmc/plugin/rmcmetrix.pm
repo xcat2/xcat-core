@@ -353,6 +353,7 @@ sub get_sum_metrix
 	my $nodename = undef;
 	my $time = undef;
 #	my $end:shared;
+    my %summetrix = {};
 	my $end = undef;
        	$end = xCAT::Utils->runcmd("date +%s", 0);
 #	my $step:shared;
@@ -420,8 +421,8 @@ sub get_sum_metrix
 #					$summary{$a}{$n}{$timestamp} = &share({});
 #					$summary{$a}{$n}{$timestamp}{sum} = &share({});
 #					$summary{$a}{$n}{$timestamp}{num} = &share({});
-					$summary{$a}{$n}{$timestamp}{sum} = $sum;
-					$summary{$a}{$n}{$timestamp}{num} = $num;
+					$summetrix{$a}{$timestamp}{sum} += $sum * $num;
+					$summetrix{$a}{$timestamp}{num} += $num;
 				}
 			}
 		}
@@ -435,18 +436,18 @@ sub get_sum_metrix
 #		}
 #	}
 
-	my %summetrix = {};
-	foreach $attribute (keys %summary){
-		foreach $nodename (keys %{$summary{$attribute}}){
-			foreach $time (keys %{$summary{$attribute}{$nodename}}){
-				print "$attribute.$nodename.$time $summary{$attribute}{$nodename}{$time}{sum} $summary{$attribute}{$nodename}{$time}{num}\n";
-				$temp = $summary{$attribute}{$nodename}{$time}{sum} * $summary{$attribute}{$nodename}{$time}{num};
-				$summetrix{$attribute}{$time}{sum} += $temp;
-				$summetrix{$attribute}{$time}{num} += $summary{$attribute}{$nodename}{$time}{num};
-			}
-		}
+#	my %summetrix = {};
+#	foreach $attribute (keys %summary){
+#		foreach $nodename (keys %{$summary{$attribute}}){
+#			foreach $time (keys %{$summary{$attribute}{$nodename}}){
+#				print "$attribute.$nodename.$time $summary{$attribute}{$nodename}{$time}{sum} $summary{$attribute}{$nodename}{$time}{num}\n";
+#				$temp = $summary{$attribute}{$nodename}{$time}{sum} * $summary{$attribute}{$nodename}{$time}{num};
+#				$summetrix{$attribute}{$time}{sum} += $temp;
+#				$summetrix{$attribute}{$time}{num} += $summary{$attribute}{$nodename}{$time}{num};
+#			}
+#		}
 		
-	}
+#	}
 
 	my $rrdcluster = "/var/rrd/cluster";
 	if(! -d $rrdcluster){
