@@ -1455,6 +1455,12 @@ my @nodeattrs = (
                  access_tabentry => 'ppc.node=attr:node',
                 },
  {attr_name => 'parent',
+                 only_if => 'mgt=bpa',
+                 tabentry => 'ppc.parent',
+                 access_tabentry => 'ppc.node=attr:node',
+                },
+
+ {attr_name => 'parent',
                  only_if => 'mgt=fsp',
                  tabentry => 'ppc.parent',
                  access_tabentry => 'ppc.node=attr:node',
