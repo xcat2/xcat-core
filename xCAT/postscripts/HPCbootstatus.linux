@@ -27,6 +27,13 @@ else
     exit
 fi
 
+# add HPCbootstatus.linuxinit to /etc/init.d for diskful node reboot
+cat /xcatpost/HPCbootstatus.linuxinit >/etc/init.d/HPCbootstatus.linuxinit
+
+# Change permissions
+chmod 755 /etc/init.d/HPCbootstatus.linuxinit
+chkconfig --add HPCbootstatus.linuxinit
+
 # Use a loop
 while [ true ]; do
 
