@@ -538,13 +538,14 @@ sub mknetboot
         # which is used for dracut
         # the redhat5.x os will ignore it
         my $useifname=0;
+
         if ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{installnic} and $reshash->{$node}->[0]->{installnic} ne "mac") {
             $useifname=1;
             $kcmdline .= "ifname=".$reshash->{$node}->[0]->{installnic} . ":";
         } elsif ($nodebootif) {
             $useifname=1;
             $kcmdline .= "ifname=$nodebootif:";
-        } elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic}) {
+        } elsif ($reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
             $useifname=1;
             $kcmdline .= "ifname=".$reshash->{$node}->[0]->{primarynic}.":";
         }
@@ -579,7 +580,7 @@ sub mknetboot
             $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{installnic} . " ";
         } elsif ($nodebootif) {
             $kcmdline .= "netdev=" . $nodebootif . " ";
-        } elsif ( $reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic}) {
+        } elsif ( $reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
             $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
         } else {
             if ($mac) {
