@@ -305,7 +305,7 @@ sub get_zonesdir {
     }
 
     if ($sitetab) {
-        ($ref) = $sitetab->getAttribs({key => 'bindzones'}, 'value');
+        my ($ref) = $sitetab->getAttribs({key => 'bindzones'}, 'value');
         if ($ref and $ref->{value}) {
             $ZonesDir= $ref->{value};
         }
@@ -327,7 +327,7 @@ sub get_conf {
     }
 
     if ($sitetab) {
-        ($ref) = $sitetab->getAttribs({key => 'bindconf'}, 'value');
+        my ($ref) = $sitetab->getAttribs({key => 'bindconf'}, 'value');
         if ($ref and $ref->{value}) {
             $conf= $ref->{value};
         }
