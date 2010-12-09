@@ -579,51 +579,140 @@ function loadCopyLinuxPage() {
 		newTabId = 'copyLinuxTab' + inst;
 	}
 	
-	// Create info bar
-	var infoBar = createInfoBar('Copy Linux distributions and service levels from CDs or DVDs to the install directory.');
-
 	// Create copy Linux form
 	var copyLinuxForm = $('<div class="form"></div>');
-	copyLinuxForm.append(infoBar);
 	
-	// Create Linux distribution input
-	var file = $('<div></div>');
-	var label = $('<label>Linux image:</label>').css('vertical-align', 'middle');
-	var input = $('<input type="text" id="file" name="file"/>').css('width', '300px');
-	file.append(label);
-	file.append(input);
-	copyLinuxForm.append(file);
+	// Create status bar, hide on load
+	var statBarId = 'copyLinuxStatusBar' + inst;
+	var statBar = createStatusBar(statBarId).hide();
+	copyLinuxForm.append(statBar);
+
+	// Create loader
+	var loader = createLoader('');
+	statBar.append(loader);
+	statBar.hide();
+	
+	// Create info bar
+	var infoBar = createInfoBar('Copy Linux distributions and service levels from CDs or DVDs to the install directory.');
+	copyLinuxForm.append(infoBar);
+			
+	// Create Linux ISO input
+	var iso = $('<div></div>');
+	var isoLabel = $('<label> Linux ISO/DVD:</label>').css('vertical-align', 'middle');
+	var isoInput = $('<input type="text" id="iso" name="iso"/>').css('width', '300px');
+	iso.append(isoLabel);
+	iso.append(isoInput);
+	copyLinuxForm.append(iso);
+	
+	// Create architecture input
+	copyLinuxForm.append('<div><label>Architecture:</label><input type="text" id="arch" name="arch" title="The architecture of the Linux distro on the ISO/DVD, e.g. rhel5.3, centos5.1, fedora9."/></div>');
+	// Create distribution input
+	copyLinuxForm.append('<div><label>Distribution:</label><input type="text" id="distro" name="distro" title="The Linux distro name and version that the ISO/DVD contains, e.g. x86, s390x, ppc64."/></div>');
+	
+	// Generate tooltips
+	copyLinuxForm.find('div input[title]').tooltip({
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",		
+		opacity: 0.7,
+		events: {
+			def:     "mouseover,mouseout",
+			input:   "mouseover,mouseout",
+			widget:  "focus mouseover,blur mouseout",
+			tooltip: "mouseover,mouseout"
+		}
+	});
 	
 	// Create select button
 	var selectBtn = createButton('Select');
-	file.append(selectBtn);
+	iso.append(selectBtn);
 	// Browse server directory and files
 	selectBtn.serverBrowser({
-		onSelect: function(path) {
-            $('#file').val(path);
-        },
-        onLoad: function() {
-            return $('#file').val();
-        },
-        knownExt: ['exe', 'js', 'txt'],
-        knownPaths: [{text:'Install', image:'desktop.png', path:'/install'}],
-        imageUrl: 'images/',
-        systemImageUrl: 'images/',
-        handlerUrl: 'lib/getpath.php',
-        title: 'Browse',
-        basePath: '',
-        requestMethod: 'POST',
-        width: '500',
-        height: '300',
-        basePath: '/install'
-    });
+		onSelect : function(path) {
+			$('#iso').val(path);
+		},
+		onLoad : function() {
+			return $('#iso').val();
+		},
+		knownExt : [ 'exe', 'js', 'txt' ],
+		knownPaths : [ {
+			text : 'Install',
+			image : 'desktop.png',
+			path : '/install'
+		} ], // Limit user to only install directory
+		imageUrl : 'images/',
+		systemImageUrl : 'images/',
+		handlerUrl : 'lib/getpath.php',
+		title : 'Browse',
+		basePath : '',
+		requestMethod : 'POST',
+		width : '500',
+		height : '300',
+		basePath : '/install'
+	});
 	
 	// Create copy button
 	var copyBtn = createButton('Copy');
 	copyLinuxForm.append(copyBtn);
 	copyBtn.bind('click', function(event) {
-		// Run Linux to install directory
-		tab.remove($(this).parent().parent().attr('id'));
+		// Disable all fields
+		$('#' + newTabId + ' input').attr('disabled', 'true');
+		// Disable buttons
+		$('#' + newTabId + ' button').attr('disabled', 'true');
+		// Show status bar and loader
+		$('#' + statBarId).show();
+		$('#' + statBarId).find('img').show();
+		
+		// Get Linux ISO
+		var iso = $('#' + newTabId + ' input[name=iso]').val();
+		// Get architecture
+		var arch = $('#' + newTabId + ' input[name=arch]').val();
+		// Get distribution
+		var distro = $('#' + newTabId + ' input[name=distro]').val();
+
+		// Send ajax request to copy ISO
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'copycds',
+				tgt : '',
+				args : '-n;' + distro + ';-a;' + arch + ';' + iso,
+				msg : 'out=' + statBarId
+			},
+
+			/**
+			 * Show output
+			 * 
+			 * @param data
+			 *            Data returned from HTTP request
+			 * @return Nothing
+			 */
+			success : function(data) {
+				// Get output
+				var out = data.rsp;
+				// Get status bar ID
+				var statBarId = data.msg.replace('out=', '');
+				// Get tab ID
+				var tabId = statBarId.replace('copyLinuxStatusBar', 'copyLinuxTab'); 
+				
+				// Go through output and append to paragraph
+				var prg = $('<p></p>');
+				for (var i in out) {
+					if (out[i].length > 6) {
+						prg.append(out[i] + '<br>');
+					}
+				}
+				$('#' + statBarId).append(prg);
+				
+				// Hide loader
+				$('#' + statBarId).find('img').hide();
+				// Enable inputs
+				$('#' + tabId + ' input').attr('disabled', '');
+				// Enable buttons
+				$('#' + tabId + ' button').attr('disabled', '');
+			}
+		});
 	});
 	
 	// Create cancel button
