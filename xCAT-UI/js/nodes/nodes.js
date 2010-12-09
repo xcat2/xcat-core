@@ -333,6 +333,9 @@ function loadNodes(data) {
 	// Node attributes
 	var headers = new Object();
 	
+	// Variable to send command and request node status
+	var getNodeStatus = true;
+	
 	// Clear cookie containing list of nodes where
 	// their attributes need to be updated
 	$.cookie('nodes2update', '');
@@ -361,8 +364,14 @@ function loadNodes(data) {
 		// Create a hash table
 		attrs[node][key] = val;
 		headers[key] = 1;
+		
+		// If the node status is available
+		if (key == 'status') {
+			// Do not send command to request node status
+			getNodeStatus = false;
+		}
 	}
-	
+		
 	// Save attributes in hash table
 	origAttrs = attrs;
 
@@ -377,10 +386,11 @@ function loadNodes(data) {
 	sorted.sort();
 
 	// Add column for check box, node, ping, power, and comments
+	// Power status for nodes will not be requested until user clicks on power link
 	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 
 		'node', 
 		'<a>status</a><img src="images/loader.gif"></img>', 
-		'<a>power</a><img src="images/loader.gif"></img>',
+		'<a>power</a><img src="images/loader.gif" style="display: none;"></img>',
 		'comments');
 
 	// Create a datatable
@@ -391,12 +401,16 @@ function loadNodes(data) {
 	for (var node in attrs) {
 		// Create a row
 		var row = new Array();
+		
 		// Create a check box
 		var checkBx = '<input type="checkbox" name="' + node + '"/>';
 		// Open node onclick
 		var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
-		// Push in checkbox, node link, ping, and power
-		row.push(checkBx, nodeLink, '', '');
+		// Get node status
+		var status = attrs[node]['status'].replace('sshd', 'ping');
+		
+		// Push in checkbox, node link, status, and power
+		row.push(checkBx, nodeLink, status, '');
 
 		// Put in comments
 		var comment = attrs[node]['usercomment'];
@@ -712,35 +726,29 @@ function loadNodes(data) {
 		});
 	
 	/**
-	 * Get power and ping for each node
+	 * Get the node status and definable node attributes
 	 */
-	// Get power status
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'rpower',
-			tgt : group,
-			args : 'stat',
-			msg : ''
-		},
 
-		success : loadPowerStatus
-	});
-
-	// Get node status
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'nodestat',
-			tgt : group,
-			args : '',
-			msg : ''
-		},
-
-		success : loadNodeStatus
-	});
+	// If request to get node status is made
+	if (getNodeStatus) {
+    	// Get node status
+    	$.ajax( {
+    		url : 'lib/cmd.php',
+    		dataType : 'json',
+    		data : {
+    			cmd : 'nodestat',
+    			tgt : group,
+    			args : '',
+    			msg : ''
+    		},
+    
+    		success : loadNodeStatus
+    	});
+	} else {
+		// Hide status loader
+		var statCol = $('#nodesDataTable thead tr th').eq(2);
+		statCol.find('img').hide();
+	}
 	
 	// Get definable node attributes
 	$.ajax( {
@@ -774,21 +782,25 @@ function loadNodes(data) {
 		for (var h in hcps) {
 			// Get node without domain name
 			args = h.split('.');
-			// Check if SMAPI is online
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'lsvm',
-					tgt : args[0],
-					args : '',
-					msg : 'group=' + group + ';hcp=' + args[0]
-				},
-
-				// Load hardware control point (HCP) specific info
-				// Get disk pools and network names
-				success : loadHcpInfo
-			});		
+			
+			// If there is no disk pool or network names cookie for this zHCP
+			if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
+    			// Check if SMAPI is online
+    			$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'lsvm',
+    					tgt : args[0],
+    					args : '',
+    					msg : 'group=' + group + ';hcp=' + args[0]
+    				},
+    
+    				// Load hardware control point (HCP) specific info
+    				// Get disk pools and network names
+    				success : loadHcpInfo
+    			});		
+			}
 		} // End of for
 	} // End of if
 }

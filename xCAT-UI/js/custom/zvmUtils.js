@@ -65,33 +65,39 @@ function loadHcpInfo(data) {
 	var userEntry = data.rsp;
 	if (userEntry[0].indexOf('Failed') < 0) {
 		if (hcp) {
-        	// Get disk pools
-        	$.ajax( {
-        		url : 'lib/cmd.php',
-        		dataType : 'json',
-        		data : {
-        			cmd : 'lsvm',
-        			tgt : hcp,
-        			args : '--diskpoolnames',
-        			msg : hcp
-        		},
+			// If there is no cookie for the disk pool names
+			if (!$.cookie(hcp + 'diskpools')) {
+            	// Get disk pools
+            	$.ajax( {
+            		url : 'lib/cmd.php',
+            		dataType : 'json',
+            		data : {
+            			cmd : 'lsvm',
+            			tgt : hcp,
+            			args : '--diskpoolnames',
+            			msg : hcp
+            		},
+            
+            		success : setDiskPoolCookies
+            	});
+			}
         
-        		success : setDiskPoolCookies
-        	});
-        
-        	// Get network names
-        	$.ajax( {
-        		url : 'lib/cmd.php',
-        		dataType : 'json',
-        		data : {
-        			cmd : 'lsvm',
-        			tgt : hcp,
-        			args : '--getnetworknames',
-        			msg : hcp
-        		},
-        
-        		success : setNetworkCookies
-        	});
+        	// If there is no cookie for the network names
+        	if (!$.cookie(hcp + 'networks')) {
+        		// Get network names
+            	$.ajax( {
+            		url : 'lib/cmd.php',
+            		dataType : 'json',
+            		data : {
+            			cmd : 'lsvm',
+            			tgt : hcp,
+            			args : '--getnetworknames',
+            			msg : hcp
+            		},
+            
+            		success : setNetworkCookies
+            	});
+        	}
 		} // End of if (hcp)
 	} else {
 		// Create warning dialog 		
@@ -1694,7 +1700,11 @@ function setDiskPoolCookies(data) {
 	if (data.rsp) {
 		var node = data.msg;
 		var pools = data.rsp[0].split(node + ': ');
-		$.cookie(node + 'diskpools', pools);
+		
+		// Set cookie to expire in 5 minutes
+		var exDate = new Date();
+		exDate.setTime(exDate.getTime() + (5 * 60 * 1000));
+		$.cookie(node + 'diskpools', pools, { expires: exDate });
 	}
 }
 
@@ -1709,7 +1719,11 @@ function setNetworkCookies(data) {
 	if (data.rsp) {
 		var node = data.msg;
 		var networks = data.rsp[0].split(node + ': ');
-		$.cookie(node + 'networks', networks);
+		
+		// Set cookie to expire in 5 minutes
+		var exDate = new Date();
+		exDate.setTime(exDate.getTime() + (5 * 60 * 1000));
+		$.cookie(node + 'networks', networks, { expires: exDate });
 	}
 }
 

@@ -267,6 +267,9 @@ function loadNodes4Ganglia(data) {
 	// Node attributes
 	var headers = new Object();
 
+	// Variable to send command and request node status
+	var getNodeStatus = true;
+	
 	var node;
 	var args;
 	for ( var i in rsp) {
@@ -289,18 +292,30 @@ function loadNodes4Ganglia(data) {
 		// Create a hash table
 		attrs[node][key] = val;
 		headers[key] = 1;
+		
+		// If the node status is available
+		if (key == 'status') {
+			// Do not send command to request node status
+			getNodeStatus = false;
+		}
 	}
 
 	// Sort headers
 	var sorted = new Array();
 	for ( var key in headers) {
-		sorted.push(key);
+		// Do not put comments and status in
+		if (key != 'usercomment' && key.indexOf('status') < 0) {
+			sorted.push(key);
+		}
 	}
 	sorted.sort();
 
 	// Add column for check box, node, ping, and power
-	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node', '<a>ping</a><img src="images/loader.gif"></img>',
-		'<a>power</a><img src="images/loader.gif"></img>', '<a>ganglia</a><img src="images/loader.gif"></img>');
+	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 
+		'node', 
+		'<a>status</a><img src="images/loader.gif"></img>',
+		'<a>power</a><img src="images/loader.gif" style="display: none;"></img>', 
+		'<a>ganglia</a><img src="images/loader.gif"></img>');
 
 	// Create a datatable
 	var dTable = new DataTable('nodesDataTable');
@@ -310,21 +325,29 @@ function loadNodes4Ganglia(data) {
 	for ( var node in attrs) {
 		// Create a row
 		var row = new Array();
+		
 		// Create a check box
 		var checkBx = '<input type="checkbox" name="' + node + '"/>';
 		// Open node onclick
 		var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
-		row.push(checkBx, nodeLink, '', '', '');
+		// Get node status
+		var status = attrs[node]['status'].replace('sshd', 'ping');
+		
+		row.push(checkBx, nodeLink, status, '', '');
 
 		// Go through each header
 		for ( var i = 5; i < sorted.length; i++) {
 			// Add the node attributes to the row
 			var key = sorted[i];
-			var val = attrs[node][key];
-			if (val) {
-				row.push(val);
-			} else {
-				row.push('');
+			
+			// Do not put comments and status in
+			if (key != 'usercomment' && key.indexOf('status') < 0) {
+    			var val = attrs[node][key];
+    			if (val) {
+    				row.push(val);
+    			} else {
+    				row.push('');
+    			}
 			}
 		}
 
@@ -448,36 +471,29 @@ function loadNodes4Ganglia(data) {
 	});
 
 	/**
-	 * Get power and ping status for each node
+	 * Get node and ganglia status
 	 */
-
-	// Get the power status
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'rpower',
-			tgt : group,
-			args : 'stat',
-			msg : ''
-		},
-
-		success : loadPowerStatus
-	});
-
-	// Get the node status
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'nodestat',
-			tgt : group,
-			args : '',
-			msg : ''
-		},
-
-		success : loadNodeStatus
-	});
+	
+	// If request to get node status is made
+	if (getNodeStatus) {
+    	// Get the node status
+    	$.ajax( {
+    		url : 'lib/cmd.php',
+    		dataType : 'json',
+    		data : {
+    			cmd : 'nodestat',
+    			tgt : group,
+    			args : '',
+    			msg : ''
+    		},
+    
+    		success : loadNodeStatus
+    	});
+	} else {
+		// Hide status loader
+		var statCol = $('#nodesDataTable thead tr th').eq(2);
+		statCol.find('img').hide();
+	}
 
 	// Get the status of Ganglia
 	$.ajax( {
