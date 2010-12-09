@@ -1766,6 +1766,8 @@ sub process_request {
        #For mkhwconn ....
        if( $request->{hwtype} ne 'hmc' ) {
            $request_new->{hwtype}  = $lasthcp_type;
+       } else {
+           $request_new->{fsp_api} = 0; 
        }
        #print Dumper($request_new);
        @failed_nodes = () ;
