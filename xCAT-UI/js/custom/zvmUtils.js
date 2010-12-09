@@ -1701,9 +1701,9 @@ function setDiskPoolCookies(data) {
 		var node = data.msg;
 		var pools = data.rsp[0].split(node + ': ');
 		
-		// Set cookie to expire in 5 minutes
+		// Set cookie to expire in 60 minutes
 		var exDate = new Date();
-		exDate.setTime(exDate.getTime() + (5 * 60 * 1000));
+		exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
 		$.cookie(node + 'diskpools', pools, { expires: exDate });
 	}
 }
@@ -1720,9 +1720,9 @@ function setNetworkCookies(data) {
 		var node = data.msg;
 		var networks = data.rsp[0].split(node + ': ');
 		
-		// Set cookie to expire in 5 minutes
+		// Set cookie to expire in 60 minutes
 		var exDate = new Date();
-		exDate.setTime(exDate.getTime() + (5 * 60 * 1000));
+		exDate.setTime(exDate.getTime() + (60 * 60 * 1000));
 		$.cookie(node + 'networks', networks, { expires: exDate });
 	}
 }
