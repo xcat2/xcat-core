@@ -412,7 +412,7 @@ sub get_sum_metrix
 			}
 #			$summary{$a}{$n} = &share({});
 			foreach $line (@$result){
-				if($line =~ /NaNQ/){
+				if($line =~ /[NaNQ|nan]/){
 					next;
 				} elsif ($line =~ /^(\d+): (\S+) (\S+)/){
 					$timestamp = $1;
