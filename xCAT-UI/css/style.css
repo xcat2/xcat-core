@@ -633,7 +633,6 @@ table a:hover {
 }
 
 .fspDiv2 {
-	margin: 0px 12px 2px 17px;
 	font-size: 12px;
 	height: 20px;
 	line-height: 20px;
@@ -643,10 +642,10 @@ table a:hover {
 	border-style: solid;
 	border-width: 1px;
 	cursor: pointer;
+	display: inline-block;
 }
 
 .fspDiv4 {
-	margin: 0px 12px 2px 17px;
 	font-size: 12px;
 	height: 44px;
 	line-height: 44px;
@@ -656,6 +655,7 @@ table a:hover {
 	border-style: solid;
 	border-width: 1px;
 	cursor: pointer;
+	display: inline-block;
 }
 
 .fspDiv42 {
@@ -677,6 +677,10 @@ table a:hover {
 .lparStatus {
 	width: 5px;
 	height: 5px;
+}
+
+.fspcheckbox{
+	padding: 0px;
 }
 
 /*--------------- Discovery section ---------------*/
