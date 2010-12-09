@@ -226,6 +226,16 @@ function loadRmcMonShow(){
 			showRmcSummary(data.rsp[0]);
 		}
 	});
+}
+
+function showRmcSummary(returnData){
+	var attributes = returnData.split(';');
+	var attr;
+	var attrName;
+	var attrValues;
+	var attrDiv;
+	var summaryTable = $('<table><tbody></tbody></table>');
+	var summaryRow;
 	
 	//load each nodes' status
 	$.ajax({
@@ -242,18 +252,8 @@ function loadRmcMonShow(){
 			parseRmcData(data.rsp);
 		}		
 	});
-}
-
-function showRmcSummary(returnData){
-	var attributes = returnData.split(';');
-	var attr;
-	var attrName;
-	var attrValues;
-	var attrDiv;
-	var summaryTable = $('<table><tbody></tbody></table>');
-	var summaryRow;
 	
-
+	//show the summary data
 	$('#rmcmonSummary').empty().append('<h3>Overview</h3><hr />');
 	$('#rmcmonSummary').append(summaryTable);
 	
