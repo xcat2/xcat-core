@@ -111,17 +111,6 @@ else
 
 	&runcmd("rpm -e tftp-server");
 
-    if (`rpm -q xCATsn` =~ /package xCATsn is not installed/) {
-        #xCATsn package has not been installed yet
-        $msg = "Installing xCAT";
-        `logger -t xcat $msg`;
-        if ( -f "/etc/SuSE-release") { #special case for SLES11
-            &runcmd("rpm -e perl-doc"); #perl-doc conflicts with perl-Version which will be installed
-        }
-        my $osver=$ENV{'OSVER'};
-        my $arch=$ENV{'ARCH'};
-        &runcmd("OTHERPKGS=xcat/xcat-core/xCATsn,xcat/xcat-dep/$osver/$arch/conserver /xcatpost/otherpkgs");
-    }
          &copycerts;
 }
 
