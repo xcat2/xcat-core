@@ -441,12 +441,20 @@ function createActionMenu(){
 		}
 	});
 
-	//Open the Rcons page
-	var rcons = $('<a>Open Rcons</a>');
+	//Remote console
+	var rcons = $('<a>Open console</a>');
 	rcons.bind('click', function(event){
 		var tgtNodes = getSelectNodes();
 		if (tgtNodes) {
 			loadRconsPage(tgtNodes);
+		}
+	});
+	
+	//Edit properties
+	var editProps = $('<a>Edit properties</a>');
+	editProps.bind('click', function(event){
+		for (var node in selectNode) {
+			loadEditPropsPage(node);
 		}
 	});
 
@@ -458,7 +466,7 @@ function createActionMenu(){
 
 	// Advanced actions
 	var advancedActions;
-	advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons ];
+	advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons, editProps ];
 	var advancedActionMenu = createMenu(advancedActions);
 
 	/**
