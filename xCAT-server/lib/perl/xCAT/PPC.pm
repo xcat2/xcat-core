@@ -34,6 +34,8 @@ my %modules = (
                        ivm   => "xCAT::PPCpower",
                        fsp    => "xCAT::FSPpower",
                        bpa    => "xCAT::FSPpower",
+                       cec    => "xCAT::FSPpower",
+                       frame  => "xCAT::FSPpower",
 		       },
         rvitals   => { hmc    => "xCAT::PPCvitals",
                        fsp    => "xCAT::FSPvitals",
@@ -1031,6 +1033,15 @@ sub resolve {
         $att->{node}     = $node;
         $att->{type}     = $type;
     }
+    elsif ( $type =~ /^$::NODETYPE_CEC$/ ) {
+        $att->{pprofile} = 0;
+        $att->{id}       = 0;
+        $att->{fsp}      = 0;
+        $att->{node}     = $node;
+        $att->{type}     = $type;
+        $att->{parent}   = exists($att->{parent}) ? $att->{parent} : 0;
+        $att->{bpa}      = $att->{parent};
+    }
     #################################
     # Find MTMS in vpd database 
     #################################
@@ -1157,7 +1168,7 @@ sub invoke_cmd {
     ########################################
     # Direct-attached FSP handler 
     ########################################
-    if ( ($power ne "hmc") && ( $hwtype eq "fsp" or $hwtype eq "bpa") && $request->{fsp_api} == 0) {
+    if ( ($power ne "hmc") && ( $hwtype eq "fsp" or $hwtype eq "bpa" or $hwtype eq "cec") && $request->{fsp_api} == 0) {
 
         ####################################
         # Dynamically load FSP module
@@ -1757,7 +1768,7 @@ sub process_request {
        %$request_new =%$request;
        $request_new->{node}  = \@next;
        $request_new->{fsp_api} = 0;
-       if($lasthcp_type =~ /^(fsp|bpa)$/ ) {
+       if($lasthcp_type =~ /^(fsp|bpa|cec)$/ ) {
 	       #my $fsp_api = check_fsp_api($request);
 	       #if($fsp_api == 0 ) {
            $request_new->{fsp_api} = 1; 
