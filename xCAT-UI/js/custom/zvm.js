@@ -94,11 +94,12 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		cloneForm.append('<div><label>Disk password:</label><input type="password" id="diskPw" name="diskPw" title="The password that will be used for accessing the disk. This input is optional."/></div>');
 
 		// Generate tooltips
-		cloneForm.find('div input[title]').tooltip( {
+		cloneForm.find('div input[title]').tooltip({
 			position : "center right",
 			offset : [ -2, 10 ],
 			effect : "fade",
 			opacity : 0.7,
+			predelay: 800,
 			events : {
 				def : "mouseover,mouseout",
 				input : "mouseover,mouseout",

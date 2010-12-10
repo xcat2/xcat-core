@@ -2103,6 +2103,7 @@ function createZProvisionExisting(inst) {
 		offset: [-2, 10],
 		effect: "fade",		
 		opacity: 0.7,
+		predelay: 800,
 		events: {
 			def:     "mouseover,mouseout",
 			input:   "mouseover,mouseout",
@@ -2371,6 +2372,7 @@ function createZProvisionNew(inst) {
 			offset: [-4, 4],
 			effect: "fade",
 			opacity: 0.7,
+			predelay: 800,
 			events: {
 				def:     "mouseover,mouseout",
 				input:   "mouseover,mouseout",
@@ -2396,6 +2398,7 @@ function createZProvisionNew(inst) {
 		offset: [-2, 10],
 		effect: "fade",
 		opacity: 0.7,
+		predelay: 800,
 		events: {
 			def:     "mouseover,mouseout",
 			input:   "mouseover,mouseout",

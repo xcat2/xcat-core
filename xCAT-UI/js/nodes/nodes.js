@@ -284,7 +284,8 @@ function loadGroups(data) {
 		position: "center right",
 		offset: [-2, 10],
 		effect: "fade",
-		opacity: 0.7
+		opacity: 0.7,
+		predelay: 800
 	});
 	
 	$('#groups').append(addNodeLink);
@@ -1039,6 +1040,7 @@ function loadUnlockPage(tgtNodes) {
 		offset: [-2, 10],
 		effect: "fade",
 		opacity: 0.7,
+		predelay: 800,
 		events : {
 			def : "mouseover,mouseout",
 			input : "mouseover,mouseout",
@@ -1148,6 +1150,7 @@ function loadScriptPage(tgtNodes) {
 		offset: [-2, 10],
 		effect: "fade",
 		opacity: 0.7,
+		predelay: 800,
 		events : {
 			def : "mouseover,mouseout",
 			input : "mouseover,mouseout",

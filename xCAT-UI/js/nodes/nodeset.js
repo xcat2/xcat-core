@@ -129,6 +129,7 @@ function loadNodesetPage(tgtNodes) {
 		offset: [-2, 10],
 		effect: "fade",
 		opacity: 0.7,
+		predelay: 800,
 		events : {
 			def : "mouseover,mouseout",
 			input : "mouseover,mouseout",

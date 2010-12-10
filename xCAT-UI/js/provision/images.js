@@ -489,6 +489,7 @@ function loadEditImagePage(tgtImage) {
 		effect: "fade",
 		opacity: 0.8,
 		delay: 500,
+		predelay: 800,
 		events: {
 		  def:     "mouseover,mouseout",
 		  input:   "mouseover,mouseout",
@@ -616,6 +617,7 @@ function loadCopyLinuxPage() {
 		effect: "fade",		
 		opacity: 0.7,
 		delay: 500,
+		predelay: 800,
 		events: {
 			def:     "mouseover,mouseout",
 			input:   "mouseover,mouseout",
