@@ -103,8 +103,7 @@ function loadUpdatenodePage(tgtNodes) {
     		requestMethod : 'POST',
     		width : '500',
     		height : '300',
-    		basePath : '/install', // Limit user to only install directory
-    		multiselect : true
+    		basePath : '/install' // Limit user to only install directory
     	});
     	allSwScrDirectory.append(allSWSrcDirBrowse);
     	allSwScrDirectory.hide();
@@ -151,8 +150,7 @@ function loadUpdatenodePage(tgtNodes) {
 		requestMethod : 'POST',
 		width : '500',
 		height : '300',
-		basePath : '/install', // Limit user to only install directory
-		multiselect : true
+		basePath : '/install' // Limit user to only install directory
 	});
 	scrDirectory.append(srcDirBrowse);
 	scrDirectory.hide();
