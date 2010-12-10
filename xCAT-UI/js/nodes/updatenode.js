@@ -7,7 +7,7 @@
  */
 function loadUpdatenodePage(tgtNodes) {
 	// Get OS images
-	$.ajax( {
+	$.ajax({
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
@@ -20,7 +20,7 @@ function loadUpdatenodePage(tgtNodes) {
 		success : setOSImageCookies
 	});
 	
-	// Get node OS (AIX, rh*, centos*, fedora*, or sles*)
+	// Get node OS
 	var osHash = new Object();
 	var nodes = tgtNodes.split(',');
 	for (var i in nodes) {
@@ -58,31 +58,59 @@ function loadUpdatenodePage(tgtNodes) {
 	// Create info bar
 	var infoBar = createInfoBar('Update nodes in an xCAT environment');
 	updatenodeForm.append(infoBar);
-
+	
 	// Create target node or group input
-	var target = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to update"/></div>');
-	updatenodeForm.append(target);
+	var tgt = $('<div><label for="target">Target node range:</label><input type="text" name="target" value="' + tgtNodes + '" title="The node or node range to update"/></div>');
+	updatenodeForm.append(tgt);
 
 	// Create options
-	var optsDIV = $('<div></div>');
-	var optsLabel = $('<label>Options:</label>');	
-	var optsList = $('<ul></ul>');
-	optsDIV.append(optsLabel);
-	optsDIV.append(optsList);
-	updatenodeForm.append(optsDIV);
+	var options = $('<div></div>');
+	var optionsLabel = $('<label>Options:</label>');	
+	var optionsList = $('<ul></ul>');
+	options.append(optionsLabel);
+	options.append(optionsList);
+	updatenodeForm.append(options);
 		
-	// Create update all software checkbox (AIX)
+	// Create update all software checkbox (only AIX)
 	if (osHash['AIX']) {
+		var updateAllOption = $('<li></li>');
     	var updateAllChkBox = $('<input type="checkbox" id="A" name="A"/>');
-    	var updateAllOpt = $('<li></li>');
-    	optsList.append(updateAllOpt);
-    	updateAllOpt.append(updateAllChkBox);
-    	updateAllOpt.append('Install or update all software contained in the source directory');
-    	var allSwScrDirectory = $('<li><label for="allSwSrcDirectory">Source directory:</label><input type="text" name="allSwSrcDirectory"/></li>');
+    	updateAllOption.append(updateAllChkBox);
+    	optionsList.append(updateAllOption);
+    	updateAllOption.append('Install or update all software contained in the source directory');
+    	
+    	// Create source directory input
+    	var allSwScrDirectory = $('<li><label for="allSwSrcDirectory" style="vertical-align: middle">Source directory:</label><input type="text" id="allSwSrcDirectory" name="allSwSrcDirectory"/></li>');
+    	// Browse server directory and files
+    	var allSWSrcDirBrowse = createButton('Browse');
+    	allSWSrcDirBrowse.serverBrowser({
+    		onSelect : function(path) {
+    			$('#allSwSrcDirectory').val(path);
+    		},
+    		onLoad : function() {
+    			return $('#allSwSrcDirectory').val();
+    		},
+    		knownExt : [ 'exe', 'js', 'txt' ],
+    		knownPaths : [ {
+    			text : 'Install',
+    			image : 'desktop.png',
+    			path : '/install'
+    		} ],
+    		imageUrl : 'images/',
+    		systemImageUrl : 'images/',
+    		handlerUrl : 'lib/getpath.php',
+    		title : 'Browse',
+    		requestMethod : 'POST',
+    		width : '500',
+    		height : '300',
+    		basePath : '/install', // Limit user to only install directory
+    		multiselect : true
+    	});
+    	allSwScrDirectory.append(allSWSrcDirBrowse);
     	allSwScrDirectory.hide();
-    	optsList.append(allSwScrDirectory);
-    			
-    	// Show alternate source directory when checked
+    	optionsList.append(allSwScrDirectory);
+
+    	// Show source directory when checked
     	updateAllChkBox.bind('click', function(event) {
     		if ($(this).is(':checked')) {
     			allSwScrDirectory.show();
@@ -93,67 +121,93 @@ function loadUpdatenodePage(tgtNodes) {
 	}
 	
 	// Create update software checkbox
+	var updateOption = $('<li></li>');
 	var updateChkBox = $('<input type="checkbox" id="S" name="S"/>');
-	var updateOpt = $('<li></li>');
-	optsList.append(updateOpt);
-	updateOpt.append(updateChkBox);
-	updateOpt.append('Update existing software');
+	optionsList.append(updateOption);
+	updateOption.append(updateChkBox);
+	updateOption.append('Update existing software');
 		
 	// Create source directory input
-	var scrDirectory = $('<li><label for="srcDirectory">Source directory:</label><input type="text" name="srcDirectory" title="You must give the source directory containing the updated software packages"/></li>');
+	var scrDirectory = $('<li><label for="srcDirectory" style="vertical-align: middle">Source directory:</label><input type="text" id="srcDirectory" name="srcDirectory" title="You must give the source directory containing the updated software packages"/></li>');
+	// Browse server directory and files
+	var srcDirBrowse = createButton('Browse');
+	srcDirBrowse.serverBrowser({
+		onSelect : function(path) {
+			$('#srcDirectory').val(path);
+		},
+		onLoad : function() {
+			return $('#srcDirectory').val();
+		},
+		knownExt : [ 'exe', 'js', 'txt' ],
+		knownPaths : [ {
+			text : 'Install',
+			image : 'desktop.png',
+			path : '/install'
+		} ],
+		imageUrl : 'images/',
+		systemImageUrl : 'images/',
+		handlerUrl : 'lib/getpath.php',
+		title : 'Browse',
+		requestMethod : 'POST',
+		width : '500',
+		height : '300',
+		basePath : '/install', // Limit user to only install directory
+		multiselect : true
+	});
+	scrDirectory.append(srcDirBrowse);
 	scrDirectory.hide();
-	optsList.append(scrDirectory);
+	optionsList.append(scrDirectory);
 	
 	// Create other packages input
-	var otherPkgs = $('<li><label for="otherpkgs">otherpkgs:</label><input type="text" name="otherpkgs"/></li>');
+	var otherPkgs = $('<li><label for="otherpkgs" style="vertical-align: middle">otherpkgs:</label><input type="text" id="otherpkgs" name="otherpkgs"/></li>');
 	otherPkgs.hide();
-	optsList.append(otherPkgs);
+	optionsList.append(otherPkgs);
 	
-	// Create RPM flags input
-	var rpmFlags = $('<li><label for="rpm_flags">rpm_flags:</label><input type="text" name="rpm_flags"/></li>');
-	rpmFlags.hide();
-	optsList.append(rpmFlags);
+	// Create RPM flags input (only AIX)
+	var aixRpmFlags = $('<li><label for="rpm_flags">rpm_flags:</label><input type="text" name="rpm_flags"/></li>');
+	aixRpmFlags.hide();
+	optionsList.append(aixRpmFlags);
 	
-	// Create installp flags input
-	var installPFlags = $('<li><label for="installp_flags">installp_flags:</label><input type="text" name="installp_flags"/></li>');
-	installPFlags.hide();
-	optsList.append(installPFlags);
+	// Create installp flags input (only AIX)
+	var aixInstallPFlags = $('<li><label for="installp_flags">installp_flags:</label><input type="text" name="installp_flags"/></li>');
+	aixInstallPFlags.hide();
+	optionsList.append(aixInstallPFlags);
 	
-	// Create emgr flags input
-	var emgrFlags = $('<li><label for="emgr_flags">emgr_flags:</label><input type="text" name="emgr_flags"/></li>');
-	emgrFlags.hide();
-	optsList.append(emgrFlags);
+	// Create emgr flags input (only AIX)
+	var aixEmgrFlags = $('<li><label for="emgr_flags">emgr_flags:</label><input type="text" name="emgr_flags"/></li>');
+	aixEmgrFlags.hide();
+	optionsList.append(aixEmgrFlags);
 	
-	// Show alternate source directory when checked
+	// Show flags when checked
 	updateChkBox.bind('click', function(event) {
 		if ($(this).is(':checked')) {
 			scrDirectory.show();
 			otherPkgs.show();
 			if (osHash['AIX']) {
-    			rpmFlags.show();
-    			installPFlags.show();
-    			emgrFlags.show();
+    			aixRpmFlags.show();
+    			aixInstallPFlags.show();
+    			aixEmgrFlags.show();
 			}
 		} else {
 			scrDirectory.hide();
 			otherPkgs.hide();
 			if (osHash['AIX']) {
-    			rpmFlags.hide();
-    			installPFlags.hide();
-    			emgrFlags.hide();
+    			aixRpmFlags.hide();
+    			aixInstallPFlags.hide();
+    			aixEmgrFlags.hide();
 			}
 		}
 	});
 	
 	// Create postscripts input
+	var postOption = $('<li></li>');
 	var postChkBox = $('<input type="checkbox" id="P" name="P"/>');
-	var postOpt = $('<li></li>');
-	optsList.append(postOpt);
-	postOpt.append(postChkBox);
-	postOpt.append('Run postscripts');
-	var postscripts = $('<li><label for="postscripts">Postscripts:</label><input type="text" name="postscripts" title="You must give the postscript(s) to run"/></li>');
+	optionsList.append(postOption);
+	postOption.append(postChkBox);
+	postOption.append('Run postscripts');
+	var postscripts = $('<li><label for="postscripts" style="vertical-align: middle">Postscripts:</label><input type="text" id="postscripts" name="postscripts" title="You must give the postscript(s) to run"/></li>');
 	postscripts.hide();
-	optsList.append(postscripts);
+	optionsList.append(postscripts);
 	
 	// Show alternate source directory when checked
 	postChkBox.bind('click', function(event) {
@@ -163,16 +217,16 @@ function loadUpdatenodePage(tgtNodes) {
 			postscripts.hide();
 		}
 	});
-	optsList.append('<li><input type="checkbox" id="F" name="F"/>Distribute and synchronize files</li>');
-	optsList.append('<li><input type="checkbox" id="k" name="k"/>Update the ssh keys and host keys for the service nodes and compute nodes</li>');
+	optionsList.append('<li><input type="checkbox" id="F" name="F"/>Distribute and synchronize files</li>');
+	optionsList.append('<li><input type="checkbox" id="k" name="k"/>Update the ssh keys and host keys for the service nodes and compute nodes</li>');
 	
 	// Create update OS checkbox
 	if (!osHash['AIX']) {
+		var osOption = $('<li></li>');
     	var osChkBox = $('<input type="checkbox" id="o" name="o"/>');
-    	var osOpt = $('<li></li>');
-    	optsList.append(osOpt);
-    	osOpt.append(osChkBox);
-    	osOpt.append('Update the operating system');
+    	optionsList.append(osOption);
+    	osOption.append(osChkBox);
+    	osOption.append('Update the operating system');
     	
     	var os = $('<li></li>').hide();
     	var osLabel = $('<label for="os">Operating system:</label>');
@@ -186,7 +240,7 @@ function loadUpdatenodePage(tgtNodes) {
     	});
     	os.append(osLabel);
     	os.append(osInput);
-    	optsList.append(os);
+    	optionsList.append(os);
     	
     	// Show alternate source directory when checked
     	osChkBox.bind('click', function(event) {
@@ -224,68 +278,68 @@ function loadUpdatenodePage(tgtNodes) {
 		
 		// Generate arguments
 		var chkBoxes = $("#" + newTabId + " input[type='checkbox']:checked");
-		var optStr = '';
-		var opt;
+		var optionsStr = '';
+		var option;
 		for ( var i = 0; i < chkBoxes.length; i++) {
-			opt = chkBoxes.eq(i).attr('name');
-			optStr += '-' + opt;
+			option = chkBoxes.eq(i).attr('name');
+			optionsStr += '-' + option;
 			
 			// If update all software is checked
-			if (opt == 'S') {
+			if (option == 'S') {
 				var srcDir = $('#' + newTabId + ' input[name=allSwSrcDirectory]').val();
 				if (srcDir) {
-					optStr += ';-d ' + srcDir;
+					optionsStr += ';-d ' + srcDir;
 				}
 			}
 
 			// If update software is checked
-			if (opt == 'S') {
+			if (option == 'S') {
 				// Get source directory
-				var srcDir = $('#' + newTabId + ' input[name=srcDirectory]').val();
-				if (srcDir) {
-					optStr += ';-d;' + srcDir;
+				var srcDirectory = $('#' + newTabId + ' input[name=srcDirectory]').val();
+				if (srcDirectory) {
+					optionsStr += ';-d;' + srcDirectory;
 				}
 				
 				// Get otherpkgs
 				var otherpkgs = $('#' + newTabId + ' input[name=otherpkgs]').val();
 				if (otherpkgs) {
-					optStr += ';otherpkgs=' + otherpkgs;
+					optionsStr += ';otherpkgs=' + otherpkgs;
 				}
 				
 				// Get rpm_flags
 				var rpm_flags = $('#' + newTabId + ' input[name=rpm_flags]').val();
 				if (rpm_flags) {
-					optStr += ';rpm_flags=' + rpm_flags;
+					optionsStr += ';rpm_flags=' + rpm_flags;
 				}
 				
 				// Get installp_flags
 				var installp_flags = $('#' + newTabId + ' input[name=installp_flags]').val();
 				if (installp_flags) {
-					optStr += ';installp_flags=' + installp_flags;
+					optionsStr += ';installp_flags=' + installp_flags;
 				}
 				
 				// Get emgr_flags
 				var emgr_flags = $('#' + newTabId + ' input[name=emgr_flags]').val();
 				if (emgr_flags) {
-					optStr += ';emgr_flags=' + emgr_flags;
+					optionsStr += ';emgr_flags=' + emgr_flags;
 				}
 			}
 			
 			// If postscripts is checked
-			if (opt == 'P') {
+			if (option == 'P') {
 				// Get postscripts
-				optStr += ';' + $('#' + newTabId + ' input[name=postscripts]').val();
+				optionsStr += ';' + $('#' + newTabId + ' input[name=postscripts]').val();
 			}
 			
 			// If operating system is checked
-			if (opt == 'o') {
+			if (option == 'o') {
 				// Get the OS
-				optStr += ';' + $('#' + newTabId + ' input[name=os]').val();
+				optionsStr += ';' + $('#' + newTabId + ' input[name=os]').val();
 			}
 			
 			// Append ; to end of string
 			if (i < (chkBoxes.length - 1)) {
-				optStr += ';';
+				optionsStr += ';';
 			}
 		}
 		
@@ -306,7 +360,7 @@ function loadUpdatenodePage(tgtNodes) {
 				data : {
 					cmd : 'updatenode',
 					tgt : tgts,
-					args : optStr,
+					args : optionsStr,
 					msg : 'out=' + statBarId + ';cmd=updatenode;tgt=' + tgts
 				},
 

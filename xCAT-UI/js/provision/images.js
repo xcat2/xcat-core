@@ -644,16 +644,15 @@ function loadCopyLinuxPage() {
 			text : 'Install',
 			image : 'desktop.png',
 			path : '/install'
-		} ], // Limit user to only install directory
+		} ],
 		imageUrl : 'images/',
 		systemImageUrl : 'images/',
 		handlerUrl : 'lib/getpath.php',
 		title : 'Browse',
-		basePath : '',
 		requestMethod : 'POST',
 		width : '500',
 		height : '300',
-		basePath : '/install'
+		basePath : '/install' // Limit user to only install directory
 	});
 	
 	/**

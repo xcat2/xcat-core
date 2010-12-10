@@ -424,7 +424,8 @@ function initPage() {
 	includeJs("js/jquery/jquery.jstree.js");
 	includeJs("js/jquery/jquery.flot.js");
 	includeJs("js/jquery/tooltip.min.js");
-		
+	includeJs("js/jquery/jquery.serverBrowser.js");
+
 	// Page plugins
 	includeJs("js/configure/configure.js");	
 	includeJs("js/monitor/monitor.js");
@@ -463,7 +464,6 @@ function initPage() {
 		headers.eq(1).css('background-color', '#A9D0F5');
 		loadConfigPage();
 	} else if (page == 'provision.php') {
-		includeJs("js/jquery/jquery.serverBrowser.js");
 		includeJs("js/provision/images.js");
 		headers.eq(2).css('background-color', '#A9D0F5');
 		loadProvisionPage();
