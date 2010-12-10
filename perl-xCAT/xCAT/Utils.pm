@@ -2813,7 +2813,7 @@ sub getNodeIPaddress
                 	$c1 = getchildren($nodetocheck);
                 	if ( $c1 ) {
                 		$ips = join ",", @$c1;
-                        return \$ips;
+                        return $ips;
                     }
                 }
             }
