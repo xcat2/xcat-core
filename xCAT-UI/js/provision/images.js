@@ -488,6 +488,7 @@ function loadEditImagePage(tgtImage) {
 		offset: [-2, 10],
 		effect: "fade",
 		opacity: 0.8,
+		delay: 500,
 		events: {
 		  def:     "mouseover,mouseout",
 		  input:   "mouseover,mouseout",
@@ -590,7 +591,6 @@ function loadCopyLinuxPage() {
 	// Create loader
 	var loader = createLoader('');
 	statBar.append(loader);
-	statBar.hide();
 	
 	// Create info bar
 	var infoBar = createInfoBar('Copy Linux distributions and service levels from CDs or DVDs to the install directory.');
@@ -615,6 +615,7 @@ function loadCopyLinuxPage() {
 		offset: [-2, 10],
 		effect: "fade",		
 		opacity: 0.7,
+		delay: 500,
 		events: {
 			def:     "mouseover,mouseout",
 			input:   "mouseover,mouseout",
@@ -623,11 +624,13 @@ function loadCopyLinuxPage() {
 		}
 	});
 	
-	// Create select button
-	var selectBtn = createButton('Select');
-	iso.append(selectBtn);
+	/**
+	 * Browse
+	 */
+	var browseBtn = createButton('Browse');
+	iso.append(browseBtn);
 	// Browse server directory and files
-	selectBtn.serverBrowser({
+	browseBtn.serverBrowser({
 		onSelect : function(path) {
 			$('#iso').val(path);
 		},
@@ -651,13 +654,14 @@ function loadCopyLinuxPage() {
 		basePath : '/install'
 	});
 	
-	// Create copy button
+	/**
+	 * Copy
+	 */
 	var copyBtn = createButton('Copy');
 	copyLinuxForm.append(copyBtn);
 	copyBtn.bind('click', function(event) {
-		// Disable all fields
+		// Disable all inputs and buttons
 		$('#' + newTabId + ' input').attr('disabled', 'true');
-		// Disable buttons
 		$('#' + newTabId + ' button').attr('disabled', 'true');
 		// Show status bar and loader
 		$('#' + statBarId).show();
@@ -707,15 +711,16 @@ function loadCopyLinuxPage() {
 				
 				// Hide loader
 				$('#' + statBarId).find('img').hide();
-				// Enable inputs
+				// Enable inputs and buttons
 				$('#' + tabId + ' input').attr('disabled', '');
-				// Enable buttons
 				$('#' + tabId + ' button').attr('disabled', '');
 			}
 		});
 	});
 	
-	// Create cancel button
+	/**
+	 * Cancel
+	 */
 	var cancelBtn = createButton('Cancel');
 	copyLinuxForm.append(cancelBtn);
 	cancelBtn.bind('click', function(event) {
