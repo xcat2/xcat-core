@@ -189,7 +189,7 @@ sub fsp_state_action {
     $fsp_name = $node_name; 
 
      
-    if($type_name =~ /^fsp$/ || $type_name =~ /^lpar$/) {
+    if($type_name =~ /^fsp$/ || $type_name =~ /^lpar$/ || $type_name =~ /^cec$/) {
         $type = 0;
     } else { 
 	$type = 1;
