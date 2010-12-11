@@ -1,24 +1,27 @@
 #!/usr/bin/perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-# Downloads/converts the xCAT docs on the sourceforge wiki to HTML and PDF
+# Downloads/converts the xCAT docs on the sourceforge wiki to local HTML and PDF.
+# This script is not dependent on other xCAT code, so you can copy it to a machine
+# that has internet access to run it.  Before running this command, you must have
+# wget, python, and pisa installed.  See: https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Editing_xCAT_Documentation_Pages#Converting_Wiki_Pages_to_HTML_and_PDFs .
 
-BEGIN
-{
-    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
-}
+#BEGIN
+#{
+#    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr';
+#}
 use strict;
-use lib "$::XCATROOT/lib/perl";
+#use lib "$::XCATROOT/lib/perl";
 #use xCAT::Utils;
 use Getopt::Long;
 use Data::Dumper;
 
-my $VERSION;
+#my $VERSION;
 my $HELP;
  
 my $usage = sub {
    	my $exitcode = shift @_;
-   	print "Usage: getxcatdocs [-v|--version] [-?|-h|--help] [<destination-dir>]\n";
+   	print "Usage: getxcatdocs [-?|-h|--help] [<destination-dir>]\n";
 	exit $exitcode;
 };
 
@@ -26,14 +29,14 @@ my $usage = sub {
 Getopt::Long::Configure("bundling");
 #Getopt::Long::Configure("pass_through");
 Getopt::Long::Configure("no_pass_through");
-if (!GetOptions('h|?|help'  => \$HELP, 'v|version' => \$VERSION) ) { $usage->(1); }
+if (!GetOptions('h|?|help'  => \$HELP )) { $usage->(1); }
 
-if ($HELP || (scalar(@ARGV)==0 && !$VERSION)) { $usage->(0); }
+if ($HELP) { $usage->(0); }
 
-if ($VERSION) {
+#if ($VERSION) {
     #print xCAT::Utils->Version(), "\n";
-    exit;
-}
+#    exit;
+#}
 
 #if (xCAT::Utils->isAIX()) { die "Error: this command is not yet supported on AIX.\n"; }
 if ($^O =~ /^aix/i) { die "Error: this command is not yet supported on AIX.\n"; }
@@ -60,9 +63,10 @@ foreach my $file (@dir) {
 	if ($file =~ /^index.php\?title=MediaWiki:/ || $file eq 'index.php?title=XCAT_Documentation') { next; }
 	my ($docname) = $file =~ /^index.php\?title=(.+)$/;
 	print "Converting $docname to PDF format...\n";
-	my $url = "https://sourceforge.net/apps/mediawiki/xcat/$file";
+	my $url = "https://sourceforge.net/apps/mediawiki/xcat/$file&printable=yes";
 	my $destfile = "$docname.pdf";
-	my $cmd = "xhtml2pdf $url $destfile";
+	my $cmd = "xhtml2pdf '$url' '$destfile' ";
+	#print "$cmd\n";
 	runh2p($cmd);
 }
 
