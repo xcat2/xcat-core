@@ -1,14 +1,14 @@
 start:makedhcp_n
 os:Linux
-cmd:mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak
+cmd:mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak
 cmd:makedhcp -n
 check:rc==0
-cmd:ls /etc/dhcpd.conf
+cmd:ls /etc/dhcp/dhcpd.conf
 check:rc==0
 cmd:ps -e | grep dhcpd
 check:rc==0
 check:output=~dhcpd
-cmd:mv -f /etc/dhcpd.conf.bak /etc/dhcpd.conf
+cmd:mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf
 end
 start:makedhcp_a
 os:Linux
@@ -26,7 +26,7 @@ start:makedhcp_a_d
 os:Linux
 cmd:lsdef -l $$CN -z > /tmp/$$CN.stanza
 cmd:chdef -t node -o $$CN mac=11:22:33:44:55:66
-cmd:mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak
+cmd:mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak
 cmd:makedhcp -a
 cmd:makedhcp -a -d
 check:rc==0
@@ -34,13 +34,13 @@ cmd:cat /var/lib/dhcpd/dhcpd.leases | grep deleted
 check:output=~deleted
 cmd:chdef -t node -o $$CN mac=
 cmd:cat /tmp/$$CN.stanza | chdef -z
-cmd:mv -f /etc/dhcpd.conf.bak /etc/dhcpd.conf
+cmd:mv -f /etc/dhcp/dhcpd.conf.bak /etc/dhcp/dhcpd.conf
 end
 start:makedhcp_d
 os:Linux
 cmd:lsdef -l $$CN -z > /tmp/$$CN.stanza
 cmd:chdef -t node -o $$CN mac=11:22:33:44:55:66
-cmd:mv -f /etc/dhcpd.conf /etc/dhcpd.conf.bak
+cmd:mv -f /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.bak
 cmd:makedhcp -a
 cmd:makedhcp -d $$CN
 check:rc==0
@@ -48,5 +48,5 @@ cmd:cat /var/lib/dhcpd/dhcpd.leases | grep deleted
 check:output=~deleted
 cmd:chdef -t node -o $$CN mac=
 cmd:cat /tmp/$$CN.stanza | chdef -z
-cmd:mv -f /etc/dhcpd.conf.bak /etc/dhcpd.conf
+cmd:mv -f /etc/dhcpd/dhcpd.conf.bak /etc/dhcpd/dhcpd.conf
 end
