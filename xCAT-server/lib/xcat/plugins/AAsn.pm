@@ -262,17 +262,6 @@ sub init_plugin
 	    {
 		xCAT::Utils->update_xCATSN($service);
 	    }
-	} else {
-	    
-	    $rc =  xCAT::NetworkUtils->setup_ip_forwarding(0);    # disable ip forwarding
-	    if ($rc == 0)
-	    {
-		#remove the service from the /etc/xCATSN file
-		my $text=`sed -e "/$service/d" /etc/xCATSN`;
-                if ($?==0) {
-		    `echo "$text" > /etc/xCATSN`;
-		}
-	    }
 	}
     }
     else     # management node
