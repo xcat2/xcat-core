@@ -5,8 +5,6 @@ BEGIN
 }
 use lib "$::XCATROOT/lib/perl";
 
-use lib "../imgutils";
-
 use File::Basename;
 use File::Path;
 use File::Copy;
@@ -14,6 +12,8 @@ use File::Find;
 use Getopt::Long;
 use Cwd qw(realpath);
 
+use FindBin;
+use lib "$FindBin::Bin/../imgutils";
 use imgutils;
 
 #use strict;
