@@ -129,6 +129,7 @@ ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodels
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/nodech
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/noderm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rnetboot
+ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rbootseq
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/getmacs
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/mkvm
 ln -sf ../bin/xcatclient $RPM_BUILD_ROOT/%{prefix}/bin/rmvm
