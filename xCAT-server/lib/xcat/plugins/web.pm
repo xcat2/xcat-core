@@ -91,9 +91,9 @@ sub web_lsevent {
 	#print Dumper(\@ret);
 	#please refer the manpage for the output format of "lsevent"
 
-	my %data = ();
+	my $data = [];
 
-	my %record = ();
+	my $record = '';
 
 	my $i = 0;
 	my $j = 0;
@@ -102,15 +102,19 @@ sub web_lsevent {
 		if ( $item ne "\n" ) {
 			chomp $item;
 			my ( $key, $value ) = split( "=", $item );
-			$record{$key} = $value;
+			if ($j < 2){
+				$record .= $value . ';';
+			}
+			else{
+				$record .= $value;
+			}
+			
 			$j++;
 			if ( $j == 3 ) {
 				$i++;
 				$j = 0;
-				while ( my ( $k, $v ) = each %record ) {
-					$data{$i}{$k} = $v;
-				}
-				%record = ();
+				push(@$data, {name=>$i, data=>$record});
+				$record = '';
 			}
 		}
 
@@ -118,9 +122,7 @@ sub web_lsevent {
 
 	#print Dumper(\%data);
 
-	while ( my ( $key, $value ) = each %data ) {
-		$callback->( { data => $value } );
-	}
+	$callback->( { data => $data } );
 }
 
 sub web_lsrsrcdef {
