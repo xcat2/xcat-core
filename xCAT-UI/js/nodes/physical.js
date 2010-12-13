@@ -515,7 +515,7 @@ function createFspDiv(fspName, mtm, fsp){
 	}
 		
 	//create return value
-	var retHtml = '<input class="fspcheckbox" type="checkbox" name="check_' + fspName + '">';
+	var retHtml = '<input style="margin:3px 3px 1px 4px;padding:0" class="fspcheckbox" type="checkbox" name="check_' + fspName + '">';
 	retHtml += '<div value="' + fspName + '" class="' + divClass + '">';
 	retHtml += '<div class="lparDiv"><table><tbody><tr>' + lparStatusRow + '</tr></tbody></table></div></div>';
 	return retHtml;
