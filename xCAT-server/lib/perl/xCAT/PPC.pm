@@ -86,6 +86,8 @@ my %modules = (
 		      },
         renergy   => { hmc    => "xCAT::PPCenergy",
 		     },
+        rbootseq  => { fsp    => "xCAT::FSPbootseq",
+             },
         );
 
 
@@ -281,7 +283,7 @@ sub process_command {
     #       |count    //node number managed by the hcp
     #       |runprocess    //the process number connect to the hcp
     #       |index    //the index of node will be forked of the hcp
-    if ( ($request->{command} =~ /^(getmacs)$/ && exists( $request->{opt}->{D} )) || ($request->{command} =~ /^(rnetboot)$/) ) {
+    if ( ($request->{command} =~ /^(getmacs)$/ && exists( $request->{opt}->{D} )) || ($request->{command} =~ /^(rnetboot)$/) || ($request->{command} =~ /^(rbootseq)$/) ) {
         my %pid_owner = ();
 
         $request->{maxssh} = int($request->{maxssh}/2);
@@ -696,7 +698,7 @@ sub preprocess_nodes {
     ##########################################
     # Special processing - rnetboot 
     ##########################################
-    if ( $request->{command} eq "rnetboot" ) { 
+    if ( $request->{command} eq "rnetboot"  || $request->{command} eq "rbootseq"  ) { 
         $netwk = resolve_netwk( $request, $noderange );
         if ( !defined( %$netwk )) {
             return undef;
@@ -774,7 +776,7 @@ sub preprocess_nodes {
     # LPAR-by-LPAR basis - fork one process
     # per LPAR.  
     ##########################################
-    if ( ($method =~ /^(getmacs)$/ && exists( $request->{opt}->{D} )) || ($method =~ /^(rnetboot)$/) ) {
+    if ( ($method =~ /^(getmacs)$/ && exists( $request->{opt}->{D} )) || ($method =~ /^(rnetboot)$/) || $method =~ /^(rbootseq)$/ ) {
         while (my ($hcp,$hash) = each(%nodehash) ) {    
             @nodegroup = ();
             while (my ($mtms,$h) = each(%$hash) ) {
@@ -784,7 +786,7 @@ sub preprocess_nodes {
                     ##########################
                     # Save network info
                     ##########################
-                    if ( $method =~ /^rnetboot$/ ) {
+                    if ( $method =~ /^rnetboot$/ || $method =~ /^(rbootseq)$/  ) {
                         push @$d, $netwk->{$lpar}; 
                     }
                     push @nodegroup,[$hcp,$d]; 
