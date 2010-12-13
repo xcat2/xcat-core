@@ -17,7 +17,7 @@ cmd:chdef -t osimage -o autotest installp_bundle="xCATaixCN"
 check:rc==0
 cmd:rscan __GETNODEATTR($$CN, hcp)__ -w
 check:rc==0
-cmd:makeconservercf
+cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN

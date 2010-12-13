@@ -6,10 +6,7 @@ cmd:makedns
 check:rc==0
 cmd:service named restart
 check:rc==0
-cmd:nslookup $$CN
-check:rc==0
-check:output=~Address:\s+\d+.\d+.\d+.\d+
-cmd:makeconservercf
+cmd:makeconservercf $$CN
 check:rc==0
 cmd:cat /etc/conserver.cf | grep $$CN
 check:output=~$$CN
