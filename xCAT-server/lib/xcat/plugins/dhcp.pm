@@ -462,14 +462,14 @@ sub preprocess_request
     }
 
    if(grep /-h/,@{$req->{arg}}) {
-        my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
+        my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements] [--HFI]\n\tmakedhcp [-h|--help]";
         $callback->({data => [$usage]});
         return;
     }  
     
     unless (($req->{arg} and (@{$req->{arg}}>0)) or $req->{node})
     {
-	my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
+	my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements] [--HFI]\n\tmakedhcp [-h|--help]";
         $callback->({data => [$usage]});
         return;
     }
@@ -946,6 +946,62 @@ sub process_request
             }
         }
         close($omshell) if ($^O ne 'aix');
+        foreach my $node (@{$req->{node}})
+        {
+            unless ($machash)
+            {
+                $callback->(
+                       {
+                        error => ["Unable to open mac table, it may not exist yet"],
+                        errorcode => [1]
+                       }
+                       );
+                return;
+            }
+            my $ent = $machash->{$node}->[0]; #tab->getNodeAttribs($node, [qw(mac)]);
+            unless ($ent and $ent->{mac})
+            {
+                $callback->(
+                        {
+                         error     => ["Unable to find mac address for $node"],
+                         errorcode => [1]
+                        }
+                        );
+                next;
+            }
+            my $mac = $ent->{mac};
+            # Workarounds for HFI devices, omshell doesn't support HFI device type, we cannot set hfi as hardware type in dhcp lease-file.
+            # Replace the ethernet with hfi in lease-file if --HFI is specified.
+            # After omshell supports HFI devices, remove these code and add correct hardware type from omshell
+            if ( grep /^--HFI$/, @{$req->{arg}} )
+            {
+                unless ( open( HOSTS,"</var/lib/dhcpd/dhcpd.leases" ))
+                {
+                    next;
+                }
+                my @rawdata = <HOSTS>;
+                my @newdata = ();
+                close( HOSTS );
+                chomp @rawdata;
+                foreach my $line ( @rawdata ) {
+                    if ( $line =~ /^(.*)ethernet $mac(.*)$/ ) {
+                        push @newdata, "$1hfi $mac$2";
+                    } else {
+                        push @newdata, $line;
+                    }
+                }
+
+                unless ( open( HOSTS,">/var/lib/dhcpd/dhcpd.leases" )) {
+                    next;
+                }
+                for my $line (@newdata)
+                {
+                    print HOSTS "$line\n";
+                }
+                close( HOSTS );
+            }
+
+        }
     }
     writeout();
     if ($restartdhcp) {

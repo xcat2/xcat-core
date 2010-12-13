@@ -587,6 +587,12 @@ sub mknetboot
                 $kcmdline .= "BOOTIF=" . $mac . " ";
             }
         }
+
+        if ( grep /hf/, $reshash->{$node}->[0]->{installnic} )
+        {
+            $kcmdline .= "rdloaddriver=hf_if ";
+        }
+
         
         if (defined $sent->{serialport})
         {
