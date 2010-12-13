@@ -68,6 +68,7 @@ sub fsp_api_action {
     my $attrs      = shift;
     my $action     = shift;
     my $tooltype   = shift;
+    my $parameter   = shift;
 #    my $user 	   = "HMC";
 #    my $password   = "abc123";
     my $fsp_api    = ($::XCATROOT) ? "$::XCATROOT/sbin/fsp-api" : "/opt/xcat/sbin/fsp-api"; 
@@ -125,7 +126,7 @@ sub fsp_api_action {
         my $password = $password_hash->{password};
     	$cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
     } else {
-        $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+        $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter";
     }
 
     #print "cmd: $cmd\n"; 
