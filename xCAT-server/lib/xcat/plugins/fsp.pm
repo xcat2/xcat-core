@@ -21,6 +21,7 @@ sub handled_commands {
       rflash    => 'nodehm:mgt',
       getmacs   => 'nodehm:mgt',
       rnetboot  => 'nodehm:mgt',
+      rbootseq  => 'nodehm:mgt',
       rvitals   => 'nodehm:mgt',
       mkvm      => 'nodehm:mgt',
       lsvm      => 'nodehm:mgt',
