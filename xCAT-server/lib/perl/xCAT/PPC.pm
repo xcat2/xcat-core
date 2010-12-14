@@ -43,6 +43,7 @@ my %modules = (
 		       },
         rscan     => { hmc    => "xCAT::PPCscan",
                        fsp    => "xCAT::FSPscan",
+                       cec    => "xCAT::FSPscan",
 		       },
         mkvm      => { hmc    => "xCAT::PPCvm",
                        fsp    => "xCAT::FSPvm",
@@ -1755,7 +1756,7 @@ sub process_request {
 	         }
 	         #print "lasthcp_type:$lasthcp_type ;thishcp_type:$thishcp_type\n";
 	        if(defined($lasthcp_type)) { 
-                if ( ($lasthcp_type =~ /^(hmc)$/ &&  $thishcp_type =~ /^(fsp|bpa)$/) or (($lasthcp_type =~ /^(fsp|bpa)$/ ) && ($thishcp_type =~ /^(hmc)$/ )) )  {   
+                if ( ($lasthcp_type =~ /^(hmc)$/ &&  $thishcp_type =~ /^(fsp|bpa|cec)$/) or (($lasthcp_type =~ /^(fsp|bpa|cec)$/ ) && ($thishcp_type =~ /^(hmc)$/ )) )  {   
 		            $callback->({data=>["the $node\'s hcp type is different from the other's in the specified noderange in the 'ppc' table."]}); 
 	               return;
 	             }
@@ -1787,7 +1788,7 @@ sub process_request {
        process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
        #print "after result:\n";
        #print Dumper(\@failed_nodes);
-       if($lasthcp_type =~ /^(fsp|bpa)$/  && $request->{hwtype} ne 'hmc' ) {
+       if($lasthcp_type =~ /^(fsp|bpa|cec)$/  && $request->{hwtype} ne 'hmc' ) {
 	       my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
 	       if (defined($enableASMI[0])) {
                 $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
