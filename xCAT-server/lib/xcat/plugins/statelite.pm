@@ -403,8 +403,14 @@ sub liteMe {
         return;
     }
 
-    # snapshot directory for tmpfs and persistent data.
-    $callback->({info=>["creating $rootimg_dir/$statedir"]});
+    unless ( -d "$rootimg_dir/$statedir" ) {
+        # snapshot directory for tmpfs and persistent data.
+        if ( -e "$rootimg_dir/$statedir" ) {
+            xCAT::Utils->runcmd("rm -rf $rootimg_dir/$statedir", 0, 1);
+        }
+        $callback->({info=>["creating $rootimg_dir/$statedir"]});
+        xCAT::Utils->runcmd("mkdir -p $rootimg_dir/$statedir", 0, 1);
+    }
     unless ( -d "$rootimg_dir/$statedir/tmpfs" ) {
         xCAT::Utils->runcmd("mkdir -p $rootimg_dir/$statedir/tmpfs", 0, 1);
     }
@@ -419,6 +425,7 @@ sub liteMe {
         }
     }
 
+    $callback->({info=>["done."]});
     # end loop, synclist should now all be in place.
 }
 
