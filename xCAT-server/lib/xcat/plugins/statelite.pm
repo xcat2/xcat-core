@@ -109,7 +109,6 @@ sub process_request {
 			$callback->({error=>["The linuximage table cannot be opened."],errorcode=>[1]});
 			return;
 		}
-
 		# get the os, arch, and profile from the image name table.
 		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile');
 		if (!$ref) {

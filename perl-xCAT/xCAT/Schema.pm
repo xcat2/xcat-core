@@ -593,7 +593,7 @@ osimage  => {
  },
   },
 linuximage  => {
- cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir nodebootif otherifce netdrivers kernelver permission comments disable)],
+ cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir nodebootif otherifce netdrivers kernelver permission dump comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
  descriptions => {
@@ -611,6 +611,7 @@ linuximage  => {
   netdrivers => 'the ethernet device drivers of the nodes which will use this linux image, at least the device driver for the nodes\' installnic should be included',
   kernelver => 'the version of linux kernel used in the linux image. If the kernel version is not set, the default kernel in rootimgdir will be used',
   permission => 'the mount permission of /.statelite directory is used, its default value is 755',
+  dump => qq{The NFS directory to hold the Linux kernel dump file (vmcore) when the node with this image crashes, its format is "nfs://<nfs_server_ip>/<kdump_path>". If you want to use the node's "xcatmaster" (its SN or MN), <nfs_server_ip> can be left blank. For example, "nfs:///<kdump_path>" means the NFS directory to hold the kernel dump file is on the node's SN, or MN if there's no SN.},
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1884,6 +1885,11 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
  {attr_name => 'permission',
                  only_if => 'imagetype=linux',
                  tabentry => 'linuximage.permission',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                },
+ {attr_name => 'dump',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.dump',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 },
 ####################

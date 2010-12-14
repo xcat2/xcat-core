@@ -199,8 +199,8 @@ sub process_request {
         }
     }
 
-    # TODO: following the old genimage code, to update the stateles-only files/directories 
-    # another file should be /opt/xcat/xcatdsklspost, but it seems  not necessary
+    # TODO: following the old genimage code, to update the stateles-only files/directories
+    # # another file should be /opt/xcat/xcatdsklspost, but it seems  not necessary
     xCAT::Utils->runcmd("mv $rootimg_dir/etc/init.d/statelite $rootimg_dir/.statebackup/statelite ", 0, 1) if ( -e "$rootimg_dir/etc/init.d/statelite");
     if ( -e "$rootimg_dir/usr/share/dracut" ) {
         # currently only used for redhat families, not available for SuSE families

@@ -1,0 +1,50 @@
+#!/bin/bash
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#(C)IBM Corp
+# 
+
+for i in `cat /proc/cmdline`; do
+    KEY=`echo $i | awk -F= '{print $1}'`
+    if [ "$KEY" = "dump" ]; then
+        DUMP=`echo $i |awk -F= '{print $2}'`
+        if [ ! -z "$XCAT" ]; then
+            break
+        fi
+    elif [ "$KEY" = "XCAT" ]; then
+        XCAT=`echo $i |awk -F= '{print $2}'`
+        if [ ! -z "$DUMP" ]; then
+            break
+        fi
+    fi
+done
+
+if [ ! -z "$DUMP" ]; then
+    # parse "dump=<proto>://<nfsserver_IP>/<directory>"
+    KDPATH=${DUMP#*:}
+    KDPROTO=${DUMP%:$KDPATH*}
+    
+    KDPATH=${KDPATH/\/\//}
+    KDIP=`echo $KDPATH | cut -d'/' -f1`
+    KDPATH=${KDPATH/$KDIP/}
+
+    # if "dump=<proto>:///<directory>", use $xcatmaster as the default NFS server
+    if [ -z $KDIP ]; then
+        KDIP=${XCAT%:*}
+    fi
+
+    if [ "$KDPROTO" = "nfs" ]; then
+        echo "net $KDIP:$KDPATH" > /etc/kdump.conf
+    fi
+
+    # workaround for RHEL6
+    KDTMPSERVER=${XCAT%:*}
+    /bin/mount $KDTMPSERVER:/install/kdump/tmp /var/tmp
+
+    /etc/init.d/kdump restart
+
+    /bin/umount /var/tmp
+else
+    /bin/echo "The kdump server is not configured"
+fi
+
+exit 0

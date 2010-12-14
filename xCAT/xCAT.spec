@@ -69,6 +69,7 @@ mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
 mkdir -p $RPM_BUILD_ROOT/install/prescripts
+mkdir -p $RPM_BUILD_ROOT/install/kdump/tmp # workaround for RHEL6
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 cd $RPM_BUILD_ROOT/%{prefix}/share/xcat/
 

@@ -1,5 +1,6 @@
 #!/bin/sh
 echo $drivers
-dracut_install wget cpio gzip dash  modprobe wc touch
+dracut_install wget cpio gzip dash  modprobe wc touch echo cut
 dracut_install grep ifconfig hostname awk egrep grep dirname expr
+dracut_install fsck.ext3 fsck.ext4
 inst_hook pre-pivot 5 "$moddir/xcat-prepivot.sh"

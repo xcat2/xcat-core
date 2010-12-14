@@ -223,7 +223,7 @@ sub mknetboot
 
     my $machash = $mactab->getNodesAttribs(\@nodes, ['interface','mac']);
 
-    my $reshash    = $restab->getNodesAttribs(\@nodes, ['primarynic','tftpserver','xcatmaster','nfsserver','nfsdir', 'installnic']);
+    my $reshash    = $restab->getNodesAttribs(\@nodes, ['primarynic','tftpserver','xcatmaster','nfsserver','nfsdir', 'installnic', 'dump']);
     my $hmhash =
           $hmtab->getNodesAttribs(\@nodes,
                                  ['serialport', 'serialspeed', 'serialflow']);
@@ -243,6 +243,7 @@ sub mknetboot
         my $platform;
         my $rootimgdir;
         my $nodebootif; # nodebootif will be used if noderes.installnic is not set
+        my $dump; # for kdump, its format is "nfs://<nfs_server_ip>/<kdump_path>"
 
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
@@ -261,12 +262,17 @@ sub mknetboot
                     if (!$linuximagetab) {
                 	    $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
                     }
-                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif'); 
+                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif', 'dump'); 
                     if (($ref1) && ($ref1->{'rootimgdir'})) {
                 	    $img_hash{$imagename}->{rootimgdir}=$ref1->{'rootimgdir'};
                     }
                     if (($ref1) && ($ref1->{'nodebootif'})) {
                         $img_hash{$imagename}->{nodebootif} = $ref1->{'nodebootif'};
+                    }
+                    if ( $ref1 ) {
+                        if ($ref1->{'dump'}) {
+                            $img_hash{$imagename}->{dump} = $ref1->{'dump'};
+                        }
                     }
                 } else {
                     $callback->(
@@ -276,16 +282,19 @@ sub mknetboot
                 }
             }
 	        my $ph=$img_hash{$imagename};
+            
 	        $osver = $ph->{osver};
 	        $arch  = $ph->{osarch};
 	        $profile = $ph->{profile};
-	
+
 	        $rootimgdir=$ph->{rootimgdir};
             unless ($rootimgdir) {
                 $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
             }
             
             $nodebootif = $ph->{nodebootif};
+            
+            $dump = $ph->{dump};
 	    }
         else {
             $osver = $ent->{os};
@@ -620,7 +629,12 @@ sub mknetboot
 
         # turn off the selinux
         if ($osver =~ m/fedora12/ || $osver =~ m/fedora13/) {
-            $kcmdline .= " selinux=0";
+            $kcmdline .= " selinux=0 ";
+        }
+
+        # if kdump service is enbaled, add "crashkernel=" and "kdtarget="
+        if ($dump) {
+            $kcmdline .= " crashkernel=256M\@32M dump=$dump ";
         }
 
         # add the addkcmdline attribute  to the end

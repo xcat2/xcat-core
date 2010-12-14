@@ -518,6 +518,38 @@ ResolveLinks
 # make sure mtab points to the right place:
 /bin/ln -sf /proc/mounts ${TMPFS}/etc/mtab
 
+# create /etc/sysconfig/network-scripts/
+for i in `/bin/cat /proc/cmdline`; do
+    KEY=`/bin/echo $i  | /bin/awk -F= '{print $1}'`
+    if [ "$KEY" = "ifname" ]; then
+        ifname=`/bin/echo $i | /bin/awk -F= '{print $2}'`
+        MACX=${ifname#*:}
+        ETHX=${ifname%:$MACX*}
+        break
+    elif [ "$KEY" = "netdev" ]; then
+        ETHX=$netdev
+        MACX=`/sbin/ip link show $netdev | /bin/grep ether | /bin/awk '{print $2}'`
+        break
+    elif [ "$KEY" = "BOOTIF" ]; then
+        MACX=$BOOTIF
+        ETHX=`/sbin/ifconfig | /bin/grep -i $BOOTIF | /bin/awk '{print $1}'`
+        break
+    fi
+done
+
+if [ ! -z "$MACX" ] && [ ! -z "$ETHX" ]; then
+    if [ ! -e $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX ]; then
+        /bin/touch $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    fi
+    echo "DEVICE=$ETHX" > $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "BOOTPROTO=dhcp" >> $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "HWADDR=$MACX" >> $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+    echo "ONBOOT=yes" >> $MNTDIR/etc/sysconfig/network-scripts/ifcfg-$ETHX
+fi
+
+/bin/cat /etc/resolv.conf > $MNTDIR/etc/resolv.conf
+
 # catch all hack for debugging:
 #cp -r -a ${DEFAULT}/* /.snapshot/tmpfs/
 # foo
+

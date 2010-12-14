@@ -72,7 +72,7 @@ GetOptions(
    'l=s' => \$rootlimit,
    't=s' => \$tmplimit,
    'k=s' => \$kernelver,
-   'permission=s' => \$permission
+   'permission=s' => \$permission,
 );
 
 # if "Table.pm" can be found here, the attributes in linuximage and osimage will be updated
@@ -247,7 +247,7 @@ unless ($osver and $profile) {
    print '       genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -k <KERNELVER> <imagename>'."\n";
    print "       --permission only works with statelite mode\n";
    print "Examples:\n";
-   print " genimage -i eth0 -n tg3 -o centos5.1 -p compute\n";
+   print " genimage -i eth0 -n tg3 -o centos5.1 -p compute \n";
    print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
    print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot\n";
    print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777\n";
@@ -1354,8 +1354,15 @@ sub isnetdriver {
 
 
 
-sub postscripts { # TODO: customized postscripts
+sub postscripts {
    generic_post();
+
+   # TODO: workaround for kdump on RHEL6
+   # add one fake command: fsck.nfs
+   unless ( -x "$rootimg_dir/sbin/fsck.nfs" ) {
+        system("echo true > $rootimg_dir/sbin/fsck.nfs; chmod a+x $rootimg_dir/sbin/fsck.nfs");
+   }
+   
 
    if( ! -d "$rootimg_dir/opt/xcat/") {
        mkdir "$rootimg_dir/opt/xcat/";
