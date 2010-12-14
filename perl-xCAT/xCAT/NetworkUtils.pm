@@ -151,7 +151,9 @@ sub gethostname()
                 return undef;
             }
             my $hostname = gethostbyaddr(inet_aton($iporhost), AF_INET);
-            $hostname =~ s/\..*//; #short hostname
+            if ( $hostname ) {            
+                $hostname =~ s/\..*//; #short hostname
+            }
             return $hostname;
         }
      }
