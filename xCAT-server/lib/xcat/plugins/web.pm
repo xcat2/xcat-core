@@ -721,7 +721,7 @@ sub web_rmcmonShow() {
 	#like this PctTotalTimeIdle=>"10.0000, 20.0000, 12.0000, 30.0000"
 	if ( 'summary' eq $nodeRange ) {
 		$output =
-		  xCAT::Utils->runcmd( "monshow rmcmon -s -t 10 -a " . $attr, -1, 1 );
+		  xCAT::Utils->runcmd( "monshow rmcmon -s -t 60 -a " . $attr, -1, 1 );
 		foreach $temp (@$output) {
 
 			#the attribute name

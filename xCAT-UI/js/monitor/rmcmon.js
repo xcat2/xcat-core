@@ -3,6 +3,7 @@ var globalNodesDetail;
 var globalAllNodesNum = 0;
 var globalFinishNodesNum = 0;
 var globalSelectedAttributes = '';
+var globalTimeStamp;
 
 function loadRmcMon(){
 	//find the rmcmon tab
@@ -236,7 +237,7 @@ function showRmcSummary(returnData){
 	var attrDiv;
 	var summaryTable = $('<table><tbody></tbody></table>');
 	var summaryRow;
-	
+	globalTimeStamp = new Array();
 	//load each nodes' status
 	$.ajax({
 		url : 'lib/cmd.php',
@@ -253,6 +254,15 @@ function showRmcSummary(returnData){
 		}		
 	});
 	
+	//create the timestamp, the flot only use the UTC time, so had to change the value, to show the right time
+	var tempDate = new Date();	
+	var tempOffset = tempDate.getTimezoneOffset();
+	var tempTime = tempDate.getTime() - 3600000 - tempOffset * 60000;
+	
+	for (var i = 0; i < 60; i++){
+		globalTimeStamp.push(tempTime + i * 60000);
+	}
+	
 	//show the summary data
 	$('#rmcmonSummary').empty().append('<h3>Overview</h3><hr />');
 	$('#rmcmonSummary').append(summaryTable);
@@ -264,7 +274,7 @@ function showRmcSummary(returnData){
 		attrName = attributes[attr].substr(0, temp);
 		attrValues = attributes[attr].substr(temp + 1).split(',');
 		for (var i in attrValues){
-			tempArray.push([i, attrValues[i]]);
+			tempArray.push([globalTimeStamp[i], attrValues[i]]);
 		}
 
 		if (0 == (attr % 3)){
@@ -274,7 +284,7 @@ function showRmcSummary(returnData){
 		summaryRow.append(tempTd);
 		attrDiv = $('<div class="monitorsumdiv"></div>');
 		tempTd.append(attrDiv);
-		$.plot(attrDiv, [tempArray]);
+		$.plot(attrDiv, [tempArray], {xaxis: {mode:"time"}});
 		attrDiv.append('<center>' + attrName + '</center>');
 		
 	}	
@@ -429,9 +439,9 @@ function showAllNodes(attrName, type){
 		var tempData = sortArray[sortIndex]['value'].split(',');
 		var tempArray = [];
 		for (var i in tempData){
-			tempArray.push([i, tempData[i]]);				
+			tempArray.push([globalTimeStamp[i], tempData[i]]);				
 		}
-		$.plot(nodeChat, [tempArray]);
+		$.plot(nodeChat, [tempArray], {xaxis: {mode:"time", tickSize: [20, "minute"]}});
 
 		tempTd.append('<center>' + sortArray[sortIndex]['name'] + '</center>');
 		tempTd.css('cursor', 'pointer');
@@ -474,10 +484,10 @@ function showNode(nodeName){
 		var tempData = globalNodesDetail[nodeName][attr].split(',');
 		var tempArray = [];
 		for (var i in tempData){
-			tempArray.push([i, tempData[i]]);				
+			tempArray.push([globalTimeStamp[i], tempData[i]]);				
 		}
 		
-		$.plot(attrChat, [tempArray]);
+		$.plot(attrChat, [tempArray], {xaxis: {mode:"time", tickSize: [20, "minute"]}});
 		attrChat.append('<center>' + attr +'</center>');
 	}
 }
