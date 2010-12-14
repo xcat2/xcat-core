@@ -96,9 +96,10 @@ if (!(-e ($db2install)))
     chomp $::db2installloc;
     $::db2installloc =~
       s/^(\'|\")(.*)(\"|\')$/$2/;              # remove any surrounding quotes
- 
+
     # startNFS
-    $rc = &startNFS; 
+    $rc = &startNFS;
+
     # mount the db2 directory to get to the db2 code to install
     $rc = &mountdb2code;
 
@@ -110,8 +111,8 @@ if (!(-e ($db2install)))
         {
             $msg = "Error installing DB2. Cannot continue. \n";
             `logger -t xcat $msg`;
-             &unmountdb2code;
-             exit(1);
+            &unmountdb2code;
+            exit(1);
 
         }
 
@@ -132,14 +133,15 @@ else
     `logger -t xcat $msg`;
 }
 
-# get the cfgloc file from the Management Node
+# get the cfgloc file, should be in /etc/xcat/cfgloc.db2 from xcatserver
+# postscript
 $rc = &getcfgloc;
 if ($rc != 0)
-{                           # could not get the cfgloc file, cannot continue
-      $msg =
-    "Cannot get the cfgloc file from the MN.  Client setup cannot continue. \n";
-        `logger -t xcat $msg`;
-      exit 1;
+{    # could not get the cfgloc file, cannot continue
+    $msg =
+      "Cannot get the cfgloc file from the MN.  Client setup cannot continue. \n";
+    `logger -t xcat $msg`;
+    exit 1;
 }
 
 # setup the db2 Client for xCAT and start xCAT on the DB2 database
@@ -188,60 +190,77 @@ sub getcfgloc
 {
     my $msg;
     my $filename = "/etc/xcat/cfgloc";
-    my $response = &getresponse("xcat_cfgloc");
-    if (defined($response))
+    my $cfgsave  = "/etc/xcat/cfgloc.db2";
+    if (-e $cfgsave)
     {
-        my $fd;
-        &runcmd("mkdir -p /etc/xcat");
-        open($fd, '>', $filename);
-        print $fd $response;
-        close($fd);
+        my $cmd = " cp $cfgsave $filename ";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            $msg = "$::sdate db2install: $cmd failed.\n";
+            `logger -t xcat $msg`;
+            return 1;
+        }
 
-        # set the permissions
-        my $cmd = "chmod 600 $filename > /dev/null 2>&1";
-        &runcmd($cmd);
     }
     else
-    {
-        $msg = "$::sdate db2install: Could not get cfgloc file.\n";
-        `logger -t xcat $msg`;
-        return 1;
-    }
+    {    # file not there get it from the MN
+        my $response = &getresponse("xcat_cfgloc");
+        if (defined($response))
+        {
+            my $fd;
+            &runcmd("mkdir -p /etc/xcat");
+            open($fd, '>', $filename);
+            print $fd $response;
+            close($fd);
 
-    # get the info
-    my $xcatcfg;
-    my $cfgl;
-    open($cfgl,"<",$filename);
-    $xcatcfg = <$cfgl>;
-    close($cfgl);
-    chomp $xcatcfg; 
-    my ($hdr, $instance, $password) = split('\|', $xcatcfg);
-    if ($hdr =~ /^DB2:/)
-    {
-        return 0;
-    }
-    else
-    {
-        $msg = "$::sdate db2install: cfgloc file not for DB2.\n";
-        `logger -t xcat $msg`;
-        return 1;
+            # set the permissions
+            my $cmd = "chmod 600 $filename > /dev/null 2>&1";
+            &runcmd($cmd);
+        }
+        else
+        {
+            $msg = "$::sdate db2install: Could not get cfgloc file.\n";
+            `logger -t xcat $msg`;
+            return 1;
+        }
+
+        # get the info
+        my $xcatcfg;
+        my $cfgl;
+        open($cfgl, "<", $filename);
+        $xcatcfg = <$cfgl>;
+        close($cfgl);
+        chomp $xcatcfg;
+        my ($hdr, $instance, $password) = split('\|', $xcatcfg);
+        if ($hdr =~ /^DB2:/)
+        {
+
+            return 0;
+        }
+        else
+        {
+            $msg = "$::sdate db2install: cfgloc file not for DB2.\n";
+            `logger -t xcat $msg`;
+            return 1;
+        }
     }
     return 0;
 
 }
 #####################################################
 #
-# startNFS 
-#    Makes sure NFS is running 
+# startNFS
+#    Makes sure NFS is running
 #
 #####################################################
 sub startNFS
- 
-{
-   my $rc = 0;
 
-   if (xCAT::Utils->isLinux())
-   {
+{
+    my $rc = 0;
+
+    if (xCAT::Utils->isLinux())
+    {
         my $os = xCAT::Utils->osver();
         if ($os =~ /sles.*/)
         {
@@ -252,18 +271,17 @@ sub startNFS
         {
             $rc = xCAT::Utils->startService("nfs");
         }
-   }
-   else
-   {    #AIX
+    }
+    else
+    {    #AIX
         $rc = xCAT::Utils->startService("nfsd");
-   }
-   if ($rc != 0)
-   {
+    }
+    if ($rc != 0)
+    {
         return 1;
-   }
+    }
 
     return $rc;
-
 
 }
 #####################################################
@@ -486,10 +504,11 @@ sub rundb2sqlsetup
     my $rc = 0;
     my $cmd;
     my $filename = "/etc/xcat/cfgloc";
+
     # get the info
     my $xcatcfg;
     my $cfgl;
-    open($cfgl,"<",$filename);
+    open($cfgl, "<", $filename);
     $xcatcfg = <$cfgl>;
     close($cfgl);
     chomp $xcatcfg;
@@ -520,7 +539,7 @@ sub getresponse
 {
     my ($req) = @_;
     my $msg;
-    my $port = $ENV{'XCATDPORT'}; 
+    my $port = $ENV{'XCATDPORT'};
     my $node = $ENV{'NODE'};
 
     # open listener connection to wait for check from management node
@@ -605,7 +624,6 @@ sub getresponse
 sub openlistener
 {
     my $node = $ENV{'NODE'};
-
 
     # fork a child process to open a socket to listen for communication
     #	from the server

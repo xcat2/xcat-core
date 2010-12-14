@@ -19,9 +19,11 @@ export USEOPENSSLFORXCAT
    getcredentials.awk xcat_cfgloc | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /etc/xcat/cfgloc
     # if not DB2
     grep "DB2" /etc/xcat/cfgloc  2>&1 1> /dev/null
-    if [ $? -eq 0 ]; then
+    if [ $? -ne 0 ]; then
       sed s/host=[^\|]*/host=$MASTER/ /etc/xcat/cfgloc > /etc/xcat/cfgloc.new
       mv /etc/xcat/cfgloc.new /etc/xcat/cfgloc
+    else
+      mv /etc/xcat/cfgloc /etc/xcat/cfgloc.db2
     fi
    chmod 600 /etc/xcat/cfgloc
    # do not assume working directory, use the full path
