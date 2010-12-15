@@ -1706,11 +1706,11 @@ sub parse_responses {
             } elsif ( $type1 eq TYPE_CEC and $type eq TYPE_FSP and $mtm1 eq $mtm and $sn1 eq $sn ) {
             	$parent = $h1;       # FSP's parent is CEC
             	last;
+            } else {
+            	$parent = "";   # Frame and HMC have no parent
             }
         }
-        unless ( $parent ) {
-            $parent = "undef";   # for HMC there is no parent
-        }
+ 
         push @$data, $parent;
 
         
