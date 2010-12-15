@@ -170,6 +170,7 @@ sub preprocess_request
 
     if ($command =~ /mknimimage/)
 
+
     {
 
         my $reqcopy = {%$req};
@@ -181,7 +182,6 @@ sub preprocess_request
 
     if ($command =~ /rmnimimage/)
     {
-
         # take care of -h etc.
         # also get osimage hash to pass on!!
         my ($rc, $imagehash, $servers) = &prermnimimage($cb, $sub_req);
@@ -238,16 +238,13 @@ sub preprocess_request
     my $sn;
     if ($nodes)
     {
-        $sn = xCAT::Utils->get_ServiceNode($nodes, $service, "MN");
+        $sn = xCAT::Utils->getSNformattedhash($nodes, $service, "MN");
     }
 
     # these commands might be merged some day??
     if (($command =~ /nimnodeset/) || ($command =~ /mkdsklsnode/))
     {
-        my ($rc, $nodehash, $nethash, $imagehash, $lochash, $attrs, $nimhash) =
-          &prenimnodeset($cb, $command, $sub_req);
-
-
+        my ($rc, $nodehash, $nethash, $imagehash, $lochash, $attrs, $nimhash) = &prenimnodeset($cb, $command, $sub_req);
 
         if ($rc)
         {    # either error or -h was processed etc.
@@ -264,6 +261,12 @@ sub preprocess_request
         # set up the requests to go to the service nodes
         foreach my $snkey (keys %$sn)
         {
+
+#debug
+my $rsp;
+push @{$rsp->{data}}, "SN = $snkey";
+xCAT::MsgUtils->message("E", $rsp, $cb);
+
             my $reqcopy = {%$req};
             $reqcopy->{node} = $sn->{$snkey};
             $reqcopy->{'_xcatdest'} = $snkey;
@@ -1195,7 +1198,6 @@ sub spot_updates
     my @SNlist;    # list of SNs to have spot removed
     if ($::UPDATE)
     {
-
         # get list of SNs
         @allservers = xCAT::Utils->getAllSN();
 
@@ -1440,8 +1442,6 @@ srvnode.";
             }
 
             my $rmcmd = qq~nim -o remove $spot_name 2>/dev/null~;
-#ndebug
-
             my $nout  =
               xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $rmcmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -2768,25 +2768,19 @@ sub mknimimage
 
         if ($::dodumpold || $::MKDUMP)
         {
-
-
             my $dump_name;
             if ($::attrres{dump})
             {
-
                 # if provided then use it
                 $dump_name = $::attrres{dump};
-
             }
             elsif ($::opt_i)
             {
-
                 # if one is provided in osimage
                 if ($::imagedef{$::opt_i}{dump})
                 {
                     $dump_name = $::imagedef{$::opt_i}{dump};
                 }
-
             }
             else
             {
@@ -2924,6 +2918,61 @@ sub mknimimage
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
+
+		#
+		#  create a dump res if requested
+		#
+        if ($::MKDUMP)
+        {
+            my $dump_name;
+            if ($::attrres{dump})
+            {
+                # if provided then use it
+                $dump_name = $::attrres{dump};
+            }
+            elsif ($::opt_i)
+            {
+                # if one is provided in osimage
+                if ($::imagedef{$::opt_i}{dump})
+                {
+                    $dump_name = $::imagedef{$::opt_i}{dump};
+                }
+            }
+            else
+            {
+                # may need to create new one
+                # all use the same dump res unless another is specified
+                $dump_name = $::image_name . "_dump";
+
+                # see if it's already defined
+                if (grep(/^$dump_name$/, @::nimresources))
+                {
+                    my $rsp;
+                    push @{$rsp->{data}},
+                      "Using existing dump resource named \'$dump_name\'.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+                else
+                {
+                    # create it
+                    my $type = "dump";
+                    if (
+                        &mkdumpres(
+                                   $dump_name, \%::attrres, $callback, $::opt_l
+                        ) != 0
+                      )
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}},
+                          "Could not create a NIM definition for \'$dump_name\'.\n";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        return 1;
+                    }
+                }
+            }    # end dump res
+            chomp $dump_name;
+            $newres{dump} = $dump_name;
+        }    # end create dump
 
         if ($::METHOD eq "rte")
         {
@@ -4537,7 +4586,7 @@ sub prermnimimage
         my $service = "xcat";
         if (\@nlist)
         {
-            $sn = xCAT::Utils->get_ServiceNode(\@nlist, $service, "MN");
+            $sn = xCAT::Utils->getSNformattedhash(\@nlist, $service, "MN");
         }
         foreach my $snkey (keys %$sn)
         {
@@ -6065,7 +6114,7 @@ sub prenimnodecust
     #
     #  Get the service nodes for this list of nodes
     #
-    my $sn = xCAT::Utils->get_ServiceNode(\@nodelist, "xcat", "MN");
+    my $sn = xCAT::Utils->getSNformattedhash(\@nodelist, "xcat", "MN");
     if ($::ERROR_RC)
     {
         my $rsp;
@@ -6835,11 +6884,11 @@ sub prenimnodeset
     #		defined locally when this cmd runs there
     #
     ######################################################
-    if (
-        &doSNcopy($callback, \@nodelist, $nimprime, \@nimrestypes,
-                  \%imghash, \%lochash,  \%nodeosi, $subreq)
-      )
-    {
+
+
+	my $snhash;
+	$snhash = &doSNcopy($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash,  \%nodeosi, $subreq);
+    if ( !defined($snhash) ) {
         my $rsp;
         push @{$rsp->{data}},
           "Could not copy NIM resources to the xCAT service nodes.\n";
@@ -7252,8 +7301,8 @@ sub copyres
 
         Arguments:
         Returns:
-                0 - OK
-                1 - error
+                snhash
+                undef - error
         Globals:
         Example:
         Comments:
@@ -7282,13 +7331,13 @@ sub doSNcopy
     #
     #  Get a list of nodes for each service node
     #
-    my $sn = xCAT::Utils->get_ServiceNode(\@nodelist, "xcat", "MN");
+    my $sn = xCAT::Utils->getSNformattedhash(\@nodelist, "xcat", "MN");
     if ($::ERROR_RC)
     {
         my $rsp;
         push @{$rsp->{data}}, "Could not get list of xCAT service nodes.";
         xCAT::MsgUtils->message("E", $rsp, $callback);
-        return 1;
+        return undef;
     }
 
     #
@@ -7378,7 +7427,7 @@ sub doSNcopy
                 my $rsp;
                 push @{$rsp->{data}}, "Could not get NIM resource definitions.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
+                return undef;
             }
 
             foreach my $r (@resources)
@@ -7481,7 +7530,7 @@ sub doSNcopy
         }
     }
 
-    return 0;
+    return \%$sn;
 }
 
 #----------------------------------------------------------------------------
@@ -8178,7 +8227,7 @@ sub mkdsklsnode
                 # if nfsserver is set to the service node itself, nothing needs to do
                 if(!xCAT::InstUtils->is_me($nfshash->{$snd}->[0]->{'nfsserver'}))
                 {
-                    my $osimg = $nodeosi{$snd};
+					my $osimg = $nodeosi{$snd};
                     #shared_root configuration
                     my $hostfile;
                     my $filesystemsfile;
@@ -8896,6 +8945,7 @@ sub make_SN_resource
                                );
                 if (grep(/^$restype$/, @dir_res))
                 {
+
 
                     my $loc =
                       dirname(dirname($lochash{$imghash{$image}{$restype}}));
