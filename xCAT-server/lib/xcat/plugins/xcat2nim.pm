@@ -1455,30 +1455,6 @@ sub mkNIMnetwork
 				return 1;
 			}
 
-			#
-        	# create an interface def (if*) for the master 
-			#
-			# first get the if* and cable_type* attrs
-			#  - the -A option gets the next avail index for this attr
-			my $ifcmd = qq~/usr/sbin/lsnim -A if master 2>/dev/null~;
-			my $ifindex = xCAT::Utils->runcmd("$ifcmd", -1);
-            if ($::RUNCMD_RC  != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "Could not run \'$ifcmd\'.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
-
-			my $ctcmd = qq~/usr/sbin/lsnim -A cable_type master 2>/dev/null~;
-			my $ctindex = xCAT::Utils->runcmd("$ctcmd", -1);
-			if ($::RUNCMD_RC  != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "$::msgstr Could not run \'$ctcmd\'.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
-
-			# get the local adapter hostname for this network
 			# get all the possible IPs for the node I'm running on
 			my $ifgcmd = "ifconfig -a | grep 'inet'";
 			my @result = xCAT::Utils->runcmd($ifgcmd, 0);
@@ -1489,73 +1465,138 @@ sub mkNIMnetwork
                 return 1;
 			}
 
-			my $adapterhostname;
+			
+			my $samesubnet = 0;
+			my ($inet, $myIP, $str);
 			foreach my $int (@result) {
-				my ($inet, $myIP, $str) = split(" ", $int);
+				($inet, $myIP, $str) = split(" ", $int);
 				chomp $myIP;
 				$myIP =~ s/\/.*//; # ipv6 address 4000::99/64
 				$myIP =~ s/\%.*//; # ipv6 address ::1%1/128
 
 				# if the ip address is in the subnet
-				#       the right interface
 				if ( xCAT::NetworkUtils->ishostinsubnet($myIP, $xnethash{$net}{mask}, $xnethash{$net}{net} )) {
-					$adapterhostname = xCAT::NetworkUtils->gethostname($myIP);
+                    # to create the nim network object within the same subnet
+					$samesubnet = 1;
 					last;
 				}
 			}
 
-			# define the new interface
-			my $chcmd = qq~/usr/sbin/nim -o change -a if$ifindex='$net $adapterhostname 0' -a cable_type$ctindex=N/A master 2>/dev/null~;
+			if ($samesubnet == 1)
+			{
+    			#
+            	# create an interface def (if*) for the master 
+    			#
+    			# first get the if* and cable_type* attrs
+    			#  - the -A option gets the next avail index for this attr
+    			my $ifcmd = qq~/usr/sbin/lsnim -A if master 2>/dev/null~;
+    			my $ifindex = xCAT::Utils->runcmd("$ifcmd", -1);
+                if ($::RUNCMD_RC  != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not run \'$ifcmd\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
 
-			my $output2 = xCAT::Utils->runcmd("$chcmd", -1);
-            if ($::RUNCMD_RC  != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "$::msgstr Could not run \'$chcmd\'.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
+    			my $ctcmd = qq~/usr/sbin/lsnim -A cable_type master 2>/dev/null~;
+    			my $ctindex = xCAT::Utils->runcmd("$ctcmd", -1);
+    			if ($::RUNCMD_RC  != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$::msgstr Could not run \'$ctcmd\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }			    
 
-        	# get the next index for the routing attr
-			my $ncmd = qq~/usr/sbin/lsnim -A routing master_net 2>/dev/null~;
-			my $rtindex = xCAT::Utils->runcmd("$ncmd", -1);
-			if ($::RUNCMD_RC  != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "$::msgstr Could not run \'$ncmd\'.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
+			    # 
+			    # get the local adapter hostname for this network
+			    my $adapterhostname = xCAT::NetworkUtils->gethostname($myIP);
 
-			# get hostname of primary int - always if1
-			my $hncmd = qq~/usr/sbin/lsnim -a if1 -Z master 2>/dev/null~;
-			my @ifone = xCAT::Utils->runcmd("$hncmd", -1);
-			if ($::RUNCMD_RC  != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "$::msgstr Could not run \'$hncmd\'.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
-			my ($junk1, $junk2, $adapterhost);
-			foreach my $l (@ifone){
-				# skip comment lines
-				next if ($l =~ /^\s*#/);
-				($junk1, $junk2, $adapterhost) = split(':', $l);
+    			# define the new interface
+    			my $chcmd = qq~/usr/sbin/nim -o change -a if$ifindex='$net $adapterhostname 0' -a cable_type$ctindex=N/A master 2>/dev/null~;
 
+    			my $output2 = xCAT::Utils->runcmd("$chcmd", -1);
+                if ($::RUNCMD_RC  != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$::msgstr Could not run \'$chcmd\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
 			}
+			else
+			{
+			    # cross subnet
+			    # create static routes between the networks
 
-			# get the ip of the nim primary interface
-			my $gwIP = xCAT::NetworkUtils->getipaddr($adapterhost);
-			chomp $gwIP;
+    			# get master_net - always if1
+    			my $hncmd = qq~/usr/sbin/lsnim -a if1 -Z master 2>/dev/null~;
+    			my @ifone = xCAT::Utils->runcmd("$hncmd", -1);
+    			if ($::RUNCMD_RC  != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$::msgstr Could not run \'$hncmd\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
 
-			# create static routes between the networks
-			my $rtgcmd = qq~/usr/sbin/nim -o change -a routing$rtindex='master_net $gwIP $xnethash{$net}{gateway}' $net 2>/dev/null~;
-			my $output3 = xCAT::Utils->runcmd("$rtgcmd", -1);
-            if ($::RUNCMD_RC  != 0) {
-                my $rsp;
-                push @{$rsp->{data}}, "$::msgstr Could not run \'$rtgcmd\'.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
-            }
+    			my ($junk1, $masternet, $adapterhost);
+    			foreach my $l (@ifone){
+    				# skip comment lines
+    				next if ($l =~ /^\s*#/);
+    				($junk1, $masternet, $adapterhost) = split(':', $l);
 
+    			}
+
+            	# get the next index for the routing attr
+    			my $ncmd = qq~/usr/sbin/lsnim -A routing $masternet 2>/dev/null~;
+    			my $rtindex = xCAT::Utils->runcmd("$ncmd", -1);
+    			if ($::RUNCMD_RC  != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$::msgstr Could not run \'$ncmd\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
+
+                # get the gateway of master_net
+    			my $gcmd = qq~/usr/sbin/lsnim -a routing1 -Z $masternet 2>/dev/null~;
+    			my @gws = xCAT::Utils->runcmd("$gcmd", -1);
+    			if ($::RUNCMD_RC  != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$::msgstr Could not run \'$gcmd\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
+
+    			my ($junk, $dft, $gw);
+    			foreach my $l (@gws){
+    				# skip comment lines
+    				next if ($l =~ /^\s*#/);
+    				($junk, $dft, $gw) = split(':', $l);
+    			}
+
+    			my $masternetgw;
+    			if ($dft =~ /default/)
+    			{
+    			    $masternetgw = $gw;
+    			}
+    			else
+    			{
+    			    # use the master IP as default gateway
+        			# get the ip of the nim primary interface
+        			my $gwIP = xCAT::NetworkUtils->getipaddr($adapterhost);
+        			chomp $gwIP;
+        			$masternetgw = $gwIP;
+    			}
+
+    			# create static routes between the networks
+    			my $rtgcmd = qq~/usr/sbin/nim -o change -a routing$rtindex='$net $masternetgw $xnethash{$net}{gateway}' $masternet 2>/dev/null~;
+    			my $output3 = xCAT::Utils->runcmd("$rtgcmd", -1);
+                if ($::RUNCMD_RC  != 0) {
+                    my $rsp;
+                    push @{$rsp->{data}}, "$::msgstr Could not run \'$rtgcmd\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
+			    
+			}
 		} # end - define new nim network
 
 	} # end - for each network
