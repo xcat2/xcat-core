@@ -76,7 +76,7 @@ sub init_plugin
 
     my $rc = 0;
 
-    if ((xCAT::Utils->isServiceNode()) && ( -e "/etc/xcat/cfgloc"))
+    if ((xCAT::Utils->isServiceNode()) && ( -s "/etc/xcat/cfgloc"))
     {
         my @nodeinfo   = xCAT::Utils->determinehostname;
         my $nodename   = pop @nodeinfo;                    # get hostname
