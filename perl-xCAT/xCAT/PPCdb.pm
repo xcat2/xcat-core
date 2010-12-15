@@ -103,6 +103,16 @@ sub add_ppc {
         # old data firstly
         ###############################
         my $mgt = $hwtype;
+        
+        # Specify CEC and Frame's mgt as fsp and bpa
+        if ( $type =~ /^cec$/)  {
+            $mgt = "fsp";
+        }
+        if ( $type =~ /^frame$/)  {
+            $mgt = "bpa";
+        }    
+        
+             
         my $cons= $hwtype;
         if ( $not_overwrite)
         {
