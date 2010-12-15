@@ -15,7 +15,7 @@ Source1: xcat.conf
 Source2: license.tar.gz
 Source3: xCATSN 
 Provides: xCATsn = %{version}
-Requires: xCAT-server xCAT-client perl-xCAT 
+Requires: xCAT-server xCAT-client perl-xCAT perl-DBD-SQLite 
 
 %ifos linux
 Requires: perl-XML-Parser
@@ -81,7 +81,19 @@ cp %{SOURCE3} $RPM_BUILD_ROOT/etc/xCATSN
 
 %post
 
+
 if [ "$1" = "1" ]; then #Only if installing for the first time..
+
+# setup sqlite if no other database
+
+%ifos linux 
+if [ -f "/proc/cmdline" ]; then   #check to make sure this is not image install 
+ if [ ! -f /etc/xcat/cfgloc ]; then  # database is sqlite 
+   $RPM_INSTALL_PREFIX0/sbin/xcatconfig -d
+ fi
+fi
+%endif
+
 # so conserver will start
  mkdir -p /var/log/consoles
 
