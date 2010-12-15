@@ -136,7 +136,8 @@ sub add_ppc {
                { hcp=>$server,
                  id=>$id,
                  pprofile=>$pprofile,
-                 parent=>$parent
+                 parent=>$parent,
+                 nodetype=>$hwtype,
                }); 
             $db{ppc}{commit} = 1;
 
