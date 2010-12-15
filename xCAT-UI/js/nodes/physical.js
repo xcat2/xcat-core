@@ -227,9 +227,9 @@ function createGraphical(bpa, fsp, area){
 	});
 	
 	$('.fspDiv2, .fspDiv4, .fspDiv42').tooltip({
-		position: "top center",
+		position: "center right",
 		relative : true,
-		offset : [20, 40],
+		offset : [10, 10],
 		effect: "fade"
 	});
 	
@@ -502,7 +502,7 @@ function createFspDiv(fspName, mtm, fsp){
 		}
 		var lparName = fsp[fspName]['children'][lparIndex];
 		var color = statusMap(lparList[lparName]);
-		lparStatusRow += '<td class="lparStatus" style="background-color:' + color + ';color:' + color + ';padding: 0px;font-size:1;border-width: 1px;border-style: solid;" name="' + lparName + '">1</td>';
+		lparStatusRow += '<td class="lparStatus" style="background-image:url(images/' + color + '.gif);padding: 0px;" name="' + lparName + '"></td>';
 	}
 	
 	//select the backgroud
@@ -515,7 +515,7 @@ function createFspDiv(fspName, mtm, fsp){
 	}
 		
 	//create return value
-	var retHtml = '<input style="margin:3px 3px 1px 4px;padding:0" class="fspcheckbox" type="checkbox" name="check_' + fspName + '">';
+	var retHtml = '<input style="margin:3px 3px 1px 4px;padding:0;" class="fspcheckbox" type="checkbox" name="check_' + fspName + '">';
 	retHtml += '<div value="' + fspName + '" class="' + divClass + '">';
 	retHtml += '<div class="lparDiv"><table><tbody><tr>' + lparStatusRow + '</tr></tbody></table></div></div>';
 	return retHtml;
@@ -582,6 +582,7 @@ function statusMap(status){
 		}
 		break;
 		default:
+			color = 'grey';
 			break;
 	}
 	
@@ -627,14 +628,18 @@ function getSelectNodes(){
  * @return 
  */
 function changeNode(lparName, status){
+	var imgUrl = '';
+	var checkFlag = true;
 	if ('select' == status){
 		selectNode[lparName] = 1;
-		$('#graphTable [name=' + lparName + ']').css('border-color', 'aqua');
-		$('.tooltip input[name="' + lparName + '"]').attr('checked', true);
+		imgUrl = 'url(images/s-'+ statusMap(lparList[lparName]) + '.gif)';
+		checkFlag = true;
 	}
 	else{
 		delete selectNode[lparName];
-		$('#graphTable [name=' + lparName + ']').css('border-color', '#BDBDBD');
-		$('.tooltip input[name="' + lparName + '"]').attr('checked', false);
+		imgUrl = 'url(images/'+ statusMap(lparList[lparName]) + '.gif)';
+		checkFlag = false;
 	}
+	$('#graphTable [name=' + lparName + ']').css('background-image', imgUrl);
+	$('.tooltip input[name="' + lparName + '"]').attr('checked', checkFlag);
 }

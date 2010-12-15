@@ -113,7 +113,7 @@ sub web_lsevent {
 			if ( $j == 3 ) {
 				$i++;
 				$j = 0;
-				push(@$data, {name=>$i, data=>$record});
+				push(@$data, $record);
 				$record = '';
 			}
 		}
