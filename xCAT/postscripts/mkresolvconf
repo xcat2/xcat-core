@@ -1,0 +1,33 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#---------------------------------------------------------------------------
+#  create an /etc/resolv.conf file on the node
+#
+#	- this script assumes the nameserver for the node will be 
+#		the value of the "xcatmaster" attribute (SN as known by 
+#		the node) or the name of the management node as known 
+#		by the node.
+
+#---------------------------------------------------------------------------
+
+conf_file="/etc/resolv.conf"
+conf_file_bak="/etc/resolv.conf.bak"
+
+# get values set when the myxcatpost_<node> script was run
+master=$MASTER  # this is the ip for the nodes xcatmaster attribute
+domain=$DOMAIN  # this is the domain name used in this cluster
+node=$NODE
+
+if [[ -n "$master" ]] && [[ -n "$domain" ]]; then
+
+	#logger -t xcat "Created /etc/resolv.conf file on $node."
+	cp $conf_file $conf_file_bak > /dev/null 2>&1
+	echo "search $domain" >$conf_file
+	echo "nameserver $master" >>$conf_file
+else     
+	logger -t xcat "Could not create resolv.conf on $node."
+	exit 1
+fi
+
+exit 0
