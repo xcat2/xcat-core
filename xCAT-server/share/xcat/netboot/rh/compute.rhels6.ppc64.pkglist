@@ -18,3 +18,4 @@ ppc64-utils
 iputils
 dracut
 dracut-network
+e2fsprogs

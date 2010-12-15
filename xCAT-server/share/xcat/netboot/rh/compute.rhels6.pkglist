@@ -12,3 +12,4 @@ ntp
 rpm
 rsync
 rsyslog
+e2fsprogs
