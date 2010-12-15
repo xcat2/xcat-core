@@ -88,7 +88,7 @@ if [ "$1" = "1" ]; then #Only if installing for the first time..
 
 %ifos linux 
 if [ -f "/proc/cmdline" ]; then   #check to make sure this is not image install 
- if [ ! -f /etc/xcat/cfgloc ]; then  # database is sqlite 
+ if [ ! -s /etc/xcat/cfgloc ]; then  # database is sqlite 
    $RPM_INSTALL_PREFIX0/sbin/xcatconfig -d
  fi
 fi
