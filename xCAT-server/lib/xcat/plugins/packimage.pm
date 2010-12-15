@@ -114,8 +114,8 @@ sub process_request {
            return;
        }
        
-       unless ($provmethod eq 'netboot' or $provmethod eq 'mixed') {
-           $callback->({error=>["\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot' or 'mixed'."],errorcode=>[1]});
+       if ($provmethod ne 'netboot') {
+           $callback->({error=>["\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot'."],errorcode=>[1]});
            return;
        }
        
@@ -146,82 +146,62 @@ sub process_request {
        unless ($exlistloc) {  $exlistloc=xCAT::SvrUtils->get_exlist_file_name("$::XCATROOT/share/xcat/netboot/$distname", $profile, $osver, $arch); }
    }
 
+
+    # before generating rootimg.gz or rootimg.sfs, need to switch the rootimg to stateless mode if necessary
     my $rootimg_status = 0; # 0 means stateless mode, while 1 means statelite mode
     $rootimg_status = 1 if (-f "$rootimg_dir/.statelite/litefile.save");
+    
+    my $ref_liteList; # get the litefile entries
 
-    if ( $provmethod ne "mixed" ) {
-        # before generating rootimg.gz or rootimg.sfs, need to switch the rootimg to stateless mode if necessary
-        
-        my $ref_liteList; # get the litefile entries
+    my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($osver, $arch, $profile, "statelite");
+    unless ($ret[0] eq 0) {
+        $callback->({error=>["Error when updating the osimage tables: " . $ret[1]], errorcode=>[1]});
+        return;
+    }
+    my @ret = xCAT::Utils->runcmd("ilitefile $osver-$arch-statelite-$profile" , 0, 1);
+    $ref_liteList = $ret[0];
 
-        my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($osver, $arch, $profile, "statelite");
-        unless ($ret[0] eq 0) {
-            $callback->({error=>["Error when updating the osimage tables: " . $ret[1]], errorcode=>[1]});
-            return;
-        }
-        my @ret = xCAT::Utils->runcmd("ilitefile $osver-$arch-statelite-$profile" , 0, 1);
-        $ref_liteList = $ret[0];
+    my %liteHash;   # create hash table for the entries in @listList
+    if (parseLiteFiles($ref_liteList, \%liteHash)) {
+        $callback->({error=>["Failed for parsing litefile table!"], errorcode=>[1]});
+        return;
+    }
 
-        my %liteHash;   # create hash table for the entries in @listList
-        if (parseLiteFiles($ref_liteList, \%liteHash)) {
-            $callback->({error=>["Failed for parsing litefile table!"], errorcode=>[1]});
-            return;
-        }
+    $verbose && $callback->({data=>["rootimg_status = $rootimg_status at line " . __LINE__ ]});
 
-        $verbose && $callback->({data=>["rootimg_status = $rootimg_status at line " . __LINE__ ]});
+    if($rootimg_status) {
+        xCAT::Utils->runcmd("mkdir $rootimg_dir/.statebackup", 0, 1);
+        # read through the litefile table to decide which file/directory should be restore
+        my $defaultloc = "$rootimg_dir/.default";
+        foreach my $entry (keys %liteHash) {
+            my @tmp = split /\s+/, $entry;
+            my $filename = $tmp[1];
+            my $fileopt = $tmp[0];
 
-        if($rootimg_status) {
-            xCAT::Utils->runcmd("mkdir $rootimg_dir/.statebackup", 0, 1);
-            # read through the litefile table to decide which file/directory should be restore
-            my $defaultloc = "$rootimg_dir/.default";
-            foreach my $entry (keys %liteHash) {
-                my @tmp = split /\s+/, $entry;
-                my $filename = $tmp[1];
-                my $fileopt = $tmp[0];
-
-                if ($fileopt =~ m/link/) {
-                    # backup them into .statebackup dirctory
-                    # restore the files with "link" options
-                    if ($filename =~ m/\/$/) {
-                        chop $filename;
-                    }
-                    # create the parent directory if $filename's directory is not there, 
-                    my $parent = dirname $filename;
-                    unless ( -d "$rootimg_dir/.statebackup$parent" ) {
-                        unlink "$rootimg_dir/.statebackup$parent";
-                        $verbose && $callback->({data=>["mkdir -p $rootimg_dir/.statebackup$parent"]});
-                        xCAT::Utils->runcmd("mkdir -p $rootimg_dir/.statebackup$parent", 0, 1);
-                    }
-                    $verbose && $callback->({data=>["backing up the file $filename.. at line " . __LINE__ ]});
-                    $verbose && print "++ $defaultloc$filename ++ $rootimg_dir$filename ++ at " . __LINE__ . "\n";
-                    xCAT::Utils->runcmd("mv $rootimg_dir$filename $rootimg_dir/.statebackup$filename", 0, 1);
-                    xCAT::Utils->runcmd("cp -r -a $defaultloc$filename $rootimg_dir$filename", 0, 1);
+            if ($fileopt =~ m/link/) {
+                # backup them into .statebackup dirctory
+                # restore the files with "link" options
+                if ($filename =~ m/\/$/) {
+                    chop $filename;
                 }
-            }
-        }
-
-        # TODO: following the old genimage code, to update the stateles-only files/directories
-        # # another file should be /opt/xcat/xcatdsklspost, but it seems  not necessary
-        xCAT::Utils->runcmd("mv $rootimg_dir/etc/init.d/statelite $rootimg_dir/.statebackup/statelite ", 0, 1) if ( -e "$rootimg_dir/etc/init.d/statelite");
-    } else {
-        # the mixed method, mixing stateless and statelite together
-        # TODO:
-        unless( $rootimg_status ) {
-            my $rsp;
-            push @{$rsp->{data}}, qq{Running liteimg to update the rootimg...};
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-
-
-            xCAT::Utils->runcmd("liteimg $osver-$arch-statelite-$profile", 0, 1);
-            if ($::RUNCMD_RC) {
-                my $rsp;
-                push @{$rsp->{data}}, qq{The "liteimg" command failed...};
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                return;
+                # create the parent directory if $filename's directory is not there, 
+                my $parent = dirname $filename;
+                unless ( -d "$rootimg_dir/.statebackup$parent" ) {
+                    unlink "$rootimg_dir/.statebackup$parent";
+                    $verbose && $callback->({data=>["mkdir -p $rootimg_dir/.statebackup$parent"]});
+                    xCAT::Utils->runcmd("mkdir -p $rootimg_dir/.statebackup$parent", 0, 1);
+                }
+                $verbose && $callback->({data=>["backing up the file $filename.. at line " . __LINE__ ]});
+                $verbose && print "++ $defaultloc$filename ++ $rootimg_dir$filename ++ at " . __LINE__ . "\n";
+                xCAT::Utils->runcmd("mv $rootimg_dir$filename $rootimg_dir/.statebackup$filename", 0, 1);
+                xCAT::Utils->runcmd("cp -r -a $defaultloc$filename $rootimg_dir$filename", 0, 1);
             }
         }
     }
 
+    # TODO: following the old genimage code, to update the stateles-only files/directories
+    # # another file should be /opt/xcat/xcatdsklspost, but it seems  not necessary
+    xCAT::Utils->runcmd("mv $rootimg_dir/etc/init.d/statelite $rootimg_dir/.statebackup/statelite ", 0, 1) if ( -e "$rootimg_dir/etc/init.d/statelite");
     if ( -e "$rootimg_dir/usr/share/dracut" ) {
         # currently only used for redhat families, not available for SuSE families
         if ( -e "$rootimg_dir/etc/rc.sysinit.backup" ) {
@@ -269,12 +249,10 @@ sub process_request {
         }
    }
 
-    if ($provmethod ne "mixed") {
-        # the files specified for statelite should be excluded
-        my @excludeStatelite = ("./etc/init.d/statelite", "./etc/rc.sysinit.backup", "./.statelite*", "./.default*", "./.statebackup*");
-        foreach my $entry (@excludeStatelite) {
-            $excludestr .= "'!' -path '" . $entry . "' -a ";
-        }
+    # the files specified for statelite should be excluded
+    my @excludeStatelite = ("./etc/init.d/statelite", "./etc/rc.sysinit.backup", "./.statelite*", "./.default*", "./.statebackup*");
+    foreach my $entry (@excludeStatelite) {
+        $excludestr .= "'!' -path '" . $entry . "' -a ";
     }
 
    $excludestr =~ s/-a $//;
@@ -320,7 +298,7 @@ sub process_request {
       }
    }
 
-    # sync files configured in the synclist to the rootimage
+    # sync fils configured in the synclist to the rootimage
    unless ($imagename) {
        $syncfile = xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
        if (defined ($syncfile) && -f $syncfile
@@ -341,98 +319,75 @@ sub process_request {
     $callback->({data=>["$verb contents of $rootimg_dir"]});
     unlink("$destdir/rootimg.gz");
     unlink("$destdir/rootimg.sfs");
-    if ($provmethod ne "mixed") {
-        if ($method =~ /cpio/) {
-            if ( ! $exlistloc ) {
-                $excludestr = "find . |cpio -H newc -o | gzip -c - > ../rootimg.gz";
-            }else {
-                chdir("$rootimg_dir");
-                system("$excludestr >> $xcat_packimg_tmpfile"); 
-                if ($includestr) {
-            	    system("$includestr >> $xcat_packimg_tmpfile"); 
-                }
-                #$excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
-                $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | gzip -c - > ../rootimg.gz";
-            }
-            $oldmask = umask 0077;
-        } elsif ($method =~ /squashfs/) {
-            $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
-            chmod 0755,$temppath;
+    if ($method =~ /cpio/) {
+        if ( ! $exlistloc ) {
+            $excludestr = "find . |cpio -H newc -o | gzip -c - > ../rootimg.gz";
+        }else {
             chdir("$rootimg_dir");
             system("$excludestr >> $xcat_packimg_tmpfile"); 
             if ($includestr) {
-	            system("$includestr >> $xcat_packimg_tmpfile"); 
+            	system("$includestr >> $xcat_packimg_tmpfile"); 
             }
-            $excludestr = "cat $xcat_packimg_tmpfile|cpio -dump $temppath"; 
-        } else {
-            $callback->({error=>["Invalid method '$method' requested"],errorcode=>[1]});
-        }
-        chdir("$rootimg_dir");
-        `$excludestr`;
-        if ($method =~ /cpio/) {
-            chmod 0644,"$destdir/rootimg.gz";
-            umask $oldmask;
-        } elsif ($method =~ /squashfs/) {
-            my $flags;
-            if ($arch =~ /x86/) {
-                $flags="-le";
-            } elsif ($arch =~ /ppc/) {
-                $flags="-be";
-            }
-            if (! -x "/sbin/mksquashfs") {
-                $callback->({error=>["mksquashfs not found, squashfs-tools rpm should be installed on the management node"],errorcode=>[1]});
-                return;
-            }
-            my $rc = system("mksquashfs $temppath ../rootimg.sfs $flags");
-            if ($rc) {
-                $callback->({error=>["mksquashfs could not be run successfully"],errorcode=>[1]});
-                return;
-            }
-            $rc = system("rm -rf $temppath");
-            if ($rc) {
-                $callback->({error=>["Failed to clean up temp space"],errorcode=>[1]});
-                return;
-            }
-            chmod(0644,"../rootimg.sfs");
-        }
-    } else {
-        # follow the cpio way to generate the rootimg
-        unlink("$destdir/rootimg-mixed.gz");
-        if ($exlistloc) {
-            chdir("$rootimg_dir");
-            xCAT::Utils->runcmd("$excludestr >> $xcat_packimg_tmpfile", 0, 1);
-            if ($includestr) {
-                xCAT::Utils->runcmd("$includestr >> $xcat_packimg_tmpfile", 0, 1);
-            }
-            $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | gzip -c - > ../rootimg-mixed.gz";
-        } else {
-            $excludestr = "find . |cpio -H newc -o | gzip -c - > ../rootimg-mixed.gz";
+            #$excludestr =~ s!-a \z!|cpio -H newc -o | gzip -c - > ../rootimg.gz!;
+            $excludestr = "cat $xcat_packimg_tmpfile|cpio -H newc -o | gzip -c - > ../rootimg.gz";
         }
         $oldmask = umask 0077;
-
-        chdir("$rootimg_dir");
-        xCAT::Utils->runcmd("$excludestr", 0, 1);
-        chmod 0644, "$destdir/rootimg-mixed.gz";
-        umask $oldmask;
+    } elsif ($method =~ /squashfs/) {
+      $temppath = mkdtemp("/tmp/packimage.$$.XXXXXXXX");
+      chmod 0755,$temppath;
+      chdir("$rootimg_dir");
+      system("$excludestr >> $xcat_packimg_tmpfile"); 
+      if ($includestr) {
+	  system("$includestr >> $xcat_packimg_tmpfile"); 
+      }
+      $excludestr = "cat $xcat_packimg_tmpfile|cpio -dump $temppath"; 
+    } else {
+       $callback->({error=>["Invalid method '$method' requested"],errorcode=>[1]});
     }
-    system("rm -f $xcat_packimg_tmpfile");
+    chdir("$rootimg_dir");
+    `$excludestr`;
+    if ($method =~ /cpio/) {
+        chmod 0644,"$destdir/rootimg.gz";
+        umask $oldmask;
+    } elsif ($method =~ /squashfs/) {
+       my $flags;
+       if ($arch =~ /x86/) {
+          $flags="-le";
+       } elsif ($arch =~ /ppc/) {
+          $flags="-be";
+       }
+       if (! -x "/sbin/mksquashfs") {
+          $callback->({error=>["mksquashfs not found, squashfs-tools rpm should be installed on the management node"],errorcode=>[1]});
+          return;
+       }
+       my $rc = system("mksquashfs $temppath ../rootimg.sfs $flags");
+       if ($rc) {
+          $callback->({error=>["mksquashfs could not be run successfully"],errorcode=>[1]});
+          return;
+       }
+       $rc = system("rm -rf $temppath");
+       if ($rc) {
+          $callback->({error=>["Failed to clean up temp space"],errorcode=>[1]});
+          return;
+       }
+       chmod(0644,"../rootimg.sfs");
+    }
+   system("rm -f $xcat_packimg_tmpfile");
     
-    if ($provmethod ne "mixed") {
-        # move the files in /.statebackup back to rootimg_dir
-        if ($rootimg_status) { #  statelite mode
-            foreach my $entry (keys %liteHash) {
-                my @tmp = split /\s+/, $entry;
-                my $filename = $tmp[1];
-                my $fileopt = $tmp[0];
-                if ($fileopt =~ m/link/) {
-                    chop $filename if ($filename =~ m/\/$/);
-                    xCAT::Utils->runcmd("rm -rf $rootimg_dir$filename", 0, 1);
-                    xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup$filename $rootimg_dir$filename", 0, 1);
-                }
+    # move the files in /.statebackup back to rootimg_dir
+    if ($rootimg_status) { #  statelite mode
+        foreach my $entry (keys %liteHash) {
+            my @tmp = split /\s+/, $entry;
+            my $filename = $tmp[1];
+            my $fileopt = $tmp[0];
+            if ($fileopt =~ m/link/) {
+                chop $filename if ($filename =~ m/\/$/);
+                xCAT::Utils->runcmd("rm -rf $rootimg_dir$filename", 0, 1);
+                xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup$filename $rootimg_dir$filename", 0, 1);
             }
-            xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup/statelite $rootimg_dir/etc/init.d/statelite", 0, 1);
-            xCAT::Utils->runcmd("rm -rf $rootimg_dir/.statebackup", 0, 1);
         }
+        xCAT::Utils->runcmd("mv $rootimg_dir/.statebackup/statelite $rootimg_dir/etc/init.d/statelite", 0, 1);
+        xCAT::Utils->runcmd("rm -rf $rootimg_dir/.statebackup", 0, 1);
     }
 
 
