@@ -167,9 +167,9 @@ chomp $::root;
 # Generate ssh host keys for the nodes
 #
 #
-
-&genSSHNodeHostKey;
-
+if (xCAT::Utils->isMN()) {
+  &genSSHNodeHostKey;
+}
 #
 #  gen root's ssh keys, if needed and copy to appropriate directories to
 #  be used during install
