@@ -116,14 +116,6 @@ if (($::INITIALINSTALL) && ($::UPDATEINSTALL))
     xCAT::MsgUtils->message("N", $warning);
     exit 1;
 }
-#If not asking to install and you are on the servicenode, then error
-if (!($::INITIALINSTALL) && (xCAT::Utils->isServiceNode())) { 
-  xCAT::MsgUtils->message(
-            'E',
-            "xcatconfig should only be run on the Management Node."
-            );
-   exit 1;
-}
 
 #
 # Display command
@@ -151,41 +143,6 @@ else
 chomp $::arch;
 chomp $::root;
 
-# Make this system a management node
-my $cmd = "/bin/touch /etc/xCATMN";
-my $outref = xCAT::Utils->runcmd("$cmd", 0);
-if ($::RUNCMD_RC != 0)
-{
-    xCAT::MsgUtils->message(
-        'E',
-        "Could not create /etc/xCATMN file. Management Node not successfully setup. Manually, touch /etc/xCATMN."
-        );
-}
-else
-{
-    verbose("Created /etc/xCATMN file.");
-}
-
-# Make sure service node file is not there
-if (-f "/etc/xCATSN")
-{
-    my $cmd = "/bin/rm /etc/xCATSN";
-    my $outref = xCAT::Utils->runcmd("$cmd", 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message(
-            'E',
-            "Could not remove /etc/xCATSN file. Management Node not successfully setup. Manually, remove /etc/xCATSN."
-            );
-    }
-    else
-    {
-        xCAT::MsgUtils->message(
-            'I',
-            "Removed /etc/xCATSN file. This node is being converted from a Service Node to a Management Node."
-            );
-    }
-}
 
 # some Linux-only config
 # Do not need to start vsftpd here, because when xcatd starts, it will restart it
@@ -376,7 +333,7 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
 # more - Linux-only config
 if (($::osname eq 'Linux') && (($::INITIALINSTALL || $::FORCE)))
 {
-
+    my $cmd;
     #Zap the almost certainly wrong pxelinux.cfg file
     if (-f "$::TFTPDIR/pxelinux.cfg/default")
     {
@@ -1393,8 +1350,8 @@ sub setupAIXIPMITool
 {
     if (!-f "/usr/bin/ipmitool")
     {
-        $cmd = "ln -sf /opt/freeware/bin/ipmitool /usr/bin/ipmitool";
-        $outref = xCAT::Utils->runcmd("$cmd", 0);
+        my $cmd = "ln -sf /opt/freeware/bin/ipmitool /usr/bin/ipmitool";
+       my  $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
         {
             xCAT::MsgUtils->message(
