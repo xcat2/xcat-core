@@ -15,6 +15,9 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 Requires: perl-SOAP-Lite
 %endif
+%ifarch ppc64
+Requires: perl-IO-Stty
+%endif
 
 Provides: perl-xCAT = %{epoch}:%{version}
 

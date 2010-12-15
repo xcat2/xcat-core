@@ -239,7 +239,8 @@ sub processArgs
                     'version|v' => \$::opt_v,
                     'w=s@'       => \$::opt_w,
                     'x|xml'     => \$::opt_x,
-                    'z|stanza'  => \$::opt_z
+                    'z|stanza'  => \$::opt_z,
+                    'nocache'  => \$::opt_c
         )
       )
     {
