@@ -4,7 +4,7 @@
 #####################################################
 #
 #   Utility subroutines that can be used to manage xCAT data object
-#			definitions.
+#                       definitions.
 #
 #
 #####################################################
@@ -36,7 +36,7 @@ use Socket;
         Example:
         Comments:
 
-		@objlist = xCAT::DBobjUtils->getObjectsOfType($type);
+                @objlist = xCAT::DBobjUtils->getObjectsOfType($type);
 
 =cut
 
@@ -2040,5 +2040,149 @@ sub parse_access_tabentry()
        }
     }
     return 0;
+}
+#-------------------------------------------------------------------------------
+
+=head3   getchildren
+    returns fsp(or bpa) of the specified cec(or frame),
+    Arguments:
+        none
+    Returns:
+        refrence of fsp/bpa hostnames (IPs)
+    Globals:
+        %PARENT_CHILDREN
+    Error:
+        none
+    Example:
+         $c1 = getchildren($nodetocheck);
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub getchildren
+{
+    my $parent = shift;
+    if (($parent) && ($parent =~ /xCAT::/))
+    {
+        $parent = shift;
+    }
+    my @children = ();
+    if (!%::PARENT_CHILDREN) {
+        my $ppctab  = xCAT::Table->new( 'ppc' );
+        my @ps = $ppctab->getAllNodeAttribs(['node','parent']);
+        for my $entry ( @ps ) {
+            my $p = $entry->{parent};
+            my $c = $entry->{node};
+            if ( $p and $c) {
+                my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
+                if ( $type and ($type->{nodetype} ne 'cec'))
+                {
+                    push @{$::PARENT_CHILDREN{$p}}, $c;
+                }
+            }
+        }
+        foreach (@{$::PARENT_CHILDREN{$parent}}) {
+            push @children, $_;
+        }
+    } else {
+        if (exists($::PARENT_CHILDREN{$parent})) {
+            foreach (@{$::PARENT_CHILDREN{$parent}}) {
+                push @children, $_;
+            }
+        }
+    }
+    return \@children;
+}
+#-------------------------------------------------------------------------------
+
+=head3   getnodetype
+    returns nodetype,
+    first requery ppc table, if not exist, requery nodetypetable
+    if the input is a array it will return a refrence,
+    if the input is a simple node,it will return its type value
+    if the value in the talbe is null, it will be undef but not ''
+    Arguments:
+        none
+    Returns:
+        type of node
+    Globals:
+        %::GLOBLE_NODE_TYPE
+    Error:
+        none
+    Example:
+         $type = getnodetype($node);
+         $typerefer = getnodetype(\@nodes);
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub getnodetype
+{
+    my $nodes = shift;
+    if (($nodes) && ($nodes =~ /xCAT::/))
+    {
+        $nodes = shift;
+    }
+
+    my $ppctab  = xCAT::Table->new( 'ppc' );
+    if ( !$ppctab ) {
+        my $rsp;
+        $rsp->{data}->[0] = "Could not open the ppc table.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+    }
+    my $nodetypetab = xCAT::Table->new( 'nodetype' );
+    if ( !$nodetypetab )
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "Could not open the nodetype table.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        if ( !$ppctab ) {
+            return undef;
+        }
+    }
+    
+    my @types = ();
+    my $typep;
+    my $type;
+    if ( $nodes =~ /^ARRAY/) {
+        foreach ( @$nodes ) {
+            if ( $ppctab ) {
+                $typep = $ppctab->getNodeAttribs($_, ["nodetype"]);
+                if ($typep and $typep->{nodetype}) {
+                    $type = $typep->{nodetype};
+                    push (@types, $type);
+                    next;
+                }
+            }
+            if ( $nodetypetab ) {
+                $typep = $nodetypetab->getNodeAttribs($_, ["nodetype"]);
+                if ($typep and $typep->{nodetype}) {
+                    $type = $typep->{nodetype};
+                    push (@types, $type);
+                    next;
+                }
+            }
+            push (@types, undef);
+        }
+        return \@types;
+    } else {
+        if ( $ppctab ) {
+            $typep  = $ppctab->getNodeAttribs($nodes, ["nodetype"]);
+            if ( $typep and $typep->{nodetype} ) {
+                $type = $typep->{nodetype};
+                return $type;
+            }
+        }
+        if ( $nodetypetab ) {
+            $typep = $nodetypetab->getNodeAttribs($nodes, ["nodetype"]);
+            if ( $typep and $typep->{nodetype} ) {
+                $type = $typep->{nodetype};
+                return $type;
+            }
+        }
+    }
+    return undef;
 }
 1;
