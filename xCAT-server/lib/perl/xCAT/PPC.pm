@@ -964,7 +964,7 @@ sub resolve {
     # Check for valid "type"
     #################################
     my ($type) = grep( 
-            /^$::NODETYPE_LPAR|$::NODETYPE_OSI|$::NODETYPE_BPA|$::NODETYPE_FSP$/, 
+            /^$::NODETYPE_LPAR|$::NODETYPE_OSI|$::NODETYPE_BPA|$::NODETYPE_FSP|$::NODETYPE_CEC|$::NODETYPE_FRAME$/,
             split /,/, $ent->{nodetype} );
 
     if ( !defined( $type )) {
@@ -1756,7 +1756,7 @@ sub process_request {
 	         }
 	         #print "lasthcp_type:$lasthcp_type ;thishcp_type:$thishcp_type\n";
 	        if(defined($lasthcp_type)) { 
-                if ( ($lasthcp_type =~ /^(hmc)$/ &&  $thishcp_type =~ /^(fsp|bpa|cec)$/) or (($lasthcp_type =~ /^(fsp|bpa|cec)$/ ) && ($thishcp_type =~ /^(hmc)$/ )) )  {   
+                if ( ($lasthcp_type =~ /^(hmc)$/ &&  $thishcp_type =~ /^(fsp|bpa)$/) or (($lasthcp_type =~ /^(fsp|bpa)$/ ) && ($thishcp_type =~ /^(hmc)$/ )) )  {
 		            $callback->({data=>["the $node\'s hcp type is different from the other's in the specified noderange in the 'ppc' table."]}); 
 	               return;
 	             }
