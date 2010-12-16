@@ -623,3 +623,68 @@ function showConfigureDia(){
 		}
 	});
 }
+
+/**
+ * load the rmc event tab.
+ * 
+ * @param 
+
+ * @return
+ *        
+ */
+function loadRmcEvent(){
+	//find the rmcevent tab
+	
+	//add the stauts bar first. id = 'rmcMonStatus'
+	var rmcStatusBar = createStatusBar('rmcEvent');
+	rmcStatusBar.append(createLoader());
+	$('#rmcevent').append(rmcStatusBar);
+	$('#rmcevent').append('<div id="rmcEventDiv"></div>');
+	
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'lsevent',
+			msg : ''
+		},
+
+		success : showEventLog
+	});
+}
+
+/**
+ * show all the event in the rmc event tab 
+ * 
+ * @param data response from the xcat server.
+
+ * @return
+ *        
+ */
+function showEventLog(data){
+	var eventDiv = $('#rmcEventDiv');
+	eventDiv.empty();
+	var eventTable = new DataTable('lsEventTable');
+	eventTable.init(['Time', 'Type', 'Content']);
+	
+	eventDiv.empty();
+	
+	for(var i in data.rsp){
+		var row = data.rsp[i].split(';');
+		eventTable.add(row);
+	}
+	
+	eventDiv.append(eventTable.object());
+	$('#lsEventTable').dataTable({
+		'bFilter' : true,
+		'bLengthChange' :true,
+		'bSort' :true,
+		'bPaginate' :true,
+		'iDisplayLength' :10
+	});
+	
+	//unsort on the content column
+	$('#lsEventTable thead tr th').eq(2).unbind('click');
+}

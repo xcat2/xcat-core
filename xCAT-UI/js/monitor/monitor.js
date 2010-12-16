@@ -65,7 +65,11 @@ function loadMonitorPage() {
 		+ "will be updated periodically  with the latest status values for the nodes.<li>";
 	items += "<li><a href='#' name='rmcmon'>RMC Monitor</a> : IBM's Resource Monitoring and Control (RMC) "
 		+ "subsystem is our recommended software for monitoring xCAT clusters. It's is part "
-		+ "of the IBM's Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive " + "clustering environment for AIX and LINUX.<li>";
+		+ "of the IBM's Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive " 
+		+ "clustering environment for AIX and LINUX.<li>";
+	items += "<li><a href='#' name='rmcevent'>RMC Event</a> : Listing event monitoring information " 
+		+ "recorded by the RSCT Event Response resource manager in the audit log. Creating and " 
+		+ "removing a condition/response association.<li>";
 	items += "<li><a href='#' name='gangliamon'>Ganglia Monitor</a> : Ganglia is a scalable distributed "
 		+ "monitoring system for high-performance computing systems such as clusters and Grids.<li>";
 	items += "<li><a href='#' name='pcpmon'>PCP Monitor</a> : Under construction.<li>";
@@ -181,6 +185,10 @@ function loadMonitorTab(monitorName) {
 	case 'gangliamon':
 		tab.add(monitorName, 'Ganglia', '', true);
 		loadGangliaMon();
+		break;
+	case 'rmcevent':
+		tab.add(monitorName, 'RMC Event', '', true);
+		loadRmcEvent();
 		break;
 	case 'pcpmon':
 		loadUnfinish(monitorName, tab);
