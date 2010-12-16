@@ -19,10 +19,10 @@ cmd:makedhcp -a
 check:rc==0
 cmd:service dhcpd restart
 check:rc==0
-cmd:cat /var/lib/dhcpd/dhcpd.leases| grep lpar5
-check:output=~lpar5
-#cmd:copycds $$ISO
-#check:rc==0
+cmd:cat /var/lib/dhcpd/dhcpd.leases| grep $$CN
+check:output=~$$CN
+cmd:copycds $$ISO
+check:rc==0
 cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
 check:rc==0
 cmd:$$NETBOOTDIR/packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__
