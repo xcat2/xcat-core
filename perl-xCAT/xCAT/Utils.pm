@@ -2799,20 +2799,28 @@ sub getNodeIPaddress
         }
     }
 
-    #modified by yinle, need to make sure that user would not define 
-    #cec and frame in hosts table
+    #if still find ip, check if the object is cec or frame
+    #if so, find their children's IPs as theirself IPs.
     my @children;
     my $c1;
     my $ips;
     unless ( $nodeip ) {
-        my $nttab  = xCAT::Table->new('nodetype');    
+        my $nttab  = xCAT::Table->new('ppc');    
         if ( $nttab ) {
             my $type = 	$nttab->getNodeAttribs($nodetocheck, ['nodetype']);
             if ($type) {
                 if ($type->{nodetype} eq "frame" or $type->{nodetype} eq "cec")  {
-                	$c1 = getchildren($nodetocheck);
-                	if ( $c1 ) {
-                		$ips = join ",", @$c1;
+                	$c1 = xCAT::DBobjUtils->getchildren($nodetocheck); 
+                	my $hstab =  xCAT::Table->new('hosts'); 
+                	if ( $hstab ) {
+                	    my @myip = ();
+                	    foreach ( @$c1 )
+                	    {
+                                my $point= $hstab->getNodeAttribs($_, ['ip']);
+                                my $value = $point->{ip};
+                                push (@myip, $value);
+                        }
+                        $ips = join ",", @myip;
                         return $ips;
                     }
                 }
@@ -2827,85 +2835,7 @@ sub getNodeIPaddress
         return undef;
     }
 }
-#-------------------------------------------------------------------------------
-
-=head3   getchildren
-    returns fsp(or bpa) of the specified cec(or frame),
-    only support the condition that definition of fsp/bpa is IP address.
-    Arguments:
-        none
-    Returns:
-        refrence of fsp/bpa hostnames (IPs)
-    Globals:
-        %PARENT_CHILDREN
-    Error:
-        none
-    Example:
-         $c1 = getchildren($nodetocheck);
-    Comments:
-        none
-=cut
-
-#-------------------------------------------------------------------------------
-
-sub getchildren
-{
-	my $parent = shift;
-	my @children = ();
-    if (!%::PARENT_CHILDREN) {
-    	my $ppctab  = xCAT::Table->new( 'ppc' );
-    	my @ps = $ppctab->getAllNodeAttribs(['node','parent']);
-    	for my $entry ( @ps ) {
-    		my $p = $entry->{parent};
-    	    my $c = $entry->{node};
-    	    #just return fsp or bpa, need to make sure
-    	    #we won't allow user to define fsp/bpa
-    	    if ( $p and ($c =~ /\d+\.\d+\.\d+\.\d+/)) {   
-    		    push @{$::PARENT_CHILDREN{$p}}, $c;
-    		}
-    	}
-    	foreach (@{$::PARENT_CHILDREN{$parent}}) {
-    		push @children, $_;
-    	}
-    } else {
-    	if (exists($::PARENT_CHILDREN{$parent})) {
-    	    foreach (@{$::PARENT_CHILDREN{$parent}}) {
-    		    push @children, $_;
-    	    }
-    	}
-    }
-    return \@children;
-}
     	
-##-------------------------------------------------------------------------------
-#
-#=head3   getparent
-# still need to deside if needed
-#=cut
-#
-##-------------------------------------------------------------------------------
-#
-#sub getparent
-#{
-#	my $child = shift;
-#	my $parent;
-#    if (!%::CHILDREN_PARENT) {
-#    	my $ppctab  = xCAT::Table->new( 'ppc' );
-#    	my @ps = $ppctab->getAllNodeAttribs(['node','parent']);
-#    	for my $entry ( @ps ) {
-#    		my $c = $entry->{node};
-#    		my $p = $entry->{parent};
-#    		if ( $p ) ) {
-#    		    $::CHILDREN_PARENT{$c} = $p;
-#    		}
-#    	}
-#    } else {
-#    	if (exists($::CHILDREN_PARENT{$child})) {
-#    	    $parent = $::CHILDREN_PARENT{$child};
-#    	}
-#    } 
-#    return \$parent;   
-#}	
 	
 	
 #-------------------------------------------------------------------------------
