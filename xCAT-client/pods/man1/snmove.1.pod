@@ -1,18 +1,81 @@
 =head1 NAME
 
-B<snmove> - move the nodes from one service node to another service node.
+B<snmove> - Change xCAT compute nodes to use a different xCAT service node.
 
 =head1 SYNOPSIS
 
-B<snmove> I<noderange> B<-d>|B<--dest> I<sn2> B<-D>|B<--destn> I<sn2n> [B<-i>|B<--ignorenodes>]
+B<snmove> I<noderange> [B<-d>|B<--dest> I<sn2>] [B<-D>|B<--destn> I<sn2n>] [B<-i>|B<--ignorenodes>]
 
-B<snmove> B<-s>|B<--source> I<sn1> [B<-S>|B<--sourcen> I<sn1n>] B<-d>|B<--dest> I<sn2> B<-D>|B<--destn> I<sn2n> [B<-i>|B<--ignorenodes>]
+B<snmove> B<-s>|B<--source> I<sn1> [B<-S>|B<--sourcen> I<sn1n>] [B<-d>|B<--dest> I<sn2>] [B<-D>|B<--destn> I<sn2n>] [B<-i>|B<--ignorenodes>]
 
 B<snmove> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The B<snmove> command moves the nodes from one service nodes to another. It assumes that both service nodes can reach the nodes in terms of network. Both are configured as service nodes and listed in the B<noderes.servicenode> for the nodes. The source service node is the first in the list and also in B<noderes.xcatmaster>. This command will move the desination service node I<sn2> to the first in the list for B<noderes.servicenode> and also change <noderes.master> to match I<sn2>. It'll also change the services so that TFTP, NFS, serial console and DHCP will use the new server for the nodes. If -i is specified, the nodes themselves will be untouched. Otherwise, syslog and NTP will be changed to use the new service node as the master. The user can run other postscripts using updatenode command after this command is done to setup other applications such as monitoring. The destination service node <sn2> has to be up and running, but the source service node does not have to.  
+The B<snmove> command moves a node or nodes from one service node to
+another.
+				 
+The use of backup service nodes in an xCAT hierarchical cluster can
+help improve the overall reliability, availability, and serviceability
+of the cluster.
+												
+Before you run the B<snmove> command it is assumed that the backup
+service node has been configured properly to manage the new node
+or nodes. (See the xCAT document named
+"Using xCAT Service Nodes with AIX" for information on how to set
+up backup AIX service nodes.).
+
+The B<snmove> command can use the information stored in the xCAT
+database or information passed in on the command line to determine
+the current service node and the backup service node.
+										 
+To specify the primary and backup service nodes you can set the
+"servicenode" attribute of the node definitions.
+
+The "servicenode" attribute is the hostname of the xCAT service node
+as it is known by the management node. The "xcatmaster" attribute
+is the hostname of the xCAT service node as known by the node.
+The "servicenode" attribute should be set to a comma-separated list
+so that the primary service node is first and the backup service
+node is second.  The "xcatmaster" attribute must be set to the
+hostname of the primary service node as it is known by the node.
+
+When the B<snmove> command is run it modifies the xCAT database to
+switch the the primary server to the backup server.
+			 
+It will also check the other services that are being used for the
+node (tftpserver, monserver, nfsserver, conserver), and if they were set 
+to the original service node they will be changed to point to the backup
+service node. 
+											 
+If the -i option is specified, the nodes themselves will not be modified.
+
+If the -i option is NOT specified then the nodes will e modified as follows:
+
+=over 3
+
+=item 1.
+
+The B<syslog> postscript will be run.
+
+=item 2.
+
+The B<setupntp> script will be run IF it was included in the nodes postscript list.
+
+=item 3.
+
+The B<mkresolvconf> script will be run IF it was included in the nodes postscript list.
+
+=item 4.
+
+If it is an AIX diskful node then the B<niminit> command will be run so that it will recognize the new service node as it's NIM master.
+
+=back
+
+Note: You can also run other postscripts using the B<updatenode> command if needed.
+
+When the B<snmove> command is executed the new service node must be running but
+the original service node may be down.
 
 =head1 OPTIONS
 
@@ -20,23 +83,23 @@ The B<snmove> command moves the nodes from one service nodes to another. It assu
 
 =item B<-s|--source>
 
-Specifies the hostname of the source service node adapter facing the management node. It can be found in the B<servicenode> table. 
+Specifies the hostname of the current (source) service node sa known by (facing) the management node.  
 
 =item B<-S|--sourcen>
 
-Specifies the hostname of the source service node adapter facing the nodes.
+Specifies the hostname of the current service node adapter as known by (facing) the nodes.
 
 =item B<-d|--dest>
 
-Specifies the hostname of the destination service node adapter facing the management node. It can be found in the B<servicenode> table. 
+Specifies the hostname of the new destination service node as known by (facing) the management node. 
 
 =item B<-D|--destn>
 
-Specifies the hostname of the destination service node adapter facing the nodes.
+Specifies the hostname of the destination service node as known by (facing) the nodes.
 
 =item B<-i|--ignorenodes>
 
-No action will be done on the nodes. If not specified, the syslog and setup ntp postscritps will be rerun on the nodes to switch the syslog and NTP server.
+No modifications will be made on the nodes. If not specified, several xCAT postscripts will be run on the nodes to complete the switch to the new service node.
 
 =item B<-h|--help>
 
@@ -46,7 +109,6 @@ Display usage message.
 
 Command Version.
 
-
 =back
 
 =head1 EXAMPLES
@@ -55,15 +117,33 @@ Command Version.
 
 =item 1.
 
-To move a groups of nodes from one server nodes to another:
+Move the nodes contained in group "group1" to the service node named "xcatsn02".
 
- snmove group1 -d xcatsn02 -D xcatsn02-eth1
+B<snmove group1 -d xcatsn02 -D xcatsn02-eth1>
 
 =item 2.
 
-To move all the nodes from one service nodes to another:
+Move all the nodes that use service node xcatsn01 to service node xcatsn02.
 
- snmove -s xcatsn01 -S xcatsn01-eth1 -d xcatsn02 -D xcatsn02-eth1
+B<snmove -s xcatsn01 -S xcatsn01-eth1 -d xcatsn02 -D xcatsn02-eth1>
+
+=item 3.
+
+Move any nodes that have sn1 as their primary server to the backup service node set in the xCAT node definition.
+
+B<snmove -s sn1>
+
+=item 4.
+
+Move all the nodes in the xCAT group named "nodegroup1" to their backup SNs.
+
+B<snmove nodegroup1>
+
+=item 5.
+
+Move all the nodes in xCAT group "sngroup1" to the SN named "xcatsn2".
+
+B<snmove sngroup1 -d xcatsn2>
 
 =back
 
