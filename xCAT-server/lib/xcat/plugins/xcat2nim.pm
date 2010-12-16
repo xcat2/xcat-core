@@ -107,7 +107,7 @@ sub preprocess_request
 			#   - for the nodes that were provided
 			#  -  to handle node and group objects
 			my $sn;
-			$sn = xCAT::Utils->get_ServiceNode($mynodes, $service, "MN");
+			$sn = xCAT::Utils->getSNformattedhash($mynodes, $service, "MN");
 			foreach my $snkey (keys %$sn) {
 				my $reqcopy = {%$req};
 				$reqcopy->{node} = $sn->{$snkey};
