@@ -181,7 +181,7 @@ sub powercmd {
 	            push @output, [$node_name, "\'$action\' command not supported for LPAR", -1 ];
 	            return (\@output);
 	        }
-	    } elsif ($$d[4] =~ /^fsp$/) {
+	    } elsif ($$d[4] =~ /^(fsp|cec)$/) {
 	        if($action =~ /^on$/) { $action = "cec_on_autostart"; }
 	        if($action =~ /^off$/) { $action = "cec_off"; }
 	        if($action =~ /^of$/ ) {
