@@ -179,7 +179,7 @@ function loadMonitorTab(monitorName) {
 		loadXcatMon();
 		break;
 	case 'rmcmon':
-		tab.add(monitorName, 'RMC', '', true);
+		tab.add(monitorName, 'RMC Monitor', '', true);
 		loadRmcMon();
 		break;
 	case 'gangliamon':

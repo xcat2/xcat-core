@@ -636,7 +636,7 @@ function loadRmcEvent(){
 	//find the rmcevent tab
 	
 	//add the stauts bar first. id = 'rmcMonStatus'
-	var rmcStatusBar = createStatusBar('rmcEvent');
+	var rmcStatusBar = createStatusBar('rmcEventStatus');
 	rmcStatusBar.append(createLoader());
 	$('#rmcevent').append(rmcStatusBar);
 	$('#rmcevent').append('<div id="rmcEventDiv"></div>');
@@ -647,7 +647,7 @@ function loadRmcEvent(){
 		data : {
 			cmd : 'webrun',
 			tgt : '',
-			args : 'lsevent',
+			args : 'lsevent;-O;1000',
 			msg : ''
 		},
 
@@ -655,6 +655,7 @@ function loadRmcEvent(){
 	});
 }
 
+/*===========RMC Event Tab============*/
 /**
  * show all the event in the rmc event tab 
  * 
@@ -664,12 +665,20 @@ function loadRmcEvent(){
  *        
  */
 function showEventLog(data){
+	$('#rmcEventStatus').empty();
+	//rsct not installed.
+	if (data.rsp[0] && (-1 != data.rsp[0].indexOf('lsevent'))){
+		$('#rmcEventStatus').append('Please install RSCT first!');
+		return;
+	}
 	var eventDiv = $('#rmcEventDiv');
 	eventDiv.empty();
+	
+	//add the configure button
+	loadRmcEventConfig();
+	
 	var eventTable = new DataTable('lsEventTable');
 	eventTable.init(['Time', 'Type', 'Content']);
-	
-	eventDiv.empty();
 	
 	for(var i in data.rsp){
 		var row = data.rsp[i].split(';');
@@ -687,4 +696,62 @@ function showEventLog(data){
 	
 	//unsort on the content column
 	$('#lsEventTable thead tr th').eq(2).unbind('click');
+}
+
+/**
+ * Add the configure button into rmc event tab
+ * 
+ * @param 
+
+ * @return
+ *        
+ */
+function loadRmcEventConfig(){
+	var mkConResBut = createButton('Make Association');
+	mkConResBut.bind('click', function(){
+		mkCondRespDia();
+	});
+	
+	$('#rmcEventDiv').append(mkConResBut);
+}
+
+/**
+ * show the make association dialogue
+ * 
+ * @param 
+
+ * @return
+ *        
+ */
+function mkCondRespDia(){
+	var diaDiv = $('<div title="Make Association"><div>');
+	diaDiv.append('under construction.');
+	
+	diaDiv.dialog({
+		 modal: true,
+         width: 400,
+         close: function(event, ui){
+					$(this).remove();
+				},
+		buttons: {
+			cancel : function(){
+				$(this).dialog('close');
+			},
+			ok : function(){
+				$(this).dialog('close');
+			}
+		}
+	});
+}
+
+/**
+ * show the remove association dialogue
+ * 
+ * @param 
+
+ * @return
+ *        
+ */
+function rmCondRespDia(){
+	
 }
