@@ -10,6 +10,7 @@ use xCAT::PPC;
 ##########################################################################
 sub handled_commands {
   return {
+      rpower      => 'nodehm:power,mgt',
       rspconfig   => 'nodehm:mgt',
       mkhwconn    => 'nodehm:mgt',
       rmhwconn    => 'nodehm:mgt',
