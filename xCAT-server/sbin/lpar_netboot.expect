@@ -2355,6 +2355,17 @@ while { ! $done } {
         set done 1
         continue
     }
+
+    set timeout 1
+    expect {
+        -i $spawn_id_rconsole
+        -re "(.*)elect this consol(.*)" {
+            nc_msg "$PROGRAM Status: selecting active console\n"
+            set command  "0"
+            send_command
+        }
+    }
+
     incr query_count
 
     if { $query_count > 300 } {
