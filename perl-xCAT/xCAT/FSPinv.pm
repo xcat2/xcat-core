@@ -75,7 +75,7 @@ sub firmware {
             #####################################
             # Command only supported on FSP/BPA/LPARs 
             #####################################
-            if ( @$d[4] !~ /^(fsp|bpa|lpar)$/ ) {
+            if ( @$d[4] !~ /^(fsp|bpa|lpar|cec|frame)$/ ) {
                 push @result, 
                     [$name,"Information only available for CEC/BPA/LPAR",RC_ERROR];
                 next; 
