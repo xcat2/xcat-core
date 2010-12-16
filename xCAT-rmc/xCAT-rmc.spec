@@ -33,7 +33,7 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/xCAT_monitoring/rmc
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/sbin/rmcmon
 mkdir -p $RPM_BUILD_ROOT/install/postscripts
-mkdir -p $RPM_BUILD_ROOT/install/postscripts/rmcmon/resources
+mkdir -p $RPM_BUILD_ROOT/install/postscripts/rmcmon/resources/node
 mkdir -p $RPM_BUILD_ROOT/install/postscripts/rmcmon/scripts
 mkdir -p $RPM_BUILD_ROOT/%{prefix}/lib/perl/TEAL
 
@@ -60,7 +60,7 @@ do
 done
 chmod 755 $RPM_BUILD_ROOT/install/postscripts/rmcmon/scripts/*
 
-cp -r resources/node/* $RPM_BUILD_ROOT/install/postscripts/rmcmon/resources 
+cp -r resources/node/* $RPM_BUILD_ROOT/install/postscripts/rmcmon/resources/node 
 
 
 %clean

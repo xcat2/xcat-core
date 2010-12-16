@@ -174,17 +174,27 @@ if [ $ADD -eq 1 ]; then
     fi
   fi
 
-  #create predefined sensors
+  #create predefined resources
   if [[ -z "$NFSSERVER" ]]; then
     NFSSERVER=$MASTER
   fi
+  
+  nodetype="node"
+  if [[ $NTYPE = service ]]; then
+      nodetype=sn
+  fi
+
   mkdir -p /var/xcat/rmcmon
   rm -f -R /var/xcat/rmcmon
   if [[ $OSTYPE = linux* ]]; then
-      mkdir -p /tmp/postage/rmcmon
-      rm -f -R /tmp/postage/rmcmon/*
-      cd /tmp/postage/rmcmon
-      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/postscripts/rmcmon 2> /tmp/wget.log
+      mkdir -p /tmp/postage/rmcmon/scripts
+      mkdir -p /tmp/postage/rmcmon/resources/$nodetype
+      rm -f -R /tmp/postage/rmcmon/scripts/*
+      rm -f -R /tmp/postage/rmcmon/resources/$nodetype
+      cd /tmp/postage/rmcmon/scripts
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/postscripts/rmcmon/scripts 2> /tmp/wget.log
+      cd /tmp/postage/rmcmon/resources/$nodetype
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/postscripts/rmcmon/resources/$nodetyp 2> /tmp/wget.log
       mv $NFSSERVER/postscripts/rmcmon /var/xcat/rmcmon;
       rm -rf $NFSSERVER
   else
@@ -195,12 +205,15 @@ if [ $ADD -eq 1 ]; then
 	  logger -t xCAT "Failed to mount $result"
 	  exit 1
       fi
-      cp -p -R /xcatmnt/rmcmon /var/xcat/rmcmon 2>/dev/null
+      mkdir -p /var/xcat/rmcmon/scripts
+      cp -p -R /xcatmnt/rmcmon/scripts /var/xcat/rmcmon/scripts 2>/dev/null
+      mkdir -p /var/xcat/rmcmon/resources/$nodetype
+      cp -p -R /xcatmnt/rmcmon/resources/$nodetype /var/xcat/rmcmon/resources/$nodetype 2>/dev/null
       umount /xcatmnt
       rmdir /xcatmnt
   fi
   chmod 755 /var/xcat/rmcmon/scripts/*
-  /var/xcat/rmcmon/scripts/mkrmcresources /var/xcat/rmcmon/resources
+  /var/xcat/rmcmon/scripts/mkrmcresources /var/xcat/rmcmon/resources/$nodetype
 else
   #check if the resource is defined
   result=`/usr/bin/lsrsrc-api -s IBM.MCP::"NodeID=0x$MS_NODEID"::MNName 2>&1`
