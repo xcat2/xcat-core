@@ -261,12 +261,6 @@ sub preprocess_request
         # set up the requests to go to the service nodes
         foreach my $snkey (keys %$sn)
         {
-
-#debug
-my $rsp;
-push @{$rsp->{data}}, "SN = $snkey";
-xCAT::MsgUtils->message("E", $rsp, $cb);
-
             my $reqcopy = {%$req};
             $reqcopy->{node} = $sn->{$snkey};
             $reqcopy->{'_xcatdest'} = $snkey;
