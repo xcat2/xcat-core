@@ -190,7 +190,7 @@ function createGraphical(bpa, fsp, area){
 		row.append(td);
 	}
 	
-	var selectNodeDiv = $('<div id="selectNodeDiv" style="margin: 20px;"></div>');
+	var selectNodeDiv = $('<div id="selectNodeDiv" style="margin: 20px;">Nodes:</div>');
 	var temp = 0;
 	for (var i in selectNode){
 		temp ++;
@@ -294,7 +294,7 @@ function updateSelectNodeDiv(){
 
 	//add buttons
 	
-	$('#selectNodeDiv').append('Lpars: ');
+	$('#selectNodeDiv').append('Nodes: ');
 	for(var lparName in selectNode){
 		$('#selectNodeDiv').append(lparName + ' ');
 		temp ++;
