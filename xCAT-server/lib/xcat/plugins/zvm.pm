@@ -3201,7 +3201,7 @@ sub nodeSet {
 			# 	Gateway=10.0.0.1 Netmask=255.255.255.0
 			# 	Broadcast=10.0.0.0 Layer2=1 OSAHWaddr=02:00:01:FF:FF:FF
 			# 	ReadChannel=0.0.0800  WriteChannel=0.0.0801  DataChannel=0.0.0802
-			# 	Nameserver=9.0.2.11 Portname=OSAPORT Portno=0
+			# 	Nameserver=10.0.0.1 Portname=OSAPORT Portno=0
 			#	Install=ftp://10.0.0.1/sles10.2/s390x/1/
 			#	UseVNC=1  VNCPassword=12345678
 			#	InstNetDev=osa OsaInterface=qdio OsaMedium=eth Manual=0
