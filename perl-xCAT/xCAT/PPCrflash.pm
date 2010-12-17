@@ -243,7 +243,7 @@ sub noderange_validate {
             }
         }
         #print "type:$type\n";
-        if( $type =~/(fsp|lpar)/) {
+        if( $type =~/(fsp|lpar|cec)/) {
             $f1 = 1;
         } else {
             $f2 = 1;
