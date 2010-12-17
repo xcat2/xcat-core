@@ -36,9 +36,25 @@ sub parse_args {
         "general_passwd",
         "*_passwd"
     );
+    my @cec = (
+        "HMC_passwd",
+        "admin_passwd",
+        "general_passwd",
+        "*_passwd"
+    );
+    my @frame = (
+        "HMC_passwd",
+        "admin_passwd",
+        "general_passwd",
+        "*_passwd"
+    );
+
+    
     my %rsp = (
-        fsp => \@fsp,
-        bpa => \@bpa
+        fsp   => \@fsp,
+        bpa   => \@bpa,
+        cec   => \@cec,
+        frame => \@frame,
     );
     #############################################
     # Get support command list
