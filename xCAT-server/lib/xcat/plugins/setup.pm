@@ -11,6 +11,7 @@
 #
 # Todo: Limitations on the values in the config file:
 # - do not yet support redundant bpcs or fsps
+# - also support verbose mode
 #
 #####################################################
 package xCAT_plugin::setup;
@@ -29,6 +30,7 @@ my $CALLBACK;
 my %STANZAS;
 my $SUB_REQ;
 my $DELETENODES;
+my %NUMCECSINFRAME;
 
 sub handled_commands {
     return( { xcatsetup => "setup" } );
@@ -136,16 +138,18 @@ sub readFileInput {
     return 1;
 }
 
-# A few global variables for common tables that a lot of functions need
-my %tables = ('site' => 0,
-			'nodelist' => 0,
-			'hosts' => 0,
-			'ppc' => 0,
-			'nodetype' => 0,
-			'nodehm' => 0,
-			'noderes' => 0,
-			'postscripts' => 0,
-			'nodepos' => 0,
+# A few common tables that a lot of functions need.  The value is whether or not is should autocommit.
+my %tables = ('site' => 1,
+			'nodelist' => 1,
+			'hosts' => 1,
+			'ppc' => 1,
+			'nodetype' => 1,
+			'nodehm' => 1,
+			'noderes' => 1,
+			'postscripts' => 1,
+			'nodepos' => 1,
+			'servicenode' => 1,
+			'nodegroup' => 0,
 			);
 my $CECPOSITIONS;	# a hash of the cec values in the nodepos table
 
@@ -154,7 +158,7 @@ sub writedb {
 	
 	# Open some common tables that several of the stanzas need
 	foreach my $tab (keys %tables) {
-		$tables{$tab} = xCAT::Table->new($tab, -create=>1);
+		$tables{$tab} = xCAT::Table->new($tab, -create=>1, -autocommit=>$tables{$tab});
 		if (!$tables{$tab}) { errormsg("Can not open $tab table in database.  Exiting config file processing.", 3); return; }
 	}
 	
@@ -202,7 +206,14 @@ sub writedb {
 		unless (writebb($framesperbb)) { closetables(); return; }
 	}
 	
-	# Write lpar info in ppc, noderes, servicenode
+	# Write lpar info in ppc, noderes, servicenode, etc.
+	my $lparrange = $STANZAS{'xcat-lpars'}->{'hostname-range'};
+	if ($lparrange && (!scalar(keys(%$sections))||$$sections{'xcat-lpars'})) { 
+		unless (writelpar($lparrange)) { closetables(); return; }
+		#unless (writelpar-service($lparrange)) { closetables(); return; }
+		#unless (writelpar-storage($lparrange)) { closetables(); return; }
+	}
+	
 	my $snrange = $STANZAS{'xcat-service-nodes'}->{'hostname-range'};
 	if ($snrange && (!scalar(keys(%$sections))||$$sections{'xcat-service-nodes'})) { 
 		unless (writesn($snrange)) { closetables(); return; }
@@ -258,19 +269,18 @@ sub writesite {
 sub writehmc {
 	# using hostname-range, write: nodelist.node, nodelist.groups
 	my $hmcrange = shift;
-	if ($DELETENODES) { deletenodes('HMCs', $hmcrange); return 1; }
+	my $nodes = [noderange($hmcrange, 0)];
+	if (!scalar(@$nodes)) { return 1; }
+	if ($DELETENODES) {
+		deletenodes('HMCs', $hmcrange);
+		deletegroup('hmc');
+		return 1;
+	}
 	my $hmchash;
 	unless ($hmchash = parsenoderange($hmcrange)) { return 0; }
-	my $nodes = [noderange($hmcrange, 0)];
-	#print "$$nodes[0], $hmcstartnum\n";
 	infomsg('Defining HMCs...');
-	if (scalar(@$nodes)) {
-		#my %nodehash;
-		#foreach my $n (@$nodes) { print "n=$n\n"; $nodehash{$n} = { node => $n, groups => 'hmc,all' }; }
-		#print "here\n";
-		$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'hmc,all' });
-		#print "here2\n";
-	}
+	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'hmc,all' });
+	staticGroup('hmc');
 	
 	# using hostname-range and starting-ip, write regex for: hosts.node, hosts.ip
 	my $hmcstartip = $STANZAS{'xcat-hmcs'}->{'starting-ip'};
@@ -283,8 +293,8 @@ sub writehmc {
 	}
 	
 	# using hostname-range, write regex for: ppc.node, nodetype.nodetype 
-	$tables{'ppc'}->setNodeAttribs('hmc', {comments => 'hmc'});
-	$tables{'nodetype'}->setNodeAttribs('hmc', {nodetype => 'hmc'});
+	$tables{'ppc'}->setNodeAttribs('hmc', {nodetype => 'hmc'});
+	#$tables{'nodetype'}->setNodeAttribs('hmc', {nodetype => 'hmc'});
 	
 	# Set the 1st two hmcs as the ones CNM should send service events to
 	$nodes = [noderange($hmcrange, 0)];
@@ -297,15 +307,16 @@ sub writehmc {
 sub writeframe {
 	# write hostname-range in nodelist table
 	my ($framerange, $cwd) = @_;
-	if ($DELETENODES) { deletenodes('frames', $framerange); return 1; }
-	infomsg('Defining frames...');
 	my $nodes = [noderange($framerange, 0)];
-	#print "$$nodes[0], $framestartnum\n";
-	if (scalar(@$nodes)) {
-		#my %nodehash;
-		#foreach my $n (@$nodes) { print "n=$n\n"; $nodehash{$n} = { node => $n, groups => 'hmc,all' }; }
-		$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'frame,all' });
+	if (!scalar(@$nodes)) { return 1; }
+	if ($DELETENODES) {
+		deletenodes('frames', $framerange);
+		deletegroup('frame');
+		return 1;
 	}
+	infomsg('Defining frames...');
+	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'frame,all' });
+	staticGroup('frame');
 	
 	# Using the frame group, write starting-ip in hosts table
 	my $framestartip = $STANZAS{'xcat-frames'}->{'starting-ip'};
@@ -319,7 +330,8 @@ sub writeframe {
 	}
 	
 	# Using the frame group, write: nodetype.nodetype, nodehm.mgt
-	$tables{'nodetype'}->setNodeAttribs('frame', {nodetype => 'bpa'});
+	$tables{'ppc'}->setNodeAttribs('frame', {nodetype => 'bpa'});
+	#$tables{'nodetype'}->setNodeAttribs('frame', {nodetype => 'bpa'});
 	
 	# Using the frame group, num-frames-per-hmc, hmc hostname-range, write regex for: ppc.node, ppc.hcp, ppc.id
 	# The frame # should come from the nodename
@@ -369,18 +381,21 @@ sub readwritevpd {
 sub writecec {
 	# write hostname-range in nodelist table
 	my ($cecrange, $cwd) = @_;
-	if ($DELETENODES) { deletenodes('CECs', $cecrange); return 1; }
-	infomsg('Defining CECs...');
 	my $nodes = [noderange($cecrange, 0)];
 	if ($$nodes[0] =~ /\[/) {
 		errormsg("hostname ranges with 2 sets of '[]' are not supported in xCAT 2.5 and below.", 21);
 		return 0;
 	}
-	if (scalar(@$nodes)) {
-		#my %nodehash;
-		#foreach my $n (@$nodes) { print "n=$n\n"; $nodehash{$n} = { node => $n, groups => 'hmc,all' }; }
-		$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'cec,all' });
+	if (!scalar(@$nodes)) { return 1; }
+	if ($DELETENODES) {
+		deletenodes('CECs', $cecrange);
+		deletegroup('cec');
+		dynamicGroups('delete', $nodes);
+		return 1;
 	}
+	infomsg('Defining CECs...');
+	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'cec,all' });
+	staticGroup('cec');
 	
 	# Using the cec group, write starting-ip in hosts table
 	my $cecstartip = $STANZAS{'xcat-cecs'}->{'starting-ip'};
@@ -409,7 +424,8 @@ sub writecec {
 	}
 	
 	# Using the cec group, write: nodetype.nodetype
-	$tables{'nodetype'}->setNodeAttribs('cec', {nodetype => 'fsp'});
+	$tables{'ppc'}->setNodeAttribs('cec', {nodetype => 'fsp'});
+	#$tables{'nodetype'}->setNodeAttribs('cec', {nodetype => 'fsp'});
 	
 	# Write regex for ppc.hcp, nodehm.mgt
 	if ($STANZAS{'xcat-site'}->{'use-direct-fsp-control'}) {
@@ -423,16 +439,8 @@ sub writecec {
 	}
 	
 	# Create dynamic groups for the nodes in each cec
-	my $ntab = xCAT::Table->new('nodegroup', -create=>1,-autocommit=>0);
-	if (!$ntab) { errormsg("Can not open nodegroup table in database.", 3); }
-	else {
-		$nodes = [noderange($cecrange, 0)];		# the setNodesAttribs() function blanks out the nodes array
-		foreach my $n (@$nodes) {
-			$ntab->setAttribs({groupname => "${n}nodes"}, {grouptype => 'dynamic', members => 'dynamic', wherevals => "parent==$n" });
-		}
-		$ntab->commit();
-		$ntab->close();
-	}
+	$nodes = [noderange($cecrange, 0)];		# the setNodesAttribs() function blanks out the nodes array
+	dynamicGroups('add', $nodes, 'parent==');
 	
 	# Write supernode-list in ppc.supernode.  While we are at it, also assign the cage id and parent.
 	$nodes = [noderange($cecrange, 0)];		# the setNodesAttribs() function blanks out the nodes array
@@ -469,6 +477,9 @@ sub writecec {
 				$cageid += 2;
 			}
 		}
+		$NUMCECSINFRAME{$k} = $numcecs;		# save this for later
+		my ($knum) = $k =~ /(\d+)$/;
+		$NUMCECSINFRAME{$knum+0} = $numcecs;		# also save it by the frame num
 		if (defined($$cechash{'secondary-start'}) && $numcecs != ($$cechash{'secondary-end'}-$$cechash{'secondary-start'}+1)) {
 			# There are some cecs in this frame that did not get assigned supernode nums - maybe they do not exist
 			#infomsg("Warning: the xcat-cecs:hostname-range of $cecrange appears to be using frame and CEC numbers in the CEC hostnames, but there is not the same number of CECs in each frame (according to the supernodelist).  This causes the supernode numbers to be assigned to the wrong CECs.");
@@ -485,14 +496,14 @@ sub writecec {
 	}
 	# Now write all of the attribute values to the tables
 	if (scalar(keys %framesupers)) {
+		if (scalar(@nonexistant)) {
+			my $nr = join(',', @nonexistant);
+			#print "deleting $nr\n";
+			noderm($nr);
+		}
 		$tables{'ppc'}->setNodesAttribs(\%ppchash);
 		$tables{'nodelist'}->setNodesAttribs(\%nodehash);
 		$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
-		if (scalar(@nonexistant)) {
-			my $nr = join(',', @nonexistant);
-			print "deleting $nr\n";
-			my $ret = xCAT::Utils->runxcmd({ command => ['rmdef'], arg => [$nr,'-t','node'] }, $SUB_REQ, 0, 1);
-		}
 	}
 	return 1;
 }
@@ -541,10 +552,12 @@ sub readsupers {
 
 sub writebb {
 	my $framesperbb = shift;
+	if ($DELETENODES) { return 1; }
 	infomsg('Defining building blocks...');
 	
 	# Set site.sharedtftp=1 since we have bldg blocks
 	$tables{'site'}->setAttribs({key => 'sharedtftp'}, {value => 1});
+	$tables{'site'}->setAttribs({key => 'sshbetweennodes'}, {value => 'service'});
 	
 	# Using num-frames-per-bb write ppc.parent (frame #) for bpas
 	if ($framesperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-frames-per-bb: $framesperbb", 7); return 0; }
@@ -553,18 +566,278 @@ sub writebb {
 	return 1;
 }
 
+# Create lpar node definitions.  This stanza is used only if they are using hostnames like f1c1p1
+sub writelpar {
+	my $range = shift;
+	my $nodes = [noderange($range, 0)];
+	if (!scalar(@$nodes)) { return 1; }
+	if ($DELETENODES) {
+		deletenodes('LPAR nodes', $range);
+		deletegroup('lpar');
+		deletegroup('service');
+		deletegroup('compute');
+		#todo:  also delete dynamic groups: dynamicGroups('delete', [keys(%servicenodes)]);
+		return 1;
+	}
+	infomsg('Defining LPAR nodes...');
+	my $rangeparts = parsenoderange($range);
+	if (!defined($$rangeparts{'tertiary-start'})) { errormsg("Currently only support xcat-lpars:hostname-range format like f[1-2]c[1-2]p[1-2].", 5); return 0; }
+	my ($startnum) = $$rangeparts{'primary-start'};		# save this value for later
+	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'compute,lpar,all' });
+	staticGroup('lpar');
+	staticGroup('service');
+	staticGroup('compute');
+	
+	# Write regex for hosts.node, hosts.ip, etc, for all lpars.  Also write a special entry
+	# for service nodes, since they also have an ethernet adapter.
+	my $startip = $STANZAS{'xcat-lpars'}->{'starting-ip'};
+	if ($startip && isIP($startip)) {
+		my ($ipbase, $ip2nd, $ip3rd, $ip4th) = $startip =~/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
+		# take the number from the nodename, and as it increases, increase the ip addr
+		# using name like f1c1p1
+		my $primstartnum = $$rangeparts{'primary-start'};
+		my $secstartnum = $$rangeparts{'secondary-start'};
+		my $thirdstartnum = $$rangeparts{'tertiary-start'};
+		# Math for 2nd field:  ip2nd+primnum-primstartnum
+		# Math for 3rd field:  ip3rd+secnum-secstartnum
+		# Math for 4th field:  ip4th+thirdnum-thirdstartnum
+		my $regex = '|\D+(\d+)\D+(\d+)\D+(\d+)$|' . "$ipbase.($ip2nd+" . '$1' . "-$primstartnum).($ip3rd+" . '$2' . "-$secstartnum).($ip4th+" . '$3' . "-$thirdstartnum)|";
+		my %hash = (ip => $regex);
+		# for service nodes, use the starting ip from that stanza
+		my $serviceip = $STANZAS{'xcat-service-nodes'}->{'starting-ip'};
+		my ($servbase, $serv2nd, $serv3rd, $serv4th) = $serviceip =~/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
+		my %servicehash;
+		if ($serviceip && isIP($serviceip)) {
+			my $serviceregex = '|\D+(\d+)\D+(\d+)\D+(\d+)$|' . "$servbase.($serv2nd+" . '$1' . "-$primstartnum).($serv3rd+" . '$2' . "-$secstartnum).($serv4th+" . '$3' . "-$thirdstartnum)|";
+			$servicehash{ip} = $serviceregex;
+		}
+		
+		my $otherint = $STANZAS{'xcat-lpars'}->{'otherinterfaces'};
+		if ($otherint) {
+			# need to replace each ip addr in otherinterfaces with a regex
+			my @ifs = split(/[\s,]+/, $otherint);
+			foreach my $if (@ifs) {
+				my ($nic, $nicip) = split(/:/, $if);
+				if (!isIP($nicip)) { next; }
+				my ($nicbase, $nic2nd, $nic3rd, $nic4th) = $nicip =~/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
+				$if = "$nic:$nicbase.($nic2nd+" . '$1' . "-$primstartnum).($nic3rd+" . '$2' . "-$secstartnum).($nic4th+" . '$3' . "-$thirdstartnum)";
+			}
+			$regex = '|\D+(\d+)\D+(\d+)\D+(\d+)$|' . join(',', @ifs) . '|';
+			#print "regex=$regex\n";
+			$hash{otherinterfaces} = $regex;
+			if ($serviceip && isIP($serviceip)) {
+				# same as regular lpar value, except prepend the lpar ip as -hf0
+				my $hf0 = "-hf0:$ipbase.($ip2nd+" . '$1' . "-$primstartnum).($ip3rd+" . '$2' . "-$secstartnum).($ip4th+" . '$3' . "-$thirdstartnum)";
+				my $serviceregex = '|\D+(\d+)\D+(\d+)\D+(\d+)$|' . "$hf0," . join(',', @ifs) . '|';
+				$servicehash{otherinterfaces} = $serviceregex;
+			}
+		}
+		
+		my $aliases = $STANZAS{'xcat-lpars'}->{'aliases'};
+		if ($aliases) {
+			# support more than 1 alias
+			my @alist = split(/[\s,]+/, $aliases);
+			foreach my $a (@alist) { if ($a=~/^-/) { $a = '($1)' . $a; } }	# prepend the hostname
+			$regex = '|(.+)|' . join(',', @alist) . '|';
+			$hash{hostnames} = $regex;
+			
+			# For services nodes, we do not really need any aliases, but we have to override the above
+			$servicehash{hostnames} = '|(.+)|($1)-eth0|';
+		}
+		
+		$tables{'hosts'}->setNodeAttribs('lpar', \%hash);
+		if ($serviceip && isIP($serviceip)) { $tables{'hosts'}->setNodeAttribs('service', \%servicehash); }
+	}
+	
+	# If there are an inconsistent # of cecs in each frame, delete the lpars that are not really there
+	if ($STANZAS{'xcat-cecs'}->{'delete-unused-cecs'}) {
+		my @nodestodelete;		# the lpars to delete
+		my $maxcecs = $$rangeparts{'secondary-end'} - $$rangeparts{'secondary-start'} + 1;
+		foreach my $k (sort keys %NUMCECSINFRAME) {
+			if ($NUMCECSINFRAME{$k} >= $maxcecs) { next; }		# this frame is completely populated
+			# create the noderange of the lpars that need to be deleted
+			my ($framenum) = $k =~ /(\d+)$/;
+			my $len = length($$rangeparts{'secondary-start'});
+			my $index1 = $NUMCECSINFRAME{$k} + $$rangeparts{'secondary-start'};
+			$index1 = sprintf("%0${len}d", $index1);
+			my $index2 = $$rangeparts{'secondary-end'};
+			$index2 = sprintf("%0${len}d", $index2);
+			$len = length($$rangeparts{'primary-start'});
+			$framenum = sprintf("%0${len}d", $framenum);
+			my $nr = $$rangeparts{'primary-base'} . $framenum . $$rangeparts{'secondary-base'} . "[$index1-$index2]" . $$rangeparts{'tertiary-base'} . '[' . $$rangeparts{'tertiary-start'} . '-' . $$rangeparts{'tertiary-end'} . ']';
+			push @nodestodelete, $nr;
+		}
+		my $delnodes = join(',', @nodestodelete);
+		#print "should delete: $delnodes\n";
+		#rmdef('f5c12p[1-8]');
+		noderm($delnodes);
+	}
+	
+	# Set some attrs common to all lpars
+	$tables{'nodetype'}->setNodeAttribs('lpar', {nodetype => 'osi', arch => 'ppc64'});
+	$tables{'nodehm'}->setNodeAttribs('lpar', {mgt => 'fsp', cons => 'fsp'});
+	$tables{'noderes'}->setNodeAttribs('lpar', {netboot => 'yaboot'});
+	
+	# Write regexs for some of the ppc attrs
+	# Note: we assume here that if they used f1c1p1 for nodes they should use f1c1 for cecs
+	my $cechash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
+	my $cecprimbase = $$cechash{'primary-base'};
+	#my $cecprimlen = length($$cechash{'primary-start'});
+	my $cecsecbase = $$cechash{'secondary-base'};
+	if (!$cecsecbase) { errormsg("when using LPAR names like f1c1p1, you must also use CEC names like f1c1",7); return 0; }
+	my $framehash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
+	#my $framebase = $$framehash{'primary-base'};
+	#my $framestart = $$framehash{'primary-start'};
+	#my $framelen = length($$framehash{'primary-start'});
+	my %ppchash;
+	my %nodeposhash;
+	$ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)$|(($1-1)*4+1)|';		#todo: this is p7 ih specific
+	# convert between the lpar name and the cec name.  Assume that numbers are the same, but the base can be different
+	my $regex = '|^\D+(\d+)\D+(\d+)\D+\d+$|' . "$cecprimbase" . '($1)' . "$cecsecbase" .'($2)|';
+	$ppchash{hcp} = $regex;
+	$ppchash{parent} = $regex;
+	$ppchash{nodetype} = 'lpar';
+	#print Dumper($CECPOSITIONS);
+	$tables{'ppc'}->setNodeAttribs('lpar', \%ppchash);
+	
+	#todo: for now, let the nodepos attrs for the cec be good enough
+	#$nodeposhash{rack} = {rack => $CECPOSITIONS->{$cecname}->[0]->{rack}, u => $CECPOSITIONS->{$cecname}->[0]->{u}};
+	#$nodeposhash{u} = {rack => $CECPOSITIONS->{$cecname}->[0]->{rack}, u => $CECPOSITIONS->{$cecname}->[0]->{u}};
+	#$tables{'nodepos'}->setNodeAttribs('lpar', \%nodeposhash);
+	
+	# Figure out which lpars are service nodes and storage nodes and put them in groups
+	my $framesperbb = $STANZAS{'xcat-building-blocks'}->{'num-frames-per-bb'};
+	my $numframes = $$rangeparts{'primary-end'} - $$rangeparts{'primary-start'} + 1;
+	my $numbbs = int($numframes/$framesperbb) + ($numframes%$framesperbb > 0);
+	my %servicenodes;
+	my %storagenodes;
+	my %lpars;
+	#my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
+	#if ($cecsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-cecs-per-bb: $cecsperbb", 7); return 0; }
+	for (my $b=1; $b<=$numbbs; $b++) {
+		my $framebase = ($b-1) * $framesperbb + 1;
+		findSNsinBB('service', $b, $framebase, $rangeparts, \%servicenodes, \%lpars) or return 0;
+		findSNsinBB('storage', $b, $framebase, $rangeparts, \%storagenodes) or return 0;
+	}
+	if (scalar(keys(%servicenodes))) { $tables{'nodelist'}->setNodesAttribs(\%servicenodes); }
+	if (scalar(keys(%storagenodes))) { $tables{'nodelist'}->setNodesAttribs(\%storagenodes); }
+	if (scalar(keys(%lpars))) { $tables{'noderes'}->setNodesAttribs(\%lpars); }
+	
+	# Set some more service node specific attributes
+	$tables{'servicenode'}->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>1});
+	if ($STANZAS{'ll-config'}->{'central_manager_list'}) {		# write the LL postscript for service nodes
+		addPostscript('service', 'llserver.sh');
+		addPostscript('compute', 'llcompute.sh');
+	}
+	
+	dynamicGroups('add', [keys(%servicenodes)], 'xcatmaster==');
+}
+
+
+# Find either service nodes or storage nodes in a BB.  Adds the nodenames of the lpars to the snodes hash,
+# and defines the groups in the hash, and assigns the other lpars to the correct service node.
+sub findSNsinBB {
+	my ($sntext, $bb, $framebase, $rangeparts, $snodes, $lpars) = @_;
+	my $primbase = $$rangeparts{'primary-base'};
+	my $primlen = length($$rangeparts{'primary-start'});
+	my $secbase = $$rangeparts{'secondary-base'};
+	my $seclen = length($$rangeparts{'secondary-start'});
+	my $tertbase = $$rangeparts{'tertiary-base'};
+	my $tertlen = length($$rangeparts{'tertiary-start'});
+	my $framesperbb = $STANZAS{'xcat-building-blocks'}->{'num-frames-per-bb'};
+	
+	# Determine the lpar node name for each service/storage node
+	my $snsperbb = $STANZAS{"xcat-$sntext-nodes"}->{"num-$sntext-nodes-per-bb"};
+	if ($snsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-$sntext-nodes-per-bb: $snsperbb", 7); return 0; }
+	my @snpositions = split(/[\s,]+/, $STANZAS{"xcat-$sntext-nodes"}->{'cec-positions-in-bb'});
+	if (scalar(@snpositions) != $snsperbb) { errormsg("invalid number of positions specified for xcat-$sntext-nodes:cec-positions-in-bb.", 3); return 0; }
+	my @snsinbb;
+	foreach my $p (@snpositions) {
+		my $cecbase = 0;
+		my $frame = $framebase;
+		while ($p > ($cecbase + $NUMCECSINFRAME{$frame})) {
+			# p is not in this frame, go on to the next
+			$cecbase += $NUMCECSINFRAME{$frame};
+			$frame++;
+			#print "cecbase=$cecbase, frame=$frame\n";
+			if ($frame >= ($framebase+$framesperbb)) { errormsg("Can not find $sntext node position $p in building block $bb.",9); return 0; }
+		}
+		my $cecinframe = $p - $cecbase;
+		#my $nodename = $primbase . sprintf("%0${primlen}d", $frame) . $secbase . sprintf("%0${seclen}d", $cecinframe) . $tertbase . sprintf("%0${tertlen}d", 1);
+		my $nodename = buildNodename($frame, $cecinframe, 1, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen);
+		#print "nodename=$nodename\n";
+		$$snodes{$nodename} = { groups => "bb$bb$sntext,$sntext,lpar,all" };
+		push @snsinbb, "$frame,$cecinframe";	# save for later
+	}
+	
+	if ($lpars) {
+		# Set xcatmaster/servicenode attrs for lpars
+		my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
+		if ($cecsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-cecs-per-bb: $cecsperbb", 7); return 0; }
+		my $servsperbb = $STANZAS{'xcat-service-nodes'}->{'num-service-nodes-per-bb'};
+		my $cecspersn = int($cecsperbb / $snsperbb);
+		my $pmax = $STANZAS{'xcat-lpars'}->{'num-lpars-per-cec'};
+		# Loop thru all lpars in this BB, assigning it to a service node
+		my $snindex = 0;
+		my $cecinthisbb = 1;
+		for (my $f=$framebase; $f<($framebase+$framesperbb); $f++) {
+			for (my $c=1; $c<=$NUMCECSINFRAME{$f}; $c++) {
+				# form the current service node name
+				my ($snframe, $sncec) = split(/,/, $snsinbb[$snindex]);
+				my $snname = buildNodename($snframe, $sncec, 1, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen);
+				my $othersns;
+				# build the list of other service node names
+				for (my $s=0; $s<scalar(@snsinbb); $s++) {
+					if ($s != $snindex) {
+						my ($snf, $snc) = split(/,/, $snsinbb[$s]);
+						$othersns .= ',' . buildNodename($snf, $snc, 1, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen);;
+					}
+				}
+				# assign all partitions in this cec to this service node
+				for (my $p=1; $p<=$pmax; $p++) {
+					my $lparname = buildNodename($f, $c, $p, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen);
+					$$lpars{$lparname} = {xcatmaster => $snname, servicenode => "$snname$othersns"};
+				}
+				# move to the next cec and possibly the next sn
+				$cecinthisbb++;
+				if ($cecinthisbb>$cecspersn && $snindex<(scalar(@snsinbb)-1)) { $snindex++; }
+			}
+		}
+		# delete the service nodes themselves from this list
+		foreach my $serv (@snsinbb) {
+			my ($snframe, $sncec) = split(/,/, $serv);
+			my $snname = buildNodename($snframe, $sncec, 1, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen);
+			delete $$lpars{$snname};
+		}
+	}
+	return 1;
+}
+
+sub buildNodename {
+	my ($frame, $cec, $partition, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen) = @_;
+	my $lparname = $primbase . sprintf("%0${primlen}d", $frame) . $secbase . sprintf("%0${seclen}d", $cec) . $tertbase . sprintf("%0${tertlen}d", $partition);
+	return $lparname;
+}
+
 
 # Create service node definitions
 sub writesn {
 	my $range = shift;
+	if (defined($STANZAS{'xcat-lpars'}->{'hostname-range'})) { errormsg("Can not define hostname-range in both the xcat-lpars and xcat-service-nodes stanzas.", 8); return 0; }
+	my $nodes = [noderange($range, 0)];
+	if (!scalar(@$nodes)) { return 1; }
+	if ($DELETENODES) {
+		deletenodes('service nodes', $range);
+		deletegroup('service');
+		dynamicGroups('delete', $nodes);
+		return 1;
+	}
 	infomsg('Defining service nodes...');
 	# We support name formats: sn01 or (todo:) b1s1
-	my $nodes = [noderange($range, 0)];
 	my $rangeparts = parsenoderange($range);
 	my ($startnum) = $$rangeparts{'primary-start'};		# save this value for later
-	if (scalar(@$nodes)) {
-		$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'service,all' });
-	}
+	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'service,lpar,all' });
+	staticGroup('service');
 	
 	# Write regex for: hosts.node, hosts.ip
 	my $startip = $STANZAS{'xcat-service-nodes'}->{'starting-ip'};
@@ -592,25 +865,13 @@ sub writesn {
 	}
 	
 	# Write regex for: ppc.id, nodetype.nodetype, etc.
-	$tables{'ppc'}->setNodeAttribs('service', {id => '1'});
+	$tables{'ppc'}->setNodeAttribs('service', {id => '1', nodetype => 'lpar'});
 	$tables{'nodetype'}->setNodeAttribs('service', {nodetype => 'osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('service', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('service', {netboot => 'yaboot'});
-	my $sntab = xCAT::Table->new('servicenode', -create=>1);
-	if (!$sntab) { errormsg("Can not open servicenode table in database.", 3); }
-	else {
-		$sntab->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>1});
-	}
+	$tables{'servicenode'}->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>1});
 	if ($STANZAS{'ll-config'}->{'central_manager_list'}) {		# write the LL postscript for service nodes
-		my $ref = $tables{'postscripts'}->getNodeAttribs('service', 'postscripts');
-		#print Dumper($ref);
-		my $posts;
-		if ($ref && $ref->{postscripts}=~/\S/) {
-			$posts = $ref->{postscripts};
-			if ($posts !~ /(^|,)llserver\.sh(,|$)/) { $posts .= ",llserver.sh"; }
-		}
-		else { $posts = "llserver.sh"; }
-		$tables{'postscripts'}->setNodeAttribs('service', {postscripts => $posts });
+		addPostscript('service', 'llserver.sh')
 	}
 	
 	# Figure out what cec each sn is in and write ppc.hcp and ppc.parent
@@ -639,7 +900,7 @@ sub writesn {
 		# figure out the BB num to add this node to that group
 		my $bbnum = int($i/$snsperbb) + 1;
 		my $bbname = "bb$bbnum";
-		$grouphash{$$nodes[$i]} = {groups => "${bbname}service,service,all"};
+		$grouphash{$$nodes[$i]} = {groups => "${bbname}service,service,lpar,all"};
 		# figure out the CEC num
 		my $snpositioninbb = $positions[$i % $snsperbb];		# the offset within the BB
 		my $cecnum = ( int($i/$snsperbb) * $cecsperbb) + $snpositioninbb;		# which cec num, counting from the beginning
@@ -665,30 +926,27 @@ sub writesn {
 	$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
 	
 	# Create dynamic groups for the nodes in each service node
-	my $ntab = xCAT::Table->new('nodegroup', -create=>1,-autocommit=>0);
-	if (!$ntab) { errormsg("Can not open nodegroup table in database.", 3); }
-	else {
-		$nodes = [noderange($range, 0)];		# the setNodesAttribs() function blanks out the nodes array
-		foreach my $n (@$nodes) {
-			$ntab->setAttribs({groupname => "${n}nodes"}, {grouptype => 'dynamic', members => 'dynamic', wherevals => "xcatmaster==$n" });
-		}
-		$ntab->commit();
-		$ntab->close();
-	}
+	$nodes = [noderange($range, 0)];		# the setNodesAttribs() function blanks out the nodes array
+	dynamicGroups('add', $nodes, 'xcatmaster==');
 	return 1;
 }
-
 
 # Create storage node definitions
 sub writestorage {
 	my $range = shift;
-	infomsg('Defining storage nodes...');
+	if (defined($STANZAS{'xcat-lpars'}->{'hostname-range'})) { errormsg("Can not define hostname-range in both the xcat-lpars and xcat-storage-nodes stanzas.", 8); return 0; }
 	my $nodes = [noderange($range, 0)];
+	if (!scalar(@$nodes)) { return 1; }
+	if ($DELETENODES) {
+		deletenodes('storage nodes', $range);
+		deletegroup('storage');
+		return 1;
+	}
+	infomsg('Defining storage nodes...');
 	my $rangeparts = parsenoderange($range);
 	my ($startnum) = $$rangeparts{'primary-start'};		# save this value for later
-	if (scalar(@$nodes)) {
-		$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'storage,all' });
-	}
+	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'storage,lpar,all' });
+	staticGroup('storage');
 	
 	# Write regex for: hosts.node, hosts.ip
 	my $startip = $STANZAS{'xcat-storage-nodes'}->{'starting-ip'};
@@ -715,7 +973,7 @@ sub writestorage {
 		if ($aliases) {
 			# support more than 1 alias
 			my @alist = split(/[\s,]+/, $aliases);
-			foreach my $a (@alist) { $a = '($1)' . $a; }	# prepend the hostname
+			foreach my $a (@alist) { if ($a=~/^-/) { $a = '($1)' . $a; } }	# prepend the hostname
 			$regex = '|(.+)|' . join(',', @alist) . '|';
 			$hash{hostnames} = $regex;
 		}
@@ -724,7 +982,7 @@ sub writestorage {
 	}
 	
 	# Write ppc.id, nodetype.nodetype, etc.
-	$tables{'ppc'}->setNodeAttribs('storage', {id => '1'});
+	$tables{'ppc'}->setNodeAttribs('storage', {id => '1', nodetype => 'lpar'});
 	$tables{'nodetype'}->setNodeAttribs('storage', {nodetype => 'osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('storage', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('storage', {netboot => 'yaboot'});
@@ -757,7 +1015,7 @@ sub writestorage {
 		# figure out the BB num to add this node to that group
 		my $bbnum = int($i/$snsperbb) + 1;
 		my $bbname = "bb$bbnum";
-		$grouphash{$$nodes[$i]} = {groups => "${bbname}storage,storage,all"};
+		$grouphash{$$nodes[$i]} = {groups => "${bbname}storage,lpar,storage,all"};
 		# figure out the CEC num
 		my $snpositioninbb = $positions[$i % $snsperbb];		# the offset within the BB
 		my $cecnum = ( int($i/$snsperbb) * $cecsperbb) + $snpositioninbb;		# which cec num, counting from the beginning
@@ -776,10 +1034,11 @@ sub writestorage {
 		$nodehash{$$nodes[$i]} = {hcp => $cecname, parent => $cecname};
 		$nodeposhash{$$nodes[$i]} = {rack => $CECPOSITIONS->{$cecname}->[0]->{rack}, u => $CECPOSITIONS->{$cecname}->[0]->{u}};
 		
-		# Now determine the service node this compute node is under
+		# Now determine the service node this storage node is under
 		#my $bbnum = int(($cecnum-1) / $cecsperbb) + 1;
 		my $cecinthisbb = ($cecnum-1) % $cecsperbb + 1;
 		my $servsperbb = $STANZAS{'xcat-service-nodes'}->{'num-service-nodes-per-bb'};
+		#todo: handle case where this does not divide evenly
 		my $cecspersn = int($cecsperbb / $servsperbb); 
 		my $snoffset = int(($cecinthisbb-1) / $cecspersn) + 1;
 		my $snsbeforethisbb = ($bbnum-1) * $servsperbb;
@@ -803,11 +1062,17 @@ sub writestorage {
 # Create compute node definitions
 sub writecompute {
 	my $range = shift;
-	infomsg('Defining compute nodes...');
+	if (defined($STANZAS{'xcat-lpars'}->{'hostname-range'})) { errormsg("Can not define hostname-range in both the xcat-lpars and xcat-storage-nodes stanzas.", 8); return 0; }
 	my $nodes = [noderange($range, 0)];
-	if (scalar(@$nodes)) {
-		$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'compute,all' });
+	if (!scalar(@$nodes)) { return 1; }
+	if ($DELETENODES) {
+		deletenodes('compute nodes', $range);
+		deletegroup('compute');
+		return 1;
 	}
+	infomsg('Defining compute nodes...');
+	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'compute,lpar,all' });
+	staticGroup('compute');
 	
 	# Write regex for: hosts.node, hosts.ip
 	my $nodehash = parsenoderange($range);
@@ -840,7 +1105,7 @@ sub writecompute {
 		if ($aliases) {
 			# support more than 1 alias
 			my @alist = split(/[\s,]+/, $aliases);
-			foreach my $a (@alist) { $a = '($1)' . $a; }	# prepend the hostname
+			foreach my $a (@alist) { if ($a=~/^-/) { $a = '($1)' . $a; } }	# prepend the hostname
 			$regex = '|(.+)|' . join(',', @alist) . '|';
 			$hash{hostnames} = $regex;
 		}
@@ -849,19 +1114,12 @@ sub writecompute {
 	}
 	
 	# Write regex for: nodetype.nodetype, etc.
+	$tables{'ppc'}->setNodeAttribs('compute', {nodetype => 'lpar'});
 	$tables{'nodetype'}->setNodeAttribs('compute', {nodetype => 'osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('compute', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('compute', {netboot => 'yaboot'});
 	if ($STANZAS{'ll-config'}->{'central_manager_list'}) {		# write the LL postscript for compute nodes
-		my $ref = $tables{'postscripts'}->getNodeAttribs('compute', 'postscripts');
-		#print Dumper($ref);
-		my $posts;
-		if ($ref && $ref->{postscripts}=~/\S/) {
-			$posts = $ref->{postscripts};
-			if ($posts !~ /(^|,)llcompute\.sh(,|$)/) { $posts .= ",llcompute.sh"; }
-		}
-		else { $posts = "llcompute.sh"; }
-		$tables{'postscripts'}->setNodeAttribs('compute', {postscripts => $posts });
+		addPostscript('compute', 'llcompute.sh');
 	}
 	
 	# Figure out what cec each compute node is in and write ppc.hcp, ppc.parent, ppc.id, noderes.xcatmaster, noderes.servicenode
@@ -909,6 +1167,7 @@ sub writecompute {
 		# Now determine the service node this compute node is under
 		my $bbnum = int(($cecnum-1) / $cecsperbb) + 1;
 		my $cecinthisbb = ($cecnum-1) % $cecsperbb + 1;
+		#todo: handle case where this does not divide evenly
 		my $cecspersn = int($cecsperbb / $snsperbb); 
 		my $snoffset = int(($cecinthisbb-1) / $cecspersn) + 1;
 		my $snsbeforethisbb = ($bbnum-1) * $snsperbb;
@@ -1017,11 +1276,72 @@ sub deletenodes {
 	my ($name, $range) = @_;
 	if ($range !~ /\S/) { return; }
 	infomsg("Deleting $name...");
-	#my $nr = [$hmcrange];
-	my $ret = xCAT::Utils->runxcmd({ command => ['rmdef'], arg => [$range,'-t','node'] }, $SUB_REQ, 0, 1);
-	#xCAT::MsgUtils->message('D', {data=>$ret}, $CALLBACK);
-	#$CALLBACK->({data=>$ret});
+	rmdef($range);
 	return;
+}
+
+sub deletegroup {
+	my $group = shift;
+	if ($group !~ /\S/) { return; }
+	#print "group=$group\n";
+	my $ret = xCAT::Utils->runxcmd({ command => ['rmdef'], arg => ['-t','group','--nocache','-o',$group] }, $SUB_REQ, 0, 1);
+	if ($$ret[0] !~ /^Object definitions have been removed\.$/) { xCAT::MsgUtils->message('D', {data=>$ret}, $CALLBACK); }
+}
+
+sub rmdef {
+	my $range = shift;
+	if ($range !~ /\S/) { return; }
+	#print "deleting $range\n";
+	my $ret = xCAT::Utils->runxcmd({ command => ['rmdef'], arg => ['-t','node','--nocache','-o',$range] }, $SUB_REQ, 0, 1);
+	#print Dumper($ret);
+	if ($$ret[0] !~ /^Object definitions have been removed\.$/ && $$ret[0] !~ /^Could not find an object named/) { xCAT::MsgUtils->message('D', {data=>$ret}, $CALLBACK); }
+	#$CALLBACK->({data=>$ret});
+}
+
+sub noderm {
+	my $range = shift;
+	if ($range !~ /\S/) { return; }
+	#print "noderm $range\n";
+	my $ret = xCAT::Utils->runxcmd({ command => ['noderm'], noderange => [$range] }, $SUB_REQ, 0, 1);
+	xCAT::MsgUtils->message('D', {data=>$ret}, $CALLBACK);
+}
+
+
+# Create or delete dynamic groups for the given node list
+sub dynamicGroups {
+	my ($action, $nodes, $where) = @_;
+	#my $ntab = xCAT::Table->new('nodegroup', -create=>1,-autocommit=>0);
+	#if (!$ntab) { errormsg("Can not open nodegroup table in database.", 3);  return; }
+	my $ntab = $tables{'nodegroup'};
+	foreach my $n (@$nodes) {
+		if ($action ne 'delete') {
+			#print "adding group ${n}nodes with $where$n\n";
+			$ntab->setAttribs({groupname => "${n}nodes"}, {grouptype => 'dynamic', members => 'dynamic', wherevals => "$where$n" });
+		} else {
+			$ntab->delEntries({groupname => "${n}nodes"});
+		}
+	}
+	$ntab->commit();
+	#$ntab->close();
+}
+
+sub staticGroup {
+	my $group = shift;
+	$tables{'nodegroup'}->setAttribs({groupname => $group}, {grouptype => 'static', members => 'static'});	# this makes rmdef happier
+	$tables{'nodegroup'}->commit();
+}
+
+sub addPostscript {
+	my ($group, $postscript) = @_;
+	my $ref = $tables{'postscripts'}->getNodeAttribs($group, 'postscripts');
+	#print Dumper($ref);
+	my $posts;
+	if ($ref && $ref->{postscripts}=~/\S/) {
+		$posts = $ref->{postscripts};
+		if ($posts !~ /(^|,)llserver\.sh(,|$)/) { $posts .= ",$postscript"; }
+	}
+	else { $posts = "$postscript"; }
+	$tables{'postscripts'}->setNodeAttribs($group, {postscripts => $posts });
 }
 
 1;

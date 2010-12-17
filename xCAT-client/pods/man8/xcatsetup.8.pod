@@ -64,8 +64,7 @@ use individual rows for every node, you can do the following:
   lsdef -z all >tmp.stanza
   cat tmp.stanza | chdef -z
 
-If you want to delete all of the nodes that xcatsetup created, and start over, use L<rmdef(1)|rmdef.1> and give it all of the ranges
-specified in the config file.
+If you want to delete all of the nodes that xcatsetup created, and start over, use the B<--yesreallydeletenodes> option.
 
 =head2 Restrictions
 
@@ -130,33 +129,40 @@ The hostnames specified must sort correctly.  I.e. use node01-node80, instead of
 
   xcat-lpars:
    num-lpars-per-cec = 8
+   # If you set these, then do not set the corresponding attributes in the other node stanzas below.
+   # Except you still need to set xcat-service-nodes:starting-ip (which is the ethernet adapter)
+   hostname-range = f[1-6]c[01-12]p[1-8]
+   starting-ip = 11.1.1.1
+   aliases = -hf0
+   # ml0 is for aix.  For linux, use bond0 instead.
+   otherinterfaces = -hf1:12.1.1.1,-hf2:13.1.1.1,-hf3:14.1.1.1,-ml0:15.1.1.1
 
   xcat-service-nodes:
    num-service-nodes-per-bb = 2
    # which cecs within the bldg block that the SNs are located in
    cec-positions-in-bb = 1,20
    # this is for the ethernet NIC on each SN
-   hostname-range = sn1-sn6
-   starting-ip = 10.200.1.1
+   #hostname-range = sn1-sn6
+   starting-ip = 16.1.1.1
    # this value is the same format as the hosts.otherinterfaces attribute except 
    # the IP addresses are starting IP addresses
-   otherinterfaces = -hf0:10.10.1.1,-hf1:10.11.1.1,-hf2:10.12.1.1,-hf3:10.13.1.1,-ml0:10.14.1.1
+   #otherinterfaces = -hf0:10.10.1.1,-hf1:10.11.1.1,-hf2:10.12.1.1,-hf3:10.13.1.1,-ml0:10.14.1.1
 
   xcat-storage-nodes:
    num-storage-nodes-per-bb = 3
    # which cecs within the bldg block that the storage nodes are located in
    cec-positions-in-bb = 5,10,15
-   hostname-range = stor01-stor09
-   starting-ip = 10.20.1.1
-   aliases = -hf0
-   otherinterfaces = -hf1:10.21.1.1,-hf2:10.22.1.1,-hf3:10.23.1.1,-ml0:10.24.1.1
+   #hostname-range = stor01-stor09
+   #starting-ip = 10.20.1.1
+   #aliases = -hf0
+   #otherinterfaces = -hf1:10.21.1.1,-hf2:10.22.1.1,-hf3:10.23.1.1,-ml0:10.24.1.1
 
   xcat-compute-nodes:
-   hostname-range = n001-n465
-   starting-ip = 10.30.1.1
-   aliases = -hf0
+   #hostname-range = n001-n465
+   #starting-ip = 10.30.1.1
+   #aliases = -hf0
    # ml0 is for aix.  For linux, use bond0 instead.
-   otherinterfaces = -hf1:10.31.1.1,-hf2:10.32.1.1,-hf3:10.33.1.1,-ml0:10.34.1.1
+   #otherinterfaces = -hf1:10.31.1.1,-hf2:10.32.1.1,-hf3:10.33.1.1,-ml0:10.34.1.1
 
 =head2 VPD File for Frames
 

@@ -247,6 +247,24 @@ sub processArgs
 
         # return 2;
     }
+    
+	# Initialize some global arrays in case this is being called twice in the same process.
+	# Currently only doing this when --nocache is specified, but i think it should be done all of the time.
+	if ($::opt_c) {
+		%::CLIATTRS = ();
+		%::FILEATTRS = ();
+		%::FINALATTRS = ();
+		%::objfilehash = ();
+		%::WhereHash = ();
+		@::AttrList = ();
+		@::clobjtypes = ();
+		@::fileobjtypes = ();
+		@::clobjnames = ();
+		@::fileobjnames = ();
+		@::objfilelist = ();
+		@::allobjnames = ();
+		@::noderange = ();
+	}
 
     #  opt_x not yet supported
     if ($::opt_x)
