@@ -37,7 +37,7 @@ my @output = xCAT::Utils->runcmd("tabdump", 0);
 if ($::RUNCMD_RC != 0)
 {    # error
     xCAT::MsgUtils->message("E",
-                            "Error running tabdump to get list of tables\n");
+                            "Error running tabdump to get list of tables");
     exit 1;
 }
 foreach my $table (@output)
@@ -46,10 +46,10 @@ foreach my $table (@output)
     my @errout = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {    # error
-        xCAT::MsgUtils->message("E", "Error running $cmd, @errout\n");
+        xCAT::MsgUtils->message("E", "Error running $cmd, @errout");
     } else {
       if ($::DUMPVERBOSE) {
-        xCAT::MsgUtils->message("I", "Dumping $table\n");
+        xCAT::MsgUtils->message("I", "Dumping $table");
       }
     }
 
@@ -70,7 +70,7 @@ sub parse_args
 {
     my $msg;
     my  $usagemsg =
-          " dumpxCATdb -h \n dumpxCATdb -v \n dumpxCATdb [-V] <-p> [path to dump directory]\n";
+          " dumpxCATdb -h \n dumpxCATdb -v \n dumpxCATdb [-V] <-p> [path to dump directory]";
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
@@ -100,12 +100,12 @@ sub parse_args
     }
     if (!($::PATH))
     {
-        my $msg = " Requires -p with path to directory to hold db files.\n";
+        my $msg = " Requires -p with path to directory to hold db files.";
         xCAT::MsgUtils->message("E", $msg);
         exit 1;
     }
 	if (!( -e $::PATH)) {
-        my $msg = " Input path must exist \n";
+        my $msg = " Input path must exist";
         xCAT::MsgUtils->message("E", $msg);
         exit 1;
 	}
