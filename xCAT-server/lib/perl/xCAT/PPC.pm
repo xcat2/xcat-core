@@ -78,6 +78,8 @@ my %modules = (
         rflash    => { hmc    => "xCAT::PPCrflash",
                        fsp    => "xCAT::FSPflash",
                        bpa    => "xCAT::FSPflash",
+                       cec    => "xCAT::FSPflash",
+                       frame  => "xCAT::FSPflash",
 	              },
         mkhwconn  => { hmc    => "xCAT::PPCconn",
                        fsp    => "xCAT::FSPconn",
@@ -1050,6 +1052,15 @@ sub resolve {
         $att->{type}     = $type;
         $att->{parent}   = exists($att->{parent}) ? $att->{parent} : 0;
         $att->{bpa}      = $att->{parent};
+    }
+    elsif ( $type =~ /^$::NODETYPE_FRAME$/ ) {
+        $att->{pprofile} = 0;
+        $att->{id}       = 0;
+        $att->{bpa}      = 0;
+        $att->{parent}   = 0;
+        $att->{fsp}      = 0;
+        $att->{node}     = $node;
+        $att->{type}     = $type;
     }
     #################################
     # Find MTMS in vpd database 
