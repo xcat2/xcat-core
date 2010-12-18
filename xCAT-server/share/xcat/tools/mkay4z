@@ -1,0 +1,1163 @@
+#!/usr/bin/perl
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
+#-------------------------------------------------------
+
+=head1	mkay4z
+	
+	Description: 	Create an autoyast template for Linux on System z.
+					Only supported on SLES 11 at this time.
+	Author: 	Thang Pham (thang.pham@us.ibm.com)
+	Returns:	Autoyast template
+
+    Usage: 		mkay4z [conf file] [ref template], where
+    				[conf file]: File containing Linux configuration
+    				[ref template]: Reference autoyast template to build off of
+    Example: 	# ./mkay4z conf.txt sles11.tmpl > myautoyast.tmpl
+    
+=cut
+
+#-------------------------------------------------------
+use strict;
+use warnings;
+
+# Check arguments
+if(@ARGV != 2) {
+	print <<END;
+Invalid arguments!
+
+Create an autoyast template for Linux on System z. More information found at
+http://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_zVM#SUSE_Linux_Enterprise_Server_6.
+
+Usage: mkay4z [conf file] [ref template], where
+    	 [conf file]: File containing Linux configuration
+    	 [ref template]: Reference autoyast template to build off of
+Example: # ./mkay4z conf.txt sles11.tmpl > myautoyast.tmpl
+END
+	exit();
+}
+
+# Get conf file and reference template
+my $file = $ARGV[0];
+my $tmpl = $ARGV[1];
+
+# Create parameters to search for
+my @search = ('dasd', 'partitions', 'software');
+# Get parameters from conf file
+my %parms = getParms($file);
+# Set parameters for networking and root password
+$parms{'hosts'} = '[host_address=replace_host_address,name=replace_long_name replace_short_name]';
+$parms{'dns'} = '[hostname=replace_hostname,dhcp_hostname=true,dhcp_resolv=true,domain=replace_domain,nameserver=replace_nameserver]';
+$parms{'interfaces'} = '[device=replace_device,bootproto=dhcp,lladdr=replace_lladdr,chanids=replace_ccw_chan_ids]';
+$parms{'root_password'} = 'replace_root_password';
+
+# Check that all parameters are given
+my $missing = '';
+foreach(@search) {
+	if(!$parms{$_}) {
+		$missing .= "$_ ";
+	}
+}
+
+# If there are missing paramters
+if($missing) {
+	print "Please supply the following parameters in $file: $missing";
+	exit();
+}
+
+# Create <dasd> section
+my $dasdSection = createDasd($parms{'dasd'});
+
+# Create <hosts> section
+my $hostsSection = createHosts($parms{'hosts'});
+
+# Create <dns> section
+my $dnsSection = createDns($parms{'dns'});
+
+# Create <interfaces> section
+my ($interfacesSection, %interface) = createInterfaces($parms{'interfaces'});
+
+# Create <modules> section
+my $dasdModulesSection = createDasdModules($parms{'dasd'});
+my $nicModulesSection = createNicModules(%interface);
+
+# Create <partitions> section
+my $partitionsSection = createPartitions($parms{'partitions'});
+
+# Create software section
+my $softwareSection = createSoftware($parms{'software'});
+
+# Create password section
+my $passwordSection = <<END;
+  <user_password>$parms{'root_password'}</user_password>
+END
+
+# Create routes section
+my $routesSection = createRoutes($parms{'interfaces'});
+
+# Create scripts section
+my $scriptsSection = createScripts(%interface);
+
+# Begin to build template
+
+# Edit template by replacing place holders:
+# 	insert_devices     
+# 	insert_hosts
+# 	insert_dns
+# 	insert_interfaces
+# 	insert_modules
+# 	insert_partitioning_drives
+# 	insert_software_pattern
+# 	insert_root_password
+#   insert_routes
+
+# Read in autoyast template
+open(FILE, $tmpl);
+# Go through each line
+while(my $ln = <FILE>) {
+	# If the line matches the pattern to replace, print replacement
+	if($ln =~ 'insert_devices') {
+		print $dasdSection;
+	} elsif($ln =~ 'insert_hosts') {
+		print $hostsSection;
+	} elsif($ln =~ 'insert_dns') {
+		print $dnsSection;
+	} elsif($ln =~ 'insert_interfaces') {
+		print $interfacesSection;
+	} elsif($ln =~ 'insert_modules') {
+		print $dasdModulesSection;
+		print $nicModulesSection;
+	} elsif($ln =~ 'insert_partitioning_drives') {
+		print $partitionsSection;
+	} elsif($ln =~ 'insert_software_pattern') {
+		print $softwareSection;
+	} elsif($ln =~ 'insert_root_password') {
+		print $passwordSection;
+	} elsif($ln =~ 'insert_routes') {
+		print $routesSection;
+	} elsif($ln =~ '<scripts>') {
+		# Print line
+		$ln =~ s/\r//g;	# Remove return carriage
+		print $ln;
+		
+		print $scriptsSection;
+	} else {
+		# Print line
+		$ln =~ s/\r//g;	# Remove return carriage
+		print $ln;
+	}
+}
+close(FILE);
+
+#-------------------------------------------------------
+
+=head3   getParms
+
+	Description	: Get the parameters in the conf file
+    Arguments	: Conf file
+    Returns		: Hash table of parameters
+    Example		: my %parms = getParms($file);
+    
+=cut
+
+#-------------------------------------------------------
+sub getParms {
+	my ($file) = @_;
+	
+	# Read in file
+	open(FILE, $file);
+	
+	# Go through line in the file
+	my %parms;
+	my $name = '';
+	my $tmp = '';
+	while(my $ln = <FILE>) {
+		# If the line contains ={, get the parameter name
+		if ($ln =~ /={/) {
+			($name, $tmp) = split(/={/, $ln, 2);
+			$parms{$name} = '';
+		}
+		
+		if ($name) {
+			# Append line to parameter
+			$parms{$name} = $parms{$name} . trim($ln);
+		}	
+	}
+	close(FILE);
+	
+	# Remove curly brackets
+	foreach my $key(keys %parms) {
+		$parms{$key} =~ s/(.*=\{|\})//g;
+	}
+	
+	return %parms;
+}
+
+#-------------------------------------------------------
+
+=head3   trim
+
+	Description	: Trim the whitespaces in a string
+    Arguments	: String
+    Returns		: Trimmed string
+    Example		: my $str = trim($str);
+    
+=cut
+
+#-------------------------------------------------------
+sub trim {
+
+	# Get string
+	my ($str) = @_;
+
+	# Trim right
+	$str =~ s/\s*$//;
+	# Trim left
+	$str =~ s/^\s*//;
+
+	return ($str);
+}
+
+#-------------------------------------------------------
+
+=head3   createDasd
+
+	Description	: Create the <dasd> section
+    Arguments	: Dasd attached to server
+    Returns		: <dasd> section
+    Example		: my $section = createDasd($dasd);
+    
+=cut
+
+#-------------------------------------------------------
+sub createDasd {
+	# Get string
+	my ($str) = @_;
+	
+	# Split the dasd
+	my @args = split(/\],/, $str);
+	
+	# Remove square brackets
+	my $i;
+	for($i = 0; $i < @args; $i++) {
+		$args[$i] =~ s/(\[|\])//g;
+		$args[$i] = trim($args[$i]);
+	}
+	
+	# Create hash table for each dasd
+	my %dasd;
+	my @tmp;
+	my $pos;
+	my $length;
+	foreach(@args) {
+		# Split the arguments
+		# e.g. 0.0.0100,dasd_eckd_mod,(/dev/dasda,/dev/dasdb)
+		@tmp = split(/,/,$_,4);
+		$tmp[0] = trim($tmp[0]);
+		$dasd{$tmp[0]}{'channel'} = $tmp[0];
+		$dasd{$tmp[0]}{'modules'} = trim($tmp[1]);
+		$dasd{$tmp[0]}{'dev_name'} = trim($tmp[2]);
+		
+		# Remove brackets
+		$tmp[3] = trim($tmp[3]);
+		$dasd{$tmp[0]}{'partition_info'} = substr($tmp[3], 1, length($tmp[3])-2);
+	}
+	
+	# Create <dasd> section
+	#   <!-- Dasd attached at 0100 --> 
+	#   <listentry>
+	#     <bus>None</bus>
+	#     <bus_hwcfg>none</bus_hwcfg>
+	#     <channel>0.0.0100</channel>
+	#     <format config:type="boolean">true</format>
+	#     <dev_name>/dev/dasda</dev_name>
+	#     <dev_names config:type="list">
+	#       <listentry>/dev/dasda</listentry>
+	#       <listentry>/dev/disk/by-path/ccw-0.0.0100</listentry>
+	#     </dev_names>
+	#     <device>DASD</device>
+	#     <driver>io_subchannel</driver>
+	#     <drivers config:type="list">
+	#       <listentry>
+	#         <active config:type="boolean">true</active>
+	#         <modprobe config:type="boolean">true</modprobe>
+	#           <modules config:type="list">
+	#             <module_entry config:type="list">
+	#             <listentry>dasd_eckd_mod</listentry>
+	#             <listentry></listentry>
+	#           </module_entry>
+	#         </modules>
+	#       </listentry>
+	#     </drivers>
+	#     <formatted config:type="boolean">false</formatted>
+	#     <partition_info>/dev/dasda1 (Linux native)</partition_info>
+	#     <resource>
+	#       <io config:type="list">
+	#         <listentry>
+	#           <active config:type="boolean">true</active>
+	#           <length config:type="integer">1</length>
+	#           <mode>rw</mode>
+	#         </listentry>
+	#       </io>
+	#     </resource>
+	#     <sysfs_bus_id>0.0.0100</sysfs_bus_id>
+	#   </listentry>
+	my $xml = '';
+	
+	my @partInfo;
+	foreach my $id(sort (keys %dasd)){	
+		# If this dasd is to be used for Linux
+		if ($dasd{$id}{'partition_info'} =~ 'Linux native') {
+			$xml .= <<END;
+<listentry>
+  <bus>None</bus>
+  <bus_hwcfg>none</bus_hwcfg>
+  <channel>$id</channel>
+  <format config:type="boolean">true</format>
+  <dev_name>$dasd{$id}{'dev_name'}</dev_name>
+  <dev_names config:type="list">
+    <listentry>$dasd{$id}{'dev_name'}</listentry>
+    <listentry>/dev/disk/by-path/ccw-$id</listentry>
+  </dev_names>
+  <device>DASD</device>
+  <driver>io_subchannel</driver>
+  <drivers config:type="list">
+    <listentry>
+      <active config:type="boolean">true</active>
+      <modprobe config:type="boolean">true</modprobe>
+        <modules config:type="list">
+          <module_entry config:type="list">
+          <listentry>$dasd{$id}{'modules'}</listentry>
+          <listentry></listentry>
+        </module_entry>
+      </modules>
+    </listentry>
+  </drivers>
+  <formatted config:type="boolean">false</formatted>
+  <partition_info>$dasd{$id}{'partition_info'}</partition_info>
+  <resource>
+    <io config:type="list">
+      <listentry>
+        <active config:type="boolean">true</active>
+        <length config:type="integer">1</length>
+        <mode>rw</mode>
+      </listentry>
+    </io>
+  </resource>
+  <sysfs_bus_id>$id</sysfs_bus_id>
+</listentry>
+END
+		} else {
+			$xml .= <<END;
+<listentry>
+  <bus>None</bus>
+  <bus_hwcfg>none</bus_hwcfg>
+  <channel>$id</channel>
+  <dev_name>$dasd{$id}{'dev_name'}</dev_name>
+  <dev_names config:type="list">
+    <listentry>$dasd{$id}{'dev_name'}</listentry>
+    <listentry>/dev/disk/by-path/ccw-$id</listentry>
+  </dev_names>
+  <device>DASD</device>
+  <driver>io_subchannel</driver>
+  <drivers config:type="list">
+    <listentry>
+      <active config:type="boolean">true</active>
+      <modprobe config:type="boolean">true</modprobe>
+        <modules config:type="list">
+          <module_entry config:type="list">
+          <listentry>$dasd{$id}{'modules'}</listentry>
+          <listentry/>
+        </module_entry>
+      </modules>
+    </listentry>
+  </drivers>
+  <formatted config:type="boolean">true</formatted>
+  <partition_info>$dasd{$id}{'partition_info'}</partition_info>
+  <resource>
+    <disk_log_geo config:type="list">
+      <listentry>
+        <heads config:type="integer">16</heads>
+        <sectors config:type="integer">128</sectors>
+      </listentry>
+    </disk_log_geo>
+  </resource>
+  <sysfs_bus_id>$id</sysfs_bus_id>
+</listentry>
+END
+		}				
+	}
+	
+	return $xml;
+}
+
+#-------------------------------------------------------
+
+=head3   createInterfaces
+
+	Description	: Create the <interfaces> section
+    Arguments	: Interfaces attached to server
+    Returns		: <interfaces> section
+    Example		: my $section = createInterfaces($interfaces);
+    
+=cut
+
+#-------------------------------------------------------
+sub createInterfaces {
+	# Get string
+	my ($str) = @_;
+	
+	# Split the interfaces
+	my @device = split(/\],/,$str);
+	
+	# Remove square brackets
+	my $i;
+	for($i = 0; $i < @device; $i++) {
+		$device[$i] =~ s/(\[|\])//g;
+		$device[$i] = trim($device[$i]);
+	}
+	
+	# Create hash table for each interface
+	my %interface;
+	my @args;
+
+	my $id;
+	my $name;
+	my $value;
+	
+	# Loop through each interface
+	foreach(@device) {
+		# Split the arguments
+		# e.g. device=eth0,bootproto=static,broadcast=10.1.100.255,...
+		@args = split(/,/,$_);
+				
+		# Device name should always be the first index
+		$args[0] =~ s/device=//g;
+		$id = trim($args[0]);
+		
+		# Go through each attribute and set hash table
+		for($i = 1; $i < @args; $i++) {
+			# Get the attribute name value pair
+			($name, $value) = split(/=/, $args[$i], 2);
+			$name = trim($name);
+			$value = trim($value);
+
+			$interface{$id}{$name} = $value;
+		}
+	}
+	
+	# Create <interfaces> section
+	# <interface>
+	#   <bootproto>static</bootproto>
+	#   <broadcast>10.1.100.255</broadcast>
+	#   <device>eth0</device>
+	#   <ipaddr>10.1.100.100</ipaddr>
+	#   <name>OSA Express Network card (0.0.0800)</name>
+	#   <netmask>255.255.255.0</netmask>
+	#   <prefixlen>25</prefixlen>
+	#   <startmode>auto</startmode>
+	# </interface>
+	#
+	# The layout is different for DHCP:
+	# <interface>
+	#   <bootproto>dhcp</bootproto>
+	#   <device>eth0</device>
+	#   <lladdr>02:00:00:FF:FF:FF</lladdr>
+	#   <startmode>auto</startmode>
+	#   <usercontrol>no</usercontrol>
+	# </interface>
+	my $xml = '';
+	foreach my $id(keys %interface){
+		# Create static interface
+		if($interface{$id}{'bootproto'} eq 'static') {
+			$xml .= <<END;	
+<interface>
+  <bootproto>$interface{$id}{'bootproto'}</bootproto>
+  <broadcast>$interface{$id}{'broadcast'}</broadcast>
+  <device>$id</device>
+  <ipaddr>$interface{$id}{'ipaddr'}</ipaddr>
+  <name>$interface{$id}{'name'}</name>
+  <netmask>$interface{$id}{'netmask'}</netmask>
+  <prefixlen>25</prefixlen>
+  <startmode>auto</startmode>
+</interface>
+END
+		}
+		
+		# Create DHCP interface
+		else {
+			$xml .= <<END;
+<interface>
+  <bootproto>$interface{$id}{'bootproto'}</bootproto>
+  <device>$id</device>
+  <lladdr>$interface{$id}{'lladdr'}</lladdr>
+  <startmode>auto</startmode>
+  <usercontrol>no</usercontrol>
+</interface>
+END
+		}
+	}
+	
+	return ($xml, %interface);
+}
+
+#-------------------------------------------------------
+
+=head3   createPartitions
+
+	Description	: Create the <partitions> section
+    Arguments	: Partitions to create on server
+    Returns		: <partitions> section
+    Example		: my $section = createPartitions($partitions);
+    
+=cut
+
+#-------------------------------------------------------
+sub createPartitions {
+	# Get string
+	my ($str) = @_;
+	
+	# Split the interfaces
+	my @device = split(/\],/,$str);
+	
+	# Remove square brackets
+	my $i;
+	for($i = 0; $i < @device; $i++) {
+		$device[$i] =~ s/(\[|\])//g;
+		$device[$i] = trim($device[$i]);
+	}
+	
+	# Create hash table for each partitions
+	my %partitions;
+	my @args;
+	my $id;
+	
+	# Loop through each partitions
+	foreach(@device) {
+		# Split the arguments
+		# e.g. device=/dev/dasda,filesystem=ext3,(mount=/;size=4G),(lvm_group=VG;size=max)
+		# device=/dev/VG,(lv_name=LV_home;filesystenm=ext3;mount=/home;size=3G),(lv_name=LV_opt;filesystem=ext3;mount=/opt;size=3G)
+		@args = split(/,/,$_,2);
+				
+		# Device name should always be the first index
+		$args[0] =~ s/device=//g;
+		$id = trim($args[0]);
+				
+		# Partition setup should always be the second index
+		$partitions{$id}{'partition'} = trim($args[1]);
+	}
+	
+	# Create <partitions> section
+	# <drive>
+    #   <device>/dev/dasda</device>
+    #   <partitions config:type="list">
+    #     <partition>
+    #       <create config:type="boolean">true</create>
+    #       <filesystem config:type="symbol">ext3</filesystem>
+    #       <format config:type="boolean">true</format>
+    #       <mount>/</mount>
+    #       <mountby config:type="symbol">path</mountby>
+    #       <partition_id config:type="integer">131</partition_id>
+    #       <partition_nr config:type="integer">1</partition_nr>
+    #       <partition_type>primary</partition_type>
+    #       <size>max</size>
+    #     </partition>
+    #   </partitions>
+    #   <use>all</use>
+    # </drive>
+    #
+    # The layout is different for LVM:
+	# <drive>
+	#   <device>/dev/dasdb</device>
+	#   <initialize config:type="boolean">true</initialize>
+	#   <partitions config:type="list">
+	#     <partition>
+	#       <create config:type="boolean">true</create>
+	#       <crypt_fs config:type="boolean">false</crypt_fs>
+	#       <filesystem config:type="symbol">ext3</filesystem>
+	#       <format config:type="boolean">false</format>
+	#       <loop_fs config:type="boolean">false</loop_fs>
+	#       <lvm_group>VG</lvm_group>
+	#       <mountby config:type="symbol">path</mountby>
+	#       <resize config:type="boolean">false</resize>
+	#       <size>max</size>
+	#     </partition>
+	#   </partitions>
+	#   <use>all</use>
+	# </drive>
+	my $xml = '';
+	my %layoutAttr;
+	my @layout;
+	
+	my @attrs;
+	my $name;
+	my $value;
+	
+	# Go through each partition	
+	foreach my $id(sort (keys %partitions)){
+		# Split partition layout
+		@layout = split(/,/, $partitions{$id}{'partition'});
+		%layoutAttr = ();
+		
+		# Go through each layout		
+		for($i = 0; $i < @layout; $i++) {
+			# Remove parenthesis
+			$layout[$i] =~ s/(\(|\))//g;
+			$layout[$i] = trim($layout[$i]);
+			
+			# Split layout attributes
+			@attrs = split(/;/, $layout[$i]);
+			foreach(@attrs) {
+				($name, $value) = split(/=/, $_, 2);
+				$name = trim($name);
+				$value = trim($value);
+				$layoutAttr{$i}{$name} = $value;
+			}
+		}
+		
+		# Create <drive> head
+		$xml .= <<END;
+<drive>
+  <device>$id</device>
+  <partitions config:type="list">
+END
+
+		# Go through each layout and create <partition> section(s)
+		my $isLvm;
+		foreach my $p(keys %layoutAttr){
+			$isLvm = 0;
+			
+			# If this partition is an LVM group
+			if($layoutAttr{$p}{'lvm_group'}) {
+				$xml .= <<END;
+    <partition>
+      <create config:type="boolean">true</create>
+      <crypt_fs config:type="boolean">false</crypt_fs>
+      <filesystem config:type="symbol">$layoutAttr{$p}{'filesystem'}</filesystem>
+      <format config:type="boolean">false</format>
+      <loop_fs config:type="boolean">false</loop_fs>
+      <lvm_group>$layoutAttr{$p}{'lvm_group'}</lvm_group>
+      <mountby config:type="symbol">path</mountby>
+      <partition_id config:type="integer">142</partition_id>
+      <partition_nr config:type="integer">1</partition_nr>
+      <resize config:type="boolean">false</resize>
+      <size>$layoutAttr{$p}{'size'}</size>
+    </partition>
+END
+			}
+			
+			# If this partition is an LVM volume
+			elsif($layoutAttr{$p}{'lv_name'}) {
+				$isLvm = 1;
+				$xml .= <<END;
+    <partition>
+      <create config:type="boolean">true</create>
+      <crypt_fs config:type="boolean">false</crypt_fs>
+      <filesystem config:type="symbol">$layoutAttr{$p}{'filesystem'}</filesystem>
+      <format config:type="boolean">true</format>
+      <fstopt>acl,user_xattr</fstopt>
+      <lv_name>$layoutAttr{$p}{'lv_name'}</lv_name>
+      <mount>$layoutAttr{$p}{'mount'}</mount>
+      <mountby config:type="symbol">path</mountby>
+      <partition_id config:type="integer">131</partition_id>
+      <raid_options/>
+      <resize config:type="boolean">false</resize>
+      <size>$layoutAttr{$p}{'size'}</size>
+    </partition>
+END
+			}
+			
+			# Not an LVM
+			else {
+				$xml .= <<END;
+    <partition>
+      <create config:type="boolean">true</create>
+      <filesystem config:type="symbol">$layoutAttr{$p}{'filesystem'}</filesystem>
+      <format config:type="boolean">true</format>
+      <mount>$layoutAttr{$p}{'mount'}</mount>
+      <mountby config:type="symbol">path</mountby>
+      <partition_id config:type="integer">131</partition_id>
+      <partition_nr config:type="integer">1</partition_nr>
+      <partition_type>primary</partition_type>
+      <size>$layoutAttr{$p}{'size'}</size>
+    </partition>	
+END
+			}
+		}
+		
+		# Create <drive> tail
+		if(!$isLvm) {
+		$xml .= <<END;
+  </partitions>
+  <use>all</use>
+</drive>
+END
+		} else {
+		$xml .= <<END;
+  </partitions>
+  <pesize>4M</pesize>
+  <type config:type="symbol">CT_LVM</type>
+  <use>all</use>
+</drive>
+END
+		}
+	}
+
+	return $xml;
+}
+
+#-------------------------------------------------------
+
+=head3   createHosts
+
+	Description	: Create the <hosts> section
+    Arguments	: Hosts to be created on server
+    Returns		: <hosts> section
+    Example		: my $section = createHosts($hosts);
+    
+=cut
+
+#-------------------------------------------------------
+sub createHosts {
+		# Get string
+	my ($str) = @_;
+
+	# Split the hosts
+	my @hosts = split(/\],/,$str);
+	
+	# Remove square brackets
+	my $i;
+	for($i = 0; $i < @hosts; $i++) {
+		$hosts[$i] =~ s/(\[|\])//g;
+		$hosts[$i] = trim($hosts[$i]);
+	}
+	
+	# Create hash table for each host
+	my %host;
+	my @args;
+	
+	my $id;
+	my $name;
+	my $value;
+	
+	# Loop through each host
+	foreach(@hosts) {
+		# Split the arguments
+		# e.g. host_address=10.1.100.100,name=gpok100.endicott.ibm.com gpok100
+		@args = split(/,/,$_);
+				
+		# Host address should always be the first index
+		$args[0] =~ s/host_address=//g;
+		$id = trim($args[0]);
+		
+		# Go through each attribute and set hash table
+		for($i = 1; $i < @args; $i++) {
+			# Get the attribute name value pair
+			($name, $value) = split(/=/, $args[$i], 2);
+			$name = trim($name);
+			$value = trim($value);
+
+			$host{$id}{$name} = $value;
+		}
+	}
+	
+	# Create <hosts> section
+	# e.g.
+    # <hosts_entry>
+    #   <host_address>10.1.100.100</host_address>
+    #   <names config:type="list">
+    #     <name>gpok100.endicott.ibm.com gpok100</name>
+    #   </names>
+    # </hosts_entry>
+	my $xml = '';
+	
+	# Create standard localhost entry
+	$xml .= <<END;
+  <hosts_entry>
+    <host_address>127.0.0.1</host_address>
+    <names config:type="list">
+      <name>localhost</name>
+    </names>
+  </hosts_entry>
+END
+	
+	# Create host entries
+	foreach my $id(keys %host){
+		$xml .= <<END;
+  <hosts_entry>
+    <host_address>$id</host_address>
+    <names config:type="list">
+      <name>$host{$id}{'name'}</name>
+    </names>
+  </hosts_entry>
+END
+	}
+	
+	return $xml;
+}
+
+#-------------------------------------------------------
+
+=head3   createDns
+
+	Description	: Create the <dns> section
+    Arguments	: DNS to use
+    Returns		: <dns> section
+    Example		: my $section = createDns($dns);
+    
+=cut
+
+#-------------------------------------------------------
+sub createDns {
+	# Get string
+	my ($str) = @_;
+
+	# Split the hosts
+	my @dns = split(/\],/,$str);
+	
+	# Remove square brackets
+	my $i;
+	for($i = 0; $i < @dns; $i++) {
+		$dns[$i] =~ s/(\[|\])//g;
+		$dns[$i] = trim($dns[$i]);
+	}
+	
+	# Create hash table for each DNS
+	my %dn;
+	my @args;
+	
+	my $id;
+	my $name;
+	my $value;
+	
+	# Loop through each host
+	foreach(@dns) {
+		# Split the arguments
+		# e.g. hostname=gpok100,domain=endicott.ibm.com,nameserver=10.1.100.1
+		@args = split(/,/,$_);
+				
+		# Hostname should always be the first index
+		$args[0] =~ s/hostname=//g;
+		$id = trim($args[0]);
+		
+		# Go through each attribute and set hash table
+		for($i = 1; $i < @args; $i++) {
+			# Get the attribute name value pair
+			($name, $value) = split(/=/, $args[$i], 2);
+			$name = trim($name);
+			$value = trim($value);
+
+			$dn{$id}{$name} = $value;
+		}
+	}
+	
+	# Create <dns> section
+	#   <dhcp_hostname config:type="boolean">false</dhcp_hostname>
+    #   <dhcp_resolv config:type="boolean">false</dhcp_resolv>
+    #   <domain>endicott.ibm.com</domain>
+    #   <hostname>gpok100</hostname>
+    #   <nameservers config:type="list">
+    #     <nameserver>10.1.100.100</nameserver>
+    #   </nameservers>
+    my $xml = '';
+	foreach my $id(keys %dn){
+		$xml .= <<END;
+<dhcp_hostname config:type="boolean">$dn{$id}{'dhcp_hostname'}</dhcp_hostname>
+<dhcp_resolv config:type="boolean">$dn{$id}{'dhcp_resolv'}</dhcp_resolv>
+<domain>$dn{$id}{'domain'}</domain>
+<hostname>$id</hostname>
+<nameservers config:type="list">
+  <nameserver>$dn{$id}{'nameserver'}</nameserver>
+</nameservers>
+END
+	}
+
+	return $xml;
+}
+
+#-------------------------------------------------------
+
+=head3   createDasdModules
+
+	Description	: Create the <modules> section for each dasd attached
+    Arguments	: Dasd attached to server
+    Returns		: <modules> section
+    Example		: my $section = createDasdModules($modules);
+    
+=cut
+
+#-------------------------------------------------------
+sub createDasdModules {
+	# Get string
+	my ($str) = @_;
+	
+	# Split the dasd
+	my @args = split(/\],/,$str);
+	
+	# Remove square brackets
+	my $i;
+	for($i = 0; $i < @args; $i++) {
+		$args[$i] =~ s/(\[|\])//g;
+		$args[$i] = trim($args[$i]);
+	}
+	
+	# Create hash table for each dasd
+	my %modules;
+	my @tmp;
+	foreach(@args) {
+		# Split the arguments
+		# e.g. 0.0.0100,dasd_eckd_mod,/dev/dasda,(/dev/dasda1;/dev/dasda2)
+		@tmp = split(/,/,$_,4);
+		$tmp[0] = trim($tmp[0]);
+		$modules{$tmp[0]}{'channel'} = $tmp[0];
+		$modules{$tmp[0]}{'module'} = trim($tmp[1]);
+	}
+	
+	# Create <modules> section
+	# <module_entry>
+	#   <device>dasd-bus-ccw-0.0.0100</device>
+	#   <module>dasd_eckd_mod</module>
+	#   <options></options>
+	# </module_entry>
+
+	my $xml = '';
+	foreach my $id(keys %modules){
+		$xml .= <<END;
+<module_entry>
+  <device>dasd-bus-ccw-$id</device>
+  <module>$modules{$id}{'module'}</module>
+  <options></options>
+</module_entry>
+END
+	}
+
+	return $xml;
+}
+
+#-------------------------------------------------------
+
+=head3   createNicModules
+
+	Description	: Create the <modules> section for each interface attached
+    Arguments	: Hash table of interfaces
+    Returns		: <modules> section
+    Example		: my $section = createNicModules(%interfaces);
+    
+=cut
+
+#-------------------------------------------------------
+sub createNicModules {
+	# Get hash table
+	my (%interface) = @_;
+	
+	# Create <modules> section
+	# <module_entry>
+	#   <ccw_chan_ids>0.0.0800 0.0.0801 0.0.0802</ccw_chan_ids>
+	#   <ccw_chan_mode>FOOBAR</ccw_chan_mode>
+	#   <ccw_chan_num>3</ccw_chan_num>
+	#   <device>eth0</device>
+	#   <module>qeth</module>
+	#   <options/>
+	# </module_entry>
+	my $xml = '';
+    my $script = '';
+	foreach my $id(sort (keys %interface)){
+		$xml .= <<END;
+<module_entry>
+  <ccw_chan_ids>$interface{$id}{'chanids'}</ccw_chan_ids>
+  <ccw_chan_mode>FOOBAR</ccw_chan_mode>
+  <ccw_chan_num>3</ccw_chan_num>
+  <device>$id</device>
+  <module>qeth</module>
+  <options></options>
+</module_entry>
+END
+	}
+	
+	return $xml;
+}
+
+#-------------------------------------------------------
+
+=head3   createSoftware
+
+	Description	: Create the <software> section
+    Arguments	: Software to be installed
+    Returns		: <software> section
+    Example		: my $section = createSoftware($dns);
+    
+=cut
+
+#-------------------------------------------------------
+sub createSoftware {
+	# Get string
+	my ($str) = @_;
+
+	# Split the software
+	# e.g. base,gnome
+	my @software = split(/,/,$str);
+		
+	# Create <software> section
+	# <pattern>Basis-Devel</pattern>
+	# <pattern>Minimal</pattern>
+	# <pattern>base</pattern>
+	# <pattern>documentation</pattern>
+	# <pattern>file_server</pattern>
+	# <pattern>gnome</pattern>
+	# <pattern>print_server</pattern>
+	# <pattern>x11</pattern>
+    my $xml = '';
+	foreach (@software){
+		 $xml .= <<END;
+  <pattern>$_</pattern>
+END
+	}
+
+	return $xml;
+}
+
+#-------------------------------------------------------
+
+=head3   createRoutes
+
+	Description	: Create the <routes> section
+    Arguments	: Routing configuration
+    Returns		: <routes> section
+    Example		: my $section = createRoutes($route);
+    
+=cut
+
+#-------------------------------------------------------
+sub createRoutes {
+	# Get string
+	my ($str) = @_;
+	
+	# Split the interfaces
+	my @device = split(/\],/,$str);
+	
+	# Remove square brackets
+	my $i;
+	for($i = 0; $i < @device; $i++) {
+		$device[$i] =~ s/(\[|\])//g;
+		$device[$i] = trim($device[$i]);
+	}
+	
+	# Create hash table for each interface
+	my %interface;
+	my @args;
+	
+	my $id;
+	my $name;
+	my $value;
+	
+	# Loop through each interface
+	foreach(@device) {
+		# Split the arguments
+		# e.g. device=eth0,bootproto=static,broadcast=10.1.100.255,...
+		@args = split(/,/,$_);
+				
+		# Device name should always be the first index
+		$args[0] =~ s/device=//g;
+		$id = trim($args[0]);
+		
+		# Go through each attribute and set hash table
+		for($i = 1; $i < @args; $i++) {
+			# Get the attribute name value pair
+			($name, $value) = split(/=/, $args[$i], 2);
+			$name = trim($name);
+			$value = trim($value);
+
+			$interface{$id}{$name} = $value;
+		}
+	}
+	
+	# Create <routes> section
+	# <ip_forward config:type="boolean">false</ip_forward>
+	#   <routes config:type="list">
+	#   <route>
+	#     <destination>default</destination>
+	#     <device>eth0</device>
+	#     <gateway>10.1.100.1</gateway>
+	#     <netmask>-</netmask>
+	#   </route>
+	# </routes>
+
+	my $xml = '';
+	my $dest = '';
+	foreach my $id(sort (keys %interface)){
+		if(!$dest) {
+			# The first interface is the default route
+			$dest = 'default';
+		} else {
+			# Get network
+			$dest = substr($interface{$id}{'ipaddr'}, 0, rindex($interface{$id}{'ipaddr'}, '.'));
+			$dest .= ".0";
+		}
+		
+		# Do not set route for DHCP interface
+		if(!($interface{$id}{'bootproto'} eq 'dhcp')) {
+			$xml .= <<END;	
+  <route>
+    <destination>$dest</destination>
+    <device>$id</device>
+    <gateway></gateway>
+    <netmask>$interface{$id}{'netmask'}</netmask>
+  </route>
+END
+		}
+	}
+	
+	return $xml;
+}
+
+#-------------------------------------------------------
+
+=head3   createScripts
+
+	Description	: Create the <scripts> section to configure interfaces
+    Arguments	: Hash table of interfaces to configure with post-scripts
+    Returns		: <scripts> section
+    Example		: my $section = createScripts(%interfaces);
+    
+=cut
+
+#-------------------------------------------------------
+sub createScripts {
+	# Get hash table
+	my (%interface) = @_;
+
+	# Default route is being added by autoyast (bug)
+	# Setting default route in post-script
+    my $xml = '';
+    my $script = '';
+	foreach my $id(sort (keys %interface)){
+		# Set the default route for the firs interface
+		# Do not set default route for DHCP interface
+		if(!$script && !($interface{$id}{'bootproto'} eq 'dhcp')) {
+			$script .= <<END;
+echo "default - 0.0.0.0 $id" > /etc/sysconfig/network/routes
+END
+			last;
+		}
+	}
+	
+	# Create <scripts> section
+	if($script) {
+		$xml .= <<END;
+<post-scripts config:type="list">
+  <script>
+    <filename>post.sh</filename>
+    <interpreter>shell</interpreter>
+    <source>
+<![CDATA[
+#!/bin/sh
+
+$script
+]]>
+    </source>
+  </script>
+</post-scripts>
+END
+	}
+	
+	return $xml;
+}
