@@ -5,7 +5,6 @@
 =head1	mkay4z
 	
 	Description: 	Create an autoyast template for Linux on System z.
-					Only supported on SLES 11 at this time.
 	Author: 	Thang Pham (thang.pham@us.ibm.com)
 	Returns:	Autoyast template
 
