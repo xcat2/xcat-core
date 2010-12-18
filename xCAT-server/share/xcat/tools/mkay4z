@@ -12,7 +12,7 @@
     Usage: 		mkay4z [conf file] [ref template], where
     				[conf file]: File containing Linux configuration
     				[ref template]: Reference autoyast template to build off of
-    Example: 	# ./mkay4z conf.txt sles11.tmpl > myautoyast.tmpl
+    Example: 	# ./mkay4z conf.txt ref.sles11.s390x.tmpl > custom.sles11.s390x.tmpl
     
 =cut
 
@@ -25,13 +25,13 @@ if(@ARGV != 2) {
 	print <<END;
 Invalid arguments!
 
-Create an autoyast template for Linux on System z. More information found at
-http://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_zVM#SUSE_Linux_Enterprise_Server_6.
+Create an autoyast template for Linux on System z. For more information, 
+refer to http://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_zVM#SUSE_Linux_Enterprise_Server_6.
 
 Usage: mkay4z [conf file] [ref template], where
     	 [conf file]: File containing Linux configuration
     	 [ref template]: Reference autoyast template to build off of
-Example: # ./mkay4z conf.txt sles11.tmpl > myautoyast.tmpl
+Example: # ./mkay4z conf.txt ref.sles11.s390x.tmpl > custom.sles11.s390x.tmpl
 END
 	exit();
 }
