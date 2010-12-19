@@ -2783,11 +2783,11 @@ sub defls
                     {
                         if ($#::clobjtypes > 0)
                         {
-                            push (@{$rsp_info->{data}}, "\nObject name: $obj  ($defhash{$obj}{'objtype'})");
+                            push (@{$rsp_info->{data}}, "Object name: $obj  ($defhash{$obj}{'objtype'})");
                         }
                         else
                         {
-                            push (@{$rsp_info->{data}}, "\nObject name: $obj");
+                            push (@{$rsp_info->{data}}, "Object name: $obj");
                         }
                     }
 
