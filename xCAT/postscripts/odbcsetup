@@ -54,7 +54,7 @@ my $msg;
 my $dbname = xCAT::Utils->get_DBName;
 if ($dbname eq "DB2")
 {
-    $msg = "Setting up ODBC for DB2";
+    $msg = "odbcsetup:Setting up ODBC for DB2";
     `logger -t xcat $msg`;
     &setupdb2odbc;
 
@@ -63,14 +63,14 @@ else
 {
     if ($dbname eq "MYSQL")
     {
-        $msg = "Setting up ODBC for MYSQL";
+        $msg = "odbcsetup:Setting up ODBC for MYSQL";
         `logger -t xcat $msg`;
         &setupmysqlodbc;
     }
     else
     {
         $msg =
-          "cfgloc file does not contain MySQL or DB2,  will not setup ODBC.";
+          "odbcsetup:cfgloc file does not contain MySQL or DB2,  will not setup ODBC.";
         `logger -t xcat $msg`;
         exit 1;
     }
@@ -104,12 +104,12 @@ sub setupdb2odbc
     chomp $xcatcfg;
     my ($database, $instance, $password) = split('\|', $xcatcfg);
     $cmd = "$::XCATROOT/bin/db2sqlsetup -o -C";
-    $msg = "$::sdate Running Client ODBC setup. $cmd\n";
+    $msg = "odbcsetup:Running Client ODBC setup. $cmd\n";
     `logger -t xcat $msg`;
 
     $rc = &runcmd($cmd);
 
-    $msg = "$::sdate Client ODBC setup finished.\n";
+    $msg = "odbcsetup: Client ODBC setup finished.\n";
     `logger -t xcat $msg`;
 
     return $rc;
@@ -127,12 +127,12 @@ sub setupmysqlodbc
     my $rc = 0;
     my $cmd;
     $cmd = "$::XCATROOT/bin/mysqlsetup -o";
-    $msg = "$::sdate Running Client ODBC setup. $cmd\n";
+    $msg = "odbcsetup: Running Client ODBC setup. $cmd\n";
     `logger -t xcat $msg`;
 
     $rc = &runcmd($cmd);
 
-    $msg = "$::sdate Client ODBC setup finished.\n";
+    $msg = "odbcsetup: Client ODBC setup finished.\n";
     `logger -t xcat $msg`;
 
     return $rc;
@@ -159,7 +159,7 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            my $msg = "$cmd returned rc=$rc $::outref\n";
+            my $msg = "odbcsetup:$cmd returned rc=$rc $::outref\n";
             `logger -t xcat $msg`;
             return 1;
         }
