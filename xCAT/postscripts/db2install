@@ -109,7 +109,7 @@ if (!(-e ($db2install)))
         $rc = &installdb2code;
         if ($rc != 0)
         {
-            $msg = "Error installing DB2. Cannot continue. \n";
+            $msg = "db2install:Error installing DB2. Cannot continue. \n";
             `logger -t xcat $msg`;
             &unmountdb2code;
             exit(1);
@@ -122,14 +122,14 @@ if (!(-e ($db2install)))
     else
     {
         $msg =
-          "Cannot mount the site.db2installloc directory to get the db2 code to install. Setup cannot continue.\n";
+          "db2install:Cannot mount the site.db2installloc directory to get the db2 code to install. Setup cannot continue.\n";
         `logger -t xcat $msg`;
         exit(1);
     }
 }
 else
 {
-    $msg = "DB2 is already installed. Will skip installation. \n";
+    $msg = "db2install:DB2 is already installed. Will skip installation. \n";
     `logger -t xcat $msg`;
 }
 
@@ -139,7 +139,7 @@ $rc = &getcfgloc;
 if ($rc != 0)
 {    # could not get the cfgloc file, cannot continue
     $msg =
-      "Cannot get the cfgloc file from the MN.  Client setup cannot continue. \n";
+      "db2install:Cannot get the cfgloc file from the MN.  Client setup cannot continue. \n";
     `logger -t xcat $msg`;
     exit 1;
 }
@@ -172,7 +172,7 @@ sub runcmd
         $rc = $? >> 8;
         if ($rc > 0)
         {
-            my $msg = "$cmd returned rc=$rc $::outref\n";
+            my $msg = "db2install:$cmd returned rc=$rc $::outref\n";
             `logger -t xcat $msg`;
             return 1;
         }
@@ -197,7 +197,7 @@ sub getcfgloc
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
         {
-            $msg = "$::sdate db2install: $cmd failed.\n";
+            $msg = "db2install: $cmd failed.\n";
             `logger -t xcat $msg`;
             return 1;
         }
@@ -220,7 +220,7 @@ sub getcfgloc
         }
         else
         {
-            $msg = "$::sdate db2install: Could not get cfgloc file.\n";
+            $msg = "db2install: Could not get cfgloc file.\n";
             `logger -t xcat $msg`;
             return 1;
         }
@@ -240,7 +240,7 @@ sub getcfgloc
         }
         else
         {
-            $msg = "$::sdate db2install: cfgloc file not for DB2.\n";
+            $msg = "db2install: cfgloc file not for DB2.\n";
             `logger -t xcat $msg`;
             return 1;
         }
@@ -353,14 +353,14 @@ sub installdb2code
 
     if (!(-e $installcode))
     {
-        $msg = "$installcode does not exist. Cannot install DB2 code.\n";
+        $msg = "db2install:$installcode does not exist. Cannot install DB2 code.\n";
         `logger -t xcat $msg`;
         exit 1;
     }
 
     my $expect_log = "/tmp/xcatexpect.log";
     $msg =
-      "$::sdate Starting DB2 install. Monitor progress in $expect_log on the node. \n";
+      "db2install:Starting DB2 install. Monitor progress in $expect_log on the node. \n";
     `logger -t xcat $msg`;
     my $db2sql;
     my $timeout = 1000;    #sets Expect default timeout, 0 accepts immediately
@@ -417,7 +417,7 @@ sub installdb2code
     $spawncmd = "$installcode";
     unless ($db2sql->spawn($spawncmd))
     {
-        $msg = "Unable to run $spawncmd to create database.\n";
+        $msg = "db2install:Unable to run $spawncmd to create database.\n";
         `logger -t xcat $msg`;
         exit 1;
 
@@ -454,12 +454,12 @@ sub installdb2code
     {
         my $errmsg = $result[1];
         $db2sql->soft_close();
-        $msg = "Installing DB2 results = $errmsg.\n";
+        $msg = "db2install:Installing DB2 results = $errmsg.\n";
         `logger -t xcat $msg`;
 
     }
     $db2sql->soft_close();
-    $msg = "$::sdate Ending DB2 install.\n";
+    $msg = "db2install:Ending DB2 install.\n";
     `logger -t xcat $msg`;
     return $rc;
 
@@ -515,12 +515,12 @@ sub rundb2sqlsetup
     my ($database, $instance, $password) = split('\|', $xcatcfg);
     $cmd =
       "XCATDB2SERVER=$::MN XCATDB2PW=$password $::XCATROOT/bin/db2sqlsetup -i -C";
-    $msg = "$::sdate Running Client setup. $::XCATROOT/bin/db2sqlsetup -i -C\n";
+    $msg = "db2install:Running Client setup. $::XCATROOT/bin/db2sqlsetup -i -C\n";
     `logger -t xcat $msg`;
 
     $rc = &runcmd($cmd);
 
-    $msg = "$::sdate Client setup finished.\n";
+    $msg = "db2install: Client setup finished.\n";
     `logger -t xcat $msg`;
 
     return $rc;
