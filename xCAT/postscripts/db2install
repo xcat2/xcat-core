@@ -122,7 +122,7 @@ if (!(-e ($db2install)))
     else
     {
         $msg =
-          "Cannot mount the site.db2installloc directory to get to the\n db2 code to install. Setup cannot continue.\n";
+          "Cannot mount the site.db2installloc directory to get the db2 code to install. Setup cannot continue.\n";
         `logger -t xcat $msg`;
         exit(1);
     }
@@ -133,7 +133,7 @@ else
     `logger -t xcat $msg`;
 }
 
-# get the cfgloc file, should be in /etc/xcat/cfgloc.db2 from xcatserver
+# get the cfgloc file,if linux should be in /etc/xcat/cfgloc.db2 from xcatserver
 # postscript
 $rc = &getcfgloc;
 if ($rc != 0)

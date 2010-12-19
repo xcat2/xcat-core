@@ -25,7 +25,7 @@ export USEOPENSSLFORXCAT
     else
       mv /etc/xcat/cfgloc /etc/xcat/cfgloc.db2
     fi
-   chmod 600 /etc/xcat/cfgloc
+   chmod 600 /etc/xcat/cfgloc*
    # do not assume working directory, use the full path
    cp /xcatpost/_xcat/ca.pem /etc/xcat/cert/ca.pem
    kill -9 $CREDPID
