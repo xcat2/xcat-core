@@ -8,9 +8,9 @@
 	Author: 	Thang Pham (thang.pham@us.ibm.com)
 	Returns:	Autoyast template
 
-    Usage: 		mkay4z [conf file] [ref template], where
-    				[conf file]: File containing Linux configuration
-    				[ref template]: Reference autoyast template to build off of
+    Usage: 		mkay4z [conf_file] [ref_template], where
+    				[conf_file]: File containing Linux configuration
+    				[ref_template]: Reference autoyast template to build off of
     Example: 	# ./mkay4z conf.txt ref.sles11.s390x.tmpl > custom.sles11.s390x.tmpl
     
 =cut
