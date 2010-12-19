@@ -304,7 +304,7 @@ function loadNodes4Ganglia(data) {
 	var sorted = new Array();
 	for ( var key in headers) {
 		// Do not put comments and status in
-		if (key != 'usercomment' && key.indexOf('status') < 0) {
+		if (key != 'usercomment' && key != 'status' && key.indexOf('statustime') < 0) {
 			sorted.push(key);
 		}
 	}
@@ -313,8 +313,8 @@ function loadNodes4Ganglia(data) {
 	// Add column for check box, node, ping, and power
 	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 
 		'node', 
-		'<a>status</a><img src="images/loader.gif"></img>',
-		'<a>power</a><img src="images/loader.gif" style="display: none;"></img>', 
+		'<span><a>status</a></span><img src="images/loader.gif"></img>',
+		'<span><a>power</a></span><img src="images/loader.gif" style="display: none;"></img>', 
 		'<a>ganglia</a><img src="images/loader.gif"></img>');
 
 	// Create a datatable
@@ -341,7 +341,7 @@ function loadNodes4Ganglia(data) {
 			var key = sorted[i];
 			
 			// Do not put comments and status in
-			if (key != 'usercomment' && key.indexOf('status') < 0) {
+			if (key != 'usercomment' && key != 'status' && key.indexOf('statustime') < 0) {
     			var val = attrs[node][key];
     			if (val) {
     				row.push(val);
@@ -468,6 +468,30 @@ function loadNodes4Ganglia(data) {
 
 	gangliaCol.bind('click', function(event) {
 		refreshGangliaStatus(group);
+	});
+	
+	// Create tooltip for status 
+	var pingTip = createStatusToolTip();
+	pingCol.find('span').append(pingTip);
+	pingCol.find('span a').tooltip({
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",	
+		opacity: 0.8,
+		relative: true,
+		predelay: 800
+	});
+	
+	// Create tooltip for power 
+	var powerTip = createPowerToolTip();
+	powerCol.find('span').append(powerTip);
+	powerCol.find('span a').tooltip({
+		position: "center right",
+		offset: [-2, 10],
+		effect: "fade",	
+		opacity: 0.8,
+		relative: true,
+		predelay: 800
 	});
 
 	/**
