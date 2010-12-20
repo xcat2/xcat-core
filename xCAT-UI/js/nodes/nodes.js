@@ -682,10 +682,10 @@ function loadNodes(data) {
 	$('#nodesDataTable tbody tr td:nth-child(5)').css('text-align', 'center');
 	
 	// Instead refresh the node status and power status
-	pingCol.bind('click', function(event) {
+	pingCol.find('span a').bind('click', function(event) {
 		refreshNodeStatus(group);
 	});
-	powerCol.bind('click', function(event) {
+	powerCol.find('span a').bind('click', function(event) {
 		refreshPowerStatus(group);
 	});
 	
@@ -1972,10 +1972,40 @@ function createCommentsToolTip(comment) {
  */
 function createStatusToolTip() {
 	// Create tooltip container
-	var toolTip = $('<div class="tooltip">Click here to refresh the node status</div>').css({
-		'height': '50px',
+	var toolTip = $('<div class="tooltip"></div>').css({
 		'width': '150px'
 	});
+	
+	// Create info text
+	var info = $('<p></p>');
+	info.append('Click here to refresh the node status. To configure the xCAT monitor, ');
+	
+	// Create link to turn on xCAT monitoring
+	var monitorLnk = $('<a>click here</a>').css({
+		'color': '#58ACFA',
+		'font-size': '10px'
+	});
+	
+	// Open dialog to configure xCAT monitor
+	monitorLnk.bind('click', function(){
+		// Check if xCAT monitor is enabled
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'monls',
+				tgt : '',
+				args : 'xcatmon',
+				msg : ''
+			},
+
+			success : openConfXcatMon
+		});
+	});
+	
+	info.append(monitorLnk);
+	toolTip.append(info);
+	
 	return toolTip;
 }
 
@@ -1987,10 +2017,99 @@ function createStatusToolTip() {
 function createPowerToolTip() {
 	// Create tooltip container
 	var toolTip = $('<div class="tooltip">Click here to refresh the power status</div>').css({
-		'height': '50px',
 		'width': '150px'
 	});	
 	return toolTip;
+}
+
+/**
+ * Open dialog to configure xCAT monitor
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function openConfXcatMon(data) {
+	// Create info bar
+	var info = createInfoBar('Configure the xCAT monitor. Select to enable or disable the monitor below.');
+	var dialog = $('<div></div>');
+	dialog.append(info);
+	
+	// Create status area
+	var statusArea = $('<div></div>').css('padding-top', '10px');
+	var label = $('<label>Status:</label>');
+	statusArea.append(label);
+	
+	// Get xCAT monitor status
+	var status = data.rsp[0];
+	var buttons;
+	// If xCAT monitor is disabled
+	if (status.indexOf('not-monitored') > -1) {
+		status = $('<span>Disabled</span>').css('padding', '0px 5px');
+		statusArea.append(status);
+		
+		// Create enable and cancel buttons
+		buttons = {
+			"Enable": function(){
+				// Enable xCAT monitor
+    			$.ajax({
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'monstart',
+    					tgt : '',
+    					args : 'xcatmon',
+    					msg : ''
+    				},
+    
+    				success : function(data){
+    					openDialog('info', data.rsp[0]);
+    				}
+    			});
+				$(this).dialog("close");
+			},
+			"Cancel": function(){ 
+				$(this).dialog("close");
+			}
+		};
+	} else {
+		status = $('<span>Enabled</span>').css('padding', '0px 5px');
+		statusArea.append(status);
+		
+		// Create disable and cancel buttons
+		buttons = {
+			"Disable": function(){
+				// Disable xCAT monitor
+    			$.ajax({
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'monstop',
+    					tgt : '',
+    					args : 'xcatmon',
+    					msg : ''
+    				},
+    
+    				success : function(data){
+    					openDialog('info', data.rsp[0]);
+    				}
+    			});
+				$(this).dialog("close");
+			},
+			"Cancel": function(){ 
+				$(this).dialog("close");
+			}
+		};
+	}
+	
+	dialog.append(statusArea);
+	
+	// Open dialog
+	dialog.dialog({
+		modal: true,
+		width: 500,
+		buttons: buttons
+	});
 }
 
 /**

@@ -458,11 +458,11 @@ function loadNodes4Ganglia(data) {
 	$('#nodesDataTable tbody tr td:nth-child(5)').css(style);
 
 	// Instead refresh the ping status and power status
-	pingCol.bind('click', function(event) {
+	pingCol.find('span a').bind('click', function(event) {
 		refreshNodeStatus(group);
 	});
 
-	powerCol.bind('click', function(event) {
+	powerCol.find('span a').bind('click', function(event) {
 		refreshPowerStatus(group);
 	});
 
