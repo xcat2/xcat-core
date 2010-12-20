@@ -69,20 +69,7 @@ sub mkhwconn_parse_args
     {
         return( usage('Flags -P can only be used when flag -p is specified.'));
     }
-
-    if( ! exists $opt{T} )
-    {
-        return( usage('Missing -T option. The value can be lpar or fnm.'));
-    }
-    
-    if(  $opt{T} eq "lpar") {
-        $opt{T} = 0;   
-    } elsif($opt{T} eq "fnm") {
-        $opt{T} = 1;   
-    } else {
-        return( usage('Wrong value of  -T option. The value can be lpar or fnm.'));
-    }
-    
+   
     ##########################################
     # Check if CECs are controlled by a frame
     ##########################################
@@ -101,6 +88,9 @@ sub mkhwconn_parse_args
     {
         my $nodetype_hash    = $nodetypetab->getNodeAttribs( $opt{p},[qw(nodetype)]);
         my $nodetype    = $nodetype_hash->{nodetype};
+        if( !defined($nodetype) ) {
+            return(usage("Something wrong with the specified HMC (-p Option). The HMC type doesn't exist."));
+        }
         if ( $nodetype eq 'hmc' )
         {
     	    $request->{ 'hwtype'} = 'hmc';
@@ -186,6 +176,20 @@ sub mkhwconn_parse_args
     # Set HW type to 'hmc' anyway, so that this command will not going to 
     # PPCfsp.pm
     # $request->{ 'hwtype'} = 'hmc';
+
+    if( ! exists $opt{T} )
+    {
+        return( usage('Missing -T option. The value can be lpar or fnm.'));
+    }
+    
+    if(  $opt{T} eq "lpar") {
+        $opt{T} = 0;   
+    } elsif($opt{T} eq "fnm") {
+        $opt{T} = 1;   
+    } else {
+        return( usage('Wrong value of  -T option. The value can be lpar or fnm.'));
+    }
+ 
     $request->{method} = 'mkhwconn';
     return( \%opt);
 }
