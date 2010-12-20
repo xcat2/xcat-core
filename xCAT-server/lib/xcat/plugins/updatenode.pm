@@ -1369,6 +1369,7 @@ sub doAIXcopy
     my $images  =
       $nodetab->getNodesAttribs(\@nodelist, ['node', 'provmethod', 'profile']);
     my @imagenames;
+    my @noimage;
     foreach my $node (@nodelist)
     {
         my $imgname;
@@ -1380,13 +1381,24 @@ sub doAIXcopy
         {
             $imgname = $images->{$node}->[0]->{profile};
         }
-        if (!grep(/^$imgname$/, @imagenames))
+
+        if(!$imgname) {
+            push @noimage, $node;
+        } elsif (!grep(/^$imgname$/, @imagenames))
         {
             push @imagenames, $imgname;
         }
         $nodeupdateinfo{$node}{imagename} = $imgname;
     }
     $nodetab->close;
+
+    if (@noimage) {
+        my $rsp;
+        my $allnodes = join(',', @noimage);
+        push @{$rsp->{data}}, "No osimage specified for the following nodes: $allnodes. You can try to run the nimnodeset command or set the profile|provmethod attributes manually.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
 
     my $osimageonly = 0;
     if ((!$attrvals{installp_bundle} && !$attrvals{otherpkgs}) && !$::CMDLINE)
