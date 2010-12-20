@@ -8,7 +8,13 @@ B<lshwconn> [B<-h>| B<--help>]
 
 B<lshwconn> [B<-v>| B<--version>]
 
+=head2 PPC (with HMC) specific:
+
 B<lshwconn> [B<-V>| B<--verbose>] noderange
+
+=head2 PPC (without HMC, using FSPAPI) specific:
+
+B<lshwconn> noderange B<-T tooltype>
 
 =head1 DESCRIPTION
 
@@ -24,6 +30,10 @@ Display usage message.
 =item B<-V|--verbose>
 
 Verbose output.
+
+=item B<-T>
+
+The tooltype is used to communicate to the FSP/BPA. The value could be lpar or fnm. The tooltype value lpar is for xCAT and fnm is for CNM.
 
 =back
 
@@ -59,6 +69,17 @@ Output is similar to:
 
  frame1: side=a,ipaddr=192.168.200.247,alt_ipaddr=unavailable,state=Connected
  frame1: side=b,ipaddr=192.168.200.248,alt_ipaddr=unavailable,state=Connected
+
+=item 3.
+
+To display connection status for all FSP nodes in node group fsp to hardware server, and using lpar tooltype:
+
+ lshwconn fsp -T lpar
+
+Output is similar to:
+
+ cec1: sp=primary,ipadd=40.3.7.1,alt_ipadd=unavailable,state=LINE UP
+ cec2: Connection not found
 
 =back
 
