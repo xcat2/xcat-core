@@ -154,7 +154,7 @@ sub do_getmacs {
     my $Rc = SUCCESS;
 
     foreach ( split /\n/, $result ) {
-        if ( /^lpar_netboot: / ) {
+        if ( /^lpar_netboot / ) {
             $Rc = RC_ERROR;
             last;
         }
@@ -499,7 +499,7 @@ sub getmacs {
         # Return error
         ##################################
         if ( $Rc != SUCCESS ) {
-            if ( @$result[0] =~ /lpar_netboot: (.*)/ ) {
+            if ( @$result[0] =~ /lpar_netboot (.*)/ ) {
                 return( [[$node,$1,$Rc]] );
             }
             return( [[$node,join( '', @$result ),$Rc]] );

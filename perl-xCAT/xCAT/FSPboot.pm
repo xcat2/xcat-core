@@ -144,7 +144,7 @@ sub do_rnetboot {
         #######################################
 
         foreach ( split /\n/, $result ) {
-            if ( /^lpar_netboot: / ) {
+            if ( /^lpar_netboot / ) {
                 $Rc = RC_ERROR;
                 last;
             }
@@ -348,7 +348,7 @@ sub rnetboot {
     #
     ##################################
     if ( $Rc != SUCCESS ) {
-        if ( @$result[0] =~ /lpar_netboot: (.*)/ ) {
+        if ( @$result[0] =~ /lpar_netboot (.*)/ ) {
             return( [[$node,$1,$Rc]] );
         }
         return( [[$node,join( '', @$result ),$Rc]] );
@@ -388,7 +388,7 @@ sub rnetboot {
     #  lpar_netboot: bootp operation failed.
     #
     #####################################
-    if ( $data =~ /lpar_netboot: (.*)/ ) {
+    if ( $data =~ /lpar_netboot (.*)/ ) {
         return( [[$node,$1,RC_ERROR]] );
     }
     return( [[$node,$data,RC_ERROR]] );
