@@ -171,16 +171,31 @@ my %usage = (
     "mkhwconn" =>
 "Usage:
     mkhwconn [-h|--help]
+    
+    PPC (with HMC) specific:
     mkhwconn noderange -t [--bind] [-V|--verbose]
-    mkhwconn noderange -p single_hmc [-P HMC passwd] [-V|--verbose]",
+    mkhwconn noderange -p single_hmc [-P HMC passwd] [-V|--verbose]
+    
+    PPC (without HMC, using FSPAPI) specific:
+    mkhwconn noderange -t -T tooltype",
     "rmhwconn" =>
 "Usage:
     rmhwconn [-h|--help]
-    rmhwconn noderange [-V|--verbose]",
+    
+    PPC (with HMC) specific:
+    rmhwconn noderange [-V|--verbose]
+    
+    PPC (without HMC, using FSPAPI) specific:
+    rmhwconn noderange -T tooltype",
     "lshwconn" =>
 "Usage:
     lshwconn [-h|--help]
-    lshwconn noderange [-V|--verbose]",
+    
+    PPC (with HMC) specific:
+    lshwconn noderange [-V|--verbose]
+    
+    PPC (without HMC, using FSPAPI) specific:
+    lshwconn noderange -T tooltype",
     "renergy" =>
 "Usage:
     renergy [-h | --help] 
