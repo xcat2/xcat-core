@@ -105,6 +105,8 @@ if [ "$1" -gt 1 ]; then #Ugrade only, restart daemon and migrate settings
   XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd -r 
 fi
 %endif
+exit 0
+
 %changelog
 * Wed May 2 2007 - Norm Nott nott@us.ibm.com
 - Made changes to make this work on AIX

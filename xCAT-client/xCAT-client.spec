@@ -253,6 +253,7 @@ export XCATROOT PATH MANPATH
 " >>/etc/profile
 fi
 %endif
+exit 0
 
 %preun
 %ifos linux

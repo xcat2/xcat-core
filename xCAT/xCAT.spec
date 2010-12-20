@@ -120,6 +120,8 @@ $RPM_INSTALL_PREFIX0/sbin/xcatconfig -i
 else
 $RPM_INSTALL_PREFIX0/sbin/xcatconfig -u
 fi
+exit 0
+
 %clean
 
 %files

@@ -201,6 +201,7 @@ if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd -r
 fi  
 %endif
+exit 0
 
 %preun
 %ifos linux
