@@ -58,7 +58,7 @@ sub chvm_parse_args {
     #############################################
     if ( !defined( $args )) {
         $request->{method} = $cmd;
-        return( \%opt );
+        return( usage() );
     }
     #############################################
     # Checks case in GetOptions, allows opts
