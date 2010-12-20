@@ -8,13 +8,25 @@ B<rmhwconn> [B<-h>| B<--help>]
 
 B<rmhwconn> [B<-v>| B<--version>]
 
+=head2 PPC (with HMC) specific:
+
 B<rmhwconn> [B<-V>| B<--verbose>] noderange
 
+=head2 PPC (without HMC, using FSPAPI) specific:
+
+B<rmhwconn> noderange B<-T tooltype>
+
 =head1 DESCRIPTION
+
+For PPC (with HMC) specific:
 
 This command is used to disconnect FSP and BPA nodes from HMC nodes, according to the connection information defined in ppc talbe in xCAT DB. 
 
 Note: If a CEC (FSP node represents) belongs to a frame with a BPA installed, this CEC cannot be disconnected individually. Instead, the whole frame (BPA node represents) should be disconnected.
+
+For PPC (without HMC, using FSPAPI) specific:
+
+It's used to disconnection FSP and BPA nodes from hardware server.
 
 =head1 OPTIONS
 
@@ -27,6 +39,10 @@ Display usage message.
 =item B<-V|--verbose>
 
 Verbose output.
+
+=item B<-T>
+
+The tooltype is used to communicate to the FSP/BPA. The value could be lpar or fnm. The tooltype value lpar is for xCAT and fnm is for CNM.
 
 =back
 
@@ -52,6 +68,12 @@ To disconnect all FSP nodes in node group fsp from their HMC nodes:
 To remove the connection for BPA node frame1:
 
  rmhwconn frame1
+
+=item 3.
+
+To disconnect all FSP nodes in node group fsp from their related hardware serveri, using lpar tooltype:
+ 
+ rmhwconn fsp -T lpar
 
 =back
 
