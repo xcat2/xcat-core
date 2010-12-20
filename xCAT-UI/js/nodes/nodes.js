@@ -358,10 +358,10 @@ function loadNodes(data) {
 		}
 
 		// Get key and value
-		args = rsp[i].split('=');
+		args = rsp[i].split('=', 2);
 		var key = jQuery.trim(args[0]);
-		var val = jQuery.trim(args[1]);
-
+		var val = jQuery.trim(rsp[i].substring(rsp[i].indexOf('=') + 1, rsp[i].length));
+		
 		// Create a hash table
 		attrs[node][key] = val;
 		headers[key] = 1;
