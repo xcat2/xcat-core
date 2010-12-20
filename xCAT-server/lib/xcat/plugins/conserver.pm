@@ -398,25 +398,15 @@ sub makeconservercf {
     #restart conserver daemon
     my $cmd;
     if(xCAT::Utils->isAIX()){
-       if (-f "/var/run/conserver.pid") {
         $cmd = "stopsrc -s conserver";
         xCAT::Utils->runcmd($cmd, 0);
         $cmd = "startsrc -s conserver";
         xCAT::Utils->runcmd($cmd, 0);
-      } else {
-        $cmd = "startsrc -s conserver";
-        xCAT::Utils->runcmd($cmd, 0);
-      }
     } else {
-      if (-f "/var/run/conserver.pid") {
         $cmd = "/etc/init.d/conserver stop";
         xCAT::Utils->runcmd($cmd, 0);
         $cmd = "/etc/init.d/conserver start";
         xCAT::Utils->runcmd($cmd, 0);
-      } else {
-        $cmd = "/etc/init.d/conserver start";
-        xCAT::Utils->runcmd($cmd, 0);
-      }
     }
   }
 }
