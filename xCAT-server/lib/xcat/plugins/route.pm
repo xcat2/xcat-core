@@ -180,7 +180,7 @@ sub process_makeroutes {
     my $routestab=xCAT::Table->new("routes", -create =>1);
     if ($routestab) {
 	my @tmp1=$routestab->getAllAttribs(('routename', 'net', 'mask', 'gateway', 'ifname'));
-	if (defined(@tmp1) && (@tmp1 > 0)) {
+	if (@tmp1 > 0) {
 	    foreach(@tmp1) {
 		$all_routes{$_->{routename}} = $_;
 		$_->{process} = 0;

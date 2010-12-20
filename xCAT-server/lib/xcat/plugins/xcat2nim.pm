@@ -691,7 +691,7 @@ sub x2n
 
 	# get all the attrs for these definitions
 	%::objhash = xCAT::DBobjUtils->getobjdefs(\%::objtype);
-	if (!defined(%::objhash))
+	if (!%::objhash)
     {
 		my $rsp;
         $rsp->{data}->[0] = "Could not get xCAT object definitions.\n";

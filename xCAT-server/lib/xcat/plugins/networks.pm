@@ -150,7 +150,7 @@ sub donets
     	}
 	
     	%nethash = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
-    	if (!defined(%nethash)) {
+    	if (!%nethash) {
         	my $rsp;
         	$rsp->{data}->[0] = "Could not get xCAT network definitions.\n";
         	xCAT::MsgUtils->message("E", $rsp, $::callback);
