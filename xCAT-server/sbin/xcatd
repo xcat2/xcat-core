@@ -145,7 +145,7 @@ $xcatdir = (($tmp and $tmp->{value}) ? $tmp->{value} : "/etc/xcat");
 $sitetab->close;
 my $progname;
 $SIG{PIPE} = sub { 
-    confess "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)"
+    confess "SIGPIPE $$progname encountered a broken pipe (probably Ctrl-C by client)";
 };
 $progname = \$0;
 
