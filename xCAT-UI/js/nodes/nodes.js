@@ -2170,9 +2170,15 @@ function setDefAttrs(data) {
     			key = jQuery.trim(attr.substring(0, attr.indexOf(':')));
     			descr = jQuery.trim(attr.substring(attr.indexOf(':') + 1));
     			
+    			// Remove arrow brackets
+    			descr = descr.replace(new RegExp('<|>', 'g'), '');
+    			
     			// Set hash table where key = attribute name and value = description
         		defAttrs[key] = descr;
-			} else {				
+			} else {
+				// Remove arrow brackets
+				attr = attr.replace(new RegExp('<|>', 'g'), '');
+    			
 				// Append description to hash table
 				defAttrs[key] = defAttrs[key] + '\n' + attr;
 			}
