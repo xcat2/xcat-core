@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<mkhwconn> - Sets up connections for FSP and BPA nodes to HMC nodes.
+B<mkhwconn> - Sets up connections for FSP and BPA nodes to HMC nodes or hardware server.
 
 =head1 SYNOPSIS
 
@@ -8,11 +8,19 @@ B<mkhwconn> [B<-h>| B<--help>]
 
 B<mkhwconn> [B<-v>| B<--version>]
 
+=head2 PPC (with HMC) specific:
+
 B<mkhwconn> [B<-V>| B<--verbose>] noderange B<-t>
 
 B<mkhwconn> [B<-V>| B<--verbose>] noderange B<-p> hmc [B<-P> passwd]
 
+=head2 PPC (without HMC, using FSPAPI) specific:
+
+B<mkhwconn> noderange B<-t> B<-T tooltype>
+
 =head1 DESCRIPTION
+
+For PPC (with HMC) specific:
 
 This command is used to set up connections for FSP and BPA nodes to HMC nodes. (If the connection already exists, it will not break it.)
 This command is useful when you have multiple HMCs, each of which will manage a subset of the FSPs/BPAs.  Use B<mkhwconn> to tell
@@ -26,6 +34,10 @@ When -p is specified, this command gets the connection information from command 
 In any case, before running this command, the FSP and BPA nodes need be defined with correct nodetype.nodetype value (fsp or bpa) and nodehm.mgt value (hmc).
 
 Note: If a CEC (FSP) belongs to a frame, which has a BPA installed, this CEC should not be assigned to an HMC individually. Instead, the whole frame (BPA) should be assigned to the HMC.
+
+For PPC (without HMC, using FSPAPI) specific:
+
+It is used to set up connections for FSP and BPA node to Hardware Server on management node (or service node ). It only could be done according to the definition in xCAT DB. 
 
 =head1 OPTIONS
 
@@ -47,6 +59,10 @@ The HMC node name. Only one HMC nodes can be specified by this flag. To setup co
 =item B<-P>
 
 The password of HMC based FSP/BPA login user(Default user name is 'HMC'). This flag is optional.
+
+=item B<-T>
+
+The tooltype is used to communicate to the FSP/BPA. The value could be lpar or fnm. The tooltype value lpar is for xCAT and fnm is for CNM.
 
 =item B<-V|--verbose>
 
@@ -75,6 +91,12 @@ To setup the connection for all FSP nodes in node group fsp, according to the de
 To setup the connection for BPA nodes in node group frame_grp1 to HMC node hmc1, with password 'abc123':
 
  mkhwconn frame_grp1 -p hmc1 -P abc123
+
+=item 3.
+
+To setup the connections for all FSP nodes in node group fsp to hardware server, and the tooltype value is lpar:
+
+ mkhwconn fsp -t -T lpar
 
 =back
 
