@@ -309,8 +309,8 @@ sub lshwconn_parse_args
         {
             return( ["Failed to get nodehm.mgt value for node $node.\n"]);
         }
-        if ( $ent->{nodetype} ne 'fsp' 
-                and $ent->{nodetype} ne 'bpa')
+        if ( $ent->{nodetype} ne 'fsp' and $ent->{nodetype} ne 'cec'
+                and $ent->{nodetype} ne 'bpa' and $ent->{nodetype} ne 'frame')
         {
             return( ["Node type $ent->{nodetype} is not supported for this command in FSPAPI\n"]);
         }
@@ -420,9 +420,10 @@ sub rmhwconn_parse_args
             push @bpa_ctrled_nodes, $node;
         }
 
-        if ( $nodetype eq 'bpa')
+        if ( $nodetype eq 'frame')
         {
-            my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
+           # my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
+            my $my_frame_bpa_cec = xCAT::DBobjUtils::getchildren($node);
             push @frame_members, @$my_frame_bpa_cec;
         }
     }
