@@ -126,7 +126,11 @@ sub fsp_api_action {
         my $password = $password_hash->{password};
     	$cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
     } else {
-        $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter";
+        if( defined($parameter) ) {
+            $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter";
+        } else {
+            $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+        }
     }
 
     #print "cmd: $cmd\n"; 
@@ -139,7 +143,9 @@ sub fsp_api_action {
     # output the prompt
     #################
     #$outhash{ $node_name } = $res;
-    $res =~ s/$node_name: //;
+    if(defined($res)) {
+        $res =~ s/$node_name: //;
+    }
     return( [$node_name,$res, $Rc] ); 
 }
 
@@ -219,7 +225,9 @@ sub fsp_state_action {
     # output the prompt
     #################
     #$outhash{ $node_name } = $res;
-    $res[0] =~ s/$node_name: //;
+    if( defined($res) ) {
+        $res[0] =~ s/$node_name: //;
+    }
     return( [$Rc,@res] ); 
 }
 
@@ -373,7 +381,9 @@ sub fsp_api_create_parttion {
     # output the prompt
     #################
     #$outhash{ $node_name } = $res;
-    $res =~ s/$fsp_name: //;
+    if( defined($res) ) {
+        $res =~ s/$fsp_name: //;
+    }
     return( [$fsp_name,$res, $Rc] ); 
 }
 
