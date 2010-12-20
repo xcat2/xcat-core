@@ -2297,7 +2297,8 @@ if { $set_boot_order > 1 } {
         
         if { $rc } { 
             if { $retry_count == 3 } {
-                nc_msg "$PROGRAM Status: error from rpower command\n"
+                nc_msg "$PROGRAM Status: error from rpower command: $msg\n"
+                send_user "$PROGRAM Status: error from rpower command: $msg\n"
                 exit 1
             }
             sleep 1
@@ -2318,7 +2319,8 @@ if { $set_boot_order > 1 } {
         
         if { $rc } { 
             if { $retry_count == 3 } {
-                nc_msg "$PROGRAM Status: error from rpower command\n"
+                nc_msg "$PROGRAM Status: error from rpower command: $msg\n"
+                send_user "$PROGRAM Status: error from rpower command: $msg\n"
                 exit 1
             }
             sleep 1
