@@ -2242,20 +2242,21 @@ function createZProvisionNew(inst) {
 	hcpInput.blur(function() {
 		if ($(this).val()) {
 			var args = $(this).val().split('.');
-
-			// Get disk pools
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'lsvm',
-					tgt : args[0],
-					args : '--diskpoolnames',
-					msg : args[0]
-				},
-
-				success : setDiskPoolCookies
-			});
+			if (!$.cookie(args[0] + 'diskpools')) {
+    			// Get disk pools
+    			$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'lsvm',
+    					tgt : args[0],
+    					args : '--diskpoolnames',
+    					msg : args[0]
+    				},
+    
+    				success : setDiskPoolCookies
+    			});
+			}
 		}
 	});
 	hcpDiv.append(hcpLabel);
