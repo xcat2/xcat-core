@@ -131,9 +131,8 @@ if ( $PLTFRM eq "Linux" ) {
     {
         updatefile("/etc/modprobe.conf", "options ib_ehca nr_ports=1");
         updatefile("/etc/modprobe.conf", "options ib_ehca lock_hcalls=0");
+        runcmd("echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf");
     }
-
-    runcmd("echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf");
 
     my $rdma_cmd = "/sbin/chkconfig --level 2345 $ib_driver on";
     runcmd($rdma_cmd);
