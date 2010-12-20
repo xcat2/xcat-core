@@ -3136,6 +3136,8 @@ sub nodeSet {
 			$postScript = "/opt/xcat/share/xcat/install/scripts/post.sles11.s390x";
 		} elsif ( $os =~ m/rhel5/i ) {
 			$postScript = "/opt/xcat/share/xcat/install/scripts/post.rhel5.s390x";
+		} elsif ( $os =~ m/rhel6/i ) {
+			$postScript = "/opt/xcat/share/xcat/install/scripts/post.rhel6.s390x";
 		} else {
 			xCAT::zvmUtils->printLn( $callback, "$node: (Error) No postscript available for $os" );
 			return;
@@ -3311,6 +3313,9 @@ sub nodeSet {
 				# If the line contains 'ramdisk_size'
 				if ( $_ =~ m/ramdisk_size/i ) {
 					$parmHeader = xCAT::zvmUtils->trimStr($_);
+					
+					# Remove last parameter on RHEL6
+					$parmHeader =~ s/cio_ignore=all,!0.0.0009//g;
 				}
 			}
 
