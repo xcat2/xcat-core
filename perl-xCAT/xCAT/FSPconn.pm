@@ -419,7 +419,7 @@ sub rmhwconn_parse_args
             next;
         }
 
-        if ( $nodetype eq 'fsp' and 
+        if ( ($nodetype eq 'fsp' or $nodetype eq 'cec') and 
                 $node_parent and 
                 $node_parent ne $node)
         {
