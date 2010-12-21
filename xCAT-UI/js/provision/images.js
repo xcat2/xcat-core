@@ -43,8 +43,7 @@ function loadImages(data) {
 	// Image attributes
 	var headers = new Object();
 	
-	// Clear cookie containing list of images where their attributes 
-	// need to be updated
+	// Clear cookie containing list of images where their attributes need to be updated
 	$.cookie('images2update', '');
 	// Clear hash table containing image attributes
 	origAttrs = '';
@@ -193,6 +192,7 @@ function loadImages(data) {
 	/**
 	 * Enable editable columns
 	 */
+	
 	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
 	$('#imagesDataTable td:not(td:nth-child(1),td:nth-child(2))').editable(
 		function(value, settings) {	
@@ -330,8 +330,7 @@ function updateImageAttrs() {
 		} // End of if
 	} // End of for
 	
-	// Clear cookie containing list of images where
-	// their attributes need to be updated
+	// Clear cookie containing list of images where their attributes need to be updated
 	$.cookie('images2update', '');
 }
 
@@ -378,8 +377,7 @@ function restoreImageAttrs() {
 		} // End of if
 	} // End of for
 	
-	// Clear cookie containing list of images where
-	// their attributes need to be updated
+	// Clear cookie containing list of images where their attributes need to be updated
 	$.cookie('images2update', '');
 }
 

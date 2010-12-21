@@ -198,8 +198,7 @@ function loadGroups4Ganglia(data) {
 			var info = $('<div class="ui-state-highlight ui-corner-all"></div>');
 			var msg = $('<p></p>');
 			msg.append('<span class="ui-icon ui-icon-info"></span>');
-			msg
-				.append('Review the nodes that are monitored by Ganglia.  You can turn on Ganglia monitoring on a node by selecting it and clicking on Monitor. If you are satisfied with the nodes you want to monitor, ');
+			msg.append('Review the nodes that are monitored by Ganglia.  You can turn on Ganglia monitoring on a node by selecting it and clicking on Monitor. If you are satisfied with the nodes you want to monitor, ');
 			msg.append(gangliaLnk);
 			msg.append(' to open Ganglia page.');
 			info.append(msg);
@@ -230,8 +229,7 @@ function loadGroups4Ganglia(data) {
 				success : loadNodes4Ganglia
 			});
 
-			// Get subgroups within selected group
-			// only when this is the parent group and not a subgroup
+			// Get subgroups within selected group only when this is the parent group and not a subgroup
 			if (data.rslt.obj.attr('id').indexOf('Subgroup') < 0) {
 				$.ajax( {
 					url : 'lib/cmd.php',
@@ -247,7 +245,7 @@ function loadGroups4Ganglia(data) {
 				});
 			}
 		} // End of if (thisGroup)
-	}   );
+	});
 }
 
 /**
@@ -461,11 +459,9 @@ function loadNodes4Ganglia(data) {
 	pingCol.find('span a').bind('click', function(event) {
 		refreshNodeStatus(group);
 	});
-
 	powerCol.find('span a').bind('click', function(event) {
 		refreshPowerStatus(group);
 	});
-
 	gangliaCol.bind('click', function(event) {
 		refreshGangliaStatus(group);
 	});
@@ -645,8 +641,8 @@ function monitorNode(node, monitor) {
 							} else {
 								warningMsg = out[i];
 							}
-						} // End of if
-					} // End of for
+						}
+					}
 					
 					// If there are warnings
 					if (warn) {
