@@ -7831,33 +7831,34 @@ sub mkdsklsnode
         ($nodeshorthost = $node) =~ s/\..*$//;
         chomp $nodeshorthost;
 
-        #
-        #  define the new NIM machine
-        #
+        my $todef = 0;
+        my $toinit = 0;
 
         # 	see if it's already defined first
         if (grep(/^$nim_name$/, @machines))
         {
+            # Already defined
             if ($::FORCE)
             {
+                # Reinitialize
 
-                # get rid of the old definition
+                # Deallocate the nim resources for the existing machine, but not remove machine definition
                 if ($::VERBOSE)
                 {
                     my $rsp;
                     push @{$rsp->{data}},
-                      "$Sname: Removing NIM definition for $nim_name.\n";
+                    "$Sname: Deallocate NIM resources for $nim_name.\n";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
 
                 my $rmcmd =
-                  "/usr/sbin/nim -o reset -a force=yes $nim_name;/usr/sbin/nim -Fo deallocate -a subclass=all $nim_name;/usr/sbin/nim -Fo remove $nim_name";
+                    "/usr/sbin/nim -o reset -a force=yes $nim_name;/usr/sbin/nim -Fo deallocate -a subclass=all $nim_name";
                 my $output = xCAT::Utils->runcmd("$rmcmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
                     my $rsp;
                     push @{$rsp->{data}},
-                      "$Sname: Could not remove the existing NIM object named \'$nim_name\'.\n";
+                        "$Sname: Could not remove the existing NIM object named \'$nim_name\'.\n";
                     if ($::VERBOSE)
                     {
                         push @{$rsp->{data}}, "$output";
@@ -7868,280 +7869,297 @@ sub mkdsklsnode
                     next;
                 }
 
+                # To be reinitialized
+                $toinit = 1;
+                
             }
             else
-            {    # no force
+            {
+                # Give a message to confirm if reinitialization is needed.
                 my $rsp;
                 push @{$rsp->{data}},
-                  "$Sname: The node \'$node\' is already defined. Use the force option to remove and reinitialize.";
+                  "$Sname: The node \'$node\' is already defined. Use the force option to reinitialize.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 push(@nodesfailed, $node);
                 $error++;
                 next;
             }
-
-        }    # end already defined
-
-        # get, check the node IP
-        # TODO - need IPv6 update
-        #my $IP = inet_ntoa(inet_aton($node));
-        my $IP = xCAT::NetworkUtils->getipaddr($node);
-        chomp $IP;
-        unless (($IP =~ /\d+\.\d+\.\d+\.\d+/) || ($IP =~ /:/))
+        }
+        else
         {
-            my $rsp;
-            push @{$rsp->{data}},
-              "$Sname: Could not get valid IP address for node $node.\n";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            $error++;
-            push(@nodesfailed, $node);
-            next;
+            # new node to define and initialize
+            
+            # 1. define diskless machine
+            $todef = 1;
+            # 2. dkls_init for this machine
+            $toinit = 1;
         }
 
-        # check for required attrs
-        if (($type ne "standalone"))
+        my @attrlist;
+        my $output;
+        
+        if ($todef == 1)
         {
-
-            # could be diskless or dataless
-            # mask, gateway, cosi, root, dump, paging
-            # TODO - need to fix this check for shared_root
-            if (   !$nethash{$node}{'mask'}
-                || !$nethash{$node}{'gateway'}
-                || !$imagehash{$image_name}{spot})
+            # get, check the node IP
+            # TODO - need IPv6 update
+            #my $IP = inet_ntoa(inet_aton($node));
+            my $IP = xCAT::NetworkUtils->getipaddr($node);
+            chomp $IP;
+            unless (($IP =~ /\d+\.\d+\.\d+\.\d+/) || ($IP =~ /:/))
             {
                 my $rsp;
                 push @{$rsp->{data}},
-                  "$Sname: Missing required information for node \'$node\'.\n";
+                  "$Sname: Could not get valid IP address for node $node.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 $error++;
                 push(@nodesfailed, $node);
                 next;
             }
-        }
 
-        # diskless also needs a defined paging res
-        if ($type eq "diskless")
-        {
-            if (!$imagehash{$image_name}{paging})
+            # check for required attrs
+            if (($type ne "standalone"))
             {
-                my $rsp;
-                push @{$rsp->{data}},
-                  "$Sname: Missing required information for node \'$node\'.\n";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                $error++;
-                push(@nodesfailed, $node);
-                next;
+
+                # could be diskless or dataless
+                # mask, gateway, cosi, root, dump, paging
+                # TODO - need to fix this check for shared_root
+                if (   !$nethash{$node}{'mask'}
+                    || !$nethash{$node}{'gateway'}
+                    || !$imagehash{$image_name}{spot})
+                {
+                    my $rsp;
+                    push @{$rsp->{data}},
+                      "$Sname: Missing required information for node \'$node\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                    push(@nodesfailed, $node);
+                    next;
+                }
             }
-        }
 
-        # set some default values
-        # overwrite with cmd line values - if any
-        my $speed  = "100";
-        my $duplex = "full";
-        if ($attrs{duplex})
-        {
-            $duplex = $attrs{duplex};
-        }
-        if ($attrs{speed})
-        {
-            $speed = $attrs{speed};
-        }
-
-        # define the node
-        my $mac_or_local_link_addr;
-        my $adaptertype;
-        my $netmask;
-        my $defcmd = "/usr/sbin/nim -o define -t $type ";
-
-        $objhash{$node}{'mac'} =~ s/://g;    # strip out colons if any
-        if (xCAT::NetworkUtils->getipaddr($nodeshorthost) =~ /:/) #ipv6 node
-        {
-            $mac_or_local_link_addr = xCAT::NetworkUtils->linklocaladdr($objhash{$node}{'mac'});
-            $adaptertype = "ent6";
-            $netmask = xCAT::NetworkUtils->prefixtomask($nethash{$node}{'mask'});
-        } else {
-            $mac_or_local_link_addr = $objhash{$node}{'mac'};
-            # only support Ethernet for management interfaces
-            if ($::HFI)
+            # set some default values
+            # overwrite with cmd line values - if any
+            my $speed  = "100";
+            my $duplex = "full";
+            if ($attrs{duplex})
             {
-                $adaptertype = "hfi0";
+                $duplex = $attrs{duplex};
+            }
+            if ($attrs{speed})
+            {
+                $speed = $attrs{speed};
+            }
+
+            # define the node
+            my $mac_or_local_link_addr;
+            my $adaptertype;
+            my $netmask;
+            # Use -F to workaround ping time during diskless node defined in nim
+            my $defcmd = "/usr/sbin/nim -Fo define -t $type ";
+
+            $objhash{$node}{'mac'} =~ s/://g;    # strip out colons if any
+            if (xCAT::NetworkUtils->getipaddr($nodeshorthost) =~ /:/) #ipv6 node
+            {
+                $mac_or_local_link_addr = xCAT::NetworkUtils->linklocaladdr($objhash{$node}{'mac'});
+                $adaptertype = "ent6";
+                $netmask = xCAT::NetworkUtils->prefixtomask($nethash{$node}{'mask'});
             } else {
-                $adaptertype = "ent";
+                $mac_or_local_link_addr = $objhash{$node}{'mac'};
+                # only support Ethernet for management interfaces
+                if ($::HFI)
+                {
+                    $adaptertype = "hfi0";
+                } else {
+                    $adaptertype = "ent";
+                }
+                $netmask = $nethash{$node}{'mask'};
             }
-            $netmask = $nethash{$node}{'mask'};
-        }
-               
-        my $netname = $nethash{$node}{'netname'}; 
+                   
+            my $netname = $nethash{$node}{'netname'}; 
 
-        if ($::NEWNAME)
-        {
-            $defcmd .= "-a if1='find_net $nodeshorthost 0' ";
-        } else
-        {
-            $defcmd .=
-                  "-a if1='find_net $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
-        }
-
-        $defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
-
-        if (!$::HFI)
-        {
-            $defcmd .=
-                "-a net_definition='$adaptertype $netmask $nethash{$node}{'gateway'}' "; 
-            $defcmd .= "-a net_settings1='$speed $duplex' ";
-        }
-
-        # add any additional supported attrs from cmd line
-        my @attrlist = ("dump_iscsi_port");
-        foreach my $attr (keys %attrs)
-        {
-            if (grep(/^$attr$/, @attrlist))
+            if ($::NEWNAME)
             {
-                $defcmd .= "-a $attr=$attrs{$attr} ";
+                $defcmd .= "-a if1='find_net $nodeshorthost 0' ";
+            } else
+            {
+                $defcmd .=
+                      "-a if1='find_net $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
             }
-        }
 
-        $defcmd .= "$nim_name  2>&1";
-        if ($::VERBOSE)
-        {
-            my $rsp;
-            push @{$rsp->{data}}, "$Sname: Creating NIM node definition.\n";
-            #push @{$rsp->{data}}, "Running: \'$defcmd\'\n";
-            xCAT::MsgUtils->message("I", $rsp, $callback);
-        }
-        my $output = xCAT::Utils->runcmd("$defcmd", -1);
-        if ($::RUNCMD_RC != 0)
-        {
-            my $rsp;
-            push @{$rsp->{data}},
-              "$Sname: Could not create a NIM definition for \'$nim_name\'.\n";
+            $defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
+
+            if (!$::HFI)
+            {
+                $defcmd .=
+                    "-a net_definition='$adaptertype $netmask $nethash{$node}{'gateway'}' "; 
+                $defcmd .= "-a net_settings1='$speed $duplex' ";
+            }
+
+            # add any additional supported attrs from cmd line
+            @attrlist = ("dump_iscsi_port");
+            foreach my $attr (keys %attrs)
+            {
+                if (grep(/^$attr$/, @attrlist))
+                {
+                    $defcmd .= "-a $attr=$attrs{$attr} ";
+                }
+            }
+
+            $defcmd .= "$nim_name  2>&1";
             if ($::VERBOSE)
-            {
-                push @{$rsp->{data}}, "$output";
-            }
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            $error++;
-            push(@nodesfailed, $node);
-            next;
-        }
-
-        #
-        # initialize node
-        #
-
-        my $psize = "64";
-        if ($attrs{psize})
-        {
-            $psize = $attrs{psize};
-        }
-
-        my $arg_string;
-        if ($imagehash{$image_name}{shared_root})
-        {
-            $arg_string =
-              "-a spot=$imagehash{$image_name}{spot} -a shared_root=$imagehash{$image_name}{shared_root} -a size=$psize ";
-        }
-        else
-        {
-            $arg_string =
-              "-a spot=$imagehash{$image_name}{spot} -a root=$imagehash{$image_name}{root} -a size=$psize ";
-        }
-
-        # the rest of these resources may or may not be provided
-        if ($imagehash{$image_name}{paging})
-        {
-            $arg_string .= "-a paging=$imagehash{$image_name}{paging} ";
-        }
-        if ($imagehash{$image_name}{resolv_conf})
-        {
-            $arg_string .=
-              "-a resolv_conf=$imagehash{$image_name}{resolv_conf} ";
-        }
-        if ($imagehash{$image_name}{dump})
-        {
-            $arg_string .= "-a dump=$imagehash{$image_name}{dump} ";
-        }
-        if ($imagehash{$image_name}{home})
-        {
-            $arg_string .= "-a home=$imagehash{$image_name}{home} ";
-        }
-        if ($imagehash{$image_name}{tmp})
-        {
-            $arg_string .= "-a tmp=$imagehash{$image_name}{tmp} ";
-        }
-        if ($imagehash{$image_name}{shared_home})
-        {
-            $arg_string .=
-              "-a shared_home=$imagehash{$image_name}{shared_home} ";
-        }
-
-        # add any additional supported attrs from cmd line
-        @attrlist = ("configdump", "sparse_paging");
-        foreach my $attr (keys %attrs)
-        {
-            if (grep(/^$attr$/, @attrlist))
-            {
-                $arg_string .= "-a $attr=$attrs{$attr} ";
-            }
-        }
-
-        #
-        #  make sure we have enough space for the new node root dir
-        #
-        # TODO - test FS resize
-        if (0)
-        {
-            if (
-                &enoughspace(
-                             $imagehash{$image_name}{spot},
-                             $imagehash{$image_name}{root},
-                             $psize,
-                             $callback
-                ) != 0
-              )
             {
                 my $rsp;
-                push @{$rsp->{data}}, "Could not initialize node \'$node\'\n";
+                push @{$rsp->{data}}, "$Sname: Creating NIM node definition.\n";
+                #push @{$rsp->{data}}, "Running: \'$defcmd\'\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+            }
+            $output = xCAT::Utils->runcmd("$defcmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}},
+                  "$Sname: Could not create a NIM definition for \'$nim_name\'.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$output";
+                }
                 xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
+                $error++;
+                push(@nodesfailed, $node);
+                next;
             }
         }
 
-        my $initcmd;
-        if ($type eq "diskless")
+        if ($toinit == 1)
         {
-            $initcmd = "/usr/sbin/nim -o dkls_init $arg_string $nim_name 2>&1";
-        }
-        else
-        {
-            $initcmd = "/usr/sbin/nim -o dtls_init $arg_string $nim_name 2>&1";
-        }
+            # diskless also needs a defined paging res
+            if ($type eq "diskless")
+            {
+                if (!$imagehash{$image_name}{paging})
+                {
+                    my $rsp;
+                    push @{$rsp->{data}},
+                      "$Sname: Missing required information for node \'$node\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+                    push(@nodesfailed, $node);
+                    next;
+                }
+            }
 
-        my $time = `date | cut -f5 -d' '`;
-        chomp $time;
-        my $rsp;
-        push @{$rsp->{data}},
-          "$Sname: Initializing NIM machine \'$nim_name\'. This could take a while.\n";
-        if ($::VERBOSE)
-        {
-            #push @{$rsp->{data}}, "Running: \'$initcmd\'\n";
-        }
-       # xCAT::MsgUtils->message("I", $rsp, $callback);
+            #
+            # initialize node
+            #
 
-        $output = xCAT::Utils->runcmd("$initcmd", -1);
-        if ($::RUNCMD_RC != 0)
-        {
+            my $psize = "64";
+            if ($attrs{psize})
+            {
+                $psize = $attrs{psize};
+            }
+
+            my $arg_string;
+            if ($imagehash{$image_name}{shared_root})
+            {
+                $arg_string =
+                  "-a spot=$imagehash{$image_name}{spot} -a shared_root=$imagehash{$image_name}{shared_root} -a size=$psize ";
+            }
+            else
+            {
+                $arg_string =
+                  "-a spot=$imagehash{$image_name}{spot} -a root=$imagehash{$image_name}{root} -a size=$psize ";
+            }
+
+            # the rest of these resources may or may not be provided
+            if ($imagehash{$image_name}{paging})
+            {
+                $arg_string .= "-a paging=$imagehash{$image_name}{paging} ";
+            }
+            if ($imagehash{$image_name}{resolv_conf})
+            {
+                $arg_string .=
+                  "-a resolv_conf=$imagehash{$image_name}{resolv_conf} ";
+            }
+            if ($imagehash{$image_name}{dump})
+            {
+                $arg_string .= "-a dump=$imagehash{$image_name}{dump} ";
+            }
+            if ($imagehash{$image_name}{home})
+            {
+                $arg_string .= "-a home=$imagehash{$image_name}{home} ";
+            }
+            if ($imagehash{$image_name}{tmp})
+            {
+                $arg_string .= "-a tmp=$imagehash{$image_name}{tmp} ";
+            }
+            if ($imagehash{$image_name}{shared_home})
+            {
+                $arg_string .=
+                  "-a shared_home=$imagehash{$image_name}{shared_home} ";
+            }
+
+            # add any additional supported attrs from cmd line
+            @attrlist = ("configdump", "sparse_paging");
+            foreach my $attr (keys %attrs)
+            {
+                if (grep(/^$attr$/, @attrlist))
+                {
+                    $arg_string .= "-a $attr=$attrs{$attr} ";
+                }
+            }
+
+            #
+            #  make sure we have enough space for the new node root dir
+            #
+            # TODO - test FS resize
+            if (0)
+            {
+                if (
+                    &enoughspace(
+                                 $imagehash{$image_name}{spot},
+                                 $imagehash{$image_name}{root},
+                                 $psize,
+                                 $callback
+                    ) != 0
+                  )
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Could not initialize node \'$node\'\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
+            }
+
+            my $initcmd;
+            if ($type eq "diskless")
+            {
+                $initcmd = "/usr/sbin/nim -o dkls_init $arg_string $nim_name 2>&1";
+            }
+            else
+            {
+                $initcmd = "/usr/sbin/nim -o dtls_init $arg_string $nim_name 2>&1";
+            }
+
+            my $time = `date | cut -f5 -d' '`;
+            chomp $time;
             my $rsp;
             push @{$rsp->{data}},
-              "$Sname: Could not initialize NIM client named \'$nim_name\'.\n";
-            if ($::VERBOSE)
+              "$Sname: Initializing NIM machine \'$nim_name\'. This could take a while.\n";
+
+            $output = xCAT::Utils->runcmd("$initcmd", -1);
+            if ($::RUNCMD_RC != 0)
             {
-                push @{$rsp->{data}}, "$output";
+                my $rsp;
+                push @{$rsp->{data}},
+                  "$Sname: Could not initialize NIM client named \'$nim_name\'.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$output";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                $error++;
+                push(@nodesfailed, $node);
+                next;
             }
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            $error++;
-            push(@nodesfailed, $node);
-            next;
         }
 
         if (0)
