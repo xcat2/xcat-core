@@ -594,12 +594,13 @@ mkpath "$rootimg_dir/.statelite";  # create place for NFS mounts.
 
 # this script will get the directories.	
 # TODO: the file is re-copied in liteimg.pm
-unless (-f "../add-on/statelite/rc.statelite") {
-	print "Can't find ../add-on/statelite/rc.statelite!\n";
+my $cwd = $FindBin::Bin;
+unless (-f "$cwd/../add-on/statelite/rc.statelite") {
+	print "Can't find $cwd/../add-on/statelite/rc.statelite!\n";
 	exit 1;
 }
 
-system("cp ../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
+system("cp $cwd/../add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
 # also need to add this file:
 # may have already been made into a symbolic link, if so ignore it
 
