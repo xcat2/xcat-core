@@ -2185,4 +2185,57 @@ sub getnodetype
     }
     return undef;
 }
+#-------------------------------------------------------------------------------
+
+=head3   getcecchildren
+    returns cec of the specified frame,
+    Arguments:
+        none
+    Returns:
+        refrence of cec hostnames
+    Globals:
+        $::PARENT_CHILDREN_CEC
+    Error:
+        none
+    Example:
+         $c1 = getcecchildren($nodetocheck);
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub getcecchildren
+{
+    my $parent = shift;
+    if (($parent) && ($parent =~ /xCAT::/))
+    {
+        $parent = shift;
+    }
+    my @children = ();
+    if (!%::PARENT_CHILDREN_CEC) {
+        my $ppctab  = xCAT::Table->new( 'ppc' );
+        my @ps = $ppctab->getAllNodeAttribs(['node','parent']);
+        for my $entry ( @ps ) {
+            my $p = $entry->{parent};
+            my $c = $entry->{node};
+            if ( $p and $c) {
+                my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
+                if ( $type and ($type->{nodetype} eq 'cec'))
+                {
+                    push @{$::PARENT_CHILDREN_CEC{$p}}, $c;
+                }
+            }
+        }
+        foreach (@{$::PARENT_CHILDREN_CEC{$parent}}) {
+            push @children, $_;
+        }
+    } else {
+        if (exists($::PARENT_CHILDREN_CEC{$parent})) {
+            foreach (@{$::PARENT_CHILDREN_CEC{$parent}}) {
+                push @children, $_;
+            }
+        }
+    }
+    return \@children;
+}
 1;
