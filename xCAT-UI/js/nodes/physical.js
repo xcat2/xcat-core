@@ -235,7 +235,7 @@ function createGraphical(bpa, fsp, area){
 	
 	$('.tooltip a').bind('click', function(){
 		var lparName = $(this).html();
-		$('#nodesDataTable #' + lparName).trigger('click');
+		$('#nodesDatatable #' + lparName).trigger('click');
 	});
 	
 	$('.fspDiv2, .fspDiv4, .fspDiv42').bind('click', function(){
