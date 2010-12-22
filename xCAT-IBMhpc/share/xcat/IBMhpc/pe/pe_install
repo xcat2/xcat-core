@@ -48,7 +48,7 @@ if [ $OS != "AIX" ]; then
             rpm -Uvh IBM_pe_license*.rpm
         fi
         IBM_PE_LICENSE_PROMPT=N /opt/ibmhpc/install/sbin/accept_ppe_license.sh
-        rpm -Uvh --force ibm_lapi*.rpm ibm_pe*.rpm ppe_*.rpm 
+        rpm -Uvh --force ibm_pami*.rpm ibm_pe*.rpm ppe_*.rpm 
         cd /
         rm -Rf /tmp/pe
     fi
