@@ -434,7 +434,7 @@ sub makescript
         my $pkgtext = get_pkglist_tex($ospkglist);
         if ($pkgtext)
         {
-            push @scriptd, "OSPKGS=$pkgtext\n";
+            push @scriptd, "OSPKGS='".$pkgtext."'\n";
             push @scriptd, "export OSPKGS\n";
         }
     }
@@ -449,7 +449,7 @@ sub makescript
             foreach (@sublists)
             {
                 $sl_index++;
-                push @scriptd, "OTHERPKGS$sl_index=$_\n";
+                push @scriptd, "OTHERPKGS$sl_index='".$_."'\n";
                 push @scriptd, "export OTHERPKGS$sl_index\n";
             }
             if ($sl_index > 0)
