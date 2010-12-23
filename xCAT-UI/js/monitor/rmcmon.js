@@ -707,11 +707,22 @@ function showEventLog(data){
  *        
  */
 function loadRmcEventConfig(){
+	var chCondScopeBut = createButton('Change Condition Scope');
+	chCondScopeBut.bind('click', function(){
+		chCondScopeDia();
+	});
+	$('#rmcEventDiv').append(chCondScopeBut);
+	
+	var mkResponseBut = createButton('Make Response');
+	mkResponseBut.bind('click', function(){
+		mkResponseDia();
+	});
+	$('#rmcEventDiv').append(mkResponseBut);
+	
 	var mkConResBut = createButton('Make Association');
 	mkConResBut.bind('click', function(){
 		mkCondRespDia();
 	});
-	
 	$('#rmcEventDiv').append(mkConResBut);
 }
 
@@ -754,4 +765,148 @@ function mkCondRespDia(){
  */
 function rmCondRespDia(){
 	
+}
+
+/**
+ * show the make condition dialogue
+ * 
+ * @param 
+
+ * @return
+ *        
+ */
+function chCondScopeDia(){
+	var diaDiv = $('<div title="Change Condition Scope" id="chScopeDiaDiv"><div>');
+	diaDiv.append('<fieldset id="changePreCond"><legend>Predefined Condition</legend></fieldset>');
+	diaDiv.append('<fieldset id="changeGroup"><legend>Group</legend></fieldset>');
+	diaDiv.append('<fieldset id="changeStatus"></fieldset>');
+	
+	diaDiv.dialog({
+		 modal: true,
+         width: 570,
+         close: function(event, ui){
+					$(this).remove();
+				},
+		buttons: {
+			cancel : function(){
+				$(this).dialog('close');
+			},
+			ok : function(){
+				$('#changeStatus').empty().append('<legend>Status</legend>');
+				var conditionName = $('#changePreCond :checked').attr('value');
+				var groupName = '';
+				$('#changeGroup :checked').each(function(){
+					if ('' == groupName){
+						groupName += $(this).attr('value');
+					}
+					else{
+						groupName += ',' + $(this).attr('value');
+					}
+				});
+				
+				if (undefined == conditionName){
+					$('#changeStatus').append('Please select conditon.');
+					return;
+				}
+				
+				if ('' == groupName){
+					$('#changeStatus').append('Please select group.');
+					return;
+				}
+				
+				$('#changeStatus').append(createLoader());
+				$.ajax({
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'webrun',
+						tgt : '',
+						args : 'mkcondition;change;' + conditionName + ';' + groupName,
+						msg : ''
+					},
+					
+					success : function(data){
+						$('#changeStatus img').remove();
+						if (-1 != data.rsp[0].indexOf('Error')){
+							$('#changeStatus').append(data.rsp[0]);
+						}
+						else{
+							$('#rmcEventStatus').empty().append(data.rsp[0]);
+							$('#chScopeDiaDiv').remove();
+						}
+					}
+				});
+			}
+		}
+	});
+	
+	$('#changePreCond').append('Getting predefined conditions.');
+	$('#changePreCond').append(createLoader());
+	var groups = $.cookie('groups').split(',');
+	for (var i in groups){
+		var tempStr = '<input type="checkbox" value="' + groups[i] + '">' + groups[i];
+		$('#changeGroup').append(tempStr);
+	}
+	
+	$.ajax({
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'lscondition',
+			msg : ''
+		},
+		
+		success : function(data){
+			$('#changePreCond').empty();
+			var conditions = data.rsp[0].split(';');
+			var name = '';
+			var showStr = '<legend>Predefined Condition</legend><table style="font:12px verdana,arial,helvetica,sans-serif;"><tbody>';
+			for (var i in conditions){
+				name = conditions[i];
+				name = name.substr(1, name.length - 2);
+				if (0 == i % 2){
+					showStr += '<tr><td><input type="radio" name="preCond" value="'+ name + '">' + name + '</td><td width=10></td>' ;
+				}
+				else{
+					showStr += '<td><input type="radio" name="preCond" value="'+ name + '">' + name + '</td></tr>';
+				}
+			}
+			showStr += '</tbody></table>';
+			
+			$('#changePreCond').append(showStr);
+			//adjust the dialog's position
+			$('#chScopeDiaDiv').dialog( "option", "position", 'center' );
+		}
+	});
+}
+
+/**
+ * show the make response dialogue
+ * 
+ * @param 
+
+ * @return
+ *        
+ */
+function mkResponseDia(){
+	var diaDiv = $('<div title="Make Response"><div>');
+	diaDiv.append('under construction.');
+	
+	diaDiv.dialog({
+		 modal: true,
+         width: 400,
+         close: function(event, ui){
+					$(this).remove();
+				},
+		buttons: {
+			cancel : function(){
+				$(this).dialog('close');
+			},
+			ok : function(){
+				$(this).dialog('close');
+			}
+		}
+	});
 }

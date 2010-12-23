@@ -53,7 +53,7 @@ sub process_request {
 		'gangliastop'   => \&web_gangliastop,
 		'gangliastatus' => \&web_gangliastatus,
 		'gangliacheck' => \&web_gangliacheck,
-
+		'mkcondition'   => \&web_mkcondition,
 		#'xdsh' => \&web_xdsh,
 		#THIS list needs to be updated
 	);
@@ -187,29 +187,98 @@ sub web_stopcondresp {
 
 sub web_lscond {
 	my ( $request, $callback, $sub_req ) = @_;
-	my $ret = `lscondition`;
+	my $nodeRange = $request->{arg}->[1];
+	my $names = '';
 
-	my @lines = split '\n', $ret;
-	shift @lines;
-	shift @lines;
-	foreach my $line (@lines) {
-		$callback->( { data => $line } );
+	#list all the conditions on all lpars in this group 
+	if ($nodeRange){
+		my @nodes = xCAT::NodeRange::noderange($nodeRange);
+		my %tempHash;
+		my $nodeCount = @nodes;
+		#no node in this group
+		if (1 > $nodeCount){
+			return;
+		}
+
+		#no conditions return
+		my $tempCmd = 'lscondition -d :' . join(',', @nodes);
+		my $retInfo = xCAT::Utils->runcmd($tempCmd, -1, 1);
+		if (1 > @$retInfo){
+			return;
+		}
+
+		shift @$retInfo;
+		shift @$retInfo;
+
+		foreach my $line (@$retInfo){
+			my @temp = split(':', $line);
+			$tempHash{@temp[0]}++;
+		}
+
+		foreach my $name (keys (%tempHash)){
+			if ($nodeCount == $tempHash{$name}){
+				$names = $names . $name . ';';
+			}
+		}
 	}
+	#only list the conditions on local.
+	else{
+		my $retInfo = xCAT::Utils->runcmd('lscondition -d', -1, 1);
 
+		shift @$retInfo;
+		shift @$retInfo;
+		foreach my $line (@$retInfo) {
+			my @temp = split(':', $line);
+			$names = $names . @temp[0] . ';';		
+		}		
+	}
+	if ('' eq $names){
+		return;
+	}
+	$names = substr($names, 0, (length($names) - 1));
+	
+	$callback->( { data => $names } );
+}
+
+sub web_mkcondition{
+	my ( $request, $callback, $sub_req ) = @_;
+
+	if ('change' eq $request->{arg}->[1]){
+		my @nodes;
+		my $conditionName = $request->{arg}->[2];
+		my $groupName = $request->{arg}->[3];
+
+		my $retInfo = xCAT::Utils->runcmd('nodels ' . $groupName . " nodetype.nodetype", -1, 1);
+		foreach my $line (@$retInfo){
+			my @temp = split(':', $line);
+			if (@temp[1] !~ /lpar/){
+				$callback->( { data => 'Error : only the compute nodes\' group could select.' } );
+				return;
+			}
+			push (@nodes, @temp[0]);
+		}
+
+		#xCAT::Utils->runcmd('chcondition -n ' + join(',', @nodes) + '-m m ' + $conditionName);
+		$callback->( { data => 'Change scope success.' } );
+	}
+	
 }
 
 sub web_lsresp {
 	my ( $request, $callback, $sub_req ) = @_;
-	my $ret = `lsresponse`;
-	my @resps;
+	my $names = '';
+	my @temp = ();
+	my $retInfo = xCAT::Utils->runcmd('lsresponse -d', -1, 1);
 
-	my @lines = split '\n', $ret;
-	shift @lines;
-	shift @lines;
-
-	foreach my $line (@lines) {
-		$callback->( { data => $line } );
+	shift @$retInfo;
+	shift @$retInfo;
+	foreach my $line (@$retInfo) {
+		@temp = split(':', $line);
+		$names = $names . @temp[0] . ';';
 	}
+
+	$names = substr($names, 0, (length($names) - 1));
+	$callback->( { data => $names } );
 }
 
 sub web_lscondresp {
