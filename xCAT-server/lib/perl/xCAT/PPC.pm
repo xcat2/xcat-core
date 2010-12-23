@@ -1798,7 +1798,7 @@ sub process_request {
        %$request_new =%$request;
        $request_new->{node}  = \@next;
        $request_new->{fsp_api} = 0;
-       if($lasthcp_type =~ /^(fsp|bpa|cec)$/ ) {
+       if($lasthcp_type =~ /^(fsp|bpa|cec|frame)$/ ) {
 	       #my $fsp_api = check_fsp_api($request);
 	       #if($fsp_api == 0 ) {
            $request_new->{fsp_api} = 1; 
