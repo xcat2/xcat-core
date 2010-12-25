@@ -258,7 +258,7 @@ sub web_mkcondition{
 			push (@nodes, @temp[0]);
 		}
 
-		#xCAT::Utils->runcmd('chcondition -n ' + join(',', @nodes) + '-m m ' + $conditionName);
+		xCAT::Utils->runcmd('chcondition -n ' + join(',', @nodes) + '-m m ' + $conditionName);
 		$callback->( { data => 'Change scope success.' } );
 	}
 	
@@ -267,7 +267,7 @@ sub web_mkcondition{
 sub web_lsresp {
 	my ( $request, $callback, $sub_req ) = @_;
 	my $names = '';
-	my @temp = ();
+	my @temp;
 	my $retInfo = xCAT::Utils->runcmd('lsresponse -d', -1, 1);
 
 	shift @$retInfo;
@@ -283,14 +283,29 @@ sub web_lsresp {
 
 sub web_lscondresp {
 	my ( $request, $callback, $sub_req ) = @_;
-	my @ret = `lscondresp`;
-	shift @ret;
-	shift @ret;
+	my $names = ''; 
+	my @temp;
+	#if there is condition name, then we only show the condition linked associations.
+	if ($request->{arg}->[1]){
+		my $cmd = 'lscondresp -d ' . $request->{arg}->[1];
+		my $retInfo = xCAT::Utils->runcmd($cmd, -1, 1);
+		if (2 > @$retInfo){
+			$callback->( { data => '' } );
+			return;
+		}
 
-	foreach my $line (@ret) {
-		chomp $line;
-		$callback->( { data => $line } );
+		shift @$retInfo;
+		shift @$retInfo;
+		for my $line (@$retInfo){
+			@temp = split(':', $line);
+			$names = $names . @temp[1] . ';';
+		}
 	}
+	else{
+	}
+
+	$names = substr($names, 0, (length($names) - 1));
+	$callback->( { data => $names } );
 }
 
 sub web_gettab {
