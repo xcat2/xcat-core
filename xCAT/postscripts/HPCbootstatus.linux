@@ -61,8 +61,8 @@ while [ true ]; do
 	fs=`/bin/mount |grep "type gpfs"|awk '{print $3}'|tr '\n' '!'`
     if [ "$fs" != "" ]; then        
         # Sent message to xcatd
-        updateflag.awk $MASTER 3002 "hpcbootstatus gfsp-filesystem=$fs"
-        echo "HPCbootstatus.linux: Reporting gfsp-filesystem=$fs to xcatd on $MASTER!"
+        updateflag.awk $MASTER 3002 "hpcbootstatus gpfs-filesystem=$fs"
+        echo "HPCbootstatus.linux: Reporting gpfs-filesystem=$fs to xcatd on $MASTER!"
         let COUNT=$COUNT+1
     fi
 

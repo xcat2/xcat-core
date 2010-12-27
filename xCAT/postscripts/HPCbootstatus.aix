@@ -89,10 +89,10 @@ while (1)
         }
 
         # send message to xcatd
-        my $gpfsf = "hpcbootstatus gfsp-filesystem=$new";
+        my $gpfsf = "hpcbootstatus gpfs-filesystem=$new";
         if (&updateflag($master,$gpfsf) != 0)
         {
-            print "HPCbootstatus.aix: Failed to report $gpfsq to xcatd on $master!\n";
+            print "HPCbootstatus.aix: Failed to report $gpfsf to xcatd on $master!\n";
         }
         $count++;
     }
