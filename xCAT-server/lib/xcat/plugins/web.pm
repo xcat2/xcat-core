@@ -154,15 +154,28 @@ sub web_lsrsrc {
 
 sub web_mkcondresp {
 	my ( $request, $callback, $sub_req ) = @_;
-	print Dumper( $request->{arg}->[0] );    #debug
-	my $ret = system( $request->{arg}->[0] );
+	my $conditionName = $request->{arg}->[1];
+	my $temp = $request->{arg}->[2];
+	my $cmd = '';
 
-	#there's no output for "mkcondresp"
-	#TODO
-	if ($ret) {
-
-		#failed
+	my @resp = split(':', $temp);
+	#create new associations
+	if (1 < length(@resp[0])){
+		$cmd = substr(@resp[0], 1);
+		$cmd =~ s/,/ /;
+		$cmd = 'mkcondresp ' . $conditionName . ' ' . $cmd;
+		my $retInfo = xCAT::Utils->runcmd($cmd, -1, 1);
 	}
+
+	#delete old associations
+	if (1 < length(@resp[1])){
+		$cmd = substr(@resp[1], 1);
+		$cmd =~ s/,/ /;
+		$cmd = 'rmcondresp ' . $conditionName . ' ' . $cmd;
+		my $retInfo = xCAT::Utils->runcmd($cmd, -1, 1);
+	}
+	#there's no output for "mkcondresp"
+	$callback->({ data => "Success." });
 }
 
 sub web_startcondresp {

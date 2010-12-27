@@ -788,7 +788,7 @@ function loadRmcEventConfig(){
 	});
 	$('#rmcEventDiv').append(mkResponseBut);
 	
-	var mkConResBut = createButton('Make Association');
+	var mkConResBut = createButton('Configure Association');
 	mkConResBut.bind('click', function(){
 		mkCondRespDia();
 	});
@@ -804,13 +804,12 @@ function loadRmcEventConfig(){
  *        
  */
 function mkCondRespDia(){
-	var diaDiv = $('<div title="Make Association" id="mkAssociation"><div>');
+	var diaDiv = $('<div title="Configure Association" id="mkAssociation"><div>');
 	
 	//2 fieldset conditions, response
 	diaDiv.append('<fieldset id="mkAssCond"><legend>Predefined Condition</legend></fieldset>');
 	diaDiv.append('<fieldset id="mkAssResp"><legend>Response</legend>Plase select condition first.</fieldset>');
-	
-	
+	diaDiv.append('<div id="selectedResp" style="display: none;" ><div>');
 	
 	//add the conditions into fieldset
 	if ('' == globalCondition){
@@ -835,6 +834,7 @@ function mkCondRespDia(){
 			
 			success : function(data){
 				var tempHash = new Object();
+				var oldSelectedResp = '';
 				var showStr = '';
 				if (data.rsp[0]){
 					var names = data.rsp[0].split(';');
@@ -848,6 +848,7 @@ function mkCondRespDia(){
 				for(var name in globalResponse){
 					if(tempHash[name]){
 						showStr += '<input type="checkbox" checked="checked" value="' + name + '">' + name;
+						oldSelectedResp += ';' + name;
 					}
 					else{
 						showStr += '<input type="checkbox" value="' + name + '">' + name;
@@ -855,6 +856,7 @@ function mkCondRespDia(){
 				}
 				
 				diaDiv.find('#mkAssResp').empty().append('<legend>Response</legend>').append(showStr);
+				diaDiv.find('#selectedResp').empty().append(oldSelectedResp);
 			}
 		});
 	});
@@ -870,6 +872,69 @@ function mkCondRespDia(){
 				$(this).dialog('close');
 			},
 			ok : function(){
+				var newResp = new Object();
+				var oldResp = new Object();
+				var oldString = '';
+				var newString = '';
+				//get the old seelected responses
+				var conditionName = $(this).find('#mkAssCond :checked').attr('value');
+				if (!conditionName){
+					return;
+				}
+				var temp = $(this).find('#selectedResp').html();
+				if('' == temp){
+					return;
+				}
+				var tempArray = temp.substr(1).split(';');
+				for (var i in tempArray){
+					oldResp[tempArray[i]] = 1;
+				}
+				//get the new selected responses
+				$(this).find('#mkAssResp input:checked').each(function(){
+					var respName = $(this).attr('value');
+					newResp[respName] = 1;
+				});
+				
+				for (var i in newResp){
+					if(oldResp[i]){
+						delete oldResp[i];
+						delete newResp[i];
+					}
+				}
+				
+				//add the response which are delete.
+				for (var i in oldResp){
+					oldString += ',"' + i + '"';
+				}
+				if('' != oldString){
+					oldString = oldString.substr(1);
+				}
+				
+				//add the response which are new add
+				for (var i in newResp){
+					newString += ',"' + i +'"';
+				}
+				if ('' != newString){
+					newString = newString.substr(1);
+				}
+				
+				if(('' != oldString) || ('' != newString)){
+					$('#rmcEventStatus').empty().append('Create/Remove associations').append(createLoader());
+					$.ajax({
+						url : 'lib/cmd.php',
+						dataType : 'json',
+						data : {
+							cmd : 'webrun',
+							tgt : '',
+							args : 'mkcondresp;"' + conditionName + '";+' + newString + ':-' + oldString,
+							msg : ''
+						},
+						
+						success : function(data){
+							$('#rmcEventStatus').empty().append(data.rsp[0]);;
+						}
+					});
+				}
 				$(this).dialog('close');
 			}
 		}
