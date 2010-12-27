@@ -1978,6 +1978,12 @@ sub do_resetnet {
             send_msg( $req, 0, "$name: no nodetype defined, skipping network reset" );
             next;
         }
+        
+        # Skip frame and cec
+        if ( $type->{nodetype} eq "cec" or $type->{nodetype} eq "frame" ) {
+        	send_msg( $req, 0, "$name: $type->{nodetype}, skipping network reset" );
+        	next;
+        }        
 
         my $mac = $mactab->getNodeAttribs( $name, [qw(mac)]);
         if ( !$mac or !$mac->{mac} ) {
