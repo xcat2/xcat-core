@@ -652,6 +652,7 @@ sub processArgs
 
     # if there is no other input for object names then we need to
     #	find all the object names for the specified types
+    #   Do NOT do this for rmdef
     if ($::opt_t
         && !(   $::opt_o
              || $::filedata
@@ -661,6 +662,14 @@ sub processArgs
     {
         my @tmplist;
 
+        if ($::command eq 'rmdef')
+        {
+            my $rsp;
+            $rsp->{data}->[0] =
+              "No object names were provided.";
+            xCAT::MsgUtils->message("E", $rsp, $::callback);
+            return 2;
+        }
         # also ne chdef ????????
         if ($::command ne 'mkdef')
         {
