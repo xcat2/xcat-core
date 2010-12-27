@@ -28,6 +28,7 @@ for nic in `ifconfig -a|grep -B1 "inet addr"|awk '{print $1}'|grep -v inet|grep 
    fi
    sed -i s/BOOTPROTO=dhcp/BOOTPROTO=static/ $NICFILE
    sed -i s/BOOTPROTO=\'dhcp\'/BOOTPROTO=static/ $NICFILE
+   sed -i s/BOOTPROTO=\"dhcp\"/BOOTPROTO=static/ $NICFILE
    echo IPADDR=$IPADDR >> $NICFILE
    echo NETMASK=$NETMASK >> $NICFILE 
 done
