@@ -319,7 +319,7 @@ hosts => {
   node => 'The node name or group name.',
   ip => 'The IP address of the node.',
   hostnames => 'Hostname aliases added to /etc/hosts for this node.',
-  otherinterfaces => 'Other IP addresses to add for this node.  Format: -<ext>:<ip>,<intfhostname>:ip>,...',
+  otherinterfaces => 'Other IP addresses to add for this node.  Format: -<ext>:<ip>,<intfhostname>:<ip>,...',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
