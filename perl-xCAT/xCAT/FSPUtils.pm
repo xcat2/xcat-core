@@ -225,7 +225,7 @@ sub fsp_state_action {
     # output the prompt
     #################
     #$outhash{ $node_name } = $res;
-    if( defined($res) ) {
+    if( @res ) {
         $res[0] =~ s/$node_name: //;
     }
     return( [$Rc,@res] ); 
