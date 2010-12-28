@@ -180,22 +180,18 @@ sub web_mkcondresp {
 
 sub web_startcondresp {
 	my ( $request, $callback, $sub_req ) = @_;
-	print Dumper( $request->{arg}->[0] );    #debug
-	my $ret = system( $request->{arg}->[0] );
-	if ($ret) {
-
-		#to handle the failure
-	}
+	my $conditionName = $request->{arg}->[1];
+	my $cmd = 'startcondresp "' . $conditionName . '"';
+	my $retInfo = xCAT::Utils->runcmd($cmd, -1, 1);
+	$callback->({ data => 'start monitor "' . $conditionName .  '" Successful.' });
 }
 
 sub web_stopcondresp {
 	my ( $request, $callback, $sub_req ) = @_;
-	print Dumper( $request->{arg}->[0] );    #debug
-	my $ret = system( $request->{arg}->[0] );
-	if ($ret) {
-
-		#to handle the failure
-	}
+	my $conditionName = $request->{arg}->[1];
+	my $cmd = 'stopcondresp "' . $conditionName . '"';
+	my $retInfo = xCAT::Utils->runcmd($cmd, -1, 1);
+	$callback->({ data => 'stop monitor "' . $conditionName .  '" Successful.' });
 }
 
 sub web_lscond {
@@ -204,7 +200,7 @@ sub web_lscond {
 	my $names = '';
 
 	#list all the conditions on all lpars in this group 
-	if ($nodeRange){
+	if ($nodeRange && ('-' ne substr($nodeRange, 0, 1))){
 		my @nodes = xCAT::NodeRange::noderange($nodeRange);
 		my %tempHash;
 		my $nodeCount = @nodes;
@@ -236,8 +232,16 @@ sub web_lscond {
 	}
 	#only list the conditions on local.
 	else{
-		my $retInfo = xCAT::Utils->runcmd('lscondition -d', -1, 1);
+		my $option = '';
+		if ($nodeRange){
+			$option = $nodeRange;
+		}
+		my $retInfo = xCAT::Utils->runcmd('lscondition -d ' . $option, -1, 1);
 
+		if (2 > @$retInfo){
+			return;
+		}
+		
 		shift @$retInfo;
 		shift @$retInfo;
 		foreach my $line (@$retInfo) {

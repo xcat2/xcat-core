@@ -782,17 +782,23 @@ function loadRmcEventConfig(){
 	});
 	$('#rmcEventDiv').append(chCondScopeBut);
 	
-	var mkResponseBut = createButton('Make Response');
-	mkResponseBut.bind('click', function(){
-		mkResponseDia();
-	});
-	$('#rmcEventDiv').append(mkResponseBut);
-	
-	var mkConResBut = createButton('Configure Association');
-	mkConResBut.bind('click', function(){
+	var mkCondRespBut = createButton('Make/Remove Association');
+	mkCondRespBut.bind('click', function(){
 		mkCondRespDia();
 	});
-	$('#rmcEventDiv').append(mkConResBut);
+	$('#rmcEventDiv').append(mkCondRespBut);
+	
+	var startCondRespBut = createButton('Start Association');
+	startCondRespBut.bind('click', function(){
+		startCondRespDia();
+	});
+	$('#rmcEventDiv').append(startCondRespBut);
+	
+	var stopCondRespBut = createButton('Stop Association');
+	stopCondRespBut.bind('click', function(){
+		stopCondRespDia();
+	});
+	$('#rmcEventDiv').append(stopCondRespBut);
 }
 
 /**
@@ -1067,6 +1073,148 @@ function mkResponseDia(){
 				$(this).dialog('close');
 			},
 			ok : function(){
+				$(this).dialog('close');
+			}
+		}
+	});
+}
+
+
+
+/**
+ * start the condition and response associations
+ * 
+ * @param 
+
+ * @return
+ *        
+ */
+function startCondRespDia(){
+	var diaDiv = $('<div title="Start Association" id="startAss"><div>');
+	diaDiv.append('Getting conditions').append(createLoader());
+	
+	$.ajax({
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'lscondition;-n',
+			msg : ''
+		},
+		
+		success : function(data){
+			if (data.rsp[0]){
+				$('#startAss').empty().append(createConditionTable(data.rsp[0]));
+				$('#startAss').dialog("option", "position", 'center');
+			}
+			else{
+				$('#startAss').empty().append('There is not non-monitored condition.');
+			}
+		}
+	});
+	
+	diaDiv.dialog({
+		 modal: true,
+         width: 570,
+         close: function(event, ui){
+					$(this).remove();
+				},
+		buttons: {
+			cancel : function(){
+				$(this).dialog('close');
+			},
+			start : function(){
+				var conditionName = $('#startAss :checked').attr('value');
+				if (!conditionName){
+					alert('Select condition name please.');
+					return;
+				}
+				$('#rmcEventStatus').empty().append('Starting monitor on ' + conditionName).append(createLoader());
+				$.ajax({
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'webrun',
+						tgt : '',
+						args : 'startcondresp;' + conditionName,
+						msg : ''
+					},
+					
+					success : function(data){
+						$('#rmcEventStatus').empty().append(data.rsp[0]);
+					}
+				});
+				$(this).dialog('close');
+			}
+		}
+	});
+}
+
+/**
+ * stop the condition and response associations
+ * 
+ * @param 
+
+ * @return
+ *        
+ */
+function stopCondRespDia(){
+	var diaDiv = $('<div title="Stop Association" id="stopAss"><div>');
+	diaDiv.append('Getting conditions').append(createLoader());
+	
+	$.ajax({
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'lscondition;-m',
+			msg : ''
+		},
+		
+		success : function(data){
+			if (data.rsp[0]){
+				$('#stopAss').empty().append(createConditionTable(data.rsp[0]));
+				$('#stopAss').dialog("option", "position", 'center');
+			}
+			else{
+				$('#stopAss').empty().append('There is not monitored condition.');
+			}
+		}
+	});
+	
+	diaDiv.dialog({
+		 modal: true,
+         width: 570,
+         close: function(event, ui){
+					$(this).remove();
+				},
+		buttons: {
+			cancel : function(){
+				$(this).dialog('close');
+			},
+			stop : function(){
+				var conditionName = $('#stopAss :checked').attr('value');
+				if (!conditionName){
+					alert('Select condition name please.');
+					return;
+				}
+				$('#rmcEventStatus').empty().append('Stoping monitor on ' + conditionName).append(createLoader());
+				$.ajax({
+					url : 'lib/cmd.php',
+					dataType : 'json',
+					data : {
+						cmd : 'webrun',
+						tgt : '',
+						args : 'stopcondresp;' + conditionName,
+						msg : ''
+					},
+					
+					success : function(data){
+						$('#rmcEventStatus').empty().append(data.rsp[0]);
+					}
+				});
 				$(this).dialog('close');
 			}
 		}
