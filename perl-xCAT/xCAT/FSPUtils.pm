@@ -89,25 +89,38 @@ sub fsp_api_action {
     $id = $$attrs[0];
     $fsp_name = $$attrs[3]; 
 
-    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/) {
+    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ || $$attrs[4] =~ /^cec$/) {
         $type = 0;
+    } elsif($$attrs[4] =~ /^bpa$/ || $$attrs[4] =~ /^frame$/) { 
+	    $type = 1;
     } else { 
-	$type = 1;
+        $res = "$fsp_name\'s type is $$attrs[4]. Not support for $$attrs[4]";
+	    return ([$node_name, $res, -1]);
     } 
 
-    ############################
-    # Get IP address
-    ############################
-    $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
+    if( $action =~ /^add_connection$/) { 
+        ############################
+        # Get IP address
+        ############################
+        $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name, $parameter );
+	    undef($parameter);
+    } else {
+        $fsp_ip = xCAT::Utils::getNodeIPaddress( $fsp_name );
+    }
+
     if(!defined($fsp_ip)) {
-        $res = "Failed to get the $fsp_name\'s ip";
+        $res = "Failed to get the $fsp_name\'s or the related FSPs/BPAs' ip";
         return ([$node_name, $res, -1]);	
     }
-    unless ($fsp_ip =~ /\d+\.\d+\.\d+\.\d+/) {
-	    $res = "Not supporting IPv6 here"; #Not supporting IPv6 here IPV6TODO
+
+    if($fsp_ip eq "-1") {
+        $res = "Cannot open vpd table";
         return ([$node_name, $res, -1]);	
-    }
-	
+	} elsif( $fsp_ip eq "-3") {
+        $res = "It doesn't have the  FSPs or BPAs whose side is the value as specified or by default.";
+        return ([$node_name, $res, -1]);	
+	}
+
     #print "fsp name: $fsp_name\n";
     #print "fsp ip: $fsp_ip\n";
     
@@ -119,9 +132,10 @@ sub fsp_api_action {
         my $ppcdirecttab = xCAT::Table->new( 'ppcdirect');
         if ( ! $ppcdirecttab) {
             $res = "Failed to open table 'ppcdirect'.";	
-	    return ([$node_name, $res, -1]);
-	}	
-	my $password_hash    = $ppcdirecttab->getAttribs({'hcp'=> $fsp_name,'username'=>"HMC" } ,[qw(password)]);
+	        return ([$node_name, $res, -1]);
+     	}	
+     	my $password_hash    = $ppcdirecttab->getAttribs({'hcp'=> $fsp_name,'username'=>"HMC" } ,[qw(password)]);
+        $ppcdirecttab->close();
         my $user = "HMC";
         my $password = $password_hash->{password};
     	$cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
