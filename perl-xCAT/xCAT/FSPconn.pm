@@ -55,7 +55,7 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t T=s p=s P=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t T=s p=s P=s port=s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -196,6 +196,20 @@ sub mkhwconn_parse_args
         return( usage('Wrong value of  -T option. The value can be lpar or fnm.'));
     }
  
+    if( ! exists $opt{port} )
+    {
+        $opt{port} = "0";
+    }
+
+    if( $opt{port} ne "0" and $opt{port} ne "1")
+    {
+        return( usage('Wrong value of  --port option. The value can be 0 or 1, and the default value is 0.'));   
+    }
+    
+    $ppctab->close();
+    $nodetypetab->close();
+    $vpdtab->close();
+    
     $request->{method} = 'mkhwconn';
     return( \%opt);
 }
@@ -333,6 +347,9 @@ sub lshwconn_parse_args
         }
     }
 
+    $nodetypetab->close();
+    $nodehmtab->close();
+    
     $request->{nodetype} = $nodetype;
 
     $request->{method} = 'lshwconn';
@@ -445,6 +462,11 @@ sub rmhwconn_parse_args
         return ( usage("Attribute nodetype.nodetype cannot be found for node(s) $tmp_nodelist"));
     }
 
+    $ppctab->close();
+    $nodetypetab->close();
+    $vpdtab->close();
+    $nodehmtab->close();
+
     #if (scalar(@bpa_ctrled_nodes))
     #{
     #    my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
@@ -500,7 +522,7 @@ sub mkhwconn
 
             }
 
-            my $res = xCAT::FSPUtils::fsp_api_action( $node_name, $d, "add_connection", $tooltype );
+            my $res = xCAT::FSPUtils::fsp_api_action( $node_name, $d, "add_connection", $tooltype, $opt->{port} );
             $Rc = @$res[2];
 	    if( @$res[1] ne "") {
                 push @value, [$node_name, @$res[1], $Rc];
