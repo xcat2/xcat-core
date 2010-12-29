@@ -2787,6 +2787,7 @@ sub nodeonmynet
 sub getNodeIPaddress 
 {
     my $nodetocheck = shift;
+    my $port        = shift;
     my $nodeip;
 
     $nodeip = xCAT::NetworkUtils->getipaddr($nodetocheck);
@@ -2811,7 +2812,36 @@ sub getNodeIPaddress
             if ($type) {
                 if ($type->{nodetype} eq "frame" or $type->{nodetype} eq "cec")  {
                 	$c1 = xCAT::DBobjUtils->getchildren($nodetocheck); 
-                	my $hstab =  xCAT::Table->new('hosts'); 
+   
+                    #if $port exists, only for mkhwconn ... CEC/Frame 
+                    if ( defined($port) ) {
+                        my @fsp_bpa = @$c1;
+                        undef ($c1);
+                        # mkhwconn only creates the connections for the FSPs/BPAs whoes port is $port.
+                	    my $vpd_tab   =  xCAT::Table->new('vpd');
+                        unless($vpd_tab) {
+                            return "-1"; # Cannot open vpd table
+                        }
+                        foreach ( @fsp_bpa ) {
+                            my $vpd_hash = $vpd_tab->getNodeAttribs( $_, [qw(side)]);
+                            my $side = $vpd_hash->{side};
+                            if (!defined($side)) {
+				                #return -2; # $_: No side in vpd table for  $_
+                                 next;
+			                }
+				            #print $side;
+                            if ( $side =~ /[A|a|B|b]-$port/) {
+                                 push (@$c1, $_);
+                            }
+                        }
+                        $vpd_tab->close(); 
+			    
+                        if(!defined($c1) || @$c1 == 0) {
+                                return "-3"; # the FSP/BPA's side is not $port.
+                        }
+                    }
+
+                    my $hstab =  xCAT::Table->new('hosts'); 
                 	if ( $hstab ) {
                 	    my @myip = ();
                 	    foreach ( @$c1 )
