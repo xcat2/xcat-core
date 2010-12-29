@@ -9500,17 +9500,6 @@ sub rmdsklsnode
                 $output =
                   xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nodename,
                                         $scmd, 0);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "Could not shut down node \'$nodename\'.";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-
-                    #push(@nodesfailed, $nodename);
-                    #next;
-                }
             }
             else
             {
