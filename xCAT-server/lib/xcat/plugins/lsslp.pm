@@ -41,7 +41,7 @@ use constant {
     TYPE_IVM         => "IVM",
     TYPE_FSP         => "FSP",
     TYPE_CEC         => "CEC",
-    TYPE_FRAME       => "FRAME",    
+    TYPE_FRAME       => "FRAME",
     IP_ADDRESSES     => 4,
     TEXT             => 0,
     FORMAT           => 1,
@@ -56,7 +56,7 @@ my %service_slp = (
     @{[ SERVICE_FSP    ]} => TYPE_FSP,
     @{[ SERVICE_BPA    ]} => TYPE_BPA,
     @{[ SERVICE_CEC    ]} => TYPE_CEC,
-    @{[ SERVICE_FRAME  ]} => TYPE_FRAME,    
+    @{[ SERVICE_FRAME  ]} => TYPE_FRAME,
     @{[ SERVICE_HMC    ]} => TYPE_HMC,
     @{[ SERVICE_IVM    ]} => TYPE_IVM,
     @{[ SERVICE_MM     ]} => TYPE_MM,
@@ -114,6 +114,8 @@ my $maxtries   = 1;
 my $openSLP    = 1;
 my @converge;
 my $macmap;
+my $expect_ent = 0;
+my $time_out = 300;
 
 
 ##########################################################################
@@ -203,7 +205,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n updatehosts makedhcp M=s resetnet vpdtable))) {
+            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n C=s T=s updatehosts makedhcp M=s resetnet vpdtable))) {
         return( usage() );
     }
 
@@ -243,9 +245,9 @@ sub parse_args {
     #############################################
     # Check for an argument
     #############################################
-    elsif ( defined( $ARGV[0] )) {
-        return(usage( "Invalid Argument: $ARGV[0]" ));
-    }
+    #elsif ( defined( $ARGV[0] )) {
+    #    return(usage( "Invalid Argument: $ARGV[0]" ));
+    #}
     #############################################
     # Option -V for verbose output
     #############################################
@@ -301,6 +303,34 @@ sub parse_args {
     #    return( usage("Invalid value for '-M' option. Acceptable value is 'vpd' or 'switchport'") );
     #}
 
+    #############################################
+    # Check the validation of -T option
+    #############################################
+    if ( exists( $opt{T} )) {
+        $time_out = $opt{T};
+        if ( $time_out !~ /^\d+$/ ) {
+            return( usage( "Invalid timeout value, should be number" ));
+        }       
+        if (!exists( $opt{C} )) {
+            return ( usage( "-T should be used with -C" ));
+        }
+    }
+    
+        
+    #############################################
+    # Check the validation of -C option
+    #############################################
+    if ( exists( $opt{C} )) {
+        $expect_ent = $opt{C};
+        
+        if ( $expect_ent !~ /^\d+$/ ) {
+            return( usage( "Invalid expect entries, should be number" ));
+        }
+        if ( !exists($opt{i} )) {
+            return( usage( "-C should be used with -i" ));          
+        }
+    } 
+        
     return(0);
 }
 
@@ -708,7 +738,7 @@ sub invoke_cmd {
     my $result  = runslp( $args, $ip, $services, $request );
     my $unicast = @$result[0];
     my $values  = @$result[1];
-    prt_result( $request, $values);
+    #prt_result( $request, $values);
 
     ########################################
     # May have to send additional unicasts
@@ -756,6 +786,39 @@ sub invoke_cmd {
             }
         }
     }
+    ########################################
+    # Need to check if the result is enough
+    ########################################
+    if ( exists( $opt{C}) ) {
+        send_msg( $request, 0, "\n Begin to try again, this maybe takes long time \n" );
+        #my $uni_tmp = $unicast;
+        my %val_tmp = %$values;     
+        my $rlt;
+        my $val;
+        my $start_time = Time::HiRes::gettimeofday();     
+        my $elapse;
+        my $found = scalar(keys %val_tmp);
+        while ( $found < $expect_ent ) {
+            $rlt = runslp( $args, $ip, $services, $request );
+            $val =  @$rlt[1];
+            for my $v (keys %$val) {
+                if ( $val_tmp{$v} ne 1 ) {
+                    $val_tmp{$v} = 1;
+                }
+            }
+            $found = scalar(keys %val_tmp);
+            $elapse = Time::HiRes::gettimeofday() - $start_time;
+            if ( $elapse > $time_out ) {
+                send_msg( $request, 0, "Time out, Force return.\n" );
+                last;
+            }
+        }
+        send_msg( $request, 0, "Discovered $found nodes \n" );
+        $values = \%val_tmp;
+        #my @re = [$uni_tmp, \%val_tmp];
+        #$result = \@re;
+    }    
+    prt_result( $request, $values);
     ########################################
     # No valid responses received
     ########################################
@@ -1601,18 +1664,18 @@ sub parse_responses {
             my @ips = split/,/, $result[4];
 
             foreach (@result) {
-            	push @severnode1, $_;
+                push @severnode1, $_;
             }         
-            $severnode1[3] = $severnode1[3].'-p0';  
+            $severnode1[3] = $severnode1[3].'-0';  
             $severnode1[4] = $ips[0];
             $severnode1[0] = $service_slp{$type};
             push @severnode1, $rsp;
             $outhash{$ips[0]} = \@severnode1; 
                                     
             foreach (@result) {
-            	push @severnode2, $_;
+                push @severnode2, $_;
             }
-            $severnode2[3] = $severnode2[3].'-p1';              
+            $severnode2[3] = $severnode2[3].'-1';              
             $severnode2[4] = $ips[1];
             $severnode2[0] = $service_slp{$type};
             push @severnode2, $rsp;
@@ -1626,17 +1689,17 @@ sub parse_responses {
             }
             $host = undef;
             unless ($host) {
-            	$host = "Server-$result[1]-SN$result[2]";
+                $host = "Server-$result[1]-SN$result[2]";
             }
             unless ( exists( $outhash{$host} ))
             {
                 if ( $type eq SERVICE_BPA )
                 {
-                	$result[0] = TYPE_FRAME;
+                    $result[0] = TYPE_FRAME;
                 }
                 else
                 {
-                	$result[0] = TYPE_CEC;
+                    $result[0] = TYPE_CEC;
                 }
                 
                 # side of frame and cec should be null 
@@ -1649,7 +1712,7 @@ sub parse_responses {
                 $outhash{$host} = \@result;    
             }        
         } else   {
-        	
+            
             ###########################################        
             # for HMC
             ###########################################  
@@ -1696,18 +1759,18 @@ sub parse_responses {
         my $bpamtm  = @$data[5];
         my $bpasn   = @$data[6];          
         foreach my $h1 ( keys %outhash ) {
-        	my $data1 = $outhash{$h1};
+            my $data1 = $outhash{$h1};
             my $type1 = @$data1[0];
             my $mtm1  = @$data1[1];
             my $sn1   = @$data1[2];
             if ( $type1 eq TYPE_FRAME and ($type eq TYPE_BPA or $type eq TYPE_CEC) and $mtm1 eq $bpamtm and $sn1 eq $bpasn ) {
-            	$parent = $h1;       # BPA and CEC's parent is Frame
-            	last;
+                $parent = $h1;       # BPA and CEC's parent is Frame
+                last;
             } elsif ( $type1 eq TYPE_CEC and $type eq TYPE_FSP and $mtm1 eq $mtm and $sn1 eq $sn ) {
-            	$parent = $h1;       # FSP's parent is CEC
-            	last;
+                $parent = $h1;       # FSP's parent is CEC
+                last;
             } else {
-            	$parent = "";   # Frame and HMC have no parent
+                $parent = "";   # Frame and HMC have no parent
             }
         }
  
@@ -1718,7 +1781,7 @@ sub parse_responses {
         if ( $type ne TYPE_FRAME and $type ne TYPE_CEC )  {# the ips of frame and cec are null
             $mac = match_ip_mac( $ip0 ); 
         } else {
-        	$mac = "undef";
+            $mac = "undef";
         }
         push @$data, $mac;        
         
@@ -1785,7 +1848,7 @@ sub xCATdB {
         } elsif ( $type =~ /^(HMC|IVM)$/ ) {
             ########################################
             # HMC: name=hostname, ip=ip, mac=mac
-            ########################################           	
+            ########################################            
             xCAT::PPCdb::add_ppchcp( lc($type), "$name,$mac,$ip",1 );
         }
         elsif ( $type =~ /^FSP$/ ) {
@@ -1814,7 +1877,7 @@ sub xCATdB {
                lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
             xCAT::PPCdb::add_ppc( "frame", [$values], 0, 1 );   
         }
-        elsif ( $type =~ /^CEC$/ ) {	
+        elsif ( $type =~ /^CEC$/ ) {    
             ########################################
             # CEC: type=cec, name=hostname, cageid=cageid
             # mtms=mtms, side=null, prof=null,frame=parent
@@ -1826,7 +1889,7 @@ sub xCATdB {
             my $values = join( ",",
                lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$frame,$ip,$mac );
             xCAT::PPCdb::add_ppc( "cec", [$values], 0, 1 );   
-        }        	
+        }           
     }
 }
 
@@ -1981,8 +2044,8 @@ sub do_resetnet {
         
         # Skip frame and cec
         if ( $type->{nodetype} eq "cec" or $type->{nodetype} eq "frame" ) {
-        	send_msg( $req, 0, "$name: $type->{nodetype}, skipping network reset" );
-        	next;
+            send_msg( $req, 0, "$name: $type->{nodetype}, skipping network reset" );
+            next;
         }        
 
         my $mac = $mactab->getNodeAttribs( $name, [qw(mac)]);
@@ -2581,7 +2644,7 @@ sub preprocess_request {
     my %sv_hash=();
     my @all = xCAT::Utils::getAllSN();
     foreach (@all) {
-	    $sv_hash{$_}=1;
+        $sv_hash{$_}=1;
     }
     ###########################################
     # build each request for each service node
@@ -2629,7 +2692,7 @@ sub disti_multi_node
     foreach my $node ( @nodes ) {
         my $id_parent = $ppctab->getNodeAttribs( $node, ['id','parent'] );
         my $nodetype = $nodetypetab->getNodeAttribs($node, ['nodetype'] );
-	    next if ( !defined $nodetype or !exists $nodetype->{'nodetype'} );
+        next if ( !defined $nodetype or !exists $nodetype->{'nodetype'} );
         next if ( $nodetype->{'nodetype'} ne lc($type) );
 
         if ( $nodetype->{'nodetype'} eq 'fsp' ) {
