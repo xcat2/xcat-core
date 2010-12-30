@@ -2036,15 +2036,16 @@ sub do_resetnet {
             next;
         }
 
-        my $type = $nodetypetab->getNodeAttribs( $name, [qw(nodetype)]);
-        if ( !$type or !$type->{nodetype} ) {
+        #my $type = $nodetypetab->getNodeAttribs( $name, [qw(nodetype)]);
+        my $type = xCAT::DBobjUtils->getnodetype($name);
+        if ( !$type  ) {
             send_msg( $req, 0, "$name: no nodetype defined, skipping network reset" );
             next;
         }
         
         # Skip frame and cec
-        if ( $type->{nodetype} eq "cec" or $type->{nodetype} eq "frame" ) {
-            send_msg( $req, 0, "$name: $type->{nodetype}, skipping network reset" );
+        if ( $type eq "cec" or $type eq "frame" ) {
+            send_msg( $req, 0, "$name: $type, skipping network reset" );
             next;
         }        
 
@@ -2058,14 +2059,14 @@ sub do_resetnet {
         # Make the target that will reset its
         # network interface
         #####################################
-        $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'args'} = "0.0.0.0,$name";
-        $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'mac'} = $mac->{mac};
-        $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'name'} = $name;
-        $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'ip'} = $namehash->{$name};
-        $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'type'} = $type->{nodetype};
-        if ( $type->{nodetype} !~ /^mm$/ ) {
+        $targets->{$type}->{$namehash->{$name}}->{'args'} = "0.0.0.0,$name";
+        $targets->{$type}->{$namehash->{$name}}->{'mac'} = $mac->{mac};
+        $targets->{$type}->{$namehash->{$name}}->{'name'} = $name;
+        $targets->{$type}->{$namehash->{$name}}->{'ip'} = $namehash->{$name};
+        $targets->{$type}->{$namehash->{$name}}->{'type'} = $type;
+        if ( $type !~ /^mm$/ ) {
             my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$namehash->{$name}] );
-            $targets->{$type->{nodetype}}->{$namehash->{$name}}->{'args'} .= ",$netinfo{$namehash->{$name}}{'gateway'},$netinfo{$oi}{'mask'}";
+            $targets->{$type}->{$namehash->{$name}}->{'args'} .= ",$netinfo{$namehash->{$name}}{'gateway'},$netinfo{$oi}{'mask'}";
         }
         $ip_host->{$namehash->{$name}} = $name;
     }
