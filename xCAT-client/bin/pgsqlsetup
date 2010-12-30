@@ -288,15 +288,15 @@ if (($::INIT) && ($::xcatrunningpgsql == 0))
         # create cfgloc file
         #
         &createcfgloc;
+
+        #
+        # Restore backed up database into PostgreSQL
+        #
+        &restorexcatdb;
     }
 
-    #
-    # Restore backed up database into PostgreSQL
-    #
-    &restorexcatdb;
-
     xCAT::MsgUtils->message("I",
-                           "xCAT is now running on the PostgreSQL database.\n");
+                           "xCAT is running on the PostgreSQL database.\n");
 
 }    # end initialization
 
@@ -383,18 +383,13 @@ sub backupxcatdb
 
 {
 
-    # If there is no backup or the /etc/xcat/cfgloc file does not point to
-    # pgsql, then we backup the database
-    my $sitefile = "$::backupdir/site.csv";
 
-    if ((!(-e $sitefile)) || ($::xcatrunningpgsql == 0))
-    {
-        xCAT::MsgUtils->message(
+    xCAT::MsgUtils->message(
             "I",
             "Backing up xCAT Database to $::backupdir.\nThis could take several minutes."
             );
-        if (!(-e $::backupdir))
-        {    # does not exist, make it
+    if (!(-e $::backupdir))
+    {    # does not exist, make it
             my $cmd = "mkdir -p $::backupdir";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -402,9 +397,9 @@ sub backupxcatdb
                 xCAT::MsgUtils->message("E", " $cmd failed.");
                 exit(1);
             }
-        }
-        else
-        {    # remove contents
+    }
+    else
+    {    # remove contents
 
             my $cmd = "rm -f $::backupdir/*";
             xCAT::Utils->runcmd($cmd, 0);
@@ -413,16 +408,15 @@ sub backupxcatdb
                 xCAT::MsgUtils->message("E", " $cmd failed.");
                 exit(1);
             }
-        }
+    }
 
-        # back it up
-        my $cmd = " dumpxCATdb -p $::backupdir";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
+    # back it up
+    my $cmd = " dumpxCATdb -p $::backupdir";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
             xCAT::MsgUtils->message("E", " $cmd failed.");
             exit(1);
-        }
     }
 
 }
