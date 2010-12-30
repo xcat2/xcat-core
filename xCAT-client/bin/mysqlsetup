@@ -337,19 +337,19 @@ if ($::INIT)
         # create cfgloc file
         #
         &createcfgloc;
+
+        #
+        # Restore backed up database into MySQL
+        #
+        &restorexcatdb;
+
+        if ($::osname eq 'AIX')
+        {
+          xCAT::MsgUtils->message("I", "xCAT is now running on the MySQL database.\nYou should log out and back in, so that the new ulimit settings will take affect.");
+        } else {
+          xCAT::MsgUtils->message("I", "xCAT is now running on the MySQL database.");
+        } 
     }
-
-    #
-    # Restore backed up database into MySQL
-    #
-    &restorexcatdb;
-
-    if ($::osname eq 'AIX')
-    {
-        xCAT::MsgUtils->message("I", "xCAT is now running on the MySQL database.\nYou should log out and back in, so that the new ulimit settings will take affect.");
-    } else {
-        xCAT::MsgUtils->message("I", "xCAT is now running on the MySQL database.");
-    } 
 
 }    # end initialization
 
@@ -1584,7 +1584,6 @@ sub createcfgloc
 
 }
 
-#-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
 
@@ -1602,28 +1601,25 @@ sub restorexcatdb
 
     # copy the mysql cfgloc file
     my $cmd;
-    if ($::xcatrunningmysql == 0)
-    {    # xcat cfgloc not configured
 
-        # if they had an old cfgloc on another database, save it
-        if ((-e ("/etc/xcat/cfgloc")) && (!(-e ("/etc/xcat/cfgloc.olddb"))))
-        {
+    # if they had an old cfgloc on another database, save it
+    if ((-e ("/etc/xcat/cfgloc")) && (!(-e ("/etc/xcat/cfgloc.olddb"))))
+    {
             $cmd = "cp /etc/xcat/cfgloc /etc/xcat/cfgloc.olddb";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message("E", " $cmd failed.");
             }
-        }
+    }
 
-        # put in place cfgloc for mysql
-        $cmd = "cp /etc/xcat/cfgloc.mysql /etc/xcat/cfgloc";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
+    # put in place cfgloc for mysql
+    $cmd = "cp /etc/xcat/cfgloc.mysql /etc/xcat/cfgloc";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
             xCAT::MsgUtils->message("E", " $cmd failed.");
             exit(1);
-        }
     }
 
     # allow readonly by root
