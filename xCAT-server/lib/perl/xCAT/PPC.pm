@@ -1774,7 +1774,8 @@ sub process_request {
 	        }#end of if
 	        #print "thishcp:$thishcp\n";
 	        #get the nodetype of hcp:
-	        my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($thishcp,$callback);
+	        #my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($thishcp,$callback);
+	        my  $thishcp_type = xCAT::DBobjUtils->getnodetype($thishcp);
             if(!defined($thishcp_type)) {
                 $request = {};
 	            next;
@@ -2012,7 +2013,8 @@ sub getHCPsOfNodes
     my %hcps     = ();
     #get hcp from ppc.
     foreach my $node( @$nodes) {
-        my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($node, $callback);
+        #my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($node, $callback);
+        my $thishcp_type = xCAT::DBobjUtils->getnodetype($node);
         if( $thishcp_type eq "hmc") {
             $hcps{$node}{hcp} = [$node];
             $hcps{$node}{num} = 1;
