@@ -888,17 +888,15 @@ sub resolve_netwk {
             next;
         }
         my $gateway = $nethash{$_}{gateway};
-        if ( !defined( $gateway )) {
-            my $msg = sprintf("$_: $errmsg{NO_ATTR}","gateway","networks");
-            send_msg( $request, 1, $msg );
-            next;
+        my $gateway_ip;
+        if ( defined( $gateway )) {
+            $ip = xCAT::Utils::toIP( $gateway );
+            if ( @$ip[0] != 0 ) {
+                send_msg( $request, 1, "$_: Cannot resolve '$gateway'" );
+                next;  
+            }
+            $gateway_ip = @$ip[1];
         }
-        $ip = xCAT::Utils::toIP( $gateway );
-        if ( @$ip[0] != 0 ) {
-            send_msg( $request, 1, "$_: Cannot resolve '$gateway'" );
-            next;  
-        }
-        my $gateway_ip = @$ip[1];
 
         my $netmask = $nethash{$_}{mask};
         if ( !defined( $netmask )) {
