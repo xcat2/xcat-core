@@ -381,10 +381,13 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
     #
     if ($::SERVER)
     {
-        &restorexcatdb;
+       if ($::xcatrunningdb2 == 0) # if not already running on db2
+       {
+          &restorexcatdb;
+       }
 
         xCAT::MsgUtils->message("I",
-                                "xCAT is now running on the DB2 database.\n");
+                                "xCAT is  running on the DB2 database.\n");
 
     }
     else  # client
@@ -504,12 +507,7 @@ sub backupxcatdb
 
 {
 
-    # If there is no backup or the /etc/xcat/cfgloc file does not point to
-    # pgsql, then we backup the database
-    my $sitefile = "$::backupdir/site.csv";
 
-    if ((!(-e $sitefile)) || ($::xcatrunningdb2 == 0))
-    {
         xCAT::MsgUtils->message(
             "I",
             "Backing up xCAT Database to $::backupdir.\nThis could take several minutes."
@@ -544,7 +542,6 @@ sub backupxcatdb
             xCAT::MsgUtils->message("E", " $cmd failed.");
             exit(1);
         }
-    }
 
 }
 
