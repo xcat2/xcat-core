@@ -1960,7 +1960,7 @@ sub getNetwkInfo
                                   The structure of the hash is:
                                   {
                                       'lookup_tables' => <table_name>
-                                      'lookup_attrs =>
+                                      'lookup_attrs' =>
                                       {
                                           'attr1' => 'val1'
                                           'attr2' => 'val2'
