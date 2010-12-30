@@ -14,10 +14,35 @@
 #
 #-----------------------------------------------------------------------------
 NODE_NAME=$NODE
-SERVER_IP=$MASTER
 GATE_WAY=$GATEWAY
 
 OS=`uname`
+if [ -z $MASTER ]; then
+    msg="$0: The environment variable MASTER is null, pls check.\n"
+    echo $msg
+    logger -t xcat "$msg"
+    exit 1
+fi
+
+SERVER_IP=`echo $MASTER | grep -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'`
+if [ ! -z $SERVER_IP ]; then
+    SERVER_IP=$MASTER
+else
+    if [[ $OS = "Linux" ]]; then
+        SERVER_IP=`ping -c 3 $MASTER | sed '/icmp_seq/!d;s/.*(\([0-9.]\+\)).*/\1/' | uniq  2>&1`
+        SRET=`echo $?`
+    else ## for AIX
+        SERVER_IP=`ping -c 3 $MASTER | grep "icmp_seq" | sed 's/.*from \([0-9.]*\):.*/\1/' | uniq 2>&1`
+        SRET=`echo $?`
+    fi
+    if [ $SRET -ne 0 ]; then
+        msg="$0: The returned value is not correct, server_ip=$SERVER_IP\n"
+        echo $msg
+        logger -t xcat "$msg"
+        exit 1
+    fi
+fi
+
 if [ ! -z $NODE_NAME ]; then
    if [[ $OS = "Linux" ]]; then
       CLIENT_IP=`ping -c 3 $NODE_NAME | sed '/icmp_seq/!d;s/.*(\([0-9.]\+\)).*/\1/' | uniq  2>&1`
