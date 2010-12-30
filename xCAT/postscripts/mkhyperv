@@ -64,7 +64,7 @@ chkconfig --add libvirtd
 #added runlevels to init.d/kvm - kvm needs to start before libvirt or the
 #libvirt will not recognize kvm-ness is available and vm creation will fail.
 
-cat <<EOF > /etc/init.d/kvm && chmod u+x /etc/init.d/kvm && chkconfig --add kvm
+cat <<EOF > /etc/init.d/kvm
 #!/bin/sh
 # kvm init script - stripped off bridge code, but still 'Takes care
 #
@@ -103,6 +103,7 @@ case "\$1" in
 esac
 EOF
 
+chmod u+x /etc/init.d/kvm && chkconfig --add kvm
 
 # iscsi target init script
 # you may not need this.  Also, you'll have to set the iSCSI target
@@ -111,8 +112,7 @@ EOF
 
 ISCSITARGET=h0.cluster1
 
-cat <<EOF > /etc/init.d/iscsiconnect && chmod u+x
-/etc/init.d/iscsiconnect && chkconfig --add iscsiconnect
+cat <<EOF > /etc/init.d/iscsiconnect
 #!/bin/sh
 #
 # chkconfig: 345 10 75
@@ -145,3 +145,5 @@ case "\$1" in
       exit 1
 esac
 EOF
+
+chmod u+x /etc/init.d/iscsiconnect && chkconfig --add iscsiconnect
