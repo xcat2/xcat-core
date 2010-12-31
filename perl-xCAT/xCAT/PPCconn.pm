@@ -95,14 +95,14 @@ sub mkhwconn_parse_args
                 next;
             }
             
-            if ( $nodetype eq 'fsp' and 
+            if ( ($nodetype eq 'fsp' or $nodetype eq 'cec')  and 
                 $node_parent and 
                 $node_parent ne $node)
             {
                 push @bpa_ctrled_nodes, $node;
             }
             
-            if ( $nodetype eq 'bpa')
+            if ( ($nodetype eq 'bpa' or $nodetype eq 'frame'))
             {
                 my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
                 push @frame_members, @$my_frame_bpa_cec;
