@@ -1197,7 +1197,7 @@ sub network_reset {
     my $matched = 0;
     for( $i=0; $i < scalar(@eth_ip); $i++)
     {
-        if (@eth_ip[$i] eq $current_ip)
+        if ($eth_ip[$i] eq $current_ip)
         {
             $matched = 1;
             last;
