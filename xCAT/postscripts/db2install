@@ -515,7 +515,7 @@ sub rundb2sqlsetup
     my ($database, $instance, $password) = split('\|', $xcatcfg);
     $cmd =
       "XCATDB2SERVER=$::MN XCATDB2PW=$password $::XCATROOT/bin/db2sqlsetup -i -C";
-    $msg = "db2install:Running Client setup. $::XCATROOT/bin/db2sqlsetup -i -C\n";
+    $msg = "db2install:Running Client setup. \"$::XCATROOT/bin/db2sqlsetup -i -C\"\n";
     `logger -t xcat $msg`;
 
     $rc = &runcmd($cmd);
