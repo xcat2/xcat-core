@@ -127,7 +127,7 @@ sub setupmysqlodbc
     my $rc = 0;
     my $cmd;
     $cmd = "$::XCATROOT/bin/mysqlsetup -o";
-    $msg = "odbcsetup: Running Client ODBC setup. $cmd\n";
+    $msg = "odbcsetup: Running Client ODBC setup. \"$cmd\"\n";
     `logger -t xcat $msg`;
 
     $rc = &runcmd($cmd);
