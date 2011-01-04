@@ -52,7 +52,7 @@ fi
 mounted=0;
 result=`mount |grep /install |grep $NFSSERVER`
 if [ $? -eq 0 ]; then
-    NFSSERVER=$INSTALLDIR
+    NFSSERVER="/install"
     mounted=1 
 fi
 
