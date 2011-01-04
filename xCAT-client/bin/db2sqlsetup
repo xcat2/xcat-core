@@ -1362,7 +1362,7 @@ sub setupODBC
                 exit(1);
 
              }
-             my $entry = "\n[$instance]\nuid=$instance\npasswd=$passwd";
+             my $entry = "\n[$instance]\nuid=$instance\npwd=$passwd";
              $cmd = "echo \"$entry\" >> $db2clifile";
              xCAT::Utils->runcmd($cmd, 0);
              if ($::RUNCMD_RC != 0)
@@ -1378,7 +1378,7 @@ sub setupODBC
              xCAT::MsgUtils->message("I", "$message");
          }
         } else { # file does not exist
-             my $entry = "[$instance]\nuid=$instance\npasswd=$passwd";
+             my $entry = "[$instance]\nuid=$instance\npwd=$passwd";
              $cmd = "echo \"$entry\" > $db2clifile";
              xCAT::Utils->runcmd($cmd, 0);
              if ($::RUNCMD_RC != 0)
