@@ -918,19 +918,19 @@ sub monadd {
   }
   my $table=xCAT::Table->new("monitoring", -create =>1);
   if ($table) {
-    my $tmp1=$table->getAllEntries("all");
-    if (defined($tmp1) && (@$tmp1 > 0)) {
-      foreach(@$tmp1) {
-        my $name=$_->{name};
-        if ($name eq $pname) { 
-          my $rsp={};
-          $rsp->{data}->[0]="$pname has already been added in the monitoring table.";
-          $callback->($rsp);
-          $table->close(); 
-          return 1;
-        }
-      }
-    }
+    #my $tmp1=$table->getAllEntries("all");
+    #if (defined($tmp1) && (@$tmp1 > 0)) {
+    #  foreach(@$tmp1) {
+    #    my $name=$_->{name};
+    #    if ($name eq $pname) { 
+    #      my $rsp={};
+    #      $rsp->{data}->[0]="$pname has already been added in the monitoring table.";
+    #      $callback->($rsp);
+    #      $table->close(); 
+    #      return 1;
+    #    }
+    #  }
+    #}
 
     my $module_name="xCAT_monitoring::$pname";
 
