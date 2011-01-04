@@ -405,7 +405,11 @@ function loadNodes(data) {
 		// Create a check box, node link, and get node status
 		var checkBx = '<input type="checkbox" name="' + node + '"/>';
 		var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
-		var status = attrs[node]['status'].replace('sshd', 'ping');
+		var status = '';
+		if (attrs[node]['status']){
+			status = attrs[node]['status'].replace('sshd', 'ping');
+		}
+		
 		
 		// Push in checkbox, node link, status, and power
 		row.push(checkBx, nodeLink, status, '');
