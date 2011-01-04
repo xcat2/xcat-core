@@ -708,7 +708,7 @@ sub get_pkglist_tex
             if (/^@(.*)/)
             {    #for groups that has space in name
                 my $save = $1;
-                if ($1 =~ / /) { $_ = "\@\'" . $save . "\'"; }
+                if ($1 =~ / /) { $_ = "\@" . $save; }
             }
             push(@otherpkgs, $_);
         }
