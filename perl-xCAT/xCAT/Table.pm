@@ -687,11 +687,11 @@ sub new
     my $create = 1;
     if (exists($otherargs{'-create'}) && ($otherargs{'-create'}==0)) {$create = 0;}
     $self->{autocommit} = $otherargs{'-autocommit'};
-    $self->{realautocommit} = $self->{autocommit}; #Assume we let the DB do the work, i.e. the autocommit is either not used or is not emulated by Table.pm
     unless (defined($self->{autocommit}))
     {
         $self->{autocommit} = 1;
     }
+    $self->{realautocommit} = $self->{autocommit}; #Assume requester autocommit behavior maps directly to DBI layer autocommit
     my $class = ref($proto) || $proto;
     if ($dbworkerpid) {
         my $request = { 
@@ -719,6 +719,11 @@ sub new
         {
             $self->{backend_type} = 'sqlite';
             $self->{realautocommit} = 1; #Regardless of autocommit semantics, only electively do autocommit due to SQLite locking difficulties
+            #for SQLite, we cannot open the same db twice without deadlock risk, so we cannot have both autocommit on and off via
+            #different handles, so we pick one
+            #previously, Table.pm tried to imitate autocommit, but evidently was problematic, so now SQLite is just almost always
+            #autocommit, turned off very selectively
+            #so realautocommit is a hint to say that the handle needs to be set back to autocommit as soon as possible
             my @path = split(':', $xcatcfg, 2);
             unless (-e $path[1] . "/" . $self->{tabname} . ".sqlite" || $create)
             {
@@ -1287,6 +1292,15 @@ sub addAttribs
         return dbc_call($self,'addAttribs',@_);
     }
     if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        #I have realized that this needs some comment work
+        #so if we are not in a transaction, *but* the current caller context expects autocommit to be off (i.e. fast performance and rollback
+        #however, the DBI layer is set to stick to autocommit on as much as possible (pretty much SQLite) because the single
+        #handle is shared, we disable autocommit on that handle until commit or rollback is called
+        #yes, that means some table calls coming in with expectation of autocommit during this hopefully short interval
+        #could get rolled back along with this transaction, but it's unlikely and moving to a more robust DB solves it
+        #so it is intentional that autocommit is left off because it is expected that a commit will come along one day and fix it right up
+        #TODO: if caller crashes after inducing a 'begin transaction' without commit or rollback, this could be problematic.
+        #calling commit on all table handles if a client goes away uncleanly may be a good enough solution.
         $self->{intransaction}=1;
         $self->{dbh}->{AutoCommit}=0;
     }
@@ -1372,6 +1386,7 @@ sub rollback
     }
     $self->{dbh}->rollback;
     if ($self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        #on rollback, if sharing a DB handle for autocommit and non-autocommit, put the handle back to autocommit
         $self->{intransaction}=0;
         $self->{dbh}->{AutoCommit}=1;
     }
@@ -1407,8 +1422,12 @@ sub commit
     if ($dbworkerpid) {
         return dbc_call($self,'commit',@_);
     }
-    $self->{dbh}->commit;
+    unless ($self->{dbh}->{AutoCommit}) { #caller can now hammer commit function with impunity, even when it makes no sense
+        $self->{dbh}->commit;
+    }
     if ($self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        #if realautocommit indicates shared DBH between manual and auto commit, put the handle back to autocommit if a transaction
+        #is committed (aka ended)
         $self->{intransaction}=0;
         $self->{dbh}->{AutoCommit}=1;
     }
@@ -1478,6 +1497,7 @@ sub setAttribs
     my $query;
     my $data;
     if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        #search this code for the other if statement just like it for an explanation of why I do this
         $self->{intransaction}=1;
         $self->{dbh}->{AutoCommit}=0;
     }
@@ -1720,6 +1740,7 @@ sub setAttribsWhere
     my $action;
     my @notif_data;
     if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        #search this code for the other if statement just like it for an explanation of why I do this
         $self->{intransaction}=1;
         $self->{dbh}->{AutoCommit}=0;
     }
@@ -3053,6 +3074,7 @@ sub delEntries
     my @all_keyparis;
     my %keypairs;
     if (not $self->{intransaction} and not $self->{autocommit} and $self->{realautocommit}) {
+        #search this code for the other if statement just like it for an explanation of why I do this
         $self->{intransaction}=1;
         $self->{dbh}->{AutoCommit}=0;
     }
