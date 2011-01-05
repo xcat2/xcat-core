@@ -4,7 +4,7 @@ B<rnetboot> - Cause the range of nodes to boot to network.
 
 =head1 SYNOPSIS
 
-B<rnetboot> [B<-V>|B<--verbose>] B<[-s boot_device_order]> B<[-F]> B<[-f]> I<noderange> [-m table.column==expectedstatus [-m table.col-umn=~expectedstatus]] [-t timeout] [-r retrycount]
+B<rnetboot> [B<-V>|B<--verbose>] B<[-s boot_device_order]> B<[-F]> B<[-f]> B<[--hfi]> I<noderange> [-m table.column==expectedstatus [-m table.col-umn=~expectedstatus]] [-t timeout] [-r retrycount]
 
 B<rnetboot> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
@@ -22,6 +22,8 @@ B<-s>          Set the boot device order.  Accepted boot devices are hd and net.
 B<-F>          Force reboot the system no matter what state the node is.  By default, rnetboot will not reboot the node if node is in 'boot' state.
 
 B<-f>          Force immediate shutdown of the partition.
+
+B<--hfi>       Netboot the nodes from HFI devices.
 
 B<-m>          Use one or multiple -m flags to specify the node attributes and the expected status for the node installation monitor
 ing and automatic retry mechanism. The operators ==, !=, =~ and !~ are valid. This flag must be used with -t flag.

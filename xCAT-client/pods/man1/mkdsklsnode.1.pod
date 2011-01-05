@@ -6,7 +6,7 @@ B<mkdsklsnode> - Use this xCAT command to define and initialize AIX/NIM diskless
 
 B<mkdsklsnode [-h|--help ]>
 
-B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] noderange [attr=val [attr=val ...]]>
+B<mkdsklsnode [-V|--verbose] [-f|--force] [--hfi] [-n|--newname] [-i osimage_name] noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
@@ -71,6 +71,10 @@ Use the force option to reinitialize the NIM machines.
 =item B<-h |--help>
 
 Display usage message.
+
+=item B<--hfi>
+
+Create a new NIM machine booting from HFI interfaces.
 
 =item B<-i image_name>
 

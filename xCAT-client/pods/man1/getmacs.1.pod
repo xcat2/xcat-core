@@ -12,7 +12,7 @@ I<getmacs [-h| --help | -v| --version]>
 
 I<getmacs noderange [-F filter]>
 
-I<getmacs noderange [-V| --verbose] [-f] [-d] [--arp] | [-D [-S server] [-G gateway] [-C client]]>
+I<getmacs noderange [-V| --verbose] [-f] [-d] [--arp] | [-D [-S server] [-G gateway] [-C client] [--hfi]]>
 
 =head2 blade specific:
 
@@ -43,6 +43,8 @@ B<-F>          Specify filters to select the correct adapter.  Acceptable filter
 B<-G>          Gateway IP address of the partition.  The default is to read from xCAT database if no -G specified.
 
 B<-h>          Display usage message.
+
+B<--hfi>       Read HFI MAC address.  This option mush be used with [-D] option to perform ping test.
 
 B<-S>          The IP address of the machine to ping.  The default is to read from xCAT databse if no -S specified.
 
