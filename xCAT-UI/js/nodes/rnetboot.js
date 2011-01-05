@@ -164,7 +164,8 @@ function loadNetbootPage(tgtNodes) {
 				optStr += 'ipl=' + ipl.val();
 			}
 
-			// Disable Ok button
+			// Disable all inputs and Ok button
+			$('#' + newTabId + ' input').attr('disabled', 'disabled');
 			$(this).attr('disabled', 'true');
 
 			/**

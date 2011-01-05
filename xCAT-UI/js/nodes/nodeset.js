@@ -171,7 +171,9 @@ function loadNodesetPage(tgtNodes) {
 			var arch = $('#' + tabId + ' input[name=arch]').val();
 			var profile = $('#' + tabId + ' input[name=profile]').val();
 
-			// Disable Ok button
+			// Disable all inputs, selects, and Ok button
+			inputs.attr('disabled', 'disabled');
+			$('#' + tabId + ' select').attr('disabled', 'disabled');
 			$(this).attr('disabled', 'true');
 
 			/**

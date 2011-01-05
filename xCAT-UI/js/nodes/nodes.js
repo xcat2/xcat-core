@@ -1106,7 +1106,8 @@ function loadUnlockPage(tgtNodes) {
     		// Show status bar
     		statusBar.show();
     
-    		// Disable Ok button
+    		// Disable all inputs and Ok button
+			$('#' + newTabId + ' input').attr('disabled', 'disabled');
     		$(this).attr('disabled', 'true');
     	} else {
     		// Show warning message

@@ -346,7 +346,8 @@ function loadUpdatenodePage(tgtNodes) {
 			// Get nodes
 			var tgts = $('#' + newTabId + ' input[name=target]').val();
 
-			// Disable Ok button
+			// Disable all inputs and Ok button
+			$('#' + newTabId + ' input').attr('disabled', 'disabled');
 			$(this).attr('disabled', 'true');
 			
 			/**
