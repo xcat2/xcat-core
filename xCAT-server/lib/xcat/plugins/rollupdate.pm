@@ -444,6 +444,17 @@ sub rollupdate {
         return ( $rc - 1 );
     }
     if ($::VERBOSE) {
+        unless ( -d $::LOGDIR) {
+            unless ( File::Path::mkpath($::LOGDIR) ) {
+                my $rsp;
+                push @{ $rsp->{data} }, "Could not create directory $::LOGDIR, logging is disabled.";
+                xCAT::MsgUtils->message( "W", $rsp, $::CALLBACK );
+                $::VERBOSE = 0;
+                $::verbose = 0;
+            }
+        }
+    }
+    if ($::VERBOSE) {
         my $rsp;
         push @{ $rsp->{data} }, "Running rollupdate command... ";
         xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
