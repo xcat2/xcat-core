@@ -457,9 +457,14 @@ sub rollupdate {
     # Build updategroup nodelists
     #
     my %updategroup;
+
+    # Check for updateall and required stanzas
+    $::updateall=0;
+    $::updateall_nodecount=1;
     if ( defined($::FILEATTRS{updateall}[0])  &&
      ( ($::FILEATTRS{updateall}[0] eq 'yes') ||
        ($::FILEATTRS{updateall}[0] eq 'y'  ) ) ) {
+        $::updateall=1;
         if ( defined($::FILEATTRS{updateall_nodes}[0])){
             my $ugname = "UPDATEALL".time();
             my $ugval = $::FILEATTRS{updateall_nodes}[0];
@@ -471,7 +476,17 @@ sub rollupdate {
             xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
             return 1;
         }
+        if ( defined($::FILEATTRS{updateall_nodecount}[0]) ) {
+            $::updateall_nodecount=$::FILEATTRS{updateall_nodecount}[0];
+        } else {
+            my $rsp;
+            push @{ $rsp->{data} },
+"Error processing stanza input:  updateall=yes but no updateall_nodecount specified. ";
+            xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+            return 1;
+        }
     } else {
+    # Standard update (NOT updateall)
         foreach my $ugline ( @{ $::FILEATTRS{'updategroup'} } ) {
             my ( $ugname, $ugval ) = split( /\(/, $ugline );
             $ugval =~ s/\)$//;    # remove trailing ')'
@@ -589,17 +604,6 @@ sub ll_jobs {
         print RULOG localtime()." Creating LL job command files \n";
         close (RULOG);
      }
-
-    $::updateall=0;
-    $::updateall_nodecount=1;
-    if ( defined($::FILEATTRS{updateall}[0])  &&
-         ( ($::FILEATTRS{updateall}[0] eq 'yes') ||
-           ($::FILEATTRS{updateall}[0] eq 'y'  ) ) ) {
-        $::updateall=1;
-        if ( defined($::FILEATTRS{updateall_nodecount}[0]) ) {
-            $::updateall_nodecount=$::FILEATTRS{updateall_nodecount}[0];
-        }
-    }
 
 
     # Create LL floating resources for mutual exclusion support
