@@ -293,8 +293,11 @@ sub process_servicenodes_xdcp
             # run the command to each servicenode
             # xdcp <sn> -s -F <syncfile>
             my @sn = ();
-            push @sn, $node;
-
+            # handle multiple servicenodes for one node
+            my @sn_list = split ',', $node;
+            foreach my $snode (@sn_list) {
+             push @sn, $snode;
+            }
             # don't use runxcmd, because can go straight to process_request,
             # these are all service nodes. Also servicenode is taken from
             # the noderes table and may not be the same name as in the nodelist
@@ -379,7 +382,11 @@ sub process_servicenodes_xdcp
         foreach my $node (@snodes)
         {
             my @sn = ();
-            push @sn, $node;
+            # handle multiple servicenodes for one node
+            my @sn_list = split ',', $node;
+            foreach my $snode (@sn_list) {
+             push @sn, $snode;
+            }
 
             # run the command to each servicenode
             # to make the directory under the temporary
@@ -523,7 +530,11 @@ sub process_servicenodes_xdsh
             # xdcp <sn> -s -F <tmpsyncfile>
   
             my @sn = ();
-            push @sn, $node;
+            # handle multiple servicenodes for one node
+            my @sn_list = split ',', $node;
+            foreach my $snode (@sn_list) {
+             push @sn, $snode;
+            }
 
             # don't use runxcmd, because can go straight to process_request,
             # these are all service nodes. Also servicenode is taken from
