@@ -608,10 +608,8 @@ sub ll_jobs {
 
     # Create LL floating resources for mutual exclusion support
     #   and max_updates
-    if (!$::updateall) {
-        if (&create_LL_mutex_resources($updategroup) > 0) {
-            return 1;
-        }
+    if (&create_LL_mutex_resources($updategroup,$::updateall) > 0) {
+        return 1;
     }
 
     #
@@ -1501,6 +1499,10 @@ sub get_mutex {
         Create all required LL mutex resources
 
         Arguments:
+                   updategroup
+                   maxupdates_only:
+                        1 - only create MAXUPDATES resources (for updateall)
+			0 - create MAXUPDATES and all MUTEX resources
         Returns:
                 0 - OK
                 1 - error
@@ -1522,55 +1524,57 @@ sub get_mutex {
 sub create_LL_mutex_resources {
 
     my $updategroup=shift;
+    my $maxupdates_only=shift;
 
     $::LL_MUTEX_RESOURCES_CREATED = 0;
     my $mxindex=0;
     my $fileattrs_index=0;
-    foreach my $mxline ( @{ $::FILEATTRS{'mutex'} } ) {
-        my $mx_count = $::FILEATTRS{'mutex_count'}[$fileattrs_index];
-        my @mxparts = split(/,/,$mxline);
-        if ( scalar @mxparts < 2 ) {
-            my $rsp;
-            push @{ $rsp->{data} }, "Error processing stanza line: ";
-            push @{ $rsp->{data} }, "mutex=" . $mxline;
-            push @{ $rsp->{data} }, "Value must contain at least 2 update groups";
-            xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-            return 1; 
-        }
-
-        my $mxpi = 0;
-        my $mxindexmax = $mxindex;
-        my @ugnames;
-        foreach my $mxpart ( @mxparts ) {
-            my $mxindex2 = $mxindex;
-            my @ugnamelist = xCAT::NameRange::namerange( $mxpart, 0 );
-            foreach my $ugname (@ugnamelist) {
-                $::MUTEX[$mxindex2][$mxpi] = $ugname;
-                $mxindex2++;
+    if (!$maxupdates_only) {
+        foreach my $mxline ( @{ $::FILEATTRS{'mutex'} } ) {
+            my $mx_count = $::FILEATTRS{'mutex_count'}[$fileattrs_index];
+            my @mxparts = split(/,/,$mxline);
+            if ( scalar @mxparts < 2 ) {
+                my $rsp;
+                push @{ $rsp->{data} }, "Error processing stanza line: ";
+                push @{ $rsp->{data} }, "mutex=" . $mxline;
+                push @{ $rsp->{data} }, "Value must contain at least 2 update groups";
+                xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+                return 1; 
             }
-            $mxindexmax = ($mxindex2 > $mxindexmax) ? $mxindex2 : $mxindexmax;
-            $mxpi++;
-        }
-        my $mxc;
-        for ($mxc=$mxindex; $mxc < $mxindexmax; $mxc++) {
-            $::MUTEX_COUNT[$mxc] = $mx_count;
-        }
-        $mxindex = $mxindexmax;
-        $fileattrs_index++;
-     }
+
+            my $mxpi = 0;
+            my $mxindexmax = $mxindex;
+            my @ugnames;
+            foreach my $mxpart ( @mxparts ) {
+                my $mxindex2 = $mxindex;
+                my @ugnamelist = xCAT::NameRange::namerange( $mxpart, 0 );
+                foreach my $ugname (@ugnamelist) {
+                    $::MUTEX[$mxindex2][$mxpi] = $ugname;
+                    $mxindex2++;
+                }
+                $mxindexmax = ($mxindex2 > $mxindexmax) ? $mxindex2 : $mxindexmax;
+                $mxpi++;
+            }
+            my $mxc;
+            for ($mxc=$mxindex; $mxc < $mxindexmax; $mxc++) {
+                $::MUTEX_COUNT[$mxc] = $mx_count;
+            }
+            $mxindex = $mxindexmax;
+            $fileattrs_index++;
+         }
 
     # If nodegroup_mutex entries are specified, we need to use the 
     # list of all the nodes in each updategroup for this entire run.
     # Then we need to get a list of all the nodes in the specified
     # nodegroup and look for any intersections to create mutexes.
-    $fileattrs_index=0;
-    foreach my $mxnodegrp_range ( @{ $::FILEATTRS{'nodegroup_mutex'} } ) {
-        my $mx_count = $::FILEATTRS{'nodegroup_mutex_count'}[$fileattrs_index];
+        $fileattrs_index=0;
+        foreach my $mxnodegrp_range ( @{ $::FILEATTRS{'nodegroup_mutex'} } ) {
+            my $mx_count = $::FILEATTRS{'nodegroup_mutex_count'}[$fileattrs_index];
 
-        foreach my $mxnodegroup ( xCAT::NameRange::namerange( $mxnodegrp_range, 0 ) ) {
-            my $mxpi = 0;
-mxnode_loop: foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
-               foreach my $ugname ( keys %{$updategroup} ) {
+            foreach my $mxnodegroup ( xCAT::NameRange::namerange( $mxnodegrp_range, 0 ) ) {
+              my $mxpi = 0;
+mxnode_loop:  foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
+                foreach my $ugname ( keys %{$updategroup} ) {
                   foreach my $node ( @{ $updategroup->{$ugname} } ) {
                      if ($mxnode eq $node) {
                      # found a match, add updategroup to this mutex if we
@@ -1588,18 +1592,19 @@ mxnode_loop: foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
                         next mxnode_loop;
                      } # end if found match 
                   }  
-               }
-            } # end mxnode_loop
-            if ($mxpi == 1) {
-               # only one updategroup in this mutex, not valid -- ignore it
-               undef $::MUTEX[$mxindex];
-            } elsif ( $mxpi > 1 ) {
-                $::MUTEX_COUNT[$mxindex] = $mx_count;
-                $mxindex++;
+                }
+              } # end mxnode_loop
+              if ($mxpi == 1) {
+                 # only one updategroup in this mutex, not valid -- ignore it
+                 undef $::MUTEX[$mxindex];
+              } elsif ( $mxpi > 1 ) {
+                 $::MUTEX_COUNT[$mxindex] = $mx_count;
+                 $mxindex++;
+              }
             }
+            $fileattrs_index++;
         }
-        $fileattrs_index++;
-    }
+     }
 
 
      # Build the actual FLOATING_RESOURCES and SCHEDULE_BY_RESOURCES
@@ -1612,11 +1617,13 @@ mxnode_loop: foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
          $resource_string .= "XCATROLLINGUPDATE_MAXUPDATES($max_updates) ";
      }
 
-     my $num_mutexes = scalar @::MUTEX;
-     if ( $num_mutexes > 0 ) {
-        foreach my $row (0..($num_mutexes-1)) {
-             $resource_string .= "XCATROLLINGUPDATE_MUTEX".$row."($::MUTEX_COUNT[$row]) ";
-        }
+     if (!$maxupdates_only) {
+         my $num_mutexes = scalar @::MUTEX;
+         if ( $num_mutexes > 0 ) {
+            foreach my $row (0..($num_mutexes-1)) {
+                $resource_string .= "XCATROLLINGUPDATE_MUTEX".$row."($::MUTEX_COUNT[$row]) ";
+            }
+         }
      }
 
      if ( $resource_string ) {
