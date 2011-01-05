@@ -69,11 +69,11 @@ An error has occurred.
 
 =item 1.
 
-To run a cluster rolling update based on the information provided in the file 
+To run a cluster rolling update based on the information you have created in the file 
 /u/admin/rolling_updates/update_all.stanza
 enter:
 
-  cat /admin/rolling_updates/update_all.stanza | rollupdate
+  cat /u/admin/rolling_updates/update_all.stanza | rollupdate
 
 =back
 
