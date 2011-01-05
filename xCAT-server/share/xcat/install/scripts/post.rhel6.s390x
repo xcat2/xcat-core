@@ -116,3 +116,6 @@ echo "$TMP" > /tmp/mypostscript
 
 # Master/service node variable set by nodeset
 updateflag.awk replace_master 3002
+
+# Restore default SELinux security context
+restorecon -R -v /root/.ssh
