@@ -268,22 +268,22 @@ sub rnetboot {
         }
     }
 
-    my $sitetab  = xCAT::Table->new('site');
-    my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
-    if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+    #my $sitetab  = xCAT::Table->new('site');
+    #my $vcon = $sitetab->getAttribs({key => "conserverondemand"}, 'value');
+    #if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
 	    #   $result = xCAT::PPCcli::lpar_netboot(
 	    #                $exp,
 	    #                $request->{verbose},
 	    #                $name,
 	    #                $d,
 	    #                \%opt );
-        return( [[$node,"Not support conserverondemand's value is yes",RC_ERROR]] );
-    } else {
+    #    return( [[$node,"Not support conserverondemand's value is yes",RC_ERROR]] );
+    #} else {
         #########################################
         # Manually perform boot. 
         #########################################
         $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
-    }
+    #}
     $sitetab->close;
 
     if (defined($request->{opt}->{m})) {
