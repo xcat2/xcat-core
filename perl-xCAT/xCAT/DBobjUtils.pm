@@ -2076,7 +2076,7 @@ sub getchildren
             my $c = $entry->{node};
             if ( $p and $c) {
                 my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
-                if ( $type and ($type->{nodetype} ne 'cec'))
+                if ( $type and ($type->{nodetype} eq 'fsp') or ($type->{nodetype} eq 'bpa'))
                 {
                     push @{$::PARENT_CHILDREN{$p}}, $c;
                 }
@@ -2190,7 +2190,7 @@ sub getnodetype
 =head3   getcecchildren
     returns cec of the specified frame,
     Arguments:
-        none
+        frame name
     Returns:
         refrence of cec hostnames
     Globals:
@@ -2214,28 +2214,32 @@ sub getcecchildren
     my @children = ();
     if (!%::PARENT_CHILDREN_CEC) {
         my $ppctab  = xCAT::Table->new( 'ppc' );
-        my @ps = $ppctab->getAllNodeAttribs(['node','parent']);
-        for my $entry ( @ps ) {
-            my $p = $entry->{parent};
-            my $c = $entry->{node};
-            if ( $p and $c) {
-                my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
-                if ( $type and ($type->{nodetype} eq 'cec'))
-                {
-                    push @{$::PARENT_CHILDREN_CEC{$p}}, $c;
+        if ($ppctab)
+        {
+            my @ps = $ppctab->getAllNodeAttribs(['node','parent']);
+            for my $entry ( @ps ) {
+                my $p = $entry->{parent};
+                my $c = $entry->{node};
+                if ( $p and $c) {
+                    my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
+                    if ( $type and ($type->{nodetype} eq 'cec')) {
+                        push @{$::PARENT_CHILDREN_CEC{$p}}, $c;
+                    }
                 }
+            }        
+            foreach (@{$::PARENT_CHILDREN_CEC{$parent}}) {
+                push @children, $_;        
             }
-        }
-        foreach (@{$::PARENT_CHILDREN_CEC{$parent}}) {
-            push @children, $_;
-        }
+			return \@children;
+        }	
     } else {
         if (exists($::PARENT_CHILDREN_CEC{$parent})) {
             foreach (@{$::PARENT_CHILDREN_CEC{$parent}}) {
                 push @children, $_;
             }
+		    return \@children;			
         }
     }
-    return \@children;
+    return undef;
 }
 1;
