@@ -100,19 +100,16 @@ sub process_request
     Getopt::Long::Configure("bundling");
     Getopt::Long::Configure("no_pass_through");
 
-    my $SN1;  # source SN akb MN
-    my $SN1N; # source SN akb node
-    my $SN2;  # dest SN akb MN
-    my $SN2N; # dest SN akb node
     if (
         !GetOptions(
                     'h|help'        => \$::HELP,
                     'v|version'     => \$::VERSION,
-                    's|source=s'    => \$SN1,
-                    'S|sourcen=s'   => \$SN1N,
-                    'd|dest=s'      => \$SN2,
-                    'D|destn=s'     => \$SN2N,
+                    's|source=s'    => \$::SN1,  # source SN akb MN
+                    'S|sourcen=s'   => \$::SN1N, # source SN akb node
+                    'd|dest=s'      => \$::SN2,  # dest SN akb MN
+                    'D|destn=s'     => \$::SN2N, # dest SN akb node
                     'i|ignorenodes' => \$::IGNORE,
+					'V|verbose'     => \$::VERBOSE,
         )
       )
     {
@@ -145,7 +142,7 @@ sub process_request
         return 1;
     }
 
-    if ((@ARGV == 0) && (!$SN1))
+    if ((@ARGV == 0) && (!$::SN1))
     {
         my $rsp = {};
         $rsp->{data}->[0] =
@@ -180,7 +177,7 @@ sub process_request
         my $pn_hash = xCAT::Utils->getSNandNodes();
         foreach my $snlist (keys %$pn_hash)
         {
-            if (($snlist =~ /^$SN1$/) || ($snlist =~ /^$SN1\,/))
+            if (($snlist =~ /^$::SN1$/) || ($snlist =~ /^$::SN1\,/))
             {
                 push(@nodes, @{$pn_hash->{$snlist}});
             }
@@ -239,11 +236,11 @@ sub process_request
 	my @servlist; # list of new service nodes
 	my %newsn;
 	my $nodehash;
-	if ($SN2) {  # we have the backup for each node from cmd line 
+	if ($::SN2) {  # we have the backup for each node from cmd line 
 		foreach my $n (@nodes) {
-			$newsn{$n}=$SN2;
+			$newsn{$n}=$::SN2;
 		}
-		push(@servlist, $SN2);
+		push(@servlist, $::SN2);
 	} else {
 		# check the 2nd value of the servicenode attr
 		foreach my $node (@nodes)
@@ -273,9 +270,9 @@ sub process_request
 	# get the new xcatmaster for each node
 	#
 	my %newxcatmaster;
-	if ($SN2N) {  # we have the xcatmaster for each node from cmd line
+	if ($::SN2N) {  # we have the xcatmaster for each node from cmd line
 		foreach my $n (@nodes) {
-			$newxcatmaster{$n}=$SN2N;
+			$newxcatmaster{$n}=$::SN2N;
 		}
 	} else {
 		# try to calculate the xcatmaster value for each node
@@ -333,8 +330,8 @@ sub process_request
 		my $sn1n;
                 
 		# get current xcatmaster
-		if ($SN1N) { # use command line value
-		    $sn1n = $SN1N; 
+		if ($::SN1N) { # use command line value
+		    $sn1n = $::SN1N; 
 		} 
 		elsif ($nhash{$node}{'xcatmaster'} ) {  # use xcatmaster attr
 			$sn1n = $nhash{$node}{'xcatmaster'}; 
@@ -346,18 +343,20 @@ sub process_request
 			 xCAT::MsgUtils->message("W", $rsp, $callback);
 		}
 
-		# get current servicenode
+		# get the servicenode values
 		my @sn_a;
-		if ($SN1) 
+		my $snlist = $nhash{$node}{'servicenode'};
+		@sn_a = split(',', $snlist);
+
+		# get current servicenode
+		if ($::SN1) 
 		{ 
 			# current SN from the command line
-			$sn1 = $SN1; 
+			$sn1 = $::SN1; 
 		}
         else 
 		{ 
 			# current SN from node attribute
-			my $snlist = $nhash{$node}{'servicenode'};
-			@sn_a = split(',', $snlist);
 			$sn1 = $sn_a[0]; 
 		}
 
