@@ -1002,7 +1002,7 @@ sub updateschema
 	 	    $datatype .= " NOT NULL";
 	    }
             my $tmpcol=$dcol; # for sqlite
-            if ($xcatcfg =~ /^DB2:/){
+            if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
               $tmpcol="\"$dcol\"";
               
             } else {
@@ -1088,7 +1088,7 @@ sub updateschema
             }
 		
             my $tmpkey=$dbkey; # for sqlite
-            if ($xcatcfg =~ /^DB2:/){
+            if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
                   $tmpkey="\"$dbkey\"";
                   # get rid of NOT NULL, cannot modify with NOT NULL
                   my ($tmptype,$nullvalue)= split('NOT NULL',$datatype );
@@ -1511,8 +1511,12 @@ sub setAttribs
                  if ($xcatcfg =~ /^DB2:/) { # for DB2
 	            $qstring .= "\"$_\" LIKE ? AND ";  
               
-                 } else { # for other dbs
-	           $qstring .= "$_ = ? AND "; 
+                 } else { # for Postgresql 
+                    if  ($xcatcfg =~ /^Pg:/) { 
+	               $qstring .= "\"$_\" = ? AND "; 
+                    } else { 
+	               $qstring .= "$_ = ? AND "; 
+                    }  
                  }  
             }  
 
@@ -1571,7 +1575,7 @@ sub setAttribs
         $action = "u";
         for my $col (keys %$elems)
         {
-           if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+           if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
              my $colsq = q(") . $col . q(");  # quote columns
              $cols = $cols . $colsq . " = ?,";
            } else {
@@ -1590,7 +1594,7 @@ sub setAttribs
                 if ($xcatcfg =~ /^mysql:/) {  #for mysql
                   $cmd .= q(`) . $_ . q(`) . " = '" . $keypairs{$_}->[0] . "' AND ";
                 } else { 
-                   if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+                   if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
                      $cmd .= "\"$_\"" . " = '" . $keypairs{$_}->[0] . "' AND ";
                    } else {  # other dbs
                      $cmd .= "$_" . " = '" . $keypairs{$_}->[0] . "' AND ";
@@ -1602,7 +1606,7 @@ sub setAttribs
                 if ($xcatcfg =~ /^mysql:/) {  #for mysql
                   $cmd .= q(`) . $_ . q(`) . " = '" . $keypairs{$_} . "' AND ";
                 } else {  
-                   if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+                   if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
                      $cmd .= "\"$_\"" . " = '" . $keypairs{$_} . "' AND ";
                    } else {  # other dbs
                      $cmd .= "$_" . " = '" . $keypairs{$_} . "' AND ";
@@ -1650,7 +1654,7 @@ sub setAttribs
 	   if ($xcatcfg =~ /^mysql:/) {  #for mysql
               $cols .= q(`) . $_ . q(`) . ","; 
            } else {
-               if ($xcatcfg =~ /^DB2:/) {  #for DB2
+               if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
                    $cols .= "\"$_\"" . ",";
                } else {
                 $cols .= $_ . ","; # for other dbs 
@@ -1774,11 +1778,11 @@ sub setAttribsWhere
 
     $query->finish();
 
+    my $xcatcfg =get_xcatcfg();
     #update the rows
     for my $col (keys %$elems)
     {
-      my $DBname = xCAT::Utils->get_DBName;
-      if ($DBname =~ /^DB2/) {
+      if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
           $cols = $cols . "\"$col\"" . " = ?,";
       } else {
           $cols = $cols . $col . " = ?,";
@@ -1923,7 +1927,7 @@ sub setNodesAttribs {
        if ($xcatcfg =~ /^mysql:/) {
           push @sqlorderedcols, "\`$col\`"; 
        } else {
-          if ($xcatcfg =~ /^DB2:/){
+          if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
             push @sqlorderedcols, "\"$col\""; 
           } else{
             push @sqlorderedcols, $col; 
@@ -1946,7 +1950,7 @@ sub setNodesAttribs {
         if ($xcatcfg =~ /^mysql:/) {  #for mysql
            $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \`$nodekey\` in (";
         } else {
-          if ($xcatcfg =~ /^DB2:/){
+          if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
             $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \"$nodekey\" in (";
           } else {
            $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE $nodekey in (";
@@ -1976,7 +1980,7 @@ sub setNodesAttribs {
               if ($xcatcfg =~ /^mysql:/) {
                 $columns = "\`$nodekey\`, ";
               } else {
-                if ($xcatcfg =~ /^DB2:/){
+               if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
                   $columns = "\"$nodekey\", ";
                 } else {
                   $columns = "$nodekey, ";
@@ -2013,7 +2017,7 @@ sub setNodesAttribs {
                 if ($xcatcfg =~ /^mysql:/) {  #for mysql
                    $upstring =~ s/, \z/ where \`$nodekey\` = ?/;
                 } else {
-                  if ($xcatcfg =~ /^DB2:/){
+                  if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
                    $upstring =~ s/, \z/ where \"$nodekey\" = ?/;
                   } else {
                     $upstring =~ s/, \z/ where $nodekey = ?/;
@@ -3104,7 +3108,7 @@ sub delEntries
                     if ($xcatcfg =~ /^mysql:/) {
                       $qstring .= q(`) . $keypair . q(`) . " = ? AND ";
                     } else {
-                      if ($xcatcfg =~ /^DB2:/) {
+                      if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
                         $qstring .= q(") . $keypair . q(") . " = ? AND "; 
                       } else { # for other dbs
                         $qstring .= "$keypair = ? AND ";
@@ -3144,7 +3148,7 @@ sub delEntries
                 if ($xcatcfg =~ /^mysql:/) {
                    $delstring .= q(`) . $keypair. q(`) . ' = ? AND '; 
                 } else {
-                   if ($xcatcfg =~ /^DB2:/) {
+                   if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
                      $delstring .= q(") . $keypair. q(") . ' = ? AND '; 
                    } else { # for other dbs
                      $delstring .= $keypair . ' = ? AND ';
@@ -3286,7 +3290,7 @@ sub getAttribs
             if ($xcatcfg =~ /^mysql:/) {  #for mysql
               $statement .= q(`) . $_ . q(`) . " = ? and "
             } else {
-              if ($xcatcfg =~ /^DB2:/) {  #for  DB2
+              if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
                  $statement .= q(") . $_ . q(") . " = ? and "
                 } else { # for other dbs
                    $statement .= "$_ = ? and ";
@@ -3306,7 +3310,7 @@ sub getAttribs
             if ($xcatcfg =~ /^mysql:/) {  #for mysql
 	        $statement .= q(`) . $_ . q(`) . " is NULL and " ; 
             } else {
-              if ($xcatcfg =~ /^DB2:/) {  #for  DB2
+              if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
 	        $statement .= q(") . $_ . q(") . " is NULL and " ; 
               } else { # for other dbs
                 $statement .= "$_ is NULL and ";
