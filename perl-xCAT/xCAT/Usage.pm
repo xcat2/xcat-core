@@ -177,7 +177,7 @@ my %usage = (
     mkhwconn noderange -p single_hmc [-P HMC passwd] [-V|--verbose]
     
     PPC (without HMC, using FSPAPI) specific:
-    mkhwconn noderange -t -T tooltype",
+    mkhwconn noderange -t -T tooltype [--port port_value]",
     "rmhwconn" =>
 "Usage:
     rmhwconn [-h|--help]
