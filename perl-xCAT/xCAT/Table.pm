@@ -1234,7 +1234,7 @@ sub setNodeAttribs
 
 #--------------------------------------------------------------------------
 
-=head3  addNodeAttribs
+=head3  addNodeAttribs  (not supported)
 
     Description: Add new attributes input to the routine to the nodes
 
@@ -1257,12 +1257,14 @@ sub setNodeAttribs
 sub addNodeAttribs
 {
     my $self = shift;
+    xCAT::MsgUtils->message("S","addNodeAttribs is not supported");
+    die "addNodeAttribs is not supported";
     return $self->addAttribs('node', @_);
 }
 
 #--------------------------------------------------------------------------
 
-=head3  addAttribs
+=head3  addAttribs (not supported)
 
     Description: add new attributes
 
@@ -1288,6 +1290,8 @@ sub addNodeAttribs
 sub addAttribs
 {
     my $self   = shift;
+    xCAT::MsgUtils->message("S","addAttribs is not supported");
+    die "addAttribs is not supported";
     if ($dbworkerpid) {
         return dbc_call($self,'addAttribs',@_);
     }
