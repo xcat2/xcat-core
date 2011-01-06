@@ -8239,7 +8239,15 @@ sub mkdsklsnode
                 # if nfsserver is set to the service node itself, nothing needs to do
                 if(!xCAT::InstUtils->is_me($nfshash->{$snd}->[0]->{'nfsserver'}))
                 {
-					my $osimg = $nodeosi{$snd};
+                    my $osimg = $nodeosi{$snd};
+                    my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
+                    if (!$nfshost || !$nfsip)
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                    }
                     #shared_root configuration
                     my $hostfile;
                     my $filesystemsfile;
@@ -8258,14 +8266,46 @@ sub mkdsklsnode
                                                           "location", $callback, $Sname, $subreq);
                         $hostfile = "$imgrootdir/$snd/etc/hosts";
                         $filesystemsfile = "$imgrootdir/$snd/etc/filesystems";
-                    }
-                    my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
-                    if (!$nfshost || !$nfsip)
-                    {
-                        my $rsp = {};
-                        $rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        next;
+                        my ($nodehost, $nodeip) = xCAT::NetworkUtils->gethostnameandip($snd);
+                        if (!$nodehost || !$nodeip)
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Can not resolve the node $snd";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
+                        }
+                        my $tftpdir = xCAT::Utils->getTftpDir();
+                        my $niminfofile = "$tftpdir/${nodeip}.info";
+                        #Update /tftpboot/<node>.info file
+                        my $fscontent;
+                        unless (open(NIMINFOFILE, "<$niminfofile"))
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Can not open the niminfo file $niminfofile for node $snd";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
+                        }
+                        while (my $line = <NIMINFOFILE>)
+                        {
+                            $fscontent .= $line;
+                        }
+
+                        # Update the ROOT & NIM_HOSTS
+                        $fscontent =~ s/(export\s+SPOT=)(.*):/$1$nfshost:/;
+                        $fscontent =~ s/(export\s+ROOT=)(.*):/$1$nfshost:/;
+                        $fscontent =~ s/(export\s+NIM_HOSTS=.*)"/$1$nfsip:$nfshost "/;
+                        close(NIMINFOFILE);
+
+                        unless (open(TMPFILE, ">$niminfofile"))
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Can not open the file $niminfofile for writing";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
+                        }
+                        print TMPFILE $fscontent;
+                        close(TMPFILE);
+
                     }
                     
                     #Update etc/hosts file in the shared_root or root
