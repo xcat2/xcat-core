@@ -16,7 +16,7 @@ B<mkhwconn> [B<-V>| B<--verbose>] noderange B<-p> hmc [B<-P> passwd]
 
 =head2 PPC (without HMC, using FSPAPI) specific:
 
-B<mkhwconn> noderange B<-t> B<-T tooltype> [B<--port>]
+B<mkhwconn> noderange B<-t> B<-T tooltype> [B<--port> port_value]
 
 =head1 DESCRIPTION
 
