@@ -81,6 +81,9 @@ sub fsp_api_action {
     my $Rc = 0 ;
     my %outhash = ();
     my $res;    
+    my $user;
+    my $password;
+    my $fsp_bpa_type;
     
     if( !defined($tooltype) ) {
         $tooltype = 0; 
@@ -91,8 +94,10 @@ sub fsp_api_action {
 
     if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ || $$attrs[4] =~ /^cec$/) {
         $type = 0;
+	    $fsp_bpa_type="fsp";
     } elsif($$attrs[4] =~ /^bpa$/ || $$attrs[4] =~ /^frame$/) { 
 	    $type = 1;
+	    $fsp_bpa_type="bpa";
     } else { 
         $res = "$fsp_name\'s type is $$attrs[4]. Not support for $$attrs[4]";
 	    return ([$node_name, $res, -1]);
@@ -123,21 +128,33 @@ sub fsp_api_action {
 
     #print "fsp name: $fsp_name\n";
     #print "fsp ip: $fsp_ip\n";
-    
+  
+    #get the HMC/password from  passwd table or ppcdirect table.
+    if( $action =~ /^add_connection$/) {
+        my $tmp_node; 
+ 	    if( $$attrs[4] =~ /^cec$/ || $$attrs[4] =~ /^frame$/ ) {
+            #for redundant FSPs/BPAs, we only need to get the one node's HMC/passwd
+            my $children = xCAT::DBobjUtils->getchildren($fsp_name);
+	        if( !defined($children) ) {
+	            $res = "Failed to get the $fsp_name\'s FSPs/BPAs"; 
+	            return ([$fsp_name, $res, -1]);
+	        }
+	        $tmp_node = $$children[0];
+	    } else {
+	        $tmp_node = $fsp_name; 
+	    }
+	    ($user, $password) = xCAT::PPCdb::credentials( $tmp_node, $fsp_bpa_type,'HMC');        
+	    if ( !$password) {
+	        $res = "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.";
+	        return ([$node_name, $res, -1]);
+	    }
+    }
+
     my $cmd;
     my $install_dir = xCAT::Utils->getInstallDir();
     if( $action =~ /^code_update$/) { 
         $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name: -d $install_dir/packages_fw/";
     } elsif($action =~ /^add_connection$/) {
-        my $ppcdirecttab = xCAT::Table->new( 'ppcdirect');
-        if ( ! $ppcdirecttab) {
-            $res = "Failed to open table 'ppcdirect'.";	
-	        return ([$node_name, $res, -1]);
-     	}	
-     	my $password_hash    = $ppcdirecttab->getAttribs({'hcp'=> $fsp_name,'username'=>"HMC" } ,[qw(password)]);
-        $ppcdirecttab->close();
-        my $user = "HMC";
-        my $password = $password_hash->{password};
     	$cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
     } else {
         if( defined($parameter) ) {
