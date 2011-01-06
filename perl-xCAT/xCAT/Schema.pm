@@ -15,6 +15,9 @@ use xCAT::ExtTab;
 #
 #  Make sure any new attributes are not SQL reserved words by checking
 #  on this site:http://www.petefreitag.com/tools/sql_reserved_words_checker/
+#  For Postgresql: check the following site for names that cannot be used
+#  as attributes under any conditions:
+#  http://www.postgresql.org/docs/8.3/static/sql-keywords-appendix.html
 #
 #  Current SQL reserved words being used in this Schema with special 
 #  processing are the
