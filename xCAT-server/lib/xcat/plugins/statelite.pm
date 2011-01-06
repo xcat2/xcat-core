@@ -55,14 +55,18 @@ sub process_request {
 		return;
 	}
 
+    my $rootfstype;
+    my $exlistloc; # borrowed from packimage.pm
 	my $osver;
 	my $arch;
 	my $profile;
 	my $rootimg_dir;
+    my $exlist; # it is used when rootfstype = ramdisk
 	my $destdir;
 	my $imagename;
 
 	GetOptions(
+        "rootfstype|t=s" => \$rootfstype,
 		"profile|p=s" => \$profile,
 		"arch|a=s" => \$arch,
 		"osver|o=s" => \$osver,
@@ -110,15 +114,26 @@ sub process_request {
 			return;
 		}
 		# get the os, arch, and profile from the image name table.
-		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile');
+		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'rootfstype', 'osvers', 'osarch', 'profile');
 		if (!$ref) {
 			$callback->({error=>["Cannot find image \'$imagename\' from the osimage table."],errorcode=>[1]});
 			return;
 		}
 
+        $rootfstype = $ref->{'rootfstype'};
 		$osver=$ref->{'osvers'};
 		$arch=$ref->{'osarch'};
 		$profile=$ref->{'profile'};
+
+        # get the exlist and rootimgdir attributes
+        (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'exlist', 'rootimgdir');
+        unless($ref1) {
+            $callback->({error=>[qq{Cannot find image '$imagename' from the osimage table.}], errorcode => [1]});
+        }
+        $destdir = $ref1->{'rootimgdir'};
+        $exlistloc = $ref1->{'exlist'};
+        $rootimg_dir = "$destdir/rootimg";
+
 	} # end of case where they give us osimage.
 
 	unless ($osver and $arch and $profile ) {
@@ -126,8 +141,10 @@ sub process_request {
 		return;
 	}
 
-	$destdir="$installroot/netboot/$osver/$arch/$profile";
-	$rootimg_dir="$destdir/rootimg";
+    unless ($destdir) {
+	    $destdir="$installroot/netboot/$osver/$arch/$profile";
+	    $rootimg_dir="$destdir/rootimg";
+    }
 	my $oldpath=cwd();
 	
 	# now we have all the info we need:
@@ -173,13 +190,28 @@ sub process_request {
 	#    }
 	#}
 
+    my $distname = $osver;
+    unless ( -r "$::XCATROOT/share/xcat/netboot/$distname/" or not $distname) {
+        chop($distname);
+    }
+
+    unless($distname) {
+        $callback->({error=>["Unable to find $::XCATROOT/share/xcat/netboot directory for $osver"], errorcode=>[1]});
+        return;
+    }
+
+	unless ($imagename) {
         #store the image in the DB
-	if (!$imagename) {
 	    my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($osver, $arch, $profile, 'statelite');
-	    if ($ret[0] != 0) {
-		$callback->({error=>["Error when updating the osimage tables: " . $ret[1]]});
+	    if ($ret[0]) {
+		    $callback->({error=>["Error when updating the osimage tables: " . $ret[1]]});
 	    }
-            $imagename="$osver-$arch-statelite-$profile"
+        $imagename="$osver-$arch-statelite-$profile";
+
+        $exlistloc = xCAT::SvrUtils->get_exlist_file_name("$installroot/custom/netboot/$distname", $profile, $osver, $arch); 
+        unless ($exlistloc) { 
+            $exlistloc = xCAT::SvrUtils->get_exlist_file_name("$::XCATROOT/share/xcat/netboot/$distname", $profile, $osver, $arch); 
+        }
 	}
     # check if the file "litefile.save" exists or not
     # if it doesn't exist, then we get the synclist, and run liteMe
@@ -390,6 +422,84 @@ sub process_request {
         system("cp -a $::XCATROOT/share/xcat/netboot/add-on/statelite/rc.statelite $rootimg_dir/etc/init.d/statelite");
     }
 
+    # newly-introduced code for the rootfs with "ramdisk" as its type
+    if( $rootfstype eq "ramdisk" ) {
+        my $xcat_packimg_tmpfile = "/tmp/xcat_packimg.$$";
+        my $excludestr = "find . ";
+        my $includestr;
+        if ($exlistloc) {
+            my $exlist;
+            my $excludetext;
+            open($exlist,"<",$exlistloc);
+            system("echo -n > $xcat_packimg_tmpfile");
+            while (<$exlist>) {
+                $excludetext .= $_;
+            }
+            close($exlist);
+
+            #handle the #INLCUDE# tag recursively
+            my $idir = dirname($exlistloc);
+            my $doneincludes=0;
+            while (not $doneincludes) {
+                $doneincludes=1;
+                if ($excludetext =~ /#INCLUDE:[^#^\n]+#/) {
+                    $doneincludes=0;
+                    $excludetext =~ s/#INCLUDE:([^#^\n]+)#/include_file($1,$idir)/eg; 
+                }
+            }
+        
+            my @tmp=split("\n", $excludetext);
+            foreach (@tmp) {
+                chomp $_;
+                s/\s*#.*//;      #-- remove comments 
+                next if /^\s*$/; #-- skip empty lines
+                if (/^\+/) {
+                    s/^\+//; #remove '+'
+                    $includestr .= "-path '". $_ ."' -o ";
+                } else {
+                    s/^\-//;  #remove '-' if any
+                    $excludestr .= "'!' -path '".$_."' -a ";
+                }
+            }
+        }
+
+        $excludestr =~ s/-a $//;
+        if ($includestr) {
+            $includestr =~ s/-o $//;
+            $includestr = "find . " .  $includestr;
+        }
+
+        print "\nexcludestr=$excludestr\n\n includestr=$includestr\n\n"; # debug
+        
+        # some rpms like atftp mount the rootimg/proc to /proc, we need to make sure rootimg/proc is free of junk 
+        # before packaging the image
+        system("umount $rootimg_dir/proc");
+
+        my $verb = "Packing";
+
+        my $temppath;
+        my $oldmask;
+        $callback->({data=>["$verb contents of $rootimg_dir"]});
+        unlink("$destdir/rootimg-statelite.gz");
+        if ($exlistloc) {
+            chdir("$rootimg_dir");
+            system("$excludestr >> $xcat_packimg_tmpfile");
+            if ( $includestr) {
+                system("$includestr >> $xcat_packimg_tmpfile");
+            }
+            $excludestr = "cat $xcat_packimg_tmpfile |cpio -H newc -o | gzip -c - > ../rootimg-statelite.gz";
+        } else {
+            $excludestr = "find . |cpio -H newc -o | gzip -c - > ../rootimg-statelite.gz";
+        }
+        $oldmask = umask 0077;
+        chdir("$rootimg_dir");
+        xCAT::Utils->runcmd("$excludestr");
+        chmod 0644, "$destdir/rootimg-statelite.gz";
+        umask $oldmask;
+        
+        system("rm -f $xcat_packimg_tmpfile");
+    }
+    chdir($oldpath);
 }
 
 sub liteMe {

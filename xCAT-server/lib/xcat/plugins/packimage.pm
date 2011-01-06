@@ -311,7 +311,7 @@ sub process_request {
     my $verb = "Packing";
 
     my $temppath;
-    my $oldumask;
+    my $oldmask;
     unless ( -d $rootimg_dir) {
        $callback->({error=>["$rootimg_dir does not exist, run genimage -o $osver -p $profile on a server with matching architecture"]});
        return;

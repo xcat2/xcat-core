@@ -949,14 +949,17 @@ for i in `cat /proc/cmdline`; do
         SERVER=`echo \$VALUE|awk -F: '{print \$1}'`
         ROOTDIR=`echo \$VALUE|awk -F/ '{for(i=2;i<=NF;i++) printf "/%s",\$i}'`
    elif [ "\$KEY" == 'STATEMNT' ]; then
-        NFSROOT=1
+        STATELITE=1
         VALUE=`echo \$i |awk -F= '{print \$2}'`
-        SNAPSHOTSERVER=`echo \$VALUE|awk -F: '{print \$1}'`
-        SNAPSHOTROOT=`echo \$VALUE|awk -F/ '{for(i=2;i<=NF;i++) printf "/%s",\$i}'`
-        # may be that there is not server and just a directory.
-        if [ -z \$SNAPSHOTROOT ]; then
-            SNAPSHOTROOT=\$SNAPSHOTSERVER
-            SNAPSHOTSERVER=
+        # VALUE may be null
+        if [ ! -z \$VALUE ]; then
+            SNAPSHOTSERVER=`echo \$VALUE|awk -F: '{print \$1}'`
+            SNAPSHOTROOT=`echo \$VALUE|awk -F/ '{for(i=2;i<=NF;i++) printf "/%s",\$i}'`
+            # may be that there is not server and just a directory.
+            if [ -z \$SNAPSHOTROOT ]; then
+                SNAPSHOTROOT=\$SNAPSHOTSERVER
+                SNAPSHOTSERVER=
+            fi
         fi
     fi
 done
@@ -964,35 +967,57 @@ done
 # show xCAT logo
 fancydisplay
 
-# begin NFSROOT/Statelite code
-if [ "\$NFSROOT" = "1" ]; then
+# Statelite code is here
+if [ "\$STATELITE" = "1" ]; then
     echo Setting up Statelite
-    # for loop back mounting capability!
     mknod /dev/loop0 b 7 0
     mkdir -p \$NEWROOT
     MAXTRIES=15
     ITER=0
     ME=`hostname`
-    while ! mount.nfs \${SERVER}:\${ROOTDIR}/rootimg \$NEWROOT -r -n -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14
-    do
-        ITER=\$(expr \$ITER + 1)
-        if [ "\$ITER" == "\$MAXTRIES" ]
-        then
-            echo "You're dead.  rpower \$ME boot to play again."
-            echo "Possible problems:
-1.  This initrd wasn't created for statelite node?  rerun genimage with the -m statelite flag, then rerun 'nodeset \$ME statelite'
-2.  Is DNS set up?  Maybe that's why I can't mount \${SERVER}.
-3.  The nfs modules aren't set right in this initfs?"
-    
-            shell
-            exit
-        fi
-        echo -e "\${RED}Could not mount \$SERVER:\$ROOTDIR on \$NEWROOT \$RESET"
-        RS=`expr \$RANDOM % 30`
-        echo -e "Trying again in \$RS seconds"
-        sleep \$RS
-    done
+    if [ "\$NFSROOT" = "1" ]; then
+        while ! mount.nfs \${SERVER}:\${ROOTDIR}/rootimg \$NEWROOT -r -n -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14; do
+            ITER=\$(expr \$ITER + 1)
+            if [ "\$ITER" = "\$MAXTRIES" ]; then
+                echo "You're dead. rpower \$ME boot to play again."
+                echo "Possible problems:
+1.  This initrd wan't created for the statelite node? 
+2.  IS DNS set up? Maybe that's why I can't mount \${SERVER}.
+3.  The nfs modules aren't set right in this initial ramdisk?"
+                shell
+                exit
+            fi
+            echo -e "\${RED}Couldn't mount \$SERVER:\$ROOTDIR on \$NEWROOT \$RESET"
+            RS=\$(expr \$RANDOM % 30)
+            echo -e "Trying again in \$RS seconds"
+            sleep \$RS
+        done
+    else
+        # for statelite mode on top of the ramdisk
+EOMS
+    print $inifile "if [ -r /rootimg-statelite.gz ]; then \n";
+    print $inifile "echo Setting up RAM-root tmpfs.\n";
+    if ($rootlimit) {
+        print $inifile "    mount -o size=$rootlimit mode=755 -t tmpfs rootfs \$NEWROOT \n";
+    } else {
+        print $inifile "    mount -o mode=755 -t tmpfs rootfs \$NEWROOT \n";
+    }
 
+    print $inifile <<EOMS;
+        cd \$NEWROOT
+        echo -n "Extracting root file system:"
+        if [ -x /bin/cpio ]; then
+            gzip -cd /rootimg-statelite.gz | /bin/cpio -idum
+        else
+            gzip -cd /rootimg-statelite.gz | cpio -idum
+        fi
+        echo "Done"
+    else
+        echo -e "\${RED} Couldn't find rootimg-statelite.gz for statelite semantics on top of ramdisk \${RESET}"
+        shell
+        exit
+    fi
+fi
 # now we need to mount the rest of the system.  This is the read/write portions
 #echo "Mounting Snapshot directories"
     if [ ! -e "\$NEWROOT/\$RWDIR" ]
@@ -1111,9 +1136,9 @@ EOMS
    print $inifile "elif [ -r /rootimg.gz ]; then\n";
    print $inifile "echo Setting up RAM-root tmpfs.\n";
    if ($rootlimit) {
-      print $inifile "  mount -o size=$rootlimit  mode=755 -t tmpfs rootfs /sysroot\n";
+      print $inifile "  mount -o size=$rootlimit  mode=755 -t tmpfs rootfs \$NEWROOT\n";
    } else {
-      print $inifile "  mount -o  mode=755 -t tmpfs rootfs /sysroot\n";
+      print $inifile "  mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
    }
    print $inifile "  cd /sysroot\n";
    print $inifile "  echo -n \"Extracting root filesystem:\"\n";
@@ -1142,12 +1167,12 @@ EOMS
    print $inifile "  exit\n";
    print $inifile "fi\n";
    print $inifile "cd /\n";
-   print $inifile "mkdir /sysroot/var/lib/dhcpcd/\n";	#neccessary for SLES11, not sure for SLES10
-   print $inifile "cp /var/lib/dhcpcd/* /sysroot/var/lib/dhcpcd/\n";
-   print $inifile "cp /etc/resolv.conf /sysroot/etc/\n";
-   print $inifile "cp /etc/HOSTNAME /sysroot/etc/\n";
-   print $inifile "mknod /sysroot/dev/console c 5 1\n";
-   print $inifile "exec /lib/mkinitrd/bin/run-init -c /dev/console /sysroot /sbin/init\n";
+   print $inifile "mkdir \$NEWROOT/var/lib/dhcpcd/\n";	#neccessary for SLES11, not sure for SLES10
+   print $inifile "cp /var/lib/dhcpcd/* \$NEWROOT/var/lib/dhcpcd/\n";
+   print $inifile "cp /etc/resolv.conf \$NEWROOT/etc/\n";
+   print $inifile "cp /etc/HOSTNAME \$NEWROOT/etc/\n";
+   print $inifile "mknod \$NEWROOT/dev/console c 5 1\n";
+   print $inifile "exec /lib/mkinitrd/bin/run-init -c /dev/console \$NEWROOT /sbin/init\n";
    close($inifile);
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/bin/bash \n";
@@ -1175,7 +1200,7 @@ END
      }
    }
     if($mode eq "statelite") {
-        foreach ("sbin/ifconfig", "usr/bin/clear", "sbin/mount.nfs","sbin/umount.nfs","bin/hostname","usr/bin/egrep","bin/ln","bin/ls","usr/bin/dirname","usr/bin/expr","usr/bin/chroot","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","bin/umount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","usr/bin/wc") {
+        foreach ("sbin/ifconfig", "usr/bin/clear", "sbin/mount.nfs","sbin/umount.nfs","bin/hostname","usr/bin/egrep","bin/ln","bin/ls","usr/bin/dirname","usr/bin/expr","usr/bin/chroot","usr/bin/grep","bin/cpio","bin/sleep","bin/mount","bin/umount","sbin/dhcpcd","bin/bash","sbin/insmod","bin/mkdir","bin/mknod","sbin/ip","bin/cat","usr/bin/awk","usr/bin/wget","bin/cp","usr/bin/cpio","usr/bin/zcat","usr/bin/gzip","lib/mkinitrd/bin/run-init","usr/bin/uniq","usr/bin/sed","usr/bin/wc", "bin/sed") {
             getlibs($_); 
             push @filestoadd,$_;
         } 

@@ -245,6 +245,7 @@ sub mknetboot
         my $rootimgdir;
         my $nodebootif; # nodebootif will be used if noderes.installnic is not set
         my $dump; # for kdump, its format is "nfs://<nfs_server_ip>/<kdump_path>"
+        my $rootfstype; 
 
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
         if ($ent and $ent->{provmethod} and ($ent->{provmethod} ne 'install') and ($ent->{provmethod} ne 'netboot') and ($ent->{provmethod} ne 'statelite')) {
@@ -254,12 +255,13 @@ sub mknetboot
         	    if (!$osimagetab) {
         	        $osimagetab=xCAT::Table->new('osimage', -create=>1);
         	    }
-        	    (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
+        	    (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod', 'rootfstype');
         	    if ($ref) {
                     $img_hash{$imagename}->{osver}=$ref->{'osvers'};
                     $img_hash{$imagename}->{osarch}=$ref->{'osarch'};
                     $img_hash{$imagename}->{profile}=$ref->{'profile'};
                     $img_hash{$imagename}->{provmethod}=$ref->{'provmethod'};
+                    $img_hash{$imagename}->{rootfstype} = $ref->{rootfstype};
                     if (!$linuximagetab) {
                 	    $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
                     }
@@ -288,6 +290,8 @@ sub mknetboot
 	        $arch  = $ph->{osarch};
 	        $profile = $ph->{profile};
 
+            $rootfstype = $ph->{rootfstype};
+
 	        $rootimgdir=$ph->{rootimgdir};
             unless ($rootimgdir) {
                 $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
@@ -302,6 +306,10 @@ sub mknetboot
             $arch    = $ent->{arch};
             $profile = $ent->{profile};
             $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
+            
+            $rootfstype = "nfs"; # TODO: try to get it from the option or table
+            # $dump; # TODO: set the dump value here
+
         }
 
         #print"osvr=$osver, arch=$arch, profile=$profile, imgdir=$rootimgdir\n";
@@ -328,18 +336,25 @@ sub mknetboot
                 });
                 next;
             }
-	    if (!-r "$rootimgdir/initrd-statelite.gz") {
+	        if (!-r "$rootimgdir/initrd-statelite.gz") {
                 if (! -r "$rootimgdir/initrd.gz") {
                     $callback->({
                         error=>[qq{Did you run "genimage" before running "liteimg"? initrd.gz or initrd-statelite.gz cannot be found}],
                         errorcode=>[1]
-				});
+				    });
                     next;
                 }
-		else {
-		    copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-statelite.gz");
+		        else {
+		            copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-statelite.gz");
                 }
-	    } 
+	        } 
+            if ( $rootfstype eq "ramdisk" and ! -r "$rootimgdir/rootimg-statelite.gz") {
+                $callback->({
+                    error=>[qq{No packed image for platform $osver, architecture $arch and profile $profile, please run "liteimg" to create it.}],
+                    errorcode => [1]
+                });
+                next;
+            }
         } else {
             unless ( -r "$rootimgdir/kernel") {
                 $callback->({
@@ -347,20 +362,20 @@ sub mknetboot
                     errorcode=>[1]
 			    });
                 next;
-	    }
-	    if (!-r "$rootimgdir/initrd-stateless.gz") {
+	        }
+	        if (!-r "$rootimgdir/initrd-stateless.gz") {
                 if (! -r "$rootimgdir/initrd.gz") {
                     $callback->({
                         error=>[qq{Did you run "genimage" before running "packimage"? initrd.gz or initrd-stateless.gz cannot be found}],
                         errorcode=>[1]
-				});
+				    });
                     next;
                 }
-		else {
-		    copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
+		        else {
+		            copy("$rootimgdir/initrd.gz", "$rootimgdir/initrd-stateless.gz");
                 }
             }
-	    unless ( -r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.sfs" ) {
+	        unless ( -r "$rootimgdir/rootimg.gz" or -r "$rootimgdir/rootimg.sfs" ) {
                 $callback->({
                     error=>["No packed image for platform $osver, architecture $arch, and profile $profile, please run packimage (e.g.  packimage -o $osver -p $profile -a $arch"],
                     errorcode => [1]});
@@ -470,32 +485,36 @@ sub mknetboot
         }
         my $kcmdline; # add two more arguments: XCAT=xcatmaster:xcatport and ifname=<eth0>:<mac address>
 	    if($statelite){
-		    # get entry for nfs root if it exists:
-		    # have to get nfssvr and nfsdir from noderes table
-		    my $nfssrv = $imgsrv;
-		    my $nfsdir = $rootimgdir;
-		    if($ient->{nfsserver} ){
-			    $nfssrv = $ient->{nfsserver};
-		    }
-		    if($ient->{nfsdir} ne ''){	
-			    $nfsdir = $ient->{nfsdir} . "/netboot/$osver/$arch/$profile";
+            if ($rootfstype ne "ramdisk") {
+		        # get entry for nfs root if it exists:
+		        # have to get nfssvr and nfsdir from noderes table
+		        my $nfssrv = $imgsrv;
+		        my $nfsdir = $rootimgdir;
+		        if($ient->{nfsserver} ){
+			        $nfssrv = $ient->{nfsserver};
+		        }
+		        if($ient->{nfsdir} ne ''){	
+			        $nfsdir = $ient->{nfsdir} . "/netboot/$osver/$arch/$profile";
                         #this code sez, "if nfsdir starts with //, then
                         #use a absolute path, i.e. do not append xCATisms"
                         #this is required for some statelite envs.
                         #still open for debate.
 
-			    if($ient->{nfsdir} =~ m!^//!) {
-				    $nfsdir = $ient->{nfsdir};
-				    $nfsdir =~ s!^/!!;
-			    }
-		    }
+			        if($ient->{nfsdir} =~ m!^//!) {
+				        $nfsdir = $ient->{nfsdir};
+				        $nfsdir =~ s!^/!!;
+			        }
+		        }
 
-            # special case for redhat6, fedora12/13
-            if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/ 
-                || $osver =~ m/fedora12/ || $osver =~ m/fedora13/ ) {
-                $kcmdline = "root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
+                # special case for redhat6, fedora12/13
+                if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/ 
+                    || $osver =~ m/fedora12/ || $osver =~ m/fedora13/ ) {
+                    $kcmdline = "root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
+                } else {
+                    $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
+                }
             } else {
-                $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
+                $kcmdline =  "imgurl=http://$imgsrv/$rootimgdir/rootimg-statelite.gz STATEMNT=";
             }
 
             # add support for subVars in the value of "statemnt"
@@ -523,20 +542,22 @@ sub mknetboot
 		    $kcmdline .= $statemnt ." ";
 		    $kcmdline .=
 			    "XCAT=$xcatmaster:$xcatdport ";
-            # BEGIN service node
-            my $isSV = xCAT::Utils->isServiceNode();
-            my $res = xCAT::Utils->runcmd("hostname", 0);
-            my $sip = xCAT::NetworkUtils->getipaddr($res);  # this is the IP of service node
-            if($isSV and (($xcatmaster eq $sip) or ($xcatmaster eq $res))) {
-                # if the NFS directory in litetree is on the service node,
-                # and it is not exported, then it will be mounted automatically
-                xCAT::SvrUtils->setupNFSTree($node, $sip, $callback);
-                # then, export the statemnt directory if it is on the service node
-                if($statemnt) {
-                    xCAT::SvrUtils->setupStatemnt($sip, $statemnt, $callback);
+            if ($rootfstype ne "ramdisk") {
+                # BEGIN service node
+                my $isSV = xCAT::Utils->isServiceNode();
+                my $res = xCAT::Utils->runcmd("hostname", 0);
+                my $sip = xCAT::NetworkUtils->getipaddr($res);  # this is the IP of service node
+                if($isSV and (($xcatmaster eq $sip) or ($xcatmaster eq $res))) {
+                    # if the NFS directory in litetree is on the service node,
+                    # and it is not exported, then it will be mounted automatically
+                    xCAT::SvrUtils->setupNFSTree($node, $sip, $callback);
+                    # then, export the statemnt directory if it is on the service node
+                    if($statemnt) {
+                        xCAT::SvrUtils->setupStatemnt($sip, $statemnt, $callback);
+                    }
                 }
+                # END service node
             }
-            # END service node
 	    }
         else {
             $kcmdline =
@@ -654,6 +675,12 @@ sub mknetboot
 	    }
         my $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
         $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz" if ($statelite);
+        # special case for the dracut-enabled OSes
+        if ($osver =~ m/rhels6/ || $osver =~ m/rhel6/ || $osver =~ m/fedora12/ || $osver =~ m/fedora13/) {
+            if($statelite and $rootfstype eq "ramdisk") {
+                $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
+            }
+        }
         $bptab->setNodeAttribs(
             $node,
             {
