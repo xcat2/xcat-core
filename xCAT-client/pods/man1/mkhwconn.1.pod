@@ -16,7 +16,7 @@ B<mkhwconn> [B<-V>| B<--verbose>] noderange B<-p> hmc [B<-P> passwd]
 
 =head2 PPC (without HMC, using FSPAPI) specific:
 
-B<mkhwconn> noderange B<-t> B<-T tooltype>
+B<mkhwconn> noderange B<-t> B<-T tooltype> [B<--port>]
 
 =head1 DESCRIPTION
 
@@ -37,7 +37,9 @@ Note: If a CEC (FSP) belongs to a frame, which has a BPA installed, this CEC sho
 
 For PPC (without HMC, using FSPAPI) specific:
 
-It is used to set up connections for FSP and BPA node to Hardware Server on management node (or service node ). It only could be done according to the definition in xCAT DB. 
+It is used to set up connections for FSP and BPA node to Hardware Server on management node (or service node ). It only could be done according to the node definition in xCAT DB. And this command will try to read the user/password from the ppcdirect table firstly. If fails, then read them from passwd table. Commonly , the username is HMC. If using the ppcdirect table,  each FSP/BPA and user/password should be  stored in ppcdirect table. If using the passwd table, the key should be "fsp" or "bpa", and the related user/password are stored in passwd table.
+
+When --port is specified, this command will create the connections for FSPs/BPAs whose side in vpd table is equal to port value.
 
 =head1 OPTIONS
 
@@ -64,6 +66,10 @@ The password of HMC based FSP/BPA login user(Default user name is 'HMC'). This f
 
 The tooltype is used to communicate to the FSP/BPA. The value could be lpar or fnm. The tooltype value lpar is for xCAT and fnm is for CNM.
 
+=item B<--port>
+
+The port value specify which side will be used to create the connection to the FSP/BPA. The value could be "0" or "1". If this port value is not specfied in the command, it will use the default value "0". If the port value is "0", in the vpd table, the side column should be A-0 and B-0; If the port value is "1", the side column should be A-1 and B-1.
+
 =item B<-V|--verbose>
 
 Verbose output.
@@ -82,7 +88,7 @@ Verbose output.
 
 =item 1.
 
-To setup the connection for all FSP nodes in node group fsp, according to the definition in xCAT DB:
+To setup the connection for all FSP nodes in node group fsp to HMC node, according to the definition in xCAT DB:
 
  mkhwconn fsp -t
 
