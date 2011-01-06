@@ -505,22 +505,22 @@ sub mkhwconn
         {
             my $d = $node_hash->{$node_name};
 
-            my ( undef,undef,$mtms,undef,$type) = @$d;
-            my ($user, $passwd);
-            if ( exists $opt->{P})
-            {
-                ($user, $passwd) = ('HMC', $opt->{P});
-            }
-            else
-            {
-                ($user, $passwd) = xCAT::PPCdb::credentials( $node_name, $type,'HMC');
-                if ( !$passwd)
-                {
-                    push @value, [$node_name, "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.",1];
-                    next;
-                }
+            #my ( undef,undef,$mtms,undef,$type) = @$d;
+            #my ($user, $passwd);
+            #if ( exists $opt->{P})
+            #{
+            #    ($user, $passwd) = ('HMC', $opt->{P});
+            #}
+            #else
+            #{
+            #    ($user, $passwd) = xCAT::PPCdb::credentials( $node_name, $type,'HMC');
+            #    if ( !$passwd)
+            #    {
+            #        push @value, [$node_name, "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.",1];
+            #        next;
+            #    }
 
-            }
+            #}
 
             my $res = xCAT::FSPUtils::fsp_api_action( $node_name, $d, "add_connection", $tooltype, $opt->{port} );
             $Rc = @$res[2];
