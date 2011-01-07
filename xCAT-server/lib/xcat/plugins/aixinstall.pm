@@ -128,7 +128,7 @@ sub preprocess_request
     # don't want preprocess to run on service node but _xcatdest is not set??
     #if ($req->{_xcatdest}) { return [$req]; }    #exit if preprocessed
 
-    my $nodes   = $req->{node};
+    my $nodes   = $req->{node}; # this may not be the list of nodes we need!
     my $service = "xcat";
     my @requests;
     my $lochash;
@@ -169,10 +169,7 @@ sub preprocess_request
     #
 
     if ($command =~ /mknimimage/)
-
-
     {
-
         my $reqcopy = {%$req};
         $reqcopy->{'_xcatdest'} = $nimprime;
         push @requests, $reqcopy;
@@ -232,19 +229,10 @@ sub preprocess_request
 		return \@requests;
 	}
 
-    #
-    # get the hash of service nodes - for the nodes that were provided
-    #
-    my $sn;
-    if ($nodes)
-    {
-        $sn = xCAT::Utils->getSNformattedhash($nodes, $service, "MN");
-    }
-
     # these commands might be merged some day??
     if (($command =~ /nimnodeset/) || ($command =~ /mkdsklsnode/))
     {
-        my ($rc, $nodehash, $nethash, $imagehash, $lochash, $attrs, $nimhash) = &prenimnodeset($cb, $command, $sub_req);
+        my ($rc, $nodehash, $nethash, $imagehash, $lochash, $attrs, $nimhash, $mynodes, $type) = &prenimnodeset($cb, $command, $sub_req);
 
         if ($rc)
         {    # either error or -h was processed etc.
@@ -258,53 +246,58 @@ sub preprocess_request
             return undef;
         }
 
-        # set up the requests to go to the service nodes
-        foreach my $snkey (keys %$sn)
-        {
-            my $reqcopy = {%$req};
-            $reqcopy->{node} = $sn->{$snkey};
-            $reqcopy->{'_xcatdest'} = $snkey;
+		if (scalar(@{$mynodes})) {
+        	# set up the requests to go to the service nodes
+			my $snodes;
+			$snodes = xCAT::Utils->getSNformattedhash($mynodes, $service, "MN", $type);
 
-            # might as well pass along anything we had to look up
-            #   in the preprocessing
-            if ($nodehash)
-            {
+        	foreach my $snkey (keys %$snodes)
+        	{
+            	my $reqcopy = {%$req};
+            	$reqcopy->{node} = $snodes->{$snkey};
+            	$reqcopy->{'_xcatdest'} = $snkey;
 
-                # add tags to the hash keys that start with a number
-                #  XML cannot handle keys that start with number
-                xCAT::InstUtils->taghash($nodehash);
-                $reqcopy->{'nodehash'} = $nodehash;
-            }
+            	# might as well pass along anything we had to look up
+            	#   in the preprocessing
+            	if ($nodehash)
+            	{
 
-            if ($imagehash)
-            {
-                xCAT::InstUtils->taghash($imagehash);
-                $reqcopy->{'imagehash'} = $imagehash;
-            }
+                	# add tags to the hash keys that start with a number
+                	#  XML cannot handle keys that start with number
+                	xCAT::InstUtils->taghash($nodehash);
+                	$reqcopy->{'nodehash'} = $nodehash;
+            	}
 
-            if ($lochash)
-            {
-                xCAT::InstUtils->taghash($lochash);
-                $reqcopy->{'lochash'} = $lochash;
-            }
+            	if ($imagehash)
+            	{
+                	xCAT::InstUtils->taghash($imagehash);
+                	$reqcopy->{'imagehash'} = $imagehash;
+            	}
 
-            if ($nethash)
-            {
-                xCAT::InstUtils->taghash($nethash);
-                $reqcopy->{'nethash'} = $nethash;
-            }
+            	if ($lochash)
+            	{
+                	xCAT::InstUtils->taghash($lochash);
+                	$reqcopy->{'lochash'} = $lochash;
+            	}
 
-            if ($attrs)
-            {
-                $reqcopy->{'attrval'} = $attrs;
-            }
+            	if ($nethash)
+            	{
+                	xCAT::InstUtils->taghash($nethash);
+                	$reqcopy->{'nethash'} = $nethash;
+            	}
 
-			if ($nimhash)
-			{
-				xCAT::InstUtils->taghash($nimhash);
-				$reqcopy->{'nimhash'} = $nimhash;
+            	if ($attrs)
+            	{
+                	$reqcopy->{'attrval'} = $attrs;
+            	}
+
+				if ($nimhash)
+				{
+					xCAT::InstUtils->taghash($nimhash);
+					$reqcopy->{'nimhash'} = $nimhash;
+				}
+				push @requests, $reqcopy;
 			}
-			push @requests, $reqcopy;
         }
         return \@requests;
     }
@@ -312,6 +305,9 @@ sub preprocess_request
     if ($command =~ /nimnodecust/)
     {
 
+		#
+		#  THIS COMMAND IS NO LONGER SUPPORTED!!!
+		#
         # handle -h etc.
         # copy stuff to service nodes
 
@@ -327,6 +323,12 @@ sub preprocess_request
             }
             return undef;
         }
+
+		my $sn;
+		if ($nodes)
+		{
+			$sn = xCAT::Utils->getSNformattedhash($nodes, $service, "MN");
+		}
 
         # set up the requests to go to the service nodes
         #   all get the same request
@@ -350,9 +352,8 @@ sub preprocess_request
 
     if ($command =~ /rmdsklsnode/)
     {
-
         # handle -h etc.
-        my $rc = &prermdsklsnode($cb, $sub_req);
+		my ($rc, $mynodes, $type) = &prermdsklsnode($cb, $sub_req);
 
         if ($rc)
         {    # either error or -h was processed etc.
@@ -365,15 +366,16 @@ sub preprocess_request
             }
             return undef;
         }
-        else
+        elsif (scalar(@{$mynodes})) 
         {
-
             # set up the requests to go to the service nodes
             #   all get the same request
-            foreach my $snkey (keys %$sn)
+			my $snodes;
+			$snodes = xCAT::Utils->getSNformattedhash($mynodes, $service, "MN", $type);
+			foreach my $snkey (keys %$snodes)
             {
                 my $reqcopy = {%$req};
-                $reqcopy->{node} = $sn->{$snkey};
+                $reqcopy->{node} = $snodes->{$snkey};
                 $reqcopy->{'_xcatdest'} = $snkey;
 
                 push @requests, $reqcopy;
@@ -556,9 +558,11 @@ sub nimnodeset
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
+					'b|backupSN'  => \$::BACKUP,
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::OSIMAGE,
+					'p|primarySN' => \$::PRIMARY,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
                     'nfsv4'     => \$::NFSV4,
@@ -4264,6 +4268,7 @@ sub mk_resolv_conf
     return $resolv_conf_name;
 }
 
+
 #----------------------------------------------------------------------------
 
 =head3   mk_mksysb
@@ -5620,6 +5625,9 @@ sub updatespot
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
 
+
+# This code block  is no longer needed
+if (0) {
     #
     #  add rpm.rte to the SPOT
     #	- it contains gunzip which is needed on the nodes
@@ -5656,6 +5664,9 @@ sub updatespot
         }
     }    # end - install rpm.rte
 
+} # end - not needed
+
+
     #
     #  Get the SPOT location ( path to ../usr)
     #
@@ -5675,8 +5686,8 @@ sub updatespot
     #
     my $odmscript    = "$spot_loc/ODMscript";
     my $odmscript_mn = "/tmp/ODMscript";
-    $cmd    = qq~ls $odmscript~;
-    $output =
+    my $cmd    = qq~ls $odmscript~;
+    my $output =
       xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
@@ -6432,11 +6443,13 @@ sub prenimnodeset
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
+					'b|backupSN'  => \$::BACKUP,					
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'hfi'       => \$::HFI,
                     'i=s'       => \$::OSIMAGE,
                     'n|new'     => \$::NEWNAME,
+					'p|primarySN' => \$::PRIMARY,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
                     'nfsv4'     => \$::NFSV4,
@@ -6483,6 +6496,18 @@ sub prenimnodeset
         xCAT::MsgUtils->message("I", $rsp, $callback);
         return (2);
     }
+
+	my $type;
+	if ($::PRIMARY && $::BACKUP) {
+	# setting both is the same as all
+		$type="all";
+	} elsif ($::PRIMARY) {
+		$type="primary";
+	} elsif ($::BACKUP) {
+		$type="backup";
+	} else {
+		$type="all";
+	}
 
     # if an osimage is included make sure it is defined
     if ($::OSIMAGE)
@@ -6881,7 +6906,7 @@ sub prenimnodeset
 
 
 	my $snhash;
-	$snhash = &doSNcopy($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash,  \%nodeosi, $subreq);
+	$snhash = &doSNcopy($callback, \@nodelist, $nimprime, \@nimrestypes, \%imghash, \%lochash,  \%nodeosi, $subreq, $type);
     if ( !defined($snhash) ) {
         my $rsp;
         push @{$rsp->{data}},
@@ -6901,7 +6926,7 @@ sub prenimnodeset
     }
 
     # pass this along to the process_request routine
-    return (0, \%objhash, \%nethash, \%imghash, \%lochash, \%attrs, \%nimhash);
+    return (0, \%objhash, \%nethash, \%imghash, \%lochash, \%attrs, \%nimhash, \@nodelist, $type);
 }
 
 #----------------------------------------------------------------------------
@@ -7120,6 +7145,12 @@ sub copyres
     my $free_space = $fslist[3];
     my $FSname     = $fslist[7];
 
+
+# ndebug
+	my $rsp;
+	push @{$rsp->{data}}, "copyres: dir = $dir, FSname= $FSname\n";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
+
     # How much space is the resource using?
     my $ducmd = qq~/usr/bin/du -sm $dir | /usr/bin/awk '{print \$1}'~;
 
@@ -7314,6 +7345,7 @@ sub doSNcopy
     my $locs     = shift;
     my $nosi     = shift;
     my $subreq   = shift;
+	my $type 	 = shift; 
 
     my %lochash     = %{$locs};
     my %imghash     = %{$imaghash};
@@ -7325,7 +7357,7 @@ sub doSNcopy
     #
     #  Get a list of nodes for each service node
     #
-    my $sn = xCAT::Utils->getSNformattedhash(\@nodelist, "xcat", "MN");
+    my $sn = xCAT::Utils->getSNformattedhash(\@nodelist, "xcat", "MN", $type);
     if ($::ERROR_RC)
     {
         my $rsp;
@@ -7609,11 +7641,13 @@ sub mkdsklsnode
     # parse the options
     if (
         !GetOptions(
+					'b|backup'  => \$::BACKUP,
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'hfi'       => \$::HFI,
                     'i=s'       => \$::OSIMAGE,
                     'n|new'     => \$::NEWNAME,
+					'p|primary' => \$::PRIMARY,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
                     'nfsv4'     => \$::NFSV4,
@@ -8239,15 +8273,7 @@ sub mkdsklsnode
                 # if nfsserver is set to the service node itself, nothing needs to do
                 if(!xCAT::InstUtils->is_me($nfshash->{$snd}->[0]->{'nfsserver'}))
                 {
-                    my $osimg = $nodeosi{$snd};
-                    my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
-                    if (!$nfshost || !$nfsip)
-                    {
-                        my $rsp = {};
-                        $rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        next;
-                    }
+					my $osimg = $nodeosi{$snd};
                     #shared_root configuration
                     my $hostfile;
                     my $filesystemsfile;
@@ -8266,46 +8292,14 @@ sub mkdsklsnode
                                                           "location", $callback, $Sname, $subreq);
                         $hostfile = "$imgrootdir/$snd/etc/hosts";
                         $filesystemsfile = "$imgrootdir/$snd/etc/filesystems";
-                        my ($nodehost, $nodeip) = xCAT::NetworkUtils->gethostnameandip($snd);
-                        if (!$nodehost || !$nodeip)
-                        {
-                            my $rsp = {};
-                            $rsp->{data}->[0] = "Can not resolve the node $snd";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            next;
-                        }
-                        my $tftpdir = xCAT::Utils->getTftpDir();
-                        my $niminfofile = "$tftpdir/${nodeip}.info";
-                        #Update /tftpboot/<node>.info file
-                        my $fscontent;
-                        unless (open(NIMINFOFILE, "<$niminfofile"))
-                        {
-                            my $rsp = {};
-                            $rsp->{data}->[0] = "Can not open the niminfo file $niminfofile for node $snd";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            next;
-                        }
-                        while (my $line = <NIMINFOFILE>)
-                        {
-                            $fscontent .= $line;
-                        }
-
-                        # Update the ROOT & NIM_HOSTS
-                        $fscontent =~ s/(export\s+SPOT=)(.*):/$1$nfshost:/;
-                        $fscontent =~ s/(export\s+ROOT=)(.*):/$1$nfshost:/;
-                        $fscontent =~ s/(export\s+NIM_HOSTS=.*)"/$1$nfsip:$nfshost "/;
-                        close(NIMINFOFILE);
-
-                        unless (open(TMPFILE, ">$niminfofile"))
-                        {
-                            my $rsp = {};
-                            $rsp->{data}->[0] = "Can not open the file $niminfofile for writing";
-                            xCAT::MsgUtils->message("E", $rsp, $callback);
-                            next;
-                        }
-                        print TMPFILE $fscontent;
-                        close(TMPFILE);
-
+                    }
+                    my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
+                    if (!$nfshost || !$nfsip)
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
                     }
                     
                     #Update etc/hosts file in the shared_root or root
@@ -9029,7 +9023,7 @@ sub make_SN_resource
                     my $dir = dirname($resdir);
 
                     # ex. /install/nim/lpp_source
-                    if ($::VERBOSE)
+                    if (0)
                     {
                         my $rsp;
                         push @{$rsp->{data}},
@@ -9275,7 +9269,7 @@ sub make_SN_resource
 
                     # ex. /install/nim/spot
 
-                    if ($::VERBOSE)
+                    if (0)
                     {
                         my $rsp;
                         push @{$rsp->{data}},
@@ -9396,9 +9390,11 @@ sub prermdsklsnode
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
+					'b|backupSN'  => \$::BACKUP,
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::opt_i,
+					'p|primarySN' => \$::PRIMARY,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
         )
@@ -9424,7 +9420,29 @@ sub prermdsklsnode
         return 2;
     }
 
-    return 0;
+	my $type;
+	if ($::PRIMARY && $::BACKUP) {
+		# setting both is the same as all
+		$type="all";
+	} elsif ($::PRIMARY) {
+		$type="primary";
+	} elsif ($::BACKUP) {
+		$type="backup";
+	} else {
+		$type="all";
+	}
+
+	# the first arg should be a noderange - the other should be attr=val
+	my @nodelist;
+	while (my $a = shift(@ARGV))
+	{
+		if (!($a =~ /=/))
+		{
+			@nodelist = &noderange($a, 0);
+			last;
+		}
+	}
+    return (0, \@nodelist, $type);
 }
 
 #----------------------------------------------------------------------------
@@ -9540,6 +9558,17 @@ sub rmdsklsnode
                 $output =
                   xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nodename,
                                         $scmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}},
+                      "Could not shut down node \'$nodename\'.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    $error++;
+
+                    #push(@nodesfailed, $nodename);
+                    #next;
+                }
             }
             else
             {
@@ -9699,7 +9728,7 @@ sub mkdsklsnode_usage
     push @{$rsp->{data}}, "\tmkdsklsnode [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tmkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] \n\t\t[-i image_name] noderange [attr=val [attr=val ...]]\n";
+      "\tmkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] \n\t\t[-i image_name] [-p|--primarySN] [-b|--backupSN]\n\t\tnoderange [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
@@ -9722,7 +9751,7 @@ sub rmdsklsnode_usage
     push @{$rsp->{data}}, "\trmdsklsnode [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\trmdsklsnode [-V|--verbose] [-f|--force] {-i image_name} noderange";
+      "\trmdsklsnode [-V|--verbose] [-f|--force] {-i image_name}\n\t\t[-p|--primarySN] [-b|--backupSN] noderange";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
@@ -9841,7 +9870,7 @@ sub nimnodeset_usage
     push @{$rsp->{data}}, "\tnimnodeset [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tnimnodeset [-V|--verbose] [-f|--force] [ -i osimage_name]\n\t\tnoderange [attr=val [attr=val ...]]\n";
+      "\tnimnodeset [-V|--verbose] [-f|--force] [ -i osimage_name]\n\t\t[-p|--primarySN] [-b|--backupSN] noderange [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }

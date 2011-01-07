@@ -92,7 +92,7 @@ sub preprocess_request
 		
 		# handle -h etc.
 		#  list of nodes could be derived multiple ways!!
-		my ($ret, $mynodes, $servnodes) = &prexcat2nim($cb);
+		my ($ret, $mynodes, $servnodes, $type) = &prexcat2nim($cb);
 		if ( $ret ) { # either error or -h was processed etc.
 			my $rsp;
 			if ($ret eq "1") {
@@ -107,7 +107,7 @@ sub preprocess_request
 			#   - for the nodes that were provided
 			#  -  to handle node and group objects
 			my $sn;
-			$sn = xCAT::Utils->getSNformattedhash($mynodes, $service, "MN");
+			$sn = xCAT::Utils->getSNformattedhash($mynodes, $service, "MN", $type);
 			foreach my $snkey (keys %$sn) {
 				my $reqcopy = {%$req};
 				$reqcopy->{node} = $sn->{$snkey};
@@ -115,6 +115,7 @@ sub preprocess_request
 				$reqcopy->{_xcatpreprocessed}->[0] = 1;
 				push @requests, $reqcopy;
 			}
+
 			return \@requests;
 
 		} elsif (scalar(@{$servnodes} )) {
@@ -207,13 +208,15 @@ sub prexcat2nim
     if (
         !GetOptions(
                     'all|a'     => \$::opt_a,
+					'b|backupSN'  => \$::BACKUP,
                     'f|force'   => \$::FORCE,
-                    'help|h|?'    => \$::opt_h,
+                    'help|h|?'  => \$::opt_h,
                     'list|l'    => \$::opt_l,
                     'update|u'  => \$::opt_u,
                     'remove|r'  => \$::opt_r,
 					'managementnode|M'	=> \$::MN,
                     'o=s'       => \$::opt_o,
+					'p|primarySN' => \$::PRIMARY,
                     't=s'       => \$::opt_t,
 					's=s'		=> \$::SERVERS,
                     'verbose|V' => \$::opt_V,
@@ -244,6 +247,18 @@ sub prexcat2nim
 
 	# process the command line
     my $rc = &processArgs($callback);
+
+	my $type;
+	if ($::PRIMARY && $::BACKUP) {
+		# setting both is the same as all
+		$type="all";
+	} elsif ($::PRIMARY) {
+		$type="primary";
+	} elsif ($::BACKUP) {
+		$type="backup";
+	} else {
+		$type="all";
+	}
 
 	# figure out what nodes are involved - if any
 	#	- so we can send the request to the correct service nodes 
@@ -308,7 +323,7 @@ if(0) { # only do networks on the management node (NIM primary) for now
 	}
 }
 
-	return (0, \@nodelist, \@servicenodes);
+	return (0, \@nodelist, \@servicenodes, $type);
 }
 
 #----------------------------------------------------------------------------
@@ -357,6 +372,7 @@ sub processArgs
     if (
         !GetOptions(
                     'all|a'     => \$::opt_a,
+					'b|backupSN'  => \$::BACKUP,
 					'f|force'	=> \$::FORCE,
                     'help|h|?'    => \$::opt_h,
 					'list|l'    => \$::opt_l,
@@ -364,6 +380,7 @@ sub processArgs
 					'remove|r'  => \$::opt_r,
 					'managementnode|M'  => \$::MN,
                     'o=s'       => \$::opt_o,
+					'p|primarySN' => \$::PRIMARY,
 					's=s'       => \$::SERVERS,
                     't=s'       => \$::opt_t,
                     'verbose|V' => \$::opt_V,
@@ -1348,7 +1365,7 @@ sub xcat2nim_usage
     my $rsp;
 	push @{$rsp->{data}}, "\nUsage: xcat2nim - Use this command to create and manage AIX NIM definitions based on xCAT object definitions.\n";
 	push @{$rsp->{data}}, "  xcat2nim [-h|--help ]\n";
-	push @{$rsp->{data}}, "  xcat2nim [-V|--verbose] [-l|--list] [-r|--remove] [-u|--update]\n    [-f|--force] [-t object-types] [-o object-names] [-a|--allobjects]\n    [noderange] [attr=val [attr=val...]]\n";
+	push @{$rsp->{data}}, "  xcat2nim [-V|--verbose] [-l|--list] [-r|--remove] [-u|--update]\n    [-f|--force] [-t object-types] [-o object-names] [-a|--allobjects]\n    [-p|--primarySN] [-b|--backupSN] [noderange] [attr=val [attr=val...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
