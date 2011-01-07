@@ -1035,15 +1035,18 @@ sub runcmd
     # redirect stderr to stdout
     if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }   
 
+	# get this systems name as known by xCAT management node
+	my $Sname = xCAT::InstUtils->myxCATname();
+	chomp $Sname;
 
 	if ($::VERBOSE)
 	{
 		if ($::CALLBACK){
 			my $rsp    = {};
-			$rsp->{data}->[0] = "Running Command: $cmd\n";
+			$rsp->{data}->[0] = "Running command on $Sname: $cmd\n";
 			xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
 		} else {
-			xCAT::MsgUtils->message("I", "Running Command: $cmd\n");
+			xCAT::MsgUtils->message("I", "Running command on $Sname: $cmd\n");
 		}
 	}
 
@@ -3781,48 +3784,56 @@ sub get_ServiceNode
      Error:
          $::ERROR_RC=0 no error $::ERROR_RC=1 error
 
-	 example: $sn =xCAT::Utils->getSNformattedhash(\@nodes,$service,"MN");
-	  $sn =xCAT::Utils->getSNformattedhash(\@nodes,$service,"Node");
+	 example: $sn =xCAT::Utils->getSNformattedhash(\@nodes,$service,"MN", $type);
+	  $sn =xCAT::Utils->getSNformattedhash(\@nodes,$service,"Node", "primary");
 
 =cut
 
 #-----------------------------------------------------------------------------
 sub getSNformattedhash
 {
-    my ($class, $node, $service, $request) = @_;
+    my ($class, $node, $service, $request, $type) = @_;
     my @node_list = @$node;
     my $cmd;
     my %newsnhash;
+
+	# get the values of either the servicenode or xcatmaster attributes
     my $sn = xCAT::Utils->get_ServiceNode(\@node_list, $service, $request);
 
     # get the keys which are the service nodes and break apart any pool lists
     # format into individual service node keys pointing to node lists
+	if ($sn)
+	{
+        foreach my $snkey (keys %$sn)
+        {
+			# split the key if pool of service nodes
+			push my @tmpnodes, $sn->{$snkey};
+			my @nodes;
+			for my $i (0 .. $#tmpnodes) {
+				for my $j ( 0 .. $#{$tmpnodes[$i]}) {
+					my $check=$tmpnodes[$i][$j];
+					push @nodes,$check; 
+				}
+			}
 
-    if ($sn)
-    {
-            foreach my $snkey (keys %$sn)
-            {
-                # split the key if pool of service nodes
-                #push my @nodes, $sn->{$snkey}->[0];
-                push my @tmpnodes, $sn->{$snkey};
-                my @nodes;
-                for my $i (0 .. $#tmpnodes) {
-                  for my $j ( 0 .. $#{$tmpnodes[$i]}) {
-                     my $check=$tmpnodes[$i][$j];
-                     push @nodes,$check; 
-                  }
-                }
-                my @servicenodes = split /,/, $snkey;
-                # now build new hash of individual service nodes
-                foreach my $newsnkey (@servicenodes) {
-                  push @{$newsnhash{$newsnkey}}, @nodes;
-                }
+			# for SN backup we might only want the primary or backup
+			my @servicenodes;
+			my ($primary, $backup) = split /,/, $snkey;
+			if (($primary) && ($type eq "primary")) {
+				push @servicenodes, $primary;
+			} elsif (($backup) && ($type eq "backup")) {
+				push @servicenodes, $backup;
+			} else {
+				@servicenodes = split /,/, $snkey;
+			}
 
-            }
-    }
-
+			# now build new hash of individual service nodes
+			foreach my $newsnkey (@servicenodes) {
+				push @{$newsnhash{$newsnkey}}, @nodes;
+			}
+		}
+	}
     return \%newsnhash;
-
 }
 
 #-----------------------------------------------------------------------------

@@ -142,7 +142,9 @@ sub myxCATname
 
         # the myxcatpost_<nodename> file should exist on all nodes!
         my $catcmd = "cat /xcatpost/myxcatpost_* | grep '^NODE='";
-        my $output = xCAT::Utils->runcmd("$catcmd", -1);
+		# - can't use runcmd because this routine is called by runcmd
+
+		my $output = `$catcmd`;
         if ($::RUNCMD_RC == 0)
         {
             ($junk, $name) = split('=', $output);
@@ -647,6 +649,7 @@ sub taghash
 #-------------------------------------------------------------------------------
 sub getOSnodes
 {
+
     my ($class, $nodes) = @_;
 
     my @nodelist = @$nodes;
@@ -1012,6 +1015,7 @@ sub dolitesetup
             return 1;
         }
     }
+
 
 	# populate the .defaults dir with files and dirs from the image - if any
 	my $default="$instrootloc/.default";
