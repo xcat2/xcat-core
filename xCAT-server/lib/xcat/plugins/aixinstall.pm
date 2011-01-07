@@ -169,7 +169,10 @@ sub preprocess_request
     #
 
     if ($command =~ /mknimimage/)
+
+
     {
+
         my $reqcopy = {%$req};
         $reqcopy->{'_xcatdest'} = $nimprime;
         push @requests, $reqcopy;
@@ -4268,7 +4271,6 @@ sub mk_resolv_conf
     return $resolv_conf_name;
 }
 
-
 #----------------------------------------------------------------------------
 
 =head3   mk_mksysb
@@ -5625,9 +5627,9 @@ sub updatespot
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
 
-
 # This code block  is no longer needed
 if (0) {
+
     #
     #  add rpm.rte to the SPOT
     #	- it contains gunzip which is needed on the nodes
@@ -5663,9 +5665,7 @@ if (0) {
             return 1;
         }
     }    # end - install rpm.rte
-
 } # end - not needed
-
 
     #
     #  Get the SPOT location ( path to ../usr)
@@ -6443,7 +6443,7 @@ sub prenimnodeset
     Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
-					'b|backupSN'  => \$::BACKUP,					
+					'b|backupSN'  => \$::BACKUP,
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'hfi'       => \$::HFI,
@@ -6499,7 +6499,7 @@ sub prenimnodeset
 
 	my $type;
 	if ($::PRIMARY && $::BACKUP) {
-	# setting both is the same as all
+		# setting both is the same as all
 		$type="all";
 	} elsif ($::PRIMARY) {
 		$type="primary";
@@ -7145,12 +7145,6 @@ sub copyres
     my $free_space = $fslist[3];
     my $FSname     = $fslist[7];
 
-
-# ndebug
-	my $rsp;
-	push @{$rsp->{data}}, "copyres: dir = $dir, FSname= $FSname\n";
-	xCAT::MsgUtils->message("I", $rsp, $callback);
-
     # How much space is the resource using?
     my $ducmd = qq~/usr/bin/du -sm $dir | /usr/bin/awk '{print \$1}'~;
 
@@ -7345,7 +7339,7 @@ sub doSNcopy
     my $locs     = shift;
     my $nosi     = shift;
     my $subreq   = shift;
-	my $type 	 = shift; 
+	my $type     = shift;
 
     my %lochash     = %{$locs};
     my %imghash     = %{$imaghash};
@@ -8273,7 +8267,15 @@ sub mkdsklsnode
                 # if nfsserver is set to the service node itself, nothing needs to do
                 if(!xCAT::InstUtils->is_me($nfshash->{$snd}->[0]->{'nfsserver'}))
                 {
-					my $osimg = $nodeosi{$snd};
+                    my $osimg = $nodeosi{$snd};
+                    my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
+                    if (!$nfshost || !$nfsip)
+                    {
+                        my $rsp = {};
+                        $rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        next;
+                    }
                     #shared_root configuration
                     my $hostfile;
                     my $filesystemsfile;
@@ -8292,14 +8294,46 @@ sub mkdsklsnode
                                                           "location", $callback, $Sname, $subreq);
                         $hostfile = "$imgrootdir/$snd/etc/hosts";
                         $filesystemsfile = "$imgrootdir/$snd/etc/filesystems";
-                    }
-                    my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
-                    if (!$nfshost || !$nfsip)
-                    {
-                        my $rsp = {};
-                        $rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
-                        xCAT::MsgUtils->message("E", $rsp, $callback);
-                        next;
+                        my ($nodehost, $nodeip) = xCAT::NetworkUtils->gethostnameandip($snd);
+                        if (!$nodehost || !$nodeip)
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Can not resolve the node $snd";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
+                        }
+                        my $tftpdir = xCAT::Utils->getTftpDir();
+                        my $niminfofile = "$tftpdir/${nodeip}.info";
+                        #Update /tftpboot/<node>.info file
+                        my $fscontent;
+                        unless (open(NIMINFOFILE, "<$niminfofile"))
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Can not open the niminfo file $niminfofile for node $snd";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
+                        }
+                        while (my $line = <NIMINFOFILE>)
+                        {
+                            $fscontent .= $line;
+                        }
+
+                        # Update the ROOT & NIM_HOSTS
+                        $fscontent =~ s/(export\s+SPOT=)(.*):/$1$nfshost:/;
+                        $fscontent =~ s/(export\s+ROOT=)(.*):/$1$nfshost:/;
+                        $fscontent =~ s/(export\s+NIM_HOSTS=.*)"/$1$nfsip:$nfshost "/;
+                        close(NIMINFOFILE);
+
+                        unless (open(TMPFILE, ">$niminfofile"))
+                        {
+                            my $rsp = {};
+                            $rsp->{data}->[0] = "Can not open the file $niminfofile for writing";
+                            xCAT::MsgUtils->message("E", $rsp, $callback);
+                            next;
+                        }
+                        print TMPFILE $fscontent;
+                        close(TMPFILE);
+
                     }
                     
                     #Update etc/hosts file in the shared_root or root
@@ -9558,17 +9592,6 @@ sub rmdsklsnode
                 $output =
                   xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nodename,
                                         $scmd, 0);
-                if ($::RUNCMD_RC != 0)
-                {
-                    my $rsp;
-                    push @{$rsp->{data}},
-                      "Could not shut down node \'$nodename\'.";
-                    xCAT::MsgUtils->message("E", $rsp, $callback);
-                    $error++;
-
-                    #push(@nodesfailed, $nodename);
-                    #next;
-                }
             }
             else
             {
@@ -9751,7 +9774,7 @@ sub rmdsklsnode_usage
     push @{$rsp->{data}}, "\trmdsklsnode [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\trmdsklsnode [-V|--verbose] [-f|--force] {-i image_name}\n\t\t[-p|--primarySN] [-b|--backupSN] noderange";
+      "\trmdsklsnode [-V|--verbose] [-f|--force] {-i image_name}\n\t\t[-p|--primarySN] [-b|--backupSN]  noderange";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
