@@ -6,7 +6,7 @@ var origAttrs = new Object();	// Original node attributes
 var defAttrs; 		// Definable node attributes
 
 /**
- * Set the nodes tab
+ * Set the nodes tab 
  * 
  * @param obj
  *            Tab object
