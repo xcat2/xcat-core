@@ -4,15 +4,17 @@ B<mkdsklsnode> - Use this xCAT command to define and initialize AIX/NIM diskless
 
 =head1 SYNOPSIS
 
-B<mkdsklsnode [-h|--help ]>
+y<mkdsklsnode [-h|--help ]>
 
-B<mkdsklsnode [-V|--verbose] [-f|--force] [--hfi] [-n|--newname] [-i osimage_name] noderange [attr=val [attr=val ...]]>
+B<mkdsklsnode [-V|--verbose] [-f|--force] [--hfi] [-n|--newname] [-i osimage_name] [-p|--primarySN] [-b|--backupSN] noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
 This xCAT command can be used to define and/or initialize AIX/NIM diskless machines. Once this step is completed the xCAT rnetboot command may be used to initiate a network boot of the nodes.
 
 The command can be used to define and initialize a new NIM machine object or it may be used to reinitialize an existing machine to use a different operating system image.
+
+If you are using xCAT service nodes the B<mkdsklsnode> command will automatically determine the correct server(s) for the node and create the NIM definitions on that server(s).
 
 When creating a new NIM machine definition the default is to use the same name as the xCAT node name that is provided.
 
@@ -64,6 +66,10 @@ Specifies the type dump to be collected at the client.  The values are "selectiv
 
 =back
 
+=item B<-b |--backupSN>
+
+When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes.
+
 =item B<-f |--force>
 
 Use the force option to reinitialize the NIM machines.
@@ -83,6 +89,10 @@ The name of an existing xCAT osimage definition. If this information is not prov
 =item B<-n|--newname>
 
 Create a new NIM machine object name for the xCAT node. Use the naming convention "<xcat_node_name>_<image_name>" for the new NIM machine definition.
+
+=item B<-p|--primarySN>
+
+When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
 
 =item B<noderange>
 

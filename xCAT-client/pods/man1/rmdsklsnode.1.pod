@@ -6,7 +6,7 @@ B<rmdsklsnode> - Use this xCAT command to remove AIX/NIM diskless machine defini
 
 B<rmdsklsnode [-h | --help ]>
 
-B<rmdsklsnode [-V|--verbose] [-f|--force] [-i image_name] noderange>
+B<rmdsklsnode [-V|--verbose] [-f|--force] [-i image_name] [-p|--primarySN] [-b|--backupSN] noderange>
 
 =head1 DESCRIPTION
 
@@ -14,9 +14,11 @@ Use this command to remove all NIM machine names that were created for the speci
 
 The xCAT node definitions will not be removed.
 
-The default is to assume that the NIM machine names are the same as the xCAT node names.  If you had used the "-n" option when you created the NIM machine definitions with the mkdsklsnode command then the NIM machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions you must provide the name of the osimage that was used.
+The default is to assume that the NIM machine names are the same as the xCAT node names.  If you had used the "-n" option when you created the NIM machine definitions with the B<mkdsklsnode> command then the NIM machine names would be a combination of the xCAT node name and the osimage name used to initialize the NIM machine. To remove these definitions you must provide the name of the osimage that was used.
 
-Use the xCAT rmdef command to remove xCAT node definitions.
+If you are using xCAT service nodes the B<rmdsklsnode> command will automatically determine the correct server(s) for the node and remove the NIM definitions on that server(s).
+
+Use the xCAT B<rmdef> command to remove xCAT node definitions.
 
 =head1 OPTIONS
 
@@ -25,6 +27,11 @@ Use the xCAT rmdef command to remove xCAT node definitions.
 =item B<-f |--force>
 
 Use the force option to stop and remove running nodes. This handles the situation where a NIM machine definition indicates that a node is still running even though it is not.
+
+=item B<-b |--backupSN>
+
+When using backup service nodes only update the backup.  The default is to updat
+e both the primary and backup service nodes.
 
 =item B<-h |--help>
 
@@ -37,6 +44,11 @@ The name of an xCAT image definition.
 =item B<noderange>
 
 A set of comma delimited node names and/or group names. See the "noderange" man page for details on additional supported formats.
+
+=item B<-p|--primarySN>
+
+When using backup service nodes only update the primary.  The default is to upda
+te both the primary and backup service nodes.
 
 =item B<-V |--verbose>
 

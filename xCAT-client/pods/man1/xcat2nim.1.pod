@@ -6,7 +6,7 @@ B<xcat2nim> - Use this command to create and manage AIX NIM definitions based on
 
 I<xcat2nim [-h|--help ]>
 
-I<xcat2nim [-V|--verbose] [-u|--update] [-l|--list] [-r|--remove] [-f|--force] [-t object-types] [-o object-names] [-a|--allobjects] [noderange] [attr=val [attr=val...]] >
+I<xcat2nim [-V|--verbose] [-u|--update] [-l|--list] [-r|--remove] [-f|--force] [-t object-types] [-o object-names] [-a|--allobjects] [-p|--primarySN] [-b|--backupSN] [noderange] [attr=val [attr=val...]] >
 
 =head1 DESCRIPTION
 
@@ -42,6 +42,8 @@ B<-a|--all>             The list of objects will include all xCAT node, group an
 
 B<attr=val [attr=val ...]>  Specifies one or more "attribute equals value" pairs, separated by spaces. Attr=val pairs must be specified last on the command line.  The attribute names must correspond to the attributes supported by the relevant NIM commands.  When providing attr=val pairs on the command line you must not specify more than one object type.
 
+B<-b|--backupSN>       When using backup service nodes only update the backup.  The default is to update both the primary and backup service nodes.
+
 B<-f|--force>   	 The force option will remove the existing NIM definition and create a new one.
 
 B<-h|--help>            Display the usage message.
@@ -49,6 +51,8 @@ B<-h|--help>            Display the usage message.
 B<-l|--list>		 List NIM definitions corresponding to xCAT definitions.
 
 B<-o object-names>       A set of comma delimited xCAT object names. Objects must be of type node, group, or network.
+
+B<-p|--primarySN>        When using backup service nodes only update the primary.  The default is to update both the primary and backup service nodes.
 
 B<-r|--remove>         Remove NIM definitions corresponding to xCAT definitions.
 
