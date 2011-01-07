@@ -90,7 +90,8 @@ function submit_request($req, $skipVerify){
 			// Look for serverdone response
 			$fullpattern = '/<xcatresponse>\s*<serverdone>\s*<\/serverdone>\s*<\/xcatresponse>/';
 			$mixedpattern = '/<serverdone>\s*<\/serverdone>.*<\/xcatresponse>/';
-			if(preg_match($mixedpattern,$response)) {
+			$recentpattern = '/<\/xcatresponse>/';
+			if(preg_match($recentpattern,$str) && preg_match($mixedpattern,$response)) {
 				// Transaction is done,
 				// Package up XML and return it
 				// Remove the serverdone response and put an xcat tag around the rest
