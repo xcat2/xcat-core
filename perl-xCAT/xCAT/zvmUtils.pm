@@ -919,7 +919,7 @@ sub createMacAddr {
 
 	# Get HCP MAC address
 	# Get the first MAC address found
-	my $out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q nic" | grep "MAC:"`;
+	my $out   = `ssh -o ConnectTimeout=5 $hcp "vmcp q v nic" | grep "MAC:"`;
 	my @lines = split( "\n", $out );
 	my @vars  = split( " ", $lines[0] );
 
