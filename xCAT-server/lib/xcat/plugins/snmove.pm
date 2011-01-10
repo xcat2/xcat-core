@@ -386,13 +386,21 @@ sub process_request
 		}
 
 		#set monserver  ( = "servicenode,xcatmaster" )
-		if ($nhash{$node}{'monserver'})
+		if ($nhash{$node}{'monserver'})  # if it is currently set
 		{
 			my @tmp_a = split(',', $nhash{$node}{'monserver'});
-			if ((@tmp_a > 1) && ($tmp_a[1] eq $sn1n))
+			if (scalar(@tmp_a) < 2)	# it must have two values		
 			{
-				$sn_hash{$node}{'monserver'} = "$newsn{$node},$newxcatmaster{$node}";
-			}
+				my $rsp;
+				push @{$rsp->{data}}, "The current value of the monserver attribute is not valid.  It will not be reset.\n";
+				xCAT::MsgUtils->message("E", $rsp, $callback);
+			} else {
+				# if the first value is the current service node then change it
+				if ($tmp_a[0] eq $sn1)
+				{
+					$sn_hash{$node}{'monserver'} = "$newsn{$node},$newxcatmaster{$node}";
+				}
+			} 
 		}
 	}
 
