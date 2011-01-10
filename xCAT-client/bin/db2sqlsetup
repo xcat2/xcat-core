@@ -1112,6 +1112,16 @@ sub db2reboot
         xCAT::MsgUtils->message("W", " $cmd failed.");
 
     }
+    # root needs to run the command also
+    $cmd = $::installdb2dir;
+    $cmd .= "\/bin\/db2iauto -on xcatdb ";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {                       # if error exit
+       xCAT::MsgUtils->message("W", " $cmd failed.");
+    
+    }
+    
 }
 
 #-----------------------------------------------------------------------------
