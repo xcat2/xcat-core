@@ -240,7 +240,8 @@ sub processArgs
                     'w=s@'       => \$::opt_w,
                     'x|xml'     => \$::opt_x,
                     'z|stanza'  => \$::opt_z,
-                    'nocache'  => \$::opt_c
+                    'nocache'  => \$::opt_c,
+                    'H'        => \$::opt_H,
         )
       )
     {
@@ -2901,6 +2902,31 @@ sub defls
         } # end - for each object
     } # end - for each type
 
+        #delete the fsp and bpa node from the hash
+        my $newrsp;
+        my $listtab  = xCAT::Table->new( 'nodelist' );
+        if ($listtab and  (!defined($::opt_H))  ) {
+            foreach my $n (@{$rsp_info->{data}}) {
+                if ( $n =~ /node/ ) {
+                    $_= $n;
+                    s/ +\(node\)//;
+                    my ($hidhash) = $listtab->getNodeAttribs($_ ,['hidden']);
+                    if ( $hidhash->{hidden} ne 0)  {
+                        push (@{$newrsp->{data}}, $n);
+                    }
+                }
+            }
+            if (defined($newrsp->{data}) && scalar(@{$newrsp->{data}}) > 0) {
+                xCAT::MsgUtils->message("I", $newrsp, $::callback);
+                return 0;
+            }
+        }else {
+            my $rsp;
+            $rsp->{data}->[0] =
+             "Could not open nodelist table.";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+        }
+
     # Display the definition of objects
     if (defined($rsp_info->{data}) && scalar(@{$rsp_info->{data}}) > 0) {
         xCAT::MsgUtils->message("I", $rsp_info, $::callback);
@@ -3334,7 +3360,7 @@ sub defls_usage
     $rsp->{data}->[2] =
       "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
     $rsp->{data}->[3] =
-      "    [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ]";
+      "    [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ] [-H]";
     $rsp->{data}->[4] =
       "    [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
     $rsp->{data}->[5] =
