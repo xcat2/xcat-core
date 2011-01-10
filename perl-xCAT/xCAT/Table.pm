@@ -427,7 +427,7 @@ sub buildcreatestmt
     my $retv  = "CREATE TABLE $tabn (\n  ";
     my $col;
     my $types=$descr->{types};
-
+    my $delimitedcol;
     foreach $col (@{$descr->{cols}})
     {
         my $datatype;
@@ -443,11 +443,9 @@ sub buildcreatestmt
 	    }
 	}  
         # build the columns of the table
-        if ($xcatcfg =~ /^mysql:/) {  #for mysql
-	      $retv .= q(`) . $col . q(`) . " $datatype";  # mysql change
-        } else { # for other dbs including DB2
-            $retv .= "\"$col\" $datatype ";
-        }
+	    $delimitedcol= &delimitcol($col);	
+	    $retv .= $delimitedcol . " $datatype";  # mysql change
+
         
         if (grep /^$col$/, @{$descr->{required}})
         { 
@@ -466,11 +464,8 @@ sub buildcreatestmt
 	foreach (@{$descr->{keys}})
 	{
 
-            if ($xcatcfg =~ /^mysql:/) {  #for mysql
-	      $retv .= q(`) . $_ . q(`) . ",";  # mysql  support reserved words
-            } else { # for other dbs including db2
-	       $retv .= "\"$_\",";
-            }
+	      $delimitedcol= &delimitcol($_);	
+	      $retv .= $delimitedcol . ",";  
 	}
 	$retv =~ s/,$/)\n)/;
     }
@@ -3691,6 +3686,42 @@ sub get_filelist
     }
     return @filelist;
 }
+#--------------------------------------------------------------------------
 
+=head3   
+
+    Description: delimitcol 
+
+    Arguments:
+                attribute name 
+    Returns:
+              The attribute(column)
+			  delimited appropriately for the runnning Database 
+    Globals:
+
+    Error:
+
+    Example:
+
+        my $delimitedcol=delimitcol($col);
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub delimitcol {
+    my $attrin=shift;   #input attribute name
+    my $attrout;        #output attribute name
+
+    my $xcatcfg =get_xcatcfg(); # get database
+    $attrout=$attrin; # for sqlite do nothing
+    if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
+      $attrout="\"$attrin\"";   # use double quotes
+    } else {
+      if ($xcatcfg =~ /^mysql:/) {  # use backtick
+        $attrout="\`$attrin\`";
+      } 
+    } 
+    return $attrout;
+}
 1;
 
