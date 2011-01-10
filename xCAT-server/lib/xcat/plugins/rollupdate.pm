@@ -2485,27 +2485,51 @@ sub llreconfig {
     my @llms = split(/\s+/,$llcms." ".$llrms);
     my %have = ();
     my @llnodes;
+    my $runlocal=0;
     foreach my $m (@llms) {
        my ($sm,$rest) = split(/\./,$m);
-       push(@llnodes, $sm) unless $have{$sm}++;
+       if (xCAT::Utils->thishostisnot($m)) {
+           push(@llnodes, $sm) unless $have{$sm}++;
+       } else {
+           $runlocal=1;
+       }
     }
-    if ($::VERBOSE) {
-        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-        print RULOG localtime()." Running command \'xdsh $llcms $llrms $cmd\'\n";
-        close (RULOG);
+
+    if ($runlocal) {
+        if ($::VERBOSE) {
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." Running local command \'$cmd\'\n";
+            close (RULOG);
+        }
+        if ($::TEST) {
+            my $rsp;
+            push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command:  $cmd ";
+               xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+            $::RUNCMD_RC = 0;
+        } else {
+            xCAT::Utils->runcmd( $cmd, 0 );
+        }
     }
-    if ($::TEST) {
-        my $rsp;
-        push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: xdsh <llcm,llrm> $cmd ";
-           xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
-        $::RUNCMD_RC = 0;
-    } else {
-        xCAT::Utils->runxcmd(
+
+    if ( scalar(@llnodes) > 0 ) {
+        if ($::VERBOSE) {
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." Running command \'xdsh $llcms $llrms $cmd\'\n";
+            close (RULOG);
+        }
+        if ($::TEST) {
+            my $rsp;
+            push @{ $rsp->{data} }, "In TEST mode.  Will NOT run command: xdsh <llcm,llrm> $cmd ";
+               xCAT::MsgUtils->message( "I", $rsp, $::CALLBACK );
+            $::RUNCMD_RC = 0;
+        } else {
+            xCAT::Utils->runxcmd(
                   { command => ['xdsh'],
                      node    => \@llnodes,
                      arg     => [ "-v", $cmd ]
                   },
                   $::SUBREQ, -1);
+        }
     }
 
 }
