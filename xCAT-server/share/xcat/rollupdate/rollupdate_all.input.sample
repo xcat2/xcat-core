@@ -36,7 +36,7 @@ scheduser=loadl
 #    controls that LL allows you in the LL job template that you provide.
 # If updateall is used, the following entries MUST be specified in this file:
 #       updateall_nodes  
-#       updateall_numperupdate
+#       updateall_nodecount
 #       job_template
 #       job_dir
 # If updateall is used, the following entries can also be used:
@@ -58,14 +58,14 @@ updateall=yes
 updateall_nodes=compute
 
 
-# updateall_numperupdate:  The number of nodes that will be reserved at one time
+# updateall_nodecount:  The number of nodes that will be reserved at one time
 #    in the scheduler and updated together.  The smaller the number, the more
 #    scheduler reservation jobs that will be submitted.
 # NOTE:  LoadLeveler performance decreases with large numbers of 
 #        reservations.  Do not set this value so low that you will exceed
 #        the maximum number of reservations allowed for your cluster or
 #        that you will degrade LL performance for your production jobs.
-updateall_numperupdate=3
+updateall_nodecount=3
 
 
 
