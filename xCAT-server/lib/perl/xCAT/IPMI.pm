@@ -18,6 +18,8 @@ use IO::Socket::INET;
 use IO::Select;
 use Data::Dumper;
 use Digest::MD5 qw/md5/;
+my $pendingpackets=0;
+my $maxpending; #determined dynamically based on rcvbuf detection
 my $ipmi2support = eval {
     require Digest::SHA1;
     Digest::SHA1->import(qw/sha1/);
@@ -78,6 +80,19 @@ sub new {
     }
     unless ($socket) {
         $socket = IO::Socket::INET->new(Proto => 'udp');
+        if (-r "/proc/sys/net/core/rmem_max") { # we can detect the maximum allowed socket, read it.
+            my $sysctl;
+            open ($sysctl,"<","/proc/sys/net/core/rmem_max");
+            my $maxrcvbuf=<$sysctl>;
+            my $rcvbuf = $socket->sockopt(SO_RCVBUF);
+             if ($maxrcvbuf > $rcvbuf) {
+                 $socket->sockopt(SO_RCVBUF,$maxrcvbuf/2);
+             }
+              $maxpending=$maxrcvbuf/1500; #probably could have maxpending go higher, but just go with typical MTU as a guess
+        } else { #We do not have a way to determine how high we could set RCVBUF, so read the current value and run with it
+            my $rcvbuf = $socket->sockopt(SO_RCVBUF);
+            $maxpending=$rcvbuf/1500; #probably could have maxpending go higher, but just go with typical MTU as a guess
+        }
         $select->add($socket);
     }
     my $bmc_n;
@@ -124,7 +139,7 @@ sub logout {
 sub logged_out {
     my $rsp = shift;
     my $self = shift;
-    if ($rsp->{code} == 0) { 
+    if (defined $rsp->{code} and $rsp->{code} == 0) { 
         $self->{logged}=0;
         if ( $self->{onlogout}) { 
             $self->{onlogout}->("SUCCESS",$self->{onlogout_args});
@@ -333,6 +348,7 @@ sub waitforrsp {
        if  ($sessions_waiting{$_}->{timeout} <= $curtime) { #retry or fail..
            my $session = $sessions_waiting{$_}->{ipmisession};
            delete $sessions_waiting{$_};
+           $pendingpackets-=1;
            $session->timedout();
            next;
         }
@@ -382,6 +398,7 @@ sub route_ipmiresponse {
     ($port,$host) = sockaddr_in($sockaddr);
     $host = inet_ntoa($host);
     if ($bmc_handlers{$host}) {
+        $pendingpackets-=1;
         $bmc_handlers{$host}->handle_ipmi_packet(@rsp);
     }
 }
@@ -749,7 +766,11 @@ sub sendpayload {
             #push integrity data
             }
     }
+    while ($pendingpackets > $maxpending) { #if we hit our ceiling, wait until a slot frees up
+        $self->waitforrsp();
+    }
     $socket->send(pack("C*",@msg),0,$self->{peeraddr});
+    $pendingpackets+=1;
     if ($self->{sequencenumber}) { #if using non-zero, increment, otherwise..
         $self->{sequencenumber} += 1;
         $self->{sequencenumberbytes} =  [$self->{sequencenumber}&0xff,($self->{sequencenumber}>>8)&0xff,($self->{sequencenumber}>>16)&0xff,($self->{sequencenumber}>>24)&0xff];
