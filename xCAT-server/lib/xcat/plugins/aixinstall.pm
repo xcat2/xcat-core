@@ -7861,6 +7861,7 @@ sub mkdsklsnode
 
         my $todef = 0;
         my $toinit = 0;
+        my $toremove = 0;
 
         # 	see if it's already defined first
         if (grep(/^$nim_name$/, @machines))
@@ -7868,6 +7869,23 @@ sub mkdsklsnode
             # Already defined
             if ($::FORCE)
             {
+                # To determine if the defined node is standalone
+                my $tstring;
+                $cmd      =
+                  qq~/usr/sbin/lsnim -l $nim_name | grep "type " 2>/dev/null~;
+
+                $tstring = xCAT::Utils->runcmd("$cmd", -1);
+
+                my ($junk, $mtype) = split(/=/, $tstring);
+                chomp $mtype;
+
+                if ($mtype =~ /standalone/)
+                {
+                    # Need to remove the machine and define it as diskless
+                    $toremove = 1;
+                    $todef = 1;
+                }
+                
                 # Reinitialize
 
                 # Deallocate the nim resources for the existing machine, but not remove machine definition
@@ -7886,7 +7904,7 @@ sub mkdsklsnode
                 {
                     my $rsp;
                     push @{$rsp->{data}},
-                        "$Sname: Could not remove the existing NIM object named \'$nim_name\'.\n";
+                        "$Sname: Could not deallocate the existing NIM object named \'$nim_name\'.\n";
                     if ($::VERBOSE)
                     {
                         push @{$rsp->{data}}, "$output";
@@ -7895,6 +7913,27 @@ sub mkdsklsnode
                     $error++;
                     push(@nodesfailed, $node);
                     next;
+                }
+
+                if ($toremove == 1)
+                {
+                    $cmd =
+                        "/usr/sbin/nim -Fo remove $nim_name";
+                    $output = xCAT::Utils->runcmd("$cmd", -1);
+                    if ($::RUNCMD_RC != 0)
+                    {
+                        my $rsp;
+                        push @{$rsp->{data}},
+                            "$Sname: Could not remove the existing NIM object named \'$nim_name\'.\n";
+                        if ($::VERBOSE)
+                        {
+                            push @{$rsp->{data}}, "$output";
+                        }
+                        xCAT::MsgUtils->message("E", $rsp, $callback);
+                        $error++;
+                        push(@nodesfailed, $node);
+                        next;
+                    }
                 }
 
                 # To be reinitialized
