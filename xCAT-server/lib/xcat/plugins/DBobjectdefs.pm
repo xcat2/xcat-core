@@ -241,7 +241,7 @@ sub processArgs
                     'x|xml'     => \$::opt_x,
                     'z|stanza'  => \$::opt_z,
                     'nocache'  => \$::opt_c,
-                    'H'        => \$::opt_H,
+                    'S'        => \$::opt_S,
         )
       )
     {
@@ -2905,7 +2905,7 @@ sub defls
         #delete the fsp and bpa node from the hash
         my $newrsp;
         my $listtab  = xCAT::Table->new( 'nodelist' );
-        if ($listtab and  (!defined($::opt_H))  ) {
+        if ($listtab and  (!defined($::opt_S))  ) {
             foreach my $n (@{$rsp_info->{data}}) {
                 if ( $n =~ /node/ ) {
                     $_= $n;
@@ -3360,7 +3360,7 @@ sub defls_usage
     $rsp->{data}->[2] =
       "  lsdef [-V | --verbose] [-t object-types] [-o object-names]";
     $rsp->{data}->[3] =
-      "    [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ] [-H]";
+      "    [ -l | --long] [-s | --short] [-a | --all] [-z | --stanza ] [-S]";
     $rsp->{data}->[4] =
       "    [-i attr-list] [-w attr==val [-w attr=~val] ...] [noderange]\n";
     $rsp->{data}->[5] =
