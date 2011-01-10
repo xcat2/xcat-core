@@ -2408,7 +2408,7 @@ function openSetPropsDialog() {
 	setPropsForm.dialog({
 		modal: true,
 		height: 400,
-		width: 650,
+		width: 700,
 		buttons: {
         	"Save": function() {
         		// Remove any warning messages
