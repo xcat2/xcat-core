@@ -155,6 +155,12 @@ sub add_ppc {
             # Update nodelist table
             ###########################
             updategroups( $name, $db{nodelist}, $type );
+            if ( $type =~ /^(fsp|bpa)$/ )  {
+                $db{nodelist}->setNodeAttribs( $name,  hidden => '0'));
+            } else {
+                $db{nodelist}->setNodeAttribs( $name,  hidden => '1'));
+            }
+            
             $db{nodelist}{commit} = 1;
 
             ###########################
