@@ -478,7 +478,7 @@ nodehm => {
  },
   },
 nodelist => {
-    cols => [qw(node groups status statustime appstatus appstatustime primarysn comments disable)],
+    cols => [qw(node groups status statustime appstatus appstatustime primarysn comments disable hidden)],
     keys => [qw(node)],
     table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
     descriptions => {
@@ -491,6 +491,7 @@ nodelist => {
      primarysn => 'Not used currently. The primary servicenode, used by this node.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
+     hidden => "Used to hide fsp and bpa definitions, 0 means not show them when running lsdef and nodels",
     },
   },
 nodepos => {
@@ -1775,6 +1776,10 @@ my @nodeattrs = (
                  tabentry => 'nodelist.comments',
                  access_tabentry => 'nodelist.node=attr:node',
              },
+		{attr_name => 'hidden',
+                 tabentry => 'nodelist.hidden',
+                 access_tabentry => 'nodelist.node=attr:node',
+             },             
           );
 
 # add on the node attrs from other tables
