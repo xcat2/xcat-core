@@ -348,6 +348,7 @@ sub donets
       } else { 
 
 		# For Linux systems
+        my @ip6table = split /\n/,`/sbin/ip -6 route`;
     	my @rtable = split /\n/, `/bin/netstat -rn`;
     	open($rconf, "/etc/resolv.conf");
     	my @nameservers;
@@ -381,6 +382,60 @@ sub donets
             {
                 $netgw{$entarr[0]}{$entarr[2]} = $entarr[1];
             }
+        }
+        #routers advertise their role completely outside of DHCPv6 scope, we don't need to
+        #get ipv6 routes and in fact *cannot* dictate router via DHCPv6 at this specific moment.
+        foreach (@ip6table)
+        { 
+            my @ent = split /\s+/, $_;
+            if ($ent[0] eq 'fe80::/64' or $ent[0] eq 'unreachable' or $ent[1] eq 'via') {
+                #Do not contemplate link-local, unreachable, or gatewayed networks further
+                #DHCPv6 relay will be manually entered into networks as was the case for IPv4
+                next;
+            }
+            my $net = shift @ent;
+            my $dev = shift @ent;
+            if ($dev eq 'dev') {
+                $dev = shift @ent;
+            } else {
+                die "Unrecognized IPv6 routing entry $_";
+            }
+            my @myv6addrs=split /\n/,`ip -6 addr show dev $dev scope global`;
+            #for v6, deprecating mask since the CIDR slash syntax is ubiquitous
+            my $consideredaddr=$net;
+            $consideredaddr=~ s!/(.*)!!;
+            my $consideredbits=$1;
+            #below may be redundant, but apply resolution in case ambiguous net, e.g. 2001:0db8:0::/64 is the same thing as 2001:0db8::/64
+            $consideredaddr = xCAT::NetworkUtils->getipaddr($consideredaddr);
+            my $netexists=0;
+			foreach my $netn (@netlist) { #search for network that doesn't exist yet
+                    my $curnet=$nethash{$netn}{'net'};
+                    unless ($curnet =~ /:/) {  #only ipv6 here
+                        next;
+                    }
+                    $curnet =~ s!/(.*)!!; #remove 
+                    my $curnetbits=$1;
+                    unless ($consideredbits==$curnetbits) { #only matches if netmask matches
+                        next;
+                    }
+					$currnet = xCAT::NetworkUtils->getipaddr($currnet);
+                    unless ($currnet eq  $consideredaddr) {
+                        next;
+                    }
+                    $netexists=1;
+            }
+			if ($::DISPLAY) {
+				push @{$rsp->{data}}, "\n#From $host.";
+				push @{$rsp->{data}}, "$net:";
+				push @{$rsp->{data}}, "    objtype=network";
+                   push @{$rsp->{data}}, "    net=$net";
+                   push @{$rsp->{data}}, "    mgtifname=$dev";
+			} else {
+				unless ($netexiss) {
+					$nettab->setAttribs({'net' => $net, 'mask' => ''}, {'netname' => $net, 'mgtifname' => $dev});
+				}
+			}
+            
         }
     	foreach (@rtable)
     	{ #should be the lines to think about, do something with U, and something else with UG
@@ -509,7 +564,6 @@ sub donets
                     	}
                 	}
             	}
-
             	#Nothing much sane to do for the other fields at the moment?
         	}
         	elsif ($ent[3] eq 'UG')
