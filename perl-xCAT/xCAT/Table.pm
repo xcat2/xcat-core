@@ -442,9 +442,9 @@ sub buildcreatestmt
 		$datatype = "VARCHAR(128) ";
 	    }
 	}  
-        # build the columns of the table
-	    $delimitedcol= &delimitcol($col);	
-	    $retv .= $delimitedcol . " $datatype";  # mysql change
+        # delimit the columns of the table
+	$delimitedcol= &delimitcol($col);	
+	$retv .= $delimitedcol . " $datatype";  # mysql change
 
         
         if (grep /^$col$/, @{$descr->{required}})
@@ -996,15 +996,9 @@ sub updateschema
 	    {
 	 	    $datatype .= " NOT NULL";
 	    }
-            my $tmpcol=$dcol; # for sqlite
-            if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-              $tmpcol="\"$dcol\"";
-              
-            } else {
-              if ($xcatcfg =~ /^mysql:/) {
-                 $tmpcol="\`$dcol\`";
-              }
-            }
+            # delimit the columns of the table
+	    my $tmpcol= &delimitcol($dcol);	
+
             my $tablespace;
             my $stmt =
                   "ALTER TABLE " . $self->{tabname} . " ADD $tmpcol $datatype";
@@ -1082,17 +1076,13 @@ sub updateschema
 		    }
             }
 		
-            my $tmpkey=$dbkey; # for sqlite
+            # delimit the columns
+	    my $tmpkey= &delimitcol($dbkey);	
             if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-                  $tmpkey="\"$dbkey\"";
                   # get rid of NOT NULL, cannot modify with NOT NULL
                   my ($tmptype,$nullvalue)= split('NOT NULL',$datatype );
                   $datatype=$tmptype; 
                    
-            } else {
-               if ($xcatcfg =~ /^mysql:/) {
-                    $tmpkey="\`$dbkey\`";
-               } 
             } 
 	    my $stmt;
             if ($xcatcfg =~ /^DB2:/){
