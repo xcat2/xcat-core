@@ -6464,7 +6464,7 @@ sub prenimnodeset
         {
             &nimnodeset_usage($callback);
         }
-        return;
+        return 1;
     }
 
     if ($::HELP)
