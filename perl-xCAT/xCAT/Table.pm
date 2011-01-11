@@ -2616,18 +2616,9 @@ sub getAllEntries
         . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
 
       } else {   
-          if ($xcatcfg =~ /^DB2:/) {  #for DB2
-              my $qstring = 
-                "SELECT * FROM "
-                . $self->{tabname}
-                . " WHERE \"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR \"disable\" LIKE 'NO' OR \"disable\" LIKE 'nO' ";
-               $query =  $self->{dbh}->prepare($qstring);
- 
-          } else { # for other dbs
             $query = $self->{dbh}->prepare('SELECT * FROM '
              . $self->{tabname}
           . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','No','nO')");
-          }
       }
     }
 
@@ -3220,11 +3211,7 @@ sub getAttribs
     if ($xcatcfg =~ /^mysql:/) {  #for mysql
        $statement .= "(" . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO'))";
     } else {
-       if ($xcatcfg =~ /^DB2:/) {  #for DB2 
-         $statement .= "(\"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR \"disable\" LIKE 'NO'  OR \"disable\" LIKE 'No' OR \"disable\" LIKE 'nO')";
-       } else { # for other dbs
          $statement .= "(\"disable\" is NULL or \"disable\" in ('0','no','NO','No','nO'))";
-       }
     }
     #print "This is my statement: $statement \n";
     my $query = $self->{dbh}->prepare($statement);
