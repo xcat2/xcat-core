@@ -1607,7 +1607,7 @@ mxnode_loop:  foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
               } # end mxnode_loop
               if ($mxpi == 1) {
                  # only one updategroup in this mutex, not valid -- ignore it
-                 undef $::MUTEX[$mxindex];
+                 delete $::MUTEX[$mxindex];
               } elsif ( $mxpi > 1 ) {
                  $::MUTEX_COUNT[$mxindex] = $mx_count;
                  $mxindex++;
