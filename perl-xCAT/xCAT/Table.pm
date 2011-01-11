@@ -2998,7 +2998,6 @@ sub getAllAttribs
 sub delEntries
 {
     my $self   = shift;
-    my $xcatcfg =get_xcatcfg();
     if ($dbworkerpid) {
         return dbc_call($self,'delEntries',@_);
     }
@@ -3033,15 +3032,9 @@ sub delEntries
                 $qstring .= "(";
                 foreach my $keypair (keys %{$keypairs})
                 {
-                    if ($xcatcfg =~ /^mysql:/) {
-                      $qstring .= q(`) . $keypair . q(`) . " = ? AND ";
-                    } else {
-                      if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-                        $qstring .= q(") . $keypair . q(") . " = ? AND "; 
-                      } else { # for other dbs
-                        $qstring .= "$keypair = ? AND ";
-                      }
-                    }
+                    # delimit the columns of the table
+	            my $dkeypair= &delimitcol($keypair);	
+                    $qstring .= "$dkeypair = ? AND ";
 
                     push @qargs, $keypairs->{$keypair};
                 }
@@ -3073,15 +3066,8 @@ sub delEntries
             $delstring .= "(";
             foreach my $keypair (keys %{$keypairs})
             {
-                if ($xcatcfg =~ /^mysql:/) {
-                   $delstring .= q(`) . $keypair. q(`) . ' = ? AND '; 
-                } else {
-                   if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-                     $delstring .= q(") . $keypair. q(") . ' = ? AND '; 
-                   } else { # for other dbs
-                     $delstring .= $keypair . ' = ? AND ';
-                   }
-                }
+	        my $dkeypair= &delimitcol($keypair);	
+                $delstring .= $dkeypair . ' = ? AND ';
                 if (ref($keypairs->{$keypair}))
                 {   #XML transformed data may come in mangled unreasonably into listrefs
                     push @stargs, $keypairs->{$keypair}->[0];
