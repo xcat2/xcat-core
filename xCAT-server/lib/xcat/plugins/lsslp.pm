@@ -1821,7 +1821,12 @@ sub parse_responses {
         my $mtm     = @$data[1];
         my $sn      = @$data[2];        
         my $side    = @$data[3];
-        my $ip0     = @$data[4];
+        my $ip0;
+        if ( $h =~ /^([^\(]+)\(([^\)]+)\)$/ ) {
+            $ip0    = $2;
+        } else {
+            $ip0    = @$data[4];
+        }
         my $bpamtm  = @$data[5];
         my $bpasn   = @$data[6];
         
