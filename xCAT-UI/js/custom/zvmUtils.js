@@ -244,13 +244,14 @@ function loadUserEntry(data) {
 
 		saveBtn.show();
 		cancelBtn.show();
+		saveBtn.css('display', 'inline-table');
+		cancelBtn.css('display', 'inline-table');
 	});
 	
 	/**
 	 * Save
 	 */
 	var saveBtn = createButton('Save');
-	saveBtn.css('display', 'inline-table');
 	saveBtn.hide();
 	saveBtn.bind('click', function(event) {
 		// Show loader
@@ -294,7 +295,6 @@ function loadUserEntry(data) {
 	 * Cancel
 	 */
 	var cancelBtn = createButton('Cancel');
-	cancelBtn.css('display', 'inline-table');
 	cancelBtn.hide();
 	cancelBtn.bind('click', function(event) {
 		txtArea.attr('readonly', 'readonly');
