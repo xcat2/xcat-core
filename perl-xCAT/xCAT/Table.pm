@@ -1881,15 +1881,8 @@ sub setNodesAttribs {
     my @sqlorderedcols=();
     # must quote to protect from reserved DB keywords
     foreach my $col (@orderedcols) {
-       if ($xcatcfg =~ /^mysql:/) {
-          push @sqlorderedcols, "\`$col\`"; 
-       } else {
-          if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-            push @sqlorderedcols, "\"$col\""; 
-          } else{
-            push @sqlorderedcols, $col; 
-          }
-       }
+       my $delimitedcol = &delimitcol($col);	
+       push @sqlorderedcols, $delimitedcol; 
     }
     use Data::Dumper;
     my $nodesatatime = 999; #the update case statement will consume '?' of which we are allowed 999 in the most restricted DB we support
@@ -1899,51 +1892,37 @@ sub setNodesAttribs {
     my @currnodes = splice(@$nodelist,0,$nodesatatime); #Do a few at a time to stay under max sql statement length and max variable count
     my $insertsth; #if insert is needed, this will hold the single prepared insert statement
     my $upsth;
+
+    my $dnodekey = &delimitcol($nodekey);	
     while (scalar @currnodes) {
-        my %updatenodes=();
-        my %insertnodes=();
-        my $qstring;
-        #sort nodes into inserts and updates
-        if ($xcatcfg =~ /^mysql:/) {  #for mysql
-           $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \`$nodekey\` in (";
-        } else {
-          if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-            $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE \"$nodekey\" in (";
-          } else {
-           $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE $nodekey in (";
-          }
-        }
-        $qstring .= '?, ' x scalar(@currnodes);
-        $qstring =~ s/, $/)/;
-    	my $query = $self->{dbh}->prepare($qstring);
-    	$query->execute(@currnodes);
-        my $rec;
+       my %updatenodes=();
+       my %insertnodes=();
+       my $qstring;
+       #sort nodes into inserts and updates
+       $qstring = "SELECT * FROM " . $self->{tabname} . " WHERE $dnodekey in (";
+       $qstring .= '?, ' x scalar(@currnodes);
+       $qstring =~ s/, $/)/;
+       my $query = $self->{dbh}->prepare($qstring);
+       $query->execute(@currnodes);
+       my $rec;
 	    while ($rec = $query->fetchrow_hashref()) {
             $updatenodes{$rec->{$nodekey}}=1;
-        }
-        if (scalar keys %updatenodes < scalar @currnodes) {
+       }
+       if (scalar keys %updatenodes < scalar @currnodes) {
             foreach (@currnodes) {
                 unless ($updatenodes{$_}) {
                     $insertnodes{$_}=1;
                 }
             }
-        }
+       }
         my $havenodecol; #whether to put node first in execute arguments or let it go naturally
         if (not $insertsth and keys %insertnodes) { #prepare an insert statement since one will be needed
             my $columns="";
             my $bindhooks="";
             $havenodecol = defined $cols{$nodekey};
             unless ($havenodecol) {
-              if ($xcatcfg =~ /^mysql:/) {
-                $columns = "\`$nodekey\`, ";
-              } else {
-               if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-                  $columns = "\"$nodekey\", ";
-                } else {
-                  $columns = "$nodekey, ";
-                }
-              }
-              $bindhooks="?, ";
+               $columns = "$dnodekey, ";
+               $bindhooks="?, ";
             }
             $columns .= join(", ",@sqlorderedcols);
             $bindhooks .= "?, " x scalar @sqlorderedcols;
@@ -1971,15 +1950,7 @@ sub setNodesAttribs {
             if (grep { $_ eq $nodekey } @orderedcols) {
                 $upstring =~ s/, \z//;
             } else {
-                if ($xcatcfg =~ /^mysql:/) {  #for mysql
-                   $upstring =~ s/, \z/ where \`$nodekey\` = ?/;
-                } else {
-                  if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-                   $upstring =~ s/, \z/ where \"$nodekey\" = ?/;
-                  } else {
-                    $upstring =~ s/, \z/ where $nodekey = ?/;
-                  }
-                }
+                $upstring =~ s/, \z/ where $dnodekey = ?/;
             }
             $upsth = $self->{dbh}->prepare($upstring);
         }
