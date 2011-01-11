@@ -1494,19 +1494,13 @@ sub setAttribs
 	foreach (keys %keypairs)
 	{
 
-            if ($xcatcfg =~ /^mysql:/) {  #for mysql
-	      $qstring .= q(`) . $_ . q(`) . " = ? AND ";  
+            # delimit the columns of the table
+	    my $delimitedcol = &delimitcol($_);	
+            
+            if ($xcatcfg =~ /^DB2:/) { # for DB2
+	      $qstring .= $delimitedcol . " LIKE ? AND ";  
             } else {
-                 if ($xcatcfg =~ /^DB2:/) { # for DB2
-	            $qstring .= "\"$_\" LIKE ? AND ";  
-              
-                 } else { # for Postgresql 
-                    if  ($xcatcfg =~ /^Pg:/) { 
-	               $qstring .= "\"$_\" = ? AND "; 
-                    } else { 
-	               $qstring .= "$_ = ? AND "; 
-                    }  
-                 }  
+	      $qstring .= $delimitedcol . " = ? AND ";  
             }  
 
 	    push @qargs, $keypairs{$_};
@@ -1564,13 +1558,10 @@ sub setAttribs
         $action = "u";
         for my $col (keys %$elems)
         {
-           if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-             my $colsq = q(") . $col . q(");  # quote columns
-             $cols = $cols . $colsq . " = ?,";
-           } else {
-             $cols = $cols . $col . " = ?,";
-           }
-            push @bind, (($$elems{$col} =~ /NULL/) ? undef: $$elems{$col});
+           # delimit the columns of the table
+	   my $delimitedcol = &delimitcol($col);	
+           $cols = $cols . $delimitedcol . " = ?,";
+           push @bind, (($$elems{$col} =~ /NULL/) ? undef: $$elems{$col});
         }
         chop($cols);
         my $cmd ;
@@ -1580,27 +1571,14 @@ sub setAttribs
         {
             if (ref($keypairs{$_}))
             {
-                if ($xcatcfg =~ /^mysql:/) {  #for mysql
-                  $cmd .= q(`) . $_ . q(`) . " = '" . $keypairs{$_}->[0] . "' AND ";
-                } else { 
-                   if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-                     $cmd .= "\"$_\"" . " = '" . $keypairs{$_}->[0] . "' AND ";
-                   } else {  # other dbs
-                     $cmd .= "$_" . " = '" . $keypairs{$_}->[0] . "' AND ";
-                   }
-                }
+                # delimit the columns
+	        my $delimitedcol = &delimitcol($_);	
+                $cmd .= $delimitedcol . " = '" . $keypairs{$_}->[0] . "' AND ";
             }
             else
             {
-                if ($xcatcfg =~ /^mysql:/) {  #for mysql
-                  $cmd .= q(`) . $_ . q(`) . " = '" . $keypairs{$_} . "' AND ";
-                } else {  
-                   if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-                     $cmd .= "\"$_\"" . " = '" . $keypairs{$_} . "' AND ";
-                   } else {  # other dbs
-                     $cmd .= "$_" . " = '" . $keypairs{$_} . "' AND ";
-                   }
-                }
+	        my $delimitedcol = &delimitcol($_);	
+                $cmd .= $delimitedcol . " = '" . $keypairs{$_} . "' AND ";
             }
         }
         $cmd =~ s/ AND \z//;
@@ -1640,16 +1618,9 @@ sub setAttribs
         }
 	foreach (keys %newpairs) {
 
-	   if ($xcatcfg =~ /^mysql:/) {  #for mysql
-              $cols .= q(`) . $_ . q(`) . ","; 
-           } else {
-               if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-                   $cols .= "\"$_\"" . ",";
-               } else {
-                $cols .= $_ . ","; # for other dbs 
-               }  
-            }  
-            push @bind, $newpairs{$_};
+	   my $delimitedcol = &delimitcol($_);	
+           $cols .= $delimitedcol . ","; 
+           push @bind, $newpairs{$_};
         }
         chop($cols);
         my $qstring = 'INSERT INTO ' . $self->{tabname} . " ($cols) VALUES (";
