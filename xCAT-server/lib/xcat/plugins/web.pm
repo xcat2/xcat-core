@@ -200,7 +200,7 @@ sub web_lscond {
 	my $names = '';
 
 	#list all the conditions on all lpars in this group 
-	if ($nodeRange && ('-' ne substr($nodeRange, 0, 1))){
+	if ($nodeRange){
 		my @nodes = xCAT::NodeRange::noderange($nodeRange);
 		my %tempHash;
 		my $nodeCount = @nodes;
@@ -232,11 +232,7 @@ sub web_lscond {
 	}
 	#only list the conditions on local.
 	else{
-		my $option = '';
-		if ($nodeRange){
-			$option = $nodeRange;
-		}
-		my $retInfo = xCAT::Utils->runcmd('lscondition -d ' . $option, -1, 1);
+		my $retInfo = xCAT::Utils->runcmd('lscondition -d', -1, 1);
 
 		if (2 > @$retInfo){
 			return;
@@ -246,7 +242,7 @@ sub web_lscond {
 		shift @$retInfo;
 		foreach my $line (@$retInfo) {
 			my @temp = split(':', $line);
-			$names = $names . @temp[0] . ';';		
+			$names = $names . @temp[0] . ':' . substr(@temp[2], 1, 3) .  ';';		
 		}		
 	}
 	if ('' eq $names){
