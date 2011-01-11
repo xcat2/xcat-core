@@ -2007,6 +2007,9 @@ sub runrollupdate {
             }
 
             xCAT::Utils->setAppStatus(\@bootnodes,"RollingUpdate","rebooting");
+            if ($bootindex < $numboots) {
+                xCAT::Utils->setAppStatus(\@remaining_nodes,"RollingUpdate","waiting_on_bringuporder");
+            }
             if ( scalar(@rnetboot_nodes) > 0 ) {
                 my $rnb_nodelist = join( ',', @rnetboot_nodes );
                 # my $cmd = "rnetboot $rnb_nodelist -f";
@@ -2046,6 +2049,7 @@ sub runrollupdate {
          # wait for bringupstatus to be set
         my $not_done = 1;
         my $totalwait = 0;
+        my %ll_res;
         while ($not_done && $totalwait < ($statustimeout * 60)) {
             if ($::VERBOSE) { 
                  open (RULOG, ">>$::LOGDIR/$::LOGFILE");
@@ -2054,11 +2058,12 @@ sub runrollupdate {
             }
             my $nltab_stats =
                 $nltab->getNodesAttribs( \@bootnodes, [ 'node', $statusattr ] );
-            my %ll_res;
+            %ll_res = ();
             $not_done = 0;
             foreach my $bn (@bootnodes) {
                 if ( $nltab_stats->{$bn}->[0]->{$statusattr} !~ /$statusval/ ) {
-                    $not_done = 1;
+                  $ll_res{$bn}{not_done}=1;
+                  $not_done = 1;
                 } else {
                   $ll_res{$bn}{remove}=1;
                 }
@@ -2083,11 +2088,27 @@ sub runrollupdate {
             }
         }
         if ($not_done) { 
-             open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-             print RULOG "\n";
-             print RULOG localtime()." ERROR:  Update group $::ug_name:  Reached bringuptimeout before all nodes completed bringup.  Some nodes may not have been updated. \n";
-            print RULOG "\n";
-            close (RULOG);
+            if (($::scheduler eq "loadleveler") &&
+                ($::ll_reservation_id)){ 
+                 open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                 print RULOG "\n";
+                 print RULOG localtime()." ERROR:  Update group $::ug_name:  Reached bringuptimeout before all nodes completed bringup.  Some nodes may not have been updated. \n";
+                print RULOG "Cancelling LL reservation $::ll_reservation_id \n";
+                print RULOG "\n";
+                close (RULOG);
+
+                my @remove_res;
+                $remove_res[0]='CANCEL_DUE_TO_ERROR';
+                &remove_LL_reservations(\@remove_res);
+                my @error_nodes;
+                foreach my $bn (keys %ll_res) {
+                    if ($ll_res{$bn}{not_done}) {
+                        push (@error_nodes,$bn);
+                    }
+                }
+                xCAT::Utils->setAppStatus(\@error_nodes,"RollingUpdate","ERROR_bringuptimeout_reached");
+                xCAT::Utils->setAppStatus(\@remaining_nodes,"RollingUpdate","ERROR_bringuptimeout_reached_for_previous_node");
+            }
             last;
         }
 
@@ -2237,7 +2258,12 @@ sub get_hostlist {
 
 #-----------------------------------------------------------------------------
 sub remove_LL_reservations {
-    my $nodes = shift;
+    my $input_nodes = shift;
+    my $nodes = $input_nodes;
+    my $CANCEL_DUE_TO_ERROR = 0;
+    if ( $input_nodes->[0] eq 'CANCEL_DUE_TO_ERROR') {
+       $CANCEL_DUE_TO_ERROR = 1;
+    }
 
     my $cmd;
     if ($::VERBOSE) {
@@ -2270,11 +2296,18 @@ sub remove_LL_reservations {
     my $remove_reservation = 0;
     my $remove_cmd = "llchres -R $::ll_reservation_id -h -";
 
+    if ($CANCEL_DUE_TO_ERROR) {
+        $nodes = \@llnodes;
+    }
     foreach my $n (@{$nodes}) {
         if ( grep(/^$n$/,@llnodes) ) {
             $remove_count++;
             # change features for this node
-            &change_LL_feature($n);
+            if ($CANCEL_DUE_TO_ERROR) {
+                &remove_LL_updatefeature_only($n);
+            } else {
+                &change_LL_feature($n);
+            }
             if ( $remove_count < $llnode_count ) {
               $remove_cmd .= " $n";
             } else {
@@ -2445,6 +2478,86 @@ sub change_LL_feature {
 
 
 
+#----------------------------------------------------------------------------
+
+=head3   remove_LL_updatefeature_only
+
+        Changes the LL feature for the node to remove only the updatefeature 
+        Will NOT remove oldfeature or set newfeature
+
+        Arguments:
+        Returns:
+                0 - OK
+                1 - error
+        Globals:
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub remove_LL_updatefeature_only {
+    my $node = shift;
+
+    if (!defined($::DATAATTRS{updatefeature}[0]) ) {
+        return 0;
+    }
+    # Query current feature
+    my $cmd = "llconfig -h $node -d FEATURE";
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." $::ug_name:  Running command \'$cmd\'\n";
+        close (RULOG);
+    }
+    my ($llcfgout) = xCAT::Utils->runcmd( $cmd, 0 );
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
+        close (RULOG);
+    }
+
+    # Remove old feature 
+    my $newfeature_string = "";
+    my @llfeatures;
+    if ( $llcfgout =~ /:FEATURE =/ ) {
+        my ($stuff,$curfeature_string) = split(/=/,$llcfgout);
+        @llfeatures = split(/\s+/,$curfeature_string);
+        my $updateallfeature = " ";
+        if (defined($::DATAATTRS{updatefeature}[0])) {
+           $updateallfeature = $::DATAATTRS{updatefeature}[0];
+        }
+        foreach my $f (@llfeatures) {
+            if ($f eq $updateallfeature) {
+               $f = " "; 
+            }
+        }
+        $newfeature_string = join(" ",@llfeatures);
+    }
+
+    # Change in LL database
+    $cmd = "llconfig -N -h $node -c FEATURE=\"$newfeature_string\"";
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." $::ug_name:  Running command \'$cmd\'\n";
+        close (RULOG);
+    }
+    xCAT::Utils->runcmd( $cmd, 0 );
+    if ($::VERBOSE) {
+        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+        print RULOG localtime()." Return code:  $::RUNCMD_RC\n";
+        close (RULOG);
+    }
+
+    # Send LL reconfig to all central mgrs and resource mgrs
+    llreconfig();
+
+    return 0;
+}
+
+
+
 
 #----------------------------------------------------------------------------
 
@@ -2494,7 +2607,6 @@ sub llreconfig {
            $runlocal=1;
        }
     }
-
     if ($runlocal) {
         if ($::VERBOSE) {
             open (RULOG, ">>$::LOGDIR/$::LOGFILE");
