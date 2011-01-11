@@ -1738,15 +1738,12 @@ sub setAttribsWhere
 
     $query->finish();
 
-    my $xcatcfg =get_xcatcfg();
     #update the rows
     for my $col (keys %$elems)
     {
-      if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-          $cols = $cols . "\"$col\"" . " = ?,";
-      } else {
-          $cols = $cols . $col . " = ?,";
-      }
+      # delimit the columns of the table
+      my $delimitedcol = &delimitcol($col);	
+      $cols = $cols . $delimitedcol . " = ?,";
       push @bind, (($$elems{$col} =~ /NULL/) ? undef: $$elems{$col});
     }
     chop($cols);
