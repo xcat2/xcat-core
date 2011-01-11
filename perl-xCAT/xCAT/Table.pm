@@ -3199,17 +3199,10 @@ sub getAttribs
     my @exeargs;
     foreach (keys %keypairs)
     {
+	my $dkeypair= &delimitcol($_);	
         if ($keypairs{$_})
         {
-            if ($xcatcfg =~ /^mysql:/) {  #for mysql
-              $statement .= q(`) . $_ . q(`) . " = ? and "
-            } else {
-              if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-                 $statement .= q(") . $_ . q(") . " = ? and "
-                } else { # for other dbs
-                   $statement .= "$_ = ? and ";
-              }  
-            }  
+            $statement .= $dkeypair . " = ? and ";
             if (ref($keypairs{$_}))
             {    #correct for XML process mangling if occurred
                 push @exeargs, $keypairs{$_}->[0];
@@ -3221,15 +3214,7 @@ sub getAttribs
         }
         else
         {
-            if ($xcatcfg =~ /^mysql:/) {  #for mysql
-	        $statement .= q(`) . $_ . q(`) . " is NULL and " ; 
-            } else {
-              if (($xcatcfg =~ /^DB2:/) || ($xcatcfg =~ /^Pg:/)) {  
-	        $statement .= q(") . $_ . q(") . " is NULL and " ; 
-              } else { # for other dbs
-                $statement .= "$_ is NULL and ";
-              }
-            }
+	  $statement .= $dkeypair . " is NULL and " ; 
         }
     }
     if ($xcatcfg =~ /^mysql:/) {  #for mysql
