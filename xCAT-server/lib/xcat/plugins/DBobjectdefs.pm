@@ -2907,7 +2907,7 @@ sub defls
         my $listtab  = xCAT::Table->new( 'nodelist' );
         if ($listtab and  (!defined($::opt_S))  ) {
             foreach my $n (@{$rsp_info->{data}}) {
-                if ( $n =~ /node/ ) {
+                if ( $n =~ /\(node\)/ ) {
                     $_= $n;
                     s/ +\(node\)//;
                     my ($hidhash) = $listtab->getNodeAttribs($_ ,['hidden']);
