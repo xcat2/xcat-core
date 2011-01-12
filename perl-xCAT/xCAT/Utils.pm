@@ -3450,7 +3450,8 @@ sub get_site_Master
     }
     else
     {
-        xCAT::MsgUtils->message('E',
+# this msg can be missleading
+#        xCAT::MsgUtils->message('E',
                            "Unable to read site table for Master attribute.\n");
     }
     return $Master;
