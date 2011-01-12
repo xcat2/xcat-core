@@ -151,6 +151,10 @@ sub myxCATname
         }
     }
 
+	if (!$name) {
+		$name = hostname();
+	}
+
     my $shorthost;
     ($shorthost = $name) =~ s/\..*$//;
     chomp $shorthost;

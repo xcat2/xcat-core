@@ -1037,7 +1037,6 @@ sub runcmd
 
 	# get this systems name as known by xCAT management node
 	my $Sname = xCAT::InstUtils->myxCATname();
-	chomp $Sname;
 
 	if ($::VERBOSE)
 	{
