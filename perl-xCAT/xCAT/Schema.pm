@@ -478,7 +478,7 @@ nodehm => {
  },
   },
 nodelist => {
-    cols => [qw(node groups status statustime appstatus appstatustime primarysn comments disable hidden)],
+    cols => [qw(node groups status statustime appstatus appstatustime primarysn hidden comments disable)],
     keys => [qw(node)],
     table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
     descriptions => {
@@ -962,7 +962,7 @@ auditlog => {
 },
 
 prescripts => {
-    cols => [qw(node begin end comments disable)],
+    cols => [qw(node begin end test comments disable)],
     keys => [qw(node)],
     table_desc => 'The scripts that will be run at the beginning and the end of the nodeset(Linux), nimnodeset(AIX) or mkdsklsnode(AIX) command.',
     descriptions => {
