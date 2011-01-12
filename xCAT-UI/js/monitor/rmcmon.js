@@ -1125,8 +1125,67 @@ function startStopCondRespDia(){
 		buttons: {
 			close : function(){
 				$(this).dialog('close');
-			}	
+			}
 		}
+	});
+	
+	$('#divStartStopAss button').bind('click', function(){
+		var operationType = '';
+		var conditionName = $(this).attr('name');
+		if ('Start' == $(this).html()){
+			operationType = 'start';
+		}
+		else{
+			operationType = 'stop';
+		}
+		
+		$(this).parent().prev().empty().append(createLoader());
+		$('#divStartStopAss').dialog('option', 'disabled', true);
+		$.ajax({
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'webrun',
+				tgt : '',
+				args : operationType + 'condresp;' + conditionName,
+				msg : operationType + ';' + conditionName
+			},
+			
+			success : function(data){
+				var conditionName = '';
+				var newOperationType = '';
+				var associationStatus = '';
+				var backgroudColor = '';
+				if ('start' == data.msg.substr(0, 5)){
+					newOperationType = 'Stop';
+					conditionName = data.msg.substr(6);
+					associationStatus = 'Monitored';
+					backgroudColor = '#ffffff';
+				}
+				else{
+					newOperationType = 'Start';
+					conditionName = data.msg.substr(5);
+					associationStatus = 'Not Monitored';
+					backgroudColor = '#fffacd';
+				}
+								
+				var button = $('#divStartStopAss button[name="' + conditionName + '"]');
+				if (data.rsp[0]){
+					$('#rmcEventStatus').empty().append('Getting associations\' status').append(createLoader());
+					$('#rmcEventButtons').hide();
+					button.html(newOperationType);
+					button.parent().prev().html(associationStatus);
+					button.parent().parent().css('background-color', backgroudColor);
+					globalCondition = '';
+					getConditions();
+				}
+				else{
+					button.html('Error');
+				}
+				
+				$('#divStartStopAss').dialog('option', 'disabled', false);
+			}
+		});
 	});
 }
 
@@ -1245,15 +1304,13 @@ function createAssociationTable(cond){
 		tempStatus = name.substr(tempLength - 3);
 		name = name.substr(1, tempLength - 6);
 		
-		showStr += '<tr>';
-		showStr += '<td>' + name + '</td>';
 		if ('Not' == tempStatus){
-			showStr += '<td>Not Monitored</td>';
-			showStr += '<td><button id="button">Start</button></td>';
+			showStr += '<tr style="background-color:#fffacd;"><td>' + name + '</td><td>Not Monitored</td>';
+			showStr += '<td><button id="button" name="' + name + '">Start</button></td>';
 		}
 		else{
-			showStr += '<td>Monitored</td>';
-			showStr += '<td><button id="button">Stop</button></td>';
+			showStr += '<tr><td>' + name + '</td><td>Monitored</td>';
+			showStr += '<td><button id="button" name="' + name + '">Stop</button></td>';
 		}
 		showStr += '</tr>';
 	}

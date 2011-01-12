@@ -175,6 +175,8 @@ sub web_mkcondresp {
 		my $retInfo = xCAT::Utils->runcmd($cmd, -1, 1);
 	}
 	#there's no output for "mkcondresp"
+	$cmd = 'startcondresp ' . $conditionName;
+	my $refInfo = xCAT::Utils->runcmd($cmd, -1, 1);
 	$callback->({ data => "Success." });
 }
 
