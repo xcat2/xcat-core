@@ -962,7 +962,7 @@ auditlog => {
 },
 
 prescripts => {
-    cols => [qw(node begin end test comments disable)],
+    cols => [qw(node begin end comments disable)],
     keys => [qw(node)],
     table_desc => 'The scripts that will be run at the beginning and the end of the nodeset(Linux), nimnodeset(AIX) or mkdsklsnode(AIX) command.',
     descriptions => {
