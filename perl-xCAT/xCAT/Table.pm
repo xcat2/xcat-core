@@ -3060,7 +3060,7 @@ sub delEntries
 
     Example:
         $table = xCAT::Table->new('passwd');
-		@tmp=$table->getAttribs({'key'=>'ipmi'},('username','password');
+	@tmp=$table->getAttribs({'key'=>'ipmi'},('username','password'));
     Comments:
         none
 
@@ -3140,7 +3140,6 @@ sub getAttribs
         }
         return undef;
     }
-    my $xcatcfg =get_xcatcfg();
     #print "Uncached access to ".$self->{tabname}."\n";
     my $statement = 'SELECT * FROM ' . $self->{tabname} . ' WHERE ';
     my @exeargs;
@@ -3164,11 +3163,9 @@ sub getAttribs
 	  $statement .= $dkeypair . " is NULL and " ; 
         }
     }
-    if ($xcatcfg =~ /^mysql:/) {  #for mysql
-       $statement .= "(" . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO'))";
-    } else {
-         $statement .= "(\"disable\" is NULL or \"disable\" in ('0','no','NO','No','nO'))";
-    }
+    # delimit the disable column based on the DB 
+    my $disable= &delimitcol("disable");	
+    $statement .= "(" . $disable . " is NULL or " .  $disable . " in ('0','no','NO','No','nO'))";
     #print "This is my statement: $statement \n";
     my $query = $self->{dbh}->prepare($statement);
     unless (defined $query) {
