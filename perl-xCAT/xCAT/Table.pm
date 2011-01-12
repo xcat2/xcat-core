@@ -2605,21 +2605,14 @@ sub getAllEntries
     my $allentries = shift;
     my @rets;
     my $query;
-    my $xcatcfg =get_xcatcfg();
 
+    # delimit the disable column based on the DB 
+    my $disable= &delimitcol("disable");	
     if ($allentries) { # get all lines
      $query = $self->{dbh}->prepare('SELECT * FROM ' . $self->{tabname});
     } else {  # get only enabled lines
-      if ($xcatcfg =~ /^mysql:/) {  #for mysql
-         $query = $self->{dbh}->prepare('SELECT * FROM '
-             . $self->{tabname}
-        . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
-
-      } else {   
-            $query = $self->{dbh}->prepare('SELECT * FROM '
-             . $self->{tabname}
-          . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','No','nO')");
-      }
+     my $qstring = 'SELECT * FROM ' . $self->{tabname} . " WHERE " . $disable . " is NULL or " .  $disable . " in ('0','no','NO','No','nO')";
+     $query = $self->{dbh}->prepare($qstring);
     }
 
     $query->execute();
@@ -2674,7 +2667,6 @@ sub getAllAttribsWhere
 
     #Takes a list of attributes, returns all records in the table.
     my $self        = shift;
-    my $xcatcfg =get_xcatcfg();
     if ($dbworkerpid) {
         return dbc_call($self,'getAllAttribsWhere',@_);
     }
@@ -2684,22 +2676,10 @@ sub getAllAttribsWhere
     my $query;
     my $query2;
 
-    if ($xcatcfg =~ /^mysql:/) {  #for mysql
-           $query2='SELECT * FROM '  . $self->{tabname} . ' WHERE (' . $whereclause . ")  and  (\`disable\`  is NULL or \`disable\` in ('0','no','NO','No','nO'))";
-           $query = $self->{dbh}->prepare($query2);
-      } else {   
-          if ($xcatcfg =~ /^DB2:/) {  #for DB2
-            $query2= 'SELECT * FROM ' . $self->{tabname} . ' WHERE (' . $whereclause . " ) and (\"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR  \"disable\" LIKE 'NO' OR  \"disable\" LIKE 'No' OR  \"disable\" LIKE 'nO')";
-            $query = $self->{dbh}->prepare($query2);
- 
-           } else { # for other dbs
-              $query = $self->{dbh}->prepare('SELECT * FROM '
-                . $self->{tabname}
-                . ' WHERE ('
-                . $whereclause
-                . ") and (\"disable\" is NULL or \"disable\" in ('0','no','NO','no'))");
-            }
-    }
+    # delimit the disable column based on the DB 
+    my $disable= &delimitcol("disable");	
+    $query2='SELECT * FROM '  . $self->{tabname} . ' WHERE (' . $whereclause . ")  and  ($disable  is NULL or $disable in ('0','no','NO','No','nO'))";
+    $query = $self->{dbh}->prepare($query2);
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
     {
