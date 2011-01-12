@@ -54,6 +54,7 @@ sub process_request {
 		'gangliastatus' => \&web_gangliastatus,
 		'gangliacheck' => \&web_gangliacheck,
 		'mkcondition'   => \&web_mkcondition,
+		'monls'         => \&web_monls,
 		#'xdsh' => \&web_xdsh,
 		#THIS list needs to be updated
 	);
@@ -953,4 +954,26 @@ sub web_rmcmonShow() {
 	#push the last attribute name and values.
 	push( @{ $retHash->{node} }, { name => $attrName, data => join( ',', @attrValue ) } );
 	$callback->($retHash);
+}
+
+sub web_monls(){
+	my ( $request, $callback, $sub_req ) = @_;
+	my $retInfo = xCAT::Utils->runcmd( "monls", -1, 1 );
+	my $ret = '';
+	foreach my $line (@$retInfo){
+		my @temp = split(/\s+/, $line);
+		$ret .= @temp[0];
+		if('not-monitored' eq @temp[1]){
+			$ret .= ':Not Monitored;';
+		}
+		else{
+			$ret .= ':Monitored;';
+		}
+	}
+	if ('' eq $ret){
+		return;
+	}
+
+	$ret = substr($ret, 0, length($ret) - 1);
+	$callback->({data=>$ret});
 }

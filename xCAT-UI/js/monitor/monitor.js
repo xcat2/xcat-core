@@ -54,35 +54,74 @@ function loadMonitorPage() {
 	var monitorForm = $('<div class="form"></div>');
 
 	// Create info bar
-	var monitorInfoBar = createInfoBar('Select a monitoring tool to use.');
-	monitorForm.append(monitorInfoBar);
+	monitorForm.append('Getting monitoring stauts').append(createLoader());
 
-	// Create a list of monitoring tools
-	var monitorList = $('<ol></ol>');
-	var items = "<li><a href='#' name='xcatmon'>xCAT Monitor</a> : xcatmon provides node status "
-		+ "monitoring using fping on AIX and nmap on Linux. It also provides application "
-		+ "status monitoring. The status and the appstatus columns of the nodelist table "
-		+ "will be updated periodically  with the latest status values for the nodes.<li>";
-	items += "<li><a href='#' name='rmcmon'>RMC Monitor</a> : IBM's Resource Monitoring and Control (RMC) "
-		+ "subsystem is our recommended software for monitoring xCAT clusters. It's is part "
-		+ "of the IBM's Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive " 
-		+ "clustering environment for AIX and LINUX.<li>";
-	items += "<li><a href='#' name='rmcevent'>RMC Event</a> : Listing event monitoring information " 
-		+ "recorded by the RSCT Event Response resource manager in the audit log. Creating and " 
-		+ "removing a condition/response association.<li>";
-	items += "<li><a href='#' name='gangliamon'>Ganglia Monitor</a> : Ganglia is a scalable distributed "
-		+ "monitoring system for high-performance computing systems such as clusters and Grids.<li>";
-	items += "<li><a href='#' name='pcpmon'>PCP Monitor</a> : Under construction.<li>";
-	monitorList.append(items);
-
-	// Open new tab for monitor tool
-	$('a', monitorList).click(function() {
-		loadMonitorTab($(this).attr('name'));
-	});
-
-	monitorForm.append(monitorList);
+	
 	tab.add('monitorTab', 'Monitor', monitorForm, false);
 
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'monls',
+			msg : ''
+		},
+
+		success : function(data){
+			var monitorTable = '<table><thead><tr><th>Monitor Tool</th><th>Status</th><th>Description</th></tr></thead>';
+			var monitorStatusHash = new Object();
+			if (data.rsp[0]){
+				var tempArray = data.rsp[0].split(';');
+				var position = 0;
+				var name = '';
+				var status = '';
+				for(var i in tempArray){
+					position = tempArray[i].indexOf(':');
+					if(-1 == position){
+						continue;
+					}
+					name = tempArray[i].substr(0, position);
+					status = tempArray[i].substr(position + 1);
+					monitorStatusHash[name] = status;
+				}
+			}
+			//xcat monitor
+			monitorTable += '<tbody><tr><td><a href="#" name="xcatmon">xCAT Monitor</a></td>';
+			monitorTable += '<td>' + monitorStatusHash['xcatmon'] + '</td>';
+			monitorTable += '<td>Provides node status monitoring using fping on AIX and nmap on Linux. It also provides application status monitoring. The status and the appstatus columns of the nodelist table will be updated periodically  with the latest status values for the nodes.</td></tr>';
+			
+			//rmc monitor 
+			monitorTable += '<tr><td><a href="#" name="rmcmon">RMC Monitor</a></td>';
+			monitorTable += '<td>' + monitorStatusHash['rmcmon'] + '</td>';
+			monitorTable += '<td>IBM\'s Resource Monitoring and Control (RMC) subsystem is our recommended software for monitoring xCAT clusters. It\'s is part of the IBM\'s Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive clustering environment for AIX and LINUX.</td></tr>';
+			
+			//rmc event
+			monitorTable += '<tr><td><a href="#" name="rmcevent">RMC Event</a></td>';
+			monitorTable += '<td>' + monitorStatusHash['rmcmon'] + '</td>';
+			monitorTable += '<td>Listing event monitoring information recorded by the RSCT Event Response resource manager in the audit log. Creating and removing a condition/response association.</td></tr>';
+			
+			//ganglia event
+			monitorTable += '<tr><td><a href="#" name="gangliamon">Ganglia Monitor</a></td>';
+			monitorTable += '<td>' + monitorStatusHash['gangliamon'] + '</td>';
+			monitorTable += '<td>A scalable distributed monitoring system for high-performance computing systems such as clusters and Grids.</td></tr>';
+			
+			//pcp monitor
+			monitorTable += '<tr><td><a href="#" name="pcpmon">PCP Monitor</a></td>';
+			monitorTable += '<td>undefined</td>';
+			monitorTable += '<td>Under construction.</td></tr>';
+			
+			monitorTable += '</tbody></table>';
+			
+			$('#monitorTab div').empty().append(createInfoBar('Select a monitoring tool to use.'));
+			$('#monitorTab .form').append(monitorTable);
+			
+			$('#monitorTab .form a').bind('click', function() {
+				loadMonitorTab($(this).attr('name'));
+			});
+		}
+	});
 	/**
 	 * Monitor resources
 	 */
