@@ -2740,7 +2740,6 @@ sub getAllNodeAttribs
 
     #Extract and substitute every node record, expanding groups and substituting as getNodeAttribs does
     my $self    = shift;
-    my $xcatcfg =get_xcatcfg();
     if ($dbworkerpid) {
         return dbc_call($self,'getAllNodeAttribs',@_);
     }
@@ -2755,23 +2754,13 @@ sub getAllNodeAttribs
     if (defined $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}) {
         $nodekey = $xCAT::Schema::tabspec{$self->{tabname}}->{nodecol}
     };
-    if ($xcatcfg =~ /^mysql:/) {  #for mysql
-         $query = $self->{dbh}->prepare('SELECT '.$nodekey.' FROM '
-             . $self->{tabname}
-        . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
-      } else {   
-          if ($xcatcfg =~ /^DB2:/) {  #for DB2
-            my $qstring = "Select \"$nodekey\" FROM ";
-            $qstring  .= $self->{tabname};
-            $qstring  .=  " WHERE \"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR  \"disable\" LIKE 'NO' OR  \"disable\" LIKE 'No' OR  \"disable\" LIKE 'nO'";
-            $query =  $self->{dbh}->prepare($qstring); 
-          } else {  # for other dbs 
-             $query =
-             $self->{dbh}->prepare('SELECT '.$nodekey.' FROM '
-              . $self->{tabname}
-              . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','no')");
-          }
-       }
+    # delimit the disable column based on the DB 
+    my $disable= &delimitcol("disable");	
+    my $dnodekey= &delimitcol($nodekey);	
+    my $qstring= 'SELECT '.$dnodekey.' FROM ' 
+     . $self->{tabname}
+     . " WHERE " . $disable . " is NULL or " .  $disable . " in ('0','no','NO','No','nO')";
+    $query = $self->{dbh}->prepare($qstring);
     $query->execute();
     xCAT::NodeRange::retain_cache(1);
     $self->{_use_cache} = 0;
@@ -2869,7 +2858,6 @@ sub getAllAttribs
 
     #Takes a list of attributes, returns all records in the table.
     my $self    = shift;
-    my $xcatcfg =get_xcatcfg();
     if ($dbworkerpid) {
         return dbc_call($self,'getAllAttribs',@_);
     }
@@ -2900,24 +2888,12 @@ sub getAllAttribs
         }
         return undef;
     }
+    # delimit the disable column based on the DB 
+    my $disable= &delimitcol("disable");	
     my $query;
-    if ($xcatcfg =~ /^mysql:/) {  #for mysql
-         $query = $self->{dbh}->prepare('SELECT * FROM '
-             . $self->{tabname}
-        . " WHERE " . q(`disable`) . " is NULL or " .  q(`disable`) . " in ('0','no','NO','No','nO')");
-    } else {
-      if ($xcatcfg =~ /^DB2:/) {  #for DB2  
-         my $qstring = 
-          "SELECT * FROM "
-              . $self->{tabname}
-              . " WHERE \"disable\" is NULL OR \"disable\" LIKE '0' OR \"disable\" LIKE 'no' OR \"disable\" LIKE 'NO' OR \"disable\" LIKE 'nO' ";
-         $query =  $self->{dbh}->prepare($qstring);
-      } else { # for other dbs
-         $query =  $self->{dbh}->prepare('SELECT * FROM '
-              . $self->{tabname}
-              . " WHERE \"disable\" is NULL or \"disable\" in ('','0','no','NO','nO')");
-      }
-    }
+    my $qstring =  "SELECT * FROM " . $self->{tabname} 
+        . " WHERE " . $disable . " is NULL or " .  $disable . " in ('0','no','NO','No','nO')";
+         $query = $self->{dbh}->prepare($qstring);
     #print $query;
     $query->execute();
     while (my $data = $query->fetchrow_hashref())
