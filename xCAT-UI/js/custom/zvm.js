@@ -43,9 +43,9 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 
 		// Get hardware control point
 		var nodeRow = $('#' + node).parent().parent();
-		var dTable = $('#nodesDatatable').dataTable();
-		var rowPos = dTable.fnGetPosition(nodeRow.get(0));
-		var aData = dTable.fnGetData(rowPos);
+		var datatable = $('#' + getNodesTableId()).dataTable();
+		var rowPos = datatable.fnGetPosition(nodeRow.get(0));
+		var aData = datatable.fnGetData(rowPos);
 		var hcp = aData[hcpCol];
 
 		// Create status bar and hide it

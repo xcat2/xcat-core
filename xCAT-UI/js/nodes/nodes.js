@@ -1,29 +1,53 @@
 /**
  * Global variables
  */
-var nodesTabs; 		// Node tabs
-var origAttrs = new Object();	// Original node attributes
-var defAttrs; 		// Definable node attributes
+// Node tabs
+var nodesTab;
+// Original node attributes
+var origAttrs = new Object();
+// Node attributes
+var nodeAttrs;
+// Node list
+var nodesList;
+// Nodes datatable ID
+var nodesTableId = 'nodesDatatable';
 
 /**
- * Set the nodes tab 
+ * Set node tab
  * 
- * @param obj
+ * @param tab
  *            Tab object
  * @return Nothing
  */
-function setNodesTab(obj) {
-	nodesTabs = obj;
+function setNodesTab(tab) {
+	nodesTab = tab;
 }
 
 /**
- * Get the nodes tab
+ * Get node tab
  * 
- * @param Nothing
  * @return Tab object
  */
 function getNodesTab() {
-	return nodesTabs;
+	return nodesTab;
+}
+
+/**
+ * Get node list
+ * 
+ * @return Node list
+ */
+function getNodesList() {
+	return nodesList;
+}
+
+/**
+ * Get nodes table ID
+ * 
+ * @return Nodes table ID
+ */
+function getNodesTableId() {
+	return nodesTableId;
 }
 
 /**
@@ -94,22 +118,22 @@ function loadGroups(data) {
 	setGroupsCookies(data);
 
 	// Create a list of groups
-	var ul = $('<ul></ul>');
+	var list = $('<ul></ul>');
 	var item = $('<li id="root"><h3>Groups</h3></li>');
-	var subUL = $('<ul></ul>');
-	ul.append(item);
-	item.append(subUL);
+	var subList = $('<ul></ul>');
+	list.append(item);
+	item.append(subList);
 
 	// Create a link for each group
 	for (var i = groups.length; i--;) {
 		var subItem = $('<li id="' + groups[i] + '"></li>');
 		var link = $('<a>' + groups[i] + '</a>');
 		subItem.append(link);
-		subUL.append(subItem);
+		subList.append(subItem);
 	}
 
 	// Turn groups list into a tree
-	$('#groups').append(ul);
+	$('#groups').append(list);
 	$('#groups').jstree( {
 		core : { "initially_open" : [ "root" ] },
 		themes : {
@@ -123,6 +147,7 @@ function loadGroups(data) {
 	$('#groups').bind('select_node.jstree', function(event, data) {
 		// If there are subgroups, remove them
 		data.rslt.obj.children('ul').remove();
+		
 		var thisGroup = jQuery.trim(data.rslt.obj.text());
 		if (thisGroup) {
 			// Clear nodes division
@@ -140,20 +165,69 @@ function loadGroups(data) {
 			tab.add('nodesTab', 'Nodes', loader, false);
 			tab.add('graphTab', 'Graphical', loader2, false);
 
-			// Get nodes within selected group
+			// To improve performance, get all nodes within selected group
+			// Get node definitions only for first 50 nodes
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
 				data : {
-					cmd : 'lsdef',
-					tgt : '',
-					args : thisGroup,
+					cmd : 'nodels',
+					tgt : thisGroup,
+					args : '',
 					msg : thisGroup
 				},
 
-				success : loadNodes
+				/**
+				 * Get node definitions for first 50 nodes
+				 * 
+				 * @param data
+				 *            Data returned from HTTP request
+				 * @return Nothing
+				 */
+				success : function(data) {
+					var rsp = data.rsp;
+					var group = data.msg;
+					
+					// Save nodes in a list so it can be accessed later
+					nodesList = new Array();
+					for (var i in rsp) {
+						if (rsp[i][0]) {
+							nodesList.push(rsp[i][0]);
+						}
+					}
+										
+					// Sort nodes list
+					nodesList.sort();
+					
+					// Get first 50 nodes
+					var nodes = '';
+					for (var i = 0; i < nodesList.length; i++) {
+						if (i > 49) {
+							break;
+						}
+						
+						nodes += nodesList[i] + ',';						
+					}
+								
+					// Remove last comma
+					nodes = nodes.substring(0, nodes.length-1);
+					
+					// Get nodes definitions
+					$.ajax( {
+						url : 'lib/cmd.php',
+						dataType : 'json',
+						data : {
+							cmd : 'lsdef',
+							tgt : '',
+							args : nodes,
+							msg : group
+						},
+
+						success : loadNodes
+					});
+				}
 			});
-			
+						
 			// Get subgroups within selected group
 			// only when this is the parent group and not a subgroup
 			if (data.rslt.obj.attr('id').indexOf('Subgroup') < 0) {
@@ -187,10 +261,23 @@ function loadGroups(data) {
 		} // End of if (thisGroup)
 	});
 	
+	// Make a link to add nodes
+	$('#groups').append(mkAddNodeLink());
+}
+
+/**
+ * Make a link to add nodes
+ * 
+ * @returns Link to add nodes
+ */
+function mkAddNodeLink() {
 	// Create link to add nodes
 	var addNodeLink = $('<a title="Add a node or a node range to xCAT">Add node</a>');
-	addNodeLink.bind('click', function(event) {
+	addNodeLink.click(function() {
+		// Create info bar
 		var info = createInfoBar('Select the hardware management for the new node range');
+		
+		// Create form to add node
 		var addNodeForm = $('<div class="form"></div>');
 		addNodeForm.append(info);
 		addNodeForm.append('<div><label for="mgt">Hardware management:</label>'
@@ -202,13 +289,13 @@ function loadGroups(data) {
     			+ '<option>fsp</option>'
     			+ '<option>zvm</option>'
     		+ '</select>'
-    	+ '</div>' );
+    	+ '</div>');
 		
 		// Create advanced link to set advanced node properties
 		var advanced = $('<div></div>');
 		var advancedLnk = $('<a>Advanced</a>').css('cursor', 'pointer');
-		advancedLnk.bind('click', function(event) {
-			// Get definable node attributes
+		advancedLnk.click(function() {
+			// Get node attributes
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
@@ -220,20 +307,22 @@ function loadGroups(data) {
 				},
 
 				/**
-				 * Set definable node attributes and open dialog
+				 * Set node attributes and open dialog
 				 * 
 				 * @param data
 				 *            Data returned from HTTP request
 				 * @return Nothing
 				 */
 				success : function(data) {
-					setDefAttrs(data);
-					openSetPropsDialog();
+					// Save node attributes
+					setNodeAttrs(data);
+					// Open a dialog to set node attributes
+					openSetAttrsDialog();
 				}
 			});
 			
 			// Close dialog
-			addNodeForm.dialog( "close" );
+			addNodeForm.dialog('close');
 		});
 		advanced.append(advancedLnk);
 		addNodeForm.append(advanced);
@@ -243,7 +332,7 @@ function loadGroups(data) {
 			modal: true,
 			width: 400,
 			buttons: {
-        		"Ok": function(){
+        		'Ok': function(){
 					// Get hardware management
 					var mgt = $(this).find('select[name=mgt]').val();					
 					
@@ -270,10 +359,10 @@ function loadGroups(data) {
 			    	}
 					
 					plugin.addNode();
-					$(this).dialog( "close" );
+					$(this).dialog('close');
 				},
-				"Cancel": function(){
-        			$(this).dialog( "close" );
+				'Cancel': function(){
+        			$(this).dialog('close');
         		}
 			}
 		});
@@ -282,28 +371,26 @@ function loadGroups(data) {
 	
 	// Generate tooltips
 	addNodeLink.tooltip({
-		position: "center right",
+		position: 'center right',
 		offset: [-2, 10],
-		effect: "fade",
+		effect: 'fade',
 		opacity: 0.7,
 		predelay: 800
 	});
 	
-	$('#groups').append(addNodeLink);
+	return addNodeLink;
 }
 
 /**
- * Load subgroups belonging to a given group
+ * Load subgroups
  * 
  * @param data
  *            Data returned from HTTP request
  * @return Nothing
  */
 function loadSubgroups(data) {
-	// Data returned
-	var rsp = data.rsp;
-	// Group name
-	var group = data.msg;
+	var rsp = data.rsp;		// Data returned
+	var group = data.msg;	// Group name
 	
 	// Go through each subgroup
 	for (var i in rsp) {
@@ -315,7 +402,7 @@ function loadSubgroups(data) {
 				'data': rsp[i]}, 
 			'', true);
 		}
-	} // End of for
+	}
 }
 
 /**
@@ -326,11 +413,11 @@ function loadSubgroups(data) {
  * @return Nothing
  */
 function loadNodes(data) {
-	// Data returned
+	// Data returned	
 	var rsp = data.rsp;
 	// Group name
 	var group = data.msg;
-	// Node attributes hash
+	// Hash of Node attributes
 	var attrs = new Object();
 	// Node attributes
 	var headers = new Object();
@@ -343,12 +430,10 @@ function loadNodes(data) {
 	// Clear hash table containing node attributes
 	origAttrs = '';
 	
-	var node;
-	var args;
+	var node, args;
 	for (var i in rsp) {
-		// Get the node
-		var pos = rsp[i].indexOf('Object name:');
-		if (pos > -1) {
+		// Get node name
+		if (rsp[i].indexOf('Object name:') > -1) {
 			var temp = rsp[i].split(': ');
 			node = jQuery.trim(temp[1]);
 
@@ -366,13 +451,22 @@ function loadNodes(data) {
 		attrs[node][key] = val;
 		headers[key] = 1;
 		
-		// If the node status is available
+		// If node status is available
 		if (key == 'status') {
-			// Do not send command to request node status
+			// Do not request node status
 			getNodeStatus = false;
 		}
 	}
-		
+	
+	// Add nodes that are not in data returned
+	for (var i in nodesList) {
+		if (!attrs[nodesList[i]]) {
+			// Create attributes list and save node name
+			attrs[nodesList[i]] = new Object();
+			attrs[nodesList[i]]['node'] = nodesList[i];
+		}
+	}
+	
 	// Save attributes in hash table
 	origAttrs = attrs;
 
@@ -394,9 +488,9 @@ function loadNodes(data) {
 		'comments');
 
 	// Create a datatable
-	var dTable = new DataTable('nodesDatatable');
-	dTable.init(sorted);
-
+	var nodesTable = new DataTable(nodesTableId);
+	nodesTable.init(sorted);
+	
 	// Go through each node
 	for (var node in attrs) {
 		// Create a row
@@ -409,44 +503,49 @@ function loadNodes(data) {
 		if (attrs[node]['status']){
 			status = attrs[node]['status'].replace('sshd', 'ping');
 		}
-		
-		
-		// Push in checkbox, node link, status, and power
-		row.push(checkBx, nodeLink, status, '');
-
-		// Put in comments
-		var comment = attrs[node]['usercomment'];
-		var iconSrc;
-		// If no comments exists, show 'No comments' and set icon image source
-		if (!comment) {
-			comment = 'No comments';
-			iconSrc = 'images/ui-icon-no-comment.png';
-		} else {
-			iconSrc = 'images/ui-icon-comment.png';
-		}
 				
-		// Create comments icon
-		var tipID = node + 'Tip';
-		var icon = $('<img id="' + tipID + '" src="' + iconSrc + '"></img>').css({
-			'width': '18px',
-			'height': '18px'
-		});
+		// Push in checkbox, node, status, and power
+		row.push(checkBx, nodeLink, status, '');
 		
-		// Create tooltip
-		var tip = createCommentsToolTip(comment);
-		var col = $('<span></span>').append(icon);
-		col.append(tip);
-		row.push(col);
+		// If the node attributes are known (i.e the group is known)
+		if (attrs[node]['groups']) {
+			// Put in comments
+			var comments = attrs[node]['usercomment'];			
+			// If no comments exists, show 'No comments' and set icon image source
+			var iconSrc;
+			if (!comments) {
+				comments = 'No comments';
+				iconSrc = 'images/ui-icon-no-comment.png';
+			} else {
+				iconSrc = 'images/ui-icon-comment.png';
+			}
+					
+			// Create comments icon
+			var tipID = node + 'Tip';
+			var icon = $('<img id="' + tipID + '" src="' + iconSrc + '"></img>').css({
+				'width': '18px',
+				'height': '18px'
+			});
+			
+			// Create tooltip
+			var tip = createCommentsToolTip(comments);
+			var col = $('<span></span>').append(icon);
+			col.append(tip);
+			row.push(col);
 		
-		// Generate tooltips
-		icon.tooltip({
-			position: "center right",
-			offset: [-2, 10],
-			effect: "fade",	
-			opacity: 0.8,
-			relative: true,
-			delay: 500
-		});
+			// Generate tooltips
+			icon.tooltip({
+				position: "center right",
+				offset: [-2, 10],
+				effect: "fade",	
+				opacity: 0.8,
+				relative: true,
+				delay: 500
+			});
+		} else {
+			// Do not put in comments if attributes are not known
+			row.push('');
+		}
 		
 		// Go through each header
 		for (var i = 5; i < sorted.length; i++) {
@@ -465,7 +564,7 @@ function loadNodes(data) {
 		}
 
 		// Add the row to the table
-		dTable.add(row);
+		nodesTable.add(row);
 	}
 
 	// Clear the tab before inserting the table
@@ -479,7 +578,7 @@ function loadNodes(data) {
 	var actionBar = $('<div class="actionBar"></div>');
 
 	/**
-	 * The following actions are available to perform against a given node:
+	 * Create menu for actions to perform against a given node:
 	 * power, clone, delete, unlock, and advanced
 	 */
 
@@ -487,8 +586,8 @@ function loadNodes(data) {
 	
 	// Power on
 	var powerOnLnk = $('<a>Power on</a>');
-	powerOnLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+	powerOnLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			powerNode(tgtNodes, 'on');
 		}
@@ -496,8 +595,8 @@ function loadNodes(data) {
 	
 	// Power off
 	var powerOffLnk = $('<a>Power off</a>');
-	powerOffLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+	powerOffLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			powerNode(tgtNodes, 'off');
 		}
@@ -505,11 +604,11 @@ function loadNodes(data) {
 
 	// Clone
 	var cloneLnk = $('<a>Clone</a>');
-	cloneLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable').split(',');
+	cloneLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId).split(',');
 		for (var i in tgtNodes) {
 			var mgt = getNodeAttr(tgtNodes[i], 'mgt');
-			
+
 			// Create an instance of the plugin
 			var plugin;
 			switch(mgt) {
@@ -539,8 +638,8 @@ function loadNodes(data) {
 
 	// Delete
 	var deleteLnk = $('<a>Delete</a>');
-	deleteLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+	deleteLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			loadDeletePage(tgtNodes);
 		}
@@ -548,8 +647,8 @@ function loadNodes(data) {
 
 	// Unlock
 	var unlockLnk = $('<a>Unlock</a>');
-	unlockLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+	unlockLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			loadUnlockPage(tgtNodes);
 		}
@@ -557,8 +656,8 @@ function loadNodes(data) {
 
 	// Run script
 	var scriptLnk = $('<a>Run script</a>');
-	scriptLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+	scriptLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			loadScriptPage(tgtNodes);
 		}
@@ -566,8 +665,8 @@ function loadNodes(data) {
 
 	// Update
 	var updateLnk = $('<a>Update</a>');
-	updateLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+	updateLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			loadUpdatenodePage(tgtNodes);
 		}
@@ -575,8 +674,8 @@ function loadNodes(data) {
 
 	// Set boot state
 	var setBootStateLnk = $('<a>Set boot state</a>');
-	setBootStateLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+	setBootStateLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			loadNodesetPage(tgtNodes);
 		}
@@ -585,8 +684,8 @@ function loadNodes(data) {
 
 	// Boot to network
 	var boot2NetworkLnk = $('<a>Boot to network</a>');
-	boot2NetworkLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+	boot2NetworkLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			loadNetbootPage(tgtNodes);
 		}
@@ -595,7 +694,7 @@ function loadNodes(data) {
 	// Remote console
 	var rcons = $('<a>Open console</a>');
 	rcons.bind('click', function(event){
-		var tgtNodes = getNodesChecked('nodesDatatable');
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			loadRconsPage(tgtNodes);
 		}
@@ -604,7 +703,7 @@ function loadNodes(data) {
 	// Edit properties
 	var editProps = $('<a>Edit properties</a>');
 	editProps.bind('click', function(event){
-		var tgtNodes = getNodesChecked('nodesDatatable').split(',');
+		var tgtNodes = getNodesChecked(nodesTableId).split(',');
 		for (var i in tgtNodes) {
 			loadEditPropsPage(tgtNodes[i]);
 		}
@@ -624,19 +723,17 @@ function loadNodes(data) {
 	}
 	var advancedActionMenu = createMenu(advancedActions);
 
-	/**
-	 * Create an action menu
-	 */
-	var actionsDIV = $('<div></div>');
+	// Create an action menu
+	var actionsDiv = $('<div></div>');
 	var actions = [ [ powerLnk, powerActionMenu ], cloneLnk, deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
-	var actionMenu = createMenu(actions);
-	actionMenu.superfish();
-	actionsDIV.append(actionMenu);
-	actionBar.append(actionsDIV);
+	var actionsMenu = createMenu(actions);
+	actionsMenu.superfish();
+	actionsDiv.append(actionsMenu);
+	actionBar.append(actionsDiv);
 	
 	// Insert action bar and nodes datatable
 	$('#nodesTab').append(actionBar);
-	$('#nodesTab').append(dTable.object());
+	$('#nodesTab').append(nodesTable.object());
 	
 	/**
 	 * Create menu to save and undo table changes
@@ -657,43 +754,66 @@ function loadNodes(data) {
 	// It will be hidden until a change is made
 	var tableActionsMenu = createMenu([saveLnk, undoLnk]).hide();
 	tableActionsMenu.css('margin-left', '100px');
-	actionsDIV.append(tableActionsMenu);
+	tableActionsMenu.attr('id', 'tableActionMenu');
+	actionsDiv.append(tableActionsMenu);
 
 	// Turn table into a datatable
-	var myDataTable = $('#nodesDatatable').dataTable({
+	var nodesDatatable = $('#' + nodesTableId).dataTable({
 		'iDisplayLength': 50
 	});
 	
+	// Filter table when enter key is pressed
+	$('#' + nodesTableId + '_filter input').unbind();
+	$('#' + nodesTableId + '_filter input').bind('keyup', function(e){
+		if (e.keyCode == 13) {
+			var table = $('#' + nodesTableId).dataTable();
+			table.fnFilter($(this).val());
+			
+			// If there are nodes found, get the node attributes
+			if (!$('#' + nodesTableId + ' .dataTables_empty').length) {
+				getNodeAttrs(getNodeAttrs);
+			}
+		}
+	});
+	
+	// Load node definitions when next or previous buttons are clicked
+	$('#' + nodesTableId + '_next, #' + nodesTableId + '_previous').click(function() {
+		getNodeAttrs(group);
+	});
+	
 	/**
-	 * Change how datatable behaves 
+	 * Change how datatable behaves
 	 */
 	
 	// Do not sort ping, power, and comment column
-	var pingCol = $('#nodesDatatable thead tr th').eq(2);
-	var powerCol = $('#nodesDatatable thead tr th').eq(3);
-	var commentCol = $('#nodesDatatable thead tr th').eq(4);
+	var cols = $('#' + nodesTableId + ' thead tr th').click(function() {		
+		getNodeAttrs(group);
+	});
+	var pingCol = $('#' + nodesTableId + ' thead tr th').eq(2);
+	var powerCol = $('#' + nodesTableId + ' thead tr th').eq(3);
+	var commentCol = $('#' + nodesTableId + ' thead tr th').eq(4);
 	pingCol.unbind('click');
 	powerCol.unbind('click');
 	commentCol.unbind('click');
 	
 	// Create enough space for loader to be displayed
-	$('#nodesDatatable tbody tr td:nth-child(3)').css('min-width', '60px');
-	$('#nodesDatatable tbody tr td:nth-child(4)').css('min-width', '60px');
+	$('#' + nodesTableId + ' tbody tr td:nth-child(3)').css('min-width', '60px');
+	$('#' + nodesTableId + ' tbody tr td:nth-child(4)').css('min-width', '60px');
 	
 	// Center align power, ping, and comments
-	$('#nodesDatatable tbody tr td:nth-child(3)').css('text-align', 'center');
-	$('#nodesDatatable tbody tr td:nth-child(4)').css('text-align', 'center');
-	$('#nodesDatatable tbody tr td:nth-child(5)').css('text-align', 'center');
+	$('#' + nodesTableId + ' tbody tr td:nth-child(3)').css('text-align', 'center');
+	$('#' + nodesTableId + ' tbody tr td:nth-child(4)').css('text-align', 'center');
+	$('#' + nodesTableId + ' tbody tr td:nth-child(5)').css('text-align', 'center');
 	
 	// Instead refresh the node status and power status
-	pingCol.find('span a').bind('click', function(event) {
+	pingCol.find('span a').click(function() {
 		refreshNodeStatus(group);
 	});
-	powerCol.find('span a').bind('click', function(event) {
+	powerCol.find('span a').click(function() {
 		refreshPowerStatus(group);
 	});
 	
-	// Create tooltip for status 
+	// Create tooltip for status
 	var pingTip = createStatusToolTip();
 	pingCol.find('span').append(pingTip);
 	pingCol.find('span a').tooltip({
@@ -705,7 +825,7 @@ function loadNodes(data) {
 		predelay: 800
 	});
 	
-	// Create tooltip for power 
+	// Create tooltip for power
 	var powerTip = createPowerToolTip();
 	powerCol.find('span').append(powerTip);
 	powerCol.find('span a').tooltip({
@@ -722,7 +842,7 @@ function loadNodes(data) {
 	 */
 	
 	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
-	$('#nodesDatatable td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5))').editable(
+	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5))').editable(
 		function(value, settings) {			
 			// Change text color to red
 			$(this).css('color', 'red');
@@ -731,11 +851,11 @@ function loadNodes(data) {
 			var colPos = this.cellIndex;
 						
 			// Get row index
-			var dTable = $('#nodesDatatable').dataTable();
+			var dTable = $('#' + nodesTableId).dataTable();
 			var rowPos = dTable.fnGetPosition(this.parentNode);
 			
 			// Update datatable
-			dTable.fnUpdate(value, rowPos, colPos);
+			dTable.fnUpdate(value, rowPos, colPos, false);
 			
 			// Get node name
 			var node = $(this).parent().find('td a.node').text();
@@ -760,6 +880,359 @@ function loadNodes(data) {
 
 	// If request to get node status is made
 	if (getNodeStatus) {
+		var tgt = getNodesShown(nodesTableId);
+		
+    	// Get node status
+    	$.ajax( {
+    		url : 'lib/cmd.php',
+    		dataType : 'json',
+    		data : {
+    			cmd : 'nodestat',
+    			tgt : tgt,
+    			args : '-u',
+    			msg : ''
+    		},
+    
+    		success : loadNodeStatus
+    	});
+	} else {
+		// Hide status loader
+		var statCol = $('#' + nodesTableId + ' thead tr th').eq(2);
+		statCol.find('img').hide();
+	}
+	
+	// Get definable node attributes
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'lsdef',
+			tgt : '',
+			args : '-t;node;-h',
+			msg : ''
+		},
+
+		success : setNodeAttrs
+	});
+	
+	/**
+	 * Additional ajax requests need to be made for zVM
+	 */
+	
+	// Get index of hcp column
+	var i = $.inArray('hcp', sorted);
+	if (i) {
+		// Get hardware control point
+		var rows = nodesTable.object().find('tbody tr');
+		var hcps = new Object();
+		for (var j in rows) {
+			var val = rows.eq(j).find('td').eq(i).html();
+			hcps[val] = 1;
+		}
+
+		var args;
+		for (var h in hcps) {
+			// Get node without domain name
+			args = h.split('.');
+			
+			// If there are no disk pools or network names cookie for this hcp
+			if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
+    			// Check if SMAPI is online
+    			$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'lsvm',
+    					tgt : args[0],
+    					args : '',
+    					msg : 'group=' + group + ';hcp=' + args[0]
+    				},
+    
+    				// Load hardware control point specific info
+    				// Get disk pools and network names
+    				success : loadHcpInfo
+    			});		
+			}
+		} // End of for
+	} // End of if
+}
+
+/**
+ * Get nodes currently shown in datatable
+ * 
+ * @param tableId
+ *            Datatable ID
+ * @return String of nodes shown
+ */
+function getNodesShown(tableId) {
+	// String of nodes shown
+	var shownNodes = '';
+	
+	// Get rows of shown nodes
+	var nodes = $('#' + tableId + ' tbody tr');
+				
+	// Go through each row
+	var cols;
+	for (var i = 0; i < nodes.length; i++) {
+		// Get second column containing node name
+		cols = nodes.eq(i).find('td');
+		shownNodes += cols.eq(1).text() + ',';
+	}
+	
+	// Remove last comma
+	shownNodes = shownNodes.substring(0, shownNodes.length-1);
+	return shownNodes;
+}
+
+/**
+ * Get attributes for nodes not yet initialized
+ * 
+ * @param group
+ *            Group name
+ * @return Nothing
+ */
+function getNodeAttrs(group) {	
+	// Get datatable headers and rows
+	var headers = $('#' + nodesTableId + ' thead tr th');
+	var nodes = $('#' + nodesTableId + ' tbody tr');
+	
+	// Find group column
+	var head, groupsCol;
+	for (var i = 0; i < headers.length; i++) {
+		head = headers.eq(i).html();
+		if (head == 'groups') {
+			groupsCol = i;
+			break;
+		}
+	}
+
+	// Check if groups definition is set
+	var node, cols;
+	var tgtNodes = '';
+	for (var i = 0; i < nodes.length; i++) {
+		cols = nodes.eq(i).find('td');
+		if (!cols.eq(groupsCol).html()) {
+			node = cols.eq(1).text();
+			tgtNodes += node + ',';
+		}
+	}
+		
+	// If there are node definitions to load
+	if (tgtNodes) {
+		// Remove last comma
+		tgtNodes = tgtNodes.substring(0, tgtNodes.length-1);
+				
+		// Get node definitions
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'lsdef',
+				tgt : '',
+				args : tgtNodes,
+				msg : group
+			},
+	
+			success : addNodes2Table
+		});
+		
+		// Create dialog to indicate table is updating
+		var update = $('<div id="updatingDialog" class="ui-state-highlight ui-corner-all">' 
+				+ '<p><span class="ui-icon ui-icon-info"></span> Updating table <img src="images/loader.gif"/></p>'
+			+'</div>');
+		update.dialog({
+			modal: true,
+			width: 300,
+			position: 'center'
+		});
+	}
+}
+
+/**
+ * Add nodes to datatable
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function addNodes2Table(data) {
+	// Data returned
+	var rsp = data.rsp;
+	// Group name
+	var group = data.msg;
+	// Hash of node attributes
+	var attrs = new Object();
+	// Node attributes
+	var headers = $('#' + nodesTableId + ' thead tr th');
+	
+	// Variable to send command and request node status
+	var getNodeStatus = true;
+	
+	// Clear cookie containing list of nodes where their attributes need to be updated
+	$.cookie('nodes2update', '');
+
+	// Go through each attribute
+	var node, args;
+	for (var i in rsp) {
+		// Get node name
+		if (rsp[i].indexOf('Object name:') > -1) {
+			var temp = rsp[i].split(': ');
+			node = jQuery.trim(temp[1]);
+
+			// Create a hash for node attributes
+			attrs[node] = new Object();
+			i++;
+		}
+
+		// Get key and value
+		args = rsp[i].split('=', 2);
+		var key = jQuery.trim(args[0]);
+		var val = jQuery.trim(rsp[i].substring(rsp[i].indexOf('=') + 1, rsp[i].length));
+		
+		// Create a hash table
+		attrs[node][key] = val;
+		// Save attributes in original hash table
+		origAttrs[node][key] = val;
+				
+		// If node status is available
+		if (key == 'status') {
+			// Do not request node status
+			getNodeStatus = false;
+		}
+	}
+		
+	// Set the first four headers
+	var headersCol = new Object();
+	headersCol['node'] = 1;
+	headersCol['status'] = 2;
+	headersCol['power'] = 3;
+	headersCol['comments'] = 4;
+	
+	// Go through each header
+	for (var i = 5; i < headers.length; i++) {
+		// Get the column index
+		headersCol[headers.eq(i).html()] = i;
+	}
+
+	// Go through each node
+	var datatable = $('#' + nodesTableId).dataTable();
+	var rows = datatable.fnGetData();
+	for (var node in attrs) {
+		// Get row containing node
+		var nodeRowPos;
+		for (var i in rows) {
+			// If column contains node
+			if (rows[i][1].indexOf('>' + node + '<') > -1) {
+				nodeRowPos = i;
+				break;
+			}
+		}
+				
+		// Get node status
+		var status = '';
+		if (attrs[node]['status']){
+			status = attrs[node]['status'].replace('sshd', 'ping');
+		}
+		
+		rows[nodeRowPos][headersCol['status']] = status;
+				
+		// Go through each header
+		for (var key in headersCol) {
+			// Do not put comments and status in twice
+			if (key != 'usercomment' && key != 'status' && key.indexOf('statustime') < 0) {
+    			var val = attrs[node][key];
+    			if (val) {
+    				rows[nodeRowPos][headersCol[key]] = val;
+    			}
+			}
+		}
+		
+		// Update row
+		datatable.fnUpdate(rows[nodeRowPos], nodeRowPos, 0, false);
+		
+		// Insert node comments
+		// This is done after datatable is updated because 
+		// you cannot insert an object using fnUpdate()
+		var comments = attrs[node]['usercomment'];
+				
+		// If no comments exists, show 'No comments' and 
+		// set icon image source
+		var iconSrc;
+		if (!comments) {
+			comments = 'No comments';
+			iconSrc = 'images/ui-icon-no-comment.png';
+		} else {
+			iconSrc = 'images/ui-icon-comment.png';
+		}
+				
+		// Create icon for node comments
+		var tipID = node + 'Tip';
+		var commentsCol = $('#' + node).parent().parent().find('td').eq(4);
+		
+		// Create tooltip
+		var icon = $('<img id="' + tipID + '" src="' + iconSrc + '"></img>').css({
+			'width': '18px',
+			'height': '18px'
+		});
+		
+		var tip = createCommentsToolTip(comments);
+		var span = $('<span></span>').append(icon);
+		span.append(tip);
+		commentsCol.append(span);
+				
+		// Generate tooltips
+		icon.tooltip({
+			position: "center right",
+			offset: [-2, 10],
+			effect: "fade",	
+			opacity: 0.8,
+			relative: true,
+			delay: 500
+		});
+	}
+
+	// Close dialog for updating table
+	$('.ui-dialog-content').dialog('close');
+	
+	/**
+	 * Enable editable columns
+	 */
+	
+	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
+	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5))').editable(
+		function(value, settings) {			
+			// Change text color to red
+			$(this).css('color', 'red');
+			
+			// Get column index
+			var colPos = this.cellIndex;
+						
+			// Get row index
+			var dTable = $('#' + nodesTableId).dataTable();
+			var rowPos = dTable.fnGetPosition(this.parentNode);
+			
+			// Update datatable
+			dTable.fnUpdate(value, rowPos, colPos, false);
+			
+			// Get node name
+			var node = $(this).parent().find('td a.node').text();
+			
+			// Flag node to update
+			flagNode2Update(node);
+			
+			// Show table menu actions
+			$('#tableActionMenu').show();
+
+			return (value);
+		}, {
+			onblur : 'submit', 	// Clicking outside editable area submits changes
+			type : 'textarea',
+			placeholder: ' ',
+			height : '30px' 	// The height of the text area
+		});
+	
+	// If request to get node status is made
+	if (getNodeStatus) {
     	// Get node status
     	$.ajax( {
     		url : 'lib/cmd.php',
@@ -775,35 +1248,20 @@ function loadNodes(data) {
     	});
 	} else {
 		// Hide status loader
-		var statCol = $('#nodesDatatable thead tr th').eq(2);
+		var statCol = $('#' + nodesTableId + ' thead tr th').eq(2);
 		statCol.find('img').hide();
 	}
-	
-	// Get definable node attributes
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'lsdef',
-			tgt : '',
-			args : '-t;node;-h',
-			msg : ''
-		},
-
-		success : setDefAttrs
-	});
 	
 	/**
 	 * Additional ajax requests need to be made for zVM
 	 */
-	// Get index of HCP column
-	var i = $.inArray('hcp', sorted);
-	if (i) {
+	// If there is an hcp column
+	if (headersCol['hcp']) {
 		// Get hardware control point
-		var rows = dTable.object().find('tbody tr');
+		var rows = $('#' + nodesTableId + ' tbody tr');
 		var hcps = new Object();
 		for (var j in rows) {
-			var val = rows.eq(j).find('td').eq(i).html();
+			var val = rows.eq(j).find('td').eq(headersCol['hcp']).html();
 			hcps[val] = 1;
 		}
 
@@ -811,8 +1269,8 @@ function loadNodes(data) {
 		for (var h in hcps) {
 			// Get node without domain name
 			args = h.split('.');
-			
-			// If there is no disk pool or network names cookie for this zHCP
+						
+			// If there are no disk pools or network names cookie for this hcp
 			if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
     			// Check if SMAPI is online
     			$.ajax( {
@@ -825,7 +1283,7 @@ function loadNodes(data) {
     					msg : 'group=' + group + ';hcp=' + args[0]
     				},
     
-    				// Load hardware control point (HCP) specific info
+    				// Load hardware control point specific info
     				// Get disk pools and network names
     				success : loadHcpInfo
     			});		
@@ -842,8 +1300,7 @@ function loadNodes(data) {
  * @return Nothing
  */
 function loadPowerStatus(data) {
-	// Get datatable
-	var dTable = $('#nodesDatatable').dataTable();
+	var dTable = $('#' + nodesTableId).dataTable();
 	var power = data.rsp;
 	var rowPos, node, status, args;
 
@@ -852,15 +1309,16 @@ function loadPowerStatus(data) {
 		args = power[i].split(':');
 		node = jQuery.trim(args[0]);
 		status = jQuery.trim(args[1]);
+		
 		// Get the row containing the node
-		rowPos = findRowIndexUsingCol(node, '#nodesDatatable', 1);
+		rowPos = findRow(node, '#' + nodesTableId, 1);
 
 		// Update the power status column
-		dTable.fnUpdate(status, rowPos, 3);
+		dTable.fnUpdate(status, rowPos, 3, false);
 	}
 	
 	// Hide power loader
-	var powerCol = $('#nodesDatatable thead tr th').eq(3);
+	var powerCol = $('#' + nodesTableId + ' thead tr th').eq(3);
 	powerCol.find('img').hide();
 }
 
@@ -873,16 +1331,19 @@ function loadPowerStatus(data) {
  */
 function refreshPowerStatus(group) {
 	// Show power loader
-	var powerCol = $('#nodesDatatable thead tr th').eq(3);
+	var powerCol = $('#' + nodesTableId + ' thead tr th').eq(3);
 	powerCol.find('img').show();
 	
-	// Get the power status
+	// Get power status for nodes shown
+	var nodes = getNodesShown(nodesTableId);
+		
+	// Get power status
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
 			cmd : 'rpower',
-			tgt : group,
+			tgt : nodes,
 			args : 'stat',
 			msg : ''
 		},
@@ -899,27 +1360,27 @@ function refreshPowerStatus(group) {
  * @return Nothing
  */
 function loadNodeStatus(data) {
-	// Get data table
-	var dTable = $('#nodesDatatable').dataTable();
+	var dTable = $('#' + nodesTableId).dataTable();
 	var rsp = data.rsp;
 	var args, rowPos, node, status;
 
-	// Get all nodes within the datatable
+	// Get all nodes within datatable
 	for (var i in rsp) {
 		args = rsp[i].split(':');
 		
 		// args[0] = node and args[1] = status
 		node = jQuery.trim(args[0]);
 		status = jQuery.trim(args[1]).replace('sshd', 'ping');
-		// Get the row containing the node
-		rowPos = findRowIndexUsingCol(node, '#nodesDatatable', 1);
+		
+		// Get row containing node
+		rowPos = findRow(node, '#' + nodesTableId, 1);
 
-		// Update the ping status column
-		dTable.fnUpdate(status, rowPos, 2);
+		// Update ping status column
+		dTable.fnUpdate(status, rowPos, 2, false);
 	}
 	
 	// Hide status loader
-	var statCol = $('#nodesDatatable thead tr th').eq(2);
+	var statCol = $('#' + nodesTableId + ' thead tr th').eq(2);
 	statCol.find('img').hide();
 }
 
@@ -932,8 +1393,11 @@ function loadNodeStatus(data) {
  */
 function refreshNodeStatus(group) {
 	// Show ping loader
-	var pingCol = $('#nodesDatatable thead tr th').eq(2);
+	var pingCol = $('#' + nodesTableId + ' thead tr th').eq(2);
 	pingCol.find('img').show();
+	
+	// Get power status for nodes shown
+	var nodes = getNodesShown(nodesTableId);
 	
 	// Get the node status
 	$.ajax( {
@@ -941,7 +1405,7 @@ function refreshNodeStatus(group) {
 		dataType : 'json',
 		data : {
 			cmd : 'nodestat',
-			tgt : group,
+			tgt : nodes,
 			args : '-u',
 			msg : ''
 		},
@@ -1026,7 +1490,7 @@ function loadNode(e) {
 }
 
 /**
- * Unlock a node by setting the SSH keys
+ * Unlock a node by setting the ssh keys
  * 
  * @param tgtNodes
  *            Nodes to unlock
@@ -1082,7 +1546,7 @@ function loadUnlockPage(tgtNodes) {
 	 * Ok
 	 */
 	var okBtn = createButton('Ok');
-	okBtn.bind('click', function(event) {
+	okBtn.click(function() {
 		// Remove any warning messages
 		$(this).parent().parent().find('.ui-state-error').remove();
 		
@@ -1204,7 +1668,7 @@ function loadScriptPage(tgtNodes) {
 	 * Run
 	 */
 	var runBtn = createButton('Run');
-	runBtn.bind('click', function(event) {
+	runBtn.click(function() {
 		// Remove any warning messages
 		$(this).parent().parent().find('.ui-state-error').remove();
 		
@@ -1237,7 +1701,7 @@ function loadScriptPage(tgtNodes) {
  * @return Sorted list
  */
 jQuery.fn.sort = function() {
-	return this.pushStack( [].sort.apply(this, arguments), []);
+	return this.pushStack([].sort.apply(this, arguments), []);
 };
 
 function sortAlpha(a, b) {
@@ -1328,7 +1792,7 @@ function loadDeletePage(tgtNodes) {
 	deleteForm.append(statBar);
 	deleteForm.append(statBar);
 	
-	// Word wrap
+	// Confirm delete
 	var instr = $('<p>Are you sure you want to delete ' + tgtNodesStr + '?</p>').css('word-wrap', 'break-word');
 	deleteForm.append(instr);
 
@@ -1336,7 +1800,7 @@ function loadDeletePage(tgtNodes) {
 	 * Delete
 	 */
 	var deleteBtn = createButton('Delete');
-	deleteBtn.bind('click', function(event) {
+	deleteBtn.click(function() {
 		// Delete the virtual server
 		$.ajax( {
 			url : 'lib/cmd.php',
@@ -1397,7 +1861,7 @@ function updateStatusBar(data) {
 		$('#' + statBarId).append(prg);	
 	} else if (cmd == 'rmvm') {
 		// Get data table
-		var dTable = $('#nodesDatatable').dataTable();
+		var dTable = $('#' + nodesTableId).dataTable();
 		var failed = false;
 
 		// Hide loader
@@ -1416,8 +1880,8 @@ function updateStatusBar(data) {
 		var rowPos;
 		for (var i in tgts) {
 			if (!failed) {
-				// Get the row containing the node link and delete it
-				rowPos = findRowIndexUsingCol(tgts[i], '#nodesDatatable', 1);
+				// Get row containing the node link and delete it
+				rowPos = findRow(tgts[i], '#' + nodesTableId, 1);
 				dTable.fnDeleteRow(rowPos);
 			}
 		}
@@ -1462,20 +1926,20 @@ function updateStatusBar(data) {
  */
 function updatePowerStatus(data) {
 	// Get datatable
-	var dTable = $('#nodesDatatable').dataTable();
+	var dTable = $('#' + nodesTableId).dataTable();
 
 	// Get xCAT response
 	var rsp = data.rsp;
 	// Loop through each line
 	var node, status, rowPos, strPos;
 	for (var i in rsp) {
-		// Get the node
+		// Get node name
 		node = rsp[i].split(":")[0];
 
 		// If there is no error
 		if (rsp[i].indexOf("Error") < 0 || rsp[i].indexOf("Failed") < 0) {
 			// Get the row containing the node link
-			rowPos = findRowIndexUsingCol(node, '#nodesDatatable', 1);
+			rowPos = findRow(node, '#' + nodesTableId, 1);
 
 			// If it was power on, then the data return would contain "Starting"
 			strPos = rsp[i].indexOf("Starting");
@@ -1486,7 +1950,7 @@ function updatePowerStatus(data) {
 			}
 
 			// Update the power status column
-			dTable.fnUpdate(status, rowPos, 3);
+			dTable.fnUpdate(status, rowPos, 3, false);
 		} else {
 			// Power on/off failed
 			alert(rsp[i]);
@@ -1593,7 +2057,7 @@ function setOSImageCookies(data) {
 
 	// Go through each index
 	for (var i = 1; i < rsp.length; i++) {
-		// Get the image name
+		// Get image name
 		var cols = rsp[i].split(',');
 		var osImage = cols[0].replace(new RegExp('"', 'g'), '');
 		var profile = cols[1].replace(new RegExp('"', 'g'), '');
@@ -1672,9 +2136,9 @@ function getNodesChecked(datatableId) {
 }
 
 /**
- * Find the row index using a column search value
+ * Find the row index containing a column with a given string
  * 
- * @param searchStr
+ * @param str
  *            String to search for
  * @param table
  *            Table to check
@@ -1682,20 +2146,17 @@ function getNodesChecked(datatableId) {
  *            Column to find string under
  * @return The row index containing the search string
  */
-function findRowIndexUsingCol(searchStr, table, col){
+function findRow(str, table, col){
 	var dTable, rows, cols;
 	
 	// Get datatable
 	dTable = $(table).dataTable();
 	rows = dTable.fnGetData();
-
+	
 	// Loop through each row
-	for (var i = 0; i < rows.length; i++) {
-		// Get columns in row
-		cols = dTable.fnGetData(i);
-		// If column contains string
-		if ( cols[col].indexOf(searchStr) > -1 ) {
-			// Return index
+	for (var i in rows) {
+		// If the column contains the search string
+		if (rows[i][col].indexOf(str) > -1) {
 			return i;
 		}
 	}
@@ -1704,7 +2165,7 @@ function findRowIndexUsingCol(searchStr, table, col){
 }
 
 /**
- * Select all checkboxes in a given datatable
+ * Select all checkboxes in the datatable
  * 
  * @param event
  *            Event on element
@@ -1715,9 +2176,9 @@ function findRowIndexUsingCol(searchStr, table, col){
 function selectAllCheckbox(event, obj) {
 	// Get datatable ID
 	// This will ascend from <input> <td> <tr> <thead> <table>
-	var datatableId = obj.parent().parent().parent().parent().attr('id');
+	var tableId = obj.parent().parent().parent().parent().attr('id');
 	var status = obj.attr('checked');
-	$('#' + datatableId + ' :checkbox').attr('checked', status);
+	$('#' + tableId + ' :checkbox').attr('checked', status);
 	event.stopPropagation();
 }
 
@@ -1769,7 +2230,7 @@ function flagNode2Update(node) {
 }
 
 /**
- * Update the node attributes
+ * Update node attributes
  * 
  * @param group
  *            The node group name
@@ -1777,12 +2238,12 @@ function flagNode2Update(node) {
  */
 function updateNodeAttrs(group) {
 	// Get the nodes datatable
-	var dTable = $('#nodesDatatable').dataTable();
+	var dTable = $('#' + nodesTableId).dataTable();
 	// Get all nodes within the datatable
 	var rows = dTable.fnGetNodes();
 	
 	// Get table headers
-	var headers = $('#nodesDatatable thead tr th');
+	var headers = $('#' + nodesTableId + ' thead tr th');
 							
 	// Get list of nodes to update
 	var nodesList = $.cookie('nodes2update');
@@ -1798,9 +2259,9 @@ function updateNodeAttrs(group) {
 			args = '';
 			
         	// Get the row containing the node link
-        	rowPos = findRowIndexUsingCol(nodes[i], '#nodesDatatable', 1);
+        	rowPos = findRow(nodes[i], '#' + nodesTableId, 1);
         	$(rows[rowPos]).find('td').each(function (){
-        		if ($(this).css('color') == 'red') {
+        		if ($(this).css('color') == 'red' || $(this).css('color') == 'rgb(255, 0, 0)') {
         			// Change color back to normal
         			$(this).css('color', '');
         			
@@ -1811,7 +2272,7 @@ function updateNodeAttrs(group) {
         			
         			// Get attribute name
         			attrName = jQuery.trim(headers.eq(colPos).text());
-        			
+        			        			
         			// Build argument string
         			if (args) {
         				// Handle subsequent arguments
@@ -1822,7 +2283,7 @@ function updateNodeAttrs(group) {
         			}		
         		}
         	});
-        	
+        	        	
         	// Send command to change node attributes
         	$.ajax( {
         		url : 'lib/cmd.php',
@@ -1855,9 +2316,9 @@ function restoreNodeAttrs() {
 	var nodes = nodesList.split(';');
 	
 	// Get the nodes datatable
-	var dTable = $('#nodesDatatable').dataTable();
+	var dTable = $('#' + nodesTableId).dataTable();
 	// Get table headers
-	var headers = $('#nodesDatatable thead tr th');
+	var headers = $('#' + nodesTableId + ' thead tr th');
 	// Get all nodes within the datatable
 	var rows = dTable.fnGetNodes();
 		
@@ -1867,9 +2328,9 @@ function restoreNodeAttrs() {
 	for (var i in nodes) {
 		if (nodes[i]) {			
 			// Get the row containing the node link
-        	rowPos = findRowIndexUsingCol(nodes[i], '#nodesDatatable', 1);
+        	rowPos = findRow(nodes[i], '#' + nodesTableId, 1);
         	$(rows[rowPos]).find('td').each(function (){
-        		if ($(this).css('color') == 'red') {
+        		if ($(this).css('color') == 'red' || $(this).css('color') == 'rgb(255, 0, 0)') {
         			// Change color back to normal
         			$(this).css('color', '');
         			
@@ -1881,7 +2342,7 @@ function restoreNodeAttrs() {
         			origVal = origAttrs[nodes[i]][attrName];
         			
         			// Update column
-        			dTable.fnUpdate(origVal, rowPos, colPos);
+        			dTable.fnUpdate(origVal, rowPos, colPos, false);
         		}
         	});
 		} // End of if
@@ -1892,10 +2353,10 @@ function restoreNodeAttrs() {
 }
 
 /**
- * Create a tool tip for comment
+ * Create a tool tip for comments
  * 
  * @param comment
- *            The comments to be placed in the tool tip
+ *            Comments to be placed in a tool tip
  * @return Tool tip
  */
 function createCommentsToolTip(comment) {
@@ -1920,6 +2381,7 @@ function createCommentsToolTip(comment) {
 		'padding': '5px',
 		'float': 'right'
 	};
+	
 	var saveLnk = $('<a>Save</a>').css(lnkStyle).hide();
 	var cancelLnk = $('<a>Cancel</a>').css(lnkStyle).hide();
 	var infoSpan = $('<span>Click to edit</span>').css(lnkStyle);
@@ -2155,15 +2617,15 @@ function showChdefOutput(data) {
 }
 
 /**
- * Set definable node attributes
+ * Set node attributes
  * 
  * @param data
  *            Data returned from HTTP request
  * @return Nothing
  */
-function setDefAttrs(data) {
+function setNodeAttrs(data) {
 	// Clear hash table containing definable node attributes
-	defAttrs = new Array();
+	nodeAttrs = new Array();
 	
 	// Get definable attributes
 	var attrs = data.rsp[2].split(/\n/);
@@ -2175,7 +2637,7 @@ function setDefAttrs(data) {
 		
 		// If the line is not empty
 		if (attr) {
-			// If the line has the attribute name 
+			// If the line has the attribute name
 			if (attr.indexOf(':') && attr.indexOf(' ')) {
     			// Get attribute name and description
     			key = jQuery.trim(attr.substring(0, attr.indexOf(':')));
@@ -2184,14 +2646,15 @@ function setDefAttrs(data) {
     			// Remove arrow brackets
     			descr = descr.replace(new RegExp('<|>', 'g'), '');
     			
-    			// Set hash table where key = attribute name and value = description
-        		defAttrs[key] = descr;
+    			// Set hash table where key = attribute name and value =
+				// description
+        		nodeAttrs[key] = descr;
 			} else {
 				// Remove arrow brackets
 				attr = attr.replace(new RegExp('<|>', 'g'), '');
     			
 				// Append description to hash table
-				defAttrs[key] = defAttrs[key] + '\n' + attr;
+				nodeAttrs[key] = nodeAttrs[key] + '\n' + attr;
 			}
 		} // End of if
 	} // End of for
@@ -2229,7 +2692,7 @@ function loadEditPropsPage(tgtNode) {
 	var div, label, input, descr, value;
 	// Set node attribute
 	origAttrs[tgtNode]['node'] = tgtNode;
-	for (var key in defAttrs) {
+	for (var key in nodeAttrs) {
 		// If an attribute value exists
 		if (origAttrs[tgtNode][key]) {
 			// Set the value
@@ -2241,7 +2704,7 @@ function loadEditPropsPage(tgtNode) {
 		// Create label and input for attribute
 		div = $('<div></div>').css('display', 'inline');
 		label = $('<label>' + key + ':</label>').css('vertical-align', 'middle');
-		input = $('<input type="text" value="' + value + '" title="' + defAttrs[key] + '"/>').css('margin-top', '5px');
+		input = $('<input type="text" value="' + value + '" title="' + nodeAttrs[key] + '"/>').css('margin-top', '5px');
 		
 		// Change border to blue onchange
 		input.bind('change', function(event) {
@@ -2279,7 +2742,7 @@ function loadEditPropsPage(tgtNode) {
 	 * Save
 	 */
 	var saveBtn = createButton('Save');
-	saveBtn.bind('click', function(event) {	
+	saveBtn.click(function() {	
 		// Get all inputs
 		var inputs = $('#' + newTabId + ' input');
 		
@@ -2327,7 +2790,7 @@ function loadEditPropsPage(tgtNode) {
 	 * Cancel
 	 */
 	var cancelBtn = createButton('Cancel');
-	cancelBtn.bind('click', function(event) {
+	cancelBtn.click(function() {
 		// Close the tab
 		tab.remove($(this).parent().parent().attr('id'));
 	});
@@ -2341,11 +2804,11 @@ function loadEditPropsPage(tgtNode) {
 }
 
 /**
- * Open set node properties dialog
+ * Open set node attributes dialog
  * 
  * @return Nothing
  */
-function openSetPropsDialog() {
+function openSetAttrsDialog() {
 	// Open new tab
 	// Create set properties form
 	var setPropsForm = $('<div class="form"></div>');
@@ -2356,13 +2819,13 @@ function openSetPropsDialog() {
 	
 	// Create an input for each definable attribute
 	var div, label, input, descr, value;
-	for (var key in defAttrs) {
+	for (var key in nodeAttrs) {
 		value = '';
 		
 		// Create label and input for attribute
 		div = $('<div></div>').css('display', 'inline');
 		label = $('<label>' + key + ':</label>').css('vertical-align', 'middle');
-		input = $('<input type="text" value="' + value + '" title="' + defAttrs[key] + '"/>').css('margin-top', '5px');
+		input = $('<input type="text" value="' + value + '" title="' + nodeAttrs[key] + '"/>').css('margin-top', '5px');
 		
 		// Change border to blue onchange
 		input.bind('change', function(event) {

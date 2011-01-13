@@ -1,4 +1,9 @@
 /**
+ * Global variables
+ */
+var nodesTableId = getNodesTableId();
+
+/**
  * Load Ganglia monitoring tool
  * 
  * @return Nothing
@@ -316,8 +321,8 @@ function loadNodes4Ganglia(data) {
 		'<a>ganglia</a><img src="images/loader.gif"></img>');
 
 	// Create a datatable
-	var dTable = new DataTable('nodesDatatable');
-	dTable.init(sorted);
+	var datatable = new DataTable(nodesTableId);
+	datatable.init(sorted);
 
 	// Go through each node
 	for ( var node in attrs) {
@@ -350,7 +355,7 @@ function loadNodes4Ganglia(data) {
 		}
 
 		// Add the row to the table
-		dTable.add(row);
+		datatable.add(row);
 	}
 
 	// Clear the tab before inserting the table
@@ -372,7 +377,7 @@ function loadNodes4Ganglia(data) {
 	// Power on
 	var powerOnLnk = $('<a>Power on</a>');
 	powerOnLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			powerNode(tgtNodes, 'on');
 		}
@@ -381,7 +386,7 @@ function loadNodes4Ganglia(data) {
 	// Power off
 	var powerOffLnk = $('<a>Power off</a>');
 	powerOffLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			powerNode(tgtNodes, 'off');
 		}
@@ -396,7 +401,7 @@ function loadNodes4Ganglia(data) {
 	 */
 	var monitorLnk = $('<a>Monitor</a>');
 	monitorLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 
 		}
@@ -405,7 +410,7 @@ function loadNodes4Ganglia(data) {
 	// Turn monitoring on
 	var monitorOnLnk = $('<a>Monitor on</a>');
 	monitorOnLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			monitorNode(tgtNodes, 'on');
 		}
@@ -414,7 +419,7 @@ function loadNodes4Ganglia(data) {
 	// Turn monitoring off
 	var monitorOffLnk = $('<a>Monitor off</a>');
 	monitorOffLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked('nodesDatatable');
+		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			monitorNode(tgtNodes, 'off');
 		}
@@ -436,24 +441,24 @@ function loadNodes4Ganglia(data) {
 	$('#nodesTab').append(actionBar);
 
 	// Insert table
-	$('#nodesTab').append(dTable.object());
+	$('#nodesTab').append(datatable.object());
 
 	// Turn table into a datatable
-	var myDataTable = $('#nodesDatatable').dataTable();
+	var myDataTable = $('#' + nodesTableId).dataTable();
 
 	// Do not sort ping and power column
-	var pingCol = $('#nodesDatatable thead tr th').eq(2);
-	var powerCol = $('#nodesDatatable thead tr th').eq(3);
-	var gangliaCol = $('#nodesDatatable thead tr th').eq(4);
+	var pingCol = $('#' + nodesTableId + ' thead tr th').eq(2);
+	var powerCol = $('#' + nodesTableId + ' thead tr th').eq(3);
+	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
 	pingCol.unbind('click');
 	powerCol.unbind('click');
 	gangliaCol.unbind('click');
 
 	// Create enough space for loader to be displayed
 	var style = {'min-width': '60px', 'text-align': 'center'};
-	$('#nodesDatatable tbody tr td:nth-child(3)').css(style);
-	$('#nodesDatatable tbody tr td:nth-child(4)').css(style);
-	$('#nodesDatatable tbody tr td:nth-child(5)').css(style);
+	$('#' + nodesTableId + ' tbody tr td:nth-child(3)').css(style);
+	$('#' + nodesTableId + ' tbody tr td:nth-child(4)').css(style);
+	$('#' + nodesTableId + ' tbody tr td:nth-child(5)').css(style);
 
 	// Instead refresh the ping status and power status
 	pingCol.find('span a').bind('click', function(event) {
@@ -511,7 +516,7 @@ function loadNodes4Ganglia(data) {
     	});
 	} else {
 		// Hide status loader
-		var statCol = $('#nodesDatatable thead tr th').eq(2);
+		var statCol = $('#' + nodesTableId + ' thead tr th').eq(2);
 		statCol.find('img').hide();
 	}
 
@@ -539,7 +544,7 @@ function loadNodes4Ganglia(data) {
  */
 function loadGangliaStatus(data) {
 	// Get datatable
-	var dTable = $('#nodesDatatable').dataTable();
+	var datatable = $('#' + nodesTableId).dataTable();
 	var ganglia = data.rsp;
 	var rowNum, node, status, args;
 
@@ -549,14 +554,14 @@ function loadGangliaStatus(data) {
 		status = jQuery.trim(ganglia[i][1]);
 
 		// Get the row containing the node
-		rowNum = findRowIndexUsingCol(node, '#nodesDatatable', 1);
+		rowNum = findRow(node, '#' + nodesTableId, 1);
 
 		// Update the power status column
-		dTable.fnUpdate(status, rowNum, 4);
+		datatable.fnUpdate(status, rowNum, 4);
 	}
 
 	// Hide Ganglia loader
-	var gangliaCol = $('#nodesDatatable thead tr th').eq(4);
+	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
 	gangliaCol.find('img').hide();
 }
 
@@ -569,7 +574,7 @@ function loadGangliaStatus(data) {
  */
 function refreshGangliaStatus(group) {
 	// Show ganglia loader
-	var gangliaCol = $('#nodesDatatable thead tr th').eq(4);
+	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
 	gangliaCol.find('img').show();
 
 	// Get the status of Ganglia

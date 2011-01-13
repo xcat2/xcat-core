@@ -28,19 +28,24 @@ if (isset($_GET["cmd"])) {
 	if (!$tgt) {
 		$tgt = NULL;
 	}
-
+	
 	// If no $msg is given, set $msg to NULL
 	if (!$msg) {
 		$msg = NULL;
 	}
 
-	// If $args contains multiple arguments, split it into an array
-	if (strpos($args,";")) {
-		// Split the arguments into an array
+	// If no $args is given, set $arr to NULL
+	if (!$args) {
 		$arr = array();
-		$arr = explode(";", $args);
 	} else {
-		$arr = array($args);
+		// If $args contains multiple arguments, split it into an array
+		if (strpos($args,";")) {
+			// Split the arguments into an array
+			$arr = array();
+			$arr = explode(";", $args);
+		} else {
+			$arr = array($args);
+		}
 	}
 
 	// Submit request and get response

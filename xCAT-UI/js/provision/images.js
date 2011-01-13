@@ -289,7 +289,7 @@ function updateImageAttrs() {
 			args = '';
 			
         	// Get the row containing the image name
-        	rowPos = findRowIndexUsingCol(images[i], '#imagesDataTable', 1);
+        	rowPos = findRow(images[i], '#imagesDataTable', 1);
         	$(rows[rowPos]).find('td').each(function (){
         		if ($(this).css('color') == 'red') {
         			// Change color back to normal
@@ -357,7 +357,7 @@ function restoreImageAttrs() {
 	for (var i in images) {
 		if (images[i]) {			
 			// Get the row containing the image name
-			rowPos = findRowIndexUsingCol(images[i], '#imagesDataTable', 1);
+			rowPos = findRow(images[i], '#imagesDataTable', 1);
         	$(rows[rowPos]).find('td').each(function (){
         		if ($(this).css('color') == 'red') {
         			// Change color back to normal
