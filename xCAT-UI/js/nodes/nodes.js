@@ -1190,6 +1190,9 @@ function addNodes2Table(data) {
 			delay: 500
 		});
 	}
+	
+	// Enable node link
+	$('.node').bind('click', loadNode);
 
 	// Close dialog for updating table
 	$('.ui-dialog-content').dialog('close');
