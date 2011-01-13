@@ -4,8 +4,14 @@ BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/o
 use lib "$::XCATROOT/lib/perl";
 use Data::Dumper;
 use xCAT::Client;
+use Getopt:Long;
 use strict;
 my %output;
+
+my $option;
+
+GetOptions("n"=>\$option);
+
 while (<STDIN>) {
     my $node;
     my $output;
@@ -36,7 +42,9 @@ foreach my $output (keys %collated) {
         noderange => [$nodes],
         command => ['rnoderange'],
     };
-    xCAT::Client::submit_request($cmdref,\&fillerup);
+    unless ($option) {
+        xCAT::Client::submit_request($cmdref,\&fillerup);
+    }
     print "====================================\n";
     print "$nodes\n";
     print "====================================\n";

@@ -4,7 +4,7 @@ B<xcoll> - Formats and consolidates the output of the B<psh>, B<rinv> commands.
 
 =head1 B<SYNOPSIS>
 
-B<xcoll>
+B<xcoll> [B<-n>]
 
 =head1 B<DESCRIPTION>
 
@@ -44,6 +44,13 @@ is identical:
  .
  .
 
+=head1 B<OPTIONS>
+
+=over 3
+
+=item B<-n>
+
+Display output as nodenames instead of groupnames.
 
 =head1 B<EXAMPLES>
 
