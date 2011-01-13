@@ -1815,7 +1815,6 @@ sub setNodesAttribs {
     my %cols = ();
     my @orderedcols=();
     my $oldac = $self->{dbh}->{AutoCommit}; #save autocommit state
-    my $xcatcfg =get_xcatcfg();  # get current database 
     $self->{dbh}->{AutoCommit}=0; #turn off autocommit for performance
     my $hashrec;
     my $colsmatch=1;
