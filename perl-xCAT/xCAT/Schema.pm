@@ -491,7 +491,7 @@ nodelist => {
      primarysn => 'Not used currently. The primary servicenode, used by this node.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
-     hidden => "Used to hide fsp and bpa definitions, 0 means not show them when running lsdef and nodels",
+     hidden => "Used to hide fsp and bpa definitions, 1 means not show them when running lsdef and nodels",
     },
   },
 nodepos => {
