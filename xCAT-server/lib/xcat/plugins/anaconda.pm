@@ -506,9 +506,10 @@ sub mknetboot
 			        }
 		        }
 
-                # special case for redhat6, fedora12/13
+                # special case for redhat6, fedora12/13/14
                 if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/ 
-                    || $osver =~ m/fedora12/ || $osver =~ m/fedora13/ ) {
+                    || $osver =~ m/fedora12/ || $osver =~ m/fedora13/ 
+                    || $osver =~ m/fedora14/ ) {
                     $kcmdline = "root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
                 } else {
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
@@ -676,7 +677,9 @@ sub mknetboot
         my $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
         $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz" if ($statelite);
         # special case for the dracut-enabled OSes
-        if ($osver =~ m/rhels6/ || $osver =~ m/rhel6/ || $osver =~ m/fedora12/ || $osver =~ m/fedora13/) {
+        if ($osver =~ m/rhels6/ || $osver =~ m/rhel6/ 
+            || $osver =~ m/fedora12/ || $osver =~ m/fedora13/
+            || $osver =~ m/fedora14/ ) {
             if($statelite and $rootfstype eq "ramdisk") {
                 $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
             }
