@@ -2911,7 +2911,7 @@ sub defls
                     $_= $n;
                     s/ +\(node\)//;
                     my ($hidhash) = $listtab->getNodeAttribs($_ ,['hidden']);
-                    if ( $hidhash->{hidden} ne 0)  {
+                    if ( $hidhash->{hidden} ne 1)  {
                         push (@{$newrsp->{data}}, $n);
                     }
                 }
