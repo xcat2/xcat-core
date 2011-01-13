@@ -1036,18 +1036,18 @@ sub runcmd
     if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }   
 
 	# get this systems name as known by xCAT management node
-	my $Sname = xCAT::InstUtils->myxCATname();
+	#my $Sname = xCAT::InstUtils->myxCATname();
 
-	if ($::VERBOSE)
-	{
-		if ($::CALLBACK){
-			my $rsp    = {};
-			$rsp->{data}->[0] = "Running command on $Sname: $cmd\n";
-			xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-		} else {
-			xCAT::MsgUtils->message("I", "Running command on $Sname: $cmd\n");
-		}
-	}
+	#if ($::VERBOSE)
+	#{
+	#	if ($::CALLBACK){
+	#		my $rsp    = {};
+	#		$rsp->{data}->[0] = "Running command on $Sname: $cmd\n";
+	#		xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+	#	} else {
+	#		xCAT::MsgUtils->message("I", "Running command on $Sname: $cmd\n");
+	#	}
+	#}
 
     my $outref = [];
     @$outref = `$cmd`;
