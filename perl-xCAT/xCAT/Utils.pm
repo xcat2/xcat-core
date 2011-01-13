@@ -2843,33 +2843,56 @@ sub getNodeIPaddress
                         }
                     }
 
-                    my $hstab =  xCAT::Table->new('hosts'); 
-                	if ( $hstab ) {
-                	    my @myip = ();
-                	    foreach ( @$c1 )
-                	    {
-                                my $point= $hstab->getNodeAttribs($_, ['ip']);
-                                my $value = $point->{ip};
-                                push (@myip, $value);
-                        }
-                        $ips = join ",", @myip;
-                        return $ips;
+                    #my $hstab =  xCAT::Table->new('hosts');
+                    #if ( $hstab ) {
+                    #    my @myip = ();
+                    #    foreach ( @$c1 )
+                    #    {
+                    #            my $point= $hstab->getNodeAttribs($_, ['ip']);
+                    #            my $value = $point->{ip};
+                    #            push (@myip, $value);
+                    #    }
+                    #    $ips = join ",", @myip;
+                    #    return $ips;
+                    #}
+
+                    #modify the way of finding IP address.
+                    my @myip = ();
+                    my @nonip =();
+                    foreach ( @$c1 )
+                    {
+                        my $ifip = isIpaddr($_);
+                            if ($ifip)      {
+                                push (@myip, $_);
+                            } else {
+                                push (@nonip, $_);
+                            }
                     }
+                    my $hstab =  xCAT::Table->new('hosts');
+                    if ( $hstab ) {
+                        my $ent = $hstab->getNodesAttribs(\@nonip,['ip']);
+                        foreach ( @nonip) {
+                            push (@myip, $_);
+                        }
+                    }
+                    $ips = join ",", @myip;
+                    return $ips;
                 }
             }
         }
     }
-        	
-    	    
+
+            
+            
     if ( $nodeip ) {
         return $nodeip;
     } else {
         return undef;
     }
 }
-    	
-	
-	
+        
+    
+    
 #-------------------------------------------------------------------------------
 
 =head3   thishostisnot
