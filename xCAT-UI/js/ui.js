@@ -414,16 +414,16 @@ function createMenu(items) {
 function initPage() {
 	// JQuery plugins
 	includeJs("js/jquery/jquery.dataTables.min.js");
-	includeJs("js/jquery/jquery.form.js");
-	includeJs("js/jquery/jquery.jeditable.js");
-	includeJs("js/jquery/jquery.contextmenu.js");
-	includeJs("js/jquery/jquery.cookie.js");
-	includeJs("js/jquery/superfish.js");
-	includeJs("js/jquery/hoverIntent.js");
-	includeJs("js/jquery/jquery.jstree.js");
-	includeJs("js/jquery/jquery.flot.js");
+	includeJs("js/jquery/jquery.form.min.js");
+	includeJs("js/jquery/jquery.jeditable.min.js");
+	includeJs("js/jquery/jquery.contextmenu.min.js");
+	includeJs("js/jquery/jquery.cookie.min.js");
+	includeJs("js/jquery/superfish.min.js");
+	includeJs("js/jquery/hoverIntent.min.js");
+	includeJs("js/jquery/jquery.jstree.min.js");
+	includeJs("js/jquery/jquery.flot.min.js");
 	includeJs("js/jquery/tooltip.min.js");
-	includeJs("js/jquery/jquery.serverBrowser.js");
+	includeJs("js/jquery/jquery.serverBrowser.min.js");
 
 	// Page plugins
 	includeJs("js/configure/configure.js");	
