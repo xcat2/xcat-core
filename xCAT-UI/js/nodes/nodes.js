@@ -499,11 +499,14 @@ function loadNodes(data) {
 		// Create a check box, node link, and get node status
 		var checkBx = '<input type="checkbox" name="' + node + '"/>';
 		var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
+		
+		// If there is no status attribute for the node, do not try to access hash table
+		// Else the code will break
 		var status = '';
-		if (attrs[node]['status']){
+		if (attrs[node]['status']) {
 			status = attrs[node]['status'].replace('sshd', 'ping');
 		}
-				
+			
 		// Push in checkbox, node, status, and power
 		row.push(checkBx, nodeLink, status, '');
 		
@@ -771,7 +774,7 @@ function loadNodes(data) {
 			
 			// If there are nodes found, get the node attributes
 			if (!$('#' + nodesTableId + ' .dataTables_empty').length) {
-				getNodeAttrs(getNodeAttrs);
+				getNodeAttrs(group);
 			}
 		}
 	});

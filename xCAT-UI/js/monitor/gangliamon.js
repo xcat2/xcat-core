@@ -1,7 +1,8 @@
 /**
  * Global variables
  */
-var nodesTableId = getNodesTableId();
+var gangliaTableId = 'gangliaDatatable';
+var gangliaNodesList;
 
 /**
  * Load Ganglia monitoring tool
@@ -13,7 +14,7 @@ function loadGangliaMon() {
 	var gangliaTab = $('#gangliamon');
 
 	// Check whether Ganglia RPMs are installed on the xCAT MN
-	$.ajax( {
+	$.ajax({
 		url : 'lib/systemcmd.php',
 		dataType : 'json',
 		data : {
@@ -179,8 +180,7 @@ function loadGroups4Ganglia(data) {
 	});
 
 	// Load nodes onclick
-	$('#groups')
-		.bind('select_node.jstree', function(event, data) {
+	$('#groups').bind('select_node.jstree', function(event, data) {
 			// If there are subgroups, remove them
 			data.rslt.obj.children('ul').remove();
 			var thisGroup = jQuery.trim(data.rslt.obj.text());
@@ -220,34 +220,84 @@ function loadGroups4Ganglia(data) {
 			$('#nodes').append(tab.object());
 			tab.add('nodesTab', 'Nodes', loader, false);
 
-			// Get nodes within selected group
+			// To improve performance, get all nodes within selected group
+			// Get node definitions only for first 50 nodes
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
 				data : {
-					cmd : 'lsdef',
-					tgt : '',
-					args : thisGroup,
+					cmd : 'nodels',
+					tgt : thisGroup,
+					args : '',
 					msg : thisGroup
 				},
 
-				success : loadNodes4Ganglia
+				/**
+				 * Get node definitions for first 50 nodes
+				 * 
+				 * @param data
+				 *            Data returned from HTTP request
+				 * @return Nothing
+				 */
+				success : function(data) {
+					var rsp = data.rsp;
+					var group = data.msg;
+					
+					// Save nodes in a list so it can be accessed later
+					nodesList = new Array();
+					for (var i in rsp) {
+						if (rsp[i][0]) {
+							nodesList.push(rsp[i][0]);
+						}
+					}
+										
+					// Sort nodes list
+					nodesList.sort();
+					
+					// Get first 50 nodes
+					var nodes = '';
+					for (var i = 0; i < nodesList.length; i++) {
+						if (i > 49) {
+							break;
+						}
+						
+						nodes += nodesList[i] + ',';						
+					}
+								
+					// Remove last comma
+					nodes = nodes.substring(0, nodes.length-1);
+					
+					// Get nodes definitions
+					$.ajax( {
+						url : 'lib/cmd.php',
+						dataType : 'json',
+						data : {
+							cmd : 'lsdef',
+							tgt : '',
+							args : nodes,
+							msg : group
+						},
+
+						success : loadNodes4Ganglia
+					});
+				}
 			});
-
-			// Get subgroups within selected group only when this is the parent group and not a subgroup
+						
+			// Get subgroups within selected group
+			// only when this is the parent group and not a subgroup
 			if (data.rslt.obj.attr('id').indexOf('Subgroup') < 0) {
-				$.ajax( {
-					url : 'lib/cmd.php',
-					dataType : 'json',
-					data : {
-						cmd : 'extnoderange',
-						tgt : thisGroup,
-						args : 'subgroups',
-						msg : thisGroup
-					},
-
-					success : loadSubgroups
-				});
+    			$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'extnoderange',
+    					tgt : thisGroup,
+    					args : 'subgroups',
+    					msg : thisGroup
+    				},
+    
+    				success : loadSubgroups
+    			});
 			}
 		} // End of if (thisGroup)
 	});
@@ -288,10 +338,10 @@ function loadNodes4Ganglia(data) {
 		}
 
 		// Get key and value
-		args = rsp[i].split('=');
+		args = rsp[i].split('=', 2);
 		var key = jQuery.trim(args[0]);
-		var val = jQuery.trim(args[1]);
-
+		var val = jQuery.trim(rsp[i].substring(rsp[i].indexOf('=') + 1, rsp[i].length));
+		
 		// Create a hash table
 		attrs[node][key] = val;
 		headers[key] = 1;
@@ -302,7 +352,16 @@ function loadNodes4Ganglia(data) {
 			getNodeStatus = false;
 		}
 	}
-
+	
+	// Add nodes that are not in data returned
+	for (var i in nodesList) {
+		if (!attrs[nodesList[i]]) {
+			// Create attributes list and save node name
+			attrs[nodesList[i]] = new Object();
+			attrs[nodesList[i]]['node'] = nodesList[i];
+		}
+	}
+	
 	// Sort headers
 	var sorted = new Array();
 	for ( var key in headers) {
@@ -321,21 +380,26 @@ function loadNodes4Ganglia(data) {
 		'<a>ganglia</a><img src="images/loader.gif"></img>');
 
 	// Create a datatable
-	var datatable = new DataTable(nodesTableId);
-	datatable.init(sorted);
+	var gangliaTable = new DataTable(gangliaTableId);
+	gangliaTable.init(sorted);
 
 	// Go through each node
 	for ( var node in attrs) {
 		// Create a row
 		var row = new Array();
-		
-		// Create a check box
+
+		// Create a check box, node link, and get node status
 		var checkBx = '<input type="checkbox" name="' + node + '"/>';
-		// Open node onclick
 		var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
-		// Get node status
-		var status = attrs[node]['status'].replace('sshd', 'ping');
 		
+		// If there is no status attribute for the node, do not try to access hash table
+		// Else the code will break
+		var status = '';
+		if (attrs[node]['status']) {
+			status = attrs[node]['status'].replace('sshd', 'ping');
+		}
+
+		// Push in checkbox, node, status, and power
 		row.push(checkBx, nodeLink, status, '', '');
 
 		// Go through each header
@@ -355,9 +419,9 @@ function loadNodes4Ganglia(data) {
 		}
 
 		// Add the row to the table
-		datatable.add(row);
+		gangliaTable.add(row);
 	}
-
+	
 	// Clear the tab before inserting the table
 	$('#nodesTab').children().remove();
 
@@ -376,8 +440,8 @@ function loadNodes4Ganglia(data) {
 
 	// Power on
 	var powerOnLnk = $('<a>Power on</a>');
-	powerOnLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked(nodesTableId);
+	powerOnLnk.click(function() {
+		var tgtNodes = getNodesChecked(gangliaTableId);
 		if (tgtNodes) {
 			powerNode(tgtNodes, 'on');
 		}
@@ -385,8 +449,8 @@ function loadNodes4Ganglia(data) {
 
 	// Power off
 	var powerOffLnk = $('<a>Power off</a>');
-	powerOffLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked(nodesTableId);
+	powerOffLnk.click(function() {
+		var tgtNodes = getNodesChecked(gangliaTableId);
 		if (tgtNodes) {
 			powerNode(tgtNodes, 'off');
 		}
@@ -400,17 +464,11 @@ function loadNodes4Ganglia(data) {
 	 * Monitor
 	 */
 	var monitorLnk = $('<a>Monitor</a>');
-	monitorLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked(nodesTableId);
-		if (tgtNodes) {
-
-		}
-	});
 
 	// Turn monitoring on
 	var monitorOnLnk = $('<a>Monitor on</a>');
-	monitorOnLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked(nodesTableId);
+	monitorOnLnk.click(function() {
+		var tgtNodes = getNodesChecked(gangliaTableId);
 		if (tgtNodes) {
 			monitorNode(tgtNodes, 'on');
 		}
@@ -418,8 +476,8 @@ function loadNodes4Ganglia(data) {
 
 	// Turn monitoring off
 	var monitorOffLnk = $('<a>Monitor off</a>');
-	monitorOffLnk.bind('click', function(event) {
-		var tgtNodes = getNodesChecked(nodesTableId);
+	monitorOffLnk.click(function() {
+		var tgtNodes = getNodesChecked(gangliaTableId);
 		if (tgtNodes) {
 			monitorNode(tgtNodes, 'off');
 		}
@@ -429,9 +487,7 @@ function loadNodes4Ganglia(data) {
 	var monitorActions = [ monitorOnLnk, monitorOffLnk ];
 	var monitorActionMenu = createMenu(monitorActions);
 
-	/**
-	 * Create an action menu
-	 */
+	// Create an action menu
 	var actionsDIV = $('<div></div>');
 	var actions = [ [ powerLnk, powerActionMenu ], [ monitorLnk, monitorActionMenu ] ];
 	var actionMenu = createMenu(actions);
@@ -441,24 +497,48 @@ function loadNodes4Ganglia(data) {
 	$('#nodesTab').append(actionBar);
 
 	// Insert table
-	$('#nodesTab').append(datatable.object());
+	$('#nodesTab').append(gangliaTable.object());
 
 	// Turn table into a datatable
-	var myDataTable = $('#' + nodesTableId).dataTable();
+	var gangliaDataTable = $('#' + gangliaTableId).dataTable({
+		'iDisplayLength': 50
+	});
+	
+	// Filter table when enter key is pressed
+	$('#' + gangliaTableId + '_filter input').unbind();
+	$('#' + gangliaTableId + '_filter input').bind('keyup', function(e){
+		if (e.keyCode == 13) {
+			var table = $('#' + gangliaTableId).dataTable();
+			table.fnFilter($(this).val());
+			
+			// If there are nodes found, get the node attributes
+			if (!$('#' + gangliaTableId + ' .dataTables_empty').length) {
+				getNodeAttrs4Ganglia(group);
+			}
+		}
+	});
+	
+	// Load node definitions when next or previous buttons are clicked
+	$('#' + gangliaTableId + '_next, #' + gangliaTableId + '_previous').click(function() {
+		getNodeAttrs4Ganglia(group);
+	});
 
-	// Do not sort ping and power column
-	var pingCol = $('#' + nodesTableId + ' thead tr th').eq(2);
-	var powerCol = $('#' + nodesTableId + ' thead tr th').eq(3);
-	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	// Do not sort ping, power, and comment column
+	var cols = $('#' + gangliaTableId + ' thead tr th').click(function() {		
+		getNodeAttrs4Ganglia(group);
+	});
+	var pingCol = $('#' + gangliaTableId + ' thead tr th').eq(2);
+	var powerCol = $('#' + gangliaTableId + ' thead tr th').eq(3);
+	var gangliaCol = $('#' + gangliaTableId + ' thead tr th').eq(4);
 	pingCol.unbind('click');
 	powerCol.unbind('click');
 	gangliaCol.unbind('click');
 
 	// Create enough space for loader to be displayed
 	var style = {'min-width': '60px', 'text-align': 'center'};
-	$('#' + nodesTableId + ' tbody tr td:nth-child(3)').css(style);
-	$('#' + nodesTableId + ' tbody tr td:nth-child(4)').css(style);
-	$('#' + nodesTableId + ' tbody tr td:nth-child(5)').css(style);
+	$('#' + gangliaTableId + ' tbody tr td:nth-child(3)').css(style);
+	$('#' + gangliaTableId + ' tbody tr td:nth-child(4)').css(style);
+	$('#' + gangliaTableId + ' tbody tr td:nth-child(5)').css(style);
 
 	// Instead refresh the ping status and power status
 	pingCol.find('span a').bind('click', function(event) {
@@ -516,18 +596,19 @@ function loadNodes4Ganglia(data) {
     	});
 	} else {
 		// Hide status loader
-		var statCol = $('#' + nodesTableId + ' thead tr th').eq(2);
+		var statCol = $('#' + gangliaTableId + ' thead tr th').eq(2);
 		statCol.find('img').hide();
 	}
 
 	// Get the status of Ganglia
+	var nodes = getNodesShown(gangliaTableId);
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
 			cmd : 'webrun',
 			tgt : '',
-			args : 'gangliastatus;' + group,
+			args : 'gangliastatus;' + nodes,
 			msg : ''
 		},
 
@@ -544,7 +625,7 @@ function loadNodes4Ganglia(data) {
  */
 function loadGangliaStatus(data) {
 	// Get datatable
-	var datatable = $('#' + nodesTableId).dataTable();
+	var datatable = $('#' + gangliaTableId).dataTable();
 	var ganglia = data.rsp;
 	var rowNum, node, status, args;
 
@@ -554,14 +635,14 @@ function loadGangliaStatus(data) {
 		status = jQuery.trim(ganglia[i][1]);
 
 		// Get the row containing the node
-		rowNum = findRow(node, '#' + nodesTableId, 1);
+		rowNum = findRow(node, '#' + gangliaTableId, 1);
 
 		// Update the power status column
 		datatable.fnUpdate(status, rowNum, 4);
 	}
 
 	// Hide Ganglia loader
-	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	var gangliaCol = $('#' + gangliaTableId + ' thead tr th').eq(4);
 	gangliaCol.find('img').hide();
 }
 
@@ -574,8 +655,11 @@ function loadGangliaStatus(data) {
  */
 function refreshGangliaStatus(group) {
 	// Show ganglia loader
-	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	var gangliaCol = $('#' + gangliaTableId + ' thead tr th').eq(4);
 	gangliaCol.find('img').show();
+	
+	// Get power status for nodes shown
+	var nodes = getNodesShown(gangliaTableId);
 
 	// Get the status of Ganglia
 	$.ajax( {
@@ -584,7 +668,7 @@ function refreshGangliaStatus(group) {
 		data : {
 			cmd : 'webrun',
 			tgt : '',
-			args : 'gangliastatus;' + group,
+			args : 'gangliastatus;' + nodes,
 			msg : ''
 		},
 
@@ -715,4 +799,209 @@ function monitorNode(node, monitor) {
 			}
 		});
 	}
+}
+
+/**
+ * Get attributes for nodes not yet initialized
+ * 
+ * @param group
+ *            Group name
+ * @return Nothing
+ */
+function getNodeAttrs4Ganglia(group) {	
+	// Get datatable headers and rows
+	var headers = $('#' + gangliaTableId + ' thead tr th');
+	var nodes = $('#' + gangliaTableId + ' tbody tr');
+	
+	// Find group column
+	var head, groupsCol;
+	for (var i = 0; i < headers.length; i++) {
+		head = headers.eq(i).html();
+		if (head == 'groups') {
+			groupsCol = i;
+			break;
+		}
+	}
+
+	// Check if groups definition is set
+	var node, cols;
+	var tgtNodes = '';
+	for (var i = 0; i < nodes.length; i++) {
+		cols = nodes.eq(i).find('td');
+		if (!cols.eq(groupsCol).html()) {
+			node = cols.eq(1).text();
+			tgtNodes += node + ',';
+		}
+	}
+		
+	// If there are node definitions to load
+	if (tgtNodes) {
+		// Remove last comma
+		tgtNodes = tgtNodes.substring(0, tgtNodes.length-1);
+				
+		// Get node definitions
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'lsdef',
+				tgt : '',
+				args : tgtNodes,
+				msg : group
+			},
+	
+			success : addNodes2GangliaTable
+		});
+		
+		// Create dialog to indicate table is updating
+		var update = $('<div id="updatingDialog" class="ui-state-highlight ui-corner-all">' 
+				+ '<p><span class="ui-icon ui-icon-info"></span> Updating table <img src="images/loader.gif"/></p>'
+			+'</div>');
+		update.dialog({
+			modal: true,
+			width: 300,
+			position: 'center'
+		});
+	}
+}
+
+/**
+ * Add nodes to datatable
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function addNodes2GangliaTable(data) {
+	// Data returned
+	var rsp = data.rsp;
+	// Group name
+	var group = data.msg;
+	// Hash of node attributes
+	var attrs = new Object();
+	// Node attributes
+	var headers = $('#' + gangliaTableId + ' thead tr th');
+
+	// Variable to send command and request node status
+	var getNodeStatus = true;
+	
+	// Go through each attribute
+	var node, args;
+	for (var i in rsp) {
+		// Get node name
+		if (rsp[i].indexOf('Object name:') > -1) {
+			var temp = rsp[i].split(': ');
+			node = jQuery.trim(temp[1]);
+
+			// Create a hash for node attributes
+			attrs[node] = new Object();
+			i++;
+		}
+
+		// Get key and value
+		args = rsp[i].split('=', 2);
+		var key = jQuery.trim(args[0]);
+		var val = jQuery.trim(rsp[i].substring(rsp[i].indexOf('=') + 1, rsp[i].length));
+
+		// Create a hash table
+		attrs[node][key] = val;
+		
+		// If node status is available
+		if (key == 'status') {
+			// Do not request node status
+			getNodeStatus = false;
+		}
+	}
+
+	// Set the first four headers
+	var headersCol = new Object();
+	headersCol['node'] = 1;
+	headersCol['status'] = 2;
+	headersCol['power'] = 3;
+	headersCol['ganglia'] = 4;
+	
+	// Go through each header
+	for (var i = 5; i < headers.length; i++) {
+		// Get the column index
+		headersCol[headers.eq(i).html()] = i;
+	}
+
+	// Go through each node
+	var datatable = $('#' + gangliaTableId).dataTable();
+	var rows = datatable.fnGetData();
+	for (var node in attrs) {
+		// Get row containing node
+		var nodeRowPos;
+		for (var i in rows) {
+			// If column contains node
+			if (rows[i][1].indexOf('>' + node + '<') > -1) {
+				nodeRowPos = i;
+				break;
+			}
+		}
+
+		// Get node status
+		var status = '';
+		if (attrs[node]['status']){
+			status = attrs[node]['status'].replace('sshd', 'ping');
+		}
+		
+		rows[nodeRowPos][headersCol['status']] = status;
+
+		// Go through each header
+		for (var key in headersCol) {
+			// Do not put comments and status in twice
+			if (key != 'usercomment' && key != 'status' && key.indexOf('statustime') < 0) {
+    			var val = attrs[node][key];
+    			if (val) {
+    				rows[nodeRowPos][headersCol[key]] = val;
+    			}
+			}
+		}
+		
+		// Update row
+		datatable.fnUpdate(rows[nodeRowPos], nodeRowPos, 0, false);
+	}
+
+	// Enable node link
+	$('.node').bind('click', loadNode);
+
+	// Close dialog for updating table
+	$('.ui-dialog-content').dialog('close');
+	
+	// If request to get node status is made
+	if (getNodeStatus) {
+    	// Get the node status
+    	$.ajax( {
+    		url : 'lib/cmd.php',
+    		dataType : 'json',
+    		data : {
+    			cmd : 'nodestat',
+    			tgt : group,
+    			args : '',
+    			msg : ''
+    		},
+    
+    		success : loadNodeStatus
+    	});
+	} else {
+		// Hide status loader
+		var statCol = $('#' + gangliaTableId + ' thead tr th').eq(2);
+		statCol.find('img').hide();
+	}
+
+	// Get the status of Ganglia
+	var nodes = getNodesShown(gangliaTableId);
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'gangliastatus;' + nodes,
+			msg : ''
+		},
+
+		success : loadGangliaStatus
+	});
 }
