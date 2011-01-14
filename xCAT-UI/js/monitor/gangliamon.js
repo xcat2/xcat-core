@@ -1,7 +1,7 @@
 /**
  * Global variables
  */
-var gangliaTableId = 'gangliaDatatable';
+var gangliaTableId = 'nodesDatatable';
 var gangliaNodesList;
 
 /**
@@ -542,10 +542,10 @@ function loadNodes4Ganglia(data) {
 
 	// Instead refresh the ping status and power status
 	pingCol.find('span a').bind('click', function(event) {
-		refreshNodeStatus(group);
+		refreshNodeStatus(group, gangliaTableId);
 	});
 	powerCol.find('span a').bind('click', function(event) {
-		refreshPowerStatus(group);
+		refreshPowerStatus(group, gangliaTableId);
 	});
 	gangliaCol.bind('click', function(event) {
 		refreshGangliaStatus(group);

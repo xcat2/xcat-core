@@ -502,7 +502,7 @@ function createFspDiv(fspName, mtm, fsp){
 		}
 		var lparName = fsp[fspName]['children'][lparIndex];
 		var color = statusMap(lparList[lparName]);
-		lparStatusRow += '<td class="lparStatus" style="background-image:url(images/' + color + '.gif);padding: 0px;" name="' + lparName + '"></td>';
+		lparStatusRow += '<td class="lparStatus" style="background-image:url(images/nodes/' + color + '.gif);padding: 0px;" name="' + lparName + '"></td>';
 	}
 	
 	//select the backgroud
@@ -632,12 +632,12 @@ function changeNode(lparName, status){
 	var checkFlag = true;
 	if ('select' == status){
 		selectNode[lparName] = 1;
-		imgUrl = 'url(images/s-'+ statusMap(lparList[lparName]) + '.gif)';
+		imgUrl = 'url(images/nodes/s-'+ statusMap(lparList[lparName]) + '.gif)';
 		checkFlag = true;
 	}
 	else{
 		delete selectNode[lparName];
-		imgUrl = 'url(images/'+ statusMap(lparList[lparName]) + '.gif)';
+		imgUrl = 'url(images/nodes/'+ statusMap(lparList[lparName]) + '.gif)';
 		checkFlag = false;
 	}
 	$('#graphTable [name=' + lparName + ']').css('background-image', imgUrl);

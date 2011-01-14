@@ -449,7 +449,7 @@ legend {
 
 /*--------------- jQuery context menu ---------------*/
 .context-menu-theme-vista {
-	background: #FAFAFA url(../images/context-menu-bg.gif) repeat-y left top
+	background: #FAFAFA url(../images/contextmenu/context-menu-bg.gif) repeat-y left top
 		;
 	border: 1px solid #868686;
 }
@@ -470,7 +470,7 @@ legend {
 }
 
 .context-menu-theme-vista .context-menu-item-hover {
-	background: transparent url(../images/context-menu-item-hover.gif)
+	background: transparent url(../images/contextmenu/context-menu-item-hover.gif)
 		repeat-x left center;
 	border: 1px solid #D7D0B3;
 }

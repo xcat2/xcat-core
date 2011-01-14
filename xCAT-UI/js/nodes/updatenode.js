@@ -96,8 +96,8 @@ function loadUpdatenodePage(tgtNodes) {
     			image : 'desktop.png',
     			path : '/install'
     		} ],
-    		imageUrl : 'images/',
-    		systemImageUrl : 'images/',
+    		imageUrl : 'images/serverbrowser/',
+    		systemImageUrl : 'images/serverbrowser/',
     		handlerUrl : 'lib/getpath.php',
     		title : 'Browse',
     		requestMethod : 'POST',
@@ -143,8 +143,8 @@ function loadUpdatenodePage(tgtNodes) {
 			image : 'desktop.png',
 			path : '/install'
 		} ],
-		imageUrl : 'images/',
-		systemImageUrl : 'images/',
+		imageUrl : 'images/serverbrowser/',
+		systemImageUrl : 'images/serverbrowser/',
 		handlerUrl : 'lib/getpath.php',
 		title : 'Browse',
 		requestMethod : 'POST',

@@ -518,9 +518,9 @@ function loadNodes(data) {
 			var iconSrc;
 			if (!comments) {
 				comments = 'No comments';
-				iconSrc = 'images/ui-icon-no-comment.png';
+				iconSrc = 'images/nodes/ui-icon-no-comment.png';
 			} else {
-				iconSrc = 'images/ui-icon-comment.png';
+				iconSrc = 'images/nodes/ui-icon-comment.png';
 			}
 					
 			// Create comments icon
@@ -810,10 +810,10 @@ function loadNodes(data) {
 	
 	// Instead refresh the node status and power status
 	pingCol.find('span a').click(function() {
-		refreshNodeStatus(group);
+		refreshNodeStatus(group, nodesTableId);
 	});
 	powerCol.find('span a').click(function() {
-		refreshPowerStatus(group);
+		refreshPowerStatus(group, nodesTableId);
 	});
 	
 	// Create tooltip for status
@@ -1163,9 +1163,9 @@ function addNodes2Table(data) {
 		var iconSrc;
 		if (!comments) {
 			comments = 'No comments';
-			iconSrc = 'images/ui-icon-no-comment.png';
+			iconSrc = 'images/nodes/ui-icon-no-comment.png';
 		} else {
-			iconSrc = 'images/ui-icon-comment.png';
+			iconSrc = 'images/nodes/ui-icon-comment.png';
 		}
 				
 		// Create icon for node comments
@@ -1333,15 +1333,17 @@ function loadPowerStatus(data) {
  * 
  * @param group
  *            Group name
+ * @param tableId
+ * 			  Table to update node status
  * @return Nothing
  */
-function refreshPowerStatus(group) {
+function refreshPowerStatus(group, tableId) {
 	// Show power loader
-	var powerCol = $('#' + nodesTableId + ' thead tr th').eq(3);
+	var powerCol = $('#' + tableId + ' thead tr th').eq(3);
 	powerCol.find('img').show();
 	
 	// Get power status for nodes shown
-	var nodes = getNodesShown(nodesTableId);
+	var nodes = getNodesShown(tableId);
 		
 	// Get power status
 	$.ajax( {
@@ -1395,15 +1397,17 @@ function loadNodeStatus(data) {
  * 
  * @param group
  *            Group name
+ * @param tableId
+ * 			  Table to update node status
  * @return Nothing
  */
-function refreshNodeStatus(group) {
+function refreshNodeStatus(group, tableId) {
 	// Show ping loader
-	var pingCol = $('#' + nodesTableId + ' thead tr th').eq(2);
+	var pingCol = $('#' + tableId + ' thead tr th').eq(2);
 	pingCol.find('img').show();
 	
 	// Get power status for nodes shown
-	var nodes = getNodesShown(nodesTableId);
+	var nodes = getNodesShown(tableId);
 	
 	// Get the node status
 	$.ajax( {
