@@ -86,7 +86,9 @@ function loadNodesetPage(tgtNodes) {
 		var tmp = $.cookie('osvers');
 		if (tmp) {
 			// Turn on auto complete
-			$(this).autocomplete(tmp.split(','));
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
 		}
 	});
 	os.append(osLabel);
@@ -101,7 +103,9 @@ function loadNodesetPage(tgtNodes) {
 		var tmp = $.cookie('osarchs');
 		if (tmp) {
 			// Turn on auto complete
-			$(this).autocomplete(tmp.split(','));
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
 		}
 	});
 	arch.append(archLabel);
@@ -116,7 +120,9 @@ function loadNodesetPage(tgtNodes) {
 		tmp = $.cookie('profiles');
 		if (tmp) {
 			// Turn on auto complete
-			$(this).autocomplete(tmp.split(','));
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
 		}
 	});
 	profile.append(profileLabel);

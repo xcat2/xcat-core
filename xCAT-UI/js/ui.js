@@ -416,7 +416,6 @@ function initPage() {
 	includeJs("js/jquery/jquery.dataTables.min.js");
 	includeJs("js/jquery/jquery.form.js");
 	includeJs("js/jquery/jquery.jeditable.js");
-	includeJs("js/jquery/jquery.autocomplete.js");
 	includeJs("js/jquery/jquery.contextmenu.js");
 	includeJs("js/jquery/jquery.cookie.js");
 	includeJs("js/jquery/superfish.js");

@@ -72,7 +72,9 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 			var groupNames = $.cookie('groups');
 			if (groupNames) {
 				// Turn on auto complete
-				$(this).autocomplete(groupNames.split(','));
+				$(this).autocomplete({
+    				source: groupNames.split(',')
+    			});
 			}
 		});
 		group.append(groupLabel);
@@ -86,7 +88,9 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		// Create disk pool input
 		var poolDiv = $('<div></div>');
 		var poolLabel = $('<label>Disk pool:</label>');
-		var poolInput = $('<input type="text" id="diskPool" name="diskPool" title="You must give a disk pool. xCAT relies on DirMaint to allocate minidisks out of a pool of DASD volumes. These DASD volume pools are defined in the EXTENT CONTROL file."/>').autocomplete(diskPools.split(','));
+		var poolInput = $('<input type="text" id="diskPool" name="diskPool" title="You must give a disk pool. xCAT relies on DirMaint to allocate minidisks out of a pool of DASD volumes. These DASD volume pools are defined in the EXTENT CONTROL file."/>').autocomplete({
+			source: diskPools.split(',')
+		});
 		poolDiv.append(poolLabel);
 		poolDiv.append(poolInput);
 		cloneForm.append(poolDiv);

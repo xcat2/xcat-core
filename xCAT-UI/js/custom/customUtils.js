@@ -204,7 +204,9 @@ function createProvisionExisting(plugin, inst) {
 		var tmp = $.cookie('osvers');		
 		if (tmp) {
 			// Turn on auto complete
-			$(this).autocomplete(tmp.split(','));
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
 		}
 	});
 	os.append(osLabel);
@@ -219,7 +221,9 @@ function createProvisionExisting(plugin, inst) {
 		var tmp = $.cookie('osarchs');
 		if (tmp) {
 			// Turn on auto complete
-			$(this).autocomplete(tmp.split(','));
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
 		}
 	});
 	arch.append(archLabel);
@@ -234,7 +238,9 @@ function createProvisionExisting(plugin, inst) {
 		var tmp = $.cookie('profiles');
 		if (tmp) {
 			// Turn on auto complete
-			$(this).autocomplete(tmp.split(','));
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
 		}
 	});
 	profile.append(profileLabel);
@@ -277,7 +283,9 @@ function createProvisionNew(plugin, inst) {
 		var groupNames = $.cookie('groups');
 		if (groupNames) {
 			// Turn on auto complete
-			$(this).autocomplete(groupNames.split(','));
+			$(this).autocomplete({
+				source: groupNames.split(',')
+			});
 		}
 	});
 	group.append(groupLabel);
@@ -318,7 +326,9 @@ function createProvisionNew(plugin, inst) {
 		var tmp = $.cookie('osvers');
 		if (tmp) {
 			// Turn on auto complete
-			$(this).autocomplete(tmp.split(','));
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
 		}
 	});
 	os.append(osLabel);
@@ -333,7 +343,9 @@ function createProvisionNew(plugin, inst) {
 		var tmp = $.cookie('osarchs');
 		if (tmp) {
 			// Turn on auto complete
-			$(this).autocomplete(tmp.split(','));
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
 		}
 	});
 	arch.append(archLabel);
@@ -348,7 +360,9 @@ function createProvisionNew(plugin, inst) {
 		var tmp = $.cookie('profiles');
 		if (tmp) {
 			// Turn on auto complete
-			$(this).autocomplete(tmp.split(','));
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
 		}
 	});
 	profile.append(profileLabel);

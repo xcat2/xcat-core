@@ -233,7 +233,9 @@ function loadUpdatenodePage(tgtNodes) {
     		var tmp = $.cookie('osvers');
     		if (tmp) {
     			// Turn on auto complete
-    			$(this).autocomplete(tmp.split(','));
+    			$(this).autocomplete({
+    				source: tmp.split(',')
+    			});
     		}
     	});
     	os.append(osLabel);

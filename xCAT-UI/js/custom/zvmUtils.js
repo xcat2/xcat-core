@@ -2076,7 +2076,9 @@ function createZProvisionExisting(inst) {
 		var imageNames = $.cookie('imagenames');
 		if (imageNames) {
 			// Turn on auto complete
-			$(this).autocomplete(imageNames.split(','));
+			$(this).autocomplete({
+				source: imageNames.split(',')
+			});
 		}
 	});
 	os.append(osLabel);
@@ -2216,7 +2218,9 @@ function createZProvisionNew(inst) {
 		var groupNames = $.cookie('groups');
 		if (groupNames) {
 			// Turn on auto complete
-			$(this).autocomplete(groupNames.split(','));
+			$(this).autocomplete({
+				source: groupNames.split(',')
+			});
 		}
 	});
 	group.append(groupLabel);
@@ -2272,7 +2276,9 @@ function createZProvisionNew(inst) {
 		var imageNames = $.cookie('imagenames');
 		if (imageNames) {
 			// Turn on auto complete
-			$(this).autocomplete(imageNames.split(','));
+			$(this).autocomplete({
+				source: imageNames.split(',')
+			});
 		}
 	});
 	os.append(osLabel);
@@ -2357,7 +2363,9 @@ function createZProvisionNew(inst) {
 
 		// Create disk pool input
 		// Turn on auto complete for disk pool
-		var diskPoolInput = $('<input type="text" title="You must give the group or region where the new image disk is to be created"/>').autocomplete(definedPools.split(','));
+		var diskPoolInput = $('<input type="text" title="You must give the group or region where the new image disk is to be created"/>').autocomplete({
+			source: definedPools.split(',')
+		});
 		var diskPool = $('<td></td>').append(diskPoolInput);
 		diskRow.append(diskPool);
 
