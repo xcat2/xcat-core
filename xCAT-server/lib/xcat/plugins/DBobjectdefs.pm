@@ -2914,6 +2914,8 @@ sub defls
                     if ( $hidhash->{hidden} ne 1)  {
                         push (@{$newrsp->{data}}, $n);
                     }
+                }else{
+                push (@{$newrsp->{data}}, $n);
                 }
             }
             if (defined($newrsp->{data}) && scalar(@{$newrsp->{data}}) > 0) {
