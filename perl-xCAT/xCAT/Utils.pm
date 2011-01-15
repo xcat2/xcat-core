@@ -2868,11 +2868,16 @@ sub getNodeIPaddress
                                 push (@nonip, $_);
                             }
                     }
-                    my $hstab =  xCAT::Table->new('hosts');
-                    if ( $hstab ) {
-                        my $ent = $hstab->getNodesAttribs(\@nonip,['ip']);
-                        foreach ( @nonip) {
-                            push (@myip, $_);
+                    if (scalar(@nonip)){
+                        my $hstab =  xCAT::Table->new('hosts');
+                        if ( $hstab ) {
+                            my $ent = $hstab->getNodesAttribs(\@nonip,['ip']);
+                            if ($ent){
+                                foreach (@nonip) {
+                                    my $i = $ent->{$_}->[0]->{ip};
+                                    push (@myip, $i);
+                                }
+                            }
                         }
                     }
                     $ips = join ",", @myip;
