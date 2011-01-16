@@ -120,7 +120,14 @@ sub myxCATname
 {
     my ($junk, $name);
 
-    $name = hostname();
+	$name = hostname();
+
+	# make sure xcatd is running - & db is available
+	#    this routine is called during initial install of xCAT
+	my $rc = `lsxcatd -d`;
+	if ($rc) {
+		return $name;
+	}
 
     if (xCAT::Utils->isMN())
     {
@@ -291,12 +298,6 @@ sub get_nim_attrs
 		if ($attrval =~ /=/) {
 
 			my ($attr, $val) = $attrval =~ /^\s*(\S+?)\s*=\s*(\S*.*)$/;
-
-
-#ndebug
-#my $rsp;
-#push @{$rsp->{data}}, "attr= $attr, val= $val.\n";
-#xCAT::MsgUtils->message("I", $rsp, $callback);
 
 
 			if ($attr && $val) {
@@ -1082,7 +1083,6 @@ sub dolitesetup
 		if (!grep (/^$instrootfile$/, @copiedfiles)) {
 			# don't copy same file twice
             push (@copiedfiles, $instrootfile);
-
 			if (-e $instrootfile) {
 
 				if (-d $instrootfile) {
@@ -1113,6 +1113,7 @@ sub dolitesetup
 					# ex. mkdir -p ../inst_root/.default/etc
 					# ex. cp .../inst_root/etc/lppcfg ../inst_root/.default/etc
 					$cpcmd = qq~mkdir -p $default$filedir; cp -p $instrootfile $default$filedir 2>/dev/null~;
+					$output = xCAT::Utils->runcmd("$cpcmd", -1);
 				}
 			} else {
 
@@ -1212,6 +1213,18 @@ sub dolitesetup
 					xCAT::MsgUtils->message("E", $rsp, $callback);
 					return 1;
 				}
+
+				# also copy $instrootloc/.default contents
+				$ccmd = "/usr/bin/cp -p -r $instrootloc/.default $SRloc";
+				my $out = xCAT::Utils->runcmd("$ccmd", -1);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not copy $instrootloc/.default to $SRloc.";
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					return 1;
+				}
+
 			}
 		}
 	}

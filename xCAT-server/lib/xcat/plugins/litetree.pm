@@ -404,9 +404,11 @@ sub mergeArrays {
 			$attrs->{$_->{file}} = $o;
 		}
 
-        if ($doesMtabExists eq 0) {
-            $attrs->{"/etc/mtab"} = "link";
-        }
+		if (xCAT::Utils->isLinux()) {
+        	if ($doesMtabExists eq 0) {
+            	$attrs->{"/etc/mtab"} = "link";
+        	}
+		}
 
 	}elsif($type =~ /location/){
 	    foreach(@$arr)

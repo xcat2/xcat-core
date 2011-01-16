@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/ksh
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 ################################################################################
@@ -23,19 +23,27 @@ LITEFILE="/litefile.table"
 LITETREE="/litetree.table"
 LOG="${ROOTDIR}/${SL}/statelite.log"
 
+ELIST=[]    # entry list, each entry will contain the type and the path
+
 # get this node name from the /etc/niminfo file
-INFO=`cat /etc/niminfo | grep 'NIM_HOSTNAME'`
-ME=`echo $INFO | awk -F= '{print $2}' | awk -F. '{print $1}'`
+INFO=`/usr/bin/cat /etc/niminfo | grep 'NIM_HOSTNAME'`
+ME=`echo $INFO | /usr/bin/awk -F= '{print $2}' | /usr/bin/awk -F. '{print $1}'`
+
+if [ ! -e ${STATELITE} ]; then
+	echo "no ${STATELITE} file"
+	echo "no ${STATELITE} file"  >>$LOG
+	exit 0
+fi
 
 # check the statelite.table file to see if we have
 #       a persistent dir to mount.
 ProcessStatelite () {
 
-	for i in `cat $STATELITE | grep -v '^#' | grep $ME`
+	for i in `/usr/bin/cat $STATELITE | /usr/bin/grep -v '^#' | /usr/bin/grep $ME`
 	do
 
-		SERVER=`echo $i | awk -F'|' '{print $2}'`
-		TOMNT=`echo $i | awk -F'|' '{print $3}'`
+		SERVER=`echo $i | /usr/bin/awk -F'|' '{print $2}'`
+		TOMNT=`echo $i | /usr/bin/awk -F'|' '{print $3}'`
 
 		# /.statelite/tmpdir
 		if [ ! -d ${TMPDIR} ]; then
@@ -48,7 +56,7 @@ ProcessStatelite () {
 		fi
 
 		# mount 10.2.0.200:/nodedata /.statelite/persistent
-		mount $SERVER:$TOMNT ${PERSISTENT}
+		/usr/sbin/mount $SERVER:$TOMNT ${PERSISTENT}
 
 		# make a node subdir
 		# /.statelite/persistent/<nodename>
@@ -61,39 +69,138 @@ ProcessStatelite () {
 
 # process the litefile table
 ProcessLitefile () {
-	for i in `cat $LITEFILE | grep $ME`
+	let j=0
+	for i in `/usr/bin/cat $LITEFILE | /usr/bin/grep $ME`
 	do
-		type=`echo $i | awk -F'|' '{print $2}'`
-		path=`echo $i | awk -F'|' '{print $3}'`
+		type=`echo $i | /usr/bin/awk -F'|' '{print $2}'`
+		path=`echo $i | /usr/bin/awk -F'|' '{print $3}'`
 
-		FindFile ${path} ${type}
+		# entry list one line per element
+		ELIST[$j]="$type $path";
+		let j=j+1;
+
 	done
 
+	# number of entries(lines) in file
+	num=${#ELIST[@]}
+
+	let i=0
+	while [ $i -lt $num ]; do
+
+      	set -- ${ELIST[$i]}
+       	etype=$1
+       	epath=$2
+
+		# ex. for /etc/foo the parent is /etc/
+		parent="`/usr/bin/dirname $epath`/"
+
+		let efound=0
+		let ptype=0
+		let ppath=0
+		while [ "$parent" != "//" ]; do
+			let j=0
+			while [ $j -lt $num ]; do
+				set -- ${ELIST[$j]}
+				jtype=$1
+				jpath=$2
+
+				# see if a parent is also one of the file entries
+				if [ "$parent" = "$jpath" ]; then
+					efound=1
+					ptype=$jtype
+					ppath=$jpath
+					break 2
+				fi
+				let j=j+1;
+			done
+			parent="`/usr/bin/dirname $parent`/"
+		done
+
+		if [ "$efound" = "1" ]; then
+			# found a parent & child on the list
+
+			# check options
+			# can't do any child that has parent of ro
+			if [ "$ptype" = "ro" ]; then
+				echo "Cannot add child ($epath) when parent ($ppath) has 'ro' option." >>$LOG
+				break
+			fi
+
+			# a persistent parent can't have a ro child
+			if [ "$ptype" = "persistent" ]; then
+				if [ "$etype" = "ro" ]; then
+					echo "Cannot add child ($epath) with 'ro' option when parent ($ppath) has 'persistent' option." >>$LOG
+					break
+				fi
+			fi
+
+			# ok - # put the child on into CLIST
+			cnum=${#CLIST[@]}
+			CLIST[$cnum]=${ELIST[$i]}
+
+		else
+			# add the parents and the entries with no parents to PLIST
+			let pfound=0
+			let pnum=${#PLIST[@]}
+			let k=0
+			while [ $k -lt $pnum ]; do			
+				if [ "${PLIST[$k]}" = "${path}" ]; then
+                    pfound=1
+                fi
+				let k=k+1
+			done
+
+			if [ "$pfound" = "0" ]; then
+                # put it into PLIST
+				let plnum=${#PLIST[@]}
+                PLIST[$plnum]=${ELIST[$i]}
+            fi
+		fi
+
+		let i=i+1;	
+	done
+
+	plistnum=${#PLIST[@]}
+	n=0
+	while [ $n -lt $plistnum ]; do
+		set -- ${PLIST[$n]}
+		FindFile ${2} ${1} 0	
+		let n=n+1
+	done
+
+    plistnum=${#CLIST[@]}
+	m=0
+    while [ $m -lt $plistnum ]; do
+        set -- ${CLIST[$m]}
+        FindFile ${2} ${1} 1
+		let m=m+1
+    done
 }
 
+# mount the required directories from the server
 MountTrees () {
 	# ex. /.statelite/mnt
 	if [ ! -d ${MOUNTDIR} ]; then
-		mkdir -m 755 -p $MOUNTDIR
+		/usr/bin/mkdir -m 755 -p $MOUNTDIR
 	fi
 
-	for i in `cat $LITETREE | grep -v '^#' | grep $ME`
+	for i in `/usr/bin/cat $LITETREE | /usr/bin/grep -v '^#' | /usr/bin/grep $ME`
 	do
 
-		NODE=`echo $i | awk -F'|' '{print $1}'`
-		SERV=`echo $i | awk -F'|' '{print $2}'`
-		DIR=`echo $i | awk -F'|' '{print $3}'`
+		NODE=`echo $i | /usr/bin/awk -F'|' '{print $1}'`
+		SERV=`echo $i | /usr/bin/awk -F'|' '{print $2}'`
+		DIR=`echo $i | /usr/bin/awk -F'|' '{print $3}'`
 
 		if [ ! -d ${MOUNTDIR}/${SERV}${DIR} ]; then
 			# ex. /.statelite/mnt/10.2.0.200/etc/
-			mkdir -m 755 -p ${MOUNTDIR}/${SERV}${DIR}
+			/usr/bin/mkdir -m 755 -p ${MOUNTDIR}/${SERV}${DIR}
 		fi
 
 		MAX=5
         TRIES=1
 
 		# ex. 10.2.0.200:/etc/ /.statelite/mnt/10.2.0.200/etc/
-        while ! mount $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR} 
+        while ! /usr/sbin/mount $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR} 
         do
             if [ "$TRIES" = "$MAX" ]
             then
@@ -102,51 +209,52 @@ MountTrees () {
             fi
             TRIES=`expr $TRIES + 1`
             S=`expr $RANDOM % 20`
-            echo "Can't mount $SERV:$MNT... Sleeping $S seconds then trying agai
-n" >/dev/console
+            echo "Can't mount $SERV:$MNT... Sleeping $S seconds then trying again" >>$LOG
             sleep $S
         done
 	done
 }
 
-
+#  mount the files or directories as requested
 ProcessType () {
-	#MOUNT=$1  	#  where this is (ex. /.statelite/mnt/10.2.0.200/etc/FScfg)
-	#PATH=$2	  	# file (ex. /etc/FScfg)
-	#TYPE=$3		# type of file (ex. rw)
-    #isChild=$4     # child = 1, parent = 0
 
-    PPATH=`dirname ${2}` # ex. /etc
+	MOUNT=$1  	#  where this is (ex. /.statelite/mnt/10.2.0.200/etc/FScfg)
+	PATH=$2	  	# file (ex. /etc/FScfg)
+	TYPE=$3		# type of file (ex. rw)
+    isChild=$4     # child = 1, parent = 0
+
+    PPATH=`/usr/bin/dirname ${2}` # ex. /etc
 	
 	case "${3}" in 
 		rw)
-			# item is copied from litetree dir or .default location ($1)
-			#	into local file
-
+			# item is mounted from litetree dir or .default location ($1)
+			#	onto local file
 
 			# the local name of the file or directory
-			LOCAL=`echo ${2} |  sed -e 's/\/$//'`
+			LOCAL=`echo ${2} |  /usr/bin/sed -e 's/\/$//'`
 
-			# copy to local file or dir
             if [ -d ${1} ]; then
-				# if it's a dir then copy all contents to local
+				# if it's a dir 
 				if [ ! -e ${LOCAL} ]; then
-					mkdir -m 755 -p ${LOCAL}
-				fi
-				if [ "0" -ne `ls -A ${1} | wc -l` ]; then
-			    	cp -p -r ${1}* ${LOCAL}
-			    	echo "cp -p -r ${1}* ${LOCAL}" 2>&1 >>$LOG
+					/usr/bin/mkdir -m 755 -p ${LOCAL}
 				fi
             else
-				# if file just copy
+				# if file 
 				if [ ! -e ${LOCAL} ]; then
-					FDIR=`dirname ${2}`
-                    mkdir -m 755 -p ${FDIR}
-                    touch ${LOCAL}
+					FDIR=`/usr/bin/dirname ${2}`
+                    /usr/bin/mkdir -m 755 -p ${FDIR}
+                    /usr/bin/touch ${LOCAL}
 				fi
-                cp -p -r ${1} ${LOCAL}
-                echo "cp -p -r ${1} ${LOCAL}" 2>&1 >>$LOG
             fi
+
+			# ex. /.statelite/mnt/<server>/etc/lppcfg
+ 			SOURCE=`echo ${1} |  /usr/bin/sed -e 's/\/$//'`
+
+			# make sure we don't get duplicate mounts
+			/usr/sbin/umount ${LOCAL}>>$LOG > /dev/null > /dev/null 2>&1
+
+			echo "/usr/sbin/mount ${SOURCE} ${LOCAL}" >>$LOG
+			/usr/sbin/mount ${SOURCE} ${LOCAL}>>$LOG 2>&1
 			;;
 
         persistent)
@@ -156,17 +264,17 @@ ProcessType () {
 			#	over the local /blah
 			# ex. /.statelite/persistent/compute02/etc
             if [ ! -d ${PERSISTENT}/${ME}${PPATH} ]; then
-                mkdir -m 755 -p ${PERSISTENT}/${ME}${PPATH}
+                /usr/bin/mkdir -m 755 -p ${PERSISTENT}/${ME}${PPATH}
                 echo "mkdir -p ${PERSISTENT}/${ME}${PPATH}" >>$LOG
             fi
 
             # if the file doesn't exist, then copy it over to persistent
             if [ ! -e ${PERSISTENT}/${ME}${2} ]; then
                 echo "cp -p -r ${1} ${PERSISTENT}/${ME}${2}" >>$LOG
-                cp -p -r ${1} ${PERSISTENT}/${ME}${2} 2>&1 >>$LOG
+                /usr/bin/cp -p -r ${1} ${PERSISTENT}/${ME}${2} 2>&1 >>$LOG
             fi
 
-            LOCAL=`echo ${2} |  sed -e 's/\/$//'`
+            LOCAL=`echo ${2} |  /usr/bin/sed -e 's/\/$//'`
             SOURCE=`echo ${PERSISTENT}/${ME}${2}`
 
 			if [ ! -e ${LOCAL} ]; then
@@ -174,15 +282,15 @@ ProcessType () {
                 if [ -d ${SOURCE} ]; then
                     # need to create local dir
                     echo "mkdir -m 755 -p ${LOCAL}" >>$LOG
-                    mkdir -m 755 -p ${LOCAL}
+                    /usr/bin/mkdir -m 755 -p ${LOCAL}
 
                 else
                     # need to create local file
-					FDIR=`dirname ${2}`
+					FDIR=`/usr/bin/dirname ${2}`
 					if [ ! -d ${FDIR} ]; then
-                    	mkdir -m 755 -p ${FDIR}
+                    	/usr/bin/mkdir -m 755 -p ${FDIR}
 					fi
-                    touch ${LOCAL}
+                    /usr/bin/touch ${LOCAL}
 
                 fi
             fi
@@ -192,52 +300,51 @@ ProcessType () {
 			#	/.statelite/persistent
 
 			# make sure we don't get duplicate mounts
-			umount ${LOCAL}>>$LOG 2>&1
+			/usr/sbin/umount ${LOCAL}>>$LOG > /dev/null 2>&1
 
-            echo "mount ${SOURCE} ${LOCAL}" >>$LOG
-            mount ${SOURCE} ${LOCAL}>>$LOG 2>&1
+            echo "/usr/sbin/mount ${SOURCE} ${LOCAL}" >>$LOG
+            /usr/sbin/mount ${SOURCE} ${LOCAL}>>$LOG 2>&1
             ;;
 
 		ro)
 			# mounted file or dir is overmounted over local version
-
 			# $1 - mounted file or directory or default(?)
 			# $2 - file or dir name
 
 			# ex. /etc/lppcfg
-			LOCAL=`echo ${2} |  sed -e 's/\/$//'`
+			LOCAL=`echo ${2} |  /usr/bin/sed -e 's/\/$//'`
 
 			# ex. /.statelite/mnt/<server>/etc/lppcfg
-			SOURCE=`echo ${1} |  sed -e 's/\/$//'`
+			SOURCE=`echo ${1} |  /usr/bin/sed -e 's/\/$//'`
 
 			if [ ! -e ${LOCAL} ]; then
 
 				if [ -d ${SOURCE} ]; then
 					# need to create local dir
 					echo "mkdir  -m 755 -p ${LOCAL}" >>$LOG
-            		mkdir -m 755 -p ${LOCAL}
+            		/usr/bin/mkdir -m 755 -p ${LOCAL}
 				else			
 					# need to create local file
-					GDIR=`dirname ${2}`
+					GDIR=`/usr/bin/dirname ${2}`
                     if [ ! -d ${GDIR} ]; then
-                        mkdir -m 755 -p ${GDIR}
+                        /usr/bin/mkdir -m 755 -p ${GDIR}
                     fi
-					touch ${LOCAL}
+					/usr/bin/touch ${LOCAL}
 				fi
 			fi
 			# make sure we don't get duplicate mounts
-			umount ${LOCAL}>>$LOG 2>&1
+			/usr/sbin/umount ${LOCAL}>>$LOG > /dev/null 2>&1
 
-			echo "mount -o ro ${SOURCE} ${LOCAL}" >>$LOG 2>&1
-			# ex. mount -o /.statelite/mnt/<server>/etc/lppcfg /etc/lppcfg
-			mount -o ro ${SOURCE} ${LOCAL}>>$LOG 2>&1
+			echo "/usr/sbin/mount -o ro ${SOURCE} ${LOCAL}" >>$LOG 2>&1
+			# ex. mount -o ro /.statelite/mnt/<server>/etc/lppcfg /etc/lppcfg
+			/usr/sbin/mount -o ro ${SOURCE} ${LOCAL}>>$LOG 2>&1
 			;;
 		*)
 			;;
 	esac
 }
 
-
+# find a source for the file or directory
 FindFile () {
 	# $1 = Pathname to locate
 	# $2 = Type of file
@@ -247,19 +354,20 @@ FindFile () {
     isChild=$3
 	FOUND=0
 
-	# this assumes the dir are already in priority order
-	for i in `cat $LITETREE | grep -v '^#' | grep $ME`
+	# this assumes the dir are already in priority order in the 
+	#	/litetree.table file
+	for i in `/usr/bin/cat $LITETREE | /usr/bin/grep -v '^#' | /usr/bin/grep $ME`
     do
+		SERVER=`echo $i | /usr/bin/awk -F'|' '{print $2}'`
+		DIR=`echo $i | /usr/bin/awk -F'|' '{print $3}'`
+		SRC=`echo ${MOUNTDIR}/${SERVER}${DIR}${path} |  /usr/bin/sed -e 's/\/\//\//'`
 
-		SERVER=`echo $i | awk -F'|' '{print $2}'`
-		DIR=`echo $i | awk -F'|' '{print $3}'`
-		SRC=`echo ${MOUNTDIR}/${SERVER}${DIR}${path} |  sed -e 's/\/\//\//'`
-
-		# ex. /.statelite/mnt/10.2.0.200/etc/FScfg
-        # ex. /.statelite/mnt/10.2.0.200/root/ssh/
+		# ex. SRC =  /.statelite/mnt/10.2.0.200/etc/FScfg
+        # or  /.statelite/mnt/10.2.0.200/root/ssh/
 		if [ -e ${SRC} ]; then
-            PATHEND=${#path}
-            CHAREND=`echo ${path} |cut -c${PATHEND}`
+			# ok - we found a src for the file or dir
+			PATHEND=${#path}
+            CHAREND=`echo ${path} | /usr/bin/cut -c${PATHEND}`
             if [ "${CHAREND}" != '/' ] && [ -d ${SRC} ]; then
                 FOUND=0
                 continue
@@ -269,27 +377,23 @@ FindFile () {
                 FOUND=0
                 continue
             fi
-             
-			FOUND=1
-		    ProcessType ${SRC} ${path} ${type} ${isChild}
-		    break
+
+            FOUND=1
+            ProcessType ${SRC} ${path} ${type} ${isChild}
+            break
 		fi	
 	done
 
+	# couldn't find SRC so use the value in /.default
 	# Default behavior is to get from the image
 	if [ "$FOUND" = "0"  ]; then
-
 		if [ -e "${DEFAULT}${path}" ]; then
-
-
 			ProcessType ${DEFAULT}${path} ${path} ${type} ${isChild}
 		else
-
-			echo "Could not find ${path} in defaults or any other place" >/dev/console
+			echo "Could not find ${path}" >>$LOG
 		fi
 	fi
 }
-
 
 ###########################################################################
 # Start / MAIN / main
@@ -303,8 +407,5 @@ MountTrees
 
 # process the litefile table
 ProcessLitefile
-
-# Unmount dirs no longer needed - TBD
-#UnmountTrees
 
 exit 0
