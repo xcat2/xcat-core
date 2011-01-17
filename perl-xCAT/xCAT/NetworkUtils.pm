@@ -19,6 +19,7 @@ if ($^O =~ /^aix/i) {
 use lib "$::XCATROOT/lib/perl";
 use POSIX qw(ceil);
 use File::Path;
+use Math::BigInt;
 use Socket;
 use strict;
 use warnings "all";
@@ -26,6 +27,8 @@ my $netipmodule = eval {require Net::IP;};
 my $socket6support = eval { require Socket6 };
 
 our @ISA       = qw(Exporter);
+our @EXPORT_OK = qw(getipaddr);
+
 
 #--------------------------------------------------------------------------------
 
@@ -168,6 +171,8 @@ sub gethostname()
     if the hostname can not be resolved, returns undef
     Arguments:
        hostname
+       Optional:
+        GetNumber=>1 (return the address as a BigInt instead of readable string)
     Returns: ip address
     Globals:
         cache: %::hostiphash
@@ -180,9 +185,13 @@ sub gethostname()
 =cut
 
 #-------------------------------------------------------------------------------
-sub getipaddr()
+sub getipaddr
 {
-    my ($class, $iporhost) = @_;
+    my $iporhost = shift;
+    if ($iporhost eq 'xCAT::NetworkUtils') { #was called with -> syntax
+        $iporhost = shift;
+    }
+    my %extraarguments = @_;
 
    if (!defined($iporhost))
    {
@@ -198,11 +207,13 @@ sub getipaddr()
        }
    }
 
-    if ($iporhost and ($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/))
-    {
-        #pass in an ip and only want an ip??
-        return $iporhost;
-    }
+    #go ahead and do the reverse lookup on ip, useful to 'frontend' aton/pton and also to 
+    #spit out a common abbreviation if leading zeroes or using different ipv6 presentation rules
+    #if ($iporhost and ($iporhost =~ /\d+\.\d+\.\d+\.\d+/) || ($iporhost =~ /:/))
+    #{
+    #    #pass in an ip and only want an ip??
+    #    return $iporhost;
+    #}
 
     #cache, do not lookup DNS each time
     if ($::hostiphash and defined($::hostiphash{$iporhost}) && $::hostiphash{$iporhost})
@@ -216,7 +227,17 @@ sub getipaddr()
             my ($family, $socket, $protocol, $ip, $name) = Socket6::getaddrinfo($iporhost,0);
             if ($ip)
             {
-                return (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
+                if ($extraarguments{GetNumber}) { #return a BigInt for compare, e.g. for comparing ip addresses for determining if they are in a common network or range
+                    my $ip = (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
+                    my $bignumber = Math::BigInt->new(0);
+                    foreach (unpack("N*",Socket6::inet_pton($family,$ip))) { #if ipv4, loop will iterate once, for v6, will go 4 times
+                        $bignumber->blsft(32);
+                        $bignumber->badd($_);
+                    }
+                    return $bignumber;
+                } else {
+                    return (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
+                }
             }
             return undef;
         }
@@ -229,6 +250,9 @@ sub getipaddr()
              if (!$packed_ip)
              {
                 return undef;
+             }
+             if ($extraarguments{GetNumber}) { #only 32 bits, no for loop needed.
+                 return Math::BigInt->new(unpack("N*",$packed_ip));
              }
              return inet_ntoa($packed_ip);
         }

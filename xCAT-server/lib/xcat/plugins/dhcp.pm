@@ -14,43 +14,57 @@ use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
 use Socket;
+my $candoipv6 = eval {
+    require Socket6;
+    1;
+};
 use Sys::Syslog;
 use IPC::Open2;
-use xCAT::NetworkUtils;
+use xCAT::NetworkUtils qw/getipaddr/;
 use xCAT::Utils;
 use xCAT::NodeRange;
 use Fcntl ':flock';
 
 my @dhcpconf; #Hold DHCP config file contents to be written back.
+my @dhcp6conf; #ipv6 equivalent
 my @nrn;      # To hold output of networks table to be consulted throughout process
+my @nrn6; #holds ip -6 route output on Linux, yeah, name doesn't make much sense now..
 my $domain;
 my $omshell;
+my $omshell6; #separate session to DHCPv6 instance of dhcp
 my $statements;    #Hold custom statements to be slipped into host declarations
 my $callback;
 my $restartdhcp;
+my $restartdhcp6;
 my $sitenameservers;
 my $sitentpservers;
 my $sitelogservers;
 my $nrhash;
 my $machash;
+my $vpdhash;
 my $iscsients;
 my $chainents;
 my $tftpdir = xCAT::Utils->getTftpDir();
+use Math::BigInt;
 my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf'; 
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
+my %netcfgs;
 
 # dhcp 4.x will use /etc/dhcp/dhcpd.conf as the config file
+my $dhcp6conffile;
 if ( $^O ne 'aix' and -d "/etc/dhcp" ) {
     $dhcpconffile = '/etc/dhcp/dhcpd.conf';
+    $dhcp6conffile = '/etc/dhcp/dhcpd6.conf'; 
 }
+my $usingipv6;
 
-sub ipIsDynamic {
+sub ipIsDynamic { #meant to be v4/v6 agnostic.  DHCPv6 however takes some care to allow a dynamic range to overlap static reservations
+                  #xCAT will for now continue to advise people to keep their nodes out of the dynamic range
     my $ip = shift;
-    my $number = inet_aton($ip);
+    my $number = getipaddr($ip,GetNumber=>1);
     unless ($number) { # shouldn't be possible, but pessimistically presume it dynamically if so
         return 1;
     }
-    $number = unpack("N*",$number);
     foreach (values %dynamicranges) {
         if ($_->[0] <= $number and $_->[1] >= $number) {
             return 1;
@@ -132,6 +146,72 @@ sub delnode
         print $omshell "remove\n";
         print $omshell "close\n";
     }
+}
+
+sub addnode6 {
+    #omshell to add host dynamically
+    my $node = shift;
+    unless ($vpdhash) { 
+        $callback->({error => ["Unable to open vpd table, it may not exist yet"], errorcode => [1] });
+        return;
+    }
+    my $ent = $vpdhash->{$node}->[0]; #tab->getNodeAttribs($node, [qw(mac)]);
+    unless ($ent and $ent->{uuid})
+    {
+    print Dumper($vpdhash);
+        $callback->( { error     => ["Unable to find UUID for $node"], errorcode => [1] });
+        return;
+    }
+    #phase 1, dynamic and static addresses, hopefully ddns-hostname works, may be tricky to do 'send hostname'
+    #since FQDN is the only thing to be sent down, and that RFC clearly suggests that the client
+    #assembles that data, not host
+    #tricky for us since the client wouldn't know it's hostname/fqdn in advance
+    #unless acquired via IPv4 first
+    #don't think dhclient is smart enough to assemble advertised domain with it's own name and then
+    #request FQDN update
+    #goal is simple enough, we want `hostname` to look sane *and* we want DNS to look right
+    my $uuid = $ent->{uuid};
+    $uuid =~ s/-//g;
+    $uuid =~ s/(..)/$1:/g;
+    $uuid =~ s/:\z//;
+    $uuid =~ s/^/00:04:/;
+    my $ip = getipaddr($node);
+    if ($ip and $ip =~ /:/ and not ipIsDynamic($ip)) {
+        $ip = getipaddr($ip,GetNumber=>1);
+        $ip = $ip->as_hex;
+        $ip =~ s/^0x//;
+        $ip =~ s/(..)/$1:/g;
+        $ip =~ s/:\z//;
+        print $omshell6 "set ip-address = $ip\n";
+    } else {
+        $ip=0;
+    }
+    print $omshell6 "new host\n";
+    print $omshell6 "set name = \"$node\"\n";    #Find and destroy conflict name
+    print $omshell6 "open\n";
+    print $omshell6 "remove\n";
+    print $omshell6 "close\n";
+    if ($ip) {
+        print $omshell6 "new host\n";
+        print $omshell6 "set ip-address = $ip\n";   #find and destroy ip conflict
+        print $omshell6 "open\n";
+        print $omshell6 "remove\n";
+        print $omshell6 "close\n";
+    }
+    print $omshell6 "new host\n";
+    print $omshell6 "set dhcp-client-identifier = " . $uuid . "\n";    #find and destroy DUID-UUID conflict
+    print $omshell6 "open\n";
+    print $omshell6 "remove\n";
+    print $omshell6 "close\n";
+    print $omshell6 "new host\n";
+    print $omshell6 "set name = \"$node\"\n";
+    print $omshell6 "set dhcp-client-identifier = $uuid\n";
+    if ($ip) {
+        print $omshell6 "set ip-address = $ip\n";
+    }
+    print $omshell6 "create\n";
+    print $omshell6 "close\n";
+
 }
 
 sub addnode
@@ -360,6 +440,44 @@ sub addnode
     }
 }
 
+sub addrangedetection {
+    my $net = shift;
+    my $trange = $net->{dynamicrange}; #temp range, the dollar sign makes it look strange
+    my $begin;
+    my $end;
+    if ($trange =~ /[ ,-]/) { #a range of one number to another..
+       $trange =~ s/[,-]/ /g;
+       $netcfgs{$net->{net}}->{range}=$trange; 
+       ($begin,$end) = split / /,$trange;
+       $dynamicranges{$trange}=[getipaddr($begin,GetNumber=>1),getipaddr($end,GetNumber=>1)];
+    } elsif ($trange =~ /\//) { #a CIDR style specification for a range that could be described in subnet rules
+        #we are going to assume that this is a subset of the network (it really ought to be) and therefore all zeroes or all ones is good to include
+        my $prefix;
+        my $suffix;
+        ($prefix,$suffix) = split /\//,$trange;
+        my $numbits;
+        if ($prefix =~ /:/) { #ipv6
+            $netcfgs{$net->{net}}->{range}=$trange; #we can put in dhcpv6 ranges verbatim as CIDR
+            $numbits=128;
+        } else {
+            $numbits=32;
+        }
+        my $number = getipaddr($prefix,GetNumber=>1);
+        my $highmask=Math::BigInt->new("0b".("1"x$suffix).("0"x($numbits-$suffix)));
+        my $lowmask=Math::BigInt->new("0b".("1"x($numbits-$suffix)));
+        $number &= $highmask; #remove any errant high bits beyond the mask.
+        $begin = $number->copy();
+        $number |= $lowmask; #get the highest number in the range, 
+        $end=$number->copy();
+        $dynamicranges{$trange}=[$begin,$end];
+        if ($prefix !~ /:/) { #ipv4, must convert CIDR subset to range
+            my $lowip = inet_ntoa(pack("N*",$begin));
+            my $highip = inet_ntoa(pack("N*",$end));
+            $netcfgs{$net->{net}}->{range} = "$lowip $highip";
+
+        }
+    }
+}
 ######################################################
 # Add nodes into dhcpsd.cnf. For AIX only
 ######################################################
@@ -717,16 +835,24 @@ sub process_request
             $restartdhcp=1;
             @dhcpconf = ();
         }
+        if ($dhcp6conffile and -e $dhcp6conffile) {
+            open($rconf, $dhcp6conffile);
+            while (<$rconf>) { push @dhcp6conf, $_; }
+            close($rconf);
+        }
+        unless ($dhcp6conf[0] =~ /^#xCAT/)
+        {    #Discard file if not xCAT originated
+            $restartdhcp6=1;
+            @dhcp6conf = ();
+        }
     }
 	my $nettab = xCAT::Table->new("networks");
 	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange');
     foreach (@vnets) {
-        my $trange = $_->{dynamicrange}; #temp range, the dollar sign makes it look strange
-        $trange =~ s/[,-]/ /g;
-        my $begin;
-        my $end;
-       ($begin,$end) = split / /,$trange;
-       $dynamicranges{$trange}=[unpack("N*",inet_aton($begin)),unpack("N*",inet_aton($end))];
+        if ($_->{net} =~ /:/) { #IPv6 detected
+            $usingipv6=1;
+        }
+        addrangedetection($_); #add to hash for remembering whether a node has a static address or just happens to live dynamically
     }
     if ($^O eq 'aix')
     {
@@ -740,19 +866,30 @@ sub process_request
             my @parts = split  /\s+/;
             push @nrn,$parts[0].":".$parts[7].":".$parts[2].":".$parts[3];
         }
+        my @ip6routes = `ip -6 route`;
+        foreach (@ip6routes) {
+            #TODO: filter out multicast?  Don't know if multicast groups *can* appear in ip -6 route...
+            if (/^fe80::\/64/ or /^unreachable/ or /^[^ ]+ via/) { #ignore link-local, junk, and routed networks
+                next;
+            }
+            my @parts = split /\s+/;
+            push @nrn6,{net=>$parts[0],iface=>$parts[2]};
+        }
     }
 
 	foreach(@vnets){
+        #TODO: v6 relayed networks?
 		my $n = $_->{net};
 		my $if = $_->{mgtifname};
 		my $nm = $_->{mask};
 		#$callback->({data => ["array of nets $n : $if : $nm"]});
-        if ($if =~ /!remote!/) { #only take in networks with special interface
+        if ($if =~ /!remote!/ and $n !~ /:/) { #only take in networks with special interface, but only v4 for now
     		push @nrn, "$n:$if:$nm";
         }
 	}
     if ($querynics)
     {    #Use netstat to determine activenics only when no site ent.
+        #TODO: IPv6 auto-detect, or just really really insist people define dhcpinterfaces or suffer doom?
         foreach (@nrn)
         {
             my @ent = split /:/;
@@ -772,8 +909,10 @@ sub process_request
     if ( $^O ne 'aix')
     {
 #add the active nics to /etc/sysconfig/dhcpd
-        if (-e "/etc/sysconfig/dhcpd") {
-            open DHCPD_FD, "/etc/sysconfig/dhcpd";
+        my $dhcpver;
+        foreach $dhcpver ("dhcpd","dhcpd6") {
+        if (-e "/etc/sysconfig/$dhcpver") {
+            open DHCPD_FD, "/etc/sysconfig/$dhcpver";
             my $syscfg_dhcpd = "";
             my $found = 0;
             my $dhcpd_key = "DHCPDARGS";
@@ -804,12 +943,13 @@ sub process_request
             }
             close DHCPD_FD; 
 
-            open DBG_FD, '>', "/etc/sysconfig/dhcpd";
+            open DBG_FD, '>', "/etc/sysconfig/$dhcpver";
             print DBG_FD $syscfg_dhcpd;
             close DBG_FD;
-        } else {
-            $callback->({error=>"The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"});
+        } elsif ($_ eq "dhcpd" or $usingipv6) {
+            $callback->({error=>"The file /etc/sysconfig/$_ doesn't exist, check the dhcp server"});
 #        return;
+        }
         }
     }
     
@@ -818,16 +958,23 @@ sub process_request
         $restartdhcp=1;
         newconfig();
     }
+    if ($usingipv6 and not $dhcp6conf[0]) {
+        $restartdhcp6=1;
+        newconfig6();
+    }
     if ( $^O ne 'aix')
     {
         foreach (keys %activenics)
         {
-            addnic($_);
+            addnic($_,\@dhcpconf);
+            if ($usingipv6) {
+                addnic($_,\@dhcp6conf);
+            }
         }
     }
     if ((!$req->{node}) && (grep /^-a$/, @{$req->{arg}}))
     {
-        if (grep /-d$/, @{$req->{arg}})
+        if (grep /-d$/, @{$req->{arg}}) #delete all entries
         {
             $req->{node} = [];
             my $nodelist = xCAT::Table->new('nodelist');
@@ -837,7 +984,7 @@ sub process_request
                 push @{$req->{node}}, $_->{node};
             }
         }
-        else
+        else #add all entries
         {
             $req->{node} = [];
             my $mactab  = xCAT::Table->new('mac');
@@ -866,6 +1013,9 @@ sub process_request
         {
             addnet($line[0], $line[2]);
         }
+    }
+    foreach (@nrn6) { #do the ipv6 networks
+        addnet6($_); #already did all the filtering before putting into nrn6
     }
 
     if ($req->{node})
@@ -901,11 +1051,18 @@ sub process_request
 #Have nodes to update
 #open2($omshellout,$omshell,"/usr/bin/omshell");
             open($omshell, "|/usr/bin/omshell > /dev/null");
-
             print $omshell "key "
                 . $ent->{username} . " \""
                 . $ent->{password} . "\"\n";
             print $omshell "connect\n";
+            if ($usingipv6) {
+                open($omshell6, "|/usr/bin/omshell > /dev/null");
+                print $omshell6 "port 7912\n";
+                print $omshell6 "key "
+                    . $ent->{username} . " \""
+                    . $ent->{password} . "\"\n";
+                print $omshell6 "connect\n";
+            }
         }
         
         my $nrtab = xCAT::Table->new('noderes');
@@ -922,6 +1079,8 @@ sub process_request
         }
         my $mactab = xCAT::Table->new('mac');
         $machash = $mactab->getNodesAttribs($req->{node},['mac']);
+        my $vpdtab = xCAT::Table->new('vpd');
+        $vpdhash = $vpdtab->getNodesAttribs($req->{node},['uuid']);
         foreach (@{$req->{node}})
         {
             if (grep /^-d$/, @{$req->{arg}})
@@ -941,11 +1100,14 @@ sub process_request
                 {
                     next;
                 }
-                #print "addnode $_\n";
                 addnode $_;
+                if ($usingipv6) {
+                    addnode6 $_;
+                }
             }
         }
         close($omshell) if ($^O ne 'aix');
+        close($omshell6) if ($^O ne 'aix');
         foreach my $node (@{$req->{node}})
         {
             unless ($machash)
@@ -1116,6 +1278,52 @@ sub putmyselffirst {
                 $srvlist = join(', ',@reordered);
             }
             return $srvlist;
+}
+sub addnet6
+{
+    my $netentry = shift;
+    my $net = $netentry->{net};
+    my $iface = $netentry->{iface};
+    my $idx = 0;
+    if (grep /\{ # $net subnet_end/,@dhcp6conf) { #need to add to dhcp6conf
+        return;
+    } else { #need to add to dhcp6conf
+        while ($idx <= $#dhcp6conf)
+        {
+            if ($dhcp6conf[$idx] =~ /\} # $iface nic_end/) {
+                last;
+            }
+            $idx++;
+        }
+        unless ($dhcp6conf[$idx] =~ /\} # $iface nic_end\n/) {
+                return 1;    #TODO: this is an error condition
+        }
+
+    }
+    my @netent = (
+                   "  subnet6 $net {\n",
+                   "    max-lease-time 43200;\n",
+                   "    min-lease-time 43200;\n",
+                   "    default-lease-time 43200;\n",
+                   );
+    #for now, just do address allocatios (phase 1)
+    #phase 2 (by 2.6 presumably) will include the various things like DNS server and other options allowed by dhcpv6
+    #gateway is *not* currently allowed to be DHCP designated, router advertises its own self indpendent of dhcp.  We'll just keep it that way
+    #domain search list is allowed (rfc 3646)
+        #nis domain is also an alloed option (rfc 3898)
+    #sntp server list (rfc 4075)
+    #ntp server rfc 5908
+    #fqdn rfc 4704
+    #posix timezone rfc 4833/tzdb timezone
+    #phase 3 will include whatever is required to do Netboot6.  That might be in the october timeframe for lack of implementations to test
+    #boot url/param (rfc 59070)
+    if ($netcfgs{$net}->{range}) {
+        push @netent,"    range6 ".$netcfgs{$net}->{range}.";\n";
+    } else {
+        $callback->({warning => ["No dynamic range specified for $net. Hosts with no static address will receive no addresses on this subnet."]});
+    }
+    push @netent, "  } # $net subnet_end\n";
+    splice(@dhcp6conf, $idx, 0, @netent);
 }
 sub addnet
 {
@@ -1434,18 +1642,19 @@ sub gen_aix_net
 sub addnic
 {
     my $nic        = shift;
+    my $conf       = shift;
     my $firstindex = 0;
     my $lastindex  = 0;
-    unless (grep /} # $nic nic_end/, @dhcpconf)
+    unless (grep /} # $nic nic_end/, @$conf)
     {    #add a section if not there
         $restartdhcp=1;
         print "Adding NIC $nic\n";
         if ($nic =~ /!remote!/) {
-            push @dhcpconf, "#shared-network $nic {\n";
-            push @dhcpconf, "#\} # $nic nic_end\n";
+            push @$conf, "#shared-network $nic {\n";
+            push @$conf, "#\} # $nic nic_end\n";
         } else {
-            push @dhcpconf, "shared-network $nic {\n";
-            push @dhcpconf, "\} # $nic nic_end\n";
+            push @$conf, "shared-network $nic {\n";
+            push @$conf, "\} # $nic nic_end\n";
         }
 
     }
@@ -1476,6 +1685,46 @@ sub writeout
         print $targ $_;
     }
     close($targ);
+    if (@dhcp6conf) {
+    open($targ, '>', $dhcp6conffile);
+    foreach (@dhcp6conf)
+    {
+        print $targ $_;
+    }
+    close($targ);
+    }
+}
+
+sub newconfig6 {
+    #phase 1, basic working
+    #phase 2, ddns too, evaluate other stuff from dhcpv4 as applicable
+    push @dhcp6conf, "#xCAT generated dhcp configuration\n";
+    push @dhcp6conf, "\n";
+    push @dhcp6conf, "omapi-port 7912;\n";        #Enable omapi...
+    push @dhcp6conf, "key xcat_key {\n";
+    push @dhcp6conf, "  algorithm hmac-md5;\n";
+    my $passtab = xCAT::Table->new('passwd', -create => 1);
+    (my $passent) =
+      $passtab->getAttribs({key => 'omapi', username => 'xcat_key'}, 'password');
+    my $secret = encode_base64(genpassword(32));    #Random from set of  62^32
+    chomp $secret;
+    if ($passent->{password}) { $secret = $passent->{password}; }
+    else
+    {
+        $callback->(
+             {
+              data =>
+                ["The dhcp server must be restarted for OMAPI function to work"]
+             }
+             );
+        $passtab->setAttribs({key => 'omapi'},
+                             {username => 'xcat_key', password => $secret});
+    }
+
+    push @dhcp6conf, "  secret \"" . $secret . "\";\n";
+    push @dhcp6conf, "};\n";
+    push @dhcp6conf, "omapi-key xcat_key;\n";
+    #that is all for pristine ipv6 config
 }
 
 sub newconfig
