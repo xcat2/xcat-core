@@ -87,18 +87,7 @@ function loadNodesPage() {
 		});
 		
 		// Get graphical view info
-		$.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'nodels',
-				tgt : 'all',
-				args : 'nodetype.nodetype;ppc.parent;vpd.mtm;nodelist.status;nodehm.mgt',
-				msg : ''
-			},
-
-			success : extractGraphicalData
-		});
+		getGraphicalData();
 	}
 }
 
@@ -195,7 +184,8 @@ function loadGroups(data) {
 							nodesList.push(rsp[i][0]);
 						}
 					}
-										
+					
+					createPhysicalLayout(nodesList);
 					// Sort nodes list
 					nodesList.sort();
 					
@@ -245,19 +235,6 @@ function loadGroups(data) {
     			});
 			}
 			
-			// Get physical layout
-			$.ajax({
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'lsdef',
-					tgt : '',
-					args : thisGroup + ';-s',
-					msg : ''
-				},
-				
-				success : createPhysicalLayout
-			});
 		} // End of if (thisGroup)
 	});
 	

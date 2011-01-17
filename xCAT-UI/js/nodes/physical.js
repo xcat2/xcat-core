@@ -1,8 +1,77 @@
 var bpaList;
 var fspList;
 var lparList;
-var nodeList;
+var graphicalNodeList;
 var selectNode;
+
+function getGraphicalData(){
+	graphicalNodeList = new Object();
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'nodels',
+			tgt : 'all',
+			args : 'nodetype.nodetype',
+			msg : 'nodetype'
+		},
+
+		success : extractGraphicalData
+	});
+	
+	// Get graphical view info
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'nodels',
+			tgt : 'all',
+			args : 'ppc.parent',
+			msg : 'parent'
+		},
+
+		success : extractGraphicalData
+	});
+	
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'nodels',
+			tgt : 'all',
+			args : 'vpd.mtm',
+			msg : 'mtm'
+		},
+
+		success : extractGraphicalData
+	});
+	
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'nodels',
+			tgt : 'all',
+			args : 'nodelist.status',
+			msg : 'status'
+		},
+
+		success : extractGraphicalData
+	});
+	
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'nodels',
+			tgt : 'all',
+			args : 'nodehm.mgt',
+			msg : 'mgt'
+		},
+
+		success : extractGraphicalData
+	});
+}
 
 /**
  * extract all nodes userful data into a hash, which is used for creating graphical
@@ -13,34 +82,33 @@ var selectNode;
  */
 function extractGraphicalData(data){
 	var nodes = data.rsp;
-	nodeList = new Object();
 	
 	//extract useful info into tempList
 	for (var i = 0; i < nodes.length; i++){
 		var nodeName = nodes[i][0];
-		if (undefined == nodeList[nodeName]){
-			nodeList[nodeName] = new Object();
+		if (undefined == graphicalNodeList[nodeName]){
+			graphicalNodeList[nodeName] = new Object();
 		}
 		
-		switch(nodes[i][2]){
-			case 'nodetype.nodetype': {
-				nodeList[nodeName]['type'] = nodes[i][1];
+		switch(data.msg){
+			case 'nodetype': {
+				graphicalNodeList[nodeName]['type'] = nodes[i][1];
 			}
 			break;
-			case 'ppc.parent' : {
-				nodeList[nodeName]['parent'] = nodes[i][1];
+			case 'parent' : {
+				graphicalNodeList[nodeName]['parent'] = nodes[i][1];
 			}
 			break;
-			case 'nodelist.status': {
-				nodeList[nodeName]['status'] = nodes[i][1];
+			case 'status': {
+				graphicalNodeList[nodeName]['status'] = nodes[i][1];
 			}
 			break;
-			case 'vpd.mtm': {
-				nodeList[nodeName]['mtm'] = nodes[i][1];
+			case 'mtm': {
+				graphicalNodeList[nodeName]['mtm'] = nodes[i][1];
 			}
 			break;
-			case 'nodehm.mgt': {
-				nodeList[nodeName]['mgt'] = nodes[i][1];
+			case 'mgt': {
+				graphicalNodeList[nodeName]['mgt'] = nodes[i][1];
 			}
 			break;
 			default :
@@ -49,16 +117,15 @@ function extractGraphicalData(data){
 	}	
 }
 
-function createPhysicalLayout(data){
+function createPhysicalLayout(nodeList){
 	bpaList = new Object();
 	fspList = new Object();
 	lparList = new Object();
 	selectNode = new Object();
 	
 	$('#graphTab').empty();
-	for (var temp in data.rsp){
-		var nodeName = data.rsp[temp];
-		nodeName = nodeName.substring(0, nodeName.indexOf(' '));
+	for (var temp in nodeList){
+		var nodeName = nodeList[temp];
 		if ('' == nodeName){
 			continue;
 		}
@@ -68,18 +135,20 @@ function createPhysicalLayout(data){
 }
 
 function fillList(nodeName){
-	var parentName = nodeList[nodeName]['parent'];
-	var mtm = nodeList[nodeName]['mtm'];
-	var status = nodeList[nodeName]['status']; 
+	var parentName = graphicalNodeList[nodeName]['parent'];
+	var mtm = graphicalNodeList[nodeName]['mtm'];
+	var status = graphicalNodeList[nodeName]['status']; 
 	
-	switch(nodeList[nodeName]['type']){
+	switch(graphicalNodeList[nodeName]['type']){
 		case 'bpa': {
 			if (undefined == bpaList[nodeName]){
 				bpaList[nodeName] = new Array();
 			}
 		}
 		break;
-		case 'lpar,osi': {
+		case 'lpar,osi': 
+		case 'lpar':
+		case 'osi': {
 			if ('' == parentName){
 				break;
 			}
@@ -358,7 +427,7 @@ function createActionMenu(){
 	var cloneLnk = $('<a>Clone</a>');
 	cloneLnk.bind('click', function(event) {
 		for (var name in selectNode) {
-			var mgt = nodeList[name]['mgt'];
+			var mgt = graphicalNodeList[name]['mgt'];
 			
 			// Create an instance of the plugin
 			var plugin;
@@ -494,6 +563,7 @@ function createActionMenu(){
 function createFspDiv(fspName, mtm, fsp){
 	//create fsp title
 	var lparStatusRow = '';
+	var temp = '';
 	
 	for (var lparIndex in fsp[fspName]['children']){
 		//show 8 lpars on one cec at most.
@@ -507,8 +577,14 @@ function createFspDiv(fspName, mtm, fsp){
 	
 	//select the backgroud
 	var divClass = '';
-	if (hardwareInfo[mtm][1]){
-		divClass += 'fspDiv' + hardwareInfo[mtm][1];
+	if ('' == mtm){
+		temp = '8231-E2B';
+	}
+	else{
+		temp = mtm;
+	}
+	if (hardwareInfo[temp][1]){
+		divClass += 'fspDiv' + hardwareInfo[temp][1];
 	}
 	else{
 		divClass += 'fspDiv4';
@@ -533,8 +609,15 @@ function createFspDiv(fspName, mtm, fsp){
 function createFspTip(fspName, mtm, fsp){
 	var tip = $('<div class="tooltip"></div>');
 	var tempTable = $('<table><tbody></tbody></table>');
-	if (hardwareInfo[mtm]){
-		tip.append('<h3>' + fspName + '(' + hardwareInfo[mtm][0] + ')</h3><br/>');
+	var temp = '';
+	if ('' == mtm){
+		temp = 'unkown';
+	}
+	else{
+		temp = mtm;
+	}
+	if (hardwareInfo[temp]){
+		tip.append('<h3>' + fspName + '(' + hardwareInfo[temp][0] + ')</h3><br/>');
 	}
 	else{
 		tip.append('<h3>' + fspName + '</h3><br/>');

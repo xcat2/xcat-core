@@ -627,7 +627,7 @@ table a:hover {
 	width: 179px;
 	height: 500px;
 	font-size: 10px;
-	background: url(../images/bpa.jpg);
+	background: url(../images/nodes/bpa.jpg);
 	border-width: 2px;
 }
 
@@ -637,7 +637,7 @@ table a:hover {
 	line-height: 21px;
 	width: 140px;
 	text-align: center;
-	background: url(../images/2ufsp.jpg);
+	background: url(../images/nodes/2ufsp.jpg);
 	border-style: solid;
 	border-width: 1px;
 	cursor: pointer;
@@ -650,7 +650,7 @@ table a:hover {
 	line-height: 44px;
 	width: 140px;
 	text-align: center;
-	background: url(../images/4ufsp.jpg);
+	background: url(../images/nodes/4ufsp.jpg);
 	border-style: solid;
 	border-width: 1px;
 	cursor: pointer;
@@ -661,7 +661,7 @@ table a:hover {
 	width: 179px;
 	height: 500px;
 	font-size: 15px;
-	background: url(../images/42ufsp.jpg);
+	background: url(../images/nodes/42ufsp.jpg);
 	border-width: 2px;
 	cursor: pointer;
 }
