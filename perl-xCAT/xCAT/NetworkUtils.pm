@@ -23,7 +23,6 @@ use Math::BigInt;
 use Socket;
 use strict;
 use warnings "all";
-my $netipmodule = eval {require Net::IP;};
 my $socket6support = eval { require Socket6 };
 
 our @ISA       = qw(Exporter);
@@ -341,39 +340,27 @@ sub linklocaladdr {
 #-------------------------------------------------------------------------------
 sub ishostinsubnet {
     my ($class, $ip, $mask, $subnet) = @_;
- 
-    if ($ip =~ /\d+\.\d+\.\d+\.\d+/) {# ipv4 address
-       $ip =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-       my $ipnum = ($1<<24)+($2<<16)+($3<<8)+$4;
-
-       $mask =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-       my $masknum = ($1<<24)+($2<<16)+($3<<8)+$4;
-
-       $subnet =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
-       my $netnum = ($1<<24)+($2<<16)+($3<<8)+$4;
-
-       if (($ipnum & $masknum) == $netnum) {
-          return 1;
-       } else {
-          return 0;
-       }
-    } else { # for ipv6
-       if ($netipmodule) {
-           my $eip = Net::IP::ip_expand_address ($ip,6);
-           my $enet = Net::IP::ip_expand_address ($subnet,6);
-           my $bmask = Net::IP::ip_get_mask($mask,6);
-           my $bip = Net::IP::ip_iptobin($eip,6);
-           my $bipnet = $bip & $bmask;
-           my $bnet = Net::IP::ip_iptobin($enet,6);
-           if (!$bipnet || !$bnet)
-           {
-               return 0;
-           }
-           if ($bipnet == $bnet) {
-               return 1;
-           }
-       } # else, can not check without Net::IP module
-       return 0; 
+    my $numbits=32;
+    if ($ip =~ /:/) {#ipv6
+        $numbits=128;
+    }
+    if ($mask) {
+        $mask=getipaddr($mask,GetNumber=>1);
+    } else {  #CIDR notation supported
+        if ($ip =~ /\//) { 
+            ($ip,$mask) = split /\//,$ip,2;
+            $mask=Math::BigInt->new("0b".("1"x$mask).("0"x($numbits-$mask)));
+        } else {
+            die "ishostinsubnet must either be called with a netmask or CIDR /bits notation";
+        }
+    }
+    $ip = getipaddr($ip,GetNumber=>1);
+    $subnet = getipaddr($ip,GetNumber=>1);
+    $ip &= $mask;
+    if ($ip == $subnet) {
+        return 1;
+    } else {
+        return 0;
     }
 }
 
@@ -435,17 +422,10 @@ sub prefixtomask {
         return 0;
     }
     
-    # can not do this without Net::IP module
-    if (!$netipmodule)
-    {
-        return 0;
-    }
-
-    my $ip = new Net::IP ("fe80::/$prefixlength") or die (Net::IP::Error());
-
-    my $mask = $ip->mask();
-
+    my $number=Math::BigInt->new("0b".("1"x$prefixlength).("0"x(128-$prefixlength)));
+    my $mask = $number->as_hex();
+    $mask =~ s/^0x//;
+    $mask =~ s/(....)/$1/g;
     return $mask;
-
 }
 1;
