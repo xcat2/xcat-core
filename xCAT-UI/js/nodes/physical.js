@@ -139,6 +139,10 @@ function fillList(nodeName){
 	var mtm = graphicalNodeList[nodeName]['mtm'];
 	var status = graphicalNodeList[nodeName]['status']; 
 	
+	if ('' == status){
+		status = 'unknown';
+	}
+	
 	switch(graphicalNodeList[nodeName]['type']){
 		case 'bpa': {
 			if (undefined == bpaList[nodeName]){
