@@ -64,6 +64,21 @@ tar -xf postscripts.tar
 
 %build
 
+%pre
+if [ -e "/etc/SuSE-release" ]; then
+    # In SuSE, dhcp-server provides the dhcp server, which is different from the RedHat.
+    # When building the package, we cannot add "dhcp-server" into the "Requires", because RedHat doesn't 
+    # have such one package.
+    # so there's only one solution, Yes, it looks ugly.
+    rpm -q dhcp-server >/dev/null
+    if [ $? != 0 ]; then
+        echo ""
+        echo "!! On SuSE, the dhcp-server package should be installed before installing xCAT !!"
+        exit -1;
+    fi
+fi
+
+
 %install
 mkdir -p $RPM_BUILD_ROOT/etc/apache2/conf.d
 mkdir -p $RPM_BUILD_ROOT/etc/httpd/conf.d
