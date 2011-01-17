@@ -2704,8 +2704,20 @@ sub nodeonmynet
                 }
             }
 
+        } else {
+            my @v6routes = split /\n/,`ip -6 route`;
+            foreach (@v6routes) {
+                if (/via/ or /^unreachable/ or /^fe80::\/64/) {  #only count local ones, remote ones can be caught in next loop
+                                                                 #also, link-local would be a pitfall, since more context than address is
+                                                                 #needed to determine locality
+                    next;
+                }
+                s/ .*//; #remove all after the space
+                if (xCAT::NetworkUtils->ishostinsubnet($nodeip,'',$_)) { #bank on CIDR support
+                    return 1;
+                }
+            }
         }
-        #TODO, ipv6 on Linux
         my $nettab=xCAT::Table->new("networks");
         my @vnets = $nettab->getAllAttribs('net','mgtifname','mask');
         foreach (@vnets) {

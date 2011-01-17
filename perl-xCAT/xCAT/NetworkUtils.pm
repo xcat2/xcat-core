@@ -347,15 +347,15 @@ sub ishostinsubnet {
     if ($mask) {
         $mask=getipaddr($mask,GetNumber=>1);
     } else {  #CIDR notation supported
-        if ($ip =~ /\//) { 
-            ($ip,$mask) = split /\//,$ip,2;
+        if ($subnet =~ /\//) { 
+            ($subnet,$mask) = split /\//,$subnet,2;
             $mask=Math::BigInt->new("0b".("1"x$mask).("0"x($numbits-$mask)));
         } else {
             die "ishostinsubnet must either be called with a netmask or CIDR /bits notation";
         }
     }
     $ip = getipaddr($ip,GetNumber=>1);
-    $subnet = getipaddr($ip,GetNumber=>1);
+    $subnet = getipaddr($subnet,GetNumber=>1);
     $ip &= $mask;
     if ($ip == $subnet) {
         return 1;
