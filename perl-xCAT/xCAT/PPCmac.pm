@@ -88,7 +88,7 @@ sub parse_args {
         if ( exists($opt{S}) ) {
             push @network, $_;
         } else {
-            $server = xCAT::Utils->get_ServiceNode( $node, "xcat", "MN" );
+			$server = xCAT::Utils->getSNformattedhash( $node, "xcat", "MN", "primary" );
             foreach my $key ( keys %$server ) {
                 my $valid_ip = xCAT::Utils->validate_ip( $key );
                 if ( $valid_ip ) {
