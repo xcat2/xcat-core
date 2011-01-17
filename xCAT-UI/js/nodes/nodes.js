@@ -185,7 +185,6 @@ function loadGroups(data) {
 						}
 					}
 					
-					createPhysicalLayout(nodesList);
 					// Sort nodes list
 					nodesList.sort();
 					
@@ -215,6 +214,9 @@ function loadGroups(data) {
 
 						success : loadNodes
 					});
+					
+					// Create physical layout
+					createPhysicalLayout(nodesList);
 				}
 			});
 						
