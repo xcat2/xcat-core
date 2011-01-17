@@ -253,7 +253,7 @@ sub get_related_fsp_bpa {
 	#Get node
 	#################################
 	print "in get_related_fsp_bpa(), serial = $serial, mtm= $mtm\n";
-	my @ent = $tab->getAllAttribsWhere("serial=\"$serial\" and mtm=\"$mtm\"", 'node');
+	my @ent = $tab->getAllAttribsWhere("\"serial\" like '%".$serial."%' and  \"mtm\" like '%".$mtm."%'", 'node');
 	if (@ent < 0) {
 		$msg = "failed to get the FSPs or BPAs whose mtm is $mtm, serial is $serial!";
 		return ("", $msg);
