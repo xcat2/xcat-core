@@ -9515,6 +9515,15 @@ sub prermdsklsnode
 			last;
 		}
 	}
+
+	if (scalar(@nodelist) == 0) {
+		my $rsp;
+		push @{$rsp->{data}}, "A noderange is required.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		&rmdsklsnode_usage($callback);
+		return 2;
+	}
+
     return (0, \@nodelist, $type);
 }
 
