@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 NEWROOT=$3
 RWDIR=.statelite
 XCATMASTER=$XCAT
