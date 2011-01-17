@@ -673,7 +673,7 @@ sub process_request
         if ($href and $href->{value}) {
             $sitelogservers = $href->{value};
         }
-        ($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
+        #($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
         ($href) = $sitetab->getAttribs({key => 'domain'}, 'value');
         unless ($href and $href->{value})
         {
