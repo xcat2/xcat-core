@@ -3820,10 +3820,15 @@ sub get_ServiceNode
 #-----------------------------------------------------------------------------
 sub getSNformattedhash
 {
-    my ($class, $node, $service, $request, $type) = @_;
+    my ($class, $node, $service, $request, $btype) = @_;
     my @node_list = @$node;
     my $cmd;
     my %newsnhash;
+
+	my $type="";
+	if ($btype) {
+		$type=$btype;
+	}
 
 	# get the values of either the servicenode or xcatmaster attributes
     my $sn = xCAT::Utils->get_ServiceNode(\@node_list, $service, $request);
