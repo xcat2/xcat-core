@@ -16,10 +16,12 @@ then
         #cd $source/perl-xCAT
         #rpm -ba perl-xCAT.spec
         
+        svn info > perl-xCAT/.svninfo
         source=/opt/freeware/src/packages
         echo '.svn' > /tmp/xcat-excludes
         tar -X /tmp/xcat-excludes -cf $source/SOURCES/perl-xCAT-$VER.tar perl-xCAT
         gzip -f $source/SOURCES/perl-xCAT-$VER.tar
+        rm perl-xCAT/.svninfo
         rm -f $source/SRPMS/perl-xCAT*rpm $source/RPMS/ppc/perl-xCAT*rpm
         rpm -ba perl-xCAT/perl-xCAT.spec
         #rpm -ta $source/SOURCES/perl-xCAT-$VER.tar.gz
