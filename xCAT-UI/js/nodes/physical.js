@@ -3,73 +3,48 @@ var fspList;
 var lparList;
 var graphicalNodeList;
 var selectNode;
+var graphicalDataType = ['nodetype.nodetype', 'ppc.parent', 'nodelist.status', 'vpd.mtm'];
 
-function getGraphicalData(){
-	graphicalNodeList = new Object();
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'nodels',
-			tgt : 'all',
-			args : 'nodetype.nodetype',
-			msg : 'nodetype'
-		},
+function initGraphicalData(dataTypeIndex){
+	if (undefined == dataTypeIndex){
+		dataTypeIndex = 0;
+	}
 
-		success : extractGraphicalData
-	});
+	if ((dataTypeIndex < 0) || (dataTypeIndex > 3)){
+		return;
+	}
 	
-	// Get graphical view info
+	var typeName = graphicalDataType[dataTypeIndex];
+	$('#graphTab').empty().append('Getting ' + typeName).append(createLoader());
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
 			cmd : 'nodels',
 			tgt : 'all',
-			args : 'ppc.parent',
-			msg : 'parent'
+			args : typeName,
+			msg : 'index' + dataTypeIndex.toString()
 		},
 
-		success : extractGraphicalData
-	});
-	
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'nodels',
-			tgt : 'all',
-			args : 'vpd.mtm',
-			msg : 'mtm'
-		},
-
-		success : extractGraphicalData
-	});
-	
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'nodels',
-			tgt : 'all',
-			args : 'nodelist.status',
-			msg : 'status'
-		},
-
-		success : extractGraphicalData
-	});
-	
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'nodels',
-			tgt : 'all',
-			args : 'nodehm.mgt',
-			msg : 'mgt'
-		},
-
-		success : extractGraphicalData
+		success : function(data){
+			var tempIndex = Number(data.msg.substr(5, 1));
+			extractGraphicalData(data);
+			if (tempIndex < graphicalDataType.length - 1){
+				tempIndex ++;
+				initGraphicalData(tempIndex);
+			}
+			else{
+				$('#graphTab').empty();
+				for (var temp in nodesList){
+					var nodeName = nodesList[temp];
+					if ('' == nodeName){
+						continue;
+					}
+					fillList(nodeName);
+				}
+				createGraphical(bpaList, fspList, $('#graphTab'));
+			}
+		}
 	});
 }
 
@@ -90,25 +65,21 @@ function extractGraphicalData(data){
 			graphicalNodeList[nodeName] = new Object();
 		}
 		
-		switch(data.msg){
-			case 'nodetype': {
+		switch(data.msg.substr(5, 1)){
+			case '0': {
 				graphicalNodeList[nodeName]['type'] = nodes[i][1];
 			}
 			break;
-			case 'parent' : {
+			case '1' : {
 				graphicalNodeList[nodeName]['parent'] = nodes[i][1];
 			}
 			break;
-			case 'status': {
+			case '2': {
 				graphicalNodeList[nodeName]['status'] = nodes[i][1];
 			}
 			break;
-			case 'mtm': {
+			case '3': {
 				graphicalNodeList[nodeName]['mtm'] = nodes[i][1];
-			}
-			break;
-			case 'mgt': {
-				graphicalNodeList[nodeName]['mgt'] = nodes[i][1];
 			}
 			break;
 			default :
@@ -122,16 +93,37 @@ function createPhysicalLayout(nodeList){
 	fspList = new Object();
 	lparList = new Object();
 	selectNode = new Object();
+	var flag = false;
 	
-	$('#graphTab').empty();
-	for (var temp in nodeList){
-		var nodeName = nodeList[temp];
-		if ('' == nodeName){
-			continue;
-		}
-		fillList(nodeName);
+	//no nodes are selected.
+	if (!nodeList){
+		return;
 	}
-	createGraphical(bpaList, fspList, $('#graphTab'));
+	
+	//save the new selected nodes.
+	if(graphicalNodeList){
+		for(var i in graphicalNodeList){
+			flag = true;
+			break;
+		}
+	}
+	
+	//there is not graphical data, get the info now
+	if (!flag){
+		graphicalNodeList = new Object();
+		initGraphicalData(0);
+	}
+	else{
+		$('#graphTab').empty();
+		for (var temp in nodeList){
+			var nodeName = nodeList[temp];
+			if ('' == nodeName){
+				continue;
+			}
+			fillList(nodeName);
+		}
+		createGraphical(bpaList, fspList, $('#graphTab'));
+	}
 }
 
 function fillList(nodeName){
@@ -302,7 +294,7 @@ function createGraphical(bpa, fsp, area){
 	$('.fspDiv2, .fspDiv4, .fspDiv42').tooltip({
 		position: "center right",
 		relative : true,
-		offset : [10, 10],
+		offset : [10, -40],
 		effect: "fade"
 	});
 	
@@ -430,6 +422,7 @@ function createActionMenu(){
 	//Clone
 	var cloneLnk = $('<a>Clone</a>');
 	cloneLnk.bind('click', function(event) {
+		/*
 		for (var name in selectNode) {
 			var mgt = graphicalNodeList[name]['mgt'];
 			
@@ -458,6 +451,7 @@ function createActionMenu(){
 			
 			plugin.loadClonePage(name);
 		}
+		*/
 	});
 
 	//Delete

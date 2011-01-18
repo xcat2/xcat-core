@@ -86,8 +86,6 @@ function loadNodesPage() {
 			success : loadGroups
 		});
 		
-		// Get graphical view info
-		getGraphicalData();
 	}
 }
 
@@ -147,13 +145,19 @@ function loadGroups(data) {
 			var loader2 = $('<center></center>').append(createLoader());
 			
 			// Create a tab for this group
-			var tab = new Tab();
+			var tab = new Tab('nodesPageTabs');
 			setNodesTab(tab);
 			tab.init();
 			$('#nodes').append(tab.object());
 			tab.add('nodesTab', 'Nodes', loader, false);
 			tab.add('graphTab', 'Graphical', loader2, false);
-
+			
+			$('#nodesPageTabs').bind('tabsselect', function(event, ui){
+				//for the graphical tab, we should check the graphical data first
+				if (1 == ui.index){
+					createPhysicalLayout(nodesList);
+				}
+			});
 			// To improve performance, get all nodes within selected group
 			// Get node definitions only for first 50 nodes
 			$.ajax( {
@@ -215,8 +219,6 @@ function loadGroups(data) {
 						success : loadNodes
 					});
 					
-					// Create physical layout
-					createPhysicalLayout(nodesList);
 				}
 			});
 						
