@@ -972,6 +972,32 @@ sub process_request
             }
         }
     }
+    #need to transfer CEC/Frame to FSPs/BPAs
+    my @inodes = ();
+    my @validnodes = ();
+    my $pnode;
+    my $cnode;
+    if ($req->{node})
+    {
+        #@inodes = split /,/,${$req->{noderange}};
+        foreach $pnode(@{$req->{node}})
+        {
+            my $ntype = xCAT::DBobjUtils->getnodetype($pnode);
+                if ($ntype =~ /^(cec|frame)$/)
+                {
+                    $cnode = xCAT::DBobjUtils->getchildren($pnode);
+                    foreach (@$cnode)
+                    {
+                        push @validnodes, $_;
+                    }
+                } else
+                {
+                    push @validnodes, $pnode;
+                }
+        }
+        $req->{node} = \@validnodes;
+    }
+	
     if ((!$req->{node}) && (grep /^-a$/, @{$req->{arg}}))
     {
         if (grep /-d$/, @{$req->{arg}}) #delete all entries
@@ -981,7 +1007,12 @@ sub process_request
             my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
             foreach (@entries)
             {
-                push @{$req->{node}}, $_->{node};
+                #delete the CEC and Frame node
+                my $ntype = xCAT::DBobjUtils->getnodetype($_->{node});
+                unless ($ntype =~ /^(cec|frame)$/)
+                {
+                    push @{$req->{node}}, $_->{node};
+                }
             }
         }
         else #add all entries
