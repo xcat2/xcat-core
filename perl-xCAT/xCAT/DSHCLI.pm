@@ -4761,17 +4761,27 @@ sub run_rsync_postscripts
     my @newoutput= (); 
     my $dshparms; 
     my $firstpass=1;
+    my $rsp = {};
     foreach my $postsfile (@::postscripts) {
        my $tmppostfile = $postsfile ;
+        #my $rsp = {};
+        #$rsp->{data}->[0] = " postscripts = $postsfile";
+        #xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
  
        # remove  first character, we have to do this because the
        # return from rsync is tmp/file1  not /tmp/file1
+       # if service node need to add the SNsyncfiledir to the path
+       if (xCAT::Utils->isServiceNode()) {
+         my $tmpp=$syncdir . $tmppostfile;
+         $tmppostfile = $tmpp;
+       }
        substr($tmppostfile,0,1)=""; 
 
+       #$rsp->{data}->[0] = " postscripts = $tmppostfile";
+       #xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
        # now remove .post from the postscript file for the compare
        # with the returned file name
        my($tp,$post) = split(/.post/,$tmppostfile);
-
        $tmppostfile = $tp;
        foreach my $line (@rsync_output) {
          my($hostname,$ps) = split(/: /, $line);
