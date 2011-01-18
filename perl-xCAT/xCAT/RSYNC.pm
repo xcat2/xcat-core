@@ -113,8 +113,13 @@ sub remote_copy_command
         {
             $sync_opt = '--rsync-path /usr/bin/rsync ';
         }
-
-        $sync_opt .= '-Lprotz ';
+        # if only syncing the service node or no postscripts then do not
+        # get update file notification
+        if (($::SYNCSN  == 1) || (!(defined @::postscripts))) { 
+          $sync_opt .= '-Lprotz ';
+        } else {
+           $sync_opt .= '-Liprotz --out-format=%f%L '; # add notify of update
+        }
         $sync_opt .= $$config{'options'};
         if ($::SYNCSN == 1)
         {    # syncing service node

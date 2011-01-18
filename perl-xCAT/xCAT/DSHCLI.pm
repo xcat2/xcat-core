@@ -4141,7 +4141,7 @@ sub parse_and_run_dcp
         return;
 
     }
-
+    my $synfiledir;
     # if rsyncing the nodes or service nodes
     if ($options{'File'})
     {
@@ -4153,7 +4153,7 @@ sub parse_and_run_dcp
         }
 
         # set default sync dir on service node
-        my $synfiledir = "/var/xcat/syncfiles";
+        $synfiledir = "/var/xcat/syncfiles";
 
         # get the directory on the servicenode to put the rsync files in
         my @syndir = xCAT::Utils->get_site_attribute("SNsyncfiledir");
@@ -4164,6 +4164,9 @@ sub parse_and_run_dcp
 
         my $rc;
         my $syncfile = $options{'File'};
+        # the parsing of the file will fill in an array of postscripts 
+        # need to be run if the associated file is updated
+        @::postscripts=();
         if (xCAT::Utils->isServiceNode())
         {    # running on service node
             $rc =
@@ -4226,17 +4229,18 @@ sub parse_and_run_dcp
 
     # Execute the dcp api
     @results = xCAT::DSHCLI->runDcp_api(\%options, 0);
-
-    #if ($::RUNCMD_RC)
-    #{    # error from dcp
-    #    my $rsp = {};
-    #    $rsp->{data}->[0] = "Error from xdcp. Return Code = $::RUNCMD_RC";
-    #    xCAT::MsgUtils->message("E", $rsp, $::CALLBACK, 1);
-
-    #}
     $::FAILED_NODES = $::RUNCMD_RC;
-    return (@results);
-
+    
+    # if not just syncing the service node SNsyncfiledir directory,
+    #  @::postscripts should be empty in this case anyway
+    # if postscripts to run after rsync, process the output and 
+    # create the xdsh command to run the ones needed
+    if ((@::postscripts) && ($::SYNCSN == 0)) {
+      my @results2 = &run_rsync_postscripts(\@results,$synfiledir); 
+      return (@results2);
+    } else {
+      return (@results);
+    }
 }
 
 #-------------------------------------------------------------------------------
@@ -4246,6 +4250,7 @@ sub parse_and_run_dcp
 
         This parses the -F rsync input file. and runs rsync to the input
 		image for the files
+		Does not process the EXECUTE statement
 
         File format:
           /.../file1 ->  /.../dir1/filex
@@ -4288,6 +4293,16 @@ sub rsync_to_image
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
+        if ($line =~ /^#/)    # skip commments
+        {
+            next;
+        }
+
+        # process no more lines, do not exec
+        # do not execute postscripts when syncing servicenodes
+        if ($line =~ /EXECUTE:/) { # process no more lines
+			last;
+	}
         if ($line =~ /(.+) -> (.+)/)
         {
             my $imageupdatedir  = $image;
@@ -4419,6 +4434,24 @@ sub parse_rsync_input_file_on_MN
         if ($line =~ /^#/)    # skip commments
         {
             next;
+        }
+        # if syncing only the service node directory, do not execute
+        # postscripts
+        if ($line =~ /EXECUTE:/) {
+          if ($::SYNCSN == 1) {
+        	last;
+          } else {
+             while (my $line = <INPUTFILE>)
+             {
+               chomp $line;
+               if ($line =~ /^#/)    # skip commments
+               {
+                 next;
+               }
+               push @::postscripts,$line;
+              }
+           
+         }
         }
         if ($line =~ /(.+) -> (.+)/)
         {
@@ -4574,6 +4607,28 @@ sub parse_rsync_input_file_on_SN
     while (my $line = <INPUTFILE>)
     {
         chomp $line;
+        if ($line =~ /^#/)    # skip commments
+        {
+            next;
+        }
+        # if syncing only the service node directory, do not execute
+        # postscripts
+        if ($line =~ /EXECUTE:/) {
+          if ($::SYNCSN == 1) {
+        	last;
+          } else {
+             while (my $line = <INPUTFILE>)
+             {
+               chomp $line;
+               if ($line =~ /^#/)    # skip commments
+               {
+                 next;
+               }
+               push @::postscripts,$line;
+              }
+           
+         }
+        }
         if ($line =~ /(.+) -> (.+)/)
         {
             $process_line = 1;
@@ -4666,6 +4721,97 @@ sub parse_rsync_input_file_on_SN
         $$options{'nodes'} = join ',', keys %{$$options{'destDir_srcFile'}};
     }
     return 0;
+}
+#-------------------------------------------------------------------------------
+
+=head3
+       run_rsync_postscripts 
+
+        This executes the postscript file on the nodes where
+	    the corresponding rsync file was updated
+        rsync returns a list of files that have been updated
+        in the form   hostname: <full file path>
+        For example:  node1: tmp/test/file1  ( yes it leaves the first / off)
+        This routine must match that list to the input list of postscripts.
+        If there is a match, for example
+        The postscript file is /tmp/test/file1.post  and tmp/test/file1 was 
+        updated, then it builds a xdsh command to the node to run  
+        /tmp/test/file1.post.
+        On the service node, the file will be in $syncdir/tmp/test/file1.post.
+        Also the routine must preserve all other messages returned from rsync, 
+        to return to the admin.  It will remove the messages that the files 
+        were updated, that is all of from hostname: <full file path>.	
+       Input: the output from the xdcp rsync run
+            : @::postscripts  to run
+
+        Comments:
+          Needs to remove the lines from rsync that are return to let
+          me know files were updated from the output to determine which 
+          postscripts to run and leave any other messages 
+          to return to the admin.
+
+=cut
+
+#-------------------------------------------------------------------------------
+
+sub run_rsync_postscripts 
+{
+    my ($rsyncoutput,$syncdir) = @_;
+    my @rsync_output   = @$rsyncoutput;
+    my @newoutput= (); 
+    my $dshparms; 
+    my $firstpass=1;
+    foreach my $postsfile (@::postscripts) {
+       my $tmppostfile = $postsfile ;
+ 
+       # remove  first character, we have to do this because the
+       # return from rsync is tmp/file1  not /tmp/file1
+       substr($tmppostfile,0,1)=""; 
+
+       # now remove .post from the postscript file for the compare
+       # with the returned file name
+       my($tp,$post) = split(/.post/,$tmppostfile);
+
+       $tmppostfile = $tp;
+       foreach my $line (@rsync_output) {
+         my($hostname,$ps) = split(/: /, $line);
+         chomp $ps;
+         chomp $hostname;
+         if ($ps eq "rsync") {  # this is a line that is not an update 
+             # save output , if firstpass through output
+             if ($firstpass == 1) {
+               push @newoutput, $line;
+               $firstpass = 0;
+             }
+             next;
+         }
+         if ($tmppostfile eq $ps) { 
+           # build xdsh commands
+           # if on the service node need to add the $syncdir directory 
+           # to the path
+           if (xCAT::Utils->isServiceNode()) {
+             my $tmpp=$syncdir . $postsfile;
+             $postsfile=$tmpp;
+           }
+           # build host and all scripts to execute
+           push (@{$dshparms->{'postscripts'} {$postsfile}}, $hostname);
+         }
+       }
+    }
+    # now if we have postscripts to run, run xdsh
+    my $out;
+    foreach  my $ps ( keys %{$$dshparms{'postscripts'}}) {
+         my @nodes;
+         push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
+         
+         $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
+                                    node    => \@nodes,
+                                    arg     => [ "-e", $ps ]
+                             }, $::SUBREQ, 0);
+         push @newoutput,$out;
+
+    }
+    return @newoutput;
 }
 
 #-------------------------------------------------------------------------------
