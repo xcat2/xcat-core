@@ -1755,7 +1755,7 @@ sub nodels
 	        }
             #-S will make nodels not show FSPs and BPAs
             my @newnodes = ();
-            if (defined($HIDDEN))
+            if (!defined($HIDDEN))
             {
                 my $listtab  = xCAT::Table->new( 'nodelist' );
                 if ($listtab) {
