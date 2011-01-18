@@ -1053,14 +1053,23 @@ sub process_request
     {
         my $ip_hash;
         foreach my $node ( @{$req->{node}} ) {
-            my $hoststab  = xCAT::Table->new('hosts');
-            my $ent = $hoststab->getNodeAttribs( $node, ['ip'] );
-            if ( $ent->{ip} ) {
-                if ( $ip_hash->{ $ent->{ip} } ) {
-                    $callback->({error=>["Duplicated IP addresses in hosts table for following nodes: $node," . $ip_hash->{ $ent->{ip} }],errorcode=>[1]});
-                    return;
+            #need to change the way of finding IP for nodes
+            my $ifip = xCAT::Utils->isIpaddr($node);
+            if ($ifip)
+            {
+                $ip_hash->{ $node} = $node;
+            }
+            else
+            {
+                my $hoststab  = xCAT::Table->new('hosts');
+                my $ent = $hoststab->getNodeAttribs( $node, ['ip'] );
+                if ( $ent->{ip} ) {
+                    if ( $ip_hash->{ $ent->{ip} } ) {
+                        $callback->({error=>["Duplicated IP addresses in hosts table for following nodes: $node," . $ip_hash->{ $ent->{ip} }],errorcode=>[1]});
+                        return;
+                    }
+                    $ip_hash->{ $ent->{ip} } = $node;
                 }
-                $ip_hash->{ $ent->{ip} } = $node;
             }
         }
 
