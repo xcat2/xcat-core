@@ -1147,7 +1147,7 @@ sub process_request
             }
         }
         close($omshell) if ($^O ne 'aix');
-        close($omshell6) if ($^O ne 'aix');
+        close($omshell6) if ($omshell6 and $^O ne 'aix');
         foreach my $node (@{$req->{node}})
         {
             unless ($machash)
