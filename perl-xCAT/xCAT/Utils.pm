@@ -5624,6 +5624,10 @@ sub get_subnet_aix
 sub isIpaddr
 {
     my $addr = shift;
+    if (($addr) && ($addr =~ /xCAT::Utils/))
+    {
+        $addr = shift;
+    }
 
     #print "addr=$addr\n";
     if ($addr !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
