@@ -4796,13 +4796,7 @@ sub run_rsync_postscripts
              next;
          }
          if ($tmppostfile eq $ps) { 
-           # build xdsh commands
-           # if on the service node need to add the $syncdir directory 
-           # to the path
-           if (xCAT::Utils->isServiceNode()) {
-             my $tmpp=$syncdir . $postsfile;
-             $postsfile=$tmpp;
-           }
+           # build xdsh queue 
            # build host and all scripts to execute
            push (@{$dshparms->{'postscripts'} {$postsfile}}, $hostname);
          }
@@ -4811,8 +4805,17 @@ sub run_rsync_postscripts
     # now if we have postscripts to run, run xdsh
     my $out;
     foreach  my $ps ( keys %{$$dshparms{'postscripts'}}) {
-         my @nodes;
-         push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
+        my @nodes;
+        push (@nodes, @{$$dshparms{'postscripts'}{$ps}}); 
+        # if on the service node need to add the $syncdir directory 
+        # to the path
+        if (xCAT::Utils->isServiceNode()) {
+         my $tmpp=$syncdir . $ps;
+         $ps=$tmpp;
+        }
+      #  my $rsp = {};
+      # $rsp->{data}->[0] = " postscripts = $ps";
+      #  xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
          
          $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
                                     node    => \@nodes,
