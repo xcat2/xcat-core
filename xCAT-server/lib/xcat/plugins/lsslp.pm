@@ -1687,6 +1687,10 @@ sub parse_responses {
             #if ( exists($opt{M}) )  {
                 $hostname = match_vpdtable($type, $result[1], $result[2],$result[3], $result[5], $result[6], $result[7], $result[8]);
             #}
+            my $ifip1 = xCAT::Utils->isIpaddr($hostname);
+            if ($ifip1) {
+                $hostname = $severnode1[4];
+            }            
             if ($hostname) {
                 #$severnode1[4] = $hostip{$hostname};
                 $outhash{$hostname} = \@severnode1;    
@@ -1709,6 +1713,11 @@ sub parse_responses {
             #if ( exists($opt{M})  )  {
                 $hostname = match_vpdtable($type, $result[1], $result[2],$result[3], $result[5], $result[6], $result[7], $result[8]);
             #}    
+            my $ifip2 = xCAT::Utils->isIpaddr($hostname);
+            if ($ifip2) {
+                $hostname = $severnode2[4];
+            }    
+        
             if ($hostname) {
                 #$severnode2[4] = $hostip{$hostname};  
                 $outhash{$hostname} = \@severnode2; 
