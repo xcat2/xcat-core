@@ -686,6 +686,7 @@ sub process_request
     my $request  = shift;
     my $callback = shift;
     my $sub_req  = shift;
+    $::SUBREQ = $sub_req;
 
     my $nodes   = $request->{node};
     my $command = $request->{command}->[0];
