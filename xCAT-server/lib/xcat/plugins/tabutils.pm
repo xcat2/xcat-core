@@ -1491,7 +1491,7 @@ sub nodels
     	my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage:";
-        push @{$rsp{data}}, "  nodels [noderange] [-b|--blame] [-H|--with-fieldname] [table.attribute | shortname] [...]";
+        push @{$rsp{data}}, "  nodels [noderange] [-b|--blame] [-H|--with-fieldname] [table.attribute | shortname] [-S][...]";
         push @{$rsp{data}}, "  nodels {-v|--version}";
         push @{$rsp{data}}, "  nodels [-?|-h|--help]";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
@@ -1505,8 +1505,9 @@ sub nodels
     }
     my $NOTERSE;
     my $ATTRIBUTION;
+        my $HIDDEN;
 
-   if (!GetOptions('h|?|help'  => \$HELP, 'H|with-fieldname' => \$NOTERSE, 'b|blame' => \$ATTRIBUTION, 'v|version' => \$VERSION,) ) { $nodels_usage->(1); return; }
+   if (!GetOptions('h|?|help'  => \$HELP, 'H|with-fieldname' => \$NOTERSE, 'b|blame' => \$ATTRIBUTION, 'v|version' => \$VERSION, 'S' => \$HIDDEN) ) { $nodels_usage->(1); return; }
 
     # Help
     if ($HELP) { $nodels_usage->(0); return; }
@@ -1746,14 +1747,34 @@ sub nodels
         {
             my @attribs = ("node");
             my @ents    = $nodelisttab->getAllAttribs(@attribs);
-	    my @nodes;
+	        my @nodes;
             foreach (@ents) {
-         	if ($_->{node}) {
-			push @nodes, $_->{node};
-		}
-	    }
-	    @nodes = sort {$a cmp $b} @nodes;
-	    foreach (@nodes) {
+         	    if ($_->{node}) {
+			        push @nodes, $_->{node};
+		        }
+	        }
+            #-S will make nodels not show FSPs and BPAs
+            my @newnodes = ();
+            if (defined($HIDDEN))
+            {
+                my $listtab  = xCAT::Table->new( 'nodelist' );
+                if ($listtab) {
+                    my $listHash = $listtab->getNodesAttribs(\@nodes, ['hidden']);
+                    foreach my $rnode(@nodes) {
+                        unless (defined($listHash->{$rnode}->[0]->{hidden})){
+                            push (@newnodes, $rnode);
+                        } elsif ($listHash->{$rnode}->[0]->{hidden} ne 1)  {
+                            push (@newnodes, $rnode);
+                        }
+                    }
+                }
+                @nodes = ();
+                foreach (@newnodes) {
+                    push (@nodes, $_);
+                }
+            }
+	        @nodes = sort {$a cmp $b} @nodes;
+	        foreach (@nodes) {
                 my $rsp;
                 #if ($_)
                 #{
