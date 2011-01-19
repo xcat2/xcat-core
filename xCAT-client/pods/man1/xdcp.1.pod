@@ -129,6 +129,25 @@ For example:
 
   /etc/*  ->  /etc/
 
+B<Running postscripts after files are sync'd to the nodes>:
+
+After you define the files to rsync, you can add an B<EXECUTE:> clause in the synclist file. The B<EXECUTE:> clause will list all the postscripts that you would like to run after the files are sync'd to the node. 
+The postscript file must be of the form B<filename.post>, reside in the same
+directory as B<filename>, and be executable.
+If the file B<filename> is rsync'd to the node, then the B<filename.post>
+will automatically be run on the node.
+If the file B<filename> is not updated on the node,  the B<filename.post> will not be run.  
+
+Putting the B<filename.post> in the file list to rsync to the node is required
+for hierarchical clusters.  It is optional for non-hierarchical cluster. 
+
+For example, your rsynclist file may look like this:
+ /tmp/file2  ->  /tmp/file2
+ /tmp/file2.post -> /tmp/file2.post
+ # the below are postscripts
+ EXECUTE:
+ /tmp/file2.post
+
 On Linux rsync always uses ssh remoteshell. On AIX, ssh or rsh is used depending on the site.useSSHonAIX attribute.
 
 =item B<-h>|B<--help>
