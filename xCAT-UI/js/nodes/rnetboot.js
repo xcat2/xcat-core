@@ -33,8 +33,8 @@ function loadNetbootPage(tgtNodes) {
 	var netbootForm = $('<div class="form"></div>');
 
 	// Create status bar
-	var barId = 'netbootStatusBar' + inst;
-	var statusBar = createStatusBar(barId).hide();
+	var statBarId = 'netbootStatusBar' + inst;
+	var statusBar = createStatusBar(statBarId).hide();
 	netbootForm.append(statusBar);
 
 	// Create loader
@@ -178,7 +178,7 @@ function loadNetbootPage(tgtNodes) {
 					cmd : 'rnetboot',
 					tgt : tgts,
 					args : optStr,
-					msg : 'out=' + barId + ';cmd=rnetboot;tgt=' + tgts
+					msg : 'out=' + statBarId + ';cmd=rnetboot;tgt=' + tgts
 				},
 
 				success : updateStatusBar

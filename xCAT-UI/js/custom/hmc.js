@@ -32,8 +32,7 @@ hmcPlugin.prototype.loadInventory = function(data) {
 	var inv = data.rsp;
 
 	// Remove loader
-	var loaderId = tabId + 'TabLoader';
-	$('#' + loaderId).remove();
+	$('#' + tabId).find('img').remove();
 
 	// Create division to hold inventory
 	var invDivId = tabId + 'Inventory';
@@ -155,13 +154,11 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 
 	// Create status bar
 	var statBarId = 'hmcProvisionStatBar' + inst;
-	var statBar = createStatusBar(statBarId);
-	statBar.hide();
+	var statBar = createStatusBar(statBarId).hide();
 	provForm.append(statBar);
 
 	// Create loader
-	var loader = createLoader('hmcProvisionLoader' + inst);
-	loader.hide();
+	var loader = createLoader('hmcProvisionLoader' + inst).hide();
 	statBar.append(loader);
 
 	// Create info bar
@@ -217,12 +214,9 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
  */
 hmcPlugin.prototype.loadResources = function() {
 	// Get resource tab ID
-	var tabID = 'hmcResourceTab';
-	// Get loader ID
-	var loaderID = 'hmcResourceLoader';
-	if ($('#' + loaderID).length) {
-		$('#' + loaderID).remove();
-	}
+	var tabId = 'hmcResourceTab';
+	// Remove loader
+	$('#' + tabId).find('img').remove();
 	
 	// Create info bar
 	var infoBar = createInfoBar('Under construction');
@@ -231,7 +225,7 @@ hmcPlugin.prototype.loadResources = function() {
 	var resrcForm = $('<div class="form"></div>');
 	resrcForm.append(infoBar);
 	
-	$('#' + tabID).append(resrcForm);
+	$('#' + tabId).append(resrcForm);
 };
 
 /**

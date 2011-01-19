@@ -68,10 +68,9 @@ function loadConfigPage() {
 	$('#content').append(tab.object());
 
 	// Create loader
-	var loader = createLoader();
-	loader = $('<center></center>').append(loader);
+	var loader = $('<center></center>').append(createLoader());
 
-	// Configure xCAT datable tables
+	// Add tab to configure xCAT tables
 	tab.add('configTablesTab', 'Tables', loader, false);
 
 	// Add the update tab
@@ -135,8 +134,7 @@ function loadTableNames(data) {
 			var id = (e.target) ? e.target.id : e.srcElement.id;
 
 			// Create loader
-			var loader = createLoader();
-			loader = $('<center></center>').append(loader);
+			var loader = $('<center></center>').append(createLoader());
 
 			// Add a new tab for this table
 			var configTab = getConfigTab();

@@ -89,6 +89,7 @@ Tab.prototype.add = function(tabId, tabName, tabCont, closeable) {
 			// Do not remove first tab
 			if (tabIndex != 0) {			
 				tabs.tabs('remove', tabIndex);
+				tabs.tabs('select', 0);
 			}
 		});
 	}
@@ -349,7 +350,7 @@ function createWarnBar(msg) {
  * 
  * @param loaderId
  *            Loader ID
- * @return Nothing
+ * @return Loader
  */
 function createLoader(loaderId) {
 	var loader = $('<img id="' + loaderId + '" src="images/loader.gif"></img>');

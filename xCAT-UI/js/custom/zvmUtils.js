@@ -100,7 +100,7 @@ function loadHcpInfo(data) {
         	}
 		} // End of if (hcp)
 	} else {
-		// Create warning dialog 		
+		// Create warning dialog
 		var warnDialog = $('<div class="ui-state-error ui-corner-all">'
 			+ '<p><span class="ui-icon ui-icon-alert"></span>'
 			+ 'z/VM SMAPI is not responding to ' + hcp + '.  It needs to be reset.</p>'
@@ -195,8 +195,7 @@ function loadUserEntry(data) {
 	var userEntry = data.rsp[0].split(node + ':');
 
 	// Remove loader
-	var loaderId = node + 'TabLoader';
-	$('#' + loaderId).remove();
+	$('#' + node + 'TabLoader').remove();
 
 	var toggleLinkId = node + 'ToggleLink';
 	$('#' + toggleLinkId).click(function() {
@@ -251,14 +250,11 @@ function loadUserEntry(data) {
 	/**
 	 * Save
 	 */
-	var saveBtn = createButton('Save');
-	saveBtn.hide();
+	var saveBtn = createButton('Save').hide();
 	saveBtn.bind('click', function(event) {
 		// Show loader
-		var statusId = node + 'StatusBar';
-		var statusBarLoaderId = node + 'StatusBarLoader';
-		$('#' + statusBarLoaderId).show();
-		$('#' + statusId).show();
+		$('#' + node + 'StatusBarLoader').show();
+		$('#' + node + 'StatusBar').show();
 
 		// Replace user entry
 		var newUserEntry = jQuery.trim(txtArea.val()) + '\n';
@@ -294,8 +290,7 @@ function loadUserEntry(data) {
 	/**
 	 * Cancel
 	 */
-	var cancelBtn = createButton('Cancel');
-	cancelBtn.hide();
+	var cancelBtn = createButton('Cancel').hide();
 	cancelBtn.bind('click', function(event) {
 		txtArea.attr('readonly', 'readonly');
 		txtArea.css( {
@@ -1571,10 +1566,8 @@ function openAddNicDialog(node, hcp) {
             		incrementNodeProcess(node);
             
             		// Show loader
-            		var statusId = node + 'StatusBar';
-            		var statusBarLoaderId = node + 'StatusBarLoader';
-            		$('#' + statusBarLoaderId).show();
-            		$('#' + statusId).show();
+            		$('#' + node + 'StatusBarLoader').show();
+            		$('#' + node + 'StatusBar').show();
     		
     				// Close dialog
     				$(this).dialog( "close" );
@@ -1614,10 +1607,8 @@ function removeProcessor(node, address) {
 	incrementNodeProcess(node);
 
 	// Show loader
-	var statusId = node + 'StatusBar';
-	var statusBarLoaderId = node + 'StatusBarLoader';
-	$('#' + statusBarLoaderId).show();
-	$('#' + statusId).show();
+	$('#' + node + 'StatusBarLoader').show();
+	$('#' + node + 'StatusBar').show();
 }
 
 /**
@@ -1647,10 +1638,8 @@ function removeDisk(node, address) {
 	incrementNodeProcess(node);
 
 	// Show loader
-	var statusId = node + 'StatusBar';
-	var statusBarLoaderId = node + 'StatusBarLoader';
-	$('#' + statusBarLoaderId).show();
-	$('#' + statusId).show();
+	$('#' + node + 'StatusBarLoader').show();
+	$('#' + node + 'StatusBar').show();
 }
 
 /**
@@ -1683,10 +1672,8 @@ function removeNic(node, nic) {
 	incrementNodeProcess(node);
 
 	// Show loader
-	var statusId = node + 'StatusBar';
-	var statusBarLoaderId = node + 'StatusBarLoader';
-	$('#' + statusBarLoaderId).show();
-	$('#' + statusId).show();
+	$('#' + node + 'StatusBarLoader').show();
+	$('#' + node + 'StatusBar').show();
 }
 
 /**
@@ -1826,9 +1813,9 @@ function loadDiskPoolTable(data) {
 	var tmp = data.rsp[0].split(hcp + ': ');
 
 	// Remove loader
-	var loaderID = 'zvmResourceLoader';
-	if ($('#' + loaderID).length) {
-		$('#' + loaderID).remove();
+	var loaderId = 'zvmResourceLoader';
+	if ($('#' + loaderId).length) {
+		$('#' + loaderId).remove();
 	}
 
 	// Resource tab ID
@@ -1887,19 +1874,19 @@ function loadNetworkTable(data) {
 	var tmp = data.rsp[0].split(hcp + ': ');
 
 	// Remove loader
-	var loaderID = 'zvmResourceLoader';
-	if ($('#' + loaderID).length) {
-		$('#' + loaderID).remove();
+	var loaderId = 'zvmResourceLoader';
+	if ($('#' + loaderId).length) {
+		$('#' + loaderId).remove();
 	}
 
 	// Resource tab ID
-	var tabID = 'zvmResourceTab';
-	var info = $('#' + tabID).find('.ui-state-highlight');
+	var tabId = 'zvmResourceTab';
+	var info = $('#' + tabId).find('.ui-state-highlight');
 	// If there is no info bar
 	if (!info.length) {
 		// Create info bar
 		info = createInfoBar('Below are disks and networks found by the hardware control point.  It shows disk pools defined in the EXTENT CONTROL file and LANs|VSWITCHes available to use.');
-		$('#' + tabID).append(info);
+		$('#' + tabId).append(info);
 	}
 
 	// Get datatable
@@ -1911,16 +1898,16 @@ function loadNetworkTable(data) {
 		fieldSet.append(legend);
 
 		// Create table
-		var tableID = 'zNetworkDataTable';
-		var table = new DataTable(tableID);
+		var tableId = 'zNetworkDataTable';
+		var table = new DataTable(tableId);
 		table.init( [ 'Hardware control point', 'Type', 'Name', 'Details' ]);
 
 		// Append datatable to tab
 		fieldSet.append(table.object());
-		$('#' + tabID).append(fieldSet);
+		$('#' + tabId).append(fieldSet);
 
 		// Turn into datatable
-		dTable = $('#' + tableID).dataTable();
+		dTable = $('#' + tableId).dataTable();
 		setNetworkDataTable(dTable);
 
 		// Set the column width
@@ -1953,12 +1940,10 @@ function connect2GuestLan(data) {
 	var address = args[1].replace('addr=', '');
 	var lanName = args[2].replace('lan=', '');
 	var lanOwner = args[3].replace('owner=', '');
-
-	var statBarId = node + 'StatusBar';
 	
 	// Write ajax response to status bar
 	var prg = writeRsp(rsp, node + ': ');	
-	$('#' + statBarId).append(prg);	
+	$('#' + node + 'StatusBar').append(prg);	
 			
 	// Connect NIC to Guest LAN
 	$.ajax( {
@@ -1989,12 +1974,10 @@ function connect2VSwitch(data) {
 	var node = args[0].replace('node=', '');
 	var address = args[1].replace('addr=', '');
 	var vswitchName = args[2].replace('vsw=', '');
-
-	var statBarId = node + 'StatusBar';
 	
 	// Write ajax response to status bar
 	var prg = writeRsp(rsp, node + ': ');	
-	$('#' + statBarId).append(prg);	
+	$('#' + node + 'StatusBar').append(prg);	
 
 	// Connect NIC to VSwitch
 	$.ajax( {

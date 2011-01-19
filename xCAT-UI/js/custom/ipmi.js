@@ -32,8 +32,7 @@ ipmiPlugin.prototype.loadInventory = function(data) {
 	var inv = data.rsp;
 
 	// Remove loader
-	var loaderId = tabId + 'TabLoader';
-	$('#' + loaderId).remove();
+	$('#' + tabId).find('img').remove();
 
 	// Create division to hold inventory
 	var invDivId = tabId + 'Inventory';
@@ -122,13 +121,11 @@ ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
 
 	// Create status bar
 	var statBarId = 'ipmiProvisionStatBar' + inst;
-	var statBar = createStatusBar(statBarId);
-	statBar.hide();
+	var statBar = createStatusBar(statBarId).hide();
 	provForm.append(statBar);
 
 	// Create loader
-	var loader = createLoader('ipmiProvisionLoader' + inst);
-	loader.hide();
+	var loader = createLoader('ipmiProvisionLoader' + inst).hide();
 	statBar.append(loader);
 
 	// Create info bar
@@ -184,12 +181,9 @@ ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
  */
 ipmiPlugin.prototype.loadResources = function() {
 	// Get resource tab ID
-	var tabID = 'ipmiResourceTab';
-	// Get loader ID
-	var loaderID = 'ipmiResourceLoader';
-	if ($('#' + loaderID).length) {
-		$('#' + loaderID).remove();
-	}
+	var tabId = 'ipmiResourceTab';
+	// Remove loader
+	$('#' + tabId).find('img').remove();
 	
 	// Create info bar
 	var infoBar = createInfoBar('Under construction');
@@ -198,7 +192,7 @@ ipmiPlugin.prototype.loadResources = function() {
 	var resrcForm = $('<div class="form"></div>');
 	resrcForm.append(infoBar);
 	
-	$('#' + tabID).append(resrcForm);
+	$('#' + tabId).append(resrcForm);
 };
 
 /**

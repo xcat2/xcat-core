@@ -102,36 +102,36 @@ function checkGangliaRPMs(data) {
 			success : function(data) {
 				if (data.rsp[0].indexOf("not-monitored") > -1) {
 					// Create link to start Ganglia
-			var startLnk = $('<a href="#">Click here</a>');
-			startLnk.css( {
-				'color' : 'blue',
-				'text-decoration' : 'none'
-			});
-			startLnk.click(function() {
-				// Turn on Ganglia for all nodes
-				monitorNode('', 'on');
-			});
-
-			// Create warning bar
-			var warningBar = $('<div class="ui-state-error ui-corner-all"></div>');
-			var msg = $('<p></p>');
-			msg.append('<span class="ui-icon ui-icon-alert"></span>');
-			msg.append('Please start Ganglia Monitoring on xCAT. ');
-			msg.append(startLnk);
-			msg.append(' to start Ganglia Monitoring.');
-			warningBar.append(msg);
-			warningBar.css('margin-bottom', '10px');
-
-			// If there are any warning messages, append this warning after it
-			var curWarnings = $('#gangliamon').find('.ui-state-error');
-			var gangliaTab = $('#gangliamon');
-			if (curWarnings.length) {
-				curWarnings.after(warningBar);
-			} else {
-				warningBar.prependTo(gangliaTab);
+					var startLnk = $('<a href="#">Click here</a>');
+					startLnk.css( {
+						'color' : 'blue',
+						'text-decoration' : 'none'
+					});
+					startLnk.click(function() {
+						// Turn on Ganglia for all nodes
+						monitorNode('', 'on');
+					});
+		
+					// Create warning bar
+					var warningBar = $('<div class="ui-state-error ui-corner-all"></div>');
+					var msg = $('<p></p>');
+					msg.append('<span class="ui-icon ui-icon-alert"></span>');
+					msg.append('Please start Ganglia Monitoring on xCAT. ');
+					msg.append(startLnk);
+					msg.append(' to start Ganglia Monitoring.');
+					warningBar.append(msg);
+					warningBar.css('margin-bottom', '10px');
+		
+					// If there are any warning messages, append this warning after it
+					var curWarnings = $('#gangliamon').find('.ui-state-error');
+					var gangliaTab = $('#gangliamon');
+					if (curWarnings.length) {
+						curWarnings.after(warningBar);
+					} else {
+						warningBar.prependTo(gangliaTab);
+					}
+				}
 			}
-		}
-	}
 		});
 	}
 	return;
@@ -323,8 +323,7 @@ function loadNodes4Ganglia(data) {
 	// Variable to send command and request node status
 	var getNodeStatus = true;
 	
-	var node;
-	var args;
+	var node, args;
 	for ( var i in rsp) {
 		// Get the node
 		var pos = rsp[i].indexOf('Object name:');

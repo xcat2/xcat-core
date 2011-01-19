@@ -32,8 +32,7 @@ bladePlugin.prototype.loadInventory = function(data) {
 	var inv = data.rsp;
 
 	// Remove loader
-	var loaderId = tabId + 'TabLoader';
-	$('#' + loaderId).remove();
+	$('#' + tabId).find('img').remove();
 
 	// Create division to hold inventory
 	var invDivId = tabId + 'Inventory';
@@ -122,13 +121,11 @@ bladePlugin.prototype.loadProvisionPage = function(tabId) {
 
 	// Create status bar
 	var statBarId = 'bladeProvisionStatBar' + inst;
-	var statBar = createStatusBar(statBarId);
-	statBar.hide();
+	var statBar = createStatusBar(statBarId).hide();
 	provForm.append(statBar);
 
 	// Create loader
-	var loader = createLoader('bladeProvisionLoader' + inst);
-	loader.hide();
+	var loader = createLoader('bladeProvisionLoader' + inst).hide();
 	statBar.append(loader);
 
 	// Create info bar
@@ -184,12 +181,9 @@ bladePlugin.prototype.loadProvisionPage = function(tabId) {
  */
 bladePlugin.prototype.loadResources = function() {
 	// Get resource tab ID
-	var tabID = 'bladeResourceTab';
-	// Get loader ID
-	var loaderID = 'bladeResourceLoader';	
-	if ($('#' + loaderID).length) {
-		$('#' + loaderID).remove();
-	}
+	var tabId = 'bladeResourceTab';
+	// Remove loader
+	$('#' + tabId).find('img').remove();
 	
 	// Create info bar
 	var infoBar = createInfoBar('Under construction');

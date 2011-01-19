@@ -30,10 +30,9 @@ ivmPlugin.prototype.loadInventory = function(data) {
 	var node = args[1].replace('node=', '');
 	// Get node inventory
 	var inv = data.rsp;
-
+	
 	// Remove loader
-	var loaderId = tabId + 'TabLoader';
-	$('#' + loaderId).remove();
+	$('#' + tabId).find('img').remove();
 
 	// Create division to hold inventory
 	var invDivId = tabId + 'Inventory';
@@ -122,13 +121,11 @@ ivmPlugin.prototype.loadProvisionPage = function(tabId) {
 
 	// Create status bar
 	var statBarId = 'ivmProvisionStatBar' + inst;
-	var statBar = createStatusBar(statBarId);
-	statBar.hide();
+	var statBar = createStatusBar(statBarId).hide();
 	provForm.append(statBar);
 
 	// Create loader
-	var loader = createLoader('ivmProvisionLoader' + inst);
-	loader.hide();
+	var loader = createLoader('ivmProvisionLoader' + inst).hide();
 	statBar.append(loader);
 
 	// Create info bar
@@ -184,12 +181,9 @@ ivmPlugin.prototype.loadProvisionPage = function(tabId) {
  */
 ivmPlugin.prototype.loadResources = function() {
 	// Get resource tab ID
-	var tabID = 'ivmResourceTab';
-	// Get loader ID
-	var loaderID = 'ivmResourceLoader';
-	if ($('#' + loaderID).length) {
-		$('#' + loaderID).remove();
-	}
+	var tabId = 'ivmResourceTab';
+	// Remove loader
+	$('#' + tabId).find('img').remove();
 	
 	// Create info bar
 	var infoBar = createInfoBar('Under construction');
@@ -198,7 +192,7 @@ ivmPlugin.prototype.loadResources = function() {
 	var resrcForm = $('<div class="form"></div>');
 	resrcForm.append(infoBar);
 	
-	$('#' + tabID).append(resrcForm);
+	$('#' + tabId).append(resrcForm);
 };
 
 /**

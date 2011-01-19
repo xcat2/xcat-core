@@ -299,20 +299,17 @@ zvmPlugin.prototype.loadInventory = function(data) {
 	var node = args[1].replace('node=', '');
 	// Get node inventory
 	var inv = data.rsp[0].split(node + ':');
-	
+
 	// Remove loader
-	var loaderId = tabId + 'TabLoader';
-	$('#' + loaderId).remove();
+	$('#' + tabId).find('img').remove();
 
 	// Create status bar
 	var statBarId = node + 'StatusBar';
 	var statBar = createStatusBar(statBarId);
 
 	// Add loader to status bar and hide it
-	loaderId = node + 'StatusBarLoader';
-	var loader = createLoader(loaderId);
+	var loader = createLoader(node + 'StatusBarLoader').hide();
 	statBar.append(loader);
-	loader.hide();
 	statBar.hide();
 
 	// Create array of property keys
@@ -839,13 +836,11 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 
 	// Create status bar
 	var statBarId = 'zProvisionStatBar' + inst;
-	var statBar = createStatusBar(statBarId);
-	statBar.hide();
+	var statBar = createStatusBar(statBarId).hide();
 	provForm.append(statBar);
 
 	// Create loader
-	var loader = createLoader('zProvisionLoader' + inst);
-	loader.hide();
+	var loader = createLoader('zProvisionLoader' + inst).hide();
 	statBar.append(loader);
 
 	// Create info bar
