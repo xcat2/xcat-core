@@ -206,9 +206,9 @@ if [ $ADD -eq 1 ]; then
 	  exit 1
       fi
       mkdir -p /var/xcat/rmcmon/scripts
-      cp -p -R /xcatmnt/rmcmon/scripts /var/xcat/rmcmon/scripts 2>/dev/null
+      cp -p -R /xcatmnt/rmcmon/scripts/* /var/xcat/rmcmon/scripts/ 2>/dev/null
       mkdir -p /var/xcat/rmcmon/resources/$nodetype
-      cp -p -R /xcatmnt/rmcmon/resources/$nodetype /var/xcat/rmcmon/resources/$nodetype 2>/dev/null
+      cp -p -R /xcatmnt/rmcmon/resources/$nodetype/* /var/xcat/rmcmon/resources/$nodetype/ 2>/dev/null
       umount /xcatmnt
       rmdir /xcatmnt
   fi
