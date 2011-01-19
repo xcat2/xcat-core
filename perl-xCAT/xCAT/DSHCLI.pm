@@ -4761,12 +4761,8 @@ sub run_rsync_postscripts
     my @newoutput= (); 
     my $dshparms; 
     my $firstpass=1;
-    my $rsp = {};
     foreach my $postsfile (@::postscripts) {
        my $tmppostfile = $postsfile ;
-        #my $rsp = {};
-        #$rsp->{data}->[0] = " postscripts = $postsfile";
-        #xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
  
        # remove  first character, we have to do this because the
        # return from rsync is tmp/file1  not /tmp/file1
@@ -4777,8 +4773,6 @@ sub run_rsync_postscripts
        }
        substr($tmppostfile,0,1)=""; 
 
-       #$rsp->{data}->[0] = " postscripts = $tmppostfile";
-       #xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
        # now remove .post from the postscript file for the compare
        # with the returned file name
        my($tp,$post) = split(/.post/,$tmppostfile);
@@ -4813,15 +4807,16 @@ sub run_rsync_postscripts
          my $tmpp=$syncdir . $ps;
          $ps=$tmpp;
         }
-      #  my $rsp = {};
-      # $rsp->{data}->[0] = " postscripts = $ps";
-      #  xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
          
          $out=xCAT::Utils->runxcmd( { command => ['xdsh'],
                                     node    => \@nodes,
                                     arg     => [ "-e", $ps ]
-                             }, $::SUBREQ, 0);
-         push @newoutput,$out;
+                             }, $::SUBREQ, 0,1);
+        foreach my $r (@$out){
+                push(@newoutput, $r);
+
+        }
+
 
     }
     return @newoutput;
