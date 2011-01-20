@@ -1325,7 +1325,7 @@ sub addnet6
     my $net = $netentry->{net};
     my $iface = $netentry->{iface};
     my $idx = 0;
-    if (grep /\{ # $net subnet_end/,@dhcp6conf) { #need to add to dhcp6conf
+    unless (grep /\{ # $net subnet_end/,@dhcp6conf) { #need to add to dhcp6conf
         return;
     } else { #need to add to dhcp6conf
         while ($idx <= $#dhcp6conf)
