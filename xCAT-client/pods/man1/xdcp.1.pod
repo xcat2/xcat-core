@@ -144,9 +144,12 @@ for hierarchical clusters.  It is optional for non-hierarchical cluster.
 For example, your rsynclist file may look like this:
  /tmp/file2  ->  /tmp/file2
  /tmp/file2.post -> /tmp/file2.post
+ /tmp/file3  ->  /tmp/file3
+ /tmp/file3.post -> /tmp/file3.post
  # the below are postscripts
  EXECUTE:
  /tmp/file2.post
+ /tmp/file3.post
 
 On Linux rsync always uses ssh remoteshell. On AIX, ssh or rsh is used depending on the site.useSSHonAIX attribute.
 
