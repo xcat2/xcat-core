@@ -19,13 +19,13 @@ my $inet6support;
 if ($^O =~ /^aix/i) {  # disable AIX IPV6  TODO fix
  $inet6support = 0;
 } else {
-  $inet6support=eval { require Socket6 };
+  $inet6support=eval { require Socket6; 1; };
 }
 if ($inet6support) {
-   $inet6support = eval { require IO::Socket::INET6 };
+   $inet6support = eval { require IO::Socket::INET6; 1; };
 }
 if ($inet6support) {
-   $inet6support = eval { require IO::Socket::SSL; IO::Socket::SSL->import('inet6'); };
+   $inet6support = eval { require IO::Socket::SSL; IO::Socket::SSL->import('inet6'); 1;};
 }
 unless ($inet6support) {
   eval { require Socket };
