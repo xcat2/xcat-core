@@ -284,7 +284,7 @@ sub rnetboot {
         #########################################
         $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
     #}
-    $sitetab->close;
+    #$sitetab->close;
 
     if (defined($request->{opt}->{m})) {
     
