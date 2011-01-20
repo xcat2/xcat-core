@@ -301,17 +301,17 @@ sub rnetboot {
              my $rsp={};
              $rsp->{data}->[0] = "$node: Reinitializing the installation: $retries retry";
              xCAT::MsgUtils->message("I", $rsp, $callback);
-            if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
+             #if ($vcon and $vcon->{"value"} and $vcon->{"value"} eq "yes" ) {
 		    #    $result = xCAT::PPCcli::lpar_netboot(
 		    #                $exp,
 		    #                $request->{verbose},
 		    #                $name,
 		    #                $d,
 		    #                \%opt );
-	        return( [[$node,"Not support conserverondemand's value is yes",RC_ERROR]] );
-            } else {
+            #return( [[$node,"Not support conserverondemand's value is yes",RC_ERROR]] );
+            #} else {
                 $result = do_rnetboot( $request, $d, $exp, $name, $node, \%opt );
-            }
+            #}
             xCAT::Utils->monitor_installation($request, $monsettings);
                 
         }
