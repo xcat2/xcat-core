@@ -16,7 +16,7 @@ BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 
 BuildArch: noarch
 Provides: xCAT-UI = %{version}
-Requires: python >= 2.3
+Requires: xCAT-UI-deps >= 2.6
 
 %ifos linux
 # httpd is provided by apache2 on SLES and httpd on RHEL
@@ -38,7 +38,6 @@ mkdir -p $RPM_BUILD_ROOT%{prefix}/ui
 set +x
 cp -r * $RPM_BUILD_ROOT%{prefix}/ui
 chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
-chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/lib/ajaxterm/*.py
 set -x
 
 %files
