@@ -52,6 +52,8 @@ is identical:
 
 Display output as nodenames instead of groupnames.
 
+=back
+
 =head1 B<EXAMPLES>
 
 =over 3
