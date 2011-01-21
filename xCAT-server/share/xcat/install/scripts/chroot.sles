@@ -59,7 +59,7 @@ then
 elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?` == "0" ]]; then
     export PRINIC=`ifconfig -a | grep -i "HWaddr $PRINIC" | awk '{print $1}'`
 fi
-echo 'export PRINIC='"$PRINIC" > /tmp/prinicsetting
+echo 'export PRINIC='"$PRINIC" > /mnt/tmp/prinicsetting
 ]]>
 
           </source>
