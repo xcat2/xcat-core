@@ -95,8 +95,8 @@ sub enumerate {
         for my $node_name ( keys %$node_hash)
         {
             my $d = $node_hash->{$node_name};
-	    if($$d[4] =~ /^lpar$/ || $$d[4] =~ /^bpa$/) {
-	        $data = "please check the $node_name; the noderange of rscan couldn't be LPAR or BPA. ";
+	    if($$d[4] =~ /^lpar$/ || $$d[4] =~ /^bpa$/ || $$d[4] =~ /^frame$/ ) {
+	        $data = "please check the $node_name; the noderange of rscan couldn't be LPAR or BPA, or frame. ";
 		#push @output, [$node_name,$data,$Rc];
                 push @values, $data;
                 next;
