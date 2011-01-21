@@ -37,6 +37,29 @@ EOF
 
 chmod 755 /tmp/updateflag.awk
 /tmp/updateflag.awk
+export PRINIC=#TABLEBLANKOKAY:noderes:THISNODE:primarynic#
+if [ "$PRINIC" == "mac" ]
+then
+    export PRINIC='#TABLE:mac:THISNODE:mac#'
+fi
+if [ -z "$PRINIC" ]
+then
+    for karg in $(cat /proc/cmdline |sed -e 's/-/:/g' -e 's/ /\n/g'); do
+        if  [ "${karg%%=*}" = "BOOTIF" ]; then
+            export PRINIC=`ifconfig -a|grep -i "hwaddr ${karg#*=01:}"|awk '{print $1}'`
+        fi
+    done
+    if [ -z "$PRINIC" ]; then
+        export PRINIC=eth0
+    fi
+fi
+if [ -z "$PRINIC" ]
+then
+    export PRINIC=eth0
+elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?` == "0" ]]; then
+    export PRINIC=`ifconfig -a | grep -i "HWaddr $PRINIC" | awk '{print $1}'`
+fi
+echo 'export PRINIC='"$PRINIC" > /tmp/prinicsetting
 ]]>
 
           </source>
