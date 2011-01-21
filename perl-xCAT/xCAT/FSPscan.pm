@@ -97,7 +97,8 @@ sub enumerate {
             my $d = $node_hash->{$node_name};
 	    if($$d[4] =~ /^lpar$/ || $$d[4] =~ /^bpa$/) {
 	        $data = "please check the $node_name; the noderange of rscan couldn't be LPAR or BPA. ";
-                push @output, [$node_name,$data,$Rc];
+		#push @output, [$node_name,$data,$Rc];
+                push @values, $data;
                 next;
             }  
             my $stat = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "query_connection");
@@ -108,12 +109,14 @@ sub enumerate {
             # Output error
             ##################################
             if ( $Rc != SUCCESS ) {
-                push @output, [$node_name,$data,$Rc];
+		#push @output, [$node_name,$data,$Rc];
+                push @values, $data;
                 next;
             }
-	    if($data !~ "LINE UP") {
-	        $data = "please check the $node_name is coneected to the hardware server";
-                push @output, [$node_name,$data,$Rc];
+	    if($data !~ "Connected") {
+	        $data = "please check if the $node_name is coneected to the hardware server";
+		#push @output, [$node_name,$data,$Rc];
+                push @values, $data;
                 next;
 	    }
             
@@ -132,7 +135,8 @@ sub enumerate {
 	    $fname  = $fsp; 
             my $ips ="$7,$8";	    
             push @values, join( ",",
-             "fsp",$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
+             $$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
+            # "fsp",$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
             #"fsp",$fsp,$cageid,$model,$serial,$side,$server,$prof,$fname,$ips );
            
 	    #####################################
@@ -146,7 +150,8 @@ sub enumerate {
             # Output error
             ##################################
             if ( $Rc != SUCCESS ) {
-                push @output, [$node_name,$data,$Rc];
+		#push @output, [$node_name,$data,$Rc];
+                push @values, $data;
                 next;
             }
 	    my @list = split(/\n/,$data);    
@@ -172,238 +177,11 @@ sub enumerate {
            	 } 
 
 	}
-        return(\@values); 
+	#return(\@values); 
     }
 
    
-    
-    #########################################
-    # Get hardware control point info 
-    #########################################
-    {
-    my $hcp = xCAT::PPCcli::lshmc( $exp );
-    $Rc = shift(@$hcp);
-
-    #########################################
-    # Return error 
-    #########################################
-    if ( $Rc != SUCCESS ) {
-        return( @$hcp[0] );
-    }
-    #########################################
-    # Success 
-    #########################################
-    my ($model,$serial) = split /,/, @$hcp[0];
-    my $id   = "";
-    my $prof = "";
-    my $ips  = "";
-    my $bpa  = "";
-    my $side = "";
-
-    push @values, join( ",",
-        $hwtype,$server,$id,$model,$serial,$side,$server,$prof,$bpa,$ips );
-    }
-
-    #########################################
-    # Save hardware connections
-    #########################################
-    $filter = "type_model_serial_num,ipaddr,sp,side";
-    my $conns = xCAT::PPCcli::lssysconn( $exp, "alls", $filter );
-    $Rc = shift(@$conns);
-
-    #########################################
-    # Return error
-    #########################################
-    if ( $Rc != SUCCESS ) {
-        return( @$conns[0] );
-    }
-
-    foreach my $con ( @$conns ) {
-        my ($mtms,$ipaddr,$sp,$side) = split /,/,$con;
-        my $value = undef;
- 
-        if ( $sp =~ /^primary$/ or $side =~ /^a$/ ) {
-            $value = "A";
-        } elsif ($sp =~ /^secondary$/ or $side =~ /^b$/ ) {
-            $value = "B";
-        }
-
-        $hwconn{$ipaddr} = "$mtms,$value";
-    }
- 
-    #########################################
-    # Enumerate frames (IVM has no frame)
-    #########################################
-    if ( $hwtype ne "ivm" ) { 
-        $filter    = "type_model,serial_num,name,frame_num,ipaddr_a,ipaddr_b";
-        my $frames = xCAT::PPCcli::lssyscfg( $exp, "bpas", $filter );
-        $Rc = shift(@$frames);
-
-        #####################################
-        # Expect error 
-        #####################################
-        if ( $Rc == EXPECT_ERROR ) {
-            return( @$frames[0] );
-        }
-        #####################################
-        # CLI error 
-        #####################################
-        if ( $Rc == RC_ERROR ) {
-            return( @$frames[0] );
-        }
-        #####################################
-        # If frames found, enumerate cages 
-        #####################################
-        if ( $Rc != NR_ERROR ) {
-            $filter = "cage_num,type_model_serial_num";
-
-            foreach my $val ( @$frames ) {
-                my ($model,$serial) = split /,/, $val;
-                my $mtms = "$model*$serial";
-
-                my $cages = xCAT::PPCcli::lssyscfg($exp,"cage",$mtms,$filter);
-                $Rc = shift(@$cages);
-
-                #############################
-                # Skip...
-                # Frame in bad state 
-                #############################
-                if ( $Rc != SUCCESS ) {
-                    push @values, "# $mtms: ERROR @$cages[0]";
-                    next;
-                }
-                #############################
-                # Success 
-                #############################
-                foreach ( @$cages ) {
-                    my ($cageid,$mtms) = split /,/;
-                    $cage{$mtms} = "$cageid,$val";
-                }          
-            }
-        }
-    }
-    #########################################
-    # Enumerate CECs 
-    #########################################
-    $filter  = "name,type_model,serial_num,ipaddr";
-    my $cecs = xCAT::PPCcli::lssyscfg( $exp, "fsps", $filter );
-    $Rc = shift(@$cecs);
-
-    #########################################
-    # Return error
-    #########################################
-    if ( $Rc != SUCCESS ) {
-        return( @$cecs[0] );
-    }
-    foreach ( @$cecs ) {
-        #####################################
-        # Get CEC information
-        #####################################
-        my ($fsp,$model,$serial,$ips) = split /,/;
-        my $mtms   = "$model*$serial";
-        my $cageid = "";
-        my $fname  = "";
-
-        #####################################
-        # Get cage CEC is in
-        #####################################
-        my $frame = $cage{$mtms};
-
-        #####################################
-        # Save frame information
-        #####################################
-        if ( defined($frame) ) {
-            my ($cage,$model,$serial,$name,$id,$ipa,$ipb) = split /,/, $frame;
-            my $prof = "";
-            my $bpa  = ""; 
-            $cageid  = $cage;
-            $fname   = $name;
-
-            #######################################
-            # Convert IP-A to short-hostname.
-            # If fails, use user-defined FSP name
-            #######################################
-            my $host = getshorthost( $ipa );
-            if ( defined($host) ) {
-                $fname = $host;
-            }
-
-            #######################################
-            # Save two sides of BPA seperately
-            #######################################
-            my $bpastr = join( ",","bpa",$fname,$id,$model,$serial,"A",$server,$prof,$bpa,$ipa);
-            if ( !grep /^\Q$bpastr\E$/, @values)
-            {
-                push @values, join( ",",
-                    "bpa",$fname,$id,$model,$serial,"A",$server,$prof,$bpa,$ipa);
-            }
-            $bpastr = join( ",","bpa",$fname,$id,$model,$serial,"B",$server,$prof,$bpa,$ipb);
-            if ( !grep /^\Q$bpastr\E$/, @values)
-            {
-                push @values, join( ",",
-                    "bpa",$fname,$id,$model,$serial,"B",$server,$prof,$bpa,$ipb);
-            }
-        }
-        #####################################
-        # Save CEC information
-        #####################################
-        my $prof = "";
-
-        #######################################
-        # Convert IP to short-hostname.
-        # If fails, use user-defined FSP name
-        #######################################
-        my $host = getshorthost( $ips );
-        if ( defined($host) ) {
-            $fsp = $host;
-        }
-
-        my $mtmss = $hwconn{$ips};
-        my ($mtms,$side) = split /,/, $mtmss;
-        push @values, join( ",",
-            "fsp",$fsp,$cageid,$model,$serial,$side,$server,$prof,$fname,$ips );
-
-        #####################################
-        # Enumerate LPARs 
-        #####################################
-        $filter    = "name,lpar_id,default_profile,curr_profile"; 
-        my $lpars  = xCAT::PPCcli::lssyscfg( $exp, "lpar", $mtms, $filter );
-        $Rc = shift(@$lpars); 
-
-        ####################################
-        # Expect error 
-        ####################################
-        if ( $Rc == EXPECT_ERROR ) {
-            return( @$lpars[0] );
-        }
-        ####################################
-        # Skip...
-        # CEC could be "Incomplete" state
-        ####################################
-        if ( $Rc == RC_ERROR ) {
-            push @values, "# $mtms: ERROR @$lpars[0]";
-            next;
-        }
-        ####################################
-        # No results found 
-        ####################################
-        if ( $Rc == NR_ERROR ) {
-            next;
-        }
-        foreach ( @$lpars ) {
-            my ($name,$lparid,$dprof,$curprof) = split /,/;
-            my $prof = (length($curprof) && ($curprof !~ /^none$/)) ? $curprof : $dprof;
-            my $ips  = "";
-            my $port = "";
-            
-            #####################################
-            # Save LPAR information
-            #####################################
-            push @values, join( ",",
-              "lpar",$name,$lparid,$model,$serial,$port,$server,$prof,$fsp,$ips );
-        }
-    }
-    return( \@values );
+       return( \@values );
 }
 
 
@@ -549,7 +327,7 @@ sub format_stanza {
     #####################################
     # Skip hardware control point 
     #####################################
-    #shift(@$values);
+    shift(@$values);
 
     foreach ( sort @$values ) {
         my @data = split /,/;
