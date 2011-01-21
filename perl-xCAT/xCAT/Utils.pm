@@ -4398,6 +4398,47 @@ sub logEventsToDatabase
     return (0, "");
 }
 
+
+#-------------------------------------------------------------------------------
+
+=head3   logEventsToTealDatabase
+       Logs the given events info to the TEAL's 'x_tealeventlog' database 
+    Arguments:
+        arrayref -- A pointer to an array. Each element is a hash that contains an events.
+  Returns:
+       (ret code, error message) 
+
+=cut
+
+#-------------------------------------------------------------------------------
+sub logEventsToTealDatabase
+{
+    my $pEvents = shift;
+    if (($pEvents) && ($pEvents =~ /xCAT::Utils/))
+    {
+        $pEvents = shift;
+    }
+
+    if (($pEvents) && (@$pEvents > 0))
+    {
+        my $currtime;
+        my $tab = xCAT::Table->new("x_tealeventlog", -create => 1, -autocommit => 0);
+        if (!$tab)
+        {
+            return (1, "The x_tealeventlog table cannot be opened.");
+        }
+
+        foreach my $event (@$pEvents)
+        {
+            my @ret = $tab->setAttribs(undef, $event);
+            if (@ret > 1) { return (1, $ret[1]); }
+        }
+        $tab->commit;
+    }
+
+    return (0, "");
+}
+
 #-------------------------------------------------------------------------------
 
 =head3   StartService
