@@ -1720,9 +1720,19 @@ sub writeout
 {
     my $targ;
     open($targ, '>', $dhcpconffile);
-    foreach (@dhcpconf)
+    my $idx;
+    my $skipone;
+    foreach $idx (0..$#dhcpconf)
     {
-        print $targ $_;
+        #avoid writing out empty shared network declarations
+        if ($dhcpconf[$idx] =~ /^shared-network/ and $dhcpconf[$idx+1] =~ /^} .* nic_end/) {
+            $skipone=1;
+            next;
+        } elsif ($skipone) {
+            $skipone=0;
+            next;
+        }
+        print $targ $dhcpconf[$idx];
     }
     close($targ);
     if (@dhcp6conf) {
