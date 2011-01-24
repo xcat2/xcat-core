@@ -1,0 +1,405 @@
+
+start:query_9125-F2C_reset
+description:Reset the value of power saving and capping to a default one
+type:9125-F2C
+cmd:renergy $$CN savingstatus=off
+check:rc==0
+check:output=~Set savingstatus succeeded
+cmd:renergy $$CN dsavingstatus=off
+check:rc==0
+check:output=~Set dsavingstatus succeeded
+cmd:renergy $$CN cappingstatus=off
+check:rc==0
+check:output=~Set cappingstatus succeeded
+cmd:renergy $$CN cappingwatt=14555
+check:rc==0
+end
+
+start:query_9125-F2C_all
+description:query all the attributes of the node
+type:9125-F2C
+cmd:renergy $$CN all
+check:rc==0
+check:output=~savingstatus: off
+check:output=~cappingstatus: off
+check:output=~dsavingstatus: off
+check:output=~cappingmin: 14505
+check:output=~cappingmax: 14585
+check:output=~cappingvalue: 14555
+check:output=~cappingsoftmin: 5556
+check:output=~averageAC: na
+check:output~~averageDC: 6976
+check:output~~ambienttemp: 24
+check:output~~ exhausttemp: 24
+check:output~~CPUspeed: 3836
+check:output=~syssbpower: na
+check:output~~sysIPLtime: 900
+end
+
+start:query_9125-F2C_savingstatus
+description:
+type:9125-F2C
+cmd:renergy $$CN savingstatus
+check:rc==0
+check:output=~savingstatus: off
+check:output!~dsavingstatus
+check:output!~cappingstatus
+end
+
+start:query_9125-F2C_dsavingstatus
+description:
+type:9125-F2C
+cmd:renergy $$CN dsavingstatus
+check:rc==0
+check:output=~dsavingstatus: off
+check:output!~: savingstatus
+check:output!~cappingstatus
+end
+
+start:query_9125-F2C_cappingstatus
+description:
+type:9125-F2C
+cmd:renergy $$CN cappingstatus
+check:rc==0
+check:output=~cappingstatus: off
+check:output!~dsavingstatus
+check:output!~savingstatus
+end
+
+start:query_9125-F2C_cappingmaxmin
+description:
+type:9125-F2C
+cmd:renergy $$CN cappingmaxmin
+check:rc==0
+check:output=~cappingmin: 14505
+check:output=~cappingmax: 14585
+check:output!~cappingvalue
+check:output!~cappingsoftmin
+end
+
+start:query_9125-F2C_cappingvalue
+description:
+type:9125-F2C
+cmd:renergy $$CN cappingvalue
+check:rc==0
+check:output=~cappingvalue: 14555
+check:output!~cappingmin
+check:output!~cappingmax
+check:output!~cappingsoftmin
+end
+
+start:query_9125-F2C_cappingsoftmin
+description:
+type:9125-F2C
+cmd:renergy $$CN cappingsoftmin
+check:rc==0
+check:output=~cappingsoftmin: 5556
+check:output!~cappingmin
+check:output!~cappingmax
+check:output!~cappingvalue
+end
+
+start:query_9125-F2C_averageAC
+description:
+type:9125-F2C
+cmd:renergy $$CN averageAC
+check:rc==0
+check:output=~averageAC: na
+check:output!~averageDC
+check:output!~ambienttemp
+check:output!~exhausttemp
+check:output!~CPUspeed
+end
+
+start:query_9125-F2C_averageDC
+description:
+type:9125-F2C
+cmd:renergy $$CN averageDC
+check:rc==0
+check:output~~averageDC: 6976
+check:output!~averageAC
+check:output!~ambienttemp
+check:output!~exhausttemp
+check:output!~CPUspeed
+end
+
+start:query_9125-F2C_ambienttemp
+description:
+type:9125-F2C
+cmd:renergy $$CN ambienttemp
+check:rc==0
+check:output~~ambienttemp: 24
+check:output!~averageAC
+check:output!~averageDC
+check:output!~exhausttemp
+check:output!~CPUspeed
+end
+
+start:query_9125-F2C_exhausttemp
+description:
+type:9125-F2C
+cmd:renergy $$CN exhausttemp
+check:rc==0
+check:output~~exhausttemp: 24
+check:output!~averageAC
+check:output!~ambienttemp
+check:output!~averageDC
+check:output!~CPUspeed
+end
+
+start:query_9125-F2C_CPUspeed
+description:
+type:9125-F2C
+cmd:renergy $$CN CPUspeed
+check:rc==0
+check:output~~CPUspeed: 3836
+check:output!~averageAC
+check:output!~ambienttemp
+check:output!~exhausttemp
+check:output!~averageDC
+end
+
+start:query_9125-F2C_syssbpower
+description:
+type:9125-F2C
+cmd:renergy $$CN syssbpower
+check:rc==0
+check:output=~syssbpower: na
+check:output!~averageAC
+check:output!~ambienttemp
+check:output!~exhausttemp
+check:output!~averageDC
+check:output!~sysIPLtime
+end
+
+start:query_9125-F2C_sysIPLtime
+description:
+type:9125-F2C
+cmd:renergy $$CN sysIPLtime
+check:rc==0
+check:output=~sysIPLtime: 900
+check:output!~averageAC
+check:output!~ambienttemp
+check:output!~exhausttemp
+check:output!~averageDC
+check:output!~syssbpower
+end
+
+start:set_9125-F2C_savingstatus
+description:
+type:9125-F2C
+cmd:renergy $$CN savingstatus=on
+check:rc==0
+check:output=~Set savingstatus succeeded
+check:output=~This setting may need some minutes to take effect.
+check:output!~Set savingstatus failed.
+cmd:sleep 60
+
+cmd:renergy $$CN savingstatus
+check:rc==0
+check:output=~savingstatus: on
+
+cmd:renergy $$CN CPUspeed
+check:rc==0
+check:output~~CPUspeed: 2856
+
+cmd:renergy $$CN savingstatus=onxx
+check:rc!=0
+check:output=~Usage:
+
+cmd:renergy $$CN dsavingstatus=on-norm
+check:rc!=0
+check:output=~Cannot enable static and dynamic power
+check:output=~Set dsavingstatus failed.
+
+cmd:renergy $$CN savingstatus=off
+check:rc==0
+check:output=~Set savingstatus succeeded.
+check:output=~This setting may need some minutes to take effect.
+check:output!~Set savingstatus failed.
+
+cmd:sleep 60
+
+cmd:renergy $$CN savingstatus
+check:rc==0
+check:output=~savingstatus: off
+
+cmd:renergy $$CN CPUspeed
+check:rc==0
+check:output~~CPUspeed: 3836
+end
+
+
+start:set_9125-F2C_dsavingstatus
+description:
+type:9125-F2C
+cmd:renergy $$CN dsavingstatus=on
+check:rc!=0
+check:output=~ Usage:
+
+cmd:renergy $$CN dsavingstatus=on-norm
+check:rc==0
+check:output=~Set dsavingstatus succeeded.
+check:output=~This setting may need some minutes to take effect.
+check:output!~Set dsavingstatus failed.
+
+cmd:sleep 60
+
+cmd:renergy $$CN dsavingstatus
+check:rc==0
+check:output=~dsavingstatus: on-norm
+
+cmd:renergy $$CN CPUspeed
+check:rc==0
+check:output~~CPUspeed: 3836
+
+cmd:renergy $$CN savingstatus=on
+check:rc!=0
+check:output=~Cannot enable static and dynamic power
+check:output=~Set savingstatus failed.
+
+cmd:renergy $$CN dsavingstatus=onxx
+check:rc!=0
+check:output=~ Usage:
+
+cmd:renergy $$CN dsavingstatus=on-maxp
+check:rc==0
+check:output=~Set dsavingstatus succeeded.
+check:output=~This setting may need some minutes to take effect.
+check:output!~Set dsavingstatus failed.
+
+cmd:renergy $$CN dsavingstatus
+check:rc==0
+check:output=~dsavingstatus: on-maxp
+
+cmd:renergy $$CN CPUspeed
+check:rc==0
+check:output~~CPUspeed: 3836
+
+cmd:renergy $$CN  dsavingstatus=off
+check:rc==0
+check:output=~Set dsavingstatus succeeded.
+check:output=~This setting may need some minutes to take effect.
+check:output!~Set dsavingstatus failed.
+
+cmd:sleep 60
+
+cmd:renergy $$CN dsavingstatus
+check:rc==0
+check:output=~dsavingstatus: off
+
+cmd:renergy $$CN CPUspeed
+check:rc==0
+check:output~~CPUspeed: 3836
+end
+
+start:set_9125-F2C_cappingstatus
+description:
+type:9125-F2C
+cmd:renergy $$CN cappingstatus=on
+check:rc==0
+check:output=~Set cappingstatus succeeded.
+check:output=~This setting may need some minutes to take effect.
+check:output!~Set cappingstatus failed.
+
+cmd:sleep 60
+
+cmd:renergy $$CN cappingstatus
+check:rc==0
+check:output=~cappingstatus: on
+
+cmd:renergy $$CN cappingstatus=onxx
+check:rc!=0
+check:output=~Usage:
+
+cmd:renergy $$CN cappingstatus=off
+check:rc==0
+check:output=~Set cappingstatus succeeded.
+check:output=~This setting may need some minutes to take effect.
+check:output!~Set cappingstatus failed.
+
+cmd:sleep 60
+
+cmd:renergy $$CN cappingstatus
+check:rc==0
+check:output=~cappingstatus: off
+end
+
+start:set_9125-F2C_cappingwatt
+description:
+type:9125-F2C
+cmd:renergy $$CN cappingwatt=14560
+check:rc==0
+check:output=~Set cappingwatt succeeded.
+check:output=~cappingvalue: 14560
+check:output!~Set cappingwatt failed.
+
+cmd:renergy $$CN cappingvalue
+check:rc==0
+check:output=~cappingvalue: 14560
+
+cmd:renergy $$CN cappingwatt=100
+check:rc!=0
+check:output!~Set cappingwatt succeeded.
+check:output=~Set cappingwatt failed.
+check:output=~Invalid value for cappingwatt.
+
+cmd:renergy $$CN cappingwatt=15000
+check:rc!=0
+check:output!~Set cappingwatt succeeded.
+check:output=~Set cappingwatt failed.
+check:output=~Invalid value for cappingwatt.
+
+cmd:renergy $$CN cappingvalue
+check:rc==0
+check:output=~cappingvalue: 14560
+
+cmd:renergy $$CN cappingwatt=14555
+check:rc==0
+check:output=~Set cappingwatt succeeded.
+check:output=~cappingvalue: 14555
+check:output!~Set cappingwatt failed.
+
+cmd:renergy $$CN cappingvalue
+check:rc==0
+check:output=~cappingvalue: 14555
+end
+
+start:set_9125-F2C_cappingperc
+description:
+type:9125-F2C
+cmd:renergy $$CN cappingperc=0
+check:rc==0
+check:output=~Set cappingperc succeeded.
+check:output=~cappingvalue: 14505
+check:output!~Set cappingperc failed.
+
+cmd:renergy $$CN cappingperc=50
+check:rc==0
+check:output=~Set cappingperc succeeded.
+check:output=~cappingvalue: 14545
+check:output!~Set cappingperc failed.
+
+cmd:renergy $$CN cappingperc=100
+check:rc==0
+check:output=~Set cappingperc succeeded.
+check:output=~cappingvalue: 14585
+check:output!~Set cappingperc failed.
+
+cmd:renergy $$CN cappingperc=110
+check:rc!=0
+check:output!~Set cappingperc succeeded.
+check:output=~Invalid value for cappingperc.
+check:output=~Set cappingperc failed.
+
+cmd:renergy $$CN cappingwatt=14555
+check:rc==0
+check:output=~Set cappingwatt succeeded.
+check:output=~cappingvalue: 14555
+check:output!~Set cappingwatt failed.
+
+cmd:renergy $$CN cappingvalue
+check:rc==0
+check:output=~cappingvalue: 14555
+
+end
