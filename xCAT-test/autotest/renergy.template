@@ -1,0 +1,6 @@
+# The test for the renergy command needs to specify
+# the specific node and node type for a test
+
+[System]
+CN=   #specify the node name of CEC
+TYPE= #specify the CEC type like: 8233-E8B, 9125-F2C
