@@ -602,7 +602,9 @@ sub child_response {
 	  		if ($nodename eq $_->{node}->[0]->{name}->[0]) {
                 		#save the nodes that has errors for node status monitoring
           			if ((exists($_->{errorcode})) && ($_->{errorcode} != 0))  {
-                        push(@$failed_nodes, $nodename);
+					if (!grep /^$nodename$/, @$failed_nodes) {
+					    push(@$failed_nodes, $nodename);
+					}
 					    if( defined( $failed_msg->{$nodename} )) {
 					        my $f = $failed_msg->{$nodename}; 
 					        my $c = scalar(@$f);
