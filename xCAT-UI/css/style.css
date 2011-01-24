@@ -667,7 +667,7 @@ table a:hover {
 }
 
 .lparDiv {
-	margin: 5px 0px 0px 9px;
+	margin: 1px 0px 0px 1px;
 	width: 80px;
 	height: 10px;
 	opacity: 1;
@@ -680,6 +680,7 @@ table a:hover {
 
 .fspcheckbox{
 	padding: 0px;
+	margin: 3px 3px 1px 3px;
 }
 
 /*--------------- Discovery section ---------------*/

@@ -204,13 +204,26 @@ function createGraphical(bpa, fsp, area){
 		var td = $('<td style="padding:0;border-color: transparent;"></td>');
 		var frameDiv = $('<div class="frameDiv"></div>');
 		frameDiv.append('<div style="height:27px;" title="' + bpaName + '"><input type="checkbox" class="fspcheckbox" name="check_'+ bpaName +'"></div>');
+		//for P7-IH, all the cecs are insert into the frame from down to up, so we had to show the cecs same as the
+		//physical layout.
+		var tempBlankDiv = $('<div></div>');
+		var tempHeight = 0;
 		for (var fspIndex in bpa[bpaName]){
 			var fspName = bpa[bpaName][fspIndex];
-			usedFsp[fspName] = 1;
+			usedFsp[fspName] = 1;			
 			
+			//this is the p7IH, we should add the blank at the top
+			if ((0 == fspIndex) && ('9125-F2C' == fsp[fspName]['mtm'])){
+				frameDiv.append(tempBlankDiv);
+			}
 			frameDiv.append(createFspDiv(fspName, fsp[fspName]['mtm'], fsp));
 			frameDiv.append(createFspTip(fspName, fsp[fspName]['mtm'], fsp));
+			
+			tempHeight += coculateBlank(fsp[fspName]['mtm']);
 		}
+		//now the tempHeight are all cecs' height, so we should minus bpa div height and cecs' div height
+		tempHeight = 428 - tempHeight;
+		tempBlankDiv.css('height', tempHeight);
 		td.append(frameDiv);
 		row.append(td);
 	}
@@ -589,7 +602,7 @@ function createFspDiv(fspName, mtm, fsp){
 	}
 		
 	//create return value
-	var retHtml = '<input style="margin:3px 3px 1px 4px;padding:0;" class="fspcheckbox" type="checkbox" name="check_' + fspName + '">';
+	var retHtml = '<input style="padding:0;" class="fspcheckbox" type="checkbox" name="check_' + fspName + '">';
 	retHtml += '<div value="' + fspName + '" class="' + divClass + '">';
 	retHtml += '<div class="lparDiv"><table><tbody><tr>' + lparStatusRow + '</tr></tbody></table></div></div>';
 	return retHtml;
@@ -723,4 +736,42 @@ function changeNode(lparName, status){
 	}
 	$('#graphTable [name=' + lparName + ']').css('background-image', imgUrl);
 	$('.tooltip input[name="' + lparName + '"]').attr('checked', checkFlag);
+}
+
+/**
+ * The P7-IH's cecs are insert from down to up, so we had to coculate the blank height. 
+ * 
+ * @param 
+
+ * @return the height for the cec
+ */
+function coculateBlank(mtm){
+	if ('' == mtm){
+		return 24;
+	}
+	
+	if (!hardwareInfo[mtm]){
+		return 24;
+	}
+	
+	switch(hardwareInfo[mtm]){
+		case 1:
+		{
+			return 13;
+		}
+		break;
+		case 2:
+		{
+			return 24;
+		}
+		break;
+		case 4:
+		{
+			return 47;
+		}
+		break;
+		default:
+			return 0;
+		break;
+	}
 }
