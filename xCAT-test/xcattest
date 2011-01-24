@@ -462,7 +462,7 @@ sub loadcase
             #TODO: description line is treated as a comment line for now
             next if($line =~ /^description\s*:/);
 
-            if($line =~ /^start\s*:\s*(\w+)/){
+            if($line =~ /^start\s*:\s*([\w-]+)/){
                 $skip = 0;
                 my $name = $1;
                 if( $caserange[0] && !(grep {/^$name$/} @caserange)){
@@ -502,6 +502,14 @@ sub loadcase
                 next if $skip;
                 $cases[$i]->{hcp}=$1;
                 if($cases[$i]->{hcp} !~ /$config{var}{HCP}/){
+                    push(@notrightcase, $cases[$i]->{name});
+                    pop(@rightcase);
+                    $skip = 1;
+                }
+            }elsif($line =~ /^type\s*:\s*(\w[\w\,-]+)/){
+                next if $skip;
+                $cases[$i]->{type}=$1;
+                if($cases[$i]->{type} !~ /$config{var}{TYPE}/){
                     push(@notrightcase, $cases[$i]->{name});
                     pop(@rightcase);
                     $skip = 1;
@@ -663,7 +671,8 @@ sub runcase
                         log_this("CHECK:rc $op $rvalue\t[Pass]");
                         push(@record, "CHECK:rc $op $rvalue\t[Pass]");
                     }
-                } elsif ($check =~ /output\s*([=!~]+)\s*(\S.*)/){
+                } elsif ($check =~ /output\s*([=!~]+)\s*(\S.*)/
+                      && $check !~ /output\s*([=!~])\1/){
                     $lvalue = join ("\n",@output);
                     $op = $1;
                     $rvalue = $2;
@@ -680,6 +689,40 @@ sub runcase
                         last;
                     } else {
                         log_this("CHECK:output $op $rvalue\t[Pass]");
+                        push(@record, "CHECK:output $op $rvalue\t[Pass]");
+                    }
+                } elsif ($check =~ /output\s*~~\s*(\S.*)/){
+                    $op = "~~";
+                    $failed = 1;
+                    $rvalue = $1;
+                    $rvalue = getfunc($rvalue);
+                    my $num;
+                    if ($rvalue =~ /(\d+)/) {
+                     $num = $1;
+                    }
+                    $rvalue =~ s/(\d+)//;
+                    foreach my $line (@output) {
+                     chomp($line);
+                     if ($line =~ /$rvalue/) {
+                       if ($num =~ /^\d+$/) {
+                         my $max = $num *1.1;
+                         my $min = $num *0.9;
+                         $line =~ /.*:.*: (\d+) /;
+                         if ($1 < $max && $1 > $min) {
+                            $failed = 0;
+                            last;
+                         }
+                       } else {
+                         next;
+                       }
+                     }
+                    }
+                    if($failed){
+                        log_this("CHECK:output $op $rvalue $num\t[Failed]");
+                        push(@record, "CHECK:output $op $rvalue\t[Failed]");
+                        last;
+                    } else {
+                        log_this("CHECK:output $op $rvalue $num\t[Pass]");
                         push(@record, "CHECK:output $op $rvalue\t[Pass]");
                     }
                 }
