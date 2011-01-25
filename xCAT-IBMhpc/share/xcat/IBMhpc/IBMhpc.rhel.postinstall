@@ -73,5 +73,8 @@ fi
 #/usr/bin/sed -i 's/HARDRESIDENTLIMIT=.*/HARDRESIDENTLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
 #/usr/bin/sed -i 's/SOFTRESIDENTLIMIT=.*/SOFTRESIDENTLIMIT="unlimited"/g'  $installroot/etc/sysconfig/ulimit
 
+#max locked memory
+echo "*               soft    memlock           unlimited" >> $installroot/etc/security/limits.conf
+echo "*               hard    memlock           unlimited" >> $installroot/etc/security/limits.conf
 
 
