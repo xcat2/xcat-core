@@ -185,17 +185,20 @@ if [ $ADD -eq 1 ]; then
   fi
 
   mkdir -p /var/xcat/rmcmon
-  rm -f -R /var/xcat/rmcmon
+  rm -f -R /var/xcat/rmcmon/*
   if [[ $OSTYPE = linux* ]]; then
       mkdir -p /tmp/postage/rmcmon/scripts
       mkdir -p /tmp/postage/rmcmon/resources/$nodetype
       rm -f -R /tmp/postage/rmcmon/scripts/*
-      rm -f -R /tmp/postage/rmcmon/resources/$nodetype
+      rm -f -R /tmp/postage/rmcmon/resources/$nodetype/*
       cd /tmp/postage/rmcmon/scripts
       wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/postscripts/rmcmon/scripts 2> /tmp/wget.log
       cd /tmp/postage/rmcmon/resources/$nodetype
       wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 0 -T 60 ftp://$NFSSERVER/postscripts/rmcmon/resources/$nodetyp 2> /tmp/wget.log
-      mv $NFSSERVER/postscripts/rmcmon /var/xcat/rmcmon;
+      mv $NFSSERVER/postscripts/rmcmon/* /var/xcat/rmcmon;
+      rm -rf $NFSSERVER
+	  cd /tmp/postage/rmcmon/scripts
+	  mv $NFSSERVER/postscripts/rmcmon/* /var/xcat/rmcmon/;
       rm -rf $NFSSERVER
   else
       mkdir -p /xcatmnt
