@@ -103,6 +103,8 @@ my %modules = (
                        frame  => "xCAT::FSPconn",
 		      },
         renergy   => { hmc    => "xCAT::PPCenergy",
+                       fsp    => "xCAT::PPCenergy",
+                       cec    => "xCAT::PPCenergy",
 		     },
         rbootseq  => { fsp    => "xCAT::FSPbootseq",
                        cec    => "xCAT::FSPbootseq",
