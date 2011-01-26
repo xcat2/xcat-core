@@ -132,7 +132,7 @@ sub gethostname()
     {
         if ($socket6support) # the getaddrinfo and getnameinfo supports both IPv4 and IPv6
         {
-            my ($family, $socket, $protocol, $ip, $name) = Socket6::getaddrinfo($iporhost,0);
+            my ($family, $socket, $protocol, $ip, $name) = Socket6::getaddrinfo($iporhost,0,AF_UNSPEC,SOCK_STREAM,6); #specifically ask for TCP capable records, maximizing chance of no more than one return per v4/v6
             my $host = (Socket6::getnameinfo($ip))[0];
             if ($host eq $iporhost) # can not resolve
             {
@@ -223,8 +223,16 @@ sub getipaddr
     {
         if ($socket6support) # the getaddrinfo and getnameinfo supports both IPv4 and IPv6
         {
-            my ($family, $socket, $protocol, $ip, $name) = Socket6::getaddrinfo($iporhost,0);
-            if ($ip)
+            my @returns;
+            my $family=AF_UNSPEC;
+            if ($extraarguments{OnlyV6}) {
+                $family=AF_INET6;
+            } elsif ($extraarguments{OnlyV4}) {
+                $family=AF_INET;
+            }
+            my @addrinfo = Socket6::getaddrinfo($iporhost,0,$family,SOCK_STREAM,6);
+            my ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo,0,5);
+            while ($ip)
             {
                 if ($extraarguments{GetNumber}) { #return a BigInt for compare, e.g. for comparing ip addresses for determining if they are in a common network or range
                     my $ip = (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
@@ -233,12 +241,17 @@ sub getipaddr
                         $bignumber->blsft(32);
                         $bignumber->badd($_);
                     }
-                    return $bignumber;
+                    push(@returns,$bignumber);
                 } else {
-                    return (Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
+                    push @returns,(Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
+                }
+                if (scalar @addrinfo and $extraargumests{GetAllAddresses}) {
+                    ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo,0,5);
+                } else {
+                    $ip=0;
                 }
             }
-            return undef;
+            return @returns;
         }
         else
         {
