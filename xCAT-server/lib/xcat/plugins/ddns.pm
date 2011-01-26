@@ -25,6 +25,29 @@ sub getzonesfornet {
     my $net = shift;
     my $mask = shift;
     my @zones = ();
+    if ($net =~ /:/) {#ipv6, for now do the simple stuff under the assumption we won't have a mask indivisible by 4
+        $net =~ s/\/(.*)//;
+        my $maskbits=$1;
+        if ($mask) {
+            die "Not supporting having a mask like $mask on an ipv6 network like $net";
+        }
+        my $netnum= getipaddr($net,GetNumber=>1);
+        $netnum->brsft(128-$maskbits);
+        my $prefix=$netnum->as_hex();
+        my $nibbs=$maskbits/4;
+        $prefix =~ s/^0x//;
+        my $rev;
+        foreach (reverse(split //,$prefix)) {
+            $rev .= $_.".";
+            $nibbs--;
+        }
+        while ($nibbs) { 
+            $rev .= "0.";
+            $nibbs--;
+        }
+        $rev.="ip6.arpa.";
+        return ($rev);
+    }
     #return all in-addr reverse zones for a given mask and net
     #for class a,b,c, the answer is easy
     #for classless, identify the partial byte, do $netbyte | (0xff&~$maskbyte) to get the highest value
@@ -689,37 +712,48 @@ sub add_or_delete_records {
         }
     }
     my $node;
-    my $ip;
+    my @ips;
     my $domain = $ctx->{domain}; # store off for lazy typing and possible local mangling
     unless ($domain =~ /^\./) { $domain = '.'.$domain; } #example.com becomes .example.com for consistency
     $ctx->{nsmap} = {}; #will store a map to known NS records to avoid needless redundant queries to sort nodes into domains
     $ctx->{updatesbyzone}={}; #sort all updates into their respective zones for bulk update for fewer DNS transactions
     foreach $node (@{$ctx->{nodes}}) {
-        $ip = $node;
         my $name = $node;
         unless ($name =~ /$domain/) { $name .= $domain } # $name needs to represent fqdn, but must preserve $node as a nodename for cfg lookup
         #if (domaintab->{$node}->[0]->{domain) { $domain = domaintab->{$node}->[0]->{domain) }  
         #above is TODO draft of how multi-domain support could come into play
         if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
-            $ip = $ctx->{hoststab}->{$node}->[0]->{ip};
+            @ips = ($ctx->{hoststab}->{$node}->[0]->{ip});
         } else {
-            unless ($ip = inet_aton($ip)) {
+            @ips = getipaddr($node,GetAllAddresses=>1);
+            unless (@ips) {
                 xCAT::SvrUtils::sendmsg([1,"Unable to find an IP for $node in hosts table or via system lookup (i.e. /etc/hosts"], $callback);
                 next;
             }
-            $ip = inet_ntoa($ip);
         }
-        $ctx->{currip}=$ip;
-        #time to update, A and PTR records, IPv6 still TODO
-        $ip = join('.',reverse(split(/\./,$ip)));
-        $ip .= '.IN-ADDR.ARPA.';
-        #ok, now it is time to identify which zones should actually hold the forward (A) and reverse (PTR) records and a nameserver to handle the request
-        my $revzone = $ip;
-        $ctx->{currnode}=$node;
-        $ctx->{currname}=$name;
-        $ctx->{currrevname}=$ip;
-        find_nameserver_for_dns($ctx,$revzone);
-        find_nameserver_for_dns($ctx,$domain);
+        foreach my $ip (@ips) {
+            $ctx->{currip}=$ip;
+            #time to update, A and PTR records, IPv6 still TODO
+            if ($ip =~ /\./) { #v4
+                $ip = join('.',reverse(split(/\./,$ip)));
+                $ip .= '.IN-ADDR.ARPA.';
+            } elsif ($ip =~ /:/) { #v6
+                $ip=getipaddr($ip,GetNumber=>1);
+                $ip=$ip->as_hex();
+                $ip =~ s/^0x//;
+                $ip = join('.',reverse(split(//,$ip)));
+                $ip .= '.ip6.arpa.';
+            } else {
+                die "ddns did not understand $ip result of lookup";
+            }
+            #ok, now it is time to identify which zones should actually hold the forward (A) and reverse (PTR) records and a nameserver to handle the request
+            my $revzone = $ip;
+            $ctx->{currnode}=$node;
+            $ctx->{currname}=$name;
+            $ctx->{currrevname}=$ip;
+            find_nameserver_for_dns($ctx,$revzone);
+            find_nameserver_for_dns($ctx,$domain);
+        }
     }
     my $zone;
     foreach $zone (keys %{$ctx->{updatesbyzone}}) {
@@ -758,17 +792,26 @@ sub find_nameserver_for_dns {
     my $rname = $ctx->{currrevname};
     my $name = $ctx->{currname};
     unless ($name =~ /\.\z/) { $name .= '.' }
-    my @rrcontent = ( "$name IN A $ip" );
+    my @rrcontent;
+    if ($ip =~ /:/) {
+        @rrcontent = ( "$name IN AAAA $ip" );
+    } else {
+        @rrcontent = ( "$name IN A $ip" );
+    }
     foreach (keys %{$ctx->{nodeips}->{$node}}) {
         unless ($_ eq $ip) {
-            push @rrcontent,"$name IN A $_";
+            if ($_ =~ /:/) {
+                push @rrcontent,"$name IN AAAA $_";
+            } else {
+                push @rrcontent,"$name IN A $_";
+            }
         }
     }
     if ($ctx->{deletemode}) {
         push @rrcontent,"$name TXT";
         push @rrcontent,"$name A";
     }
-    if ($zone =~ /IN-ADDR.ARPA/) { #reverse style
+    if ($zone =~ /IN-ADDR.ARPA/ or $zone =~ /ip6.arpa/) { #reverse style
         @rrcontent = ("$rname IN PTR $name");
     }
     while ($zone) {
