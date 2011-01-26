@@ -183,7 +183,7 @@ sub process_request
             if ($_->{net} =~ /:/) {
                 my $rsp = {};
                 $rsp->{data}->[0] = "Ignoring IPv6 network, not supported in bind.pm (site.dnshandler=ddns if you want to do IPv6 DNS records";
-                xCAT::MsgeUtils->message("W",$rsp,$callback,1);
+                xCAT::MsgUtils->message("W",$rsp,$callback,1);
                 next;
             }
             push @args, "-n";
