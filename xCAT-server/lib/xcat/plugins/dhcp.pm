@@ -313,7 +313,7 @@ sub addnode
             $hname = $node;
         }    #Default to hostname equal to nodename
         unless ($mac) { next; }    #Skip corrupt format
-        my $ip = inet_aton(inet_ntoa($hname)); #xCAT::Utils::getNodeIPaddress($hname);
+        my $ip = inet_ntoa(inet_aton($hname)); #xCAT::Utils::getNodeIPaddress($hname);
         if ($hname eq '*NOIP*') {
             $hname = $node . "-noip".$mac;
             $hname =~ s/://g;
