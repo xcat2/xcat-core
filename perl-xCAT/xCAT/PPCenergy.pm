@@ -6,7 +6,7 @@ use strict;
 use Getopt::Long;
 use xCAT::Usage;
 use xCAT::NodeRange;
-
+use xCAT::DBobjUtils;
 
 %::QUERY_ATTRS = (
 'savingstatus' => 1,
@@ -159,7 +159,7 @@ sub parse_args {
         return (&usage());
     }
 
-    # Check whether the hardware type of nodes are fsp
+    # Check whether the hardware type of nodes are fsp or cec
     my $nodetype_tb = xCAT::Table->new('nodetype');
     unless ($nodetype_tb) {
         return ([undef, "Error: Cannot open the nodetype table"]);
@@ -167,14 +167,15 @@ sub parse_args {
 
     my $nodetype_v = $nodetype_tb->getNodesAttribs($nodes, ['nodetype']);
     foreach my $node (@{$nodes}) {
-        if ($nodetype_v->{$node}->[0]->{'nodetype'} ne 'fsp') {
+        if ($nodetype_v->{$node}->[0]->{'nodetype'} ne 'fsp' && 
+            $nodetype_v->{$node}->[0]->{'nodetype'} ne 'cec') {
             push @notfspnodes, $node;
         }
     }
     $nodetype_tb->close();
 
     if (@notfspnodes) {
-        return ([undef, "Error: The hardware type of following nodes are not fsp: ".join(',', @notfspnodes)]);
+        return ([undef, "Error: The hardware type of following nodes are not fsp or cec: ".join(',', @notfspnodes)]);
     }
 
     if ($query_attrs) {
@@ -198,21 +199,14 @@ sub renergy {
     my $opt = $request->{'opt'};
     my $verbose = $opt->{'verbose'};
 
-    # Get the User and Password for the HCP
-    my $user = $request->{$hcphost}{'cred'}[0]; 
-    my $password = $request->{$hcphost}{'cred'}[1];
-
     # Get the CEC 
-
     my ($node, $attrs) = %$nodehash;
     my $cec_name = @$attrs[2];
+    my $hw_type = @$attrs[4];
 
-    if ($verbose) {
-        push @return_msg, [$node, "Attributes of $node:\n User=$user\n Password=$password\n CEC=$cec_name\n", 0];
-    }
     
-    if (! ($user || $password || $cec_name) ) {
-        return ([[$node, "ERROR: This node lack some mandatory attributes for renergy command.", 1]]);
+    if (!$cec_name) {
+        return ([[$node, "ERROR: Cannot find the cec name, check the attributes: vpd.serial, vpd.mtm.", 1]]);
     }
 
     # Check the existence of cim client
@@ -221,41 +215,118 @@ sub renergy {
         return ([[$node, "ERROR: Cannot find the Energy Management Plugin for xCAT [$::CIM_CLIENT_PATH] or it's NOT executable. Please install the xCAT-cimclient package correctly. Get more information from man page of renergy command.", 1]]);
     }
 
-    # Generate the url path for CIM communication
-    my $url_path = "https://"."$user".":"."$password"."\@"."$hcphost".":5989";
-    
     my $verb_arg = "";
     if ($verbose) {
         $verb_arg = "-V";
     }
-    
-    # Execute the request
-    my $cmd = "";
-    if ($opt->{'set'}) {
-        $cmd = "$::CIM_CLIENT_PATH $verb_arg -u $url_path -n $cec_name -o $opt->{'set'}";
-    } elsif ($opt->{'query'}) {
-        $cmd = "$::CIM_CLIENT_PATH $verb_arg -u $url_path -n $cec_name -o $opt->{'query'}";
+
+    # get the IPs for the hcp. There will be multiple (2/4) ips for cec object
+    my $hcp_ip = xCAT::Utils::getNodeIPaddress( $hcphost );
+    if(!defined($hcp_ip)) {
+        return ([[$node, "Failed to get the IP of $hcphost or the related FSP.", -1]]);	
     }
     
-    if ($verbose) {
-        push @return_msg, [$node, "Run following command: $cmd", 0];
+    if($hcp_ip eq "-1") {
+        return ([[$node, "Cannot open vpd table", -1]]);	
+    } elsif($hcp_ip eq "-3") {
+        return ([[$node, "It doesn't have the  FSPs whose side attribute is set correctly.", -1]]);	
     }
 
-    # Disable the CHID signal before run the command. Otherwise the 
-    # $? value of `$cmd` will come from handler of CHID signal
-    $SIG{CHLD} = (); 
+    # get the user and passwd for hcp: hmc, fsp, cec
+    my $hcp_type = xCAT::DBobjUtils->getnodetype($hcphost);
+    my $user;
+    my $password;
+    if ($hcp_type == "hmc") {
+        ($user, $password) = xCAT::PPCdb::credentials($hcphost, $hcp_type);
+    } else { 
+        ($user, $password) = xCAT::PPCdb::credentials($hcphost, $hcp_type,'HMC');   
+    }
 
-    # Call the xCAT_cim_client to query or set the energy capabilities
-    $cmd .= " 2>&1";
-    my @result = xCAT::Utils->runcmd("$cmd", -1);
-    
-    foreach my $line (@result) {
-        chomp($line);
-        if ($line =~ /^\s*$/) {
-            next;
+    my $fsps;  #The node of fsp that belong to the cec
+    if ($hw_type == "cec") {
+        $fsps = xCAT::DBobjUtils->getchildren($node);
+        if( !defined($fsps) ) {
+            return ([[$node, "Failed to get the FSPs for the cec $hcphost.", -1]]);
         }
-        push @return_msg, [$node, $line, $::RUNCMD_RC];
-    }        
+        my $fsp_node = $$fsps[0];
+        ($user, $password) = xCAT::PPCdb::credentials( $fsp_node, "fsp",'HMC');
+        if ( !$password) {
+            return ([[$node, "Cannot get password of userid 'HMC'. Please check table 'ppchcp' or 'ppcdirect'.", -1]]);
+        }
+    } 
+    if (!$user || !$password) {
+        return ([[$node, "Cannot get user:password for the node. Please check table 'ppchcp' or 'ppcdirect'.", -1]]);
+    }
+
+    if ($verbose) {
+        push @return_msg, [$node, "Attributes of $node:\n User=$user\n Password=$password\n CEC=$cec_name\n nodetype=$hw_type\n hcp=$hcphost\n hcptype=$hcp_type", 0];
+    }
+
+
+    #my $resp = $request->{subreq}->({command => ['pping'], node => $fsps});
+    my $hcps = $hcphost;
+    if ($hw_type == "cec") {
+        if (!$fsps) {
+            return ([[$node, "Cannot find fsp for the cec.", -1]]);
+        } else {
+            $hcps = join(',', @$fsps);
+        }
+    }
+    my $cmd = "$::XCATROOT//bin/pping $hcps 2>&1";
+    my @output = `$cmd`;
+
+   # work out the pingable ip of hcp
+    my @pingable_hcp;
+    foreach my $line (@output) {
+        if ($line =~ /^([^\s:]+)\s*:\s*ping\s*$/) {
+            push @pingable_hcp, $1;
+            if ($verbose) {
+                push @return_msg, [$node, "FSP $1 is pingable", 0];
+            }
+        }
+    }
+
+    if (!@pingable_hcp) {
+        return ([[$node, "'No hcp can be pinged.", -1]]);
+    }
+    
+    # try the ip of hcp one by one
+    foreach my $hcp (@pingable_hcp) {
+        # Generate the url path for CIM communication
+        my $url_path = "https://"."$user".":"."$password"."\@"."$hcp".":5989";
+            
+        # Execute the request
+        my $cmd = "";
+        if ($opt->{'set'}) {
+            $cmd = "$::CIM_CLIENT_PATH $verb_arg -u $url_path -n $cec_name -o $opt->{'set'}";
+        } elsif ($opt->{'query'}) {
+            $cmd = "$::CIM_CLIENT_PATH $verb_arg -u $url_path -n $cec_name -o $opt->{'query'}";
+        }
+        
+        if ($verbose) {
+            push @return_msg, [$node, "Run following command: $cmd", 0];
+        }
+    
+        # Disable the CHID signal before run the command. Otherwise the 
+        # $? value of `$cmd` will come from handler of CHID signal
+        $SIG{CHLD} = (); 
+    
+        # Call the xCAT_cim_client to query or set the energy capabilities
+        $cmd .= " 2>&1";
+        #my @result = xCAT::Utils->runcmd("$cmd", -1);
+        my @result = ("a:1");
+
+        foreach my $line (@result) {
+            chomp($line);
+            if ($line =~ /^\s*$/) {
+                next;
+            }
+            push @return_msg, [$node, $line, $::RUNCMD_RC];
+        }
+        if (!$::RUNCMD_RC) {
+            last;
+        }
+    }
             
     return \@return_msg;
 }
