@@ -132,7 +132,7 @@ B<Set>:   savingstatus
 
 =back
 
-B<8233-E8B>, B<8236-E8C>
+B<8233-E8B>, B<8236-E8C>, B<9125-F2C>
 
 =over 4
 
@@ -210,7 +210,7 @@ Query the total DC power available for the entire blade center chassis.
 
 Query the average power consumed (Input). (Unit is watt)
 
-Note: For 9125-F2A server, the value of attribute 
+Note: For 9125-F2A,9125-F2C server, the value of attribute 
 averageAC is the aggregate for all of the servers in a rack.
 
 Note: For Blade Center, the value of attribute 
