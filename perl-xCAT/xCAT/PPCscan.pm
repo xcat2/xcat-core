@@ -11,6 +11,7 @@ use xCAT::PPCdb;
 use xCAT::GlobalDef;
 use xCAT::Usage;
 use xCAT::NetworkUtils;
+use xCAT_plugin::lsslp;
 
 
 ##############################################
@@ -292,18 +293,21 @@ sub enumerate {
             #######################################
             # Save two sides of BPA seperately
             #######################################
-            my $bpastr = join( ",","bpa",$fname,$id,$model,$serial,"A",$server,$prof,$bpa,$ipa);
-            if ( !grep /^\Q$bpastr\E$/, @values)
-            {
-                push @values, join( ",",
-                    "bpa",$fname,$id,$model,$serial,"A",$server,$prof,$bpa,$ipa);
-            }
-            $bpastr = join( ",","bpa",$fname,$id,$model,$serial,"B",$server,$prof,$bpa,$ipb);
-            if ( !grep /^\Q$bpastr\E$/, @values)
-            {
-                push @values, join( ",",
-                    "bpa",$fname,$id,$model,$serial,"B",$server,$prof,$bpa,$ipb);
-            }
+            #my $bpastr = join( ",","bpa",$fname,$id,$model,$serial,"A",$server,$prof,$bpa,$ipa);
+            #if ( !grep /^\Q$bpastr\E$/, @values)
+            #{
+            #    push @values, join( ",",
+            #        "bpa",$fname,$id,$model,$serial,"A",$server,$prof,$bpa,$ipa);
+            #}
+            #$bpastr = join( ",","bpa",$fname,$id,$model,$serial,"B",$server,$prof,$bpa,$ipb);
+            #if ( !grep /^\Q$bpastr\E$/, @values)
+            #{
+            #    push @values, join( ",",
+            #        "bpa",$fname,$id,$model,$serial,"B",$server,$prof,$bpa,$ipb);
+            #}
+            push @values, join( ",",
+                    "frame",$fname,$id,$model,$serial,"",$server,$prof,$bpa,"");
+       
         }
         #####################################
         # Save CEC information
@@ -322,7 +326,7 @@ sub enumerate {
         my $mtmss = $hwconn{$ips};
         my ($mtms,$side) = split /,/, $mtmss;
         push @values, join( ",",
-            "fsp",$fsp,$cageid,$model,$serial,$side,$server,$prof,$fname,$ips );
+            "cec",$fsp,$cageid,$model,$serial,"",$server,$prof,$fname,"" );
 
         #####################################
         # Enumerate LPARs 
@@ -406,7 +410,29 @@ sub format_output {
         # Strip errors for results
         #######################################
         my @val = grep( !/^#.*: ERROR /, @$values );
-        $values = xCAT::PPCdb::update_ppc( $hwtype, \@val );
+        #$values = xCAT::PPCdb::update_ppc( $hwtype, \@val );        
+        foreach my $node (@val)
+        {
+            my ($ttype,$tname,$tid,$tmtm,$tsn,$ttmp,$thcp,$tprofile,$tparent) = split /,/, $node;
+            if ($ttype eq "cec" )
+            {
+                my $hostname =  xCAT_plugin::lsslp::gethost_from_url_or_old($tname, "FSP", $tmtm, $tsn, "", "", $tid, "","");
+                if ($hostname ne $tname)
+                {
+                    push @$values, join( ",",
+                  "fsp",$hostname,$tid,$tmtm,$tsn,$ttmp,$thcp,$tprofile,$tparent,"");           
+                }                                                   
+            }
+            if ($ttype eq "frame" )
+            {
+                my $hostname =  xCAT_plugin::lsslp::gethost_from_url_or_old($tname, "BPA", $tmtm, $tsn, "", "", $tid, "","");
+                if ($hostname ne $tname)
+                {
+                    push @$values, join( ",",
+                  "bpa",$hostname,$tid,$tmtm,$tsn,$ttmp,$thcp,$tprofile,$tparent,"");                  
+                }                  
+            }  
+        }
         if ( exists( $opt->{x} ) or exists( $opt->{z} ))
         {
             unshift @$values, "hmc";
