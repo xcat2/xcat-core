@@ -5,6 +5,8 @@ use Net::DNS;
 use File::Path;
 use xCAT::Table;
 use Sys::Hostname;
+use xCAT::NetworkUtils qw/getipaddr/;
+use Math::BigInt;
 use MIME::Base64;
 use xCAT::SvrUtils;
 use Socket;
@@ -79,36 +81,62 @@ sub getzonesfornet {
         return @zones;
     }
 }
-sub get_reverse_zone_for_entity {
+sub get_reverse_zones_for_entity {
     my $ctx = shift;
     my $node = shift;
     my $net;
     if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
         $node = $ctx->{hoststab}->{$node}->[0]->{ip};
     }
+    my @tvars=getipaddr($node,GetNumber=>1,GetAllAddresses=>1);
     my $tvar;
-    if ($tvar = inet_aton($node)) { #This is an assignment, we are testing and storing the value in one shot
-        $tvar = unpack("N",$tvar);
+    my @revs;
+    foreach $tvar (@tvars) {
+    #if ($tvar = getipaddr($node,GetNumber=>1)) { #This is an assignment, we are testing and storing the value in one shot
         foreach my $net (keys %{$ctx->{nets}}) {
             if ($ctx->{nets}->{$net}->{netn} == ($tvar & $ctx->{nets}->{$net}->{mask})) {
-                my $maskstr = unpack("B32",pack("N",$ctx->{nets}->{$net}->{mask}));
-                my $maskcount = ($maskstr =~ tr/1//);
-                $maskcount+=((8-($maskcount%8))%8); #round to the next octet
-                my $newmask = 2**$maskcount -1 << (32 - $maskcount);
-                my $rev = inet_ntoa(pack("N",($tvar & $newmask)));
-                my @zone;
-                my @orig=split /\./,$rev;
-                while ($maskcount) {
-                    $maskcount-=8;
-                    unshift(@zone,(shift @orig));
+                if ($net =~ /\./) { #IPv4/IN-ADDR.ARPA case.
+                    my $maskstr = unpack("B32",pack("N",$ctx->{nets}->{$net}->{mask}));
+                    my $maskcount = ($maskstr =~ tr/1//);
+                    $maskcount+=((8-($maskcount%8))%8); #round to the next octet
+                    my $newmask = 2**$maskcount -1 << (32 - $maskcount);
+                    my $rev = inet_ntoa(pack("N",($tvar & $newmask)));
+                    my @zone;
+                    my @orig=split /\./,$rev;
+                    while ($maskcount) {
+                        $maskcount-=8;
+                        unshift(@zone,(shift @orig));
+                    }
+                    $rev = join('.',@zone);
+                    $rev .= '.IN-ADDR.ARPA.';
+                    push @revs,$rev;
+                } elsif ($net =~ /:/) {#v6/ip6.arpa case
+                    $net =~ /\/(.*)/;
+                    my $maskbits = $1;
+                    unless ($maskbits and (($maskbits%4)==0)) {
+                        die "Never expected this, $net should have had CIDR / notation... and the mask should be a factor of 4, if not, need work..."
+                    }
+                    my $netnum = Math::BigInt->new($ctx->{nets}->{$net}->{netn});
+                    $netnum->brsft(128-$maskbits);
+                    my $prefix=$netnum->as_hex();
+                    my $nibbs=$maskbits/4;
+                    $prefix =~ s/^0x//;
+                    my $rev;
+                    foreach (reverse(split //,$prefix)) {
+                        $rev .= $_.".";
+                        $nibbs--;
+                    }
+                    while ($nibbs) { 
+                        $rev .= "0.";
+                        $nibbs--;
+                    }
+                    $rev.="ip6.arpa.";
+                    push @revs,$rev;
                 }
-                $rev = join('.',@zone);
-                $rev .= '.IN-ADDR.ARPA.';
-                return $rev;
             }
         }
     }
-    return undef;
+    return @revs;
 }
 
 sub process_request {
@@ -214,9 +242,25 @@ sub process_request {
     unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
     my @networks = $networkstab->getAllAttribs('net','mask');
     foreach (@networks) {
-        my $maskn = unpack("N",inet_aton($_->{mask}));
+        my $maskn;
+        if ($_->{mask}) { #better be IPv4, we only do CIDR for v6, use the v4/v6 agnostic just in case
+            $maskn = getipaddr($_->{mask},GetNumber=>1); #pack("N",inet_aton($_->{mask}));
+        } elsif ($_->{net} =~ /\/(.*)/) { #CIDR
+            my $maskbits=$1;
+            my $numbits;
+            if ($_->{net} =~ /:/) { #v6
+                $numbits=128;
+            } elsif ($_->{net} =~ /\./) {
+                $numbits=32;
+            } else {
+                die "Network ".$_->{net}." appears to be malformed in networks table";
+            }
+            $maskn = Math::BigInt->new("0b".("1"x$maskbits).("0"x($numbits-$maskbits)));
+        }
         $ctx->{nets}->{$_->{net}}->{mask} = $maskn;
-        $ctx->{nets}->{$_->{net}}->{netn} = unpack("N",inet_aton($_->{net}));
+        my $net = $_->{net};
+        $net =~ s/\/.*//;
+        $ctx->{nets}->{$_->{net}}->{netn} = getipaddr($net,GetNumber=>1);
         my $currzone;
         foreach $currzone (getzonesfornet($_->{net},$_->{mask})) {
             $ctx->{zonestotouch}->{$currzone} = 1;
@@ -234,10 +278,12 @@ sub process_request {
     }
     $ctx->{zonestotouch}->{$ctx->{domain}}=1;
     foreach (@nodes) {
-        my $revzone =  get_reverse_zone_for_entity($ctx,$_);;
-        unless ($revzone) { next; }
-        $ctx->{revzones}->{$_} = $revzone;
-        $ctx->{zonestotouch}->{$ctx->{revzones}->{$_}}=1;
+        my @revzones =  get_reverse_zones_for_entity($ctx,$_);;
+        unless (@revzones) { next; }
+        $ctx->{revzones}->{$_} = \@revzones;
+        foreach (@revzones) {
+            $ctx->{zonestotouch}->{$_}=1;
+        }
     }
     if (1) { #TODO: function to detect and return 1 if the master server is DNS SOA for all the zones we care about
         #here, we are examining local files to assure that our key is in named.conf, the zones we care about are there, and that if

@@ -251,6 +251,9 @@ sub getipaddr
                     $ip=0;
                 }
             }
+            unless ($extraarguments{GetAllAddresses}) {
+                return $returns[0];
+            }
             return @returns;
         }
         else
