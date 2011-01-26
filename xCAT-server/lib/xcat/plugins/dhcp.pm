@@ -442,39 +442,42 @@ sub addnode
 
 sub addrangedetection {
     my $net = shift;
-    my $trange = $net->{dynamicrange}; #temp range, the dollar sign makes it look strange
+    my $tranges = $net->{dynamicrange}; #temp range, the dollar sign makes it look strange
+    my $trange;
     my $begin;
     my $end;
-    if ($trange =~ /[ ,-]/) { #a range of one number to another..
-       $trange =~ s/[,-]/ /g;
-       $netcfgs{$net->{net}}->{range}=$trange; 
-       ($begin,$end) = split / /,$trange;
-       $dynamicranges{$trange}=[getipaddr($begin,GetNumber=>1),getipaddr($end,GetNumber=>1)];
-    } elsif ($trange =~ /\//) { #a CIDR style specification for a range that could be described in subnet rules
-        #we are going to assume that this is a subset of the network (it really ought to be) and therefore all zeroes or all ones is good to include
-        my $prefix;
-        my $suffix;
-        ($prefix,$suffix) = split /\//,$trange;
-        my $numbits;
-        if ($prefix =~ /:/) { #ipv6
-            $netcfgs{$net->{net}}->{range}=$trange; #we can put in dhcpv6 ranges verbatim as CIDR
-            $numbits=128;
-        } else {
-            $numbits=32;
-        }
-        my $number = getipaddr($prefix,GetNumber=>1);
-        my $highmask=Math::BigInt->new("0b".("1"x$suffix).("0"x($numbits-$suffix)));
-        my $lowmask=Math::BigInt->new("0b".("1"x($numbits-$suffix)));
-        $number &= $highmask; #remove any errant high bits beyond the mask.
-        $begin = $number->copy();
-        $number |= $lowmask; #get the highest number in the range, 
-        $end=$number->copy();
-        $dynamicranges{$trange}=[$begin,$end];
-        if ($prefix !~ /:/) { #ipv4, must convert CIDR subset to range
-            my $lowip = inet_ntoa(pack("N*",$begin));
-            my $highip = inet_ntoa(pack("N*",$end));
-            $netcfgs{$net->{net}}->{range} = "$lowip $highip";
-
+    foreach $trange (split /;/,$tranges) {
+        if ($trange =~ /[ ,-]/) { #a range of one number to another..
+           $trange =~ s/[,-]/ /g;
+           $netcfgs{$net->{net}}->{range}=$trange; 
+           ($begin,$end) = split / /,$trange;
+           $dynamicranges{$trange}=[getipaddr($begin,GetNumber=>1),getipaddr($end,GetNumber=>1)];
+        } elsif ($trange =~ /\//) { #a CIDR style specification for a range that could be described in subnet rules
+            #we are going to assume that this is a subset of the network (it really ought to be) and therefore all zeroes or all ones is good to include
+            my $prefix;
+            my $suffix;
+            ($prefix,$suffix) = split /\//,$trange;
+            my $numbits;
+            if ($prefix =~ /:/) { #ipv6
+                $netcfgs{$net->{net}}->{range}=$trange; #we can put in dhcpv6 ranges verbatim as CIDR
+                $numbits=128;
+            } else {
+                $numbits=32;
+            }
+            my $number = getipaddr($prefix,GetNumber=>1);
+            my $highmask=Math::BigInt->new("0b".("1"x$suffix).("0"x($numbits-$suffix)));
+            my $lowmask=Math::BigInt->new("0b".("1"x($numbits-$suffix)));
+            $number &= $highmask; #remove any errant high bits beyond the mask.
+            $begin = $number->copy();
+            $number |= $lowmask; #get the highest number in the range, 
+            $end=$number->copy();
+            $dynamicranges{$trange}=[$begin,$end];
+            if ($prefix !~ /:/) { #ipv4, must convert CIDR subset to range
+                my $lowip = inet_ntoa(pack("N*",$begin));
+                my $highip = inet_ntoa(pack("N*",$end));
+                $netcfgs{$net->{net}}->{range} = "$lowip $highip";
+    
+            }
         }
     }
 }
@@ -1593,7 +1596,11 @@ sub addnet
           "    } else if substring(filename,0,1) = null { #otherwise, provide yaboot if the client isn't specific\n ";
         push @netent, "      filename \"/yaboot\";\n";
         push @netent, "    }\n";
-        if ($range) { push @netent, "    range dynamic-bootp $range;\n" }
+        if ($range) { 
+            foreach  my $singlerange (split /;/,$range) {
+                push @netent, "    range dynamic-bootp $singlerange;\n" 
+            }
+        }
         push @netent, "  } # $net\/$mask subnet_end\n";
         splice(@dhcpconf, $idx, 0, @netent);
     }
