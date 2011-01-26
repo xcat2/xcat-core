@@ -224,13 +224,13 @@ sub getipaddr
         if ($socket6support) # the getaddrinfo and getnameinfo supports both IPv4 and IPv6
         {
             my @returns;
-            my $family=AF_UNSPEC;
+            my $reqfamily=AF_UNSPEC;
             if ($extraarguments{OnlyV6}) {
-                $family=AF_INET6;
+                $reqfamily=AF_INET6;
             } elsif ($extraarguments{OnlyV4}) {
-                $family=AF_INET;
+                $reqfamily=AF_INET;
             }
-            my @addrinfo = Socket6::getaddrinfo($iporhost,0,$family,SOCK_STREAM,6);
+            my @addrinfo = Socket6::getaddrinfo($iporhost,0,$reqfamily,SOCK_STREAM,6);
             my ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo,0,5);
             while ($ip)
             {
@@ -245,7 +245,7 @@ sub getipaddr
                 } else {
                     push @returns,(Socket6::getnameinfo($ip, Socket6::NI_NUMERICHOST()))[0];
                 }
-                if (scalar @addrinfo and $extraargumests{GetAllAddresses}) {
+                if (scalar @addrinfo and $extraarguments{GetAllAddresses}) {
                     ($family, $socket, $protocol, $ip, $name) = splice(@addrinfo,0,5);
                 } else {
                     $ip=0;
