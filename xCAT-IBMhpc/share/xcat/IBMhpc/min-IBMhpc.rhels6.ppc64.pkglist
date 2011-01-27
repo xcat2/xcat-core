@@ -1,5 +1,5 @@
 # OS packages that are useful for all IBM HPC products
-#INCLUDE:/opt/xcat/share/xcat/netboot/rh/compute.rhel6.ppc64.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/netboot/rh/compute.rhels6.ppc64.pkglist#
 
 xinetd
 rsh

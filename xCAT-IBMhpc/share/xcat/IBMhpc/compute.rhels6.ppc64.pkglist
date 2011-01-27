@@ -1,0 +1,3 @@
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.rhels6.ppc64.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.rhels6.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.rhels6.pkglist#

@@ -1,7 +1,7 @@
 # Sample exlude list for building a diskless RHEL6 PPC64 image
 
 #INCLUDE:/opt/xcat/share/xcat/netboot/rh/compute.exlist#
-#INCLUDE:/opt/xcat/share/xcat/IBMhpc/min-IBMhpc.rhel6.ppc64.exlist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/min-IBMhpc.rhels6.ppc64.exlist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.exlist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/min-essl.exlist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/min-gpfs.exlist#

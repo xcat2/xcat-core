@@ -24,7 +24,7 @@ otherpkgs=/install/post/otherpkgs/$osver/$arch
 
 
 # Run default postinstall shipped with xcat
-/opt/xcat/share/xcat/netboot/rh/compute.rhel6.ppc64.postinstall $1 $2 $3 $4 $5
+/opt/xcat/share/xcat/netboot/rh/compute.rhels6.ppc64.postinstall $1 $2 $3 $4 $5
 
 
 # Run general IBMhpc postinstall script
