@@ -448,6 +448,7 @@ sub addrangedetection {
     my $begin;
     my $end;
     $netcfgs{$net->{net}}->{nameservers} = $net->{nameservers};
+    $netcfgs{$net->{net}}->{domain} = $domain; #TODO: finer grained domains
     unless ($netcfgs{$net->{net}}->{nameservers}) {
         $netcfgs{$net->{net}}->{nameservers} = $::XCATSITEVALS{nameservers};
     }
@@ -1388,6 +1389,7 @@ sub addnet6
     #posix timezone rfc 4833/tzdb timezone
     #phase 3 will include whatever is required to do Netboot6.  That might be in the october timeframe for lack of implementations to test
     #boot url/param (rfc 59070)
+    push @netent, "    option domain-name \"".$netcfgs{$net}->{domain}."\";\n";
     my $nameservers = $netcfgs{$net}->{nameservers};
     if ($nameservers and $nameservers =~ /:/) {
         push @netent,"    nameservers ".$netcfgs{$net}->{nameservers}.";\n";
