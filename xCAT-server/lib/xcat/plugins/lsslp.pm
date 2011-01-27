@@ -226,7 +226,7 @@ sub parse_args {
     # Process command-line flags
     #############################################
     if (!GetOptions( \%opt,
-            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n C=s T=s updatehosts makedhcp resetnet vpdtable))) {
+            qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n C=s T=s I updatehosts makedhcp resetnet vpdtable))) {
         return( usage() );
     }
 
@@ -810,7 +810,7 @@ sub invoke_cmd {
     # Need to check if the result is enough
     ########################################
     if ( exists( $opt{C}) ) {
-        send_msg( $request, 0, "\n Begin to try again, this maybe takes long time \n" );
+        send_msg( $request, 0, "\n Begin to try again, this may takes long time \n" );
         #my $uni_tmp = $unicast;
         my %val_tmp = %$values;
         my $rlt;
@@ -1120,7 +1120,7 @@ sub format_output {
     # -w flag for write to xCat database
     ###########################################
     if ( exists( $opt{w} )) {
-        send_msg( $request, 0, "Begin to write into Database, this maybe change node name" );
+        send_msg( $request, 0, "Begin to write into Database, this may change node name" );
         xCATdB( $outhash );
     }
 
@@ -1138,6 +1138,18 @@ sub format_output {
     ###########################################
     if ( exists( $opt{resetnet} ) ) {
         do_resetnet( $request, $outhash );
+    }
+
+    ###########################################
+    # -I flat give the warning message for
+    # the no-response nodes
+    ###########################################
+    if ( exists( $opt{I} ) ) {
+        my $outresult = integrity_check( $outhash );
+        if ($outresult)
+        {
+            send_msg( $request, 0, $outresult );
+        }
     }
 
     ###########################################
@@ -1205,6 +1217,63 @@ sub format_output {
     }
     send_msg( $request, 0, $result );
 }
+##########################################################################
+# Give the warning message for the no-response nodes
+##########################################################################
+sub integrity_check {
+    my $datahash = shift;
+    my $findflag = 0;
+    my $result;
+
+    foreach my $existnode ( keys %::OLD_DATA_CACHE )
+    {
+        my $tmptype = uc(@{$::OLD_DATA_CACHE{$existnode}}[6]);
+        my $tmpmtm  = @{$::OLD_DATA_CACHE{$existnode}}[0];
+        my $tmpsn   = @{$::OLD_DATA_CACHE{$existnode}}[1];
+        my $tmpside = @{$::OLD_DATA_CACHE{$existnode}}[2];
+        if ( $tmptype eq TYPE_CEC or $tmptype eq TYPE_FRAME or  $tmptype =~ /lpar/ )
+        {
+            next;
+        }
+        $findflag = 0;
+        foreach my $foundnode ( keys %$datahash )
+        {
+            my $newdata = $datahash->{$foundnode};
+            my $newtype = @$newdata[0];
+            my $newmtm  = @$newdata[1];
+            my $newsn   = @$newdata[2];
+            my $newside = @$newdata[3];
+
+            if( !$foundnode or !$newtype or !$newtype or !$newsn )
+            {
+                next;
+            }
+            if ( ($newtype eq $tmptype) and ($tmptype eq TYPE_BPA or $tmptype eq TYPE_FSP) )
+            {
+                # begin to match fsp/bpa
+                if (($newmtm eq $tmpmtm) and ($newsn eq $tmpsn) and ($newside eq $tmpside))
+                {
+                    $findflag = 1;
+                    last;
+                }
+            }elsif ( ($newtype eq $tmptype) and ($tmptype eq TYPE_HMC) )
+            {
+                # begin to match hmc
+                if (($newmtm eq $tmpmtm) and ($newsn eq $tmpsn))
+                {
+                    $findflag = 1;
+                    last;
+                }
+            }
+        }
+
+        if ($findflag eq 0 and $existnode ne "")
+        {
+            $result .= "\n Warning: The node $existnode has no response. \n";
+        }
+    }
+    return $result;
+}
 
 
 ##########################################################################
@@ -1257,7 +1326,7 @@ sub gethost_from_url_or_old {
 
 
     # get the information of existed nodes to do the migration
-    if (!%::OLD_DATA_CACHE)
+    if ( !defined(%::OLD_DATA_CACHE))
     {
         # find out all the existed nodes' ipaddresses
         my $hoststab  = xCAT::Table->new('hosts');
@@ -2041,7 +2110,7 @@ sub parse_responses {
             if ( $hostname )
             {
                 $outhash{$hostname} = \@severnode1;
-            } 
+            }
 
 
             $hostname = undef;
@@ -2058,7 +2127,7 @@ sub parse_responses {
             if ( $hostname )
             {
                  $outhash{$hostname} = \@severnode2;
-            } 
+            }
 
             ###########################################
             #  begin to define frame and cec
