@@ -236,14 +236,14 @@ sub renergy {
     my $hcp_type = xCAT::DBobjUtils->getnodetype($hcphost);
     my $user;
     my $password;
-    if ($hcp_type == "hmc") {
+    if ($hcp_type eq "hmc") {
         ($user, $password) = xCAT::PPCdb::credentials($hcphost, $hcp_type);
     } else { 
         ($user, $password) = xCAT::PPCdb::credentials($hcphost, $hcp_type,'HMC');   
     }
 
     my $fsps;  #The node of fsp that belong to the cec
-    if ($hw_type == "cec") {
+    if ($hw_type eq "cec") {
         $fsps = xCAT::DBobjUtils->getchildren($node);
         if( !defined($fsps) ) {
             return ([[$node, "Failed to get the FSPs for the cec $hcphost.", -1]]);
@@ -265,7 +265,7 @@ sub renergy {
 
     #my $resp = $request->{subreq}->({command => ['pping'], node => $fsps});
     my $hcps = $hcphost;
-    if ($hw_type == "cec") {
+    if ($hw_type eq "cec") {
         if (!$fsps) {
             return ([[$node, "Cannot find fsp for the cec.", -1]]);
         } else {
@@ -285,6 +285,8 @@ sub renergy {
             }
         }
     }
+    #just for temp that all hcp will be tried
+    @pingable_hcp = split(',', $hcps);
 
     if (!@pingable_hcp) {
         return ([[$node, "'No hcp can be pinged.", -1]]);
@@ -313,8 +315,7 @@ sub renergy {
     
         # Call the xCAT_cim_client to query or set the energy capabilities
         $cmd .= " 2>&1";
-        #my @result = xCAT::Utils->runcmd("$cmd", -1);
-        my @result = ("a:1");
+        my @result = xCAT::Utils->runcmd("$cmd", -1);
 
         foreach my $line (@result) {
             chomp($line);
