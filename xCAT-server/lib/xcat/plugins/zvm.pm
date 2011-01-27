@@ -3053,6 +3053,10 @@ sub nodeSet {
 		# Get first 3 octets of node IP (IPv4)
 		@words = split( /\./, $hostIP );
 		my $octets = "$words[0].$words[1].$words[2]";
+		
+		# Class B and A networks
+		my $octetsB = "$words[0].$words[1].0";
+		my $octetsA = "$words[0].0.0";
 
 		# Get networks in 'networks' table
 		my $entries = xCAT::zvmUtils->getAllTabEntries('networks');
@@ -3065,7 +3069,7 @@ sub nodeSet {
 			$network = $_->{'net'};
 
 			# If networks contains the first 3 octets of the node IP
-			if ( $network =~ m/$octets/i ) {
+			if ( $network =~ m/$octets/i || $network =~ m/$octetsB/i || $network =~ m/$octetsA/i) {
 
 				# Exit loop
 				last;
