@@ -280,8 +280,10 @@ Query the current power capping value. (Unit is watt)
 Set the power capping value base on the watt unit.
 
 If the 'watt' >  maximum of I<cappingmaxmin> or 'watt' 
-< minimum of I<cappingmaxmim>, the setting operation 
-will be failed.
+< I<cappingsoftmin>, the setting operation 
+will be failed. If the 'watt' > I<cappingsoftmin> and 
+'watt' < minimum of I<cappingmaxmin>, the value can NOT be 
+guaranteed.
 
 =item B<CPUspeed>
 
