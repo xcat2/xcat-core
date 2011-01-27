@@ -1,4 +1,4 @@
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+# IBM(c) 2010 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT_plugin::dhcp;
 BEGIN
 {
@@ -206,6 +206,7 @@ sub addnode6 {
     print $omshell6 "new host\n";
     print $omshell6 "set name = \"$node\"\n";
     print $omshell6 "set dhcp-client-identifier = $uuid\n";
+    print $omshell6 'set statements = "ddns-hostname \"'.$node.'\";";'."\n";
     if ($ip) {
         print $omshell6 "set ip-address = $ip\n";
     }
@@ -446,6 +447,10 @@ sub addrangedetection {
     my $trange;
     my $begin;
     my $end;
+    $netcfgs{$net->{net}}->{nameservers} = $net->{nameservers};
+    unless ($netcfgs{$net->{net}}->{nameservers}) {
+        $netcfgs{$net->{net}}->{nameservers} = $::XCATSITEVALS{nameservers};
+    }
     foreach $trange (split /;/,$tranges) {
         if ($trange =~ /[ ,-]/) { #a range of one number to another..
            $trange =~ s/[,-]/ /g;
@@ -850,7 +855,7 @@ sub process_request
         }
     }
 	my $nettab = xCAT::Table->new("networks");
-	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange');
+	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange','nameservers');
     foreach (@vnets) {
         if ($_->{net} =~ /:/) { #IPv6 detected
             $usingipv6=1;
@@ -1249,6 +1254,29 @@ sub getzonesfornet {
     my $net = shift;
     my $mask = shift;
     my @zones = ();
+    if ($net =~ /:/) {#ipv6, for now do the simple stuff under the assumption we won't have a mask indivisible by 4
+        $net =~ s/\/(.*)//;
+        my $maskbits=$1;
+        if ($mask) {
+            die "Not supporting having a mask like $mask on an ipv6 network like $net";
+        }
+        my $netnum= getipaddr($net,GetNumber=>1);
+        $netnum->brsft(128-$maskbits);
+        my $prefix=$netnum->as_hex();
+        my $nibbs=$maskbits/4;
+        $prefix =~ s/^0x//;
+        my $rev;
+        foreach (reverse(split //,$prefix)) {
+            $rev .= $_.".";
+            $nibbs--;
+        }
+        while ($nibbs) { 
+            $rev .= "0.";
+            $nibbs--;
+        }
+        $rev.="ip6.arpa.";
+        return ($rev);
+    }
     #return all in-addr reverse zones for a given mask and net
     #for class a,b,c, the answer is easy
     #for classless, identify the partial byte, do $netbyte | (0xff&~$maskbyte) to get the highest value
@@ -1328,7 +1356,7 @@ sub addnet6
     my $net = $netentry->{net};
     my $iface = $netentry->{iface};
     my $idx = 0;
-    unless (grep /\{ # $net subnet_end/,@dhcp6conf) { #need to add to dhcp6conf
+    if (grep /\} # $net subnet_end/,@dhcp6conf) { #need to add to dhcp6conf
         return;
     } else { #need to add to dhcp6conf
         while ($idx <= $#dhcp6conf)
@@ -1360,6 +1388,20 @@ sub addnet6
     #posix timezone rfc 4833/tzdb timezone
     #phase 3 will include whatever is required to do Netboot6.  That might be in the october timeframe for lack of implementations to test
     #boot url/param (rfc 59070)
+    my $nameservers = $netcfgs{$net}->{nameservers};
+    if ($nameservers and $nameservers =~ /:/) {
+        push @netent,"    nameservers ".$netcfgs{$net}->{nameservers}.";\n";
+    }
+    my $ddnserver = $nameservers;
+    $ddnserver =~ s/,.*//;
+    push @netent, "    zone $domain. {\n";
+    push @netent, "       primary $ddnserver; key xcat_key; \n";
+    push @netent, "    }\n";
+    foreach (getzonesfornet($net)) {
+       push @netent, "    zone $_ {\n";
+       push @netent, "       primary $ddnserver; key xcat_key; \n";
+       push @netent, "    }\n";
+    }
     if ($netcfgs{$net}->{range}) {
         push @netent,"    range6 ".$netcfgs{$net}->{range}.";\n";
     } else {
@@ -1744,9 +1786,16 @@ sub writeout
     close($targ);
     if (@dhcp6conf) {
     open($targ, '>', $dhcp6conffile);
-    foreach (@dhcp6conf)
+    foreach $idx (0..$#dhcp6conf)
     {
-        print $targ $_;
+        if ($dhcp6conf[$idx] =~ /^shared-network/ and $dhcp6conf[$idx+1] =~ /^} .* nic_end/) {
+            $skipone=1;
+            next;
+        } elsif ($skipone) {
+            $skipone=0;
+            next;
+        }
+        print $targ $dhcp6conf[$idx];
     }
     close($targ);
     }
@@ -1757,6 +1806,9 @@ sub newconfig6 {
     #phase 2, ddns too, evaluate other stuff from dhcpv4 as applicable
     push @dhcp6conf, "#xCAT generated dhcp configuration\n";
     push @dhcp6conf, "\n";
+    push @dhcp6conf, "ddns-update-style interim;\n";
+    push @dhcp6conf, "ignore client-updates;\n";
+    push @dhcp6conf, "update-static-leases on;\n";
     push @dhcp6conf, "omapi-port 7912;\n";        #Enable omapi...
     push @dhcp6conf, "key xcat_key {\n";
     push @dhcp6conf, "  algorithm hmac-md5;\n";
