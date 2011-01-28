@@ -4,8 +4,10 @@ var lparList;
 var graphicalNodeList;
 var selectNode;
 var graphicalDataType = ['nodetype.nodetype', 'ppc.parent', 'nodelist.status', 'vpd.mtm'];
+var gettingDataFlag = false;
 
 function initGraphicalData(dataTypeIndex){
+	gettingDataFlag = true;
 	if (undefined == dataTypeIndex){
 		dataTypeIndex = 0;
 	}
@@ -34,6 +36,7 @@ function initGraphicalData(dataTypeIndex){
 				initGraphicalData(tempIndex);
 			}
 			else{
+				gettingDataFlag = false;
 				$('#graphTab').empty();
 				for (var temp in nodesList){
 					var nodeName = nodesList[temp];
@@ -97,6 +100,16 @@ function createPhysicalLayout(nodeList){
 	
 	//no nodes are selected.
 	if (!nodeList){
+		return;
+	}
+	
+	//it is getting data,so we had to wait now.
+	if(gettingDataFlag){
+		return;
+	}
+	
+	//when the graphical layout is shown, do not need to redraw
+	if (1 < $('#graphTab').children().length){
 		return;
 	}
 	

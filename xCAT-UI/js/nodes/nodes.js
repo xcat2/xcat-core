@@ -142,7 +142,6 @@ function loadGroups(data) {
 			
 			// Create loader
 			var loader = $('<center></center>').append(createLoader());
-			var loader2 = $('<center></center>').append(createLoader());
 			
 			// Create a tab for this group
 			var tab = new Tab('nodesPageTabs');
@@ -150,7 +149,7 @@ function loadGroups(data) {
 			tab.init();
 			$('#nodes').append(tab.object());
 			tab.add('nodesTab', 'Nodes', loader, false);
-			tab.add('graphTab', 'Graphical', loader2, false);
+			tab.add('graphTab', 'Graphical', '', false);
 			
 			$('#nodesPageTabs').bind('tabsselect', function(event, ui){
 				//for the graphical tab, we should check the graphical data first
