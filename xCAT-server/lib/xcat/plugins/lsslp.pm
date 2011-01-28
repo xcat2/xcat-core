@@ -2690,23 +2690,24 @@ sub format_stanza {
             } elsif ( /^mgt$/ ) {
                 $d = $mgt{$type};
             } elsif ( /^id$/ ) {
-                if ( $type =~ /^fsp$/ ) {
+                if ( $type =~ /^(fsp|bpa|cec|frame)$/ ) {
                     $d = $data[$i++];
-                } elsif ( $type =~ /^bpa$/ ) {
-                    $i++;
                 } else {
                     $i++;
                     next;
                 }
                 $i++;
-            } elsif ( /^side$/ or /^parent$/ ) {
+            } elsif ( /^side$/ ) {
                 if ( $type !~ /^(fsp|bpa)$/ ) {
                     next;
                 }
-            } elsif ( /^otherinterfaces$/ ) {
-                $d = $ip;
+            } elsif ( /^parent$/ )  {
+                if ( $type !~ /^(fsp|bpa|cec)$/ ) {
+                    next;
+                }
+            } elsif ( /^otherinterfaces$/ )  {
+                    next;
             }
-
             if ( !defined($d) ) {
                 next;
             }
@@ -2768,21 +2769,23 @@ sub format_xml {
             } elsif ( /^mgt$/ ) {
                 $d = $mgt{$type};
             } elsif ( /^id$/ ) {
-                if ( $type =~ /^fsp$/ ) {
+                if ( $type =~ /^(fsp|bpa|frame|cec)$/ ) {
                     $d = $data[$i++];
-                } elsif ( $type =~ /^bpa$/ ) {
-                    $i++;
                 } else {
                     $i++;
                     next;
                 }
                 $i++;
-            } elsif ( /^side$/ or /^parent$/ ) {
-                if ( $type !~ /^(fsp|bpa)$/ ) {
+            } elsif ( /^side$/ ) {
+                if ( $type !~ /^(fsp|bpa|cec|frame)$/ ) {
                     next;
                 }
-            } elsif ( /^otherinterfaces$/ ) {
-                $d = $ip;
+            } elsif ( /^parent$/ )  {
+                if ( $type !~ /^(fsp|bpa|cec)$/ ) {
+                    next;
+                }
+            } elsif ( /^otherinterfaces$/ )  {
+                    next;
             }
 
             if ( !defined($d) ) {
