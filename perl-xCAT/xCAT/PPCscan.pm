@@ -11,7 +11,6 @@ use xCAT::PPCdb;
 use xCAT::GlobalDef;
 use xCAT::Usage;
 use xCAT::NetworkUtils;
-use xCAT_plugin::lsslp;
 
 
 ##############################################
@@ -410,29 +409,7 @@ sub format_output {
         # Strip errors for results
         #######################################
         my @val = grep( !/^#.*: ERROR /, @$values );
-        #$values = xCAT::PPCdb::update_ppc( $hwtype, \@val );        
-        foreach my $node (@val)
-        {
-            my ($ttype,$tname,$tid,$tmtm,$tsn,$ttmp,$thcp,$tprofile,$tparent) = split /,/, $node;
-            if ($ttype eq "cec" )
-            {
-                my $hostname =  xCAT_plugin::lsslp::gethost_from_url_or_old($tname, "FSP", $tmtm, $tsn, "", "", $tid, "","");
-                if ($hostname ne $tname)
-                {
-                    push @$values, join( ",",
-                  "fsp",$hostname,$tid,$tmtm,$tsn,$ttmp,$thcp,$tprofile,$tparent,"");           
-                }                                                   
-            }
-            if ($ttype eq "frame" )
-            {
-                my $hostname =  xCAT_plugin::lsslp::gethost_from_url_or_old($tname, "BPA", $tmtm, $tsn, "", "", $tid, "","");
-                if ($hostname ne $tname)
-                {
-                    push @$values, join( ",",
-                  "bpa",$hostname,$tid,$tmtm,$tsn,$ttmp,$thcp,$tprofile,$tparent,"");                  
-                }                  
-            }  
-        }
+        $values = xCAT::PPCdb::update_ppc( $hwtype, \@val );
         if ( exists( $opt->{x} ) or exists( $opt->{z} ))
         {
             unshift @$values, "hmc";
