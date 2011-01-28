@@ -1,6 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::PPCdb;
+use xCAT_plugin::lsslp;
 use strict;
 use xCAT::Table;
 use xCAT::GlobalDef;
@@ -252,9 +253,59 @@ sub update_ppc {
                                                'pprofile','parent','supernode',
                                                'comments', 'disable']);
     my @maclist = $db{mac}->getAllNodeAttribs(['node','mac']);
-
     ###################################
-    # Update FSP in tables 
+    # Need to do database migration first
+    ###################################
+    foreach my $value ( @$values ) {
+        my ($ttype,
+            $tname,
+            $tid,
+            $tmtm,
+            $tsn,
+            $tside,
+            $server,
+            $pprofile,
+            $parent,
+            $ips ) = split /,/, $value;
+ 
+        if ( $ttype eq 'cec' )
+        {
+            my $hostname =  xCAT_plugin::lsslp::gethost_from_url_or_old($tname, "FSP", $tmtm, $tsn, "", "", $tid, "","");
+            if ($hostname ne $tname) 
+            {
+                $hostname =~ /\-(\w)$/;
+                if ($1 =~ /^(A|B)$/)
+                {
+                    $tside = $1;
+                }
+                if ( update_node_attribs($hwtype, $ttype, $hostname, $tid, $tmtm, $tsn, $tside,
+                                    $server, $pprofile, $parent, $ips, \%db, $tname, \@ppclist))
+                {
+                    push @update_list, $value;  
+                }
+            }
+        } elsif ( $ttype eq 'frame' )
+        {
+            my $hostname =  xCAT_plugin::lsslp::gethost_from_url_or_old($tname, "BPA", $tmtm, $tsn, "", "", $tid, "","");
+            if ($hostname ne $tname) 
+            {
+                $hostname =~ /\-(\w)$/;
+                if ($1 =~ /^(A|B)$/)
+                {
+                    $tside = $1;
+                }
+
+                if ( update_node_attribs($hwtype, $ttype, $hostname, $tid, $tmtm, $tsn, $tside,
+                                    $server, $pprofile, $parent, $ips, \%db, $tname, \@ppclist))
+                {
+                    push @update_list, $value;  
+                }
+            }   
+        } 
+    }        
+        
+    ###################################
+    # Update CEC in tables 
     ###################################
     foreach my $value ( @$values ) {
         my ($type,
@@ -268,18 +319,14 @@ sub update_ppc {
             $parent,
             $ips ) = split /,/, $value;
          
-        next if ( $type ne 'fsp' );
+        next if ( $type ne 'cec' );
 
         my $predefined_node = undef;
         foreach my $vpdent (@vpdlist)
         {
-            if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
+            if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial )
             {
                 $predefined_node = $vpdent->{node};
-                if ( $predefined_node =~ /-B$/ ) {
-                    $name = $name . "-B";
-                }
-
                 if ( update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
                                     $server, $pprofile, $parent, $ips,
                                     \%db, $predefined_node, \@ppclist))
@@ -295,7 +342,7 @@ sub update_ppc {
                                                'pprofile','parent','supernode',
                                                'comments', 'disable']);
     ###################################
-    # Update BPA in tables 
+    # Update FRAME in tables 
     ###################################
     foreach my $value ( @$values ) {
         my ($type,
@@ -309,7 +356,7 @@ sub update_ppc {
             $parent,
             $ips ) = split /,/, $value;
          
-        next if ( $type ne 'bpa');
+        next if ( $type ne 'frame');
 
         my $predefined_node = undef;
         foreach my $vpdent (@vpdlist)
@@ -317,9 +364,7 @@ sub update_ppc {
             if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
             {
                 $predefined_node = $vpdent->{node};
-                if ( $predefined_node =~ /-B$/ ) {
-                    $name = $name . "-B";
-                }   
+ 
                 if (update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
                                     $server, $pprofile, $parent, $ips, 
                                     \%db, $predefined_node, \@newppclist))
