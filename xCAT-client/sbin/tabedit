@@ -19,7 +19,7 @@ fi
 TABLE=$1
 
 if [ $TABLE = "eventlog" ]  || [ $TABLE = "auditlog" ]; then
-    echo "The auditlog and eventlog tables may not be edited. Editing will cause index regeneration.";
+    echo "The auditlog and eventlog tables may not be edited. Editing will cause index regeneration. Use the tabprune command.";
     exit 1
 fi
 if [ -z "$TABEDITOR" ]; then
