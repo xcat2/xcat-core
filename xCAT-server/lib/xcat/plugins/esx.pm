@@ -166,6 +166,7 @@ sub preprocess_request {
 	# build an individual request for each service node
 	my $service  = "xcat";
 	my @hyps=keys(%hyp_hash);
+    my %targethyps;
     if ($command eq 'rmigrate' and (scalar @{$extraargs} >= 1)) {
         @ARGV=@{$extraargs};
         my $offline;
@@ -177,6 +178,7 @@ sub preprocess_request {
         my $dsthyp = $ARGV[0];
         if ($dsthyp) {
             push @hyps,$dsthyp;
+            $targethyps{$dsthyp}=1;
         }
     }
     #TODO: per hypervisor table password lookup
@@ -204,7 +206,7 @@ sub preprocess_request {
 		my @nodes=();
 		foreach (@$hyps1) { #This preserves the constructed data to avoid redundant table lookup
 			my $cfgdata;
-            if (not $hyp_hash{$_}) { #a vm, skip it
+            if (not $targethyps{$_} and not $hyp_hash{$_}) { #a vm, skip it
                 next;
             } elsif ($hyp_hash{$_}{nodes}) {
 			    push @nodes, @{$hyp_hash{$_}{nodes}};
