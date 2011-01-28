@@ -1,11 +1,10 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT::PPCdb;
-use xCAT_plugin::lsslp;
 use strict;
 use xCAT::Table;
 use xCAT::GlobalDef;
-
+use xCAT_plugin::lsslp;
 
 ###########################################
 # Factory defaults
