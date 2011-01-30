@@ -29,9 +29,14 @@ ELIST=[]    # entry list, each entry will contain the type and the path
 INFO=`/usr/bin/cat /etc/niminfo | grep 'NIM_HOSTNAME'`
 ME=`echo $INFO | /usr/bin/awk -F= '{print $2}' | /usr/bin/awk -F. '{print $1}'`
 
-if [ ! -e ${STATELITE} ]; then
+if [ ! -s ${STATELITE} ]; then
 	echo "no ${STATELITE} file"
 	echo "no ${STATELITE} file"  >>$LOG
+	exit 0
+fi
+if [ ! -s ${LITEFILE} ]; then
+	echo "no ${LITEFILE} file"
+	echo "no ${LITEFILE} file"  >>$LOG
 	exit 0
 fi
 
