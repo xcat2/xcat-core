@@ -77,13 +77,13 @@ ProcessLitefile () {
 	let j=0
 	for i in `/usr/bin/cat $LITEFILE | /usr/bin/grep $ME`
 	do
+
 		type=`echo $i | /usr/bin/awk -F'|' '{print $2}'`
 		path=`echo $i | /usr/bin/awk -F'|' '{print $3}'`
 
 		# entry list one line per element
 		ELIST[$j]="$type $path";
 		let j=j+1;
-
 	done
 
 	# number of entries(lines) in file
@@ -124,24 +124,28 @@ ProcessLitefile () {
 		if [ "$efound" = "1" ]; then
 			# found a parent & child on the list
 
+			cantdo=0
+
 			# check options
 			# can't do any child that has parent of ro
 			if [ "$ptype" = "ro" ]; then
 				echo "Cannot add child ($epath) when parent ($ppath) has 'ro' option." >>$LOG
-				break
+				cantdo=1
 			fi
 
 			# a persistent parent can't have a ro child
 			if [ "$ptype" = "persistent" ]; then
 				if [ "$etype" = "ro" ]; then
 					echo "Cannot add child ($epath) with 'ro' option when parent ($ppath) has 'persistent' option." >>$LOG
-					break
+					cantdo=1
 				fi
 			fi
 
-			# ok - # put the child on into CLIST
-			cnum=${#CLIST[@]}
-			CLIST[$cnum]=${ELIST[$i]}
+			if [ $cantdo -eq 0 ]; then
+				# ok - # put the child on into CLIST
+				cnum=${#CLIST[@]}
+				CLIST[$cnum]=${ELIST[$i]}
+			fi
 
 		else
 			# add the parents and the entries with no parents to PLIST
