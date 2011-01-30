@@ -120,42 +120,39 @@ sub myxCATname
 {
     my ($junk, $name);
 
-	$name = hostname();
-
 	# make sure xcatd is running - & db is available
-	#    this routine is called during initial install of xCAT
+	#    this routine is also called during initial install of xCAT
 	my $rc = `lsxcatd -d`;
-	if ($rc) {
-		return $name;
-	}
+	if ($rc == 0) {
 
-    if (xCAT::Utils->isMN())
-    {
+    	if (xCAT::Utils->isMN())
+    	{
 
-        # read the site table, master attrib
-        my $hostname = xCAT::Utils->get_site_Master();
-        if (($hostname =~ /\d+\.\d+\.\d+\.\d+/) || ($hostname =~ /:/))
-        {
+        	# read the site table, master attrib
+        	my $hostname = xCAT::Utils->get_site_Master();
+        	if (($hostname =~ /\d+\.\d+\.\d+\.\d+/) || ($hostname =~ /:/))
+        	{
             $name = xCAT::NetworkUtils->gethostname($hostname);
-        }
-        else
-        {
-            $name = $hostname;
-        }
+        	}
+        	else
+        	{
+            	$name = $hostname;
+        	}
 
-    }
-    elsif (xCAT::Utils->isServiceNode())
-    {
+    	}
+    	elsif (xCAT::Utils->isServiceNode())
+    	{
 
-        # the myxcatpost_<nodename> file should exist on all nodes!
-        my $catcmd = "cat /xcatpost/myxcatpost_* | grep '^NODE='";
-		# - can't use runcmd because this routine is called by runcmd
+        	# the myxcatpost_<nodename> file should exist on all nodes!
+        	my $catcmd = "cat /xcatpost/myxcatpost_* | grep '^NODE='";
+			# - can't use runcmd because this routine is called by runcmd
 
-		my $output = `$catcmd`;
-        if ($::RUNCMD_RC == 0)
-        {
-            ($junk, $name) = split('=', $output);
-        }
+			my $output = `$catcmd`;
+        	if ($::RUNCMD_RC == 0)
+        	{
+            	($junk, $name) = split('=', $output);
+        	}
+		}
     }
 
 	if (!$name) {
@@ -1216,7 +1213,7 @@ sub dolitesetup
 
 				# also copy $instrootloc/.default contents
 				$ccmd = "/usr/bin/cp -p -r $instrootloc/.default $SRloc";
-				my $out = xCAT::Utils->runcmd("$ccmd", -1);
+				$out = xCAT::Utils->runcmd("$ccmd", -1);
 				if ($::RUNCMD_RC != 0)
 				{
 					my $rsp;

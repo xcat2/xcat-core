@@ -1035,19 +1035,25 @@ sub runcmd
     # redirect stderr to stdout
     if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }   
 
-	# get this systems name as known by xCAT management node
-	#my $Sname = xCAT::InstUtils->myxCATname();
+	if ($::VERBOSE)
+	{
+		# get this systems name as known by xCAT management node
+		my $Sname = xCAT::InstUtils->myxCATname();
+		my $msg;
+		if ($Sname) {
+			$msg = "Running command on $Sname: $cmd";
+		} else {
+			$msg="Running command: $cmd";
+		}
 
-	#if ($::VERBOSE)
-	#{
-	#	if ($::CALLBACK){
-	#		my $rsp    = {};
-	#		$rsp->{data}->[0] = "Running command on $Sname: $cmd\n";
-	#		xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-	#	} else {
-	#		xCAT::MsgUtils->message("I", "Running command on $Sname: $cmd\n");
-	#	}
-	#}
+		if ($::CALLBACK){
+			my $rsp    = {};
+			$rsp->{data}->[0] = "$msg\n";
+			xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
+		} else {
+			xCAT::MsgUtils->message("I", "$msg\n");
+		}
+	}
 
     my $outref = [];
     @$outref = `$cmd`;
