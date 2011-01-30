@@ -1492,6 +1492,7 @@ srvnode.";
     return 0;
 }
 
+
 #----------------------------------------------------------------------------
 
 =head3   chkosimage
@@ -5882,7 +5883,7 @@ sub update_dd_boot
     {
 
         # only update if it has not been done yet
-        my $cmd = "cat $dd_boot_file_mn | grep 'xCAT support'";
+        my $cmd = "cat $dd_boot_file_mn | grep 'xCAT basecust support'";
         my @result = xCAT::Utils->runcmd("$cmd", -1);
         if ($::RUNCMD_RC != 0)
         {
@@ -5893,10 +5894,70 @@ sub update_dd_boot
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
 
-            my $patch =
-              qq~\n\t# xCAT support - 1\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
+			my $odmrestore =qq~\n
+	# xCAT basecust support #1
+	#  when using a shared_root we need to see if there is a persistent 
+	#		/etc/basecust file available.  If we have one we need to 
+	#		restore it.  This will restore anything previously 
+	#		saved in the ODM.
+	if [ -n "\${NIM_SHARED_ROOT}" ]
+	then
+		#  Get the name of the server and the name of the persistent 
+		#     directory to mount
+		#  - /mnt is the shared_root dir at this point
+		#  - the statelite.table file has entries like: 
+		#			"compute04|10.2.0.200|/nodedata"
+		if [ -f "/mnt/statelite.table" ]
+		then
+			# make sure we have the commands we need
+			cp /SPOT/usr/bin/cat /usr/bin
+			cp /SPOT/usr/bin/awk /usr/bin
+			cp /SPOT/usr/bin/grep /usr/bin
 
-			my $scripthook = qq~\n\t# xCAT support - 2\n\t# do statelite setup if needed\n\t/aixlitesetup\n\n~;
+			# statelite entry for this node
+			SLLINE=`/usr/bin/cat /mnt/statelite.table | /usr/bin/grep \${NIM_NAME}`
+			# the statelite server
+			SLSERV=`echo \$SLLINE | /usr/bin/awk -F'|' '{print \$2}'`
+
+			# statelite directory to mount
+			SLDIR=`echo \$SLLINE | /usr/bin/awk -F'|' '{print \$3}'`
+
+			mount \${SLSERV}:\${SLDIR} /tmp
+
+			# - get the persistent version of basecust from the server
+			if [ -f /tmp/\${NIM_NAME}/etc/basecust  ]; then
+				cp -p /tmp/\${NIM_NAME}/etc/basecust /etc
+				cp /SPOT/usr/lib/boot/restbase /usr/sbin
+				cp /SPOT/usr/bin/uncompress /usr/bin
+			fi
+			umount /tmp
+		fi
+	fi
+			\n\n~;
+			
+			my $mntbase=qq~
+	# xCAT basecust support #2
+    if [ -n "\${NIM_SHARED_ROOT}" ]
+	then
+		# if we found a statelite directory - above
+		if [ -n "\${SLDIR}" ]
+		then
+			# need to mount persistent basecust over the one in RAM FS
+			mount -o rw \${SLSERV}:\${SLDIR} /tmp
+			/usr/bin/touch /etc/basecust
+			mount /tmp/\${NIM_NAME}/etc/basecust /etc/basecust
+		fi
+	fi \n\n~;
+
+            my $patch =
+              qq~\n\t# xCAT support #3\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
+
+			my $scripthook = qq~
+		# xCAT support #4
+		# do statelite setup if needed
+		cp /../SPOT/niminfo /etc/niminfo
+		/aixlitesetup
+	\n\n~;
 
             if (open(DDBOOT, "<$dd_boot_file_mn"))
             {
@@ -5936,20 +5997,26 @@ sub update_dd_boot
                     {
                         $dontupdate = 1;
                     }
+					if (($l =~ /network boot phase 1/)) {
+						# add /etc/basecust to restore
+						print DDBOOT $odmrestore;
+					}
+					if (($l =~ /configure paging - local or NFS network/)) {
+						# make basecust persistent
+						print DDBOOT $mntbase;
+					}
                     if (($l =~ /0x620/) && (!$dontupdate))
                     {
-
-                        # add the patch
+                        # add the patch to set the console 
                         print DDBOOT $patch;
                     }
-					if (($l =~ /configure nfso option/) && (!$dontupdate)) {
-						# add the aixlitesetup hook
+					if (($l =~ /Copy the local_domain file to/) && (!$dontupdate)) {
+						# add the aixlitesetup hook for xCAT statelite support
 						print DDBOOT $scripthook;
 					}
                     print DDBOOT $l;
                 }
                 close(DDBOOT);
-
             }
             else
             {
@@ -6879,6 +6946,10 @@ sub prenimnodeset
         {
 
             # must be diskless or dataless so update spot
+			my $rsp;
+			push @{$rsp->{data}}, "Updating the spot named \'$i\'.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+
 			my $rc = &updatespot($i, \%imghash, \@nodelist, $callback, $subreq);
             if ($rc != 0)
             {
@@ -8079,7 +8150,11 @@ sub mkdsklsnode
                 push @{$rsp->{data}}, "$Sname: Creating NIM node definition.\n";
                 #push @{$rsp->{data}}, "Running: \'$defcmd\'\n";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
-            }
+            } else {
+				my $rsp;
+				push @{$rsp->{data}}, "$Sname: Creating NIM client definition \'$nim_name.\'\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
             $output = xCAT::Utils->runcmd("$defcmd", -1);
             if ($::RUNCMD_RC != 0)
             {
@@ -8208,9 +8283,10 @@ sub mkdsklsnode
 
             my $time = `date | cut -f5 -d' '`;
             chomp $time;
+
             my $rsp;
-            push @{$rsp->{data}},
-              "$Sname: Initializing NIM machine \'$nim_name\'. This could take a while.\n";
+            push @{$rsp->{data}}, "$Sname: Initializing NIM machine \'$nim_name\'. \n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
 
             $output = xCAT::Utils->runcmd("$initcmd", -1);
             if ($::RUNCMD_RC != 0)
@@ -8855,11 +8931,16 @@ sub make_SN_resource
 
     my $cmd;
 
-    my $SNname = xCAT::InstUtils->myxCATname();
+    my $SNname = "";
+	$SNname = xCAT::InstUtils->myxCATname();
     chomp $SNname;
 
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
+
+	my $rsp;
+	push @{$rsp->{data}}, "Checking NIM resources on $SNname.\n";
+	xCAT::MsgUtils->message("I", $rsp, $callback);
 
     #
     #  Install/config NIM master if needed
