@@ -2051,8 +2051,8 @@ function setOSImageCookies(data) {
 		var cols = rsp[i].split(',');
 		var osImage = cols[0].replace(new RegExp('"', 'g'), '');
 		var profile = cols[1].replace(new RegExp('"', 'g'), '');
-		var osVer = cols[5].replace(new RegExp('"', 'g'), '');
-		var osArch = cols[7].replace(new RegExp('"', 'g'), '');
+		var osVer = cols[6].replace(new RegExp('"', 'g'), '');
+		var osArch = cols[8].replace(new RegExp('"', 'g'), '');
 		
 		imageNames.push(osImage);
 		profilesHash[profile] = 1;
@@ -2071,14 +2071,14 @@ function setOSImageCookies(data) {
 	$.cookie('profiles', tmp);
 
 	// Save OS versions in a cookie
-	tmp = [];
+	tmp = new Array;
 	for (var key in osVersHash) {
 		tmp.push(key);
 	}
 	$.cookie('osvers', tmp);
 
 	// Save OS architectures in a cookie
-	tmp = [];
+	tmp = new Array;
 	for (var key in osArchsHash) {
 		tmp.push(key);
 	}
