@@ -1072,13 +1072,20 @@ sub getrvidparms_with_buildid {
     $browser->cookie_jar({});
     my $baseurl = "http://".$sessdata->{ipmisession}->{bmc}."/";
     my $response = $browser->request(POST $baseurl."/session/create",'Content-Type'=>"text/xml",Content=>$message);
-    unless ($response->content eq "ok") {
+    my $sessionid;
+    if ($response->content =~ /^ok:?(.*)/) {
+        $sessionid=$1;
+    } else {
         sendmsg ([1,"Server returned unexpected data"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
 
     $response = $browser->request(GET $baseurl."/page/session.html"); #we don't care, but some firmware is confused if we don't
-    $response = $browser->request(GET $baseurl."/kvm/kvm/jnlp");
+    if ($sessionid) {
+        $response = $browser->request(GET $baseurl."/kvm/kvm/jnlp?session_id=$sessionid");
+    } else {
+        $response = $browser->request(GET $baseurl."/kvm/kvm/jnlp");
+    }
     my $jnlp = $response->content;
     if ($jnlp =~ /This advanced option requires the purchase and installation/) {
         sendmsg ([1,"Node does not have feature key for remote video"],$sessdata->{node},%allerrornodes);
@@ -1089,7 +1096,11 @@ sub getrvidparms_with_buildid {
     xCAT::SvrUtils::sendmsg("jnlp:$jnlp",$callback,$sessdata->{node},%allerrornodes);
     my @cmdargv = @{$sessdata->{extraargs}};
     if (grep /-m/,@cmdargv) {
-        $response = $browser->request(GET $baseurl."/kvm/vm/jnlp");
+        if ($sessionid) {
+            $response = $browser->request(GET $baseurl."/kvm/vm/jnlp?session_id=$sessionid");
+        } else {
+            $response = $browser->request(GET $baseurl."/kvm/vm/jnlp");
+        }
         xCAT::SvrUtils::sendmsg("mediajnlp:".$response->content,$callback,$sessdata->{node},%allerrornodes);;
     }
     return;
