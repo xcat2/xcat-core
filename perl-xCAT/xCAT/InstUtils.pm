@@ -121,7 +121,7 @@ sub myxCATname
     my ($junk, $name);
 
 	# make sure xcatd is running - & db is available
-	#    this routine is also called during initial install of xCAT
+	#    this routine is called during initial install of xCAT
 	my $rc = `lsxcatd -d`;
 	if ($rc == 0) {
 
@@ -1066,6 +1066,14 @@ sub dolitesetup
 		# $file could be full path file name or dir name
 		# ex. /foo/bar/  or /etc/lppcfg
 		my ($node, $option, $file) = split (/\|/, $line);
+
+		#  entry must be an absolute path
+		unless ($file =~ m{^/}) {
+			my $rsp;
+			push @{$rsp->{data}}, "The litefile entry \'$file\' is not an absolute path name.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			return 1;
+		} 
 
 		# ex. /foo or /etc
 		my $filedir = dirname($file);
