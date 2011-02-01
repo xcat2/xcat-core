@@ -182,6 +182,11 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
     # Try to match groups?
         unless ($grptab) {
            $grptab = xCAT::Table->new('nodegroup');
+        } else { # if DB2 we need to get a new table handle always
+             my $DBname = xCAT::Utils->get_DBName; 
+             if (($DBname =~ /^DB2/) && (xCAT::Utils->isServiceNode())){
+              $grptab = xCAT::Table->new('nodegroup');
+             }
         }
         if ($grptab and not $didgrouplist and not scalar @grplist) { 
             $didgrouplist = 1;
