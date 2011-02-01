@@ -1178,6 +1178,7 @@ sub spot_updates
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return 1;
     }
+
     else
     {
 
@@ -1491,7 +1492,6 @@ srvnode.";
     } # end UPDATE
     return 0;
 }
-
 
 #----------------------------------------------------------------------------
 
@@ -4022,7 +4022,6 @@ sub mk_bosinst_data
 		Only if the node "domain" & "nameservers" attrs are set!
 
         Returns:
-
                 0 - OK
                 1 - error
 =cut
@@ -7849,7 +7848,7 @@ sub mkdsklsnode
                 {
                     my $rsp;
                     push @{$rsp->{data}},
-                      "The resource named \'$imagehash{$img}{shared_root}\' is currently allocated. It will not be updated.\n";
+                      "The resource named \'$imagehash{$img}{shared_root}\' is currently allocated. It will not be re-synchronized.\n";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                     next;
                 }
@@ -7935,6 +7934,17 @@ sub mkdsklsnode
         my $todef = 0;
         my $toinit = 0;
         my $toremove = 0;
+
+		#  NIM has a limit of 39 characters for a macine name
+		my $len = length($nim_name);
+		if ($len > 39) {
+			my $rsp;
+			push @{$rsp->{data}}, "$Sname: Could not define \'$nim_name\'. A NIM machine name can be no longer then 39 characters.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			push(@nodesfailed, $node);
+			$error++;
+			next;
+		}
 
         # 	see if it's already defined first
         if (grep(/^$nim_name$/, @machines))

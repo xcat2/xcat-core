@@ -873,6 +873,15 @@ sub mkclientdef
 	# need short host name for NIM client defs
 	($shorthost = $node) =~ s/\..*$//;
 
+	#  NIM has a limit of 39 characters for a machine name
+	my $len = length($shorthost);
+	if ($len > 39) {
+		my $rsp;
+		push @{$rsp->{data}}, "$::msgstr Could not define \'$shorthost\'. A NIM machine name can be no longer then 39 characters.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
 	# don't update an existing def unless they say so!
 	if ($::client_exists && !$::opt_u) {
 
