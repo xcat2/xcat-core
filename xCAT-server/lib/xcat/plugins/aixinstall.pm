@@ -4022,6 +4022,7 @@ sub mk_bosinst_data
 		Only if the node "domain" & "nameservers" attrs are set!
 
         Returns:
+
                 0 - OK
                 1 - error
 =cut
@@ -5753,7 +5754,7 @@ if (0) {
 		my $rc=xCAT::InstUtils->dolitesetup($image, \%imghash, \@nodelist, $callback, $subreq);
         if ($rc eq 1) { # error
             my $rsp;
-            push @{$rsp->{data}}, qq{There's one error when doing statelite setup, see the error message above};
+            push @{$rsp->{data}}, qq{Could not complete the statelite setup.};
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
@@ -6956,6 +6957,7 @@ sub prenimnodeset
                 my $rsp;
                 push @{$rsp->{data}},
                   "Could not update the SPOT resource named \'$imghash{$i}{'spot'}\'.\n";
+				push @{$rsp->{data}}, "Could not initialize the nodes.\n";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return (1);
             }
@@ -7851,11 +7853,11 @@ sub mkdsklsnode
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                     next;
                 }
-                if ($::VERBOSE)
+                if (1)
                 {
                     my $rsp;
                     push @{$rsp->{data}},
-                      "$Sname: Updating \'$imagehash{$img}{shared_root}\'.\n";
+                      "$Sname: Synchronizing the NIM \'$imagehash{$img}{shared_root}\' resource.\n";
                     xCAT::MsgUtils->message("I", $rsp, $callback);
                 }
                 my $scmd = "nim -F -o sync_roots $imagehash{$img}{spot}";
