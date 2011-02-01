@@ -14,6 +14,8 @@ This xCAT command can be used to define and/or initialize AIX/NIM diskless machi
 
 The command can be used to define and initialize a new NIM machine object or it may be used to reinitialize an existing machine to use a different operating system image.
 
+Note:  The length of a NIM object name must be no longer than 39 characters.
+
 If you are using xCAT service nodes the B<mkdsklsnode> command will automatically determine the correct server(s) for the node and create the NIM definitions on that server(s).
 
 When creating a new NIM machine definition the default is to use the same name as the xCAT node name that is provided.

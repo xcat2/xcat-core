@@ -18,6 +18,8 @@ The B<xcat2nim> command uses xCAT database information, command line input, and 
 
 The xCAT node, group and network definition names will correspond to the NIM machine, machine group and network definitions.
 
+Note:  The length of a NIM object name must be no longer than 39 characters.
+
 To create or update a NIM definition you must provide the names of the xCAT definitions to use. The default behavior is to create new NIM definitions but not apply updates to existing definitions. If you wish to update existing NIM definitions then you must use the "update" option.  If you wish to completely remove the old definition and re-create it you must use the "force" option.
 
 The xCAT code uses the appropriate NIM commands to create the NIM definitions.  To create definitions the "nim -o define" operation is used. To update definitions the "nim -o change" operation is used.  If you wish to specify additional information to pass to the NIM commands you can use the "attr=val" support.  The attribute names must correspond to the attributes supported by the relevant NIM commands.  (For example. "netboot_kernel=mp")
