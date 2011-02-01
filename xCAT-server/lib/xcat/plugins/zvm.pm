@@ -3220,10 +3220,10 @@ sub nodeSet {
 
 			# Set layer in autoyast profile
 			if ( $layer == 2 ) {
-				$parms = $parms . "Broadcast=$network Layer2=1 OSAHWaddr=$mac\n";
+				$parms = $parms . "Broadcast=$broadcast Layer2=1 OSAHWaddr=$mac\n";
 			}
 			else {
-				$parms = $parms . "Broadcast=$network Layer2=0\n";
+				$parms = $parms . "Broadcast=$broadcast Layer2=0\n";
 			}
 
 			$parms = $parms . "ReadChannel=$readChannel WriteChannel=$writeChannel DataChannel=$dataChannel\n";
