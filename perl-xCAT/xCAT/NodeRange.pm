@@ -60,6 +60,11 @@ sub nodesmissed {
   return @$missingnodes;
 }
 
+sub reset_db {
+#workaround, something seems to be trying to use a corrupted reference to grptab
+#this allows init_dbworker to reset the object
+    $grptab=0;
+}
 sub nodesbycriteria {
    #TODO: this should be in a common place, shared by tabutils nodech/nodels and noderange
    #there is a set of functions already, but the path is a little complicated and
@@ -182,11 +187,6 @@ sub expandatom { #TODO: implement table selection as an atom (nodetype.os==rhels
     # Try to match groups?
         unless ($grptab) {
            $grptab = xCAT::Table->new('nodegroup');
-        } else { # if DB2 we need to get a new table handle always
-             my $DBname = xCAT::Utils->get_DBName; 
-             if (($DBname =~ /^DB2/) && (xCAT::Utils->isServiceNode())){
-              $grptab = xCAT::Table->new('nodegroup');
-             }
         }
         if ($grptab and not $didgrouplist and not scalar @grplist) { 
             $didgrouplist = 1;

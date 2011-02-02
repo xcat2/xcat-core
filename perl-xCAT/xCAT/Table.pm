@@ -151,6 +151,7 @@ sub init_dbworker {
 
 
     $dbworkerpid = fork;
+    xCAT::NodeRange::reset_db(); #do in both processes, to be sure
 
     unless (defined $dbworkerpid) {
         die "Error spawining database worker";
