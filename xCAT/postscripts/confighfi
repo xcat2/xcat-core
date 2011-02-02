@@ -1,0 +1,21 @@
+#!/bin/sh
+
+for ((i=0;i<4;i++))
+do
+CLIENT_IP=`ping -c 3 $NODE-hf$i | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' ||
+ uniq 2>&1`
+
+if [ -n $CLIENT_IP ]
+then
+echo "DEVICE=hf$i
+NM_CONTROLLED=yes
+IPADDR=$CLIENT_IP
+NETMASK=255.0.0.0
+ONBOOT=yes
+" >/etc/sysconfig/network-scripts/ifcfg-hf$i
+
+ifup hf$i
+
+sleep 1
+fi
+done
