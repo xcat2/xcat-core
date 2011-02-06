@@ -1664,7 +1664,6 @@ sub restorexcatdb
     $xcatcfg = <$cfgl>;
     close($cfgl);
     chomp($xcatcfg);
-    $ENV{'XCATCFG'}=$xcatcfg;
 
     # restore the database
     xCAT::MsgUtils->message(
