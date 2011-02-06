@@ -843,9 +843,10 @@ sub new
                buildcreatestmt($self->{tabname},
                                $xCAT::Schema::tabspec{$self->{tabname}},
                        $xcatcfg);
-              $self->{dbh}->do($str);
-			     $self->{dbh}->commit;  #  commit the create
-
+               $self->{dbh}->do($str);
+               if (!$self->{dbh}->{AutoCommit}) {
+	         $self->{dbh}->commit;  #  commit the create
+               }
               
           }
          } # end Generic DBI
