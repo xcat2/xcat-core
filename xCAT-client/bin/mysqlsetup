@@ -257,6 +257,9 @@ if ($::INIT)
     }
 
     &backupxcatdb;
+    # shutdown the xcatd daemon while migrating
+    &shutdownxcatd;
+
 
     #
     #  Get MN name from site.master in backed up database
@@ -549,6 +552,35 @@ sub backupxcatdb
     }
 
 }
+#-----------------------------------------------------------------------------
+
+=head3    shutdownxcatd 
+	
+  shutdown the daemon 
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub shutdownxcatd
+
+{
+    my $msg = "Shutting down the xcatd daemon during database migration.";
+    xCAT::MsgUtils->message('I', "$msg");
+    my $xcmd;
+    if ($::osname eq 'AIX')
+    {
+        $xcmd = "stopsrc -s xcatd";
+
+    }
+    else
+    {
+        $xcmd = "service xcatd stop";
+    }
+    system($xcmd);
+}
+
+#-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
 
@@ -1625,6 +1657,15 @@ sub restorexcatdb
     # allow readonly by root
     chmod 0600, "/etc/xcat/cfgloc";
 
+    # set the env variable for Table.pm for the new database 
+    my $xcatcfg;
+    my $cfgl;
+    open($cfgl,"<","/etc/xcat/cfgloc");
+    $xcatcfg = <$cfgl>;
+    close($cfgl);
+    chomp($xcatcfg);
+    $ENV{'XCATCFG'}=$xcatcfg;
+
     # restore the database
     xCAT::MsgUtils->message(
         "I",
@@ -1638,7 +1679,7 @@ sub restorexcatdb
     }
 
     # restore it
-    my $cmd = "XCATBYPASS=1 restorexCATdb -p $::backupdir";
+    my $cmd = "XCATBYPASS=y XCATCFG=\"$xcatcfg\"  restorexCATdb -p $::backupdir";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
