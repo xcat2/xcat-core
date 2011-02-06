@@ -868,7 +868,14 @@ sub createcfgloc
 
 sub restorexcatdb
 {
-
+    # set the env variable for Table.pm for the new database
+    my $xcatcfg;
+    my $cfgl;
+    open($cfgl,"<","/etc/xcat/cfgloc");
+    $xcatcfg = <$cfgl>;
+    close($cfgl);
+    chomp($xcatcfg);
+ 
     # restore the database
     xCAT::MsgUtils->message(
         "I",
@@ -882,7 +889,7 @@ sub restorexcatdb
     }
 
     # restore it
-    my $cmd = "XCATBYPASS=1 restorexCATdb -p $::backupdir";
+    my $cmd = "XCATBYPASS=1 XCATCFG=\"$xcatcfg\" restorexCATdb -p $::backupdir";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
