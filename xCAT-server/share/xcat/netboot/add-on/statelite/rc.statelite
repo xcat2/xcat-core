@@ -20,7 +20,7 @@ ELIST=[]    # entry list, each entry will contain the type and the path
 declare -a CLIST 
 declare -a PLIST 
 
-ME=`hostname`
+ME=`hostname -s`
 
 PERSISTENT="${MNTDIR}/$SL/persistent/$ME"
 
@@ -54,7 +54,7 @@ GetSyncInfo () {
 		fi
 	done
 
-    hn=`hostname`
+    hn=`hostname -s`
 
 	if [ -z $XCATSERVER ]; then
 		echo "Cannot find the xCAT server for node $hn"
