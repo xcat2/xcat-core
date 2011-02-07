@@ -152,6 +152,8 @@ $request->{clienttype}->[0] = "cli";   # setup clienttype for auditlog
      );
    }
   unless ($client) {
+     print "Unable to open socket connection to xcatd daemon on $xcathost.\n";
+     print "Verify that the xcatd daemon is running and that your SSL setup is correct.\n";
      if ($@ =~ /SSL Timeout/) {
         die "Connection failure: SSL Timeout or incorrect certificates in ~/.xcat";
      } else {
