@@ -2528,7 +2528,20 @@ sub build_cfgspec {
         my $vpdtab = xCAT::Table->new('vpd');
        	$vpdtab->setNodeAttribs($node,{uuid=>$uuid});
     }
-    return VirtualMachineConfigSpec->new(
+    my @optionvals;
+    if ($tablecfg{vm}->{$node}->[0]->{othersettings}) {
+        my $key;
+        my  $value;
+        foreach (split /;/,$tablecfg{vm}->{$node}->[0]->{othersettings}) {
+            ($key,$value)=split /=/;
+            if ($value) {
+                push @optionvals,OptionValue->new(key=>$key,value=>$value);
+            } else {
+                push @optionvals,OptionValue->new(key=>$key);
+            }
+        }
+    }
+    my %specargs = (
             name => $node,
             files => $vfiles,
             guestId=>$nodeos,
@@ -2536,7 +2549,11 @@ sub build_cfgspec {
             numCPUs => $ncpus,
             deviceChange => \@devices,
             uuid=>$uuid,
-        );
+    );
+    if (@optionvals) {
+        $specargs{extraConfig}=\@optionvals;
+    }
+    return VirtualMachineConfigSpec->new(%specargs);
 }
 
 sub create_nic_devs {
