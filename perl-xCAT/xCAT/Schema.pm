@@ -184,7 +184,7 @@ vmmaster => {
     }
 },
 vm => {
-    cols => [qw(node host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter guestostype comments disable)],
+    cols => [qw(node host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter guestostype othersettings comments disable)],
     keys => [qw(node)],
     table_desc => 'Virtualization parameters',
     descriptions => {
@@ -212,6 +212,7 @@ vm => {
         'vncport' => 'Tracks the current VNC display port (currently not meant to be set',
         'textconsole' => 'Tracks the Psuedo-TTY that maps to the serial port or console of a VM',
         'powerstate' => "This flag is used by xCAT to track the last known power state of the VM.",
+        'othersettings' => "This allows specifying a semicolon delimited list of key->value pairs to include in a vmx file of VMware.",
         'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
         'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
         'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
