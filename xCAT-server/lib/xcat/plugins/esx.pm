@@ -656,10 +656,12 @@ sub chvm {
 	$SIG{__WARN__} = sub {
 		xCAT::SvrUtils::sendmsg([1,"Could not parse options, ".shift()], $output_handler);
 	};
+    my @otherparams;
 	my $rc = GetOptions(
 		"d=s"       => \@deregister,
 		"p=s"       => \@purge,
 		"a=s"       => \@add,
+        "o=s"       => \@otherparams,
 		"resize=s%" => \%resize,
 		"cpus=s"    => \$cpuCount,
 		"mem=s"     => \$memory
@@ -811,6 +813,24 @@ sub chvm {
 	if(@devChanges) {
 		$conargs{deviceChange} = \@devChanges;
 	}
+    if (@otherparams) {
+        my $key;
+        my $value;
+        my @optionvals;
+        foreach (@otherparams) {
+            ($key,$value) = split /=/;
+            unless ($key) {
+	            xCAT::SvrUtils::sendmsg([1,"Invalid format for other parameter specification"], $output_handler,$node);
+                return;
+            }
+            if ($value) {
+                push @optionvals,OptionValue->new(key=>$key,value=>$value);
+            } else {
+                push @optionvals,OptionValue->new(key=>$key); #the api doc says this is *supposed* to delete a key, don't think it works though, e.g. http://communities.vmware.com/message/1602644
+            }
+        }
+        $conargs{extraConfig} = \@optionvals;
+    }
 
 	my $reconfigspec = VirtualMachineConfigSpec->new(%conargs);
 	
