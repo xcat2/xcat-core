@@ -840,7 +840,7 @@ sub createcfgloc
         }
     }
     my $pgentry = "Pg:dbname=xcatdb;host=$::MN|xcatadm|$::adminpassword";
-    $cmd = "echo \"$pgentry\" >> $cfgloc";
+    $cmd = "echo \"$pgentry\" > $cfgloc";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {

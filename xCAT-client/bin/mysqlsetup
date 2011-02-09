@@ -1601,7 +1601,7 @@ sub createcfgloc
     }
     my $mysqlentry =
       "mysql:dbname=xcatdb;host=$::MN|xcatadmin|$::adminpassword";
-    $cmd = "echo \"$mysqlentry\" >> $cfglocmysql";
+    $cmd = "echo \"$mysqlentry\" > $cfglocmysql";
     xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
