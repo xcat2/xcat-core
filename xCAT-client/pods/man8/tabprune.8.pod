@@ -36,6 +36,10 @@ Remove the number of records input.
 
 Remove the percentage of records input.
 
+=item B<-V>
+
+Return the records that were removed by this command.
+
 =back
 
 =head1 RETURN VALUE
