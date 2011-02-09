@@ -195,6 +195,18 @@ if (!(-e ($::installdb2dir)))
     exit(1);
 }
 
+# check to see if the perl DBD for DB2 is installed 
+#
+my $cmd = "rpm -qa | grep perl-DBD-DB2";
+xCAT::Utils->runcmd($cmd, 0);
+if ($::RUNCMD_RC != 0)
+{
+        my $message =
+          "\perl-DBD-DB2 is not installed.  It should be first obtained from the xcat dependency tarballs and installed before we can setup DB2";
+        xCAT::MsgUtils->message("E", " $cmd failed. $message");
+        exit(1);
+}
+
 # If setting up the Server, check to see if  DB2  is running
 $::db2running     = 0;
 $::xcatrunningdb2 = 0;
