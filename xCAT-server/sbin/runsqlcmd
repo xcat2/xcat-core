@@ -276,16 +276,22 @@ sub runmysqlcmd
     my ($prefix, $dbname) = split('=',  $front);
     my ($host, $admin, $passwd) = split('\|', $back);
     my ($hostind, $hostname) = split('=', $host);
-
+ 
     my $rc  = 0;
     if (!(-e $file)) {  # file does not exist
         xCAT::MsgUtils->message("SE",
             "The file:$file does not exist. ");
         return;
     }
-    
+    # set correct path to the mysql cmd
+    my $mysql;
+    if (xCAT::Utils->isAIX()) {
+      $mysql="/usr/local/mysql/bin/mysql";
+    } else {
+      $mysql="/usr/bin/mysql";
+    }
     my $cmd =
-      "mysql --user=$admin --password=$passwd --host=$hostname $dbname \< $file   ";
+      "$mysql --user=$admin --password=$passwd --host=$hostname $dbname \< $file   ";
     #xCAT::MsgUtils->message("SI", "Running mysql --user=$admin --host=$hostname $dbname $file ");
     system("$cmd");
 
@@ -324,8 +330,15 @@ sub runpgsqlcmd
             "The file:$file does not exist. ");
         return;
     }
+    # set correct path to the psql cmd
+    my $psql;
+    if (xCAT::Utils->isAIX()) {
+      $psql="/var/lib/pgsql/bin/psql";
+    } else {
+      $psql="/usr/bin/psql";
+    }
     my $cmd =
-      "PGPASSWORD=$passwd psql -d $dbname -h $hostname -U $admin -f $file   ";
+      "PGPASSWORD=$passwd $psql -d $dbname -h $hostname -U $admin -f $file   ";
     #xCAT::MsgUtils->message("SI", "Running psql -d $dbname -h $hostname -U $admin -f $file ");
     system("$cmd");
 
