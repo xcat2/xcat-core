@@ -951,6 +951,17 @@ sub setupdb2env
 
 sub db2start
 {
+    # check to see if xcatdb instance is already running
+    my $cmd = "ps -ef | grep xcatdb";
+    my @output = xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC == 0)    # already running
+    {
+        my $db2check = "db2sysc";    # see if really running
+        if (grep(/$db2check/, @output))
+        {
+          return;
+        }
+    }
     xCAT::MsgUtils->message("I", "Starting the DB2 Server");
     my $cmd;
 
