@@ -3676,16 +3676,28 @@ sub mk_spot
             }
 
             # where to put it - the default is /install
+			my $spotloc;
             if ($::opt_l)
             {
                 $cpcosi_cmd .= "-l $::opt_l/spot ";
+				$spotloc ="$::opt_l/spot";
             }
             else
             {
                 $cpcosi_cmd .= "-l $install_dir/nim/spot  ";
+				$spotloc ="$install_dir/nim/spot";
             }
 
             $cpcosi_cmd .= "$spot_name  2>&1";
+
+			# check the file system space needed
+			#   800 MB for spot
+			my $spotsize = 800;
+			if (&chkFSspace($spotloc, $spotsize, $callback) != 0)
+			{
+				# error
+				return undef;
+			}
 
             # run the cmd
             my $rsp;
@@ -3797,11 +3809,10 @@ sub mk_spot
             }
 
             # check the file system space needed
-            #	500 MB for spot ?? 64MB for tftpboot???
-            my $spotsize = 500;
+            #	800 MB for spot ?? 64MB for tftpboot???
+            my $spotsize = 800;
             if (&chkFSspace($loc, $spotsize, $callback) != 0)
             {
-
                 # error
                 return undef;
             }
