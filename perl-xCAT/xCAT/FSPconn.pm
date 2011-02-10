@@ -185,7 +185,8 @@ sub mkhwconn_parse_args
 
     if( ! exists $opt{T} )
     {
-        return( usage('Missing -T option. The value can be lpar or fnm.'));
+        $opt{T} = "lpar"; #defaut value is lpar.
+        #return( usage('Missing -T option. The value can be lpar or fnm.'));
     }
     
     if(  $opt{T} eq "lpar") {
@@ -193,7 +194,7 @@ sub mkhwconn_parse_args
     } elsif($opt{T} eq "fnm") {
         $opt{T} = 1;   
     } else {
-        return( usage('Wrong value of  -T option. The value can be lpar or fnm.'));
+        return( usage('Wrong value of  -T option. The value can be lpar or fnm. The defaut value is lpar.'));
     }
  
     if( ! exists $opt{port} )
@@ -287,7 +288,8 @@ sub lshwconn_parse_args
     
     if( ! exists $opt{T} )
     {
-        return( usage('Missing -T option. The value can be lpar or fnm.'));
+        $opt{T} = "lpar"; #defaut value is lpar.
+        #return( usage('Missing -T option. The value can be lpar or fnm.'));
     }
     
     if(  $opt{T} eq "lpar") {
@@ -295,7 +297,7 @@ sub lshwconn_parse_args
     } elsif($opt{T} eq "fnm") {
         $opt{T} = 1;   
     } else {
-        return( usage('Wrong value of  -T option. The value can be lpar or fnm.'));
+        return( usage('Wrong value of  -T option. The value can be lpar or fnm. The defaut value is lpar.'));
     }
     
 
@@ -383,7 +385,8 @@ sub rmhwconn_parse_args
     
     if( ! exists $opt{T} )
     {
-        return( usage('Missing -T option. The value can be lpar or fnm.'));
+        $opt{T} = "lpar"; #defaut value is lpar.
+        #return( usage('Missing -T option. The value can be lpar or fnm.'));
     }
     
     if(  $opt{T} eq "lpar") {
@@ -391,7 +394,7 @@ sub rmhwconn_parse_args
     } elsif($opt{T} eq "fnm") {
         $opt{T} = 1;   
     } else {
-        return( usage('Wrong value of  -T option. The value can be lpar or fnm.'));
+        return( usage('Wrong value of  -T option. The value can be lpar or fnm. The default value is lpar.'));
     }
     
 
