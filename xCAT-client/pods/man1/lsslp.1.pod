@@ -9,7 +9,7 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp][--resetnet]>
+I<lsslp [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp][--resetnet]>
 
 
 =head1 DESCRIPTION
@@ -83,6 +83,9 @@ B<-w>          Writes output to xCAT database.
 B<-x>          XML format.
 
 B<-z>          Stanza formated output.
+
+B<-I>          Give the warning message for the nodes in database which have no SLP responses.
+            Please note that this flag noly can be used after the database migration finished successfully.
 
 
 =head1 RETURN VALUE
@@ -214,11 +217,32 @@ Output is similar to:
  Server-8233-E8B-SN1000ECP-A,Server-9119-FHA-SN0275995-B,Server-9119-FHA-SN0275995-A,
 
  Reset network finished.
+ 
+device  type-model  serial-number  side  ip-addresses  hostname
+FSP     9117-MMB    105EBEP        A-1   20.0.0.138    20.0.0.138
+FSP     9117-MMB    105EBEP        B-1   20.0.0.139    20.0.0.139
+FSP     8205-E6B    1040C7P        A-1   20.0.0.141    20.0.0.141
+FSP     8233-E8B    100538P        A-0   20.0.0.146    20.0.0.146
+FSP     9125-F2A    0262652        A-1   20.0.0.166    20.0.0.166
+FSP     9125-F2A    027ACA4        A-1   20.0.0.169    20.0.0.169
 
- device  type-model  serial-number  side  ip-addresses             hostname
- FSP     8233-E8B    1000ECP        A     192.168.200.19 50.0.0.5  Server-8233-E8B-SN1000ECP-A(50.0.0.5)
- FSP     9119-FHA    0275995        A     192.168.200.6 50.0.0.3   Server-9119-FHA-SN0275995-A(50.0.0.3)
- FSP     9119-FHA    0275995        B     192.168.200.2 50.0.0.4   Server-9119-FHA-SN0275995-B(50.0.0.4)
+ 
+7. To list all the nodes defined in database which have no SLP response.
+
+  lsslp -I 
+
+Output is similar to:
+
+   Warning: The node Server-8204-E8 has no response.
+  
+   Warning: The node Server-8203-E4 has no response.
+  
+  device  type-model  serial-number  side  ip-addresses                              hostname
+  BPA     9458-100    99201WM        B-1   10.1.255.250                              10.1.255.250
+  FSP     9125-F2A    0262652        A-0   192.168.200.16                            192.168.200.16
+  FSP     8233-E8B    1000ECP        A-0   192.168.200.19                            192.168.200.19
+  CEC     8205-E6B    1040C7P                                                        Server-8205-E6B-SN1040C7P
+
 
 
 =head1 FILES
