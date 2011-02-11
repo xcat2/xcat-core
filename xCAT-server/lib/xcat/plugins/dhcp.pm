@@ -1396,6 +1396,7 @@ sub addnet6
     }
     my $ddnserver = $nameservers;
     $ddnserver =~ s/,.*//;
+    if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
     push @netent, "    zone $domain. {\n";
     push @netent, "       primary $ddnserver; key xcat_key; \n";
     push @netent, "    }\n";
@@ -1403,6 +1404,7 @@ sub addnet6
        push @netent, "    zone $_ {\n";
        push @netent, "       primary $ddnserver; key xcat_key; \n";
        push @netent, "    }\n";
+    }
     }
     if ($netcfgs{$net}->{range}) {
         push @netent,"    range6 ".$netcfgs{$net}->{range}.";\n";
@@ -1610,6 +1612,7 @@ sub addnet
         }
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;
+        if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
         push @netent, "zone $domain. {\n";
         push @netent, "   primary $ddnserver; key xcat_key; \n";
         push @netent, " }\n";
@@ -1617,6 +1620,7 @@ sub addnet
             push @netent, "zone $_ {\n";
             push @netent, "   primary $ddnserver; key xcat_key; \n";
             push @netent, " }\n";
+        }
         }
 
         my $tmpmaskn = unpack("N", inet_aton($mask));
