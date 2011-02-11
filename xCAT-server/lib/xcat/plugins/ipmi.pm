@@ -4411,6 +4411,52 @@ sub sensor_was_read {
 	   if (@exparts) {
 	      $extext = join(",",@exparts);
 	   }
+        } elsif ($sdr->sensor_type == 0x12) {
+            @exparts=();
+            if ($exdata1 & 1) {
+                push @exparts,"System Reconfigured";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"OEM System Boot Event";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Undetermined system hardware failure";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Aux log manipulated";
+            }
+            if ($exdata1 & 1<<4) {
+                push @exparts,"PEF Action";
+            }
+            if (@exparts) {
+                $extext = join(",",@exparts);
+            }
+        } elsif ($sdr->sensor_type == 0x25) {
+            if ($exdata1 & 1) {
+                push @exparts,"Present";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Absent";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Disabled";
+            }
+            if (@exparts) {
+                $extext = join(",",@exparts);
+            }
+        } elsif ($sdr->sensor_type == 0x23) {
+            if ($exdata1 & 1) {
+                push @exparts,"Expired";
+            }
+            if ($exdata1 & 1<<1) {
+                push @exparts,"Hard Reset";
+            }
+            if ($exdata1 & 1<<2) {
+                push @exparts,"Power Down";
+            }
+            if ($exdata1 & 1<<3) {
+                push @exparts,"Power Cycle";
+            }
         } else {
             $extext = "xCAT needs to add support for ".$sdr->sensor_type;
         }
