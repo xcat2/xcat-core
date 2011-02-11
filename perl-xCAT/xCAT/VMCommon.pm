@@ -122,7 +122,7 @@ sub requestMacAddresses {
                 if (not $macdata) {
                     $macdata = $macaddr;
                 } else {
-                    $macdata .= "|".$macaddr."*NOIP*";
+                    $macdata .= "|".$macaddr."!*NOIP*";
                 }
                 push @macs,$macaddr;
             }
