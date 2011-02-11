@@ -2487,11 +2487,15 @@ sub do_makedhcp {
         # Check if IP and mac are both
         # existing for this node
         #####################################
-        my ($hostsent) = $db{hosts}->getNodeAttribs( $name, [qw(ip)] );
-        if ( !$hostsent or !$hostsent->{ip} ) {
-            $string = "Cannot find IP address for node $name during makedhcp, skip";
-            send_msg( $request, 0, $string );
-            next;
+        my $ifip = xCAT::Utils->isIpaddr($name);
+        unless( $ifip ) 
+        {
+            my ($hostsent) = $db{hosts}->getNodeAttribs( $name, [qw(ip)] );
+            if ( !$hostsent or !$hostsent->{ip} ) {
+                $string = "Cannot find IP address for node $name during makedhcp, skip";
+                send_msg( $request, 0, $string );
+                next;
+            }
         }
 
         my ($macent) = $db{mac}->getNodeAttribs( $name, [qw(mac)] );
