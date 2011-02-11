@@ -187,11 +187,12 @@ sub runbeginpre
 		    undef $SIG{CHLD};
                     #pass all the nodes to the script, only invoke the script once
 		    my $ret=`NODES=$runnodes_s ACTION=$action $installdir/prescripts/$s 2>&1`;
-		    my $err_code=$?;
+		    my $err_code=$?/256;
 		    if ($err_code != 0) {
 			my $rsp = {};
 			$rsp->{error}->[0]="$localhostname: $s: return code=$err_code. Error message=$ret";
 			$callback->($rsp);
+                        if ($err_code > 1) { return $err_code; }
 		    } else {
 			if ($ret) {
 			    my $rsp = {};
@@ -250,11 +251,12 @@ sub runendpre
 		} else { 
 		    undef $SIG{CHLD};
 		    my $ret=`NODES=$runnodes_s ACTION=$action $installdir/prescripts/$s 2>&1`;
-		    my $err_code=$?;
+		    my $err_code=$?/256;
 		    if ($err_code != 0) {
 			my $rsp = {};
 			$rsp->{error}->[0]="$localhostname: $s: return code=$err_code. Error message=$ret";
 			$callback->($rsp);
+                        if ($err_code > 1) { return $err_code; }
 		    } else {
 			if ($ret) {
 			    my $rsp = {};
