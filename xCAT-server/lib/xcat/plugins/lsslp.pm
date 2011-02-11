@@ -1155,10 +1155,18 @@ sub format_output {
     ###########################################
     # -r flag for raw response format
     ###########################################
+    my %rawhash = ();
     if ( exists( $opt{r} )) {
         foreach ( keys %$outhash ) {
-            $result .= "@{ $outhash->{$_}}[9]\n";
+            #$result .= "@{ $outhash->{$_}}[9]\n";
+            my $raw = @{$outhash->{$_}}[9];
+            $rawhash{$raw} = 1;
         }
+        
+        foreach ( keys %rawhash ) {
+            $result .= "$_\n";
+        }
+        
         send_msg( $request, 0, $result );
         return;
     }
