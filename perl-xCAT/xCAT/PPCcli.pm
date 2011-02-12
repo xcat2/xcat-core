@@ -75,6 +75,10 @@ my %lsrefcode = (
       pri =>"lsrefcode -r sys -m %s -s p",
       sec =>"lsrefcode -r sys -m %s -s s",
   },
+  cec => {
+      pri =>"lsrefcode -r sys -m %s -s p",
+      sec =>"lsrefcode -r sys -m %s -s s",
+  },  
   lpar   =>"lsrefcode -r lpar -m %s --filter lpar_ids=%s",
 );
 
@@ -355,7 +359,7 @@ sub lsrefcode {
     ###################################
     # Select command  
     ###################################
-    if($res eq 'fsp'){
+    if($res =~ /^(fsp|cec)$/) {
         $cmds[0] = sprintf($lsrefcode{$res}{pri}, $d1);
         $cmds[1] = sprintf($lsrefcode{$res}{sec}, $d1);
     } elsif($res eq 'lpar'){
