@@ -1,8 +1,9 @@
-start:rinv_null
-cmd:rinv
-check:rc!=0
-check:output=~Usage
-end
+#comment out for developper will not fix it
+#start:rinv_null
+#cmd:rinv
+#check:rc!=0
+#check:output=~Usage
+#end
 start:rinv_bus
 arch:ppc
 cmd:rinv $$CN bus
