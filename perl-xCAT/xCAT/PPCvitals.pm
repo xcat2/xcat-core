@@ -255,7 +255,7 @@ sub temp {
             ################################# 
             # Temperatures not available 
             ################################# 
-            if ( @$d[4] !~ /^(fsp|lpar)$/ ) {
+            if ( @$d[4] !~ /^(fsp|cec|lpar)$/ ) {
                 my $text = "$prefix Only available for CEC/LPAR";
                 push @result, [$name,$text,1];
                 next;
