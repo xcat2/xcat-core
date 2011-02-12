@@ -125,7 +125,7 @@ sub enumerate {
             ##############################
             # No lparid for fsp/bpa     
             ##############################
-            if ( $type =~ /^(fsp|bpa)$/ ) {
+            if ( $type =~ /^(fsp|bpa|cec|frame)$/ ) {
                 $lparid = $type;
             }
             $outhash{ $lparid } = $state;
@@ -170,7 +170,7 @@ sub powercmd_boot {
         # Look up by lparid
         ##################################
         my $type = @$d[4];
-        my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
+        my $id   = ($type=~/^(fsp|bpa|frame|cec)$/) ? $type : @$d[0];
 
         ##################################
         # Output error
@@ -405,7 +405,7 @@ sub state {
             # Look up by lparid 
             ##################################
             my $type = @$d[4];
-            my $id   = ($type=~/^(fsp|bpa)$/) ? $type : @$d[0];
+            my $id   = ($type=~/^(fsp|bpa|cec|frame)$/) ? $type : @$d[0];
             
             ##################################
             # Output error
