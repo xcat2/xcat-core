@@ -29,10 +29,12 @@ use constant {
 ##############################################
 my %lssyscfg = (
   fsp    =>"lssyscfg -r sys -m %s -F %s",
+  cec    =>"lssyscfg -r sys -m %s -F %s",
   fsps   =>"lssyscfg -r sys -F %s",
   node   =>"lssyscfg -r lpar -m %s -F %s --filter lpar_ids=%s",
   lpar   =>"lssyscfg -r lpar -m %s -F %s",
   bpa    =>"lssyscfg -r frame -e %s -F %s",
+  frame  =>"lssyscfg -r frame -e %s -F %s",
   bpas   =>"lssyscfg -r frame -F %s",
   prof   =>"lssyscfg -r prof -m %s --filter %s",
   profs  =>"lssyscfg -r prof -m %s -F %s --filter %s",
@@ -1141,7 +1143,8 @@ sub power_cmd {
 
     my $op   = shift;  
     my $d    = shift;
-    my $type = (@$d[4] eq "fsp") ? "sys" : @$d[4];
+    #my $type = (@$d[4] eq "fsp") ? "sys" : @$d[4];
+    my $type = ( @$d[4] =~ /^(fsp|cec)$/ ) ? "sys" : @$d[4];
 
     ##############################
     # Build command 
