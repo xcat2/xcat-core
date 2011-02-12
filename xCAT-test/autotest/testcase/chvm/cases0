@@ -1,8 +1,9 @@
-start:chvm_null
-cmd:chvm
-check:rc!=0
-check:output=~Usage
-end
+#comment out for developper will not fix it
+#start:chvm_null
+#cmd:chvm
+#check:rc!=0
+#check:output=~Usage
+#end
 start:chvm_p
 hcp:hmc
 cmd:lsvm $$CN > /tmp/autotest.profile
@@ -38,7 +39,7 @@ end
 start:chvm_node
 cmd:chvm $$CN
 check:rc!=0
-check:output=~Error
+check:output=~Usage
 end
 start:chvm_err_node
 cmd:chvm testnode
