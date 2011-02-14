@@ -175,14 +175,14 @@ sub enumerate_cfg {
     ######################################
     # Invalid target hardware
     ######################################
-    if ( $type !~ /^(fsp|lpar)$/ ) {
+    if ( $type !~ /^(fsp|lpar|cec)$/ ) {
         return( [RC_ERROR,"Information only available for CEC/LPAR"] );
     }
     ######################################
     # Check for CECs in list
     ######################################
     while (my ($name,$d) = each(%{$hash->{$mtms}}) ) { 
-        if ( @$d[4] eq "fsp" ) {
+        if ( @$d[4] =~ /^(fsp|cec)$/ ) {
             $cec = $name;
             last;
         }
@@ -256,7 +256,7 @@ sub enumerate_bus {
     ##################################
     # Invalid target hardware 
     ##################################
-    if ( $type !~ /^(fsp|lpar)$/ ) {
+    if ( $type !~ /^(fsp|lpar|cec)$/ ) {
         return( [RC_ERROR,"Bus information only available for CEC/LPAR"] );
     }
     ##################################
@@ -280,7 +280,7 @@ sub enumerate_bus {
     # Check for CECs in list
     ##################################
     foreach ( keys %{$hash->{$mtms}} ) {
-        if ( @{$hash->{$mtms}->{$_}}[4] eq "fsp" ) {
+        if ( @{$hash->{$mtms}->{$_}}[4] =~ /^(fsp|cec)$/ ) {
             $cec = $_;
             last;
         }
@@ -337,7 +337,7 @@ sub bus {
             # Look up by lparid
             ##################################
             my $type = @$d[4];
-            my $id   = ($type=~/^fsp$/) ? 0 : @$d[0];
+            my $id   = ($type=~/^(fsp|cec)$/) ? 0 : @$d[0];
 
             #################################
             # Output header 
@@ -437,7 +437,7 @@ sub firmware {
             #####################################
             # Command only supported on FSP/BPA/LPARs 
             #####################################
-            if ( @$d[4] !~ /^(fsp|bpa|lpar)$/ ) {
+            if ( @$d[4] !~ /^(fsp|bpa|cec|frame|lpar)$/ ) {
                 push @result, 
                     [$name,"Information only available for CEC/BPA/LPAR",RC_ERROR];
                 next; 
@@ -445,9 +445,12 @@ sub firmware {
 	        #################
 	        #For support on  Lpars, the flag need to be changed.
 	        ##########
-	        if(@$d[4] eq "lpar")	{
+	        if(@$d[4] =~ /^(lpar|cec)$/)	{
 		        @$d[4] = "fsp";
 	        }
+	        if(@$d[4] =~ /^frame$/)	{
+		        @$d[4] = "bpa";
+	        }            
            my $values = xCAT::PPCcli::lslic( $exp, $d );
             my $Rc = shift(@$values);
     
@@ -513,7 +516,7 @@ sub config {
             # Look up by lparid
             ##################################
             my $type = @$d[4];
-            my $id   = ($type=~/^fsp$/) ? 0 : @$d[0];
+            my $id   = ($type=~/^(fsp|cec)$/) ? 0 : @$d[0];
 
             #################################
             # Output header
