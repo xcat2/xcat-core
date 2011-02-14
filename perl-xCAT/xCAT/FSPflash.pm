@@ -489,8 +489,8 @@ sub rflash {
 			$i = 0;
 			$name2 = $$nodes[1]->{node};  #Secondary FSP or BPC side B.
 		} else {
-			$name2 = $name;          #Secondary FSP or BPC side B.
-			$name  = $$nodes[1]->{node}; #the Primary FSP or BPC side A.
+            #$name2 = $name;          #Secondary FSP or BPC side B.
+			$name2  = $$nodes[0]->{node}; #the Primary FSP or BPC side A.
 		}
 	   }
 
@@ -499,7 +499,8 @@ sub rflash {
 			$name2 = $name; # Secondary FSP or BPC side B.
 			$name  = $$nodes[1]->{node};#the Primary FSP or BPC side A.
 		} else {
-			$name2 = $$nodes[1]->{node};  #Secondary FSP or BPC side B.
+            $name2 = $name; # Secondary FSP or BPC side B.
+			$name = $$nodes[0]->{node};  #primary FSP or BPC side B.
 		} 
 	   }
 	   print "name: $name, name2: $name2\n";
