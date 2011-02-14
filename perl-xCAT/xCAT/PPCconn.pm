@@ -102,10 +102,16 @@ sub mkhwconn_parse_args
                 push @bpa_ctrled_nodes, $node;
             }
             
-            if ( ($nodetype eq 'bpa' or $nodetype eq 'frame'))
+            if ( $nodetype eq 'bpa')
             {
                 my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
                 push @frame_members, @$my_frame_bpa_cec;
+            }
+            if ( $nodetype eq 'frame')
+            {
+                my $my_frame_bpa_cec =  xCAT::DBobjUtils::getcecchildren( $node)                                                                             ;
+                push @frame_members, @$my_frame_bpa_cec;
+                push @frame_members, $node;
             }
         }
     }
@@ -241,8 +247,8 @@ sub lshwconn_parse_args
             return( ["lshwconn can only support HMC nodes, or nodes managed by HMC, i.e. nodehm.mgt should be 'hmc'. Please make sure node $node has correect nodehm.mgt and ppc.hcp value.\n"]);
         }
         if ( $ent->{nodetype} ne 'hmc' 
-                and $ent->{nodetype} ne 'fsp' 
-                and $ent->{nodetype} ne 'bpa')
+                and $ent->{nodetype} ne 'fsp' and $ent->{nodetype} ne 'cec'
+                and $ent->{nodetype} ne 'bpa' and $ent->{nodetype} ne 'frame')
         {
             return( ["Node type $ent->{nodetype} is not supported for this command.\n"]);
         }
@@ -334,7 +340,7 @@ sub rmhwconn_parse_args
             next;
         }
 
-        if ( $nodetype eq 'fsp' and 
+        if ( ($nodetype eq 'fsp' or $nodetype eq 'cec') and 
                 $node_parent and 
                 $node_parent ne $node)
         {
@@ -345,6 +351,12 @@ sub rmhwconn_parse_args
         {
             my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
             push @frame_members, @$my_frame_bpa_cec;
+        }
+        if ( $nodetype eq 'frame')
+        {
+            my $my_frame_bpa_cec = xCAT::DBobjUtils::getcecchildren($node);
+            push @frame_members, @$my_frame_bpa_cec;
+            push @frame_members, $node;
         }
     }
 
@@ -574,13 +586,14 @@ sub rmhwconn
             ############################
             # Get IP address
             ############################
-            my $hosttab  = xCAT::Table->new( 'hosts' );
-            my $node_ip = undef;
-            if ( $hosttab)
-            {
-                my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
-                $node_ip = $node_ip_hash->{ip};
-            }
+            #my $hosttab  = xCAT::Table->new( 'hosts' );
+            #my $node_ip = undef;
+            #if ( $hosttab)
+            #{
+            #    my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
+            #    $node_ip = $node_ip_hash->{ip};
+            #}
+            my $node_ip = xCAT::Utils::getNodeIPaddress($node_name);
             if (!$node_ip)
             {
                 push @value, [$node_name, $node_ip, $Rc];
