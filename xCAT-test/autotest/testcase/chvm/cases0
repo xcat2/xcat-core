@@ -21,6 +21,8 @@ check:rc==0
 check:output=~Success
 cmd:lsvm -a testnode
 check:output=~__GETNODEATTR($$CN, pprofile)__
+cmd:lsdef -t node -l testnode -i pprofile
+check:output=~__GETNODEATTR($$CN, pprofile)__
 cmd:rmvm testnode
 cmd:rm -f /tmp/autotest.profile
 end
