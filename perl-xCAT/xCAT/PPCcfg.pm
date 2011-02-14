@@ -67,20 +67,39 @@ sub parse_args {
     #############################################
     # Get support command list
     #############################################
-    my $sitetab  = xCAT::Table->new( 'nodetype' );
+    #my $sitetab  = xCAT::Table->new( 'nodetype' );
+    #my $nodes = $request->{node};
+    #foreach (@$nodes) {
+    #    if ( defined( $sitetab )) {      
+    #        my ($ent) = $sitetab->getAttribs({ node=>$_},'nodetype');
+    #        if ( defined($ent) ) {
+    #               $request->{hwtype} = $ent->{nodetype};
+    #               last;
+    #        }
+    #
+    #    }
+    #
+    #}    
+    my @newnodes = ();
     my $nodes = $request->{node};
-    foreach (@$nodes) {
-        if ( defined( $sitetab )) {      
-            my ($ent) = $sitetab->getAttribs({ node=>$_},'nodetype');
-            if ( defined($ent) ) {
-                   $request->{hwtype} = $ent->{nodetype};
-                   last;
+    foreach my $snode(@$nodes) {
+        my $ntype = xCAT::DBobjUtils->getnodetype($snode);
+        if ( $ntype =~ /^(cec|frame)$/) {
+            my $children = xCAT::DBobjUtils->getchildren($snode);
+            unless( $children )  {
+                next;
             }
-
+            foreach (@$children)  {
+                push @newnodes, $_;
+            }
+            $request->{hwtype} = ($ntype =~ /^cec$/) ? "fsp" : "bpa";
+        } else   {
+            push @newnodes, $_;
+            $request->{hwtype} = $ntype;
         }
-
     }
- 
+    $request->{node} = \@newnodes;
+    #$request->{noderange} = \@newnodes;
     my $supported = $rsp{$request->{hwtype}};
   
     #############################################
