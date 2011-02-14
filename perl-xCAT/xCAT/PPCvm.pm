@@ -492,7 +492,8 @@ sub clone {
 #####################################
 # Source must be CEC 
 #####################################
-    if ( $type ne "fsp" ) {
+    #if ( $type ne "fsp" ) {
+    unless ( $type =~ /^(cec|fsp)$/) {
         return( [[RC_ERROR,"Node must be an FSP"]] );
     }
 #####################################
@@ -628,7 +629,7 @@ sub remove {
             ####################################
             # Must be CEC or LPAR
             ####################################
-            if ( $type !~ /^(lpar|fsp)$/ ) {
+            if ( $type !~ /^(lpar|fsp|cec)$/ ) {
                 push @values, [$lpar, "Node must be LPAR or CEC", RC_ERROR];
                 next;
             } 
@@ -1140,7 +1141,7 @@ sub list {
             ####################################
             # Must be CEC or LPAR
             ####################################
-            if ( $type !~ /^(lpar|fsp)$/ ) {
+            if ( $type !~ /^(lpar|fsp|cec)$/ ) {
                 $values->{$lpar} = [$lpar,"Node must be LPAR or CEC",RC_ERROR];
                 next;
             }
@@ -1597,7 +1598,7 @@ sub create {
     #####################################
     # Must be CEC or LPAR 
     #####################################
-    if ( $type !~ /^(lpar|fsp)$/ ) {
+    if ( $type !~ /^(lpar|fsp|cec)$/ ) {
         return( [[$lpar,"Node must be LPAR or CEC",RC_ERROR]] );
     }
     #####################################
@@ -1895,7 +1896,7 @@ my $ppctab  = xCAT::Table->new('ppc');
     #####################################
     # Must be CEC or LPAR 
     #####################################
-    if ( $type !~ /^(lpar|fsp)$/ ) {
+    if ( $type !~ /^(lpar|fsp|cec)$/ ) {
         return( [[$lpar,"Node must be LPAR or CEC",RC_ERROR]] );
     }
 
