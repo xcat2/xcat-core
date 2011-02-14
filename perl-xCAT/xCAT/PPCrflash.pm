@@ -52,7 +52,28 @@ sub parse_args {
     my $args    = $request->{arg};
 
 
-    	#############################################
+    #############################################
+    # Change CEC/Frame node into FSPs/BPAs
+    #############################################     
+    my @newnodes = ();
+    my $nodes = $request->{node};
+    foreach my $snode(@$nodes) {
+        my $ntype = xCAT::DBobjUtils->getnodetype($snode);
+        if ( $ntype =~ /^(cec|frame)$/) {
+            my $children = xCAT::DBobjUtils->getchildren($snode);
+            unless( $children )  {
+                next;
+            }
+            foreach (@$children)  {
+                push @newnodes, $_;
+            }
+        } else   {
+            push @newnodes, $_;
+        }
+    }
+    $request->{node} = \@newnodes;
+    
+    #############################################
     # Responds with usage statement
     #############################################
     local *usage = sub {
@@ -281,82 +302,81 @@ sub preprocess_for_rflash {
 #        }
 #    } 
     $packages_d = $$opt{p};
-	if($packages_d ne $packages_fw ) {
-		$$opt{p} = $packages_fw;
-		if(! -d $packages_d) {
-			#send_msg($request, 1, "The directory $packages_d doesn't exist!");
-			$callback->({data=>["The directory $packages_d doesn't exist!"]});      
-			$request = ();
-	       		return -1;
-        	}
-	
-		#print "opening directory and reading names\n";
-        	opendir DIRHANDLE, $packages_d;
-        	my @dirlist= readdir DIRHANDLE;
-       		closedir DIRHANDLE;
+    if($packages_d ne $packages_fw ) {
+        $$opt{p} = $packages_fw;
+        if(! -d $packages_d) {
+            #send_msg($request, 1, "The directory $packages_d doesn't exist!");
+            $callback->({data=>["The directory $packages_d doesn't exist!"]});      
+            $request = ();
+                   return -1;
+            }
+    
+            #print "opening directory and reading names\n";
+            opendir DIRHANDLE, $packages_d;
+            my @dirlist= readdir DIRHANDLE;
+               closedir DIRHANDLE;
 
-        	@dirlist = File::Spec->no_upwards( @dirlist );
+            @dirlist = File::Spec->no_upwards( @dirlist );
 
-        	# Make sure we have some files to process
-        	#
-        	if( !scalar( @dirlist ) ) {
-			#send_msg($request, 1, "The directory $packages_d is empty !");
-			$callback->({data=>["The directory $packages_d is empty !"]});
-	      		$request = ();
-	      		return -1;
-        	}
-	
-		#Find the rpm lic file
-        	my @rpmlist = grep /\.rpm$/, @dirlist;
-		my @xmllist = grep /\.xml$/, @dirlist;
-		if( @rpmlist == 0 | @xmllist == 0) {
-			#send_msg($request, 1, "There isn't any rpm and xml files in the  directory $packages_d!");
-	      		$callback->({data=>["There isn't any rpm and xml files in the  directory $packages_d!"]});
-	      		$request = ();
-	      		return -1;
-		}
-	
-		my $rpm_list =  join(" ", @rpmlist);
-		my $xml_list = join(" ", @xmllist);
-		 
-		my $cmd;
-		if( -d $packages_fw) {
-             		$cmd = "rm -rf $packages_fw";
-			xCAT::Utils->runcmd($cmd, 0);
-	                if ($::RUNCMD_RC != 0)
-        	        {
-				#send_msg($request, 1, "Failed to remove the old packages in $packages_fw.");
-				$callback->({data=>["Failed to remove the old packages in $packages_fw."]});
-				$request = ();
-                      		return -1;
+            # Make sure we have some files to process
+            #
+            if( !scalar( @dirlist ) ) {
+            #send_msg($request, 1, "The directory $packages_d is empty !");
+            $callback->({data=>["The directory $packages_d is empty !"]});
+                  $request = ();
+                  return -1;
+            }
+    
+        #Find the rpm lic file
+        my @rpmlist = grep /\.rpm$/, @dirlist;
+        my @xmllist = grep /\.xml$/, @dirlist;
+        if( @rpmlist == 0 | @xmllist == 0) {
+            #send_msg($request, 1, "There isn't any rpm and xml files in the  directory $packages_d!");
+            $callback->({data=>["There isn't any rpm and xml files in the  directory $packages_d!"]});
+            $request = ();
+            return -1;
+        }
+    
+        my $rpm_list =  join(" ", @rpmlist);
+        my $xml_list = join(" ", @xmllist);
+         
+        my $cmd;
+        if( -d $packages_fw) {
+            $cmd = "rm -rf $packages_fw";
+            xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                #send_msg($request, 1, "Failed to remove the old packages in $packages_fw.");
+                $callback->({data=>["Failed to remove the old packages in $packages_fw."]});
+                $request = ();
+                return -1;
+                }
+            }
+    
+        $cmd = "mkdir $packages_fw";
+        xCAT::Utils->runcmd("$cmd", 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            #send_msg($request, 1, "$cmd failed.");
+            $callback->({data=>["$cmd failed."]});    
+            $request = ();
+            return;
 
-                	}
-        	}
-	
-		$cmd = "mkdir $packages_fw";
-   		xCAT::Utils->runcmd("$cmd", 0);
-		if ($::RUNCMD_RC != 0)
-    		{
-			#send_msg($request, 1, "$cmd failed.");
-		        $callback->({data=>["$cmd failed."]});	
-	      		$request = ();
-	         	return;
+        }
+    
+        $cmd = "cp $packages_d/*.rpm  $packages_d/*.xml $packages_fw";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            #send_msg($request, 1, "$cmd failed.");
+            $callback->({data=>["$cmd failed."]});
+            $request = ();
+            return -1;
 
-		}
-	
-		$cmd = "cp $packages_d/*.rpm  $packages_d/*.xml $packages_fw";
-   		xCAT::Utils->runcmd($cmd, 0);
-		if ($::RUNCMD_RC != 0)
-    		{
-			#send_msg($request, 1, "$cmd failed.");
-			$callback->({data=>["$cmd failed."]});
-	      		$request = ();
-	         	return -1;
+        }
 
-		}
-
-#		$req->{arg} = $exargs;
-	}
+    #$req->{arg} = $exargs;
+    }
     return 0;
 }
 
