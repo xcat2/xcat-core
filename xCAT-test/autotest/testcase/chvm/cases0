@@ -6,10 +6,10 @@
 #end
 start:chvm_p
 hcp:hmc
-cmd:lsvm $$CN > /tmp/autotest.profile
-check:rc==0
 cmd:mkdef -t node -o testnode mgt=hmc groups=all
 cmd:mkvm testnode -i $$MaxLparID -l $$CN
+check:rc==0
+cmd:lsvm testnode > /tmp/autotest.profile
 check:rc==0
 cmd:perl -pi -e 's/min_mem=\d+/min_mem=1024/g' /tmp/autotest.profile
 cmd:cat /tmp/autotest.profile|chvm testnode
@@ -19,8 +19,8 @@ check:output=~min_mem=1024
 cmd:chvm testnode -p __GETNODEATTR($$CN, pprofile)__
 check:rc==0
 check:output=~Success
-cmd:lsvm testnode
-check:output!~min_mem=1024
+cmd:lsvm -a testnode
+check:output=~__GETNODEATTR($$CN, pprofile)__
 cmd:rmvm testnode
 cmd:rm -f /tmp/autotest.profile
 end
