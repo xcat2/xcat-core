@@ -86,16 +86,20 @@ my %lsrefcode = (
 # mksysconn support formats
 ##############################################
 my %mksysconn = (
-    fsp => "mksysconn --ip %s -r sys --passwd %s",
-    bpa => "mksysconn --ip %s -r frame --passwd %s"
+    fsp   => "mksysconn --ip %s -r sys --passwd %s",
+    cec   => "mksysconn --ip %s -r sys --passwd %s",
+    bpa   => "mksysconn --ip %s -r frame --passwd %s",
+    frame => "mksysconn --ip %s -r frame --passwd %s",
 );
 
 ##############################################
 # rmsysconn support formats
 ##############################################
 my %rmsysconn = (
-    fsp => "rmsysconn -o remove --ip %s",
-    bpa => "rmsysconn -o remove --ip %s"
+    fsp   => "rmsysconn -o remove --ip %s",
+    cec   => "rmsysconn -o remove --ip %s",
+    bpa   => "rmsysconn -o remove --ip %s",
+    frame => "rmsysconn -o remove --ip %s",
 );
 
 ##############################################
@@ -111,8 +115,10 @@ my %lssysconn = (
 # or frames
 ##############################################
 my %chsyspwd = (
-    fsp => "chsyspwd -t %s -m %s --passwd %s --newpasswd %s",
-    bpa => "chsyspwd -t %s -e %s --passwd %s --newpasswd %s"
+    fsp   => "chsyspwd -t %s -m %s --passwd %s --newpasswd %s",
+    bpa   => "chsyspwd -t %s -e %s --passwd %s --newpasswd %s",
+    cec   => "chsyspwd -t %s -m %s --passwd %s --newpasswd %s",
+    frame => "chsyspwd -t %s -e %s --passwd %s --newpasswd %s",
 );
 
 
