@@ -407,7 +407,7 @@ sub print_var {
                 #} else {
                 #    &print_var($t23);
                 #}
-                        }
+                }
             
             }else {
                 $var = $var. "$t\n";
