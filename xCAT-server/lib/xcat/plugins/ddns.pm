@@ -22,9 +22,13 @@ sub handled_commands
     return {"makedns" => "site:dnshandler"};
 }
 sub getzonesfornet {
-    my $net = shift;
-    my $mask = shift;
+    my $netent = shift;
+    my $net = $netent->{net};
+    my $mask = $netent->{mask};
     my @zones = ();
+    if ($netent->{ddnsdomain}) {
+        push @zones,$netent->{ddnsdomain};
+    }
     if ($net =~ /:/) {#ipv6, for now do the simple stuff under the assumption we won't have a mask indivisible by 4
         $net =~ s/\/(.*)//;
         my $maskbits=$1;
@@ -46,7 +50,8 @@ sub getzonesfornet {
             $nibbs--;
         }
         $rev.="ip6.arpa.";
-        return ($rev);
+        push @zones,$rev;
+        return @zones;
     }
     #return all in-addr reverse zones for a given mask and net
     #for class a,b,c, the answer is easy
@@ -220,8 +225,8 @@ sub process_request {
             s/^[ \t\n]*//; #remove leading whitespace
             next unless ($_); #skip empty lines
             ($addr,$names) = split /[ \t]+/,$_,2;
-            if ($addr !~ /^\d+\.\d+\.\d+\.\d+$/) {
-                xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, only IPv4 format entries are supported currently", $callback);
+            if ($addr !~ /^\d+\.\d+\.\d+\.\d+$/ and $addr !~ /^[abcdef0123456789:]+$/) {
+                xCAT::SvrUtils::sendmsg(":Ignoring line $_ in /etc/hosts, address seems malformed.", $callback);
                 next;
             }
             unless ($names =~ /^[a-z0-9\. \t\n-]+$/i) {
@@ -263,7 +268,7 @@ sub process_request {
     $ctx->{nodes} = \@nodes;
     my $networkstab = xCAT::Table->new('networks',-create=>0);
     unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
-    my @networks = $networkstab->getAllAttribs('net','mask');
+    my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain');
     foreach (@networks) {
         my $maskn;
         if ($_->{mask}) { #better be IPv4, we only do CIDR for v6, use the v4/v6 agnostic just in case
@@ -285,7 +290,7 @@ sub process_request {
         $net =~ s/\/.*//;
         $ctx->{nets}->{$_->{net}}->{netn} = getipaddr($net,GetNumber=>1);
         my $currzone;
-        foreach $currzone (getzonesfornet($_->{net},$_->{mask})) {
+        foreach $currzone (getzonesfornet($_)) {
             $ctx->{zonestotouch}->{$currzone} = 1;
         }
     }

@@ -448,6 +448,7 @@ sub addrangedetection {
     my $begin;
     my $end;
     $netcfgs{$net->{net}}->{nameservers} = $net->{nameservers};
+    $netcfgs{$net->{net}}->{ddnsdomain} = $net->{ddnsdomain};
     $netcfgs{$net->{net}}->{domain} = $domain; #TODO: finer grained domains
     unless ($netcfgs{$net->{net}}->{nameservers}) {
         $netcfgs{$net->{net}}->{nameservers} = $::XCATSITEVALS{nameservers};
@@ -856,7 +857,7 @@ sub process_request
         }
     }
 	my $nettab = xCAT::Table->new("networks");
-	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange','nameservers');
+	my @vnets = $nettab->getAllAttribs('net','mgtifname','mask','dynamicrange','nameservers','ddnsdomain');
     foreach (@vnets) {
         if ($_->{net} =~ /:/) { #IPv6 detected
             $usingipv6=1;
@@ -1396,8 +1397,17 @@ sub addnet6
     }
     my $ddnserver = $nameservers;
     $ddnserver =~ s/,.*//;
+    my $ddnsdomain;
+    if ($netcfgs{$net}->{ddnsdomain}) {
+        $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
+    }
     if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
+        if ($ddnsdomain) {
+            push @netent, "    ddns-domain-name \"".$ddnsdomain."\";\n";
+            push @netent, "    zone $ddnsdomain. {\n";
+        } else {
     push @netent, "    zone $domain. {\n";
+        }
     push @netent, "       primary $ddnserver; key xcat_key; \n";
     push @netent, "    }\n";
     foreach (getzonesfornet($net)) {
@@ -1612,8 +1622,17 @@ sub addnet
         }
         my $ddnserver = $nameservers;
         $ddnserver =~ s/,.*//;
-        if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
-        push @netent, "zone $domain. {\n";
+        my $ddnsdomain;
+        if ($netcfgs{$net}->{ddnsdomain}) {
+            $ddnsdomain = $netcfgs{$net}->{ddnsdomain};
+        }
+    if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
+        if ($ddnsdomain) {
+            push @netent, "    ddns-domain-name \"".$ddnsdomain."\";\n";
+            push @netent, "    zone $ddnsdomain. {\n";
+        } else {
+            push @netent, "    zone $domain. {\n";
+        }
         push @netent, "   primary $ddnserver; key xcat_key; \n";
         push @netent, " }\n";
         foreach (getzonesfornet($net,$mask)) {

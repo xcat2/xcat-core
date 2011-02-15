@@ -425,7 +425,7 @@ mpa => {
  },
   },
 networks => {
-    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange nodehostname comments disable)],
+    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange nodehostname ddnsdomain comments disable)],
     keys => [qw(net mask)],
     table_desc => 'Describes the networks in the cluster and info necessary to set up nodes on that network.',
  descriptions => {
@@ -441,6 +441,7 @@ networks => {
   logservers => 'The log servers for this network.  Used in creating the DHCP network definition.  Assumed to be the DHCP server if not set.',
   dynamicrange => 'The IP address range used by DHCP to assign dynamic IP addresses for requests on this network.  This should not overlap with entities expected to be configured with static host declarations, i.e. anything ever expected to be a node with an address registered in the mac table.',
   nodehostname => 'A regular expression used to specify node name to network-specific hostname.  i.e. "/\z/-secondary/" would mean that the hostname of "n1" would be n1-secondary on this network.  By default, the nodename is assumed to equal the hostname, followed by nodename-interfacename.',
+     ddnsdomain => 'A domain to be combined with nodename to construct FQDN for DDNS updates induced by DHCP.  This is not passed down to the client as "domain"',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
