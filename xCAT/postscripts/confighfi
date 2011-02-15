@@ -1,9 +1,19 @@
 #!/bin/sh
 
+name=`echo $NODE | awk -F- '{print $1}'`
+if [ -z $name ]
+then
+name=$NODE
+fi
+
 for ((i=0;i<4;i++))
 do
-CLIENT_IP=`ping -c 3 $NODE-hf$i | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' ||
- uniq 2>&1`
+if [ $i = 0 ]
+then
+CLIENT_IP=`ping -c 3 $NODE | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+else 
+CLIENT_IP=`ping -c 3 $name-hf$i | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+fi
 
 if [ -n $CLIENT_IP ]
 then
@@ -15,7 +25,7 @@ ONBOOT=yes
 " >/etc/sysconfig/network-scripts/ifcfg-hf$i
 
 ifup hf$i
-
 sleep 1
 fi
+
 done
