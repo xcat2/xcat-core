@@ -1900,6 +1900,7 @@ sub runrollupdate {
                      || ( $pstat eq "on" ) )
                 {
 
+                    $alldown = 0;
                     # give up on shutdown after requested wait time and force the
                     # node off
                     if ( $slept >= ($shutdownmax * 60) ) {
@@ -1907,13 +1908,13 @@ sub runrollupdate {
                         my $pwroff_cmd = "rpower $pnode off";
                         if ($::VERBOSE) { 
                             open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                            print RULOG localtime()." $::ug_name:  shutdowntimeout exceeded for $pnode \n";
                             print RULOG localtime()." $::ug_name:  Running command \'$pwroff_cmd\' \n";
                             close (RULOG);
                         }
+                        xCAT::Utils->setAppStatus([$pnode],"RollingUpdate","shutdowntimeout_exceeded__forcing_rpower_off");
                         xCAT::Utils->runxcmd( $pwroff_cmd, $::SUBREQ, -1 );
-                    }
-                    else {
-                        $alldown = 0;
+                    } else {
                         last;
                     }
                 }
@@ -2053,7 +2054,7 @@ sub runrollupdate {
         while ($not_done && $totalwait < ($statustimeout * 60)) {
             if ($::VERBOSE) { 
                  open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-                 print RULOG localtime()." $::ug_name:  Checking xCAT database $statusattr for value $statusval \n";
+                 print RULOG localtime()." $::ug_name:  Checking ".join(",",@bootnodes)." xCAT database $statusattr for value $statusval \n";
                  close (RULOG);
             }
             my $nltab_stats =
@@ -2106,8 +2107,8 @@ sub runrollupdate {
                         push (@error_nodes,$bn);
                     }
                 }
-                xCAT::Utils->setAppStatus(\@error_nodes,"RollingUpdate","ERROR_bringuptimeout_reached");
-                xCAT::Utils->setAppStatus(\@remaining_nodes,"RollingUpdate","ERROR_bringuptimeout_reached_for_previous_node");
+                xCAT::Utils->setAppStatus(\@error_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded");
+                xCAT::Utils->setAppStatus(\@remaining_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded_for_previous_node");
             }
             last;
         }
