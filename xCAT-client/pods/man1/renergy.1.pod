@@ -2,25 +2,23 @@
 
 B<renergy> - remote energy management tool
 
-
 =head1 B<SYNOPSIS>
 
 B<renergy> [-h | --help] 
 
 B<renergy> [-v | --version] 
 
-
 B<Power 6 server specific :>
 
 =over 2
 
-B<renergy> I<noderange> [-V] { all | { [savingstatus] [cappingstatus] 
+B<renergy> I<noderange> [-V] { all | [savingstatus] [cappingstatus] 
 [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] 
-[averageDC] [ambienttemp] [exhausttemp] [CPUspeed] } }
+[averageDC] [ambienttemp] [exhausttemp] [CPUspeed] }
 
-B<renergy> I<noderange> [-V] { {savingstatus}={on | off} 
-| {cappingstatus}={on | off} | {cappingwatt}=watt 
-| {cappingperc}=percentage } 
+B<renergy> I<noderange> [-V] { savingstatus={on | off} 
+| cappingstatus={on | off} | cappingwatt=watt 
+| cappingperc=percentage } 
 
 =back
 
@@ -28,48 +26,60 @@ B<Power 7 server specific :>
 
 =over 2
 
-B<renergy> I<noderange> [-V] { all | { [savingstatus] [dsavingstatus] 
+B<renergy> I<noderange> [-V] { all | [savingstatus] [dsavingstatus] 
 [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] 
 [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] 
-[syssbpower] [sysIPLtime] } }
+[syssbpower] [sysIPLtime] }
 
-B<renergy> I<noderange> [-V] { {savingstatus}={on | off} 
-| {dsavingstatus}={on-norm | on-maxp | off} 
-| {cappingstatus}={on | off} | {cappingwatt}=watt 
-| {cappingperc}=percentage }
+B<renergy> I<noderange> [-V] { savingstatus={on | off} 
+| dsavingstatus={on-norm | on-maxp | off} 
+| cappingstatus={on | off} | cappingwatt=watt 
+| cappingperc=percentage }
 
 =back
 
-B<Blade specific :>
+B<BladeCenter specific :>
 
 =over 2
 
-B<For node of blade management module:>
+B<For Management Modules as the target:>
 
 =over 4
 
-B<renergy> I<noderange> [-V] { all | pd1all | pd2all | { [pd1status] 
+B<renergy> I<noderange> [-V] { all | pd1all | pd2all | [pd1status] 
 [pd2status] [pd1policy] [pd2policy] [pd1powermodule1] 
 [pd1powermodule2] [pd2powermodule1] [pd2powermodule2] 
 [pd1avaiablepower] [pd2avaiablepower] [pd1reservedpower] 
 [pd2reservedpower] [pd1remainpower] [pd2remainpower] 
 [pd1inusedpower] [pd2inusedpower] [availableDC] [averageAC] 
-[thermaloutput] [ambienttemp] [mmtemp] } } 
+[thermaloutput] [ambienttemp] [mmtemp] } 
 
 =back
 
-B<For node of blade server:>
+B<For a blades as the target:>
 
 =over 4
 
-B<renergy> I<noderange> [-V] { all | { [averageDC]  
+B<renergy> I<noderange> [-V] { all | [averageDC]  
 [capability] [cappingvalue] [CPUspeed] [maxCPUspeed] 
-[savingstatus] [dsavingstatus] } }
+[savingstatus] [dsavingstatus] }
 
-B<renergy> I<noderange> [-V] { {savingstatus}={on | off} 
- | {dsavingstatus}={on-norm | on-maxp | off} }
+B<renergy> I<noderange> [-V] { savingstatus={on | off} 
+ | dsavingstatus={on-norm | on-maxp | off} }
 
 =back
+
+=back
+
+B<iDataPlex specific :>
+
+=over 2
+
+B<renergy> I<noderange> [-V] [ { cappingmaxmin | cappingmax | cappingmin } ]
+[cappingstatus] [cappingvalue] [relhistogram]
+
+B<renergy> I<noderange> [-V] { cappingstatus={on | enable | off | disable}
+| {cappingwatt|cappingvalue}=watt }
 
 =back
 
@@ -77,17 +87,17 @@ B<renergy> I<noderange> [-V] { {savingstatus}={on | off}
 
 This B<renergy> command can be used to manage the energy consumption of
 IBM servers which support IBM EnergyScale technology. Through this command, 
-user can query and set the power saving and power capping status, also can 
+user can query and set the power saving and power capping status, and also can 
 query the average consumed energy, the ambient and exhaust temperature, 
 the processor frequency for a server.
 
-B<renergy> command supports IBM POWER6 and POWER7 rack-mounted servers 
-(system P CEC node),  blade management module node, blade server node. 
-For rack-mounted servers, following specific hardware types are supported:
+B<renergy> command supports IBM POWER6 and POWER7 rack-mounted servers,
+BladeCenter management modules, blade servers, and iDataPlex servers. 
+For system p rack-mounted servers, the following specific hardware types are supported:
 I<8203-E4A>, I<8204-E8A>, I<9125-F2A>, I<8233-E8B>, I<8236-E8C>.
 
-The parameter I<noderange> needs to be specified for B<renergy> command to 
-get the target server. The I<noderange> should be a list of CEC node names, blade 
+The parameter I<noderange> needs to be specified for the B<renergy> command to 
+get the target servers. The I<noderange> should be a list of CEC node names, blade 
 management module node names or blade server node names. Lpar name
 is not acceptable here.
 
@@ -98,10 +108,10 @@ gets and displays the current value. Otherwise, if specifying the attribute with
 
 The attributes listed in the B<SYNOPSIS> section are which ones can be handled by 
 B<renergy> command. But for each specific type of server, there are some attributes that
-are not supported. If user specifies an attribute which does not be supported by certain
+are not supported. If user specifies an attribute which is not supported by a specific
 server, the return value of this attribute will be 'na'.
 
-The supported attributes for each specific hardware types are listed as follow:
+The supported attributes for each specific system p hardware type is listed as follows:
 
 =over 2
 
@@ -154,17 +164,19 @@ For system P CEC nodes, each query operation for attribute CPUspeed, averageAC
 or averageDC needs about 30 seconds to complete. The query for others attributes
 will get response immediately.
 
+=head1 B<PREREQUISITES>
 
-=head1 B<PREREQUISITE>
-
-For the system P CEC nodes, B<renergy> command depends 
-on the Energy Management Plugin for xCAT B<xCAT-cimclient> to 
-communicate with server. Then, before running the B<renergy> command, to
-check whether the B<xCAT-cimclient> package has been installed. 
-
-B<xCAT-cimclient> can be downloaded from IBM web site: 
+For the system p nodes, the B<renergy> command depends 
+on the Energy Management Plugin B<xCAT-energy> to 
+communicate with server.  B<xCAT-energy> can be downloaded from the IBM web site: 
 http://www14.software.ibm.com/webapp/set2/sas/f/xcat/energy.html
 
+For iDataPlex nodes, the B<renergy> command depends 
+on the Energy Management Plugin B<perl-IBM-EnergyManager> to 
+communicate with server.  This plugin must be requested from IBM.
+
+(The support for BladeCenter energy management is built into base xCAT,
+so no additional plugins are needed for BladeCenter.)
 
 =head1 B<OPTIONS>
 
@@ -394,6 +406,10 @@ Query the remaining power available in power domain 2.
 
 Query the total power being used in power domain 2.
 
+=item B<relhistogram>
+
+Query histogram data for wattage information
+
 =item B<savingstatus>
 
 Query the static power saving status. The result should be 
@@ -429,13 +445,11 @@ center chassis.
 
 =back
 
-
 =head1 B<RETURN VALUE>
 
 0 The command completed successfully.
 
 1 An error has occurred.
-
 
 =head1 B<EXAMPLES>
 
@@ -571,7 +585,7 @@ The output of the setting operation:
 
 =item 1
 
-The more information of 'Power System Energy Management':
+For more information on 'Power System Energy Management':
 
     http://www-03.ibm.com/systems/power/software/energy/index.html
 
