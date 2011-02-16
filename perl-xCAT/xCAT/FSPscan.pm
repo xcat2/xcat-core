@@ -113,7 +113,7 @@ sub enumerate {
                 push @values, $data;
                 next;
             }
-	    if($data !~ "Connected") {
+	    if($data !~ "Connected" && $data !~ "LINE UP" ) {
 	        $data = "please check if the $node_name is coneected to the hardware server";
 		#push @output, [$node_name,$data,$Rc];
                 push @values, $data;
@@ -160,13 +160,13 @@ sub enumerate {
 	    foreach my $lpar (@list) {
 	         $lpar =~ /lparname:\s+(\w+),\s+lparid:\s+(\d+),\s+state:/;
 		 my $name = $1;
-		 $name =~ s/\-//g;
-		 $name =~ tr/A-Z/a-z/;
 		 my $lparid = $2;
                  my $prof = $1; 
 		 my $server = $fsp;
                  my $ips  = "";
           	 my $port = "";
+		 $name =~ s/\-//g;
+		 $name =~ tr/A-Z/a-z/;
                  	
                  #####################################
                  # Save LPAR information

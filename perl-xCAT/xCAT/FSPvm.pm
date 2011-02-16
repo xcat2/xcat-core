@@ -193,7 +193,7 @@ sub mkvm_parse_args {
     
     }
     
-    $opt{target} = @{$request->{node}};
+    $opt{target} = $request->{node};
 
     ####################################
     # No operands - add command name 
@@ -1389,7 +1389,7 @@ sub create {
     my $profile;
     my $starting_lpar_id = $opt->{i};
     my $octant_conf_value = $opt->{o};
-    my $node_number       =$opt->{target}; 
+    my $node_number       =@{$opt->{target}}; 
     #####################################
     # Get source node information
     #####################################
