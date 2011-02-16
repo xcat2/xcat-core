@@ -3948,6 +3948,10 @@ sub cpNetbootImages {
             }
 
             if (! -d $destDir) {
+                if ( -e $destDir ) {
+                    xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents to $destDir, it exists but is not currently a directory"], $output_handler);
+                    return;
+                }
                 mkpath($destDir);
             }
             
