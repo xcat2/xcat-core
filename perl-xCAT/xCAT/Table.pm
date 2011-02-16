@@ -453,6 +453,10 @@ sub buildcreatestmt
             # will have already put in NOT NULL, if DB2 and a key
             if (!($xcatcfg =~ /^DB2:/)){   # not a db2 key
               $retv .= " NOT NULL";
+            } else { # is DB2
+	      if (!(isAKey(\@{$descr->{keys}}, $col))) {   # not a key
+                 $retv .= " NOT NULL";
+              } 
             }
         }
         $retv .= ",\n  ";
