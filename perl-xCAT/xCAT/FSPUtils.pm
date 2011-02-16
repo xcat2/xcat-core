@@ -383,7 +383,7 @@ sub fsp_api_create_parttion {
     $starting_octant_id = int($starting_lpar_id/4);
 
     print "$octant_num_needed\n";
-    if(7 - $starting_octant_id < $octant_num_needed ) {
+    if(8 - $starting_octant_id < $octant_num_needed ) {
         $res =  "starting LPAR id is $starting_lpar_id, starting octant id is $starting_octant_id, octant configuration values is $octant_conf_value. Wrong plan.\n";
         return ([$fsp_name, $res, -1]);  
     }
@@ -394,8 +394,8 @@ sub fsp_api_create_parttion {
     my $new_pending_interleave_mode = 2;
     my $i = 0;
     for($i = 0; $i < $octant_num_needed; $i++  ) {
-        $octant_id += $i;
-	$parameters = $parameters.":$octant_id:$octant_conf_value:$new_pending_interleave_mode";
+	    $parameters = $parameters.":$octant_id:$octant_conf_value:$new_pending_interleave_mode";
+        $octant_id ++;
     }
 
     my $cmd;
