@@ -1171,7 +1171,7 @@ sub setupODBC
     if ($::RUNCMD_RC != 0)
     {
         my $message =
-          "\nunixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs.";
+          "\nunixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs. If RHEL6 and ppc is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc should be installed. ";
         xCAT::MsgUtils->message("E", " $cmd failed. $message");
         exit(1);
     }
@@ -1215,9 +1215,9 @@ sub setupODBC
     # The unixODBC Driver Manager loads the DB2 Driver dynamically
     # so the shared object must be extracted from the driver
     #if it does not already exist
-    if (!(-e "/var/lib/db2/sqllib/lib/libdb2.so"))
+    if  ($::osname eq 'AIX')
     {
-        if (($::linuxos =~ /rh.*/) || ($::osname eq 'AIX'))
+        if (!(-e "/var/lib/db2/sqllib/lib/libdb2.so"))
         {
             $cmd = "ar -x /var/lib/db2/sqllib/lib/libdb2.a";
             @rpmoutput = xCAT::Utils->runcmd($cmd, 0);
@@ -1236,12 +1236,6 @@ sub setupODBC
                 exit(1);
             }
         }
-        else
-        {    #sles  TBD
-            xCAT::MsgUtils->message("E",
-                                    " SLES ODBC support not implemented yet");
-            exit(1);
-        }
     }
 
     if (($::linuxos =~ /rh.*/) || ($::osname eq 'AIX'))
@@ -1258,25 +1252,42 @@ sub setupODBC
     }
 
     # setup the odbcinst.ini file
-    my $sharedlib;
+    my $sharedlibaix;
+    my $sharedlib32;
+    my $sharedlib64;
     if ($::osname eq 'AIX') {
-        $sharedlib = "/var/lib/db2/sqllib/lib/libdb2.so";
+        $sharedlibaix = "/var/lib/db2/sqllib/lib/libdb2.so";
     } else {
-        $sharedlib="/var/lib/db2/sqllib/lib/libdb2o.so";
+        $sharedlib32="/var/lib/db2/sqllib/lib32/libdb2.so";
+        $sharedlib64="/var/lib/db2/sqllib/lib/libdb2o.so";
     }
     $cmd = "fgrep -i  DB2 $odbcinstfile ";
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)    # then DB2 entry not there
     {
-        my $entry =
-          "[DB2]\nDescription = ODBC for DB2\nDriver      = $sharedlib";
-        $cmd = "echo \"$entry\" >> $odbcinstfile";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            $message = "$cmd failed. Could not setup ODBC.";
-            xCAT::MsgUtils->message("E", "$message");
-            exit(1);
+        my $entry;
+        if ($::osname eq 'AIX') {
+          $entry =
+          "[DB2]\nDescription =  DB2 Driver\nDriver   = $sharedlibaix";
+          $cmd = "echo \"$entry\" >> $odbcinstfile";
+          xCAT::Utils->runcmd($cmd, 0);
+          if ($::RUNCMD_RC != 0)
+          {
+             $message = "$cmd failed. Could not setup ODBC.";
+             xCAT::MsgUtils->message("E", "$message");
+             exit(1);
+          }
+        } else { #RHEL
+          $entry =
+          "[DB2]\nDescription =  DB2 Driver\nDriver   = $sharedlib32\nDriver64 = $sharedlib64";
+          $cmd = "echo \"$entry\" >> $odbcinstfile";
+          xCAT::Utils->runcmd($cmd, 0);
+          if ($::RUNCMD_RC != 0)
+          {
+             $message = "$cmd failed. Could not setup ODBC.";
+             xCAT::MsgUtils->message("E", "$message");
+             exit(1);
+          }
         }
         $entry = "FileUsage = 1";
         $cmd   = "echo \"$entry\" >> $odbcinstfile";
@@ -1335,104 +1346,47 @@ sub setupODBC
         xCAT::MsgUtils->message("I", "$message");
     }
 
-    # setup $roothome/.odbc.ini so root will not have to specify password
+    # setup $roothome/db2cli.ini so root will not have to specify password
     # when accessing through ODBC
+    # setup /var/lib/db2/sqllib/cfg/db2cli.ini
 
-    my $rootodbcfile = $homedir;
-    if ($::osname eq "AIX")
+    my $db2clifile       = "/var/lib/db2/sqllib/cfg/db2cli.ini";
+    $cmd = "db2 update cli cfg for section $instance using uid $instance"; 
+    my $rc  = &rundb2cmd($cmd);
+    if ($rc != 0)
     {
-        $rootodbcfile .= ".odbc.ini";
+      xCAT::MsgUtils->message("SI", " $cmd warning.");
     }
-    else
+    $cmd = "db2 update cli cfg for section $instance using pwd $passwd"; 
+    $rc  = &rundb2cmd($cmd);
+    if ($rc != 0)
     {
-        $rootodbcfile .= "/.odbc.ini";
+      xCAT::MsgUtils->message("SI", " $cmd warning.");
     }
-
-    # setup the DSN odbc.ini file
-    $cmd = "fgrep -i  XCATDB $rootodbcfile";
-    xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)    # then xcat entry not there
+    $cmd = "chown xcatdb $db2clifile";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
     {
-        my $entry =
-          "[$instance]\nDATABASE = $database\nUSER     = $instance\nPASSWORD = $passwd";
-        $cmd = "echo \"$entry\" >> $rootodbcfile";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            $message = "$cmd failed. Could not setup $rootodbcfile.";
-            xCAT::MsgUtils->message("E", "$message");
-            exit(1);
-
-        }
+        xCAT::MsgUtils->message("E", " $cmd failed.");
     }
-    else
-    {    # entry already there
-        $message = "$rootodbcfile already configured, will not change. Check to see if rootid and password are correct for DB2";
-        xCAT::MsgUtils->message("I", "$message");
-    }
-
-    # allow readonly by root
-    chmod 0600, $rootodbcfile;
-
-    # if on the client, must setup /var/lib/db2/sqllib/cfg/db2cli.ini
-    # this is a db2 support bug workaround
-
-    if ($::CLIENT)
+    $cmd = "chmod 0600 $db2clifile";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
     {
-        my $db2clifile       = "/var/lib/db2/sqllib/cfg/db2cli.ini";
-        my $db2clifilebackup = "/var/lib/db2/sqllib/cfg/db2cli.ini.org";
-        if (-e ( $db2clifile)) {
-          $cmd = "fgrep -i  XCATDB $db2clifile";
-          xCAT::Utils->runcmd($cmd, -1);
-          if ($::RUNCMD_RC != 0)    # then xcat entry not there
-          {
-             $cmd = "cp $db2clifile $db2clifilebackup ";
-             xCAT::Utils->runcmd($cmd, 0);
-             if ($::RUNCMD_RC != 0)
-             {
-                $message = "$cmd failed. Could not setup ODBC.";
-                xCAT::MsgUtils->message("SE", "$message");
-                exit(1);
-
-             }
-             my $entry = "\n[$instance]\nuid=$instance\npwd=$passwd";
-             $cmd = "echo \"$entry\" >> $db2clifile";
-             xCAT::Utils->runcmd($cmd, 0);
-             if ($::RUNCMD_RC != 0)
-             {
-                 $message = "$cmd failed. Could not setup $db2clifile.";
-                 xCAT::MsgUtils->message("SE", "$message");
-
-             }
-         }
-         else
-         {    # entry already there
-             $message = "$db2clifile  already configured, will not change.";
-             xCAT::MsgUtils->message("I", "$message");
-         }
-        } else { # file does not exist
-             my $entry = "[$instance]\nuid=$instance\npwd=$passwd";
-             $cmd = "echo \"$entry\" > $db2clifile";
-             xCAT::Utils->runcmd($cmd, 0);
-             if ($::RUNCMD_RC != 0)
-             {
-                 $message = "$cmd failed. Could not setup $db2clifile.";
-                 xCAT::MsgUtils->message("SE", "$message");
-
-             }
-            $cmd = "chown xcatdb $db2clifile";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
-            }
-            $cmd = "chmod 0600 $db2clifile";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message("E", " $cmd failed.");
-            }
-        }
+       xCAT::MsgUtils->message("E", " $cmd failed.");
+    }
+    my $path= $homedir .= "\/db2cli.ini"; # copy to roots home directory
+    $cmd = "cp $db2clifile $path ";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+       xCAT::MsgUtils->message("E", " $cmd failed.");
+    }
+    $cmd = "chmod 0600 $path";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+       xCAT::MsgUtils->message("E", " $cmd failed.");
     }
 }
 
