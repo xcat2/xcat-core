@@ -152,14 +152,13 @@ sub addnode6 {
     #omshell to add host dynamically
     my $node = shift;
     unless ($vpdhash) { 
-        $callback->({error => ["Unable to open vpd table, it may not exist yet"], errorcode => [1] });
+        $callback->({node=>{name=>[$node],warning => ["Skipping DHCPv6 setup due to missing vpd.uuid information."]}});
         return;
     }
     my $ent = $vpdhash->{$node}->[0]; #tab->getNodeAttribs($node, [qw(mac)]);
     unless ($ent and $ent->{uuid})
     {
-    print Dumper($vpdhash);
-        $callback->( { error     => ["Unable to find UUID for $node"], errorcode => [1] });
+        $callback->({node=>{name=>[$node],warning => ["Skipping DHCPv6 setup due to missing vpd.uuid information."]}});
         return;
     }
     #phase 1, dynamic and static addresses, hopefully ddns-hostname works, may be tricky to do 'send hostname'

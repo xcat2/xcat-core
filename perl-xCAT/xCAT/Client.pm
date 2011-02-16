@@ -967,6 +967,10 @@ sub handle_response {
          $desc.=": Error: ".$node->{error}->[0];
 		 $errflg=1;
       }
+      if ($node->{warning}) {
+         $desc.=": Warning: ".$node->{warning}->[0];
+		 $errflg=1;
+      }
       if ($node->{data}) {
          if (ref(\($node->{data}->[0])) eq 'SCALAR') {
             $desc=$desc.": ".$node->{data}->[0];
