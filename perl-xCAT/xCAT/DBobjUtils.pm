@@ -2045,6 +2045,7 @@ sub parse_access_tabentry()
 
 =head3   getchildren
     returns fsp(or bpa) of the specified cec(or frame),
+            if specified port, it will just return nodes within the port.
     Arguments:
         none
     Returns:
@@ -2063,11 +2064,13 @@ sub parse_access_tabentry()
 sub getchildren
 {
     my $parent = shift;
+    my $port   = shift;
     if (($parent) && ($parent =~ /xCAT::/))
     {
         $parent = shift;
     }
     my @children = ();
+    my @children_prot = ();
     if (!%::PARENT_CHILDREN) {
         my $ppctab  = xCAT::Table->new( 'ppc' );
         my @ps = $ppctab->getAllNodeAttribs(['node','parent']);
@@ -2092,7 +2095,22 @@ sub getchildren
             }
         }
     }
-    return \@children;
+    unless ( $port )
+    {
+        return \@children;
+    } else
+    {
+        my $vpdtab = xCAT::Table->new( 'vpd' );
+        my $sides = $vpdtab->getNodesAttribs(\@children, ['side']);
+        for my $n (@children)
+        {
+            if ($sides->{$n}->{side} =~ /$port/)
+            {
+                push @children_prot, $n;
+            }
+        }
+        return \@children_prot;
+    }
 }
 #-------------------------------------------------------------------------------
 
