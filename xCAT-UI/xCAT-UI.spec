@@ -2,24 +2,23 @@ Summary: Web Client for xCAT 2
 Name: xCAT-UI
 Version: %(cat Version)
 Release: snap%(date +"%Y%m%d%H%M")
-Epoch: 4
-
 License: EPL
 Group: Applications/System
-Source: xCAT-UI-%(cat Version).tar.gz
-Packager: IBM Corp.
-Vendor: IBM Corp.
-URL: http://xcat.org
-Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
-Prefix: /opt/xcat
-BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
+URL: http://xcat.sourceforge.net/
+Packager: IBM
+Vendor: IBM
 
+Source: xCAT-UI-%(cat Version).tar.gz
+BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 BuildArch: noarch
 Provides: xCAT-UI = %{version}
 Requires: xCAT-UI-deps >= 2.6
 
+Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
+Prefix: /opt/xcat
+
 %ifos linux
-# httpd is provided by apache2 on SLES and httpd on RHEL
+# httpd is provided as apache2 on SLES and httpd on RHEL
 Requires: httpd
 %endif
 
@@ -28,13 +27,11 @@ Provides a browser-based interface for xCAT (Extreme Cloud Administration Toolki
 
 %prep
 %setup -q -n xCAT-UI
+
 %build
 %install
-
 rm -rf $RPM_BUILD_ROOT
-
 mkdir -p $RPM_BUILD_ROOT%{prefix}/ui
-
 set +x
 cp -r * $RPM_BUILD_ROOT%{prefix}/ui
 chmod 755 $RPM_BUILD_ROOT%{prefix}/ui/*
@@ -106,7 +103,7 @@ then
   true
 fi
 
-%else # AIX
+%else	# AIX
 ihs_config_dir='/usr/IBM/HTTPServer/conf'
 if [ "$1" = 1 ] #initial install
 then
