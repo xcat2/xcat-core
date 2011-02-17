@@ -237,7 +237,7 @@ ProcessType () {
 	
 	# every type has to have a base dir in tmpfs
 	if [ ! -d ${TMPFS}${PPATH} ] && [ ! -L ${TMPFS}${PPATH} ]; then
-		mkdir -p ${TMPFS}${PPATH}
+		/bin/mkdir -p ${TMPFS}${PPATH}
 		echo "mkdir -p ${TMPFS}${PPATH}" >>$LOG
 	fi	
 	
