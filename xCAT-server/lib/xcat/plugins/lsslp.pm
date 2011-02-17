@@ -2700,7 +2700,13 @@ sub format_stanza {
             } elsif ( /^groups$/ ) {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
-                $d = $mgt{$type};
+                if ($mgt{$type} =~ /^cec$/)  {
+                    $d = "fsp";
+                }elsif ($mgt{$type} =~ /^frame$/)  {
+                    $d = "bpa";                
+                }else {
+                    $d = $mgt{$type};
+                }
             } elsif ( /^id$/ ) {
                 if ( $type =~ /^(fsp|bpa|cec|frame)$/ ) {
                     $d = $data[$i++];
