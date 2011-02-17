@@ -486,10 +486,10 @@ function deleteRow(obj) {
 /**
  * Count the number of occurrences of a specific character in a string
  * 
- * @param char
+ * @param c
  *            Character to count
  * @return The number of occurrences
  */
-String.prototype.count = function(char) {
-	return (this.length - this.replace(new RegExp(char, "g"), '').length)/char.length;
+String.prototype.count = function(c) {
+	return (this.length - this.replace(new RegExp(c, 'g'), '').length)/c.length;
 };
