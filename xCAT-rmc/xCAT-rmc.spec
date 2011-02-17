@@ -85,7 +85,12 @@ rm -rf $RPM_BUILD_ROOT
 %else
   #restart the xcatd on if xCAT or xCATsn is installed already
   if [ -f $RPM_INSTALL_PREFIX0/sbin/xcatd  ]; then
-    XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd -r
+    if [ -n "$INUCLIENTS" ] && [ $INUCLIENTS -eq 1 ]; then
+      #Do nothing in not running system
+      echo "Do not restartxcatd in not running system"
+    else
+      XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd -r
+    fi     
   fi
 %endif
 exit 0
