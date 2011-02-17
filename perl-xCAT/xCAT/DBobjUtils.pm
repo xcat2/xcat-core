@@ -2064,11 +2064,11 @@ sub parse_access_tabentry()
 sub getchildren
 {
     my $parent = shift;
-    my $port   = shift;
     if (($parent) && ($parent =~ /xCAT::/))
     {
         $parent = shift;
     }
+    my $port   = shift;
     my @children = ();
     my @children_prot = ();
     if (!%::PARENT_CHILDREN) {
@@ -2259,5 +2259,65 @@ sub getcecchildren
         }
     }
     return undef;
+}
+#-------------------------------------------------------------------------------
+
+=head3   judge_node
+    judge the node is a real FSP/BPA, 
+    use to distinguish if the data is defined in xCAT 2.5 or later
+    Arguments:
+        node name
+    Returns:
+        0  is a fake FSP/BPA,defined in xCAT 2.5
+        1  is a real FSP/BPA,defined in xCAT 2.6 or later
+    Error:
+        none
+    Example:
+         $result = judge_node($nodetocheck);
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub judge_node
+{
+    my $node = shift;
+    if (($node) && ($node =~ /xCAT::/))
+    {
+        $node = shift;
+    }    
+    my $type = shift;
+    my $flag = 0;
+    my $parenttype;
+    my $nodeparent;
+    my $ppctab  = xCAT::Table->new( 'ppc' );    
+    if ( $ppctab ) {
+        $nodeparent = $ppctab->getNodeAttribs($node, ["parent"]);
+        if ($nodeparent and $nodeparent->{parent}) {
+            $parenttype = getnodetype($nodeparent->{parent});
+        }
+    }
+    
+    if ($type =~ /^fsp$/) {
+        if ($nodeparent->{parent} =~ /^cec$/)
+        {
+            $flag = 1;
+        } else
+        {
+            $flag = 0;
+        }
+    }
+    
+    if ($type =~ /^bpa$/) {
+        if ($nodeparent->{parent} =~ /^frame$/)
+        {
+            $flag = 1;
+        } else
+        {
+            $flag = 0;
+        }
+    }        
+      
+    return $flag;            
 }
 1;
