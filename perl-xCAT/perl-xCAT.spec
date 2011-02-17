@@ -104,6 +104,7 @@ fi
 if [ "$1" -gt 1 ]; then #Ugrade only, restart daemon and migrate settings
   if [ -n "$INUCLIENTS" ] && [ $INUCLIENTS -eq 1 ]; then
     #Do nothing in not running system
+    echo "Do not restartxcatd in not running system"
   else
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd -r
   fi 
