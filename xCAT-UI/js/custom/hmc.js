@@ -119,32 +119,36 @@ hmcPlugin.prototype.loadClonePage = function(node) {
  */
 hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	// Get OS image names
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'tabdump',
-			tgt : '',
-			args : 'osimage',
-			msg : ''
-		},
+	if (!$.cookie('imagenames')){
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'tabdump',
+				tgt : '',
+				args : 'osimage',
+				msg : ''
+			},
 
-		success : setOSImageCookies
-	});
+			success : setOSImageCookies
+		});
+	}
 
 	// Get groups
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'extnoderange',
-			tgt : '/.*',
-			args : 'subgroups',
-			msg : ''
-		},
+	if (!$.cookie('groups')){
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'extnoderange',
+				tgt : '/.*',
+				args : 'subgroups',
+				msg : ''
+			},
 
-		success : setGroupsCookies
-	});
+			success : setGroupsCookies
+		});
+	}
 
 	// Get provision tab instance
 	var inst = tabId.replace('hmcProvisionTab', '');
@@ -169,44 +173,43 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	$('#' + tabId).append(provForm);
 
 	// Create provision type drop down
-	var provType = $('<div></div>');
-	var typeLabel = $('<label>Provision:</label>');
-	var typeSelect = $('<select></select>');
-	var provNewNode = $('<option value="new">New node</option>');
-	var provExistNode = $('<option value="existing">Existing node</option>');
-	typeSelect.append(provNewNode);
-	typeSelect.append(provExistNode);
-	provType.append(typeLabel);
-	provType.append(typeSelect);
-	provForm.append(provType);
+	provForm.append('<div><label>Provision:</label><select><option value="existing">Existing node</option></select></div>');
 
 	/**
 	 * Create provision new node division
 	 */
 	// You should copy whatever is in this function, put it here, and customize it
-	var provNew = createProvisionNew('hmc', inst);
-	provForm.append(provNew);
+	//var provNew = createProvisionNew('hmc', inst);
+	//provForm.append(provNew);
 
 	/**
 	 * Create provision existing node division
 	 */
 	// You should copy whatever is in this function, put it here, and customize it
-	var provExisting = createProvisionExisting('hmc', inst);
-	provForm.append(provExisting);
+	provForm.append(createHmcProvisionExisting(inst));
 
-	// Toggle provision new/existing on select
-	typeSelect.change(function() {
-		var selected = $(this).val();
-		if (selected == 'new') {
-			provNew.toggle();
-			provExisting.toggle();
-		} else {
-			provNew.toggle();
-			provExisting.toggle();
-		}
+	var hmcProvisionBtn = createButton('Provision');
+	hmcProvisionBtn.bind('click', function(event) {
+		//TODO Insert provision code here
+		openDialog('info', 'Under construction');
 	});
+	provForm.append(hmcProvisionBtn);
+	
+	// update the node table on group select 
+	provForm.find('#groupname').bind('change', function(){
+		var groupName = $(this).val();
+		var nodeArea = $('#hmcSelectNodesTable' + inst);
+		nodeArea.empty();
+		if (!groupName){
+			nodeArea.html('Select a group to view its nodes');
+			return;
+		}
+		
+		nodeArea.append(createLoader());
+		createNodesArea(groupName, 'hmcSelectNodesTable'+ inst);
+	});
+	// Toggle provision new/existing on select
 };
-
 /**
  * Load resources
  * 
@@ -236,3 +239,136 @@ hmcPlugin.prototype.loadResources = function() {
 hmcPlugin.prototype.addNode = function() {
 	openDialog('info', 'Under construction');
 };
+
+/**
+ * Create hmc provision existing form
+ * 
+ * @return: form content
+ */
+function createHmcProvisionExisting(inst){
+	//create the group area.
+	var strGroup = '<div><label>Group:</label>';
+	var groupNames = $.cookie('groups');
+	if (groupNames){
+		strGroup += '<select id="groupname"><option></option>';
+		var temp = groupNames.split(',');
+		for (var i in temp){
+			strGroup += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
+		}
+		strGroup += '</select>';
+	}
+	else{
+		strGroup += '<input type="text" id="groupname">';
+	}
+	strGroup += '</div>';
+	
+	//create nodes area
+	var strNodes = '<div><label>Nodes:</label><div id="hmcSelectNodesTable' + inst + 
+				  '" style="display:inline-block;width:700px;overflow-y:auto;">Select a group to view its nodes</div></div>';
+	
+	//create boot method
+	var strBoot = '<div><label>Boot Method:</label><select id="boot">' + 
+				'<option value="install">install</option>' + 
+				'<option value="netboot">netboot</option>' +
+				'<option value="statelite">statelite</option></select></div>';
+	
+	// Create operating system
+	var strOs = '<div><label>Operating system:</label>';
+	var osName = $.cookie('osvers');
+	if (osName){
+		strOs += '<select id="osname">';
+		var temp = osName.split(',');
+		for (var i in temp){
+			strOs += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
+		}
+		strOs += '</select>';
+	}
+	else{
+		strOs += '<input type="text" id="osname">';
+	}
+	strOs += '</div>';
+	
+	//create architecture
+	var strArch = '<div><label>Architecture:</label>';
+	var archName = $.cookie('osarchs');
+	if ('' != archName){
+		strArch += '<select id="arch">';
+		var temp = archName.split(',');
+		for (var i in temp){
+			strArch += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
+		}
+		strArch += '</select>';
+	}
+	else{
+		strArch += '<input type="text" id="arch">';
+	}
+	strArch += '</div>';
+	
+	//create profile 
+	var strPro = '<div><label>Profile:</label>';
+	var proName = $.cookie('profiles');
+	if ('' != proName){
+		strPro += '<select id="pro">';
+		var temp = proName.split(',');
+		for (var i in temp){
+			strPro += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
+		}
+		strPro += '</select>';
+	}
+	else{
+		strPro += '<input type="text" id="pro">';
+	}
+	strPro += '</div>';
+	
+	var strRet = strGroup + strNodes + strBoot + strOs + strArch + strPro;
+	return strRet;
+}
+
+/**
+ * refresh the nodes area base on group selected
+ * 
+ * @return Nothing
+ */
+function createNodesArea(groupName, areaId){
+	// Get group nodes
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'nodels',
+			tgt : groupName,
+			args : '',
+			msg : areaId
+		},
+
+		/**
+		 * Create nodes datatable
+		 * 
+		 * @param data
+		 *            Data returned from HTTP request
+		 * @return Nothing
+		 */
+		success : function(data) {
+			var areaObj = $('#' + data.msg);
+			var nodes = data.rsp;
+			var index;
+			var showStr = '<table><thead><tr><th><input type="checkbox" onclick="selectAllCheckbox(event, $(this))"></th>';
+			showStr += '<th>Node</th></tr></thead><tbody>';
+			for (index in nodes){
+				var node = nodes[index][0];
+				if ('' == node){
+					continue;
+				}
+				showStr += '<tr><td><input type="checkbox" name="' + node + '"/></td><td>' + node + '</td></tr>';
+			}
+			showStr += '</tbody></table>';
+			areaObj.empty().append(showStr);
+			if (index > 10){
+				areaObj.css('height', '300px');
+			}
+			else{
+				areaObj.css('height', 'auto');
+			}
+		} // End of function(data)
+	});
+}

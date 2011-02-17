@@ -41,7 +41,7 @@ function createNodesDatatable(group, outId) {
     		var headers = new Object();
     
     		// Clear nodes datatable division
-    		$('#' + outId).children().remove();
+    		$('#' + outId).empty();
     
     		// Create nodes datatable
     		var node, args;

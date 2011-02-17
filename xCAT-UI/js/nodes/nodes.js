@@ -2166,9 +2166,9 @@ function findRow(str, table, col){
 function selectAllCheckbox(event, obj) {
 	// Get datatable ID
 	// This will ascend from <input> <td> <tr> <thead> <table>
-	var tableId = obj.parent().parent().parent().parent().attr('id');
+	var tableObj = obj.parent().parent().parent().parent();
 	var status = obj.attr('checked');
-	$('#' + tableId + ' :checkbox').attr('checked', status);
+	tableObj.find(' :checkbox').attr('checked', status);
 	event.stopPropagation();
 }
 
