@@ -8,7 +8,7 @@ I<liteimg [-h| --help]>
 
 I<liteimg  [-v| --version]>
 
-I<liteimg [-o OS] [ -p profile] [-a architecture]>
+I<liteimg [-o OS] [ -p profile] [-a architecture] [-t rootfstype]>
 
 I<liteimg imagename>
 
@@ -45,6 +45,7 @@ Note: If you make any changes to your litefile table after running liteimg then 
 
 I<imagename> specifies the name of a os image definition to be used. The specification for the image is storted in the I<osimage> table and I<linuximage> table.
 
+
 =head1 OPTIONS
 
 
@@ -57,6 +58,8 @@ B<-o>          Operating system (fedora8, rhel5, sles10,etc)
 B<-p>          Profile (compute,service)
 
 B<-a>          Architecture (ppc64,x86_64,etc)
+
+B<-t>          The type of rootfs for the image (nfs, ramdisk). It is optional, nfs is used to be the rootfs type when B<-t> is not specified.
 
 
 =head1 RETURN VALUE
