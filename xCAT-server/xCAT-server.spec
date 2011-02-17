@@ -198,7 +198,11 @@ if [ "$1" -gt "1" ]; then #only on upgrade for AIX...
     #migration issue for monitoring
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/chtab filename=monitorctrl.pm notification -d 
 
+  if [ -n "$INUCLIENTS" ] && [ $INUCLIENTS -eq 1 ]; then
+    #Do nothing in not running system
+  else
     XCATROOT=$RPM_INSTALL_PREFIX0 $RPM_INSTALL_PREFIX0/sbin/restartxcatd -r
+  fi     
 fi  
 %endif
 exit 0
