@@ -321,7 +321,15 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     my $xcmd;
     if ($::osname eq 'AIX')
     {
-        $xcmd = "$::XCATROOT/sbin/restartxcatd";
+        if ($ENV{'INUCLIENTS'} == 1)
+        {
+            #Do nothing in not running system
+            
+        }
+        else
+        {
+            $xcmd = "$::XCATROOT/sbin/restartxcatd";
+        }
     }
     else
     {
