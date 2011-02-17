@@ -25,7 +25,7 @@ cmd:copycds $$ISO
 check:rc==0
 cmd:$$NETBOOTDIR/genimage -i __GETNODEATTR($$CN,installnic)__ -n $$NETDRIVER -o __GETNODEATTR($$CN,os)__ -p compute
 check:rc==0
-cmd:$$NETBOOTDIR/packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__
+cmd:packimage -o __GETNODEATTR($$CN,os)__ -p compute -a __GETNODEATTR($$CN,arch)__
 check:rc==0
 cmd:nodeset $$CN netboot
 check:rc==0
