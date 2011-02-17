@@ -538,7 +538,7 @@ sub format_stanza {
             if ( /^node$/ ) {
                 next;
             } elsif ( /^nodetype$/ ) {
-                $d = $nodetype{$d}; 
+                $d = $type;
             } elsif ( /^groups$/ ) {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
