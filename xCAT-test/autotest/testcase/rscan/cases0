@@ -3,7 +3,7 @@ hcp:hmc
 cmd:rscan __GETNODEATTR($$CN,hcp)__
 check:rc==0
 check:output=~lpar\s+\w+\s+\d+\s+\w{4}-\w{3}\s+\w{7}\s+[\w|-]+
-check:output=~fsp\s+[\w|-]+\s+\w{4}-\w{3}\s+\w{7}
+check:output=~cec\s+[\w|-]+\s+\w{4}-\w{3}\s+\w{7}
 check:output=~hmc\s+__GETNODEATTR($$CN,hcp)__\s+\w{4}-\w{3}\s+\w{7}
 end
 start:rscan_x
@@ -28,7 +28,7 @@ cmd:rmdef $$CN
 cmd:rscan __GETNODEATTR(testnode,hcp)__  -w
 check:rc==0
 check:output=~lpar\s+\w+\s+\d+\s+\w{4}-\w{3}\s+\w{7}\s+[\w|-]+
-check:output=~fsp\s+[\w|-]+\s+\w{4}-\w{3}\s+\w{7}
+check:output=~cec\s+[\w|-]+\s+\w{4}-\w{3}\s+\w{7}
 check:output=~hmc\s+__GETNODEATTR($$CN,hcp)__\s+\w{4}-\w{3}\s+\w{7}
 cmd:lsdef -l $$CN
 check:rc==0
