@@ -125,7 +125,7 @@ sub process_request
             my $rsp = {};
             $rsp->{data}->[0] = "Could not create $DBDir.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback, 1);
-            exit 1;
+            return 1;
         }
     }
 
@@ -448,7 +448,7 @@ sub process_request
     my $rsp = {};
     $rsp->{data}->[0] = "Setup of DNS complete.";
     xCAT::MsgUtils->message("I", $rsp, $callback);
-    exit 0;
+    return 0;
 }
 
 #

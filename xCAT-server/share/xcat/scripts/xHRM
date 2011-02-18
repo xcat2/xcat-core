@@ -1,131 +1,206 @@
 #!/bin/bash
 #written in bash for fewest prerequisites
 function get_def_interface {
-	#gethostbyname on `hostname` would be helpful, but since we
-	#are in bash, the best alternative is to use ping to get at it
-	#don't want to grep in /etc/hosts or presume DNS
-	#we are, however, presuming ipv4 for the moment
-	retval=$(ping -c 1 `hostname`|head -n 1|cut -d\( -f 2|cut -d\) -f 1)
-	if [ -z "$retval" -o "127.0.0.1" = "$retval" ]; then #ok, that didn't pan out, now we grab the first address that looks sane
-		retval=`ifconfig|grep inet" " |grep -v addr:127.0.0.1|grep -v 'addr:169.254'|head -n 1|cut -d: -f 2|cut -d' ' -f 1`
-	fi
-	if [ -z "$retval" ]; then 
-		echo "ERROR: Unable to reasonably guess the 'default' interface" >&2
-		exit 1
-	fi
-	iface=`ifconfig|grep -v inet6|egrep '(Link|inet)'|grep -B1 'addr:'$retval |head -n 1|awk '{print $1}'`
-	if [ -z "$iface" ]; then
-		echo "ERROR: Unable to reasonably guess the default interface" >&2
-		exit 1
-	fi
-	if brctl show | grep ^$iface >& /dev/null; then #
-		OIFS=$IFS
-		IFS=$'\n'
+    #gethostbyname on `hostname` would be helpful, but since we
+    #are in bash, the best alternative is to use ping to get at it
+    #don't want to grep in /etc/hosts or presume DNS
+    #we are, however, presuming ipv4 for the moment
+    retval=$(ping -c 1 `hostname`|head -n 1|cut -d\( -f 2|cut -d\) -f 1)
+    if [ -z "$retval" -o "127.0.0.1" = "$retval" ]; then #ok, that didn't pan out, now we grab the first address that looks sane
+	retval=`ifconfig|grep inet" " |grep -v addr:127.0.0.1|grep -v 'addr:169.254'|head -n 1|cut -d: -f 2|cut -d' ' -f 1`
+    fi
+    if [ -z "$retval" ]; then 
+	echo "ERROR: Unable to reasonably guess the 'default' interface" >&2
+	exit 1
+    fi
+    iface=`ifconfig|grep -v inet6|egrep '(Link|inet)'|grep -B1 'addr:'$retval |head -n 1|awk '{print $1}'`
+    if [ -z "$iface" ]; then
+	echo "ERROR: Unable to reasonably guess the default interface" >&2
+	exit 1
+    fi
+    if brctl show | grep ^$iface >& /dev/null; then #
+	OIFS=$IFS
+	IFS=$'\n'
+	INMATCH=0
+	for brline in $(brctl show); do
+	    if [ $(expr match "$brline" $iface) == $(expr length $iface) ]; then
+		INMATCH=1
+	    elif [ $(expr match "$brline" "	") != 1 ]; then
 		INMATCH=0
-		for brline in $(brctl show); do
-			if [ $(expr match "$brline" $iface) == $(expr length $iface) ]; then
-				INMATCH=1
-			elif [ $(expr match "$brline" "	") != 1 ]; then
-				INMATCH=0
-			fi
-			if [ "$INMATCH" == 1 ];  then
-				if ! ethtool -i `echo $brline|awk '{print $NF}'`|grep "driver: tun" >& /dev/null; then
-					iface=`echo $brline|awk '{print $NF}'`
-					echo "$iface"
-					IFS=$OFIS
-					return
-				fi
-			fi
-		done
-	else 
-		echo "$iface"
-	fi
+	    fi
+	    if [ "$INMATCH" == 1 ];  then
+		if ! ethtool -i `echo $brline|awk '{print $NF}'`|grep "driver: tun" >& /dev/null; then
+		    iface=`echo $brline|awk '{print $NF}'`
+		    echo "$iface"
+		    IFS=$OFIS
+		    return
+		fi
+	    fi
+	done
+    else 
+	echo "$iface"
+    fi
 }
 if [ "storageprereq" = "$1"  ]; then
-	MOUNTURI="$2"
-	DIRNAME=`echo $MOUNTURI|sed -e 's!nfs://!nfs_!'`
-	MOUNTPATH=`echo $DIRNAME|sed -e 's!nfs_!!'|sed -e 's!/!:/!'`
-	if mount|grep $MOUNTPATH > /dev/null; then
-		exit 0;
-	fi
-	mkdir -p /var/lib/xcat/vmnt/$DIRNAME
-	mount $MOUNTPATH /var/lib/xcat/vmnt/$DIRNAME
+    MOUNTURI="$2"
+    DIRNAME=`echo $MOUNTURI|sed -e 's!nfs://!nfs_!'`
+    MOUNTPATH=`echo $DIRNAME|sed -e 's!nfs_!!'|sed -e 's!/!:/!'`
+    if mount|grep $MOUNTPATH > /dev/null; then
+	exit 0;
+    fi
+    mkdir -p /var/lib/xcat/vmnt/$DIRNAME
+    mount $MOUNTPATH /var/lib/xcat/vmnt/$DIRNAME
 elif [ "bridgeprereq" = "$1" ]; then
-	NETDESC="$2"
-	if [ -z "$NETDESC" ]; then
-		echo "Incorrect usage"
-		exit 1
-	fi
-	if echo "$NETDESC"|grep ':'> /dev/null; then
-		PORTS=`echo "$NETDESC"|cut -d: -f 1`
-		BNAME=`echo "$NETDESC"|cut -d: -f 2`
-	else 
-		BNAME=$NETDESC
-	fi
-	if brctl showstp "$BNAME" > /dev/null; then
-		echo "$BNAME"
-		exit 0
-	fi
-	#Still here, that means we must build a bridge
-	if [ -z "$PORTS" ]; then #No ports specified, default to whatever looks up
-		PORTS=$(get_def_interface)
-	fi
-	if [ -z "$PORTS" ]; then #This has been checked many times before in theory, check again just in case
-		exit 1
-	fi
-	#For now, we only support bridge name==network name.  This precludes
-	#the config of the same vlan number on multiple fabrics, but
-	#will cover that flexibility later if demanded (with 4k vlan ids, 
-	#I think it would be unwise to reuse them as it could confuse anyway)
-	if echo "$PORTS"|grep '&'; then #we have bonding... fun to be had
-	#To be slack, going to just support one bond for now..
-		modprobe bonding miimon=100 mode=4
-		PORTS=`echo $PORTS |sed -e 's/&/ /'`
-		ip link set bond0 up
-		for p in $PORTS; do
-			#TODO: we are only going to manage the default
-			#route for now
-			saveroutes=`ip route | grep default| grep "dev $p"|grep via|sed -e 's/dev .*//'`
-			#TODO: support inet6+inet and aliases, probably messing with IFS to do so
-			saveip=`ip addr show dev $p scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
-			if [ ! -z "$saveip" ]; then
-				ip addr add dev bond0 $saveip
-			fi
-			ifenslave bond0 $p
-			if [ ! -z "$saveroutes" ]; then
-				ip route add $saveroutes
-			fi
-		done
-		PORTS=bond0
-	fi
-	if echo "$BNAME"|egrep '^vl(an)?[0123456789]' > /dev/null; then 
-		TNAME=${BNAME##vl}
-		TNAME=${TNAME##an}
-		#We have a vlan... more fun
-		modprobe 8021q
-		vconfig add $PORTS $TNAME
-		vconfig set_flag $PORTS.$TNAME 2 1 #Turn on GVRP where supported
-		ip link set $PORTS.$TNAME up
-		PORTS=$PORTS.$TNAME
-	fi
-	#Now, $PORTS is 'the' physical device to participate in a bridge
-	#TODO: we are only going to manage the default
-	#route for now
-	brctl addbr $BNAME
-	brctl setfd $BNAME 0 #fast forwarding
-	ip link set $BNAME up
-	saveroutes=`ip route | grep default| grep "dev $PORTS"|grep via|sed -e 's/dev .*//'`
-	#TODO: support inet6+inet and aliases, probably messing with IFS to do so
-	saveip=`ip addr show dev $PORTS scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
-	if [ ! -z "$saveip" ]; then
-		ip addr add dev $BNAME $saveip
-	fi
-	brctl addif $BNAME $PORTS
-	if [ ! -z "$saveip" ]; then
-		ip addr del dev $PORTS $saveip
-	fi
-	if [ ! -z "$saveroutes" ]; then
+    NETDESC="$2"
+    if [ -z "$NETDESC" ]; then
+	echo "Incorrect usage"
+	exit 1
+    fi
+    if echo "$NETDESC"|grep ':'> /dev/null; then
+	PORTS=`echo "$NETDESC"|cut -d: -f 1`
+	BNAME=`echo "$NETDESC"|cut -d: -f 2`
+    else 
+	BNAME=$NETDESC
+    fi
+    if brctl showstp "$BNAME" > /dev/null; then
+	echo "$BNAME"
+	exit 0
+    fi
+    #Still here, that means we must build a bridge
+    if [ -z "$PORTS" ]; then #No ports specified, default to whatever looks up
+	PORTS=$(get_def_interface)
+    fi
+    if [ -z "$PORTS" ]; then #This has been checked many times before in theory, check again just in case
+	exit 1
+    fi
+    #For now, we only support bridge name==network name.  This precludes
+    #the config of the same vlan number on multiple fabrics, but
+    #will cover that flexibility later if demanded (with 4k vlan ids, 
+    #I think it would be unwise to reuse them as it could confuse anyway)
+    if echo "$PORTS"|grep '&'; then #we have bonding... fun to be had
+    #To be slack, going to just support one bond for now..
+	modprobe bonding miimon=100 mode=4
+	PORTS=`echo $PORTS |sed -e 's/&/ /'`
+	ip link set bond0 up
+	for p in $PORTS; do
+	    #TODO: we are only going to manage the default
+	    #route for now
+	    saveroutes=`ip route | grep default| grep "dev $p"|grep via|sed -e 's/dev .*//'`
+	    #TODO: support inet6+inet and aliases, probably messing with IFS to do so
+	    saveip=`ip addr show dev $p scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+	    if [ ! -z "$saveip" ]; then
+		ip addr add dev bond0 $saveip
+	    fi
+	    ifenslave bond0 $p
+	    if [ ! -z "$saveroutes" ]; then
 		ip route add $saveroutes
+	    fi 
+	done
+	PORTS=bond0
+    fi
+    if echo "$BNAME"|egrep '^vl(an)?[0123456789]' > /dev/null; then 
+	vlan="yes"
+	TNAME=${BNAME##vl}
+	TNAME=${TNAME##an}
+	#We have a vlan... more fun
+	modprobe 8021q
+	vconfig add $PORTS $TNAME
+	vconfig set_flag $PORTS.$TNAME 2 1 #Turn on GVRP where supported
+	ip link set $PORTS.$TNAME up
+	PORTS=$PORTS.$TNAME
+    fi
+    #Now, $PORTS is 'the' physical device to participate in a bridge
+    #TODO: we are only going to manage the default
+    #route for now
+    brctl addbr $BNAME
+    brctl setfd $BNAME 0 #fast forwarding
+    ip link set $BNAME up
+    saveroutes=`ip route | grep default| grep "dev $PORTS"|grep via|sed -e 's/dev .*//'`
+    #TODO: support inet6+inet and aliases, probably messing with IFS to do so
+    saveip=`ip addr show dev $PORTS scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+    if [ ! -z "$saveip" ]; then
+	ip addr add dev $BNAME $saveip
+    else
+        if [ ! -z "$3" ]; then
+	    ip addr add dev $BNAME $3 
 	fi
+    fi
+    brctl addif $BNAME $PORTS
+    if [ ! -z "$saveip" ]; then
+	ip addr del dev $PORTS $saveip
+    fi
+    if [ ! -z "$saveroutes" ]; then
+	ip route add $saveroutes
+    fi
+    
+    #now save the settings into the config files so that they will be persistent among reboots
+    if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+	nwdir="/etc/sysconfig/network"
+	isSLES=1
+    else 
+	nwdir="/etc/sysconfig/network-scripts"
+    fi 
+    
+     #write into the network configuration file
+    if [[ $isSLES -eq 1 ]]; then
+	cat >$nwdir/ifcfg-$PORTS <<EOF
+DEVICE='$PORTS'
+ONBOOT='yes'
+BRIDGE='$BNAME'
+EOF
+	mac=`ip addr show dev $PORTS scope global|grep link|sed -e 's/link\/ether//'|sed -e 's/brd.*$//'|sed -e 's/[ ]*//'`
+	if [ ! -z "$mac" ]; then
+	    echo "HWADDR='$mac'" >> $nwdir/ifcfg-$PORTS
+	fi
+	if [ ! -z "$vlan" ]; then
+	    echo "VLAN='yes'" >> $nwdir/ifcfg-$PORTS
+	fi
+	cat >$nwdir/ifcfg-$BNAME <<EOF	    
+DEVICE='$BNAME'
+TYPE='Bridge'
+ONBOOT='yes'
+PEERDNS='yes'
+DELAY='0'
+EOF
+	if [ ! -z "$3" ]; then 
+	    echo "IPADDR='$3'" >> $nwdir/ifcfg-$BNAME 
+	    if [ ! -z "$4" ]; then
+		echo "NETMASK='$4'" >> $nwdir/ifcfg-$BNAME
+	    fi
+	else
+	    echo "BOOTPROTO=dhcp" >> $nwdir/ifcfg-$BNAME
+	fi
+    else
+	cat >$nwdir/ifcfg-$PORTS <<EOF
+DEVICE=$PORTS
+ONBOOT=yes
+BRIDGE=$BNAME
+EOF
+	mac=`ip addr show dev $PORTS scope global|grep link|sed -e 's/link\/ether//'|sed -e 's/brd.*$//'|sed -e 's/[ ]*//'`
+	if [ ! -z "$mac" ]; then
+	    echo "HWADDR=$mac" >> $nwdir/ifcfg-$PORTS
+	fi
+	if [ ! -z "$vlan" ]; then
+	    echo "VLAN=yes" >> $nwdir/ifcfg-$PORTS
+	fi
+	cat >$nwdir/ifcfg-$BNAME <<EOF	    
+DEVICE=$BNAME
+TYPE=Bridge
+ONBOOT=yes
+PEERDNS=yes
+DELAY=0
+EOF
+	if [ ! -z "$3" ]; then 
+	    echo "IPADDR=$3" >> $nwdir/ifcfg-$BNAME 
+	    if [ ! -z "$4" ]; then
+		echo "NETMASK=$4" >> $nwdir/ifcfg-$BNAME
+	    fi
+	else
+	    echo "BOOTPROTO=dhcp" >> $nwdir/ifcfg-$BNAME
+	fi
+    fi 
+ 
+    ifup $BNAME
 fi #END bridge config.
 
+	

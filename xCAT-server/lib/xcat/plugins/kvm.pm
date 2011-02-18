@@ -238,12 +238,14 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
     unless ($format) {
         $format = 'qcow2';
     }
+    #print "url=$url, dev=$dev,create=$create, force=$force, format=$format\n";
     #ok, now that we have the pool, we need the storage volume from the pool for the node/dev
     my $poolobj = get_storage_pool_by_url($url);
     unless ($poolobj) { die "Could not get storage pool for $url"; }
     $poolobj->refresh(); #if volumes change on nfs storage, libvirt is too dumb to notice
     my @volobjs = $poolobj->list_volumes();
     my $desiredname = $node.'.'.$dev.'.'.$format;
+    #print "desiredname=$desiredname, volobjs=@volobjs\n";
     foreach (@volobjs) {
         if ($_->get_name() eq $desiredname) {
             if ($create) {
@@ -375,6 +377,7 @@ sub build_oshash {
 }
 
 sub build_diskstruct {
+    print "build_diskstruct called\n";
     my $cdloc=shift;
     my @returns=();
     my $currdev;
@@ -875,9 +878,48 @@ sub xhrm_satisfy {
     if ($confdata->{vm}->{$node}->[0]->{nics}) {
         @nics = split /,/,$confdata->{vm}->{$node}->[0]->{nics};
     }
+        
+    $rc |=system("scp $::XCATROOT/share/xcat/scripts/xHRM $hyp:/usr/bin");
+
     foreach (@nics) {
         s/=.*//; #this code cares not about the model of virtual nic
-        $rc |=system("ssh $hyp xHRM bridgeprereq $_");
+        my $nic=$_;
+	my $vlanip;
+	my $netmask;
+	my $subnet;
+	if ($nic =~ /^vl([\d]+)$/) {
+	    my $vlan=$1;
+	    my $nwtab=xCAT::Table->new("networks", -create =>0);
+	    if ($nwtab) {
+		my $sent = $nwtab->getAttribs({vlanid=>"$vlan"},'net','mask');
+		if ($sent and ($sent->{net})) {
+		    $subnet=$sent->{net};
+		    $netmask=$sent->{mask};
+		} 
+		if (($subnet) && ($netmask)) {
+		    my $hoststab = xCAT::Table->new("hosts", -create => 0);
+		    if ($hoststab) {
+			my $tmp = $hoststab->getNodeAttribs($hyp, ['otherinterfaces']);
+			if (defined($tmp) && ($tmp) && $tmp->{otherinterfaces})
+			{
+			    my $otherinterfaces = $tmp->{otherinterfaces};
+			    my @itf_pairs=split(/,/, $otherinterfaces);
+			    foreach (@itf_pairs) {
+				my ($name,$vip)=split(/:/, $_);
+				if(xCAT::NetworkUtils->ishostinsubnet($vip, $netmask, $subnet)) {
+				    $vlanip=$vip;
+				    last;
+				}
+			    }
+			}
+		    }
+		}
+	    }
+	}
+        
+	#print "nic=$nic\n";
+	$rc |=system("ssh $hyp xHRM bridgeprereq $nic $vlanip $netmask");
+
         #TODO: surprise! there is relatively undocumented libvirt capability for this...
         #./tests/interfaceschemadata/ will have to do in lieu of documentation..
         #note that RHEL6 is where that party starts
@@ -938,6 +980,7 @@ sub makedom {
 
 sub createstorage {
 #svn rev 6638 held the older vintage of createstorage
+    #print "createstorage called\n";
     my $filename=shift;
     my $mastername=shift;
     my $size=shift;
@@ -979,7 +1022,7 @@ sub createstorage {
     if ($filename =~ /^nfs:/ or $filename =~ /^dir:/) { #libvirt storage pool to be used for this
         my @sizes = split /,/,$size;
         foreach (@sizes) {
-            get_filepath_by_url(url=>$filename,dev=>$prefix.shift(@suffixes),create=>$_);
+            get_filepath_by_url(url=>$filename,dev=>$prefix.shift(@suffixes),create=>$_, force=>$force);
         }
     }else{
         oldCreateStorage($filename, $mastername, $size, $cfginfo, $force);
@@ -1861,6 +1904,7 @@ sub mkvm {
             return 1,"mkvm management of block device storage not implemented";
         }
     }
+    #print "force=$force\n";
     if ($mastername or $disksize) {
        my @return= createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force);
          unless ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
