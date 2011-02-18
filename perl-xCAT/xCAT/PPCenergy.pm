@@ -220,18 +220,6 @@ sub renergy {
         $verb_arg = "-V";
     }
 
-    # get the IPs for the hcp. There will be multiple (2/4) ips for cec object
-    my $hcp_ip = xCAT::Utils::getNodeIPaddress( $hcphost );
-    if(!defined($hcp_ip)) {
-        return ([[$node, "Failed to get the IP of $hcphost or the related FSP.", -1]]);	
-    }
-    
-    if($hcp_ip eq "-1") {
-        return ([[$node, "Cannot open vpd table", -1]]);	
-    } elsif($hcp_ip eq "-3") {
-        return ([[$node, "It doesn't have the  FSPs whose side attribute is set correctly.", -1]]);	
-    }
-
     # get the user and passwd for hcp: hmc, fsp, cec
     my $hcp_type = xCAT::DBobjUtils->getnodetype($hcphost);
     my $user;
@@ -243,58 +231,71 @@ sub renergy {
     }
 
     my $fsps;  #The node of fsp that belong to the cec
-    if ($hw_type eq "cec") {
+    my @hcps_ip;
+    if ($hcp_type ne "hmc" && $hw_type eq "cec") {
         $fsps = xCAT::DBobjUtils->getchildren($node);
         if( !defined($fsps) ) {
             return ([[$node, "Failed to get the FSPs for the cec $hcphost.", -1]]);
         }
+        my $hcp_ip = xCAT::Utils::getNodeIPaddress($hcphost);
+        push @hcps_ip, split(',', $hcp_ip);
         my $fsp_node = $$fsps[0];
         ($user, $password) = xCAT::PPCdb::credentials( $fsp_node, "fsp",'HMC');
         if ( !$password) {
             return ([[$node, "Cannot get password of userid 'HMC'. Please check table 'ppchcp' or 'ppcdirect'.", -1]]);
         }
-    } 
+    } else {
+        # for the case that hcp is hmc or fsp
+        push @hcps_ip, xCAT::Utils::getNodeIPaddress($hcphost);
+    }
+
     if (!$user || !$password) {
         return ([[$node, "Cannot get user:password for the node. Please check table 'ppchcp' or 'ppcdirect'.", -1]]);
     }
 
     if ($verbose) {
-        push @return_msg, [$node, "Attributes of $node:\n User=$user\n Password=$password\n CEC=$cec_name\n nodetype=$hw_type\n hcp=$hcphost\n hcptype=$hcp_type", 0];
+        push @return_msg, [$node, "Attributes of $node:\n User=$user\n Password=$password\n CEC=$cec_name\n nodetype=$hw_type\n inithcp=$hcphost\n hcps=@hcps_ip\n hcptype=$hcp_type", 0];
     }
 
-
-    #my $resp = $request->{subreq}->({command => ['pping'], node => $fsps});
-    my $hcps = $hcphost;
-    if ($hw_type eq "cec") {
-        if (!$fsps) {
-            return ([[$node, "Cannot find fsp for the cec.", -1]]);
-        } else {
-            $hcps = join(',', @$fsps);
+    my $master = xCAT::Utils->get_site_Master();
+    my $masterip = xCAT::NetworkUtils->getipaddr($master);
+    if ($masterip =~ /:/) { #IPv6, needs fping6 support 
+        if (!-x '/usr/bin/fping6')
+        {
+            push @return_msg, [$node, "fping6 is not availabe for IPv6 ping.", -1];
+            return \@return_msg;
         }
+        open (FPING, "fping6 ".join(' ',@hcps_ip). " 2>&1 |") or die("Cannot open fping pipe: $!");
+    } else {
+        open (FPING, "fping ".join(' ',@hcps_ip). " 2>&1 |") or die("Cannot open fping pipe: $!");
     }
-    my $cmd = "$::XCATROOT//bin/pping $hcps 2>&1";
-    my @output = `$cmd`;
 
-   # work out the pingable ip of hcp
     my @pingable_hcp;
-    foreach my $line (@output) {
-        if ($line =~ /^([^\s:]+)\s*:\s*ping\s*$/) {
-            push @pingable_hcp, $1;
-            if ($verbose) {
-                push @return_msg, [$node, "FSP $1 is pingable", 0];
-            }
+    while (<FPING>) {
+        if ($verbose) {
+            push @return_msg, [$node, $_, 0];
+        }
+        if ($_ =~ /is alive/) {
+            s/ is alive//;
+            push @pingable_hcp, $_;
         }
     }
-    #just for temp that all hcp will be tried
-    @pingable_hcp = split(',', $hcps);
 
     if (!@pingable_hcp) {
-        return ([[$node, "'No hcp can be pinged.", -1]]);
+        push @return_msg, [$node, "No hcp can be pinged.", -1];
+        return \@return_msg;
     }
-    
+
     # try the ip of hcp one by one
+    my @lastnoerr_msg;
+    my @noerr_msg;
+    my @last_msg;
     foreach my $hcp (@pingable_hcp) {
+        push @noerr_msg, @lastnoerr_msg; 
+        @lastnoerr_msg = ();
+        @last_msg = ();
         # Generate the url path for CIM communication
+        chomp($hcp);
         my $url_path = "https://"."$user".":"."$password"."\@"."$hcp".":5989";
             
         # Execute the request
@@ -306,7 +307,7 @@ sub renergy {
         }
         
         if ($verbose) {
-            push @return_msg, [$node, "Run following command: $cmd", 0];
+            push @noerr_msg, [$node, "Run following command: $cmd", 0];
         }
     
         # Disable the CHID signal before run the command. Otherwise the 
@@ -322,14 +323,22 @@ sub renergy {
             if ($line =~ /^\s*$/) {
                 next;
             }
-            push @return_msg, [$node, $line, $::RUNCMD_RC];
+            push @lastnoerr_msg, [$node, $line, 0];
+            push @last_msg, [$node, $line, $::RUNCMD_RC];
         }
         if (!$::RUNCMD_RC) {
             last;
         }
     }
-            
+
+    # only display the correct msg when getting correct result from one fsp
+    if ($::RUNCMD_RC || $verbose) {
+        push @return_msg, @noerr_msg;
+    } 
+    push @return_msg, @last_msg;
+
     return \@return_msg;
 }
+
 
 1;
