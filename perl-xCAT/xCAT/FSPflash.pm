@@ -492,6 +492,8 @@ sub rflash {
             #$name2 = $name;          #Secondary FSP or BPC side B.
 			$name2  = $$nodes[0]->{node}; #the Primary FSP or BPC side A.
 		}
+        my($hcp, $id) = get_hcp_id($name2);
+        @dt = ($id, @$d[1], $mtms, $hcp, @$d[4], 0);
 	   }
 
 	   if($c ==2 && $role == 0x02) {
@@ -501,7 +503,10 @@ sub rflash {
 		} else {
             $name2 = $name; # Secondary FSP or BPC side B.
 			$name = $$nodes[0]->{node};  #primary FSP or BPC side B.
-		} 
+		}
+        @dt = (@$d[0], @$d[1], @$d[2], @$d[3], @$d[4],  @$d[5]);
+        my($hcp, $id) = get_hcp_id($name);
+        @$d = ($id, $dt[1], $mtms, $hcp, $dt[4], 0);
 	   }
 	   print "name: $name, name2: $name2\n";
 	  
@@ -510,8 +515,8 @@ sub rflash {
 	   my $fds = new IO::Select;
  	   my $pipe;
 	   if(defined($name2) ) {
-		my($hcp, $id) = get_hcp_id($name2);
-		my @dt = ($id, @$d[1], $mtms, $hcp, @$d[4], 0);
+	   #my($hcp, $id) = get_hcp_id($name2);
+	   #my @dt = ($id, @$d[1], $mtms, $hcp, @$d[4], 0);
 	   
                 ($pipe) = fork_cmd( $name2, \@dt, $action );
 	       	
