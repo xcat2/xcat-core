@@ -54,7 +54,7 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s port=s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -89,24 +89,49 @@ sub mkhwconn_parse_args
             my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
             $nodetype    = $nodetype_hash->{nodetype};
             $node_parent = $node_parent_hash->{parent};
-            if ( !$nodetype)
+            if ( !$nodetype )
             {
                 push @no_type_nodes, $node;
                 next;
             }
-            
-            if ( ($nodetype eq 'fsp' or $nodetype eq 'cec')  and 
-                $node_parent and 
-                $node_parent ne $node)
+
+            if ( $nodetype eq 'fsp' )
             {
-                push @bpa_ctrled_nodes, $node;
+                my $jr = xCAT::DBobjUtils::judge_node($node, $nodetype);
+                unless ($jr)
+                {
+                    if ($node_parent and $node_parent ne $node )
+                    {
+                        push @bpa_ctrled_nodes, $node;
+                    }
+                }
             }
-            
+
+            ##########################################
+            # Nothing to do with cec
+            ##########################################
+            #if (($nodetype eq 'cec') and
+            #    $node_parent and
+            #    $node_parent ne $node)
+            #{
+            #    push @bpa_ctrled_nodes, $node;
+            #}
+            ##########################################
+            # Now we suppport the operation on sigal bpa
+            ##########################################
             if ( $nodetype eq 'bpa')
             {
-                my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
-                push @frame_members, @$my_frame_bpa_cec;
+                my $jr = xCAT::DBobjUtils::judge_node($node, $nodetype);
+                unless($jr)
+                {
+                    my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
+                    push @frame_members, @$my_frame_bpa_cec;
+                }
             }
+            ##########################################
+            # For the Frame, we will have its CEC to do
+            # mkhwconn at the same time
+            ##########################################
             if ( $nodetype eq 'frame')
             {
                 my $my_frame_bpa_cec =  xCAT::DBobjUtils::getcecchildren( $node)                                                                             ;
@@ -133,10 +158,18 @@ sub mkhwconn_parse_args
         my @all_nodes = xCAT::Utils::get_unique_members( @$nodes, @frame_members);
         $request->{node} = \@all_nodes;
     }
-    # Set HW type to 'hmc' anyway, so that this command will not going to 
+    # Set HW type to 'hmc' anyway, so that this command will not going to
     # PPCfsp.pm
     $request->{ 'hwtype'} = 'hmc';
     $request->{hcp} = 'hmc';
+    if( ! exists $opt{port} )
+    {
+        $opt{port} = "0";
+    }
+    if( $opt{port} ne "0" and $opt{port} ne "1")
+    {
+        return( usage('Wrong value of  --port option. The value can be 0 or 1, and the default value is 0.'));
+    }
     $request->{method} = 'mkhwconn';
     return( \%opt);
 }
@@ -234,7 +267,7 @@ sub lshwconn_parse_args
     {
         my $ent = $nodetypetab->getNodeAttribs( $node, [qw(nodetype)]);
         my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
-        if ( ! $ent) 
+        if ( ! $ent)
         {
             return( ["Failed to get node type for node $node.\n"]);
         }
@@ -246,7 +279,7 @@ sub lshwconn_parse_args
         {
             return( ["lshwconn can only support HMC nodes, or nodes managed by HMC, i.e. nodehm.mgt should be 'hmc'. Please make sure node $node has correect nodehm.mgt and ppc.hcp value.\n"]);
         }
-        if ( $ent->{nodetype} ne 'hmc' 
+        if ( $ent->{nodetype} ne 'hmc'
                 and $ent->{nodetype} ne 'fsp' and $ent->{nodetype} ne 'cec'
                 and $ent->{nodetype} ne 'bpa' and $ent->{nodetype} ne 'frame')
         {
@@ -308,51 +341,52 @@ sub rmhwconn_parse_args
     my $nodes = $request->{node};
     my $ppctab  = xCAT::Table->new( 'ppc' );
     return( ["Failed to open table 'ppc'.\n"]) if ( ! $ppctab);
-    my $nodetypetab = xCAT::Table->new( 'nodetype');
-    return( ["Failed to open table 'nodetype'.\n"]) if ( ! $nodetypetab);
     my $vpdtab = xCAT::Table->new( 'vpd');
     return( ["Failed to open table 'vpd'.\n"]) if ( ! $vpdtab);
-    my $nodehmtab = xCAT::Table->new('nodehm');
-    return( ["Failed to open table 'nodehm'.\n"]) if (! $nodehmtab);
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
     my @frame_members    = ();
     for my $node ( @$nodes)
     {
-        my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
-        if ( ! $nodehm)
-        {
-            return( ["Failed to get nodehm.mgt value for node $node.\n"]);
-        }
-        elsif ( $nodehm->{mgt} ne 'hmc')
-        {
-            return( ["rmhwconn can only support nodes managed by HMC, i.e. nodehm.mgt should be 'hmc'. Please make sure node $node has correect nodehm.mgt and ppc.hcp value.\n"]);
-        }
         my $node_parent = undef;
-        my $nodetype    = undef;
-        my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
         my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
-        $nodetype    = $nodetype_hash->{nodetype};
         $node_parent = $node_parent_hash->{parent};
-        if ( !$nodetype)
-        {
+        my $newtype = xCAT::DBobjUtils::getnodetype($node);
+        unless ($newtype) {
             push @no_type_nodes, $node;
-            next;
         }
 
-        if ( ($nodetype eq 'fsp' or $nodetype eq 'cec') and 
-                $node_parent and 
-                $node_parent ne $node)
+        if ($newtype =~ /^(fsp|bpa)$/ )
         {
-            push @bpa_ctrled_nodes, $node;
+            ##########################################
+            # We should judge if the node is defined in xCAT 2.5
+            # If it is, it should really be a cec or frame
+            # If not, we will do nothing to it,
+            # which means we support remove a sigal connection
+            ##########################################
+            my $jr = xCAT::DBobjUtils::judge_node($node, $newtype);
+            #$jr is defined by the xCAT2.5
+
+            unless ($jr)
+            {
+                if ( ($newtype eq 'fsp') and $node_parent and $node_parent ne $node)
+                {
+                    push @bpa_ctrled_nodes, $node;
+                }
+
+                if ( $newtype eq 'bpa')
+                {
+                    my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
+                    push @frame_members, @$my_frame_bpa_cec;
+                }
+            }
+        }
+        if (( $newtype eq 'cec') and  $node_parent and  $node_parent ne $node)
+        {
+            #push @bpa_ctrled_nodes, $node;
         }
 
-        if ( $nodetype eq 'bpa')
-        {
-            my $my_frame_bpa_cec = getFrameMembers( $node, $vpdtab, $ppctab);
-            push @frame_members, @$my_frame_bpa_cec;
-        }
-        if ( $nodetype eq 'frame')
+        if ( $newtype eq 'frame')
         {
             my $my_frame_bpa_cec = xCAT::DBobjUtils::getcecchildren($node);
             push @frame_members, @$my_frame_bpa_cec;
@@ -403,35 +437,61 @@ sub mkhwconn
             ############################
             # Get IP address
             ############################
-            my $node_ip = xCAT::Utils::getNodeIPaddress( $node_name );
-            if (!$node_ip)
+            my $cnode;
+            my $ntype = xCAT::DBobjUtils::getnodetype($node_name);
+            if ($ntype =~ /^(cec|frame)$/)
             {
-                push @value, [$node_name, "Cannot get IP address. Please check table 'hosts' or name resolution", 1];
-                next;
+                $cnode = xCAT::DBobjUtils::getchildren($node_name, $opt->{port});
+            } else {
+                $cnode = $node_name;
             }
-            my ( undef,undef,$mtms,undef,$type) = @$d;
-            my ($user, $passwd);
-            if ( exists $opt->{P})
+
+            my @newnodes = ();
+            if ( $cnode =~ /ARRAY/ )
             {
-                ($user, $passwd) = ('HMC', $opt->{P});
+                foreach (@$cnode) {
+                    push @newnodes, $_;
+                }
+            } else {
+                push @newnodes,$cnode;
             }
-            else
+            for my $nn ( @newnodes )
             {
-                ($user, $passwd) = xCAT::PPCdb::credentials( $node_name, $type,'HMC');
-                if ( !$passwd)
+                my $node_ip;
+                unless ( xCAT::Utils->isIpaddr($nn) ) {
+                    $node_ip = xCAT::Utils::getNodeIPaddress( $nn );
+                } else {
+                    $node_ip = $nn;
+                }
+                unless($node_ip)
                 {
-                    push @value, [$node_name, "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.",1];
+                    push @value, [$node_name, "Cannot get IP address. Please check table 'hosts' or name resolution", 1];
                     next;
                 }
 
-            }
+                my ( undef,undef,$mtms,undef,$type) = @$d;
+                my ($user, $passwd);
+                if ( exists $opt->{P})
+                {
+                    ($user, $passwd) = ('HMC', $opt->{P});
+                }
+                else
+                {
+                    ($user, $passwd) = xCAT::PPCdb::credentials( $node_name, $type,'HMC');
+                    if ( !$passwd)
+                    {
+                        push @value, [$node_name, "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.",1];
+                        next;
+                    }
 
-            my $res = xCAT::PPCcli::mksysconn( $exp, $node_ip, $type, $passwd);
-            $Rc = shift @$res;
-            push @value, [$node_name, @$res[0], $Rc];
-            if ( !$Rc)
-            {
-                sethmcmgt( $node_name, $exp->[3]);
+                }
+                my $res = xCAT::PPCcli::mksysconn( $exp, $node_ip, $type, $passwd);
+                $Rc = shift @$res;
+                push @value, [$node_name, @$res[0], $Rc];
+                if ( !$Rc)
+                {
+                    sethmcmgt( $node_name, $exp->[3]);
+                }
             }
 
 #            if ( exists $opt->{N} )
@@ -531,8 +591,9 @@ sub lshwconn
                 my $node_ip = undef;
                 if ( $hosttab)
                 {
-                    my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
-                    $node_ip = $node_ip_hash->{ip};
+                    #my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
+                    #$node_ip = $node_ip_hash->{ip};
+                    $node_ip = xCAT::Utils::getNodeIPaddress( $node_name );
                 }
                 if (!$node_ip)
                 {
@@ -540,20 +601,26 @@ sub lshwconn
                     next;
                 }
 
-                if ( my @res_matched = grep /\Qipaddr=$node_ip,\E/, @$res)
+                my @nodes_ip = split(/,/, $node_ip);
+                for my $ip  (@nodes_ip)
                 {
-                    for my $r ( @res_matched)
+                    if ( my @res_matched = grep /\Qipaddr=$ip,\E/, @$res)
                     {
-                        $r =~ s/\Qtype_model_serial_num=$cec_bpa,\E//;
-#                        $r =~ s/\Qresource_type=$type,\E//;
-                        $r =~ s/sp=.*?,//;
+                        for my $r ( @res_matched)
+                        {
+                            $r =~ s/\Qtype_model_serial_num=$cec_bpa,\E//;
+                            #$r =~ s/\Qresource_type=$type,\E//;
+                            $r =~ s/sp=.*?,//;
                             $r =~ s/sp_phys_loc=.*?,//;
-                            push @value, [$node_name, $r, $Rc];
+                            my $new_name = $node_name."(".$ip. ")";
+                            push @value, [$new_name, $r, $Rc];
+                        }
                     }
-                }
-                else
-                {
-                    push @value, [$node_name, 'Connection not found', 1];
+                    else
+                    {
+                        my $new_name = $node_name."(".$ip. ")";
+                        push @value, [$new_name, 'Connection not found', 1];
+                    }
                 }
             }
         }
@@ -586,26 +653,22 @@ sub rmhwconn
             ############################
             # Get IP address
             ############################
-            #my $hosttab  = xCAT::Table->new( 'hosts' );
-            #my $node_ip = undef;
-            #if ( $hosttab)
-            #{
-            #    my $node_ip_hash = $hosttab->getNodeAttribs( $node_name,[qw(ip)]);
-            #    $node_ip = $node_ip_hash->{ip};
-            #}
-            my $node_ip = xCAT::Utils::getNodeIPaddress($node_name);
+            my $node_ip = xCAT::PPCcli::getHMCcontrolIP($node_name, $exp);
             if (!$node_ip)
             {
                 push @value, [$node_name, $node_ip, $Rc];
                 next;
             }
-
-            my $res = xCAT::PPCcli::rmsysconn( $exp, $type, $node_ip);
-            $Rc = shift @$res;
-            push @value, [$node_name, @$res[0], $Rc];
-            if ( !$Rc)
+            my @newnodes = split(/,/, $node_ip);
+            for my $nn ( @newnodes )
             {
-                rmhmcmgt( $node_name, $type);
+                my $res = xCAT::PPCcli::rmsysconn( $exp, $type, $nn);
+                $Rc = shift @$res;
+                push @value, [$node_name, @$res[0], $Rc];
+                if ( !$Rc)
+                {
+                    rmhmcmgt( $node_name, $type);
+                }
             }
         }
     }
