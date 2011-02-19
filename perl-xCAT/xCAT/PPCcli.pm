@@ -1293,13 +1293,50 @@ sub rmsysconn
     my $result = send_cmd( $exp, $cmd);
     return ( $result);
 }
+##########################################################################
+# Get FSP/BPA IP address for the redundancy FSP/BPA from HMC
+##########################################################################
+sub getHMCcontrolIP
+{
+    my $node = shift;
+
+    if (($node) && ($node =~ /xCAT::/))
+    {
+        $node = shift;
+    }
+    my $exp = shift;
+
+    #get node type first
+    my $type =  xCAT::DBobjUtils::getnodetype($node);
+    unless ($type)
+    {
+        return undef;
+    }
+
+
+    #get node ip from hmc
+    my $nodes_found = lssyscfg( $exp, "$type", "$node","name,ipaddr,ipaddr_secondary" );
+    my @ips;
+    my $ip_result;
+    if ( @$nodes_found[0] eq SUCCESS ) {
+        my $Rc = shift(@$nodes_found);
+        #foreach my $mtms ( @$nodes_found ) {
+      my @newnodes = split(/,/, $nodes_found->[0]);
+            if ( $node eq $newnodes[0] ) {
+                if(xCAT::Utils->isIpaddr($newnodes[1]))  {
+                    push @ips, $newnodes[1];
+                }
+                if(xCAT::Utils->isIpaddr($newnodes[2]))  {
+                    push @ips, $newnodes[2];
+                }
+                $ip_result = join( ",", @ips );
+            }
+        #}
+    }
+    return $ip_result;
+}
+
+
+
 1;
-
-
-
-
-
-
-
-
 
