@@ -2095,16 +2095,21 @@ sub getchildren
             }
         }
     }
-    unless ( $port )
+    if ( !defined($port ))
     {
         return \@children;
     } else
     {
         my $vpdtab = xCAT::Table->new( 'vpd' );
         my $sides = $vpdtab->getNodesAttribs(\@children, ['side']);
+        if(!$sides)
+        {
+           return undef;
+        }
         for my $n (@children)
         {
-            if ($sides->{$n}->{side} =~ /$port/)
+            my $nside = $sides->{$n}->[0];
+            if ($nside->{side} =~ /$port/)
             {
                 push @children_prot, $n;
             }
@@ -2299,7 +2304,7 @@ sub judge_node
     }
     
     if ($type =~ /^fsp$/) {
-        if ($nodeparent->{parent} =~ /^cec$/)
+        if ($parenttype =~ /^cec$/)
         {
             $flag = 1;
         } else
@@ -2307,9 +2312,9 @@ sub judge_node
             $flag = 0;
         }
     }
-    
+
     if ($type =~ /^bpa$/) {
-        if ($nodeparent->{parent} =~ /^frame$/)
+        if ($parenttype =~ /^frame$/)
         {
             $flag = 1;
         } else
