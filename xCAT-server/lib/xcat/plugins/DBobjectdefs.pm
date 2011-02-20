@@ -207,6 +207,16 @@ sub processArgs
             return 2;
         }
     }
+    if ( scalar(@{$::args}) eq 1 and $::args->[0] eq '-S')
+    {
+        if ($::command eq "lsdef") {
+            push @ARGV, "-t";
+            push @ARGV, "node";
+            push @ARGV, "-s";
+        } else {
+            return 2;
+        }
+    }
 
     if ($::command eq "lsdef") {
         if (scalar(@ARGV) == 1 && $ARGV[0] eq "-l") {
