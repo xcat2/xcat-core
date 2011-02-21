@@ -129,6 +129,40 @@ else
 {
     $::osname = 'Linux';
 }
+
+#
+# To support AIX INUCLIENTS
+#
+if (($::osname eq 'AIX') && ($ENV{'INUCLIENTS'} == 1))
+{
+    # INUCLIENTS is configured, add xcatconfig to /etc/inittab
+    my $cmd = "/usr/sbin/lsitab xcatconfig > /dev/null 2>&1";
+    my $rc = system("$cmd") >>8;
+    if ($rc != 0)
+    {
+        # add new entry
+        my $flag;
+        if ($::INITIALINSTALL)
+        {
+            $flag = "-i";
+        }
+
+        if ($::UPDATEINSTALL)
+        {
+            $flag = "-u";
+        }
+
+        if ($::initDB)
+        {
+            $flag = "-d";
+        }
+        
+        my $mkcmd = qq~/usr/sbin/mkitab "xcatconfig:2:once:$::XCATROOT/sbin/xcatconfig $flag > /dev/console 2>&1"~;
+        system("$mkcmd");
+    }
+    exit(0);
+}
+
 if ($::osname eq 'AIX')
 {
     $::arch = `uname -p`;
@@ -321,15 +355,7 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     my $xcmd;
     if ($::osname eq 'AIX')
     {
-        if ($ENV{'INUCLIENTS'} == 1)
-        {
-            #Do nothing in not running system
-            
-        }
-        else
-        {
-            $xcmd = "$::XCATROOT/sbin/restartxcatd";
-        }
+        $xcmd = "$::XCATROOT/sbin/restartxcatd";
     }
     else
     {
@@ -369,6 +395,22 @@ if (($::osname eq 'Linux') && (($::INITIALINSTALL || $::FORCE)))
     xCAT::MsgUtils->message('I', $linux_note);
 
 }    #End - more - Linux-only config
+
+END
+{
+    # Remove xcatconfig itself from the inittab
+
+    if (($::osname eq 'AIX') && ($ENV{'INUCLIENTS'} != 1))
+    {
+        my $cmd = "/usr/sbin/lsitab xcatconfig > /dev/null 2>&1";
+        my $rc = system("$cmd") >>8;
+        if ($rc == 0)
+        {
+            my $rmcmd = '/usr/sbin/rmitab xcatconfig';
+            system("$rmcmd");
+        }    
+    }
+}
 
 exit;
 
