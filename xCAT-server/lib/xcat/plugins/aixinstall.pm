@@ -10977,7 +10977,7 @@ sub update_spot_rpm
     }
     
     my $cdcmd = qq~cd $source_dir;~;
-    my $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd /usr/bin/rpm $rpm_flags $rpmpkgs"~;
+    my $cmd = qq~$::XCATROOT/bin/xcatchroot -i $spotname "$cdcmd export INUCLIENTS=1; /usr/bin/rpm $rpm_flags $rpmpkgs"~;
 
     my $output =
       xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);   
