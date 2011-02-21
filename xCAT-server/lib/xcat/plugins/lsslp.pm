@@ -1506,7 +1506,7 @@ sub gethost_from_url_or_old {
                                     {
                                         @{$::OLD_DATA_CACHE{$oldnode}}[7] = 0;
                                         #change node name, need to record the node here
-                                        $::UPDATE_CACHE{$oldnode.'-'.$slot} = $oldnode;
+                                        $::UPDATE_CACHE{$mtm.'-'.$sn} = $oldnode;
                                         return $oldnode.'-'.$slot;
                                     }
                                 } else  # not find a matched definition, but need to use the old node name
@@ -2360,21 +2360,21 @@ sub xCATdB {
                 my $values = join( ",",
                             lc($type),$name,$frameid,$model,$serial,$side,$name,$prof,$parent,"",$mac );
                 xCAT::PPCdb::add_ppc( lc($type), [$values], 0, 1 );
-                if ( exists($::UPDATE_CACHE{$name}))
-                {
-                    xCAT::PPCdb::update_node_attribs(
-                            "bpa","bpa",$name,$frameid,$model,$serial,$side,"","",$parent,"",\%db, $::UPDATE_CACHE{$name},\@ppclist);
-                }
+                #if ( exists($::UPDATE_CACHE{$name}))
+                #{
+                #    xCAT::PPCdb::update_node_attribs(
+                #            "bpa","bpa",$name,$frameid,$model,$serial,$side,"","",$parent,"",\%db, $::UPDATE_CACHE{$name},\@ppclist);
+                #}
             } else
             {
                 my $values = join( ",",
                             lc($type),$name,$frameid,$model,$serial,$side,$name,$prof,$parent,$ip,$mac );
                 xCAT::PPCdb::add_ppc( lc($type), [$values], 0, 1 );
-                if ( exists($::UPDATE_CACHE{$name}))
-                {
-                    xCAT::PPCdb::update_node_attribs(
-                            "bpa","bpa",$name,$frameid,$model,$serial,$side,"","",$parent,$ip,\%db, $::UPDATE_CACHE{$name},\@ppclist);
-                }
+                #if ( exists($::UPDATE_CACHE{$name}))
+                #{
+                #    xCAT::PPCdb::update_node_attribs(
+                #            "bpa","bpa",$name,$frameid,$model,$serial,$side,"","",$parent,$ip,\%db, $::UPDATE_CACHE{$name},\@ppclist);
+                #}
             }
         } elsif ( $type =~ /^(HMC|IVM)$/ ) {
             ########################################
@@ -2394,21 +2394,21 @@ sub xCATdB {
                 my $values = join(
                         ",",lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$parent,"",$mac );
                 xCAT::PPCdb::add_ppc( "fsp", [$values], 0, 1 );
-                if ( exists($::UPDATE_CACHE{$name}))
-                {
-                    xCAT::PPCdb::update_node_attribs(
-                        "fsp","fsp",$name,$cageid,$model,$serial,$side,"","",$parent,"",\%db, $::UPDATE_CACHE{$name},\@ppclist);
-                }
+                #if ( exists($::UPDATE_CACHE{$name}))
+                #{
+                #    xCAT::PPCdb::update_node_attribs(
+                #        "fsp","fsp",$name,$cageid,$model,$serial,$side,"","",$parent,"",\%db, $::UPDATE_CACHE{$name},\@ppclist);
+                #}
             } else
             {
                 my $values = join(
                     ",",lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$parent,$ip,$mac );
                 xCAT::PPCdb::add_ppc( "fsp", [$values], 0, 1 );
-                if ( exists($::UPDATE_CACHE{$name}))
-                {
-                    xCAT::PPCdb::update_node_attribs(
-                        "fsp","fsp",$name,$cageid,$model,$serial,$side,"","",$parent,$ip,\%db, $::UPDATE_CACHE{$name},\@ppclist);
-                }
+                #if ( exists($::UPDATE_CACHE{$name}))
+                #{
+                #    xCAT::PPCdb::update_node_attribs(
+                #        "fsp","fsp",$name,$cageid,$model,$serial,$side,"","",$parent,$ip,\%db, $::UPDATE_CACHE{$name},\@ppclist);
+                #}
             }
         }
         elsif ( $type =~ /^(RSA|MM)$/ ) {
@@ -2425,11 +2425,20 @@ sub xCATdB {
             my $ip         = "";
             my $values = join( ",",
                lc($type),$name,$frameid,$model,$serial,$side,$name,$prof,$parent,$ip,$mac );
-            xCAT::PPCdb::add_ppc( "frame", [$values], 0, 1 );
-            if ( exists($::UPDATE_CACHE{$name}))
+            # we should call update_node_attribs to Frame/CEC 
+            # to make sure the information difined for FSP/BPA
+            # before can be kept.            
+            if ( exists($::UPDATE_CACHE{$model."-".$serial}))
             {
                 xCAT::PPCdb::update_node_attribs("frame","frame",$name,$frameid,$model,$serial,"","","",$parent,"",\%db, $::UPDATE_CACHE{$name},\@ppclist);
-            }
+            }           
+            xCAT::PPCdb::add_ppc( "frame", [$values], 0, 1 );
+            #copy passwd for the bpas.
+            my $rst = copypasswd($name);
+            unless ( $rst )
+            {
+                # do something here
+            }    
         }
         elsif ( $type =~ /^CEC$/ ) {
             ########################################
@@ -2442,11 +2451,20 @@ sub xCATdB {
             my $side       = "";
             my $values = join( ",",
                lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$parent,$ip,$mac );
-            xCAT::PPCdb::add_ppc( "cec", [$values], 0, 1 );
-             if ( exists($::UPDATE_CACHE{$name}))
+            # we should call update_node_attribs to Frame/CEC 
+            # to make sure the information difined for FSP/BPA
+            # before can be kept.   
+            if ( exists($::UPDATE_CACHE{$model."-".$serial}))
             {
                 xCAT::PPCdb::update_node_attribs("cec","cec",$name,$cageid,$model,$serial,"","","",$parent,"",\%db, $::UPDATE_CACHE{$name},\@ppclist);
-            }
+            }            
+            xCAT::PPCdb::add_ppc( "cec", [$values], 0, 1 );
+            #copy passwd for the fsps.
+            my $rst = copypasswd($name);
+            unless ( $rst )
+            {
+                # do something here
+            }             
         }
 
     }
@@ -3578,6 +3596,34 @@ sub writehost {
     $hoststab->close();
 }
 
+##########################################################################
+# Copy the user/passwd information from CEC/Frame to FSP/BPA
+# This function should be called after database migration
+##########################################################################
+sub copypasswd {
+    my $node = shift;
+    if (($node) && ($node =~ /xCAT::/))
+    {
+        $node = shift;
+    }   
+    
+    my $children = xCAT::DBobjUtils->getchildren($node);
+    my %childentry;
+    my $directtab = xCAT::Table->new('ppcdirect');
+    if ( $children and $directtab )  {
+        my $dthash = $directtab->getNodeAttribs($node, [qw(username password disable)]);
+        my $username = $dthash->{username};
+        my $passwd   = $dthash->{passwd};
+        my $disable  = $dthash->{disable};
+        foreach (@$children) {
+            $childentry{$_}{username} = $username;
+            $childentry{$_}{password}   = $passwd;            
+            $childentry{$_}{disable}  = $disable;   
+        }            
+        $directtab->setNodesAttribs(\%childentry);   
+    } 
+    return 1;
+}
 1;
 
 
