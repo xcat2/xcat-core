@@ -2607,6 +2607,11 @@ sub isInSameSubnet
     $ip1 = xCAT::NetworkUtils->getipaddr($ip1);
     $ip2 = xCAT::NetworkUtils->getipaddr($ip2);
 
+    if (!defined($ip1) || !defined($ip2))
+    {
+        return undef;
+    }
+
     if ((($ip1 =~ /\d+\.\d+\.\d+\.\d+/) && ($ip2 !~ /\d+\.\d+\.\d+\.\d+/))
       ||(($ip1 !~ /\d+\.\d+\.\d+\.\d+/) && ($ip2 =~ /\d+\.\d+\.\d+\.\d+/)))
     {
