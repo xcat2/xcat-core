@@ -41,6 +41,9 @@ List the complete object definition.
 
 Only list the object names.
 
+=item B<-S> 
+
+List all the hidden nodes (FSP/BPA nodes) with other ones.
 =item I<noderange>
 
 A set of comma delimited node names and/or group names.
@@ -174,6 +177,13 @@ what xCAT database tables are used to store the data.
 
  lsdef -V -l -t node -o node01
 
+=item 14.
+
+To list the hidden nodes that can't be seen with other flags.
+The hidden nodes are FSP/BPAs.
+
+ lsdef -S
+ 
 =back
 
 
