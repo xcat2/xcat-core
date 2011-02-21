@@ -48,7 +48,11 @@ if [ $OS != "AIX" ]; then
             rpm -Uvh IBM_pe_license*.rpm
         fi
         IBM_PE_LICENSE_PROMPT=N /opt/ibmhpc/install/sbin/accept_ppe_license.sh
-        rpm -Uvh --force ibm_pami*.rpm ibm_pe*.rpm ppe_*.rpm 
+##############
+###  TEMPORARY FOR xCAT 2.6 Beta:
+        #rpm -Uvh --force ibm_pami*.rpm ibm_pe*.rpm ppe_*.rpm 
+        rpm -Uvh --force sci*.rpm ibm_p*.rpm ibm_open*.rpm ibm_pe*.rpm ppe_*.rpm --nodeps
+##############
         cd /
         rm -Rf /tmp/pe
     fi
@@ -79,13 +83,30 @@ if [ $OS != "AIX" ]; then
             fi
             # Install PE license rpm into image, BUT DO NOT ACCEPT
             # The java process fails when you try to run in chroot
+##############
+###  TEMPORARY FOR xCAT 2.6 Beta:
             #yum --installroot $installroot --nogpgcheck install  $PE_DIR/IBM_pe_license*.rpm
+            yum --installroot $installroot --nogpgcheck install  $PE_DIR/IBM_pe_license*.rpm
+##############
             # Copy license files from MN into the image
             mkdir -p $installroot/etc/opt/ibmhpc/license
             cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
+##############
+###  TEMPORARY FOR xCAT 2.6 Beta:
  	    #chroot $installroot /opt/ibmhpc/install/sbin/accept_ppe_license.sh
+ 	    chroot $installroot /opt/ibmhpc/install/sbin/accept_ppe_license.sh
             # Install PE product rpms
-            INUCLIENTS=1 INUBOSTYPE=1 yum --installroot $installroot --nogpgcheck install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
+            #INUCLIENTS=1 INUBOSTYPE=1 yum --installroot $installroot --nogpgcheck install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
+            chroot /install/netboot/rhels6/ppc64/compute_hfi_0128_cfgchg/rootimg mkdir -p /tmp/pe
+            chroot /install/netboot/rhels6/ppc64/compute_hfi_0128_cfgchg/rootimg rm -f -R /tmp/pe/*
+            download_dir=`echo $PE_DIR | cut -d '/' -f3-`
+            echo $download_dir
+        ### we had to set SITEMASTER to MN IP explicitly in our test cluster
+            #SITEMASTER=10.0.0.1
+            chroot /install/netboot/rhels6/ppc64/compute_hfi_0128_cfgchg/rootimg wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm --directory-prefix=/tmp/pe
+            chroot /install/netboot/rhels6/ppc64/compute_hfi_0128_cfgchg/rootimg /bin/rpm -ivh /tmp/pe/s*.rpm  /tmp/pe/p*.rpm /tmp/pe/ibm_*.rpm --nodeps
+            chroot /install/netboot/rhels6/ppc64/compute_hfi_0128_cfgchg/rootimg /bin/rm -r /tmp/pe
+##############
         fi
     fi
 fi
