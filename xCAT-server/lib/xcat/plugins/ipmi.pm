@@ -2841,6 +2841,7 @@ sub eventlog {
 	}
 	elsif($subcommand =~ /^\d+$/) {
         $sessdata->{numevents} = $subcommand;
+	$sessdata->{displayedevents} = 0;
 	}
 	else {
 		return(1,"unsupported command eventlog $subcommand");
@@ -3072,19 +3073,23 @@ sub got_sel {
 
         if ($sessdata->{auxloginfo} and $sessdata->{auxloginfo}->{$entry}) {
              $text.=" with additional data:";
-             if ($sessdata->{fullsel}) {
+             if ($sessdata->{fullsel} || ( $sessdata->{numevents}
+	        && $sessdata->{numevents} > $sessdata->{displayedevents})) {
                 xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
                 foreach (split /\n/,$sessdata->{auxloginfo}->{$entry}) {
                     xCAT::SvrUtils::sendmsg($_,$sessdata->{node});
                 }
+                $sessdata->{displayedevents}++;
              } else {
         		push(@{$sessdata->{selentries}},$text);
                 push @{$sessdata->{selentries}},split /\n/,$sessdata->{auxloginfo}->{$entry};
              } 
 
         } else {
-            if ($sessdata->{fullsel}) {
+            if ($sessdata->{fullsel} || ($sessdata->{numevents}
+	        && $sessdata->{numevents} > $sessdata->{displayedevents})) {
                 xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
+		$sessdata->{displayedevents}++;
             } else {
         		push(@{$sessdata->{selentries}},$text);
             }
