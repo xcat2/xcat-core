@@ -1,16 +1,23 @@
 # AIX bundle package list for PE
 
+### TEMPORARY for xCAT 2.6
+
 # POE
 I:ppe.poe
 I:ppe.pdb
 #I:ppe.man
 I:ppe.loc.license
+I:ppe.openshmem
+#I:ppe.samples
+I:ppe.pami
+I:ppe.sci
+
 
 # needed on login node
 #I:ppe.hpct
 
 # LAPI
-I:rsct.lapi
+#I:rsct.lapi
 #I:rsct.sci
 
 # MetaCluster (checkpoint/restore)
