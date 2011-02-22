@@ -1,16 +1,17 @@
 =head1 NAME
 
-B<tabprune> - Deletes records from the eventlog or auditlog tables.
+B<tabprune> - Deletes records from the eventlog, auditlog  or x_teal* tables.
 
 =head1 SYNOPSIS
 
-B<tabprune> B<eventlog | auditlog>  [B<-V>] B<-i> I<recid> |B<-n> I<number of records> | B<-p> I<percentage> | B<-a>  
+B<tabprune> B<eventlog | auditlog | x_teal*>  [B<-V>] B<-i> I<recid> |B<-n> I<number of records> | B<-p> I<percentage> | B<-a>  
 
 B<tabprune> [B<-h>|B<--help>] [B<-v>|B<--version>] 
 
 =head1 DESCRIPTION
 
-The tabprune command is used to delete records from the auditlog or eventlog. As an option, the table header and all the rows pruned from the specified table will be displayed in CSV (comma separated values) format.  
+The tabprune command is used to delete records from the auditlog, eventlog or the x_teal* tables.  As an option, the table header and all the rows pruned from the specified table will be displayed in CSV (comma separated values) format. 
+If TEAL is installed the following tables are also supported: x_tealalert2alert,x_tealalert2event,x_tealalertlog,x_tealcheckpoint,x_tealeventlog. 
 
 =head1 OPTIONS
 
