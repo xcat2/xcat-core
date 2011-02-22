@@ -662,12 +662,15 @@ sub tabprune
     my $tabprune_usage = sub {
     	my $exitcode = shift @_;
         my %rsp;
-        push @{$rsp{data}}, "Usage: tabprune <eventlog | auditlog> [-V] -a";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog> [-V] -n <# of records>";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog> [-V] -i <recid>";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog> [-V] -p <percent>";
+        push @{$rsp{data}}, "Usage: tabprune <eventlog | auditlog | x_teal*> [-V] -a";
+        push @{$rsp{data}}, "       tabprune <eventlog | auditlog | x_teal*> [-V] -n <# of records>";
+        push @{$rsp{data}}, "       tabprune <eventlog | auditlog | x_teal*> [-V] -i <recid>";
+        push @{$rsp{data}}, "       tabprune <eventlog | auditlog | x_teal*> [-V] -p <percent>";
         push @{$rsp{data}}, "       tabprune [-h|--help]";
         push @{$rsp{data}}, "       tabprune [-v|--version]";
+        push @{$rsp{data}}, "       where x_teal* are the tables: ";
+        push @{$rsp{data}}, "       x_tealalert2alert,x_tealalert2event,x_tealalertlog ";
+        push @{$rsp{data}}, "       x_tealcheckpoint, or x_tealeventlog ";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
     };
@@ -698,16 +701,16 @@ sub tabprune
     my $table = $ARGV[0];
     if (!(defined $table)) {
         my %rsp;
-        $rsp{data}->[0] = "Table name eventlog or auditlog required.";
+        $rsp{data}->[0] = "Table name eventlog, auditlog or x_teal* required.";
         $rsp{errorcode} = 1; 
         $cb->(\%rsp);
         return 1;
       
     }
     $table=~ s/\s*//g; # remove blanks 
-    if (($table ne "eventlog") && ($table ne "auditlog")){
+    if (($table ne "eventlog") && ($table ne "auditlog") && ($table ne "x_tealalert2alert") && ($table ne "x_tealalert2event") && ($table ne "x_tealalertlog") && ($table ne "x_tealcheckpoint") && ($table ne "x_tealeventlog")) {
         my %rsp;
-        $rsp{data}->[0] = "Table name eventlog or auditlog required.";
+        $rsp{data}->[0] = "Table name eventlog, auditlog or x_teal* required.";
         $rsp{errorcode} = 1; 
         $cb->(\%rsp);
         return 1;
@@ -749,19 +752,35 @@ sub tabprune
         $rsp{errorcode} = 1; 
         $cb->(\%rsp);
         return 1;
-    } 
-      
+    }
+    # determine the attribute name of the recid
+    my $attrrecid; 
+    if (($table eq "eventlog") || ($table eq "auditlog")) {
+      $attrrecid="recid";
+    } else {
+      if (($table eq "x_tealalertlog") || ($table eq "x_tealeventlog")) {
+         $attrrecid="rec_id";
+      } else {
+       if (($table eq "x_tealalert2alert") || ($table eq "x_tealalert2event")) {
+           $attrrecid="assoc_id";
+        } else {
+            if ($table eq "x_tealcheckpoint") {
+               $attrrecid="chkpt_id";
+            }
+        }
+      }
+    }
     if (defined $ALL ) {
-     $rc=tabprune_all($table,$cb,$VERBOSE); 
+     $rc=tabprune_all($table,$cb, $attrrecid,$VERBOSE); 
     }
     if (defined $NUMBERENTRIES ) {
-     $rc=tabprune_numberentries($table,$cb,$NUMBERENTRIES,"n",$VERBOSE); 
+     $rc=tabprune_numberentries($table,$cb,$NUMBERENTRIES,"n", $attrrecid,$VERBOSE); 
     }
     if (defined $PERCENT) {
-     $rc=tabprune_numberentries($table,$cb,$PERCENT,"p",$VERBOSE); 
+     $rc=tabprune_numberentries($table,$cb,$PERCENT,"p", $attrrecid,$VERBOSE); 
     }
     if (defined $RECID ) {
-     $rc=tabprune_recid($table,$cb,$RECID,$VERBOSE); 
+     $rc=tabprune_recid($table,$cb,$RECID, $attrrecid,$VERBOSE); 
     }
     if (!($VERBOSE)) {  # not putting out changes
       my %rsp;
@@ -775,6 +794,7 @@ sub tabprune
 sub tabprune_all {
    my $table = shift;
    my $cb  = shift;
+   my  $attrrecid  = shift;
    my $VERBOSE  = shift;
    my $rc=0;
    my $tab        = xCAT::Table->new($table);
@@ -801,6 +821,7 @@ sub tabprune_numberentries {
   my $numberentries  = shift; # either number of entries or percent to 
                               # remove based on the flag
   my $flag  = shift;   # (n or p flag)
+  my  $attrrecid  = shift;
   my $VERBOSE  = shift;
   my $rc=0;
   my $tab        = xCAT::Table->new($table);
@@ -809,12 +830,7 @@ sub tabprune_numberentries {
        return 1;
   }
   my $DBname = xCAT::Utils->get_DBName;
-  my @attribs;
-  if ($DBname =~ /^DB2/) {
-    @attribs = ("\"recid\"");
-  } else {
-    @attribs = ("recid");
-  } 
+  my @attribs = ("$attrrecid");
   my @ents=$tab->getAllAttribs(@attribs);
   # find smallest and largest  recid, note table is not ordered by recid after
   # a while
@@ -827,29 +843,29 @@ sub tabprune_numberentries {
     if (!(defined $largerid)) {
          $largerid=$rid;
     }
-    if ($rid->{recid} < $smallrid->{recid}) {
+    if ($rid->{$attrrecid} < $smallrid->{$attrrecid}) {
          $smallrid=$rid;
     }
-    if ($rid->{recid} > $largerid->{recid}) {
+    if ($rid->{$attrrecid} > $largerid->{$attrrecid}) {
          $largerid=$rid;
     }
   }
   my $RECID;
   if ($flag eq "n") {  # deleting number of records
     #determine recid to delete all entries that come before like the -i flag
-    $RECID= $smallrid->{recid} + $numberentries ; 
+    $RECID= $smallrid->{$attrrecid} + $numberentries ; 
   } else {  # flag must be percentage
      #take largest and smallest recid and percentage and determine the recid
      # that will remove the requested percentage.   If some are missing in the
      # middle due to tabedit,  we are not worried about it.
      
-     my $totalnumberrids = $largerid->{recid} - $smallrid->{recid} +1;
+     my $totalnumberrids = $largerid->{$attrrecid} - $smallrid->{$attrrecid} +1;
      my $percent = $numberentries / 100;
      my $percentage=$totalnumberrids * $percent ;
      my $cnt=sprintf( "%d", $percentage ); # round to whole number
-     $RECID=$smallrid->{recid} + $cnt; # get recid to remove all before
+     $RECID=$smallrid->{$attrrecid} + $cnt; # get recid to remove all before
   }
-  $rc=tabprune_recid($table,$cb,$RECID,$VERBOSE); 
+  $rc=tabprune_recid($table,$cb,$RECID, $attrrecid,$VERBOSE); 
   return $rc;
 }
 
@@ -859,6 +875,7 @@ sub tabprune_recid {
    my $table = shift;
    my $cb  = shift;
    my $recid  = shift;
+   my  $attrrecid  = shift;
    my $VERBOSE  = shift;
    my $rc=0;
    # check which database so can build the correct Where clause
@@ -872,17 +889,17 @@ sub tabprune_recid {
    my @recs;
    if ($VERBOSE) { # need to get all attributes 
     if ($DBname =~ /^DB2/) {
-      @recs=$tab->getAllAttribsWhere("\"recid\"<$recid", 'ALL');
+      @recs=$tab->getAllAttribsWhere("\"$attrrecid\"<$recid", 'ALL');
     } else {
-      @recs=$tab->getAllAttribsWhere("recid<$recid", 'ALL');
+      @recs=$tab->getAllAttribsWhere("$attrrecid<$recid", 'ALL');
     }  
     output_table($table,$cb,$tab,\@recs); 
    }  
    my @ents;
    if ($DBname =~ /^DB2/) {
-      @ents=$tab->getAllAttribsWhere("\"recid\"<$recid", 'recid');
+      @ents=$tab->getAllAttribsWhere("\"$attrrecid\"<$recid", $attrrecid);
    } else {
-      @ents=$tab->getAllAttribsWhere("recid<$recid", 'recid');
+      @ents=$tab->getAllAttribsWhere("$attrrecid<$recid", $attrrecid);
    } 
    # delete them 
    foreach my $rid (@ents) {
