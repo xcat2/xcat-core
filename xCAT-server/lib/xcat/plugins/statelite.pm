@@ -385,7 +385,7 @@ sub process_request {
             foreach my $child (@{$childrenRef}) {
                 my @tmpc = split (/\s+/, $child);
                 my $name = $tmpc[1];
-                my @newentries = grep /\s+$name$/, @{listNew};
+                my @newentries = grep /\s+$name$/, @{$listNew};
                 my @entry;
                 
                 if (scalar @newentries == 1) {
