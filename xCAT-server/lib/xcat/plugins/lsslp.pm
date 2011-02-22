@@ -92,7 +92,7 @@ my @invalidiplist = (
         "192.168.3.147",
         "192.168.3.148",
         "192.168.3.149",
-        "169.254.*.*",
+        "169.254.",
         "127.0.0.0",
         "127",
         0,
@@ -125,7 +125,7 @@ my %mgt = (
     lc(TYPE_RSA)   => "blade"
 );
 
-my @attribs    = qw(nodetype mtm serial side otherinterfaces groups mgt id parent mac);
+my @attribs    = qw(nodetype mtm serial side otherinterfaces groups mgt id parent mac hidden);
 my $verbose    = 0;
 my %ip_addr    = ();
 my %slp_result = ();
@@ -1632,7 +1632,7 @@ sub check_ip {
     }
     foreach (@invalidiplist)
     {
-        if ( $myip eq $_ )
+        if ( $myip =~ /^($_)/ )
         {
             return 0;
         }
@@ -2743,6 +2743,12 @@ sub format_stanza {
                 }
             } elsif ( /^otherinterfaces$/ )  {
                     next;
+            } elsif (/^hidden$/) {
+             if ( $type =~ /^(fsp|bpa)$/ ) {
+                    $d = "1";
+                } else {
+                    $d = "0";
+                }
             }
             if ( !defined($d) ) {
                 next;
@@ -2803,9 +2809,15 @@ sub format_xml {
             } elsif ( /^groups$/ ) {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
-                $d = $mgt{$type};
+                if ($mgt{$type} =~ /^cec$/)  {
+                    $d = "fsp";
+                }elsif ($mgt{$type} =~ /^frame$/)  {
+                    $d = "bpa";                
+                }else {
+                    $d = $mgt{$type};
+                }
             } elsif ( /^id$/ ) {
-                if ( $type =~ /^(fsp|bpa|frame|cec)$/ ) {
+                if ( $type =~ /^(fsp|bpa|cec|frame)$/ ) {
                     $d = $data[$i++];
                 } else {
                     $i++;
@@ -2813,7 +2825,7 @@ sub format_xml {
                 }
                 $i++;
             } elsif ( /^side$/ ) {
-                if ( $type !~ /^(fsp|bpa|cec|frame)$/ ) {
+                if ( $type !~ /^(fsp|bpa)$/ ) {
                     next;
                 }
             } elsif ( /^parent$/ )  {
@@ -2822,11 +2834,17 @@ sub format_xml {
                 }
             } elsif ( /^otherinterfaces$/ )  {
                     next;
+            } elsif (/^hidden$/) {
+             if ( $type =~ /^(fsp|bpa)$/ ) {
+                    $d = "1";
+                } else {
+                    $d = "0";
+                }
             }
-
             if ( !defined($d) ) {
                 next;
             }
+
             $href->{Node}->{$_} = $d;
         }
         #################################
