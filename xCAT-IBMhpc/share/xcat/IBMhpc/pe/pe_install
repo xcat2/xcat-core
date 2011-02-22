@@ -97,15 +97,16 @@ if [ $OS != "AIX" ]; then
  	    chroot $installroot /opt/ibmhpc/install/sbin/accept_ppe_license.sh
             # Install PE product rpms
             #INUCLIENTS=1 INUBOSTYPE=1 yum --installroot $installroot --nogpgcheck install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
-            chroot /install/netboot/rhels6/ppc64/compute_hfi_0128_cfgchg/rootimg mkdir -p /tmp/pe
-            chroot /install/netboot/rhels6/ppc64/compute_hfi_0128_cfgchg/rootimg rm -f -R /tmp/pe/*
+            chroot $installroot mkdir -p /tmp/pe
+            chroot $installroot rm -f -R /tmp/pe/*
+
             download_dir=`echo $PE_DIR | cut -d '/' -f3-`
             echo $download_dir
         ### we had to set SITEMASTER to MN IP explicitly in our test cluster
             #SITEMASTER=10.0.0.1
-            chroot /install/netboot/rhels6/ppc64/compute_hfi_0128_cfgchg/rootimg wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm --directory-prefix=/tmp/pe
-            chroot /install/netboot/rhels6/ppc64/compute_hfi_0128_cfgchg/rootimg /bin/rpm -ivh /tmp/pe/s*.rpm  /tmp/pe/p*.rpm /tmp/pe/ibm_*.rpm --nodeps
-            chroot /install/netboot/rhels6/ppc64/compute_hfi_0128_cfgchg/rootimg /bin/rm -r /tmp/pe
+            chroot $installroot wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm --directory-prefix=/tmp/pe
+            chroot $installroot /bin/rpm -ivh /tmp/pe/s*.rpm  /tmp/pe/p*.rpm /tmp/pe/ibm_*.rpm --nodeps
+            chroot $installroot /bin/rm -r /tmp/pe
 ##############
         fi
     fi
