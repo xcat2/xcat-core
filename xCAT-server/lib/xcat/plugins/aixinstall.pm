@@ -1234,8 +1234,7 @@ sub spot_updates
             if ($::RUNCMD_RC != 0)
             {
                 my $rsp;
-                push @{$rsp->{data}}, "Could not get NIM spot definitions from $
-srvnode.";
+                push @{$rsp->{data}}, "Could not get NIM spot definitions from $srvnode.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
                 return 1;
             }
