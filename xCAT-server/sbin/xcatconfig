@@ -1069,6 +1069,8 @@ sub initDB
               "$::XCATROOT/sbin/chtab priority=4.5 policy.commands=getcredentials policy.rule=allow;";
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab priority=4.6 policy.commands=syncfiles policy.rule=allow;";
+            $chtabcmds .=
+              "$::XCATROOT/sbin/chtab priority=2.3 policy.commands=lsxcatd policy.rule=allow;";
         }
         else    # linux
         {
