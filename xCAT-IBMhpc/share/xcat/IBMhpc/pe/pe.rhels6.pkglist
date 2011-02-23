@@ -1,2 +1,10 @@
+
+# The following are for systems running InfiniBand networks
+##############
+#  Temporary for xCAT 2.6:
+#    You should comment out these packages when running with HFI,
+#    but you will also then need to use the xCAT 2.6 pe_install script
+#    that does a force install of pe.  The current pe packages prereq 
+#    these libibverbs packages.
 libibverbs.ppc
 libibverbs.ppc64
