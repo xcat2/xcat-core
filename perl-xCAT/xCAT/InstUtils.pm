@@ -122,11 +122,16 @@ sub myxCATname
 
 	# make sure xcatd is running - & db is available
 	#    this routine is called during initial install of xCAT
-	my $rc = `lsxcatd -d`;
-	if ($rc == 0) {
+        my $cmd="lsxcatd -d > /dev/null 2>&1";
+        my $outref = [];
+        @$outref = `$cmd`;
+        my $rc = $? >> 8;
 
-    	if (xCAT::Utils->isMN())
-    	{
+        if ($rc == 0)
+        {
+
+    	  if (xCAT::Utils->isMN())
+    	  {
 
         	# read the site table, master attrib
         	my $hostname = xCAT::Utils->get_site_Master();
@@ -139,9 +144,9 @@ sub myxCATname
             	$name = $hostname;
         	}
 
-    	}
-    	elsif (xCAT::Utils->isServiceNode())
-    	{
+       	  }
+    	  elsif (xCAT::Utils->isServiceNode())
+    	  {
 
         	# the myxcatpost_<nodename> file should exist on all nodes!
         	my $catcmd = "cat /xcatpost/myxcatpost_* | grep '^NODE='";
@@ -152,8 +157,8 @@ sub myxCATname
         	{
             	($junk, $name) = split('=', $output);
         	}
-		}
-    }
+	 }
+       }
 
 	if (!$name) {
 		$name = hostname();
