@@ -19,8 +19,17 @@ arch=$3
 profile=$4
 workdir=$5
 
-hpc=/install/custom/netboot/sles/ling/
 otherpkgs=/install/post/otherpkgs/$osver/$arch
+
+################
+# This script runs other postinstall scripts from the $hpc directory
+# If you have created a custom copy of ANY of these scripts,
+#   make sure to change the execution path from $hpc/<product> to the location
+#   you have placed your script in
+###############
+hpc=/opt/xcat/share/xcat/IBMhpc
+custom=/install/custom/netboot/sles
+installps=/install/postscripts
 
 
 # Run default postinstall shipped with xcat
