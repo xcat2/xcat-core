@@ -157,12 +157,11 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	var provForm = $('<div class="form"></div>');
 
 	// Create status bar
-	var statBarId = 'hmcProvisionStatBar' + inst;
-	var statBar = createStatusBar(statBarId).hide();
+	var statBar = createStatusBar('statBar').hide();
 	provForm.append(statBar);
 
 	// Create loader
-	var loader = createLoader('hmcProvisionLoader' + inst).hide();
+	var loader = createLoader('loader').hide();
 	statBar.append(loader);
 
 	// Create info bar
@@ -190,8 +189,61 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 
 	var hmcProvisionBtn = createButton('Provision');
 	hmcProvisionBtn.bind('click', function(event) {
-		//TODO Insert provision code here
-		openDialog('info', 'Under construction');
+		// Remove any warning messages
+		var tempTab = $(this).parent().parent();
+		tempTab.find('.ui-state-error').remove();
+		
+		var ready = true;
+		var errMsg = '';
+		var tempNodes = '';
+		
+		// Get nodes that were checked
+		tempNodes = getCheckedByObj(tempTab.find('table'));
+		if ('' == tempNodes){
+			errMsg += 'You need to select a node.<br>';
+			ready = false;
+		}
+		else{
+			tempNodes = tempNodes.substr(0, tempNodes.length - 1);
+		}
+		
+		// If all inputs are valid, ready to provision
+		if (ready) {			
+			// Disable provision button
+			$(this).attr('disabled', 'true');
+			
+			// Show loader
+			tempTab.find('#statBar').show();
+			tempTab.find('#loader').show();
+
+			// Disable all selects, input and checkbox
+			tempTab.find('input').attr('disabled', 'disabled');
+						
+			// Get operating system image
+			var os = tempTab.find('#osname').val();
+			var arch = tempTab.find('#arch').val();
+			var profile = tempTab.find('#pro').val();
+									
+			/**
+			 * (1) Set operating system
+			 */
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'nodeadd',
+					tgt : '',
+					args : tempNodes + ';noderes.netboot=yaboot;nodetype.os=' + os + ';nodetype.arch=' + arch + ';nodetype.profile=' + profile,
+					msg : 'cmd=nodeadd;out=' + tempTab.attr('id')
+				},
+
+				success : pProvisionExisting
+			});
+		} else {
+			// Show warning message
+			var warn = createWarnBar(errMsg);
+			warn.prependTo(tempTab);
+		}
 	});
 	provForm.append(hmcProvisionBtn);
 	
@@ -371,4 +423,112 @@ function createNodesArea(groupName, areaId){
 			}
 		} // End of function(data)
 	});
+}
+
+/**
+ * provision for existing system p node
+ * 
+ * @return Nothing
+ */
+function pProvisionExisting(data){
+	// Get ajax response
+	var rsp = data.rsp;
+	var args = data.msg.split(';');
+
+	// Get command invoked
+	var cmd = args[0].replace('cmd=', '');
+	// Get provision tab instance
+	var tabId = args[1].replace('out=', '');
+	
+	//get tab obj
+	var tempTab = $('#' + tabId);
+	/**
+	 * (2) Prepare node for boot
+	 */
+	if (cmd == 'nodeadd') {
+		// Get operating system
+		var bootMethod = tempTab.find('#boot').val();
+		
+		// Get nodes that were checked
+		var tgts = getCheckedByObj(tempTab.find('table'));
+		
+		// Prepare node for boot
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'nodeset',
+				tgt : tgts,
+				args : bootMethod,
+				msg : 'cmd=nodeset;out=' + tabId
+			},
+
+			success : pProvisionExisting
+		});
+	} 
+	
+	/**
+	 * (3) Boot node from network
+	 */
+	else if (cmd == 'nodeset') {
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		tempTab.find('#statBar').append(prg);
+
+		// If there was an error, do not continue
+		if (prg.html().indexOf('Error') > -1) {
+			tempTab.find('#loader').remove();
+			return;
+		}
+				
+		// Get nodes that were checked
+		var tgts = getCheckedByObj(tempTab.find('table'));
+		
+		// Boot node from network
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'rnetboot',
+				tgt : tgts,
+				args : '',
+				msg : 'cmd=rnetboot;out=' + tabId
+			},
+
+			success : pProvisionExisting
+		});
+	} 
+	
+	/**
+	 * (4) Done
+	 */
+	else if (cmd == 'rnetboot') {
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		tempTab.find('#statBar').append(prg);
+		
+		tempTab.find('#loader').remove();
+	}
+
+}
+
+/**
+ * get all select elements' name in the obj, 
+ * 
+ * @return all nodes name, seperate by ','
+ */
+function getCheckedByObj(obj){
+	var tempStr = '';
+	// Get nodes that were checked
+	obj.find('input:checked').each(function(){
+		if($(this).attr('name')){
+			tempStr += $(this).attr('name') + ',';
+		}
+	});
+	
+	if ('' != tempStr){
+		tempStr = tempStr.substr(0, tempStr.length - 1);
+	}
+
+	return tempStr;
 }

@@ -36,6 +36,38 @@ function loadProvisionPage() {
 		return;
 	}
 
+	// Get OS image names
+	if (!$.cookie('imagenames')){
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'tabdump',
+				tgt : '',
+				args : 'osimage',
+				msg : ''
+			},
+
+			success : setOSImageCookies
+		});
+	}
+
+	// Get groups
+	if (!$.cookie('groups')){
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'extnoderange',
+				tgt : '/.*',
+				args : 'subgroups',
+				msg : ''
+			},
+
+			success : setGroupsCookies
+		});
+	}
+	
 	// Create info bar
 	var infoBar = createInfoBar('Select a platform to provision or re-provision a node on, then click Ok.');
 	
