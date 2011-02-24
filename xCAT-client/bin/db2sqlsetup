@@ -387,6 +387,9 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         &catalogServer;
         &createcfgloc;
     }
+    # add paths to db2 code to roots path.  Need this for LL, but it is
+    # convenient
+    &adddb2paths;
 
     #
     # Restore backed up database into DB2
@@ -414,6 +417,9 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
 
 if ($::SETUPODBC)
 {
+    # add paths to db2 code to roots path.  Need this for LL, but it is
+    # convenient
+    &adddb2paths;
 
     #
     #  set up the ODBC on the Management Node
@@ -1482,7 +1488,131 @@ sub restorexcatdb
     #
     &startxcatd;
 }
+#-----------------------------------------------------------------------------
 
+=head3    adddb2paths
+	
+ Add paths to db2 commands to /etc/profile and ~.profile 
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub adddb2paths
+
+{
+   my $cmd;
+   if ($::osname eq 'AIX')
+   {
+        my $profname = "/etc/profile";
+        my $cmd = qq~cat $profname | grep "xCAT DB2 setup"~;
+        my $outref = xCAT::Utils->runcmd("$cmd", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+
+            # make back up file
+            my $cpcmd = qq~/bin/cp -p $profname $profname.orig1~;
+            my $outref = xCAT::Utils->runcmd("$cpcmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not copy $profname.");
+            }
+
+            # add DB2 paths
+            my $db2paths="/var/lib/db2/sqllib/bin:/var/lib/db2/sqllib/adm:/var/lib/db2/sqllib/misc:/var/lib/db2/sqllib/db2tss/bin";
+
+            my $eccmd =
+             qq~echo '# xCAT DB2 setup\nPATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
+            $outref = xCAT::Utils->runcmd("$eccmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not update $profname.");
+            }
+        } 
+        my $homedir = xCAT::Utils->getHomeDir();
+        $profname = "$homedir/.profile";
+        if (-e ("$profname")) {  # if .profile exists
+          $cmd = qq~cat $profname | grep "xCAT DB2 setup"~;
+          $outref = xCAT::Utils->runcmd("$cmd", -1);
+          if ($::RUNCMD_RC != 0)
+          {
+
+            # make back up file
+            my $cpcmd = qq~/bin/cp -p $profname $profname.orig1~;
+            my $outref = xCAT::Utils->runcmd("$cpcmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not copy $profname.");
+            }
+
+            # add DB2 paths
+            my $db2paths="/var/lib/db2/sqllib/bin:/var/lib/db2/sqllib/adm:/var/lib/db2/sqllib/misc:/var/lib/db2/sqllib/db2tss/bin";
+
+            my $eccmd =
+             qq~echo '# xCAT DB2 setup\nPATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
+            $outref = xCAT::Utils->runcmd("$eccmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not update $profname.");
+            }
+         }
+       }
+
+   }
+   else   #Linux
+   {
+        my $profname = "/etc/profile.d/xcat.sh";
+        my $cmd = qq~cat $profname | grep "db2"~;
+        my $outref = xCAT::Utils->runcmd("$cmd", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+
+            # make back up file
+            my $cpcmd = qq~/bin/cp -p $profname $profname.orig1~;
+            my $outref = xCAT::Utils->runcmd("$cpcmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not copy $profname.");
+            }
+
+            # add DB2 paths
+            my $db2paths="/var/lib/db2/sqllib/bin:/var/lib/db2/sqllib/adm:/var/lib/db2/sqllib/misc:/var/lib/db2/sqllib/db2tss/bin";
+
+            my $eccmd =
+             qq~echo 'PATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
+            $outref = xCAT::Utils->runcmd("$eccmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not update $profname.");
+            }
+        } 
+        my $profname = "/etc/profile.d/xcat.csh";
+        my $cmd = qq~cat $profname | grep "db2"~;
+        my $outref = xCAT::Utils->runcmd("$cmd", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+         
+            # make back up file
+            my $cpcmd = qq~/bin/cp -p $profname $profname.orig1~;
+            my $outref = xCAT::Utils->runcmd("$cpcmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not copy $profname.");
+            }
+
+            # add DB2 paths
+            my $db2paths="/var/lib/db2/sqllib/bin:/var/lib/db2/sqllib/adm:/var/lib/db2/sqllib/misc:/var/lib/db2/sqllib/db2tss/bin";
+
+            my $eccmd =
+             qq~echo 'setenv PATH \${PATH}:$db2paths\n' >>$profname~;
+            $outref = xCAT::Utils->runcmd("$eccmd", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E', "Could not update $profname.");
+            }
+        } 
+   }
+}
 #-----------------------------------------------------------------------------
 
 =head3   remove
