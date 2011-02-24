@@ -887,6 +887,7 @@ EOMS
    foreach (@ndrivers) {
       print $inifile "insmod /lib/$_\n";
    }
+    print $inifile "killall -9 udevd\n";
     if($mode eq "statelite") {
         print $inifile "echo debug: before netstart\n";
         print $inifile "# check and see if debug is specified on command line\n";
@@ -1281,6 +1282,7 @@ END
 	system("cp -r $rootimg_dir/etc/udev/* /tmp/xcatinitrd.$$/etc/udev");
 	system("cp -r $rootimg_dir/bin/uname /tmp/xcatinitrd.$$/bin/");
 	system("cp -r $rootimg_dir/lib/firmware/* /tmp/xcatinitrd.$$/lib/firmware");
+	system("cp -r $rootimg_dir/usr/bin/killall /tmp/xcatinitrd.$$/usr/bin");
 	
 	# Copy rules for network adapter
 	my $name = `cat /etc/sysconfig/network/ifcfg-$prinic | grep NAME`;
