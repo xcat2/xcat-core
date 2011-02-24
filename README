@@ -1,14 +1,9 @@
-xCAT - eXtreme Cluster Administration Toolkit
+xCAT - eXtreme Cloud Administration Toolkit
 
 xCAT is a toolkit for the deployment and administration of clusters.
 
-For documentation on getting started with xCAT, see: 
-http://xcat.svn.sourceforge.net/svnroot/xcat/xcat-core/trunk/xCAT-client/share/doc/xCAT2.pdf .
+xCAT documentation is available at: http://xcat.sourceforge.net/
 
-xCAT is made available as OSS under the EPL license:
+xCAT is made available as open source software under the EPL license:
 http://www.opensource.org/licenses/eclipse-1.0.php
-
-(This file is not packaged with the xCAT RPMs.  It is only here for those that look
-at the source in SVN and want to know how to get started.  The README that is packaged
-with xCAT is in perl-xCAT-2.0/README.)
 

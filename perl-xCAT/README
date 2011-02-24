@@ -1,19 +1,9 @@
-xCAT - eXtreme Cluster Administration Toolkit
+xCAT - eXtreme Cloud Administration Toolkit
 
 xCAT is a toolkit for the deployment and administration of clusters.
 
-For documentation on getting started with xCAT you can download the 
-following xCAT 2.0 Cookbooks.
+xCAT documentation is available at: http://xcat.sourceforge.net/
 
-Linux Cookbook:
-http://xcat.svn.sourceforge.net/svnroot/xcat/xcat-core/trunk/perl-xCAT-2.0/xCAT2.0.pdf
-
-AIX Cookbook:
-http://xcat.svn.sourceforge.net/svnroot/xcat/xcat-core/trunk/perl-xCAT-2.0/xCAT2onAIX.pdf
-
-The Cookbooks are also available on an installed system in the
-/opt/xcat/share/doc/ directory.
-
-xCAT is made available as OSS under the EPL license:
+xCAT is made available as open source software under the EPL license:
 http://www.opensource.org/licenses/eclipse-1.0.php
 
