@@ -83,18 +83,14 @@ function loadProvisionPage() {
 
 	// Create radio buttons for platforms
 	var hwList = $('<ol>Platforms available:</ol>');
-	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>ipmi</li>');
-	var blade = $('<li><input type="radio" name="hw" value="blade"/>blade</li>');
-	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>hmc</li>');
-	var ivm = $('<li><input type="radio" name="hw" value="ivm"/>ivm</li>');
-	var fsp = $('<li><input type="radio" name="hw" value="fsp"/>fsp</li>');
-	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>zvm</li>');
+	var ipmi = $('<li><input type="radio" name="hw" value="ipmi" checked/>iDataPlex</li>');
+	var blade = $('<li><input type="radio" name="hw" value="blade"/>BladeCenter</li>');
+	var hmc = $('<li><input type="radio" name="hw" value="hmc"/>System p</li>');
+	var zvm = $('<li><input type="radio" name="hw" value="zvm"/>System z</li>');
 
 	hwList.append(ipmi);
 	hwList.append(blade);
 	hwList.append(hmc);
-	hwList.append(ivm);
-	hwList.append(fsp);
 	hwList.append(zvm);
 	provPg.append(hwList);
 
@@ -123,17 +119,11 @@ function loadProvisionPage() {
 		case "blade":
 			plugin = new bladePlugin();
 			break;
-		case "fsp":
-			plugin = new fspPlugin();
-			break;
 		case "hmc":
 			plugin = new hmcPlugin();
 			break;
 		case "ipmi":
 			plugin = new ipmiPlugin();
-			break;
-		case "ivm":
-			plugin = new ivmPlugin();
 			break;
 		case "zvm":
 			plugin = new zvmPlugin();
