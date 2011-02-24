@@ -125,98 +125,98 @@ sub mkvm_parse_args {
     my $cmd     = $request->{command};
     my $args    = $request->{arg};
 
-#############################################
-# Responds with usage statement
-#############################################
+    #############################################
+    # Responds with usage statement
+    #############################################
     local *usage = sub {
         my $usage_string = xCAT::Usage->getUsage($cmd);
         return( [ $_[0], $usage_string] );
     };
-#############################################
-# Process command-line arguments
-#############################################
+    #############################################
+    # Process command-line arguments
+    #############################################
     if ( !defined( $args )) {
         return(usage( "No command specified" ));
     }
-#############################################
-# Checks case in GetOptions, allows opts
-# to be grouped (e.g. -vx), and terminates
-# at the first unrecognized option.
-#############################################
+    #############################################
+    # Checks case in GetOptions, allows opts
+    # to be grouped (e.g. -vx), and terminates
+    # at the first unrecognized option.
+    #############################################
     @ARGV = @$args;
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
     if ( !GetOptions( \%opt, qw(V|verbose ibautocfg ibacap=s i=s l=s c=s p=s full) )) {
         return( usage() );
     }
-####################################
-# Check for "-" with no option
-####################################
+    ####################################
+    # Check for "-" with no option
+    ####################################
     if ( grep(/^-$/, @ARGV )) {
         return(usage( "Missing option: -" ));
     }
     #############################################################
     # Check if only ibacap or ibautocfg specified with the other
     #############################################################
-#    if ( exists $opt{ibautocfg} and ! exists $opt{ibacap})
-#    {
-#       return(usage( "Missing option ibacap when ibautocfg is specified"));
-#    }    
-#    elsif ( exists $opt{ibacap} and !exists $opt{ibautocfg})
-#    {
-#        return(usage( "Missing option ibautocfg when ibacap is specified"));
-#    }    
-#    if ( $opt{ibacap} ne '1' and $opt{ibacap} ne '2' and $opt{ibacap} ne '3' and $opt{ibacap} ne '4')
-#    {
-#        return(usage( "IB adapter virtual capability (option --ibacap) can only be number 1,2,3,4. \n\t 1 means 'Low utilization': 6.25% of HCA resources (1/16 of an HCA); \n\t 2 means 'Medium utilization': 12.5% of HCA resources (1/8 of an HCA); \n\t 3 means 'High utilization': 25% of HCA resources (1/4 of an HCA);\n\t 4 means 'Dedicated HCA': 100% of HCA resources (complete HCA).\n"));
-#    }
+    #if ( exists $opt{ibautocfg} and ! exists $opt{ibacap})
+    #{
+    #   return(usage( "Missing option ibacap when ibautocfg is specified"));
+    #}    
+    #elsif ( exists $opt{ibacap} and !exists $opt{ibautocfg})
+    #{
+    #    return(usage( "Missing option ibautocfg when ibacap is specified"));
+    #}    
+    #if ( $opt{ibacap} ne '1' and $opt{ibacap} ne '2' and $opt{ibacap} ne '3' and $opt{ibacap} ne '4')
+    #{
+    #    return(usage( "IB adapter virtual capability (option --ibacap) can only be number 1,2,3,4. \n\t 1 means 'Low utilization': 6.25% of HCA resources (1/16 of an HCA); \n\t 2 means 'Medium utilization': 12.5% of HCA resources (1/8 of an HCA); \n\t 3 means 'High utilization': 25% of HCA resources (1/4 of an HCA);\n\t 4 means 'Dedicated HCA': 100% of HCA resources (complete HCA).\n"));
+    #}
 
-####################################
-# Check for non-zero integer 
-####################################
+    ####################################
+    # Check for non-zero integer 
+    ####################################
     if ( exists( $opt{i} )) {
         if ( $opt{i} !~ /^([1-9]{1}|[1-9]{1}[0-9]+)$/ ) {
             return(usage( "Invalid entry: $opt{i}" ));
 
         }
     }
-####################################
-# -i and -l not valid with -c 
-####################################
+    ####################################
+    # -i and -l not valid with -c 
+    ####################################
     if ( exists( $opt{c} ) ) {
         if ( exists($opt{i}) or exists($opt{l}) or exists($opt{full})) {
             return( usage() );
         }
-####################################
-# -p is required for -c
-####################################
+    ####################################
+    # -p is required for -c
+    ####################################
         if ( !exists($opt{p})) {
             return( usage() );
         }
     }
-####################################
-# -i, -l and -c not valid with -f 
-####################################
+    ####################################
+    # -i, -l and -c not valid with -f 
+    ####################################
     elsif ( exists( $opt{full} ) ) {
         if ( exists($opt{c}) or exists($opt{i}) or exists($opt{l})) {
             return( usage() );
         }
     }
-####################################
-# If -i and -l, both required
-####################################
+    ####################################
+    # If -i and -l, both required
+    ####################################
     elsif ( !exists($opt{l}) or !exists($opt{i})) {
         return( usage() );
     }
-####################################
-# Check for an extra argument
-####################################
+    ####################################
+    # Check for an extra argument
+    ####################################
     if ( defined( $ARGV[0] )) {
         return(usage( "Invalid Argument: $ARGV[0]" ));
     }
-####################################
-# Expand -l noderange
-####################################
+    ####################################
+    # Expand -l noderange
+    ####################################
     if ( exists( $opt{l} )) {
         my @noderange = xCAT::NodeRange::noderange( $opt{l},0 );
         if ( !@noderange ) {
@@ -225,9 +225,9 @@ sub mkvm_parse_args {
         @noderange = sort @noderange;
         $opt{lpar} = \@noderange;
     }
-####################################
-# Expand -c noderange
-####################################
+    ####################################
+    # Expand -c noderange
+    ####################################
     if ( exists( $opt{c} )) {
         my @noderange = xCAT::NodeRange::noderange( $opt{c},0 );
         if ( !@noderange ) {
@@ -235,9 +235,9 @@ sub mkvm_parse_args {
         }
         $opt{cec} = \@noderange;
     }
-#################################################
-# Swap the targets to be processed in PPC.pm
-#################################################
+    #################################################
+    # Swap the targets to be processed in PPC.pm
+    #################################################
     $opt{target} = [@{$request->{node}}];
     if ( $opt{l})
     {
@@ -250,22 +250,20 @@ sub mkvm_parse_args {
         $request->{node} = [@{$opt{cec}}];
         $request->{noderange} = $opt{c};
     }    
-#############################################
-# Only 1 node allowed 
-#############################################
+    #############################################
+    # Only 1 node allowed 
+    #############################################
     if ( !exists($opt{full}) && scalar( @{$request->{node}} ) > 1) {
         return(usage( "Multiple source specified" ));
     } 
 
-################################################
-# Check if the multiple nodes of  the same CEC are specified with -f
-################################################
+    ################################################
+    # Check if the multiple nodes of  the same CEC are specified with -f
+    ################################################
 
-if ( (exists($opt{full})) && (scalar (@{$opt{target}}) > 1) ) {
+    if ( (exists($opt{full})) && (scalar (@{$opt{target}}) > 1) ) {
         my $lparparent;
-
         my $ppctab  = xCAT::Table->new('ppc');
-
         foreach my $vnode (@{$opt{target}}) {
             my $vcon = $ppctab->getAttribs({node => $vnode}, ('node','parent'));
             if ($vcon and $vcon->{"node"} and $vcon->{"parent"}) {
@@ -275,10 +273,8 @@ if ( (exists($opt{full})) && (scalar (@{$opt{target}}) > 1) ) {
         }
 
         $ppctab->close;
-
         my $cbmsg        = "mkvm: multiple LPAR nodes which belong to the same CEC have been defined.\n";
             my $sameflag    = 0;
-
             foreach my $iparent (keys %$lparparent) {
                  if (scalar (keys %{$lparparent->{$iparent}}) > 1) {
                        $sameflag       = 1;
@@ -291,15 +287,14 @@ if ( (exists($opt{full})) && (scalar (@{$opt{target}}) > 1) ) {
             $cbmsg =~ s/,$/ /;
             $cbmsg = $cbmsg . "\n";
             }
-
         if ($sameflag) {
             return(usage( $cbmsg ));
         }
     } 
 
-####################################
-# Read and check profile
-####################################
+    ####################################
+    # Read and check profile
+    ####################################
     if ( exists( $opt{p})) {
         $opt{p} = $request->{cwd}->[0] . '/' . $opt{p} if ( $opt{p} !~ /^\//);
         return ( usage( "Profile $opt{p} cannot be found")) if ( ! -f $opt{p});
@@ -337,7 +332,7 @@ if ( (exists($opt{full})) && (scalar (@{$opt{target}}) > 1) ) {
         $opt{profile} = \@cfgdata;
     }
 
-####################################
+    ####################################
     # No operands - add command name 
     ####################################
     $request->{method} = $cmd;
@@ -476,50 +471,50 @@ sub clone {
     my $destcec;
     my $opt     = $request->{opt};
 
-#####################################
-# Always one source CEC specified 
-#####################################
+   #####################################
+   # Always one source CEC specified 
+   #####################################
     my $lparid = @$destd[0];
     my $mtms   = @$destd[2];
     my $type   = @$destd[4];
 
-#####################################
-# Not supported on IVM 
-#####################################
+    #####################################
+    # Not supported on IVM 
+    #####################################
     if ( $hwtype eq "ivm" ) {
         return( [[RC_ERROR,"Not supported for IVM"]] );
     }
-#####################################
-# Source must be CEC 
-#####################################
+    #####################################
+    # Source must be CEC 
+    #####################################
     #if ( $type ne "fsp" ) {
     unless ( $type =~ /^(cec|fsp)$/) {
         return( [[RC_ERROR,"Node must be an FSP"]] );
     }
-#####################################
-# Attributes not found
-#####################################
+    #####################################
+    # Attributes not found
+    #####################################
     if ( !$mtms) {
         return( [[RC_ERROR,"Cannot found serial and mtm for $destname"]] );
     }
 
-#####################################
-# Enumerate CECs
-#####################################
+    #####################################
+    # Enumerate CECs
+    #####################################
     my $filter = "type_model,serial_num";
     my $cecs = xCAT::PPCcli::lssyscfg( $exp, "fsps", $filter );
     my $Rc = shift(@$cecs);
 
-#####################################
-# Return error
-#####################################
+    #####################################
+    # Return error
+    #####################################
     if ( $Rc != SUCCESS ) {
         return( [[$Rc, @$cecs[0]]] );
     }
 
-#####################################
-# Get HCA info
-#####################################
+    #####################################
+    # Get HCA info
+    #####################################
     my $unassigned_iba = undef;
     my $iba_replace_pair = undef;
     if ( exists $opt->{ibautocfg})
@@ -532,9 +527,9 @@ sub clone {
         $iba_replace_pair = get_iba_replace_pair( $unassigned_iba, $profile);
     }
 
-#####################################
-# Find source/dest CEC 
-#####################################
+    #####################################
+    # Find source/dest CEC 
+    #####################################
     foreach ( @$cecs ) {
         s/(.*),(.*)/$1*$2/;
 
@@ -542,15 +537,15 @@ sub clone {
             $destcec = $_;
         }
     }
-#####################################
-# Destination CEC not found
-#####################################
+    #####################################
+    # Destination CEC not found
+    #####################################
     if ( !defined( $destcec )) {
         return([[RC_ERROR,"Destination CEC '$destname' not found on '$server'"]]);
     }
-#####################################
-# Modify read back profile
-#####################################
+    #####################################
+    # Modify read back profile
+    #####################################
     my $min_lpar_num = scalar(@$profile) < scalar(@$targets) ? scalar(@$profile) : scalar(@$targets) ;
     my $i;
     for ($i = 0; $i < $min_lpar_num; $i++)
@@ -574,9 +569,9 @@ sub clone {
         {
             $cfg = hcasubst( $cfg, $iba_replace_pair);
         }
-#################################
-# Create new LPAR  
-#################################
+        #################################
+        # Create new LPAR  
+        #################################
         my @temp = @$destd;
         $temp[0] = $lparid;
         $temp[2] = $destcec;
@@ -585,9 +580,9 @@ sub clone {
         my $result = xCAT::PPCcli::mksyscfg( $exp, "lpar", \@temp, $cfg ); 
         $Rc = shift(@$result);
 
-#################################
-# Success - add LPAR to database 
-#################################
+        #################################
+        # Success - add LPAR to database 
+        #################################
         if ( $Rc == SUCCESS ) {
             my $err = xCATdB( 
                     "mkvm", $targets->[$i], $profile, $lparid, $destd, $hwtype, $targets->[$i], $destname );
@@ -597,9 +592,9 @@ sub clone {
             }
             next;
         }
-#################################
-# Error - Save error 
-#################################
+        #################################
+        # Error - Save error 
+        #################################
         push @values, [@$result[0], $Rc]; 
     }
     if ( !scalar(@values) ) {
@@ -609,9 +604,9 @@ sub clone {
 }
 
 
-##########################################################################
-# Removes logical partitions 
-##########################################################################
+    ##########################################################################
+    # Removes logical partitions 
+    ##########################################################################
 sub remove {
    
     my $request = shift;
@@ -668,11 +663,11 @@ sub remove {
             # Remove the LPARs
             ####################################
             foreach ( @lpars ) {
-        my $lparinfo   = shift(@lpars);
+            my $lparinfo   = shift(@lpars);
                 my ($name,$id) = split /,/, $lparinfo;
                 my $mtms = @$d[2];
                 
-        if ($opt->{service}) {
+                if ($opt->{service}) {
                     ###############################################
                     # begin to retrieve the CEC's service lpar id
                     ############################################### 
@@ -683,7 +678,7 @@ sub remove {
                                                   "service_lpar_id" );
                     my $Rc = shift(@$service_lparid);
                 
-            #####################################################
+                    #####################################################
                     # Change the CEC's state to standby and set it's service lpar id to none
                     #####################################################
                     if ( $Rc == SUCCESS ) {
@@ -697,9 +692,9 @@ sub remove {
                                 }
                             }
                     }
-        }
+                }
  
-        ################################  
+                ################################  
                 # id profile mtms hcp type frame
                 ################################  
                 my @d = ( $id,0,$mtms,0,"lpar",0 );
@@ -1214,15 +1209,15 @@ sub list {
                 # -a|--all is assigned
                 #################################
                 if (exists( $args->{a} )) {
-             my $count = 0;
-             foreach (@$prof) {
-                 $pprofile .= "@$prof[$count]\n\n";
-                 $count++;
-             }
-         } else {
-             $pprofile .= "@$prof[0]\n\n";
-         }
-     }                
+                    my $count = 0;
+                    foreach (@$prof) {
+                        $pprofile .= "@$prof[$count]\n\n";
+                        $count++;
+                    }
+                } else {
+                    $pprofile .= "@$prof[0]\n\n";
+                }
+            }                
             $values->{$lpar} = [$lpar, $pprofile, SUCCESS];
         }
     }
@@ -1855,7 +1850,7 @@ sub xCATdB {
                 $lparid,
                 $model,
                 $serial,
-        "",
+                "",
                 $server,
                 $profile,
                 $parent ); 
@@ -1890,7 +1885,7 @@ sub mkfulllpar {
     my $type;
     my $profile;
    
-my $ppctab  = xCAT::Table->new('ppc'); 
+    my $ppctab  = xCAT::Table->new('ppc'); 
     #####################################
     # Get source node information
     #####################################
