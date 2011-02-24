@@ -2132,7 +2132,10 @@ sub parse_responses {
             {
                 $outhash{$hostname} = \@severnode1;
             }
-
+            if ( length( $severnode1[4] ) > $$length ) {
+                $$length = length( $severnode1[4] );
+            }
+            
             #begin to define another fsp/bpa
             $hostname = undef;
             foreach (@result) {
@@ -2148,7 +2151,10 @@ sub parse_responses {
             {
                  $outhash{$hostname} = \@severnode2;
             }
-
+            if ( length( $severnode2[4] ) > $$length ) {
+                $$length = length( $severnode2[4] );
+            }
+            
             ###########################################
             #  begin to define frame and cec
             #  As default, use Server-$result[1]-SN$result[2] as hostname
