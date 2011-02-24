@@ -865,10 +865,12 @@ sub prt_result
     my $nets = xCAT::Utils::my_nets();
     for my $v (keys %$values)
     {
-        if ( $v =~ /ip-address=([^\)]+)/g)
+        #if ( $v =~ /ip-address=([^\)]+)/g)
+        if ($v =~ /.*URL: .*\:\/\/(\d+\.\d+\.\d+\.\d+)/)
         {
-            my $iplist = $1;
-            my $ip = getip_from_iplist( $iplist, $nets, $opt{i});
+            #my $iplist = $1;
+            #my $ip = getip_from_iplist( $iplist, $nets, $opt{i});
+            my $ip = $1;
             if ( $ip)
             {
                 #send_msg($request, "Received SLP response from $ip.");
@@ -1316,7 +1318,6 @@ sub getip_from_url {
 # the global variable %::OLD_DATA_CACHE contans all the data
 # the global variable %::UPDATE_CACHE records the data need to change name
 #############################################################################
-use Data::Dumper;
 sub gethost_from_url_or_old {
     my $nodename        = shift;
     my $type            = shift;
@@ -2024,6 +2025,8 @@ sub parse_responses {
        "slot",
        "ip-address" );
 
+    my $primary;
+    my %fspcageid;
     foreach my $rsp ( @$values ) {
         ###########################################
         # Get service-type from response
@@ -2077,8 +2080,10 @@ sub parse_responses {
             my $val = $1;
             if (( $_ =~ /^slot$/ ) and ( $val == 0 )) {
                 push @result, "B";
+                $primary = 0;
             } elsif (( $_ =~ /^slot$/ ) and ( $val == 1 )) {
                 push @result, "A";
+                $primary = 1;
             } else {
                 push @result, $val;
             }
@@ -2102,13 +2107,21 @@ sub parse_responses {
             #  excrete each slp response into two definitions
             #  put the definitions into %outhash
             ###########################################
+            
             # begin to define fsp/bpa
             my (@severnode1, @severnode2);
             my @ips = split/,/, $result[4];
 
             foreach (@result) {
                 push @severnode1, $_;
+            }    
+            
+            #keep cage id for the secondary fsp definition
+            if ($type eq SERVICE_FSP and $severnode1[3] eq "A")
+            {
+                $fspcageid{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];          
             }
+            
             $severnode1[3] = $severnode1[3].'-0';
             $severnode1[4] = $ips[0];
             $severnode1[0] = $service_slp{$type};
@@ -2120,9 +2133,8 @@ sub parse_responses {
                 $outhash{$hostname} = \@severnode1;
             }
 
-
-            $hostname = undef;
             #begin to define another fsp/bpa
+            $hostname = undef;
             foreach (@result) {
                 push @severnode2, $_;
             }
@@ -2144,7 +2156,8 @@ sub parse_responses {
             ###########################################
             $hostname = undef;
             $host = "Server-$result[1]-SN$result[2]";
-            unless ( exists( $outhash{$host} ))
+            #unless ( exists( $outhash{$host} ))
+            if ( $primary )
             {
                 if ( $type eq SERVICE_BPA )
                 {
@@ -2242,6 +2255,12 @@ sub parse_responses {
         my $bpamtm  = @$data[5];
         my $bpasn   = @$data[6];
         my $cagenum = @$data[8];
+        
+        # find cageid for the secondary fsp node
+        if ( $type =~ /^FSP$/ and $side =~ /^B/) {
+            @$data[8] = $fspcageid{$mtm."*".$sn};
+        }
+        
         # if there is a -n flag, skip the existed nodes
         if ( exists( $opt{n} ) ) {
              if ( exists $vpd_table_hash{$mtm . '*' . $sn . '-' . $side} ) {
