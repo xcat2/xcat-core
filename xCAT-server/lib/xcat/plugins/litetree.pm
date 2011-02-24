@@ -382,7 +382,8 @@ sub mergeArrays {
 				if (xCAT::Utils->isAIX()) {
 					$o = "rw";  # default option if not provided
 				} else {
-					$o = "tmpfs";
+                    # for compatible reason, the default option is set to "tmpfs,rw"
+					$o = "tmpfs,rw";
 				}
 			}
 
@@ -391,7 +392,7 @@ sub mergeArrays {
                 # TODO
                 # let the user know the "link" option should be with
                 # /etc/mtab
-                $o = "link";
+                $o = "tmpfs,rw";
             }
 
 			# TODO: put some logic in here to make sure that ro is alone.

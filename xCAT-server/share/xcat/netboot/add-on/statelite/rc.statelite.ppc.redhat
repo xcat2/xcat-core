@@ -242,16 +242,26 @@ ProcessType () {
 	fi	
 	
 	case "${3}" in 
-		link)       # the previous name is tmpfs,rw
+        link)       # the previous name is tmpfs,rw
             if [ -d ${TMPFS}${2} ]; then
-			    /bin/cp -r -a ${1}* ${TMPFS}${2}
-			    echo "cp -r -a ${1}* ${TMPFS}${2}" >>$LOG
+            /bin/cp -r -a ${1}* ${TMPFS}${2}
+            echo "cp -r -a ${1}* ${TMPFS}${2}" >>$LOG
             else
                 /bin/cp -r -a ${1} ${TMPFS}${2}
                 echo "cp -r -a ${1} ${TMPFS}${2}" >>$LOG
             fi
-			# the link has already be in place on the image, so nothing else to do!
-			;;
+            # the link has already be in place on the image, so nothing else to do!
+            ;;
+        tmpfs,rw)       # which has the same meaning of "link". It exists for compatible reason
+            if [ -d ${TMPFS}${2} ]; then
+            /bin/cp -r -a ${1}* ${TMPFS}${2}
+            echo "cp -r -a ${1}* ${TMPFS}${2}" >>$LOG
+            else
+                /bin/cp -r -a ${1} ${TMPFS}${2}
+                echo "cp -r -a ${1} ${TMPFS}${2}" >>$LOG
+            fi
+            # the link has already be in place on the image, so nothing else to do!
+            ;;
         link,ro)
  			# need to make sure its parent directory exists:
 			if [ ! -d ${TMPFS}${PPATH} ]; then
