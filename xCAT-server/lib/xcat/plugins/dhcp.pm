@@ -1532,6 +1532,18 @@ sub addnet
             if ($ent and $ent->{gateway})
             {
                 $gateway = $ent->{gateway};
+
+                if ($gateway eq '<myself>')
+                {
+                    if(xCAT::NetworkUtils->ip_forwarding_enabled())
+                    {
+                        $gateway = $myip;
+                    }
+                    else
+                    {
+                        $gateway = '';
+                    }
+                }
             }
             if ($ent and $ent->{dynamicrange})
             {
@@ -1707,6 +1719,17 @@ sub gen_aix_net
     my @netent = ( "network $net $mask\n{\n");
     if ( $gateway)
     {
+        if ($gateway eq '<myself>')
+        {
+            if(xCAT::NetworkUtils->ip_forwarding_enabled())
+            {
+                $gateway = $myip;
+            }
+            else
+            {
+                $gateway = '';
+            }
+        }
         if (xCAT::Utils::isInSameSubnet($gateway,$net,$mask,1))
         {
             push @netent, "    option 3 $gateway\n";

@@ -276,7 +276,22 @@ sub donets
             		}
             		$ipaddr = $fields[1];
             		$netmask = $fields[2];
-            		$gateway = $fields[6];
+                        if ($fields[6])
+                        {
+                            if(xCAT::Utils::isInSameSubnet($fields[6], $ipaddr, $netmask, 0))
+                            {
+                                $gateway = $fields[6]; 
+                            }
+                        }
+
+                        # set gateway to keyword <myself>,
+                        # to indicate to use the cluster-facing ip address 
+                        # on this management node or service node
+                        if (!$gateway)
+                        {
+                            $gateway = "<myself>";
+                        }
+                        
     
             		# split interface IP
                     my ($ip1, $ip2, $ip3, $ip4) = split('\.', $ipaddr);
@@ -460,11 +475,12 @@ sub donets
             	$net       = $ent[0];
             	$mask      = $ent[2];
 				$mgtifname = $ent[7];
-                if (defined($netgw{$net}{$mask}))
+                if (defined($netgw{'0.0.0.0'}{'0.0.0.0'}))
                 {
-                    $gw =  $netgw{$net}{$mask}; #gateway for this network
-                } else {   
-                    $gw =  $netgw{'0.0.0.0'}{'0.0.0.0'}; #default gatetway
+                    if(xCAT::NetworkUtils->ishostinsubnet($netgw{'0.0.0.0'}{'0.0.0.0'}, $mask, $net))
+                    {
+                        $gw =  $netgw{'0.0.0.0'}{'0.0.0.0'}; #default gatetway
+                    }
                 }
 
 				# use convention for netname attr

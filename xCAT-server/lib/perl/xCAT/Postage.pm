@@ -877,6 +877,17 @@ sub net_parms
         my $net  = $_->{'net'};
         my $mask = $_->{'mask'};
         my $gw   = $_->{'gateway'};
+        if($gw eq '<myself>')
+        {
+             if(xCAT::NetworkUtils->ip_forwarding_enabled())
+             {
+                 $gw = xCAT::NetworkUtils->my_ip_in_subnet($net, $mask);
+             }
+             else
+             {
+                 $gw = '';
+             }
+        }
         if (xCAT::NetworkUtils->ishostinsubnet($ip, $mask, $net))
         {
             return ($ip, $mask, $gw);

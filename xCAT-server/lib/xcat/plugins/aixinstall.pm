@@ -443,6 +443,22 @@ sub process_request
 	my $nimhash   = $flatreq->{'nimhash'};
     my $nodes     = $flatreq->{node};
 
+    my $ip_forwarding_enabled = xCAT::NetworkUtils->ip_forwarding_enabled();
+    foreach my $fnode (keys %{$nethash})
+    {
+        if($nethash->{$fnode}->{'myselfgw'} eq '1')
+        {
+            if ($ip_forwarding_enabled)
+            {
+                $nethash->{$fnode}->{'gateway'} = xCAT::NetworkUtils->my_ip_in_subnet($nethash->{$fnode}->{'net'}, $nethash->{$fnode}->{'mask'});
+            }
+            else
+            {
+                $nethash->{$fnode}->{'gateway'} = '';
+            }
+        }
+     }
+        
     # figure out which cmd and call the subroutine to process
     if ($command eq "mkdsklsnode")
     {

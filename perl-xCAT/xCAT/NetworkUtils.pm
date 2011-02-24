@@ -444,4 +444,79 @@ sub prefixtomask {
     $mask =~ s/(....)/$1/g;
     return $mask;
 }
+
+#-------------------------------------------------------------------------------
+
+=head3  my_ip_in_subnet 
+    Get the facing ip for some specific network
+
+    Arguments:
+       net - subnet, such as 192.168.0.01
+       mask - netmask, such as 255.255.255.0
+    Returns:
+       facing_ip - The local ip address in the subnet,
+                   returns undef if no local ip address is in the subnet
+    Globals:
+    Error:
+        none
+    Example:
+        my $facingip = xCAT::NetworkUtils->my_ip_in_subnet($net, $mask);
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub my_ip_in_subnet
+{
+    my ($class, $net, $mask) = @_;
+
+    if (!$net || !$mask)
+    {
+        return undef;
+    } 
+
+    my $fmask = xCAT::Utils::formatNetmask($mask, 0, 1);
+
+    my $localnets = xCAT::Utils->my_nets();
+
+    return $localnets->{"$net\/$fmask"};
+}
+
+#-------------------------------------------------------------------------------
+
+=head3  ip_forwarding_enabled 
+    Check if the ip_forward enabled on the system 
+
+    Arguments:
+    Returns:
+       1 - The ip_forwarding is eanbled
+       0 - The ip_forwarding is not eanbled
+    Globals:
+    Error:
+        none
+    Example:
+        if(xCAT::NetworkUtils->ip_forwarding_enabled())
+    Comments:
+        none
+=cut
+
+#-------------------------------------------------------------------------------
+sub ip_forwarding_enabled
+{
+
+    my $enabled;
+    if (xCAT::Utils->isLinux())
+    {
+        $enabled = `sysctl -n net.ipv4.ip_forward`;
+        chomp($enabled);
+    }
+    else
+    {
+        $enabled = `no -o ipforwarding`;
+        chomp($enabled);
+        $enabled =~ s/ipforwarding\s+=\s+//;
+    }
+    return $enabled;
+}
+
 1;

@@ -1938,6 +1938,18 @@ sub getNetwkInfo
 						$nethash{$node}{$attr} = $_->{$attr};
 					}
                                 }
+                                if($nethash{$node}{'gateway'} eq '<myself>')
+                                {
+                                    if(xCAT::NetworkUtils->ip_forwarding_enabled())
+                                    {
+                                        $nethash{$node}{'gateway'} = xCAT::NetworkUtils->my_ip_in_subnet($net, $NM);
+                                    }
+                                    else
+                                    {
+                                        $nethash{$node}{'gateway'} = '';
+                                    }
+                                    $nethash{$node}{'myselfgw'} = 1;
+                                }
                                 next;
                         }
                             
