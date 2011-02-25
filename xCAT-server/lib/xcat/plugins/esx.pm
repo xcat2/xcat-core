@@ -1192,7 +1192,7 @@ sub poweron_task_callback {
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
     }  elsif ($q and $q->text =~ /^msg.uuid.altered:/ and ($q->choice->choiceInfo->[0]->summary eq 'Cancel' and ($q->choice->choiceInfo->[0]->key eq '0'))) { #make sure it is what is what we have seen it to be
-        if ($parms->{forceon} and $q->choice->choiceInfo->[1]->summary eq 'I (_)?moved it' and $q->choice->choiceInfo->[1]->key eq '1') { #answer the question as 'moved'
+        if ($parms->{forceon} and $q->choice->choiceInfo->[1]->summary =~ /I (_)?moved it/ and $q->choice->choiceInfo->[1]->key eq '1') { #answer the question as 'moved'
             $vm->AnswerVM(questionId=>$q->id,answerChoice=>'1');
         } else {
             $vm->AnswerVM(questionId=>$q->id,answerChoice=>'0');
