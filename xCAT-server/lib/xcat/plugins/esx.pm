@@ -577,7 +577,7 @@ sub inv {
   );
   $SIG{__WARN__} = 'DEFAULT';
 
-  if(@ARGV) {
+  if(@ARGV > 1) {
     xCAT::SvrUtils::sendmsg("Invalid arguments:  @ARGV", $output_handler);
     return;
   }
