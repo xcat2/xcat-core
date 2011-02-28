@@ -124,11 +124,11 @@ sub rbootseq {
     my $node_name     =  @$d[6]; 
     my $o   =  @$d[7];
      
-    print "in setbootseq:\n";
-    print "request\n";
-    print Dumper($request);
-    print "d"; 
-    print Dumper($d);
+    #print "in setbootseq:\n";
+    #print "request\n";
+    #print Dumper($request);
+    #print "d"; 
+    #print Dumper($d);
   
          
     if (!($$d[4] =~ /^lpar$/)) { 
@@ -145,7 +145,7 @@ sub rbootseq {
             
         my $mac_hash    = $mactab->getNodeAttribs( $node_name,[qw(mac)]);	
 	my $mac         = $mac_hash->{mac};
-	if( $mac ) {
+	if( !defined($mac) ) {
 	    push @output, [$node_name, "No mac address in mac table", -1 ];	
 	}    
 	$mactab->close();
