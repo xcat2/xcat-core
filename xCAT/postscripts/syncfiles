@@ -37,7 +37,7 @@ then
 returncode=$?
 fi
 
-if [ $returncode -eq 1 ]
+if [ $returncode -eq 0 ]
 then
   logger -t xCAT "$0: Perform Syncing File action successfully"
 else

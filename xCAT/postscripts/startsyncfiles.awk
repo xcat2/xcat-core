@@ -7,7 +7,7 @@ BEGIN {
   }
 
   quit = "no"
-  exitcode = 1
+  exitcode = 0
 
   print "<xcatrequest>" |& server
   print "   <command>syncfiles</command>" |& server
@@ -17,8 +17,9 @@ BEGIN {
     if (match($0,"<serverdone>")) {
       quit = "yes"
     }
-    if (match($0,"<errorcode>") || match($0,"<error>")) {
-      exitcode = 0
+    if ((match($0,"<errorcode>") && !match($0,"<errorcode>0")) \
+      || (match($0,"<error>") && !match($0,"<error>0")) ) {
+      exitcode = 1
     }
 
     if (match($0,"</xcatresponse>") && match(quit,"yes")) {
