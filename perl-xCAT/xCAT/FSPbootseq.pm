@@ -168,6 +168,10 @@ sub rbootseq {
 	        $mac = $m_t;
 	     }
 	 }
+
+     if( $mac =~ /\:/) {
+         $mac =~ s/\://g;
+      }
          $parameter = "mac=$mac:speed=auto,duplex=auto,$o->{server},,$o->{gateway},$o->{client},$bootp_retries,$tftp_retries,$o->{netmask},$blksize";	      
 	    
        }
