@@ -308,8 +308,26 @@ sub mknetboot
             $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
             
             $rootfstype = "nfs"; # TODO: try to get it from the option or table
-            # $dump; # TODO: set the dump value here
-
+            my $imgname;
+            if ($statelite) {
+                $imgname = "$osver-$arch-statelite-$profile";
+            } else {
+                $imgname = "$osver-$arch-netboot-$profile";
+            }
+            if ( ! $linuximagetab ) {
+                $linuximagetab = xCAT::Table->new('linuximage');
+            }
+            if ( $linuximagetab ) {
+                (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'dump');
+                if($ref1 and $ref1->{'dump'})  {
+                    $dump = $ref1->{'dump'};
+                }
+            } else {
+                $callback->(
+                    { error => [qq{ Cannot find the linux image called "$osver-$arch-$provmethod-$profile", maybe you need to use the "nodeset <nr> osimage=<your_image_name>" command to set the boot state}],
+                    errorcode => [1] }
+                );
+            }
         }
 
         #print"osvr=$osver, arch=$arch, profile=$profile, imgdir=$rootimgdir\n";
@@ -657,7 +675,9 @@ sub mknetboot
 
         # if kdump service is enbaled, add "crashkernel=" and "kdtarget="
         if ($dump) {
-            $kcmdline .= " crashkernel=256M\@32M dump=$dump ";
+            if ($arch eq "ppc64") { # for ppc64, the crashkernel paramter should be "128M@32M", otherwise, some kernel crashes will be met
+                $kcmdline .= " crashkernel=128M\@32M dump=$dump ";
+            }
         }
 
         # add the addkcmdline attribute  to the end
