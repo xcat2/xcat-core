@@ -172,13 +172,13 @@ sub rbootseq {
      if( $mac =~ /\:/) {
          $mac =~ s/\://g;
       }
-         $parameter = "mac=$mac:speed=auto,duplex=auto,$o->{server},,$o->{gateway},$o->{client},$bootp_retries,$tftp_retries,$o->{netmask},$blksize";	      
+         $parameter = "mac=$mac:speed=auto,duplex=auto,$o->{server},,$o->{client},$o->{gateway},$bootp_retries,$tftp_retries,$o->{netmask},$blksize";	      
 	    
        }
 
        if( $opt->{hfi}) {
        
-           $parameter = "/hfi-iohub/hfi-ethernet:$o->{server},,$o->{gateway},$o->{client},$bootp_retries,$tftp_retries,$o->{netmask},$blksize";	      
+           $parameter = "/hfi-iohub/hfi-ethernet:$o->{server},,$o->{client},$o->{gateway},$bootp_retries,$tftp_retries,$o->{netmask},$blksize";	      
        
        }
 
