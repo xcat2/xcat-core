@@ -12,12 +12,12 @@ for i in `/bin/cat /proc/cmdline`; do
         ETHX=${ifname%:$MACX*}
         break
     elif [ "$KEY" = "netdev" ]; then
-        ETHX=$netdev
+        ETHX=`/bin/echo $i | /bin/awk -F= '{print $2}'`
         MACX=`/sbin/ip link show $netdev | /bin/grep ether | /bin/awk '{print $2}'`
         break
     elif [ "$KEY" = "BOOTIF" ]; then
-        MACX=$BOOTIF
-        ETHX=`/sbin/ifconfig | /bin/grep -i $BOOTIF | /bin/awk '{print $1}'`
+        MACX=`/bin/echo $i | /bin/awk -F= '{print $2}'`
+        ETHX=`/sbin/ifconfig | /bin/grep -i $MACX | /bin/awk '{print $1}'`
         break
     fi
 done
