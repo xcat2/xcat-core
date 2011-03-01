@@ -3827,7 +3827,6 @@ sub mknetboot {
 			xCAT::SvrUtils::sendmsg([1,"Please run copycds first for $osver or create custom image in $custprofpath/"], $output_handler);
 		}
 
-		mkpath("$tftpdir/xcat/netboot/$osver/$arch/");
         my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz cim.vgz/; #Required modules for an image to be considered complete
         my %mods;
         foreach (@reqmods) {
@@ -3836,6 +3835,7 @@ sub mknetboot {
         my $shortprofname = $profile;
         $shortprofname =~ s/\/\z//;
         $shortprofname =~ s/.*\///;
+		mkpath("$tftpdir/xcat/netboot/$osver/$arch/$shortprofname/");
 		unless($donetftp{$osver,$arch}) {
 			my $srcdir = "$installroot/$osver/$arch";
 			my $dest = "$tftpdir/xcat/netboot/$osver/$arch/$shortprofname";
