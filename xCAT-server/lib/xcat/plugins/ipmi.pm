@@ -1076,7 +1076,7 @@ sub getrvidparms_with_buildid {
     if ($response->content =~ /^ok:?(.*)/) {
         $sessionid=$1;
     } else {
-        sendmsg ([1,"Server returned unexpected data"],$callback,$sessdata->{node},%allerrornodes);
+        xCAT::SvrUtils::sendmsg ([1,"Server returned unexpected data"],$callback,$sessdata->{node},%allerrornodes);
         return;
     }
 
@@ -1088,7 +1088,8 @@ sub getrvidparms_with_buildid {
     }
     my $jnlp = $response->content;
     if ($jnlp =~ /This advanced option requires the purchase and installation/) {
-        sendmsg ([1,"Node does not have feature key for remote video"],$sessdata->{node},%allerrornodes);
+        xCAT::SvrUtils::sendmsg ([1,"Node does not have feature key for remote video"],$callback,$sessdata->{node},%allerrornodes);
+	return;
     }
     my $currnode = $sessdata->{node};
     $jnlp =~ s!argument>title=.*Video Viewer</argument>!argument>title=$currnode wvid</argument>!;
