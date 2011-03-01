@@ -629,12 +629,6 @@ sub makescript
             }
         }
     }
-
-    # touch the /etc/xCATSN when it is a service node
-    if (xCAT::Utils->isSN($node)) {
-        push @scriptd, "touch /etc/xCATSN";
-    }
-
     ###Please do not remove or modify this line of code!!! xcatdsklspost depends on it
     push @scriptd, "# postscripts-start-here\n";
 
