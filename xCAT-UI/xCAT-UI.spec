@@ -29,6 +29,28 @@ Provides a browser-based interface for xCAT (Extreme Cloud Administration Toolki
 %setup -q -n xCAT-UI
 
 %build
+# Minify Javascript files using Google Compiler
+JAVA='/opt/ibm/java-ppc64-60/jre/bin/java'
+COMPILER_JAR='/xcat2/build/tools/compiler.jar'
+UI_JS="js/"
+
+declare -a FILES
+IFS='
+'
+
+# Find all Javascript files
+FILES=(`find ${UI_JS} -name '*.js'`)
+for i in ${FILES[*]}; do
+	# Ignore Javascripts that are already minified
+	if [[ ! $i =~ '.*\.min\.js$' ]]; then
+		`${JAVA} -jar ${COMPILER_JAR} --warning_level=QUIET --js=$i --js_output_file=$i.min`
+		
+		# Remove old Javascript and replace it with minified version
+		rm -rf $i
+		mv $i.min $i
+    fi
+done
+
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT%{prefix}/ui
