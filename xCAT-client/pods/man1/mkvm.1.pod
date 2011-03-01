@@ -15,6 +15,7 @@ I<mkvm [-v| --version]>
 I<mkvm [-V| --verbose] noderange -i id -l singlenode>
 
 I<mkvm [-V| --verbose] noderange -c destcec -p profile>
+
 I<mkvm [-V| --verbose] noderange --full>
 
 =head2 For KVM:
@@ -70,7 +71,7 @@ I<mkdef -t node -o lpar5 mgt=hmc groups=all>
 
 then:
 
-I<mkvm lpar5 -i 5 l lpar4>
+I<mkvm lpar5 -i 5 -l lpar4>
 
 Output is similar to:
 
@@ -83,7 +84,7 @@ I<mkdef -t node -o lpar5-lpar8 mgt=hmc groups=all>
 
 then:
 
-I<mkvm lpar5-lpar8 -i 5 lpar4>
+I<mkvm lpar5-lpar8 -i 5 -l lpar4>
 
 Output is similar to:
 
