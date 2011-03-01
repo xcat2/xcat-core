@@ -434,10 +434,8 @@ function initPage() {
 	
 	// Custom plugins
 	includeJs("js/custom/blade.js");
-	includeJs("js/custom/fsp.js");
-	includeJs("js/custom/hmc.js");
+	//includeJs("js/custom/hmc.js");
 	includeJs("js/custom/ipmi.js");
-	includeJs("js/custom/ivm.js");
 	includeJs("js/custom/zvm.js");
 	includeJs("js/custom/customUtils.js");
 

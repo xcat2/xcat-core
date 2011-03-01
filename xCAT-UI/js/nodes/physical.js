@@ -3,37 +3,59 @@ var fspList;
 var lparList;
 var graphicalNodeList;
 var selectNode;
-var graphicalDataType = ['nodetype.nodetype', 'ppc.parent', 'nodelist.status', 'vpd.mtm'];
+var graphicalDataType = ['ppc.nodetype', 'nodetype.nodetype', 'ppc.parent', 'nodelist.status', 'vpd.mtm'];
 var gettingDataFlag = false;
 
-function initGraphicalData(dataTypeIndex){
+/**
+ * get all nodes useful attributes from remote server.
+ * 
+ * @param dataTypeIndex: the index in Array graphicalDataType, which contains attributes we need.
+ * 		  attrNullNode:  the target node list for this attribute 
+ *
+ * @return null
+ */
+function initGraphicalData(dataTypeIndex, attrNullNode){
 	gettingDataFlag = true;
+	var tempTgt = 'all';
 	if (undefined == dataTypeIndex){
 		dataTypeIndex = 0;
 	}
 
-	if ((dataTypeIndex < 0) || (dataTypeIndex > 3)){
+	if ((dataTypeIndex < 0) || (dataTypeIndex > 4)){
 		return;
 	}
 	
+	//there two nodetype field in database in table ppc and nodetype. we should query ppc.nodetype first,
+	//if the ppc.nodetype is NULL, then query the nodetype.nodetype.
+	if (1 == dataTypeIndex){
+		if (!attrNullNode){
+			initGraphicalData(2);
+			return;
+		}
+		else{
+			tempTgt = attrNullNode;
+		}
+	}
+	
 	var typeName = graphicalDataType[dataTypeIndex];
-	$('#graphTab').empty().append('Getting ' + typeName).append(createLoader());
+	$('#graphTab img').remove();
+	$('#graphTab').append('<br/>Getting ' + typeName).append(createLoader());
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
 			cmd : 'nodels',
-			tgt : 'all',
+			tgt : tempTgt,
 			args : typeName,
 			msg : 'index' + dataTypeIndex.toString()
 		},
 
 		success : function(data){
 			var tempIndex = Number(data.msg.substr(5, 1));
-			extractGraphicalData(data);
+			var tempNodeList = extractGraphicalData(data);
 			if (tempIndex < graphicalDataType.length - 1){
 				tempIndex ++;
-				initGraphicalData(tempIndex);
+				initGraphicalData(tempIndex, tempNodeList);
 			}
 			else{
 				gettingDataFlag = false;
@@ -56,11 +78,11 @@ function initGraphicalData(dataTypeIndex){
  * 
  * @param data: the response from xcat command "nodels all nodetype.nodetype ppc.parent ..." 
  *
- * @return
+ * @return nodes list for next time query
  */
 function extractGraphicalData(data){
 	var nodes = data.rsp;
-	
+	var tempNullNodes ='';
 	//extract useful info into tempList
 	for (var i = 0; i < nodes.length; i++){
 		var nodeName = nodes[i][0];
@@ -69,26 +91,35 @@ function extractGraphicalData(data){
 		}
 		
 		switch(data.msg.substr(5, 1)){
-			case '0': {
+			case '0': 
+			case '1':{
+				if (!nodes[i][1]){
+					tempNullNodes += nodeName + ',';
+					break;
+				}
 				graphicalNodeList[nodeName]['type'] = nodes[i][1];
 			}
 			break;
-			case '1' : {
+			case '2' : {
 				graphicalNodeList[nodeName]['parent'] = nodes[i][1];
 			}
 			break;
-			case '2': {
+			case '3': {
 				graphicalNodeList[nodeName]['status'] = nodes[i][1];
 			}
 			break;
-			case '3': {
+			case '4': {
 				graphicalNodeList[nodeName]['mtm'] = nodes[i][1];
 			}
 			break;
 			default :
 				break;
 		}
-	}	
+	}
+	if ('' != tempNullNodes){
+		tempNullNodes = tempNullNodes.substr(0, tempNullNodes.length - 1);
+	}
+	return tempNullNodes;
 }
 
 function createPhysicalLayout(nodeList){
