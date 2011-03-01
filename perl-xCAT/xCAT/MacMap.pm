@@ -107,10 +107,11 @@ OID, and have the switch table port value match exactly the format suggested by 
   }
 
 
-  unless ($namepersnmp =~ /[^0123456789]$namepercfg\z/)  {
+  unless ($namepersnmp =~ /[^0123456789]$namepercfg(\.0)?\z/)  { #ensure name from user exists in the string without being preceeded immediately by a number, and allowing a .0 to exist after the cfg for juniper
     #Most common case, won't match at all
     return 0;
   }
+  #at this point we know the string the user wanted does exist on this port, now we move on to non-ethernet ports that may ambiguously match the user request as well
 
   #stop contemplating vlan, Nu, stacking ports, and console interfaces
   if (($namepersnmp =~ /vl/i) or ($namepersnmp =~ /Nu/) or ($namepersnmp =~ /onsole/) or ($namepersnmp =~ /Stack/))  {
