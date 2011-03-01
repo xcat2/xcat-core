@@ -29,7 +29,7 @@ config_Rsyslog_C3()
   isReceiving=0
   isLocal=$1
 
-  if [ -f /etc/xCATMN ] || [ -f /etc/xCATSN ]
+  if [ -f /etc/xCATMN ] ||  [ $isSN -eq 1 ] 
   then 
     isReceiving=1
   fi

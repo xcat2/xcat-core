@@ -100,7 +100,7 @@ else
 fi
 rm /tmp/ssh_rsa_hostkey
 
-if [ -r /etc/xCATSN ] ; then
+if [[ $NTYPE = service ]]; then
    mkdir -p /etc/xcat/hostkeys
    cp /etc/ssh/ssh* /etc/xcat/hostkeys/.
 fi
