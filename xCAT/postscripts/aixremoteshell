@@ -37,6 +37,7 @@ my $rc = 0;
 my $usesshonaix = $ENV{'USESSHONAIX'};
 my $master      = $ENV{'MASTER'};
 my $node        = $ENV{'NODE'};
+my $nodetype     = $ENV{'NTYPE'};
 my $enablesshbetweennodes  = $ENV{'ENABLESSHBETWEENNODES'};
 my $msg;
 my $home;
@@ -181,8 +182,7 @@ sub setupSSH
         $msg = "aixremoteshell: Could not get ssh_host_rsa_key file.\n";
         `logger -t xcat $msg`;
     }
-
-	if ( -f "/etc/xCATSN") {
+        if ( $nodetype eq "service") {
 		&runcmd("mkdir -p /etc/xcat/hostkeys; cp /etc/ssh/ssh* /etc/xcat/hostkeys/. > /dev/null 2>&1");
 	}
         # Decide whether to enable ssh between the nodes
