@@ -616,6 +616,32 @@ sub ll_jobs {
         close (RULOG);
      }
 
+    # Verify scheduser exists and can run xCAT runrollupdate cmd
+    # Get LL userid
+    my $lluser = $::FILEATTRS{scheduser}[0];
+    unless ( defined($lluser) ) {
+        my $rsp;
+        push @{ $rsp->{data} },
+          "Error processing stanza input:  No scheduser entries found. ";
+        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+        return 1;
+    }
+    my ( $login, $pass, $uid, $gid );
+    ( $login, $pass, $uid, $gid ) = getpwnam($lluser);
+    unless ( defined($uid) ) {
+        my $rsp;
+        push @{ $rsp->{data} },
+"Error processing stanza input:  scheduser userid $lluser not defined in system. ";
+        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+        return 1;
+    }
+    if ( &check_policy($lluser,'runrollupdate') ) {
+        my $rsp;
+        push @{ $rsp->{data} },
+          "Error processing stanza input:  scheduser userid $lluser not listed in xCAT policy table for runrollupdate command.  Add to policy table and ensure userid has ssh credentials for running xCAT commands. ";
+        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
+        return 1;
+    }
 
     # Create LL floating resources for mutual exclusion support
     #   and max_updates
@@ -690,31 +716,6 @@ sub ll_jobs {
     #
     # Generate job command file for each updategroup
     #
-    # Get LL userid
-    my $lluser = $::FILEATTRS{scheduser}[0];
-    unless ( defined($lluser) ) {
-        my $rsp;
-        push @{ $rsp->{data} },
-          "Error processing stanza input:  No scheduser entries found. ";
-        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-        return 1;
-    }
-    my ( $login, $pass, $uid, $gid );
-    ( $login, $pass, $uid, $gid ) = getpwnam($lluser);
-    unless ( defined($uid) ) {
-        my $rsp;
-        push @{ $rsp->{data} },
-"Error processing stanza input:  scheduser userid $lluser not defined in system. ";
-        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-        return 1;
-    }
-    if ( &check_policy($lluser,'runrollupdate') ) {
-        my $rsp;
-        push @{ $rsp->{data} },
-          "Error processing stanza input:  scheduser userid $lluser not listed in xCAT policy table for runrollupdate command.  Add to policy table and ensure userid has ssh credentials for running xCAT commands. ";
-        xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
-        return 1;
-    }
 
     my $lljobs_dir = $::FILEATTRS{jobdir}[0];
     unless ( defined($lljobs_dir) ) {
