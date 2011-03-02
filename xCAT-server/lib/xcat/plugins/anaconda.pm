@@ -415,7 +415,11 @@ sub mknetboot
 	        }
             copy("$rootimgdir/kernel", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
             if ($statelite) {
-                copy("$rootimgdir/initrd-statelite.gz", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+                if($rootfstype eq "ramdisk") {
+                    copy("$rootimgdir/initrd-stateless.gz", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+                } else {
+                    copy("$rootimgdir/initrd-statelite.gz", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
+                }
             } else {
                 copy("$rootimgdir/initrd-stateless.gz", "/$tftpdir/xcat/netboot/$osver/$arch/$profile/");
             }
@@ -424,8 +428,14 @@ sub mknetboot
 
 
         if ($statelite) {
+            my $initrdloc = "/$tftpdir/xcat/netboot/$osver/$arch/$profile/";
+            if ($rootfstype eq "ramdisk") {
+                $initrdloc .= "initrd-stateless.gz";
+            } else {
+                $initrdloc .= "initrd-statelite.gz";
+            }
             unless ( -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/kernel"
-                    and -r "/$tftpdir/xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz") {
+                    and -r $initrdloc ) {
                 $callback->({
                     error=>[qq{copying to /$tftpdir/xcat/netboot/$osver/$arch/$profile failed}],
                     errorcode=>[1]
