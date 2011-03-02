@@ -60,6 +60,8 @@ my %modules = (
                        cec    => "xCAT::FSPvm",
 		      },
         chvm      => { hmc    => "xCAT::PPCvm",
+                       fsp    => "xCAT::FSPvm",
+                       cec    => "xCAT::FSPvm",
 		      },
         rnetboot  => { hmc    => "xCAT::PPCboot",
                        ivm    => "xCAT::PPCboot",
