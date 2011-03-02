@@ -316,7 +316,7 @@ sub getTypeOfNode
 #-------------------------------------------------------------------------------
 sub fsp_api_create_parttion {
     my $starting_lpar_id   = shift;
-    my $octant_conf_value  = shift;
+    my $octant_cfg = shift;
     my $node_number        = shift;
     my $attrs      = shift;
     my $action     = shift;
@@ -336,13 +336,16 @@ sub fsp_api_create_parttion {
     my $number_of_lpars_per_octant;
     my $octant_num_needed;
     my $starting_octant_id;
+    my $octant_conf_value;
+    my $octant_cfg_value = $octant_cfg->{octant_cfg_value};
+    my $new_pending_interleave_mode = $octant_cfg->{memory_interleave};
     
     if( !defined($tooltype) ) {
         $tooltype = 0; 
     }
    
-    use Data::Dumper; 
-    print Dumper($attrs);
+    #use Data::Dumper; 
+    #print Dumper($attrs);
     $fsp_name = $$attrs[3]; 
     $type = 0;
 
@@ -357,46 +360,62 @@ sub fsp_api_create_parttion {
 	
     #print "fsp name: $fsp_name\n";
     #print "fsp ip: $fsp_ip\n";
-   
-    #octant configuration values could be 1,2,3,4,5 ; AS following:
-    #  1 - 1 partition with all cpus and memory of the octant
-    #  2 - 2 partitions with a 50/50 split of cpus and memory
-    #  3 - 3 partitions with a 25/25/50 split of cpus and memory
-    #  4 - 4 partitions with a 25/25/25/25 split of cpus and memory
-    #  5 - 2 partitions with a 25/75 split of cpus and memory
-    if($octant_conf_value  ==  1)  {
-	$number_of_lpars_per_octant  = 1;
-    } elsif($octant_conf_value  ==  2 ) {
-        $number_of_lpars_per_octant  = 2;
-    } elsif($octant_conf_value  ==  3 ) {
-        $number_of_lpars_per_octant  = 3;
-    } elsif($octant_conf_value  ==  4 ) {
-        $number_of_lpars_per_octant  = 4;
-    } elsif($octant_conf_value  ==  5 ) {
-        $number_of_lpars_per_octant  = 2;
-    } else {
-        $res = "Wrong octant configuration values!\n";
-	return ([$fsp_name, $res, -1]);
-    }	    
-   
-    $octant_num_needed = $node_number/$number_of_lpars_per_octant;
     $starting_octant_id = int($starting_lpar_id/4);
+    my $lparnum_from_octant = 0;
+    my $new_pending_pump_mode = $octant_cfg->{pendingpumpmode};
+    my $parameters;
+    #my $parameters = "$new_pending_pump_mode:$octant_num_needed";
+    my $octant_id = $starting_octant_id ;
+    my $i = 0;
+    for($i=$starting_octant_id; $i < (keys %$octant_cfg_value) ; $i++) {
+	if(! exists($octant_cfg_value->{$i})) {
+	    $res = "starting LPAR id is $starting_lpar_id, starting octant id is $starting_octant_id, octant configuration value isn't provided. Wrong plan.";
+	    return ([$fsp_name, $res, -1]);
 
-    print "$octant_num_needed\n";
-    if(8 - $starting_octant_id < $octant_num_needed ) {
-        $res =  "starting LPAR id is $starting_lpar_id, starting octant id is $starting_octant_id, octant configuration values is $octant_conf_value. Wrong plan.\n";
+        }
+	my $octant_conf_value = $octant_cfg_value->{$i};
+        #octant configuration values could be 1,2,3,4,5 ; AS following:
+        #  1 - 1 partition with all cpus and memory of the octant
+        #  2 - 2 partitions with a 50/50 split of cpus and memory
+        #  3 - 3 partitions with a 25/25/50 split of cpus and memory
+        #  4 - 4 partitions with a 25/25/25/25 split of cpus and memory
+        #  5 - 2 partitions with a 25/75 split of cpus and memory
+        if($octant_conf_value  ==  1)  {
+	    $number_of_lpars_per_octant  = 1;
+        } elsif($octant_conf_value  ==  2 ) {
+            $number_of_lpars_per_octant  = 2;
+        } elsif($octant_conf_value  ==  3 ) {
+            $number_of_lpars_per_octant  = 3;
+        } elsif($octant_conf_value  ==  4 ) {
+            $number_of_lpars_per_octant  = 4;
+        } elsif($octant_conf_value  ==  5 ) {
+            $number_of_lpars_per_octant  = 2;
+        } else {
+            $res = "octant $i, configuration values: $octant_conf_value. Wrong octant configuration values!\n";
+	    return ([$fsp_name, $res, -1]);
+        }	   
+
+    $lparnum_from_octant += $number_of_lpars_per_octant;
+    $octant_num_needed++; 
+    $parameters .= ":$octant_id:$octant_conf_value:$new_pending_interleave_mode";
+     
+        
+    }  
+    $parameters = "$new_pending_pump_mode:$octant_num_needed".$parameters;
+    if($node_number != $lparnum_from_octant ) {
+        $res =  "According to the partition split rule and the starting LPAR id, $lparnum_from_octant LPARs will be gotten. But the noderange has $node_number node.  Wrong plan.\n";
         return ([$fsp_name, $res, -1]);  
     }
    
-    my $new_pending_pump_mode = 1;
-    my $parameters = "$new_pending_pump_mode:$octant_num_needed";
-    my $octant_id = $starting_octant_id ;
-    my $new_pending_interleave_mode = 2;
-    my $i = 0;
-    for($i = 0; $i < $octant_num_needed; $i++  ) {
-	    $parameters = $parameters.":$octant_id:$octant_conf_value:$new_pending_interleave_mode";
-        $octant_id ++;
-    }
+    #my $new_pending_pump_mode = 1;
+    #my $parameters = "$new_pending_pump_mode:$octant_num_needed";
+    #my $octant_id = $starting_octant_id ;
+    #my $new_pending_interleave_mode = 2;
+    #my $i = 0;
+    #for($i = 0; $i < $octant_num_needed; $i++  ) {
+    #    $octant_id += $i;
+    #	$parameters = $parameters.":$octant_id:$octant_conf_value:$new_pending_interleave_mode";
+    #}
 
     my $cmd;
     $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:0:$fsp_name:$parameters";
@@ -406,7 +425,6 @@ sub fsp_api_create_parttion {
     $res = xCAT::Utils->runcmd($cmd, -1);
     #$res = "good"; 
     $Rc = $::RUNCMD_RC;
-    print $cmd;
     #$Rc = -1;
     ##################
     # output the prompt
