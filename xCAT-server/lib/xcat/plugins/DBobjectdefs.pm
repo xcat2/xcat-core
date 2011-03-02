@@ -256,7 +256,7 @@ sub processArgs
       )
     {
 
-        # return 2;
+         return 2;
     }
     
 	# Initialize some global arrays in case this is being called twice in the same process.
