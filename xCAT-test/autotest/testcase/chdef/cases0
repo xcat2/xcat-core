@@ -51,7 +51,7 @@ cmd:cat /tmp/testnode.stanza | chdef -z
 check:rc==0
 cmd:lsdef -l testnode -z > /tmp/testnode1.stanza
 check:rc==0
-cmd:diff /tmp/testnode.stanza /tmp/testnode1.stanza
+cmd:diff -w /tmp/testnode.stanza /tmp/testnode1.stanza
 check:rc==0
 cmd:rm -f /tmp/testnode1.stanza
 cmd:rm -f /tmp/testnode.stanza
