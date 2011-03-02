@@ -30,6 +30,8 @@ Provides a browser-based interface for xCAT (Extreme Cloud Administration Toolki
 
 %build
 # Minify Javascript files using Google Compiler
+echo "Minifying Javascripts... This will take a couple of minutes."
+
 JAVA='/opt/ibm/java-ppc64-60/jre/bin/java'
 COMPILER_JAR='/xcat2/build/tools/compiler.jar'
 UI_JS="js/"
