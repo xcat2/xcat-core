@@ -133,6 +133,7 @@ sub process_request
     my $ret;
     my $msg;
 
+    &initialize_variables();
     # globals used by all subroutines.
     $::command  = $::request->{command}->[0];
     $::args     = $::request->{arg};
@@ -262,19 +263,7 @@ sub processArgs
 	# Initialize some global arrays in case this is being called twice in the same process.
 	# Currently only doing this when --nocache is specified, but i think it should be done all of the time.
 	if ($::opt_c) {
-		%::CLIATTRS = ();
-		%::FILEATTRS = ();
-		%::FINALATTRS = ();
-		%::objfilehash = ();
-		%::WhereHash = ();
-		@::AttrList = ();
-		@::clobjtypes = ();
-		@::fileobjtypes = ();
-		@::clobjnames = ();
-		@::fileobjnames = ();
-		@::objfilelist = ();
-		@::allobjnames = ();
-		@::noderange = ();
+            &initialize_variables();
 	}
 
     #  opt_x not yet supported
@@ -3438,5 +3427,38 @@ sub defrm_usage
     return 0;
 }
 
+#----------------------------------------------------------------------------
+
+=head3  initialize_variables
+            Initialize the global variables
+
+        Arguments:
+        Returns:
+        Globals:
+
+        Error:
+
+        Example:
+
+        Comments:
+=cut
+
+#-----------------------------------------------------------------------------
+sub initialize_variables
+{
+    %::CLIATTRS = ();
+    %::FILEATTRS = ();
+    %::FINALATTRS = ();
+    %::objfilehash = ();
+    %::WhereHash = ();
+    @::AttrList = ();
+    @::clobjtypes = ();
+    @::fileobjtypes = ();
+    @::clobjnames = ();
+    @::fileobjnames = ();
+    @::objfilelist = ();
+    @::allobjnames = ();
+    @::noderange = ();
+}
 1;
 
