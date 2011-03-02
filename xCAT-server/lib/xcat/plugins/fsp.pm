@@ -25,6 +25,7 @@ sub handled_commands {
       rvitals   => 'nodehm:mgt',
       mkvm      => 'nodehm:mgt',
       lsvm      => 'nodehm:mgt',
+      chvm      => 'nodehm:mgt',
       rscan     => 'nodehm:mgt'
 
   };
