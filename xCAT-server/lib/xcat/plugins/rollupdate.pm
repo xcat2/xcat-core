@@ -2596,7 +2596,13 @@ sub llreconfig {
         if ( $llattr =~ /RESOURCE_MGR_LIST/ ) {
             $llrms = $llval; }
     }
-    $cmd = "llrctl reconfig";
+    ######
+    ###  WORKAROUND FOR LL BUG
+    ###  The "EXTSHM=ON" is a workaround for a LL bug
+    ###  This must be set when calling llrctl from xcatd
+    ######
+    #$cmd = "llrctl reconfig";
+    $cmd = "export EXTSHM=ON;llrctl reconfig";
     my @llms = split(/\s+/,$llcms." ".$llrms);
     my %have = ();
     my @llnodes;
