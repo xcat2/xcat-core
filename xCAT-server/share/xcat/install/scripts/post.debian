@@ -1,0 +1,141 @@
+#!/bin/bash
+#
+# Setup hostname
+#
+echo "post scripts" >/root/post.log
+export PRINIC=#TABLE:noderes:THISNODE:primarynic#
+if [ "$PRINIC" == "mac" ]
+then
+    export PRINIC='#TABLE:mac:THISNODE:mac#'
+fi
+if [ -z "$PRINIC" ]
+then
+    export PRINIC=eth0
+elif [[ `echo "$PRINIC" | grep -sqE ^[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+:[A-Fa-f0-9]+$ ;echo $?` == "0" ]]; then
+    export PRINIC=`ifconfig -a | grep -i "HWaddr $PRINIC" | awk '{print $1}'`
+fi
+IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+if [ -z $IP ]
+then
+	dhclient eth0
+	IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
+fi
+echo "search #TABLE:site:key=domain:value#" >/etc/resolv.conf
+for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
+do
+	echo "nameserver $i"
+done >>/etc/resolv.conf
+export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
+hostname $HOSTNAME
+#
+# Run xCAT post install
+#
+export MASTER_IP="#XCATVAR:XCATMASTER#"
+export MASTER_IPS="#XCATVAR:XCATMASTER#"
+export MASTER="#XCATVAR:XCATMASTER#"
+cd /tmp
+RAND=$(perl -e 'print int(rand(50)). "\n"')
+sleep $RAND
+for i in $(seq 1 20)
+do
+	GOTIT=0
+	for i in $MASTER_IPS
+	do
+      wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused  -t 0 -T 60 ftp://$i/postscripts
+		#wget --wait=10 --random-wait --waitretry=10 --retry-connrefused -t 0 -T 60 http://$i/install/autoinst/xcatpost.tar.gz
+		if [ "$?" = "0" ]
+		then
+         if [ ! -x /usr/bin/openssl ]; then #Stop if no openssl to help the next bit
+            exit 1
+         fi
+       	 USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
+     	 export USEOPENSSLFORXCAT
+         XCATSERVER=$i:3001
+         export XCATSERVER
+         mv $i/postscripts /xcatpost
+         rm -rf $i
+         chmod +x /xcatpost/*
+         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+         MYCONT=`grep MASTER /tmp/mypostscript`
+         MAX_RETRIES=10
+         RETRY=0
+         while [ -z "$MYCONT" ]; do
+            RETRY=$(($RETRY+1))
+            if [ $RETRY -eq $MAX_RETRIES ]
+            then
+                break
+            fi
+
+            let SLI=$RANDOM%10+10
+            sleep $SLI
+            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+            MYCONT=`grep MASTER /tmp/mypostscript`
+         done
+
+            
+         chmod +x /tmp/mypostscript
+			GOTIT=1
+			break
+		fi
+	done
+	if [ "$GOTIT" = "1" ]
+	then
+            #save the master to /opt/xcat/xcatinfo file
+            if [ ! -f /opt/xcat/xcatinfo ]; then
+                mkdir -p /opt/xcat
+                touch /opt/xcat/xcatinfo
+            fi
+            echo "XCATSERVER=$i" > /opt/xcat/xcatinfo
+	    break
+	fi
+	RAND=$(perl -e 'print int(rand(5)). "\n"')
+	sleep $RAND
+done
+cd /xcatpost
+#gunzip xcatpost.tar.gz
+#tar -xvf xcatpost.tar
+#/xcatpost/#TABLE:nodelist:THISNODE:node#
+export PATH=/xcatpost:$PATH
+
+#save the postboot scripts to /tmp/mypostscript.post
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript.post
+chmod 755 /tmp/mypostscript.post
+
+#create the post init 
+cat >/etc/init.d/xcatpostinit1 << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1#
+EOF
+chmod 755 /etc/init.d/xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/rc2.d/S84xcatpostinit1
+mkdir -p /opt/xcat
+cat >/opt/xcat/xcatinstallpost << 'EOF'
+#INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
+rm /etc/rc2.d/S84xcatpostinit1
+EOF
+chmod 755 /opt/xcat/xcatinstallpost
+
+#only run the prebooot scripts here
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript
+
+/tmp/mypostscript
+export NODE=#TABLE:nodelist:THISNODE:node#
+export OSVER=#TABLE:nodetype:THISNODE:os#
+export ARCH=#TABLE:nodetype:THISNODE:arch#
+#addsiteyum
+if [[ -r /boot/grub/menu.lst ]]; then
+sed -i 's/^serial/#serial/' /boot/grub/menu.lst
+sed -i 's/^terminal/#terminal/' /boot/grub/menu.lst
+elif [[ -r /boot/grub/grub.cfg ]] ; then
+sed -i 's/\(GRUB_CMDLINE_LINUX=\).*/\1\"console=tty0\ console=ttyS#TABLE:nodehm:THISNODE:serialport#,#TABLE:nodehm:THISNODE:serialspeed#\"/' /etc/default/grub
+sed -i 's/\(GRUB_CMDLINE_LINUX_DEFAULT=\).*/\1""/g' /etc/default/grub
+update-grub
+fi
+sed -i 's/\(deb.*security.*\)/#\1/' /etc/apt/sources.list
+updateflag.awk $MASTER 3002
+cd /
+#rm -Rf /xcatpost
+#rm -f /tmp/mypostscript
+exit 0
+

@@ -470,6 +470,8 @@ sub makescript
                 elsif ($os =~ /fedora.*/) { $platform = "fedora"; }
                 elsif ($os =~ /SL.*/)     { $platform = "SL"; }
                 elsif ($os =~ /sles.*/)   { $platform = "sles"; }
+                elsif ($os =~ /ubuntu.*/) { $platform = "ubuntu"; }
+                elsif ($os =~ /debian.*/) { $platform = "debian"; }
                 elsif ($os =~ /aix.*/)    { $platform = "aix"; }
             }
             if (($nodesetstate) && ($nodesetstate eq "netboot"))

@@ -34,6 +34,9 @@ stop)
   logger -t xcat "nothing to stop"
   ;;
 start)
+		# For nodes that unmount/remove /tmp at install time, like ubuntu
+		#cp /root/mypostscript* /tmp/.
+		
         # Node is stateless by default
         STATELITE="No"
 

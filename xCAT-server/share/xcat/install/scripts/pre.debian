@@ -1,0 +1,90 @@
+#!/bin/sh
+
+AWK=`find / -name awk | tail -1`
+#old awk /mounts/instsys/bin/awk -f
+
+cat >/tmp/bar.awk <<EOF
+#!$AWK -f
+
+BEGIN {
+	xcatdport = "#TABLE:site:key=xcatiport:value#"
+	xcatdhost = "#XCATVAR:XCATMASTER#"
+
+	ns = "/inet/tcp/0/" xcatdhost "/" xcatiport
+
+	print "xCAT_xcatd" |& ns
+
+	while(1) {
+		ns |& getline
+
+		if(\$0 == "ready")
+			print "installmonitor" |& ns
+		if(\$0 == "done")
+			break
+	}
+
+	close(ns)
+
+	exit 0
+}
+EOF
+
+if [ ! -c /dev/vcs ]; then
+	mknod /dev/vcs c 7 0
+fi
+cat >/tmp/foo.awk <<EOF
+#!$AWK -f
+
+BEGIN {
+	ns = "/inet/tcp/3001/0/0"
+
+	while(1) {
+		ns |& getline
+
+#		if(\$1 == "sh") { #TODO: ENABLE IF DEBUG
+#			sub(/^sh +/,"",\$0)
+#			output = \$0
+#			while((output | getline) > 0)
+#				print \$0 |& ns
+#			print "EOO" |& ns
+#			close(output)
+#		}
+
+		if(\$1 == "screendump") {
+			output = "chvt " \$2 ";cat /dev/vcs"
+			while((output | getline) > 0)
+				print \$0 |& ns
+			close(output)
+		}
+
+		if(\$1 == "stat") {
+			while((getline < "/target/var/log/installer/syslog") > 0) {
+				line = \$0
+			}
+			close("/target/var/log/installer/syslog")
+
+			if(line ~ /Unpacking/) {
+				sub(/\.[^\.]+\.deb .*$/,"",line)
+				sub(/^.* /,"",line)
+			}
+			if( (line ~ /Installing/) (line ~ /Selecting/) or (line ~ /Setting\ up/)) {
+				sub(/\.[^\.]+\.deb .*$/,"",line)
+				sub(/^.* /,"",line)
+			}
+			else {
+				line = "prep"
+			}
+
+			print ("installing " line) |& ns
+		}
+
+		close(ns)
+	}
+}
+EOF
+
+chmod 755 /tmp/foo.awk
+chmod 755 /tmp/bar.awk
+
+/tmp/bar.awk &
+/tmp/foo.awk >/tmp/foo.log 2>&1 &

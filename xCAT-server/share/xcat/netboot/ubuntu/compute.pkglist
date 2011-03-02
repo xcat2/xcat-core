@@ -1,0 +1,12 @@
+bash 
+nfs-common
+openssl
+dhcp3-client
+linux-image-generic
+openssh-server 
+openssh-client
+wget
+vim
+ntp
+rsyslog
+rsync
