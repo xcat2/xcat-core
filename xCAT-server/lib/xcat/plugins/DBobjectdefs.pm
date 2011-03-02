@@ -606,6 +606,7 @@ sub processArgs
         # special handling for site table !!!!!
         if (($::opt_t eq 'site') && ($::opt_o ne 'clustersite'))
         {
+            push(@::clobjnames, $::opt_o);
             push(@::clobjnames, 'clustersite');
 
         }
