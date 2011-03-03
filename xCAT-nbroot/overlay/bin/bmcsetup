@@ -223,6 +223,13 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
     if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
+    echo -n "Putting SOL on channel $LANCHAN:"
+    while ! ipmitool raw 0xc 0x21 $LANCHAN 7 $LANCHAN > /dev/null; do
+        sleep 1
+        let TRIES=TRIES+1
+        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    done
+    if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 fi
 
 #frume.awk
