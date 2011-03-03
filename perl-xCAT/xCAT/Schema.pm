@@ -824,7 +824,7 @@ site => {
    " svloglocal:  if set to 1, syslog on the service node will not get forwarded to the\n".
    "              mgmt node.\n\n".
    " timezone:  (e.g. America/New_York)\n\n".
-   " tftpdir:  tftp directory path. Default is /tftpdir\n\n".
+   " tftpdir:  tftp directory path. Default is /tftpboot\n\n".
    " useNmapfromMN:  When set to yes, nodestat command should obtain the node status\n".
    "                 using nmap (if available) from the management node instead of the\n".
    "                 service node. This will improve the performance in a flat network.\n\n".
