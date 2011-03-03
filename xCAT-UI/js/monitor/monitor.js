@@ -38,27 +38,15 @@ function loadMonitorPage() {
 
 	// Create monitor tab
 	var tab = new Tab();
-	setConfigTab(tab);
-	tab.init();
-	$('#content').append(tab.object());
-
-	// Create provision tab
-	var tab = new Tab();
 	setMonitorTab(tab);
 	tab.init();
 	$('#content').append(tab.object());
 
-	/**
-	 * Monitor nodes
-	 */
 	var monitorForm = $('<div class="form"></div>');
-
-	// Create info bar
-	monitorForm.append('Getting monitoring stauts').append(createLoader());
-
-	
+	monitorForm.append('Getting monitoring status ').append(createLoader());
 	tab.add('monitorTab', 'Monitor', monitorForm, false);
 
+	// Get monitoring status of each tool
 	$.ajax( {
 		url : 'lib/cmd.php',
 		dataType : 'json',
@@ -69,62 +57,78 @@ function loadMonitorPage() {
 			msg : ''
 		},
 
+		/**
+		 * Load monitoring status
+		 * 
+		 * @param data
+		 *            Data returned from HTTP request
+		 * @return Nothing
+		 */
 		success : function(data){
-			var monitorTable = '<table><thead><tr><th>Monitor Tool</th><th>Status</th><th>Description</th></tr></thead>';
+			// Initialize status for each tool
 			var monitorStatusHash = new Object();
-			if (data.rsp[0]){
+			monitorStatusHash['xcatmon'] = 'Not monitored';
+			monitorStatusHash['rmcmon'] = 'Not monitored';
+			monitorStatusHash['rmcevent'] = 'Not monitored';
+			monitorStatusHash['gangliamon'] = 'Not monitored';
+			if (data.rsp[0]) {
 				var tempArray = data.rsp[0].split(';');
 				var position = 0;
 				var name = '';
 				var status = '';
-				for(var i in tempArray){
+				for ( var i in tempArray) {
 					position = tempArray[i].indexOf(':');
-					if(-1 == position){
+					if (position == -1) {
 						continue;
 					}
+
 					name = tempArray[i].substr(0, position);
 					status = tempArray[i].substr(position + 1);
 					monitorStatusHash[name] = status;
 				}
-			}
-			//xcat monitor
+			}		
+			
+			var monitorTable = '<table><thead><tr><th>Monitor Tool</th><th>Status</th><th>Description</th></tr></thead>';
+			
+			// xCAT monitor
 			monitorTable += '<tbody><tr><td><a href="#" name="xcatmon">xCAT Monitor</a></td>';
 			monitorTable += '<td>' + monitorStatusHash['xcatmon'] + '</td>';
 			monitorTable += '<td>Provides node status monitoring using fping on AIX and nmap on Linux. It also provides application status monitoring. The status and the appstatus columns of the nodelist table will be updated periodically  with the latest status values for the nodes.</td></tr>';
 			
-			//rmc monitor 
+			// RMC monitor 
 			monitorTable += '<tr><td><a href="#" name="rmcmon">RMC Monitor</a></td>';
 			monitorTable += '<td>' + monitorStatusHash['rmcmon'] + '</td>';
 			monitorTable += '<td>IBM\'s Resource Monitoring and Control (RMC) subsystem is our recommended software for monitoring xCAT clusters. It\'s is part of the IBM\'s Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive clustering environment for AIX and LINUX.</td></tr>';
 			
-			//rmc event
+			// RMC event
 			monitorTable += '<tr><td><a href="#" name="rmcevent">RMC Event</a></td>';
-			monitorTable += '<td>' + monitorStatusHash['rmcmon'] + '</td>';
+			monitorTable += '<td>' + monitorStatusHash['rmcevent'] + '</td>';
 			monitorTable += '<td>Listing event monitoring information recorded by the RSCT Event Response resource manager in the audit log. Creating and removing a condition/response association.</td></tr>';
 			
-			//ganglia event
+			// Ganglia event
 			monitorTable += '<tr><td><a href="#" name="gangliamon">Ganglia Monitor</a></td>';
 			monitorTable += '<td>' + monitorStatusHash['gangliamon'] + '</td>';
 			monitorTable += '<td>A scalable distributed monitoring system for high-performance computing systems such as clusters and Grids.</td></tr>';
 			
-			//pcp monitor
+			// PCP monitor
 			monitorTable += '<tr><td><a href="#" name="pcpmon">PCP Monitor</a></td>';
-			monitorTable += '<td>undefined</td>';
+			monitorTable += '<td>Not monitored</td>';
 			monitorTable += '<td>Under construction.</td></tr>';
 			
 			monitorTable += '</tbody></table>';
 			
+			// Append info bar
 			$('#monitorTab div').empty().append(createInfoBar('Select a monitoring tool to use.'));
 			$('#monitorTab .form').append(monitorTable);
 			
+			// Open monitoring tool onclick
 			$('#monitorTab .form a').bind('click', function() {
 				loadMonitorTab($(this).attr('name'));
 			});
 		}
 	});
-	/**
-	 * Monitor resources
-	 */
+	
+	// Create resources tab
 	var resrcForm = $('<div class="form"></div>');
 
 	// Create info bar
@@ -144,9 +148,6 @@ function loadMonitorPage() {
 	hwList.append(zvm);
 	resrcForm.append(hwList);
 
-	/**
-	 * Ok
-	 */
 	var okBtn = createButton('Ok');
 	okBtn.bind('click', function(event) {
 		// Get hardware that was selected
@@ -155,25 +156,25 @@ function loadMonitorPage() {
 		// Generate new tab ID
 		var newTabId = hw + 'ResourceTab';
 		if (!$('#' + newTabId).length) {
-			var loader = createLoader(hw + 'ResourceLoader');
-			loader = $('<center></center>').append(loader);
+			// Create loader
+			var loader = $('<center></center>').append(createLoader(hw + 'ResourceLoader'));
 			tab.add(newTabId, hw, loader, true);
 
 			// Create an instance of the plugin
 			var plugin;
 			switch (hw) {
-			case "blade":
-				plugin = new bladePlugin();
-				break;
-			case "hmc":
-				plugin = new hmcPlugin();
-				break;
-			case "ipmi":
-				plugin = new ipmiPlugin();
-				break;
-			case "zvm":
-				plugin = new zvmPlugin();
-				break;
+				case "blade":
+					plugin = new bladePlugin();
+					break;
+				case "hmc":
+					plugin = new hmcPlugin();
+					break;
+				case "ipmi":
+					plugin = new ipmiPlugin();
+					break;
+				case "zvm":
+					plugin = new zvmPlugin();
+					break;
 			}
 
 			plugin.loadResources();
@@ -182,53 +183,53 @@ function loadMonitorPage() {
 		// Select tab
 		tab.select(newTabId);
 	});
+	
 	resrcForm.append(okBtn);
-
 	tab.add('resourceTab', 'Resources', resrcForm, false);
 }
 
 /**
- * Open a tab and load given monitoring tool
+ * Load monitoring tool in a new tab
  * 
- * @param monitorName
+ * @param name
  *            Name of monitoring tool
  * @return Nothing
  */
-function loadMonitorTab(monitorName) {
+function loadMonitorTab(name) {
 	// If the tab exist, then we only need to select it
 	var tab = getMonitorTab();
-	if ($("#" + monitorName).length) {
-		tab.select(monitorName);
+	if ($("#" + name).length) {
+		tab.select(name);
 		return;
 	}
 
-	switch (monitorName) {
-	case 'xcatmon':
-		tab.add(monitorName, 'xCAT', '', true);
-		loadXcatMon();
-		break;
-	case 'rmcmon':
-		tab.add(monitorName, 'RMC Monitor', '', true);
-		loadRmcMon();
-		break;
-	case 'gangliamon':
-		tab.add(monitorName, 'Ganglia', '', true);
-		loadGangliaMon();
-		break;
-	case 'rmcevent':
-		tab.add(monitorName, 'RMC Event', '', true);
-		loadRmcEvent();
-		break;
-	case 'pcpmon':
-		loadUnfinish(monitorName, tab);
-		break;
+	switch (name) {
+		case 'xcatmon':
+			tab.add(name, 'xCAT', '', true);
+			loadXcatMon();
+			break;
+		case 'rmcmon':
+			tab.add(name, 'RMC Monitor', '', true);
+			loadRmcMon();
+			break;
+		case 'gangliamon':
+			tab.add(name, 'Ganglia', '', true);
+			loadGangliaMon();
+			break;
+		case 'rmcevent':
+			tab.add(name, 'RMC Event', '', true);
+			loadRmcEvent();
+			break;
+		case 'pcpmon':
+			loadUnfinish(name, tab);
+			break;
 	}
 
-	tab.select(monitorName);
+	tab.select(name);
 }
 
 /**
- * Open a tab and show 'Under contruction'
+ * Load tab showing 'Under contruction'
  * 
  * @param monitorName
  *            Name of monitoring tool
