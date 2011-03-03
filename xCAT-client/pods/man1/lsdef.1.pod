@@ -183,7 +183,7 @@ To list the hidden nodes that can't be seen with other flags.
 The hidden nodes are FSP/BPAs.
 
  lsdef -S
- 
+
 =back
 
 
