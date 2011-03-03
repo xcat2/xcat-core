@@ -49,7 +49,7 @@ Run nodeset and rpower/rnetboot to boot up the nodes.
 
 The B<xcatsetup> command is intended as a quick way to fill out the database for a cluster that has very regular
 naming patterns.  The only thing it does is fill in database attributes.  If your cluster does not follow consistent
-naming patterns, or has some other special configuration, you should define attribute values manually instead of using
+naming patterns, or has some other special configuration, you should define attribute values manually using L<mkdef(1)|mkdef.1>, instead of using
 B<xcatsetup>.  The cluster config file is meant to be an easy way to prime the database; it is not meant to be a
 long living file that you update as the cluster changes.  If you do want to run xcatsetup again at a later time,
 because, for example, you added a lot of nodes, you should put the total list of nodes in the config file, not just
@@ -63,6 +63,9 @@ use individual rows for every node, you can do the following:
 
   lsdef -z all >tmp.stanza
   cat tmp.stanza | chdef -z
+
+Many of the sections and attributes in the configuration file can be omitted, if you have a simple cluster, or if you want
+to create just 1 or 2 of the object types at this time.  See the section B<A Simpler Configuration File> for an example of this.
 
 If you want to delete all of the nodes that xcatsetup created, and start over, use the B<--yesreallydeletenodes> option.
 
@@ -174,33 +177,50 @@ in the cluster must be specified (A-side only).
 
 Here is a sample file:
 
-  bpc01:
+  bpc1:
     objtype=node
     serial=99200G1
     mtm=9A00-100
     side=A
 
-  bpc02:
+  bpc2:
     objtype=node
     serial=99200D1
     mtm=9A00-100
     side=A
+
+  ...
 
 =head2 Supernode Numbers for CECs
 
 The B<supernode-list> file lists what supernode numbers should be given to each CEC in each frame.
 Here is a sample file:
 
-  bpc01: 0, 1, 16
-  bpc02: 17, 32
-  bpc03: 33, 48, 49
-  bpc04: 64 , 65, 80
-  bpc05: 81, 96
-  bpc06: 97(1), 112(1), 113(1)
+  bpc1: 0, 1, 16
+  bpc2: 17, 32
+  bpc3: 33, 48, 49
+  bpc4: 64 , 65, 80
+  bpc5: 81, 96
+  bpc6: 97(1), 112(1), 113(1), 37(1), 55, 71
 
 The name before the colon is the node name of the frame BPC.  The numbers after the colon are the supernode numbers
 to assign to the groups of CECs in that frame from bottom to top.  Each supernode contains 4 CECs, unless it is immediately
 followed by "(#)", in which case the number in parenthesis indicates how many CECs are in this supernode.
+
+=head2 A Simpler Configuration File
+
+This is an example of a simple cluster config file that just defines the frames and CECs for 2 frames, without specifying
+VPD data or supernode numbers at this time.
+
+  xcat-site:
+   use-direct-fsp-control = 1
+
+  xcat-frames:
+   hostname-range = bpc[1-2]
+
+  xcat-cecs:
+   hostname-range = cec[01-24]
+   num-cecs-per-frame = 12
 
 =head2 Database Attributes Written
 
@@ -361,5 +381,5 @@ using this option.
 
 =head1 SEE ALSO
 
-L<mkdef(1)|mkdef.1>, L<chdef(1)|chdef.1>, L<xcatstanzafile(5)|xcatstanzafile.5>, L<noderange(3)|noderange.3>, L<nodeadd(8)|nodeadd.8>, L<lsdef(1)|lsdef.1>
+L<mkdef(1)|mkdef.1>, L<chdef(1)|chdef.1>, L<lsdef(1)|lsdef.1>, L<xcatstanzafile(5)|xcatstanzafile.5>, L<noderange(3)|noderange.3>, L<nodeadd(8)|nodeadd.8>
 

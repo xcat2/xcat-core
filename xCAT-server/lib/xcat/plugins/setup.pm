@@ -81,6 +81,7 @@ sub process_request
     	foreach my $s (split(/[\s,]+/, $SECT)) { $SECTIONS{$s} = 1; }
     }
     
+    #todo: support reading the config file from stdin
     my $input;
     my $filename = fullpath($ARGV[0], $request->{cwd}->[0]);
     if (!open($input, $filename)) {
@@ -441,9 +442,38 @@ sub writecec {
 	# Create dynamic groups for the nodes in each cec
 	$nodes = [noderange($cecrange, 0)];		# the setNodesAttribs() function blanks out the nodes array
 	dynamicGroups('add', $nodes, 'parent==');
-	
-	# Write supernode-list in ppc.supernode.  While we are at it, also assign the cage id and parent.
+
 	$nodes = [noderange($cecrange, 0)];		# the setNodesAttribs() function blanks out the nodes array
+	
+	# If they are taking the simple approach for now of not assigning supernode #s, but just told
+	# us how many cecs should be in each frame, write: ppc.id, ppc.parent, nodelist.groups, nodepos.rack, nodepos.u
+	if (!($STANZAS{'xcat-cecs'}->{'supernode-list'}) && $STANZAS{'xcat-cecs'}->{'num-cecs-per-frame'}) {
+		# Loop thru all cecs, incrementing the cageid and frameindex appropriately, and put the cec attrs in the hashes.
+		my $cecsperframe = $STANZAS{'xcat-cecs'}->{'num-cecs-per-frame'};
+		my %ppchash;
+		my %nodehash;
+		my %nodeposhash;
+		my $numcecs = 1;		# the # of cecs we have assigned to the current frame
+		my $cageid = 5;		#todo: p7 ih starts at 5, but what about other models?
+		my $frames = [noderange($STANZAS{'xcat-frames'}->{'hostname-range'}, 0)];
+		my $frameindex = 0;
+		foreach my $cec (@$nodes) {
+			my $framename = $$frames[$frameindex];
+			$ppchash{$cec} = { id => $cageid, parent => $framename };
+			$nodehash{$cec} = { groups => "${framename}cecs,cec,all" };
+			my ($framenum) = $framename =~ /\S+?(\d+)$/;
+			$nodeposhash{$cec} = { rack => $framenum+0, u => $cageid };
+			# increment indexes for the next iteration of the loop
+			$cageid += 2;
+			$numcecs++;
+			if ($numcecs > $cecsperframe) { $frameindex++; $numcecs=1; $cageid=5; }		#todo: p7 ih starts at 5
+		}
+		$tables{'ppc'}->setNodesAttribs(\%ppchash);
+		$tables{'nodelist'}->setNodesAttribs(\%nodehash);
+		$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
+	}
+	
+	# If they specified supernode-list, write ppc.supernode.  While we are at it, also assign the cage id and parent.
 	my %framesupers;
 	if (!($STANZAS{'xcat-cecs'}->{'supernode-list'})) { return 1; }
 	my $filename = fullpath($STANZAS{'xcat-cecs'}->{'supernode-list'}, $cwd);
@@ -460,7 +490,7 @@ sub writecec {
 	foreach my $k (sort keys %framesupers) {
 		my $f = $framesupers{$k};	# $f is a ptr to an array of super node numbers
 		if (!$f) { next; }		# in case some frame nums did not get filled in by user
-		my $cageid = 3;		#todo: p7 ih starts at 3, but what about other models?
+		my $cageid = 5;		#todo: p7 ih starts at 5, but what about other models?
 		my $numcecs = 0;
 		foreach my $s (@$f) {	# loop thru the supernode nums in this frame
 			my $supernum = $s;
