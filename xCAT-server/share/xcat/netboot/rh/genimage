@@ -974,11 +974,11 @@ fi
 
 export IFACE=\$IFACE
 
-netstart
+netstart \$IFACE
 while ! ifconfig | grep inet; do
     echo -e "\${RED}Failed to acquire address, retrying \${RESET}"
     sleep 5
-    netstart
+    netstart \$IFACE
 done
 ifconfig lo 127.0.0.1
 ifconfig lo up
@@ -1236,7 +1236,7 @@ EOMS
 
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/sbin/nash\n";
-   print $inifile "network --device \$IFACE --bootproto dhcp\n";
+   print $inifile "network --device \${1} --bootproto dhcp\n"; #must not use env, doesn't work in older RH
    close($inifile);
    chmod(0755,"/tmp/xcatinitrd.$$/init");
    chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
