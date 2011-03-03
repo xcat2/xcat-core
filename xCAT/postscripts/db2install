@@ -349,13 +349,20 @@ sub installdb2code
 {
     my $msg;
     my $rc          = 0;
-    my $installcode = "$::installloc/ese/db2_install";
+    my $installcode;
+    my $installcode1 = "$::installloc/ese/db2_install";
+    my $installcode2 = "$::installloc/server/db2_install";
 
-    if (!(-e $installcode))
+    if ((!(-e $installcode1)) && (!(-e $installcode2)))
     {
-        $msg = "db2install:$installcode does not exist. Cannot install DB2 code.\n";
+        $msg = "db2install:Install code  does not exist. Cannot install DB2 code.\n";
         `logger -t xcat $msg`;
         exit 1;
+    }
+    if (-e $installcode1 ) {
+      $installcode=$installcode1;
+    } else {
+      $installcode=$installcode2;
     }
 
     my $expect_log = "/tmp/xcatexpect.log";
