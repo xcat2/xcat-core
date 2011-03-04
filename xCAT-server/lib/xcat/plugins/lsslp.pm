@@ -138,6 +138,7 @@ my $macmap;
 my $expect_ent = 0;
 my $time_out = 300;
 my $enter_time = 0;
+my @filternodes;
 
 ##########################################################################
 # Command handler method from tables
@@ -1118,6 +1119,16 @@ sub format_output {
         send_msg( $request, 0, "No responses" );
         return;
     }
+    
+    ###########################################
+    # filter the result and keep the specified nodes
+    ###########################################
+    if ( scalar(@filternodes)) {
+        my $outhash1 = filter( $outhash );
+        $outhash = $outhash1;
+    }
+    
+    
     ###########################################
     # -w flag for write to xCat database
     ###########################################
@@ -2026,7 +2037,9 @@ sub parse_responses {
        "ip-address" );
 
     my $primary;
-    my %fspcageid;
+    my %fid1;
+    my %fid2;
+    my %cid;
     foreach my $rsp ( @$values ) {
         ###########################################
         # Get service-type from response
@@ -2117,9 +2130,14 @@ sub parse_responses {
             }    
             
             #keep cage id for the secondary fsp definition
+            #the cash hash is like $fid{mtm*sn}=cageid
             if ($type eq SERVICE_FSP and $severnode1[3] eq "A")
             {
-                $fspcageid{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];          
+                $fid1{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];          
+            }
+            if ($type eq SERVICE_FSP and $severnode1[3] eq "B")
+            {
+                $fid2{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];          
             }
             
             $severnode1[3] = $severnode1[3].'-0';
@@ -2217,7 +2235,29 @@ sub parse_responses {
         }
     }
 
-
+    ############################################################
+    # find out the cageid for the cec
+    ############################################################    
+    foreach my $idtmp( keys(%fid1) )
+    {
+        if ($fid1{$idtmp} > 0) 
+        {
+            $cid{$idtmp} = $fid1{$idtmp}; 
+        } elsif ($fid2{$idtmp} > 0) 
+        {
+            $cid{$idtmp} = $fid2{$idtmp}; 
+        } else {
+            $cid{$idtmp} = 0;
+        }               
+    } 
+    foreach ( keys(%fid2) )
+    {
+        if (!defined($cid{$_})) 
+        {
+            $cid{$_} = $fid2{$_};
+        }
+    }    
+    
     ############################################################
     # -n flag to skip the existing node
     ############################################################
@@ -2263,8 +2303,8 @@ sub parse_responses {
         my $cagenum = @$data[8];
         
         # find cageid for the secondary fsp node
-        if ( $type =~ /^FSP$/ and $side =~ /^B/) {
-            @$data[8] = $fspcageid{$mtm."*".$sn};
+        if ( $type =~ /^FSP$/ || $type =~ /^CEC$/) {
+            @$data[8] = $cid{$mtm."*".$sn};
         }
         
         # if there is a -n flag, skip the existed nodes
@@ -3259,6 +3299,11 @@ sub preprocess_request {
     # Prompt for usage if needed
     ####################################
     my $noderange = $req->{node}; #Should be arrayref
+    foreach (@$noderange) 
+    {
+        push @filternodes, $_;
+    }
+    
     my $command = $req->{command}->[0];
     my $extrargs = $req->{arg};
     my @exargs=($req->{arg});
@@ -3666,6 +3711,22 @@ sub copypasswd {
         $directtab->setNodesAttribs(\%childentry);   
     } 
     return 1;
+}
+##########################################################################
+# Filter nodes the user specified
+##########################################################################
+sub filter {
+    my $oldhash = shift;
+    my $newhash;
+    
+        foreach (@filternodes)
+        {
+            if ( exists($oldhash->{$_} ))
+            {        
+                $newhash->{$_} = $oldhash->{$_};
+            }
+        }   
+    return $newhash;        
 }
 1;
 
