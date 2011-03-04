@@ -158,15 +158,15 @@ sub enumerate {
         #print "list\n";
         #print Dumper(\@list);
 	    foreach my $lpar (@list) {
-	         $lpar =~ /lparname:\s+(\w+),\s+lparid:\s+(\d+),\s+state:/;
-		 my $name = $1;
-		 my $lparid = $2;
-                 my $prof = $1; 
-		 my $server = $fsp;
-                 my $ips  = "";
+	         $lpar =~ /lparname:\s+([\w\-]+),\s+lparid:\s+(\d+),\s+state:/;
+		     my $name = $1;
+		     my $lparid = $2;
+             my $prof = "";  # No profile for P7 IH
+		     my $server = $fsp;
+             my $ips  = "";
           	 my $port = "";
-		 $name =~ s/\-//g;
-		 $name =~ tr/A-Z/a-z/;
+		     $name =~ s/\-//g;
+		     $name =~ tr/A-Z/a-z/;
                  	
                  #####################################
                  # Save LPAR information
