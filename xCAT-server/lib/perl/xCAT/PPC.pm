@@ -1100,7 +1100,9 @@ sub resolve {
     #################################
     foreach my $at ( @attribs ) {
         if ( !exists( $att->{$at} )) {
+            if( !($request->{fsp_api} == 1 && !exists($att->{pprofile}))) { #for p7 ih, there is no pprofile attribute    
                 return( sprintf( $errmsg{NO_ATTR}, $at, "ppc" ));
+            }    
         } 
     }
     #################################
