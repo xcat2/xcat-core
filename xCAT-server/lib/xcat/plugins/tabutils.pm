@@ -662,15 +662,12 @@ sub tabprune
     my $tabprune_usage = sub {
     	my $exitcode = shift @_;
         my %rsp;
-        push @{$rsp{data}}, "Usage: tabprune <eventlog | auditlog | x_teal*> [-V] -a";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog | x_teal*> [-V] -n <# of records>";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog | x_teal*> [-V] -i <recid>";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog | x_teal*> [-V] -p <percent>";
+        push @{$rsp{data}}, "Usage: tabprune <eventlog | auditlog > [-V] -a";
+        push @{$rsp{data}}, "       tabprune <eventlog | auditlog > [-V] -n <# of records>";
+        push @{$rsp{data}}, "       tabprune <eventlog | auditlog > [-V] -i <recid>";
+        push @{$rsp{data}}, "       tabprune <eventlog | auditlog > [-V] -p <percent>";
         push @{$rsp{data}}, "       tabprune [-h|--help]";
         push @{$rsp{data}}, "       tabprune [-v|--version]";
-        push @{$rsp{data}}, "       where x_teal* are the tables: ";
-        push @{$rsp{data}}, "       x_tealalert2alert,x_tealalert2event,x_tealalertlog ";
-        push @{$rsp{data}}, "       x_tealcheckpoint, or x_tealeventlog ";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
     };
@@ -701,16 +698,16 @@ sub tabprune
     my $table = $ARGV[0];
     if (!(defined $table)) {
         my %rsp;
-        $rsp{data}->[0] = "Table name eventlog, auditlog or x_teal* required.";
+        $rsp{data}->[0] = "Table name eventlog, or auditlog.";
         $rsp{errorcode} = 1; 
         $cb->(\%rsp);
         return 1;
       
     }
     $table=~ s/\s*//g; # remove blanks 
-    if (($table ne "eventlog") && ($table ne "auditlog") && ($table ne "x_tealalert2alert") && ($table ne "x_tealalert2event") && ($table ne "x_tealalertlog") && ($table ne "x_tealcheckpoint") && ($table ne "x_tealeventlog")) {
+    if (($table ne "eventlog") && ($table ne "auditlog")) {
         my %rsp;
-        $rsp{data}->[0] = "Table name eventlog, auditlog or x_teal* required.";
+        $rsp{data}->[0] = "Table name eventlog, or auditlog required.";
         $rsp{errorcode} = 1; 
         $cb->(\%rsp);
         return 1;
@@ -757,18 +754,6 @@ sub tabprune
     my $attrrecid; 
     if (($table eq "eventlog") || ($table eq "auditlog")) {
       $attrrecid="recid";
-    } else {
-      if (($table eq "x_tealalertlog") || ($table eq "x_tealeventlog")) {
-         $attrrecid="rec_id";
-      } else {
-       if (($table eq "x_tealalert2alert") || ($table eq "x_tealalert2event")) {
-           $attrrecid="assoc_id";
-        } else {
-            if ($table eq "x_tealcheckpoint") {
-               $attrrecid="chkpt_id";
-            }
-        }
-      }
     }
     if (defined $ALL ) {
      $rc=tabprune_all($table,$cb, $attrrecid,$VERBOSE); 
