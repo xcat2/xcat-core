@@ -590,11 +590,12 @@ sub lshwconn
 	           my $slot       = $5;
 	           my $ipadd      = $6;
 	           my $alt_ipaddr = $7;
-	           if($ipadd ne $node_ip) {
-	               $ipadd=$7;
-	               $alt_ipaddr = $6;
-	           }
-	           $data = "$sp,ipadd=$node_ip,alt_ipadd=$alt_ipaddr,state=$state";
+               #if($ipadd ne $node_ip) {
+               #    $ipadd=$7;
+               #    $alt_ipaddr = $6;
+               #}
+               #$data = "$sp,ipadd=$node_ip,alt_ipadd=$alt_ipaddr,state=$state";
+	           $data = "$sp,ipadd=$ipadd,alt_ipadd=$alt_ipaddr,state=$state";
 	       #my $s;
 	       #foreach my $val ( @infomap ) {
 	       #    if ( $data =~ /@$val[0]=([\w.\-\s]+)/ ) {
