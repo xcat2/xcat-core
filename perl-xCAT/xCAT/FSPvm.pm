@@ -536,24 +536,23 @@ sub enumerate {
     my %outhash = ();
     my $cec;
     my $type;
-    my $td;
+    my @td;
 
     while (my ($name,$d) = each(%$h) ) {
         $cec = @$d[3];
         $type = @$d[4];
-        if($type =~ /^(fsp|cec)$/ ) {
-            $td = $d;
-        }
+        @td = @$d;
     }
-    
+   
+    $td[4]="fsp"; 
     my $action = "get_io_slot_info";
-    my $values =  xCAT::FSPUtils::fsp_api_action ($cec, $td, $action);
+    my $values =  xCAT::FSPUtils::fsp_api_action ($cec, \@td, $action);
     my $Rc = shift(@$values);
     if ( $Rc != 0 ) {
         return( [$Rc,@$values[0]] );
     }
     
-    $outhash{ $$td[0] } = $$values[0];
+    $outhash{ $td[0] } = $$values[0];
     #my @t; 
     #foreach my $value ( @$values ) {
     #    my ($lparid, $busid, $slot_location_code, $drc_index,@t ) = split (/,/, $value);
@@ -562,7 +561,7 @@ sub enumerate {
  
     if( $type =~ /^(fsp|cec)$/ )  {
 	$action = "query_octant_cfg";
-	my $values =  xCAT::FSPUtils::fsp_api_action ($cec, $td, $action);
+	my $values =  xCAT::FSPUtils::fsp_api_action ($cec, \@td, $action);
 	my $Rc = shift(@$values);
 	if ( $Rc != 0 ) {
 	    return( [$Rc,@$values[0]] );
@@ -586,12 +585,12 @@ sub list {
     my $node_name; 
     my $d;
     my @result;
-
+    
     while (my ($mtms,$h) = each(%$hash) ) {
 	my $info = enumerate( $h, $mtms );
 	my $Rc = shift(@$info);
 	my $data = @$info[0];
-	
+         	
         while (($node_name,$d) = each(%$h) ) {
             my $cec   = @$d[3];
             my $type   = @$d[4];
@@ -618,7 +617,7 @@ sub list {
                 if ($type=~/^(fsp|cec)$/) {
                     push @result,[$lparid, join(',', @t), $Rc];
                 } else {
-                    if( $lparid == $id) {
+                    if( $lparid eq $id) {
                         push @result,[$lparid, join(',', @t), $Rc];
                     }
                 } 
