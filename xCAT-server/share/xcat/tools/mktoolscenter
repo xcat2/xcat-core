@@ -296,12 +296,12 @@ if ( system("cp $srcdir/$util $repo") or system("cp $asudir/$asu $repo")) {
 
 my $optstr = "";
 if ($proxy{host} ne "") {
-  $optstr = " --proxy-address $proxy{host} --proxy-port $proxy{port}";
+  $optstr = " --proxy-address=$proxy{host} --proxy-port=$proxy{port}";
   if ($proxy{user} ne "") {
-    $optstr .= " --proxy-user $proxy{user}";
+    $optstr .= " --proxy-user=$proxy{user}";
   }
   if ($proxy{pw} ne "") {
-    $optstr .= " --proxy-password $proxy{pw}";
+    $optstr .= " --proxy-password=$proxy{pw}";
   }
 }
 
