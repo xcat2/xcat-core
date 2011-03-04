@@ -828,7 +828,7 @@ sub create {
         } else {
             foreach my $name ( @{$opt->{target}} ) {
 	        push @result, [$name,"Success",$Rc];   
-                xCAT::FSPvm::xCATdB("mkvm", $name, "",$node_id{$name}, $d, $type, $name ); 
+                xCAT::FSPvm::xCATdB("mkvm", $name, "",$node_id{$name}, $d, "fsp", $name ); 
             }
 	}
         	
