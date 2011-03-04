@@ -176,8 +176,8 @@ my %usage = (
     mkhwconn noderange -t [--bind] [-V|--verbose]
     mkhwconn noderange -p single_hmc [-P HMC passwd] [-V|--verbose]
     
-    PPC (without HMC, using FSPAPI) specific:
-    mkhwconn noderange -t -T tooltype [--port port_value]",
+    PPC (without HMC, using Direct FSP Management) specific:
+    mkhwconn noderange -t [-T tooltype] [--port port_value]",
     "rmhwconn" =>
 "Usage:
     rmhwconn [-h|--help]
@@ -185,8 +185,8 @@ my %usage = (
     PPC (with HMC) specific:
     rmhwconn noderange [-V|--verbose]
     
-    PPC (without HMC, using FSPAPI) specific:
-    rmhwconn noderange -T tooltype",
+    PPC (without HMC, using Direct FSP Management) specific:
+    rmhwconn noderange [-T tooltype]",
     "lshwconn" =>
 "Usage:
     lshwconn [-h|--help]
@@ -194,8 +194,8 @@ my %usage = (
     PPC (with HMC) specific:
     lshwconn noderange [-V|--verbose]
     
-    PPC (without HMC, using FSPAPI) specific:
-    lshwconn noderange -T tooltype",
+    PPC (without HMC, using Direct FSP Management) specific:
+    lshwconn noderange [-T tooltype]",
     "renergy" =>
 "Usage:
     renergy [-h | --help] 
