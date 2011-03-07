@@ -117,22 +117,23 @@ sub chvm_parse_args {
         $opt{profile} = \@cfgdata;
     }     
 
-    if (defined( $request->{stdin} )) {
-         my $p =  $request->{stdin};
-         my @io = split(/\n/, $p) ;
-         foreach (@io) {
-             chomp;
-             if( $_ =~ /(\d+):(\s+)(\d+),([\w\.\-]+),(\w+),/) {
-                push @cfgdata, $_;
-             } else {
-                return ( usage( "Invalid line in profile: $_"));
-             }
+    #if (defined( $request->{stdin} )) {
+    #     my $p =  $request->{stdin};
+    #     my @io = split(/\n/, $p) ;
+    #     foreach (@io) {
+    #         chomp;
+    #         if( $_ =~ /(\d+):(\s+)(\d+),([\w\.\-]+),(\w+),/) {
+    #            push @cfgdata, $_;
+    #         } else {
+    #             return ( usage( "Invalid line in profile: $_"));
+    #         }
                   
-         }
+    #     }
          
-        $opt{profile} = \@cfgdata;
-    }
-    print Dumper(\%opt); 
+    #    $opt{profile} = \@cfgdata;
+    #}
+    #print "in parse args:\n";
+    #print Dumper(\%opt); 
     ####################################
     # No operands - add command name 
     ####################################
@@ -457,7 +458,20 @@ sub modify_by_prof {
     my %io = ();   
     my %lpar_state = ();
 
-    print Dumper($hash); 
+    if (defined( $request->{stdin} )) {
+         my $p =  $request->{stdin};
+         my @io = split(/\n/, $p) ;
+         foreach (@io) {
+             chomp;
+             if( $_ =~ /(\d+):(\s+)(\d+),([\w\.\-]+),(\w+),/) {
+                push @$cfgdata, $_;
+             } else {
+                return (\["Error", "Invalid line in profile: $_", -1]);
+             }
+                  
+         }
+    }
+
     while (my ($cec,$h) = each(%$hash) ) {
         while (my ($lpar,$d) = each(%$h) ) {
             $td = $d;
@@ -500,6 +514,7 @@ sub modify_by_prof {
     while (my ($cec,$h) = each(%$hash) ) {
         while (my ($lpar,$d) = each(%$h) ) {
             my $id = @$d[0];
+            #print Dumper($cfgdata);
             my @found = grep(/^$id:/, @$cfgdata );
             print Dumper(\@found); 
             my $action = "set_io_slot_owner";
@@ -510,9 +525,9 @@ sub modify_by_prof {
                 
                 my $orig_id = $io{$drc_index}{lparid};
                 # the current owning lpar and the new owning lpar must be in power off  state
-                if (($lpar_state{$orig_id} ne " Not Activated") || ($lpar_state{$id} ne  " Not Activated" )){
-                    push @values, [$lpar, "For the I/O $location, the current owning lpar(id=$orig_id) of the I/O  and the new owning lpar(id=$id) must be in power off  state", -1];
-                    next; 
+                if (($lpar_state{$orig_id} ne "Not Activated") || ($lpar_state{$id} ne  "Not Activated" )){
+                    push @values, [$lpar, "For the I/O $location, the current owning lpar(id=$orig_id) of the I/O  and the new owning lpar(id=$id) must be in Not Activated state at first. And then run chvm again", -1];
+                    return ( \@values ); 
                 }                   
      
                 my $values =  xCAT::FSPUtils::fsp_api_action ($lpar, $d, $action, $tooltype, $drc_index);
@@ -566,7 +581,18 @@ sub enumerate {
 	if ( $Rc != 0 ) {
 	    return( [$Rc,@$values[0]] );
         }	    
-        $outhash{ $cec } = @$values[0];	
+        #$outhash{ $cec } = @$values[0];
+        my $data = @$values[0];	
+	my @value =  split(/:/, $data);
+	my $pendingpumpmode = $value[0];
+	my $currentpumpMode = $value[1];
+	my $octantcount     = $value[2];
+        my $j = 3;
+	my $res = "PendingPumpMode=$pendingpumpmode,CurrentPumpMode=$currentpumpMode,OctantCount=$octantcount:";
+	for(my $i=0; $i < $octantcount; $i++) {
+	    $res = $res."OctantID=".$value[$j++].",PendingOctCfg=".$value[$j++].",CurrentOctCfg=".$value[$j++].",PendingMemoryInterleaveMode=".$value[$j++].",CurrentMemoryInterleaveMode=".$value[$j++].";";
+	}
+        $outhash{ $cec } = $res;	
     } 
     
     return( [0,\%outhash] );
@@ -770,7 +796,7 @@ sub create {
         my $res;
         for($i=0; $i < (keys %$octant_cfg_value) ; $i++) {
 	    if(! exists($octant_cfg_value->{$octant_id})) {
-	        $res = "starting LPAR id is $starting_lpar_id, starting octant id is $starting_octant_id, octant configuration value isn't provided. Wrong plan.";
+	        $res = "starting LPAR id is $starting_lpar_id, starting octant id is $starting_octant_id. The octants should be used continuously. Octant $octant_id  configuration value isn't provided. Wrong plan.";
 	        return ([[$cec_name, $res, -1]]);
 
             }
