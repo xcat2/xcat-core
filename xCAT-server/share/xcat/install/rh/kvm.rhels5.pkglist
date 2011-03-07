@@ -1,0 +1,15 @@
+#Please make sure there is a space between @ and group name
+ntp
+nfs-utils
+sendmail-cf
+openssh-server
+util-linux
+screen
+bridge-utils
+dnsmasq
+
+iscsi-initiator-utils
+qemu-kvm
+perl-Sys-Virt
+libvirt.x86_64
+xnba-kvm
