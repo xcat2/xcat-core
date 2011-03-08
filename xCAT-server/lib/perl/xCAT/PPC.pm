@@ -580,6 +580,7 @@ sub child_response {
     my $verbose=shift;
     my @ready_fds = $fds->can_read(1);
     my $rc = @ready_fds;
+    my $mkvm_cec; 
 
     foreach my $rfh (@ready_fds) {
         my $data = <$rfh>;
@@ -604,6 +605,11 @@ sub child_response {
      		my $nodename = $_;
      		foreach ( @$responses ) {
 	  		if ($nodename eq $_->{node}->[0]->{name}->[0]) {
+                                # One special case for mkvm to output some messages 
+                                if((exists($_->{errorcode})) && ($_->{errorcode} eq "mkvm" )) {
+                                     $mkvm_cec = $nodename;
+                                     next;    
+                                }
                 		#save the nodes that has errors for node status monitoring
           			if ((exists($_->{errorcode})) && ($_->{errorcode} != 0))  {
 					if (!grep /^$nodename$/, @$failed_nodes) {
@@ -633,6 +639,14 @@ sub child_response {
            		}
      		}
 	    }
+            if( defined($mkvm_cec)) {
+                my $r;
+                $r->{errorcode}=0;
+                $r->{node}->[0]->{name}->[0] = $mkvm_cec;
+                $r->{node}->[0]->{data}->[0]->{contents}->[0]="Please reboot the CEC $mkvm_cec firstly, and then use chvm to assign the I/O slots to the LPARs";
+                $callback->($r);
+            }
+
             next;
         }
         #################################
@@ -1100,9 +1114,9 @@ sub resolve {
     #################################
     foreach my $at ( @attribs ) {
         if ( !exists( $att->{$at} )) {
-            if( !($request->{fsp_api} == 1 && !exists($att->{pprofile}))) { #for p7 ih, there is no pprofile attribute    
-                return( sprintf( $errmsg{NO_ATTR}, $at, "ppc" ));
-            }    
+                if( !($request->{fsp_api} == 1 && !exists($att->{pprofile}))) { #for p7 ih, there is no pprofile attribute
+                    return( sprintf( $errmsg{NO_ATTR}, $at, "ppc" ));
+                }
         } 
     }
     #################################
