@@ -108,7 +108,7 @@ sub chvm_parse_args {
         open (PROFFILE, "<$opt{p}") or return ( usage( "Cannot open profile $opt{p}"));
         while(  <PROFFILE>) {
             chomp;
-            if( $_ =~ /(\d+):(\s+)(\d+),([\w\.\-]+),(\w+),/) {
+            if( $_ =~ /(\d+):(\s+)(\d+)\/([\w\.\-]+)\/(\w+)\//) {
                 push @cfgdata, $_;
             } else {
                 return ( usage( "Invalid line in profile: $_"));
@@ -463,7 +463,7 @@ sub modify_by_prof {
          my @io = split(/\n/, $p) ;
          foreach (@io) {
              chomp;
-             if( $_ =~ /(\d+):(\s+)(\d+),([\w\.\-]+),(\w+),/) {
+             if( $_ =~ /(\d+):(\s+)(\d+)\/([\w\.\-]+)\/(\w+)\//) {
                 push @$cfgdata, $_;
              } else {
                 return (\["Error", "Invalid line in profile: $_", -1]);
@@ -516,13 +516,12 @@ sub modify_by_prof {
             my $id = @$d[0];
             #print Dumper($cfgdata);
             my @found = grep(/^$id:/, @$cfgdata );
-            print Dumper(\@found); 
+            #print Dumper(\@found); 
             my $action = "set_io_slot_owner";
             my $tooltype = 0; 
             foreach my $f (@found) {
-                #'1: 514,U78A9.001.0123456-P1-C17,0x21010202,2,1'
-                my ($bus,$location,$drc_index,@t) = split(/,/, $f);
-                
+                #'1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1'
+                my ($bus,$location,$drc_index,@t) = split(/\//, $f);
                 my $orig_id = $io{$drc_index}{lparid};
                 # the current owning lpar and the new owning lpar must be in power off  state
                 if (($lpar_state{$orig_id} ne "Not Activated") || ($lpar_state{$id} ne  "Not Activated" )){
@@ -641,10 +640,10 @@ sub list {
             foreach my $v (@value) {
                 my ($lparid, @t ) = split (/,/, $v);  
                 if ($type=~/^(fsp|cec)$/) {
-                    push @result,[$lparid, join(',', @t), $Rc];
+                    push @result,[$lparid, join('/', @t), $Rc];
                 } else {
                     if( $lparid eq $id) {
-                        push @result,[$lparid, join(',', @t), $Rc];
+                        push @result,[$lparid, join('/', @t), $Rc];
                     }
                 } 
             }
@@ -750,7 +749,8 @@ sub create {
     my $node_number       =@{$opt->{target}}; 
     my %node_id = (); 
     my @nodes = @{$opt->{target}};	
-    
+   
+    #print Dumper($request); 
     #####################################
     # Get source node information
     #####################################
@@ -853,14 +853,15 @@ sub create {
 	    push @result, [$cec_name,$data,$Rc];
         } else {
             foreach my $name ( @{$opt->{target}} ) {
-	        push @result, [$name,"Success",$Rc];   
+	        push @result, [$name,"Success", $Rc];   
                 xCAT::FSPvm::xCATdB("mkvm", $name, "",$node_id{$name}, $d, "fsp", $name ); 
             }
+            push @result, [$cec_name,"Please reboot the CEC $cec_name before using chvm to assign the I/O slots to the LPARs", "mkvm"];   
+            #$request->{callback}->({info => ["Please reboot the CEC $cec_name before using chvm to assign the I/O slots to the LPARs"]}); 
 	}
         	
     }
     
-    push @result, [$cec_name,"For P7 IH, if mkvm succeeds, please reboot the CEC $cec_name before using chvm to assign the I/O slots", 0];    
     return( \@result );
 }
 
