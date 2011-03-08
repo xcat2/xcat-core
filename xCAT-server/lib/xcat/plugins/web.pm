@@ -52,9 +52,12 @@ sub process_request {
 		'gangliastart'  => \&web_gangliastart,
 		'gangliastop'   => \&web_gangliastop,
 		'gangliastatus' => \&web_gangliastatus,
-		'gangliacheck' => \&web_gangliacheck,
+		'gangliacheck'  => \&web_gangliacheck,
 		'mkcondition'   => \&web_mkcondition,
 		'monls'         => \&web_monls,
+		'writeframe'    => \&web_writeframe,
+		'writecec'      => \&web_writecec,
+		'writehmc'      => \&web_writehmc
 		#'xdsh' => \&web_xdsh,
 		#THIS list needs to be updated
 	);
@@ -977,3 +980,217 @@ sub web_monls(){
 	$ret = substr($ret, 0, length($ret) - 1);
 	$callback->({data=>$ret});
 }
+sub web_opentables{
+    my %tableHash;
+    my $tempNameArray = shift @_;
+    foreach my $tableName (@$tempNameArray){
+        $tableHash{$tableName} = xCAT::Table->new($tableName);
+        if (!($tableHash{$tableName})){
+            web_closetables(\%tableHash);
+            return undef;
+        }
+    }
+    return \%tableHash;
+}
+
+sub web_closetables{
+    my $tempHash = shift @_;
+    foreach my $tab (keys %$tempHash){
+        if ($tempHash->{$tab}){
+            $tempHash->{$tab}->close();
+        }
+    }
+}
+#-------------------------------------------------------
+
+=head3   web_writehmc
+
+	Description	: work for cluster setup wizard, write hmc into nodelist, ppc, site table
+    Arguments	: hmcnamerange
+    Returns		: Nothing
+    
+=cut
+
+#-------------------------------------------------------
+sub web_writehmc{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $hmcNameRange = $request->{arg}->[1];
+
+    #connect all used tables;
+    my $tablePoint = web_opentables(['nodelist', 'ppc', 'site']);
+    if (!$tablePoint){
+        $callback->({data=>'Error: Connect tables failed!'});
+        return;
+    }
+    
+    my @names = xCAT::NodeRange::noderange($hmcNameRange, 0);
+    if (scalar(@names) < 1){
+        $callback->({data=>'Error: node range input error!'});
+        web_closetables($tablePoint);
+        return;
+    }
+
+    for my $tempName (@names){
+        $tablePoint->{'nodelist'}->setNodeAttribs($tempName, {groups => 'hmc,all'});
+        $tablePoint->{'ppc'}->setNodeAttribs($tempName, {nodetype => 'hmc'});
+    }
+
+    $tablePoint->{'site'}->setAttribs({key => 'ea_primary_hmc'}, {value => $names[0]});
+    if (scalar(@names) > 2){
+        $tablePoint->{'site'}->setAttribs({key => 'ea_backup_hmc'}, {value => $names[1]});
+    }
+
+    web_closetables($tablePoint);
+    $callback->({data=>'Success: Write all HMCs into xCAT database!'});
+}
+#-------------------------------------------------------
+
+=head3   web_writeframe
+
+	Description	: work for cluster setup wizard, write frame into nodelist, ppc, nodehm table
+	              the command is "webrun writeframe framename hmc/dfm hmcname framenumperhmc"
+    Arguments	: nodegroupname, management method(hmc or dfm)
+    Returns		: Nothing
+    
+=cut
+
+#-------------------------------------------------------
+sub web_writeframe{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $frameNameRange = $request->{arg}->[1];
+    my $hmcFlag = $request->{arg}->[2];
+    my $framenumperhmc;
+    my @hmcNames;
+    my $tempname = '';
+    my $id = 0;
+    my $index = 0;
+    
+    if ('hmc' eq $hmcFlag){
+        my $hmcName = $request->{arg}->[3];
+        $framenumperhmc = $request->{arg}->[4] + 0;
+        unless ($framenumperhmc){
+            $callback->({data=>'Error: frame number per hmc is error!'});
+            return;
+        }
+        @hmcNames = xCAT::NodeRange::noderange($hmcName, 0);
+    }
+    
+    #open nodelist, ppc and nodehm table for update or add
+    my $tablePoint = web_opentables(['nodelist', 'ppc', 'nodehm']);
+    unless ($tablePoint){
+        $callback->({data=>'Error: Connect tables failed!'});
+        return;
+    }
+
+    my %nodelistHash;
+    my %nodehmHash;
+    my %ppcHash;
+    
+    #expand the node range and set attributes in database.
+    my @frameNames = xCAT::NodeRange::noderange($frameNameRange, 0);
+    foreach $tempname (@frameNames){
+        #find it's id
+        if ($tempname =~ /\S+?(\d+)$/){
+            $id = $1;
+        }
+        else{
+            $id++;
+        }
+        $ppcHash{$tempname}{'id'} = $id;
+        $ppcHash{$tempname}{'nodetype'} = 'frame';
+
+        if ('hmc' eq $hmcFlag){
+            $nodehmHash{$tempname}{'mgt'} = 'hmc';
+            $ppcHash{$tempname}{'hcp'} = $hmcNames[int($index / $framenumperhmc)];
+        }
+        else{
+            $nodehmHash{$tempname}{'mgt'} = 'bpa';
+            $ppcHash{$tempname}{'hcp'} = $tempname;
+        }
+        $nodelistHash{$tempname}{'groups'} = 'frame,all';
+        $index++;
+    }
+    
+    $tablePoint->{'nodelist'}->setNodesAttribs(\%nodelistHash);
+    $tablePoint->{'ppc'}->setNodesAttribs(\%ppcHash);
+    $tablePoint->{'nodehm'}->setNodesAttribs(\%nodehmHash);
+    
+    web_closetables($tablePoint);
+    $callback->({data=>'Success: Write all Frames into xCAT database!'});
+}
+
+#-------------------------------------------------------
+
+=head3   web_writecec
+
+    Description : work for cluster setup wizard, write cec into nodelist, ppc, nodehm table
+                  command is "webrun writecec frameNameRange hmc/dfm cecNameRange cecnumperframe"
+    Arguments   : nodegroupname, management method(hmc or dfm), cecname, cecnumperframe
+    Returns     : Nothing
+    
+=cut
+
+#-------------------------------------------------------
+sub web_writecec{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $frameNameRange = $request->{arg}->[1];
+    my $hmcFlag = $request->{arg}->[2];
+    my $cecNameRange = $request->{arg}->[3];
+    my $cecnumperframe = $request->{arg}->[4];;
+    my @frameNames = xCAT::NodeRange::noderange($frameNameRange, 0);
+    my @cecNames = xCAT::NodeRange::noderange($cecNameRange, 0);
+    my $tempname = '';
+    my $index = 0;
+
+    unless ($cecnumperframe){
+        $callback->({data=>'Error: cec number per frame is error!'});
+        return;
+    }
+
+    #open nodelist, ppc and nodehm table for update or add
+    my $tablePoint = web_opentables(['nodelist', 'ppc', 'nodehm', 'nodepos']);
+    unless ($tablePoint){
+        $callback->({data=>'Error: Connect tables failed!'});
+        return;
+    }
+
+    my %ppcHash;
+    my %nodelistHash;
+    my %nodehmHash;
+    my %nodeposHash;
+
+    foreach $tempname (@cecNames){
+        my $tempFrameid = int($index / $cecnumperframe) + 1;
+        my $tempCageid = 5 + ($index % $cecnumperframe) * 2;
+        my $parentName = $frameNames[$tempFrameid];
+        $nodelistHash{$tempname}{'groups'} = 'cec,all';
+        if ('hmc' eq $hmcFlag){
+            $nodehmHash{$tempname}{'mgt'} = 'hmc';
+            my $parentHcp = $tablePoint->getNodeAttribs($parentName, ['hcp']);
+            if ($parentHcp && $parentHcp->{'hcp'}){
+                $ppcHash{$tempname}{'hcp'} = $parentHcp->{'hcp'};
+            }
+        }
+        else{
+            $nodehmHash{$tempname}{'mgt'} = 'cec';
+            $ppcHash{$tempname}{'hcp'} = $tempname;
+        }
+
+        $ppcHash{$tempname}{'id'} = $tempCageid;
+        $ppcHash{$tempname}{'parent'} = $parentName;
+
+        $nodeposHash{$tempname} = {'rack' => $tempFrameid, 'u' =>$tempCageid};
+
+        $index++;
+    }
+
+    $tablePoint->{'nodelist'}->setNodesAttribs(\%nodelistHash);
+    $tablePoint->{'ppc'}->setNodesAttribs(\%ppcHash);
+    $tablePoint->{'nodehm'}->setNodesAttribs(\%nodehmHash);
+    $tablePoint->{'nodepos'}->setNodesAttribs(\%nodeposHash);
+
+    web_closetables($tablePoint);
+    $callback->({data=>'Success: Write all CECs into xCAT database!'});
+}
+
+1;
