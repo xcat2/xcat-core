@@ -2348,7 +2348,7 @@ sub my_nets
       my $n = $_->{net};
       my $if = $_->{mgtifname};
       my $nm = $_->{mask};
-      if (!$n || !$if || $nm)
+      if (!$n || !$if || !$nm)
       {
           next; #incomplete network
       }
