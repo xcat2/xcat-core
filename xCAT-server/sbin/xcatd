@@ -1428,7 +1428,11 @@ sub build_response {
   my $resp = shift;
   foreach (keys %$resp) {
     my $subresp = dclone($resp->{$_});
-    push (@{$Main::resps->{$_}}, @{$subresp});
+    if (ref $subresp eq 'ARRAY') {
+        push (@{$Main::resps->{$_}}, @{$subresp});
+    } else {
+        push (@{$Main::resps->{$_}}, $subresp);
+    }
   }
 }
 
