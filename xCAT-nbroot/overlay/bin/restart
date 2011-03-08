@@ -13,7 +13,7 @@ fi
 WAITING=1
 while [ $WAITING -gt 0 ]; do
     killall -12 udhcpc;killall -10 udhcpc
-    echo -n "Wating 10 seconds for DHCP changes to take effect "
+    echo -n "Waiting 10 seconds for DHCP changes to take effect "
     for i in 1 2 3 4 5 6 7 8 9 10; do
        sleep 1
        echo -n .
