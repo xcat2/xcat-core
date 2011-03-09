@@ -45,6 +45,7 @@ my $requester;
 my $viavcenter;
 my $viavcenterbyhyp;
 my $vcenterautojoin=1;
+my $vcenterforceremove=0; #used in rmhypervisor
 my $reconfigreset=1;
 my $vmwaresdkdetect = eval {
     require VMware::VIRuntime;
@@ -382,6 +383,9 @@ sub process_request {
     $viavcenter = 0;
     if ($command eq 'rmigrate' or $command eq 'rmhypervisor') { #Only use vcenter when required, fewer prereqs
         $viavcenter = 1;
+    }
+    if ($command eq 'rmhypervisor' and grep /-f/, @exargs) { #force remove of hypervisor
+        $vcenterforceremove=1;
     }
     my $keytab = xCAT::Table->new('prodkey');
     if ($keytab) {
@@ -999,6 +1003,28 @@ sub connecthost_callback {
        $running_tasks{$task}->{callback} = \&connecthost_callback;
        $running_tasks{$task}->{conn} = $args->{conn};
        $running_tasks{$task}->{data} = $args; #{ conn_spec=>$connspec,hostview=>$hv,hypname=>$args->{hypname},vcenter=>$args->{vcenter} };
+    } elsif ($state eq 'error') {
+        my $error = $task->info->error->localizedMessage;
+        if (defined ($task->info->error->fault->faultMessage)) { #Only in 4.0, support of 3.5 must be careful?
+            foreach(@{$task->info->error->fault->faultMessage}) {
+                $error.=$_->message;
+            }
+        }
+        xCAT::SvrUtils::sendmsg([1,$error], $output_handler); #,$node);
+        $hypready{$args->{hypname}} = -1; #Impossible for this hypervisor to ever be ready
+        $vcenterhash{$args->{vcenter}}->{badhyps}->{$args->{hypname}} = 1;
+    }
+}
+
+sub delhost_callback { #only called in rmhypervisor -f case during validate vcenter phase
+    my $task = shift;
+    my $args = shift;
+    my $hv = $args->{hostview};
+    my $state = $task->info->state->val;
+    if ($state eq "success") {
+       xCAT::SvrUtils::sendmsg("removed", $output_handler,$args->{hypname});
+       $hypready{$args->{hypname}} = -1; #Impossible for this hypervisor to ever be ready
+       $vcenterhash{$args->{vcenter}}->{badhyps}->{$args->{hypname}} = 1;
     } elsif ($state eq 'error') {
         my $error = $task->info->error->localizedMessage;
         if (defined ($task->info->error->fault->faultMessage)) { #Only in 4.0, support of 3.5 must be careful?
@@ -1768,9 +1794,9 @@ sub rmhypervisor_disconnected {
     my $state = $task->info->state->val;
     if ($state eq 'success') {
         my $task = $hyphash{$hyp}->{hostview}->Destroy_Task();
-        $running_tasks{$task}->{data} = { node => $node, successtext => 'removed' };
-        $running_tasks{$task}->{task} = $task;
-        $running_tasks{$task}->{callback} = \&generic_task_callback;
+	$running_tasks{$task}->{data} = { node => $node, successtext => 'removed' };
+	$running_tasks{$task}->{task} = $task;
+	$running_tasks{$task}->{callback} = \&generic_task_callback;
         $running_tasks{$task}->{hyp} =$hyp;
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
@@ -2861,7 +2887,7 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
 
 
                 return 1;
-            } elsif ($vcenterautojoin) { #if allowed autojoin and the current view seems corrupt, throw it away and rejoin
+            } elsif ($vcenterautojoin or $vcenterforceremove) { #if allowed autojoin and the current view seems corrupt, throw it away and rejoin
                 my $ref_to_delete;
                 if ($hview->parent->type eq 'ClusterComputeResource') { #We are allowed to specifically kill a host in a cluster
                     $ref_to_delete = $hview->{mo_ref};
@@ -2870,7 +2896,11 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
                 }
                 my $task = $hyphash{$hyp}->{vcenter}->{conn}->get_view(mo_ref=>$ref_to_delete)->Destroy_Task();
                 $running_tasks{$task}->{task} = $task;
-                $running_tasks{$task}->{callback} = \&addhosttovcenter;
+		if ($vcenterautojoin) {
+               	    $running_tasks{$task}->{callback} = \&addhosttovcenter;
+		} elsif ($vcenterforceremove) {
+                    $running_tasks{$task}->{callback} = \&delhost_callback;
+                }
                 $running_tasks{$task}->{conn} = $hyphash{$hyp}->{vcenter}->{conn};
                 $running_tasks{$task}->{data} = { depfun => $depfun, depargs => $depargs, conn=>  $hyphash{$hyp}->{vcenter}->{conn}, connspec=>$connspec,hostview=>$hview,hypname=>$hyp,vcenter=>$vcenter };
                 return undef;
