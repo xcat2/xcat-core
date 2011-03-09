@@ -16,6 +16,7 @@ use Thread qw(yield);
 use Getopt::Long;
 use POSIX qw(:signal_h :errno_h :sys_wait_h);
 my $interface;
+my $opts;
 Getopt::Long::Configure("require_order");
 Getopt::Long::Configure("posix_default");
 Getopt::Long::Configure("no_gnu_compat");
@@ -36,6 +37,7 @@ if (!(@ARGV)) {
 if (!GetOptions(
   'h|help'     => \$help,
   'v|version'  => \$version,
+  'o|options=s' => \$opts,
   'i|interface=s'  => \$interface))
 {
        &usage;
@@ -112,7 +114,7 @@ foreach (@nodes) {
   while ($children > $pshmaxp) { processoutput($inputs); }
   my $child;
   $children++;
-  scpnode(\$child,$node,@ARGV[0],$destloc);
+  scpnode(\$child,$node,@ARGV[0],$destloc,$opts);
   $inputs->add($child);
   $nodehdl{$child} = $node;
 }
@@ -149,11 +151,14 @@ sub scpnode {
   #my $args = join(" ",@_);
   my $file = shift;
   my $dest = shift;
-  open($$out,"rsync -az $file $node:$dest 2>&1 |");
+  my $opts = shift;
+  my $cmd="rsync -az$opts $file $node:$dest 2>&1 |";
+  open($$out,"rsync -az$opts $file $node:$dest 2>&1 |"); 
 }
 sub usage {
     print "Usage: prsync filename [filename ...] noderange:destinationdirectory\n";
-    print "       prsync  [rsync-opts] [filename filename ...] [directory directory ...]\n";
-    print "       noderange:destinationdirectory\n";
+    print "       prsync  [-o rsync options] [filename filename ...] [directory directory ...]";
+    print "  noderange:destinationdirectory\n";
     print "       prsync {-h|--help|-v|--version}\n";
 }
+
