@@ -6,7 +6,7 @@ prsync - parallel rsync
 
 B<prsync> I<filename> [I<filename> I<...>] I<noderange:destinationdirectory>
 
-B<prsync>  [I<rsync-opts>] [I<filename> I<filename> I<...>] [I<directory> I<directory> I<...>]
+B<prsync>  [I<-o rsync options>] [I<filename> I<filename> I<...>] [I<directory> I<directory> I<...>]
 I<noderange:destinationdirectory>
 
 B<prsync> {B<-h>|B<--help>|B<-v>|B<--version>}
@@ -57,7 +57,7 @@ Print version.
 
 =item *
 
-B<cd> I</install;> B<prsync> B<-cravz> I<post> I<stage:/install>
+B<cd> I</install;> B<prsync> B<-o "crz"> I<post> I<stage:/install>
 
 =item *
 
