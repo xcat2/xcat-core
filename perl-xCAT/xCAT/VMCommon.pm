@@ -87,6 +87,7 @@ sub requestMacAddresses {
     my @allmacs;
     my $complete = 0;
     my $updatesneeded;
+    my $vpdupdates;
     srand(); #Re-seed the rng.  This will make the mac address generation less deterministic
     while (not $complete and scalar @$neededmacs) {
         foreach $node (@$neededmacs) {
@@ -130,11 +131,28 @@ sub requestMacAddresses {
                 $updatesneeded->{$node}->{mac}=$macdata;
                 $tablecfg->{dhcpneeded}->{$node}=1; #at our leisure, this dhcp binding should be updated
             }
+	    #now that macs are done, do simple uuid... (done after to benefit from having at least one mac address)
+	    unless ($tablecfg->{vpd}->{$node}->[0]->{uuid}) {
+		my $umac = $macs[0];
+                my $uuid;
+		if ($umac) {
+	           $uuid=xCAT::Utils::genUUID(mac=>$umac);
+                } else { #shouldn't be possible, but just in case
+	           $uuid=xCAT::Utils::genUUID();
+                }
+	        $vpdupdates->{$node}->{uuid}=$uuid;
+		$tablecfg->{vpd}->{$node}=[{uuid=>$uuid}];
+                $tablecfg->{dhcpneeded}->{$node}=1; #at our leisure, this dhcp binding should be updated
+	    }
             #TODO: LOCK if a distributed lock management structure goes in place, that may be a faster solution than this
             #this code should be safe though as it is, if a tiny bit slower
             #can also be sped up by doing it for a noderange in a sweep instead of once per node
             #but the current architecture has this called at a place that is unaware of the larger context
             #TODO2.4 would be either the lock management or changing this to make large scale mkvm faster
+        }
+        if (defined $vpdupdates) {
+           my $vpdtab = xCAT::Table->new('vpd',-create=>1);
+           $vpdtab->setNodesAttribs($vpdupdates);
         }
         if (defined $updatesneeded) {
             my $mactab = xCAT::Table->new('mac',-create=>1);
