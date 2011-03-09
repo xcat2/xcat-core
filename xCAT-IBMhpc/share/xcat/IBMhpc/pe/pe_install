@@ -51,7 +51,7 @@ if [ $OS != "AIX" ]; then
 ##############
 ###  TEMPORARY FOR xCAT 2.6 Beta:
         #rpm -Uvh --force ibm_pami*.rpm ibm_pe*.rpm ppe_*.rpm 
-        rpm -Uvh --force sci*.rpm ibm_p*.rpm ibm_open*.rpm ibm_pe*.rpm ppe_*.rpm --nodeps
+        rpm -Uvh --force ibm_openshmem*.rpm ppe_rte*.rpm --nodeps
 ##############
         cd /
         rm -Rf /tmp/pe

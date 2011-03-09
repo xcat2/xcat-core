@@ -8,3 +8,4 @@
 #    these libibverbs packages.
 libibverbs.ppc
 libibverbs.ppc64
+xinetd
