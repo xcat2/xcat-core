@@ -667,7 +667,7 @@ postscripts => {
  },
   },
 ppc => {
-    cols => [qw(node hcp id pprofile parent nodetype supernode comments disable)],
+    cols => [qw(node hcp id pprofile parent nodetype supernode sfp comments disable)],
     keys => [qw(node)],
     table_desc => 'List of system p hardware: HMCs, IVMs, FSPs, BPCs.',
  descriptions => {
@@ -678,6 +678,7 @@ ppc => {
   parent => 'For LPARs: the FSP/CEC; for FSPs: the BPA (if one exists); for BPAs: the building block (BB) which consists 1 or more service nodes and compute/storage nodes that are serviced by them.',
   nodetype => 'The hardware type of the node. Only can be one of fsp, bpa, cec, frame, hmc and lpar',
   supernode => 'Comma separated list of 2 ids. The first one is the id of the supernode the FSP resides in. The second one is the logic location number (0-3) within the supernode for the FSP.',
+     sfp => ' The Service Focal Point of the Frame. It should be the name of HMC.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1483,7 +1484,11 @@ my @nodeattrs = (
                  tabentry => 'ppc.supernode',
                  access_tabentry => 'ppc.node=attr:node',
                 },
-
+ {attr_name => 'sfp',
+                 only_if => 'nodetype=frame',
+                 tabentry => 'ppc.sfp',
+                 access_tabentry => 'ppc.node=attr:node',
+                },
 #######################
 #  ppcdirect table    #
 #######################
