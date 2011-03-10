@@ -9593,7 +9593,7 @@ sub prermdsklsnode
       )
     {
         &rmdsklsnode_usage($callback);
-        return;
+        return 2;
     }
 
     if ($::HELP)
