@@ -8253,6 +8253,10 @@ sub mkdsklsnode
             if ($imagehash{$image_name}{paging})
             {
                 $arg_string .= "-a paging=$imagehash{$image_name}{paging} ";
+				# add extras from the cmd line
+				if ($attrs{sparse_paging} ) {
+					$arg_string .= "-a sparse_paging=$attrs{sparse_paging} ";
+				}
             }
             if ($imagehash{$image_name}{resolv_conf})
             {
@@ -8262,6 +8266,12 @@ sub mkdsklsnode
             if ($imagehash{$image_name}{dump})
             {
                 $arg_string .= "-a dump=$imagehash{$image_name}{dump} ";
+				if ($attrs{configdump} ) {
+					$arg_string .= "-a configdump=$attrs{configdump} ";
+				} else {
+					# the default is selective
+					$arg_string .= "-a configdump=selective ";
+				}
             }
             if ($imagehash{$image_name}{home})
             {
@@ -8275,16 +8285,6 @@ sub mkdsklsnode
             {
                 $arg_string .=
                   "-a shared_home=$imagehash{$image_name}{shared_home} ";
-            }
-
-            # add any additional supported attrs from cmd line
-            @attrlist = ("configdump", "sparse_paging");
-            foreach my $attr (keys %attrs)
-            {
-                if (grep(/^$attr$/, @attrlist))
-                {
-                    $arg_string .= "-a $attr=$attrs{$attr} ";
-                }
             }
 
             #
