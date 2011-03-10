@@ -57,7 +57,8 @@ sub process_request {
 		'monls'         => \&web_monls,
 		'writeframe'    => \&web_writeframe,
 		'writecec'      => \&web_writecec,
-		'writehmc'      => \&web_writehmc
+		'writehmc'      => \&web_writehmc,
+		'discoverframe' => \&web_discoverframe
 		#'xdsh' => \&web_xdsh,
 		#THIS list needs to be updated
 	);
@@ -1001,6 +1002,26 @@ sub web_closetables{
         }
     }
 }
+
+sub web_writegroup{
+    my($groupType, $groupName, $condition) = @_;
+    my $ngtab = xCAT::Table->new('nodegroup', -autocommit=>0);
+	if (!$ngtab) {
+	    return; 
+    }
+
+    if('static' eq $groupType){
+        $ngtab->setAttribs({groupname => $groupName}, {grouptype => 'static', members => 'static'});
+    }
+    else{
+        foreach my $t(@$groupName){
+            $ngtab->setAttribs({groupname => "${t}nodes"}, {grouptype => 'dynamic', members => 'dynamic', wherevals => "$condition$t" });
+        }
+    }
+
+    $ngtab->commit();
+    $ngtab->close();
+}
 #-------------------------------------------------------
 
 =head3   web_writehmc
@@ -1030,6 +1051,7 @@ sub web_writehmc{
         return;
     }
 
+    web_writegroup('static', 'hmc', '');
     for my $tempName (@names){
         $tablePoint->{'nodelist'}->setNodeAttribs($tempName, {groups => 'hmc,all'});
         $tablePoint->{'ppc'}->setNodeAttribs($tempName, {nodetype => 'hmc'});
@@ -1082,6 +1104,8 @@ sub web_writeframe{
         return;
     }
 
+    web_writegroup('static', 'frame', '');
+    
     my %nodelistHash;
     my %nodehmHash;
     my %ppcHash;
@@ -1154,6 +1178,9 @@ sub web_writecec{
         return;
     }
 
+    web_writegroup('static', 'cec', '');
+    web_writegroup('dynamic', \@cecNames, 'parent==');
+    
     my %ppcHash;
     my %nodelistHash;
     my %nodehmHash;
@@ -1193,4 +1220,19 @@ sub web_writecec{
     $callback->({data=>'Success: Write all CECs into xCAT database!'});
 }
 
+sub web_discoverframe{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $retStr = '';
+    my $retInfo = xCAT::Utils->runcmd( "lsslp -s BPA 2>null | grep FRAME | awk '{print \$2\"-\"\$3}'", -1, 1 );
+    if (scalar(@$retInfo) < 1){
+        $retStr = 'Error: Can not discover frames in cluster!';
+    }
+    else{
+        foreach my $line (@$retInfo){
+            $retStr .= $line . ';';
+        }
+        $retStr = substr($retStr, 0, -1);
+    }
+    $callback->({data=>$retStr});
+}
 1;
