@@ -1,0 +1,9 @@
+# Sample otherpkgs pkglist for installing all IBM HPC products in a 
+# SLES11 PPC64 login node 
+
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.otherpkgs.pkglist#
+#NEW_INSTALL_LIST#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/gpfs.otherpkgs.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.otherpkgs.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.otherpkgs.pkglist#
+#INCLUDE:/opt/xcat/share/xcat/IBMhpc/loadl/login-loadl.otherpkgs.pkglist#

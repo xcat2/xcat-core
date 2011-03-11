@@ -1,0 +1,4 @@
+# AIX bundle file for LoadLeveler packages on login node
+
+# Submit only
+I:LoadL.scheduler.so
