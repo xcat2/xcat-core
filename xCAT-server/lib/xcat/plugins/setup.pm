@@ -25,12 +25,14 @@ use xCAT::Utils;
 use xCAT::MsgUtils;
 use Data::Dumper;
 use xCAT::DBobjUtils;
+use xCAT_plugin::networks;
 
 my $CALLBACK;
 my %STANZAS;
 my $SUB_REQ;
 my $DELETENODES;
 my %NUMCECSINFRAME;
+my $DHCPINTERFACES;
 
 sub handled_commands {
     return( { xcatsetup => "setup" } );
@@ -117,7 +119,7 @@ sub readFileInput {
             my $val  = $2;
             #$attr =~ s/^\s*//;       # Remove any leading whitespace - already did that
             #$attr =~ s/\s*$//;       # Remove any trailing whitespace - already did that
-            $attr =~ tr/A-Z/a-z/;    # Convert to lowercase
+            $attr =~ tr/A-Z/a-z/;     # Convert to lowercase
             #$val  =~ s/^\s*//;
             #$val  =~ s/\s*$//;
 
@@ -151,6 +153,7 @@ my %tables = ('site' => 1,
 			'nodepos' => 1,
 			'servicenode' => 1,
 			'nodegroup' => 0,
+            'networks' => 1,
 			);
 my $CECPOSITIONS;	# a hash of the cec values in the nodepos table
 
@@ -162,11 +165,7 @@ sub writedb {
 		$tables{$tab} = xCAT::Table->new($tab, -create=>1, -autocommit=>$tables{$tab});
 		if (!$tables{$tab}) { errormsg("Can not open $tab table in database.  Exiting config file processing.", 3); return; }
 	}
-	
-	# Write site table attrs (hash key=xcat-site)
-	my $domain = $STANZAS{'xcat-site'}->{domain};
-	if ($domain && (!scalar(keys(%$sections))||$$sections{'xcat-site'})) { writesite($domain); }
-	
+
 	# Write service LAN info (hash key=xcat-service-lan)
 	#using hostname-range, write: nodelist.node, nodelist.groups, switches.switch
 	#using hostname-range and starting-ip, write regex for: hosts.node, hosts.ip
@@ -175,8 +174,17 @@ sub writedb {
     # * Note: for AIX the permanent IPs for HMCs/FSPs/BPAs (specified in later stanzas) should be within this dynamic range, at the high end. For linux the permanent IPs should be outside this dynamic range.
     # * use the first IP in the specified dynamic range to locate the service network in the networks table 
 	#on aix stop bootp - see section 2.2.1.1 of p hw mgmt doc
-	#run makedhcp -n
+	#run makedhcp -n   
+    my $iprange = $STANZAS{'xcat-service-lan'}->{'dhcp-dynamic-range'};
+	if ($iprange && (!scalar(keys(%$sections))||$$sections{'xcat-service-lan'})) { 
+        my $mkresult = xCAT_plugin::networks->donets();
+		unless (writenetworks($iprange)) { closetables(); return; }
+	}
 	
+	# Write site table attrs (hash key=xcat-site)
+	my $domain = $STANZAS{'xcat-site'}->{domain};
+	if ($domain && (!scalar(keys(%$sections))||$$sections{'xcat-site'})) { writesite($domain); }    
+    
 	# Write HMC info (hash key=xcat-hmcs)
 	my $hmcrange = $STANZAS{'xcat-hmcs'}->{'hostname-range'};
 	if ($hmcrange && (!scalar(keys(%$sections))||$$sections{'xcat-hmcs'})) { 
@@ -240,6 +248,34 @@ sub closetables {
 	}
 }
 
+sub writenetworks {
+    if ($DELETENODES) { return 1; }
+    my $range = shift;
+    infomsg('Defining networks attributes...');
+    # set the IP range specified in the config file
+    #print "range=$range\n";
+    # find the network the range existed
+    $range =~ /(\d+\.\d+\.\d+\.\d+)\-(\d+\.\d+\.\d+\.\d+)/;
+    my ($ip1, $ip2, $ip3, $ip4) = split('\.', $1);
+    my @entries = @{$tables{'networks'}->getAllEntries()};
+    if (@entries) {
+        for my $net (@entries) {
+            my %netref = %$net;
+            my ($m1, $m2, $m3, $m4) = split('\.', $netref{'mask'});
+            my $n1 = ((int $ip1) & (int $m1));
+            my $n2 = ((int $ip2) & (int $m2));
+            my $n3 = ((int $ip3) & (int $m3));
+            my $n4 = ((int $ip4) & (int $m4));
+            my $ornet = "$n1.$n2.$n3.$n4";
+            if ($ornet eq $netref{'net'}) {
+                $tables{'networks'}->setAttribs({'net' => $netref{'net'}, 'mask' => $netref{'mask'}}, {'dynamicrange' => $range});
+                $DHCPINTERFACES = $netref{'mgtifname'};
+                last;
+            }
+        }
+    }
+    return 1;
+}    
 
 sub writesite {
 	if ($DELETENODES) { return 1; }
@@ -261,8 +297,10 @@ sub writesite {
 		$tables{'site'}->setAttribs({key => 'topology'}, {value => $STANZAS{'xcat-site'}->{topology} });
 	}
 	
-	#todo: put dynamic range in networks table
-	#todo: set site.dhcpinterfaces
+	# set site.dhcpinterfaces
+	if ($DHCPINTERFACES) {
+		$tables{'site'}->setAttribs({key => 'dhcpinterfaces'}, {value => $DHCPINTERFACES });
+	}    
 	return 1;
 }
 
@@ -289,7 +327,7 @@ sub writehmc {
 		my $hmcstartnum = $$hmchash{'primary-start'};
 		my ($ipbase, $ipstart) = $hmcstartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
-		my $regex = '|\S+?(\d+)$|' . "$ipbase.($ipstart+" . '$1' . "-$hmcstartnum)|";
+        my $regex = '|\S+?(\d+)\D*$|' . "$ipbase.($ipstart+" . '$1' . "-$hmcstartnum)|";
 		$tables{'hosts'}->setNodeAttribs('hmc', {ip => $regex});
 	}
 	
@@ -320,23 +358,24 @@ sub writeframe {
 	staticGroup('frame');
 	
 	# Using the frame group, write starting-ip in hosts table
+    my $framehash;
 	my $framestartip = $STANZAS{'xcat-frames'}->{'starting-ip'};
 	if ($framestartip && isIP($framestartip)) {
-		my $framehash = parsenoderange($framerange);
+        $framehash = parsenoderange($framerange);
 		my $framestartnum = $$framehash{'primary-start'};
 		my ($ipbase, $ipstart) = $framestartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
-		my $regex = '|\S+?(\d+)$|' . "$ipbase.($ipstart+" . '$1' . "-$framestartnum)|";
+        my $regex = '|\S+?(\d+)\D*$|' . "$ipbase.($ipstart+" . '$1' . "-$framestartnum)|";
 		$tables{'hosts'}->setNodeAttribs('frame', {ip => $regex});
 	}
 	
 	# Using the frame group, write: nodetype.nodetype, nodehm.mgt
-	$tables{'ppc'}->setNodeAttribs('frame', {nodetype => 'bpa'});
+	$tables{'ppc'}->setNodeAttribs('frame', {nodetype => 'frame'});
 	#$tables{'nodetype'}->setNodeAttribs('frame', {nodetype => 'bpa'});
 	
 	# Using the frame group, num-frames-per-hmc, hmc hostname-range, write regex for: ppc.node, ppc.hcp, ppc.id
 	# The frame # should come from the nodename
-	my $idregex = '|\S+?(\d+)$|(0+$1)|';
+    my $idregex = '|\S+?(\d+)\D*$|(0+$1)|';
 	my %hash = (id => $idregex);
 
 	if ($STANZAS{'xcat-site'}->{'use-direct-fsp-control'}) {
@@ -350,8 +389,22 @@ sub writeframe {
 	}
 	
 	# Calculate which hmc manages this frame by dividing by num-frames-per-hmc
-	#my $framesperhmc = $STANZAS{'xcat-frames'}->{'num-frames-per-hmc'};
-	
+	my $framesperhmc = $STANZAS{'xcat-frames'}->{'num-frames-per-hmc'};
+    if ($framesperhmc and $STANZAS{'xcat-hmcs'}->{'hostname-range'}) {
+        my $hmchash;
+        unless ($hmchash = parsenoderange($STANZAS{'xcat-hmcs'}->{'hostname-range'})) { return 0; }
+        my $hmcbase = $$hmchash{'primary-base'};
+        my $fnum = $$framehash{'primary-start'};
+        my $hmcattch = $$hmchash{'attach'};
+        my $umb = $$hmchash{'primary-start'};
+        my $sfpregex;
+        #unless ($hmcattch) { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'(0+$1)|'; }
+        unless ($hmcattch) { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'((0+$1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')|'; }
+        #else { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'(0+$1)'.$hmcattch.'|'; }
+        else { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'((0+$1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')'.$hmcattch.'|'; }
+        $hash{'sfp'} =  $sfpregex;
+    }
+
 	$tables{'ppc'}->setNodeAttribs('frame', \%hash);
 	
 	# Write vpd-file to vpd table
@@ -412,20 +465,20 @@ sub writecec {
 			my $secstartnum = $$cechash{'secondary-start'};
 			# Math for 3rd field:  ip3rd+primnum-primstartnum
 			# Math for 4th field:  ip4th+secnum-secstartnum
-			$regex = '|\D+(\d+)\D+(\d+)$|' . "$ipbase.($ip3rd+" . '$1' . "-$primstartnum).($ip4th+" . '$2' . "-$secstartnum)|";
+            $regex = '|\D+(\d+)\D+(\d+)\D*$|' . "$ipbase.($ip3rd+" . '$1' . "-$primstartnum).($ip4th+" . '$2' . "-$secstartnum)|";
 		}
 		else {
 			# using name like cec01
 			my $cecstartnum = $$cechash{'primary-start'};
 			# Math for 4th field:  (ip4th-1+cecnum-cecstartnum)%254 + 1
 			# Math for 3rd field:  (ip4th-1+cecnum-cecstartnum)/254 + ip3rd
-			$regex = '|\S+?(\d+)$|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$cecstartnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$cecstartnum)%254+1)|";
+            $regex = '|\S+?(\d+)$\D*|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$cecstartnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$cecstartnum)%254+1)|";
 		}
 		$tables{'hosts'}->setNodeAttribs('cec', {ip => $regex});
 	}
 	
 	# Using the cec group, write: nodetype.nodetype
-	$tables{'ppc'}->setNodeAttribs('cec', {nodetype => 'fsp'});
+	$tables{'ppc'}->setNodeAttribs('cec', {nodetype => 'cec'});
 	#$tables{'nodetype'}->setNodeAttribs('cec', {nodetype => 'fsp'});
 	
 	# Write regex for ppc.hcp, nodehm.mgt
@@ -461,7 +514,7 @@ sub writecec {
 			my $framename = $$frames[$frameindex];
 			$ppchash{$cec} = { id => $cageid, parent => $framename };
 			$nodehash{$cec} = { groups => "${framename}cecs,cec,all" };
-			my ($framenum) = $framename =~ /\S+?(\d+)$/;
+            my ($framenum) = $framename =~ /\S+?(\d+)\D*$/;
 			$nodeposhash{$cec} = { rack => $framenum+0, u => $cageid };
 			# increment indexes for the next iteration of the loop
 			$cageid += 2;
@@ -502,7 +555,7 @@ sub writecec {
 				#print "Setting $nodename supernode attribute to $supernum,$j\n";
 				$ppchash{$nodename} = { supernode => "$supernum,$j", id => $cageid, parent => $k };
 				$nodehash{$nodename} = { groups => "${k}cecs,cec,all" };
-				my ($framenum) = $k =~ /\S+?(\d+)$/;
+                my ($framenum) = $k =~ /\S+?(\d+)\D*$/;
 				$nodeposhash{$nodename} = { rack => $framenum+0, u => $cageid };
 				$cageid += 2;
 			}
@@ -591,7 +644,7 @@ sub writebb {
 	
 	# Using num-frames-per-bb write ppc.parent (frame #) for bpas
 	if ($framesperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-frames-per-bb: $framesperbb", 7); return 0; }
-	my $bbregex = '|\S+?(\d+)$|((($1-1)/' . $framesperbb . ')+1)|';
+    my $bbregex = '|\S+?(\d+)\D*$|((($1-1)/' . $framesperbb . ')+1)|';
 	$tables{'ppc'}->setNodeAttribs('frame', {parent => $bbregex});
 	return 1;
 }
@@ -631,14 +684,14 @@ sub writelpar {
 		# Math for 2nd field:  ip2nd+primnum-primstartnum
 		# Math for 3rd field:  ip3rd+secnum-secstartnum
 		# Math for 4th field:  ip4th+thirdnum-thirdstartnum
-		my $regex = '|\D+(\d+)\D+(\d+)\D+(\d+)$|' . "$ipbase.($ip2nd+" . '$1' . "-$primstartnum).($ip3rd+" . '$2' . "-$secstartnum).($ip4th+" . '$3' . "-$thirdstartnum)|";
+        my $regex = '|\D+(\d+)\D+(\d+)\D+(\d+)\D*$|' . "$ipbase.($ip2nd+" . '$1' . "-$primstartnum).($ip3rd+" . '$2' . "-$secstartnum).($ip4th+" . '$3' . "-$thirdstartnum)|";
 		my %hash = (ip => $regex);
 		# for service nodes, use the starting ip from that stanza
 		my $serviceip = $STANZAS{'xcat-service-nodes'}->{'starting-ip'};
 		my ($servbase, $serv2nd, $serv3rd, $serv4th) = $serviceip =~/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
 		my %servicehash;
 		if ($serviceip && isIP($serviceip)) {
-			my $serviceregex = '|\D+(\d+)\D+(\d+)\D+(\d+)$|' . "$servbase.($serv2nd+" . '$1' . "-$primstartnum).($serv3rd+" . '$2' . "-$secstartnum).($serv4th+" . '$3' . "-$thirdstartnum)|";
+            my $serviceregex = '|\D+(\d+)\D+(\d+)\D+(\d+)\D*$|' . "$servbase.($serv2nd+" . '$1' . "-$primstartnum).($serv3rd+" . '$2' . "-$secstartnum).($serv4th+" . '$3' . "-$thirdstartnum)|";
 			$servicehash{ip} = $serviceregex;
 		}
 		
@@ -652,13 +705,13 @@ sub writelpar {
 				my ($nicbase, $nic2nd, $nic3rd, $nic4th) = $nicip =~/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
 				$if = "$nic:$nicbase.($nic2nd+" . '$1' . "-$primstartnum).($nic3rd+" . '$2' . "-$secstartnum).($nic4th+" . '$3' . "-$thirdstartnum)";
 			}
-			$regex = '|\D+(\d+)\D+(\d+)\D+(\d+)$|' . join(',', @ifs) . '|';
+            $regex = '|\D+(\d+)\D+(\d+)\D+(\d+)\D*$|' . join(',', @ifs) . '|';
 			#print "regex=$regex\n";
 			$hash{otherinterfaces} = $regex;
 			if ($serviceip && isIP($serviceip)) {
 				# same as regular lpar value, except prepend the lpar ip as -hf0
 				my $hf0 = "-hf0:$ipbase.($ip2nd+" . '$1' . "-$primstartnum).($ip3rd+" . '$2' . "-$secstartnum).($ip4th+" . '$3' . "-$thirdstartnum)";
-				my $serviceregex = '|\D+(\d+)\D+(\d+)\D+(\d+)$|' . "$hf0," . join(',', @ifs) . '|';
+                my $serviceregex = '|\D+(\d+)\D+(\d+)\D+(\d+)\D*$|' . "$hf0," . join(',', @ifs) . '|';
 				$servicehash{otherinterfaces} = $serviceregex;
 			}
 		}
@@ -695,6 +748,7 @@ sub writelpar {
 			$len = length($$rangeparts{'primary-start'});
 			$framenum = sprintf("%0${len}d", $framenum);
 			my $nr = $$rangeparts{'primary-base'} . $framenum . $$rangeparts{'secondary-base'} . "[$index1-$index2]" . $$rangeparts{'tertiary-base'} . '[' . $$rangeparts{'tertiary-start'} . '-' . $$rangeparts{'tertiary-end'} . ']';
+            if ($$rangeparts{'attach'}) { $nr .= $$rangeparts{'attach'};}
 			push @nodestodelete, $nr;
 		}
 		my $delnodes = join(',', @nodestodelete);
@@ -721,9 +775,9 @@ sub writelpar {
 	#my $framelen = length($$framehash{'primary-start'});
 	my %ppchash;
 	my %nodeposhash;
-	$ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)$|(($1-1)*4+1)|';		#todo: this is p7 ih specific
+    $ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)\D*$|(($1-1)*4+1)|';              #todo: this is p7 ih specific
 	# convert between the lpar name and the cec name.  Assume that numbers are the same, but the base can be different
-	my $regex = '|^\D+(\d+)\D+(\d+)\D+\d+$|' . "$cecprimbase" . '($1)' . "$cecsecbase" .'($2)|';
+    my $regex = '|^\D+(\d+)\D+(\d+)\D+\d+\D*$|' . "$cecprimbase" . '($1)' . "$cecsecbase" .'($2)|';
 	$ppchash{hcp} = $regex;
 	$ppchash{parent} = $regex;
 	$ppchash{nodetype} = 'lpar';
@@ -1223,6 +1277,14 @@ sub parsenoderange {
 	my $nr = shift;
 	my $ret = {};
 	
+    # Check for a 3 square bracket range, e.g. f[1-2]c[01-10]p[1-8]a
+	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'tertiary-base'}, $$ret{'tertiary-start'}, $$ret{'tertiary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) || (length($$ret{'tertiary-start'}) != length($$ret{'tertiary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
+		if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) || ($$ret{'tertiary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		return $ret;
+	}
+    
 	# Check for a 3 square bracket range, e.g. f[1-2]c[01-10]p[1-8]
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'tertiary-base'}, $$ret{'tertiary-start'}, $$ret{'tertiary-end'}) = ($1, $2, $3, $4, $5, $6, $7, $8, $9);
@@ -1231,6 +1293,14 @@ sub parsenoderange {
 		return $ret;
 	}
 	
+	# Check for a 2 square bracket range, e.g. f[1-2]c[01-10]a
+	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4, $5, $6, $7);
+		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
+		if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		return $ret;
+	}
+    
 	# Check for a 2 square bracket range, e.g. f[1-2]c[01-10]
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}) = ($1, $2, $3, $4, $5, $6);
@@ -1239,6 +1309,14 @@ sub parsenoderange {
 		return $ret;
 	}
 	
+	# Check for a square bracket range, e.g. n[01-20]a
+	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\s*$/ ) {
+		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4);
+		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
+		if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		return $ret;
+	}
+    
 	# Check for a square bracket range, e.g. n[01-20]
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}) = ($1, $2, $3);
@@ -1247,6 +1325,16 @@ sub parsenoderange {
 		return $ret;
 	}
 	
+	# Check for normal range, e.g. n01a-n20a
+	my $base2;
+	if ( $nr =~ /^\s*(\S+?)(\d+)(\S+?)\-(\S+?)(\d+)(\S+?)\s*$/ ) {
+        ($$ret{'primary-base'}, $$ret{'primary-start'},  $$ret{'attach'}, $base2, $$ret{'primary-end'}, $$ret{'attach2'}) = ($1, $2, $3, $4, $5, $6);
+		if ($$ret{'primary-base'} ne $base2) { errormsg("invalid noderange format: $nr", 5); return undef; }
+		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
+		if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		return $ret;
+	}
+    
 	# Check for normal range, e.g. n01-n20
 	my $base2;
 	if ( $nr =~ /^\s*(\S+?)(\d+)\-(\S+?)(\d+)\s*$/ ) {
