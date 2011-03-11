@@ -1095,18 +1095,18 @@ sub process_request {
 		   
 		   my $oldappstatus=$stuff->{$node1}->[0]->{'appstatus'};
 		   my $newappstatus=$status->{$node1}->{'appsd'};
-		   if ($newappstatus) {
-		       if ((!$oldappstatus) || ($newappstatus ne $oldappstatus)) { 
-			   $status1->{$node1}->{appstatus}= $newappstatus; 
-			   $status1->{$node1}->{appstatustime}= $currtime; 
-		       }  
-		   } 
-		   else {
-		       if ($oldappstatus) {
-			   $status1->{$node1}->{appstatus}= "";
-			   $status1->{$node1}->{appstatustime}= ""; 
-		       }
-		   }
+		   while ($newappstatus =~ /(\w+)\=(\w+)/) {
+                       my $tmp1=$1;
+                       my $tmp2=$2;
+                       if($oldappstatus =~ /$tmp1\=/){
+                           $oldappstatus =~ s/$tmp1\=\w+/$tmp1\=$tmp2/g;
+                       }else{
+                           $oldappstatus = $oldappstatus."\,$tmp1\=$tmp2";
+                       }
+                       $newappstatus =~ s/(\w+)\=(\w+)//g;
+                    }
+	 	    $status1->{$node1}->{appstatus}= $oldappstatus; 
+		    $status1->{$node1}->{appstatustime}= $currtime; 
 	       }  
 	       #print Dumper($status1);    
 	       $nodetab->setNodesAttribs($status1);
