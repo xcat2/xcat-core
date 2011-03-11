@@ -29,6 +29,7 @@ our @ISA = 'xCAT::Common';
 #therefore, the lifetime of assignments to these glabals as architected
 #is to be cleared on every request
 #my %esx_comm_pids;
+my %limbonodes; #nodes in limbo during a forced migration due to missing parent
 my %hyphash; #A data structure to hold hypervisor-wide variables (i.e. the current resource pool, virtual machine folder, connection object
 my %vcenterhash; #A data structure to reflect the state of vcenter connectivity to hypervisors
 my %vmhash; #store per vm info of interest
@@ -489,6 +490,7 @@ sub process_request {
                 my @relevant_nodes = sort (keys %{$hyphash{$_}->{nodes}});
                 foreach (@relevant_nodes) {
                     xCAT::SvrUtils::sendmsg([1,": hypervisor unreachable"], $output_handler,$_);
+		    if ($command eq "rmigrate" and grep /-f/,@exargs) { $limbonodes{$_}=1; }
                 }
                 delete $hyphash{$_};
             }
@@ -1749,6 +1751,34 @@ sub generic_hyp_operation { #The general form of firing per-hypervisor requests 
     my $function = shift; #The function to actually run against the right VM view
     my @exargs = @_; #Store the rest to pass on
     my $hyp;
+    if (scalar keys %limbonodes) { #we are in forced migration with dead sources, try to register them
+    	@ARGV=@exargs;
+	my $datastoredest;
+	my $offline;
+        unless (GetOptions(
+	        's=s' => \$datastoredest,
+               'f' => \$offline,
+        )) {
+        xCAT::SvrUtils::sendmsg([1,"Error parsing arguments"], $output_handler);
+        return;
+        }
+    if ($datastoredest) {
+        xCAT::SvrUtils::sendmsg([1,"Storage migration impossible with dead hypervisor, must be migrated to live hypervisor first"], $output_handler);
+        return;
+    } elsif (@ARGV) {
+        my $target=shift @ARGV;
+        if (@ARGV) {
+            xCAT::SvrUtils::sendmsg([1,"Unrecognized arguments ".join(' ',@ARGV)], $output_handler);
+            return;
+        }
+	foreach (keys %limbonodes) {
+	       register_vm($target,$_,undef,\&migrate_ok,{ nodes => [$_], target=>$target, },"failonerror");
+	}
+    } else { #storage migration only
+            xCAT::SvrUtils::sendmsg([1,"No target hypervisor specified"], $output_handler);
+
+    }
+    }
     foreach $hyp (keys %hyphash) {
          process_tasks; #check for tasks needing followup actions before the task is forgotten (VMWare's memory is fairly short at times
         my @relevant_nodes = sort (keys %{$hyphash{$hyp}->{nodes}});
