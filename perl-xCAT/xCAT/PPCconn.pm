@@ -54,11 +54,16 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s port=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s port=s s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
 
+    if ( exists $opt{s} )
+    {
+        return( usage('Flags -s is just used in direct-attach enviroment.'));
+    }
+    
     if ( exists $opt{t} and exists $opt{p})
     {
         return( usage('Flags -t and -p cannot be used together.'));
@@ -488,7 +493,7 @@ sub mkhwconn
                 my $res = xCAT::PPCcli::mksysconn( $exp, $node_ip, $type, $passwd);
                 $Rc = shift @$res;
                 push @value, [$node_name, @$res[0], $Rc];
-                if ( !$Rc)
+                if ( !$Rc and !$opt->{s})
                 {
                     sethmcmgt( $node_name, $exp->[3]);
                 }
