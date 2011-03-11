@@ -71,10 +71,8 @@ xCAT::Client::submit_request($cmdref,\&getans);
 until ($dsthost and $speed and $dstty) {
     release_lock();
     $sleepint=int(rand(30))+60;
-    print "Console not ready, retrying in $sleepint seconds (Ctrl-e,c,o to skip delay)\n";
-    sleep $sleepint;
-    get_lock();
-    xCAT::Client::submit_request($cmdref,\&getans);
+    print "Console not ready, retrying in $sleepint seconds (Ctrl-C to skip delay)\n";
+    exec "sleep $sleepint";
 }
 release_lock();
 exec "ssh -t $dsthost screen -U -a -O -e ^]a -d -R -S serial-".$ARGV[0]."-cons -A $dstty $speed";
