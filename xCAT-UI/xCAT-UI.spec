@@ -35,14 +35,6 @@ echo "Minifying Javascripts... This will take a couple of minutes."
 %ifos linux
 JAVA='/opt/ibm/java-ppc64-60/jre/bin/java'
 declare -a FILES
-%else
-JAVA='/usr/java6_64/bin/java'
-%endif
-COMPILER_JAR='/xcat2/build/tools/compiler.jar'
-UI_JS="js/"
-
-IFS='
-'
 
 # Find all Javascript files
 FILES=`find ${UI_JS} -name '*.js'`
@@ -56,6 +48,24 @@ for i in ${FILES[*]}; do
 		mv $i.min $i
     fi
 done
+%else  #AIX
+JAVA='/usr/java6_64/bin/java'
+FILES=`find ${UI_JS} -name '*.js'`
+for i in ${FILES[*]}; do
+	# Ignore Javascripts that are already minified
+	if [[ ! $i = @(*.min.js) ]]; then
+		`${JAVA} -jar ${COMPILER_JAR} --warning_level=QUIET --js=$i --js_output_file=$i.min`
+		
+		# Remove old Javascript and replace it with minified version
+		rm -rf $i
+		mv $i.min $i
+    fi
+done
+%endif
+
+
+IFS='
+'
 
 %install
 rm -rf $RPM_BUILD_ROOT
