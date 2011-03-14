@@ -45,7 +45,7 @@ IFS='
 '
 
 # Find all Javascript files
-FILES=(`find ${UI_JS} -name '*.js'`)
+FILES=`find ${UI_JS} -name '*.js'`
 for i in ${FILES[*]}; do
 	# Ignore Javascripts that are already minified
 	if [[ ! $i =~ '.*\.min\.js$' ]]; then
