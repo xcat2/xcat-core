@@ -164,7 +164,8 @@ sub setdestiny {
             }
         } #end if($target) 
         $updateattribs->{provmethod}=$state;
-        $nodetypetable->setNodesAttribs($req->{node},$updateattribs);
+        my @tmpnodelist = @{$req->{node}};
+        $nodetypetable->setNodesAttribs(\@tmpnodelist, $updateattribs);
     } else {
 	if (@{$req->{node}} == 0) { return;}
         if ($target) {
@@ -186,7 +187,8 @@ sub setdestiny {
             $updateattribs->{profile}=$ref->{profile};
             $updateattribs->{os}=$ref->{osvers};
             $updateattribs->{arch}=$ref->{osarch};
-            $nodetypetable->setNodesAttribs($req->{node},$updateattribs);
+            my @tmpnodelist = @{$req->{node}};
+            $nodetypetable->setNodesAttribs(\@tmpnodelist,$updateattribs);
         } else { 
             $errored =1; $callback->({error=>"OS image name must be specified."});
 	    return;
