@@ -110,6 +110,8 @@ sub do_rnetboot {
     } else {
         $cmd.= " -t ent";
     }
+    
+   $pprofile = "not_use"; #lpar_netboot.expect need pprofile for p5 & p6, but for p7 ih, we don't use this attribute.
 
     #######################################
     # Add command options
