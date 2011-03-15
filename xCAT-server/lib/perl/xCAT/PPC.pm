@@ -71,6 +71,7 @@ my %modules = (
         getmacs   => { hmc    => "xCAT::PPCmac",
                        ivm    => "xCAT::PPCmac",
                        fsp    => "xCAT::FSPmac",
+                       cec    => "xCAT::FSPmac",
 		      },
         reventlog => { hmc    => "xCAT::PPClog",
 		      },
