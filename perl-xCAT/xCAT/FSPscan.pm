@@ -133,9 +133,13 @@ sub enumerate {
             my $side = $6; 
 	    $server = $fsp;
 	    $fname  = $fsp; 
-            my $ips ="$7,$8";	    
+            my $ips ="$7,$8";	  
+            if($$d[4] =~ /^cec$/) {
+                $side="";
+            }
             push @values, join( ",",
-             $$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
+             $$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $ips);
+         # $$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
             # "fsp",$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
             #"fsp",$fsp,$cageid,$model,$serial,$side,$server,$prof,$fname,$ips );
            
