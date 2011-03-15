@@ -2269,9 +2269,9 @@ sub remove_LL_reservations {
 
     my $cmd;
     if ($::VERBOSE) {
-        $cmd = "llqres -r -s -R $::ll_reservation_id 2>>$::LOGDIR/$::LOGFILE";
+        $cmd = "llqres -r -R $::ll_reservation_id 2>>$::LOGDIR/$::LOGFILE";
     } else {
-        $cmd = "llqres -r -s -R $::ll_reservation_id";
+        $cmd = "llqres -r -R $::ll_reservation_id";
     }
     if ($::VERBOSE) {
         open (RULOG, ">>$::LOGDIR/$::LOGFILE");
@@ -2301,17 +2301,20 @@ sub remove_LL_reservations {
     if ($CANCEL_DUE_TO_ERROR) {
         $nodes = \@llnodes;
     }
+    my @llnodes_removed;
     foreach my $n (@{$nodes}) {
-        if ( grep(/^$n$/,@llnodes) ) {
+        my @lln;
+        if ( (@lln=grep(/^$n$/,@llnodes)) | (@lln=grep(/^$n\./,@llnodes)) ) {
             $remove_count++;
+            push (@llnodes_removed,$lln[0]);
             # change features for this node
             if ($CANCEL_DUE_TO_ERROR) {
-                &remove_LL_updatefeature_only($n);
+                &remove_LL_updatefeature_only($lln[0]);
             } else {
-                &change_LL_feature($n);
+                &change_LL_feature($lln[0]);
             }
             if ( $remove_count < $llnode_count ) {
-              $remove_cmd .= " $n";
+              $remove_cmd .= " $lln[0]";
             } else {
               $remove_reservation = 1;
               last;
@@ -2321,7 +2324,7 @@ sub remove_LL_reservations {
    #  Verify that the config change has been registered and that updatefeature 
    #  has been removed according to what the LL daemons report 
      if (defined($::DATAATTRS{updatefeature}[0])) {
-         my $machinelist = join(" ",@{$nodes});
+         my $machinelist = join(" ",@llnodes_removed);
          my $llset;
          my $statrun = 0;
          do {
