@@ -1985,6 +1985,7 @@ sub runrollupdate {
             foreach my $rn (@remaining_nodes) {
                 if (defined($rn)) {
                     push (@bootnodes,$rn);
+                    undef($rn);
                 }
             }
         }
@@ -2109,7 +2110,9 @@ sub runrollupdate {
                     }
                 }
                 xCAT::Utils->setAppStatus(\@error_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded");
-                xCAT::Utils->setAppStatus(\@remaining_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded_for_previous_node");
+                if ( defined($remaining_nodes[0]) ) {
+                  xCAT::Utils->setAppStatus(\@remaining_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded_for_previous_node");
+                }
             }
             last;
         }
