@@ -123,7 +123,10 @@ sub do_getmacs {
         }
 
         $cmd.= " -D -s auto -d auto -S $opt->{S} -G $opt->{G} -C $opt->{C} ";
-    } 
+    }
+
+    $pprofile = "not_use"; #lpar_netboot.expect need pprofile for p5 & p6, but for p7 ih, we don't use this attribute.
+
     #######################################
     # Add command options 
     #######################################
