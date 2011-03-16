@@ -278,7 +278,7 @@ sub fsp_api_passwd {
     ############################
     # Set type for FSP or BPA
     ############################
-    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/) {
+    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ || $$attrs[4] =~ /^cec$/) {
         $type = 0;
     } else {
         $type = 1;
@@ -287,7 +287,8 @@ sub fsp_api_passwd {
     ############################
     # Get IP address
     ############################
-    $fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
+    #$fsp_ip = xCAT::Utils::get_hdwr_ip($fsp_name);
+    $fsp_ip = xCAT::Utils::getNodeIPaddress($fsp_name);
     if($fsp_ip == -1) {
         $res = "Failed to get the $fsp_name\'s ip";
         return ([$node_name, $res, -1]);
