@@ -58,7 +58,9 @@ sub process_request {
 		'writeframe'    => \&web_writeframe,
 		'writecec'      => \&web_writecec,
 		'writehmc'      => \&web_writehmc,
-		'discoverframe' => \&web_discoverframe
+		'discover'      => \&web_discover,
+		'updatevpd'     => \&web_updatevpd,
+		'updatesite'    => \&web_updatesite
 		#'xdsh' => \&web_xdsh,
 		#THIS list needs to be updated
 	);
@@ -1220,10 +1222,23 @@ sub web_writecec{
     $callback->({data=>'Success: Write all CECs into xCAT database!'});
 }
 
-sub web_discoverframe{
+sub web_discover{
     my ( $request, $callback, $sub_req ) = @_;
+    my $type1 = '';
+    my $type2 = uc($request->{arg}->[1]);
+
+    if ('FRAME' eq $type1){
+        $type1 = 'BPA';
+    }
+    elsif('CEC' eq $request->{arg}->[1]) {
+        $type1 = 'FSP';
+    }
+    elsif ('HMC' eq $request->{arg}->[1]){
+        $type1 = 'HMC';
+    }
+    
     my $retStr = '';
-    my $retInfo = xCAT::Utils->runcmd( "lsslp -s BPA 2>null | grep FRAME | awk '{print \$2\"-\"\$3}'", -1, 1 );
+    my $retInfo = xCAT::Utils->runcmd( "lsslp -s $type1 2>null | grep $type2 | awk '{print \$2\"-\"\$3}'", -1, 1 );
     if (scalar(@$retInfo) < 1){
         $retStr = 'Error: Can not discover frames in cluster!';
     }
@@ -1234,5 +1249,40 @@ sub web_discoverframe{
         $retStr = substr($retStr, 0, -1);
     }
     $callback->({data=>$retStr});
+}
+
+sub web_updatevpd{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $harwareMtmsPair = $request->{arg}->[1];
+    my @hardware = split(/:/, $harwareMtmsPair);
+
+    my $vpdtab = xCAT::Table->new('vpd');
+    unless($vpdtab){
+        return;
+    }
+    foreach my $hard (@hardware){
+        #the sequence must be object name, mtm, serial
+        my @temp = split(/,/, $hard);
+        $vpdtab->setAttribs({'node' => @temp[0]}, {'serial' => @temp[2], 'mtm'=>@temp[1]});
+    }
+
+    $vpdtab->close();
+}
+
+sub web_updatesite{
+    my ( $request, $callback, $sub_req ) = @_;
+    my @valuePair = split(/:/, $request->{arg}->[1]);
+
+    my $sitetab = xCAT::Table->new('site');
+    unless($sitetab){
+        return;
+    }
+
+    foreach my $temp (@valuePair){
+        my @keyvalue = split(/,/, $temp);
+        $sitetab->setAttribs({key => @keyvalue[0]}, {value => @keyvalue[1] });
+    }
+
+    $sitetab->close();
 }
 1;
