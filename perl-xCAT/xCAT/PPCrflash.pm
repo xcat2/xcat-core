@@ -68,7 +68,7 @@ sub parse_args {
                 push @newnodes, $_;
             }
         } else   {
-            push @newnodes, $_;
+            push @newnodes, $snode;
         }
     }
     $request->{node} = \@newnodes;
