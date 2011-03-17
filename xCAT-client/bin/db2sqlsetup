@@ -4,7 +4,7 @@
 
 #-----------------------------------------------------------------------------
 
-=head1   db2setup 
+=head1   db2sqlsetup 
 
 
 
@@ -24,11 +24,18 @@
    For Client setup, it will interact for the hostname or ip address
    of the DB2 Server as known by the Service Node, unless the
    XCATDB2SERVER  environement variable is set.
-   See man db2setup for more information and the xCAT2SetupDB2.pdf 
-   documentation. 
+   See man db2setup for more information   
    The script will assume the default install paths of /opt/IBM/db2 for AIX and 
    /opt/ibm/db2 for Linux,  unless overridden with the XCATDB2INSPATH 
    environment variable. 
+   The script will assume /var/lib/db2 for the xcat db2 database directory
+   unless the 
+   DATABASELOC environment variable is set or the site.databaseloc attribute is
+   set.  The environment variable should match the
+   databaseloc attribute in the site table, but the DATABASELOC environment
+   variable will take precedence. DATABASELOC points to the directory that 
+   contains the db2 database directory,  so  if DATABASELOC=/db2database then
+   the actual location for the db2 database is /db2database/db2.    
    
    -r flag will help you to remove DB2 from xCAT and uninstall DB2 from either
    management node or service node. The flag -r and -S used together for 
@@ -73,7 +80,6 @@ my $args = join ' ', @ARGV;
 $::command = "$0 $args";
 Getopt::Long::Configure("bundling");
 $Getopt::Long::ignorecase = 0;
-$::databaseloc            = "/var/lib/db2";    # database loccation
 # parse the options
 if (
     !GetOptions(
@@ -209,7 +215,30 @@ if ($::RUNCMD_RC != 0)
 
 # If setting up the Server, check to see if  DB2  is running
 $::db2running     = 0;
-$::xcatrunningdb2 = 0;
+$::xcatrunningdb2 = 0; 
+
+# determine the location of the xcatdb instance
+#
+$::databaseloc            = "/var/lib/db2";    # database location default
+# if database location environment variable is set, use it
+if ($ENV{'DATABASELOC'})    # input where xcatdb is located  
+{
+    $::databaseloc = $ENV{'DATABASELOC'};
+    $::databaseloc .="\/db2";
+} else { # use site.databaseloc if set
+    my $cmd = " XCATBYPASS=1  tabdump site | grep databaseloc";
+    my @output = xCAT::Utils->runcmd($cmd, -1);
+    if ($::RUNCMD_RC == 0)    # if there 
+    {
+       (my $attr, my $db) = split(",", $output[0]);
+       (my $q, $::databaseloc) = split("\"", $db);
+       $::databaseloc .="\/db2";
+   
+    }
+}
+
+
+# if we are on the MN ( db2 server) 
 if ($::SERVER)
 {
     my $cmd = "ps -ef | grep db2";
@@ -271,7 +300,7 @@ if ((($odbconly == 0) && ($::xcatrunningdb2 == 0)) || (($::CLIENT) && ($odbconly
 if (($::INIT) && ($::xcatrunningdb2 == 0))
 {
     if ($::SERVER)
-    {    # setting up server
+    {    # setting up db2 server on the MN 
 
         # makesure the daemon is running 
         &startxcatd;
@@ -543,7 +572,7 @@ sub backupxcatdb
         else
         {    # remove contents
 
-            my $cmd = "rm -f $::backupdir/*";
+            my $cmd = "rm -rf $::backupdir/*";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -602,7 +631,7 @@ sub mkdb2user
         {
 
             #user does not exist, need to make it
-            $cmd = "mkuser pgrp=xcatdb home=/var/lib/db2 shell=/bin/ksh xcatdb";
+            $cmd = "mkuser pgrp=xcatdb home=$::databaseloc shell=/bin/ksh xcatdb";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -610,14 +639,14 @@ sub mkdb2user
                 exit(1);
             }
             # touch .profile to makesure it stays owned by xcatd
-            $cmd = "touch /var/lib/db2/.profile";
+            $cmd = "touch $::databaseloc/.profile";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
-            $cmd = "chmod 777 /var/lib/db2/.profile";
+            $cmd = "chmod 777 $::databaseloc/.profile";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -660,7 +689,7 @@ sub mkdb2user
         {
 
             #user does not exist, need to make it
-            $cmd = "useradd -d /var/lib/db2 -g xcatdb -m -s /bin/bash xcatdb";
+            $cmd = "useradd -d $::databaseloc -g xcatdb -m -s /bin/bash xcatdb";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -792,13 +821,13 @@ sub setupinstance
                 xCAT::MsgUtils->message("E", " $cmd failed.");
             }
 
-            $cmd = "echo \"EXTSHM=ON\" >> /var/lib/db2/sqllib/db2profile ";
+            $cmd = "echo \"EXTSHM=ON\" >> $::databaseloc/sqllib/db2profile ";
             xCAT::Utils->runcmd($cmd,0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message("I", " $cmd warning.");
             }
-            $cmd = "echo \"export EXTSHM\" >>/var/lib/db2/sqllib/db2profile ";
+            $cmd = "echo \"export EXTSHM\" >> $::databaseloc/sqllib/db2profile ";
             xCAT::Utils->runcmd($cmd,0);
             if ($::RUNCMD_RC != 0)
             {
@@ -815,13 +844,13 @@ sub setupinstance
                 xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
-            $cmd = "echo \"EXTSHM=ON\" >> /var/lib/db2/sqllib/db2profile ";
+            $cmd = "echo \"EXTSHM=ON\" >> $::databaseloc/sqllib/db2profile ";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message("SI", " $cmd warning.");
             }
-            $cmd = "echo \"export EXTSHM\" >>/var/lib/db2/sqllib/db2profile ";
+            $cmd = "echo \"export EXTSHM\" >> $::databaseloc/sqllib/db2profile ";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -1076,6 +1105,66 @@ sub createxcatdb
                  "Creating the xCAT database. This can take several minutes.");
     my $cmd;
     my $rc = 0;
+    # need to make sure the createdb.sql script if pointing to the 
+    # correct databaseloc,  the default is /var/lib/db2 in the shipped
+    # script but this may have been changed by the admin
+    # two lines are affected
+    #   Create tablespace xcattbs16k pagesize 16k managed by system using
+    #('/var/lib/db2 /ts16')  BUFFERPOOL BP16K;
+    #Create tablespace xcattbs32k pagesize 32k managed by system using
+    #  ('/var/lib/db2 /ts32')  BUFFERPOOL BP32K;
+    my $createdb       = "/opt/xcat/share/xcat/tools/createdb.sql";
+    my $createdborg = "/opt/xcat/share/xcat/tools/createdb.sql.org";
+    my $createdbtmp = "/opt/xcat/share/xcat/tools/createdb.sql.tmp";
+    my $cmd;
+    my $message;
+    if (!(-e $createdborg)) {
+      $cmd = "cp $createdb $createdborg";
+      xCAT::Utils->runcmd($cmd, 0);
+      if ($::RUNCMD_RC != 0)
+      {
+            xCAT::MsgUtils->message("E", " $cmd failed.");
+            exit 1;
+      }
+    }
+    # rm tmp file
+    $cmd = "rm $createdbtmp";  # rm tmp file, ignore errors
+    xCAT::Utils->runcmd($cmd, -1);
+    $cmd = "touch $createdbtmp";
+    xCAT::Utils->runcmd($cmd,0 );
+    # now read the orginal file and build the tmp file with the correct info
+    open (CREATEDB," < $createdb");
+    foreach my $line (<CREATEDB>) 
+    {
+     chop $line;
+     if ($line =~ /^Create tablespace/i) {  # line to change
+      my $newline;
+       if ($line =~ /xcattbs16k/i) {
+         $newline="Create tablespace xcattbs16k pagesize 16k managed by system using('$::databaseloc/ts16') BUFFERPOOL BP16K;";
+         $cmd="echo \"$newline\" >> $createdbtmp"
+       } else {
+         $newline="Create tablespace xcattbs32k pagesize 32k managed by system using('$::databaseloc/ts32') BUFFERPOOL BP32K;";
+         $cmd="echo \"$newline\" >> $createdbtmp"
+       }
+     } else { # just put line in new file
+       $cmd="echo \"$line\" >> $createdbtmp"
+     }
+     xCAT::Utils->runcmd($cmd, 0);
+     if ($::RUNCMD_RC != 0) {
+        xCAT::MsgUtils->message("E", " $cmd failed. Could not build createdb.sql");
+        exit 1;
+     }
+    }
+    close CREATEDB;
+    # copy tmp back to createdb.sql
+    $cmd = "cp $createdbtmp $createdb";
+    xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+            xCAT::MsgUtils->message("E", " $cmd failed.");
+            exit 1;
+    }
+
 
     # su to xcatdb to create the database
     $cmd = "db2 -tvf  /opt/xcat/share/xcat/tools/createdb.sql ";
@@ -1220,12 +1309,11 @@ sub setupODBC
 
     # The unixODBC Driver Manager loads the DB2 Driver dynamically
     # so the shared object must be extracted from the driver
-    #if it does not already exist
     if  ($::osname eq 'AIX')
     {
-        if (!(-e "/var/lib/db2/sqllib/lib/libdb2.so"))
+        if (!(-e "$::databaseloc/sqllib/lib/libdb2.so"))
         {
-            $cmd = "ar -x /var/lib/db2/sqllib/lib/libdb2.a";
+            $cmd = "ar -x $::databaseloc/sqllib/lib/libdb2.a";
             @rpmoutput = xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -1233,7 +1321,7 @@ sub setupODBC
                 xCAT::MsgUtils->message("E", " $cmd failed. $message");
                 exit(1);
             }
-            $cmd = "mv shr.o /var/lib/db2/sqllib/lib/libdb2.so";
+            $cmd = "mv shr.o $::databaseloc/sqllib/lib/libdb2.so";
             @rpmoutput = xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {
@@ -1262,9 +1350,9 @@ sub setupODBC
     my $sharedlib32;
     my $sharedlib64;
     if ($::osname eq 'AIX') {
-        $sharedlibaix = "/var/lib/db2/sqllib/lib/libdb2.so";
+        $sharedlibaix = "$::databaseloc/sqllib/lib/libdb2.so";
     } else {
-        $sharedlib32="/var/lib/db2/sqllib/lib32/libdb2.so";
+        $sharedlib32="$::databaseloc/sqllib/lib32/libdb2.so";
         $sharedlib64="/var/lib/db2/sqllib/lib/libdb2o.so";
     }
     $cmd = "fgrep -i  DB2 $odbcinstfile ";
@@ -1354,9 +1442,9 @@ sub setupODBC
 
     # setup $roothome/db2cli.ini so root will not have to specify password
     # when accessing through ODBC
-    # setup /var/lib/db2/sqllib/cfg/db2cli.ini
+    # setup $::databaseloc/sqllib/cfg/db2cli.ini
 
-    my $db2clifile       = "/var/lib/db2/sqllib/cfg/db2cli.ini";
+    my $db2clifile       = "$::databaseloc/sqllib/cfg/db2cli.ini";
     $cmd = "db2 update cli cfg for section $instance using uid $instance"; 
     my $rc  = &rundb2cmd($cmd);
     if ($rc != 0)
@@ -1519,7 +1607,7 @@ sub adddb2paths
             }
 
             # add DB2 paths
-            my $db2paths="/var/lib/db2/sqllib/bin:/var/lib/db2/sqllib/adm:/var/lib/db2/sqllib/misc:/var/lib/db2/sqllib/db2tss/bin";
+            my $db2paths="$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
 
             my $eccmd =
              qq~echo '# xCAT DB2 setup\nPATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
@@ -1546,7 +1634,7 @@ sub adddb2paths
             }
 
             # add DB2 paths
-            my $db2paths="/var/lib/db2/sqllib/bin:/var/lib/db2/sqllib/adm:/var/lib/db2/sqllib/misc:/var/lib/db2/sqllib/db2tss/bin";
+            my $db2paths="$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
 
             my $eccmd =
              qq~echo '# xCAT DB2 setup\nPATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
@@ -1576,7 +1664,7 @@ sub adddb2paths
             }
 
             # add DB2 paths
-            my $db2paths="/var/lib/db2/sqllib/bin:/var/lib/db2/sqllib/adm:/var/lib/db2/sqllib/misc:/var/lib/db2/sqllib/db2tss/bin";
+            my $db2paths="$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
 
             my $eccmd =
              qq~echo 'PATH=\$PATH:$db2paths\nexport PATH\n' >>$profname~;
@@ -1601,7 +1689,7 @@ sub adddb2paths
             }
 
             # add DB2 paths
-            my $db2paths="/var/lib/db2/sqllib/bin:/var/lib/db2/sqllib/adm:/var/lib/db2/sqllib/misc:/var/lib/db2/sqllib/db2tss/bin";
+            my $db2paths="$::databaseloc/sqllib/bin:$::databaseloc/sqllib/adm:$::databaseloc/sqllib/misc:$::databaseloc/sqllib/db2tss/bin";
 
             my $eccmd =
              qq~echo 'setenv PATH \${PATH}:$db2paths\n' >>$profname~;
@@ -1908,11 +1996,11 @@ sub remove
    	    $error += 1;
     }
    
-    $cmd = "rm -rf /var/lib/db2/";	
+    $cmd = "rm -rf $::databaseloc/";	
     xCAT::Utils->runcmd($cmd, -1);
     if ($::RUNCMD_RC != 0)
     {
-   	    my $message = "can't remove the directory /var/lib/db2 \n*";
+   	    my $message = "can't remove the directory $::databaseloc \n*";
    	    xCAT::MsgUtils->message("E", "$message");
    	    $error += 1;
     }
