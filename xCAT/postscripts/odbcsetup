@@ -48,7 +48,8 @@ chomp $::sdate;
 
 
 my $msg;
-
+# get location of database
+$::databaseloc = $ENV{'DATABASELOC'};
 # check the /etc/xcat/cfgloc file to see if MySQL or DB2
 # if it is not here,  error out
 my $dbname = xCAT::Utils->get_DBName;
@@ -103,7 +104,11 @@ sub setupdb2odbc
     close($cfgl);
     chomp $xcatcfg;
     my ($database, $instance, $password) = split('\|', $xcatcfg);
-    $cmd = "$::XCATROOT/bin/db2sqlsetup -o -C";
+    if ($::databaseloc) {
+      $cmd = "DATABASELOC=$::databaseloc $::XCATROOT/bin/db2sqlsetup -o -C";
+    } else {
+      $cmd = "$::XCATROOT/bin/db2sqlsetup -o -C";
+    }
     $msg = "odbcsetup: Running Client ODBC setup. \"$cmd\"\n";
     `logger -t xcat $msg`;
 

@@ -72,6 +72,7 @@ $::hname = `hostname`;
 chomp $::hname;
 
 $::MN = $ENV{'MASTER'};    # as known by the node
+$::databaseloc = $ENV{'DATABASELOC'};    # directory for db instance 
 if ($::osname eq 'AIX')
 {
     $::installdb2dir = "/opt/IBM/db2/V9.7";    # default
@@ -520,8 +521,13 @@ sub rundb2sqlsetup
     close($cfgl);
     chomp $xcatcfg;
     my ($database, $instance, $password) = split('\|', $xcatcfg);
-    $cmd =
+    if ($::databaseloc) {
+      $cmd =
+      "DATABASELOC=$::databaseloc XCATDB2SERVER=$::MN XCATDB2PW=$password $::XCATROOT/bin/db2sqlsetup -i -C";
+    } else {
+      $cmd =
       "XCATDB2SERVER=$::MN XCATDB2PW=$password $::XCATROOT/bin/db2sqlsetup -i -C";
+    }
     $msg = "db2install:Running Client setup. \"$::XCATROOT/bin/db2sqlsetup -i -C\"\n";
     `logger -t xcat $msg`;
 
