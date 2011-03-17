@@ -31,7 +31,66 @@ my @licmap = (
 # Parse the command line for options and operands 
 ##########################################################################
 sub parse_args {
-    xCAT::PPCinv::parse_args(@_);
+#    xCAT::PPCinv::parse_args(@_);
+    my $request = shift;
+    my $command = $request->{command};
+    my $args    = $request->{arg};
+    my %opt     = ();
+#    my @rinv    = qw(bus config model serial firm all);
+    my @rinv    = qw( firm );
+
+    #############################################
+    # Responds with usage statement
+    #############################################
+    local *usage = sub {
+        my $usage_string = xCAT::Usage->getUsage($command);
+        return( [ $_[0], $usage_string] );
+    };
+    #############################################
+    # Process command-line arguments
+    #############################################
+    if ( !defined( $args )) {
+        return(usage( "No command specified" )); 
+    }
+    #############################################
+    # Checks case in GetOptions, allows opts
+    # to be grouped (e.g. -vx), and terminates
+    # at the first unrecognized option.
+    #############################################
+    @ARGV = @$args;
+    $Getopt::Long::ignorecase = 0;
+    Getopt::Long::Configure( "bundling" );
+
+    if ( !GetOptions( \%opt, qw(V|Verbose) )) { 
+        return( usage() );
+    }
+    ####################################
+    # Check for "-" with no option
+    ####################################
+    if ( grep(/^-$/, @ARGV )) {
+        return(usage( "Missing option: -" ));
+    }
+    ####################################
+    # Unsupported command
+    ####################################
+    my ($cmd) = grep(/^$ARGV[0]$/, @rinv );
+    if ( !defined( $cmd )) {
+        return(usage( "Invalid command: $ARGV[0]" ));
+    }
+    ####################################
+    # Check for an extra argument
+    ####################################
+    shift @ARGV;
+    if ( defined( $ARGV[0] )) {
+        return(usage( "Invalid Argument: $ARGV[0]" ));
+    }
+    ####################################
+    # Set method to invoke 
+    ####################################
+    $request->{method} = $cmd; 
+    return( \%opt );
+
+
 }
 
 
