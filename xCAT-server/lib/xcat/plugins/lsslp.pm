@@ -814,16 +814,26 @@ sub invoke_cmd {
         send_msg( $request, 0, "\n Begin to try again, this may takes long time \n" );
         #my $uni_tmp = $unicast;
         my %val_tmp = %$values;
+        my %found_cec;
+        for my $v (keys %val_tmp) {
+            $v =~ /type=([^\)]+)\)\,\(serial-number=([^\)]+)\)\,\(machinetype-model=([^\)]+)\)\,/;
+            if ( $found_cec{$2.'*'.$3} ne 1 and $1  eq SERVICE_FSP)  {
+                $found_cec{$2.'*'.$3} = 1;
+            }
+        }
+
         my $rlt;
         my $val;
         my $start_time = Time::HiRes::gettimeofday();
         my $elapse;
-        my $found = scalar(keys %val_tmp);
+        my $found = scalar(keys %found_cec);
         while ( $found < $expect_ent ) {
             $rlt = runslp( $args, $ip, $services, $request );
             $val =  @$rlt[1];
             for my $v (keys %$val) {
-                if ( $val_tmp{$v} ne 1 ) {
+                $v =~ /type=([^\)]+)\)\,\(serial-number=([^\)]+)\)\,\(machinetype-model=([^\)]+)\)\,/;
+                if ( $found_cec{$2.'*'.$3} ne 1 and $1  eq SERVICE_FSP)  {
+                    $found_cec{$2.'*'.$3} = 1;
                     $val_tmp{$v} = 1;
                 }
             }
