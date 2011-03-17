@@ -587,7 +587,7 @@ sub lsxcatd
     if (scalar(@ARGV)== 0) { $lsxcatd_usage->(1); return; }
     if (!GetOptions('h|?|help' => \$HELP,
                      'v|version' => \$VERSION,
-                     'a' => \$ALL,
+                     'a|all' => \$ALL,
                      'd|database' => \$DATABASE))
              { $lsxcatd_usage->(1); return; }
 
