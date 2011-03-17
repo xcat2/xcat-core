@@ -477,6 +477,16 @@ sub get_exlist_file_name {
     return xCAT::SvrUtils::get_file_name($searchpath, "exlist", @_);
 }
 
+# for the "imgcapture" command
+
+sub get_imgcapture_exlist_file_name {
+    my $searchpath = shift;
+    if ($searchpath and $searchpath =~ m/xCAT::SvrUtils/) {
+        $searchpath = shift;
+    }
+    return xCAT::SvrUtils::get_file_name($searchpath, "imgcapture.exlist", @_);
+}
+
 
 #-------------------------------------------------------------------------------
 

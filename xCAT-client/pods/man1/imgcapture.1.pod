@@ -1,0 +1,101 @@
+=head1 NAME
+
+B<imgcapture> - Captures an image from one running diskful Linux node, prepares the rootimg directory, kernel and initial ramdisks for the B<liteimg>/B<packimage> command to generate the statelite/stateless rootimg.
+
+=head1 SYNOPSIS
+
+B<imgcapture> node [B<-p>|B<--profile> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-V>|B<--verbose>]
+
+B<imgcapture> [B<-h> | B<--help>] | [B<-v> | B<--version>]
+
+=head1 DESCRIPTION
+
+The B<imgcapture> command will capture an image from one running diskful Linux node, prepares the rootimg directory, kernel and initial rmadisks for the B<liteimg>/B<packimage> command to generate the statelite/stateless rootimg.
+
+The B<node> should be one diskful Linux node, managed by the xCAT MN, and the remote shell between MN and the B<node> should have been configured. AIX is not supported. 
+
+The B<osver>, B<arch> and B<profile> attributes for the stateless/statelite image to be created are duplicated from the B<node>'s attribute. If the B<-p|--profile> I<profile> option is specified, the image will be created under "/<I<installroot>>/netboot/<osver>/<arch>/<I<profile>>/rootimg". 
+
+The default files/directories excluded in the image are specified by /opt/xcat/share/xcat/netboot/<os>/<I<profile>>.<osver>.<arch>.imgcapture.exlist; also, you can put your customized file (<I<profile>>.<osver>.<arch>.imgcapture.exlist) to /install/custom/netboot/<osplatform>. The directories in the default I<.imgcapture.exlist> file are necessary to capture image from the diskful Linux node managed by xCAT, please don't remove it.
+
+The image captured will be extracted into the /<I<installroot>>/netboot/<B<osver>>/<B<arch>>/<B<profile>>/rootimg directory. 
+
+After the B<imgcapture> command returns without any errors, you can customize the rootimg and run the B<liteimg>/B<packimage> command for your own request.
+
+=head1 OPTIONS
+
+=over 12
+
+=item B<-p|--profile> I<profile> 
+
+assign I<profile> as the profile of the image to be created.
+
+=item B<-i> I<nodebootif>
+
+The network interface the diskless node will boot over (e.g. eth0), which is used by the B<genimage> command to generate initial ramdisks.
+
+This is optional.
+
+=item B<-n> I<nodenetdrivers>
+
+The driver modules needed for the network interface, which is used by the B<genimage> command to generate initial ramdisks.
+
+This is optional. By default, the B<genimage> command can provide drivers for the following network interfaces:
+
+For x86 or x86_64 platform:
+
+    tg3 bnx2 bnx2x e1000 e1000e igb m1x_en
+
+For ppc64 platform:
+
+    e1000 e1000e igb ibmveth ehea
+
+For S390x:
+
+    qdio ccwgroup
+
+If the network interface is not in the above list, you'd better specify the driver modules with this option.
+
+=item B<-h|--help> 
+
+Display the usage message.
+
+=item B<-v|--version>
+
+Display the version.
+
+=item B<-V|--verbose>
+
+Verbose output.
+
+=back
+
+=head1 RETRUN VALUE
+
+0 The command completed sucessfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+B<node1> is one diskful Linux node, which is managed by xCAT.
+
+1. In order to create the image, run the following command:
+
+    imgcapture node1
+
+2. In order to create the image with B<hpc> as profile, run the command:
+
+    imgcapture node1 -p hpc
+
+3. Create the image: its profile is B<hpc>, and the network interface the diskless node will boot over is B<eth0>, the driver modules for this network interface is B<e1000e>.
+
+    imgcapture node1 -p hpc -i eth0 -n e1000e
+ 
+=head1 FILES
+
+/opt/xcat/bin/imgcapture
+
+=head1 SEE ALSO
+
+L<genimage(1)|genimage.1>, L<imgimport(1)|imgimport.1>, L<imgexport(1)|imgexport.1>, L<packimage(1)|packimage.1>, L<liteimg(1)|liteimg.1>
