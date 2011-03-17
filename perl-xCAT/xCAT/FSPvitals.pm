@@ -167,6 +167,8 @@ sub temp {
     while (my ($mtms,$h) = each(%$hash) ) {
         while (my ($name,$d) = each(%$h) ) {
             my $mtms = @$d[5];
+            
+            push @result, [$name,"System Temperature Not support in Direct FSP Management",-1];
 
             #################################
             # No frame commands for IVM 
@@ -196,6 +198,8 @@ sub temp {
             $frame{$mtms}{$name} = $d;
         }
     }
+
+    return( \@result );
 
     while (my ($mtms,$h) = each(%frame) ) {
         ################################# 
