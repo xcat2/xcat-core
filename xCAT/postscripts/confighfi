@@ -1,19 +1,60 @@
 #!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-name=`echo $NODE | awk -F- '{print $1}'`
+#-------------------------------------------------------------------------------
+#=head1  otherpkgs
+#=head2  It gets the extra rpms and install/update them.
+#        The environment variable OTHERPKGS contains the rpms to be installed/updated.
+#        On MN, You need to:
+#        1. put rpms under /install/post/otherpkgs/os/arch directory where 'os' and 'arch'
+#           can be found in the nodetype table.
+#        2. put the name of the packages to /opt/xcat/share/xcat/netboot(install)/platform
+#           directory. The file name is one of the following:
+#              profile.os.arch.otherpkgs.pkglist
+#              profile.os.otherpkgs.pkglist
+#              profile.arch.otherpkgs.pkglist
+#              profile.otherpkgs.pkglist
+#   The install/deployment process will pick up the rpms and install them on the nodes.
+#   However, if the nodes have already installed and up and running, you can run the following
+#   command to have the extra rpms installed:
+#       updatenode noderange otherpkgs
+#
+#=cut
+#-------------------------------------------------------------------------------
+PLTFRM=`uname`
+
+name=`echo $NODE | awk -F-hf '{print $1}'`
 if [ -z $name ]
 then
 name=$NODE
 fi
 
-for ((i=0;i<4;i++))
-do
-if [ $i = 0 ]
+if [[ $PLTFRM != AIX  ]] && [[ $PLTFRM != aix  ]]
 then
-CLIENT_IP=`ping -c 3 $NODE | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
-else 
-CLIENT_IP=`ping -c 3 $name-hf$i | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+
+if [[ $NTYPE = service ]]
+then
+
+CLIENT_IP=`ping -c 3 $name-hf0 -I hf0 | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+
+if [ -n $CLIENT_IP ]
+then
+echo "DEVICE=hf0
+NM_CONTROLLED=yes
+IPADDR=$CLIENT_IP
+NETMASK=255.0.0.0
+ONBOOT=yes
+" >/etc/sysconfig/network-scripts/ifcfg-hf$i
+
+ifup hf$i
 fi
+
+fi
+
+for i in 1 2 3
+do
+
+CLIENT_IP=`ping -c 3 $name-hf$i -I hf$i | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
 
 if [ -n $CLIENT_IP ]
 then
@@ -25,7 +66,33 @@ ONBOOT=yes
 " >/etc/sysconfig/network-scripts/ifcfg-hf$i
 
 ifup hf$i
-sleep 1
 fi
 
 done
+
+else
+
+if [[ $NTYPE = service ]]
+then
+
+CLIENT_IP=`ping -q -n -c 1 -w 1 $name-hf0 | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
+
+if [ -n $CLIENT_IP ]
+then
+ifconfig hf0 $CLIENT_IP
+fi
+
+fi
+
+for i in 1 2 3
+do
+CLIENT_IP=`ping -q -n -c 1 -w 1 $name-hf$i | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
+
+if [ -n $CLIENT_IP ]
+then
+ifconfig hf$i $CLIENT_IP
+fi
+
+done
+
+fi
