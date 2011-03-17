@@ -264,9 +264,7 @@ function mkAddNodeLink() {
     		+ '<select id="mgt" name="mgt">'
     			+ '<option>ipmi</option>' 
     			+ '<option>blade</option>'
-    			+ '<option>hmc</option>' 
-    			+ '<option>ivm</option>'
-    			+ '<option>fsp</option>'
+    			+ '<option>hmc</option>'
     			+ '<option>zvm</option>'
     		+ '</select>'
     	+ '</div>');
@@ -321,17 +319,11 @@ function mkAddNodeLink() {
 			    		case "blade":
 			        		plugin = new bladePlugin();
 			        		break;
-			    		case "fsp":
-			    			plugin = new fspPlugin();
-			    			break;
 			    		case "hmc":
 			    			plugin = new hmcPlugin();
 			    			break;
 			    		case "ipmi":
 			    			plugin = new ipmiPlugin();
-			    			break;		
-			    		case "ivm":
-			    			plugin = new ivmPlugin();
 			    			break;
 			    		case "zvm":
 			    			plugin = new zvmPlugin();
@@ -1880,10 +1872,10 @@ function updateStatusBar(data) {
 		$('#' + statBarId).find('img').hide();
 		
 		// Write ajax response to status bar
-		var prg = $('<p></p>');
+		var prg = $('<pre style="margin: 0px;"></pre>');
 		for (var i in rsp) {
 			for (var j in tgts) {
-				rsp[i] = rsp[i].replace(new RegExp(tgts[j] + ':', 'g'), '<br>');
+				rsp[i] = rsp[i].replace(new RegExp(tgts[j] + ':', 'g'), '');
 			}
 
 			prg.append(rsp[i]);
