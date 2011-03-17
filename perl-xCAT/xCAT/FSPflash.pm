@@ -471,13 +471,19 @@ sub rflash {
 	   }
 	   dpush ( \@value, [$name, $msg]);
 	   }
+
+       my $res = xCAT::FSPUtils::fsp_api_action( $name, $d, $action );
+       push(@value,[$name, @$res[1], @$res[2]]);
+       return (\@value);
+
 	   my $nodes = get_related_fsp_bpa( $mtm, $serial);
        #print Dumper($nodes); 
 	   my $i     = 0;
 	   my $flag  = 0;
 	   my $c = @$nodes;
 	   my $name2 = undef;
-	   if ($c == 1 && $role == 0x01 ) {
+       my @dt;
+       if ($c == 1 && $role == 0x01 ) {
 			
 	   }
 	   if ($c == 1 && $role == 0x02 ) {
