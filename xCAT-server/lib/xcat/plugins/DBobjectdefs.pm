@@ -180,8 +180,9 @@ sub process_request
 
         Returns:
                 0 - OK
-                1 - just print usage
-				2 - error
+				1 - just return
+                2 - just print usage
+				3 - error
         Globals:
 
         Error:
@@ -257,7 +258,10 @@ sub processArgs
       )
     {
 
-         return 2;
+		my $rsp;
+		$rsp->{data}->[0] = "Invalid option..";
+		xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
     }
     
 	# Initialize some global arrays in case this is being called twice in the same process.
@@ -349,7 +353,7 @@ sub processArgs
                     my $rsp;
                     $rsp->{data}->[0] = "No node in \'$a\', check the noderange syntax.";
                     xCAT::MsgUtils->message("E", $rsp, $::callback);
-                    return 1;
+                    return 3;
                 }
             }
 
@@ -391,7 +395,7 @@ sub processArgs
             my $rsp;
             $rsp->{data}->[0] = "Invalid flag specified, see rmdef manpage for details.";
             xCAT::MsgUtils->message("E", $rsp, $::callback);
-            return 1;
+            return 2;
         }
     }
 
@@ -863,16 +867,24 @@ sub defmk
 
     # process the command line
     $rc = &processArgs;
+
     if ($rc != 0)
     {
 
         # rc: 0 - ok, 1 - return, 2 - help, 3 - error
-        if ($rc != 1)
-        {
-            &defmk_usage;
-        }
-        return ($rc - 1);
-    }
+		# 0 - continue
+		# 1 - return  (like for version option)
+		# 2 - return with usage
+		# 3 - return error
+		if ($rc == 1) {
+			return 0;
+		} elsif ($rc == 2) {
+			&defmk_usage;
+			return 0;
+		} elsif ($rc == 3) {
+			return 1;
+		}
+	}
 
     # check options unique to these commands
     if ($::opt_p || $::opt_m)
@@ -1467,16 +1479,25 @@ sub defch
 
     # process the command line
     $rc = &processArgs;
+
     if ($rc != 0)
     {
 
         # rc: 0 - ok, 1 - return, 2 - help, 3 - error
-        if ($rc != 1)
-        {
-            &defch_usage;
-        }
-        return ($rc - 1);
-    }
+		# 0 - continue
+		# 1 - return  (like for version option)
+		# 2 - return with usage
+		# 3 - return error
+		if ($rc == 1) {
+			return 0;
+		} elsif ($rc == 2) {
+			&defch_usage;
+			return 0;
+		} elsif ($rc == 3) {
+			return 1;
+		}
+	}
+
 
     #
     # check options unique to this command
@@ -2404,15 +2425,25 @@ sub defls
 
     # process the command line
     my $rc = &processArgs;
+
     if ($rc != 0)
     {
+
         # rc: 0 - ok, 1 - return, 2 - help, 3 - error
-        if ($rc != 1)
-        {
-            &defls_usage;
-        }
-        return ($rc - 1);
-    }
+		# 0 - continue
+		# 1 - return  (like for version option)
+		# 2 - return with usage
+		# 3 - return error
+		if ($rc == 1) {
+			return 0;
+		} elsif ($rc == 2) {
+			&defls_usage;
+			return 0;
+		} elsif ($rc == 3) {
+			return 1;
+		}
+	}
+
 
     # do we want just the object names or all the attr=val
     if ($::opt_l || @::noderange || $::opt_o || $::opt_i)
@@ -2970,16 +3001,25 @@ sub defrm
 
     # process the command line
     my $rc = &processArgs;
+
     if ($rc != 0)
     {
 
         # rc: 0 - ok, 1 - return, 2 - help, 3 - error
-        if ($rc != 1)
-        {
-            &defrm_usage;
-        }
-        return ($rc - 1);
-    }
+		# 0 - continue
+		# 1 - return  (like for version option)
+		# 2 - return with usage
+		# 3 - return error
+		if ($rc == 1) {
+			return 0;
+		} elsif ($rc == 2) {
+			&defrm_usage;
+			return 0;
+		} elsif ($rc == 3) {
+			return 1;
+		}
+	}
+
 
     if ($::opt_a && !$::opt_f)
     {
