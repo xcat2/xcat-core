@@ -2036,15 +2036,42 @@ function setOSImageCookies(data) {
 	var profilesHash = new Object();
 	var osVersHash = new Object();
 	var osArchsHash = new Object();
-
+	var imagePos = 0;
+	var profilePos = 0;
+	var osversPos = 0;
+	var osarchPos = 0;
+	//get the column value
+	var colNameArray = rsp[0].substr(1).split(',');
+	for (var i in colNameArray){
+		switch (colNameArray[i]){
+			case 'imagename': {
+				imagePos = i;
+			}
+			break;
+			case 'profile':{
+				profilePos = i;
+			}
+			break;
+			case 'osvers':{
+				osversPos = i;
+			}
+			break;
+			case 'osarch':{
+				osarchPos = i;
+			}
+			break;
+			default :
+			break;
+		}
+	}
 	// Go through each index
 	for (var i = 1; i < rsp.length; i++) {
 		// Get image name
 		var cols = rsp[i].split(',');
-		var osImage = cols[0].replace(new RegExp('"', 'g'), '');
-		var profile = cols[1].replace(new RegExp('"', 'g'), '');
-		var osVer = cols[6].replace(new RegExp('"', 'g'), '');
-		var osArch = cols[8].replace(new RegExp('"', 'g'), '');
+		var osImage = cols[imagePos].replace(new RegExp('"', 'g'), '');
+		var profile = cols[profilePos].replace(new RegExp('"', 'g'), '');
+		var osVer = cols[osversPos].replace(new RegExp('"', 'g'), '');
+		var osArch = cols[osarchPos].replace(new RegExp('"', 'g'), '');
 		
 		imageNames.push(osImage);
 		profilesHash[profile] = 1;
