@@ -1,18 +1,26 @@
 =head1 Name
 
-B<rflash> - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems 
+B<rflash> - Performs Licensed Internal Code (LIC) update support for HMC-attached POWER5 and POWER6 Systems, and POWER7 systems using Direct FSP management. 
 
 =head1 B<Synopsis>
 
 B<rflash> [B<-h>|B<--help> | B<-v>|B<--version>]
 
+=head2 PPC (with HMC) specific:
+
 B<rflash> I<noderange> B<-p> I<directory> [B<--activate> B<concurrent>|B<disruptive>] [B<-V>|B<--verbose>]
 
 B<rflash> I<noderange> [B<--commit>|B<--recover>] [B<-V>|B<--verbose>]
 
+=head2 PPC (without HMC, using Direct FSP Management) specific:
+
+B<rflash> I<noderange> B<-p> I<directory> B<--activate> B<disruptive>
+
+B<rflash> I<noderange> [B<--commit>|B<--recover>]
+
 =head1 B<Description>
 
-B<rflash> The B<rflash> command initiates Firmware updates on supported xCAT nodes.  Licensed Internal Code (also known as microcode) updates are performed on supported HMC-attached  POWER5 and POWER6 pSeries nodes.
+B<rflash> The B<rflash> command initiates Firmware updates on supported xCAT nodes.  Licensed Internal Code (also known as microcode) updates are performed on supported HMC-attached  POWER5 and POWER6 pSeries nodes, and POWER7 systems using Direct FSP management.
 
 The command scans the specified directory structure for Firmware update package files applicable to the given nodes and components. And then it will B<automatically> select the B<latest> version for the upgrade. The firmware update files include the Microcode update package and associated XML file. They can be downloaded from the IBM Web site: I<http://www-933.ibm.com/support/fixcentral/>.
 
