@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<chvm> - Changes HMC- and IVM-managed partition profiles.
+B<chvm> - Changes HMC- and IVM-managed partition profiles. For P7 IH, chvm only could be used to change the I/O slots assignment to LPARs.
 
 =head1 SYNOPSIS
 
@@ -8,21 +8,30 @@ I<chvm [-h| --help]>
 
 I<chvm [-v| --version]>
 
-=head2 PPC specific:
+=head2 PPC (with HMC) specific:
 I<chvm [-V| --verbose] noderange [-p profile]>
 
 I<chvm [-V| --verbose] noderange attr=val [attr=val...]>
+
+=head2 PPC (using Direct FSP Management) specific:
+I<chvm noderange [-p profile]>
 
 =head2 VMware specific:
 I<chvm noderange [-a size] [-d disk] [-p disk] [--resize disk=size] [--cpus count] [--mem memory]>
 
 =head1 DESCRIPTION
 
-=head2 PPC specific:
+=head2 PPC (with HMC) specific:
 
 The chvm command modifies the partition profile for the partitions specified in noderange. A partitions current profile can be read using lsvm, modified, and piped into the chvm command, or changed with the -p flag. 
 
 This command also supports to change specific partition attributes by specifying one or more "attribute equals value" pairs in command line directly, without whole partition profile.
+
+=head2 PPC (using Direct FSP Management) specific:
+
+chvm is designed to assign the I/O slots to the new LPAR. Both the current IO owning lpar and the new IO owning lpar must be powered off before an IO assignment. Otherwise, if the I/O slot is belonged to an Lpar and the LPAR is power on, the command will return an error when trying to assign that slot to a different lpar. 
+
+The administrator should use lsvm to get the profile content, and then edit the content, and add the node name with ":" manually before the I/O which will be assigned to the node. And then the profile can be piped into the chvm command, or changed with the -p flag.
 
 =head2 VMware specific:
 
@@ -66,7 +75,7 @@ B<--resize disk=size> Change the size of the Hard disk.  The disk can never be s
 
 =head1 EXAMPLES
 
-=head2 PPC specific:
+=head2 PPC (with HMC) specific:
 
 1. To change the partition profile for lpar4 using the configuration data in the file /tmp/lparfile, enter:
 
@@ -91,6 +100,22 @@ I<chvm lpar4 max_mem=4096>
 Output is similar to:
 
 lpar4: Success
+
+=head2 PPC (using Direct FSP Management) specific:
+
+1.To change the I/O slot profile for lpar4 using the configuration data in the file /tmp/lparfile, the I/O slots information is similar to:
+
+4: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+4: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
+4: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
+
+then run the command:
+
+I<cat /tmp/lparfile | chvm lpar4>
+
+2. To change the I/O slot profile for lpar1-lpar8 using the configuration data in the file /tmp/lparfile. Users can use the output of lsvm.and remove the cec information, and  modify the lpar id  before each I/O, and run the command as following:
+
+I<chvm lpar1-lpar8 -p /tmp/lparfile>
 
 =head2 VMware specific:
 
