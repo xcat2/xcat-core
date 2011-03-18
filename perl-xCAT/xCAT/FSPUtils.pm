@@ -143,19 +143,7 @@ sub fsp_api_action {
 	    } else {
 	        $tmp_node = $fsp_name; 
 	    }
-	    
-	    # find parent for fsp/bpa, use parent's attributes first.
-	    my $ntype = xCAT::DBobjUtils->getnodetype($tmp_node);
-	    if ($ntype =~ /^(fsp|bpa)$/)  {
-	        my $ptab =  xCAT::Table->new('ppc');
-	        if ($ptab)  {
-	            my $parent = $ptab->getNodeAttribs($tmp_node, ["parent"]);
-	            if ($parent and $parent->{parent})  {
-	                $tmp_node = $parent->{parent};
-	            }
-	        }
-	    }
-	    
+	    	    
 	    ($user, $password) = xCAT::PPCdb::credentials( $tmp_node, $fsp_bpa_type,'HMC');        
 	    if ( !$password) {
 	        $res = "Cannot get password of userid 'HMC'. Please check table 'passwd' or 'ppcdirect'.";
