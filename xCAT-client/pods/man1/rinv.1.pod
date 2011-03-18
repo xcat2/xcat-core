@@ -10,9 +10,13 @@ B<rinv> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 B<rinv> I<noderange> {B<pci>|B<model>|B<serial>|B<asset>|B<vpd>|B<mprom>|B<deviceid>|B<guid>|B<firm>|B<diag>|B<bios>|B<mparom>|B<mac>|B<all>}
 
-=head2 PPC specific:
+=head2 PPC (with HMC) specific:
 
 B<rinv> I<noderange> {B<bus>|B<config>|B<serial>|B<model>|B<firm>|B<all>}
+
+=head2 PPC (using Direct FSP Management) specific:
+
+B<rinv> I<noderange> B<firm>
 
 =head2 Blade specific:
 
