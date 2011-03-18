@@ -1,20 +1,31 @@
 
 =head1 NAME
 
-B<rbootseq> - Persistently sets the order of boot devices for BladeCenter blades.
+B<rbootseq> - Persistently sets the order of boot devices for BladeCenter blades or PPC LPARs.
 
 =head1 SYNOPSIS
 
-B<rbootseq> I<noderange> {B<hd0>|B<hd1>|B<hd2>|B<hd3>|B<net>|B<iscsi>|B<iscsicrit>|B<cdrom>|B<usbflash>|B<floppy>|B<none>|B<list>|B<stat>}B<,>I<...>
-
 B<rbootseq> [B<-h>|B<--help>|B<-v>|B<--version>]
 
+=head2 Blade specific:
+
+B<rbootseq> I<noderange> {B<hd0>|B<hd1>|B<hd2>|B<hd3>|B<net>|B<iscsi>|B<iscsicrit>|B<cdrom>|B<usbflash>|B<floppy>|B<none>|B<list>|B<stat>}B<,>I<...>
+
+=head2 PPC (using Direct FSP Management) specific:
+
+B<rbootseq> I<noderange> B<[hfi|net]>
 
 =head1 DESCRIPTION
+
+For PPC (with HMC) specific:
 
 B<rbootseq> sets the boot sequence (the order in which boot devices should be tried) for the specified blades.
 Up to four different medium/devices can be listed, separated by commas.  The boot sequence will remain
 in effect for these blades until set differently.
+
+For PPC (using Direct FSP Management) specific:
+
+B<rbootseq> sets the net or hfi device as the first boot device for the specified PPC LPARs. The net or hfi mac address is store in the mac table. And B<rbootseq> requires that the network information is correct in networks table as for getmacs/rnetboot. 
 
 =head1 OPTIONS
 
