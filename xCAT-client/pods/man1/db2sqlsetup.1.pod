@@ -25,6 +25,7 @@ The hostname or ip address of the Management Node as known by the Service Node m
 The script  will assume the default install paths of /opt/IBM/db2 for AIX and
 /opt/ibm/db2 for Linux,  unless overridden with the XCATDB2INSPATH
 environment variable.
+The script will create the xcat database instance (xcatdb) in the /var/lib/db2 directory unless overriden by setting the site.databaseloc attribute.  This attribute should not be set to the directory that is defined in the installloc attribute and it is recommended that the databaseloc be a new filesystem dedicated to the DB2 database, especially in very large clusters.
 
 Note: On AIX , root must be running ksh and on Linux,  bash shell.
 
