@@ -38,8 +38,10 @@ my %usage = (
 "Usage:
   Common:
       rvitals [-h|--help|-v|--version]
-  FSP/LPAR specific:
+  FSP/LPAR (with HMC) specific:
       rvitals noderange {temp|voltage|lcds|all}
+  FSP/LPAR (using Direct FSP Management)specific:
+      rvitals noderange lcds
   MPA specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|summary|all}
   Blade specific:
@@ -58,8 +60,10 @@ my %usage = (
        rinv <noderange> [vpd|mprom|deviceid|uuid|guid]
     MPA specific:
        rinv <noderange> [firm|bios|diag|mprom|sprom|mparom|mac|mtm]
-    PPC specific:
+    PPC specific(with HMC):
        rinv <noderange> [bus|config|serial|model|firm|all]
+    PPC specific(using Direct FSP Management):
+       rinv <noderange> firm
     Blade specific:
        rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]
     VMware specific:
@@ -68,8 +72,13 @@ my %usage = (
 "Usage: rsetboot <noderange> [net|hd|cd|floppy|def|stat] [-V|--verbose]
        rsetboot [-h|--help|-v|--version]",
     "rbootseq" => 
-"Usage: rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...
-       rbootseq [-h|--help|-v|--version]",
+"Usage: 
+       Common:
+           rbootseq [-h|--help|-v|--version]
+       Blade specific:
+           rbootseq <noderange> [hd0|hd1|hd2|hd3|net|iscsi|usbflash|floppy|none],...
+       PPC (using Direct FSP Management) specific:
+           rbootseq <noderange> [hfi|net]",
     "rscan" => 
 "Usage: rscan <noderange> [-u][-w][-x|-z] [-V|--verbose]
        rscan [-h|--help|-v|--version]",
@@ -134,10 +143,12 @@ my %usage = (
 "Usage:
     Common:
        mkvm [-h|--help|-v|--version]
-    For PPC:
+    For PPC(with HMC):
        mkvm noderange -i id -l singlenode [-V|--verbose]
        mkvm noderange -c destcec -p profile [-V|--verbose]
        mkvm noderange --full [-V|--verbose]
+    For PPC(using Direct FSP Management):
+       mkvm noderange -i id -m memory_interleaving -r partition_rule 
     For KVM
        mkvm noderange -m|--master mastername -s|--size disksize -f|--force",
     "lsvm" => 
@@ -145,15 +156,19 @@ my %usage = (
    Common:
        lsvm <noderange> [-V|--verbose]
        lsvm [-h|--help|-v|--version]
-   PPC specific:
-       lsvm <noderange> [-a|--all]",
+   PPC (with HMC) specific:
+       lsvm <noderange> [-a|--all]
+   PPC (using Direct FSP Management) specific:
+       lsvm <noderange> ",
     "chvm" => 
 "Usage:
    Common:
        chvm [-h|--help|-v|--version]
-   PPC specific:
+   PPC (with HMC) specific:
        chvm <noderange> [-p profile][-V|--verbose] 
        chvm <noderange> <attr>=<val> [<attr>=<val>...]
+   PPC (using Direct FSP Management) specific:
+       chvm <noderange> [-p profile] 
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]",
     "rmvm" => 
@@ -165,8 +180,13 @@ my %usage = (
              [-t tries][-m][-e cmd][-c [timeinterval[interval,..]]][--vpdtable]
              [-M vpd|switchport][--makedhcp][--updatehost][--resetnet]",
   "rflash" =>
-"Usage: rflash [ -h|--help|-v|--version]
+"Usage: 
+    rflash [ -h|--help|-v|--version]
+    PPC (with HMC) specific:
 	rflash <noderange> -p directory [--activate concurrent | disruptive][-V|--verbose] 
+	rflash <noderange> [--commit | --recover] [-V|--verbose]
+    PPC (using Direct FSP Management) specific:
+	rflash <noderange> -p directory --activate disruptive 
 	rflash <noderange> [--commit | --recover] [-V|--verbose]",
     "mkhwconn" =>
 "Usage:
@@ -176,7 +196,7 @@ my %usage = (
     mkhwconn noderange -t [--bind] [-V|--verbose]
     mkhwconn noderange -p single_hmc [-P HMC passwd] [-V|--verbose]
     
-    PPC (without HMC, using Direct FSP Management) specific:
+    PPC (using Direct FSP Management) specific:
     mkhwconn noderange -t [-T tooltype] [--port port_value]",
     "rmhwconn" =>
 "Usage:
@@ -185,7 +205,7 @@ my %usage = (
     PPC (with HMC) specific:
     rmhwconn noderange [-V|--verbose]
     
-    PPC (without HMC, using Direct FSP Management) specific:
+    PPC (using Direct FSP Management) specific:
     rmhwconn noderange [-T tooltype]",
     "lshwconn" =>
 "Usage:
@@ -194,7 +214,7 @@ my %usage = (
     PPC (with HMC) specific:
     lshwconn noderange [-V|--verbose]
     
-    PPC (without HMC, using Direct FSP Management) specific:
+    PPC (using Direct FSP Management) specific:
     lshwconn noderange [-T tooltype]",
     "renergy" =>
 "Usage:
