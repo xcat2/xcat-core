@@ -26,11 +26,11 @@ For full information on the setup of DB2,  see http://sourceforge.net/apps/media
 
 When running of db2sqlsetup on the MN:
 One password must be supplied for the setup,  a password for the xcatdb unix id which will be used as the DB2 instance id and database name.  The password will be prompted for interactively or can be input with the XCATDB2PW  environment variable.
+The script will create the xcat database instance (xcatdb) in the /var/lib/db2 directory unless overriden by setting the site.databaseloc attribute.  This attribute should not be set to the directory that is defined in the installloc attribute and it is recommended that the databaseloc be a new filesystem dedicated to the DB2 database, especially in very large clusters.
  
 When running db2sqlseutp on the SN: 
 Not only will the password for the DB2 instance Id be prompted for and must match the one on the Management Node;  but also the hostname or ip address of the Management Node as known by the Service Node must be supplied , unless the XCATDB2SERVER environment variable is set.  
 You can automatically install and setup of DB2 on the SN using the db2install and odbcsetup postscripts and not need to manually run the command.  See the full documentation. 
-The script will create the xcat database instance (xcatdb) in the /var/lib/db2 directory unless overriden by setting the site.databaseloc attribute.  This attribute should not be set to the directory that is defined in the installloc attribute and it is recommended that the databaseloc be a new filesystem dedicated to the DB2 database, especially in very large clusters.
 
 Note: On AIX , root must be running ksh and on Linux,  bash shell.
 
