@@ -16,7 +16,7 @@ I<lsvm [-a| --all] noderange>
 
  The lsvm command lists all partition profiles defined for the partitions specified in noderange. If noderange is a CEC, all the partitions associated with that CEC are displayed.
 
-For P7 IH, it lists the LPARs' I/O slots information and CEC configuration.
+For P7 IH, lsvm lists all partition I/O slots information for the partitions specified in noderange. If noderange is a CEC, it gets the CEC's pump mode value, octant's memory interleaving value, the all the octants configure value, and all the I/O slots information
 
 =head1 OPTIONS
 
