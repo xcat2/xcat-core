@@ -117,10 +117,10 @@ sub voltage {
             ################################# 
             # Voltages available in frame
             ################################# 
-            if ( @$d[4] ne "bpa" ) {
-                push @result, [$name,"$text Only available for BPA",1];
-                next;
-            }
+            #if ( @$d[4] ne "bpa" && @$d[4] ne "frame") {
+            #    push @result, [$name,"$text Only available for BPA/Frame",1];
+            #    next;
+            #}
 	    #my $volt = enumerate_volt( $exp, $d );
 	    #my $Rc = shift(@$volt);
 
@@ -141,7 +141,7 @@ sub voltage {
 	    #    my $value = sprintf($_, $values[$i++]);
 	    #    push @result, [$name,$value,$Rc];
 	    #} 
-	    push @result, [$name,"$text: Not supported by FSPvitals", 1];
+	    push @result, [$name,"$text: Not supported in Direct FSP Management", 1];
         }
     }
     return( \@result );
@@ -180,7 +180,7 @@ sub temp {
             ################################# 
             # Temperatures not available 
             ################################# 
-            if ( @$d[4] !~ /^(fsp|lpar)$/ ) {
+            if ( @$d[4] !~ /^(fsp|lpar|cec)$/ ) {
                 my $text = "$prefix Only available for CEC/LPAR";
                 push @result, [$name,$text,1];
                 next;
