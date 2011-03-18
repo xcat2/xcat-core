@@ -32,6 +32,9 @@ fi
 if [[ $PLTFRM != AIX  ]] && [[ $PLTFRM != aix  ]]
 then
 
+# A difference between service node and compute node is that service node is booted from
+# ethernet, all the HFI interfaces should be configured.  Compute node is booted from hf0
+# so hf0 on compute node should not be re-configured on compute node.
 if [[ $NTYPE = service ]]
 then
 
@@ -51,6 +54,7 @@ fi
 
 fi
 
+# Configure hf0-hf<n> interfaces one by one.
 for i in 1 2 3
 do
 
@@ -94,5 +98,13 @@ ifconfig hf$i $CLIENT_IP
 fi
 
 done
+
+# Configure ml0 for AIX.
+CLIENT_IP=`ping -q -n -c 1 -w 1 $name-ml0 | grep PING |awk '{print $3}' | sed 's/(\(.*\)):/\1/' `
+
+if [ -n $CLIENT_IP ]
+then
+ifconfig ml0 $CLIENT_IP
+fi
 
 fi
