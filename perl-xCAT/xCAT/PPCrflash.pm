@@ -55,23 +55,23 @@ sub parse_args {
     #############################################
     # Change CEC/Frame node into FSPs/BPAs
     #############################################     
-    my @newnodes = ();
-    my $nodes = $request->{node};
-    foreach my $snode(@$nodes) {
-        my $ntype = xCAT::DBobjUtils->getnodetype($snode);
-        if ( $ntype =~ /^(cec|frame)$/) {
-            my $children = xCAT::DBobjUtils->getchildren($snode);
-            unless( $children )  {
-                next;
-            }
-            foreach (@$children)  {
-                push @newnodes, $_;
-            }
-        } else   {
-            push @newnodes, $snode;
-        }
-    }
-    $request->{node} = \@newnodes;
+    #my @newnodes = ();
+    #my $nodes = $request->{node};
+    #foreach my $snode(@$nodes) {
+    #    my $ntype = xCAT::DBobjUtils->getnodetype($snode);
+    #    if ( $ntype =~ /^(cec|frame)$/) {
+    #        my $children = xCAT::DBobjUtils->getchildren($snode);
+    #        unless( $children )  {
+    #            next;
+    #        }
+    #        foreach (@$children)  {
+    #            push @newnodes, $_;
+    #        }
+    #    } else   {
+    #        push @newnodes, $snode;
+    #    }
+    #}
+    #$request->{node} = \@newnodes;
     
     #############################################
     # Responds with usage statement
