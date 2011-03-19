@@ -6,7 +6,7 @@ B<lsdef> - Use this command to list xCAT data object definitions.
 
 B<lsdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
-B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-s>|B<--short>] [B<-a>|B<--all>] 
+B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-s>|B<--short>] [B<-a>|B<--all>] [B<-S>] 
 [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-i> I<attr-list>]
 [[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
 
