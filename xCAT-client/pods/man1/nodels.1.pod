@@ -4,7 +4,7 @@ B<nodels> - lists the nodes, and their attributes, from the xCAT database.
 
 =head1 SYNOPSIS
 
-B<nodels> [I<noderange>] [B<-b> | B<--blame>] [B<-H> | B<--with-fieldname>] [I<table.column> | I<shortname>] [I<...>]
+B<nodels> [I<noderange>] [B<-b> | B<--blame>] [B<-H> | B<--with-fieldname>] [B<-S>] [I<table.column> | I<shortname>] [I<...>]  
 
 B<nodels> [I<noderange>] [B<-H> | B<--with-fieldname>] [I<table>]
 
@@ -76,6 +76,10 @@ Force display of table name and column name context for each result
 =item B<-b|--blame>
 
 For values inherited from groups, display which groups provided the inheritence
+
+=item B<-S> 
+
+List all the hidden nodes (FSP/BPA nodes) with other ones.
 
 =item B<-?|-h|--help>
 
@@ -232,7 +236,15 @@ Output looks like:
    blade7: mp.id: 7
    blade8: mp.id: 8
    blade9: mp.id: 9
+   
+=item 10.
 
+To list the hidden nodes that can't be seen with other flags.
+The hidden nodes are FSP/BPAs.
+
+ lsdef -S
+ 
+ 
 =back
 
 =head1 FILES
