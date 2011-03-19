@@ -44,6 +44,7 @@ Only list the object names.
 =item B<-S> 
 
 List all the hidden nodes (FSP/BPA nodes) with other ones.
+
 =item I<noderange>
 
 A set of comma delimited node names and/or group names.
