@@ -138,6 +138,12 @@ sub mkhwconn_parse_args
             {
                 push @no_type_nodes, $node;
                 next;
+            } else
+            {
+                unless ( $nodetype =~ /^(fsp|bpa|frame|cec|hmc)$/)
+                {
+                     return ( usage("Node type is incorrect. \n"));
+                }
             }
             
             if (( $nodetype eq 'fsp' or $nodetype eq 'cec') and
