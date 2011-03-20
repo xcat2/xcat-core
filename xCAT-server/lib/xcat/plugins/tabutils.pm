@@ -1542,6 +1542,25 @@ sub nodels
                     # TODO - gather data for each node
                     #        for now just return the flattened list of nodes)
         my $rsp;    #build up fewer requests, be less chatty
+        
+        #-S will make nodels not show FSPs and BPAs
+        my @newnodes = ();
+        if (!defined($HIDDEN))
+        {
+            my $listtab  = xCAT::Table->new( 'nodelist' );
+            if ($listtab) {
+                my $listHash = $listtab->getNodesAttribs(\@$nodes, ['hidden']);
+                foreach my $rnode(@$nodes) {
+                    unless (defined($listHash->{$rnode}->[0]->{hidden})){
+                        push (@newnodes, $rnode);
+                    } elsif ($listHash->{$rnode}->[0]->{hidden} ne 1)  {
+                        push (@newnodes, $rnode);
+                    }
+                }
+            }
+            $nodes = \@newnodes;
+        }
+        
         if ($argc)
         {
             my %tables;
