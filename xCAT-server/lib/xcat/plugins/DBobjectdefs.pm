@@ -29,10 +29,10 @@ $Getopt::Long::ignorecase = 0;
 %::CLIATTRS;      # attr=values provided on the command line
 %::FILEATTRS;     # attr=values provided in an input file
 %::FINALATTRS;    # final set of attr=values that are used to set
-                  #	the object
+                  #    the object
 
 %::objfilehash;   #  hash of objects/types based of "-f" option
-                  #	(list in file)
+                  #    (list in file)
 
 %::WhereHash;     # hash of attr=val from "-w" option
 @::AttrList;      # list of attrs from "-i" option
@@ -174,15 +174,15 @@ sub process_request
 
         Process the command line. Covers all four commands.
 
-		Also - Process any input files provided on cmd line.
+        Also - Process any input files provided on cmd line.
 
         Arguments:
 
         Returns:
                 0 - OK
-				1 - just return
+                1 - just return
                 2 - just print usage
-				3 - error
+                3 - error
         Globals:
 
         Error:
@@ -232,7 +232,7 @@ sub processArgs
     }
 
     # parse the options - include any option from all 4 cmds
-	Getopt::Long::Configure("no_pass_through");
+    Getopt::Long::Configure("no_pass_through");
     if (
         !GetOptions(
                     'all|a'     => \$::opt_a,
@@ -258,17 +258,17 @@ sub processArgs
       )
     {
 
-		my $rsp;
-		$rsp->{data}->[0] = "Invalid option..";
-		xCAT::MsgUtils->message("E", $rsp, $::callback);
+        my $rsp;
+        $rsp->{data}->[0] = "Invalid option..";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
     
-	# Initialize some global arrays in case this is being called twice in the same process.
-	# Currently only doing this when --nocache is specified, but i think it should be done all of the time.
-	if ($::opt_c) {
+    # Initialize some global arrays in case this is being called twice in the same process.
+    # Currently only doing this when --nocache is specified, but i think it should be done all of the time.
+    if ($::opt_c) {
             &initialize_variables();
-	}
+    }
 
     #  opt_x not yet supported
     if ($::opt_x)
@@ -339,7 +339,7 @@ sub processArgs
             {
 
                 # if the type was not provided or it is "node"
-                #	then set noderange
+                #    then set noderange
                 if (($::command ne 'mkdef') && ($a =~ m/^\//))
                 {
                     @::noderange = &noderange($a, 1); # Use the "verify" option to support regular expression
@@ -410,7 +410,7 @@ sub processArgs
     if (defined($::opt_v))
     {
         my $rsp;
-		my $version=xCAT::Utils->Version();
+        my $version=xCAT::Utils->Version();
         push @{$rsp->{data}}, "$::command - $version";
         xCAT::MsgUtils->message("I", $rsp, $::callback);
         return 1;    # no usage - just exit
@@ -422,9 +422,9 @@ sub processArgs
         $::verbose = 1;
         $::VERBOSE = 1;
     } else {
-		$::verbose = 0;
+        $::verbose = 0;
         $::VERBOSE = 0;
-	}
+    }
 
     #
     # process the input file - if provided
@@ -494,7 +494,7 @@ sub processArgs
                 $rsp->{data}->[0] =
                   "\nType \'$t\' is not a valid xCAT object type.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
-				return 3;
+                return 3;
             }
             else
             {
@@ -512,11 +512,11 @@ sub processArgs
         # make the default type = 'node' if not specified
         push(@::clobjtypes, 'node');
         my $rsp;
-		if ( !$::opt_z && !$::opt_x) {
-			# don't want this msg in stanza or xml output
-        	#$rsp->{data}->[0] = "Assuming an object type of \'node\'.";
-        	#xCAT::MsgUtils->message("I", $rsp, $::callback);
-		}
+        if ( !$::opt_z && !$::opt_x) {
+            # don't want this msg in stanza or xml output
+            #$rsp->{data}->[0] = "Assuming an object type of \'node\'.";
+            #xCAT::MsgUtils->message("I", $rsp, $::callback);
+        }
     }
 
     # if user specifies "-t" & "-h" they want valid type or attrs info
@@ -528,23 +528,23 @@ sub processArgs
         {
             my $rsp;
 
-			if ($t eq 'site') {
-				my $schema = xCAT::Table->getTableSchema('site');
-				my $desc;
+            if ($t eq 'site') {
+                my $schema = xCAT::Table->getTableSchema('site');
+                my $desc;
 
-				$rsp->{data}->[0] = "\nThere can only be one xCAT site definition. This definition consists \nof an unlimited list of user-defined attributes and values that represent \nglobal settings for the whole cluster. The following is a list \nof the attributes currently supported by xCAT."; 
+                $rsp->{data}->[0] = "\nThere can only be one xCAT site definition. This definition consists \nof an unlimited list of user-defined attributes and values that represent \nglobal settings for the whole cluster. The following is a list \nof the attributes currently supported by xCAT."; 
 
-				$desc = $schema->{descriptions}->{'key'};
-				$rsp->{data}->[1] = $desc;
+                $desc = $schema->{descriptions}->{'key'};
+                $rsp->{data}->[1] = $desc;
 
-				xCAT::MsgUtils->message("I", $rsp, $::callback);
-				next;
-			}
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                next;
+            }
 
-			# get the data type  definition from Schema.pm
+            # get the data type  definition from Schema.pm
             my $datatype = $xCAT::Schema::defspec{$t};
 
-			$rsp->{data}->[0] = "The valid attribute names for object type '$t' are:";
+            $rsp->{data}->[0] = "The valid attribute names for object type '$t' are:";
 
             # get the objkey for this type object (ex. objkey = 'node')
             my $objkey = $datatype->{'objkey'};
@@ -552,7 +552,7 @@ sub processArgs
             $rsp->{data}->[1] = "Attribute          Description\n";
 
             my @alreadydone;    # the same attr may appear more then once
-			my @attrlist;
+            my @attrlist;
             my $outstr = "";
 
             foreach my $this_attr (@{$datatype->{'attrs'}})
@@ -560,37 +560,37 @@ sub processArgs
                 my $attr = $this_attr->{attr_name};
                 my $desc = $this_attr->{description};
                 if (!defined($desc)) {     
-					# description key not there, so go to the corresponding 
-					#	entry in tabspec to get the description
-                	my ($tab, $at) = split(/\./, $this_attr->{tabentry});
-                	my $schema = xCAT::Table->getTableSchema($tab);
-                	$desc = $schema->{descriptions}->{$at};
+                    # description key not there, so go to the corresponding 
+                    #    entry in tabspec to get the description
+                    my ($tab, $at) = split(/\./, $this_attr->{tabentry});
+                    my $schema = xCAT::Table->getTableSchema($tab);
+                    $desc = $schema->{descriptions}->{$at};
                 }
 
-				# could display the table that the attr is in
-				# however some attrs are in more than one table!!!
-				#my ($tab, $junk) = split('\.', $this_attr->{tabentry});
+                # could display the table that the attr is in
+                # however some attrs are in more than one table!!!
+                #my ($tab, $junk) = split('\.', $this_attr->{tabentry});
 
                 if (!grep(/^$attr$/, @alreadydone))
                 {
-					my $space = (length($attr)<7 ? "\t\t" : "\t");
-					push(@attrlist, "$attr:$space$desc\n\n");
+                    my $space = (length($attr)<7 ? "\t\t" : "\t");
+                    push(@attrlist, "$attr:$space$desc\n\n");
                 }
                 push(@alreadydone, $attr);
             }
 
-			# print the output in alphabetical order
+            # print the output in alphabetical order
             foreach my $a (sort @attrlist) {
                 $outstr .= "$a";
             }
             chop($outstr);  chop($outstr);
             $rsp->{data}->[2] = $outstr;
 
-			# the monitoring table is  special
-			if ($t eq 'monitoring') {
-				$rsp->{data}->[3] = "\nYou can also include additional monitoring plug-in specific settings. These settings will be used by the monitoring plug-in to customize the behavior such as event filter, sample interval, responses etc.";
-			}
-			
+            # the monitoring table is  special
+            if ($t eq 'monitoring') {
+                $rsp->{data}->[3] = "\nYou can also include additional monitoring plug-in specific settings. These settings will be used by the monitoring plug-in to customize the behavior such as event filter, sample interval, responses etc.";
+            }
+            
             xCAT::MsgUtils->message("I", $rsp, $::callback);
         }
 
@@ -656,7 +656,7 @@ sub processArgs
     }
 
     # if there is no other input for object names then we need to
-    #	find all the object names for the specified types
+    #    find all the object names for the specified types
     #   Do NOT do this for rmdef
     if ($::opt_t
         && !(   $::opt_o
@@ -759,20 +759,20 @@ sub processArgs
     }
 
     # must have object name(s) -
-	if ((scalar(@::clobjnames) == 0) && (scalar(@::fileobjnames) == 0))
+    if ((scalar(@::clobjnames) == 0) && (scalar(@::fileobjnames) == 0))
     {
         return 3;
     }
 
     # combine object name all object names provided
     @::allobjnames = @::clobjnames;
-	if (scalar(@::fileobjnames) > 0)
+    if (scalar(@::fileobjnames) > 0)
     {
 
         # add list from stanza or xml file
         push @::allobjnames, @::fileobjnames;
     }
-	elsif (scalar(@::objfilelist) > 0)
+    elsif (scalar(@::objfilelist) > 0)
     {
 
         # add list from "-f" file option
@@ -848,9 +848,9 @@ sub processArgs
         Example:
 
         Comments:
-			Object names to create are derived from
-				-o, -t, w, -z, -x, or noderange!
-			Attr=val pairs come from cmd line args or -z/-x files
+            Object names to create are derived from
+                -o, -t, w, -z, -x, or noderange!
+            Attr=val pairs come from cmd line args or -z/-x files
 =cut
 
 #-----------------------------------------------------------------------------
@@ -863,7 +863,7 @@ sub defmk
     my $rc    = 0;
     my $error = 0;
 
-	my %objTypeLists;
+    my %objTypeLists;
 
     # process the command line
     $rc = &processArgs;
@@ -872,19 +872,19 @@ sub defmk
     {
 
         # rc: 0 - ok, 1 - return, 2 - help, 3 - error
-		# 0 - continue
-		# 1 - return  (like for version option)
-		# 2 - return with usage
-		# 3 - return error
-		if ($rc == 1) {
-			return 0;
-		} elsif ($rc == 2) {
-			&defmk_usage;
-			return 0;
-		} elsif ($rc == 3) {
-			return 1;
-		}
-	}
+        # 0 - continue
+        # 1 - return  (like for version option)
+        # 2 - return with usage
+        # 3 - return error
+        if ($rc == 1) {
+            return 0;
+        } elsif ($rc == 2) {
+            &defmk_usage;
+            return 0;
+        } elsif ($rc == 3) {
+            return 1;
+        }
+    }
 
     # check options unique to these commands
     if ($::opt_p || $::opt_m)
@@ -909,16 +909,16 @@ sub defmk
         return 1;
     }
 
-	# can't have -z with other obj sources
-	if ($::opt_z && ($::opt_o || @::noderange))
-	{
-		my $rsp;
-		$rsp->{data}->[0] = "Cannot use \'-z\' with \'-o\' or a noderange.";
-		$rsp->{data}->[1] = "Example of -z usage:\n\t\'cat stanzafile | mkdef -z\'";
-		xCAT::MsgUtils->message("E", $rsp, $::callback);
-		&defmk_usage;
-		return 1;
-	}
+    # can't have -z with other obj sources
+    if ($::opt_z && ($::opt_o || @::noderange))
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "Cannot use \'-z\' with \'-o\' or a noderange.";
+        $rsp->{data}->[1] = "Example of -z usage:\n\t\'cat stanzafile | mkdef -z\'";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        &defmk_usage;
+        return 1;
+    }
 
     # check to make sure we have a list of objects to work with
     if (!@::allobjnames)
@@ -974,7 +974,7 @@ sub defmk
             # set the attrs from the attr=val pairs
             foreach my $attr (keys %::ATTRS)
             {
-				if (!grep(/^$attr$/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
+                if (!grep(/^$attr$/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
@@ -1002,7 +1002,7 @@ sub defmk
 
     #
     #   Pull all the pieces together for the final hash
-    #		- combines the command line attrs and input file attrs if provided
+    #        - combines the command line attrs and input file attrs if provided
     #
     if (&setFINALattrs != 0)
     {
@@ -1010,7 +1010,7 @@ sub defmk
     }
 
     # we need a list of objects that are
-    #	already defined for each type.
+    #    already defined for each type.
     foreach my $t (@::finalTypeList)
     {
 
@@ -1049,29 +1049,29 @@ sub defmk
             next;
         }
 
-		# we don't want to overwrite any existing table row.  This could
-		#	happen if there are multiple table keys. (ex. networks table -
-		#		where the object name is not either of the table keys - net 
-		#		& mask)
-		#  just handle network objects for now - 
-		if ($type eq 'network') {
-			my @nets = xCAT::DBobjUtils->getObjectsOfType('network');
-			my %objhash;
-			foreach my $n (@nets) {
-				$objhash{$n} = $type;
-			}
-			my %nethash = xCAT::DBobjUtils->getobjdefs(\%objhash);
-			foreach my $o (keys %nethash) {
-				if ( ($nethash{$o}{net} eq $::FINALATTRS{$obj}{net})  && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask}) ) {
-					my $rsp;
-					$rsp->{data}->[0] = "A network definition called \'$o\' already exists that contains the same net and mask values. Cannot create a definition for \'$obj\'.";
-					xCAT::MsgUtils->message("E", $rsp, $::callback);
-					$error = 1;
-					delete $::FINALATTRS{$obj};
-					next OBJ;
-				}	
-			}
-		}
+        # we don't want to overwrite any existing table row.  This could
+        #    happen if there are multiple table keys. (ex. networks table -
+        #        where the object name is not either of the table keys - net 
+        #        & mask)
+        #  just handle network objects for now - 
+        if ($type eq 'network') {
+            my @nets = xCAT::DBobjUtils->getObjectsOfType('network');
+            my %objhash;
+            foreach my $n (@nets) {
+                $objhash{$n} = $type;
+            }
+            my %nethash = xCAT::DBobjUtils->getobjdefs(\%objhash);
+            foreach my $o (keys %nethash) {
+                if ( ($nethash{$o}{net} eq $::FINALATTRS{$obj}{net})  && ($nethash{$o}{mask} eq $::FINALATTRS{$obj}{mask}) ) {
+                    my $rsp;
+                    $rsp->{data}->[0] = "A network definition called \'$o\' already exists that contains the same net and mask values. Cannot create a definition for \'$obj\'.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    $error = 1;
+                    delete $::FINALATTRS{$obj};
+                    next OBJ;
+                }    
+            }
+        }
 
         # if object already exists
         if (grep(/^$obj$/, @{$objTypeLists{$type}}))
@@ -1079,7 +1079,7 @@ sub defmk
             if ($::opt_f)
             {
                 # remove the old object
-				my %objhash;
+                my %objhash;
                 $objhash{$obj} = $type;
                 if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0)
                 {
@@ -1180,8 +1180,8 @@ sub defmk
                     @memberlist = &noderange($::FINALATTRS{$obj}{members}, 0);
 
                     #  don't list all the nodes in the group table
-                    #	set the value to static and we'll figure out the list
-                    # 	by looking in the nodelist table
+                    #    set the value to static and we'll figure out the list
+                    #     by looking in the nodelist table
                     $::FINALATTRS{$obj}{members} = 'static';
 
                 }
@@ -1200,7 +1200,7 @@ sub defmk
                           xCAT::DBobjUtils->getObjectsOfType('node');
 
                         # create a hash of obj names and types
-						my %objhash;
+                        my %objhash;
                         foreach my $n (@tmplist)
                         {
                             $objhash{$n} = 'node';
@@ -1264,7 +1264,7 @@ sub defmk
                     }
 
                     #  add this group name to the node entry in
-                    #		the nodelist table
+                    #        the nodelist table
                     #$nodehash{$n}{groups} = $obj;
 
                     # get the current value
@@ -1291,13 +1291,13 @@ sub defmk
                     if ($newgroups)
                     {
                         $tab->setNodeAttribs($n, {groups => $newgroups});
-			$changed=1;
+            $changed=1;
                     }
 
                 }
-		if ($changed) {
-		    $tab->commit;
-		}
+        if ($changed) {
+            $tab->commit;
+        }
 
 
             }
@@ -1318,7 +1318,7 @@ sub defmk
 
         #
         #  Need special handling for node objects that have the
-        #	groups attr set - may need to create group defs
+        #    groups attr set - may need to create group defs
         #
         if (($type eq "node") && $::FINALATTRS{$obj}{groups})
         {
@@ -1337,7 +1337,7 @@ sub defmk
             my $grptab = xCAT::Table->new('nodegroup');
             my @grplist = @{$grptab->getAllEntries()}; #dynamic groups and static groups in nodegroup table
 
-			my %GroupHash;
+            my %GroupHash;
             foreach my $g (@grouplist)
             {
                 my $indynamicgrp = 0;
@@ -1397,7 +1397,7 @@ sub defmk
         my $rsp;
         $rsp->{data}->[0] = "Could not write data to the xCAT database.";
 
-        #		xCAT::MsgUtils->message("E", $rsp, $::callback);
+        #        xCAT::MsgUtils->message("E", $rsp, $::callback);
         $error = 1;
     }
 
@@ -1456,9 +1456,9 @@ sub defmk
         Example:
 
         Comments:
-			Object names to create are derived from
-				-o, -t, w, -z, -x, or noderange!
-			Attr=val pairs come from cmd line args or -z/-x files
+            Object names to create are derived from
+                -o, -t, w, -z, -x, or noderange!
+            Attr=val pairs come from cmd line args or -z/-x files
 =cut
 
 #-----------------------------------------------------------------------------
@@ -1484,19 +1484,19 @@ sub defch
     {
 
         # rc: 0 - ok, 1 - return, 2 - help, 3 - error
-		# 0 - continue
-		# 1 - return  (like for version option)
-		# 2 - return with usage
-		# 3 - return error
-		if ($rc == 1) {
-			return 0;
-		} elsif ($rc == 2) {
-			&defch_usage;
-			return 0;
-		} elsif ($rc == 3) {
-			return 1;
-		}
-	}
+        # 0 - continue
+        # 1 - return  (like for version option)
+        # 2 - return with usage
+        # 3 - return error
+        if ($rc == 1) {
+            return 0;
+        } elsif ($rc == 2) {
+            &defch_usage;
+            return 0;
+        } elsif ($rc == 3) {
+            return 1;
+        }
+    }
 
 
     #
@@ -1599,16 +1599,16 @@ sub defch
         return 1;
     }
 
-	# can't have -z with other obj sources
-	if ($::opt_z && ($::opt_o || @::noderange))
-	{
-		my $rsp;
-		$rsp->{data}->[0] = "Cannot use \'-z\' with \'-o\' or a noderange.";
-		$rsp->{data}->[1] = "Example of -z usage:\n\t\'cat stanzafile | chdef -z\'";
-		xCAT::MsgUtils->message("E", $rsp, $::callback);
-		&defch_usage;
-		return 1;
-	}
+    # can't have -z with other obj sources
+    if ($::opt_z && ($::opt_o || @::noderange))
+    {
+        my $rsp;
+        $rsp->{data}->[0] = "Cannot use \'-z\' with \'-o\' or a noderange.";
+        $rsp->{data}->[1] = "Example of -z usage:\n\t\'cat stanzafile | chdef -z\'";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        &defch_usage;
+        return 1;
+    }
 
     # check to make sure we have a list of objects to work with
     if (!@::allobjnames)
@@ -1652,7 +1652,7 @@ sub defch
             # set the attrs from the attr=val pairs
             foreach my $attr (keys %::ATTRS)
             {
-				if (!grep(/^$attr$/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
+                if (!grep(/^$attr$/, @list) && ($::objtype ne 'site') && ($::objtype ne 'monitoring'))
                 {
                     my $rsp;
                     $rsp->{data}->[0] =
@@ -1673,7 +1673,7 @@ sub defch
 
     #
     #   Pull all the pieces together for the final hash
-    #		- combines the command line attrs and input file attrs if provided
+    #        - combines the command line attrs and input file attrs if provided
     #
     if (&setFINALattrs != 0)
     {
@@ -1747,7 +1747,7 @@ sub defch
 
         #
         # need to handle group definitions - special!
-        #	- may need to update the node definitions for the group members
+        #    - may need to update the node definitions for the group members
         #
         if ($type eq 'group')
         {
@@ -1756,7 +1756,7 @@ sub defch
 
             # what kind of group is this? - static or dynamic
             my $grptype;
-			my %objhash;
+            my %objhash;
             if ($::opt_d)
             {
                # For dynamic node group,
@@ -1797,8 +1797,8 @@ sub defch
                    delete($::FINALATTRS{$obj});
                    next;
                 }
-				# for now all groups are static
-				#$grptype = 'static';
+                # for now all groups are static
+                #$grptype = 'static';
             }
             else
             {    #not defined
@@ -1827,7 +1827,7 @@ sub defch
             }
 
             #  get the @memberlist for static group
-            #	- if provided - to use below
+            #    - if provided - to use below
             if ($grptype eq 'static')
             {
 
@@ -1863,7 +1863,7 @@ sub defch
                     my @tmplist = xCAT::DBobjUtils->getObjectsOfType('node');
 
                     # create a hash of obj names and types
-					my %objhash;
+                    my %objhash;
                     foreach my $n (@tmplist)
                     {
                         $objhash{$n} = 'node';
@@ -1944,7 +1944,7 @@ sub defch
                 }
 
                 # if this is a static group
-                #	then update the "groups" attr of each member node
+                #    then update the "groups" attr of each member node
                 if ($::FINALATTRS{$obj}{grouptype} eq 'static')
                 {
 
@@ -1973,7 +1973,7 @@ sub defch
 
                 # if a list of members is provided then update the node entries
                 #   note: the members attr of the group def will be set
-                #	to static
+                #    to static
                 if (@memberlist)
                 {
 
@@ -2022,16 +2022,16 @@ sub defch
                     {    # replace the members list altogether
 
                         # this is the default for the chdef command
-				if ($firsttime) {
+                if ($firsttime) {
                         # get the current members list
 
-						$grphash{$obj}{'grouptype'} = "static";
+                        $grphash{$obj}{'grouptype'} = "static";
                         my $list =
                           xCAT::DBobjUtils->getGroupMembers($obj, \%grphash);
                         my @currentlist = split(',', $list);
 
                         # for each node in currentlist - remove group name
-                        #	from groups attr
+                        #    from groups attr
 
                         my %membhash;
                         foreach my $n (@currentlist)
@@ -2048,8 +2048,8 @@ sub defch
                         {
                             $error = 1;
                         }
-					$firsttime=0;
-				} # end - first time
+                    $firsttime=0;
+                } # end - first time
                         $::minus_option = 0;
 
                         # for each node in memberlist add this group
@@ -2081,7 +2081,7 @@ sub defch
 
         #
         #  Need special handling for node objects that have the
-        #	groups attr set - may need to create group defs
+        #    groups attr set - may need to create group defs
         #
         if (($type eq "node") && $::FINALATTRS{$obj}{groups})
         {
@@ -2101,15 +2101,15 @@ sub defch
             my @grplist = @{$grptab->getAllEntries()}; #dynamic groups and static groups in nodegroup table
 
             # if we're creating the node or we're adding to or replacing
-            #	the "groups" attr then check if the group
-            # 	defs exist and create them if they don't
+            #    the "groups" attr then check if the group
+            #     defs exist and create them if they don't
             if (!$isDefined || !$::opt_m)
             {
 
                 #  we either replace, add or take away from the "groups"
-                #		list
+                #        list
                 #  if not taking away then we must be adding or replacing
-				my %GroupHash;
+                my %GroupHash;
                 foreach my $g (@grouplist)
                 {
                     my $indynamicgrp = 0;
@@ -2185,7 +2185,7 @@ sub defch
         my $rsp;
         $rsp->{data}->[0] = "Could not write data to the xCAT database.";
 
-        #		xCAT::MsgUtils->message("E", $rsp, $::callback);
+        #        xCAT::MsgUtils->message("E", $rsp, $::callback);
         $error = 1;
     }
     
@@ -2256,8 +2256,8 @@ sub defch
 
 =head3   setFINALattrs
 
-		create %::FINALATTRS{objname}{attr}=val hash
-		conbines %::FILEATTRS, and %::CLIATTR
+        create %::FINALATTRS{objname}{attr}=val hash
+        conbines %::FILEATTRS, and %::CLIATTR
 
         Arguments:
 
@@ -2297,13 +2297,13 @@ sub setFINALattrs
 
             # get the data type definition from Schema.pm
 
-			if (!$::FILEATTRS{$objname}{objtype}) {
-				my $rsp;
-				$rsp->{data}->[0] = "\nNo objtype value was specified for \'$objname\'. Cannot create object definition.";
-				xCAT::MsgUtils->message("E", $rsp, $::callback);
-				$error = 1;
-				next;
-			}
+            if (!$::FILEATTRS{$objname}{objtype}) {
+                my $rsp;
+                $rsp->{data}->[0] = "\nNo objtype value was specified for \'$objname\'. Cannot create object definition.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                $error = 1;
+                next;
+            }
 
             my $datatype =
               $xCAT::Schema::defspec{$::FILEATTRS{$objname}{objtype}};
@@ -2320,7 +2320,7 @@ sub setFINALattrs
             {
 
                 # see if valid attr
-				if (!grep(/^$attr$/, @list) && ($::FILEATTRS{$objname}{objtype} ne 'site') && ($::FILEATTRS{$objname}{objtype} ne 'monitoring'))
+                if (!grep(/^$attr$/, @list) && ($::FILEATTRS{$objname}{objtype} ne 'site') && ($::FILEATTRS{$objname}{objtype} ne 'monitoring'))
                 {
 
                     my $rsp;
@@ -2337,11 +2337,11 @@ sub setFINALattrs
                 }
 
             }
-			# need to make sure the node attr is set otherwise nothing 
-			#	gets set in the nodelist table
-			if ($::FINALATTRS{$objname}{objtype} eq "node") {
-				$::FINALATTRS{$objname}{node} = $objname;
-			}
+            # need to make sure the node attr is set otherwise nothing 
+            #    gets set in the nodelist table
+            if ($::FINALATTRS{$objname}{objtype} eq "node") {
+                $::FINALATTRS{$objname}{node} = $objname;
+            }
         }
     }
 
@@ -2368,9 +2368,9 @@ sub setFINALattrs
             }
 
         }
-		# need to make sure the node attr is set otherwise nothing 
-		#   gets set in the nodelist table
-		if ($::FINALATTRS{$objname}{objtype} eq "node") {
+        # need to make sure the node attr is set otherwise nothing 
+        #   gets set in the nodelist table
+        if ($::FINALATTRS{$objname}{objtype} eq "node") {
             $::FINALATTRS{$objname}{node} = $objname;
         }
     }
@@ -2402,7 +2402,7 @@ sub setFINALattrs
         Example:
 
         Comments:
-			Object names derived from -o, -t, w, -a or noderange!
+            Object names derived from -o, -t, w, -a or noderange!
             List of attrs to display is given by -i.
             Output goes to standard out or a stanza/xml file (-z or -x)
 
@@ -2430,19 +2430,19 @@ sub defls
     {
 
         # rc: 0 - ok, 1 - return, 2 - help, 3 - error
-		# 0 - continue
-		# 1 - return  (like for version option)
-		# 2 - return with usage
-		# 3 - return error
-		if ($rc == 1) {
-			return 0;
-		} elsif ($rc == 2) {
-			&defls_usage;
-			return 0;
-		} elsif ($rc == 3) {
-			return 1;
-		}
-	}
+        # 0 - continue
+        # 1 - return  (like for version option)
+        # 2 - return with usage
+        # 3 - return error
+        if ($rc == 1) {
+            return 0;
+        } elsif ($rc == 2) {
+            &defls_usage;
+            return 0;
+        } elsif ($rc == 3) {
+            return 1;
+        }
+    }
 
 
     # do we want just the object names or all the attr=val
@@ -2450,7 +2450,7 @@ sub defls
     {
 
         # assume we want the the details - not just the names
-        # 	- if provided object names or noderange
+        #     - if provided object names or noderange
         $long++;
 
     }
@@ -2481,12 +2481,12 @@ sub defls
     }
 
     #
-    #	put together a hash with the list of objects and the associated types
-    #  		- need to figure out which objects to look up
+    #    put together a hash with the list of objects and the associated types
+    #          - need to figure out which objects to look up
     #
 
     # if a set of objects was provided on the cmd line then there can
-    #	be only one type value
+    #    be only one type value
 
     # Figure out the attributes that needed in the def operation
     my @neededattrs = ();
@@ -2676,7 +2676,7 @@ sub defls
       
     # the list of objects may be limited by the "-w" option
     # see which objects have attr/val that match the where values
-    #		- if provided
+    #        - if provided
     if ($::opt_w)
     {
         foreach my $obj (sort (keys %myhash))
@@ -2700,7 +2700,7 @@ sub defls
 
     # group the objects by type to make the output easier to read
     my $numobjects = 0;    # keep track of how many object we want to display
-	# for each type
+    # for each type
     foreach my $type (@::clobjtypes)
     {
 
@@ -2728,6 +2728,36 @@ sub defls
             return 0;
         }
 
+        
+        if ($type eq "node") {
+            my %newhash;
+            my $listtab  = xCAT::Table->new( 'nodelist' );
+            if ($listtab and  (!defined($::opt_S))  ) {
+                #my $tmp1=$listtab->getAllEntries("all");
+                #if (defined($tmp1) && (@$tmp1 > 0)) {
+                #    foreach(@$tmp1) {
+                #        $newhash{$_->{node}} = 1;
+                #    }
+                #}                
+            
+                foreach my $n (keys %defhash) {
+                    #if ($newhash{$n} eq 1) {
+                        my ($hidhash) = $listtab->getNodeAttribs($n ,['hidden']);
+                        if ($hidhash) {
+                            if ( $hidhash->{hidden} eq 1)  {  
+                                delete $defhash{$n};
+                            }
+                        }
+                    #}
+                }
+            }else {
+                my $rsp;
+                $rsp->{data}->[0] =
+                 "Could not open nodelist table.";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+            } 
+        }            
+            
         # Get all the objects of this type
         my @allobjoftype;
         @allobjoftype = xCAT::DBobjUtils->getObjectsOfType($type);
@@ -2875,7 +2905,7 @@ sub defls
                                 && ($showattr eq 'members'))
 
                             {
-								#$defhash{$obj}{'grouptype'} = "static";
+                                #$defhash{$obj}{'grouptype'} = "static";
                                 my $memberlist =
                                   xCAT::DBobjUtils->getGroupMembers($obj,\%defhash);
                                 push (@{$rsp_info->{data}}, "    $showattr=$memberlist");
@@ -2933,32 +2963,32 @@ sub defls
         } # end - for each object
     } # end - for each type
 
-        #delete the fsp and bpa node from the hash
-        my $newrsp;
-        my $listtab  = xCAT::Table->new( 'nodelist' );
-        if ($listtab and  (!defined($::opt_S))  ) {
-            foreach my $n (@{$rsp_info->{data}}) {
-                if ( $n =~ /\(node\)/ ) {
-                    $_= $n;
-                    s/ +\(node\)//;
-                    my ($hidhash) = $listtab->getNodeAttribs($_ ,['hidden']);
-                    if ( $hidhash->{hidden} ne 1)  {
-                        push (@{$newrsp->{data}}, $n);
-                    }
-                }else{
-                push (@{$newrsp->{data}}, $n);
-                }
-            }
-            if (defined($newrsp->{data}) && scalar(@{$newrsp->{data}}) > 0) {
-                xCAT::MsgUtils->message("I", $newrsp, $::callback);
-                return 0;
-            }
-        }else {
-            my $rsp;
-            $rsp->{data}->[0] =
-             "Could not open nodelist table.";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
-        }
+    #delete the fsp and bpa node from the hash
+    #my $newrsp;
+    #my $listtab  = xCAT::Table->new( 'nodelist' );
+    #if ($listtab and  (!defined($::opt_S))  ) {
+    #    foreach my $n (@{$rsp_info->{data}}) {
+    #        if ( $n =~ /\(node\)/ ) {
+    #            $_= $n;
+    #            s/ +\(node\)//;
+    #            my ($hidhash) = $listtab->getNodeAttribs($_ ,['hidden']);
+    #            if ( $hidhash->{hidden} ne 1)  {
+    #                push (@{$newrsp->{data}}, $n);
+    #            }
+    #        }else{
+    #        push (@{$newrsp->{data}}, $n);
+    #        }
+    #    }
+    #    if (defined($newrsp->{data}) && scalar(@{$newrsp->{data}}) > 0) {
+    #        xCAT::MsgUtils->message("I", $newrsp, $::callback);
+    #        return 0;
+    #    }
+    #}else {
+    #    my $rsp;
+    #    $rsp->{data}->[0] =
+    #     "Could not open nodelist table.";
+    #    xCAT::MsgUtils->message("I", $rsp, $::callback);
+    #}
 
     # Display the definition of objects
     if (defined($rsp_info->{data}) && scalar(@{$rsp_info->{data}}) > 0) {
@@ -2985,8 +3015,8 @@ sub defls
         Example:
 
         Comments:
-			Object names to remove are derived from -o, -t, w, -a, -f,
-				 or noderange!
+            Object names to remove are derived from -o, -t, w, -a, -f,
+                 or noderange!
 =cut
 
 #-----------------------------------------------------------------------------
@@ -3006,19 +3036,19 @@ sub defrm
     {
 
         # rc: 0 - ok, 1 - return, 2 - help, 3 - error
-		# 0 - continue
-		# 1 - return  (like for version option)
-		# 2 - return with usage
-		# 3 - return error
-		if ($rc == 1) {
-			return 0;
-		} elsif ($rc == 2) {
-			&defrm_usage;
-			return 0;
-		} elsif ($rc == 3) {
-			return 1;
-		}
-	}
+        # 0 - continue
+        # 1 - return  (like for version option)
+        # 2 - return with usage
+        # 3 - return error
+        if ($rc == 1) {
+            return 0;
+        } elsif ($rc == 2) {
+            &defrm_usage;
+            return 0;
+        } elsif ($rc == 3) {
+            return 1;
+        }
+    }
 
 
     if ($::opt_a && !$::opt_f)
@@ -3036,11 +3066,11 @@ sub defrm
     #
 
     # the list of objects to remove could have come from: the arg list,
-    #	opt_o, a noderange, opt_t, or opt_a. (rmdef doesn't take file
-    #	input)
+    #    opt_o, a noderange, opt_t, or opt_a. (rmdef doesn't take file
+    #    input)
 
     # if a set of objects was specifically provided on the cmd line then
-    #	there can only be one type value
+    #    there can only be one type value
     if ($::objectsfrom_opto || $::objectsfrom_nr || $::objectsfrom_args)
     {
         my $type = @::clobjtypes[0];
@@ -3104,7 +3134,7 @@ sub defrm
     }
 
     # if the object to remove is a group then the "groups" attr of
-    #	the memberlist nodes must be updated.
+    #    the memberlist nodes must be updated.
 
     my $numobjects = 0;
     my %objTypeLists;
@@ -3128,7 +3158,7 @@ sub defrm
         {
 
             # get the group object definition
-			my %ghash;
+            my %ghash;
             $ghash{$obj} = 'group';
             my @attrs = ('grouptype', 'wherevals');
             my %grphash = xCAT::DBobjUtils->getobjdefs(\%ghash, 0, \@attrs);
@@ -3148,8 +3178,8 @@ sub defrm
                 next;
             }
             # get the members list
-			#  all groups are "static" for now
-			$grphash{$obj}{'grouptype'} = "static";
+            #  all groups are "static" for now
+            $grphash{$obj}{'grouptype'} = "static";
             my $memberlist = xCAT::DBobjUtils->getGroupMembers($obj, \%grphash);
             my @members = split(',', $memberlist);
 
@@ -3188,7 +3218,7 @@ sub defrm
                 @gprslist = split(',', $nodehash{$m}{groups});
 
                 # make a new "groups" list for the node without the
-                #  	group that is being removed
+                #      group that is being removed
                 my $first = 1;
                 my $newgrps = "";
                 foreach my $grp (@gprslist)
