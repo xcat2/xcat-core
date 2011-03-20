@@ -52,7 +52,7 @@ sub handled_commands
             nr         => "tabutils",     # not implemented yet
             rnoderange => "tabutils",     # not implemented yet
             tabgrep    => "tabutils",
-	    gennr	=> "tabutils"
+            gennr    => "tabutils"
             };
 }
 
@@ -103,10 +103,10 @@ sub process_request
     {
         return nodech($nodes, $args, $callback, "groupch");
     }
-		elsif ($command eq "gennr") 
-		{
-				return gennr($nodes, $args, $callback);
-		}
+    elsif ($command eq "gennr") 
+    {
+        return gennr($nodes, $args, $callback);
+    }
     elsif ($command eq "nodech" or $command eq "chnode")
     {
         return nodech($nodes, $args, $callback, 0);
@@ -155,7 +155,7 @@ sub gettab
     my $NOTERSE;
 
     my $gettab_usage = sub {
-    	my $exitcode = shift @_;
+        my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage: gettab [-H|--with-fieldname] key=value,...  table.attribute ...";
         push @{$rsp{data}}, "       gettab [-?|-h|--help]";
@@ -163,8 +163,8 @@ sub gettab
         $callback->(\%rsp);
     };
 
-	# Process arguments
-	if (!defined($req->{arg})) { $gettab_usage->(1); return; }
+    # Process arguments
+    if (!defined($req->{arg})) { $gettab_usage->(1); return; }
     @ARGV = @{$req->{arg}};
     if (!GetOptions('h|?|help' => \$HELP,'H|with-fieldname' => \$NOTERSE)) { $gettab_usage->(1); return; }
 
@@ -233,7 +233,7 @@ sub noderm
     my $HELP;
 
     my $noderm_usage = sub {
-    	my $exitcode = shift @_;
+        my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage:";
         push @{$rsp{data}}, "  noderm noderange";
@@ -337,8 +337,8 @@ sub tabrestore
             {                    #Match empty, or end of line that is empty
                  #TODO: should we detect when there weren't enough CSV fields on a line to match colums?
                 if (!exists($auto_cols{$col})) {
-		    $record{$col} = undef;
-		}
+                $record{$col} = undef;
+            }
                 $line =~ s/^,//;
             }
             elsif ($line =~ /^[^,]*"/)
@@ -406,10 +406,10 @@ sub tabrestore
                             chop $ent;
                             $ent = substr($ent, 1);
                             $ent =~ s/""/"/g;
-			    if (!exists($auto_cols{$col}))
+                            if (!exists($auto_cols{$col}))
                             {
-			        $record{$col} = $ent;
-			    }
+                                $record{$col} = $ent;
+                            }
                         }
                         else
                         {
@@ -428,10 +428,10 @@ sub tabrestore
             }
             elsif ($line =~ /^([^,]+)/)
             {    #easiest case, no Text::Balanced needed..
-		if (!exists($auto_cols{$col}))
+                if (!exists($auto_cols{$col}))
                 {
-		    $record{$col} = $1;
-		}
+                    $record{$col} = $1;
+                }
                 $line =~ s/^([^,]+)(,|$)//;
             }
         }
@@ -473,7 +473,7 @@ sub tabdump
     my $DESC;
 
     my $tabdump_usage = sub {
-    	my $exitcode = shift @_;
+        my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage: tabdump [-d] [table]";
         push @{$rsp{data}}, "       tabdump [-?|-h|--help]";
@@ -481,7 +481,7 @@ sub tabdump
         $cb->(\%rsp);
     };
 
-	# Process arguments
+    # Process arguments
     if ($args) {
         @ARGV = @{$args};
     }
@@ -493,32 +493,32 @@ sub tabdump
     my %rsp;
     # If no arguments given, we display a list of the tables
     if (!scalar(@ARGV)) {
-    	if ($DESC) {  # display the description of each table
-    		my $tab = xCAT::Table->getDescriptions();
-    		foreach my $key (keys %$tab) {
-    			my $space = (length($key)<7 ? "\t\t" : "\t");
-    			push @{$rsp{data}}, "$key:$space".$tab->{$key}."\n";
-    		}
-    	}
-    	else { push @{$rsp{data}}, xCAT::Table->getTableList(); }   # if no descriptions, just display the list of table names
-    	@{$rsp{data}} = sort @{$rsp{data}};
-		if ($DESC && scalar(@{$rsp{data}})) { chop($rsp{data}->[scalar(@{$rsp{data}})-1]); }   # remove the final newline
+        if ($DESC) {  # display the description of each table
+            my $tab = xCAT::Table->getDescriptions();
+            foreach my $key (keys %$tab) {
+                my $space = (length($key)<7 ? "\t\t" : "\t");
+                push @{$rsp{data}}, "$key:$space".$tab->{$key}."\n";
+            }
+        }
+        else { push @{$rsp{data}}, xCAT::Table->getTableList(); }   # if no descriptions, just display the list of table names
+        @{$rsp{data}} = sort @{$rsp{data}};
+        if ($DESC && scalar(@{$rsp{data}})) { chop($rsp{data}->[scalar(@{$rsp{data}})-1]); }   # remove the final newline
         $cb->(\%rsp);
-    	return;
+        return;
     }
 
     $table = $ARGV[0];
     if ($DESC) {     # only show the attribute descriptions, not the values
-    	my $schema = xCAT::Table->getTableSchema($table);
-    	if (!$schema) { $cb->({error => "table $table does not exist.",errorcode=>1}); return; }
-		my $desc = $schema->{descriptions};
-		foreach my $c (@{$schema->{cols}}) {
-			my $space = (length($c)<7 ? "\t\t" : "\t");
-			push @{$rsp{data}}, "$c:$space".$desc->{$c}."\n";
-		}
-		if (scalar(@{$rsp{data}})) { chop($rsp{data}->[scalar(@{$rsp{data}})-1]); }   # remove the final newline
+        my $schema = xCAT::Table->getTableSchema($table);
+        if (!$schema) { $cb->({error => "table $table does not exist.",errorcode=>1}); return; }
+        my $desc = $schema->{descriptions};
+        foreach my $c (@{$schema->{cols}}) {
+            my $space = (length($c)<7 ? "\t\t" : "\t");
+            push @{$rsp{data}}, "$c:$space".$desc->{$c}."\n";
+        }
+        if (scalar(@{$rsp{data}})) { chop($rsp{data}->[scalar(@{$rsp{data}})-1]); }   # remove the final newline
         $cb->(\%rsp);
-		return;
+        return;
     }
 
 
@@ -535,8 +535,8 @@ sub tabdump
     {
         if (defined($xCAT::Schema::tabspec{$table}))
         {
-        	$tabdump_header->(@{$xCAT::Schema::tabspec{$table}->{cols}});
-        	$cb->(\%rsp);
+            $tabdump_header->(@{$xCAT::Schema::tabspec{$table}->{cols}});
+            $cb->(\%rsp);
             return;
         }
         $cb->({error => "No such table: $table",errorcode=>1});
@@ -549,8 +549,8 @@ sub tabdump
     {
         if (defined($xCAT::Schema::tabspec{$table}))
         {
-        	$tabdump_header->(@{$xCAT::Schema::tabspec{$table}->{cols}});
-        	$cb->(\%rsp);
+            $tabdump_header->(@{$xCAT::Schema::tabspec{$table}->{cols}});
+            $cb->(\%rsp);
             return;
         }
     }
@@ -570,7 +570,7 @@ sub lsxcatd
     my $rc=0;
 
     my $lsxcatd_usage = sub {
-    	my $exitcode = shift @_;
+        my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "       lsxcatd [-v|--version]";
         push @{$rsp{data}}, "       lsxcatd [-h|--help]";
@@ -580,7 +580,7 @@ sub lsxcatd
         $cb->(\%rsp);
     };
 
-	# Process arguments
+    # Process arguments
     if ($args) {
         @ARGV = @{$args};
     }
@@ -660,7 +660,7 @@ sub tabprune
     my $rc=0;
 
     my $tabprune_usage = sub {
-    	my $exitcode = shift @_;
+        my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage: tabprune <eventlog | auditlog > [-V] -a";
         push @{$rsp{data}}, "       tabprune <eventlog | auditlog > [-V] -n <# of records>";
@@ -672,7 +672,7 @@ sub tabprune
         $cb->(\%rsp);
     };
 
-	# Process arguments
+    # Process arguments
     if ($args) {
         @ARGV = @{$args};
     }
@@ -914,7 +914,7 @@ sub output_table {
         {
             if (defined $rec->{$_})
             {
-            	$rec->{$_} =~ s/"/""/g;
+                $rec->{$_} =~ s/"/""/g;
                 $line = $line . '"' . $rec->{$_} . '",';
             }
             else
@@ -1069,18 +1069,18 @@ sub nodech
 
     my $nodech_usage = sub
     {
-    	my $exitcode = shift @_;
-    	my $addmode = shift @_;
+        my $exitcode = shift @_;
+        my $addmode = shift @_;
         my $groupmode = shift @_;
-    	my $cmdname = $addmode ? 'nodeadd' : ($groupmode ? 'nodegrpch' : 'nodech');
+        my $cmdname = $addmode ? 'nodeadd' : ($groupmode ? 'nodegrpch' : 'nodech');
         my %rsp;
         if ($addmode) {
-        	push @{$rsp{data}}, "Usage: $cmdname <noderange> groups=<groupnames> [table.column=value] [...]";
+            push @{$rsp{data}}, "Usage: $cmdname <noderange> groups=<groupnames> [table.column=value] [...]";
         } elsif ($groupmode) {
-        	push @{$rsp{data}}, "Usage: $cmdname <group1,group2,...> [table.column=value] [...]";
+            push @{$rsp{data}}, "Usage: $cmdname <group1,group2,...> [table.column=value] [...]";
         } else {
-        	push @{$rsp{data}}, "Usage: $cmdname <noderange> table.column=value [...]";
-        	push @{$rsp{data}}, "       $cmdname {-d | --delete} <noderange> <table> [...]";
+            push @{$rsp{data}}, "Usage: $cmdname <noderange> table.column=value [...]";
+            push @{$rsp{data}}, "       $cmdname {-d | --delete} <noderange> <table> [...]";
         }
         push @{$rsp{data}}, "       $cmdname {-v | --version}";
         push @{$rsp{data}}, "       $cmdname [-? | -h | --help]";
@@ -1124,8 +1124,8 @@ sub nodech
 
     if ($addmode)
     {
-    	my $nr = shift @ARGV;
-    	$nodes = [noderange($nr, 0)];
+        my $nr = shift @ARGV;
+        $nodes = [noderange($nr, 0)];
         unless ($nodes) {
             $callback->({error => "No noderange to add.\n",errorcode=>1});
             return;
@@ -1275,7 +1275,7 @@ sub nodech
         my $tabhdl = xCAT::Table->new($tab, -create => 1, -autocommit => 0);
         if ($tabhdl)
         {
-	    my $changed=0;
+        my $changed=0;
             my @entities;
             if ($groupmode) {
                 @entities = @groups;
@@ -1286,16 +1286,16 @@ sub nodech
             foreach $entity (@entities) {
                 if ($deletemode) {
                     $tabhdl->delEntries({'node' => $entity});
-		    $changed=1;
+                    $changed=1;
                 } else {
                     #$tabhdl->setNodeAttribs($_,$tables{$tab});
                     my %uhsh;
-                    foreach (keys %{$tables{$tab}})		# for each column specified for this table
+                    foreach (keys %{$tables{$tab}})        # for each column specified for this table
                     {
                         #my $op  = $tables{$tab}->{$_}->[1];
                         #my $val = $tables{$tab}->{$_}->[0];
                         my @valoppairs = @{$tables{$tab}->{$_}}; #Deep copy
-                        while (scalar(@valoppairs)) {			# alternating list of value and op for this table.column
+                        while (scalar(@valoppairs)) {            # alternating list of value and op for this table.column
                             my $val = shift @valoppairs;
                             my $op  = shift @valoppairs;
                             my $key = $_;
@@ -1365,8 +1365,8 @@ sub nodech
                                     }
                                 }    #else, what they asked for is the case alredy
                             }
-                        }		# end of while @valoppairs
-                    }		# end of foreach column specified for this table
+                        }        # end of while @valoppairs
+                    }        # end of foreach column specified for this table
 
                     if (keys %uhsh)
                     {
@@ -1381,14 +1381,14 @@ sub nodech
                                 $clrhash{$_}="";    
                             }
                             $tabhdl->setAttribs({node=>$entity},\%uhsh);
-			    $changed=1;
+                            $changed=1;
                             $nodes = [noderange($entity)];
                             unless (scalar @$nodes) { next; }
                             $tabhdl->setNodesAttribs($nodes,\%clrhash);
-			    $changed=1;
+                            $changed=1;
                         } else {
                             my @rc = $tabhdl->setNodeAttribs($entity, \%uhsh);
-			    $changed=1;
+                            $changed=1;
                             if (not defined($rc[0])) {
                                 $callback->({error => "DB error " . $rc[1],errorcode=>1});
                             }
@@ -1396,9 +1396,9 @@ sub nodech
                     }
                 }
             }
-	    if ($changed) {
-		$tabhdl->commit;
-	    }
+            if ($changed) {
+                $tabhdl->commit;
+            }
         }
         else
         {
@@ -1412,19 +1412,19 @@ sub nodech
 # gennr linked to xcatclientnnr and is used to generate a list of nodes
 # external to the database.
 sub gennr {
-	my $nodes = shift;
-	my $args = shift;
-	my $callback = shift;
-	@ARGV = @{$args};
-	my $nr = shift @ARGV;
-	$nodes = [noderange($nr, 0)];
-	my %rsp;	# for output.
-	foreach (@$nodes){
-		#print $_ . "\n";
-		push @{$rsp{data}}, $_;
-		
-	}
-	$callback->(\%rsp);
+    my $nodes = shift;
+    my $args = shift;
+    my $callback = shift;
+    @ARGV = @{$args};
+    my $nr = shift @ARGV;
+    $nodes = [noderange($nr, 0)];
+    my %rsp;    # for output.
+    foreach (@$nodes){
+        #print $_ . "\n";
+        push @{$rsp{data}}, $_;
+        
+    }
+    $callback->(\%rsp);
 }
 
 sub tabgrep
@@ -1490,7 +1490,7 @@ sub nodels
 
     my $nodels_usage = sub 
     {
-    	my $exitcode = shift @_;
+        my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage:";
         push @{$rsp{data}}, "  nodels [noderange] [-b|--blame] [-H|--with-fieldname] [table.attribute | shortname] [-S][...]";
@@ -1749,12 +1749,12 @@ sub nodels
         {
             my @attribs = ("node");
             my @ents    = $nodelisttab->getAllAttribs(@attribs);
-	        my @nodes;
+            my @nodes;
             foreach (@ents) {
-         	    if ($_->{node}) {
-			        push @nodes, $_->{node};
-		        }
-	        }
+                 if ($_->{node}) {
+                    push @nodes, $_->{node};
+                }
+            }
             #-S will make nodels not show FSPs and BPAs
             my @newnodes = ();
             if (!defined($HIDDEN))
@@ -1775,8 +1775,8 @@ sub nodels
                     push (@nodes, $_);
                 }
             }
-	        @nodes = sort {$a cmp $b} @nodes;
-	        foreach (@nodes) {
+            @nodes = sort {$a cmp $b} @nodes;
+            foreach (@nodes) {
                 my $rsp;
                 #if ($_)
                 #{
@@ -1798,76 +1798,76 @@ sub nodels
 #########
 
 sub tabch {
-	my $args = shift;
-	my $callback = shift;
-	my @ARGV = @{$args};
-	my $delete = 0;
-	if ($ARGV[0] =~ /^-d$/){
-		shift @ARGV;
-		$delete = 1;
-	}
-	
-	my $target = shift @ARGV;
-	my %tables;
-	my %keyhash=();
-	my @keypairs=split(/,/,$target);
-	if ($keypairs[0] !~ /([^\.\=]+)\.([^\.\=]+)\=(.+)/) {
-		foreach (@keypairs) {
-			m/(.*)=(.*)/;
-			my $key=$1;
-			my $val=$2;
-			$keyhash{$key}=$val;
-		}
-	} else {
-		unshift(@ARGV, $target);
-	}
+    my $args = shift;
+    my $callback = shift;
+    my @ARGV = @{$args};
+    my $delete = 0;
+    if ($ARGV[0] =~ /^-d$/){
+        shift @ARGV;
+        $delete = 1;
+    }
+    
+    my $target = shift @ARGV;
+    my %tables;
+    my %keyhash=();
+    my @keypairs=split(/,/,$target);
+    if ($keypairs[0] !~ /([^\.\=]+)\.([^\.\=]+)\=(.+)/) {
+        foreach (@keypairs) {
+            m/(.*)=(.*)/;
+            my $key=$1;
+            my $val=$2;
+            $keyhash{$key}=$val;
+        }
+    } else {
+        unshift(@ARGV, $target);
+    }
 
-	if($delete){
-		my @tables_to_del=@ARGV;
-		if(@tables_to_del == 0){
-			$callback->({error => ["Missing table name."],errorcode=>[1]});
-			return;
-		}
+    if($delete){
+        my @tables_to_del=@ARGV;
+        if(@tables_to_del == 0){
+            $callback->({error => ["Missing table name."],errorcode=>[1]});
+            return;
+        }
 
-		for(@tables_to_del){
-			$tables{$_} = xCAT::Table->new($_,-create=> 1,-autocommit => 0);
-			$tables{$_}->delEntries(\%keyhash);
-			$tables{$_}->commit;
-		}
-	}else{	
-		my %tableupdates;
-		for (@ARGV) {
-			my $temp;
-			my $table;
-			my $column;
-			my $value;
-			($table,$temp) = split('\.',$_,2);
-			($column,$value) = split("=",$temp,2);
-			unless ($tables{$table}) {
-				my $tab = xCAT::Table->new($table,-create => 1,-autocommit => 0);
-				if ($tab) {
-					$tables{$table}=$tab;
-				} else {
-					$callback->({error => [ "Table $table does not exist."],errorcode=>[1]});
-				}
-			}
-		$tableupdates{$table}{$column}=$value;
-			$tableupdates{$table}{$column}=$value;
-		}
-  	#commit all the changes
-  	foreach (keys %tables) {
-    	if (exists($tableupdates{$_})) {
-    		$tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
-			}
-			$tables{$_}->commit;
-		}
+        for(@tables_to_del){
+            $tables{$_} = xCAT::Table->new($_,-create=> 1,-autocommit => 0);
+            $tables{$_}->delEntries(\%keyhash);
+            $tables{$_}->commit;
+        }
+    }else{    
+        my %tableupdates;
+        for (@ARGV) {
+            my $temp;
+            my $table;
+            my $column;
+            my $value;
+            ($table,$temp) = split('\.',$_,2);
+            ($column,$value) = split("=",$temp,2);
+            unless ($tables{$table}) {
+                my $tab = xCAT::Table->new($table,-create => 1,-autocommit => 0);
+                if ($tab) {
+                    $tables{$table}=$tab;
+                } else {
+                    $callback->({error => [ "Table $table does not exist."],errorcode=>[1]});
+                }
+            }
+            $tableupdates{$table}{$column}=$value;
+            $tableupdates{$table}{$column}=$value;
+        }
+      #commit all the changes
+      foreach (keys %tables) {
+        if (exists($tableupdates{$_})) {
+            $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+            }
+            $tables{$_}->commit;
+        }
 
-		#commit all the changes
-		foreach (keys %tables) {
-			if (exists($tableupdates{$_})) {
-				$tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
-			}
-			$tables{$_}->commit;
-		}
-	}
+        #commit all the changes
+        foreach (keys %tables) {
+            if (exists($tableupdates{$_})) {
+                $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
+            }
+            $tables{$_}->commit;
+        }
+    }
 }
