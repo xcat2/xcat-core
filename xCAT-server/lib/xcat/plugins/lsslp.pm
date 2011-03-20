@@ -23,6 +23,7 @@ use constant {
     SOFTWARE_SERVICE => "service:management-software.IBM",
     WILDCARD_SERVICE => "service:management-*",
     P6_SERVICE       => "service:management-hardware.IBM",
+    P7_SERVICE       => "service:management-software.IBM",
     SERVICE_FSP      => "cec-service-processor",
     SERVICE_BPA      => "bulk-power-controller",
     SERVICE_CEC      => "null",
@@ -3164,7 +3165,7 @@ sub runcmd {
     my $cmd      = shift;
     my $services = shift;
     my $callback = $request->{callback};
-    my @services = ( WILDCARD_SERVICE, P6_SERVICE );
+    my @services = ( WILDCARD_SERVICE, P6_SERVICE, P7_SERVICE );
     my $start;
 
     ###########################################
