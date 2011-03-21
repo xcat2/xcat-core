@@ -603,7 +603,11 @@ sub decode_manufacturer {
     unless ($code) {
         return "Malformed SPD";
     }
-    return $jedec_ids->[$arr_index]->{$code};
+    if (defined $jedec_ids->[$arr_index]->{$code}) {
+    	return $jedec_ids->[$arr_index]->{$code};
+    } else {
+    	return "Unrecognized manufacturer: $arr_index, $code";
+    }
 }
 
 
