@@ -11,6 +11,7 @@ use IO::Select;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
 use xCAT::PPCdb;
+use xCAT::NodeRange;
 
 require xCAT::MacMap;
 require xCAT_plugin::blade;
@@ -236,9 +237,21 @@ sub parse_args {
     #############################################
     # Check for switch "-" with no option
     #############################################
-    if ( grep(/^-$/, @ARGV )) {
-        return(usage( "Missing option: -" ));
+    #if ( grep(/^-$/, @ARGV )) {
+    #    return(usage( "Missing option: -" ));
+    #}
+    #############################################
+    # Check for node range
+    #############################################
+    if ( scalar(@ARGV) eq 1 ) {
+        my @nodes = xCAT::NodeRange::noderange( @ARGV );
+        foreach (@nodes)  {
+            push @filternodes, $_;
+        }
+    } elsif ( scalar(@ARGV) > 1 ) {
+        return(usage( "Invalid flag, please check and retry." ));      
     }
+    
     #############################################
     # Set convergence
     #############################################
@@ -3306,15 +3319,7 @@ sub preprocess_request {
     my $callback=shift;
     my @requests;
 
-    ####################################
-    # Prompt for usage if needed
-    ####################################
-    my $noderange = $req->{node}; #Should be arrayref
-    foreach (@$noderange) 
-    {
-        push @filternodes, $_;
-    }
-    
+
     my $command = $req->{command}->[0];
     my $extrargs = $req->{arg};
     my @exargs=($req->{arg});
@@ -3729,14 +3734,13 @@ sub copypasswd {
 sub filter {
     my $oldhash = shift;
     my $newhash;
-    
-        foreach (@filternodes)
-        {
-            if ( exists($oldhash->{$_} ))
-            {        
-                $newhash->{$_} = $oldhash->{$_};
+    foreach my $n(@filternodes) {
+	    for my $foundnode ( keys %$oldhash ) {
+            if ( $foundnode =~ /\Q$n\E/ )  {        
+                $newhash->{$foundnode} = $oldhash->{$foundnode};
             }
-        }   
+        }	
+    }   
     return $newhash;        
 }
 1;
