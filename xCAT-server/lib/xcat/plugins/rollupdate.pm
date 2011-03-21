@@ -136,6 +136,9 @@ sub process_request {
     $::SUBREQ   = shift;
     my $ret;
 
+    # ENV variable required by all LL commands
+    $ENV{'EXTSHM'} = 'ON';
+
     # globals used by all subroutines.
     $::command   = $::request->{command}->[0];
     $::args      = $::request->{arg};
@@ -2602,13 +2605,7 @@ sub llreconfig {
         if ( $llattr =~ /RESOURCE_MGR_LIST/ ) {
             $llrms = $llval; }
     }
-    ######
-    ###  WORKAROUND FOR LL BUG
-    ###  The "EXTSHM=ON" is a workaround for a LL bug
-    ###  This must be set when calling llrctl from xcatd
-    ######
-    #$cmd = "llrctl reconfig";
-    $cmd = "export EXTSHM=ON;llrctl reconfig";
+    $cmd = "llrctl reconfig";
     my @llms = split(/\s+/,$llcms." ".$llrms);
     my %have = ();
     my @llnodes;
