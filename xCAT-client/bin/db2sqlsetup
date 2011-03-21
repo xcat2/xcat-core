@@ -114,7 +114,6 @@ if ($::VERSION)
 }
 
 
-
 #
 # Get OS
 #
@@ -609,28 +608,45 @@ sub mkdb2user
     #
 
     my $cmd;
+    my $makeuser;
     if ($::osname eq 'AIX')
     {
-        $cmd = "lsgroup xcatdb";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)
-        {
-
-            #group does not exist, need to make it
-            $cmd = "mkgroup xcatdb";
-            xCAT::Utils->runcmd($cmd, 0);
-            if ($::RUNCMD_RC != 0)
-            {
-                xCAT::MsgUtils->message("SE", " $cmd failed.");
-                exit(1);
-            }
-        }
         $cmd = "lsuser xcatdb";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
+          $makeuser =1;  # user does not exist
+        } else {   # user exists but check to see if home directory exist
+            my $homedir = xCAT::Utils->getHomeDir("xcatdb");
+            if (!(-e $homedir)) { # if it does not exist
+              $cmd = "rmuser xcatdb";  # we need to remake the user
+              xCAT::Utils->runcmd($cmd, 0);
+              if ($::RUNCMD_RC != 0)
+              {
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
+                exit(1);
+              }
+              $makeuser =1;  
+              
+            } else { # user ok , home dir ok
+              $makeuser =0;  
+            }
+        }
+        if ($makeuser ==1) {
+           $cmd = "lsgroup xcatdb";
+           xCAT::Utils->runcmd($cmd, -1);
+           if ($::RUNCMD_RC != 0)
+           {
 
-            #user does not exist, need to make it
+              #group does not exist, need to make it
+              $cmd = "mkgroup xcatdb";
+              xCAT::Utils->runcmd($cmd, 0);
+              if ($::RUNCMD_RC != 0)
+              {
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
+                exit(1);
+              }
+            }
             $cmd = "mkuser pgrp=xcatdb home=$::databaseloc shell=/bin/ksh xcatdb";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -669,10 +685,32 @@ sub mkdb2user
     else
     {    # Linux
 
-        $cmd = "egrep -i \"^xcatdb:\" /etc/group";
+        $cmd = "egrep -i \"^xcatdb:\" /etc/passwd";
         xCAT::Utils->runcmd($cmd, -1);
         if ($::RUNCMD_RC != 0)
         {
+          $makeuser =1;  # user does not exist
+        } else {   # user exists but check to see if home directory exist
+            my $homedir = xCAT::Utils->getHomeDir("xcatdb");
+            if (!(-e $homedir)) { # if it does not exist
+              $cmd = "userdel xcatdb";  # we need to remake the user
+              xCAT::Utils->runcmd($cmd, 0);
+              if ($::RUNCMD_RC != 0)
+              {
+                xCAT::MsgUtils->message("SE", " $cmd failed.");
+                exit(1);
+              }
+              $makeuser =1;  # user does not exist
+              
+            } else { # user ok , home dir ok
+              $makeuser =0;  
+            }
+        }
+        if ($makeuser ==1) {
+          $cmd = "egrep -i \"^xcatdb:\" /etc/group";
+          xCAT::Utils->runcmd($cmd, -1);
+          if ($::RUNCMD_RC != 0)
+          {
 
             #group does not exist, need to make it
             $cmd = "groupadd  xcatdb";
@@ -682,13 +720,9 @@ sub mkdb2user
                 xCAT::MsgUtils->message("SE", " $cmd failed.");
                 exit(1);
             }
-        }
-        $cmd = "egrep -i \"^xcatdb:\" /etc/passwd";
-        xCAT::Utils->runcmd($cmd, -1);
-        if ($::RUNCMD_RC != 0)
-        {
+          }
 
-            #user does not exist, need to make it
+          #user does not exist, need to make it
             $cmd = "useradd -d $::databaseloc -g xcatdb -m -s /bin/bash xcatdb";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
@@ -709,6 +743,7 @@ sub mkdb2user
             exit(1);
         }
     }
+
 }
 
 #-----------------------------------------------------------------------------
