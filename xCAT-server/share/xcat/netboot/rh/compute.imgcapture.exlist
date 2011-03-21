@@ -1,0 +1,6 @@
+./tmp*
+./proc*
+./dev*
+./sys*
+./install*
+./xcatpost*

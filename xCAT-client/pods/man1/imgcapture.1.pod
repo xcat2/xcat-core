@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<imgcapture> - Captures an image from one running diskful Linux node, prepares the rootimg directory, kernel and initial ramdisks for the B<liteimg>/B<packimage> command to generate the statelite/stateless rootimg.
+B<imgcapture> - Captures an image from a Linux diskful node and create a diskless image on the management node.
 
 =head1 SYNOPSIS
 
@@ -20,11 +20,11 @@ The default files/directories excluded in the image are specified by /opt/xcat/s
 
 The image captured will be extracted into the /<I<installroot>>/netboot/<B<osver>>/<B<arch>>/<B<profile>>/rootimg directory. 
 
-After the B<imgcapture> command returns without any errors, you can customize the rootimg and run the B<liteimg>/B<packimage> command for your own request.
+After the B<imgcapture> command returns without any errors, you can customize the rootimg and run the B<liteimg>/B<packimage> command with the options you want.
 
 =head1 OPTIONS
 
-=over 12
+=over 4
 
 =item B<-p|--profile> I<profile> 
 
@@ -82,15 +82,15 @@ B<node1> is one diskful Linux node, which is managed by xCAT.
 
 1. In order to create the image, run the following command:
 
-    imgcapture node1
+imgcapture node1
 
 2. In order to create the image with B<hpc> as profile, run the command:
 
-    imgcapture node1 -p hpc
+imgcapture node1 -p hpc
 
 3. Create the image: its profile is B<hpc>, and the network interface the diskless node will boot over is B<eth0>, the driver modules for this network interface is B<e1000e>.
 
-    imgcapture node1 -p hpc -i eth0 -n e1000e
+imgcapture node1 -p hpc -i eth0 -n e1000e
  
 =head1 FILES
 

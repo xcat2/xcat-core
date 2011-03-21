@@ -43,13 +43,14 @@ sub process_request {
     @ARGV = @{$request->{arg}} if (defined $request->{arg});
     my $argc = scalar @ARGV;
 
-    my $usage = "Usage: imgcapture <node> [-p | --profile <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [-V | --verbose] \n imgcapture [-h|--help] \n imgcapture [-v|--version]";
+    my $usage = "Usage: imgcapture <node> [-p | --profile <profile>] [-o|--osimage <osimage>] [-i <nodebootif>] [-n <nodenetdrivers>] [-V | --verbose] \n imgcapture [-h|--help] \n imgcapture [-v|--version]";
 
     my $os;
     my $arch;
     my $profile;
     my $bootif;
     my $netdriver;
+    my $osimg;
     my $help;
     my $version;
 
@@ -57,6 +58,7 @@ sub process_request {
         "profile|p=s" => \$profile,
         "i=s" => \$bootif,
         'n=s' => \$netdriver,
+        'osimage|o=s' => \$osimg,
         "help|h" => \$help,
         "version|v" => \$version,
         "verbose|V" => \$verbose
@@ -91,12 +93,57 @@ sub process_request {
     unless($profile) {
         $profile = $ref_nodetype->{profile};
     }
+
+    # check whether the osimage exists or not
+    if($osimg) {
+        my $osimgtab=xCAT::Table->new('osimage', -create=>1);
+        unless($osimgtab) {
+            # the osimage table doesn't exist
+            my $rsp = {};
+            $rsp->{data}->[0] = qq{Cannot open the osimage table};
+            $xCAT::MsgUtils->message("E", $rsp, $callback);
+            return;
+        }
+
+        my $linuximgtab = xCAT::Table->new('linuximage', -create=>1);
+        unless($linuximgtab) {
+            # the linuximage table doesn't exist
+            my $rsp = {};
+            $rsp->{data}->[0] = qq{Cannot open the linuximage table};
+            $xCAT::MsgUtils->message("E", $rsp, $callback);
+            return;
+        }
+
+        my ($ref) = $osimgtab->getAttribs({imagename => $osimg}, 'osvers', 'osarch', 'profile');
+        unless($ref) {
+            my $rsp = {};
+            $rsp->{data}->[0] = qq{Cannot find $osimg from the osimage table.};
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return;
+        }
+
+        my ($ref1) = $linuximgtab->getAttribs({imagename => $osimg}, 'comments');
+        unless($ref1) {
+            my $rsp = {};
+            $rsp->{data}->[0] = qq{Cannot find $osimg from the linuximage table};
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return;
+        }
+
+        # make sure the "osvers" and "osarch" attributes match the node's attribute
+        unless($os eq $ref->{'osvers'} and $arch eq $ref->{'osarch'}) {
+            my $rsp = {};
+            $rsp->{data}->[0] = qq{The 'osvers' or 'osarch' attribute of the "$osimg" table doesn't match the node's attribute};
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return;
+        }
+    }
     
-    imgcapture($node, $os, $arch, $profile, $bootif, $netdriver, $callback, $doreq);
+    imgcapture($node, $os, $arch, $profile, $osimg, $bootif, $netdriver, $callback, $doreq);
 }
 
 sub imgcapture {
-    my ($node, $os, $arch, $profile, $bootif, $netdriver, $callback, $subreq) = @_;
+    my ($node, $os, $arch, $profile, $osimg, $bootif, $netdriver, $callback, $subreq) = @_;
     if($verbose) {
         my $rsp = {};
         $rsp->{data}->[0] = "nodename is $node; os is $os; arch is $arch; profile is $profile";
@@ -164,6 +211,7 @@ sub imgcapture {
 
         while(<$exlist>) {
             $_ =~ s/^\s+//;
+            chomp $_;
             unless($_ =~ m{^#}) {
                 $excludestr .= qq{ ! -path "$_"};
             }
@@ -172,7 +220,7 @@ sub imgcapture {
         close $exlist;
     } else {
         # the following directories must be exluded when capturing the image
-        my @default_exlist = ("./tmp*", "./proc*", "./sys*", "./dev*", "./xcatpost*", "./install*");
+        my @default_exlist = ("./tmp/", "./proc/", "./sys/", "./dev/", "./xcatpost/", "./install/");
         foreach my $item (@default_exlist) {
             $excludestr .= qq{ ! -path "$item"};
         }
@@ -201,12 +249,17 @@ sub imgcapture {
         return;
     }
 
-    xCAT::Utils->runxcmd({command => ["xdsh"], node => [$node], arg => [$excludestr]}, $subreq, -1, 1);
+    my $rsp = {};
+    $rsp->{data}->[0] = qq{Capturing image on $node...};
+    xCAT::MsgUtils->message("D", $rsp, $callback);
+
     if($verbose) {
         my $rsp = {};
         $rsp->{data}->[0] = qq{running "$excludestr" on $node via the "xdsh" command};
         xCAT::MsgUtils->message("D", $rsp, $callback);
     }
+
+    xCAT::Utils->runxcmd({command => ["xdsh"], node => [$node], arg => [$excludestr]}, $subreq, -1, 1);
 
     if($::RUNCMD_RC) { # the xdsh command fails
         my $rsp = {};
@@ -214,6 +267,10 @@ sub imgcapture {
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return;
     }
+
+    $rsp = {};
+    $rsp->{data}->[0] = qq{Transfering the image captured on $node back...};
+    xCAT::MsgUtils->message("D", $rsp, $callback);
 
     # copy the image captured on $node back via the "scp" command
     xCAT::Utils->runcmd("scp $node:$xcat_imgcapture_tmpfile $xcat_imgcapture_tmpfile");
@@ -229,6 +286,8 @@ sub imgcapture {
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return;
     }
+
+    xCAT::Utils->runxcmd({command => ["xdsh" ], node => [$node], arg => ["rm -f $xcat_imgcapture_tmpfile"]}, $subreq, -1, 1);
 
     # extract the $xcat_imgcapture_tmpfile file to /install/netboot/$os/$arch/$profile/rootimg
     my $rootimgdir = "$installroot/netboot/$os/$arch/$profile/rootimg";
@@ -276,16 +335,25 @@ sub imgcapture {
     # the next step is to call "genimage"
     my $platform = getplatform($os);
     if( -e "$::XCATROOT/share/xcat/netboot/$platform/genimage" ) {
-        my $cmd = "$::XCATROOT/share/xcat/netboot/$platform/genimage -o $os -a $arch -p $profile ";
+        my $cmd;
+
+        if( $osimg ) {
+            $cmd = "$::XCATROOT/share/xcat/netboot/$platform/genimage $osimg";
+        } else {
+            $cmd = "$::XCATROOT/share/xcat/netboot/$platform/genimage -o $os -a $arch -p $profile ";
+        }
+
         if($bootif) {
             $cmd .= "-i $bootif ";
         }
         if($netdriver) {
             $cmd .= "-n $netdriver";
         }
+
         my $rsp = {};
-        $rsp->{data}->[0] = qq{Generating kernel and initial ramdisks};
+        $rsp->{data}->[0] = qq{Generating kernel and initial ramdisks...};
         xCAT::MsgUtils->message("D", $rsp, $callback);
+
         if($verbose) {
             my $rsp = {};
             $rsp->{data}->[0] = qq{"The genimage command is: $cmd"};
@@ -298,6 +366,13 @@ sub imgcapture {
         xCAT::MsgUtils->message("E", $rsp, $callback);
         return;
     }
+
+    my $rsp = {};
+    $rsp->{data}->[0] = qq{"Done."};
+    xCAT::MsgUtils->message("D", $rsp, $callback);
+
+    unlink $xcat_imgcapture_tmpfile;
+
     return 0;
 }
 
