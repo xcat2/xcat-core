@@ -317,21 +317,6 @@ sub imgcapture {
         xCAT::MsgUtils->message("D", $rsp, $callback);
     }
 
-    my @spotslist = ("/tmp/", "/proc/", "/sys/", "/dev/");
-
-    if($verbose) {
-        my $rsp = {};
-        $rsp->{data}->[0] = qq{The spots to be restored in the image are:};
-        foreach (@spotslist) {
-            push @{$rsp->{data}}, $_;
-        }
-        xCAT::MsgUtils->message("D", $rsp, $callback);
-    }
-    # create the directories listed in @spotslist in the rootimg
-    foreach my $path (@spotslist) {
-        mkpath("$rootimgdir$path");
-    }   
-
     # the next step is to call "genimage"
     my $platform = getplatform($os);
     if( -e "$::XCATROOT/share/xcat/netboot/$platform/genimage" ) {
