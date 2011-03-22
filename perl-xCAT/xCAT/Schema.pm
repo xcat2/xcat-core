@@ -537,7 +537,7 @@ noderes => {
  },
   },
     switches => {
-        cols => [qw(switch snmpversion username password privacy auth comments disable)],
+        cols => [qw(switch snmpversion username password privacy auth linkports comments disable)],
         keys => [qw(switch)],
         nodecol => "switch",
         table_desc => 'Parameters to use when interrogating switches',
@@ -548,6 +548,7 @@ noderes => {
          password => 'The password or community string to use for SNMPv3 or SNMPv1 respectively.  Falls back to passwd table, and site snmpc value if using SNMPv1',
          privacy => 'The privacy protocol to use for v3.  DES is assumed if v3 enabled, as it is the most readily available.',
          auth => 'The authentication protocol to use for SNMPv3.  SHA is assumed if v3 enabled and this is unspecified',
+         linkports => 'The ports that connect to other switches. Currently, this column is only used by vlan configuration. The format is: "port_number:switch,port_number:switch...". Please refer to the switch table for details on how to specify the port numbers.',
         },
     },
 nodetype => {
