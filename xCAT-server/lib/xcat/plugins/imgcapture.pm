@@ -122,7 +122,7 @@ sub process_request {
             return;
         }
 
-        my ($ref1) = $linuximgtab->getAttribs({imagename => $osimg}, 'comments');
+        my ($ref1) = $linuximgtab->getAttribs({imagename => $osimg}, 'imagename');
         unless($ref1) {
             my $rsp = {};
             $rsp->{data}->[0] = qq{Cannot find $osimg from the linuximage table};
