@@ -6,6 +6,9 @@ use Carp qw(cluck confess);
 BEGIN
 {
     $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+     # Required when using DB2 as the xCAT database:
+     $ENV{'DB2INSTANCE'} = 'xcatdb';
+     $ENV{'EXTSHM'} = 'ON';
 }
 
 # if AIX - make sure we include perl 5.8.2 in INC path.

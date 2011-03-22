@@ -136,9 +136,6 @@ sub process_request {
     $::SUBREQ   = shift;
     my $ret;
 
-    # ENV variable required by all LL commands
-    $ENV{'EXTSHM'} = 'ON';
-
     # globals used by all subroutines.
     $::command   = $::request->{command}->[0];
     $::args      = $::request->{arg};
