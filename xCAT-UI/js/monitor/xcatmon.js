@@ -338,6 +338,7 @@ function loadXcatMonSetting(data){
 		var tableName="monsetting";
 		var tmp;
 		var tmp1;
+	var closeBtn=createButton("close");
 		// get the contain of the rows 
 		for (var i =0; i< dRows.length;i++){
 			
@@ -414,8 +415,16 @@ function loadXcatMonSetting(data){
 		//tmp=otherCont.length;
 		//tmp1=newCont;	
 		setDatatable(XcatmonTableId,dTable);
-
 		
+		// create the save dialog
+		var dialogSave=$('<div id="saveDialog" align="center">saving the configuration </div>');
+		dialogSave.append(createLoader());
+		addBar.append(dialogSave);
+		// open the dialog..modal is true
+		$("#saveDialog").dialog({modal: true});
+		// hide the cross...
+		$('.ui-dialog-titlebar-close').hide();
+
 		// pot the table name and the contain to the tabRestore.php
 		$.ajax({
 			type : 'POST',
@@ -426,10 +435,18 @@ function loadXcatMonSetting(data){
 				cont : newCont
 			},
 			success : function (data){
-				alert('changes saved');
+				// empty the dialog.add the close button
+				$("#saveDialog").empty().append('<p>The Configure has saved!</p>');
+				$("#saveDialog").append(closeBtn);
 			}
 
 		});
+	// close button function
+	closeBtn.bind('click',function(event){
+		$("#saveDialog").dialog("distroy");
+		$("#saveDialog").remove();
+
+	});
 
 		// clear the newCont
 		newCont=null;
