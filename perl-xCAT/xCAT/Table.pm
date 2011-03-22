@@ -2642,14 +2642,20 @@ sub getAllEntries
 
     Description:  Get all attributes with "where" clause
 
-    Warning, because we support mulitiple databases (SQLite,MySQL and DB2) that
+    When using a general Where clause with SQL statement then
+    because we support mulitiple databases (SQLite,MySQL and DB2) that
     require different syntax.  Any code using this routine,  must call the 
     Utils->getDBName routine and code the where clause that is appropriate for
     each supported database.
 
+    When the input is the array of attr<operator> val  strings, the routine will
+    build the correct Where clause for the database we are running. 
+
     Arguments:
        Database Handle
        Where clause
+       or 
+       array of attr<operator>val strings to be build into a Where clause
     Returns:
         Array of attributes
     Globals:
@@ -2657,10 +2663,20 @@ sub getAllEntries
     Error:
 
     Example:
+    General Where clause:
+
     $nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'node','group');
     returns  node and group attributes
     $nodelist->getAllAttribsWhere("groups like '%".$atom."%'",'ALL');
     returns  all attributes
+    
+    Input of attr<operator>val strings
+
+    $nodelist->getAllAttribsWhere(array of attr<operator> val,'node','group');
+    returns  node and group attributes
+    $nodelist->getAllAttribsWhere(array of attr<operator> val,'ALL');
+    returns  all attributes
+
     Comments:
         none
 
@@ -2675,11 +2691,18 @@ sub getAllAttribsWhere
     if ($dbworkerpid) {
         return dbc_call($self,'getAllAttribsWhere',@_);
     }
-    my $whereclause = shift;
+    my $clause = shift; 
+    my $whereclause; 
     my @attribs     = @_;
     my @results     = ();
     my $query;
     my $query2;
+    if(ref($clause) eq 'ARRAY'){
+      $whereclause = &buildWhereClause($clause);
+    } else {
+      $whereclause = $clause;
+    }
+
 
     # delimit the disable column based on the DB 
     my $disable= &delimitcol("disable");	
@@ -3569,6 +3592,98 @@ sub delimitcol {
       } 
     } 
     return $attrout;
+}
+#--------------------------------------------------------------------------
+
+=head3   
+
+    Description: buildwhereclause 
+
+    Arguments:
+                 Array of the following
+                   attr<operator> val  where the operator can be the following:
+                == 
+                != 
+                =~ 
+                !~ 
+                 >   
+                 <   
+                 >=  
+                 <=  
+
+    Returns:
+             Where clause with SQL appropriate for the running DB 
+    Globals:
+
+    Error:
+
+    Example:
+
+        my $whereclause=buildWhereClause(@array);
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub buildWhereClause {
+    my $attrvalstr=shift;   # array of atr<op>val strings
+    my $whereclause;        # Where Clause
+    my $firstpass=1;
+    foreach my $m (@{$attrvalstr})
+    {
+        my $attr;
+        my $val;
+        my $operator;
+        if ($firstpass == 1) { # first pass no AND
+           $firstpass = 0; 
+        } else {   # add an AND
+            $whereclause .=" AND ";
+        }
+        
+        if ($m =~ /^[^=]*\==/) { #attr==val
+            ($attr, $val) = split /==/,$m,2;
+            $operator=' = ';
+        } elsif ($m =~ /^[^=]*=~/) { #attr=~val
+            ($attr, $val) = split /=~/,$m,2;
+            $val =~ s/^\///;
+            $val =~ s/\/$//;
+            $operator=' like ';
+        } elsif ($m =~ /^[^=]*\!=/) { #attr!=val
+             ($attr,$val) = split /!=/,$m,2;
+            $operator=' != ';
+        } elsif ($m =~ /[^=]*!~/) { #attr!~val
+            ($attr,$val) = split /!~/,$m,2;
+            $val =~ s/^\///;
+            $val =~ s/\/$//;
+            $operator=' not like ';
+        } elsif ($m =~ /^[^=]*\<=/) { #attr<=val
+            ($attr, $val) = split /<=/,$m,2;
+            $operator=' <= ';
+        } elsif ($m =~ /^[^=]*\</) { #attr<val
+            ($attr, $val) = split /</,$m,2;
+            $operator=' < ';
+        } elsif ($m =~ /^[^=]*\>=/) { #attr>=val
+            ($attr, $val) = split />=/,$m,2;
+            $operator=' >= ';
+        } elsif ($m =~ /^[^=]*\>/) { #attr>val
+            ($attr, $val) = split />/,$m,2;
+            $operator=' > ';
+        } else {
+	   xCAT::MsgUtils->message("S", "Unsupported operator:$m  on -w flag input, could not build a Where Clause.");
+           $whereclause="";
+           return $whereclause;  
+        }
+	my $delimitedattr= &delimitcol($attr);	
+        $whereclause .=$delimitedattr;
+        $whereclause .=$operator;
+        #$whereclause .="(\'";
+        $whereclause .="\'";
+        $whereclause .=$val;
+        #$whereclause .="\')";
+        $whereclause .="\'";
+        
+    }  
+    return $whereclause;
+     
 }
 1;
 
