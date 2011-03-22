@@ -24,7 +24,8 @@ B<noderange>   The nodes which the user want to discover.
             If the user specify the noderange, lsslp will just return the nodes in 
 			the node range. Which means it will help to add the new nodes to the xCAT
 			database without modifying the existed definitions. But the nodes' name 
-			specified in noderange should be defined in database in advance. 
+			specified in noderange should be defined in database in advance. And please
+			do not use noderange with the flag -s.
 
 B<-c>          Convergence timeout.
             A value-list of 32 bit integers used as timeouts, in milliseconds, to
