@@ -1533,7 +1533,7 @@ sub addnet
             {
                 $gateway = $ent->{gateway};
 
-                if ($gateway eq '<myself>')
+                if ($gateway eq '<xcatmaster>')
                 {
                     if(xCAT::NetworkUtils->ip_forwarding_enabled())
                     {
@@ -1719,7 +1719,7 @@ sub gen_aix_net
     my @netent = ( "network $net $mask\n{\n");
     if ( $gateway)
     {
-        if ($gateway eq '<myself>')
+        if ($gateway eq '<xcatmaster>')
         {
             if(xCAT::NetworkUtils->ip_forwarding_enabled())
             {

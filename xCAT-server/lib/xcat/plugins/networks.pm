@@ -284,12 +284,12 @@ sub donets
                             }
                         }
 
-                        # set gateway to keyword <myself>,
+                        # set gateway to keyword <xcatmaster>,
                         # to indicate to use the cluster-facing ip address 
                         # on this management node or service node
                         if (!$gateway)
                         {
-                            $gateway = "<myself>";
+                            $gateway = "<xcatmaster>";
                         }
                         
     

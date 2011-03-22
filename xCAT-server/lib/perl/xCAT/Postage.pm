@@ -880,7 +880,7 @@ sub net_parms
         my $net  = $_->{'net'};
         my $mask = $_->{'mask'};
         my $gw   = $_->{'gateway'};
-        if($gw eq '<myself>')
+        if($gw eq '<xcatmaster>')
         {
              if(xCAT::NetworkUtils->ip_forwarding_enabled())
              {

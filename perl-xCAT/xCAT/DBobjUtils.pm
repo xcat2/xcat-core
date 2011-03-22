@@ -1938,7 +1938,7 @@ sub getNetwkInfo
 						$nethash{$node}{$attr} = $_->{$attr};
 					}
                                 }
-                                if($nethash{$node}{'gateway'} eq '<myself>')
+                                if($nethash{$node}{'gateway'} eq '<xcatmaster>')
                                 {
                                     if(xCAT::NetworkUtils->ip_forwarding_enabled())
                                     {
