@@ -444,6 +444,7 @@ sub process_request
     my $nodes     = $flatreq->{node};
 
     my $ip_forwarding_enabled = xCAT::NetworkUtils->ip_forwarding_enabled();
+    my $gwerr = 0;
     foreach my $fnode (keys %{$nethash})
     {
         if($nethash->{$fnode}->{'myselfgw'} eq '1')
@@ -454,10 +455,21 @@ sub process_request
             }
             else
             {
+                $gwerr = 1;
                 $nethash->{$fnode}->{'gateway'} = '';
             }
         }
      }
+
+    if($gwerr == 1)
+    {
+        my $rsp;
+
+        my $name = hostname();
+        my $msg = "The ipforwarding is not enabled on $name, it will not be able to act as default gateway for the compute nodes, check the ipforward setting in servicenode table or enable ipforwarding manually.\n"; 
+        push @{$rsp->{data}}, $msg;
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+    }
         
     # figure out which cmd and call the subroutine to process
     if ($command eq "mkdsklsnode")
