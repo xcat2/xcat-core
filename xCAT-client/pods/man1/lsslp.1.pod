@@ -9,7 +9,7 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp][--resetnet]>
+I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp][--resetnet]>
 
 
 =head1 DESCRIPTION
@@ -20,6 +20,11 @@ NOTE: SLP broadcast requests will propagate only within the subnet of the networ
 
 =head1 OPTIONS
 
+B<noderange>   The nodes which the user want to discover.
+            If the user specify the noderange, lsslp will just return the nodes in 
+			the node range. Which means it will help to add the new nodes to the xCAT
+			database without modifying the existed definitions. But the nodes' name 
+			specified in noderange should be defined in database in advance. 
 
 B<-c>          Convergence timeout.
             A value-list of 32 bit integers used as timeouts, in milliseconds, to
@@ -243,6 +248,16 @@ Output is similar to:
   FSP     8233-E8B    1000ECP        A-0   192.168.200.19                            192.168.200.19
   CEC     8205-E6B    1040C7P                                                        Server-8205-E6B-SN1040C7P
 
+8. To find the nodes within the user specified. Please make sure the noderange input have been defined in xCAT database.
+
+  lsslp cec1-cec3
+
+  device  type-model  serial-number  side  ip-addresses      hostname
+  CEC     9125-F2A    0262652        A-0   192.168.200.16      cec1
+  CEC     8233-E8B    1000ECP        A-0   192.168.200.19      cec2
+  CEC     8205-E6B    1040C7P        A-0   192.168.200.1       cec3
+
+  
 
 
 =head1 FILES
