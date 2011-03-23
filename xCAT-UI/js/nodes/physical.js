@@ -180,7 +180,7 @@ function fillList(nodeName){
 	}
 	
 	switch(graphicalNodeList[nodeName]['type']){
-		case 'bpa': {
+		case 'frame': {
 			if (undefined == bpaList[nodeName]){
 				bpaList[nodeName] = new Array();
 			}
@@ -201,7 +201,7 @@ function fillList(nodeName){
 			lparList[nodeName] = status;
 		}
 		break;
-		case 'fsp': {
+		case 'cec': {
 			if (undefined != fspList[nodeName]){
 				break;
 			}
