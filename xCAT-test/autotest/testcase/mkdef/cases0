@@ -136,7 +136,7 @@ end
 start:mkdef_t_o_error
 cmd:mkdef -t testtype -o testnode groups=all,aix
 check:rc!=0
-check:output=~Usage
+check:output=~Error
 end
 
 

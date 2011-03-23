@@ -121,5 +121,5 @@ end
 start:rmdef_t_err
 cmd:rmdef -t testtype -o testnode
 check:rc!=0
-check:output=~Usage
+check:output=~Error
 end

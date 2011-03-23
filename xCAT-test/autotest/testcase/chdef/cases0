@@ -181,5 +181,5 @@ end
 start:chdef_t_o_error
 cmd:chdef -t testtype -o testnode groups=all,aix
 check:rc!=0
-check:output=~Usage
+check:output=~Error
 end
