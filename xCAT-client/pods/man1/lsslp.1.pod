@@ -24,8 +24,10 @@ B<noderange>   The nodes which the user want to discover.
             If the user specify the noderange, lsslp will just return the nodes in 
 			the node range. Which means it will help to add the new nodes to the xCAT
 			database without modifying the existed definitions. But the nodes' name 
-			specified in noderange should be defined in database in advance. And please
-			do not use noderange with the flag -s.
+			specified in noderange should be defined in database in advance. The specified
+			nodes' type can be frame/cec/hmc/fsp/bpa. If the it is frame or cec, lsslp
+			will list the bpa or fsp nodes within the nodes(bap for frame, fsp for cec).
+			Please do not use noderange with the flag -s.
 
 B<-c>          Convergence timeout.
             A value-list of 32 bit integers used as timeouts, in milliseconds, to
@@ -149,31 +151,65 @@ Output is similar to:
 
 Output is similar to:
 
- mm01:
-    objtype=node
-    nodetype=fsp
-    mtm=8233-E8B
-    serial=1000ECP
-    side=A
-    otherinterfaces=50.0.0.5
-    groups=fsp,all
-    mgt=fsp
-    id=0
-    mac=00:14:5E:F0:5C:FD
-    ip=50.0.0.5
+c76v1hmc02:
+        objtype=node
+        hcp=c76v1hmc02
+        nodetype=hmc
+        mtm=7315CR2
+        serial=10407DA
+        ip=192.168.200.125 20.0.0.125 9.114.113.125
+        groups=hmc,all
+        mgt=hmc
+        mac=00:1a:64:fb:7d:50		
+        hidden=0
+192.168.200.244:
+        objtype=node
+        hcp=192.168.200.244
+        nodetype=fsp
+        mtm=9125-F2A
+        serial=0262662
+        side=A-0
+        ip=192.168.200.244
+        groups=fsp,all
+        mgt=fsp
+        id=4
+        parent=Server-9125-F2A-SN0262662
+        mac=00:1a:64:fa:01:fe
+        hidden=1
+Server-8205-E6B-SN1074CDP:
+        objtype=node
+        hcp=Server-8205-E6B-SN1074CDP
+        nodetype=cec
+        mtm=8205-E6B
+        serial=1074CDP
+        groups=cec,all
+        mgt=fsp
+        id=0
+        hidden=0
+192.168.200.33:
+        objtype=node
+        hcp=192.168.200.33
+        nodetype=bpa
+        mtm=9458-100
+        serial=99201WM
+        side=B-0
+        ip=192.168.200.33
+        groups=bpa,all
+        mgt=bpa
+        id=0
+        mac=00:09:6b:ad:19:90
+        hidden=1
+Server-9125-F2A-SN0262652:
+        objtype=node
+        hcp=Server-9125-F2A-SN0262652
+        nodetype=frame
+        mtm=9125-F2A
+        serial=0262652
+        groups=frame,all
+        mgt=fsp
+        id=5
+        hidden=0
 
- bpa01:
-    objtype=node
-    nodetype=bpa
-    mtm=9A01-100
-    serial=0P1N746
-    side=A
-    otherinterfaces=50.0.0.1
-    groups=bpa,all
-    mgt=bpa
-    id=0
-    mac=00:1A:64:54:8C:A5
-    ip=50.0.0.1
 
 
 5. To list all discovered service types in stanza format and display the IP address, enter:
@@ -187,8 +223,7 @@ Output is similar to:
     nodetype=fsp
     mtm=8233-E8B
     serial=1000ECP
-    side=A
-    otherinterfaces=50.0.0.5
+    side=A-0
     groups=fsp,all
     mgt=fsp
     id=0
@@ -200,8 +235,7 @@ Output is similar to:
     nodetype=bpa
     mtm=9A01-100
     serial=0P1N746
-    side=A
-    otherinterfaces=50.0.0.1
+    side=A-1
     groups=bpa,all
     mgt=bpa
     id=0
@@ -243,22 +277,33 @@ Output is similar to:
   
    Warning: The node Server-8203-E4 has no response.
   
-  device  type-model  serial-number  side  ip-addresses                              hostname
-  BPA     9458-100    99201WM        B-1   10.1.255.250                              10.1.255.250
-  FSP     9125-F2A    0262652        A-0   192.168.200.16                            192.168.200.16
-  FSP     8233-E8B    1000ECP        A-0   192.168.200.19                            192.168.200.19
-  CEC     8205-E6B    1040C7P                                                        Server-8205-E6B-SN1040C7P
+  device  type-model  serial-number  side  ip-addresses       hostname
+  BPA     9458-100    99201WM        B-1   10.1.255.250       10.1.255.250
+  FSP     9125-F2A    0262652        A-0   192.168.200.16     192.168.200.16
+  FSP     8233-E8B    1000ECP        A-0   192.168.200.19     192.168.200.19
+  CEC     8205-E6B    1040C7P                                 Server-8205-E6B-SN1040C7P
 
 8. To find the nodes within the user specified. Please make sure the noderange input have been defined in xCAT database.
 
-  lsslp cec1-cec3
+   lsslp CEC1-CEC3
+or lsslp CEC1,CEC2,CEC3
 
-  device  type-model  serial-number  side  ip-addresses      hostname
-  CEC     9125-F2A    0262652        A-0   192.168.200.16      cec1
-  CEC     8233-E8B    1000ECP        A-0   192.168.200.19      cec2
-  CEC     8205-E6B    1040C7P        A-0   192.168.200.1       cec3
-
-  
+  device  type-model  serial-number  side  ip-addresses     hostname
+  FSP     9A01-100    0P1P336        A-0   192.168.200.34  192.168.200.34
+  FSP     9A01-100    0P1P336        B-0   192.168.200.35  192.168.200.35
+  FSP     9A01-100    0P1P336        A-1   50.0.0.27       50.0.0.27
+  FSP     9A01-100    0P1P336        B-1   50.0.0.28       50.0.0.28
+  CEC     9A01-100    0P1P336                              CEC1
+  FSP     8233-E8B    1040C7P        A-0   192.168.200.36  192.168.200.36
+  FSP     8233-E8B    1040C7P        B-0   192.168.200.37  192.168.200.37
+  FSP     8233-E8B    1040C7P        A-1   50.0.0.29       50.0.0.29
+  FSP     8233-E8B    1040C7P        B-1   50.0.0.30       50.0.0.30
+  CEC     8233-E8B    1040C7P                              CEC2
+  FSP     8205-E6B    1000ECP        A-0   192.168.200.38  192.168.200.38
+  FSP     8205-E6B    1000ECP        B-0   192.168.200.39  192.168.200.39
+  FSP     8205-E6B    1000ECP        A-1   50.0.0.31       50.0.0.27
+  FSP     8205-E6B    1000ECP        B-1   50.0.0.32       50.0.0.28
+  CEC     8205-E6B    1000ECP                              CEC3  
 
 
 =head1 FILES
