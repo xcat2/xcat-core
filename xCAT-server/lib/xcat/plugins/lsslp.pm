@@ -127,7 +127,7 @@ my %mgt = (
     lc(TYPE_RSA)   => "blade"
 );
 
-my @attribs    = qw(nodetype mtm serial side otherinterfaces groups mgt id parent mac hidden);
+my @attribs    = qw(nodetype mtm serial side ip groups mgt id parent mac hidden);
 my $verbose    = 0;
 my %ip_addr    = ();
 my %slp_result = ();
@@ -2830,8 +2830,10 @@ sub format_stanza {
                 if ( $type !~ /^(fsp|bpa|cec)$/ ) {
                     next;
                 }
-            } elsif ( /^otherinterfaces$/ )  {
+            } elsif ( /^ip$/ )  {
+                if ( $type =~ /^(frame|cec)$/ ) {
                     next;
+                }
             } elsif (/^hidden$/) {
              if ( $type =~ /^(fsp|bpa)$/ ) {
                     $d = "1";
@@ -2921,8 +2923,10 @@ sub format_xml {
                 if ( $type !~ /^(fsp|bpa|cec)$/ ) {
                     next;
                 }
-            } elsif ( /^otherinterfaces$/ )  {
+            } elsif ( /^ip$/ )  {
+                if ( $type =~ /^(frame|cec)$/ ) {
                     next;
+                }    
             } elsif (/^hidden$/) {
              if ( $type =~ /^(fsp|bpa)$/ ) {
                     $d = "1";
@@ -3734,13 +3738,31 @@ sub copypasswd {
 sub filter {
     my $oldhash = shift;
     my $newhash;
+    # find HMC/CEC/Frame that the user want to find
     foreach my $n(@filternodes) {
-	    for my $foundnode ( keys %$oldhash ) {
-            if ( $foundnode =~ /\Q$n\E/ )  {        
+        for my $foundnode ( keys %$oldhash ) {
+            if ( $foundnode =~ /^(\w+)\(.*\)/ )  {
+                if ( $1 eq $n ) {
+                    $newhash->{$foundnode} = $oldhash->{$foundnode};
+                }
+            }
+            elsif ( $foundnode eq $n )  {        
                 $newhash->{$foundnode} = $oldhash->{$foundnode};
             }
-        }	
-    }   
+        }    
+    }
+    
+    # fine the FSP/BPA nodes for the CEC/Frame.
+    for my $cn ( keys %$oldhash ) {
+        for my $pn ( keys %$newhash ) {
+            if ( (${$oldhash->{$cn}}[0] =~ /^(FSP|BPA)$/)
+              and (${$newhash->{$pn}}[2] eq ${$oldhash->{$cn}}[2])
+              and (${$newhash->{$pn}}[1] eq ${$oldhash->{$cn}}[1]) ) {
+                $newhash->{$cn} = $oldhash->{$cn};
+            }
+        }            
+    }
+    
     return $newhash;        
 }
 1;
