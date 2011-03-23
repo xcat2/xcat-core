@@ -2672,10 +2672,14 @@ sub getAllEntries
     
     Input of attr<operator>val strings
 
-    $nodelist->getAllAttribsWhere(array of attr<operator> val,'node','group');
+    $nodelist->getAllAttribsWhere(array of attr<operator>val,'node','group');
     returns  node and group attributes
-    $nodelist->getAllAttribsWhere(array of attr<operator> val,'ALL');
+    $nodelist->getAllAttribsWhere(array of attr<operator>val,'ALL');
     returns  all attributes
+     where operator can be
+     (==,!=,=~,!~, >, <, >=,<=)
+
+
 
     Comments:
         none
