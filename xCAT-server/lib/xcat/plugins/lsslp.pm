@@ -1372,10 +1372,10 @@ sub gethost_from_url_or_old {
     # Extract IP from URL
     #######################################
     my $nets = xCAT::Utils::my_nets();
-    my $ip = getip_from_iplist( $ip, $nets, $opt{i});
-    if ( !defined( $ip )) {
-        return undef;
-    }
+    my $avip = getip_from_iplist( $ip, $nets, $opt{i});
+    #if ( !defined( $ip )) {
+    #    return undef;
+    #}
 
     # get the information of existed nodes to do the migration
     if ( !defined(%::OLD_DATA_CACHE))
