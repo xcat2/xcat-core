@@ -3028,6 +3028,8 @@ sub defrm
     my $error = 0;
     my %rmhash;
     my %myhash;
+    my %childrenhash;
+    my %typehash;
 
     # process the command line
     my $rc = &processArgs;
@@ -3256,7 +3258,20 @@ sub defrm
             }
         }
     }
-
+    # find the children of the node.
+    for my $tob (keys %objhash)  {
+        if ( $objhash{$tob} eq 'node' ) {
+            my $ntype = xCAT::DBobjUtils->getnodetype($tob);
+            if ( $ntype =~ /^(cec|frame)$/ )  {
+                my $cnodep = xCAT::DBobjUtils->getchildren($tob);
+                if ($cnodep) {
+                    my $cnode = join ',', @$cnodep;            
+                    $childrenhash{$tob} = $cnode;
+                    $typehash{$tob} = $ntype;
+                }
+            }
+        }
+    }
     # remove the objects
     if (xCAT::DBobjUtils->rmobjdefs(\%objhash) != 0)
     {
@@ -3297,6 +3312,15 @@ sub defrm
                 $rsp->{data}->[0] = "Object definitions have been removed.";
                 xCAT::MsgUtils->message("I", $rsp, $::callback);
             }
+            # Give a warning message to the user to remove the children of the node.
+            for my $tn (keys %objhash)  {
+                if ( $childrenhash{$tn} ) {
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "You have removed a $typehash{$tn} node, please remove these nodes belongs to it manually: $childrenhash{$tn} .";
+                    xCAT::MsgUtils->message("W", $rsp, $::callback);                
+                }
+            }            
         }
         else
         {
