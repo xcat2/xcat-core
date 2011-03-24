@@ -457,6 +457,7 @@ sub modify_by_prof {
     my $td; 
     my %io = ();   
     my %lpar_state = ();
+    my @result;   
 
     if (defined( $request->{stdin} )) {
          my $p =  $request->{stdin};
@@ -471,7 +472,7 @@ sub modify_by_prof {
                   
          }
     }
-
+    #print Dumper($cfgdata);
     while (my ($cec,$h) = each(%$hash) ) {
         while (my ($lpar,$d) = each(%$h) ) {
             $td = $d;
@@ -483,8 +484,8 @@ sub modify_by_prof {
         my $values =  xCAT::FSPUtils::fsp_api_action ($cec_name, $td, $action);
         my $Rc = shift(@$values);
         if ( $Rc != 0 ) {
-            push @values, [$cec_name, $$values[0], $Rc];
-            return (\@values);
+            push @result, [$cec_name, $$values[0], $Rc];
+            return (\@result);
         }
         my @data = split(/\n/, $$values[0]);
         foreach my $v (@data) {
@@ -500,8 +501,8 @@ sub modify_by_prof {
         my $values =  xCAT::FSPUtils::fsp_state_action ($cec_name, "fsp", $action); 
         $Rc = shift(@$values);
         if ( $Rc != 0 ) {
-            push @values, [$cec_name, $$values[0], $Rc];
-            return (\@values);
+            push @result, [$cec_name, $$values[0], $Rc];
+            return (\@result);
         }
         foreach ( @$values ) {
              my ($state,$lparid) = split /,/;
@@ -525,21 +526,22 @@ sub modify_by_prof {
                 my $orig_id = $io{$drc_index}{lparid};
                 # the current owning lpar and the new owning lpar must be in power off  state
                 if (($lpar_state{$orig_id} ne "Not Activated") || ($lpar_state{$id} ne  "Not Activated" )){
-                    push @values, [$lpar, "For the I/O $location, the current owning lpar(id=$orig_id) of the I/O  and the new owning lpar(id=$id) must be in Not Activated state at first. And then run chvm again", -1];
-                    return ( \@values ); 
+                    push @result, [$lpar, "For the I/O $location, the current owning lpar(id=$orig_id) of the I/O  and the new owning lpar(id=$id) must be in Not Activated state at first. And then run chvm again", -1];
+                    return ( \@result ); 
                 }                   
      
                 my $values =  xCAT::FSPUtils::fsp_api_action ($lpar, $d, $action, $tooltype, $drc_index);
-                my $Rc = shift(@$values);
+                #my $Rc = shift(@$values);
+                my $Rc = pop(@$values);
                 if ( $Rc != 0 ) {
-                    push @values, [$lpar, $$values[0],$Rc];
+                    push @result, [$lpar, $$values[1],$Rc];
                     next;
                 } 
             }
                   
         }
     }
-    return( \@values );
+    return( \@result );
 }
 
 
@@ -566,7 +568,7 @@ sub enumerate {
         return( [$Rc,@$values[0]] );
     }
     
-    $outhash{ $td[0] } = $$values[0];
+    $outhash{ 0 } = $$values[0];
     #my @t; 
     #foreach my $value ( @$values ) {
     #    my ($lparid, $busid, $slot_location_code, $drc_index,@t ) = split (/,/, $value);
@@ -610,11 +612,13 @@ sub list {
     my $node_name; 
     my $d;
     my @result;
-    
+
+    #print Dumper($hash);    
     while (my ($mtms,$h) = each(%$hash) ) {
 	my $info = enumerate( $h, $mtms );
 	my $Rc = shift(@$info);
 	my $data = @$info[0];
+        my $values = $data->{0};
          	
         while (($node_name,$d) = each(%$h) ) {
             my $cec   = @$d[3];
@@ -635,7 +639,6 @@ sub list {
             # get the I/O slot information  
             my $v;
             my @t;  
-            my $values = $data->{$id};
             my @value = split(/\n/, $values);
             foreach my $v (@value) {
                 my ($lparid, @t ) = split (/,/, $v);  
