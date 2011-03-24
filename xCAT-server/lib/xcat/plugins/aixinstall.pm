@@ -4800,6 +4800,12 @@ sub rmnimimage
             next;
         }
 
+		# don't remove lpp_source resource unless they specify delete
+		if ( ($attr eq 'lpp_source')  && !$::DELETE)
+		{
+			next;
+		}
+
         my @res_list;
         my $res_name = $imagedef{$image_name}{$attr};
         chomp $res_name;
