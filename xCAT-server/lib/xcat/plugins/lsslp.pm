@@ -2068,7 +2068,6 @@ sub parse_responses {
        "slot",
        "ip-address" );
 
-    my $primary;
     my %fid1;
     my %fid2;
     my %cid;
@@ -2125,10 +2124,8 @@ sub parse_responses {
             my $val = $1;
             if (( $_ =~ /^slot$/ ) and ( $val == 0 )) {
                 push @result, "B";
-                $primary = 0;
             } elsif (( $_ =~ /^slot$/ ) and ( $val == 1 )) {
                 push @result, "A";
-                $primary = 1;
             } else {
                 push @result, $val;
             }
@@ -2212,8 +2209,7 @@ sub parse_responses {
             ###########################################
             $hostname = undef;
             $host = "Server-$result[1]-SN$result[2]";
-            #unless ( exists( $outhash{$host} ))
-            if ( $primary )
+            unless ( exists( $outhash{$host} ))
             {
                 if ( $type eq SERVICE_BPA )
                 {
