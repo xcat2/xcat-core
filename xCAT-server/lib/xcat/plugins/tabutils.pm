@@ -14,6 +14,8 @@ use Data::Dumper;
 use xCAT::NodeRange qw/noderange abbreviate_noderange/;
 use xCAT::Schema;
 use xCAT::Utils;
+use xCAT::MsgUtils;
+use xCAT::DBobjUtils;
 use Getopt::Long;
 my $requestcommand;
 
@@ -278,6 +280,22 @@ sub noderm
             push @tablist, $_;
         }
     }
+    if (scalar(@$nodes))  {
+        for my $nn ( @$nodes ) {
+            my $nt = xCAT::DBobjUtils->getnodetype($nn);
+            if ( $nt =~ /^(cec|frame)$/ )  {
+                my $cnodep = xCAT::DBobjUtils->getchildren($nn);
+                if ($cnodep) {
+                    my $cnode = join ',', @$cnodep;            
+                    my $rsp;
+                    $rsp->{data}->[0] =
+                      "Removed a $nt node, please remove these nodes belongs to it manually: $cnode \n";
+                    xCAT::MsgUtils->message("I", $rsp, $cb);
+                }
+            }
+        }
+    }
+                 
     nodech($nodes, \@tablist, $cb, 0);
 }
 
