@@ -177,7 +177,7 @@ my $machines;
 if ($surrogate eq 0) {
    $instroot = `gettab key=installdir site.value`;
    my $nodes = `$nodels|tr '\n' ','`;
-   $machines = `$nodels $nodes vpd.mtm |cut -f2 -d:|cut -b2-5|sort -u`;
+   $machines = `$nodels $nodes vpd.mtm |cut -f2 -d:|sort -u|cut -b2-5`;
 } else {
    $instroot = question("What is the installdir?","/install",'');
    $machines = question("What is the list of machine types?","7947",'');
