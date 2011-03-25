@@ -12,9 +12,15 @@ I<lsvm [-V| --verbose] noderange>
 
 I<lsvm [-a| --all] noderange>
 
+=head2 For PPC (using Direct FSP Management):
+
+I<lsvm noderange>
+
 =head1 DESCRIPTION
 
  The lsvm command lists all partition profiles defined for the partitions specified in noderange. If noderange is a CEC, all the partitions associated with that CEC are displayed.
+
+=head2 For PPC (using Direct FSP Management):
 
 For P7 IH, lsvm lists all partition I/O slots information for the partitions specified in noderange. If noderange is a CEC, it gets the CEC's pump mode value, octant's memory interleaving value, the all the octants configure value, and all the I/O slots information
 
@@ -62,7 +68,9 @@ I<lsvm lpar1>
 Output is similar to:
 
 1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+
 1: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
+
 1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
 
 4. For P7 IH, to list the I/O slot information and octant configuration of cec1, enter:
@@ -71,22 +79,39 @@ I<lsvm cec1>
 Output is similar to:
 
 1: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+
 1: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
+
 1: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
+
 13: 537/U78A9.001.0123456-P1-C9/0x21010219/2/13
+
 13: 536/U78A9.001.0123456-P1-C10/0x21010218/2/13
+
 17: 545/U78A9.001.0123456-P1-C7/0x21010221/2/17
+
 17: 544/U78A9.001.0123456-P1-C8/0x21010220/2/17
+
 21: 553/U78A9.001.0123456-P1-C5/0x21010229/2/21
+
 21: 552/U78A9.001.0123456-P1-C6/0x21010228/2/21
+
 25: 569/U78A9.001.0123456-P1-C1/0x21010239/2/25
+
 25: 561/U78A9.001.0123456-P1-C3/0x21010231/2/25
+
 25: 560/U78A9.001.0123456-P1-C4/0x21010230/2/25
+
 29: 568/U78A9.001.0123456-P1-C2/0x21010238/2/29
+
 5: 521/U78A9.001.0123456-P1-C13/0x21010209/2/5
+
 5: 520/U78A9.001.0123456-P1-C14/0x21010208/2/5
+
 9: 529/U78A9.001.0123456-P1-C11/0x21010211/2/9
+
 9: 528/U78A9.001.0123456-P1-C12/0x21010210/2/9
+
 cec1: PendingPumpMode=1,CurrentPumpMode=1,OctantCount=8:OctantID=0,PendingOctCfg=5,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=1,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=2,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=3,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=4,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=5,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=6,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;OctantID=7,PendingOctCfg=1,CurrentOctCfg=1,PendingMemoryInterleaveMode=2,CurrentMemoryInterleaveMode=2;
 
 =head1 FILES
