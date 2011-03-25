@@ -145,9 +145,9 @@ I<getmacs c250f07c04ap01 -d>
 
 Output is similar to:
 
-c250f07c04ap01:
-#Type  Phys_Port_Loc  MAC_Address  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
-HFI  N/A  02:00:02:00:00:04:|02:00:02:00:00:05:|02:00:02:00:00:06  N/A  N/A  N/A  N/A  N/A  N/A  N/A
+ c250f07c04ap01:
+ #Type  Phys_Port_Loc  MAC_Address  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
+ HFI  N/A  02:00:02:00:00:04:|02:00:02:00:00:05:|02:00:02:00:00:06  N/A  N/A  N/A  N/A  N/A  N/A  N/A
 
 7.  To retrieve the HFI MAC address for P7 IH LPARl using Direct FSP Management ping test and display the result only, enter:
 
@@ -155,10 +155,10 @@ I<getmacs c250f07c07ap01 -d -D --hfi>
 
 Output is similar to:
 
-c250f07c07ap01:
-# Type  Location Code   MAC Address      Full Path Name  Ping Result
-hfi-ent U78A9.001.0123456-P1 020004200004 /hfi-iohub@300000000000000/hfi-ethernet@0 unsuccessful physical
-hfi-ent U78A9.001.0123456-P1 020004200004 /hfi-iohub@300000000000000/hfi-ethernet@1 unsuccessful physical
+ c250f07c07ap01:
+ # Type  Location Code   MAC Address      Full Path Name  Ping Result
+ hfi-ent U78A9.001.0123456-P1 020004200004 /hfi-iohub@300000000000000/hfi-ethernet@0 unsuccessful physical
+ hfi-ent U78A9.001.0123456-P1 020004200004 /hfi-iohub@300000000000000/hfi-ethernet@1 unsuccessful physical
 
 =head1 FILES
 
