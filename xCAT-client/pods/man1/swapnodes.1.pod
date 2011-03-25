@@ -1,0 +1,67 @@
+=head1 NAME
+
+B<swapnodes> - swap the location info in the db between 2 nodes. If swapping within a cec, it will assign the IO adapters that were assigned to the defective node to the available node. 
+
+=head1 SYNOPSIS
+
+B<swapnodes> [B<-h>| B<--help>]
+
+B<swapnodes> B<-c> current_node B<-f> fip_node
+
+=head1 DESCRIPTION
+
+This command is only for P7 IH using Direct FSP Management. It's used to swap the location info in the db between 2 nodes. If swapping within a cec, it will assign the IO adapters that were assigned to the defective node to the available node. Originally, the current_node is a defective non-compute node, and fip_node is a avaible compute node. After the swapping, the current_node will be a available node.
+
+=head1 OPTIONS
+
+=over 5
+
+=item B<-h|--help>
+
+Display usage message.
+
+=item B<-c>
+
+current_node -- the defective non-compute node.
+
+=item B<-f>
+
+-f fip_node -- a compute node which will be swapped as the non-compute node.
+
+=back
+
+
+=head1 RETURN VALUE
+
+0 The command completed successfully.
+
+1 An error has occurred.
+
+=head1 EXAMPLES
+
+=over 3
+
+=item 1.
+
+To swap the service node attributes and IO assignments between sn1 and compute2 which are in the same cec:
+
+ swapnodes -c sn1 -f compute2
+
+=back
+
+
+=head1 FILES
+
+$XCATROOT/bin/swapnodes
+
+(The XCATROOT environment variable is set when xCAT is installed. The
+default value is "/opt/xcat".)
+
+=head1 NOTES
+
+This command is part of the xCAT software product.
+
+
+=head1 SEE ALSO
+
+L<lsvm(1)|lsvm.1>, L<mkvm(1)|mkvm.1>, L<chvm(1)|chvm.1>
