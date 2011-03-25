@@ -9,14 +9,17 @@ I<chvm [-h| --help]>
 I<chvm [-v| --version]>
 
 =head2 PPC (with HMC) specific:
+
 I<chvm [-V| --verbose] noderange [-p profile]>
 
 I<chvm [-V| --verbose] noderange attr=val [attr=val...]>
 
 =head2 PPC (using Direct FSP Management) specific:
+
 I<chvm noderange [-p profile]>
 
 =head2 VMware specific:
+
 I<chvm noderange [-a size] [-d disk] [-p disk] [--resize disk=size] [--cpus count] [--mem memory]>
 
 =head1 DESCRIPTION
@@ -106,7 +109,9 @@ lpar4: Success
 1.To change the I/O slot profile for lpar4 using the configuration data in the file /tmp/lparfile, the I/O slots information is similar to:
 
 4: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+
 4: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
+
 4: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
 
 then run the command:
