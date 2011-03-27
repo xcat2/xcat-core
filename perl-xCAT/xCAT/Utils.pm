@@ -2348,7 +2348,7 @@ sub my_nets
       my $n = $_->{net};
       my $if = $_->{mgtifname};
       my $nm = $_->{mask};
-      if (!$n || !$if || !$nm)
+      if (!$n || !$if || $nm)
       {
           next; #incomplete network
       }
@@ -4328,7 +4328,7 @@ sub get_image_name
     Arguments:
         arrayref -- A pointer to an array. Each element is a hash that contains an events.
         The hash should contain the at least one of the following keys:
-          eventtime -- The format is "mm-dd-yyyy hh:mm:ss".
+          eventtime -- The format is "yyyy-mm-dd hh:mm:ss".
                        If omitted, the current date and time will be used.
           monitor  -- The name of the monitor that monitors this event.
           monnode -- The node that monitors this event.
@@ -4344,7 +4344,7 @@ sub get_image_name
   Example:
     my  @a=();
     my $event={
-        eventtime=>"07-28-2009 23:02:03",
+        eventtime=>"2009-07-28 23:02:03",
         node => 'node1',
         rawdata => 'kjdlkfajlfjdlksaj',
     };
@@ -4394,8 +4394,8 @@ sub logEventsToDatabase
                         $year, $wday, $yday, $isdst
                       )
                       = localtime(time);
-                    $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
-                                        $mon + 1, $mday, $year + 1900,
+                    $currtime = sprintf("%04d-%02d-%02d %02d:%02d:%02d",
+                                        $year + 1900, $mon + 1, $mday, 
                                         $hour, $min, $sec);
                 }
                 $event->{eventtime} = $currtime;
