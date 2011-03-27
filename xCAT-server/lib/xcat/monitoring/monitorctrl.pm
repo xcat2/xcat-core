@@ -1426,7 +1426,7 @@ sub show {
   if ($nameref =~ /xCAT_monitoring::monitorctrl/) {
     $nameref=shift;
   }
-  my ($noderef, $sum, $time, $attrs, $pe, $callback) = @_;
+  my ($noderef, $sum, $time, $attrs, $pe, $where,$callback) = @_;
   my %ret=();
   my @product_names=@$nameref;
 
@@ -1450,7 +1450,7 @@ sub show {
       #initialize and start monitoring
       no strict  "refs";
       if (defined(${$module_name."::"}{show})) {
-        my @ret1 = ${$module_name."::"}{show}->($noderef, $sum, $time, $attrs, $pe, $callback);
+        my @ret1 = ${$module_name."::"}{show}->($noderef, $sum, $time, $attrs, $pe, $where,$callback);
         $ret{$_}=\@ret1;
       }
     } else {
