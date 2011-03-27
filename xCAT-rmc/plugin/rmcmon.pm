@@ -1583,6 +1583,92 @@ sub showmetrix($rrddir, $attrs, $start_time, $end_time)
 	return $result;
 
 }
+
+sub showeventlog
+{
+  my @result = ();
+  my ($table, $node,$attrs,$start_time,$end_time,$where) = @_;
+
+  my $need_filter = 0;  #need second search to sql
+  my @attr = ();
+  my @attrkey = ();
+  my @severity = ('Informational', 'Warning', 'Critical');
+
+  if(!$attrs){
+    @attrkey = ('eventtype','monitor','monnode','application',
+               'component','id','severity','message','rawdata','comments');
+  } else {
+    @attrkey = split /,/, $attrs;
+  }
+  
+  #node 
+  push @attr, "node==$node";
+  #plugin
+  push @attr, "application==RMC";
+  #where
+  if(defined($where)){
+    foreach my $a (@$where){
+      if($a =~ /severity([!=><]+)(\w+)/){
+        my $op = $1;
+        my $sev = $2;
+        if(($op eq '==')||($op eq '!=')){
+          push @attr, $a;
+        } elsif($op eq '>=') {
+          foreach my $s (@severity){
+            if($sev =~ /^$s$/i){
+              last; 
+            }
+            push @attr, "severity!=$s"; 
+          }
+        } elsif($op eq '<=') {
+          my $s = pop @severity;
+          while($s !~ /^$sev$/i){
+            push @attr, "severity!=$s";
+            $s = pop @severity;
+          }
+        } elsif($op eq '>') {
+          foreach my $s (@severity){
+            if($sev =~ /^$s$/i){
+              push @attr, "severity!=$s";
+              last;
+            }
+          }
+        } elsif($op eq '<') {
+          my $s = pop @severity;
+          while($sev !~ /^$s$/i){
+            push @attr, "severity!=$s";
+            $s = pop @severity;
+          }
+          push @attr, "severity!=$s";
+        } 
+      } else {
+        push @attr, $a;
+      }
+    } 
+  }
+  #eventtime
+  my ($s_sec,$s_min,$s_hour,$s_mday,$s_mon,$s_year) = localtime($start_time);
+  my ($e_sec,$e_min,$e_hour,$e_mday,$e_mon,$e_year) = localtime($end_time);
+  my $tmp = sprintf("eventtime>=%04d-%02d-%02d %02d:%02d:%02d",$s_year+1900,$s_mon+1,$s_mday,$s_hour,$s_min,$s_sec);
+  push @attr, $tmp;
+  $tmp = sprintf("eventtime<=%04d-%02d-%02d %02d:%02d:%02d",$e_year+1900,$e_mon+1,$e_mday,$e_hour,$e_min,$e_sec);
+  push @attr, $tmp;
+
+  my @r = $table->getAllAttribsWhere(\@attr, 'eventtime', @attrkey);
+
+  push @result, (join ",", @attrkey);
+  $result[0] = "eventtime,$result[0]";
+  foreach my $entry (@r){
+    my $str = "\'$entry->{eventtime}\'";
+    foreach my $a (@attrkey){
+      $str = $str. ",\'$entry->{$a}\'";
+    }
+    push @result, $str;
+  }
+  return \@result;
+  
+}
+
 #--------------------------------------------------------------------------------
 =head3    show
       This function configures the cluster for the given nodes.  
@@ -1599,10 +1685,11 @@ sub showmetrix($rrddir, $attrs, $start_time, $end_time)
        (error code, error message)
 =cut
 #--------------------------------------------------------------------------------
-sub show {
+sub show 
+{
   print "rmcmon:show called\n";
   no strict 'refs';
-  my ($noderef, $sum, $time, $attrs, $pe, $callback) = @_;
+  my ($noderef, $sum, $time, $attrs, $pe, $where,$callback) = @_;
   my @monnodes = ();
   my $rsp = {};
   my $localhostname=hostname();
@@ -1636,6 +1723,7 @@ sub show {
   }
   $sum &= 0x1;
 
+  if($pe =~ /p/){
   if($sum){
     foreach $node (@monnodes){
       if($node eq $localhostname){
@@ -1667,6 +1755,19 @@ sub show {
       push @{$rsp->{data}}, "\n$node:";
       push @{$rsp->{data}}, @$output;
     }
+  }
+  } elsif($pe =~ /e/){
+    my $eventtable =xCAT::Table->new("eventlog", -create =>0);
+    if (!$eventtable) {
+      push @{$rsp->{data}}, "Error:Can't open table eventlog!";
+      return -1;
+    }
+    foreach $node (@monnodes){
+      push @{$rsp->{data}}, "\n$node:";
+      $output = showeventlog($eventtable,$node,$attrs,$start_time,$end_time,$where);
+      push @{$rsp->{data}}, @$output;
+    }
+    $eventtable->close();
   }
   $callback->($rsp);
   return (0, "");
