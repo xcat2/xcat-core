@@ -102,6 +102,7 @@ sub preprocess_request
 	push @{$reqcopy->{priv}}, $a_ret[3];
 	push @{$reqcopy->{priv}}, $a_ret[5];
 	push @{$reqcopy->{priv}}, $a_ret[6];
+        push @{$reqcopy->{priv}}, $a_ret[7];
 	push @requests, $reqcopy;
 	return \@requests;
       }
@@ -152,13 +153,14 @@ sub preprocess_request
 
         push @{$reqcopy->{module}}, $a_ret[1];
 	if($command eq "monshow"){
-		push @{$reqcopy->{priv}}, $a_ret[2];
-		push @{$reqcopy->{priv}}, $a_ret[3];
-		push @{$reqcopy->{priv}}, $a_ret[5];
-		push @{$reqcopy->{priv}}, $a_ret[6];
+  	  push @{$reqcopy->{priv}}, $a_ret[2];
+	  push @{$reqcopy->{priv}}, $a_ret[3];
+     	push @{$reqcopy->{priv}}, $a_ret[5];
+	push @{$reqcopy->{priv}}, $a_ret[6];
+        push  @{$reqcopy->{priv}}, $a_ret[7];
 	} else {
-        	push @{$reqcopy->{nodestatmon}}, $a_ret[2];
-        	push @{$reqcopy->{scope}}, $a_ret[3];
+        push @{$reqcopy->{nodestatmon}}, $a_ret[2];
+        push @{$reqcopy->{scope}}, $a_ret[3];
 	}
         push @{$reqcopy->{nodeinfo}}, join(',', @$mon_nodes);
         push @requests, $reqcopy;
@@ -1595,7 +1597,7 @@ sub mondecfg
       callback - the pointer to the callback function.
       args - The format of the args is:
         [-h|--help|-v|--version] or
-        name [noderange] [-s] [-t time] [-a attributes] [-o pe]        
+        name [noderange] [-s] [-t time] [-a attributes] [-w attr<operator>val [-w attr<operator>val] ...] [-o pe]        
         where
           name is the monitoring plug-in name. For example: rmcmon. Only for rmcmon currently.
           noderange a range of nodes to be showed for. If omitted, the data for all the nodes will be displayed.
@@ -1603,7 +1605,7 @@ sub mondecfg
           -t specify a range of time for the data, default is last 60 minutes
 	  -a specifies a comma-separated list of attributes or metrics names. The default is all.
     Returns:
-        (0, $modulename, $sum, $time, \@nodes, $attrs, $pe) for success.
+        (0, $modulename, $sum, $time, \@nodes, $attrs, $pe, $where) for success.
         (1, "") for unsuccess. The error messages are returns through the callback pointer.
 =cut
 #--------------------------------------------------------------------------------
@@ -1619,7 +1621,7 @@ sub preprocess_monshow
     my $error=shift;
     my $rsp={};
     $rsp->{data}->[0]= "Usage:";
-    $rsp->{data}->[1]= "  monshow name noderange [-s] [-t time] [-a attributes] [-o pe]";
+    $rsp->{data}->[1]= "  monshow name noderange [-s] [-t time] [-a attributes] [-w attr<operator>val[-w attr<operator>val ...]][-o pe]";
     $rsp->{data}->[2]= "  monshow [-h|--help|-v|--version]";
     $rsp->{data}->[3]= "     name is the name of the monitoring plug-in module to be invoked.";
     $rsp->{data}->[4]= "     noderange is a list of nodes to be showed for. If omitted,";
@@ -1627,8 +1629,9 @@ sub preprocess_monshow
     $rsp->{data}->[6]= "     -s shows the summary data.";
     $rsp->{data}->[7]= "     -t specifies a range of time for the data, The default is last 60 minutes";
     $rsp->{data}->[8]= "     -a specifies a comma-separated list of attributes or metrics names. The default is all.";
-    $rsp->{data}->[9]= "     -o specifies montype, it can be p, e or pe.";
-    $rsp->{data}->[10]= "        p means performance, e means events, not used now.";
+    $rsp->{data}->[9]= "     -w specifies one or multiple selection string that can be used to select events.";
+    $rsp->{data}->[10]= "     -o specifies montype, it can be p, e or pe.";
+    $rsp->{data}->[11]= "        p means performance, e means events, default is e";
 #    $cb->($rsp);
     if($error){
       xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -1647,7 +1650,8 @@ sub preprocess_monshow
       's'  => \$::SUMMARY,
       't=s' => \$::TIME,
       'a=s' => \$::ATTRS,
-      'o=s' => \$::PE))
+      'o=s' => \$::PE,
+      'w=s@' => \$::OPT_W))
   {
     &monshow_usage($callback, 1);
     return (1, "");
@@ -1673,7 +1677,8 @@ sub preprocess_monshow
   my $time = 60;
   my @nodes=();
   my $attrs=undef;
-  my $pe = 0;
+  my $pe = 'e';
+  my $where = [];
 
   if(@ARGV < 1) {
     &monshow_usage($callback, 1);
@@ -1705,6 +1710,9 @@ sub preprocess_monshow
     }
   }
   if($::PE) {$pe=$::PE;}
+  if($::OPT_W) {
+    $where = $::OPT_W;
+  }
   
   $pname=$ARGV[0];
 
@@ -1772,7 +1780,7 @@ sub preprocess_monshow
     return (1, "");
   }
   
-  return (0, $pname, $sum, $time, \@nodes, $attrs, $pe);
+  return (0, $pname, $sum, $time, \@nodes, $attrs, $pe,$where);
 }
 
 #--------------------------------------------------------------------------------
@@ -1797,10 +1805,11 @@ sub monshow
   my $time=$request->{priv}->[1];
   my $attrs=$request->{priv}->[2];
   my $pe=$request->{priv}->[3];
+  my $where=$request->{priv}->[4];
 
   my @nodes=split(',', $nodeinfo);
 
-  xCAT_monitoring::monitorctrl->show([$pname], \@nodes,  $sum, $time, $attrs, $pe, $callback); 
+  xCAT_monitoring::monitorctrl->show([$pname], \@nodes,  $sum, $time, $attrs, $pe, $where, $callback); 
   return 0;
 }
 
