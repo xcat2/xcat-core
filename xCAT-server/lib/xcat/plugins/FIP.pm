@@ -110,7 +110,13 @@ sub preprocess_request {
         my $service  = "xcat";
         my @hcps=[$current_ppc_ent->{'hcp'}];
         my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
-    
+        print Dumper($sn);
+        if( keys(%$sn) == 0 )     {
+            my $reqcopy = {%$req};
+            push @requests, $reqcopy;
+        } 
+      
+ 
         # build each request for each service node
         foreach my $snkey (keys %$sn)
         { 
@@ -237,7 +243,7 @@ sub parse_args
 
     # parse the options - include any option from all 4 cmds
     Getopt::Long::Configure("no_pass_through");
-    if ( !GetOptions( \%opt, qw(h|help v|version V|verbose c=s f=s ) )) {
+    if ( !GetOptions( \%opt, qw(h|help v|version V|verbose c=s f=s o ) )) {
          return 2;
     }
 
@@ -377,8 +383,10 @@ sub swapnodes
     $keyhash{'node'}    = $current_node; 
     $ppctab->setAttribs( \%keyhash,$fip_ppc_ent );
 
-    $keyhash{'node'}    = $fip_node;
-    $ppctab->setAttribs( \%keyhash,$current_ppc_ent );
+    if( ! (exists($opt->{o}))) {
+        $keyhash{'node'}    = $fip_node;
+        $ppctab->setAttribs( \%keyhash,$current_ppc_ent );
+    }
 
     $ppctab->commit;
     $ppctab->close();
@@ -406,8 +414,10 @@ sub swapnodes
     $keyhash{'node'}    = $current_node; 
     $nodepostab->setAttribs( \%keyhash,$fip_ent );
 
-    $keyhash{'node'}    = $fip_node;
-    $nodepostab->setAttribs( \%keyhash,$current_ent );
+    if( ! (exists($opt->{o}))) {
+        $keyhash{'node'}    = $fip_node;
+        $nodepostab->setAttribs( \%keyhash,$current_ent );
+    }
 
     $nodepostab->commit;
     $nodepostab->close();
@@ -472,7 +482,7 @@ sub swapnodes_usage
     $rsp->{data}->[0] =
       "\nUsage: swapnodes - swap the location info in the db between 2 nodes. If swapping within a cec, it will assign the IO adapters that were assigned to the defective node to the available node\n";
     $rsp->{data}->[1] = "  swapnodes [-h | --help ] \n";
-    $rsp->{data}->[2] = "  swapnodes -c current_node -f fip_node";
+    $rsp->{data}->[2] = "  swapnodes -c current_node -f fip_node [-o]";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
