@@ -1,4 +1,3 @@
 pe/src
-pe/sci_ppc*
 pe/IBM_pe_license
 #  All PE packages are installed through the pe_install postinstall script
