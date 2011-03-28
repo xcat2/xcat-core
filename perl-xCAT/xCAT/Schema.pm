@@ -602,7 +602,7 @@ osimage  => {
  },
   },
 linuximage  => {
- cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir nodebootif otherifce netdrivers kernelver permission dump comments disable)],
+ cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver permission dump comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
  descriptions => {
@@ -615,6 +615,7 @@ linuximage  => {
   exlist => 'The fully qualified name of the file that stores the file names and directory names that will be excluded from the image during packimage command.  It is used for diskless image only.',
   postinstall => 'The fully qualified name of the script file that will be run at the end of the packimage command. It is used for diskless image only.',
   rootimgdir => 'The directory name where the image is stored.  It is used for diskless image only.',
+  kerneldir => 'The directory name where the 3rd-party kernel is stored. It is used for diskless image only.',
   nodebootif => 'The network interface the stateless/statelite node will boot over (e.g. eth0)',
   otherifce => 'Other network interfaces (e.g. eth1) in the image that should be configured via DHCP',
   netdrivers => 'the ethernet device drivers of the nodes which will use this linux image, at least the device driver for the nodes\' installnic should be included',
@@ -1891,6 +1892,11 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'linuximage.rootimgdir',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 }, 
+ {attr_name => 'kerneldir',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.kerneldir',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                },
  {attr_name => 'nodebootif',
                  only_if => 'imagetype=linux',
                  tabentry => 'linuximage.nodebootif',

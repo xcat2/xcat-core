@@ -40,6 +40,7 @@ if ($name =~ /geninitrd/) {
 my $rootlimit;
 my $tmplimit;
 my $installroot = "/install";
+my $kerneldir;
 my $kernelver = ""; 
 my $basekernelver; 
 my $customdir=$fullpath;
@@ -136,7 +137,7 @@ if (@ARGV > 0 and $needUpdateTable eq 1) {
         exit 1;
     }
 
-    (my $ref_linuximage_tab) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission');
+    (my $ref_linuximage_tab) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission');
     unless ($ref_linuximage_tab) {
         print "Cannot find $imagename from the linuximage table\n";
         exit 1;
@@ -168,6 +169,7 @@ if (@ARGV > 0 and $needUpdateTable eq 1) {
     $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
     $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
     $destdir = $ref_linuximage_tab->{'rootimgdir'};
+    $kerneldir = $ref_linuximage_tab->{'kerneldir'};
 
     # TODO: how can we do if the user specifies one wrong value to the following attributes?
     # currently, one message is output to indicate the users there will be some updates
@@ -236,6 +238,8 @@ $destdir="$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
 $updates{'rootimgdir'} = $destdir if ($needUpdateTable);
 
 $rootimg_dir="$destdir/rootimg";
+$kerneldir = "$installroot/kernels" unless ($kerneldir);    # the default directory for 3rd-party kernel is "$installroot/kernels";
+$updates{'kerneldir'} = $kerneldir if ($needUpdateTable);
 
 unless ($osver and $profile) {
    print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -k <KERNELVER> -o <OSVER> -p <PROFILE> [-a <ARCH>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n";
@@ -534,25 +538,21 @@ $kernelver = $basekernelver unless ($kernelver);
 chomp $kernelver;
 $updates{kernelver} = $kernelver if ($needUpdateTable);
 
-
-
 if ($kernelver ne $basekernelver) {
-    # if "-k" is specified, the kernel file should be in the "/boot" directory (not in the rootimg chroot environment)
-    # the modules should be in /lib/modules/$kernelver
-    if ( -e "/boot/vmlinux-$kernelver") {
-        copy("/boot/vmlinux-$kernelver", "$rootimg_dir/boot/");
-    } elsif ( -e "/boot/vmlinuz-$kernelver") {
-        copy("/boot/vmlinuz-$kernelver", "$rootimg_dir/boot/");
-    } elsif ( -e "/boot/image-$kernelver") {
-        copy("/boot/image-$kernelver", "$rootimg_dir/boot/");
-    } else {
-        xdie "couldnot find the kernel file matched $kernelver in /boot!";
-    }
-   
-    if ( -e "/lib/modules/$kernelver" ) {
-        system("cp -r /lib/modules/$kernelver $rootimg_dir/lib/modules/");
-    } else {
-        xdie "couldnot find /lib/modules/$kernelver!";
+    # the files in the entire kernel rpm package must be put in ${linuximage.kerneldir},
+    # the default value for ${linuximage.kerneldir} is "$installroot/kernels";
+
+    if ( -d "$kerneldir/$kernelver" ) {
+        # return one error if the directory is empty
+        my @kernelfiles = <$kerneldir/$kernelver/*>;
+        if (scalar @kernelfiles) {
+            # remove the kernel files for the basekernelver
+            unlink <$rootimg_dir/boot/*$basekernelver*>;
+            system("rm -rf $rootimg_dir/lib/modules/$basekernelver");
+            system("cp -r -a $kerneldir/$kernelver/* $rootimg_dir/");
+        } else {
+            xdie("couldnot find the kernel files matched $kernelver in $kerneldir/$kernelver !");
+        }
     }
 }
 
@@ -1240,17 +1240,7 @@ END
 
 
    push @filestoadd,keys %libhash;
-	if($basekernelver ne $kernelver) {
-		system("rm -rf $rootimg_dir/lib/modules/$basekernelver");
-        unless (-d "$rootimg_dir/lib/modules/$kernelver") {
-		    if(-d "/lib/modules/$kernelver") {
-		    	system("cd /lib/modules;cp -r $kernelver $rootimg_dir/lib/modules/");
-		    }
-		    else {
-		    	xdie("Cannot read /lib/modules/$kernelver");
-		    }
-        }
-	}
+
    find(\&isnetdriver, <$rootimg_dir/lib/modules/$kernelver/*>);
    foreach (@filestoadd) {
       if (ref($_)) {
