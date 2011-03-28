@@ -110,7 +110,7 @@ sub preprocess_request {
         my $service  = "xcat";
         my @hcps=[$current_ppc_ent->{'hcp'}];
         my $sn = xCAT::Utils->get_ServiceNode(\@hcps, $service, "MN");
-        print Dumper($sn);
+        #print Dumper($sn);
         if( keys(%$sn) == 0 )     {
             my $reqcopy = {%$req};
             push @requests, $reqcopy;
