@@ -117,9 +117,9 @@ cat >/etc/init.d/xcatpostinit1 << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatpostinit1#
 EOF
 chmod 755 /etc/init.d/xcatpostinit1
-ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc3.d/S84xcatpostinit1
-ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc4.d/S84xcatpostinit1
-ln -s /etc/init.d/xcatpostinit1 /etc/init.d/rc5.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/rc3.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/rc4.d/S84xcatpostinit1
+ln -s /etc/init.d/xcatpostinit1 /etc/rc5.d/S84xcatpostinit1
 mkdir -p /opt/xcat
 cat >/opt/xcat/xcatinstallpost << 'EOF'
 #INCLUDE:#TABLE:site:key=installdir:value#/postscripts/xcatinstallpost#
