@@ -108,19 +108,17 @@ lpar4: Success
 
 1.To change the I/O slot profile for lpar4 using the configuration data in the file /tmp/lparfile, the I/O slots information is similar to:
 
-4: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
-
-4: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
-
-4: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
+ 4: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
+ 4: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
+ 4: 512/U78A9.001.0123456-P1-C16/0x21010200/2/1
 
 then run the command:
 
-I<cat /tmp/lparfile | chvm lpar4>
+ cat /tmp/lparfile | chvm lpar4
 
 2. To change the I/O slot profile for lpar1-lpar8 using the configuration data in the file /tmp/lparfile. Users can use the output of lsvm.and remove the cec information, and  modify the lpar id  before each I/O, and run the command as following:
 
-I<chvm lpar1-lpar8 -p /tmp/lparfile>
+ chvm lpar1-lpar8 -p /tmp/lparfile
 
 =head2 VMware specific:
 
