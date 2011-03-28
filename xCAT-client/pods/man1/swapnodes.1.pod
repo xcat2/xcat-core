@@ -6,11 +6,11 @@ B<swapnodes> - swap the location info in the db between 2 nodes. If swapping wit
 
 B<swapnodes> [B<-h>| B<--help>]
 
-B<swapnodes> B<-c> current_node B<-f> fip_node
+B<swapnodes> B<-c> current_node B<-f> fip_node [-o]
 
 =head1 DESCRIPTION
 
-This command is only for P7 IH using Direct FSP Management. It's used to swap the location info in the db between 2 nodes. If swapping within a cec, it will assign the IO adapters that were assigned to the defective node to the available node. Originally, the current_node is a defective non-compute node, and fip_node is a avaible compute node. After the swapping, the current_node will be a available node.
+This command is only for P7 IH using Direct FSP Management. Without -o option, it's used to swap the location info in the db between 2 nodes. With -o option, it's used to move the current_node definition to fip_node (the 2nd octant), not move the fip_node definition to the 1st octant. If the two nodes are in a cec, it will assign the IO adapters that were assigned to the defective node to the available node. Originally, the current_node is a defective non-compute node, and fip_node is a avaible compute node. After the swapping, the current_node will be a available node.
 
 =head1 OPTIONS
 
@@ -26,7 +26,11 @@ current_node -- the defective non-compute node.
 
 =item B<-f>
 
--f fip_node -- a compute node which will be swapped as the non-compute node.
+fip_node -- a compute node which will be swapped as the non-compute node.
+
+=item B<-o>
+
+one way. Move the current_node definition to fip_node (the 2nd octant), and not move the fip_node definition to the 1st octant.
 
 =back
 
