@@ -57,6 +57,7 @@ sub process_request {
 		'monls'         => \&web_monls,
 		'discover'      => \&web_discover,
 		'updatevpd'     => \&web_updatevpd,
+		'createimage'   => \&web_createimage
 		#'xdsh' => \&web_xdsh,
 		#THIS list needs to be updated
 	);
@@ -1027,4 +1028,205 @@ sub web_updatevpd{
     $vpdtab->close();
 }
 
+sub web_createimage{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $ostype = $request->{arg}->[1];
+    my $osarch = lc($request->{arg}->[2]);
+    my $profile = $request->{arg}->[3];
+    my $bootif = $request->{arg}->[4];
+    my $imagetype = lc($request->{arg}->[5]);
+    my @softArray;
+    my $netdriver = '';
+    my $installdir = xCAT::Utils->getInstallDir();
+    my $tempos = $ostype;
+    $tempos =~ s/[0-9]//;
+    my $CONFILE;
+    my $archFlag = 0;
+    my $ret = '';
+    my $cmdPath = '';
+
+    if ($request->{arg}->[6]){
+        @softArray = split(',' , $request->{arg}->[6]);
+
+        #check the arch 
+        if('ppc64' ne $osarch){
+            $callback->({data=>'Error: only support PPC64!'});
+            return;
+        }
+
+        #check the osver
+        unless (-e "/opt/xcat/share/xcat/IBMhpc/IBMhpc.$ostype.ppc64.pkglist"){
+            $callback->({data=>'Error: only support rhels6 and sles11!'});
+            return;
+        }
+
+        #check the custom package, if the path is not exist, must create the dir first
+        if (-e "$installdir/custom/netboot/$ostype/"){
+            #the path is exist, so archive all file under this path.
+            opendir(TEMPDIR, "$installdir/custom/netboot/$ostype/");
+            my @fileArray = readdir(TEMPDIR);
+            closedir(TEMPDIR);
+            if (2 < scalar(@fileArray)){
+                $archFlag = 1;
+                unless (-e "/tmp/webImageArch/"){
+                    system("mkdir -p /tmp/webImageArch/");
+                }
+                system("mv $installdir/custom/netboot/$ostype/*.* /tmp/webImageArch/");
+            }
+            else{
+                $archFlag = 0;
+            }
+        }
+        else{
+            #do not need to archive
+            $archFlag = 0;
+            system("mkdir -p $installdir/custom/netboot/$ostype/");
+        }
+        
+        #write pkglist
+        open($CONFILE, ">$installdir/custom/netboot/$ostype/$profile.pkglist");
+        print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.$ostype.ppc64.pkglist# \n";
+        close($CONFILE);
+
+        #write otherpkglist
+        open($CONFILE, ">$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist");
+        print $CONFILE "\n";
+        close($CONFILE);
+
+        #write exlist for stateless
+        open($CONFILE, ">/install/custom/netboot/$ostype/$profile.exlist");
+        print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.$ostype.$osarch.exlist#\n";
+        close($CONFILE);
+
+        #write postinstall
+        open($CONFILE, ">$installdir/custom/netboot/$ostype/$profile.postinstall");
+        print $CONFILE "/opt/xcat/share/xcat/IBMhpc/IBMhpc.$tempos.postinstall \$1 \$2 \$3 \$4 \$5 \n";
+        close($CONFILE);
+
+        for my $soft (@softArray){
+            $soft = lc($soft);
+            if ('gpfs' eq $soft){
+                web_gpfsConfigure($ostype, $profile, $installdir);
+            }
+        }
+
+        #chmod 
+        system("chmod 755 $installdir/custom/netboot/$ostype/*.*");
+    }
+
+    if ($bootif =~ /hf/i){
+        $netdriver = 'hf_if';
+    }
+    else{
+        $netdriver = 'ibmveth';
+    }
+
+    if ($tempos =~ /rh/i){
+        $cmdPath = "/opt/xcat/share/xcat/netboot/rh";
+    }
+    else{
+        $cmdPath = "/opt/xcat/share/xcat/netboot/sles";
+    }
+    #for stateless only run packimage is ok
+    if ('stateless' eq $imagetype){
+        my $retInfo = xCAT::Utils->runcmd( "${cmdPath}/genimage -i $bootif -n $netdriver -o $ostype -p $profile", -1, 1 );
+        $ret = join ("\n", @$retInfo);
+        if ($::RUNCMD_RC){
+            $callback->({data=>$ret});
+            return;
+        }
+        $ret .= "\n";
+        my $retInfo = xCAT::Utils->runcmd( "packimage -o $ostype -p $profile -a $osarch", -1, 1 );
+        $ret .= join ("\n", @$retInfo);
+    }
+    else{
+        #for statelist we should check the litefile table
+        #step1 save the old litefile table content into litefilearchive.csv
+        system('tabdump litefile > /tmp/litefilearchive.csv');
+
+        #step2 write the new litefile.csv for this lite image
+        open ($CONFILE, ">/tmp/litefile.csv");
+        print $CONFILE "#image,file,options,comments,disable\n";
+        print $CONFILE '"ALL","/etc/lvm/","tmpfs",,' . "\n";
+        print $CONFILE '"ALL","/etc/ntp.conf","tmpfs",,' . "\n";
+        print $CONFILE '"ALL","/etc/resolv.conf","tmpfs",,' . "\n";
+        print $CONFILE '"ALL","/etc/sysconfig/","tmpfs",,' . "\n";
+        print $CONFILE '"ALL","/etc/yp.conf","tmpfs",,' . "\n";
+        print $CONFILE '"ALL","/etc/ssh/","tmpfs",,' . "\n";
+        print $CONFILE '"ALL","/var/","tmpfs",,' . "\n";
+        print $CONFILE '"ALL","/tmp/","tmpfs",,' . "\n";
+        print $CONFILE '"ALL","/root/.ssh/","tmpfs",,' . "\n";
+        print $CONFILE '"ALL","/opt/xcat/","tmpfs",,' . "\n";
+        print $CONFILE '"ALL","/xcatpost/","tmpfs",,' . "\n";
+
+        if ('rhels' eq $tempos){
+            print $CONFILE '"ALL","/etc/adjtime","tmpfs",,' . "\n";
+            print $CONFILE '"ALL","/etc/securetty","tmpfs",,' . "\n";
+            print $CONFILE '"ALL","/etc/rsyslog.conf","tmpfs",,' . "\n";
+            print $CONFILE '"ALL","/etc/rsyslog.conf.XCATORIG","tmpfs",,' . "\n";
+            print $CONFILE '"ALL","/etc/udev/","tmpfs",,' . "\n";
+            print $CONFILE '"ALL","/etc/ntp.conf.predhclient","tmpfs",,' . "\n";
+            print $CONFILE '"ALL","/etc/resolv.conf.predhclient","tmpfs",,' . "\n";
+        }
+        else{
+            print $CONFILE '"ALL","/etc/ntp.conf.org","tmpfs",,' . "\n";
+            print $CONFILE '"ALL","/etc/syslog-ng/","tmpfs",,' . "\n";
+            print $CONFILE '"ALL","/etc/fstab","tmpfs",,' . "\n";
+        }
+        close($CONFILE);
+        
+        for my $soft (@softArray){
+            $soft = lc($soft);
+            system ("grep '^[^#]' /opt/xcat/share/xcat/IBMhpc/$soft/litefile.csv >> /tmp/litefile.csv");
+        }
+        
+        system("tabrestore /tmp/litefile.csv");
+
+        #create the image
+        my $retInfo = xCAT::Utils->runcmd( "${cmdPath}/genimage -i $bootif -n $netdriver -o $ostype -p $profile", -1, 1 );
+        $ret = join ("\n", @$retInfo);
+        if ($::RUNCMD_RC){
+            $callback->({data=>$ret});
+            return;
+        }
+        $ret .= "\n";
+        my $retInfo = xCAT::Utils->runcmd( "liteimg -o $ostype -p $profile -a $osarch", -1, 1 );
+        $ret .= join ("\n", @$retInfo);
+
+        #restore the litefile table
+        system("rm -r /tmp/litefile.csv ; mv /tmp/litefilearchive.csv /tmp/litefile.csv ; tabrestore /tmp/litefile.csv");
+    }
+
+    #recover all file in the $installdir/custom/netboot/$ostype/
+    if ($request->{arg}->[6]){
+        system("rm -f $installdir/custom/netboot/$ostype/*.*");
+    }
+    
+    if ($archFlag){
+        system("mv /tmp/webImageArch/*.* $installdir/custom/netboot/$ostype/");
+    }
+    $callback->({data=>$ret});
+    return;
+}
+
+sub web_gpfsConfigure{
+    my ($ostype, $profile, $installdir) = @_;
+    my $CONFILE;
+    #other pakgs
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist");
+    print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/gpfs.otherpkgs.pkglist#\n";
+    close($CONFILE);
+
+    #exlist
+    open ($CONFILE, ">>/install/custom/netboot/$ostype/$profile.exlist");
+    print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/gpfs.exlist#\n";
+    close ($CONFILE);
+
+    #postinstall
+    system ('cp /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_mmsdrfs /install/postscripts/gpfs_mmsdrfs');
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
+    print $CONFILE "NODESETSTATE=genimage installroot=\$1 /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_updates \n";
+    print $CONFILE "installroot=$1 /install/postscripts/gpfs_mmsdrfs\n";
+    close($CONFILE);
+}
 1;

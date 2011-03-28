@@ -135,6 +135,12 @@ function loadImages(data) {
 		loadCopyCdPage();
 	});
 	
+	// Create new button
+	var newBtn = createButton("Create Image");
+	newBtn.bind('click',function(event){
+		loadCreateImage();
+	});
+	
 	// Create edit button
 	var editBtn = createButton('Edit');
 	editBtn.bind('click', function(event){
@@ -170,6 +176,7 @@ function loadImages(data) {
 	 */
 	var actionsBar = $('<div></div>').css('margin', '10px 0px');
 	actionsBar.append(copyLinuxBtn);
+	actionsBar.append(newBtn);
 	actionsBar.append(editBtn);
 	actionsBar.append(saveBtn);
 	actionsBar.append(undoBtn);
@@ -418,6 +425,195 @@ function setImageDefAttrs(data) {
 	} // End of for
 }
 
+/**
+ *Load create image page
+ *
+ *@param Nothing
+ *		Create a new image for provision
+ *@return Nothing
+ */
+function loadCreateImage(){
+	// get nodes tab
+	var tab=getProvisionTab();
+	var tabId = 'createImageTab';
+	//Generate new tab ID
+	if($('#' + tabId).length){
+		tab.select(tabId);
+		return ;
+	}
+	
+	// Open new tab
+	// Create set properties form 
+	var setPropsForm = $('<div class="form"></div>');
+
+	var infoBar= createInfoBar('Input the image info ,you want to generate. When you finished, click generate.');
+	setPropsForm.append(infoBar);
+	
+	// Create an input for each generate attribute
+	var showStr = '';
+	//os version selector
+	showStr += '<p><label>OS Version:</label><select id="osvers"><option value="rhsel6">rhlse6</option></select></p>';
+	//os arch selector
+	showStr += '<p><label>OS Architecture:</label><select id="osarch"><option value="ppc64">ppc64</option></select></p>';
+	//net boot interface input
+	showStr += '<p><label>Net Boot Interface:</label><input type="text" id="netbootif"></p>';
+	//profile selector
+	showStr += '<p><label>Profile:</label><select id="profile"><option value="compute">compute</option>' + 
+			   '<option value="service">service</option></select></p>';
+	//boot method selector
+	showStr += '<p><label>Boot Method:</label><select id="bootmethod"><option value="stateless">stateless</option>' + 
+	   		   '<option value="statelite">statelite</option></select></p>';
+
+	// advanced software when select the compute profile
+	showStr += '<fieldset id="hpcsoft"><legend>HPC Software Stack</legend><ul>' +
+			   '<li id="gpfsli"><input type="checkbox" onclick="gpfsCheck(this)" name="gpfs">GPFS</li>' + 
+			   '<li id="loadli"><input type="checkbox" name="loadll">LoadLeveler</li>'
+			   + '</ul></fieldset>';
+	
+	setPropsForm.append(showStr);
+	
+	var createImageBtn=createButton("CreateImage");
+	createImageBtn.bind('click',function(event){
+		createImage();
+	});
+	
+	setPropsForm.append(createImageBtn);	
+	tab.add(tabId, 'Create Image', setPropsForm, true);
+	tab.select(tabId);
+	
+	//for the profile select, if not compute could not select the software
+	$('#createImageTab #profile').bind('change', function(){
+		if('compute' != $(this).attr('value')){
+			$('#createImageTab #hpcsoft').hide();
+		}
+		else{
+			$('#createImageTab #hpcsoft').show();
+		}
+	});
+}
+
+/**
+ * use users' input or select to create image
+ * 
+ * @param 
+ *  
+ * @return Nothing
+ */
+function createImage(){
+	var osvers = $("#createImageTab #osvers").val();
+	var osarch = $("#createImageTab #osarch").val();
+	var profile = $("#createImageTab #profile").val();
+	var bootInterface = $("#createImageTab #netbootif").val();
+	var bootMethod = $("#createImageTab #bootmethod").val();
+	
+	$('#createImageTab .ui-state-error').remove();
+	
+	if (!bootInterface){
+		$("#createImageTab").prepend('<div class="ui-state-error ui-corner-all">' + 
+					                 '<p>Input the netboot interface please.</p></div>');
+		return;
+	}
+	
+	var createImageArgs = "createimage;" + osvers + ";" + osarch + ";" + profile + ";" + bootInterface + ";" +
+						  bootMethod + ";";
+	
+	$("#createImageTab :checkbox:checked").each(function (){
+		createImageArgs+=$(this).attr("name")+",";
+	});
+	
+	createImageArgs=createImageArgs.substring(0,(createImageArgs.length-1));
+	$.ajax({
+		 url : 'lib/cmd.php',
+         dataType : 'json',
+         data : {
+   		         cmd : 'webrun',
+                 tgt : '',
+                 args : createImageArgs,
+                 msg : ''
+		},
+		success : function(data){
+
+		}
+	});
+}
+
+/**
+ * when users want to install gpfs on compute node, 
+ * should check the rpms install and copy status first.
+ * 
+ * @param 
+ *  
+ * @return Nothing
+ */
+function gpfsCheck(obj) {
+	if(0 < $('#createImageTab #gpfsli .ui-icon-circle-check').size()){
+		return;
+	}
+	
+	$('#createImageTab #gpfsli .ui-state-error').remove();
+	$('#createImageTab #gpfsli').append(createLoader());
+	$.ajax({
+		url : 'lib/systemcmd.php',
+		dataType : 'json',
+		data:{
+			cmd : 'rpm -q gpfs.base gpfs.gpl gpfs.msg  xCAT-IBMhpc createrepo'
+		},
+		success : function(data){
+			var checkResult=data.rsp.split("\n");
+			var errorStr = '';
+			
+			for (var i in checkResult){
+				if (-1 != checkResult[i].indexOf("not installed")){
+					errorStr += ' ' + checkResult[i] + ',';
+				}
+			}
+			
+			if ('' != errorStr){
+				errorStr = errorStr.substr(0, errorStr.length - 1);
+				$(":checkbox[name=gpfs]").attr("checked",false);
+				//add the error
+				var errorPart = '<div style="display:inline-block;margin:0px" class="ui-state-error">' +
+								'<span class="ui-icon ui-icon-alert"></span>' + errorStr + '</div>';
+				$('#createImageTab #gpfsli').find('img').remove();
+				$('#createImageTab #gpfsli').append(errorPart);
+				return;
+			}
+			
+			gpfsCopyCheck();
+		}
+	});	
+}
+
+function gpfsCopyCheck(){
+	var osvers=$("#createImageTab #osvers").val();
+	var osarch=$("#createImageTab #osarch").val();
+	$.ajax({
+		url: 'lib/systemcmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'ls /install/post/otherpkgs/' + osvers + '/' + osarch + '/gpfs/gpfs.gplbin*.rpm'
+		},
+		success : function(data){
+			var installPath = '/install/post/otherpkgs/' + $("#createImageTab #osvers").val() + '/' + 
+							  $("#createImageTab #osarch").val() + '/gpfs';
+			//remove the loading image.
+			$('#createImageTab #gpfsli').find('img').remove();
+			
+			//check the return information
+			if (null == data.rsp){
+				var errorPart = '<div style="display:inline-block;margin:0px" class="ui-state-error">' +
+								'<span class="ui-icon ui-icon-alert"></span>Build the GPFS portability layer rpm, install it and copy it into ' +
+								installPath + '.<br/>For information: <a href="http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_up_GPFS_in_a_Statelite_or_Stateless_Cluster#Install.2FBuild_GPFS" target="_blank">Install/Build GPFS</a></div>';
+				$('#createImageTab #gpfsli').append(errorPart);
+				$(":checkbox[name=gpfs]").attr("checked",false);
+			}
+			else{
+				var infoPart = '<div style="display:inline-block;margin:0px"><span class="ui-icon ui-icon-circle-check"></span></div>';
+				$('#createImageTab #gpfsli').append(infoPart);
+			}
+		}
+	});
+}
 /**
  * Load set image properties page
  * 
