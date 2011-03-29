@@ -484,9 +484,10 @@ sub message
         {
             my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
               localtime(time);
-            my $currtime = sprintf("%02d-%02d-%04d %02d:%02d:%02d",
-                                   $mon + 1, $mday, $year + 1900,
-                                   $hour, $min, $sec);
+            
+            my $currtime = sprintf("%04d-%02d-%02d %02d:%02d:%02d",
+                                        $year + 1900, $mon + 1, $mday,
+                                        $hour, $min, $sec);
 
             $auditlogentry->{audittime}  = $currtime;
             $auditlogentry->{userid}     = $newrsp->{userid}->[0];
