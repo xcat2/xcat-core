@@ -236,15 +236,15 @@ Output looks like:
    blade7: mp.id: 7
    blade8: mp.id: 8
    blade9: mp.id: 9
-   
+
 =item 10.
 
 To list the hidden nodes that can't be seen with other flags.
 The hidden nodes are FSP/BPAs.
 
  lsdef -S
- 
- 
+
+
 =back
 
 =head1 FILES
