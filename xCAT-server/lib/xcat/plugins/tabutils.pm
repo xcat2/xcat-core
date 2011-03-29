@@ -489,12 +489,18 @@ sub tabdump
     my $table = "";
     my $HELP;
     my $DESC;
+    my $OPTW;
+    my $VERSION;
 
     my $tabdump_usage = sub {
         my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage: tabdump [-d] [table]";
+        push @{$rsp{data}}, "       tabdump      [table]";
+        push @{$rsp{data}}, "       tabdump [-w attr==val [-w attr=~val] ...] [table]";
         push @{$rsp{data}}, "       tabdump [-?|-h|--help]";
+        push @{$rsp{data}}, "       tabdump {-v|--version}"; 
+        push @{$rsp{data}}, "       tabdump ";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
     };
@@ -503,7 +509,25 @@ sub tabdump
     if ($args) {
         @ARGV = @{$args};
     }
-    if (!GetOptions('h|?|help' => \$HELP, 'd' => \$DESC)) { $tabdump_usage->(1); return; }
+
+    if (!GetOptions(
+          'h|?|help' => \$HELP,
+          'v|version' => \$VERSION,
+          'd' => \$DESC,
+          'w=s@' => \$OPTW,
+         ) 
+       )
+     {$tabdump_usage->(1);
+         return;
+     }
+    if ($VERSION) {
+        my %rsp;
+        my $version = xCAT::Utils->Version();
+        $rsp{data}->[0] = "$version";
+        $cb->(\%rsp);
+        return;
+    }
+
 
     if ($HELP) { $tabdump_usage->(0); return; }
     if (scalar(@ARGV)>1) { $tabdump_usage->(1); return; }
@@ -524,7 +548,7 @@ sub tabdump
         $cb->(\%rsp);
         return;
     }
-
+    # get the table name
     $table = $ARGV[0];
     if ($DESC) {     # only show the attribute descriptions, not the values
         my $schema = xCAT::Table->getTableSchema($table);
@@ -560,20 +584,32 @@ sub tabdump
         $cb->({error => "No such table: $table",errorcode=>1});
         return 1;
     }
-
-    my $recs = $tabh->getAllEntries("all");
-    my $rec;
-    unless (@$recs)        # table exists, but is empty.  Show header.
-    {
-        if (defined($xCAT::Schema::tabspec{$table}))
-        {
+    my $recs;
+    my @ents;
+    my @attrarray;
+    if (!($OPTW)) {   # if no -w flag to filter, then get all
+      $recs = $tabh->getAllEntries("all");
+    } else {  # filter entries  
+       foreach my $w (@{$OPTW}){  # get each attr=val  
+         push @attrarray, $w;
+       }
+       @ents = $tabh->getAllAttribsWhere(\@attrarray, 'ALL');
+       foreach my $e (@ents) {
+          push @$recs,$e;
+       }
+     }
+     my $rec;
+     unless (@$recs)        # table exists, but is empty.  Show header.
+     {
+       if (defined($xCAT::Schema::tabspec{$table}))
+       {
             $tabdump_header->(@{$xCAT::Schema::tabspec{$table}->{cols}});
             $cb->(\%rsp);
             return;
-        }
-    }
-    # Display all the rows of the table  the order of the columns in the schema
-    output_table($table,$cb,$tabh,$recs); 
+       }
+     }
+     #Display all the rows of the table  the order of the columns in the schema
+      output_table($table,$cb,$tabh,$recs); 
 }
 # Display information from the daemon.
 #  
