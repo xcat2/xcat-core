@@ -4,7 +4,7 @@
 # EPL license http://www.eclipse.org/legal/epl-v10.html
 #
 # Revision history:
-#   July, 2010 		vallard@sumavi.com comments added.
+#   July, 2010    vallard@sumavi.com comments added.
 #   August, 2009	blade.pm adapted to generate hpblade.pm
 #
 package xCAT_plugin::hpblade;
@@ -1027,7 +1027,8 @@ sub getmacs
 		foreach my $macEntry (@macs) {
 			if ($macEntry =~ /MAC ADDRESS $pxeNic/) {
 				$mac = $macEntry;
-				$mac =~ s/MAC ADDRESS $pxeNic://;
+				$mac =~ s/MAC ADDRESS $pxeNic: //;
+				$mac = lc $mac;
 				last;
 			}
 		}
@@ -1263,7 +1264,7 @@ sub buildEventHash {
 	my $eventLogFound = 0;
 	my $eventFound = 0;
 	my $eventNumber = 0;
-	
+
 	my @lines = split /^/, $logText;
 	foreach my $line (@lines){
 		if(! $eventLogFound ) {
@@ -1301,38 +1302,58 @@ sub buildEventHash {
 		$eventHash->{event}->{$eventNumber}->{$desc} = $value;
 		next;
 	}
-	return;
+	return $eventNumber;
 }
 
 sub eventlog {
 	my $subcommand= shift;
 	
 	my @output;
-	
-	my $numEntries = $subcommand;
-	
-	if($subcommand eq "all"  | $subcommand eq "clear" ) {
-		return(1, "Command not supported");
-	} elsif ($subcommand =~ /\D/) {
-		return(1, "Command not supported");
-	} else {
+ 
+	$subcommand = "all" if $subcommand eq "";
+ 
+	if ($subcommand eq "all" or $subcommand =~ /\d+/) {
 		my $mpEventLogResponse = $hpoa->getBladeMpEventLog("bayNumber"=>$slot, "maxsize"=>640000);
 		if($mpEventLogResponse->fault) {
-			return(1, "Attempt to retreive Event Log faulted");
+			return(1, "Attempt to retrieve Event Log faulted");
 		}
 		my $logText = $mpEventLogResponse->result->{logContents};
-		buildEventHash($logText, $numEntries);
+		my $numEvents = buildEventHash($logText);
+
+		my $recCount = 0;
+		$eventHash->{'event'} = {
+			map {
+				$recCount++ => $_->[1]
+			} sort {
+				$a->[0] <=> $b->[0]
+			} map {
+				(defined $_->{LAST_UPDATE} && $_->{LAST_UPDATE} ne '[NOT SET]')
+				? [ &extractDate($_->{LAST_UPDATE}), $_]
+				: [ $_->{SELID}, $_ ]
+			} map {
+				$eventHash->{'event'}{$_}{SELID} = $_;
+				$eventHash->{'event'}{$_};
+			} grep {
+				defined $eventHash->{'event'}{$_}
+			} keys %{$eventHash->{'event'}}
+		};
 		
-		for (my $index = 0; $index < $numEntries; $index++) {
-			my $class = $eventHash->{event}->{$index}->{CLASS};
-			my $severity = $eventHash->{event}->{$index}->{SEVERITY};
-			my $dateTime = $eventHash->{event}->{$index}->{LAST_UPDATE};
-			my $desc = $eventHash->{event}->{$index}->{DESCRIPTION};
-			
+		my $limitEvents = ($subcommand eq "all" ? $recCount : $subcommand);
+
+		for (my $index = 0; $index < $limitEvents; $index++) {
+			--$recCount;
+
+			my $class = $eventHash->{event}->{$recCount}->{CLASS};
+			my $severity = $eventHash->{event}->{$recCount}->{SEVERITY};
+			my $dateTime = $eventHash->{event}->{$recCount}->{LAST_UPDATE};
+			my $desc = $eventHash->{event}->{$recCount}->{DESCRIPTION};
 			unshift @output,"$class $severity:$dateTime $desc";
 		}
 		return(0, @output);
-		
+	} elsif ($subcommand eq "clear") {
+		return(1, "Command not supported");
+	} else {
+		return(1, "Command '$subcommand' not supported");
 	}
 }
 			
@@ -1605,7 +1626,7 @@ sub bootseq {
 			}	
 		}
 					
-		return (0,join(',',@order));
+		return (0, lc join(',',@order));
 	} else {
 		foreach (@args) {
 			my @neworder=(split /,/,$_);
@@ -1656,11 +1677,12 @@ sub bootseq {
 
 	
 sub power {
-	my $slot = shift; # so we can check the stat after running commands.
 	my $subcommand = shift;
 	my $command2Send;
 	my $currPowerStat;
-	my $ret; # return code.	
+	my $returnState;
+	
+	$returnState = "";
 	$currPowerStat = $getBladeStatusResponse->result->{powered};
 	
 	if($subcommand eq "stat" || $subcommand eq "state") {
@@ -1673,84 +1695,33 @@ sub power {
 	
 	if ($subcommand eq "on") {
 		if($currPowerStat eq "POWER_OFF") {
-			while($currPowerStat eq "POWER_OFF"){
-				my $ps = runpowercmd('MOMENTARY_PRESS');
-				$getBladeStatusResponse = $hpoa->getBladeStatus('bayNumber' => $slot);
-				$currPowerStat = $getBladeStatusResponse->result->{powered};
-				#print $currPowerStat . "\n";
-				sleep 1;
-			}
-			if($currPowerStat eq "POWER_ON"){
-				return(0, "on");
-			}else{
-				return(1, $currPowerStat);
-			}
+			$command2Send = "MOMENTARY_PRESS";
+			$returnState = "on";
 		} else {
-			# its already on
 			return(0, "on");
 		}
-
-
-	# power the node off
 	} elsif ($subcommand eq "off") {
 		if($currPowerStat eq "POWER_ON") {
-			while($currPowerStat eq "POWER_ON"){
-				my $ps = runpowercmd('PRESS_AND_HOLD');
-				$getBladeStatusResponse = $hpoa->getBladeStatus('bayNumber' => $slot);
-				$currPowerStat = $getBladeStatusResponse->result->{powered};
-				#print $currPowerStat . "\n";
-				sleep 1;
-			}
-		}
-		if($currPowerStat eq "POWER_OFF"){
+			$command2Send = "PRESS_AND_HOLD";
+			$returnState = "off";
+		} else {
 			return(0, "off");
-		}else{
-			return(1, $currPowerStat);
 		}
-
-	# reset command
 	} elsif ($subcommand eq "reset") {
 		$command2Send = "RESET";
-	
-	# cycle command
 	} elsif ($subcommand eq "cycle") {
 		if($currPowerStat eq "POWER_ON") {
 			power("off");
 		}
 		$command2Send = "MOMENTARY_PRESS";
-
 	} elsif ($subcommand eq "boot") {
-		my $rc = "";
-		# turn it off first
-		if($currPowerStat eq "POWER_ON"){
-			while($currPowerStat eq "POWER_ON"){
-				my $ps = runpowercmd('PRESS_AND_HOLD');
-				$getBladeStatusResponse = $hpoa->getBladeStatus('bayNumber' => $slot);
-				$currPowerStat = $getBladeStatusResponse->result->{powered};
-				#print $currPowerStat . "\n";
-				sleep 1;
-			}
-			$rc = "off ";
+		if($currPowerStat eq "POWER_OFF") {
+			$command2Send = "MOMENTARY_PRESS";
+			$returnState = "off on";
+		} else {
+			$command2Send = "COLD_BOOT";
+			$returnState = "on reset";
 		}
-
-		# power should be off if at this point.
-		if($currPowerStat eq "POWER_OFF"){
-			while($currPowerStat eq "POWER_OFF"){
-				runpowercmd('MOMENTARY_PRESS');
-				$getBladeStatusResponse = $hpoa->getBladeStatus('bayNumber' => $slot);
-				$currPowerStat = $getBladeStatusResponse->result->{powered};
-				if($currPowerStat eq "POWER_OFF"){
-					sleep 1;
-				}
-			}
-			$rc .= "on";
-		}
-		#if($currPowerStat eq "POWER_OFF") {
-		#	$command2Send = "MOMENTARY_PRESS";
-		#} else {
-		#	$command2Send = "COLD_REBOOT";
-		#}
-		return(0,$rc);
 	} elsif ($subcommand eq "softoff") {
 		if($currPowerStat eq "POWER_ON") {
 			$command2Send = "MOMENTARY_PRESS";
@@ -1763,32 +1734,11 @@ sub power {
 		if($pwrResult->fault) {
 			return(1, "Node $curn - Power command failed");
 		}
-		$getBladeStatusResponse = $hpoa->getBladeStatus('bayNumber' => $slot);
-		$currPowerStat = $getBladeStatusResponse->result->{powered};
-		my $r;
-		if($currPowerStat eq "POWER_ON"){ 
-			$r = "on" 
-		}elsif($currPowerStat eq "POWER_OFF"){
-			$r = "off";
-		}else{
-			# don't know what this is:
-			$r = $currPowerStat;
-		}
-		return(0, $r);
+		return(0, $returnState);
 	}
 }
-
-# put this in here to make things more robust.	
-sub runpowercmd {
-	my $cmd = shift;
-	my $pwrResult = $hpoa->setBladePower('bayNumber' => $slot, 'power' => $cmd);
-	if($pwrResult->fault){
-		print $pwrResult->fault;
-	}
-	return $pwrResult;
-	#print Dumper($pwrResult);	
-}	
 	
+		
 
 sub bladecmd {
 	my $oa = shift;
@@ -1813,7 +1763,7 @@ sub bladecmd {
 	if ($command eq "rbeacon") {
 		return beacon(@args);
 	} elsif ($command eq "rpower") {
-		return power($slot, @args);
+		return power(@args);
 	} elsif ($command eq "rvitals") {
 		return vitals(@args);
 	} elsif ($command =~ /r[ms]preset/) {
@@ -1945,14 +1895,14 @@ sub doblade {
 	#my $msgtoparent=freeze(\@outhashes); # = XMLout(\%output,RootName => 'xcatresponse');
 	#print $out $msgtoparent; #$node.": $_\n";
 }
+
+sub extractDate {
+	use Time::Local;
+	my $date = shift;
+
+	return 0 unless $date =~ m/(\d{1,2})\/(\d{1,2})\/(\d{4}) (\d{1,2}):(\d{1,2})/;
+
+	return timegm(0,$5,$4,$2,$1,$3);
+}
+
 1;
-	
-		
-		
-	
-	
-	
-
-	
-	
-
