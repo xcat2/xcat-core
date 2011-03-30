@@ -594,6 +594,7 @@ sub tabdump
          push @attrarray, $w;
        }
        @ents = $tabh->getAllAttribsWhere(\@attrarray, 'ALL');
+       @$recs = ();
        foreach my $e (@ents) {
           push @$recs,$e;
        }
