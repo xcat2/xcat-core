@@ -39,6 +39,7 @@ Show descriptions of the tables, instead of the contents of the tables.  If a ta
 Use one or multiple -w flags to specify the selection string that can be used to select particular rows of the table. See examples.
 
 Operator descriptions:
+
         ==        Select nodes where the attribute value is exactly this value.
         !=        Select nodes where the attribute value is not this specific value.
         >         Select nodes where the attribute value is greater than this  specific value.
