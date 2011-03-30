@@ -896,12 +896,18 @@ function loadNodes(data) {
 	
 	// Get index of hcp column
 	var i = $.inArray('hcp', sorted);
+	var archCol = $.inArray('arch', sorted);
 	if (i) {
 		// Get hardware control point
 		var rows = nodesTable.object().find('tbody tr');
 		var hcps = new Object();
-		for (var j in rows) {
+		var rowsNum = rows.size();
+		for (var j = 0; j < rowsNum; j++) {
 			var val = rows.eq(j).find('td').eq(i).html();
+			var archval = rows.eq(j).find('td').eq(archCol).html();
+			if (-1 == archval.indexOf('390')){
+				continue;
+			}
 			hcps[val] = 1;
 		}
 
