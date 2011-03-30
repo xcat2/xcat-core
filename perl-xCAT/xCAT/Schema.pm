@@ -532,7 +532,7 @@ noderes => {
   current_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image currently deployed on this node.',
   next_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image that will be installed on the node the next time it is deployed.',
   nimserver => 'Not used for now. The NIM server for this node (as known by this node).',
-  routenames => 'A comma seperated route names. The route is defined in the routes table',
+  routenames => 'A comma separated route names. The route is defined in the routes table.',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -795,6 +795,8 @@ site => {
    " iscsidir:  The path to put the iscsi disks in on the mgmt node.\n\n".
    " master:  The hostname of the xCAT management node, as known by the nodes.\n\n".
    " maxssh:  The max # of SSH connections at any one time to the hw ctrl point for PPC\n\n".
+   " mnroutes:  The name of the routes to be setup on the management node.\n\n".
+   "            It is a comma separated list of route names that are defined in the routes table.\n\n".
    " nameservers:  A comma delimited list of DNS servers that each node in the cluster\n".
    "               should use - often the xCAT management node.\n\n".
    " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n".
