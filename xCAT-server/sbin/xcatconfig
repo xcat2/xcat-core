@@ -847,7 +847,15 @@ sub initDB
     if (!$master) {
         xCAT::MsgUtils->message("E", "Hostname resolution for $hname failed.");
         $master = "NORESOLUTION";
-    } 
+    }
+    # get forwarders which are the nameserver entries in /etc/resolv.conf
+    my @names =
+      xCAT::Utils->runcmd(
+              "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'",
+              0);
+    my $forwarders     = join(',', @names);
+
+ 
     # for policy table
     # get hostname from the /etc/xcat/cert/server-cert.pem
     my $MNname;
@@ -929,6 +937,10 @@ sub initDB
               "$::XCATROOT/sbin/chtab key=consoleondemand site.value=no;";
         }
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=master site.value=$master;";
+        if ($forwarders) {
+          $chtabcmds .= "$::XCATROOT/sbin/chtab key=forwarders site.value=$forwarders;";
+        }
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=nameservers site.value=$master;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=maxssh site.value=8;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppcmaxp site.value=64;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=ppcretry site.value=3;";
