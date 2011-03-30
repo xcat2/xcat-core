@@ -482,6 +482,13 @@ sub donets
                         $gw =  $netgw{'0.0.0.0'}{'0.0.0.0'}; #default gatetway
                     }
                 }
+                # set gateway to keyword <xcatmaster>,
+                # to indicate to use the cluster-facing ip address 
+                # on this management node or service node
+                if (!$gw)
+                {
+                    $gw = "<xcatmaster>";
+                }
 
 				# use convention for netname attr
                 my $netn;

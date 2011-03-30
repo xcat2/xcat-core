@@ -1949,6 +1949,22 @@ sub getNetwkInfo
                                         $nethash{$node}{'gateway'} = '';
                                     }
                                     $nethash{$node}{'myselfgw'} = 1;
+                                    # For hwctrl commands, it is possible that this subroutine is called
+                                    # on MN instead of SN, if the hcp SN is not set
+                                    if (xCAT::Utils->isMN() && !$nethash{$node}{'gateway'})
+                                    {
+                                        # does not have ip address in this subnet,
+                                        # use the node attribute 'xcatmaster'
+                                        my $noderestab = xCAT::Table->new('noderes');
+                                        my $et = $noderestab->getNodeAttribs($node, ['xcatmaster']);
+                                        if ($et and defined($et->{'xcatmaster'}))
+                                        {
+                                            my $value = $et->{'xcatmaster'};
+                                            $nethash{$node}{'gateway'} = xCAT::NetworkUtils->getipaddr($value);
+                                        }
+                                        $noderestab->close();
+                                    }
+                                
                                 }
                                 next;
                         }
