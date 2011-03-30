@@ -513,7 +513,7 @@ nodepos => {
  },
   },
 noderes => {
-    cols => [qw(node servicenode netboot tftpserver nfsserver monserver nfsdir installnic primarynic discoverynics cmdinterface xcatmaster current_osimage next_osimage nimserver comments disable)],
+    cols => [qw(node servicenode netboot tftpserver nfsserver monserver nfsdir installnic primarynic discoverynics cmdinterface xcatmaster current_osimage next_osimage nimserver routenames comments disable)],
     keys => [qw(node)],
     table_desc => 'Resources and settings to use when installing nodes.',
  descriptions => {
@@ -531,9 +531,10 @@ noderes => {
   xcatmaster => 'The hostname of the xCAT service node (as known by this node).  This is the default value if nfsserver or tftpserver are not set.',
   current_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image currently deployed on this node.',
   next_osimage => 'Not currently used.  The name of the osimage data object that represents the OS image that will be installed on the node the next time it is deployed.',
-     nimserver => 'Not used for now. The NIM server for this node (as known by this node).',
-     comments => 'Any user-written notes.',
-     disable => "Set to 'yes' or '1' to comment out this row.",
+  nimserver => 'Not used for now. The NIM server for this node (as known by this node).',
+  routenames => 'A comma seperated route names. The route is defined in the routes table',
+  comments => 'Any user-written notes.',
+  disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
     switches => {
@@ -1213,6 +1214,10 @@ my @nodeattrs = (
   },
         {attr_name => 'netboot',
                  tabentry => 'noderes.netboot',
+                 access_tabentry => 'noderes.node=attr:node',
+  },
+       {attr_name => 'routenames',
+                 tabentry => 'noderes.routenames',
                  access_tabentry => 'noderes.node=attr:node',
   },
 ######################
