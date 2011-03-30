@@ -36,7 +36,7 @@ Show descriptions of the tables, instead of the contents of the tables.  If a ta
 
 =item B<-w> I<attr==val> B<-w> I<attr=~val> ...
 
-Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. Use the help option to get a list of valid attributes for each object type.
+Use one or multiple -w flags to specify the selection string that can be used to select particular rows of the table. See examples.
 
 Operator descriptions:
         ==        Select nodes where the attribute value is exactly this value.
