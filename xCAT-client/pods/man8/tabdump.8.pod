@@ -6,7 +6,15 @@ B<tabdump> - display an xCAT database table in CSV format.
 
 B<tabdump> [I<-d>] [I<table>]
 
+B<tabdump> [I<table>]
+
+B<tabdump> [I<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<table>]
+
+B<tabdump> [I<-v> | I<--version>]
+
 B<tabdump> [I<-?> | I<-h> | I<--help>]
+
+B<tabdump> 
 
 =head1 DESCRIPTION
 
@@ -25,6 +33,21 @@ Display usage message.
 =item B<-d>
 
 Show descriptions of the tables, instead of the contents of the tables.  If a table name is also specified, descriptions of the columns (attributes) of the table will be displayed.  Otherwise, a summary of each table will be displayed.
+
+=item B<-w> I<attr==val> B<-w> I<attr=~val> ...
+
+Use one or multiple -w flags to specify the selection string that can be used to select objects. The operators ==, !=, =~ and !~ are available. Use the help option to get a list of valid attributes for each object type.
+
+Operator descriptions:
+        ==        Select nodes where the attribute value is exactly this value.
+        !=        Select nodes where the attribute value is not this specific value.
+        >         Select nodes where the attribute value is greater than this  specific value.
+        >=        Select nodes where the attribute value is greater than or equal to this  specific value.
+        <         Select nodes where the attribute value is less than this  specific value.
+        <=        Select nodes where the attribute value is less than or equal to this  specific value.
+        =~        Select nodes where the attribute value matches the SQL LIKE value.
+        !~        Select nodes where the attribute value matches the SQL NOT LIKE value.
+
 
 =back
 
@@ -51,6 +74,18 @@ An error has occurred.
 To display the contents of the site table:
 
 B<tabdump> I<site>
+
+=item *
+
+To display the contents of the nodelist table where the groups attribute is compute :
+
+B<tabdump>  I<-w groups==compute> I<nodelist>
+
+=item *
+
+To display the contents of the nodelist table where the groups attribute is comput% where % is a wildcard and can represent any string  and the status attribute is booted :
+
+B<tabdump>  I<-w groups=~comput%> I<-w status==booted> I<nodelist>
 
 =item *
 
