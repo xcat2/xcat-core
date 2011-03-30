@@ -795,7 +795,7 @@ site => {
    " iscsidir:  The path to put the iscsi disks in on the mgmt node.\n\n".
    " master:  The hostname of the xCAT management node, as known by the nodes.\n\n".
    " maxssh:  The max # of SSH connections at any one time to the hw ctrl point for PPC\n\n".
-   " mnroutes:  The name of the routes to be setup on the management node.\n\n".
+   " mnroutenames:  The name of the routes to be setup on the management node.\n\n".
    "            It is a comma separated list of route names that are defined in the routes table.\n\n".
    " nameservers:  A comma delimited list of DNS servers that each node in the cluster\n".
    "               should use - often the xCAT management node.\n\n".
