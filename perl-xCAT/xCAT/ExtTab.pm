@@ -15,7 +15,7 @@ $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat'
 
 use File::Path;
 %ext_tabspec=(); 
-$ext_defspec=();
+%ext_defspec=();
 
 
 # loads user defined table spec. They are stored under /opt/xcat/lib/perl/xCAT_schema directory
