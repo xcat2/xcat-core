@@ -77,14 +77,6 @@ If you want to delete all of the nodes that xcatsetup created, and start over, u
 
 The B<xcatsetup> command has only been implemented and tested for system p servers so far.
 
-=item *
-
-Redundant BPAs and FSPs are not yet supported.
-
-=item *
-
-Hostname ranges must start with 1 (or 01, etc.).  I.e. use node01-node80, instead of node03-node83.
-
 =back
 
 =head2 Configuration File
@@ -96,12 +88,18 @@ text and the numbers.  For example, hmc1-hmc3 could be changed to hwmgmt01-hwmgm
 The hostnames specified must sort correctly.  I.e. use node01-node80, instead of node1-node80.
 This sample configuration file is for a 2 building block cluster.
 
+  xcat-service-lan:
+    # IP range used for DHCP. If you set the entry, the networks table will be filled 
+    # automatically with this range and the dhcp interface will be set in the site table.
+    dhcp-dynamic-range = 50.0.0.0-50.0.0.200
+	
   xcat-site:
    domain = cluster.com
    # currently only direct fsp control is supported
    use-direct-fsp-control = 1
    # ISR network topology.  For example, one of the following: 128D, 64D, 32D, 16D, 8D, 4D, 2D, 1D
    topology = 32D
+   # The nameservers in site table will be set with the value of master automatically.
 
   xcat-hmcs:
    hostname-range = hmc1-hmc2
