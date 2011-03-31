@@ -15,7 +15,6 @@ if ($^O =~ /^aix/i)
 
 use strict;
 use Sys::Syslog qw (:DEFAULT setlogsock);
-require xCAT::Table;
 use xCAT::Utils;
 #use locale;
 use Socket;
@@ -478,6 +477,7 @@ sub message
     if (xCAT::Utils->isMN()){
      if ($sev eq 'SA')
      {
+        require xCAT::Table;
         my $auditlogentry;
         my $tab = xCAT::Table->new("auditlog");
         if ($tab)
