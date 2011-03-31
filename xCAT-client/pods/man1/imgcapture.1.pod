@@ -4,8 +4,7 @@ B<imgcapture> - Captures an image from a Linux diskful node and create a diskles
 
 =head1 SYNOPSIS
 
-B<imgcapture> node [B<-p>|B<--profile> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-V>|B<--verbose>]
-
+B<imgcapture> node [B<-p>|B<--profile> I<profile>] [B<-o>|B<--osimage> I<osimage>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-V>|B<--verbose>]
 B<imgcapture> [B<-h> | B<--help>] | [B<-v> | B<--version>]
 
 =head1 DESCRIPTION
@@ -28,7 +27,11 @@ After the B<imgcapture> command returns without any errors, you can customize th
 
 =item B<-p|--profile> I<profile> 
 
-assign I<profile> as the profile of the image to be created.
+Assign I<profile> as the profile of the image to be created.
+
+=item B<-o|--osimage> I<osimage>
+
+Assign the pre-defined I<osimage> object. The attributes of I<osimage> will be used to capture and prepare the root image.
 
 =item B<-i> I<nodebootif>
 
@@ -80,17 +83,20 @@ Verbose output.
 
 B<node1> is one diskful Linux node, which is managed by xCAT.
 
-1. In order to create the image, run the following command:
+1. In order to capture and prepare the root image, run the following command:
 
 imgcapture node1
 
-2. In order to create the image with B<hpc> as profile, run the command:
+2. In order to capture and prepare the root image with B<hpc> as profile, run the command:
 
 imgcapture node1 -p hpc
 
-3. Create the image: its profile is B<hpc>, and the network interface the diskless node will boot over is B<eth0>, the driver modules for this network interface is B<e1000e>.
+3. In order to capture and prepare the root image: its profile is B<hpc>, and the network interface the diskless node will boot over is B<eth0>, the driver modules for this network interface is B<e1000e>.
 
 imgcapture node1 -p hpc -i eth0 -n e1000e
+
+4. There's one pre-defined I<osimage>. In order to capture and prepare the root image for I<osimage>, run the command:
+imgcapture node1 -o osimage
  
 =head1 FILES
 

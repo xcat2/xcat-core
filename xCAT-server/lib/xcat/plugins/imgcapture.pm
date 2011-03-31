@@ -344,7 +344,16 @@ sub imgcapture {
             $rsp->{data}->[0] = qq{"The genimage command is: $cmd"};
             xCAT::MsgUtils->message("D", $rsp, $callback);
         }
-        xCAT::Utils->runcmd($cmd);
+        my @cmdoutput = xCAT::Utils->runcmd($cmd, 0);
+        if($::RUNCMD_RC) {
+            my $rsp = {};
+            foreach (@cmdoutput) {
+                push @{$rsp->{data}}, $_;
+            }
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            unlink $xcat_imgcapture_tmpfile;
+            return;
+        }
     } else {
         my $rsp = {};
         $rsp->{data}->[0] = qq{Can't run the "genimage" command for $os};
@@ -353,7 +362,7 @@ sub imgcapture {
     }
 
     my $rsp = {};
-    $rsp->{data}->[0] = qq{"Done."};
+    $rsp->{data}->[0] = qq{Done.};
     xCAT::MsgUtils->message("D", $rsp, $callback);
 
     unlink $xcat_imgcapture_tmpfile;
