@@ -12,7 +12,7 @@ if [ ! -f /tmp/xcat/$rvid_server.remotekvm.jar ]; then
     wget --no-check-certificate -O /tmp/xcat/$rvid_server.remotekvm.jar http://$rvid_server/private/remotekvm.jar >& /dev/null
 fi
 if [ $fwpref == 'BPET' ]; then
-    if [ $fwmaj -ge 46 ]; then
+    if [[ "0x$fwmaj" -ge 46 ]]; then
         java -jar /tmp/xcat/$rvid_server.remotekvm.jar -s $rvid_server -r $rvid_authtoken -b $rvid_slot -B -R >& /dev/null
     elif [ $fwmaj -ge 42 ]; then
         echo "Unable to securely support $rvid_fwrev in an adequately secure manner, please upgrade to BPET46C or better"
