@@ -171,6 +171,9 @@ sub snap_it {
     chop( $INSTALLDIR =
           `tabdump site | grep installdir | cut -f2 -d ,` );
     $INSTALLDIR =~ s/"//g;
+    # make a list of all files in /tftpboot
+    # need to limit what we get due to size
+    `ls -lR /tftpboot > /tftpboot/tftpboot.list`;
     if ( $OSname eq "AIX" ) {
         
         @files_array = (
@@ -209,7 +212,8 @@ sub snap_it {
         @Commands_array = (
             "uname -a","ifconfig -a","netstat -in","netstat -rn","env",
             "reventlog -a","lsmod","/sbin/lspci","lssrc -a","rpm -qa",
-            "ls -lR $installdir","ls -lR /tftpboot","ls -lR $xcatroot",
+            "ls -lR $installdir",
+            "find /tftpboot -size -32k","ls -lR $xcatroot",
             "arp -a","ps -edlf","ps -aux","ulimit -a","df -k","oslevel",
             "netstat -A","errpt -a","/usr/sbin/instfix -i",
             "/usr/sbin/lsnim -l","lssrc -l -s dhcpsd","lslpp -hac");
@@ -218,7 +222,8 @@ sub snap_it {
         @Commands_array = (
             "uname -a","ifconfig -a","netstat -in","netstat -rn","env",
             "reventlog -a","lsmod","/sbin/lspci","lssrc -a","rpm -qa",
-            "ls $installdir","ls -lR /tftpboot","ls -lR $xcatroot",
+            "ls $installdir",
+            "find /tftpboot -size -32k","ls -lR $xcatroot",
             "arp -a","ps -edlf","ps -aux","ulimit -a","df -k",
             "cat /etc/issue");
     }
@@ -247,6 +252,7 @@ sub snap_it {
         `dumpxCATdb -p $output_dir`;
         print "xCAT database retrieved.\n";
     }
+    `rm /tftpboot/tftpboot.list`;  # remove temp list
 }    
 
 ############################# Main Section ####################################
