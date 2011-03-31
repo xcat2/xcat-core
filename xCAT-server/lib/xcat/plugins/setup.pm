@@ -733,7 +733,7 @@ sub writelpar {
 	}
 	
 	# If there are an inconsistent # of cecs in each frame, delete the lpars that are not really there
-	if ($STANZAS{'xcat-cecs'}->{'delete-unused-cecs'}) {
+	if ($STANZAS{'xcat-cecs'}->{'delete-unused-cecs'} and $STANZAS{'xcat-cecs'}->{'supernode-list'} and !$STANZAS{'xcat-cecs'}->{'num-cecs-per-frame'}) {
 		my @nodestodelete;		# the lpars to delete
 		my $maxcecs = $$rangeparts{'secondary-end'} - $$rangeparts{'secondary-start'} + 1;
 		foreach my $k (sort keys %NUMCECSINFRAME) {
@@ -1281,7 +1281,7 @@ sub parsenoderange {
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'tertiary-base'}, $$ret{'tertiary-start'}, $$ret{'tertiary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) || (length($$ret{'tertiary-start'}) != length($$ret{'tertiary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) || ($$ret{'tertiary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		#if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) || ($$ret{'tertiary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
     
@@ -1289,7 +1289,7 @@ sub parsenoderange {
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'tertiary-base'}, $$ret{'tertiary-start'}, $$ret{'tertiary-end'}) = ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) || (length($$ret{'tertiary-start'}) != length($$ret{'tertiary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) || ($$ret{'tertiary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		#if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) || ($$ret{'tertiary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
 	
@@ -1297,7 +1297,7 @@ sub parsenoderange {
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4, $5, $6, $7);
 		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		#if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
     
@@ -1305,7 +1305,7 @@ sub parsenoderange {
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}) = ($1, $2, $3, $4, $5, $6);
 		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		#if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
 	
@@ -1313,7 +1313,7 @@ sub parsenoderange {
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4);
 		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		#if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
     
@@ -1321,7 +1321,7 @@ sub parsenoderange {
 	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}) = ($1, $2, $3);
 		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		#if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
 	
@@ -1331,7 +1331,7 @@ sub parsenoderange {
         ($$ret{'primary-base'}, $$ret{'primary-start'},  $$ret{'attach'}, $base2, $$ret{'primary-end'}, $$ret{'attach2'}) = ($1, $2, $3, $4, $5, $6);
 		if ($$ret{'primary-base'} ne $base2) { errormsg("invalid noderange format: $nr", 5); return undef; }
 		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		#if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
     
@@ -1341,7 +1341,7 @@ sub parsenoderange {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $base2, $$ret{'primary-end'}) = ($1, $2, $3, $4);
 		if ($$ret{'primary-base'} ne $base2) { errormsg("invalid noderange format: $nr", 5); return undef; }
 		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
+		#if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
 	
