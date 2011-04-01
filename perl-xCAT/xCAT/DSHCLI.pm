@@ -14,7 +14,6 @@ use Getopt::Long;
 require xCAT::DSHCore;
 use xCAT::MsgUtils;
 use xCAT::Utils;
-use xCAT::Table;
 use lib '/opt/xcat/xdsh';
 our @dsh_available_contexts = ();
 our @dsh_valid_contexts     = ();
