@@ -728,7 +728,7 @@ function loadNodes(data) {
 	
 	// It will be hidden until a change is made
 	var tableActionsMenu = createMenu([saveLnk, undoLnk]).hide();
-	tableActionsMenu.css('margin-left', '100px');
+	tableActionsMenu.css('margin-left', '90px');
 	tableActionsMenu.attr('id', 'tableActionMenu');
 	actionsDiv.append(tableActionsMenu);
 
