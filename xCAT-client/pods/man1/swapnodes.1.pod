@@ -6,11 +6,11 @@ B<swapnodes> - swap the location info in the db between 2 nodes. If swapping wit
 
 B<swapnodes> [B<-h>| B<--help>]
 
-B<swapnodes> B<-c> current_node B<-f> fip_node [-o]
+B<swapnodes> B<-c> I<current_node> B<-f> I<fip_node> [B<-o>]
 
 =head1 DESCRIPTION
 
-This command is only for P7 IH using Direct FSP Management. Without -o option, it's used to swap the location info in the db between 2 nodes. With -o option, it's used to move the current_node definition to fip_node (the 2nd octant), not move the fip_node definition to the 1st octant. If the two nodes are in a cec, it will assign the IO adapters that were assigned to the defective node to the available node. Originally, the current_node is a defective non-compute node, and fip_node is a avaible compute node. After the swapping, the current_node will be a available node.
+This command is only for P7 IH using Direct FSP Management. Without B<-o> option, it's used to swap the location info in the db between 2 nodes. With B<-o> option, it's used to move the I<current_node> definition to I<fip_node> (the 2nd octant), not move the I<fip_node> definition to the 1st octant. If the two nodes are in a cec, it will assign the IO adapters that were assigned to the defective node to the available node. Originally, the I<current_node> is a defective non-compute node, and I<fip_node> is a avaible compute node. After the swapping, the I<current_node> will be a available node.
 
 =head1 OPTIONS
 
@@ -22,15 +22,15 @@ Display usage message.
 
 =item B<-c>
 
-current_node -- the defective non-compute node.
+I<current_node> -- the defective non-compute node.
 
 =item B<-f>
 
-fip_node -- a compute node which will be swapped as the non-compute node.
+I<fip_node> -- a compute node which will be swapped as the non-compute node.
 
 =item B<-o>
 
-one way. Move the current_node definition to fip_node (the 2nd octant), and not move the fip_node definition to the 1st octant.
+one way. Move the I<current_node> definition to I<fip_node> (the 2nd octant), and not move the I<fip_node> definition to the 1st octant.
 
 =back
 
