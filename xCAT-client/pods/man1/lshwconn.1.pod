@@ -10,15 +10,16 @@ B<lshwconn> [B<-v>| B<--version>]
 
 =head2 PPC (with HMC) specific:
 
-B<lshwconn> [B<-V>| B<--verbose>] noderange
+B<lshwconn> [B<-V>| B<--verbose>] I<noderange>
 
 =head2 PPC (without HMC, using FSPAPI) specific:
 
-B<lshwconn> noderange B<-T tooltype>
+B<lshwconn> I<noderange> B<-T> I<tooltype>
 
 =head1 DESCRIPTION
 
 This command is used to display the connection status for FSP and BPA node. 
+
 =head1 OPTIONS
 
 =over 5
