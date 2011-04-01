@@ -6,17 +6,17 @@ B<getmacs> - Collects node MAC address.
 
 =head2 Common:
 
-I<getmacs [-h| --help | -v| --version]>
+B<getmacs> [B<-h>| B<--help> | B<-v>| B<--version>]
 
 =head2 PPC specific:
 
-I<getmacs noderange [-F filter]>
+B<getmacs> I<noderange> [B<-F> I<filter>]
 
-I<getmacs noderange [-V| --verbose] [-f] [-d] [--arp] | [-D [-S server] [-G gateway] [-C client] [--hfi] [-o]]>
+B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-f>] [B<-d>] [B<--arp>] | [B<-D> [B<-S> I<server>] [B<-G> I<gateway>] [B<-C> I<client>] [B<--hfi>] [B<-o>]]
 
 =head2 blade specific:
 
-I<getmacs noderange [-V| --verbose] [-d] [--arp]>
+B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-d>] [B<--arp>]
 
 =head1 DESCRIPTION
 
@@ -26,37 +26,63 @@ If no ping test performed,  getmacs writes the first adapter MAC to the xCAT dat
 
 For PPC (without HMC, using Direct FSP Management) specific:
 
-If users run "getmacs noderange" directly for P7 IH LPARs, it will return the HIF MAC addresses which are owned by the LPARs. If run getmacs with ping test by default, it will return the physical mac address. If run getmacs with ping test using --hfi, it will return the HFI MAC address.
+If users run "B<getmacs> I<noderange>" directly for P7 IH LPARs, it will return the HIF MAC addresses which are owned by the LPARs. If run B<getmacs> with ping test by default, it will return the physical mac address. If run getmacs with ping test using B<--hfi>, it will return the HFI MAC address.
 
-Note: If network adapters are physically assigned to LPARs, getmacs cannot read the MAC addresses unless perform ping test, since there is no HMC command to read them and getmacs has to login to open formware. And if the LPARs has never been activated before, getmacs need to be performed with the option "-D" to get theirs MAC addresses.
+Note: If network adapters are physically assigned to LPARs, getmacs cannot read the MAC addresses unless perform ping test, since there is no HMC command to read them and getmacs has to login to open formware. And if the LPARs has never been activated before, getmacs need to be performed with the option "B<-D>" to get theirs MAC addresses.
 
 =head1 OPTIONS
 
-B<--arp>          Read MAC address with ARP protocal.
+B<--arp>          
 
-B<-C>          Specify the IP address of the partition for ping test. The default is to read from xCAT database if no -C specified. 
+Read MAC address with ARP protocal.
 
-B<-d>          Display MAC only. The default is to write the first valid adapter MAC to the xCAT database.
+B<-C>          
 
-B<-D>          Perform ping test.  Please be aware that in this way, the lpars will be reset.
+Specify the IP address of the partition for ping test. The default is to read from xCAT database if no B<-C> specified. 
 
-B<-f>          Force immediate shutdown of the partition.
+B<-d>          
 
-B<-F>          Specify filters to select the correct adapter.  Acceptable filters are Type, MAC_Address, Phys_Port_Loc, Adapter, Port_Group, Phys_Port, Logical_Port, VLan, VSwitch, Curr_Conn_Speed.
+Display MAC only. The default is to write the first valid adapter MAC to the xCAT database.
 
-B<-G>          Gateway IP address of the partition.  The default is to read from xCAT database if no -G specified.
+B<-D>          
 
-B<-h>          Display usage message.
+Perform ping test.  Please be aware that in this way, the lpars will be reset.
 
-B<--hfi>       Read HFI MAC address.  This option mush be used with [-D] option to perform ping test.
+B<-f>          
 
-B<-o>          Read MAC address when the lpar is in openfirmware state.  This option mush be used with [-D] option to perform ping test. Before use -o, the lpar must be in openfirmware state.
+Force immediate shutdown of the partition.
 
-B<-S>          The IP address of the machine to ping.  The default is to read from xCAT databse if no -S specified.
+B<-F>          
 
-B<-v>          Command Version.
+Specify filters to select the correct adapter.  Acceptable filters are Type, MAC_Address, Phys_Port_Loc, Adapter, Port_Group, Phys_Port, Logical_Port, VLan, VSwitch, Curr_Conn_Speed.
 
-B<-V>          Verbose output.
+B<-G>          
+
+Gateway IP address of the partition.  The default is to read from xCAT database if no B<-G> specified.
+
+B<-h>          
+
+Display usage message.
+
+B<--hfi>       
+
+Read HFI MAC address.  This option mush be used with [B<-D>] option to perform ping test.
+
+B<-o>          
+
+Read MAC address when the lpar is in openfirmware state.  This option mush be used with [B<-D>] option to perform ping test. Before use B<-o>, the lpar must be in openfirmware state.
+
+B<-S>          
+
+The IP address of the machine to ping.  The default is to read from xCAT databse if no B<-S> specified.
+
+B<-v>          
+
+Command Version.
+
+B<-V>         
+
+Verbose output.
 
 
 =head1 RETURN VALUE
@@ -69,76 +95,62 @@ B<-V>          Verbose output.
 =head1 EXAMPLES
 
 1. To retrieve the MAC address for the HMC-managed partition lpar4 and write the first valid adapter MAC to the xCAT database, enter:
-
-I<getmacs lpar4>
+ 
+ getmacs lpar4
 
 Output is similar to:
 
-# Type     MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
-
-lpar4:
-
-#Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
-
-hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
-
-ent U78A1.001.99203B5-P1-T6   00145eb55788 /lhea@23c00614/ethernet@23e00514 unsuccessful physical
+ lpar4:
+ #Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
+ hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
+ ent U78A1.001.99203B5-P1-T6   00145eb55788 /lhea@23c00614/ethernet@23e00514 unsuccessful physical
 
 
 2. To retrieve the MAC address with ARP protocal:
 
-I<getmacs lpar4 --arp>
+ getmacs lpar4 --arp
 
 Output is similar to:
 
-lpar4:
-
-#IP           MAC_Address
-
-192.168.0.10  00145eb55788
+ lpar4:
+ #IP           MAC_Address
+ 192.168.0.10  00145eb55788
 
 
 3. To retrieve the MAC address for the HMC-managed partition lpar4 and display the result only, enter:
 
-I<getmacs lpar4 -d>
+ getmacs lpar4 -d
 
 Output is similar to:
 
-lpar4:
-
-#Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
-
-hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
-
-ent U78A1.001.99203B5-P1-T6   00145eb55788 /lhea@23c00614/ethernet@23e00514 unsuccessful physical
+ lpar4:
+ #Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
+ hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
+ ent U78A1.001.99203B5-P1-T6   00145eb55788 /lhea@23c00614/ethernet@23e00514 unsuccessful physical
 
 
 
 4. To retrieve the MAC address for the HMC-managed partition lpar4 with filter Type=hea,VSwitch=ETHERNET0.
 
-I<getmacs lpar4 -F Type=hea,VSwitch=ETHERNET0>
+ getmacs lpar4 -F Type=hea,VSwitch=ETHERNET0
 
 Output is similar to:
 
-lpar4:
-
-#Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
-
-hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
+ lpar4:
+ #Type  MAC_Address  Phys_Port_Loc  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
+ hea  7607DFB07F02  N/A  N/A  N/A  N/A  N/A  1  ETHERNET0  N/A
 
 
 
 5. To retrieve the MAC address while performing a ping test for the HMC-managed partition lpar4 and display the result only, enter:
 
-I<getmacs lpar4 -d -D -S 9.3.6.49 -G 9.3.6.1 -C 9.3.6.234>
+ getmacs lpar4 -d -D -S 9.3.6.49 -G 9.3.6.1 -C 9.3.6.234
 
 Output is similar to:
 
-lpar4:
-
-#Type  Location Code   MAC Address      Full Path Name  Ping Result
-
-ent U9133.55A.10B7D1G-V12-C4-T1 8e:e2:24:5c:f0:04 /vdevice/l-lan@30000004 successful virtual
+ lpar4:
+ #Type  Location Code   MAC Address      Full Path Name  Ping Result
+ ent U9133.55A.10B7D1G-V12-C4-T1 8e:e2:24:5c:f0:04 /vdevice/l-lan@30000004 successful virtual
 
 6. To retrieve the MAC address for P7 IH LPARl using Direct FSP Management without ping test and display the result only, enter:
 
