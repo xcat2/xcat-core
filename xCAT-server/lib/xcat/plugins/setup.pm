@@ -32,7 +32,7 @@ my %STANZAS;
 my $SUB_REQ;
 my $DELETENODES;
 my %NUMCECSINFRAME;
-my $DHCPINTERFACES;
+#my $DHCPINTERFACES;
 
 sub handled_commands {
     return( { xcatsetup => "setup" } );
@@ -141,7 +141,7 @@ sub readFileInput {
     return 1;
 }
 
-# A few common tables that a lot of functions need.  The value is whether or not is should autocommit.
+# A few common tables that a lot of functions need.  The value is whether or not it should autocommit.
 my %tables = ('site' => 1,
 			'nodelist' => 1,
 			'hosts' => 1,
@@ -165,25 +165,17 @@ sub writedb {
 		$tables{$tab} = xCAT::Table->new($tab, -create=>1, -autocommit=>$tables{$tab});
 		if (!$tables{$tab}) { errormsg("Can not open $tab table in database.  Exiting config file processing.", 3); return; }
 	}
-
-	# Write service LAN info (hash key=xcat-service-lan)
-	#using hostname-range, write: nodelist.node, nodelist.groups, switches.switch
-	#using hostname-range and starting-ip, write regex for: hosts.node, hosts.ip
-	#using num-ports-per-switch, switch-port-prefix, switch-port-sequence, write: switch.node, switch.switch, switch.port
-	#using dhcp-dynamic-range, write: networks.dynamicrange for the service network.
-    # * Note: for AIX the permanent IPs for HMCs/FSPs/BPAs (specified in later stanzas) should be within this dynamic range, at the high end. For linux the permanent IPs should be outside this dynamic range.
-    # * use the first IP in the specified dynamic range to locate the service network in the networks table 
-	#on aix stop bootp - see section 2.2.1.1 of p hw mgmt doc
-	#run makedhcp -n   
-    my $iprange = $STANZAS{'xcat-service-lan'}->{'dhcp-dynamic-range'};
-	if ($iprange && (!scalar(keys(%$sections))||$$sections{'xcat-service-lan'})) { 
-        my $mkresult = xCAT_plugin::networks->donets();
-		unless (writenetworks($iprange)) { closetables(); return; }
-	}
 	
 	# Write site table attrs (hash key=xcat-site)
 	my $domain = $STANZAS{'xcat-site'}->{domain};
 	if ($domain && (!scalar(keys(%$sections))||$$sections{'xcat-site'})) { writesite($domain); }    
+
+	# Write service LAN info (hash key=xcat-service-lan)
+    my $iprange = $STANZAS{'xcat-service-lan'}->{'dhcp-dynamic-range'};
+	if ($iprange && (!scalar(keys(%$sections))||$$sections{'xcat-service-lan'})) { 
+        #my $mkresult = xCAT_plugin::networks->donets();
+		unless (writenetworks($iprange)) { closetables(); return; }
+	}
     
 	# Write HMC info (hash key=xcat-hmcs)
 	my $hmcrange = $STANZAS{'xcat-hmcs'}->{'hostname-range'};
@@ -248,35 +240,6 @@ sub closetables {
 	}
 }
 
-sub writenetworks {
-    if ($DELETENODES) { return 1; }
-    my $range = shift;
-    infomsg('Defining networks attributes...');
-    # set the IP range specified in the config file
-    #print "range=$range\n";
-    # find the network the range existed
-    $range =~ /(\d+\.\d+\.\d+\.\d+)\-(\d+\.\d+\.\d+\.\d+)/;
-    my ($ip1, $ip2, $ip3, $ip4) = split('\.', $1);
-    my @entries = @{$tables{'networks'}->getAllEntries()};
-    if (@entries) {
-        for my $net (@entries) {
-            my %netref = %$net;
-            my ($m1, $m2, $m3, $m4) = split('\.', $netref{'mask'});
-            my $n1 = ((int $ip1) & (int $m1));
-            my $n2 = ((int $ip2) & (int $m2));
-            my $n3 = ((int $ip3) & (int $m3));
-            my $n4 = ((int $ip4) & (int $m4));
-            my $ornet = "$n1.$n2.$n3.$n4";
-            if ($ornet eq $netref{'net'}) {
-                $tables{'networks'}->setAttribs({'net' => $netref{'net'}, 'mask' => $netref{'mask'}}, {'dynamicrange' => $range});
-                $DHCPINTERFACES = $netref{'mgtifname'};
-                last;
-            }
-        }
-    }
-    return 1;
-}    
-
 sub writesite {
 	if ($DELETENODES) { return 1; }
 	#write: domain, nameservers=<MN>
@@ -297,12 +260,54 @@ sub writesite {
 		$tables{'site'}->setAttribs({key => 'topology'}, {value => $STANZAS{'xcat-site'}->{topology} });
 	}
 	
-	# set site.dhcpinterfaces
-	if ($DHCPINTERFACES) {
-		$tables{'site'}->setAttribs({key => 'dhcpinterfaces'}, {value => $DHCPINTERFACES });
-	}    
 	return 1;
 }
+
+
+sub writenetworks {
+    if ($DELETENODES) { return 1; }
+    my $range = shift;
+    infomsg('Defining service LAN attributes...');
+    
+	#using dhcp-dynamic-range, write: networks.dynamicrange for the service network.
+    # Note: for AIX the permanent IPs for HMCs/FSPs/BPAs (specified in later stanzas) should be within this dynamic range, at the high end. For linux the permanent IPs should be outside this dynamic range.
+    # Use the first IP in the specified dynamic range to locate the service network in the networks table 
+	#todo: create the service and cluster networks in the networks table based on the ip ranges they give us
+	#      for the hw and the nodes
+    
+    # set the IP range specified in the config file
+    #print "range=$range\n";
+    my $dhcpinterfaces;
+    # find the network the range existed
+    $range =~ /(\d+\.\d+\.\d+\.\d+)\-(\d+\.\d+\.\d+\.\d+)/;
+    my ($ip1, $ip2, $ip3, $ip4) = split('\.', $1);
+    my @entries = @{$tables{'networks'}->getAllEntries()};
+    #todo: give an error msg if you do not find a network that corresponds to the range they gave
+    if (@entries) {
+        for my $net (@entries) {
+            my %netref = %$net;
+            my ($m1, $m2, $m3, $m4) = split('\.', $netref{'mask'});
+            my $n1 = ((int $ip1) & (int $m1));
+            my $n2 = ((int $ip2) & (int $m2));
+            my $n3 = ((int $ip3) & (int $m3));
+            my $n4 = ((int $ip4) & (int $m4));
+            my $ornet = "$n1.$n2.$n3.$n4";
+            if ($ornet eq $netref{'net'}) {
+                $tables{'networks'}->setAttribs({'net' => $netref{'net'}, 'mask' => $netref{'mask'}}, {'dynamicrange' => $range});
+                $dhcpinterfaces = $netref{'mgtifname'};
+                last;
+            }
+        }
+    }
+    
+	# set site.dhcpinterfaces
+	#todo: we also need to include the cluster mgmt network
+	if ($dhcpinterfaces) {
+		$tables{'site'}->setAttribs({key => 'dhcpinterfaces'}, {value => $dhcpinterfaces });
+	}
+	
+    return 1;
+}    
 
 
 sub writehmc {
@@ -358,10 +363,9 @@ sub writeframe {
 	staticGroup('frame');
 	
 	# Using the frame group, write starting-ip in hosts table
-    my $framehash;
+    my $framehash = parsenoderange($framerange);
 	my $framestartip = $STANZAS{'xcat-frames'}->{'starting-ip'};
 	if ($framestartip && isIP($framestartip)) {
-        $framehash = parsenoderange($framerange);
 		my $framestartnum = $$framehash{'primary-start'};
 		my ($ipbase, $ipstart) = $framestartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
@@ -401,7 +405,7 @@ sub writeframe {
         #unless ($hmcattch) { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'(0+$1)|'; }
         unless ($hmcattch) { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'((0+$1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')|'; }
         #else { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'(0+$1)'.$hmcattch.'|'; }
-        else { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'((0+$1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')'.$hmcattch.'|'; }
+        else { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'(($1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')'.$hmcattch.'|'; }
         $hash{'sfp'} =  $sfpregex;
     }
 
@@ -642,9 +646,11 @@ sub writebb {
 	$tables{'site'}->setAttribs({key => 'sharedtftp'}, {value => 1});
 	$tables{'site'}->setAttribs({key => 'sshbetweennodes'}, {value => 'service'});
 	
-	# Using num-frames-per-bb write ppc.parent (frame #) for bpas
+	# Using num-frames-per-bb write ppc.parent (bb #) for the frames
 	if ($framesperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-frames-per-bb: $framesperbb", 7); return 0; }
-    my $bbregex = '|\S+?(\d+)\D*$|((($1-1)/' . $framesperbb . ')+1)|';
+	my $framehash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
+	my $framestartnum = $$framehash{'primary-start'};
+    my $bbregex = '|\S+?(\d+)\D*$|((($1-' . $framestartnum . ')/' . $framesperbb . ')+1)|';
 	$tables{'ppc'}->setNodeAttribs('frame', {parent => $bbregex});
 	return 1;
 }
@@ -769,7 +775,7 @@ sub writelpar {
 	#my $cecprimlen = length($$cechash{'primary-start'});
 	my $cecsecbase = $$cechash{'secondary-base'};
 	if (!$cecsecbase) { errormsg("when using LPAR names like f1c1p1, you must also use CEC names like f1c1",7); return 0; }
-	my $framehash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
+	#my $framehash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
 	#my $framebase = $$framehash{'primary-base'};
 	#my $framestart = $$framehash{'primary-start'};
 	#my $framelen = length($$framehash{'primary-start'});
@@ -796,16 +802,18 @@ sub writelpar {
 	my %servicenodes;
 	my %storagenodes;
 	my %lpars;
+	my @mnroutes;
 	#my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
 	#if ($cecsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-cecs-per-bb: $cecsperbb", 7); return 0; }
 	for (my $b=1; $b<=$numbbs; $b++) {
 		my $framebase = ($b-1) * $framesperbb + 1;
-		findSNsinBB('service', $b, $framebase, $rangeparts, \%servicenodes, \%lpars) or return 0;
+		findSNsinBB('service', $b, $framebase, $rangeparts, \%servicenodes, \%lpars, \@mnroutes) or return 0;
 		findSNsinBB('storage', $b, $framebase, $rangeparts, \%storagenodes) or return 0;
 	}
 	if (scalar(keys(%servicenodes))) { $tables{'nodelist'}->setNodesAttribs(\%servicenodes); }
 	if (scalar(keys(%storagenodes))) { $tables{'nodelist'}->setNodesAttribs(\%storagenodes); }
 	if (scalar(keys(%lpars))) { $tables{'noderes'}->setNodesAttribs(\%lpars); }
+	if (scalar(@mnroutes)) { $tables{'site'}->setAttribs({key => 'mnroutenames'}, {value => join(',',@mnroutes)}); }
 	
 	# Set some more service node specific attributes
 	$tables{'servicenode'}->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>1});
@@ -821,7 +829,7 @@ sub writelpar {
 # Find either service nodes or storage nodes in a BB.  Adds the nodenames of the lpars to the snodes hash,
 # and defines the groups in the hash, and assigns the other lpars to the correct service node.
 sub findSNsinBB {
-	my ($sntext, $bb, $framebase, $rangeparts, $snodes, $lpars) = @_;
+	my ($sntext, $bb, $framebase, $rangeparts, $snodes, $lpars, $mnroutes) = @_;
 	my $primbase = $$rangeparts{'primary-base'};
 	my $primlen = length($$rangeparts{'primary-start'});
 	my $secbase = $$rangeparts{'secondary-base'};
@@ -835,13 +843,14 @@ sub findSNsinBB {
 	if ($snsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-$sntext-nodes-per-bb: $snsperbb", 7); return 0; }
 	my @snpositions = split(/[\s,]+/, $STANZAS{"xcat-$sntext-nodes"}->{'cec-positions-in-bb'});
 	if (scalar(@snpositions) != $snsperbb) { errormsg("invalid number of positions specified for xcat-$sntext-nodes:cec-positions-in-bb.", 3); return 0; }
+	my $cecsperframe = $STANZAS{'xcat-cecs'}->{'num-cecs-per-frame'};	# they may have specified this instead of a supernode-list, which would fill in NUMCECSINFRAME
 	my @snsinbb;
 	foreach my $p (@snpositions) {
 		my $cecbase = 0;
 		my $frame = $framebase;
-		while ($p > ($cecbase + $NUMCECSINFRAME{$frame})) {
+		while ($p > ($cecbase + ($NUMCECSINFRAME{$frame}||$cecsperframe))) {
 			# p is not in this frame, go on to the next
-			$cecbase += $NUMCECSINFRAME{$frame};
+			$cecbase += $NUMCECSINFRAME{$frame} || $cecsperframe;
 			$frame++;
 			#print "cecbase=$cecbase, frame=$frame\n";
 			if ($frame >= ($framebase+$framesperbb)) { errormsg("Can not find $sntext node position $p in building block $bb.",9); return 0; }
@@ -852,6 +861,7 @@ sub findSNsinBB {
 		#print "nodename=$nodename\n";
 		$$snodes{$nodename} = { groups => "bb$bb$sntext,$sntext,lpar,all" };
 		push @snsinbb, "$frame,$cecinframe";	# save for later
+		push @$mnroutes, "mnto$nodename";		# gather all the routenames for site.mnroutenames
 	}
 	
 	if ($lpars) {
@@ -865,7 +875,7 @@ sub findSNsinBB {
 		my $snindex = 0;
 		my $cecinthisbb = 1;
 		for (my $f=$framebase; $f<($framebase+$framesperbb); $f++) {
-			for (my $c=1; $c<=$NUMCECSINFRAME{$f}; $c++) {
+			for (my $c=1; $c<=($NUMCECSINFRAME{$f}||$cecsperframe); $c++) {
 				# form the current service node name
 				my ($snframe, $sncec) = split(/,/, $snsinbb[$snindex]);
 				my $snname = buildNodename($snframe, $sncec, 1, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen);
@@ -874,13 +884,15 @@ sub findSNsinBB {
 				for (my $s=0; $s<scalar(@snsinbb); $s++) {
 					if ($s != $snindex) {
 						my ($snf, $snc) = split(/,/, $snsinbb[$s]);
-						$othersns .= ',' . buildNodename($snf, $snc, 1, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen);;
+						$othersns .= ',' . buildNodename($snf, $snc, 1, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen);
 					}
 				}
 				# assign all partitions in this cec to this service node
 				for (my $p=1; $p<=$pmax; $p++) {
 					my $lparname = buildNodename($f, $c, $p, $primbase, $primlen, $secbase, $seclen, $tertbase, $tertlen);
-					$$lpars{$lparname} = {xcatmaster => $snname, servicenode => "$snname$othersns"};
+					my $routes = "cnto$snname";
+					if ($othersns) { $routes .= join(',cnto',split(',',$othersns)); }		# othersns has a leading comma
+					$$lpars{$lparname} = {xcatmaster => $snname, servicenode => "$snname$othersns", routenames => $routes};
 				}
 				# move to the next cec and possibly the next sn
 				$cecinthisbb++;
@@ -987,7 +999,7 @@ sub writesn {
 		$grouphash{$$nodes[$i]} = {groups => "${bbname}service,service,lpar,all"};
 		# figure out the CEC num
 		my $snpositioninbb = $positions[$i % $snsperbb];		# the offset within the BB
-		my $cecnum = ( int($i/$snsperbb) * $cecsperbb) + $snpositioninbb;		# which cec num, counting from the beginning
+		my $cecnum = ( int($i/$snsperbb) * $cecsperbb) + $snpositioninbb + $cecstart - 1;		# which cec num, counting from the beginning
 		my $cecname;
 		if (!$secbase) {
 			$cecname = $cecbase . sprintf("%0${ceclen}d", $cecnum);
@@ -1005,6 +1017,11 @@ sub writesn {
 		#print "cecname=$cecname\n";
 		$nodeposhash{$$nodes[$i]} = {rack => $CECPOSITIONS->{$cecname}->[0]->{rack}, u => $CECPOSITIONS->{$cecname}->[0]->{u}};
 	}
+	
+	# Form the list of route names for MN to CN
+	my $routes = 'mnto' . join(',mnto', @$nodes);
+	$tables{'site'}->setAttribs({key => 'mnroutenames'}, {value => $routes});
+	
 	$tables{'ppc'}->setNodesAttribs(\%nodehash);
 	$tables{'nodelist'}->setNodesAttribs(\%grouphash);
 	$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
@@ -1094,12 +1111,12 @@ sub writestorage {
 	my %nodeposhash;
 	my %grouphash;
 	my %nodereshash;
-	# Go thru each storage node and calculate which cec it is in
+	# Go thru each storage node and calculate which cec it is in and its service node
 	for (my $i=0; $i<scalar(@$nodes); $i++) {
 		# figure out the BB num to add this node to that group
 		my $bbnum = int($i/$snsperbb) + 1;
 		my $bbname = "bb$bbnum";
-		$grouphash{$$nodes[$i]} = {groups => "${bbname}storage,lpar,storage,all"};
+		$grouphash{$$nodes[$i]} = {groups => "${bbname}storage,storage,lpar,all"};
 		# figure out the CEC num
 		my $snpositioninbb = $positions[$i % $snsperbb];		# the offset within the BB
 		my $cecnum = ( int($i/$snsperbb) * $cecsperbb) + $snpositioninbb;		# which cec num, counting from the beginning
@@ -1133,7 +1150,9 @@ sub writestorage {
 		for (my $s=$snsbeforethisbb+1; $s<=$snsbeforethisbb+$servsperbb; $s++) {
 			if ($s != $snnum) { $othersns .= ',' . $$sns[$s-1]; }
 		}
-		$nodereshash{$$nodes[$i]} = {xcatmaster => $snname, servicenode => "$snname$othersns"};
+		my $routes = "cnto$snname";
+		if ($othersns) { $routes .= join(',cnto',split(',',$othersns)); }		# othersns has a leading comma
+		$nodereshash{$$nodes[$i]} = {xcatmaster => $snname, servicenode => "$snname$othersns", routenames => $routes};
 	}
 	$tables{'ppc'}->setNodesAttribs(\%nodehash);
 	$tables{'nodelist'}->setNodesAttribs(\%grouphash);
@@ -1227,7 +1246,7 @@ sub writecompute {
 	# set these incrementers to the imaginary position just before the 1st position
 	my $cecnum = 0;
 	my $lparid = $lparspercec;
-	# Go thru each compute node and calculate which cec it is in
+	# Go thru each compute node and calculate which cec it is in and its service node
 	for (my $i=0; $i<scalar(@$nodes); $i++) {
 		if ($lparid >= $lparspercec) { $cecnum++; $lparid=1; }	# at the end of the cec
 		else { $lparid++ }
@@ -1262,7 +1281,9 @@ sub writecompute {
 		for (my $s=$snsbeforethisbb+1; $s<=$snsbeforethisbb+$snsperbb; $s++) {
 			if ($s != $snnum) { $othersns .= ',' . $$sns[$s-1]; }
 		}
-		$nodereshash{$$nodes[$i]} = {xcatmaster => $snname, servicenode => "$snname$othersns"};
+		my $routes = "cnto$snname";
+		if ($othersns) { $routes .= join(',cnto',split(',',$othersns)); }		# othersns has a leading comma
+		$nodereshash{$$nodes[$i]} = {xcatmaster => $snname, servicenode => "$snname$othersns", routenames => $routes};
 	}
 	$tables{'ppc'}->setNodesAttribs(\%nodehash);
 	$tables{'noderes'}->setNodesAttribs(\%nodereshash);
