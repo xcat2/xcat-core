@@ -6,25 +6,25 @@ B<mkvm> - Creates HMC- and IVM-managed partitions or other virtual machines.
 
 =head2 Common:
 
-I<mkvm [-h| --help]>
+B<mkvm> [B<-h>| B<--help>]
 
-I<mkvm [-v| --version]>
+B<mkvm> [B<-v>| B<--version>]
 
 =head2 For PPC (with HMC):
 
-I<mkvm [-V| --verbose] noderange -i id -l singlenode>
+B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<-i> I<id> B<-l> I<singlenode>
 
-I<mkvm [-V| --verbose] noderange -c destcec -p profile>
+B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<-c> I<destcec> B<-p> I<profile>
 
-I<mkvm [-V| --verbose] noderange --full>
+B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<--full>
 
 =head2 For PPC (using Direct FSP Management):
 
-I<mkvm noderange -i id -m memory_interleaving -r partition_rule>
+B<mkvm> I<noderange> B<-i id> B<-m> I<memory_interleaving> B<-r> I<partition_rule>
 
 =head2 For KVM:
 
-I<mkvm noderange -m|--master mastername -s|--size disksize -f|--force>
+B<mkvm> I<noderange> B<-m>|B<--master> I<mastername> B<-s>|B<--size> I<disksize> B<-f>|B<--force>
 
 =head1 DESCRIPTION
 
@@ -32,7 +32,7 @@ I<mkvm noderange -m|--master mastername -s|--size disksize -f|--force>
 
 For PPC (with HMC) specific:
 
-The first form of mkvm command creates new partition(s) with the same profile/resources as the partition specified by I<singlenode>. The -i and I<noderange> specify the starting numeric partition number and the noderange for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition. 
+The first form of mkvm command creates new partition(s) with the same profile/resources as the partition specified by I<singlenode>. The -i and I<noderange> specify the starting numeric partition number and the I<noderange> for the newly created partitions, respectively. The LHEA port numbers and the HCA index numbers will be automatically increased if they are defined in the source partition. 
 
 The second form of this command duplicates all the partitions from the source specified by I<profile> to the destination specified by I<destcec>. The source and destination CECs can be managed by different HMCs.
 
@@ -42,7 +42,7 @@ Please note that the mkvm command currently only supports creating standard LPAR
 
 For PPC (without HMC, using Direct FSP Management) specific:
 
-This feature is only for P7 IH. mkvm is designed to  set the Octant configure value to split the CPU and memory for partitions, and set Octant Memory interleaving value. The mkvm will only set the pending attributes value. After mkvm, the CEC needs to be rebooted manually for the pending values to be enabled. Before reboot the cec, the administrator can use mkvm to change the partition plan. If the the partition needs I/O slots, the administrator should use chvm to assign the I/O slots.
+This feature is only for P7 IH. mkvm is designed to set the Octant configure value to split the CPU and memory for partitions, and set Octant Memory interleaving value. The mkvm will only set the pending attributes value. After mkvm, the CEC needs to be rebooted manually for the pending values to be enabled. Before reboot the cec, the administrator can use mkvm to change the partition plan. If the the partition needs I/O slots, the administrator should use chvm to assign the I/O slots.
 
 =head2 For KVM:
 
@@ -52,15 +52,25 @@ mkvm ....
 
 =over 10
 
-=item B<-h|--help>       Display usage message.
+=item B<-h|--help>       
 
-=item B<-c>              The cec (fsp) name for the destination.
+Display usage message.
 
-=item B<-i>              Starting numeric id of the newly created partitions. For P7 IH using Direct FSP Management, the id value only could be 1, 5, 9, 13, 17, 21, 25 and 29.
+=item B<-c>              
 
-=item B<-m>              memory interleaving. The value only could be interleaved or non-interleaved. non-interleaved mode means the memory cannot be shared across the processors in an octant. interleaved means the memory can be shared.
+The cec (fsp) name for the destination.
 
-=item B<-r>              partition rule.
+=item B<-i>              
+
+Starting numeric id of the newly created partitions. For P7 IH using Direct FSP Management, the id value only could be 1, 5, 9, 13, 17, 21, 25 and 29.
+
+=item B<-m>              
+
+memory interleaving. The value only could be interleaved or non-interleaved. non-interleaved mode means the memory cannot be shared across the processors in an octant. interleaved means the memory can be shared.
+
+=item B<-r>              
+
+partition rule.
 
 If all the octants configuration value are same in one CEC,  it will be  " -r  0-7:value" .
 
@@ -74,15 +84,25 @@ The octants configuration value for one Octant could be  1, 2, 3, 4, 5 . The mea
  4 - 4 partitions with a 25/25/25/25 split of cpus and memory
  5 - 2 partitions with a 25/75 split of cpus and memory
 
-=item B<-l>              The partition name of the source.
+=item B<-l>              
 
-=item B<-p>              The file that contains the profiles for the source partitions.
+The partition name of the source.
 
-=item B<--full>          Request to create a new full system partition for each CEC.
+=item B<-p>             
 
-=item B<-v|--version>    Command Version.
+The file that contains the profiles for the source partitions.
 
-=item B<-V|--verbose>    Verbose output.
+=item B<--full>          
+
+Request to create a new full system partition for each CEC.
+
+=item B<-v|--version>    
+
+Command Version.
+
+=item B<-V|--verbose>    
+
+Verbose output.
 
 =back
 
@@ -96,72 +116,63 @@ The octants configuration value for one Octant could be  1, 2, 3, 4, 5 . The mea
 
 1. To create a new partition lpar5 based on the profile/resources of lpar4, enter:
 
-I<mkdef -t node -o lpar5 mgt=hmc groups=all>
+ mkdef -t node -o lpar5 mgt=hmc groups=all
 
 then:
 
-I<mkvm lpar5 -i 5 -l lpar4>
+ mkvm lpar5 -i 5 -l lpar4
 
 Output is similar to:
 
-lpar5: Success
+ lpar5: Success
 
 
 2. To create new partitions lpar5-lpar8 based on the profile/resources of lpar4, enter:
 
-I<mkdef -t node -o lpar5-lpar8 mgt=hmc groups=all>
+ mkdef -t node -o lpar5-lpar8 mgt=hmc groups=all
 
 then:
 
-I<mkvm lpar5-lpar8 -i 5 -l lpar4>
+ mkvm lpar5-lpar8 -i 5 -l lpar4
 
 Output is similar to:
 
-lpar5: Success
-
-lpar6: Success
-
-lpar7: Success
-
-lpar8: Success
+ lpar5: Success
+ lpar6: Success
+ lpar7: Success
+ lpar8: Success
 
 
 3. To duplicate all the partitions associated with cec01 on cec02, first save the lpars from cec01 to a file:
 
-I<lsvm lpar01-lpar04> > I</tmp/myprofile> 
+ lsvm lpar01-lpar04 > /tmp/myprofile
 
 then create lpars on cec02:
 
-I<mkvm lpar05-lpar08 -c cec02 -p /tmp/myprofile>
+ mkvm lpar05-lpar08 -c cec02 -p /tmp/myprofile
 
 Output is similar to:
 
-lpar5: Success
-
-lpar6: Success
-
-lpar7: Success
-
-lpar8: Success
+ lpar5: Success
+ lpar6: Success
+ lpar7: Success
+ lpar8: Success
 
 
 4. To duplicate all the partitions associated with cec01 on cec02, one is for cec01, the other is for cec02:
 
-I<mkdef -t node -o lpar5,lpar6 mgt=hmc groups=all>
-
-I<chtab node=lpar5 ppc.parent=cec01>
-
-I<chtab node=lpar6 ppc.parent=cec02>
+ mkdef -t node -o lpar5,lpar6 mgt=hmc groups=all
+ chtab node=lpar5 ppc.parent=cec01
+ chtab node=lpar6 ppc.parent=cec02
 
 then create lpars on cec01 and cec02:
 
-I<mkvm lpar5,lpar6 --full>
+ mkvm lpar5,lpar6 --full
 
 Output is similar to:
 
-lpar5: Success
-
-lpar6: Success
+ lpar5: Success
+ lpar6: Success
 
 5. For P7 IH, to create a new partition lpar1 on the first octant of the cec, lpar1 will use all the cpu and memory of the octant 0, enter: 
 
