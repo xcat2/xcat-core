@@ -4,17 +4,17 @@ B<lsvm> - Lists partition profile information for HMC- and IVM-managed nodes. Fo
 
 =head1 SYNOPSIS
 
-I<lsvm [-h| --help]>
+B<lsvm> [B<-h>| B<--help]>
 
-I<lsvm [-v| --version]>
+B<lsvm> [B<-v>| B<--version>]
 
-I<lsvm [-V| --verbose] noderange>
+B<lsvm> [B<-V>| B<--verbose>] I<noderange>
 
-I<lsvm [-a| --all] noderange>
+B<lsvm> [B<-a>| B<--all>] I<noderange>
 
 =head2 For PPC (using Direct FSP Management):
 
-I<lsvm noderange>
+B<lsvm> I<noderange>
 
 =head1 DESCRIPTION
 
@@ -27,14 +27,21 @@ I<lsvm noderange>
 =head1 OPTIONS
 
 
-B<-h>          Display usage message.
+B<-h>          
 
-B<-v>          Command Version.
+Display usage message.
 
-B<-V>          Verbose output.
+B<-v>          
 
-B<-a>          List all the profiles for one partition
+Command Version.
 
+B<-V>          
+
+Verbose output.
+
+B<-a>          
+
+List all the profiles for one partition
 
 =head1 RETURN VALUE
 
