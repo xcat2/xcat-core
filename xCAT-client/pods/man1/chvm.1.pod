@@ -4,23 +4,23 @@ B<chvm> - Changes HMC- and IVM-managed partition profiles. For P7 IH, chvm only 
 
 =head1 SYNOPSIS
 
-I<chvm [-h| --help]>
+B<chvm> [B<-h>| B<--help>]
 
-I<chvm [-v| --version]>
+B<chvm> [B<-v>| B<--version>]
 
 =head2 PPC (with HMC) specific:
 
-I<chvm [-V| --verbose] noderange [-p profile]>
+B<chvm> [B<-V>| B<--verbose>] I<noderange> [B<-p> I<profile>]
 
-I<chvm [-V| --verbose] noderange attr=val [attr=val...]>
+B<chvm> [B<-V>| B<--verbose>] I<noderange> B<attr>=I<val> [B<attr>=I<val>...]
 
 =head2 PPC (using Direct FSP Management) specific:
 
-I<chvm noderange [-p profile]>
+B<chvm> I<noderange> [B<-p> I<profile>]
 
 =head2 VMware specific:
 
-I<chvm noderange [-a size] [-d disk] [-p disk] [--resize disk=size] [--cpus count] [--mem memory]>
+B<chvm> I<noderange> [B<-a> I<size>] [B<-d> I<disk>] [B<-p> I<disk>] [B<--resize> B<disk>=I<size>] [B<--cpus> I<count>] [B<--mem> I<memory>]
 
 =head1 DESCRIPTION
 
@@ -44,31 +44,53 @@ The chvm command modifes the vm specified in noderange.  Calling with deregister
 
 =head2 Common:
 
-B<-h>          Display usage message.
+B<-h>          
 
-B<-v>          Command Version.
+Display usage message.
+
+B<-v>          
+
+Command Version.
 
 =head2 PPC specific:
 
-B<-p profile>  Name of an existing partition profile.
+B<-p> I<profile>  
 
-B<attr=val>    Specifies one or more "attribute equals value" pairs, separated by spaces.
+Name of an existing partition profile.
 
-B<-V>          Verbose output.
+B<attr>=I<val>    
+
+Specifies one or more "attribute equals value" pairs, separated by spaces.
+
+B<-V>          
+
+Verbose output.
 
 =head2 VMware specific:
 
-B<-a size> Add a new Hard disk with size defaulting to GB.  Multiple can be added with comma separated values.
+B<-a> I<size> 
 
-B<--cpus count> Set the number of CPUs.
+Add a new Hard disk with size defaulting to GB.  Multiple can be added with comma separated values.
 
-B<-d disk> Deregister the Hard disk but leave the backing files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
+B<--cpus> I<count> 
 
-B<--mem memory> Set the memory, defaults to MB.
+Set the number of CPUs.
 
-B<-p disk> Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
+B<-d> I<disk> 
 
-B<--resize disk=size> Change the size of the Hard disk.  The disk can never be set to less than it's current size.  Multiple disks can be resized to I<size> by using comma separated values on the left side of B<=>.  The disks are specified by SCSI id.  Size defaults to GB.
+Deregister the Hard disk but leave the backing files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
+
+B<--mem> I<memory> 
+
+Set the memory, defaults to MB.
+
+B<-p> I<disk> 
+
+Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
+
+B<--resize> B<disk>=I<size> 
+
+Change the size of the Hard disk.  The disk can never be set to less than it's current size.  Multiple disks can be resized to I<size> by using comma separated values on the left side of B<=>.  The disks are specified by SCSI id.  Size defaults to GB.
 
 =head1 RETURN VALUE
 
@@ -82,27 +104,27 @@ B<--resize disk=size> Change the size of the Hard disk.  The disk can never be s
 
 1. To change the partition profile for lpar4 using the configuration data in the file /tmp/lparfile, enter:
 
-I<cat /tmp/lparfile | chvm lpar4>
+ cat /tmp/lparfile | chvm lpar4
 
 Output is similar to:
 
-lpar4: Success
+ lpar4: Success
 
 2. To change the partition profile for lpar4 to the existing profile 'prof1', enter:
 
-I<chvm lpar4 -p prof1>
+ chvm lpar4 -p prof1
 
 Output is similar to:
 
-lpar4: Success
+ lpar4: Success
 
 3. To change partition attributes for lpar4 by specifying attribute value pairs in command line, enter:
 
-I<chvm lpar4 max_mem=4096>
+ chvm lpar4 max_mem=4096
 
 Output is similar to:
 
-lpar4: Success
+ lpar4: Success
 
 =head2 PPC (using Direct FSP Management) specific:
 
@@ -122,11 +144,11 @@ then run the command:
 
 =head2 VMware specific:
 
-I<chvm vm1 -a 8,16 --mem 512 --cpus 2>
+ chvm vm1 -a 8,16 --mem 512 --cpus 2
 
 Output is similar to:
 
-vm1: node successfully changed
+ vm1: node successfully changed
 
 
 =head1 FILES
