@@ -17,7 +17,8 @@ if ($^O =~ /^aix/i) {
 }
 
 use lib "$::XCATROOT/lib/perl";
-require xCAT::Table;
+# do not put a use or require for  xCAT::Table here. Add to each new routine
+# needing it to avoid reprocessing of user tables ( ExtTab.pm) for each command call 
 use POSIX qw(ceil);
 use File::Path;
 use Socket;
@@ -606,6 +607,7 @@ sub close_delete_file
 #------------------------------------------------------------------------
 sub list_all_nodes
 {
+    require xCAT::Table;
     my @nodes;
     my @nodelist;
     my $nodelisttab;
@@ -649,6 +651,7 @@ sub list_all_nodes
 #------------------------------------------------------------------------
 sub list_all_node_groups
 {
+    require xCAT::Table;
     my @grouplist;
     my @grouplist2;
     my @distinctgroups;
@@ -792,7 +795,9 @@ sub isMemberofGroup
 #------------------------------------------------------------------------
 sub get_site_attribute
 {
+    require xCAT::Table;
     my ($class, $attr) = @_;
+    
     my $values;
 
     my $sitetab = xCAT::Table->new('site');
@@ -2277,6 +2282,7 @@ For an example
 #-----------------------------------------------------------------------
 sub my_nets
 {
+    require xCAT::Table;
     my $rethash;
     my @nets;
     my $v6net;
@@ -2684,6 +2690,7 @@ sub isInSameSubnet
 
 sub nodeonmynet
 {
+    require xCAT::Table;
     my $nodetocheck = shift;
     if (scalar(@_))
     {
@@ -2811,6 +2818,7 @@ sub nodeonmynet
 
 sub getNodeIPaddress 
 {
+    require xCAT::Table;
     my $nodetocheck = shift;
     my $port        = shift;
     my $nodeip;
@@ -2998,6 +3006,7 @@ sub thishostisnot
 #-------------------------------------------------------------------------------
 sub GetMasterNodeName
 {
+    require xCAT::Table;
     my ($class, $node) = @_;
     my $master;
     my $noderestab = xCAT::Table->new('noderes');
@@ -3056,6 +3065,7 @@ sub GetMasterNodeName
 #-------------------------------------------------------------------------------
 sub GetNodeOSARCH
 {
+    require xCAT::Table;
     my ($class, $node) = @_;
     my $noderestab = xCAT::Table->new('noderes');
     my $typetab    = xCAT::Table->new('nodetype');
@@ -3192,6 +3202,7 @@ sub readSNInfo
 #-----------------------------------------------------------------------------
 sub isServiceReq
 {
+    require xCAT::Table;
     my ($class, $servicenodename, $serviceip) = @_;
 
     # list of all services from service node table
@@ -3492,6 +3503,7 @@ sub create_postscripts_tar
 
 sub get_site_Master
 {
+    require xCAT::Table;
     my $Master;
     my $sitetab = xCAT::Table->new('site');
     (my $et) = $sitetab->getAttribs({key => "master"}, 'value');
@@ -3545,6 +3557,7 @@ sub get_site_Master
 #-----------------------------------------------------------------------------
 sub get_ServiceNode
 {
+    require xCAT::Table;
     my ($class, $node, $service, $request) = @_;
     my @node_list = @$node;
     my $cmd;
@@ -3944,6 +3957,7 @@ sub toIP
 #-----------------------------------------------------------------------------
 sub isSN
 {
+    require xCAT::Table;
     my ($class, $node) = @_;
 
     # reads all nodes from the service node table
@@ -3993,6 +4007,7 @@ sub isSN
 sub getAllSN
 {
 
+    require xCAT::Table;
     # reads all nodes from the service node table
     my @servicenodes;
     my $servicenodetab = xCAT::Table->new('servicenode');
@@ -4045,6 +4060,7 @@ sub getAllSN
 sub getSNandNodes
 {
 
+    require xCAT::Table;
     # read all the nodes from the nodelist table
     #  call get_ServiceNode to find which Service Node
     # the node belongs to.
@@ -4089,6 +4105,7 @@ sub getSNandNodes
 #-----------------------------------------------------------------------------
 sub getSNList
 {
+    require xCAT::Table;
     my ($class, $service) = @_;
 
     # reads all nodes from the service node table
@@ -4366,6 +4383,7 @@ sub get_image_name
 #-------------------------------------------------------------------------------
 sub logEventsToDatabase
 {
+    require xCAT::Table;
     my $pEvents = shift;
     if (($pEvents) && ($pEvents =~ /xCAT::Utils/))
     {
@@ -4424,6 +4442,7 @@ sub logEventsToDatabase
 #-------------------------------------------------------------------------------
 sub logEventsToTealDatabase
 {
+    require xCAT::Table;
     my $pEvents = shift;
     if (($pEvents) && ($pEvents =~ /xCAT::Utils/))
     {
@@ -5152,6 +5171,7 @@ sub release_lock {
 
 sub getrootimage()
 {
+  require xCAT::Table;
   my $node = shift;
   my $installdir = getInstallDir();
   if (($node) && ($node =~ /xCAT::Utils/))
@@ -5496,6 +5516,7 @@ sub generate_monsettings()
 #-------------------------------------------------------------------------------
 sub monitor_installation()
 {
+    require xCAT::Table;
     my ($class, $request, $monsettings) = @_;
     my $callback = $request->{callback};
 
@@ -5793,6 +5814,7 @@ sub get_unique_members
 #-------------------------------------------------------------------------------
 sub get_hdwr_ip
 {
+    require xCAT::Table;
     my $node = shift;
     my $ip   = undef; 
     my $Rc   = undef;
@@ -6160,6 +6182,7 @@ sub setupAIXconserver
 
 sub setAppStatus
 {
+    require xCAT::Table;
 
     my ($class, $nodes_ref, $application, $status) = @_;
     my @nodes = @$nodes_ref;
@@ -6237,6 +6260,7 @@ sub setAppStatus
 
 sub getAppStatus
 {
+    require xCAT::Table;
 
     my ($class, $nodes_ref, $application) = @_;
     my @nodes = @$nodes_ref;
@@ -6293,6 +6317,7 @@ sub getAppStatus
 sub enablessh 
 {
 
+    require xCAT::Table;
     my ($class, $node) = @_;
     my $enablessh=1;
     if (xCAT::Utils->isSN($node)) 
