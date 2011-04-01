@@ -82,11 +82,11 @@ Note: if the "val" fields includes spaces or any other characters that will be p
 
 Do not use dependency table (default is to use dependency table). Valid only with B<on|off|boot|reset|cycle> for blade power method and B<on|off|reset|softoff> for hmc/fsp power method.
 
-=item B<-r retrycount>
+=item B<-r> I<retrycount>
 
 specify the number of retries that the monitoring process will perform before declare the failure. The default value is 3. Setting the retrycount to 0 means only monitoring the os installation progress and will not re-initiate the installation if the node status has not been changed to the expected value after timeout. This flag must be used with -m flag.
 
-=item B<-t timeout>
+=item B<-t> I<timeout>
 
 Specify the the timeout, in minutes, to wait for the expectedstatus specified by -m flag. This is a required flag if the -m flag is specified.
 
@@ -96,7 +96,7 @@ Power off, then on.
 
 Prints out a brief usage message.
 
-=item B<-v>, B<--version>
+=item B<-v>|B<--version>
 
 Display the version number.
 
