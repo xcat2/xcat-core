@@ -10,11 +10,11 @@ B<rmhwconn> [B<-v>| B<--version>]
 
 =head2 PPC (with HMC) specific:
 
-B<rmhwconn> [B<-V>| B<--verbose>] noderange
+B<rmhwconn> [B<-V>| B<--verbose>] I<noderange>
 
 =head2 PPC (without HMC, using FSPAPI) specific:
 
-B<rmhwconn> noderange B<-T tooltype>
+B<rmhwconn> I<noderange> B<-T> I<tooltype>
 
 =head1 DESCRIPTION
 
@@ -42,7 +42,7 @@ Verbose output.
 
 =item B<-T>
 
-The tooltype is used to communicate to the FSP/BPA. The value could be lpar or fnm. The tooltype value lpar is for xCAT and fnm is for CNM.
+The tooltype is used to communicate to the FSP/BPA. The value could be B<lpar> or B<fnm>. The tooltype value B<lpar> is for xCAT and B<fnm> is for CNM.
 
 =back
 
