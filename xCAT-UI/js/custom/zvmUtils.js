@@ -480,7 +480,7 @@ function updateZProvisionNewStatus(data) {
 			$.cookie('tries4' + tabId, 0);
 
 			// Set cookie for number of disks
-			var diskRows = $('#' + tabId + ' table:visible tr');
+			var diskRows = $('#' + tabId + ' table:visible tbody tr');
 			$.cookie('disks2add' + out2Id, diskRows.length);
 			if (diskRows.length > 0) {
 				for ( var i = 0; i < diskRows.length; i++) {
@@ -548,7 +548,7 @@ function updateZProvisionNewStatus(data) {
 				$.cookie('tries4' + tabId, tries);
 
 				// Set cookie for number of disks
-				var diskRows = $('#' + tabId + ' table:visible tr');	
+				var diskRows = $('#' + tabId + ' table:visible tbody tr');	
 				$.cookie('disks2add' + out2Id, diskRows.length);
 				if (diskRows.length > 0) {
 					for ( var i = 0; i < diskRows.length; i++) {
