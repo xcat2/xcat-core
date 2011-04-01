@@ -4,7 +4,7 @@ B<rnetboot> - Cause the range of nodes to boot to network.
 
 =head1 SYNOPSIS
 
-B<rnetboot> [B<-V>|B<--verbose>] B<[-s boot_device_order]> B<[-F]> B<[-f]> B<[--hfi]> I<noderange> [-m table.column==expectedstatus [-m table.col-umn=~expectedstatus]] [-t timeout] [-r retrycount]
+B<rnetboot> [B<-V>|B<--verbose>] [B<-s> I<boot_device_order>] [B<-F>] [B<-f>] [B<--hfi>] I<noderange> [B<-m> I<table.column>==I<expectedstatus> [B<-m> I<table.col-umn>=~I<expectedstatus>]] [B<-t> I<timeout>] [B<-r> I<retrycount>]
 
 B<rnetboot> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
@@ -17,28 +17,47 @@ system p nodes.
 
 =head1 OPTIONS
 
-B<-s>          Set the boot device order.  Accepted boot devices are hd and net.
+B<-s>          
 
-B<-F>          Force reboot the system no matter what state the node is.  By default, rnetboot will not reboot the node if node is in 'boot' state.
+Set the boot device order.  Accepted boot devices are hd and net.
 
-B<-f>          Force immediate shutdown of the partition.
+B<-F>          
 
-B<--hfi>       Netboot the nodes from HFI devices.
+Force reboot the system no matter what state the node is.  By default, rnetboot will not reboot the node if node is in 'boot' state.
 
-B<-m>          Use one or multiple -m flags to specify the node attributes and the expected status for the node installation monitor
-ing and automatic retry mechanism. The operators ==, !=, =~ and !~ are valid. This flag must be used with -t flag.
+B<-f>          
+
+Force immediate shutdown of the partition.
+
+B<--hfi>       
+
+Netboot the nodes from HFI devices.
+
+B<-m>          
+
+Use one or multiple -m flags to specify the node attributes and the expected status for the node installation monitoring and automatic retry mechanism. The operators ==, !=, =~ and !~ are valid. This flag must be used with -t flag.
 
 Note: if the "val" fields includes spaces or any other characters that will be parsed by shell, the "attr<oper-ator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
 
-B<-r>          specify the number of retries that the monitoring process will perform before declare the failure. The default value is 3. Setting the retrycount to 0 means only monitoring the os installation progress and will not re-initiate the installation if the node status has not been changed to the expected value after timeout. This flag must be used with -m flag.
+B<-r>          
 
-B<-t>          Specify the the timeout, in minutes, to wait for the expectedstatus specified by -m flag. This is a required flag if the -m flag is specified.
+specify the number of retries that the monitoring process will perform before declare the failure. The default value is 3. Setting the retrycount to 0 means only monitoring the os installation progress and will not re-initiate the installation if the node status has not been changed to the expected value after timeout. This flag must be used with -m flag.
 
-B<-V>          Verbose output.
+B<-t>          
 
-B<-h>          Display usage message.
+Specify the the timeout, in minutes, to wait for the expectedstatus specified by -m flag. This is a required flag if the -m flag is specified.
 
-B<-v>          Command Version.
+B<-V>          
+
+Verbose output.
+
+B<-h>          
+
+Display usage message.
+
+B<-v>          
+
+Command Version.
 
 
 =head1 RETURN VALUE
@@ -50,15 +69,15 @@ B<-v>          Command Version.
 
 =head1 EXAMPLES
 
-B<rnetboot 1,3>
+ rnetboot 1,3
 
-B<rnetboot 14-56,70-203>
+ rnetboot 14-56,70-203
 
-B<rnetboot 1,3,14-56,70-203>
+ rnetboot 1,3,14-56,70-203
 
-B<rnetboot all,-129-256>
+ rnetboot all,-129-256
 
-B<rnetboot all -s hd,net>
+ rnetboot all -s hd,net
 
 
 =head1 SEE ALSO
