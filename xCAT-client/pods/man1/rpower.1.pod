@@ -4,7 +4,7 @@ B<rpower> - remote power control of nodes
 
 =head1 SYNOPSIS
 
-B<rpower> I<noderange> [B<--nodeps>] {B<on>|B<onstandby>|B<off>|B<suspend>|B<stat>|B<state>|B<reset>|B<boot>} [-m table.column==expectedstatus [-m table.column=~expectedstatus]] [-t timeout] [-r retrycount]
+B<rpower> I<noderange> [B<--nodeps>] [B<on>|B<onstandby>|B<off>|B<suspend>|B<stat>|B<state>|B<reset>|B<boot>] [B<-m> I<table.column>==I<expectedstatus> [B<-m> I<table.column>=~I<expectedstatus>]] [B<-t> I<timeout>] [B<-r> I<retrycount>]
 
 B<rpower> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -72,15 +72,15 @@ Power off, then on.
 
 Boot the node to open firmware mode.
 
-=item B<-m table.column==expectedstatus -m table.column=~expectedstatus>
+=item B<-m> I<table.column>==I<expectedstatus> B<-m> I<table.column>=~I<expectedstatus>
 
-Use one or multiple -m flags to specify the node attributes and the expected status for the node installation monitoring and automatic retry mechanism. The operators ==, !=, =~ and !~ are valid. This flag must be used with -t flag.
+Use one or multiple B<-m> flags to specify the node attributes and the expected status for the node installation monitoring and automatic retry mechanism. The operators ==, !=, =~ and !~ are valid. This flag must be used with -t flag.
 
 Note: if the "val" fields includes spaces or any other characters that will be parsed by shell, the "attr<oper-ator>val" needs to be quoted. If the operator is "!~", the "attr<operator>val" needs to be quoted using single quote.
 
 =item B<--nodeps>
 
-Do not use dependency table (default is to use dependency table). Valid only with on|off|boot|reset|cycle for blade power method and on|off|reset|softoff for hmc/fsp power method.
+Do not use dependency table (default is to use dependency table). Valid only with B<on|off|boot|reset|cycle> for blade power method and B<on|off|reset|softoff> for hmc/fsp power method.
 
 =item B<-r retrycount>
 
@@ -109,14 +109,14 @@ Display the version number.
 
 =item *
 
-B<rpower> I<node4,node5 stat>
+ rpower node4,node5 stat
 
  node4: on
  node5: off
 
 =item *
 
-B<rpower> I<node5 on>
+ rpower node5 on
 
  node5: on
 
