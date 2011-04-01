@@ -60,7 +60,7 @@ Writes the command’s usage statement to standard output.
 
 Specifies the directory where the packages are located.
 
-=item B<--activate concurrent | disruptive>
+=item B<--activate> B<concurrent> | B<disruptive>
 
 Must be specified to activate the new Licensed Internal Code.  The “disruptive” option will cause the target systems to be recycled.  Without this flag, LIC updates will be installed only, not activated.
 
@@ -96,19 +96,19 @@ Verbose output.
 
 To  update  only the  power subsystem attached to a single HMC-attached pSeries CEC(cec_name), and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
 
-B<rflash> I<cec_name> I<-p /tmp/fw> I<--activate disruptive>
+ rflash cec_name -p /tmp/fw --activate disruptive
 
 =item 2
 
 To  update  only the  power subsystem attached to a single HMC-attached pSeries node, and recycle the power  subsystem  and  all attached managed systems when the update is complete, and the Microcode update package and associated XML file are in /tmp/fw, enter:
 
-B<rflash> I<bpa_name> I<-p /tmp/fw> I<--activate disruptive>
+ rflash bpa_name -p /tmp/fw --activate disruptive
 
 =item 3
 
 To commit a firmware update to permanent flash for both managed system and the related power subsystems, enter:
 
-B<rflash> I<cec_name> I<--commit>
+ rflash cec_name --commit
 
 =back
 
