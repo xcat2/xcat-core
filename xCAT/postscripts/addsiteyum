@@ -1,7 +1,7 @@
 #!/bin/sh
 cd `dirname $0`
 if [ ! -d repos/$OSVER/$ARCH ];  then
-   logger -t xcat "repos/$OSVER/$ARCH is not a directory"
+   logger -t xcat "addsiteyum: repos/$OSVER/$ARCH is not a directory"
    exit;
 fi
 for i in repos/$OSVER/$ARCH/*
