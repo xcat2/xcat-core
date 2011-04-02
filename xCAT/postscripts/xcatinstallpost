@@ -14,17 +14,6 @@ fi
 let SLI=$RANDOM%10
 sleep $SLI
 
-if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
-    touch /var/lock/subsys/xcatmounts
-    echo '#!/bin/bash' > /etc/rc6.d/K10xcatmounts
-    echo umount -l /ro >> /etc/rc6.d/K10xcatmounts
-    echo umount -l /rw >> /etc/rc6.d/K10xcatmounts
-    chmod 755 /etc/rc6.d/K10xcatmounts
-    ln -sf /etc/rc6.d/K10xcatmounts /etc/rc0.d/K10xcatmounts
-fi
-
-
-
 cd /xcatpost; 
 PATH=/xcatpost:$PATH
 export PATH
