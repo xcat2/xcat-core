@@ -1632,24 +1632,6 @@ sub makenetworks
                              "The makenetworks command was run with no error.");
     }
 
-    # set the nameserver in the site table
-    my @names =
-      xCAT::Utils->runcmd(
-              "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'",
-              0);
-    my $ns     = join(',', @names);
-    $cmd    = "$::XCATROOT/sbin/chtab key=nameservers site.value=$ns";
-    $outref = xCAT::Utils->runcmd("$cmd", 0);
-    if ($::RUNCMD_RC != 0)
-    {
-        xCAT::MsgUtils->message('E',
-                             "The chtab command returned error: $::RUNCMD_RC.");
-    }
-    else
-    {
-        verbose(
-               "Updated the site definition with the value of the nameserver.");
-    }
 
     # restart httpd
     if (-e "/etc/init.d/apache2")
