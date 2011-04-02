@@ -329,7 +329,7 @@ sub writehmc {
 	# using hostname-range and starting-ip, write regex for: hosts.node, hosts.ip
 	my $hmcstartip = $STANZAS{'xcat-hmcs'}->{'starting-ip'};
 	if ($hmcstartip && isIP($hmcstartip)) {
-		my $hmcstartnum = $$hmchash{'primary-start'};
+        my $hmcstartnum = int $$hmchash{'primary-start'};
 		my ($ipbase, $ipstart) = $hmcstartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
         my $regex = '|\S+?(\d+)\D*$|' . "$ipbase.($ipstart+" . '$1' . "-$hmcstartnum)|";
@@ -366,7 +366,7 @@ sub writeframe {
     my $framehash = parsenoderange($framerange);
 	my $framestartip = $STANZAS{'xcat-frames'}->{'starting-ip'};
 	if ($framestartip && isIP($framestartip)) {
-		my $framestartnum = $$framehash{'primary-start'};
+        my $framestartnum = int $$framehash{'primary-start'};
 		my ($ipbase, $ipstart) = $framestartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
         my $regex = '|\S+?(\d+)\D*$|' . "$ipbase.($ipstart+" . '$1' . "-$framestartnum)|";
@@ -398,14 +398,12 @@ sub writeframe {
         my $hmchash;
         unless ($hmchash = parsenoderange($STANZAS{'xcat-hmcs'}->{'hostname-range'})) { return 0; }
         my $hmcbase = $$hmchash{'primary-base'};
-        my $fnum = $$framehash{'primary-start'};
+        my $fnum = int $$framehash{'primary-start'};
         my $hmcattch = $$hmchash{'attach'};
-        my $umb = $$hmchash{'primary-start'};
+        my $umb = int $$hmchash{'primary-start'};
         my $sfpregex;
-        #unless ($hmcattch) { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'(0+$1)|'; }
-        unless ($hmcattch) { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'((0+$1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')|'; }
-        #else { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'(0+$1)'.$hmcattch.'|'; }
-        else { $sfpregex = '|\S+?(\d+)$|'.$hmcbase.'(($1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')'.$hmcattch.'|'; }
+        unless ($hmcattch) { $sfpregex = '|\S+?(\d+)\D*$|'.$hmcbase.'(($1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')|'; }
+        else { $sfpregex = '|\S+?(\d+)\D*$|'.$hmcbase.'(($1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')'.$hmcattch.'|'; }
         $hash{'sfp'} =  $sfpregex;
     }
 
@@ -465,15 +463,15 @@ sub writecec {
 		my $regex;
 		if (defined($$cechash{'secondary-start'})) {
 			# using name like f1c1
-			my $primstartnum = $$cechash{'primary-start'};
-			my $secstartnum = $$cechash{'secondary-start'};
+            my $primstartnum = int $$cechash{'primary-start'};
+            my $secstartnum = int $$cechash{'secondary-start'};
 			# Math for 3rd field:  ip3rd+primnum-primstartnum
 			# Math for 4th field:  ip4th+secnum-secstartnum
             $regex = '|\D+(\d+)\D+(\d+)\D*$|' . "$ipbase.($ip3rd+" . '$1' . "-$primstartnum).($ip4th+" . '$2' . "-$secstartnum)|";
 		}
 		else {
 			# using name like cec01
-			my $cecstartnum = $$cechash{'primary-start'};
+            my $cecstartnum = int $$cechash{'primary-start'};
 			# Math for 4th field:  (ip4th-1+cecnum-cecstartnum)%254 + 1
 			# Math for 3rd field:  (ip4th-1+cecnum-cecstartnum)/254 + ip3rd
             $regex = '|\S+?(\d+)$\D*|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$cecstartnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$cecstartnum)%254+1)|";
@@ -684,9 +682,9 @@ sub writelpar {
 		my ($ipbase, $ip2nd, $ip3rd, $ip4th) = $startip =~/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
 		# using name like f1c1p1
-		my $primstartnum = $$rangeparts{'primary-start'};
-		my $secstartnum = $$rangeparts{'secondary-start'};
-		my $thirdstartnum = $$rangeparts{'tertiary-start'};
+        my $primstartnum = int $$rangeparts{'primary-start'};
+        my $secstartnum = int $$rangeparts{'secondary-start'};
+        my $thirdstartnum = int $$rangeparts{'tertiary-start'};
 		# Math for 2nd field:  ip2nd+primnum-primstartnum
 		# Math for 3rd field:  ip3rd+secnum-secstartnum
 		# Math for 4th field:  ip4th+thirdnum-thirdstartnum
@@ -931,7 +929,7 @@ sub writesn {
 	infomsg('Defining service nodes...');
 	# We support name formats: sn01 or (todo:) b1s1
 	my $rangeparts = parsenoderange($range);
-	my ($startnum) = $$rangeparts{'primary-start'};		# save this value for later
+    my ($startnum) = int $$rangeparts{'primary-start'};        # save this value for later
 	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'service,lpar,all' });
 	staticGroup('service');
 	
@@ -1017,7 +1015,6 @@ sub writesn {
 		#print "cecname=$cecname\n";
 		$nodeposhash{$$nodes[$i]} = {rack => $CECPOSITIONS->{$cecname}->[0]->{rack}, u => $CECPOSITIONS->{$cecname}->[0]->{u}};
 	}
-	
 	# Form the list of route names for MN to CN
 	my $routes = 'mnto' . join(',mnto', @$nodes);
 	$tables{'site'}->setAttribs({key => 'mnroutenames'}, {value => $routes});
@@ -1045,7 +1042,7 @@ sub writestorage {
 	}
 	infomsg('Defining storage nodes...');
 	my $rangeparts = parsenoderange($range);
-	my ($startnum) = $$rangeparts{'primary-start'};		# save this value for later
+    my ($startnum) = int $$rangeparts{'primary-start'};        # save this value for later
 	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'storage,lpar,all' });
 	staticGroup('storage');
 	
@@ -1183,7 +1180,7 @@ sub writecompute {
 	if ($startip && isIP($startip)) {
 		my ($ipbase, $ip3rd, $ip4th) = $startip =~/^(\d+\.\d+)\.(\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
-		my $startnum = $$nodehash{'primary-start'};
+        my $startnum = int $$nodehash{'primary-start'};
 		# Math for 4th field:  (ip4th-1+nodenum-startnum)%254 + 1
 		# Math for 3rd field:  (ip4th-1+nodenum-startnum)/254 + ip3rd
 		my $regex = '|\S+?(\d+)$|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$startnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$startnum)%254+1)|";
@@ -1298,57 +1295,35 @@ sub parsenoderange {
 	my $nr = shift;
 	my $ret = {};
 	
-    # Check for a 3 square bracket range, e.g. f[1-2]c[01-10]p[1-8]a
-	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\s*$/ ) {
+    # Check for a 3 square bracket range, e.g. f[1-2]c[01-10]p[1-8] or f[1-2]c[01-10]p[1-8]a
+        if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S*?)\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'tertiary-base'}, $$ret{'tertiary-start'}, $$ret{'tertiary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) || (length($$ret{'tertiary-start'}) != length($$ret{'tertiary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
 		#if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) || ($$ret{'tertiary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
     
-	# Check for a 3 square bracket range, e.g. f[1-2]c[01-10]p[1-8]
-	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
-		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'tertiary-base'}, $$ret{'tertiary-start'}, $$ret{'tertiary-end'}) = ($1, $2, $3, $4, $5, $6, $7, $8, $9);
-		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) || (length($$ret{'tertiary-start'}) != length($$ret{'tertiary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		#if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) || ($$ret{'tertiary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
-		return $ret;
-	}
-	
-	# Check for a 2 square bracket range, e.g. f[1-2]c[01-10]a
-	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\s*$/ ) {
+    
+    # Check for a 2 square bracket range, e.g.  f[1-2]c[01-10] or f[1-2]c[01-10]a
+        if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S*?)\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4, $5, $6, $7);
 		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
 		#if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
     
-	# Check for a 2 square bracket range, e.g. f[1-2]c[01-10]
-	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
-		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}) = ($1, $2, $3, $4, $5, $6);
-		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		#if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
-		return $ret;
-	}
-	
-	# Check for a square bracket range, e.g. n[01-20]a
-	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\s*$/ ) {
+    # Check for a square bracket range, e.g. n[01-20] or n[01-20]a
+    if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S*?)\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4);
 		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
 		#if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
 		return $ret;
 	}
     
-	# Check for a square bracket range, e.g. n[01-20]
-	if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\]\s*$/ ) {
-		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}) = ($1, $2, $3);
-		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		#if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
-		return $ret;
-	}
 	
-	# Check for normal range, e.g. n01a-n20a
+    # Check for normal range, e.g. n01-n20 or n01a-n20a
 	my $base2;
-	if ( $nr =~ /^\s*(\S+?)(\d+)(\S+?)\-(\S+?)(\d+)(\S+?)\s*$/ ) {
+        if ( $nr =~ /^\s*(\S+?)(\d+)(\S*?)\-(\S+?)(\d+)(\S*?)\s*$/ ) {
         ($$ret{'primary-base'}, $$ret{'primary-start'},  $$ret{'attach'}, $base2, $$ret{'primary-end'}, $$ret{'attach2'}) = ($1, $2, $3, $4, $5, $6);
 		if ($$ret{'primary-base'} ne $base2) { errormsg("invalid noderange format: $nr", 5); return undef; }
 		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
@@ -1356,15 +1331,6 @@ sub parsenoderange {
 		return $ret;
 	}
     
-	# Check for normal range, e.g. n01-n20
-	my $base2;
-	if ( $nr =~ /^\s*(\S+?)(\d+)\-(\S+?)(\d+)\s*$/ ) {
-		($$ret{'primary-base'}, $$ret{'primary-start'}, $base2, $$ret{'primary-end'}) = ($1, $2, $3, $4);
-		if ($$ret{'primary-base'} ne $base2) { errormsg("invalid noderange format: $nr", 5); return undef; }
-		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
-		#if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
-		return $ret;
-	}
 	
 	# It may be a simple single nodename
 	if ( $nr =~ /^\s*([^\[\]\-\:\s]+?)(\d+)\s*$/ ) {
