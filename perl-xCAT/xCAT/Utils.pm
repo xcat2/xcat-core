@@ -2899,18 +2899,33 @@ sub getNodeIPaddress
                                 push (@nonip, $_);
                             }
                     }
-                    if (scalar(@nonip)){
-                        my $hstab =  xCAT::Table->new('hosts');
-                        if ( $hstab ) {
-                            my $ent = $hstab->getNodesAttribs(\@nonip,['ip']);
-                            if ($ent){
-                                foreach (@nonip) {
-                                    my $i = $ent->{$_}->[0]->{ip};
-                                    push (@myip, $i);
-                                }
+                    #if (scalar(@nonip)){
+                    #    my $hstab =  xCAT::Table->new('hosts');
+                    #    if ( $hstab ) {
+                    #        my $ent = $hstab->getNodesAttribs(\@nonip,['ip']);
+                    #        if ($ent){
+                    #            foreach (@nonip) {
+                    #                my $i = $ent->{$_}->[0]->{ip};
+                    #                push (@myip, $i);
+                    #            }
+                    #        }
+                    #    }
+                    #}
+                    foreach my $t (@nonip) {
+                        $nodeip = xCAT::NetworkUtils->getipaddr($t);
+                        if (!$nodeip) {
+                            my $hoststab = xCAT::Table->new( 'hosts');
+                            my $ent = $hoststab->getNodeAttribs( $t, ['ip'] );
+                            if ( $ent->{'ip'} ) {
+                                $nodeip = $ent->{'ip'};
                             }
                         }
-                    }
+                        if($nodeip) {
+                            push (@myip, $nodeip);
+                        }
+                    } 
+
+
                     $ips = join ",", @myip;
                     return $ips;
                 }
