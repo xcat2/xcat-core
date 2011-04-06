@@ -168,7 +168,8 @@ my %usage = (
        chvm <noderange> [-p profile][-V|--verbose] 
        chvm <noderange> <attr>=<val> [<attr>=<val>...]
    PPC (using Direct FSP Management) specific:
-       chvm <noderange> [-p profile] 
+       chvm <noderange> [-p <profile>]
+       chvm <noderange> -i <id> [-m <memory_interleaving>] -r <partition_rule>
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]",
     "rmvm" => 
