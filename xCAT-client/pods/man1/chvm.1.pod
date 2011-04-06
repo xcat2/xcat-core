@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<chvm> - Changes HMC- and IVM-managed partition profiles. For P7 IH, chvm only could be used to change the I/O slots assignment to LPARs.
+B<chvm> - Changes HMC- and IVM-managed partition profiles. For P7 IH, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
 
 =head1 SYNOPSIS
 
@@ -12,11 +12,13 @@ B<chvm> [B<-v>| B<--version>]
 
 B<chvm> [B<-V>| B<--verbose>] I<noderange> [B<-p> I<profile>]
 
-B<chvm> [B<-V>| B<--verbose>] I<noderange> B<attr>=I<val> [B<attr>=I<val>...]
+B<chvm> [B<-V>| B<--verbose>] I<noderange> I<attr>=I<val> [I<attr>=I<val>...]
 
 =head2 PPC (using Direct FSP Management) specific:
 
 B<chvm> I<noderange> [B<-p> I<profile>]
+
+B<chvm> I<noderange> B<-i id> B<-m> I<memory_interleaving> B<-r> I<partition_rule>
 
 =head2 VMware specific:
 
@@ -32,7 +34,9 @@ This command also supports to change specific partition attributes by specifying
 
 =head2 PPC (using Direct FSP Management) specific:
 
-chvm is designed to assign the I/O slots to the new LPAR. Both the current IO owning lpar and the new IO owning lpar must be powered off before an IO assignment. Otherwise, if the I/O slot is belonged to an Lpar and the LPAR is power on, the command will return an error when trying to assign that slot to a different lpar. 
+chvm could be used to change the octant configuration values for generating LPARs. chvm is designed to set the Octant configure value to split the CPU and memory for partitions, and set Octant Memory interleaving value. The chvm will only set the pending attributes value. After chvm, the CEC needs to be rebooted manually for the pending values to be enabled. Before reboot the cec, the administrator can use chvm to change the partition plan. If the the partition needs I/O slots, the administrator should use chvm to assign the I/O slots. 
+
+chvm is also designed to assign the I/O slots to the new LPAR. Both the current IO owning lpar and the new IO owning lpar must be powered off before an IO assignment. Otherwise, if the I/O slot is belonged to an Lpar and the LPAR is power on, the command will return an error when trying to assign that slot to a different lpar. 
 
 The administrator should use lsvm to get the profile content, and then edit the content, and add the node name with ":" manually before the I/O which will be assigned to the node. And then the profile can be piped into the chvm command, or changed with the -p flag.
 
@@ -44,53 +48,99 @@ The chvm command modifes the vm specified in noderange.  Calling with deregister
 
 =head2 Common:
 
-B<-h>          
+=over 10
+
+=item B<-h>          
 
 Display usage message.
 
-B<-v>          
+=item B<-v>          
 
 Command Version.
 
-=head2 PPC specific:
+=back
 
-B<-p> I<profile>  
+=head2 PPC (with HMC) specific:
+
+=over 10
+
+=item B<-p> I<profile>  
 
 Name of an existing partition profile.
 
-B<attr>=I<val>    
+=item I<attr>=I<val>    
 
 Specifies one or more "attribute equals value" pairs, separated by spaces.
 
-B<-V>          
+=item B<-V>          
 
 Verbose output.
 
+=back
+
+=head2 PPC (using Direct FSP Management) specific:
+
+=over 10
+
+=item B<-i>              
+
+Starting numeric id of the newly created partitions. For P7 IH using Direct FSP Management, the id value only could be B<1>, B<5>, B<9>, B<13>, B<17>, B<21>, B<25> and B<29>.
+
+=item B<-m>              
+
+memory interleaving. The value only could be B<interleaved> or B<non-interleaved>. B<non-interleaved> mode means the memory cannot be shared across the processors in an octant. B<interleaved> means the memory can be shared.
+
+=item B<-r>              
+
+partition rule.
+
+If all the octants configuration value are same in one CEC,  it will be  " B<-r>  B<0-7>:I<value>" .
+
+If the octants use the different configuration value in one cec, it will be "B<-r> B<0>:I<value1>,B<1>:I<value2>,...B<7>:I<value7>", or "B<-r> B<0>:I<value1>,B<1-7>:I<value2>" and so on.
+
+The octants configuration value for one Octant could be  B<1>, B<2>, B<3>, B<4>, B<5>. The meanings of the octants configuration value  are as following:
+
+ 1 -- 1 partition with all cpus and memory of the octant
+ 2 -- 2 partitions with a 50/50 split of cpus and memory
+ 3 -- 3 partitions with a 25/25/50 split of cpus and memory
+ 4 -- 4 partitions with a 25/25/25/25 split of cpus and memory
+ 5 -- 2 partitions with a 25/75 split of cpus and memory
+
+=item B<-p> I<profile>  
+
+Name of I/O slots assignment profile.
+
+=back
+
 =head2 VMware specific:
 
-B<-a> I<size> 
+=over 10
+
+=item B<-a> I<size> 
 
 Add a new Hard disk with size defaulting to GB.  Multiple can be added with comma separated values.
 
-B<--cpus> I<count> 
+=item B<--cpus> I<count> 
 
 Set the number of CPUs.
 
-B<-d> I<disk> 
+=item B<-d> I<disk> 
 
 Deregister the Hard disk but leave the backing files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
 
-B<--mem> I<memory> 
+=item B<--mem> I<memory> 
 
 Set the memory, defaults to MB.
 
-B<-p> I<disk> 
+=item B<-p> I<disk> 
 
 Purge the Hard disk.  Deregisters and deletes the files.  Multiple can be done with comma separated values.  The disks are specified by SCSI id.  Size defaults to GB.
 
-B<--resize> B<disk>=I<size> 
+=item B<--resize> B<disk>=I<size> 
 
 Change the size of the Hard disk.  The disk can never be set to less than it's current size.  Multiple disks can be resized to I<size> by using comma separated values on the left side of B<=>.  The disks are specified by SCSI id.  Size defaults to GB.
+
+=back
 
 =head1 RETURN VALUE
 
@@ -128,7 +178,61 @@ Output is similar to:
 
 =head2 PPC (using Direct FSP Management) specific:
 
-1.To change the I/O slot profile for lpar4 using the configuration data in the file /tmp/lparfile, the I/O slots information is similar to:
+1. For P7 IH, to create a new partition lpar1 on the first octant of the cec cec01, lpar1 will use all the cpu and memory of the octant 0, enter: 
+
+ mkdef -t node -o lpar1 mgt=fsp groups=all parent=cec01   nodetype=lpar   hcp=cec01
+
+then:
+
+ chvm lpar1 -i 1 -m non-interleaved -r 0:1
+
+Output is similar to:
+
+ lpar1: Success
+ cec01: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
+
+2. For P7 IH, to create new partitions lpar1-lpar8 on the whole cec cec01, each LPAR will use all the cpu and memory of each octant, enter:
+
+ mkdef -t node -o lpar1-lpar8 nodetype=lpar  mgt=fsp groups=all parent=cec01  hcp=cec01
+
+then:
+
+ chvm lpar1-lpar8 -i 1 -m non-interleaved  -r 0-7:1
+
+Output is similar to:
+
+ lpar1: Success
+ lpar2: Success
+ lpar3: Success
+ lpar4: Success
+ lpar5: Success
+ lpar6: Success
+ lpar7: Success
+ lpar8: Success
+ cec01: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
+
+3. For P7 IH cec1, to create new partitions lpar1-lpar9, the lpar1 will use 25% CPU and 25% memory of the first octant, and lpar2 will use the left CPU and memory of the first octant. lpar3-lpar9 will use all the cpu and memory of each octant, enter:
+
+ mkdef -t node -o lpar1-lpar9 mgt=fsp groups=all parent=cec1   nodetype=lpar   hcp=cec1
+
+then:
+
+ chvm lpar1-lpar9 -i 1 -m non-interleaved  -r 0:5,1-7:1
+
+Output is similar to: 
+
+ lpar1: Success
+ lpar2: Success
+ lpar3: Success
+ lpar4: Success
+ lpar5: Success
+ lpar6: Success
+ lpar7: Success
+ lpar8: Success
+ lpar9: Success
+ cec1: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
+
+4.To change the I/O slot profile for lpar4 using the configuration data in the file /tmp/lparfile, the I/O slots information is similar to:
 
  4: 514/U78A9.001.0123456-P1-C17/0x21010202/2/1
  4: 513/U78A9.001.0123456-P1-C15/0x21010201/2/1
@@ -138,7 +242,7 @@ then run the command:
 
  cat /tmp/lparfile | chvm lpar4
 
-2. To change the I/O slot profile for lpar1-lpar8 using the configuration data in the file /tmp/lparfile. Users can use the output of lsvm.and remove the cec information, and  modify the lpar id  before each I/O, and run the command as following:
+5. To change the I/O slot profile for lpar1-lpar8 using the configuration data in the file /tmp/lparfile. Users can use the output of lsvm.and remove the cec information, and  modify the lpar id  before each I/O, and run the command as following:
 
  chvm lpar1-lpar8 -p /tmp/lparfile
 
