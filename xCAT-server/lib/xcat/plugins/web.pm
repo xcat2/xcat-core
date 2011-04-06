@@ -1111,6 +1111,9 @@ sub web_createimage{
             elsif ('rsct' eq $soft){
                 web_rsctConfigure($ostype, $profile, $osarch, $installdir);
             }
+            elsif('pe' eq $soft){
+                web_peConfigure($ostype, $profile, $osarch, $installdir);
+            }
         }
 
         #chmod 
@@ -1178,10 +1181,11 @@ sub web_createimage{
             print $CONFILE '"ALL","/etc/fstab","tmpfs",,' . "\n";
         }
         close($CONFILE);
-        
+
+        #write the hpc software litefile into temp litefile.csv
         for my $soft (@softArray){
             $soft = lc($soft);
-            if (-e /opt/xcat/share/xcat/IBMhpc/$soft/litefile.csv){
+            if (-e "/opt/xcat/share/xcat/IBMhpc/$soft/litefile.csv"){
                 system ("grep '^[^#]' /opt/xcat/share/xcat/IBMhpc/$soft/litefile.csv >> /tmp/litefile.csv");
             }
         }
@@ -1252,7 +1256,7 @@ sub web_rsctConfigure{
 
     #postinstall
     open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
-    print $CONFILE "installroot=\$1 rsctdir=/install/post/otherpkgs/rhels6/ppc64/rsct NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/rsct/rsct_install\n";
+    print $CONFILE "installroot=\$1 rsctdir=$installdir/post/otherpkgs/rhels6/ppc64/rsct NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/rsct/rsct_install\n";
     close ($CONFILE);
 }
 
@@ -1289,7 +1293,7 @@ sub web_peConfigure{
     #postinstall
     open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
     print $CONFILE "installroot=\$1 NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/compilers/compilers_license";
-    print $CONFILE "installroot=\$1 pedir=/install/post/otherpkgs/rhels6/ppc64/pe NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/pe/pe_install";
+    print $CONFILE "installroot=\$1 pedir=$installdir/post/otherpkgs/rhels6/ppc64/pe NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/pe/pe_install";
     close ($CONFILE);
 }
 
