@@ -77,7 +77,7 @@ sub chvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose p=s ) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose p=s i=s m=s r=s ) )) {
         return( usage() );
     }
     ####################################
@@ -95,14 +95,19 @@ sub chvm_parse_args {
     ####################################
     # Configuration file required 
     ####################################
-    if ( !exists( $opt{p}) ) { 
-        if ( !defined( $request->{stdin} )) { 
-            return(usage( "Configuration file or attributes not specified" ));
-        }
-    }
+    #if ( !exists( $opt{p}) ) { 
+    #    if ( !defined( $request->{stdin} )) { 
+    #        return(usage( "Configuration file or attributes not specified" ));
+    #    }
+    #}
     
     my @cfgdata ;
     if ( exists( $opt{p})) {
+        
+	if ( exists( $opt{i} ) ||  exists( $opt{r}) || exists( $opt{m} ) ) {
+            return(usage("-p should NOT  be used with -i, -r or -m."));
+        }
+	
         $opt{p} = $request->{cwd}->[0] . '/' . $opt{p} if ( $opt{p} !~ /^\//);
         return ( usage( "Profile $opt{p} cannot be found")) if ( ! -f $opt{p});
         open (PROFFILE, "<$opt{p}") or return ( usage( "Cannot open profile $opt{p}"));
@@ -117,6 +122,12 @@ sub chvm_parse_args {
         $opt{profile} = \@cfgdata;
     }     
 
+    if (defined( $request->{stdin} )) {
+        $opt{p} = 1;
+	if ( exists( $opt{i} ) ||  exists( $opt{r} ) || exists( $opt{m} ) ) {
+            return(usage("When the profile is piped into the chvm command, the -i, -r and -m could NOT be used."));
+        }
+    }
     #if (defined( $request->{stdin} )) {
     #     my $p =  $request->{stdin};
     #     my @io = split(/\n/, $p) ;
@@ -133,7 +144,136 @@ sub chvm_parse_args {
     #    $opt{profile} = \@cfgdata;
     #}
     #print "in parse args:\n";
-    #print Dumper(\%opt); 
+    #print Dumper(\%opt);
+
+
+    
+    if ( exists( $opt{i} ) ) {
+	if( !exists( $opt{r} ) ) {
+            return(usage( "Option -i should be used with option -r ." ));
+	}
+	
+        if ( $opt{i} !~ /^([1-9]{1}|[1-9]{1}[0-9]+)$/ ) {
+            return(usage( "Invalid entry: $opt{i}" ));
+        }
+        my @id = (1, 5, 9, 13, 17, 21, 25, 29);
+        my @found =  grep(/^$opt{i}$/, @id );
+	if ( @found != 1) {
+            return(usage( "Invalid entry: $opt{i}.\n For P7 IH, starting numeric id of the newly created partitions only could be 1, 5, 9, 13, 17, 21, 25 and 29." ));
+        }
+       
+	#if ( !exists($opt{o})  ) {
+	#    return(usage("For P7 IH, -i should be used with -o"));
+	#}
+      
+	#my @value = (1, 2, 3, 4, 5);
+	#if ( grep(/^$opt{i}$/, @id ) != 1) {
+	#    return(usage( "Invalid entry: $opt{o}.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	#}
+       
+	
+    } 
+  
+    
+    # pending memory interleaving mode  (1- interleaved, 2- non-interleaved)
+    # non-interleaved mode means the memory cannot be shared across the processors in an octant.
+    # interleaved means the memory can be shared.
+    if( exists($opt{m}) ) {
+        if( $opt{m} =~ /^interleaved$/ || $opt{m} =~ /^1$/ ) {
+	    $opt{m} = 1;
+	} elsif( $opt{m} =~ /^non-interleaved$/ || $opt{m} =~ /^2$/  ) {
+	    $opt{m} = 2;
+	} else {
+            return(usage( "Invalid entry: $opt{m}.\n For P7 IH, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
+	}
+    } else {
+        $opt{m} = 2 ;# non-interleaved, which is the default    
+    }
+   
+    my @ratio = (1, 2, 3, 4, 5);
+    my %octant_cfg = ();
+    if ( exists( $opt{r} ) ) {
+    
+	if( !exists( $opt{i} ) ) {
+            return(usage( "Option -r should be used with option -i ." ));
+	}
+	    
+        my @elems = split(/\,/,$opt{r});
+        my $range="";
+        while (my $elem = shift @elems) {
+            if($elem !~ /\-/) {
+		my @subelems = split(/\:/, $elem);
+	        if( $subelems[0] < 0 || $subelems[0] > 7) {
+		    return(usage("Octant ID only could be 0 to 7 in the octant configuration value $elem"));
+		}
+		if( grep(/^$subelems[1]$/, @ratio ) != 1) {
+	            return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+		}
+		if( exists($octant_cfg{$subelems[0]}) && $octant_cfg{$subelems[0]} == $subelems[1] ) {
+	            return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
+		}
+                $octant_cfg{$subelems[0]} = $subelems[1];
+	        $range .= "$elem,";
+	    } else {
+	        my @subelems = split(/\:/, $elem);
+		my ($left,$right) = split(/\-/, $subelems[0]);
+	        if( $left < 0 || $left > 7 || $right < 0 || $right > 7) {
+		       return(usage("Octant ID only could be 0 to 7 in the octant configuration rule $elem"));
+		}
+                if($left == $right) {
+		   if( grep(/^$subelems[1]$/, @ratio ) != 1) {
+	               return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+		   }
+		   if( exists($octant_cfg{$left}) || $octant_cfg{$left} == $subelems[1] ) {
+	               return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
+		   }
+		   $octant_cfg{$left} = $subelems[1];
+		   $range .="$left:$subelems[1],"
+		} elsif($left < $right ) {
+		   my $i = $left;   
+		   for( $i; $i <=$right ; $i ++) {
+		       if( exists($octant_cfg{$i}) || $octant_cfg{$i} == $subelems[1] ) {
+	                   return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
+		       }
+		       $octant_cfg{$i} = $subelems[1];
+
+		       $range .= "$i:$subelems[1],";
+		   }
+		} else {
+		   return(usage("In the octant configuration rule $elem, the left octant ID could NOT be bigger than the right octant ID"));  	
+		}
+	    } # end of "if .. else.."
+        } # end of while
+    } #end of if
+     
+    if ( exists( $opt{i} ) &&  exists( $opt{r} ) ) {
+        $opt{octant_cfg}{octant_cfg_value} = (\%octant_cfg);
+        $opt{octant_cfg}{memory_interleave} = $opt{m};
+    
+        $opt{target} = \@{$request->{node}};
+        my $ppctab = xCAT::Table->new( 'ppc');
+        unless($ppctab) {
+            return(usage("Cannot open ppc table"));
+        }
+ 
+        my $other_p;
+        foreach my $node( @{$request->{node}} ) {
+            my $parent_hash    = $ppctab->getNodeAttribs( $node,[qw(parent)]);
+            my $p = $parent_hash->{parent};
+            if ( !$p) {
+                return(usage("Not found the parent of $node"));
+            }
+            if(! defined( $other_p)) {
+                $other_p = $p;
+            } 
+            if ($other_p ne $p) {
+                return(usage("For P7 IH, please make sure the noderange are in one CEC "));
+            }
+        } 
+        $request->{node} = [$other_p]; 
+        $request->{noderange} = $other_p;  
+    }
+
     ####################################
     # No operands - add command name 
     ####################################
@@ -437,7 +577,8 @@ sub lsvm_parse_args {
 sub modify {
     my $request = shift;
     my $hash    = shift;
-    return modify_by_prof( $request, $hash); 
+    return modify_by_prof( $request, $hash) if ( $request->{opt}->{p}); 
+    return create( $request, $hash) if ( $request->{opt}->{i}); 
 }
 
 
