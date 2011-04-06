@@ -437,183 +437,133 @@ function loadCreateImage(){
 	var tab=getProvisionTab();
 	var tabId = 'createImageTab';
 	//Generate new tab ID
-	if($('#' + tabId).length){
+	if($('#' + tabId).size()){
 		tab.select(tabId);
 		return ;
 	}
-	
-	// Open new tab
-	// Create set properties form 
-	var setPropsForm = $('<div class="form"></div>');
 
-	var infoBar= createInfoBar('Input the image info ,you want to generate. When you finished, click generate.');
+	var showStr = '';
+	var imageOsvers = $.cookie("osvers").split(",");
+	var imageArch = $.cookie("osarchs").split(",");
+	
+	// Create set properties form 
+	var setPropsForm = $('<div class="form" ></div>');
+
+	//show the infomation
+	var infoBar= createInfoBar('Input the image info ,you want to generate. Click generate.');
 	setPropsForm.append(infoBar);
 	
-	// Create an input for each generate attribute
-	var showStr = '';
 	//os version selector
-	showStr += '<p><label>OS Version:</label><select id="osvers"><option value="rhsel6">rhlse6</option></select></p>';
+	showStr += '<p><label>OS Version:</label><select id="osvers" onchange="hpcShow()">';
+	for(var i = 0 ;i<imageOsvers.length;i++){
+		showStr+='<option value="'+imageOsvers[i]+'">'+imageOsvers[i]+'</option>';
+	}
+	showStr+='</select></p>';
+
 	//os arch selector
-	showStr += '<p><label>OS Architecture:</label><select id="osarch"><option value="ppc64">ppc64</option></select></p>';
+	showStr += '<p><label>OS Architecture:</label><select id="osarch" onchange="hpcShow()">';
+	for(var i =0;i<imageArch.length;i++){
+		showStr+='<option value="'+imageArch[i]+'">'+imageArch[i]+'</option>';
+	}
+	showStr+='</select></p>';
+
 	//net boot interface input
 	showStr += '<p><label>Net Boot Interface:</label><input type="text" id="netbootif"></p>';
 	//profile selector
-	showStr += '<p><label>Profile:</label><select id="profile"><option value="compute">compute</option>' + 
+	showStr += '<p><label>Profile:</label><select id="profile" onchange="hpcShow()">' +
+			   '<option value="compute">compute</option>' + 
 			   '<option value="service">service</option></select></p>';
 	//boot method selector
-	showStr += '<p><label>Boot Method:</label><select id="bootmethod"><option value="stateless">stateless</option>' + 
+	showStr += '<p><label>Boot Method:</label><select id="bootmethod">' +
+			   '<option value="stateless">stateless</option>' + 
 	   		   '<option value="statelite">statelite</option></select></p>';
 
-	// advanced software when select the compute profile
-	showStr += '<fieldset id="hpcsoft"><legend>HPC Software Stack</legend><ul>' +
-			   '<li id="gpfsli"><input type="checkbox" onclick="gpfsCheck(this)" name="gpfs">GPFS</li>' + 
-			   '<li id="loadli"><input type="checkbox" name="loadll">LoadLeveler</li>'
-			   + '</ul></fieldset>';
-	
 	setPropsForm.append(showStr);
+	createHpcSelect(setPropsForm);
 	
-	var createImageBtn=createButton("CreateImage");
-	createImageBtn.bind('click',function(event){
-		createImage();
-	});
-	
-	setPropsForm.append(createImageBtn);	
+	//add and show the tab
 	tab.add(tabId, 'Create Image', setPropsForm, true);
 	tab.select(tabId);
 	
-	//for the profile select, if not compute could not select the software
-	$('#createImageTab #profile').bind('change', function(){
-		if('compute' != $(this).attr('value')){
-			$('#createImageTab #hpcsoft').hide();
-		}
-		else{
-			$('#createImageTab #hpcsoft').show();
-		}
-	});
-}
-
-/**
- * use users' input or select to create image
- * 
- * @param 
- *  
- * @return Nothing
- */
-function createImage(){
-	var osvers = $("#createImageTab #osvers").val();
-	var osarch = $("#createImageTab #osarch").val();
-	var profile = $("#createImageTab #profile").val();
-	var bootInterface = $("#createImageTab #netbootif").val();
-	var bootMethod = $("#createImageTab #bootmethod").val();
+	//check the selected osver and osarch for hcp stack select, if they are validated,
+	//then show the hpc stack select area.
+	hpcShow();
 	
-	$('#createImageTab .ui-state-error').remove();
-	
-	if (!bootInterface){
-		$("#createImageTab").prepend('<div class="ui-state-error ui-corner-all">' + 
-					                 '<p>Input the netboot interface please.</p></div>');
-		return;
-	}
-	
-	var createImageArgs = "createimage;" + osvers + ";" + osarch + ";" + profile + ";" + bootInterface + ";" +
-						  bootMethod + ";";
-	
-	$("#createImageTab :checkbox:checked").each(function (){
-		createImageArgs+=$(this).attr("name")+",";
-	});
-	
-	createImageArgs=createImageArgs.substring(0,(createImageArgs.length-1));
-	$.ajax({
-		 url : 'lib/cmd.php',
-         dataType : 'json',
-         data : {
-   		         cmd : 'webrun',
-                 tgt : '',
-                 args : createImageArgs,
-                 msg : ''
-		},
-		success : function(data){
-
-		}
-	});
-}
-
-/**
- * when users want to install gpfs on compute node, 
- * should check the rpms install and copy status first.
- * 
- * @param 
- *  
- * @return Nothing
- */
-function gpfsCheck(obj) {
-	if(0 < $('#createImageTab #gpfsli .ui-icon-circle-check').size()){
-		return;
-	}
-	
-	$('#createImageTab #gpfsli .ui-state-error').remove();
-	$('#createImageTab #gpfsli').append(createLoader());
 	$.ajax({
 		url : 'lib/systemcmd.php',
 		dataType : 'json',
-		data:{
-			cmd : 'rpm -q gpfs.base gpfs.gpl gpfs.msg  xCAT-IBMhpc createrepo'
-		},
-		success : function(data){
-			var checkResult=data.rsp.split("\n");
-			var errorStr = '';
-			
-			for (var i in checkResult){
-				if (-1 != checkResult[i].indexOf("not installed")){
-					errorStr += ' ' + checkResult[i] + ',';
-				}
-			}
-			
-			if ('' != errorStr){
-				errorStr = errorStr.substr(0, errorStr.length - 1);
-				$(":checkbox[name=gpfs]").attr("checked",false);
-				//add the error
-				var errorPart = '<div style="display:inline-block;margin:0px" class="ui-state-error">' +
-								'<span class="ui-icon ui-icon-alert"></span>' + errorStr + '</div>';
-				$('#createImageTab #gpfsli').find('img').remove();
-				$('#createImageTab #gpfsli').append(errorPart);
-				return;
-			}
-			
-			gpfsCopyCheck();
-		}
-	});	
-}
-
-function gpfsCopyCheck(){
-	var osvers=$("#createImageTab #osvers").val();
-	var osarch=$("#createImageTab #osarch").val();
-	$.ajax({
-		url: 'lib/systemcmd.php',
-		dataType : 'json',
 		data : {
-			cmd : 'ls /install/post/otherpkgs/' + osvers + '/' + osarch + '/gpfs/gpfs.gplbin*.rpm'
+			cmd : 'lsb_release -d;uname -p'
 		},
 		success : function(data){
-			var installPath = '/install/post/otherpkgs/' + $("#createImageTab #osvers").val() + '/' + 
-							  $("#createImageTab #osarch").val() + '/gpfs';
-			//remove the loading image.
-			$('#createImageTab #gpfsli').find('img').remove();
+			var tempArray = data.rsp.split("\n");
+			var mnOs = tempArray[0];
+			var mnArch = tempArray[1]; 
+			tempArray = mnOs.split(" ");
+			// get the the version of mn
+			if(mnOs.indexOf("Red Hat")!= -1 ){
+				mnOs="rhels" + tempArray[6];
+			}
 			
-			//check the return information
-			if (null == data.rsp){
-				var errorPart = '<div style="display:inline-block;margin:0px" class="ui-state-error">' +
-								'<span class="ui-icon ui-icon-alert"></span>Build the GPFS portability layer rpm, install it and copy it into ' +
-								installPath + '.<br/>For information: <a href="http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_up_GPFS_in_a_Statelite_or_Stateless_Cluster#Install.2FBuild_GPFS" target="_blank">Install/Build GPFS</a></div>';
-				$('#createImageTab #gpfsli').append(errorPart);
-				$(":checkbox[name=gpfs]").attr("checked",false);
-			}
-			else{
-				var infoPart = '<div style="display:inline-block;margin:0px"><span class="ui-icon ui-icon-circle-check"></span></div>';
-				$('#createImageTab #gpfsli').append(infoPart);
-			}
+			$('#createImageTab option[value=' + mnOs + ']').attr('selected', 'selected');
+			$('#createImageTab option[value=' + mnArch + ']').attr('selected', 'selected');
+			// The button used to create images is created here.
+			var createImageBtn=createButton("CreateImage");
+			createImageBtn.bind('click',function(event){
+				createImage();
+			});
+			
+			$('#createImageTab').append(createImageBtn);
+			
+			// check the option ,Decide to show the hpcsoft or not
+			hpcShow();
 		}
 	});
+	
 }
+
+function createHpcSelect(container){
+	var hpcFieldset = $('<fieldset id="hpcsoft"></fieldset>');
+	hpcFieldset.append('<legend>HPC Software Stack</legend>');
+	var str = 'Before selecting the software, you should have the following already completed for your xCAT cluster:<br/><br/>' +
+		      '1. If you are using xCAT hierarchy, your service nodes are installed and running.<br/>' +
+		      '2. Your compute nodes are defined to xCAT, and you have verified your hardware control capabilities, ' +
+		      'gathered MAC addresses, and done all the other necessary preparations for a diskless install.<br/>' +
+			  '3. You should have a diskless image created with the base OS installed and verified on at least one test node.<br/>' +
+			  '4. You should install the softwares on the management node, and copy all correponding packages into the location ' + 
+			  '"/install/custom/otherpkgs/" based on ' + 
+			  '<a href="http://sourceforge.net/apps/mediawiki/xcat/index.php?title=IBM_HPC_Stack_in_an_xCAT_Cluster" target="_blank">these documentations</a>.<br/>';
+			  
+	hpcFieldset.append(createInfoBar(str));
+	// advanced software when select the compute profile
+	str = '<ul><li id="gpfsli"><input type="checkbox" onclick="gpfsCheck(this)" name="gpfs">GPFS</li>' + 
+		//'<li id="loadli"><input type="checkbox" name="loadll">LoadLeveler</li>' +
+		  '<li id="rsctli"><input type="checkbox" onclick="rsctCheck(this)" name="rsct">RSCT</li>' +
+		  '<li id="peli"><input type="checkbox" onclick="peCheck(this)" name="pe">PE</li>' +
+		  '<li id="esslli"><input type="checkbox" onclick="esslCheck(this)" name="essl">ESSl&PESSL</li>' +
+		  '</ul>';
+	hpcFieldset.append(str);
+	
+	container.append(hpcFieldset);
+}
+/**
+ *	check the Option , Decide to show the hpcsoft or not
+ * 	
+ *
+ *	@param
+ *
+ *	@return Nothing
+ */
+function hpcShow(){
+	// The current ui only support rhels 6 
+	// if you want support all delete the subcheck
+	if($('#createImageTab #osvers').attr('value')!="rhels6"||$('#createImageTab #osarch').attr('value')!="ppc64"||$('#createImageTab #profile').attr('value')!="compute"){
+		$('#createImageTab #hpcsoft').hide();
+	}else {
+		$('#createImageTab #hpcsoft').show();
+	}
+}
+
 /**
  * Load set image properties page
  * 
@@ -1051,4 +1001,276 @@ function loadCopyCdPage() {
 
 	tab.add(newTabId, 'Copy', copyLinuxForm, true);
 	tab.select(newTabId);
+}
+
+/**
+ * use users' input or select to create image
+ * 
+ * @param 
+ *  
+ * @return Nothing
+ */
+function createImage(){
+	var osvers = $("#createImageTab #osvers").val();
+	var osarch = $("#createImageTab #osarch").val();
+	var profile = $("#createImageTab #profile").val();
+	var bootInterface = $("#createImageTab #netbootif").val();
+	var bootMethod = $("#createImageTab #bootmethod").val();
+	
+	$('#createImageTab .ui-state-error').remove();
+	// If there no input for the bootInterface
+	if (!bootInterface){
+		$("#createImageTab").prepend('<div class="ui-state-error ui-corner-all">' + 
+					                 '<p>Input the netboot interface please.</p></div>');
+		return;
+	}
+	
+	var createImageArgs = "createimage;" + osvers + ";" + osarch + ";" + profile + ";" + bootInterface + ";" +
+						  bootMethod + ";";
+	
+	$("#createImageTab :checkbox:checked").each(function (){
+		createImageArgs+=$(this).attr("name")+",";
+	});
+	
+	createImageArgs=createImageArgs.substring(0,(createImageArgs.length-1));
+	$.ajax({
+		 url : 'lib/cmd.php',
+         dataType : 'json',
+         data : {
+   		         cmd : 'webrun',
+                 tgt : '',
+                 args : createImageArgs,
+                 msg : ''
+		},
+		success : function(data){
+
+		}
+	});
+}
+
+/**
+ * when users want to install gpfs on compute node, 
+ * should check the rpms install and copy status first.
+ * 
+ * @param 
+ *  
+ * @return Nothing
+ */
+function gpfsCheck(obj) {
+	if(0 < $('#createImageTab #gpfsli .ui-icon-circle-check').size()){
+		return;
+	}
+	
+	$('#createImageTab #gpfsli .ui-state-error').remove();
+	$('#createImageTab #gpfsli').append(createLoader());
+	$.ajax({
+		url : 'lib/systemcmd.php',
+		dataType : 'json',
+		data:{
+			cmd : 'rpm -q gpfs.base gpfs.gpl gpfs.msg  xCAT-IBMhpc createrepo'
+		},
+		success : function(data){
+			if (rpmCheck(data.rsp, 'gpfs')){
+				var osvers=$("#createImageTab #osvers").val();
+				var osarch=$("#createImageTab #osarch").val();
+				var cmd = 'ls /install/post/otherpkgs/' + osvers + '/' + osarch + '/gpfs/gpfs.gplbin*.rpm';
+				rpmCopyCheck(cmd);
+			}
+		}
+	});
+}
+
+/**
+* when users want to install rsct on compute node,
+* They should install the rsct on mn .
+* The rsctCheck check the basic configuration of rsct.
+*
+* @param 
+*
+* @return Nothing
+*/
+function rsctCheck(obj){
+	if (0 < $('#createImageTab #rsctli .ui-icon-circle-check').size()){
+		return;
+	}
+	$('#createImageTab #rsctli .ui-state-error').remove();
+	$('#createImageTab #rsctli').append(createLoader());
+	$.ajax({
+		url : 'lib/systemcmd.php',
+		dataType : 'json',
+		data: {
+			cmd : 'rpm -q rsct.core rsct.core.utils src createrepo'
+		},
+		success : function (data){
+			if (rpmCheck(data.rsp, 'rsct')){
+				var osvers = $("#createImageTab #osvers").val();
+				var osarch = $("#createImageTab #osarch").val();
+				var cmd = 'ls /install/post/otherpkgs/' + osvers + '/' + osarch + '/rsct/rsct.core*.rpm ' +
+			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/rsct/rsct.core.utils*.rpm ' +
+			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/rsct/src*.rpm 2>&1';
+				rpmCopyCheck(cmd);
+			}
+		}
+	});
+}
+
+/**
+*	When users want to install PE on their compute node.
+*	The peCheck will check the info of mn.
+*	And return the info to users.
+*
+*	@param
+*
+*	@return Nothing
+*/
+function peCheck(obj){
+	//verify result is ok, the return;
+	if (0 < $('#createImageTab #peli .ui-icon-circle-check').size()){
+		return;
+	}
+	
+	//delete the error part
+	$('#createImageTab #peli .ui-state-error').remove();
+	$('#createImageTab #peli').append(createLoader());
+	$.ajax({
+		url : 'lib/systemcmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'rpm -q src IBM_pe_license ibm_lapi ibm_pe ppe '
+		},
+		success : function(data){
+			if (rpmCheck(data.rsp, 'pe')){
+				var osvers=$("#createImageTab #osvers").val();
+				var osarch=$("#createImageTab #osarch").val();
+				var cmd = 'ls /install/post/otherpkgs/' + osvers + '/' + osarch + '/pe/IBM_pe_licence*.rpm ' +
+			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/pe/src*.rpm ' +
+			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/pe/ibm_lapi*.rpm ' +
+			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/pe/ibm_pe*.rpm ' +
+			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/pe/ppe*.rpm 2>&1';
+				rpmCopyCheck(cmd);
+			}
+		}
+	});
+}
+
+function esslCheck(obj){
+	if(0 < $('#createImageTab #esslli .ui-icon-circle-check').size()){
+		return;
+	}
+	
+	$('#createImageTab #esslli .ui-state-error').remove();
+	//before select the essl, must select pe first
+	if (false == $('#createImageTab input[name=pe]').attr('checked')){
+		var errorStr = '<div style="margin:0px" class="ui-state-error">You must select the pe first.</div>';
+		$('#createImageTab #esslli').append(errorStr);
+		$(':checkbox[name=essl]').attr("checked",false);
+		return;
+	}
+	
+	$.ajax({
+		url : 'lib/systemcmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'rpm -q essl.common essl.licens essl.rte pessl.license pessl.msg pessl.rte.ppe'
+		},
+		success : function(data){
+			if (rpmCheck(data.rsp, 'pe')){
+				var osvers=$("#createImageTab #osvers").val();
+				var osarch=$("#createImageTab #osarch").val();
+				var cmd = 'ls /install/post/otherpkgs/' + osvers + '/' + osarch + '/essl/essl.common*.rpm ' +
+			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/essl/essl.licens*.rpm ' +
+			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/essl/essl.rte*.rpm ' +
+			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/essl/pessl.license*.rpm ' +
+			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/essl/pessl.msg*.rpm 2>&1';
+				rpmCopyCheck(cmd);
+			}
+		}
+	});
+}
+
+/**
+*	When the rpm check info return, check if all rpms are installed.
+*
+*	@param   checkInfo: "rpm -q ***"'s return 
+*			 name: software name
+*
+*	@return true: the rpms are all installed
+*           false: some of the rpms are not installed, detail add into the page.
+*/
+function rpmCheck(checkInfo, name){
+	var errorStr = '';
+	
+	var checkArray = checkInfo.split("\n");
+	for(var i in checkArray){
+		if(-1 != checkArray[i].indexOf("not install")){
+			errorStr += checkArray[i] + "<br/>";
+		}
+	}
+	
+	if ('' == errorStr){
+		return true;
+	}
+	
+	errorStr = errorStr.substr(0, errorStr.length - 1);
+	$(':checkbox[name=' + name + ']').attr("checked",false);
+	//add the error
+	var errorPart = '<div style="margin:0px" class="ui-state-error">' + errorStr + '</div>';
+	$('#createImageTab #' + name + 'li').find('img').remove();
+	$('#createImageTab #' + name + 'li').append(errorPart);
+	return;
+}
+
+/**
+*	check the rpm list result, to create the error message
+*
+*	@param   name: software name
+*
+*	@return 
+*/
+function rpmCopyCheck(checkCmd){
+	$.ajax({
+		url: 'lib/systemcmd.php',
+		dataType : 'json',
+		data : {
+			cmd : checkCmd
+		},
+		success : function(data){
+			//remove the loading image.
+			var errorStr = '';
+			var softwareName = '';
+			//check the return information
+			var reg = /.+:(.+): No such.*/;
+			var resultArray = data.rsp.split("\n");
+			for(var i in resultArray){
+				var temp = reg.exec(resultArray[i]);
+				if (temp){
+					//find out the path and rpm name
+					var pos = temp[1].lastIndexOf('/');
+					var path = temp[1].substring(0, pos);
+					var rpmName = temp[1].substring(pos + 1).replace('*', '');
+					errorStr += 'Copy ' + rpmName + ' to ' + path + '<br/>';
+					//find out the software name 
+					if ('' == softwareName){
+						pos = path.lastIndexOf('/');
+						softwareName = path.substring(pos + 1);
+					}
+				}
+			}
+			
+			$('#createImageTab #' + softwareName + 'li').find('img').remove();
+			//no error, show the check image
+			if ('' == errorStr){
+				var infoPart = '<div style="display:inline-block;margin:0px"><span class="ui-icon ui-icon-circle-check"></span></div>';
+				$('#createImageTab #' + softwareName + 'li').append(infoPart);
+			}
+			else{
+				//show the error message
+				errorStr = '<div style="margin:0px" class="ui-state-error">' +
+	               'To install the rsct on your compute node. You should:<br/>' +
+	               errorStr + '</div>';
+				$('#createImageTab #' + softwareName + 'li').append(errorStr);
+				$(':checkbox[name=' + softwareName + ']').attr("checked",false);
+			}
+		}
+	});
 }
