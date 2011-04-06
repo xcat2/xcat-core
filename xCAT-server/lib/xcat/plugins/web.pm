@@ -1094,7 +1094,7 @@ sub web_createimage{
         close($CONFILE);
 
         #write exlist for stateless
-        open($CONFILE, ">/install/custom/netboot/$ostype/$profile.exlist");
+        open($CONFILE, ">$installdir/custom/netboot/$ostype/$profile.exlist");
         print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/IBMhpc.$ostype.$osarch.exlist#\n";
         close($CONFILE);
 
@@ -1106,7 +1106,10 @@ sub web_createimage{
         for my $soft (@softArray){
             $soft = lc($soft);
             if ('gpfs' eq $soft){
-                web_gpfsConfigure($ostype, $profile, $installdir);
+                web_gpfsConfigure($ostype, $profile, $osarch, $installdir);
+            }
+            elsif ('rsct' eq $soft){
+                web_rsctConfigure($ostype, $profile, $osarch, $installdir);
             }
         }
 
@@ -1132,6 +1135,7 @@ sub web_createimage{
         my $retInfo = xCAT::Utils->runcmd( "${cmdPath}/genimage -i $bootif -n $netdriver -o $ostype -p $profile", -1, 1 );
         $ret = join ("\n", @$retInfo);
         if ($::RUNCMD_RC){
+            web_restoreChange($request->{arg}->[6], $archFlag, $imagetype, $ostype, $installdir);
             $callback->({data=>$ret});
             return;
         }
@@ -1177,7 +1181,9 @@ sub web_createimage{
         
         for my $soft (@softArray){
             $soft = lc($soft);
-            system ("grep '^[^#]' /opt/xcat/share/xcat/IBMhpc/$soft/litefile.csv >> /tmp/litefile.csv");
+            if (-e /opt/xcat/share/xcat/IBMhpc/$soft/litefile.csv){
+                system ("grep '^[^#]' /opt/xcat/share/xcat/IBMhpc/$soft/litefile.csv >> /tmp/litefile.csv");
+            }
         }
         
         system("tabrestore /tmp/litefile.csv");
@@ -1186,47 +1192,121 @@ sub web_createimage{
         my $retInfo = xCAT::Utils->runcmd( "${cmdPath}/genimage -i $bootif -n $netdriver -o $ostype -p $profile", -1, 1 );
         $ret = join ("\n", @$retInfo);
         if ($::RUNCMD_RC){
+            web_restoreChange($request->{arg}->[6], $archFlag, $imagetype, $ostype, $installdir);
             $callback->({data=>$ret});
             return;
         }
         $ret .= "\n";
         my $retInfo = xCAT::Utils->runcmd( "liteimg -o $ostype -p $profile -a $osarch", -1, 1 );
         $ret .= join ("\n", @$retInfo);
-
-        #restore the litefile table
-        system("rm -r /tmp/litefile.csv ; mv /tmp/litefilearchive.csv /tmp/litefile.csv ; tabrestore /tmp/litefile.csv");
     }
 
-    #recover all file in the $installdir/custom/netboot/$ostype/
-    if ($request->{arg}->[6]){
-        system("rm -f $installdir/custom/netboot/$ostype/*.*");
-    }
-    
-    if ($archFlag){
-        system("mv /tmp/webImageArch/*.* $installdir/custom/netboot/$ostype/");
-    }
+    web_restoreChange($request->{arg}->[6], $archFlag, $imagetype, $ostype, $installdir);
     $callback->({data=>$ret});
     return;
 }
 
 sub web_gpfsConfigure{
-    my ($ostype, $profile, $installdir) = @_;
+    my ($ostype, $profile, $osarch, $installdir) = @_;
     my $CONFILE;
+    
+    #createrepo
+    system('createrepo $installdir/post/otherpkgs/$ostype/$osarch/gpfs');
+    
     #other pakgs
     open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist");
     print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/gpfs.otherpkgs.pkglist#\n";
     close($CONFILE);
 
     #exlist
-    open ($CONFILE, ">>/install/custom/netboot/$ostype/$profile.exlist");
+    open ($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist");
     print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/gpfs/gpfs.exlist#\n";
     close ($CONFILE);
 
     #postinstall
-    system ('cp /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_mmsdrfs /install/postscripts/gpfs_mmsdrfs');
+    system ('cp /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_mmsdrfs $installdir/postscripts/gpfs_mmsdrfs');
     open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
-    print $CONFILE "NODESETSTATE=genimage installroot=\$1 /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_updates \n";
-    print $CONFILE "installroot=$1 /install/postscripts/gpfs_mmsdrfs\n";
+    print $CONFILE "NODESETSTATE=genimage installroot=\$1 /opt/xcat/share/xcat/IBMhpc/gpfs/gpfs_updates\n";
+    print $CONFILE "installroot=\$1 $installdir/postscripts/gpfs_mmsdrfs\n";
     close($CONFILE);
+}
+
+sub web_rsctConfigure{
+    my ($ostype, $profile, $osarch, $installdir) = @_;
+    my $CONFILE;
+
+    #createrepo
+    system('createrepo $installdir/post/otherpkgs/$ostype/$osarch/rsct');
+
+    #packagelist for sles11
+    if ($ostype =~ /sles/i){
+        open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist");
+        print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/rsct.pkglist# \n";
+        close($CONFILE);
+    }
+
+    #exlist
+    open ($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist");
+    print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/rsct/rsct.exlist#\n";
+    close ($CONFILE);
+
+    #postinstall
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
+    print $CONFILE "installroot=\$1 rsctdir=/install/post/otherpkgs/rhels6/ppc64/rsct NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/rsct/rsct_install\n";
+    close ($CONFILE);
+}
+
+sub web_peConfigure{
+    my ($ostype, $profile, $osarch, $installdir) = @_;
+    my $CONFILE;
+
+    #createrepo
+    system('createrepo $installdir/post/otherpkgs/$ostype/$osarch/pe');
+    system('createrepo $installdir/post/otherpkgs/$ostype/$osarch/compilers');
+
+    #pkglist
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist");
+    if ($ostype =~ /rh/i){
+        print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.$ostype.pkglist#\n";
+    }
+    else{
+        print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.pkglist#\n";
+        print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.pkglist#\n";
+    }
+    close($CONFILE);
+
+    #otherpaglist
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist");
+    print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.otherpkgs.pkglist#\n";
+    close($CONFILE);
+
+    #exlist
+    open ($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist");
+    print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.exlist#\n";
+    print $CONFILE "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.exlist#\n";
+    close ($CONFILE);
+
+    #postinstall
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
+    print $CONFILE "installroot=\$1 NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/compilers/compilers_license";
+    print $CONFILE "installroot=\$1 pedir=/install/post/otherpkgs/rhels6/ppc64/pe NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/pe/pe_install";
+    close ($CONFILE);
+}
+
+sub web_restoreChange{
+    my ($software, $archFlag, $imagetype, $ostype, $installdir) = @_;
+    #recover all file in the $installdir/custom/netboot/$ostype/
+    if ($software){
+        system("rm -f $installdir/custom/netboot/$ostype/*.*");
+    }
+
+    if ($archFlag){
+        system("mv /tmp/webImageArch/*.* $installdir/custom/netboot/$ostype/");
+    }
+
+    #recover the litefile table for statelite image
+    if ('statelite' == $imagetype){
+        system("rm -r /tmp/litefile.csv ; mv /tmp/litefilearchive.csv /tmp/litefile.csv ; tabrestore /tmp/litefile.csv");
+    }
 }
 1;
