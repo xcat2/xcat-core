@@ -1,0 +1,105 @@
+#!/bin/sh
+# IBM(c) 2011EPL license http://www.eclipse.org/legal/epl-v10.html
+
+#-------------------------------------------------------------------------------
+#=head1  routeop  
+#=head2  routeop is called by makeroutes command and setuproutes postscript to
+#        setup a route on a node.    
+#        The syntax is:
+#          routeop add/delete net mask gateway ifname
+#=cut
+#-------------------------------------------------------------------------------
+
+op=$1
+
+net=$2
+mask=$3
+gateway=$4
+if [[ -n "$5" ]]; then
+    ifname=$5
+fi
+
+
+route_exists()
+{
+    net=$1
+    mask=$2
+    gw=$3
+    ret=0
+
+    if [[ -n "$4" ]]; then
+	ifname=$4
+    fi
+
+    result=`netstat -nr|grep $net`;
+    if [ $? -eq 0 ] && [ -n "$result" ]; then
+	for x in `echo "$result"|tr -s " " ","`
+       	do
+	    if [[ $OSTYPE = linux* ]]; then
+		net1=`echo $x|cut -d',' -f1`
+		gw1=`echo $x|cut -d',' -f2`
+		mask1=`echo $x|cut -d',' -f3`
+		if [[ "$net" == "$net1" ]] && [[ "$mask" == "$mask1" ]] && [[ "$gw" == "$gw1" ]]; then
+		    ret=1
+		    break
+		fi
+	    else
+		tmp1=`echo $x|cut -d',' -f1`
+		gw1=`echo $x|cut -d',' -f2`
+
+                n1=`echo $net |cut -d'.' -f1`	        
+                n2=`echo $net |cut -d'.' -f2`	        
+                n3=`echo $net |cut -d'.' -f3`	        
+                n4=`echo $net |cut -d'.' -f4`
+
+	        let "netnum = $(( $n1 << 24 )) + $(( $n2 << 16 )) + $(( $n3 << 8 )) + $n4"
+                bits=32
+		while [ `expr $netnum % 2` -eq 0 ]
+		do
+		    let "bits = $bits -1"
+		    let "netnum = $netnum >> 1"
+		done
+                
+                tmp2="$net/$bits";
+		#echo "$tmp2=$tmp2"
+		if [[ "$tmp1" == "$tmp2" ]] && [[ "$gw" == "$gw1" ]]; then
+		    ret=1
+		    break
+		fi
+	    fi
+	done
+    fi
+    
+    echo $ret
+}
+
+result=$(route_exists $net $mask $gateway)
+echo "result=$result"
+if [[ "$result" == "0" ]]; then
+    if [[ "$op" == "add" ]]; then
+	if [[ $OSTYPE = linux* ]]; then
+	    cmd="route add -net $net netmask $mask gw $gw"
+	else 
+	    $cmd="route add -net $net -netmask $mask $gw"
+	fi
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then
+	    logger -t xCAT  "$cmd\nerror code=$?, result=$result."
+	    return 1;
+	fi
+    fi
+else
+    if [[ "$op" == "delete" ]]; then
+	if [[ $OSTYPE = linux* ]]; then
+	    cmd="route delete -net $net netmask $mask gw $gw"
+	else 
+	    $cmd="route delete -net $net -netmask $mask $gw"
+	fi
+	result=`$cmd 2>&1`
+	if [ $? -ne 0 ]; then
+	    logger -t xCAT  "$cmd\nerror code=$?, result=$result."
+	    return 1;
+	fi
+    fi
+fi
+exit 0
