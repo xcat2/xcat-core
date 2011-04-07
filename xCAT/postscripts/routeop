@@ -14,7 +14,7 @@ op=$1
 
 net=$2
 mask=$3
-gateway=$4
+gw=$4
 if [[ -n "$5" ]]; then
     ifname=$5
 fi
@@ -73,8 +73,7 @@ route_exists()
     echo $ret
 }
 
-result=$(route_exists $net $mask $gateway)
-echo "result=$result"
+result=$(route_exists $net $mask $gw)
 if [[ "$result" == "0" ]]; then
     if [[ "$op" == "add" ]]; then
 	if [[ $OSTYPE = linux* ]]; then
@@ -82,11 +81,16 @@ if [[ "$result" == "0" ]]; then
 	else 
 	    $cmd="route add -net $net -netmask $mask $gw"
 	fi
+	echo "$cmd"
 	result=`$cmd 2>&1`
-	if [ $? -ne 0 ]; then
-	    logger -t xCAT  "$cmd\nerror code=$?, result=$result."
-	    return 1;
+	code=$?
+	if [ $code -ne 0 ]; then
+	    logger -t xCAT  "$cmd\nerror code=$code, result=$result."
+	    echo "  error code=$code, result=$result."
+	    exit 1;
 	fi
+    else
+	echo "The route ($net $mask $gw) does not exist."
     fi
 else
     if [[ "$op" == "delete" ]]; then
@@ -95,11 +99,16 @@ else
 	else 
 	    $cmd="route delete -net $net -netmask $mask $gw"
 	fi
+	echo "$cmd"
 	result=`$cmd 2>&1`
-	if [ $? -ne 0 ]; then
-	    logger -t xCAT  "$cmd\nerror code=$?, result=$result."
-	    return 1;
+	code=$?
+	if [ $code -ne 0 ]; then
+	    logger -t xCAT  "$cmd\nerror code=$code, result=$result."
+	    echo "  error code=$code, result=$result."
+	    exit 1;
 	fi
+    else
+	echo "The route ($net $mask $gw) already exists."
     fi
 fi
 exit 0

@@ -80,7 +80,7 @@ sub preprocess_request
 	if ($nodes) {
 	    @sns=@$nodes;
 	}
-	print "sns=@sns\n";
+	#print "sns=@sns\n";
 	my @requests=();
 	foreach (@sns) {
 	    my $reqcopy = {%$request};
@@ -101,13 +101,11 @@ sub preprocess_request
 	
 	my $routelist_in;
 	my $delete=0;
-	my $update=0;
 	if(!GetOptions(
 		'h|help'     => \$::HELP,
 		'v|version'  => \$::VERSION,
 		'r|routename=s'  => \$routelist_in,
 		'd|delete'  => \$delete,
-		'u|updatedb'  => \$update,
 	   ))
 	{
 	    &usage($callback);
@@ -172,9 +170,6 @@ sub preprocess_request
 	    if ($delete) {
 		$reqcopy->{delete}->[0]=1;
 	    }
-	    if ($update) {
-		$reqcopy->{update}->[0]=1;
-	    }
 	    return [$reqcopy];
 	} else { #noderange is specified, 
 	    my $ret=[];
@@ -205,9 +200,6 @@ sub preprocess_request
 		    if ($delete) {
 			$reqcopy->{delete}->[0]=1;
 		    }
-		    if ($update) {
-			$reqcopy->{update}->[0]=1;
-		    }
 		    push(@$ret, $reqcopy);
 		}
 	    }
@@ -229,9 +221,6 @@ sub preprocess_request
 		}
 		if ($delete) {
 		    $reqcopy->{delete}->[0]=1;
-		}
-		if ($update) {
-		    $reqcopy->{update}->[0]=1;
 		}
 		push(@$ret, $reqcopy);
 	    }
@@ -287,10 +276,6 @@ sub process_makeroutes {
 	$remote=$request->{remote}->[0];
     }
 
-    my $update=0;
-    if (exists($request->{update})) {
-	$update=$request->{update}->[0];
-    }
 
     my $routelist;
     if (exists($request->{routelist})) {
@@ -318,46 +303,19 @@ sub process_makeroutes {
 		$all_routes{$_}->{nodes}=$nodes;
 	    }
 	}
-    } 
-
-    #get the routes for each nodes from the noderes table (for sn and cn) and site table (for mn)
-    #make sure the input routes are defined for the node for 'add' case
-    if ($nodes) {
-	my $nrtab=xCAT::Table->new("noderes", -create =>1);
-	my $nrhash = $nrtab->getNodesAttribs($nodes, ['routenames']) ;
-	foreach(@$nodes) {
-	    my @badroutes=();
-	    my $node=$_;
-	    my $rn;
-	    my $ent=$nrhash->{$node}->[0];
-	    if (ref($ent) and defined $ent->{routenames}) {
-		$rn = $ent->{routenames};
-	    }
-	    if ($routelist) { 
-		if ($rn) {
-		    my @a=split(',', $rn);
-		    my @b=split(',', $routelist);
-		    foreach my $r (@b) {
-			if (!grep(/^$r$/, @a)) {
-			    push(@badroutes, $r);
-			}
-		    }
-		} else {
-		    @badroutes=split(',', $routelist);
+    } else {
+	#get the routes for each nodes from the noderes table (for sn and cn) and site table (for mn)
+	if ($nodes) {
+	    my $nrtab=xCAT::Table->new("noderes", -create =>1);
+	    my $nrhash = $nrtab->getNodesAttribs($nodes, ['routenames']) ;
+	    foreach(@$nodes) {
+		my @badroutes=();
+		my $node=$_;
+		my $rn;
+		my $ent=$nrhash->{$node}->[0];
+		if (ref($ent) and defined $ent->{routenames}) {
+		    $rn = $ent->{routenames};
 		}
-		#print "badroutes=@badroutes, delete=$delete\n";
-		if ((!$delete) && (@badroutes > 0)) {
-		    my $badroutes_s=join(',', @badroutes);
-		    my $rsp={};
-		    if (@badroutes==1) {
-			$rsp->{error}->[0]= "The route $badroutes_s is not defined in the noderes table for node $node.";
-		    } else {
-			$rsp->{error}->[0]= "The routes $badroutes_s are not defined in the noderes table for node $node.";
-		    }
-		    $callback->($rsp);
-		    return 1;
-		}
-	    } else { #use what's defined in the noderes table for the node
 		if ($rn) {
 		    my @a=split(',', $rn);
 		    my @badroutes=();
@@ -365,7 +323,7 @@ sub process_makeroutes {
 			if (! exists($all_routes{$r})) {
 			    push(@badroutes, $r);
 			} else {
-			    print "got here...., remote=$remote\n";
+			    #print "got here...., remote=$remote\n";
 			    $all_routes{$r}->{process}=1;
 			    if ($remote) {
 				my $pa=$all_routes{$r}->{nodes};
@@ -388,7 +346,6 @@ sub process_makeroutes {
 			$callback->($rsp);
 			return 1;
 		    }
-		    
 		} else {
 		    my $rsp={};
 		    $rsp->{data}->[0]= "No routes defined in noderes.routenames for node $node, skiping $node.";
@@ -396,34 +353,8 @@ sub process_makeroutes {
 		}
 	    }
 	}
-    }
-    else { #this is mn, get the routes from the site table
-	my @mnroutes = xCAT::Utils->get_site_attribute("routenames");
-	if ($routelist) { 
-	    my @badroutes=();
-	    if ($mnroutes[0]) {
-		my @a=split(',', $mnroutes[0]);
-		my @b=split(',', $routelist);
-		foreach my $r (@b) {
-		    if (!grep(/^$r$/, @a)) {
-			push(@badroutes, $r);
-		    }
-		}
-	    } else {
-		@badroutes=split(',', $routelist);
-	    }
-	    if ((!$delete) && (@badroutes > 0)) {
-		my $badroutes_s=join(',', @badroutes);
-		my $rsp={};
-		if (@badroutes==1) {
-		    $rsp->{error}->[0]= "The route $badroutes_s is not defined in the site.routenames for the management node.";
-		} else {
-		    $rsp->{error}->[0]= "The routes $badroutes_s are not defined in the site.routenames for the management node.";
-		}
-		$callback->($rsp);
-		return 1;
-	    }
-	} else { #use what's defined in the site table for the mn
+	else { #this is mn, get the routes from the site table
+	    my @mnroutes = xCAT::Utils->get_site_attribute("routenames");
 	    if ($mnroutes[0]) {
 		my @a=split(',', $mnroutes[0]);
 		my @badroutes=();
@@ -454,7 +385,7 @@ sub process_makeroutes {
 	}
     }
 
-    print Dumper(%all_routes); 
+    #print Dumper(%all_routes); 
 
     #now let's handle the route creatation and deletion
     my @sns=(); 
@@ -477,12 +408,9 @@ sub process_makeroutes {
 			_xcatpreprocessed => [1],
 		    }, 
 		    $sub_req, -1, 1);
-		if ($::RUNCMD_RC != 0) {
-		    my $rsp={};
-		    $rsp->{error}=$output;
-		    $callback->($rsp);
-		    return 1;		}		
-
+		my $rsp={};
+		$rsp->{data}=$output;
+		$callback->($rsp);
 	    } else { #local on mn or sn
 		if ($delete)  {
 		    delete_route($callback, $route_hash->{net}, $route_hash->{mask}, $gw_ip, $gw_name);
@@ -494,6 +422,7 @@ sub process_makeroutes {
 	}
     }
     
+
     #not all gateways are service nodes
     my %sn_hash=();
     my @allSN=xCAT::Utils->getAllSN();
@@ -522,6 +451,8 @@ sub process_makeroutes {
 	node=>\@nodes,
 	arg=>[$delete]}, 
 	       $callback);
+
+
 }
 
 sub process_ipforward {
@@ -625,7 +556,7 @@ sub set_route {
 	} else {
 	    $cmd="route add -net $net -netmask $mask $gw_ip";
 	}
-	print "cmd=$cmd\n";
+	#print "cmd=$cmd\n";
 	$result=`$cmd 2>&1`;
 	if ($? != 0) {
 	    my $rsp={};
@@ -656,7 +587,7 @@ sub delete_route {
 	} else {
 	    $cmd="route delete -net $net -netmask $mask $gw_ip";
 	}
-	print "cmd=$cmd\n";
+	#print "cmd=$cmd\n";
 	$result=`$cmd 2>&1`;
 	if ($? != 0) {
 	    my $rsp={};
