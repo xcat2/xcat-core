@@ -34,10 +34,9 @@ unless ($inet6support) {
 }
 
 
-use XML::Simple;
+use XML::Simple; #smaller than libxml....
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
-require Data::Dumper;
-use Storable qw(dclone);
+#require Data::Dumper;
 my $xcathost='localhost:3001';
 my $plugins_dir;
 my %resps;
@@ -792,8 +791,9 @@ sub do_request {
 ###################################
 sub build_response {
   my $rsp = shift;
+  require Storable;
   foreach (keys %$rsp) {
-    my $subresp = dclone($rsp->{$_});
+    my $subresp = Storable::dclone($rsp->{$_});
     push (@{$Main::resps->{$_}}, @{$subresp});
   }
 }
