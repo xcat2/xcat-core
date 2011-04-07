@@ -19,6 +19,11 @@ if (!isAuthenticated()){
 if (isset($_GET["cmd"])) {
 	// HTTP GET requests
 	$cmd = $_GET["cmd"];
+	$msg = NULL;
+	
+	if (isset($_GET["msg"])){
+		$msg = $_GET["msg"];
+	}	
 	$ret = "";
 
 	if ("ostype" == $cmd) {
@@ -28,6 +33,6 @@ if (isset($_GET["cmd"])) {
 		$ret = shell_exec($cmd);
 	}
 
-	echo json_encode(array("rsp"=>$ret));
+	echo json_encode(array("rsp"=>$ret, "msg" => $msg));
 }
 ?>
