@@ -37,6 +37,7 @@ if (!$batch) { #handle single event
 	rpt_comp => 'IBM.Condition',
 	rpt_loc_type =>"A",
         rpt_loc => $ENV{ERRM_NODE_NAME} . "##" . $ENV{ERRM_COND_NAME},
+        raw_data_fmt =>"0",
 	raw_data => $ENV{ERRM_ATTR_PNAME} . "=" . $ENV{ERRM_VALUE},
     }; 
     
@@ -89,6 +90,7 @@ if (!$batch) { #handle single event
 		rpt_comp => "IBM.Condition",
 		rpt_loc_type =>"A",
 		rpt_loc => $content_hash{ERRM_NODE_NAME} . "##" . $content_hash{ERRM_COND_NAME},
+                raw_data_fmt =>"0",
 		raw_data => $content_hash{ERRM_ATTR_PNAME} . "=" . $content_hash{ERRM_VALUE},
 	    }; 
 	    push(@a, $event);
