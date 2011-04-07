@@ -1,0 +1,50 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+BEGIN { $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : -d '/opt/xcat' ? '/opt/xcat' : '/usr'; }
+use lib "$::XCATROOT/lib/perl";
+use Data::Dumper;
+use xCAT::Client;
+my %columns;
+use strict;
+my %output;
+while (<STDIN>) {
+    my $node;
+    my $output;
+    if (/:/) {
+        ($node,$output) = split /:/,$_,2;
+    } else {
+        $node= "UNKNOWN";
+        $output = $_;
+    }
+    my $colname;
+     if ($output =~ /:/) {
+    	($colname,$output) = split /:/,$output,2;
+    } else {
+	$colname = "UNKNOWN";
+    }
+     $colname =~ s/^ *//;
+    $output =~ s/^ //;
+    $output =~ s/\n//;
+    $output{$node}->{$colname}.=$output;
+    $columns{$colname}=1;
+}
+my @columns;
+foreach (keys %columns) { #create,preserv ordered list of columns
+	push @columns, $_;
+}
+print join(',',"node",@columns)."\n";
+
+my $nodes;
+sub fillerup {
+    my $response = shift;
+    if ($response->{data}->[0]) {
+        $nodes = $response->{data}->[0];
+    }
+}
+foreach my $node (keys %output) {
+    my @output=($node);
+    foreach (@columns) {
+	push @output,$output{$node}->{$_};
+    }
+    print join(",",@output)."\n";
+}
