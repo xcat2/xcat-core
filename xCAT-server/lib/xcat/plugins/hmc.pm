@@ -140,10 +140,25 @@ sub gethmccon {
             return ;
         }
     }
+    ################################
+    # Get username and passwd
+    ################################
+    my $hwtype   = "hmc";
+	my $host     = $att->{hcp};
+	my @cred = xCAT::PPCdb::credentials( $host, $hwtype );
+	if ( !defined(@cred) )
+	{
+        $rsp->{node}->[0]->{error}=["Can't username and passwd for the hmc"];
+        $rsp->{node}->[0]->{errorcode}=[1];			   
+        $callback->($rsp);		
+        return;
+    }
+	
 	$rsp = {node=>[{name=>[$node]}]};
     $rsp->{node}->[0]->{mtms}->[0]   = "$vpd->{mtm}*$vpd->{serial}";
     $rsp->{node}->[0]->{host}->[0] = $att->{hcp};
     $rsp->{node}->[0]->{lparid}->[0] = $att->{id};
+	$rsp->{node}->[0]->{cred}->[0] =  join ',', @cred;   
     $callback->($rsp);	
 }
 
