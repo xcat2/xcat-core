@@ -574,6 +574,10 @@ sub inv {
       return;
     }
   }
+  if (not $args{vmview}->{config}) {
+    xCAT::SvrUtils::sendmsg([1,"VM is in an invalid state"], $output_handler,$node);
+    return;
+  }
 
   @ARGV= @{$args{exargs}};
   require Getopt::Long;
