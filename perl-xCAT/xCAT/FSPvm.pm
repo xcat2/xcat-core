@@ -15,7 +15,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use xCAT::NodeRange;
 use xCAT::FSPUtils;
-use Data::Dumper;
+#use Data::Dumper;
 
 ##############################################
 # Globals
