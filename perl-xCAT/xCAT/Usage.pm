@@ -28,6 +28,10 @@ my %usage = (
        rpower <noderange> [--nodeps] [of] [-V|--verbose]
      PPC (HMC) specific:
        rpower <noderange> [onstandby] [-V|--verbose]
+     CEC/FSP(using Direct FSP Management) specific:
+       rpower <noderange> [on|onstandby|off|stat|state|lowpower]
+     Frame/BPA(using Direct FSP Management) specific:
+       rpower <noderange> [stat|state|rackstandby|exit_rackstandby]
      Blade specific:
        rpower <noderange> [cycle|softoff] [-V|--verbose]
 ",
@@ -63,7 +67,7 @@ my %usage = (
     PPC specific(with HMC):
        rinv <noderange> [bus|config|serial|model|firm|all]
     PPC specific(using Direct FSP Management):
-       rinv <noderange> firm
+       rinv <noderange> [firm|deconfig]
     Blade specific:
        rinv <noderange> [mtm|serial|mac|bios|diag|mprom|mparom|firm|all]
     VMware specific:
