@@ -94,7 +94,7 @@ sub parse_args {
             }
             $request->{hwtype} = ($ntype =~ /^cec$/) ? "fsp" : "bpa";
         } else   {
-            push @newnodes, $_;
+            push @newnodes, $snode;
             $request->{hwtype} = $ntype;
         }
     }
