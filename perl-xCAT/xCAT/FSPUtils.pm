@@ -20,23 +20,15 @@ use lib "$::XCATROOT/lib/perl";
 require xCAT::Table;
 use POSIX qw(ceil);
 use File::Path;
-use Socket;
 use strict;
 use Symbol;
-use IPC::Open3;
-use warnings "all";
 require xCAT::InstUtils;
 require xCAT::NetworkUtils;
 require xCAT::Schema;
 require xCAT::Utils;
-use  Data::Dumper;
+#use  Data::Dumper;
 require xCAT::NodeRange;
-require DBI;
 
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(genpassword runcmd3);
-
-my $utildata; #data to persist locally
 
 
 #-------------------------------------------------------------------------------
@@ -170,7 +162,7 @@ sub fsp_api_action {
     $res = xCAT::Utils->runcmd($cmd, -1);
     #$res = "good"; 
     $Rc = $::RUNCMD_RC;
-    #$Rc = -1;
+    
     ##################
     # output the prompt
     #################
@@ -248,6 +240,7 @@ sub fsp_state_action {
     my $cmd;
     #$cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
     $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+    #print "cmd: $cmd\n"; 
     $SIG{CHLD} = 'DEFAULT'; 
     @res = xCAT::Utils->runcmd($cmd, -1);
     #$res = "good"; 
