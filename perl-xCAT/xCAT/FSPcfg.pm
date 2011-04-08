@@ -4,7 +4,7 @@ package xCAT::FSPcfg;
 use strict;
 use Getopt::Long;
 use xCAT::Usage;
-use Data::Dumper;
+#use Data::Dumper;
 #use xCAT::PPCcli;
 
 
