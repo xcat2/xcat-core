@@ -3,7 +3,7 @@
 package xCAT_plugin::hmc;
 use strict;
 use xCAT::PPC;
-
+use xCAT::DBobjUtils;
 
 ##########################################################################
 # Command handler method from tables
@@ -25,7 +25,8 @@ sub handled_commands {
       mkhwconn    => 'nodehm:mgt',
       rmhwconn    => 'nodehm:mgt',
       lshwconn    => 'nodehm:mgt',
-      renergy   => 'nodehm:mgt'
+      renergy   => 'nodehm:mgt',
+      gethmccon => 'nodehm:cons',
   };
 }
 
@@ -34,6 +35,13 @@ sub handled_commands {
 # Pre-process request from xCat daemon
 ##########################################################################
 sub preprocess_request {
+    my ($arg1, $arg2, $arg3) = @_;
+    if ($arg1->{command}->[0] eq "gethmccon") { #Can handle it here and now
+        my $node = $arg1->{noderange}->[0];
+		my $callback = $arg2;
+        gethmccon($node,$callback);
+        return [];
+    }	
     xCAT::PPC::preprocess_request(__PACKAGE__,@_);
 }
 
@@ -44,7 +52,100 @@ sub process_request {
     xCAT::PPC::process_request(__PACKAGE__,@_);
 }
 
-
+##########################################################################
+# get hcp and id for rcons with fsp
+##########################################################################
+sub gethmccon {
+    
+    my $node = shift;
+	my $callback = shift;
+	my @attribs = qw(id parent hcp);
+    my %tabs    = ();
+	my $rsp;
+    
+    ##################################
+    # Open databases needed
+    ##################################
+    foreach ( qw(ppc vpd nodetype) ) {
+        $tabs{$_} = xCAT::Table->new($_);
+    
+        if ( !exists( $tabs{$_} )) {
+            #return( sprintf( $errmsg{DB_UNDEF}, $_ ));
+			$rsp->{node}->[0]->{error}=["open table $_ error"];
+            $rsp->{node}->[0]->{errorcode}=[1];
+            $callback->($rsp);		
+            return ;
+        }
+    }
+    
+    #################################
+    # Get node type
+    #################################
+    my $type = xCAT::DBobjUtils->getnodetype($node);
+    #my ($type) = grep( /^(lpar|osi)$/, @types );
+    
+    if ( !defined( $type ) or !($type =~/^(lpar|osi)$/) ) {
+        #return( "Invalid node type: $ent->{nodetype}" );
+        $rsp->{node}->[0]->{error}=["Invalid node type: $type"];
+        $rsp->{node}->[0]->{errorcode}=[1];		
+        $callback->($rsp);	
+        return ;
+    }
+    #################################
+    # Get attributes
+    #################################
+    my ($att) = $tabs{ppc}->getAttribs({'node'=>$node}, @attribs );
+    
+    if ( !defined( $att )) {
+        #return( sprintf( $errmsg{NODE_UNDEF}, "ppc" ));
+        $rsp->{node}->[0]->{error}=["node is not defined in ppc table"];
+        $rsp->{node}->[0]->{errorcode}=[1];			
+        $callback->($rsp);		
+        return ;
+    }
+    #################################
+    # Verify required attributes
+    #################################
+    foreach my $at ( @attribs ) {
+        if ( !exists( $att->{$at} )) {
+            #return( sprintf( $errmsg{NO_ATTR}, $at, "ppc" ));
+            $rsp->{node}->[0]->{error}=["Can't find node tarribute $at in ppc table"];
+            $rsp->{node}->[0]->{errorcode}=[1];			   
+            $callback->($rsp);			
+            return ;
+        }
+    }
+    #################################
+    # Find MTMS in vpd database
+    #################################
+    my @attrs = qw(mtm serial);
+    my ($vpd) = $tabs{vpd}->getNodeAttribs($att->{parent}, \@attrs );
+    
+    if ( !defined( $vpd )) {
+        #return( sprintf( $errmsg{NODE_UNDEF}, "vpd" ));
+        $rsp->{node}->[0]->{error}=["Can't find node tarribute in vpd table"];
+        $rsp->{node}->[0]->{errorcode}=[1];			   
+        $callback->($rsp);					
+        return ;
+    }
+    ################################
+    # Verify both vpd attributes
+    ################################
+    foreach ( @attrs ) {
+        if ( !exists( $vpd->{$_} )) {
+            #return( sprintf( $errmsg{NO_ATTR}, $_, "vpd" ));
+            $rsp->{node}->[0]->{error}=["Can't find node tarribute in vpd table"];
+            $rsp->{node}->[0]->{errorcode}=[1];			   
+            $callback->($rsp);				
+            return ;
+        }
+    }
+	$rsp = {node=>[{name=>[$node]}]};
+    $rsp->{node}->[0]->{mtms}->[0]   = "$vpd->{mtm}*$vpd->{serial}";
+    $rsp->{node}->[0]->{host}->[0] = $att->{hcp};
+    $rsp->{node}->[0]->{lparid}->[0] = $att->{id};
+    $callback->($rsp);	
+}
 
 
 1;
