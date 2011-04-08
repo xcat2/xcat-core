@@ -32,7 +32,14 @@ sub enumerate {
     while (my ($name,$d) = each(%$h) ) {
         $cec_bpa = @$d[3];
         $type = @$d[4];
-        $cmds{$type} = ($type=~/^lpar$/) ? "all_lpars_state" : "cec_state";
+        #$cmds{$type} = ($type=~/^lpar$/) ? "all_lpars_state" : "cec_state";
+        if( $type=~/^lpar$/ ) {
+            $cmds{$type} = "all_lpars_state";
+        } elsif ($type=~/^(fsp|cec)$/) {
+            $cmds{$type} =  "cec_state";
+        } else {
+            $cmds{$type} = "bpa_state";
+        }
     }
     foreach my $type ( keys %cmds ) {
         my $action = $cmds{$type};
@@ -176,26 +183,29 @@ sub powercmd {
     foreach my $node_name ( keys %$hash)
     {
         my $d = $hash->{$node_name};
-	    if ($$d[4] =~ /^lpar$/) {
-	        if( !($action =~ /^(on|off|of|reset|sms)$/)) {
-	            push @output, [$node_name, "\'$action\' command not supported for LPAR", -1 ];
-	            return (\@output);
-	        }
-	    } elsif ($$d[4] =~ /^(fsp|cec)$/) {
-	        if($action =~ /^on$/) { $action = "cec_on_autostart"; }
-	        if($action =~ /^off$/) { $action = "cec_off"; }
-	        if($action =~ /^of$/ ) {
-	            push @output, [$node_name, "\'$action\' command not supported for CEC", -1 ];
-	            #return (\@output);
-		        next;
-	         }		    
+	if ($$d[4] =~ /^lpar$/) {
+	    if( !($action =~ /^(on|off|of|reset|sms)$/)) {
+	        push @output, [$node_name, "\'$action\' command not supported for LPAR", -1 ];
+	        return (\@output);
+	    }
+	} elsif ($$d[4] =~ /^(fsp|cec)$/) {
+	    if($action =~ /^on$/) { $action = "cec_on_autostart"; }
+	    if($action =~ /^off$/) { $action = "cec_off"; }
+	    if($action =~ /^lowpower$/) { $action = "cec_on_low_power"; }
+	    if($action =~ /^of$/ ) {
+	        push @output, [$node_name, "\'$action\' command not supported for CEC", -1 ];
+	        #return (\@output);
+	        next;
+	    }		    
         } else {
-             if($action =~ /^state$/) {
-	         $action = "cec_state";
+	     if ( $action =~ /^rackstandby$/) {
+	         $action = "enter_rack_standby";
+	     } elsif ( $action=~/^exit_rackstandby$/) {
+	         $action = "exit_rack_standby";
 	     } else {
 	         push @output, [$node_name, "$node_name\'s type isn't fsp or lpar. Not allow doing this operation", -1 ];
-		     #return (\@output);
-             next;
+		 #return (\@output);
+                 next;
 	     }
         }		
         my $res = xCAT::FSPUtils::fsp_api_action($node_name, $d, $action );
