@@ -7,7 +7,7 @@ use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::NetworkUtils;
 use xCAT::FSPUtils;
-use Data::Dumper;
+#use Data::Dumper;
 
 ##########################################################################
 # Parse the command line for options and operands 
@@ -94,9 +94,9 @@ sub parse_args {
     }
    
     
-    print "in parse_args:\n";
-    print $command;
-    print Dumper(\%opt);    
+    #print "in parse_args:\n";
+    #print $command;
+    #print Dumper(\%opt);    
 
     ####################################
     # Set method to invoke 
