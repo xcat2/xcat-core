@@ -4,9 +4,10 @@ package xCAT::FSPinv;
 use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
-use xCAT::Usage;
-use xCAT::PPCinv;
-use xCAT::FSPUtils;
+require xCAT::Usage;
+require xCAT::PPCinv;
+require xCAT::FSPUtils;
+use XML::Simple;
 #use Data::Dumper;
 
 ##########################################
@@ -37,7 +38,7 @@ sub parse_args {
     my $args    = $request->{arg};
     my %opt     = ();
 #    my @rinv    = qw(bus config model serial firm all);
-    my @rinv    = qw( firm );
+    my @rinv    = qw( deconfig firm );
 
     #############################################
     # Responds with usage statement
@@ -134,9 +135,9 @@ sub firmware {
             #####################################
             # Command only supported on FSP/BPA/LPARs 
             #####################################
-            if ( @$d[4] !~ /^(fsp|bpa|lpar|cec|frame)$/ ) {
+            if ( @$d[4] !~ /^(cec|frame|fsp|bpa|lpar)$/ ) {
                 push @result, 
-                    [$name,"Information only available for CEC/BPA/LPAR",RC_ERROR];
+                    [$name,"Information only available for CEC/FSP/Frame/BPA/LPAR",RC_ERROR];
                 next; 
             }
 	       #################
@@ -193,7 +194,93 @@ sub vpd {
 sub bus {
 }
 
-sub config {
+sub deconfig {
+
+    my $request = shift;
+    my $hash    = shift;
+    my @result;
+ 
+    # print "in FSPinv \n";
+    #print Dumper($request);
+    #print Dumper($hash);
+
+    ####################################
+    # FSPinv with deconfig command is grouped by hardware control point
+    # In FSPinv, the hcp is the related fsp.  
+    ####################################
+    
+    # Example of $hash.    
+    #VAR1 = {
+    #	          '9110-51A*1075ECF' => {
+    #                                   'Server-9110-51A-SN1075ECF' => [
+    #    	                                                          0,
+    #		                                                          0,
+    #                           									  '9110-51A*1075ECF',
+    #							                            		  'fsp1_name',
+    #				                            					  'fsp',
+    #									                               0
+    #									                               ]
+    #					                }
+    # 	   };
+
+    while (my ($mtms,$h) = each(%$hash) ) {
+        while (my ($name,$d) = each(%$h) ) {
+
+            #####################################
+            # Command only supported on FSP/BPA/LPARs 
+            #####################################
+            if ( @$d[4] !~ /^(cec|fsp)$/ ) {
+                push @result, 
+                    [$name,"Deconfigured resource information only available for CEC/FSP",RC_ERROR];
+                next; 
+            }
+	    #################
+	    #For support on  Lpars, the flag need to be changed.
+	    ##########
+	    #if(@$d[4] eq "lpar")	{
+	    #    @$d[4] = "fsp";
+	    #    @$d[0] = 0;
+	    #}
+	    my $values = xCAT::FSPUtils::fsp_api_action( $name, $d, "get_cec_deconfigured");
+	    my $Rc = @$values[2];
+	    my $data = @$values[1];
+	    #print "values";
+            #print Dumper($values); 
+            #####################################
+            # Return error
+            #####################################
+            if ( $Rc != SUCCESS ) {
+                 push @result, [$name,$data,$Rc];
+                 next; 
+             }
+            
+	     #####################################
+             # Format fsp-api results
+             #####################################
+             my $decfg = XMLin($data);
+	     my $node =  $decfg->{NODE};
+	     if( $node ) {
+		 push @result,[$name,"Deconfigured resources", 0];
+	         push @result,[$name,$node->{Location_code}.",".$node->{RID}, 0];
+		 foreach my $unit(@{$node->{GARDRECORD}}) {
+		      my $Call_Out_Hardware_State = $unit->{GARDUNIT}->{Call_Out_Hardware_State};
+		      my $Call_Out_Method = $unit->{GARDUNIT}->{Call_Out_Method};
+		      my $Location_code = $unit->{GARDUNIT}->{Location_code};
+		      my $RID = $unit->{GARDUNIT}->{RID};
+		      my $TYPE = $unit->{GARDUNIT}->{TYPE};
+
+		      push @result,[$name,"$Location_code,$RID,$Call_Out_Method,$Call_Out_Hardware_State,$TYPE",0]; 
+		 }
+	     
+	     } else {
+		 push @result,[$name,"NO Deconfigured resources", 0];
+             }
+	         
+        }
+    }
+    return( \@result );
+
+
 }
 
 ##########################################################################
@@ -208,9 +295,7 @@ sub model {
 sub all {
 
     my @result = ( 
-        @{vpd(@_)}, 
-        @{bus(@_)}, 
-        @{config(@_)},
+        @{deconfig(@_)},
         @{firmware(@_)} 
     );       
     return( \@result );
