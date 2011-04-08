@@ -1,0 +1,30 @@
+#!/bin/sh
+# IBM(c) 2011 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+#-------------------------------------------------------------------------------
+#=head1  setroute 
+#=head2  setrout command adds the routes to the node according to 
+#        what is specified in the xCAT tables. 
+#        The route name for the node is defined in noderes.routenames.
+#        The route itself is defined in the routes table.
+#=cut
+#-------------------------------------------------------------------------------
+
+if [[ -z "$NODEROUTENAMES" ]]; then
+    exit 0
+fi
+
+for rn in `echo "$NODEROUTENAMES" | tr "," "\n"`
+do
+    eval route_string=\$ROUTE_$rn
+    net=`echo $route_string |cut -d',' -f1`
+    mask=`echo $route_string |cut -d',' -f2`
+    gw=`echo $route_string |cut -d',' -f3`
+    ifname=`echo $route_string |cut -d',' -f4`
+
+    cmd="routeop add $net $mask $gw $ifname"
+    result=`$cmd 2>&1`
+    echo $result
+done
+
+exit 0

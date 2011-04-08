@@ -224,7 +224,7 @@ sub makescript
 
     my $noderesent =
       $noderestab->getNodeAttribs($node,
-                                  ['nfsserver', 'installnic', 'primarynic']);
+                                  ['nfsserver', 'installnic', 'primarynic','routenames']);
     if ($noderesent and defined($noderesent->{'nfsserver'}))
     {
         push @scriptd, "NFSSERVER=" . $noderesent->{'nfsserver'} . "\n";
@@ -239,6 +239,34 @@ sub makescript
     {
         push @scriptd, "PRIMARYNIC=" . $noderesent->{'primarynic'} . "\n";
         push @scriptd, "export PRIMARYNIC\n";
+    }
+
+    #routes 
+    if ($noderesent and defined($noderesent->{'routenames'}))
+    {
+	my $rn=$noderesent->{'routenames'};
+	my @rn_a=split(',', $rn);
+	my $routestab = xCAT::Table->new('routes');
+	if ((@rn_a > 0) && ($routestab)) {
+	    push @scriptd, "NODEROUTENAMES=$rn\n";
+	    push @scriptd, "export NODEROUTENAMES\n";
+	    foreach my $route_name (@rn_a) {
+		my $routesent = $routestab->getAttribs({routename => $route_name}, 'net', 'mask', 'gateway', 'ifname');
+		if ($routesent and defined($routesent->{net}) and defined($routesent->{mask})) {
+		    my $val="ROUTE_$route_name=" . $routesent->{net} . "," . $routesent->{mask};
+		    $val .= ",";
+		    if (defined($routesent->{gateway})) {
+			$val .= $routesent->{gateway};
+		    }
+		    $val .= ",";
+		    if (defined($routesent->{ifname})) {
+			$val .= $routesent->{ifname};
+		    }
+		    push @scriptd, "$val\n";
+		    push @scriptd, "export ROUTE_$route_name\n";
+		}
+	    }
+	}
     }
 
     my $os;
