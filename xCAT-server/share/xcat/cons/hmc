@@ -40,7 +40,7 @@ require xCAT::Client;
 use strict;
 #use Getopt::Long;
 #use xCAT::Table;
-use xCAT::PPCdb;
+#use xCAT::PPCdb;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use Data::Dumper;
 require File::Basename;
@@ -55,6 +55,8 @@ my $node;
 my $host;
 my $lparid;
 my $mtms;
+my @cred;
+my $credencial;
 
 ##########################################
 # Database errors
@@ -251,7 +253,8 @@ sub invoke_cmd {
     #################################
     # Get userid and password 
     #################################
-    my @cred = xCAT::PPCdb::credentials( $host, $hwtype );
+    #my @cred = xCAT::PPCdb::credentials( $host, $hwtype );
+    @cred = split(/,/, $credencial);
     $request{$host}{cred} = \@cred;
     #################################
     # Connect to the remote server
@@ -283,6 +286,7 @@ sub getans {
         $host = $rsp->{node}->[0]->{host}->[0];
         $lparid = $rsp->{node}->[0]->{lparid}->[0];
         $mtms = $rsp->{node}->[0]->{mtms}->[0];
+		$credencial = $rsp->{node}->[0]->{cred}->[0];
     }
 }
 
