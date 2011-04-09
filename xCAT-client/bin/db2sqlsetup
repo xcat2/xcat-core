@@ -1274,32 +1274,7 @@ sub db2reboot
        xCAT::MsgUtils->message("W", " $cmd failed.");
     
     }
-    # if on Linux redhat6 ,  we need to setup /etc/init.d
-    # this is a workaround until DB2 no longer uses /etc/inittab on Linux
-    
     if ($::osname eq 'Linux') {
-      # check to see DB2 has not already implemented a script in /etc/inittab
-      $cmd = " fgrep db2fmcd /etc/init.d/*";
-      xCAT::Utils->runcmd($cmd, -1);
-      if ($::RUNCMD_RC == 0) {
-         my $message = "DB2 /etc/init.d reboot file already setup";
-         xCAT::MsgUtils->message("I", "$message");
-      } else {
-        $cmd = "cp /opt/xcat/share/xcat/tools/db2xcat /etc/init.d/db2xcat";
-        xCAT::Utils->runcmd($cmd, 0);
-        if ($::RUNCMD_RC != 0)
-        {
-            xCAT::MsgUtils->message("E", " $cmd failed. DB2 will not automatically restart on reboot.");
-        } else { # added the script to start db2fmcd
-          $cmd = "chkconfig --add db2xcat";
-          xCAT::Utils->runcmd($cmd, 0);
-          if ($::RUNCMD_RC != 0)
-          {
-            xCAT::MsgUtils->message("E", " $cmd failed. DB2 will not automatically restart on reboot.");
-            
-          }
-        }
-      }
       # add setup required for DB2 reboot
       $cmd = " fgrep \"kernel.shmmax = 268435456\" /etc/sysctl.conf";
       xCAT::Utils->runcmd($cmd, -1); # entry not there
@@ -1317,8 +1292,8 @@ sub db2reboot
             xCAT::MsgUtils->message("I", " $cmd failed. DB2 will not automatically restart on reboot.");
          }
       }
+   }
   
-     } # end Linux
         
     
 }
