@@ -18,14 +18,16 @@ package xCAT_plugin::setup;
 
 use strict;
 #use warnings;
+use Socket;		#todo: also support ipv6 for routes
 use xCAT::NodeRange;
-use xCAT::Schema;
-use xCAT::Table;
-use xCAT::Utils;
-use xCAT::MsgUtils;
-use Data::Dumper;
+require xCAT::Schema;
+require xCAT::Table;
+require xCAT::Utils;
+require xCAT::MsgUtils;
+require xCAT::NetworkUtils;
+#use Data::Dumper;
 use xCAT::DBobjUtils;
-use xCAT_plugin::networks;
+require xCAT_plugin::networks;
 
 my $CALLBACK;
 my %STANZAS;
@@ -154,6 +156,7 @@ my %tables = ('site' => 1,
 			'servicenode' => 1,
 			'nodegroup' => 0,
             'networks' => 1,
+            'routes' => 0,
 			);
 my $CECPOSITIONS;	# a hash of the cec values in the nodepos table
 
@@ -678,7 +681,8 @@ sub writelpar {
 	# Write regex for hosts.node, hosts.ip, etc, for all lpars.  Also write a special entry
 	# for service nodes, since they also have an ethernet adapter.
 	my $startip = $STANZAS{'xcat-lpars'}->{'starting-ip'};
-	if ($startip && isIP($startip)) {
+	if (!isIP($startip)) { errormsg("$startip is not a valid IP address for xcat-lpars:starting-ip.", 5); }
+	else {
 		my ($ipbase, $ip2nd, $ip3rd, $ip4th) = $startip =~/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
 		# take the number from the nodename, and as it increases, increase the ip addr
 		# using name like f1c1p1
@@ -694,7 +698,8 @@ sub writelpar {
 		my $serviceip = $STANZAS{'xcat-service-nodes'}->{'starting-ip'};
 		my ($servbase, $serv2nd, $serv3rd, $serv4th) = $serviceip =~/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
 		my %servicehash;
-		if ($serviceip && isIP($serviceip)) {
+		if (!isIP($serviceip)) { errormsg("$serviceip is not a valid IP address for xcat-service-nodes:starting-ip.", 5); }
+		else {
             my $serviceregex = '|\D+(\d+)\D+(\d+)\D+(\d+)\D*$|' . "$servbase.($serv2nd+" . '$1' . "-$primstartnum).($serv3rd+" . '$2' . "-$secstartnum).($serv4th+" . '$3' . "-$thirdstartnum)|";
 			$servicehash{ip} = $serviceregex;
 		}
@@ -800,21 +805,22 @@ sub writelpar {
 	my %servicenodes;
 	my %storagenodes;
 	my %lpars;
-	my @mnroutes;
 	#my $cecsperbb = $STANZAS{'xcat-building-blocks'}->{'num-cecs-per-bb'};
 	#if ($cecsperbb !~ /^\d+$/) { errormsg("invalid non-integer value for num-cecs-per-bb: $cecsperbb", 7); return 0; }
 	for (my $b=1; $b<=$numbbs; $b++) {
 		my $framebase = ($b-1) * $framesperbb + 1;
-		findSNsinBB('service', $b, $framebase, $rangeparts, \%servicenodes, \%lpars, \@mnroutes) or return 0;
+		findSNsinBB('service', $b, $framebase, $rangeparts, \%servicenodes, \%lpars) or return 0;
 		findSNsinBB('storage', $b, $framebase, $rangeparts, \%storagenodes) or return 0;
 	}
-	if (scalar(keys(%servicenodes))) { $tables{'nodelist'}->setNodesAttribs(\%servicenodes); }
+	if (scalar(keys(%servicenodes))) {
+		$tables{'nodelist'}->setNodesAttribs(\%servicenodes);
+		writeMnRouteNames([keys(%servicenodes)]);
+	}
 	if (scalar(keys(%storagenodes))) { $tables{'nodelist'}->setNodesAttribs(\%storagenodes); }
 	if (scalar(keys(%lpars))) { $tables{'noderes'}->setNodesAttribs(\%lpars); }
-	if (scalar(@mnroutes)) { $tables{'site'}->setAttribs({key => 'mnroutenames'}, {value => join(',',@mnroutes)}); }
 	
 	# Set some more service node specific attributes
-	$tables{'servicenode'}->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>1});
+	$tables{'servicenode'}->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>defined($STANZAS{'xcat-service-nodes'}->{'route-masks'})});
 	if ($STANZAS{'ll-config'}->{'central_manager_list'}) {		# write the LL postscript for service nodes
 		addPostscript('service', 'llserver.sh');
 		addPostscript('compute', 'llcompute.sh');
@@ -827,7 +833,7 @@ sub writelpar {
 # Find either service nodes or storage nodes in a BB.  Adds the nodenames of the lpars to the snodes hash,
 # and defines the groups in the hash, and assigns the other lpars to the correct service node.
 sub findSNsinBB {
-	my ($sntext, $bb, $framebase, $rangeparts, $snodes, $lpars, $mnroutes) = @_;
+	my ($sntext, $bb, $framebase, $rangeparts, $snodes, $lpars) = @_;
 	my $primbase = $$rangeparts{'primary-base'};
 	my $primlen = length($$rangeparts{'primary-start'});
 	my $secbase = $$rangeparts{'secondary-base'};
@@ -859,7 +865,6 @@ sub findSNsinBB {
 		#print "nodename=$nodename\n";
 		$$snodes{$nodename} = { groups => "bb$bb$sntext,$sntext,lpar,all" };
 		push @snsinbb, "$frame,$cecinframe";	# save for later
-		push @$mnroutes, "mnto$nodename";		# gather all the routenames for site.mnroutenames
 	}
 	
 	if ($lpars) {
@@ -914,6 +919,51 @@ sub buildNodename {
 }
 
 
+# For the list of route names (basically the list of SNs), create entries in the routes table
+sub writeMnRouteNames {
+	my $sns = shift;
+	my $serviceip = $STANZAS{'xcat-service-nodes'}->{'starting-ip'};
+	my $routemasks = $STANZAS{'xcat-service-nodes'}->{'route-masks'};
+	if (!$serviceip || !isIP($serviceip) || !$routemasks) { return; }
+	#todo: delete the routes if in delete mode
+	
+	# Parse the route masks
+	my @parts = split(/[\s,]+/, $routemasks);
+	my %nicmasks;
+	foreach my $p (@parts) {
+		my ($nic, $nicmask) = split(/:/, $p);
+		$nicmasks{$nic} = $nicmask;
+	}
+	
+	# Go thru the route names and create entries in the routes table
+	my @mnroutes;
+	my $rtab = $tables{'routes'};
+	foreach my $sn (@$sns) {
+		#my ($sn) = $r =~ /^mnto(.+)$/;
+		my $ref = $tables{'hosts'}->getNodeAttribs($sn, ['ip','otherinterfaces']);
+		if (!$ref || $ref->{ip}!~/\S/ || $ref->{otherinterfaces}!~/\S/) { next; }
+		my %routehash = ( gateway => $ref->{ip} );
+		# go thru each nic to create a route for it
+		my @ifs = split(/[\s,]+/, $ref->{otherinterfaces});
+		foreach my $i (@ifs) {
+			my ($nic, $nicip) = split(/:/, $i);
+			my $routename = "mnto$sn$nic";
+			$routehash{mask} = $nicmasks{$nic};
+			# and together $nicip with $nicmasks{$nic} to get the $routehash{net}
+			my $mask = xCAT::NetworkUtils::getipaddr($nicmasks{$nic}, GetNumber=>1);
+			my $ip = xCAT::NetworkUtils::getipaddr($nicip, GetNumber=>1);
+			my $subnet = $ip & $mask;
+			$subnet = inet_ntoa(pack('N',$subnet));
+			$routehash{net} = $subnet;
+			$rtab->setAttribs({routename => $routename}, \%routehash);
+			push @mnroutes, $routename;		# gather all the routenames for site.mnroutenames
+		}
+	}
+	$rtab->commit();
+	$tables{'site'}->setAttribs({key => 'mnroutenames'}, {value => join(',',@mnroutes)});
+}
+
+
 # Create service node definitions
 sub writesn {
 	my $range = shift;
@@ -963,7 +1013,7 @@ sub writesn {
 	$tables{'nodetype'}->setNodeAttribs('service', {nodetype => 'osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('service', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('service', {netboot => 'yaboot'});
-	$tables{'servicenode'}->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>1});
+	$tables{'servicenode'}->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>defined($STANZAS{'xcat-service-nodes'}->{'route-masks'})});
 	if ($STANZAS{'ll-config'}->{'central_manager_list'}) {		# write the LL postscript for service nodes
 		addPostscript('service', 'llserver.sh')
 	}
@@ -1015,9 +1065,11 @@ sub writesn {
 		#print "cecname=$cecname\n";
 		$nodeposhash{$$nodes[$i]} = {rack => $CECPOSITIONS->{$cecname}->[0]->{rack}, u => $CECPOSITIONS->{$cecname}->[0]->{u}};
 	}
-	# Form the list of route names for MN to CN
-	my $routes = 'mnto' . join(',mnto', @$nodes);
-	$tables{'site'}->setAttribs({key => 'mnroutenames'}, {value => $routes});
+	
+	# Form the list of route for MN to CN
+	#my $routes = 'mnto' . join(',mnto', @$nodes);
+	#$tables{'site'}->setAttribs({key => 'mnroutenames'}, {value => $routes});
+	writeMnRouteNames($nodes);
 	
 	$tables{'ppc'}->setNodesAttribs(\%nodehash);
 	$tables{'nodelist'}->setNodesAttribs(\%grouphash);
