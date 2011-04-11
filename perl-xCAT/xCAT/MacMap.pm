@@ -8,7 +8,7 @@ use xCAT::MsgUtils;
 use IO::Select;
 use IO::Handle;
 use Sys::Syslog;
-use Data::Dumper;
+#use Data::Dumper;
 use POSIX qw/WNOHANG/;
 use SNMP;
 my %cisco_vlans; #Special hash structure to reflect discovered VLANS on Cisco equip

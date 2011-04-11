@@ -486,7 +486,7 @@ sub abbreviate_noderange {
         push @{$sizedgroups{scalar @{$grouphash{$group}}}},$group;
     }
     my $node;
-    use Data::Dumper;
+    #use Data::Dumper;
     #print Dumper(\%sizedgroups);
     foreach (reverse sort {$a <=> $b} keys %sizedgroups) {
         GROUP: foreach $group (@{$sizedgroups{$_}}) {

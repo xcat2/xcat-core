@@ -27,7 +27,7 @@ use xCAT::NodeRange qw/noderange abbreviate_noderange/;
 use xCAT::Utils;
 use Fcntl qw(:flock);
 use Getopt::Long;
-use Data::Dumper;
+#use Data::Dumper;
 my $tempfile;
 my $errored = 0;
 my @dshresult;

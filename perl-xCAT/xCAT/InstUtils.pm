@@ -29,7 +29,7 @@ require xCAT::Schema;
 use xCAT::NetworkUtils;
 
 #require Data::Dumper;
-use Data::Dumper;
+#use Data::Dumper;
 require xCAT::NodeRange;
 require DBI;
 

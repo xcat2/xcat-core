@@ -30,7 +30,7 @@ use warnings "all";
 require xCAT::InstUtils;
 require xCAT::NetworkUtils;
 require xCAT::Schema;
-require Data::Dumper;
+#require Data::Dumper;
 require xCAT::NodeRange;
 require DBI;
 
@@ -466,11 +466,11 @@ sub Version
     my $version = shift;
     if ($version eq 'short')
     {
-		$version = ''    #XCATVERSIONSUBHERE ;
+		$version = ''    . '2.6' ;
     }
     else
     {
-		$version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ;
+		$version = 'Version '    . '2.6' . ' (svn r9267, built Mon Apr 11 09:33:21 EDT 2011)' ;
     }
     return $version;
 

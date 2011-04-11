@@ -36,7 +36,7 @@ use xCAT::MsgUtils;
 use Sys::Syslog;
 use Storable qw/freeze thaw/;
 use IO::Socket;
-use Data::Dumper;
+#use Data::Dumper;
 use POSIX qw/WNOHANG/;
 use Time::HiRes qw (sleep);
 use Safe;
@@ -1889,7 +1889,7 @@ sub setNodesAttribs {
        my $delimitedcol = &delimitcol($col);	
        push @sqlorderedcols, $delimitedcol; 
     }
-    use Data::Dumper;
+    #use Data::Dumper;
     my $nodesatatime = 999; #the update case statement will consume '?' of which we are allowed 999 in the most restricted DB we support
     #ostensibly, we could do 999 at a time for the select statement, and subsequently limit the update aggregation only
     #to get fewer sql statements, but the code is probably more complex than most people want to read
