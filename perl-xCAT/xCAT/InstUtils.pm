@@ -33,8 +33,6 @@ use Data::Dumper;
 require xCAT::NodeRange;
 require DBI;
 
-our @ISA       = qw(Exporter);
-our @EXPORT_OK = qw(genpassword);
 
 #-------------------------------------------------------------------------------
 
