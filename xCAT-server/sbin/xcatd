@@ -70,7 +70,7 @@ $XML::Simple::PREFERRED_PARSER='XML::Parser';
 use xCAT::Table;
 my $dbmaster;
 use xCAT::ExtTab;
-use Data::Dumper;
+#use Data::Dumper;
 use Getopt::Long;
 use Sys::Syslog qw(:DEFAULT setlogsock);
 openlog("xcatd",,"local4");
