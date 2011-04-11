@@ -774,6 +774,10 @@ site => {
    "                  events to if the primary HMC is down.\n\n".
    " enableASMI:  (yes/1 or no/0). If yes, ASMI method will be used after fsp-api. If no,\n".
    "               when fsp-api is used, ASMI method will not be used. Default is no.\n\n".
+   " excludenodes:  A set of comma separated nodes and/or groups that would automatically\n".
+   "                be subtracted from any noderange, it can be used for excluding some\n".
+   "                failed nodes for any xCAT commands. See the 'noderange' manpage for\n".
+   "                details on supported formats.\n\n".
    " forwarders:  The DNS servers at your site that can provide names outside of the\n".
    "              cluster.  The DNS on the management node will forward requests it\n".
    "              does not know to these servers.\n\n".

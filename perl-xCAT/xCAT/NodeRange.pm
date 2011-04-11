@@ -509,7 +509,12 @@ sub noderange {
   $missingnodes=[];
   #We for now just do left to right operations
   my $range=shift;
-  my $verify = (scalar(@_) == 1 ? shift : 1);
+  my $verify = (scalar(@_) >= 1 ? shift : 1);
+
+  #excludenodes attribute in site table,
+  #these nodes should be excluded for any xCAT commands
+  my $exsitenode = (scalar(@_) >= 1 ? shift : 1);
+
   unless ($nodelist) { 
     $nodelist =xCAT::Table->new('nodelist',-create =>1); 
     $nodelist->_set_use_cache(0); #TODO: a more proper external solution
@@ -572,6 +577,27 @@ sub noderange {
 	$op = shift @elems;
 
     }    # end of main while loop
+
+
+    # Exclude the nodes in site attribute excludenodes?
+    if ($exsitenode) {
+        my $badnoderange = 0;
+        my @badnodes = ();
+        my $sitetab = xCAT::Table->new('site',-create=>0);
+        if ($sitetab) {
+            my ($ref) = $sitetab->getAttribs({key => 'excludenodes'}, 'value');
+            if ($ref and $ref->{value}) {
+                $badnoderange = $ref->{value};
+                # use the exsitenode argument to exit recursion
+                @badnodes = noderange($badnoderange, 1, 0);
+                foreach my $bnode (@badnodes) {
+                    if (!$delnodes{$bnode}) {
+                        $delnodes{$bnode} = 1;
+                    }
+                }
+            }
+        }
+    }
 
     # Now remove all the exclusion nodes
     foreach (keys %nodes) {
