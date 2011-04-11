@@ -16,7 +16,7 @@ use warnings "all";
 
 use IO::Socket::INET;
 use IO::Select;
-use Data::Dumper;
+#use Data::Dumper;
 use Digest::MD5 qw/md5/;
 my $pendingpackets=0;
 my $maxpending; #determined dynamically based on rcvbuf detection

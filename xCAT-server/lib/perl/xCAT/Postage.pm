@@ -14,7 +14,7 @@ use xCAT::MsgUtils;
 use xCAT::NodeRange;
 use xCAT::Utils;
 use xCAT::SvrUtils;
-use Data::Dumper;
+#use Data::Dumper;
 use File::Basename;
 use Socket;
 use strict;

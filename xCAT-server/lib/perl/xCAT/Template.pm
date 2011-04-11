@@ -6,7 +6,7 @@ use strict;
 use xCAT::Table;
 use File::Basename;
 use File::Path;
-use Data::Dumper;
+#use Data::Dumper;
 use Sys::Syslog;
 use xCAT::ADUtils; #to allow setting of one-time machine passwords
 my $netdnssupport = eval {
