@@ -354,7 +354,7 @@ sub process_makeroutes {
 	    }
 	}
 	else { #this is mn, get the routes from the site table
-	    my @mnroutes = xCAT::Utils->get_site_attribute("routenames");
+	    my @mnroutes = xCAT::Utils->get_site_attribute("mnroutenames");
 	    if ($mnroutes[0]) {
 		my @a=split(',', $mnroutes[0]);
 		my @badroutes=();
@@ -369,16 +369,16 @@ sub process_makeroutes {
 		    my $badroutes_s=join(',', @badroutes);
 		    my $rsp={};
 		    if (@badroutes==1) {
-			$rsp->{error}->[0]= "The route $badroutes_s is not defined in the routes table. Please check site.routenames for the management node.";
+			$rsp->{error}->[0]= "The route $badroutes_s is not defined in the routes table. Please check site.mnroutenames for the management node.";
 		    } else {
-			$rsp->{error}->[0]= "The routes $badroutes_s are not defined in the routes table. Please check site.routenames for the management node.";
+			$rsp->{error}->[0]= "The routes $badroutes_s are not defined in the routes table. Please check site.mnroutenames for the management node.";
 		    }
 		    $callback->($rsp);
 		    return 1;
 		}
 	    } else {
 		my $rsp={};
-		$rsp->{data}->[0]= "No routes defined in the site.routnames for the management node.";
+		$rsp->{data}->[0]= "No routes defined in the site.mnroutnames for the management node.";
 		$callback->($rsp);
 		return 1;
 	    }
