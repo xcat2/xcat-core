@@ -12,9 +12,8 @@ unless ($xcatroot) {
     $xcatroot = "/opt/xcat"
 }
 use File::Basename;
-#use Data::Dumper;
 use xCAT::Client;
-use Data::Dumper;
+#use Data::Dumper;
 sub process_response {
     my $resp = shift;
     foreach my $rst (\@{$resp->{node}}) {

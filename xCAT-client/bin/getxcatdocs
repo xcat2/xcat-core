@@ -14,7 +14,7 @@ use strict;
 #use lib "$::XCATROOT/lib/perl";
 #use xCAT::Utils;
 use Getopt::Long;
-use Data::Dumper;
+#use Data::Dumper;
 
 #my $VERSION;
 my $HELP;

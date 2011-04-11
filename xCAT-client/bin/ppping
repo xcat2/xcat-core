@@ -24,7 +24,7 @@ use XML::Simple;
 if ($^O =~ /^linux/i) {
   $XML::Simple::PREFERRED_PARSER='XML::Parser';
 }
-use Data::Dumper;
+#use Data::Dumper;
 use IO::Handle;
 use IO::Select;
 use Getopt::Long;

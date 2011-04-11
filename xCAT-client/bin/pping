@@ -16,7 +16,7 @@ use POSIX qw(:signal_h :errno_h :sys_wait_h);
 use IO::Socket::SSL;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
-use Data::Dumper;
+#use Data::Dumper;
 use IO::Handle;
 use IO::Select;
 use Getopt::Long;
