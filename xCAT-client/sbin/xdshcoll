@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
-use Data::Dumper;
+#use Data::Dumper;
 my %output;
 while (<STDIN>) {
     my $node;
