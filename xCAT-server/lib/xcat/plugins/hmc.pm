@@ -59,6 +59,7 @@ sub gethmccon {
     
     my $node = shift;
 	my $callback = shift;
+	my $otherhcp = shift;
 	my @attribs = qw(id parent hcp);
     my %tabs    = ();
 	my $rsp;
@@ -74,7 +75,7 @@ sub gethmccon {
 			$rsp->{node}->[0]->{error}=["open table $_ error"];
             $rsp->{node}->[0]->{errorcode}=[1];
             $callback->($rsp);		
-            return ;
+            return $rsp;
         }
     }
     
@@ -84,12 +85,12 @@ sub gethmccon {
     my $type = xCAT::DBobjUtils->getnodetype($node);
     #my ($type) = grep( /^(lpar|osi)$/, @types );
     
-    if ( !defined( $type ) or !($type =~/^(lpar|osi)$/) ) {
+    if ( !defined( $type ) or !($type =~/lpar/) ) {
         #return( "Invalid node type: $ent->{nodetype}" );
         $rsp->{node}->[0]->{error}=["Invalid node type: $type"];
         $rsp->{node}->[0]->{errorcode}=[1];		
         $callback->($rsp);	
-        return ;
+        return $rsp;
     }
     #################################
     # Get attributes
@@ -101,7 +102,7 @@ sub gethmccon {
         $rsp->{node}->[0]->{error}=["node is not defined in ppc table"];
         $rsp->{node}->[0]->{errorcode}=[1];			
         $callback->($rsp);		
-        return ;
+        return $rsp;
     }
     #################################
     # Verify required attributes
@@ -112,7 +113,7 @@ sub gethmccon {
             $rsp->{node}->[0]->{error}=["Can't find node tarribute $at in ppc table"];
             $rsp->{node}->[0]->{errorcode}=[1];			   
             $callback->($rsp);			
-            return ;
+            return $rsp;
         }
     }
     #################################
@@ -126,7 +127,7 @@ sub gethmccon {
         $rsp->{node}->[0]->{error}=["Can't find node tarribute in vpd table"];
         $rsp->{node}->[0]->{errorcode}=[1];			   
         $callback->($rsp);					
-        return ;
+        return $rsp;
     }
     ################################
     # Verify both vpd attributes
@@ -137,29 +138,35 @@ sub gethmccon {
             $rsp->{node}->[0]->{error}=["Can't find node tarribute in vpd table"];
             $rsp->{node}->[0]->{errorcode}=[1];			   
             $callback->($rsp);				
-            return ;
+            return $rsp;
         }
     }
     ################################
     # Get username and passwd
     ################################
     my $hwtype   = "hmc";
-	my $host     = $att->{hcp};
+	my $host;
+	if ($otherhcp) {
+	    $host = $otherhcp;
+	} else {
+	    $host = $att->{hcp};
+	}
 	my @cred = xCAT::PPCdb::credentials( $host, $hwtype );
 	if ( !defined(@cred) )
 	{
         $rsp->{node}->[0]->{error}=["Can't username and passwd for the hmc"];
         $rsp->{node}->[0]->{errorcode}=[1];			   
         $callback->($rsp);		
-        return;
+        return $rsp;
     }
 	
 	$rsp = {node=>[{name=>[$node]}]};
     $rsp->{node}->[0]->{mtms}->[0]   = "$vpd->{mtm}*$vpd->{serial}";
-    $rsp->{node}->[0]->{host}->[0] = $att->{hcp};
+    $rsp->{node}->[0]->{host}->[0] = $host;
     $rsp->{node}->[0]->{lparid}->[0] = $att->{id};
 	$rsp->{node}->[0]->{cred}->[0] =  join ',', @cred;   
     $callback->($rsp);	
+	return $rsp;
 }
 
 
