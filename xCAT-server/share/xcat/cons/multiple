@@ -166,6 +166,9 @@ sub getans {
     my $rsp = shift; 
     if ($rsp->{node}) {
         $hcps = $rsp->{node}->[0]->{hcp};
+		if ( $rsp->{node}->[0]->{errorcode} ) {
+            print STDERR "$rsp->{node}->[0]->{error}";
+        }
     }
 }
 my $cmdref={
