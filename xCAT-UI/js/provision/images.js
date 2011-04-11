@@ -536,16 +536,200 @@ function createHpcSelect(container){
 			  
 	hpcFieldset.append(createInfoBar(str));
 	// advanced software when select the compute profile
-	str = '<ul><li id="gpfsli"><input type="checkbox" onclick="gpfsCheck(this)" name="gpfs">GPFS</li>' + 
-		//'<li id="loadli"><input type="checkbox" name="loadll">LoadLeveler</li>' +
-		  '<li id="rsctli"><input type="checkbox" onclick="rsctCheck(this)" name="rsct">RSCT</li>' +
-		  '<li id="peli"><input type="checkbox" onclick="peCheck(this)" name="pe">PE</li>' +
+	str = '<ul><li id="gpfsli"><input type="checkbox" onclick="softwareCheck(this)" name="gpfs">GPFS</li>' + 
+		  '<li id="rsctli"><input type="checkbox" onclick="softwareCheck(this)" name="rsct">RSCT</li>' +
+		  '<li id="peli"><input type="checkbox" onclick="softwareCheck(this)" name="pe">PE</li>' +
 		  '<li id="esslli"><input type="checkbox" onclick="esslCheck(this)" name="essl">ESSl&PESSL</li>' +
 		  '</ul>';
 	hpcFieldset.append(str);
 	
 	container.append(hpcFieldset);
 }
+var softwareList = {
+    "rsct" : [ "rsct.core.utils", "rsct.core", "src" ],
+    "pe" : [ "IBMJava2-142-ppc64-JRE", "ibm_lapi_ip_rh6p", "ibm_lapi_us_rh6p", "IBM_pe_license",
+            "ibm_pe_rh6p", "ppe_pdb_ppc64_rh600", "sci_ppc_32bit_rh600", "sci_ppc_64bit_rh600",
+            "vac.cmp", "vac.lib", "vac.lic", "vacpp.cmp", "vacpp.help.pdf", "vacpp.lib",
+            "vacpp.man", "vacpp.rte", "vacpp.rte.lnk", "vacpp.samples", "xlf.cmp", "xlf.help.pdf",
+            "xlf.lib", "xlf.lic", "xlf.man", "xlf.msg.rte", "xlf.rte", "xlf.rte.lnk",
+            "xlf.samples", "xlmass.lib", "xlsmp.lib", "xlsmp.msg.rte", "xlsmp.rte" ],
+    "gpfs" : [ "gpfs.base", "gpfs.gpl", "gpfs.gplbin", "gpfs.msg.en_US" ],
+    "essl" : [ "essl.3232.rte", "essl.3264.rte", "essl.6464.rte", "essl.common", "essl.license",
+            "essl.man", "essl.msg", "essl.rte", "ibm-java2", "pessl.common", "pessl.license",
+            "pessl.man", "pessl.msg", "pessl.rte.ppe" ],
+    "loadl" : [ "IBMJava2", "LoadL-full-license-RH6", "LoadL-resmgr-full-RH6",
+            "LoadL-scheduler-full-RH6" ],
+    "base" : [ "createrepo" ]
+};
+
+/**
+ * esslCheck check the dependance of essl and start the softwareCheck for essl
+ * 
+ * @param softwareObject :
+ *            the checkbox object of essl
+ * 
+ * @return nothing
+ */
+
+function esslCheck(softwareObject) {
+    var softwareName = softwareObject.name;
+    if (false == $('#createImageTab input[name=pe]').attr('checked')) {
+        var errorStr = '<div style="margin:0px" class="ui-state-error">You must select the pe fi     rst.</div>';
+        $('#createImageTab #esslli').append(errorStr);
+        $(':checkbox[name=essl]').attr("checked", false);
+        return;
+    }
+    else {
+        softwareCheck(softwareObject);
+    }
+}
+
+/**
+*   softwarCheck check the preparation for hpc software
+*
+*   @param   softwareObject : the checkbox object of the hpc software
+*
+*   @return true: the checkbox checked
+*	    false: the error message on the page
+*/
+
+function softwareCheck(softwareObject) {
+    var softwareName = softwareObject.name;
+    $('#createImageTab #' + softwareName + 'li .ui-state-error').remove();
+    $('#createImageTab #' + softwareName + 'li').append(createLoader());
+    var cmdString = genRpmCmd(softwareName);
+    $.ajax( {
+        url : 'lib/systemcmd.php',
+        dataType : 'json',
+        data : {
+            cmd : cmdString,
+            msg : softwareName
+        },
+        success : function(data) {
+            if (rpmCheck(data.rsp, data.msg)) {
+                genLsCmd(data.msg);
+                $.ajax( {
+                    url : 'lib/systemcmd.php',
+                    dataType : 'json',
+                    data : {
+                        cmd : genLsCmd(data.msg),
+                        msg : data.msg
+                    },
+                    success : rpmCopyCheck
+                });
+            }
+        }
+    });
+}
+
+function rpmCopyCheck(data){
+    // remove the loading image.
+    var errorStr = '';
+    var softwareName = data.msg;
+    // check the return information
+    var reg = /.+:(.+): No such.*/;
+    var resultArray = data.rsp.split("\n");
+    for ( var i in resultArray) {
+        var temp = reg.exec(resultArray[i]);
+        if (temp) {
+            // find out the path and rpm name
+            var pos = temp[1].lastIndexOf('/');
+            var path = temp[1].substring(0, pos);
+            var rpmName = temp[1].substring(pos + 1).replace('*', '');
+            errorStr += 'Copy ' + rpmName + ' to ' + path + '<br/>';
+        }
+    }
+    $('#createImageTab #' + softwareName + 'li').find('img').remove();
+    // no error, show the check image
+    if ('' == errorStr) {
+        var infoPart = '<div style="display:inline-block;margin:0px"><span class="ui-icon ui-icon-circle-check"></span></div>';
+        $('#createImageTab #' + softwareName + 'li').append(infoPart);
+    }
+    else {
+        // show the error message
+        errorStr = '<div style="margin:0px" class="ui-state-error">'
+                + 'To install the rsct on your compute node. You should:<br/>'
+                + errorStr + '</div>';
+        $('#createImageTab #' + softwareName + 'li').append(errorStr);
+        $(':checkbox[name=' + softwareName + ']').attr("checked", false);
+    }
+}
+/**
+*   genRpmCmd generate the rpm command for the rpmcheck 
+*
+*   @param   softwareName: the name of the software
+*
+*   @return the rpm command :"rpm -q ***"
+*/
+
+function genRpmCmd(softwareName){
+    var cmdString;	
+    var packageLength;
+    cmdString = "rpm -q ";
+    for(var i in softwareList[softwareName]){
+    	cmdString += softwareList[softwareName][i]+" ";
+    }
+
+    for(var i in softwareList["base"]){
+    	cmdString += softwareList["base"][i]+" ";
+    }
+    return cmdString;
+}
+/**
+*   genLsCmd check whether the rpms for the hpc software are copied to the special location
+*   
+*   @param   softwareName: the name of the software 
+*
+*   @return true: OK
+*           false: add the error message to the page
+*/
+
+function genLsCmd(softwareName){
+    var osvers = $("#createImageTab #osvers").val();
+    var osarch = $("#createImageTab #osarch").val();
+    var path = '/install/post/otherpkgs/' + osvers + '/' + osarch + '/' + softwareName;
+    var checkCmd = 'ls ';
+
+    for ( var i in softwareList[softwareName]) {
+        checkCmd += path + '/' + softwareList[softwareName][i] + '*.rpm ';
+    }
+    checkCmd += '2>&1';
+    
+    return checkCmd;
+}
+/**
+*   When the rpm check info return, check if all rpms are installed.
+*
+*   @param   checkInfo: "rpm -q ***"'s return 
+*	     name: software name
+*
+*   @return true: the rpms are all installed
+*           false: some of the rpms are not installed, detail add into the page.
+*/
+function rpmCheck(checkInfo, name){
+    var errorStr = '';
+
+    var checkArray = checkInfo.split("\n");
+    for ( var i in checkArray) {
+        if (-1 != checkArray[i].indexOf("not install")) {
+            errorStr += checkArray[i] + "<br/>";
+        }
+    }
+
+    if ('' == errorStr) {
+        return true;
+    }
+
+    errorStr = errorStr.substr(0, errorStr.length - 1);
+    $(':checkbox[name=' + name + ']').attr("checked", false);
+    // add the error
+    var errorPart = '<div style="margin:0px" class="ui-state-error">'
+            + errorStr + '</div>';
+    $('#createImageTab #' + name + 'li').find('img').remove();
+    $('#createImageTab #' + name + 'li').append(errorPart);
+    return;
+}
+
 /**
  *	check the Option , Decide to show the hpcsoft or not
  * 	
@@ -554,14 +738,17 @@ function createHpcSelect(container){
  *
  *	@return Nothing
  */
-function hpcShow(){
-	// The current ui only support rhels 6 
-	// if you want support all delete the subcheck
-	if($('#createImageTab #osvers').attr('value')!="rhels6"||$('#createImageTab #osarch').attr('value')!="ppc64"||$('#createImageTab #profile').attr('value')!="compute"){
-		$('#createImageTab #hpcsoft').hide();
-	}else {
-		$('#createImageTab #hpcsoft').show();
-	}
+function hpcShow() {
+    // The current ui only support rhels 6
+    // if you want support all delete the subcheck
+    if ($('#createImageTab #osvers').attr('value') != "rhels6"
+            || $('#createImageTab #osarch').attr('value') != "ppc64"
+            || $('#createImageTab #profile').attr('value') != "compute") {
+        $('#createImageTab #hpcsoft').hide();
+    }
+    else {
+        $('#createImageTab #hpcsoft').show();
+    }
 }
 
 /**
@@ -1044,233 +1231,6 @@ function createImage(){
 		},
 		success : function(data){
 
-		}
-	});
-}
-
-/**
- * when users want to install gpfs on compute node, 
- * should check the rpms install and copy status first.
- * 
- * @param 
- *  
- * @return Nothing
- */
-function gpfsCheck(obj) {
-	if(0 < $('#createImageTab #gpfsli .ui-icon-circle-check').size()){
-		return;
-	}
-	
-	$('#createImageTab #gpfsli .ui-state-error').remove();
-	$('#createImageTab #gpfsli').append(createLoader());
-	$.ajax({
-		url : 'lib/systemcmd.php',
-		dataType : 'json',
-		data:{
-			cmd : 'rpm -q gpfs.base gpfs.gpl gpfs.msg  xCAT-IBMhpc createrepo'
-		},
-		success : function(data){
-			if (rpmCheck(data.rsp, 'gpfs')){
-				var osvers=$("#createImageTab #osvers").val();
-				var osarch=$("#createImageTab #osarch").val();
-				var cmd = 'ls /install/post/otherpkgs/' + osvers + '/' + osarch + '/gpfs/gpfs.gplbin*.rpm';
-				rpmCopyCheck(cmd);
-			}
-		}
-	});
-}
-
-/**
-* when users want to install rsct on compute node,
-* They should install the rsct on mn .
-* The rsctCheck check the basic configuration of rsct.
-*
-* @param 
-*
-* @return Nothing
-*/
-function rsctCheck(obj){
-	if (0 < $('#createImageTab #rsctli .ui-icon-circle-check').size()){
-		return;
-	}
-	$('#createImageTab #rsctli .ui-state-error').remove();
-	$('#createImageTab #rsctli').append(createLoader());
-	$.ajax({
-		url : 'lib/systemcmd.php',
-		dataType : 'json',
-		data: {
-			cmd : 'rpm -q rsct.core rsct.core.utils src createrepo'
-		},
-		success : function (data){
-			if (rpmCheck(data.rsp, 'rsct')){
-				var osvers = $("#createImageTab #osvers").val();
-				var osarch = $("#createImageTab #osarch").val();
-				var cmd = 'ls /install/post/otherpkgs/' + osvers + '/' + osarch + '/rsct/rsct.core*.rpm ' +
-			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/rsct/rsct.core.utils*.rpm ' +
-			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/rsct/src*.rpm 2>&1';
-				rpmCopyCheck(cmd);
-			}
-		}
-	});
-}
-
-/**
-*	When users want to install PE on their compute node.
-*	The peCheck will check the info of mn.
-*	And return the info to users.
-*
-*	@param
-*
-*	@return Nothing
-*/
-function peCheck(obj){
-	//verify result is ok, the return;
-	if (0 < $('#createImageTab #peli .ui-icon-circle-check').size()){
-		return;
-	}
-	
-	//delete the error part
-	$('#createImageTab #peli .ui-state-error').remove();
-	$('#createImageTab #peli').append(createLoader());
-	$.ajax({
-		url : 'lib/systemcmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'rpm -q src IBM_pe_license ibm_lapi ibm_pe ppe '
-		},
-		success : function(data){
-			if (rpmCheck(data.rsp, 'pe')){
-				var osvers=$("#createImageTab #osvers").val();
-				var osarch=$("#createImageTab #osarch").val();
-				var cmd = 'ls /install/post/otherpkgs/' + osvers + '/' + osarch + '/pe/IBM_pe_licence*.rpm ' +
-			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/pe/src*.rpm ' +
-			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/pe/ibm_lapi*.rpm ' +
-			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/pe/ibm_pe*.rpm ' +
-			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/pe/ppe*.rpm 2>&1';
-				rpmCopyCheck(cmd);
-			}
-		}
-	});
-}
-
-function esslCheck(obj){
-	if(0 < $('#createImageTab #esslli .ui-icon-circle-check').size()){
-		return;
-	}
-	
-	$('#createImageTab #esslli .ui-state-error').remove();
-	//before select the essl, must select pe first
-	if (false == $('#createImageTab input[name=pe]').attr('checked')){
-		var errorStr = '<div style="margin:0px" class="ui-state-error">You must select the pe first.</div>';
-		$('#createImageTab #esslli').append(errorStr);
-		$(':checkbox[name=essl]').attr("checked",false);
-		return;
-	}
-	
-	$.ajax({
-		url : 'lib/systemcmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'rpm -q essl.common essl.licens essl.rte pessl.license pessl.msg pessl.rte.ppe'
-		},
-		success : function(data){
-			if (rpmCheck(data.rsp, 'pe')){
-				var osvers=$("#createImageTab #osvers").val();
-				var osarch=$("#createImageTab #osarch").val();
-				var cmd = 'ls /install/post/otherpkgs/' + osvers + '/' + osarch + '/essl/essl.common*.rpm ' +
-			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/essl/essl.licens*.rpm ' +
-			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/essl/essl.rte*.rpm ' +
-			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/essl/pessl.license*.rpm ' +
-			      '/install/post/otherpkgs/' + osvers + '/' + osarch + '/essl/pessl.msg*.rpm 2>&1';
-				rpmCopyCheck(cmd);
-			}
-		}
-	});
-}
-
-/**
-*	When the rpm check info return, check if all rpms are installed.
-*
-*	@param   checkInfo: "rpm -q ***"'s return 
-*			 name: software name
-*
-*	@return true: the rpms are all installed
-*           false: some of the rpms are not installed, detail add into the page.
-*/
-function rpmCheck(checkInfo, name){
-	var errorStr = '';
-	
-	var checkArray = checkInfo.split("\n");
-	for(var i in checkArray){
-		if(-1 != checkArray[i].indexOf("not install")){
-			errorStr += checkArray[i] + "<br/>";
-		}
-	}
-	
-	if ('' == errorStr){
-		return true;
-	}
-	
-	errorStr = errorStr.substr(0, errorStr.length - 1);
-	$(':checkbox[name=' + name + ']').attr("checked",false);
-	//add the error
-	var errorPart = '<div style="margin:0px" class="ui-state-error">' + errorStr + '</div>';
-	$('#createImageTab #' + name + 'li').find('img').remove();
-	$('#createImageTab #' + name + 'li').append(errorPart);
-	return;
-}
-
-/**
-*	check the rpm list result, to create the error message
-*
-*	@param   name: software name
-*
-*	@return 
-*/
-function rpmCopyCheck(checkCmd){
-	$.ajax({
-		url: 'lib/systemcmd.php',
-		dataType : 'json',
-		data : {
-			cmd : checkCmd
-		},
-		success : function(data){
-			//remove the loading image.
-			var errorStr = '';
-			var softwareName = '';
-			//check the return information
-			var reg = /.+:(.+): No such.*/;
-			var resultArray = data.rsp.split("\n");
-			for(var i in resultArray){
-				var temp = reg.exec(resultArray[i]);
-				if (temp){
-					//find out the path and rpm name
-					var pos = temp[1].lastIndexOf('/');
-					var path = temp[1].substring(0, pos);
-					var rpmName = temp[1].substring(pos + 1).replace('*', '');
-					errorStr += 'Copy ' + rpmName + ' to ' + path + '<br/>';
-					//find out the software name 
-					if ('' == softwareName){
-						pos = path.lastIndexOf('/');
-						softwareName = path.substring(pos + 1);
-					}
-				}
-			}
-			
-			$('#createImageTab #' + softwareName + 'li').find('img').remove();
-			//no error, show the check image
-			if ('' == errorStr){
-				var infoPart = '<div style="display:inline-block;margin:0px"><span class="ui-icon ui-icon-circle-check"></span></div>';
-				$('#createImageTab #' + softwareName + 'li').append(infoPart);
-			}
-			else{
-				//show the error message
-				errorStr = '<div style="margin:0px" class="ui-state-error">' +
-	               'To install the rsct on your compute node. You should:<br/>' +
-	               errorStr + '</div>';
-				$('#createImageTab #' + softwareName + 'li').append(errorStr);
-				$(':checkbox[name=' + softwareName + ']').attr("checked",false);
-			}
 		}
 	});
 }

@@ -706,17 +706,14 @@ function statusMap(status){
 		case 'ready':
 		case 'pbs':
 		case 'sshd':
-		case 'booting':{
+		case 'booting':
+		case 'ping':{
 			color = 'green';
 		}
 		break;
 		case 'noping':
 		case 'unreachable':{
 			color = 'red';
-		}
-		break;
-		case 'ping':{
-			color = 'yellow';
 		}
 		break;
 		default:
@@ -748,13 +745,13 @@ function selectAllLpars(checkbox){
  * @return lpars' string
  *        
  */
-function getSelectNodes(){
-	var ret = '';
-	for (var lparName in selectNode){
-		ret += lparName + ',';
-	}
-	
-	return ret.substring(0, ret.length-1);
+function getSelectNodes() {
+    var ret = '';
+    for ( var lparName in selectNode) {
+        ret += lparName + ',';
+    }
+
+    return ret.substring(0, ret.length - 1);
 }
 
 /**
