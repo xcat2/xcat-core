@@ -2732,7 +2732,15 @@ sub defls
         if ($type eq "node") {
             my %newhash;
             my $listtab  = xCAT::Table->new( 'nodelist' );
-            if ($listtab and  (!defined($::opt_S))  ) {
+            if (!$listtab) {
+                my $rsp;
+                $rsp->{data}->[0] =
+                 "Could not open nodelist table.";
+                xCAT::MsgUtils->message("E", $rsp, $::callback);
+                return 1;
+            } 
+            
+            if (!defined($::opt_S) ) {
                 #my $tmp1=$listtab->getAllEntries("all");
                 #if (defined($tmp1) && (@$tmp1 > 0)) {
                 #    foreach(@$tmp1) {
@@ -2750,12 +2758,7 @@ sub defls
                         }
                     #}
                 }
-            }else {
-                my $rsp;
-                $rsp->{data}->[0] =
-                 "Could not open nodelist table.";
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
-            } 
+            }
         }            
             
         # Get all the objects of this type
