@@ -88,7 +88,7 @@ files on AIX systems.  For example, any files under /usr on AIX
 diskless nodes cannot be updated.
 
 More information on using the  synchronization file function is in  
-"xCAT2SyncFilesHowTo.pdf".
+https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Using_Updatenode.
 
 =head3 Create the synclist file
 
