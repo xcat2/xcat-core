@@ -12,6 +12,7 @@ require_once "$TOPDIR/lib/jsonwrapper.php";
  * @param 	$cmd	The xCAT command
  * 			$tgt	The target node or group
  * 			$args	The xCAT command arguments, separated by semicolons
+ * 			$opts	The xCAT command options, separated by semicolons
  * @return 	The xCAT response.  Replies are in the form of JSON
  */
 if (isset($_GET["cmd"])) {
@@ -19,7 +20,7 @@ if (isset($_GET["cmd"])) {
 	$cmd = $_GET["cmd"];
 	$tgt = $_GET["tgt"];
 	$args = $_GET["args"];
-
+	
 	// Special messages put here
 	// This gets sent back to the AJAX request as is.
 	$msg = $_GET["msg"];
@@ -34,22 +35,41 @@ if (isset($_GET["cmd"])) {
 		$msg = NULL;
 	}
 
-	// If no $args is given, set $arr to NULL
-	if (!$args) {
-		$arr = array();
-	} else {
+	// If no $args are given, set $args_array to NULL
+	$args_array = array();
+	if ($args) {
 		// If $args contains multiple arguments, split it into an array
 		if (strpos($args,";")) {
 			// Split the arguments into an array
-			$arr = array();
-			$arr = explode(";", $args);
+			$args_array = array();
+			$args_array = explode(";", $args);
 		} else {
-			$arr = array($args);
+			$args_array = array($args);
+		}
+	}
+	
+	// If no $opts are given, set $opts_array to NULL
+	$opts_array = array();
+	if (isset($_GET["opts"])) {
+		$opts = $_GET["opts"];
+		
+		// If $args contains multiple arguments, split it into an array
+		if (strpos($opts,";")) {
+			// Split the arguments into an array
+			$opts_array = array();
+			$opts_array = explode(";", $opts);
+		} else {
+			$opts_array = array($opts);
 		}
 	}
 
 	// Submit request and get response
-	$xml = docmd($cmd, $tgt, $arr);
+	$xml = docmd($cmd, $tgt, $args_array, $opts_array);
+	// If the output is flushed, do not return output in JSON
+	if (in_array("flush", $opts_array)) {
+		return;
+	}
+	
 	$rsp = array();
 
 	// webrun pping and gangliastatus output needs special handling

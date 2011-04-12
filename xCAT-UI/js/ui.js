@@ -326,7 +326,16 @@ function createStatusBar(barId) {
  */
 function createInfoBar(msg) {
 	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>');
-	var msg = $('<p><span class="ui-icon ui-icon-info"></span>' + msg + '</p>');
+	var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
+		'display': 'inline-block',
+		'margin': '10px 5px'
+	});
+	var msg = $('<p>' + msg + '</p>').css({
+		'display': 'inline-block',
+		'width': '95%'
+	});
+	
+	infoBar.append(icon);
 	infoBar.append(msg);
 	return infoBar;
 }
@@ -562,4 +571,30 @@ function openDialog(type, msg) {
 			}
 		}
 	});
+}
+
+/**
+ * Create an iframe to hold the output of an xCAT command
+ * 
+ * @param src
+ * 			The URL of the document to show in the iframe
+ * @return Info box containing the iframe
+ */
+function createIFrame(src) {
+	// Put an iframe inside an info box
+	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>');
+	var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
+		'display': 'inline-block',
+		'margin': '10px 5px'
+	});
+	var iframe = $('<iframe></iframe>').attr('src', src).css({
+		'display': 'inline-block',
+		'border': '0px',
+		'margin': '10px 0px',
+		'width': '95%'
+	});
+	
+	infoBar.append(icon);
+	infoBar.append(iframe);
+	return infoBar;
 }

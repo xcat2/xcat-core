@@ -12,19 +12,20 @@ error_reporting(E_ALL);
 ini_set('display_errors', true);
 
 /**
- * Description: Run a command using the xCAT client/server protocol
+ * Run a command using the xCAT client/server protocol
  *
- * @param 	$cmd	The xCAT command
- * 			$nr		Node range or group
- * 			$args	Command arguments
+ * @param 	$cmd			The xCAT command
+ * 			$nr				Node range or group
+ * 			$args_array		Command arguments
+ * 			$opts_array		Command options
  * @return 	A tree of SimpleXML objects.
  * 			See perl-xCAT/xCAT/Client.pm for the format
  */
-function docmd($cmd, $nr, $args){
+function docmd($cmd, $nr, $args_array, $opts_array){
 	// If we are not logged in,
 	// do not try to communicate with xcatd
 	if (!is_logged()) {
-		echo "<p>docmd: Not logged in - cannot run command</p>";
+		echo "<p>You are not logged in! Failed to run command.</p>";
 		return simplexml_load_string('<xcat></xcat>', 'SimpleXMLElement', LIBXML_NOCDATA);
 	}
 
@@ -33,8 +34,8 @@ function docmd($cmd, $nr, $args){
 	$request = simplexml_load_string('<xcatrequest></xcatrequest>');
 	$request->addChild('command', $cmd);
 	if(!empty($nr)) { $request->addChild('noderange', $nr); }
-	if (!empty($args)) {
-		foreach ($args as $a) {
+	if (!empty($args_array)) {
+		foreach ($args_array as $a) {
 			$request->addChild('arg',$a);
 		}
 	}
@@ -44,22 +45,36 @@ function docmd($cmd, $nr, $args){
 	$usernode->addChild('username',$_SESSION["username"]);
 	$usernode->addChild('password',getpassword());
 
-	$xml = submit_request($request,0);
+	$xml = submit_request($request, 0, $opts_array);
 	return $xml;
 }
 
 /**
- * Used by docmd()
+ * Used by docmd() to submit request to xCAT
  *
- * @param 	$req	Tree of SimpleXML objects
+ * @param 	$req			Tree of SimpleXML objects
+ * @param 	$opts_array		Request options
  * @return 	A tree of SimpleXML objects
  */
-function submit_request($req, $skipVerify){
+function submit_request($req, $skipVerify, $opts_array){
 	$xcathost = "localhost";
 	$port = "3001";
 	$rsp = FALSE;
 	$response = '';
 	$cleanexit = 0;
+	
+	// Determine whether to flush output or not
+	$flush = false;
+	if (in_array("flush", $opts_array)) {
+		$flush = true;
+	}
+	
+	// Determine how to handle the flush output
+	// You can specify a function name, in place of TBD, to handle the flush output
+	$flush_format = "";
+	if (in_array("flush-format=TBD", $opts_array)) {
+		$flush_format = "TBD";
+	}
 	
 	// Open syslog, include the process ID and also send
 	// the log to standard error, and use a user defined
@@ -84,7 +99,15 @@ function submit_request($req, $skipVerify){
 			$str = fread($fp, 8192);
 			if ($str) {
 				$response .= preg_replace('/>\n\s*</', '><', $str);
-				// syslog(LOG_INFO, "($nr) Reading partial response: $response");
+				
+				// Flush output to browser
+				if ($flush) {
+					// Strip HTML tags from output
+					if ($tmp = trim(strip_tags($str))) {
+						echo $tmp . '<br/>';
+						flush();
+					}
+				}
 			}
 							
 			// Look for serverdone response
