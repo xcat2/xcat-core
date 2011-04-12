@@ -1114,6 +1114,9 @@ sub web_createimage{
             elsif('pe' eq $soft){
                 web_peConfigure($ostype, $profile, $osarch, $installdir);
             }
+            elsif('essl' eq $soft){
+                web_esslConfigure($ostype, $profile, $osarch, $installdir);
+            }
         }
 
         #chmod 
@@ -1294,6 +1297,38 @@ sub web_peConfigure{
     open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
     print $CONFILE "installroot=\$1 NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/compilers/compilers_license";
     print $CONFILE "installroot=\$1 pedir=$installdir/post/otherpkgs/rhels6/ppc64/pe NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/pe/pe_install";
+    close ($CONFILE);
+}
+
+sub web_esslConfigure{
+    my ($ostype, $profile, $osarch, $installdir) = @_;
+    my $CONFILE;
+    
+    #reaterepo
+    system('createrepo $installdir/post/otherpkgs/$ostype/$osarch/essl');
+    
+    #pkglist
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist");
+    if ($ostype =~ /rh/i){
+        print $CONFILE, "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/compilers/compilers.rhels6.pkglist#\n";
+    }
+    else{
+        print $CONFILE, "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.pkglist#\n";
+    }
+
+    #otherpkgs
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist");
+    print $CONFILE, "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.otherpkgs.pkglist#\n";
+    close($CONFILE);
+
+    #exlist
+    open ($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.exlist");
+    print $CONFILE, "#INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.exlist#\n";
+    close($CONFILE);
+
+    #postinstall
+    open($CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.postinstall");
+    print $CONFILE, "installroot=\$1 essldir=$installdir/post/otherpkgs/rhels6/ppc64/essl NODESETSTATE=genimage   /opt/xcat/share/xcat/IBMhpc/essl/essl_install";
     close ($CONFILE);
 }
 
