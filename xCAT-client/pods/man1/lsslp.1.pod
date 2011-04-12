@@ -22,12 +22,12 @@ NOTE: SLP broadcast requests will propagate only within the subnet of the networ
 
 B<noderange>   The nodes which the user want to discover.
             If the user specify the noderange, lsslp will just return the nodes in 
-			the node range. Which means it will help to add the new nodes to the xCAT
-			database without modifying the existed definitions. But the nodes' name 
-			specified in noderange should be defined in database in advance. The specified
-			nodes' type can be frame/cec/hmc/fsp/bpa. If the it is frame or cec, lsslp
-			will list the bpa or fsp nodes within the nodes(bap for frame, fsp for cec).
-			Please do not use noderange with the flag -s.
+            the node range. Which means it will help to add the new nodes to the xCAT
+            database without modifying the existed definitions. But the nodes' name 
+            specified in noderange should be defined in database in advance. The specified
+            nodes' type can be frame/cec/hmc/fsp/bpa. If the it is frame or cec, lsslp
+            will list the bpa or fsp nodes within the nodes(bap for frame, fsp for cec).
+            Please do not use noderange with the flag -s.
 
 B<-c>          Convergence timeout.
             A value-list of 32 bit integers used as timeouts, in milliseconds, to
@@ -160,7 +160,7 @@ c76v1hmc02:
         ip=192.168.200.125 20.0.0.125 9.114.113.125
         groups=hmc,all
         mgt=hmc
-        mac=00:1a:64:fb:7d:50		
+        mac=00:1a:64:fb:7d:50        
         hidden=0
 192.168.200.244:
         objtype=node
