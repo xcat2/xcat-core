@@ -1274,6 +1274,48 @@ sub db2reboot
        xCAT::MsgUtils->message("W", " $cmd failed.");
     
     }
+    # For redhat 6 need to setup upstart for reboot until DB2 does
+    # DB2 will shipped this with 9.7  later PTF
+    # check to see DB2 has not already implemented a script in /etc/init
+    my $osver=xCAT::Utils->osver;
+    if ($osver eq 'rhserver6') {
+      # see if left over /etc/init.d/db2xcat then remove it. This was put in
+      # by  xcat db2sqlsetup script in the past
+      if (-e("/etc/init.d/db2xcat")) {
+         $cmd = "chkconfig --del db2xcat";
+          xCAT::Utils->runcmd($cmd, 0);
+          if ($::RUNCMD_RC != 0)
+          {
+            xCAT::MsgUtils->message("E", " $cmd failed.");
+
+          }
+          $cmd = "rm /etc/init.d/db2xcat";
+          xCAT::Utils->runcmd($cmd, 0);
+          if ($::RUNCMD_RC != 0)
+          {
+            xCAT::MsgUtils->message("E", " $cmd failed.");
+
+          }
+      
+      }     
+      $cmd = " fgrep db2fmcd /etc/init/*";
+      xCAT::Utils->runcmd($cmd, -1);
+      if ($::RUNCMD_RC == 0) {
+         my $message = "DB2 /etc/init reboot file already setup";
+         xCAT::MsgUtils->message("I", "$message");
+      } else {
+        $cmd = "cp /opt/xcat/share/xcat/tools/xcatfmcd.conf /etc/init/xcatfmcd.conf";
+        xCAT::Utils->runcmd($cmd, 0);
+        if ($::RUNCMD_RC != 0)
+        {
+            xCAT::MsgUtils->message("E", " $cmd failed. DB2 will not automatical
+ly restart on reboot.");
+        } 
+      }
+    }  # end Redhat6
+
+
+    # setup for any Linux shmmax attribute 
     if ($::osname eq 'Linux') {
       # add setup required for DB2 reboot
       $cmd = " fgrep \"kernel.shmmax = 268435456\" /etc/sysctl.conf";
