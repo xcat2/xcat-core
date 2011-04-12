@@ -37,6 +37,7 @@ function get_def_interface {
 		fi
 	    fi
 	done
+	IFS=$OFIS
     else 
 	echo "$iface"
     fi
@@ -86,11 +87,15 @@ elif [ "bridgeprereq" = "$1" ]; then
 	    #TODO: we are only going to manage the default
 	    #route for now
 	    saveroutes=`ip route | grep default| grep "dev $p"|grep via|sed -e 's/dev .*//'`
-	    #TODO: support inet6+inet and aliases, probably messing with IFS to do so
-	    saveip=`ip addr show dev $p scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+	    OIFS=$IFS
+	    IFS=$'\n'
+	    saveip=`ip addr show dev $p scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
 	    if [ ! -z "$saveip" ]; then
-		ip addr add dev bond0 $saveip
+	    	for line in $saveip; do 
+			ip addr add dev bond0 $line
+		done
 	    fi
+	    IFS=$OIFS
 	    ifenslave bond0 $p
 	    if [ ! -z "$saveroutes" ]; then
 		ip route add $saveroutes
@@ -116,10 +121,14 @@ elif [ "bridgeprereq" = "$1" ]; then
     brctl setfd $BNAME 0 #fast forwarding
     ip link set $BNAME up
     saveroutes=`ip route | grep default| grep "dev $PORTS"|grep via|sed -e 's/dev .*//'`
-    #TODO: support inet6+inet and aliases, probably messing with IFS to do so
-    saveip=`ip addr show dev $PORTS scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+    OIFS=$IFS
+    IFS=$'\n'
+    saveip=`ip addr show dev $PORTS scope global|grep inet|grep -v dynamic|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
+    #saveip=`ip addr show dev $PORTS scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
     if [ ! -z "$saveip" ]; then
-	ip addr add dev $BNAME $saveip
+    	for line in $saveip; do 
+		ip addr add dev $BNAME $line
+	done
     else
         if [ ! -z "$3" ]; then
 	    ip addr add dev $BNAME $3 
@@ -127,7 +136,9 @@ elif [ "bridgeprereq" = "$1" ]; then
     fi
     brctl addif $BNAME $PORTS
     if [ ! -z "$saveip" ]; then
-	ip addr del dev $PORTS $saveip
+    	for line in $saveip; do 
+		ip addr del dev $PORTS $line
+	done
     fi
     if [ ! -z "$saveroutes" ]; then
 	ip route add $saveroutes
