@@ -113,6 +113,12 @@ sub get_reverse_zones_for_entity {
     my $ctx = shift;
     my $node = shift;
     my $net;
+    if (($node =~ /loopback/) || ($node =~ /localhost/))
+    {
+        # do not use DNS to resolve localhsot
+        return;
+    }
+
     if ($ctx->{hoststab} and $ctx->{hoststab}->{$node} and $ctx->{hoststab}->{$node}->[0]->{ip}) {
         $node = $ctx->{hoststab}->{$node}->[0]->{ip};
     }
@@ -126,7 +132,8 @@ sub get_reverse_zones_for_entity {
                 if ($net =~ /\./) { #IPv4/IN-ADDR.ARPA case.
                     my $maskstr = unpack("B32",pack("N",$ctx->{nets}->{$net}->{mask}));
                     my $maskcount = ($maskstr =~ tr/1//);
-                    $maskcount+=((8-($maskcount%8))%8); #round to the next octet
+                    $maskcount-=($maskcount%8);  #e.g. treat the 27bit netmask as 24bit
+                    #$maskcount+=((8-($maskcount%8))%8); #round to the next octet
                     my $newmask = 2**$maskcount -1 << (32 - $maskcount);
                     my $rev = inet_ntoa(pack("N",($tvar & $newmask)));
                     my @zone;
@@ -352,8 +359,17 @@ sub process_request {
         update_zones($ctx);
         if ($ctx->{restartneeded}) {
             xCAT::SvrUtils::sendmsg("Restarting $service", $callback);
+
+        if (xCAT::Utils->isAIX())
+        {
+            system("/usr/bin/stopsrc -s $service");
+            system("/usr/bin/startsrc -s $service");
+        }
+        else
+        {
             system("/sbin/service $service start");
             system("/sbin/service $service reload");
+        }
             xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
         }
     } else {
@@ -724,6 +740,12 @@ sub add_or_delete_records {
     $ctx->{updatesbyzone}={}; #sort all updates into their respective zones for bulk update for fewer DNS transactions
     foreach $node (@{$ctx->{nodes}}) {
         my $name = $node;
+
+        if (($name =~ /loopback/) || ($name =~ /localhost/))
+        {
+            next;
+        }
+
         unless ($name =~ /$domain/) { $name .= $domain } # $name needs to represent fqdn, but must preserve $node as a nodename for cfg lookup
         #if (domaintab->{$node}->[0]->{domain) { $domain = domaintab->{$node}->[0]->{domain) }  
         #above is TODO draft of how multi-domain support could come into play
