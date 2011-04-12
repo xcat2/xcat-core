@@ -4,9 +4,9 @@ B<snmove> - Change xCAT compute nodes to use a different xCAT service node.
 
 =head1 SYNOPSIS
 
-B<snmove> I<noderange> [B<-d>|B<--dest> I<sn2>] [B<-D>|B<--destn> I<sn2n>] [B<-i>|B<--ignorenodes>]
+B<snmove> I<noderange> [B<-d>|B<--dest> I<sn2>] [B<-D>|B<--destn> I<sn2n>] [B<-i>|B<--ignorenodes>] [B<-P>|B<--postscripts> I<script1,script2...>|I<all>]
 
-B<snmove> B<-s>|B<--source> I<sn1> [B<-S>|B<--sourcen> I<sn1n>] [B<-d>|B<--dest> I<sn2>] [B<-D>|B<--destn> I<sn2n>] [B<-i>|B<--ignorenodes>]
+B<snmove> B<-s>|B<--source> I<sn1> [B<-S>|B<--sourcen> I<sn1n>] [B<-d>|B<--dest> I<sn2>] [B<-D>|B<--destn> I<sn2n>] [B<-i>|B<--ignorenodes>] [B<-P>|B<--postscripts> I<script1,script2...>|I<all>]
 
 B<snmove> [B<-h>|B<--help>|B<-v>|B<--version>]
 
@@ -72,7 +72,7 @@ If it is an AIX diskful node then the B<niminit> command will be run so that it 
 
 =back
 
-Note: You can also run other postscripts using the B<updatenode> command if needed.
+Note: You can also run other postscripts useing -P option if needed.
 
 When the B<snmove> command is executed the new service node must be running but
 the original service node may be down.
@@ -100,6 +100,10 @@ Specifies the hostname of the destination service node as known by (facing) the 
 =item B<-i|--ignorenodes>
 
 No modifications will be made on the nodes. If not specified, several xCAT postscripts will be run on the nodes to complete the switch to the new service node.
+
+=item B<-P|--postscripts>
+
+Specifies a list of extra postscripts to be run on the nodes after the nodes are moved over to the new serive node. If 'all' is specified, all the postscripts defined in the postscripts table will be run for the nodes. The specified postscripts must be stored under /install/postscripts directory. 
 
 =item B<-h|--help>
 
@@ -144,6 +148,18 @@ B<snmove nodegroup1>
 Move all the nodes in xCAT group "sngroup1" to the SN named "xcatsn2".
 
 B<snmove sngroup1 -d xcatsn2>
+
+=item 6.
+
+Move all the nodes in xCAT group "sngroup1" to the SN named "xcatsn2" and run extra postscripts.
+
+B<snmove sngroup1 -d xcatsn2 -P test1>
+
+=item 7.
+
+Move all the nodes in xCAT group "sngroup1" to the SN named "xcatsn2" and do not run anything on the nodes.
+
+B<snmove sngroup1 -d xcatsn2 -i>
 
 =back
 

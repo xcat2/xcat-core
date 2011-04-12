@@ -21,7 +21,7 @@ use xCAT::NetworkUtils;
 use xCAT::MsgUtils;
 use Getopt::Long;
 use xCAT::NodeRange;
-use Data::Dumper;
+#use Data::Dumper;
 
 1;
 
@@ -102,14 +102,15 @@ sub process_request
 
     if (
         !GetOptions(
-                    'h|help'        => \$::HELP,
-                    'v|version'     => \$::VERSION,
-                    's|source=s'    => \$::SN1,  # source SN akb MN
-                    'S|sourcen=s'   => \$::SN1N, # source SN akb node
-                    'd|dest=s'      => \$::SN2,  # dest SN akb MN
-                    'D|destn=s'     => \$::SN2N, # dest SN akb node
-                    'i|ignorenodes' => \$::IGNORE,
-					'V|verbose'     => \$::VERBOSE,
+	     'h|help'           => \$::HELP,
+	     'v|version'        => \$::VERSION,
+	     's|source=s'       => \$::SN1,  # source SN akb MN
+	     'S|sourcen=s'      => \$::SN1N, # source SN akb node
+	     'd|dest=s'         => \$::SN2,  # dest SN akb MN
+	     'D|destn=s'        => \$::SN2N, # dest SN akb node
+	     'P|postscripts=s'  => \$::POST, # postscripts to be run
+	     'i|ignorenodes'    => \$::IGNORE,
+	     'V|verbose'        => \$::VERBOSE,
         )
       )
     {
@@ -131,6 +132,13 @@ sub process_request
         $rsp->{data}->[0] = xCAT::Utils->Version();
         $callback->($rsp);
         return 0;
+    }
+
+    if (($::IGNORE) && ($::POST)) {
+	my $rsp = {};
+        $rsp->{data}->[0] = "-P and -i flags cannot be specified at the same time.\n";
+        $callback->($rsp);
+        return 1;
     }
 
     if (@ARGV > 1)
@@ -183,387 +191,420 @@ sub process_request
             }
         }
     }
+    
+    #
+    #  get the node object definitions
+    #
+    my %objtype;
+    my %nodehash;
+    foreach my $o (@nodes)
+    {
+	$objtype{$o} = 'node';
+    }
 
-	#
-	#  get the node object definitions
-	#
-	my %objtype;
-	my %nodehash;
-	foreach my $o (@nodes)
-	{
-		$objtype{$o} = 'node';
-	}
-	my %nhash = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
-	if (!(%nhash))
-	{
-		my $rsp;
-		push @{$rsp->{data}}, "Could not get xCAT object definitions.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		return 1;
-	}
-
+    my %nhash = xCAT::DBobjUtils->getobjdefs(\%objtype, $callback);
+    if (!(%nhash))
+    {
+	my $rsp;
+	push @{$rsp->{data}}, "Could not get xCAT object definitions.\n";
+	xCAT::MsgUtils->message("E", $rsp, $callback);
+	return 1;
+    }
+    
     my $rsp = {};
     $rsp->{data}->[0] = "Changing the service node for the following nodes: \n @nodes\n";
     $callback->($rsp);
-
-	#
-	# get the nimtype for AIX nodes  (diskless or standalone)
-	#
-	my %nimtype;
-	if (xCAT::Utils->isAIX()) 
+    
+    #
+    # get the nimtype for AIX nodes  (diskless or standalone)
+    #
+    my %nimtype;
+    if (xCAT::Utils->isAIX()) 
+    {
+	# need to check the nimimage table to find the nimtype
+	my $nimtab = xCAT::Table->new('nimimage', -create => 1);
+	if ($nimtab)
 	{
-		# need to check the nimimage table to find the nimtype
-		my $nimtab = xCAT::Table->new('nimimage', -create => 1);
-		if ($nimtab)
+	    foreach my $node (@nodes)
+	    {
+		my $provmethod = $nhash{$node}{'provmethod'};
+		
+		# get the nimtype
+		my $ref = $nimtab->getAttribs({imagename => $provmethod},'nimtype');
+		if ($ref)
 		{
-			foreach my $node (@nodes)
-			{
-				my $provmethod = $nhash{$node}{'provmethod'};
-
-				# get the nimtype
-				my $ref = $nimtab->getAttribs({imagename => $provmethod},'nimtype');
-				if ($ref)
-				{
-					$nimtype{$node} = $ref->{'nimtype'};
-				}
-			}
+		    $nimtype{$node} = $ref->{'nimtype'};
 		}
+	    }
 	}
-
-	#
-	# get the backup sn for each node
-	#
-	my @servlist; # list of new service nodes
-	my %newsn;
-	my $nodehash;
-	if ($::SN2) {  # we have the backup for each node from cmd line 
-		foreach my $n (@nodes) {
-			$newsn{$n}=$::SN2;
-		}
-		push(@servlist, $::SN2);
-	} else {
-		# check the 2nd value of the servicenode attr
-		foreach my $node (@nodes)
-		{
-			if ($nhash{$node}{'servicenode'} ) {
-				my @sn = split(',', $nhash{$node}{'servicenode'});
-				if ( (scalar(@sn) > 2) && (xCAT::Utils->isAIX())) {
-					print "Error - The service node attribute cannot have more than two values.\n";
-				}
-
-				if ($sn[1]) {
-					$newsn{$node}=$sn[1];
-					if (!grep(/^$sn[1]$/, @servlist)) {
-						push(@servlist, $sn[1]);
-					}
-				}
-			}
-
-			if (!$newsn{$node}) {
-				print "Could not determine a backup service node for node $node.\n";
-				$error++;
-			}
-		}
+    }
+    
+    #
+    # get the backup sn for each node
+    #
+    my @servlist; # list of new service nodes
+    my %newsn;
+    my $nodehash;
+    if ($::SN2) {  # we have the backup for each node from cmd line 
+	foreach my $n (@nodes) {
+	    $newsn{$n}=$::SN2;
 	}
-
-	#
-	# get the new xcatmaster for each node
-	#
-	my %newxcatmaster;
-	if ($::SN2N) {  # we have the xcatmaster for each node from cmd line
-		foreach my $n (@nodes) {
-			$newxcatmaster{$n}=$::SN2N;
-		}
-	} else {
-		# try to calculate the xcatmaster value for each node
-
-		# get all the interfaces from each SN
-		# $sni{$SN}= list of ip
-		my $s = &getSNinterfaces(\@servlist, $callback, $sub_req);
-
-		my %sni = %$s;
-
-		# get the network info for each node
-		# $nethash{nodename}{networks attr name} = value
-		my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodes);
-
-		# determine the xcatmaster value for the new SN
-		foreach my $node (@nodes)
-		{
-			# get the node ip
-			# or use getNodeIPaddress
-			my $nodeIP = xCAT::NetworkUtils->getipaddr($node);
-			chomp $nodeIP;
-
-			# get the new SN for the node
-			my $mySN = $newsn{$node};
-
-			# check each interface on the service node
-			foreach my $IP (@{$sni{$mySN}} ) {
-				# if IP is in nodes subnet then thats the xcatmaster
-				if(xCAT::NetworkUtils->ishostinsubnet($IP, $nethash{$node}{mask}, $nethash{$node}{net})) {
-					# get the short hostname
-					my $xcatmaster = xCAT::NetworkUtils->gethostname($IP);
-					$xcatmaster =~ s/\..*//; 
-
-					# add the value to the hash
-					$newxcatmaster{$node}=$xcatmaster;
-					last;
-				}
-			}
-			if (!$newxcatmaster{$node}) {
-				print "error: Could not determine an xcatmaster value for node $node.\n";
-				$error++;
-			}
-		}
-	}	
-
-	#
-	#  reset the node attribute values
-	#
-   	my %sn_hash;
-   	my $old_node_hash = {};
-
+	push(@servlist, $::SN2);
+    } else {
+	# check the 2nd value of the servicenode attr
 	foreach my $node (@nodes)
 	{
-		my $sn1;
-		my $sn1n;
-                
-		# get current xcatmaster
-		if ($::SN1N) { # use command line value
-		    $sn1n = $::SN1N; 
-		} 
-		elsif ($nhash{$node}{'xcatmaster'} ) {  # use xcatmaster attr
-			$sn1n = $nhash{$node}{'xcatmaster'}; 
+	    if ($nhash{$node}{'servicenode'} ) {
+		my @sn = split(',', $nhash{$node}{'servicenode'});
+		if ( (scalar(@sn) > 2) && (xCAT::Utils->isAIX())) {
+		    my $rsp = {};
+		    $rsp->{error}->[0] =
+			"The service node attribute cannot have more than two values.";
+		    $callback->($rsp);
 		}
-		else
-		{
-			 my $rsp;
-			 push @{$rsp->{data}}, "The current xcatmaster attribute is not set for node $node.\n";
-			 xCAT::MsgUtils->message("W", $rsp, $callback);
+		
+		if ($sn[1]) {
+		    $newsn{$node}=$sn[1];
+		    if (!grep(/^$sn[1]$/, @servlist)) {
+			push(@servlist, $sn[1]);
+		    }
 		}
+	    }
+	    
+	    if (!$newsn{$node}) {
+		my $rsp = {};
+		$rsp->{error}->[0] =
+		    "Could not determine a backup service node for node $node.";
+		$callback->($rsp);
+		$error++;
+	    }
+	}
+    }
 
-		# get the servicenode values
-		my @sn_a;
-		my $snlist = $nhash{$node}{'servicenode'};
-		@sn_a = split(',', $snlist);
+    if ($error) {
+	return 1;
+    }
 
-		# get current servicenode
-		if ($::SN1) 
-		{ 
-			# current SN from the command line
-			$sn1 = $::SN1; 
+    
+    #
+    # get the new xcatmaster for each node
+    #
+    my %newxcatmaster;
+    if ($::SN2N) {  # we have the xcatmaster for each node from cmd line
+	foreach my $n (@nodes) {
+	    $newxcatmaster{$n}=$::SN2N;
+	}
+    } else {
+	# try to calculate the xcatmaster value for each node
+	
+	# get all the interfaces from each SN
+	# $sni{$SN}= list of ip
+	my $s = &getSNinterfaces(\@servlist, $callback, $sub_req);
+	
+	my %sni = %$s;
+	
+	# get the network info for each node
+	# $nethash{nodename}{networks attr name} = value
+	my %nethash = xCAT::DBobjUtils->getNetwkInfo(\@nodes);
+	
+	# determine the xcatmaster value for the new SN
+	foreach my $node (@nodes)
+	{
+	    # get the node ip
+	    # or use getNodeIPaddress
+	    my $nodeIP = xCAT::NetworkUtils->getipaddr($node);
+	    chomp $nodeIP;
+	    
+	    # get the new SN for the node
+	    my $mySN = $newsn{$node};
+	    
+	    # check each interface on the service node
+	    foreach my $IP (@{$sni{$mySN}} ) {
+		# if IP is in nodes subnet then thats the xcatmaster
+		if(xCAT::NetworkUtils->ishostinsubnet($IP, $nethash{$node}{mask}, $nethash{$node}{net})) {
+		    # get the short hostname
+		    my $xcatmaster = xCAT::NetworkUtils->gethostname($IP);
+		    $xcatmaster =~ s/\..*//; 
+		    
+		    # add the value to the hash
+		    $newxcatmaster{$node}=$xcatmaster;
+		    last;
 		}
+	    }
+	    if (!$newxcatmaster{$node}) {
+		my $rsp = {};
+		$rsp->{error}->[0] =
+		    "Could not determine an xcatmaster value for node $node.";
+		$callback->($rsp);
+		$error++;
+	    }
+	}
+    }	
+
+    if ($error) {
+	return 1;
+    }
+    
+    #
+    #  reset the node attribute values
+    #
+    my %sn_hash;
+    my $old_node_hash = {};
+    
+    foreach my $node (@nodes)
+    {
+	my $sn1;
+	my $sn1n;
+	my $sn1n_ip;
+	
+	# get current xcatmaster
+	if ($::SN1N) { # use command line value
+	    $sn1n = $::SN1N; 
+	} 
+	elsif ($nhash{$node}{'xcatmaster'} ) {  # use xcatmaster attr
+	    $sn1n = $nhash{$node}{'xcatmaster'}; 
+	}
+	
+	if ($sn1n) {
+	    my @ret=xCAT::Utils::toIP($sn1n);
+	    if ($ret[0]->[0] == 0) { 
+		$sn1n_ip = $ret[0]->[1];
+	    }
+	}
+
+        # get the servicenode values
+	my @sn_a;
+	my $snlist = $nhash{$node}{'servicenode'};
+	@sn_a = split(',', $snlist);
+	
+	# get current servicenode
+	if ($::SN1) 
+	{ 
+	    # current SN from the command line
+	    $sn1 = $::SN1; 
+	}
         else 
-		{ 
-			# current SN from node attribute
-			$sn1 = $sn_a[0]; 
-		}
-
-		# switch the servicenode attr list
-		my @sn_temp = grep(!/^$newsn{$node}$/, @sn_a);
-		unshift(@sn_temp, $newsn{$node});
-		my $t = join(',', @sn_temp);
-
-		$sn_hash{$node}{objtype} = 'node';
-
-		# set servicenode and xcatmaster attr
-		$sn_hash{$node}{'servicenode'}     = $t;
-		$sn_hash{$node}{'xcatmaster'}      = $newxcatmaster{$node};
-		$old_node_hash->{$node}->{'oldsn'}     = $sn1;
-		$old_node_hash->{$node}->{'oldmaster'} = $sn1n;
-
-		# set tftpserver
-		if ($nhash{$node}{'tftpserver'} && ($nhash{$node}{'tftpserver'} eq $sn1n))
-		{
-			$sn_hash{$node}{'tftpserver'} = $newxcatmaster{$node};
-		}
-
-		# set nfsserver
-		if ($nhash{$node}{'nfsserver'} && ($nhash{$node}{'nfsserver'} eq $sn1n))
-		{
-			$sn_hash{$node}{'nfsserver'} = $newxcatmaster{$node};
-		}
-
-		#set monserver  ( = "servicenode,xcatmaster" )
-		if ($nhash{$node}{'monserver'})  # if it is currently set
-		{
-			my @tmp_a = split(',', $nhash{$node}{'monserver'});
-			if (scalar(@tmp_a) < 2)	# it must have two values		
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "The current value of the monserver attribute is not valid.  It will not be reset.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-			} else {
-				# if the first value is the current service node then change it
-				if ($tmp_a[0] eq $sn1)
-				{
-					$sn_hash{$node}{'monserver'} = "$newsn{$node},$newxcatmaster{$node}";
-				}
-			} 
-		}
+	{ 
+	    # current SN from node attribute
+	    $sn1 = $sn_a[0]; 
 	}
-
+	
+	# switch the servicenode attr list
+	my @sn_temp = grep(!/^$newsn{$node}$/, @sn_a);
+	unshift(@sn_temp, $newsn{$node});
+	my $t = join(',', @sn_temp);
+	
+	$sn_hash{$node}{objtype} = 'node';
+	
+	# set servicenode and xcatmaster attr
+	$sn_hash{$node}{'servicenode'}     = $t;
+	$sn_hash{$node}{'xcatmaster'}      = $newxcatmaster{$node};
+	$old_node_hash->{$node}->{'oldsn'}     = $sn1;
+	$old_node_hash->{$node}->{'oldmaster'} = $sn1n;
+	
+	# set tftpserver
+	my $tftp=$nhash{$node}{'tftpserver'};
+	if ($tftp) {
+	    if ($sn1n && ($tftp eq $sn1n)) 
+	    {
+		$sn_hash{$node}{'tftpserver'} = $newxcatmaster{$node};
+	    } elsif  ($sn1n_ip && ($tftp eq $sn1n_ip)) {
+		$sn_hash{$node}{'tftpserver'} = $newxcatmaster{$node};
+	    }
+	}
+	
+	# set nfsserver
+	my $nfs=$nhash{$node}{'nfsserver'};
+	#print "nfs=$nfs, sn1n=$sn1n, sn1n_ip=$sn1n_ip\n";
+	if ($nfs) {
+	    if ($sn1n && ($nfs eq $sn1n)) 
+	    {
+		$sn_hash{$node}{'nfsserver'} = $newxcatmaster{$node};
+	    } elsif  ($sn1n_ip && ($nfs eq $sn1n_ip)) {
+		$sn_hash{$node}{'nfsserver'} = $newxcatmaster{$node};
+	    }
+	}
+	
+	#set monserver  ( = "servicenode,xcatmaster" )
+	my $mon=$nhash{$node}{'monserver'};
+	if ($mon)  # if it is currently set
+	{
+	    my @tmp_a = split(',', $mon);
+	    if (scalar(@tmp_a) < 2)	# it must have two values		
+	    {
+		my $rsp;
+		push @{$rsp->{data}}, "The current value of the monserver attribute is not valid.  It will not be reset.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+	    } else {
+		# if the first value is the current service node then change it
+		if ($tmp_a[0] eq $sn1)
+		{
+		    $sn_hash{$node}{'monserver'} = "$newsn{$node},$newxcatmaster{$node}";
+		}
+	    } 
+	}
+    }
+    
     my $rsp;
-	push @{$rsp->{data}}, "Setting new values in the xCAT database.\n";
-	xCAT::MsgUtils->message("I", $rsp, $callback);
-
-	if (keys(%sn_hash) > 0)
-	{
-		# update the node definition
-		if (xCAT::DBobjUtils->setobjdefs(\%sn_hash) != 0)
-		{
-			my $rsp;
-			push @{$rsp->{data}}, "Could not update xCAT node definitions.\n";
-			xCAT::MsgUtils->message("E", $rsp, $::callback);
-			$error++;
-		}
-	}
-
-	#
-    # handle conserver
-	#
-    my %sn_hash1;
-	foreach my $node (@nodes)
-	{
-		if (($nhash{$node}{'conserver'})  and ($nhash{$node}{'conserver'} eq $old_node_hash->{$node}->{'oldsn'})) {
-			$sn_hash1{$node}{'conserver'} = $newsn{$node};
-			$sn_hash1{$node}{objtype} = 'node';
-		}
-	}
-
+    push @{$rsp->{data}}, "Setting new values in the xCAT database.\n";
+    xCAT::MsgUtils->message("I", $rsp, $callback);
+    
+    if (keys(%sn_hash) > 0)
+    {
 	# update the node definition
-	if (keys(%sn_hash1) > 0)
+	if (xCAT::DBobjUtils->setobjdefs(\%sn_hash) != 0)
 	{
-		if (xCAT::DBobjUtils->setobjdefs(\%sn_hash1) != 0)
-		{
-			my $rsp;
-			push @{$rsp->{data}}, "Could not update xCAT node definitions.\n";
-			xCAT::MsgUtils->message("E", $rsp, $::callback);
-			$error++;
-		}
+	    my $rsp;
+	    push @{$rsp->{data}}, "Could not update xCAT node definitions.\n";
+	    xCAT::MsgUtils->message("E", $rsp, $::callback);
+	    $error++;
 	}
-
-	# run makeconservercf
+    }
+    
+    #
+    # handle conserver
+    #
+    my %sn_hash1;
+    foreach my $node (@nodes)
+    {
+	if (($nhash{$node}{'conserver'})  and ($nhash{$node}{'conserver'} eq $old_node_hash->{$node}->{'oldsn'})) {
+	    $sn_hash1{$node}{'conserver'} = $newsn{$node};
+	    $sn_hash1{$node}{objtype} = 'node';
+	}
+    }
+    
+    # update the node definition
+    if (keys(%sn_hash1) > 0)
+    {
+	if (xCAT::DBobjUtils->setobjdefs(\%sn_hash1) != 0)
+	{
+	    my $rsp;
+	    push @{$rsp->{data}}, "Could not update xCAT node definitions.\n";
+	    xCAT::MsgUtils->message("E", $rsp, $::callback);
+	    $error++;
+	}
+    }
+    
+    # run makeconservercf
     my @nodes_con = keys(%sn_hash1);
     if (@nodes_con > 0)
     {
         my $rsp = {};
         $rsp->{data}->[0] = "Running makeconservercf " . join(',', @nodes_con);
         $callback->($rsp);
-
+	
         my $ret =
-          xCAT::Utils->runxcmd(
-                               {
-                                command => ['makeconservercf'],
-                                node    => \@nodes_con,
-                               },
-                               $sub_req, 0, 1
-                               );
+	    xCAT::Utils->runxcmd(
+		{
+		    command => ['makeconservercf'],
+		    node    => \@nodes_con,
+		},
+		$sub_req, 0, 1
+	    );
         $callback->({data => $ret});
     }
-
-	#
-	#   Run niminit on AIX diskful nodes
-	#
-	if (!$::IGNORE) # unless the user does not want us to touch the node
+    
+    #
+    #   Run niminit on AIX diskful nodes
+    #
+    if (!$::IGNORE) # unless the user does not want us to touch the node
+    {
+	if (xCAT::Utils->isAIX())
 	{
-		if (xCAT::Utils->isAIX())
-		{
-			#if the node is aix and the type is standalone
-			foreach my $node (@nodes)
-			{
-				# if this is a standalone node then run niminit
-				if (($nimtype{$node}) && ($nimtype{$node} eq 'standalone')) {
-
-					my $nimcmd = qq~/usr/sbin/niminit -a name=$node -a master=$newsn{$node} >/dev/null 2>&1~;
-					
-					my $out = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $node, $nimcmd, 0);
-
-					if ($::RUNCMD_RC != 0)
-					{
-						my $rsp;
-						push @{$rsp->{data}}, "Could not run niminit on node $node.\n";
-						xCAT::MsgUtils->message("E", $rsp, $callback);
-						$error++;
-					}
-				}
-			}
+	    #if the node is aix and the type is standalone
+	    foreach my $node (@nodes)
+	    {
+		# if this is a standalone node then run niminit
+		if (($nimtype{$node}) && ($nimtype{$node} eq 'standalone')) {
+		    
+		    my $nimcmd = qq~/usr/sbin/niminit -a name=$node -a master=$newsn{$node} >/dev/null 2>&1~;
+		    
+		    my $out = xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $node, $nimcmd, 0);
+		    
+		    if ($::RUNCMD_RC != 0)
+		    {
+			my $rsp;
+			push @{$rsp->{data}}, "Could not run niminit on node $node.\n";
+			xCAT::MsgUtils->message("E", $rsp, $callback);
+			$error++;
+		    }
 		}
+	    }
 	}
-
-	# for Linux system only
+    }
+    
+    # for Linux system only
     if (xCAT::Utils->isLinux())
     {
         #tftp, dhcp and nfs (site.disjointdhcps should be set to 1)
-
-		# get a list of nodes for each provmethod
+	
+	# get a list of nodes for each provmethod
         my %nodeset_hash;
         foreach my $node (@nodes)
         {
-			my $provmethod = $nhash{$node}{'provmethod'};
-			if ($provmethod)
-			{
-				if (!grep(/^$node$/, @{$nodeset_hash{$provmethod}})) {
-					push(@{$nodeset_hash{$provmethod}}, $node);
-				}
+	    my $provmethod = $nhash{$node}{'provmethod'};
+	    if ($provmethod)
+	    {
+		if (!grep(/^$node$/, @{$nodeset_hash{$provmethod}})) {
+		    push(@{$nodeset_hash{$provmethod}}, $node);
+		}
             }
         }
-
-		# run the nodeset command
+	
+	# run the nodeset command
         foreach my $provmethod (keys(%nodeset_hash))
         {
-			# need a node list to send to nodeset
-			my $nodeset_nodes = join ',', @{$nodeset_hash{$provmethod}};
-
-			if (($provmethod eq 'netboot') || ($provmethod eq 'install') || ($provmethod eq 'statelite')) 
+	    # need a node list to send to nodeset
+	    my @nodeset_nodes = @{$nodeset_hash{$provmethod}};
+	    
+	    if (($provmethod eq 'netboot') || ($provmethod eq 'install') || ($provmethod eq 'statelite')) 
             {
                 my $ret =
-                  xCAT::Utils->runxcmd(
-                                       {
-                                        command => ['nodeset'],
-                                        node    => $nodeset_nodes,
-                                        arg     => [$provmethod],
-                                       },
-                                       $sub_req, 0, 1
-                                       );
-				if ($::RUNCMD_RC != 0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not run the nodeset command.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-				}
+		    xCAT::Utils->runxcmd(
+			{
+			    command => ['nodeset'],
+			    node    => \@nodeset_nodes,
+			    arg     => [$provmethod],
+			},
+			$sub_req, 0, 1
+		    );
+		if ($::RUNCMD_RC != 0)
+		{
+		    my $rsp;
+		    push @{$rsp->{data}}, "Could not run the nodeset command.\n";
+		    xCAT::MsgUtils->message("E", $rsp, $callback);
+		    $error++;
+		}
             }
             else
             {
-                my $ret = xCAT::Utils->runxcmd( {command => ['nodeset'], node    => $nodeset_nodes, arg     => ["osimage=$provmethod"],}, $sub_req, 0, 1 );
-				if ($::RUNCMD_RC != 0)
-				{
-					my $rsp;
-					push @{$rsp->{data}}, "Could not run the nodeset command.\n";
-					xCAT::MsgUtils->message("E", $rsp, $callback);
-					$error++;
-				}
+                my $ret = xCAT::Utils->runxcmd( {command => ['nodeset'], node    => \@nodeset_nodes, arg     => ["osimage=$provmethod"],}, $sub_req, 0, 1 );
+		if ($::RUNCMD_RC != 0)
+		{
+		    my $rsp;
+		    push @{$rsp->{data}}, "Could not run the nodeset command.\n";
+		    xCAT::MsgUtils->message("E", $rsp, $callback);
+		    $error++;
+		}
             }
         }
-	} # end - for Linux system only    
-
-	#
-	# for both AIX and Linux systems
-	#
+    } # end - for Linux system only    
+    
+    #
+    # for both AIX and Linux systems
+    #
     # run postscripts to take care of syslog, ntp, and mkresolvconf 
-	#	 - if they are icluded in the postscripts table
+    #	 - if they are included in the postscripts table
     if (!$::IGNORE) # unless the user does not want us to touch the node
     {
-		# get all the postscripts that should be run for the nodes
+	# get all the postscripts that should be run for the nodes
         my $pstab = xCAT::Table->new('postscripts', -create => 1);
         my $nodeposhash = {};
         if ($pstab)
         {
             $nodeposhash =
-                  $pstab->getNodesAttribs(\@nodes,
-                                          ['postscripts', 'postbootscripts']);
+		$pstab->getNodesAttribs(\@nodes,
+					['postscripts', 'postbootscripts']);
         }
         else
         {
@@ -572,10 +613,10 @@ sub process_request
             $callback->($rsp);
             return 1;
         }
-
+	
         my $et =
-          $pstab->getAttribs({node => "xcatdefaults"},
-                                 'postscripts', 'postbootscripts');
+	    $pstab->getAttribs({node => "xcatdefaults"},
+			       'postscripts', 'postbootscripts');
         my $defscripts     = "";
         my $defbootscripts = "";
         if ($et)
@@ -583,17 +624,22 @@ sub process_request
             $defscripts     = $et->{'postscripts'};
             $defbootscripts = $et->{'postbootscripts'};
         }
+	
+	my $user_posts;
+	if ($::POST) {
+	    $user_posts=$::POST;
+	}
 
         my $pos_hash = {};
         foreach my $node (@nodes)
         {
-
-			if (($nimtype{$node}) && ($nimtype{$node} eq 'diskless')) {
-				# don't run scripts on AIX diskless nodes 
-				#	- they will have to be rebooted anyway.
-				next;
-			}
-
+	    
+	    if (($nimtype{$node}) && ($nimtype{$node} eq 'diskless')) {
+		# don't run scripts on AIX diskless nodes 
+		#	- they will have to be rebooted anyway.
+		next;
+	    }
+	    
             foreach my $rec (@{$nodeposhash->{$node}})
             {
                 my $scripts;
@@ -601,37 +647,52 @@ sub process_request
                 {
                     $scripts = join(',',
                                     $defscripts,
+				    $rec->{'postscripts'},
                                     $defbootscripts,
-                                        $rec->{'postscripts'},
-                                        $rec->{'postsbootcripts'});
+				    $rec->{'postbootscripts'});
                 }
                 else
                 {
                     $scripts = join(',', $defscripts, $defbootscripts);
                 }
                 my @tmp_a = split(',', $scripts);
-
-				# only consider running syslog, setupntp, and mkresolvconf
-				my @valid_scripts = ("syslog", "setupntp", "mkresolvconf");
+		
+		# xCAT's default scripts to be run: syslog, setupntp, and mkresolvconf
+		my @valid_scripts = ("syslog", "setupntp", "mkresolvconf");
                 my $scripts1="";
-				foreach my $s (@valid_scripts) {
+		if (($user_posts) && ($user_posts eq "all")) {
+		    $scripts1=$scripts; #run all the postscripts defined in the postscripts table
+		} else {
+		    foreach my $s (@valid_scripts) {
+			
+			# if it was included in the original list then run it
+			if (grep(/^$s$/, @tmp_a))
+			{
+			    if ($scripts1) { 
+				$scripts1 = "$scripts1,$s"; 
+			    }
+			    else
+			    {
+				$scripts1 = $s;
+			    }
+			}
+		    }
 
-					# if it was included in the original list then run it
-					if (grep(/^$s$/, @tmp_a))
-					{
-						if ($scripts1) { 
-							$scripts1 = "$scripts1,$s"; 
-						}
-						else
-						{
-							$scripts1 = $s;
-						}
-					}
-				}
-
+		    #append the user given scripts
+		    if ($user_posts) {
+			if ($scripts1) { 
+			    $scripts1 = "$scripts1,$user_posts"; 
+			}
+			else
+			{
+			    $scripts1 = $user_posts;
+			}
+		    }
+		}
+		
                 if ($scripts1)
                 {
-                     if (exists($pos_hash->{$scripts1}))
+		    if (exists($pos_hash->{$scripts1}))
                     {
                         my $pa = $pos_hash->{$scripts1};
                         push(@$pa, $node);
@@ -644,45 +705,52 @@ sub process_request
             }
         }
 
+	#print Dumper($pos_hash);
+	
+	my $rsp;
+	$rsp->{data}->[0]="Running postscripts on the nodes."; 
+	xCAT::MsgUtils->message("I", $rsp, $callback);
         foreach my $scripts (keys(%$pos_hash))
         {
             my $pos_nodes = $pos_hash->{$scripts};
+	    #print "pos_nodes=@$pos_nodes\n";
             my $ret =
-                  xCAT::Utils->runxcmd(
-                                       {
-                                        command => ['updatenode'],
-                                        node    => $pos_nodes,
-                                        arg     => ["-P", $scripts, "-s"],
-                                       },
-                                       $sub_req, 0, 1
-                                       );
-			if ($::RUNCMD_RC != 0)
-			{
-				my $rsp;
-				push @{$rsp->{data}}, "Could not run the updatenode command.\n";
-				xCAT::MsgUtils->message("E", $rsp, $callback);
-				$error++;
-			}
+		xCAT::Utils->runxcmd(
+		    {
+			command => ['updatenode'],
+			node    => $pos_nodes,
+			arg     => ["-P", "$scripts", "-s"],
+		    },
+		    $sub_req, -1, 1
+		);
+	    if ($::RUNCMD_RC != 0)
+	    {
+		$error++;
+	    }
+	    
+	    my $rsp;
+	    $rsp->{data}=$ret; 
+	    xCAT::MsgUtils->message("I", $rsp, $callback);
         }
     } # end -for both AIX and Linux systems
-
-	my  $retcode=0;
+    
+    my  $retcode=0;
     if ($error)
-	{
-		my $rsp;
-		push @{$rsp->{data}}, "One or more errors occurred while attempting to switch nodes to a new service node.\n";
-		xCAT::MsgUtils->message("E", $rsp, $callback);
-		$retcode = 1;
-	}
-	else
-	{
-		my $rsp;
-		push @{$rsp->{data}}, "The nodes were successfully moved to the new service node.\n";
-		xCAT::MsgUtils->message("I", $rsp, $callback);
-	}
-
-	return  $retcode;
-
+    {
+	#my $rsp;
+	#push @{$rsp->{data}}, "One or more errors occurred while attempting to switch nodes to a new service node.\n";
+	#xCAT::MsgUtils->message("E", $rsp, $callback);
+	$retcode = 1;
+    }
+    #else
+    #{
+    #	my $rsp;
+    #	push @{$rsp->{data}}, "The nodes were successfully moved to the new service node.\n";
+    #	xCAT::MsgUtils->message("I", $rsp, $callback);
+    #}
+    
+    return  $retcode;
+    
 }
 
 #----------------------------------------------------------------------------
@@ -736,8 +804,11 @@ sub getSNinterfaces
 		my $result = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $sn, $ifcmd, 0);
 		if ($::RUNCMD_RC != 0)
 		{
-			print "Could not get IP addresses from service node $sn.\n";
-			next;
+		    my $rsp = {};
+		    $rsp->{data}->[0] =
+			"Could not get IP addresses from service node $sn.\n";
+		    $callback->($rsp);
+		    next;
 		}
 
 		foreach my $int ( split(/\n/, $result) )
@@ -799,10 +870,10 @@ sub usage
     push @{$rsp->{data}}, "\tsnmove -v";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tsnmove noderange [-d sn2] [-D sn2n] [-i|--ignorenodes]";
+      "\tsnmove noderange [-d sn2] [-D sn2n] [-i | -P scripts|all]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tsnmove -s sn1 [-S sn1n] [-d sn2] [-D sn2n] [-i|--ignorenodes]";
+      "\tsnmove -s sn1 [-S sn1n] [-d sn2] [-D sn2n] [-i | -P scripts|all]";
     push @{$rsp->{data}}, "\n";
     push @{$rsp->{data}}, "\nWhere:";
     push @{$rsp->{data}},
@@ -813,6 +884,8 @@ sub usage
       "\tsn2 is the hostname of the destination service node as known by (facing) the management node.";
     push @{$rsp->{data}},
       "\tsn2n is the hostname of the destination service node as known by (facing) the nodes.";
+    push @{$rsp->{data}},
+      "\tscripts is a comma separated list of postscripts to be run on the nodes. 'all' means all the scripts defined in the postscripts table for each node are to be run.";
     $cb->($rsp);
 
     return 0;
