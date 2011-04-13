@@ -132,8 +132,14 @@ sub get_reverse_zones_for_entity {
                 if ($net =~ /\./) { #IPv4/IN-ADDR.ARPA case.
                     my $maskstr = unpack("B32",pack("N",$ctx->{nets}->{$net}->{mask}));
                     my $maskcount = ($maskstr =~ tr/1//);
-                    $maskcount-=($maskcount%8);  #e.g. treat the 27bit netmask as 24bit
-                    #$maskcount+=((8-($maskcount%8))%8); #round to the next octet
+                    if ($maskcount >= 24)
+                    {
+                        $maskcount-=($maskcount%8);  #e.g. treat the 27bit netmask as 24bit
+                    }
+                    else
+                    {
+                        $maskcount+=((8-($maskcount%8))%8); #round to the next octet
+                    }
                     my $newmask = 2**$maskcount -1 << (32 - $maskcount);
                     my $rev = inet_ntoa(pack("N",($tvar & $newmask)));
                     my @zone;
