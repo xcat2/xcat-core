@@ -65,14 +65,14 @@ function submit_request($req, $skipVerify, $opts_array){
 	
 	// Determine whether to flush output or not
 	$flush = false;
-	if (in_array("flush", $opts_array)) {
+	if ($opts_array && in_array("flush", $opts_array)) {
 		$flush = true;
 	}
 	
 	// Determine how to handle the flush output
 	// You can specify a function name, in place of TBD, to handle the flush output
 	$flush_format = "";
-	if (in_array("flush-format=TBD", $opts_array)) {
+	if ($opts_array && in_array("flush-format=TBD", $opts_array)) {
 		$flush_format = "TBD";
 	}
 	
@@ -255,7 +255,7 @@ function is_logged() {
 function isAuthenticated() {
 	if (is_logged()) {
 		if ($_SESSION["xcatpassvalid"] != 1) {
-			$testcred = docmd("authcheck", "", NULL);
+			$testcred = docmd("authcheck", "", NULL, NULL);
 			if (isset($testcred->{'xcatresponse'}->{'data'})) {
 				$result = "".$testcred->{'xcatresponse'}->{'data'};
 				if (is_numeric(strpos("Authenticated",$result))) {
