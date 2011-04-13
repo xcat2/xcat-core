@@ -7,6 +7,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 #use Data::Dumper;
 use xCAT::FSPUtils;
+use xCAT::PPCconn;
 
 ##############################################
 # Globals
@@ -58,6 +59,14 @@ sub mkhwconn_parse_args
     if ( !GetOptions( \%opt, qw(V|verbose h|help t T=s p=s P=s port=s) )) {
         return( usage() );
     }
+
+    if ( exists $opt{s} )
+    {
+       my $opttmp = xCAT::PPCconn::mkhwconn_parse_args($request, $args);
+           return $opttmp;
+    }
+
+
     return usage() if ( exists $opt{h});
 
     if ( exists $opt{t} and exists $opt{p})
