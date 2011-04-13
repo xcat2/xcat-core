@@ -583,19 +583,13 @@ sub noderange {
     if ($exsitenode) {
         my $badnoderange = 0;
         my @badnodes = ();
-        my $sitetab = xCAT::Table->new('site',-create=>0);
-        if ($sitetab) {
-            my ($ref) = $sitetab->getAttribs({key => 'excludenodes'}, 'value');
-            if ($ref and $ref->{value}) {
-                $badnoderange = $ref->{value};
-                # use the exsitenode argument to exit recursion
-                @badnodes = noderange($badnoderange, 1, 0);
+	if ($::XCATSITEVALS{excludenodes}) {
+                @badnodes = noderange($::XCATSITEVALS{excludenodes}, 1, 0);
                 foreach my $bnode (@badnodes) {
                     if (!$delnodes{$bnode}) {
                         $delnodes{$bnode} = 1;
                     }
-                }
-            }
+		}
         }
     }
 
