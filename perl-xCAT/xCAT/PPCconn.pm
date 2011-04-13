@@ -59,10 +59,10 @@ sub mkhwconn_parse_args
     }
     return usage() if ( exists $opt{h});
 
-    if ( exists $opt{s} )
-    {
-        return( usage('Flags -s is just used in direct-attach enviroment.'));
-    }
+    #if ( exists $opt{s} )
+    #{
+    #    return( usage('Flags -s is just used in direct-attach enviroment.'));
+    #}
     
     if ( exists $opt{t} and exists $opt{p})
     {
