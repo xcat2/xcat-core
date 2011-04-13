@@ -67,7 +67,7 @@ if (isset($_GET["cmd"])) {
 		// CLI command: chvm gpok249 --replacevs /tmp/dirEntry.txt
 		// Replace user entry
 		array_push($arr, $userEntry);
-		$xml = docmd($cmd, $tgt, $arr);
+		$xml = docmd($cmd, $tgt, $arr, NULL);
 		foreach ($xml->children() as $child) {
 			foreach ($child->children() as $data) {
 				$data = str_replace(":|:", "\n", $data);
@@ -88,7 +88,7 @@ if (isset($_GET["cmd"])) {
 		// CLI command: mkvm gpok3 /tmp/gpok3.txt
 		// Create user entry
 		array_unshift($arr, $userEntry);
-		$xml = docmd($cmd, $tgt, $arr);
+		$xml = docmd($cmd, $tgt, $arr, NULL);
 		foreach ($xml->children() as $child) {
 			foreach ($child->children() as $data) {
 				$data = str_replace(":|:", "\n", $data);
@@ -118,7 +118,7 @@ if (isset($_GET["cmd"])) {
 		// CLI command: xdsh gpok3 -e /var/tmp/gpok3.sh
 		// Create user entry
 		array_push($arr, $script);
-		$xml = docmd($cmd, $tgt, $arr);
+		$xml = docmd($cmd, $tgt, $arr, NULL);
 		foreach ($xml->children() as $child) {
 			foreach ($child->children() as $data) {
 				$data = str_replace(":|:", "\n", $data);
