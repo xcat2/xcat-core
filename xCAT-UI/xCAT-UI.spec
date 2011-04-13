@@ -133,9 +133,9 @@ set -x
 	  
 	  	# Copy php.ini file into /opt/xcat/ui and turn off output_buffering
 		if [ -e "/etc/redhat-release" ]; then
-			sed /etc/php.ini -e 's/output_buffering = 4096/output_buffering = Off/g' > %{prefix}/ui/php.ini
+			/bin/sed /etc/php.ini -e 's/output_buffering = 4096/output_buffering = Off/g' > %{prefix}/ui/php.ini
 	 	else 	# SUSE
-	    	sed /etc/php5/apache2/php.ini -e 's/output_buffering = 4096/output_buffering = Off/g' > %{prefix}/ui/php.ini
+	    	/bin/sed /etc/php5/apache2/php.ini -e 's/output_buffering = 4096/output_buffering = Off/g' > %{prefix}/ui/php.ini
 	  	fi
 	  
 	  	# Automatically put encrypted password into the xCAT passwd database
