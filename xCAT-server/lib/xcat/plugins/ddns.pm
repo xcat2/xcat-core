@@ -349,7 +349,14 @@ sub process_request {
                 $ctx->{dnsupdaters} = \@nservers;
         }
         if ($zapfiles) { #here, we unlink all the existing files to start fresh
-            system("/sbin/service $service stop"); #named may otherwise hold on to stale journal filehandles
+            if (xCAT::Utils->isAIX())
+            {
+                system("/usr/bin/stopsrc -s $service");
+            }
+            else
+            {
+                system("/sbin/service $service stop"); #named may otherwise hold on to stale journal filehandles
+            }
             my $conf = get_conf();
             unlink $conf;
             my $DBDir = get_dbdir();
