@@ -2246,7 +2246,7 @@ sub parse_responses {
             # Strip commas from IP list
             ###########################################
 			
-            # we need te hidden ipv6 ip address temporarily
+            # we need to hide ipv6 ip address temporarily
 			my @iptmp = split /,/, $result[4];
             my @iptmp2;
             foreach (@iptmp){
