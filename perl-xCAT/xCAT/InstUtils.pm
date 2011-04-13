@@ -33,7 +33,6 @@ use xCAT::NetworkUtils;
 require xCAT::NodeRange;
 require DBI;
 
-
 #-------------------------------------------------------------------------------
 
 =head1    xCAT::InstUtils
@@ -925,7 +924,8 @@ sub dolitesetup
  	}
 
 	# create the statelite table file
-	my $stateHash = $statelitetab->getNodesAttribs(\@nodelist, ['statemnt']);
+	my $foundentry=0;
+	my $stateHash = $statelitetab->getNodesAttribs(\@nodelist, ['statemnt', 'mntopts']);
 	foreach my $node (@nodelist) {
 
 		# process statelite entry
@@ -935,7 +935,10 @@ sub dolitesetup
     	# 	then - on node - a nodename subdir is created
 
 		my $statemnt="";
+		my $mntopts;
         if (exists($stateHash->{$node})) {
+
+			$mntopts = $stateHash->{$node}->[0]->{mntopts};
             $statemnt = $stateHash->{$node}->[0]->{statemnt};
             my ($server, $dir) = split(/:/, $statemnt);
 
@@ -959,13 +962,30 @@ sub dolitesetup
 		}
 
 		my $entry = qq~$node|$statemnt~;
+		if ($mntopts) {
+			$entry = qq~$node|$statemnt|$mntopts~;
+		}
 		$entry =~ s/\s*//g; #remove blanks
 
 		if ($statemnt) {
 			print STATELITE $entry . "\n";
+			$foundentry++;
 		}
 	}
 	close(STATELITE);
+
+	if (!$foundentry) {
+		# don't leave empty file
+		my $rc = xCAT::Utils->runcmd("rm $statelitetable", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not remove $statelitetable file.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+
+	}
 
 	unless (open(LITEFILE, ">$litefiletable"))
     {
@@ -976,15 +996,29 @@ sub dolitesetup
     }
 
 	my @filelist = xCAT::Utils->runcmd("/opt/xcat/bin/litefile $noderange", -1);
-
-	foreach my $l (@filelist) {
-		$l =~ s/://g;  # remove ":"'s
-		$l =~ s/\s+/|/g;  # change separator to "|"
-		print LITEFILE $l . "\n";
-		push (@litefiles, $l);
-		$foundstatelite++;
+	if (scalar(@filelist) > 0) {
+		foreach my $l (@filelist) {
+			$l =~ s/://g;  # remove ":"'s
+			$l =~ s/\s+/|/g;  # change separator to "|"
+			print LITEFILE $l . "\n";
+			push (@litefiles, $l);
+			$foundstatelite++;
+		}
+		close(LITEFILE);
+	} else {
+    	close(LITEFILE);
+		# remove empty files
+		my $rc = xCAT::Utils->runcmd("rm $litefiletable", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not remove $litefiletable file.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
 	}
-    close(LITEFILE);
+
+
 
 	unless (open(LITETREE, ">$litetreetable"))
     {
@@ -994,18 +1028,30 @@ sub dolitesetup
         return 1;
     }
 	my @treelist = xCAT::Utils->runcmd("/opt/xcat/bin/litetree $noderange", -1);
-	foreach my $l (@treelist) {
-
-		my ($p, $serv, $dir) = split (/:/, $l);
-		$p =~ s/\s*//g;
-		$serv =~ s/\s*//g;
-		$dir =~ s/\s*//g;
-        my $serverIP = xCAT::NetworkUtils->getipaddr($serv);
-		my $entry = "$p|$serverIP|$dir";
-        print LITETREE $entry . "\n";
-		$foundstatelite++;
-    }
-    close(LITETREE);
+	if (scalar(@treelist) > 0) {
+		foreach my $l (@treelist) {
+			my ($p, $serv, $dir) = split (/:/, $l);
+			$p =~ s/\s*//g;
+			$serv =~ s/\s*//g;
+			$dir =~ s/\s*//g;
+        	my $serverIP = xCAT::NetworkUtils->getipaddr($serv);
+			my $entry = "$p|$serverIP|$dir";
+        	print LITETREE $entry . "\n";
+			$foundstatelite++;
+    	}
+    	close(LITETREE);
+	} else {
+		close(LITETREE);
+		# don't leave empty file
+		my $rc = xCAT::Utils->runcmd("rm $litetreetable", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not remove $litetreetable file.";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+	}
 
 	# if there is no statelite info then just return
 	if (!$foundstatelite) {
@@ -1049,7 +1095,6 @@ sub dolitesetup
             return 1;
         }
     }
-
 
 	# populate the .defaults dir with files and dirs from the image - if any
 	my $default="$instrootloc/.default";

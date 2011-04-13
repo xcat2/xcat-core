@@ -49,6 +49,16 @@ ProcessStatelite () {
 
 		SERVER=`echo $i | /usr/bin/awk -F'|' '{print $2}'`
 		TOMNT=`echo $i | /usr/bin/awk -F'|' '{print $3}'`
+		OPTS=`echo $i | /usr/bin/awk -F'|' '{print $4}'`
+
+# ndebug
+
+		if [ "$OPTS" = "" ]; then
+			MNTOPTS=" "
+		else
+			MNTOPTS=" -o $OPTS "
+		fi
+
 
 		# /.statelite/tmpdir
 		if [ ! -d ${TMPDIR} ]; then
@@ -61,7 +71,7 @@ ProcessStatelite () {
 		fi
 
 		# mount 10.2.0.200:/nodedata /.statelite/persistent
-		/usr/sbin/mount $SERVER:$TOMNT ${PERSISTENT}
+		/usr/sbin/mount ${MNTOPTS} $SERVER:$TOMNT ${PERSISTENT}
 
 		# make a node subdir
 		# /.statelite/persistent/<nodename>

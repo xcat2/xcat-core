@@ -1264,7 +1264,7 @@ sub spot_updates
                 my $rsp;
                 push @{$rsp->{data}}, "Could not get NIM spot definitions from $srvnode.";
                 xCAT::MsgUtils->message("E", $rsp, $callback);
-                return 1;
+                # return 1;
             }
 
 			my @SNspots;
@@ -3067,6 +3067,7 @@ sub mknimimage
         $newres{spot} = $spot_name;
         if (!defined($spot_name))
         {
+
             my $rsp;
             push @{$rsp->{data}}, "Could not create spot definition.\n";
             xCAT::MsgUtils->message("E", $rsp, $callback);
@@ -5781,6 +5782,7 @@ if (0) {
         {
             my $rsp;
             push @{$rsp->{data}}, "Could not copy the odmscript back";
+
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
@@ -5994,13 +5996,16 @@ sub update_dd_boot
 	fi \n\n~;
 
             my $patch =
-              qq~\n\t# xCAT support #3\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
+              qq~\n\t# xCAT support #3\n\tif [ -z "\$(odmget -qattribute=syscons CuAt)" ] \n\tthen\n\t  \${SHOWLED} 0x911\n\t  cp /usr/ODMscript /tmp/ODMscript\n\tchmod 600 /tmp/ODMscript\n\t  [ \$? -eq 0 ] && odmadd /tmp/ODMscript\n\tfi \n\n~;
 
 			my $scripthook = qq~
 		# xCAT support #4
 		# do statelite setup if needed
 		cp /../SPOT/niminfo /etc/niminfo
-		/aixlitesetup
+		if [ -f "/aixlitesetup" ]
+		then
+			/aixlitesetup
+		fi
 	\n\n~;
 
             if (open(DDBOOT, "<$dd_boot_file_mn"))
@@ -9611,7 +9616,7 @@ sub prermdsklsnode
       )
     {
         &rmdsklsnode_usage($callback);
-        return 2;
+        return;
     }
 
     if ($::HELP)
