@@ -66,11 +66,12 @@ function loadMonitorPage() {
 		 */
 		success : function(data){
 			// Initialize status for each tool
-			var monitorStatusHash = new Object();
-			monitorStatusHash['xcatmon'] = 'Not monitored';
-			monitorStatusHash['rmcmon'] = 'Not monitored';
-			monitorStatusHash['rmcevent'] = 'Not monitored';
-			monitorStatusHash['gangliamon'] = 'Not monitored';
+			var statusHash = new Object();
+			statusHash['xcatmon'] = 'Off';
+			statusHash['rmcmon'] = 'Off';
+			statusHash['rmcevent'] = 'Off';
+			statusHash['gangliamon'] = 'Off';
+			statusHash['pcpmon'] = 'Off';
 			if (data.rsp[0]) {
 				var tempArray = data.rsp[0].split(';');
 				var position = 0;
@@ -84,43 +85,80 @@ function loadMonitorPage() {
 
 					name = tempArray[i].substr(0, position);
 					status = tempArray[i].substr(position + 1);
-					monitorStatusHash[name] = status;
+					statusHash[name] = status;
 				}
-			}		
+			}
 			
-			var monitorTable = '<table><thead><tr><th>Monitor Tool</th><th>Status</th><th>Description</th></tr></thead>';
+			// Create a status buttonset for each monitoring tool
+			var statusButtonHash = new Object();
+			for ( var name in statusHash) {
+				var statusButton = $('<div></div>').css({
+					'width': '100px',
+					'text-align': 'center'
+				});
+				statusButtonHash[name] = statusButton;
+				
+				// Set button to correct status
+				if (statusHash[name] == 'On') {
+					statusButton.append($('<input type="radio" id="' + name + 'On" name="' + name + 'Status" checked="checked"/><label for="' + name + 'On">On</label>'));
+					statusButton.append($('<input type="radio" id="' + name + 'Off" name="' + name + 'Status"/><label for="' + name + 'Off">Off</label>'));
+				} else {
+					statusButton.append($('<input type="radio" id="' + name + 'On" name="' + name + 'Status"/><label for="' + name + 'On">On</label>'));
+					statusButton.append($('<input type="radio" id="' + name + 'Off" name="' + name + 'Status" checked="checked"/><label for="' + name + 'Off">Off</label>'));
+				}
+
+				statusButton.find('label').css({
+					'margin': '0px',
+					'padding': '0px',
+					'font-size': '10px',
+					'width': 'auto'
+				});
+				statusButton.buttonset();
+			}
+						
+			var monTable = $('<table></table>');
+			monTable.append($('<thead><tr><th>Monitor Tool</th><th>Status</th><th>Description</th></tr></thead>'));
 			
-			// xCAT monitor
-			monitorTable += '<tbody><tr><td><a href="#" name="xcatmon">xCAT Monitor</a></td>';
-			monitorTable += '<td>' + monitorStatusHash['xcatmon'] + '</td>';
-			monitorTable += '<td>Provides node status monitoring using fping on AIX and nmap on Linux. It also provides application status monitoring. The status and the appstatus columns of the nodelist table will be updated periodically  with the latest status values for the nodes.</td></tr>';
+			var monTableBody = $('<tbody></tbody>');
+			monTable.append(monTableBody);			
 			
-			// RMC monitor 
-			monitorTable += '<tr><td><a href="#" name="rmcmon">RMC Monitor</a></td>';
-			monitorTable += '<td>' + monitorStatusHash['rmcmon'] + '</td>';
-			monitorTable += '<td>IBM\'s Resource Monitoring and Control (RMC) subsystem is our recommended software for monitoring xCAT clusters. It\'s is part of the IBM\'s Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive clustering environment for AIX and LINUX.</td></tr>';
+			var xcatMon = $('<tr></tr>');
+			xcatMon.append($('<td><a href="#" name="xcatmon">xCAT Monitor</a></td>'));
+			xcatMon.append($('<td></td>').append(statusButtonHash['xcatmon']));
+			xcatMon.append($('<td>Provides node status monitoring using fping on AIX and nmap on Linux. It also provides application status monitoring. The status and the appstatus columns of the nodelist table will be updated periodically  with the latest status values for the nodes.</td>'));
+			monTableBody.append(xcatMon);
 			
-			// RMC event
-			monitorTable += '<tr><td><a href="#" name="rmcevent">RMC Event</a></td>';
-			monitorTable += '<td>' + monitorStatusHash['rmcevent'] + '</td>';
-			monitorTable += '<td>Listing event monitoring information recorded by the RSCT Event Response resource manager in the audit log. Creating and removing a condition/response association.</td></tr>';
+			var rmcMon = $('<tr></tr>');
+			rmcMon.append($('<td><a href="#" name="rmcmon">RMC Monitor</a></td>'));
+			rmcMon.append($('<td></td>').append(statusButtonHash['rmcmon']));
+			rmcMon.append($('<td>IBM\'s Resource Monitoring and Control (RMC) subsystem is our recommended software for monitoring xCAT clusters. It\'s is part of the IBM\'s Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive clustering environment for AIX and Linux.</td>'));
+			monTableBody.append(rmcMon);
 			
-			// Ganglia event
-			monitorTable += '<tr><td><a href="#" name="gangliamon">Ganglia Monitor</a></td>';
-			monitorTable += '<td>' + monitorStatusHash['gangliamon'] + '</td>';
-			monitorTable += '<td>A scalable distributed monitoring system for high-performance computing systems such as clusters and Grids.</td></tr>';
+			var rmcEvent = $('<tr></tr>');
+			rmcEvent.append($('<td><a href="#" name="rmcevent">RMC Event</a></td>'));
+			rmcEvent.append($('<td></td>').append(statusButtonHash['rmcevent']));
+			rmcEvent.append($('<td>Listing event monitoring information recorded by the RSCT Event Response resource manager in the audit log. Creating and removing a condition/response association.</td>'));
+			monTableBody.append(rmcEvent);
+
+			var gangliaMon = $('<tr></tr>');
+			gangliaMon.append($('<td><a href="#" name="gangliamon">Ganglia Monitor</a></td>'));
+			gangliaMon.append($('<td></td>').append(statusButtonHash['gangliamon']));
+			gangliaMon.append($('<td>A scalable distributed monitoring system for high-performance computing systems such as clusters and Grids.</td>'));
+			monTableBody.append(gangliaMon);
 			
-			// PCP monitor
-			monitorTable += '<tr><td><a href="#" name="pcpmon">PCP Monitor</a></td>';
-			monitorTable += '<td>Not monitored</td>';
-			monitorTable += '<td>Under construction.</td></tr>';
+			var pcpMon = $('<tr></tr>');
+			pcpMon.append($('<td><a href="#" name="pcpmon">PCP Monitor</a></td>'));
+			pcpMon.append($('<td></td>').append(statusButtonHash['pcpmon']));
+			pcpMon.append($('<td>Under construction.</td>'));
+			monTableBody.append(pcpMon);
 			
-			monitorTable += '</tbody></table>';
+			// Do not word wrap
+			monTableBody.find('td:nth-child(1)').css('white-space', 'nowrap');
 			
 			// Append info bar
 			$('#monitorTab div').empty().append(createInfoBar('Select a monitoring tool to use.'));
-			$('#monitorTab .form').append(monitorTable);
-			
+			$('#monitorTab .form').append(monTable);
+									
 			// Open monitoring tool onclick
 			$('#monitorTab .form a').bind('click', function() {
 				loadMonitorTab($(this).attr('name'));
@@ -240,5 +278,5 @@ function loadMonitorTab(name) {
 function loadUnfinish(monitorName, tab) {
 	var unfinishPage = $('<div></div>');
 	unfinishPage.append(createInfoBar('Under construction'));
-	tab.add(monitorName, 'Unfinish', unfinishPage, true);
+	tab.add(monitorName, 'Unfinished', unfinishPage, true);
 }
