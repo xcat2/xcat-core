@@ -104,6 +104,7 @@ function submit_request($req, $skipVerify, $opts_array){
 				if ($flush) {
 					// Strip HTML tags from output
 					if ($tmp = trim(strip_tags($str))) {
+						// Format the output based on what was given for $flush_format
 						echo $tmp . '<br/>';
 						flush();
 					}
