@@ -31,84 +31,84 @@ my %modules = (
                        bpa    => "xCAT::FSPinv",
                        cec    => "xCAT::FSPinv",
                        frame  => "xCAT::FSPinv",
-		       },
+                       },
         rpower    => { hmc    => "xCAT::PPCpower",
                        ivm   => "xCAT::PPCpower",
                        fsp    => "xCAT::FSPpower",
                        bpa    => "xCAT::FSPpower",
                        cec    => "xCAT::FSPpower",
                        frame  => "xCAT::FSPpower",
-		       },
+                       },
         rvitals   => { hmc    => "xCAT::PPCvitals",
                        fsp    => "xCAT::FSPvitals",
                        bpa    => "xCAT::FSPvitals",
                        cec    => "xCAT::FSPvitals",
                        frame  => "xCAT::FSPvitals",
-		       },
+                       },
         rscan     => { hmc    => "xCAT::PPCscan",
                        fsp    => "xCAT::FSPscan",
                        cec    => "xCAT::FSPscan",
-		       },
+                       },
         mkvm      => { hmc    => "xCAT::PPCvm",
                        fsp    => "xCAT::FSPvm",
                        cec    => "xCAT::FSPvm",
-		      },
+                      },
         rmvm      => { hmc    => "xCAT::PPCvm",
-		      },
+                      },
         lsvm      => { hmc    => "xCAT::PPCvm",
                        fsp    => "xCAT::FSPvm",
                        cec    => "xCAT::FSPvm",
-		      },
+                      },
         chvm      => { hmc    => "xCAT::PPCvm",
                        fsp    => "xCAT::FSPvm",
                        cec    => "xCAT::FSPvm",
-		      },
+                      },
         rnetboot  => { hmc    => "xCAT::PPCboot",
                        ivm    => "xCAT::PPCboot",
                        fsp    => "xCAT::FSPboot",
                        cec    => "xCAT::FSPboot",
-		      },
+                      },
         getmacs   => { hmc    => "xCAT::PPCmac",
                        ivm    => "xCAT::PPCmac",
                        fsp    => "xCAT::FSPmac",
                        cec    => "xCAT::FSPmac",
-		      },
+                      },
         reventlog => { hmc    => "xCAT::PPClog",
-		      },
+                      },
         rspconfig => { hmc    => "xCAT::PPCcfg",
                        fsp    => "xCAT::FSPcfg",
                        bpa    => "xCAT::FSPcfg",
                        cec    => "xCAT::FSPcfg",
                        frame  => "xCAT::FSPcfg",
-		      },
+                      },
         rflash    => { hmc    => "xCAT::PPCrflash",
                        fsp    => "xCAT::FSPflash",
                        bpa    => "xCAT::FSPflash",
                        cec    => "xCAT::FSPflash",
                        frame  => "xCAT::FSPflash",
-	              },
+                      },
         mkhwconn  => { hmc    => "xCAT::PPCconn",
                        fsp    => "xCAT::FSPconn",
                        cec    => "xCAT::FSPconn",
                        bpa    => "xCAT::FSPconn",
                        frame  => "xCAT::FSPconn",
-		      },
+                      },
         rmhwconn  => { hmc    => "xCAT::PPCconn",
                        fsp    => "xCAT::FSPconn",
                        cec    => "xCAT::FSPconn",
                        bpa    => "xCAT::FSPconn",
                        frame  => "xCAT::FSPconn",
-		      },
+                      },
         lshwconn  => { hmc    => "xCAT::PPCconn",
                        fsp    => "xCAT::FSPconn",
                        cec    => "xCAT::FSPconn",
                        bpa    => "xCAT::FSPconn",
                        frame  => "xCAT::FSPconn",
-		      },
+                      },
         renergy   => { hmc    => "xCAT::PPCenergy",
                        fsp    => "xCAT::PPCenergy",
                        cec    => "xCAT::PPCenergy",
-		     },
+                     },
         rbootseq  => { fsp    => "xCAT::FSPbootseq",
                        cec    => "xCAT::FSPbootseq",
              },
@@ -1741,6 +1741,23 @@ sub process_request {
     #print "-------failed nodes-------\n";
     #print Dumper(\@failed_nodes); 
     my $hcps = getHCPsOfNodes(\@failed_nodes, $callback);
+    if ($request->{command} eq "mkhwconn" ) {
+        if ( grep ("-s", @$request{arg}) ) {
+            my $ppctab = xCAT::Table->new('ppc');
+            my %newhcp;
+            if ( $ppctab ) {
+                for my $n (@failed_nodes) {
+                    my $pptmp = $ppctab->getNodeAttribs( $n, [qw(sfp)]);
+                    if ($pptmp)
+                    {
+                        $newhcp{$n}{hcp} = [$pptmp->{sfp}];
+                        $newhcp{$n}{num} = 1;
+                     }
+                }
+                $hcps = \%newhcp;
+            }
+        }
+    }
     if( !defined($hcps)) {
 	#Not found the hcp for one node
         $request = {};	
