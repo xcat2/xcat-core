@@ -2245,6 +2245,19 @@ sub parse_responses {
             ###########################################
             # Strip commas from IP list
             ###########################################
+			
+            # we need te hidden ipv6 ip address temporarily
+			my @iptmp = split /,/, $result[4];
+            my @iptmp2;
+            foreach (@iptmp){
+                if ($_ =~ /\d+\.\d+\.\d+\.\d+/) {
+                   push @iptmp2,$_;
+                }
+             }
+             $result[4] = join( ",", @iptmp2);
+            # end of hidden ipv6 ip address
+
+
             $result[4] =~ s/,/ /g;
             my $ip     = $result[4];
 
