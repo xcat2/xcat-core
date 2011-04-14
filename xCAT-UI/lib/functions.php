@@ -105,8 +105,13 @@ function submit_request($req, $skipVerify, $opts_array){
 					// Strip HTML tags from output
 					if ($tmp = trim(strip_tags($str))) {
 						// Format the output based on what was given for $flush_format
-						echo $tmp . '<br/>';
-						flush();
+						if ($flush_format == "TDB") {
+							format_TBD($tmp);
+						} else {
+							// Print out output by default
+							echo $tmp . '<br/>';
+							flush();
+						}
 					}
 				}
 			}
@@ -297,5 +302,17 @@ function logout() {
 	// Clear server store of data
 	$_SESSION=array();
 	session_destroy();
+}
+
+/**
+ * Format a given string and echo it back to the browser
+ * 
+ * @param 	$str	String
+ * @return 	Nothing
+ */
+function format_TBD($str) {
+	// Format a given string however you want it 
+	echo $tmp . '<br/>';
+	flush();
 }
 ?>
