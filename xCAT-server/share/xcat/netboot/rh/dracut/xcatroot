@@ -4,7 +4,7 @@ RWDIR=.statelite
 XCATMASTER=$XCAT
 
 if [ ! -z "$imgurl" ]; then
-	if [ xhttp = x${imgurl%:*} ]; then
+	if [ xhttp = x${imgurl%%:*} ]; then
 		NFS=0
 		FILENAME=${imgurl##*/}
 		while [ ! -r "$FILENAME" ]; do
@@ -14,7 +14,7 @@ if [ ! -z "$imgurl" ]; then
 				sleep 27
 			fi
 		done
-	elif [ xnfs = x${imgurl%:*} ]; then
+	elif [ xnfs = x${imgurl%%:*} ]; then
 		NFS=1
 		SERVER=${imgurl#nfs:}
 		SERVER=${SERVER#/}
