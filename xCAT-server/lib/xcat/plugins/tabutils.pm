@@ -672,10 +672,13 @@ sub lsxcatd
           my $instance;
           $instance = $parts[1];
           my ($db2,$databasename)= split(':',$parts[0]);
+          my $xcatdbhome = xCAT::Utils->getHomeDir("xcatdb");
           $rsp{data}->[0] = "cfgloc=$cfgloc";
           $rsp{data}->[1] = "dbengine=$db2";
-          $rsp{data}->[3] = "dbname=$databasename";
           $rsp{data}->[2] = "dbinstance=$instance";
+          $rsp{data}->[3] = "dbname=$databasename";
+          $rsp{data}->[4] = "dbloc=$xcatdbhome";
+
           $cb->(\%rsp);
 
         }
