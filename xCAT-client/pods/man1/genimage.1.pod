@@ -65,8 +65,15 @@ The mount permission of B</.statelite> directory for B<statelite> mode, which is
 
 =item B<-n> I<nodenetdrivers>
 
-The driver modules needed for the network interface.  Note:  the order that the drivers are specified in
-is important.
+This argument is now optional, and allows you to specify the driver
+modules needed for the network interface(s) on your stateless nodes.  If
+you do not specify this option, the default is to include all recent IBM
+xSeries network drivers.  
+
+If specified, I<nodenetdrivers> should be a comma separated list of
+network drivers to be used by the stateless nodes (Ie.: -n tg3,e1000).
+Note that the drivers will be loaded in the order that you list them,
+which may prove important in some cases.
 
 =item B<-l> I<rootlimit>
 
@@ -105,11 +112,12 @@ Display usage message.
 
 =item 1.
 
-To generate a fedora8 image for a compute node architecture x86_64 and place it in the
-/install/netboot/fedora8/x86_64/compute/rootimg directory:  change directory to
-/opt/xcat/share/xcat/netboot/fedora and run:
+For example, to generate a fedora8 image for a compute node architecture
+x86_64 and place it in the
+/install/netboot/fedora8/x86_64/compute/rootimg directory:
 
- genimage -i eth0 -n tg3,bnx2 -o fedora8 -p compute
+ cd /opt/xcat/share/xcat/netboot/fedora/
+ genimage -i eth0 -o fedora8 -p compute
 
 This would use the profile information from the /opt/xcat/share/xcat/netboot/fedora/compute* files.
 
