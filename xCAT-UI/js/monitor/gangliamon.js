@@ -201,8 +201,8 @@ function loadGroups4Ganglia(data) {
 
 			// Create info bar
 			var info = $('<div class="ui-state-highlight ui-corner-all"></div>');
-			var msg = $('<p></p>');
-			msg.append('<span class="ui-icon ui-icon-info"></span>');
+			info.append('<span class="ui-icon ui-icon-info" style="display: inline-block; margin: 10px 5px;"></span>');
+			var msg = $('<p style="display: inline-block; width: 95%;"></p>');
 			msg.append('Review the nodes that are monitored by Ganglia.  You can turn on Ganglia monitoring on a node by selecting it and clicking on Monitor. If you are satisfied with the nodes you want to monitor, ');
 			msg.append(gangliaLnk);
 			msg.append(' to open Ganglia page.');
