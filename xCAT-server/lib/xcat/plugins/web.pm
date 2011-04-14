@@ -967,10 +967,10 @@ sub web_monls(){
 		my @temp = split(/\s+/, $line);
 		$ret .= @temp[0];
 		if('not-monitored' eq @temp[1]){
-			$ret .= ':Not Monitored;';
+			$ret .= ':Off;';
 		}
 		else{
-			$ret .= ':Monitored;';
+			$ret .= ':On;';
 		}
 	}
 	if ('' eq $ret){
