@@ -277,8 +277,11 @@ function ShowUpdateResult(data) {
 		}
 
 		// Create link to show details
-		$('#update').append('<br><a>Show details</a>');
-		$('#update a').bind('click', function() {
+		$('#update').append('<br/><a>Show details</a>');
+		$('#update a').css({
+			'color': '#0000FF',
+			'cursor': 'pointer'
+		}).bind('click', function() {
 			// Toggle details and change text
 			$('#resDetail').toggle();
 			if ($('#update a').text() == 'Show details') {
