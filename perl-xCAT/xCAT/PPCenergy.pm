@@ -312,7 +312,7 @@ sub renergy {
     
         # Disable the CHID signal before run the command. Otherwise the 
         # $? value of `$cmd` will come from handler of CHID signal
-        $SIG{CHLD} = (); 
+        $SIG{CHLD} = 'DEFAULT'; 
     
         # Call the xCAT_cim_client to query or set the energy capabilities
         $cmd .= " 2>&1";
