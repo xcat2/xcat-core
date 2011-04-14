@@ -589,6 +589,18 @@ B<updatenode clstrn01 -F -P>
 
 =item 3
 
+Running updatenode -P with the syncfiles postscript is not supported. You should use updatenode -F instead. 
+
+Do not run:
+
+B<updatenode clstrno1 -P syncfiles>
+
+Run:
+
+B<updatenode clstrn01 -F>
+
+=item 3
+
 To run the postscripts which indicated in the postscripts attribute on 
 the node "clstrn01":
 
