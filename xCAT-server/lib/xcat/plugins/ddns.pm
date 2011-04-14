@@ -189,19 +189,30 @@ sub process_request {
     my $hadargs=0;
     my $allnodes;
     my $zapfiles;
+    my $help;
     my $deletemode=0;
     if ($request->{arg}) {
         $hadargs=1;
         @ARGV=@{$request->{arg}};
+
+        Getopt::Long::Configure("no_pass_through");
         if (!GetOptions(
             'a|all' => \$allnodes,
             'n|new' => \$zapfiles,
             'd|delete' => \$deletemode,
+            'h|help' => \$help,
             )) {
-            xCAT::SvrUtils::sendmsg([1,"TODO: makedns Usage message"], $callback);
+            #xCAT::SvrUtils::sendmsg([1,"TODO: makedns Usage message"], $callback);
+            makedns_usage($callback);
             return;
         }
     }
+
+    if ($help)
+    {
+        makedns_usage($callback);
+    }
+    
     $ctx->{deletemode}=$deletemode;
         
     my $sitetab = xCAT::Table->new('site');
@@ -905,4 +916,21 @@ sub genpassword
     }
     return $password;
 }
+
+sub makedns_usage
+{
+    my $callback = shift;
+
+    my $rsp;
+    push @{$rsp->{data}},
+      "\n  makedns - sets up domain name services (DNS).";
+    push @{$rsp->{data}}, "  Usage: ";
+    push @{$rsp->{data}}, "\tmakedns [-h|--help ]";
+    push @{$rsp->{data}}, "\tmakedns [-n|--new ] [noderange]";
+    push @{$rsp->{data}}, "\tmakedns [-d|--delete ] [noderange]";
+    push @{$rsp->{data}}, "\n";
+    xCAT::MsgUtils->message("I", $rsp, $callback);
+    return 0;
+}
+
 1;
