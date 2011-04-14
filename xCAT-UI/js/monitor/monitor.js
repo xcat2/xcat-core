@@ -100,11 +100,11 @@ function loadMonitorPage() {
 				
 				// Set button to correct status
 				if (statusHash[name] == 'On') {
-					statusButton.append($('<input type="radio" id="' + name + 'On" name="' + name + 'Status" checked="checked"/><label for="' + name + 'On">On</label>'));
-					statusButton.append($('<input type="radio" id="' + name + 'Off" name="' + name + 'Status"/><label for="' + name + 'Off">Off</label>'));
+					statusButton.append($('<input type="radio" id="' + name + 'On" name="' + name + '" value="On" checked="checked"/><label for="' + name + 'On">On</label>'));
+					statusButton.append($('<input type="radio" id="' + name + 'Off" name="' + name + '" value="Off"/><label for="' + name + 'Off">Off</label>'));
 				} else {
-					statusButton.append($('<input type="radio" id="' + name + 'On" name="' + name + 'Status"/><label for="' + name + 'On">On</label>'));
-					statusButton.append($('<input type="radio" id="' + name + 'Off" name="' + name + 'Status" checked="checked"/><label for="' + name + 'Off">Off</label>'));
+					statusButton.append($('<input type="radio" id="' + name + 'On" name="' + name + '" value="On"/><label for="' + name + 'On">On</label>'));
+					statusButton.append($('<input type="radio" id="' + name + 'Off" name="' + name + '" value="Off" checked="checked"/><label for="' + name + 'Off">Off</label>'));
 				}
 
 				statusButton.find('label').css({
@@ -114,6 +114,9 @@ function loadMonitorPage() {
 					'width': 'auto'
 				});
 				statusButton.buttonset();
+				
+				// Turn on or off monitoring tool when clicked
+				statusButton.find('input["' + name + '"]:radio').change(toggleMonitor);
 			}
 						
 			var monTable = $('<table></table>');
@@ -279,4 +282,58 @@ function loadUnfinish(monitorName, tab) {
 	var unfinishPage = $('<div></div>');
 	unfinishPage.append(createInfoBar('Under construction'));
 	tab.add(monitorName, 'Unfinished', unfinishPage, true);
+}
+
+/**
+ * Turn on or off monitoring tool
+ * 
+ * @return Nothing
+ */
+function toggleMonitor() {
+	// Get the name of the monitoring tool
+	var name = $(this).attr('name');
+	// Get the status to toggle to, either on or off
+	var status = $(this).val();
+
+	// Start or stop monitoring plugin
+	var command = 'monstart';
+	if (status == 'Off') {
+		command = 'monstop'	;
+	}
+	
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : command,
+			tgt : '',
+			args : name + ';-r',
+			msg : name + ' switched ' + status
+		},
+		success : updateMonStatus
+	});
+}
+
+/**
+ * Update the monitoring status on Monitor tab
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function updateMonStatus(data) {
+	var rsp = data.rsp[data.rsp.length-1];
+	var msg = data.msg;
+	
+	// Create appropriate info or warning bar
+	var bar = '';
+	if (rsp.indexOf('started') > -1 || rsp.indexOf('stopped') > -1) {
+		bar = createInfoBar(msg);
+	} else {
+		var bar = createWarnBar('Failed to ' + msg + '. ' + rsp);
+	}
+	
+	// Prepend info or warning bar to tab
+	bar.prependTo($('#monitorTab .form'));
+	bar.delay(4000).slideUp();
 }
