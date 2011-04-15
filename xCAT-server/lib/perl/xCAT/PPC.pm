@@ -1742,7 +1742,7 @@ sub process_request {
     #print Dumper(\@failed_nodes); 
     my $hcps = getHCPsOfNodes(\@failed_nodes, $callback);
     if ($request->{command} eq "mkhwconn" ) {
-        if ( grep ("-s", @$request{arg}) ) {
+        if ( grep (/^-s$/, @$request{arg}) ) {
             my $ppctab = xCAT::Table->new('ppc');
             my %newhcp;
             if ( $ppctab ) {
