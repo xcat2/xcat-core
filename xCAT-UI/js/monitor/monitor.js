@@ -120,7 +120,7 @@ function loadMonitorPage() {
 			}
 						
 			var monTable = $('<table></table>');
-			monTable.append($('<thead><tr><th>Monitor Tool</th><th>Status</th><th>Description</th></tr></thead>'));
+			monTable.append($('<thead><tr><th><b>Monitor Tool</b></th><th><b>Status</b></th><th><b>Description</b></th></tr></thead>'));
 			
 			var monTableBody = $('<tbody></tbody>');
 			monTable.append(monTableBody);			

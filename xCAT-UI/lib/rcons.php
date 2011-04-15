@@ -1,5 +1,4 @@
 <?php
-
 require_once "functions.php";
 require_once "jsonwrapper.php";
 
@@ -48,7 +47,7 @@ if (isset($_POST['f'])){
 else{
 	$temp = $query . '&c=1&k=' . urlencode($_POST['k']);
 }
- 
+
 $output = rconsSynchronise($temp);
 if (0 < substr_count($output, 'error')){
 	echo (array('err'=>$output));

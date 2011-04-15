@@ -8,7 +8,7 @@ require_once "$TOPDIR/lib/jsonwrapper.php";
  * Replace the contents of an xCAT table
  *
  * @param 	$tab	The xCAT table
- * 			$cont	The xCAT table contents
+ * @param	$cont	The xCAT table contents
  * @return The xCAT response.  Replies are in the form of JSON
  */
 if (isset($_POST["table"])) {

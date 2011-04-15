@@ -10,9 +10,9 @@ require_once "$TOPDIR/lib/jsonwrapper.php";
  * own .php.  Look at zCmd.php for an example.
  *
  * @param 	$cmd	The xCAT command
- * 			$tgt	The target node or group
- * 			$args	The xCAT command arguments, separated by semicolons
- * 			$opts	The xCAT command options, separated by semicolons
+ * @param	$tgt	The target node or group
+ * @param 	$args	The xCAT command arguments, separated by semicolons
+ * @param	$opts	The xCAT command options, separated by semicolons
  * @return 	The xCAT response.  Replies are in the form of JSON
  */
 if (isset($_GET["cmd"])) {

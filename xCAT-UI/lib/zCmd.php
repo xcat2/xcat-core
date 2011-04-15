@@ -8,8 +8,8 @@ require_once "$TOPDIR/lib/jsonwrapper.php";
  * Issue an xCAT command (only for z)
  *
  * @param 	$cmd	The xCAT command
- * 			$tgt	The target node or group
- * 			$args	The xCAT command arguments, separated by semicolons
+ * @param	$tgt	The target node or group
+ * @param	$args	The xCAT command arguments, separated by semicolons
  * @return The xCAT response.  Replies are in the form of JSON
  */
 if (isset($_GET["cmd"])) {

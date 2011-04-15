@@ -15,9 +15,9 @@ ini_set('display_errors', true);
  * Run a command using the xCAT client/server protocol
  *
  * @param 	$cmd			The xCAT command
- * 			$nr				Node range or group
- * 			$args_array		Command arguments
- * 			$opts_array		Command options
+ * @param	$nr				Node range or group
+ * @param	$args_array		Command arguments
+ * @param	$opts_array		Command options
  * @return 	A tree of SimpleXML objects.
  * 			See perl-xCAT/xCAT/Client.pm for the format
  */
@@ -165,7 +165,7 @@ function submit_request($req, $skipVerify, $opts_array){
  * Enable password storage to split between cookie and session variable
  *
  * @param 	$data
- * 			$key
+ * @param	$key
  * @return
  */
 function xorcrypt($data, $key) {

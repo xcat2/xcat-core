@@ -20,10 +20,10 @@ if (isset($_GET["cmd"])) {
 	// HTTP GET requests
 	$cmd = $_GET["cmd"];
 	$msg = NULL;
-	
+
 	if (isset($_GET["msg"])){
 		$msg = $_GET["msg"];
-	}	
+	}
 	$ret = "";
 
 	if ("ostype" == $cmd) {
