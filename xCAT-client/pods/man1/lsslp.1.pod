@@ -9,12 +9,12 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp][--resetnet]>
+I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][-M vpd|switchport][--updatehosts][-makedhcp][--resetnet]>
 
 
 =head1 DESCRIPTION
 
-The lsslp command discovers selected service types using the -s flag. All service types are returned if the -s flag is not specified. If a specific IP address is not specified using the -i flag, the request is sent out all available network adapters. The optional -r, -x, -z and --vpdtable flags format the output.
+The lsslp command discovers selected service types using the -s flag. All service types are returned if the -s flag is not specified. If a specific IP address is not specified using the -i flag, the request is sent out all available network adapters. The optional -r, -x and -z flags format the output.
 
 NOTE: SLP broadcast requests will propagate only within the subnet of the network adapter broadcast IPs specified by the -i flag.
 
@@ -61,7 +61,7 @@ B<-C>          The number of the nodes expected to find, specified by the user.
             When using this flag, lsslp will not return until the it has found all the nodes or time out.
             The default max time is 5 minutes. The user can use -T flag the specify the time they want to use.
             A short time will limite the time costing, while a long time will help to find all the nodes.
-            
+
 B<-T>          The number in seconds to limite the time costing of lsslp. Must be used with the flag -C.
             See the help of flag -C for more details.            
 
@@ -79,8 +79,6 @@ B<--updatehosts>  Display current IP address or write the ip address into xCAT D
             the same as current ip address running on hardwares. This is to avoid useless 
             network resetting that if ip and otherinterfaces are the same, lsslp will skip
             the network resetting for that node.
-
-B<--vpdtable>  Output the SLP response in vpdtable formatting. Easy for writting data to vpd table.
 
 B<-v>          Command Version.
 
