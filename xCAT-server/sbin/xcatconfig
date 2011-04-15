@@ -364,13 +364,14 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL || $::genCredentials)
     system($xcmd);
 }
 
-# more - Linux-only config
-if (($::osname eq 'Linux') && (($::INITIALINSTALL || $::FORCE)))
+# more  config needed after xcatd start
+if ($::INITIALINSTALL || $::FORCE)
 {
     my $cmd;
-    #Zap the almost certainly wrong pxelinux.cfg file
-    if (-f "$::TFTPDIR/pxelinux.cfg/default")
-    {
+    if ($::osname eq 'Linux') {
+     #Zap the almost certainly wrong pxelinux.cfg file
+     if (-f "$::TFTPDIR/pxelinux.cfg/default")
+     {
         $cmd = "/bin/rm $::TFTPDIR/pxelinux.cfg/default";
         my $outref = xCAT::Utils->runcmd("$cmd", 0);
         if ($::RUNCMD_RC != 0)
@@ -382,17 +383,26 @@ if (($::osname eq 'Linux') && (($::INITIALINSTALL || $::FORCE)))
         {
             verbose("Removed $::TFTPDIR/pxelinux.cfg/default.");
         }
-    }
+     }
 
-    # run mknb - only needed for Intel platforms for now
-    &mknb;
+     # run mknb - only needed for Intel platforms for now
+     &mknb;
 
-    # makenetworks and setup http
-    &makenetworks;
+     # makenetworks and setup http
+     &makenetworks;
+     &setuphttp;
 
-    my $linux_note =
-      "xCAT is now installed, it is recommended to tabedit networks \nand set a dynamic ip address range on any networks where nodes \nare to be discovered. Then, run makedhcp -n to create a new dhcpd \nconfiguration file, and \/etc\/init.d\/dhcpd restart. Either examine sample \nconfiguration templates, or write your own, or specify a value per \nnode with nodeadd or tabedit.";
-    xCAT::MsgUtils->message('I', $linux_note);
+     my $linux_note =
+      "xCAT is now running, it is recommended to tabedit networks \nand set a dynamic ip address range on any networks where nodes \nare to be discovered. Then, run makedhcp -n to create a new dhcpd \nconfiguration file, and \/etc\/init.d\/dhcpd restart. Either examine sample \nconfiguration templates, or write your own, or specify a value per \nnode with nodeadd or tabedit.";
+     xCAT::MsgUtils->message('I', $linux_note);
+   } else { #AIX
+     # makenetworks
+     &makenetworks;
+
+     my $AIX_note =
+      "xCAT is now running.";
+     xCAT::MsgUtils->message('I', $AIX_note);
+   }
 
 }    #End - more - Linux-only config
 
@@ -1610,7 +1620,7 @@ sub mknb
 
 =head3    makenetworks 
 	
-     Runs makenetworks and initializes http  on Linux
+     Runs makenetworks on AIX and Linux 
 
 =cut
 
@@ -1633,6 +1643,20 @@ sub makenetworks
     }
 
 
+}
+#-----------------------------------------------------------------------------
+
+=head3    setuphttp 
+	
+     initializes http  on Linux
+
+=cut
+
+#-----------------------------------------------------------------------------
+sub setuphttp 
+{
+
+    my $cmd;
     # restart httpd
     if (-e "/etc/init.d/apache2")
     {    #for sles
@@ -1643,7 +1667,7 @@ sub makenetworks
         $cmd = "/etc/init.d/httpd stop; /etc/init.d/httpd start";
     }
 
-    $outref = xCAT::Utils->runcmd("$cmd", 0);
+    my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
         xCAT::MsgUtils->message('E', "Could not restart httpd.");
