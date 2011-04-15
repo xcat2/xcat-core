@@ -191,13 +191,18 @@ sub get_storage_pool_by_url {
             $poolobj->build();
             $poolobj->create();
         }
-        $poolobj->refresh();
+	eval { #we *try* to do this, but various things may interfere.
+		#this is basically to make sure the list of contents is up to date
+        	$poolobj->refresh();
+	};
         return $poolobj; 
     }
     $poolobj = $virtconn->define_storage_pool(build_pool_xml($url,$mounthost));
     $poolobj->build();
     $poolobj->create();
-    $poolobj->refresh();
+    eval { #wrap in eval, not likely to fail here, but calling it at all may be superfluous anyway
+    	$poolobj->refresh();
+    };
     return $poolobj;
 }
 
@@ -207,7 +212,9 @@ sub get_multiple_paths_by_url {
     my $node = $args{node};
     my $poolobj = get_storage_pool_by_url($url);
     unless ($poolobj) { die "Cound not get storage pool for $url"; }
-    $poolobj->refresh(); #if volumes change on nfs storage, libvirt is too dumb to notice
+    eval { #refresh() can 'die' if cloning in progress, accept stale data then
+    	$poolobj->refresh(); #if volumes change on nfs storage, libvirt is too dumb to notice
+    };
     my @volobjs = $poolobj->list_volumes();
     my %paths;
     foreach (@volobjs) {
@@ -242,7 +249,9 @@ sub get_filepath_by_url { #at the end of the day, the libvirt storage api gives 
     #ok, now that we have the pool, we need the storage volume from the pool for the node/dev
     my $poolobj = get_storage_pool_by_url($url);
     unless ($poolobj) { die "Could not get storage pool for $url"; }
-    $poolobj->refresh(); #if volumes change on nfs storage, libvirt is too dumb to notice
+    eval { #make a refresh attempt non-fatal to fail, since cloning can block it
+    	$poolobj->refresh(); #if volumes change on nfs storage, libvirt is too dumb to notice
+    };
     my @volobjs = $poolobj->list_volumes();
     my $desiredname = $node.'.'.$dev.'.'.$format;
     #print "desiredname=$desiredname, volobjs=@volobjs\n";
@@ -1645,8 +1654,10 @@ sub promote_vm_to_master {
         $volname =~ s!.*/!!; #perl is greedy by default
         $volname =~ s/^$node/$mastername/;
         my $novol;
-        eval {
+        eval { #use two evals, there is a chance the pool has a task blocking refresh like long-running clone.... libvirt should do better IMO, oh well
             $poolobj->refresh();
+        };
+        eval {
             $novol = $poolobj->get_volume_by_name($volname);
         };
         if ($novol) {
