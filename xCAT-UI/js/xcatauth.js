@@ -14,7 +14,7 @@ $(document).ready(function() {
 		},
 		open : function(type, dialog) {
 			if (document.location.protocol == "http:") {
-				$("#logstatus").html("You are using an unencrypted session !");
+				$("#logstatus").html("You are using an unencrypted session!");
 				$("#logstatus").css("color", "#ff0000");
 			}
 			if ($("#username").val() == "") {
@@ -53,7 +53,7 @@ function onlogin(data, txtStatus) {
 	// Clear password field regardless of what happens
 	$("#password").val("");
 	if (data.authenticated == "yes") {
-		$("#logstatus").text("Logged in successfully");
+		$("#logstatus").text("Login successful");
 		$("#logdialog").dialog("close");
 
 		// Remembered what page they were trying to go to

@@ -175,8 +175,7 @@ rconsTerm = function(nodeName, height, width){
 		if (firstFlag){
 			requireString = queryStable + keyPressList + '&f=1';
 			firstFlag = false;
-		}
-		else{
+		} else{
 			requireString = queryStable + keyPressList;
 		}
 		
@@ -201,8 +200,7 @@ rconsTerm = function(nodeName, height, width){
 		if (data.term){
 			termArea.empty().append(data.term);
 			maxDelay = 200;
-		}
-		else{
+		} else{
 			maxDelay = 2000;
 		}
 		

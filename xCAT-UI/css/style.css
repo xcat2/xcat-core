@@ -685,21 +685,22 @@ table a:hover {
 
 /*--------------- Discovery section ---------------*/
 .discoverstep {
-	width: 200px;
+	width: 220px;
 	vertical-align: top;
 	float: left;
 	position: relative;
 	overflow: auto;
-	background-color: #CCCCFF;
-	padding: 10px 0px 0px 5px;
+	background-color: #A9D0F5;
+	padding: 5px 0px;
 	-moz-border-radius: .5em;
 	-webkit-border-radius: .5em;
 	border-radius: .5em;
 }
 
 .discoverstep span {
-	font: normal bold 13px/ 35px verdana, arial, helvetica, sans-serif;
-	margin: 0px 0px 10px 0px;
+	font: normal bold 12px/ 35px verdana, arial, helvetica, sans-serif;
+	padding: 5px;
+	margin: 0px 5px; /* Top right left bottom*/
 }
 
 .discovercontent {

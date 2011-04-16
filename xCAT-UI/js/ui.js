@@ -297,15 +297,6 @@ DataTable.prototype.add = function(rowCont) {
 };
 
 /**
- * Remove a row from the datatable
- * 
- * @return Nothing
- */
-NodesTable.prototype.remove = function(id) {
-	// To be continued
-};
-
-/**
  * Create status bar
  * 
  * @param barId
@@ -332,7 +323,7 @@ function createInfoBar(msg) {
 	});
 	var msg = $('<p>' + msg + '</p>').css({
 		'display': 'inline-block',
-		'width': '95%'
+		'width': '90%'
 	});
 	
 	infoBar.append(icon);
@@ -349,7 +340,16 @@ function createInfoBar(msg) {
  */
 function createWarnBar(msg) {
 	var warnBar = $('<div class="ui-state-error ui-corner-all"></div>');
-	var msg = $('<p><span class="ui-icon ui-icon-alert"></span>' + msg + '</p>');
+	var icon = $('<span class="ui-icon ui-icon-alert"></span>').css({
+		'display': 'inline-block',
+		'margin': '10px 5px'
+	});
+	var msg = $('<p>' + msg + '</p>').css({
+		'display': 'inline-block',
+		'width': '90%'
+	});
+	
+	warnBar.append(icon);
 	warnBar.append(msg);
 	return warnBar;
 }
@@ -374,7 +374,7 @@ function createLoader(loaderId) {
  * @return Nothing
  */
 function createButton(name) {
-	var button = $('<button aria-disabled="false" role="button" class="ui-button ui-widget ui-state-default ui-corner-all ui-button-text-only" id="button"><span class="ui-button-text">' + name + '</span></button>');
+	var button = $('<button>' + name + '</button>').button();
 	return button;
 }
 
@@ -443,7 +443,6 @@ function initPage() {
 	
 	// Custom plugins
 	includeJs("js/custom/blade.js");
-	//includeJs("js/custom/hmc.js");
 	includeJs("js/custom/ipmi.js");
 	includeJs("js/custom/zvm.js");
 	includeJs("js/custom/customUtils.js");

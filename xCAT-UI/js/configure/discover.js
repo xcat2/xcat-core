@@ -1,13 +1,13 @@
 /*associate the step name with step number*/
-var steps = ['Discover Hardware', 
-             'Cluster Patterns',
-             'Supernode Numbers',
-             'More Cluster Patterns',
-             'Power On Hardware',
-             'Discover Frames',
-             'Prepare Management Node',
-             'Update Definitions',
-             'Create Lpars',
+var steps = ['Discover hardware', 
+             'Cluster patterns',
+             'Supernode numbers',
+             'More cluster patterns',
+             'Power on hardware',
+             'Discover frames',
+             'Prepare management node',
+             'Update definitions',
+             'Create LPARs',
              'Complete'];
 
 /*associate the function with step number*/
@@ -23,7 +23,7 @@ var initFunctions = [initSelectPlatform,
                      complete];
 
 /*associate the function witch should be called before the page changed(when click next or back)
- * if there is no need to call functions, use undefined.*/
+ *if there is no need to call functions, use undefined.*/
 var nextFunctions = [getPlatform,
                      checkBasicPattern,
                      checkSupernode,
@@ -67,7 +67,7 @@ function loadDiscoverPage(){
 function updateDiscoverStep(){
 	$('#discoverStepDiv').empty();
 	var showString = '';
-	for(var index in steps){
+	for (var index in steps){
 		showString += '<span';
 		if (currentStep == index){
 			showString += ' style="background-color:yellow;"';
@@ -101,7 +101,7 @@ function createDiscoverButtons(){
 		buttonDiv.append(backButton);
 	}
 	
-	if(nextButton){
+	if (nextButton){
 		buttonDiv.append(nextButton);
 	}
 
@@ -244,7 +244,7 @@ function expandNR(nodeRange){
 		var start = Number(parts[0]);
 		var end = Number(parts[1]);
 		var len = parts[0].length;
-		for(var i = parts[0]; i <= parts[1]; i++){
+		for (var i = parts[0]; i <= parts[1]; i++){
 			var ts = i.toString();
 			if (ts.length < len){
 				ts = "000000".substring(0, (len - ts.length)) + ts;
@@ -261,25 +261,25 @@ function expandNR(nodeRange){
 	}
 	
 	var begin = tempArray[0].match(/^(\D+)(\d+)$/);
-	if(2 > begin){
+	if (2 > begin){
 		retArray.push(nodeRange);
 		return retArray;
 	}
 	
 	var end = tempArray[1].match(/^(\D+)(\d+)$/);
-	if(2 > end){
+	if (2 > end){
 		retArray.push(nodeRange);
 		return retArray;
 	}
 	
-	if(begin[1] != end[1]){
+	if (begin[1] != end[1]){
 		retArray.push(nodeRange);
 		return retArray;
 	}
 	
 	var prefix = begin[1];
 	var len = begin[2].length;
-	for(var i = begin[2]; i <= end[2]; i++){
+	for (var i = begin[2]; i <= end[2]; i++){
 		var ts = i.toString();
 		if (ts.length < len){
 			ts = "000000".substring(0, (len - ts.length)) + ts;
@@ -302,7 +302,7 @@ function collectInputValue(){
 	$('#discoverContentDiv input[type=text]').each(function(){
 		var name = $(this).attr('name');
 		var value = $(this).attr('value');
-		if('' != value){
+		if ('' != value){
 			setDiscoverEnv(name, value);
 		}
 		else{
@@ -514,7 +514,8 @@ function checkBasicPattern(operType){
 	
 	//the input value check is finished.
 	if ('' != errMessage){
-		$('#patternDiv').prepend('<div class="ui-state-error ui-corner-all"><p>' + errMessage + '</p></div>');
+		var warnBar = createWarnBar(errMessage);
+		$('#patternDiv').prepend(warnBar);
 		return false;
 	}
 	
@@ -532,7 +533,8 @@ function checkBasicPattern(operType){
 	}
 	
 	if ('' != errMessage){
-		$('#patternDiv').prepend('<div class="ui-state-error ui-corner-all"><p>' + errMessage + '</p></div>');
+		var warnBar = createWarnBar(errMessage);
+		$('#patternDiv').prepend(warnBar);
 		return false;
 	}
 	
@@ -614,8 +616,10 @@ function checkSupernode(operType){
 		}
 	}
 	
+	var warnBar;
 	if (errString){
-		$('#supernodeDiv').prepend('<div class="ui-state-error ui-corner-all"><p>' + errString + '</p></div>');
+		warnBar = createWarnBar(errString);
+		$('#supernodeDiv').prepend(warnBar);
 		return false;
 	}
 	
@@ -623,7 +627,8 @@ function checkSupernode(operType){
 	if (eceNum != cecArray.length){
 		errString += 'The number of CEC calculated from supernode configure is ' + eceNum + ', but the number ' + 
 					 'calculated from CECs\' Name Range is ' + cecArray.length + '. Reconfigure the supernode please.';
-		$('#supernodeDiv').prepend('<div class="ui-state-error ui-corner-all"><p>' + errString + '</p></div>');
+		warnBar = createWarnBar(errString);
+		$('#supernodeDiv').prepend(warnBar);
 		return false;
 	}
 	
@@ -838,7 +843,8 @@ function checkSiteTable(operType){
 		return true;
 	}
 	
-	$('#discoverContentDiv #siteDiv').prepend('<div class="ui-state-error ui-corner-all"><p>' + errMessage + '</p></div>');
+	var warnBar = createWarnBar(errMessage);
+	$('#discoverContentDiv #siteDiv').prepend(warnBar);
 	return false;
 }
 
@@ -931,6 +937,7 @@ function initDiscoverFrames(){
 						frameArray[i] + '</span></p>');
 				
 			}
+			
 			for (var i in mtmsArray){
 				$('#mtmsTd').append('<p><input name="mtmsradio" type="radio" onclick="createMap(this)"><span>' + 
 						mtmsArray[i] + '</span></p>');
@@ -1003,8 +1010,8 @@ function checkFrameMtms(operType){
 	var vpdFileCon = '';
 	$('#discoverShow .ui-state-error').remove();
 	if (0 < $('#discoverShow :radio').size()){
-		$('#discoverContentDiv #discoverShow').prepend('<div class="ui-state-error ui-corner-all"><p>' + 
-				'Map all of the frame with mtms.</p></div>');
+		var warnBar = createWarnBar('Map all of the frame with mtms.');
+		$('#discoverContentDiv #discoverShow').prepend(warnBar);
 		return false;
 	}
 	
@@ -1284,12 +1291,12 @@ function lsslpWriteHMC(){
 			var mtmsArray = data.rsp[0].split(';');
 			var tempPar = '';
 			
-			if(hmcArray.length != mtmsArray.length){
+			if (hmcArray.length != mtmsArray.length){
 				//error info
 				$('#hmcLine2 img').remove();
-				$('#discoverContentDiv div').append('<div class="ui-state-error ui-corner-all"><p>' +
-						'Error: Defined ' + hmcArray.length  + ' hmcs, but discovered ' + mtmsArray.length + 
-						' hmcs. Check the configuration please.</p></div>');
+				var warnBar = createWarnBar('Error: Defined ' + hmcArray.length  + ' HMCs, but discovered ' + mtmsArray.length + 
+					' HMCs. Please check the configuration.');
+				$('#discoverContentDiv div').prepend(warnBar);
 				createDiscoverButtons();
 				return;
 			}
@@ -1423,13 +1430,13 @@ function ihCreateLpar(parentDiv){
 		var inputStr = getDiscoverEnv('partconf');
 		var testArray = reg.exec(inputStr);
 		if (!testArray || inputStr != testArray[0]){
-			$('#discoverContentDiv').prepend('<div class="ui-state-error ui-corner-all">' + 
-	                 '<p>Input the correct configuration rule.</p></div>');
+			var warnBar = createWarnBar('Input the correct configuration rule.');
+			$('#discoverContentDiv').prepend(warnBar);
 			return;
 		}
 
 		var ruleArray = inputStr.split(',');
-		for(var i in ruleArray){
+		for (var i in ruleArray){
 			var octantCount = 0;
 			var octantArray = ruleArray[i].split(':');
 			var octantRule = Number(octantArray[1]);
@@ -1450,10 +1457,10 @@ function ihCreateLpar(parentDiv){
 			lparCount += octantCount * octantRule;
 		}
 		
-		if(getDiscoverEnv('lparNumPerCec') != lparCount){
-			$('#discoverContentDiv').prepend('<div class="ui-state-error ui-corner-all">' + 
-            	'<p>The Lpar number per CEC is ' + getDiscoverEnv('lparNumPerCec') + ', but the configuration ' +
-            	'rule calculation is ' + lparCount + '.</p></div>');
+		if (getDiscoverEnv('lparNumPerCec') != lparCount){
+			var warnBar = createWarnBar('The LPAR number per CEC is ' + getDiscoverEnv('lparNumPerCec') + ', but the configuration ' +
+            	'rule calculation is ' + lparCount + '.');
+			$('#discoverContentDiv').prepend(warnBar);
 			return;
 		}
 		
@@ -1508,13 +1515,15 @@ function updateCreateLparDia(cecname, cecNum){
 		$('#createLparDiv').remove();
 	});
 }
+
 function nonihCreateLpar(parentDiv){
 	var showStr = 'The machine type is not P7 IH, so you had to create lpars by command line manually.';
 	parentDiv.append(createInfoBar(showStr));
 	return;
 }
+
 /**
- * Step 10: compelte
+ * Step 10: complete
  *          
  * @param 
  * 
@@ -1528,5 +1537,4 @@ function complete(){
 	$('#discoverContentDiv').append(showStr);
 	
 	createDiscoverButtons();
-
 }

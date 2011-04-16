@@ -153,14 +153,14 @@ function xcatrmcRpmCheck(){
 			var needHelp = false;
 			$('#rmcMonStatus').empty();
 			//check the xcat-rmc
-			if(-1 != softInstallStatus[0].indexOf("not")){
+			if (-1 != softInstallStatus[0].indexOf("not")){
 				needHelp = true;
 				$('#rmcMonStatus').append(
 				'Please install the <a href="http://xcat.sourceforge.net/#download" target="install_window">xCAT-rmc</a> first.<br/>');
 			}
 			
 			//check the rrdtool
-			if(-1 != softInstallStatus[1].indexOf("not")){
+			if (-1 != softInstallStatus[1].indexOf("not")){
 				needHelp = true;
 				$('#rmcMonStatus').append(
 					'Please install the <a href="http://oss.oetiker.ch/rrdtool/download.en.html" target="install_window">RRD-tool</a> first.<br/>');
@@ -357,8 +357,8 @@ function showDetail(){
 	$('#rmcmonDetail').append(detailFilter);
 	
 	select = $('<select id="metric"></select>');
-	for(var node in globalNodesDetail){
-		for(var attr in globalNodesDetail[node]){
+	for (var node in globalNodesDetail){
+		for (var attr in globalNodesDetail[node]){
 			select.append('<option value="' + attr + '">' + attr + '</option>');
 		}
 		break;
@@ -468,7 +468,6 @@ function showNode(nodeName){
 		$('#rmcmonDetail').show();
 	});
 
-	
 	$('#nodeDetail').append(nodeTable);
 	
 	for(var attr in globalNodesDetail[nodeName]){
@@ -497,18 +496,18 @@ function showNode(nodeName){
 function filterSort(attrName, sortType, retArray){
 	var tempObj = {};
 	
-	for(var node in globalNodesDetail){
+	for (var node in globalNodesDetail){
 		tempObj['name'] = node; 
 		tempObj['value'] = globalNodesDetail[node][attrName];
 		retArray.push(tempObj);
 	}
 	
 	//by node name
-	if(3 == sortType){
+	if (3 == sortType){
 		retArray.sort(sortName);
 	}
 	//desend
-	else if(2 == sortType){
+	else if (2 == sortType){
 		retArray.sort(sortDes);
 	}
 	//ascend
@@ -520,7 +519,7 @@ function filterSort(attrName, sortType, retArray){
 }
 
 function sortAsc(x, y){
-	if(x['value'] > y['value']){
+	if (x['value'] > y['value']){
 		return 1;
 	}
 	else{
@@ -529,7 +528,7 @@ function sortAsc(x, y){
 }
 
 function sortDes(x, y){
-	if(x['value'] > y['value']){
+	if (x['value'] > y['value']){
 		return -1;
 	}
 	else{
@@ -538,7 +537,7 @@ function sortDes(x, y){
 }
 
 function sortName(x, y){
-	if(x['name'] > y['name']){
+	if (x['name'] > y['name']){
 		return 1;
 	}
 	else{
@@ -560,7 +559,7 @@ function showConfigureDia(){
 	for (var i in wholeAttrArray){
 		var name = wholeAttrArray[i];
 		var tempString = '<tr>';
-		if(selectedAttrHash[name]){
+		if (selectedAttrHash[name]){
 			tempString += '<td><input type="checkbox" name="' + name + '" checked="checked"></td>';
 		}
 		else{
@@ -599,7 +598,7 @@ function showConfigureDia(){
 		 			//collect all attibutes' name
 		 			var str = '';
 		 			$('#rmcAttrTable input:checked').each(function(){
-		 				if('' == str){
+		 				if ('' == str){
 		 					str += $(this).attr('name');
 		 				}
 		 				else{
@@ -631,7 +630,7 @@ function showConfigureDia(){
  * load the rmc event tab.
  * 
  * @param 
-
+ * 
  * @return
  *        
  */
@@ -661,7 +660,6 @@ function loadRmcEvent(){
 /**
  * get all conditions  
  * 
- * 
  * @return
  *        
  */
@@ -678,7 +676,7 @@ function getConditions(){
 				msg : ''
 			},
 			
-			success : function(data){
+			success : function (data){
 				$('#rmcEventStatus').empty();
 				$('#rmcEventButtons').show();
 				globalCondition = data.rsp[0];
@@ -693,7 +691,6 @@ function getConditions(){
 /**
  * get all response  
  * 
- * 
  * @return
  *        
  */
@@ -704,6 +701,7 @@ function getResponse(){
 		tempFlag = true; 
 		break;
 	}
+	
 	if (!tempFlag){
 		$.ajax({
 			url : 'lib/cmd.php',
@@ -717,7 +715,7 @@ function getResponse(){
 			
 			success : function(data){
 				var resps = data.rsp[0].split(';');
-				for(var i in resps){
+				for (var i in resps){
 					var name = resps[i];
 					name = name.substr(1, (name.length - 2));
 					globalResponse[name] = 1;
@@ -755,7 +753,7 @@ function showEventLog(data){
 	var eventTable = new DataTable('lsEventTable');
 	eventTable.init(['Time', 'Type', 'Content']);
 	
-	for(var i in data.rsp){
+	for (var i in data.rsp){
 		var row = data.rsp[i].split(';');
 		eventTable.add(row);
 	}
@@ -840,7 +838,7 @@ function mkCondRespDia(){
 				msg : ''
 			},
 			
-			success : function(data){
+			success : function (data){
 				var tempHash = new Object();
 				var oldSelectedResp = '';
 				var showStr = '';
@@ -853,8 +851,8 @@ function mkCondRespDia(){
 					}
 				}
 				
-				for(var name in globalResponse){
-					if(tempHash[name]){
+				for (var name in globalResponse){
+					if (tempHash[name]){
 						showStr += '<input type="checkbox" checked="checked" value="' + name + '">' + name + '<br/>';
 						oldSelectedResp += ';' + name;
 					}
@@ -905,7 +903,7 @@ function mkCondRespDia(){
 				});
 				
 				for (var i in newResp){
-					if(oldResp[i]){
+					if (oldResp[i]){
 						delete oldResp[i];
 						delete newResp[i];
 					}
@@ -915,7 +913,7 @@ function mkCondRespDia(){
 				for (var i in oldResp){
 					oldString += ',"' + i + '"';
 				}
-				if('' != oldString){
+				if ('' != oldString){
 					oldString = oldString.substr(1);
 				}
 				
@@ -927,7 +925,7 @@ function mkCondRespDia(){
 					newString = newString.substr(1);
 				}
 				
-				if(('' != oldString) || ('' != newString)){
+				if (('' != oldString) || ('' != newString)){
 					$('#rmcEventStatus').empty().append('Create/Remove associations').append(createLoader());
 					$.ajax({
 						url : 'lib/cmd.php',
@@ -1298,7 +1296,7 @@ function createAssociationTable(cond){
 	var showStr = '<center><table><thead><tr><th>Condition Name</th><th>Status</th><th>Start/Stop</th></tr></thead>';
 	showStr += '<tbody>';
 	
-	for(var i in conditions){
+	for (var i in conditions){
 		name = conditions[i];
 		tempLength = name.length;
 		tempStatus = name.substr(tempLength - 3);

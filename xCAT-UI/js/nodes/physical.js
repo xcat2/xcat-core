@@ -77,7 +77,6 @@ function initGraphicalData(dataTypeIndex, attrNullNode){
  * extract all nodes userful data into a hash, which is used for creating graphical
  * 
  * @param data: the response from xcat command "nodels all nodetype.nodetype ppc.parent ..." 
- *
  * @return nodes list for next time query
  */
 function extractGraphicalData(data){
@@ -90,7 +89,7 @@ function extractGraphicalData(data){
 			graphicalNodeList[nodeName] = new Object();
 		}
 		
-		switch(data.msg.substr(5, 1)){
+		switch (data.msg.substr(5, 1)){
 			case '0': 
 			case '1':{
 				if (!nodes[i][1]){
@@ -135,7 +134,7 @@ function createPhysicalLayout(nodeList){
 	}
 	
 	//it is getting data,so we had to wait now.
-	if(gettingDataFlag){
+	if (gettingDataFlag){
 		return;
 	}
 	
@@ -145,7 +144,7 @@ function createPhysicalLayout(nodeList){
 	}
 	
 	//save the new selected nodes.
-	if(graphicalNodeList){
+	if (graphicalNodeList){
 		for(var i in graphicalNodeList){
 			flag = true;
 			break;
@@ -179,7 +178,7 @@ function fillList(nodeName){
 		status = 'unknown';
 	}
 	
-	switch(graphicalNodeList[nodeName]['type']){
+	switch (graphicalNodeList[nodeName]['type']){
 		case 'frame': {
 			if (undefined == bpaList[nodeName]){
 				bpaList[nodeName] = new Array();
@@ -275,8 +274,7 @@ function createGraphical(bpa, fsp, area){
 	//find the single fsp and sort descend by units 
 	var singleFsp = new Array();
 	for (var fspName in fsp){
-		if (usedFsp[fspName])
-		{
+		if (usedFsp[fspName]){
 			continue;
 		}
 		
@@ -408,7 +406,6 @@ function createGraphical(bpa, fsp, area){
  * 
  * @param 
  * @return
- *
  **/
 function updateSelectNodeDiv(){
 	var temp = 0;
@@ -432,11 +429,10 @@ function updateSelectNodeDiv(){
  * 
  * @param getNodesFunction
  *            the function that can find selected nodes name
- * @return 
- *        action menu object
+ * @return action menu object
  */
 function createActionMenu(){
-	// Create action bar
+	//create action bar
 	var actionBar = $('<div class="actionBar"></div>');
 
 	/**
@@ -444,11 +440,11 @@ function createActionMenu(){
 	 * power, clone, delete, unlock, and advanced
 	 */
 	var powerLnk = $('<a>Power</a>');
-	//Power on
+	//power on
 	var powerOnLnk = $('<a>Power on</a>');
 	powerOnLnk.bind('click', function(event) {
 		var tgtNodes = getSelectNodes();
-		$.ajax( {
+		$.ajax({
 			url : 'lib/cmd.php',
 			dataType : 'json',
 			data : {
@@ -460,11 +456,11 @@ function createActionMenu(){
 		});
 	});
 
-	//Power off
+	//power off
 	var powerOffLnk = $('<a>Power off</a>');
 	powerOffLnk.bind('click', function(event) {
 		var tgtNodes = getSelectNodes();
-		$.ajax( {
+		$.ajax({
 			url : 'lib/cmd.php',
 			dataType : 'json',
 			data : {
@@ -476,14 +472,14 @@ function createActionMenu(){
 		});
 	});
 
-	//Clone
+	//clone
 	var cloneLnk = $('<a>Clone</a>');
 	cloneLnk.bind('click', function(event) {
 		/*
 		for (var name in selectNode) {
 			var mgt = graphicalNodeList[name]['mgt'];
 			
-			// Create an instance of the plugin
+			//create an instance of the plugin
 			var plugin;
 			switch(mgt) {
 				case "blade":
@@ -511,7 +507,7 @@ function createActionMenu(){
 		*/
 	});
 
-	//Delete
+	//delete
 	var deleteLnk = $('<a>Delete</a>');
 	deleteLnk.bind('click', function(event) {
 		var tgtNodes = getSelectNodes();
@@ -520,7 +516,7 @@ function createActionMenu(){
 		}
 	});
 
-	//Unlock
+	//unlock
 	var unlockLnk = $('<a>Unlock</a>');
 	unlockLnk.bind('click', function(event) {
 		var tgtNodes = getSelectNodes();
@@ -529,7 +525,7 @@ function createActionMenu(){
 		}
 	});
 
-	//Run script
+	//run script
 	var scriptLnk = $('<a>Run script</a>');
 	scriptLnk.bind('click', function(event) {
 		var tgtNodes = getSelectNodes();
@@ -538,7 +534,7 @@ function createActionMenu(){
 		}
 	});
 
-	//Update node
+	//update node
 	var updateLnk = $('<a>Update</a>');
 	updateLnk.bind('click', function(event) {
 		var tgtNodes = getSelectNodes();
@@ -547,7 +543,7 @@ function createActionMenu(){
 		}
 	});
 
-	//Set boot state
+	//set boot state
 	var setBootStateLnk = $('<a>Set boot state</a>');
 	setBootStateLnk.bind('click', function(event) {
 		var tgtNodes = getSelectNodes();
@@ -556,7 +552,7 @@ function createActionMenu(){
 		}
 	});
 
-	//Boot to network
+	//boot to network
 	var boot2NetworkLnk = $('<a>Boot to network</a>');
 	boot2NetworkLnk.bind('click', function(event) {
 		var tgtNodes = getSelectNodes();
@@ -565,7 +561,7 @@ function createActionMenu(){
 		}
 	});
 
-	//Remote console
+	//remote console
 	var rcons = $('<a>Open console</a>');
 	rcons.bind('click', function(event){
 		var tgtNodes = getSelectNodes();
@@ -574,7 +570,7 @@ function createActionMenu(){
 		}
 	});
 	
-	//Edit properties
+	//edit properties
 	var editProps = $('<a>Edit properties</a>');
 	editProps.bind('click', function(event){
 		for (var node in selectNode) {
@@ -584,17 +580,17 @@ function createActionMenu(){
 
 	var advancedLnk = $('<a>Advanced</a>');
 
-	// Power actions
+	//power actions
 	var powerActions = [ powerOnLnk, powerOffLnk ];
 	var powerActionMenu = createMenu(powerActions);
 
-	// Advanced actions
+	//advanced actions
 	var advancedActions;
 	advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons, editProps ];
 	var advancedActionMenu = createMenu(advancedActions);
 
 	/**
-	 * Create an action menu
+	 * create an action menu
 	 */
 	var actionsDIV = $('<div></div>');
 	var actions = [ [ powerLnk, powerActionMenu ], cloneLnk, deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
@@ -612,8 +608,7 @@ function createActionMenu(){
  * @param bpaName : fsp's key
  *        fsp : all fsp and there related lpars
  *        fspinfo : all fsps' hardwareinfo
- * @return
- *       
+ * @return     
  */
 function createFspDiv(fspName, mtm, fsp){
 	//create fsp title
@@ -658,8 +653,7 @@ function createFspDiv(fspName, mtm, fsp){
  * @param bpaName : fsp's key
  *        fsp : all fsp and there related lpars
  *        fspinfo : all fsps' hardwareinfo
- * @return
- *        
+ * @return     
  */
 function createFspTip(fspName, mtm, fsp){
 	var tip = $('<div class="tooltip"></div>');
@@ -694,9 +688,7 @@ function createFspTip(fspName, mtm, fsp){
  * map the lpar's status into a color 
  * 
  * @param status : lpar's status in nodelist table
-
- * @return
- *        corresponding color name
+ * @return corresponding color name
  */
 function statusMap(status){
 	var color = 'gainsboro';
@@ -728,9 +720,7 @@ function statusMap(status){
  * select all lpars checkbox in the dialog 
  * 
  * @param 
-
- * @return
- *        
+ * @return   
  */
 function selectAllLpars(checkbox){
 	var temp = checkbox.attr('checked');
@@ -741,9 +731,7 @@ function selectAllLpars(checkbox){
  * export all lpars' name from selectNode 
  * 
  * @param 
-
- * @return lpars' string
- *        
+ * @return lpars' string   
  */
 function getSelectNodes() {
     var ret = '';
@@ -759,7 +747,6 @@ function getSelectNodes() {
  * list and update the tooltip table 
  * 
  * @param 
-
  * @return 
  */
 function changeNode(lparName, status){
@@ -783,7 +770,6 @@ function changeNode(lparName, status){
  * The P7-IH's cecs are insert from down to up, so we had to coculate the blank height. 
  * 
  * @param 
-
  * @return the height for the cec
  */
 function coculateBlank(mtm){

@@ -40,7 +40,7 @@ hmcPlugin.prototype.loadInventory = function(data) {
 
 	// Loop through each line
 	var fieldSet, legend, oList, item;
-	for ( var k = 0; k < inv.length; k++) {
+	for (var k = 0; k < inv.length; k++) {
 		// Remove node name in front
 		var str = inv[k].replace(node + ': ', '');
 		str = jQuery.trim(str);
@@ -106,7 +106,7 @@ hmcPlugin.prototype.loadClonePage = function(node) {
 		// Add clone tab
 		tab.add(newTabId, 'Clone', cloneForm, true);
 	}
-	
+
 	tab.select(newTabId);
 };
 
@@ -119,8 +119,8 @@ hmcPlugin.prototype.loadClonePage = function(node) {
  */
 hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	// Get OS image names
-	if (!$.cookie('imagenames')){
-		$.ajax( {
+	if (!$.cookie('imagenames')) {
+		$.ajax({
 			url : 'lib/cmd.php',
 			dataType : 'json',
 			data : {
@@ -135,7 +135,7 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	}
 
 	// Get groups
-	if (!$.cookie('groups')){
+	if (!$.cookie('groups')) {
 		$.ajax( {
 			url : 'lib/cmd.php',
 			dataType : 'json',
@@ -175,16 +175,8 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 	provForm.append('<div><label>Provision:</label><select><option value="existing">Existing node</option></select></div>');
 
 	/**
-	 * Create provision new node division
-	 */
-	// You should copy whatever is in this function, put it here, and customize it
-	//var provNew = createProvisionNew('hmc', inst);
-	//provForm.append(provNew);
-
-	/**
 	 * Create provision existing node division
 	 */
-	// You should copy whatever is in this function, put it here, and customize it
 	provForm.append(createHmcProvisionExisting(inst));
 
 	var hmcProvisionBtn = createButton('Provision');
@@ -192,48 +184,48 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 		// Remove any warning messages
 		var tempTab = $(this).parent().parent();
 		tempTab.find('.ui-state-error').remove();
-		
+
 		var ready = true;
 		var errMsg = '';
 		var tempNodes = '';
-		
+
 		// Get nodes that were checked
 		tempNodes = getCheckedByObj(tempTab.find('table'));
-		if ('' == tempNodes){
+		if ('' == tempNodes) {
 			errMsg += 'You need to select a node.<br>';
 			ready = false;
-		}
-		else{
+		} else {
 			tempNodes = tempNodes.substr(0, tempNodes.length - 1);
 		}
-		
+
 		// If all inputs are valid, ready to provision
-		if (ready) {			
+		if (ready) {
 			// Disable provision button
 			$(this).attr('disabled', 'true');
-			
+
 			// Show loader
 			tempTab.find('#statBar').show();
 			tempTab.find('#loader').show();
 
 			// Disable all selects, input and checkbox
 			tempTab.find('input').attr('disabled', 'disabled');
-						
+
 			// Get operating system image
 			var os = tempTab.find('#osname').val();
 			var arch = tempTab.find('#arch').val();
 			var profile = tempTab.find('#pro').val();
-									
+
 			/**
 			 * (1) Set operating system
 			 */
-			$.ajax( {
+			$.ajax({
 				url : 'lib/cmd.php',
 				dataType : 'json',
 				data : {
 					cmd : 'nodeadd',
 					tgt : '',
-					args : tempNodes + ';noderes.netboot=yaboot;nodetype.os=' + os + ';nodetype.arch=' + arch + ';nodetype.profile=' + profile,
+					args : tempNodes + ';noderes.netboot=yaboot;nodetype.os=' + os
+							+ ';nodetype.arch=' + arch + ';nodetype.profile=' + profile,
 					msg : 'cmd=nodeadd;out=' + tempTab.attr('id')
 				},
 
@@ -246,22 +238,22 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 		}
 	});
 	provForm.append(hmcProvisionBtn);
-	
-	// update the node table on group select 
-	provForm.find('#groupname').bind('change', function(){
+
+	// Update the node table on group select
+	provForm.find('#groupname').bind('change', function() {
 		var groupName = $(this).val();
 		var nodeArea = $('#hmcSelectNodesTable' + inst);
 		nodeArea.empty();
-		if (!groupName){
+		if (!groupName) {
 			nodeArea.html('Select a group to view its nodes');
 			return;
 		}
-		
+
 		nodeArea.append(createLoader());
-		createNodesArea(groupName, 'hmcSelectNodesTable'+ inst);
+		createNodesArea(groupName, 'hmcSelectNodesTable' + inst);
 	});
-	// Toggle provision new/existing on select
 };
+
 /**
  * Load resources
  * 
@@ -272,14 +264,14 @@ hmcPlugin.prototype.loadResources = function() {
 	var tabId = 'hmcResourceTab';
 	// Remove loader
 	$('#' + tabId).find('img').remove();
-	
+
 	// Create info bar
 	var infoBar = createInfoBar('Under construction');
 
 	// Create resource form
 	var resrcForm = $('<div class="form"></div>');
 	resrcForm.append(infoBar);
-	
+
 	$('#' + tabId).append(resrcForm);
 };
 
@@ -295,95 +287,92 @@ hmcPlugin.prototype.addNode = function() {
 /**
  * Create hmc provision existing form
  * 
- * @return: form content
+ * @return: Form content
  */
-function createHmcProvisionExisting(inst){
-	//create the group area.
+function createHmcProvisionExisting(inst) {
+	// Create the group area
 	var strGroup = '<div><label>Group:</label>';
 	var groupNames = $.cookie('groups');
-	if (groupNames){
+	if (groupNames) {
 		strGroup += '<select id="groupname"><option></option>';
 		var temp = groupNames.split(',');
-		for (var i in temp){
+		for (var i in temp) {
 			strGroup += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
 		}
 		strGroup += '</select>';
-	}
-	else{
+	} else {
 		strGroup += '<input type="text" id="groupname">';
 	}
 	strGroup += '</div>';
-	
-	//create nodes area
-	var strNodes = '<div><label>Nodes:</label><div id="hmcSelectNodesTable' + inst + 
-				  '" style="display:inline-block;width:700px;overflow-y:auto;">Select a group to view its nodes</div></div>';
-	
-	//create boot method
-	var strBoot = '<div><label>Boot Method:</label><select id="boot">' + 
-				'<option value="install">install</option>' + 
-				'<option value="netboot">netboot</option>' +
-				'<option value="statelite">statelite</option></select></div>';
-	
+
+	// Create nodes area
+	var strNodes = '<div><label>Nodes:</label><div id="hmcSelectNodesTable'
+			+ inst
+			+ '" style="display:inline-block;width:700px;overflow-y:auto;">Select a group to view its nodes</div></div>';
+
+	// Create boot method
+	var strBoot = '<div><label>Boot Method:</label><select id="boot">'
+			+ '<option value="install">install</option>'
+			+ '<option value="netboot">netboot</option>'
+			+ '<option value="statelite">statelite</option></select></div>';
+
 	// Create operating system
 	var strOs = '<div><label>Operating system:</label>';
 	var osName = $.cookie('osvers');
-	if (osName){
+	if (osName) {
 		strOs += '<select id="osname">';
 		var temp = osName.split(',');
-		for (var i in temp){
+		for (var i in temp) {
 			strOs += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
 		}
 		strOs += '</select>';
-	}
-	else{
+	} else {
 		strOs += '<input type="text" id="osname">';
 	}
 	strOs += '</div>';
-	
-	//create architecture
+
+	// Create architecture
 	var strArch = '<div><label>Architecture:</label>';
 	var archName = $.cookie('osarchs');
-	if ('' != archName){
+	if ('' != archName) {
 		strArch += '<select id="arch">';
 		var temp = archName.split(',');
-		for (var i in temp){
+		for (var i in temp) {
 			strArch += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
 		}
 		strArch += '</select>';
-	}
-	else{
+	} else {
 		strArch += '<input type="text" id="arch">';
 	}
 	strArch += '</div>';
-	
-	//create profile 
+
+	// Create profile
 	var strPro = '<div><label>Profile:</label>';
 	var proName = $.cookie('profiles');
-	if ('' != proName){
+	if ('' != proName) {
 		strPro += '<select id="pro">';
 		var temp = proName.split(',');
-		for (var i in temp){
+		for (var i in temp) {
 			strPro += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
 		}
 		strPro += '</select>';
-	}
-	else{
+	} else {
 		strPro += '<input type="text" id="pro">';
 	}
 	strPro += '</div>';
-	
+
 	var strRet = strGroup + strNodes + strBoot + strOs + strArch + strPro;
 	return strRet;
 }
 
 /**
- * refresh the nodes area base on group selected
+ * Refresh the nodes area base on group selected
  * 
  * @return Nothing
  */
-function createNodesArea(groupName, areaId){
+function createNodesArea(groupName, areaId) {
 	// Get group nodes
-	$.ajax( {
+	$.ajax({
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
@@ -406,19 +395,19 @@ function createNodesArea(groupName, areaId){
 			var index;
 			var showStr = '<table><thead><tr><th><input type="checkbox" onclick="selectAllCheckbox(event, $(this))"></th>';
 			showStr += '<th>Node</th></tr></thead><tbody>';
-			for (index in nodes){
+			for (index in nodes) {
 				var node = nodes[index][0];
-				if ('' == node){
+				if ('' == node) {
 					continue;
 				}
-				showStr += '<tr><td><input type="checkbox" name="' + node + '"/></td><td>' + node + '</td></tr>';
+				showStr += '<tr><td><input type="checkbox" name="' + node + '"/></td><td>'
+						+ node + '</td></tr>';
 			}
 			showStr += '</tbody></table>';
 			areaObj.empty().append(showStr);
-			if (index > 10){
+			if (index > 10) {
 				areaObj.css('height', '300px');
-			}
-			else{
+			} else {
 				areaObj.css('height', 'auto');
 			}
 		} // End of function(data)
@@ -426,11 +415,11 @@ function createNodesArea(groupName, areaId){
 }
 
 /**
- * provision for existing system p node
+ * Provision for existing system p node
  * 
  * @return Nothing
  */
-function pProvisionExisting(data){
+function pProvisionExisting(data) {
 	// Get ajax response
 	var rsp = data.rsp;
 	var args = data.msg.split(';');
@@ -439,21 +428,22 @@ function pProvisionExisting(data){
 	var cmd = args[0].replace('cmd=', '');
 	// Get provision tab instance
 	var tabId = args[1].replace('out=', '');
-	
-	//get tab obj
+
+	// Get tab obj
 	var tempTab = $('#' + tabId);
+
 	/**
 	 * (2) Prepare node for boot
 	 */
 	if (cmd == 'nodeadd') {
 		// Get operating system
 		var bootMethod = tempTab.find('#boot').val();
-		
+
 		// Get nodes that were checked
 		var tgts = getCheckedByObj(tempTab.find('table'));
-		
+
 		// Prepare node for boot
-		$.ajax( {
+		$.ajax({
 			url : 'lib/cmd.php',
 			dataType : 'json',
 			data : {
@@ -465,14 +455,14 @@ function pProvisionExisting(data){
 
 			success : pProvisionExisting
 		});
-	} 
-	
+	}
+
 	/**
 	 * (3) Boot node from network
 	 */
 	else if (cmd == 'nodeset') {
 		// Write ajax response to status bar
-		var prg = writeRsp(rsp, '');	
+		var prg = writeRsp(rsp, '');
 		tempTab.find('#statBar').append(prg);
 
 		// If there was an error, do not continue
@@ -480,12 +470,12 @@ function pProvisionExisting(data){
 			tempTab.find('#loader').remove();
 			return;
 		}
-				
+
 		// Get nodes that were checked
 		var tgts = getCheckedByObj(tempTab.find('table'));
-		
+
 		// Boot node from network
-		$.ajax( {
+		$.ajax({
 			url : 'lib/cmd.php',
 			dataType : 'json',
 			data : {
@@ -497,36 +487,34 @@ function pProvisionExisting(data){
 
 			success : pProvisionExisting
 		});
-	} 
-	
+	}
+
 	/**
 	 * (4) Done
 	 */
 	else if (cmd == 'rnetboot') {
 		// Write ajax response to status bar
-		var prg = writeRsp(rsp, '');	
+		var prg = writeRsp(rsp, '');
 		tempTab.find('#statBar').append(prg);
-		
 		tempTab.find('#loader').remove();
 	}
-
 }
 
 /**
- * get all select elements' name in the obj, 
+ * Get all select elements' name in the obj
  * 
- * @return all nodes name, seperate by ','
+ * @return All nodes name, seperate by ','
  */
-function getCheckedByObj(obj){
+function getCheckedByObj(obj) {
 	var tempStr = '';
 	// Get nodes that were checked
-	obj.find('input:checked').each(function(){
-		if($(this).attr('name')){
+	obj.find('input:checked').each(function() {
+		if ($(this).attr('name')) {
 			tempStr += $(this).attr('name') + ',';
 		}
 	});
-	
-	if ('' != tempStr){
+
+	if ('' != tempStr) {
 		tempStr = tempStr.substr(0, tempStr.length - 1);
 	}
 
