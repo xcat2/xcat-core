@@ -12,6 +12,8 @@ B<mkhwconn> [B<-v>| B<--version>]
 
 B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-t>
 
+B<mkhwconn> [B<-V>| B<--verbose>] Inoderange B<-s>
+
 B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-p> I<hmc> [B<-P> I<passwd>]
 
 =head2 PPC (without HMC, using Direct FSP Management) specific:
@@ -30,6 +32,8 @@ to put all the HMCs and all the BPAs on a single flat service network.
 When B<-t> is specified, this command reads the connection information from the xCAT ppc table (e.g. the parent attribute), and read the user/password from the ppcdirect table. Then this command will assign FSP nodes and BPA nodes to HMC nodes. 
 
 When B<-p> is specified, this command gets the connection information from command line arguments. If B<-P> is not specified, the default password for FSP and BPA nodes is used.
+
+The flag B<-s> is used to make the connection between the frame and its Service focal point(HMC). The sfp of the frame should be specified in ppc table.
 
 In any case, before running this command, the FSP and BPA nodes need be defined with correct nodetype.nodetype value (fsp or bpa) and nodehm.mgt value (hmc).
 
@@ -69,6 +73,10 @@ The tooltype is used to communicate to the FSP/BPA. The value could be B<lpar> o
 =item B<--port>
 
 The port value specify which side will be used to create the connection to the FSP/BPA. The value could be "B<0>" or "B<1>". If this port value is not specfied in the command, it will use the default value "B<0>". If the port value is "B<0>", in the vpd table, the side column should be B<A-0> and B<B-0>; If the port value is "B<1>", the side column should be B<A-1> and B<B-1>.
+
+=item B<-s>
+
+The flag -s is used to make the connection between the frame and its Service Focal Point(HMC). -s flag is not supposed to work with other functional flags. The noderange should be frame.
 
 =item B<-V|--verbose>
 
