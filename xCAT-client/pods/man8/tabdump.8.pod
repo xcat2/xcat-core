@@ -80,13 +80,20 @@ B<tabdump> I<site>
 
 To display the contents of the nodelist table where the groups attribute is compute :
 
-B<tabdump>  I<-w groups==compute> I<nodelist>
+B<tabdump>  I<-w 'groups==compute'> I<nodelist>
 
 =item *
 
 To display the contents of the nodelist table where the groups attribute is comput% where % is a wildcard and can represent any string  and the status attribute is booted :
 
-B<tabdump>  I<-w groups=~comput%> I<-w status==booted> I<nodelist>
+B<tabdump>  I<-w 'groups=~comput%'> I<-w 'status==booted'> I<nodelist>
+
+=item *
+
+To display the records of the auditlog before date  2011-04-18 11:30:00 :
+
+B<tabdump>   I<-w 'audittime>2011-04-18 11:30:00'> I<auditlog>
+
 
 =item *
 
