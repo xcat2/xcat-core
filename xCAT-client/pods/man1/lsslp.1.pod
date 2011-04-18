@@ -9,7 +9,7 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s BPA|MM|IVM|RSA|FSP|HMC][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp][--resetnet]>
+I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp][--resetnet]>
 
 
 =head1 DESCRIPTION
@@ -118,7 +118,7 @@ Output is similar to:
 
 2. list all discovered FSP service types in raw response format on subnet 30.0.0.255, enter:
 
- lsslp -i 3.0.0.255 -s FSP -r
+ lsslp -i 3.0.0.255 -s CEC -r
 
 Output is similar to:
 
@@ -245,7 +245,7 @@ Output is similar to:
 
 6. To list all the FSPs and reset their network interfaces to get new IP from dhcp server, enter:
 
- lsslp -s FSP --resetnet
+ lsslp -s CEC --resetnet
 
 Output is similar to:
 
@@ -261,10 +261,7 @@ Output is similar to:
 device  type-model  serial-number  side  ip-addresses  hostname
 FSP     9117-MMB    105EBEP        A-1   20.0.0.138    20.0.0.138
 FSP     9117-MMB    105EBEP        B-1   20.0.0.139    20.0.0.139
-FSP     8205-E6B    1040C7P        A-1   20.0.0.141    20.0.0.141
-FSP     8233-E8B    100538P        A-0   20.0.0.146    20.0.0.146
-FSP     9125-F2A    0262652        A-1   20.0.0.166    20.0.0.166
-FSP     9125-F2A    027ACA4        A-1   20.0.0.169    20.0.0.169
+CEC     9117-MMB    105EBEP                            Server-9117-MMB-SN105EBEP
 
  
 7. To list all the nodes defined in database which have no SLP response.
