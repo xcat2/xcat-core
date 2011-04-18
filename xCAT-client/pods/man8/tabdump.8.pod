@@ -34,7 +34,7 @@ Display usage message.
 
 Show descriptions of the tables, instead of the contents of the tables.  If a table name is also specified, descriptions of the columns (attributes) of the table will be displayed.  Otherwise, a summary of each table will be displayed.
 
-=item B<-w> I<attr==val> B<-w> I<attr=~val> ...
+=item B<-w> I<'attr==val'> B<-w> I<'attr=~val'> ...
 
 Use one or multiple -w flags to specify the selection string that can be used to select particular rows of the table. See examples.
 
@@ -90,9 +90,9 @@ B<tabdump>  I<-w 'groups=~comput%'> I<-w 'status==booted'> I<nodelist>
 
 =item *
 
-To display the records of the auditlog before date  2011-04-18 11:30:00 :
+To display the records of the auditlog on date  2011-04-18 11:30:00 :
 
-B<tabdump>   I<-w 'audittime>2011-04-18 11:30:00'> I<auditlog>
+B<tabdump>   I<-w 'audittime==2011-04-18 11:30:00'> I<auditlog>
 
 
 =item *
