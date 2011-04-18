@@ -131,6 +131,12 @@ my @hsdcmacoids = (
   '1.3.6.1.4.1.2.3.51.2.2.21.4.2.1.102', #bladeHSDaughterCard1MACAddress3Vpd
   '1.3.6.1.4.1.2.3.51.2.2.21.4.2.1.103', #bladeHSDaughterCard1MACAddress4Vpd
 );
+my @sidecardoids = (
+  '1.3.6.1.4.1.2.3.51.2.2.21.4.2.1.164', #bladeSideCardMACAddress1Vpd
+  '1.3.6.1.4.1.2.3.51.2.2.21.4.2.1.165', #bladeSideCardMACAddress2Vpd
+  '1.3.6.1.4.1.2.3.51.2.2.21.4.2.1.166', #bladeSideCardMACAddress3Vpd
+  '1.3.6.1.4.1.2.3.51.2.2.21.4.2.1.167', #bladeSideCardMACAddress4Vpd
+);
 my @bootseqoids = (
   '1.3.6.1.4.1.2.3.51.2.22.1.3.1.7', #bootSequence1
   '1.3.6.1.4.1.2.3.51.2.22.1.3.1.8', #bootSequence2
@@ -1466,8 +1472,8 @@ sub getmacs {
 
    my @macs = ();
    (my $code,my @orig_macs)=inv('mac');
+   my $ignore_gen_mac = 0;
    foreach my $mac (@orig_macs) {
-       push @macs, $mac;
        if ($mac =~ /(.*) -> (.*)/) { 
            #Convert JS style mac ranges to pretend to be simple
            #this is not a guarantee of how the macs work, but 
@@ -1477,6 +1483,7 @@ sub getmacs {
 
            my $basemac = $1;
            my $lastmac = $2;
+           push @macs, $basemac;
            $basemac =~ s/mac address \d: //i;
            $lastmac =~ s/mac address \d: //i;
 
@@ -1503,6 +1510,12 @@ sub getmacs {
 
                $basemac = $newmac;
            }
+
+           # If one mac address has -> as a range, this must be a system P blade. 
+           # Then ignore the following mac with prefix "mac address"
+           $ignore_gen_mac = 1;
+       } elsif (!$ignore_gen_mac || $mac =~ /\w+ mac address \d:/i) {
+           push @macs, $mac;
        }
    }
 
@@ -1529,14 +1542,16 @@ sub getmacs {
        }
    }
    if ($code==0) {
-      #my @macs = split /\n/,$macs;
-    my @allmacs;
-    foreach my $midx ( @midxary) {
+     if ($display =~ /yes/) {
+      my $allmac = join("\n", @macs);
+      return 0,":The mac address is:\n$allmac";
+     }
+
+     my @allmacs;
+     foreach my $midx ( @midxary) {
        (my $macd,my $mac) = split (/:/,$macs[$midx],2);
        $mac =~ s/\s+//g;
-       if ($macd =~ /mac address \d/i) {
-          $mac =~ s/\s*->.*$//;
-       } else {
+       if ($macd !~ /mac address \d/i) {
            return 1,"Unable to retrieve MAC address for interface $midx from Management Module";
        }
 
@@ -1545,17 +1560,13 @@ sub getmacs {
        } else {
         push @allmacs,$mac."!".$curn."e".$midx;
        }
-    }
+     }
 
-    my $macstring = join("|",@allmacs);
-    if ($display =~ /yes/) {
-       return 0,":The mac address is $macstring";
-    } else {
-       my $mactab = xCAT::Table->new('mac',-create=>1);
-       $mactab->setNodeAttribs($curn,{mac=>$macstring});
-       $mactab->close;
-       return 0,":mac.mac set to $macstring";
-    }
+     my $macstring = join("|",@allmacs);
+     my $mactab = xCAT::Table->new('mac',-create=>1);
+     $mactab->setNodeAttribs($curn,{mac=>$macstring});
+     $mactab->close;
+     return 0,":mac.mac set to $macstring";
    } else {
       return $code,$macs[0];
    }
@@ -1677,6 +1688,13 @@ sub inv {
         if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
         if ($data =~ /:/) {
           push @output,"Daughter card 1 MAC Address ".($_+1).": ".$data;
+        }
+      }
+      foreach (0..3) {
+        $data=$session->get([$sidecardoids[$_],$slot]);
+        if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
+        if ($data =~ /:/) {
+          push @output,"Side card MAC Address ".($_+1).": ".$data;
         }
       }
     }
