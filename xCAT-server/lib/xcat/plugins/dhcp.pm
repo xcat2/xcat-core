@@ -589,14 +589,14 @@ sub preprocess_request
     }
 
    if(grep /-h/,@{$req->{arg}}) {
-        my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements] [--HFI]\n\tmakedhcp [-h|--help]";
+        my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
         $callback->({data => [$usage]});
         return;
     }  
     
     unless (($req->{arg} and (@{$req->{arg}}>0)) or $req->{node})
     {
-	my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements] [--HFI]\n\tmakedhcp [-h|--help]";
+	my $usage="Usage: makedhcp -n\n\tmakedhcp -a\n\tmakedhcp -a -d\n\tmakedhcp -d noderange\n\tmakedhcp <noderange> [-s statements]\n\tmakedhcp [-h|--help]";
         $callback->({data => [$usage]});
         return;
     }
@@ -1182,9 +1182,10 @@ sub process_request
             }
             my $mac = $ent->{mac};
             # Workarounds for HFI devices, omshell doesn't support HFI device type, we cannot set hfi as hardware type in dhcp lease-file.
-            # Replace the ethernet with hfi in lease-file if --HFI is specified.
+            # Replace the ethernet with hfi in lease-file.
             # After omshell supports HFI devices, remove these code and add correct hardware type from omshell
-            if ( grep /^--HFI$/, @{$req->{arg}} )
+            my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
+            if ( grep /hf/, $client_nethash{$node}{mgtifname} )
             {
                 unless ( open( HOSTS,"</var/lib/dhcpd/dhcpd.leases" ))
                 {
