@@ -431,12 +431,12 @@ sub confGmetad
     chomp(my $hostname = `hostname`);
 
     #version 3.1.0
-    if (-e "/etc/ganglia/gmond.conf"){
-    	$configure_file = '/etc/ganglia/gmond.conf';
+    if (-e "/etc/ganglia/gmetad.conf"){
+    	$configure_file = '/etc/ganglia/gmetad.conf';
 	}
 	#version 3.0.7
-	elsif (-e "/etc/gmond.conf"){
-		$configure_file = '/etc/gmond.conf';
+	elsif (-e "/etc/gmetad.conf"){
+		$configure_file = '/etc/gmetad.conf';
 	}
 	#non should install
 	else
