@@ -141,7 +141,7 @@ my $expect_ent = 0;
 my $time_out = 300;
 my $enter_time = 0;
 my @filternodes;
-
+my %otherinterfacehash;
 ##########################################################################
 # Command handler method from tables
 ##########################################################################
@@ -2140,6 +2140,15 @@ sub parse_responses {
         #}
 
         # begin to define FSP/BPA/FRAME/CEC
+        my $typetp;
+        if ( $type eq SERVICE_BPA )
+        {
+            $typetp = TYPE_BPA;
+        }
+        else
+        {
+            $typetp = TYPE_FSP;
+        }
         my $hostname = undef;
         if ( $type eq SERVICE_BPA or $type eq SERVICE_FSP ) {
 
@@ -2171,7 +2180,7 @@ sub parse_responses {
             
             $severnode1[3] = $severnode1[3].'-0';
             $severnode1[4] = $ips[0];
-            $severnode1[0] = $service_slp{$type};
+            $severnode1[0] = $typetp;
             push @severnode1, $rsp;
             $hostname =  gethost_from_url_or_old($ips[0], $severnode1[0], $severnode1[1], $severnode1[2],
                                                  $severnode1[3], $ips[0], $severnode1[8], $severnode1[5],$severnode1[6]);
@@ -2182,6 +2191,7 @@ sub parse_responses {
             if ( length( $severnode1[4] ) > $$length ) {
                 $$length = length( $severnode1[4] );
             }
+            $otherinterfacehash{$hostname}{otherinterfaces} = $ips[0];
             
             #begin to define another fsp/bpa
             $hostname = undef;
@@ -2190,7 +2200,7 @@ sub parse_responses {
             }
             $severnode2[3] = $severnode2[3].'-1';
             $severnode2[4] = $ips[1];
-            $severnode2[0] = $service_slp{$type};
+            $severnode2[0] = $typetp;
             push @severnode2, $rsp;
             $hostname =  gethost_from_url_or_old($ips[1], $severnode2[0], $severnode2[1], $severnode2[2],
                                                  $severnode2[3], $ips[1], $severnode2[8], $severnode2[5],$severnode2[6]);
@@ -2201,6 +2211,7 @@ sub parse_responses {
             if ( length( $severnode2[4] ) > $$length ) {
                 $$length = length( $severnode2[4] );
             }
+            $otherinterfacehash{$hostname}{otherinterfaces} = $ips[1];
             
             ###########################################
             #  begin to define frame and cec
@@ -2413,6 +2424,7 @@ sub xCATdB {
         my $cageid     = @$data[8];
         my $parent     = @$data[10];
         my $mac        = @$data[11];
+        my $otherif    = $otherinterfacehash{$hostname}{otherinterfaces};
         my $prof       = "";
 
         #######################################
@@ -2573,6 +2585,15 @@ sub xCATdB {
             }             
         }
 
+        ########################################
+        # Write otherinterface to the host table
+        ########################################
+        if ( $type =~ /^(FSP|BPA)$/ ) {
+            my $hoststab  = xCAT::Table->new( 'hosts' );
+            if ($hoststab and %otherinterfacehash) {
+                 $hoststab->setNodesAttribs(\%otherinterfacehash);  
+            }                 
+        }
     }
 }
 
@@ -2852,11 +2873,13 @@ sub format_stanza {
                     next;
                 }
             } elsif (/^hidden$/) {
-             if ( $type =~ /^(fsp|bpa)$/ ) {
+                if ( $type =~ /^(fsp|bpa)$/ ) {
                     $d = "1";
                 } else {
                     $d = "0";
                 }
+            } elsif (/^otherinterfaces$/) {
+                $d = $otherinterfacehash{$name}{otherinterfaces};
             }
             if ( !defined($d) ) {
                 next;
@@ -2950,6 +2973,8 @@ sub format_xml {
                 } else {
                     $d = "0";
                 }
+            } elsif (/^otherinterfaces$/) {
+                $d = $otherinterfacehash{$name}{otherinfterfaces};
             }
             if ( !defined($d) ) {
                 next;
@@ -2986,6 +3011,7 @@ sub format_table {
         my $mtm  = $data[1];
         my $serial = $data[2];
         my $side = $data[3];
+        next if ($type =~ /^(fsp|bpa)$/);
         if ( $side =~ /^N\/A$/ ) {
             $result .= ",\"$serial\",\"$mtm\",,,\"$type\",\n";
         } else {
