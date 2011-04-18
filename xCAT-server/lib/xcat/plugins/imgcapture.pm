@@ -220,7 +220,7 @@ sub imgcapture {
         close $exlist;
     } else {
         # the following directories must be exluded when capturing the image
-        my @default_exlist = ("./tmp/", "./proc/", "./sys/", "./dev/", "./xcatpost/", "./install/");
+        my @default_exlist = ("./tmp/*", "./proc/*", "./sys/*", "./dev/*", "./xcatpost/*", "./install/*");
         foreach my $item (@default_exlist) {
             $excludestr .= qq{ ! -path "$item"};
         }
