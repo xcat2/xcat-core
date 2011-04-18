@@ -127,7 +127,7 @@ my %mgt = (
     lc(TYPE_RSA)   => "blade"
 );
 
-my @attribs    = qw(nodetype mtm serial side ip groups mgt id parent mac hidden);
+my @attribs    = qw(nodetype mtm serial side ip groups mgt id parent mac hidden otherinterfaces);
 my $verbose    = 0;
 my %ip_addr    = ();
 my %slp_result = ();
