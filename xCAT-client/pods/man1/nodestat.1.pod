@@ -84,30 +84,30 @@ Print help.
 
 1.  nodestat compute
 
- node1   ping,sshd
- node2   ping,sshd
+ node1   sshd
+ node2   sshd
  node3   ping
- node4   ping,pbs
+ node4   pbs
  node5   noping
 
 2.  nodestat compute -p
 
- node1   ping,sshd
- node2   ping,sshd
+ node1   sshd
+ node2   sshd
  node3   ping
- node4   ping,pbs
+ node4   pbs
  node5   noping(Shutting down)
 
 
-3. nodeset compute -u
- node1   ping,sshd
- node2   ping,sshd
+3. nodestat compute -u
+ node1   sshd
+ node2   sshd
  node3   ping
  node4   netboot
  node5   noping
 
 
-4. nodeset compute -m
+4. nodestat compute -m
  node1   ping,sshd,ll,gpfs=ok
  node2   ping,sshd,ll,gpfs=not ok,someapp=something is wrong
  node3   netboot
