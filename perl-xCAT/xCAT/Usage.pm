@@ -151,8 +151,6 @@ my %usage = (
        mkvm noderange -i id -l singlenode [-V|--verbose]
        mkvm noderange -c destcec -p profile [-V|--verbose]
        mkvm noderange --full [-V|--verbose]
-    For PPC(using Direct FSP Management):
-       mkvm noderange -i id -m memory_interleaving -r partition_rule 
     For KVM
        mkvm noderange -m|--master mastername -s|--size disksize -f|--force",
     "lsvm" => 
