@@ -81,11 +81,11 @@ sub parse_args {
     }
 
     if( $ARGV[0]  =~/^hfi$/) {
-        $opt{hfi} = 1; 
-    } 
-
-    if( $ARGV[0] =~/^net$/) {
-        $opt{net} = 1; 
+        $opt{hfi} = 1;
+    } elsif ( $ARGV[0] =~/^net$/) {
+        $opt{net} = 1;
+    } else {
+        return(usage( "Invalid Argument: $ARGV[0]" ));
     }
 
     shift @ARGV;
