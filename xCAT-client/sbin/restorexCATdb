@@ -57,6 +57,14 @@ foreach my $table (@files)
           }
           next;
         }
+        # skip teal tables
+        if ( $table =~ /^x_teal/ ) {
+           if ($::VERBOSEREST) {
+            xCAT::MsgUtils->message("I", "Skipping $table\n");
+           }
+           next;
+        }
+
         my $cmd = "tabrestore $tablename";
         my @errout = xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
