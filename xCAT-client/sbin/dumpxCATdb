@@ -42,6 +42,21 @@ if ($::RUNCMD_RC != 0)
 }
 foreach my $table (@output)
 {
+    # if not -a request , skip eventlog and auditlog
+    if ( (!$::ALL) && (($table =~ /^eventlog/) || ($table =~ /^auditlog/))) {
+      if ($::DUMPVERBOSE) {
+        xCAT::MsgUtils->message("I", "Skipping $table\n");
+      }
+      next;
+    }
+    # skip teal tables 
+    if ( $table =~ /^x_teal/ ) {
+      if ($::DUMPVERBOSE) {
+        xCAT::MsgUtils->message("I", "Skipping $table\n");
+      }
+      next;
+    }
+
     $cmd = "tabdump $table > $::PATH/$table.csv";
     my @errout = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
@@ -70,12 +85,13 @@ sub parse_args
 {
     my $msg;
     my  $usagemsg =
-          " dumpxCATdb -h \n dumpxCATdb -v \n dumpxCATdb [-V] <-p> [path to dump directory]";
+          " dumpxCATdb -h \n dumpxCATdb -v \n dumpxCATdb [-a] [-V] <-p> [path to dump directory]";
     Getopt::Long::Configure("posix_default");
     Getopt::Long::Configure("no_gnu_compat");
     Getopt::Long::Configure("bundling");
     if (
         !GetOptions(
+            'a|all'    => \$::ALL,
             'p|path=s'  => \$::PATH,
             'h|help'    => \$::HELP,
             'V|verbose'    => \$::DUMPVERBOSE,
