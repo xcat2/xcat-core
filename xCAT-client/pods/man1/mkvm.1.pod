@@ -18,10 +18,6 @@ B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<-c> I<destcec> B<-p> I<profile>
 
 B<mkvm> [B<-V>| B<--verbose>] I<noderange> B<--full>
 
-=head2 For PPC (using Direct FSP Management):
-
-B<mkvm> I<noderange> B<-i id> B<-m> I<memory_interleaving> B<-r> I<partition_rule>
-
 =head2 For KVM:
 
 B<mkvm> I<noderange> B<-m>|B<--master> I<mastername> B<-s>|B<--size> I<disksize> B<-f>|B<--force>
@@ -39,10 +35,6 @@ The second form of this command duplicates all the partitions from the source sp
 Please make sure the nodes in the I<noderange> is defined in the I<nodelist> table and the I<mgt> is set to 'hmc' in the I<nodehm> table before running this command.
 
 Please note that the mkvm command currently only supports creating standard LPARs, not virtual LPARs working with VIOS server.
-
-For PPC (without HMC, using Direct FSP Management) specific:
-
-This feature is only for P7 IH. mkvm is designed to set the Octant configure value to split the CPU and memory for partitions, and set Octant Memory interleaving value. The mkvm will only set the pending attributes value. After mkvm, the CEC needs to be rebooted manually for the pending values to be enabled. Before reboot the cec, the administrator can use mkvm to change the partition plan. If the the partition needs I/O slots, the administrator should use chvm to assign the I/O slots.
 
 =head2 For KVM:
 
@@ -62,27 +54,7 @@ The cec (fsp) name for the destination.
 
 =item B<-i>              
 
-Starting numeric id of the newly created partitions. For P7 IH using Direct FSP Management, the id value only could be B<1>, B<5>, B<9>, B<13>, B<17>, B<21>, B<25> and B<29>.
-
-=item B<-m>              
-
-memory interleaving. The value only could be B<interleaved> or B<non-interleaved>. B<non-interleaved> mode means the memory cannot be shared across the processors in an octant. B<interleaved> means the memory can be shared.
-
-=item B<-r>              
-
-partition rule.
-
-If all the octants configuration value are same in one CEC,  it will be  " B<-r>  B<0-7>:I<value>" .
-
-If the octants use the different configuration value in one cec, it will be "B<-r> B<0>:I<value1>,B<1>:I<value2>,...B<7>:I<value7>", or "B<-r> B<0>:I<value1>,B<1-7>:I<value2>" and so on.
-
-The octants configuration value for one Octant could be  B<1>, B<2>, B<3>, B<4>, B<5>. The meanings of the octants configuration value  are as following:
-
- 1 -- 1 partition with all cpus and memory of the octant
- 2 -- 2 partitions with a 50/50 split of cpus and memory
- 3 -- 3 partitions with a 25/25/50 split of cpus and memory
- 4 -- 4 partitions with a 25/25/25/25 split of cpus and memory
- 5 -- 2 partitions with a 25/75 split of cpus and memory
+Starting numeric id of the newly created partitions. 
 
 =item B<-l>              
 
@@ -173,60 +145,6 @@ Output is similar to:
 
  lpar5: Success
  lpar6: Success
-
-5. For P7 IH, to create a new partition lpar1 on the first octant of the cec, lpar1 will use all the cpu and memory of the octant 0, enter: 
-
- mkdef -t node -o lpar1 mgt=fsp groups=all parent=cec01   nodetype=lpar   hcp=cec01
-
-then:
-
- mkvm lpar1 -i 1 -m non-interleaved -r 0:1
-
-Output is similar to:
-
- par1: Success
- cec1: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
-
-6. For P7 Ih, to create new partitions lpar1-lpar8 on the whole cec, each LPAR will use all the cpu and memory of each octant, enter:
-
- mkdef -t node -o lpar1-lpar8 nodetype=lpar  mgt=fsp groups=all parent=cec01  hcp=cec01
-
-then:
-
- mkvm lpar1-lpar8 -i 1 -m non-interleaved  -r 0-7:1
-
-Output is similar to:
-
- lpar1: Success
- lpar2: Success
- lpar3: Success
- lpar4: Success
- lpar5: Success
- lpar6: Success
- lpar7: Success
- lpar8: Success
- cec1: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
-
-7. For P7 IH, to create new partitions lpar1-lpar9, the lpar1 will use 25% CPU and 25% memory of the first octant, and lpar2 will use the left CPU and memory of the first octant. lpar3-lpar9 will use all the cpu and memory of each octant, enter:
-
- mkdef -t node -o lpar1-lpar9 mgt=fsp groups=all parent=cec1   nodetype=lpar   hcp=cec1
-
-then:
-
- mkvm lpar1-lpar9 -i 1 -m non-interleaved  -r 0:5,1-7:1
-
-Output is similar to: 
-
- lpar1: Success
- lpar2: Success
- lpar3: Success
- lpar4: Success
- lpar5: Success
- lpar6: Success
- lpar7: Success
- lpar8: Success
- lpar9: Success
- cec1: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
 
 =head1 FILES
 
