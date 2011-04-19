@@ -18,6 +18,14 @@ B<rpower> I<noderange> [B<onstandby>]
 
 B<rpower> I<noderange> [B<softoff>]
 
+=head2 CEC (using Direct FSP Management) specific:
+
+B<rpower> I<noderange> [B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<lowpower>]
+
+=head2 Frame (using Direct FSP Management) specific:
+
+B<rpower> I<noderange> [B<rackstandby>|B<exit_rackstandby>|B<stat>|B<state>]
+
 =head2 Blade specific:
 
 B<rpower> I<noderange> [B<cycle>|B<softoff>] 
@@ -37,6 +45,18 @@ Turn power on.
 =item B<onstandby>
 
 Turn power on to standby state
+
+=item B<lowpower>
+
+Turn CEC to low power state. This is a disruptive operation which requires the CEC to be powered off prior to entering low power mode.
+
+=item B<rackstandby>
+
+Places the rack in the rack standby state. It requires that all CECs and DE be powered off before it will run.
+
+=item B<exit_rackstandby>
+
+Exit Rack standby will be the default state that a rack goes into when power is initially applied to the rack. It simply moves the BPA from Rack standby to both bpa's in standby state.
 
 =item B<softoff>
 
