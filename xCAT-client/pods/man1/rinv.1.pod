@@ -16,7 +16,7 @@ B<rinv> I<noderange> {B<bus>|B<config>|B<serial>|B<model>|B<firm>|B<all>}
 
 =head2 PPC (using Direct FSP Management) specific:
 
-B<rinv> I<noderange> B<firm>
+B<rinv> I<noderange> {B<firm>|B<deconfig>}
 
 =head2 Blade specific:
 
@@ -61,6 +61,10 @@ Retrieves serial number.
 =item B<firm>
 
 Retrieves firmware versions.
+
+=item B<deconfig>
+
+Retrieves deconfigured resources. Deconfigured resources are hw components (cpus, memory, etc.) that have failed so the firmware has automatically turned those components off. 
 
 =item B<asset>
 
