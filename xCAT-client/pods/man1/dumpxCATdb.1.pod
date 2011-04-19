@@ -4,7 +4,7 @@ B<dumpxCATdb> - dumps the xCAT db tables .
 
 =head1 SYNOPSIS
 
-B<dumpxCATdb> [B<-V>] [{B<-p>|B<--path>} I<path>]
+B<dumpxCATdb> [B<-a>] [B<-V>] [{B<-p>|B<--path>} I<path>]
 
 B<dumpxCATdb> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
@@ -22,6 +22,8 @@ B<-v>          Command Version.
 
 B<-V>          Verbose.
 
+B<-a>          All,without this flag the eventlog and auditlog will be skipped.
+
 B<-p>          Path to the directory to dump the tables.
 
 
@@ -36,6 +38,10 @@ B<-p>          Path to the directory to dump the tables.
 1. To dump the xCAT database into the /tmp/db directory, enter:
 
 B<dumpxCATdb -p /tmp/db>
+
+2. To dump the xCAT database into the /tmp/db directory, including the auditlog and eventlog enter:
+
+B<dumpxCATdb -a -p /tmp/db>
 
 
 
