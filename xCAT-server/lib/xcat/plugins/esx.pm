@@ -3682,7 +3682,18 @@ sub copycd {
             }
         }
         close(LINE);
-    }
+    } elsif (-r $path . "/vmware-esx-base-readme") {
+	open(LINE,$path."/vmware-esx-base-readme");
+	while (<LINE>) {
+		if (/VMware ESXi 5\.0/) {
+			$darch="x86_64";
+			$arch="x86_64";
+			$distname='esxi5';
+			$found=1;
+			last;
+		}
+	}
+     }
 
     unless ($found) { return; } #not our media
 	xCAT::SvrUtils::sendmsg("Copying media to $installroot/$distname/$arch/", $output_handler);
