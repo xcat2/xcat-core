@@ -221,6 +221,12 @@ sub processArgs
     }
 
     if ($::command eq "lsdef") {
+        if (scalar(@ARGV) == 2 && (($ARGV[0] eq "-l" && $ARGV[1] eq "-S") || ($ARGV[0] eq "-S" && $ARGV[1] eq "-l"))){
+            push @ARGV, "-t";
+            push @ARGV, "node";
+        }
+    }
+    if ($::command eq "lsdef") {
         if (scalar(@ARGV) == 1 && $ARGV[0] eq "-l") {
             push @ARGV, "-t";
             push @ARGV, "node";
