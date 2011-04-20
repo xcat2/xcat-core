@@ -105,7 +105,8 @@ sub do_rnetboot {
         $cmd.= " -o";
     }
 
-    if (  exists( $opt->{hfi} )) {
+    my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
+    if ( grep /hf/, $client_nethash{$node}{mgtifname} ) {
         $cmd.= " -t hfi-ent";
     } else {
         $cmd.= " -t ent";
@@ -218,10 +219,6 @@ sub rnetboot {
         $opt{o} = $options->{o};
     }
 
-    if ( exists( $options->{hfi} )) {
-        $opt{hfi} = 1;
-    }
-     
     #####################################
     # Invalid target hardware 
     #####################################
