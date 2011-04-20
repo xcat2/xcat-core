@@ -466,11 +466,11 @@ sub Version
     my $version = shift;
     if ($version eq 'short')
     {
-		$version = ''    . '2.6' ;
+	 $version = ''    #XCATVERSIONSUBHERE ;	
     }
     else
     {
-		$version = 'Version '    . '2.6' . ' (svn r9267, built Mon Apr 11 09:33:21 EDT 2011)' ;
+          $version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ;
     }
     return $version;
 
@@ -4219,7 +4219,7 @@ sub validate_ip
         -1 error
     Example:
          if (xCAT::Utils->isMounted($directory)) { blah; }
-    Comments:
+    Comments:  Do not name your directory nfs or this will not work
         none
 =cut
 
@@ -4227,16 +4227,34 @@ sub validate_ip
 sub isMounted
 {
     my ($class, $directory) = @_;
-    my $cmd = "df -P $directory";
-    my @output = xCAT::Utils->runcmd($cmd, -1);
-    foreach my $line (@output)
-    {
-        my ($file_sys, $blocks, $used, $avail, $cap, $mount_point) =
-          split(' ', $line);
-        if ($mount_point eq $directory)
-        {
-            return 1;
+    my $cmd;
+    my @output;
+    if (-e $directory) {  # does the directory exist
+      if (xCAT::Utils->isLinux()) {
+        $cmd = "df -T -P $directory";
+        @output= xCAT::Utils->runcmd($cmd, -1);
+        foreach my $line (@output){
+          my ($file_sys, $type, $blocks, $used, $avail, $per, $mount_point) = 
+           split(' ', $line);
+          $type=~ s/\s*//g; # remove blanks
+          if ( $type =~ /^nfs/ )
+          {
+             return 1;
+          }
         }
+      } else { #AIX
+       $cmd = "/usr/sysv/bin/df -n $directory";
+       @output = xCAT::Utils->runcmd($cmd, -1);
+       foreach my $line (@output){
+          my ($dir, $colon, $type) = 
+           split(' ', $line);
+          $type=~ s/\s*//g; # remove blanks
+          if ( $type =~ /^nfs/ )
+          {
+             return 1;
+          }
+       }
+      }
     }
     return 0;
 }
