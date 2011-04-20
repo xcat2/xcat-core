@@ -108,10 +108,11 @@ sub do_getmacs {
         }
     }
 
-    if ( exists( $opt->{hfi} )) {
-        $cmd .=" -t hfi-ent";
+    my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
+    if ( grep /hf/, $client_nethash{$node}{mgtifname} ) {
+        $cmd .= " -t hfi-ent";
     } else {
-        $cmd .=" -t ent";
+        $cmd .= " -t ent";
     }
 
     #######################################
@@ -578,50 +579,24 @@ sub format_mac {
     #####################################
     # Get adapter mac
     #####################################
-    #$data =~ /^(\S+\s+\S+\s+)(\S+)(\s+.*)$/;
-    #my $mac = $2;
-    #my $save = $mac;
-    #####################################
-    # Currenlty HFI drivers don't support
-    # broadcast, users need to fresh the
-    # ARP table.  Write 3 MAC addresses
-    # is useless in this case.  Comment
-    # the code until HFI drivers support
-    # broadcast.
-    #####################################
-#    if ( $data =~ /^hfi-ent\s+/ ) {
-#        my @macs;
-#        my $newmac;
-#        my $newmac0 = cal_mac( $mac );
-#        my $newmac1 = cal_mac( $newmac0 );
-#        push @macs, $mac;
-#        push @macs, $newmac0;
-#        push @macs, $newmac1;
-#        foreach my $mac_a ( @macs ) {
-#            if ( !xCAT::Utils->isAIX() ) {
-#                $mac_a    = lc($mac_a);
-#                $mac_a    =~ s/(\w{2})/$1:/g;
-#                $mac_a    =~ s/:$//;
-#                $newmac   = $newmac.",".$mac_a;
-#            } else {
-#                $newmac   = $newmac.",".$mac_a;
-#            }
-#            $newmac =~ s/^,//;
-#        }
-#        $data   =~ s/$save/$newmac/;
-#    } else {
+    my @newmacs;
+    my @macs = split /\|/, $mac;
+
+    foreach my $mac_a ( @macs ) {
         if ( !xCAT::Utils->isAIX() ) {
             #################################
             # Delineate MAC with colons
             #################################
-            $mac    = lc($mac);
-            $mac    =~ s/(\w{2})/$1:/g;
-            $mac    =~ s/:$//;
-            #$data   =~ s/$save/$mac/;
+            $mac_a = lc($mac_a);
+            $mac_a =~ s/(\w{2})/$1:/g;
+            $mac_a =~ s/:$//;
+            push @newmacs, $mac_a;
         }
-#    }
-    #return( "$data\n" );
-    return( "$mac" );
+    }
+
+    my $newmac = join("|",@newmacs);
+
+    return( "$newmac" );
 
 }
 

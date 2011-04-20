@@ -44,7 +44,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s D d f hfi o F=s arp))) { 
+    if ( !GetOptions( \%opt,qw(h|help V|Verbose v|version C=s G=s S=s D d f o F=s arp))) { 
         return( usage() );
     }
     ####################################
@@ -88,7 +88,7 @@ sub parse_args {
         if ( exists($opt{S}) ) {
             push @network, $_;
         } else {
-			$server = xCAT::Utils->getSNformattedhash( $node, "xcat", "MN", "primary" );
+			$server = xCAT::Utils->getSNformattedhash( $node, "xcat", "node", "primary" );
             foreach my $key ( keys %$server ) {
                 my $valid_ip = xCAT::Utils->validate_ip( $key );
                 if ( $valid_ip ) {
@@ -206,18 +206,14 @@ sub parse_args {
     ####################################
     # Check -F options's format 
     ####################################
-        if ( exists($opt{F}) ) {
-            my @filters = split /,/,$opt{F};
-            foreach ( @filters ) {
-                my @value = split /=/,$_;
-                if ( !@value[1] ) {
-                    return( usage("Option '-F' contains wrong filter format") );
-                }
+    if ( exists($opt{F}) ) {
+        my @filters = split /,/,$opt{F};
+        foreach ( @filters ) {
+            my @value = split /=/,$_;
+            if ( !@value[1] ) {
+                return( usage("Option '-F' contains wrong filter format") );
             }
         }
-
-    if ( exists($opt{hfi}) && !exists($opt{D}) ) {
-        return( usage("Option 'hfi' must work with '-D'") );
     }
 
     ####################################
@@ -321,10 +317,11 @@ sub do_getmacs {
         }
     }
 
-    if ( exists( $opt->{hfi} )) {
-        $cmd .=" -t hfi-ent";
+    my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
+    if ( grep /hf/, $client_nethash{$node}{mgtifname} ) {
+        $cmd.= " -t hfi-ent";
     } else {
-        $cmd .=" -t ent";
+        $cmd.= " -t ent";
     }
 
     #######################################
@@ -744,46 +741,31 @@ sub cal_mac {
 ##########################################################################
 sub format_mac {
 
-    my $data = shift;
+    my $mac = shift;
+    #my $data = shift;
 
     #####################################
     # Get adapter mac
     #####################################
-    $data =~ /^(\S+\s+\S+\s+)(\S+)(\s+.*)$/;
-    my $mac = $2;
-    my $save = $mac;
-    if ( $data =~ /^hfi-ent\s+/ ) {
-        my @macs;
-        my $newmac;
-        my $newmac0 = cal_mac( $mac );
-        my $newmac1 = cal_mac( $newmac0 );
-        push @macs, $mac;
-        push @macs, $newmac0;
-        push @macs, $newmac1;
-        foreach my $mac_a ( @macs ) {
-            if ( !xCAT::Utils->isAIX() ) {
-                $mac_a    = lc($mac_a);
-                $mac_a    =~ s/(\w{2})/$1:/g;
-                $mac_a    =~ s/:$//;
-                $newmac   = $newmac.",".$mac_a;
-            } else {
-                $newmac   = $newmac.",".$mac_a;
-            }
-            $newmac =~ s/^,//;
-        }
-        $data   =~ s/$save/$newmac/;
-    } else {
+    my @newmacs;
+    my @macs = split /\|/, $mac;
+
+    foreach my $mac_a ( @macs ) {
         if ( !xCAT::Utils->isAIX() ) {
             #################################
-            # Delineate MAC with colons 
+            # Delineate MAC with colons
             #################################
-            $mac    = lc($mac);
-            $mac    =~ s/(\w{2})/$1:/g;
-            $mac    =~ s/:$//;
-            $data   =~ s/$save/$mac/;
+            $mac_a = lc($mac_a);
+            $mac_a =~ s/(\w{2})/$1:/g;
+            $mac_a =~ s/:$//;
+            push @newmacs, $mac_a;
         }
     }
-    return( "$data\n" );
+
+    my $newmac = join("|",@newmacs);
+
+    return( "$newmac" );
+
 }
 
 
