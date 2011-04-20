@@ -445,6 +445,7 @@ function initPage() {
 	includeJs("js/custom/blade.js");
 	includeJs("js/custom/ipmi.js");
 	includeJs("js/custom/zvm.js");
+	includeJs("js/custom/hmc.js");
 	includeJs("js/custom/customUtils.js");
 
 	// Get the page being loaded
