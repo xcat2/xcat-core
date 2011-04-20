@@ -67,8 +67,8 @@ if [ ! -z "$DUMP" ]; then
     fi
 
     # workaround for RHEL6
-    KDTMPSERVER=${XCAT%:*}
-    /bin/mount $KDTMPSERVER:/install/kdump/tmp /var/tmp
+    # the $KDIP:$KDPATH directory will be used to generate the initrd for kdump service
+    /bin/mount $KDIP:$KDPATH /var/tmp
 
     /etc/init.d/kdump restart
 
