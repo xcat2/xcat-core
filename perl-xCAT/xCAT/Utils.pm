@@ -4219,7 +4219,7 @@ sub validate_ip
         -1 error
     Example:
          if (xCAT::Utils->isMounted($directory)) { blah; }
-    Comments:  Do not name your directory nfs or this will not work
+    Comments: 
         none
 =cut
 
