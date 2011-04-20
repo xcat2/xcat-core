@@ -32,6 +32,7 @@ if ($^O =~ /^aix/i) {
 }
 
 use lib "$::XCATROOT/lib/perl";
+use strict;
 
 # MAIN
 use IO::Socket;
@@ -516,7 +517,7 @@ sub copycerts
     `touch /etc/xCATSN`;
     # get roots home directory
     my @user= getpwuid($>);
-    $homedir=$user[7];
+    my $homedir=$user[7];
     if (-d "/xcatpost/_xcat")
     {
         if (!(-d "$homedir/.xcat"))
