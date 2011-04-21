@@ -74,26 +74,31 @@ An error has occurred.
 
 To display the contents of the site table:
 
-B<tabdump> I<site>
+B<tabdump> B<site>
 
 =item *
 
 To display the contents of the nodelist table where the groups attribute is compute :
 
-B<tabdump>  I<-w 'groups==compute'> I<nodelist>
+B<tabdump>  B<-w 'groups==compute'> B<nodelist>
 
 =item *
 
 To display the contents of the nodelist table where the groups attribute is comput% where % is a wildcard and can represent any string  and the status attribute is booted :
 
-B<tabdump>  I<-w 'groups=~comput%'> I<-w 'status==booted'> I<nodelist>
+B<tabdump>  B<-w 'groups=~comput%'> B<-w 'status==booted'> B<nodelist>
 
 =item *
 
 To display the records of the auditlog on date  2011-04-18 11:30:00 :
 
-B<tabdump>   I<-w 'audittime==2011-04-18 11:30:00'> I<auditlog>
+B<tabdump>   B<-w 'audittime==2011-04-18 11:30:00'> B<auditlog>
 
+=item *
+
+To display the records of the auditlog starting on 2011-04-18:
+
+tabdump -w 'audittime>2011-04-18 11:30:00' auditlog
 
 =item *
 
@@ -103,21 +108,23 @@ B<tabdump>
 
 =item *
 
-To back up all the xCAT database tables:
+To back up all the xCAT database tables, instead of running B<tabdump> multiple times, you can use the B<dumpxCATdb> command as follows:
 
-dumpxCATdb -p <backup directory>
+B<dumpxCATdb -p /tmp/xcatbak >
+
+See the B<dumpxCATdb> man page for details.
 
 =item *
 
 To display a summary description of each table:
 
-B<tabdump> I<-d>
+B<tabdump> B<-d>
 
 =item *
 
 To display a description of each column in the nodehm table:
 
-B<tabdump> I<-d nodehm>
+B<tabdump> B<-d nodehm>
 
 =back
 
