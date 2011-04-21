@@ -186,37 +186,37 @@ Here is a sample file:
  frame1:
   objtype=node
   serial=99200A1
-  mtm=9A00-100
+  mtm=78AC-100
   side=A
 
  frame2:
   objtype=node
   serial=99200B1
-  mtm=9A00-100
+  mtm=78AC-100
   side=A
 
  frame3:
   objtype=node
   serial=99200C1
-  mtm=9A00-100
+  mtm=78AC-100
   side=A
 
  frame4:
   objtype=node
   serial=99200D1
-  mtm=9A00-100
+  mtm=78AC-100
   side=A
 
  frame5:
   objtype=node
   serial=99200E1
-  mtm=9A00-100
+  mtm=78AC-100
   side=A
 
  frame6:
   objtype=node
   serial=99200F1
-  mtm=9A00-100
+  mtm=78AC-100
   side=A
 
 =head2 Supernode Numbers for CECs
