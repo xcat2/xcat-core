@@ -108,6 +108,10 @@ fi
 cd $OSVER
 # Have to install rpms 1 at a time, since some may be already installed.
 # The only interdependency between the dep rpms so far is that net-snmp requires bash
+
+#  pyodbc is dependent on unixODBC
+rpm -Uvh unixODBC*
+
 for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-'`; do
 	if [ "$i" == "perl-Net-DNS-0.66-1.aix5.3.ppc.rpm" ]; then
 		opts="--nodeps"
