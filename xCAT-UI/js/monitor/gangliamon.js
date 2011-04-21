@@ -203,9 +203,9 @@ function loadGroups4Ganglia(data) {
 			var info = $('<div class="ui-state-highlight ui-corner-all"></div>');
 			info.append('<span class="ui-icon ui-icon-info" style="display: inline-block; margin: 10px 5px;"></span>');
 			var msg = $('<p style="display: inline-block; width: 95%;"></p>');
-			msg.append('Review the nodes that are monitored by Ganglia.  You can turn on Ganglia monitoring on a node by selecting it and clicking on Monitor. If you are satisfied with the nodes you want to monitor, ');
+			msg.append('Review the nodes that are monitored by Ganglia. Install Ganglia onto a node you want to monitor by selecting it and clicking on Install. Turn on Ganglia monitoring for a node by selecting it and clicking on Monitor. If you are satisfied with the nodes you want to monitor, ');
 			msg.append(gangliaLnk);
-			msg.append(' to open Ganglia page.');
+			msg.append(' to open the Ganglia page.');
 			info.append(msg);
 			info.css('margin-bottom', '10px');
 			$('#nodes').append(info);
@@ -376,7 +376,7 @@ function loadNodes4Ganglia(data) {
 		'node', 
 		'<span><a>status</a></span><img src="images/loader.gif"></img>',
 		'<span><a>power</a></span><img src="images/loader.gif" style="display: none;"></img>', 
-		'<a>ganglia</a><img src="images/loader.gif"></img>');
+		'<span><a>ganglia</a></span><img src="images/loader.gif" style="display: none;"></img>');
 
 	// Create a datatable
 	var gangliaTable = new DataTable(gangliaTableId);
@@ -481,6 +481,15 @@ function loadNodes4Ganglia(data) {
 			monitorNode(tgtNodes, 'off');
 		}
 	});
+	
+	// Install Ganglia
+	var installLnk = $('<a>Install</a>');
+	installLnk.click(function() {
+		var tgtNodes = getNodesChecked(gangliaTableId);
+		if (tgtNodes) {
+			openInstallDialog(tgtNodes);
+		}
+	});
 
 	// Power actions
 	var monitorActions = [ monitorOnLnk, monitorOffLnk ];
@@ -488,7 +497,7 @@ function loadNodes4Ganglia(data) {
 
 	// Create an action menu
 	var actionsDIV = $('<div></div>');
-	var actions = [ [ powerLnk, powerActionMenu ], [ monitorLnk, monitorActionMenu ] ];
+	var actions = [ [ powerLnk, powerActionMenu ], [ monitorLnk, monitorActionMenu ], installLnk ];
 	var actionMenu = createMenu(actions);
 	actionMenu.superfish();
 	actionsDIV.append(actionMenu);
@@ -546,33 +555,33 @@ function loadNodes4Ganglia(data) {
 	powerCol.find('span a').bind('click', function(event) {
 		refreshPowerStatus(group, gangliaTableId);
 	});
-	gangliaCol.bind('click', function(event) {
+	gangliaCol.find('span a').bind('click', function(event) {
 		refreshGangliaStatus(group);
 	});
 	
 	// Create tooltip for status 
-	var pingTip = createStatusToolTip();
-	pingCol.find('span').append(pingTip);
-	pingCol.find('span a').tooltip({
+	var tooltipConf = {
 		position: "center right",
 		offset: [-2, 10],
 		effect: "fade",	
 		opacity: 0.8,
 		relative: true,
 		predelay: 800
-	});
+	};
+	
+	var pingTip = createStatusToolTip();
+	pingCol.find('span').append(pingTip);
+	pingCol.find('span a').tooltip(tooltipConf);
 	
 	// Create tooltip for power 
 	var powerTip = createPowerToolTip();
 	powerCol.find('span').append(powerTip);
-	powerCol.find('span a').tooltip({
-		position: "center right",
-		offset: [-2, 10],
-		effect: "fade",	
-		opacity: 0.8,
-		relative: true,
-		predelay: 800
-	});
+	powerCol.find('span a').tooltip(tooltipConf);
+	
+	// Create tooltip for ganglia 
+	var gangliaTip = createGangliaToolTip();
+	gangliaCol.find('span').append(gangliaTip);
+	gangliaCol.find('span a').tooltip(tooltipConf);
 
 	/**
 	 * Get node and ganglia status
@@ -1003,4 +1012,103 @@ function addNodes2GangliaTable(data) {
 
 		success : loadGangliaStatus
 	});
+}
+
+/**
+ * Create a tool tip for ganglia status
+ * 
+ * @return Tool tip
+ */
+function createGangliaToolTip() {
+	// Create tooltip container
+	var toolTip = $('<div class="tooltip">Click here to refresh the Ganglia status</div>').css({
+		'width': '150px'
+	});	
+	return toolTip;
+}
+
+/**
+ * Open dialog to install Ganglia on a given node
+ * 
+ * @param node
+ *            Node to install Ganglia on
+ * @return Nothing
+ */
+function openInstallDialog(node) {
+	var form = $('<div class="form"></div>');
+	
+	// Create info bar
+	var info = createInfoBar('Select the directory containing the Ganglia packages to install onto the given node range. Be aware that the Ganglia packages must be present in the /install directory.');
+	form.append(info);
+	
+	// Create node range input
+	var nr = $('<div></div>');
+	var nrLabel = $('<label>Node range:</label>').css('vertical-align', 'middle');
+	var nrInput = $('<input type="text" id="node" name="node"/>').val(node);
+	nr.append(nrLabel);
+	nr.append(nrInput);
+	form.append(nr);
+	
+	// Create Ganglia directory input
+	var directory = $('<div></div>');
+	var dirLabel = $('<label>Directory:</label>').css('vertical-align', 'middle');
+	var dirInput = $('<input type="text" id="directory" name="directory"/>').css('width', '300px');
+	directory.append(dirLabel);
+	directory.append(dirInput);
+	form.append(directory);
+
+	// Create button to browse for Ganglia directory
+	var browseBtn = createButton('Browse');
+	directory.append(browseBtn);
+	// Browse server directory and files
+	browseBtn.serverBrowser({
+		onSelect : function(path) {
+			$('input[name="directory"]').val(path);
+		},
+		onLoad : function() {
+			return $('input[name="directory"]').val();
+		},
+		knownExt : [ 'exe', 'js', 'txt' ],
+		knownPaths : [ {
+			text : 'Install',
+			image : 'desktop.png',
+			path : '/install'
+		} ],
+		imageUrl : 'images/serverbrowser/',
+		systemImageUrl : 'images/serverbrowser/',
+		handlerUrl : 'lib/getpath.php',
+		title : 'Browse',
+		requestMethod : 'POST',
+		width : '500',
+		height : '300',
+		basePath : '/install' // Limit user to only install directory
+	});
+	
+	// Open dialog to install Ganglia
+	form.dialog({
+		modal: true,
+		width: 600,
+		buttons: {
+    		'Install': function(){
+				installGanglia($('input[name="node"]').val(), $('input[name="directory"]').val());
+				$(this).dialog('close');
+			},
+			'Cancel': function(){
+    			$(this).dialog('close');
+    		}
+		}
+	});
+}
+
+/**
+ * Install Ganglia on a given node
+ * 
+ * @param node
+ *            Node to install Ganglia on
+ * @param directory
+ * 			  Directory containing Ganglia packages
+ * @return Nothing
+ */
+function installGanglia(node, directory) {
+	
 }

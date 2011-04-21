@@ -159,7 +159,7 @@ function loadMonitorPage() {
 			monTableBody.find('td:nth-child(1)').css('white-space', 'nowrap');
 			
 			// Append info bar
-			$('#monitorTab div').empty().append(createInfoBar('Select a monitoring tool to use.'));
+			$('#monitorTab div').empty().append(createInfoBar('Select a monitoring tool to use'));
 			$('#monitorTab .form').append(monTable);
 									
 			// Open monitoring tool onclick
@@ -289,7 +289,7 @@ function loadUnfinish(monitorName, tab) {
  * 
  * @return Nothing
  */
-function toggleMonitor() {
+function toggleMonitor() {	
 	// Get the name of the monitoring tool
 	var name = $(this).attr('name');
 	// Get the status to toggle to, either on or off
@@ -300,8 +300,8 @@ function toggleMonitor() {
 	if (status == 'Off') {
 		command = 'monstop'	;
 	}
-	
-	$.ajax( {
+		
+	$.ajax({
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
