@@ -36,16 +36,18 @@ while (<$remote>) {
   $response .= $_;
   if ($response =~ m/<\/xcatresponse>/) {
     $rsp = eval { XMLin($response,SuppressEmpty=>undef,ForceArray=>1) };
-    if ($rsp->{serverdone}) {
-      close $remote;
-      exit $rc;
-    }
 
     if ($rsp->{errorcode}) {
       $rc = $rsp->{errorcode}[0];
     } elsif ($rsp->{error}) {
       $rc = $rsp->{error}[0];
     }
+    if ($rsp->{serverdone}) {
+      close $remote;
+      if ($rc) { $rc = 1; }
+      exit $rc;
+    }
+
     $response='';
   }
 }
