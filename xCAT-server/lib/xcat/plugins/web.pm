@@ -43,12 +43,12 @@ sub process_request {
 		'gangliastop'   => \&web_gangliastop,
 		'gangliastatus' => \&web_gangliastatus,
 		'gangliacheck'  => \&web_gangliacheck,
+		'installganglia'=> \&web_installganglia,
 		'mkcondition'   => \&web_mkcondition,
 		'monls'         => \&web_monls,
 		'discover'      => \&web_discover,
 		'updatevpd'     => \&web_updatevpd,
-		'createimage'   => \&web_createimage,
-		'queryrepoloc'  => \&web_queryrepoloc
+		'createimage'   => \&web_createimage
 	);
 
 	#check whether the request is authorized or not
@@ -494,34 +494,109 @@ sub web_gangliacheck() {
 	return;
 }
 
-sub web_queryrepoloc() {
+sub web_installganglia() {
 	my ( $request, $callback, $sub_req ) = @_;
 
+	# Get node range
+	my $nr = $request->{arg}->[1];
+	my @nodes = split( ',', $nr );
+	
 	# Get repository type
 	my $os = xCAT::Utils->osver();
-	
 	# Get repository name
-	my $name = $request->{arg}->[1];
+	my $xcatDep = 'xCAT-dep';
 	
 	# Get location of repository
 	my $loc;
 	if ($os =~ /rh/) {
 		# Red Hat
-		$loc = `cat /etc/yum.repos.d/$name.repo | grep "baseurl"`;
+		$loc = `cat /etc/yum.repos.d/$xcatDep.repo | grep "baseurl"`;
 	} elsif ($os =~ /sles11/) {
 		# SUSE
-		$loc = `cat /etc/zypp/repos.d/$name.repo | grep "baseurl"`;
+		$loc = `cat /etc/zypp/repos.d/$xcatDep.repo | grep "baseurl"`;
 	} else {
 		$loc = '';
 	}
 
 	$loc =~ s/baseurl=//g;
+	$loc =~ s/file://g; 	# Downloaded xCAT-dep
 	
 	# Trim right and left
 	$loc =~ s/\s*$//;
 	$loc =~ s/^\s*//;
+	
+	# Get the base directory for xcat-dep
+	$loc = substr($loc, 0, index($loc, 'xcat-dep/') + 8);
+	
+	# Get the appropriate directory for each nodes
+	# This is based on the nodetype.os and nodetype.arch attributes
+	# e.g. xcat-dep/<os>/<arch>, where <os> can be: fedora8, fedora9, fedora12, fedora13, rh4, rh5, rh6, sles10, sles11
+	# and where <arch> can be: ppc64, s390x, x86, x86_64
+	my $info;
+	my $tab;
+	my $attrs;
+	my $tmp;
+	
+	# Repository location: $repo{$node}
+	my $repo;
+	# Go through each node because each node might have a different repository 
+	# location, based on its OS and arch
+	foreach (@nodes) {
+		# Get table
+		$tab = xCAT::Table->new('nodetype');
+		# Get property values
+		$attrs = $tab->getNodeAttribs( $_, ['os', 'arch'] );
+
+		if ($attrs->{'arch'} && $attrs->{'os'}) {
+			# Point to the right OS
+			if ($attrs->{'os'} =~ /fedora8/) {
+				$attrs->{'os'} = 'fedora8';
+			} elsif ($attrs->{'os'} =~ /fedora9/) {
+				$attrs->{'os'} = 'fedora9';
+			} elsif ($attrs->{'os'} =~ /fedora12/) {
+				$attrs->{'os'} = 'fedora12';
+			} elsif ($attrs->{'os'} =~ /fedora13/) {
+				$attrs->{'os'} = 'fedora13';
+			} elsif ($attrs->{'os'} =~ /rh4/ || $attrs->{'os'} =~ /rhel4/) {
+				$attrs->{'os'} = 'rh4';
+			} elsif ($attrs->{'os'} =~ /rh5/ || $attrs->{'os'} =~ /rhel5/) {
+				$attrs->{'os'} = 'rh5';
+			} elsif ($attrs->{'os'} =~ /rh6/ || $attrs->{'os'} =~ /rhel6/) {
+				$attrs->{'os'} = 'rh6';
+			} elsif ($attrs->{'os'} =~ /sles10/) {
+				$attrs->{'os'} = 'sles10';
+			} elsif ($attrs->{'os'} =~ /sles11/) {
+				$attrs->{'os'} = 'sles11';
+			}
+			
+			$repo = "$loc/$attrs->{'os'}/$attrs->{'arch'}";
+		} else {
+			$callback->( { info => '(Error) Missing the nodetype.os and nodetype.arch attributes for $_' } );	
+		}
+				
+		# Transfer Ganglia packages into /tmp directory of node
+		$callback->( { info => "$_: Copying over Ganglia packages..." } );
+		$info = `xdcp $_ $repo/ganglia-gmond-* $repo/libconfuse-* $repo/libganglia-* /tmp`;
+		$callback->( { info => $info } );
 		
-	$callback->( { info => $loc } );
+		# Check if libapr1 is installed
+		$tmp = '/tmp';
+		$info = `xdsh $_ "rpm -qa libapr1"`;
+		if (!($info =~ /libapr1/)) {
+			$callback->( { info => "(Error) libapr1 package not installed on $_" } );
+		} else {
+			# If libapr1 is installed, install Ganglia packages
+			$callback->( { info => "$_: Installing Ganglia..." } );
+			$info = `xdsh $_ "rpm -i $tmp/ganglia-gmond-* $tmp/libconfuse-* $tmp/libganglia-*"`;
+			$callback->( { info => $info } );
+		}
+		
+		# Remove Ganglia packages from /tmp
+		$callback->( { info => "$_: Removing Ganglia packages..." } );
+		$info = `xdsh $_ "rm $tmp/ganglia-gmond-* $tmp/libconfuse-* $tmp/libganglia-*"`;
+		$callback->( { info => $info } );
+	}
+	
 	return;
 }
 
