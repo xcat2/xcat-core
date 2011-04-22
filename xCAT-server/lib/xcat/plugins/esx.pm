@@ -3999,7 +3999,6 @@ sub mknetboot {
         }
 		if (defined $bpadds->{$node}->[0]->{addkcmdline}) {
             my $modules;
-            $kcmdline;
             ($kcmdline,$modules) = split /---/,$bpadds->{$node}->[0]->{addkcmdline},2;
             $kcmdline =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$nodesubdata{$1}->{$node}->[0]->{$2}/eg;
             if ($modules) {
