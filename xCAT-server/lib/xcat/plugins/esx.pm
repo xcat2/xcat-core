@@ -3968,6 +3968,7 @@ sub mknetboot {
 		my $tp = "xcat/netboot/$osver/$arch/$shortprofname";
 	my $kernel;
 	my $kcmdline;
+	my $append;
 	if ($osver =~ /esxi4/) {
 	  my $bail=0;
 	  foreach (@reqmods) {
@@ -3983,7 +3984,7 @@ sub mknetboot {
 		$kernel = "$tp/mboot.c32";
 		my $prepend = "$tp/vmkboot.gz";
         delete $mods{"vmkboot.gz"};
-		my $append = " --- $tp/vmk.gz";
+		$append = " --- $tp/vmk.gz";
         delete $mods{"vmk.gz"};
 		$append .= " --- $tp/sys.vgz";
         delete $mods{"sys.vgz"};
@@ -4010,7 +4011,7 @@ sub mknetboot {
 	}
 	elsif ($osver =~ /esxi5/) { #do a more straightforward thing..
 	  $kernel = "$tp/mboot.c32";
-	  $kcmdline = "-c $tp/boot.cfg.stateless";
+	  $append = "-c $tp/boot.cfg.stateless";
 	}
 	$output_handler->({node=>[{name=>[$node],'_addkcmdlinehandled'=>[1]}]});
 
