@@ -47,7 +47,8 @@ sub process_request {
 		'monls'         => \&web_monls,
 		'discover'      => \&web_discover,
 		'updatevpd'     => \&web_updatevpd,
-		'createimage'   => \&web_createimage
+		'createimage'   => \&web_createimage,
+		'queryrepoloc'  => \&web_queryrepoloc
 	);
 
 	#check whether the request is authorized or not
@@ -490,6 +491,37 @@ sub web_gangliacheck() {
 	my $info;
 	my $info = `xdsh $nr "rpm -q ganglia-gmond libganglia libconfuse"`;
 	$callback->( { info => $info } );
+	return;
+}
+
+sub web_queryrepoloc() {
+	my ( $request, $callback, $sub_req ) = @_;
+
+	# Get repository type
+	my $os = xCAT::Utils->osver();
+	
+	# Get repository name
+	my $name = $request->{arg}->[1];
+	
+	# Get location of repository
+	my $loc;
+	if ($os =~ /rh/) {
+		# Red Hat
+		$loc = `cat /etc/yum.repos.d/$name.repo | grep "baseurl"`;
+	} elsif ($os =~ /sles11/) {
+		# SUSE
+		$loc = `cat /etc/zypp/repos.d/$name.repo | grep "baseurl"`;
+	} else {
+		$loc = '';
+	}
+
+	$loc =~ s/baseurl=//g;
+	
+	# Trim right and left
+	$loc =~ s/\s*$//;
+	$loc =~ s/^\s*//;
+		
+	$callback->( { info => $loc } );
 	return;
 }
 
