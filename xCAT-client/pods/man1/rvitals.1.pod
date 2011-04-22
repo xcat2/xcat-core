@@ -12,7 +12,7 @@ B<rvitals> I<noderange> {B<temp>|B<voltage>|B<lcds>|B<all>}
 
 =head2 CEC/LPAR/Frame (using Direct FSP Management ) specific:
 
-B<rvitals> I<noderange> {B<rackenv>|B<lcds>|B<all>}
+B<rvitals> I<noderange> {B<rackenv>|B<lcds>|B<all>} [B<-V>| B<--verbose>]
 
 =head2 MPA specific:
 
