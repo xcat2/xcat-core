@@ -196,7 +196,7 @@ span.ui-icon-info {
 .tab {
 	font: 12px verdana, arial, helvetica, sans-serif;
 	border-style: none;
-	overflow: hidden;
+	overflow: visible;
 }
 
 .tab p {
