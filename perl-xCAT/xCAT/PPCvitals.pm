@@ -16,7 +16,7 @@ sub parse_args {
     my $command = $request->{command};
     my $args    = $request->{arg};
     my %opt     = ();
-    my @rvitals = qw(temp voltage power lcds state all);
+    my @rvitals = qw(temp voltage power lcds state rackenv all);
 
     #############################################
     # Responds with usage statement
