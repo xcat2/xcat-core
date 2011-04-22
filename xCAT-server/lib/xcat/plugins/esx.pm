@@ -3864,7 +3864,7 @@ sub  makecustomizedmod {
     if (-e "$dest/$modname") {
         unlink("$dest/$modname");
     }
-    if ($dossh) {
+    if ($dossh and $osver =~ /esxi4/) {
         system("tar czf $dest/$modname * .ssh");
     } else {
         system("tar czf $dest/$modname *");
