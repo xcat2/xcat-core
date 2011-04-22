@@ -3752,6 +3752,27 @@ sub copycd {
 	# let everyone read it
 	#chdir "/tmp";
 	chmod 0755, "$installroot/$distname/$arch";
+	if ($distname =~ /esxi5/) { #going to tweak boot.cfg for install and default stateless case
+	  if (! -r "$installroot/$distname/$arch/boot.cfg.stateless") {
+	    copy("$installroot/$distname/$arch/boot.cfg","$installroot/$distname/$arch/boot.cfg.stateless");
+	    my $bootcfg;
+	    open($bootcfg,"<","$installroot/$distname/$arch/boot.cfg");
+	    my @bootcfg = <$bootcfg>;
+	    close($bootcfg);
+	    foreach (@bootcfg) { #no point in optimizing trivial, infrequent code, readable this way
+	      s/runweasel//; #don't run the installer in stateless mode
+	      s!--- /imgdb.tgz!!; #don't need the imgdb for stateless
+	      s!--- /imgpayld.tgz!!; #don't need the boot payload since we aren't installing
+	      s!--- /weaselin.i00!!; #and also don't need the weasel install images if... not installing
+	      s!Loading ESXi installer!xCAT is loading ESXi stateless!;
+	    }
+	    open($bootcfg,">","$installroot/$distname/$arch/boot.cfg.stateless");
+	    foreach (@bootcfg) {
+	      print $bootcfg $_;
+	    }
+	    close($bootcfg);
+	}
+	
 	if ($rc != 0){
         xCAT::SvrUtils::sendmsg([1,"Media copy operation failed, status $rc"], $output_handler);
 	}else{
