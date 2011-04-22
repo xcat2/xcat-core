@@ -3958,7 +3958,7 @@ sub mknetboot {
                 push @reqmods,"mod.tgz";
                 $mods{"mod.tgz"}=1;
             }
-            if (-r "$::XCATROOT/share/xcat/netboot/syslinux/mboot.c32") { #prefer xCAT patched mboot.c32 with BOOTIF for mboot
+            if ($osver =~ /esxi4/ and -r "$::XCATROOT/share/xcat/netboot/syslinux/mboot.c32") { #prefer xCAT patched mboot.c32 with BOOTIF for mboot
 			    copy("$::XCATROOT/share/xcat/netboot/syslinux/mboot.c32", $dest);
             } else {
 			    copy("$srcdir/mboot.c32", $dest);
@@ -3966,17 +3966,18 @@ sub mknetboot {
 			$donetftp{$osver,$arch,$profile} = 1;
 		}
 		my $tp = "xcat/netboot/$osver/$arch/$shortprofname";
-        my $bail=0;
-        foreach (@reqmods) {
-            unless (-r "$tftpdir/$tp/$_") { 
-                xCAT::SvrUtils::sendmsg([1,"$_ is missing from the target destination, ensure that either copycds has been run or that $custprofpath contains this file"], $output_handler);
-                $bail=1; #only flag to bail, present as many messages as possible to user
-            }
-        }
-        if ($bail) { #if the above loop detected one or more failures, bail out
-           return;
-        }
-		# now make <HEX> file entry stuff
+	if ($osver =~ /esxi4/) {
+	  my $bail=0;
+	  foreach (@reqmods) {
+	      unless (-r "$tftpdir/$tp/$_") { 
+		  xCAT::SvrUtils::sendmsg([1,"$_ is missing from the target destination, ensure that either copycds has been run or that $custprofpath contains this file"], $output_handler);
+		  $bail=1; #only flag to bail, present as many messages as possible to user
+	      }
+	  }
+	  if ($bail) { #if the above loop detected one or more failures, bail out
+	    return;
+	  }	
+	      # now make <HEX> file entry stuff
 		my $kernel = "$tp/mboot.c32";
 		my $prepend = "$tp/vmkboot.gz";
         delete $mods{"vmkboot.gz"};
@@ -4004,7 +4005,12 @@ sub mknetboot {
             $prepend .= " ".$kcmdline;
 		}
         $append = $prepend.$append;
-        $output_handler->({node=>[{name=>[$node],'_addkcmdlinehandled'=>[1]}]});
+	}
+	elsif ($osver =~ /esxi5/) { #do a more straightforward thing..
+	  my $kernel = "$tp/mboot.c32";
+	  my $kcmdline = "-c $tp/boot.cfg.stateless";
+	}
+	$output_handler->({node=>[{name=>[$node],'_addkcmdlinehandled'=>[1]}]});
 
 
 
@@ -4124,13 +4130,16 @@ sub cpNetbootImages {
 	    return;
 	  }
 	  my $statelesscfg;
+	  my @filestocopy = ("boot.cfg.stateless");
 	  if (-r "$overridedir/boot.cfg.stateless") {
 	    open ($statelesscfg,"<","$overridedir/boot.cfg.stateless");
-	  } else {
+	  } elsif (-r "$srcDir/boot.cfg.stateless") {
 	    open ($statelesscfg,"<","$srcDir/boot.cfg.stateless");
+	  } else {
+	    die "boot.cfg.stateless was missing from $srcDir???";
 	  }
 	  my @statelesscfg=<$statelesscfg>;
-	  my @filestocopy;
+	  
 	  foreach (@statelesscfg) { #search for files specified by the boot cfg and pull them in
 	    if (/^kernel=(.*)/) {
 	      push @filestocopy,$1;
