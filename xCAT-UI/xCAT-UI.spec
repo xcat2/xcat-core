@@ -36,12 +36,11 @@ echo "Minifying Javascripts... This will take a couple of minutes."
 COMPILER_JAR='/xcat2/build/tools/compiler.jar'
 UI_JS="js/"
 
+%ifos linux
+JAVA='/opt/ibm/java-ppc64-60/jre/bin/java'
 # Find all Javascript files
 declare -a FILES
 FILES=`find ${UI_JS} -name '*.js'`
-
-%ifos linux
-JAVA='/opt/ibm/java-ppc64-60/jre/bin/java'
 for i in ${FILES[*]}; do
 	# Ignore Javascripts that are already minified
 	if [[ ! $i =~ '.*\.min\.js$' ]]; then
@@ -55,6 +54,8 @@ done
 
 %else  # AIX
 JAVA='/usr/java6_64/bin/java'
+# Find all Javascript files
+FILES=`find ${UI_JS} -name '*.js'`
 for i in ${FILES[*]}; do
 	# Ignore Javascripts that are already minified
 	if [[ ! $i = @(*.min.js) ]]; then
