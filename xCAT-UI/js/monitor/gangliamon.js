@@ -487,7 +487,7 @@ function loadNodes4Ganglia(data) {
 	installLnk.click(function() {
 		var tgtNodes = getNodesChecked(gangliaTableId);
 		if (tgtNodes) {
-			openInstallDialog(tgtNodes);
+			installGanglia(tgtNodes);
 		}
 	});
 
@@ -1028,87 +1028,52 @@ function createGangliaToolTip() {
 }
 
 /**
- * Open dialog to install Ganglia on a given node
- * 
- * @param node
- *            Node to install Ganglia on
- * @return Nothing
- */
-function openInstallDialog(node) {
-	var form = $('<div class="form"></div>');
-	
-	// Create info bar
-	var info = createInfoBar('Select the directory containing the Ganglia packages to install onto the given node range. Be aware that the Ganglia packages must be present in the /install directory.');
-	form.append(info);
-	
-	// Create node range input
-	var nr = $('<div></div>');
-	var nrLabel = $('<label>Node range:</label>').css('vertical-align', 'middle');
-	var nrInput = $('<input type="text" id="node" name="node"/>').val(node);
-	nr.append(nrLabel);
-	nr.append(nrInput);
-	form.append(nr);
-	
-	// Create Ganglia directory input
-	var directory = $('<div></div>');
-	var dirLabel = $('<label>Directory:</label>').css('vertical-align', 'middle');
-	var dirInput = $('<input type="text" id="directory" name="directory"/>').css('width', '300px');
-	directory.append(dirLabel);
-	directory.append(dirInput);
-	form.append(directory);
-
-	// Create button to browse for Ganglia directory
-	var browseBtn = createButton('Browse');
-	directory.append(browseBtn);
-	// Browse server directory and files
-	browseBtn.serverBrowser({
-		onSelect : function(path) {
-			$('input[name="directory"]').val(path);
-		},
-		onLoad : function() {
-			return $('input[name="directory"]').val();
-		},
-		knownExt : [ 'exe', 'js', 'txt' ],
-		knownPaths : [ {
-			text : 'Install',
-			image : 'desktop.png',
-			path : '/install'
-		} ],
-		imageUrl : 'images/serverbrowser/',
-		systemImageUrl : 'images/serverbrowser/',
-		handlerUrl : 'lib/getpath.php',
-		title : 'Browse',
-		requestMethod : 'POST',
-		width : '500',
-		height : '300',
-		basePath : '/install' // Limit user to only install directory
-	});
-	
-	// Open dialog to install Ganglia
-	form.dialog({
-		modal: true,
-		width: 600,
-		buttons: {
-    		'Install': function(){
-				installGanglia($('input[name="node"]').val(), $('input[name="directory"]').val());
-				$(this).dialog('close');
-			},
-			'Cancel': function(){
-    			$(this).dialog('close');
-    		}
-		}
-	});
-}
-
-/**
  * Install Ganglia on a given node
  * 
  * @param node
  *            Node to install Ganglia on
- * @param directory
- * 			  Directory containing Ganglia packages
  * @return Nothing
  */
-function installGanglia(node, directory) {
+function installGanglia(node) {
+	// (1) Find xCAT-dep repository
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'installganglia;' + node,
+			msg : node
+		},
+
+		success : updateGangliaInstall
+	});
+}
+
+/**
+ * Update Ganglia install status
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function updateGangliaInstall(data) {
+	// Create message in info box
+	var msg = '<pre>';
+	for (var i  in data.rsp) {
+		msg += data.rsp[i] + '<br/>';
+	}
+	msg += '</pre>';
 	
+	// Create an info box
+	var bar = createInfoBar(msg);
+	
+	// Prepend info or warning bar to tab
+	bar.prependTo($('#gangliamon #nodes'));
+	bar.css({
+		'overflow': 'hidden',
+		'margin-bottom': '10px',
+		'width': '750px'
+	});
+	bar.delay(8000).slideUp();
 }
