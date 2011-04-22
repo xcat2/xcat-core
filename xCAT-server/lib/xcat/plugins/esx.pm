@@ -4129,10 +4129,12 @@ sub cpNetbootImages {
 	    }
 	    #now that we have a list, do the copy (mostly redundant, but PXE needs them tftp accessible)
 	    foreach (@filestocopy) {
+	      chomp;
+	      s/ *\z//;
 	      my $mod = scalar fileparse($_);
 	      if (-r "$overridedir/$mod") {
 		copyIfNewer("$overridedir/$mod","$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $overridedir/$mod to $destDir/$mod, $!"], $output_handler);
-	      } elsif (-r "$_") {
+	      } elsif (-r "$srcDir/$mod") {
 		copyIfNewer($srcDir."/".$mod,"$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $srcDir/$mod to $destDir/$mod, $!"], $output_handler);
 	      } elsif ($mod ne "xcatmod.tgz") {
 		xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $srcDir/$mod to $destDir/$mod, $srcDir/$mod not found"], $output_handler);
