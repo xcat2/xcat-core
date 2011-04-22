@@ -3966,6 +3966,8 @@ sub mknetboot {
 			$donetftp{$osver,$arch,$profile} = 1;
 		}
 		my $tp = "xcat/netboot/$osver/$arch/$shortprofname";
+	my $kernel;
+	my $kcmdline;
 	if ($osver =~ /esxi4/) {
 	  my $bail=0;
 	  foreach (@reqmods) {
@@ -3978,7 +3980,7 @@ sub mknetboot {
 	    return;
 	  }	
 	      # now make <HEX> file entry stuff
-		my $kernel = "$tp/mboot.c32";
+		$kernel = "$tp/mboot.c32";
 		my $prepend = "$tp/vmkboot.gz";
         delete $mods{"vmkboot.gz"};
 		my $append = " --- $tp/vmk.gz";
@@ -3996,7 +3998,7 @@ sub mknetboot {
         }
 		if (defined $bpadds->{$node}->[0]->{addkcmdline}) {
             my $modules;
-            my $kcmdline;
+            $kcmdline;
             ($kcmdline,$modules) = split /---/,$bpadds->{$node}->[0]->{addkcmdline},2;
             $kcmdline =~ s/#NODEATTRIB:([^:#]+):([^:#]+)#/$nodesubdata{$1}->{$node}->[0]->{$2}/eg;
             if ($modules) {
@@ -4007,8 +4009,8 @@ sub mknetboot {
         $append = $prepend.$append;
 	}
 	elsif ($osver =~ /esxi5/) { #do a more straightforward thing..
-	  my $kernel = "$tp/mboot.c32";
-	  my $kcmdline = "-c $tp/boot.cfg.stateless";
+	  $kernel = "$tp/mboot.c32";
+	  $kcmdline = "-c $tp/boot.cfg.stateless";
 	}
 	$output_handler->({node=>[{name=>[$node],'_addkcmdlinehandled'=>[1]}]});
 
