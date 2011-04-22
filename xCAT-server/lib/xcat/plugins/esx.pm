@@ -4129,17 +4129,27 @@ sub cpNetbootImages {
 	    foreach (@filestocopy) {
 	      my $mod = scalar fileparse($_);
 	      if (-r "$overridedir/$mod") {
-		copy("$overridedir/$mod","$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $_ to $destDir/$mod"], $output_handler);
-	      } else {
-		copy($_,"$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $_ to $destDir/$mod"], $output_handler);
+		copyIfNewer("$overridedir/$mod","$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $overridedir/$mod to $destDir/$mod, $!"], $output_handler);
+	      } elsif (-r "$_") {
+		copyIfNewer($srcDir."/".$mod,"$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $srcDir/$mod to $destDir/$mod, $!"], $output_handler);
+	      } elsif ($mod ne "xcatmod.tgz") {
+		xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $srcDir/$mod to $destDir/$mod, $srcDir/$mod not found"], $output_handler);
 	      }
 	    }
 	} else {
-			xCAT::SvrUtils::sendmsg([1,"VMware $osver is not supported for netboot"], $output_handler);
+			xCAT::SvrUtils::sendmsg([1,"VMware $osver is not supported for netboot"], $output_handler);	  
 	}
 
 }
 
+sub copyIfNewer {
+  my $source = shift;
+  my $dest = shift;
+  if (! -e $dest or -C $source > -C $dest) {
+    return copy($source,$dest);
+  }
+  return 1; 
+}
 
 # compares nfs target described by parameters to every share mounted by target hypervisor
 # returns 1 if matching datastore is present and 0 otherwise
