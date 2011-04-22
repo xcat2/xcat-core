@@ -3764,6 +3764,9 @@ sub copycd {
 	      s!--- /imgdb.tgz!!; #don't need the imgdb for stateless
 	      s!--- /imgpayld.tgz!!; #don't need the boot payload since we aren't installing
 	      s!--- /weaselin.i00!!; #and also don't need the weasel install images if... not installing
+	      if (/^modules=/ and $_ !~ /xcatmod.tgz/) {
+		$_ .= $_. ' --- xcatmod.tgz';
+	      }
 	      s!Loading ESXi installer!xCAT is loading ESXi stateless!;
 	    }
 	    open($bootcfg,">","$installroot/$distname/$arch/boot.cfg.stateless");
@@ -4100,7 +4103,38 @@ sub cpNetbootImages {
             }
         }
 
-	}else{
+	}elsif ($osver =~ /esxi5/) { #we need boot.cfg.stateles
+	  if (! -r "$srcDir/boot.cfg.stateless" and ! -r "$overridedir/boot.cfg.stateless") {
+	    xCAT::SvrUtils::sendmsg([1,"$srcDir is missing boot.cfg.stateless file required for stateless boot"], $output_handler);
+	    return;
+	  }
+	  my $statelesscfg;
+	  if (-r "$overridedir/boot.cfg.stateless") {
+	    open ($statelesscfg,"<","$overridedir/boot.cfg.stateless");
+	  } else {
+	    open ($statelesscfg,"<","$srcDir/boot.cfg.stateless");
+	  }
+	  my @statelesscfg=<$statelesscfg>;
+	  my @filestocopy;
+	  foreach (@statelesscfg) { #search for files specified by the boot cfg and pull them in
+	    if (/^kernel=(.*)/) {
+	      push @filestocopy,$1;
+	    } elsif (/^modules=(.*)/) {
+	      foreach {split / --- /,$1) {
+		unless (
+		push @filestocopy,$_;
+	      }
+	    }
+	    #now that we have a list, do the copy (mostly redundant, but PXE needs them tftp accessible)
+	    foreach (@filestocopy) {
+	      my $mod = scalar fileparse($_);
+	      if (-r "$overridedir/$mod") {
+		copy("$overridedir/$mod","$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $_ to $destDir/$mod"], $output_handler);
+	      } else {
+		copy($_,"$destDir/$mod") or xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $_ to $destDir/$mod"], $output_handler);
+	      }
+	    }
+	} else {
 			xCAT::SvrUtils::sendmsg([1,"VMware $osver is not supported for netboot"], $output_handler);
 	}
 
