@@ -236,14 +236,15 @@ sub powercmd {
 # Queries CEC/LPAR power status (On or Off) for powercmd_boot
 ##########################################################################
 sub power_status {
-
+    my $value = shift;
     my @states = (
         "Operating|operating",
         "Running|running",
+        "standby",
         "Open Firmware|open-firmware"
     );
-    foreach ( @states ) { 
-        if ( /$_[0]/ ) {
+    foreach my $s ( @states ) { 
+        if ($value =~ /$s/ ) {
             return("on");
         }
     } 
