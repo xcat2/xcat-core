@@ -6,9 +6,13 @@ B<rvitals> - remote hardware vitals
 
 B<rvitals> [B<-h>|B<--help>|B<-v>|B<--version>]
 
-=head2 FSP/LPAR specific:
+=head2 FSP/LPAR (with HMC) specific:
 
 B<rvitals> I<noderange> {B<temp>|B<voltage>|B<lcds>|B<all>}
+
+=head2 CEC/LPAR/Frame (using Direct FSP Management ) specific:
+
+B<rvitals> I<noderange> {B<rackenv>|B<lcds>|B<all>}
 
 =head2 MPA specific:
 
@@ -58,6 +62,10 @@ Retrieves fan speeds.
 =item B<lcds>
 
 Retrieves LCDs status.
+
+=item B<rackenv>
+
+Retrieves rack environmentals.
 
 =item B<leds>
 
