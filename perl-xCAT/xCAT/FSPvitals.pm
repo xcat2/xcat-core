@@ -8,6 +8,8 @@ use xCAT::FSPpower;
 use xCAT::Usage;
 use xCAT::PPCvitals;
 use xCAT::FSPUtils;
+#use Data::Dumper;
+
 
 ##########################################################################
 # Parse the command line for options and operands
@@ -89,6 +91,40 @@ sub enumerate_lcds {
 
     return \@refcode;
 }
+
+##########################################################################
+# Returns rack environmentals 
+##########################################################################
+sub enumerate_rackenv {
+
+    my $name= shift;
+    my $d = shift;
+    #my $mtms = @$d[2];
+    my $Rc;
+    my $attr;
+    my $value;
+    my %outhash = ();
+    my $action = "get_rack_env"; 
+   
+    my $values = xCAT::FSPUtils::fsp_api_action ($name, $d, $action);
+    $Rc =  @$values[2];
+    my $data = @$values[1];
+    if ( $Rc != 0 ) {
+	 return( [$Rc,@$values[1]] );
+    }
+   
+    my $i = 0;
+    my @t = split(/\n/, $data); 
+    foreach my $td ( @t ) {
+       my ($attr,$value) = split (/:/, $td);
+       $outhash{ $attr } = $value;
+       $outhash{$i}{ $attr } = $value;
+       $i++;
+    }
+    
+    return ( [0,\%outhash] );
+}
+
 
 
 ##########################################################################
@@ -238,6 +274,63 @@ sub temp {
     return( \@result );
 }
 
+##########################################################################
+# Returns rack environmentals
+##########################################################################
+sub rackenv {
+
+    my $request = shift;
+    my $hash    = shift;
+    my @result  = ();
+    my %frame   = ();
+    my $prefix  = "Rack Environmentals:";
+
+    ######################################### 
+    # Group by frame
+    ######################################### 
+    while (my ($mtms,$h) = each(%$hash) ) {
+        while (my ($name,$d) = each(%$h) ) {
+            my $mtms = @$d[5];
+            
+
+            ################################# 
+            # Temperatures not available 
+            ################################# 
+            if ( @$d[4] !~ /^(bpa|frame)$/ ) {
+                my $text = "$prefix Only available for BPA/Frame";
+                push @result, [$name,$text,1];
+                next;
+            }
+            
+            my $action = "get_rack_env";
+            my $values = xCAT::FSPUtils::fsp_api_action ($name, $d, $action);
+            my $Rc =  @$values[2];
+            my $data = @$values[1];
+            if ( $Rc != 0 ) {
+                push @result, [$name,$data, $Rc];
+                next;
+            }
+
+            my @t = split(/\n/, $data);
+            foreach my $td ( @t ) {
+                push @result, [$name,$td, $Rc];
+                if ( !exists($request->{verbose}) ) {
+                    if( $td =~ /^Rack altitude in meters/ ) {
+                        last;
+                    }
+                } 
+            }
+        }
+    }
+
+
+    return( \@result );
+}
+
+
+
+
+
 
 ##########################################################################
 # Returns system power status (on or off) 
@@ -296,8 +389,7 @@ sub lcds {
 sub all {
 
     my @values = ( 
-        @{temp(@_)}, 
-        @{voltage(@_)}, 
+        @{rackenv(@_)}, 
         @{state(@_)},
         @{power(@_)},
         @{lcds(@_)}, 
