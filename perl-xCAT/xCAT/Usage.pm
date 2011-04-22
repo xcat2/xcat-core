@@ -45,7 +45,7 @@ my %usage = (
   FSP/LPAR (with HMC) specific:
       rvitals noderange {temp|voltage|lcds|all}
   FSP/LPAR (using Direct FSP Management)specific:
-      rvitals noderange lcds
+      rvitals noderange {lcds|rackenv|all}
   MPA specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|summary|all}
   Blade specific:
