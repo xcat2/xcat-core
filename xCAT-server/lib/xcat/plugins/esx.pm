@@ -3763,9 +3763,11 @@ sub copycd {
 	      s/runweasel//; #don't run the installer in stateless mode
 	      s!--- /imgdb.tgz!!; #don't need the imgdb for stateless
 	      s!--- /imgpayld.tgz!!; #don't need the boot payload since we aren't installing
+	      s!--- /tools.t00!!; #tools could be useful, but for now skip the memory requirement
 	      s!--- /weaselin.i00!!; #and also don't need the weasel install images if... not installing
 	      if (/^modules=/ and $_ !~ /xcatmod.tgz/) {
-		$_ .= $_. ' --- xcatmod.tgz';
+		chomp();
+		s! *\z! --- /xcatmod.tgz\n!;
 	      }
 	      s!Loading ESXi installer!xCAT is loading ESXi stateless!;
 	    }
@@ -3774,6 +3776,7 @@ sub copycd {
 	      print $bootcfg $_;
 	    }
 	    close($bootcfg);
+	  }
 	}
 	
 	if ($rc != 0){
@@ -4120,8 +4123,7 @@ sub cpNetbootImages {
 	    if (/^kernel=(.*)/) {
 	      push @filestocopy,$1;
 	    } elsif (/^modules=(.*)/) {
-	      foreach {split / --- /,$1) {
-		unless (
+	      foreach (split / --- /,$1) {
 		push @filestocopy,$_;
 	      }
 	    }
@@ -4136,6 +4138,7 @@ sub cpNetbootImages {
 		xCAT::SvrUtils::sendmsg([1,"Could not copy netboot contents from $srcDir/$mod to $destDir/$mod, $srcDir/$mod not found"], $output_handler);
 	      }
 	    }
+	  }
 	} else {
 			xCAT::SvrUtils::sendmsg([1,"VMware $osver is not supported for netboot"], $output_handler);	  
 	}
