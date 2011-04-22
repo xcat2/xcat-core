@@ -3794,9 +3794,15 @@ sub copycd {
 sub  makecustomizedmod {
     my $osver = shift;
     my $dest = shift;
+    my $modname;
+    if ($osver =~ /esxi4/) { #want more descriptive name,but don't break esxi4 setups.
+      $modname="mod.tgz";
+    } else {
+      $modname="xcatmod.tgz";
+    }
     # if it already exists, do not overwrite it because it may be someone
     # else's custom image
-    if(-f "$dest/mod.tgz"){ return 1; }
+    if(-f "$dest/$modname"){ return 1; }
     my $passtab = xCAT::Table->new('passwd');
     my $tmp;
     my $password;
@@ -3824,11 +3830,11 @@ sub  makecustomizedmod {
     }
     close($shadow);
     umask($oldmask);
-    if (-e "$::XCATROOT/share/xcat/netboot/esxi/38.xcat-enableipv6") {
+    if ($osver =~ /esxi4/ and -e "$::XCATROOT/share/xcat/netboot/esxi/38.xcat-enableipv6") {
         mkpath($tempdir."/etc/vmware/init/init.d");
         copy( "$::XCATROOT/share/xcat/netboot/esxi/38.xcat-enableipv6",$tempdir."/etc/vmware/init/init.d/38.xcat-enableipv6");
     }
-    if (-e "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking") {
+    if ($osver =~ /esxi4/ and -e "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking") {
         copy( "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking",$tempdir."/etc/vmware/init/init.d/47.xcat-networking");
     }
     if (-e "$::XCATROOT/share/xcat/netboot/esxi/xcatsplash") {
@@ -3838,8 +3844,13 @@ sub  makecustomizedmod {
     if (-r "/root/.ssh/id_rsa.pub") {
         $dossh=1;
         my $umask = umask(0077);#don't remember if dropbear is picky, but just in case
-        mkpath($tempdir."/.ssh");
-        copy("/root/.ssh/id_rsa.pub",$tempdir."/.ssh/authorized_keys");
+        if ($osver =~ /esxi4/) { #esxi4 used more typical path
+	  mkpath($tempdir."/.ssh");
+	  copy("/root/.ssh/id_rsa.pub",$tempdir."/.ssh/authorized_keys");
+	} elsif ($osver =~ /esxi5/) { #weird path to keys
+	  mkpath($tempdir."/etc/ssh/keys-root");
+	  copy("/root/.ssh/id_rsa.pub",$tempdir."/etc/ssh/keys-root/authorized_keys");
+	}
         umask($umask);
     }
     my $tfile;
@@ -3850,13 +3861,13 @@ sub  makecustomizedmod {
     require Cwd;
     my $dir=Cwd::cwd();
     chdir($tempdir);
-    if (-e "$dest/mod.tgz") {
-        unlink("$dest/mod.tgz");
+    if (-e "$dest/$modname") {
+        unlink("$dest/$modname");
     }
     if ($dossh) {
-        system("tar czf $dest/mod.tgz * .ssh");
+        system("tar czf $dest/$modname * .ssh");
     } else {
-        system("tar czf $dest/mod.tgz *");
+        system("tar czf $dest/$modname *");
     }
     chdir($dir);
     rmtree($tempdir);
