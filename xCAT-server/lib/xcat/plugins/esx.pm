@@ -3838,6 +3838,7 @@ sub  makecustomizedmod {
         copy( "$::XCATROOT/share/xcat/netboot/esxi/47.xcat-networking",$tempdir."/etc/vmware/init/init.d/47.xcat-networking");
     }
     if (-e "$::XCATROOT/share/xcat/netboot/esxi/xcatsplash") {
+      mkpath($tempdir."/etc/vmware/");
         copy( "$::XCATROOT/share/xcat/netboot/esxi/xcatsplash",$tempdir."/etc/vmware/welcome");
     }
     my $dossh=0;
