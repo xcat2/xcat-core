@@ -3760,11 +3760,22 @@ sub copycd {
 	    my @bootcfg = <$bootcfg>;
 	    close($bootcfg);
 	    foreach (@bootcfg) { #no point in optimizing trivial, infrequent code, readable this way
+	      s!kernel=/!kernel=!; # remove leading /
+	      s!modules=/!modules=!; #remove leading /
+	      s!--- /!--- !g; #remove all the 'absolute' slashes
+	    }
+	    open($bootcfg,">","$installroot/$distname/$arch/boot.cfg.install");
+	    foreach (@bootcfg) {
+	      print $bootcfg $_;
+	    }
+	    close($bootcfg);
+	    foreach (@bootcfg) { #no point in optimizing trivial, infrequent code, readable this way
 	      s/runweasel//; #don't run the installer in stateless mode
 	      s!--- /imgdb.tgz!!; #don't need the imgdb for stateless
 	      s!--- /imgpayld.tgz!!; #don't need the boot payload since we aren't installing
 	      s!--- /tools.t00!!; #tools could be useful, but for now skip the memory requirement
 	      s!--- /weaselin.i00!!; #and also don't need the weasel install images if... not installing
+	      
 	      if (/^modules=/ and $_ !~ /xcatmod.tgz/) {
 		chomp();
 		s! *\z! --- /xcatmod.tgz\n!;
