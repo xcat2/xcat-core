@@ -3771,10 +3771,10 @@ sub copycd {
 	    close($bootcfg);
 	    foreach (@bootcfg) { #no point in optimizing trivial, infrequent code, readable this way
 	      s/runweasel//; #don't run the installer in stateless mode
-	      s!--- /imgdb.tgz!!; #don't need the imgdb for stateless
-	      s!--- /imgpayld.tgz!!; #don't need the boot payload since we aren't installing
-	      s!--- /tools.t00!!; #tools could be useful, but for now skip the memory requirement
-	      s!--- /weaselin.i00!!; #and also don't need the weasel install images if... not installing
+	      s!--- imgdb.tgz!!; #don't need the imgdb for stateless
+	      s!--- imgpayld.tgz!!; #don't need the boot payload since we aren't installing
+	      s!--- tools.t00!!; #tools could be useful, but for now skip the memory requirement
+	      s!--- weaselin.i00!!; #and also don't need the weasel install images if... not installing
 	      
 	      if (/^modules=/ and $_ !~ /xcatmod.tgz/) {
 		chomp();
