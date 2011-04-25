@@ -3778,7 +3778,7 @@ sub copycd {
 	      
 	      if (/^modules=/ and $_ !~ /xcatmod.tgz/) {
 		chomp();
-		s! *\z! --- /xcatmod.tgz\n!;
+		s! *\z! --- xcatmod.tgz\n!;
 	      }
 	      s!Loading ESXi installer!xCAT is loading ESXi stateless!;
 	    }
