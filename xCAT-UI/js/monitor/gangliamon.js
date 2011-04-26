@@ -1035,45 +1035,6 @@ function createGangliaToolTip() {
  * @return Nothing
  */
 function installGanglia(node) {
-	// (1) Find xCAT-dep repository
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'webrun',
-			tgt : '',
-			args : 'installganglia;' + node,
-			msg : node
-		},
-
-		success : updateGangliaInstall
-	});
-}
-
-/**
- * Update Ganglia install status
- * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
- */
-function updateGangliaInstall(data) {
-	// Create message in info box
-	var msg = '<pre>';
-	for (var i  in data.rsp) {
-		msg += data.rsp[i] + '<br/>';
-	}
-	msg += '</pre>';
-	
-	// Create an info box
-	var bar = createInfoBar(msg);
-	
-	// Prepend info or warning bar to tab
-	bar.prependTo($('#gangliamon #nodes'));
-	bar.css({
-		'overflow': 'hidden',
-		'margin-bottom': '10px',
-		'width': '750px'
-	});
-	bar.delay(8000).slideUp();
+	var iframe = createIFrame('lib/cmd.php?cmd=webrun&tgt=&args=installganglia;' + node + '&msg=' + node + '&opts=flush');
+	iframe.prependTo($('#gangliamon #nodes'));
 }
