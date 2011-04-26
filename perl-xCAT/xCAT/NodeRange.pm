@@ -130,6 +130,10 @@ sub nodesbycriteria {
    foreach $tab (keys %tables) {
        my $tabh = xCAT::Table->new($tab,-create=>0);
        unless ($tabh) { next; }
+       my @cols;
+       foreach (@{$tables{$tab}}) {
+           push @cols, $_->[0];
+        }
        if ($tab eq "nodelist") { #fun caching interaction
 	 my $neednewcache=0;
 	 foreach (@cols) {
@@ -145,10 +149,6 @@ sub nodesbycriteria {
 	   }
 	  }
 	 }
-       my @cols;
-       foreach (@{$tables{$tab}}) {
-           push @cols, $_->[0];
-        }
         my $rechash = $tabh->getNodesAttribs($nodes,\@cols); #TODO: if not defined nodes, getAllNodesAttribs may be faster actually...
         foreach my $node (@$nodes) {
             my $recs = $rechash->{$node};
