@@ -136,10 +136,11 @@ sub nodesbycriteria {
         }
        if ($tab eq "nodelist") { #fun caching interaction
 	 my $neednewcache=0;
-	 foreach (@cols) {
-	   unless (grep /^$_\z/,@cachedcolumns) {
+	 my $nlcol;
+	 foreach $nlcol (@cols) {
+	   unless (grep /^$nlcol\z/,@cachedcolumns) {
 	     $neednewcache=1;
-	     push @cachedcolumns,$_;
+	     push @cachedcolumns,$nlcol;
 	   }
 	 }
 	 if ($neednewcache) {
