@@ -583,18 +583,31 @@ function openDialog(type, msg) {
 function createIFrame(src) {
 	// Put an iframe inside an info box
 	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>');
+	
+	// Create info and close icons
 	var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
 		'display': 'inline-block',
 		'margin': '10px 5px'
 	});
+	var close = $('<span class="ui-icon ui-icon-close"></span>').css({
+		'display': 'inline-block',
+		'float': 'right',
+		'margin': '10px 5px'
+	}).click(function() {
+		// Remove info box on-click
+		$(this).parent().remove();
+	});
+		
 	var iframe = $('<iframe></iframe>').attr('src', src).css({
 		'display': 'inline-block',
 		'border': '0px',
 		'margin': '10px 0px',
-		'width': '95%'
+		'width': '90%'
 	});
 	
 	infoBar.append(icon);
 	infoBar.append(iframe);
+	infoBar.append(close);
+	
 	return infoBar;
 }
