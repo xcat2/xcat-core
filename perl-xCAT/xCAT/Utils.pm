@@ -32,6 +32,7 @@ require xCAT::NetworkUtils;
 require xCAT::Schema;
 #require Data::Dumper;
 require xCAT::NodeRange;
+require xCAT::Version;
 require DBI;
 
 our @ISA       = qw(Exporter);
@@ -464,14 +465,7 @@ sub Version
 
     #The following tag tells the build script where to append build info
     my $version = shift;
-    if ($version eq 'short')
-    {
-	 $version = ''    #XCATVERSIONSUBHERE ;	
-    }
-    else
-    {
-          $version = 'Version '    #XCATVERSIONSUBHERE #XCATSVNBUILDSUBHERE ;
-    }
+    $version = xCAT::Version->Version();
     return $version;
 
 }
