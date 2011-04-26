@@ -1044,6 +1044,8 @@ sub plugin_command {
         $$progname=$oldprogname.": $modname instance";
         if ($sock) { close $pfd; }
         unless ($handler_hash{$_} == 1) {
+	  #ok, if nodes have numbers, this sorts them numerically... roughly..
+	  #if node doesn't, then it spews a message, need to fix
           my @nodes = sort {($a =~ /(\d+)/)[0] <=> ($b =~ /(\d+)/)[0] || $a cmp $b } (keys %{$handler_hash{$_}});
           $req->{node}=\@nodes;
         }
