@@ -15,14 +15,23 @@ export USEOPENSSLFORXCAT
    sleep 1
    mkdir -p /root/.xcat
    chmod 700 /root/.xcat
-   getcredentials.awk xcat_client_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.xcat/client-cred.pem
-   CONT=`cat /root/.xcat/client-cred.pem`
-   while [ -z "$CONT" ]; do
-    let SLI=$RANDOM%10+10
-    sleep $SLI
-    getcredentials.awk xcat_client_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.xcat/client-cred.pem
+   getcredentials.awk xcat_client_cred > /tmp/xcat_client_cred
+   grep -E '<error>' /tmp/xcat_client_cred
+   if [ $? -ne 0 ]; then
+     cat /tmp/xcat_client_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.xcat/client-cred.pem
      CONT=`cat /root/.xcat/client-cred.pem`
-   done
+     while [ -z "$CONT" ]; do
+      let SLI=$RANDOM%10+10
+      sleep $SLI
+      getcredentials.awk xcat_client_cred | grep -v '<'|sed -e 's/&lt;/</' -e 's/&gt;/>/' -e 's/&amp;/&/' -e 's/&quot/"/' -e "s/&apos;/'/" > /root/.xcat/client-cred.pem
+       CONT=`cat /root/.xcat/client-cred.pem`
+     done
+   else
+     ERR_MSG=`sed -n 's%.*<error>\(.*\)</error>.*%\1%p' /tmp/xcat_client_cred`
+     logger -t xCAT xcat_client_cred Error: $ERR_MSG
+   fi
+   rm /tmp/xcat_client_cred
+
    chmod 600 /root/.xcat/client-cred.pem
    cp _xcat/ca.pem /root/.xcat/ca.pem
    kill -9 $CREDPID

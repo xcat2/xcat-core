@@ -15,11 +15,14 @@ BEGIN {
             print "   <arg>"ARGV[i]"</arg>" |& server
         print "</xcatrequest>" |& server
 
+        start = 0
         while (server |& getline) {
-                if (match($0,/^\s*</)) {
+                if (match($0,"<xcatresponse>")) {
+                  start = 1
+                }
+                if (start == 1) {
                   print $0
                 }
-                print $0 
                 if (match($0,"<serverdone>")) {
                   quit = "yes"
                 }
