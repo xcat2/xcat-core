@@ -3834,7 +3834,12 @@ sub  makecustomizedmod {
     open($shadow,">",$tempdir."/etc/shadow");
     $password = crypt($password,'$1$'.xCAT::Utils::genpassword(8));
     my $dayssince1970 = int(time()/86400); #Be truthful about /etc/shadow
-    my @otherusers = qw/nobody nfsnobody dcui daemon vimuser/;
+    my @otherusers = qw/nobody nfsnobody dcui daemon/;
+    if ($osver =~ /esxi4/) {
+      push @otherusers,"vimuser";
+    } elsif ($osver =~ /esxi5/) {
+      push @otherusers,"vpxuser";
+    }
     print $shadow "root:$password:$dayssince1970:0:99999:7:::\n";
     foreach (@otherusers) {
         print $shadow "$_:*:$dayssince1970:0:99999:7:::\n";
