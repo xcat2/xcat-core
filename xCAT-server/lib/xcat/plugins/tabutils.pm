@@ -720,12 +720,13 @@ sub tabprune
     my $tabprune_usage = sub {
         my $exitcode = shift @_;
         my %rsp;
-        push @{$rsp{data}}, "Usage: tabprune <eventlog | auditlog > [-V] -a";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog > [-V] -n <# of records>";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog > [-V] -i <recid>";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog > [-V] -p <percent>";
+        push @{$rsp{data}}, "Usage: tabprune <tablename> [-V] -a";
+        push @{$rsp{data}}, "       tabprune <tablename> [-V] -n <# of records>";
+        push @{$rsp{data}}, "       tabprune <tablename> [-V] -i <recid>";
+        push @{$rsp{data}}, "       tabprune <tablename> [-V] -p <percent>";
         push @{$rsp{data}}, "       tabprune [-h|--help]";
         push @{$rsp{data}}, "       tabprune [-v|--version]";
+        push @{$rsp{data}}, "       tables supported:eventlog,auditlog,isnm_perf,isnm_perf_sum";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
     };
@@ -756,16 +757,16 @@ sub tabprune
     my $table = $ARGV[0];
     if (!(defined $table)) {
         my %rsp;
-        $rsp{data}->[0] = "Table name eventlog, or auditlog.";
+        $rsp{data}->[0] = "Table name required.";
         $rsp{errorcode} = 1; 
         $cb->(\%rsp);
         return 1;
       
     }
     $table=~ s/\s*//g; # remove blanks 
-    if (($table ne "eventlog") && ($table ne "auditlog")) {
+    if (($table ne "eventlog") && ($table ne "auditlog") && ($table ne "isnm_perf") && ($table ne "isnm_perf_sum") ) {
         my %rsp;
-        $rsp{data}->[0] = "Table name eventlog, or auditlog required.";
+        $rsp{data}->[0] = "Table $table not supported, see tabprune -h for supported tables.";
         $rsp{errorcode} = 1; 
         $cb->(\%rsp);
         return 1;
@@ -812,6 +813,12 @@ sub tabprune
     my $attrrecid; 
     if (($table eq "eventlog") || ($table eq "auditlog")) {
       $attrrecid="recid";
+    } else {
+      if ($table eq "isnm_perf") {  # if ISNM
+        $attrrecid="perfid";
+      } else {
+        $attrrecid="period";   # isnm_perf_sum table
+      }
     }
     if (defined $ALL ) {
      $rc=tabprune_all($table,$cb, $attrrecid,$VERBOSE); 
@@ -875,40 +882,47 @@ sub tabprune_numberentries {
   my $DBname = xCAT::Utils->get_DBName;
   my @attribs = ("$attrrecid");
   my @ents=$tab->getAllAttribs(@attribs);
-  # find smallest and largest  recid, note table is not ordered by recid after
-  # a while
-  my $smallrid;
-  my $largerid;
-  foreach my $rid (@ents) {
-    if (!(defined $smallrid)) {
+  if (@ents) {    # anything to process 
+    # find smallest and largest  recid, note table is not ordered by recid after
+    # a while
+    my $smallrid;
+    my $largerid;
+    foreach my $rid (@ents) {
+      if (!(defined $smallrid)) {
          $smallrid=$rid;
-    }
-    if (!(defined $largerid)) {
+      }
+      if (!(defined $largerid)) {
          $largerid=$rid;
-    }
-    if ($rid->{$attrrecid} < $smallrid->{$attrrecid}) {
+      }
+      if ($rid->{$attrrecid} < $smallrid->{$attrrecid}) {
          $smallrid=$rid;
-    }
-    if ($rid->{$attrrecid} > $largerid->{$attrrecid}) {
+      }
+      if ($rid->{$attrrecid} > $largerid->{$attrrecid}) {
          $largerid=$rid;
+      }
     }
-  }
-  my $RECID;
-  if ($flag eq "n") {  # deleting number of records
-    #determine recid to delete all entries that come before like the -i flag
-    $RECID= $smallrid->{$attrrecid} + $numberentries ; 
-  } else {  # flag must be percentage
-     #take largest and smallest recid and percentage and determine the recid
-     # that will remove the requested percentage.   If some are missing in the
-     # middle due to tabedit,  we are not worried about it.
+    my $RECID;
+    if ($flag eq "n") {  # deleting number of records
+      #determine recid to delete all entries that come before like the -i flag
+      $RECID= $smallrid->{$attrrecid} + $numberentries ; 
+    } else {  # flag must be percentage
+       #take largest and smallest recid and percentage and determine the recid
+       # that will remove the requested percentage.   If some are missing in the
+       # middle due to tabedit,  we are not worried about it.
      
-     my $totalnumberrids = $largerid->{$attrrecid} - $smallrid->{$attrrecid} +1;
-     my $percent = $numberentries / 100;
-     my $percentage=$totalnumberrids * $percent ;
-     my $cnt=sprintf( "%d", $percentage ); # round to whole number
-     $RECID=$smallrid->{$attrrecid} + $cnt; # get recid to remove all before
+       my $totalnumberrids = $largerid->{$attrrecid} - $smallrid->{$attrrecid} +1;
+       my $percent = $numberentries / 100;
+       my $percentage=$totalnumberrids * $percent ;
+       my $cnt=sprintf( "%d", $percentage ); # round to whole number
+       $RECID=$smallrid->{$attrrecid} + $cnt; # get recid to remove all before
+    }
+    $rc=tabprune_recid($table,$cb,$RECID, $attrrecid,$VERBOSE); 
+  } else {
+      my %rsp;
+      push @{$rsp{data}}, "Nothing to prune from $table.";
+      $rsp{errorcode} = $rc; 
+      $cb->(\%rsp);
   }
-  $rc=tabprune_recid($table,$cb,$RECID, $attrrecid,$VERBOSE); 
   return $rc;
 }
 
