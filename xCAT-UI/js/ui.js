@@ -304,7 +304,38 @@ DataTable.prototype.add = function(rowCont) {
  * @return Status bar
  */
 function createStatusBar(barId) {
-	var statusBar = $('<div class="ui-state-highlight ui-corner-all" id="' + barId + '"></div>').css('padding', '10px');
+	var statusBar = $('<div class="ui-state-highlight ui-corner-all" id="' + barId + '"></div>').css({
+		'margin-bottom': '5px',
+		'min-height': '30px'
+	});
+	
+	// Create info icon
+	var icon = $('<span class="ui-icon ui-icon-circle-check"></span>').css({
+		'display': 'inline-block',
+		'margin': '10px 5px'
+	});
+	
+	// Create message section
+	var msg = $('<div></div>').css({
+		'display': 'inline-block',
+		'margin': '10px 0px',
+		'width': '90%'
+	});
+	
+	// Create hide button
+	var hide = $('<span class="ui-icon ui-icon-minus"></span>').css({
+		'display': 'inline-block',
+		'float': 'right',
+		'margin': '10px 5px',
+		'cursor': 'pointer'
+	}).click(function() {
+		// Remove info box on-click
+		$(this).parent().hide();
+	});
+	
+	statusBar.append(icon);
+	statusBar.append(msg);
+	statusBar.append(hide);
 	return statusBar;
 }
 
@@ -520,17 +551,18 @@ function includeJs(file) {
  */
 function writeRsp(rsp, pattern) {
 	// Create paragraph to hold ajax response
-	var prg = $('<p></p>');
+	var prg = $('<pre></pre>');
+	
 	for ( var i in rsp) {
 		if (rsp[i]) {
 			// Create regular expression for given pattern
 			// Replace pattern with break
 			if (pattern) {
-				rsp[i] = rsp[i].replace(new RegExp(pattern, 'g'), '<br>');
+				rsp[i] = rsp[i].replace(new RegExp(pattern, 'g'), '<br/>');
 				prg.append(rsp[i]);
 			} else {
 				prg.append(rsp[i]);
-				prg.append('<br>');
+				prg.append('<br/>');
 			}			
 		}
 	}
@@ -582,7 +614,9 @@ function openDialog(type, msg) {
  */
 function createIFrame(src) {
 	// Put an iframe inside an info box
-	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>');
+	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>').css({
+		'margin-bottom': '5px'
+	});
 	
 	// Create info and close icons
 	var icon = $('<span class="ui-icon ui-icon-info"></span>').css({

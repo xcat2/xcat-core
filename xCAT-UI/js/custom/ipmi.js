@@ -126,7 +126,7 @@ ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
 
 	// Create loader
 	var loader = createLoader('ipmiProvisionLoader' + inst).hide();
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Provision a node on iDataPlex.');

@@ -1506,7 +1506,7 @@ function loadUnlockPage(tgtNodes) {
 
 	// Create loader
 	var loader = createLoader('');
-	statusBar.append(loader);
+	statusBar.find('div').append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Give the root password for this node range to setup its SSH keys.');
@@ -1606,7 +1606,7 @@ function loadScriptPage(tgtNodes) {
 
 	// Create loader
 	var loader = createLoader('scriptLoader' + inst);
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Load a script to run against this node range.');
@@ -1747,7 +1747,7 @@ function loadDeletePage(tgtNodes) {
 
 	// Create loader
 	var loader = createLoader('');
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 	statBar.hide();
 
 	// Create target nodes string
@@ -1846,7 +1846,7 @@ function updateStatusBar(data) {
 
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 	} else if (cmd == 'rmvm') {
 		// Get data table
 		var dTable = $('#' + nodesTableId).dataTable();
@@ -1857,7 +1857,7 @@ function updateStatusBar(data) {
 
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 		
 		// If there was an error, do not continue
 		if (prg.html().indexOf('Error') > -1) {
@@ -1878,7 +1878,7 @@ function updateStatusBar(data) {
 		$('#' + statBarId).find('img').hide();
 		
 		// Write ajax response to status bar
-		var prg = $('<pre style="margin: 0px;"></pre>');
+		var prg = $('<pre></pre>');
 		for (var i in rsp) {
 			for (var j in tgts) {
 				rsp[i] = rsp[i].replace(new RegExp(tgts[j] + ':', 'g'), '');
@@ -1887,7 +1887,7 @@ function updateStatusBar(data) {
 			prg.append(rsp[i]);
 			prg.append('<br>');	
 		}
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 		
 		// Enable fields
 		$('#' + statBarId).parent().find('input').removeAttr('disabled');
@@ -1901,7 +1901,7 @@ function updateStatusBar(data) {
 		
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 	}
 }
 

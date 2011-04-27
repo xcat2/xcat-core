@@ -13,7 +13,7 @@ function loadRmcMon(){
 	
 	//add the stauts bar first. id = 'rmcMonStatus'
 	var rmcStatusBar = createStatusBar('rmcMonStatus');
-	rmcStatusBar.append(createLoader());
+	rmcStatusBar.find('div').append(createLoader());
 	rmcMonTab.append(rmcStatusBar);
 	
 	//add the configure button.
@@ -61,7 +61,7 @@ function loadRmcMonConfigure(){
 	var startButton = createButton('Start');
 	rmcmonCfgDiv.append(startButton);
 	startButton.click(function(){
-		$('#rmcMonStatus').empty().append(createLoader());
+		$('#rmcMonStatus div').empty().append(createLoader());
 		$.ajax({
 			url : 'lib/cmd.php',
 			dataType : 'json',
@@ -73,7 +73,7 @@ function loadRmcMonConfigure(){
 			},
 
 			success : function(data){
-				$('#rmcMonStatus').empty().append(data.rsp[0]);
+				$('#rmcMonStatus div').empty().append(data.rsp[0]);
 			}
 		});
 	});
@@ -82,7 +82,7 @@ function loadRmcMonConfigure(){
 	var stopButton = createButton('Stop');
 	rmcmonCfgDiv.append(stopButton);
 	stopButton.click(function(){
-		$('#rmcMonStatus').empty().append(createLoader());
+		$('#rmcMonStatus div').empty().append(createLoader());
 		$.ajax({
 			url : 'lib/cmd.php',
 			dataType : 'json',
@@ -94,7 +94,7 @@ function loadRmcMonConfigure(){
 			},
 
 			success : function(data){
-				$('#rmcMonStatus').empty().append(data.rsp[0]);
+				$('#rmcMonStatus div').empty().append(data.rsp[0]);
 			}
 		});
 	});
@@ -125,7 +125,7 @@ function rsctRpmCheck(data){
 
 			success : function(data){
 				if (-1 != data.rsp.indexOf("not")){
-					$('#rmcMonStatus').empty().append(
+					$('#rmcMonStatus div').empty().append(
 					'Please install the <a href="http://www14.software.ibm.com/webapp/set2/sas/f/rsct/rmc/download/home.html" target="install_window">RSCT</a> first.<br/>' +
 					'You can find more support from <a href="http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/xCAT-client/share/doc/xCAT2-Monitoring.pdf" target="pdf_window">xCAT2-Monitoring.pdf</a>');
 				}
@@ -151,24 +151,24 @@ function xcatrmcRpmCheck(){
 		success : function(data){
 			var softInstallStatus = data.rsp.split(/\n/);
 			var needHelp = false;
-			$('#rmcMonStatus').empty();
+			$('#rmcMonStatus div').empty();
 			//check the xcat-rmc
 			if (-1 != softInstallStatus[0].indexOf("not")){
 				needHelp = true;
-				$('#rmcMonStatus').append(
+				$('#rmcMonStatus div').append(
 				'Please install the <a href="http://xcat.sourceforge.net/#download" target="install_window">xCAT-rmc</a> first.<br/>');
 			}
 			
 			//check the rrdtool
 			if (-1 != softInstallStatus[1].indexOf("not")){
 				needHelp = true;
-				$('#rmcMonStatus').append(
+				$('#rmcMonStatus div').append(
 					'Please install the <a href="http://oss.oetiker.ch/rrdtool/download.en.html" target="install_window">RRD-tool</a> first.<br/>');
 			}
 			
 			//add help info or load the rmc show
 			if (needHelp){
-				$('#rmcMonStatus').append(
+				$('#rmcMonStatus div').append(
 				'You can find more support form <a href="http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/xCAT-client/share/doc/xCAT2-Monitoring.pdf" target="pdf_window">xCAT2-Monitoring.pdf</a>');
 			}
 			else{
@@ -179,8 +179,8 @@ function xcatrmcRpmCheck(){
 }
 
 function rmcWorkingCheck(){
-	$('#rmcMonStatus').empty().append("Checking RMC working status.");
-	$('#rmcMonStatus').append(createLoader());
+	$('#rmcMonStatus div').empty().append("Checking RMC working status.");
+	$('#rmcMonStatus div').append(createLoader());
 	$('#rmcmon button:first').show();
 	$.ajax({
 		url : 'lib/cmd.php',
@@ -194,7 +194,7 @@ function rmcWorkingCheck(){
 
 		success : function(data){
 			if (-1 != data.rsp[0].indexOf("not-monitored")){
-				$('#rmcMonStatus').empty().append("Please start the RMC Monitoring first.");
+				$('#rmcMonStatus div').empty().append("Please start the RMC Monitoring first.");
 				return;
 			}
 			loadRmcMonShow();
@@ -203,8 +203,8 @@ function rmcWorkingCheck(){
 }
 
 function loadRmcMonShow(){
-	$('#rmcMonStatus').empty().append("Getting monitoring Data (This step may take a long time).");
-	$('#rmcMonStatus').append(createLoader());
+	$('#rmcMonStatus div').empty().append("Getting monitoring Data (This step may take a long time).");
+	$('#rmcMonStatus div').append(createLoader());
 	
 	//init the selected Attributes string
 	if ($.cookie('rmcmonattr')){
@@ -352,7 +352,7 @@ function showDetail(){
 	
 	var detailFilter = $('<div id="detailFilter"></div>');
 		
-	$('#rmcMonStatus').empty().append("RMC Monitoring Show");
+	$('#rmcMonStatus div').empty().append("RMC Monitoring Show");
 	$('#rmcmonDetail').empty().append('<h3>Detail</h3><hr />');
 	$('#rmcmonDetail').append(detailFilter);
 	
@@ -639,7 +639,7 @@ function loadRmcEvent(){
 	
 	//add the stauts bar first. id = 'rmcMonStatus'
 	var rmcStatusBar = createStatusBar('rmcEventStatus');
-	rmcStatusBar.append(createLoader());
+	rmcStatusBar.find('div').append(createLoader());
 	$('#rmcevent').append(rmcStatusBar);
 	$('#rmcevent').append('<div id="rmcEventDiv"></div>');
 	
@@ -665,7 +665,7 @@ function loadRmcEvent(){
  */
 function getConditions(){
 	if ('' == globalCondition){
-		$('#rmcEventStatus').empty().append('Getting predefined conditions').append(createLoader());
+		$('#rmcEventStatus div').empty().append('Getting predefined conditions').append(createLoader());
 		$.ajax({
 			url : 'lib/cmd.php',
 			dataType : 'json',
@@ -677,7 +677,7 @@ function getConditions(){
 			},
 			
 			success : function (data){
-				$('#rmcEventStatus').empty();
+				$('#rmcEventStatus div').empty();
 				$('#rmcEventButtons').show();
 				globalCondition = data.rsp[0];
 			}
@@ -734,10 +734,10 @@ function getResponse(){
  *        
  */
 function showEventLog(data){
-	$('#rmcEventStatus').empty();
+	$('#rmcEventStatus div').empty();
 	//rsct not installed.
 	if (data.rsp[0] && (-1 != data.rsp[0].indexOf('lsevent'))){
-		$('#rmcEventStatus').append('Please install RSCT first!');
+		$('#rmcEventStatus div').append('Please install RSCT first!');
 		return;
 	}
 	var eventDiv = $('#rmcEventDiv');
@@ -926,7 +926,7 @@ function mkCondRespDia(){
 				}
 				
 				if (('' != oldString) || ('' != newString)){
-					$('#rmcEventStatus').empty().append('Create/Remove associations').append(createLoader());
+					$('#rmcEventStatus div').empty().append('Create/Remove associations').append(createLoader());
 					$.ajax({
 						url : 'lib/cmd.php',
 						dataType : 'json',
@@ -938,7 +938,7 @@ function mkCondRespDia(){
 						},
 						
 						success : function(data){
-							$('#rmcEventStatus').empty().append(data.rsp[0]);;
+							$('#rmcEventStatus div').empty().append(data.rsp[0]);;
 						}
 					});
 				}
@@ -1032,7 +1032,7 @@ function chCondScopeDia(){
 							$('#changeStatus').append(data.rsp[0]);
 						}
 						else{
-							$('#rmcEventStatus').empty().append(data.rsp[0]);
+							$('#rmcEventStatus div').empty().append(data.rsp[0]);
 							$('#chScopeDiaDiv').remove();
 						}
 					}
@@ -1169,7 +1169,7 @@ function startStopCondRespDia(){
 								
 				var button = $('#divStartStopAss button[name="' + conditionName + '"]');
 				if (data.rsp[0]){
-					$('#rmcEventStatus').empty().append('Getting associations\' status').append(createLoader());
+					$('#rmcEventStatus div').empty().append('Getting associations\' status').append(createLoader());
 					$('#rmcEventButtons').hide();
 					button.html(newOperationType);
 					button.parent().prev().html(associationStatus);
@@ -1236,7 +1236,7 @@ function stopCondRespDia(){
 					alert('Select condition name please.');
 					return;
 				}
-				$('#rmcEventStatus').empty().append('Stoping monitor on ' + conditionName).append(createLoader());
+				$('#rmcEventStatus div').empty().append('Stoping monitor on ' + conditionName).append(createLoader());
 				$.ajax({
 					url : 'lib/cmd.php',
 					dataType : 'json',
@@ -1248,7 +1248,7 @@ function stopCondRespDia(){
 					},
 					
 					success : function(data){
-						$('#rmcEventStatus').empty().append(data.rsp[0]);
+						$('#rmcEventStatus div').empty().append(data.rsp[0]);
 					}
 				});
 				$(this).dialog('close');

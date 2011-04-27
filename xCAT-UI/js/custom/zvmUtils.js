@@ -364,9 +364,9 @@ function updateZProvisionNewStatus(data) {
 		// If there was an error, do not continue
 		if (rsp.length) {
 			$('#' + loaderId).hide();
-			$('#' + statBarId).append('<p>(Error) Failed to create node definition</p>');
+			$('#' + statBarId).find('div').append('<pre>(Error) Failed to create node definition</pre>');
 		} else {
-			$('#' + statBarId).append('<p>Node definition created for ' + node + '</p>');
+			$('#' + statBarId).find('div').append('<pre>Node definition created for ' + node + '</pre>');
     		$.ajax( {
     			url : 'lib/cmd.php',
     			dataType : 'json',
@@ -389,9 +389,9 @@ function updateZProvisionNewStatus(data) {
 		// If there was an error, do not continue
 		if (rsp.length) {
 			$('#' + loaderId).hide();
-			$('#' + statBarId).append('<p>(Error) Failed to update /etc/hosts</p>');
+			$('#' + statBarId).find('div').append('<pre>(Error) Failed to update /etc/hosts</pre>');
 		} else {
-			$('#' + statBarId).append('<p>/etc/hosts updated</p>');
+			$('#' + statBarId).find('div').append('<pre>/etc/hosts updated</pre>');
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
@@ -416,7 +416,7 @@ function updateZProvisionNewStatus(data) {
 
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);
+		$('#' + statBarId).find('div').append(prg);
 
 		// Get user entry
 		var userEntry = $('#' + tabId + ' textarea').val();
@@ -443,14 +443,14 @@ function updateZProvisionNewStatus(data) {
 	else if (cmd == 'mkvm') {		
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);
+		$('#' + statBarId).find('div').append(prg);
 
 		// If there was an error, do not continue
 		if (prg.html().indexOf('Error') > -1) {
 			// Try again
 			var tries = parseInt($.cookie('tries4' + tabId));
 			if (tries < 2) {
-				$('#' + statBarId).append('<p>Trying again...</p>');
+				$('#' + statBarId).find('div').append('<pre>Trying again...</pre>');
 				tries = tries + 1;
 
 				// One more try
@@ -532,7 +532,7 @@ function updateZProvisionNewStatus(data) {
 	else if (cmd == 'chvm') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);
+		$('#' + statBarId).find('div').append(prg);
 
 		// If there was an error, do not continue
 		if (prg.html().indexOf('Error') > -1) {
@@ -541,7 +541,7 @@ function updateZProvisionNewStatus(data) {
 			// Try again
 			var tries = parseInt($.cookie('tries4' + tabId));
 			if (tries < 2) {
-				$('#' + statBarId).append('<p>Trying again...</p>');
+				$('#' + statBarId).find('div').append('<pre>Trying again...</pre>');
 				tries = tries + 1;
 
 				// One more try
@@ -647,9 +647,9 @@ function updateZProvisionNewStatus(data) {
 		// If there was an error, do not continue
 		if (rsp.length) {
 			$('#' + loaderId).hide();
-			$('#' + statBarId).append('<p>(Error) Failed to set operating system</p>');
+			$('#' + statBarId).find('div').append('<pre>(Error) Failed to set operating system</pre>');
 		} else {
-			$('#' + statBarId).append('<p>Operating system for ' + node + ' set</p>');
+			$('#' + statBarId).find('div').append('<pre>Operating system for ' + node + ' set</pre>');
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
@@ -671,7 +671,7 @@ function updateZProvisionNewStatus(data) {
 	else if (cmd == 'makedhcp') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);
+		$('#' + statBarId).find('div').append(prg);
 		
 		// Prepare node for boot
 		$.ajax( {
@@ -694,7 +694,7 @@ function updateZProvisionNewStatus(data) {
 	else if (cmd == 'nodeset') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);
+		$('#' + statBarId).find('div').append(prg);
 		
 		// If there was an error
 		// Do not continue
@@ -722,9 +722,9 @@ function updateZProvisionNewStatus(data) {
 	else if (cmd == 'rnetboot') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);
+		$('#' + statBarId).find('div').append(prg);
 		if (prg.html().indexOf('Error') < 0) {
-			$('#' + statBarId).append('<p>Open a VNC viewer to see the installation progress.  It might take a couple of minutes before you can connect.</p>');
+			$('#' + statBarId).find('div').append('<pre>Open a VNC viewer to see the installation progress.  It might take a couple of minutes before you can connect.</pre>');
 		}
 
 		// Hide loader
@@ -785,7 +785,7 @@ function updateZProvisionExistingStatus(data) {
 	else if (cmd == 'nodeset') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);
+		$('#' + statBarId).find('div').append(prg);
 
 		// If there was an error, do not continue
 		if (prg.html().indexOf('Error') > -1) {
@@ -819,7 +819,7 @@ function updateZProvisionExistingStatus(data) {
 	else if (cmd == 'rnetboot') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);
+		$('#' + statBarId).find('div').append(prg);
 		
 		var loaderId = 'zProvisionLoader' + inst;
 		$('#' + loaderId).remove();
@@ -853,7 +853,7 @@ function updateZNodeStatus(data) {
 	
 	// Write ajax response to status bar
 	var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
-	$('#' + statBarId).append(prg);	
+	$('#' + statBarId).find('div').append(prg);	
 }
 
 /**
@@ -883,9 +883,9 @@ function updateZCloneStatus(data) {
 		// If there was an error, do not continue
 		if (rsp.length) {
 			$('#' + out2Id).find('img').hide();
-			$('#' + out2Id).append('<p>(Error) Failed to create node definition</p>');
+			$('#' + out2Id).find('div').append('<pre>(Error) Failed to create node definition</pre>');
 		} else {
-			$('#' + out2Id).append('<p>Node definition created for ' + node + '</p>');
+			$('#' + out2Id).find('div').append('<pre>Node definition created for ' + node + '</pre>');
 			
 			// If last node definition was created
 			var tmp = inst.split('/');
@@ -913,9 +913,9 @@ function updateZCloneStatus(data) {
 		// If there was an error, do not continue
 		if (rsp.length) {
 			$('#' + out2Id).find('img').hide();
-			$('#' + out2Id).append('<p>(Error) Failed to update /etc/hosts</p>');
+			$('#' + out2Id).find('div').append('<pre>(Error) Failed to update /etc/hosts</pre>');
 		} else {
-			$('#' + out2Id).append('<p>/etc/hosts updated</p>');
+			$('#' + out2Id).find('div').append('<pre>/etc/hosts updated</pre>');
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
@@ -937,7 +937,7 @@ function updateZCloneStatus(data) {
 	else if (cmd == 'makedns') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + out2Id).append(prg);
+		$('#' + out2Id).find('div').append(prg);
 	
 		// Get clone tab
 		var tabId = out2Id.replace('CloneStatusBar', 'CloneTab');
@@ -997,7 +997,7 @@ function updateZCloneStatus(data) {
 	else if (cmd == 'mkvm') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + out2Id).append(prg);
+		$('#' + out2Id).find('div').append(prg);
 		
 		// Hide loader
 		$('#' + out2Id).find('img').hide();

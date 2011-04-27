@@ -622,6 +622,53 @@ function loadNodes4Ganglia(data) {
 
 		success : loadGangliaStatus
 	});
+	
+	/**
+	 * Additional ajax requests need to be made for zVM
+	 */
+	
+	// Get index of hcp column
+	var i = $.inArray('hcp', sorted);
+	var archCol = $.inArray('arch', sorted);
+	if (i) {
+		// Get hardware control point
+		var rows = gangliaTable.object().find('tbody tr');
+		var hcps = new Object();
+		var rowsNum = rows.size();
+		for (var j = 0; j < rowsNum; j++) {
+			var val = rows.eq(j).find('td').eq(i).html();
+			var archval = rows.eq(j).find('td').eq(archCol).html();
+			if (-1 == archval.indexOf('390')){
+				continue;
+			}
+			hcps[val] = 1;
+		}
+
+		var args;
+		for (var h in hcps) {
+			// Get node without domain name
+			args = h.split('.');
+			
+			// If there are no disk pools or network names cookie for this hcp
+			if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
+    			// Check if SMAPI is online
+    			$.ajax( {
+    				url : 'lib/cmd.php',
+    				dataType : 'json',
+    				data : {
+    					cmd : 'lsvm',
+    					tgt : args[0],
+    					args : '',
+    					msg : 'group=' + group + ';hcp=' + args[0]
+    				},
+    
+    				// Load hardware control point specific info
+    				// Get disk pools and network names
+    				success : loadHcpInfo
+    			});		
+			}
+		} // End of for
+	} // End of if
 }
 
 /**
@@ -1037,4 +1084,7 @@ function createGangliaToolTip() {
 function installGanglia(node) {
 	var iframe = createIFrame('lib/cmd.php?cmd=webrun&tgt=&args=installganglia;' + node + '&msg=' + node + '&opts=flush');
 	iframe.prependTo($('#gangliamon #nodes'));
+	
+	// Turn on Ganglia for node
+	monitorNode(node, 'on');
 }

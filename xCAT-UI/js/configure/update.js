@@ -241,9 +241,9 @@ function updateRpm() {
 	});
 
 	$('#update').show();
-	$('#update').empty();
-	$('#update').append("<p>Updating <b>" + rpms + "</b> from <b>" + rpmPath + "</b></p>");
-	$('#update').append("<img id='loadingpic' src='images/loader.gif'>");
+	$('#update div').empty();
+	$('#update div').append("<p>Updating <b>" + rpms + "</b> from <b>" + rpmPath + "</b></p>");
+	$('#update div').append("<img id='loadingpic' src='images/loader.gif'>");
 	$('#rpm button').attr('disabled', 'true');
 
 	// Send the update command to server
@@ -276,29 +276,29 @@ function showUpdateResult(data) {
 	if (0 < resArray.length) {
 		// Show last lines
 		if (('' == resArray[resArray.length - 1]) && (resArray.length > 1)) {
-			$('#update').append('<pre>' + resArray[resArray.length - 2] + '</pre>');
+			$('#update div').append('<pre>' + resArray[resArray.length - 2] + '</pre>');
 		} else {
-			$('#update').append('<pre>' + resArray[resArray.length - 1] + '</pre>');
+			$('#update div').append('<pre>' + resArray[resArray.length - 1] + '</pre>');
 		}
 
 		// Create link to show details
-		$('#update').append('<br/><a>Show details</a>');
-		$('#update a').css( {
+		$('#update div').append('<br/><a>Show details</a>');
+		$('#update div a').css( {
 			'color' : '#0000FF',
 			'cursor' : 'pointer'
 		}).bind('click', function() {
 			// Toggle details and change text
 			$('#resDetail').toggle();
-			if ($('#update a').text() == 'Show details') {
-				$('#update a').text('Hide details');
+			if ($('#update div a').text() == 'Show details') {
+				$('#update div a').text('Hide details');
 			} else {
-				$('#update a').text('Show details');
+				$('#update div a').text('Show details');
 			}
 		});
 
 		var resDetail = $('<pre id="resDetail"></pre>');
 		resDetail.hide();
-		$('#update').append(resDetail);
+		$('#update div').append(resDetail);
 		for (temp = 0; temp < resArray.length; temp++) {
 			resDetail.append(resArray[temp] + '<br/>');
 		}

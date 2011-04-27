@@ -414,12 +414,13 @@ function setImageDefAttrs(data) {
     			// Get attribute name and description
     			key = jQuery.trim(attr.substring(0, attr.indexOf(':')));
     			descr = jQuery.trim(attr.substring(attr.indexOf(':') + 1));
-    			
+    			descr = descr.replace(new RegExp('<', 'g'), '[').replace(new RegExp('>', 'g'), ']');
+    			    			
     			// Set hash table where key = attribute name and value = description
         		defAttrs[key] = descr;
 			} else {				
 				// Append description to hash table
-				defAttrs[key] = defAttrs[key] + '\n' + attr;
+				defAttrs[key] = defAttrs[key] + '\n' + attr.replace(new RegExp('<', 'g'), '[').replace(new RegExp('>', 'g'), ']');
 			}
 		} // End of if
 	} // End of for
@@ -1043,7 +1044,7 @@ function loadCopyCdPage() {
 
 	// Create loader
 	var loader = createLoader('');
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 	
 	// Create info bar
 	var infoBar = createInfoBar('Copy Linux distributions and service levels from CDs or DVDs to the install directory.');
@@ -1154,13 +1155,13 @@ function loadCopyCdPage() {
 				var tabId = statBarId.replace('copyLinuxStatusBar', 'copyLinuxTab'); 
 				
 				// Go through output and append to paragraph
-				var prg = $('<p></p>');
+				var prg = $('<pre></pre>');
 				for (var i in out) {
 					if (out[i].length > 6) {
-						prg.append(out[i] + '<br>');
+						prg.append(out[i] + '<br/>');
 					}
 				}
-				$('#' + statBarId).append(prg);
+				$('#' + statBarId).find('div').append(prg);
 				
 				// Hide loader
 				$('#' + statBarId).find('img').hide();

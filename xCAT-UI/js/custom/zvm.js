@@ -263,7 +263,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 
 				// Create loader
 				var loader = createLoader('');
-				$('#' + statBarId).append(loader);
+				$('#' + statBarId).find('div').append(loader);
 				$('#' + statBarId).show();
 
 				// Disable clone button
@@ -309,7 +309,7 @@ zvmPlugin.prototype.loadInventory = function(data) {
 
 	// Add loader to status bar and hide it
 	var loader = createLoader(node + 'StatusBarLoader').hide();
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 	statBar.hide();
 
 	// Create array of property keys
@@ -841,7 +841,7 @@ zvmPlugin.prototype.loadProvisionPage = function(tabId) {
 
 	// Create loader
 	var loader = createLoader('zProvisionLoader' + inst).hide();
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Provision a node on System z.');

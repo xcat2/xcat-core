@@ -671,7 +671,7 @@ function initSiteTable(operType){
 	$('.tooltip').remove();
 	var showDiv = $('<div style="min-height:360px" id="siteDiv"><h2>' + steps[currentStep] + '(Site info)</h2></div>');
 	var statBar = createStatusBar('siteTableStat');
-	statBar.append(createLoader());
+	statBar.find('div').append(createLoader());
 	showDiv.append(statBar);
 	$('#discoverContentDiv').append(showDiv);
 	
@@ -770,7 +770,7 @@ function showSiteArea(){
 		},
 	
 		success : function(data){
-			$('#discoverContentDiv #siteTableStat').html('Current network interface configuration:<br/><pre>' + 
+			$('#discoverContentDiv #siteTableStat div').html('Current network interface configuration:<br/><pre>' + 
 						data.rsp + '</pre>');
 		}
 	});
@@ -887,7 +887,7 @@ function initDiscoverFrames(){
 			+ '</td><td style="width:20px"></td><td id="mtmsTd"></td></tr></table></center>');
 	
 	if (getDiscoverEnv('framemtmsmap')){
-		$('#framedisc').html('Mapping the frame name and mtms which discovered by lsslp.<br\>' + 
+		$('#framedisc div').html('Mapping the frame name and mtms which discovered by lsslp.<br\>' + 
 							 'Select the frame name, then select the mtms.');
 		var mapArray = getDiscoverEnv('framemtmsmap').split(':');
 		for(var i in mapArray){
@@ -914,7 +914,7 @@ function initDiscoverFrames(){
 		success : function(data){
 			var tempInfo = data.rsp[0];
 			if (-1 != tempInfo.indexOf('Error')){
-				$('#framedisc').html(tempInfo);
+				$('#framedisc div').html(tempInfo);
 				createDiscoverButtons();
 				return;
 			}
@@ -923,13 +923,13 @@ function initDiscoverFrames(){
 			var frameArray = expandNR(getDiscoverEnv('frameName'));
 			//chech the defined number and discovered number
 			if (mtmsArray.length != frameArray.length){
-				$('#framedisc').html('Error: Definded Number is ' + frameArray.length + 
+				$('#framedisc div').html('Error: Definded Number is ' + frameArray.length + 
 									', but lsslp discovered Number is ' + mtmsArray.length + ', please check your configure!');
 				createDiscoverButtons();
 				return;
 			}
 			
-			$('#framedisc').html('Mapping the frame name and mtms which discovered by lsslp.<br\>' + 
+			$('#framedisc div').html('Mapping the frame name and mtms which discovered by lsslp.<br\>' + 
 			 		'Select the frame name, then select the mtms.');
 			
 			for (var i in frameArray){
