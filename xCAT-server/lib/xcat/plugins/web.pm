@@ -501,100 +501,83 @@ sub web_installganglia() {
 	my $nr = $request->{arg}->[1];
 	my @nodes = split( ',', $nr );
 	
-	# Get repository type
-	my $os = xCAT::Utils->osver();
-	# Get repository name
-	my $xcatDep = 'xCAT-dep';
-	
-	# Get location of repository
-	my $loc;
-	if ($os =~ /rh/) {
-		# Red Hat
-		$loc = `cat /etc/yum.repos.d/$xcatDep.repo | grep "baseurl"`;
-	} elsif ($os =~ /sles11/) {
-		# SUSE
-		$loc = `cat /etc/zypp/repos.d/$xcatDep.repo | grep "baseurl"`;
-	} else {
-		$loc = '';
-	}
-
-	$loc =~ s/baseurl=//g;
-	$loc =~ s/file://g; 	# Downloaded xCAT-dep
-	
-	# Trim right and left
-	$loc =~ s/\s*$//;
-	$loc =~ s/^\s*//;
-	
-	# Get the base directory for xcat-dep
-	$loc = substr($loc, 0, index($loc, 'xcat-dep/') + 8);
-	
-	# Get the appropriate directory for each nodes
-	# This is based on the nodetype.os and nodetype.arch attributes
-	# e.g. xcat-dep/<os>/<arch>, where <os> can be: fedora8, fedora9, fedora12, fedora13, rh4, rh5, rh6, sles10, sles11
-	# and where <arch> can be: ppc64, s390x, x86, x86_64
+	# Loop through each node
 	my $info;
 	my $tab;
 	my $attrs;
-	my $tmp;
-	
-	# Repository location: $repo{$node}
-	my $repo;
-	# Go through each node because each node might have a different repository 
-	# location, based on its OS and arch
+	my $osType;
+	my $dir;
+	my $pkglist;
+	my $defaultDir;
 	foreach (@nodes) {
-		# Get table
+		# Get os, arch, profile, and provmethod
 		$tab = xCAT::Table->new('nodetype');
-		# Get property values
-		$attrs = $tab->getNodeAttribs( $_, ['os', 'arch'] );
-
-		if ($attrs->{'arch'} && $attrs->{'os'}) {
-			# Point to the right OS
-			if ($attrs->{'os'} =~ /fedora8/) {
-				$attrs->{'os'} = 'fedora8';
-			} elsif ($attrs->{'os'} =~ /fedora9/) {
-				$attrs->{'os'} = 'fedora9';
-			} elsif ($attrs->{'os'} =~ /fedora12/) {
-				$attrs->{'os'} = 'fedora12';
-			} elsif ($attrs->{'os'} =~ /fedora13/) {
-				$attrs->{'os'} = 'fedora13';
-			} elsif ($attrs->{'os'} =~ /rh4/ || $attrs->{'os'} =~ /rhel4/) {
-				$attrs->{'os'} = 'rh4';
-			} elsif ($attrs->{'os'} =~ /rh5/ || $attrs->{'os'} =~ /rhel5/) {
-				$attrs->{'os'} = 'rh5';
-			} elsif ($attrs->{'os'} =~ /rh6/ || $attrs->{'os'} =~ /rhel6/) {
-				$attrs->{'os'} = 'rh6';
-			} elsif ($attrs->{'os'} =~ /sles10/) {
-				$attrs->{'os'} = 'sles10';
-			} elsif ($attrs->{'os'} =~ /sles11/) {
-				$attrs->{'os'} = 'sles11';
+		$attrs = $tab->getNodeAttribs( $_, ['os', 'arch', 'profile', 'provmethod'] );
+		
+		# If any attributes are missing, skip
+		if (!$attrs->{'os'} || !$attrs->{'arch'} || !$attrs->{'profile'} || !$attrs->{'provmethod'}) {
+			$callback->( { info => "$_: (Error) Missing attribute (os, arch, profile, or provmethod) in nodetype table" } );
+			next;
+		}
+		
+		# Get the right OS type
+		if ($attrs->{'os'} =~ /fedora/) {
+			$osType = 'fedora';
+		} elsif ($attrs->{'os'} =~ /rh/ || $attrs->{'os'} =~ /rhel/ || $attrs->{'os'} =~ /rhels/) {
+			$osType = 'rh';
+		} elsif ($attrs->{'os'} =~ /sles/) {
+			$osType = 'sles';
+		}
+		
+		# Assume /install/post/otherpkgs/<os>/<arch>/ directory is created
+		# If Ganglia RPMs (ganglia-gmond-*, libconfuse-*, and libganglia-*) are not in directory
+		$dir = "/install/post/otherpkgs/$attrs->{'os'}/$attrs->{'arch'}/";
+		if (!(`test -e $dir/ganglia-gmond-* && echo 'File exists'` &&
+			`test -e $dir/libconfuse-* && echo 'File exists'` &&
+			`test -e $dir/libganglia-* && echo 'File exists'`)) {
+			# Skip
+			$callback->( { info => "$_: (Error) Missing Ganglia RPMs under $dir" } );
+			next;
+		}
+					
+		# Find pkglist directory
+		$dir = "/install/custom/$attrs->{'provmethod'}/$osType";
+		if (!(`test -d $dir && echo 'Directory exists'`)) {
+			# Create pkglist directory
+			`mkdir -p $dir`;
+		}
+		
+		# Find pkglist file
+		# Ganglia RPM names should be added to /install/custom/<inst_type>/<ostype>/<profile>.<os>.<arch>.otherpkgs.pkglist
+		$pkglist = "$attrs->{'profile'}.$attrs->{'os'}.$attrs->{'arch'}.otherpkgs.pkglist";
+		if (!(`test -e $dir/$pkglist && echo 'File exists'`)) {
+			# Copy default otherpkgs.pkglist
+			$defaultDir = "/opt/xcat/share/xcat/$attrs->{'provmethod'}/$osType";
+			if (`test -e $defaultDir/$pkglist && echo 'File exists'`) {
+				# Copy default pkglist
+				`cp $defaultDir/$pkglist $dir/$pkglist`;
+			} else {
+				# Create pkglist
+				`touch $dir/$pkglist`;
 			}
 			
-			$repo = "$loc/$attrs->{'os'}/$attrs->{'arch'}";
-		} else {
-			$callback->( { info => '(Error) Missing the nodetype.os and nodetype.arch attributes for $_' } );	
+			# Add Ganglia RPMs to pkglist
+			`echo ganglia-gmond >> $dir/$pkglist`;
+			`echo libconfuse >> $dir/$pkglist`;
+			`echo libganglia >> $dir/$pkglist`;
 		}
-				
-		# Transfer Ganglia packages into /tmp directory of node
-		$callback->( { info => "$_: Copying over Ganglia packages..." } );
-		$info = `xdcp $_ $repo/ganglia-gmond-* $repo/libconfuse-* $repo/libganglia-* /tmp`;
-		$callback->( { info => $info } );
-		
+
 		# Check if libapr1 is installed
-		$tmp = '/tmp';
 		$info = `xdsh $_ "rpm -qa libapr1"`;
 		if (!($info =~ /libapr1/)) {
-			$callback->( { info => "(Error) libapr1 package not installed on $_" } );
-		} else {
-			# If libapr1 is installed, install Ganglia packages
-			$callback->( { info => "$_: Installing Ganglia..." } );
-			$info = `xdsh $_ "rpm -i $tmp/ganglia-gmond-* $tmp/libconfuse-* $tmp/libganglia-*"`;
-			$callback->( { info => $info } );
+			$callback->( { info => "$_: (Error) libapr1 package not installed" } );
+			next;
 		}
 		
-		# Remove Ganglia packages from /tmp
-		$callback->( { info => "$_: Removing Ganglia packages..." } );
-		$info = `xdsh $_ "rm $tmp/ganglia-gmond-* $tmp/libconfuse-* $tmp/libganglia-*"`;
-		$callback->( { info => $info } );
+		# Install Ganglia RPMs using updatenode
+		$callback->( { info => "$_: Installing Ganglia..." } );
+		$info = `updatenode $_ -S`;
+		$callback->( { info => "$info" } );
 	}
 	
 	return;
