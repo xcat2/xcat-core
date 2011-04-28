@@ -512,6 +512,12 @@ function initPage() {
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
 	} else {
+	    includeJs("js/jquery/jquery.topzindex.min.js");
+        includeJs("js/nodes/nodeset.js");
+        includeJs("js/nodes/rnetboot.js");
+        includeJs("js/nodes/updatenode.js");
+        includeJs("js/nodes/physical.js");
+        includeJs("js/nodes/mtm.js");
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
 	}

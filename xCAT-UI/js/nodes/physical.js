@@ -89,6 +89,11 @@ function extractGraphicalData(data){
 			graphicalNodeList[nodeName] = new Object();
 		}
 		
+		if('' == nodeName){
+		    tempNullNodes = 'all,';
+		    break;
+		}
+		
 		switch (data.msg.substr(5, 1)){
 			case '0': 
 			case '1':{

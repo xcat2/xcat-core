@@ -1,13 +1,13 @@
 /*associate the step name with step number*/
-var steps = ['Discover hardware', 
-             'Cluster patterns',
-             'Supernode numbers',
-             'More cluster patterns',
+var steps = ['Platform', 
+             'Patterns',
+             'Supernode',
+             'More patterns',
              'Power on hardware',
              'Discover frames',
-             'Prepare management node',
-             'Update definitions',
-             'Create LPARs',
+             'Management node',
+             'Update',
+             'LPARs',
              'Complete'];
 
 /*associate the function with step number*/
@@ -70,10 +70,11 @@ function updateDiscoverStep(){
 	for (var index in steps){
 		showString += '<span';
 		if (currentStep == index){
-			showString += ' style="background-color:yellow;"';
+			showString += ' class="discovercurrentstep"';
 		}
-		showString += '>' + steps[index] + '</span><br/>';
+		showString += '>' + steps[index] + '</span>->';
 	}
+	showString = showString.substr(0, showString.length - 2);
 	$('#discoverStepDiv').html(showString);
 }
 
@@ -899,7 +900,7 @@ function initDiscoverFrames(){
 		return;
 	}
 	
-	statBar.append('Discovering all Frames by lsslp.').append(createLoader());
+	statBar.find('div').append('Discovering all Frames by lsslp.').append(createLoader());
 	//use lsslp to find all bpas in cluster
 	$.ajax({
 		url : 'lib/cmd.php',

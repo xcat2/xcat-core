@@ -685,28 +685,23 @@ table a:hover {
 
 /*--------------- Discovery section ---------------*/
 .discoverstep {
-	width: 220px;
+	width: 960px;
 	vertical-align: top;
-	float: left;
-	position: relative;
-	overflow: auto;
 	background-color: #A9D0F5;
-	padding: 5px 0px;
+	padding: 0px 0px 0px 5px;
 	-moz-border-radius: .5em;
 	-webkit-border-radius: .5em;
 	border-radius: .5em;
 }
-
-.discoverstep span {
+.discovercurrentstep{
+	background-color: yellow;
 	font: normal bold 12px/ 35px verdana, arial, helvetica, sans-serif;
 	padding: 5px;
-	margin: 0px 5px; /* Top right left bottom*/
 }
-
 .discovercontent {
-	width: 700px;
+	width: 960px;
 	display: inline-table;
-	padding: 0 0 0 20px;
+	padding: 0;
 }
 
 .discovercontent table{

@@ -791,7 +791,7 @@ sub web_rmcmonShow() {
 
 	my $attrName  = "";
 	my @attrValue = ();
-	$output = xCAT::Utils->runcmd( "monshow rmcmon $nodeRange -t 60 -a " . $attr, -1, 1 );
+	$output = xCAT::Utils->runcmd( "monshow rmcmon $nodeRange -t 60 -o p -a " . $attr, -1, 1 );
 	foreach (@$output) {
 		$temp = $_;
 		if ( $temp =~ /\t/ ) {
