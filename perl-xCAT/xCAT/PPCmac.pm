@@ -741,17 +741,18 @@ sub cal_mac {
 ##########################################################################
 sub format_mac {
 
-    my $mac = shift;
-    #my $data = shift;
+    my $data = shift;
 
+    $data =~ /^(\S+\s+\S+\s+)(\S+)(\s+.*)$/;
+    my $mac = $2;
     #####################################
     # Get adapter mac
     #####################################
     my @newmacs;
     my @macs = split /\|/, $mac;
 
-    foreach my $mac_a ( @macs ) {
-        if ( !xCAT::Utils->isAIX() ) {
+    if ( !xCAT::Utils->isAIX() ) {
+        foreach my $mac_a ( @macs ) {
             #################################
             # Delineate MAC with colons
             #################################
@@ -760,11 +761,11 @@ sub format_mac {
             $mac_a =~ s/:$//;
             push @newmacs, $mac_a;
         }
+        my $newmac = join("|",@newmacs);
+        $data   =~ s/$mac/$newmac/;
     }
 
-    my $newmac = join("|",@newmacs);
-
-    return( "$newmac" );
+    return( "$data\n" );
 
 }
 
