@@ -1,7 +1,0 @@
-*.php opt/xcat/ui/
-.project opt/xcat/ui/
-css opt/xcat/ui/
-etc opt/xcat/ui/
-images opt/xcat/ui/
-js opt/xcat/ui/
-lib opt/xcat/ui/
