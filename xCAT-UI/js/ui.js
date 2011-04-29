@@ -511,7 +511,12 @@ function initPage() {
 		includeJs("js/monitor/gangliamon.js");
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
-	} else {
+	} else if (page == 'manual.php') {
+	    includeJs("js/manual/manual.js");
+	    headers.eq(4).css('background-color', '#A9D0F5');
+        loadManualPage();
+	}
+	else {
 	    includeJs("js/jquery/jquery.topzindex.min.js");
         includeJs("js/nodes/nodeset.js");
         includeJs("js/nodes/rnetboot.js");
