@@ -793,7 +793,7 @@ db2c_xcatdb     50001/tcp    # Port for server connection";
 	
  Create the db2 server or client instance 
  For server
- run <db2installpath>/instance/db2icrt -a server -p db2c_xcatdb -s ese -u xcatdb xcatdb 
+ run <db2installpath>/instance/db2icrt -a server -p db2c_xcatdb -u xcatdb xcatdb 
  For Client
  run <db2installpath>/instance/db2icrt -s client xcatdb 
 
@@ -820,7 +820,7 @@ sub setupinstance
         if ($::SERVER)
         {
 
-            $cmd .= "-a server -p db2c_xcatdb -s ese -u xcatdb xcatdb ";
+            $cmd .= "-a server -p db2c_xcatdb -u xcatdb xcatdb ";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {                       # if error exit
