@@ -1,0 +1,6 @@
+install/postscripts
+install/prescripts
+opt/xcat/share/xcat
+etc/apache2/conf.d
+opt/xcat/share/doc/packages/xCAT
+etc
