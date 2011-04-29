@@ -604,7 +604,7 @@ sub build_xmldesc {
     $xtree{devices}->{disk}=build_diskstruct($cdloc);
     $xtree{devices}->{interface}=build_nicstruct($node);
     #use content to force xml simple to not make model the 'name' of video
-    if (defined ($confdata->{vm}->{$node}->[0]->{vidmodel}) {
+    if (defined ($confdata->{vm}->{$node}->[0]->{vidmodel})) {
       my $model = $confdata->{vm}->{$node}->[0]->{vidmodel};
       my $vram = '8192';
       $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>$model,vram=>8192}}];
@@ -613,7 +613,7 @@ sub build_xmldesc {
     }
     $xtree{devices}->{input}->{type}='tablet';
     $xtree{devices}->{input}->{bus}='usb';
-    if (defined ($confdata->{vm}->{$node}->[0]->{vidproto}) {
+    if (defined ($confdata->{vm}->{$node}->[0]->{vidproto})) {
        $xtree{devices}->{graphics}->{type}=$confdata->{vm}->{$node}->[0]->{vidproto};
     } else {
        $xtree{devices}->{graphics}->{type}='vnc';
