@@ -604,10 +604,21 @@ sub build_xmldesc {
     $xtree{devices}->{disk}=build_diskstruct($cdloc);
     $xtree{devices}->{interface}=build_nicstruct($node);
     #use content to force xml simple to not make model the 'name' of video
-    $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>'vga',vram=>8192}}];
+    if (defined ($confdata->{vm}->{$node}->[0]->{vidmodel}) {
+      my $model = $confdata->{vm}->{$node}->[0]->{vidmodel};
+      my $vram = '8192';
+      $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>$model,vram=>8192}}];
+    } else {
+      $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>'vga',vram=>8192}}];
+    }
     $xtree{devices}->{input}->{type}='tablet';
     $xtree{devices}->{input}->{bus}='usb';
-    $xtree{devices}->{graphics}->{type}='vnc';
+    if (defined ($confdata->{vm}->{$node}->[0]->{vidproto}) {
+       $xtree{devices}->{graphics}->{type}=$confdata->{vm}->{$node}->[0]->{vidproto};
+    } else {
+       $xtree{devices}->{graphics}->{type}='vnc';
+    }
+  
     $xtree{devices}->{console}->{type}='pty';
     $xtree{devices}->{console}->{target}->{port}='1';
     return XMLout(\%xtree,RootName=>"domain");
