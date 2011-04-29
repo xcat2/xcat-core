@@ -1,2 +1,7 @@
-usr/lib/perl5/xCAT
-usr/lib/perl5/xCAT/data
+opt/xcat/lib/perl/xCAT
+opt/xcat/lib/perl/xCAT/data
+opt/xcat/share/doc/packages/perl-xCAT
+opt/xcat/share/man/man5
+opt/xcat/share/doc/man5
+opt/xcat/share/man/man7
+opt/xcat/share/doc/man7

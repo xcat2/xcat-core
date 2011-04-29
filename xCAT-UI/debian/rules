@@ -13,9 +13,7 @@ export DH_COMPAT=5
 
 
 build:
-	dh_testdir
-	./modifyUtils 2.5.0
-	./db2man
+	pwd
 
 clean:
 	dh_testdir
@@ -23,10 +21,12 @@ clean:
 	dh_clean -d
 
 install:
+	pwd
 	dh_testdir
 	dh_testroot
 	dh_installdirs
 	dh_install
+	dh_link
 
 
 # Build architecture-independent files here.
@@ -34,7 +34,8 @@ binary-indep: build install
 # We have nothing to do by default.
 
 # Build architecture-dependent files here.
-binary-arch: build install
+binary-arch:
+	pwd
 	dh_testdir
 	dh_testroot
 	dh_installchangelogs 
@@ -54,7 +55,7 @@ binary-arch: build install
 	dh_installman
 #	dh_link
 #	dh_strip
-#	dh_compress
+	dh_compress
 #	dh_fixperms
 	dh_perl
 	dh_makeshlibs
