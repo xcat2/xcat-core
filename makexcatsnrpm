@@ -5,41 +5,50 @@ VER=`cat Version`
 
 if [ "$OSNAME" = "AIX" ]
 then
-    cd `dirname $0`/xCATsn
-    echo '.svn' > /tmp/xcat-excludes
+
+	cd `dirname $0`/xCATsn
+	echo '.svn' > /tmp/xcat-excludes
 	echo 'upflag' >> /tmp/xcat-excludes
 
-    tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/license.tar LICENSE.html
-    gzip -f /opt/freeware/src/packages/SOURCES/license.tar
+	tar -X /tmp/xcat-excludes -cf /opt/freeware/src/packages/SOURCES/license.tar LICENSE.html
+	gzip -f /opt/freeware/src/packages/SOURCES/license.tar
 
-#    cp xcat.conf /opt/freeware/src/packages/SOURCES
-#    cp xCATSN /usr/src/$pkg/SOURCES
+	#cp xcat.conf /opt/freeware/src/packages/SOURCES
+	#cp xCATSN /usr/src/$pkg/SOURCES
 
 	cp xCATSN /opt/freeware/src/packages/SOURCES
-    rm -f /opt/freeware/src/packages/SRPMS/xCATsn-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/xCATsn-$VER*rpm
-    cd -
+	rm -f /opt/freeware/src/packages/SRPMS/xCATsn-$VER*rpm /opt/freeware/src/packages/RPMS/ppc/xCATsn-$VER*rpm
+	cd -
 
-    rpm -ba xCATsn/xCATsn.spec
-    #rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCATsn-$VER*rpm
+	rpm -ba xCATsn/xCATsn.spec
+	#rpm -Uvh /opt/freeware/src/packages/RPMS/ppc/xCATsn-$VER*rpm
 
 else
 
-	if [ -f /etc/redhat-release ]
+	rpmbuild --version > /dev/null
+	if [ $? -gt 0 ]
 	then
-		pkg="redhat"
-	else
-		pkg="packages"
+		echo "Error: Is rpmbuild installed and working?"
+		exit 1
 	fi
+	RPMROOT=`rpmbuild --eval '%_topdir' xCATsn/xCATsn.spec`
+	if [ $? -gt 0 ]
+	then
+		echo "Could not determine rpmbuild's root"
+		exit 1
+	fi
+	echo "The location for rpm building is ${RPMROOT}"
 
 	cd `dirname $0`/xCATsn
-	tar --exclude .svn -czf /usr/src/$pkg/SOURCES/license.tar.gz LICENSE.html
-	cp xcat.conf /usr/src/$pkg/SOURCES
-        cp xCATSN /usr/src/$pkg/SOURCES
-	rm -f /usr/src/$pkg/SRPMS/xCATsn-$VER*rpm /usr/src/$pkg/RPMS/*/xCATsn-$VER*rpm
+	tar --exclude .svn -czf $RPMROOT/SOURCES/license.tar.gz LICENSE.html
+	cp xcat.conf $RPMROOT/SOURCES
+        cp xCATSN $RPMROOT/SOURCES
+	rm -f $RPMROOT/SRPMS/xCATsn-$VER*rpm $RPMROOT/RPMS/*/xCATsn-$VER*rpm
 	cd -
-   if [ ! -z "$1" ]; then
-	rpmbuild -ba xCATsn/xCATsn.spec --target $1
-   else
-	rpmbuild -ba xCATsn/xCATsn.spec
-   fi
+	if [ ! -z "$1" ]; then
+		rpmbuild -ba xCATsn/xCATsn.spec --target $1
+	else
+		rpmbuild -ba xCATsn/xCATsn.spec
+	fi
+
 fi
