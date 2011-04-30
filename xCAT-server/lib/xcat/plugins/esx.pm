@@ -2087,13 +2087,20 @@ sub clone_vms_from_master {
            pool=>$pool,
            #diskMoveType=>"createNewChildDiskBacking", #fyi, requires a snapshot, which isn't compatible with templates, moveChildMostDiskBacking would potentially be fine, but either way is ha incopmatible and limited to 8, arbitrary limitations hard to work around...
            );
+	unless ($args{detach}) {
+	  $relocatespecargs{diskMoveType}="createNewChildDiskBacking";
+	}
         if ($hyp) { $relocatespecargs{host}=$hyphash{$hyp}->{hostview} }
         my $relocatespec = VirtualMachineRelocateSpec->new(%relocatespecargs);
-        my $clonespec = VirtualMachineCloneSpec->new(
+	my %clonespecargs = (        
             location=>$relocatespec,
             template=>0,
             powerOn=>0
             );
+	unless ($args{detach}) {
+	  $clonespecargs{snapshot}=$masterview->snapshot->currentSnapshot;
+	}
+	my $clonespec = VirtualMachineCloneSpec->new(%clonespecargs);
         my $vmfolder = $vmhash{$node}->{vmfolder};
         my $task = $masterview->CloneVM_Task(folder=>$vmfolder,name=>$node,spec=>$clonespec);
         $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully cloned from '.$args{mastername}, mastername=>$args{mastername}, nodetypeent=>$nodetypeent,vment=>$vment };
@@ -2182,13 +2189,38 @@ sub promote_vm_to_master {
 
     my $vmfolder=$vmhash{$node}->{vmfolder};
     my $task = $nodeview->CloneVM_Task(folder=>$vmfolder,name=>$args{mastername},spec=>$clonespec);
-    $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully copied to '.$args{mastername}, mastername=>$args{mastername}, url=>$args{url} };
+    $running_tasks{$task}->{data} = { node => $node, hyp => $args{hyp}, conn => $conn, successtext => 'Successfully copied to '.$args{mastername}, mastername=>$args{mastername}, url=>$args{url} };
     $running_tasks{$task}->{task} = $task;
     $running_tasks{$task}->{callback} = \&promote_task_callback;
     $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
     $running_tasks{$task}->{vm}=$node;
 }
 sub promote_task_callback {
+    my $task = shift;
+    my $parms = shift;
+    my $state = $task->info->state->val;
+    my $node = $parms->{node};
+    my $intent = $parms->{successtext};
+    if ($state eq 'success') { #now, we have to make one snapshot for linked clones
+      my $mastername=$parms->{mastername};
+      my $regex=qr/^$mastername\z/;
+      my $masterviews = $parms->{conn}->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
+      unless (scalar @$masterviews == 1) {
+	die "Impossible";
+      }
+      my $masterview = $masterviews->[0];
+      my $task = $masterview->CreateSnapshot_Task(name=>"xcatsnap",memory=>"false",quiesce=>"false");
+      $running_tasks{$task}->{data} = $parms;
+      $running_tasks{$task}->{task} = $task;
+      $running_tasks{$task}->{callback} = \&promotesnap_task_callback;
+      $running_tasks{$task}->{hyp} = $parms->{hyp}; #$hyp_conns->{$hyp};
+      $running_tasks{$task}->{vm}=$parms->{node};
+      #xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
+    } elsif ($state eq 'error') {
+        relay_vmware_err($task,"",$node);
+    }
+}
+sub promotesnap_task_callback {
     my $task = shift;
     my $parms = shift;
     my $state = $task->info->state->val;
