@@ -2183,7 +2183,7 @@ sub promote_vm_to_master {
     );
     my $clonespec = VirtualMachineCloneSpec->new(
         location=>$relocatespec,
-        #template=>1, #can't go straight to template, need to clone, then snap, then templatify
+        template=>0, #can't go straight to template, need to clone, then snap, then templatify
         powerOn=>0
         );
 
