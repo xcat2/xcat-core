@@ -2183,7 +2183,7 @@ sub promote_vm_to_master {
     );
     my $clonespec = VirtualMachineCloneSpec->new(
         location=>$relocatespec,
-        template=>1,
+        #template=>1, #can't go straight to template, need to clone, then snap, then templatify
         powerOn=>0
         );
 
@@ -2210,6 +2210,7 @@ sub promote_task_callback {
       }
       my $masterview = $masterviews->[0];
       my $task = $masterview->CreateSnapshot_Task(name=>"xcatsnap",memory=>"false",quiesce=>"false");
+      $parms->{masterview}=$masterview;
       $running_tasks{$task}->{data} = $parms;
       $running_tasks{$task}->{task} = $task;
       $running_tasks{$task}->{callback} = \&promotesnap_task_callback;
@@ -2227,6 +2228,7 @@ sub promotesnap_task_callback {
     my $node = $parms->{node};
     my $intent = $parms->{successtext};
     if ($state eq 'success') {
+      $parms->{masterview}->MarkAsTemplate; #time to be a template
         xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
         my $mastertabentry = {
             originator=>$requester,
