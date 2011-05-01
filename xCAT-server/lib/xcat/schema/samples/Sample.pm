@@ -40,7 +40,7 @@ package xCAT_schema::Sample;
         types => {
 	    jobid => 'INTEGER',  
 	},
-        engine => 'InnoDB',
+        engine => 'InnoDB',    # note engine supported only for MySQL
 	table_desc => 'Stores jobs.',
 	descriptions => {
 	    jobid => 'The job id.',
@@ -57,6 +57,7 @@ package xCAT_schema::Sample;
 	    jobid => 'INTEGER',
 	    cpu_usage => 'FLOAT',
 	},
+        tablespace =>'XCATTBS32K',  # note tablespace only for DB2
         table_desc => 'Stores the node status.',
         descriptions => {
             node=> 'The node.',
