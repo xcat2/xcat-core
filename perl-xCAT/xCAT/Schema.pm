@@ -937,6 +937,7 @@ eventlog => {
     types => {
 	recid => 'INTEGER AUTO_INCREMENT',  
     },
+    tablespace =>'XCATTBS32K',
     table_desc => 'Stores the events occurred.',  
     descriptions => {
         recid => 'The record id.',
@@ -962,6 +963,7 @@ auditlog => {
     types => {
 	recid => 'INTEGER AUTO_INCREMENT',  
     },
+    tablespace =>'XCATTBS32K',
     table_desc => ' Audit Data log.',  
     descriptions => {
         recid => 'The record id.',

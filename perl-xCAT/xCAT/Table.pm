@@ -481,6 +481,12 @@ sub buildcreatestmt
 	  $retv .= " ENGINE=$descr->{engine} ";
        }
     }
+    # allow tablespace change for DB2 
+    if ($descr->{tablespace}) {
+       if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+	  $retv .= " in $descr->{tablespace} ";
+       }
+    }
 	#print "retv=$retv\n";
     return $retv; 
 }
