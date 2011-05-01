@@ -1999,6 +1999,12 @@ sub clonevms {
         $url=$target;
        	$url =~ s!/([^/]*)\z!!;
         $mastername=$1;
+	unless ($url) {
+	  $url = $tablecfg{vm}->{$nodes->[0]}->[0]->{storage};
+	  $url =~ s/.*\|//;
+	  $url =~ s/=(.*)//;
+	  $url =~ s/,.*//;
+	}
         $newdatastores->{$url}=[$nodes->[0]];
     }
     if ($hyp) {
