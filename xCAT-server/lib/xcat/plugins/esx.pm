@@ -2103,7 +2103,10 @@ sub clone_vms_from_master {
 	my $clonespec = VirtualMachineCloneSpec->new(%clonespecargs);
         my $vmfolder = $vmhash{$node}->{vmfolder};
         my $task = $masterview->CloneVM_Task(folder=>$vmfolder,name=>$node,spec=>$clonespec);
-        $running_tasks{$task}->{data} = { node => $node, conn=>$conn, successtext => 'Successfully cloned from '.$args{mastername}, mastername=>$args{mastername}, nodetypeent=>$nodetypeent,vment=>$vment };
+        $running_tasks{$task}->{data} = { node => $node, conn=>$conn, successtext => 'Successfully cloned from '.$args{mastername}, 
+					  mastername=>$args{mastername}, nodetypeent=>$nodetypeent,vment=>$vment, 
+					  hyp=>$args{hyp},
+	};
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&clone_task_callback;
         $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
@@ -2152,7 +2155,7 @@ sub clone_task_callback {
 	
         $nodetype->setAttribs({node=>$node},$parms->{nodetypeent});
 	foreach (keys %{$parms->{vment}}) {
-	  $tablecfg->{vm}->{$node}->[0]->{$_}=$parms->{vment}->{$_};
+	  $tablecfg{vm}->{$node}->[0]->{$_}=$parms->{vment}->{$_};
 	}
 	
 	my @networks = split /,/,$tablecfg{vm}->{$node}->[0]->{nics};
@@ -2163,7 +2166,7 @@ sub clone_task_callback {
 	my $nodeviews = $conn->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
 	unless (scalar @$nodeviews == 1) { die "this should be impossible"; }
 	my $vpdtab=xCAT::Table->new('vpd',-create=>1);
-	$vpdtab->setAttribs({node=>$node},{uuid=>$nodeview->[0]->config->uuid});
+	$vpdtab->setAttribs({node=>$node},{uuid=>$nodeviews->[0]->config->uuid});
 	my $ndev;
 	my @devstochange;
 	foreach $ndev ($nodeviews->[0]->config->hardware->device) {
@@ -2175,11 +2178,11 @@ sub clone_task_callback {
 	}
 	if (@devstochange) {
 	  my $reconfigspec = VirtualMachineConfigSpec->new(deviceChange=>\@devstochange);
-	  my $task = $vmview->ReconfigVM_Task(spec=>$reconfigspec);
+	  my $task = $nodeviews->[0]->ReconfigVM_Task(spec=>$reconfigspec);
 	  $running_tasks{$task}->{task} = $task;
 	  $running_tasks{$task}->{callback} = \&generic_task_callback;
-	  $running_tasks{$task}->{hyp} = $hyp;
-	  $running_tasks{$task}->{data} = { node => $node, successtext => $intent,cpus=>$cpuCount,mem=>$memory };
+	  $running_tasks{$task}->{hyp} = $parms->{hyp};
+	  $running_tasks{$task}->{data} = { node => $node, successtext => $intent};
 	}
 
 
