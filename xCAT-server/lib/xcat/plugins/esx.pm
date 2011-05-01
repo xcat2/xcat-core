@@ -560,6 +560,16 @@ sub do_cmd {
         generic_hyp_operation(\&migrate,@exargs);
     }
     wait_for_tasks();
+    if ($command eq 'clonevm') { #TODO: unconditional, remove mkvms hosted copy
+      my @dhcpnodes;
+      foreach (keys %{$tablecfg{dhcpneeded}}) {
+        push @dhcpnodes,$_;
+        delete $tablecfg{dhcpneeded}->{$_};
+      }
+      unless ($::XCATSITEVALS{'dhcpsetup'} and ($::XCATSITEVALS{'dhcpsetup'} =~ /^n/i or $::XCATSITEVALS{'dhcpsetup'} =~ /^d/i or $::XCATSITEVALS{'dhcpsetup'} eq '0')) {
+        $executerequest->({command=>['makedhcp'],node=>\@dhcpnodes});
+      }
+    }
 }
 
 #inventory request for esx
