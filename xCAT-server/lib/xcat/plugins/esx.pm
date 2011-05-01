@@ -2169,9 +2169,9 @@ sub clone_task_callback {
 	$vpdtab->setAttribs({node=>$node},{uuid=>$nodeviews->[0]->config->uuid});
 	my $ndev;
 	my @devstochange;
-	foreach $ndev ($nodeviews->[0]->config->hardware->device) {
-	  unless ($ndev->macAddress) { next; } #not an ndev
-	  $ndev->macAddress=shift @macs;
+	foreach $ndev (@{$nodeviews->[0]->config->hardware->device}) {
+	  unless ($ndev->{macAddress}) { next; } #not an ndev
+	  $ndev->{macAddress}=shift @macs;
 	  push @devstochange, VirtualDeviceConfigSpec->new(
 						device => $ndev,
 						operation =>  VirtualDeviceConfigSpecOperation->new('edit'));
