@@ -1361,6 +1361,7 @@ sub addnet6
     if (grep /\} # $net subnet_end/,@dhcp6conf) { #need to add to dhcp6conf
         return;
     } else { #need to add to dhcp6conf
+	$restartdhcp6=1;
         while ($idx <= $#dhcp6conf)
         {
             if ($dhcp6conf[$idx] =~ /\} # $iface nic_end/) {
@@ -1784,8 +1785,8 @@ sub addnic
     my $lastindex  = 0;
     unless (grep /} # $nic nic_end/, @$conf)
     {    #add a section if not there
-        $restartdhcp=1;
-        print "Adding NIC $nic\n";
+        #$restartdhcp=1;
+        #print "Adding NIC $nic\n";
         if ($nic =~ /!remote!/) {
             push @$conf, "#shared-network $nic {\n";
             push @$conf, "#\} # $nic nic_end\n";
