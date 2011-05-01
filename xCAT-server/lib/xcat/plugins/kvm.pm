@@ -404,6 +404,13 @@ sub build_diskstruct {
         $cdhash->{readonly};
         $cdhash->{target}->{dev}='hdc';
         push @returns,$cdhash;
+    } else { #give the VM an empty optical drive, to allow chvm live attach/remove
+      my $cdhash;
+      $cdhash->{device}='cdrom';
+      $cdhash->{type}='block';
+      $cdhash->{readonly};
+      $cdhash->{target}->{dev}='hdc';
+      push @returns,$cdhash;
     }
 
 
