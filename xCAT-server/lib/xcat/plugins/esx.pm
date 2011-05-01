@@ -2145,22 +2145,40 @@ sub clone_task_callback {
     my $conn = $parms->{conn};
     my $intent = $parms->{successtext};
     if ($state eq 'success') {
-        xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
+        #xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
         my $nodetype=xCAT::Table->new('nodetype',-create=>1);
         my $vm=xCAT::Table->new('vm',-create=>1);
         $vm->setAttribs({node=>$node},$parms->{vment});
 	
         $nodetype->setAttribs({node=>$node},$parms->{nodetypeent});
-	foreach (keys %{$parms->{vment}) {
+	foreach (keys %{$parms->{vment}}) {
 	  $tablecfg->{vm}->{$node}->[0]->{$_}=$parms->{vment}->{$_};
 	}
+	my @networks = split /,/,$tablecfg{vm}->{$node}->[0]->{nics};
 	my @macs = xCAT::VMCommon::getMacAddresses(\%tablecfg,$node,scalar @networks);
         #now with macs, change all macs in the vm to match our generated macs
 	my $regex = qr/^$node(\z|\.)/;
 	#have to do an expensive pull of the vm view, since it is brand new
 	my $nodeviews = $conn->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
 	unless (scalar @$nodeviews == 1) { die "this should be impossible"; }
-	
+	my $ndev;
+	my @devstochange;
+	foreach $ndev ($nodeviews->[0]->config->hardware->device) {
+	  unless ($ndev->macAddress) { next; } #not an ndev
+	  $ndev->macAddress=shift @macs;
+	  push @devstochange, VirtualDeviceConfigSpec->new(
+						device => $ndev,
+						operation =>  VirtualDeviceConfigSpecOperation->new('edit'));
+	}
+	if (@devstochange) {
+	  my $reconfigspec = VirtualMachineConfigSpec->new(deviceChange=>\@devstochange);
+	  my $task = $vmview->ReconfigVM_Task(spec=>$reconfigspec);
+	  $running_tasks{$task}->{task} = $task;
+	  $running_tasks{$task}->{callback} = \&generic_task_callback;
+	  $running_tasks{$task}->{hyp} = $hyp;
+	  $running_tasks{$task}->{data} = { node => $node, successtext => $intent,cpus=>$cpuCount,mem=>$memory };
+	}
+
 
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
