@@ -1996,16 +1996,18 @@ sub clonevms {
             }
         }
     } elsif ($target) {
+      if ($url =~ m!/!) {
         $url=$target;
-       	$url =~ s!/([^/]*)\z!!;
+	$url =~ s!/([^/]*)\z!!;
         $mastername=$1;
-	unless ($url) {
+      } else {
 	  $url = $tablecfg{vm}->{$nodes->[0]}->[0]->{storage};
 	  $url =~ s/.*\|//;
 	  $url =~ s/=(.*)//;
 	  $url =~ s/,.*//;
-	}
-        $newdatastores->{$url}=[$nodes->[0]];
+	  $mastername=$target
+      }
+      $newdatastores->{$url}=[$nodes->[0]];
     }
     if ($hyp) {
         unless (validate_datastore_prereqs($nodes,$hyp,$newdatastores)) {
