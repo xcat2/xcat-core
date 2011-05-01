@@ -2103,7 +2103,7 @@ sub clone_vms_from_master {
 	my $clonespec = VirtualMachineCloneSpec->new(%clonespecargs);
         my $vmfolder = $vmhash{$node}->{vmfolder};
         my $task = $masterview->CloneVM_Task(folder=>$vmfolder,name=>$node,spec=>$clonespec);
-        $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully cloned from '.$args{mastername}, mastername=>$args{mastername}, nodetypeent=>$nodetypeent,vment=>$vment };
+        $running_tasks{$task}->{data} = { node => $node, conn=>$conn, successtext => 'Successfully cloned from '.$args{mastername}, mastername=>$args{mastername}, nodetypeent=>$nodetypeent,vment=>$vment };
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&clone_task_callback;
         $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
@@ -2142,13 +2142,26 @@ sub clone_task_callback {
     my $parms = shift;
     my $state = $task->info->state->val;
     my $node = $parms->{node};
+    my $conn = $parms->{conn};
     my $intent = $parms->{successtext};
     if ($state eq 'success') {
         xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
         my $nodetype=xCAT::Table->new('nodetype',-create=>1);
         my $vm=xCAT::Table->new('vm',-create=>1);
         $vm->setAttribs({node=>$node},$parms->{vment});
+	
         $nodetype->setAttribs({node=>$node},$parms->{nodetypeent});
+	foreach (keys %{$parms->{vment}) {
+	  $tablecfg->{vm}->{$node}->[0]->{$_}=$parms->{vment}->{$_};
+	}
+	my @macs = xCAT::VMCommon::getMacAddresses(\%tablecfg,$node,scalar @networks);
+        #now with macs, change all macs in the vm to match our generated macs
+	my $regex = qr/^$node(\z|\.)/;
+	#have to do an expensive pull of the vm view, since it is brand new
+	my $nodeviews = $conn->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
+	unless (scalar @$nodeviews == 1) { die "this should be impossible"; }
+	
+
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
     }
