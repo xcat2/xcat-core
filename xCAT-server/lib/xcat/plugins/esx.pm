@@ -2154,6 +2154,7 @@ sub clone_task_callback {
 	foreach (keys %{$parms->{vment}}) {
 	  $tablecfg->{vm}->{$node}->[0]->{$_}=$parms->{vment}->{$_};
 	}
+	
 	my @networks = split /,/,$tablecfg{vm}->{$node}->[0]->{nics};
 	my @macs = xCAT::VMCommon::getMacAddresses(\%tablecfg,$node,scalar @networks);
         #now with macs, change all macs in the vm to match our generated macs
@@ -2161,6 +2162,8 @@ sub clone_task_callback {
 	#have to do an expensive pull of the vm view, since it is brand new
 	my $nodeviews = $conn->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
 	unless (scalar @$nodeviews == 1) { die "this should be impossible"; }
+	my $vpdtab=xCAT::Table->new('vpd',-create=>1);
+	$vpdtab->setAttribs({node=>$node},{uuid=>$nodeview->[0]->config->uuid});
 	my $ndev;
 	my @devstochange;
 	foreach $ndev ($nodeviews->[0]->config->hardware->device) {
