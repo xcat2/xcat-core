@@ -16,6 +16,7 @@ use XML::LibXML; #now that we are in the business of modifying xml data, need so
 #TODO: convert all uses of XML::Simple to LibXML?  Using both seems wasteful in a way..
 use XML::Simple qw(XMLout);
 use Thread qw(yield);
+use xCAT::Utils qw/genpassword/;
 use File::Basename qw/fileparse/;
 use File::Path qw/mkpath/;
 use IO::Socket;
@@ -639,11 +640,12 @@ sub refresh_vm {
     my $newxml=$dom->get_xml_description();
     $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
     $newxml = XMLin($newxml);
-    my $vncport=$newxml->{devices}->{graphics}->{port};
+    my $vidport=$newxml->{devices}->{graphics}->{port};
+    my $vidproto=$newxml->{devices}->{graphics}->{type};
     my $stty=$newxml->{devices}->{console}->{tty};
     $updatetable->{vm}->{$node}={vncport=>$vncport,textconsole=>$stty};
     #$vmtab->setNodeAttribs($node,{vncport=>$vncport,textconsole=>$stty});
-    return {vncport=>$vncport,textconsole=>$stty};
+    return {vidport=>$vidport,textconsole=>$stty,vidproto=>$vidproto};
 }
 
 sub getcons {
@@ -669,25 +671,29 @@ sub getcons {
         $sconsparms->{node}->[0]->{psuedotty}=[$consdata->{textconsole}];
         $sconsparms->{node}->[0]->{baudrate}=[$serialspeed];
         return (0,$sconsparms);
-    } elsif ($type eq "vnc") {
-        return (0,'ssh+vnc@'.$hyper.": localhost:".$consdata->{vncport}); #$consdata->{vncport});
+    } elsif ($type eq "vid") {
+      my $tpasswd=genpassword(10);
+      my $validto=POSIX::strftime("%Y-%m-%dT%H:%M:%S",gmtime(time()+300));
+	$dom->update_device("<graphics type='".$consdata->{vidproto}."' listen='0.0.0.0' passwd='$tpasswd' passwdValidTo='$validto'/>");
+	$consdata->{password}=$tpasswd;
+	$consdata->{server}=$hyper;
+	return $consdata;
+        #return (0,{$consdata->{vidproto}.'@'.$hyper.":".$consdata->{vidport}); #$consdata->{vncport});
     }
 }
 sub getrvidparms {
     my $node=shift;
-    my $location = getcons($node,"vnc");
-    if ($location =~ /ssh\+vnc@([^:]*):([^:]*):(\d+)/) {
-        my @output = (
-        "method: kvm",
-        "server: $1",
-        "vncdisplay: $2:$3",
-        "virturi: ".$hypconn->get_uri(),
-        "virtname: $node",
-        );
-        return  0,@output;
-    } else {
-        return (1,"Error: Unable to determine rvid destination for $node");
+    my $location = getcons($node,"vid");
+    unless ($location) {
+       return (1,"Error: Unable to determine rvid destination for $node");
     }
+        my @output = (
+      "method: kvm"
+      );
+    foreach (keys %$location) {
+      push @output,$_.":".$location->{$_};
+    }
+    return 0,@output;
 }
 
 sub pick_target {
