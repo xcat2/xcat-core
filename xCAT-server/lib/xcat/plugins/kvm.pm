@@ -1554,7 +1554,7 @@ sub chvm {
 	  $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
 	}
 	my $domparsed = $parser->parse_string($vmxml);
-	my $candidatenodes=$domparsed->findnodes("//disk\@device='cdrom']");
+	my $candidatenodes=$domparsed->findnodes("//disk[\@device='cdrom']");
 	if (scalar (@$candidatenodes) != 1) {
 	  die "shouldn't be possible, should only have one cdrom";
 	}
