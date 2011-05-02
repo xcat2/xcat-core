@@ -265,6 +265,7 @@ boottarget => {
 bootparams => {
    cols => [qw(node kernel initrd kcmdline addkcmdline dhcpstatements adddhcpstatements comments disable)],
    keys => [qw(node)],
+   tablespace =>'XCATTBS16K',
    table_desc => 'Current boot settings to be sent to systems attempting network boot for deployment, stateless, or other reasons.  Mostly automatically manipulated by xCAT.',
    descriptions => {
       'node' => 'The node or group name',
