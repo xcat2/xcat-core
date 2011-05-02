@@ -644,7 +644,7 @@ sub refresh_vm {
     my $vidport=$newxml->{devices}->{graphics}->{port};
     my $vidproto=$newxml->{devices}->{graphics}->{type};
     my $stty=$newxml->{devices}->{console}->{tty};
-    $updatetable->{vm}->{$node}={vncport=>$vncport,textconsole=>$stty};
+    #$updatetable->{vm}->{$node}={vncport=>$vncport,textconsole=>$stty};
     #$vmtab->setNodeAttribs($node,{vncport=>$vncport,textconsole=>$stty});
     return {vidport=>$vidport,textconsole=>$stty,vidproto=>$vidproto};
 }
