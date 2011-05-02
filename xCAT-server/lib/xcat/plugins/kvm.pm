@@ -407,7 +407,7 @@ sub build_diskstruct {
     } else { #give the VM an empty optical drive, to allow chvm live attach/remove
       my $cdhash;
       $cdhash->{device}='cdrom';
-      $cdhash->{type}='block';
+      $cdhash->{type}='file';
       $cdhash->{readonly};
       $cdhash->{target}->{dev}='hdc';
       push @returns,$cdhash;
@@ -1342,12 +1342,16 @@ sub chvm {
     my @purge;
     my @derefdisks;
     my $memory;
+    my $cdrom;
+    my $eject;
     @ARGV=@_;
     require Getopt::Long;
     GetOptions(
         "a=s"=>\@addsizes,
         "d=s"=>\@derefdisks,
         "mem=s"=>\$memory,
+	"cdrom=s"=>\$cdrom,
+	"eject"=>\$eject,
         "cpus=s" => \$cpucount,
         "p=s"=>\@purge,
         "resize=s%" => \%resize,
@@ -1514,6 +1518,53 @@ sub chvm {
 
         }
     } 
+    my $newcdxml;
+    if ($cdrom) {
+      my $cdpath;
+      if ($cdrom =~ m!://!) {
+	my $url = $cdrom;
+	$url =~ s!([^/]+)\z!!;
+	my $imagename=$1;
+	my $poolobj = get_storage_pool_by_url($url);
+	unless ($poolobj) { die "Cound not get storage pool for $url"; }
+	my $poolxml = $poolobj->get_xml_description(); #yes, I have to XML parse for even this...
+	my $parsedpool = $parser->parse_string($poolxml);
+	$cdpath = $parsedpool->findnodes("/pool/target/path/text()")->[0]->data;
+	$cdpath .= "/".$imagename;
+      } else {
+	if ($cdrom =~ m!^/dev/!) {
+	  die "TODO: device pass through if anyone cares";
+	} elsif ($cdrom =~ m!^/!) { #full path... I guess
+	  $cdpath=$cdrom;
+	} else {
+	  die "TODO: relative paths, use client cwd as hint?";
+	}
+      }
+      unless ($cdpath) { die "unable to understand cd path specification"; }
+      $newcdxml = "<disk type='file' device='cdrom'><source file='$cdpath'/><target dev='hdc'/><readonly/></disk>";
+    } elsif ($eject) {
+      $newcdxml = "<disk type='file' device='cdrom'><target dev='hdc'/><readonly/></disk>";
+    }
+    if ($newcdxml) {
+     if ($currstate eq 'on') { 
+         $dom->attach_device($newcdxml); 
+         $vmxml=$dom->get_xml_description();
+      } else {
+	unless ($vmxml) {
+	  $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
+	}
+	my $domparsed = $parser->parse_string($vmxml);
+	my $candidatenodes=$domparsed->findnodes("//disk[device='cdrom'"):
+	if (scalar (@$candidatenodes) != 1) {
+	  die "shouldn't be possible, should only have one cdrom";
+	}
+	my $newcd=$parser->parse_balanced_chunk($newcdxml);
+	$candidatenodes->[0]->replaceNode($newcd);
+	my $moddedxml;
+        $vmxml=$moddedxml;
+      }
+      $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+    }
     if ($cpucount or  $memory) {
         if ($currstate eq 'on') {
             xCAT::SvrUtils::sendmsg([1,"Hot add of cpus or memory not supported"],$callback,$node);
