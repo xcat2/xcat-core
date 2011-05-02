@@ -429,7 +429,7 @@ mpa => {
  },
   },
 networks => {
-    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange nodehostname ddnsdomain vlanid comments disable)],
+    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange nodehostname ddnsdomain vlanid domain comments disable)],
     keys => [qw(net mask)],
     table_desc => 'Describes the networks in the cluster and info necessary to set up nodes on that network.',
  descriptions => {
@@ -447,6 +447,7 @@ networks => {
   nodehostname => 'A regular expression used to specify node name to network-specific hostname.  i.e. "/\z/-secondary/" would mean that the hostname of "n1" would be n1-secondary on this network.  By default, the nodename is assumed to equal the hostname, followed by nodename-interfacename.',
   ddnsdomain => 'A domain to be combined with nodename to construct FQDN for DDNS updates induced by DHCP.  This is not passed down to the client as "domain"',
   vlanid => 'The vlan ID if this network is within a vlan.',
+  domain => 'The DNS domain name (ex. cluster.com).',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -2101,6 +2102,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
   },
         {attr_name => 'vlanid',
                  tabentry => 'networks.vlanid',
+                 access_tabentry => 'networks.netname=attr:netname',
+  },
+  		{attr_name => 'domain',
+                 tabentry => 'networks.domain',
                  access_tabentry => 'networks.netname=attr:netname',
   },
  {attr_name => 'usercomment',
