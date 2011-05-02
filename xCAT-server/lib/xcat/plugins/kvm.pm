@@ -1554,16 +1554,20 @@ sub chvm {
 	  $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
 	}
 	my $domparsed = $parser->parse_string($vmxml);
-	my $candidatenodes=$domparsed->findnodes("//disk[device='cdrom'"):
+	my $candidatenodes=$domparsed->findnodes("//disk\@device='cdrom']");
 	if (scalar (@$candidatenodes) != 1) {
 	  die "shouldn't be possible, should only have one cdrom";
 	}
 	my $newcd=$parser->parse_balanced_chunk($newcdxml);
 	$candidatenodes->[0]->replaceNode($newcd);
-	my $moddedxml;
-        $vmxml=$moddedxml;
+	my $moddedxml=$domparsed->toString;
+	if ($moddedxml) {
+	  $vmxml=$moddedxml;
+	}
       }
-      $updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+      if ($vmxml) {
+	$updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+      }
     }
     if ($cpucount or  $memory) {
         if ($currstate eq 'on') {
