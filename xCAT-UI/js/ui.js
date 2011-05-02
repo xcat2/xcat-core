@@ -506,6 +506,8 @@ function initPage() {
 		headers.eq(2).css('background-color', '#A9D0F5');
 		loadProvisionPage();
 	} else if (page == 'monitor.php') {
+		includeJs("js/jquery/jquery.jqplot.min.js");
+		includeJs("js/jquery/jqplot.pieRenderer.min.js");
 		includeJs("js/monitor/xcatmon.js");
 		includeJs("js/monitor/rmcmon.js");
 		includeJs("js/monitor/gangliamon.js");
@@ -515,8 +517,7 @@ function initPage() {
 	    includeJs("js/manual/manual.js");
 	    headers.eq(4).css('background-color', '#A9D0F5');
         loadManualPage();
-	}
-	else {
+	} else {
 	    includeJs("js/jquery/jquery.topzindex.min.js");
         includeJs("js/nodes/nodeset.js");
         includeJs("js/nodes/rnetboot.js");

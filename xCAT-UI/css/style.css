@@ -693,11 +693,13 @@ table a:hover {
 	-webkit-border-radius: .5em;
 	border-radius: .5em;
 }
+
 .discovercurrentstep{
 	background-color: yellow;
 	font: normal bold 12px/ 35px verdana, arial, helvetica, sans-serif;
 	padding: 5px;
 }
+
 .discovercontent {
 	width: 960px;
 	display: inline-table;

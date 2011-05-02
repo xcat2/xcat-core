@@ -452,11 +452,12 @@ function loadNodes(data) {
 	}
 	sorted.sort();
 
-	// Add column for check box, node, ping, power, and comments
+	// Add column for check box, node, ping, power, monitor, and comments
 	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 
 		'node', 
 		'<span><a>status</a></span><img src="images/loader.gif"></img>', 
 		'<span><a>power</a></span><img src="images/loader.gif" style="display: none;"></img>',
+		'<span><a>monitor</a></span><img src="images/loader.gif" style="display: none;"></img>',
 		'comments');
 
 	// Create a datatable
@@ -479,8 +480,8 @@ function loadNodes(data) {
 			status = attrs[node]['status'].replace('sshd', 'ping');
 		}
 			
-		// Push in checkbox, node, status, and power
-		row.push(checkBx, nodeLink, status, '');
+		// Push in checkbox, node, status, monitor, and power
+		row.push(checkBx, nodeLink, status, '', '');
 		
 		// If the node attributes are known (i.e the group is known)
 		if (attrs[node]['groups']) {
@@ -523,7 +524,7 @@ function loadNodes(data) {
 		}
 		
 		// Go through each header
-		for (var i = 5; i < sorted.length; i++) {
+		for (var i = 6; i < sorted.length; i++) {
 			// Add the node attributes to the row
 			var key = sorted[i];
 			
@@ -574,6 +575,26 @@ function loadNodes(data) {
 		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			powerNode(tgtNodes, 'off');
+		}
+	});
+	
+	var monitorLnk = $('<a>Monitor</a>');
+
+	// Turn monitoring on
+	var monitorOnLnk = $('<a>Monitor on</a>');
+	monitorOnLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
+		if (tgtNodes) {
+			monitorNode(tgtNodes, 'on');
+		}
+	});
+
+	// Turn monitoring off
+	var monitorOffLnk = $('<a>Monitor off</a>');
+	monitorOffLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
+		if (tgtNodes) {
+			monitorNode(tgtNodes, 'off');
 		}
 	});
 
@@ -684,23 +705,36 @@ function loadNodes(data) {
 		}
 	});
 	
+	// Install Ganglia
+	var installMonLnk = $('<a>Install monitoring</a>');
+	installMonLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
+		if (tgtNodes) {
+			installGanglia(tgtNodes);
+		}
+	});
+	
 	// Power actions
 	var powerActions = [ powerOnLnk, powerOffLnk ];
 	var powerActionMenu = createMenu(powerActions);
+	
+	// Monitor actions
+	var monitorActions = [ monitorOnLnk, monitorOffLnk ];
+	var monitorActionMenu = createMenu(monitorActions);
 
 	// Advanced actions
 	var advancedLnk = $('<a>Advanced</a>');
 	var advancedActions;
 	if ('compute' == group) {
-		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons, editProps ];
+		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons, editProps, installMonLnk ];
 	} else {
-		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, editProps ];
+		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, editProps, installMonLnk ];
 	}
 	var advancedActionMenu = createMenu(advancedActions);
 
 	// Create an action menu
 	var actionsDiv = $('<div></div>');
-	var actions = [ [ powerLnk, powerActionMenu ], cloneLnk, deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
+	var actions = [ [ powerLnk, powerActionMenu ], [ monitorLnk, monitorActionMenu ], cloneLnk, deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
 	var actionsMenu = createMenu(actions);
 	actionsMenu.superfish();
 	actionsDiv.append(actionsMenu);
@@ -766,58 +800,64 @@ function loadNodes(data) {
 	});
 	var pingCol = $('#' + nodesTableId + ' thead tr th').eq(2);
 	var powerCol = $('#' + nodesTableId + ' thead tr th').eq(3);
-	var commentCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	var monitorCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	var commentCol = $('#' + nodesTableId + ' thead tr th').eq(5);
 	pingCol.unbind('click');
 	powerCol.unbind('click');
+	monitorCol.unbind('click');
 	commentCol.unbind('click');
 	
 	// Create enough space for loader to be displayed
-	$('#' + nodesTableId + ' tbody tr td:nth-child(3)').css('min-width', '60px');
-	$('#' + nodesTableId + ' tbody tr td:nth-child(4)').css('min-width', '60px');
-	
 	// Center align power, ping, and comments
-	$('#' + nodesTableId + ' tbody tr td:nth-child(3)').css('text-align', 'center');
-	$('#' + nodesTableId + ' tbody tr td:nth-child(4)').css('text-align', 'center');
-	$('#' + nodesTableId + ' tbody tr td:nth-child(5)').css('text-align', 'center');
+	$('#' + nodesTableId + ' td:nth-child(3),td:nth-child(4),td:nth-child(5)').css({
+		'min-width': '65px',
+		'text-align': 'center'
+	});
 	
-	// Instead refresh the node status and power status
+	// No minimum width for comments column
+	$('#' + nodesTableId + ' tbody tr td:nth-child(6)').css('text-align', 'center');
+	
+	// Instead refresh the node, power, and monitor status
 	pingCol.find('span a').click(function() {
 		refreshNodeStatus(group, nodesTableId);
 	});
 	powerCol.find('span a').click(function() {
 		refreshPowerStatus(group, nodesTableId);
 	});
+	monitorCol.find('span a').click(function() {
+		refreshGangliaStatus(group, nodesTableId);
+	});
 	
-	// Create tooltip for status
+	// Create tooltip for status 
+	var tooltipConf = {
+			position: "center right",
+			offset: [-2, 10],
+			effect: "fade",	
+			opacity: 0.8,
+			relative: true,
+			predelay: 800
+		};
+
 	var pingTip = createStatusToolTip();
 	pingCol.find('span').append(pingTip);
-	pingCol.find('span a').tooltip({
-		position: "center right",
-		offset: [-2, 10],
-		effect: "fade",	
-		opacity: 0.8,
-		relative: true,
-		predelay: 800
-	});
+	pingCol.find('span a').tooltip(tooltipConf);
 	
 	// Create tooltip for power
 	var powerTip = createPowerToolTip();
 	powerCol.find('span').append(powerTip);
-	powerCol.find('span a').tooltip({
-		position: "center right",
-		offset: [-2, 10],
-		effect: "fade",	
-		opacity: 0.8,
-		relative: true,
-		predelay: 800
-	});
+	powerCol.find('span a').tooltip(tooltipConf);
+	
+	// Create tooltip for monitor 
+	var monitorTip = createMonitorToolTip();
+	monitorCol.find('span').append(monitorTip);
+	monitorCol.find('span a').tooltip(tooltipConf);
 	
 	/**
 	 * Enable editable columns
 	 */
 	
-	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
-	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5))').editable(
+	// Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
+	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
 		function(value, settings) {			
 			// Change text color to red
 			$(this).css('color', 'red');
@@ -1274,6 +1314,66 @@ function addNodes2Table(data) {
 			}
 		} // End of for
 	} // End of if
+}
+
+/**
+ * Load the status of Ganglia for a given group
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function loadGangliaStatus(data) {
+	// Get datatable
+	var datatable = $('#' + nodesTableId).dataTable();
+	var ganglia = data.rsp;
+	var rowNum, node, status, args;
+
+	for ( var i in ganglia) {
+		// ganglia[0] = nodeName and ganglia[1] = state
+		node = jQuery.trim(ganglia[i][0]);
+		status = jQuery.trim(ganglia[i][1]);
+
+		// Get the row containing the node
+		rowNum = findRow(node, '#' + nodesTableId, 1);
+
+		// Update the power status column
+		datatable.fnUpdate(status, rowNum, 4);
+	}
+
+	// Hide Ganglia loader
+	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	gangliaCol.find('img').hide();
+}
+
+/**
+ * Refresh the status of Ganglia for each node
+ * 
+ * @param group
+ *            Group name
+ * @return Nothing
+ */
+function refreshGangliaStatus(group) {
+	// Show ganglia loader
+	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	gangliaCol.find('img').show();
+	
+	// Get power status for nodes shown
+	var nodes = getNodesShown(nodesTableId);
+
+	// Get the status of Ganglia
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'gangliastatus;' + nodes,
+			msg : ''
+		},
+
+		success : loadGangliaStatus
+	});
 }
 
 /**
@@ -2511,6 +2611,19 @@ function createPowerToolTip() {
 }
 
 /**
+ * Create a tool tip for monitoring status
+ * 
+ * @return Tool tip
+ */
+function createMonitorToolTip() {
+	// Create tooltip container
+	var toolTip = $('<div class="tooltip">Click here to refresh the monitoring status</div>').css({
+		'width': '150px'
+	});	
+	return toolTip;
+}
+
+/**
  * Open dialog to configure xCAT monitor
  * 
  * @param data
@@ -2969,4 +3082,143 @@ function openSetAttrsDialog() {
         	}
 		}
 	});
+}
+
+/**
+ * Turn on monitoring for a given node
+ * 
+ * @param node
+ *            Node to monitor on or off
+ * @param monitor
+ *            Monitor state, on or off
+ * @return Nothing
+ */
+function monitorNode(node, monitor) {
+	if (monitor == 'on') {
+		// Append loader to warning bar
+		var gangliaLoader = createLoader('');
+		var warningBar = $('#nodesTab').find('.ui-state-error p');
+		if (warningBar.length) {
+			warningBar.append(gangliaLoader);
+		}
+
+		if (node) {
+			// Check if ganglia RPMs are installed
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'webrun',
+					tgt : '',
+					args : 'gangliacheck;' + node,
+					msg : node	// Node range will be passed along in data.msg
+				},
+
+				/**
+				 * Start ganglia on a given node range
+				 * 
+				 * @param data
+				 *            Data returned from HTTP request
+				 * @return Nothing
+				 */
+				success : function(data) {
+					// Get response
+					var out = data.rsp[0].split(/\n/);
+
+					// Go through each line
+					var warn = false;
+					var warningMsg = '';
+					for (var i in out) {
+						// If an RPM is not installed
+						if (out[i].indexOf('not installed') > -1) {
+							warn = true;
+							
+							if (warningMsg) {
+								warningMsg += '<br>' + out[i];
+							} else {
+								warningMsg = out[i];
+							}
+						}
+					}
+					
+					// If there are warnings
+					if (warn) {
+						// Create warning bar
+						var warningBar = createWarnBar(warningMsg);
+						warningBar.css('margin-bottom', '10px');
+						warningBar.prependTo($('#nodesTab'));
+					} else {
+						$.ajax( {
+							url : 'lib/cmd.php',
+							dataType : 'json',
+							data : {
+								cmd : 'webrun',
+								tgt : '',
+								args : 'gangliastart;' + data.msg,
+								msg : ''
+							},
+
+							success : function(data) {
+								// Remove any warnings
+								$('#nodesTab').find('.ui-state-error').remove();
+							}
+						});
+					} // End of if (warn)
+				} // End of function(data)
+			});
+		} else {
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'webrun',
+					tgt : '',
+					args : 'gangliastart',
+					msg : ''
+				},
+
+				success : function(data) {
+					// Remove any warnings
+					$('#nodesTab').find('.ui-state-error').remove();
+				}
+			});
+		} // End of if (node)
+	} else {
+		var args;
+		if (node) {
+			args = 'gangliastop;' + node;
+		} else {
+			args = 'gangliastop';
+		}
+
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'webrun',
+				tgt : '',
+				args : args,
+				msg : ''
+			},
+
+			success : function(data) {
+				// Do nothing
+			}
+		});
+	}
+}
+
+/**
+ * Install Ganglia on a given node
+ * 
+ * @param node
+ *            Node to install Ganglia on
+ * @return Nothing
+ */
+function installGanglia(node) {
+	var iframe = createIFrame('lib/cmd.php?cmd=webrun&tgt=&args=installganglia;' + node + '&msg=' + node + '&opts=flush');
+	iframe.prependTo($('#nodesTab'));
+	
+	// Turn on Ganglia for node
+	monitorNode(node, 'on');
 }
