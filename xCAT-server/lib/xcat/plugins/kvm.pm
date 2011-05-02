@@ -625,6 +625,8 @@ sub build_xmldesc {
     } else {
        $xtree{devices}->{graphics}->{type}='vnc';
     }
+    $xtree{devices}->{graphics}->{autoport}='yes';
+    $xtree{devices}->{sound}->{model}='ac97';
   
     $xtree{devices}->{console}->{type}='pty';
     $xtree{devices}->{console}->{target}->{port}='1';
