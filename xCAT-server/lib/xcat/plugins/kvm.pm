@@ -627,7 +627,7 @@ sub build_xmldesc {
        $xtree{devices}->{graphics}->{type}='vnc';
     }
     $xtree{devices}->{graphics}->{autoport}='yes';
-    $xtree{devices}->{graphics}->{password}=genpassword(10);
+    $xtree{devices}->{graphics}->{password}=genpassword(16);
     $xtree{devices}->{sound}->{model}='ac97';
   
     $xtree{devices}->{console}->{type}='pty';
@@ -673,7 +673,7 @@ sub getcons {
         $sconsparms->{node}->[0]->{baudrate}=[$serialspeed];
         return (0,$sconsparms);
     } elsif ($type eq "vid") {
-      my $tpasswd=genpassword(10);
+      my $tpasswd=genpassword(16);
       my $validto=POSIX::strftime("%Y-%m-%dT%H:%M:%S",gmtime(time()+300));
 	$dom->update_device("<graphics type='".$consdata->{vidproto}."' passwd='$tpasswd' passwdValidTo='$validto' autoport='yes'/>");
 	$consdata->{password}=$tpasswd;
