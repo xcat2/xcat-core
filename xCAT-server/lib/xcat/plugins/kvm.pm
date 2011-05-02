@@ -675,7 +675,7 @@ sub getcons {
     } elsif ($type eq "vid") {
       my $tpasswd=genpassword(10);
       my $validto=POSIX::strftime("%Y-%m-%dT%H:%M:%S",gmtime(time()+300));
-	$dom->update_device("<graphics type='".$consdata->{vidproto}."' passwd='$tpasswd' passwdValidTo='$validto'/>");
+	$dom->update_device("<graphics type='".$consdata->{vidproto}."' passwd='$tpasswd' passwdValidTo='$validto' autoport='yes'/>");
 	$consdata->{password}=$tpasswd;
 	$consdata->{server}=$hyper;
 	return $consdata;
