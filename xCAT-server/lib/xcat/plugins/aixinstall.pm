@@ -593,6 +593,7 @@ sub nimnodeset
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
                     'i=s'       => \$::OSIMAGE,
+					'l=s'       => \$::opt_l,
 					'p|primarySN' => \$::PRIMARY,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
@@ -1263,8 +1264,7 @@ sub spot_updates
             {
                 my $rsp;
                 push @{$rsp->{data}}, "Could not get NIM spot definitions from $srvnode.";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                # return 1;
+                xCAT::MsgUtils->message("I", $rsp, $callback);
             }
 
 			my @SNspots;
@@ -3073,16 +3073,6 @@ sub mknimimage
             xCAT::MsgUtils->message("E", $rsp, $callback);
             return 1;
         }
-
-        #
-        # create resolv_conf
-        #
-        my $resolv_conf_name = &mk_resolv_conf(\%::attrres, $callback, $subreq);
-        if (defined($resolv_conf_name))
-        {
-            chomp $resolv_conf_name;
-            $newres{resolv_conf} = $resolv_conf_name;
-        }
     }
 
     #
@@ -4162,6 +4152,299 @@ sub mk_resolv_conf_file
 
 #----------------------------------------------------------------------------
 
+=head3   chk_resolv_conf
+
+        See if new NIM resolv_conf resource is needed.
+
+		Create if needed.
+
+		Called by: prenimnodeset()
+
+        Returns:
+               0 - ok
+               1 - error
+=cut
+
+#-----------------------------------------------------------------------------
+sub chk_resolv_conf
+{
+    my $callback = shift;
+	my $nodedefs = shift;
+	my $nodes    = shift;
+	my $networks = shift;
+	my $imgdefs  = shift;
+	my $attr     = shift;
+	my $nosi     = shift;
+    my $subreq   = shift;
+
+	my %nodehash;
+    if ($nodedefs) {
+        %nodehash = %{$nodedefs};
+    }
+	my @nodelist;
+    if ($nodes) {
+        @nodelist = @{$nodes};
+    }
+	my %nethash;
+    if ($networks) {
+        %nethash = %{$networks};
+    }
+	my %attrres;
+    if ($attr) {
+        %attrres = %{$attr};
+    }
+	my %imghash;
+    if ($imgdefs) {
+        %imghash = %{$imgdefs};
+    }
+	my %nodeosi;
+	if ($nosi) {
+		%nodeosi = %{$nosi};
+	}
+
+	my $nimprime = xCAT::InstUtils->getnimprime();
+    chomp $nimprime;
+
+	# get site domain and nameservers values
+	my $sitetab = xCAT::Table->new('site');
+	my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+    my $site_domain = $tmp->{value};
+	my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
+    my $site_nameservers = $tmp2->{value};
+    $sitetab->close;
+
+	#  Get a list of the all NIM resources
+    #
+    my $cmd =
+      qq~/usr/sbin/lsnim -c resources | /usr/bin/cut -f1 -d' ' 2>/dev/null~;
+    my @nimresources =
+      xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 1);
+    if ($::RUNCMD_RC != 0)
+    {
+        my $rsp;
+        push @{$rsp->{data}}, "Could not get list of NIM resources.";
+        xCAT::MsgUtils->message("E", $rsp, $callback);
+        return 1;
+    }
+
+	foreach my $node (@nodelist) {
+
+		my $image_name = $nodeosi{$node};
+        chomp $image_name;
+
+		#
+		#  if not provided in osimage def then see if we can create one
+		#
+		if ( !$imghash{$image_name}{resolv_conf} ) {
+
+			my $create_res=0;
+			my $nameservers;
+			my $domain;
+			my $ns;
+			my $junk;
+			if ( $nethash{$node}{nameservers} && $nethash{$node}{domain} ){
+				# then create resolv_conf using these values
+				$domain=$nethash{$node}{domain};
+				if ( $nethash{$node}{nameservers} =~ /xcatmaster/ ) {
+
+					# then use xcatmaster value of node def
+					if ($nodehash{$node}{xcatmaster}) {
+						($ns, $junk) = split /,/, $nodehash{$node}{xcatmaster};
+					} else {
+						$ns=$nimprime;
+					}
+					$nameservers = xCAT::NetworkUtils->getipaddr($ns);
+        			chomp $nameservers;
+
+				} else {
+					# use actual value of nameservers
+					($ns, $junk) = split /,/, $nethash{$node}{nameservers};
+					$nameservers = xCAT::NetworkUtils->getipaddr($ns);
+                    chomp $nameservers;
+				}
+				$create_res++;
+
+			} elsif ( $site_nameservers && $site_domain ) {
+				$domain=$site_domain;
+
+				if ( $site_nameservers =~ /xcatmaster/ ) {
+                    # then use xcatmaster value of node def
+					if ($nodehash{$node}{xcatmaster}) {
+                        ($ns, $junk) = split /,/, $nodehash{$node}{xcatmaster};
+                    } else {
+                        $ns=$nimprime;
+                    }
+					$nameservers = xCAT::NetworkUtils->getipaddr($ns);
+                    chomp $nameservers;
+                } else {
+                    # use actual value of nameservers
+					($ns, $junk) = split /,/, $site_nameservers;
+					$nameservers = xCAT::NetworkUtils->getipaddr($ns);
+                    chomp $nameservers;
+				}
+				$create_res++;
+			}
+			
+			# create a new NIM resolv_conf resource
+			my $resolv_conf_name;
+			my $createdres=0;
+			if ($create_res) {
+                my $fileloc;
+                my $loc;
+				my @validattrs = ("nfs_vers", "nfs_sec");
+
+    			$resolv_conf_name = $nodehash{$node}{provmethod} . "_resolv_conf";
+
+				# see if this resource is already defined!!
+				if (grep(/^$resolv_conf_name$/, @nimresources))
+            	{
+					next;
+				}
+
+    			my $install_dir = xCAT::Utils->getInstallDir();
+                if ($::opt_l)
+                {
+                    $loc = "$::opt_l/resolv_conf/$resolv_conf_name";
+                }
+                else
+                {
+                    $loc = "$install_dir/nim/resolv_conf/$resolv_conf_name";
+                }
+
+                my $filename = "$loc/resolv.conf";
+
+				# remove any existing file - 
+				if ( -e $filename ) {
+					my $cmd = qq~/bin/rm $filename 2>/dev/null~;
+					xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
+					if ($::RUNCMD_RC != 0)
+					{
+						my $rsp;
+						push @{$rsp->{data}}, "Could not remove \'$resolv_conf_name\'";
+						xCAT::MsgUtils->message("I", $rsp, $callback);
+					}
+				}
+
+                # create the resolv.conf file 
+				my $mkcmd  = qq~/usr/bin/mkdir -p $loc~;
+				my $output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $mkcmd, 0);
+				if ($::RUNCMD_RC != 0)
+				{
+					my $rsp;
+					push @{$rsp->{data}}, "Could not create $loc.\n";
+					if ($::VERBOSE)
+					{
+						push @{$rsp->{data}}, "$output\n";
+					}
+					xCAT::MsgUtils->message("E", $rsp, $callback);
+					return 1;
+				}
+
+				#
+				# create file
+				#
+				# add the domain
+				$cmd = qq~echo search $domain > $filename~;
+        		$output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
+        		if ($::RUNCMD_RC != 0)
+        		{
+            		my $rsp;
+            		push @{$rsp->{data}}, "Could not add domain into $filename";
+            		xCAT::MsgUtils->message("E", $rsp, $callback);
+            		return 1;
+        		}
+
+				# add nameservers
+        		my $nameserverstr;
+        		foreach (split /,/, $nameservers)
+        		{
+            		$nameserverstr = "nameserver $_";
+            		chomp($nameserverstr);
+
+					$cmd = qq~echo $nameserverstr >> $filename~;
+
+					$output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $cmd, 0);
+            		if ($::RUNCMD_RC != 0)
+            		{
+                		my $rsp;
+                		push @{$rsp->{data}}, "Could not add nameservers into $filename";
+                		xCAT::MsgUtils->message("E", $rsp, $callback);
+                		return 1;
+            		}
+				}
+
+				#
+                # define the new resolv_conf resource
+				#
+                $cmd = "/usr/sbin/nim -o define -t resolv_conf -a server=master ";
+				# check for relevant cmd line attrs
+				my %cmdattrs;
+				if ( ($::NFSV4) && (!$attrres{nfs_vers}) )
+				{
+					$cmdattrs{nfs_vers}=4;
+				}
+
+				if (%attrres) {
+					foreach my $attr (keys %attrres) {
+						if (grep(/^$attr$/, @validattrs) ) {
+							$cmdattrs{$attr} = $attrres{$attr};
+						}
+					}
+				}
+
+				if (%cmdattrs) {
+					foreach my $attr (keys %cmdattrs) {
+						$cmd .= "-a $attr=$cmdattrs{$attr} ";
+					}
+				}
+
+                $cmd .= "-a location=$filename ";
+                $cmd .= "$resolv_conf_name  2>&1";
+
+				$output = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh",
+$nimprime, $cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}},
+                      "Could not create a NIM definition for \'$resolv_conf_name\'.\n";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    return 1;
+                }
+				$createdres++;
+				$imghash{$image_name}{resolv_conf}=$resolv_conf_name;
+
+				my $rsp;
+				push @{$rsp->{data}}, "Created a new resolv_conf resour ce called \'$resolv_conf_name\'.\n";
+				xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+			
+			#
+			# update the osimage def
+			#
+			if ($createdres) {
+				my %osattrs;
+				$osattrs{$image_name}{objtype}="osimage";
+				$osattrs{$image_name}{resolv_conf}=$resolv_conf_name;
+
+				if (xCAT::DBobjUtils->setobjdefs(\%osattrs) != 0)
+    			{
+        			my $rsp;
+        			push @{$rsp->{data}}, "Could not update the \"$image_name\" osimage definition.\n";
+        			xCAT::MsgUtils->message("E", $rsp, $::callback);
+    			}
+				my $rsp;
+                push @{$rsp->{data}}, "Updated the xCAT osimage definition named  \'$image_name\'.\n";
+                xCAT::MsgUtils->message("I", $rsp, $callback);
+			}
+		}
+	} # end foreach node
+
+	return 0;
+}
+
+#----------------------------------------------------------------------------
+
 =head3   mk_resolv_conf
 
         Create a NIM   resource.
@@ -4300,6 +4583,7 @@ sub mk_resolv_conf
                     xCAT::MsgUtils->message("E", $rsp, $callback);
                     return undef;
                 }
+
             }
         }
         else
@@ -5854,10 +6138,6 @@ if (0) {
         return 1;
     }
 
-    # add resolv.conf to image if data is provided in site table
-    my $fileloc = "$spot_loc/lpp/bos/inst_root/etc";
-    my $rc      = &mk_resolv_conf_file($callback, $fileloc, $subreq);
-
     # change the inst_root dir to "root system"
     # the default is "bin bin" which will not work if the user
     #   wants to use ssh as the remote shell for the nodes
@@ -6564,6 +6844,7 @@ sub prenimnodeset
                     'h|help'    => \$::HELP,
                     'hfi'       => \$::HFI,
                     'i=s'       => \$::OSIMAGE,
+					'l=s'       => \$::opt_l,
                     'n|new'     => \$::NEWNAME,
 					'p|primarySN' => \$::PRIMARY,
                     'verbose|V' => \$::VERBOSE,
@@ -6938,6 +7219,16 @@ sub prenimnodeset
 
         #	$lochash{'xcataixpost'} = "/install/nim/scripts/xcataixpost";
     }
+
+	#
+	# See if we need to create a resolv_conf resource
+	#
+
+	if (&chk_resolv_conf($callback, \%objhash, \@nodelist, \%nethash, \%imghash, \%attrs, \%nodeosi, $subreq)) {
+		my $rsp;
+		push @{$rsp->{data}}, "Could not create NIM resolv_conf resource.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+	}
 
     #
     # create a hash containing the locations of the NIM resources
@@ -7761,6 +8052,7 @@ sub mkdsklsnode
                     'h|help'    => \$::HELP,
                     'hfi'       => \$::HFI,
                     'i=s'       => \$::OSIMAGE,
+					'l=s'       => \$::opt_l,
                     'n|new'     => \$::NEWNAME,
 					'p|primary' => \$::PRIMARY,
                     'verbose|V' => \$::VERBOSE,
@@ -9941,7 +10233,7 @@ sub mkdsklsnode_usage
     push @{$rsp->{data}}, "\tmkdsklsnode [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tmkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] \n\t\t[-i image_name] [-p|--primarySN] [-b|--backupSN]\n\t\tnoderange [attr=val [attr=val ...]]\n";
+      "\tmkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] \n\t\t[-i image_name] [-l location] [-p|--primarySN] [-b|--backupSN]\n\t\tnoderange [attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
@@ -10083,7 +10375,7 @@ sub nimnodeset_usage
     push @{$rsp->{data}}, "\tnimnodeset [-h | --help ]";
     push @{$rsp->{data}}, "or";
     push @{$rsp->{data}},
-      "\tnimnodeset [-V|--verbose] [-f|--force] [ -i osimage_name]\n\t\t[-p|--primarySN] [-b|--backupSN] noderange [attr=val [attr=val ...]]\n";
+      "\tnimnodeset [-V|--verbose] [-f|--force] [ -i osimage_name]\n\t\t[-l location] [-p|--primarySN] [-b|--backupSN] noderange \n\t\t[attr=val [attr=val ...]]\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
 }
