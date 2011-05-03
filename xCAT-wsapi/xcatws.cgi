@@ -542,7 +542,7 @@ sub networksHandler{
     elsif($subResource eq /dhcp/){
       #allow restarting of the dhcp service.  scary?
       if($q->param('command') eq /restart/){
-        system.exec('service dhcp restart');
+        system('service dhcp restart');
       }
       else{
         $request->{command} = 'makedhcp';
@@ -554,7 +554,7 @@ sub networksHandler{
     elsif($subResource eq /dns/){
       #allow restarting of the named service.  scary?
       if($q->param('command') eq /restart/){
-        system.exec('service named restart');
+        system('service named restart');
       }
       else{
         $request->{command} = 'makedhcp';
@@ -1265,14 +1265,14 @@ sub vmsHandler{
   elsif(isPut() || isPatch()){
     $request->{command} = 'chvm';
     if(defined $q->param('field')){
-      foreach ($q->param('field'){
+      foreach ($q->param('field')){
         push @args, $_;
       }
     }
     
   }
   elsif(isDelete()){
-    if(defined $request->{nodeRange})){
+    if(defined $request->{nodeRange}){
       if(defined $q->param('retain')){
         push @args, '-r';
       }
@@ -1328,6 +1328,7 @@ sub wrapJson
 
 sub wrapHtml
 {
+  my $item;
   my @response = shift;
   my $baseUri = $url.$pathInfo;
   if($baseUri !~ /\/^/)
@@ -1353,7 +1354,7 @@ sub wrapHtml
       #if($element->{error}){
       if($element->{node}){
         print "<table border=1>";
-        foreach my $item (@{$element->{node}}){
+        foreach $item (@{$element->{node}}){
           #my $url = $baseUri.$item->{name}[0];
           #print "<tr><td><a href=$url>$item->{name}[0]</td></tr>";
           print "<tr><td>$item->{name}[0]</td>";
@@ -1376,7 +1377,7 @@ sub wrapHtml
       }
       elsif($element->{data}){
         print "<table border=1>";
-        foreach my $item (@{$element->{data}}){
+        foreach $item (@{$element->{data}}){
           my @values = split(/:/, $item, 2);
           #print "<tr><td><a href=$url$pathInfo$key>$key</a></td><td>$value</td></tr>";
           print "<tr>";
@@ -1396,7 +1397,7 @@ sub wrapHtml
         print "</table>";
       }
       elsif($element->{info}){
-        foreach my $item (@{$element->{info}}){
+        foreach $item (@{$element->{info}}){
 
           print $item;
         }
