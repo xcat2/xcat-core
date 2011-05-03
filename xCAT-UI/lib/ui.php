@@ -33,6 +33,7 @@ function loadPage(){
 				<li><a href="configure.php" class="top_link">Configure</a></li>
 				<li><a href="provision.php" class="top_link">Provision</a></li>
 				<li><a href="monitor.php" class="top_link">Monitor</a></li>
+				<li><a href="manual.php" class="top_link">Guide</a></li>
 			</ul>';
 			
 	// User name and log out section
@@ -80,7 +81,8 @@ function login() {
 	// xcatauth.js will open a dialog box
 	// asking for the user name and password
 	echo
-	'<script src="js/xcatauth.js" type="text/javascript"></script>
+	'<script src="js/jquery/jquery.cookie.min.js" type="text/javascript"></script>
+	<script src="js/xcatauth.js" type="text/javascript"></script>
 	<div id=logdialog>
 		<p>Give the user name and password for the xCAT management node</p>
 			<form id=loginform>

@@ -56,8 +56,21 @@ function onlogin(data, txtStatus) {
 		$("#logstatus").text("Login successful");
 		$("#logdialog").dialog("close");
 
-		// Remembered what page they were trying to go to
-		window.location = 'index.php';
+		//not the first time to log
+		if ($.cookie('logonflag')){
+		 // Remembered what page they were trying to go to
+	        window.location = window.location.pathname;
+		}
+		else{
+		    window.location = 'manual.php';
+		}
+		
+		//set the logonflag
+		$.cookie('logonflag', 'yes', {
+		    path : '/xcat',
+		    expires : 100
+		});
+		
 	} else {
 		$("#logstatus").text("Authentication failure");
 		$("#logstatus").css("color", "#FF0000");
