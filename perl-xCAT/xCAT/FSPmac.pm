@@ -580,10 +580,11 @@ sub format_mac {
     # Get adapter mac
     #####################################
     my @newmacs;
+    my $newmac = $mac;
     my @macs = split /\|/, $mac;
 
-    foreach my $mac_a ( @macs ) {
-        if ( !xCAT::Utils->isAIX() ) {
+    if ( !xCAT::Utils->isAIX() ) {
+        foreach my $mac_a ( @macs ) {
             #################################
             # Delineate MAC with colons
             #################################
@@ -592,9 +593,9 @@ sub format_mac {
             $mac_a =~ s/:$//;
             push @newmacs, $mac_a;
         }
+        $newmac = join("|",@newmacs);
     }
 
-    my $newmac = join("|",@newmacs);
 
     return( "$newmac" );
 
