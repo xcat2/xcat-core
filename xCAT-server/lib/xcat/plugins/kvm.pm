@@ -673,9 +673,16 @@ sub getcons {
         $sconsparms->{node}->[0]->{baudrate}=[$serialspeed];
         return (0,$sconsparms);
     } elsif ($type eq "vid") {
+      my $domxml = $dom->get_xml_description();
+      my $parseddom = $parser->parse_string($domxml);
+      my ($graphicsnode) = $parseddom->findnodes("//graphics");
+      
       my $tpasswd=genpassword(16);
       my $validto=POSIX::strftime("%Y-%m-%dT%H:%M:%S",gmtime(time()+300));
-	$dom->update_device("<graphics type='".$consdata->{vidproto}."' passwd='$tpasswd' passwdValidTo='$validto' autoport='yes'/>");
+      $graphicsnode->setAttribute("passwd",$tpasswd);
+      $graphicsnode->setAttribute("passwdValidTo",$validto);
+      $dom->update_device($graphicsnode->toString());
+	#$dom->update_device("<graphics type='".$consdata->{vidproto}."' passwd='$tpasswd' passwdValidTo='$validto' autoport='yes'/>");
 	$consdata->{password}=$tpasswd;
 	$consdata->{server}=$hyper;
 	return $consdata;
