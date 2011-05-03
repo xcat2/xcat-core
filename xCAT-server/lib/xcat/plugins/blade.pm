@@ -3835,8 +3835,8 @@ sub sshcfg {
   my ($line) = grep(/Build ID:\s+\S+/, @data);
 
   # Minumum firmware version BPET32 required for SSH
-  $line =~ /(\d+)/;
-  if ($1 < 32) {
+  $line =~ /(\d.)/;
+  if (hex($1) < hex(32)) {
     return([1,"SSH supported on AMM with minimum firmware BPET32"]);
   }
 
