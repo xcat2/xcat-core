@@ -627,6 +627,7 @@ sub build_xmldesc {
        $xtree{devices}->{graphics}->{type}='vnc';
     }
     $xtree{devices}->{graphics}->{autoport}='yes';
+    $xtree{devices}->{graphics}->{listen}='0.0.0.0';
     $xtree{devices}->{graphics}->{password}=genpassword(16);
     $xtree{devices}->{sound}->{model}='ac97';
   
