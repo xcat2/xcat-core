@@ -643,7 +643,7 @@ sub mknetboot
         } elsif ( $reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
             $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
         } else {
-            if ($mac) {
+            if ($useifname && $mac) {
                 $kcmdline .= "BOOTIF=" . $mac . " ";
             }
         }
