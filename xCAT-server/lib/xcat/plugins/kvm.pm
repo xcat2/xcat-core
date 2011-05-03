@@ -1008,6 +1008,9 @@ sub makedom {
     } elsif (not $xml) {
         $xml = build_xmldesc($node,cd=>$cdloc);
     }
+    my $parseddom = $parser->parse_string($xml);
+    my ($graphics) = $parseddom->findnodes("//graphics");
+    $graphics->setAttribute("passwd",genpassword(20));
     my $errstr;
     eval { $dom=$hypconn->create_domain($xml); };
     if ($@) { $errstr = $@; }
