@@ -160,7 +160,7 @@ This sample configuration file is for a 2 building block cluster.
   xcat-storage-nodes:
    num-storage-nodes-per-bb = 3
    # which cecs within the bldg block that the storage nodes are located in
-   cec-positions-in-bb = 12,20,32
+   cec-positions-in-bb = 12,20,31
    #hostname-range = stor1-stor6
    #starting-ip = 10.20.1.1
    #aliases = -hf0

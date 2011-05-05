@@ -1053,11 +1053,28 @@ sub writesn {
 			$cecname = $cecbase . sprintf("%0${ceclen}d", $cecnum);
 		}
 		else {		# calculate the 2 indexes for a name like f2c3
-			# we essentially have to do base n math, where n is the size of the second range
-			my $n = $secend - $secstart + 1;
-			my $primary = int(($cecnum-1) / $n) + 1;
-			my $secondary = ($cecnum-1) % $n + 1;
-			$cecname = $cecbase . sprintf("%0${ceclen}d", $primary) . $secbase . sprintf("%0${seclen}d", $secondary);
+	#----------------------------------\
+			# count the cecs in frames until we get to the correct frame
+			my $cecbasenum = 0;
+			my $cecsperframe = $STANZAS{'xcat-cecs'}->{'num-cecs-per-frame'};	# they may have specified this instead of a supernode-list, which would fill in NUMCECSINFRAME
+			my $framesperbb = $STANZAS{'xcat-building-blocks'}->{'num-frames-per-bb'};
+			my $framebase = ($bbnum-1) * $framesperbb + $cecstart;		# the frame num of the 1st frame in this bb
+			my $frame = $framebase;
+			while ($snpositioninbb > ($cecbasenum + ($NUMCECSINFRAME{$frame}||$cecsperframe))) {
+				# snpositioninbb is not in this frame, go on to the next
+				$cecbasenum += $NUMCECSINFRAME{$frame} || $cecsperframe;
+				$frame++;
+				#print "cecbase=$cecbase, frame=$frame\n";
+				if ($frame >= ($framebase+$framesperbb)) { errormsg("Can not find service node position $snpositioninbb in building block $bbnum.",9); return 0; }
+			}
+			my $cecinframe = $snpositioninbb - $cecbasenum;
+	#----------------------------------/
+			# Old way: we essentially have to do base n math, where n is the size of the second range
+			#my $n = $secend - $secstart + 1;
+			#my $primary = int(($cecnum-1) / $n) + 1;
+			#my $secondary = ($cecnum-1) % $n + 1;
+			#$cecname = $cecbase . sprintf("%0${ceclen}d", $primary) . $secbase . sprintf("%0${seclen}d", $secondary);
+			$cecname = $cecbase . sprintf("%0${ceclen}d", $frame) . $secbase . sprintf("%0${seclen}d", $cecinframe);
 		}
 		#print "sn=$$nodes[$i], cec=$cecname\n";
 		$nodehash{$$nodes[$i]} = {hcp => $cecname, parent => $cecname};
@@ -1174,11 +1191,28 @@ sub writestorage {
 			$cecname = $cecbase . sprintf("%0${ceclen}d", $cecnum);
 		}
 		else {		# calculate the 2 indexes for a name like f2c3
-			# we essentially have to do base n math, where n is the size of the second range
-			my $n = $secend - $secstart + 1;
-			my $primary = int(($cecnum-1) / $n) + 1;
-			my $secondary = ($cecnum-1) % $n + 1;
-			$cecname = $cecbase . sprintf("%0${ceclen}d", $primary) . $secbase . sprintf("%0${seclen}d", $secondary);
+	#----------------------------------\
+			# count the cecs in frames until we get to the correct frame
+			my $cecbasenum = 0;
+			my $cecsperframe = $STANZAS{'xcat-cecs'}->{'num-cecs-per-frame'};	# they may have specified this instead of a supernode-list, which would fill in NUMCECSINFRAME
+			my $framesperbb = $STANZAS{'xcat-building-blocks'}->{'num-frames-per-bb'};
+			my $framebase = ($bbnum-1) * $framesperbb + $cecstart;		# the frame num of the 1st frame in this bb
+			my $frame = $framebase;
+			while ($snpositioninbb > ($cecbasenum + ($NUMCECSINFRAME{$frame}||$cecsperframe))) {
+				# snpositioninbb is not in this frame, go on to the next
+				$cecbasenum += $NUMCECSINFRAME{$frame} || $cecsperframe;
+				$frame++;
+				#print "cecbase=$cecbase, frame=$frame\n";
+				if ($frame >= ($framebase+$framesperbb)) { errormsg("Can not find service node position $snpositioninbb in building block $bbnum.",9); return 0; }
+			}
+			my $cecinframe = $snpositioninbb - $cecbasenum;
+	#----------------------------------/
+			# Old way: we essentially have to do base n math, where n is the size of the second range
+			#my $n = $secend - $secstart + 1;
+			#my $primary = int(($cecnum-1) / $n) + 1;
+			#my $secondary = ($cecnum-1) % $n + 1;
+			#$cecname = $cecbase . sprintf("%0${ceclen}d", $primary) . $secbase . sprintf("%0${seclen}d", $secondary);
+			$cecname = $cecbase . sprintf("%0${ceclen}d", $frame) . $secbase . sprintf("%0${seclen}d", $cecinframe);
 		}
 		#print "sn=$$nodes[$i], cec=$cecname\n";
 		$nodehash{$$nodes[$i]} = {hcp => $cecname, parent => $cecname};
@@ -1286,27 +1320,61 @@ sub writecompute {
 	foreach (@positions) { $snpositions{$_} = 1; }
 	@positions = split(/[\s,]+/, $STANZAS{'xcat-storage-nodes'}->{'cec-positions-in-bb'});
 	foreach (@positions) { $snpositions{$_} = 1; }
+	# this next line is only valid for cec names like cec01, because names like f1c1 can have gaps due to unequal number of cecs in each frame
 	my $cecs = [noderange($STANZAS{'xcat-cecs'}->{'hostname-range'}, 0)];
+	#-------------------------\
+	# in case they are using names like f1c1, we need to collect this info
+	my $cecsperframe = $STANZAS{'xcat-cecs'}->{'num-cecs-per-frame'};
+	my $cechash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
+	my $cecbase = $$cechash{'primary-base'};
+	my $cecstart = $$cechash{'primary-start'};
+	my $ceclen = length($$cechash{'primary-start'});
+	my $secbase = $$cechash{'secondary-base'};
+	my $secstart = $$cechash{'secondary-start'};
+	my $secend = $$cechash{'secondary-end'};
+	my $seclen = length($$cechash{'secondary-start'});
+	#--------------------------/
 	my $sns = [noderange($STANZAS{'xcat-service-nodes'}->{'hostname-range'}, 0)];
 	$nodes = [noderange($range, 0)];
 	my %nodehash;
 	my %nodeposhash;
 	my %nodereshash;
-	# set these incrementers to the imaginary position just before the 1st position
-	my $cecnum = 0;
+	# set these two incrementers to the imaginary position just before the 1st position
+	my $cecnum = 0;		# for cec names like cec01
 	my $lparid = $lparspercec;
+	my $framenum = $cecstart;		# for cec names like f1c1
+	my $cecnuminframe = 0;	# $secstart -1;
 	# Go thru each compute node and calculate which cec it is in and its service node
 	for (my $i=0; $i<scalar(@$nodes); $i++) {
-		if ($lparid >= $lparspercec) { $cecnum++; $lparid=1; }	# at the end of the cec
+		if ($lparid >= $lparspercec) { 	# at the end of the cec
+			$lparid=1;
+			$cecnum++;	# name like cec01 and also for counting the cecs
+			if ($secbase) { 		# name like f1c1
+				$cecnuminframe++;
+				if ($cecnuminframe > ($NUMCECSINFRAME{$framenum} || $cecsperframe)) { $framenum++; $cecnuminframe=1; }	# go on to the next frame
+			}
+		}
 		else { $lparid++ }
 		if ($lparid == 1) {		# check if this is a service or storage node position
 			my $pos = ($cecnum-1) % $cecsperbb + 1;
 			if ($snpositions{$pos}) {
-				if ($lparid >= $lparspercec) { $cecnum++; $lparid=1; }	# at the end of the cec
+				#if ($lparid >= $lparspercec) { $cecnum++; $lparid=1; }	# at the end of the cec
+				if ($lparid >= $lparspercec) { 	# at the end of the cec
+					$lparid=1;
+					$cecnum++;	# name like cec01 and also for counting the cecs
+					if ($secbase) { 		# name like f1c1
+						$cecnuminframe++;
+						if ($cecnuminframe > ($NUMCECSINFRAME{$framenum} || $cecsperframe)) { $framenum++; $cecnuminframe=1; }	# go on to the next frame
+					}
+				}
 				else { $lparid++ }
 			}
 		}
-		my $cecname = $$cecs[$cecnum-1];
+		my $cecname;
+		if (!$secbase) { $cecname = $$cecs[$cecnum-1]; }	# name like cec01
+		else { 		# name like f1c1
+			$cecname = $cecbase . sprintf("%0${ceclen}d", $framenum) . $secbase . sprintf("%0${seclen}d", $cecnuminframe);
+		}
 		my $id = $lparid;
 		if ($lparspercec == 8) {
 			#todo: for now assume 8 means a p7 IH.  Make a different way to determine this is a p7 IH
