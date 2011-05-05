@@ -1364,6 +1364,7 @@ sub gethost_from_url_or_old {
     my $cage_number     = shift;
     my $parmtm          = shift;
     my $parsn           = shift;
+    my $pname           = shift;
     my %idhash = ();
     my %iphash = ();
     my %typehash = ();
@@ -1371,12 +1372,14 @@ sub gethost_from_url_or_old {
     #######################################
     # Extract IP from URL
     #######################################
-    my $nets = xCAT::Utils::my_nets();
-    my $avip = getip_from_iplist( $ip, $nets, $opt{i});
-    #if ( !defined( $ip )) {
-    #    return undef;
-    #}
-
+    if ($ip)
+    {
+        my $nets = xCAT::Utils::my_nets();
+        my $avip = getip_from_iplist( $ip, $nets, $opt{i});
+        #if ( !defined( $ip )) {
+        #    return undef;
+        #}
+    }
     # get the information of existed nodes to do the migration
     if ( !defined(%::OLD_DATA_CACHE))
     {
@@ -1477,7 +1480,7 @@ sub gethost_from_url_or_old {
         }
     }
 
-    if ($type eq TYPE_BPA or $type eq TYPE_FSP)
+    if (($type eq TYPE_BPA or $type eq TYPE_FSP) and  $pname)
     {
         $enter_time = ($enter_time + 1) % 2;
     }
@@ -1494,6 +1497,35 @@ sub gethost_from_url_or_old {
         my $tmptype   = uc(@{$::OLD_DATA_CACHE{$oldnode}}[6]);
         my $unmatched = @{$::OLD_DATA_CACHE{$oldnode}}[7];
 
+        # used to match fsp defined by xcatsetup
+        # should return fast to save time
+        if ( $type eq TYPE_FSP and ($tmptype eq $type)) 
+        {
+            if ($pname and $tmpparent and $cage_number and $tmpid)
+            {
+                if ($pname eq $tmpparent and $cage_number eq $tmpid) 
+                {
+                    return $oldnode;
+                } else {
+                    next; 
+                }
+            }        
+        }
+        
+        # used to match bpa defined by xcatsetup
+        # should return fast to save time
+        if ( $type eq TYPE_BPA and ($tmptype eq $type)) 
+        {
+            if ($pname and $tmpparent)
+            {
+                if ($pname eq $tmpparent) 
+                {
+                    return $oldnode;
+                } else {
+                    next; 
+                }
+            }        
+        }
         # match the existed nodes including old data and user defined data
         if ( ($type eq TYPE_BPA or $type eq TYPE_FSP) and ($tmptype eq $type))
         {
@@ -2139,6 +2171,9 @@ sub parse_responses {
         #    $hostip{$entry->{node}} = $entry->{ip};
         #}
 
+        #$result[0] is type, $result[1] is mtm, $result[2] is sn, $result[3] is ip,
+        #$result[4] is side, $result[5] is parent mtm, $result[6] is parent sn, 
+        #$result[7] is frame number, $result[8] is cage number
         # begin to define FSP/BPA/FRAME/CEC
         my $typetp;
         if ( $type eq SERVICE_BPA )
@@ -2152,67 +2187,6 @@ sub parse_responses {
         my $hostname = undef;
         if ( $type eq SERVICE_BPA or $type eq SERVICE_FSP ) {
 
-            ###########################################
-            #  begin to define fsp/bpa, use ip as the hostname of the fsp/bpa
-            #  for there are redundancy of fsp/bpa,
-            #  excrete each slp response into two definitions
-            #  put the definitions into %outhash
-            ###########################################
-            
-            # begin to define fsp/bpa
-            my (@severnode1, @severnode2);
-            my @ips = split/,/, $result[4];
-
-            foreach (@result) {
-                push @severnode1, $_;
-            }    
-            
-            #keep cage id for the secondary fsp definition
-            #the cash hash is like $fid{mtm*sn}=cageid
-            if ($type eq SERVICE_FSP and $severnode1[3] eq "A")
-            {
-                $fid1{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];          
-            }
-            if ($type eq SERVICE_FSP and $severnode1[3] eq "B")
-            {
-                $fid2{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];          
-            }
-            
-            $severnode1[3] = $severnode1[3].'-0';
-            $severnode1[4] = $ips[0];
-            $severnode1[0] = $typetp;
-            push @severnode1, $rsp;
-            $hostname =  gethost_from_url_or_old($ips[0], $severnode1[0], $severnode1[1], $severnode1[2],
-                                                 $severnode1[3], $ips[0], $severnode1[8], $severnode1[5],$severnode1[6]);
-            if ( $hostname )
-            {
-                $outhash{$hostname} = \@severnode1;
-            }
-            if ( length( $severnode1[4] ) > $$length ) {
-                $$length = length( $severnode1[4] );
-            }
-            $otherinterfacehash{$hostname}{otherinterfaces} = $ips[0];
-            
-            #begin to define another fsp/bpa
-            $hostname = undef;
-            foreach (@result) {
-                push @severnode2, $_;
-            }
-            $severnode2[3] = $severnode2[3].'-1';
-            $severnode2[4] = $ips[1];
-            $severnode2[0] = $typetp;
-            push @severnode2, $rsp;
-            $hostname =  gethost_from_url_or_old($ips[1], $severnode2[0], $severnode2[1], $severnode2[2],
-                                                 $severnode2[3], $ips[1], $severnode2[8], $severnode2[5],$severnode2[6]);
-            if ( $hostname )
-            {
-                 $outhash{$hostname} = \@severnode2;
-            }
-            if ( length( $severnode2[4] ) > $$length ) {
-                $$length = length( $severnode2[4] );
-            }
-            $otherinterfacehash{$hostname}{otherinterfaces} = $ips[1];
-            
             ###########################################
             #  begin to define frame and cec
             #  As default, use Server-$result[1]-SN$result[2] as hostname
@@ -2242,6 +2216,67 @@ sub parse_responses {
                     $outhash{$hostname} = \@result;
                 }
             }
+
+            ###########################################
+            #  begin to define fsp/bpa, use ip as the hostname of the fsp/bpa
+            #  for there are redundancy of fsp/bpa,
+            #  excrete each slp response into two definitions
+            #  put the definitions into %outhash
+            ###########################################
+            
+            # begin to define fsp/bpa
+            my (@severnode1, @severnode2);
+            my @ips = split/,/, $result[4];
+
+            foreach (@result) {
+                push @severnode1, $_;
+            }    
+            
+            #keep cage id for the secondary fsp definition
+            #the cash hash is like $fid{mtm*sn}=cageid
+            if ($type eq SERVICE_FSP and $severnode1[3] eq "A")
+            {
+                $fid1{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];          
+            }
+            if ($type eq SERVICE_FSP and $severnode1[3] eq "B")
+            {
+                $fid2{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];          
+            }
+
+            $severnode1[3] = $severnode1[3].'-0';
+            $severnode1[4] = $ips[0];
+            $severnode1[0] = $typetp;
+            push @severnode1, $rsp;
+            $hostname =  gethost_from_url_or_old($ips[0], $severnode1[0], $severnode1[1], $severnode1[2],
+                            $severnode1[3], $ips[0], $severnode1[8], $severnode1[5],$severnode1[6]);
+            if ( $hostname )
+            {
+                $outhash{$hostname} = \@severnode1;
+            }
+            if ( length( $severnode1[4] ) > $$length ) {
+                $$length = length( $severnode1[4] );
+            }
+            $otherinterfacehash{$hostname}{otherinterfaces} = $ips[0];
+            
+            #begin to define another fsp/bpa
+            $hostname = undef;
+            foreach (@result) {
+                push @severnode2, $_;
+            }
+            $severnode2[3] = $severnode2[3].'-1';
+            $severnode2[4] = $ips[1];
+            $severnode2[0] = $typetp;
+            push @severnode2, $rsp;
+            $hostname =  gethost_from_url_or_old($ips[1], $severnode2[0], $severnode2[1], $severnode2[2],
+                            $severnode2[3], $ips[1], $severnode2[8], $severnode2[5],$severnode2[6]);
+            if ( $hostname )
+            {
+                 $outhash{$hostname} = \@severnode2;
+            }
+            if ( length( $severnode2[4] ) > $$length ) {
+                $$length = length( $severnode2[4] );
+            }
+            $otherinterfacehash{$hostname}{otherinterfaces} = $ips[1];
         } else   {
 
             ###########################################
@@ -2369,6 +2404,7 @@ sub parse_responses {
             }
         }
         # begin to find parent
+        my $newname;
         foreach my $h1 ( keys %outhash ) {
             my $data1 = $outhash{$h1};
             my $type1 = @$data1[0];
@@ -2396,8 +2432,29 @@ sub parse_responses {
         }
         push @$data, $mac;
 
-        $hash{$h} = $data;
-
+        # have got node's parent and id, need to match fsp here
+        if ( $type eq TYPE_FSP and $parent and @$data[8])
+        {
+            $newname = gethost_from_url_or_old($h, $type, undef, undef, undef, undef,  
+                     @$data[8], undef, undef, $parent)
+            
+        } 
+        # have got node's parent, need to match bpa here
+        if ( $type eq TYPE_FSP and $parent and @$data[8])
+        {
+            $newname = gethost_from_url_or_old($h, $type, undef, undef, undef, undef,  
+                     undef, undef, undef, $parent)
+            
+        }
+        
+        if ($newname)
+        {        
+            $hash{$newname} = $data;
+        }
+        else
+        {
+            $hash{$h} = $data;
+        }            
     }
 
     return( \%hash );
