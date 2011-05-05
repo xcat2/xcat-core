@@ -11,6 +11,9 @@ use xCAT::Usage;
 ##########################################
 # Globals
 ##########################################
+my %rspconfig = ( 
+    frame  => \&frame,
+);
 
 
 
@@ -31,6 +34,7 @@ sub parse_args {
         "*_passwd"
     );
     my @bpa = (
+	"frame",
         "HMC_passwd",
         "admin_passwd",
         "general_passwd",
@@ -43,6 +47,7 @@ sub parse_args {
         "*_passwd"
     );
     my @frame = (
+	"frame",
         "HMC_passwd",
         "admin_passwd",
         "general_passwd",
@@ -119,7 +124,7 @@ sub parse_args {
     foreach my $arg ( @ARGV ) {
         my ($command,$value) = split( /=/, $arg );
         if ( !grep( /^$command$/, @$supported )) {
-            return(usage( "Invalid command: $arg" ));
+            return(usage( "Invalid command for $request->{hwtype} : $arg" ));
         } 
         if ( exists( $cmds{$command} )) {
             return(usage( "Command multiple times: $command" ));
@@ -148,12 +153,12 @@ sub parse_args {
     ####################################
     # Return method to invoke
     ####################################
-    #if ( exists($cmds{frame}) ) {
-    #    $request->{hcp} = "hmc";
-    #    $request->{method} = "cfg";
-    #    return( \%opt );
-    #}
-#
+    if ( exists($cmds{frame}) ) {
+        $request->{hcp} = "bpa";
+        $request->{method} = "cfg";
+        return( \%opt );
+    }
+
     ####################################
     # Return method to invoke
     ####################################
@@ -194,6 +199,14 @@ sub parse_option {
             return( "New password couldn't be empty for user 'HMC'" );
         }
     }
+
+    if ( $command eq 'frame' ){
+        if ( $value !~ /^\d+$/i && $value ne '*' ) { 
+            return( "Invalid frame number '$value'" );
+        }
+    }
+
+    
     return undef;
 }
 
@@ -252,6 +265,140 @@ sub passwd {
     return( \@output );
 }
 
+##########################################################################
+# Handles all PPC rspconfig commands
+##########################################################################
+sub cfg {
+
+    my $request = shift;
+    my $hash    = shift;
+    my $exp     = shift;
+    my $args    = $request->{arg};
+    my $result;
+
+    foreach ( @$args ) {
+        ##################################
+        # Ignore switches in command-line
+        ##################################
+        unless ( /^-/ ) {
+            my ($cmd,$value) = split /=/;
+
+            no strict 'refs';
+            $result = $rspconfig{$cmd}( $request, $value, $hash );
+            use strict;
+        }
+    }
+    return( $result );
+}
+
+sub frame {
+    my $request = shift;
+    my $value   = shift;
+    my $hash    = shift;
+    my $arg     = $request->{arg};
+
+    foreach ( @$arg ) {
+        my $result;
+        my $Rc;
+        my $data;
+
+        my ($cmd, $value) = split /=/, $_;
+        if ( $cmd ne "frame" ) {
+            return( [["Error","Multiple option $cmd and frame is not accepted", -1]] );
+        }
+
+        #################################
+        # Open xCAT database to sync with
+        # the frame number between hcp
+        # and database
+        #################################
+        my $tab = xCAT::Table->new( "ppc" );
+        
+        while ( my ($cec,$h) = each(%$hash) ) {
+            while ( my ($node,$d) = each(%$h) ) {
+                if ( !defined($value) ) {
+
+                    #################################
+                    # Get frame number
+                    #################################
+		    #$data = xCAT::PPCcli::lssyscfg( $exp, @$d[4], @$d[2], 'frame_num' );
+		    $data = xCAT::FSPUtils::fsp_api_action( $node, $d, "get_frame_number");
+                    $Rc = pop(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != 0 ) {
+                        return( [[$node,@$data[1],$Rc]] );
+                    }
+
+                    push @$result, [$node,@$data[1], 0];
+
+                    #################################
+                    # Set frame number to database
+                    #################################
+                    $tab->setNodeAttribs( $node, { id=>@$data[1] } );
+
+                } elsif ( $value eq '*' ) {
+                    #################################
+                    # Set frame number
+                    # Read the settings from database 
+                    #################################
+                    my $ent=$tab->getNodeAttribs( $node,['id'] );
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( !defined($ent) or !defined($ent->{id}) ) {
+                        return( [[$node,"Cannot find frame num in database", -1]] );
+                    }
+		    #$data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=".$ent->{id} );
+		    $data = xCAT::FSPUtils::fsp_api_action( $node, $d, "set_frame_number", 0, $ent->{id});
+                    $Rc = pop(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != 0 ) {
+                        return( [[$node,@$data[1],$Rc]] );
+                    }
+
+                    push @$result, [$node,@$data[1], 0];
+
+                } else {
+                    #################################
+                    # Set frame number
+                    # Read the frame number from opt
+                    #################################
+		    #$data = xCAT::PPCcli::chsyscfg( $exp, "bpa", $d, "frame_num=$value" );
+                    $data = xCAT::FSPUtils::fsp_api_action( $node, $d, "set_frame_number", 0, $value);
+		    $Rc = pop(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != 0 ) {
+                        return( [[$node,@$data[1],$Rc]] );
+                    }
+
+                    push @$result, [$node,@$data[1],0];
+
+                    #################################
+                    # Set frame number to database
+                    #################################
+                    $tab->setNodeAttribs( $node, { id=>$value } );
+                }
+            }
+
+            return( [@$result] );
+        }  
+    }
+}
+
+
+
+
+
 
 ##########################################################################
 # Invoke fsp_api to change the passwords and store updated passwd in db
@@ -278,7 +425,7 @@ sub fsp_api_passwd {
     ############################
     # Set type for FSP or BPA
     ############################
-    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ || $$attrs[4] =~ /^cec$/) {
+    if($$attrs[4] =~ /^fsp$/ || $$attrs[4] =~ /^lpar$/ ||  $$attrs[4] =~ /^cec$/) {
         $type = 0;
     } else {
         $type = 1;
