@@ -127,7 +127,7 @@ my %usage = (
            general_passwd=<currentpasswd,newpasswd>|
            *_passwd=<currentpasswd,newpasswd>|
            hostname=<*|hostname>
-   BPA specific:
+   BPA/Frame specific:
        rspconfig <noderange> [frame]
        rspconfig <noderange> frame=<*|frame>
    HMC specific:
