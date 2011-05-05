@@ -104,6 +104,30 @@ B<rspconfig> I<noderange> {B<hostname>}
 
 B<rspconfig> I<noderange> B<hostname>={B<*|name>}
 
+=head2 FSP/CEC (using Direct FSP Management) Specific:
+
+B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
+
+=head2 BPA/Frame (using Direct FSP Management) Specific:
+
+B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> {B<frame>}
+
+B<rspconfig> I<noderange> B<frame>={B<*|frame_number>}
+
 =head2 HMC Specific:
 
 B<rspconfig> I<noderange> {B<sshcfg>}
