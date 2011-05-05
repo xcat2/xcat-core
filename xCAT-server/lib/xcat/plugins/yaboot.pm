@@ -95,57 +95,123 @@ sub setstate {
   unless (-d "$tftpdir/etc") {
      mkpath("$tftpdir/etc");
   }
-  open($pcfg,'>',$tftpdir."/etc/".$node);
-  my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
-  if ($cref->{currstate}) {
-    print $pcfg "#".$cref->{currstate}."\n";
-  }
-  print $pcfg "timeout=5\n";
-  $normalnodes{$node}=1; #Assume a normal netboot (well, normal dhcp, 
+
+  my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
+  if ( $client_nethash{$node}{mgtifname} =~ /hf/ ) {
+    my $mactab = xCAT::Table->new('mac');
+    if ($mactab) {
+      my $ment = $machash{$node}->[0]; #$mactab->getNodeAttribs($node,['mac']);
+      if ($ment and $ment->{mac}) {
+        my @macs = split(/\|/,$ment->{mac});
+        my $count = 0;
+        foreach my $mac (@macs) {
+          if ( $mac !~ /!(.*)/) {
+            my $hostname = $node . "-hf" . $count;
+            open($pcfg,'>',$tftpdir."/etc/".$hostname);
+            my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
+            if ($cref->{currstate}) {
+              print $pcfg "#".$cref->{currstate}."\n";
+            }
+
+            print $pcfg "timeout=5\n";
+            $normalnodes{$node}=1;
+            if ($cref and $cref->{currstate} eq "boot") {
+              $breaknetbootnodes{$node}=1;
+              delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
+              #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
+              #       node=>[$node],
+              #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+              print $pcfg "bye\n";
+              close($pcfg);
+            } elsif ($kern and $kern->{kernel}) {
+              #It's time to set yaboot for this node to boot the kernel..
+              print $pcfg "image=".$kern->{kernel}."\n\tlabel=xcat\n";
+              if ($kern and $kern->{initrd}) {
+                print $pcfg "\tinitrd=".$kern->{initrd}."\n";
+              }
+              if ($kern and $kern->{kcmdline}) {
+                my $kcmdline = $kern->{kcmdline};
+                $kcmdline =~ s/(.*ifname=.*):@macs->[0].*( netdev.*)/$1:$mac$2/g;
+                print $pcfg "\tappend=\"".$kcmdline."\"\n";
+              }
+              close($pcfg);
+              my $inetn = xCAT::NetworkUtils->getipaddr($node);
+              unless ($inetn) {
+               syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
+               return;
+              }
+            } else { #TODO: actually, should possibly default to xCAT image?
+              print $pcfg "bye\n";
+              close($pcfg);
+            }
+
+            if ($mac =~ /:/) {
+              my $tmp = $mac;
+              $tmp =~ s/(..):(..):(..):(..):(..):(..)/$1-$2-$3-$4-$5-$6/g;
+              my $pname = "25-" . $tmp;
+              unlink($tftpdir."/etc/".$pname);
+              link($tftpdir."/etc/".$hostname,$tftpdir."/etc/".$pname);
+            }
+          }
+          $count = $count + 2;
+        }
+      }
+    }
+
+
+  } else {
+
+    open($pcfg,'>',$tftpdir."/etc/".$node);
+    my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
+    if ($cref->{currstate}) {
+      print $pcfg "#".$cref->{currstate}."\n";
+    }
+    print $pcfg "timeout=5\n";
+    $normalnodes{$node}=1; #Assume a normal netboot (well, normal dhcp, 
                         #which is normally with a valid 'filename' field,
                         #but the typical ppc case will be 'special' makedhcp
                         #to clear the filename field, so the logic is a little
                         #opposite
-  #  $sub_req->({command=>['makedhcp'], #This is currently batched elswhere
-  #         node=>[$node]},$callback);  #It hopefully will perform correctly
-  if ($cref and $cref->{currstate} eq "boot") {
-    $breaknetbootnodes{$node}=1;
-    delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
-    #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
-    #       node=>[$node],
-    #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
-    print $pcfg "bye\n";
-    close($pcfg);
-  } elsif ($kern and $kern->{kernel}) {
-    #It's time to set yaboot for this node to boot the kernel..
-    print $pcfg "image=".$kern->{kernel}."\n\tlabel=xcat\n";
-    if ($kern and $kern->{initrd}) {
-      print $pcfg "\tinitrd=".$kern->{initrd}."\n";
+    #  $sub_req->({command=>['makedhcp'], #This is currently batched elswhere
+    #         node=>[$node]},$callback);  #It hopefully will perform correctly
+    if ($cref and $cref->{currstate} eq "boot") {
+      $breaknetbootnodes{$node}=1;
+      delete $normalnodes{$node}; #Signify to omit this from one makedhcp command
+      #$sub_req->({command=>['makedhcp'], #batched elsewhere, this code is stale, hopefully
+      #       node=>[$node],
+      #        arg=>['-s','filename = \"xcat/nonexistant_file_to_intentionally_break_netboot_for_localboot_to_work\";']},$callback);
+      print $pcfg "bye\n";
+      close($pcfg);
+    } elsif ($kern and $kern->{kernel}) {
+      #It's time to set yaboot for this node to boot the kernel..
+      print $pcfg "image=".$kern->{kernel}."\n\tlabel=xcat\n";
+      if ($kern and $kern->{initrd}) {
+        print $pcfg "\tinitrd=".$kern->{initrd}."\n";
+      }
+      if ($kern and $kern->{kcmdline}) {
+        print $pcfg "\tappend=\"".$kern->{kcmdline}."\"\n";
+      }
+      close($pcfg);
+      my $inetn = xCAT::NetworkUtils->getipaddr($node);
+      unless ($inetn) {
+       syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
+       return;
+      }
+    } else { #TODO: actually, should possibly default to xCAT image?
+      print $pcfg "bye\n";
+      close($pcfg);
     }
-    if ($kern and $kern->{kcmdline}) {
-      print $pcfg "\tappend=\"".$kern->{kcmdline}."\"\n";
+    my $ip = xCAT::NetworkUtils->getipaddr($node);
+    unless ($ip) {
+      syslog("local1|err","xCAT unable to resolve IP in yaboot plugin");
+      return;
     }
-    close($pcfg);
-    my $inetn = xCAT::NetworkUtils->getipaddr($node);
-    unless ($inetn) {
-     syslog("local1|err","xCAT unable to resolve IP for $node in yaboot plugin");
-     return;
-    }
-  } else { #TODO: actually, should possibly default to xCAT image?
-    print $pcfg "bye\n";
-    close($pcfg);
-  }
-  my $ip = xCAT::NetworkUtils->getipaddr($node);
-  unless ($ip) {
-    syslog("local1|err","xCAT unable to resolve IP in yaboot plugin");
-    return;
-  }
-  my $mactab = xCAT::Table->new('mac');
-  my %ipaddrs;
-  $ipaddrs{$ip} = 1;
-  if ($mactab) {
-     my $ment = $machash{$node}->[0]; #$mactab->getNodeAttribs($node,['mac']);
-     if ($ment and $ment->{mac}) {
+    my $mactab = xCAT::Table->new('mac');
+    my %ipaddrs;
+    $ipaddrs{$ip} = 1;
+    if ($mactab) {
+      my $ment = $machash{$node}->[0]; #$mactab->getNodeAttribs($node,['mac']);
+      if ($ment and $ment->{mac}) {
         my @macs = split(/\|/,$ment->{mac});
         foreach (@macs) {
            if (/!(.*)/) {
@@ -155,15 +221,16 @@ sub setstate {
               }
            }
         }
-     }
-  }
-# Do not use symbolic link, p5 does not support symbolic link in /tftpboot
-#  my $hassymlink = eval { symlink("",""); 1 };
-  foreach $ip (keys %ipaddrs) {
-   my @ipa=split(/\./,$ip);
-   my $pname = sprintf("%02x%02x%02x%02x",@ipa);
-   unlink($tftpdir."/etc/".$pname);
-   link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
+      }
+    }
+    # Do not use symbolic link, p5 does not support symbolic link in /tftpboot
+    #  my $hassymlink = eval { symlink("",""); 1 };
+    foreach $ip (keys %ipaddrs) {
+      my @ipa=split(/\./,$ip);
+      my $pname = sprintf("%02x%02x%02x%02x",@ipa);
+      unlink($tftpdir."/etc/".$pname);
+      link($tftpdir."/etc/".$node,$tftpdir."/etc/".$pname);
+    }
   }
 }
   
