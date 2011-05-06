@@ -3,6 +3,7 @@ package xCAT_plugin::bmcconfig;
 use Data::Dumper;
 use xCAT::Table;
 use xCAT::MsgUtils;
+use xCAT::Utils;
 use IO::Select;
 use Socket;
 
@@ -44,6 +45,9 @@ sub net_parms {
     my $masknum = ($1<<24)+($2<<16)+($3<<8)+$4;
     $net =~ /([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)/;
     my $netnum = ($1<<24)+($2<<16)+($3<<8)+$4;
+    if ($gw eq '<xcatmaster>') {
+	$gw=xCAT::Utils->my_ip_facing($ip);
+    }
     if (($ipnum & $masknum)==$netnum) {
       return ($ip,$mask,$gw);
     } 
@@ -131,17 +135,19 @@ sub process_request  {
      $callback->({error=>["Invalid table configuration for bmcconfig"],errorcode=>[1]});
      return 1;
   }
-  (my $ip,my $mask,my $gw) = net_parms($bmc);
-  unless ($ip and $mask and $username and $password) {
-     xCAT::MsgUtils->message('S',"Unable to determine IP, netmask, username, and/or pasword for $bmc, ensure that host resolution is working.  Best guess parameters would have been: IP: '$ip', netmask: '$netmask', username: '$username', password: '$password'",  );
-     $callback->({error=>["Invalid table configuration for bmcconfig"],errorcode=>[1]});
-     return 1;
+  foreach my $sbmc (split /,/,$bmc) {
+	  (my $ip,my $mask,my $gw) = net_parms($sbmc);
+	  unless ($ip and $mask and $username and $password) {
+	     xCAT::MsgUtils->message('S',"Unable to determine IP, netmask, username, and/or pasword for $sbmc, ensure that host resolution is working.  Best guess parameters would have been: IP: '$ip', netmask: '$netmask', username: '$username', password: '$password'",  );
+	     $callback->({error=>["Invalid table configuration for bmcconfig"],errorcode=>[1]});
+	     return 1;
+	  }
+	  my $response={bmcip=>$ip,netmask=>$mask,gateway=>$gw,username=>$username,password=>$password};
+	  if (defined $bmcport) {
+	      $response->{bmcport}=$bmcport;
+	  }
+  	$callback->($response);
   }
-  my $response={bmcip=>$ip,netmask=>$mask,gateway=>$gw,username=>$username,password=>$password};
-  if (defined $bmcport) {
-      $response->{bmcport}=$bmcport;
-  }
-  $callback->($response);
   if ($gennedpassword) { # save generated password
     $ipmitable->setNodeAttribs($node,{password=>$password});
   }
