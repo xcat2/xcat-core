@@ -3071,6 +3071,9 @@ sub got_sel {
 			$text = "$text - Recovered";
 		}
         my $entry = $sessdata->{selentry};
+        if ($sessdata->{bmcnum} !=1) {
+		$text .= " on BMC ".$sessdata->{bmcnum};
+	}
 
         if ($sessdata->{auxloginfo} and $sessdata->{auxloginfo}->{$entry}) {
              $text.=" with additional data:";
@@ -5345,7 +5348,16 @@ sub process_request {
 			if (ref($ent) and defined $ent->{username}) { $nodeuser = $ent->{username}; }
 			if (ref($ent) and defined $ent->{password}) { $nodepass = $ent->{password}; }
 		}
-        push @donargs,[$node,$nodeip,$nodeuser,$nodepass];
+	if ($nodeip =~ /,/ and grep ({ $_ eq $request->{command}->[0] } qw/rinv reventlog rvitals rspconfig/)) { #multi-node x3950 X5, for example
+		my $bmcnum=1;
+		foreach (split /,/,$nodeip) {
+        		push @donargs,[$node,$_,$nodeuser,$nodepass,$bmcnum];
+			$bmcnum+=1;
+		}
+	} else {
+		$nodeip =~ s/,.*//; #stri
+        	push @donargs,[$node,$nodeip,$nodeuser,$nodepass,1];
+	}
     }
     if ($request->{command}->[0] eq "getipmicons") {
         foreach (@donargs) {
@@ -5416,7 +5428,7 @@ sub process_request {
     my $children = 0;
     my $sub_fds = new IO::Select;
     foreach (@donargs) {
-      donode($_->[0],$_->[1],$_->[2],$_->[3],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
+      donode($_->[0],$_->[1],$_->[2],$_->[3],$_->[4],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
 	}
     while (xCAT::IPMI->waitforrsp()) { yield };
     my $node;
@@ -5525,6 +5537,7 @@ sub donode {
   my $bmcip = shift;
   my $user = shift;
   my $pass = shift;
+  my $bmcnum = shift;
   my $timeout = shift;
   my $retries = shift;
   my $command = shift;
@@ -5533,6 +5546,7 @@ sub donode {
   my @exargs=@$extra;
   $sessiondata{$node} = {
       node => $node, #this seems redundant, but some code will not be privy to what the key was
+      bmcnum => $bmcnum,
       ipmisession => xCAT::IPMI->new(bmc=>$bmcip,userid=>$user,password=>$pass),
       command => $command,
       extraargs => \@exargs,
