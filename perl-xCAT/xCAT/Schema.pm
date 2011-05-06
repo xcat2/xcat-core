@@ -185,7 +185,7 @@ vmmaster => {
     }
 },
 vm => {
-    cols => [qw(node host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter guestostype othersettings comments disable)],
+    cols => [qw(node host migrationdest storage storagemodel cfgstore memory cpus nics nicmodel bootorder clockoffset virtflags master vncport textconsole powerstate beacon datacenter guestostype othersettings vidmodel vidproto comments disable)],
     keys => [qw(node)],
     table_desc => 'Virtualization parameters',
     descriptions => {
@@ -217,6 +217,8 @@ vm => {
         'guestostype' => "This allows administrator to specify an identifier for OS to pass through to virtualization stack.  Normally this should be ignored as xCAT will translate from nodetype.os rather than requiring this field be used\n",
         'beacon' => "This flag is used by xCAT to track the state of the identify LED with respect to the VM.",
         'datacenter' => "Optionally specify a datacenter for the VM to exist in (only applicable to VMWare)",
+	'vidproto' => "Request a specific protocol for remote video access be set up.  For example, spice in KVM.",
+	'vidmodel' => "Model of video adapter to provide to guest.  For example, qxl in KVM",
     }
 },
 hypervisor => {
