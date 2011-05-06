@@ -1012,6 +1012,7 @@ sub makedom {
     my $parseddom = $parser->parse_string($xml);
     my ($graphics) = $parseddom->findnodes("//graphics");
     $graphics->setAttribute("passwd",genpassword(20));
+    $graphics->setAttribute("listen",'0.0.0.0');
     my $errstr;
     eval { $dom=$hypconn->create_domain($xml); };
     if ($@) { $errstr = $@; }
