@@ -1,1 +1,30 @@
-rvid.xen
+#!/bin/bash
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+if [ ! -z "$rvid_virturi" -a ! -z "$rvid_virtname" ]; then
+    if [ -x /usr/bin/virt-viewer ]; then
+        exec /usr/bin/virt-viewer -c $rvid_virturi $rvid_virtname
+#    else
+#        echo "Installation of virt-viewer is recommended, falling back to vncviewer"
+    fi
+fi
+myport=${rvid_vidport#*:}
+if [ $rvid_vidproto = "vnc" ];then
+	let myport=myport-5900;
+	export VNC_VIA_CMD='/usr/bin/ssh -o BatchMode=yes -f -L "$L":"$H":"$R" "$G" sleep 20'
+	(
+	    flock 200
+	    echo $rvid_password|vncviewer :$myport -via $rvid_server AutoSelect=0 FullColor=1 passwdInput=1 >& /dev/null &
+    sleep 0.2
+    flock -u 200
+) 200> /tmp/xcat/virtvnclock
+elif [ $rvid_vidproto = "spice" ]; then
+	SPICEC="/usr/bin/spicec"
+	if [ ! -x $SPICEC -a -x /usr/libexec/spicec ]; then
+		SPICEC=/usr/libexec/spicec
+	elif [ ! -x $SPICEC ]; then
+		echo "Error: spice client could not be found and needed for this VM" >&2;
+	fi
+	$SPICEC -h $rvid_server -p $myport -w $rvid_password
+fi
+		
+

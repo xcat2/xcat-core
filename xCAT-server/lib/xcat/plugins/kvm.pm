@@ -16,6 +16,7 @@ use XML::LibXML; #now that we are in the business of modifying xml data, need so
 #TODO: convert all uses of XML::Simple to LibXML?  Using both seems wasteful in a way..
 use XML::Simple qw(XMLout);
 use Thread qw(yield);
+use xCAT::Utils qw/genpassword/;
 use File::Basename qw/fileparse/;
 use File::Path qw/mkpath/;
 use IO::Socket;
@@ -404,6 +405,13 @@ sub build_diskstruct {
         $cdhash->{readonly};
         $cdhash->{target}->{dev}='hdc';
         push @returns,$cdhash;
+    } else { #give the VM an empty optical drive, to allow chvm live attach/remove
+      my $cdhash;
+      $cdhash->{device}='cdrom';
+      $cdhash->{type}='file';
+      $cdhash->{readonly};
+      $cdhash->{target}->{dev}='hdc';
+      push @returns,$cdhash;
     }
 
 
@@ -604,10 +612,25 @@ sub build_xmldesc {
     $xtree{devices}->{disk}=build_diskstruct($cdloc);
     $xtree{devices}->{interface}=build_nicstruct($node);
     #use content to force xml simple to not make model the 'name' of video
-    $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>'vga',vram=>8192}}];
+    if (defined ($confdata->{vm}->{$node}->[0]->{vidmodel})) {
+      my $model = $confdata->{vm}->{$node}->[0]->{vidmodel};
+      my $vram = '8192';
+      $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>$model,vram=>8192}}];
+    } else {
+      $xtree{devices}->{video}= [ { 'content'=>'','model'=> {type=>'vga',vram=>8192}}];
+    }
     $xtree{devices}->{input}->{type}='tablet';
     $xtree{devices}->{input}->{bus}='usb';
-    $xtree{devices}->{graphics}->{type}='vnc';
+    if (defined ($confdata->{vm}->{$node}->[0]->{vidproto})) {
+       $xtree{devices}->{graphics}->{type}=$confdata->{vm}->{$node}->[0]->{vidproto};
+    } else {
+       $xtree{devices}->{graphics}->{type}='vnc';
+    }
+    $xtree{devices}->{graphics}->{autoport}='yes';
+    $xtree{devices}->{graphics}->{listen}='0.0.0.0';
+    $xtree{devices}->{graphics}->{password}=genpassword(16);
+    $xtree{devices}->{sound}->{model}='ac97';
+  
     $xtree{devices}->{console}->{type}='pty';
     $xtree{devices}->{console}->{target}->{port}='1';
     return XMLout(\%xtree,RootName=>"domain");
@@ -619,11 +642,12 @@ sub refresh_vm {
     my $newxml=$dom->get_xml_description();
     $updatetable->{kvm_nodedata}->{$node}->{xml}=$newxml;
     $newxml = XMLin($newxml);
-    my $vncport=$newxml->{devices}->{graphics}->{port};
+    my $vidport=$newxml->{devices}->{graphics}->{port};
+    my $vidproto=$newxml->{devices}->{graphics}->{type};
     my $stty=$newxml->{devices}->{console}->{tty};
-    $updatetable->{vm}->{$node}={vncport=>$vncport,textconsole=>$stty};
+    #$updatetable->{vm}->{$node}={vncport=>$vncport,textconsole=>$stty};
     #$vmtab->setNodeAttribs($node,{vncport=>$vncport,textconsole=>$stty});
-    return {vncport=>$vncport,textconsole=>$stty};
+    return {vidport=>$vidport,textconsole=>$stty,vidproto=>$vidproto};
 }
 
 sub getcons {
@@ -649,25 +673,36 @@ sub getcons {
         $sconsparms->{node}->[0]->{psuedotty}=[$consdata->{textconsole}];
         $sconsparms->{node}->[0]->{baudrate}=[$serialspeed];
         return (0,$sconsparms);
-    } elsif ($type eq "vnc") {
-        return (0,'ssh+vnc@'.$hyper.": localhost:".$consdata->{vncport}); #$consdata->{vncport});
+    } elsif ($type eq "vid") {
+      my $domxml = $dom->get_xml_description();
+      my $parseddom = $parser->parse_string($domxml);
+      my ($graphicsnode) = $parseddom->findnodes("//graphics");
+      
+      my $tpasswd=genpassword(16);
+      my $validto=POSIX::strftime("%Y-%m-%dT%H:%M:%S",gmtime(time()+300));
+      $graphicsnode->setAttribute("passwd",$tpasswd);
+      $graphicsnode->setAttribute("passwdValidTo",$validto);
+      $dom->update_device($graphicsnode->toString());
+	#$dom->update_device("<graphics type='".$consdata->{vidproto}."' passwd='$tpasswd' passwdValidTo='$validto' autoport='yes'/>");
+	$consdata->{password}=$tpasswd;
+	$consdata->{server}=$hyper;
+	return $consdata;
+        #return (0,{$consdata->{vidproto}.'@'.$hyper.":".$consdata->{vidport}); #$consdata->{vncport});
     }
 }
 sub getrvidparms {
     my $node=shift;
-    my $location = getcons($node,"vnc");
-    if ($location =~ /ssh\+vnc@([^:]*):([^:]*):(\d+)/) {
-        my @output = (
-        "method: kvm",
-        "server: $1",
-        "vncdisplay: $2:$3",
-        "virturi: ".$hypconn->get_uri(),
-        "virtname: $node",
-        );
-        return  0,@output;
-    } else {
-        return (1,"Error: Unable to determine rvid destination for $node");
+    my $location = getcons($node,"vid");
+    unless ($location) {
+       return (1,"Error: Unable to determine rvid destination for $node");
     }
+        my @output = (
+      "method: kvm"
+      );
+    foreach (keys %$location) {
+      push @output,$_.":".$location->{$_};
+    }
+    return 0,@output;
 }
 
 sub pick_target {
@@ -974,6 +1009,9 @@ sub makedom {
     } elsif (not $xml) {
         $xml = build_xmldesc($node,cd=>$cdloc);
     }
+    my $parseddom = $parser->parse_string($xml);
+    my ($graphics) = $parseddom->findnodes("//graphics");
+    $graphics->setAttribute("passwd",genpassword(20));
     my $errstr;
     eval { $dom=$hypconn->create_domain($xml); };
     if ($@) { $errstr = $@; }
@@ -1324,12 +1362,16 @@ sub chvm {
     my @purge;
     my @derefdisks;
     my $memory;
+    my $cdrom;
+    my $eject;
     @ARGV=@_;
     require Getopt::Long;
     GetOptions(
         "a=s"=>\@addsizes,
         "d=s"=>\@derefdisks,
         "mem=s"=>\$memory,
+	"cdrom=s"=>\$cdrom,
+	"eject"=>\$eject,
         "cpus=s" => \$cpucount,
         "p=s"=>\@purge,
         "resize=s%" => \%resize,
@@ -1496,6 +1538,57 @@ sub chvm {
 
         }
     } 
+    my $newcdxml;
+    if ($cdrom) {
+      my $cdpath;
+      if ($cdrom =~ m!://!) {
+	my $url = $cdrom;
+	$url =~ s!([^/]+)\z!!;
+	my $imagename=$1;
+	my $poolobj = get_storage_pool_by_url($url);
+	unless ($poolobj) { die "Cound not get storage pool for $url"; }
+	my $poolxml = $poolobj->get_xml_description(); #yes, I have to XML parse for even this...
+	my $parsedpool = $parser->parse_string($poolxml);
+	$cdpath = $parsedpool->findnodes("/pool/target/path/text()")->[0]->data;
+	$cdpath .= "/".$imagename;
+      } else {
+	if ($cdrom =~ m!^/dev/!) {
+	  die "TODO: device pass through if anyone cares";
+	} elsif ($cdrom =~ m!^/!) { #full path... I guess
+	  $cdpath=$cdrom;
+	} else {
+	  die "TODO: relative paths, use client cwd as hint?";
+	}
+      }
+      unless ($cdpath) { die "unable to understand cd path specification"; }
+      $newcdxml = "<disk type='file' device='cdrom'><source file='$cdpath'/><target dev='hdc'/><readonly/></disk>";
+    } elsif ($eject) {
+      $newcdxml = "<disk type='file' device='cdrom'><target dev='hdc'/><readonly/></disk>";
+    }
+    if ($newcdxml) {
+     if ($currstate eq 'on') { 
+         $dom->attach_device($newcdxml); 
+         $vmxml=$dom->get_xml_description();
+      } else {
+	unless ($vmxml) {
+	  $vmxml=$confdata->{kvmnodedata}->{$node}->[0]->{xml};
+	}
+	my $domparsed = $parser->parse_string($vmxml);
+	my $candidatenodes=$domparsed->findnodes("//disk[\@device='cdrom']");
+	if (scalar (@$candidatenodes) != 1) {
+	  die "shouldn't be possible, should only have one cdrom";
+	}
+	my $newcd=$parser->parse_balanced_chunk($newcdxml);
+	$candidatenodes->[0]->replaceNode($newcd);
+	my $moddedxml=$domparsed->toString;
+	if ($moddedxml) {
+	  $vmxml=$moddedxml;
+	}
+      }
+      if ($vmxml) {
+	$updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+      }
+    }
     if ($cpucount or  $memory) {
         if ($currstate eq 'on') {
             xCAT::SvrUtils::sendmsg([1,"Hot add of cpus or memory not supported"],$callback,$node);

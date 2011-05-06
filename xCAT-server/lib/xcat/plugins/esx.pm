@@ -560,6 +560,16 @@ sub do_cmd {
         generic_hyp_operation(\&migrate,@exargs);
     }
     wait_for_tasks();
+    if ($command eq 'clonevm') { #TODO: unconditional, remove mkvms hosted copy
+      my @dhcpnodes;
+      foreach (keys %{$tablecfg{dhcpneeded}}) {
+        push @dhcpnodes,$_;
+        delete $tablecfg{dhcpneeded}->{$_};
+      }
+      unless ($::XCATSITEVALS{'dhcpsetup'} and ($::XCATSITEVALS{'dhcpsetup'} =~ /^n/i or $::XCATSITEVALS{'dhcpsetup'} =~ /^d/i or $::XCATSITEVALS{'dhcpsetup'} eq '0')) {
+        $executerequest->({command=>['makedhcp'],node=>\@dhcpnodes});
+      }
+    }
 }
 
 #inventory request for esx
@@ -1986,10 +1996,18 @@ sub clonevms {
             }
         }
     } elsif ($target) {
+      if ($url =~ m!/!) {
         $url=$target;
-       	$url =~ s!/([^/]*)\z!!;
+	$url =~ s!/([^/]*)\z!!;
         $mastername=$1;
-        $newdatastores->{$url}=[$nodes->[0]];
+      } else {
+	  $url = $tablecfg{vm}->{$nodes->[0]}->[0]->{storage};
+	  $url =~ s/.*\|//;
+	  $url =~ s/=(.*)//;
+	  $url =~ s/,.*//;
+	  $mastername=$target
+      }
+      $newdatastores->{$url}=[$nodes->[0]];
     }
     if ($hyp) {
         unless (validate_datastore_prereqs($nodes,$hyp,$newdatastores)) {
@@ -2087,16 +2105,26 @@ sub clone_vms_from_master {
            pool=>$pool,
            #diskMoveType=>"createNewChildDiskBacking", #fyi, requires a snapshot, which isn't compatible with templates, moveChildMostDiskBacking would potentially be fine, but either way is ha incopmatible and limited to 8, arbitrary limitations hard to work around...
            );
+	unless ($args{detach}) {
+	  $relocatespecargs{diskMoveType}="createNewChildDiskBacking";
+	}
         if ($hyp) { $relocatespecargs{host}=$hyphash{$hyp}->{hostview} }
         my $relocatespec = VirtualMachineRelocateSpec->new(%relocatespecargs);
-        my $clonespec = VirtualMachineCloneSpec->new(
+	my %clonespecargs = (        
             location=>$relocatespec,
             template=>0,
             powerOn=>0
             );
+	unless ($args{detach}) {
+	  $clonespecargs{snapshot}=$masterview->snapshot->currentSnapshot;
+	}
+	my $clonespec = VirtualMachineCloneSpec->new(%clonespecargs);
         my $vmfolder = $vmhash{$node}->{vmfolder};
         my $task = $masterview->CloneVM_Task(folder=>$vmfolder,name=>$node,spec=>$clonespec);
-        $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully cloned from '.$args{mastername}, mastername=>$args{mastername}, nodetypeent=>$nodetypeent,vment=>$vment };
+        $running_tasks{$task}->{data} = { node => $node, conn=>$conn, successtext => 'Successfully cloned from '.$args{mastername}, 
+					  mastername=>$args{mastername}, nodetypeent=>$nodetypeent,vment=>$vment, 
+					  hyp=>$args{hyp},
+	};
         $running_tasks{$task}->{task} = $task;
         $running_tasks{$task}->{callback} = \&clone_task_callback;
         $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
@@ -2135,13 +2163,47 @@ sub clone_task_callback {
     my $parms = shift;
     my $state = $task->info->state->val;
     my $node = $parms->{node};
+    my $conn = $parms->{conn};
     my $intent = $parms->{successtext};
     if ($state eq 'success') {
-        xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
+        #xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
         my $nodetype=xCAT::Table->new('nodetype',-create=>1);
         my $vm=xCAT::Table->new('vm',-create=>1);
         $vm->setAttribs({node=>$node},$parms->{vment});
+	
         $nodetype->setAttribs({node=>$node},$parms->{nodetypeent});
+	foreach (keys %{$parms->{vment}}) {
+	  $tablecfg{vm}->{$node}->[0]->{$_}=$parms->{vment}->{$_};
+	}
+	
+	my @networks = split /,/,$tablecfg{vm}->{$node}->[0]->{nics};
+	my @macs = xCAT::VMCommon::getMacAddresses(\%tablecfg,$node,scalar @networks);
+        #now with macs, change all macs in the vm to match our generated macs
+	my $regex = qr/^$node(\z|\.)/;
+	#have to do an expensive pull of the vm view, since it is brand new
+	my $nodeviews = $conn->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
+	unless (scalar @$nodeviews == 1) { die "this should be impossible"; }
+	my $vpdtab=xCAT::Table->new('vpd',-create=>1);
+	$vpdtab->setAttribs({node=>$node},{uuid=>$nodeviews->[0]->config->uuid});
+	my $ndev;
+	my @devstochange;
+	foreach $ndev (@{$nodeviews->[0]->config->hardware->device}) {
+	  unless ($ndev->{macAddress}) { next; } #not an ndev
+	  $ndev->{macAddress}=shift @macs;
+	  push @devstochange, VirtualDeviceConfigSpec->new(
+						device => $ndev,
+						operation =>  VirtualDeviceConfigSpecOperation->new('edit'));
+	}
+	if (@devstochange) {
+	  my $reconfigspec = VirtualMachineConfigSpec->new(deviceChange=>\@devstochange);
+	  my $task = $nodeviews->[0]->ReconfigVM_Task(spec=>$reconfigspec);
+	  $running_tasks{$task}->{task} = $task;
+	  $running_tasks{$task}->{callback} = \&generic_task_callback;
+	  $running_tasks{$task}->{hyp} = $parms->{hyp};
+	  $running_tasks{$task}->{data} = { node => $node, successtext => $intent};
+	}
+
+
     } elsif ($state eq 'error') {
         relay_vmware_err($task,"",$node);
     }
@@ -2176,13 +2238,13 @@ sub promote_vm_to_master {
     );
     my $clonespec = VirtualMachineCloneSpec->new(
         location=>$relocatespec,
-        template=>1,
+        template=>0, #can't go straight to template, need to clone, then snap, then templatify
         powerOn=>0
         );
 
     my $vmfolder=$vmhash{$node}->{vmfolder};
     my $task = $nodeview->CloneVM_Task(folder=>$vmfolder,name=>$args{mastername},spec=>$clonespec);
-    $running_tasks{$task}->{data} = { node => $node, successtext => 'Successfully copied to '.$args{mastername}, mastername=>$args{mastername}, url=>$args{url} };
+    $running_tasks{$task}->{data} = { node => $node, hyp => $args{hyp}, conn => $conn, successtext => 'Successfully copied to '.$args{mastername}, mastername=>$args{mastername}, url=>$args{url} };
     $running_tasks{$task}->{task} = $task;
     $running_tasks{$task}->{callback} = \&promote_task_callback;
     $running_tasks{$task}->{hyp} = $args{hyp}; #$hyp_conns->{$hyp};
@@ -2194,7 +2256,34 @@ sub promote_task_callback {
     my $state = $task->info->state->val;
     my $node = $parms->{node};
     my $intent = $parms->{successtext};
+    if ($state eq 'success') { #now, we have to make one snapshot for linked clones
+      my $mastername=$parms->{mastername};
+      my $regex=qr/^$mastername\z/;
+      my $masterviews = $parms->{conn}->find_entity_views(view_type => 'VirtualMachine',filter=>{'config.name'=>$regex});
+      unless (scalar @$masterviews == 1) {
+	die "Impossible";
+      }
+      my $masterview = $masterviews->[0];
+      my $task = $masterview->CreateSnapshot_Task(name=>"xcatsnap",memory=>"false",quiesce=>"false");
+      $parms->{masterview}=$masterview;
+      $running_tasks{$task}->{data} = $parms;
+      $running_tasks{$task}->{task} = $task;
+      $running_tasks{$task}->{callback} = \&promotesnap_task_callback;
+      $running_tasks{$task}->{hyp} = $parms->{hyp}; #$hyp_conns->{$hyp};
+      $running_tasks{$task}->{vm}=$parms->{node};
+      #xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
+    } elsif ($state eq 'error') {
+        relay_vmware_err($task,"",$node);
+    }
+}
+sub promotesnap_task_callback {
+    my $task = shift;
+    my $parms = shift;
+    my $state = $task->info->state->val;
+    my $node = $parms->{node};
+    my $intent = $parms->{successtext};
     if ($state eq 'success') {
+      $parms->{masterview}->MarkAsTemplate; #time to be a template
         xCAT::SvrUtils::sendmsg($intent, $output_handler,$node);
         my $mastertabentry = {
             originator=>$requester,
@@ -3834,7 +3923,12 @@ sub  makecustomizedmod {
     open($shadow,">",$tempdir."/etc/shadow");
     $password = crypt($password,'$1$'.xCAT::Utils::genpassword(8));
     my $dayssince1970 = int(time()/86400); #Be truthful about /etc/shadow
-    my @otherusers = qw/nobody nfsnobody dcui daemon vimuser/;
+    my @otherusers = qw/nobody nfsnobody dcui daemon/;
+    if ($osver =~ /esxi4/) {
+      push @otherusers,"vimuser";
+    } elsif ($osver =~ /esxi5/) {
+      push @otherusers,"vpxuser";
+    }
     print $shadow "root:$password:$dayssince1970:0:99999:7:::\n";
     foreach (@otherusers) {
         print $shadow "$_:*:$dayssince1970:0:99999:7:::\n";
