@@ -618,15 +618,15 @@ sub mknetboot
         if($machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
             # TODO: currently, only "mac" attribute with classic style is used, the "|" delimited string of "macaddress!hostname" format is not used
             $mac = $machash->{$node}->[0]->{'mac'};
-#            if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
+            if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
                #convert to linux format
                 if ($mac !~ /:/) {
                    $mac =~s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
                 }
-#            } else {
-#                $callback->({ error=>[ qq{In the "mac" table, the "|" delimited string of "macaddress!hostname" format is not supported by "nodeset <nr> netboot|statelite if installnic/primarynic is set".}], errorcode=>[1]});
-#                return;
-#            }
+            } else {
+                $callback->({ error=>[ qq{In the "mac" table, the "|" delimited string of "macaddress!hostname" format is not supported by "nodeset <nr> netboot|statelite if installnic/primarynic is set".}], errorcode=>[1]});
+                return;
+            }
         }
 
         if ($useifname && $mac) {
