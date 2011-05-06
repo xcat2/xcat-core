@@ -1376,7 +1376,11 @@ sub fru_initted {
         my $type;
         foreach $type (split /,/,$fru->rec_type) {
     		if(grep {$_ eq $type} @types) {
-    			xCAT::SvrUtils::sendmsg(sprintf($format,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$callback,$sessdata->{node},%allerrornodes);
+			my $bmcifo="";
+			if ($sessdata->{bmcnum} != 1) { 
+				$bmcifo=" on BMC ".$sessdata->{bmcnum};
+			}
+    			xCAT::SvrUtils::sendmsg(sprintf($format.$bmcifo,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$callback,$sessdata->{node},%allerrornodes);
                 last;
             }
         }
