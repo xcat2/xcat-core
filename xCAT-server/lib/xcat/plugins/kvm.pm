@@ -1905,7 +1905,9 @@ sub clone_vm_from_master {
     $url =~ s/,.*//;
     my $destinationpool = get_storage_pool_by_url($url);
     foreach $disk ($newnodexml->findnodes("/domain/devices/disk")) {
-        my $srcfilename = $disk->findnodes("./source")->[0]->getAttribute("file");
+	my ($source) = ($disk->findnodes("./source"));
+	unless ($source) { next; } #most likely an empty cdrom
+        my $srcfilename = $source->getAttribute("file");
         my $filename = $srcfilename;
         $filename =~ s/^.*$mastername/$node/;
         $filename =~ m!\.([^\.]*)\z!;
