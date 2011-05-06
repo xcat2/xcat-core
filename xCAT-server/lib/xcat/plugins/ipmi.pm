@@ -805,6 +805,8 @@ sub getnetinfo_response {
     if ($subcommand eq "snmpdest") {
         $subcommand = "snmpdest1";
     }
+    my $bmcifo="";
+    if ($sessdata->{bmcnum} != 1) { $bmcifo.= " on BMC ".$sessdata->{bmcnum}; }
     my @returnd = (0,@{$rsp->{data}});
 	my $format = "%-25s";
 	if($subcommand eq "garp") {
@@ -813,41 +815,41 @@ sub getnetinfo_response {
 	}
     elsif($subcommand eq "alert") {
         if ($returnd[3] & 0x8) { 
-           xCAT::SvrUtils::sendmsg("SP Alerting: enabled",$callback,$sessdata->{node},%allerrornodes);
+           xCAT::SvrUtils::sendmsg("SP Alerting: enabled".$bmcifo,$callback,$sessdata->{node},%allerrornodes);
         } else {
-           xCAT::SvrUtils::sendmsg("SP Alerting: disabled",$callback,$sessdata->{node},%allerrornodes);
+           xCAT::SvrUtils::sendmsg("SP Alerting: disabled".$bmcifo,$callback,$sessdata->{node},%allerrornodes);
         }
      }
 	elsif($subcommand =~ m/^snmpdest(\d+)/ ) {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
 				"SP SNMP Destination $1:",
 				$returnd[5],
 				$returnd[6],
 				$returnd[7],
 				$returnd[8]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "ip") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
 				"BMC IP:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
 				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "netmask") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
 				"BMC Netmask:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
 				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "gateway") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
 				"BMC Gateway:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
 				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "backupgateway") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
 				"BMC Backup Gateway:",
 				$returnd[2],
 				$returnd[3],
@@ -864,6 +866,7 @@ sub getnetinfo_response {
 				$text = $text . sprintf("%c",$returnd[$i]);
 				$i = $i + 1;
 			}
+			$text.=$bmcifo;
             xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
 	}
     if ($sessdata->{subcommand}) {
