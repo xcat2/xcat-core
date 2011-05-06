@@ -2610,7 +2610,7 @@ if { $noboot } { # Display information for all supported adapters
                 set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
             }
             set mac_address [get_mac_addr $phandle_array($i)]
-            if { [string compare -nocase "$mac_address" "$macaddress"] == 0 } {
+            if { [string first "$mac_address" "$macaddress"] != -1 } {
                 if { $discovery == 1 } {
                     if { $adap_type($i) != "hfi-ent" } {
                         set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
