@@ -1370,7 +1370,7 @@ sub chvm {
         "a=s"=>\@addsizes,
         "d=s"=>\@derefdisks,
         "mem=s"=>\$memory,
-	"cdrom=s"=>\$cdrom,
+	"optical|cdrom=s"=>\$cdrom,
 	"eject"=>\$eject,
         "cpus=s" => \$cpucount,
         "p=s"=>\@purge,
