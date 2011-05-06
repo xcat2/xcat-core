@@ -1012,6 +1012,7 @@ sub makedom {
     my $parseddom = $parser->parse_string($xml);
     my ($graphics) = $parseddom->findnodes("//graphics");
     $graphics->setAttribute("passwd",genpassword(20));
+    $graphics->setAttribute("listen",'0.0.0.0');
     my $errstr;
     eval { $dom=$hypconn->create_domain($xml); };
     if ($@) { $errstr = $@; }
@@ -1370,7 +1371,7 @@ sub chvm {
         "a=s"=>\@addsizes,
         "d=s"=>\@derefdisks,
         "mem=s"=>\$memory,
-	"cdrom=s"=>\$cdrom,
+	"optical|cdrom=s"=>\$cdrom,
 	"eject"=>\$eject,
         "cpus=s" => \$cpucount,
         "p=s"=>\@purge,
@@ -1905,7 +1906,9 @@ sub clone_vm_from_master {
     $url =~ s/,.*//;
     my $destinationpool = get_storage_pool_by_url($url);
     foreach $disk ($newnodexml->findnodes("/domain/devices/disk")) {
-        my $srcfilename = $disk->findnodes("./source")->[0]->getAttribute("file");
+	my ($source) = ($disk->findnodes("./source"));
+	unless ($source) { next; } #most likely an empty cdrom
+        my $srcfilename = $source->getAttribute("file");
         my $filename = $srcfilename;
         $filename =~ s/^.*$mastername/$node/;
         $filename =~ m!\.([^\.]*)\z!;
