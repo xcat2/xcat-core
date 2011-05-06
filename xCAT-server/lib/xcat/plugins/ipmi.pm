@@ -4125,12 +4125,13 @@ sub sensorformat {
         $data = "N/A";
     }
 #$unitdesc.= sprintf(" %x",$sdr->sensor_type);
-    use Data::Dumper;
-    print Dumper($lformat,$sdr->id_string,$data);
+#    use Data::Dumper;
+#    print Dumper($lformat,$sdr->id_string,$data);
 	my $text = sprintf($lformat,$sdr->id_string . ":",$data);
 	if ($extext) {
 		$text="$text ($extext)";
 	}
+	if ($sessdata->{bmcnum} != 1) { $text.=" on BMC ".$sessdata->{bmcnum}; }
     xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
     if (scalar @{$sessdata->{sensorstoread}}) {
         $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
