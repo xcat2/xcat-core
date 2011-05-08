@@ -112,7 +112,7 @@ cd $OSVER
 #  pyodbc is dependent on unixODBC
 rpm -Uvh unixODBC*
 
-for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-'|^xCAT-UI-deps`; do
+for i in `ls *.rpm|grep -v -E '^tcl-|^tk-|^expect-|^unixODBC-|^xCAT-UI-deps'`; do
 	if [ "$i" == "perl-Net-DNS-0.66-1.aix5.3.ppc.rpm" ]; then
 		opts="--nodeps"
 	else
