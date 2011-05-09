@@ -34,6 +34,7 @@ while [ -z "$BMCIP" ]; do
     fi
 done
 kill $CREDPID
+NUMBMCS=`grep bmcip /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'|wc -l`
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
 IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
 if [ "$IPMIMFG" == 2 ]; then #IBM
@@ -42,14 +43,23 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
-            ipmitool raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
+	    let idev=0
+	    for p in $BMCPORT; do
+            	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
+            	ipmitool -d $idev raw 0x04 0x12 0x09 0x01 0x18 0x${p}1 0x00 > /dev/null
+	    	let idev=idev+1
+	    done
         fi
     else
         IBMFAM=`ipmitool raw 0x3a 0x50 |head -n 1| awk '{print $1 $2 $3 $4}'`
         if [ "$IBMFAM" == "59554f4f" ]; then
             BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
             if [ ! -z "$BMCPORT" ]; then
-                ipmitool raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
+	    	let idev=0
+		    for p in $BMCPORT; do
+	            	ipmitool -d $idev raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
+		    	let idev=idev+1
+		    done
             fi
         fi
     fi
@@ -59,7 +69,11 @@ elif [ "$IPMIMFG" == 20301 ] ; then
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
-            ipmitool raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
+	    	let idev=0
+		    for p in $BMCPORT; do
+	            	ipmitool -d $idev raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
+		    	let idev=idev+1
+		    done
         fi
     fi
 fi
@@ -73,46 +87,65 @@ for LANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
 done
 echo "Detected LAN channel $LANCHAN"
         
-TRIES=0
-while ! ipmitool lan set $LANCHAN ipsrc static; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+let idev=NUMBMCS
+while [ $idev -gt 0 ]; do
+	let idev=idev-1
+	TRIES=0
+	while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
+	    sleep 1
+	    let TRIES=TRIES+1
+	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+	done
 done
-TRIES=0
-while ! ipmitool lan set $LANCHAN ipaddr $BMCIP; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+let idev=0
+for b in $BMCIP; do
+	TRIES=0
+	while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
+	    sleep 1
+	    let TRIES=TRIES+1
+	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+	done
+	let idev=idev+1
 done
-TRIES=0
-while ! ipmitool lan set $LANCHAN netmask $BMCNM; do
-    sleep 1
-    let TRIES=TRIES+1
-    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+let idev=0
+for m in $BMCNM; do
+	TRIES=0
+	while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
+	    sleep 1
+	    let TRIES=TRIES+1
+	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+	done
+	let idev=idev+1
 done
 TRIES=0
 if [ ! -z "$BMCGW" ]; then
-    while ! ipmitool lan set $LANCHAN defgw ipaddr $BMCGW; do
-        sleep 1
-        let TRIES=TRIES+1
-        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+    let idev=0
+    for g in $BMCGW; do
+    	TRIES=0
+	    while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
+	        sleep 1
+	        let TRIES=TRIES+1
+	        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+	    done
+            let idev=idev+1
     done
     TRIES=0
 fi
+let idev=0
+for bmcu in $BMCUS; do
 DISABLEUSERS="1 2 3 4"
 if [ ! -z "$LOCKEDUSERS" ]; then
-    USERSLOT=`ipmitool user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep " $BMCUS"|awk '{print $1}'`
+    USERSLOT=`ipmitool -d $idev user list $LANCHAN |grep -v ^ID|awk '{print $1 " " $2}'|grep " $BMCUS"|awk '{print $1}'`
     if [ -z "$USERSLOT" ]; then
         USERSLOT=4
     fi
 else
     USERSLOT=2
 fi
-CURRENTUSER=`ipmitool user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
+CURRENTUSER=`ipmitool -d $idev user list $LANCHAN|grep ^$USERSLOT|awk '{print $2}'`
 DISABLEUSERS=`echo 1 2 3 4|sed -e s/$USERSLOT//`
 for user in $DISABLEUSERS; do
-    while ! ipmitool user disable $user; do
+    while ! ipmitool -d $idev user disable $user; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -120,7 +153,7 @@ for user in $DISABLEUSERS; do
     TRIES=0
 done
 TRIES=0
-while ! ipmitool user enable $USERSLOT; do
+while ! ipmitool -d $idev user enable $USERSLOT; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -128,41 +161,51 @@ done
 TRIES=0
 # Last param in ipmitool user priv is the channel to set it on.
 # Penguin boxes are all channel 2
-CURRPRIV=`ipmitool user list 1|grep ^$USERSLOT|awk '{print $6}'`
+CURRPRIV=`ipmitool -d $idev user list 1|grep ^$USERSLOT|awk '{print $6}'`
 if [ "$CURRPRIV" != "ADMINISTRATOR" ]; then 
-    while ! ipmitool user priv $USERSLOT 4 $LANCHAN; do
+    while ! ipmitool -d $idev user priv $USERSLOT 4 $LANCHAN; do
         sleep 1
         let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
     TRIES=0
 fi
-if [ "$CURRENTUSER" != "$BMCUS" ]; then
-    while ! ipmitool user set name $USERSLOT $BMCUS; do
+if [ "$CURRENTUSER" != "$bmcu" ]; then
+    while ! ipmitool -d $idev user set name $USERSLOT $bmcu; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
 fi
+let idev=idev+1
+done
+let idev=0
+for bmcp in $BMCPW; do
 TRIES=0
-while ! ipmitool user set password $USERSLOT $BMCPW; do
+while ! ipmitool -d $idev user set password $USERSLOT $bmcp; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
 TRIES=0
 echo "Set up following user table: "
-ipmitool user list $LANCHAN
+ipmitool -d $idev user list $LANCHAN
+let idev=idev+1
+done
+
+let idev=NUMBMCS
+while [ $idev -gt 0 ]; do
+let idev=idev-1
 
 
 echo -n "Enabling Channel $LANCHAN: "
-while ! ipmitool raw 0x6 0x40 $LANCHAN 0x42 0x44 > /dev/null; do
+while ! ipmitool -d $idev raw 0x6 0x40 $LANCHAN 0x42 0x44 > /dev/null; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
 done
 TRIES=0
-while ! ipmitool raw 0x6 0x40 $LANCHAN 0x82 0x84 > /dev/null; do
+while ! ipmitool -d $idev raw 0x6 0x40 $LANCHAN 0x82 0x84 > /dev/null; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -171,7 +214,7 @@ if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 TRIES=0
 
 echo -n "Enabling ARP responses: "
-while ! ipmitool lan set $LANCHAN arp respond on > /dev/null; do
+while ! ipmitool -d $idev lan set $LANCHAN arp respond on > /dev/null; do
     sleep 1
     let TRIES=TRIES+1
     echo -n .
@@ -181,7 +224,7 @@ if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 TRIES=0
 
 echo -n "Enabling IPMI v 1.5 MD5 LAN access:"
-while ! ipmitool lan set $LANCHAN auth admin md5 > /dev/null; do
+while ! ipmitool -d $idev lan set $LANCHAN auth admin md5 > /dev/null; do
     sleep 1
     let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -190,7 +233,7 @@ if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
 TRIES=0
 if [ ! "$IPMIVER" == "1.5"  ]; then 
     echo -n "Enabling IPMI v 2.0 LAN access:"
-    SUPPORTEDSUITES=`ipmitool lan print $LANCHAN|grep Suites|awk -F: '{print $2}'|sed -e 's/ 0//'`
+    SUPPORTEDSUITES=`ipmitool -d $idev lan print $LANCHAN|grep Suites|awk -F: '{print $2}'|sed -e 's/ 0//'`
     PRIVS="X"
     for priv in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
         if echo $SUPPORTEDSUITES|grep $priv > /dev/null; then
@@ -199,7 +242,7 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
             PRIVS="$PRIVS"X
         fi
     done
-    while ! ipmitool lan set $LANCHAN cipher_privs $PRIVS > /dev/null; do
+    while ! ipmitool -d $idev lan set $LANCHAN cipher_privs $PRIVS > /dev/null; do
         sleep 1
         let TRIES=TRIES+1
     if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -208,7 +251,7 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
     TRIES=0
 
     echo -n "Enabling SOL for channel $LANCHAN:"
-    while ! ipmitool raw 0xc 0x21 $LANCHAN 0x1 0x1 > /dev/null; do
+    while ! ipmitool -d $idev raw 0xc 0x21 $LANCHAN 0x1 0x1 > /dev/null; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -217,14 +260,14 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
     TRIES=0
     
     echo -n "Enabling SOL for $BMCUS:"
-    while ! ipmitool raw 6 0x4c $LANCHAN $USERSLOT 2 0 0 0 > /dev/null; do
+    while ! ipmitool -d $idev raw 6 0x4c $LANCHAN $USERSLOT 2 0 0 0 > /dev/null; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
     if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
     echo -n "Putting SOL on channel $LANCHAN:"
-    while ! ipmitool raw 0xc 0x21 $LANCHAN 7 $LANCHAN > /dev/null; do
+    while ! ipmitool -d $idev raw 0xc 0x21 $LANCHAN 7 $LANCHAN > /dev/null; do
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
@@ -236,7 +279,8 @@ fi
 
 echo "Lighting Identify Light"
 while :
-    do ipmitool raw 0 4 10 > /dev/null
+    do ipmitool -d $idev raw 0 4 10 > /dev/null
     sleep 7
 done &
+done
 

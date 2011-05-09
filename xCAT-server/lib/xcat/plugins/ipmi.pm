@@ -805,6 +805,8 @@ sub getnetinfo_response {
     if ($subcommand eq "snmpdest") {
         $subcommand = "snmpdest1";
     }
+    my $bmcifo="";
+    if ($sessdata->{bmcnum} != 1) { $bmcifo.= " on BMC ".$sessdata->{bmcnum}; }
     my @returnd = (0,@{$rsp->{data}});
 	my $format = "%-25s";
 	if($subcommand eq "garp") {
@@ -813,41 +815,41 @@ sub getnetinfo_response {
 	}
     elsif($subcommand eq "alert") {
         if ($returnd[3] & 0x8) { 
-           xCAT::SvrUtils::sendmsg("SP Alerting: enabled",$callback,$sessdata->{node},%allerrornodes);
+           xCAT::SvrUtils::sendmsg("SP Alerting: enabled".$bmcifo,$callback,$sessdata->{node},%allerrornodes);
         } else {
-           xCAT::SvrUtils::sendmsg("SP Alerting: disabled",$callback,$sessdata->{node},%allerrornodes);
+           xCAT::SvrUtils::sendmsg("SP Alerting: disabled".$bmcifo,$callback,$sessdata->{node},%allerrornodes);
         }
      }
 	elsif($subcommand =~ m/^snmpdest(\d+)/ ) {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
 				"SP SNMP Destination $1:",
 				$returnd[5],
 				$returnd[6],
 				$returnd[7],
 				$returnd[8]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "ip") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
 				"BMC IP:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
 				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "netmask") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
 				"BMC Netmask:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
 				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "gateway") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
 				"BMC Gateway:",
 				$returnd[2],
 				$returnd[3],
 				$returnd[4],
 				$returnd[5]),$callback,$sessdata->{node},%allerrornodes);
 	} elsif($subcommand eq "backupgateway") {
-			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d",
+			xCAT::SvrUtils::sendmsg(sprintf("$format %d.%d.%d.%d".$bmcifo,
 				"BMC Backup Gateway:",
 				$returnd[2],
 				$returnd[3],
@@ -864,6 +866,7 @@ sub getnetinfo_response {
 				$text = $text . sprintf("%c",$returnd[$i]);
 				$i = $i + 1;
 			}
+			$text.=$bmcifo;
             xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
 	}
     if ($sessdata->{subcommand}) {
@@ -1376,7 +1379,11 @@ sub fru_initted {
         my $type;
         foreach $type (split /,/,$fru->rec_type) {
     		if(grep {$_ eq $type} @types) {
-    			xCAT::SvrUtils::sendmsg(sprintf($format,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$callback,$sessdata->{node},%allerrornodes);
+			my $bmcifo="";
+			if ($sessdata->{bmcnum} != 1) { 
+				$bmcifo=" on BMC ".$sessdata->{bmcnum};
+			}
+    			xCAT::SvrUtils::sendmsg(sprintf($format.$bmcifo,$sessdata->{fru_hash}->{$key}->desc . ":",$sessdata->{fru_hash}->{$key}->value),$callback,$sessdata->{node},%allerrornodes);
                 last;
             }
         }
@@ -3071,6 +3078,9 @@ sub got_sel {
 			$text = "$text - Recovered";
 		}
         my $entry = $sessdata->{selentry};
+        if ($sessdata->{bmcnum} !=1) {
+		$text .= " on BMC ".$sessdata->{bmcnum};
+	}
 
         if ($sessdata->{auxloginfo} and $sessdata->{auxloginfo}->{$entry}) {
              $text.=" with additional data:";
@@ -4118,12 +4128,13 @@ sub sensorformat {
         $data = "N/A";
     }
 #$unitdesc.= sprintf(" %x",$sdr->sensor_type);
-    use Data::Dumper;
-    print Dumper($lformat,$sdr->id_string,$data);
+#    use Data::Dumper;
+#    print Dumper($lformat,$sdr->id_string,$data);
 	my $text = sprintf($lformat,$sdr->id_string . ":",$data);
 	if ($extext) {
 		$text="$text ($extext)";
 	}
+	if ($sessdata->{bmcnum} != 1) { $text.=" on BMC ".$sessdata->{bmcnum}; }
     xCAT::SvrUtils::sendmsg($text,$callback,$sessdata->{node},%allerrornodes);
     if (scalar @{$sessdata->{sensorstoread}}) {
         $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
@@ -5345,7 +5356,16 @@ sub process_request {
 			if (ref($ent) and defined $ent->{username}) { $nodeuser = $ent->{username}; }
 			if (ref($ent) and defined $ent->{password}) { $nodepass = $ent->{password}; }
 		}
-        push @donargs,[$node,$nodeip,$nodeuser,$nodepass];
+	if ($nodeip =~ /,/ and grep ({ $_ eq $request->{command}->[0] } qw/rinv reventlog rvitals rspconfig/)) { #multi-node x3950 X5, for example
+		my $bmcnum=1;
+		foreach (split /,/,$nodeip) {
+        		push @donargs,[$node,$_,$nodeuser,$nodepass,$bmcnum];
+			$bmcnum+=1;
+		}
+	} else {
+		$nodeip =~ s/,.*//; #stri
+        	push @donargs,[$node,$nodeip,$nodeuser,$nodepass,1];
+	}
     }
     if ($request->{command}->[0] eq "getipmicons") {
         foreach (@donargs) {
@@ -5416,7 +5436,7 @@ sub process_request {
     my $children = 0;
     my $sub_fds = new IO::Select;
     foreach (@donargs) {
-      donode($_->[0],$_->[1],$_->[2],$_->[3],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
+      donode($_->[0],$_->[1],$_->[2],$_->[3],$_->[4],$ipmitimeout,$ipmitrys,$command,-args=>\@exargs);
 	}
     while (xCAT::IPMI->waitforrsp()) { yield };
     my $node;
@@ -5525,6 +5545,7 @@ sub donode {
   my $bmcip = shift;
   my $user = shift;
   my $pass = shift;
+  my $bmcnum = shift;
   my $timeout = shift;
   my $retries = shift;
   my $command = shift;
@@ -5533,6 +5554,7 @@ sub donode {
   my @exargs=@$extra;
   $sessiondata{$node} = {
       node => $node, #this seems redundant, but some code will not be privy to what the key was
+      bmcnum => $bmcnum,
       ipmisession => xCAT::IPMI->new(bmc=>$bmcip,userid=>$user,password=>$pass),
       command => $command,
       extraargs => \@exargs,
