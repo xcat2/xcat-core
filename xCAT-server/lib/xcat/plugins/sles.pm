@@ -151,6 +151,29 @@ sub mknetboot
 	        $arch    = $ent->{arch};
 	        $profile = $ent->{profile};
             $rootfstype = "nfs";    # TODO: try to get it from the option or table
+            my $imgname;
+            if ($statelite) {
+                $imgname = "$osver-$arch-statelite-$profile";
+            } else {
+                $imgname = "$osver-$arch-netboot-$profile";
+            }
+
+            if (! $osimagetab) {
+                $osimagetab = xCAT::Table->new('osimage');
+            }
+
+            if ($osimagetab) {
+                my ($ref1) = $osimagetab->getAttribs({imagename => $imgname}, 'rootfstype');
+                if (($ref1) && ($ref1->{'rootfstype'})) {
+                    $rootfstype = $ref1->{'rootfstype'};
+                }
+            } else {
+                $callback->(
+                    { error => [ qq{Cannot find the linux image called "$osver-$arch-$provmethod-$profile", maybe you need to use the "nodeset <nr> osimage=<osimage name>" command to set the boot state} ],
+                    errorcode => [1]}
+                );
+            }
+
 	        $rootimgdir="$installroot/netboot/$osver/$arch/$profile";
 	    }
 
