@@ -693,8 +693,8 @@ sub getcons {
 sub getrvidparms {
     my $node=shift;
     my $location = getcons($node,"vid");
-    unless ($location) {
-       return (1,"Error: Unable to determine rvid destination for $node");
+    unless (ref $location) {
+       return (1,"Error: Unable to determine rvid destination for $node (appears VM is off)");
     }
         my @output = (
       "method: kvm"
