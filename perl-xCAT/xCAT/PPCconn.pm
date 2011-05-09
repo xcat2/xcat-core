@@ -720,7 +720,11 @@ sub rmhmcmgt
     my $ent = $nodehm_tab->getNodeAttribs( $node, ['mgt']);
     if ( !$ent or $ent->{mgt} ne $hwtype)
     {
-        $nodehm_tab->setNodeAttribs( $node, { mgt=>$hwtype});
+        if ($hwtype eq "cec" || $hwtype eq "frame") {
+            $nodehm_tab->setNodeAttribs( $node, { mgt=>"fsp"});
+        } else {    
+            $nodehm_tab->setNodeAttribs( $node, { mgt=>$hwtype});
+        }    
     }
     
     my $ppc_tab = xCAT::Table->new('ppc', -create=>1);
