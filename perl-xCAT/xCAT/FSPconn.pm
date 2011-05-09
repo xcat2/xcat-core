@@ -69,6 +69,10 @@ sub mkhwconn_parse_args
 
     return usage() if ( exists $opt{h});
 
+    if ( !exists $opt{t} and !exists $opt{p}) {
+        return ( usage('Flag -t or -p must be used.'));
+    }
+
     if ( exists $opt{t} and exists $opt{p})
     {
         return( usage('Flags -t and -p cannot be used together.'));
