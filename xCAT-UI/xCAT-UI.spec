@@ -126,6 +126,18 @@ set -x
 	fi
 
 	if [ "$1" = 1 ]    # Install
+	then	  	
+	  	# Update apache conf
+	  	/bin/rm -f /etc/$apachedaemon/conf.d/xcat-ui.conf
+	  	/bin/ln -s %{prefix}/ui/etc/apache2/conf.d/xcat-ui.conf /etc/$apachedaemon/conf.d/xcat-ui.conf
+	  	
+		# Automatically put encrypted password into the xCAT passwd database
+	  	%{prefix}/sbin/chtab key=xcat,username=root passwd.password=`grep root /etc/shadow|cut -d : -f 2`
+	
+	  	echo "To use xCAT-UI, point your browser to http://"`hostname -f`"/xcat"
+	fi
+	
+	if [ "$1" = 1 ] || [ "$1" = 2 ]		# Install or upgrade
 	then
 		# Copy php.ini file into /opt/xcat/ui and turn off output_buffering
 		if [ -e "/etc/redhat-release" ]; then
@@ -134,21 +146,8 @@ set -x
 	    	/bin/sed /etc/php5/apache2/php.ini -e 's/output_buffering = 4096/output_buffering = Off/g' > %{prefix}/ui/php.ini
 	  	fi
 	  	
-	  	# Update apache conf
-	  	/bin/rm -f /etc/$apachedaemon/conf.d/xcat-ui.conf
-	  	/bin/ln -s %{prefix}/ui/etc/apache2/conf.d/xcat-ui.conf /etc/$apachedaemon/conf.d/xcat-ui.conf
-	  	/etc/init.d/$apachedaemon reload
-	  		  		  
-	  	# Automatically put encrypted password into the xCAT passwd database
-	  	%{prefix}/sbin/chtab key=xcat,username=root passwd.password=`grep root /etc/shadow|cut -d : -f 2`
-	
-	  	echo "To use xCAT-UI, point your browser to http://"`hostname -f`"/xcat"
-	fi
-	
-	if [ "$1" = 1 ] || [ "$1" = 2 ]		# Install or upgrade
-	then
-		# Uncomment this if we change xcat-ui.conf again
-		# /etc/init.d/$apachedaemon reload
+		# Restart Apache Web Server
+		/etc/init.d/$apachedaemon reload
 		true
 	fi
 %else	# AIX

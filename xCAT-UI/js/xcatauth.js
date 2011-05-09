@@ -56,16 +56,15 @@ function onlogin(data, txtStatus) {
 		$("#logstatus").text("Login successful");
 		$("#logdialog").dialog("close");
 
-		//not the first time to log
+		// Not the first time to log
 		if ($.cookie('logonflag')){
-		 // Remembered what page they were trying to go to
+			// Remembered what page they were trying to go to
 	        window.location = window.location.pathname;
-		}
-		else{
+		} else {
 		    window.location = 'manual.php';
 		}
 		
-		//set the logonflag
+		// Set the logonflag
 		$.cookie('logonflag', 'yes', {
 		    path : '/xcat',
 		    expires : 100

@@ -205,6 +205,7 @@ span.ui-icon-info {
 
 .tab a {
 	cursor: pointer;
+	color: #0000FF;
 }
 
 .tab .ui-icon-close {
@@ -305,9 +306,13 @@ legend {
 }
 
 .actionBar a {
-	color: #2E6E9E;
+	color: #FFFFFF;
 	font-weight: bold;
 	cursor: pointer;
+}
+
+.actionBar a:hover {
+	color: #026890;
 }
 
 .actionBar li {

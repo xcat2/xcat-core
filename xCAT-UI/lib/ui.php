@@ -12,14 +12,14 @@ function loadPage(){
 		<head>
 			<title>xCAT Console</title>
 			<link rel="shortcut icon" href="images/favicon.ico">
-			<link href="css/jquery-ui-1.8.7.custom.css" rel=stylesheet type="text/css">
+			<link href="css/jquery-ui-1.8.12.start.css" rel=stylesheet type="text/css">
 			<link href="css/jquery.dataTables.css" rel=stylesheet type="text/css">
 			<link href="css/superfish.css" rel=stylesheet type="text/css">
 			<link href="css/jstree.css" rel=stylesheet type="text/css">
 			<link href="css/jquery.jqplot.css" rel=stylesheet type="text/css">
 			<link href="css/style.css" rel=stylesheet type="text/css">
-			<script type="text/javascript" src="js/jquery/jquery-1.4.4.min.js"></script>
-			<script type="text/javascript" src="js/jquery/jquery-ui-1.8.7.custom.min.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery-1.5.1.min.js"></script>
+			<script type="text/javascript" src="js/jquery/jquery-ui-1.8.12.start.min.js"></script>
 			<script type="text/javascript" src="js/ui.js"></script>
 		</head>';
 

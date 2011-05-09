@@ -737,6 +737,7 @@ function loadNodes(data) {
 	var actions = [ [ powerLnk, powerActionMenu ], [ monitorLnk, monitorActionMenu ], cloneLnk, deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
 	var actionsMenu = createMenu(actions);
 	actionsMenu.superfish();
+	actionsMenu.css('display', 'inline-block');
 	actionsDiv.append(actionsMenu);
 	actionBar.append(actionsDiv);
 	
@@ -758,13 +759,16 @@ function loadNodes(data) {
 	var undoLnk = $('<a>Undo</a>');
 	undoLnk.bind('click', function(event){
 		restoreNodeAttrs();
+		
+		// Hide table menu actions
+		tableActionsMenu.hide();
 	});
 	
 	// It will be hidden until a change is made
-	var tableActionsMenu = createMenu([saveLnk, undoLnk]).hide();
-	tableActionsMenu.css('margin-left', '90px');
+	var tableActionsMenu = createMenu([saveLnk, undoLnk]);
+	tableActionsMenu.css('display', 'inline-block');
 	tableActionsMenu.attr('id', 'tableActionMenu');
-	actionsDiv.append(tableActionsMenu);
+	actionsDiv.append(tableActionsMenu.hide());
 
 	// Turn table into a datatable
 	var nodesDatatable = $('#' + nodesTableId).dataTable({
