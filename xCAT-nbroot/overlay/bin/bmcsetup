@@ -45,7 +45,8 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
         if [ ! -z "$BMCPORT" ]; then
 	    let idev=0
 	    for p in $BMCPORT; do
-            	ipmitool -d $idev raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
+            	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
+            	ipmitool -d $idev raw 0x04 0x12 0x09 0x01 0x18 0x${p}1 0x00 > /dev/null
 	    	let idev=idev+1
 	    done
         fi
