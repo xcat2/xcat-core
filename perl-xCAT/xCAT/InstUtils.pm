@@ -1286,7 +1286,23 @@ sub dolitesetup
 			#	need to be rebooted
 
 			if (-d $SRloc) {
-				my $ccmd = "/bin/cp $statelitetable $litefiletable $litetreetable $instrootloc/aixlitesetup $SRloc";
+			    my $ccmd = "/bin/cp";
+			    if (-e $statelitetable)
+			    {
+			        $ccmd .= " $statelitetable";
+			    }
+
+			    if (-e $litefiletable)
+			    {
+			        $ccmd .= " $litefiletable";
+			    }
+
+			    if (-e $litetreetable)
+			    {
+			        $ccmd .= " $litetreetable";
+			    }
+			    
+			    $ccmd .= " $instrootloc/aixlitesetup $SRloc";
 				my $out = xCAT::Utils->runcmd("$ccmd", -1);
 				if ($::RUNCMD_RC != 0)
 				{
