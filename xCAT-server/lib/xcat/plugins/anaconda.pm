@@ -579,7 +579,7 @@ sub mknetboot
                     }
                     if(grep /\$|#CMD/, $dir) {
                         $dir = xCAT::SvrUtils->subVars($dir, $node, 'dir', $callback);
-                        $dir = ~ s/\/\//\//g;
+                        $dir =~ s/\/\//\//g;
                     }
                     if($server) { 
                         $server = xCAT::SvrUtils->subVars($server, $node, 'server', $callback);
