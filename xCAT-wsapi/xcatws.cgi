@@ -64,10 +64,23 @@ sub genRequest{
   my $xml = XMLout($request, RootName=>'xcatrequest',NoAttr=>1,KeyAttr=>[]);
 }
 
+#default format
 my $format = 'html';
+
+#data formatters.  To add one simple copy the format of an existing one
+# and add it to this hash
+my %formatters = ('html' => \&wrapHtml,
+                  'json' => \&wrapJson,
+                  'xml'  => \&wrapXml,
+                 );
+
 if($q->param('format'))
 {
   $format = $q->param('format');
+  if(!exists $formatters{$format}){
+    sendStatusMsg($STATUS_BAD_REQUEST, "The format '$format' is not valid");
+    exit(0);
+  }
 }
 
 #if no resource was specified
@@ -1302,13 +1315,6 @@ sub jobsHandler{
 }
 
 
-#data formatters.  To add one simple copy the format of an existing one
-# and add it to this hash
-my %formatters = ('html' => \&wrapHtml,
-                  'json' => \&wrapJson,
-                  'xml'  => \&wrapXml,
-                 );
-
 #all data wrapping and writing is funneled through here
 sub wrapData{
   my @data = shift;
@@ -1318,6 +1324,15 @@ sub wrapData{
 }
 
 sub wrapJson
+{
+  my @data = shift;
+  print header('application/json');
+  my $json;
+  $json->{'data'} = \@data;
+  print to_json($json);
+}
+
+sub wrapJsonOld
 {
   my @data = shift;
   print header('application/json');
@@ -1338,8 +1353,12 @@ sub wrapHtml
   #print $q->p("dumping in wrapHtml ".Dumper(@response));
   foreach my $data (@response){
     if(@$data[0]->{error}){
-      #not sure if we can be more specific with status codes or if this is the right choice
-      sendStatusMsg($STATUS_NOT_ACCEPTABLE, @$data[0]->{error}[0]);
+      if(@$data[0]->{error}[0] =~ /Permission denied/ || @$data[0]->{error}[0] =~ /Authentication failure/){
+        sendStatusMsg($STATUS_UNAUTH, @$data[0]->{error}[0]);
+      }
+      else{
+        sendStatusMsg($STATUS_NOT_ACCEPTABLE, @$data[0]->{error}[0]);
+      }
       exit(0);
     }
     else{
