@@ -8,6 +8,7 @@ use warnings "all";
 
 use File::Basename;
 use File::Path;
+use Cwd qw(realpath);
 
 sub get_profile_def_filename {
    my $osver = shift;
@@ -15,6 +16,7 @@ sub get_profile_def_filename {
    my $arch = shift;
    
    my $base=shift;
+   $base=realpath($base); #get the full path
    my $ext=shift;
    
    my $dotpos;
