@@ -5,6 +5,7 @@ use strict;
 use Getopt::Long;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
+use xCAT::DBobjUtils;
 
 ##############################################
 # Globals
@@ -695,17 +696,25 @@ sub sethmcmgt
     my $hcp  = shift;
 
     my $nodehm_tab = xCAT::Table->new('nodehm', -create=>1);
-    my $ent = $nodehm_tab->getNodeAttribs( $node, ['mgt']);
-    if ( !$ent or $ent->{mgt} ne 'hmc')
-    {
-        $nodehm_tab->setNodeAttribs( $node, { mgt=>'hmc'});
-    }
-    
-    my $ppc_tab = xCAT::Table->new('ppc', -create=>1);
-    my $ent = $ppc_tab->getNodeAttribs( $node, ['hcp']);
-    if ( !$ent or $ent->{hcp} ne $hcp)
-    {
-        $ppc_tab->setNodeAttribs( $node, { hcp=>$hcp});
+    my $ppc_tab = xCAT::Table->new('ppc', -create=>1);    
+    my @nodes;
+    push @nodes, $node;
+    my $ntype = xCAT::DBobjUtils->getnodetype($node);
+    if ( $ntype =~ /^(cec|frame)$/ )  {
+        my $cnodep = xCAT::DBobjUtils->getchildren($node);
+        if ($cnodep) {
+            push @nodes, @$cnodep;
+        }    
+    }            
+    for my $n (@nodes) {
+        my $ent = $nodehm_tab->getNodeAttribs( $n, ['mgt']);
+        if ( !$ent or $ent->{mgt} ne 'hmc') {
+            $nodehm_tab->setNodeAttribs( $n, { mgt=>'hmc'});
+        }
+        my $ent = $ppc_tab->getNodeAttribs( $n, ['hcp']);
+        if ( !$ent or $ent->{hcp} ne $hcp) {
+            $ppc_tab->setNodeAttribs( $n, { hcp=>$hcp});
+        }        
     }
 }
 #################################################################
@@ -717,22 +726,30 @@ sub rmhmcmgt
     my $hwtype = shift;
 
     my $nodehm_tab = xCAT::Table->new('nodehm', -create=>1);
-    my $ent = $nodehm_tab->getNodeAttribs( $node, ['mgt']);
-    if ( !$ent or $ent->{mgt} ne $hwtype)
-    {
-        if ($hwtype eq "cec" || $hwtype eq "frame") {
-            $nodehm_tab->setNodeAttribs( $node, { mgt=>"fsp"});
-        } else {    
-            $nodehm_tab->setNodeAttribs( $node, { mgt=>$hwtype});
+    my $ppc_tab = xCAT::Table->new('ppc', -create=>1);
+    my @nodes;
+    push @nodes, $node;
+    my $ntype = xCAT::DBobjUtils->getnodetype($node);
+    if ( $ntype =~ /^(cec|frame)$/ )  {
+        my $cnodep = xCAT::DBobjUtils->getchildren($node);
+        if ($cnodep) {
+            push @nodes, @$cnodep;
         }    
     }
-    
-    my $ppc_tab = xCAT::Table->new('ppc', -create=>1);
-    my $ent = $ppc_tab->getNodeAttribs( $node, ['hcp']);
-    if ( !$ent or $ent->{hcp} ne $node)
-    {
-        $ppc_tab->setNodeAttribs( $node, { hcp=>$node});
-    }
+    for my $n (@nodes) {
+        my $ent = $nodehm_tab->getNodeAttribs( $n, ['mgt']);
+        if ( !$ent or $ent->{mgt} ne $hwtype) {
+            if ($hwtype eq "cec" || $hwtype eq "frame") {
+                $nodehm_tab->setNodeAttribs( $n, { mgt=>"fsp"});
+            } else {    
+                $nodehm_tab->setNodeAttribs( $n, { mgt=>$hwtype});
+            }    
+        }
+        my $ent = $ppc_tab->getNodeAttribs( $n, ['hcp']);
+        if ( !$ent or $ent->{hcp} ne $n) {
+            $ppc_tab->setNodeAttribs( $n, { hcp=>$n});
+        }
+    }    
 }
 
 1;
