@@ -2384,6 +2384,17 @@ sub parse_responses {
                 $parent = undef;   # Frame and HMC have no parent
             }
         }
+        if ( !defined( $parent ) ) {
+            if ( exists $vpd_table_hash{$bpamtm . '*' . $bpasn . '-'} ) {
+                my $existing_node = $vpd_table_hash{$bpamtm . '*' . $bpasn . '-'};
+                my $type1 = xCAT::DBobjUtils->getnodetype($existing_node);
+                if ( $type1 eq "frame" and ($type eq TYPE_BPA or $type eq TYPE_CEC) ) {
+                    $parent = $existing_node;
+                } elsif ( $type1 eq "cec" and $type eq TYPE_FSP ) {
+                    $parent = $existing_node;
+                }
+            }
+        }
 
         push @$data, $parent;
 
