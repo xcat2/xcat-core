@@ -3092,7 +3092,18 @@ sub nodeSet {
 		my $mask       = $propVals->{'mask'};
 		my $gateway    = $propVals->{'gateway'};
 		my $ftp        = $propVals->{'tftpserver'};
-		my $nameserver = $propVals->{'nameservers'};
+
+		# convert <xcatmaster> to nameserver IP
+		my $nameserver;
+		if ($propVals->{'nameservers'} eq '<xcatmaster>')
+		{
+		    $nameserver = xCAT::InstUtils->convert_xcatmaster();
+		}
+		else
+		{
+		    $nameserver = $propVals->{'nameservers'};
+		}
+    
 		if ( !$network || !$mask || !$ftp || !$nameserver ) {
 
 			# It is acceptable to not have a gateway
