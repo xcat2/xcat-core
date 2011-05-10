@@ -446,11 +446,29 @@ sub addrangedetection {
     my $trange;
     my $begin;
     my $end;
-    $netcfgs{$net->{net}}->{nameservers} = $net->{nameservers};
+
+    # convert <xcatmaster> to nameserver IP
+    if ($net->{nameservers} eq '<xcatmaster>')
+    {
+        $netcfgs{$net->{net}}->{nameservers} = xCAT::InstUtils->convert_xcatmaster();
+    }
+    else
+    {
+        $netcfgs{$net->{net}}->{nameservers} = $net->{nameservers};
+    }
+    
     $netcfgs{$net->{net}}->{ddnsdomain} = $net->{ddnsdomain};
     $netcfgs{$net->{net}}->{domain} = $domain; #TODO: finer grained domains
     unless ($netcfgs{$net->{net}}->{nameservers}) {
-        $netcfgs{$net->{net}}->{nameservers} = $::XCATSITEVALS{nameservers};
+        # convert <xcatmaster> to nameserver IP
+        if ($::XCATSITEVALS{nameservers} eq '<xcatmaster>')
+        {
+            $netcfgs{$net->{net}}->{nameservers} = xCAT::InstUtils->convert_xcatmaster();
+        }
+        else
+        {
+            $netcfgs{$net->{net}}->{nameservers} = $::XCATSITEVALS{nameservers};
+        }
     }
     foreach $trange (split /;/,$tranges) {
         if ($trange =~ /[ ,-]/) { #a range of one number to another..
@@ -790,7 +808,15 @@ sub process_request
         }
         ($href) = $sitetab->getAttribs({key => 'nameservers'}, 'value');
         if ($href and $href->{value}) {
-            $sitenameservers = $href->{value};
+            # convert <xcatmaster> to nameserver IP
+            if ($href->{value} eq '<xcatmaster>')
+            {
+                $sitenameservers = xCAT::InstUtils->convert_xcatmaster();
+            }
+            else
+            {
+                $sitenameservers = $href->{value};
+            }
         }
         ($href) = $sitetab->getAttribs({key => 'ntpservers'}, 'value');
         if ($href and $href->{value}) {
@@ -1502,7 +1528,15 @@ sub addnet
             }
             if ($ent and $ent->{nameservers})
             {
-                $nameservers = $ent->{nameservers};
+                # convert <xcatmaster> to nameserver IP
+                if ($ent->{nameservers} eq '<xcatmaster>')
+                {
+                    $nameservers = xCAT::InstUtils->convert_xcatmaster();
+                }
+                else
+                {
+                    $nameservers = $ent->{nameservers};
+                }
             }
             else
             {
