@@ -1539,14 +1539,20 @@ sub preprocess_request {
                 return;
             }
             foreach my $node (@missednodes) {
+                my ($ent) = $ppctab->getAttribs({hcp=>$node}, "hcp");
+                if (defined($ent)) {
+                    push @{$hcp_hash{$node}{nodes}}, $node; 
+                    next;
+                }
+
                 my $ent=$ppctab->getNodeAttribs($node,['hcp']);
-                #if (defined($ent->{hcp})) { push @{$hcp_hash{$ent->{hcp}}{nodes}}, $node;}
+#if (defined($ent->{hcp})) { push @{$hcp_hash{$ent->{hcp}}{nodes}}, $node;}
                 if (defined($ent->{hcp})) {
-		            #for multiple hardware control points, the hcps should be split to nodes
-		            my @h = split(",", $ent->{hcp}); 
-		            foreach my $hcp (@h) {
+#for multiple hardware control points, the hcps should be split to nodes
+                    my @h = split(",", $ent->{hcp}); 
+                    foreach my $hcp (@h) {
                         push @{$hcp_hash{$hcp}{nodes}}, $node;
-		            }  
+                    }  
                 } else { 
                     $callback->({data=>["The node $node is neither a hcp nor an lpar"]});
                     $req = {};
@@ -1555,7 +1561,7 @@ sub preprocess_request {
             }
         }
 
-        # find service nodes for the HCPs
+# find service nodes for the HCPs
         # build an individual request for each service node
         my $service  = "xcat";
         my @hcps=keys(%hcp_hash);
