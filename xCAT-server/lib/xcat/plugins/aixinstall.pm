@@ -4072,7 +4072,18 @@ sub mk_resolv_conf_file
     my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
     my $domain = $tmp->{value};
     my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
-    my $nameservers = $tmp2->{value};
+
+    # convert <xcatmaster> to nameserver IP
+    my $nameservers;
+    if ($tmp2->{value} eq '<xcatmaster>')
+    {
+        $nameservers = xCAT::InstUtils->convert_xcatmaster();
+    }
+    else
+    {
+        $nameservers = $tmp2->{value};
+    }
+
     $sitetab->close;
 
     # if set then create file
@@ -4210,7 +4221,18 @@ sub chk_resolv_conf
 	my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
     my $site_domain = $tmp->{value};
 	my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
-    my $site_nameservers = $tmp2->{value};
+	
+    # convert <xcatmaster> to nameserver IP
+    my $site_nameservers;
+    if ($tmp2->{value} eq '<xcatmaster>')
+    {
+        $site_nameservers = xCAT::InstUtils->convert_xcatmaster();
+    }
+    else
+    {
+        $site_nameservers = $tmp2->{value};
+    }
+    
     $sitetab->close;
 
 	#  Get a list of the all NIM resources
@@ -4500,7 +4522,16 @@ sub mk_resolv_conf
         my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
         my $domain = $tmp->{value};
         my ($tmp2) = $sitetab->getAttribs({'key' => 'nameservers'}, 'value');
-        my $nameservers = $tmp2->{value};
+        # convert <xcatmaster> to nameserver IP
+        my $nameservers;
+        if ($tmp2->{value} eq '<xcatmaster>')
+        {
+            $nameservers = xCAT::InstUtils->convert_xcatmaster();
+        }
+        else
+        {
+            $nameservers = $tmp2->{value};
+        }
         $sitetab->close;
 
         # if set then we want a resolv_conf file
