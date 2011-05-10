@@ -1329,5 +1329,23 @@ sub dolitesetup
 	return 0;
 }
 
+#----------------------------------------------------------------------------
+
+=head3  convert_xcatmaster
+
+    Convert the keyword <xcatmaster> of nameservers attr in site/networks table to IP address.
+    (Either the management node or a service node)
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub convert_xcatmaster
+{
+    my $shorthost = xCAT::InstUtils->myxCATname();
+    my $selfip = xCAT::NetworkUtils->getipaddr($shorthost);
+
+    return $selfip;
+}
 
 1;
