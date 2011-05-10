@@ -678,12 +678,16 @@ sub chvm {
 		xCAT::SvrUtils::sendmsg([1,"Could not parse options, ".shift()], $output_handler);
 	};
     my @otherparams;
+    my $cdrom;
+    my $eject;
 	my $rc = GetOptions(
 		"d=s"       => \@deregister,
 		"p=s"       => \@purge,
 		"a=s"       => \@add,
         "o=s"       => \@otherparams,
 		"resize=s%" => \%resize,
+		"optical|cdrom|c=s" => \$cdrom,
+		"eject" => \$eject,
 		"cpus=s"    => \$cpuCount,
 		"mem=s"     => \$memory
 	);
@@ -802,6 +806,57 @@ sub chvm {
         push @devChanges, create_storage_devs($node,$hyphash{$hyp}->{datastoremap},$addSizes,$scsiCont,$scsiUnit,$ideCont,$ideUnit,$devices,idefull=>$idefull,scsifull=>$scsifull);
     }
 
+	if ($cdrom or $eject) {
+		my $opticalbackingif;
+		my $opticalconnectable;
+    	if ($cdrom) {
+		    my $storageurl;
+			if ($cdrom =~ m!://!) {
+				$storageurl=$cdrom;
+				$storageurl =~ s!/[^/]*\z!!;
+				unless (validate_datastore_prereqs([],$hyp,{$storageurl=>[$node]})) {
+					xCAT::SvrUtils::sendmsg([1,"Unable to find/mount datastore holding $cdrom"], $output_handler,$node);
+					return;
+				}
+				$cdrom =~ s!.*/!!;
+			} else {
+				$storageurl = $tablecfg{vm}->{$node}->[0]->{storage};
+				$storageurl =~ s/=.*//;
+				$storageurl =~ s/.*,//;
+				$storageurl =~ s/\/\z//;
+			}
+	        $opticalbackingif = VirtualCdromIsoBackingInfo->new( fileName => "[".$hyphash{$hyp}->{datastoremap}->{$storageurl}."] $cdrom");
+	    	$opticalconnectable = VirtualDeviceConnectInfo->new(startConnected=>1,allowGuestControl=>1,connected=>1);
+		} elsif ($eject) {
+			$opticalbackingif=VirtualCdromRemoteAtapiBackingInfo->new(deviceName=>"");
+	    	$opticalconnectable=VirtualDeviceConnectInfo->new(startConnected=>0,allowGuestControl=>1,connected=>0);
+		}
+			my $oldcd;
+			foreach my $dev (@$devices) {
+				if ($dev->deviceInfo->label eq "CD/DVD drive 1") {
+					$oldcd=$dev;
+					last;
+				}
+			}
+			unless ($oldcd) {
+				if ($cdrom) {
+					xCAT::SvrUtils::sendmsg([1,"Unable to find Optical drive in VM to insert ISO image"], $output_handler,$node);
+				} else {
+					xCAT::SvrUtils::sendmsg([1,"Unable to find Optical drive in VM to perform eject"], $output_handler,$node);
+				}
+				return;
+			}
+			my $newDevice = VirtualCdrom->new(backing => $opticalbackingif,
+						key=>$oldcd->key,
+						controllerKey=>201,
+						unitNumber=>0,
+                        connectable=>$opticalconnectable,
+						);
+				push @devChanges, VirtualDeviceConfigSpec->new(
+						device => $newDevice,
+						operation =>  VirtualDeviceConfigSpecOperation->new('edit'));
+
+	}
 	if(%resize) {
 		while( my ($key, $value) = each(%resize) ) {
 			my @drives = split(/,/, $key);
