@@ -6873,7 +6873,6 @@ sub prenimnodeset
 					'b|backupSN'  => \$::BACKUP,
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
-                    'hfi'       => \$::HFI,
                     'i=s'       => \$::OSIMAGE,
 					'l=s'       => \$::opt_l,
                     'n|new'     => \$::NEWNAME,
@@ -8081,7 +8080,6 @@ sub mkdsklsnode
 					'b|backup'  => \$::BACKUP,
                     'f|force'   => \$::FORCE,
                     'h|help'    => \$::HELP,
-                    'hfi'       => \$::HFI,
                     'i=s'       => \$::OSIMAGE,
 					'l=s'       => \$::opt_l,
                     'n|new'     => \$::NEWNAME,
@@ -8476,44 +8474,53 @@ sub mkdsklsnode
             my $mac_or_local_link_addr;
             my $adaptertype;
             my $netmask;
+            my $if = 1;
+            my $netname;
             # Use -F to workaround ping time during diskless node defined in nim
             my $defcmd = "/usr/sbin/nim -Fo define -t $type ";
 
             $objhash{$node}{'mac'} =~ s/://g;    # strip out colons if any
-            if (xCAT::NetworkUtils->getipaddr($nodeshorthost) =~ /:/) #ipv6 node
+            my @macs = split /\|/, $objhash{$node}{'mac'};
+            foreach my $mac (@macs)
             {
-                $mac_or_local_link_addr = xCAT::NetworkUtils->linklocaladdr($objhash{$node}{'mac'});
-                $adaptertype = "ent6";
-                $netmask = xCAT::NetworkUtils->prefixtomask($nethash{$node}{'mask'});
-            } else {
-                $mac_or_local_link_addr = $objhash{$node}{'mac'};
-                # only support Ethernet for management interfaces
-                if ($::HFI)
+                if (xCAT::NetworkUtils->getipaddr($nodeshorthost) =~ /:/) #ipv6 node
                 {
-                    $adaptertype = "hfi0";
+                    $mac_or_local_link_addr = xCAT::NetworkUtils->linklocaladdr($mac);
+                    $adaptertype = "ent6";
+                    $netmask = xCAT::NetworkUtils->prefixtomask($nethash{$node}{'mask'});
                 } else {
-                    $adaptertype = "ent";
+                    $mac_or_local_link_addr = $mac;
+                    # only support Ethernet for management interfaces
+                    if ($nethash{$node}{'mgtifname'} =~ /hf/)
+                    {
+                        $adaptertype = "hfi0";
+                    } else {
+                        $adaptertype = "ent";
+                    }
+                    $netmask = $nethash{$node}{'mask'};
                 }
-                $netmask = $nethash{$node}{'mask'};
-            }
-                   
-            my $netname = $nethash{$node}{'netname'}; 
 
-            if ($::NEWNAME)
-            {
-                $defcmd .= "-a if1='find_net $nodeshorthost 0' ";
-            } else
+                $netname = $nethash{$node}{'netname'};
+
+                if ($::NEWNAME)
+                {
+                    $defcmd .= "-a if$if='find_net $nodeshorthost 0' ";
+                } else
+                {
+                    $defcmd .=
+                          "-a if$if='find_net $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
+                }
+
+                $defcmd .= "-a cable_type$if=N/A ";
+                $if = $if + 1;
+            }
+
+            $defcmd .= "-a netboot_kernel=mp ";
+
+            if ($nethash{$node}{'mgtifname'} !~ /hf/)
             {
                 $defcmd .=
-                      "-a if1='find_net $nodeshorthost $mac_or_local_link_addr $adaptertype' ";
-            }
-
-            $defcmd .= "-a cable_type1=N/A -a netboot_kernel=mp ";
-
-            if (!$::HFI)
-            {
-                $defcmd .=
-                    "-a net_definition='$adaptertype $netmask $nethash{$node}{'gateway'}' "; 
+                    "-a net_definition='$adaptertype $netmask $nethash{$node}{'gateway'}' ";
                 $defcmd .= "-a net_settings1='$speed $duplex' ";
             }
 
@@ -8526,7 +8533,6 @@ sub mkdsklsnode
                     $defcmd .= "-a $attr=$attrs{$attr} ";
                 }
             }
-
             $defcmd .= "$nim_name  2>&1";
             if ($::VERBOSE)
             {
@@ -8535,10 +8541,10 @@ sub mkdsklsnode
                 #push @{$rsp->{data}}, "Running: \'$defcmd\'\n";
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             } else {
-				my $rsp;
-				push @{$rsp->{data}}, "$Sname: Creating NIM client definition \'$nim_name.\'\n";
-				xCAT::MsgUtils->message("I", $rsp, $callback);
-			}
+                               my $rsp;
+                               push @{$rsp->{data}}, "$Sname: Creating NIM client definition \'$nim_name.\'\n";
+                               xCAT::MsgUtils->message("I", $rsp, $callback);
+                       }
             $output = xCAT::Utils->runcmd("$defcmd", -1);
             if ($::RUNCMD_RC != 0)
             {
@@ -8599,10 +8605,10 @@ sub mkdsklsnode
             if ($imagehash{$image_name}{paging})
             {
                 $arg_string .= "-a paging=$imagehash{$image_name}{paging} ";
-				# add extras from the cmd line
-				if ($attrs{sparse_paging} ) {
-					$arg_string .= "-a sparse_paging=$attrs{sparse_paging} ";
-				}
+                               # add extras from the cmd line
+                               if ($attrs{sparse_paging} ) {
+                                       $arg_string .= "-a sparse_paging=$attrs{sparse_paging} ";
+                               }
             }
             if ($imagehash{$image_name}{resolv_conf})
             {
@@ -8612,12 +8618,12 @@ sub mkdsklsnode
             if ($imagehash{$image_name}{dump})
             {
                 $arg_string .= "-a dump=$imagehash{$image_name}{dump} ";
-				if ($attrs{configdump} ) {
-					$arg_string .= "-a configdump=$attrs{configdump} ";
-				} else {
-					# the default is selective
-					$arg_string .= "-a configdump=selective ";
-				}
+                               if ($attrs{configdump} ) {
+                                       $arg_string .= "-a configdump=$attrs{configdump} ";
+                               } else {
+                                       # the default is selective
+                                       $arg_string .= "-a configdump=selective ";
+                               }
             }
             if ($imagehash{$image_name}{home})
             {
@@ -8670,7 +8676,7 @@ sub mkdsklsnode
 
             my $rsp;
             push @{$rsp->{data}}, "$Sname: Initializing NIM machine \'$nim_name\'. \n";
-			xCAT::MsgUtils->message("I", $rsp, $callback);
+                       xCAT::MsgUtils->message("I", $rsp, $callback);
 
             $output = xCAT::Utils->runcmd("$initcmd", -1);
             if ($::RUNCMD_RC != 0)
@@ -8721,6 +8727,36 @@ sub mkdsklsnode
 
         }
 
+        # Update /etc/bootptab for HFI mac address failover
+        my $if = 1;
+        my $firstmac;
+        my @macs = split /\|/, $objhash{$node}{'mac'};
+        my $cmd = "cat /etc/bootptab | grep $macs[0]";
+        my @result = xCAT::Utils->runcmd("$cmd", -1);
+        if ($::RUNCMD_RC == 0)
+        {
+            foreach my $mac (@macs)
+            {
+                my $newline = $result[0];
+                if ($if == 1)
+                {
+                    $if = $if + 1;
+                    $firstmac = $mac;
+                    next;
+                }
+                my $cmd = "cat /etc/bootptab | grep $mac";
+                my @rt = xCAT::Utils->runcmd("$cmd", -1);
+                if ($::RUNCMD_RC == 0)
+                {
+                    $if = $if + 1;
+                    next;
+                }
+                $newline =~ s/^(.*)$firstmac(.*)$/$1$mac$2/g;
+                $cmd = "echo $newline >> /etc/bootptab";
+                xCAT::Utils->runcmd("$cmd", -1);
+                $if = $if + 1;
+           }
+        }
     }    # end - for each node
 
     #
@@ -9095,7 +9131,7 @@ sub checkNIMnetworks
             # create new nim network def
             # use the same network name as xCAT uses
             my $devtype;
-            if ($::HFI) 
+            if ($nethash{$node}{'mgtifname'} =~ /hf/)
             {
                 $devtype = "hfi";
             } else {
