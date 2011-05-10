@@ -2645,6 +2645,14 @@ sub build_cfgspec {
     }
     my @devices;
     $currkey=0;
+    my $opticalbacking = VirtualCdromRemoteAtapiBackingInfo->new(deviceName=>"");
+    my $opticalconnectable = VirtualDeviceConnectInfo->new(startConnected=>0,allowGuestControl=>1,connected=>0);
+    my $optical =VirtualCdrom->new( controllerKey => 201,
+                        connectable=>$opticalconnectable,
+                        backing=>$opticalbacking,
+                        key => $currkey++,
+                        unitNumber => 0, );
+	push @devices,VirtualDeviceConfigSpec->new(device => $optical, operation =>  VirtualDeviceConfigSpecOperation->new('add'));
     push @devices,create_storage_devs($node,$dses,$disksize);
     push @devices,create_nic_devs($node,$netmap,$hyp);
     #my $cfgdatastore = $tablecfg{vm}->{$node}->[0]->{storage}; #TODO: need a new cfglocation field in case of stateless guest?
