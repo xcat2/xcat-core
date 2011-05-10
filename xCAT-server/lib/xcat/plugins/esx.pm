@@ -2867,6 +2867,12 @@ sub create_storage_devs {
             while ($usedideunits{$unitnum}) {
               $unitnum++;
             }
+			if ($unitnum == 2) {
+				$idecontrollerkey++;
+				$ideunitnum=1;
+				$unitnum=1;
+				$controllerkey=$idecontrollerkey;
+			}
             $usedideunits{$unitnum}=1;
         } else {
             $controllerkey = $scsicontrollerkey;
