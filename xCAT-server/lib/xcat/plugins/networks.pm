@@ -541,6 +541,13 @@ sub donets
 				}
 
             	my $tent = $nettab->getAttribs({'net' => $net, 'mask' => $mask}, 'nameservers');
+
+                # convert <xcatmaster> to nameserver IP
+                if ($tent->{nameservers} eq '<xcatmaster>')
+                {
+                    $tent->{nameservers} = xCAT::InstUtils->convert_xcatmaster();
+                }
+    
             	unless ($tent and $tent->{nameservers})
             	{
                 	my $text = join ',', @nameservers;
