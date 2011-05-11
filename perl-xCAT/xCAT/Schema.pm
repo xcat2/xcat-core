@@ -442,7 +442,7 @@ networks => {
   gateway => 'The network gateway. It can be set to an ip address or the keyword <xcatmaster>, the keyword <xcatmaster> indicates the cluster-facing ip address configured on this management node or service node. Leaving this field blank means that there is no gateway for this network.',
   dhcpserver => 'The DHCP server that is servicing this network.  Required to be explicitly set for pooled service node operation.',
   tftpserver => 'The TFTP server that is servicing this network.  If not set, the DHCP server is assumed.',
-  nameservers => 'The nameservers for this network.  Used in creating the DHCP network definition, and DNS configuration.',
+  nameservers => 'A comma delimited list of DNS servers that each node in this network should use. This value will end up in the nameserver settings of the /etc/resolv.conf on each node in this network. If this attribute value is set to the IP address of an xCAT node, make sure DNS is running on it. In a hierarchical cluster, you can also set this attribute to "<xcatmaster>" to mean the DNS server for each node in this network should be the node that is managing it (either its service node or the management node).  Used in creating the DHCP network definition, and DNS configuration.',
   ntpservers => 'The ntp servers for this network.  Used in creating the DHCP network definition.  Assumed to be the DHCP server if not set.',
   logservers => 'The log servers for this network.  Used in creating the DHCP network definition.  Assumed to be the DHCP server if not set.',
   dynamicrange => 'The IP address range used by DHCP to assign dynamic IP addresses for requests on this network.  This should not overlap with entities expected to be configured with static host declarations, i.e. anything ever expected to be a node with an address registered in the mac table.',
@@ -793,8 +793,10 @@ site => {
    "                failed nodes for any xCAT commands. See the 'noderange' manpage for\n".
    "                details on supported formats.\n\n".
    " forwarders:  The DNS servers at your site that can provide names outside of the\n".
-   "              cluster.  The DNS on the management node will forward requests it\n".
-   "              does not know to these servers.\n\n".
+   "              cluster. The makedns command will configuire the DNS on the management node\n".
+   "              to forward requests it does not know to these servers.\n".
+   "              Note that the DNS servers on the service nodes will ignore this value\n".
+   "              and always be configured to forward requests to the management node.\n\n".
    " fsptimeout:  The timeout, in milliseconds, to use when communicating with FSPs.\n\n".
    " genmacprefix:  When generating mac addresses automatically, use this manufacturing\n".
    "                prefix (e.g. 00:11:aa)\n\n".
@@ -816,7 +818,13 @@ site => {
    " mnroutenames:  The name of the routes to be setup on the management node.\n\n".
    "            It is a comma separated list of route names that are defined in the routes table.\n\n".
    " nameservers:  A comma delimited list of DNS servers that each node in the cluster\n".
-   "               should use - often the xCAT management node.\n\n".
+   "               should use. This value will end up in the nameserver settings of the\n".
+   "               /etc/resolv.conf on each node. It is common (but not required) to set\n".
+   "               this attribute value to the IP address of the xCAT management node, if you have\n".
+   "               set up the DNS on the management node by running makedns.\n".
+   "               In a hierarchical cluster, you can also set this attribute to \"<xcatmaster>\"\n".
+   "               to mean the DNS server for each node should be the node that is managing it\n".
+   "               (either its service node or the management node).\n\n".
    " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n".
    "              the node deployment, node discovery and power operations.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
