@@ -23,6 +23,7 @@ function get_def_interface {
 	IFS=$'\n'
 	INMATCH=0
 	for brline in $(brctl show); do
+	    IFS=$OIFS
 	    if [ $(expr match "$brline" $iface) == $(expr length $iface) ]; then
 		INMATCH=1
 	    elif [ $(expr match "$brline" "	") != 1 ]; then
@@ -127,6 +128,7 @@ elif [ "bridgeprereq" = "$1" ]; then
     #saveip=`ip addr show dev $PORTS scope global|grep inet|sed -e 's/inet.//'|sed -e 's/[^ ]*$//'`
     if [ ! -z "$saveip" ]; then
     	for line in $saveip; do 
+    		IFS=$OIFS
 		ip addr add dev $BNAME $line
 	done
     else
@@ -136,10 +138,15 @@ elif [ "bridgeprereq" = "$1" ]; then
     fi
     brctl addif $BNAME $PORTS
     if [ ! -z "$saveip" ]; then
+    	OIFS=$IFS
+	IFS=$'\n'
     	for line in $saveip; do 
+    		IFS=$OIFS
 		ip addr del dev $PORTS $line
 	done
+	IFS=$OIFS
     fi
+    IFS=$OIFS
     if [ ! -z "$saveroutes" ]; then
 	ip route add $saveroutes
     fi
