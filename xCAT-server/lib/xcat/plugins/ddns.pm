@@ -189,6 +189,7 @@ sub process_request {
     my $hadargs=0;
     my $allnodes;
     my $zapfiles;
+    my $svcnode;
     my $help;
     my $deletemode=0;
     if ($request->{arg}) {
@@ -196,10 +197,12 @@ sub process_request {
         @ARGV=@{$request->{arg}};
 
         Getopt::Long::Configure("no_pass_through");
+        Getopt::Long::Configure("bundling");
         if (!GetOptions(
             'a|all' => \$allnodes,
             'n|new' => \$zapfiles,
             'd|delete' => \$deletemode,
+            's|svcnode' => \$svcnode,   # internal flag to indicate makedns is run on the servicenode(e.g. from AAsn.pm).
             'h|help' => \$help,
             )) {
             #xCAT::SvrUtils::sendmsg([1,"TODO: makedns Usage message"], $callback);
@@ -323,10 +326,26 @@ sub process_request {
     if ($pent and $pent->{password}) { 
         $ctx->{privkey} = $pent->{password};
     } #do not warn/error here yet, if we can't generate or extract, we'll know later
-    $stab =  $sitetab->getAttribs({key=>'forwarders'},['value']);
-    if ($stab and $stab->{value}) {
-        my @forwarders = split /[ ,]/,$stab->{value};
-        $ctx->{forwarders}=\@forwarders;
+
+    # if $svcnode is set, then makedns is run on the servicenode
+    # we set the forwarder to site.master to always forward unknown requests to the MN
+    if ($svcnode)
+    {
+        # use site.master instead of site.forwarders
+        $stab =  $sitetab->getAttribs({key=>'master'},['value']);
+        if ($stab and $stab->{value}) {
+            my @forwarders;
+            push @forwarders, $stab->{value};
+            $ctx->{forwarders} = \@forwarders;
+        }
+    }
+    else
+    {
+        $stab =  $sitetab->getAttribs({key=>'forwarders'},['value']);
+        if ($stab and $stab->{value}) {
+            my @forwarders = split /[ ,]/,$stab->{value};
+            $ctx->{forwarders}=\@forwarders;
+        }
     }
     $ctx->{zonestotouch}->{$ctx->{domain}}=1;
     foreach (@nodes) {

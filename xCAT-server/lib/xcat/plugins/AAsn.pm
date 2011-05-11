@@ -729,6 +729,7 @@ sub setup_DNS
     my $cmdref;
     $cmdref->{command}->[0] = "makedns";
     $cmdref->{arg}->[0]     = "-n";
+    $cmdref->{arg}->[1]     = "-s";
     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
 
     no strict "refs";
