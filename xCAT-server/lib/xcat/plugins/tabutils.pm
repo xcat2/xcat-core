@@ -491,13 +491,16 @@ sub tabdump
     my $DESC;
     my $OPTW;
     my $VERSION;
+    my $FILENAME;
 
     my $tabdump_usage = sub {
         my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage: tabdump [-d] [table]";
         push @{$rsp{data}}, "       tabdump      [table]";
+        push @{$rsp{data}}, "       tabdump [-f <filename>]  [table]";
         push @{$rsp{data}}, "       tabdump [-w attr==val [-w attr=~val] ...] [table]";
+        push @{$rsp{data}}, "       tabdump [-w attr==val [-w attr=~val] ...] [-f <filename>] [table]";
         push @{$rsp{data}}, "       tabdump [-?|-h|--help]";
         push @{$rsp{data}}, "       tabdump {-v|--version}"; 
         push @{$rsp{data}}, "       tabdump ";
@@ -514,6 +517,7 @@ sub tabdump
           'h|?|help' => \$HELP,
           'v|version' => \$VERSION,
           'd' => \$DESC,
+          'f=s' => \$FILENAME,
           'w=s@' => \$OPTW,
          ) 
        )
@@ -535,6 +539,11 @@ sub tabdump
     my %rsp;
     # If no arguments given, we display a list of the tables
     if (!scalar(@ARGV)) {
+        # if -f filename give but no table name, display error
+        if ($FILENAME) {
+          $cb->({error => "table name missing from the command input. ",errorcode=>1});
+          return 1;
+        }
         if ($DESC) {  # display the description of each table
             my $tab = xCAT::Table->getDescriptions();
             foreach my $key (keys %$tab) {
@@ -587,30 +596,54 @@ sub tabdump
     my $recs;
     my @ents;
     my @attrarray;
-    if (!($OPTW)) {   # if no -w flag to filter, then get all
-      $recs = $tabh->getAllEntries("all");
-    } else {  # filter entries  
-       foreach my $w (@{$OPTW}){  # get each attr=val  
-         push @attrarray, $w;
-       }
-       @ents = $tabh->getAllAttribsWhere(\@attrarray, 'ALL');
-       @$recs = ();
-       foreach my $e (@ents) {
-          push @$recs,$e;
-       }
-     }
-     my $rec;
-     unless (@$recs)        # table exists, but is empty.  Show header.
-     {
+    if (!($FILENAME)) {  # not dumping to a file
+     if (!($OPTW)) {   # if no -w flag to filter, then get all
+       $recs = $tabh->getAllEntries("all");
+     } else {  # filter entries  
+        foreach my $w (@{$OPTW}){  # get each attr=val  
+          push @attrarray, $w;
+        }
+        @ents = $tabh->getAllAttribsWhere(\@attrarray, 'ALL');
+        @$recs = ();
+        foreach my $e (@ents) {
+           push @$recs,$e;
+        }
+      }
+      my $rec;
+      unless (@$recs)        # table exists, but is empty.  Show header.
+      {
        if (defined($xCAT::Schema::tabspec{$table}))
        {
             $tabdump_header->(@{$xCAT::Schema::tabspec{$table}->{cols}});
             $cb->(\%rsp);
             return;
        }
-     }
-     #Display all the rows of the table  the order of the columns in the schema
+      }
+      #Display all the rows of the table  the order of the columns in the schema
       output_table($table,$cb,$tabh,$recs); 
+    } else { # dump to file
+      
+      my $rc1;
+      my $fh;
+      # check to see if you can open the file
+      unless (open($fh," > $FILENAME")) {
+        $cb->({error => "Error on tabdump of $table to $FILENAME. Unable to open the file for write. ",errorcode=>1});
+        return 1;
+      }
+      close $fh;
+      if (!($OPTW)) {   # if no -w flag to filter, then get all
+       $rc1=$tabh->writeAllEntries($FILENAME);
+      } else {  # filter entries  
+        foreach my $w (@{$OPTW}){  # get each attr=val  
+          push @attrarray, $w;
+        }
+        $rc1 = $tabh->writeAllAttribsWhere(\@attrarray, $FILENAME);
+      }
+      if ($rc1 != 0) {
+        $cb->({error => "Error on tabdump of $table to $FILENAME ",errorcode=>1});
+        return 1;
+      }
+    }
 }
 # Display information from the daemon.
 #  
