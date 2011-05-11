@@ -633,7 +633,7 @@ sub rflash {
             print TMP "$stanza\n";
         } else {
             while(my ($name, $d) = each(%$h)) {
-                if ( @$d[4] !~ /^(fsp|bpa|lpar)$/ ) {
+                if ( @$d[4] !~ /^(fsp|bpa|lpar|cec|frame)$/ ) {
                        push @value, [$name,"Information only available for LPAR/CEC/BPA",RC_ERROR];
                        next;
                 }
@@ -641,10 +641,10 @@ sub rflash {
                 ###############
                 #If $name is a Lpar, the flag will be changed from "lpar" to "fsp"
                 #######################
-                if ( @$d[4] =~ /^lpar$/ ) {
+                if ( @$d[4] =~ /^lpar$/ || @$d[4] =~ /^cec$/ ) {
                                 @$d[4] = "fsp";
                                 $lflag = 1;
-                    push (@value, [$hmc,"$name is a Lpar on MTMS $mtms", 1]);
+                    #push (@value, [$hmc,"$name is a Lpar on MTMS $mtms", 1]);
                 }
                 if( @$d[4] eq "fsp" ) {
                     $component = "system";
@@ -807,8 +807,8 @@ sub rflash {
     #  The above code isn't supported.
     
     my $cmd_hmc = "csmlicutil $tmp_file";
-    #my $cmd_hmc = "ls";
-    print "before runxcmd, current_userid = $current_userid\n";
+    #my $cmd_hmc = "ls -al";
+    print "before runxcmd, current_userid = $current_userid; DSH_TO_USERID=$user \n";
     my $res = xCAT::Utils->runxcmd(  {
                                      command => ['xdsh'],
                                      node    => [$hmc],
