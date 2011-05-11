@@ -57,7 +57,8 @@ foreach my $table (@output)
       next;
     }
 
-    $cmd = "tabdump $table > $::PATH/$table.csv";
+    #$cmd = "tabdump $table > $::PATH/$table.csv";
+    $cmd = "tabdump -f $::PATH/$table.csv $table";
     my @errout = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
     {    # error
