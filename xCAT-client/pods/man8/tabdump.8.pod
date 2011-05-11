@@ -8,7 +8,11 @@ B<tabdump> [I<-d>] [I<table>]
 
 B<tabdump> [I<table>]
 
+B<tabdump> [I<-f> I<filename>] [I<table>]
+
 B<tabdump> [I<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<table>]
+
+B<tabdump> [I<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<-f> I<filename>] [I<table>]
 
 B<tabdump> [I<-v> | I<--version>]
 
@@ -49,6 +53,11 @@ Operator descriptions:
         =~        Select nodes where the attribute value matches the SQL LIKE value.
         !~        Select nodes where the attribute value matches the SQL NOT LIKE value.
 
+
+=item B<-f>
+
+File name or path to file in which to dump the table. Without this the table is dumped
+to stdout.  Using the -f flag allows the table to be dumped one record at a time. If tables are very large, dumping to stdout can cause problems such as running out of memory. 
 
 =back
 
