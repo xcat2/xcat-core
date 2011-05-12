@@ -717,37 +717,6 @@ sub setup_FTP
 #-----------------------------------------------------------------------------
 sub setup_DNS
 {
-    my $rc = 0;
-
-    # run makedns
-    my $XCATROOT = "/opt/xcat";    # default
-
-    if ($ENV{'XCATROOT'})
-    {
-        $XCATROOT = $ENV{'XCATROOT'};
-    }
-    my $cmdref;
-    $cmdref->{command}->[0] = "makedns";
-    $cmdref->{arg}->[0]     = "-n";
-    $cmdref->{arg}->[1]     = "-s";
-    $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-
-    no strict "refs";
-    my $modname = "ddns";
-    ${"xCAT_plugin::" . $modname . "::"}{process_request}
-      ->($cmdref, \&xCAT::Client::handle_response);
-
-    my $rc = xCAT::Utils->startService("named");
-    if ($rc != 0)
-    {
-        return 1;
-    }
-
-    return $rc;
-}
-
-if(0)
-{
 
     my $XCATROOT = "/opt/xcat";    # default
 
