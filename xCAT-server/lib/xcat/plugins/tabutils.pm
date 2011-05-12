@@ -287,10 +287,13 @@ sub noderm
                 my $cnodep = xCAT::DBobjUtils->getchildren($nn);
                 if ($cnodep) {
                     my $cnode = join ',', @$cnodep;            
-                    my $rsp;
-                    $rsp->{data}->[0] =
-                      "Removed a $nt node, please remove these nodes belongs to it manually: $cnode \n";
-                    xCAT::MsgUtils->message("I", $rsp, $cb);
+                    if ($cnode)
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] =
+                          "Removed a $nt node, please remove these nodes belongs to it manually: $cnode \n";
+                        xCAT::MsgUtils->message("I", $rsp, $cb);
+                    }
                 }
             }
         }
