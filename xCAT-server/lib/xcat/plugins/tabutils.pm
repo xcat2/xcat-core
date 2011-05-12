@@ -310,6 +310,11 @@ sub tabrestore
     my $request    = shift;
     my $cb         = shift;
     my $table      = $request->{table}->[0];
+    # do not allow teal tables
+    if ( $table =~ /^x_teal/ ) {
+        $cb->({error => "$table is not supported in tabrestore. Use Teal maintenance commands. ",errorcode=>1});
+        return 1;
+    }
     my $tab        = xCAT::Table->new($table, -create => 1, -autocommit => 0);
     unless ($tab) {
         $cb->({error => "Unable to open $table",errorcode=>4});
@@ -562,6 +567,11 @@ sub tabdump
     }
     # get the table name
     $table = $ARGV[0];
+    # do not allow teal tables
+    if ( $table =~ /^x_teal/ ) {
+        $cb->({error => "$table is not supported in tabdump. Use Teal maintenance commands. ",errorcode=>1});
+        return 1;
+    }
     if ($DESC) {     # only show the attribute descriptions, not the values
         my $schema = xCAT::Table->getTableSchema($table);
         if (!$schema) { $cb->({error => "table $table does not exist.",errorcode=>1}); return; }
