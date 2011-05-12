@@ -859,12 +859,14 @@ sub initDB
         $master = "NORESOLUTION";
     }
     # get forwarders which are the nameserver entries in /etc/resolv.conf
+    my $forwarders;
     my @names =
-      xCAT::Utils->runcmd(
-              "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'",
-              0);
-    my $forwarders     = join(',', @names);
-
+    xCAT::Utils->runcmd(
+       "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'", -1);
+    if (@names)
+    {
+       $forwarders     = join(',', @names);
+    }
  
     # for policy table
     # get hostname from the /etc/xcat/cert/server-cert.pem
