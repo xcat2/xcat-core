@@ -1315,23 +1315,28 @@ sub getHMCcontrolIP
 
 
     #get node ip from hmc
-    my $nodes_found = lssyscfg( $exp, "$type", "$node","name,ipaddr,ipaddr_secondary" );
+    my $tab = xCAT::Table->new("vpd");
+    my $ent;
+    if ($tab) {
+       $ent = $tab->getNodeAttribs($node, ['serial', 'mtm']);	
+    }
+    my $serial = $ent->{'serial'};
+    my $mtm  = $ent->{'mtm'};
+    my $mtms = $mtm . '*' . $serial;
+    my $nodes_found = lssyscfg( $exp, "$type", "$mtms");
     my @ips;
     my $ip_result;
     if ( @$nodes_found[0] eq SUCCESS ) {
         my $Rc = shift(@$nodes_found);
         #foreach my $mtms ( @$nodes_found ) {
-      my @newnodes = split(/,/, $nodes_found->[0]);
-            if ( $node eq $newnodes[0] ) {
-                if(xCAT::Utils->isIpaddr($newnodes[1]))  {
-                    push @ips, $newnodes[1];
-                }
-                if(xCAT::Utils->isIpaddr($newnodes[2]))  {
-                    push @ips, $newnodes[2];
-                }
-                $ip_result = join( ",", @ips );
-            }
-        #}
+        my @newnodes = split(/,/, $nodes_found->[0]);
+        $Rc = shift(@newnodes);
+        for my $entry (@newnodes) {
+            if(xCAT::Utils->isIpaddr($entry)) {
+                push @ips,$entry;
+            }    
+            $ip_result = join( ",", @ips );
+        }    
     }
     return $ip_result;
 }
