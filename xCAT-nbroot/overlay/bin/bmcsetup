@@ -43,11 +43,11 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
-	    let idev=0
+	    let idev=NUMBMCS-1
 	    for p in $BMCPORT; do
             	ipmitool -d $idev raw 0xc 1 1 0xc0 $p > /dev/null
             	ipmitool -d $idev raw 0x04 0x12 0x09 0x01 0x18 0x${p}1 0x00 > /dev/null
-	    	let idev=idev+1
+	    	let idev=idev-1
 	    done
         fi
     else
@@ -55,10 +55,10 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
         if [ "$IBMFAM" == "59554f4f" ]; then
             BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
             if [ ! -z "$BMCPORT" ]; then
-	    	let idev=0
+	    	let idev=NUMBMCS-1
 		    for p in $BMCPORT; do
 	            	ipmitool -d $idev raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
-		    	let idev=idev+1
+		    	let idev=idev-1
 		    done
             fi
         fi
@@ -69,10 +69,10 @@ elif [ "$IPMIMFG" == 20301 ] ; then
         LOCKEDUSERS=1
         BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
-	    	let idev=0
+	    	let idev=NUMBMCS-1
 		    for p in $BMCPORT; do
 	            	ipmitool -d $idev raw 0xc 1 1 0xc0 $BMCPORT > /dev/null
-		    	let idev=idev+1
+		    	let idev=idev-1
 		    done
         fi
     fi
@@ -97,7 +97,7 @@ while [ $idev -gt 0 ]; do
 	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 	done
 done
-let idev=0
+let idev=NUMBMCS-1
 for b in $BMCIP; do
 	TRIES=0
 	while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
@@ -105,9 +105,9 @@ for b in $BMCIP; do
 	    let TRIES=TRIES+1
 	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 	done
-	let idev=idev+1
+	let idev=idev-1
 done
-let idev=0
+let idev=NUMBMCS-1
 for m in $BMCNM; do
 	TRIES=0
 	while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
@@ -115,11 +115,11 @@ for m in $BMCNM; do
 	    let TRIES=TRIES+1
 	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
 	done
-	let idev=idev+1
+	let idev=idev-1
 done
 TRIES=0
 if [ ! -z "$BMCGW" ]; then
-    let idev=0
+    let idev=NUMBMCS-1
     for g in $BMCGW; do
     	TRIES=0
 	    while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
@@ -127,11 +127,11 @@ if [ ! -z "$BMCGW" ]; then
 	        let TRIES=TRIES+1
 	        if [ $TRIES -gt $TIMEOUT ]; then break; fi
 	    done
-            let idev=idev+1
+            let idev=idev-1
     done
     TRIES=0
 fi
-let idev=0
+let idev=NUMBMCS-1
 for bmcu in $BMCUS; do
 DISABLEUSERS="1 2 3 4"
 if [ ! -z "$LOCKEDUSERS" ]; then
@@ -177,9 +177,9 @@ if [ "$CURRENTUSER" != "$bmcu" ]; then
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
     done
 fi
-let idev=idev+1
+let idev=idev-1
 done
-let idev=0
+let idev=NUMBMCS-1
 for bmcp in $BMCPW; do
 TRIES=0
 while ! ipmitool -d $idev user set password $USERSLOT $bmcp; do
@@ -190,7 +190,7 @@ done
 TRIES=0
 echo "Set up following user table: "
 ipmitool -d $idev user list $LANCHAN
-let idev=idev+1
+let idev=idev-1
 done
 
 let idev=NUMBMCS
@@ -267,7 +267,11 @@ if [ ! "$IPMIVER" == "1.5"  ]; then
     done
     if [ $TRIES -gt $TIMEOUT ]; then echo "ERROR"; else echo "OK"; fi
     echo -n "Putting SOL on channel $LANCHAN:"
-    while ! ipmitool -d $idev raw 0xc 0x21 $LANCHAN 7 $LANCHAN > /dev/null; do
+    while ! OUTPUT=`ipmitool -d $idev raw 0xc 0x21 $LANCHAN 7 $LANCHAN 2>&1 > /dev/null`; do
+	if echo $OUTPUT|grep "Unknown (0x80)" > /dev/null; then
+		echo "Not Needed"
+		break
+        fi
         sleep 1
         let TRIES=TRIES+1
         if [ $TRIES -gt $TIMEOUT ]; then break; fi
