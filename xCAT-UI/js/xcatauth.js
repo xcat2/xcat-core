@@ -61,7 +61,7 @@ function onlogin(data, txtStatus) {
 			// Remembered what page they were trying to go to
 	        window.location = window.location.pathname;
 		} else {
-		    window.location = 'manual.php';
+		    window.location = 'guide.php';
 		}
 		
 		// Set the logonflag

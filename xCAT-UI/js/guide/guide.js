@@ -1,9 +1,9 @@
-function loadManualPage(){
- // Create monitor tab
+function loadGuidePage(){
+	//create guide tab
     var tab = new Tab();
     tab.init();
     $('#content').append(tab.object());
-    //add the help content
+	//add the help content
     var helpForm = $('<div class="form"></div>');
     helpForm.append('<fieldset><legend>Quick Start</legend><ol>' +
              '<li><a href="configure.php">1. Discover hardware</a><br/>Discover all hardware in the cluster. Define them in the xCAT database. Initialize your cluster.</li>' +
