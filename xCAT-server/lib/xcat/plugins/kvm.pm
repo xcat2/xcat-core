@@ -679,7 +679,7 @@ sub getcons {
       my ($graphicsnode) = $parseddom->findnodes("//graphics");
       
       my $tpasswd=genpassword(16);
-      my $validto=POSIX::strftime("%Y-%m-%dT%H:%M:%S",gmtime(time()+300));
+      my $validto=POSIX::strftime("%Y-%m-%dT%H:%M:%S",gmtime(time()+60));
       $graphicsnode->setAttribute("passwd",$tpasswd);
       $graphicsnode->setAttribute("passwdValidTo",$validto);
       $dom->update_device($graphicsnode->toString());
