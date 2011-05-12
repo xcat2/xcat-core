@@ -1063,6 +1063,46 @@ sub resolve {
         $att->{type}     = $type;
         $att->{parent}   = exists($att->{parent}) ? $att->{parent} : 0;
         $att->{bpa}      = $att->{parent};
+
+        my $ntype;
+        if ( exists( $att->{parent} )) {
+            $ntype = xCAT::DBobjUtils->getnodetype($att->{parent});
+        }
+        if (( $request->{command} eq "rvitals" ) &&
+                ( $request->{method}  =~ /^all|temp$/ && $ntype =~ /^cec$/ )) {
+            my ($ent) = $tabs->{ppc}->getNodeAttribs( $att->{parent},['parent']);
+
+            #############################
+            # Find MTMS in vpd database
+            #############################
+            if (( defined( $ent )) && exists( $ent->{parent} )) {
+                my @attrs = qw(mtm serial);
+                my ($vpd) = $tabs->{vpd}->getNodeAttribs($ent->{parent},\@attrs);
+
+                ########################
+                # Verify attributes
+                ########################
+                foreach ( @attrs ) {
+                    if ( !defined( $vpd ) || !exists( $vpd->{$_} )) {
+                        return( sprintf( $errmsg{NO_UNDEF}, $_, "vpd", $ent->{parent} ));
+                    }
+                }
+                $att->{bpa} = "$vpd->{mtm}*$vpd->{serial}";
+            }
+        } elsif (( $request->{command} eq "rvitals" ) &&
+                 ( $request->{method}  =~ /^all|temp$/ && $ntype =~ /^bpa$/ )) {
+            my @attrs = qw(mtm serial);
+            my ($vpd) = $tabs->{vpd}->getNodeAttribs($att->{parent},\@attrs);
+            ########################
+            # Verify attributes
+            ########################
+            foreach my $attr ( @attrs ) {
+                if ( !defined( $vpd ) || !exists( $vpd->{$attr} )) {
+                    return( sprintf( $errmsg{NO_UNDEF}, $attr, "vpd", $att->{parent} ));
+                }
+            }
+            $att->{bpa} = "$vpd->{mtm}*$vpd->{serial}";
+        }
     }
     elsif ( $type =~ /^$::NODETYPE_BPA$/ ) {
         $att->{pprofile} = 0;
@@ -1081,6 +1121,28 @@ sub resolve {
         $att->{type}     = $type;
         $att->{parent}   = exists($att->{parent}) ? $att->{parent} : 0;
         $att->{bpa}      = $att->{parent};
+
+        if (( $request->{command} eq "rvitals" ) &&
+                ( $request->{method}  =~ /^all|temp$/ )) {
+
+            #############################
+            # Find MTMS in vpd database
+            #############################
+            if ( exists( $att->{parent} )) {
+                my @attrs = qw(mtm serial);
+                my ($vpd) = $tabs->{vpd}->getNodeAttribs($att->{parent},\@attrs);
+
+                ########################
+                # Verify attributes
+                ########################
+                foreach ( @attrs ) {
+                    if ( !defined( $vpd ) || !exists( $vpd->{$_} )) {
+                        return( sprintf( $errmsg{NO_UNDEF}, $_, "vpd", $att->{parent} ));
+                    }
+                }
+                $att->{bpa} = "$vpd->{mtm}*$vpd->{serial}";
+            }
+        }
     }
     elsif ( $type =~ /^$::NODETYPE_FRAME$/ ) {
         $att->{pprofile} = 0;
