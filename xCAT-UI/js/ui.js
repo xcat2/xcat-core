@@ -513,8 +513,8 @@ function initPage() {
 		includeJs("js/monitor/gangliamon.js");
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
-	} else if (page == 'manual.php') {
-	    includeJs("js/manual/manual.js");
+	} else if (page == 'guide.php') {
+	    includeJs("js/guide/guide.js");
 	    headers.eq(4).css('background-color', '#A9D0F5');
         loadManualPage();
 	} else {

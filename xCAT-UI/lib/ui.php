@@ -33,7 +33,7 @@ function loadPage(){
 				<li><a href="configure.php" class="top_link">Configure</a></li>
 				<li><a href="provision.php" class="top_link">Provision</a></li>
 				<li><a href="monitor.php" class="top_link">Monitor</a></li>
-				<li><a href="manual.php" class="top_link">Guide</a></li>
+				<li><a href="guide.php" class="top_link">Guide</a></li>
 			</ul>';
 			
 	// User name and log out section
