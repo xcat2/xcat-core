@@ -2559,7 +2559,7 @@ sub xCATdB {
             # before can be kept.            
             if ( exists($::UPDATE_CACHE{$model."-".$serial}))
             {
-                xCAT::PPCdb::update_node_attribs("frame","frame",$name,$frameid,$model,$serial,"","","",$parent,"",\%db, $::UPDATE_CACHE{$name},\@ppclist);
+                xCAT::PPCdb::update_node_attribs("frame","frame",$name,$frameid,$model,$serial,"","","",$parent,"",\%db, $::UPDATE_CACHE{$name},0,\@ppclist);
             }           
             xCAT::PPCdb::add_ppc( "frame", [$values], 0, 1 );
             #copy passwd for the bpas.
@@ -2585,7 +2585,7 @@ sub xCATdB {
             # before can be kept.   
             if ( exists($::UPDATE_CACHE{$model."-".$serial}))
             {
-                xCAT::PPCdb::update_node_attribs("cec","cec",$name,$cageid,$model,$serial,"","","",$parent,"",\%db, $::UPDATE_CACHE{$name},\@ppclist);
+                xCAT::PPCdb::update_node_attribs("cec","cec",$name,$cageid,$model,$serial,"","","",$parent,"",\%db, $::UPDATE_CACHE{$name},0,\@ppclist);
             }            
             xCAT::PPCdb::add_ppc( "cec", [$values], 0, 1 );
             #copy passwd for the fsps.
