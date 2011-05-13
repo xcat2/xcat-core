@@ -10,6 +10,8 @@ B<updatenode> B<noderange> [B<-k>|B<--security> [B<--user>] [B<--devicetype>]]
 
 B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<script1,script2...>]
 
+B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-f>|B<--snsync>]
+
 B<updatenode> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
@@ -515,9 +517,20 @@ Used to specify a source directory other than the standard lpp_source directory 
 
 =item B<-F|--sync>
 
-Specifies the file synchronization should be
+Specifies that file synchronization should be
 performed on the nodes.  rsync and ssh must
 be installed and configured on the nodes. 
+
+=item B<-f|--snsync>
+
+Specifies that file synchronization should be
+performed to the service nodes that service the
+nodes in the noderange. This updates the service
+nodes with the data to sync to the nodes. rsync and ssh must
+be installed and configured on the service nodes.
+For hierachy, this should be done before syncing the files
+to the nodes with the -F flag. 
+
 
 =item B<-h|--help>
 
@@ -721,6 +734,12 @@ B<updatenode xcatsn11 -V -S -c emgr_flags="-r -L IZ38930TL0">
 To update the security keys for the node "node01"
 
 B<updatenode node01 -k>
+
+=item 19
+
+To update the service nodes with the files to be synchronized to node group compute: 
+
+B<updatenode compute -f>
 
 =back
 
