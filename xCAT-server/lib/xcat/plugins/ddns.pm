@@ -834,6 +834,8 @@ sub add_or_delete_records {
         if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
             $update->sign_tsig("xcat_key",$ctx->{privkey});
             my $reply = $resolver->send($update);
+            # sometimes resolver does not work if the update zone request sent so quick
+            sleep 1;
         }
     }
 }

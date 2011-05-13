@@ -1528,15 +1528,7 @@ sub addnet
             }
             if ($ent and $ent->{nameservers})
             {
-                # convert <xcatmaster> to nameserver IP
-                if ($ent->{nameservers} eq '<xcatmaster>')
-                {
-                    $nameservers = xCAT::InstUtils->convert_xcatmaster();
-                }
-                else
-                {
-                    $nameservers = $ent->{nameservers};
-                }
+                $nameservers = $ent->{nameservers};
             }
             else
             {
