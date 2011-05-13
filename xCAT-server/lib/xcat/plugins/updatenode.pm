@@ -22,7 +22,7 @@ use File::Basename;
 use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use Socket;
-
+#use strict;
 my $CALLBACK;
 my $RERUNPS4SECURITY;
 1;
@@ -199,6 +199,7 @@ sub preprocess_updatenode
                     'v|version'        => \$::VERSION,
                     'V|verbose'        => \$::VERBOSE,
                     'F|sync'           => \$::FILESYNC,
+                    'f|snsync'         => \$::SNFILESYNC,
                     'S|sw'             => \$::SWMAINTENANCE,
                     's|sn'             => \$::SETSERVER,
                     'P|scripts:s'      => \$::RERUNPS,
@@ -240,6 +241,12 @@ sub preprocess_updatenode
         &updatenode_usage($callback);
         return \@requests;
     }
+    # -f or -F not both
+    if (($::FILESYNC) && ($::SNFILESYNC)) {
+        &updatenode_usage($callback);
+        return \@requests;
+    }
+
 
     # --user and --devicetype must work with --security
     if (($::USER || $::DEVICETYPE) && !($::SECURITY && $::USER && $::DEVICETYPE)) {
@@ -261,7 +268,7 @@ sub preprocess_updatenode
 
         # we have one or more operands on the cmd line
         if ($#ARGV == 0
-            && !($::FILESYNC || $::SWMAINTENANCE || defined($::RERUNPS) || $::SECURITY))
+            && !($::FILESYNC || $::SNFILESYNC || $::SWMAINTENANCE || defined($::RERUNPS) || $::SECURITY))
         {
 
             # there is only one operand
@@ -276,13 +283,15 @@ sub preprocess_updatenode
     }
     else
     {
-
-        # no flags and no operands
-        if (!($::FILESYNC || $::SWMAINTENANCE || defined($::RERUNPS) ||$::SECURITY))
-        {
+        # if not syncing Service Node
+        if (!($::SNFILESYNC)) {
+          # no flags and no operands, set defaults
+          if (!($::FILESYNC  || $::SWMAINTENANCE || defined($::RERUNPS) ||$::SECURITY))
+          {
             $::FILESYNC      = 1;
             $::SWMAINTENANCE = 1;
             $::RERUNPS       = "";
+          }
         }
     }
 
@@ -371,13 +380,20 @@ sub preprocess_updatenode
         }
     }
 
-    # If -F option specified, sync files to the noderange.
+    # If -F or -f  option specified, sync files to the noderange or their 
+    # service nodes.
     # Note: This action only happens on MN, since xdcp, xdsh handles the
     #	hierarchical scenario inside
     if ($::FILESYNC)
     {
         my $reqcopy = {%$request};
         $reqcopy->{FileSyncing}->[0] = "yes";
+        push @requests, $reqcopy;
+    }
+    if ($::SNFILESYNC)   # either sync service node
+    {
+        my $reqcopy = {%$request};
+        $reqcopy->{SNFileSyncing}->[0] = "yes";
         push @requests, $reqcopy;
     }
 
@@ -396,6 +412,8 @@ sub preprocess_updatenode
 
     
     # figure out the diskless nodes list and non-diskless nodes
+    my @dsklsnodes;
+    my @notdsklsnodes;
     foreach my $type (keys %insttype_node) {
         if ($type eq "netboot" || $type eq "statelite" || $type eq "diskless") {
             push @dsklsnodes, @{$insttype_node{$type}};
@@ -701,6 +719,7 @@ sub updatenode
                     'v|version'        => \$::VERSION,
                     'V|verbose'        => \$::VERBOSE,
                     'F|sync'           => \$::FILESYNC,
+                    'f|snsync'         => \$::SNFILESYNC,
                     'S|sw'             => \$::SWMAINTENANCE,
                     's|sn'             => \$::SETSERVER,
                     'P|scripts:s'      => \$::RERUNPS,
@@ -741,7 +760,8 @@ sub updatenode
     #  handle file synchronization
     #
 
-    if ($request->{FileSyncing} && $request->{FileSyncing}->[0] eq "yes")
+    if (($request->{FileSyncing} && $request->{FileSyncing}->[0] eq "yes")
+      || (($request->{SNFileSyncing} && $request->{SNFileSyncing}->[0] eq "yes")))
     {
         my %syncfile_node      = ();
         my %syncfile_rootimage = ();
@@ -775,12 +795,24 @@ sub updatenode
             if ($::VERBOSE)
             {
                 my $rsp = {};
-                $rsp->{data}->[0] =
-                  "  $localhostname: Internal call command: xdcp -F $synclist";
+                if ($request->{FileSyncing}->[0] eq "yes") { # sync nodes
+                  $rsp->{data}->[0] =
+                   "  $localhostname: Internal call command: xdcp -F $synclist";
+                } else { # sync SN
+                  $rsp->{data}->[0] =
+                   "  $localhostname: Internal call command: xdcp -s -F $synclist";
+                }
                 $callback->($rsp);
             }
-            my $args = ["-F", "$synclist"];
-            my $env = ["DSH_RSYNC_FILE=$synclist"];
+            my $args;
+            my $env;
+            if ($request->{FileSyncing}->[0] eq "yes") { # sync nodes
+              $args = ["-F", "$synclist"];
+              $env = ["DSH_RSYNC_FILE=$synclist"];
+            } else { # sync SN only
+              $args = ["-s", "-F", "$synclist"];
+              $env = ["DSH_RSYNC_FILE=$synclist","RSYNCSNONLY=1"];
+            }
             $subreq->(
                       {
                        command => ['xdcp'],
@@ -1017,6 +1049,7 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
                     # for updatenode -P
                     $mode = "1"; 
                 }
+                my $args1;
 		if ($::SETSERVER) {
 		    $args1 = ["-s", "-v", "-e", "$installdir/postscripts/xcatdsklspost $mode -M $snkey $postscripts"];
 
@@ -1079,7 +1112,7 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
 	    # it's possible that the nodes could have diff server names
 	    # do all the nodes for a particular server at once
 	    foreach my $snkey (keys %servernodes) {
-		$nodestring = join(',', @{$servernodes{$snkey}});
+		my $nodestring = join(',', @{$servernodes{$snkey}});
             	my $cmd;
                 my $mode;
                 if ($request->{rerunps4security} && $request->{rerunps4security}->[0] eq "yes") {
@@ -1416,7 +1449,7 @@ sub doAIXcopy
     my @pkglist;    # list of all software to go to SNs
     my %bndloc;
 
-    foreach $img (@imagenames)
+    foreach my $img (@imagenames)
     {
         my %objtype;
         $objtype{$img} = 'osimage';
@@ -1539,11 +1572,11 @@ sub doAIXcopy
         	# keep a list of packages from otherpkgs and bndls
         	if ($imagedef{$img}{otherpkgs})
         	{
-            	foreach $pkg (split(/,/, $imagedef{$img}{otherpkgs}))
+            	foreach my $pkg (split(/,/, $imagedef{$img}{otherpkgs}))
             	{
                 	if (!grep(/^$pkg$/, @pkglist))
                 	{
-                    	push(@pkglist, $pkg);
+                          push(@pkglist, $pkg);
                 	}
             	}
         	}
@@ -1718,6 +1751,8 @@ sub updateAIXsoftware
 
     my @noderange = @$nodes;
     my %attrvals;    # cmd line attr=val pairs
+    my %imagedefs;
+    my %nodeupdateinfo;
     my @pkglist;     # list of ALL software to install
 
     # att=val - bndls, otherpakgs, flags
@@ -1936,7 +1971,7 @@ sub updateAIXsoftware
 			# make sure pkg dir is exported
             if (scalar(@pkglist)) {
                 my $ecmd = qq~exportfs -i $pkgdir~;
-                $output = xCAT::Utils->runcmd("$ecmd", -1);
+                my $output = xCAT::Utils->runcmd("$ecmd", -1);
                 if ($::RUNCMD_RC != 0)
                 {
                     my $rsp;
