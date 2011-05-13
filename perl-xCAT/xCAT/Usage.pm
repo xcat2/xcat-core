@@ -245,7 +245,7 @@ my %usage = (
     updatenode <noderange> [-V|--verbose] [-k|--security] [--user] 
         [--devicetype]
     or
-    updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] 
+    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-S|--sw] 
         [-P|--scripts [script1,script2,...]] [-s|--sn] 
         [-A|--updateallsw] [-c|--cmdlineonly] [-d alt_source_dir]
         [attr=val [attr=val...]]
@@ -262,6 +262,9 @@ Options:
         specific device.
 
     [-F|--sync] Perform File Syncing.
+
+    [-f|--snsync] Performs File Syncing to the service nodes that service 
+        the nodes in the noderange.
 
     [-S|--sw] Perform Software Maintenance.
 
