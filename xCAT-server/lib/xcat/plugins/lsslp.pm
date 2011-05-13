@@ -2220,28 +2220,35 @@ sub parse_responses {
             ###########################################
             $hostname = undef;
             $host = "Server-$result[1]-SN$result[2]";
-            unless ( exists( $outhash{$host} ))
+            if ( $type eq SERVICE_BPA )
             {
-                if ( $type eq SERVICE_BPA )
-                {
-                    $result[0] = TYPE_FRAME;
-                }
-                else
-                {
-                    $result[0] = TYPE_CEC;
-                }
-                # IP of frame and cec should be null
-                $result[3] = "";
-                # side of frame and cec should be null
-                $result[4] = "";
-                push @result, $rsp;
-                $hostname =  gethost_from_url_or_old($host, $result[0], $result[1], $result[2],
-                             $result[3],$result[4], $result[8],$result[5],$result[6]);
-                if ( $hostname )
-                {
-                    $outhash{$hostname} = \@result;
-                }
+                $result[0] = TYPE_FRAME;
             }
+            else
+            {
+                $result[0] = TYPE_CEC;
+            }
+            # IP of frame and cec should be null
+            $result[3] = "";
+            # side of frame and cec should be null
+            $result[4] = "";
+            push @result, $rsp;
+            $hostname =  gethost_from_url_or_old($host, $result[0], $result[1], $result[2],
+                         $result[3],$result[4], $result[8],$result[5],$result[6]);
+            if ( $hostname )
+            {
+                my $newhostname;
+                if ( exists( $outhash{$hostname} ) ) {
+                    my $tmp = $outhash{$hostname};
+                    if ( @$tmp[0] ne TYPE_FRAME and @$tmp[0] ne TYPE_CEC ) {
+                        @$tmp[3] =~ /^(A|B)\-/;
+                        $newhostname = $hostname."-".$1;
+                        $outhash{$newhostname} = $tmp;
+                    }
+                }
+                $outhash{$hostname} = \@result;
+            }
+                
         } else   {
 
             ###########################################
