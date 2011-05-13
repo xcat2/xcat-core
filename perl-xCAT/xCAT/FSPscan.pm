@@ -75,7 +75,7 @@ sub enumerate {
     my $hash   = shift;
     my $exp   = shift;
     my $hwtype = ();
-    my $server = ();
+    my $server ;
     my @values = (); 
     my $cageid;
     my $server;
@@ -87,6 +87,13 @@ sub enumerate {
     my $filter;
     my $data;
     my @output;
+    my $ips;
+    my $fsp;
+    my $model ;
+    my $serial;
+    my $side; 
+    my $ips;
+    my $line;	 
     
     foreach my $cec_bpa ( keys %$hash)
     { 
@@ -104,7 +111,7 @@ sub enumerate {
             my $stat = xCAT::FSPUtils::fsp_api_action ($node_name, $d, "query_connection");
             my $Rc = @$stat[2];
     	    my $data = @$stat[1];
-	    
+           
             ##################################
             # Output error
             ##################################
@@ -113,27 +120,46 @@ sub enumerate {
                 push @values, $data;
                 next;
             }
-	    if($data !~ "Connected" && $data !~ "LINE UP" ) {
-	        $data = "please check if the $node_name is coneected to the hardware server";
-		#push @output, [$node_name,$data,$Rc];
-                push @values, $data;
-                next;
-	    }
+            my @data_a = split("\n", $data);
+            foreach $line(@data_a) { 
+	        if($line !~ "Connected" && $line !~ "LINE UP" ) {
+                    next;
+	        }
             
-            #########################################
-            # GET CEC's information
-            #########################################
-	    #$data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
-	    $data =~ /state=([\w\s]+), type=([\w-]+), MTMS=([\w-]+)\*([\w-]+), ([\w=]+), slot=([\w]+), ipadd=([\w.]+), alt_ipadd=([\w.]+)/ ;
-	    print "parsing: $1,$2,$3,$4,$5,$6,$7,$8\n";
+                #########################################
+                # GET CEC's information
+                #########################################
+	        #$data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
+	        $line =~ /state=([\w\s]+), type=([\w-]+), MTMS=([\w-]+)\*([\w-]+), sp=([\w=]+), slot=([\w]+), ipadd=([\w.]+), alt_ipadd=([\w.]+)/ ;
+	        #print "parsing: $1,$2,$3,$4,$5,$6,$7,$8\n";
 	    
-	    my $fsp=$node_name;
-	    my $model = $3;
-	    my $serial = $4;
-            my $side = $6; 
-	    $server = $fsp;
-	    $fname  = $fsp; 
-            my $ips ="$7,$8";	  
+	        $fsp=$node_name;
+	        $model = $3;
+	        $serial = $4;
+                $side = $6; 
+	        $server = $fsp;
+	        $fname  = $fsp;
+                my $ip = $7;
+                my $ip_s = $8;
+                if(! defined( $ips)) {
+                    if( $ip_s =~ /unavailable/ ) {
+                        $ips ="$ip;";
+                    } else {	 
+                        $ips ="$ip;$ip_s;";
+                    }	 
+                } else {
+                    if( $ip_s =~ /unavailable/ ) {
+                        $ips .="$ip";
+                    } else {	 
+                        $ips .="$ip;$ip_s";
+                    }	 
+                }
+            }
+            if(!defined($fsp))  {
+	        my $msg = "please check if the $node_name is coneected to the hardware server";
+                push @values, $msg;
+                next;
+            }
             if($$d[4] =~ /^cec$/) {
                 $side="";
             }
