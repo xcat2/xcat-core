@@ -271,7 +271,10 @@ function mkAddNodeLink() {
 		
 		// Create advanced link to set advanced node properties
 		var advanced = $('<div></div>');
-		var advancedLnk = $('<a>Advanced</a>').css('cursor', 'pointer');
+		var advancedLnk = $('<a>Advanced</a>').css({
+			'cursor': 'pointer',
+			'color': '#0000FF'
+		});
 		advancedLnk.click(function() {
 			// Get node attributes
 			$.ajax( {
