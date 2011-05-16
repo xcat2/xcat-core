@@ -453,7 +453,13 @@ sub process_request {
 		      node=>\@rnodes,
 		      arg=>[$args[0]]},\&pass_along);
       }
-      if ($errored) { return; }
+      if ($errored) { 
+	  my $rsp;
+ 	  $rsp->{errorcode}->[0]=1;
+	  $rsp->{error}->[0]="Failed in running begin prescripts.\n";
+	  $callback->($rsp);
+	  return; 
+      }
   }  
 
   #back to normal business
@@ -551,7 +557,13 @@ sub process_request {
 		      node=>\@rnodes,
 		      arg=>[$args[0]]},\&pass_along);
       }
-      if ($errored) { return; }
+      if ($errored) { 
+	  my $rsp;
+ 	  $rsp->{errorcode}->[0]=1;
+	  $rsp->{error}->[0]="Failed in running end prescripts.\n";
+	  $callback->($rsp);
+	  return; 
+      }
   }
 
 }
