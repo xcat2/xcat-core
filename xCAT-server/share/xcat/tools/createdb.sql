@@ -30,4 +30,5 @@ update db cfg for xcatdb using LOGPRIMARY 10;
 update db cfg for xcatdb using LOGSECOND 20;
 update db cfg for xcatdb using AUTO_RUNSTATS ON;
 update db cfg for xcatdb using AUTO_TBL_MAINT ON;
+update db cfg for xcatdb using AUTO_REORG ON;
 update db cfg for xcatdb using AUTO_MAINT ON;
