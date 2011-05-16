@@ -14,9 +14,11 @@ sub get_profile_def_filename {
    my $osver = shift;
    my $profile = shift;
    my $arch = shift;
+
+   my $tmp_base=shift;
+   my $base=realpath($tmp_base); #get the full path
+   if (!$base) { $base=$tmp_base;}
    
-   my $base=shift;
-   $base=realpath($base); #get the full path
    my $ext=shift;
    
    my $dotpos;
