@@ -10,11 +10,11 @@ B<mkhwconn> [B<-v>| B<--version>]
 
 =head2 PPC (with HMC) specific:
 
-B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-t>
+B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-t> [B<--port> I<port_value>]
 
-B<mkhwconn> [B<-V>| B<--verbose>] Inoderange B<-s>
+B<mkhwconn> [B<-V>| B<--verbose>] Inoderange B<-s> [B<--port> I<port_value>]
 
-B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-p> I<hmc> [B<-P> I<passwd>]
+B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-p> I<hmc> [B<-P> I<passwd>] [B<--port> I<port_value>]
 
 =head2 PPC (without HMC, using Direct FSP Management) specific:
 
@@ -72,7 +72,7 @@ The tooltype is used to communicate to the FSP/BPA. The value could be B<lpar> o
 
 =item B<--port>
 
-The port value specify which side will be used to create the connection to the FSP/BPA. The value could be "B<0>" or "B<1>". If this port value is not specfied in the command, it will use the default value "B<0>". If the port value is "B<0>", in the vpd table, the side column should be B<A-0> and B<B-0>; If the port value is "B<1>", the side column should be B<A-1> and B<B-1>.
+The port value specify which side will be used to create the connection to the FSP/BPA. The value could be "B<0>" or "B<1>". If this port value is not specfied in the command, it will use the default value "B<0>". If the port value is "B<0>", in the vpd table, the side column should be B<A-0> and B<B-0>; If the port value is "B<1>", the side column should be B<A-1> and B<B-1>. When making hardware connection between fsp/bpa and HMC, the port is used to specify the fsp/bpa port of the cec/frame.
 
 =item B<-s>
 
