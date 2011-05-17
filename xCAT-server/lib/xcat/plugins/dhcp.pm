@@ -699,6 +699,7 @@ sub preprocess_request
 
 	    foreach my $s (@sn)
 	    {
+		if (scalar @nodes == 1 and $nodes[0] eq $s) { next; }
 		my $reqcopy = {%$req};
 		$reqcopy->{'_xcatdest'} = $s;
 		$reqcopy->{_xcatpreprocessed}->[0] = 1;
