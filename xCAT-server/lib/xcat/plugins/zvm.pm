@@ -44,8 +44,7 @@ sub handled_commands {
 		nodeset  => 'noderes:netboot',
 		getmacs  => 'nodehm:getmac,mgt',
 		rnetboot => 'nodehm:mgt',
-
-		# updatenode => 'nodehm:mgt',
+		lstree  => 'nodehm:mgt',
 	};
 }
 
@@ -366,7 +365,7 @@ sub process_request {
 
 			# Child process
 			elsif ( $pid == 0 ) {
-				scanVM( $callback, $_ );
+				scanVM( $callback, $_, $args );
 
 				# Exit process
 				exit(0);
@@ -478,6 +477,11 @@ sub process_request {
 			}
 
 		}    # End of foreach
+	}    # End of case
+	
+	#*** Show nodes hierarchy tree ***
+	elsif ( $command eq "lstree" ) {
+		listTree( $callback, \@nodes, $args );
 	}    # End of case
 
 	# Wait for all processes to end
@@ -648,6 +652,35 @@ sub changeVM {
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
 
+	# adddisk2pool [function] [region] [volume] [group]
+	elsif ( $args->[0] eq "--adddisk2pool" ) {
+		my $funct   = $args->[1];
+		my $region  = $args->[2];
+		my $volume 	= "";
+		my $group   = "";
+		
+		# Define region as full volume and add to group
+		if ($funct eq "4") {
+			$volume = $args->[3];
+			$group  = $args->[4];
+			$out = `ssh $hcp "$::DIR/adddisk2pool $funct $region $volume $group"`;
+		}
+		
+		# Add existing region to group
+		elsif($funct eq "5") {
+			$group = $args->[3];
+			$out = `ssh $hcp "$::DIR/adddisk2pool $funct $region $group"`;
+		}
+		
+		# Exit
+		else {
+			xCAT::zvmUtils->printLn( $callback, "$node: (Error) Option not supported" );
+			return;
+		}
+		
+		$out = xCAT::zvmUtils->appendHostname( $node, $out );
+	}
+	
 	# addnic [address] [type] [device count]
 	elsif ( $args->[0] eq "--addnic" ) {
 		my $addr     = $args->[1];
@@ -1062,6 +1095,26 @@ sub changeVM {
 		$out = xCAT::zvmUtils->appendHostname( $node, $out );
 	}
 
+	# removediskfrompool [function] [region] [group]
+	elsif ( $args->[0] eq "--removediskfrompool" ) {
+		my $funct  = $args->[1];
+		my $region = $args->[2];
+		my $group  = "";
+
+		# Remove region from group | Remove entire group		
+		if ($funct eq "2" || $funct eq "7") {
+			$group  = $args->[3];
+			$out = `ssh $hcp "$::DIR/removediskfrompool $funct $region $group"`;
+		} 
+		
+		# Remove region | Remove region from all groups
+		elsif ($funct eq "1" || $funct eq "3") {
+			$out = `ssh $hcp "$::DIR/removediskfrompool $funct $region"`;
+		}
+		
+		$out = xCAT::zvmUtils->appendHostname( $node, $out );
+	}
+	
 	# removedisk [virtual device address]
 	elsif ( $args->[0] eq "--removedisk" ) {
 		my $addr = $args->[1];
@@ -1251,7 +1304,14 @@ sub powerVM {
 sub scanVM {
 
 	# Get inputs
-	my ( $callback, $node ) = @_;
+	my ( $callback, $node, $args ) = @_;
+	my $write2db = '';
+	if ($args) {
+		@ARGV = @$args;
+		
+		# Parse options
+		GetOptions(	'w' => \$write2db );
+	}
 
 	# Get node properties from 'zvm' table
 	my @propNames = ( 'hcp', 'userid' );
@@ -1297,40 +1357,104 @@ sub scanVM {
 	my @entries = $tab->getAllAttribsWhere( "hcp like '%" . $hcp . "%'", 'node', 'userid' );
 
 	my $out;
-	my $managedNode;
+	my $node;
 	my $id;
 	my $os;
 	my $arch;
 	my $groups;
+	
+	# Get node hierarchy from /proc/sysinfo
+	my $hierarchy;
+	my $host = xCAT::zvmCPUtils->getHost($hcp);
+	my $sysinfo = `ssh -o ConnectTimeout=5 $hcp "cat /proc/sysinfo"`;
 
+	# Get node CEC
+	my $cec = `echo "$sysinfo" | grep "Sequence Code"`;
+	my @args = split( ':', $cec );
+	# Remove leading spaces and zeros
+	$args[1] =~ s/^\s*0*//;
+	$cec = xCAT::zvmUtils->trimStr($args[1]);
+	
+	# Get node LPAR
+	my $lpar = `echo "$sysinfo" | grep "LPAR Name"`;
+	@args = split( ':', $lpar );
+	$lpar = xCAT::zvmUtils->trimStr($args[1]);
+	
+	# Save CEC, LPAR, and zVM to 'zvm' table
+	my %propHash;
+	if ($write2db) {
+		# Save CEC to 'zvm' table
+		%propHash = (
+			'nodetype'	=> 	'cec',
+			'parent'	=> 	''
+		);
+		xCAT::zvmUtils->setNodeProps( 'zvm', $cec, \%propHash );
+	
+		# Save LPAR to 'zvm' table
+		%propHash = (
+			'nodetype'	=> 	'lpar',
+			'parent'	=> 	$cec
+		);
+		xCAT::zvmUtils->setNodeProps( 'zvm', $lpar, \%propHash );
+		
+		# Save zVM to 'zvm' table
+		%propHash = (
+			'nodetype'	=> 	'zvm',
+			'parent'	=> 	$lpar
+		);
+		xCAT::zvmUtils->setNodeProps( 'zvm', $host, \%propHash );
+	}
+		
 	# Search for nodes managed by given HCP
 	# Get 'node' and 'userid' properties
+	%propHash = ();
 	foreach (@entries) {
-		$managedNode = $_->{'node'};
+		$node = $_->{'node'};
 
 		# Get groups
 		@propNames = ('groups');
-		$propVals  = xCAT::zvmUtils->getNodeProps( 'nodelist', $managedNode, @propNames );
+		$propVals  = xCAT::zvmUtils->getNodeProps( 'nodelist', $node, @propNames );
 		$groups    = $propVals->{'groups'};
 
 		# Load VMCP module
-		xCAT::zvmCPUtils->loadVmcp($managedNode);
+		xCAT::zvmCPUtils->loadVmcp($node);
 
 		# Get userID
-		$id = xCAT::zvmCPUtils->getUserId($managedNode);
-
-		# Get operating system (not to be saved)
-		$os = xCAT::zvmUtils->getOs($managedNode);
+		@propNames = ('userid');
+		$propVals  = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
+		$id = $propVals->{'userid'};
+		if (!$id) {
+			$id = xCAT::zvmCPUtils->getUserId($node);
+		}		
 
 		# Get architecture
-		$arch = xCAT::zvmCPUtils->getArch($managedNode);
-
+		$arch = `ssh -o ConnectTimeout=2 $node "uname -p"`;
+		$arch = xCAT::zvmUtils->trimStr($arch);
+		if (!$arch) {
+			# Assume arch is s390x
+			$arch = 's390x';
+		}
+		
+		# Save to 'zvm' table
+		if ($write2db) {
+			%propHash = (
+				'hcp' 		=> 	$hcp,
+				'userid'	=>	$id,
+				'nodetype'	=> 	'vm',
+				'parent'	=> 	$host
+			);
+						
+			xCAT::zvmUtils->setNodeProps( 'zvm', $node, \%propHash );
+		}
+		
 		# Create output string
-		$str .= "$managedNode:\n";
+		$str .= "$node:\n";
 		$str .= "  objtype=node\n";
-		$str .= "  userid=$id\n";
 		$str .= "  arch=$arch\n";
 		$str .= "  hcp=$hcp\n";
+		$str .= "  userid=$id\n";
+		$str .= "  nodetype=vm\n";
+		$str .= "  parent=$host\n";
 		$str .= "  groups=$groups\n";
 		$str .= "  mgt=zvm\n\n";
 	}
@@ -3093,14 +3217,11 @@ sub nodeSet {
 		my $gateway    = $propVals->{'gateway'};
 		my $ftp        = $propVals->{'tftpserver'};
 
-		# convert <xcatmaster> to nameserver IP
+		# Convert <xcatmaster> to nameserver IP
 		my $nameserver;
-		if ($propVals->{'nameservers'} eq '<xcatmaster>')
-		{
+		if ($propVals->{'nameservers'} eq '<xcatmaster>') {
 		    $nameserver = xCAT::InstUtils->convert_xcatmaster();
-		}
-		else
-		{
+		} else {
 		    $nameserver = $propVals->{'nameservers'};
 		}
     
@@ -3965,5 +4086,145 @@ sub updateNode {
 	}
 
 	xCAT::zvmUtils->printLn( $callback, "$out" );
+	return;
+}
+
+#-------------------------------------------------------
+
+=head3   listTree
+
+	Description	: Show the nodes hierarchy tree
+    Arguments	: Node range (zHCP)
+    Returns		: Nothing
+    Example		: listHierarchy($callback, $nodes, $args);
+    
+=cut
+
+#-------------------------------------------------------
+sub listTree {
+
+	# Get inputs
+	my ( $callback, $nodes, $args ) = @_;
+	my @nodes = @$nodes;
+	my $option = '';
+	if ($args) {
+		@ARGV = @$args;
+		
+		# Parse options
+		GetOptions(	'o' => \$option );
+	}
+	
+	# In order for this command to work, issue under /opt/xcat/bin: 
+	# ln -s /opt/xcat/bin/xcatclient lstree
+			
+	my %tree;
+	my $node;
+	my $parent;
+	my $found;
+	
+	# Create hierachy structure: CEC -> LPAR -> zVM -> VM
+	# Get table
+	my $tab = xCAT::Table->new( 'zvm', -create => 1, -autocommit => 0 );
+	
+	# Get CEC entries
+	my @entries = $tab->getAllAttribsWhere( "nodetype = 'cec'", 'node', 'parent' );
+	foreach (@entries) {
+		$node = $_->{'node'};
+		
+		# Make CEC the tree root
+		$tree{$node} = {};
+	}
+
+	# Get LPAR entries
+	@entries = $tab->getAllAttribsWhere( "nodetype = 'lpar'", 'node', 'parent' );
+	foreach (@entries) {
+		$node = $_->{'node'};		# LPAR
+		$parent = $_->{'parent'};	# CEC
+		
+		# Add LPAR branch
+		$tree{$parent}{$node} = {};
+	}
+	
+	# Get zVM entries
+	$found = 0;
+	@entries = $tab->getAllAttribsWhere( "nodetype = 'zvm'", 'node', 'parent' );
+	foreach (@entries) {
+		$node = $_->{'node'};		# zVM
+		$parent = $_->{'parent'};	# LPAR
+		
+		# Find CEC root based on LPAR
+		# CEC -> LPAR
+		$found = 0;
+		foreach my $cec(sort keys %tree) {
+			foreach my $lpar(sort keys %{$tree{$cec}}) {
+				if ($lpar eq $parent) {
+					# Add LPAR branch
+					$tree{$cec}{$parent}{$node} = {};
+					$found = 1;
+					last;
+				}
+			}
+			
+			# Exit loop if LPAR branch added
+			if ($found) {
+				last;
+			}
+		}		
+	}
+	
+	# Get VM entries
+	$found = 0;
+	@entries = $tab->getAllAttribsWhere( "nodetype = 'vm'", 'node', 'parent', 'userid' );
+	foreach (@entries) {
+		$node = $_->{'node'};		# VM
+		$parent = $_->{'parent'};	# zVM
+		
+		# Find CEC root based on zVM
+		# CEC -> LPAR -> zVM
+		$found = 0;
+		foreach my $cec(sort keys %tree) {
+			foreach my $lpar(sort keys %{$tree{$cec}}) {
+				foreach my $zvm(sort keys %{$tree{$cec}{$lpar}}) {
+					if ($zvm eq $parent) {
+						# Add zVM branch
+						$tree{$cec}{$lpar}{$parent}{$node} = $_->{'userid'};
+						$found = 1;
+						last;
+					}
+				}
+				
+				# Exit loop if zVM branch added
+				if ($found) {
+					last;
+				}
+			}
+			
+			# Exit loop if zVM branch added
+			if ($found) {
+				last;
+			}
+		}		
+	}
+	
+	# Print tree
+	# Loop through CECs
+	foreach my $cec(sort keys %tree) {
+		xCAT::zvmUtils->printLn( $callback, "CEC: $cec" );
+		
+		# Loop through LPARs
+		foreach my $lpar(sort keys %{$tree{$cec}}) {
+			xCAT::zvmUtils->printLn( $callback, "|__LPAR: $lpar" );
+			
+			# Loop through zVMs
+			foreach my $zvm(sort keys %{$tree{$cec}{$lpar}}) {
+				xCAT::zvmUtils->printLn( $callback, "   |__zVM: $zvm" );
+				
+				# Loop through VMs
+				foreach my $vm(sort keys %{$tree{$cec}{$lpar}{$zvm}}) {
+					xCAT::zvmUtils->printLn( $callback, "      |__VM: $vm ($tree{$cec}{$lpar}{$zvm}{$vm})" );
+				}
+			}
+		}
+	}
 	return;
 }

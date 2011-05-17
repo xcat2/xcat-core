@@ -130,6 +130,37 @@ sub setNodeProp {
 
 #-------------------------------------------------------
 
+=head3   setNodeProps
+
+	Description	: Set node properties in a given table
+    Arguments	: 	Table name
+    			 	Node
+    				Reference to property name/value hash
+    Returns		: Nothing
+    Example		: xCAT::zvmUtils->setNodeProps($tabName, $node, \%propHash);
+    
+=cut
+
+#-------------------------------------------------------
+sub setNodeProps {
+
+	# Get inputs
+	my ( $class, $tabName, $node, $propHash ) = @_;
+
+	# Get table
+	my $tab = xCAT::Table->new( $tabName, -create => 1, -autocommit => 0 );
+
+	# Set property
+	$tab->setAttribs( { 'node' => $node }, $propHash );
+
+	# Save table
+	$tab->commit;
+
+	return;
+}
+
+#-------------------------------------------------------
+
 =head3   delTabEntry
 
 	Description	: Delete a table entry
