@@ -2255,6 +2255,7 @@ sub clone_task_callback {
 	  $running_tasks{$task}->{task} = $task;
 	  $running_tasks{$task}->{callback} = \&generic_task_callback;
 	  $running_tasks{$task}->{hyp} = $parms->{hyp};
+	  $running_tasks{$task}->{conn} = $parms->{conn};
 	  $running_tasks{$task}->{data} = { node => $node, successtext => $intent};
 	}
 
