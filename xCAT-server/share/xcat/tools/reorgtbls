@@ -1,0 +1,79 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#####################################################
+#
+# This script will run a reorg on the DB2 tables
+# It is dependent on the setup of DB2 by the db2sqlsetup script
+# It is to be set in a cron job on the xCAT Management Node and
+# requires xCAT to be installed because it uses xCAT Perl libraries
+#  and xCAT commands
+#
+#####################################################
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATDIR  = $ENV{'XCATDIR'}  ? $ENV{'XCATDIR'}  : '/etc/xcat';
+}
+
+use lib "$::XCATROOT/lib/perl";
+use xCAT::Utils;
+
+use strict;
+use warnings;
+
+
+# Use runsqlcmd to run the SQL query to read the list of tables in 
+# the XCATDB schema
+# Then use runsqlcmd to run the reorg on the list of tables,
+# allow read/write by other applications during reorg
+my $cmd="$::XCATROOT/sbin/runsqlcmd \"select tabname from syscat.tables where TABSCHEMA='XCATDB';\"";
+my @tablist = xCAT::Utils->runcmd($cmd, 0);
+if ($::RUNCMD_RC != 0)
+{
+  `logger -txcat " reorgdb2table:error in select tabname from syscat.tables"`;   exit 1;
+}
+
+# reorg each table
+my $foundheader=0;
+foreach my $table (@tablist) {
+  chomp $table;
+  # skip lines untils we find the header
+  if ($foundheader==0) {
+    if ( !($table =~ /TABNAME/)) {
+      next;
+    } else {
+      $foundheader=1;
+      next;
+    }
+  }
+  # skip blanks and -- lines
+  $table =~ s/\s*//g;    # remove blanks
+  if ($table =~ /^\s*$/) {  # skip blanks
+      next;
+  }
+  if ($table =~ m/[^a-zA-Z0-9_]/) # skip non alphanumeric lines or underscore
+  {
+      my $stoppoint=1;
+      next;
+  }
+  $cmd="$::XCATROOT/sbin/runsqlcmd \"reorg indexes all for table $table allow write access;\"";
+  xCAT::Utils->runcmd($cmd, 0);
+  if ($::RUNCMD_RC != 0)
+  {
+    `logger -txcat " reorgtbl:error $cmd"`;
+     exit 1;
+  } else {
+    `logger -txcat " reorgtbl:reorg indexes for $table"`;
+  }
+  $cmd="$::XCATROOT/sbin/runsqlcmd \"reorg table $table inplace allow write access;\"";
+  xCAT::Utils->runcmd($cmd, 0);
+  if ($::RUNCMD_RC != 0)
+  {
+    `logger -txcat " reorgtbl:error $cmd"`;
+     exit 1;
+  } else {
+    `logger -txcat " reorgtbl:reorg $table inplace"`;
+  }
+}
+exit 0;
