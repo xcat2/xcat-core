@@ -35,6 +35,9 @@ my $SUB_REQ;
 my $DELETENODES;
 my %NUMCECSINFRAME;
 #my $DHCPINTERFACES;
+my $PANUMBER = 0;
+my $CECNUMBER = 0;
+my @CECS;
 
 sub handled_commands {
     return( { xcatsetup => "setup" } );
@@ -192,12 +195,36 @@ sub writedb {
 		unless (writeframe($framerange, $cwd)) { closetables(); return; }
 	}
 	
+    # Write bpa info (hash key=xcat-bpas)
+    my $bpaa0 = $STANZAS{'xcat-frames'}->{'bpa-a-0-starting-ip'};
+    my $bpab0 = $STANZAS{'xcat-frames'}->{'bpa-b-0-starting-ip'};
+    my $bpaa1 = $STANZAS{'xcat-frames'}->{'bpa-a-1-starting-ip'};
+    my $bpab1 = $STANZAS{'xcat-frames'}->{'bpa-b-1-starting-ip'};
+    if ( $bpaa0 and $bpaa1 and $bpab0 and $bpab1 and (!scalar(keys(%$sections))||$$sections{'xcat-frames'})) {
+        unless (writechildren($bpaa0, $bpaa1, $bpab0, $bpab1, "bpa")) { closetables(); return; }
+    }
+    if ( !($bpaa0 and $bpaa1 and $bpab0 and $bpab1) and
+        ($bpaa0 or $bpaa1 or $bpab0 or $bpab1))  {
+        # need to do something here?
+    }
 	# Write CEC info (hash key=xcat-cecs)
 	my $cecrange = $STANZAS{'xcat-cecs'}->{'hostname-range'};
 	if ($cecrange && (!scalar(keys(%$sections))||$$sections{'xcat-cecs'})) { 
 		unless (writecec($cecrange, $cwd)) { closetables(); return; }
 	}
 	
+    # Write fsp info (hash key=xcat-fsps)
+    my $fspa0 = $STANZAS{'xcat-cecs'}->{'fsp-a-0-starting-ip'};
+    my $fspb0 = $STANZAS{'xcat-cecs'}->{'fsp-b-0-starting-ip'};
+    my $fspa1 = $STANZAS{'xcat-cecs'}->{'fsp-a-1-starting-ip'};
+    my $fspb1 = $STANZAS{'xcat-cecs'}->{'fsp-b-1-starting-ip'};
+    if ( $fspa0 and $fspa1 and $fspb0 and $fspb1 and (!scalar(keys(%$sections))||$$sections{'xcat-cecs'})) {
+        unless (writechildren($fspa0, $fspa1, $fspb0, $fspb1, "fsp")) { closetables(); return; }
+    }
+    if ( !($fspa0 and $fspa1 and $fspb0 and $fspb1) and
+        ($fspa0 or $fspa1 or $fspb0 or $fspb1))  {
+        # need to do something here?
+    }
 	# Save the CEC positions for all the node definitions later
 	if ($cecrange) {
 		$CECPOSITIONS = $tables{'nodepos'}->getNodesAttribs([noderange($cecrange)], ['rack','u']);
@@ -356,6 +383,7 @@ sub writeframe {
 	my ($framerange, $cwd) = @_;
 	my $nodes = [noderange($framerange, 0)];
 	if (!scalar(@$nodes)) { return 1; }
+    $PANUMBER = scalar(@$nodes);
 	if ($DELETENODES) {
 		deletenodes('frames', $framerange);
 		deletegroup('frame');
@@ -367,14 +395,14 @@ sub writeframe {
 	
 	# Using the frame group, write starting-ip in hosts table
     my $framehash = parsenoderange($framerange);
-	my $framestartip = $STANZAS{'xcat-frames'}->{'starting-ip'};
-	if ($framestartip && isIP($framestartip)) {
-        my $framestartnum = int $$framehash{'primary-start'};
-		my ($ipbase, $ipstart) = $framestartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
-		# take the number from the nodename, and as it increases, increase the ip addr
-        my $regex = '|\S+?(\d+)\D*$|' . "$ipbase.($ipstart+" . '$1' . "-$framestartnum)|";
-		$tables{'hosts'}->setNodeAttribs('frame', {ip => $regex});
-	}
+        #my $framestartip = $STANZAS{'xcat-frames'}->{'starting-ip'};
+        #if ($framestartip && isIP($framestartip)) {
+        #my $framestartnum = int $$framehash{'primary-start'};
+        #my ($ipbase, $ipstart) = $framestartip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
+        ## take the number from the nodename, and as it increases, increase the ip addr
+        #my $regex = '|\S+?(\d+)\D*$|' . "$ipbase.($ipstart+" . '$1' . "-$framestartnum)|";
+        #       $tables{'hosts'}->setNodeAttribs('frame', {ip => $regex});
+        #}
 	
 	# Using the frame group, write: nodetype.nodetype, nodehm.mgt
 	$tables{'ppc'}->setNodeAttribs('frame', {nodetype => 'frame'});
@@ -420,6 +448,108 @@ sub writeframe {
 	return 1;
 }
 
+sub writechildren {
+
+    my $a0startingip = shift;
+    my $a1startingip = shift;
+    my $b0startingip = shift;
+    my $b1startingip = shift;
+    my $ntype        = shift;
+
+    my @startingips;
+    push @startingips, $a0startingip;
+    push @startingips, $a1startingip;
+    push @startingips, $b0startingip;
+    push @startingips, $b1startingip;
+
+    my @all;
+    for my $cip (@startingips) {
+        my ($ipbase, $ipstart) = $cip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
+        my $endip = $ipstart + $PANUMBER;
+        my $endnode = $ipbase . '.' . $endip;
+        my $range = $cip . '-' . $endnode;
+        my $nodes = [noderange($range, 0)];
+        foreach (@$nodes) { push @all, $_; }
+    }
+    if ($DELETENODES) {
+            deletenodes($ntype, \@all);
+            deletegroup($ntype);
+            return 1;
+    }
+
+    # write bpa/fsp nodes to database with nodelist.node, nodelist.groups
+
+    infomsg("Defining $ntype"."s...");
+    $tables{'nodelist'}->setNodesAttribs(\@all, { groups => "$ntype,all" });
+    staticGroup($ntype);
+
+
+    # Using the bpa group, write: ppc.nodetype, nodetype.nodetype,
+    $tables{'ppc'}->setNodeAttribs($ntype, {nodetype => $ntype});
+    $tables{'nodetype'}->setNodeAttribs($ntype, {nodetype => $ntype});
+
+    # Using the bpa group, write regex for: nodehm.mgt, ppc.node, ppc.hcp
+    my %hash ;
+    if ($STANZAS{'xcat-site'}->{'use-direct-fsp-control'}) {
+            $tables{'nodehm'}->setNodeAttribs($ntype, {mgt => $ntype});
+            my $hcpregex = '|(.+)|($1)|';           # its managed by itself
+            $hash{hcp} = $hcpregex;
+    }
+    else {
+            $tables{'nodehm'}->setNodeAttribs($ntype, {mgt => 'hmc'});
+    }
+    $tables{'ppc'}->setNodeAttribs($ntype, \%hash);
+
+    # Using the bpa group, write regex for:ppc.parent
+    # Can we assume the user define four fsp/bpas with the same starting ip(the last byte)? need to discuss!
+    #for my $pip (@startingips) {
+    my ($ipbase, $ipstart) = $a0startingip =~ /^(\d+\.\d+\.\d+)\.(\d+)$/;
+    my $phash;
+    if ($ntype eq "bpa") { 
+        $phash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
+    } else {
+        $phash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
+    }            
+	my $fs = $$phash{'primary-start'};
+    my $nb = $$phash{'primary-base'};
+    my $nameend = $$phash{'attach'};
+    my $namesecond = $$phash{'secondary-base'};
+    my $pregex;
+    my $tlength = length($fs);
+    if ($ntype eq "bpa") {
+        $pregex = '|^(\d+\.\d+\.\d+)\.(\d+)$|'.$nb.'(\'0\'*('.$tlength.'-length($2)))('.int($fs).'+$2-'.$ipstart.')'.$nameend.'|';
+        $tables{'ppc'}->setNodeAttribs($ntype, {parent => $pregex});  
+    } elsif (!($STANZAS{'xcat-cecs'}->{'supernode-list'}))  {
+        my $ss = $$phash{'secondary-start'};
+        my $se = $$phash{'secondary-end'};
+        my $cm;
+        my $clength;
+        if($ss and $se) {
+            $cm = int($se) - int($ss);
+            $clength = length($ss);
+        }
+        my $fn = '('.int($fs).'-1+($2-'.$ipstart.'+1)/'.$cm.')';
+        my $cn = '('.int($ss).'-1+($2-'.$ipstart.'+1)%'.$cm.')';
+        $pregex = '|^(\d+\.\d+\.\d+)\.(\d+)$|'.$nb.'(\'0\'*('.$tlength.'-length'.$fn.'))'.$fn.$namesecond.'(\'0\'*('.$clength.'-length'.$cn.'))'.$cn.$nameend.'|';
+        $tables{'ppc'}->setNodeAttribs($ntype, {parent => $pregex});  
+    } 
+         
+    if ($ntype eq "fsp" and $STANZAS{'xcat-cecs'}->{'supernode-list'} and @CECS) {
+        my @cecparent = sort(@CECS);
+        my %parenthash;          
+        for my $cip (@startingips) {
+            my ($ipbase, $ipstart) = $cip =~/^(\d+\.\d+\.\d+\.)(\d+)$/;          
+            my $i = 0;                 
+            foreach my $ch (@cecparent) {$parenthash{$ipbase.($i+$ipstart)}->{parent} = $ch; $i++;}
+        } 
+        $tables{'ppc'}->setNodesAttribs(\%parenthash);               
+    }  
+
+    #}
+    return 1;
+}
+
+
 sub readwritevpd {
 	my $filename = shift;
 	if (!defined($filename)) { return; }
@@ -446,6 +576,7 @@ sub writecec {
 		return 0;
 	}
 	if (!scalar(@$nodes)) { return 1; }
+    $PANUMBER = scalar(@$nodes);
 	if ($DELETENODES) {
 		deletenodes('CECs', $cecrange);
 		deletegroup('cec');
@@ -479,7 +610,7 @@ sub writecec {
 			# Math for 3rd field:  (ip4th-1+cecnum-cecstartnum)/254 + ip3rd
             $regex = '|\S+?(\d+)$\D*|' . "$ipbase.((${ip4th}-1+" . '$1' . "-$cecstartnum)/254+$ip3rd).((${ip4th}-1+" . '$1' . "-$cecstartnum)%254+1)|";
 		}
-		$tables{'hosts'}->setNodeAttribs('cec', {ip => $regex});
+        #$tables{'hosts'}->setNodeAttribs('cec', {ip => $regex});
 	}
 	
 	# Using the cec group, write: nodetype.nodetype
@@ -593,6 +724,7 @@ sub writecec {
 		$tables{'nodelist'}->setNodesAttribs(\%nodehash);
 		$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
 	}
+    foreach (keys %nodehash) { push @CECS,$_; }
 	return 1;
 }
 
@@ -950,8 +1082,8 @@ sub writeMnRouteNames {
 			my $routename = "mnto$sn$nic";
 			$routehash{mask} = $nicmasks{$nic};
 			# and together $nicip with $nicmasks{$nic} to get the $routehash{net}
-			my $mask = xCAT::NetworkUtils::getipaddr($nicmasks{$nic}, GetNumber=>1);
-			my $ip = xCAT::NetworkUtils::getipaddr($nicip, GetNumber=>1);
+            my $mask = xCAT::NetworkUtils::getipaddr($nicmasks{$nic});#, GetNumber=>1);
+            my $ip = xCAT::NetworkUtils::getipaddr($nicip);#, GetNumber=>1);
 			my $subnet = $ip & $mask;
 			$subnet = inet_ntoa(pack('N',$subnet));
 			$routehash{net} = $subnet;
