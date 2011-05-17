@@ -208,7 +208,7 @@ sub groupsHandler{
   }
   elsif(isPut()){
     #handle groupfiles4dsh -p /tmp/nodegroupfiles
-    if($q->param('command') eq /4dsh/){
+    if($q->param('command') eq "4dsh"){
       if($q->param('path')){
         $request->{command} = 'groupfiles4dsh';
         push @args, "p=$q->param('path')";
@@ -385,7 +385,7 @@ sub logsHandler{
   }
 
   if(isGet()){
-    if($logType eq /reventLog/){
+    if($logType eq "reventLog"){
       if(defined $nodeRange){
         $request->{command} = 'reventlog';
         push @args, $nodeRange;
@@ -404,7 +404,7 @@ sub logsHandler{
   }
   #this clears the log
   elsif(isPut()){
-    if($logType eq /reventlog/){
+    if($logType eq "reventlog"){
       if(defined $nodeRange){
         $request->{command} = 'reventlog';
         push @args, $nodeRange;
@@ -498,16 +498,16 @@ sub monitorsHandler{
   }
   elsif(isPut() || isPatch()){
     my $action = $q->param('action');
-    if($action eq /start/){
+    if($action eq "start"){
       $request->{command} = 'monstart';
     }
-    elsif($action eq /stop/){
+    elsif($action eq "stop"){
       $request->{command} = 'monstop';
     }
-    elsif($action eq /config/){
+    elsif($action eq "config"){
       $request->{command} = 'moncfg';
     }
-    elsif($action eq /deconfig/){
+    elsif($action eq "deconfig"){
       $request->{command} = 'mondeconfig';
     }
     else{
@@ -544,18 +544,25 @@ sub networksHandler{
   }
   elsif(isPut() or isPatch()){
     my $subResource;
-    if(defined $path[2]){
-      $subResource = $path[2];
+    if(defined $path[1]){
+      $subResource = $path[1];
     }
-    if($subResource eq /hosts/){
+print "subResource is $subResource\n";
+    if($subResource eq "hosts"){
       $request->{command} = 'makehosts';
       #is this needed?
       push @args, 'all';
     }
-    elsif($subResource eq /dhcp/){
+    elsif($subResource eq "dhcp"){
+print "got here\n";
       #allow restarting of the dhcp service.  scary?
-      if($q->param('command') eq /restart/){
-        system('service dhcp restart');
+      if($q->param('command') eq "restart"){
+        if(isAuthenticUser()){
+          system('service dhcp restart');
+        }
+        else{
+          exit(0);
+        }
       }
       else{
         $request->{command} = 'makedhcp';
@@ -564,10 +571,12 @@ sub networksHandler{
         }
       }
     }
-    elsif($subResource eq /dns/){
+    elsif($subResource eq "dns"){
       #allow restarting of the named service.  scary?
-      if($q->param('command') eq /restart/){
-        system('service named restart');
+      if($q->param('command') eq "restart"){
+        if(isAuthenticUser()){
+          system('service named restart');
+        }
       }
       else{
         $request->{command} = 'makedhcp';
@@ -1262,17 +1271,17 @@ sub vmsHandler{
       if(defined $q->param('full')){
         push @args, '--full';
       }
-      if(defined $q->param('master')){
-        push @args, '-m';
-        push @args, $q->param('master');
-      }
-      if(defined $q->param('size')){
-        push @args, '-s';
-        push @args, $q->param('size');
-      }
-      if(defined $q->param('force')){
-        push @args, '-f';
-      }
+      #if(defined $q->param('master')){
+        #push @args, '-m';
+        #push @args, $q->param('master');
+      #}
+      #if(defined $q->param('size')){
+        #push @args, '-s';
+        #push @args, $q->param('size');
+      #}
+      #if(defined $q->param('force')){
+        #push @args, '-f';
+      #}
     }
   }
   elsif(isPut() || isPatch()){
@@ -1580,4 +1589,19 @@ sub isPatch{
 
 sub isDelete{
   return uc($requestType) eq "DELETE";
+}
+
+#check to see if this is a valid user.  userName and password are already set
+sub isAuthenticUser{
+print "here\n";
+  $request->{command} = 'authcheck';
+  my $req = genRequest();
+  my @responses = sendRequest($req);
+  if(@responses[0]->{data}[0] eq "Authenticated"){
+    #user is authenticated
+    return 1;
+  }
+  #authentication failure
+  sendStatusMsg($STATUS_UNAUTH, @responses[0]->{error}[0]);
+  return 0;
 }
