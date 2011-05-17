@@ -4163,6 +4163,16 @@ sub listTree {
 					$found = 1;
 					last;
 				}
+				
+				# Handle second level zVM
+				foreach my $vm(sort keys %{$tree{$cec}{$lpar}}) {
+					if ($vm eq $parent) {
+						# Add VM branch
+						$tree{$cec}{$lpar}{$parent}{$node} = {};
+						$found = 1;
+						last;
+					}
+				}
 			}
 			
 			# Exit loop if LPAR branch added
@@ -4190,6 +4200,16 @@ sub listTree {
 						$tree{$cec}{$lpar}{$parent}{$node} = $_->{'userid'};
 						$found = 1;
 						last;
+					}
+					
+					# Handle second level zVM
+					foreach my $vm(sort keys %{$tree{$cec}{$lpar}{$zvm}}) {
+						if ($vm eq $parent) {
+							# Add VM branch
+							$tree{$cec}{$lpar}{$zvm}{$parent}{$node} = $_->{'userid'};
+							$found = 1;
+							last;
+						}
 					}
 				}
 				
@@ -4221,7 +4241,15 @@ sub listTree {
 				
 				# Loop through VMs
 				foreach my $vm(sort keys %{$tree{$cec}{$lpar}{$zvm}}) {
-					xCAT::zvmUtils->printLn( $callback, "      |__VM: $vm ($tree{$cec}{$lpar}{$zvm}{$vm})" );
+					# Handle second level zVM
+					if (ref($tree{$cec}{$lpar}{$zvm}{$vm}) eq 'HASH') {
+						xCAT::zvmUtils->printLn( $callback, "      |__zVM: $vm" );
+						foreach my $vm2(sort keys %{$tree{$cec}{$lpar}{$zvm}{$vm}}) {
+							xCAT::zvmUtils->printLn( $callback, "         |__VM: $vm2 ($tree{$cec}{$lpar}{$zvm}{$vm}{$vm2})" );
+						}
+					} else {
+						xCAT::zvmUtils->printLn( $callback, "      |__VM: $vm ($tree{$cec}{$lpar}{$zvm}{$vm})" );
+					}
 				}
 			}
 		}
