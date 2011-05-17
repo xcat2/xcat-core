@@ -68,7 +68,6 @@ foreach my $table (@tablist) {
   if ($::RUNCMD_RC != 0)
   {
     `logger -txcat " reorgtbl:error $cmd"`;
-     exit 1;
   } else {
     `logger -txcat " reorgtbl:reorg indexes for $table"`;
   }
@@ -77,7 +76,6 @@ foreach my $table (@tablist) {
   if ($::RUNCMD_RC != 0)
   {
     `logger -txcat " reorgtbl:error $cmd"`;
-     exit 1;
   } else {
     `logger -txcat " reorgtbl:reorg $table inplace"`;
   }
