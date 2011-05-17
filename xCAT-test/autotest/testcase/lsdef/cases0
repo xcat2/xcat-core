@@ -1,10 +1,12 @@
 start:lsdef_null
 description: lsdef without any flag
 cmd:mkdef -t node -o testnode groups=all
+check:rc==0
 cmd:lsdef
 check:rc==0
 check:output=~testnode\s*\(node\)
 cmd:rmdef testnode
+check:rc==0
 end
 
 start:lsdef_a
@@ -13,6 +15,12 @@ cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0
 check:rc==0
+#prune auditlog and eventlog tables
+#to avoid massive output with lsdef -a
+cmd:tabprune auditlog -a
+check:rc==0
+cmd:tabprune eventlog -a
+check:rc==0
 cmd:lsdef -a
 check:output=~testnode
 check:output=~testnetwork
@@ -20,7 +28,9 @@ cmd:lsdef --all
 check:output=~testnode
 check:output=~testnetwork
 cmd:rmdef -t network testnetwork
+check:rc==0
 cmd:rmdef -t node testnode
+check:rc==0
 end
 
 start:lsdef_t_o_l
@@ -39,7 +49,9 @@ check:output=~net=1.2.3.0
 check:output=~mask=255.255.255.0
 check:output!~testnode
 cmd:rmdef -t network testnetwork
+check:rc==0
 cmd:rmdef -t node testnode
+check:rc==0
 end
 
 start:lsdef_t_o_l_z
@@ -130,8 +142,47 @@ check:output=~testnode\s+\(node\)
 cmd:rmdef -t node testnode
 end
 
+start:lsdef_t_auditlog
+description:lsdef -t auditlog
+cmd:tabprune auditlog -a
+check:rc==0
+cmd:lsdef -t auditlog
+check:rc==0
+check:output=~auditlog
+end
+
+start:lsdef_t_eventlog
+description:lsdef -t eventlog
+cmd:tabprune eventlog -a
+check:rc==0
+cmd:lsdef -t eventlog
+check:rc==0
+check:output!~not a valid xCAT object type
+end
+
+start:lsdef_t_policy
+description:lsdef -t policy
+cmd:lsdef -t policy
+check:rc==0
+check:output=~1\s+\(policy\)
+cmd:lsdef -t policy -o 1 -l
+check:rc==0
+check:output=~rule=allow
+end
+
+start:lsdef_t_site
+description:lsdef -t site
+cmd:lsdef -t site
+check:rc==0
+check:output=~clustersite
+cmd:lsdef -t site -o clustersite -l
+check:rc==0
+check:output=~xcatdport
+end
+
 start:lsdef_t_err
-cmd:lsdef -t test -o test
+description:lsdef -t wrongtype -o
+cmd:lsdef -t wrongtype -o test
 check:rc!=0
 check:output=~Error
 end
