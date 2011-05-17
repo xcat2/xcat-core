@@ -18,6 +18,7 @@ BEGIN
 
 use lib "$::XCATROOT/lib/perl";
 use xCAT::Utils;
+use Getopt::Long;
 
 use strict;
 use warnings;
@@ -27,6 +28,9 @@ use warnings;
 # the XCATDB schema
 # Then use runsqlcmd to run the reorg on the list of tables,
 # allow read/write by other applications during reorg
+#
+GetOptions( 'V|verbose' => \$::VERBOSE );
+
 my $cmd="$::XCATROOT/sbin/runsqlcmd \"select tabname from syscat.tables where TABSCHEMA='XCATDB';\"";
 my @tablist = xCAT::Utils->runcmd($cmd, 0);
 if ($::RUNCMD_RC != 0)
@@ -52,10 +56,12 @@ foreach my $table (@tablist) {
   if ($table =~ /^\s*$/) {  # skip blanks
       next;
   }
-  if ($table =~ m/[^a-zA-Z0-9_]/) # skip non alphanumeric lines or underscore
+  if ($table =~ m/[^a-zA-Z0-9_]/) # skip non alphanumeric lines not underscore
   {
-      my $stoppoint=1;
       next;
+  }
+  if ($::VERBOSE) {
+    print " Reorg of table $table\n";
   }
   $cmd="$::XCATROOT/sbin/runsqlcmd \"reorg indexes all for table $table allow write access;\"";
   xCAT::Utils->runcmd($cmd, 0);
