@@ -630,11 +630,11 @@ sub preprocess_request
 	    $snonly=$href->{value};
 	}
     }
-
     my @requests=();
     my $hasHierarchy=0;
-    if (($snonly == 1) && (! grep /-n/,@{$req->{arg}})) {
-	my @nodes=();
+
+    my @nodes=();
+    if (! grep /-n/,@{$req->{arg}}) {
 	if ($req->{node}) {
 	    @nodes=@{$req->{node}};
 	}
@@ -661,7 +661,10 @@ sub preprocess_request
 		}
 	    }	    
 	}
+    }
+    #print "nodes=@nodes\n";
 
+    if (($snonly == 1) && (! grep /-n/,@{$req->{arg}})) {
         if (@nodes > 0) {
 	    my $sn_hash =xCAT::Utils->getSNformattedhash(\@nodes,"xcat","MN"); 
 	    if ($localonly) {
