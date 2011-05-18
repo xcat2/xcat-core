@@ -30,7 +30,7 @@ foreach (@extSchema) {
     my $modname = $1;
     no strict 'refs';
     my $warning;
-    `logger -t xCAT processing $_`; 
+    # `logger -t xCAT processing $_`; 
     eval {require($_)};
     if ($@) { 
 	$warning ="Warning: The user defined database table schema file $file cannot be located or has compiling errors.\n";
