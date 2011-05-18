@@ -138,8 +138,8 @@ export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
-sed -i 's/^serial/#serial/' /boot/grub/menu.lst
-sed -i 's/^terminal/#terminal/' /boot/grub/menu.lst
+sed -i 's/^serial/#serial/' /boot/grub/grub.conf
+sed -i 's/^terminal/#terminal/' /boot/grub/grub.conf
 updateflag.awk $MASTER 3002
 cd /
 #rm -Rf /xcatpost
