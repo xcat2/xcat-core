@@ -225,10 +225,12 @@ sub process_request {
           if ($DELNODE) {
               delnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
           } else {
-              addnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
-              if (defined($ref->{otherinterfaces})){
-                 addotherinterfaces $ref->{node},$ref->{otherinterfaces},$domain;
-            }
+              if ( xCAT::Utils->isIpaddr($ref->{ip}) ) { 
+                  addnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
+                  if (defined($ref->{otherinterfaces})){
+                     addotherinterfaces $ref->{node},$ref->{otherinterfaces},$domain;
+                  }
+              } 
           }
         } #end foreach
     } # end else
@@ -238,10 +240,12 @@ sub process_request {
       }
     my @hostents = $hoststab->getAllNodeAttribs(['ip','node','hostnames','otherinterfaces']);
     foreach (@hostents) {
-      addnode $_->{node},$_->{ip},$_->{hostnames},$domain;
-      if (defined($_->{otherinterfaces})){
-         addotherinterfaces $_->{node},$_->{otherinterfaces},$domain;
-      }
+        if ( xCAT::Utils->isIpaddr($_->{ip}) ) {
+            addnode $_->{node},$_->{ip},$_->{hostnames},$domain;
+            if (defined($_->{otherinterfaces})){
+               addotherinterfaces $_->{node},$_->{otherinterfaces},$domain;
+            }
+        }
     }
   }
   writeout();
