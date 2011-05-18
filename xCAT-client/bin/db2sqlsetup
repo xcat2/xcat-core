@@ -433,6 +433,9 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         xCAT::MsgUtils->message("I",
                                 "xCAT is  running on the DB2 database.\n");
 
+       # add cron entry for table reorg
+       &updatecrontab;
+
     }
     else  # client
     {
@@ -1682,6 +1685,28 @@ sub restorexcatdb
     # start the daemon
     #
     &startxcatd;
+}
+#-----------------------------------------------------------------------------
+
+=head3   updatecrontab 
+	   
+	    Sets up a crontab entry to reorg the database, once a week on Sunday 
+               night midnight	
+	
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub  updatecrontab
+{
+  my $cmd="/opt/xcat/share/xcat/tools/reorgtbls";
+  my $entry="0 0 * * 0 $cmd";
+  my ($code, $msg)=xCAT::Utils::add_cron_job($entry);
+  if ($code==0) {
+        xCAT::MsgUtils->message("I", " A crontab entry has been added to run DB2 table reorg once a week on Sunday 12pm\n If you would like to change this time, use crontab -e to modify the entry for reorgtbls execution\n You may also limit the tables to reorg but using the -t parameter on reorgtbls.\n  See reorgtbls -h.");
+  } else {
+        xCAT::MsgUtils->message("W", " Failed to add crontab entry for Table reorg.");
+  }
 }
 #-----------------------------------------------------------------------------
 
