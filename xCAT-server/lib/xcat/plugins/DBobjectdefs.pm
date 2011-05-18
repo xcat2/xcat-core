@@ -242,6 +242,7 @@ sub processArgs
     if (
         !GetOptions(
                     'all|a'     => \$::opt_a,
+                    'compress|c'=> \$::opt_c,
                     'dynamic|d' => \$::opt_d,
                     'f|force'   => \$::opt_f,
                     'i=s'       => \$::opt_i,
@@ -303,6 +304,13 @@ sub processArgs
         return 2;
     }
 
+    # -c must be used together with -i
+    if ($::opt_c && !$::opt_i) {
+        my $rsp;
+        $rsp->{data}->[0] = "The flags \'-c'\ and \'-i'\ must be used together.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
     # can get object names in many ways - easier to keep track
     $::objectsfrom_args = 0;
     $::objectsfrom_opto = 0;
@@ -2867,7 +2875,10 @@ sub defls
                         }
                         else
                         {
-                            push (@{$rsp_info->{data}}, "Object name: $obj");
+                            if (!$::opt_c)
+                            {
+                                push (@{$rsp_info->{data}}, "Object name: $obj");
+                            } 
                         }
                     }
 
@@ -2903,7 +2914,15 @@ sub defls
 
                                     # since they asked for this attr
                                     #   show it even if not set
-                                    push (@{$rsp_info->{data}}, "    $showattr=$attrval");
+                                    if (!$::opt_c)
+                                    {
+                                        push (@{$rsp_info->{data}}, "    $showattr=$attrval");
+                                    } 
+                                    else
+                                    {
+                                        push (@{$rsp_info->{data}}, "$obj: $showattr=$attrval");
+
+                                    } 
                                 }
                             }
                         }
