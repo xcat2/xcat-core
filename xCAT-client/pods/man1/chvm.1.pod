@@ -20,7 +20,7 @@ B<chvm> I<noderange> [B<-p> I<profile>]
 
 B<chvm> I<noderange> B<-i id> B<-m> I<memory_interleaving> B<-r> I<partition_rule>
 
-=head2 VMware specific:
+=head2 VMware/KVM specific:
 
 B<chvm> I<noderange> [B<-a> I<size>] [B<-d> I<disk>] [B<-p> I<disk>] [B<--resize> B<disk>=I<size>] [B<--cpus> I<count>] [B<--mem> I<memory>]
 
@@ -40,7 +40,7 @@ chvm is also designed to assign the I/O slots to the new LPAR. Both the current 
 
 The administrator should use lsvm to get the profile content, and then edit the content, and add the node name with ":" manually before the I/O which will be assigned to the node. And then the profile can be piped into the chvm command, or changed with the -p flag.
 
-=head2 VMware specific:
+=head2 VMware/KVM specific:
 
 The chvm command modifes the vm specified in noderange.  Calling with deregister or purge options at the same time as the resize option is not recommended.
 
@@ -112,7 +112,7 @@ Name of I/O slots assignment profile.
 
 =back
 
-=head2 VMware specific:
+=head2 VMware/KVM specific:
 
 =over 10
 
@@ -246,7 +246,7 @@ then run the command:
 
  chvm lpar1-lpar8 -p /tmp/lparfile
 
-=head2 VMware specific:
+=head2 VMware/KVM specific:
 
  chvm vm1 -a 8,16 --mem 512 --cpus 2
 
