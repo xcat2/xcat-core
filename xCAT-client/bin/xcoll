@@ -9,8 +9,10 @@ use strict;
 my %output;
 
 my $option;
+my $printcount;
 
-GetOptions("n"=>\$option);
+GetOptions("n"=>\$option,
+           "c"=>\$printcount);
 
 while (<STDIN>) {
     my $node;
@@ -48,6 +50,10 @@ foreach my $output (keys %collated) {
     print "====================================\n";
     print "$nodes\n";
     print "====================================\n";
+    if ($printcount) {
+       print "Node count = ".scalar( keys %{$collated{$output}})." \n";
+       print "====================================\n";
+    }
     print $output;
     print "\n";
 }
