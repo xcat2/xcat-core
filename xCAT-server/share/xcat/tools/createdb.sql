@@ -25,7 +25,7 @@ update db cfg for xcatdb using DFT_PREFETCH_SZ AUTOMATIC;
 update db cfg for xcatdb using MAXAPPLS AUTOMATIC;
 update db cfg for xcatdb using AVG_APPLS AUTOMATIC;
 update db cfg for xcatdb using LOGBUFSZ 98;
-update db cfg for xcatdb using LOGFILSIZ 20048;
+update db cfg for xcatdb using LOGFILSIZ 40048;
 update db cfg for xcatdb using LOGPRIMARY 10;
 update db cfg for xcatdb using LOGSECOND 20;
 update db cfg for xcatdb using AUTO_RUNSTATS ON;
