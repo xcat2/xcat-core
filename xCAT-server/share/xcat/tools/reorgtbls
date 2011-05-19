@@ -48,6 +48,15 @@ if ($help) {
     print "\n";
     exit 0;
 }
+# check to see if running DB2
+my $DBname = xCAT::Utils->get_DBName;
+if ($DBname ne "DB2") {
+ 
+   print " Reorg of table only supported for DB2 database\n";
+   `logger -txcat " reorgtbls:Only supports DB2 database"` ;
+    exit 1;
+  
+}
 if ($tablelist) {  # input list of tables 
   @tablist=split(/\,/, $tablelist);
 } else { # get all tables
@@ -55,7 +64,7 @@ if ($tablelist) {  # input list of tables
   @tablist = xCAT::Utils->runcmd($cmd, 0);
   if ($::RUNCMD_RC != 0)
   {
-   `logger -txcat " reorgdb2table:error in select tabname from syscat.tables"` ;
+   `logger -txcat " reorgtbls:error in select tabname from syscat.tables"` ;
    exit 1;
   }
 }
@@ -92,17 +101,17 @@ foreach my $table (@tablist) {
   xCAT::Utils->runcmd($cmd, 0);
   if ($::RUNCMD_RC != 0)
   {
-    `logger -txcat " reorgtbl:error $cmd"`;
+    `logger -txcat " reorgtbls:error $cmd"`;
   } else {
-    `logger -txcat " reorgtbl:reorg indexes for $table"`;
+    `logger -txcat " reorgtbls:reorg indexes for $table"`;
   }
   $cmd="$::XCATROOT/sbin/runsqlcmd \"reorg table $table inplace allow write access;\"";
   xCAT::Utils->runcmd($cmd, 0);
   if ($::RUNCMD_RC != 0)
   {
-    `logger -txcat " reorgtbl:error $cmd"`;
+    `logger -txcat " reorgtbls:error $cmd"`;
   } else {
-    `logger -txcat " reorgtbl:reorg $table inplace"`;
+    `logger -txcat " reorgtbls:reorg $table inplace"`;
   }
 }
 exit 0;
