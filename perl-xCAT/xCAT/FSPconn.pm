@@ -604,54 +604,39 @@ sub lshwconn
 	      #print "in lshwconn:\n";
 	      #print Dumper($res);
 	      my $Rc = @$res[2];
-	      my $data = @$res[1];
+	      my $values = @$res[1];
 		     
 	      ############################################
               # If lssysconn failed, put error into all
               # nodes' return values
               ############################################
-              if ( $Rc ) 
-              {
-                    push @value, [$node_name, $data, $Rc];
-                    next;
-               }
-               
-	       my $node_ip = xCAT::Utils::getNodeIPaddress( $node_name );
-	       if(!defined($node_ip)) {
-                    $data = "Failed to get the $node_name\'s ip";
-		    push @value, [$node_name, $data, -1];
-		    next;
-	       }
-	       if( $data =~ /state/) { 
-	           $data =~ /state=([\w\s]+), type=([\w-]+), MTMS=([\w-\*]+), ([\w=]+), slot=([\w]+), ipadd=([\w.]+), alt_ipadd=([\w.]+)/ ;
-	          #$data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
-	           print "parsing: $1,$2,$3,$4,$5,$6,$7\n";
-	           my $state      = $1;
-	           my $type       = $2;
-	           my $mtms       = $3;
-	           my $sp         = $4;
-	           my $slot       = $5;
-	           my $ipadd      = $6;
-	           my $alt_ipaddr = $7;
-               #if($ipadd ne $node_ip) {
-               #    $ipadd=$7;
-               #    $alt_ipaddr = $6;
-               #}
-               #$data = "$sp,ipadd=$node_ip,alt_ipadd=$alt_ipaddr,state=$state";
-	           $data = "$sp,ipadd=$ipadd,alt_ipadd=$alt_ipaddr,state=$state";
-	       #my $s;
-	       #foreach my $val ( @infomap ) {
-	       #    if ( $data =~ /@$val[0]=([\w.\-\s]+)/ ) {
-	       #  	print "$1\n";
-	       #         $s = $s + "@$val[1]=$1";
-	       #   }
-	       #}
-	       #$data = $s;
-               }
-               push @value, [$node_name, $data, $Rc];
-                
-            }
-        }
+          #if ( $Rc ) 
+          #    {
+          #          push @value, [$node_name, $values, $Rc];
+          #          next;
+          #     }
+                  
+           my @data_a = split("\n", $values);         
+           foreach my $data(@data_a) {
+	           if( $data =~ /state/) { 
+	               $data =~ /state=([\w\s]+), type=([\w-]+), MTMS=([\w-\*]+), ([\w=]+), slot=([\w]+), ipadd=([\w.]+), alt_ipadd=([\w.]+)/ ;
+	               #$data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
+	               print "parsing: $1,$2,$3,$4,$5,$6,$7\n";
+	               my $state      = $1;
+	               my $type       = $2;
+	               my $mtms       = $3;
+	               my $sp         = $4;
+	               my $slot       = $5;
+	               my $ipadd      = $6;
+	               my $alt_ipaddr = $7;
+	               $data = "$ipadd: $sp,ipadd=$ipadd,alt_ipadd=$alt_ipaddr,state=$state";
+                }
+             push @value, [$node_name, $data, $Rc];
+          } 
+       }
+    } 
+
+
     return \@value;
 
 
