@@ -57,11 +57,13 @@ This option runs during update, it will take all the host from the input file (p
 This option sets up the ODBC  /etc/../odbcinst.ini, /etc/../odbc.ini and the .odbc.ini file in roots home directory will be created and initialized to run off the xcatdb MySQL database.
 See "Add ODBC Support" in
 https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_Up_MySQL_as_the_xCAT_DB
+
 =item B<-L|--LL>
 
 Additional database configuration specifically for the LoadLeveler product. 
 See "Add ODBC Support" in
 https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Setting_Up_MySQL_as_the_xCAT_DB
+
 =back
 
 =head1 ENVIRONMENT VARIABLES
@@ -90,7 +92,7 @@ B<mysqlsetup> I<-i>
 
 =item *
 
-To add hosts from /tmp/xcat/hostlist that can access the xcatdb database in MySQL:
+Add hosts from /tmp/xcat/hostlist that can access the xcatdb database in MySQL:
 
 B<mysqlsetup> I<-u> I<-f /tmp/xcat/hostlist>
 
