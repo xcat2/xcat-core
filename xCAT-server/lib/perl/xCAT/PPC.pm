@@ -1808,24 +1808,7 @@ sub process_request {
     my @failed_nodes = @$t;
     #print "-------failed nodes-------\n";
     #print Dumper(\@failed_nodes); 
-    my $hcps = getHCPsOfNodes(\@failed_nodes, $callback);
-    if ($request->{command} eq "mkhwconn" ) {
-        if ( grep (/^-s$/, @$request{arg}) ) {
-            my $ppctab = xCAT::Table->new('ppc');
-            my %newhcp;
-            if ( $ppctab ) {
-                for my $n (@failed_nodes) {
-                    my $pptmp = $ppctab->getNodeAttribs( $n, [qw(sfp)]);
-                    if ($pptmp)
-                    {
-                        $newhcp{$n}{hcp} = [$pptmp->{sfp}];
-                        $newhcp{$n}{num} = 1;
-                     }
-                }
-                $hcps = \%newhcp;
-            }
-        }
-    }
+    my $hcps = getHCPsOfNodes(\@failed_nodes, $callback, $request);
     if( !defined($hcps)) {
 	#Not found the hcp for one node
         $request = {};	
@@ -2118,7 +2101,42 @@ sub getHCPsOfNodes
 {
     my $nodes    = shift;
     my $callback = shift;
-    my %hcps     = ();
+    my $request  = shift;
+    my %hcps;
+    
+    if ($request->{command} eq "mkhwconn" or $request->{command} eq "lshwconn" or $request->{command} eq "rmhwconn") {
+        if ( grep (/^-s$/, @{$request->{arg}}) ) {
+
+            my $ppctab = xCAT::Table->new('ppc');
+            my %newhcp;
+            if ( $ppctab ) {
+                my $typeref = xCAT::DBobjUtils->getnodetype($nodes);
+                my $i = 0;
+                for my $n (@$nodes) {
+                    if (@$typeref[$i++] =~ /^fsp|bpa$/) {
+                        my $np = $ppctab->getNodeAttribs( $n, [qw(parent)]);
+                        if ($np)  { # use parent(frame/cec)'s sfp attributes first,for high end machine with 2.5/2.6+ database
+                            my $psfp = $ppctab->getNodeAttribs( $np->{parent}, [qw(sfp)]);
+                            $newhcp{$n}{hcp} = [$psfp->{sfp}]  if ($psfp);
+                        } else {    # if the node don't have a parent,for low end machine with 2.5 database
+                            my $psfp = $ppctab->getNodeAttribs( $n, [qw(sfp)]);
+                            $newhcp{$n}{hcp} = [$psfp->{sfp}] if ($psfp);
+                        }
+                    } else {
+                         my $psfp = $ppctab->getNodeAttribs( $n, [qw(sfp)]);
+                         $newhcp{$n}{hcp} = [$psfp->{sfp}] if($psfp); 
+                    }
+                    $newhcp{$n}{num} = 1;
+                }
+            } else {
+                $callback->({data=>["Could not open the ppc table"]});
+            }
+            return \%newhcp;
+        }
+    }
+
+
+    
     #get hcp from ppc.
     foreach my $node( @$nodes) {
         #my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($node, $callback);
