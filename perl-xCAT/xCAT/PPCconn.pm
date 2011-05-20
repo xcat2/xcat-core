@@ -255,7 +255,7 @@ sub lshwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -264,7 +264,9 @@ sub lshwconn_parse_args
     # Process command-line arguments
     #############################################
     if ( scalar( @ARGV)) {
+        unless( $opt{s}) {
         return(usage( "No additional flag is support by this command" ));
+      }
     }
     my $nodetypetab = xCAT::Table->new('nodetype');
     if (! $nodetypetab)
@@ -339,7 +341,7 @@ sub rmhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -348,7 +350,9 @@ sub rmhwconn_parse_args
     # Process command-line arguments
     #############################################
     if ( scalar (@ARGV)) {
+        unless( $opt{s}) {
         return(usage( "No additional flag is support by this command" ));
+        }
     }
     ##########################################
     # Check if CECs are controlled by a frame
@@ -680,7 +684,7 @@ sub rmhwconn
                 my $res = xCAT::PPCcli::rmsysconn( $exp, $type, $nn);
                 $Rc = shift @$res;
                 push @value, [$node_name, @$res[0], $Rc];
-                if ( !$Rc)
+                if ( !$Rc and !$opt->{s})
                 {
                     rmhmcmgt( $node_name, $type);
                 }
