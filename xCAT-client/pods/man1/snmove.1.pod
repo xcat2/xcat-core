@@ -14,11 +14,11 @@ B<snmove> [B<-h>|B<--help>|B<-v>|B<--version>]
 
 The B<snmove> command moves a node or nodes from one service node to
 another.
-				 
+
 The use of backup service nodes in an xCAT hierarchical cluster can
 help improve the overall reliability, availability, and serviceability
 of the cluster.
-												
+
 Before you run the B<snmove> command it is assumed that the backup
 service node has been configured properly to manage the new node
 or nodes. (See the xCAT document named
@@ -28,26 +28,26 @@ up backup AIX service nodes.).
 The B<snmove> command can use the information stored in the xCAT
 database or information passed in on the command line to determine
 the current service node and the backup service node.
-										 
+
 To specify the primary and backup service nodes you can set the
 "servicenode" attribute of the node definitions.
 
-The "servicenode" attribute is the hostname of the xCAT service node
-as it is known by the management node. The "xcatmaster" attribute
+The B<servicenode> attribute is the hostname of the xCAT service node
+as it is known by the management node. The B<xcatmaster> attribute
 is the hostname of the xCAT service node as known by the node.
-The "servicenode" attribute should be set to a comma-separated list
+The B<servicenode> attribute should be set to a comma-separated list
 so that the primary service node is first and the backup service
-node is second.  The "xcatmaster" attribute must be set to the
+node is second.  The B<xcatmaster> attribute must be set to the
 hostname of the primary service node as it is known by the node.
 
 When the B<snmove> command is run it modifies the xCAT database to
 switch the the primary server to the backup server.
-			 
+
 It will also check the other services that are being used for the
 node (tftpserver, monserver, nfsserver, conserver), and if they were set 
 to the original service node they will be changed to point to the backup
 service node. 
-											 
+
 If the -i option is specified, the nodes themselves will not be modified.
 
 If the -i option is NOT specified then the nodes will e modified as follows:
