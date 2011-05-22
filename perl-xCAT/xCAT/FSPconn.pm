@@ -56,14 +56,14 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t T=s p=s P=s port=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t s T=s p=s P=s port=s) )) {
         return( usage() );
     }
 
     if ( exists $opt{s} )
     {
-       my $opttmp = xCAT::PPCconn::mkhwconn_parse_args($request, $args);
-           return $opttmp;
+        my $opttmp = xCAT::PPCconn::mkhwconn_parse_args($request, $args);
+        return $opttmp;
     }
 
 
@@ -300,7 +300,13 @@ sub lshwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s) )) {
+    if ( exists $opt{s} )
+    {
+        my $opttmp = xCAT::PPCconn::lshwconn_parse_args($request, $args);
+        return $opttmp;
+    }
+	
+    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -421,11 +427,17 @@ sub rmhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
-    
+
+    if ( $opt{s} )
+    {
+        my $opttmp = xCAT::PPCconn::rmhwconn_parse_args($request, $args);
+        return $opttmp;
+    }	
+	
     if( ! exists $opt{T} )
     {
         $opt{T} = "lpar"; #defaut value is lpar.
