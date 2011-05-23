@@ -31,27 +31,31 @@ sub parse_args {
         "HMC_passwd",
         "admin_passwd",
         "general_passwd",
-        "*_passwd"
+        "*_passwd",
+        "resetnet",
     );
     my @bpa = (
 	"frame",
         "HMC_passwd",
         "admin_passwd",
         "general_passwd",
-        "*_passwd"
+        "*_passwd",
+        "resetnet"
     );
     my @cec = (
         "HMC_passwd",
         "admin_passwd",
         "general_passwd",
-        "*_passwd"
+        "*_passwd",
+        "resetnet"
     );
     my @frame = (
 	"frame",
         "HMC_passwd",
         "admin_passwd",
         "general_passwd",
-        "*_passwd"
+        "*_passwd",
+        "resetnet"
     );
 
     
@@ -103,7 +107,7 @@ sub parse_args {
     Getopt::Long::Configure( "bundling" );
     $request->{method} = undef;
 
-    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose resetnet))) {
         return( usage() );
     }
     ####################################
@@ -123,7 +127,7 @@ sub parse_args {
     ####################################
     foreach my $arg ( @ARGV ) {
         my ($command,$value) = split( /=/, $arg );
-        if ( !grep( /^$command$/, @$supported )) {
+        if ( !grep( /^$command$/, @$supported) and !$opt{resetnet}) {
             return(usage( "Invalid command for $request->{hwtype} : $arg" ));
         } 
         if ( exists( $cmds{$command} )) {
@@ -159,6 +163,14 @@ sub parse_args {
         return( \%opt );
     }
 
+    ####################################
+    # Return method to invoke
+    ####################################
+    if ( $opt{resetnet}  ) {
+        $request->{hcp} = "fsp";
+        $request->{method} = "resetnet";
+        return( \%opt );
+    }
     ####################################
     # Return method to invoke
     ####################################
@@ -468,5 +480,20 @@ sub fsp_api_passwd {
 
 }
 
+
+##########################################################################
+# Do resetnet 
+##########################################################################
+sub resetnet {
+    my $request = shift;
+    my $hash    = shift;
+    my %nodehash;
+    foreach ( @{$request->{noderange}}) {
+       $nodehash{$_} = 1;
+    }
+    # go to use lsslp do_resetnet
+    my $result = xCAT_plugin::lsslp::do_resetnet($request, \%nodehash);
+	return [$result];
+}
 1;
 
