@@ -1085,3 +1085,23 @@ sub getUserProfile {
 	$out = `ssh $hcp "cat $file"`;
 	return $out;
 }
+
+#-------------------------------------------------------
+
+=head3   inArray
+
+	Description	: Checks if a value exists in an array
+    Arguments	: 	Value to search for
+    				Array to search in
+    Returns		: The searched expression
+    Example		: my $rtn = xCAT::zvmUtils->inArray($needle, @haystack);
+    
+=cut
+
+#-------------------------------------------------------
+sub inArray {
+
+	# Get inputs
+	my ( $class, $needle, @haystack ) = @_;
+	return grep{ $_ eq $needle } @haystack;
+}

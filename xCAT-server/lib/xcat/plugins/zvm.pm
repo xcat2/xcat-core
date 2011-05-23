@@ -4127,6 +4127,7 @@ sub listTree {
 	my $tab = xCAT::Table->new( 'zvm', -create => 1, -autocommit => 0 );
 	
 	# Get CEC entries
+	# There should be few of these nodes
 	my @entries = $tab->getAllAttribsWhere( "nodetype = 'cec'", 'node', 'parent' );
 	foreach (@entries) {
 		$node = $_->{'node'};
@@ -4136,6 +4137,7 @@ sub listTree {
 	}
 
 	# Get LPAR entries
+	# There should be a couple of these nodes
 	@entries = $tab->getAllAttribsWhere( "nodetype = 'lpar'", 'node', 'parent' );
 	foreach (@entries) {
 		$node = $_->{'node'};		# LPAR
@@ -4146,6 +4148,7 @@ sub listTree {
 	}
 	
 	# Get zVM entries
+	# There should be a couple of these nodes
 	$found = 0;
 	@entries = $tab->getAllAttribsWhere( "nodetype = 'zvm'", 'node', 'parent' );
 	foreach (@entries) {
@@ -4172,24 +4175,30 @@ sub listTree {
 						$found = 1;
 						last;
 					}
-				}
-			}
+				} # End of foreach zVM
+			} # End of foreach LPAR
 			
 			# Exit loop if LPAR branch added
 			if ($found) {
 				last;
 			}
-		}		
+		} # End of foreach CEC		
 	}
 	
 	# Get VM entries
+	# There should be many of these nodes
 	$found = 0;
 	@entries = $tab->getAllAttribsWhere( "nodetype = 'vm'", 'node', 'parent', 'userid' );
 	foreach (@entries) {
 		$node = $_->{'node'};		# VM
 		$parent = $_->{'parent'};	# zVM
 		
-		# Find CEC root based on zVM
+		# Skip node if it is not in noderange
+		if (!xCAT::zvmUtils->inArray($node, @nodes)) {
+			next;
+		}
+		
+		# Find CEC/LPAR root based on zVM
 		# CEC -> LPAR -> zVM
 		$found = 0;
 		foreach my $cec(sort keys %tree) {
@@ -4210,22 +4219,22 @@ sub listTree {
 							$found = 1;
 							last;
 						}
-					}
-				}
+					} # End of foreach VM
+				} # End of foreach zVM
 				
 				# Exit loop if zVM branch added
 				if ($found) {
 					last;
 				}
-			}
+			} # End of foreach LPAR
 			
 			# Exit loop if zVM branch added
 			if ($found) {
 				last;
 			}
-		}		
-	}
-	
+		} # End of foreach CEC
+	} # End of foreach VM node
+
 	# Print tree
 	# Loop through CECs
 	foreach my $cec(sort keys %tree) {
@@ -4250,9 +4259,9 @@ sub listTree {
 					} else {
 						xCAT::zvmUtils->printLn( $callback, "      |__VM: $vm ($tree{$cec}{$lpar}{$zvm}{$vm})" );
 					}
-				}
-			}
-		}
-	}
+				} # End of foreach VM
+			} # End of foreach zVM
+		} # End of foreach LPAR
+	} # End of foreach CEC
 	return;
 }
