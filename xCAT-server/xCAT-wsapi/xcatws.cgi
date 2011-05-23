@@ -14,7 +14,7 @@ use Data::Dumper;
 #all data input will be done from the common structure
 
 #turn on or off the debugging output
-my $DEBUGGING = 1;
+my $DEBUGGING = 0;
 
 my $q = CGI->new;
 my $url = $q->url;
@@ -1226,9 +1226,76 @@ sub objectsHandler{
     }
   }
   elsif(isPut()){
+    $request->{command} = 'chdef';
+    if($q->param('verbose')){
+      push @args, '-v';
+    }
+    if(!defined $q->param('objectType')){
+      sendStatusMsg($STATUS_BAD_REQUEST, "The object must be specified.");
+    }
+    else{
+      push @args, '-t';
+      push @args, join(',',  $q->param('objectType'));
+    }
+    if($q->param('objectName')){
+      push @args, join(',', $q->param('objectName'));
+    }
+    if($q->param('dynamic')){
+      push @args, '-d';
+    }
+    if($q->param('minus')){
+      push @args, '-m';
+    }
+    if($q->param('plus')){
+      push @args, '-p';
+    }
+    if(defined $q->param('field')){
+      foreach ($q->param('field')){
+        #if it has ==, !=. =~ or !~ operators in the field, use the -w option
+        if(/==|!=|=~|!~/){
+          push @args, '-w';
+        }
+        push @args, $_;
+      }
+    }
+    if($q->param('nodeRange')){
+      push @args, $q->param('nodeRange');
+    }
 
   }
   elsif(isPost()){
+    $request->{command} = 'mkdef';
+    if($q->param('verbose')){
+      push @args, '-v';
+    }
+    if(!defined $q->param('objectType')){
+      sendStatusMsg($STATUS_BAD_REQUEST, "The object must be specified.");
+    }
+    else{
+      push @args, '-t';
+      push @args, join(',',  $q->param('objectType'));
+    }
+    if($q->param('objectName')){
+      push @args, join(',', $q->param('objectName'));
+    }
+    if($q->param('dynamic')){
+      push @args, '-d';
+    }
+    if($q->param('force')){
+      push @args, '-f';
+    }
+    if(defined $q->param('field')){
+      foreach ($q->param('field')){
+        #if it has ==, !=. =~ or !~ operators in the field, use the -w option
+        if(/==|!=|=~|!~/){
+          push @args, '-w';
+        }
+        push @args, $_;
+      }
+    }
+    if($q->param('nodeRange')){
+      push @args, $q->param('nodeRange');
+    }
 
   }
   elsif (isDelete()){
@@ -1417,7 +1484,7 @@ sub wrapHtml
         sendStatusMsg($STATUS_UNAUTH, @$data[0]->{error}[0]);
       }
       else{
-        sendStatusMsg($STATUS_NOT_ACCEPTABLE, @$data[0]->{error}[0]);
+        sendStatusMsg($STATUS_FORBIDDEN, @$data[0]->{error}[0]);
       }
       exit(0);
     }
@@ -1542,23 +1609,9 @@ sub sendRequest{
     #$preXml =~ s/>/&gt<br>/g;
     print $q->p("request XML<br>$preXml");
   }
-  #while (!($sitetab=xCAT::Table->new('site')) && $retries < 200)
-  #{
-    #print ("Can not open basic site table for configuration, waiting the database to be initialized.\n");
-    #sleep 1;
-    #$retries++;
-  #}
-  #unless ($sitetab) {
-    #xCAT::MsgUtils->message("S","ERROR: Unable to open basic site table for configuration");
-    #die;
-  #}
-#
-  #my ($tmp) = $sitetab->getAttribs({'key'=>'xcatdport'},'value');
-  #unless ($tmp) {
-    #xCAT::MsgUtils->message("S","ERROR:Need xcatdport defined in site table, try chtab key=xcatdport site.value=3001");
-    #die;
-  #}
-  my $port = 3001;#$tmp->{value};
+
+  #hardcoded port for now
+  my $port = 3001;
   my $xcatHost = "localhost:$port";
 
   #temporary, will be using username and password
