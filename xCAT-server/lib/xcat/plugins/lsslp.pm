@@ -1,6 +1,7 @@
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 
 package xCAT_plugin::lsslp;
+use lib "/opt/xcat/lib/perl";
 use strict;
 use Getopt::Long;
 use Socket;
@@ -1175,7 +1176,8 @@ sub format_output {
     # interface of the node
     ###########################################
     if ( exists( $opt{resetnet} ) ) {
-        do_resetnet( $request, $outhash );
+        #do_resetnet( $request, $outhash );
+		send_msg( $request, 0, "the flag --resetnet has been moved to rspconfig, please see the rspconfig man page for more details" );
     }
 
     ###########################################
@@ -2747,19 +2749,49 @@ sub do_resetnet {
     my $targets;
     my $result;
 
+    # this part was used for lsslp output data format.
+    # when invoked by rspconfig, the input data are different.
+    # so I re-write this part.
+    #if ( $outhash ) {
+    #    $reset_all = 0;
+    #    foreach my $name ( keys %$outhash ) {
+    #        my $data = $outhash->{$name};
+    #        my $ip = @$data[4];
+    #        if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
+    #            $name = $1;
+    #            $ip = $2;
+    #        }
+    #        $namehash->{$name} = $ip;
+    #    }
+    #}
+    
     if ( $outhash ) {
         $reset_all = 0;
-        foreach my $name ( keys %$outhash ) {
-            my $data = $outhash->{$name};
-            my $ip = @$data[4];
-            if ( $name =~ /^([^\(]+)\(([^\)]+)\)$/) {
-                $name = $1;
-                $ip = $2;
+        foreach my $nn ( keys %$outhash ) {
+            my $nt = xCAT::DBobjUtils->getnodetype($nn);
+            # this brunch is just for the xcat 2.6(+) database
+            if ( $nt =~ /^(cec|frame)$/ )  {
+                my $cnodep = xCAT::DBobjUtils->getchildren($nn);
+                if ($cnodep) {
+                    foreach my $cnode (@$cnodep) {
+                        my $ip = xCAT::Utils::getNodeIPaddress( $cnode );
+                        $namehash->{$cnode} = $ip;
+                    }
+                } else {
+                    send_msg( $req, 1, "Can't get the fsp/bpa nodes for the $nn" );
+                    return( [RC_ERROR] );
+                }  
+            # this brunch is just for the xcat 2.5(-) databse                 
+            } else {                
+                my $ip = getNodeIPaddress( $nn );
+                $namehash->{$nn} = $ip;
             }
-            $namehash->{$name} = $ip;
         }
-    }
-
+    }        
+    
+    
+    
+    
     my $hoststab = xCAT::Table->new( 'hosts' );
     if ( !$hoststab ) {
         send_msg( $req, 1, "Error open hosts table" );
@@ -2788,6 +2820,8 @@ sub do_resetnet {
         my $oi;
 
         #####################################
+        # find the otherinterfaces for the 
+        # specified nodes, or the all nodes
         # Skip the node if the IP attributes
         # is same as otherinterfaces or ip
         # discovered
@@ -2821,10 +2855,10 @@ sub do_resetnet {
         }
 
         # Skip frame and cec
-        if ( $type eq "cec" or $type eq "frame" ) {
-            send_msg( $req, 0, "$name: $type, skipping network reset" );
-            next;
-        }
+        #if ( $type eq "cec" or $type eq "frame" ) {
+        #    send_msg( $req, 0, "$name: $type, skipping network reset" );
+        #    next;
+        #}
 
         my $mac = $mactab->getNodeAttribs( $name, [qw(mac)]);
         if ( !$mac or !$mac->{mac} ) {
@@ -3786,7 +3820,9 @@ sub process_request {
     }
 
     if ( exists($opt{resetnet}) and scalar(keys %opt) eq 1 ) {
-        $result = do_resetnet( \%request );
+        #$result = do_resetnet( \%request );
+		send_msg( \%request, 0, "the flag --resetnet has been moved to rspconfig, please see the rspconfig man page for more details" );
+		$result = [0];
     } else {
         ###########################################
         # SLP service-request - select program
