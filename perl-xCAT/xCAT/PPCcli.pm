@@ -1322,21 +1322,28 @@ sub getHMCcontrolIP
     }
     my $serial = $ent->{'serial'};
     my $mtm  = $ent->{'mtm'};
-    my $mtms = $mtm . '*' . $serial;
-    my $nodes_found = lssyscfg( $exp, "$type", "$mtms");
+    #my $mtms = $mtm . '*' . $serial;
+    #my $nodes_found = lssyscfg( $exp, "$type", "$mtms");
+    my $nodes_found = lssysconn ($exp, "all");
     my @ips;
     my $ip_result;
     if ( @$nodes_found[0] eq SUCCESS ) {
         my $Rc = shift(@$nodes_found);
-        #foreach my $mtms ( @$nodes_found ) {
-        my @newnodes = split(/,/, $nodes_found->[0]);
-        $Rc = shift(@newnodes);
-        for my $entry (@newnodes) {
-            if(xCAT::Utils->isIpaddr($entry)) {
-                push @ips,$entry;
-            }    
-            $ip_result = join( ",", @ips );
-        }    
+        #my @newnodes = split(/,/, $nodes_found->[0]);
+        #$Rc = shift(@newnodes);
+        #for my $entry (@newnodes) {
+        #    if(xCAT::Utils->isIpaddr($entry)) {
+        #        push @ips,$entry;
+        #    }    
+        #    $ip_result = join( ",", @ips );
+        #} 
+        foreach my $entry ( @$nodes_found ) {
+            if ( $entry =~ /$mtm\*$serial/)   {
+                $entry =~ /ipaddr=(\d+\.\d+\.\d+\.\d+),/;
+                push @ips, $1;
+            }
+        } 
+        $ip_result = join( ",", @ips );        
     }
     return $ip_result;
 }
