@@ -43,7 +43,8 @@ sub parse_args {
         "admin_passwd",
         "general_passwd",
         "*_passwd",
-        "hostname"
+        "hostname",
+        "resetnet",
     );
     my @bpa = (
         "frame",
@@ -53,7 +54,8 @@ sub parse_args {
         "admin_passwd",
         "general_passwd",
         "*_passwd",
-        "hostname"
+        "hostname",
+        "resetnet",
     );
     my @ppc = (
         "sshcfg"
@@ -108,7 +110,7 @@ sub parse_args {
     Getopt::Long::Configure( "bundling" );
     $request->{method} = undef;
 
-    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose resetnet))) {
         return( usage() );
     }
     ####################################
@@ -128,7 +130,7 @@ sub parse_args {
     ####################################
     foreach my $arg ( @ARGV ) {
         my ($command,$value) = split( /=/, $arg );
-        if ( !grep( /^$command$/, @$supported )) {
+        if ( !grep( /^$command$/, @$supported) and !$opt{resetnet}) {
             return(usage( "Invalid command: $arg" ));
         } 
         if ( exists( $cmds{$command} )) {
@@ -161,6 +163,14 @@ sub parse_args {
     if ( exists($cmds{frame}) or exists($cmds{hostname}) ) {
         $request->{hcp} = "hmc";
         $request->{method} = "cfg";
+        return( \%opt );
+    }
+    ####################################
+    # Return method to invoke
+    ####################################
+    if ( $opt{resetnet}  ) {
+        $request->{hcp} = "hmc";
+        $request->{method} = "resetnet";
         return( \%opt );
     }
 
@@ -579,6 +589,20 @@ sub hostname {
     }
 
     return( [@$result] );
+}
+##########################################################################
+# Do resetnet 
+##########################################################################
+sub resetnet {
+    my $request = shift;
+    my $hash    = shift;
+    my %nodehash;
+    foreach ( @{$request->{noderange}}) {
+       $nodehash{$_} = 1;
+    }
+    # go to use lsslp do_resetnet
+    my $result = xCAT_plugin::lsslp::do_resetnet($request, \%nodehash);
+	return [$result];
 }
 
 1;
