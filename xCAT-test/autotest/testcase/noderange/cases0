@@ -1,0 +1,204 @@
+start:noderange_individual_node
+description: noderange individual node
+cmd:mkdef -t node -o testnode01 -f groups=all
+cmd:nodels testnode01
+check:rc==0
+check:output=~testnode01
+cmd:rmdef testnode01
+end
+
+start:noderange_individual_grp
+description: noderange individual group
+cmd:mkdef -t node -o testnode01,testnode02 groups=nrtestgrp
+cmd:nodels nrtestgrp
+check:rc==0
+check:output=~testnode01
+check:output=~testnode02
+cmd:rmdef -t node -o nrtestgrp
+cmd:rmdef -t group -o nrtestgrp
+check:rc==0
+end
+
+start:noderange_node01-node10
+description: noderange node01-node10
+cmd:mkdef -t node -o nrtestnode01-nrtestnode10 groups=all
+check:rc==0
+cmd:nodels nrtestnode01-nrtestnode10
+check:rc==0
+check:output=~nrtestnode01
+check:output=~nrtestnode05
+check:output=~nrtestnode10
+cmd:rmdef -t node -o nrtestnode01-nrtestnode10
+check:rc==0
+end
+
+start:noderange_node[01-10]
+description: noderange node[01-10]
+cmd:mkdef -t node -o nrtestnode[01-10] groups=all
+check:rc==0
+cmd:nodels nrtestnode[01-10]
+check:rc==0
+check:output=~nrtestnode01
+check:output=~nrtestnode05
+check:output=~nrtestnode10
+cmd:rmdef -t node -o nrtestnode[01-10]
+check:rc==0
+end
+
+start:noderange_node[01:10]
+description: noderange node[01:10]
+cmd:mkdef -t node -o nrtestnode[01:10] groups=all
+check:rc==0
+cmd:nodels nrtestnode[01:10]
+check:rc==0
+check:output=~nrtestnode01
+check:output=~nrtestnode05
+check:output=~nrtestnode10
+cmd:rmdef -t node -o nrtestnode[01:10]
+check:rc==0
+end
+
+start:noderange_f[1-2]n[1-3]
+description: noderange f[1-2]n[1-3]
+cmd:mkdef -t node -o f[1-2]n[1-3] groups=all
+check:rc==0
+cmd:nodels f[1-2]n[1-3]
+check:rc==0
+check:output=~f1n1
+check:output=~f1n2
+check:output=~f1n3
+check:output=~f2n1
+check:output=~f2n2
+check:output=~f2n3
+cmd:rmdef -t node -o f[1-2]n[1-3]
+check:rc==0
+end
+
+start:noderange_group1-group3
+description: noderange group1-group3
+cmd:mkdef -t node -o testnode01 groups=nrtestgrp1
+cmd:mkdef -t node -o testnode02 groups=nrtestgrp2
+cmd:mkdef -t node -o testnode03 groups=nrtestgrp3
+cmd:nodels nrtestgrp1-nrtestgrp3
+check:rc==0
+check:output=~testnode01
+check:output=~testnode02
+check:output=~testnode03
+cmd:rmdef -t node -o nrtestgrp1-nrtestgrp3
+check:rc==0
+end
+
+#start:noderange_node001-node200
+#description: noderange node001-node200
+#cmd:mkdef -t node -o nrtestnode001-nrtestnode200 groups=all
+#check:rc==0
+#cmd:nodels nrtestnode001-nrtestnode200
+#check:rc==0
+#check:output=~nrtestnode001
+#check:output=~nrtestnode010
+#check:output=~nrtestnode100
+#check:output=~nrtestnode200
+#cmd:rmdef -t node -o nrtestnode001-nrtestnode200
+#check:rc==0
+#end
+
+start:noderange_node10+3
+description: noderange node10+3
+cmd:mkdef -t node -o nrtestnode10+3 groups=all
+check:rc==0
+cmd:nodels nrtestnode10+3
+check:rc==0
+check:output=~nrtestnode10
+check:output=~nrtestnode11
+check:output=~nrtestnode12
+check:output=~nrtestnode13
+cmd:rmdef -t node -o nrtestnode10+3
+check:rc==0
+end
+
+start:noderange_10-20
+description: noderange 10-20
+cmd:mkdef -t node -o 10-20 groups=all
+check:rc==0
+cmd:nodels 10-20
+check:rc==0
+check:output=~node10
+check:output=~node11
+check:output=~node12
+check:output=~node19
+check:output=~node20
+cmd:rmdef -t node -o 10-20
+check:rc==0
+end
+
+start:noderange_XCAT_NODE_PREFIX
+description: noderange XCAT_NODE_PREFIX
+cmd: XCAT_NODE_PREFIX=abc XCATBYPASS=1 nodels 10-20
+check:output=~abc10,abc11,abc12,abc13,abc14,abc15,abc16,abc17,abc18,abc19,abc20
+end
+
+start:noderange_XCAT_NODE_SUFFIX
+description: noderange XCAT_NODE_SUFFIX
+cmd: XCAT_NODE_PREFIX=abc XCAT_NODE_SUFFIX=def XCATBYPASS=1 nodels 10-20
+check:output=~abc10def,abc11def,abc12def,abc13def,abc14def,abc15def,abc16def,abc17def,abc18def,abc19def,abc20def
+end
+
+start:noderange_/nrtestnode.*
+description: noderange /nrtestnode.*
+cmd:mkdef -t node -o nrtestnode1-nrtestnode3 groups=all
+check:rc==0
+cmd:nodels /nrtestnode.*
+check:rc==0
+check:output=~nrtestnode1
+check:output=~nrtestnode2
+check:output=~nrtestnode3
+cmd:rmdef -t node -o nrtestnode1-nrtestnode3
+check:rc==0
+end
+
+start:noderange_/tmp/nodelistfile
+description: noderange ^/tmp/nodelistfile
+#cmd:echo #testnode1 > /tmp/nodelist
+cmd:mkdef -t node -o nrnode1,nrnode2 groups=all
+cmd:echo nrnode1 > /tmp/nodelist
+cmd:echo nrnode2 >> /tmp/nodelist
+cmd:nodels ^/tmp/nodelist
+check:rc==0
+check:output=~nrnode1
+check:output=~nrnode2
+cmd:rmdef -t node -o nrnode1,nrnode2
+check:rc==0
+end
+
+start:noderange_exclusion
+description: noderange exnode1-exnode5,-exnode3,-exnode4
+cmd:mkdef -t node -o exnode1-exnode5 groups=all
+check:rc==0
+cmd:nodels exnode1-exnode5,-exnode3,-exnode4
+check:rc==0
+check:output=~exnode1
+check:output=~exnode2
+check:output!~exnode3
+check:output!~exnode4
+check:output=~exnode5
+cmd:rmdef -t node -o exnode1-exnode5
+check:rc==0
+end
+
+start:noderange_group_intersection
+description: noderange group1@group2
+cmd:mkdef -t node -o nrtestnode1-nrtestnode3 groups=group1
+check:rc==0
+cmd:chdef -t node -o nrtestnode1 -p groups=group2
+check:rc==0
+cmd:nodels group1@group2
+check:rc==0
+check:output=~nrtestnode1
+check:output!~nrtestnode2
+check:output!~nrtestnode3
+cmd:rmdef -t node -o nrtestnode1-nrtestnode3
+check:rc==0
+cmd:rmdef -t group -o group1,group2
+check:rc==0
+end
+
