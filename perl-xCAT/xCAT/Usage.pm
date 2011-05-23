@@ -200,7 +200,7 @@ my %usage = (
     mkhwconn noderange -p single_hmc [-P HMC passwd] [-V|--verbose]
     
     PPC (using Direct FSP Management) specific:
-    mkhwconn noderange -t [-T tooltype] [--port port_value]",
+    mkhwconn noderange -t [-T tooltype] [--port port_value] [-s]",
     "rmhwconn" =>
 "Usage:
     rmhwconn [-h|--help]
@@ -209,7 +209,7 @@ my %usage = (
     rmhwconn noderange [-V|--verbose]
     
     PPC (using Direct FSP Management) specific:
-    rmhwconn noderange [-T tooltype]",
+    rmhwconn noderange [-T tooltype] [-s]",
     "lshwconn" =>
 "Usage:
     lshwconn [-h|--help]
@@ -218,7 +218,7 @@ my %usage = (
     lshwconn noderange [-V|--verbose]
     
     PPC (using Direct FSP Management) specific:
-    lshwconn noderange [-T tooltype]",
+    lshwconn noderange [-T tooltype] [-s]",
     "renergy" =>
 "Usage:
     renergy [-h | --help] 
