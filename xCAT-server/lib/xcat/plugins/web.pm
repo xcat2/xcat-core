@@ -665,15 +665,12 @@ sub web_rmcmonShow() {
 	my $retInfo;
 	my $retHash = {};
 	my $output;
-	my @activeNodes;
-	my @rmcNodes;
-	my $tempNodes;
 	my $temp = "";
 
 	#only get the system rmc info
 	#like this PctTotalTimeIdle=>"10.0000, 20.0000, 12.0000, 30.0000"
 	if ( 'summary' eq $nodeRange ) {
-		$output = xCAT::Utils->runcmd( "monshow rmcmon -s -t 60 -a " . $attr, -1, 1 );
+		$output = xCAT::Utils->runcmd( "monshow rmcmon -s -t 60 -o p -a " . $attr, -1, 1 );
 		foreach $temp (@$output) {
 
 			#the attribute name
@@ -703,68 +700,16 @@ sub web_rmcmonShow() {
 		return;
 	}
 
-	if ( 'lpar' eq $nodeRange ) {
-
+	if ( 'compute' eq $nodeRange ) {
+		my $node;
 		#get nodes detail containt
 		@nodes = xCAT::NodeRange::noderange($nodeRange);
-		if ( (@nodes) && ( @nodes > 0 ) ) {
-
-			#get all the active nodes
-			$temp = join( ' ', @nodes );
-			$output = `fping -a $temp 2> /dev/null`;
-			chomp($output);
-			@activeNodes = split( /\n/, $output );
-
-			#get all the inactive nodes by substracting the active nodes from all.
-			my %temp2;
-			foreach (@activeNodes) {
-				$temp2{$_} = 1;
+		for $node (@nodes){
+			if (-e "/var/rrd/$node"){
+				push( @{ $retHash->{node} }, { name => $node, data => 'OK' } );
 			}
-			foreach (@nodes) {
-				if ( !$temp2{$_} ) {
-					push( @{ $retHash->{node} }, { name => $_, data => 'NA' } );
-				}
-			}
-		}
-
-		if ( @activeNodes < 1 ) {
-			$callback->($retHash);
-			return;
-		}
-
-		$tempNodes = join( ',', @activeNodes );
-		$output = xCAT::Utils->runcmd( "xdsh $tempNodes rpm -q rsct.core", -1, 1 );
-
-		#non-installed
-		foreach (@$output) {
-			my @temp = split( /:/, $_ );
-			if ( @temp[1] =~ /not installed/ ) {
-				push( @{ $retHash->{node} }, { name => @temp[0], data => 'NI' } );
-			} else {
-				push( @rmcNodes, @temp[0] );
-			}
-		}
-
-		#there are not rmc nodes, so we should return directly
-		if ( @rmcNodes < 1 ) {
-			$callback->($retHash);
-			return;
-		}
-
-		$tempNodes = join( ',', @rmcNodes );
-		$output = xCAT::Utils->runcmd(
-"xdsh $tempNodes \"/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep\" | /bin/awk '{print \$1\$9}'",
-			-1, 1
-		);
-		foreach (@$output) {
-			my @temp = split( /:/, $_ );
-			if ( @temp[1] =~ /rmcd/ ) {
-				push( @{ $retHash->{node} }, { name => @temp[0], data => 'OK' } );
-			}
-
-			#not running
-			else {
-				push( @{ $retHash->{node} }, { name => @temp[0], data => 'NR' } );
+			else{
+				push( @{ $retHash->{node} }, { name => $node, data => 'NR' } );
 			}
 		}
 
