@@ -121,11 +121,17 @@ sub parse_args
         xCAT::MsgUtils->message("E", $msg);
         exit 1;
     }
-	if (!( -e $::PATH)) {
-        my $msg = " Input path must exist";
-        xCAT::MsgUtils->message("E", $msg);
-        exit 1;
-	}
+    if (!( -e $::PATH)) {
+          my $msg = " Creating $::PATH for database dump";
+          xCAT::MsgUtils->message("I", $msg);
+          my @output = xCAT::Utils->runcmd("mkdir -p $::PATH", 0);
+          if ($::RUNCMD_RC != 0)
+          {    # error
+              xCAT::MsgUtils->message("E",
+                            "Error running mkdir -p $::PATH");
+              exit 1;
+          }
+    }
 
 }
 
