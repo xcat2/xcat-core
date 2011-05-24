@@ -1330,6 +1330,12 @@ sub scanVM {
 		xCAT::zvmUtils->printLn( $callback, "$node: (Error) Missing node ID" );
 		return;
 	}
+	
+	# Exit if node is not a HCP
+	if ( !( $hcp =~ m/$node./i ) ) {
+		xCAT::zvmUtils->printLn( $callback, "$node: (Error) $node is not a hardware control point" );
+		return;
+	}
 
 	# Print output string
 	# [Node name]:
