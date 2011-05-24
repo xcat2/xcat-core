@@ -57,6 +57,7 @@ package xCAT_schema::Sample;
 	    jobid => 'INTEGER',
 	    cpu_usage => 'FLOAT',
 	},
+        compress =>'YES',  # note compress only for DB2
         tablespace =>'XCATTBS32K',  # note tablespace only for DB2
         table_desc => 'Stores the node status.',
         descriptions => {
