@@ -342,31 +342,7 @@ sub lshwconn_parse_args
     {
         return( ["Failed to open table 'nodehm'.\n"]);
     }
-    #need to transfer CEC/Frame to FSPs/BPAs
-    my @inodes = ();
-    my @validnodes = ();
-    my $pnode;
-    my $cnode;
-    if ($request->{node})
-    {
-        foreach $pnode(@{$request->{node}})
-        {
-            my $ntype = xCAT::DBobjUtils->getnodetype($pnode);
-                if ($ntype =~ /^(cec|frame)$/)
-                {
-                    $cnode = xCAT::DBobjUtils->getchildren($pnode);
-                    foreach (@$cnode)
-                    {
-                        push @validnodes, $_;
-                    }
-                } else
-                {
-                    push @validnodes, $pnode;
-                }
-        }
-        $request->{node} = \@validnodes;
-    }    
-      
+       
     my $nodetype;
     for my $node ( @{$request->{node}})
     {
