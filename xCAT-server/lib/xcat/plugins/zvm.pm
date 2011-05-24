@@ -1312,7 +1312,7 @@ sub scanVM {
 		# Parse options
 		GetOptions(	'w' => \$write2db );
 	}
-
+	
 	# Get node properties from 'zvm' table
 	my @propNames = ( 'hcp', 'userid' );
 	my $propVals = xCAT::zvmUtils->getNodeProps( 'zvm', $node, @propNames );
@@ -1441,22 +1441,33 @@ sub scanVM {
 			$arch = 's390x';
 		}
 		
-		# Save to 'zvm' table
+		# Get OS
+		$os = xCAT::zvmUtils->getOsVersion($node);
+		
+		# Save node attributes
 		if ($write2db) {
+			# Save to 'zvm' table
 			%propHash = (
 				'hcp' 		=> 	$hcp,
 				'userid'	=>	$id,
 				'nodetype'	=> 	'vm',
 				'parent'	=> 	$host
-			);
-						
+			);						
 			xCAT::zvmUtils->setNodeProps( 'zvm', $node, \%propHash );
+			
+			# Save to 'nodetype' table
+			%propHash = (
+				'arch' 	=> 	$arch,
+				'os'	=>	$os
+			);						
+			xCAT::zvmUtils->setNodeProps( 'nodetype', $node, \%propHash );
 		}
 		
 		# Create output string
 		$str .= "$node:\n";
 		$str .= "  objtype=node\n";
 		$str .= "  arch=$arch\n";
+		$str .= "  os=$os\n";
 		$str .= "  hcp=$hcp\n";
 		$str .= "  userid=$id\n";
 		$str .= "  nodetype=vm\n";

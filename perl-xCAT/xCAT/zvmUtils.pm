@@ -1105,3 +1105,49 @@ sub inArray {
 	my ( $class, $needle, @haystack ) = @_;
 	return grep{ $_ eq $needle } @haystack;
 }
+
+#-------------------------------------------------------
+
+=head3   getOsVersion
+
+	Description	: Get the operating system of a given node
+    Arguments	: Node
+    Returns		: Operating system name
+    Example		: my $os = xCAT::zvmUtils->getOsVersion($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getOsVersion {
+	
+	# Get inputs
+	my ( $class, $node ) = @_;
+
+	my $os = '';
+	my $version = '';
+
+	# Get operating system
+	my $release = `ssh -o ConnectTimeout=2 $node "cat /etc/*release"`;
+	my @lines = split('\n', $release);
+	if (grep(/SLES|Enterprise Server/, @lines)) {
+		$os = 'sles';
+		$version = $lines[0];
+		$version =~ tr/\.//;
+		$version =~ s/[^0-9]*([0-9]+).*/$1/;
+		$os = $os . $version;
+		
+		# Append service level
+		$version = `echo "$release" | grep "LEVEL"`;
+		$version =~ tr/\.//;
+		$version =~ s/[^0-9]*([0-9]+).*/$1/;
+		$os = $os . 'sp' . $version;
+	} elsif (grep(/Red Hat Enterprise Linux Server/, @lines)) {
+		$os = 'rhel';
+		$version = $lines[0];
+		$version =~ tr/\.//;
+		$version =~ s/([A-Za-z\s\(\)]+)//g;
+		$os = $os . $version;
+	}
+
+	return xCAT::zvmUtils->trimStr($os);
+}
