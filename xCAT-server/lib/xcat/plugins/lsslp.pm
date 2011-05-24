@@ -143,6 +143,7 @@ my $time_out = 300;
 my $enter_time = 0;
 my @filternodes;
 my %otherinterfacehash;
+my $TRACE = 0;
 ##########################################################################
 # Command handler method from tables
 ##########################################################################
@@ -428,12 +429,21 @@ sub trace {
 
     my $request = shift;
     my $msg     = shift;
+    my $sig     = shift;
 
-    if ( $verbose ) {
-        my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
-        my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
-        send_msg( $request, 0, $msg );
-    }
+    if ($sig) {
+        if ($TRACE) {
+            my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
+            my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
+            send_msg( $request, 0, $msg );
+        }
+    } else { 
+        if ( $verbose ) {
+            my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
+            my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
+            send_msg( $request, 0, $msg );
+        }
+    }    
 }
 
 
@@ -2105,6 +2115,9 @@ sub parse_responses {
     my %fid1;
     my %fid2;
     my %cid;
+    
+
+    trace( $request, "Now I will explain how the lsslp parse its response: " , 1);   
     foreach my $rsp ( @$values ) {
         ###########################################
         # Get service-type from response
@@ -2173,9 +2186,8 @@ sub parse_responses {
         #    $hostip{$entry->{node}} = $entry->{ip};
         #}
 
-        #$result[0] is type, $result[1] is mtm, $result[2] is sn, $result[3] is ip,
-        #$result[4] is side, $result[5] is parent mtm, $result[6] is parent sn, 
-        #$result[7] is frame number, $result[8] is cage number
+        trace( $request, "The type is $result[0], mtm is $result[1], sn is $result[2], side is $result[3], ip is $result[4], parent mtm is $result[5], parent sn is $result[6], frame num is $result[7], cage num is $result[8].", 1 );   
+
         # begin to define FSP/BPA/FRAME/CEC
         my $typetp;
         if ( $type eq SERVICE_BPA )
@@ -2188,37 +2200,9 @@ sub parse_responses {
         }
         my $hostname = undef;
         if ( $type eq SERVICE_BPA or $type eq SERVICE_FSP ) {
-
-            ###########################################
-            #  begin to define frame and cec
-            #  As default, use Server-$result[1]-SN$result[2] as hostname
-            #  put the definitions into %outhash
-            ###########################################
-            $hostname = undef;
-            $host = "Server-$result[1]-SN$result[2]";
-            unless ( exists( $outhash{$host} ))
-            {
-                if ( $type eq SERVICE_BPA )
-                {
-                    $result[0] = TYPE_FRAME;
-                }
-                else
-                {
-                    $result[0] = TYPE_CEC;
-                }
-                # IP of frame and cec should be null
-                $result[3] = "";
-                # side of frame and cec should be null
-                $result[4] = "";
-                push @result, $rsp;
-                $hostname =  gethost_from_url_or_old($host, $result[0], $result[1], $result[2],
-                             $result[3],$result[4], $result[8],$result[5],$result[6]);
-                if ( $hostname )
-                {
-                    $outhash{$hostname} = \@result;
-                }
-            }
-
+        
+            trace( $request, "........First begin to define FSP/BPA nodes", 1 );  
+            trace( $request, "     we will keep the datas here first", 1); 
             ###########################################
             #  begin to define fsp/bpa, use ip as the hostname of the fsp/bpa
             #  for there are redundancy of fsp/bpa,
@@ -2260,6 +2244,8 @@ sub parse_responses {
             }
             $otherinterfacehash{$hostname}{otherinterfaces} = $ips[0];
             
+            trace( $request, "     Keep the node ip $ips[0] in its otherinterfaces", 1 );  
+            trace( $request, "     The node $ips[0] match the old data and got the new name $hostname" , 1);        
             #begin to define another fsp/bpa
             $hostname = undef;
             foreach (@result) {
@@ -2279,12 +2265,48 @@ sub parse_responses {
                 $$length = length( $severnode2[4] );
             }
             $otherinterfacehash{$hostname}{otherinterfaces} = $ips[1];
+            trace( $request, "     Keep the node ip $ips[1] in its otherinterfaces" , 1);  
+            trace( $request, "     The node $ips[1] match the old data and got the new name $hostname" , 1);        
+
+            ###########################################
+            #  begin to define frame and cec
+            #  As default, use Server-$result[1]-SN$result[2] as hostname
+            #  put the definitions into %outhash
+            ###########################################
+
+            trace( $request, "........second begin to define frame and cec " , 1);  
+            $hostname = undef;
+            $host = "Server-$result[1]-SN$result[2]";
+            unless ( exists( $outhash{$host} ))
+            {
+                if ( $type eq SERVICE_BPA )
+                {
+                    $result[0] = TYPE_FRAME;
+                }
+                else
+                {
+                    $result[0] = TYPE_CEC;
+                }
+                # IP of frame and cec should be null
+                $result[3] = "";
+                # side of frame and cec should be null
+                $result[4] = "";
+                push @result, $rsp;
+                $hostname =  gethost_from_url_or_old($host, $result[0], $result[1], $result[2],
+                             $result[3],$result[4], $result[8],$result[5],$result[6]);
+                if ( $hostname )
+                {
+                    $outhash{$hostname} = \@result;
+                }
+                trace( $request, "      the node $host match the old data and got the new name $hostname " , 1);  
+            }
+
         } else   {
 
             ###########################################
             # for HMC
             ###########################################
-
+            trace( $request, "........begin to define hmc ", 1);      
             $host = gethost_from_url( $request, $rsp, @result);
             if ( !defined( $host )) {
                 next;
@@ -2327,6 +2349,7 @@ sub parse_responses {
     ############################################################
     # find out the cageid for the cec
     ############################################################    
+    trace( $request, "\n\n.......the cageid need to be adjust,because some secondary fsp return wrong side value ( always 0)", 1);      
     foreach my $idtmp( keys(%fid1) )
     {
         if ($fid1{$idtmp} > 0) 
@@ -2350,6 +2373,7 @@ sub parse_responses {
     ############################################################
     # -n flag to skip the existing node
     ############################################################
+    trace( $request, "\n\ncheck if there is -n, and skip the existing nodes ", 1);      
     my %vpd_table_hash;
     my $vpdtab  = xCAT::Table->new( 'vpd' );
     my @entries = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
@@ -2375,6 +2399,7 @@ sub parse_responses {
     my %hash = ();
     my $mac;
     my $parent;
+    trace( $request, "\n\n\n Begin to parse these datas second time: ", 1);
     foreach my $h ( keys %outhash ) {
         my $data    = $outhash{$h};
         my $type    = @$data[0];
@@ -2390,7 +2415,7 @@ sub parse_responses {
         my $bpamtm  = @$data[5];
         my $bpasn   = @$data[6];
         my $cagenum = @$data[8];
-        
+        trace( $request, ">>>>>>>>The node is $h, type is $type, mtm is $mtm, sn is $sn, side is $side, ip is $ip0, bpamtm is $bpamtm, bpasn is $bpasn, cagenum is $cagenum", 1);      
         # find cageid for the secondary fsp node
         if ( $type =~ /^FSP$/ || $type =~ /^CEC$/) {
             @$data[8] = $cid{$mtm."*".$sn};
@@ -2401,6 +2426,7 @@ sub parse_responses {
              if ( exists $vpd_table_hash{$mtm . '*' . $sn . '-' . $side} ) {
                 my $existing_node = $vpd_table_hash{$mtm . '*' . $sn . '-' . $side};
                 if ( exists $nodehm_table_hash{$existing_node} ) {
+                    trace ( $request, "    This node is exites, so skipped. ", 1);
                     next;
                 }
             }
@@ -2436,7 +2462,7 @@ sub parse_responses {
         }
 
         push @$data, $parent;
-
+        trace ( $request, "    Then find the node's parent $parent.", 1);
 
         #find the mac address
         if ( $type ne TYPE_FRAME and $type ne TYPE_CEC )  {# the ips of frame and cec are null
@@ -2445,16 +2471,20 @@ sub parse_responses {
             $mac = undef;
         }
         push @$data, $mac;
+        trace ( $request, "    Then find the node's mac $mac.", 1);
 
+
+        
         # have got node's parent and id, need to match fsp here
-        if ( $type eq TYPE_FSP and $parent and @$data[8])
+        trace ( $request, "    Need to find new name for the fsp/bpa with parent $parent and id @$data[8].", 1);
+        if ( $type eq TYPE_FSP and $parent)
         {
             $newname = gethost_from_url_or_old($h, $type, undef, undef, undef, undef,  
                      @$data[8], undef, undef, $parent)
             
         } 
         # have got node's parent, need to match bpa here
-        if ( $type eq TYPE_FSP and $parent and @$data[8])
+        if ( $type eq TYPE_BPA and $parent)
         {
             $newname = gethost_from_url_or_old($h, $type, undef, undef, undef, undef,  
                      undef, undef, undef, $parent)
@@ -2463,10 +2493,12 @@ sub parse_responses {
         
         if ($newname)
         {        
+            trace ( $request, "    The new name is $newname.", 1);        
             $hash{$newname} = $data;
         }
         else
         {
+            trace ( $request, "    The new name is $h.", 1); 
             $hash{$h} = $data;
         }            
     }
