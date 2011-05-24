@@ -1,0 +1,74 @@
+=head1 NAME
+
+B<makedns> - sets up domain name services (DNS).
+
+=head1 SYNOPSIS
+
+B<makedns> [I<-h>|I<--help>]
+
+B<makedns> [I<-n>|I<--new>] [I<noderange>]
+
+B<makedns> [I<-d>|I<--delete> I<noderange>]
+
+=head1 DESCRIPTION
+
+B<makedns> configures a DNS server on the local machine from the /etc/hosts file entries if no I<noderange> specified.  It also uses the following
+attributes set in the B<site> table as default values:  B<domain>, B<forwarders>, B<nameservers>.
+The B<net> and B<mask> attributes in the B<networks> table will also be used.  Only entries in
+/etc/hosts or the hosts specified by I<noderange> that are part of a network listed in the B<networks> table will be added to DNS.
+
+B<makedns> can only handle hostnames from a single domain, normally a private domain just for the cluster.  The
+typical cluster set up is for site.domain to be set to the cluster domain, site.nameservers to be set to the
+cluster-facing IP address of the management node, and site.forwarders to be set to the IP address of one or more
+nameservers at your site that can resolve names outside of your cluster.  With this set up, all nodes ask the
+management node to resolve names, and if it is a name that the MN DNS does not know about, it will ask the outside
+world.
+
+=head1 OPTIONS
+
+=over 6
+
+=item B<-n>|B<--new>
+
+B<named> sometimes may hold on to stale journal filehandles, use this flag to remove the named configuration file and db files to start fresh.
+
+=item B<-d>|B<--delete> I<noderange>
+
+Remove the DNS records for the hosts specified by I<noderange>.
+
+=back
+
+=head1 Examples
+
+=over 6
+
+=item 1
+
+To set up DNS for all the hosts in /etc/hosts file.
+
+B<makedns>
+
+=item 2
+
+To set up DNS for I<node1>.
+
+B<makedns> I<node1>
+
+=item 3
+
+To fresh the DNS configuration for all the hosts in /etc/hosts file.
+
+B<makedns> B<-n>
+
+=item 4
+
+To delete the DNS records for I<node1>.
+
+B<makedns> B<-d> I<node1>
+
+=back
+
+=head1 SEE ALSO
+
+L<makehosts(8)|makehosts.8>
+
