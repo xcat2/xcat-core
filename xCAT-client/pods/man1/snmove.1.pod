@@ -77,6 +77,10 @@ Note: You can also run other postscripts useing -P option if needed.
 When the B<snmove> command is executed the new service node must be running but
 the original service node may be down.
 
+Note: On a Linux cluster, for NFS statelite nodes that do not use external NFS server, if the original service node is down, the nodes it manages will be down too. You must run nodeset command and then reboot the nodes after running snmove. For stateless nodes and RAMDisk statelite nodes, the nodes will be up even if the original service node is down. However, make sure to run nodeset command if you decide to reboot the nodes later.   
+
+Note: For statelite nodes, 
+
 =head1 OPTIONS
 
 =over 10
