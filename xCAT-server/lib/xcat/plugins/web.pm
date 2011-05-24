@@ -709,7 +709,7 @@ sub web_rmcmonShow() {
 				push( @{ $retHash->{node} }, { name => $node, data => 'OK' } );
 			}
 			else{
-				push( @{ $retHash->{node} }, { name => $node, data => 'NR' } );
+				push( @{ $retHash->{node} }, { name => $node, data => 'UNKNOWN' } );
 			}
 		}
 
@@ -717,43 +717,35 @@ sub web_rmcmonShow() {
 		return;
 	}
 
-	my $attrName  = "";
-	my @attrValue = ();
-	$output = xCAT::Utils->runcmd( "monshow rmcmon $nodeRange -t 60 -o p -a " . $attr, -1, 1 );
-	foreach (@$output) {
-		$temp = $_;
-		if ( $temp =~ /\t/ ) {
-			$temp =~ s/\t/ /g;
-			chomp($temp);
-		}
-
-		#the attribute name
-		if ( $temp =~ m/\s+(Pct.*)\s+/ ) {
-			$temp = $1;
-
-			#the first one
-			if ( "" ne $attrName ) {
-				push(
-					@{ $retHash->{node} },
-					{ name => $attrName, data => join( ',', @attrValue ) }
-				);
-				$attrName  = "";
-				@attrValue = ();
-			}
-			$attrName = $temp;
-			next;
-		}
-
-		#the content of the attribute
-		$temp =~ m/\s+(\d+\.\d{4})\s*$/;
-		if ( defined($1) ) {
-			push( @attrValue, $1 );
-		}
-	}
-
-	#push the last attribute name and values.
-	push( @{ $retHash->{node} }, { name => $attrName, data => join( ',', @attrValue ) } );
-	$callback->($retHash);
+    my $attrName  = "";
+    my @attrs = split(/,/, $attr);
+    for $attrName (@attrs){
+        my @attrValue = ();
+        $output = xCAT::Utils->runcmd( "rrdtool fetch /var/rrd/${nodeRange}/${attrName}.rrd -r 60 -s e-1h AVERAGE", -1, 1 );
+        foreach(@$output){
+            $temp = $_;
+            if ($temp eq ''){
+                next;
+            }
+            
+            if ($temp =~ /[NaNQ|nan]/){
+                next;
+            }
+            
+            if ($temp =~ /^(\d+): (\S+) (\S+)/){
+                push( @attrValue, (sprintf "%.2f", $2));
+            }
+        }
+        
+        if(scalar(@attrValue) > 1){
+            push(@{$retHash->{node}}, { name => $attrName, data => join( ',', @attrValue )});
+        }
+        else{
+        	$retHash->{node}= { name => $attrName, data => ''};
+        	last;
+        }
+    }
+    $callback->($retHash);
 }
 
 sub web_monls() {
