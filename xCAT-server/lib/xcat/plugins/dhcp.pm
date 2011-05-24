@@ -1658,9 +1658,9 @@ sub addnet
         } elsif ($myip){
         	push @netent, "    option ntp-servers $myip;\n";
         }
-        push @netent, "    option domain-name \"$domain\";\n";
         if ($nameservers)
         {
+            push @netent, "    option domain-name \"$domain\";\n";
             push @netent, "    option domain-name-servers  $nameservers;\n";
         }
         my $ddnserver = $nameservers;
@@ -1676,11 +1676,17 @@ sub addnet
         } else {
             push @netent, "    zone $domain. {\n";
         }
-        push @netent, "   primary $ddnserver; key xcat_key; \n";
+        if ($ddnserver)
+        {
+            push @netent, "   primary $ddnserver; key xcat_key; \n";
+        }
         push @netent, " }\n";
         foreach (getzonesfornet($net,$mask)) {
             push @netent, "zone $_ {\n";
-            push @netent, "   primary $ddnserver; key xcat_key; \n";
+            if ($ddnserver)
+            {
+                push @netent, "   primary $ddnserver; key xcat_key; \n";
+            }
             push @netent, " }\n";
         }
         }
