@@ -485,6 +485,12 @@ sub buildcreatestmt
 	  $retv .= " ENGINE=$descr->{engine} ";
        }
     }
+    # allow compression for DB2 
+    if ($descr->{compress}) {
+       if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+	  $retv .= " compress $descr->{compress} ";
+       }
+    }
     # allow tablespace change for DB2 
     if ($descr->{tablespace}) {
        if ($xcatcfg =~ /^DB2:/) {  #for DB2 
