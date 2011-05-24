@@ -973,6 +973,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=db2installloc site.value=\/mntdb2;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=databaseloc site.value=\/var\/lib;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=sshbetweennodes site.value=ALLGROUPS;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=dnshandler site.value=ddns;";
 
         if ($::osname eq 'AIX')
         {
@@ -1214,6 +1215,24 @@ sub initDB
             verbose("Removed xcatdefaults.");
         }
 
+        # switch from bind.pm to ddns.pm
+        # give a warning message for the first time
+        my $cmds = "$::XCATROOT/sbin/tabdump site|grep dnshandler";
+        $outref = xCAT::Utils->runcmd("$cmds", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            # set site.dnshandler
+            $cmds = "$::XCATROOT/sbin/chtab key=dnshandler site.value=ddns;";
+            $outref = xCAT::Utils->runcmd("$cmds", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E',"Could not set ddns as dnshandler.");
+            }
+            else
+            {
+                xCAT::MsgUtils->message('I',"xCAT uses Dynamic DNS instead of BIND. If you want to keep the existing DNS settings made by xCAT BIND, then you should not run \"makedns\" commands. If you want to use the Dynamic DNS feature then you must run \"makedns -n\" to refresh the DNS settings.");
+            }
+        }
     }
 }    # end initial DB install setup
 
