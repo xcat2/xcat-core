@@ -520,6 +520,7 @@ sub writechildren {
         $pregex = '|^(\d+\.\d+\.\d+)\.(\d+)$|'.$nb.'(\'0\'*('.$tlength.'-length($2)))('.int($fs).'+$2-'.$ipstart.')'.$nameend.'|';
         $tables{'ppc'}->setNodeAttribs($ntype, {parent => $pregex});  
     } elsif (!($STANZAS{'xcat-cecs'}->{'supernode-list'}))  {
+        # no supernode-list specified, which means every frame contians same number cecs
         my $ss = $$phash{'secondary-start'};
         my $se = $$phash{'secondary-end'};
         my $cm;
@@ -534,6 +535,8 @@ sub writechildren {
         $tables{'ppc'}->setNodeAttribs($ntype, {parent => $pregex});  
     } 
          
+    # the cec numbers for each frame are different
+    # so we need to find the fsp parent one by one    
     if ($ntype eq "fsp" and $STANZAS{'xcat-cecs'}->{'supernode-list'} and @CECS) {
         my @cecparent = sort(@CECS);
         my %parenthash;          
@@ -545,6 +548,25 @@ sub writechildren {
         $tables{'ppc'}->setNodesAttribs(\%parenthash);               
     }  
 
+    #  write: vpd.side
+    my $time = 0;
+    for my $cip (@startingips) {
+        my ($ipbase, $ipstart) = $cip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
+        my $endip = $ipstart + $PANUMBER;
+        my $endnode = $ipbase . '.' . $endip;
+        my $range = $cip . '-' . $endnode;
+        my $nodetmp = [noderange($range, 0)];
+        $time ++;
+        my %sidehash;
+        foreach my $ch (@$nodetmp) {
+            $sidehash{$ch}->{side} = "A-0" if ($time eq 1);
+            $sidehash{$ch}->{side} = "A-1" if ($time eq 2);       
+            $sidehash{$ch}->{side} = "B-0" if ($time eq 3);
+            $sidehash{$ch}->{side} = "B-1" if ($time eq 4); 
+        }  
+        $tables{'vpd'}->setNodesAttribs(\%sidehash);        
+    }
+    
     #}
     return 1;
 }
