@@ -1511,126 +1511,77 @@ sub gethost_from_url_or_old {
 
         # used to match fsp defined by xcatsetup
         # should return fast to save time
-        if ( $type eq TYPE_FSP and ($tmptype eq $type)) 
-        {
-            if ($pname and $tmpparent and $cage_number and $tmpid)
-            {
-                if ($pname eq $tmpparent and $cage_number eq $tmpid) 
-                {
-                    return $oldnode;
-                } else {
-                    next; 
-                }
-            }        
+        if (($type eq TYPE_BPA or $type eq TYPE_FSP) and ($tmptype eq $type) and $pname and $side) {
+            if ($pname eq $tmpparent and $side eq $tmpside)  {
+                return $oldnode;
+            }
         }
         
-        # used to match bpa defined by xcatsetup
-        # should return fast to save time
-        if ( $type eq TYPE_BPA and ($tmptype eq $type)) 
-        {
-            if ($pname and $tmpparent)
-            {
-                if ($pname eq $tmpparent) 
-                {
-                    return $oldnode;
-                } else {
-                    next; 
-                }
-            }        
-        }
         # match the existed nodes including old data and user defined data
-        if ( ($type eq TYPE_BPA or $type eq TYPE_FSP) and ($tmptype eq $type))
-        {
-
-            unless ($tmpmtm)
-            {
+        if ( ($type eq TYPE_BPA or $type eq TYPE_FSP) and ($tmptype eq $type)) {
+            unless ($tmpmtm) {
                 next;
             }
 
-            if ( $tmpmtm eq $mtm  and  $tmpsn eq $sn)
-            {
+            if ( $tmpmtm eq $mtm  and  $tmpsn eq $sn) {
                 my $ifip = xCAT::Utils->isIpaddr($oldnode);
-                if ( $ifip ) # which means that the node is defined by the new lsslp
-                {
-                    if ( $tmpside eq $side ) # match! which means that node is the same as the new one
-                    {
-                        if ( $ip eq $tmpip ) #which means that the ip is not changed
-                        {
+                if ( $ifip )  {# which means that the node is defined by the new lsslp
+                    if ( $tmpside eq $side ) {# match! which means that node is the same as the new one
+                        if ( $ip eq $tmpip ) { #which means that the ip is not changed
                             # maybe we should check if the ip is invalid and send a warning
                             return $ip;
-                        }  else  #which means that the ip is changed
-                        {
+                        }  else { #which means that the ip is changed
                             my $vip = check_ip($ip);
-                            if ( !$vip )  #which means the ip is changed and valid
-                            {
+                            if ( !$vip )  { #which means the ip is changed and valid
                                 # maybe we should check if the old ip is invalid and send a warning
                                 # even so we should keep the definition as before
                                 # because this case, we can't put check_ip in the end
                                 return $oldnode;
-                            } else
-                            {
+                            } else {
                                 return $ip;
                             }
                         }
                     }
                 }
-                else  # name is not a ip
-                {
+                else { # name is not a ip
                     $side =~ /(\w)\-(\w)/;
                     my $slot = $1;
-                    if ( $tmpside and $tmpside !~ /\-/ ) # side is like A or B
-                    {
-                        if ( $slot eq $tmpside )
-                        {
-                            if ( $oldnode =~ /^Server\-/) #judge if need to change node's name
-                            {
-                                if ( $ip eq $tmpip )
-                                {
-                                    if ( $oldnode =~ /\-(A|B)$/)
-                                    {
+                    if ( $tmpside and $tmpside !~ /\-/ )  {# side is like A or B
+                        if ( $slot eq $tmpside ) {
+                            if ( $oldnode =~ /^Server\-/)  {#judge if need to change node's name
+                                if ( $ip eq $tmpip ) {
+                                    if ( $oldnode =~ /\-(A|B)$/) {
                                         @{$::OLD_DATA_CACHE{$oldnode}}[7] = 0;
                                         return  $oldnode;
-                                    } else
-                                    {
+                                    } else {
                                         @{$::OLD_DATA_CACHE{$oldnode}}[7] = 0;
                                         #change node name, need to record the node here
                                         $::UPDATE_CACHE{$mtm.'-'.$sn} = $oldnode;
                                         return $oldnode.'-'.$slot;
                                     }
-                                } else  # not find a matched definition, but need to use the old node name
-                                {
-                                    if ( $enter_time eq 0 and $unmatched)
-                                    {
+                                } else   {# not find a matched definition, but need to use the old node name
+                                    if ( $enter_time eq 0 and $unmatched){
                                         return $oldnode;
                                     }
                                 }
-                            } elsif ( $tmpside =~ /\-/ ) # end of if ( $oldnode =~ /^Server\-/)
-                            {
-                                if ( $ip eq $tmpip )
-                                {
+                            } elsif ( $tmpside =~ /\-/ )  {# end of if ( $oldnode =~ /^Server\-/)
+                                if ( $ip eq $tmpip ) {
                                     @{$::OLD_DATA_CACHE{$oldnode}}[7] = 0;
                                     return $oldnode;
-                                } else
-                                {
-                                    if ( $enter_time eq 0 and $unmatched)
-                                    {
+                                } else{
+                                    if ( $enter_time eq 0 and $unmatched){
                                         return $oldnode;
                                     }
                                 }
                             }
                         }
-                    } elsif ( $tmpside =~ /\-/ )
-                    {
-                        if ( $side eq $tmpside )
-                        {
+                    } elsif ( $tmpside =~ /\-/ ){
+                        if ( $side eq $tmpside ) {
                             return $oldnode;
                         }
-                    } elsif ( !$tmpside )
-                    {
-                        if ( $oldnode =~ /^Server\-/) #judge if need to change node's name
-                        {
-                            if ( $oldnode !~ /\-(A|B)$/ )
-                            {
+                    } elsif ( !$tmpside ) {
+                        if ( $oldnode =~ /^Server\-/)  {#judge if need to change node's name
+                            if ( $oldnode !~ /\-(A|B)$/ ) {
                                 delete $::OLD_DATA_CACHE{$oldnode};
                                 return $oldnode."-".$slot;
                             }
@@ -1644,42 +1595,33 @@ sub gethost_from_url_or_old {
             }# end of if ($tmpmtm eq $mtm  and  $tmpsn eq $sn)
 
 
-        } elsif ( ($type eq TYPE_FRAME or $type eq TYPE_CEC) and ($type eq $tmptype))
-        {
-            if ( !$tmpmtm and !$tmpid)
-            {
+        } elsif ( ($type eq TYPE_FRAME or $type eq TYPE_CEC) and ($type eq $tmptype)){
+            if ( !$tmpmtm and !$tmpid)  {
                 next;
             }
             # user may define cec only with parent /id /type
             # we should match this situation
-            if ( ($type eq TYPE_CEC) and $parmtm and $parsn  and  $cage_number )
-            {
+            if ( ($type eq TYPE_CEC) and $parmtm and $parsn  and  $cage_number ) {
                 my $tpparmtm = @{$::OLD_DATA_CACHE{$tmpparent}}[0];
                 my $tpparsn  = @{$::OLD_DATA_CACHE{$tmpparent}}[1];
-                if ( ($tpparmtm eq $parmtm) and ($tpparsn eq $parsn) and ($cage_number eq $tmpid) and ($type eq $tmptype) )
-                {
+                if ( ($tpparmtm eq $parmtm) and ($tpparsn eq $parsn) and ($cage_number eq $tmpid) and ($type eq $tmptype) ) {
                     return $oldnode;
                 }
             }
 
             # user may define cec/frame only with mtms
             # but what we consider here is just the data in xCAT 2.6
-            if ($tmpmtm eq $mtm  and  $tmpsn eq $sn and $tmptype eq $type)
-            {
-                if ( $oldnode =~ /^Server\-/) #judge if need to change node's name
-                {
-                    if ( $oldnode =~ /(\-A)$/)
-                    {
+            if ($tmpmtm eq $mtm  and  $tmpsn eq $sn and $tmptype eq $type)  {
+                if ( $oldnode =~ /^Server\-/)  {#judge if need to change node's name
+                    if ( $oldnode =~ /(\-A)$/) {
                         $nodename = s/(\-A)$//;
                         # should send a warning here
                         return $nodename;
                     }
-                    else
-                    {
+                    else  {
                         return $oldnode;
                     }
-                } else
-                {
+                } else {
                     return $oldnode;
                 }
             }
@@ -1688,17 +1630,13 @@ sub gethost_from_url_or_old {
 
     # not matched, use the new name
     my $ifip = xCAT::Utils->isIpaddr($nodename);
-    unless ($ifip)
-    {
+    unless ($ifip) {
         return $nodename;
-    }else
-    {
+    }else {
         my $vip = check_ip($nodename);
-        if ( $vip )  #which means the ip is a valid one
-        {
+        if ( $vip )   {#which means the ip is a valid one
             return $nodename;
-        } else
-        {
+        } else {
             return undef;
         }
     }
@@ -2470,6 +2408,7 @@ sub parse_responses {
         } else {
             $mac = undef;
         }
+        unless ( $mac =~ /\w+\:\w+\:\w+\:\w+\:\w+\:\w+/ ) { $mac = undef;}
         push @$data, $mac;
         trace ( $request, "    Then find the node's mac $mac.", 1);
 
@@ -2477,19 +2416,10 @@ sub parse_responses {
         
         # have got node's parent and id, need to match fsp here
         trace ( $request, "    Need to find new name for the fsp/bpa with parent $parent and id @$data[8].", 1);
-        if ( $type eq TYPE_FSP and $parent)
+        if (($type eq TYPE_FSP or $type eq TYPE_BPA) and $parent)
         {
-            $newname = gethost_from_url_or_old($h, $type, undef, undef, undef, undef,  
-                     @$data[8], undef, undef, $parent)
-            
+            $newname = gethost_from_url_or_old($h, $type, undef, undef, $side, undef, undef, undef, undef, $parent);
         } 
-        # have got node's parent, need to match bpa here
-        if ( $type eq TYPE_BPA and $parent)
-        {
-            $newname = gethost_from_url_or_old($h, $type, undef, undef, undef, undef,  
-                     undef, undef, undef, $parent)
-            
-        }
         
         if ($newname)
         {        
