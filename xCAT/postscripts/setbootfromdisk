@@ -24,6 +24,16 @@ if [[ $OS = "Linux" ]]; then
             fi
 
             BOOTDEVICE=`echo $BOOTENTRY | awk '{print $1}'`
+
+            #software raid, assume sda and sdb
+            if echo $BOOTDEVICE | grep "md"
+            then
+                logger -t xcat setbootfromdisk: Setting sda sdb to be the default bootup device
+                echo "setbootfromdisk: setting up sda sdb to be the default bootup device"
+                bootlist -m normal sda sdb
+                exit 0
+            fi
+
             if [[ -z $BOOTDEVICE ]]; then
                 logger -t xcat setbootfromdisk: cannot find the booting device
             else
