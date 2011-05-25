@@ -160,6 +160,7 @@ my %tables = ('site' => 1,
 			'nodegroup' => 0,
             'networks' => 1,
             'routes' => 0,
+            'vpd' => 1,
 			);
 my $CECPOSITIONS;	# a hash of the cec values in the nodepos table
 
