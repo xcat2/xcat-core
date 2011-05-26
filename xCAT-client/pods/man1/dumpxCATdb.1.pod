@@ -45,7 +45,7 @@ B<dumpxCATdb -a -p /tmp/db>
 
 2. To have dumpxCATdb not backup the hosts or passwd table:
 
-B<chtab key=skiptables site.value="hosts,passwd"
+B<chtab key=skiptables site.value="hosts,passwd">
 
 =head1 FILES
 
