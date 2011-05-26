@@ -41,8 +41,11 @@ if ($::RUNCMD_RC != 0)
     exit 1;
 }
 # read tables to skip during dump from site.skiptables attribute
-my @skiptbls=xCAT::Utils->get_site_attribute('skiptables');
-
+my @output2=xCAT::Utils->get_site_attribute('skiptables');
+my @skiptbls;
+if (@output2) {
+  @skiptbls = split (/\,/,$output2[0]);
+}
 foreach my $table (@output)
 {
     # if not -a request , skip eventlog and auditlog
