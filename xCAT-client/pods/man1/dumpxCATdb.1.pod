@@ -11,7 +11,7 @@ B<dumpxCATdb> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The dumpxCATdb command creates .csv files for all  xCAT database tables and puts them in the directory given by the -p flag. These files can be used by the restorexCATdb command to restore the database.
+The dumpxCATdb command creates .csv files for xCAT database tables and puts them in the directory given by the -p flag. These files can be used by the restorexCATdb command to restore the database. The command will read the list of tables in the site.skiptables attribute and not backup those tables, if the attribute exists.
 
 =head1 OPTIONS
 
@@ -24,7 +24,8 @@ B<-V>          Verbose.
 
 B<-a>          All,without this flag the eventlog and auditlog will be skipped.
 
-B<-p>          Path to the directory to dump the tables.
+B<-p>          Path to the directory to dump the tables. It will be created if 
+               it does not exist.
 
 
 =head1 RETURN VALUE
@@ -43,7 +44,9 @@ B<dumpxCATdb -p /tmp/db>
 
 B<dumpxCATdb -a -p /tmp/db>
 
+2. To have dumpxCATdb not backup the hosts or passwd table:
 
+B<chtab key=skiptables site.value="hosts,passwd"
 
 =head1 FILES
 
