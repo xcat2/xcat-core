@@ -202,6 +202,10 @@ sub is_me
     my $nameIP = xCAT::NetworkUtils->getipaddr($name);
     chomp $nameIP;
 
+    # shut off verbose - just for this routine
+    my $verb = $::VERBOSE;
+    $::VERBOSE = 0;
+
     # split into octets
     #my ($b1, $b2, $b3, $b4) = split /\./, $nameIP;
 
@@ -213,6 +217,7 @@ sub is_me
         my $rsp;
         #	push @{$rsp->{data}}, "Could not run $ifcmd.\n";
         #    xCAT::MsgUtils->message("E", $rsp, $callback);
+		$::VERBOSE = $verb;
         return 0;
     }
 
@@ -225,9 +230,11 @@ sub is_me
 
         if ($myIP eq $nameIP)
         {
+			$::VERBOSE = $verb;
             return 1;
         }
     }
+	$::VERBOSE = $verb;
     return 0;
 }
 
@@ -355,9 +362,11 @@ sub get_nim_attr_val
       xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $target, $cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-        my $rsp;
-        push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+		if ($::VERBOSE) {
+			my $rsp;
+        	push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
         return undef;
     }
 
