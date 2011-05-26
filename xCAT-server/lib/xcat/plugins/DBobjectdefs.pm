@@ -259,7 +259,7 @@ sub processArgs
                     'w=s@'       => \$::opt_w,
                     'x|xml'     => \$::opt_x,
                     'z|stanza'  => \$::opt_z,
-                    'nocache'  => \$::opt_c,
+                    'nocache'  => \$::opt_nc,
                     'S'        => \$::opt_S,
         )
       )
@@ -273,7 +273,7 @@ sub processArgs
     
     # Initialize some global arrays in case this is being called twice in the same process.
     # Currently only doing this when --nocache is specified, but i think it should be done all of the time.
-    if ($::opt_c) {
+    if ($::opt_nc) {
             &initialize_variables();
     }
 
