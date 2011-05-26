@@ -41,7 +41,6 @@ if ($help) {
     print
       "The script is run on the command line to inspect the xcatdb DB2 database tables.\n";
     print  "Output indicates whether compression should be set on the table.\n";
-    print  "These must be at least one row of data in the table.\n";
     print  "Output is put in /tmp/<tablename all caps>.output. For example /tmp/SITE.out.\n";
     print "Usage:\n";
     print "\t--V - Verbose mode\n";
@@ -102,6 +101,14 @@ foreach my $table (@tablist) {
   $table  =~ tr/a-z/A-Z/;    # convert to upper
   if ($::VERBOSE) {
     print "Inspect of table $table\n";
+  }
+  $cmd = " rm /tmp/$table.out";   # cleanup
+  xCAT::Utils->runcmd($cmd, 0);
+  if ($::RUNCMD_RC != 0)
+  {
+    `logger -txcat " insptbls:error $cmd"`;
+  } else {
+    `logger -txcat " insptbls: $cmd"`;
   }
   $cmd="$::XCATROOT/sbin/runsqlcmd \"INSPECT ROWCOMPESTIMATE TABLE NAME $table results keep $table.res;\"";
   xCAT::Utils->runcmd($cmd, 0);
