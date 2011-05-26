@@ -285,6 +285,14 @@ foreach (split /,/,$netdriver) {
 unless ($onlyinitrd) {
    @yumdirs=();
    find(\&isyumdir, <$installroot/$osver/$arch/>);
+   # Add the dir for kernel rpm to be installed
+   if ($kernelver) {
+      find(\&isyumdir, <$kerneldir/>);
+      if (!grep /$kerneldir/, @yumdirs) {
+         print "The repository for $kerneldir should be created before running the geniamge. Try to run [createrepo $kerneldir].\n";
+         exit 1;
+      }
+   }
    unless (scalar(@yumdirs)) {
       print "Need $installroot/$osver/$arch/ available from a system that has ran copycds on $osver $arch\n";
       exit 1;
@@ -311,14 +319,13 @@ unless ($onlyinitrd) {
       $yumcmd .= "--enablerepo=$osver-$arch-$_ ";
    }
    
-   $yumcmd .= "install ";
    mkpath("$rootimg_dir/var/lib/yum");
 
    unless ($imagename) {
        $pkglist= imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "pkglist");
        unless ($pkglist) {
            $pkglist= imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "pkglist");
-       }  
+       }
    }
 
    if ($pkglist) {
@@ -327,7 +334,7 @@ unless ($onlyinitrd) {
        print "Unable to find package list for $profile!";
        exit 1;
    }
-   
+
    my %pkg_hash=imgutils::get_package_names($pkglist);
    my $index=1;
    my $pass;
@@ -336,11 +343,38 @@ unless ($onlyinitrd) {
        foreach (keys(%{$pkg_hash{$pass}})) {
            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
            my $pa=$pkg_hash{$pass}{$_};
-           $pkgnames .= " " . join(' ', @$pa);
+           my @npa = ();
+           # replace the kernel package with the name has the specific version
+           foreach my $p (@$pa) {
+            if ($p =~ /^kernel$/ && $kernelver) {
+             my $kernelname = "kernel-".$kernelver;
+             my $searchkern = $yumcmd . " list $kernelname -q";
+             my @kernpkgs = `$searchkern`;
+             my $found = 0;
+             foreach my $k (@kernpkgs) {
+               if ($k =~ /\s*kernel[^\s]*\s+([\w\.-]+)/) {
+                 my $version = $1;
+                 my $relversion = $kernelver;
+                 $relversion =~ s/\.[^\.]+$//;
+                 if ($version == $relversion) {
+                   $found++;
+                 }
+               }
+             }
+             if ($found eq 0) {
+               print "Cannot find the kernel with version $kernelver.\n";
+               exit 1;
+             }
+             push @npa, $kernelname;
+            } else {
+             push @npa, $p;
+            }
+           }
+           $pkgnames .= " " . join(' ', @npa);
        }
 
-       print "$yumcmd $pkgnames\n";
-       my $rc = system("$yumcmd $pkgnames");
+       print "$yumcmd install $pkgnames\n";
+       my $rc = system("$yumcmd install $pkgnames");
        if ($rc) { 
           print "yum invocation failed\n";
           exit 1;
@@ -457,25 +491,6 @@ $kernelver = $basekernelver unless ($kernelver);
 chomp($kernelver);
 
 $updates{'kernelver'} = $kernelver if ($needUpdateTable);
-
-if ($kernelver ne $basekernelver) {
-    # the kernelver is specified by "-k",
-    # the files in the entire kernel rpm package must be put in ${linuximage.kerneldir}, 
-    # the default value for ${linuximage.kerneldir} is "$installroot/kernels";
-
-    if ( -d "$kerneldir/$kernelver" ) {
-        # return one error if the directory is empty
-        my @kernelfiles = <$kerneldir/$kernelver/*>;
-        if (scalar @kernelfiles) {
-            # remove the kernel files for the basekernelver
-            unlink <$rootimg_dir/boot/*$basekernelver*>;
-            system("rm -rf $rootimg_dir/lib/modules/$basekernelver");
-            system("cp -r -a $kerneldir/$kernelver/* $rootimg_dir/");
-        } else {
-            xdie("couldnot find the kernel files matched $kernelver in $kerneldir/$kernelver !");
-        }
-    }
-}
 
 # copy the kernel to $destdir
 if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
