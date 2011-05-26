@@ -844,6 +844,7 @@ site => {
    "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n". 
    "              If value is set to a hostname, the directory in tftpdir\n".
    "              will be mounted from that hostname on the SN\n\n". 
+   " skiptables:  Comma separated list of tables to be skipped by dumpxCATdb\n".
    " SNsyncfiledir:  The directory on the Service Node, where xdcp will copy the files\n".
    "                 from the MN that will eventually be copied to the compute nodes.\n\n".
    " snmpc:  The snmp community string that xcat should use when communicating with the\n".
