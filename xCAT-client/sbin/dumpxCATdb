@@ -40,6 +40,9 @@ if ($::RUNCMD_RC != 0)
                             "Error running tabdump to get list of tables");
     exit 1;
 }
+# read tables to skip during dump from site.skiptables attribute
+my @skiptbls=xCAT::Utils->get_site_attribute('skiptables');
+
 foreach my $table (@output)
 {
     # if not -a request , skip eventlog and auditlog
@@ -56,8 +59,14 @@ foreach my $table (@output)
       }
       next;
     }
+    # skip and table in the site.skiptables attribute
+    if (grep(/^$table$/, @skiptbls)) {  
+      if ($::DUMPVERBOSE) {
+        xCAT::MsgUtils->message("I", "Skipping $table\n");
+      }
+      next;
+    }
 
-    #$cmd = "tabdump $table > $::PATH/$table.csv";
     $cmd = "tabdump -f $::PATH/$table.csv $table";
     my @errout = xCAT::Utils->runcmd($cmd, 0);
     if ($::RUNCMD_RC != 0)
