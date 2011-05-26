@@ -638,7 +638,13 @@ sub nimnodeset
     $subreq->({command=>['runbeginpre'],
 		node=>\@nodelist,
 		arg=>["standalone", '-l']},\&pass_along);
-    if ($errored) { return; }
+    if ($errored) { 
+	my $rsp;
+	$rsp->{errorcode}->[0]=1;
+	$rsp->{error}->[0]="Failed in running begin prescripts.\n";
+	$callback->($rsp);
+	return 1; 
+    }
  
 
     #
@@ -1125,7 +1131,13 @@ sub nimnodeset
                 node=>\@nodelist,
                 arg=>["standalone", '-l']},\&pass_along);
     }
-    if ($errored) { $retcode = 1; }
+    if ($errored) { 
+	my $rsp;
+	$rsp->{errorcode}->[0]=1;
+	$rsp->{error}->[0]="Failed in running end prescripts.\n";
+	$callback->($rsp);
+	return 1; 
+    }
 
     return  $retcode;
 }
@@ -7807,7 +7819,13 @@ sub mkdsklsnode
     $subreq->({command=>['runbeginpre'],
 		node=>\@nodelist,
 		arg=>["diskless", '-l']},\&pass_along);
-    if ($errored) { return; }
+    if ($errored) { 
+	my $rsp;
+	$rsp->{errorcode}->[0]=1;
+	$rsp->{error}->[0]="Failed in running begin prescripts.\n";
+	$callback->($rsp);
+	return 1; 
+    }
 
 
     #
@@ -8674,7 +8692,13 @@ sub mkdsklsnode
                       node=>\@nodelist,
                       arg=>["diskless", '-l']},\&pass_along);
     }
-    if ($errored) { $retcode = 1; }
+    if ($errored) { 
+	my $rsp;
+	$rsp->{errorcode}->[0]=1;
+	$rsp->{error}->[0]="Failed in running end prescripts.\n";
+	$callback->($rsp);
+	return 1; 
+    }
 
 
     return  $retcode;
@@ -9741,7 +9765,13 @@ sub rmdsklsnode
 	#	to handles my own children
 	$errored=0;
 	$subreq->({command=>['runbeginpre'], node=>\@nodelist, arg=>["remove", '-l']},\&pass_along);
-	if ($errored) { return; }
+	if ($errored) { 
+	    my $rsp;
+	    $rsp->{errorcode}->[0]=1;
+	    $rsp->{error}->[0]="Failed in running begin prescripts.\n";
+	    $callback->($rsp);
+	    return 1; 
+	}
 
     # for each node
     my @nodesfailed;
@@ -9916,7 +9946,13 @@ sub rmdsklsnode
                 node=>\@nodelist,
                 arg=>["remove", '-l']},\&pass_along);
     }
-    if ($errored) { $retcode = 1; }
+    if ($errored) { 
+	my $rsp;
+	$rsp->{errorcode}->[0]=1;
+	$rsp->{error}->[0]="Failed in running end prescripts.\n";
+	$callback->($rsp);
+	return 1; 
+    }
 
     return  $retcode;
 
