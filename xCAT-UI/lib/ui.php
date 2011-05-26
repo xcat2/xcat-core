@@ -83,7 +83,7 @@ function login() {
 	echo
 	'<script src="js/jquery/jquery.cookie.min.js" type="text/javascript"></script>
 	<script src="js/xcatauth.js" type="text/javascript"></script>
-	<div id=logdialog>
+	<div id=logdialog title="Login">
 		<p>Give the user name and password for the xCAT management node</p>
 			<form id=loginform>
 				<table cellspacing=3>
