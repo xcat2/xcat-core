@@ -870,6 +870,10 @@ site => {
    "                   will not interfere.\n\n".
    " vmwarereconfigonpower:  When set to no, the VMWare plugin will make no effort to\n".
    "                         push vm.cpus/vm.memory updates from xCAT to VMWare.\n\n".
+   " vsftp:       Default is 'y'. If set to 'n', the xcatd on the mn will not automatically \n".
+   "              bring up the vsftpd. This setting does not apply to the sn, for sn\n".
+   "              you need to set servicenode.ftpserver=0 if you do not want the xcatd\n".
+   "              bring up vsftpd.\n\n".
    " xcatconfdir:  Where xCAT config data is (default /etc/xcat).\n\n".
    " xcatdport:  The port used by the xcatd daemon for client/server communication.\n\n".
    " xcatiport:  The port used by xcatd to receive install status updates from nodes.\n\n",
