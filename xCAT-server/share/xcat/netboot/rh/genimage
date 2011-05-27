@@ -739,7 +739,7 @@ sub mkinitrd_dracut {
 
         # update etc/dracut.conf
         open($DRACUTCONF, '>', "$rootimg_dir/etc/dracut.conf");
-        print $DRACUTCONF qq{dracutmodules+="xcat base network kernel-modules"\n};
+        print $DRACUTCONF qq{dracutmodules+="xcat nfs base network kernel-modules"\n};
         print $DRACUTCONF qq{add_drivers+="$add_drivers"\n};
         close $DRACUTCONF;
     } else {
