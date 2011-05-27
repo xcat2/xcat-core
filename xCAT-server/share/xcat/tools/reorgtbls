@@ -3,7 +3,7 @@
 #
 #####################################################
 #
-# This script will run a reorg on the DB2 tables
+# This script will run a reorg on the DB2 table(s)
 # It is dependent on the setup of DB2 by the db2sqlsetup script
 # It is to be set in a cron job on the xCAT Management Node and
 # requires xCAT to be installed because it uses xCAT Perl libraries
