@@ -31,4 +31,4 @@ update db cfg for xcatdb using LOGSECOND 20;
 update db cfg for xcatdb using AUTO_RUNSTATS ON;
 update db cfg for xcatdb using AUTO_TBL_MAINT ON;
 update db cfg for xcatdb using AUTO_MAINT ON;
-update db cfg for xcatdb using CATALOGCACHE_SZ 100;
+update db cfg for xcatdb using CATALOGCACHE_SZ 50;
