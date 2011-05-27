@@ -983,6 +983,7 @@ auditlog => {
     types => {
 	recid => 'INTEGER AUTO_INCREMENT',  
     },
+    compress =>'YES',
     tablespace =>'XCATTBS32K',
     table_desc => ' Audit Data log.',  
     descriptions => {
