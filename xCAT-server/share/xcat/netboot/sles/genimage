@@ -87,6 +87,7 @@ GetOptions(
    'l=s' => \$rootlimit,
    't=s' => \$tmplimit,
    'k=s' => \$kernelver,
+   'g=s' => \$krpmver,
    'permission=s' => \$permission
 );
 
@@ -238,6 +239,11 @@ $destdir="$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
 $updates{'rootimgdir'} = $destdir if ($needUpdateTable);
 
 $rootimg_dir="$destdir/rootimg";
+
+if ($kernelver && (!$krpmver)) {
+  print "The -g flag for the rpm version of kernel packages needs to be specified when kernel version has been specified.\n";
+  exit 1;
+}
 $kerneldir = "$installroot/kernels" unless ($kerneldir);    # the default directory for 3rd-party kernel is "$installroot/kernels";
 $updates{'kerneldir'} = $kerneldir if ($needUpdateTable);
 
@@ -345,6 +351,21 @@ unless ($onlyinitrd) {
 	   system("zypper -R $rootimg_dir sa file:$srcdir");
    }
 
+   # Add the rep for kernel packages
+   if ($kernelver) {
+      if (! -d $kerneldir) {
+          print "Cannot find the directory for the kernel at $kerneldir.\n";
+          exit 1;
+      }
+      if ($osver_host == 11) {
+         if (-e "$rootimg_dir/etc/zypp/repos.d/$kernelver.repo") {
+            system("rm -rf $rootimg_dir/etc/zypp/repos.d/$kernelver.repo");
+         }
+         system("zypper -R $rootimg_dir ar file:$kerneldir $kernelver");
+      } else {
+         system("zypper -R $rootimg_dir sa file:$kerneldir");
+      }
+   }
    #remove the old repository for extra packages
    my $result=`zypper -R $rootimg_dir sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
    if ($result =~ /\S/) {
@@ -438,7 +459,32 @@ unless ($onlyinitrd) {
        foreach (keys(%{$pkg_hash{$pass}})) {
            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
            my $pa=$pkg_hash{$pass}{$_};
-           $pkgnames .= " " . join(' ', @$pa);
+           # replace the kernel package with the name has the specific version
+           my @npa = ();
+           foreach my $p (@$pa) {
+             if ($p =~ /^kernel$/ && $kernelver) {
+               # get all files in $srcdir and $kerneldir
+               my @alldirs = ("$srcdir", "$kerneldir");
+               my @allrpms = ();
+               foreach my $dir (@alldirs) {
+                 my @files = `find $dir -name *.rpm`;
+                 push @allrpms, @files;
+               }
+               my @kernelpkgs = ("kernel-default","kernel-default-base");
+               foreach my $kern (@kernelpkgs) {
+                 my @rpm = grep /$kern-$krpmver/, @allrpms;
+                 if (!@rpm) {
+                   print "Cannot find the kernel package with the versioin $krpmver.\n";
+                   exit 1;
+                 }
+                 my $kernelname = "$kern=".$krpmver;
+                 push @npa, $kernelname;
+               }
+             } else {
+               push @npa, $p;
+             }
+           }
+           $pkgnames .= " " . join(' ', @npa);
        }
        print "$yumcmd $pkgnames\n";
        my $rc = system("$yumcmd $pkgnames");
@@ -537,24 +583,6 @@ unless ($basekernelver) {
 $kernelver = $basekernelver unless ($kernelver);
 chomp $kernelver;
 $updates{kernelver} = $kernelver if ($needUpdateTable);
-
-if ($kernelver ne $basekernelver) {
-    # the files in the entire kernel rpm package must be put in ${linuximage.kerneldir},
-    # the default value for ${linuximage.kerneldir} is "$installroot/kernels";
-
-    if ( -d "$kerneldir/$kernelver" ) {
-        # return one error if the directory is empty
-        my @kernelfiles = <$kerneldir/$kernelver/*>;
-        if (scalar @kernelfiles) {
-            # remove the kernel files for the basekernelver
-            unlink <$rootimg_dir/boot/*$basekernelver*>;
-            system("rm -rf $rootimg_dir/lib/modules/$basekernelver");
-            system("cp -r -a $kerneldir/$kernelver/* $rootimg_dir/");
-        } else {
-            xdie("couldnot find the kernel files matched $kernelver in $kerneldir/$kernelver !");
-        }
-    }
-}
 
 # copy the kernel to $destdir
 if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
