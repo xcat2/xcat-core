@@ -2,6 +2,9 @@
  * Open login dialog
  */
 $(document).ready(function() {
+    $('#header').remove();
+    $('#content').remove();
+    
 	$("#logdialog").dialog( {
 		modal : true,
 		closeOnEscape : false,
