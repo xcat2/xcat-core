@@ -126,10 +126,13 @@ body {
 /*--------------- Groups ---------------*/
 #groups {
 	width: 150px;
+	min-height:570px;
 	vertical-align: top;
 	float: left;
 	position: relative;
 	margin: 15px 0px 15px 15px;
+	padding: 0px 10px 0px 0px;
+	border-right: medium solid #E6E6F2;
 }
 
 #groups ul {
@@ -160,10 +163,14 @@ body {
 /*--------------- Nodes section ---------------*/
 #nodes {
 	width: 700px;
-	margin: 20px;
+	padding: 15px 0px 0px 10px;
 	display: inline-table;
 }
 
+.ui-widget-header{
+	border-color: #4297D7 #4297D7 #7BB642;
+	border-width: 1px 1px 4px;
+}
 /*--------------- Info/warning bar ---------------*/
 span.ui-icon-info {
 	float: left;
@@ -280,7 +287,7 @@ legend {
 .tab li {
 	list-style: none;
 	padding: 5px;
-	margin: 0;
+	margin: 1;
 }
 
 .tab textarea {

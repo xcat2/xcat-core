@@ -127,7 +127,8 @@ function loadGroups(data) {
 			"theme" : "default",
 			"dots" : false,	// No dots
 			"icons" : false	// No icons
-		}
+		},
+		cookies : { "auto_save" : false}
 	});
 	
 	// Load nodes onclick
@@ -220,7 +221,8 @@ function loadGroups(data) {
 					
 				}
 			});
-						
+				
+			/*
 			// Get subgroups within selected group
 			// only when this is the parent group and not a subgroup
 			if (data.rslt.obj.attr('id').indexOf('Subgroup') < 0) {
@@ -237,12 +239,13 @@ function loadGroups(data) {
     				success : loadSubgroups
     			});
 			}
+			*/
 			
 		} // End of if (thisGroup)
 	});
 	
 	// Make a link to add nodes
-	$('#groups').append(mkAddNodeLink());
+	//$('#groups').append(mkAddNodeLink());
 }
 
 /**
