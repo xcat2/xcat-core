@@ -149,8 +149,8 @@ function loadGroups(data) {
 			setNodesTab(tab);
 			tab.init();
 			$('#nodes').append(tab.object());
-			tab.add('nodesTab', 'Nodes', loader, false);
-			tab.add('graphTab', 'Graphical', '', false);
+			tab.add('nodesTab', 'Table View', loader, false);
+			tab.add('graphTab', 'Graphic View', '', false);
 			
 			$('#nodesPageTabs').bind('tabsselect', function(event, ui){
 				//for the graphical tab, we should check the graphical data first

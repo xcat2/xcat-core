@@ -123,6 +123,10 @@ body {
 	overflow: auto;
 }
 
+#content .ui-widget-header{
+	border-color: #4297D7 #4297D7 #7BB642;
+	border-width: 1px 1px 4px;
+}
 /*--------------- Groups ---------------*/
 #groups {
 	width: 150px;
@@ -167,10 +171,6 @@ body {
 	display: inline-table;
 }
 
-.ui-widget-header{
-	border-color: #4297D7 #4297D7 #7BB642;
-	border-width: 1px 1px 4px;
-}
 /*--------------- Info/warning bar ---------------*/
 span.ui-icon-info {
 	float: left;
