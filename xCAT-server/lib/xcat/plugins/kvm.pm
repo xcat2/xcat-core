@@ -2049,7 +2049,18 @@ sub mkvm {
     }
     #print "force=$force\n";
     if ($mastername or $disksize) {
-       my @return= createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force);
+       my @return;
+	eval {
+	@return = createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force);
+	};
+	if ($@) {
+                if ($@ =~ /ath already exists/) {
+                        return 1,"Storage creation request conflicts with existing file(s)";
+                } else {
+                        return 1,"Unknown issue $@";
+                }
+          }
+
          unless ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
              my $xml;
              $xml = build_xmldesc($node,cpus=>$cpucount,memory=>$memory);
@@ -2785,8 +2796,11 @@ sub dohyp {
       $text =~ s/\s+$//;
       $output{node}->[0]->{errorcode} = $rc;
       $output{node}->[0]->{name}->[0]=$node;
-      $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
-      $output{node}->[0]->{error} = $text unless $rc == 0;
+      if ($rc == 0) {
+	$output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+      } else {
+         $output{node}->[0]->{error} = $text;
+      }
       print $out freeze([\%output]);
       print $out "\nENDOFFREEZE6sK4ci\n";
       yield();
