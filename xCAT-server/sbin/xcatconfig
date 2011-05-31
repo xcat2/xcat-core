@@ -974,6 +974,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=databaseloc site.value=\/var\/lib;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=sshbetweennodes site.value=ALLGROUPS;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dnshandler site.value=ddns;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=vsftp site.value=y;";
 
         if ($::osname eq 'AIX')
         {
