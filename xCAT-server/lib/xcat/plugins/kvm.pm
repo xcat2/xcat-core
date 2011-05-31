@@ -324,13 +324,24 @@ sub waitforack {
     }
 }
 
-sub fixbootorder {
+sub reconfigvm {
     $node=shift;
     my $xml = shift;
     my $domdesc = $parser->parse_string($xml);
     my @bootdevs = $domdesc->findnodes("/domain/os/boot");
     my @oldbootdevs;
     my $needfixin=0;
+    if (defined $confdata->{vm}->{$node}->[0]->{memory}) {
+	$needfixin=1;
+	$domdesc->findnodes("/domain/memory/text()")->[0]->setData(getUnits($confdata->{vm}->{$node}->[0]->{memory},"M",1024));
+	foreach ($domdesc->findnodes("/domain/currentMemory/text()")) {
+		$_->setData(getUnits($confdata->{vm}->{$node}->[0]->{memory},"M",1024));
+	}
+    }
+    if (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
+	$needfixin=1;
+	$domdesc->findnodes("/domain/vcpu/text()")->[0]->setData($confdata->{vm}->{$node}->[0]->{cpus});
+    }
     if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
         my @expectedorder = split(/[:,]/,$confdata->{vm}->{$node}->[0]->{bootorder});
         foreach (@expectedorder) { #this loop will check for changes and fix 'n' and 'net'
@@ -360,6 +371,8 @@ sub fixbootorder {
             my $fragment = $parser->parse_balanced_chunk('<boot dev="'.$_.'"/>');
             $osnode->appendChild($fragment);
         }
+    }
+    if ($needfixin) {
         return $domdesc->toString();
     } else { return 0; }
 }
@@ -1002,7 +1015,7 @@ sub makedom {
             }
         }
         $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
-        my $newxml = fixbootorder($node,$xml);
+        my $newxml = reconfigvm($node,$xml);
         if ($newxml) {
             $xml=$newxml;
         }
@@ -1201,13 +1214,20 @@ sub rinv {
     my $cpus = $domain->findnodes('/domain/vcpu')->[0]->to_literal;
     xCAT::SvrUtils::sendmsg("CPUs: $cpus", $callback,$node);
     my $memnode = $domain->findnodes('/domain/currentMemory')->[0];
+    my $maxmemnode = $domain->findnodes('/domain/memory')->[0];
     unless ($memnode) {
-        $memnode = $domain->findnodes('/domain/memory')->[0];
+        $memnode = $maxmemnode;
     }
     if ($memnode) {
         my $mem = $memnode->to_literal;
         $mem=$mem/1024;
         xCAT::SvrUtils::sendmsg("Memory: $mem MB", $callback,$node);
+    }
+    if ($maxmemnode) {
+	my $maxmem = $maxmemnode->to_literal;
+	$maxmem=$maxmem/1024;
+        xCAT::SvrUtils::sendmsg("Maximum Memory: $maxmem MB", $callback,$node);
+	
     }
     invstorage($domain);
     invnics($domain);
@@ -1253,7 +1273,11 @@ sub invstorage {
             }
         }
 
-        my $file = $disk->findnodes('./source')->[0]->getAttribute('file');
+	my @candidatenodes = $disk->findnodes('./source');
+	unless (scalar @candidatenodes) {
+		next;
+	}
+        my $file = $candidatenodes[0]->getAttribute('file');
         #we'll attempt to map file path to pool name and volume name
         #fallback to just reporting filename if not feasible
         #libvirt lacks a way to lookup a storage pool by path, so we'll only do so if using the 'default' xCAT scheme with uuid in the path
@@ -1591,15 +1615,26 @@ sub chvm {
 	$updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
       }
     }
-    if ($cpucount or  $memory) {
+    if ($cpucount or $memory) {
         if ($currstate eq 'on') {
-            xCAT::SvrUtils::sendmsg([1,"Hot add of cpus or memory not supported"],$callback,$node);
+            if ($cpucount) {xCAT::SvrUtils::sendmsg([1,"Hot add of cpus not supported (VM must be powered down to successfuly change)"],$callback,$node); }
             if ($cpucount) {
                 #$dom->set_vcpus($cpucount); this didn't work out as well as I hoped..
                 #xCAT::SvrUtils::sendmsg([1,"Hot add of cpus not supported"],$callback,$node);
             }
             if ($memory) {
-                #$dom->set_max_memory(getUnits($memory,"M",1024));
+		eval {
+	                $dom->set_memory(getUnits($memory,"M",1024));
+		};
+		if ($@) {
+			if ($@ =~ /cannot set memory higher/) {
+				xCAT::SvrUtils::sendmsg([1,"Unable to increase memory beyond current capacity (requires VM to be powered down to change)"],$callback,$node);
+			}
+		}
+         	$vmxml=$dom->get_xml_description();
+		if ($vmxml) {
+            		$updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+		}
             }
         } else { #offline xml edits
             my $parsed=$parser->parse_string($vmxml); #TODO: should only do this once, oh well
@@ -2084,7 +2119,7 @@ sub power {
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
             my $oldxml=$dom->get_xml_description();
-            my $newxml=fixbootorder($node,$oldxml);
+            my $newxml=reconfigvm($node,$oldxml);
             #This *was* to be clever, but libvirt doesn't even frontend the capability, great...
             unless ($newxml) { $newxml=$oldxml; } #TODO: remove this when the 'else' line can be sanely filled out
             if ($newxml) { #need to destroy and repower..
