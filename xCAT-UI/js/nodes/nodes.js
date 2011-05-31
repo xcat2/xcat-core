@@ -149,8 +149,8 @@ function loadGroups(data) {
 			setNodesTab(tab);
 			tab.init();
 			$('#nodes').append(tab.object());
-			tab.add('nodesTab', 'Table View', loader, false);
-			tab.add('graphTab', 'Graphic View', '', false);
+			tab.add('nodesTab', 'Table', loader, false);
+			tab.add('graphTab', 'Graphic', '', false);
 			
 			$('#nodesPageTabs').bind('tabsselect', function(event, ui){
 				//for the graphical tab, we should check the graphical data first
@@ -245,7 +245,7 @@ function loadGroups(data) {
 	});
 	
 	// Make a link to add nodes
-	//$('#groups').append(mkAddNodeLink());
+	$('#groups').append(mkAddNodeLink());
 }
 
 /**
