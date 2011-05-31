@@ -1958,11 +1958,27 @@ sub clone_vm_from_master {
             eval {
              $newvol =$destinationpool->clone_volume($targxml,$sourcevol);
             };
+	    if ($@) {
+		if ($@ =~ /already exists/) {
+                        return 1,"Storage creation request conflicts with existing file(s)";
+		} else {
+                        return 1,"Unknown issue $@";
+		}
+	   }
         } else {
             my $sourcevol = $hypconn->get_storage_volume_by_path($srcfilename);
             my %sourceinfo = %{$sourcevol->get_info()};
             my $newbasexml="<volume><name>$filename</name><target><format type='$format'/></target><capacity>".$sourceinfo{capacity}."</capacity><backingStore><path>$srcfilename</path><format type='$format'/></backingStore></volume>";
+	    eval {
            $newvol = $destinationpool->create_volume($newbasexml);
+		};
+	    if ($@) {
+		if ($@ =~ /already in use/) {
+                        return 1,"Storage creation request conflicts with existing file(s)";
+		} else {
+                        return 1,"Unknown issue $@";
+		}
+	   }
            $updatetable->{vm}->{$node}->{master}=$mastername;
         }
         my $newfilename=$newvol->get_path();
