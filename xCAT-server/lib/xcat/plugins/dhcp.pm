@@ -25,6 +25,7 @@ use xCAT::Utils;
 use xCAT::NodeRange;
 use Fcntl ':flock';
 
+my @aixcfg;  # hold AIX entries created by NIM
 my @dhcpconf; #Hold DHCP config file contents to be written back.
 my @dhcp6conf; #ipv6 equivalent
 my @nrn;      # To hold output of networks table to be consulted throughout process
@@ -58,8 +59,9 @@ if ( $^O ne 'aix' and -d "/etc/dhcp" ) {
 }
 my $usingipv6;
 
-sub ipIsDynamic { #meant to be v4/v6 agnostic.  DHCPv6 however takes some care to allow a dynamic range to overlap static reservations
-                  #xCAT will for now continue to advise people to keep their nodes out of the dynamic range
+sub ipIsDynamic { 
+	#meant to be v4/v6 agnostic.  DHCPv6 however takes some care to allow a dynamic range to overlap static reservations
+    #xCAT will for now continue to advise people to keep their nodes out of the dynamic range
     my $ip = shift;
     my $number = getipaddr($ip,GetNumber=>1);
     unless ($number) { # shouldn't be possible, but pessimistically presume it dynamically if so
@@ -641,28 +643,54 @@ sub preprocess_request
 	elsif(grep /-a/,@{$req->{arg}}) {
 	    if (grep /-d$/, @{$req->{arg}})
 	    {
-		my $nodelist = xCAT::Table->new('nodelist');
-		my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
-		foreach (@entries)
-		{
-		    push @nodes, $_->{node};
-		}
+			my $nodelist = xCAT::Table->new('nodelist');
+			my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
+			foreach (@entries)
+			{
+		    	push @nodes, $_->{node};
+			}
 	    }
 	    else
 	    {
-		my $mactab  = xCAT::Table->new('mac');
-		my @entries=();
-		if ($mactab) {
-		    @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
-		}
-		foreach (@entries)
-		{
-		    push @nodes, $_->{node};
-		}
+			my $mactab  = xCAT::Table->new('mac');
+			my @entries=();
+			if ($mactab) {
+		    	@entries = ($mactab->getAllNodeAttribs([qw(mac)]));
+			}
+			foreach (@entries)
+			{
+		    	push @nodes, $_->{node};
+			}
 	    }	    
+	} # end - if -a
+
+	# don't put compute node entries in for AIX nodes
+    # this is handled by NIM - duplicate entires will cause
+    # an error
+	if ($^O eq 'aix') {
+		my @tmplist;
+		my $Imsg;
+		foreach my $n (@nodes)
+		{
+			# get the nodetype for each node
+			my $ntype = xCAT::DBobjUtils->getnodetype($n);
+			if ($ntype =~ /osi/) {
+				$Imsg++;
+			}
+			unless ($ntype =~ /osi/) {
+				push @tmplist, $n;
+			}
+		}
+		@nodes = @tmplist;
+
+		if ($Imsg) {
+			my $rsp;
+			push @{$rsp->{data}}, "AIX nodes with a nodetype of \'osi\' will not be added to the dhcp configuration file.  This is handled by NIM.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
 	}
-    }
-    #print "nodes=@nodes\n";
+	}
+
 
     if (($snonly == 1) && (! grep /-n/,@{$req->{arg}})) {
         if (@nodes > 0) {
@@ -844,8 +872,6 @@ sub process_request
 
     @dhcpconf = ();
     
-
-
    my $dhcplockfd;
    open($dhcplockfd,">","/tmp/xcat/dhcplock");
    flock($dhcplockfd,LOCK_EX);
@@ -853,6 +879,34 @@ sub process_request
     {
         if (-e $dhcpconffile)
         {
+			if ($^O eq 'aix')
+    		{
+				# save NIM aix entries - to be restored later
+				my $aixconf;
+        		open($aixconf, $dhcpconffile); 
+        		if ($aixconf)
+        		{
+					my $save=0;
+            		while (<$aixconf>)
+            		{
+						if ($save) {	
+                			push @aixcfg, $_;
+						}
+
+						if ($_ =~ /#Network configuration end\n/) {
+							$save++;
+						}
+            		}
+            		close($aixconf);
+        		}
+				$restartdhcp=1;  
+        		@dhcpconf = ();
+			}
+
+			my $rsp;
+            push @{$rsp->{data}}, "Renamed existing dhcp configuration file to  $dhcpconffile.xcatbak\n";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+
             my $bakname = "$dhcpconffile.xcatbak";
             rename("$dhcpconffile", $bakname);
         }
@@ -1063,10 +1117,28 @@ sub process_request
             if ($mactab) {
                 @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
             }
+
             foreach (@entries)
             {
                 push @{$req->{node}}, $_->{node};
             }
+
+			# don't put compute node entries in for AIX nodes
+			# this is handled by NIM - duplicate entires will cause
+			# an error
+			if ($^O eq 'aix') {
+				my @tmplist;
+				foreach my $n (@{$req->{node}})
+				{
+					# get the nodetype for each node
+					my $ntype = xCAT::DBobjUtils->getnodetype($n);
+					# don't add if it is type "osi"
+					unless ($ntype =~ /osi/) {
+						push @tmplist, $n;
+					}
+				}
+				@{$req->{node}} = @tmplist;
+			}
         }
     }
 
@@ -1852,6 +1924,8 @@ sub addnic
 
 sub writeout
 {
+
+	# add the new entries to the dhcp config file
     my $targ;
     open($targ, '>', $dhcpconffile);
     my $idx;
@@ -1868,7 +1942,20 @@ sub writeout
         }
         print $targ $dhcpconf[$idx];
     }
+
+	if ($^O eq 'aix')
+	{
+		# add back any NIM entries that were saved earlier
+		if (@aixcfg) {
+			foreach $idx (0..$#aixcfg)
+			{
+				print $targ $aixcfg[$idx];
+			}
+		}
+	}
     close($targ);
+
+
     if (@dhcp6conf) {
     open($targ, '>', $dhcp6conffile);
     foreach $idx (0..$#dhcp6conf)
