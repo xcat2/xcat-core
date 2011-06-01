@@ -608,6 +608,47 @@ table a:hover {
 }
 
 /*--------------- Provision and monitor forms ---------------*/
+.rmcnormal {
+	border: 2px outset #7FFFD4;
+	background: #66CD00;
+	cursor: pointer;
+}
+
+.rmcwarning {
+   	background: #FFD700;
+  	border: 2px outset #EEEE00;
+	cursor: pointer;
+}
+
+.rmcerror {
+	background:  #FF3030;
+	border: 2px outset #FF4040;
+}
+
+.rmcunknown {
+    background:  #8B8B7A;
+    border: 2px outset #858585;
+}
+
+.rmcnodeli {
+	width: 16px;
+	height: 16px;
+	float: left;
+}
+
+.rmcsumdiv {
+	width: 300px;
+	height: 150px;
+	float: left;
+	margin: 0px 0px 10px 0px;
+}
+
+.rmcnodediv {
+	width: 240px;
+	height: 120px;
+	margin: 0px 0px 15px 0px;
+}
+
 .provision div,.monitor div {
 	margin: 10px 0;
 	display: block;
@@ -620,19 +661,6 @@ table a:hover {
 	display: inline-table;
 	width: 350px;
 	height: 150px;
-}
-
-.monitorsumdiv {
-	width: 300px;
-	height: 150px;
-	float: left;
-	margin: 0px 0px 10px 0px;
-}
-
-.monitornodediv {
-	width: 240px;
-	height: 120px;
-	margin: 0px 0px 15px 0px;
 }
 
 /*--------------- Physical layout section ---------------*/

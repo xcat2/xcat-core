@@ -508,6 +508,7 @@ function initPage() {
 	} else if (page == 'monitor.php') {
 		includeJs("js/jquery/jquery.jqplot.min.js");
 		includeJs("js/jquery/jqplot.pieRenderer.min.js");
+		includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
 		includeJs("js/monitor/xcatmon.js");
 		includeJs("js/monitor/rmcmon.js");
 		includeJs("js/monitor/gangliamon.js");
