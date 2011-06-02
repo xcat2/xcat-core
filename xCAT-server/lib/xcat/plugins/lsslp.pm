@@ -251,9 +251,9 @@ sub parse_args {
             push @filternodes, $_;
         }
     } elsif ( scalar(@ARGV) > 1 ) {
-        return(usage( "Invalid flag, please check and retry." ));      
+        return(usage( "Invalid flag, please check and retry." ));
     }
-    
+
     #############################################
     # Set convergence
     #############################################
@@ -437,13 +437,13 @@ sub trace {
             my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
             send_msg( $request, 0, $msg );
         }
-    } else { 
+    } else {
         if ( $verbose ) {
             my ($sec,$min,$hour,$mday,$mon,$yr,$wday,$yday,$dst) = localtime(time);
             my $msg = sprintf "%02d:%02d:%02d %5d %s", $hour,$min,$sec,$$,$msg;
             send_msg( $request, 0, $msg );
         }
-    }    
+    }
 }
 
 
@@ -1155,7 +1155,7 @@ sub format_output {
         send_msg( $request, 0, "No responses" );
         return;
     }
-    
+
     ###########################################
     # filter the result and keep the specified nodes
     ###########################################
@@ -1163,8 +1163,8 @@ sub format_output {
         my $outhash1 = filter( $outhash );
         $outhash = $outhash1;
     }
-    
-    
+
+
     ###########################################
     # -w flag for write to xCat database
     ###########################################
@@ -1187,7 +1187,7 @@ sub format_output {
     ###########################################
     if ( exists( $opt{resetnet} ) ) {
         #do_resetnet( $request, $outhash );
-		send_msg( $request, 0, "the flag --resetnet has been moved to rspconfig, please see the rspconfig man page for more details" );
+        send_msg( $request, 0, "the flag --resetnet has been moved to rspconfig, please see the rspconfig man page for more details" );
     }
 
     ###########################################
@@ -1212,11 +1212,11 @@ sub format_output {
             my $raw = @{$outhash->{$_}}[9];
             $rawhash{$raw} = 1;
         }
-        
+
         foreach ( keys %rawhash ) {
             $result .= "$_\n";
         }
-        
+
         send_msg( $request, 0, $result );
         return;
     }
@@ -1461,29 +1461,32 @@ sub gethost_from_url_or_old {
                 {
                     @{$::OLD_DATA_CACHE{$entry->{node}}}[0] = $entry->{mtm};
                     @{$::OLD_DATA_CACHE{$entry->{node}}}[1] = $entry->{serial};
-                    @{$::OLD_DATA_CACHE{$entry->{node}}}[2] = $entry->{side};
-
-                    # find node ip address, check node name first, then check hosts table
-                    my $ifip = xCAT::Utils->isIpaddr($entry->{node});
-                    if ( $ifip )
-                    {
-                        @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $entry->{node};
-                    } else
-                    {
-                        if ( exists ($iphash{$entry->{node}}) )
-                        {
-                            @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $iphash{$entry->{node}};
-                        }
-                        else
-                        {
-                            @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = "";
-                        }
-                    }
-                    @{$::OLD_DATA_CACHE{$entry->{node}}}[4] = @{$idhash{$entry->{node}}}[0];
-                    @{$::OLD_DATA_CACHE{$entry->{node}}}[5] = @{$idhash{$entry->{node}}}[1];
-                    @{$::OLD_DATA_CACHE{$entry->{node}}}[6] = @{$idhash{$entry->{node}}}[2];
-                    @{$::OLD_DATA_CACHE{$entry->{node}}}[7] = 1;
+                } else {
+                    @{$::OLD_DATA_CACHE{$entry->{node}}}[0] = undef;
+                    @{$::OLD_DATA_CACHE{$entry->{node}}}[1] = undef;
                 }
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[2] = $entry->{side};   
+                # find node ip address, check node name first, then check hosts table
+                my $ifip = xCAT::Utils->isIpaddr($entry->{node});
+                if ( $ifip )
+                {
+                    @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $entry->{node};
+                } else
+                {
+                    if ( exists ($iphash{$entry->{node}}) )
+                    {
+                        @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $iphash{$entry->{node}};
+                    }
+                    else
+                    {
+                        @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = "";
+                    }
+                }
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[4] = @{$idhash{$entry->{node}}}[0];
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[5] = @{$idhash{$entry->{node}}}[1];
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[6] = @{$idhash{$entry->{node}}}[2];
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[7] = 1;
+                
             }
         }
         else
@@ -1516,7 +1519,7 @@ sub gethost_from_url_or_old {
                 return $oldnode;
             }
         }
-        
+
         # match the existed nodes including old data and user defined data
         if ( ($type eq TYPE_BPA or $type eq TYPE_FSP) and ($tmptype eq $type)) {
             unless ($tmpmtm) {
@@ -2053,9 +2056,8 @@ sub parse_responses {
     my %fid1;
     my %fid2;
     my %cid;
-    
 
-    trace( $request, "Now I will explain how the lsslp parse its response: " , 1);   
+    trace( $request, "Now I will explain how the lsslp parse its response: " , 1);
     foreach my $rsp ( @$values ) {
         ###########################################
         # Get service-type from response
@@ -2124,7 +2126,7 @@ sub parse_responses {
         #    $hostip{$entry->{node}} = $entry->{ip};
         #}
 
-        trace( $request, "The type is $result[0], mtm is $result[1], sn is $result[2], side is $result[3], ip is $result[4], parent mtm is $result[5], parent sn is $result[6], frame num is $result[7], cage num is $result[8].", 1 );   
+        trace( $request, "The type is $result[0], mtm is $result[1], sn is $result[2], side is $result[3], ip is $result[4], parent mtm is $result[5], parent sn is $result[6], frame num is $result[7], cage num is $result[8].", 1 );
 
         # begin to define FSP/BPA/FRAME/CEC
         my $typetp;
@@ -2138,33 +2140,33 @@ sub parse_responses {
         }
         my $hostname = undef;
         if ( $type eq SERVICE_BPA or $type eq SERVICE_FSP ) {
-        
-            trace( $request, "........First begin to define FSP/BPA nodes", 1 );  
-            trace( $request, "     we will keep the datas here first", 1); 
+
+            trace( $request, "........First begin to define FSP/BPA nodes", 1 );
+            trace( $request, "     we will keep the datas here first", 1);
             ###########################################
             #  begin to define fsp/bpa, use ip as the hostname of the fsp/bpa
             #  for there are redundancy of fsp/bpa,
             #  excrete each slp response into two definitions
             #  put the definitions into %outhash
             ###########################################
-            
+
             # begin to define fsp/bpa
             my (@severnode1, @severnode2);
             my @ips = split/,/, $result[4];
 
             foreach (@result) {
                 push @severnode1, $_;
-            }    
-            
+            }
+
             #keep cage id for the secondary fsp definition
             #the cash hash is like $fid{mtm*sn}=cageid
             if ($type eq SERVICE_FSP and $severnode1[3] eq "A")
             {
-                $fid1{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];          
+                $fid1{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];
             }
             if ($type eq SERVICE_FSP and $severnode1[3] eq "B")
             {
-                $fid2{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];          
+                $fid2{$severnode1[1]."*".$severnode1[2]} = $severnode1[8];
             }
 
             $severnode1[3] = $severnode1[3].'-0';
@@ -2181,9 +2183,9 @@ sub parse_responses {
                 $$length = length( $severnode1[4] );
             }
             $otherinterfacehash{$hostname}{otherinterfaces} = $ips[0];
-            
-            trace( $request, "     Keep the node ip $ips[0] in its otherinterfaces", 1 );  
-            trace( $request, "     The node $ips[0] match the old data and got the new name $hostname" , 1);        
+
+            trace( $request, "     Keep the node ip $ips[0] in its otherinterfaces", 1 );
+            trace( $request, "     The node $ips[0] match the old data and got the new name $hostname" , 1);      
             #begin to define another fsp/bpa
             $hostname = undef;
             foreach (@result) {
@@ -2203,8 +2205,8 @@ sub parse_responses {
                 $$length = length( $severnode2[4] );
             }
             $otherinterfacehash{$hostname}{otherinterfaces} = $ips[1];
-            trace( $request, "     Keep the node ip $ips[1] in its otherinterfaces" , 1);  
-            trace( $request, "     The node $ips[1] match the old data and got the new name $hostname" , 1);        
+            trace( $request, "     Keep the node ip $ips[1] in its otherinterfaces" , 1);
+            trace( $request, "     The node $ips[1] match the old data and got the new name $hostname" , 1);      
 
             ###########################################
             #  begin to define frame and cec
@@ -2212,7 +2214,7 @@ sub parse_responses {
             #  put the definitions into %outhash
             ###########################################
 
-            trace( $request, "........second begin to define frame and cec " , 1);  
+            trace( $request, "........second begin to define frame and cec " , 1);
             $hostname = undef;
             $host = "Server-$result[1]-SN$result[2]";
             unless ( exists( $outhash{$host} ))
@@ -2236,7 +2238,7 @@ sub parse_responses {
                 {
                     $outhash{$hostname} = \@result;
                 }
-                trace( $request, "      the node $host match the old data and got the new name $hostname " , 1);  
+                trace( $request, "      the node $host match the old data and got the new name $hostname " , 1);
             }
 
         } else   {
@@ -2244,7 +2246,7 @@ sub parse_responses {
             ###########################################
             # for HMC
             ###########################################
-            trace( $request, "........begin to define hmc ", 1);      
+            trace( $request, "........begin to define hmc ", 1);
             $host = gethost_from_url( $request, $rsp, @result);
             if ( !defined( $host )) {
                 next;
@@ -2253,9 +2255,9 @@ sub parse_responses {
             ###########################################
             # Strip commas from IP list
             ###########################################
-			
+
             # we need to hide ipv6 ip address temporarily
-			my @iptmp = split /,/, $result[4];
+            my @iptmp = split /,/, $result[4];
             my @iptmp2;
             foreach (@iptmp){
                 if ($_ =~ /\d+\.\d+\.\d+\.\d+/) {
@@ -2286,32 +2288,32 @@ sub parse_responses {
 
     ############################################################
     # find out the cageid for the cec
-    ############################################################    
-    trace( $request, "\n\n.......the cageid need to be adjust,because some secondary fsp return wrong side value ( always 0)", 1);      
+    ############################################################
+    trace( $request, "\n\n.......the cageid need to be adjust,because some secondary fsp return wrong side value ( always 0)", 1);
     foreach my $idtmp( keys(%fid1) )
     {
-        if ($fid1{$idtmp} > 0) 
+        if ($fid1{$idtmp} > 0)
         {
-            $cid{$idtmp} = $fid1{$idtmp}; 
-        } elsif ($fid2{$idtmp} > 0) 
+            $cid{$idtmp} = $fid1{$idtmp};
+        } elsif ($fid2{$idtmp} > 0)
         {
-            $cid{$idtmp} = $fid2{$idtmp}; 
+            $cid{$idtmp} = $fid2{$idtmp};
         } else {
             $cid{$idtmp} = 0;
-        }               
-    } 
+        }
+    }
     foreach ( keys(%fid2) )
     {
-        if (!defined($cid{$_})) 
+        if (!defined($cid{$_}))
         {
             $cid{$_} = $fid2{$_};
         }
-    }    
-    
+    }
+
     ############################################################
     # -n flag to skip the existing node
     ############################################################
-    trace( $request, "\n\ncheck if there is -n, and skip the existing nodes ", 1);      
+    trace( $request, "\n\ncheck if there is -n, and skip the existing nodes ", 1);
     my %vpd_table_hash;
     my $vpdtab  = xCAT::Table->new( 'vpd' );
     my @entries = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
@@ -2353,12 +2355,12 @@ sub parse_responses {
         my $bpamtm  = @$data[5];
         my $bpasn   = @$data[6];
         my $cagenum = @$data[8];
-        trace( $request, ">>>>>>>>The node is $h, type is $type, mtm is $mtm, sn is $sn, side is $side, ip is $ip0, bpamtm is $bpamtm, bpasn is $bpasn, cagenum is $cagenum", 1);      
+        trace( $request, ">>>>>>>>The node is $h, type is $type, mtm is $mtm, sn is $sn, side is $side, ip is $ip0, bpamtm is $bpamtm, bpasn is $bpasn, cagenum is $cagenum", 1);
         # find cageid for the secondary fsp node
         if ( $type =~ /^FSP$/ || $type =~ /^CEC$/) {
             @$data[8] = $cid{$mtm."*".$sn};
         }
-        
+
         # if there is a -n flag, skip the existed nodes
         if ( exists( $opt{n} ) ) {
              if ( exists $vpd_table_hash{$mtm . '*' . $sn . '-' . $side} ) {
@@ -2413,24 +2415,24 @@ sub parse_responses {
         trace ( $request, "    Then find the node's mac $mac.", 1);
 
 
-        
+
         # have got node's parent and id, need to match fsp here
         trace ( $request, "    Need to find new name for the fsp/bpa with parent $parent and id @$data[8].", 1);
         if (($type eq TYPE_FSP or $type eq TYPE_BPA) and $parent)
         {
             $newname = gethost_from_url_or_old($h, $type, undef, undef, $side, undef, undef, undef, undef, $parent);
-        } 
-        
+        }
+
         if ($newname)
-        {        
-            trace ( $request, "    The new name is $newname.", 1);        
+        {
+            trace ( $request, "    The new name is $newname.", 1);
             $hash{$newname} = $data;
         }
         else
         {
-            trace ( $request, "    The new name is $h.", 1); 
+            trace ( $request, "    The new name is $h.", 1);
             $hash{$h} = $data;
-        }            
+        }
     }
 
     return( \%hash );
@@ -2576,20 +2578,20 @@ sub xCATdB {
             my $ip         = "";
             my $values = join( ",",
                lc($type),$name,$frameid,$model,$serial,$side,$name,$prof,$parent,$ip,$mac );
-            # we should call update_node_attribs to Frame/CEC 
+            # we should call update_node_attribs to Frame/CEC
             # to make sure the information difined for FSP/BPA
-            # before can be kept.            
+            # before can be kept.
             if ( exists($::UPDATE_CACHE{$model."-".$serial}))
             {
                 xCAT::PPCdb::update_node_attribs("frame","frame",$name,$frameid,$model,$serial,"","","",$parent,"",\%db, $::UPDATE_CACHE{$name},\@ppclist);
-            }           
+            }
             xCAT::PPCdb::add_ppc( "frame", [$values], 0, 1 );
             #copy passwd for the bpas.
             my $rst = copypasswd($name);
             unless ( $rst )
             {
                 # do something here
-            }    
+            }
         }
         elsif ( $type =~ /^CEC$/ ) {
             ########################################
@@ -2602,20 +2604,20 @@ sub xCATdB {
             my $side       = "";
             my $values = join( ",",
                lc($type),$name,$cageid,$model,$serial,$side,$name,$prof,$parent,$ip,$mac );
-            # we should call update_node_attribs to Frame/CEC 
+            # we should call update_node_attribs to Frame/CEC
             # to make sure the information difined for FSP/BPA
-            # before can be kept.   
+            # before can be kept.
             if ( exists($::UPDATE_CACHE{$model."-".$serial}))
             {
                 xCAT::PPCdb::update_node_attribs("cec","cec",$name,$cageid,$model,$serial,"","","",$parent,"",\%db, $::UPDATE_CACHE{$name},\@ppclist);
-            }            
+            }
             xCAT::PPCdb::add_ppc( "cec", [$values], 0, 1 );
             #copy passwd for the fsps.
             my $rst = copypasswd($name);
             unless ( $rst )
             {
                 # do something here
-            }             
+            }
         }
 
         ########################################
@@ -2624,8 +2626,8 @@ sub xCATdB {
         if ( $type =~ /^(FSP|BPA)$/ ) {
             my $hoststab  = xCAT::Table->new( 'hosts' );
             if ($hoststab and %otherinterfacehash) {
-                 $hoststab->setNodesAttribs(\%otherinterfacehash);  
-            }                 
+                 $hoststab->setNodesAttribs(\%otherinterfacehash);
+            }
         }
     }
 }
@@ -2666,7 +2668,7 @@ sub do_makedhcp {
         # existing for this node
         #####################################
         my $ifip = xCAT::Utils->isIpaddr($name);
-        unless( $ifip ) 
+        unless( $ifip )
         {
             my ($hostsent) = $db{hosts}->getNodeAttribs( $name, [qw(ip)] );
             if ( !$hostsent or !$hostsent->{ip} ) {
@@ -2726,10 +2728,10 @@ sub do_resetnet {
     #        $namehash->{$name} = $ip;
     #    }
     #}
-    
-    if ( $outhash ) {
+
+    if ( $req->{node} ) {
         $reset_all = 0;
-        foreach my $nn ( keys %$outhash ) {
+        foreach my $nn ( @{ $req->{node}} ) {
             my $nt = xCAT::DBobjUtils->getnodetype($nn);
             # this brunch is just for the xcat 2.6(+) database
             if ( $nt =~ /^(cec|frame)$/ )  {
@@ -2742,18 +2744,17 @@ sub do_resetnet {
                 } else {
                     send_msg( $req, 1, "Can't get the fsp/bpa nodes for the $nn" );
                     return( [RC_ERROR] );
-                }  
-            # this brunch is just for the xcat 2.5(-) databse                 
-            } else {                
-                my $ip = getNodeIPaddress( $nn );
+                }
+            # this brunch is just for the xcat 2.5(-) databse
+            } else {
+                my $ip = xCAT::Utils::getNodeIPaddress( $nn );
                 $namehash->{$nn} = $ip;
             }
         }
-    }        
-    
-    
-    
-    
+    }
+
+
+
     my $hoststab = xCAT::Table->new( 'hosts' );
     if ( !$hoststab ) {
         send_msg( $req, 1, "Error open hosts table" );
@@ -2782,7 +2783,7 @@ sub do_resetnet {
         my $oi;
 
         #####################################
-        # find the otherinterfaces for the 
+        # find the otherinterfaces for the
         # specified nodes, or the all nodes
         # Skip the node if the IP attributes
         # is same as otherinterfaces or ip
@@ -2913,7 +2914,7 @@ sub format_stanza {
                 if ($mgt{$type} =~ /^cec$/)  {
                     $d = "fsp";
                 }elsif ($mgt{$type} =~ /^frame$/)  {
-                    $d = "bpa";                
+                    $d = "bpa";
                 }else {
                     $d = $mgt{$type};
                 }
@@ -3008,7 +3009,7 @@ sub format_xml {
                 if ($mgt{$type} =~ /^cec$/)  {
                     $d = "fsp";
                 }elsif ($mgt{$type} =~ /^frame$/)  {
-                    $d = "bpa";                
+                    $d = "bpa";
                 }else {
                     $d = $mgt{$type};
                 }
@@ -3031,7 +3032,7 @@ sub format_xml {
             } elsif ( /^ip$/ )  {
                 if ( $type =~ /^(frame|cec)$/ ) {
                     next;
-                }    
+                }
             } elsif (/^hidden$/) {
              if ( $type =~ /^(fsp|bpa)$/ ) {
                     $d = "1";
@@ -3783,8 +3784,8 @@ sub process_request {
 
     if ( exists($opt{resetnet}) and scalar(keys %opt) eq 1 ) {
         #$result = do_resetnet( \%request );
-		send_msg( \%request, 0, "the flag --resetnet has been moved to rspconfig, please see the rspconfig man page for more details" );
-		$result = [0];
+        send_msg( \%request, 0, "the flag --resetnet has been moved to rspconfig, please see the rspconfig man page for more details" );
+        $result = [0];
     } else {
         ###########################################
         # SLP service-request - select program
@@ -3823,8 +3824,8 @@ sub copypasswd {
     if (($node) && ($node =~ /xCAT::/))
     {
         $node = shift;
-    }   
-    
+    }
+
     my $children = xCAT::DBobjUtils->getchildren($node);
     my %childentry;
     my $directtab = xCAT::Table->new('ppcdirect');
@@ -3835,11 +3836,11 @@ sub copypasswd {
         my $disable  = $dthash->{disable};
         foreach (@$children) {
             $childentry{$_}{username} = $username;
-            $childentry{$_}{password}   = $passwd;            
-            $childentry{$_}{disable}  = $disable;   
-        }            
-        $directtab->setNodesAttribs(\%childentry);   
-    } 
+            $childentry{$_}{password}   = $passwd;
+            $childentry{$_}{disable}  = $disable;
+        }
+        $directtab->setNodesAttribs(\%childentry);
+    }
     return 1;
 }
 ##########################################################################
@@ -3856,12 +3857,12 @@ sub filter {
                     $newhash->{$foundnode} = $oldhash->{$foundnode};
                 }
             }
-            elsif ( $foundnode eq $n )  {        
+            elsif ( $foundnode eq $n )  {
                 $newhash->{$foundnode} = $oldhash->{$foundnode};
             }
-        }    
+        }
     }
-    
+
     # fine the FSP/BPA nodes for the CEC/Frame.
     for my $cn ( keys %$oldhash ) {
         for my $pn ( keys %$newhash ) {
@@ -3870,13 +3871,12 @@ sub filter {
               and (${$newhash->{$pn}}[1] eq ${$oldhash->{$cn}}[1]) ) {
                 $newhash->{$cn} = $oldhash->{$cn};
             }
-        }            
+        }
     }
-    
-    return $newhash;        
+
+    return $newhash;
 }
 1;
-
 
 
 
