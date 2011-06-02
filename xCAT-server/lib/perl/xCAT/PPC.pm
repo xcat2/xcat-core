@@ -450,6 +450,8 @@ sub process_command {
 
             $nodes = $remain_node;
         }
+    }  elsif ( $request->{command} =~ /^rspconfig$/&& exists( $request->{opt}->{resetnet} ) ) {
+        runcmd( $request );
     } else {
         $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
         my $hw;
