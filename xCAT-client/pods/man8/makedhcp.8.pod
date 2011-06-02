@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<makedhcp> - Creates and updates dhcp configuration files.
+B<makedhcp> - Creates and updates DHCP configuration files.
 
 =head1 SYNOPSIS
 
@@ -21,20 +21,23 @@ B<makedhcp> [I<-h|--help>]
 
 =head1 DESCRIPTION
 
-The B<makedhcp> command configures the DHCP daemon on the local system so that xCAT can manage the nodes of the cluster during discovery, full install, diskless booting, and normal booting.
+The B<makedhcp> command creates and updates the DHCP configuration file on the local system. 
 
 The B<makedhcp> command is supported for both Linux and AIX clusters.
 
-With the B<-n> option, B<makedhcp> will create a new dhcp configuration file.  For Linux systems this will include certain general parameters such as a dynamic range and omapi configuration.
+With the B<-n> option, B<makedhcp> will create a new dhcp configuration file.  For Linux systems the file will include network entries as well as certain general parameters such as a dynamic range and omapi configuration.  For AIX systems the file will include network entries.
 
-Before using the B<-n> option make sure there is nothing in the configuration file that you wish to preserve.   If a configuration file already exist the B<makedhcp> command will create a backup before creating a new one.
+If a configuration file already exist the B<makedhcp> command will create a backup before creating a new one.
+
+On AIX systems, if there are any non-xCAT entries in the configuration file they will be preserved and added to the end of the new configuration file.
 
 With a noderange or the B<-a> option, B<makedhcp> will inject configuration data pertinent to the specified nodes that immediately takes effect without a restart of DHCP.
 
-If the B<-d> flag is used with the B<-a> flag then B<makedhcp> will delete all nodes' dhcp host definitions. The B<-d> flag followed by a I<noderange> will delete the dhcp host definitons for the noderange.
+On AIX systems B<makedhcp> will not add entries for cluster nodes that will be installed using NIM.  The entries for these nodes will be managed by NIM.  
 
-The B<makedhcp> command also uses the following attributes from the xCAT database:
-B<site.dhcpinterfaces>, B<site.domain>, B<site.nameservers>, B<networks.dynamicrange>, B<networks.dhcpserver>, B<networks.nameservers>.  See the B<xcatdb> man page for details about the database attributes.
+If the B<-d> flag is used with the B<-a> flag then B<makedhcp> will delete all the node entries created by xCAT. The B<-d> flag followed by a I<noderange> will delete the dhcp host definitons for the noderange.  
+
+Any entries created by NIM will not be removed. 
 
 =head1 OPTIONS
 
@@ -58,11 +61,11 @@ For the input noderange, the argument will be interpreted like dhcp configuratio
 
 =item B<-a -d>
 
-Delete all nodes from the DHCP server configuration.
+Delete all node entries added by xCAT from the DHCP server configuration.
 
 =item B<-d> I<noderange>
 
-Delete all nodes in the noderange from the DHCP server configuration.
+Delete all node entries, added by xCAT, in the noderange from the DHCP server configuration.
 
 =item B<--hfi> I<noderange>
 
@@ -88,7 +91,7 @@ Display usage message.
 
 =item 1.
 
-Add the network definitions to DHCP by updating the dhcp configuration file:
+Create a new DHCP configuration file and add the network definitions:
 
  makedhcp -n
 
@@ -98,6 +101,8 @@ Define all nodes to the dhcp server:
 
  makedhcp -a
 
+Note:  This does not add nodes that will be installed with AIX/NIM.
+
 =item 3.
 
 Will cause dhcp on the next request to set root-path appropriately for only node5.  Note some characters (e.g. ") must be doubly escaped (once for the shell, and once for the OMAPI layer).
@@ -106,6 +111,15 @@ Will cause dhcp on the next request to set root-path appropriately for only node
 
 =back
 
+=head1 FILES
+
+DHCP configuration files.
+
+[AIX]     /etc/dhcpsd.cnf
+
+[SLES]    /etc/dhcpd.conf
+
+[RH]      /etc/dhcp/dhcpd.conf
 
 =head1 SEE ALSO
 
