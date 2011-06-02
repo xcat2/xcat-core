@@ -131,13 +131,10 @@ body {
 /*--------------- Groups ---------------*/
 #groups {
 	width: 150px;
-	min-height:570px;
 	vertical-align: top;
 	float: left;
 	position: relative;
-	margin: 15px 0px 15px 15px;
-	padding: 0px 10px 0px 0px;
-	border-right: medium solid #E6E6F2;
+	margin: 15px 10px 15px 15px;
 }
 
 #groups ul {
@@ -168,8 +165,11 @@ body {
 /*--------------- Nodes section ---------------*/
 #nodes {
 	width: 700px;
-	padding: 15px 0px 0px 10px;
-	display: inline-table;
+	min-height: 570px;
+	margin: 15px 0px 15px 0px;
+	padding: 0px 0px 0px 10px;
+	display: inline-block;
+	border-left: medium solid #E6E6F2;
 }
 
 /*--------------- Info/warning bar ---------------*/
