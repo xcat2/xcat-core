@@ -57,16 +57,16 @@ sub fix_directory {
         chomp($oldsha);
         
         #update primary.xml.gz & primary.xml
+		if( -r  "$dirlocation/primary.xml")
+        {
+            unlink("$dirlocation/primary.xml");
+        }
         system("/bin/gunzip  $dirlocation/primary.xml.gz");
         
         $oldopensha=`/usr/bin/sha1sum $dirlocation/primary.xml`;
         $oldopensha =~ s/\s+.*//;
         chomp($oldopensha);
 
-        if( -r  "$dirlocation/primary.xml")
-        {
-            unlink("$dirlocation/primary.xml");
-        }
         open($primaryxml,"+<$dirlocation/primary.xml");
         while (<$primaryxml>) {
             s!xml:base="media://[^"]*"!!g;
