@@ -2106,8 +2106,10 @@ sub getchildren
             my $p = $entry->{parent};
             my $c = $entry->{node};
             if ( $p and $c) {
-                my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
-                if ( $type and ($type->{nodetype} eq 'fsp') or ($type->{nodetype} eq 'bpa'))
+                #my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
+                my $type = getnodetype($c);
+                #if ( $type and ($type->{nodetype} eq 'fsp') or ($type->{nodetype} eq 'bpa'))
+                if ( $type eq 'fsp' or $type eq 'bpa')
                 {
                     push @{$::PARENT_CHILDREN{$p}}, $c;
                 }
@@ -2272,8 +2274,9 @@ sub getcecchildren
                 my $p = $entry->{parent};
                 my $c = $entry->{node};
                 if ( $p and $c) {
-                    my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
-                    if ( $type and ($type->{nodetype} eq 'cec')) {
+                    #my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
+                    my $type = getnodetype($c);
+                    if ( $type eq 'cec') {
                         push @{$::PARENT_CHILDREN_CEC{$p}}, $c;
                     }
                 }
