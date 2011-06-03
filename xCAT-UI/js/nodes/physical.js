@@ -127,10 +127,6 @@ function extractGraphicalData(data){
 }
 
 function createPhysicalLayout(nodeList){
-	bpaList = new Object();
-	fspList = new Object();
-	lparList = new Object();
-	selectNode = new Object();
 	var flag = false;
 	
 	//no nodes are selected.
@@ -159,6 +155,10 @@ function createPhysicalLayout(nodeList){
 	//there is not graphical data, get the info now
 	if (!flag){
 		graphicalNodeList = new Object();
+		bpaList = new Object();
+	    fspList = new Object();
+	    lparList = new Object();
+	    selectNode = new Object();
 		initGraphicalData(0);
 	}
 	else{

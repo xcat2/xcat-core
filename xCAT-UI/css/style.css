@@ -164,7 +164,7 @@ body {
 
 /*--------------- Nodes section ---------------*/
 #nodes {
-	width: 700px;
+	width: 760px;
 	min-height: 570px;
 	margin: 15px 0px 15px 0px;
 	padding: 0px 0px 0px 10px;
@@ -303,20 +303,16 @@ legend {
 /*--------------- Actions bar ---------------*/
 .actionBar {
 	display: inline-table;
+	padding: 8px 0px 0px 8px;
 }
 
 .actionBar div {
 	padding: 10px 0px;
 }
 
-.actionBar span {
-	padding: 0px 10px;
-}
-
 .actionBar a {
 	color: #FFFFFF;
 	font-weight: bold;
-	cursor: pointer;
 }
 
 .actionBar a:hover {
@@ -325,15 +321,19 @@ legend {
 
 .actionBar li {
 	list-style: none;
-	padding: 5px;
+	padding: 2px;
 	margin: 0;
 }
 
 /*--------------- jQuery datatable ---------------*/
 .dataTables_wrapper {
 	overflow: auto;
-	width: 700px;
-	margin: 0px auto;
+	width: auto;
+	margin: 10px auto;
+	-moz-border-radius:5px;
+	-webkit-border-radius:5px;
+	border-radius:5px;
+	background-color: #f5f5f5;
 }
 
 /*** Show X entries ***/
@@ -350,7 +350,7 @@ legend {
 	display: block;
 	float: right;
 	text-align: right;
-	padding: 10px 10px;
+	padding: 8px 8px;
 }
 
 .tab input,select {

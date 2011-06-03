@@ -564,8 +564,6 @@ function loadNodes(data) {
 	 * power, clone, delete, unlock, and advanced
 	 */
 
-	var powerLnk = $('<a>Power</a>');
-	
 	// Power on
 	var powerOnLnk = $('<a>Power on</a>');
 	powerOnLnk.click(function() {
@@ -720,41 +718,31 @@ function loadNodes(data) {
 		}
 	});
 	
-	// Power actions
-	var powerActions = [ powerOnLnk, powerOffLnk ];
-	var powerActionMenu = createMenu(powerActions);
+	// operations actions (power monitor)
+	var powerLnk = '<a>Operations</a>';
+	var powerActionMenu = createMenu([ powerOnLnk, powerOffLnk, monitorOnLnk, monitorOffLnk, scriptLnk]);
 	
-	// Monitor actions
-	var monitorActions = [ monitorOnLnk, monitorOffLnk ];
-	var monitorActionMenu = createMenu(monitorActions);
-
+	//configurations
+	var configLnk = '<a>Configuration</a>';
+	var configMenu = createMenu([cloneLnk, deleteLnk, unlockLnk, updateLnk, editProps, installMonLnk]);
 	// Advanced actions
-	var advancedLnk = $('<a>Advanced</a>');
-	var advancedActions;
-	if ('compute' == group) {
-		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons, editProps, installMonLnk ];
-	} else {
-		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, editProps, installMonLnk ];
-	}
-	var advancedActionMenu = createMenu(advancedActions);
+	var advancedLnk = '<a>Advanced</a>';
+	var advancedActionMenu = createMenu([ boot2NetworkLnk, setBootStateLnk, rcons]);
 
 	// Create an action menu
-	var actionsDiv = $('<div></div>');
-	var actions = [ [ powerLnk, powerActionMenu ], [ monitorLnk, monitorActionMenu ], cloneLnk, deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
-	var actionsMenu = createMenu(actions);
+	var actionsMenu = createMenu([ [ powerLnk, powerActionMenu ], [ configLnk, configMenu ],  [ advancedLnk, advancedActionMenu ] ]);
 	actionsMenu.superfish();
 	actionsMenu.css('display', 'inline-block');
-	actionsDiv.append(actionsMenu);
-	actionBar.append(actionsDiv);
+	actionBar.append(actionsMenu);
 	
 	// Insert action bar and nodes datatable
-	$('#nodesTab').append(actionBar);
+	//$('#nodesTab').append(actionBar);
 	$('#nodesTab').append(nodesTable.object());
 	
 	/**
 	 * Create menu to save and undo table changes
 	 */
-	
+	/*
 	// Save changes
 	var saveLnk = $('<a>Save</a>');
 	saveLnk.bind('click', function(event){
@@ -775,10 +763,12 @@ function loadNodes(data) {
 	tableActionsMenu.css('display', 'inline-block');
 	tableActionsMenu.attr('id', 'tableActionMenu');
 	actionsDiv.append(tableActionsMenu.hide());
-
+    */
+	
 	// Turn table into a datatable
 	var nodesDatatable = $('#' + nodesTableId).dataTable({
-		'iDisplayLength': 50
+		'iDisplayLength': 50,
+		'bLengthChange': false
 	});
 	
 	// Filter table when enter key is pressed
@@ -838,6 +828,8 @@ function loadNodes(data) {
 		refreshGangliaStatus(group, nodesTableId);
 	});
 	
+	$('#' + nodesTableId + '_wrapper').prepend(actionBar);
+	
 	// Create tooltip for status 
 	var tooltipConf = {
 			position: "center right",
@@ -865,7 +857,7 @@ function loadNodes(data) {
 	/**
 	 * Enable editable columns
 	 */
-	
+	/*
 	// Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
 	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
 		function(value, settings) {			
@@ -898,7 +890,7 @@ function loadNodes(data) {
 			placeholder: ' ',
 			height : '30px' 	// The height of the text area
 		});
-	
+	/*
 	/**
 	 * Get the node status and definable node attributes
 	 */
