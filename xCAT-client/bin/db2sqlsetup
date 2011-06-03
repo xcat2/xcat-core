@@ -288,11 +288,21 @@ if ((($odbconly == 0) && ($::xcatrunningdb2 == 0)) || (($::CLIENT) && ($odbconly
     else
     {                         #prompt for password
 
-        my $msg = "Input the password for xcatdb instance id: ";
+        my $msg = "Enter the password for xcatdb instance id: ";
         xCAT::MsgUtils->message('I', "$msg");
         `stty -echo`;
         chop($::adminpassword = <STDIN>);
         `stty echo`;
+        $msg = "Retype the password for xcatdb instance id: ";
+        xCAT::MsgUtils->message('I', "$msg");
+        `stty -echo`;
+        chop(my $adminpwd2 = <STDIN>);
+        `stty echo`;
+        if ($::adminpassword ne $adminpwd2) { # no match
+            $msg = "Sorry, passwords do not match. ";
+             xCAT::MsgUtils->message('I', "$msg");
+             exit 1;
+        }
     }
 }
 
@@ -677,6 +687,11 @@ sub mkdb2user
         }
 
         # set xcatdb id password
+        my $verboseflg=0;
+        if ($::VERBOSE) {   # do not show commands with password
+          $verboseflg=1;
+          $::VERBOSE=undef;
+        }
         $cmd = qq~echo "xcatdb:$::adminpassword" | /bin/chpasswd -c~;
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -684,6 +699,9 @@ sub mkdb2user
 
             xCAT::MsgUtils->message("SE", " $cmd failed.");
             exit(1);
+        }
+        if ($verboseflg == 1) {
+          $::VERBOSE=1;
         }
     }
     else
@@ -738,6 +756,11 @@ sub mkdb2user
         }
 
         # set xcatdb id password
+        my $verboseflg=0;
+        if ($::VERBOSE) {   # do not show commands with password
+          $verboseflg=1;
+          $::VERBOSE=undef;
+        }
         $cmd = qq~echo $::adminpassword | passwd xcatdb --stdin~;
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -745,6 +768,9 @@ sub mkdb2user
 
             xCAT::MsgUtils->message("SE", " $cmd failed.");
             exit(1);
+        }
+        if ($verboseflg == 1) {
+          $::VERBOSE=1;
         }
     }
 
@@ -1623,6 +1649,11 @@ sub createcfgloc
             xCAT::MsgUtils->message("E", " $cmd failed.");
         }
     }
+    my $verboseflg=0;
+    if ($::VERBOSE) {   # do not show commands with password
+          $verboseflg=1;
+          $::VERBOSE=undef;
+    }
     my $db2entry = "DB2:xcatdb|xcatdb|$::adminpassword";
     $cmd = "echo \"$db2entry\" > $cfgloc";
     xCAT::Utils->runcmd($cmd, 0);
@@ -1632,6 +1663,9 @@ sub createcfgloc
         xCAT::MsgUtils->message("SE", "$message");
         exit(1);
 
+    }
+    if ($verboseflg == 1) {
+          $::VERBOSE=1;
     }
 
     # allow readonly by root
