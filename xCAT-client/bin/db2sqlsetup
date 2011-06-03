@@ -1703,7 +1703,7 @@ sub  updatecrontab
   my $entry="0 0 * * 0 $cmd";
   my ($code, $msg)=xCAT::Utils::add_cron_job($entry);
   if ($code==0) {
-        xCAT::MsgUtils->message("I", "A crontab entry has been added to run DB2 table reorg once a week on Sunday 12pm.\nIf you would like to change this time, use crontab -e to modify the entry for reorgtbls execution.\nYou may also limit the tables to reorg by using the -t parameter on reorgtbls.\nRun reorgtbls -h.");
+        xCAT::MsgUtils->message("I", "A crontab entry has been added to run DB2 table reorg once a week on Sunday 12am.\nIf you would like to change this time, use crontab -e to modify the entry for reorgtbls execution.\nYou may also limit the tables to reorg by using the -t parameter on reorgtbls.\nRun reorgtbls -h.");
   } else {
         xCAT::MsgUtils->message("W", " Failed to add crontab entry for Table reorg.");
   }
