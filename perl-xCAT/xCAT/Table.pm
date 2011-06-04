@@ -2044,7 +2044,7 @@ sub getNodesAttribs {
                 push @locattribs,'node';
             }
             unless (grep(/^groups$/,@locattribs)) {
-                push @locattribs,'node';
+                push @locattribs,'groups';
             }
             $self->_build_cache(\@locattribs);
         } else {
