@@ -2099,6 +2099,7 @@ sub _clear_cache { #PRIVATE FUNCTION TO EXPIRE CACHED DATA EXPLICITLY
     }
     #it shouldn't have been zero, but whether it was 0 or 1, ensure that the cache is gone
     $self->{_use_cache}=0; # Signal slow operation to any in-flight operations that may fail with empty cache
+    $self->{_cached_attriblist} = undef;
     undef $self->{_tablecache};
     undef $self->{_nodecache};
 }
@@ -2112,13 +2113,32 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     }
     my $attriblist = shift;
     my $refresh = not ref $attriblist; #if attriblist is not a reference, it is a refresh request
+    if (not ref $attriblist) {
+       $attriblist = $self->{_cached_attriblist}; #need attriblist to mean something, don't know how this didn't break horribly already
+    }
+    
     if (not $refresh and $self->{_cache_ref}) { #we have active cache reference, increment counter and return
         #TODO: ensure that the cache isn't somehow still ludirously old
         $self->{_cache_ref} += 1;
-        return;
+	my $currattr;
+	my $cachesufficient=1;
+	foreach $currattr (@$attriblist) { #if any of the requested attributes are not cached, we must rebuild
+	   unless (grep { $currattr eq  $_ } @{$self->{_cached_attriblist}}) {
+	      $cachesufficient=0;
+	      last;
+	   }
+	}
+	if ($cachesufficient) { return; }
+	#cache is insufficient, now we must do the converse of above
+	#must add any currently cached columns to new list if not requested
+	foreach $currattr (@{$self->{_cached_attriblist}}) { 
+	   unless (grep { $currattr eq $_ } @$attriblist) {
+	       push @$attriblist,$currattr;
+	   }
+	}
     }
     #If here, _cache_ref indicates no cache
-    if (not $refresh) {
+    if (not $refresh and not $self->{_cache_ref}) { #we have active cache reference, increment counter and return
         $self->{_cache_ref} = 1;
     }
     my $oldusecache = $self->{_use_cache}; #save previous 'use_cache' setting
@@ -2139,7 +2159,7 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
             push @{$self->{_nodecache}->{$_->{$nodekey}}},$_;
         }
     }
-
+    $self->{_cached_attriblist} = $attriblist;
     $self->{_use_cache} = $oldusecache; #Restore setting to previous value
     $self->{_cachestamp} = time;
 }
