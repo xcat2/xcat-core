@@ -350,7 +350,12 @@ sub _set_use_cache {
     if ($dbworkerpid) {
         return dbc_call($self,'_set_use_cache',@_);
     }
-    $self->{_use_cache} = shift;
+    
+    my $usecache = shift;
+    if ($usecache and not $self->{_tablecache}) {
+	return; #do not allow cache to be enabled while the cache is broken
+    }
+    $self->{_use_cache} = $usecache;
 }
 #--------------------------------------------------------------------------------
 
