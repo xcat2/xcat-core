@@ -2061,8 +2061,10 @@ sub getNodesAttribs {
     }
     $self->_clear_cache;
     $self->{_use_cache} = 0;
-    $self->{nodelist}->_clear_cache;
-    $self->{nodelist}->{_use_cache} = 0;
+    if ($self->{tabname} ne 'nodelist') { #avoid calling clear_cache on nodelist twice
+	    $self->{nodelist}->_clear_cache;
+	    $self->{nodelist}->{_use_cache} = 0;
+    }
     return $rethash;
 }
 
