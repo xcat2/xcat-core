@@ -113,7 +113,7 @@ sub dbc_submit {
 	    $data .= $lastline;
     }
     close($clisock);
-    if ($lastline =~  m/*XCATBUGDETECTED*76e9b54341\n\z/) { #if it was an error
+    if ($lastline =~  m/\*XCATBUGDETECTED\*76e9b54341\n\z/) { #if it was an error
         #in the midst of the operation, die like it used to die
         my $err;
         $data =~ /\*XCATBUGDETECTED\*:(.*):\*XCATBUGDETECTED\*/s;
