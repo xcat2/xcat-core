@@ -71,18 +71,24 @@ sub parse_args {
     #############################################
     # Get support command list
     #############################################
-    my $sitetab  = xCAT::Table->new( 'nodetype' );
+    #my $typetab  = xCAT::Table->new( 'nodetype' );
+    #my $nodes = $request->{node};
+    #foreach (@$nodes) {
+    #    if ( defined( $typetab )) {      
+    #        my ($ent) = $typetab->getAttribs({ node=>$_},'nodetype');
+    #        if ( defined($ent) ) {
+    #               $request->{hwtype} = $ent->{nodetype};
+    #               last;
+    #        }
+    #
+    #    }
+    #
+    #}
+    
     my $nodes = $request->{node};
-    foreach (@$nodes) {
-        if ( defined( $sitetab )) {      
-            my ($ent) = $sitetab->getAttribs({ node=>$_},'nodetype');
-            if ( defined($ent) ) {
-                   $request->{hwtype} = $ent->{nodetype};
-                   last;
-            }
-
-        }
-
+    foreach my $nn (@$nodes) {
+        $request->{hwtype} = xCAT::DBobjUtils->getnodetype($nn);
+        last if ($request->{hwtype});
     }
  
     my $supported = $rsp{$request->{hwtype}};
