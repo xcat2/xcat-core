@@ -2833,96 +2833,93 @@ sub getNodeIPaddress
     my $c1;
     my $ips;
     unless ( $nodeip ) {
-        my $nttab  = xCAT::Table->new('ppc');    
-        if ( $nttab ) {
-            my $type = 	$nttab->getNodeAttribs($nodetocheck, ['nodetype']);
-            if ($type) {
-                if ($type->{nodetype} eq "frame" or $type->{nodetype} eq "cec")  {
-                	$c1 = xCAT::DBobjUtils->getchildren($nodetocheck); 
+        my $type = xCAT::DBobjUtils->getnodetype($nodetocheck);
+        if ($type) {
+            if ($type eq "frame" or $type eq "cec")  {
+            	$c1 = xCAT::DBobjUtils->getchildren($nodetocheck); 
    
-                    #if $port exists, only for mkhwconn ... CEC/Frame 
-                    if ( defined($port) ) {
-                        my @fsp_bpa = @$c1;
-                        undef ($c1);
-                        # mkhwconn only creates the connections for the FSPs/BPAs whoes port is $port.
-                	    my $vpd_tab   =  xCAT::Table->new('vpd');
-                        unless($vpd_tab) {
-                            return "-1"; # Cannot open vpd table
-                        }
-                        foreach ( @fsp_bpa ) {
-                            my $vpd_hash = $vpd_tab->getNodeAttribs( $_, [qw(side)]);
-                            my $side = $vpd_hash->{side};
-                            if (!defined($side)) {
-				                #return -2; # $_: No side in vpd table for  $_
-                                 next;
-			                }
-				            #print $side;
-                            if ( $side =~ /[A|a|B|b]-$port/) {
-                                 push (@$c1, $_);
-                            }
-                        }
-                        $vpd_tab->close(); 
-			    
-                        if(!defined($c1) || @$c1 == 0) {
-                                return "-3"; # the FSP/BPA's side is not $port.
-                        }
+                #if $port exists, only for mkhwconn ... CEC/Frame 
+                if ( defined($port) ) {
+                    my @fsp_bpa = @$c1;
+                    undef ($c1);
+                    # mkhwconn only creates the connections for the FSPs/BPAs whoes port is $port.
+            	    my $vpd_tab   =  xCAT::Table->new('vpd');
+                    unless($vpd_tab) {
+                        return "-1"; # Cannot open vpd table
                     }
-
-                    #my $hstab =  xCAT::Table->new('hosts');
-                    #if ( $hstab ) {
-                    #    my @myip = ();
-                    #    foreach ( @$c1 )
-                    #    {
-                    #            my $point= $hstab->getNodeAttribs($_, ['ip']);
-                    #            my $value = $point->{ip};
-                    #            push (@myip, $value);
-                    #    }
-                    #    $ips = join ",", @myip;
-                    #    return $ips;
-                    #}
-
-                    #modify the way of finding IP address.
-                    my @myip = ();
-                    my @nonip =();
-                    foreach ( @$c1 )
-                    {
-                        my $ifip = isIpaddr($_);
-                            if ($ifip)      {
-                                push (@myip, $_);
-                            } else {
-                                push (@nonip, $_);
-                            }
-                    }
-                    #if (scalar(@nonip)){
-                    #    my $hstab =  xCAT::Table->new('hosts');
-                    #    if ( $hstab ) {
-                    #        my $ent = $hstab->getNodesAttribs(\@nonip,['ip']);
-                    #        if ($ent){
-                    #            foreach (@nonip) {
-                    #                my $i = $ent->{$_}->[0]->{ip};
-                    #                push (@myip, $i);
-                    #            }
-                    #        }
-                    #    }
-                    #}
-                    foreach my $t (@nonip) {
-                        $nodeip = xCAT::NetworkUtils->getipaddr($t);
-                        if (!$nodeip) {
-                            my $hoststab = xCAT::Table->new( 'hosts');
-                            my $ent = $hoststab->getNodeAttribs( $t, ['ip'] );
-                            if ( $ent->{'ip'} ) {
-                                $nodeip = $ent->{'ip'};
-                            }
-                        }
-                        if($nodeip) {
-                            push (@myip, $nodeip);
-                        }
-                    } 
-
-
-                    $ips = join ",", @myip;
-                    return $ips;
+                    foreach ( @fsp_bpa ) {
+                        my $vpd_hash = $vpd_tab->getNodeAttribs( $_, [qw(side)]);
+                        my $side = $vpd_hash->{side};
+                        if (!defined($side)) {
+	                #return -2; # $_: No side in vpd table for  $_
+                             next;
                 }
+	            #print $side;
+                        if ( $side =~ /[A|a|B|b]-$port/) {
+                             push (@$c1, $_);
+                        }
+                    }
+                    $vpd_tab->close(); 
+    
+                    if(!defined($c1) || @$c1 == 0) {
+                            return "-3"; # the FSP/BPA's side is not $port.
+                    }
+                }
+
+                #my $hstab =  xCAT::Table->new('hosts');
+                #if ( $hstab ) {
+                #    my @myip = ();
+                #    foreach ( @$c1 )
+                #    {
+                #            my $point= $hstab->getNodeAttribs($_, ['ip']);
+                #            my $value = $point->{ip};
+                #            push (@myip, $value);
+                #    }
+                #    $ips = join ",", @myip;
+                #    return $ips;
+                #}
+
+                #modify the way of finding IP address.
+                my @myip = ();
+                my @nonip =();
+                foreach ( @$c1 )
+                {
+                    my $ifip = isIpaddr($_);
+                        if ($ifip)      {
+                            push (@myip, $_);
+                        } else {
+                            push (@nonip, $_);
+                        }
+                }
+                #if (scalar(@nonip)){
+                #    my $hstab =  xCAT::Table->new('hosts');
+                #    if ( $hstab ) {
+                #        my $ent = $hstab->getNodesAttribs(\@nonip,['ip']);
+                #        if ($ent){
+                #            foreach (@nonip) {
+                #                my $i = $ent->{$_}->[0]->{ip};
+                #                push (@myip, $i);
+                #            }
+                #        }
+                #    }
+                #}
+                foreach my $t (@nonip) {
+                    $nodeip = xCAT::NetworkUtils->getipaddr($t);
+                    if (!$nodeip) {
+                        my $hoststab = xCAT::Table->new( 'hosts');
+                        my $ent = $hoststab->getNodeAttribs( $t, ['ip'] );
+                        if ( $ent->{'ip'} ) {
+                            $nodeip = $ent->{'ip'};
+                        }
+                    }
+                    if($nodeip) {
+                        push (@myip, $nodeip);
+                    }
+                } 
+
+
+                $ips = join ",", @myip;
+                return $ips;
             }
         }
     }
