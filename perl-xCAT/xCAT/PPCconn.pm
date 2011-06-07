@@ -83,7 +83,7 @@ sub mkhwconn_parse_args
     ##########################################
     my $nodes = $request->{node};
     my $ppctab  = xCAT::Table->new( 'ppc' );
-    my $nodetypetab = xCAT::Table->new( 'nodetype');
+    #my $nodetypetab = xCAT::Table->new( 'nodetype');
     my $vpdtab = xCAT::Table->new( 'vpd');
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
@@ -94,9 +94,10 @@ sub mkhwconn_parse_args
         {
             my $node_parent = undef;
             my $nodetype    = undef;
-            my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
+            #my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
             my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
-            $nodetype    = $nodetype_hash->{nodetype};
+            #$nodetype    = $nodetype_hash->{nodetype};
+            $nodetype = xCAT::DBobjUtils->getnodetype($node);
             $node_parent = $node_parent_hash->{parent};
             if ( !$nodetype )
             {
@@ -268,11 +269,11 @@ sub lshwconn_parse_args
         return(usage( "No additional flag is support by this command" ));
       }
     }
-    my $nodetypetab = xCAT::Table->new('nodetype');
-    if (! $nodetypetab)
-    {
-        return( ["Failed to open table 'nodetype'.\n"]);
-    }
+    #my $nodetypetab = xCAT::Table->new('nodetype');
+    #if (! $nodetypetab)
+    #{
+    #    return( ["Failed to open table 'nodetype'.\n"]);
+    #}
     my $nodehmtab = xCAT::Table->new('nodehm');
     if (! $nodehmtab)
     {
@@ -282,9 +283,10 @@ sub lshwconn_parse_args
     my $nodetype;
     for my $node ( @{$request->{node}})
     {
-        my $ent = $nodetypetab->getNodeAttribs( $node, [qw(nodetype)]);
+        #my $ent = $nodetypetab->getNodeAttribs( $node, [qw(nodetype)]);
+        my $ttype = xCAT::DBobjUtils->getnodetype($node);
         my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
-        if ( ! $ent)
+        if ( ! $ttype)
         {
             return( ["Failed to get node type for node $node.\n"]);
         }
@@ -296,19 +298,19 @@ sub lshwconn_parse_args
         {
             return( ["lshwconn can only support HMC nodes, or nodes managed by HMC, i.e. nodehm.mgt should be 'hmc'. Please make sure node $node has correect nodehm.mgt and ppc.hcp value.\n"]);
         }
-        if ( $ent->{nodetype} ne 'hmc'
-                and $ent->{nodetype} ne 'fsp' and $ent->{nodetype} ne 'cec'
-                and $ent->{nodetype} ne 'bpa' and $ent->{nodetype} ne 'frame')
+        if ( $ttype ne 'hmc'
+                and $ttype ne 'fsp' and $ttype ne 'cec'
+                and $ttype ne 'bpa' and $ttype ne 'frame')
         {
-            return( ["Node type $ent->{nodetype} is not supported for this command.\n"]);
+            return( ["Node type $ttype is not supported for this command.\n"]);
         }
         if ( ! $nodetype)
         {
-            $nodetype = $ent->{nodetype};
+            $nodetype = $ttype;
         }
         else
         {
-            if ( $nodetype ne $ent->{nodetype})
+            if ( $nodetype ne $ttype)
             {
                 return( ["Cannot support multiple node types in this command line.\n"]);
             }
