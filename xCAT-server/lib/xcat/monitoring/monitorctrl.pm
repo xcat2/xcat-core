@@ -15,6 +15,7 @@ use xCAT_plugin::notification;
 use xCAT_monitoring::montbhandler;
 use Sys::Hostname;
 use xCAT::GlobalDef;
+use xCAT::DBobjUtils;
 
 #the list stores the names of the monitoring plug-in and the file name and module names.
 #the names are stored in the "name" column of the monitoring table. 
@@ -965,9 +966,10 @@ sub getMonHierarchy {
 
       my $row3=$temp_hash3{$node};
       my $nodetype=""; #default
-      if (defined($row3) && ($row3)) {
-        if ($row3->{nodetype}) { $nodetype=$row3->{nodetype}; }
-      }
+      #if (defined($row3) && ($row3)) {
+      #  if ($row3->{nodetype}) { $nodetype=$row3->{nodetype}; }
+      #}
+      $nodetype=xCAT::DBobjUtils->getnodetype($node);
 
       my $monserver;
       my $monmaster;
@@ -1066,9 +1068,10 @@ sub getMonServerWithInfo {
     my $tmp3= $tabdata->{$node}->[0];
 
     my $nodetype=""; #default
-    if (defined($tmp3) && ($tmp3)) {
-      if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
-    }
+    #if (defined($tmp3) && ($tmp3)) {
+    #  if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
+    #}
+    $nodetype=xCAT::DBobjUtils->getnodetype($node);
 
     my $pairs=$pPairHash->{$node};
 
@@ -1136,9 +1139,10 @@ sub getMonServer {
 
       my $tmp3=$tabdata3->{$node}->[0];
       my $nodetype=""; #default
-      if (defined($tmp3) && ($tmp3)) {
-	if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
-      }
+      #if (defined($tmp3) && ($tmp3)) {
+      # if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
+      #}
+      $nodetype=xCAT::DBobjUtils->getnodetype($node);
 
       my $pairs=$pPairHash->{$node};
 
