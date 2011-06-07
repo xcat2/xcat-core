@@ -261,6 +261,7 @@ sub processArgs
                     'z|stanza'  => \$::opt_z,
                     'nocache'  => \$::opt_nc,
                     'S'        => \$::opt_S,
+                    'osimage'  => \$::opt_osimg,
         )
       )
     {
@@ -284,6 +285,22 @@ sub processArgs
         my $rsp;
         $rsp->{data}->[0] =
           "The \'-x\' (XML format) option is not yet implemented.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
+    # -i and --osimage cannot be used together
+    if ($::opt_i && $::opt_osimg) {
+        my $rsp;
+        $rsp->{data}->[0] = "The flags \'-i'\ and \'--osimage'\ cannot be used together.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
+    # -z and --osimage cannot be used together
+    if ($::opt_z && $::opt_osimg) {
+        my $rsp;
+        $rsp->{data}->[0] = "The flags \'-z'\ and \'--osimage'\ cannot be used together.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
@@ -2633,8 +2650,75 @@ sub defls
             }
         }
     }
+    my %nodeosimagehash = ();
     if ($getnodes)
     {
+        # Show osimage information
+        if($::opt_osimg)
+        {
+            my %nodeosimgname;
+            my %imghash;
+            my %imglist;
+            foreach my $obj (keys %myhash)
+            {
+                if ($myhash{$obj}{'objtype'} eq 'node')
+                {
+                    my $osimagename;
+                    #provmethod can be set to osimage name
+                    if($myhash{$obj}{'provmethod'} && ($myhash{$obj}{'provmethod'} ne 'install')
+                      && ($myhash{$obj}{'provmethod'} ne 'netboot') && ($myhash{$obj}{'provmethod'} ne 'statelite')) 
+                    {
+                        $osimagename = $myhash{$obj}{'provmethod'};
+                    }
+                    else
+                    {
+                        if ($myhash{$obj}{'os'} && $myhash{$obj}{'arch'} 
+                           && $myhash{$obj}{'provmethod'} && $myhash{$obj}{'profile'})
+                        {
+                            $osimagename = "$myhash{$obj}{'os'}-$myhash{$obj}{'arch'}-$myhash{$obj}{'provmethod'}-$myhash{$obj}{'profile'}";
+                        }
+                    }
+                    # do not call xCAT::DBobjUtils->getobjdefs for each object
+                    # for performance consideration
+                    if($osimagename)
+                    {
+                        if(!defined($imglist{$osimagename}))
+                        {
+                            $imglist{$osimagename} = 'osimage';
+                        }
+                        $nodeosimgname{$obj} = $osimagename;
+                    }
+                }
+            }
+
+            # Get osimage definition info in one invocation
+            if(scalar(keys %imglist) > 0)
+            {
+                my @attrs = ();
+                %imghash = xCAT::DBobjUtils->getobjdefs(\%imglist, 0, \@attrs);
+            }
+
+            # Put the osimage definition in %nodeosimagehash
+            foreach my $obj (keys %myhash)
+            {    
+                if ($myhash{$obj}{'objtype'} eq 'node')
+                {
+                    my $imgname = $nodeosimgname{$obj};
+                    if($imgname && defined($imghash{$imgname}))
+                    {
+                        my %imgentry = %{$imghash{$imgname}};
+                        foreach my $imgattr (keys %imgentry)
+                        {
+                            # Only store the attributes that are not in general node attributes
+                            if(!defined($myhash{$obj}{$imgattr}) && defined($imgentry{$imgattr}))
+                            {
+                                $nodeosimagehash{$obj}{$imgattr} = $imgentry{$imgattr};
+                            }
+                        }
+                    }
+                }
+            }
+        }
         my $xcatdefaultsps;
         my $xcatdefaultspbs;
         my @TableRowArray = xCAT::DBobjUtils->getDBtable('postscripts');
@@ -2949,7 +3033,24 @@ sub defls
                             }
                         }
                     }
-
+                    # Additional osimage attributes
+                    if(($type eq "node") && $::opt_osimg)
+                    {
+                        if(defined($nodeosimagehash{$obj}))
+                        {
+                            foreach my $attr (keys %{$nodeosimagehash{$obj}})
+                            {
+                                if (($attr eq "osname") || ($attr eq "osarch") || ($attr eq "osvers"))
+                                {
+                                    next;
+                                }
+                                if($nodeosimagehash{$obj}{$attr})
+                                {
+                                    push (@{$rsp_info->{data}}, "    $attr=$nodeosimagehash{$obj}{$attr}");
+                                }
+                            }
+                        }
+                    }
                 }
                 else
                 {

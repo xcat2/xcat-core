@@ -8,7 +8,7 @@ B<lsdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
 B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-s>|B<--short>] [B<-a>|B<--all>] [B<-S>] 
 [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-i> I<attr-list>]
-[B<-c>|B<--compress>] [[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
+[B<-c>|B<--compress>] [B<--osimage>][[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
 
 
 =head1 DESCRIPTION
@@ -59,6 +59,10 @@ See the "noderange" man page for details on supported formats.
 =item B<-o> I<object-names>
 
 A set of comma delimited object names.
+
+=item B<--osimage>
+
+Show all the osimage information for the node.
 
 =item B<-t> I<object-types>
 
