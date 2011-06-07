@@ -989,25 +989,28 @@ sub resolve {
     #################################
     # Get node type 
     #################################
-    my $ent = $tabs->{nodetype}->getNodeAttribs($node,[qw(nodetype node)]);
-    if ( !defined( $ent )) {
-        return( sprintf( $errmsg{NODE_UNDEF}, "nodetype" ));
-    }
+    #my $ent = $tabs->{nodetype}->getNodeAttribs($node,[qw(nodetype node)]);
+    #if ( !defined( $ent )) {
+    #    return( sprintf( $errmsg{NODE_UNDEF}, "nodetype" ));
+    #}
     #################################
     # Check for type
     #################################
-    if ( !exists( $ent->{nodetype} )) {
-        return( sprintf( $errmsg{NO_ATTR}, "nodetype","nodetype" ));
-    }
+    #if ( !exists( $ent->{nodetype} )) {
+    #    return( sprintf( $errmsg{NO_ATTR}, "nodetype","nodetype" ));
+    #}
     #################################
     # Check for valid "type"
     #################################
+    my $ttype = xCAT::DBobjUtils->getnodetype($node);
     my ($type) = grep( 
             /^$::NODETYPE_LPAR|$::NODETYPE_OSI|$::NODETYPE_BPA|$::NODETYPE_FSP|$::NODETYPE_CEC|$::NODETYPE_FRAME$/,
-            split /,/, $ent->{nodetype} );
+            #split /,/, $ent->{nodetype} );
+            split /,/, $ttype);
 
     if ( !defined( $type )) {
-        return( "Invalid node type: $ent->{nodetype}" );
+        #return( "Invalid node type: $ent->{nodetype}" );
+        return( "Invalid node type: $ttype" );
     }
     #################################
     # Get attributes 
