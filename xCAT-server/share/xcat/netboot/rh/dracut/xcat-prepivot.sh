@@ -46,7 +46,12 @@ if [ ! -z $SNAPSHOTSERVER ]; then
     mkdir -p $NEWROOT/$RWDIR/persistent
     MAXTRIES=5
     ITER=0
-    while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT  $NEWROOT/$RWDIR/persistent -o nolock,rsize=32768,tcp,nfsvers=3,timeo=14; do
+	if [ -z $MNTOPTS ]; then
+		MNT_OPTIONS="nolock,rsize=32768,tcp,timeo=14"
+	else
+		MNT_OPTIONS=$MNTOPTS
+	fi
+    while ! mount $SNAPSHOTSERVER:/$SNAPSHOTROOT  $NEWROOT/$RWDIR/persistent -o $MNT_OPTIONS; do
         ITER=$(( ITER + 1 ))
         if [ "$ITER" == "$MAXTRIES" ]; then
             echo "Your are dead, rpower $ME boot to play again."
