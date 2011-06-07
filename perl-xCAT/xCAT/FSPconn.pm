@@ -148,7 +148,7 @@ sub mkhwconn_parse_args
  
             }
             #$nodetype    = $nodetype_hash->{nodetype};
-            $nodetype = CAT::DBobjUtils->getnodetype($node);
+            $nodetype = xCAT::DBobjUtils->getnodetype($node);
             $node_parent = $node_parent_hash->{parent};
             if ( !$nodetype )
             {
