@@ -256,13 +256,14 @@ sub noderange_validate {
     ###########################################
     foreach my $node ( @$noderange ) {
         my $type = undef;
-        my $sitetab  = xCAT::Table->new( 'nodetype' );
-        if ( defined( $sitetab )) {
-            my ($ent) = $sitetab->getAttribs({ node=>$node},'nodetype');
-            if ( defined($ent) ) {
-               $type = $ent->{nodetype};
-            }
-        }
+        #my $sitetab  = xCAT::Table->new( 'nodetype' );
+        #if ( defined( $sitetab )) {
+        #    my ($ent) = $sitetab->getAttribs({ node=>$node},'nodetype');
+        #    if ( defined($ent) ) {
+        #       $type = $ent->{nodetype};
+        #    }
+        #}
+        $type = xCAT::DBobjUtils->getnodetype($node);
         #print "type:$type\n";
         if( $type =~/(fsp|lpar|cec)/) {
             $f1 = 1;
