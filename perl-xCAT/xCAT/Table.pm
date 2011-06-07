@@ -108,11 +108,12 @@ sub dbc_submit {
     print $clisock $data;
     $data="";
     my $lastline="";
-    while ($lastline ne "ENDOFFREEZEQFVyo4Cj6Q0j\n" and $lastline ne "*XCATBUGDETECTED*76e9b54341\n") { #index($lastline,"ENDOFFREEZEQFVyo4Cj6Q0j") < 0) {
-        $lastline = <$clisock>;
+    while (read($clisock,$lastline,32768)) { #$lastline ne "ENDOFFREEZEQFVyo4Cj6Q0j\n" and $lastline ne "*XCATBUGDETECTED*76e9b54341\n") { #index($lastline,"ENDOFFREEZEQFVyo4Cj6Q0j") < 0) {
+#        $lastline = <$clisock>;
 	    $data .= $lastline;
     }
-    if ($lastline eq "*XCATBUGDETECTED*76e9b54341\n") { #if it was an error
+    close($clisock);
+    if ($lastline =~  m/*XCATBUGDETECTED*76e9b54341\n\z/) { #if it was an error
         #in the midst of the operation, die like it used to die
         my $err;
         $data =~ /\*XCATBUGDETECTED\*:(.*):\*XCATBUGDETECTED\*/s;
@@ -241,8 +242,10 @@ sub handle_dbc_conn {
             @returndata = (scalar(handle_dbc_request($request)));
         }
         $response = freeze(\@returndata);
-        $response .= "\nENDOFFREEZEQFVyo4Cj6Q0j\n";
+    #    $response .= "\nENDOFFREEZEQFVyo4Cj6Q0j\n";
         print $client $response;
+        $clientset->remove($client);
+        close($client);
     } else { #Connection terminated, clean up
         $clientset->remove($client);
         close($client);
