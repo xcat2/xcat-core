@@ -769,12 +769,8 @@ until ($quit) {
     } else {
       $peername=undef;
     }
-    $sitetab=xCAT::Table->new('site');
-    my ($tmp) = $sitetab->getAttribs({'key'=>'domain'},'value');
-    if (defined $tmp->{value}) {
-        $domain = $tmp->{value};
-    }
-    $sitetab->close;
+    populate_site_hash();
+    $domain = $::XCATSITEVALS{domain};
 
 if ($inet6support) {
     $peerhost = gethostbyaddr($connection->peeraddr,AF_INET6);
@@ -1489,7 +1485,6 @@ sub service_connection {
   my $peerfqdn = shift;
   my $peerport = $sock->peerport;
   my %tables=();
-  populate_site_hash();
   #some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
   # -Well, minimally, ignore requests if requesting node is not in spconfig mode (stage3)
   # -Option to generate a random password per 'getipmi' request.  This reduces the exposure to a D.O.S. hopefully
@@ -1852,7 +1847,7 @@ sub validate {
 
       # read site.auditskipcmds attribute,
       # if set skip commands else audit all cmds.
-      my @skipcmds=xCAT::Utils->get_site_attribute('auditskipcmds');
+      my @skipcmds=($::XCATSITEVALS{auditskipcmds}); #xCAT::Utils->get_site_attribute('auditskipcmds');
       # if not "ALL" and not a command from site.auditskipcmds 
       # and not getcredentials and not getcredentials ,
       # put in syslog and  auditlog
@@ -1895,7 +1890,7 @@ sub validate {
         $rsp->{status} -> [0] = $status;
         xCAT::MsgUtils->message("SA",$rsp);
       } else { # getpostscript or getcredentials, just syslog
-          xCAT::MsgUtils->message("S",$logst);
+          unless ($::XCATSITEVALS{skipvalidatelog}) { xCAT::MsgUtils->message("S",$logst); }
       }
      } # end getbladecons,etc check
       return $rc;
