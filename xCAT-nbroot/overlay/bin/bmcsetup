@@ -14,7 +14,7 @@
 #
 allowcred.awk &
 CREDPID=$!
-sleep 1
+sleep 2
 modprobe ipmi_si
 modprobe ipmi_devintf
 while [ -z "$BMCIP" ]; do
