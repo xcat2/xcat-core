@@ -1,0 +1,61 @@
+#!/bin/sh
+
+#
+# This postscript sets up a scratch area on the local disk for stateless
+# nodes. It is for Linux only. 
+#
+#====================================================================
+ME="setupscratch"
+
+if grep sda1 /proc/partitions >/dev/null 2>&1
+then
+	echo Autodetected existing /dev/sda1
+	logger -t $ME Autodetected existing /dev/sda1
+	echo Checking filesystem /dev/sda1
+	logger -t $ME Checking filesystem /dev/sda1
+	fsck -y /dev/sda1
+	mkdir -p /scratch
+	echo mounting existing /dev/sda1 to /scratch
+	logger -t $ME mounting existing /dev/sda1 to /scratch
+	if mount /dev/sda1 /scratch
+	then
+		echo
+		echo Done!
+		echo
+		exit 0
+	else
+		echo mounting /dev/sda1 to /scratch failed
+		logger -t $ME mounting /dev/sda1 to /scratch failed
+	fi
+fi
+
+
+
+echo Creating Partition
+logger -t $ME Creating Partition
+parted /dev/sda mklabel gpt 
+MB=$(cat /proc/partitions | grep sda | awk '{printf "%d\n",( $3 / (1024 )) }')
+parted /dev/sda mkpart primary ext2 0 $MB
+if grep sda1 /proc/partitions >/dev/null 2>&1
+then
+	sleep 5
+else
+	echo failed to create partition, exiting $ME
+	logger -t $ME failed to create partition, exiting $ME
+	echo
+	echo Failed!
+	echo
+	exit 1
+fi
+
+echo Creating new ext3 filesystem: /dev/sda1
+logger -t $ME Creating new ext3 filesystem: /dev/sda1
+mke2fs -j /dev/sda1
+mkdir -p /scratch
+echo mounting new /dev/sda1 to /scratch
+logger -t $ME mounting new /dev/sda1 to /scratch
+mount /dev/sda1 /scratch
+echo
+echo Done!
+echo
+exit 0
