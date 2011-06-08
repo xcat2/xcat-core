@@ -83,15 +83,19 @@ function login() {
 	echo
 	'<script src="js/jquery/jquery.cookie.min.js" type="text/javascript"></script>
 	<script src="js/xcatauth.js" type="text/javascript"></script>
-	<div id=logdialog title="Login">
-		<p>Give the user name and password for the xCAT management node</p>
-			<form id=loginform>
-				<table cellspacing=3>
-					<tr><td align=right><label for=username>User name:</label></td><td align=left><input id=username type=text name=username></td></tr>
-					<tr><td align=right><label for=password>Password:</label></td><td align=left><input id=password type=password name=password></td></tr>
-				</table>
-			</form>
-		<p><span id=logstatus></span></p>
+	<div id="logdialog">
+		<div id="loginput" class="ui-corner-all">
+			<table>
+				<tr><td colspan=5></td></tr>
+			    <tr><td align=right><img src="images/logo.png" width="50" height="35"></img></td><td colspan=4><p>eXtreme Cloud Administration Toolkit</p></td></tr>
+			    <tr><td colspan=5></td></tr>
+				<tr><td></td><td><label for=username>User name:</label></td><td colspan=2><input id=username type=text name=username></td><td></td></tr>
+				<tr><td></td><td><label for=password>Password:</label></td><td colspan=2><input id=password type=password name=password></td><td></td></tr>
+				<tr><td></td><td></td><td></td><td align=right><button>Login</button></td><td></td></tr>
+				<tr><td></td><td colspan=4><span id=logstatus></span></td></tr>
+			</table>
+		</div>
+		<div id="loginfo">Open Source. EPL License</div>
 	</div>';
 }
 ?>
