@@ -966,7 +966,7 @@ sub mkauthkeys {
         # When adding, remove old keys first
         #####################################
         foreach ( @$result ) {
-            unless ( /= $logon$/ ) {
+            unless ( /$logon$/ ) {
                 push @authkey, $_;
             }
         }

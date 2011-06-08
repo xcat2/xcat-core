@@ -408,7 +408,7 @@ sub sshcfg {
         # Find logon in key file 
         #################################
         foreach ( @$result ) {
-            if ( /= $logon$/ ) {
+            if ( /$logon$/ ) {
                 return( [[$server,"enabled",SUCCESS]] );
             }
         }
