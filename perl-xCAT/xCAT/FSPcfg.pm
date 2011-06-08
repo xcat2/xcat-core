@@ -382,6 +382,7 @@ sub frame {
                     }
 
                     push @$result, [$node,@$data[1], 0];
+                    push @$result, [$node,"It will take several minutes to complete. So please wait for several minutes, then the other operations could be done. Otherwise, the other operation will fail.", 0];
 
                 } else {
                     #################################
@@ -400,6 +401,7 @@ sub frame {
                     }
 
                     push @$result, [$node,@$data[1],0];
+                    push @$result, [$node,"It will take several minutes to complete. So please wait for several minutes, then the other operations could be done. Otherwise, the other operation will fail.", 0];
 
                     #################################
                     # Set frame number to database
