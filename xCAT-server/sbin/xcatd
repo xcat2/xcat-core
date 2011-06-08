@@ -63,7 +63,7 @@ unless ($inet6support) {
 
 my $dispatch_requests = 1; # govern whether commands are dispatchable
 use IO::Socket;
-use IO::Handle;
+#use IO::Handle;
 use IO::Select;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -1020,8 +1020,11 @@ sub plugin_command {
           die;
         }
         #pipe($pfd,$cfd);
-        $parfd->autoflush(1);
-        $pfd->autoflush(1);
+	my $oldfh = select $parfd;
+	$|=1;
+	select $pfd;
+	$|=1;
+	select $oldfh;
         binmode($parfd,':utf8');
         binmode($pfd,':utf8');
         $child = xCAT::Utils->xfork;
@@ -1243,8 +1246,11 @@ sub dispatch_request {
       xCAT::MsgUtils->message("S", "ERROR: socketpair: $!");
       die;
     }
-    $parfd->autoflush(1);
-    $pfd->autoflush(1);
+	my $oldfh = select $parfd;
+	$|=1;
+	select $pfd;
+	$|=1;
+	select $oldfh;
     binmode($parfd,':utf8');
     binmode($pfd,':utf8');
     $child = xCAT::Utils->xfork;
