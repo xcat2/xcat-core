@@ -14,8 +14,6 @@ B<makedhcp> B<-d> I<noderange>
 
 B<makedhcp> I<noderange> [B<-s> I<statements>]
 
-B<makedhcp> I<noderange> B<--hfi> 
-
 B<makedhcp> [I<-h|--help>]
 
 
@@ -66,10 +64,6 @@ Delete all node entries added by xCAT from the DHCP server configuration.
 =item B<-d> I<noderange>
 
 Delete all node entries, added by xCAT, in the noderange from the DHCP server configuration.
-
-=item B<--hfi> I<noderange>
-
-Add the specified nodes to the DHCP server configuration with HFI device type.
 
 =item B<-h>
 

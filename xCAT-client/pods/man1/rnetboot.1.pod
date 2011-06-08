@@ -4,7 +4,7 @@ B<rnetboot> - Cause the range of nodes to boot to network.
 
 =head1 SYNOPSIS
 
-B<rnetboot> [B<-V>|B<--verbose>] [B<-s> I<boot_device_order>] [B<-F>] [B<-f>] [B<--hfi>] I<noderange> [B<-m> I<table.column>==I<expectedstatus> [B<-m> I<table.col-umn>=~I<expectedstatus>]] [B<-t> I<timeout>] [B<-r> I<retrycount>]
+B<rnetboot> [B<-V>|B<--verbose>] [B<-s> I<boot_device_order>] [B<-F>] [B<-f>] I<noderange> [B<-m> I<table.column>==I<expectedstatus> [B<-m> I<table.col-umn>=~I<expectedstatus>]] [B<-t> I<timeout>] [B<-r> I<retrycount>]
 
 B<rnetboot> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
@@ -28,10 +28,6 @@ Force reboot the system no matter what state the node is.  By default, rnetboot 
 B<-f>          
 
 Force immediate shutdown of the partition.
-
-B<--hfi>       
-
-Netboot the nodes from HFI devices.
 
 B<-m>          
 
