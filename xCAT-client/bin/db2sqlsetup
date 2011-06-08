@@ -245,6 +245,15 @@ if ($ENV{'DATABASELOC'})    # input where xcatdb is located
    
     }
 }
+if (!(-e $::databaselocdir)){ # if it does not exist, create it
+   my $cmd = "mkdir -p $::databaselocdir";
+   xCAT::Utils->runcmd($cmd, 0);
+   if ($::RUNCMD_RC != 0)
+   {
+       xCAT::MsgUtils->message("E", " $cmd failed.");
+       exit(1);
+   }
+}
 # if we are on the MN ( db2 server) 
 if ($::SERVER)
 {
