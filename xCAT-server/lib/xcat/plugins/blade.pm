@@ -328,7 +328,12 @@ sub walkelog {
 sub eventlog { #Tried various optimizations, but MM seems not to do bulk-request
   #TODO: retrieval of non blade events, what should be syntax?
   #TODO: try retrieving 5 at a time, then 1 at a time when that stops working
-  my $cmd=shift;
+  @ARGV=@_;
+  my $force;
+  GetOptions(
+	"f" => \$force,
+	);
+  my $cmd=shift @ARGV;
   my $data;
   my @output;
   my $oid = $eventlogoid;
@@ -392,7 +397,7 @@ sub eventlog { #Tried various optimizations, but MM seems not to do bulk-request
     return (0,@output);
   }
   if ($cmd eq "clear") {
-    unless (isallchassis) {
+    unless ($force or isallchassis) {
       return (1,"Cannot clear eventlogs except for entire chassis");
     }
     if ($didchassis) { return 0, "eventlog cleared" }
