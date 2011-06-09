@@ -359,11 +359,12 @@ sub preprocess_updatenode
 
             foreach (@posts)
             {
-                if (!-e "$installdir/postscripts/$_")
+                my @aa=split(' ', $_);
+                if (!-e "$installdir/postscripts/$aa[0]")
                 {
                     my $rsp = {};
                     $rsp->{data}->[0] =
-                      "The postcript $installdir/postscripts/$_ does not exist.";
+                      "The postcript $installdir/postscripts/$aa[0] does not exist.";
                     $callback->($rsp);
                     return \@requests;
                 }
