@@ -87,6 +87,7 @@ sub handled_commands{
         rshutdown => "nodetype:os=(esxi.*)",
         lsvm => ['hypervisor:type','nodetype:os=(esx.*)'],
 		rmhypervisor => ['hypervisor:type','nodetype:os=(esx.*)'],
+		chhypervisor => ['hypervisor:type','nodetype:os=(esx.*)'],
 		#lsvm => 'nodehm:mgt', not really supported yet
 	};
 }
@@ -149,7 +150,7 @@ sub preprocess_request {
 
 	my $vmtabhash = $vmtab->getNodesAttribs($noderange,['host','migrationdest']);
 	foreach my $node (@$noderange){
-        if ($command eq "rmhypervisor" or $command eq 'lsvm' or $command eq 'rshutdown') {
+        if ($command eq "rmhypervisor" or $command eq 'lsvm' or $command eq 'rshutdown' or $command eq "chhypervisor") {
             $hyp_hash{$node}{nodes} = [$node];
         } else {
         my $ent = $vmtabhash->{$node}->[0];
@@ -547,6 +548,8 @@ sub do_cmd {
         generic_hyp_operation(\&rmhypervisor,@exargs);
     } elsif ($command eq 'rshutdown') {
         generic_hyp_operation(\&rshutdown,@exargs);
+    } elsif ($command eq 'chhypervisor') {
+        generic_hyp_operation(\&chhypervisor,@exargs);
     } elsif ($command eq 'lsvm') {
         generic_hyp_operation(\&lsvm,@exargs);
     } elsif ($command eq 'clonevm') {
@@ -1935,6 +1938,49 @@ sub lsvm {
     return;
 }
 
+sub chhypervisor {
+    my %args = @_;
+    @ARGV = @{$args{exargs}}; #for getoptions;
+    my $maintenance;
+	my $online;
+    my $stat;
+    require Getopt::Long;
+    GetOptions(
+        'maintenance|m' => \$maintenance,
+        'online|o' => \$online,
+        'show|s' => \$stat,
+        );
+    my $hyp = $args{hyp};
+    $hyphash{$hyp}->{hostview} = get_hostview(hypname=>$hyp,conn=>$hyphash{$hyp}->{conn}); #,properties=>['config','configManager']); 
+    if ($maintenance) {
+    if (defined $hyphash{$hyp}->{hostview}) {
+        my $task = $hyphash{$hyp}->{hostview}->EnterMaintenanceMode_Task(timeout=>0);
+        $running_tasks{$task}->{task} = $task;
+        $running_tasks{$task}->{callback} = \&generic_task_callback;
+        $running_tasks{$task}->{hyp} = $args{hyp}; 
+        $running_tasks{$task}->{data} = { node => $hyp , successtext => "hypervisor in maintenance mode"}; 
+    }
+    } elsif ($online) {
+    if (defined $hyphash{$hyp}->{hostview}) {
+        my $task = $hyphash{$hyp}->{hostview}->ExitMaintenanceMode_Task(timeout=>0);
+        $running_tasks{$task}->{task} = $task;
+        $running_tasks{$task}->{callback} = \&generic_task_callback;
+        $running_tasks{$task}->{hyp} = $args{hyp}; 
+        $running_tasks{$task}->{data} = { node => $hyp , successtext => "hypervisor online"}; 
+    }
+    } elsif ($stat) {
+        if (defined $hyphash{$hyp}->{hostview}) {
+                if ($hyphash{$hyp}->{hostview}->runtime->inMaintenanceMode) {
+                        xCAT::SvrUtils::sendmsg("hypervisor in maintenance mode", $output_handler,$hyp);
+                } else {
+                        xCAT::SvrUtils::sendmsg("hypervisor online", $output_handler,$hyp);
+                }
+        }
+    }
+
+    return;
+}
+  
 sub rshutdown { #TODO: refactor with next function too
     my %args = @_;
     my $hyp = $args{hyp};
