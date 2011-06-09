@@ -210,6 +210,7 @@ my $didchassis = 0;
 my @eventlog_array = ();
 my $activemm;
 my %mpahash;
+my $currnode;
 my $mpa;
 my $allinchassis=0;
 my $curn;
@@ -1581,13 +1582,19 @@ sub inv {
   my @invitems;
   my $data;
   my @output;
-  foreach (@_) {
+  @ARGV=@_;
+  my $updatetable;
+  GetOptions(
+	"t|table" => \$updatetable,
+  );
+  foreach (@ARGV) {
     push @invitems,split( /,/,$_);
   }
   my $item;
   unless (scalar(@invitems)) {
       @invitems = ("all");
   }
+  my %updatehash;
   while (my $item = shift @invitems) {
     if ($item =~ /^all/) {
       push @invitems,(qw(mtm serial mac firm));
@@ -1654,6 +1661,7 @@ sub inv {
       $data=$session->get([$blademtmoid,$slot]);
       if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
       push @output,"Machine Type/Model: ".$data;
+      $updatehash{mtm}=$data;
     }
     if ($item =~ /^uuid/ or $item =~ /^guid/) {
       $data=$session->get([$bladeuuidoid,$slot]);
@@ -1665,11 +1673,13 @@ sub inv {
       $data =~ s/ /-/;
       $data =~ s/ //g;
       push @output,"UUID/GUID: ".$data;
+      $updatehash{uuid}=$data;
     }
     if ($item =~ /^serial/) {
       $data=$session->get([$bladeserialoid,$slot]);
       if ($session->{ErrorStr}) { return (1,$session->{ErrorStr}); }
       push @output,"Serial Number: ".$data;
+      $updatehash{serial}=$data;
     }
 
     if ($item =~ /^mac/) {
@@ -1703,6 +1713,10 @@ sub inv {
         }
       }
     }
+  }
+  if ($updatetable and keys %updatehash) {
+  	my $vpdtab = xCAT::Table->new('vpd');
+	$vpdtab->setNodeAttribs($currnode,\%updatehash);
   }
   return (0,@output);
 }
@@ -2850,6 +2864,7 @@ sub rmflexnode {
 sub bladecmd {
   $mpa = shift;
   my $node = shift;
+  $currnode = $node;
   $slot = shift;
   if ($slot =~ /-/) {
       $slot =~ s/-(.*)//;
