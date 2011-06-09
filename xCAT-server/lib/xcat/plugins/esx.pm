@@ -2477,7 +2477,7 @@ sub register_vm {#Attempt to register existing instance of a VM
     # Try to add an existing VM to the machine folder
     my $success = eval {
         if ($hyp) {
-            $task = $vmhash{$node}->{vmfolder}->RegisterVM_Task(path=>getcfgdatastore($node,$hyphash{$hyp}->{datastoremap})." /$node/$node.vmx",name=>$node,pool=>$hyphash{$hyp}->{pool},asTemplate=>0);
+            $task = $vmhash{$node}->{vmfolder}->RegisterVM_Task(path=>getcfgdatastore($node,$hyphash{$hyp}->{datastoremap})." /$node/$node.vmx",name=>$node,pool=>$hyphash{$hyp}->{pool},host=>$hyphash{$hyp}->{hostview},asTemplate=>0);
         } else {
             $task = $vmhash{$node}->{vmfolder}->RegisterVM_Task(path=>getcfgdatastore($node,$clusterhash{$args{cluster}}->{datastoremap})." /$node/$node.vmx",name=>$node,pool=>$placement_resources->{pool},asTemplate=>0);
         }
