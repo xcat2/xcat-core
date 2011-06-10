@@ -1403,7 +1403,7 @@ sub addnet6
     }
     if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
         if ($ddnsdomain) {
-            push @netent, "    ddns-domain-name \"".$ddnsdomain."\";\n";
+            push @netent, "    ddns-domainname \"".$ddnsdomain."\";\n";
             push @netent, "    zone $ddnsdomain. {\n";
         } else {
     push @netent, "    zone $domain. {\n";
@@ -1640,7 +1640,7 @@ sub addnet
         }
     if ($::XCATSITEVALS{dnshandler} =~ /ddns/) {
         if ($ddnsdomain) {
-            push @netent, "    ddns-domain-name \"".$ddnsdomain."\";\n";
+            push @netent, "    ddns-domainname \"".$ddnsdomain."\";\n";
             push @netent, "    zone $ddnsdomain. {\n";
         } else {
             push @netent, "    zone $domain. {\n";
