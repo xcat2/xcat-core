@@ -227,6 +227,7 @@ $::xcatrunningdb2 = 0;
 # determine the location of the xcatdb instance
 #
 $::databaseloc            = "/var/lib/db2";    # database location default
+$::databaselocdir         = "/var/lib";       # database path 
 # if database location environment variable is set, use it
 if ($ENV{'DATABASELOC'})    # input where xcatdb is located  
 {
