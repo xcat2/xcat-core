@@ -448,11 +448,13 @@ sub addrangedetection {
     my $trange;
     my $begin;
     my $end;
-
+    my $myip;
+    $myip = xCAT::Utils->my_ip_facing($net->{net});
+    
     # convert <xcatmaster> to nameserver IP
     if ($net->{nameservers} eq '<xcatmaster>')
     {
-        $netcfgs{$net->{net}}->{nameservers} = xCAT::InstUtils->convert_xcatmaster();
+        $netcfgs{$net->{net}}->{nameservers} = $myip;
     }
     else
     {
@@ -465,7 +467,7 @@ sub addrangedetection {
         # convert <xcatmaster> to nameserver IP
         if ($::XCATSITEVALS{nameservers} eq '<xcatmaster>')
         {
-            $netcfgs{$net->{net}}->{nameservers} = xCAT::InstUtils->convert_xcatmaster();
+            $netcfgs{$net->{net}}->{nameservers} = $myip;
         }
         else
         {
@@ -840,15 +842,7 @@ sub process_request
         }
         ($href) = $sitetab->getAttribs({key => 'nameservers'}, 'value');
         if ($href and $href->{value}) {
-            # convert <xcatmaster> to nameserver IP
-            if ($href->{value} eq '<xcatmaster>')
-            {
-                $sitenameservers = xCAT::InstUtils->convert_xcatmaster();
-            }
-            else
-            {
-                $sitenameservers = $href->{value};
-            }
+            $sitenameservers = $href->{value};
         }
         ($href) = $sitetab->getAttribs({key => 'ntpservers'}, 'value');
         if ($href and $href->{value}) {
@@ -1620,6 +1614,13 @@ sub addnet
                     );
                 }
             }
+
+            # convert <xcatmaster> to nameserver IP
+            if ($nameservers eq '<xcatmaster>')
+            {
+                $nameservers = $myip;
+            }
+            
             $nameservers=putmyselffirst($nameservers);
             $ntpservers=putmyselffirst($ntpservers);
             $logservers=putmyselffirst($logservers);
