@@ -704,12 +704,13 @@ sub enumerate {
     $td[4]="fsp"; 
     my $action = "get_io_slot_info";
     my $values =  xCAT::FSPUtils::fsp_api_action ($cec, \@td, $action);
-    my $Rc = shift(@$values);
+    #my $Rc = shift(@$values);
+    my $Rc = @$values[2];
     if ( $Rc != 0 ) {
-        return( [$Rc,@$values[0]] );
-    }
-    
-    $outhash{ 0 } = $$values[0];
+        $outhash{ 1 } = "The LPARs' I/O slots information could NOT be listed  because the cec is in power off state";
+    } else {
+        $outhash{ 0 } = $$values[1];
+    } 
     #my @t; 
     #foreach my $value ( @$values ) {
     #    my ($lparid, $busid, $slot_location_code, $drc_index,@t ) = split (/,/, $value);
@@ -760,6 +761,7 @@ sub list {
 	my $Rc = shift(@$info);
 	my $data = @$info[0];
         my $values = $data->{0};
+        my $msg = $data->{1};
          	
         while (($node_name,$d) = each(%$h) ) {
             my $cec   = @$d[3];
@@ -777,17 +779,21 @@ sub list {
            # 	next;
            # }
            
-            # get the I/O slot information  
-            my $v;
-            my @t;  
-            my @value = split(/\n/, $values);
-            foreach my $v (@value) {
-                my ($lparid, @t ) = split (/,/, $v);  
-                if ($type=~/^(fsp|cec)$/) {
-                    push @result,[$lparid, join('/', @t), $Rc];
-                } else {
-                    if( $lparid eq $id) {
+            if( defined($msg)) { 
+                 push @result,[$node_name, $msg, 0];
+            } else {
+                # get the I/O slot information  
+                my $v;
+                my @t; 
+                my @value = split(/\n/, $values);
+                foreach my $v (@value) {
+                    my ($lparid, @t ) = split (/,/, $v);  
+                    if ($type=~/^(fsp|cec)$/) {
                         push @result,[$lparid, join('/', @t), $Rc];
+                    } else {
+                        if( $lparid eq $id) {
+                            push @result,[$lparid, join('/', @t), $Rc];
+                        }
                     }
                 } 
             }
