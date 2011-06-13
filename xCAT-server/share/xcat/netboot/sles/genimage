@@ -1390,10 +1390,11 @@ sub generic_post { # This function is meant to leave the image in a state approx
     open($cfgfile,">","$rootimg_dir/etc/resolv.conf");
     print $cfgfile "#Dummy resolv.conf to make boot cleaner";
     close($cfgfile);
-
-    #open($cfgfile,">","$rootimg_dir/etc/sysconfig/network/ifcfg-$prinic");
-    #print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\nSTARTMODE=auto\n";
-    #close($cfgfile);
+    if ($prinic) {
+      open($cfgfile,">","$rootimg_dir/etc/sysconfig/network/ifcfg-$prinic");
+      print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\nSTARTMODE=auto\n";
+      close($cfgfile);
+    }
 
     foreach (split /,/,$othernics) {
         next if (/^$/);
