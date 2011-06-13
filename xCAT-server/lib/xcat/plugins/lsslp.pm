@@ -2185,7 +2185,7 @@ sub parse_responses {
             $otherinterfacehash{$hostname}{otherinterfaces} = $ips[0];
 
             trace( $request, "     Keep the node ip $ips[0] in its otherinterfaces", 1 );
-            trace( $request, "     The node $ips[0] match the old data and got the new name $hostname" , 1);      
+            trace( $request, "     The node $ips[0] match the old data and got the new name $hostname" , 1);
             #begin to define another fsp/bpa
             $hostname = undef;
             foreach (@result) {
@@ -2206,7 +2206,7 @@ sub parse_responses {
             }
             $otherinterfacehash{$hostname}{otherinterfaces} = $ips[1];
             trace( $request, "     Keep the node ip $ips[1] in its otherinterfaces" , 1);
-            trace( $request, "     The node $ips[1] match the old data and got the new name $hostname" , 1);      
+            trace( $request, "     The node $ips[1] match the old data and got the new name $hostname" , 1);
 
             ###########################################
             #  begin to define frame and cec
@@ -2712,6 +2712,7 @@ sub do_resetnet {
     my $namehash;
     my $targets;
     my $result;
+    my $nodetype;
 
     # this part was used for lsslp output data format.
     # when invoked by rspconfig, the input data are different.
@@ -2728,14 +2729,26 @@ sub do_resetnet {
     #        $namehash->{$name} = $ip;
     #    }
     #}
+    my $hoststab = xCAT::Table->new( 'hosts' );
+    if ( !$hoststab ) {
+        send_msg( $req, 1, "Error open hosts table" );
+        return( [RC_ERROR] );
+    }
+
+    my $mactab = xCAT::Table->new( 'mac' );
+    if ( !$mactab ) {
+        send_msg( $req, 1, "Error open mac table" );
+        return( [RC_ERROR] );
+    }
 
     if ( $req->{node} ) {
         $reset_all = 0;
         foreach my $nn ( @{ $req->{node}} ) {
-            my $nt = xCAT::DBobjUtils->getnodetype($nn);
+            $nodetype = xCAT::DBobjUtils->getnodetype($nn);
             # this brunch is just for the xcat 2.6(+) database
-            if ( $nt =~ /^(cec|frame)$/ )  {
+            if ( $nodetype =~ /^(cec|frame)$/ )  {
                 my $cnodep = xCAT::DBobjUtils->getchildren($nn);
+                $nodetype = ( $nodetype =~ /^frame$/i ) ? "bpa" : "fsp";
                 if ($cnodep) {
                     foreach my $cnode (@$cnodep) {
                         my $ip = xCAT::Utils::getNodeIPaddress( $cnode );
@@ -2746,82 +2759,36 @@ sub do_resetnet {
                     return( [RC_ERROR] );
                 }
             # this brunch is just for the xcat 2.5(-) databse
-            } else {
+            } elsif ( $nodetype =~ /^(fsp|bpa)$/ )  {
                 my $ip = xCAT::Utils::getNodeIPaddress( $nn );
                 $namehash->{$nn} = $ip;
+            } elsif ( !$nodetype ){
+                send_msg( $req, 0, "$nn: no nodetype defined, skipping network reset" );
             }
         }
     }
-
-
-
-    my $hoststab = xCAT::Table->new( 'hosts' );
-    if ( !$hoststab ) {
-        send_msg( $req, 1, "Error open hosts table" );
-        return( [RC_ERROR] );
-    }
-
-    my $nodetypetab = xCAT::Table->new( 'nodetype' );
-    if ( !$nodetypetab ) {
-        send_msg( $req, 1, "Error open nodetype table" );
-        return( [RC_ERROR] );
-    }
-
-    my $mactab = xCAT::Table->new( 'mac' );
-    if ( !$mactab ) {
-        send_msg( $req, 1, "Error open mac table" );
-        return( [RC_ERROR] );
-    }
-
     send_msg( $req, 0, "\nStart to reset network..\n" );
 
     my $ip_host;
-    my @hostslist = $hoststab->getAllNodeAttribs(['node','ip','otherinterfaces']);
+    my @hostslist = $hoststab->getAllNodeAttribs(['node','otherinterfaces']);
     foreach my $host ( @hostslist ) {
         my $name = $host->{node};
-        my $ip   = $host->{ip};
-        my $oi;
+        my $oi = $host->{otherinterfaces};
 
         #####################################
         # find the otherinterfaces for the
         # specified nodes, or the all nodes
         # Skip the node if the IP attributes
-        # is same as otherinterfaces or ip
-        # discovered
+        # is same as otherinterfaces 
         #####################################
         if ( $namehash->{$name} ) {
-            $oi = $namehash->{$name};
             $hoststab->setNodeAttribs( $name,{otherinterfaces=>$namehash->{$name}} );
-        } else {
-            $oi = $host->{otherinterfaces};
         }
 
-        if ( !$reset_all ) {
-            if ( $namehash->{$name} ) {
-                if ( !$ip or $ip eq $namehash->{$name} ) {
-                    send_msg( $req, 0, "$name: same ip address, skipping network reset" );
-                    next;
-                }
-            } else {
-                next;
-            }
-        } elsif (!$ip or !$oi or $ip eq $oi) {
+        if (!$oi or $oi eq $namehash->{$name}) {
             send_msg( $req, 0, "$name: same ip address, skipping network reset" );
             next;
         }
-
-        #my $type = $nodetypetab->getNodeAttribs( $name, [qw(nodetype)]);
-        my $type = xCAT::DBobjUtils->getnodetype($name);
-        if ( !$type  ) {
-            send_msg( $req, 0, "$name: no nodetype defined, skipping network reset" );
-            next;
-        }
-
-        # Skip frame and cec
-        #if ( $type eq "cec" or $type eq "frame" ) {
-        #    send_msg( $req, 0, "$name: $type, skipping network reset" );
-        #    next;
-        #}
 
         my $mac = $mactab->getNodeAttribs( $name, [qw(mac)]);
         if ( !$mac or !$mac->{mac} ) {
@@ -2833,16 +2800,16 @@ sub do_resetnet {
         # Make the target that will reset its
         # network interface
         #####################################
-        $targets->{$type}->{$namehash->{$name}}->{'args'} = "0.0.0.0,$name";
-        $targets->{$type}->{$namehash->{$name}}->{'mac'} = $mac->{mac};
-        $targets->{$type}->{$namehash->{$name}}->{'name'} = $name;
-        $targets->{$type}->{$namehash->{$name}}->{'ip'} = $namehash->{$name};
-        $targets->{$type}->{$namehash->{$name}}->{'type'} = $type;
-        if ( $type !~ /^mm$/ ) {
-            my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$namehash->{$name}] );
-            $targets->{$type}->{$namehash->{$name}}->{'args'} .= ",$netinfo{$namehash->{$name}}{'gateway'},$netinfo{$oi}{'mask'}";
+        $targets->{$nodetype}->{$oi}->{'args'} = "0.0.0.0,$name";
+        $targets->{$nodetype}->{$oi}->{'mac'} = $mac->{mac};
+        $targets->{$nodetype}->{$oi}->{'name'} = $name;
+        $targets->{$nodetype}->{$oi}->{'ip'} = $oi;
+        $targets->{$nodetype}->{$oi}->{'type'} = $nodetype;
+        if ( $nodetype !~ /^mm$/ ) {
+            my %netinfo = xCAT::DBobjUtils->getNetwkInfo( [$oi] );
+            $targets->{$nodetype}->{$oi}->{'args'} .= ",$netinfo{$oi}{'gateway'},$netinfo{$oi}{'mask'}";
         }
-        $ip_host->{$namehash->{$name}} = $name;
+        $ip_host->{$oi} = $name;
     }
 
     $result = undef;
