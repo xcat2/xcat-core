@@ -1533,7 +1533,6 @@ my @nodeattrs = (
                  access_tabentry => 'ppc.node=attr:node',
                 },
  {attr_name => 'sfp',
-                 only_if => 'nodetype=frame',
                  tabentry => 'ppc.sfp',
                  access_tabentry => 'ppc.node=attr:node',
                 },
