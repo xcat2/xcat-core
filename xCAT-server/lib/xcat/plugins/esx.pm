@@ -543,7 +543,7 @@ sub do_cmd {
     } elsif ($command eq 'rsetboot') {
         generic_vm_operation(['config.name','runtime.host'],\&setboot,@exargs);
     } elsif ($command eq 'rinv') {
-        generic_vm_operation(['config.name','config','runtime.host'],\&inv,@exargs);
+        generic_vm_operation(['config.name','config','runtime.host','layoutEx'],\&inv,@exargs);
     } elsif ($command eq 'rmhypervisor') {
         generic_hyp_operation(\&rmhypervisor,@exargs);
     } elsif ($command eq 'rshutdown') {
@@ -618,17 +618,18 @@ sub inv {
   xCAT::SvrUtils::sendmsg("CPUs:  $cpuCount", $output_handler,$node);
   my $memory = $vmview->config->hardware->memoryMB;
   xCAT::SvrUtils::sendmsg("Memory:  $memory MB", $output_handler,$node);
+  my %updatehash = ( cpus => $cpuCount, memory=>$memory);
 
-  if($tableUpdate){
-    my $vm=xCAT::Table->new('vm',-create=>1);
-    $vm->setNodeAttribs($node,{cpus=>$cpuCount, memory=>$memory});
-  }
 
   my $devices = $vmview->config->hardware->device;
   my $label;
   my $size;
   my $fileName;
   my $device;
+  if ($tableUpdate and $hyp) {
+     validate_datastore_prereqs([$node],$hyp); #need datastoremaps to verify names...
+  }
+  my %vmstorageurls;
   foreach $device (@$devices) {
     $label = $device->deviceInfo->label;
 
@@ -645,10 +646,46 @@ sub inv {
               }
           }
       });
+	  #if ($tableUpdate) {
+	  #		$fileName =~ /\[([^\]]+)\]/;
+		#	$vmstorageurls{$hyphash{$hyp}->{datastoreurlmap}->{$1}}=1;
+	  #}
     } elsif ($label =~ /Network/) {
         xCAT::SvrUtils::sendmsg("$label: ".$device->macAddress, $output_handler,$node);
     }
   }
+  if ($tableUpdate) {
+  		my $cfgdatastore;
+  		foreach (@{$vmview->layoutEx->file}) {
+			if ($_->type eq 'config') {
+				$_->name =~ /\[([^\]]+)\]/;
+				$cfgdatastore = $hyphash{$hyp}->{datastoreurlmap}->{$1};
+				last;
+			}
+		}
+		my $cfgkey;
+		if ($tablecfg{vm}->{$node}->[0]->{cfgstore}) { #check the config file explicitly, ignore the rest
+			$cfgkey='cfgstore';
+		} elsif ($tablecfg{vm}->{$node}->[0]->{storage}) { #check the config file explicitly, ignore the rest
+			$cfgkey='storage';
+		}
+		$tablecfg{vm}->{$node}->[0]->{$cfgkey} =~ m!nfs://([^/]+)/!;
+		my $tablecfgserver =$1;
+		my $cfgserver = inet_aton($tablecfgserver);
+		if ($cfgserver) {
+			$cfgserver = inet_ntoa($cfgserver); #get the IP address (TODO: really need to wrap getaddrinfo this handily...
+			my $cfgurl = $tablecfg{vm}->{$node}->[0]->{$cfgkey};
+			$cfgurl =~ s/$tablecfgserver/$cfgserver/;
+			if ($cfgurl ne $cfgdatastore) {
+				$updatehash{$cfgkey} = $cfgdatastore;
+		    }
+		}
+  }
+  if($tableUpdate){
+    my $vm=xCAT::Table->new('vm',-create=>1);
+    $vm->setNodeAttribs($node,\%updatehash);
+  }
+
 }
 
 
@@ -3489,11 +3526,13 @@ sub refreshclusterdatastoremap {
              #            xCAT::SvrUtils::sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"], $output_handler);
              #        }
                      $clusterhash{$cluster}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
+                     $clusterhash{$cluster}->{datastoreurlmap}->{$dsv->info->name} = "nfs://".$mnthost.$dsv->info->nas->remotePath; #save off a suitable URL if needed
                      $clusterhash{$cluster}->{datastorerefmap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$_;
                 } #TODO: care about SMB
             }elsif(defined $dsv->info->{vmfs}){
                 my $name = $dsv->info->vmfs->name;
                 $clusterhash{$cluster}->{datastoremap}->{"vmfs://".$name} = $dsv->info->name;     
+				$clusterhash{$cluster}->{datastoreurlmap}->{$dsv->info->name} = "vmfs://".$name;
                 $clusterhash{$cluster}->{datasotrerefmap}->{"vmfs://".$name} = $_;
             }
         }
@@ -3529,11 +3568,13 @@ sub validate_datastore_prereqs {
                         xCAT::SvrUtils::sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"], $output_handler);
                     }
                     $hyphash{$hyp}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
+                    $hyphash{$hyp}->{datastoreurlmap}->{$dsv->info->name} = "nfs://".$mnthost.$dsv->info->nas->remotePath;
                     $hyphash{$hyp}->{datastorerefmap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$_;
                 } #TODO: care about SMB
             }elsif(defined $dsv->info->{vmfs}){
                 my $name = $dsv->info->vmfs->name;
                 $hyphash{$hyp}->{datastoremap}->{"vmfs://".$name} = $dsv->info->name;     
+                $hyphash{$hyp}->{datastoreurlmap}->{$dsv->info->name} = "vmfs://".$name;
                 $hyphash{$hyp}->{datastorerefmap}->{"vmfs://".$name} = $_;
             }
         }
@@ -3567,6 +3608,7 @@ sub validate_datastore_prereqs {
                     unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, must mount it
                         $refresh_names=1;
                         ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=mount_nfs_datastore($hostview,$location);
+						$hyphash{$hyp}->{datastoreurlmap}->{$hyphash{$hyp}->{datastoremap}->{$uri}} = $uri;
                     }
                 }elsif($method =~ /vmfs/){
                     (my $name, undef) = split /\//,$location,2;
@@ -3577,6 +3619,7 @@ sub validate_datastore_prereqs {
                         $refresh_names=1;
                         ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=create_vmfs_datastore($hostview,$name,$hyp);
                         unless($hyphash{hyp}->{datastoremap}->{$uri}){ return 0; }
+						$hyphash{$hyp}->{datastoreurlmap}->{$hyphash{$hyp}->{datastoremap}->{$uri}} = $uri;
                     }
                 }else{
                     xCAT::SvrUtils::sendmsg([1,": $method is unsupported at this time (nfs would be)"], $output_handler,$node);
@@ -3616,7 +3659,8 @@ sub validate_datastore_prereqs {
                         $refresh_names=1;
                         ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=mount_nfs_datastore($hostview,$location);
                     }
-                    $hyphash{$hyp}->{datastoremap}->{$origurl}=$hyphash{$hyp}->{datastoremap}->{$uri};
+					$hyphash{$hyp}->{datastoreurlmap}->{$hyphash{$hyp}->{datastoremap}->{$uri}} = $uri;
+                    $hyphash{$hyp}->{datastoremap}->{$origurl}=$hyphash{$hyp}->{datastoremap}->{$uri}; #we track both the uri xCAT expected and the one vCenter actually ended up with
                     $hyphash{$hyp}->{datastorerefmap}->{$origurl}=$hyphash{$hyp}->{datastorerefmap}->{$uri};
                 }elsif($method =~ /vmfs/){
                     (my $name, undef) = split /\//,$location,2;
@@ -3627,6 +3671,7 @@ sub validate_datastore_prereqs {
                         ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=create_vmfs_datastore($hostview,$name,$hyp);
                         unless($hyphash{hyp}->{datastoremap}->{$uri}){ return 0; }
                     }
+					$hyphash{$hyp}->{datastoreurlmap}->{$hyphash{$hyp}->{datastoremap}->{$uri}} = $uri;
                     $hyphash{$hyp}->{datastoremap}->{$origurl}=$hyphash{$hyp}->{datastoremap}->{$uri};
                     $hyphash{$hyp}->{datastorerefmap}->{$origurl}=$hyphash{$hyp}->{datastorerefmap}->{$uri};
                 }else{
@@ -3656,6 +3701,7 @@ sub validate_datastore_prereqs {
                             xCAT::SvrUtils::sendmsg([1,"Unable to resolve VMware specified host '".$dsv->info->nas->remoteHost."' to an address, problems may occur"], $output_handler);
                         }
                         $hyphash{$hyp}->{datastoremap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$dsv->info->name;
+					    $hyphash{$hyp}->{datastoreurlmap}->{$dsv->info->name} = "nfs://".$mnthost.$dsv->info->nas->remotePath;
                         $hyphash{$hyp}->{datastorerefmap}->{"nfs://".$mnthost.$dsv->info->nas->remotePath}=$_;
                     } #TODO: care about SMB
                 } #TODO: care about VMFS
