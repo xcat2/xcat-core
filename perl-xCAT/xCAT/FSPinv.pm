@@ -259,7 +259,7 @@ sub deconfig {
              #####################################
              my $decfg = XMLin($data);
 	     my $node =  $decfg->{NODE};
-	     if( $node ) {
+	     if( !defined($node) ) {
 		 push @result,[$name,"Deconfigured resources", 0];
 	         push @result,[$name,$node->{Location_code}.",".$node->{RID}, 0];
 		 foreach my $unit(@{$node->{GARDRECORD}}) {
