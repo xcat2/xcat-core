@@ -83,15 +83,9 @@ if($q->param('format'))
   }
 }
 
-#if no resource was specified
-if($pathInfo =~ /^\/$/ || $pathInfo =~ /^$/){
-  print $q->p('Some general xCAT WS page will be served or forwarded to when there is no resource specified');
-  exit(0);
-}
-
-
 my $XCAT_PATH = '/opt/xcat/bin';
 
+#resource handlers
 my %resources = (groups           => \&groupsHandler,
                  images           => \&imagesHandler,
                  logs             => \&logsHandler,
@@ -105,6 +99,15 @@ my %resources = (groups           => \&groupsHandler,
                  accounts         => \&accountsHandler,
                  objects          => \&objectsHandler,
                  vms              => \&vmsHandler);
+
+#if no resource was specified
+if($pathInfo =~ /^\/$/ || $pathInfo =~ /^$/){
+  print $q->p("This is the root page for the xCAT Rest Web Service.  Available resources are:");
+  foreach (sort keys %resources){
+    print $q->p($_);
+  }
+  exit(0);
+}
 
 sub doesResourceExist
 {
@@ -151,7 +154,6 @@ sub handleRequest{
 
 my @groupFields = ('groupname', 'grouptype', 'members', 'wherevals', 'comments', 'disable');
 
-#resource handlers
 
 #get is done
 #post and delete are done but not tested
@@ -273,7 +275,7 @@ sub imagesHandler{
   if(isGet()){
     if(defined $image){
       #call chkosimage, but should only be used for AIX images
-      if($q->param('check')){
+      if($q->param('checkAixImage')){
         $request->{command} = 'chkosimage';
         push @args, $image;
       }
@@ -319,7 +321,7 @@ sub imagesHandler{
   }
   elsif(isPut() || isPatch()){
     #use chkosimage to remove any older versions of the rpms.  should only be used for AIX
-    if($q->param('clean')){
+    if($q->param('cleanAixImage')){
       if(defined $image){
         $request->{command} = 'chkosimage';
         push @args, '-c';
@@ -376,7 +378,7 @@ sub logsHandler{
   else{
    $logType = $q->param('logType');
   }
-  my $nodeRange = $q->param('nodeRange');;
+  my $nodeRange = $q->param('nodeRange');
 
   #no real output unless the log type is defined
   if(!defined $logType){
@@ -411,39 +413,37 @@ sub logsHandler{
         push @args, 'clear';
       }
       else{
-        sendStatusMsg($STATUS_BAD_REQUEST, "nodeRange must be specified to GET remote event logs");
+        sendStatusMsg($STATUS_BAD_REQUEST, "nodeRange must be specified to clean remote event logs");
       }
     }
     else{
-      $request->{command} = 'tabprune';
-      #-a removes all
-      push @args, '-a';
       #should it return the removed entries?
       if(defined $q->param('showRemoved'))
       {
         push @args, '-V';
       }
-    }
-  }
-  #remove some of the entries
-  elsif(isPatch()){
-    $request->{command} = 'tabprune';
-    #should it return the removed entries?
-    if(defined $q->param('showRemoved'))
-    {
-      push @args, '-V';
-    }
-    #remove a certain number of records
-    if(defined $q->param('count')){
-      push @args, ('-n', $q->param('count'));
-    }
-    #remove a percentage of the records
-    if(defined $q->param('percent')){
-      push @args, ('-p', $q->param('percent'));
-    }
-    #remove all records before this record
-    if(defined $q->param('lastRecord')){
-      push @args, ('-i', $q->param('lastRecord'));
+      if(defined $q->param('count') || defined $q->param('percent') || defined $q->param('lastRecord')){
+        #remove some of the entries
+        $request->{command} = 'tabprune';
+
+        #remove a certain number of records
+        if(defined $q->param('count')){
+          push @args, ('-n', $q->param('count'));
+        }
+        #remove a percentage of the records
+        if(defined $q->param('percent')){
+          push @args, ('-p', $q->param('percent'));
+        }
+        #remove all records before this record
+        if(defined $q->param('lastRecord')){
+          push @args, ('-i', $q->param('lastRecord'));
+        }
+      }
+      else{
+        $request->{command} = 'tabprune';
+        #-a removes all
+        push @args, '-a';
+      }
     }
   }
   else{
@@ -540,21 +540,20 @@ sub networksHandler{
   my @args;
 
   if(isGet()){
-
+    $request->{command} = 'tabdump';
+    push @args, 'networks';
   }
   elsif(isPut() or isPatch()){
     my $subResource;
     if(defined $path[1]){
       $subResource = $path[1];
     }
-print "subResource is $subResource\n";
     if($subResource eq "hosts"){
       $request->{command} = 'makehosts';
       #is this needed?
       push @args, 'all';
     }
     elsif($subResource eq "dhcp"){
-print "got here\n";
       #allow restarting of the dhcp service.  scary?
       if($q->param('command') eq "restart"){
         if(isAuthenticUser()){
@@ -579,7 +578,7 @@ print "got here\n";
         }
       }
       else{
-        $request->{command} = 'makedhcp';
+        $request->{command} = 'makedns';
         foreach($q->param('field')){
           push @args, $_;
         }
@@ -637,7 +636,7 @@ sub nodesHandler{
         }
       }
     }
-    elsif($subResource =~ "osimage"){
+    elsif($subResource =~ "osImage"){
       
     }
     elsif($subResource =~ "status"){
@@ -668,8 +667,6 @@ sub nodesHandler{
       }
     }
   }
-  #PUT will remove and readd the nodes
-  #is that true?
   elsif(isPut()){
     my $subResource;
     if(defined $path[2]){
@@ -704,12 +701,13 @@ sub nodesHandler{
           push @args, 'statelite';
         }
       }
-      if(defined $q->param('bmcsetup')){
+      if(defined $q->param('bmcSetup')){
         push @args, "runcmd=bmcsetup";
       }
-      if(defined $q->param('shell')){
-        push @args, 'shell';
-      }
+      #can't do this
+      #if(defined $q->param('shell')){
+        #push @args, 'shell';
+      #}
     }
     else{
       sendErrorMessage($STATUS_BAD_REQUEST, "The subResource \'$request->{subResource}\' does not exist");
@@ -745,20 +743,6 @@ sub nodesHandler{
   my $req = genRequest();
   @responses = sendRequest($req);
 
-  #if($element->{node}){
-    #print "<table>";
-    #foreach my $item (@{$element->{node}}){
-      #print "<tr><td>$item->{name}[0]</td>";
-      #if(exists $item->{data}[0]->{desc}[0]){
-        #print "<td>$item->{data}[0]->{desc}[0]</td>";
-      #}
-      #if(exists $item->{data}[0]->{contents}[0]){
-        #print "<td>$item->{data}[0]->{contents}[0]</td>";
-      #}
-      #print "</tr>";
-    #}
-    #print "</table>";
-  #}
   return @responses;
 }
 
@@ -1077,6 +1061,10 @@ sub accountsHandler{
             push @args, "passwd.$_";
           }
         }
+      }
+      else{
+        $request->{command} = 'tabdump';
+        push @args, 'passwd';
       }
     }
     #cluster user list
@@ -1412,6 +1400,7 @@ sub vmsHandler{
     
   }
   elsif(isDelete()){
+    $request->{command} = 'rmvm';
     if(defined $request->{nodeRange}){
       if(defined $q->param('retain')){
         push @args, '-r';
@@ -1441,25 +1430,19 @@ sub jobsHandler{
 
 }
 
-
 #all data wrapping and writing is funneled through here
 sub wrapData{
   my @data = shift;
+  #trim the serverdone message off
+  if(exists $data[0][$#{$data[0]}]->{serverdone}){
+    pop @{$data[0]};
+  }
   if(exists $formatters{$format}){
     $formatters{$format}->(@data);
   }
 }
 
 sub wrapJson
-{
-  my @data = shift;
-  print header('application/json');
-  my $json;
-  $json->{'data'} = \@data;
-  print to_json($json);
-}
-
-sub wrapJsonOld
 {
   my @data = shift;
   print header('application/json');
@@ -1517,6 +1500,9 @@ sub wrapHtml
               print "<td>$item->{data}[0]</td>";
             }
           }
+          elsif(exists $item->{error}){
+            print "<td>$item->{error}[0]</td>";
+          }
           print "</tr>";
         }
         print "</table>";
@@ -1573,7 +1559,12 @@ sub wrapHtml
 sub wrapXml
 {
   my @data = shift;
-
+  print header('text/xml');
+  foreach(@data){
+    foreach(@$_){
+      print XMLout($_, RootName=>'',NoAttr=>1,KeyAttr=>[]);
+    }
+  }
 }
 
 #general tests for valid requests and responses with HTTP codes here
