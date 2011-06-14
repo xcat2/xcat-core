@@ -1,3 +1,3 @@
 #image,file,options,comments,disable
-"ALL","/var/ct/","bind","for rsct",
-"ALL","/etc/objrepos/","bind","for rsct",
+"ALL","/var/ct/","","for rsct",
+"ALL","/etc/objrepos/","","for rsct",
