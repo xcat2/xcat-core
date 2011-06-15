@@ -234,6 +234,12 @@ sub parse_args {
             qw(h|help V|Verbose v|version i=s x z w r s=s e=s t=s m c n C=s T=s I updatehosts makedhcp resetnet vpdtable))) {
         return( usage() );
     }
+    ####################################
+    # Check for an extra argument
+    ####################################
+    if ( defined( $ARGV[0] )) {
+        return(usage( "Invalid Argument: $ARGV[0]" ));
+    }
 
 
     #############################################
@@ -1465,7 +1471,7 @@ sub gethost_from_url_or_old {
                     @{$::OLD_DATA_CACHE{$entry->{node}}}[0] = undef;
                     @{$::OLD_DATA_CACHE{$entry->{node}}}[1] = undef;
                 }
-                @{$::OLD_DATA_CACHE{$entry->{node}}}[2] = $entry->{side};   
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[2] = $entry->{side};
                 # find node ip address, check node name first, then check hosts table
                 my $ifip = xCAT::Utils->isIpaddr($entry->{node});
                 if ( $ifip )
@@ -1486,7 +1492,7 @@ sub gethost_from_url_or_old {
                 @{$::OLD_DATA_CACHE{$entry->{node}}}[5] = @{$idhash{$entry->{node}}}[1];
                 @{$::OLD_DATA_CACHE{$entry->{node}}}[6] = @{$idhash{$entry->{node}}}[2];
                 @{$::OLD_DATA_CACHE{$entry->{node}}}[7] = 1;
-                
+
             }
         }
         else
@@ -1936,7 +1942,7 @@ sub match_ip_mac
                     for (@mac_sections ) {
                         $_ = "0$_" if ( length($_) == 1) ;
                     }
-                    $mac = join '', @mac_sections;
+                    $mac = join ':', @mac_sections;
                 }
             } elsif ( $arpent =~ /^(\S+)+\s+\S+\s+(\S+)\s/ ) {
                 ($ip, $mac) = ($1,$2);
@@ -2182,9 +2188,7 @@ sub parse_responses {
             if ( length( $severnode1[4] ) > $$length ) {
                 $$length = length( $severnode1[4] );
             }
-            $otherinterfacehash{$hostname}{otherinterfaces} = $ips[0];
 
-            trace( $request, "     Keep the node ip $ips[0] in its otherinterfaces", 1 );
             trace( $request, "     The node $ips[0] match the old data and got the new name $hostname" , 1);
             #begin to define another fsp/bpa
             $hostname = undef;
@@ -2204,8 +2208,6 @@ sub parse_responses {
             if ( length( $severnode2[4] ) > $$length ) {
                 $$length = length( $severnode2[4] );
             }
-            $otherinterfacehash{$hostname}{otherinterfaces} = $ips[1];
-            trace( $request, "     Keep the node ip $ips[1] in its otherinterfaces" , 1);
             trace( $request, "     The node $ips[1] match the old data and got the new name $hostname" , 1);
 
             ###########################################
@@ -2427,11 +2429,15 @@ sub parse_responses {
         {
             trace ( $request, "    The new name is $newname.", 1);
             $hash{$newname} = $data;
+            $otherinterfacehash{$newname}{otherinterfaces} = $ip0;
+            trace( $request, "     Keep the node ip $ip0 in its otherinterfaces" , 1);
         }
         else
         {
             trace ( $request, "    The new name is $h.", 1);
             $hash{$h} = $data;
+            $otherinterfacehash{$h}{otherinterfaces} = $ip0;
+            trace( $request, "     Keep the node ip $ip0 in its otherinterfaces" , 1);
         }
     }
 
@@ -2779,8 +2785,12 @@ sub do_resetnet {
         # find the otherinterfaces for the
         # specified nodes, or the all nodes
         # Skip the node if the IP attributes
-        # is same as otherinterfaces 
+        # is same as otherinterfaces
         #####################################
+        if ( $reset_all eq 0 && !exists( $namehash->{$name}) ){
+            next;
+        }
+        
         if ( $namehash->{$name} ) {
             $hoststab->setNodeAttribs( $name,{otherinterfaces=>$namehash->{$name}} );
         }
