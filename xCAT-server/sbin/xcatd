@@ -1396,11 +1396,13 @@ sub convey_response {
     build_response($resp);
     return;
   }
-  $resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
+  $resp = freeze($resp);
+  #$resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
   #sanitize the response, to avoid being killed by non-printable bytes
-  $resp =~ tr/\011-\177/?/c;
+  #$resp =~ tr/\011-\177/?/c;
   #seeing if using utf-8 offloads potential issues to client terminal, it didn't
   print $parent_fd $resp;
+  print $parent_fd "\nENDOFFREEZE6sK6xa\n";
   yield; #parent must get timeslice anyway before an ack could possibly return
   my $parsel = new IO::Select;
   $parsel->add($parent_fd);
@@ -1654,22 +1656,31 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
   my $text;
   foreach $rfh (@readyset) { #go through each child, extract a complete, atomic message
     my $line;
+    my $resp;
     while ($line = <$rfh>) { #Will break on complete </xcatresponse> messages, avoid interleave
-      eval {
-        print $sock $line; 
-      };
+	$resp .= $line;
+	if ($line =~ /ENDOFFREEZE6sK6xa\n/) {
+		print $rfh "nfin\n"; #ok, ack the data (superfluous, but svn revision history shows an oddity with killed processes and assuming that was legit... for now)
+					#ack before doing the real work to allow child to get back to work
+		$resp = thaw($resp);
+  		$resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
+		#sanitize the response, to avoid being killed by non-printable bytes
+  		$resp =~ tr/\011-\177/?/c;
+  		#seeing if using utf-8 offloads potential issues to client terminal, it didn't
+      		eval {
+		        print $sock $resp; 
+	      	};
+		last;
+      }
       if ($@ and $@ =~ /PIPE/) {
           $goneclient=1;
           print "Piped while writing to client\n";
           last;
       }
-      if ($line =~ /<\/xcatresponse>/) {
-        last;
-      }
     }                       
-    if ($line) { 
-      print $rfh "nfin\n"; #Notify convey_response message done
-    } else {
+    unless ($line) { 
+#      print $rfh "nfin\n"; #Notify convey_response message done
+#    } else {
       $fds->remove($rfh);      
       close($rfh);             
     }
