@@ -32,6 +32,8 @@ use xCAT::Client qw(submit_request);
 my $clientselect = new IO::Select;
 my $sslclients = 0; #THROTTLE
 my $maxsslclients = 64; #default
+my @deferredmsgargs; # hold argumentlist for MsgUtils call until after fork
+			#parallelizing logging overhead with real work
 
 sub xexit {
    while (wait() > 0) {
@@ -1110,6 +1112,8 @@ sub plugin_command {
     return $Main::resps 
   }
 
+  if (@deferredmsgargs) { xCAT::MsgUtils->message(@deferredmsgargs) };
+  @deferredmsgargs=();
   while (($plugin_numchildren > 0) and ($check_fds->count > 0)) { #this tracks end of useful data from children much more closely
     relay_fds($check_fds,$sock);
   }
@@ -1868,6 +1872,7 @@ sub validate {
           }
         }
       }
+      @deferredmsgargs=(); #should be redundant, but just in case
       if (($request->{command}->[0] ne "getpostscript") && ($request->{command}->[0] ne "getcredentials") && ($skip == 0)) {
       
         # put in audit Table and syslog
@@ -1894,9 +1899,9 @@ sub validate {
         }
         $rsp->{args} -> [0] =$arglist; 
         $rsp->{status} -> [0] = $status;
-        xCAT::MsgUtils->message("SA",$rsp);
+	@deferredmsgargs = ("SA",$rsp);
       } else { # getpostscript or getcredentials, just syslog
-          unless ($::XCATSITEVALS{skipvalidatelog}) { xCAT::MsgUtils->message("S",$logst); }
+          unless ($::XCATSITEVALS{skipvalidatelog}) { @deferredmsgargs=("S",$logst); }
       }
      } # end getbladecons,etc check
       return $rc;
