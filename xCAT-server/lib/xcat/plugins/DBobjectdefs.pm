@@ -798,6 +798,10 @@ sub processArgs
     # must have object name(s) -
     if ((scalar(@::clobjnames) == 0) && (scalar(@::fileobjnames) == 0))
     {
+        my $rsp;
+        $rsp->{data}->[0] =
+          "No object names were provided.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 3;
     }
 
