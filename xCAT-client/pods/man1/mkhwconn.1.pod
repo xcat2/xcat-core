@@ -12,7 +12,7 @@ B<mkhwconn> [B<-v>| B<--version>]
 
 B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-t> [B<--port> I<port_value>]
 
-B<mkhwconn> [B<-V>| B<--verbose>] Inoderange B<-s> [B<--port> I<port_value>]
+B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-s> [B<--port> I<port_value>]
 
 B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-p> I<hmc> [B<-P> I<passwd>] [B<--port> I<port_value>]
 
