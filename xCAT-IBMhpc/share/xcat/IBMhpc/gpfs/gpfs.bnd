@@ -6,4 +6,4 @@ I:gpfs.base
 #I:gpfs.docs.data
 
 # For TEAL GPFS collector service node
-I:teal.gpfs-sn
+#I:teal.gpfs-sn
