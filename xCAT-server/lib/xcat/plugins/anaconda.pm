@@ -73,6 +73,7 @@ my %distnames = (
                  "1241464993.830723" => "rhas4.8", #x86-64
 
 		 "1273608367.051780" => "SL5.5", #x86_64 DVD ISO
+		 "1299104542.844706" => "SL6", #x86_64 DVD ISO
                  );
 my %numdiscs = (
                 "1156364963.862322" => 4,
@@ -554,9 +555,9 @@ sub mknetboot
 		        }
 
                 # special case for redhat6, fedora12/13/14
-                if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/ 
+                if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/
                     || $osver =~ m/fedora12/ || $osver =~ m/fedora13/ 
-                    || $osver =~ m/fedora14/ ) {
+                    || $osver =~ m/fedora14/ || $osver =~ m/SL6/) {
                     $kcmdline = "root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
                 } else {
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
@@ -728,27 +729,28 @@ sub mknetboot
         # special case for the dracut-enabled OSes
         if ($osver =~ m/rhels6/ || $osver =~ m/rhel6/ 
             || $osver =~ m/fedora12/ || $osver =~ m/fedora13/
-            || $osver =~ m/fedora14/ ) {
+            || $osver =~ m/fedora14/ || $osver =~ m/SL6/) {
             if($statelite and $rootfstype eq "ramdisk") {
                 $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
             }
         }
-		
-		if($statelite)
-		{
-		    my $statelitetb = xCAT::Table->new('statelite');
-		    my $mntopts = $statelitetb->getAttribs({node => $node}, 'mntopts');
-		    
-		    my $mntoptions = $mntopts->{'mntopts'};
-		    unless (defined($mntoptions))
-		    {
-				$kcmdline .= " MNTOPTS=";
-			}
-			else
-			{
-				$kcmdline .= " MNTOPTS=$mntoptions";
-			}			
-		}
+
+        if($statelite)
+        {
+            my $statelitetb = xCAT::Table->new('statelite');
+            my $mntopts = $statelitetb->getAttribs({node => $node}, 'mntopts');
+
+            my $mntoptions = $mntopts->{'mntopts'};
+            unless (defined($mntoptions))
+            {
+                $kcmdline .= " MNTOPTS=";
+            }
+            else
+            {
+                $kcmdline .= " MNTOPTS=$mntoptions";
+            }
+        }
+
         $bptab->setNodeAttribs(
             $node,
             {
