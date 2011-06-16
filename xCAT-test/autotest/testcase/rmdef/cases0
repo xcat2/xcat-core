@@ -1,7 +1,6 @@
 start:rmdef_null
 description:rmdef without any flag
 cmd:rmdef
-check:rc!=0
 check:output=~Usage
 end
 
@@ -127,5 +126,5 @@ start:rmdef_t_err
 description:rmdef -t wrongtype
 cmd:rmdef -t wrongtype -o testnode
 check:rc!=0
-check:output=~Usage
+check:output=~not a valid
 end

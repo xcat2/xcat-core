@@ -1,7 +1,6 @@
 start:chdef_null
 description:chdef without any flag
 cmd:chdef
-check:rc!=0
 check:output=~Usage
 end
 
@@ -204,5 +203,5 @@ start:chdef_t_o_error
 description:chdef -t wrongtype
 cmd:chdef -t wrongtype -o testnode groups=all,aix
 check:rc!=0
-check:output=~Usage
+check:output=~not a valid
 end

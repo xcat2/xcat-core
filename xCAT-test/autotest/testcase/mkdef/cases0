@@ -1,7 +1,6 @@
 start:mkdef_null
 description:mkdef without any flag
 cmd:mkdef
-check:rc!=0
 check:output=~Usage
 end
 
@@ -156,7 +155,7 @@ start:mkdef_t_o_error
 description:mkdef -t wrongtype
 cmd:mkdef -t wrongtype -o testnode groups=all,aix
 check:rc!=0
-check:output=~Usage
+check:output=~not a valid
 end
 
 
