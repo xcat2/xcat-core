@@ -694,12 +694,14 @@ sub lsxcatd
 
     if ($HELP) { $lsxcatd_usage->(0); return; }
     # Version
-    if ($VERSION) {
+    if ($VERSION || $ALL) {
         my %rsp;
         my $version = xCAT::Utils->Version();
         $rsp{data}->[0] = "$version";
         $cb->(\%rsp);
+      if (!$ALL) {
         return;
+      }
     }
     # no arguments error
     my $xcatcfg;
