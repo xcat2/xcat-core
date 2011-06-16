@@ -37,7 +37,7 @@ Getopt::Long::Configure("bundling");
 # display the usage if -h or --help is specified
 
 my $tmp=join(' ', @ARGV);
-if (!($tmp =~ /--help|-h|-v|--version/)) {
+if (!($tmp =~ /--help|-h$|-v$|--version/)) {
   my $arg=shift(@ARGV);
   # Set the noderange
   if ($arg !~ /^-/) {
