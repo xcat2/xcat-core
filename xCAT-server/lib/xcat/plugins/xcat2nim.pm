@@ -723,6 +723,15 @@ sub x2n
 		if ($::objtype{$obj} eq 'node') {
 			push(@nodes, $obj);
 		} elsif ($::objtype{$obj} eq 'network') {
+                        if ($::objhash{$obj}{'gateway'} eq '<xcatmaster>') {
+                            $::objhash{$obj}{'gateway'} = xCAT::NetworkUtils->my_ip_in_subnet($::objhash{$obj}{'net'}, $::objhash{$obj}{'mask'});
+                            if(!$::objhash{$obj}{'gateway'}) {
+                                my $rsp;
+                                $rsp->{data}->[0] = "Could not get gateway for network $obj, ...skipping\n";
+                                xCAT::MsgUtils->message("E", $rsp, $callback);
+                                next;
+                            }
+                        }
 			push(@networks, $obj);
 		} elsif ($::objtype{$obj} eq 'group') {
 			push(@groups, $obj);
