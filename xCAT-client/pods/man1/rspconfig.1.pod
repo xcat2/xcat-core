@@ -82,6 +82,8 @@ B<rspconfig> I<noderange> {B<hostname>}
 
 B<rspconfig> I<noderange> B<hostname>={B<*|name>}
 
+B<rspconfig> I<noderange> B--resetnet
+
 =head2 BPA Specific:
 
 B<rspconfig> I<noderange> {B<network>}
@@ -104,6 +106,8 @@ B<rspconfig> I<noderange> {B<hostname>}
 
 B<rspconfig> I<noderange> B<hostname>={B<*|name>}
 
+B<rspconfig> I<noderange> B--resetnet
+
 =head2 FSP/CEC (using Direct FSP Management) Specific:
 
 B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
@@ -113,6 +117,8 @@ B<rspconfig> I<noderange> B<admin_passwd>={B<currentpasswd,newpasswd>}
 B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
+
+B<rspconfig> I<noderange> B--resetnet
 
 =head2 BPA/Frame (using Direct FSP Management) Specific:
 
@@ -128,11 +134,15 @@ B<rspconfig> I<noderange> {B<frame>}
 
 B<rspconfig> I<noderange> B<frame>={B<*|frame_number>}
 
+B<rspconfig> I<noderange> B--resetnet
+
 =head2 HMC Specific:
 
 B<rspconfig> I<noderange> {B<sshcfg>}
 
 B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
+
+B<rspconfig> I<noderange> B--resetnet
 
 =head1 DESCRIPTION
 
@@ -285,6 +295,10 @@ Enter the current time in UTC (Coordinated Universal Time) format.
 =item B<textid>={I<*|textid>}
 
 Set the blade or MPA textid. When using '*', the textid used is the node name specified on the command-line. Note that when specifying an actual textid, only a single node can be specified in the noderange.
+
+=item B<--resetnet>
+
+Reset the network interfaces of the specified nodes.
 
 =item B<v3>
 
@@ -480,6 +494,23 @@ B<rspconfig> I<mm01 memdecfg=deconfigure:bank:0:9,10>
 
  mm01: Success
 
+=item *
+
+To reset the network interface of the specified nodes:
+
+B<rspconfig> I<--resetnet>
+
+Output is similar to:
+
+ Start to reset network..
+
+ Reset network failed nodes:
+
+ Reset network succeed nodes:
+ Server-8233-E8B-SN1000ECP-A,Server-9119-FHA-SN0275995-B,Server-9119-FHA-SN0275995-A,
+
+ Reset network finished.
+ 
 =back
 
 To update the existing admin password on fsp:
