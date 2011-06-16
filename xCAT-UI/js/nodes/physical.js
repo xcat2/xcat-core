@@ -355,7 +355,8 @@ function createGraphical(bpa, fsp, area){
 		position: "center right",
 		relative : true,
 		offset : [10, -40],
-		effect: "fade"
+		effect: "fade",
+		opacity: 0.9
 	});
 	
 	$('.tooltip a').bind('click', function(){

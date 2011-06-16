@@ -30,6 +30,7 @@
 .tooltip h3 {
 	margin: 0px;
 }
+
 /*--------------- login dialog ---------*/
 #logdialog {
 	width: 600px;
@@ -44,7 +45,7 @@
 }
 
 #logdialog input{
-	width: 225px;
+	width: 219px;
 	border: solid 1px #0078AE;
 	font-size: 14px;
 }
@@ -203,12 +204,17 @@ body {
 
 /*--------------- Nodes section ---------------*/
 #nodes {
-	width: 760px;
+	width: 800px;
 	min-height: 570px;
 	margin: 15px 0px 15px 0px;
 	padding: 0px 0px 0px 10px;
 	display: inline-block;
 	border-left: medium solid #E6E6F2;
+}
+
+#nodes .summarypie {
+	width: 250px;
+	height: 250px;
 }
 
 /*--------------- Info/warning bar ---------------*/
@@ -339,10 +345,26 @@ legend {
 	height: 300px;
 }
 
-/*--------------- Actions bar ---------------*/
+/*--------------- menu Div Actions bar ---------------*/
+.menuDiv {
+	background:none repeat scroll 0 0 #79B7E7;
+	padding: 0.5em;
+}
+
+.sf-menu {
+	background : none repeat scroll 0 0 #79B7E7;
+	border :1px solid #f5f5f5;
+	border-radius :0.5em 0.5em 0.5em 0.5em;
+	margin-bottom: 0;
+}
+
+.sf-sub-indicator{
+	right:0;
+}
+
 .actionBar {
 	display: inline-table;
-	padding: 8px 0px 0px 8px;
+	width:50%;
 }
 
 .actionBar div {
@@ -385,11 +407,10 @@ legend {
 
 /*** Search ***/
 .dataTables_filter {
-	width: 50%;
+	width: 40%;
 	display: block;
 	float: right;
 	text-align: right;
-	padding: 8px 8px;
 }
 
 .tab input,select {

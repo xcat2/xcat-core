@@ -89,7 +89,7 @@ function login() {
 				<tr><td colspan=5></td></tr>
 			    <tr><td align=right><img src="images/logo.png" width="50" height="35"></img></td><td colspan=4><p>eXtreme Cloud Administration Toolkit</p></td></tr>
 			    <tr><td colspan=5></td></tr>
-				<tr><td></td><td><label for=username>User name:</label></td><td colspan=2><input id=username type=text name=username></td><td></td></tr>
+				<tr><td></td><td><label for=username>Username:</label></td><td colspan=2><input id=username type=text name=username></td><td></td></tr>
 				<tr><td></td><td><label for=password>Password:</label></td><td colspan=2><input id=password type=password name=password></td><td></td></tr>
 				<tr><td></td><td></td><td></td><td align=right><button>Login</button></td><td></td></tr>
 				<tr><td></td><td colspan=4><span id=logstatus></span></td></tr>

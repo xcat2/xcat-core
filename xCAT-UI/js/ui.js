@@ -440,7 +440,6 @@ function createMenu(items) {
 				'border-left' : '1px solid #BDBDBD'
 			});
 		}
-
 		menu.append(item);
 	}
 
@@ -465,7 +464,10 @@ function initPage() {
 	includeJs("js/jquery/jquery.flot.min.js");
 	includeJs("js/jquery/tooltip.min.js");
 	includeJs("js/jquery/jquery.serverBrowser.min.js");
-
+	includeJs("js/jquery/jquery.jqplot.min.js");
+    includeJs("js/jquery/jqplot.pieRenderer.min.js");
+    includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
+    
 	// Page plugins
 	includeJs("js/configure/configure.js");	
 	includeJs("js/monitor/monitor.js");
@@ -506,9 +508,6 @@ function initPage() {
 		headers.eq(2).css('background-color', '#A9D0F5');
 		loadProvisionPage();
 	} else if (page == 'monitor.php') {
-		includeJs("js/jquery/jquery.jqplot.min.js");
-		includeJs("js/jquery/jqplot.pieRenderer.min.js");
-		includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
 		includeJs("js/monitor/xcatmon.js");
 		includeJs("js/monitor/rmcmon.js");
 		includeJs("js/monitor/gangliamon.js");

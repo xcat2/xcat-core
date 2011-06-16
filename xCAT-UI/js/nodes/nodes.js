@@ -83,10 +83,156 @@ function loadNodesPage() {
 				msg : ''
 			},
 
-			success : loadGroups
+			success : function(data){
+				loadGroups(data);
+				// draw cluster's summary by group names
+				loadPieSummary();
+			}
 		});
 		
+		
 	}
+}
+
+/**
+ * show cluster's summary in pie chats
+ * 
+ * @return Nothing
+ */
+function loadPieSummary(){
+	$('#nodes').append('<h3>Cluster Summary</h3><hr/>');
+	var summaryTable = '<table>' +
+					   '<tr>' +
+					   '<td><div id="ospie" class="summarypie"></div></td>' +
+					   '<td><div id="archpie" class="summarypie"></div></td>' +
+					   '<td><div id="provmethodpie" class="summarypie"></td>' +
+					   '</tr>' +
+					   '<tr>' +
+					   '<td><div id="nodetypepie" class="summarypie"></div></td>' +
+					   '<td><div id="statuspie" class="summarypie"></div></td>' +
+					   '</tr></table>';
+	$('#nodes').append(summaryTable);
+
+	$('#nodes .summarypie').append(createLoader());
+
+	// determine the group names
+	var groups = $.cookie('groups');
+	groups = groups.toLowerCase();
+	var tgtGroup = 'compute';
+	if (-1 != groups.indexOf('compute')){
+		tgtGroup = 'compute';
+	}
+	else if(-1 != groups.indexOf('lpar')){
+		tgtGroup = 'lpar';
+	}
+	else if(-1 != groups.indexOf('blade')){
+		tgtGroup = 'blade';
+	}
+	else if(-1 != groups.indexOf('ipmi')){
+		tgtGroup = 'ipmi';
+	}
+
+	drawPieSummary('Operating System', 'nodetype.os', tgtGroup, 'ospie');
+	drawPieSummary('Architecture', 'nodetype.arch', tgtGroup, 'archpie');
+	drawPieSummary('Provision Method', 'nodetype.provmethod', tgtGroup, 'provmethodpie');
+	drawPieSummary('Node Type', 'nodetype.nodetype', tgtGroup, 'nodetypepie');
+	drawPieSummary('Status', 'nodelist.status', tgtGroup, 'statuspie');
+}
+
+/**
+ * use nodels to get nodes' information and call jqplot to draw on the page
+ * 
+ * @return Nothing
+ */
+function drawPieSummary(chattitle, field, tgtgroup, divid){
+	$.ajax({
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'nodels',
+			tgt : tgtgroup,
+			args : field,
+			msg : '' 
+		},
+		
+		success : function(data){
+			var tempHash={};
+			var key = '';
+			for(var index in data.rsp){
+				key =data.rsp[index][1];
+				if('' == key){
+					key = 'unknown';
+				}
+				
+				if(tempHash[key]){
+					tempHash[key]++;
+				}else {
+					tempHash[key] = 1;
+				}
+			}
+			
+            var dataArray = [];
+            for (key in tempHash){
+           		dataArray.push([key,tempHash[key]]);
+			}
+                        
+			$('#nodes #' + divid).empty();
+			var plot=$.jqplot(divid,
+					[dataArray],
+					{
+    	                title: chattitle,
+            	        seriesDefaults: {
+                    	renderer: $.jqplot.PieRenderer,
+            	        rendererOptions: {
+                    	    padding: 2,
+                            fill:true,
+                            shadow:true,
+                            shadowOffset: 2,
+                            shadowDepth: 5,
+	                        shadowAlpha: 0.07,
+        	                dataLabels : 'value',
+        	                showDataLabels: true
+                    		}
+                        },
+                        legend: {
+	                        show:true,
+        	                rendererOptions: {
+                	            numberRows: 1
+                        	},
+                            location: 's'
+                        }
+    	            });
+    		$('#'+divid).bind('jqplotDataClick',loadSummaryDetail);
+    		$('#'+divid).bind('jqplotDataHighlight',function(){this.style.cursor='pointer';});
+    		$('#'+divid).bind('jqplotDataUnhighlight',function(){this.style.cursor='';});
+		}
+	});
+}
+
+function loadSummaryDetail(ev, seriesIndex, pointIndex, data){
+	var temp = $(this).attr('id');
+	temp = temp.replace('pie', '');
+	var table = '';
+	switch(temp){
+	    case 'os':
+	    case 'arch':
+	    case 'provmethod':
+	    case 'nodetype':{
+	        table = 'nodetype';
+	    }
+        break;
+	    case 'status': {
+	        table = 'nodelist';
+	    }
+	    break;
+	}
+
+	var args = table + '.' + temp + '==';
+	if(data[0] != 'unknown'){
+	    args += data[0];
+	}
+	
+	drawNodesArea('all', args, '');
 }
 
 /**
@@ -138,90 +284,11 @@ function loadGroups(data) {
 		
 		var thisGroup = jQuery.trim(data.rslt.obj.text());
 		if (thisGroup) {
-			// Clear nodes division
-			$('#nodes').children().remove();
-			
-			// Create loader
-			var loader = $('<center></center>').append(createLoader());
-			
-			// Create a tab for this group
-			var tab = new Tab('nodesPageTabs');
-			setNodesTab(tab);
-			tab.init();
-			$('#nodes').append(tab.object());
-			tab.add('nodesTab', 'Table', loader, false);
-			tab.add('graphTab', 'Graphic', '', false);
-			
-			$('#nodesPageTabs').bind('tabsselect', function(event, ui){
-				//for the graphical tab, we should check the graphical data first
-				if (1 == ui.index){
-					createPhysicalLayout(nodesList);
-				}
-			});
-			// To improve performance, get all nodes within selected group
-			// Get node definitions only for first 50 nodes
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'nodels',
-					tgt : thisGroup,
-					args : '',
-					msg : thisGroup
-				},
-
-				/**
-				 * Get node definitions for first 50 nodes
-				 * 
-				 * @param data
-				 *            Data returned from HTTP request
-				 * @return Nothing
-				 */
-				success : function(data) {
-					var rsp = data.rsp;
-					var group = data.msg;
-					
-					// Save nodes in a list so it can be accessed later
-					nodesList = new Array();
-					for (var i in rsp) {
-						if (rsp[i][0]) {
-							nodesList.push(rsp[i][0]);
-						}
-					}
-					
-					// Sort nodes list
-					nodesList.sort();
-					
-					// Get first 50 nodes
-					var nodes = '';
-					for (var i = 0; i < nodesList.length; i++) {
-						if (i > 49) {
-							break;
-						}
-						
-						nodes += nodesList[i] + ',';						
-					}
-								
-					// Remove last comma
-					nodes = nodes.substring(0, nodes.length-1);
-					
-					// Get nodes definitions
-					$.ajax( {
-						url : 'lib/cmd.php',
-						dataType : 'json',
-						data : {
-							cmd : 'lsdef',
-							tgt : '',
-							args : nodes,
-							msg : group
-						},
-
-						success : loadNodes
-					});
-					
-				}
-			});
-				
+		    //click the root, return directly
+		    if ('root' == thisGroup){
+		        return;
+		    }
+		    drawNodesArea(thisGroup, '', thisGroup);
 			/*
 			// Get subgroups within selected group
 			// only when this is the parent group and not a subgroup
@@ -248,6 +315,101 @@ function loadGroups(data) {
 	$('#groups').append(mkAddNodeLink());
 }
 
+/**
+ * empty the nodes area, and add two tabs for add loading nodes result
+ * 
+ * @param targetgroup: the name range for nodels command
+ *        arguments: filter arguments for nodels command
+ *        message: the useful information for the http request
+ *            
+ * @return
+ */
+function drawNodesArea(targetgroup, arguments, message){
+ // Clear nodes division
+    $('#nodes').empty();
+    
+    // Create loader
+    var loader = $('<center></center>').append(createLoader());
+    
+    // Create a tab for this group
+    var tab = new Tab('nodesPageTabs');
+    setNodesTab(tab);
+    tab.init();
+    $('#nodes').append(tab.object());
+    tab.add('nodesTab', 'Table', loader, false);
+    tab.add('graphTab', 'Graphic', '', false);
+    
+    $('#nodesPageTabs').bind('tabsselect', function(event, ui){
+        // for the graphical tab, we should check the graphical data
+        // first
+        if (1 == ui.index){
+            createPhysicalLayout(nodesList);
+        }
+    });
+    // To improve performance, get all nodes within selected group
+    // Get node definitions only for first 50 nodes
+    $.ajax( {
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'nodels',
+            tgt : targetgroup,
+            args : arguments,
+            msg : message
+        },
+
+        /**
+         * Get node definitions for first 50 nodes
+         * 
+         * @param data
+         *            Data returned from HTTP request
+         * @return Nothing
+         */
+        success : function(data) {
+            var rsp = data.rsp;
+            var group = data.msg;
+            
+            // Save nodes in a list so it can be accessed later
+            nodesList = new Array();
+            for (var i in rsp) {
+                if (rsp[i][0]) {
+                    nodesList.push(rsp[i][0]);
+                }
+            }
+            
+            // Sort nodes list
+            nodesList.sort();
+            
+            // Get first 50 nodes
+            var nodes = '';
+            for (var i = 0; i < nodesList.length; i++) {
+                if (i > 49) {
+                    break;
+                }
+                
+                nodes += nodesList[i] + ',';                        
+            }
+                        
+            // Remove last comma
+            nodes = nodes.substring(0, nodes.length-1);
+            
+            // Get nodes definitions
+            $.ajax( {
+                url : 'lib/cmd.php',
+                dataType : 'json',
+                data : {
+                    cmd : 'lsdef',
+                    tgt : '',
+                    args : nodes,
+                    msg : targetgroup
+                },
+
+                success : loadNodes
+            });
+            
+        }
+    });
+}
 /**
  * Make a link to add nodes
  * 
@@ -679,7 +841,6 @@ function loadNodes(data) {
 		if (tgtNodes) {
 			loadNodesetPage(tgtNodes);
 		}
-
 	});
 
 	// Boot to network
@@ -827,10 +988,12 @@ function loadNodes(data) {
 	monitorCol.find('span a').click(function() {
 		refreshGangliaStatus(group, nodesTableId);
 	});
+	var menuDiv=$('<div id=\''+nodesTableId+'_menuDiv\' class=\'menuDiv\'></div>');
+	$('#' + nodesTableId + '_wrapper').prepend(menuDiv);
+	menuDiv.append(actionBar);	
+	$('#'+nodesTableId+'_filter').appendTo(menuDiv);
 	
-	$('#' + nodesTableId + '_wrapper').prepend(actionBar);
-	
-	// Create tooltip for status 
+	// Create tooltip for status
 	var tooltipConf = {
 			position: "center right",
 			offset: [-2, 10],
@@ -849,7 +1012,7 @@ function loadNodes(data) {
 	powerCol.find('span').append(powerTip);
 	powerCol.find('span a').tooltip(tooltipConf);
 	
-	// Create tooltip for monitor 
+	// Create tooltip for monitor
 	var monitorTip = createMonitorToolTip();
 	monitorCol.find('span').append(monitorTip);
 	monitorCol.find('span a').tooltip(tooltipConf);
@@ -933,51 +1096,10 @@ function loadNodes(data) {
 	});
 	
 	/**
-	 * Additional ajax requests need to be made for zVM
-	 */
-	
-	// Get index of hcp column
-	var i = $.inArray('hcp', sorted);
-	var archCol = $.inArray('arch', sorted);
-	if (i) {
-		// Get hardware control point
-		var rows = nodesTable.object().find('tbody tr');
-		var hcps = new Object();
-		var rowsNum = rows.size();
-		for (var j = 0; j < rowsNum; j++) {
-			var val = rows.eq(j).find('td').eq(i).html();
-			var archval = rows.eq(j).find('td').eq(archCol).html();
-			if (-1 == archval.indexOf('390')){
-				continue;
-			}
-			hcps[val] = 1;
-		}
-
-		var args;
-		for (var h in hcps) {
-			// Get node without domain name
-			args = h.split('.');
-			
-			// If there are no disk pools or network names cookie for this hcp
-			if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
-    			// Check if SMAPI is online
-    			$.ajax( {
-    				url : 'lib/cmd.php',
-    				dataType : 'json',
-    				data : {
-    					cmd : 'lsvm',
-    					tgt : args[0],
-    					args : '',
-    					msg : 'group=' + group + ';hcp=' + args[0]
-    				},
-    
-    				// Load hardware control point specific info
-    				// Get disk pools and network names
-    				success : loadHcpInfo
-    			});		
-			}
-		} // End of for
-	} // End of if
+     * Additional ajax requests need to be made for zVM
+     * load advanced information based on hardware architecture 
+     */
+	advancedLoad();
 }
 
 /**
@@ -1174,11 +1296,11 @@ function addNodes2Table(data) {
 		datatable.fnUpdate(rows[nodeRowPos], nodeRowPos, 0, false);
 		
 		// Insert node comments
-		// This is done after datatable is updated because 
+		// This is done after datatable is updated because
 		// you cannot insert an object using fnUpdate()
 		var comments = attrs[node]['usercomment'];
 				
-		// If no comments exists, show 'No comments' and 
+		// If no comments exists, show 'No comments' and
 		// set icon image source
 		var iconSrc;
 		if (!comments) {
@@ -1223,7 +1345,7 @@ function addNodes2Table(data) {
 	/**
 	 * Enable editable columns
 	 */
-	
+	/*
 	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
 	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5))').editable(
 		function(value, settings) {			
@@ -1256,6 +1378,7 @@ function addNodes2Table(data) {
 			placeholder: ' ',
 			height : '30px' 	// The height of the text area
 		});
+	*/
 	
 	// If request to get node status is made
 	if (getNodeStatus) {
@@ -1281,41 +1404,7 @@ function addNodes2Table(data) {
 	/**
 	 * Additional ajax requests need to be made for zVM
 	 */
-	// If there is an hcp column
-	if (headersCol['hcp']) {
-		// Get hardware control point
-		var rows = $('#' + nodesTableId + ' tbody tr');
-		var hcps = new Object();
-		for (var j in rows) {
-			var val = rows.eq(j).find('td').eq(headersCol['hcp']).html();
-			hcps[val] = 1;
-		}
-
-		var args;
-		for (var h in hcps) {
-			// Get node without domain name
-			args = h.split('.');
-						
-			// If there are no disk pools or network names cookie for this hcp
-			if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
-    			// Check if SMAPI is online
-    			$.ajax( {
-    				url : 'lib/cmd.php',
-    				dataType : 'json',
-    				data : {
-    					cmd : 'lsvm',
-    					tgt : args[0],
-    					args : '',
-    					msg : 'group=' + group + ';hcp=' + args[0]
-    				},
-    
-    				// Load hardware control point specific info
-    				// Get disk pools and network names
-    				success : loadHcpInfo
-    			});		
-			}
-		} // End of for
-	} // End of if
+	advancedLoad();
 }
 
 /**
@@ -1414,7 +1503,7 @@ function loadPowerStatus(data) {
  * @param group
  *            Group name
  * @param tableId
- * 			  Table to update node status
+ *            Table to update node status
  * @return Nothing
  */
 function refreshPowerStatus(group, tableId) {
@@ -1478,7 +1567,7 @@ function loadNodeStatus(data) {
  * @param group
  *            Group name
  * @param tableId
- * 			  Table to update node status
+ *            Table to update node status
  * @return Nothing
  */
 function refreshNodeStatus(group, tableId) {
@@ -2148,7 +2237,7 @@ function setOSImageCookies(data) {
 	var profilePos = 0;
 	var osversPos = 0;
 	var osarchPos = 0;
-	//get the column value
+	// get the column value
 	var colNameArray = rsp[0].substr(1).split(',');
 	for (var i in colNameArray){
 		switch (colNameArray[i]){
@@ -3223,4 +3312,80 @@ function installGanglia(node) {
 	
 	// Turn on Ganglia for node
 	monitorNode(node, 'on');
+}
+
+/**
+ * when nodes are loaded, based on different hardware architecture, should load different informations
+ * 
+ * @return Nothing
+ */
+function advancedLoad(){
+    var tempIndex = 0;
+    var tableHeaders = $('#' + nodesTableId + ' th');
+    var colNameHash = new Object();
+    var colName = '';
+    var archCol = 0, hcpCol = 0;
+    //find out the column name and their index
+    for (tempIndex = 0; tempIndex < tableHeaders.size(); tempIndex++){
+        var header = tableHeaders.eq(tempIndex);
+        //if link header(status, power, monitor) can dump to next one
+        if (header.find('a').size() > 0){
+            continue;
+        }
+        
+        colName = header.text();
+        
+        if (colName){
+            colNameHash[colName] = tempIndex;
+        }
+    }
+    
+    //there is not arch column, can not distinguish hardware type return directly
+    if (!colNameHash['arch']){
+        return;
+    }
+    
+    if (!colNameHash['hcp']){
+        return;
+    }
+    archCol = colNameHash['arch'];
+    hcpCol = colNameHash['hcp'];
+    
+    // Get hardware control point
+    var rows = $('#' + nodesTableId + ' tbody tr');
+    var hcps = new Object();
+    var rowsNum = rows.size();
+    for (var j = 0; j < rowsNum; j++) {
+        var val = rows.eq(j).find('td').eq(hcpCol).html();
+        var archval = rows.eq(j).find('td').eq(archCol).html();
+        if (-1 == archval.indexOf('390')){
+            continue;
+        }
+        hcps[val] = 1;
+    }
+
+    var args;
+    for (var h in hcps) {
+        // Get node without domain name
+        args = h.split('.');
+        
+        // If there are no disk pools or network names cookie for this hcp
+        if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
+            // Check if SMAPI is online
+            $.ajax( {
+                url : 'lib/cmd.php',
+                dataType : 'json',
+                data : {
+                    cmd : 'lsvm',
+                    tgt : args[0],
+                    args : '',
+                    msg : 'group=' + group + ';hcp=' + args[0]
+                },
+
+                // Load hardware control point specific info
+                // Get disk pools and network names
+                success : loadHcpInfo
+            });     
+        }
+    } // End of for
 }
