@@ -1,0 +1,69 @@
+#!/bin/sh 
+
+# 
+# Sample script to accept licenses and install ESSL and PESSL packages
+# For AIX:
+#    TBD
+# For Linux:
+#    Assumes all prerequisite software has been installed (e.g. compilers)
+
+
+OS=`uname`
+INSTALL_DIR='/install'
+ESSL_DIR=$essldir
+
+if [ -z "$ESSL_DIR" ]; then
+   # try to default
+   ESSL_DIR=$INSTALL_DIR/post/otherpkgs/$OSVER/$ARCH/essl
+fi
+
+
+
+if [ $OS != "AIX" ]; then
+    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
+    #  Being run from a stateful install postscript
+    #  Copy rpms directly from the xCAT management node and install        
+        mkdir -p /tmp/essl
+        rm -f -R /tmp/essl/*
+        cd /tmp/essl
+        download_dir=`echo $ESSL_DIR | cut -d '/' -f3-`
+        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
+        #rpm -Uvh essl.license*.rpm
+        IBM_ESSL_LICENSE_ACCEPT=yes rpm -Uvh essl*.rpm
+        #install_essl=`find /opt/ibmmath/essl -name install_essl -print`
+        #if [ -n "$install_essl" ] ; then
+        #    $install_essl -y -d . -nodocs
+        #fi
+        #rpm -Uvh pessl.license*.rpm
+        IBM_PESSL_LICENSE_ACCEPT=yes rpm -Uvh pessl*.rpm
+        #install_pessl=`find /opt/ibmmath/pessl -name install_pessl -print`
+        #if [ -n "$install_pessl" ] ; then
+        #    $install_pessl -y -d . -nodocs
+        #fi
+        rm -Rf /tmp/essl
+    fi
+
+    if [ $NODESETSTATE == "genimage" ]; then
+    # Being called from <image>.postinstall script
+    # Assume we are on the same machine
+        tmpdir=tmpessl
+        mkdir $installroot/$tmpdir
+        cp -p $ESSL_DIR/* $installroot/$tmpdir
+        #rpm --root $installroot -Uvh $installroot/$tmpdir/essl.license*.rpm
+        IBM_ESSL_LICENSE_ACCEPT=yes rpm --root $installroot -Uvh $installroot/$tmpdir/essl*.rpm
+        cd $installroot
+        #install_essl=`find opt/ibmmath/essl -name install_essl -print`
+        #if [ -n "$install_essl" ] ; then
+        #    chroot $installroot /$install_essl -y -nodocs -d /$tmpdir
+        #fi
+        #rpm --root  $installroot -Uvh $installroot/$tmpdir/pessl.license*.rpm
+        IBM_PESSL_LICENSE_ACCEPT=yes rpm --root  $installroot -Uvh $installroot/$tmpdir/pessl*.rpm
+        #install_pessl=`find opt/ibmmath/pessl -name install_pessl -print`
+        #if [ -n "$install_pessl" ] ; then
+        #    chroot $installroot /$install_pessl -y -nodocs -d /$tmpdir
+        #fi
+        rm -rf $installroot/$tmpdir
+    fi
+fi  
+
+
