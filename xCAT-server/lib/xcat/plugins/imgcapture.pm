@@ -101,6 +101,12 @@ sub process_request {
         $profile = $ref_nodetype->{profile};
     }
 
+    # -i flag is required with sles genimage
+    if (!$bootif && $os =~ /^sles/) {
+        $bootif = "eth0";
+    }
+    
+
     # check whether the osimage exists or not
     if($osimg) {
         my $osimgtab=xCAT::Table->new('osimage', -create=>1);
