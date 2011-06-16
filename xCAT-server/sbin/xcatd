@@ -1396,6 +1396,7 @@ sub convey_response {
     build_response($resp);
     return;
   }
+  unless ($resp) { return; }
   $resp = freeze($resp);
   #$resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
   #sanitize the response, to avoid being killed by non-printable bytes
