@@ -82,7 +82,7 @@ B<rspconfig> I<noderange> {B<hostname>}
 
 B<rspconfig> I<noderange> B<hostname>={B<*|name>}
 
-B<rspconfig> I<noderange> B--resetnet
+B<rspconfig> I<noderange> B<--resetnet>
 
 =head2 BPA Specific:
 
@@ -106,7 +106,7 @@ B<rspconfig> I<noderange> {B<hostname>}
 
 B<rspconfig> I<noderange> B<hostname>={B<*|name>}
 
-B<rspconfig> I<noderange> B--resetnet
+B<rspconfig> I<noderange> B<--resetnet>
 
 =head2 FSP/CEC (using Direct FSP Management) Specific:
 
@@ -118,7 +118,7 @@ B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B--resetnet
+B<rspconfig> I<noderange> B<--resetnet>
 
 =head2 BPA/Frame (using Direct FSP Management) Specific:
 
@@ -134,7 +134,7 @@ B<rspconfig> I<noderange> {B<frame>}
 
 B<rspconfig> I<noderange> B<frame>={B<*|frame_number>}
 
-B<rspconfig> I<noderange> B--resetnet
+B<rspconfig> I<noderange> B<--resetnet>
 
 =head2 HMC Specific:
 
@@ -142,7 +142,7 @@ B<rspconfig> I<noderange> {B<sshcfg>}
 
 B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
-B<rspconfig> I<noderange> B--resetnet
+B<rspconfig> I<noderange> B<--resetnet>
 
 =head1 DESCRIPTION
 
