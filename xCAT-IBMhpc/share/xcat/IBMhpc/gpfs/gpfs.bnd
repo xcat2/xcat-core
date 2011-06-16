@@ -4,3 +4,6 @@ I:gpfs.base
 # The gpfs.docs.data lpp contains the man pages for GPFS
 # By default, this will not be installed into node images
 #I:gpfs.docs.data
+
+# For TEAL GPFS collector service node
+I:teal.gpfs-sn
