@@ -272,6 +272,12 @@ sub processArgs
         return 2;
     }
     
+    # -t node is the default value
+    if (!$::opt_t && !$::opt_a && ($::command eq "lsdef"))
+    {
+        $::opt_t = 'node';
+    }
+
     # Initialize some global arrays in case this is being called twice in the same process.
     # Currently only doing this when --nocache is specified, but i think it should be done all of the time.
     if ($::opt_nc) {
