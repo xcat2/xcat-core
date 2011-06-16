@@ -768,8 +768,8 @@ sub mkinitrd {
         push @ndrivers, qw{qdio.ko ccwgroup.ko qeth.ko qeth_l2.ko qeth_l3.ko} if ($arch eq "s390x");
         
         # for nfs
-        push @ndrivers, qw{sunrpc.ko lockd.ko nfs_acl.ko fscache.ko auth_rpcgss.ko exportfs.ko nfsd.ko nfs.ko};
-        
+        my @modlist = qw{sunrpc.ko lockd.ko nfs_acl.ko fscache.ko auth_rpcgss.ko exportfs.ko nfsd.ko nfs.ko};
+        unshift(@ndrivers, @modlist);
      }
 
     mkpath("/tmp/xcatinitrd.$$/bin");
@@ -927,7 +927,7 @@ EOMS
 # check the kernel parameters firstly
 # if one parameter for the booting device is here, it will be used
 PRINIC=$prinic
-
+XCATMNTOPTS='nolock,tcp'
 for i in `cat /proc/cmdline`; do
     KEY=`echo \$i |awk -F= '{print \$1}'`
     if [ "\$KEY" == 'netdev' ]; then
@@ -939,6 +939,11 @@ for i in `cat /proc/cmdline`; do
         VALUE=`echo \$i |awk -F= '{print \$2}'`
         # format: XCAT=xcatmaster:xcatdport
         XCATSERVER=\$VALUE
+    elif [ "\$KEY" == 'MNTOPTS' ]; then
+        VALUE=`echo \$i |awk -F\\' '{print \$2}'`
+        # format: MNTOPTS='nolock,time=800'
+        XCATMNTOPTS=\$VALUE
+
     fi
 done
 
@@ -1094,7 +1099,7 @@ fi
         mkdir -p \$NEWROOT/\$RWDIR/persistent
         MAXTRIES=5
         ITER=0
-        while ! mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT  \$NEWROOT/\$RWDIR/persistent -o nolock,tcp
+        while ! mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT  \$NEWROOT/\$RWDIR/persistent -o nolock,\$XCATMNTOPTS
         do
             ITER=\$(expr \$ITER + 1)
             if [ "\$ITER" == "\$MAXTRIES" ]
@@ -1106,7 +1111,7 @@ fi
                 shell
                 exit
             fi
-            echo -e "\${RED}Hmmm... Can't mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT. \${NORMAL}"
+            echo -e "\${RED}Hmmm... Can't mount \$SNAPSHOTSERVER:\$SNAPSHOTROOT. \${NORMAL} \$XCATMNTOPTS"
             RS=`expr \$RANDOM % 20`
             echo -e "Trying again in \$RS seconds"
             sleep \$RS 

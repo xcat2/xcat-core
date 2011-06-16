@@ -482,6 +482,18 @@ sub mknetboot
 
         my $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
         $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz" if ($statelite);
+
+		if($statelite)
+		{
+		    my $statelitetb = xCAT::Table->new('statelite');
+		    my $mntopts = $statelitetb->getAttribs({node => $node}, 'mntopts');
+		    
+		    my $mntoptions = $mntopts->{'mntopts'};
+		    if(defined($mntoptions))
+		    {
+				$kcmdline .= "MNTOPTS=\'$mntoptions\'";
+		    }			
+		}
         $bptab->setNodeAttribs(
                       $node,
                       {
