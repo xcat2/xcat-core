@@ -64,6 +64,13 @@ sub process_request {
         "verbose|V" => \$verbose
     );
 
+    if ( defined( $ARGV[0] )) {
+        my $rsp = {};
+        $rsp->{data}->[0] = "Invalid Argument: $ARGV[0]";
+        $rsp->{data}->[1] = $usage;
+        xCAT::MsgUtils->message("D", $rsp, $callback);
+        return 0;
+    }
     if($version) {
         my $version = xCAT::Utils->Version();
         my $rsp = {};
