@@ -36,6 +36,7 @@ sub getzonesfornet {
             die "Not supporting having a mask like $mask on an ipv6 network like $net";
         }
         my $netnum= getipaddr($net,GetNumber=>1);
+	unless ($netnum) { return (); }
         $netnum->brsft(128-$maskbits);
         my $prefix=$netnum->as_hex();
         my $nibbs=$maskbits/4;
