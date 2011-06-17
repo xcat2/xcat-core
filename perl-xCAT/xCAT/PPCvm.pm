@@ -7,6 +7,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCdb;
 use xCAT::Usage;
 use xCAT::NodeRange;
+use Data::Dumper;
 
 
 ##############################################
@@ -56,7 +57,7 @@ sub chvm_parse_args {
     #############################################
     # Process command-line arguments
     #############################################
-    if ( !defined( $args )) {
+    if ( !defined( $args ) && !defined( $request->{stdin} ) ) {
         $request->{method} = $cmd;
         return( usage() );
     }
@@ -65,7 +66,8 @@ sub chvm_parse_args {
     # to be grouped (e.g. -vx), and terminates
     # at the first unrecognized option.
     #############################################
-    @ARGV = @$args;
+    if ($args) { @ARGV = @$args; }
+    else { @ARGV = (); }
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
