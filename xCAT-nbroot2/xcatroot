@@ -1,0 +1,8 @@
+#!/bin/sh
+echo "Starting xCAT mini-environment" 
+NEWROOT=$3
+XCATMASTER=$XCAT
+while :
+do
+ /bin/dash
+done

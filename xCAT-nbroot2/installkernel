@@ -1,0 +1,4 @@
+#!/bin/bash
+instmods nfs sunrpc
+instmods e1000 e1000e virtio_net igb ines mlx4_en cxgb3 cxgb4 bnx2 bnx2x bna ixgb qlge mpt2sas ata_piix megaraid_sas virtio_blk ahci ibmaem xhci-hcd sd_mod pmcraid be2net ext3 ext4 btrfs reiserfs usb_storage scsi_wait_scan kvm kvm-intel kvm-amd
+instmods macvlan macvtap 8021q bridge bonding
