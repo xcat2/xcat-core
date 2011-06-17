@@ -9,6 +9,7 @@ use HTML::Form;
 use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::Usage;
 use Socket;
+use xCAT::PPCdb; 
 
 
 ##########################################
@@ -35,7 +36,9 @@ my %cmds = (
      autopower     => ["Auto Power Restart",            \&autopower],
      sysdump       => ["System Dump",                   \&sysdump],
      spdump        => ["Service Processor Dump",        \&spdump],
-     network       => ["Network Configuration",         \&netcfg]},
+     network       => ["Network Configuration",         \&netcfg],
+     dev           => ["Service Processor Command Line",  \&devenable],
+     celogin1      => ["Service Processor Command Line",  \&ce1enable]},
 );
 
 
@@ -62,8 +65,9 @@ sub handler {
 
     foreach ( @$result ) {
         my %output;
-        $output{node}->[0]->{name}->[0] = $server;
-        $output{node}->[0]->{data}->[0]->{contents}->[0] = @$_[1];
+        $output{node}->[0]->{name}->[0] = $request->{host};
+        $output{node}->[0]->{data}->[0]->{contents}->[0] = $server. ": ".@$_[1];
+        $output{node}->[0]->{cmd}->[0] = @$_[2];
         $output{errorcode} = @$_[0];
         push @outhash, \%output;
     }
@@ -79,6 +83,14 @@ sub handler {
 ##########################################################################
 # Logon through remote FSP HTTP-interface
 ##########################################################################
+my %logonname = (
+        hmc   => ["hscroot","abc123"],
+        ivm   => ["padmin", "padmin"],
+        fsp   => ["admin",  "admin"],
+        bpa   => ["admin",  "admin"],
+        frame => ["admin",  "admin"],    
+        cec   => ["admin",  "admin"], 
+        );
 sub connect {
 
     my $req     = shift;
@@ -97,7 +109,14 @@ sub connect {
     # Get userid/password 
     ##################################
     my $cred = $req->{$server}{cred};
-
+    my $name = undef;
+    if (($req->{dev} eq '1') or 
+        ($req->{command} eq 'rpower')) {
+        $name = "celogin"; 
+    } else {
+        $name = $logonname{$req->{hwtype}}->[0];
+    }
+    my @cred = xCAT::PPCdb::credentials($server, $req->{hwtype}, $name);
     ##################################
     # Redirect STDERR to variable 
     ##################################
@@ -146,8 +165,8 @@ sub connect {
     # Submit logon
     ##################################
     my $res = $ua->post( $url,
-       [ user     => @$cred[0],
-         password => @$cred[1],
+       [ user     => @cred[0],
+         password => @cred[1],
          lang     => "0",
          submit   => "Log in" ]
     );
@@ -176,7 +195,7 @@ sub connect {
         ##############################
         return( $ua,
                 $server,
-                @$cred[0],
+                @cred[0],
                 \$lwp_log );
     }
     ##############################
@@ -196,11 +215,116 @@ sub connect {
     return( $lwp_log."Logon failure" );
 
 }
+sub ce1enable {
+    return &loginenable($_[0], $_[1], $_[2], "celogin1");
+}
 
+sub devenable {
+    return &loginenable($_[0], $_[1], $_[2], "dev");
+}
+my %cmdline_for_log = (
+    dev => {
+        enable => "registry -Hw nets/DevEnabled 1",
+        disable => "registry -Hw nets/DevEnabled 0",
+        check_pwd => "registry -l DevPwdFile",
+        create_pwd => "netsDynPwdTool --create dev FipSdev",
+        password => "FipSdev"
+    },
+    celogin1 => {
+        enable => "registry -Hw nets/CE1Enabled 1",
+        disable => "registry -Hw nets/CE1Enabled 0",
+        check_pwd => "registry -l Ce1PwdFile",
+        create_pwd => "netsDynPwdTool --create celogin1 FipSce1",
+        password => "FipSce1"
+    },
+    );
+sub send_command {
+    my $ua     = shift;
+    my $server = shift;
+    my $id = shift;
+    my $log_name = shift;
+    my $cmd = shift;
+    my $cmd_line = $cmdline_for_log{$log_name}{$cmd};
+    if (!defined($cmd_line)) {
+        return undef;
+    }
+    my $res = $ua->post( "https://$server/cgi-bin/cgi",
+            [ form   => $id,
+            cmd   => $cmd_line,
+            submit => "Execute" ]
+            );
 
-##########################################################################
-# Logoff through remote FSP HTTP-interface
-##########################################################################
+    if ( !$res->is_success() ) {
+        return undef;
+    }
+    if ( $res->content =~ /(not allowed.*\.|Invalid entry)/ ) {
+        return undef;
+    } 
+    return $res->content;
+}
+sub loginstate {
+    my $ua = shift;
+    my $server = shift;
+    my $log_name = shift;
+    my $url = "https://$server/cgi-bin/cgi?form=4";
+    my $res = $ua->get($url);
+    if (!$res->is_success()) {
+        return ([RC_ERROR, $res->status_line]);
+    }
+    if ($res->content =~ m#$log_name</td><td>(\w+)</td>#) {
+        my $out = sprintf("%9s: %8s", $log_name, $1);
+        return ( [SUCCESS, $out]);
+    } else {
+        return ( [RC_ERROR, "not found status for $log_name"]);
+    }
+}
+
+sub loginenable {
+    my $exp     = shift;
+    my $request = shift;
+    my $id      = shift;
+    my $log_name = shift;
+    my $ua      = @$exp[0];
+    my $server  = @$exp[1];
+    
+    my $value = $request->{method}{$log_name};
+    if (!defined($value)) {
+        return &loginstate($ua, $server, $log_name);
+       }
+    my $url = "https://$server/cgi-bin/cgi?form=$id";
+    my $res = $ua->get( $url );
+    if (!$res->is_success()) {
+        return( [RC_ERROR,$res->status_line] );
+    }
+
+    $res = &send_command($ua, $server, $id, $log_name, $value);
+    if (!defined($res)) {
+        return ([RC_ERROR, "Send command Failed"]);
+    }
+    if ( $value =~ m/^disable$/ ) {
+        my $out = sprintf("%9s: Disabled", $log_name);
+        return( [SUCCESS, $out] );
+    }
+#check password#
+    $res = &send_command($ua, $server, $id, $log_name, "check_pwd");
+    if (!defined($res)) {
+        return ([RC_ERROR, "Send command Failed"]);
+    }
+    my $password = undef; 
+    if ($res =~ m/\[\d+([a-zA-Z]+)\d+\]/) {
+        $password = $1;
+    } else {
+# create password #
+        $res = &send_command($ua, $server, $id, $log_name, "create_pwd");
+        if (!defined($res)) {
+            return ([RC_ERROR, "Send command Failed"]);
+        }
+        $password = $cmdline_for_log{$log_name}{password};
+        print "create password for $log_name is '$cmdline_for_log{$log_name}{password}'\n";
+    }
+    my $out = sprintf("%9s:  Enabled, password: $password", $log_name);
+    return( [SUCCESS, $out] );
+}
 sub disconnect {
 
     my $exp    = shift;
@@ -276,6 +400,7 @@ sub process_cmd {
         # Run command 
         ##################################
         my $res = $cmds{$command}{$_}[1]($exp, $request, $form, \%menu);
+        push @$res, $_;
         push @result, $res;
     }
     return( \@result );

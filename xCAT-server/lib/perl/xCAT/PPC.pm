@@ -1241,6 +1241,210 @@ sub fork_cmd {
     }
     return(0);
 }
+sub handle_cmd {
+    my $server = shift;
+    my $host = shift;
+    my $request = shift;
+    my $verbose = $request->{verbose};
+    eval { require xCAT::PPCfsp };
+    if ( $@ ) {
+       send_msg( $request, 1, $@ );
+       return;
+    }
+    my @exp = xCAT::PPCfsp::connect( $request, $server );
+
+####################################
+# Error connecting 
+####################################
+    if ( ref($exp[0]) ne "LWP::UserAgent" ) {
+#send_msg( $request, 1, $exp[0] );
+        my @output_array;
+        my $methods = $request->{method};
+        foreach ( keys %$methods) {
+            my %output;
+            $output{node}->[0]->{name}->[0] = "$host";
+            $output{node}->[0]->{data}->[0]->{contents}->[0] = "$server: $exp[0]";
+            $output{node}->[0]->{cmd}->[0] = $_;
+            $output{errorcode} = 128;
+            push @output_array, \%output;
+        }
+        return \@output_array;
+    }
+    $request->{host} = $host;
+    my $result = xCAT::PPCfsp::handler( $server, $request, \@exp);
+
+####################################
+# Output verbose Perl::LWP 
+####################################
+    if ( $verbose ) {
+        my $verbose_log = $exp[3];
+        my $output = shift @$result;
+        $output->{data} = [$$verbose_log];
+        unshift @$result, \%$output;
+    }
+    return $result;
+}
+
+sub handle_find_hw_children {
+    my $host = shift;
+    my $child_type = shift;
+    my @children = ();
+    my $vpdtab = xCAT::Table->new("vpd");
+    if (!defined($vpdtab) or !defined($child_type)) {
+        return undef;
+    }
+    my $mtms = $vpdtab->getAttribs({node=>$host}, qw(serial mtm));
+    if (!defined($mtms))  {
+        return undef;
+    }
+    my @nodearray = $vpdtab->getAttribs({serial=>$mtms->{serial}, mtm=>$mtms->{mtm}}, qw(node side));
+    if (!defined(@nodearray)) {
+        return undef;
+    }
+    foreach my $node (@nodearray) {
+        my $n_type = xCAT::DBobjUtils->getnodetype($node->{node});
+        if ($n_type !~ /^$child_type$/ or !defined($node->{side})) {
+            next;
+        }  
+        push @children, $node;
+    }
+    if (scalar(@children) eq '0') {
+        return undef;
+    }
+    return \@children; 
+}
+sub print_res {
+    my $request = shift;
+    my $host = shift;
+    my $res_array = shift;
+    if (!defined($res_array) or ref($res_array) ne 'ARRAY') {
+        return;
+    }
+    my $out = $request->{pipe};
+    print $out freeze( $res_array );
+    print $out "\nENDOFFREEZE6sK4ci\n";
+    return ;
+}
+
+sub get_dirindex_from_side {
+   my $side = shift;
+   my $dir = undef;
+   if ($side =~ /(a+)-\d*/i) {
+       $dir = '0'; 
+   } elsif ($side =~ /(b+)-\d*/i) {
+       $dir = '1';
+   } else {
+       $dir = '2';
+   }
+   return $dir;
+}
+sub reorgnize_res_for_handle_cmd {
+    my $request = shift;
+    my $host = shift;
+    my $output = shift;
+    my $methods = $request->{method};
+    my %re_output = ();
+    my %succ_side = ();
+    my $dir = undef;
+    foreach my $side (keys %$output) {
+        my $res = $output->{$side};
+        foreach my $index (@$$res) {
+            $dir = &get_dirindex_from_side($side);
+            my $cmd = $index->{node}->[0]->{cmd}->[0];
+            if (($index->{node}->[0]->{data}->[0]->{contents}->[0]) =~ /feature is not available/) {
+                $dir = '0';
+            }
+            if (!defined($succ_side{$cmd}{$dir}{done})) {
+                if (defined($re_output{$cmd}{$dir})) {
+                    my $array = $re_output{$cmd}{$dir};
+                    my $n = scalar(@$array);
+                    $array->[$n] = $index;    
+                } else {
+                    $re_output{$cmd}{$dir}[0] = $index;
+                }
+            } else {
+                next;
+            }
+            if ($index->{errorcode} eq '0') {
+                @{$re_output{$cmd}{$dir}} = ();
+                $re_output{$cmd}{$dir}[0] = $index;
+                $succ_side{$cmd}{$dir}{done}++;
+            }
+        }
+    }
+    foreach my $method (keys %re_output) {
+        my $value = $re_output{$method};
+        foreach my $side (keys %$value) {
+            my $res_array = $value->{$side};
+            &print_res($request, $host, $res_array);
+        }
+    }
+    return undef;
+}
+
+sub process_children {
+    my $request = shift;
+    my $host = shift;
+    my $node_array = shift;
+    my %output = ();
+    my %conn_flag = ();
+    foreach my $index (@$node_array) {
+        my $side = $index->{side};
+        my $dir = &get_dirindex_from_side($side);
+        if (defined($conn_flag{$dir})) {
+            next;
+        }
+        my $res = &handle_cmd($index->{node}, $host, $request);
+        $output{$side} = \$res;
+        if ($res->[0]->{errorcode} ne '128') {
+            $conn_flag{$dir} = 1;        
+        }
+    }
+    &reorgnize_res_for_handle_cmd($request, $host, \%output);
+    return undef;
+}
+
+
+my %children_type = (
+        cec => "fsp",
+        frame => "bpa"
+        );
+
+sub handle_redundance_fsps {
+    my $host = shift;
+    my $hwtype = shift;
+    my $request = shift;
+    my $res = undef;
+    if ($hwtype =~ /^(bpa|fsp)$/) {
+        $res = &handle_cmd($host, $host, $request);
+        &print_res($request, $host, $res);
+    } elsif ($hwtype =~ /^(cec|frame)$/){
+        my $child_type = $children_type{$hwtype};
+        my $children = &handle_find_hw_children($host, $child_type);
+        if (!defined($children)) {
+             send_msg($request, 1, "Not found any $child_type for $host");
+        } else {
+            &process_children($request, $host, $children);
+        }
+    } else {
+        send_msg( $request, 1, "$hwtype not support!");
+    }
+    return undef;
+}
+sub check_node_info {
+    my $hash = shift;
+    my $if_lpar = undef;
+    while (my ($mtms, $h) = each(%$hash)) {
+        while (my($name, $d) = each(%$h)) {
+            my $node_type = @$d[4];
+            if ($node_type =~ /^lpar$/) {
+                $if_lpar = $name;
+                last; 
+            }
+        } 
+    }
+    return $if_lpar;
+}
 
 
 ##########################################################################
@@ -1286,48 +1490,30 @@ sub invoke_cmd {
     ########################################
     # Direct-attached FSP handler 
     ########################################
-    if ( ($power ne "hmc") && ( $hwtype eq "fsp" or $hwtype eq "bpa" or $hwtype eq "cec") && $request->{fsp_api} == 0) {
+    if ( ($power ne "hmc") && ( $hwtype =~ /^(fsp|bpa|cec|frame)$/) && $request->{fsp_api} == 0) {
 
-        ####################################
-        # Dynamically load FSP module
-        ####################################
-        eval { require xCAT::PPCfsp };
-        if ( $@ ) {
-            send_msg( $request, 1, $@ );
-            return;
+        if ($request->{command} eq 'rpower') {
+            my $check = &check_node_info($nodes);
+        if (defined($check)) {
+           my %output;
+           $output{node}->[0]->{name}->[0] = $check;
+           $output{node}->[0]->{data}->[0]->{contents}->[0] = "Error: $request->{command} not support on lpar in ASMI mode";
+           $output{node}->[0]->{cmd}->[0] = $request->{method};
+           $output{errorcode} = 1;
+           my $out = $request->{pipe};
+          print $out freeze( [\%output] );
+          print $out "\nENDOFFREEZE6sK4ci\n";
+           return ;
+           }
+
+        if (ref($request->{method}) ne 'HASH') {
+           my %method_hash = ();
+           my $method = $request->{method};
+           $method_hash{$method} = undef;
+           $request->{method} = \%method_hash;
         }
-        my @exp = xCAT::PPCfsp::connect( $request, $host );
-
-        ####################################
-        # Error connecting 
-        ####################################
-        if ( ref($exp[0]) ne "LWP::UserAgent" ) {
-            #send_msg( $request, 1, $exp[0] );
-      	    my %output;
-	        $output{node}->[0]->{name}->[0] = $host;
-	        $output{node}->[0]->{data}->[0]->{contents}->[0] = "$exp[0]";
-	        $output{errorcode} = 1;
-	        push @outhash, \%output;
-	        my $out = $request->{pipe};
-	        print $out freeze( [@outhash] );
-	        print $out "\nENDOFFREEZE6sK4ci\n";
-            return;
         }
-        my $result = xCAT::PPCfsp::handler( $host, $request, \@exp );
-
-        ####################################
-        # Output verbose Perl::LWP 
-        ####################################
-        if ( $verbose ) {
-            $verbose_log = $exp[3];
-
-            my %output;
-            $output{data} = [$$verbose_log];
-            unshift @$result, \%output;
-        }
-        my $out = $request->{pipe};
-        print $out freeze( $result );
-        print $out "\nENDOFFREEZE6sK4ci\n";
+        &handle_redundance_fsps($host, $hwtype, $request);
         return;
     }
 
@@ -1770,6 +1956,7 @@ sub process_request {
     $request->{stdin}   = $req->{stdin}->[0];
     $request->{method} = $req->{method}->[0];
     $request->{op}   = $req->{op}->[0];
+    $request->{enableASMI} = $req->{enableASMI};
     #support more options in hierachy
     if( ref( $req->{opt}) eq 'ARRAY' ) {
         my $h = $req->{opt}->[0];
@@ -1894,37 +2081,44 @@ sub process_request {
        $request_new->{node}  = \@next;
        $request_new->{fsp_api} = 0;
        if($lasthcp_type =~ /^(fsp|bpa|cec|frame)$/ ) {
-	       #my $fsp_api = check_fsp_api($request);
-	       #if($fsp_api == 0 ) {
-           $request_new->{fsp_api} = 1; 
-	       # }
+#my $fsp_api = check_fsp_api($request);
+#if($fsp_api == 0 ) {
+    $request_new->{fsp_api} = 1; 
+# }
        }
-       #For mkhwconn ....
+#For mkhwconn ....
        if( $request->{hwtype} ne 'hmc' ) {
            $request_new->{hwtype}  = $lasthcp_type;
        } else {
            $request_new->{fsp_api} = 0; 
        }
-       #print Dumper($request_new);
+#print Dumper($request_new);
        @failed_nodes = () ;
+#For rspconfig to use ASMI
+       if (defined($request->{enableASMI}) && ($request->{enableASMI} eq "1")) {
+           $request_new->{fsp_api} = 0;
+       }
        process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
-       #print "after result:\n";
-       #print Dumper(\@failed_nodes);
-       if($lasthcp_type =~ /^(fsp|bpa|cec)$/  && $request->{hwtype} ne 'hmc' ) {
-	       my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
-	       if (defined($enableASMI[0])) {
-                $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
-		        if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES"))
-		        {
-	            #through asmi ......
-                    $request_new->{fsp_api} = 0;
-	                if(@failed_nodes != 0) {
-	                    my @temp = @failed_nodes;
-	                    @failed_nodes = (); 
-	                    $request_new->{node} = \@temp;
-                        process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
-                    } #end of if
-		         } # end of if
+#print "after result:\n";
+#print Dumper(\@failed_nodes);
+       if($lasthcp_type =~ /^(fsp|bpa|cec|frame)$/  && 
+               $request->{hwtype} ne 'hmc' &&
+               $request_new->{fsp_api} ne '0') {
+           if ($request_new->{command} =~ /^(rspconfig|rpower|reventlog)$/){
+               my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
+               if (defined($enableASMI[0])) {
+                   $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
+                   if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES")) {
+                        #through asmi ......
+                        $request_new->{fsp_api} = 0;
+                        if(@failed_nodes != 0) {
+                            my @temp = @failed_nodes;
+                            @failed_nodes = (); 
+                            $request_new->{node} = \@temp;
+                            process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
+                        } #end of if
+                   } #end of if
+               } # end of if
            } #end of if  
        } #end of if
     } #end of while(1)

@@ -4,6 +4,8 @@ package xCAT::FSPcfg;
 use strict;
 use Getopt::Long;
 use xCAT::Usage;
+use xCAT::Utils;
+use xCAT::PPCcfg;
 #use Data::Dumper;
 #use xCAT::PPCcli;
 
@@ -134,6 +136,15 @@ sub parse_args {
     foreach my $arg ( @ARGV ) {
         my ($command,$value) = split( /=/, $arg );
         if ( !grep( /^$command$/, @$supported) and !$opt{resetnet}) {
+            my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
+            if (defined($enableASMI[0])) {
+                $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
+                    if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES"))
+                    {
+                        $request->{enableASMI} = 1;
+                        return xCAT::PPCcfg::parse_args($request, @_);
+                    }
+            }
             return(usage( "Invalid command for $request->{hwtype} : $arg" ));
         } 
         if ( exists( $cmds{$command} )) {
