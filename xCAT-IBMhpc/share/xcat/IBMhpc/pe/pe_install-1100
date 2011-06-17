@@ -5,16 +5,6 @@
 # For AIX:
 #    TBD
 # For Linux:
-#    - For full-disk installs:
-#        - Copy rpms to node
-#        - Install and accept PE license rpm
-#        - Install PE rpms
-#    - For diskless images:
-#        - Install PE license on MN if not already installed
-#        - Install PE license rpm into image, but DO NOT ACCEPT
-#          (java accept program will hang)
-#        - Copy PE license files from MN into image
-#        - Install PE rpms
 #    - Create a smaller PNSD log file in /tmp 
 #    - Configure poe.limits file
 
@@ -32,87 +22,6 @@ if [ $NODESETSTATE != "genimage" ]; then
    # running as a postscript in a full-disk install or AIX diskless install
    installroot=""
 fi
-
-
-
-if [ $OS != "AIX" ]; then
-    if [ $NODESETSTATE == "install" ] || [ $NODESETSTATE == "boot" ]; then
-    #  Being run from a stateful install postscript
-    #  Copy rpms directly from the xCAT management node and install
-        mkdir -p /tmp/pe
-        rm -f -R /tmp/pe/*
-        cd /tmp/pe
-        download_dir=`echo $PE_DIR | cut -d '/' -f3-`
-        wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm 2> /tmp/wget.log
-        if [ ! -f /opt/ibmhpc/install/sbin/accept_ppe_license.sh ] ; then
-            rpm -Uvh IBM_pe_license*.rpm
-        fi
-        IBM_PE_LICENSE_PROMPT=N /opt/ibmhpc/install/sbin/accept_ppe_license.sh
-##############
-###  TEMPORARY FOR xCAT 2.6 Beta:
-        #rpm -Uvh --force ibm_pami*.rpm ibm_pe*.rpm ppe_*.rpm 
-        rpm -Uvh --force ibm_openshmem*.rpm ppe_rte*.rpm --nodeps
-##############
-        cd /
-        rm -Rf /tmp/pe
-    fi
-
-    if [ $NODESETSTATE == "genimage" ]; then
-    # Being called from <image>.postinstall script
-    # Assume we are on the same machine
-        if [[ $OS = sles* ]] || [[ $OS = suse* ]] || [[ -f /etc/SuSE-release ]]; then
-        # For SLES, assume zypper is available on the system running genimage
-            if [ ! -d /etc/opt/ibmhpc/license ] ; then
-            # Install and accept PE license on the MN
-                IBM_PE_LICENSE_PROMPT=N zypper install $PE_DIR/IBM_pe_license*.rpm
-            fi
-            # Install PE license rpm into image, BUT DO NOT ACCEPT
-            # The java process fails when you try to run in chroot
-            #zypper -R $installroot install $PE_DIR/IBM_pe_license*.rpm
-            # Copy license files from MN into the image
-            mkdir -p $installroot/etc/opt/ibmhpc/license
-            cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
-            # Install PE product rpms
-            INUCLIENTS=1 INUBOSTYPE=1 zypper -R $installroot install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
-        else
-        # For Redhat, etc., assume yum is available on the system running genimage
-            if [ ! -d /etc/opt/ibmhpc/license ] ; then
-            # Install and accept PE license on the MN
-                IBM_PE_LICENSE_PROMPT=N yum --nogpgcheck localupdate  $PE_DIR/IBM_pe_license*.rpm
-                #IBM_PE_LICENSE_PROMPT=N yum --nogpgcheck install  $PE_DIR/IBM_pe_license*.rpm
-            fi
-            # Install PE license rpm into image, BUT DO NOT ACCEPT
-            # The java process fails when you try to run in chroot
-##############
-###  TEMPORARY FOR xCAT 2.6 Beta:
-            #yum --installroot $installroot --nogpgcheck install  $PE_DIR/IBM_pe_license*.rpm
-            yum --installroot $installroot --nogpgcheck install  $PE_DIR/IBM_pe_license*.rpm
-##############
-            # Copy license files from MN into the image
-            mkdir -p $installroot/etc/opt/ibmhpc/license
-            cp -pR /etc/opt/ibmhpc/license/* $installroot/etc/opt/ibmhpc/license
-##############
-###  TEMPORARY FOR xCAT 2.6 Beta:
- 	    #chroot $installroot /opt/ibmhpc/install/sbin/accept_ppe_license.sh
- 	    chroot $installroot /opt/ibmhpc/install/sbin/accept_ppe_license.sh
-            # Install PE product rpms
-            #INUCLIENTS=1 INUBOSTYPE=1 yum --installroot $installroot --nogpgcheck install $PE_DIR/ibm_lapi*.rpm $PE_DIR/ibm_pe*.rpm $PE_DIR/ppe_*.rpm 
-            chroot $installroot mkdir -p /tmp/pe
-            chroot $installroot rm -f -R /tmp/pe/*
-
-            download_dir=`echo $PE_DIR | cut -d '/' -f3-`
-            echo $download_dir
-        ### we had to set SITEMASTER to MN IP explicitly in our test cluster
-            #SITEMASTER=10.0.0.1
-            chroot $installroot wget -l inf -N -r --waitretry=10 --random-wait --retry-connrefused -t 10 -T 60 -nH --cut-dirs=5 ftp://$SITEMASTER/$download_dir/*.rpm --directory-prefix=/tmp/pe
-            chroot $installroot /bin/rpm -ivh /tmp/pe/s*.rpm  /tmp/pe/p*.rpm /tmp/pe/ibm_*.rpm --nodeps
-            chroot $installroot /bin/rm -r /tmp/pe
-##############
-        fi
-    fi
-fi
-
-
 
 # Configure the PNSD.cfg to use a smaller log so it doesn't use so much memory
 # for a stateless image.  Normally, pnsd creates this file if it does not 
