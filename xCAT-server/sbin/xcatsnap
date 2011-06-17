@@ -340,7 +340,7 @@ print "Compiling Information...\n";
 print "Information compiled...\n";
 `chmod 400 $LogFile`;    # Processing the log file
 print "Send $LogFile to IBM Support.\n";
-
+my $donotdelete=0;
 if ( `which gunzip` == 0 ) {    # Compressing the tar file
     `gzip -f $TarFile`;
 }
@@ -350,10 +350,11 @@ elsif ( `which compress` == 0 ) {
 else {
     print
 "gzip and compress are not available. The tar file $TarFile will not be compressed";
+$donotdelete=1;
 }
 
-if (-e $TarFile ){
-    rm $TarFile;
+if (-e $TarFile  && $donotdelete == 0){   # Don't remove if only file to send 
+    `rm $TarFile`;
 }
 
 if ( -e $TarFile . ".gz" ) {
