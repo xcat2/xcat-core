@@ -1,0 +1,49 @@
+#!/bin/sh
+minixcatd.awk &
+
+echo "Beginning node discovery process"
+NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
+for nic in $NICSTOBRINGUP; do
+	dhclient $nic &
+	#no need to go out of our way for superfluous ipv6 nics
+done
+waitforlink=100
+while [ ! -z "$NICSTOBRINGUP" -a $waitforlink -gt 0 ]; do
+	NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep -v ,LOWER_UP|awk -F: '{print $2}'`
+	waitforlink = $((waitforlink - 1))
+	sleep 0.1
+	if [ $waitforlink = 1 ]; then
+		echo "No link detected on $NICSTOBRINGUP"
+	fi
+done
+NICSGETTINGADDR=`ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep ,LOWER_UP|awk -F: '{print $2}'`
+timewaiting=0
+echo "Waiting for nics to get addresses"
+while [ ! -z "$NICSGETTINGADDR" -a $timewaiting != 700 ]; do
+	NEWNICSGETTINGADDR=""
+	for nic in $NICSGETTINGADDR; do
+		if ! ip addr show dev $nic |grep -v inet6|grep inet >/dev/null;  then
+			NEWNICSGETTINGADDR="$NEWNICSGETTINGADDR $nic"
+		else
+			echo -n "$nic|"
+			ip addr show dev $nic |grep -v inet6|grep inet|sed -e s/\\/.*//|awk '{print $2}'
+		fi
+	done
+	sleep 0.1
+	timewaiting=$((timewaiting+1))
+	if [ $timewaiting = 450 ]; then
+		echo "45 seconds without an address on $nic, is spanning tree set to slow?"
+	fi
+	if [ $timewaiting = 699 ]; then
+		echo "No DHCP answer for $nic, ignoring interface"
+	fi
+	NICSGETTINGADDR=$NEWNICSGETTINGADDR
+done
+echo "Stopped waiting on nics to get addresses"
+	
+	
+
+while [ ! -r /restart ]; do
+	sleep 1
+done
+	

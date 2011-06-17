@@ -6,6 +6,8 @@ echo '[ -e $NEWROOT/proc ]' > /initqueue-finished/xcatroot.sh
 udevd --daemon
 udevadm trigger
 mkdir -p /var/lib/dhclient/
+ip link set lo up
+ip addr add dev lo 127.0.0.1/8
 if [ ! -z "$BOOTIF" ]; then
 	BOOTIF=`echo $BOOTIF|sed -e s/01-// -e s/-/:/g`
 	echo -n "Waiting for device with address $BOOTIF to appear.."
@@ -58,6 +60,7 @@ while ! ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v
 done
 echo -n "Acquired IPv4 address "
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
-
-
+if [ "$destiny" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
+	/bin/dodiscovery
+fi
 /bin/dash
