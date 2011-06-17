@@ -272,11 +272,11 @@ sub noderange_validate {
             my $exargs=$request->{arg};
             #my $t = print_var($exargs, "exargs");
             #print $t;
-            if ( grep(/commit/,@$exargs) != 0 || grep(/recover/,@$exargs) != 0) {
-                send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
-                send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
-                return -1;
-             }
+            #if ( grep(/commit/,@$exargs) != 0 || grep(/recover/,@$exargs) != 0) {
+            #    send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
+            #    send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
+            #    return -1;
+            # }
         }
     }
 
