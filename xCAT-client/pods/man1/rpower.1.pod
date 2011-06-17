@@ -20,7 +20,7 @@ B<rpower> I<noderange> [B<softoff>]
 
 =head2 CEC (using Direct FSP Management) specific:
 
-B<rpower> I<noderange> [B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<lowpower>]
+B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<lowpower>]
 
 =head2 Frame (using Direct FSP Management) specific:
 
@@ -48,7 +48,7 @@ Turn power on to standby state
 
 =item B<lowpower>
 
-Turn CEC to low power state. This is a disruptive operation which requires the CEC to be powered off prior to entering low power mode.
+Turn CEC to low power state (state EOCT). This is a disruptive operation which requires the CEC to be powered off prior to entering low power mode. And we can use power off command to get out of lowepower state.
 
 =item B<rackstandby>
 
