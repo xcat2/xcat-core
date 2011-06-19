@@ -517,7 +517,12 @@ Used to specify a source directory other than the standard lpp_source directory 
 
 Specifies the file synchronization should be
 performed on the nodes.  rsync and ssh must
-be installed and configured on the nodes. 
+be installed and configured on the nodes.
+The function is not supported for statelite installations.
+For statelite installations to sync files, you should use the
+read-only option for files/directories listed in
+litefile table with source location specified in the litetree table.
+
 
 =item B<-h|--help>
 
@@ -531,6 +536,8 @@ Update the ca and credentials to the service nodes.
 =item B<-P|--scripts>
 
 Specifies that postscripts should be run on the nodes.
+updatenode -P syncfiles is not supported.  The syncfiles postscript can only
+be run during install.  You should use updatenode <noderange> -F instead.
 
 =item B<-S|--sw>
 
