@@ -124,8 +124,8 @@ This sample configuration file is for a 2 building block cluster.
  
   xcat-cecs:
    # These are the connections to the CECs.  Either form of hostname is supported.
-   hostname-range = cec01-cec64
-   #hostname-range = f[1-6]c[01-12]
+   #hostname-range = cec01-cec64
+   hostname-range = f[1-6]c[01-12]
    # If you use the frame/cec hostname scheme above, but do not have a consistent
    # number of cecs in each frame, xcat can delete the cecs that do not get
    # supernode numbers assigned to them.
@@ -192,41 +192,32 @@ in the cluster must be specified.
 
 Here is a sample file:
 
- frame1:
-  objtype=node
-  serial=99200A1
-  mtm=78AC-100
-  side=A
+  frame1:
+    objtype=node
+    serial=99200G1
+    mtm=9A00-100
+  frame2:
+    objtype=node
+    serial=99200D1
+    mtm=9A00-100
+  frame3:
+    objtype=node
+    serial=99200G1
+    mtm=9A00-100
+  frame4:
+    objtype=node
+    serial=99200D1
+    mtm=9A00-100
+  frame5:
+    objtype=node
+    serial=99200G1
+    mtm=9A00-100
+  frame6:
+    objtype=node
+    serial=99200D1
+    mtm=9A00-100
 
- frame2:
-  objtype=node
-  serial=99200B1
-  mtm=78AC-100
-  side=A
 
- frame3:
-  objtype=node
-  serial=99200C1
-  mtm=78AC-100
-  side=A
-
- frame4:
-  objtype=node
-  serial=99200D1
-  mtm=78AC-100
-  side=A
-
- frame5:
-  objtype=node
-  serial=99200E1
-  mtm=78AC-100
-  side=A
-
- frame6:
-  objtype=node
-  serial=99200F1
-  mtm=78AC-100
-  side=A
 
 =head2 Supernode Numbers for CECs
 
