@@ -37,7 +37,9 @@ my %NUMCECSINFRAME;
 #my $DHCPINTERFACES;
 my $PANUMBER = 0;
 my $CECNUMBER = 0;
-my @CECS;
+#my @CECS;
+my @PARENTS;
+my %FRAMESFP;
 
 sub handled_commands {
     return( { xcatsetup => "setup" } );
@@ -126,7 +128,7 @@ sub readFileInput {
             #$attr =~ s/\s*$//;       # Remove any trailing whitespace - already did that
             $attr =~ tr/A-Z/a-z/;     # Convert to lowercase
             #$val  =~ s/^\s*//;
-            #$val  =~ s/\s*$//;
+            $val  =~ s/\s*$//;
 
             # set the value in the hash for this stanza
             if (!defined($stanza)) { errormsg("expected stanza header at line $linenum.", 3); return; }
@@ -201,13 +203,13 @@ sub writedb {
     my $bpab0 = $STANZAS{'xcat-frames'}->{'bpa-b-0-starting-ip'};
     my $bpaa1 = $STANZAS{'xcat-frames'}->{'bpa-a-1-starting-ip'};
     my $bpab1 = $STANZAS{'xcat-frames'}->{'bpa-b-1-starting-ip'};
-    if ( $bpaa0 and $bpaa1 and $bpab0 and $bpab1 and (!scalar(keys(%$sections))||$$sections{'xcat-frames'})) {
+    if ( ($bpaa0 or $bpaa1 or $bpab0 or $bpab1) and (!scalar(keys(%$sections))||$$sections{'xcat-frames'})) {
         unless (writechildren($bpaa0, $bpaa1, $bpab0, $bpab1, "bpa")) { closetables(); return; }
     }
-    if ( !($bpaa0 and $bpaa1 and $bpab0 and $bpab1) and
-        ($bpaa0 or $bpaa1 or $bpab0 or $bpab1))  {
-        # need to do something here?
-    }
+    #if ( !($bpaa0 and $bpaa1 and $bpab0 and $bpab1) and
+    #    ($bpaa0 or $bpaa1 or $bpab0 or $bpab1))  {
+    #    # need to do something here?
+    #}
 	# Write CEC info (hash key=xcat-cecs)
 	my $cecrange = $STANZAS{'xcat-cecs'}->{'hostname-range'};
 	if ($cecrange && (!scalar(keys(%$sections))||$$sections{'xcat-cecs'})) { 
@@ -219,13 +221,13 @@ sub writedb {
     my $fspb0 = $STANZAS{'xcat-cecs'}->{'fsp-b-0-starting-ip'};
     my $fspa1 = $STANZAS{'xcat-cecs'}->{'fsp-a-1-starting-ip'};
     my $fspb1 = $STANZAS{'xcat-cecs'}->{'fsp-b-1-starting-ip'};
-    if ( $fspa0 and $fspa1 and $fspb0 and $fspb1 and (!scalar(keys(%$sections))||$$sections{'xcat-cecs'})) {
+    if ( ($fspa0 or $fspa1 or $fspb0 or $fspb1) and (!scalar(keys(%$sections))||$$sections{'xcat-cecs'})) {
         unless (writechildren($fspa0, $fspa1, $fspb0, $fspb1, "fsp")) { closetables(); return; }
     }
-    if ( !($fspa0 and $fspa1 and $fspb0 and $fspb1) and
-        ($fspa0 or $fspa1 or $fspb0 or $fspb1))  {
-        # need to do something here?
-    }
+    #if ( !($fspa0 and $fspa1 and $fspb0 and $fspb1) and
+    #    ($fspa0 or $fspa1 or $fspb0 or $fspb1))  {
+    #    # need to do something here?
+    #}
 	# Save the CEC positions for all the node definitions later
 	if ($cecrange) {
 		$CECPOSITIONS = $tables{'nodepos'}->getNodesAttribs([noderange($cecrange)], ['rack','u']);
@@ -383,6 +385,7 @@ sub writeframe {
 	# write hostname-range in nodelist table
 	my ($framerange, $cwd) = @_;
 	my $nodes = [noderange($framerange, 0)];
+    foreach (@$nodes) { push @PARENTS,$_; }
 	if (!scalar(@$nodes)) { return 1; }
     $PANUMBER = scalar(@$nodes);
 	if ($DELETENODES) {
@@ -391,6 +394,7 @@ sub writeframe {
 		return 1;
 	}
 	infomsg('Defining frames...');
+    my @fnodes = @$nodes;
 	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'frame,all' });
 	staticGroup('frame');
 	
@@ -407,7 +411,7 @@ sub writeframe {
 	
 	# Using the frame group, write: nodetype.nodetype, nodehm.mgt
 	$tables{'ppc'}->setNodeAttribs('frame', {nodetype => 'frame'});
-	#$tables{'nodetype'}->setNodeAttribs('frame', {nodetype => 'bpa'});
+    $tables{'nodetype'}->setNodeAttribs('frame', {nodetype => 'ppc'});
 	
 	# Using the frame group, num-frames-per-hmc, hmc hostname-range, write regex for: ppc.node, ppc.hcp, ppc.id
 	# The frame # should come from the nodename
@@ -434,11 +438,25 @@ sub writeframe {
         my $hmcattch = $$hmchash{'attach'};
         my $umb = int $$hmchash{'primary-start'};
         my $sfpregex;
-        unless ($hmcattch) { $sfpregex = '|\S+?(\d+)\D*$|'.$hmcbase.'(($1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')|'; }
-        else { $sfpregex = '|\S+?(\d+)\D*$|'.$hmcbase.'(($1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')'.$hmcattch.'|'; }
-        $hash{'sfp'} =  $sfpregex;
-    }
+        #unless ($hmcattch) { $sfpregex = '|\S+?(\d+)\D*$|'.$hmcbase.'(($1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')|'; }
+        #else { $sfpregex = '|\S+?(\d+)\D*$|'.$hmcbase.'(($1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')'.$hmcattch.'|'; }
+        #my $tlength = length($$hmchash{'primary-start'});
+        #$sfpregex = '|\S+?(\d+)\D*$|'.$hmcbase.'(\'0\'*('.$tlength.'-length$1))'.'(($1-'.$fnum.')/'.$framesperhmc.'+'.$umb.')'.$hmcattch.'|';
+        #$hash{sfp} =  $sfpregex;
 
+        # keep the sfp attribute for the CEC belongs to it.
+        # won't use regular express because the cec number in a frame is not fixed.
+        foreach my $nn (@fnodes) {
+            $nn =~ /\S+?(\d+)\D*$/;
+            my $num = int($1);
+            my $num1 = int((int($num) - $fnum) / $framesperhmc) + $umb;
+            my $num2 = length($$hmchash{'primary-start'}) - length($num1);
+            $FRAMESFP{$nn}{sfp} = $hmcbase.$num1.$hmcattch if ($num2 <= 0);
+            $FRAMESFP{$nn}{sfp} = $hmcbase.'0'.$num1.$hmcattch if ($num2 eq 1);
+            $FRAMESFP{$nn}{sfp} = $hmcbase.'00'.$num1.$hmcattch if ($num2 eq 2);
+        }
+        $tables{'ppc'}->setNodesAttribs(\%FRAMESFP);
+    }
 	$tables{'ppc'}->setNodeAttribs('frame', \%hash);
 	
 	# Write vpd-file to vpd table
@@ -464,17 +482,30 @@ sub writechildren {
     push @startingips, $b1startingip;
 
     my @all;
+    my $tt = 0;
+    my %ranges;
     for my $cip (@startingips) {
-        my ($ipbase, $ipstart) = $cip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
-        my $endip = $ipstart + $PANUMBER;
-        my $endnode = $ipbase . '.' . $endip;
-        my $range = $cip . '-' . $endnode;
-        my $nodes = [noderange($range, 0)];
-        foreach (@$nodes) { push @all, $_; }
+        my $trange;
+        if ($cip){
+            my ($ipbase, $ipstart) = $cip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
+            my $endip = $ipstart + $PANUMBER - 1;
+            $trange = $cip . '-' . $ipbase . '.' . $endip;
+            my $nodes = [noderange($trange, 0)];
+            foreach (@$nodes) { push @all, $_; }
+        } else {
+            $trange = 1;
+        }
+        $ranges{'A-0'} = $trange if ($tt eq 0);
+        $ranges{'A-1'} = $trange if ($tt eq 1);
+        $ranges{'B-0'} = $trange if ($tt eq 2);
+        $ranges{'B-1'} = $trange if ($tt eq 3);
+        $tt++;
     }
     if ($DELETENODES) {
-            deletenodes($ntype, \@all);
-            deletegroup($ntype);
+        for my $rr (keys %ranges) {
+            deletenodes($ntype, $ranges{$rr});
+        }
+        deletegroup($ntype);
             return 1;
     }
 
@@ -487,7 +518,7 @@ sub writechildren {
 
     # Using the bpa group, write: ppc.nodetype, nodetype.nodetype,
     $tables{'ppc'}->setNodeAttribs($ntype, {nodetype => $ntype});
-    $tables{'nodetype'}->setNodeAttribs($ntype, {nodetype => $ntype});
+    $tables{'nodetype'}->setNodeAttribs($ntype, {nodetype => 'ppc'});
 
     # Using the bpa group, write regex for: nodehm.mgt, ppc.node, ppc.hcp
     my %hash ;
@@ -502,72 +533,86 @@ sub writechildren {
     $tables{'ppc'}->setNodeAttribs($ntype, \%hash);
 
     # Using the bpa group, write regex for:ppc.parent
-    # Can we assume the user define four fsp/bpas with the same starting ip(the last byte)? need to discuss!
-    #for my $pip (@startingips) {
-    my ($ipbase, $ipstart) = $a0startingip =~ /^(\d+\.\d+\.\d+)\.(\d+)$/;
-    my $phash;
-    if ($ntype eq "bpa") { 
-        $phash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
-    } else {
-        $phash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
-    }            
-	my $fs = $$phash{'primary-start'};
-    my $nb = $$phash{'primary-base'};
-    my $nameend = $$phash{'attach'};
-    my $namesecond = $$phash{'secondary-base'};
-    my $pregex;
-    my $tlength = length($fs);
-    if ($ntype eq "bpa") {
-        $pregex = '|^(\d+\.\d+\.\d+)\.(\d+)$|'.$nb.'(\'0\'*('.$tlength.'-length($2)))('.int($fs).'+$2-'.$ipstart.')'.$nameend.'|';
-        $tables{'ppc'}->setNodeAttribs($ntype, {parent => $pregex});  
-    } elsif (!($STANZAS{'xcat-cecs'}->{'supernode-list'}))  {
-        # no supernode-list specified, which means every frame contians same number cecs
-        my $ss = $$phash{'secondary-start'};
-        my $se = $$phash{'secondary-end'};
-        my $cm;
-        my $clength;
-        if($ss and $se) {
-            $cm = int($se) - int($ss);
-            $clength = length($ss);
-        }
-        my $fn = '('.int($fs).'-1+($2-'.$ipstart.'+1)/'.$cm.')';
-        my $cn = '('.int($ss).'-1+($2-'.$ipstart.'+1)%'.$cm.')';
-        $pregex = '|^(\d+\.\d+\.\d+)\.(\d+)$|'.$nb.'(\'0\'*('.$tlength.'-length'.$fn.'))'.$fn.$namesecond.'(\'0\'*('.$clength.'-length'.$cn.'))'.$cn.$nameend.'|';
-        $tables{'ppc'}->setNodeAttribs($ntype, {parent => $pregex});  
-    } 
-         
-    # the cec numbers for each frame are different
-    # so we need to find the fsp parent one by one    
-    if ($ntype eq "fsp" and $STANZAS{'xcat-cecs'}->{'supernode-list'} and @CECS) {
-        my @cecparent = sort(@CECS);
-        my %parenthash;          
-        for my $cip (@startingips) {
-            my ($ipbase, $ipstart) = $cip =~/^(\d+\.\d+\.\d+\.)(\d+)$/;          
-            my $i = 0;                 
-            foreach my $ch (@cecparent) {$parenthash{$ipbase.($i+$ipstart)}->{parent} = $ch; $i++;}
-        } 
-        $tables{'ppc'}->setNodesAttribs(\%parenthash);               
-    }  
+    # we should not assume the user define four fsp/bpas with the same starting ip the last bit
+    my %sidehash;
+    my %parenthash;
 
-    #  write: vpd.side
-    my $time = 0;
-    for my $cip (@startingips) {
-        my ($ipbase, $ipstart) = $cip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
-        my $endip = $ipstart + $PANUMBER;
-        my $endnode = $ipbase . '.' . $endip;
-        my $range = $cip . '-' . $endnode;
-        my $nodetmp = [noderange($range, 0)];
-        $time ++;
-        my %sidehash;
-        foreach my $ch (@$nodetmp) {
-            $sidehash{$ch}->{side} = "A-0" if ($time eq 1);
-            $sidehash{$ch}->{side} = "A-1" if ($time eq 2);       
-            $sidehash{$ch}->{side} = "B-0" if ($time eq 3);
-            $sidehash{$ch}->{side} = "B-1" if ($time eq 4); 
-        }  
-        $tables{'vpd'}->setNodesAttribs(\%sidehash);        
+    for my $tside (keys %ranges) {
+        next if ($ranges{$tside} eq 1);
+        my ($ipbase, $ipstart) = $ranges{$tside} =~/^(\d+\.\d+\.\d+\.)(\d+)\-\d+\.\d+\.\d+\.\d+$/;
+        my $i = 0;
+        my @parents = sort(@PARENTS);
+        foreach my $ch (@parents) {$parenthash{$ipbase.($i+$ipstart)}->{parent} = $ch; $i++;}
+        # my $nodetmp = [noderange($$tside, 0)];
+        # foreach my $ch (@$nodetmp) {$sidehash{$ch}->{side} = $tside;}
+        my $nodetmp = [noderange($ranges{$tside}, 0)];
+        foreach my $ch (@$nodetmp) {$sidehash{$ch}->{side} = $tside;}
     }
-    
+
+    $tables{'vpd'}->setNodesAttribs(\%sidehash);
+    $tables{'ppc'}->setNodesAttribs(\%parenthash);
+    #my ($ipbase, $ipstart) = $a0startingip =~ /^(\d+\.\d+\.\d+)\.(\d+)$/;
+    #my $phash;
+    #if ($ntype eq "bpa") {
+    #    $phash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
+    #} else {
+    #    $phash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
+    #}
+        #my $fs = $$phash{'primary-start'};
+    #my $nb = $$phash{'primary-base'};
+    #my $nameend = $$phash{'attach'};
+    #my $namesecond = $$phash{'secondary-base'};
+    #my $pregex;
+    #my $tlength = length($fs);
+    #if ($ntype eq "bpa") {
+    #    $pregex = '|^(\d+\.\d+\.\d+)\.(\d+)$|'.$nb.'(\'0\'*('.$tlength.'-length($2)))('.int($fs).'+$2-'.$ipstart.')'.$nameend.'|';
+    #    $tables{'ppc'}->setNodeAttribs($ntype, {parent => $pregex});
+    #} elsif (!($STANZAS{'xcat-cecs'}->{'supernode-list'}))  {
+    #    # no supernode-list specified, which means every frame contians same number cecs
+    #    my $ss = $$phash{'secondary-start'};
+    #    my $se = $$phash{'secondary-end'};
+    #    my $cm;
+    #    my $clength;
+    #    if($ss and $se) {
+    #        $cm = int($se) - int($ss);
+    #        $clength = length($ss);
+    #    }
+    #    my $fn = '('.int($fs).'-1+($2-'.$ipstart.'+1)/'.$cm.')';
+    #    my $cn = '('.int($ss).'-1+($2-'.$ipstart.'+1)%'.$cm.')';
+    #    $pregex = '|^(\d+\.\d+\.\d+)\.(\d+)$|'.$nb.'(\'0\'*('.$tlength.'-length'.$fn.'))'.$fn.$namesecond.'(\'0\'*('.$clength.'-length'.$cn.'))'.$cn.$nameend.'|';
+    #    $tables{'ppc'}->setNodeAttribs($ntype, {parent => $pregex});
+    #}
+    #
+    ## the cec numbers for each frame are different
+    ## so we need to find the fsp parent one by one
+    #if ($ntype eq "fsp" and $STANZAS{'xcat-cecs'}->{'supernode-list'} and @CECS) {
+    #    my @cecparent = sort(@CECS);
+    #    my %parenthash;
+    #    for my $cip (@startingips) {
+    #        my ($ipbase, $ipstart) = $cip =~/^(\d+\.\d+\.\d+\.)(\d+)$/;
+    #        my $i = 0;
+    #        foreach my $ch (@cecparent) {$parenthash{$ipbase.($i+$ipstart)}->{parent} = $ch; $i++;}
+    #    }
+    #    $tables{'ppc'}->setNodesAttribs(\%parenthash);
+    #}
+    #
+    ##  write: vpd.side
+    #my $time = 0;
+    #for my $cip (@startingips) {
+    #    my ($ipbase, $ipstart) = $cip =~/^(\d+\.\d+\.\d+)\.(\d+)$/;
+    #    my $endip = $ipstart + $PANUMBER;
+    #    my $endnode = $ipbase . '.' . $endip;
+    #    my $range = $cip . '-' . $endnode;
+    #    my $nodetmp = [noderange($range, 0)];
+    #    $time ++;
+    #    my %sidehash;
+    #    foreach my $ch (@$nodetmp) {
+    #        $sidehash{$ch}->{side} = "A-0" if ($time eq 1);
+    #        $sidehash{$ch}->{side} = "A-1" if ($time eq 2);
+    #        $sidehash{$ch}->{side} = "B-0" if ($time eq 3);
+    #        $sidehash{$ch}->{side} = "B-1" if ($time eq 4);
+    #    }
+    #    $tables{'vpd'}->setNodesAttribs(\%sidehash);
     #}
     return 1;
 }
@@ -625,8 +670,7 @@ sub writecec {
 			# Math for 3rd field:  ip3rd+primnum-primstartnum
 			# Math for 4th field:  ip4th+secnum-secstartnum
             $regex = '|\D+(\d+)\D+(\d+)\D*$|' . "$ipbase.($ip3rd+" . '$1' . "-$primstartnum).($ip4th+" . '$2' . "-$secstartnum)|";
-		}
-		else {
+        } else {
 			# using name like cec01
             my $cecstartnum = int $$cechash{'primary-start'};
 			# Math for 4th field:  (ip4th-1+cecnum-cecstartnum)%254 + 1
@@ -671,7 +715,8 @@ sub writecec {
 		my $frameindex = 0;
 		foreach my $cec (@$nodes) {
 			my $framename = $$frames[$frameindex];
-			$ppchash{$cec} = { id => $cageid, parent => $framename };
+                my $sfp = $FRAMESFP{$framename}{sfp};
+                $ppchash{$cec} = { id => $cageid, parent => $framename, sfp => $sfp };
 			$nodehash{$cec} = { groups => "${framename}cecs,cec,all" };
             my ($framenum) = $framename =~ /\S+?(\d+)\D*$/;
 			$nodeposhash{$cec} = { rack => $framenum+0, u => $cageid };
@@ -712,8 +757,9 @@ sub writecec {
 				my $nodename = $$nodes[$i++];
 				$numcecs++;
 				#print "Setting $nodename supernode attribute to $supernum,$j\n";
-				$ppchash{$nodename} = { supernode => "$supernum,$j", id => $cageid, parent => $k };
-				$nodehash{$nodename} = { groups => "${k}cecs,cec,all" };
+                my $sfp = $FRAMESFP{$k}{sfp};
+                $ppchash{$nodename} = { supernode => "$supernum,$j", id => $cageid, parent => $k, sfp => $sfp };
+                $nodehash{$nodename} = { groups => "${k}cecs,cec,all" };
                 my ($framenum) = $k =~ /\S+?(\d+)\D*$/;
 				$nodeposhash{$nodename} = { rack => $framenum+0, u => $cageid };
 				$cageid += 2;
@@ -747,8 +793,9 @@ sub writecec {
 		$tables{'nodelist'}->setNodesAttribs(\%nodehash);
 		$tables{'nodepos'}->setNodesAttribs(\%nodeposhash);
 	}
-    foreach (keys %nodehash) { push @CECS,$_; }
-	return 1;
+    @PARENTS = ();
+    foreach (keys %nodehash) { push @PARENTS,$_; }
+    return 1;
 }
 
 # Read/parse the supernode-list file and return the values in a hash of arrays
