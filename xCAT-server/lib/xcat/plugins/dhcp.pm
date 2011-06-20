@@ -283,8 +283,7 @@ sub addnode
     {
         $callback->(
                    {
-                    error => ["Unable to open mac table, it may not exist yet"],
-                    errorcode => [1]
+                    warning => ["Unable to open mac table, it may not exist yet"]
                    }
                    );
         return;
@@ -294,8 +293,7 @@ sub addnode
     {
         $callback->(
                     {
-                     error     => ["Unable to find mac address for $node"],
-                     errorcode => [1]
+                     warning => ["Unable to find mac address for $node"]
                     }
                     );
         return;
