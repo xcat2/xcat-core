@@ -112,26 +112,35 @@ This sample configuration file is for a 2 building block cluster.
   xcat-frames:
    # these are the connections to the frames
    hostname-range = frame[1-6]
-   starting-ip = 10.200.2.1
    num-frames-per-hmc = 3
    # this lists which serial numbers go with which frame numbers
    vpd-file = vpd2bb.stanza
-
+   # This assumes you have 2 service LANs:  a primary service LAN 10.230.0.0/255.255.0.0 that all of the port 0's
+   # are connected to, and a backup service LAN 10.231.0.0/255.255.0.0 that all of the port 1's are connected to.
+   bpa-a-0-starting-ip = 10.230.1.1
+   bpa-b-0-starting-ip = 10.230.2.1
+   bpa-a-1-starting-ip = 10.231.1.1
+   bpa-b-1-starting-ip = 10.231.2.1
+ 
   xcat-cecs:
    # These are the connections to the CECs.  Either form of hostname is supported.
-   #hostname-range = cec01-cec60
-   hostname-range = f[1-6]c[01-12]
+   hostname-range = cec01-cec64
+   #hostname-range = f[1-6]c[01-12]
    # If you use the frame/cec hostname scheme above, but do not have a consistent
    # number of cecs in each frame, xcat can delete the cecs that do not get
    # supernode numbers assigned to them.
    delete-unused-cecs = 1
-   starting-ip = 10.200.3.1
    # lists the HFI supernode numbers for each group of cecs in each frame
    supernode-list = supernodelist2bb.txt
    # If you do not want to specify the supernode-list at this time and you have a consistent
    # number of cecs in each frame, you can instead just use this setting:
    #num-cecs-per-frame = 12
-
+   fsp-a-0-starting-ip = 10.230.3.1
+   fsp-b-0-starting-ip = 10.230.4.1
+   fsp-a-1-starting-ip = 10.231.3.1
+   fsp-b-1-starting-ip = 10.231.4.1
+ 
+ 
   xcat-building-blocks:
    num-frames-per-bb = 3
    num-cecs-per-bb = 32
