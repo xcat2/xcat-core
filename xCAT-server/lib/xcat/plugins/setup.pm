@@ -356,7 +356,7 @@ sub writehmc {
 	my $hmchash;
 	unless ($hmchash = parsenoderange($hmcrange)) { return 0; }
 	infomsg('Defining HMCs...');
-	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'hmc,all' });
+    $tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'hmc,all', hidden => 0 });
 	staticGroup('hmc');
 	
 	# using hostname-range and starting-ip, write regex for: hosts.node, hosts.ip
@@ -395,7 +395,7 @@ sub writeframe {
 	}
 	infomsg('Defining frames...');
     my @fnodes = @$nodes;
-	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'frame,all' });
+    $tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'frame,all', hidden => 0 });
 	staticGroup('frame');
 	
 	# Using the frame group, write starting-ip in hosts table
@@ -512,7 +512,7 @@ sub writechildren {
     # write bpa/fsp nodes to database with nodelist.node, nodelist.groups
 
     infomsg("Defining $ntype"."s...");
-    $tables{'nodelist'}->setNodesAttribs(\@all, { groups => "$ntype,all" });
+    $tables{'nodelist'}->setNodesAttribs(\@all, { groups => "$ntype,all" , hidden => 1 });
     staticGroup($ntype);
 
 
@@ -652,7 +652,7 @@ sub writecec {
 		return 1;
 	}
 	infomsg('Defining CECs...');
-	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'cec,all' });
+    $tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'cec,all', hidden => 0 });
 	staticGroup('cec');
 	
 	# Using the cec group, write starting-ip in hosts table
@@ -682,7 +682,7 @@ sub writecec {
 	
 	# Using the cec group, write: nodetype.nodetype
 	$tables{'ppc'}->setNodeAttribs('cec', {nodetype => 'cec'});
-	#$tables{'nodetype'}->setNodeAttribs('cec', {nodetype => 'fsp'});
+    $tables{'nodetype'}->setNodeAttribs('cec', {nodetype => 'ppc'});
 	
 	# Write regex for ppc.hcp, nodehm.mgt
 	if ($STANZAS{'xcat-site'}->{'use-direct-fsp-control'}) {
@@ -875,7 +875,7 @@ sub writelpar {
 	my $rangeparts = parsenoderange($range);
 	if (!defined($$rangeparts{'tertiary-start'})) { errormsg("Currently only support xcat-lpars:hostname-range format like f[1-2]c[1-2]p[1-2].", 5); return 0; }
 	my ($startnum) = $$rangeparts{'primary-start'};		# save this value for later
-	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'compute,lpar,all' });
+        $tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'compute,lpar,all', hidden => 0 });
 	staticGroup('lpar');
 	staticGroup('service');
 	staticGroup('compute');
@@ -969,7 +969,7 @@ sub writelpar {
 	}
 	
 	# Set some attrs common to all lpars
-	$tables{'nodetype'}->setNodeAttribs('lpar', {nodetype => 'osi', arch => 'ppc64'});
+        $tables{'nodetype'}->setNodeAttribs('lpar', {nodetype => 'lpar,osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('lpar', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('lpar', {netboot => 'yaboot'});
 	
@@ -1182,7 +1182,7 @@ sub writesn {
 	# We support name formats: sn01 or (todo:) b1s1
 	my $rangeparts = parsenoderange($range);
     my ($startnum) = int $$rangeparts{'primary-start'};        # save this value for later
-	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'service,lpar,all' });
+        $tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'service,lpar,all', hidden => 0 });
 	staticGroup('service');
 	
 	# Write regex for: hosts.node, hosts.ip
@@ -1212,7 +1212,7 @@ sub writesn {
 	
 	# Write regex for: ppc.id, nodetype.nodetype, etc.
 	$tables{'ppc'}->setNodeAttribs('service', {id => '1', nodetype => 'lpar'});
-	$tables{'nodetype'}->setNodeAttribs('service', {nodetype => 'osi', arch => 'ppc64'});
+        $tables{'nodetype'}->setNodeAttribs('service', {nodetype => 'lpar,osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('service', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('service', {netboot => 'yaboot'});
 	$tables{'servicenode'}->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>defined($STANZAS{'xcat-service-nodes'}->{'route-masks'})});
@@ -1314,7 +1314,7 @@ sub writestorage {
 	infomsg('Defining storage nodes...');
 	my $rangeparts = parsenoderange($range);
     my ($startnum) = int $$rangeparts{'primary-start'};        # save this value for later
-	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'storage,lpar,all' });
+        $tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'storage,lpar,all', hidden => 0 });
 	staticGroup('storage');
 	
 	# Write regex for: hosts.node, hosts.ip
@@ -1352,7 +1352,7 @@ sub writestorage {
 	
 	# Write ppc.id, nodetype.nodetype, etc.
 	$tables{'ppc'}->setNodeAttribs('storage', {id => '1', nodetype => 'lpar'});
-	$tables{'nodetype'}->setNodeAttribs('storage', {nodetype => 'osi', arch => 'ppc64'});
+        $tables{'nodetype'}->setNodeAttribs('storage', {nodetype => 'lpar,osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('storage', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('storage', {netboot => 'yaboot'});
 	
@@ -1459,7 +1459,7 @@ sub writecompute {
 		return 1;
 	}
 	infomsg('Defining compute nodes...');
-	$tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'compute,lpar,all' });
+        $tables{'nodelist'}->setNodesAttribs($nodes, { groups => 'compute,lpar,all' , hidden => 0 });
 	staticGroup('compute');
 	
 	# Write regex for: hosts.node, hosts.ip
@@ -1503,7 +1503,7 @@ sub writecompute {
 	
 	# Write regex for: nodetype.nodetype, etc.
 	$tables{'ppc'}->setNodeAttribs('compute', {nodetype => 'lpar'});
-	$tables{'nodetype'}->setNodeAttribs('compute', {nodetype => 'osi', arch => 'ppc64'});
+        $tables{'nodetype'}->setNodeAttribs('compute', {nodetype => 'lpar,osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('compute', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('compute', {netboot => 'yaboot'});
 	if ($STANZAS{'ll-config'}->{'central_manager_list'}) {		# write the LL postscript for compute nodes
