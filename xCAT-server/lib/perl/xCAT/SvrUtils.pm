@@ -46,6 +46,7 @@ sub getNodesetStates
         my @aixnodes    = ();
         my @pxenodes    = ();
         my @yabootnodes = ();
+        my @xnbanodes= ();
         my $tabdata     = $tab->getNodesAttribs(\@nodes, ['node', 'netboot']);
         foreach my $node (@nodes)
         {
@@ -55,6 +56,10 @@ sub getNodesetStates
             if ($nb eq "yaboot")
             {
                 push(@yabootnodes, $node);
+            }
+            elsif ($nb eq "xnba")
+            {
+                push(@xnbanodes, $node);
             }
             elsif ($nb eq "pxe")
             {
@@ -95,6 +100,19 @@ sub getNodesetStates
                 xCAT::MsgUtils->message('E', $retarray[1]);
             }
         }
+        if (@xnbanodes > 0)
+        {
+            require xCAT_plugin::xnba;
+            @retarray =
+              xCAT_plugin::xnba::getNodesetStates(\@xnbanodes, $hashref);
+            if ($retarray[0])
+            {
+                $retcode = $retarray[0];
+                $errormsg .= $retarray[1];
+                xCAT::MsgUtils->message('E', $retarray[1]);
+            }
+        }
+
         if (@aixnodes > 0)
         {
             require xCAT_plugin::aixinstall;
@@ -147,9 +165,8 @@ sub get_nodeset_state
             my $tmp = xCAT_plugin::pxe::getstate($node);
             my @a = split(' ', $tmp);
             $state = $a[0];
-
         }
-        if ($boottype eq "xnba")
+        elsif ($boottype eq "xnba")
         {
             require xCAT_plugin::xnba;
             my $tmp = xCAT_plugin::xnba::getstate($node);
