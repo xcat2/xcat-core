@@ -283,7 +283,7 @@ sub noderm
     if (scalar(@$nodes))  {
         for my $nn ( @$nodes ) {
             my $nt = xCAT::DBobjUtils->getnodetype($nn);
-            if ( $nt =~ /^(cec|frame)$/ )  {
+            if ( $nt and $nt =~ /^(cec|frame)$/ )  {
                 my $cnodep = xCAT::DBobjUtils->getchildren($nn);
                 if ($cnodep) {
                     my $cnode = join ',', @$cnodep;            
