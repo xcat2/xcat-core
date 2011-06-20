@@ -201,13 +201,16 @@ sub chvm_parse_args {
         my @elems = split(/\,/,$opt{r});
         my $range="";
         while (my $elem = shift @elems) {
+            if ($elem !~ /\:/) {
+                return (usage("Invalid argument $elem.\n The input format for 'r' should be like this: \"-r Octant_id:Value\"."))
+            }
             if($elem !~ /\-/) {
 		my @subelems = split(/\:/, $elem);
 	        if( $subelems[0] < 0 || $subelems[0] > 7) {
 		    return(usage("Octant ID only could be 0 to 7 in the octant configuration value $elem"));
 		}
 		if( grep(/^$subelems[1]$/, @ratio ) != 1) {
-	            return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	            return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of chvm." ));
 		}
 		if( exists($octant_cfg{$subelems[0]}) && $octant_cfg{$subelems[0]} == $subelems[1] ) {
 	            return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
@@ -222,7 +225,7 @@ sub chvm_parse_args {
 		}
                 if($left == $right) {
 		   if( grep(/^$subelems[1]$/, @ratio ) != 1) {
-	               return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	               return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of chvm." ));
 		   }
 		   if( exists($octant_cfg{$left}) || $octant_cfg{$left} == $subelems[1] ) {
 	               return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
@@ -579,6 +582,7 @@ sub modify {
     my $hash    = shift;
     return modify_by_prof( $request, $hash) if ( $request->{opt}->{p}); 
     return create( $request, $hash) if ( $request->{opt}->{i}); 
+    return ([["Error", "Miss argument"]]);
 }
 
 
