@@ -147,7 +147,13 @@ sub get_nodeset_state
             my $tmp = xCAT_plugin::pxe::getstate($node);
             my @a = split(' ', $tmp);
             $state = $a[0];
-
+        }
+        elsif ($boottype eq "xnba")
+        {
+            require xCAT_plugin::xnba;
+            my $tmp = xCAT_plugin::xnba::getstate($node);
+            my @a = split(' ', $tmp);
+            $state = $a[0];
         }
         elsif ($boottype eq "yaboot")
         {

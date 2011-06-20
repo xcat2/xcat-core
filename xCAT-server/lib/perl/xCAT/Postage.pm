@@ -503,7 +503,7 @@ sub makescript
                 elsif ($os =~ /aix.*/)    { $platform = "aix"; }
                 elsif ($os =~ /AIX.*/)    { $platform = "AIX"; }
             }
-            if (($nodesetstate) && ($nodesetstate eq "netboot"))
+            if (($nodesetstate) && ($nodesetstate eq "netboot" || $nodesetstate eq "statelite"))
             {
                 $stat = "netboot";
             }
@@ -588,16 +588,16 @@ sub makescript
             }
         }
     }
-    else
+    if (!$syncfile)
     {
         my $stat = "install";
-        if (($nodesetstate) && ($nodesetstate eq "netboot")) {
+        if (($nodesetstate) && ($nodesetstate eq "netboot" || $nodesetstate eq "statelite")) {
             $stat = "netboot";
         }
         $syncfile =
           xCAT::SvrUtils->getsynclistfile(undef, $os, $arch, $profile, $stat);
     }
-    if (!defined($syncfile))
+    if (!$syncfile)
     {
         push @scriptd, "NOSYNCFILES=1\n";
         push @scriptd, "export NOSYNCFILES\n";
