@@ -28,10 +28,12 @@ my %usage = (
        rpower <noderange> [--nodeps] [of] [-V|--verbose]
      PPC (HMC) specific:
        rpower <noderange> [onstandby] [-V|--verbose]
-     CEC/FSP(using Direct FSP Management) specific:
+     CEC(using Direct FSP Management) specific:
        rpower <noderange> [on|onstandby|off|stat|state|lowpower]
-     Frame/BPA(using Direct FSP Management) specific:
+     Frame(using Direct FSP Management) specific:
        rpower <noderange> [stat|state|rackstandby|exit_rackstandby]
+     LPAR(using Direct FSP Management) specific:
+       rpower <noderange> [on|off|reset|stat|state|boot|of|sms]
      Blade specific:
        rpower <noderange> [cycle|softoff] [-V|--verbose]
 ",
