@@ -56,7 +56,7 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t s T=s p=s P=s port=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t  s:s T=s p=s P=s port=s ) )) {
         return( usage() );
     }
 
@@ -177,7 +177,7 @@ sub mkhwconn_parse_args
             if ( $nodetype eq 'frame')
             {
                 my $my_frame_bpa_cec =  xCAT::DBobjUtils::getcecchildren( $node)                                                                             ;
-                push @frame_members, @$my_frame_bpa_cec;
+                push @frame_members, @$my_frame_bpa_cec if($my_frame_bpa_cec);
                 push @frame_members, $node;
             }
 
