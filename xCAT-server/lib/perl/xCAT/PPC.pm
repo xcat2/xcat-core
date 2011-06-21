@@ -2311,27 +2311,46 @@ sub getHCPsOfNodes
             if ( $ppctab ) {
                 my $typeref = xCAT::DBobjUtils->getnodetype($nodes);
                 my $i = 0;
-                for my $n (@$nodes) {
-                    if (@$typeref[$i++] =~ /^fsp|bpa$/) {
-                        my $np = $ppctab->getNodeAttribs( $n, [qw(parent)]);
-                        if ($np)  { # use parent(frame/cec)'s sfp attributes first,for high end machine with 2.5/2.6+ database
-                            my $psfp = $ppctab->getNodeAttribs( $np->{parent}, [qw(sfp)]);
-                            $newhcp{$n}{hcp} = [$psfp->{sfp}]  if ($psfp);
-                        } else {    # if the node don't have a parent,for low end machine with 2.5 database
-                            my $psfp = $ppctab->getNodeAttribs( $n, [qw(sfp)]);
-                            $newhcp{$n}{hcp} = [$psfp->{sfp}] if ($psfp);
+                unless ( $request->{arg}->[1] ) {
+                    for my $n (@$nodes) {
+                        if (@$typeref[$i++] =~ /^fsp|bpa$/) {
+                            my $np = $ppctab->getNodeAttribs( $n, [qw(parent)]);
+                            if ($np)  { # use parent(frame/cec)'s sfp attributes first,for high end machine with 2.5/2.6+ database
+                                my $psfp = $ppctab->getNodeAttribs( $np->{parent}, [qw(sfp)]);
+                                $newhcp{$n}{hcp} = [$psfp->{sfp}]  if ($psfp);
+                            } else {    # if the node don't have a parent,for low end machine with 2.5 database
+                                my $psfp = $ppctab->getNodeAttribs( $n, [qw(sfp)]);
+                                $newhcp{$n}{hcp} = [$psfp->{sfp}] if ($psfp);
+                            }
+                        } else {
+                             my $psfp = $ppctab->getNodeAttribs( $n, [qw(sfp)]);
+                             $newhcp{$n}{hcp} = [$psfp->{sfp}] if($psfp); 
                         }
-                    } else {
-                         my $psfp = $ppctab->getNodeAttribs( $n, [qw(sfp)]);
-                         $newhcp{$n}{hcp} = [$psfp->{sfp}] if($psfp); 
+                        $newhcp{$n}{num} = 1;
+                    } 
+                    return \%newhcp;
+                } else { 
+                    my $sfp = $request->{arg}->[1];
+                    my %sfphash;
+                    for my $n (@$nodes) {
+                        # record hcp
+                        $newhcp{$n}{hcp} = [$sfp];
+                        $newhcp{$n}{num} = 1;  
+                        # set the sfp attribute to the database
+                        if (@$typeref[$i++] =~ /^fsp|bpa$/) {
+                            my $np = $ppctab->getNodeAttribs( $n, [qw(parent)]);
+                            $sfphash{$np}{sfp} = $sfp if ( $np );                 
+                        }
+                        $sfphash{$n}{sfp} = $sfp;         
                     }
-                    $newhcp{$n}{num} = 1;
-                }
-            } else {
+                    $ppctab->setNodesAttribs(\%sfphash);
+                    return \%newhcp; 
+                }            
+            }else {
                 $callback->({data=>["Could not open the ppc table"]});
+                return undef;
             }
-            return \%newhcp;
-        }
+        }    
     }
 
 
