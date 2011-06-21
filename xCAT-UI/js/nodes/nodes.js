@@ -279,13 +279,11 @@ function loadGroups(data) {
 	
 	// Load nodes onclick
 	$('#groups').bind('select_node.jstree', function(event, data) {
-		// If there are subgroups, remove them
-		data.rslt.obj.children('ul').remove();
 		
 		var thisGroup = jQuery.trim(data.rslt.obj.text());
 		if (thisGroup) {
 		    //click the root, return directly
-		    if ('root' == thisGroup){
+		    if ('Groups' == thisGroup){
 		        return;
 		    }
 		    drawNodesArea(thisGroup, '', thisGroup);

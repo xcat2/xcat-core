@@ -174,7 +174,7 @@ body {
 	vertical-align: top;
 	float: left;
 	position: relative;
-	margin: 15px 10px 15px 15px;
+	margin: 15px 0px 15px 15px;
 }
 
 #groups ul {
@@ -204,7 +204,7 @@ body {
 
 /*--------------- Nodes section ---------------*/
 #nodes {
-	width: 800px;
+	width: 790px;
 	min-height: 570px;
 	margin: 15px 0px 15px 0px;
 	padding: 0px 0px 0px 10px;
