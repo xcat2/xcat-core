@@ -991,6 +991,7 @@ if [ -z "\$IFACE" ]; then
 fi
 
 export IFACE=\$IFACE
+echo network --device \$IFACE --bootproto dhcp >> /bin/netstart
 
 netstart \$IFACE
 while ! ifconfig | grep inet; do
@@ -1254,7 +1255,6 @@ EOMS
 
    open($inifile,">"."/tmp/xcatinitrd.$$/bin/netstart");
    print $inifile "#!/sbin/nash\n";
-   print $inifile "network --device \${1} --bootproto dhcp\n"; #must not use env, doesn't work in older RH
    close($inifile);
    chmod(0755,"/tmp/xcatinitrd.$$/init");
    chmod(0755,"/tmp/xcatinitrd.$$/bin/netstart");
