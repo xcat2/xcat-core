@@ -26,6 +26,10 @@ B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<lowpower>]
 
 B<rpower> I<noderange> [B<rackstandby>|B<exit_rackstandby>|B<stat>|B<state>]
 
+=head2 LPAR (using Direct FSP Management) specific:
+
+B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<of>|B<sms>]
+
 =head2 Blade specific:
 
 B<rpower> I<noderange> [B<cycle>|B<softoff>] 
@@ -90,7 +94,11 @@ Power off, then on.
 
 =item B<of>
 
-Boot the node to open firmware mode.
+Boot the node to open firmware console mode.
+
+=item B<sms>
+
+Boot the node to open firmware SMS menu mode.
 
 =item B<-m> I<table.column>==I<expectedstatus> B<-m> I<table.column>=~I<expectedstatus>
 
