@@ -55,25 +55,21 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s port=s s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t  p=s P=s  port=s  s:s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
 
-#if ( exists $opt{s} )
-#{
-#    return( usage('Flags -s is just used in direct-attach enviroment.'));
-#}
     if ( !exists $opt{t} and !exists $opt{p} and !exists $opt{s}) {
         return ( usage('Flag -t or -p or -s must be used.'));
     }
 
-    if ( exists $opt{t} and exists $opt{p})
+    if (( exists $opt{t} and exists $opt{p}) or (exists $opt{s} and exists $opt{p}) or (exists $opt{t} and exists $opt{p}))
     {
         return( usage('Flags -t and -p cannot be used together.'));
     }
 
-    if ( exists $opt{P} and ! exists $opt{p})
+    if ( exists $opt{P} and (!exists $opt{p} and !exists $opt{s}))
     {
         return( usage('Flags -P can only be used when flag -p is specified.'));
     }
@@ -151,7 +147,7 @@ sub mkhwconn_parse_args
             if ( $nodetype eq 'frame')
             {
                 my $my_frame_bpa_cec =  xCAT::DBobjUtils::getcecchildren( $node)                                                                             ;
-                push @frame_members, @$my_frame_bpa_cec;
+                push @frame_members, @$my_frame_bpa_cec if($my_frame_bpa_cec);
                 push @frame_members, $node;
             }
         }
@@ -168,7 +164,7 @@ sub mkhwconn_parse_args
         my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
         return ( usage("Node(s) $tmp_nodelist is(are) controlled by BPA."));
     }
-    
+
     if ( scalar( @frame_members))
     {
         my @all_nodes = xCAT::Utils::get_unique_members( @$nodes, @frame_members);
@@ -426,7 +422,7 @@ sub rmhwconn_parse_args
         my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
         return ( usage("Node(s) $tmp_nodelist is(are) controlled by BPA."));
     }
-    
+
     if ( scalar( @frame_members))
     {
         my @all_nodes = xCAT::Utils::get_unique_members( @$nodes, @frame_members);
