@@ -1942,7 +1942,7 @@ sub match_ip_mac
                     for (@mac_sections ) {
                         $_ = "0$_" if ( length($_) == 1) ;
                     }
-                    $mac = join ':', @mac_sections;
+                    $mac = join '', @mac_sections;
                 }
             } elsif ( $arpent =~ /^(\S+)+\s+\S+\s+(\S+)\s/ ) {
                 ($ip, $mac) = ($1,$2);
@@ -2412,7 +2412,8 @@ sub parse_responses {
         } else {
             $mac = undef;
         }
-        unless ( $mac =~ /\w+\:\w+\:\w+\:\w+\:\w+\:\w+/ ) { $mac = undef;}
+        # This is originally used to check the invalid mac address in AIX, but failed to do it.
+        #unless ( $mac =~ /\w+\:\w+\:\w+\:\w+\:\w+\:\w+/ ) { $mac = undef;}
         push @$data, $mac;
         trace ( $request, "    Then find the node's mac $mac.", 1);
 
