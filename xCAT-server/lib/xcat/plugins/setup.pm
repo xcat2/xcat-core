@@ -969,7 +969,7 @@ sub writelpar {
 	}
 	
 	# Set some attrs common to all lpars
-        $tables{'nodetype'}->setNodeAttribs('lpar', {nodetype => 'lpar,osi', arch => 'ppc64'});
+        $tables{'nodetype'}->setNodeAttribs('lpar', {nodetype => 'osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('lpar', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('lpar', {netboot => 'yaboot'});
 	
@@ -1212,7 +1212,7 @@ sub writesn {
 	
 	# Write regex for: ppc.id, nodetype.nodetype, etc.
 	$tables{'ppc'}->setNodeAttribs('service', {id => '1', nodetype => 'lpar'});
-        $tables{'nodetype'}->setNodeAttribs('service', {nodetype => 'lpar,osi', arch => 'ppc64'});
+        $tables{'nodetype'}->setNodeAttribs('service', {nodetype => 'osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('service', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('service', {netboot => 'yaboot'});
 	$tables{'servicenode'}->setNodeAttribs('service', {nameserver=>1, dhcpserver=>1, tftpserver=>1, nfsserver=>1, conserver=>1, monserver=>1, ftpserver=>1, nimserver=>1, ipforward=>defined($STANZAS{'xcat-service-nodes'}->{'route-masks'})});
@@ -1352,7 +1352,7 @@ sub writestorage {
 	
 	# Write ppc.id, nodetype.nodetype, etc.
 	$tables{'ppc'}->setNodeAttribs('storage', {id => '1', nodetype => 'lpar'});
-        $tables{'nodetype'}->setNodeAttribs('storage', {nodetype => 'lpar,osi', arch => 'ppc64'});
+        $tables{'nodetype'}->setNodeAttribs('storage', {nodetype => 'osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('storage', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('storage', {netboot => 'yaboot'});
 	
@@ -1503,7 +1503,7 @@ sub writecompute {
 	
 	# Write regex for: nodetype.nodetype, etc.
 	$tables{'ppc'}->setNodeAttribs('compute', {nodetype => 'lpar'});
-        $tables{'nodetype'}->setNodeAttribs('compute', {nodetype => 'lpar,osi', arch => 'ppc64'});
+        $tables{'nodetype'}->setNodeAttribs('compute', {nodetype => 'osi', arch => 'ppc64'});
 	$tables{'nodehm'}->setNodeAttribs('compute', {mgt => 'fsp', cons => 'fsp'});
 	$tables{'noderes'}->setNodeAttribs('compute', {netboot => 'yaboot'});
 	if ($STANZAS{'ll-config'}->{'central_manager_list'}) {		# write the LL postscript for compute nodes
