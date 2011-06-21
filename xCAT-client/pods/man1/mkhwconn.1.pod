@@ -12,7 +12,7 @@ B<mkhwconn> [B<-v>| B<--version>]
 
 B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-t> [B<--port> I<port_value>]
 
-B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-s> [B<--port> I<port_value>]
+B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-s> [I<hmcnode> B<--port> I<port_value>]
 
 B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-p> I<hmc> [B<-P> I<passwd>] [B<--port> I<port_value>]
 
@@ -33,7 +33,7 @@ When B<-t> is specified, this command reads the connection information from the 
 
 When B<-p> is specified, this command gets the connection information from command line arguments. If B<-P> is not specified, the default password for FSP and BPA nodes is used.
 
-The flag B<-s> is used to make the connection between the frame and its Service focal point(HMC). The sfp of the frame should be specified in ppc table.
+The flag B<-s> is used to make the connection between the frame and its Service focal point(HMC). Makehwconn will also set the connections between the CECs within this Frame and the HMC. The sfp of the frame/CEC can either be defined in ppc table beforehand or specified in command line after the flag -s. If the user use mkhwconn noderange -s HMC_name, it will not only make the connections but also set the sfp attributes for these nodes in PPC table.
 
 In any case, before running this command, the FSP and BPA nodes need be defined with correct nodetype.nodetype value (fsp or bpa) and nodehm.mgt value (hmc).
 
@@ -76,7 +76,7 @@ The port value specify which side will be used to create the connection to the F
 
 =item B<-s>
 
-The flag -s is used to make the connection between the frame and its Service Focal Point(HMC). -s flag is not supposed to work with other functional flags. The noderange should be frame.
+The flag -s is used to make the connection between the frame and its Service Focal Point(HMC). -s flag is not supposed to work with other functional flags.
 
 =item B<-V|--verbose>
 
@@ -111,6 +111,12 @@ To setup the connection for BPA nodes in node group frame_grp1 to HMC node hmc1,
 To setup the connections for all FSP nodes in node group fsp to hardware server, and the tooltype value is lpar:
 
  mkhwconn fsp -t -T lpar
+ 
+=item 4.
+
+To setup the connection between the frame and it's SFP node. This command will also set the connections between the CECs within this frame and their SFP node. User need to define HMC_name in the database in advance, but no need to set the sfp attribute for these node, xCAT will set the HMC_name as ppc.sfp for these nodes. The CECs within this frame should have the same sfp attribute as the frame.
+
+ mkhwconn fsp -s HMC_name -P HMC_passwd
 
 =back
 
