@@ -905,6 +905,7 @@ sub migrate {
     close($sock);
     if ($desthypconn->get_domain_by_name($node)) {
         #$updatetable->{vm}->{$node}->{host} = $targ;
+      	unless ($vmtab) { $vmtab = new xCAT::Table('vm',-create=>1); }
         $vmtab->setNodeAttribs($node,{host=>$targ});
         return (0,"migrated to $targ");
     } else { #This *should* not be possible
@@ -2308,6 +2309,7 @@ sub adopt {
         delete $orphash->{$node};
         $vmupdates->{$node}->{host}=$target;
     }
+    unless ($vmtab) { $vmtab = new xCAT::Table('vm',-create=>1); }
     $vmtab->setNodesAttribs($vmupdates);
     if (keys %{$orphash}) {
         return 0;
@@ -2656,7 +2658,7 @@ sub process_request {
     close ($pfd);
     $sub_fds->add($cfd);
   }
-  while ($sub_fds->count > 0 or $children > 0) {
+  while ($sub_fds->count > 0) { # or $children > 0) { #if count is zero, even if we have live children, we can't possibly get data from them
     my $handlednodes={};
     forward_data($callback,$sub_fds,$handlednodes);
     #update the node status to the nodelist.status table
@@ -2664,17 +2666,18 @@ sub process_request {
       updateNodeStatus($handlednodes, \@allerrornodes);
     }
   }
+  #while (wait() > -1) { } #keep around just in case we find the absolute need to wait for children to be gone
 
   #Make sure they get drained, this probably is overkill but shouldn't hurt
-  my $rc=1;
-  while ( $rc>0 ) {
-    my $handlednodes={};
-    $rc=forward_data($callback,$sub_fds,$handlednodes);
-    #update the node status to the nodelist.status table
-    if ($check) {
-      updateNodeStatus($handlednodes, \@allerrornodes);
-    }
-  } 
+  #my $rc=1;
+  #while ( $rc>0 ) {
+  #  my $handlednodes={};
+  #  $rc=forward_data($callback,$sub_fds,$handlednodes);
+  #  #update the node status to the nodelist.status table
+  #  if ($check) {
+  #    updateNodeStatus($handlednodes, \@allerrornodes);
+  #  }
+  #} 
 
   if ($check) {
       #print "allerrornodes=@allerrornodes\n";
@@ -2756,7 +2759,8 @@ sub dohyp {
   my @exargs=@{$namedargs{-args}};
   my $node;
   my $args = \@exargs;
-  $vmtab = xCAT::Table->new("vm");
+  #$vmtab = xCAT::Table->new("vm");
+  $vmtab = undef;
   unless ($offlinehyps{$hyp} or ($hyp eq '!@!XCATDUMMYHYPERVISOR!@!') or nodesockopen($hyp,22)) {
     $offlinehyps{$hyp}=1;
   }
