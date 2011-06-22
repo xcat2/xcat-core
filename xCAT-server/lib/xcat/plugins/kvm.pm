@@ -96,7 +96,6 @@ my $doreq;
 my %hyphash;
 my $node;
 my $vmtab;
-my $kvmdatatab;
 
 
 sub get_path_for_pool {
@@ -2468,12 +2467,14 @@ sub process_request {
   if ($::XCATSITEVALS{usexhrm}) { $use_xhrm=1; }
   $vmtab = xCAT::Table->new("vm");
   $confdata={};
-  unless ($command eq 'lsvm') { xCAT::VMCommon::grab_table_data($noderange,$confdata,$callback); }
-  $kvmdatatab = xCAT::Table->new("kvm_nodedata",-create=>0); #grab any pertinent pre-existing xml
+  unless ($command eq 'lsvm') { 
+	xCAT::VMCommon::grab_table_data($noderange,$confdata,$callback); 
+  my $kvmdatatab = xCAT::Table->new("kvm_nodedata",-create=>0); #grab any pertinent pre-existing xml
   if ($kvmdatatab) {
       $confdata->{kvmnodedata} = $kvmdatatab->getNodesAttribs($noderange,[qw/xml/]);
   } else {
       $confdata->{kvmnodedata} = {};
+  }
   }
   if ($command eq 'mkvm' or ($command eq 'clonevm' and (grep { "$_" eq '-b' } @exargs)) or ($command eq 'rpower' and (grep { "$_" eq "on"  or $_ eq "boot" or $_ eq "reset" } @exargs))) {
       xCAT::VMCommon::requestMacAddresses($confdata,$noderange);
