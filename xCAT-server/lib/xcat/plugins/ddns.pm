@@ -213,6 +213,7 @@ sub process_request {
     if ($help)
     {
         makedns_usage($callback);
+        return;
     }
     
     $ctx->{deletemode}=$deletemode;
