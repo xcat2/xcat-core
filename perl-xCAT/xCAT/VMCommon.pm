@@ -10,8 +10,8 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
   my $vpdtab = xCAT::Table->new("vpd");
   my $hmtab = xCAT::Table->new("nodehm");
   my $nttab = xCAT::Table->new("nodetype");
-  my $sitetab = xCAT::Table->new("site");
-  $cfghash->{site}->{genmacprefix} = xCAT::Utils->get_site_attribute('genmacprefix');
+  #my $sitetab = xCAT::Table->new("site");
+  $cfghash->{site}->{genmacprefix} = $::XCATSITEVALS{genmacprefix}; #xCAT::Utils->get_site_attribute('genmacprefix');
   if ($hmtab) {
       $cfghash->{nodehm}  = $hmtab->getNodesAttribs($noderange,['serialspeed']);
   }

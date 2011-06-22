@@ -2465,13 +2465,7 @@ sub process_request {
       $command = 'rmigrate';
   }
 
-  my $sitetab = xCAT::Table->new('site');
-  if ($sitetab) {
-      my $xhent = $sitetab->getAttribs({key=>'usexhrm'},['value']);
-      if ($xhent and $xhent->{value} and $xhent->{value} !~ /no/i and $xhent->{value} !~ /disable/i) {
-          $use_xhrm=1;
-      }
-  }
+  if ($::XCATSITEVALS{usexhrm}) { $use_xhrm=1; }
   $vmtab = xCAT::Table->new("vm");
   $confdata={};
   xCAT::VMCommon::grab_table_data($noderange,$confdata,$callback);
@@ -2497,10 +2491,7 @@ sub process_request {
       $vmmaxp=1; #for now throttle concurrent migrations, requires more sophisticated heuristics to ensure sanity
   } else {
       my $tmp;
-      if ($sitetab) {
-        ($tmp)=$sitetab->getAttribs({'key'=>'vmmaxp'},'value');
-        if (defined($tmp)) { $vmmaxp=$tmp->{value}; }
-      }
+      if ($::XCATSITEVALS{vmmaxp}) { $vmmaxp=$::XCATSITEVALS{vmmaxp}; }
   }
 
   my $children = 0;
@@ -2570,12 +2561,7 @@ sub process_request {
   my @allerrornodes=();
   my $check=0;
   my $global_check=1;
-  if ($sitetab) {
-    (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    if ($ref) {
-       if ($ref->{value} =~ /0|n|N/) { $global_check=0; }
-    }
-  }
+  if ($::XCATSITEVALS{nodestatus} =~ /0|n|N/) { $global_check=0; }
 
 
   if ($command eq 'rpower') {
@@ -2625,10 +2611,7 @@ sub process_request {
     }
   }
 
-  my $sent = $sitetab->getAttribs({key=>'masterimgdir'},'value');
-  if ($sent) {
-    $xCAT_plugin::kvm::masterdir=$sent->{value};
-  }
+  if ($::XCATSITEVALS{masterimgdir}) { $xCAT_plugin::kvm::masterdir=$::XCATSITEVALS{masterimgdir} }
 
 
 
