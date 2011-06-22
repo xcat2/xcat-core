@@ -1081,9 +1081,10 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    open($cfgfile,">","$rootimg_dir/etc/resolv.conf");
    print $cfgfile "#Dummy resolv.conf to make boot cleaner";
    close($cfgfile);
-   open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$prinic");
-   print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
-   close($cfgfile);
+   # this code breaks statelite, defect 3324448
+   #open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$prinic");
+   #print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
+   #close($cfgfile);
    foreach (split /,/,$othernics) {
       if (/^$/) { next; }
       open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$_");
