@@ -2468,7 +2468,7 @@ sub process_request {
   if ($::XCATSITEVALS{usexhrm}) { $use_xhrm=1; }
   $vmtab = xCAT::Table->new("vm");
   $confdata={};
-  xCAT::VMCommon::grab_table_data($noderange,$confdata,$callback);
+  unless ($command eq 'lsvm') { xCAT::VMCommon::grab_table_data($noderange,$confdata,$callback); }
   $kvmdatatab = xCAT::Table->new("kvm_nodedata",-create=>0); #grab any pertinent pre-existing xml
   if ($kvmdatatab) {
       $confdata->{kvmnodedata} = $kvmdatatab->getNodesAttribs($noderange,[qw/xml/]);
