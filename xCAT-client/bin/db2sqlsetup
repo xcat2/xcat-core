@@ -1424,10 +1424,81 @@ sub setupODBC
     if ($::RUNCMD_RC != 0)
     {
         my $message =
-          "\nunixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs. If RHEL6 and ppc is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc should be installed. ";
+          "\nunixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs. If Redhat and ppc is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc should be installed. ";
         xCAT::MsgUtils->message("E", " $cmd failed. $message");
         exit(1);
     }
+    # For CNM you  must have the 32 bit version on Unix ODBC, Pam, 
+    # and openssl installed on Redhat.   Put out a warning.
+    if ($::linuxos =~ /rh.*/) {
+      $cmd = "rpm -qa | grep unixODBC";
+      my @output=xCAT::Utils->runcmd($cmd, 0);
+      # check for two lines one ppc and one ppc64
+      my $foundppc64 =0;
+      my $foundppc =0;
+      foreach my $line (@output)  {
+        if ($line =~ /\.ppc$/i) {
+         $foundppc=1;
+        }
+        if ($line =~ /\.ppc64$/i) {
+         $foundppc64=1;
+        }
+      }
+      if (($foundppc64 !=1) || ($foundppc != 1))
+      {
+        my $message =
+          "If Redhat on power is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc rpms must be installed to run ISNM. ";
+        xCAT::MsgUtils->message("I", "$message");
+    
+      }
+      # check pam 32 and 64 bit installed
+      @output=();
+      $cmd = "rpm -qa | grep \^pam-";
+      @output=xCAT::Utils->runcmd($cmd, 0);
+      # check for two lines one ppc and one ppc64
+      $foundppc64 =0;
+      $foundppc =0;
+      foreach my $line (@output)  {
+        if ($line =~ /\.ppc$/i) {
+         $foundppc=1;
+        }
+        if ($line =~ /\.ppc64$/i) {
+         $foundppc64=1;
+        }
+      }
+      if (($foundppc64 !=1) || ($foundppc != 1))
+      {
+        my $message =
+          "If Redhat on power is being used then both pam-*.ppc64 and pam-*.ppc rpms must be installed to run ISNM. ";
+        xCAT::MsgUtils->message("I", "$message");
+    
+       }
+      # check openssl 32 and 64 bit installed
+      @output=();
+      $cmd = "rpm -qa | grep \^openssl-";
+      @output=xCAT::Utils->runcmd($cmd, 0);
+      # check for two lines one ppc and one ppc64
+      $foundppc64 =0;
+      $foundppc =0;
+      foreach my $line (@output)  {
+        if ($line =~ /\.ppc$/i) {
+         $foundppc=1;
+        }
+        if ($line =~ /\.ppc64$/i) {
+         $foundppc64=1;
+        }
+      }
+      if (($foundppc64 !=1) || ($foundppc != 1))
+      {
+        my $message =
+          "If Redhat on power is being used then both openssl*.ppc64 and openssl*.ppc rpms must be installed to run ISNM. ";
+        xCAT::MsgUtils->message("I", "$message");
+    
+       }
+    }
+
+
+
 
     my @rpmoutput;
     my $odbcinstfile;
