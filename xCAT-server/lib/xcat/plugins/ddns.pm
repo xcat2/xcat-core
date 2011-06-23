@@ -226,6 +226,10 @@ sub process_request {
     }
     $ctx->{domain} = $stab->{value};
 
+    my $networkstab = xCAT::Table->new('networks',-create=>0);
+    unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
+    my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain');
+
     if ($request->{node}) { #we have a noderange to process
         @nodes = @{$request->{node}};
     } elsif ($allnodes) {
@@ -284,8 +288,27 @@ sub process_request {
                 }
                 $ctx->{aliases}->{$node}->{$alias}=1; #remember alias for CNAM records later
             }
-            push @nodes,$node;
-            $ctx->{nodeips}->{$node}->{$addr}=1;
+
+            # exclude the nodes not belong to any nets defined in networks table
+            # because only the nets defined in networks table will be add zones later.
+            my $found = 0;
+            foreach (@networks)
+            {
+                if(xCAT::NetworkUtils->ishostinsubnet($addr, $_->{mask}, $_->{net}))
+                {
+                    $found = 1;
+                }
+            }
+
+            if ($found)
+            {
+                push @nodes,$node;
+                $ctx->{nodeips}->{$node}->{$addr}=1;
+            }
+            else
+            {
+                xCAT::SvrUtils::sendmsg(":Ignoring host $node in /etc/hosts, it does not belong to any nets defined in networks table.", $callback);
+            }
         }
     }
     my $hoststab = xCAT::Table->new('hosts',-create=>0);
@@ -293,9 +316,7 @@ sub process_request {
         $ctx->{hoststab} = $hoststab->getNodesAttribs(\@nodes,['ip']);
     }
     $ctx->{nodes} = \@nodes;
-    my $networkstab = xCAT::Table->new('networks',-create=>0);
-    unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
-    my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain');
+
     foreach (@networks) {
         my $maskn;
         if ($_->{mask}) { #better be IPv4, we only do CIDR for v6, use the v4/v6 agnostic just in case
@@ -333,6 +354,9 @@ sub process_request {
         $ctx->{forwarders}=\@forwarders;
     }
     $ctx->{zonestotouch}->{$ctx->{domain}}=1;
+
+    xCAT::SvrUtils::sendmsg("Getting reverse zones, this may take several minutes in scaling cluster.", $callback);
+    
     foreach (@nodes) {
         my @revzones =  get_reverse_zones_for_entity($ctx,$_);;
         unless (@revzones) { next; }
@@ -341,6 +365,8 @@ sub process_request {
             $ctx->{zonestotouch}->{$_}=1;
         }
     }
+    xCAT::SvrUtils::sendmsg("Completed getting reverse zones.", $callback);
+    
     if (1) { #TODO: function to detect and return 1 if the master server is DNS SOA for all the zones we care about
         #here, we are examining local files to assure that our key is in named.conf, the zones we care about are there, and that if
         #active directory is in use, allow the domain controllers to update specific zones
@@ -408,6 +434,7 @@ sub process_request {
     #now we stick to Net::DNS style updates, with TSIG if possible.  TODO: kerberized (i.e. Windows) DNS server support, maybe needing to use nsupdate -g....
     $ctx->{resolver} = Net::DNS::Resolver->new();
     add_or_delete_records($ctx);
+    xCAT::SvrUtils::sendmsg("DNS setup is completed", $callback);
 }
 
 sub get_zonesdir {
@@ -504,6 +531,9 @@ sub update_zones {
     my $domain = $ctx->{domain};
     my $name = hostname;
     my $node = $name;
+
+    xCAT::SvrUtils::sendmsg("Updating zones.", $callback);
+    
     unless ($domain =~ /^\./) {
         $domain = '.'.$domain;
     }
@@ -561,6 +591,7 @@ sub update_zones {
             $ctx->{restartneeded}=1;
         }
     }
+    xCAT::SvrUtils::sendmsg("Completed updating zones.", $callback);
 }
 
 
@@ -751,6 +782,9 @@ sub update_namedconf {
 
 sub add_or_delete_records {
     my $ctx = shift;
+
+    xCAT::SvrUtils::sendmsg("Updating DNS records, this may take several minutes in scaling cluster.", $callback);
+    
     unless ($ctx->{privkey}) {
         my $passtab = xCAT::Table->new('passwd');
         my $pent = $passtab->getAttribs({key=>'omapi',username=>'xcat_key'},['password']);
@@ -840,6 +874,7 @@ sub add_or_delete_records {
             sleep 1;
         }
     }
+    xCAT::SvrUtils::sendmsg("Completed updating DNS records.", $callback);
 }
 sub find_nameserver_for_dns {
     my $ctx = shift;
