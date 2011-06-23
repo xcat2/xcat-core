@@ -717,6 +717,7 @@ sub getrvidparms {
     return 0,@output;
 }
 
+my %cached_noderanges;
 sub pick_target {
     my $node = shift;
     my $addmemory = shift;
@@ -729,7 +730,14 @@ sub pick_target {
     unless ($candidates) {
         return undef;
     }
-    foreach (noderange($candidates)) {
+    my @fosterhyps; #noderange is relatively expensive, and generally we only will have a few distinct noderange descriptions to contend with in a mass adoption, so cache eache one for reuse across pick_target() calls
+    if (defined $cached_noderanges{$candidates}) {
+	@fosterhyps = @{$cached_noderanges{$candidates}};
+    } else {
+	@fosterhyps = noderange($candidates);
+        $cached_noderanges{$candidates} = \@fosterhyps;
+    }
+    foreach (@fosterhyps) {
         my $targconn;
         my $cand=$_;
         if ($_ eq $currhyp) { next; } #skip current node
