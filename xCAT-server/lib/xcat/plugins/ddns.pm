@@ -307,7 +307,10 @@ sub process_request {
             }
             else
             {
-                xCAT::SvrUtils::sendmsg(":Ignoring host $node in /etc/hosts, it does not belong to any nets defined in networks table.", $callback);
+                unless ($node =~ /localhost/)
+                {
+                    xCAT::SvrUtils::sendmsg(":Ignoring host $node in /etc/hosts, it does not belong to any nets defined in networks table.", $callback);
+                }    
             }
         }
     }
