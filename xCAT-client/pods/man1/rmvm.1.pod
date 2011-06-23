@@ -11,6 +11,7 @@ I<rmvm [-v| --version]>
 
 I<rmvm [-V| --verbose] noderange [-r] [--service]>
 
+I<rmvm [-p] [-f]
 
 =head1 DESCRIPTION
 
@@ -25,10 +26,13 @@ B<-v>          Command Version.
 
 B<-V>          Verbose output.
 
-B<-r>          Remain the data object definitions of the nodes.
+B<-r>          Retain the data object definitions of the nodes.
 
 B<--service>   Remove the service partitions of the specified CECs.
 
+B<-p>          Purge the existence of the VM from persistant storage.  This will erase all storage related to the VM in addition to removing it from the active virtualization configuration.  
+
+B<-f>          Force remove the VM, even if the VM appears to be online.  This will bring down a live VM if requested. 
 
 =head1 RETURN VALUE
 
@@ -65,7 +69,7 @@ Output is similar to:
  cec01: Success
  cec02: Success
 
-4. To remove the partition lpar1, but remaining its definition, enter:
+4. To remove the partition lpar1, but retain its definition, enter:
 
 I<rmvm lpar1 -r>
 
