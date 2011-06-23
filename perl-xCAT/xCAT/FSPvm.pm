@@ -159,16 +159,16 @@ sub chvm_parse_args {
         my @id = (1, 5, 9, 13, 17, 21, 25, 29);
         my @found =  grep(/^$opt{i}$/, @id );
 	if ( @found != 1) {
-            return(usage( "Invalid entry: $opt{i}.\n For P7 IH, starting numeric id of the newly created partitions only could be 1, 5, 9, 13, 17, 21, 25 and 29." ));
+            return(usage( "Invalid entry: $opt{i}.\n For Power 775, starting numeric id of the newly created partitions only could be 1, 5, 9, 13, 17, 21, 25 and 29." ));
         }
        
 	#if ( !exists($opt{o})  ) {
-	#    return(usage("For P7 IH, -i should be used with -o"));
+	#    return(usage("For Power 775, -i should be used with -o"));
 	#}
       
 	#my @value = (1, 2, 3, 4, 5);
 	#if ( grep(/^$opt{i}$/, @id ) != 1) {
-	#    return(usage( "Invalid entry: $opt{o}.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	#    return(usage( "Invalid entry: $opt{o}.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
 	#}
        
 	
@@ -184,7 +184,7 @@ sub chvm_parse_args {
 	} elsif( $opt{m} =~ /^non-interleaved$/ || $opt{m} =~ /^2$/  ) {
 	    $opt{m} = 2;
 	} else {
-            return(usage( "Invalid entry: $opt{m}.\n For P7 IH, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
+            return(usage( "Invalid entry: $opt{m}.\n For Power 775, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
 	}
     } else {
         $opt{m} = 2 ;# non-interleaved, which is the default    
@@ -210,7 +210,7 @@ sub chvm_parse_args {
 		    return(usage("Octant ID only could be 0 to 7 in the octant configuration value $elem"));
 		}
 		if( grep(/^$subelems[1]$/, @ratio ) != 1) {
-	            return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of chvm." ));
+	            return(usage( "Invalid octant configuration value in $elem.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of chvm." ));
 		}
 		if( exists($octant_cfg{$subelems[0]}) && $octant_cfg{$subelems[0]} == $subelems[1] ) {
 	            return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
@@ -225,7 +225,7 @@ sub chvm_parse_args {
 		}
                 if($left == $right) {
 		   if( grep(/^$subelems[1]$/, @ratio ) != 1) {
-	               return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of chvm." ));
+	               return(usage( "Invalid octant configuration value in $elem.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of chvm." ));
 		   }
 		   if( exists($octant_cfg{$left}) || $octant_cfg{$left} == $subelems[1] ) {
 	               return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
@@ -270,7 +270,7 @@ sub chvm_parse_args {
                 $other_p = $p;
             } 
             if ($other_p ne $p) {
-                return(usage("For P7 IH, please make sure the noderange are in one CEC "));
+                return(usage("For Power 775, please make sure the noderange are in one CEC "));
             }
         } 
         $request->{node} = [$other_p]; 
@@ -340,16 +340,16 @@ sub mkvm_parse_args {
         my @id = (1, 5, 9, 13, 17, 21, 25, 29);
         my @found =  grep(/^$opt{i}$/, @id );
 	if ( @found != 1) {
-            return(usage( "Invalid entry: $opt{i}.\n For P7 IH, starting numeric id of the newly created partitions only could be 1, 5, 9, 13, 17, 21, 25 and 29." ));
+            return(usage( "Invalid entry: $opt{i}.\n For Power 775, starting numeric id of the newly created partitions only could be 1, 5, 9, 13, 17, 21, 25 and 29." ));
         }
        
 	#if ( !exists($opt{o})  ) {
-	#    return(usage("For P7 IH, -i should be used with -o"));
+	#    return(usage("For Power 775, -i should be used with -o"));
 	#}
       
 	#my @value = (1, 2, 3, 4, 5);
 	#if ( grep(/^$opt{i}$/, @id ) != 1) {
-	#    return(usage( "Invalid entry: $opt{o}.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	#    return(usage( "Invalid entry: $opt{o}.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
 	#}
        
 	
@@ -365,7 +365,7 @@ sub mkvm_parse_args {
 	} elsif( $opt{m} =~ /^non-interleaved$/ || $opt{m} =~ /^2$/  ) {
 	    $opt{m} = 2;
 	} else {
-            return(usage( "Invalid entry: $opt{m}.\n For P7 IH, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
+            return(usage( "Invalid entry: $opt{m}.\n For Power 775, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
 	}
     } else {
         $opt{m} = 2 ;# non-interleaved, which is the default    
@@ -383,7 +383,7 @@ sub mkvm_parse_args {
 		    return(usage("Octant ID only could be 0 to 7 in the octant configuration value $elem"));
 		}
 		if( grep(/^$subelems[1]$/, @ratio ) != 1) {
-	            return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	            return(usage( "Invalid octant configuration value in $elem.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
 		}
 		if( exists($octant_cfg{$subelems[0]}) && $octant_cfg{$subelems[0]} == $subelems[1] ) {
 	            return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
@@ -398,7 +398,7 @@ sub mkvm_parse_args {
 		}
                 if($left == $right) {
 		   if( grep(/^$subelems[1]$/, @ratio ) != 1) {
-	               return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	               return(usage( "Invalid octant configuration value in $elem.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
 		   }
 		   if( exists($octant_cfg{$left}) || $octant_cfg{$left} == $subelems[1] ) {
 	               return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
@@ -446,7 +446,7 @@ sub mkvm_parse_args {
             $other_p = $p;
         } 
         if ($other_p ne $p) {
-            return(usage("For P7 IH, please make sure the noderange are in one CEC "));
+            return(usage("For Power 775, please make sure the noderange are in one CEC "));
         }
     } 
     $request->{node} = [$other_p]; 
@@ -497,7 +497,7 @@ sub rmvm_parse_args {
     if ( !GetOptions( \%opt, qw(V|verbose service r) )) {
         return( usage() );
     }
-    return(usage( "rmvm doesn't support for P7 IH." ));
+    return(usage( "rmvm doesn't support for Power 775." ));
     ####################################
     # Check for "-" with no option
     ####################################
@@ -1147,7 +1147,7 @@ sub chvm {
 
 
 ##########################################################################
-# No rmvm for P7 IH 
+# No rmvm for Power 775 
 ##########################################################################
 #sub rmvm  {
 #    return( remove(@_) );

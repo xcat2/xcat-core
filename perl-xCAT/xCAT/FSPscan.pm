@@ -191,7 +191,7 @@ sub enumerate {
 	         $lpar =~ /lparname:\s+([\w\-]+),\s+lparid:\s+(\d+),\s+state:/;
 		     my $name = $1;
 		     my $lparid = $2;
-             my $prof = "";  # No profile for P7 IH
+             my $prof = "";  # No profile for Power 775 
 		     my $server = $fsp;
              my $ips  = "";
           	 my $port = "";
