@@ -2824,9 +2824,11 @@ sub dohyp {
       my $tabhandle = xCAT::Table->new($_,-create=>1);
       my $updates = $updatetable->{$_};
       if ($updates->{'!*XCATNODESTODELETE*!'}) {
+          my @delkeys;
           foreach (keys %{$updates->{'!*XCATNODESTODELETE*!'}}) {
-              if ($_) { $tabhandle->delEntries({node=>$_}); }
+              if ($_) { push @delkeys, {node=>$_}; }
           }
+          if (@delkeys) {  $tabhandle->delEntries(\@delkeys); }
           delete $updates->{'!*XCATNODESTODELETE*!'};
       }
       $tabhandle->setNodesAttribs($updatetable->{$_});
