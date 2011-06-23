@@ -15,6 +15,7 @@ use xCAT::PPCcfg;
 ##########################################
 my %rspconfig = ( 
     frame  => \&frame,
+    cec_off_policy  => \&cec_off_policy,
 );
 
 
@@ -49,6 +50,7 @@ sub parse_args {
         "admin_passwd",
         "general_passwd",
         "*_passwd",
+        "cec_off_policy",
         "resetnet"
     );
     my @frame = (
@@ -174,7 +176,7 @@ sub parse_args {
     ####################################
     # Return method to invoke
     ####################################
-    if ( exists($cmds{frame}) ) {
+    if ( exists($cmds{frame}) or exists($cmds{cec_off_policy})) {
         $request->{hcp} = "bpa";
         $request->{method} = "cfg";
         return( \%opt );
@@ -232,6 +234,12 @@ sub parse_option {
     if ( $command eq 'frame' ){
         if ( $value !~ /^\d+$/i && $value ne '*' ) { 
             return( "Invalid frame number '$value'" );
+        }
+    }
+
+    if ( $command eq 'cec_off_policy' ){
+        if ( $value !~ /^poweroff$/i && $value !~ /^stayon$/i ) { 
+            return( "Invalid cec_off_policy '$value'" );
         }
     }
 
@@ -425,6 +433,76 @@ sub frame {
         }  
     }
 }
+
+sub cec_off_policy {
+    my $request = shift;
+    my $value   = shift;
+    my $hash    = shift;
+    my $arg     = $request->{arg};
+
+    foreach ( @$arg ) {
+        my $result;
+        my $Rc;
+        my $data;
+
+        my ($cmd, $value) = split /=/, $_;
+        if ( $cmd ne "cec_off_policy" ) {
+            return( [["Error","Multiple option $cmd and cec is not accepted", -1]] );
+        }
+
+        while ( my ($cec,$h) = each(%$hash) ) {
+            while ( my ($node,$d) = each(%$h) ) {
+                if ( !defined($value) ) {
+
+                    #################################
+                    # Get platform IPL parameters 
+                    #################################
+		    $data = xCAT::FSPUtils::fsp_api_action( $node, $d, "get_phyp_cfg_power_off_policy");
+                    $Rc = pop(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != 0 ) {
+                        return( [[$node,@$data[1],$Rc]] );
+                    }
+                     
+                    @$data[1] =~ /cec_off_policy=(\w*);/;                    
+
+                    push @$result, [$node, $1, 0];
+
+
+                 } else {
+                    #################################
+                    # Set cec off policy 
+                    #################################
+		    if( $value eq "poweroff") {
+		        $value = "cec_off_policy_poweroff";
+		    } else {
+		        $value = "cec_off_policy_stayon";
+		    }
+                    $data = xCAT::FSPUtils::fsp_api_action( $node, $d, $value);
+		    $Rc = pop(@$data);
+
+                    #################################
+                    # Return error
+                    #################################
+                    if ( $Rc != 0 ) {
+                        return( [[$node,@$data[1],$Rc]] );
+                    }
+
+                    push @$result, [$node,"Success",0];
+
+                }
+            }
+
+            return( [@$result] );
+        }  
+    }
+}
+
+
+
 
 
 
