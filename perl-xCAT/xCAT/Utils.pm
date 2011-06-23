@@ -3509,8 +3509,8 @@ sub create_postscripts_tar
 
 sub get_site_Master
 {
-    if ($::XCATSITEVALS{$master}) {
-        return $::XCATSITEVALS{$master};
+    if ($::XCATSITEVALS{master}) {
+        return $::XCATSITEVALS{master};
     }
     require xCAT::Table;
     my $Master;
