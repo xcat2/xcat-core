@@ -1063,7 +1063,7 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
 		if ($::VERBOSE)
 		{
 		    my $rsp = {};
-		    $rsp->{data}->[0] = "  $localhostname: Internal call command: xdsh $nodestring $args1";
+		    $rsp->{data}->[0] = "  $localhostname: Internal call command: xdsh $nodestring ".join(' ',@$args1);
 		    $callback->($rsp);
 		}
                
