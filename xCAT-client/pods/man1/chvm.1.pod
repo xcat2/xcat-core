@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<chvm> - Changes HMC- and IVM-managed partition profiles. For P7 IH, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
+B<chvm> - Changes HMC- and IVM-managed partition profiles. For Power 775, chvm could be used to change the octant configuration values for generating LPARs; change the I/O slots assignment to LPARs within the same CEC.
 
 =head1 SYNOPSIS
 
@@ -84,7 +84,7 @@ Verbose output.
 
 =item B<-i>              
 
-Starting numeric id of the newly created partitions. For P7 IH using Direct FSP Management, the id value only could be B<1>, B<5>, B<9>, B<13>, B<17>, B<21>, B<25> and B<29>.
+Starting numeric id of the newly created partitions. For Power 775 using Direct FSP Management, the id value only could be B<1>, B<5>, B<9>, B<13>, B<17>, B<21>, B<25> and B<29>.
 
 =item B<-m>              
 
@@ -178,7 +178,7 @@ Output is similar to:
 
 =head2 PPC (using Direct FSP Management) specific:
 
-1. For P7 IH, to create a new partition lpar1 on the first octant of the cec cec01, lpar1 will use all the cpu and memory of the octant 0, enter: 
+1. For Power 775, to create a new partition lpar1 on the first octant of the cec cec01, lpar1 will use all the cpu and memory of the octant 0, enter: 
 
  mkdef -t node -o lpar1 mgt=fsp groups=all parent=cec01   nodetype=lpar   hcp=cec01
 
@@ -191,7 +191,7 @@ Output is similar to:
  lpar1: Success
  cec01: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
 
-2. For P7 IH, to create new partitions lpar1-lpar8 on the whole cec cec01, each LPAR will use all the cpu and memory of each octant, enter:
+2. For Power 775, to create new partitions lpar1-lpar8 on the whole cec cec01, each LPAR will use all the cpu and memory of each octant, enter:
 
  mkdef -t node -o lpar1-lpar8 nodetype=lpar  mgt=fsp groups=all parent=cec01  hcp=cec01
 
@@ -211,7 +211,7 @@ Output is similar to:
  lpar8: Success
  cec01: Please reboot the CEC cec1 firstly, and then use chvm to assign the I/O slots to the LPARs
 
-3. For P7 IH cec1, to create new partitions lpar1-lpar9, the lpar1 will use 25% CPU and 25% memory of the first octant, and lpar2 will use the left CPU and memory of the first octant. lpar3-lpar9 will use all the cpu and memory of each octant, enter:
+3. For Power 775 cec1, to create new partitions lpar1-lpar9, the lpar1 will use 25% CPU and 25% memory of the first octant, and lpar2 will use the left CPU and memory of the first octant. lpar3-lpar9 will use all the cpu and memory of each octant, enter:
 
  mkdef -t node -o lpar1-lpar9 mgt=fsp groups=all parent=cec1   nodetype=lpar   hcp=cec1
 
