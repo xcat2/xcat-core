@@ -183,7 +183,8 @@ my %usage = (
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]",
     "rmvm" => 
 "Usage: rmvm <noderange> [--service][-V|--verbose] 
-       rmvm [-h|--help|-v|--version]",
+       rmvm [-h|--help|-v|--version],
+       rmvm [-p] [-f]",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
        lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC][-C counts][-T timeout]
