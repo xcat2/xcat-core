@@ -254,14 +254,16 @@ sub deconfig {
                  next; 
              }
             
+ 
 	     #####################################
              # Format fsp-api results
              #####################################
              my $decfg = XMLin($data);
 	     my $node =  $decfg->{NODE};
-	     if( !defined($node) ) {
+	     if( defined($node) ) {
 		 push @result,[$name,"Deconfigured resources", 0];
-	         push @result,[$name,$node->{Location_code}.",".$node->{RID}, 0];
+		 push @result,[$name,"Location_code                RID   Call_Out_Method    Call_Out_Hardware_State    TYPE", 0];
+	         push @result,[$name,"$node->{Location_code}         $node->{RID}", 0];
 		 foreach my $unit(@{$node->{GARDRECORD}}) {
 		      my $Call_Out_Hardware_State = $unit->{GARDUNIT}->{Call_Out_Hardware_State};
 		      my $Call_Out_Method = $unit->{GARDUNIT}->{Call_Out_Method};
@@ -269,7 +271,7 @@ sub deconfig {
 		      my $RID = $unit->{GARDUNIT}->{RID};
 		      my $TYPE = $unit->{GARDUNIT}->{TYPE};
 
-		      push @result,[$name,"$Location_code,$RID,$Call_Out_Method,$Call_Out_Hardware_State,$TYPE",0]; 
+		      push @result,[$name,"$Location_code     $RID    $Call_Out_Method            $Call_Out_Hardware_State            $TYPE",0]; 
 		 }
 	     
 	     } else {
