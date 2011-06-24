@@ -492,8 +492,9 @@ sub process_request {
 				}
                 my @relevant_nodes = sort (keys %{$hyphash{$_}->{nodes}});
                 foreach (@relevant_nodes) {
+		    if ($command eq "rmigrate" and grep /-f/,@exargs) { $limbonodes{$_}=1; } else {
                     xCAT::SvrUtils::sendmsg([1,": hypervisor unreachable"], $output_handler,$_);
-		    if ($command eq "rmigrate" and grep /-f/,@exargs) { $limbonodes{$_}=1; }
+			}
                 }
                 delete $hyphash{$_};
             }
