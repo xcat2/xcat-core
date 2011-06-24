@@ -616,7 +616,7 @@ osimage  => {
  },
   },
 linuximage  => {
- cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver permission dump comments disable)],
+ cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
  descriptions => {
@@ -1969,6 +1969,11 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
  {attr_name => 'kernelver',
                  only_if => 'imagetype=linux',
                  tabentry => 'linuximage.kernelver',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                },
+ {attr_name => 'krpmver',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.krpmver',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 },
  {attr_name => 'permission',
