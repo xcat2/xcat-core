@@ -487,7 +487,7 @@ sub process_request {
     if (grep { $_ == -1 } values %hypready) {
         foreach (keys %hypready) {
             if ($hypready{$_} == -1) {
-				unless ($hyphash{$hyp}->{offline}) {
+				unless ($hyphash{$_}->{offline}) {
                 push @badhypes,$_;
 				}
                 my @relevant_nodes = sort (keys %{$hyphash{$_}->{nodes}});
