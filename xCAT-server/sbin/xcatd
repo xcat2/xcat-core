@@ -842,6 +842,7 @@ sub plugin_command {
   use xCAT::NodeRange qw/extnoderange nodesmissed noderange/;
   $Main::resps={};  
   my @nodes;
+  @ARGV = ();
   if ($req->{node}) {
     @nodes = @{$req->{node}};
   } elsif ($req->{noderange} and $req->{noderange}->[0]) {
