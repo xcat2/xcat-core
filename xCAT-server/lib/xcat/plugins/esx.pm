@@ -487,7 +487,9 @@ sub process_request {
     if (grep { $_ == -1 } values %hypready) {
         foreach (keys %hypready) {
             if ($hypready{$_} == -1) {
+				unless ($hyphash{$hyp}->{offline}) {
                 push @badhypes,$_;
+				}
                 my @relevant_nodes = sort (keys %{$hyphash{$_}->{nodes}});
                 foreach (@relevant_nodes) {
                     xCAT::SvrUtils::sendmsg([1,": hypervisor unreachable"], $output_handler,$_);
@@ -3191,14 +3193,22 @@ sub validate_vcenter_prereqs { #Communicate with vCenter and ensure this host is
 #               $running_tasks{$task}->{data} = { depfun => $depfun, depargs => $depargs, conn=>  $hyphash{$hyp}->{vcenter}->{conn}, connspec=>$connspec,hostview=>$hview,hypname=>$hyp,vcenter=>$vcenter };
 #ADDHOST
             } else {
+				if ($hyphash{$hyp}->{offline}) {
+            	xCAT::SvrUtils::sendmsg(": Failed to communicate with $hyp, vCenter reports it as in inventory but not connected and xCAT is set to not autojoin", $output_handler);
+				} else {
             	xCAT::SvrUtils::sendmsg([1,": Failed to communicate with $hyp, vCenter reports it as in inventory but not connected and xCAT is set to not autojoin"], $output_handler);
+				}
                     $hyphash{$hyp}->{conn} = undef;
                     return "failed";
             }
         }
     }
     unless ($vcenterautojoin) {
-            	xCAT::SvrUtils::sendmsg([1,": Failed to communicate with $hyp, vCenter does not have it in inventory and xCAT is set to not autojoin"], $output_handler);
+				if ($hyphash{$hyp}->{offline}) {
+            		xCAT::SvrUtils::sendmsg(": Failed to communicate with $hyp, vCenter does not have it in inventory and xCAT is set to not autojoin", $output_handler);
+				} else {
+            		xCAT::SvrUtils::sendmsg([1,": Failed to communicate with $hyp, vCenter does not have it in inventory and xCAT is set to not autojoin"], $output_handler);
+				}
                     $hyphash{$hyp}->{conn} = undef;
                     return "failed";
     }
