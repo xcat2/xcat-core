@@ -811,7 +811,13 @@ if ($inet6support) {
       close($mainpidfile);
   }
 if ($listener) { $listener->close; }
-while (keys %immediatechildren) { yield(); }
+my $lastpid;
+while (keys %immediatechildren) { 
+	$lastpid=wait(); 
+       if ($immediatechildren{$lastpid}) {
+           delete $immediatechildren{$lastpid};
+       }
+}
 xCAT::Table::shut_dbworker;
 if ($dbmaster) {
     kill 2, $dbmaster;
