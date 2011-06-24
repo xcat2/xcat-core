@@ -248,15 +248,7 @@ if ($arch eq "s390x") {
 }
 
 unless ($osver and $profile) {
-   print 'Usage: genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [--permission <permission>]'."\n";
-   print '       genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -k <KERNELVER> <imagename>'."\n";
-   print "       --permission only works with statelite mode\n";
-   print "Examples:\n";
-   print " genimage -i eth0 -n tg3 -o centos5.1 -p compute \n";
-   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
-   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot\n";
-   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777\n";
-   print " genimage -i eth0 -n tg3 myimage\n";
+   usage();
    exit 1;
 }
 
@@ -490,7 +482,7 @@ $basekernelver = `uname -r` unless ($basekernelver);
 $kernelver = $basekernelver unless ($kernelver);
 chomp($kernelver);
 
-$updates{'kernelver'} = $kernelver if ($needUpdateTable);
+#$updates{'kernelver'} = $kernelver if ($needUpdateTable);
 
 # copy the kernel to $destdir
 if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
@@ -1602,6 +1594,20 @@ sub load_dd ()
     rmtree "$dd_dir";
 
     return @dd_drivers;
+}
+
+sub usage {
+    print 'Usage: genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [--permission <permission>]'."\n";
+   print '       genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -k <KERNELVER> <imagename>'."\n";
+   print "       --permission only works with statelite mode\n";
+   print "Examples:\n";
+   print " genimage -i eth0 -n tg3 -o centos5.1 -p compute \n";
+   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
+   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot\n";
+   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777\n";
+   print " genimage -i eth0 -n tg3 myimage\n";
+
+    return 0;
 }
 
 

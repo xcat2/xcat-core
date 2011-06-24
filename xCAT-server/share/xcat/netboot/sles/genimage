@@ -55,6 +55,7 @@ my $postinstall_filename;
 my $rootimg_dir;
 my $mode;
 my $permission; #the permission works only for statelite mode currently
+my $krpmver;
 
 sub xdie {
    system("rm -rf /tmp/xcatinitrd.$$");
@@ -138,7 +139,7 @@ if (@ARGV > 0 and $needUpdateTable eq 1) {
         exit 1;
     }
 
-    (my $ref_linuximage_tab) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission');
+    (my $ref_linuximage_tab) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'nodebootif', 'otherifce', 'kernelver', 'krpmver', 'netdrivers', 'permission');
     unless ($ref_linuximage_tab) {
         print "Cannot find $imagename from the linuximage table\n";
         exit 1;
@@ -200,6 +201,15 @@ if (@ARGV > 0 and $needUpdateTable eq 1) {
         $kernelver = $ref_linuximage_tab->{'kernelver'};
     }
 
+    if ($krpmver) {
+        if ($krpmver ne $ref_linuximage_tab->{'krpmver'}) {
+            print "The krpmver is different from the value in linuximage table, will update it\n";
+            $updates{'krpmver'} = $krpmver;
+        }
+    } else {
+        $krpmver = $ref_linuximage_tab->{'krpmver'};
+    }
+
     if ($netdriver) {
         if ($netdriver ne $ref_linuximage_tab->{'netdrivers'}) {
             print "The netdrivers are different from the value in linuximage table, will update it\n";
@@ -248,15 +258,7 @@ $kerneldir = "$installroot/kernels" unless ($kerneldir);    # the default direct
 $updates{'kerneldir'} = $kerneldir if ($needUpdateTable);
 
 unless ($osver and $profile) {
-   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -k <KERNELVER> -o <OSVER> -p <PROFILE> [-a <ARCH>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n";
-   print '       genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-k <KERNELVER>] [-o <OSVER>] [-p <PROFILE>] [-a <ARCH>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]  <imagename>'."\n";
-   print "       --permission is used for statelite only\n";
-   print "Examples:\n";
-   print " genimage -i eth0 -n tg3 -o sles11 -p compute\n";
-   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o sles11 -p compute\n";
-   print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute\n";
-   print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute --permission 777\n";
-   print " genimage -i eth0 -n tg3 myimagename\n";
+   usage();
    exit 1;
 }
 my @ndrivers;
@@ -582,7 +584,7 @@ unless ($basekernelver) {
 
 $kernelver = $basekernelver unless ($kernelver);
 chomp $kernelver;
-$updates{kernelver} = $kernelver if ($needUpdateTable);
+#$updates{kernelver} = $kernelver if ($needUpdateTable);
 
 # copy the kernel to $destdir
 if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
@@ -1642,4 +1644,17 @@ sub load_dd()
     rmtree "$dd_dir";
 
     return @dd_drivers;
+}
+
+sub usage {
+    print 'Usage: genimage  -o <OSVER> [-a <ARCH>] -p <PROFILE> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <KERNELVER>] [-g <KRPMVER>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n";
+   print '       genimage [-o <OSVER>] [-a <ARCH>] [-p <PROFILE>] [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-k <KERNELVER>] [-g <KRPMVER>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]  <imagename>'."\n";
+   print "       --permission is used for statelite only\n";
+   print "Examples:\n";
+   print " genimage -i eth0 -n tg3 -o sles11 -p compute\n";
+   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o sles11 -p compute\n";
+   print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute\n";
+   print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute --permission 777\n";
+   print " genimage -i eth0 -n tg3 myimagename\n";
+    return 0;
 }
