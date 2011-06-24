@@ -29,9 +29,9 @@ my %usage = (
      PPC (HMC) specific:
        rpower <noderange> [onstandby] [-V|--verbose]
      CEC(using Direct FSP Management) specific:
-       rpower <noderange> [on|onstandby|off|stat|state|lowpower]
+       rpower <noderange> [on|onstandby|off|stat|state|lowpower|resetsp]
      Frame(using Direct FSP Management) specific:
-       rpower <noderange> [stat|state|rackstandby|exit_rackstandby]
+       rpower <noderange> [stat|state|rackstandby|exit_rackstandby|resetsp]
      LPAR(using Direct FSP Management) specific:
        rpower <noderange> [on|off|reset|stat|state|boot|of|sms]
      Blade specific:
