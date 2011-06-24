@@ -3045,22 +3045,19 @@ sub format_table {
     my $outhash = shift;
     my $result;
 
-    $result = "\n#node,serial,mtm,side,asset,comments,disable\n";
     #####################################
     # Create XML formatted attributes
     #####################################
     foreach my $name ( keys %$outhash ) {
         my @data = @{ $outhash->{$name}};
         my $type = lc($data[0]);
-        my $mtm  = $data[1];
-        my $serial = $data[2];
-        my $side = $data[3];
         next if ($type =~ /^(fsp|bpa)$/);
-        if ( $side =~ /^N\/A$/ ) {
-            $result .= ",\"$serial\",\"$mtm\",,,\"$type\",\n";
-        } else {
-            $result .= ",\"$serial\",\"$mtm\",\"$side\",,\"$type\",\n";
-        }
+        $result .= "$name:\n";
+        #$result .= "groups=frame,all\n";
+        $result .= "\tobjtype=node\n";
+        #$result .= "\tnodetype=$type\n";
+        $result .= "\tmtm=$data[1]\n";
+        $result .= "\tserial=$data[2]\n";
     }
 
     return( $result );
