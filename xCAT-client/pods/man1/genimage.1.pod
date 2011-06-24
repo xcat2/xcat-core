@@ -4,9 +4,9 @@ B<genimage> - Generates a stateless image to be used for a diskless install.
 
 =head1 SYNOPSIS
 
-B<genimage> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] B<-o> I<OS> B<-p> I<profile> [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<--permission> I<permission>]
+B<genimage> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] B<-o> I<OS> B<-p> I<profile> [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-g> I<krpm_version>] [B<--permission> I<permission>]
 
-B<genimage> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-o> I<OS>] [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] imagename
+B<genimage> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-o> I<OS>] [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-g> I<krpm_version>] imagename
 
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -87,6 +87,10 @@ Other network interfaces (e.g. eth1) in the image that should be configured via 
 
 Use this flag if you want to use a specific version of the kernel in the image.  Defaults to the first kernel found
 in the install image.
+
+=item B<-g> I<krpm_version>
+
+This flag is for SLES only. Use this flag to specify the rpm version for kernel packages in the image. It must be present if -k flag is specified in the command for SLES.
 
 =item B<-v|--version>
 
