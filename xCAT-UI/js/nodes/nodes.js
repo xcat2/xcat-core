@@ -322,7 +322,7 @@ function loadGroups(data) {
  *            
  * @return
  */
-function drawNodesArea(targetgroup, arguments, message){
+function drawNodesArea(targetgroup, cmdargs, message){
  // Clear nodes division
     $('#nodes').empty();
     
@@ -352,7 +352,7 @@ function drawNodesArea(targetgroup, arguments, message){
         data : {
             cmd : 'nodels',
             tgt : targetgroup,
-            args : arguments,
+            args : cmdargs,
             msg : message
         },
 
