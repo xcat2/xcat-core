@@ -44,7 +44,9 @@ my %lssyscfg = (
 my %chsyscfg = (
   prof   =>"chsyscfg -r prof -m %s -i %s",
   bpa    =>"chsyscfg -r frame -e %s -i %s",
-  fsp    =>"chsyscfg -r sys -m %s -i %s"
+  fsp    =>"chsyscfg -r sys -m %s -i %s",
+  frame  =>"chsyscfg -r frame -e %s -i %s",
+  cec    =>"chsyscfg -r sys -m %s -i %s",
 );
 
 ##############################################
