@@ -20,6 +20,8 @@ my $poddir = 'pods';
 my $mandir = 'share/man';
 my $htmldir = 'share/doc';
 my $cachedir = '/tmp';
+my $isaix = ($^O =~ /^aix/i);
+my $skiponaix = 'route|group';
 
 my $poddir5 = 'pods/man5';
 my $poddir7 = 'pods/man7';
@@ -30,7 +32,7 @@ if (system("mkdir -p $poddir7")) { die "Error: could not create $poddir7.\n"; }
 print "Building PODs pages for the database tables...\n";
 writesummarypage("$poddir5/xcatdb.5.pod", xCAT::Table->getDescriptions(), \%{xCAT::Schema::defspec});
 
-# Build the pad man page for each object definition
+# Build the pod man page for each object definition
 my $defspecref = \%{xCAT::Schema::defspec};
 foreach my $defkey (keys %$defspecref) {
 	my $def = $defspecref->{$defkey};
@@ -55,6 +57,7 @@ my @pods = getPodList($poddir);
 #mkdir($mandir) or die "Error: could not create $mandir.\n";
 print "Converting PODs to man pages...\n";
 foreach my $podfile (@pods) {
+	if ($isaix && grep(/\/($skiponaix)\.\d\.pod$/, $podfile)) { print "Skipping $podfile\n"; next; }
     my $manfile = $podfile;
     $manfile =~ s/^$poddir/$mandir/;      # change the beginning of the path
     $manfile =~ s/\.pod$//;			# change the ending
