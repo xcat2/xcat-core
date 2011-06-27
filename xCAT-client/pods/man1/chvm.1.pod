@@ -18,7 +18,7 @@ B<chvm> [B<-V>| B<--verbose>] I<noderange> I<attr>=I<val> [I<attr>=I<val>...]
 
 B<chvm> I<noderange> [B<-p> I<profile>]
 
-B<chvm> I<noderange> B<-i id> B<-m> I<memory_interleaving> B<-r> I<partition_rule>
+B<chvm> I<noderange> B<-i id> [B<-m> I<memory_interleaving>] B<-r> I<partition_rule>
 
 =head2 VMware/KVM specific:
 
@@ -88,7 +88,7 @@ Starting numeric id of the newly created partitions. For Power 775 using Direct 
 
 =item B<-m>              
 
-memory interleaving. The value only could be B<interleaved> or B<non-interleaved>. B<non-interleaved> mode means the memory cannot be shared across the processors in an octant. B<interleaved> means the memory can be shared.
+memory interleaving. The value only could be B<interleaved> or B<non-interleaved>. B<non-interleaved> mode means the memory cannot be shared across the processors in an octant. B<interleaved> means the memory can be shared. The default value is B<non-interleaved> .
 
 =item B<-r>              
 
