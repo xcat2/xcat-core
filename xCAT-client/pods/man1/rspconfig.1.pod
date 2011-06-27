@@ -528,8 +528,8 @@ Output is similar to:
  Server-8233-E8B-SN1000ECP-A,Server-9119-FHA-SN0275995-B,Server-9119-FHA-SN0275995-A,
 
  Reset network finished.
- 
-=back
+
+=item *
 
 To update the existing admin password on fsp:
 
@@ -537,11 +537,15 @@ B<rspconfig> I<fsp admin_passwd=admin,abc123>
 
  fsp: Success
 
+=item *
+
 To set the initial password for user HMC on fsp:
 
 B<rspconfig> I<fsp HMC_passwd=,abc123>
 
  fsp: Success
+
+=back
 
 =head1 SEE ALSO
 

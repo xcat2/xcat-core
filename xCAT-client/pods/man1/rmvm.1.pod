@@ -11,7 +11,7 @@ I<rmvm [-v| --version]>
 
 I<rmvm [-V| --verbose] noderange [-r] [--service]>
 
-I<rmvm [-p] [-f]
+I<rmvm [-p] [-f]>
 
 =head1 DESCRIPTION
 
