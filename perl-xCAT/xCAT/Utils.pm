@@ -5729,6 +5729,10 @@ sub isIpaddr
         $addr = shift;
     }
 
+    unless ( $addr )
+    {
+        return 0;
+    }
     #print "addr=$addr\n";
     if ($addr !~ /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/)
     {
