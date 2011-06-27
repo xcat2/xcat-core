@@ -94,7 +94,7 @@ sub add_ppc {
         ###############################
         # Update nodetype table
         ###############################
-        if ( $type =~ /^(fsp|bpa|lpar|hmc|ivm|frame|cec)$/ ) {
+        if ( $type =~ /^(fsp|bpa|hmc|ivm|frame|cec)$/ ) {
             $db{nodetype}->setNodeAttribs( $name,{nodetype=>'ppc'} );
             $db{nodetype}{commit} = 1;
         }
