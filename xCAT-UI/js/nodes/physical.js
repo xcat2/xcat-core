@@ -599,7 +599,7 @@ function createActionMenu(){
 	 * create an action menu
 	 */
 	var actionsDIV = $('<div></div>');
-	var actions = [ [ powerLnk, powerActionMenu ], cloneLnk, deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
+	var actions = [ [ powerLnk, powerActionMenu ], deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
 	var actionMenu = createMenu(actions);
 	actionMenu.superfish();
 	actionsDIV.append(actionMenu);

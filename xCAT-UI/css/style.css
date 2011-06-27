@@ -174,40 +174,55 @@ body {
 	vertical-align: top;
 	float: left;
 	position: relative;
-	margin: 15px 0px 15px 15px;
-}
-
-#groups ul {
-	list-style: none;
+	margin-top: 10px;
 }
 
 #groups ul h3 {
 	text-transform: uppercase;
-	font: 12px verdana, arial, helvetica, sans-serif;
-	font-weight: bold;
 	color: #424242;
 	display: inline-table;
 }
 
 #groups a {
-	font: 12px verdana, arial, helvetica, sans-serif;
 	color: #0000FF;
 	display: inline-table;
-	padding: 5px 15px 5px 15px; /* Top right bottom left */
+	padding: 5px 0px 5px 20px; /* Top right bottom left */
 	text-decoration: none;
 	cursor: pointer;
 }
 
-#groups a:hover {
-	color: #FF0000;
+#groups .grouplabel {
+	/*background-color: #A9D0F5;*/
+	padding: 5px 0px 5px 10px;
+	font-weight: bold;
+	font-size: 15px;
+}
+#groups .groupdiv{
+	padding-left: 10px;
+}
+
+#groups .groupdiv div:hover {
+	background: #E7EBFF;
+	cursor: pointer;
+}
+
+#groups .selectgroup {
+    background: #E6E6F2;
+    font-weight: bold;
+}
+
+#groups .actionDiv{
+	text-align: right;
+	padding-right: 5px;
+	border-top: thin solid #E7EBFF;
 }
 
 /*--------------- Nodes section ---------------*/
 #nodes {
 	width: 790px;
 	min-height: 570px;
-	margin: 15px 0px 15px 0px;
-	padding: 0px 0px 0px 10px;
+	margin: 10px 0px 0px 0px;
+	padding: 0px 0px 0px 5px;
 	display: inline-block;
 	border-left: medium solid #E6E6F2;
 }

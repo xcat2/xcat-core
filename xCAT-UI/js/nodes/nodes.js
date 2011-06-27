@@ -89,8 +89,6 @@ function loadNodesPage() {
 				loadPieSummary();
 			}
 		});
-		
-		
 	}
 }
 
@@ -251,66 +249,26 @@ function loadGroups(data) {
 	setGroupsCookies(data);
 
 	// Create a list of groups
-	var list = $('<ul></ul>');
-	var item = $('<li id="root"><h3>Groups</h3></li>');
-	var subList = $('<ul></ul>');
-	list.append(item);
-	item.append(subList);
-
+	$('#groups').append('<div class="grouplabel">Groups</div>');
+	var grouplist= $('<div class="groupdiv"></div>');
 	// Create a link for each group
 	for (var i = groups.length; i--;) {
-		var subItem = $('<li id="' + groups[i] + '"></li>');
-		var link = $('<a>' + groups[i] + '</a>');
-		subItem.append(link);
-		subList.append(subItem);
+	    grouplist.append('<div><a href="#">' + groups[i] + '</a></div>');
 	}
-
-	// Turn groups list into a tree
-	$('#groups').append(list);
-	$('#groups').jstree( {
-		core : { "initially_open" : [ "root" ] },
-		themes : {
-			"theme" : "default",
-			"dots" : false,	// No dots
-			"icons" : false	// No icons
-		},
-		cookies : { "auto_save" : false}
-	});
 	
-	// Load nodes onclick
-	$('#groups').bind('select_node.jstree', function(event, data) {
-		
-		var thisGroup = jQuery.trim(data.rslt.obj.text());
-		if (thisGroup) {
-		    //click the root, return directly
-		    if ('Groups' == thisGroup){
-		        return;
-		    }
-		    drawNodesArea(thisGroup, '', thisGroup);
-			/*
-			// Get subgroups within selected group
-			// only when this is the parent group and not a subgroup
-			if (data.rslt.obj.attr('id').indexOf('Subgroup') < 0) {
-    			$.ajax( {
-    				url : 'lib/cmd.php',
-    				dataType : 'json',
-    				data : {
-    					cmd : 'extnoderange',
-    					tgt : thisGroup,
-    					args : 'subgroups',
-    					msg : thisGroup
-    				},
-    
-    				success : loadSubgroups
-    			});
-			}
-			*/
-			
-		} // End of if (thisGroup)
+	$('#groups').append(grouplist);
+	//bind the click event
+	$('#groups .groupdiv div').bind('click', function(){
+	    var thisgroup=$(this).text();
+	    $('#groups .groupdiv div').removeClass('selectgroup');
+
+	    $(this).addClass('selectgroup');
+	    drawNodesArea(thisgroup,'',thisgroup);
 	});
 	
 	// Make a link to add nodes
-	$('#groups').append(mkAddNodeLink());
+	$('#groups').append('<div class="actionDiv" id="adddiv"></div>');
+	$('#groups #adddiv').append(mkAddNodeLink());
 }
 
 /**
@@ -415,7 +373,7 @@ function drawNodesArea(targetgroup, cmdargs, message){
  */
 function mkAddNodeLink() {
 	// Create link to add nodes
-	var addNodeLink = $('<a title="Add a node or a node range to xCAT">Add node</a>');
+	var addNodeLink = $('<a title="Add a node or a node range to xCAT">+ Add Node</a>');
 	addNodeLink.click(function() {
 		// Create info bar
 		var info = createInfoBar('Select the hardware management for the new node range');
@@ -1097,7 +1055,7 @@ function loadNodes(data) {
      * Additional ajax requests need to be made for zVM
      * load advanced information based on hardware architecture 
      */
-	advancedLoad();
+	advancedLoad(group);
 }
 
 /**
@@ -1402,7 +1360,7 @@ function addNodes2Table(data) {
 	/**
 	 * Additional ajax requests need to be made for zVM
 	 */
-	advancedLoad();
+	advancedLoad(group);
 }
 
 /**
@@ -3317,7 +3275,7 @@ function installGanglia(node) {
  * 
  * @return Nothing
  */
-function advancedLoad(){
+function advancedLoad(group){
     var tempIndex = 0;
     var tableHeaders = $('#' + nodesTableId + ' th');
     var colNameHash = new Object();
