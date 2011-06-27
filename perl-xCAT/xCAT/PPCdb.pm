@@ -95,7 +95,7 @@ sub add_ppc {
         # Update nodetype table
         ###############################
         if ( $type =~ /^(fsp|bpa|lpar|hmc|ivm|frame|cec)$/ ) {
-            $db{nodetype}->setNodeAttribs( $name,{nodetype=>$nodetype{$type}} );
+            $db{nodetype}->setNodeAttribs( $name,{nodetype=>'ppc'} );
             $db{nodetype}{commit} = 1;
         }
         ###############################
@@ -456,6 +456,7 @@ sub update_node_attribs
          $id     ne $ppchash->{id} or
          $pprofile ne $ppchash->{pprofile} or
          $parent ne $ppchash->{parent} or
+         $type ne $ppchash->{nodetype} or
          $namediff)
     {
         $db->{ppc}->delEntries( $key_col) if ( $namediff);
@@ -463,7 +464,8 @@ sub update_node_attribs
                 { hcp=>$server,
                 id=>$id,
                 pprofile=>$pprofile,
-                parent=>$parent
+                parent=>$parent,
+                nodetype=>$type,
                 }); 
         if ( $namediff)
         {
