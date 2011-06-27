@@ -73,7 +73,7 @@ my %distnames = (
                  "1241464993.830723" => "rhas4.8", #x86-64
 
 		 "1273608367.051780" => "SL5.5", #x86_64 DVD ISO
-		 "1299104542.844706" => "SL6", #x86_64 DVD ISO
+                "1299104542.844706" => "SL6", #x86_64 DVD ISO
                  );
 my %numdiscs = (
                 "1156364963.862322" => 4,
@@ -246,6 +246,7 @@ sub mknetboot
         my $rootimgdir;
         my $nodebootif; # nodebootif will be used if noderes.installnic is not set
         my $dump; # for kdump, its format is "nfs://<nfs_server_ip>/<kdump_path>"
+        my $crashkernelsize;
         my $rootfstype; 
 
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
@@ -266,7 +267,7 @@ sub mknetboot
                     if (!$linuximagetab) {
                 	    $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
                     }
-                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif', 'dump'); 
+                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize'); 
                     if (($ref1) && ($ref1->{'rootimgdir'})) {
                 	    $img_hash{$imagename}->{rootimgdir}=$ref1->{'rootimgdir'};
                     }
@@ -277,6 +278,9 @@ sub mknetboot
                         if ($ref1->{'dump'}) {
                             $img_hash{$imagename}->{dump} = $ref1->{'dump'};
                         }
+                    }
+                    if (($ref1) && ($ref1->{'crashkernelsize'})) {
+                        $img_hash{$imagename}->{crashkernelsize} = $ref1->{'crashkernelsize'};
                     }
                 } else {
                     $callback->(
@@ -299,7 +303,7 @@ sub mknetboot
             }
             
             $nodebootif = $ph->{nodebootif};
-            
+            $crashkernelsize = $ph->{crashkernelsize};
             $dump = $ph->{dump};
 	    }
         else {
@@ -338,9 +342,12 @@ sub mknetboot
                 $linuximagetab = xCAT::Table->new('linuximage');
             }
             if ( $linuximagetab ) {
-                (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'dump');
+                (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'dump', 'crashkernelsize');
                 if($ref1 and $ref1->{'dump'})  {
                     $dump = $ref1->{'dump'};
+                }
+                if($ref1 and $ref1->{'crashkernelsize'})  {
+                    $crashkernelsize = $ref1->{'crashkernelsize'};
                 }
             } else {
                 $callback->(
@@ -706,7 +713,11 @@ sub mknetboot
         # if kdump service is enbaled, add "crashkernel=" and "kdtarget="
         if ($dump) {
             if ($arch eq "ppc64") { # for ppc64, the crashkernel paramter should be "128M@32M", otherwise, some kernel crashes will be met
-                $kcmdline .= " crashkernel=128M\@32M dump=$dump ";
+                if ( $crashkernelsize ) {
+                    $kcmdline .= " crashkernel=$crashkernelsize\@32M dump=$dump ";
+                } else {
+                    $kcmdline .= " crashkernel=256M\@32M dump=$dump ";
+                }
             }
         }
 
