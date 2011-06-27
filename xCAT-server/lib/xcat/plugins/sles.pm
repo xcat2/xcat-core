@@ -671,7 +671,8 @@ sub mkinstall
                          $tmplfile,
                          "$installroot/autoinst/$node",
                          $node,
-		         $pkglistfile
+		         $pkglistfile,
+		         $pkgdir
                          );
         }
 
@@ -981,7 +982,7 @@ sub copycd
             my $prod = <$mfile>;
             close($mfile);
 
-            if ($prod =~ m/SUSE-Linux-Enterprise-Server/)
+            if ($prod =~ m/SUSE-Linux-Enterprise-Server/ || $prod =~ m/SUSE-Linux-Enterprise-Software-Development-Kit/)
             {
                 if (-f "$path/content") {
                     my $content;
@@ -1000,6 +1001,9 @@ sub copycd
                     my @subparts = split /-/,   $parts[2];
                     $detdistname = "sles" . $subparts[0];
                     unless ($distname) { $distname = "sles" . $subparts[0] };
+                }
+                if($prod =~ m/Software-Development-Kit/) {
+                    $discnumber = 'sdk' . $discnumber;
                 }
 		# check media.1/products for text.  
 		# the cselx is a special GE built version.

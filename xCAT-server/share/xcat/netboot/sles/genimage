@@ -349,6 +349,12 @@ unless ($onlyinitrd) {
 		   system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
 	   }
 	   system("zypper -R $rootimg_dir ar file:$srcdir $osver");
+	   
+       if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
+           system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
+       }
+       my $srcdir_sdk  = "$installroot/$osver/$arch/sdk1";
+       system("zypper -R $rootimg_dir ar file:$srcdir_sdk ${osver}sdk");
    }else {
 	   system("zypper -R $rootimg_dir sa file:$srcdir");
    }
