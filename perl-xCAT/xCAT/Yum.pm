@@ -44,6 +44,15 @@ sub fix_directory {
     print $yumrepofile "enabled=1\n";
     print $yumrepofile "gpgcheck=0\n\n";
   
+    $grep_result = system("grep sha256 $dirlocation/repomd.xml|grep \\<checksum");
+    if( $grep_result == 0 )
+    {
+        $sha_command = "sha256sum";
+    }
+    else
+    {
+        $sha_command = "sha1sum";
+    }
   #-----------------------------------------------------------------------
     my $oldsha;
     my $newsha;
@@ -52,7 +61,7 @@ sub fix_directory {
 
     if( -r "$dirlocation/primary.xml.gz")
     {
-        $oldsha=`/usr/bin/sha1sum $dirlocation/primary.xml.gz`;
+        $oldsha=`/usr/bin/$sha_command $dirlocation/primary.xml.gz`;
         $oldsha =~ s/\s.*//;
         chomp($oldsha);
         
@@ -63,7 +72,7 @@ sub fix_directory {
         }
         system("/bin/gunzip  $dirlocation/primary.xml.gz");
         
-        $oldopensha=`/usr/bin/sha1sum $dirlocation/primary.xml`;
+        $oldopensha=`/usr/bin/$sha_command $dirlocation/primary.xml`;
         $oldopensha =~ s/\s+.*//;
         chomp($oldopensha);
 
@@ -78,12 +87,12 @@ sub fix_directory {
         @xmlines=();
         close($primaryxml);
         
-        $newopensha=`/usr/bin/sha1sum $dirlocation/primary.xml`;
+        $newopensha=`/usr/bin/$sha_command $dirlocation/primary.xml`;
         $newopensha =~ s/\s.*//;
         chomp($newopensha);
 
         system("/bin/gzip $dirlocation/primary.xml");
-        $newsha=`/usr/bin/sha1sum $dirlocation/primary.xml.gz`;
+        $newsha=`/usr/bin/$sha_command $dirlocation/primary.xml.gz`;
         $newsha =~ s/\s.*//;
         chomp($newsha);
     }
@@ -97,7 +106,7 @@ sub fix_directory {
   
     if (-r "$dirlocation/primary.sqlite.bz2") { 
     
-        $olddbsha =`/usr/bin/sha1sum $dirlocation/primary.sqlite.bz2`;
+        $olddbsha =`/usr/bin/$sha_command $dirlocation/primary.sqlite.bz2`;
         $olddbsha =~ s/\s.*//;
         chomp($olddbsha);
     
@@ -108,19 +117,19 @@ sub fix_directory {
         }
         
         system("/usr/bin/bunzip2  $dirlocation/primary.sqlite.bz2");
-        $olddbopensha=`/usr/bin/sha1sum $dirlocation/primary.sqlite`;
+        $olddbopensha=`/usr/bin/$sha_command $dirlocation/primary.sqlite`;
         $olddbopensha =~ s/\s+.*//;
         chomp($olddbopensha);
 
         my $pdbh = DBI->connect("dbi:SQLite:$dirlocation/primary.sqlite","","",{AutoCommit=>1});
         $pdbh->do('UPDATE "packages" SET "location_base" = NULL');
         $pdbh->disconnect;
-        $newdbopensha=`/usr/bin/sha1sum $dirlocation/primary.sqlite`;
+        $newdbopensha=`/usr/bin/$sha_command $dirlocation/primary.sqlite`;
         $newdbopensha =~ s/\s.*//;
         chomp($newdbopensha);
 
         system("/usr/bin/bzip2 $dirlocation/primary.sqlite");
-        $newdbsha=`/usr/bin/sha1sum $dirlocation/primary.sqlite.bz2`;
+        $newdbsha=`/usr/bin/$sha_command $dirlocation/primary.sqlite.bz2`;
         $newdbsha =~ s/\s.*//;
         chomp($newdbsha);
     }
@@ -130,6 +139,14 @@ sub fix_directory {
     #update repomd.xml
     open($primaryxml,"+<$dirlocation/repomd.xml");
     while (<$primaryxml>) { 
+        if($_ =~ m/\<size\>/)
+        {
+            next;
+        }
+        if($_ =~ m/\<open-size\>/)
+        {
+            next;
+        }
         s!xml:base="media://[^"]*"!!g;
         if(defined($oldsha)){
             s!$oldsha!$newsha!g;
