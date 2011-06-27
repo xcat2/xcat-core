@@ -616,7 +616,7 @@ osimage  => {
  },
   },
 linuximage  => {
- cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump comments disable)],
+ cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump crashkernelsize comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
  descriptions => {
@@ -637,6 +637,7 @@ linuximage  => {
   krpmver => 'The rpm version of kernel packages (for SLES only). If it is not set, the default rpm version of kernel packages will be used.',
   permission => 'The mount permission of /.statelite directory is used, its default value is 755',
   dump => qq{The NFS directory to hold the Linux kernel dump file (vmcore) when the node with this image crashes, its format is "nfs://<nfs_server_ip>/<kdump_path>". If you want to use the node's "xcatmaster" (its SN or MN), <nfs_server_ip> can be left blank. For example, "nfs:///<kdump_path>" means the NFS directory to hold the kernel dump file is on the node's SN, or MN if there's no SN.},
+  crashkernelsize => 'the size that assigned to the kdump kernel. If the kernel size is not set, 256M will be the default value.',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -1984,6 +1985,11 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
  {attr_name => 'dump',
                  only_if => 'imagetype=linux',
                  tabentry => 'linuximage.dump',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                },
+ {attr_name => 'crashkernelsize',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.crashkernelsize',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 },
 ####################
