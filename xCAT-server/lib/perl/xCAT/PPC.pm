@@ -615,16 +615,20 @@ sub child_response {
                                 }
                 		#save the nodes that has errors for node status monitoring
           			if ((exists($_->{errorcode})) && ($_->{errorcode} != 0))  {
-					if (!grep /^$nodename$/, @$failed_nodes) {
-					    push(@$failed_nodes, $nodename);
-					}
-					    if( defined( $failed_msg->{$nodename} )) {
-					        my $f = $failed_msg->{$nodename}; 
-					        my $c = scalar(@$f);
-					        $failed_msg->{$nodename}->[$c] = $_;
-					    } else {
-					        $failed_msg->{$nodename}->[0] = $_;
-					    }
+		        	    if($$failed_nodes[0] !~ /^noloop$/) {
+                            if (!grep /^$nodename$/, @$failed_nodes) {
+				         	    push(@$failed_nodes, $nodename);
+				         	}
+					        if( defined( $failed_msg->{$nodename} )) {
+					            my $f = $failed_msg->{$nodename}; 
+					            my $c = scalar(@$f);
+					            $failed_msg->{$nodename}->[$c] = $_;
+					        } else {
+					            $failed_msg->{$nodename}->[0] = $_;
+					        }
+                        } else {
+                            $callback->( $_ );
+                        } 
 
                         if ($errornodes) { $errornodes->{$_->{node}->[0]->{name}->[0]}=-1; }
                			#if verbose, print all the message;
@@ -2094,6 +2098,9 @@ sub process_request {
        }
 #print Dumper($request_new);
        @failed_nodes = () ;
+       if( $hcps->{maxnum} == 1 && $request_new->{command} !~ /^(rspconfig|rpower|reventlog)$/ ) {
+           push @failed_nodes, "noloop"; # if each node only has one hcp, it will return immediately.
+       }
 #For rspconfig to use ASMI
        if (defined($request->{enableASMI}) && ($request->{enableASMI} eq "1")) {
            $request_new->{fsp_api} = 0;
@@ -2354,7 +2361,7 @@ sub getHCPsOfNodes
     }
 
 
-    
+    $hcps{maxnum} = 0; 
     #get hcp from ppc.
     foreach my $node( @$nodes) {
         #my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($node, $callback);
@@ -2381,6 +2388,9 @@ sub getHCPsOfNodes
 	        my @h = split(",", $hcp);
 	       $hcps{$node}{hcp} = \@h;
 	       $hcps{$node}{num} = @h;
+       }
+       if( $hcps{maxnum} < $hcps{$node}{num}) {
+           $hcps{maxnum} = $hcps{$node}{num};
        }
     }
     #print "in getHCPsOfNodes\n";
