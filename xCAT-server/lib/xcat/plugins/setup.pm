@@ -371,7 +371,7 @@ sub writehmc {
 	
 	# using hostname-range, write regex for: ppc.node, nodetype.nodetype 
 	$tables{'ppc'}->setNodeAttribs('hmc', {nodetype => 'hmc'});
-	#$tables{'nodetype'}->setNodeAttribs('hmc', {nodetype => 'hmc'});
+	$tables{'nodetype'}->setNodeAttribs('hmc', {nodetype => 'ppc'});
 	
 	# Set the 1st two hmcs as the ones CNM should send service events to
 	$nodes = [noderange($hmcrange, 0)];
