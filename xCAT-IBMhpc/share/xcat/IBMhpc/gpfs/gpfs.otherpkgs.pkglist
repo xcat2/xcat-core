@@ -2,6 +2,3 @@ gpfs/gpfs.base
 gpfs/gpfs.gpl
 gpfs/gpfs.gplbin*
 gpfs/gpfs.msg.en_US
-
-# For TEAL GPFS collector service node, by
-#gpfs/teal-gpfs-sn
