@@ -20,6 +20,7 @@ use strict;
 
 #  IPv6 not yet implemented - need Socket6
 use Socket;
+my @tabletype = qw(ppc zvm);
 
 #----------------------------------------------------------------------------
 
@@ -2178,17 +2179,15 @@ sub getnodetype
     {
         $nodes = shift;
     }
-
+    my $rsp;
     my $ppctab  = xCAT::Table->new( 'ppc' );
     if ( !$ppctab ) {
-        my $rsp;
         $rsp->{data}->[0] = "Could not open the ppc table.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
     }
     my $nodetypetab = xCAT::Table->new( 'nodetype' );
     if ( !$nodetypetab )
     {
-        my $rsp;
         $rsp->{data}->[0] = "Could not open the nodetype table.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         if ( !$ppctab ) {
@@ -2199,44 +2198,61 @@ sub getnodetype
     my @types = ();
     my $typep;
     my $type;
+    my %typehash;
     if ( $nodes =~ /^ARRAY/) {
-        foreach ( @$nodes ) {
-            if ( $ppctab ) {
-                $typep = $ppctab->getNodeAttribs($_, ["nodetype"]);
-                if ($typep and $typep->{nodetype}) {
-                    $type = $typep->{nodetype};
+        my @nodetypes = $nodetypetab->getAllAttribs('node','nodetype');
+        for my $tn( @nodetypes ) {
+            $typehash{ $tn->{'node'} } = $tn->{'nodetype'};
+        }    
+        for my $nn (@$nodes) {
+            $type = $typehash{$nn};
+            if ($type) {
+                if (!grep(/$type/, @tabletype)) { # find type in nodetype table
                     push (@types, $type);
                     next;
-                }
-            }
-            if ( $nodetypetab ) {
-                $typep = $nodetypetab->getNodeAttribs($_, ["nodetype"]);
-                if ($typep and $typep->{nodetype}) {
-                    $type = $typep->{nodetype};
-                    push (@types, $type);
-                    next;
-                }
-            }
-            push (@types, undef);
+                } else {
+                    $typep = $ppctab->getNodeAttribs($nn, ["nodetype"]);  # find type in ppc table
+                    if ($typep and $typep->{nodetype}) {
+                        $type = $typep->{nodetype};
+                        push (@types, $type);
+                        next;
+                    } else {
+                        $rsp->{data}->[0] = "Could not find node $nn in ppc table.";
+                        xCAT::MsgUtils->message("I", $rsp, $::callback);
+                        push (@types, undef);
+                    }
+                }    
+            } else {
+                $rsp->{data}->[0] = "Could not find node $nn in nodetype table.";
+                xCAT::MsgUtils->message("I", $rsp, $::callback);
+                push (@types, undef);
+            }    
         }
         return \@types;
     } else {
-        if ( $ppctab ) {
-            $typep  = $ppctab->getNodeAttribs($nodes, ["nodetype"]);
-            if ( $typep and $typep->{nodetype} ) {
+        $typep  = $nodetypetab->getNodeAttribs($nodes, ["nodetype"]);
+        if ( $typep and $typep->{nodetype} ) {  
+            $type = $typep->{nodetype};
+            if (!grep(/$type/, @tabletype)) {   # find type in nodetype table
                 $type = $typep->{nodetype};
                 return $type;
+            } else {    # find type in ppc table
+                $typep = $ppctab->getNodeAttribs($nodes, ["nodetype"]);
+                if ( $typep and $typep->{nodetype} ) {  
+                    $type = $typep->{nodetype};
+                    return $type;
+                } else {
+                    $rsp->{data}->[0] = "Could not find node $nodes in ppctable table.";
+                    xCAT::MsgUtils->message("I", $rsp, $::callback);
+                    return undef;
+                }                    
             }
-        }
-        if ( $nodetypetab ) {
-            $typep = $nodetypetab->getNodeAttribs($nodes, ["nodetype"]);
-            if ( $typep and $typep->{nodetype} ) {
-                $type = $typep->{nodetype};
-                return $type;
-            }
-        }
+        } else {
+            $rsp->{data}->[0] = "Could not find node $nodes in nodetype table.";
+            xCAT::MsgUtils->message("I", $rsp, $::callback);
+            return undef;
+        }    
     }
-    return undef;
 }
 #-------------------------------------------------------------------------------
 
