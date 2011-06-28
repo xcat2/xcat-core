@@ -48,7 +48,8 @@ sub process_request {
 		'monls'         => \&web_monls,
 		'discover'      => \&web_discover,
 		'updatevpd'     => \&web_updatevpd,
-		'createimage'   => \&web_createimage
+		'createimage'   => \&web_createimage,
+        'provision'      => \&web_provision
 	);
 
 	#check whether the request is authorized or not
@@ -1148,5 +1149,108 @@ sub web_restoreChange {
 "rm -r /tmp/litefile.csv ; mv /tmp/litefilearchive.csv /tmp/litefile.csv ; tabrestore /tmp/litefile.csv"
 		);
 	}
+}
+
+sub web_provision{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $nodes = $request->{arg}->[1];
+    my ($arch, $os, $provmethod, $profile, $inic, $pnic, $master, $tftp, $nfs)= split(/,/,$request->{arg}->[2]);
+    my $outputMessage = '';
+    my $retvalue = 0;
+    my $netboot = '';
+    if ($arch =~ /ppc/i){
+        $netboot = 'yaboot';
+    }
+    elsif($arch =~ /x.*86/i){
+        $netboot = 'xnba';
+    }
+    $outputMessage = "Do provison : $nodes \n".
+          " Arch:$arch\n OS:$os\n Provision:$provmethod\n Profile:$profile\n Install NIC:$inic\n Primary NIC:$pnic\n" .
+          " xCAT Master:$master\n TFTP Server:$tftp\n NFS Server:$nfs\n Netboot:$netboot\n";
+
+    web_infomsg($outputMessage, $callback);
+
+    #change the nodes attribute
+    my $cmd = "chdef -t node -o $nodes arch=$arch os=$os provmethod=$provmethod profile=$profile installnic=$inic tftpserver=$tftp nfsserver=$nfs netboot=$netboot" .
+              " xcatmaster=$master primarynic=$pnic";
+    web_runcmd($cmd, $callback);
+    #error return
+    if ($::RUNCMD_RC){
+        web_infomsg("Configure nodes' attributes error.\nprovision stop.", $callback);
+        return;
+    }
+
+    #dhcp
+    $cmd = "makedhcp $nodes";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Make DHCP error.\nprovision stop.", $callback);
+        return;
+    }
+    #restart dhcp
+    $cmd = "service dhcpd restart";
+    web_runcmd($cmd, $callback);
+    #conserver
+    $cmd = "makeconservercf;service conserver stop;service conserver start";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Configure conserver error.\nprovision stop.", $callback);
+        return;
+    }
+
+    #for system x, should configure boot sequence first.
+    if ($arch =~ /x.*86/i){
+        $cmd = "rbootseq $nodes net,hd";
+        web_runcmd($cmd, $callback);
+        if($::RUNCMD_RC){
+            web_infomsg("Set boot sequence error.\nprovision stop.", $callback);
+            return;
+        }
+    }
+
+    #nodeset
+    $cmd = "nodeset $nodes $provmethod";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Set nodes provision method error.\nprovision stop.", $callback);
+        return;
+    }
+    
+    #reboot the node fro provision
+    if($arch =~ /ppc/i){
+        $cmd = "rnetboot $nodes";
+    }
+    else{
+        $cmd = "rpower $nodes boot";
+    }
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Boot nodes error.\nprovision stop.", $callback);
+        return;
+    }
+
+    #provision complete
+    web_infomsg("Provision on $nodes success.\nprovision stop.");
+}
+
+#run the cmd by xCAT::Utils->runcmd and show information.
+sub web_runcmd{
+    my $cmd = shift;
+    my $callback = shift;
+    my $showstr = "\n" . $cmd . "\n";
+    web_infomsg($showstr, $callback);
+    my $retvalue = xCAT::Utils->runcmd($cmd, -1, 1);
+    $showstr = join("\n", @$retvalue);
+    $showstr .= "\n";
+    web_infomsg($showstr, $callback);
+}
+
+sub web_infomsg {
+    my $msg = shift;
+    my $callback = shift;
+    my %rsp;
+    push @{$rsp{info}}, $msg;
+    xCAT::MsgUtils->message('I', \%rsp, $callback);
+    return;
 }
 1;

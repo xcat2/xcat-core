@@ -11,7 +11,8 @@ var nodeAttrs;
 var nodesList;
 // Nodes datatable ID
 var nodesTableId = 'nodesDatatable';
-
+// provision clock for provision progress stop
+var provisionClock;
 /**
  * Set node tab
  * 
@@ -807,6 +808,14 @@ function loadNodes(data) {
 			loadNetbootPage(tgtNodes);
 		}
 	});
+	
+	var provisionLnk = $('<a>Provision</a>');
+	provisionLnk.click(function(){
+	    var tgtNodes = getNodesChecked(nodesTableId);
+	    if (tgtNodes){
+	        openQuickProvisionDia(tgtNodes);
+	    }
+	});
 
 	// Remote console
 	var rcons = $('<a>Open console</a>');
@@ -844,7 +853,7 @@ function loadNodes(data) {
 	var configMenu = createMenu([cloneLnk, deleteLnk, unlockLnk, updateLnk, editProps, installMonLnk]);
 	// Advanced actions
 	var advancedLnk = '<a>Advanced</a>';
-	var advancedActionMenu = createMenu([ boot2NetworkLnk, setBootStateLnk, rcons]);
+	var advancedActionMenu = createMenu([ boot2NetworkLnk, setBootStateLnk, rcons, provisionLnk]);
 
 	// Create an action menu
 	var actionsMenu = createMenu([ [ powerLnk, powerActionMenu ], [ configLnk, configMenu ],  [ advancedLnk, advancedActionMenu ] ]);
@@ -3344,4 +3353,186 @@ function advancedLoad(group){
             });     
         }
     } // End of for
+}
+
+/**
+ * when click the provison button, show this dislog for provision
+ * this is the quick way to deploy on the nodes page. 
+ * 
+ * @return Nothing
+ */
+function openQuickProvisionDia(tgtnodes){
+    var nodeArray = tgtnodes.split(',');
+    var nodeName = '';
+    var index = 0;
+    var archtype = '';
+    var errormessage = '';
+    var diaDiv = $('<div title="Provision(only support Linux)" class="form" id="deployDiv"></div>');
+    //check the first node's arch type
+    for (index in nodeArray){
+        nodeName = nodeArray[index];
+        //does not have arch
+        if (!origAttrs[nodeName]['arch']){
+            errormessage = 'All nodes should define arch first!';
+            break;
+        }
+        
+        if (0 == index){
+            archtype = origAttrs[nodeName]['arch'];
+        }
+        
+        //all nodes should have same archtype
+        if (archtype != origAttrs[nodeName]['arch']){
+            errormessage = 'All nodes should belong to same arch!<br/>';
+            break;
+        }
+    }
+
+    //check the mac address
+    for (index in nodeArray){
+        if (!origAttrs[nodeName]['mac']){
+            errormessage += 'All nodes should define mac!<br/>';
+            break;
+        }
+    }
+    
+    if (-1 != archtype.indexOf('390')){
+        errormessage += 'System Z should use provision page.';
+    }
+    
+    //error message should show in a dialog
+    if ('' != errormessage){
+        diaDiv.append(createWarnBar(errormessage));
+        diaDiv.dialog({
+            modal: true,
+            width: 400,
+            buttons: {
+                'Close': function(){
+                    $(this).dialog('destroy');
+                }
+            }
+        });
+        
+        return;
+    }
+    
+    //organize the provison dialog
+    var showstr = '<table><tbody>';
+    showstr += '<tr><td>Target node:</td><td><input id="nodesinput" value="' + tgtnodes + '" readonly="readonly"></td></tr>';
+    showstr += '<tr><td>Arch:</td><td><input id="archinput" value="' + archtype + '" disabled="disabled"></td></tr>';
+    showstr += '<tr><td>Image:</td><td><select></select></td></tr>';
+    showstr += '<tr><td>OS:</td><td><input id="osinput" disabled="disabled"></td></tr>';
+    showstr += '<tr><td>Provmethod:</td><td><input id="provinput" disabled="disabled"></td></tr>';
+    showstr += '<tr><td>Profile:</td><td><input id="profinput" disabled="disabled"></td></tr>';
+    showstr += '<tr><td>Install Nic:</td><td><input id="inicinput" value="ent0"></td></tr>';
+    showstr += '<tr><td>Primary Nic:</td><td><input id="pnicinput" value="ent0"></td></tr>';
+    showstr += '<tr><td>xCAT Master:</td><td><input id="masterinput"></td></tr>';
+    showstr += '<tr><td>TFTP Server:</td><td><input id="tftpinput"></td></tr>';
+    showstr += '<tr><td>NFS Server:</td><td><input id="nfsinput"></td></tr>';
+    showstr += '</tbody></table>';
+    
+    diaDiv.append(showstr);
+    diaDiv.dialog({
+        modal: true,
+        width: 400,
+        height: 480,
+        close: function(){$(this).remove();},
+        buttons: {
+            'Close': function(){$(this).remove();}
+        }
+    });
+    
+    $('#deployDiv select').parent().append(createLoader());
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'lsdef',
+            tgt : '',
+            args : '-t;osimage;-w;osarch==' + archtype,
+            msg : ''
+        },
+
+        success : function(data){
+            var index = 0;
+            var imagename = 0;
+            var position = 0;
+            $('#deployDiv img').remove();
+            if (data.rsp.lenght < 1){
+                $('#deployDiv').append(createWarnBar('Please copycds and genimage in provision page first!'));
+                return;
+            }
+            
+            for (index in data.rsp){
+                imagename = data.rsp[index];
+                position = imagename.indexOf(' ');
+                imagename = imagename.substr(0, position);
+                
+                $('#deployDiv select').append('<option value="' + imagename + '">' + imagename + '</option>');
+            }
+            
+            $('#deployDiv select').bind('change',function(){
+                var areaArray = $(this).val().split('-');
+                $('#deployDiv #osinput').val(areaArray[0]);
+                $('#deployDiv #provinput').val(areaArray[2]);
+                $('#deployDiv #profinput').val(areaArray[3]);
+            });
+            
+            $('#deployDiv select').trigger('change');
+            $('#deployDiv').dialog( "option", "buttons", {'Ok': function(){quickProvision();},
+                                                          'Cancel': function(){$(this).remove();}}
+            );
+        }
+    });
+}
+
+/**
+ * get all needed field for provsion and send the command to server 
+ * 
+ * @return Nothing
+ */
+function quickProvision(){
+    var errormessage = '';
+    var argsArray = new Array();
+    var nodesName = '';
+    var provisionArg = '';
+    var provisionFrame;
+    $('#deployDiv .ui-state-error').remove();
+    $('#deployDiv input').each(function(){
+        if ('' == $(this).val()){
+            errormessage = 'You are missing input!';
+            return false;
+        }
+    });
+    
+    if ('' != errormessage){
+        $('#deployDiv').prepend('<p class="ui-state-error">' + errormessage + '</p>');
+        return;
+    }
+    
+    $('#deployDiv input').each(function(){
+        argsArray.push($(this).val());
+    });
+    
+    nodesName = argsArray.shift();
+    provisionArg = argsArray.join(',');
+    $('#deployDiv').empty().append(createLoader()).append('<br/>');
+    $('#deployDiv').dialog( "option", "buttons", {'Close': function(){$(this).remove();clearTimeout(provisionClock);}});
+    $('#deployDiv').dialog( "option", "width", 600);
+    provisionFrame = $('<iframe id="provisionFrame" width="95%" height="90%"></iframe>');
+    $('#deployDiv').append(provisionFrame);
+    provisionFrame.attr('src', 'lib/cmd.php?cmd=webrun&tgt=&args=provision;' + nodesName + ';' + provisionArg + '&msg=&opts=flush');
+    
+    provisionStopCheck();
+}
+
+function provisionStopCheck(){
+    var content = $('#provisionFrame').contents().find('body').text();
+    if (-1 != content.indexOf('provision stop')){
+        $('#deployDiv img').remove();
+        clearTimeout(provisionClock);
+    }
+    else{
+        provisionClock = setTimeout('provisionStopCheck()', 5000);
+    }
 }

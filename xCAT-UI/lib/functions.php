@@ -110,6 +110,7 @@ function submit_request($req, $skipVerify, $opts_array){
 						} else {
 							// Print out output by default
 							echo $tmp . '<br/>';
+							ob_flush();
 							flush();
 						}
 					}
