@@ -191,7 +191,7 @@ type:8233-E8B
 cmd:renergy $$CN savingstatus=on
 check:rc==0
 check:output=~Set savingstatus succeeded
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set savingstatus failed.
 cmd:sleep 60
 
@@ -215,7 +215,7 @@ check:output=~Set dsavingstatus failed.
 cmd:renergy $$CN savingstatus=off
 check:rc==0
 check:output=~Set savingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set savingstatus failed.
 
 cmd:sleep 60
@@ -240,7 +240,7 @@ check:output=~ Usage:
 cmd:renergy $$CN dsavingstatus=on-norm
 check:rc==0
 check:output=~Set dsavingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set dsavingstatus failed.
 
 cmd:sleep 60
@@ -265,7 +265,7 @@ check:output=~ Usage:
 cmd:renergy $$CN dsavingstatus=on-maxp
 check:rc==0
 check:output=~Set dsavingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set dsavingstatus failed.
 
 cmd:renergy $$CN dsavingstatus
@@ -279,7 +279,7 @@ check:output~~CPUspeed: 3864
 cmd:renergy $$CN  dsavingstatus=off
 check:rc==0
 check:output=~Set dsavingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set dsavingstatus failed.
 
 cmd:sleep 60
@@ -299,7 +299,7 @@ type:8233-E8B
 cmd:renergy $$CN cappingstatus=on
 check:rc==0
 check:output=~Set cappingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set cappingstatus failed.
 
 cmd:sleep 60
@@ -315,7 +315,7 @@ check:output=~Usage:
 cmd:renergy $$CN cappingstatus=off
 check:rc==0
 check:output=~Set cappingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set cappingstatus failed.
 
 cmd:sleep 60
