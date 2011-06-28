@@ -1040,7 +1040,7 @@ EOMS
     print $inifile "if [ -r /rootimg-statelite.gz ]; then \n";
     print $inifile "echo Setting up RAM-root tmpfs.\n";
     if ($rootlimit) {
-        print $inifile "    mount -o size=$rootlimit mode=755 -t tmpfs rootfs \$NEWROOT \n";
+        print $inifile "    mount -o size=$rootlimit,mode=755 -t tmpfs rootfs \$NEWROOT \n";
     } else {
         print $inifile "    mount -o mode=755 -t tmpfs rootfs \$NEWROOT \n";
     }
@@ -1178,7 +1178,7 @@ EOMS
    print $inifile "elif [ -r /rootimg.gz ]; then\n";
    print $inifile "echo Setting up RAM-root tmpfs.\n";
    if ($rootlimit) {
-      print $inifile "  mount -o size=$rootlimit  mode=755 -t tmpfs rootfs \$NEWROOT\n";
+      print $inifile "  mount -o size=$rootlimit,mode=755 -t tmpfs rootfs \$NEWROOT\n";
    } else {
       print $inifile "  mount -o  mode=755 -t tmpfs rootfs \$NEWROOT\n";
    }
