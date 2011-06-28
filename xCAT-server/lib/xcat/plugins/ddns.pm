@@ -215,6 +215,12 @@ sub process_request {
         makedns_usage($callback);
         return;
     }
+
+    if ($deletemode && (!$request->{node}->[0]))
+    {
+        makedns_usage($callback);
+        return;
+    }
     
     $ctx->{deletemode}=$deletemode;
         
@@ -971,7 +977,7 @@ sub makedns_usage
     push @{$rsp->{data}}, "  Usage: ";
     push @{$rsp->{data}}, "\tmakedns [-h|--help ]";
     push @{$rsp->{data}}, "\tmakedns [-n|--new ] [noderange]";
-    push @{$rsp->{data}}, "\tmakedns [-d|--delete ] [noderange]";
+    push @{$rsp->{data}}, "\tmakedns [-d|--delete noderange]";
     push @{$rsp->{data}}, "\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
