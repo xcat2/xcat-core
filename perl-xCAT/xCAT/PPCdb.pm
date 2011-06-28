@@ -43,6 +43,15 @@ my %defaultgrp = (
     cec   => "cec",
     
 );
+my %globlehwtype = (
+    fsp   => $::NODETYPE_FSP,
+    bpa   => $::NODETYPE_BPA,
+    lpar  => $::NODETYPE_LPAR,
+    hmc   => $::NODETYPE_HMC,
+    ivm   => $::NODETYPE_IVM,
+    frame => $::NODETYPE_FRAME,
+    cec   => $::NODETYPE_CEC,
+);
 
 
 ##########################################################################
@@ -56,16 +65,6 @@ sub add_ppc {
     my $otherinterfaces = shift;
     my @tabs     = qw(ppc vpd nodehm nodelist nodetype hosts mac); 
     my %db       = ();
-    my %nodetype = (
-        fsp   => $::NODETYPE_FSP,
-        bpa   => $::NODETYPE_BPA,
-        lpar  =>"$::NODETYPE_LPAR,$::NODETYPE_OSI",
-        hmc   => $::NODETYPE_HMC,
-        ivm   => $::NODETYPE_IVM,
-        frame => $::NODETYPE_FRAME,
-        cec   => $::NODETYPE_CEC,
-    );
-
     ###################################
     # Open database needed
     ###################################
@@ -96,6 +95,9 @@ sub add_ppc {
         ###############################
         if ( $type =~ /^(fsp|bpa|hmc|ivm|frame|cec)$/ ) {
             $db{nodetype}->setNodeAttribs( $name,{nodetype=>'ppc'} );
+            $db{nodetype}{commit} = 1;
+        } elsif ($type =~ /^lpar$/) {
+            $db{nodetype}->setNodeAttribs( $name,{nodetype=>'ppc,osi'} );
             $db{nodetype}{commit} = 1;
         }
         ###############################
@@ -147,7 +149,7 @@ sub add_ppc {
                  id=>$id,
                  pprofile=>$pprofile,
                  parent=>$parent,
-                 nodetype=>$nodetype{$type},
+                 nodetype=>$globlehwtype{$type},
                }); 
             $db{ppc}{commit} = 1;
 
@@ -228,13 +230,6 @@ sub update_ppc {
     my $not_overwrite = shift;
     my @tabs     = qw(ppc vpd nodehm nodelist nodetype ppcdirect hosts mac); 
     my %db       = ();
-    my %nodetype = (
-        fsp  => $::NODETYPE_FSP,
-        bpa  => $::NODETYPE_BPA,
-        lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI",
-        hmc  => $::NODETYPE_HMC,
-        ivm  => $::NODETYPE_IVM,
-    );
     my @update_list = ();
 
     ###################################
