@@ -241,6 +241,11 @@ sub process_request {
     } elsif ($allnodes) {
         #read all nodelist specified nodes
     } else { 
+	if ($deletemode) {
+		#when this was permitted, it really ruined peoples' days
+		xCAT::SvrUtils::sendmsg([1,"makedns -d without noderange or -a is not supported"],$callback); 
+		return;
+	}
         #legacy behavior, read from /etc/hosts
         my $hostsfile;
         open($hostsfile,"<","/etc/hosts");
