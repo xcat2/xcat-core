@@ -580,9 +580,10 @@ sub lsvm_parse_args {
 sub modify {
     my $request = shift;
     my $hash    = shift;
+    my $usage_string = xCAT::Usage->getUsage($request->{command});
     return modify_by_prof( $request, $hash) if ( $request->{opt}->{p} || $request->{stdin}); 
     return create( $request, $hash) if ( $request->{opt}->{i}); 
-    return ([["Error", "Miss argument"]]);
+    return ([["Error", "Miss argument\n".$usage_string, 1]]);
 }
 
 
