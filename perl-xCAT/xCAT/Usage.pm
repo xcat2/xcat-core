@@ -139,6 +139,9 @@ my %usage = (
        rspconfig <noderange>  [dev|celogin1]
        rspconfig <noderange>  [dev=<enable|disable>]|
        rspconfig <noderange>  [celogin1=<enable|disable>]
+   Frame/CEC Specific:
+       rspconfig <noderange> [sysname]
+       rspconfig <noderange> [sysname=<*|name>]
     ",
     "getmacs" => 
 "Usage: 

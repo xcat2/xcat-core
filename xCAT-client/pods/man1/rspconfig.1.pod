@@ -152,6 +152,13 @@ B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<--resetnet>
 
+=head2 HMC Specific:
+
+B<rspconfig> I<noderange> {B<sysname>}
+
+B<rspconfig> I<noderange> B<sysname>={B<*>|B<name>}
+
+
 =head1 DESCRIPTION
 
 B<rspconfig> configures various settings in the nodes' service processors.  If only a keyword is
@@ -305,6 +312,10 @@ Set the Switch network parameters.
 =item B<sysdump>
 
 Performs a system dump.
+
+=item B<sysname>
+
+Query or set sysname for CEC or Frame. If no value specified, means to query sysname of the specified nodes. If '*' specified, it means to set sysname for the specified nodes, and the sysname values would get from xCAT datebase. If a string was specified, it means to use the string as sysname value to set for the specified node.
 
 =item B<time>={I<hh:mm:ss>}
 
@@ -506,6 +517,22 @@ B<rspconfig> I<mm01 procedecfg=deconfigure:0:4,5>
 
 =item *
 
+To check if CEC sysname set correct:
+
+B<rspconfig> I<mm01 sysname>
+
+ mm01: mm01
+
+B<rspconfig> I<mm01 sysname=frame1>
+
+ mm01: success
+
+B<rspconfig> I<mm01 sysname>
+
+ mm01: frame1
+
+=item *
+
 To deconfigure memory bank 9 and 10 of Processing Unit 0 on mm01:
 
 B<rspconfig> I<mm01 memdecfg=deconfigure:bank:0:9,10>
@@ -528,8 +555,8 @@ Output is similar to:
  Server-8233-E8B-SN1000ECP-A,Server-9119-FHA-SN0275995-B,Server-9119-FHA-SN0275995-A,
 
  Reset network finished.
-
-=item *
+ 
+=back
 
 To update the existing admin password on fsp:
 
@@ -537,15 +564,11 @@ B<rspconfig> I<fsp admin_passwd=admin,abc123>
 
  fsp: Success
 
-=item *
-
 To set the initial password for user HMC on fsp:
 
 B<rspconfig> I<fsp HMC_passwd=,abc123>
 
  fsp: Success
-
-=back
 
 =head1 SEE ALSO
 

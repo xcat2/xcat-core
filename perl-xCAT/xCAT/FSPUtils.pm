@@ -152,7 +152,11 @@ sub fsp_api_action {
     	$cmd = "$fsp_api -a $action -T $tooltype -f $parameter -t $type:$fsp_ip:$id:$node_name:";
     } else {
         if( defined($parameter) ) {
-            $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter";
+            if ($action =~ /^(set_frame_name|set_cec_name)$/) {
+                $cmd = "$fsp_api -a $action -n $parameter -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+            } else {
+                $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter";
+            }
         } else {
             $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
         }

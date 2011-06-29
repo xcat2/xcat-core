@@ -51,7 +51,8 @@ sub parse_args {
         "general_passwd",
         "*_passwd",
         "cec_off_policy",
-        "resetnet"
+        "resetnet",
+	    "sysname"
     );
     my @frame = (
 	"frame",
@@ -59,7 +60,8 @@ sub parse_args {
         "admin_passwd",
         "general_passwd",
         "*_passwd",
-        "resetnet"
+        "resetnet",
+	    "sysname"
     );
 
     
@@ -190,6 +192,11 @@ sub parse_args {
         $request->{method} = "resetnet";
         return( \%opt );
     }
+    if(exists($cmds{sysname})) {
+		$request->{hcp} = $request->{hwtype} eq 'frame' ? "bpa":"fsp";
+		$request->{method} = "sysname";
+		return (\%opt);
+	}
     ####################################
     # Return method to invoke
     ####################################
@@ -242,11 +249,106 @@ sub parse_option {
             return( "Invalid cec_off_policy '$value'" );
         }
     }
-
-    
+    if ($command eq 'sysname') {
+        if ($value ne '*') {
+            if ($value !~ /^[a-zA-Z0-9-_]+$/) {
+                return( "Invalid sysname '$value'" );
+            } elsif (scalar(@{$request->{node}}) gt '1') {
+                return( "Invalid sysname '$value'" );
+            }
+            my $len = rindex $value."\$", "\$";
+            if ($len > '31') {
+                return ("Invalid sysname '$value', name is too long, max 31 characters");
+            }
+        }
+    }
     return undef;
 }
+sub sysname_check_node_info {
+	my $hash = shift;
+	my $invalid_node = undef;
+	while (my ($mtsm, $h) = each (%$hash)) {
+		while (my ($name, $d) = each(%$h)) {
+			if (@$d[4] !~ /^(cec|frame)$/) {
+				$invalid_node = $name;
+				last;
+			}
+		}
+	}
+	return $invalid_node;
+}
 
+my %sysname_action = (
+    query => {
+        cec => "get_cec_name",
+        frame => "get_frame_name"
+    },
+    set => {
+        cec => "set_cec_name",
+        frame => "set_frame_name"
+    }
+);
+sub do_query_sysname {
+    my $request = shift;
+    my $hash = shift;
+    my @result = ();
+    while (my ($mtms, $h) = each(%$hash)) {
+        while (my($name, $d) = each(%$h)) {
+            my $action = $sysname_action{query}{@$d[4]};
+            my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action);
+            push @result, $values;
+            if (@$values[2] != 0)  {
+                last;
+            } else {
+                my $len = rindex @$values[1]."\$", "\$";
+                if ($len > '31') {
+                    return ([[$name, "Get sysname failed, name is too long, max 31 characters", "1"]]);
+                }
+            }
+        }
+    }
+    return (\@result);
+}
+sub do_set_sysname {
+    my $request = shift;
+    my $hash = shift;
+    my $value = shift;
+    my @result = ();
+    while (my ($mtms, $h) = each(%$hash)) {
+        while (my($name, $d) = each(%$h)) {
+           my $sysname = ($value eq '*') ? $name : $value;
+           my $action = $sysname_action{set}{@$d[4]};
+           my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action, 0, $sysname);
+           push @result, $values;
+           if (@$values[2] != 0)  {
+               last;
+           }
+        }
+    }
+    return (\@result);
+}
+sub sysname {
+	my $request = shift;
+	my $hash = shift;
+	my $exp = shift;
+	my $args = $request->{arg};
+	my $invalid_node = &sysname_check_node_info($hash);
+	if (defined($invalid_node)) {
+		retrun ([[$invalid_node, "Node must be CEC or Frame", '1']]);
+	}
+	foreach my $arg (@$args) {
+		my ($cmd, $value) = split /=/, $arg;
+		if ($cmd !~ /^sysname$/) {
+			return ([[$cmd, "Can't be exec with sysname", 1]]);
+		}
+		if ($value) {
+			return &do_set_sysname($request, $hash, $value)
+		} else {
+			return &do_query_sysname($request, $hash);
+		}
+	}
+    return ([["Error", "Arguments invalid", 1]]);
+}
 ##########################################################################
 # Update passwords for different users on FSP/BPA
 ##########################################################################
