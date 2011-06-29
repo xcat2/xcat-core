@@ -126,7 +126,13 @@ B<rspconfig> I<noderange> B<general_passwd>={B<currentpasswd,newpasswd>}
 
 B<rspconfig> I<noderange> B<*_passwd>={B<currentpasswd,newpasswd>}
 
-B<rspconfig> I<noderange> B<--resetnet>
+B<rspconfig> I<noderange> {B<sysname>}
+
+B<rspconfig> I<noderange> B<sysname>={B<*>|B<name>}
+
+B<rspconfig> I<noderange> {B<cec_off_policy>}
+
+B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
 
 =head2 BPA/Frame (using Direct FSP Management) Specific:
 
@@ -142,7 +148,9 @@ B<rspconfig> I<noderange> {B<frame>}
 
 B<rspconfig> I<noderange> B<frame>={B<*|frame_number>}
 
-B<rspconfig> I<noderange> B<--resetnet>
+B<rspconfig> I<noderange> {B<sysname>}
+
+B<rspconfig> I<noderange> B<sysname>={B<*>|B<name>}
 
 =head2 HMC Specific:
 
@@ -152,19 +160,12 @@ B<rspconfig> I<noderange> B<sshcfg>={B<enable>|B<disable>}
 
 B<rspconfig> I<noderange> B<--resetnet>
 
-=head2 HMC Specific:
-
-B<rspconfig> I<noderange> {B<sysname>}
-
-B<rspconfig> I<noderange> B<sysname>={B<*>|B<name>}
-
-
 =head1 DESCRIPTION
 
 B<rspconfig> configures various settings in the nodes' service processors.  If only a keyword is
 specified, without the B<=>, it displays the current value.
 
-For options B<autopower>|B<iocap>|B<dev>|B<celogin1>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>, user need to use I<chdef -t site enableASMI=yes> to enable ASMI first. For options B<dev>|B<celogin1>, user also need to access I<http://w3.pok.ibm.com/organization/prodeng/pw/> to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use I<chdef -t site enableASMI=no> to disable ASMI.
+For options B<autopower>|B<iocap>|B<dev>|B<celogin1>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>|B<resetnet>, user need to use I<chdef -t site enableASMI=yes> to enable ASMI first. For options B<dev>|B<celogin1>, user also need to access I<http://w3.pok.ibm.com/organization/prodeng/pw/> to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use I<chdef -t site enableASMI=no> to disable ASMI.
 
 =head1 OPTIONS
 
@@ -196,7 +197,11 @@ Enables or disables deconfiguration policies.
 
 =item B<frame>={B<framenumber>|I<*>}
 
-Set or get frame number.  If no framenumber and * specified, framenumber for the nodes will be displayed and updated in xCAAT database.  If framenumber is specified, it only support single node and the framenumber will be set for that frame.  If * is specified, it supports noderange and all the frame numbers for the noderange will be read from xCAT database and set to frames. 
+Set or get frame number.  If no framenumber and * specified, framenumber for the nodes will be displayed and updated in xCAAT database.  If framenumber is specified, it only supports single node and the framenumber will be set for that frame.  If * is specified, it supports noderange and all the frame numbers for the noderange will be read from xCAT database and set to frames. Setting the frame number is a disruptive command which requires all CECs to be powered off prior to issuing the command.
+
+=item B<cec_off_policy>={B<poweroff>|B<stayon>}
+
+Set or get cec off policy after lpars are powered off.  If no cec_off_policy value specified, the cec_off_policy for the nodes will be displayed. the cec_off_policy has two values: B<poweroff> and B<stayon>. B<poweroff> means Power off when last partition powers off. B<stayon> means Stay running after last partition powers off. If cec_off_policy value is specified, the cec off policy will be set for that cec.  
 
 =item B<frequency>
 
