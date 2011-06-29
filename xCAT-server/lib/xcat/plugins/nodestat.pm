@@ -839,6 +839,12 @@ sub process_request {
    %nodesetstats=();
    my $command = $request->{command}->[0];
    my $separator="XXXXXYYYYYZZZZZ";
+	my $usefping;
+	@ARGV=@{$request->{arg}};
+	GetOptions(	
+		'f' => \$usefping
+	);
+
 
    if ($command eq "nodestat_internal") {
       
@@ -865,7 +871,7 @@ sub process_request {
 	       } 
 	       
 	       my $ret={};
-	       if ( -x '/usr/bin/nmap' ) {
+	       if ( not $usefping and -x '/usr/bin/nmap' ) {
 		   $ret=process_request_nmap($request, $callback, $doreq, $nodes, \%portservices);
 	       }  else {
 		   $ret=process_request_port($request, $callback, $doreq, $nodes, \%portservices);
