@@ -580,7 +580,7 @@ sub lsvm_parse_args {
 sub modify {
     my $request = shift;
     my $hash    = shift;
-    return modify_by_prof( $request, $hash) if ( $request->{opt}->{p}); 
+    return modify_by_prof( $request, $hash) if ( $request->{opt}->{p} || $request->{stdin}); 
     return create( $request, $hash) if ( $request->{opt}->{i}); 
     return ([["Error", "Miss argument"]]);
 }
