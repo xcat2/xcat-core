@@ -129,19 +129,31 @@ my %usage = (
            general_passwd=<currentpasswd,newpasswd>|
            *_passwd=<currentpasswd,newpasswd>|
            hostname=<*|hostname>
-   BPA/Frame specific:
+   FSP/CEC (using Direct FSP Management) Specific:
+       rspconfig noderange HMC_passwd={currentpasswd,newpasswd}
+       rspconfig noderange admin_passwd={currentpasswd,newpasswd}
+       rspconfig noderange general_passwd={currentpasswd,newpasswd}
+       rspconfig noderange *_passwd={currentpasswd,newpasswd}
+       rspconfig <noderange> [sysname]
+       rspconfig <noderange> [sysname=<*|name>]
+       rspconfig <noderange> [cec_off_policy]
+       rspconfig <noderange> [cec_off_policy=<poweroff|stayon>]
+   BPA/Frame (using Direct FSP Management)specific:
+       rspconfig noderange HMC_passwd={currentpasswd,newpasswd}
+       rspconfig noderange admin_passwd={currentpasswd,newpasswd}
+       rspconfig noderange general_passwd={currentpasswd,newpasswd}
+       rspconfig noderange *_passwd={currentpasswd,newpasswd}
        rspconfig <noderange> [frame]
        rspconfig <noderange> frame=<*|frame>
+       rspconfig <noderange> [sysname]
+       rspconfig <noderange> [sysname=<*|name>]
    HMC specific:
        rspconfig <noderange>  [sshcfg]
        rspconfig <noderange>  [sshcfg=<enable|disable>]
-   FSP/CEC Specific:
+   FSP/CEC(using ASM)Specific:
        rspconfig <noderange>  [dev|celogin1]
        rspconfig <noderange>  [dev=<enable|disable>]|
        rspconfig <noderange>  [celogin1=<enable|disable>]
-   Frame/CEC Specific:
-       rspconfig <noderange> [sysname]
-       rspconfig <noderange> [sysname=<*|name>]
     ",
     "getmacs" => 
 "Usage: 
