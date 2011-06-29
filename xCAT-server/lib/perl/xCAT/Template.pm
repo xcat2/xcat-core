@@ -116,13 +116,12 @@ sub subvars {
   $inc =~ s/#INCLUDE:([^#^\n]+)#/includefile($1, 0, 0)/eg;
   $inc =~ s/#HOSTNAME#/$node/eg;
 
-  if($media_dir =~ /sles11.1/){
-      my $nrtab = xCAT::Table->new("noderes");
-      my $tftpserver = $nrtab->getNodeAttribs($node, ['tftpserver']);
-      my $sles_sdk_media = "http://" . $tftpserver->{tftpserver} . $media_dir . "/sdk1";
+  my $nrtab = xCAT::Table->new("noderes");
+  my $tftpserver = $nrtab->getNodeAttribs($node, ['tftpserver']);
+  my $sles_sdk_media = "http://" . $tftpserver->{tftpserver} . $media_dir . "/sdk1";
+  
+  $inc =~ s/#SLES_SDK_MEDIA#/$sles_sdk_media/eg;
 
-      $inc =~ s/#SLES_SDK_MEDIA#/$sles_sdk_media/eg;
-  }
   if ($tmplerr) {
      close ($outh);
      return $tmplerr;
