@@ -16,8 +16,7 @@ This module contains all the global info for xCAT.
 #--------------------------------------------------------------------------------
 
 
-# valid values for nodelist.nodetype column
-$::NODETYPE_OSI="osi"; 
+# valid values for nodelist.hwtype column
 $::NODETYPE_LPAR="lpar"; 
 $::NODETYPE_BPA="bpa"; 
 $::NODETYPE_FSP="fsp";
@@ -25,6 +24,11 @@ $::NODETYPE_HMC="hmc";
 $::NODETYPE_IVM="ivm";
 $::NODETYPE_FRAME="frame";
 $::NODETYPE_CEC="cec";
+
+# valid values for nodelist.nodetype column
+$::NODETYPE_OSI="osi"; 
+$::NODETYPE_PPC="ppc";
+$::NODETYPE_ZVM="zvm";
 
 # valid values for nodelist.status columns or other status 
 $::STATUS_ACTIVE="alive";
