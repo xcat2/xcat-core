@@ -134,6 +134,8 @@ B<rspconfig> I<noderange> {B<cec_off_policy>}
 
 B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
 
+B<rspconfig> I<noderange> B<--resetnet>
+
 =head2 BPA/Frame (using Direct FSP Management) Specific:
 
 B<rspconfig> I<noderange> B<HMC_passwd>={B<currentpasswd,newpasswd>}
@@ -152,6 +154,8 @@ B<rspconfig> I<noderange> {B<sysname>}
 
 B<rspconfig> I<noderange> B<sysname>={B<*>|B<name>}
 
+B<rspconfig> I<noderange> B<--resetnet>
+
 =head2 HMC Specific:
 
 B<rspconfig> I<noderange> {B<sshcfg>}
@@ -165,7 +169,7 @@ B<rspconfig> I<noderange> B<--resetnet>
 B<rspconfig> configures various settings in the nodes' service processors.  If only a keyword is
 specified, without the B<=>, it displays the current value.
 
-For options B<autopower>|B<iocap>|B<dev>|B<celogin1>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>|B<resetnet>, user need to use I<chdef -t site enableASMI=yes> to enable ASMI first. For options B<dev>|B<celogin1>, user also need to access I<http://w3.pok.ibm.com/organization/prodeng/pw/> to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use I<chdef -t site enableASMI=no> to disable ASMI.
+For options B<autopower>|B<iocap>|B<dev>|B<celogin1>|B<decfg>|B<memdecfg>|B<procdecfg>|B<time>|B<date>|B<spdump>|B<sysdump>|B<network>, user need to use I<chdef -t site enableASMI=yes> to enable ASMI first. For options B<dev>|B<celogin1>, user also need to access I<http://w3.pok.ibm.com/organization/prodeng/pw/> to get the dynamic password for 'celogin' and put it in passwd table. After completed the command, user should use I<chdef -t site enableASMI=no> to disable ASMI.
 
 =head1 OPTIONS
 
@@ -202,6 +206,22 @@ Set or get frame number.  If no framenumber and * specified, framenumber for the
 =item B<cec_off_policy>={B<poweroff>|B<stayon>}
 
 Set or get cec off policy after lpars are powered off.  If no cec_off_policy value specified, the cec_off_policy for the nodes will be displayed. the cec_off_policy has two values: B<poweroff> and B<stayon>. B<poweroff> means Power off when last partition powers off. B<stayon> means Stay running after last partition powers off. If cec_off_policy value is specified, the cec off policy will be set for that cec.  
+
+=item B<HMC_passwd>={B<currentpasswd,newpasswd>}
+
+Change the password of the userid B<HMC> for CEC/Frame. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, the currentpasswd should be specified to the current password of the userid B<HMC> for the CEC/Frame.
+
+=item B<admin_passwd>={B<currentpasswd,newpasswd>}
+
+Change the password of the userid B<admin> for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, the currentpasswd should be specified to the current password of the userid B<admin> for the CEC/Frame.
+
+=item B<general_passwd>={B<currentpasswd,newpasswd>}
+
+Change the password of the userid B<general> for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, the currentpasswd should be specified to the current password of the userid B<general> for the CEC/Frame.
+
+=item B<*_passwd>={B<currentpasswd,newpasswd>}
+
+Change the passwords of the userids B<HMC>, B<HMC> and B<general> for CEC/Frame from currentpasswd to newpasswd. If the CEC/Frame is the factory default, the currentpasswd should NOT be specified; otherwise, if the current passwords of the userids B<HMC>, B<HMC> and B<general> for CEC/Frame are the same one, the currentpasswd should be specified to the current password, and then the password will be changed to the newpasswd. If the CEC/Frame is NOT the factory default, and the current passwords of the userids B<HMC>, B<HMC> and B<general> for CEC/Frame are NOT the same one, this option could NOT be used, and we should change the password one by one.
 
 =item B<frequency>
 
