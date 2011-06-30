@@ -18,7 +18,11 @@ my %rspconfig = (
     cec_off_policy  => \&cec_off_policy,
 );
 
-
+my %default_passwd = ( 
+    HMC      => "",
+    admin   => "admin",
+    general => "general",
+);
 
 ##########################################################################
 # Parse the command line for options and operands
@@ -224,17 +228,17 @@ sub parse_option {
     ####################################
     # Password
     ####################################
-    if ( $command eq 'admin_passwd' or $command eq 'general_passwd' or $command eq "*_passwd"){
-        my ($passwd,$newpasswd) = split /,/, $value;
-        if ( !$passwd or !$newpasswd) {
-            return( "Current password and new password couldn't be empty for user 'admin' and 'general'" );
-        }
-    }
+    #if ( $command eq 'admin_passwd' or $command eq 'general_passwd' or $command eq "*_passwd"){
+    #    my ($passwd,$newpasswd) = split /,/, $value;
+    #    if ( !$passwd or !$newpasswd) {
+    #        return( "Current password and new password couldn't be empty for user 'admin' and 'general'" );
+    #    }
+    #}
 
-    if ( $command eq 'HMC_passwd' ) {
+    if ( $command eq 'HMC_passwd' or $command eq 'admin_passwd' or $command eq 'general_passwd' or $command eq "*_passwd" ) {
         my ($passwd,$newpasswd) = split /,/, $value;
         if ( !$newpasswd ) {
-            return( "New password couldn't be empty for user 'HMC'" );
+            return( "New password couldn't be empty for user 'HMC', 'admin' or 'general'" );
         }
     }
 
@@ -361,13 +365,18 @@ sub passwd {
     my $user    = ();
     my $users   = ();
     my @output  = ();
+    my $default;
 
 	foreach my $arg ( @$args ) {
         my ($user,$value) = split /=/, $arg;
         my ($passwd,$newpasswd) = split /,/, $value;
         $user =~ s/_passwd$//;
         #$user =~ s/^HMC$/access/g;
-
+        
+        if( !$passwd) {
+            $default = 1;    
+        }
+         
         if ( $user eq "*" ) {
             push @$users, "HMC";
             push @$users, "admin";
@@ -377,7 +386,10 @@ sub passwd {
         }
 
         foreach my $usr ( @$users ) {
-
+	       if( $default == 1 ) {
+	           $passwd = $default_passwd{$usr};
+	       }
+                
         	while ( my ($cec,$h) = each(%$hash) ) {
            			while ( my ($node,$d) = each(%$h) ) {
                			my $type = @$d[4];
