@@ -1172,6 +1172,14 @@ sub format_output {
 
 
     ###########################################
+    # filter the result in the same vlan
+    ###########################################
+    if ( exists( $opt{i} )) {
+        my $outhash1 = filtersamevlan( $outhash );
+        $outhash = $outhash1;
+    }
+
+    ###########################################
     # -w flag for write to xCat database
     ###########################################
     if ( exists( $opt{w} )) {
@@ -2791,7 +2799,7 @@ sub do_resetnet {
         if ( $reset_all eq 0 && !exists( $namehash->{$name}) ){
             next;
         }
-        
+
         if ( $namehash->{$name} ) {
             $hoststab->setNodeAttribs( $name,{otherinterfaces=>$namehash->{$name}} );
         }
@@ -3851,10 +3859,39 @@ sub filter {
 
     return $newhash;
 }
+
+##########################################################################
+# Filter nodes not in the user specified vlan
+##########################################################################
+sub filtersamevlan {
+    my $oldhash = shift;
+    my $newhash;
+    my $nets = xCAT::Utils::my_nets();
+    my $validnets;
+    for my $net ( keys %$nets) {
+        for my $nic ( split /,/, $opt{i} ) {
+            if ( $nets->{$net} eq $nic ) {
+                $validnets->{$net} = $nic;
+            }
+        }
+    }        
+    foreach my $name ( keys %$oldhash ) {
+        my @data = @{ $oldhash->{$name}};
+        my $type = lc($data[0]);
+        if ($type =~ /^(fsp|bpa)$/) {
+            my $ip = $data[4];
+            for my $net ( keys %$validnets){
+                my ($n,$m) = split /\//,$net;
+                if ( xCAT::Utils::isInSameSubnet( $n, $ip, $m, 1) and xCAT::Utils::isPingable( $ip)) {
+                    $newhash->{$name} = $oldhash->{$name};
+                }
+            }
+        } else {
+            $newhash->{$name} = $oldhash->{$name};
+        }
+    }
+    return $newhash;
+}
+
 1;
-
-
-
-
-
 
