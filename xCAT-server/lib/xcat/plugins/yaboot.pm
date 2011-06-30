@@ -106,7 +106,12 @@ sub setstate {
         my $count = 0;
         foreach my $mac (@macs) {
           if ( $mac !~ /!(.*)/) {
-            my $hostname = $node . "-hf" . $count;
+            my $hostname;
+            if ( $node !~ /^(.*)-hf(.*)$/ ) {
+                $hostname = $node . "-hf" . $count;
+            } else {
+                $hostname = $1 . "-hf" . $count;
+            }
             open($pcfg,'>',$tftpdir."/etc/".$hostname);
             my $cref=$chainhash{$node}->[0]; #$chaintab->getNodeAttribs($node,['currstate']);
             if ($cref->{currstate}) {

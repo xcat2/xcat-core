@@ -301,6 +301,7 @@ sub addnode
     my @macs = split(/\|/, $ent->{mac});
     my $mace;
     my $deflstaments=$lstatements;
+    my $count = 0;
     foreach $mace (@macs)
     {
         $lstatements=$deflstaments; #force recalc on every entry
@@ -384,11 +385,25 @@ sub addnode
                 $mac =~ s/(\w{2})/$1:/g;
                 $mac =~ s/:$//;
             }
+            my $hostname = $hname;
+            my $hardwaretype = 1;
+            my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
+            if ( $client_nethash{$node}{mgtifname} =~ /hf/ )
+            {
+                $hardwaretype = 37;
+                if ( scalar(@macs) > 1 ) {
+                    if ( $hname !~ /^(.*)-hf(.*)$/ ) {
+                        $hostname = $hname . "-hf" . $count;
+                    } else {
+                        $hostname = $1 . "-hf" . $count;
+                    }
+                }
+            }
 
             #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
             print $omshell "new host\n";
             print $omshell
-                "set name = \"$hname\"\n";    #Find and destroy conflict name
+                "set name = \"$hostname\"\n";    #Find and destroy conflict name
                 print $omshell "open\n";
             print $omshell "remove\n";
             print $omshell "close\n";
@@ -406,9 +421,9 @@ sub addnode
             print $omshell "remove\n";
             print $omshell "close\n";
             print $omshell "new host\n";
-            print $omshell "set name = \"$hname\"\n";
+            print $omshell "set name = \"$hostname\"\n";
             print $omshell "set hardware-address = " . $mac . "\n";
-            print $omshell "set hardware-type = 1\n";
+            print $omshell "set hardware-type = $hardwaretype\n";
 
             if ($ip eq "DENIED")
             { #Blacklist this mac to preclude confusion, give best shot at things working
@@ -431,12 +446,13 @@ sub addnode
 
             print $omshell "create\n";
             print $omshell "close\n";
-            unless (grep /#definition for host $node aka host $hname/, @dhcpconf)
+            unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
             {
                 push @dhcpconf,
-                     "#definition for host $node aka host $hname can be found in the dhcpd.leases file\n";
+                     "#definition for host $node aka host $hostname can be found in the dhcpd.leases file\n";
             }
         }
+        $count = $count + 2;
     }
 }
 
@@ -1274,39 +1290,6 @@ sub process_request
                         );
                 next;
             }
-            my $mac = $ent->{mac};
-            # Workarounds for HFI devices, omshell doesn't support HFI device type, we cannot set hfi as hardware type in dhcp lease-file.
-            # Replace the ethernet with hfi in lease-file.
-            # After omshell supports HFI devices, remove these code and add correct hardware type from omshell
-            my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
-            if ( grep /hf/, $client_nethash{$node}{mgtifname} )
-            {
-                unless ( open( HOSTS,"</var/lib/dhcpd/dhcpd.leases" ))
-                {
-                    next;
-                }
-                my @rawdata = <HOSTS>;
-                my @newdata = ();
-                close( HOSTS );
-                chomp @rawdata;
-                foreach my $line ( @rawdata ) {
-                    if ( $line =~ /^(.*)ethernet $mac(.*)$/ ) {
-                        push @newdata, "$1hfi $mac$2";
-                    } else {
-                        push @newdata, $line;
-                    }
-                }
-
-                unless ( open( HOSTS,">/var/lib/dhcpd/dhcpd.leases" )) {
-                    next;
-                }
-                for my $line (@newdata)
-                {
-                    print HOSTS "$line\n";
-                }
-                close( HOSTS );
-            }
-
         }
     }
     writeout();
