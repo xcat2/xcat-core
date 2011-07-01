@@ -23,14 +23,15 @@ sub localize_yumrepo {
 }
 sub check_tofix {
    if (-d $File::Find::name and $File::Find::name =~ /\/repodata$/) {
-      fix_directory($File::Find::name);
+		if($distname =~ /rhels5/)
+		{
+		  fix_directory($File::Find::name);
+		}
+		generate_repo($File::Find::name);
    }
 }
-sub fix_directory { 
-
-    my @xmlines=();
-    my $primaryxml;
-    
+sub generate_repo
+{
     #write local-repository.tmpl
     my $dirlocation = shift;
     my @dircomps = File::Spec->splitdir($dirlocation);
@@ -43,6 +44,11 @@ sub fix_directory {
     print $yumrepofile "baseurl=$yumurl\n";
     print $yumrepofile "enabled=1\n";
     print $yumrepofile "gpgcheck=0\n\n";
+}
+sub fix_directory { 
+
+    my @xmlines=();
+    my $primaryxml;
   
     $grep_result = system("grep sha256 $dirlocation/repomd.xml|grep \\<checksum");
     if( $grep_result == 0 )

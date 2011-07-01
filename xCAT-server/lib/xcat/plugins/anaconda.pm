@@ -1410,11 +1410,10 @@ sub copycd
     #my $rc = system("cd $path;rsync -a . $installroot/$distname/$arch/");
     chmod 0755, "$installroot/$distname/$arch";
     require xCAT::Yum;
-    if($distname =~ /rhels5/)
-    {
-        xCAT::Yum->localize_yumrepo($installroot, $distname, $arch);
-    }
-    if ($rc != 0)
+	
+	xCAT::Yum->localize_yumrepo($installroot, $distname, $arch);
+    
+	if ($rc != 0)
     {
         $callback->({error => "Media copy operation failed, status $rc"});
     }
