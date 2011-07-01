@@ -260,7 +260,7 @@ sub deconfig {
              #####################################
              my $decfg = XMLin($data);
 	     my $node =  $decfg->{NODE};
-	     if( defined($node) ) {
+	     if( defined($node) &&  exists($node->{Location_code}) ) {
 		 push @result,[$name,"Deconfigured resources", 0];
 		 push @result,[$name,"Location_code                RID   Call_Out_Method    Call_Out_Hardware_State    TYPE", 0];
 	         push @result,[$name,"$node->{Location_code}         $node->{RID}", 0];
