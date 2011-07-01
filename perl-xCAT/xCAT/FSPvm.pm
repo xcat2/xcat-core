@@ -628,12 +628,12 @@ sub modify_by_prof {
         #get the current I/O slot information
         my $action = "get_io_slot_info";
         my $values =  xCAT::FSPUtils::fsp_api_action ($cec_name, $td, $action);
-        my $Rc = shift(@$values);
+        my $Rc = $$values[2];
         if ( $Rc != 0 ) {
-            push @result, [$cec_name, $$values[0], $Rc];
+            push @result, [$cec_name, $$values[1], $Rc];
             return (\@result);
         }
-        my @data = split(/\n/, $$values[0]);
+        my @data = split(/\n/, $$values[1]);
         foreach my $v (@data) {
             my ($lparid, $busid, $location, $drc_index, $owner_type, $owner, $descr) = split(/,/, $v);
             $io{$drc_index}{lparid} = $lparid;
@@ -710,7 +710,7 @@ sub enumerate {
     my $action = "get_io_slot_info";
     my $values =  xCAT::FSPUtils::fsp_api_action ($cec, \@td, $action);
     #my $Rc = shift(@$values);
-    my $Rc = @$values[2];
+    my $Rc = $$values[2];
     if ( $Rc != 0 ) {
         $outhash{ 1 } = "The LPARs' I/O slots information could NOT be listed  because the cec is in power off state";
     } else {
@@ -725,12 +725,12 @@ sub enumerate {
     if( $type =~ /^(fsp|cec)$/ )  {
 	$action = "query_octant_cfg";
 	my $values =  xCAT::FSPUtils::fsp_api_action ($cec, \@td, $action);
-	my $Rc = shift(@$values);
+	my $Rc = pop(@$values);
 	if ( $Rc != 0 ) {
-	    return( [$Rc,@$values[0]] );
+	    return( [$Rc,$$values[1]] );
         }	    
         #$outhash{ $cec } = @$values[0];
-        my $data = @$values[0];	
+        my $data = $$values[1];	
 	my @value =  split(/:/, $data);
 	my $pendingpumpmode = $value[0];
 	my $currentpumpMode = $value[1];
@@ -929,7 +929,7 @@ sub create {
         if ( $Rc != 0 ) {
             return( [[$cec_name,$$values[0],$Rc]] );
         } 
-        my @v = split(/:/, @$values[0]);
+        my @v = split(/:/, $$values[0]);
         $octant_cfg->{pendingpumpmode} = $v[0];        
 
     
@@ -1002,8 +1002,8 @@ sub create {
 	
 	#$values = xCAT::FSPUtils::fsp_api_create_parttion( $starting_lpar_id, $octant_cfg, $node_number, $d, "set_octant_cfg");
         $values =  xCAT::FSPUtils::fsp_api_action ($cec_name, $d, "set_octant_cfg", 0, $parameters);   
-        my $Rc = @$values[2];
-     	my $data = @$values[1];
+        my $Rc = $$values[2];
+     	my $data = $$values[1];
 	if ( $Rc != SUCCESS ) {
 	    push @result, [$cec_name,$data,$Rc];
         } else {
