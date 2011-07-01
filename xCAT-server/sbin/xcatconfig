@@ -285,18 +285,17 @@ if ($::INITIALINSTALL || $::FORCE || $::UPDATEINSTALL)
 		# for AIX systems add xcatd to the /etc/inittab file
 		#
 
-		# first remove any existing xcatd entry
+		# add xcatd entry if one does not exist
 		my $rcmd = "/bin/cat /etc/inittab | grep 'xcatd'";
 		my $outref = xCAT::Utils->runcmd("$rcmd", -1);
-		if ($::RUNCMD_RC == 0) {
-			my $rmitab_cmd = "rmitab xcatd  > /dev/null 2>&1";
-			system($rmitab_cmd);
+		if ($::RUNCMD_RC != 0) {
+                   my $mkitab_cmd =
+                  "mkitab \"xcatd:2:once:$::XCATROOT/sbin/restartxcatd > /dev/console 2>&1\" > /dev/null 2>&1";
+		   xCAT::Utils->runcmd("$mkitab_cmd", 0);
+		   if ($::RUNCMD_RC != 0) {
+                    xCAT::MsgUtils->message('E', "Could not set up inittab.");
+		   }
 		}
-
-		# now create a new entry
-        my $mkitab_cmd =
-          "mkitab \"xcatd:2:once:$::XCATROOT/sbin/restartxcatd > /dev/console 2>&1\" > /dev/null 2>&1";
-        my $rc = system($mkitab_cmd);
 
         # add AIX needed exports
         &setupAIXexports;
@@ -1655,13 +1654,11 @@ sub makenetworks
     my $outref = xCAT::Utils->runcmd("$cmd", 0);
     if ($::RUNCMD_RC != 0)
     {
-        xCAT::MsgUtils->message('E',
-                      "The makenetworks command returned error: $::RUNCMD_RC.");
+        verbose("The makenetworks command returned error: $::RUNCMD_RC");
     }
     else
     {
-        xCAT::MsgUtils->message('I',
-                             "The makenetworks command was run with no error.");
+        verbose("The makenetworks command was run with no error.");
     }
 
 
