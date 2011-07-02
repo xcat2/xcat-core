@@ -53,6 +53,15 @@ my %globlehwtype = (
     cec   => $::NODETYPE_CEC,
 );
 
+my %globalnodetype = (
+    fsp  => $::NODETYPE_PPC,
+    bpa  => $::NODETYPE_PPC,
+    cec  => $::NODETYPE_PPC,
+    frame=> $::NODETYPE_PPC,
+    hmc  => $::NODETYPE_PPC,
+    ivm  => $::NODETYPE_PPC,
+    lpar =>"$::NODETYPE_PPC,$::NODETYPE_OSI"
+);
 
 ##########################################################################
 # Adds a node to the xCAT databases
@@ -178,14 +187,20 @@ sub add_ppc {
         ###############################
         # Update vpd table
         ###############################
-        if ( $type =~ /^(fsp|bpa|frame|cec)$/ ) {
+        if ( $type =~ /^(fsp|bpa)$/ ) {
             $db{vpd}->setNodeAttribs( $name, 
                 { mtm=>$model,
                   serial=>$serial,
                   side=>$side
                  });
-            $db{vpd}{commit} = 1;
+        }                     
+        if ( $type =~ /^(frame|cec)$/ ) {
+            $db{vpd}->setNodeAttribs( $name, 
+                { mtm=>$model,
+                  serial=>$serial,
+                 }); 
         }
+        $db{vpd}{commit} = 1;
 
         ###############################
         # Update hosts table
@@ -460,7 +475,7 @@ sub update_node_attribs
                 id=>$id,
                 pprofile=>$pprofile,
                 parent=>$parent,
-                nodetype=>$type,
+                nodetype=>$globlehwtype{$type},
                 }); 
         if ( $namediff)
         {
@@ -496,7 +511,7 @@ sub update_node_attribs
     if ( $type ne $nodetypehash->{nodetype} or $namediff)
     {
         $db->{nodetype}->delEntries( $key_col) if ( $namediff);
-        $db->{nodetype}->setNodeAttribs( $name,{nodetype=>$type} );
+        $db->{nodetype}->setNodeAttribs( $name,{nodetype=>$globalnodetype{$type}} );
         $db->{nodetype}->{commit} = 1;
         $updated = 1;
     }
@@ -587,7 +602,7 @@ sub add_ppchcp {
 
     my $hwtype = shift;
     my $values = shift;
-    my @tabs   = qw(ppchcp nodehm nodelist nodetype mac);
+    my @tabs   = qw(ppchcp nodehm nodelist nodetype mac ppc);
     my %db     = ();
 
     my ($name, $mac) = split ',', $values;
@@ -619,7 +634,8 @@ sub add_ppchcp {
     ###################################
     # Update nodetype table
     ###################################
-    $db{nodetype}->setNodeAttribs( $name, {nodetype=>lc($hwtype)});
+    $db{nodetype}->setNodeAttribs( $name, {nodetype=>$globalnodetype{$hwtype}});
+    $db{ppc}->setNodeAttribs( $name, {nodetype=>$globlehwtype{$hwtype}});
 
     ###################################
     # Update mac table
