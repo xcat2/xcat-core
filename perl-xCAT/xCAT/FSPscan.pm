@@ -27,11 +27,20 @@ my @header = (
     ["side",          "%-8s" ],
     ["address",       "%-20s\n" ]);
 
-my @attribs = qw(nodetype node id mtm serial side hcp pprofile parent groups mgt cons);
-my %nodetype = (
+my @attribs = qw(nodetype hwtype node id mtm serial side hcp pprofile parent groups mgt cons);
+my %globalnodetype = (
+    fsp  => $::NODETYPE_PPC,
+    bpa  => $::NODETYPE_PPC,
+    cec  => $::NODETYPE_PPC,
+    frame=> $::NODETYPE_PPC,
+    lpar =>"$::NODETYPE_PPC,$::NODETYPE_OSI"
+);
+my %globalhwtype = (
     fsp  => $::NODETYPE_FSP,
     bpa  => $::NODETYPE_BPA,
-    lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI"
+    lpar => $::NODETYPE_LPAR,
+    cec  => $::NODETYPE_CEC,
+    frame=> $::NODETYPE_FRAME,
 );
 
 
@@ -384,7 +393,9 @@ sub format_stanza {
             if ( /^node$/ ) {
                 next;
             } elsif ( /^nodetype$/ ) {
-                $d = $nodetype{$d}; 
+                $d = $globalnodetype{$type};
+            } elsif ( /^hwtype$/ ) {        
+                $d = $globalhwtype{$type};
             } elsif ( /^groups$/ ) {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
@@ -400,6 +411,10 @@ sub format_stanza {
                 if ( $type eq "lpar" ) {
                     $d = undef;                    
                 }     
+            } elsif (/^side$/) {
+                unless ( $type =~ /^fsp|bpa$/ ) {
+                    next;
+                }
             }
             $result .= "\t$_=$d\n";
         }
@@ -449,7 +464,9 @@ sub format_xml {
             my $d = $data[$i++];
 
             if ( /^nodetype$/ ) {
-                $d = $nodetype{$d};
+                $d = $globalnodetype{$type};
+            } elsif ( /^hwtype$/ ) {        
+                $d = $globalhwtype{$type};
             } elsif ( /^groups$/ ) {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
@@ -463,6 +480,10 @@ sub format_xml {
             } elsif ( /^(mtm|serial)$/ ) {
                 if ( $type eq "lpar" ) {
                     $d = undef;
+                }
+            } elsif (/^side$/) {
+                unless ( $type =~ /^fsp|bpa$/ ) {
+                    next;
                 }
             }
             $href->{Node}->{$_} = $d;
