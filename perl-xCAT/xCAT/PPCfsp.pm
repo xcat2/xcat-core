@@ -109,14 +109,6 @@ sub connect {
     # Get userid/password 
     ##################################
     my $cred = $req->{$server}{cred};
-    my $name = undef;
-    if (($req->{dev} eq '1') or 
-        ($req->{command} eq 'rpower')) {
-        $name = "celogin"; 
-    } else {
-        $name = $logonname{$req->{hwtype}}->[0];
-    }
-    my @cred = xCAT::PPCdb::credentials($server, $req->{hwtype}, $name);
     ##################################
     # Redirect STDERR to variable 
     ##################################
@@ -165,8 +157,8 @@ sub connect {
     # Submit logon
     ##################################
     my $res = $ua->post( $url,
-       [ user     => @cred[0],
-         password => @cred[1],
+       [ user     => @$cred[0],
+         password => @$cred[1],
          lang     => "0",
          submit   => "Log in" ]
     );
@@ -195,7 +187,7 @@ sub connect {
         ##############################
         return( $ua,
                 $server,
-                @cred[0],
+                @$cred[0],
                 \$lwp_log );
     }
     ##############################
@@ -1998,7 +1990,7 @@ sub set_netcfg
     }
 
     #Go to the confirm page
-    if ( $res->content !~ /\Q<input type=\'submit\'\E/) #If there is no submit button,get the error message and return
+    if ( $res->content !~ /<input type=\'submit\'/) #If there is no submit button,get the error message and return
     {
         my @page_lines = split /\n/, $res->content;
         my @lines_to_print;
