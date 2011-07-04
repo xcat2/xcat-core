@@ -349,7 +349,10 @@ if ($nodesetstat eq 'standalone') {
         }
     }
 }
-
+$cleanupxcatpost = `grep "CLEANUPXCATPOST=" $scriptname|awk -F \= '{print \$2}'`;
+if ((!$?) && ($cleanupxcatpost =~ /\'1\'|\'yes\'/i)) {
+    &runcmd("cd /; rm -rf /xcatpost/*");
+}
 close($::LOG_FILE);
 
 exit 0;

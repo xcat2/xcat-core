@@ -765,6 +765,9 @@ site => {
    "                For example: tabdump,nodels,lsdef will not log those cmds.\n".
    "                ALL will not log any cmds.\n\n".
    " blademaxp:  The maximum number of processes for blade hardware control.\n\n".
+   " cleanupxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost directory\n".
+   "                   on the stateless and statelite nodes after the postscripts are run.\n".
+   "                   Default is no.\n\n".
    " consoleondemand:  When set to 'yes', conserver connects and creates the console\n".
    "                   output only when the user opens the console. Default is no on\n".
    "                   Linux, yes on AIX.\n\n".

@@ -335,6 +335,13 @@ fi
 DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /tmp/mypostscript`
 echo "$DHCP_TMP" > /tmp/mypostscript
 
+CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /tmp/mypostscript |awk -F = '{print $2}'` 
+if [ "$CLEANUPXCATPOST" = "'1'" ] || [ "$CLEANUPXCATPOST" = "'yes'" ]; then
+  echo "cd /" >> /tmp/mypostscript
+  # /xcatpost might be read-only for statelite nodes
+  echo "rm -rf /xcatpost/*" >> /tmp/mypostscript
+fi
+
 chmod +x /tmp/mypostscript
 if [ -x /tmp/mypostscript ];then
    /tmp/mypostscript
