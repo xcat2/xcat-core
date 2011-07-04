@@ -2800,9 +2800,9 @@ sub do_resetnet {
             next;
         }
 
-        if ( $namehash->{$name} ) {
-            $hoststab->setNodeAttribs( $name,{otherinterfaces=>$namehash->{$name}} );
-        }
+        #if ( $namehash->{$name} ) {
+        #    $hoststab->setNodeAttribs( $name,{otherinterfaces=>$namehash->{$name}} );
+        #}
 
         if (!$oi or $oi eq $namehash->{$name}) {
             send_msg( $req, 0, "$name: same ip address, skipping network reset" );
