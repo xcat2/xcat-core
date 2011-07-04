@@ -385,7 +385,7 @@ function mkAddNodeLink() {
 		addNodeForm.append('<div><label for="mgt">Hardware management:</label>'
     		+ '<select id="mgt" name="mgt">'
     			+ '<option>ipmi</option>' 
-    			+ '<option>blade</option>'
+    			+ '<option value="blade">Blade Center</option>'
     			+ '<option>hmc</option>'
     			+ '<option>zvm</option>'
     		+ '</select>'
@@ -434,6 +434,8 @@ function mkAddNodeLink() {
 		addNodeForm.dialog({
 			modal: true,
 			width: 400,
+			title:'Add Node',
+			close: function(){$(this).remove();},
 			buttons: {
         		'Ok': function(){
 					// Get hardware management
