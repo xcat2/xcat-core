@@ -148,6 +148,12 @@ To change the node object name from node1 to node2.
 
  chdef -t node -o node1 -n node2
 
+=item 10.
+
+To change the node hwtype, this command will change the value of ppc.nodetype.
+
+ chdef -t node -o node1 hwtype=lpar
+ 
 =back
 
 
