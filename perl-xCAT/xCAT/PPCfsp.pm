@@ -83,14 +83,6 @@ sub handler {
 ##########################################################################
 # Logon through remote FSP HTTP-interface
 ##########################################################################
-my %logonname = (
-        hmc   => ["hscroot","abc123"],
-        ivm   => ["padmin", "padmin"],
-        fsp   => ["admin",  "admin"],
-        bpa   => ["admin",  "admin"],
-        frame => ["admin",  "admin"],    
-        cec   => ["admin",  "admin"], 
-        );
 sub connect {
 
     my $req     = shift;
@@ -108,7 +100,13 @@ sub connect {
     ##################################
     # Get userid/password 
     ##################################
-    my $cred = $req->{$server}{cred};
+    my $cred = undef;
+    if (($req->{dev} eq '1') or ($req->{command} eq 'rpower')) {
+        my @cred_array = xCAT::PPCdb::credentials($server, $req->{hwtype}, "celogin");
+        $cred = \@cred_array;
+    } else {
+        $cred = $req->{$server}{cred};
+    }
     ##################################
     # Redirect STDERR to variable 
     ##################################
