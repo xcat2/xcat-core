@@ -2225,14 +2225,10 @@ sub getnodetype
                         $type = $typep->{nodetype};
                         push (@types, $type);
                     } else {
-                        $rsp->{data}->[0] = "Could not find node $nn in ppc table.";
-                        xCAT::MsgUtils->message("I", $rsp, $::callback);
                         push (@types, undef);
                     }
                 }    
             } else {
-                $rsp->{data}->[0] = "Could not find node $nn in nodetype table.";
-                xCAT::MsgUtils->message("I", $rsp, $::callback);
                 push (@types, undef);
             }    
         }
@@ -2264,14 +2260,10 @@ sub getnodetype
                     $type = $typep->{nodetype};
                     return $type;
                 } else {
-                    $rsp->{data}->[0] = "Could not find node $nodes in ppctable table.";
-                    xCAT::MsgUtils->message("I", $rsp, $::callback);
                     return undef;
                 }                    
             }
         } else {
-            $rsp->{data}->[0] = "Could not find node $nodes in nodetype table.";
-            xCAT::MsgUtils->message("I", $rsp, $::callback);
             return undef;
         }    
     }
