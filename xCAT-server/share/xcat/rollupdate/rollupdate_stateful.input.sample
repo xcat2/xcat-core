@@ -91,6 +91,23 @@ updategroup=ns11(c4lpar211-c4lpar214)
 #mutex=block2a,block2b,block2c
 #mutex=block3a,block3b,block3c
 
+# translatenames:
+# If your scheduler will be using names for nodes that are different from
+# xCAT node names (e.g. the scheduler is using a different administrative
+# network), you will need to tell xCAT how to translate from xCAT node names
+# to the node names registered with your scheduler.
+#
+# Syntax:
+#  translatenames=<xCAT_noderange>:/<pattern>/<replacement>/
+# where <pattern> and <replacement> are perl regular expressions to
+# be performed on the node names in <xCAT_noderange>.
+# See the xcatdb man page for more details on using regular expressions.
+# Multiple translatenames statements are allowed.  If an xCAT nodename
+# exists in more than one xCAT_noderange, the last translated value
+# will be used.
+#translatenames=service:|bb(\d+)s(\d+)|bb($1)sn($2)|
+#translatenames=compute:/\z/-hf2/
+
 
 
 # maxupdates:  Maximum number of updategroups that can be updated at one time 

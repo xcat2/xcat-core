@@ -20,6 +20,10 @@ require Data::Dumper;
 require Getopt::Long;
 require xCAT::MsgUtils;
 require File::Path;
+use Text::Balanced qw(extract_bracketed);
+use Safe;
+my $evalcpt = new Safe;
+
 use strict;
 use warnings;
 
@@ -559,6 +563,7 @@ sub rollupdate {
         return 1;
     }
 
+
     #
     # Build and submit scheduler jobs
     #
@@ -642,6 +647,15 @@ sub ll_jobs {
         xCAT::MsgUtils->message( "E", $rsp, $::CALLBACK );
         return 1;
     }
+
+    # Translate xCAT names to LL names
+    $::XLATED = {};
+    if (defined($::FILEATTRS{translatenames}[0])) {
+       foreach my $xlate_stanza( @{ $::FILEATTRS{'translatenames'} } ) {
+          translate_names($xlate_stanza);
+       }
+    }
+    
 
     # Create LL floating resources for mutual exclusion support
     #   and max_updates
@@ -774,16 +788,22 @@ sub ll_jobs {
         my ( $nodelist, $machinelist );
         my $machinecount = 0;
         foreach my $node ( @{ $updategroup->{$ugname} } ) {
-            if ( defined( $machines{$node} )
-                 && ( $machines{$node}{'mstatus'} eq "1" ) ) {
-                $machinelist .= " $machines{$node}{'mname'}";
+            my $xlated_node;
+            if ( defined ($::XLATED{$node}) ){
+               $xlated_node = $::XLATED{$node};
+            } else {
+               $xlated_node = $node;
+            }
+            if ( defined( $machines{$xlated_node} )
+                 && ( $machines{$xlated_node}{'mstatus'} eq "1" ) ) {
+                $machinelist .= " $machines{$xlated_node}{'mname'}";
                 $machinecount++;
                 $nodelist .= ",$node";
             } elsif ( $run_if_down eq 'yes' ) {
-                if ( defined( $machines{$node} ) ) {
+                if ( defined( $machines{$xlated_node} ) ) {
                    # llmkres -D will allow reserving down nodes as long
                    # as they are present in the machine list
-                    $machinelist .= " $machines{$node}{'mname'}";
+                    $machinelist .= " $machines{$xlated_node}{'mname'}";
                     $machinecount++;
                 }
                 $nodelist .= ",$node";
@@ -832,6 +852,11 @@ sub ll_jobs {
         push (@ugdflines, $df_statusline);
         if (defined($::FILEATTRS{bringuptimeout}[0])){
             push (@ugdflines, "bringuptimeout=$::FILEATTRS{bringuptimeout}[0]\n");
+        } 
+        if (defined($::FILEATTRS{translatenames}[0])){
+            foreach my $xlate_stanza( @{ $::FILEATTRS{'translatenames'} } ) {
+                push (@ugdflines, "translatenames=$xlate_stanza\n");
+            }
         } 
         if (defined($::FILEATTRS{skipshutdown}[0])){
             push (@ugdflines, "skipshutdown=$::FILEATTRS{skipshutdown}[0]\n");
@@ -884,7 +909,8 @@ sub ll_jobs {
             }           
 
             # Build reservation callback script 
-            my @rcblines;
+            
+my @rcblines;
             my $rcbcmd = $::FILEATTRS{'reservationcallback'}[0];
             if (!defined($rcbcmd)){ $rcbcmd = "$::XCATROOT/bin/runrollupdate"; }
             push (@rcblines, "#!/bin/sh \n");
@@ -953,6 +979,7 @@ sub ll_jobs {
                 if ( $jcline =~ /Feature/ ) {
                     $jcline =~ s/\"\s+/\"/g;
                     $jcline =~ s/\s+\"/\"/g;
+                    $jcline =~ s/\=\"/\= \"/g;
                 }
                 if ($lastcount) {
                     $jcline2 = $jcline;
@@ -1187,6 +1214,117 @@ sub check_policy {
     }
   }
   return 1;  # no match found
+}
+
+
+
+#----------------------------------------------------------------------------
+
+=head3   translate_names
+
+        Translate xCAT node names to scheduler names as requested by the user
+
+        Arguments:  $instructions - translation instructions of the form:
+                      <xcat_noderange>:/<pattern>/<replacement>/
+                    OR
+                      <xcat_noderange>:|<pattern>|<replacement>|
+        Returns: 
+        Globals:
+                hash:  $::XLATED{$node}=$xlated_name                
+                AND    $::XLATED{$xlated_name}=$node
+                to allow easy lookup in either direction
+        Error:
+        Example:
+
+        Comments:
+
+=cut
+
+#-----------------------------------------------------------------------------
+# This is a utility function to create a number out of a string, useful for things like round robin algorithms on unnumbered nodes
+sub mknum {
+    my $string = shift;
+    my $number=0;
+    foreach (unpack("C*",$string)) { #do big endian, then it would make 'fred' and 'free' be one number apart
+        $number += $_;
+    }
+    return $number;
+}
+$evalcpt->share('&mknum');
+$evalcpt->permit('require');
+
+sub translate_names{
+  my $instructions = shift;
+
+  my ($nr,$regexps) = split( /\:/, $instructions );
+  my @xCATnodes = xCAT::NodeRange::noderange($nr);
+
+  foreach my $xCATnode (@xCATnodes) {
+        my $xlated_node = $xCATnode;
+        my $datum = $regexps;
+  # The following is based on code copied from Table::getNodeAttribs
+        if ($datum =~ /^\/[^\/]*\/[^\/]*\/$/)
+        {
+            my $exp = substr($datum, 1);
+            chop $exp;
+            my @parts = split('/', $exp, 2);
+            $xlated_node =~ s/$parts[0]/$parts[1]/;
+            $datum = $xlated_node;
+        }
+        elsif ($datum =~ /^\|.*\|.*\|$/)
+       {
+            #Perform arithmetic and only arithmetic operations in bracketed issues on the right.
+            #Tricky part:  don't allow potentially dangerous code, only eval if
+            #to-be-evaled expression is only made up of ()\d+-/%$
+            #Futher paranoia?  use Safe module to make sure I'm good
+            my $exp = substr($datum, 1);
+            chop $exp;
+            my @parts = split('\|', $exp, 2);
+            my $curr;
+            my $next;
+            my $prev;
+            my $retval = $parts[1];
+            ($curr, $next, $prev) =
+              extract_bracketed($retval, '()', qr/[^()]*/);
+
+            unless($curr) { #If there were no paramaters to save, treat this one like a plain regex
+               undef $@; #extract_bracketed would have set $@ if it didn't return, undef $@
+               $retval = $xlated_node;
+               $retval =~ s/$parts[0]/$parts[1]/;
+               $datum = $retval;
+               unless ($datum =~ /^$/) { # ignore blank translations
+                 $xlated_node=$datum;
+               }
+               next; #skip the redundancy that follows otherwise
+            }
+            while ($curr)
+            {
+
+                #my $next = $comps[0];
+                my $value = $xlated_node;
+                $value =~ s/$parts[0]/$curr/;
+#                $value = $evalcpt->reval('use integer;'.$value);
+                $value = $evalcpt->reval($value);
+                $retval = $prev . $value . $next;
+                #use text::balanced extract_bracketed to parse each atom, make sure nothing but arith operators, parens, and numbers are in it to guard against code execution
+                ($curr, $next, $prev) =
+                  extract_bracketed($retval, '()', qr/[^()]*/);
+            }
+            undef $@;
+            #At this point, $retval is the expression after being arithmetically contemplated, a generated regex, and therefore
+            #must be applied in total
+            my $answval = $xlated_node;
+            $answval =~ s/$parts[0]/$retval/;
+            $datum = $answval; #$retval;
+        }
+        unless ($datum =~ /^$/) {
+            $::XLATED{$xCATnode}=$datum;
+            $::XLATED{$datum}=$xCATnode;
+        }
+
+  }
+#  print Dumper($::XLATED);
+  return ;
 }
 
 
@@ -1788,9 +1926,15 @@ sub runrollupdate {
                  ($::DATAATTRS{skipshutdown}[0] eq "1") ) ) {
         $skipshutdown = 1;
     } 
+    $::XLATED = {};
+    if (defined($::DATAATTRS{translatenames}[0])) {
+       foreach my $xlate_stanza( @{ $::DATAATTRS{'translatenames'} } ) {
+          translate_names($xlate_stanza);
+       }
+    }
 
     # make sure nodes are in correct state
-    my $hostlist = &get_hostlist;
+    my $hostlist = &get_hostlist();
     if (! $hostlist ) {
         if ($::VERBOSE) { 
             open (RULOG, ">>$::LOGDIR/$::LOGFILE");
@@ -1804,7 +1948,7 @@ sub runrollupdate {
     }
 
     my $nltab = xCAT::Table->new('nodelist');
-    my @nodes = split( /\,/, $hostlist );
+    my @nodes = split( /\,/, $hostlist );    
     my $appstatus=xCAT::Utils->getAppStatus(\@nodes,"RollingUpdate");
     foreach my $node (@nodes) {
         unless ( defined($appstatus->{$node})
@@ -2054,16 +2198,25 @@ sub runrollupdate {
         my $totalwait = 0;
         my %ll_res;
         while ($not_done && $totalwait < ($statustimeout * 60)) {
+            my @query_bootnodes;
+            foreach my $bn (keys %ll_res) {
+                if ( ! ($ll_res{$bn}{removed}) ) {
+                    push (@query_bootnodes,$bn);
+                }
+            }
+            if ( ! @query_bootnodes ) {
+                @query_bootnodes = @bootnodes;
+            }
             if ($::VERBOSE) { 
                  open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-                 print RULOG localtime()." $::ug_name:  Checking ".join(",",@bootnodes)." xCAT database $statusattr for value $statusval \n";
+                 print RULOG localtime()." $::ug_name:  Checking ".join(",",@query_bootnodes)." xCAT database $statusattr for value $statusval \n";
                  close (RULOG);
             }
             my $nltab_stats =
-                $nltab->getNodesAttribs( \@bootnodes, [ 'node', $statusattr ] );
-            %ll_res = ();
+                $nltab->getNodesAttribs( \@query_bootnodes, [ 'node', $statusattr ] );
+#           %ll_res = ();
             $not_done = 0;
-            foreach my $bn (@bootnodes) {
+            foreach my $bn (@query_bootnodes) {
                 if ( $nltab_stats->{$bn}->[0]->{$statusattr} !~ /$statusval/ ) {
                   $ll_res{$bn}{not_done}=1;
                   $not_done = 1;
@@ -2075,9 +2228,14 @@ sub runrollupdate {
                 ($::ll_reservation_id)){ 
                 my @remove_res;
                 foreach my $bn (keys %ll_res) {
-                    if ($ll_res{$bn}{remove} && ! $ll_res{$bn}{removed} ){
-                        push (@remove_res,$bn);
+                    if (($ll_res{$bn}{remove}) && (! $ll_res{$bn}{removed}) ){
+                        if ( defined($::XLATED{$bn}) ) {
+                            push (@remove_res,$::XLATED{$bn});
+                        } else {
+                            push (@remove_res,$bn);
+                        }
                         $ll_res{$bn}{removed} = 1;
+                        $ll_res{$bn}{not_done} = 0;
                     }
                 }
                 if (@remove_res) {
@@ -2086,8 +2244,12 @@ sub runrollupdate {
                 }
             }
             if ($not_done) {
-                sleep(20);
-                $totalwait += 20;
+                if ($::TEST) { 
+                    $not_done = 0; 
+                } else {
+                    sleep(20);
+                    $totalwait += 20;
+                }
             }
         }
         if ($not_done) { 
@@ -2109,10 +2271,19 @@ sub runrollupdate {
                         push (@error_nodes,$bn);
                     }
                 }
+                open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+                print RULOG "\n";
+                print RULOG localtime()." ERROR:  bringuptimeout exceeded for the following nodes: \n";
+                print RULOG join(",",@error_nodes);
+                print RULOG "\n";
                 xCAT::Utils->setAppStatus(\@error_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded");
-                if ( defined($remaining_nodes[0]) ) {
+                if ( @remaining_nodes ) {
+                  print RULOG localtime()." ERROR:  bringuptimeout exceeded for some nodes in a preceding bringuporder.  The following nodes will not be powered on: \n";
+                  print RULOG join(",",@remaining_nodes);
+                  print RULOG "\n";
                   xCAT::Utils->setAppStatus(\@remaining_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded_for_previous_node");
                 }
+                close (RULOG);
             }
             last;
         }
@@ -2237,7 +2408,16 @@ sub get_hostlist {
         print RULOG localtime()." Hostlist:  $status_fields[22] \n";
         close (RULOG);
     }
-    return $status_fields[22];
+    my $return_list;
+    foreach my $machine (split( /\,/, $status_fields[22])) {
+       if ( defined($::XLATED{$machine}) ) {
+           $return_list = $return_list.','.$::XLATED{$machine};
+       } else {
+           $return_list = $return_list.','.$machine;
+       }
+    }
+    $return_list =~ s/^,//;
+    return $return_list;
 }
 
 
@@ -2609,8 +2789,10 @@ sub llreconfig {
     my $runlocal=0;
     foreach my $m (@llms) {
        my ($sm,$rest) = split(/\./,$m);
+       my $xlated_sm = $sm;
+       if ( defined ($::XLATED{$sm}) ) { $xlated_sm = $::XLATED{$sm}; }
        if (xCAT::Utils->thishostisnot($m)) {
-           push(@llnodes, $sm) unless $have{$sm}++;
+           push(@llnodes, $xlated_sm) unless $have{$sm}++;
        } else {
            $runlocal=1;
        }
@@ -2634,7 +2816,7 @@ sub llreconfig {
     if ( scalar(@llnodes) > 0 ) {
         if ($::VERBOSE) {
             open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-            print RULOG localtime()." Running command \'xdsh $llcms $llrms $cmd\'\n";
+            print RULOG localtime()." Running command \'xdsh ".join(',',@llnodes)." $cmd\'\n";
             close (RULOG);
         }
         if ($::TEST) {
