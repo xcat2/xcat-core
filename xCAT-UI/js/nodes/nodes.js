@@ -846,15 +846,15 @@ function loadNodes(data) {
 		}
 	});
 	
-	// operations actions (power monitor)
-	var powerLnk = '<a>Operations</a>';
-	var powerActionMenu = createMenu([ powerOnLnk, powerOffLnk, monitorOnLnk, monitorOffLnk, scriptLnk]);
+	// actions (power monitor)
+	var powerLnk = '<a>Actions</a>';
+	var powerActionMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, scriptLnk]);
 	
-	//configurations
+	// configurations
 	var configLnk = '<a>Configuration</a>';
-	var configMenu = createMenu([cloneLnk, deleteLnk, unlockLnk, updateLnk, editProps, installMonLnk]);
+	var configMenu = createMenu([unlockLnk, updateLnk, editProps, installMonLnk]);
 	// Advanced actions
-	var advancedLnk = '<a>Advanced</a>';
+	var advancedLnk = '<a>Provision</a>';
 	var advancedActionMenu = createMenu([ boot2NetworkLnk, setBootStateLnk, rcons, provisionLnk]);
 
 	// Create an action menu
