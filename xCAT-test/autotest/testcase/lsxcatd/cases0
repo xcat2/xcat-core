@@ -1,0 +1,28 @@
+start:lsxcatd_null
+description:lsxcatd without any flag
+cmd:lsxcatd
+check:rc==0
+check:output=~lsxcatd
+end
+
+start:lsxcatd_h
+description:lsxcatd -h
+cmd:lsxcatd -h
+check:rc==0
+check:output=~lsxcatd
+end
+
+start:lsxcatd_d
+description:lsxcatd -d
+cmd:lsxcatd -d
+check:rc==0
+check:output=~(cfgloc|dbengine|dbinstance|dbname|dbloc)
+end
+
+start:lsxcatd_a
+description:lsxcatd -a
+cmd:lsxcatd -a
+check:rc==0
+check:output=~Version
+check:output=~(cfgloc|dbengine|dbinstance|dbname|dbloc)
+end
