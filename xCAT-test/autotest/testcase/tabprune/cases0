@@ -1,0 +1,61 @@
+start:tabprune_h
+description:tabprune -h
+cmd:tabprune -h
+check:rc==0
+check:output=~Usage
+end
+
+start:tabprune_v
+description:tabprune -v
+cmd:tabprune -v
+check:rc==0
+check:output=~Version
+end
+
+start:tabprune_a_eventlog
+description:tabprune eventlog -a 
+cmd:tabprune eventlog -a
+check:rc==0
+check:output!~not a valid xCAT object type
+end
+
+start:tabprune_V_a_eventlog
+description:tabprune eventlog -V -a > /tmp/eventlog.csv
+cmd:tabprune eventlog -V -a > /tmp/eventlog.csv
+check:rc==0
+cmd:ls /tmp/eventlog.csv
+check:rc==0
+check:output=~eventlog.csv
+cmd:rm -f /tmp/eventlog.csv
+end
+
+start:tabprune_p_auditlog
+description:to remove 50% of the auditlog table,if the original number is odd number,the final result is 1;or else the final number is 0;
+cmd:n1=`lsdef -t auditlog|wc -l`;tabprune auditlog -p 50;n2=`lsdef -t auditlog|wc -l`;echo $((n1-($n2-2)*2))
+check:rc=0
+check:output=~tabprune of auditlog complete
+check:output=~(0|1)
+end
+
+start:tabprune_i_auditlog
+description:remove the records whose recid is less than the input recid number
+cmd:n1=`lsdef -t auditlog|sed -n 2p|awk '{print $1}'`;tabprune auditlog -i $n1;n1=$(($n1-1));lsdef -t auditlog -l $n1
+check:rc=0
+check:output=~tabprune of auditlog complete
+check:output=~Could not find an object named
+end
+
+start:tabprune_V_n_auditlog
+description:remove 3 records from the auditlog table and display the remove records
+description:tabprune auditlog -V -n 3
+cmd:lsdef -t site
+cmd:lsdef -t site
+cmd:lsdef -t site
+cmd:tabprune auditlog -V -n 3|tee result|wc -l
+check:rc=0
+check:output=~4
+cmd:cat result
+check:output=~recid,audittime
+cmd:rm result
+end
+
