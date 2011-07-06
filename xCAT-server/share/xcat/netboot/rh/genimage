@@ -330,48 +330,52 @@ unless ($onlyinitrd) {
    my %pkg_hash=imgutils::get_package_names($pkglist);
    my $index=1;
    my $pass;
-   foreach $pass (sort (keys(%pkg_hash))) {
-       my $pkgnames = "";
-       foreach (keys(%{$pkg_hash{$pass}})) {
-           if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
-           my $pa=$pkg_hash{$pass}{$_};
-           my @npa = ();
-           # replace the kernel package with the name has the specific version
-           foreach my $p (@$pa) {
-            if ($p =~ /^kernel$/ && $kernelver) {
-             my $kernelname = "kernel-".$kernelver;
-             my $searchkern = $yumcmd . " list $kernelname -q";
-             my @kernpkgs = `$searchkern`;
-             my $found = 0;
-             foreach my $k (@kernpkgs) {
-               if ($k =~ /\s*kernel[^\s]*\s+([\w\.-]+)/) {
-                 my $version = $1;
-                 my $relversion = $kernelver;
-                 $relversion =~ s/\.[^\.]+$//;
-                 if ($version == $relversion) {
-                   $found++;
-                 }
-               }
-             }
-             if ($found eq 0) {
-               print "Cannot find the kernel with version $kernelver.\n";
-               exit 1;
-             }
-             push @npa, $kernelname;
-            } else {
-             push @npa, $p;
+    foreach $pass (sort (keys(%pkg_hash))) {
+        my $pkgnames = "";
+        foreach (keys(%{$pkg_hash{$pass}})) {
+            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
+            my $pa=$pkg_hash{$pass}{$_};
+            my @npa = ();
+            # replace the kernel package with the name has the specific version
+            foreach my $p (@$pa) {
+                if ($p =~ /^kernel$/ && $kernelver) {
+                    my $kernelname = "kernel-".$kernelver;
+                    my $searchkern = $yumcmd . " list $kernelname -q";
+                    my @kernpkgs = `$searchkern`;
+                    my $found = 0;
+                    foreach my $k (@kernpkgs) {
+                        if ($k =~ /\s*kernel[^\s]*\s+([\w\.-]+)/) {
+                            my $version = $1;
+                            my $relversion = $kernelver;
+                            $relversion =~ s/\.[^\.]+$//;
+                            if ($version == $relversion) {
+                                $found++;
+                            }
+                        }
+                    }
+                    if ($found eq 0) {
+                        print "Cannot find the kernel with version $kernelver.\n";
+                        exit 1;
+                    }
+                    push @npa, $kernelname;
+                }
+                elsif ($p =~ /^@/) {
+                    push @npa, "\"$p\"";
+                }
+                else {
+                    push @npa, $p;
+                }
             }
-           }
-           $pkgnames .= " " . join(' ', @npa);
-       }
+            $pkgnames .= " " . join(' ', @npa);
+        }
 
-       print "$yumcmd install $pkgnames\n";
-       my $rc = system("$yumcmd install $pkgnames");
-       if ($rc) { 
-          print "yum invocation failed\n";
-          exit 1;
-       }
-   }
+        print "$yumcmd install $pkgnames\n";
+        my $rc = system("$yumcmd install $pkgnames");
+        if ($rc) { 
+            print "yum invocation failed\n";
+            exit 1;
+        }
+    }
 
    #Now let's handle extra packages
     unless ($imagename) {

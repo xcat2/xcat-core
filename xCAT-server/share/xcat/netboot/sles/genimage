@@ -441,7 +441,7 @@ unless ($onlyinitrd) {
    #mkpath("$rootimg_dir/var/lib/yum");
    my $yumcmd;
    if($osver =~ /sles11/ && $osver_host == 11) {
-       $yumcmd = "zypper -R $rootimg_dir install -l "; #add -l for SLES11
+       $yumcmd = "zypper -R $rootimg_dir install -l -y "; #add -l for SLES11
    }else {
         $yumcmd = "zypper -R $rootimg_dir install ";
    }
@@ -464,11 +464,13 @@ unless ($onlyinitrd) {
    my $index=1;
    foreach $pass (sort (keys(%pkg_hash))) {
        $pkgnames = "";
+	   $group_pkgnames = "";
        foreach (keys(%{$pkg_hash{$pass}})) {
            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
            my $pa=$pkg_hash{$pass}{$_};
            # replace the kernel package with the name has the specific version
            my @npa = ();
+		   my @npa_group = ();
            foreach my $p (@$pa) {
              if ($p =~ /^kernel$/ && $kernelver) {
                # get all files in $srcdir and $kerneldir
@@ -488,19 +490,42 @@ unless ($onlyinitrd) {
                  my $kernelname = "$kern=".$krpmver;
                  push @npa, $kernelname;
                }
-             } else {
-               push @npa, $p;
+             }
+			 else {
+				if($p =~ s/^@//)
+				{
+					push @npa_group, $p;
+				}
+				else
+				{
+					push @npa, $p;
+				}
              }
            }
            $pkgnames .= " " . join(' ', @npa);
+		   $group_pkgnames .= " " . join(' ', @npa_group);
        }
-       print "$yumcmd $pkgnames\n";
-       my $rc = system("$yumcmd $pkgnames");
-       $rc = $rc >> 8;
-       if (($rc) && ($rc != '104')) { 
-          print "zypper invocation failed with rc: $rc\n";
-          exit 1;
-       }
+			  
+	   if($pkgnames ne ' ')
+	   {
+		    print "$yumcmd $pkgnames\n";
+			my $rc = system("$yumcmd $pkgnames");
+			$rc = $rc >> 8;
+			if (($rc) && ($rc != '104')) { 
+				print "zypper invocation failed with rc: $rc\n";
+				exit 1;
+			}
+	   }
+	   if($group_pkgnames ne ' ')
+	   {
+		    print "$yumcmd -t pattern $group_pkgnames\n";
+			$rc = system("$yumcmd -t pattern $group_pkgnames");
+			$rc = $rc >> 8;
+			if (($rc) && ($rc != '104')) { 
+				print "zypper invocation failed with rc: $rc\n";
+				exit 1;
+			}
+	   }
    }
 
    foreach $pass (sort (keys(%extra_hash))) {
