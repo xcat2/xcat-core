@@ -1,7 +1,6 @@
 start:lsxcatd_null
 description:lsxcatd without any flag
 cmd:lsxcatd
-check:rc==0
 check:output=~lsxcatd
 end
 
