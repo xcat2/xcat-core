@@ -75,6 +75,7 @@ fi
 done
 
 else
+NETMASK=255.0.0.0
 
 if [[ $NTYPE = service ]]
 then
@@ -83,7 +84,7 @@ CLIENT_IP=`ping -q -n -c 1 -w 1 $name-hf0 | grep PING |awk '{print $3}' | sed 's
 
 if [ -n $CLIENT_IP ]
 then
-ifconfig hf0 $CLIENT_IP
+mkhfi -i hf0 -a $CLIENT_IP -m $NETMASK
 fi
 
 fi
@@ -94,7 +95,7 @@ CLIENT_IP=`ping -q -n -c 1 -w 1 $name-hf$i | grep PING |awk '{print $3}' | sed '
 
 if [ -n $CLIENT_IP ]
 then
-ifconfig hf$i $CLIENT_IP
+mkhfi -i hf$i -a $CLIENT_IP -m $NETMASK
 fi
 
 done
@@ -104,7 +105,7 @@ CLIENT_IP=`ping -q -n -c 1 -w 1 $name-ml0 | grep PING |awk '{print $3}' | sed 's
 
 if [ -n $CLIENT_IP ]
 then
-ifconfig ml0 $CLIENT_IP
+mkhfi -i ml0 -a $CLIENT_IP -m $NETMASK
 fi
 
 fi
