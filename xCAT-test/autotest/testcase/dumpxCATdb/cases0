@@ -1,0 +1,78 @@
+start:dumpxCATdb_null
+description:dumpxCATdb without any flag
+cmd:dumpxCATdb
+check:rc==0
+check:output=~dumpxCATdb
+end
+
+start:dumpxCATdb_h
+description:dumpxCATdb -h
+cmd:dumpxCATdb -h
+check:rc==0
+check:output=~dumpxCATdb
+end
+
+start:dumpxCATdb_v
+description:Command Version
+cmd:dumpxCATdb -v
+check:rc==0
+check:output=~Version
+end
+
+start:dumpxCATdb_p_nullskiptables
+description:dumpxCATdb -p path,not skiptables
+cmd:chtab key=skiptables site.value=""
+check:rc==0
+cmd:dumpxCATdb -p /tmp/db
+check:rc==0
+cmd:ls /tmp/db
+check:rc==0
+check:output=~site.csv
+check:output!~eventlog.csv
+check:output!~auditlog.csv
+cmd:rm -rf /tmp/db
+check:rc==0
+end
+
+start:dumpxCATdb_a_p_nullskiptables
+description:dump all,without this flag the eventlog and auditlog will be skipped
+cmd:chtab key=skiptables site.value=""
+check:rc==0
+cmd:dumpxCATdb -a -p /tmp/db.all
+check:rc==0
+cmd:ls /tmp/db.all
+check:rc==0
+check:output=~site.csv
+check:output=~eventlog.csv
+check:output=~auditlog.csv
+cmd:rm -rf /tmp/db.all
+check:rc==0
+end
+
+start:dumpxCATdb_p_skiptables
+description:To have dumpxCATdb not backup the hosts or passwd table
+cmd:chtab key=skiptables site.value="hosts,passwd"
+check:rc==0
+cmd:dumpxCATdb -p /tmp/db.skiptables
+check:rc==0
+cmd:ls /tmp/db.skiptables
+check:output!~hosts
+check:output!~passwd
+cmd:rm -rf /tmp/db.skiptables
+check:rc==0
+end
+
+start:dumpxCATdb_a_p_skiptables
+description:To have dumpxCATdb all but not backup the hosts or passwd table
+cmd:chtab key=skiptables site.value="hosts,passwd"
+check:rc==0
+cmd:dumpxCATdb -a -p /tmp/db.skiptables
+check:rc==0
+cmd:ls /tmp/db.skiptables
+check:output!~(hosts&&passwd)
+check:output=~eventlog.csv
+check:output=~auditlog.csv
+cmd:rm -rf /tmp/db.skiptables
+check:rc==0
+end
+
