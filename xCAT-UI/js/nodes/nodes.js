@@ -3392,8 +3392,8 @@ function openQuickProvisionDia(tgtnodes){
 
     //check the mac address
     for (index in nodeArray){
-        if (!origAttrs[nodeName]['mac']){
-            errormessage += 'All nodes should define mac!<br/>';
+        if (!origAttrs[nodeName]['mac'] || !origAttrs[nodeName]['ip']){
+            errormessage += 'All nodes should define ip and mac!<br/>';
             break;
         }
     }
@@ -3423,16 +3423,13 @@ function openQuickProvisionDia(tgtnodes){
     showstr += '<tr><td>Target node:</td><td><input id="nodesinput" value="' + tgtnodes + '" readonly="readonly"></td></tr>';
     showstr += '<tr><td>Arch:</td><td><input id="archinput" value="' + archtype + '" disabled="disabled"></td></tr>';
     showstr += '<tr><td>Image:</td><td><select></select></td></tr>';
-    showstr += '<tr><td>OS:</td><td><input id="osinput" disabled="disabled"></td></tr>';
-    showstr += '<tr><td>Provmethod:</td><td><input id="provinput" disabled="disabled"></td></tr>';
-    showstr += '<tr><td>Profile:</td><td><input id="profinput" disabled="disabled"></td></tr>';
     showstr += '<tr><td>Install Nic:</td><td><input id="inicinput" value="ent0"></td></tr>';
     showstr += '<tr><td>Primary Nic:</td><td><input id="pnicinput" value="ent0"></td></tr>';
     showstr += '<tr><td>xCAT Master:</td><td><input id="masterinput"></td></tr>';
     showstr += '<tr><td>TFTP Server:</td><td><input id="tftpinput"></td></tr>';
     showstr += '<tr><td>NFS Server:</td><td><input id="nfsinput"></td></tr>';
     showstr += '</tbody></table>';
-    
+    showstr += '<div id="imageinfo"></div>';
     diaDiv.append(showstr);
     diaDiv.dialog({
         modal: true,
@@ -3445,13 +3442,14 @@ function openQuickProvisionDia(tgtnodes){
     });
     
     $('#deployDiv select').parent().append(createLoader());
+
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
         data : {
             cmd : 'lsdef',
             tgt : '',
-            args : '-t;osimage;-w;osarch==' + archtype,
+            args : '-t;osimage',
             msg : ''
         },
 
@@ -3473,14 +3471,6 @@ function openQuickProvisionDia(tgtnodes){
                 $('#deployDiv select').append('<option value="' + imagename + '">' + imagename + '</option>');
             }
             
-            $('#deployDiv select').bind('change',function(){
-                var areaArray = $(this).val().split('-');
-                $('#deployDiv #osinput').val(areaArray[0]);
-                $('#deployDiv #provinput').val(areaArray[2]);
-                $('#deployDiv #profinput').val(areaArray[3]);
-            });
-            
-            $('#deployDiv select').trigger('change');
             $('#deployDiv').dialog( "option", "buttons", {'Ok': function(){quickProvision();},
                                                           'Cancel': function(){$(this).remove();}}
             );
@@ -3499,6 +3489,8 @@ function quickProvision(){
     var nodesName = '';
     var provisionArg = '';
     var provisionFrame;
+    var imageName = '';
+    var url = '';
     $('#deployDiv .ui-state-error').remove();
     $('#deployDiv input').each(function(){
         if ('' == $(this).val()){
@@ -3517,14 +3509,18 @@ function quickProvision(){
     });
     
     nodesName = argsArray.shift();
+    imageName = $('#deployDiv select').val();
     provisionArg = argsArray.join(',');
+    url = 'lib/cmd.php?cmd=webrun&tgt=&args=provision;' + nodesName + ';' + imageName + ';' + provisionArg + '&msg=&opts=flush';
+    
+    //show the result
     $('#deployDiv').empty().append(createLoader()).append('<br/>');
     $('#deployDiv').dialog( "option", "buttons", {'Close': function(){$(this).remove();clearTimeout(provisionClock);}});
     $('#deployDiv').dialog( "option", "width", 600);
     provisionFrame = $('<iframe id="provisionFrame" width="95%" height="90%"></iframe>');
     $('#deployDiv').append(provisionFrame);
-    provisionFrame.attr('src', 'lib/cmd.php?cmd=webrun&tgt=&args=provision;' + nodesName + ';' + provisionArg + '&msg=&opts=flush');
     
+    provisionFrame.attr('src', url);
     provisionStopCheck();
 }
 

@@ -210,7 +210,7 @@ sub web_mkcondition {
 		my $conditionName = $request->{arg}->[2];
 		my $groupName     = $request->{arg}->[3];
 
-		my $retInfo = xCAT::Utils->runcmd( 'nodels ' . $groupName . " nodetype.nodetype", -1, 1 );
+		my $retInfo = xCAT::Utils->runcmd( 'nodels ' . $groupName . " ppc.nodetype", -1, 1 );
 		foreach my $line (@$retInfo) {
 			my @temp = split( ':', $line );
 			if ( @temp[1] !~ /lpar/ ) {
@@ -1154,7 +1154,34 @@ sub web_restoreChange {
 sub web_provision{
     my ( $request, $callback, $sub_req ) = @_;
     my $nodes = $request->{arg}->[1];
-    my ($arch, $os, $provmethod, $profile, $inic, $pnic, $master, $tftp, $nfs)= split(/,/,$request->{arg}->[2]);
+    my $imageName = $request->{arg}->[2];
+    my ($arch, $inic, $pnic, $master, $tftp, $nfs) = split(/,/,$request->{arg}->[3]);
+    my $line = '';
+    my %imageattr;
+    my $retinfo = xCAT::Utils->runcmd("lsdef -t osimage -l $imageName", -1, 1);
+    #parse output, get the os name, type
+    foreach $line(@$retinfo){
+        if ($line =~ /(\w+)=(\S*)/){
+            $imageattr{$1} = $2;
+        }
+    }
+
+    #check the output
+    unless($imageattr{'osname'}){
+        web_infomsg("Image infomation error. Check the image first.\nprovision stop.", $callback);
+        return;
+    }
+    
+    if($imageattr{'osname'} =~ /aix/i){
+        web_provisionaix($nodes, $imageName, $imageattr{'nimtype'}, $inic, $pnic, $master, $tftp, $nfs, $callback);
+    }
+    else{
+        web_provisionlinux($nodes, $arch, $imageattr{'osvers'}, $imageattr{'provmethod'}, $imageattr{'profile'}, $inic, $pnic, $master, $tftp, $nfs, $callback);
+    }
+}
+
+sub web_provisionlinux{
+    my ($nodes, $arch, $os, $provmethod, $profile, $inic, $pnic, $master, $tftp, $nfs, $callback) = @_;
     my $outputMessage = '';
     my $retvalue = 0;
     my $netboot = '';
@@ -1191,7 +1218,7 @@ sub web_provision{
     $cmd = "service dhcpd restart";
     web_runcmd($cmd, $callback);
     #conserver
-    $cmd = "makeconservercf;service conserver stop;service conserver start";
+    $cmd = "makeconservercf $nodes";
     web_runcmd($cmd, $callback);
     if ($::RUNCMD_RC){
         web_infomsg("Configure conserver error.\nprovision stop.", $callback);
@@ -1230,6 +1257,91 @@ sub web_provision{
     }
 
     #provision complete
+    web_infomsg("Provision on $nodes success.\nprovision stop.");
+}
+
+sub web_provisionaix{
+    my ($nodes, $imagename, $nimtype, $inic, $pnic, $master, $tftp, $nfs, $callback) = @_;
+    my $outputMessage = '';
+    my $retinfo;
+    my %nimhash;
+    my $line;
+    my @updatenodes;
+    my @addnodes;
+    my $cmd = '';
+    #set attibutes
+    $cmd = "chdef -t node -o $nodes installnic=$inic tftpserver=$tftp nfsserver=$nfs xcatmaster=$master primarynic=$pnic";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Change nodes' attributes error.\nprovision stop.", $callback);
+        return;
+    }
+    #get all nim resource to filter nodes
+    $retinfo = xCAT::Utils->runcmd("lsnim -c machines", -1, 1);
+    foreach $line (@$retinfo){
+        if($line =~ /(\S+)\s+\S+/){
+            $nimhash{$1} = 1;
+        }
+    }
+
+    foreach my $node(split(/,/, $nodes)){
+        if ($nimhash{$node}){
+            push(@updatenodes, $node);
+        }
+        else{
+            push(@addnodes, $node);
+        }
+    }
+
+    #xcat2nim
+    if(0 < scalar(@addnodes)){
+        $cmd = "xcat2nim -t node -o " . join(",", @addnodes);
+        web_runcmd($cmd, $callback);
+        if ($::RUNCMD_RC){
+            web_infomsg("xcat2nim command error.\nprovision stop.", $callback);
+            return;
+        }
+    }
+
+    #update nimnode
+    if(0 < scalar(@updatenodes)){
+        $cmd = "xcat2nim -u -t node -o " . join(",", @updatenodes);
+        web_runcmd($cmd, $callback);
+        if ($::RUNCMD_RC){
+            web_infomsg("xcat2nim command error.\nprovision stop.", $callback);
+            return;
+        }
+    }
+
+    #make con server
+    $cmd = "makeconservercf $nodes";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Configure conserver error.\nprovision stop.", $callback);
+        return;
+    }
+
+    #nodeset
+    if ($nimtype =~ /diskless/){
+        $cmd = "mkdsklsnode -i $imagename $nodes";
+    }
+    else{
+        $cmd = "nimnodeset -i $imagename $nodes";
+    }
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Set node install method error.\nprovision stop.", $callback);
+        return;
+    }
+
+    #reboot nodes
+    $cmd = "rnetboot $nodes";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Reboot nodes error.\nprovision stop.", $callback);
+        return;
+    }
+
     web_infomsg("Provision on $nodes success.\nprovision stop.");
 }
 
