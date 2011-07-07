@@ -1,0 +1,67 @@
+start:restorexCAT_h
+cmd:restorexCATdb -h
+check:rc==0
+check:output=~restorexCATdb
+end
+
+start:restorexCATdb_v
+cmd:restorexCATdb -v
+check:rc==0
+check:output=~Version
+end
+
+start:restorexcatdb_p
+description:restore the xcat database from the /tmp/db
+cmd:chtab key=skiptables site.value=""
+check:rc==0
+cmd:dumpxCATdb -p /tmp/db1
+check:rc==0
+cmd:ls /tmp/db1|tr " " "\n" >/tmp/db.1
+check:rc==0
+cmd:chtab key=skiptables site.value="passwd"
+check:rc==0
+cmd:restorexCATdb -p /tmp/db1
+check:rc==0
+check:output=~Restore of Database Complete
+cmd:dumpxCATdb -p /tmp/db2
+check:rc==0
+cmd:ls /tmp/db2|tr " " "\n" >/tmp/db.2
+check:rc==0
+cmd:diff /tmp/db.1 /tmp/db.2
+check:rc==0
+cmd:rm -rf /tmp/db1 /tmp/db2 /tmp/db.1 /tmp/db.2
+end
+
+start:restorexCATdb_p_V
+cmd:chtab key=skiptables site.value=""
+check:rc==0
+cmd:dumpxCATdb -a -p /tmp/db
+check:rc==0
+cmd:restorexCATdb -p /tmp/db -V
+check:rc==0
+check:output=~Restoring
+check:output=~Restore of Database Complete
+check:output=~Skipping auditlog.csv
+check:output=~Skipping eventlog.csv
+cmd:rm -rf /tmp/db
+end
+
+start:restorexCATdb_a_p_V
+cmd:chtab key=skiptables site.value=""
+check:rc==0
+cmd:dumpxCATdb -a -p /tmp/db
+check:rc==0
+cmd:restorexCATdb -a -p /tmp/db -V
+check:rc==0
+check:output=~Restoring auditlog.csv
+check:output=~Restoring eventlog.csv
+check:output=~Restore of Database Complete
+cmd:rm -rf /tmp/db
+end
+
+start:restorexCATdb_wrongpath
+cmd:restorexCATdb -p /tmp/testpath
+check:rc!=0
+end
+
+

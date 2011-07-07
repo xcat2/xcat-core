@@ -39,7 +39,6 @@ check:output=~site.csv
 check:output=~eventlog.csv
 check:output=~auditlog.csv
 cmd:rm -rf /tmp/db.all
-check:rc==0
 end
 
 start:dumpxCATdb_p_skiptables
@@ -68,4 +67,43 @@ check:output=~auditlog.csv
 cmd:rm -rf /tmp/db.skiptables
 check:rc==0
 end
+
+start:dumpxCATdb_p_nullskiptables_V
+description:test verbose and -p
+cmd:chtab key=skiptables site.value=""
+check:rc==0
+cmd:dumpxCATdb -p /tmp/db -V
+check:rc==0
+check:output=~Skipping eventlog
+check:output=~Skipping auditlog
+check:output=~Dumping site
+check:output=~Backup Complete
+cmd:rm -rf /tmp/db
+end
+
+start:dumpxCATdb_a_p_nullskiptables_V
+description:test -V and -a
+cmd:chtab key=skiptables site.value=""
+check:rc==0
+cmd:dumpxCATdb -a -p /tmp/db -V
+check:rc==0
+check:output=~Dumping eventlog
+check:output=~Dumping auditlog
+check:output=~Backup Complete
+cmd:rm -rf /tmp/db
+end
+
+start:dumpxCATdb_p_V
+description:test -p -V
+cmd:chtab key=skiptables site.value="passwd"
+check:rc==0
+cmd:dumpxCATdb -p /tmp/db -V
+check:rc==0
+check:output=~Skipping passwd
+check:output=~Backup Complete
+cmd:rm -rf /tmp/db
+end
+
+
+
 
