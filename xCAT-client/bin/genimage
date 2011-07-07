@@ -12,14 +12,11 @@ use strict;
 use Getopt::Long;
 require xCAT::MsgUtils;
 require xCAT::DSHCLI;
+require xCAT::Client;
+
 use xCAT::Utils;
-use Term::ANSIColor;
 use File::Basename;
-# genimage is a wrapper to the genimages located in 
-# /opt/xcat/share/xcat/netboot/<os>/
-# put tab completion
-# colors
-# remember the last one done
+
 $::XCATROOT = "/opt/xcat";
 my $os = "";
 my $profile = "";
@@ -33,10 +30,13 @@ my @profiles; # available profiles
 my $profDir; # root where you do ./genimage from
 my $help;
 my $match = 0;
-my $color = 0;
 my $imagename;
 my $arch;
 my $permission;
+my $rootlimit;
+my $tmplimit;
+my $krpmver;
+my $kerneldir;
 
 #-----------------------------------------------------------------------------
 
@@ -47,44 +47,49 @@ my $permission;
 #-----------------------------------------------------------------------------
 sub print_usage
 {
-   print "Usage: genimage -h\n";
-   print "       genimage -v\n";
-   print "       genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <additional_nics>]\n                [-o <os>] [-p <profile>] [-k <kernal_version>]\n";
-   print "       genimage [-i <nodebootif>] [-n <nodenetdrivers>] [-r <additional_nics>]\n                [-k <kernal_version>] image_name\n";
-   print "Examples:\n";
-   print " genimage -i eth0 -n igb,e1000e,bnx2 -o centos5.4 -p compute\n";
-   print " genimage -o suse11\n";
-   print " genimage\n";
-   print " genimage -i eth0 -n igb,e1000e,bnx2 myimage\n";
-   print " genimage myimage\n";
+    print "Usage:\n";
+    print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n\n";
+    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]  <imagename>'."\n\n";
+    print "      --permission is used for statelite only\n";
+    print "      -g is used for SLES only\n\n";
+    print "Examples:\n";
+    print "    genimage -i eth0 -n tg3 -o sles11 -p compute\n";
+    print "    genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
+    print "    genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute\n";
+    print "    genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777\n";
+    print "    genimage -i eth0 -n tg3 myimagename\n";
+    print "    genimage myimagename\n";
 }
+
 if (!GetOptions(
-	'o=s' => \$os,
-	'i=s' => \$interface,
-	'a=s' => \$arch,
-	'p=s' => \$profile,
-	'n=s' => \$drivers,
-	'k=s' => \$kernel,
-	'r=s' => \$otherInterfaces,
-	'h|help' => \$help,
-	'v|version' => \$version,
-	'c' => \$color
-	
+	 'a=s' => \$arch,
+	 'p=s' => \$profile,
+	 'o=s' => \$os,
+	 'n=s' => \$drivers,
+	 'i=s' => \$interface,
+	 'r=s' => \$otherInterfaces,
+	 'l=s' => \$rootlimit,
+	 't=s' => \$tmplimit,
+	 'k=s' => \$kernel,
+	 'g=s' => \$krpmver,
+	 'permission=s' => \$permission,
+	 'kerneldir=s' => \$kerneldir,   
+	 'h|help' => \$help,
+	 'v|version' => \$version,
 )) {
    &print_usage;
    exit 1;
 }
 
 if($help){
-	print "genimage is a shell for the genimage located in /opt/xcat/share/xcat/netboot/<osfamily>.\n";
-        &print_usage;
-   exit 0;
+    &print_usage;
+    exit 0;
 }
 
 if ($version){
-        my $version = xCAT::Utils->Version();
-        xCAT::MsgUtils->message("N", $version);
-        exit 0;
+    my $version = xCAT::Utils->Version();
+    xCAT::MsgUtils->message("N", $version);
+    exit 0;
 
 }
 if (@ARGV > 0) {
@@ -96,25 +101,20 @@ if ((!$imagename) && (!$profile) && (!$os) && (!$arch)) {
     if ($? == 0) {
 	if (($tmpimgs) && ($tmpimgs !~ /^Could/)) { #Could is returned when the osimage table is empty
 	    my @images=split('\n', $tmpimgs);
-	    print color("reset");
 	    print "Do you want to re-genarate an existing image from the osimage table? ";
-	    print color("bold"), "[y/n] ",color("reset");
+	    print "[y/n] ";
 	    my $conf = <stdin>;
 	    chomp($conf);
 	    if($conf ne "" && $conf !~/N|n|[Nn][Oo]/) {
 		$match = 0;
 		while(1){
-		    print color("bold");
 		    print "Available images: \n";
-		    print color("reset");
 		    foreach(sort @images){
-			$color && print color("green" );
 			print  "   $_\n";
-			$color && print color("reset");	
 		    } 
 		    # default is the first image cause in many cases
 		    print "Which image do you want to re-generate? [";
-		    print color("bold"),  $images[0] , color("reset");
+		    print $images[0];
 		    print "] ";
 		    
 		    my $img = <stdin>;
@@ -132,66 +132,13 @@ if ((!$imagename) && (!$profile) && (!$os) && (!$arch)) {
 		    if ($match) {
 			last;
 		    } else {
-			print color("red bold"), "$img is not found in the osimage table.\n", color("reset");
+			print "$img is not found in the osimage table.\n";
 		    }
 		}
 	    } 
 	}
     }
 }
-
-if ($imagename) {
-    if ($os or $profile or $arch) {
-	print "-o, -a and -p options are not allowed when a image name is specified.\n";
-        exit 1;
-    }
-    #load the module in memory
-    eval {require("$::XCATROOT/lib/perl/xCAT/Table.pm")};
-    if ($@) {
-	print $@;
-	exit 1;
-    }
-   
-    #get the info from the osimage and linuximage tables 
-    my $osimagetab=xCAT::Table->new('osimage', -create=>1);
-    if (!$osimagetab) {
-	print "The osimage table cannot be opened.\n";
-	exit 1;
-    }
-    my $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
-    if (!$linuximagetab) {
-	print "The linuximage table cannot be opened.\n";
-	exit 1;
-    }
-
-    (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
-    if (!$ref) {
-	print "Cannot find image \'$imagename\' from the osimage table.\n";
-	exit 1;
-    }
-    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'nodebootif', 'otherifce', 'netdrivers', 'kernelver', 'permission');
-    if (!$ref1) {
-	print "Cannot find $imagename from the linuximage table\n";
-	exit 1;
-    }
-
-    $os=$ref->{'osvers'};
-    $arch=$ref->{'osarch'};
-    $profile=$ref->{'profile'};
-    my $provmethod=$ref->{'provmethod'};
-    
-    unless ($os and $profile) {
-	print"osimage.osvers and osimage.profile must be specified for the image $imagename in the database.\n";
-	exit 1;
-    }
-
-    $drivers=$ref1->{'netdrivers'};
-    $kernel=$ref1->{'kernelver'};
-    $interface=$ref1->{'nodebootif'};
-    $otherInterfaces=$ref1->{'otherifce'};
-    $permission=$ref1->{'permission'};
-} 
-
 
 
 # get the install directory
@@ -225,17 +172,13 @@ if ((!$imagename) && (!$os)){
     # now they have the OSes, make sure they select one that is available
     $match = 0;
     while(1){
-	print color("bold");
 	print "Available OSes: \n";
-	print color("reset");
 	foreach(@oses){
-	    $color && print color("green" );
 	    print  "   $_\n";
-	    $color && print color("reset");	
 	}
 	# default is the first OS cause in many cases, they'll only have 1.
 	print "Which OS do you want to build a image for? [";
-	print color("bold"),  $oses[0] , color("reset");
+	print $oses[0] ;
 	print "] ";
 	
 	$os = <stdin>;
@@ -253,15 +196,13 @@ if ((!$imagename) && (!$os)){
 	if($match){
 	    last;
 	}else{
-	    print color("red bold"), "$os is not found in '$installdir'\n", color("reset");
+	    print "$os is not found in '$installdir'\n";
 	}
     }
     
     chomp($os);
 }
-$color && print color("cyan"); 
 print "  OS: $os\n";
-$color && print  color("reset");
 
 
 
@@ -282,7 +223,7 @@ if ($osfamily =~ /sles/ && $osfamily =~ /sp/) {
 #print "OSfamily: $osfamily\n";
 $profDir = "$::XCATROOT/share/xcat/netboot/$osfamily";
 unless(-d $profDir){
-    print color("red bold") , "Unable to find genimage script in $profDir\n", color("reset");
+    print "Unable to find genimage script in $profDir\n";
     exit 1;
 }
 
@@ -301,20 +242,18 @@ if ((!$imagename) && (!$profile)){
     } 
     @profiles = sort keys %seen;
     if($#profiles eq -1){
-	print color("red bold"), "There are no profiles in $::XCATROOT/share/xcat/netboot/$osfamily.\n", color("reset");
+	print "There are no profiles in $::XCATROOT/share/xcat/netboot/$osfamily.\n";
 	exit 1;
     }
     $match = 0;
     while(1){
-	print color("bold"), "Available Profiles for $os: \n", color("reset");
+	print "Available Profiles for $os: \n";
 	foreach(@profiles){
-	    $color && print color("green");  
 	    print "   $_\n"; 
-	    $color && print color("reset");	
 	}
 	# default is the first OS cause in many cases, they'll only have 1.
 	print "Which profile do you want to use for $os?  [";
-	print color("bold"),  $profiles[0] , color("reset");
+	print "$profiles[0] ";
 	print "] ";
 	
 	$profile = <stdin>;
@@ -333,15 +272,13 @@ if ((!$imagename) && (!$profile)){
 	}
     }
 }
-$color && print color("cyan");
 print  "  Profile: $profile\n";
-$color && print  color("reset");
 
 # get the interface
 if ((!$imagename) && (!$interface)){
     while(1){
 	print "Which network interface do you want the image to boot from? [";
-	print color("bold"), "eth0" ,color("reset");
+	print "eth0";
 	print "] ";
 	$interface = <stdin>;
 	chomp($interface);
@@ -350,11 +287,9 @@ if ((!$imagename) && (!$interface)){
 	    last;
 	}else{
 	    print "You want your stateless machines to boot off of ";
-	    $color && print color("cyan");
 	    print "$interface";
-	    $color && print color("reset");
 	    print "? ";
-	    print color("bold"),"[Y/n] ", color("reset");
+	    print "[Y/n] ";
 	    my $conf = <stdin>;
 	    chomp($conf);
 	    if($conf eq ""){
@@ -366,140 +301,77 @@ if ((!$imagename) && (!$interface)){
 	}
     }
 }
-$color && print color("cyan");
 print "  Interface: $interface\n";
-$color && print color("reset");
 
-
-# get drivers
-if ((!$imagename) && (!$drivers)) {
-    while(1){
-	print "Which network drivers will you need? (press enter if you're not sure) ";
-	print color("bold"), "\n[igb,e1000e,e1000,bnx2,tg3] ", color("reset");
-	
-	$drivers = <stdin>;
-	chomp($drivers);
-	if($drivers eq ""){
-	    $drivers = "igb,e1000e,e1000,bnx2,tg3";
-	    last;
-	}else{
-	    print "You want to use the following driver(s): ";
-	    $color && print color("cyan");
-	    print  $drivers;
-	    $color && color("reset");
-	    print "? ";
-	    print color("bold"),"[Y/n] ", color("reset");
-	    my $conf = <stdin>;
-	    chomp($conf);
-	    if($conf eq ""){
-		last;
-	    }
-	    if($conf =~ /Y|y|[Yy][Ee][Ss]/){
-		last;
-	    }	
-	}
-    }
-}
-$color && print color("cyan");
-print  "  Network drivers: $drivers\n";
-$color && print  color("reset");
     
-# get other interfac
-if ((!$imagename) && (!$otherInterfaces)) {
-    my $first=1;
-    while(1){
-        if ($first) {
-	    print "Do you need to set up other interfaces? ";
-	    $first = 0;
-	} else {
-	    print "Do you need to set up more interfaces besides $otherInterfaces? ";
-	}
-	print color("bold"), "[y/n] ",color("reset");
-	my $conf = <stdin>;
-	chomp($conf);
-	if($conf eq "" || $conf =~/N|n|[Nn][Oo]/){
-	    last;
-	}else{
-	    print "What other interface do you need? ";
-	    my $tmp = <stdin>;
-	    chomp($tmp);
-	    if($tmp eq ""){
-		last;
-	    }else{
-		if ($otherInterfaces) {
-		    $otherInterfaces = "$otherInterfaces,$tmp";
-		} else {
-		    $otherInterfaces=$tmp;
-		}
-	    } #end confirmation
-	} # end part where they don't want default
-    } # end question loop
-} # end getting other interfaces
-if($otherInterfaces){
-    $color && print color("cyan");
-    print "  Other Interfaces: $otherInterfaces\n"; 
-    $color && color("reset");
-}   
 
-# get kernel info 
-if ((!$imagename) && (!$kernel)) {
-    while(1){
-	print "Which kernel do you want to use? [";
-	print color("bold"), "default" , color("reset");
-	print "] ";
-	$kernel = <stdin>;
-	chomp($kernel);
-	if($kernel eq ""){
-	    # special case of RHEL5.4 where kenrel must be specified or you 
-	    # get some other one
-	    if($os =~ /rhels5.4|centos5.4|rhel5.4|sl5.4/){
-		$kernel = "2.6.18-164.el5";
-	    }
-	    last;	
-	}else{
-	    print "You want to use: ";
-	    $color && print color("cyan");
-	    print $kernel;
-	    $color && print color("reset");
-	    print "? ";
-	    print color("bold"),"[Y/n] ", color("reset");
-	    my $conf = <stdin>;
-	    chomp($conf);
-	    if($conf eq ""){
-		last;
-	    }
-	    if($conf =~ /Y|y|[Yy][Ee][Ss]/){
-		last;
-	    }	
-	}
-    }
-} # end unless kernel
-if($kernel){
-    $color && print color("blue"); 
-    print "  Kernel: $kernel\n";
-    $color && print  color("reset");
-}
-   
-
-print "Generating image:\n";
-my $cmd;
+print "Generating image: \n";
+my @arg;
 if ($imagename) {
-    $cmd = "./genimage $imagename";
-} else {
-    $cmd = "./genimage -i $interface -n $drivers -o $os -p $profile ";
-
-    if ($kernel) {
-	$cmd .= " -k $kernel";
-    }
-
-    if($otherInterfaces){
-	$cmd .= " -r $otherInterfaces";
-    }
+    push @arg, "$imagename";
 }
 
-$color && print color("cyan");
-print  "cd $profDir\n";
-print  "$cmd\n"; 
-$color && print color("reset");
-exec("cd $profDir; $cmd");
+if ($interface) {
+    push @arg, "-i";
+    push @arg, "$interface";
+}
+if ($drivers) {
+    push @arg, "-n";
+    push @arg, "$drivers";
+}
+if ($os) {
+    push @arg, "-o";
+    push @arg, "$os";
+}
+if ($profile) {
+    push @arg, "-p";
+    push @arg, "$profile";
+}
+if ($arch) {
+    push @arg, "-a";
+    push @arg, "$arch";
+}
+
+if ($kernel) {
+    push @arg, "-k";
+    push @arg, "$kernel";
+}
+
+if($otherInterfaces){
+    push @arg, "-r";
+    push @arg, "$otherInterfaces";
+}
+
+if ($permission) {
+    push @arg, "--permission";
+    push @arg, "$permission";
+}
+
+if ($rootlimit) {
+    push @arg, "-l";
+    push @arg, "$rootlimit";
+}
+
+if($tmplimit) {
+    push @arg, "-t";
+    push @arg, "$tmplimit";
+}
+
+if ($krpmver) {
+    push @arg, "-g";
+    push @arg, "$krpmver";
+}
+
+if ($kerneldir) {
+    push @arg, "--kerneldir";
+    push @arg, "$kerneldir";
+}
+
+
+my $cmdref;
+push (@{$cmdref->{arg}}, @arg);
+$cmdref->{command}->[0] = "genimage";   
+
+xCAT::Client::submit_request($cmdref, \&xCAT::Client::handle_response);
+exit $xCAT::Client::EXITCODE;
     
