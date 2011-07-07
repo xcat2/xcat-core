@@ -201,5 +201,97 @@ ipmiPlugin.prototype.loadResources = function() {
  * @return Nothing
  */
 ipmiPlugin.prototype.addNode = function() {
-	openDialog('info', 'Under construction');
+    var diaDiv = $('<div id="addIdpDiv" class="form" title="Add iDataPlex Node"></div>');
+    var showStr = '<div><label>Node Name: </label><input type="text"></div>' +
+               '<div><label>Node Mac:</label><input type="text"></div>' + 
+               '<div><label>Node IP: </label><input type="text"></div>' +
+               '<div><label>Node Groups : </label><input type="text"></div>' +
+               '<div><label>BMC Name:</label><input type="text"></div>' +
+               '<div><label>BMC IP:</label><input type="text"></div>' +
+               '<div><label>BMC Groups::</label><input type="text"></div>';
+    
+    diaDiv.append(showStr);
+    diaDiv.dialog({
+        modal: true,
+        width: 400,
+        close: function(){$(this).remove();},
+        buttons: {
+            "OK" : function(){addidataplexNode();},
+            "Cancel": function(){$(this).dialog('close');}
+        }
+    });
 };
+
+function addidataplexNode(){
+    var tempArray = new Array();
+    var errormessage = '';
+    var attr = '';
+    var args = '';
+    
+    //remove the warning bar
+    $('#addIdpDiv .ui-state-error').remove();
+    
+    //get all inputs' value
+    $('#addIdpDiv input').each(function(){
+        attr = $(this).val();
+        if (attr){
+            tempArray.push($(this).val());
+        }
+        else{
+            errormessage = "You are missing some input!";
+            return false;
+        }
+    });
+    
+    if ('' != errormessage){
+        $('#addIdpDiv').prepend(createWarnBar(errormessage));
+        return;
+    }
+    
+    //add the loader
+    $('#addIdpDiv').append(createLoader());
+    
+    //change the dialog button
+    $('#addIdpDiv').dialog('option', 'buttons', {'Close':function(){$('#addIdpDiv').dialog('close');}});
+    
+    //compose all args into chdef for node
+    args = '-t;node;-o;' + tempArray[0] + ';mac=' + tempArray[1] + ';ip=' + tempArray[2] + ';groups=' + 
+          tempArray[3] + ';mgt=ipmi;chain="runcmd=bmcsetup,standby";netboot=xnba;nodetype=osi;profile=compute;' +
+          'ondiscover=nodediscover;bmc=' + tempArray[4];
+    
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'chdef',
+            tgt : '',
+            args : args,
+            msg : ''
+        }
+    });
+    
+    //compose all args into chdef for bmc
+    args = '-t;node;-o;' + tempArray[4] + ';ip=' + tempArray[5] + ';groups=' + tempArray[6];
+    
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'chdef',
+            tgt : '',
+            args : args,
+            msg : ''
+        },
+        success: function(data){
+            $('#addIdpDiv img').remove();
+            var message = '';
+            for (var i in data.rsp){
+                message += data.rsp[i];
+            }
+            
+            if ('' != message){
+                $('#addIdpDiv').prepend(createInfoBar(message));
+            }
+        }
+    });
+}
