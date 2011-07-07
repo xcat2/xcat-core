@@ -49,10 +49,11 @@ my $mode;
 sub print_usage
 {
     print "Usage:\n";
-    print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n\n";
-    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]  <imagename>'."\n\n";
+    print '    genimage  -o <osver> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n\n";
+    print '    genimage [-o <osver>] [-a <arch>] [-p <profile>] [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-m statelite] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]  <imagename>'."\n\n";
     print "      --permission is used for statelite only\n";
     print "      -g is used for SLES only\n\n";
+    print "      -m is used for urbuntu, debian and fedora12 only\n\n";
     print "Examples:\n";
     print "    genimage -i eth0 -n tg3 -o sles11 -p compute\n";
     print "    genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
