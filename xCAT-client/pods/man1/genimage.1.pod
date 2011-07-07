@@ -4,9 +4,9 @@ B<genimage> - Generates a stateless image to be used for a diskless install.
 
 =head1 SYNOPSIS
 
-B<genimage> B<-o> I<OS> B<-p> I<profile> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-g> I<krpm_version>] [B<--permission> I<permission>]
+B<genimage> B<-o> I<OS> B<-p> I<profile> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-g> I<krpm_version>] [B<-m> statelite] [B<--permission> I<permission>]
 
-B<genimage> [B<-o> I<OS>] [B<-l> I<rootlimit>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-g> I<krpm_version>] imagename
+B<genimage> [B<-o> I<OS>] [B<-l> I<rootlimit>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-g> I<krpm_version>] [B<-m> statelite] imagename
 
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -91,6 +91,11 @@ in the install image.
 =item B<-g> I<krpm_version>
 
 This flag is for SLES only. Use this flag to specify the rpm version for kernel packages in the image. It must be present if -k flag is specified in the command for SLES.
+
+=item B<-m> statelite
+
+This flag is for Ubuntu, Debian and Fedora12 only. Use this flag to specify if you want to generate statelite image. The default is to generate stateless image for these three operating systems. For others, this flag is invalid because both stateless and statelite images will be generated with this command.
+
 
 =item B<-v|--version>
 

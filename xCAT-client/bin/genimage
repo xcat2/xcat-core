@@ -37,6 +37,7 @@ my $rootlimit;
 my $tmplimit;
 my $krpmver;
 my $kerneldir;
+my $mode;
 
 #-----------------------------------------------------------------------------
 
@@ -72,6 +73,7 @@ if (!GetOptions(
 	 't=s' => \$tmplimit,
 	 'k=s' => \$kernel,
 	 'g=s' => \$krpmver,
+	 'm=s' => \$mode,
 	 'permission=s' => \$permission,
 	 'kerneldir=s' => \$kerneldir,   
 	 'h|help' => \$help,
@@ -360,6 +362,11 @@ if($tmplimit) {
 if ($krpmver) {
     push @arg, "-g";
     push @arg, "$krpmver";
+}
+
+if ($mode) {
+    push @arg, "-m";
+    push @arg, "$mode";
 }
 
 if ($kerneldir) {
