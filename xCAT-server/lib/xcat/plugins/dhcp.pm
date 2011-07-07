@@ -689,13 +689,17 @@ sub preprocess_request
 		foreach my $n (@nodes)
 		{
 			# get the nodetype for each node
-			my $ntype = xCAT::DBobjUtils->getnodetype($n);
-			if ($ntype =~ /osi/) {
+			#my $ntype = xCAT::DBobjUtils->getnodetype($n);
+            my $ntable = xCAT::Table->new('nodetype');
+            if ($ntable) {
+                my $mytype = $ntable->getNodesAttribs($n,['nodetype']);
+			    if ($mytype =~ /osi/) {
 				$Imsg++;
-			}
-			unless ($ntype =~ /osi/) {
-				push @tmplist, $n;
-			}
+			    }
+			    unless ($mytype =~ /osi/) {
+				    push @tmplist, $n;
+			    }
+            }
 		}
 		@nodes = @tmplist;
 
@@ -1139,11 +1143,16 @@ sub process_request
 				foreach my $n (@{$req->{node}})
 				{
 					# get the nodetype for each node
-					my $ntype = xCAT::DBobjUtils->getnodetype($n);
-					# don't add if it is type "osi"
-					unless ($ntype =~ /osi/) {
+					#my $ntype = xCAT::DBobjUtils->getnodetype($n);
+                    my $ntable = xCAT::Table->new('nodetype');
+                    if ($ntable) {
+                        my $ntype = $ntable->getNodesAttribs($n,['nodetype']);
+
+					    # don't add if it is type "osi"
+					    unless ($ntype =~ /osi/) {
 						push @tmplist, $n;
-					}
+					    }
+                    }    
 				}
 				@{$req->{node}} = @tmplist;
 			}
