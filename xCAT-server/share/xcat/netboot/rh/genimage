@@ -55,6 +55,7 @@ my $otherpkglist;
 my $postinstall_filename;
 my $rootimg_dir;
 my $permission; # the permission works only for statelite mode currently
+my $internal;
 
 
 sub xdie {
@@ -74,132 +75,26 @@ GetOptions(
    't=s' => \$tmplimit,
    'k=s' => \$kernelver,
    'permission=s' => \$permission,
+   'kerneldir=s' => \$kerneldir,   
+   'internal' =>\$internal, #internal flag
+   'pkglist=s' => \$pkglist,   #internal flag
+   'srcdir=s' => \$srcdir,   #internal flag
+   'otherpkgdir=s' => \$srcdir_otherpkgs,  #internal flag
+   'otherpkglist=s' => \$otherpkglist,      #internal flag
+   'postinstall=s' => \$postinstall_filename,  #internal flag
+   'rootimgdir=s' => \$destdir,   #internal flag
 );
 
-# if "Table.pm" can be found here, the attributes in linuximage and osimage will be updated
-my $needUpdateTable = 0;
-my %keyhash = ();
+if (@ARGV > 0) {
+    $imagename=$ARGV[0];
+}
+
 my %updates_os = (); # the hash for updating osimage table
 my %updates = (); # the hash for updating linuximage table
 
-my $osimagetab;
-my $linuximagetab;
-my $ref_linuximage_tab;
-my $ref_osimage_tab;
-
-# load the module in memory
-eval { require("$::XCATROOT/lib/perl/xCAT/Table.pm") };
-unless ($@) {
-    # Table.pm is there, we can update the xCAT tables
-    $needUpdateTable = 1;
-
-    # get the info from the osimage and linux 
-    $osimagetab = xCAT::Table->new('osimage', -create=>1);
-    unless ($osimagetab) {
-        print "The osimage table cannot be opened.\n";
-        exit 1;
-    }
-
-    $linuximagetab = xCAT::Table->new('linuximage', -create=>1);
-    unless ($linuximagetab) {
-        print "The linuximage table cannot be opened.\n";
-        exit 1;
-    }
-}
-
-if (@ARGV > 0 and $needUpdateTable eq 1) {
-    $imagename=$ARGV[0];
-    if ($arch or $osver or $profile) {
-        print "-o, -p and -a options are not allowed when a image name is specified.\n";
-        exit 1;
-    }
-
-    ($ref_osimage_tab) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
-    unless ($ref_osimage_tab) {
-        print "Cannot find image \'$imagename\' from the osimage table.\n";
-        exit 1;
-    }
-
-    ($ref_linuximage_tab) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission');
-    unless ($ref_linuximage_tab) {
-        print "Cannot find $imagename from the linuximage table\n";
-        exit 1;
-    }
-
-    $osver = $ref_osimage_tab->{'osvers'};
-    $arch = $ref_osimage_tab->{'osarch'};
-    $profile = $ref_osimage_tab->{'profile'};
-    my $provmethod = $ref_osimage_tab->{'provmethod'}; # TODO: not necessary; and need to update both statelite and stateless modes
-  
-    unless ($osver and $arch and $profile and $provmethod) {
-        print"osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database.\n";
-        exit 1;
-    }
-
-    unless ($provmethod eq 'netboot' || $provmethod eq 'statelite') {
-        print "\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot'.";
-        exit 1;
-    }
-
-    unless ( $ref_linuximage_tab->{'pkglist'} ) {
-        print"A .pkglist file must be specified for image \'$imagename\' in the linuximage table.\n";
-        exit 0;
-    }
-    $pkglist = $ref_linuximage_tab->{'pkglist'};
-
-    $srcdir= $ref_linuximage_tab->{'pkgdir'};
-    $srcdir_otherpkgs = $ref_linuximage_tab->{'otherpkgdir'};
-    $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
-    $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
-    $destdir = $ref_linuximage_tab->{'rootimgdir'};
-    $kerneldir = $ref_linuximage_tab->{'kerneldir'};
-
-    # TODO: how can we do if the user specifies one wrong value to the following attributes?
-    # currently, one message is output to indicate the users there will be some updates
-    if ($prinic) {
-        if ($prinic ne $ref_linuximage_tab->{'nodebootif'}) {
-            print "The primary nic is different from the value in linuximage table, will update it\n";
-            $updates{'nodebootif'} = $prinic;
-        }
-    } else {
-        $prinic = $ref_linuximage_tab->{'nodebootif'};
-    }
-    if ($othernics) {
-        if ($othernics ne $ref_linuximage_tab->{'otherifce'}) {
-            print "The other ifces are different from  the value in linuximage table, will update it\n";
-            $updates{'otherifce'} = $othernics;
-        }
-    } else {
-        $othernics = $ref_linuximage_tab->{'otherifce'};
-    }
-    if ($kernelver) {
-        if ($kernelver ne $ref_linuximage_tab->{'kernelver'}) {
-            print "The kernelver is different from the value in linuximage table, will update it\n";
-            $updates{'kernelver'} = $kernelver;
-        }
-    } else {
-        $kernelver = $ref_linuximage_tab->{'kernelver'};
-    }
-    if ($netdriver) {
-        if ($netdriver ne $ref_linuximage_tab->{'netdrivers'}) {
-            print "The netdrivers are different from the value in linuximage table, will update it\n";
-            $updates{'netdrivers'} = $netdriver;
-        }
-    } else {
-        $netdriver =  $ref_linuximage_tab->{'netdrivers'};
-    }
-    if ($permission) {
-        if ($permission ne $ref_linuximage_tab->{'permission'}) {
-            print "The permission value is different from the value in linuximage table, will update it\n";
-            $updates{'permission'} = $permission;
-        }
-    } else {
-        $permission = $ref_linuximage_tab->{'permission'};
-    }
-}
 
 $permission = "755" unless ($permission);
-$updates{'permission'} = $permission if ( $needUpdateTable );
+$updates{'permission'} = $permission if ( $internal );
 
 unless ($arch) {
     $arch = `uname -m`;
@@ -208,18 +103,18 @@ unless ($arch) {
 }
 
 $srcdir="$installroot/$osver/$arch" unless ($srcdir);
-$updates{'pkgdir'} = $srcdir if ($needUpdateTable);
+$updates{'pkgdir'} = $srcdir if ($internal);
 
 $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs);
-$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($needUpdateTable);
+$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($internal);
 
 $destdir="$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
-$updates{'rootimgdir'} = $destdir if ($needUpdateTable);
+$updates{'rootimgdir'} = $destdir if ($internal);
 
 $rootimg_dir="$destdir/rootimg";
 
 $kerneldir = "$installroot/kernels" unless ($kerneldir);    # the default directory for 3rd-party kernel is "$installroot/kernels";
-$updates{'kerneldir'} = $kerneldir if ($needUpdateTable);
+#$updates{'kerneldir'} = $kerneldir if ($internal);
 
 # Get the subchannels of the given interface
 my $subchn;
@@ -254,7 +149,7 @@ unless ($osver and $profile) {
 
 my @ndrivers;
 if ($netdriver) {
-    if ( ($updates{'netdrivers'} ne $netdriver) and ($needUpdateTable) ) {
+    if ( ($updates{'netdrivers'} ne $netdriver) and ($internal) ) {
         $updates{'netdrivers'} = $netdriver;
     }
 } else {
@@ -321,7 +216,7 @@ unless ($onlyinitrd) {
    }
 
    if ($pkglist) {
-       $updates{'pkglist'} = $pkglist if ($needUpdateTable);
+       $updates{'pkglist'} = $pkglist if ($internal);
    } else {
        print "Unable to find package list for $profile!";
        exit 1;
@@ -384,7 +279,7 @@ unless ($onlyinitrd) {
     }
     my %extra_hash=();
     if ($otherpkglist) {
-        $updates{'otherpkglist'} = $otherpkglist if ($needUpdateTable);
+        $updates{'otherpkglist'} = $otherpkglist if ($internal);
         %extra_hash = imgutils::get_package_names($otherpkglist);
     }
     my %extrapkgnames; 
@@ -486,7 +381,7 @@ $basekernelver = `uname -r` unless ($basekernelver);
 $kernelver = $basekernelver unless ($kernelver);
 chomp($kernelver);
 
-#$updates{'kernelver'} = $kernelver if ($needUpdateTable);
+#$updates{'kernelver'} = $kernelver if ($internal);
 
 # copy the kernel to $destdir
 if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
@@ -550,7 +445,7 @@ unless ($imagename) {
 
 if (($postinstall_filename) && (-x $postinstall_filename)) {
 
-    $updates{'postinstall'} = $postinstall_filename if ($needUpdateTable);
+    $updates{'postinstall'} = $postinstall_filename if ($internal);
 
     my $rc = system($postinstall_filename, $rootimg_dir,$osver,$arch,$profile);
     if($rc) {
@@ -559,47 +454,62 @@ if (($postinstall_filename) && (-x $postinstall_filename)) {
     }
 }
 
-if ($needUpdateTable) {
-    # all the attributes have been gathered
-    # now, update the linuximage and osimage tables
-    # TODO: do statelite and stateless share the same attributes?
+# all the attributes have been gathered
+# now, update the linuximage and osimage tables
+# TODO: do statelite and stateless share the same attributes?
+#BEGIN: PLEASE DO NOT CHANGE THE FOLLOWING CODE, genimage PLUGIN NEEDS TO PARSE THR OUTPUT
+if ($internal) {
     if ($imagename) {
-        $keyhash{'imagename'} = $imagename;
-
-        $linuximagetab->setAttribs(\%keyhash, \%updates);
-        $linuximagetab->commit;
+	if (keys(%updates) > 0) {
+	    print "The output for table updates starts here\n";
+	    print "table::linuximage\n";
+	    print "imagename::$imagename\n";
+	    my @a=%updates;
+	    print join('::',@a) . "\n";
+	    print "The output for table updates ends here\n";
+	}
     } else {
-    
-        # update the imagename for diskless
-        $keyhash{'imagename'} = "$osver-$arch-netboot-$profile";
-
-        $updates_os{'profile'} = $profile;
-        $updates_os{'imagetype'} = 'linux';
-        $updates_os{'provmethod'} = 'netboot';
-        $updates_os{'osname'} = 'Linux';
-        $updates_os{'osvers'} = $osver;
-        $updates_os{'osdistro'} = 'rh'; # it is not used currently
-        $updates_os{'osarch'} = $arch;
-
-        $osimagetab->setAttribs(\%keyhash, \%updates_os);
-        $osimagetab->commit;
-
-        $linuximagetab->setAttribs(\%keyhash, \%updates);
-        $linuximagetab->commit;
-
-        # update the imagename for netboot
-        $keyhash{'imagename'} = "$osver-$arch-statelite-$profile";
-
-        $updates_os{'provmethod'} = 'statelite';
-
-        $osimagetab->setAttribs(\%keyhash, \%updates_os);
-        $osimagetab->commit;
-
-        $linuximagetab->setAttribs(\%keyhash, \%updates);
-        $linuximagetab->commit;
-
+	$updates_os{'profile'} = $profile;
+	$updates_os{'imagetype'} = 'linux';
+	$updates_os{'provmethod'} = 'netboot';
+	$updates_os{'osname'} = 'Linux';
+	$updates_os{'osvers'} = $osver;
+	$updates_os{'osdistro'} = 'sles'; # not used currently
+	$updates_os{'osarch'} = $arch;
+	# update the imagename for stateless 
+	print "The output for table updates starts here\n";
+	print "table::osimage\n";
+	print "imagename::$osver-$arch-netboot-$profile\n";
+	my @a=%updates_os;
+	print join('::',@a) . "\n";
+	print "The output for table updates ends here\n";
+	
+	print "The output for table updates starts here\n";
+	print "table::linuximage\n";
+	print "imagename::$osver-$arch-netboot-$profile\n";
+	my @a=%updates;
+	print join('::',@a) . "\n";
+	print "The output for table updates ends here\n";
+	
+	# update the imagename for statelite   
+	$updates_os{'provmethod'} = 'statelite';
+	print "The output for table updates starts here\n";
+	print "table::osimage\n";
+	print "imagename::$osver-$arch-statelite-$profile\n";
+	my @a=%updates_os;
+	print join('::',@a) . "\n";
+	print "The output for table updates ends here\n";
+	
+	print "The output for table updates starts here\n";
+	print "table::linuximage\n";
+	print "imagename::$osver-$arch-statelite-$profile\n";
+	my @a=%updates;
+	print join('::',@a) . "\n";
+	print "The output for table updates ends here\n";
     }
 }
+#END
+
 
 # statelite .statelite directory added here.
 # this is where tmpfs will be created.
@@ -1601,15 +1511,13 @@ sub load_dd ()
 }
 
 sub usage {
-    print 'Usage: genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [--permission <permission>]'."\n";
-   print '       genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -k <KERNELVER> <imagename>'."\n";
+    print 'Usage: genimage [ -i <nodebootif> ] [ -n <nodenetdrivers> ] [-r <otherifaces>] -o <osver> -p <profile> -k <kernelver> [--permission <permission>]'."\n";
    print "       --permission only works with statelite mode\n";
    print "Examples:\n";
    print " genimage -i eth0 -n tg3 -o centos5.1 -p compute \n";
    print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
    print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot\n";
    print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777\n";
-   print " genimage -i eth0 -n tg3 myimage\n";
 
     return 0;
 }

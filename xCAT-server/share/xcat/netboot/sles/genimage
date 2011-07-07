@@ -56,6 +56,7 @@ my $rootimg_dir;
 my $mode;
 my $permission; #the permission works only for statelite mode currently
 my $krpmver;
+my $internal;
 
 sub xdie {
    system("rm -rf /tmp/xcatinitrd.$$");
@@ -89,148 +90,28 @@ GetOptions(
    't=s' => \$tmplimit,
    'k=s' => \$kernelver,
    'g=s' => \$krpmver,
-   'permission=s' => \$permission
-);
+   'permission=s' => \$permission,
+   'kerneldir=s' => \$kerneldir,   
+   'internal' =>\$internal, #internal flag
+   'pkglist=s' => \$pkglist,   #internal flag
+   'srcdir=s' => \$srcdir,   #internal flag
+   'otherpkgdir=s' => \$srcdir_otherpkgs,  #internal flag
+   'otherpkglist=s' => \$otherpkglist,      #internal flag
+   'postinstall=s' => \$postinstall_filename,  #internal flag
+   'rootimgdir=s' => \$destdir,   #internal flag
+ );
 
-
-# if "Table.pm" can be found here, the attributes in linuximage and osimage will be updated
-my $needUpdateTable = 0;
-my %keyhash = ();
-my $updates_os = ();    # the hash for updating osimage table
-my $updates = ();       # the hash for updating linuximage table
-
-my $osimagetab;
-my $linuximagetab;
-my $ref_linuximage_tab;
-my $ref_osimage_tab;
-
-eval { require ("$::XCATROOT/lib/perl/xCAT/Table.pm") };
-
-unless ($@) {
-    # Table.pm is there, we can update the xCAT table
-    $needUpdateTable = 1;
-
-    # get the info from the osimage and linuximage table
-    $osimagetab = xCAT::Table->new('osimage', -create=>1);
-    unless ($osimagetab) {
-        print "The osimage table cannot be found.\n";
-        exit 1;
-    }
-    
-    $linuximagetab = xCAT::Table->new('linuximage', -create=>1);
-    unless($linuximagetab) {
-        print "The linuximage table cannot be found.\n";
-        exit 1;
-    }
-}
-
-
-
-if (@ARGV > 0 and $needUpdateTable eq 1) {
+if (@ARGV > 0) {
     $imagename=$ARGV[0];
-    if ($arch or $osver or $profile) {
-        print "-o, -p and -a options are not allowed when a image name is specified.\n";
-        exit 1;
-    }
-   
-    (my $ref_osimage_tab) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
-    unless ($ref_osimage_tab) {
-        print "Cannot find image \'$imagename\' from the osimage table.\n";
-        exit 1;
-    }
-
-    (my $ref_linuximage_tab) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'nodebootif', 'otherifce', 'kernelver', 'krpmver', 'netdrivers', 'permission');
-    unless ($ref_linuximage_tab) {
-        print "Cannot find $imagename from the linuximage table\n";
-        exit 1;
-    }
-
-    $osver=$ref_osimage_tab->{'osvers'};
-    $arch=$ref_osimage_tab->{'osarch'};
-    $profile=$ref_osimage_tab->{'profile'};
-    my $provmethod=$ref_osimage_tab->{'provmethod'}; # TODO: not necessary, and need to update both statelite and stateless modes
- 
-    unless ($osver and $arch and $profile and $provmethod) {
-        print"osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database.\n";
-        exit 1;
-    }
-
-    unless ($provmethod eq 'netboot' || $provmethod eq 'statelite') {
-        print "\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot'.";
-        exit 1;
-    }
-
-    unless ( $ref_linuximage_tab->{'pkglist'}) {
-        print"A .pkglist file must be specified for image \'$imagename\' in the linuximage table.\n";
-        exit 0;
-    }
-    $pkglist = $ref_linuximage_tab->{'pkglist'};
-
-    $srcdir = $ref_linuximage_tab->{'pkgdir'};
-    $srcdir_otherpkgs = $ref_linuximage_tab->{'otherpkgdir'};
-    $otherpkglist = $ref_linuximage_tab->{'otherpkglist'};
-    $postinstall_filename = $ref_linuximage_tab->{'postinstall'};
-    $destdir = $ref_linuximage_tab->{'rootimgdir'};
-    $kerneldir = $ref_linuximage_tab->{'kerneldir'};
-
-    # TODO: how can we do if the user specifies one wrong value to the following attributes?
-    # currently, one message is output to indicate the users there will be some updates
-
-    if ($prinic) {
-        if ($prinic ne $ref_linuximage_tab->{'nodebootif'}) {
-            print "The primary nic is different from the value in linuximage table, will update it\n";
-            $updates{'nodebootif'} = $prinic;
-        }
-    } else {
-        $prinic = $ref_linuximage_tab->{'nodebootif'};
-    }
-    if ($othernics) {
-        if ($othernics ne $ref_linuximage_tab->{'otherifce'}) {
-            print "The other ifces are different from  the value in linuximage table, will update it\n";
-            $updates{'otherifce'} = $othernics;
-        }
-    } else {
-        $othernics = $ref_linuximage_tab->{'otherifce'};
-    }
-    if ($kernelver) {
-        if ($kernelver ne $ref_linuximage_tab->{'kernelver'}) {
-            print "The kernelver is different from the value in linuximage table, will update it\n";
-            $updates{'kernelver'} = $kernelver;
-        }
-    } else {
-        $kernelver = $ref_linuximage_tab->{'kernelver'};
-    }
-
-    if ($krpmver) {
-        if ($krpmver ne $ref_linuximage_tab->{'krpmver'}) {
-            print "The krpmver is different from the value in linuximage table, will update it\n";
-            $updates{'krpmver'} = $krpmver;
-        }
-    } else {
-        $krpmver = $ref_linuximage_tab->{'krpmver'};
-    }
-
-    if ($netdriver) {
-        if ($netdriver ne $ref_linuximage_tab->{'netdrivers'}) {
-            print "The netdrivers are different from the value in linuximage table, will update it\n";
-            $updates{'netdrivers'} = $netdriver;
-        }
-    } else {
-        $netdriver = $ref_linuximage_tab->{'netdrivers'};
-    }
-    
-    if ($permission) {
-        if ($permission ne $ref_linuximage_tab->{'permission'}) {
-            print "The permission value is different from the value in linuximage table, will update it\n";
-            $updates{'permission'} = $permission;
-        }
-    } else {
-        $permission = $ref_linuximage_tab->{'permission'};
-    }
 }
+
+
+my %updates_os = ();    # the hash for updating osimage table
+my %updates = ();       # the hash for updating linuximage table
+
 
 $permission = "755" unless ($permission);
-$updates{'permission'} = $permission if ($needUpdateTable);
+$updates{'permission'} = $permission if ($internal);
 
 unless ($arch) {
     $arch = `uname -m`;
@@ -239,32 +120,32 @@ unless ($arch) {
 }
 
 $srcdir="$installroot/$osver/$arch" unless ($srcdir);
-$updates{'pkgdir'} = $srcdir if ($needUpdateTable);
+$updates{'pkgdir'} = $srcdir if ($internal);
 $srcdir = $srcdir . "/1";
 
 $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch" unless ($srcdir_otherpkgs); 
-$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($needUpdateTable);
+$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($internal);
 
 $destdir="$installroot/netboot/$osver/$arch/$profile" unless ($destdir);
-$updates{'rootimgdir'} = $destdir if ($needUpdateTable);
+$updates{'rootimgdir'} = $destdir if ($internal);
 
 $rootimg_dir="$destdir/rootimg";
 
 if ($kernelver && (!$krpmver)) {
-  print "The -g flag for the rpm version of kernel packages needs to be specified when kernel version has been specified.\n";
-  exit 1;
+    print "The -g flag for the rpm version of kernel packages needs to be specified when kernel version has been specified.\n";
+    exit 1;
 }
 $kerneldir = "$installroot/kernels" unless ($kerneldir);    # the default directory for 3rd-party kernel is "$installroot/kernels";
-$updates{'kerneldir'} = $kerneldir if ($needUpdateTable);
+#$updates{'kerneldir'} = $kerneldir if ($internal);
 
 unless ($osver and $profile) {
-   usage();
-   exit 1;
+    usage();
+    exit 1;
 }
 my @ndrivers;
 
 if ($netdriver) {
-    if ( ($updates{'netdrivers'} ne $netdriver) and $needUpdateTable ) {
+    if ( ($updates{'netdrivers'} ne $netdriver) and $internal ) {
         $updates{'netdrivers'} = $netdriver;
     }
 } else {
@@ -278,21 +159,21 @@ if ($netdriver) {
 }
 
 
-foreach (split /,/,$netdriver) {
+foreach (split /,/,$netdriver) { 
     unless (/\.ko$/) {
-        s/$/.ko/;
+	s/$/.ko/;
     }
     next if (/^$/);
-	
-	# Do not include qeth module here
-	# This module is included later on
-	unless ( $_ =~ m/qeth/i ) {
-   		push @ndrivers, $_;
-	}
+    
+# Do not include qeth module here
+# This module is included later on
+    unless ( $_ =~ m/qeth/i ) {
+	push @ndrivers, $_;
+    }
 }
 
 unless (grep /af_packet/,@ndrivers) {
-   unshift(@ndrivers,"af_packet.ko");
+    unshift(@ndrivers,"af_packet.ko");
 }
 
 my $osver_host;
@@ -308,7 +189,7 @@ unless ($onlyinitrd) {
     unless ($imagename) {
         $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $customdir, "otherpkgs.pkglist");
         unless ($otherpkglist) { $otherpkglist=imgutils::get_profile_def_filename($osver, $profile, $arch, $pathtofiles, "otherpkgs.pkglist"); }
-        $updates{'otherpkglist'} = $otherpkglist if ($needUpdateTable and $otherpkglist);
+        $updates{'otherpkglist'} = $otherpkglist if ($internal and $otherpkglist);
     }
     my %extra_hash=();
     %extra_hash=imgutils::get_package_names($otherpkglist) if ($otherpkglist);
@@ -345,18 +226,18 @@ unless ($onlyinitrd) {
    close($fd);
 
    if($osver_host == 11) {#zypper in SLES11 is different
-	   if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
-		   system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
-	   }
-	   system("zypper -R $rootimg_dir ar file:$srcdir $osver");
-	   
+       if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
+	   system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
+       }
+       system("zypper -R $rootimg_dir --non-interactive ar file:$srcdir $osver");
        if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
            system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
        }
        my $srcdir_sdk  = "$installroot/$osver/$arch/sdk1";
-       system("zypper -R $rootimg_dir ar file:$srcdir_sdk ${osver}sdk");
+       system("zypper -R $rootimg_dir --non-interactive ar file:$srcdir_sdk ${osver}sdk");
+
    }else {
-	   system("zypper -R $rootimg_dir sa file:$srcdir");
+	   system("zypper -R $rootimg_dir --non-interactive sa file:$srcdir");
    }
 
    # Add the rep for kernel packages
@@ -369,23 +250,23 @@ unless ($onlyinitrd) {
          if (-e "$rootimg_dir/etc/zypp/repos.d/$kernelver.repo") {
             system("rm -rf $rootimg_dir/etc/zypp/repos.d/$kernelver.repo");
          }
-         system("zypper -R $rootimg_dir ar file:$kerneldir $kernelver");
+         system("zypper -R $rootimg_dir --non-interactive ar file:$kerneldir $kernelver");
       } else {
-         system("zypper -R $rootimg_dir sa file:$kerneldir");
+         system("zypper -R $rootimg_dir --non-interactive sa file:$kerneldir");
       }
    }
    #remove the old repository for extra packages
-   my $result=`zypper -R $rootimg_dir sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
+   my $result=`zypper -R $rootimg_dir --non-interactive sl |grep otherpkg|cut -f2 -d '|'|tr "\n" " "`;
    if ($result =~ /\S/) {
-       system("zypper -R $rootimg_dir sd $result");
+       system("zypper -R $rootimg_dir --non-interactive sd $result");
    }
 
    #add the new repository for extra packages
    my %extrapkgnames; 
    if($osver_host == 11) {	#SLES11
-      if(-e "$rootimg_dir/etc/zypp/repos.d/otherpkg.repo") {
-        system("rm -rf $rootimg_dir/etc/zypp/repos.d/otherpkg.repo");
-      }
+       if(-e "$rootimg_dir/etc/zypp/repos.d/otherpkg.repo") {
+	   system("rm -rf $rootimg_dir/etc/zypp/repos.d/otherpkg.repo");
+       }
    }
    my $index=1;
    my $pass;
@@ -395,15 +276,15 @@ unless ($onlyinitrd) {
        my $whole_path="$srcdir_otherpkgs/$_";
        if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
 	   if($osver_host == 11) { 
-	       system("zypper -R $rootimg_dir ar file:$srcdir_otherpkgs/$_  otherpkg$index");
+	       system("zypper -R $rootimg_dir --non-interactive ar file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
-	       system("zypper -R $rootimg_dir sa file:$srcdir_otherpkgs/$_");
+	       system("zypper -R $rootimg_dir --non-interactive sa file:$srcdir_otherpkgs/$_");
 	   }
        } else {
 	   if($osver_host == 11) { 
-	       system("zypper -R $rootimg_dir ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
+	       system("zypper -R $rootimg_dir --non-interactive ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
-	       system("zypper -R $rootimg_dir sa -t Plaindir file:$srcdir_otherpkgs/$_");
+	       system("zypper -R $rootimg_dir --non-interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
 	   }
        }
        $index++;
@@ -429,21 +310,21 @@ unless ($onlyinitrd) {
        chomp;
        next if /^\s*#/;
        my ($repotype,$repourl,$repoalias) = split m/\|/;
-       system("zypper -R $rootimg_dir ar $repourl $repoalias");
+       system("zypper -R $rootimg_dir --non-interactive ar $repourl $repoalias");
      }
    }
 
    # Refresh the zypper cache in case there is still old data out there
-   system("zypper -R $rootimg_dir refresh");
+   system("zypper -R $rootimg_dir --non-interactive refresh");
 
    #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir --disablerepo=* ";
    #$yumcmd .= "install ";
    #mkpath("$rootimg_dir/var/lib/yum");
    my $yumcmd;
    if($osver =~ /sles11/ && $osver_host == 11) {
-       $yumcmd = "zypper -R $rootimg_dir install -l -y "; #add -l for SLES11
+       $yumcmd = "zypper -R $rootimg_dir --non-interactive install -l "; #add -l for SLES11
    }else {
-        $yumcmd = "zypper -R $rootimg_dir install ";
+        $yumcmd = "zypper -R $rootimg_dir --non-interactive install ";
    }
 
    #install packages from pkglist file
@@ -454,7 +335,7 @@ unless ($onlyinitrd) {
    }
 
    if ($pkglist) {
-        $updates{'pkglist'} = $pkglist if ($needUpdateTable);
+        $updates{'pkglist'} = $pkglist if ($internal);
     } else {
       print "Unable to find package list for $profile!";
       exit 1;
@@ -464,13 +345,13 @@ unless ($onlyinitrd) {
    my $index=1;
    foreach $pass (sort (keys(%pkg_hash))) {
        $pkgnames = "";
-	   $group_pkgnames = "";
+       $group_pkgnames = "";
        foreach (keys(%{$pkg_hash{$pass}})) {
            if (($_ eq "PRE_REMOVE") || ($_ eq "POST_REMOVE")) { next;} 
            my $pa=$pkg_hash{$pass}{$_};
            # replace the kernel package with the name has the specific version
            my @npa = ();
-		   my @npa_group = ();
+	   my @npa_group = ();
            foreach my $p (@$pa) {
              if ($p =~ /^kernel$/ && $kernelver) {
                # get all files in $srcdir and $kerneldir
@@ -490,47 +371,45 @@ unless ($onlyinitrd) {
                  my $kernelname = "$kern=".$krpmver;
                  push @npa, $kernelname;
                }
-             }
-			 else {
-				if($p =~ s/^@//)
-				{
-					push @npa_group, $p;
-				}
-				else
-				{
-					push @npa, $p;
-				}
+             } else {
+		 if($p =~ s/^@//)
+		 {
+		     push @npa_group, $p;
+		 }
+		 else
+		 {
+		     push @npa, $p;
+		 }
              }
            }
            $pkgnames .= " " . join(' ', @npa);
-		   $group_pkgnames .= " " . join(' ', @npa_group);
+	   $group_pkgnames .= " " . join(' ', @npa_group);
        }
-			  
-	   if($pkgnames ne ' ')
-	   {
-		    print "$yumcmd $pkgnames\n";
-			my $rc = system("$yumcmd $pkgnames");
-			$rc = $rc >> 8;
-			if (($rc) && ($rc != '104')) { 
-				print "zypper invocation failed with rc: $rc\n";
-				exit 1;
-			}
+       if($pkgnames ne ' ')
+       {
+	   print "$yumcmd $pkgnames\n";
+	   my $rc = system("$yumcmd $pkgnames");
+	   $rc = $rc >> 8;
+	   if (($rc) && ($rc != '104')) { 
+	       print "zypper invocation failed with rc: $rc\n";
+	       exit 1;
 	   }
-	   if($group_pkgnames ne ' ')
-	   {
-		    print "$yumcmd -t pattern $group_pkgnames\n";
-			$rc = system("$yumcmd -t pattern $group_pkgnames");
-			$rc = $rc >> 8;
-			if (($rc) && ($rc != '104')) { 
-				print "zypper invocation failed with rc: $rc\n";
-				exit 1;
-			}
+       }
+       if($group_pkgnames ne ' ')
+       {
+	   print "$yumcmd -t pattern $group_pkgnames\n";
+	   $rc = system("$yumcmd -t pattern $group_pkgnames");
+	   $rc = $rc >> 8;
+	   if (($rc) && ($rc != '104')) { 
+	       print "zypper invocation failed with rc: $rc\n";
+	       exit 1;
 	   }
-   }
+       }
+}
 
    foreach $pass (sort (keys(%extra_hash))) {
        #remove the packages that are specified in the otherpkgs.list files with leading '-'
-       my $yumcmd_remove= "zypper -R $rootimg_dir remove "; 
+       my $yumcmd_remove= "zypper -R $rootimg_dir --non-interactive remove "; 
        if (exists ($extra_hash{$pass}{'PRE_REMOVE'})) {
            my $pa=$extra_hash{$pass}{'PRE_REMOVE'};
            my $rm_packges= join(' ', @$pa);
@@ -563,7 +442,7 @@ unless ($onlyinitrd) {
 
    # run zypper update to update any installed rpms
    # needed when running genimage again after updating software in repositories
-   my $yumcmd_update = "zypper -R $rootimg_dir update  "; 
+   my $yumcmd_update = "zypper -R $rootimg_dir --non-interactive update  "; 
    $rc = system("$yumcmd_update");
    # ignore any return code
 
@@ -615,7 +494,7 @@ unless ($basekernelver) {
 
 $kernelver = $basekernelver unless ($kernelver);
 chomp $kernelver;
-#$updates{kernelver} = $kernelver if ($needUpdateTable);
+#$updates{kernelver} = $kernelver if ($internal);
 
 # copy the kernel to $destdir
 if ( -e "$rootimg_dir/boot/vmlinux-$kernelver") {
@@ -639,7 +518,7 @@ unless ($imagename) {
 if (($postinstall_filename) && (-x $postinstall_filename)) {
     #print "postinstall_filename=$postinstall_filename\n";
 
-    $updates{'postinstall'} = $postinstall_filename if ($needUpdateTable);
+    $updates{'postinstall'} = $postinstall_filename if ($internal);
 
     my $rc = system($postinstall_filename, $rootimg_dir,$osver,$arch,$profile);
     if($rc) {
@@ -648,46 +527,64 @@ if (($postinstall_filename) && (-x $postinstall_filename)) {
     }
 }
 
-
-# commit the changes to the linuximage/osimage table if necessary
-if ($needUpdateTable) {
-    # all the information has been gathered
-    # now, update the linuximage and osimage tables
-    # TODO: do statelite and stateless share the same attributes? currently, I will update both of them
+# output the changed the attributes so that it can be save into db by the caller.
+# all the information has been gathered
+# now, update the linuximage and osimage tables
+# TODO: do statelite and stateless share the same attributes? currently, I will update both of them
+#BEGIN: PLEASE DO NOT CHANGE THE FOLLOWING CODE, genimage PLUGIN NEEDS TO PARSE THR OUTPUT
+if ($internal) {
     if ($imagename) {
-        $keyhash{'imagename'} = $imagename;
-        $linuximagetab->setAttribs(\%keyhash, \%updates);
-        $linuximagetab->commit;
+	if (keys(%updates) > 0) {
+	    print "The output for table updates starts here\n";
+	    print "table::linuximage\n";
+	    print "imagename::$imagename\n";
+	    my @a=%updates;
+	    print join('::',@a) . "\n";
+	    print "The output for table updates ends here\n";
+	}
     } else {
-        # update the imagename for stateless
-        $keyhash{'imagename'} = "$osver-$arch-netboot-$profile";
-        
-        $updates_os{'profile'} = $profile;
-        $updates_os{'imagetype'} = 'linux';
-        $updates_os{'provmethod'} = 'netboot';
-        $updates_os{'osname'} = 'Linux';
-        $updates_os{'osvers'} = $osver;
-        $updates_os{'osdistro'} = 'sles'; # not used currently
-        $updates_os{'osarch'} = $arch;
-
-        $osimagetab->setAttribs(\%keyhash, \%updates_os);
-        $osimagetab->commit;
-
-        $linuximagetab->setAttribs(\%keyhash, \%updates);
-        $linuximagetab->commit;
-
-        # update the imagename for statelite
-        $keyhash{'imagename'} = "$osver-$arch-statelite-$profile";
-        
-        $updates_os{'provmethod'} = 'statelite';
-
-        $osimagetab->setAttribs(\%keyhash, \%updates_os);
-        $osimagetab->commit;
-
-        $linuximagetab->setAttribs(\%keyhash, \%updates);
-        $linuximagetab->commit;
+	$updates_os{'profile'} = $profile;
+	$updates_os{'imagetype'} = 'linux';
+	$updates_os{'provmethod'} = 'netboot';
+	$updates_os{'osname'} = 'Linux';
+	$updates_os{'osvers'} = $osver;
+	$updates_os{'osdistro'} = 'sles'; # not used currently
+	$updates_os{'osarch'} = $arch;
+	# update the imagename for stateless 
+	print "The output for table updates starts here\n";
+	print "table::osimage\n";
+	print "imagename::$osver-$arch-netboot-$profile\n";
+	my @a=%updates_os;
+	print join('::',@a) . "\n";
+	print "The output for table updates ends here\n";
+	
+	print "The output for table updates starts here\n";
+	print "table::linuximage\n";
+	print "imagename::$osver-$arch-netboot-$profile\n";
+	my @a=%updates;
+	print join('::',@a) . "\n";
+	print "The output for table updates ends here\n";
+	
+	# update the imagename for statelite   
+	$updates_os{'provmethod'} = 'statelite';
+	print "The output for table updates starts here\n";
+	print "table::osimage\n";
+	print "imagename::$osver-$arch-statelite-$profile\n";
+	my @a=%updates_os;
+	print join('::',@a) . "\n";
+	print "The output for table updates ends here\n";
+	
+	print "The output for table updates starts here\n";
+	print "table::linuximage\n";
+	print "imagename::$osver-$arch-statelite-$profile\n";
+	my @a=%updates;
+	print join('::',@a) . "\n";
+	print "The output for table updates ends here\n";
     }
 }
+#END
+
+
 
 mkpath "$rootimg_dir/.statelite"; # create place for NFS mounts;
 
@@ -1678,14 +1575,12 @@ sub load_dd()
 }
 
 sub usage {
-    print 'Usage: genimage  -o <OSVER> [-a <ARCH>] -p <PROFILE> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <KERNELVER>] [-g <KRPMVER>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n";
-   print '       genimage [-o <OSVER>] [-a <ARCH>] [-p <PROFILE>] [-i <nodebootif>] [-n <nodenetdrivers>] [-r <otherifaces>] [-k <KERNELVER>] [-g <KRPMVER>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]  <imagename>'."\n";
-   print "       --permission is used for statelite only\n";
-   print "Examples:\n";
-   print " genimage -i eth0 -n tg3 -o sles11 -p compute\n";
-   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o sles11 -p compute\n";
-   print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute\n";
-   print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute --permission 777\n";
-   print " genimage -i eth0 -n tg3 myimagename\n";
+    print 'Usage: genimage  -o <OSVER> [-a <arch>] -p <profile> -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] [-k <kernelver>] [-g <krpmver>] [-l rootlimitsize] [-t tmplimitsize] [--permission <permission>]'."\n";
+    print "       --permission is used for statelite only\n";
+    print "Examples:\n";
+    print " genimage -i eth0 -n tg3 -o sles11 -p compute\n";
+    print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o sles11 -p compute\n";
+    print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute\n";
+    print " genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute --permission 777\n";
     return 0;
 }
