@@ -36,6 +36,7 @@ my $mode;
 my $permission; #the permission works only for statelite mode currently
 my $krpmver;
 my $kerneldir;
+my $mode;
 
 
 
@@ -68,6 +69,7 @@ sub process_request {
        't=s' => \$tmplimit,
        'k=s' => \$kernelver,
        'g=s' => \$krpmver,
+       'm=s' => \$mode,
        'kerneldir=s' => \$kerneldir,   
        'permission=s' => \$permission
        );
@@ -97,13 +99,13 @@ sub process_request {
     $osimagetab = xCAT::Table->new('osimage', -create=>1);
     unless ($osimagetab) {
 	$callback->({error=>["The osimage table cannot be open."],errorcode=>[1]});
-        exit 1;
+        return 1;
     }
     
     $linuximagetab = xCAT::Table->new('linuximage', -create=>1);
     unless($linuximagetab) {
 	$callback->({error=>["The linuximage table cannot be open."],errorcode=>[1]});
-        exit 1;
+        return 1;
     }
 
    
@@ -112,19 +114,19 @@ sub process_request {
        $imagename=$ARGV[0];
        if ($arch or $osver or $profile) {
 	   $callback->({error=>["-o, -p and -a options are not allowed when a image name is specified."],errorcode=>[1]});
-	   exit 1;
+	   return 1;
        }
        
        (my $ref_osimage_tab) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
        unless ($ref_osimage_tab) {
 	   $callback->({error=>["Cannot find image \'$imagename\' from the osimage table."],errorcode=>[1]});	   
-	   exit 1;
+	   return 1;
        }
        
        (my $ref_linuximage_tab) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir', 'kerneldir', 'krpmver', 'nodebootif', 'otherifce', 'kernelver', 'netdrivers', 'permission');
        unless ($ref_linuximage_tab) {
 	   $callback->({error=>["Cannot find $imagename from the linuximage table."],errorcode=>[1]});
-	   exit 1;
+	   return 1;
        }
        
        $osver=$ref_osimage_tab->{'osvers'};
@@ -134,17 +136,17 @@ sub process_request {
        
        unless ($osver and $arch and $profile and $provmethod) {
 	   $callback->({error=>["osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database."],errorcode=>[1]});
-	   exit 1;
+	   return 1;
        }
        
        unless ($provmethod eq 'netboot' || $provmethod eq 'statelite') {
 	   $callback->({error=>["\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot'."],errorcode=>[1]});
-	   exit 1;
+	   return 1;
        }
        
        unless ( $ref_linuximage_tab->{'pkglist'}) {
 	   $callback->({error=>["A .pkglist file must be specified for image \'$imagename\' in the linuximage table."],errorcode=>[1]});
-	   exit 1;
+	   return 1;
        }
        $pkglist = $ref_linuximage_tab->{'pkglist'};
        
@@ -234,13 +236,31 @@ sub process_request {
    }
 
    $osfamily =~ s/ //g;
+
+   #-m flag is used only for ubuntu, debian and ferdora12, for others genimage will create
+   #initrd.gz for both netboot and statelite, no -m is needed.
+   if ($mode) {
+       if (($osfamily ne "ubuntu") && ($osfamily ne "debian") && ($osver !~ /fedora12/)) {
+	   $mode="";
+	   $callback->({error=>["-m flag is valid for Ubuntu, Debian and Fedora12 only."],errorcode=>[1]});
+	   return 1;
+       }
+   }
+
    $profDir = "$::XCATROOT/share/xcat/netboot/$osfamily";
    unless(-d $profDir){
        $callback->({error=>["Unable to find genimage script in $profDir."],errorcode=>[1]});
-       exit 1;
+       return 1;
    }
 
-   
+   if ($krpmver) {
+       if ($osfamily ne "sles") {
+	   $krpmver="";
+	   $callback->({error=>["-g flag is valid for Sles only."],errorcode=>[1]});
+	   return 1;
+       }
+   }   
+
    my $cmd="cd $profDir; ./genimage";
    if ($arch) { $cmd .= " -a $arch";}
    if ($osver) { $cmd .= " -o $osver";}
@@ -253,6 +273,7 @@ sub process_request {
    if ($tmplimit) { $cmd .= " -t $tmplimit";}
    if ($kernelver) { $cmd .= " -k $kernelver";}
    if ($krpmver) { $cmd .= " -g $krpmver";}
+   if ($mode) { $cmd .= " -m $mode";}
    if ($permission) { $cmd .= " --permission $permission"; }
    if ($kerneldir) { $cmd .= " --kerneldir $kerneldir"; }
    
