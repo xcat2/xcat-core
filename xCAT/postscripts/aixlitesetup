@@ -54,9 +54,9 @@ ProcessStatelite () {
 # ndebug
 
 		if [ "$OPTS" = "" ]; then
-			MNTOPTS=" "
+			MNTOPTS=" -o llock "
 		else
-			MNTOPTS=" -o $OPTS "
+			MNTOPTS=" -o llock -o $OPTS "
 		fi
 
 
@@ -219,7 +219,7 @@ MountTrees () {
         TRIES=1
 
 		# ex. 10.2.0.200:/etc/ /.statelite/mnt/10.2.0.200/etc/
-        while ! /usr/sbin/mount $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR} 
+        while ! /usr/sbin/mount -o llock $SERV:$DIR ${MOUNTDIR}/${SERV}${DIR} 
         do
             if [ "$TRIES" = "$MAX" ]
             then
