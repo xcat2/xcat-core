@@ -256,8 +256,8 @@ function addidataplexNode(){
     
     //compose all args into chdef for node
     args = '-t;node;-o;' + tempArray[0] + ';mac=' + tempArray[1] + ';ip=' + tempArray[2] + ';groups=' + 
-          tempArray[3] + ';mgt=ipmi;chain="runcmd=bmcsetup,standby";netboot=xnba;nodetype=osi;profile=compute;' +
-          'ondiscover=nodediscover;bmc=' + tempArray[4];
+          tempArray[3] + ';mgt=ipmi;chain="runcmd=bmcsetup";netboot=xnba;nodetype=osi;profile=compute;' +
+          'bmc=' + tempArray[4];
     
     $.ajax({
         url : 'lib/cmd.php',

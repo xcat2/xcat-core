@@ -445,6 +445,8 @@ function loadCreateImage() {
 	var showStr = '';
 	var imageOsvers = $.cookie("osvers").split(",");
 	var imageArch = $.cookie("osarchs").split(",");
+	var profileArray = $.cookie("profiles").split(",");
+	var index = 0;
 
 	// Create set properties form
 	var setPropsForm = $('<div class="form" ></div>');
@@ -455,24 +457,28 @@ function loadCreateImage() {
 
 	// OS version selector
 	showStr += '<p><label>OS Version:</label><select id="osvers" onchange="hpcShow()">';
-	for ( var i = 0; i < imageOsvers.length; i++) {
-		showStr += '<option value="' + imageOsvers[i] + '">' + imageOsvers[i] + '</option>';
+	for ( index in imageOsvers) {
+		showStr += '<option value="' + imageOsvers[index] + '">' + imageOsvers[index] + '</option>';
 	}
 	showStr += '</select></p>';
 
 	// OS arch selector
 	showStr += '<p><label>OS Architecture:</label><select id="osarch" onchange="hpcShow()">';
-	for ( var i = 0; i < imageArch.length; i++) {
-		showStr += '<option value="' + imageArch[i] + '">' + imageArch[i] + '</option>';
+	for ( index in imageArch) {
+		showStr += '<option value="' + imageArch[index] + '">' + imageArch[index] + '</option>';
 	}
 	showStr += '</select></p>';
 
 	// Netboot interface input
 	showStr += '<p><label>Net Boot Interface:</label><input type="text" id="netbootif"></p>';
 	// Profile selector
-	showStr += '<p><label>Profile:</label><select id="profile" onchange="hpcShow()">' + '<option value="compute">compute</option>' + '<option value="service">service</option></select></p>';
+	showStr += '<p><label>Profile:</label><select id="profile" onchange="hpcShow()">';
+	for( index in profileArray){
+	    showStr += '<option value="' + profileArray[index] + '">' + profileArray[index] + '</option>';
+	}
+	showStr += '</select></p>';
 	// Boot method selector
-	showStr += '<p><label>Boot Method:</label><select id="bootmethod">' + '<option value="stateless">stateless</option>' + '<option value="statelite">statelite</option></select></p>';
+	showStr += '<p><label>Boot Method:</label><select id="bootmethod"><option value="stateless">stateless</option></select></p>';
 	setPropsForm.append(showStr);
 	createHpcSelect(setPropsForm);
 
@@ -484,39 +490,13 @@ function loadCreateImage() {
 	// If they are valid, show the hpc stack select area.
 	hpcShow();
 
-	$.ajax( {
-		url : 'lib/systemcmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'lsb_release -d;uname -p'
-		},
-		success : function(data) {
-			var tempArray = data.rsp.split("\n");
-			var mnOs = tempArray[0];
-			var mnArch = tempArray[1];
-			tempArray = mnOs.split(" ");
-			
-			// Get the the version of MN
-			if (mnOs.indexOf("Red Hat") != -1) {
-				mnOs = "rhels" + tempArray[6];
-			}
+	// The button used to create images is created here
+    var createImageBtn = createButton("Create Image");
+    createImageBtn.bind('click', function(event) {
+        createImage();
+    });
 
-			$('#createImageTab option[value=' + mnOs + ']').attr('selected', 'selected');
-			$('#createImageTab option[value=' + mnArch + ']').attr('selected', 'selected');
-			
-			// The button used to create images is created here
-			var createImageBtn = createButton("Create Image");
-			createImageBtn.bind('click', function(event) {
-				createImage();
-			});
-
-			$('#createImageTab').append(createImageBtn);
-
-			// Check the option and decide to show the hpcsoft or not
-			hpcShow();
-		}
-	});
-
+    $('#createImageTab').append(createImageBtn);
 }
 
 /**
