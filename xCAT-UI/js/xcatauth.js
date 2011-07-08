@@ -9,7 +9,7 @@ $(document).ready(function() {
     var diaheight = $('#logdialog').css('height');
     diaheight = diaheight.substr(0, diaheight.length - 2);
     diaheight = Number(diaheight);
-    //the window's height is to small to show the dialog
+    // the window's height is to small to show the dialog
     var tempheight = 0;
     if ((winheight - 50) < diaheight){
     	tempheight = 0;
