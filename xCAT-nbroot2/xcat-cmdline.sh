@@ -48,6 +48,29 @@ echo 'Protocol 2' >> /etc/ssh/sshd_config
 /usr/sbin/sshd
 dhclient $bootnic &
 dhclient -6 $bootnic -lf /var/lib/dhclient/dhclient6.leases &
+mkdir -p /etc/xcat
+openssl genrsa -out /etc/xcat/privkey.pem 1024
+PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout|grep -v "PUBLIC KEY"`
+PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
+mkdir -p /var/lib/lldpad
+echo 'lldp :' >> /var/lib/lldpad/lldpad.conf
+echo '{' >> /var/lib/lldpad/lldpad.conf
+for iface in `ip link |grep -v '^ '|awk '{print $2}'|sed -e 's/:$//'`; do
+echo "$iface :" >> /var/lib/lldpad/lldpad.conf
+echo "{" >> /var/lib/lldpad/lldpad.conf
+	echo  "tlvid00000006 :" >> /var/lib/lldpad/lldpad.conf
+	echo "{" >> /var/lib/lldpad/lldpad.conf
+	echo info = '"'$PUBKEY'";' >> /var/lib/lldpad/lldpad.conf
+	echo '};' >> /var/lib/lldpad/lldpad.conf
+	echo 'adminStatus = 3;' >> /var/lib/lldpad/lldpad.conf
+echo '};' >> /var/lib/lldpad/lldpad.conf
+done
+echo '};' >> /var/lib/lldpad/lldpad.conf
+lldpad -d
+
+	
+	
+
 gripeiter=101
 echo -n "Acquiring network addresses.."
 while ! ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet > /dev/null; do
