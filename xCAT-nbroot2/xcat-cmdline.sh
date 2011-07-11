@@ -52,6 +52,7 @@ mkdir -p /etc/xcat
 openssl genrsa -out /etc/xcat/privkey.pem 1024
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
+export PUBKEY
 mkdir -p /var/lib/lldpad
 echo 'lldp :' >> /var/lib/lldpad/lldpad.conf
 echo '{' >> /var/lib/lldpad/lldpad.conf

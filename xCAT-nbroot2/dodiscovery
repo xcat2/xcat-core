@@ -10,7 +10,7 @@ done
 waitforlink=100
 while [ ! -z "$NICSTOBRINGUP" -a $waitforlink -gt 0 ]; do
 	NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep -v ,LOWER_UP|awk -F: '{print $2}'`
-	waitforlink = $((waitforlink - 1))
+	waitforlink=$((waitforlink - 1))
 	sleep 0.1
 	if [ $waitforlink = 1 ]; then
 		echo "No link detected on $NICSTOBRINGUP"
@@ -40,10 +40,87 @@ while [ ! -z "$NICSGETTINGADDR" -a $timewaiting != 700 ]; do
 	NICSGETTINGADDR=$NEWNICSGETTINGADDR
 done
 echo "Stopped waiting on nics to get addresses"
+XCATPORT=3001
+export XCATPORT
+for parm in `cat /proc/cmdline`; do
+	key=`echo $parm|awk -F= '{print $1}'`
+	if [ "$key" = "xcatd" ]; then
+		XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
+		XCATPORT=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $2}'`
+	fi
+done
 	
 	
+#time to make our packet...
+MTM=unknown
+SERIAL=unknown
+ARCH=unknown
+ARCH=`uname -m` #32-bit only is old news
+if [ -r /sys/devices/virtual/dmi/id/product_name ]; then  #x86
+	PRODNAME=`cat /sys/devices/virtual/dmi/id/product_name`
+	IAMAVM=0
+	if [ "$PRODNAME" = "KVM" ]; then 
+		IAMAVM=1
+		MTM=KVM
+	elif [ "$PRODNAME" = "VMware Virtual Platform" ]; then
+		IAMAVM=1
+		MTM=VMware
+	else 
+		MTM=`cat /sys/devices/virtual/dmi/id/product_name|awk -F'[' '{print $2}'|awk -F']' '{print $1}'`
+	fi
+elif [ -r /proc/device-tree/model ]; then #POWER
+	MTM=`cat /proc/device-tree/model |awk -F, '{print $2}'`
+fi
+CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
+MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{print $2}'`
+grep "model name" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
+	echo $line > /tmp/cpumod
+done
+CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
+echo '<xcatrequest>' > /tmp/discopacket
+echo "<command>findme</command>" >> /tmp/discopacket
+echo "<arch>$ARCH</arch>" >> /tmp/discopacket
+if [ ! -z "$IAMAVM" ]; then
+	echo "<nodetype>virtual</nodetype>" >> /tmp/discopacket
+fi
+echo "<cpucount>$CPUCOUNT</cpucount>" >> /tmp/discopacket
+echo "<cputype>$CPUTYPE</cputype>" >> /tmp/discopacket
+echo "<memory>$MEMORY</memory>" >> /tmp/discopacket
+if [ "$MTM" != "unknown" ]; then
+	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
+fi
+if [ "$SERIAL" != "unknown" ]; then
+	echo "<serial>$SERIAL</serial>"
+fi
+for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://`; do
+	DRIVER=`grep DRIVER /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
+	ADDRESS=`ip address show dev $dev|grep "inet "|grep global|awk '{print $2}'`
+	MAC=`ip link show dev $dev|grep ether|awk '{print $2}'`
+	echo "<mac>$DRIVER|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
+done
+echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> /tmp/discopacket #this is not secure to use by itself, switch sourced pubkey for security
+echo "<sha512sig>" >> /tmp/discopacket
+echo "</sha512sig>" >> /tmp/discopacket
+echo "</xcatrequest>" >> /tmp/discopacket
+openssl dgst -sha512 -out /tmp/discopacket.sha512 -sign /etc/xcat/privkey.pem /tmp/discopacket
+openssl enc -e -a -in /tmp/discopacket.sha512  > /tmp/discopacket.b64sig
+cat /tmp/discopacket |while read line; do
+	if [ "$line" = "</sha512sig>" ]; then
+		cat /tmp/discopacket.b64sig >> /tmp/discopacket.new
+	fi
+	echo $line >> /tmp/discopacket.new
+done
+mv /tmp/discopacket.new /tmp/discopacket
+
 
 while [ ! -r /restart ]; do
-	sleep 1
+	if [ ! -z "$XCATMASTER" ]; then
+		(ping -c 1 $XCATMASTER cat /tmp/discopacket | udpcat.awk $XCATMASTER $XCATPORT ) &
+	fi
+	for dhcps in `grep dhcp-server /var/lib/dhclient/dhclient.leases|awk '{print $4}'|sed -s 's/;//'`; do
+		(ping -c 1 $XCATMASTER cat /tmp/discopacket | udpcat.awk $dhcps $XCATPORT ) &
+	done
+	cat /tmp/discopacket
+	sleep 5
 done
 	
