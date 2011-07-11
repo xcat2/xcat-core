@@ -1483,25 +1483,16 @@ my @nodeattrs = (
                  access_tabentry => 'ppchcp.hcp=attr:node',
                 },
  {attr_name => 'username',
-                 only_if => 'hwtype=ivm',
+                 only_if => 'nodetype=ppc',
                  tabentry => 'ppchcp.username',
                  access_tabentry => 'ppchcp.hcp=attr:node',
                 },
  {attr_name => 'password',
-                 only_if => 'hwtype=ivm',
+                 only_if => 'nodetype=ppc',
                  tabentry => 'ppchcp.password',
                  access_tabentry => 'ppchcp.hcp=attr:node',
                 },
- {attr_name => 'username',
-                 only_if => 'hwtype=hmc',
-                 tabentry => 'ppchcp.username',
-                 access_tabentry => 'ppchcp.hcp=attr:node',
-                },
- {attr_name => 'password',
-                 only_if => 'hwtype=hmc',
-                 tabentry => 'ppchcp.password',
-                 access_tabentry => 'ppchcp.hcp=attr:node',
-                },
+
 ####################
 #  ppc table       #
 ####################
