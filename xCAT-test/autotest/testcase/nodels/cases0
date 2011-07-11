@@ -1,4 +1,5 @@
 start:nodels_null
+description:nodels | grep testnode
 cmd:chdef -t node -o testnode groups="all,aix"
 check:rc==0
 cmd:nodels | grep testnode
@@ -7,7 +8,112 @@ check:output=~testnode
 cmd:rmdef -t node -o testnode
 end
 
+
+start:nodels_noderange_shortname_groups
+description:The nodels use shortname groups
+cmd:chdef -t node -o testnode groups=rhels5.5
+check:rc==0
+cmd:nodels testnode groups
+check:rc==0
+check:output=~testnode: rhels5.5
+cmd:rmdef -t node testnode
+end
+
+
+start:nodels_noderange_shortname_tags
+description:The nodels use shortname tags
+cmd:chdef -t node -o testnode groups=rhels5.5
+check:rc==0
+cmd:nodels testnode tags
+check:rc==0
+check:output=~testnode: rhels5.5
+cmd:rmdef -t node testnode
+end
+
+
+start:nodels_noderange_shortname_mgt
+description:The nodels use shortname mgt
+cmd:chdef -t node -o testnode mgt=blade
+check:rc==0
+cmd:nodels testnode mgt
+check:rc==0
+check:output=~testnode: blade
+cmd:rmdef -t node testnode
+end
+
+start:nodels_table_include
+description:Check the command nodels with =~.
+cmd:chdef -t node -o testnode groups=rh4.123456789
+check:rc==0
+cmd:nodels groups=~rh4.123456789 
+check:rc==0
+check:output=~testnode
+cmd:rmdef -t node testnode
+end
+
+
+start:nodels_noderange_table_uninclude
+description:Check the command nodels with !~.
+cmd:chdef -t node -o testnode1 groups=rhels5.5,all
+check:rc==0
+cmd:chdef -t node -o testnode2 groups=rhels5.4,all
+check:rc==0
+cmd:nodels testnode1-testnode2 nodelist.groups\!~rhels5.5 
+check:rc==0
+check:output=~testnode2
+cmd:rmdef -t node testnode1-testnode2
+end
+
+
+start:nodels_noderange_table_equal
+description:Check the command nodels with ==.
+cmd:chdef -t node -o testnode groups=rh4.123456789
+check:rc==0
+cmd:nodels groups==rh4.123456789
+check:rc==0
+check:output=~testnode
+cmd:rmdef -t node testnode
+end
+
+
+start:nodels_noderange_table_unequal
+description:Check the command nodels with !=.
+cmd:chdef -t node -o testnode1 groups=rhels5.5
+check:rc==0
+cmd:chdef -t node -o testnode2 groups=rhels5.4
+check:rc==0
+cmd:nodels testnode1-testnode2 groups!=rhels5.5 
+check:rc==0
+check:output=~testnode2
+cmd:rmdef -t node testnode1-testnode2
+end
+
+start:nodels_b
+description:nodels -b and nodels --blame
+cmd:chdef -t node -o testnode groups=rhels5.5
+check:rc==0
+cmd:nodels testnode -b groups
+check:rc==0
+check:output=~testnode:\s*rhels5.5
+cmd:nodels testnode --blame groups
+check:rc==0
+check:output=~testnode:\s*rhels5.5
+cmd:rmdef -t node testnode
+end
+
+start:nodels_S
+description:nodels -S
+cmd:chdef -t node -o testnode hidden=1 
+check:rc==0
+cmd:nodels -S
+check:rc==0
+check:output=~testnode
+cmd:rmdef -t node testnode
+end
+
+
 start:nodels_H
+description:nodels -H all groups mgt | grep testnode
 cmd:chdef -t node -o testnode groups="all,aix" mgt="hmc"
 check:rc==0
 cmd:nodels -H all groups mgt | grep testnode
@@ -18,6 +124,7 @@ cmd:rmdef -t node -o testnode
 end
 
 start:nodels_noderange
+description:nodels testnode
 cmd:chdef -t node -o testnode groups="all,aix"
 check:rc==0
 cmd:nodels testnode
@@ -25,6 +132,84 @@ check:rc==0
 check:output==testnode
 cmd:rmdef -t node -o testnode
 end
+
+
+start:nodels_noderange_table
+description:nodels testnode nodelist
+cmd:chdef -t node -o testnode groups=all
+check:rc==0
+cmd:nodels testnode nodelist
+check:rc==0
+check:output=~testnode:\s*nodelist.groups:\s*all
+cmd:rmdef -t node testnode
+end
+
+
+start:nodels_tablevalue
+description:nodels rh4.1234567890
+cmd:chdef -t node -o testnode groups=rh4.1234567890
+check:rc==0
+cmd:nodels rh4.1234567890
+check:rc==0
+check:output=~testnode
+cmd:rmdef -t node testnode
+end
+
+
+start:nodels_tablevalue_tablecolumn
+description:nodels rh4.1234567890 mgt
+cmd:chdef -t node -o testnode groups=rh4.1234567890 mgt=hmc
+check:rc==0
+cmd:nodels rh4.1234567890 mgt
+check:rc==0
+check:output=~testnode:\s*hmc
+cmd:rmdef -t node testnode
+end
+
+
+start:nodels_noderange_tablecolumn
+description:nodels testnode nodehm.mgt
+cmd:chdef -t node -o testnode mgt=hmc
+check:rc==0
+cmd:nodels testnode nodehm.mgt
+check:rc==0
+check:output=~testnode:\s*hmc
+cmd:rmdef -t node testnode
+end
+
+
+start:nodels_tablevalue_tablecolumn
+description:nodels  groups==rh4.1234567890 mgt
+cmd:chdef -t node -o testnode1-testnode4 groups=rh4.1234567890 mgt=hmc
+check:rc==0
+cmd:nodels  groups==rh4.1234567890 mgt
+check:rc==0
+check:output=~testnode1:\s*hmc
+check:output=~testnode2:\s*hmc
+check:output=~testnode3:\s*hmc
+check:output=~testnode4:\s*hmc
+cmd:rmdef -t node testnode1-testnode4
+end
+
+
+start:nodels_h
+description:nodels -h and nodels -? and nodels --help
+cmd:nodels -h
+check:output=~Usage
+cmd:nodels -?
+check:output=~Usage
+cmd:nodels --help
+check:output=~Usage
+end
+
+
+start:nodels_v
+cmd:nodels -v
+check:output=~Version
+cmd:nodels --version
+check:output=~Version
+end
+
 
 start:nodels_err_symbol
 cmd:nodels -H all unknown

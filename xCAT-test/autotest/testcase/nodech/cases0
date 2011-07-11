@@ -36,7 +36,7 @@ cmd:rmdef -t node testnode
 end
 
 
-start:nodech_noderage_table_comma_arrow
+start:nodech_noderange_table_comma_arrow
 description:nodech testnode groups^=rhels5.5 groups,=rhels5.4 . Check nodech command with both ^= and ,=.
 cmd:chdef -t node -o testnode groups=all,rhels5.5
 check:rc==0
