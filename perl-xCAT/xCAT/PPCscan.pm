@@ -24,7 +24,7 @@ my @header = (
     ["serial-number", "%-15s" ],
     ["side",          "%-6s\n" ]);
 
-my @attribs = qw(nodetype hwtype node id mtm serial side hcp pprofile parent groups mgt cons);
+my @attribs = qw(nodetype node id mtm serial side hcp pprofile parent groups mgt cons hwtype);
 my %globalnodetype = (
     fsp  => $::NODETYPE_PPC,
     bpa  => $::NODETYPE_PPC,
