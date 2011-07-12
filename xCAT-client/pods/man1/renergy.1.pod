@@ -378,6 +378,15 @@ Query the current value of FFO.
 Set the current value of FFO. The valid value of ffovalue should 
 be between the ffoMin and ffoNorm.
 
+Note1: Due to the limitation of firmware, the frequency in the range 
+3501 MHz - 3807 MHz can NOT be set to ffovalue. This range may be 
+changed in future.
+
+Note2: The setting will take effect only when the fsavingstatus is in 
+'on' status. But you need to set the ffovalue to a valid value before 
+enabling the fsavingstatus. (It's a limitation of the initial firmware 
+and will be fixed in future.) 
+
 The ffovalue setting operation needs about 1 minute to take effect.
 
 =item B<fsavingstatus>
@@ -393,6 +402,8 @@ Set the status of FFO. The value must be 'on' or 'off'.
 has been set to a valid value.
 
 'off' -disable. It will take effect immediately.
+
+Note: See the Note2 of ffovalue=MHZ.
 
 =item B<maxCPUspeed>
 
