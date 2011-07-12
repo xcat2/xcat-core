@@ -840,10 +840,12 @@ sub process_request {
    my $command = $request->{command}->[0];
    my $separator="XXXXXYYYYYZZZZZ";
 	my $usefping;
-	@ARGV=@{$request->{arg}};
-	GetOptions(	
-		'f' => \$usefping
-	);
+	if (ref $request->{arg}) {
+		@ARGV=@{$request->{arg}};
+		GetOptions(	
+			'f' => \$usefping
+		);
+	}
 
 
    if ($command eq "nodestat_internal") {
