@@ -13,6 +13,7 @@ package xCAT_plugin::web;
 use strict;
 require xCAT::Utils;
 require xCAT::MsgUtils;
+require xCAT::DBobjUtils;
 use Getopt::Long;
 use Data::Dumper;
 use LWP::Simple;
@@ -49,7 +50,8 @@ sub process_request {
 		'discover'      => \&web_discover,
 		'updatevpd'     => \&web_updatevpd,
 		'createimage'   => \&web_createimage,
-        'provision'      => \&web_provision
+        'provision'     => \&web_provision,
+        'summary'       => \&web_summay
 	);
 
 	#check whether the request is authorized or not
@@ -1364,5 +1366,93 @@ sub web_infomsg {
     push @{$rsp{info}}, $msg;
     xCAT::MsgUtils->message('I', \%rsp, $callback);
     return;
+}
+
+sub web_summay{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $groupName = $request->{arg}->[1];
+    my @nodes;
+    my $nodetypeTab;
+    my $attrs;
+    my %oshash;
+    my %archhash;
+    my %provhash;
+    my %typehash;
+    my $retHash = {};
+    my $temp;
+    #$groupName is undefined, use all nodes
+    if (defined($groupName)){
+        @nodes = xCAT::NodeRange::noderange($groupName);
+    }
+    #groupName if definded, use the defined group name
+    else{
+        @nodes = xCAT::DBobjUtils->getObjectsOfType('node');
+    }
+
+    $nodetypeTab = xCAT::Table->new('nodetype');
+    unless($nodetypeTab){
+        return;
+    }
+
+    $attrs = $nodetypeTab->getNodesAttribs(\@nodes, ['os','arch','provmethod','nodetype']);
+    unless($attrs){
+        return;
+    }
+
+    while( my ($key, $value) = each(%{$attrs})){
+        web_attrcount($value->[0]->{'os'}, \%oshash);
+        web_attrcount($value->[0]->{'arch'}, \%archhash);
+        web_attrcount($value->[0]->{'provmethod'},, \%provhash);
+        web_attrcount($value->[0]->{'nodetype'},, \%typehash);
+    }
+    
+    #os
+    $temp = '';
+    while(my ($key, $value) = each(%oshash)){
+        $temp .= ($key . ':' . $value . ';');
+    }
+    $temp = substr($temp, 0, -1);
+    push(@{$retHash->{'data'}}, 'OS=' . $temp);
+
+    #arch
+    $temp = '';
+    while(my ($key, $value) = each(%archhash)){
+        $temp .= ($key . ':' . $value . ';');
+    }
+    $temp = substr($temp, 0, -1);
+    push(@{$retHash->{'data'}}, 'Architecture=' . $temp);
+
+    #provmethod
+    $temp = '';
+    while(my ($key, $value) = each(%provhash)){
+        $temp .= ($key . ':' . $value . ';');
+    }
+    $temp = substr($temp, 0, -1);
+    push(@{$retHash->{'data'}}, 'Provision Method=' . $temp);
+
+    #nodetype
+    $temp = '';
+    while(my ($key, $value) = each(%typehash)){
+        $temp .= ($key . ':' . $value . ';');
+    }
+    $temp = substr($temp, 0, -1);
+    push(@{$retHash->{'data'}}, 'Node Type=' . $temp);
+    #return data
+    $callback->($retHash);
+}
+
+#called by web_summay, count all attr numbers
+sub web_attrcount{
+    my ($key, $container) = @_;
+    unless(defined($key)){
+        $key = 'unknown';
+    }
+
+    if ($container->{$key}){
+        $container->{$key}++;
+    }
+    else{
+        $container->{$key} = 1;
+    }
 }
 1;

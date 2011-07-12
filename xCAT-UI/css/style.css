@@ -4,7 +4,7 @@
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
-.ui-dialog label,.ui-dialog input,.ui-dialog p,.ui-dialog button {
+.ui-dialog label,.ui-dialog input,.ui-dialog p,.ui-dialog button,.ui-dialog td {
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
@@ -228,8 +228,8 @@ body {
 }
 
 #nodes .summarypie {
-	width: 250px;
-	height: 250px;
+	width: 370px;
+	height: 280px;
 }
 
 /*--------------- Info/warning bar ---------------*/

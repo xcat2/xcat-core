@@ -99,43 +99,35 @@ function loadNodesPage() {
  * @return Nothing
  */
 function loadPieSummary(){
-	$('#nodes').append('<h3>Cluster Summary</h3><hr/>');
-	var summaryTable = '<table>' +
-					   '<tr>' +
-					   '<td><div id="ospie" class="summarypie"></div></td>' +
-					   '<td><div id="archpie" class="summarypie"></div></td>' +
-					   '<td><div id="provmethodpie" class="summarypie"></td>' +
-					   '</tr>' +
-					   '<tr>' +
-					   '<td><div id="nodetypepie" class="summarypie"></div></td>' +
-					   '<td><div id="statuspie" class="summarypie"></div></td>' +
-					   '</tr></table>';
-	$('#nodes').append(summaryTable);
+    $('#nodes').append('<h3>Cluster Summary</h3><hr/>');
+    var summaryTable = '<table>' +
+                       '<tr>' +
+                       '<td><div id="ospie" class="summarypie"></div></td>' +
+                       '<td><div id="archpie" class="summarypie"></div></td>' +
+                       '</tr>' +
+                       '<tr>' +
+                       '<td><div id="provmethodpie" class="summarypie"></td>' +
+                       '<td><div id="nodetypepie" class="summarypie"></div></td>' +
+                       '</tr></table>';
+    $('#nodes').append(summaryTable);
 
-	$('#nodes .summarypie').append(createLoader());
-
-	// determine the group names
-	var groups = $.cookie('groups');
-	groups = groups.toLowerCase();
-	var tgtGroup = 'compute';
-	if (-1 != groups.indexOf('compute')){
-		tgtGroup = 'compute';
-	}
-	else if(-1 != groups.indexOf('lpar')){
-		tgtGroup = 'lpar';
-	}
-	else if(-1 != groups.indexOf('blade')){
-		tgtGroup = 'blade';
-	}
-	else if(-1 != groups.indexOf('ipmi')){
-		tgtGroup = 'ipmi';
-	}
-
-	drawPieSummary('Operating System', 'nodetype.os', tgtGroup, 'ospie');
-	drawPieSummary('Architecture', 'nodetype.arch', tgtGroup, 'archpie');
-	drawPieSummary('Provision Method', 'nodetype.provmethod', tgtGroup, 'provmethodpie');
-	drawPieSummary('Node Type', 'nodetype.nodetype', tgtGroup, 'nodetypepie');
-	drawPieSummary('Status', 'nodelist.status', tgtGroup, 'statuspie');
+    $('#nodes .summarypie').append(createLoader());
+    
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webrun',
+            tgt : '',
+            args : 'summary',
+            msg : '' 
+        },
+        success:function(data){
+             for(var i in data.rsp){
+                 drawPieSummary(i, data.rsp[i]);
+             }
+        }
+    });
 }
 
 /**
@@ -143,69 +135,52 @@ function loadPieSummary(){
  * 
  * @return Nothing
  */
-function drawPieSummary(chattitle, field, tgtgroup, divid){
-	$.ajax({
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'nodels',
-			tgt : tgtgroup,
-			args : field,
-			msg : '' 
-		},
-		
-		success : function(data){
-			var tempHash={};
-			var key = '';
-			for(var index in data.rsp){
-				key =data.rsp[index][1];
-				if('' == key){
-					key = 'unknown';
-				}
-				
-				if(tempHash[key]){
-					tempHash[key]++;
-				}else {
-					tempHash[key] = 1;
-				}
-			}
-			
-            var dataArray = [];
-            for (key in tempHash){
-           		dataArray.push([key,tempHash[key]]);
-			}
-                        
-			$('#nodes #' + divid).empty();
-			var plot=$.jqplot(divid,
-					[dataArray],
-					{
-    	                title: chattitle,
-            	        seriesDefaults: {
-                    	renderer: $.jqplot.PieRenderer,
-            	        rendererOptions: {
-                    	    padding: 2,
-                            fill:true,
-                            shadow:true,
-                            shadowOffset: 2,
-                            shadowDepth: 5,
-	                        shadowAlpha: 0.07,
-        	                dataLabels : 'value',
-        	                showDataLabels: true
-                    		}
-                        },
-                        legend: {
-	                        show:true,
-        	                rendererOptions: {
-                	            numberRows: 1
-                        	},
-                            location: 's'
-                        }
-    	            });
-    		$('#'+divid).bind('jqplotDataClick',loadSummaryDetail);
-    		$('#'+divid).bind('jqplotDataHighlight',function(){this.style.cursor='pointer';});
-    		$('#'+divid).bind('jqplotDataUnhighlight',function(){this.style.cursor='';});
-		}
-	});
+function drawPieSummary(index, valuepair){
+	var position = 0;
+	var key = '';
+	var val = '';
+	var chattitle = '';
+	var dataArray = [];
+	var tempArray = [];
+	var container = $('#nodes .summarypie').eq(index);
+	
+	position = valuepair.indexOf('=');
+	chattitle = valuepair.substr(0, position);
+	tempArray = valuepair.substr(position + 1).split(';');
+    
+	for (var i in tempArray){
+	    position = tempArray[i].indexOf(':');
+	    key = tempArray[i].substr(0, position);
+	    val = Number(tempArray[i].substr(position + 1));
+	    dataArray.push([key,val]);
+	}
+                
+	container.empty();
+	var plot=$.jqplot(container.attr('id'),
+			[dataArray],
+			{
+                title: chattitle,
+    	        seriesDefaults: {
+            	renderer: $.jqplot.PieRenderer,
+    	        rendererOptions: {
+            	    padding: 5,
+                    fill:true,
+                    shadow:true,
+                    shadowOffset: 2,
+                    shadowDepth: 5,
+                    shadowAlpha: 0.07,
+	                dataLabels : 'value',
+	                showDataLabels: true
+            		}
+                },
+                legend: {
+                    show:true,
+                    location: 'e'
+                }
+            });
+	container.bind('jqplotDataClick',loadSummaryDetail);
+	container.bind('jqplotDataHighlight',function(){this.style.cursor='pointer';});
+	container.bind('jqplotDataUnhighlight',function(){this.style.cursor='';});
 }
 
 function loadSummaryDetail(ev, seriesIndex, pointIndex, data){
@@ -231,7 +206,7 @@ function loadSummaryDetail(ev, seriesIndex, pointIndex, data){
 	    args += data[0];
 	}
 	
-	drawNodesArea('all', args, '');
+	drawNodesArea('', args, '');
 }
 
 /**
@@ -384,7 +359,7 @@ function mkAddNodeLink() {
 		addNodeForm.append(info);
 		addNodeForm.append('<div><label for="mgt">Hardware management:</label>'
     		+ '<select id="mgt" name="mgt">'
-    			+ '<option>ipmi</option>' 
+    			+ '<option value="ipmi">iDataPlex</option>' 
     			+ '<option value="blade">Blade Center</option>'
     			+ '<option>hmc</option>'
     			+ '<option>zvm</option>'
