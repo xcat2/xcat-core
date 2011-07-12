@@ -249,11 +249,11 @@ Select the policy for I/O Adapter Enlarged Capacity. This option controls the si
 
 =item B<dev>={I<enable>|I<disable>}
 
-Enable or disable the 'dev' account or display account status if no value specified. 
+Enable or disable the CEC|Frame 'dev' account or display account status if no value specified. 
 
 =item B<celogin1>={I<enable>|I<disable>}
 
-Enable or disable the 'celogin1' account or display account status if no value specified. 
+Enable or disable the CEC|Frame 'celogin1' account or display account status if no value specified. 
 
 =item B<ip>
 
