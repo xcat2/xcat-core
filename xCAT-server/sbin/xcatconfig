@@ -131,8 +131,11 @@ else
 }
 
 #
-# To support AIX INUCLIENTS
+# To support AIX INUCLIENTS, to support the scenario where the user needs to install xCAT rpms
+# into the INUCLIENT=1 environment, such as AIX diskless node(installing xCAT in AIX NIM SPOT), 
+# or alternative disk installation.
 #
+
 if (($::osname eq 'AIX') && ($ENV{'INUCLIENTS'} == 1))
 {
     # INUCLIENTS is configured, add xcatconfig to /etc/inittab
