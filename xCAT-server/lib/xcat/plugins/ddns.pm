@@ -924,6 +924,8 @@ sub find_nameserver_for_dns {
        unless (defined $ctx->{nsmap}->{$zone}) { #ok, we already thought about this zone and made a decision
            if ($zone =~ /^\.*192.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*172.IN-ADDR.ARPA\.*/ or $zone =~ /127.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*IN-ADDR.ARPA\.*/ or $zone =~ /^\.*ARPA\.*/) {
                 $ctx->{nsmap}->{$zone} = 0; #ignore zones that are likely to appear, but probably not ours
+	   } elsif ($::XCATSITEVALS{ddnsserver}) {
+                $ctx->{nsmap}->{$zone} = $::XCATSITEVALS{ddnsserver};
            } else {
                my $reply = $ctx->{resolver}->query($zone,'NS');
                if ($reply)  {
