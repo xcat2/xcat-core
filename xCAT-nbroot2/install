@@ -4,6 +4,7 @@ dracut_install wget openssl tar ipmitool cpio gzip dash  modprobe touch echo cut
 dracut_install grep ip hostname awk egrep grep dirname expr
 dracut_install mount.nfs sshd vi reboot lspci parted libvirtd /usr/share/libvirt/cpu_map.xml mkfs mkfs.ext4 mkfs.btrfs
 dracut_install mkswap df brctl vconfig ifenslave ssh-keygen /usr/bin/qemu-img /usr/libexec/qemu-kvm scp clear dhclient lldpad
+dracut_install lldptool
 dracut_install poweroff
 inst "$moddir/xcatroot" "/sbin/xcatroot"
 inst "$moddir/dodiscovery" "/bin/dodiscovery"
