@@ -107,11 +107,13 @@ if [ -n $CLIENT_IP ]
 then
     #Check whether the mlt0 is available
     `lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null`
-    if [ -n $? ]
+    if [ $? ]
     then
-        chdev -l ml0 -a state=detach
-        chdev -l ml0 -a netaddr=$CLIENT_IP -a netmask=$NETMASK -a state=up
+        /usr/ml/aix71/rc.ml
     fi
+
+    chdev -l ml0 -a state=detach
+    chdev -l ml0 -a netaddr=$CLIENT_IP -a netmask=$NETMASK -a state=up
 fi
 
 fi
