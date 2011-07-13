@@ -105,7 +105,13 @@ CLIENT_IP=`ping -q -n -c 1 -w 1 $name-ml0 | grep PING |awk '{print $3}' | sed 's
 
 if [ -n $CLIENT_IP ]
 then
-mkhfi -i ml0 -a $CLIENT_IP -m $NETMASK
+    #Check whether the mlt0 is available
+    `lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null`
+    if [ -n $? ]
+    then
+        chdev -l ml0 -a state=detach
+        chdev -l ml0 -a netaddr=$CLIENT_IP -a netmask=$NETMASK -a state=up
+    fi
 fi
 
 fi
