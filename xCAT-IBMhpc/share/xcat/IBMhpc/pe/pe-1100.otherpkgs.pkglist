@@ -1,3 +1,6 @@
 pe/src
 pe/ibm_openshmem_*
 pe/ppe_rte_*
+
+# PE HPC toolkit, needed on login node
+#pe/ppedev_hpct_*
