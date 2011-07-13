@@ -75,6 +75,10 @@ sub mkhwconn_parse_args
     }
 
     ##########################################
+    # Find the sfp for the mkhwconn -s
+    ##########################################
+    $request->{sfp} = $opt{s};
+    ##########################################
     # Check if CECs are controlled by a frame
     ##########################################
     my $nodes = $request->{node};
