@@ -20,12 +20,16 @@ my @licmap = (
     ["accepted_level",         "Accepted Level "],
     ["curr_ecnumber_a",        "Release Level A"],
     ["curr_level_a",           "Level A        "],
+    ["curr_power_on_side_a",        "Current Power on side A"],
     ["curr_ecnumber_b",        "Release Level B"],
     ["curr_level_b",           "Level B        "],
+    ["curr_power_on_side_b",        "Current Power on side B"],
     ["curr_ecnumber_primary",  "Release Level Primary"],
     ["curr_level_primary",     "Level Primary  "],
+    ["curr_power_on_side_primary",  "Current Power on side Primary"],
     ["curr_ecnumber_secondary","Release Level Secondary"],
-    ["curr_level_secondary",   "Level Secondary"]
+    ["curr_level_secondary",   "Level Secondary"],
+    ["curr_power_on_side_secondary","Current Power on side Secondary"]
 );
 
 ##########################################################################
