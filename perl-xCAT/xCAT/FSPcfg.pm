@@ -303,11 +303,6 @@ sub do_query_sysname {
             push @result, $values;
             if (@$values[2] != 0)  {
                 last;
-            } else {
-                my $len = rindex @$values[1]."\$", "\$";
-                if ($len > '31') {
-                    return ([[$name, "Get sysname failed, name is too long, max 31 characters", "1"]]);
-                }
             }
         }
     }
@@ -323,8 +318,8 @@ sub do_set_sysname {
            my $sysname = ($value eq '*') ? $name : $value;
            my $action = $sysname_action{set}{@$d[4]};
            my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action, 0, $sysname);
-           push @result, $values;
            if (@$values[2] != 0)  {
+               push @result, $values;
                last;
            }
         }
