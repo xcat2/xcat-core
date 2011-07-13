@@ -2318,7 +2318,7 @@ sub getHCPsOfNodes
             if ( $ppctab ) {
                 my $typeref = xCAT::DBobjUtils->getnodetype($nodes);
                 my $i = 0;
-                unless ( $request->{arg}->[1] ) {
+                unless ( $request->{sfp} ) {
                     for my $n (@$nodes) {
                         if (@$typeref[$i++] =~ /^fsp|bpa$/) {
                             my $np = $ppctab->getNodeAttribs( $n, [qw(parent)]);
@@ -2337,7 +2337,7 @@ sub getHCPsOfNodes
                     } 
                     return \%newhcp;
                 } else { 
-                    my $sfp = $request->{arg}->[1];
+                    my $sfp = $request->{sfp};
                     my %sfphash;
                     for my $n (@$nodes) {
                         # record hcp
