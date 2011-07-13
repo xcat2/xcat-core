@@ -115,10 +115,10 @@ mv /tmp/discopacket.new /tmp/discopacket
 
 while [ ! -r /restart ]; do
 	if [ ! -z "$XCATMASTER" ]; then
-		(ping -c 1 $XCATMASTER cat /tmp/discopacket | udpcat.awk $XCATMASTER $XCATPORT ) &
+		(cat /tmp/discopacket | udpcat.awk $XCATMASTER $XCATPORT ) &
 	fi
 	for dhcps in `grep dhcp-server /var/lib/dhclient/dhclient.leases|awk '{print $4}'|sed -s 's/;//'`; do
-		(ping -c 1 $XCATMASTER cat /tmp/discopacket | udpcat.awk $dhcps $XCATPORT ) &
+		(cat /tmp/discopacket | udpcat.awk $dhcps $XCATPORT ) &
 	done
 	cat /tmp/discopacket
 	sleep 5
