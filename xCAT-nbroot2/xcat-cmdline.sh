@@ -7,7 +7,6 @@ udevd --daemon
 udevadm trigger
 mkdir -p /var/lib/dhclient/
 ip link set lo up
-ip addr add dev lo 127.0.0.1/8
 if [ ! -z "$BOOTIF" ]; then
 	BOOTIF=`echo $BOOTIF|sed -e s/01-// -e s/-/:/g`
 	echo -n "Waiting for device with address $BOOTIF to appear.."
@@ -49,6 +48,8 @@ echo 'Protocol 2' >> /etc/ssh/sshd_config
 dhclient $bootnic &
 dhclient -6 $bootnic -lf /var/lib/dhclient/dhclient6.leases &
 mkdir -p /etc/xcat
+mkdir -p /etc/pki/tls
+touch /etc/pki/tls/openssl.cnf
 openssl genrsa -out /etc/xcat/privkey.pem 1024
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
