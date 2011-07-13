@@ -692,7 +692,7 @@ sub preprocess_request
 			#my $ntype = xCAT::DBobjUtils->getnodetype($n);
             my $ntable = xCAT::Table->new('nodetype');
             if ($ntable) {
-                my $mytype = $ntable->getNodesAttribs($n,['nodetype']);
+                my $mytype = $ntable->getNodeAttribs($n,['nodetype']);
 			    if ($mytype =~ /osi/) {
 				$Imsg++;
 			    }
@@ -1146,7 +1146,7 @@ sub process_request
 					#my $ntype = xCAT::DBobjUtils->getnodetype($n);
                     my $ntable = xCAT::Table->new('nodetype');
                     if ($ntable) {
-                        my $ntype = $ntable->getNodesAttribs($n,['nodetype']);
+                        my $ntype = $ntable->getNodeAttribs($n,['nodetype']);
 
 					    # don't add if it is type "osi"
 					    unless ($ntype =~ /osi/) {
