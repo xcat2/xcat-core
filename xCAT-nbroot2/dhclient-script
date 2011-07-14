@@ -15,7 +15,7 @@ elif [ $reason = "BOUND" ]; then
 	if [ ! -z "$new_domain_name" ]; then
 		echo search $new_domain_name >> /etc/resolv.conf
 	fi
-	for ns in $new_domain_servers; do
+	for ns in $new_domain_name_servers; do
 		echo nameserver $ns >> /etc/resolv.conf
 	done
 	for ntp in $new_ntp_servers; do
