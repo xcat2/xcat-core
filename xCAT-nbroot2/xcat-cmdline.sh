@@ -63,6 +63,7 @@ echo "{" >> /var/lib/lldpad/lldpad.conf
 	echo  "tlvid00000006 :" >> /var/lib/lldpad/lldpad.conf
 	echo "{" >> /var/lib/lldpad/lldpad.conf
 	echo info = '"'$PUBKEY'";' >> /var/lib/lldpad/lldpad.conf
+	echo enableTx = true; >> /var/lib/lldpad/lldpad.conf
 	echo '};' >> /var/lib/lldpad/lldpad.conf
 	echo 'adminStatus = 3;' >> /var/lib/lldpad/lldpad.conf
 echo '};' >> /var/lib/lldpad/lldpad.conf
