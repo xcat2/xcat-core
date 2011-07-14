@@ -57,7 +57,7 @@ export PUBKEY
 mkdir -p /var/lib/lldpad
 echo 'lldp :' >> /var/lib/lldpad/lldpad.conf
 echo '{' >> /var/lib/lldpad/lldpad.conf
-for iface in `ip link |grep -v '^ '|awk '{print $2}'|sed -e 's/:$//|grep -v lo'`; do
+for iface in `ip link |grep -v '^ '|awk '{print $2}'|sed -e 's/:$//'|grep -v lo`; do
 echo "$iface :" >> /var/lib/lldpad/lldpad.conf
 echo "{" >> /var/lib/lldpad/lldpad.conf
 	echo  "tlvid00000006 :" >> /var/lib/lldpad/lldpad.conf
