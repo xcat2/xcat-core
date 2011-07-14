@@ -12,7 +12,7 @@ if [ ! -z "$BOOTIF" ]; then
 	echo -n "Waiting for device with address $BOOTIF to appear.."
 	gripeiter=300
 	while [ -z "$bootnic" ]; do 
-		bootnic=`ip link show|grep -B1 $BOOTIF|grep mtu|awk '{print $2}'`
+		bootnic=`ip link show|grep -B1 $BOOTIF|grep mtu|awk '{print $2}'|sed -e 's/:$//'`
 		sleep 0.1
 		if [ $gripeiter = 0 ]; then
 			echo "ERROR"

@@ -10,7 +10,7 @@ elif [ $reason = "BOUND" ]; then
 	fi
 	if [ ! -z "$new_host_name" ]; then
 		hostname $new_host_name
-		lldptool -T -i $interface -V 5 enableTx=yes
+		lldptool -T -i $interface -V 5 enableTx=yes 
 	fi
 	if [ ! -z "$new_domain_name" ]; then
 		echo search $new_domain_name >> /etc/resolv.conf
