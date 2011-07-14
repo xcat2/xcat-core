@@ -1,0 +1,31 @@
+#!/bin/dash
+if [ $reason = "PREINIT" -o $reason = "PREINIT6" ]; then
+	ip link set $interface up
+	while ! (ip link show $interface|grep LOWER_UP > /dev/null 2>&1); do
+		sleep 0.1
+	done
+elif [ $reason = "BOUND" ]; then
+	if [ ! -z "$new_ip_address" -a ! -z "$new_subnet_mask" ]; then
+		ip addr add dev $interface $new_ip_address/$new_subnet_mask
+	fi
+	if [ ! -z "$new_host_name" ]; then
+		hostname $new_host_name
+		lldptool -T -i $interface -V 5 enableTx=yes
+	fi
+	if [ ! -z "$new_domain_name" ]; then
+		echo search $new_domain_name >> /etc/resolv.conf
+	fi
+	for ns in $new_domain_servers; do
+		echo nameserver $ns >> /etc/resolv.conf
+	done
+	for ntp in $new_ntp_servers; do
+		echo server $ntp >> /etc/ntp.conf
+	done
+	for gw in $new_routers; do
+		ip route add default via $gw
+	done
+elif [ $reason = "BOUND6" ]; then
+	if [ ! -z "$new_ip6_address" ]; then 
+		ip addr add dev $interface $new_ip6_address/$new_ip6_prefixlen
+	fi
+fi
