@@ -153,6 +153,15 @@ my %globlehwtype = (
     frame => $::NODETYPE_FRAME,
     cec   => $::NODETYPE_CEC,
 );
+my %globalnodetype = (
+    fsp  => $::NODETYPE_PPC,
+    bpa  => $::NODETYPE_PPC,
+    cec  => $::NODETYPE_PPC,
+    frame=> $::NODETYPE_PPC,
+    hmc  => $::NODETYPE_PPC,
+    ivm  => $::NODETYPE_PPC,
+    lpar =>"$::NODETYPE_PPC,$::NODETYPE_OSI"
+);
 ##########################################################################
 # Command handler method from tables
 ##########################################################################
@@ -2902,7 +2911,7 @@ sub format_stanza {
             my $d = $data[$i++];
 
             if ( /^nodetype$/ ) {
-                $d = $type;
+                $d = $globalnodetype{$type};
             } elsif ( /^groups$/ ) {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
@@ -2999,7 +3008,7 @@ sub format_xml {
             my $d = $data[$i++];
 
             if ( /^nodetype$/ ) {
-                $d = $type;
+                $d = $globalnodetype{$type};
             } elsif ( /^groups$/ ) {
                 $d = "$type,all";
             } elsif ( /^mgt$/ ) {
