@@ -128,7 +128,7 @@ my %mgt = (
     lc(TYPE_RSA)   => "blade"
 );
 
-my @attribs    = qw(nodetype mtm serial side ip groups mgt id parent mac hidden otherinterfaces);
+my @attribs    = qw(nodetype mtm serial side ip groups mgt id parent mac hidden otherinterfaces hwtype);
 my $verbose    = 0;
 my %ip_addr    = ();
 my %slp_result = ();
@@ -144,6 +144,15 @@ my $enter_time = 0;
 my @filternodes;
 my %otherinterfacehash;
 my $TRACE = 0;
+my %globlehwtype = (
+    fsp   => $::NODETYPE_FSP,
+    bpa   => $::NODETYPE_BPA,
+    lpar  => $::NODETYPE_LPAR,
+    hmc   => $::NODETYPE_HMC,
+    ivm   => $::NODETYPE_IVM,
+    frame => $::NODETYPE_FRAME,
+    cec   => $::NODETYPE_CEC,
+);
 ##########################################################################
 # Command handler method from tables
 ##########################################################################
@@ -2932,6 +2941,8 @@ sub format_stanza {
                 }
             } elsif (/^otherinterfaces$/) {
                 $d = $otherinterfacehash{$name}{otherinterfaces};
+            } elsif (/^hwtype$/) {
+                $d = $globlehwtype{$type}
             }
             if ( !defined($d) ) {
                 next;
@@ -3027,6 +3038,8 @@ sub format_xml {
                 }
             } elsif (/^otherinterfaces$/) {
                 $d = $otherinterfacehash{$name}{otherinfterfaces};
+            } elsif (/^hwtype$/) {
+                $d = $globlehwtype{$type}
             }
             if ( !defined($d) ) {
                 next;
