@@ -509,7 +509,7 @@ sub mkhwconn
                 my $res = xCAT::PPCcli::mksysconn( $exp, $node_ip, $type, $passwd);
                 $Rc = shift @$res;
                 push @value, [$node_name, @$res[0], $Rc];
-                if ( !$Rc and !$opt->{s})
+                if ( !$Rc and !(exists $opt->{s}))
                 {
                     sethmcmgt( $node_name, $exp->[3]);
                 }
