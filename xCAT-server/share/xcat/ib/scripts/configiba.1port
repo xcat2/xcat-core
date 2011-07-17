@@ -1,227 +1,169 @@
-#!/usr/bin/perl
+#!/bin/sh
 # IBM(c) 2008 EPL license http://www.eclipse.org/legal/epl-v10.html
 
-# Sample xCAT post script for configuring secondary adatper based on eth0 
+# Sample xCAT post script for configuring secondary adatper based on eth0
+
 # settings and some conventions.  This scripts works for both diskfull installs # and diskless boots.
 
 # configiba.1port assume there is only port availabe per IB adapter.
 
-use Socket;
+PLTFRM=`uname`
 
-#Check the platform
-my $PLTFRM = `uname`;
-chomp $PLTFRM;
+if [ "$OSVER" == rhels5* ]
+then
+    ib_driver="rdma"
+else
+    ib_driver="openibd"
+fi
 
-my $OS_name;
-my $ib_driver;
-if ( $ENV{OSVER} && ($ENV{OSVER} =~ /rhe(\D+)(\d+)(\.\d+)?/)  ) {
-    if ( $2 > 5 ) {
-        $ib_driver = "rdma";
-    } else {
-        $ib_driver = "openibd";
-    }
-} else {
-    $ib_driver = "openibd";
-}
+HOST=`hostname -s`
 
-my $HOST = `hostname -s`;
-chomp $HOST;
-
-my @nums = (0..1);
-my @nics;
-foreach my $num ( @nums ) {
+for num in 0 1
+do
     # Take primary node name, add -ib$num and then reverse resolve to get what ip should be
-    my $nic = "ib$num";
-    my $hostname;
-
+    nic="ib$num"   
+    
     # Get hostname from system in case postscript environment is not ready
-    if ( $HOST ) {
-        $hostname = "$HOST-$nic";
-    } else {
-        $hostname = "$ENV{NODE}-$nic";
-    }
+    if [ $NODE ]
+    then
+        hostname="$NODE-$nic"
+    else
+        hostname="$HOST-$nic"
+    fi
 
-    my $packed_ip = gethostbyname($hostname);
-    if ( !$packed_ip ) { system("logger -t xcat 'configiba: cannot resolve $hostname.'"); next; }
-    my $ip = inet_ntoa($packed_ip);
-    #TODO: should contact xcatd on the service node to get the netmask and gateway from the networks table
-    my $netmask = "255.255.255.0";
-    my ($first, $second, $rest) = split(/\./, $ip);
-    my $gateway = "$first.$second.255.254";
+    ip=`ping -c 3 $hostname -I ib$num | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    if [ $ip ]
+    then
+        netmask="255.255.255.0"
+        first=`echo $ip | awk -F. '{print $1}'`
+        second=`echo $ip | awk -F. '{print $2}'`
+        gateway="$first.$second.255.254"
 
-    if ( $PLTFRM eq "Linux" ) {
-        # Issue openibd for Linux at boot time
-        if ( -f '/etc/redhat-release' )
-        {
-            $OS_name = "redhat";
-        }
-        elsif ( -f '/etc/SuSE-release' )
-        {
-            $OS_name = "suse";
-        }
-        else
-        {
-            print "Unsupported to config IB on this OS!\n";
-            exit;
-        }
-        if ( -f "/etc/sysctl.conf" )
-        {
-            updatefile("/etc/sysctl.conf", "net.ipv4.conf.$nic.arp_filter");
-            updatefile("/etc/sysctl.conf", "net.ipv4.conf.$nic.arp_ignore");
-            runcmd("echo 'net.ipv4.conf.$nic.arp_filter=1' >> /etc/sysctl.conf");
-            runcmd("echo 'net.ipv4.conf.$nic.arp_ignore=1' >> /etc/sysctl.conf");
-        }
+        if [ $PLTFRM == "Linux" ]
+        then
+            # Issue openibd for Linux at boot time
+            if [ -f /etc/redhat-release ]
+            then
+                OS_name="redhat"
+            elif [ -f /etc/SuSE-release ]
+            then
+                OS_name="suse"
+            else
+                echo "Unsupported to config IB on this OS!"
+                exit
+            fi
+            
+            if [ -f /etc/sysctl.conf ]
+            then
+                sed -i "/net.ipv4.conf.$nic.arp_filter=1/d" /etc/sysctl.conf
+                sed -i "/net.ipv4.conf.$nic.arp_ignore=1/d" /etc/sysctl.conf
+                echo "net.ipv4.conf.$nic.arp_filter=1" >> /etc/sysctl.conf
+                echo "net.ipv4.conf.$nic.arp_ignore=1" >> /etc/sysctl.conf
+            fi
 
-        # Write the info to the ifcfg file
-        my $dir;
-        if ( $OS_name eq 'suse')
-        {
-            $dir = "/etc/sysconfig/network";
-        }
-        elsif ( $OS_name eq 'redhat' )
-        {
-            $dir = "/etc/sysconfig/network-scripts";
-        }
-        if ( !open(FILE, ">$dir/ifcfg-$nic") ) { system("logger -t xcat 'configiba: cannot open $dir/ifcfg-$nic.'"); exit 1; }
-        print FILE "DEVICE=$nic\n";
-        print FILE "BOOTPROTO=static\n";
-        print FILE "IPADDR=$ip\n";
-        print FILE "NETMASK=$netmask\n";
-        print FILE "GATEWAY=$gateway\n";
-        print FILE "ONBOOT=yes\n" if ( $OS_name eq 'redhat');
-        print FILE "STARTMODE=auto\n" if ( $OS_name eq 'suse');
-        close FILE;
+            # Write the info to the ifcfg file
+            if [ $OS_name == 'suse' ]
+            then
+                dir="/etc/sysconfig/network"
+            else
+                dir="/etc/sysconfig/network-scripts"
+            fi
+            echo "DEVICE=$nic
+BOOTPROTO=static
+IPADDR=$ip
+NETMASK=$netmask
+GATEWAY=$gateway" > $dir/ifcfg-$nic
+            if [ $OS_name == 'redhat' ]
+            then
+                echo "ONBOOT=yes" >> $dir/ifcfg-$nic
+            else 
+                echo "STARTMODE=auto" >> $dir/ifcfg-$nic
+            fi
+        elif [ $PLTFRM == "AIX" ]
+        then
+            lsdev -C | grep icm | grep Available
+            if [ -n $? ]
+            then
+                mkdev -c management -s infiniband -t icm
+                if [ -n $? ]
+                then
+                    mkdev -l icm
+                    if [ -n $? ]
+                    then
+                        exit $?
+                    fi
+                fi
+            fi
 
-        push @nics, $nic;
-    } elsif ( $PLTFRM eq "AIX" ) {
-    #Check whether the icm is available
-        my $cmd = "lsdev -C | grep icm | grep Available";
-        `$cmd`;
-        if ($?) {
-            my $iba_cmd = "mkdev -c management -s infiniband -t icm";
-            runcmd($iba_cmd);
-            if ($?) {
-                my $iba_command = "mkdev -l icm";
-                runcmd($iba_command);
-                if ($?) { exit $?; }
-            }
-        }
-        #Configure the IB interfaces.  Customize the port num.
-        my $iba_num = $num;
-        my $ib_adapter = "iba$iba_num";
-        my $port = 1;
-        my $mkib_cmd = "mkiba -a $ip -i $nic -A $ib_adapter -p $port -P -1 -S up -m $netmask";
-        runcmd($mkib_cmd);
-        system("logger -t xcat 'configiba: successfully configured $nic.'");
-    }
-}
+            #Configure the IB interfaces.  Customize the port num.
+            iba_num=$num
+            ib_adapter="iba$iba_num"
+            port=1
+            mkiba -a $ip -i $nic -A $ib_adapter -p $port -P -1 -S up -m $netmask
+        fi
+    fi
+done
 
-if ( $PLTFRM eq "Linux" ) {
+# Bringup all the ib interfaces
+if [ $PLTFRM == "Linux" ]
+then
+    if [ -f "/etc/rdma/rdma.conf" ]
+    then
+        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/rdma/rdma.conf
+    elif [ -f "/etc/infiniband/openib.conf" ]
+    then
+        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/infiniband/openib.conf
+    fi
 
-    if ( -f "/etc/rdma/rdma.conf" )
-    {
-        updatefile("/etc/rdma/rdma.conf", "SDP_LOAD=yes", "SDP_LOAD=no");
-    } elsif ( -f "/etc/infiniband/openib.conf" )
-    {
-        updatefile("/etc/infiniband/openib.conf", "SDP_LOAD=yes", "SDP_LOAD=no");
-    }
+    if [ $OS_name == "suse" ]
+    then
+        sed -i "/options ib_ehca nr_ports/d" /etc/modprobe.conf
+        sed -i "/options ib_ehca lock_hcalls/d" /etc/modprobe.conf
+        echo 'options ib_ehca nr_ports=1' >> /etc/modprobe.conf
+        echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf 
+    fi
+    /sbin/chkconfig --level 2345 $ib_driver on
+    /sbin/service $ib_driver restart
+    sysctl -p
 
+    sleep 10
 
-    if ( $OS_name eq 'suse')
-    {
-        updatefile("/etc/modprobe.conf", "options ib_ehca nr_ports");
-        updatefile("/etc/modprobe.conf", "options ib_ehca lock_hcalls");
-        runcmd("echo 'options ib_ehca nr_ports=1' >> /etc/modprobe.conf");
-        runcmd("echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf");
-    }
+    for num in 0 1
+    do
+        sleep 5
+        ifup ib$num
 
-    my $openibd_cmd = "/sbin/chkconfig --level 2345 $ib_driver on";
-    runcmd($openibd_cmd);
-    my $openibd_start_cmd = "/sbin/service $ib_driver restart";
-    runcmd($openibd_start_cmd);
-
-    runcmd("sysctl -p");
-
-    sleep(20);
-    foreach my $nic ( @nics ) {
-        sleep(5);
-        runcmd("ifup $nic");
-        system("logger -t xcat 'configiba: successfully configured $nic.'");
-    }
-}
-
+    done
+fi
 
 #Configure the ml0 interface
-if ( $PLTFRM eq "AIX" ) {
-    my $hostname;
-    if ( $HOST ) {
-        $hostname = "$HOST-ml0";
-    } else {
-        $hostname = "$ENV{NODE}-ml0";
-    }
-    my $packed_ip = gethostbyname($hostname);
-    if ( !$packed_ip ) { system("logger -t xcat 'configiba: cannot resolve $hostname.'"); exit; }
-    my $ip = inet_ntoa($packed_ip);
-    my $netmask = "255.255.255.0";
+if [ $PLTFRM == "AIX" ]
+then
+    if [ $NODE ]
+    then
+        hostname="$NODE-ml0"
+    else
+        hostname="$HOST-ml0"
+    fi
 
     #Check whether the mlt0 is available
-    my $cmd = "lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null";
-    `$cmd`;
-    if ( $? ) {
-        system("logger -t xcat 'configiba: mlt0 interface is not available'");
-        exit;
-    }
+    lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null
+    if [ -n $? ]
+    then
+        exit
+    fi
 
-    my $chdev_cmd = "chdev -l ml0 -a state=detach 2>&1";
-    runcmd($chdev_cmd);
+    #Check whether the ml0 is available
+    lsdev -C | grep ml0 2>&1 >/dev/null
+    if [ -n $? ]
+    then
+        cfgmgr 2>&1 >/dev/null
+    fi
 
-    $chdev_cmd = "chdev -l ml0 -a netaddr=$ip -a netmask=$netmask -a state=up 2>&1";
-    runcmd($chdev_cmd);
+    ip=`ping -c 3 $hostname -I ml0 | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    netmask="255.255.255.0"
 
-    system("logger -t xcat 'configiba: configured ml0.'");
-}
+    chdev -l ml0 -a state=detach 2>&1
 
-
-exit 0;
-
-sub runcmd {
-    my $cmd = shift @_;
-    $cmd .= ' 2>&1';
-    my @output = `$cmd`;
-    my $rc = $? >> 8;
-    if ( $rc ) {
-        system("logger -t xcat 'configiba: command $cmd failed with rc $rc: " . join('',@output) . "'");
-        return $rc;
-    }
-}
-
-sub updatefile {
-    my $fname = shift;
-    my $old   = shift;
-    my $new   = shift;
-    unless ( open( HOSTS,"<$fname" )) {
-        return undef;
-    }
-    my @rawdata = <HOSTS>;
-    my @newdata = ();
-    close( HOSTS );
-    chomp @rawdata;
-
-    foreach my $line ( @rawdata ) {
-        if ( $line =~ /^(.*)$old(.*)$/ ) {
-            if ( $new ) {
-                push @newdata, "$1$new$2";
-            }
-        } else {
-            push @newdata, $line;
-        }
-    }
-    unless ( open( HOSTS,">$fname" )) {
-        return undef;
-    }
-    for my $line (@newdata)
-    {
-        print HOSTS "$line\n";
-    }
-    close( HOSTS );
-}
+    chdev -l ml0 -a netaddr=$ip -a netmask=$netmask -a state=up 2>&1
+fi
