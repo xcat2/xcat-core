@@ -1,3 +1,22 @@
+start:tabgrep_null
+description: tabgrep with no argument
+cmd:tabgrep
+check:output=~Usage
+end
+
+
+
+start:tabgrep_h
+description:tabgrep -h an d -? and --help
+cmd:tabgrep -h
+check:output=~Usage
+cmd:tabgrep -?
+check:output=~Usage
+cmd:tabgrep --help
+check:output=~Usage
+end
+
+
 start:tabgrep_node
 cmd:mkdef -t node testnode groups=all
 check:rc==0
@@ -5,4 +24,13 @@ cmd:tabgrep testnode
 check:rc==0
 check:output=~nodelist
 cmd:rmdef -t node testnode
+end
+
+
+start:tabgrep_err
+description:tabgrep with error noderange
+cmd:rmdef -t node testnode
+cmd:tabgrep testnode
+check:rc!=0
+check:output=~Invalid nodes and/or groups in noderange: testnode
 end
