@@ -78,7 +78,7 @@ sub mkhwconn_parse_args
         return( usage('Flags -t and -p cannot be used together.'));
     }
 
-    if ( exists $opt{P} and ! exists $opt{p})
+    if ( (exists $opt{P} or grep(/^(-P)$/, @$args)) and !exists $opt{p})
     {
         return( usage('Flags -P can only be used when flag -p is specified.'));
     }
