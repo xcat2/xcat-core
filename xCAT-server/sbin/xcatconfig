@@ -859,12 +859,26 @@ sub initDB
         $master = "NORESOLUTION";
     }
     # get forwarders which are the nameserver entries in /etc/resolv.conf
-    my @names =
-      xCAT::Utils->runcmd(
-              "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'",
-              0);
-    my $forwarders     = join(',', @names);
+    # don't use if the address is this machine (Management Node)
+    my $forwarders;
+    # find out the names for the Management Node
+    my @MNnodeinfo   = xCAT::Utils->determinehostname;
+    my $MNnodename   = pop @MNnodeinfo;                  # hostname
+    my @MNnodeipaddr = @MNnodeinfo;                      # ipaddresses
 
+    my @names; 
+    my @tmpnames =
+    xCAT::Utils->runcmd(
+       "/bin/grep ^[^#]*nameserver /etc/resolv.conf | awk '{print \$2}'", -1);
+    foreach my $ip (@tmpnames) {
+      if (!grep(/$ip/, @MNnodeipaddr))
+      {     # if not the MN
+         push @names,$ip;  # add it as a forwarder
+      }
+    }
+    if (@names) {
+        $forwarders     = join(',', @names);
+    }
  
     # for policy table
     # get hostname from the /etc/xcat/cert/server-cert.pem
