@@ -16,7 +16,7 @@ B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-s> [I<hmcnode> B<--port> I<por
 
 B<mkhwconn> [B<-V>| B<--verbose>] I<noderange> B<-p> I<hmc> [B<-P> I<passwd>] [B<--port> I<port_value>]
 
-=head2 PPC (without HMC, using Direct FSP Management) specific:
+=head2 PPC (using Direct FSP Management) specific:
 
 B<mkhwconn> I<noderange> B<-t> [B<-T tooltype>] [B<--port> I<port_value>]
 
@@ -39,7 +39,7 @@ In any case, before running this command, the FSP and BPA nodes need be defined 
 
 Note: If a CEC (FSP) belongs to a frame, which has a BPA installed, this CEC should not be assigned to an HMC individually. Instead, the whole frame (BPA) should be assigned to the HMC.
 
-For PPC (without HMC, using Direct FSP Management) specific:
+For PPC (using Direct FSP Management) specific:
 
 It is used to set up connections for FSP and BPA node to Hardware Server on management node (or service node ). It only could be done according to the node definition in xCAT DB. And this command will try to read the user/password from the ppcdirect table firstly. If fails, then read them from passwd table. Commonly , the username is B<HMC>. If using the B<ppcdirect> table,  each FSP/BPA and user/password should be  stored in B<ppcdirect> table. If using the B<passwd> table, the key should be "B<fsp>" or "B<bpa>", and the related user/password are stored in B<passwd> table.
 
@@ -111,8 +111,14 @@ To setup the connection for BPA nodes in node group frame_grp1 to HMC node hmc1,
 To setup the connections for all FSP nodes in node group fsp to hardware server, and the tooltype value is lpar:
 
  mkhwconn fsp -t -T lpar
- 
+
 =item 4.
+
+To setup the connections for all cecs nodes in node group cec to hardware server, and the tooltype value is lpar, and the port value is 1:
+
+ mkhwconn cec -t -T lpar --port 1 
+
+=item 5.
 
 To setup the connection between the frame and it's SFP node. This command will also set the connections between the CECs within this frame and their SFP node. User need to define HMC_name in the database in advance, but no need to set the sfp attribute for these node, xCAT will set the HMC_name as ppc.sfp for these nodes. The CECs within this frame should have the same sfp attribute as the frame.
 
