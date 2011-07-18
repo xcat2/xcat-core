@@ -353,7 +353,7 @@ unless ($onlyinitrd) {
            my @npa = ();
 	   my @npa_group = ();
            foreach my $p (@$pa) {
-             if ($p =~ /^kernel$/ && $kernelver) {
+             if ($p =~ /^kernel/ && $kernelver) {
                # get all files in $srcdir and $kerneldir
                my @alldirs = ("$srcdir", "$kerneldir");
                my @allrpms = ();
@@ -361,7 +361,14 @@ unless ($onlyinitrd) {
                  my @files = `find $dir -name *.rpm`;
                  push @allrpms, @files;
                }
-               my @kernelpkgs = ("kernel-default","kernel-default-base");
+               my @kernelpkgs = ();
+               if ($p =~ /^kernel$/) {
+                 @kernelpkgs = ("kernel-default","kernel-default-base");
+               } elsif ($p =~ /^kernel-ppc64$/) {
+                 @kernelpkgs = ($p, $p."-base");
+               } else {
+                 @kernelpkgs = ($p);
+               }
                foreach my $kern (@kernelpkgs) {
                  my @rpm = grep /$kern-$krpmver/, @allrpms;
                  if (!@rpm) {
