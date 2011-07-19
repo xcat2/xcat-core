@@ -229,12 +229,14 @@ unless ($onlyinitrd) {
        if(-e "$rootimg_dir/etc/zypp/repos.d/$osver.repo") {
 	   system("rm -rf $rootimg_dir/etc/zypp/repos.d/$osver.repo");
        }
-       system("zypper -R $rootimg_dir --non-interactive ar file:$srcdir $osver");
+       system("zypper -R $rootimg_dir --gpg-auto-import-keys  ar file:$srcdir $osver");
        if(-e "$rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo") {
            system("rm -rf $rootimg_dir/etc/zypp/repos.d/${osver}sdk.repo");
        }
        my $srcdir_sdk  = "$installroot/$osver/$arch/sdk1";
-       system("zypper -R $rootimg_dir --non-interactive ar file:$srcdir_sdk ${osver}sdk");
+       if ( -e "$srcdir_sdk") {
+           system("zypper -R $rootimg_dir  --gpg-auto-import-keys ar file:$srcdir_sdk ${osver}sdk");
+       }
 
    }else {
 	   system("zypper -R $rootimg_dir --non-interactive sa file:$srcdir");
@@ -250,7 +252,7 @@ unless ($onlyinitrd) {
          if (-e "$rootimg_dir/etc/zypp/repos.d/$kernelver.repo") {
             system("rm -rf $rootimg_dir/etc/zypp/repos.d/$kernelver.repo");
          }
-         system("zypper -R $rootimg_dir --non-interactive ar file:$kerneldir $kernelver");
+         system("zypper -R $rootimg_dir --gpg-auto-import-keys ar file:$kerneldir $kernelver");
       } else {
          system("zypper -R $rootimg_dir --non-interactive sa file:$kerneldir");
       }
@@ -276,13 +278,13 @@ unless ($onlyinitrd) {
        my $whole_path="$srcdir_otherpkgs/$_";
        if (-r "$srcdir_otherpkgs/$_/repodata/repomd.xml") {
 	   if($osver_host == 11) { 
-	       system("zypper -R $rootimg_dir --non-interactive ar file:$srcdir_otherpkgs/$_  otherpkg$index");
+	       system("zypper -R $rootimg_dir --gpg-auto-import-keys ar file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
 	       system("zypper -R $rootimg_dir --non-interactive sa file:$srcdir_otherpkgs/$_");
 	   }
        } else {
 	   if($osver_host == 11) { 
-	       system("zypper -R $rootimg_dir --non-interactive ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
+	       system("zypper -R $rootimg_dir --gpg-auto-import-keys ar -t Plaindir file:$srcdir_otherpkgs/$_  otherpkg$index");
 	   }else {
 	       system("zypper -R $rootimg_dir --non-interactive sa -t Plaindir file:$srcdir_otherpkgs/$_");
 	   }
@@ -310,12 +312,12 @@ unless ($onlyinitrd) {
        chomp;
        next if /^\s*#/;
        my ($repotype,$repourl,$repoalias) = split m/\|/;
-       system("zypper -R $rootimg_dir --non-interactive ar $repourl $repoalias");
+       system("zypper -R $rootimg_dir --gpg-auto-import-keys ar $repourl $repoalias");
      }
    }
 
    # Refresh the zypper cache in case there is still old data out there
-   system("zypper -R $rootimg_dir --non-interactive refresh");
+   system("zypper -R $rootimg_dir  --gpg-auto-import-keys refresh");
 
    #my $yumcmd = "yum -y -c /tmp/genimage.$$.yum.conf --installroot=$rootimg_dir --disablerepo=* ";
    #$yumcmd .= "install ";
