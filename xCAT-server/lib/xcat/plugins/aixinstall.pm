@@ -1712,6 +1712,7 @@ sub chkosimage
 		my @bndlist = split(/,/, $imagedef{$image_name}{installp_bundle});
 		foreach my $bnd (@bndlist)
 		{
+			$bnd =~ s/\s*//g;    # remove blanks
 			my ($rc, $list, $loc) = xCAT::InstUtils->readBNDfile($callback, $bnd, $nimprime, $subreq);
 			foreach my $pkg (@$list)
 			{
