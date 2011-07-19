@@ -261,7 +261,7 @@ sub loginstate {
     if (!$res->is_success()) {
         return ([RC_ERROR, $res->status_line]);
     }
-    if ($res->content =~ m#[\d\D]+Status[\d\D]+$log_name</td><td[^>]?>(\w+)</td>#) {
+    if ($res->content =~ m#[\d\D]+Status[\d\D]+$log_name</td><td[^\>]*>(\w+)</td>#) {
         my $out = sprintf("%9s: %8s", $log_name, $1);
         return ( [SUCCESS, $out]);
     } else {
