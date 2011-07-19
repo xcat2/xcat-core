@@ -16,6 +16,29 @@ else
     ib_driver="openibd"
 fi
 
+if [ $PLTFRM == "Linux" ]
+then
+    if [ -f "/etc/rdma/rdma.conf" ]
+    then
+        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/rdma/rdma.conf
+    elif [ -f "/etc/infiniband/openib.conf" ]
+    then
+        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/infiniband/openib.conf
+    fi
+
+    if [ -f "/etc/modprobe.conf" ]
+    then
+        sed -i "/options ib_ehca nr_ports=1/d" /etc/modprobe.conf
+        sed -i "/options ib_ehca lock_hcalls/d" /etc/modprobe.conf
+        echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf
+    fi
+    /sbin/chkconfig --level 2345 $ib_driver on
+    /sbin/service $ib_driver restart
+    sysctl -p
+
+fi
+
+
 HOST=`hostname -s`
 
 for num in 0 1
@@ -31,7 +54,13 @@ do
         hostname="$HOST-$nic"
     fi
 
-    ip=`ping -c 3 $hostname -I ib$num | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    if [ $PLTFRM == "Linux" ]
+    then
+        ip=`ping -c 3 -I ib$num $hostname | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    else
+        ip=`ping -c 3 $hostname | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    fi
+
     if [ $ip ]
     then
         netmask="255.255.255.0"
@@ -82,13 +111,13 @@ GATEWAY=$gateway" > $dir/ifcfg-$nic
         elif [ $PLTFRM == "AIX" ]
         then
             lsdev -C | grep icm | grep Available
-            if [ -n $? ]
+            if [ $? -ne 0 ]
             then
                 mkdev -c management -s infiniband -t icm
-                if [ -n $? ]
+                if [ $? -ne 0 ]
                 then
                     mkdev -l icm
-                    if [ -n $? ]
+                    if [ $? -ne 0 ]
                     then
                         exit $?
                     fi
@@ -113,25 +142,8 @@ done
 # Bringup all the ib interfaces
 if [ $PLTFRM == "Linux" ]
 then
-    if [ -f "/etc/rdma/rdma.conf" ]
-    then
-        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/rdma/rdma.conf
-    elif [ -f "/etc/infiniband/openib.conf" ]
-    then
-        sed -i "s/SDP_LOAD=yes/SDP_LOAD=no/g" /etc/infiniband/openib.conf
-    fi
 
-    if [ -f "/etc/modprobe.conf" ]
-    then
-        sed -i "/options ib_ehca nr_ports=1/d" /etc/modprobe.conf
-        sed -i "/options ib_ehca lock_hcalls/d" /etc/modprobe.conf
-        echo 'options ib_ehca lock_hcalls=0' >> /etc/modprobe.conf 
-    fi
-    /sbin/chkconfig --level 2345 $ib_driver on
     /sbin/service $ib_driver restart
-    sysctl -p
-
-    sleep 10
 
     for num in 0 1
     do
@@ -154,22 +166,25 @@ then
 
     #Check whether the mlt0 is available
     lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null
-    if [ -n $? ]
+    if [ $? -ne 0 ]
     then
         exit
     fi
 
     #Check whether the ml0 is available
     lsdev -C | grep ml0 2>&1 >/dev/null
-    if [ -n $? ]
+    if [ $? -ne 0 ]
     then
         cfgmgr 2>&1 >/dev/null
     fi
 
-    ip=`ping -c 3 $hostname -I ml0 | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    ip=`ping -c 3 $hostname | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
     netmask="255.255.255.0"
 
-    chdev -l ml0 -a state=detach 2>&1
+    if [ $ip ]
+    then
+        chdev -l ml0 -a state=detach 2>&1
 
-    chdev -l ml0 -a netaddr=$ip -a netmask=$netmask -a state=up 2>&1
+        chdev -l ml0 -a netaddr=$ip -a netmask=$netmask -a state=up 2>&1
+    fi
 fi

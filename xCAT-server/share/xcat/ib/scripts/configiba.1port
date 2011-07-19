@@ -31,7 +31,13 @@ do
         hostname="$HOST-$nic"
     fi
 
-    ip=`ping -c 3 $hostname -I ib$num | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    if [ $PLTFRM == "Linux" ]
+    then
+        ip=`ping -c 3 -I ib$num $hostname | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    else
+        ip=`ping -c 3 $hostname | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    fi
+
     if [ $ip ]
     then
         netmask="255.255.255.0"
@@ -82,13 +88,13 @@ GATEWAY=$gateway" > $dir/ifcfg-$nic
         elif [ $PLTFRM == "AIX" ]
         then
             lsdev -C | grep icm | grep Available
-            if [ -n $? ]
+            if [ $? -ne 0 ]
             then
                 mkdev -c management -s infiniband -t icm
-                if [ -n $? ]
+                if [ $? -ne 0 ]
                 then
                     mkdev -l icm
-                    if [ -n $? ]
+                    if [ $? -ne 0 ]
                     then
                         exit $?
                     fi
@@ -148,22 +154,25 @@ then
 
     #Check whether the mlt0 is available
     lsdev -C | grep mlt0 | grep Available 2>&1 >/dev/null
-    if [ -n $? ]
+    if [ $? -ne 0 ]
     then
         exit
     fi
 
     #Check whether the ml0 is available
     lsdev -C | grep ml0 2>&1 >/dev/null
-    if [ -n $? ]
+    if [ $? -ne 0 ]
     then
         cfgmgr 2>&1 >/dev/null
     fi
 
-    ip=`ping -c 3 $hostname -I ml0 | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
+    ip=`ping -c 3 $hostname | grep "data" | sed 's/.* (\([0-9.]*\)).*/\1/' | uniq 2>&1`
     netmask="255.255.255.0"
 
-    chdev -l ml0 -a state=detach 2>&1
+    if [ $ip ]
+    then
+        chdev -l ml0 -a state=detach 2>&1
 
-    chdev -l ml0 -a netaddr=$ip -a netmask=$netmask -a state=up 2>&1
+        chdev -l ml0 -a netaddr=$ip -a netmask=$netmask -a state=up 2>&1
+    fi
 fi
