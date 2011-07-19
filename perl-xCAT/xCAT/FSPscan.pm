@@ -27,7 +27,7 @@ my @header = (
     ["side",          "%-8s" ],
     ["address",       "%-20s\n" ]);
 
-my @attribs = qw(nodetype hwtype node id mtm serial side hcp pprofile parent groups mgt cons);
+my @attribs = qw(nodetype node id mtm serial side hcp pprofile parent groups mgt cons hwtype);
 my %globalnodetype = (
     fsp  => $::NODETYPE_PPC,
     bpa  => $::NODETYPE_PPC,
@@ -173,7 +173,7 @@ sub enumerate {
                 $side="";
             }
             push @values, join( ",",
-             $$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $ips);
+             $$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $ips, $$d[4]);
          # $$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
             # "fsp",$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
             #"fsp",$fsp,$cageid,$model,$serial,$side,$server,$prof,$fname,$ips );
@@ -211,7 +211,7 @@ sub enumerate {
                  # Save LPAR information
                  #####################################
                  push @values, join( ",",
-                    "lpar",$name,$lparid,$model,$serial,$port,$server,$prof,$fsp,$ips );
+                    "lpar",$name,$lparid,$model,$serial,$port,$server,$prof,$fsp,$ips,"lpar" );
 		 
            	 } 
 
