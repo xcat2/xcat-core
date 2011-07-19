@@ -141,7 +141,7 @@ sub connect {
     ##################################
     my $hosttab  = xCAT::Table->new( 'hosts' );
     if ( $hosttab) {
-        my $hostshash = $hosttab->getNodeAttribs( $server, [qw(otherinterfaces)]);
+        my $hostshash = $hosttab->getNodeAttribs( $server, [qw(ip otherinterfaces)]);
         if ( $hostshash ) {
             $server = $hostshash->{ip};
         }
@@ -262,6 +262,7 @@ sub loginstate {
         return ([RC_ERROR, $res->status_line]);
     }
     if ($res->content =~ m#$log_name</td><td>(\w+)</td>#) {
+    if ($res->content =~ m#[\d\D]+Status[\d\D]+$log_name</td><td[^>]+>(\w+)</td>#) {
         my $out = sprintf("%9s: %8s", $log_name, $1);
         return ( [SUCCESS, $out]);
     } else {
