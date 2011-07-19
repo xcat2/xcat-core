@@ -4,5 +4,5 @@ NEWROOT=$3
 XCATMASTER=$XCAT
 while :
 do
- /bin/dash
+ /bin/sh
 done

@@ -4,7 +4,7 @@ minixcatd.awk &
 echo "Beginning node discovery process"
 NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
 for nic in $NICSTOBRINGUP; do
-	dhclient $nic &
+	dhclient -pf /var/run/dhclient.$nic.pid $nic &
 	#no need to go out of our way for superfluous ipv6 nics
 done
 waitforlink=100

@@ -1,4 +1,5 @@
-#!/bin/dash
+#!/bin/sh
+PATH=/bin:/sbin:/usr/bin:/usr/sbin
 if [ $reason = "PREINIT" -o $reason = "PREINIT6" ]; then
 	ip link set $interface up
 	while ! (ip link show $interface|grep LOWER_UP > /dev/null 2>&1); do
@@ -19,13 +20,18 @@ elif [ $reason = "BOUND" ]; then
 		echo nameserver $ns >> /etc/resolv.conf
 	done
 	for ntp in $new_ntp_servers; do
-		echo server $ntp >> /etc/ntp.conf
+		echo server $ntp iburst >> /etc/ntp.conf
 	done
 	for gw in $new_routers; do
 		ip route add default via $gw
 	done
+	if [ ! -z "$new_tcode" -a -r "/usr/share/zoneinfo/posix/$new_tcode" ]; then
+		cp "/usr/share/zoneinfo/posix/$new_tcode" /etc/localtime
+		rm -rf /usr/share/zoneinfo #free up ramdisk
+	fi
 elif [ $reason = "BOUND6" ]; then
 	if [ ! -z "$new_ip6_address" ]; then 
 		ip addr add dev $interface $new_ip6_address/$new_ip6_prefixlen
 	fi
 fi
+exit 0

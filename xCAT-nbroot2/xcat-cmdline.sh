@@ -6,7 +6,9 @@ echo '[ -e $NEWROOT/proc ]' > /initqueue-finished/xcatroot.sh
 udevd --daemon
 udevadm trigger
 mkdir -p /var/lib/dhclient/
+mkdir -p /var/log
 ip link set lo up
+echo '127.0.0.1 localhost' >> /etc/hosts
 if [ ! -z "$BOOTIF" ]; then
 	BOOTIF=`echo $BOOTIF|sed -e s/01-// -e s/-/:/g`
 	echo -n "Waiting for device with address $BOOTIF to appear.."
@@ -36,7 +38,7 @@ if [ -r /sys/devices/virtual/dmi/id/product_uuid ]; then
 	duid=$duid'";'
 	echo $duid > /var/lib/dhclient/dhclient6.leases
 fi
-#/bin/dash
+#/bin/sh
 mkdir -p /etc/ssh
 mkdir -p /var/empty/sshd
 echo root:x:0:0::/:/bin/sh >> /etc/passwd
@@ -45,8 +47,8 @@ ssh-keygen -q -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
 ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
 echo 'Protocol 2' >> /etc/ssh/sshd_config
 /usr/sbin/sshd
-dhclient $bootnic &
-dhclient -6 $bootnic -lf /var/lib/dhclient/dhclient6.leases &
+dhclient -pf /var/run/dhclient.$bootnic.pid $bootnic &
+dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
 mkdir -p /etc/xcat
 mkdir -p /etc/pki/tls
 touch /etc/pki/tls/openssl.cnf
@@ -86,7 +88,14 @@ while ! ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v
 done
 echo -n "Acquired IPv4 address "
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
+ntpd -g -x
+(while ! ntpq -c "rv 0 state"|grep 'state=4' > /dev/null; do sleep 1; done; hwclock --systohc) &
+modprobe cdc_ether 
+modprobe ipmi_si
+modprobe ipmi_devintf
+ip link set usb0 up
+ip addr add dev usb0 169.254.95.120/16
 if [ "$destiny" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
 	/bin/dodiscovery
 fi
-/bin/dash
+/bin/sh
