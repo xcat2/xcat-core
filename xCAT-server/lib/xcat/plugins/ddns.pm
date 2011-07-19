@@ -517,6 +517,8 @@ sub get_dbdir {
     } elsif (-d "/var/named") {
         return "/var/named/";
     } elsif (-d "/var/lib/named") {
+        # Temp fix for bugzilla 73119
+        chown(scalar(getpwnam('root')),scalar(getgrnam('named')),"/var/lib/named");
         return "/var/lib/named/";
     } else {
         mkpath "/var/named/";
