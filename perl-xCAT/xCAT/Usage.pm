@@ -46,8 +46,8 @@ my %usage = (
       rvitals [-h|--help|-v|--version]
   FSP/LPAR (with HMC) specific:
       rvitals noderange {temp|voltage|lcds|all}
-  FSP/LPAR (using Direct FSP Management)specific:
-      rvitals noderange {lcds|rackenv|all}
+  CEC/LPAR/Frame (using Direct FSP Management)specific:
+      rvitals noderange {rackenv|lcds|all}
   MPA specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|summary|all}
   Blade specific:
