@@ -188,6 +188,7 @@ my %bootnumbers = (
   'hd4' => 10,
   'harddisk4' => 10,
   'usbflash' => 11,
+  'hypervisor' => 12,
   'flash' => 11,
   'uefi' => 13,
   'legacy' => 14,
