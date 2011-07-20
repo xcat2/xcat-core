@@ -283,6 +283,9 @@ sub process_request {
             }
             my %names = ();
             my $node = $canonical;
+
+            xCAT::SvrUtils::sendmsg(":Handling $node in /etc/hosts.", $callback);
+            
             unless ($canonical =~ /$domain/) {
                 $canonical.=$domain;
             }
@@ -785,6 +788,19 @@ sub update_namedconf {
         #$zfilename =~ s/\..*//;
         push @newnamed,"\t};\n","\tfile \"db.$zfilename\";\n","};\n\n";
     }
+
+    # For AIX, add a hint zone
+    if (xCAT::Utils->isAIX())
+    {
+        unless (grep(/hint/, @newnamed))
+        {
+            push @newnamed,"zone \"\.\" in {\n","\ttype hint;\n","\tfile \"db\.cache\";\n","};\n\n";
+            # Toutch the stub zone file
+            system("/usr/bin/touch $ctx->{dbdir}.'/db.cache'");
+            $ctx->{restartneeded}=1;
+        }
+    }
+        
     my $newnameconf;
     open($newnameconf,">>",$namedlocation);
     flock($newnameconf,LOCK_EX);
