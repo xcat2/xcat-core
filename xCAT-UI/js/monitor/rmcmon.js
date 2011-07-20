@@ -6,15 +6,15 @@ var globalCondition = '';
 var globalResponse = new Object();
 
 function loadRmcMon() {
-    // find the rmcmon tab
+    //find the rmcmon tab
     var rmcMonTab = $('#rmcmon');
 
-    // add the stauts bar first. id = 'rmcMonStatus'
+    //add the stauts bar first. id = 'rmcMonStatus'
     var rmcStatusBar = createStatusBar('rmcMonStatus');
     rmcStatusBar.find('div').append(createLoader());
     rmcMonTab.append(rmcStatusBar);
 
-    // add the configure button.
+    //add the configure button.
     var configButton = createButton('Configure');
     configButton.hide();
     configButton.click(function() {
@@ -27,18 +27,18 @@ function loadRmcMon() {
     });
     rmcMonTab.append(configButton);
 
-    // add configure div
+    //add configure div
     rmcMonTab.append("<div id='rmcMonConfig'></div>");
     $('#rmcMonConfig').hide();
 
-    // load the configure div's content
+    //load the configure div's content
     loadRmcMonConfigure();
 
-    // add the content of the rmcmon, id = 'rmcMonTab'
+    //add the content of the rmcmon, id = 'rmcMonTab'
     rmcMonTab.append("<div id='rmcMonShow'><div id='rmcmonSummary'></div><div id='rmcmonDetail'></div><div id='nodeDetail'></div></div>");
     $('#nodeDetail').hide();
 
-    // check the software work status by platform(linux and aix)
+    //check the software work status by platform(linux and aix)
     $.ajax( {
         url : 'lib/systemcmd.php',
         dataType : 'json',
@@ -51,11 +51,11 @@ function loadRmcMon() {
 }
 
 function loadRmcMonConfigure(){
-	// get the configure div and clean its content.
+	//get the configure div and clean its content.
 	var rmcmonCfgDiv = $('#rmcMonConfig');
 	rmcmonCfgDiv.empty();
 	
-	// add the start button
+	//add the start button
 	var startButton = createButton('Start');
 	rmcmonCfgDiv.append(startButton);
 	startButton.click(function(){
@@ -76,7 +76,7 @@ function loadRmcMonConfigure(){
 		});
 	});
 	
-	// add the stop button
+	//add the stop button
 	var stopButton = createButton('Stop');
 	rmcmonCfgDiv.append(stopButton);
 	stopButton.click(function(){
@@ -106,7 +106,7 @@ function loadRmcMonConfigure(){
 }
 
 function rsctRpmCheck(data){
-	// linux had to check the rscp first
+	//linux had to check the rscp first
 	if ('aix' != data.rsp){
 		$.ajax( {
 			url : 'lib/systemcmd.php',
@@ -144,21 +144,21 @@ function xcatrmcRpmCheck(){
 			var softInstallStatus = data.rsp.split(/\n/);
 			var needHelp = false;
 			$('#rmcMonStatus div').empty();
-			// check the xcat-rmc
+			//check the xcat-rmc
 			if (-1 != softInstallStatus[0].indexOf("not")){
 				needHelp = true;
 				$('#rmcMonStatus div').append(
 				'Please install the <a href="http://xcat.sourceforge.net/#download" target="install_window">xCAT-rmc</a> first.<br/>');
 			}
 			
-			// check the rrdtool
+			//check the rrdtool
 			if (-1 != softInstallStatus[1].indexOf("not")){
 				needHelp = true;
 				$('#rmcMonStatus div').append(
 					'Please install the <a href="http://oss.oetiker.ch/rrdtool/download.en.html" target="install_window">RRD-tool</a> first.<br/>');
 			}
 			
-			// add help info or load the rmc show
+			//add help info or load the rmc show
 			if (needHelp){
 				$('#rmcMonStatus div').append(
 				'You can find more support form <a href="http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/xCAT-client/share/doc/xCAT2-Monitoring.pdf" target="pdf_window">xCAT2-Monitoring.pdf</a>');
@@ -201,11 +201,12 @@ function removeStatusBar(){
     
     $('#rmcmonDetail [title]').tooltip({position:['center','right']});
 }
+
 function loadRmcMonShow(){
 	$('#rmcMonStatus div').empty().append("Getting Summary Data.");
 	$('#rmcMonStatus div').append(createLoader());
 	
-	// load the rmc status summary
+	//load the rmc status summary
 	$.ajax({
 		url : 'lib/cmd.php',
 		dataType : 'json',
@@ -234,7 +235,7 @@ function showRmcSummary(returnData) {
 
     //update the rmc status area
     $('#rmcMonStatus div').empty().append("Getting Nodes' Data").append(createLoader());
-    // load each nodes' status
+    //load each nodes' status
     $.ajax( {
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -250,8 +251,8 @@ function showRmcSummary(returnData) {
         }
     });
 
-    // create the timestamp, the flot only use the UTC time, so had to change
-    // the value, to show the right time
+    //create the timestamp, the flot only use the UTC time, so had to change
+    //the value, to show the right time
     var tempDate = new Date();
     var tempOffset = tempDate.getTimezoneOffset();
     var tempTime = tempDate.getTime() - 3600000;
@@ -260,7 +261,7 @@ function showRmcSummary(returnData) {
         globalTimeStamp.push(tempDate.getTime());
     }
 
-    // show the summary data
+    //show the summary data
     $('#rmcmonSummary').empty().append('<h3>Overview</h3><hr />');
     $('#rmcmonSummary').append(summaryTable);
 
@@ -497,9 +498,9 @@ function showNode(nodeName) {
  * 
  */
 function loadRmcEvent(){
-	// find the rmcevent tab
+	//find the rmcevent tab
 	
-	// add the stauts bar first. id = 'rmcMonStatus'
+	//add the stauts bar first. id = 'rmcMonStatus'
 	var rmcStatusBar = createStatusBar('rmcEventStatus');
 	rmcStatusBar.find('div').append(createLoader());
 	$('#rmcevent').append(rmcStatusBar);
@@ -558,7 +559,7 @@ function getConditions(){
  */
 function getResponse(){
 	var tempFlag = false;
-	// get all response first
+	//get all response first
 	for (var i in globalResponse){
 		tempFlag = true; 
 		break;
@@ -605,10 +606,10 @@ function showEventLog(data){
 	var eventDiv = $('#rmcEventDiv');
 	eventDiv.empty();
 	
-	// add the configure button
+	//add the configure button
 	loadRmcEventConfig();
 	
-	// get conditions and responses, save in the global
+	//get conditions and responses, save in the global
 	getConditions();
 	getResponse();
 	
@@ -629,7 +630,7 @@ function showEventLog(data){
 		'iDisplayLength' :10
 	});
 	
-	// unsort on the content column
+	//unsort on the content column
 	$('#lsEventTable thead tr th').eq(2).unbind('click');
 }
 
@@ -676,7 +677,7 @@ function mkCondRespDia(){
 	var diaDiv = $('<div title="Configure Association" id="mkAssociation" class="tab"></div>');
 	var mkAssociationTable = '<center><table><thead><tr><th>Condition Name</th><th>Response Name</th></tr></thead>';
 	mkAssociationTable += '<tbody><tr><td id="mkAssCond">';
-	// add the conditions into fieldset
+	//add the conditions into fieldset
 	if ('' == globalCondition){
 		mkAssociationTable += 'Getting predefined conditions, open this dislogue later.';
 	}
@@ -687,7 +688,7 @@ function mkCondRespDia(){
 	mkAssociationTable += '</td><td id="mkAssResp">Plase select condition first.</td></tr></tbody></table></center>';
 	diaDiv.append(mkAssociationTable);
 	diaDiv.append('<div id="selectedResp" style="display: none;" ><div>');
-	// change the response field when click the condition
+	//change the response field when click the condition
 	diaDiv.find('input:radio').bind('click', function(){
 		diaDiv.find('#mkAssResp').empty().append('Getting response').append(createLoader());
 		$.ajax({
@@ -745,7 +746,8 @@ function mkCondRespDia(){
 				var oldResp = new Object();
 				var oldString = '';
 				var newString = '';
-				// get the old seelected responses
+				
+				//get the old seelected responses
 				var conditionName = $(this).find('#mkAssCond :checked').attr('value');
 				if (!conditionName){
 					return;
@@ -758,7 +760,8 @@ function mkCondRespDia(){
 				for (var i in tempArray){
 					oldResp[tempArray[i]] = 1;
 				}
-				// get the new selected responses
+				
+				//get the new selected responses
 				$(this).find('#mkAssResp input:checked').each(function(){
 					var respName = $(this).attr('value');
 					newResp[respName] = 1;
@@ -771,7 +774,7 @@ function mkCondRespDia(){
 					}
 				}
 				
-				// add the response which are delete.
+				//add the response which are delete.
 				for (var i in oldResp){
 					oldString += ',"' + i + '"';
 				}
@@ -779,7 +782,7 @@ function mkCondRespDia(){
 					oldString = oldString.substr(1);
 				}
 				
-				// add the response which are new add
+				//add the response which are new add
 				for (var i in newResp){
 					newString += ',"' + i +'"';
 				}
@@ -823,7 +826,7 @@ function chCondScopeDia(){
 	var tableContent = '<center><table id="changeScopeTable" ><thead><tr><th>Condition Name</th><th>Group Name</th></tr></thead>';
 	
 	tableContent += '<tbody><tr><td id="changePreCond">';
-	// add the conditions into fieldset
+	//add the conditions into fieldset
 	if ('' == globalCondition){
 		tableContent += 'Getting predefined conditions, open this dislogue later.';
 	}
@@ -832,7 +835,7 @@ function chCondScopeDia(){
 	}
 	tableContent += '</td><td id="changeGroup">';
 	
-	// add the groups into table
+	//add the groups into table
 	var groups = $.cookie('groups').split(',');
 	for (var i in groups){
 		tableContent += '<input type="checkbox" value="' + groups[i] + '">' + groups[i] + '<br/>';
@@ -840,9 +843,9 @@ function chCondScopeDia(){
 	
 	tableContent += '</td></tr></tbody></table></center>';
 	diaDiv.append(tableContent);
-	// fieldset to show status
+	//fieldset to show status
 	diaDiv.append('<fieldset id="changeStatus"></fieldset>');
-	// create the dislogue
+	//create the dislogue
 	diaDiv.dialog({
 		modal: true,
         width: 500,

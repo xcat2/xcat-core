@@ -203,12 +203,12 @@ ipmiPlugin.prototype.loadResources = function() {
 ipmiPlugin.prototype.addNode = function() {
     var diaDiv = $('<div id="addIdpDiv" class="form" title="Add iDataPlex Node"></div>');
     var showStr = '<div><label>Node Name: </label><input type="text"></div>' +
-               '<div><label>Node Mac:</label><input type="text"></div>' + 
+               '<div><label>Node MAC:</label><input type="text"></div>' + 
                '<div><label>Node IP: </label><input type="text"></div>' +
                '<div><label>Node Groups : </label><input type="text"></div>' +
                '<div><label>BMC Name:</label><input type="text"></div>' +
                '<div><label>BMC IP:</label><input type="text"></div>' +
-               '<div><label>BMC Groups::</label><input type="text"></div>';
+               '<div><label>BMC Groups:</label><input type="text"></div>';
     
     diaDiv.append(showStr);
     diaDiv.dialog({

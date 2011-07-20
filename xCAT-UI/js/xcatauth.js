@@ -9,12 +9,12 @@ $(document).ready(function() {
     var diaheight = $('#logdialog').css('height');
     diaheight = diaheight.substr(0, diaheight.length - 2);
     diaheight = Number(diaheight);
+    
     // the window's height is to small to show the dialog
     var tempheight = 0;
     if ((winheight - 50) < diaheight){
     	tempheight = 0;
-    }
-    else{
+    } else {
     	tempheight = parseInt((winheight - diaheight - 50) / 2); 
     }
     
@@ -29,6 +29,7 @@ $(document).ready(function() {
 		$("#logstatus").html("You are using an unencrypted session!");
 		$("#logstatus").css("color", "#ff0000");
 	}
+	
 	if ($("#username").val() == "") {
 		$("#username").focus();
 	} else {

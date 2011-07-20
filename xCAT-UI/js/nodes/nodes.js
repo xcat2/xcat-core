@@ -13,6 +13,7 @@ var nodesList;
 var nodesTableId = 'nodesDatatable';
 // provision clock for provision progress stop
 var provisionClock;
+
 /**
  * Set node tab
  * 
@@ -156,7 +157,7 @@ function drawPieSummary(index, valuepair){
 	}
                 
 	container.empty();
-	var plot=$.jqplot(container.attr('id'),
+	var plot = $.jqplot(container.attr('id'),
 			[dataArray],
 			{
                 title: chattitle,
@@ -164,8 +165,8 @@ function drawPieSummary(index, valuepair){
             	renderer: $.jqplot.PieRenderer,
     	        rendererOptions: {
             	    padding: 5,
-                    fill:true,
-                    shadow:true,
+                    fill: true,
+                    shadow: true,
                     shadowOffset: 2,
                     shadowDepth: 5,
                     shadowAlpha: 0.07,
@@ -233,13 +234,14 @@ function loadGroups(data) {
 	}
 	
 	$('#groups').append(grouplist);
-	//bind the click event
+	
+	// bind the click event
 	$('#groups .groupdiv div').bind('click', function(){
-	    var thisgroup=$(this).text();
+	    var thisGroup = $(this).text();
 	    $('#groups .groupdiv div').removeClass('selectgroup');
 
 	    $(this).addClass('selectgroup');
-	    drawNodesArea(thisgroup,'',thisgroup);
+	    drawNodesArea(thisGroup,'',thisGroup);
 	});
 	
 	// Make a link to add nodes
@@ -257,7 +259,7 @@ function loadGroups(data) {
  * @return
  */
 function drawNodesArea(targetgroup, cmdargs, message){
- // Clear nodes division
+	// Clear nodes division
     $('#nodes').empty();
     
     // Create loader
@@ -272,8 +274,7 @@ function drawNodesArea(targetgroup, cmdargs, message){
     tab.add('graphTab', 'Graphic', '', false);
     
     $('#nodesPageTabs').bind('tabsselect', function(event, ui){
-        // for the graphical tab, we should check the graphical data
-        // first
+        // for the graphical tab, we should check the graphical data first
         if (1 == ui.index){
             createPhysicalLayout(nodesList);
         }
@@ -342,6 +343,7 @@ function drawNodesArea(targetgroup, cmdargs, message){
         }
     });
 }
+
 /**
  * Make a link to add nodes
  * 
@@ -360,9 +362,9 @@ function mkAddNodeLink() {
 		addNodeForm.append('<div><label for="mgt">Hardware management:</label>'
     		+ '<select id="mgt" name="mgt">'
     			+ '<option value="ipmi">iDataPlex</option>' 
-    			+ '<option value="blade">Blade Center</option>'
-    			+ '<option>hmc</option>'
-    			+ '<option>zvm</option>'
+    			+ '<option value="blade">BladeCenter</option>'
+    			+ '<option value="hmc">System p</option>'
+    			+ '<option value="zvm">System z</option>'
     		+ '</select>'
     	+ '</div>');
 		
@@ -498,9 +500,7 @@ function loadNodes(data) {
 	
 	// Variable to send command and request node status
 	var getNodeStatus = true;
-	
-	// Clear cookie containing list of nodes where their attributes need to be updated
-	$.cookie('nodes2update', '');
+
 	// Clear hash table containing node attributes
 	origAttrs = '';
 	
@@ -649,7 +649,7 @@ function loadNodes(data) {
 	$('#nodesTab').children().remove();
 	
 	// Create info bar for nodes tab
-	var info = createInfoBar('Click on a cell to edit.  Click outside the table to write to the cell.  Hit the Escape key to ignore changes. Once you are satisfied with how the table looks, click on Save.');
+	var info = createInfoBar('Click on a cell to edit.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
 	$('#nodesTab').append(info);
 
 	// Create action bar
@@ -839,35 +839,8 @@ function loadNodes(data) {
 	actionBar.append(actionsMenu);
 	
 	// Insert action bar and nodes datatable
-	//$('#nodesTab').append(actionBar);
 	$('#nodesTab').append(nodesTable.object());
-	
-	/**
-	 * Create menu to save and undo table changes
-	 */
-	/*
-	// Save changes
-	var saveLnk = $('<a>Save</a>');
-	saveLnk.bind('click', function(event){
-		updateNodeAttrs(group);
-	});
-	
-	// Undo changes
-	var undoLnk = $('<a>Undo</a>');
-	undoLnk.bind('click', function(event){
-		restoreNodeAttrs();
 		
-		// Hide table menu actions
-		tableActionsMenu.hide();
-	});
-	
-	// It will be hidden until a change is made
-	var tableActionsMenu = createMenu([saveLnk, undoLnk]);
-	tableActionsMenu.css('display', 'inline-block');
-	tableActionsMenu.attr('id', 'tableActionMenu');
-	actionsDiv.append(tableActionsMenu.hide());
-    */
-	
 	// Turn table into a datatable
 	var nodesDatatable = $('#' + nodesTableId).dataTable({
 		'iDisplayLength': 50,
@@ -962,13 +935,9 @@ function loadNodes(data) {
 	/**
 	 * Enable editable columns
 	 */
-	/*
 	// Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
 	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
 		function(value, settings) {			
-			// Change text color to red
-			$(this).css('color', 'red');
-			
 			// Get column index
 			var colPos = this.cellIndex;
 						
@@ -979,23 +948,41 @@ function loadNodes(data) {
 			// Update datatable
 			dTable.fnUpdate(value, rowPos, colPos, false);
 			
+			// Get table headers
+			var headers = $('#' + nodesTableId + ' thead tr th');
+			
 			// Get node name
 			var node = $(this).parent().find('td a.node').text();
+			// Get attribute name
+			var attrName = jQuery.trim(headers.eq(colPos).text());
+			// Get column value
+			var value = $(this).text();
 			
-			// Flag node to update
-			flagNode2Update(node);
+			// Build argument
+			var args = attrName + '=' + value;
 			
-			// Show table menu actions
-			tableActionsMenu.show();
+			// Send command to change node attributes
+        	$.ajax( {
+        		url : 'lib/cmd.php',
+        		dataType : 'json',
+        		data : {
+        			cmd : 'chdef',
+        			tgt : '',
+        			args : '-t;node;-o;' + node + ';' + args,
+        			msg : 'out=nodesTab;tgt=' + node
+        		},
 
-			return (value);
+        		success: showChdefOutput
+        	});
+
+			return value;
 		}, {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',
 			placeholder: ' ',
 			height : '30px' 	// The height of the text area
 		});
-	/*
+	
 	/**
 	 * Get the node status and definable node attributes
 	 */
@@ -1155,9 +1142,6 @@ function addNodes2Table(data) {
 	// Variable to send command and request node status
 	var getNodeStatus = true;
 	
-	// Clear cookie containing list of nodes where their attributes need to be updated
-	$.cookie('nodes2update', '');
-
 	// Go through each attribute
 	var node, args;
 	for (var i in rsp) {
@@ -1287,13 +1271,10 @@ function addNodes2Table(data) {
 	/**
 	 * Enable editable columns
 	 */
-	/*
-	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
-	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5))').editable(
+	alert('I am here');
+	// Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
+	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
 		function(value, settings) {			
-			// Change text color to red
-			$(this).css('color', 'red');
-			
 			// Get column index
 			var colPos = this.cellIndex;
 						
@@ -1304,23 +1285,40 @@ function addNodes2Table(data) {
 			// Update datatable
 			dTable.fnUpdate(value, rowPos, colPos, false);
 			
+			// Get table headers
+			var headers = $('#' + nodesTableId + ' thead tr th');
+			
 			// Get node name
 			var node = $(this).parent().find('td a.node').text();
+			// Get attribute name
+			var attrName = jQuery.trim(headers.eq(colPos).text());
+			// Get column value
+			var value = $(this).text();
 			
-			// Flag node to update
-			flagNode2Update(node);
+			// Build argument
+			var args = attrName + '=' + value;
 			
-			// Show table menu actions
-			$('#tableActionMenu').show();
+			// Send command to change node attributes
+        	$.ajax( {
+        		url : 'lib/cmd.php',
+        		dataType : 'json',
+        		data : {
+        			cmd : 'chdef',
+        			tgt : '',
+        			args : '-t;node;-o;' + node + ';' + args,
+        			msg : 'out=nodesTab;tgt=' + node
+        		},
 
-			return (value);
+        		success: showChdefOutput
+        	});
+
+			return value;
 		}, {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',
 			placeholder: ' ',
 			height : '30px' 	// The height of the text area
 		});
-	*/
 	
 	// If request to get node status is made
 	if (getNodeStatus) {
@@ -2324,7 +2322,7 @@ function findRow(str, table, col){
 function selectAllCheckbox(event, obj) {
 	// Get datatable ID
 	// This will ascend from <input> <td> <tr> <thead> <table>
-	var tableObj = obj.parent().parent().parent().parent();
+	var tableObj = obj.parents('table');
 	var status = obj.attr('checked');
 	tableObj.find(' :checkbox').attr('checked', status);
 	event.stopPropagation();
@@ -2356,148 +2354,6 @@ function loadRconsPage(tgtNodes){
 	
 	// Open the rcons page
 	window.open(redirectUrl + "?rconsnd=" + tgtNodes, '', "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,width=670,height=436");
-}
-
-/**
- * Flag the node in the group table to update
- * 
- * @param node
- *            The node name
- * @return Nothing
- */
-function flagNode2Update(node) {
-	// Get list containing current nodes to update
-	var nodes = $.cookie('nodes2update');
-
-	// If the node is not in the list
-	if (nodes.indexOf(node) == -1) {
-		// Add the new node to list
-		nodes += node + ';';
-		$.cookie('nodes2update', nodes);
-	}
-}
-
-/**
- * Update node attributes
- * 
- * @param group
- *            The node group name
- * @return Nothing
- */
-function updateNodeAttrs(group) {
-	// Get the nodes datatable
-	var dTable = $('#' + nodesTableId).dataTable();
-	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
-	
-	// Get table headers
-	var headers = $('#' + nodesTableId + ' thead tr th');
-							
-	// Get list of nodes to update
-	var nodesList = $.cookie('nodes2update');
-	var nodes = nodesList.split(';');
-	
-	// Create the arguments
-	var args;
-	var rowPos, colPos, value;
-	var attrName;
-	// Go through each node where an attribute was changed
-	for (var i in nodes) {
-		if (nodes[i]) {
-			args = '';
-			
-        	// Get the row containing the node link
-        	rowPos = findRow(nodes[i], '#' + nodesTableId, 1);
-        	$(rows[rowPos]).find('td').each(function (){
-        		if ($(this).css('color') == 'red' || $(this).css('color') == 'rgb(255, 0, 0)') {
-        			// Change color back to normal
-        			$(this).css('color', '');
-        			
-        			// Get column position
-        			colPos = $(this).parent().children().index($(this));
-        			// Get column value
-        			value = $(this).text();
-        			
-        			// Get attribute name
-        			attrName = jQuery.trim(headers.eq(colPos).text());
-        			        			
-        			// Build argument string
-        			if (args) {
-        				// Handle subsequent arguments
-        				args += ';' + attrName + '=' + value;
-        			} else {
-        				// Handle the 1st argument
-        				args += attrName + '=' + value;
-        			}		
-        		}
-        	});
-        	        	
-        	// Send command to change node attributes
-        	$.ajax( {
-        		url : 'lib/cmd.php',
-        		dataType : 'json',
-        		data : {
-        			cmd : 'chdef',
-        			tgt : '',
-        			args : '-t;node;-o;' + nodes[i] + ';' + args,
-        			msg : 'out=nodesTab;tgt=' + nodes[i]
-        		},
-
-        		success: showChdefOutput
-        	});
-		} // End of if
-	} // End of for
-	
-	// Clear cookie containing list of nodes where
-	// their attributes need to be updated
-	$.cookie('nodes2update', '');
-}
-
-/**
- * Restore node attributes to their original content
- * 
- * @return Nothing
- */
-function restoreNodeAttrs() {
-	// Get list of nodes to update
-	var nodesList = $.cookie('nodes2update');
-	var nodes = nodesList.split(';');
-	
-	// Get the nodes datatable
-	var dTable = $('#' + nodesTableId).dataTable();
-	// Get table headers
-	var headers = $('#' + nodesTableId + ' thead tr th');
-	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
-		
-	// Go through each node where an attribute was changed
-	var rowPos, colPos;
-	var attrName, origVal;
-	for (var i in nodes) {
-		if (nodes[i]) {			
-			// Get the row containing the node link
-        	rowPos = findRow(nodes[i], '#' + nodesTableId, 1);
-        	$(rows[rowPos]).find('td').each(function (){
-        		if ($(this).css('color') == 'red' || $(this).css('color') == 'rgb(255, 0, 0)') {
-        			// Change color back to normal
-        			$(this).css('color', '');
-        			
-        			// Get column position
-        			colPos = $(this).parent().children().index($(this));	        			
-        			// Get attribute name
-        			attrName = jQuery.trim(headers.eq(colPos).text());
-        			// Get original content
-        			origVal = origAttrs[nodes[i]][attrName];
-        			
-        			// Update column
-        			dTable.fnUpdate(origVal, rowPos, colPos, false);
-        		}
-        	});
-		} // End of if
-	} // End of for
-	
-	// Clear cookie containing list of nodes where their attributes need to be updated
-	$.cookie('nodes2update', '');
 }
 
 /**
@@ -2807,8 +2663,7 @@ function setNodeAttrs(data) {
     			// Remove arrow brackets
     			descr = descr.replace(new RegExp('<|>', 'g'), '');
     			
-    			// Set hash table where key = attribute name and value =
-				// description
+    			// Set hash table where key = attribute name and value = description
         		nodeAttrs[key] = descr;
 			} else {
 				// Remove arrow brackets
@@ -3267,10 +3122,10 @@ function advancedLoad(group){
     var colNameHash = new Object();
     var colName = '';
     var archCol = 0, hcpCol = 0;
-    //find out the column name and their index
+    // find out the column name and their index
     for (tempIndex = 0; tempIndex < tableHeaders.size(); tempIndex++){
         var header = tableHeaders.eq(tempIndex);
-        //if link header(status, power, monitor) can dump to next one
+        // if link header(status, power, monitor) can dump to next one
         if (header.find('a').size() > 0){
             continue;
         }
@@ -3282,7 +3137,7 @@ function advancedLoad(group){
         }
     }
     
-    //there is not arch column, can not distinguish hardware type return directly
+    // there is not arch column, can not distinguish hardware type return directly
     if (!colNameHash['arch']){
         return;
     }
@@ -3345,10 +3200,10 @@ function openQuickProvisionDia(tgtnodes){
     var archtype = '';
     var errormessage = '';
     var diaDiv = $('<div title="Provision(only support Linux)" class="form" id="deployDiv"></div>');
-    //check the first node's arch type
+    // check the first node's arch type
     for (index in nodeArray){
         nodeName = nodeArray[index];
-        //does not have arch
+        // does not have arch
         if (!origAttrs[nodeName]['arch']){
             errormessage = 'All nodes should define arch first!';
             break;
@@ -3358,14 +3213,14 @@ function openQuickProvisionDia(tgtnodes){
             archtype = origAttrs[nodeName]['arch'];
         }
         
-        //all nodes should have same archtype
+        // all nodes should have same archtype
         if (archtype != origAttrs[nodeName]['arch']){
             errormessage = 'All nodes should belong to same arch!<br/>';
             break;
         }
     }
 
-    //check the mac address
+    // check the mac address
     for (index in nodeArray){
         if (!origAttrs[nodeName]['mac'] || !origAttrs[nodeName]['ip']){
             errormessage += 'All nodes should define ip and mac!<br/>';
@@ -3377,7 +3232,7 @@ function openQuickProvisionDia(tgtnodes){
         errormessage += 'System Z should use provision page.';
     }
     
-    //error message should show in a dialog
+    // error message should show in a dialog
     if ('' != errormessage){
         diaDiv.append(createWarnBar(errormessage));
         diaDiv.dialog({
@@ -3393,7 +3248,7 @@ function openQuickProvisionDia(tgtnodes){
         return;
     }
     
-    //organize the provison dialog
+    // organize the provison dialog
     var showstr = '<table><tbody>';
     showstr += '<tr><td>Target node:</td><td><input id="nodesinput" value="' + tgtnodes + '" readonly="readonly"></td></tr>';
     showstr += '<tr><td>Arch:</td><td><input id="archinput" value="' + archtype + '" disabled="disabled"></td></tr>';
@@ -3488,7 +3343,7 @@ function quickProvision(){
     provisionArg = argsArray.join(',');
     url = 'lib/cmd.php?cmd=webrun&tgt=&args=provision;' + nodesName + ';' + imageName + ';' + provisionArg + '&msg=&opts=flush';
     
-    //show the result
+    // show the result
     $('#deployDiv').empty().append(createLoader()).append('<br/>');
     $('#deployDiv').dialog( "option", "buttons", {'Close': function(){$(this).remove();clearTimeout(provisionClock);}});
     $('#deployDiv').dialog( "option", "width", 600);

@@ -184,7 +184,7 @@ function createBackButton(){
 function getDiscoverEnv(envName){
 	if (discoverEnv[envName]){
 		return discoverEnv[envName];
-	}
+	} 
 	else{
 		return '';
 	}
@@ -331,7 +331,6 @@ function initSelectPlatform(){
 	temp += '<p>This wizard will guide you through the process of defining the naming conventions within' + 
 		'your cluster, discovering the hardware on your network, and automatically defining it in the xCAT' +
 		'database.<br/>Choose which type of hardware you want to discover, and then click Next.</p>';
-	
 	temp += '<input type="radio" name="platform" disabled="true"><span  style="color:gray;"> System x hardware (not implemented yet)</span></input><br/>';
 	temp += '<input type="radio" name="platform" id="ih"> System p hardware (P7 IH)</input><br/>';
 	temp += '<input type="radio" name="platform" id="nonih"> System p hardware (Non P7 IH)</input><br/>';
@@ -359,9 +358,9 @@ function initSelectPlatform(){
 function getPlatform(){
 	var radioValue = $('#discoverContentDiv :checked').attr('id');
 	setDiscoverEnv('machineType', radioValue);
-
 	return true;
 }
+
 /**
  * Step 2: Cluster basic patterns 
  *         users can input the switches' name range, the number of port, start ip and port prefix
@@ -413,7 +412,6 @@ function initBasicPattern(){
 	showString += '</tbody></table></div>';
 	
 	$('#discoverContentDiv').append(showString);
-	
 	$('#discoverContentDiv [title]').tooltip({
 		position: "center right",
 		offset: [-2, 10],
@@ -640,6 +638,7 @@ function checkSupernode(operType){
 			cmd : 'echo -e "' + args + '" > /tmp/websupernode.txt'
 		}
 	});
+	
 	return true;
 }
 
@@ -811,6 +810,7 @@ function calcEndIp(ipStart, num){
 	ipArray[0] = ipArray[0] + parseInt(sum / 255);
 	return (ipArray.join('.'));
 }
+
 /**
  * Step 4: check the input are all filled 
  *          
@@ -936,7 +936,6 @@ function initDiscoverFrames(){
 			for (var i in frameArray){
 				$('#frameTd').append('<p><input name="frameradio" type="radio" onclick="createMap(this)"><span>' +
 						frameArray[i] + '</span></p>');
-				
 			}
 			
 			for (var i in mtmsArray){
@@ -1082,6 +1081,7 @@ function initConfig(operType){
 	
 	createSetupFile();
 }
+
 /**
  * Step 7: create the xcat configure file
  *          
@@ -1175,6 +1175,7 @@ function runSetup(){
 		}
 	});
 }
+
 /**
  * Step 7: create the dhcp configure file
  *          
@@ -1341,9 +1342,9 @@ function lsslpWriteHMC(){
 							tempSpan.addClass('ui-icon-check');
 							lsslpWriteCec();
 						}
-				});
+					});
 				}
-		});
+			});
 		}
 	});
 }

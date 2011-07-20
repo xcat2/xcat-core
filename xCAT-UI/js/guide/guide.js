@@ -3,6 +3,7 @@ function loadGuidePage(){
     var tab = new Tab();
     tab.init();
     $('#content').append(tab.object());
+    
 	//add the help content
     var helpForm = $('<div class="form"></div>');
     helpForm.append('<fieldset><legend>Quick Start</legend><ol>' +

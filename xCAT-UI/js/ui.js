@@ -461,7 +461,6 @@ function initPage() {
 	includeJs("js/jquery/superfish.min.js");
 	includeJs("js/jquery/hoverIntent.min.js");
 	includeJs("js/jquery/jquery.jstree.min.js");
-	includeJs("js/jquery/jquery.flot.min.js");
 	includeJs("js/jquery/tooltip.min.js");
 	includeJs("js/jquery/jquery.serverBrowser.min.js");
 	includeJs("js/jquery/jquery.jqplot.min.js");
@@ -489,16 +488,7 @@ function initPage() {
 
 	// Show the page
 	$("#content").children().remove();
-	if (page == 'index.php') {
-		includeJs("js/jquery/jquery.topzindex.min.js");
-		includeJs("js/nodes/nodeset.js");
-		includeJs("js/nodes/rnetboot.js");
-		includeJs("js/nodes/updatenode.js");
-		includeJs("js/nodes/physical.js");
-		includeJs("js/nodes/mtm.js");
-		headers.eq(0).css('background-color', '#A9D0F5');
-		loadNodesPage();
-	} else if (page == 'configure.php') {
+	if (page == 'configure.php') {
 		includeJs("js/configure/update.js");
 		includeJs("js/configure/discover.js");
 		headers.eq(1).css('background-color', '#A9D0F5');
@@ -518,6 +508,7 @@ function initPage() {
 	    headers.eq(4).css('background-color', '#A9D0F5');
         loadGuidePage();
 	} else {
+		// Load nodes page by default
 	    includeJs("js/jquery/jquery.topzindex.min.js");
         includeJs("js/nodes/nodeset.js");
         includeJs("js/nodes/rnetboot.js");

@@ -229,6 +229,7 @@ function fillList(nodeName){
 			break;
 	}
 }
+
 /**
  * create the physical graphical layout 
  * 
@@ -248,10 +249,13 @@ function createGraphical(bpa, fsp, area){
 			row = $('<tr></tr>');
 			graphTable.append(row);
 		}
+		
 		elementNum ++;
+		
 		var td = $('<td style="padding:0;border-color: transparent;"></td>');
 		var frameDiv = $('<div class="frameDiv"></div>');
 		frameDiv.append('<div style="height:27px;" title="' + bpaName + '"><input type="checkbox" class="fspcheckbox" name="check_'+ bpaName +'"></div>');
+		
 		//for P7-IH, all the cecs are insert into the frame from down to up, so we had to show the cecs same as the
 		//physical layout.
 		var tempBlankDiv = $('<div></div>');
@@ -269,6 +273,7 @@ function createGraphical(bpa, fsp, area){
 			
 			tempHeight += coculateBlank(fsp[fspName]['mtm']);
 		}
+		
 		//now the tempHeight are all cecs' height, so we should minus bpa div height and cecs' div height
 		tempHeight = 428 - tempHeight;
 		tempBlankDiv.css('height', tempHeight);
@@ -418,7 +423,6 @@ function updateSelectNodeDiv(){
 	$('#selectNodeDiv').empty();
 
 	//add buttons
-	
 	$('#selectNodeDiv').append('Nodes: ');
 	for(var lparName in selectNode){
 		$('#selectNodeDiv').append(lparName + ' ');
@@ -671,6 +675,7 @@ function createFspTip(fspName, mtm, fsp){
 	else{
 		temp = mtm;
 	}
+	
 	if (hardwareInfo[temp]){
 		tip.append('<h3>' + fspName + '(' + hardwareInfo[temp][0] + ')</h3><br/>');
 	}

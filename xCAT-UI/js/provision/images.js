@@ -43,8 +43,6 @@ function loadImages(data) {
 	// Image attributes
 	var headers = new Object();
 	
-	// Clear cookie containing list of images where their attributes need to be updated
-	$.cookie('images2update', '');
 	// Clear hash table containing image attributes
 	origAttrs = '';
 
@@ -118,11 +116,8 @@ function loadImages(data) {
 	$('#imagesTab').children().remove();
 	
 	// Create info bar for images tab
-	var info = createInfoBar('Click on a cell to edit.  Click outside the table to write to the cell.  Hit the Escape key to ignore changes. Once you are satisfied with how the table looks, click on Save.');
+	var info = createInfoBar('Click on a cell to edit.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
 	$('#imagesTab').append(info);
-
-	// Create action bar
-	var actionBar = $('<div class="actionBar"></div>');
 
 	/**
 	 * The following actions are available for images:
@@ -149,28 +144,7 @@ function loadImages(data) {
 			 loadEditImagePage(tgtImages[i]);
 		}
 	});
-	
-	// Create save button
-	var saveBtn = createButton('Save');
-	// Do not show button until table is edited
-	saveBtn.css({
-		'display': 'inline',
-		'margin-left': '550px'
-	}).hide();
-	saveBtn.bind('click', function(event){
-		updateImageAttrs();
-	});
-	
-	// Create undo button
-	var undoBtn = createButton('Undo');
-	// Do not show button until table is edited
-	undoBtn.css({
-		'display': 'inline'
-	}).hide();
-	undoBtn.bind('click', function(event){
-		restoreImageAttrs();
-	});
-	
+
 	/**
 	 * Create an action bar
 	 */
@@ -178,8 +152,6 @@ function loadImages(data) {
 	actionsBar.append(copyLinuxBtn);
 	actionsBar.append(newBtn);
 	actionsBar.append(editBtn);
-	actionsBar.append(saveBtn);
-	actionsBar.append(undoBtn);
 	$('#imagesTab').append(actionsBar);
 	
 	// Insert table
@@ -203,9 +175,6 @@ function loadImages(data) {
 	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
 	$('#imagesDataTable td:not(td:nth-child(1),td:nth-child(2))').editable(
 		function(value, settings) {	
-			// Change text color to red
-			$(this).css('color', 'red');
-			
 			// Get column index
 			var colPos = this.cellIndex;
 						
@@ -218,15 +187,32 @@ function loadImages(data) {
 			
 			// Get image name
 			var image = $(this).parent().find('td:eq(1)').text();
-			
-			// Flag image to update
-			flagImage2Update(image);
-			
-			// Show table menu actions
-			saveBtn.show();
-			undoBtn.show();
+					
+			// Get table headers
+			var headers = $('#imagesDataTable thead tr th');
 
-			return (value);
+        	// Get attribute name
+        	var attrName = jQuery.trim(headers.eq(colPos).text());
+        	// Get column value
+        	var value = $(this).text();		
+        	// Build argument
+        	var args = attrName + '=' + value;
+        			
+        	// Send command to change image attributes
+        	$.ajax( {
+        		url : 'lib/cmd.php',
+        		dataType : 'json',
+        		data : {
+        			cmd : 'chdef',
+        			tgt : '',
+        			args : '-t;osimage;-o;' + image + ';' + args,
+        			msg : 'out=imagesTab;tgt=' + image
+        		},
+
+        		success: showChdefOutput
+        	});
+
+			return value;
 		}, {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',	// Input type to use
@@ -247,145 +233,6 @@ function loadImages(data) {
 
 		success : setImageDefAttrs
 	});
-}
-
-/**
- * Flag the image in the table to update
- * 
- * @param image
- *            The image name
- * @return Nothing
- */
-function flagImage2Update(image) {
-	// Get list containing current images to update
-	var images = $.cookie('images2update');
-
-	// If the node is not in the list
-	if (images.indexOf(image) == -1) {
-		// Add the new node to list
-		images += image + ';';
-		$.cookie('images2update', images);
-	}
-}
-
-/**
- * Update the image attributes
- * 
- * @return Nothing
- */
-function updateImageAttrs() {
-	// Get the nodes datatable
-	var dTable = $('#imagesDataTable').dataTable();
-	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
-	
-	// Get table headers
-	var headers = $('#imagesDataTable thead tr th');
-							
-	// Get list of nodes to update
-	var imagesList = $.cookie('images2update');
-	var images = imagesList.split(';');
-		
-	// Create the arguments
-	var args;
-	var rowPos, colPos, value;
-	var attrName;
-	// Go through each node where an attribute was changed
-	for (var i in images) {
-		if (images[i]) {
-			args = '';
-			
-        	// Get the row containing the image name
-        	rowPos = findRow(images[i], '#imagesDataTable', 1);
-        	$(rows[rowPos]).find('td').each(function (){
-        		if ($(this).css('color') == 'red') {
-        			// Change color back to normal
-        			$(this).css('color', '');
-        			
-        			// Get column position
-        			colPos = $(this).parent().children().index($(this));
-        			// Get column value
-        			value = $(this).text();
-        			
-        			// Get attribute name
-        			attrName = jQuery.trim(headers.eq(colPos).text());
-        			
-        			// Build argument string
-        			if (args) {
-        				// Handle subsequent arguments
-        				args += ';' + attrName + '=' + value;
-        			} else {
-        				// Handle the 1st argument
-        				args += attrName + '=' + value;
-        			}		
-        		}
-        	});
-        	
-        	// Send command to change image attributes
-        	$.ajax( {
-        		url : 'lib/cmd.php',
-        		dataType : 'json',
-        		data : {
-        			cmd : 'chdef',
-        			tgt : '',
-        			args : '-t;osimage;-o;' + images[i] + ';' + args,
-        			msg : 'out=imagesTab;tgt=' + images[i]
-        		},
-
-        		success: showChdefOutput
-        	});
-		} // End of if
-	} // End of for
-	
-	// Clear cookie containing list of images where their attributes need to be updated
-	$.cookie('images2update', '');
-}
-
-/**
- * Restore image attributes to their original content
- * 
- * @return Nothing
- */
-function restoreImageAttrs() {
-	// Get list of images to restore
-	var imagesList = $.cookie('images2update');
-	var images = imagesList.split(';');
-	
-	// Get the image datatable
-	var dTable = $('#imagesDataTable').dataTable();
-	// Get table headers
-	var headers = $('#imagesDataTable thead tr th');
-	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
-		
-	// Go through each node where an attribute was changed
-	var rowPos, colPos;
-	var attrName, origVal;
-	for (var i in images) {
-		if (images[i]) {			
-			// Get the row containing the image name
-			rowPos = findRow(images[i], '#imagesDataTable', 1);
-        	$(rows[rowPos]).find('td').each(function (){
-        		if ($(this).css('color') == 'red') {
-        			// Change color back to normal
-        			$(this).css('color', '');
-        			
-        			// Get column position
-        			colPos = $(this).parent().children().index($(this));	        			
-        			// Get attribute name
-        			attrName = jQuery.trim(headers.eq(colPos).text());
-        			// Get original content
-        			origVal = origAttrs[images[i]][attrName];
-        			
-        			// Update column
-        			dTable.fnUpdate(origVal, rowPos, colPos);
-        		}
-        	});
-		} // End of if
-	} // End of for
-	
-	// Clear cookie containing list of images where their attributes need to be updated
-	$.cookie('images2update', '');
 }
 
 /**
@@ -527,6 +374,7 @@ function createHpcSelect(container) {
 
 	container.append(hpcFieldset);
 }
+
 var softwareList = {
 	"rsct" : [ "rsct.core.utils", "rsct.core", "src" ],
 	"pe" : [ "IBMJava2-142-ppc64-JRE", "ibm_lapi_ip_rh6p", "ibm_lapi_us_rh6p", "IBM_pe_license", "ibm_pe_rh6p", "ppe_pdb_ppc64_rh600", "sci_ppc_32bit_rh600", "sci_ppc_64bit_rh600", "vac.cmp",
@@ -643,7 +491,6 @@ function rpmCopyCheck(data) {
  */
 function genRpmCmd(softwareName) {
 	var cmdString;
-	var packageLength;
 	cmdString = "rpm -q ";
 	for (var i in softwareList[softwareName]) {
 		cmdString += softwareList[softwareName][i] + " ";
@@ -756,7 +603,7 @@ function loadEditImagePage(tgtImage) {
 	setPropsForm.append(infoBar);
 
 	// Create an input for each definable attribute
-	var div, label, input, descr, value;
+	var div, label, input, value;
 	// Set node attribute
 	origAttrs[tgtImage]['imagename'] = tgtImage;
 	for (var key in defAttrs) {

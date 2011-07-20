@@ -203,20 +203,20 @@ bladePlugin.prototype.loadResources = function() {
 bladePlugin.prototype.addNode = function() {
     var nodeTypeSelectDia = $('<div id="nodeTypeSelectDia" class="form"></div>');
     nodeTypeSelectDia.append('<div><label for="mgt">Node Type :</label><select id="nodeTypeSelect">' +
-            '<option value="mm">Amm Node</option><option value="blade">Blade Node</option></select></div>');
+            '<option value="mm">AMM Node</option><option value="blade">Blade Node</option></select></div>');
     //append the mm div
     var mmStr = '<div id="mmNode">' +
-                   '<label>Amm Name : </label><input id="ammName" type="text"></input><br/><br/>' +
-                   '<label>Amm IP   : </label><input id="ammIp" type="text"></input>' +
+                   '<label>AMM Name: </label><input id="ammName" type="text"></input><br/><br/>' +
+                   '<label>AMM IP: </label><input id="ammIp" type="text"></input>' +
                    '</div>';
     
     //append the blade div
     var bladeStr = '<div id="bladeNode" style="display:none;">' +
-                   '<label>Blade Name : </label><input id="bladeName" type="text"></input><br/><br/>' +
-                   '<label>Blade Group : </label><input id="bladeGroup" type="text"></input><br/><br/>' +
-                   '<label>Blade Id : </label><input id="bladeId" type="text"></input><br/><br/>' +
-                   '<label>Blade Series : </label><input type="radio" name="series" value="js"/>JS<input type="radio" name="series" value="ls"/>LS<br/><br/>' +
-                   '<label>Blade Mpa : </label><select id="mpaSelect"></select>';
+                   '<label>Blade Name: </label><input id="bladeName" type="text"></input><br/><br/>' +
+                   '<label>Blade Group: </label><input id="bladeGroup" type="text"></input><br/><br/>' +
+                   '<label>Blade ID: </label><input id="bladeId" type="text"></input><br/><br/>' +
+                   '<label>Blade Series: </label><input type="radio" name="series" value="js"/>JS<input type="radio" name="series" value="ls"/>LS<br/><br/>' +
+                   '<label>Blade MPA: </label><select id="mpaSelect"></select>';
     nodeTypeSelectDia.append(mmStr);
     nodeTypeSelectDia.append(bladeStr);
     
@@ -298,7 +298,7 @@ function addMmNode(){
     var ip = $('#ammIp').val();
     
     if ((!name) || (!ip)){
-        $('#nodeTypeSelectDia').prepend(createWarnBar("You miss some inputs."));
+        $('#nodeTypeSelectDia').prepend(createWarnBar("You are missing some inputs!"));
         return;
     }
     
