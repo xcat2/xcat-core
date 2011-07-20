@@ -846,7 +846,7 @@ site => {
    "                 removing DHCP entries when noderm is executed)\n\n".
    " rsh:  This is no longer used. path to remote shell command for xdsh.\n\n".
    " rcp:  This is no longer used. path to remote copy command for xdcp.\n\n".
-   " sharedtftp:  Set to 0 or no, if xCAT should not assume the directory\n".
+   " sharedtftp:  Set to 0 or no, xCAT should not assume the directory\n".
    "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n". 
    "              If value is set to a hostname, the directory in tftpdir\n".
    "              will be mounted from that hostname on the SN\n\n". 
