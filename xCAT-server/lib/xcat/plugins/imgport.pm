@@ -139,7 +139,7 @@ sub xexport {
 		push@{ $rsp{data} }, "imgexport: Creates a tarball (bundle) of an existing xCAT image";
 		push@{ $rsp{data} }, "Usage: ";
 		push@{ $rsp{data} }, "\timgexport [-h|--help]";
-		push@{ $rsp{data} }, "\timgexport <image_name> [directory] [[-e|--extra <file:dir> ] ... ] [-p|--postscripts <node_name>] [-v]";
+		push@{ $rsp{data} }, "\timgexport <image_name> [destination] [[-e|--extra <file:dir> ] ... ] [-p|--postscripts <node_name>] [-v]";
 		if($ec){ $rsp{errorcode} = $ec; }
 		$callback->(\%rsp);
 	};
