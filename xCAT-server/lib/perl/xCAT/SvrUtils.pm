@@ -734,82 +734,105 @@ sub  update_tables_with_diskless_image
     my $osimagetab;
     my $linuximagetab;
 
-    #get the pkglist file
-    my $pkglistfile=get_pkglist_file_name($cuspath, $profile, $osver, $arch);
-    if (!$pkglistfile) { $pkglistfile=get_pkglist_file_name($defpath, $profile, $osver, $arch);}
-    #print "pkglistfile=$pkglistfile\n";
-    if (!$pkglistfile) { return (0, "");}
-    
-    #get otherpkgs.pkglist file
-    my $otherpkgsfile=get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
-    if (!$otherpkgsfile) { $otherpkgsfile=get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch);}
-    
-    #get synclist file
-    my $synclistfile=xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
-    
-    #get the exlist file
-    my $exlistfile=get_exlist_file_name($cuspath, $profile, $osver, $arch);
-    if (!$exlistfile) {  $exlistfile=get_exlist_file_name($defpath, $profile, $osver, $arch); }
-
-    #get postinstall script file name
-    my $postfile=get_postinstall_file_name($cuspath, $profile, $osver, $arch);
-    if (!$postfile) {  $postfile=get_postinstall_file_name($defpath, $profile, $osver, $arch); }
-
-
-    #now update the db
-    if (!$osimagetab) { 
-	$osimagetab=xCAT::Table->new('osimage',-create=>1); 
+    my %profiles=();
+    if ($profile) {
+        $profiles{$profile} = 1;
+    } else {
+        my @tmplfiles=glob($cuspath."/*.pkglist");
+        foreach (@tmplfiles) {
+            my $tmpf=basename($_); 
+            #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
+            $tmpf =~ /^([^\.]*)\..*$/;
+            $tmpf = $1;
+            $profiles{$tmpf}=1;
+        }
+        @tmplfiles=glob($defpath."/*.pkglist");
+        foreach (@tmplfiles) {
+            my $tmpf=basename($_); 
+            #get the profile name out of the file, TODO: this does not work if the profile name contains the '.'
+            $tmpf =~ /^([^\.]*)\..*$/;
+            $tmpf = $1;
+            $profiles{$tmpf}=1;
+        }
     }
+    foreach my $profile (keys %profiles) {
+        #get the pkglist file
+        my $pkglistfile=get_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$pkglistfile) { $pkglistfile=get_pkglist_file_name($defpath, $profile, $osver, $arch);}
+        #print "pkglistfile=$pkglistfile\n";
+        if (!$pkglistfile) { next;}
+        
+        #get otherpkgs.pkglist file
+        my $otherpkgsfile=get_otherpkgs_pkglist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$otherpkgsfile) { $otherpkgsfile=get_otherpkgs_pkglist_file_name($defpath, $profile, $osver, $arch);}
+        
+        #get synclist file
+        my $synclistfile=xCAT::SvrUtils->getsynclistfile(undef, $osver, $arch, $profile, "netboot");
+        
+        #get the exlist file
+        my $exlistfile=get_exlist_file_name($cuspath, $profile, $osver, $arch);
+        if (!$exlistfile) {  $exlistfile=get_exlist_file_name($defpath, $profile, $osver, $arch); }
     
-    if ($osimagetab) {    
-	#check if the image is already in the table
-	if ($osimagetab) {
-	    my $found=0;
-	    my $tmp1=$osimagetab->getAllEntries();
-	    if (defined($tmp1) && (@$tmp1 > 0)) {
-		foreach my $rowdata(@$tmp1) {
-		    if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq $provm) && ($profile eq $rowdata->{profile})){
-			$found=1;
-			last;
-		    }
-		}
-	    }
-	    if ($found) { print "The image is already in the db.\n"; return (0, ""); } 
-	    
-	    my $imagename=$osver . "-" . $arch . "-$provm-" . $profile;
-	    #TODO: check if there happen to be a row that has the same imagename but with different contents
-	    #now we can wirte the info into db
-	    my %key_col = (imagename=>$imagename);
-	    my %tb_cols=(imagetype=>$imagetype, 
-			 provmethod=>$provm,
-			 profile=>$profile, 
-			 osname=>$ostype,
-			 osvers=>$osver,
-			 osarch=>$arch,
-			 synclists=>$synclistfile);
-	    $osimagetab->setAttribs(\%key_col, \%tb_cols);
-	    
-	    if ($osname !~ /^win/) {
-		if (!$linuximagetab) { $linuximagetab=xCAT::Table->new('linuximage',-create=>1); }
-		if ($linuximagetab) {
-		    my %key_col = (imagename=>$imagename);
-		    my %tb_cols=(pkglist=>$pkglistfile, 
-				 pkgdir=>"$installroot/$osver/$arch",
-				 otherpkglist=>$otherpkgsfile,
-				 otherpkgdir=>"$installroot/post/otherpkgs/$osver/$arch",
-				 exlist=>$exlistfile,
-				 postinstall=>$postfile,
-				 rootimgdir=>"$installroot/netboot/$osver/$arch/$profile");
-		    $linuximagetab->setAttribs(\%key_col, \%tb_cols);
-		    
-		} else {
-		    return (1, "Cannot open the linuximage table.");
-		}
-	    }
-	} else {
-	    return (1, "Cannot open the osimage table."); 
-	}
-    }  
+        #get postinstall script file name
+        my $postfile=get_postinstall_file_name($cuspath, $profile, $osver, $arch);
+        if (!$postfile) {  $postfile=get_postinstall_file_name($defpath, $profile, $osver, $arch); }
+    
+    
+        #now update the db
+        if (!$osimagetab) { 
+    	$osimagetab=xCAT::Table->new('osimage',-create=>1); 
+        }
+        
+        if ($osimagetab) {    
+    	#check if the image is already in the table
+    	if ($osimagetab) {
+    	    my $found=0;
+    	    my $tmp1=$osimagetab->getAllEntries();
+    	    if (defined($tmp1) && (@$tmp1 > 0)) {
+    		foreach my $rowdata(@$tmp1) {
+    		    if (($osver eq $rowdata->{osvers}) && ($arch eq $rowdata->{osarch}) && ($rowdata->{provmethod} eq $provm) && ($profile eq $rowdata->{profile})){
+    			$found=1;
+    			last;
+    		    }
+    		}
+    	    }
+    	    if ($found) { print "The image is already in the db.\n"; next; } 
+    	    
+    	    my $imagename=$osver . "-" . $arch . "-$provm-" . $profile;
+    	    #TODO: check if there happen to be a row that has the same imagename but with different contents
+    	    #now we can wirte the info into db
+    	    my %key_col = (imagename=>$imagename);
+    	    my %tb_cols=(imagetype=>$imagetype, 
+    			 provmethod=>$provm,
+    			 profile=>$profile, 
+    			 osname=>$ostype,
+    			 osvers=>$osver,
+    			 osarch=>$arch,
+    			 synclists=>$synclistfile);
+    	    $osimagetab->setAttribs(\%key_col, \%tb_cols);
+    	    
+    	    if ($osname !~ /^win/) {
+    		if (!$linuximagetab) { $linuximagetab=xCAT::Table->new('linuximage',-create=>1); }
+    		if ($linuximagetab) {
+    		    my %key_col = (imagename=>$imagename);
+    		    my %tb_cols=(pkglist=>$pkglistfile, 
+    				 pkgdir=>"$installroot/$osver/$arch",
+    				 otherpkglist=>$otherpkgsfile,
+    				 otherpkgdir=>"$installroot/post/otherpkgs/$osver/$arch",
+    				 exlist=>$exlistfile,
+    				 postinstall=>$postfile,
+    				 rootimgdir=>"$installroot/netboot/$osver/$arch/$profile");
+    		    $linuximagetab->setAttribs(\%key_col, \%tb_cols);
+    		    
+    		} else {
+    		    return (1, "Cannot open the linuximage table.");
+    		}
+    	    }
+    	} else {
+    	    return (1, "Cannot open the osimage table."); 
+    	}
+        }  
+    }
     if ($osimagetab) { $osimagetab->close(); }
     if ($linuximagetab) { $linuximagetab->close(); }
     return (0, "");
