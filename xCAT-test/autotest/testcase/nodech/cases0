@@ -25,7 +25,6 @@ end
 
 
 start:nodech_noderange_table_arrow
-description:nodech testnode groups^=rhels5.5.Check nodech command with ^=.
 cmd:chdef -t node -o testnode groups=all,rhels5.5
 check:rc==0
 cmd:nodech testnode groups^=rhels5.5
@@ -144,7 +143,7 @@ check:output=~mgt=hmc
 cmd:rmdef -t node testnode
 end
 
-start:nodech_d
+start:nodech_delete
 description:nodech -d 
 cmd:chdef -t node -o testnode os=hello
 check:rc==0
