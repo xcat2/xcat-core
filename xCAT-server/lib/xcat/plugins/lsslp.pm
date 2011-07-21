@@ -1910,13 +1910,21 @@ sub getip_from_iplist
     my $inc     = shift;
 
     my @ips = split /,/, $iplist;
+    my @ips2 = split /,/, $inc;
     if ( $inc)
     {
         for my $net (keys %$nets)
         {
-            delete $nets->{$net} if ( $nets->{$net} ne $inc);
+            my $flag = 1;
+            for my $einc (@ips2) {
+                if ( $nets->{$net} eq $einc) { 
+                    $flag = 0;
+                }
+            }
+            delete $nets->{$net} if ($flag) ;
         }
     }
+
 
     for my $ip (@ips)
     {
