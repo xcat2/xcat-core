@@ -637,6 +637,7 @@ sub update_namedconf {
                 $gotoptions=1;
                 my $skip=0;
                 do {
+		    push @newnamed,"\t\t//listen-on-v6 { any; };\n";
                     if ($ctx->{forwarders} and $line =~ /forwarders {/) {
                         push @newnamed,"\tforwarders \{\n";
                         $skip=1;
@@ -739,6 +740,7 @@ sub update_namedconf {
     }
     unless ($gotoptions) {
         push @newnamed,"options {\n","\tdirectory \"".$ctx->{zonesdir}."\";\n";
+	push @newnamed,"\t\t//listen-on-v6 { any; };\n";
         if ($ctx->{forwarders}) {
             push @newnamed,"\tforwarders {\n";
             foreach (@{$ctx->{forwarders}}) {
