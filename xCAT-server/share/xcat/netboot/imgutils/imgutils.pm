@@ -79,7 +79,7 @@ sub get_package_names {
    my @tmp_array=();
 
 
-   if ($plist_file_name) {
+   if ($plist_file_name && -r $plist_file_name) {
      my $pkgfile;
      open($pkgfile,"<","$plist_file_name");
      while (<$pkgfile>) {
