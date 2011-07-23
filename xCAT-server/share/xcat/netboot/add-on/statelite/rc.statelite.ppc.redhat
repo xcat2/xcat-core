@@ -292,10 +292,6 @@ ProcessType () {
             PATH=`echo ${PATH} | /bin/sed -e 's/\/$//'`
 
             TARGET=${TMPFS}${PATH}
-            if [ -d ${TARGET} ]; then
-                echo "rm -Rf ${TARGET}" >>$LOG 2>&1
-                /bin/rm -Rf ${TARGET} 2>&1 >>$LOG
-            fi
 
             if [ ! -d ${PERSISTENT}${PPATH} ]; then
                 /bin/mkdir -p ${PERSISTENT}${PPATH} 2>&1 >>$LOG
@@ -309,22 +305,31 @@ ProcessType () {
             fi
 
             if [ "$isChild" = "1" ]; then
-                num=${#PLIST[@]}
+                pnum=${#PLIST[@]}
                 echo "${PPATH}: "
-                for ((i=0;i<$num; i++)); do
-                    set -- ${PLIST[$i]}
+                parent="$PPATH/"
+                while [ "$parent" != "//" ]; do
+                  for ((p=0;p<$pnum; p++)); do
+                    set -- ${PLIST[$p]}
                     itype=$1
                     ipath=$2
-                    if [ "$PPATH" = "$ipath" ]; then
+                    if [ "$parent" = "$ipath" ]; then
                         echo "${itype}"
-                        if [ "$itype" = "link,persistent" ]; then
+                        #if [ "$itype" = "link,persistent" ]; then
+                        if [ "$itype" = "link" -o "$itype" = "tmpfs,rw" ]; then
                             # mount it to ${TARGET}
                             echo "mount --bind ${PERSISTENT}${PATH} ${TARGET}" >>$LOG 2>&1
                             /bin/mount --bind ${PERSISTENT}${PATH} ${TARGET}
                         fi
                     fi
+                  done
+                  parent="`/usr/bin/dirname $parent`/"
                 done
             else
+                if [ -d ${TARGET} ]; then
+                    echo "rm -Rf ${TARGET}" >>$LOG 2>&1
+                    /bin/rm -Rf ${TARGET} 2>&1 >>$LOG
+                fi
                 # finally make the tmpfs link point to the persistent file
                 # you have to get rid of the ${MNTDIR} directory in the beginning
                 # so that when the chroot happens the link is valid.
