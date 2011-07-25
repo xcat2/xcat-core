@@ -47,6 +47,26 @@ sub parse_args {
 ##########################################################################
 # Parse the chvm command line for options and operands
 ##########################################################################
+sub chvm_parse_lparname {
+    my $args = shift;
+    my $opt = shift;
+    if ((ref($args) ne 'ARRAY') || 
+            (scalar(@$args) > '1')){ 
+        return "@$args";
+    }
+    my ($cmd, $value) = split(/\=/, $args->[0]);        
+    if ($cmd !~ /^lparname$/) {
+        return "'$cmd' not support";
+    }
+    if (!defined($value)) {
+        return "value not specify";
+    }
+    $opt->{$cmd} = $value;
+    if ($value && $value ne '*' && $value !~ /^[a-zA-Z0-9-_]+$/) {
+        return "'$value' invalid";
+    }
+    return undef;
+}
 sub chvm_parse_args {
 
     my $request = shift;
@@ -90,7 +110,21 @@ sub chvm_parse_args {
     # Check for an extra argument
     ####################################
     if ( defined( $ARGV[0] )) {
-        return(usage( "Invalid argument: $ARGV[0]" ));
+        my $check_chvm_lpar_arg = chvm_parse_lparname(\@ARGV, \%opt);
+        if (defined($check_chvm_lpar_arg)) {
+            return (usage("Invalid argument: $check_chvm_lpar_arg"));
+        } elsif (($opt{lparname} ne '*') && (scalar(@{$request->{node}}) > '1')){
+            return(usage( "Invalid argument: must specify '*' for more than one node" ));
+        } else { 
+            my $len = rindex $opt{lparname}."\$", "\$";
+            if ($len > '47') {
+                return (usage("Invalid lparname '$opt{lparname}', name is too long, max 47 characters"));
+            }
+        }
+        if (exists($opt{lparname}) && 
+                (exists($opt{p}) || exists($opt{i}) || exists($opt{m}) || exists($opt{r}))) {
+            return (usage("lparname should NOT be used with -p, -i, -m or -r."));
+        }
     }
     ####################################
     # Configuration file required 
@@ -583,7 +617,51 @@ sub modify {
     my $usage_string = xCAT::Usage->getUsage($request->{command});
     return modify_by_prof( $request, $hash) if ( $request->{opt}->{p} || $request->{stdin}); 
     return create( $request, $hash) if ( $request->{opt}->{i}); 
+    return op_lparname ($request, $hash) if ($request->{opt}->{lparname});
     return ([["Error", "Miss argument\n".$usage_string, 1]]);
+}
+sub do_set_lparname {
+    my $request = shift;
+    my $hash = shift;
+    my @values = ();
+    my $lparname_para = $request->{opt}->{lparname};
+    while (my ($mtms, $h) = each(%$hash)) {
+        while (my($name, $d) = each(%$h)) {
+            my $lparname = ($lparname_para eq '*') ? $name : $lparname_para;
+            my $values = xCAT::FSPUtils::fsp_api_action($name, $d, "set_lpar_name", 0, $lparname);
+            if (@$values[1] && ((@$values[1] =~ /Error/i) && (@$values[2] ne '0'))) {
+                return ([[$name, @$values[1], '1']]) ;
+            } else {
+                push @values, [$name, "Success", '0'];
+            } 
+        }
+    } 
+    return \@values;
+}
+sub check_node_info {
+    my $hash = shift;
+    my $not_lpar = undef;
+    while (my ($mtms, $h) = each(%$hash)) {
+        while (my($name, $d) = each(%$h)) {
+            my $node_type = @$d[4];
+            if ($node_type !~ /^lpar$/) {
+                $not_lpar = $name;
+                last; 
+            }
+        } 
+    }
+    return $not_lpar;
+}
+
+sub op_lparname {
+    my $request = shift;
+    my $hash = shift;
+    my $node = $request->{node};
+    my $lpar_flag = &check_node_info($hash);
+    if (defined($lpar_flag)) {
+        return ([[$lpar_flag,"Node must be LPAR", 1]]);
+    }
+    return &do_set_lparname($request, $hash);
 }
 
 
@@ -746,6 +824,41 @@ sub enumerate {
     return( [0,\%outhash] );
 }
 
+sub get_cec_lpar_info {
+    my $name = shift;
+    my $attr = shift;
+    my $lparid = shift;
+    my $values = xCAT::FSPUtils::fsp_api_action($name, $attr, "get_lpar_info");
+    if (@$values[1] && ((@$values[1] =~ /Error/i) && @$values[2] ne '0')) {
+        return ([[$name, @$values[1], '1']]);
+    }
+    return @$values[1];
+}
+sub get_cec_lpar_name {
+    my $name = shift;
+    my $lpar_info = shift;
+    my $lparid = shift;
+    my @value = split(/\n/, $lpar_info);
+    foreach my $v (@value) {
+        if($v =~ /lparname:\s*([^\,]*),\s*lparid:\s*([\d]+),/) {
+            if($2 == $lparid) {
+                return $1;
+            }
+        }
+    }
+    return ([[$name, "can not get lparname for lpar id $lparid", '1']]);
+
+}
+sub get_lpar_lpar_name {
+    my $name = shift;
+    my $attr = shift;
+    my $values = xCAT::FSPUtils::fsp_api_action($name, $attr, "get_lpar_name");
+    if (@$values[1] && ((@$values[1] =~ /Error/i) && (@$values[2] ne '0'))) {
+        return $values;
+    }
+    return @$values[1];
+}
+
 ##########################################################################
 # Lists logical partitions
 ##########################################################################
@@ -759,14 +872,12 @@ sub list {
     my $node_name; 
     my $d;
     my @result;
-
+    my $lpar_infos;
     #print Dumper($hash);    
     while (my ($mtms,$h) = each(%$hash) ) {
 	my $info = enumerate( $h, $mtms );
 	my $Rc = shift(@$info);
 	my $data = @$info[0];
-        my $values = $data->{0};
-        my $msg = $data->{1};
          	
         while (($node_name,$d) = each(%$h) ) {
             my $cec   = @$d[3];
@@ -778,6 +889,8 @@ sub list {
 	        push @result, [$node_name, $data,$Rc]; 
 		next;
 	    }
+            my $values = $data->{0};
+            my $msg = $data->{1};
 	   
 	   # if ( !exists( $data->{$id} )) {
            #     push @result, [$node_name, "Node not found",1];
@@ -788,16 +901,37 @@ sub list {
                  push @result,[$node_name, $msg, 0];
             } else {
                 # get the I/O slot information  
+                if($request->{opt}->{l} and $type =~ /^(fsp|cec)$/) {
+                    $lpar_infos = get_cec_lpar_info($node_name, $d);
+                    if (ref($lpar_infos) eq 'ARRAY') {
+                        return $lpar_infos;
+                    }
+                }
                 my $v;
                 my @t; 
                 my @value = split(/\n/, $values);
                 foreach my $v (@value) {
                     my ($lparid, @t ) = split (/,/, $v);  
+                    my $lparname = undef;
+                    if ($request->{opt}->{l}) {
+                        if ($type =~ /^(fsp|cec)$/) {
+                            $lparname = get_cec_lpar_name($node_name, $lpar_infos, $lparid);
+                        } else {
+                            $lparname = get_lpar_lpar_name($node_name, $d);
+                        }
+                        if (ref($lparname) eq 'ARRAY') {
+                            return $lparname;
+                        } else {
+                            $lparname = "$lparname: $lparid";
+                        }
+                    } else {
+                        $lparname = $lparid;
+                    }
                     if ($type=~/^(fsp|cec)$/) {
-                        push @result,[$lparid, join('/', @t), $Rc];
+                        push @result,[$lparname, join('/', @t), $Rc];
                     } else {
                         if( $lparid eq $id) {
-                            push @result,[$lparid, join('/', @t), $Rc];
+                            push @result,[$lparname, join('/', @t), $Rc];
                         }
                     }
                 } 
