@@ -58,6 +58,8 @@ sub parse_args {
         "*_passwd",
         "hostname",
         "resetnet",
+        "dev",
+        "celogin1"
     );
     my @ppc = (
         "sshcfg"

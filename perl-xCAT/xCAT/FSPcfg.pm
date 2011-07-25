@@ -318,9 +318,10 @@ sub do_set_sysname {
            my $sysname = ($value eq '*') ? $name : $value;
            my $action = $sysname_action{set}{@$d[4]};
            my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action, 0, $sysname);
-           if (@$values[2] != 0)  {
-               push @result, $values;
-               last;
+           if (@$values[1] && ((@$values[1] =~ /Error/i) && (@$values[2] != 0))) {
+                return ([[$name, @$values[1], '1']]);
+           } else {
+                push $result, [$name, "Success", 0];
            }
         }
     }

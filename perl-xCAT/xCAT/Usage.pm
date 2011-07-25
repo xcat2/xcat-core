@@ -183,7 +183,7 @@ my %usage = (
    PPC (with HMC) specific:
        lsvm <noderange> [-a|--all]
    PPC (using Direct FSP Management) specific:
-       lsvm <noderange> ",
+       lsvm <noderange> [-l|--long]",
     "chvm" => 
 "Usage:
    Common:
@@ -193,6 +193,7 @@ my %usage = (
        chvm <noderange> <attr>=<val> [<attr>=<val>...]
    PPC (using Direct FSP Management) specific:
        chvm <noderange> [-p <profile>]
+       chvm <noderange> [lparname=<*|name>]
        chvm <noderange> -i <id> [-m <memory_interleaving>] -r <partition_rule>
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]",

@@ -550,7 +550,7 @@ B<rspconfig> I<mm01 sysname>
 
 B<rspconfig> I<mm01 sysname=frame1>
 
- mm01: success
+ mm01: Success
 
 B<rspconfig> I<mm01 sysname>
 
