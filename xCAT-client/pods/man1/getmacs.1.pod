@@ -146,13 +146,13 @@ Output is similar to:
  #Type  Location Code   MAC Address      Full Path Name  Ping Result
  ent U9133.55A.10B7D1G-V12-C4-T1 8e:e2:24:5c:f0:04 /vdevice/l-lan@30000004 successful virtual
 
-6. To retrieve the MAC address for Power 775 LPARl using Direct FSP Management without ping test and display the result only, enter:
+6. To retrieve the MAC address for Power 775 LPAR using Direct FSP Management without ping test and display the result only, enter:
 
- getmacs c250f07c04ap01 -d
+ getmacs lpar4 -d
 
 Output is similar to:
 
- c250f07c04ap01:
+ lpar4:
  #Type  Phys_Port_Loc  MAC_Address  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
  HFI  N/A  02:00:02:00:00:04:|02:00:02:00:00:05:|02:00:02:00:00:06  N/A  N/A  N/A  N/A  N/A  N/A  N/A
 
