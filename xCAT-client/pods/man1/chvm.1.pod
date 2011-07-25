@@ -18,6 +18,8 @@ B<chvm> [B<-V>| B<--verbose>] I<noderange> I<attr>=I<val> [I<attr>=I<val>...]
 
 B<chvm> I<noderange> [B<-p> I<profile>]
 
+B<chvm> I<noderange> [B<lparname>={B<*>|B<name>}]
+
 B<chvm> I<noderange> B<-i id> [B<-m> I<memory_interleaving>] B<-r> I<partition_rule>
 
 =head2 VMware/KVM specific:
@@ -109,6 +111,10 @@ The octants configuration value for one Octant could be  B<1>, B<2>, B<3>, B<4>,
 =item B<-p> I<profile>  
 
 Name of I/O slots assignment profile.
+
+=item B<lparname>={B<*>|B<name>}
+
+Set LPAR name for the specified lpars. If '*' specified, it means to get names from xCAT database and then set them for the specified lpars. If a string is specified, it only supports single node and the string will be set for the specified lpar. The user can use lsvm to check the lparnames for lpars. 
 
 =back
 
@@ -245,6 +251,14 @@ then run the command:
 5. To change the I/O slot profile for lpar1-lpar8 using the configuration data in the file /tmp/lparfile. Users can use the output of lsvm.and remove the cec information, and  modify the lpar id  before each I/O, and run the command as following:
 
  chvm lpar1-lpar8 -p /tmp/lparfile
+
+6. To change the LPAR name, enter:
+
+ chvm lpar1 lparname=test_lpar01
+
+Output is similar to:
+
+ lpar1: Success
 
 =head2 VMware/KVM specific:
 
