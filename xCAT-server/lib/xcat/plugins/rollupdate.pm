@@ -2226,21 +2226,24 @@ sub runrollupdate {
             }
             if (($::scheduler eq "loadleveler") &&
                 ($::ll_reservation_id)){ 
-                my @remove_res;
+                my @remove_res_LL;
+                my @remove_res_xCAT;
                 foreach my $bn (keys %ll_res) {
                     if (($ll_res{$bn}{remove}) && (! $ll_res{$bn}{removed}) ){
                         if ( defined($::XLATED{$bn}) ) {
-                            push (@remove_res,$::XLATED{$bn});
+                            push (@remove_res_LL,$::XLATED{$bn});
+                            push (@remove_res_xCAT,$bn);
                         } else {
-                            push (@remove_res,$bn);
+                            push (@remove_res_LL,$bn);
+                            push (@remove_res_xCAT,$bn);
                         }
                         $ll_res{$bn}{removed} = 1;
                         $ll_res{$bn}{not_done} = 0;
                     }
                 }
-                if (@remove_res) {
-                    &remove_LL_reservations(\@remove_res);
-                    xCAT::Utils->setAppStatus(\@remove_res,"RollingUpdate","update_complete");
+                if (@remove_res_LL) {
+                    &remove_LL_reservations(\@remove_res_LL);
+                    xCAT::Utils->setAppStatus(\@remove_res_xCAT,"RollingUpdate","update_complete");
                 }
             }
             if ($not_done) {
