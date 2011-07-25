@@ -25,13 +25,38 @@ if [[ $OS = "Linux" ]]; then
 
             BOOTDEVICE=`echo $BOOTENTRY | awk '{print $1}'`
 
+            if  [[ -f /sbin/multipath ]] ; then
+                MPATH=`/sbin/multipath -ll`
+            fi
+
             #software raid, assume sda and sdb
             if echo $BOOTDEVICE | grep "md"
             then
+                if echo $MPATH | grep "sdc"
+                then
+                    if echo $MPATH | grep "sdd"
+                    then
+                        logger -t xcat setbootfromdisk: Setting sda sdb sdc sdd to be the default bootup device
+                        echo "setbootfromdisk: setting up sda sdb sdc sdd to be the default bootup device"
+                        bootlist -m normal sda sdb sdc sdd
+                        exit 0
+                    fi
+                fi
                 logger -t xcat setbootfromdisk: Setting sda sdb to be the default bootup device
-                echo "setbootfromdisk: setting up sda sdb to be the default bootup device"
+                echo "setbootfromdisk: setting up sda sdb to be the default bootup device for software raid"
                 bootlist -m normal sda sdb
                 exit 0
+            fi
+
+            if echo $MPATH | grep "sda"
+            then
+                if echo $MPATH | grep "sdb"
+                then
+                    logger -t xcat setbootfromdisk: Setting sda sdb to be the default bootup device
+                    echo "setbootfromdisk: setting up sda sdb to be the default bootup device"
+                    bootlist -m normal sda sdb
+                    exit 0
+                fi
             fi
 
             if [[ -z $BOOTDEVICE ]]; then
