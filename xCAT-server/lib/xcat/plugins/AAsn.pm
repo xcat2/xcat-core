@@ -215,6 +215,16 @@ sub init_plugin
                 }
 
             }
+	    my $service = "ipforward";
+  	    if (grep(/$service/, @servicelist))
+	    {
+	    
+	      $rc =  xCAT::NetworkUtils->setup_ip_forwarding(1);    # enable ip forwarding
+	      if ($rc == 0)
+	      {
+	    	xCAT::Utils->update_xCATSN($service);
+	      }
+	    }
 
             #
             # setup dhcp only on Linux and last
@@ -253,16 +263,6 @@ sub init_plugin
                                 "AAsn.pm:Error reading the servicenode table.");
         }
 
-	my $service = "ipforward";
-	if (grep(/$service/, @servicelist))
-	{
-	    
-	    $rc =  xCAT::NetworkUtils->setup_ip_forwarding(1);    # enable ip forwarding
-	    if ($rc == 0)
-	    {
-		xCAT::Utils->update_xCATSN($service);
-	    }
-	}
     }
     else     # management node
     {
