@@ -199,7 +199,7 @@ prescriptnodes=sn
 #    updates may be applied to the nodes through prescripts, and a node 
 #    reboot may not be required. 
 # Default is "no" - a node shutdown will be performed.
-skipshutdown=yes
+skipshutdown=no
 
 
 

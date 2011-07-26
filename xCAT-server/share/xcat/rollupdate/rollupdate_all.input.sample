@@ -172,13 +172,12 @@ update_if_down=no
 
 
 
-# NOT IMPLEMENTED YET! FUTURE SUPPORT FOR ROLLING UPDATE OF DISKFULL NODES
-# shutdownrequired:  Should a shutdown command be sent to the nodes.
+# skipshutdown:  Should a shutdown command be sent to the nodes.
 #    Shutdown is required for diskless nodes.  For diskfull nodes, simple
 #    updates may be applied to the nodes through prescripts, and a node
 #    reboot may not be required.
-# Default is "yes".
-shutdownrequired=yes
+# Default is "no" - a node shutdown will be performed.
+skipshutdown=no
 
 
 
