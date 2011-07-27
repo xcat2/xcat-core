@@ -312,7 +312,8 @@ run_ps () {
  
  if [[ -f \$1 ]]; then 
   echo \"Running postscript: \$@\" | tee -a \$logfile
-  ./\$@ 2>&1 | tee -a \$logfile
+  ./\$@ 2>&1 1> /tmp/tmp4xcatlog
+  cat /tmp/tmp4xcatlog | tee -a \$logfile
  else
   echo \"Postscript \$1 does NOT exist.\" | tee -a \$logfile
  fi
