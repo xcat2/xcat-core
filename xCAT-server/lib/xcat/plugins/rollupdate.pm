@@ -1295,7 +1295,7 @@ sub translate_names{
                unless ($datum =~ /^$/) { # ignore blank translations
                  $xlated_node=$datum;
                }
-               next; #skip the redundancy that follows otherwise
+#               next; #skip the redundancy that follows otherwise
             }
             while ($curr)
             {
