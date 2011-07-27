@@ -42,7 +42,7 @@ If the value of the attribute is a list then this option may be used to remove o
 
 Change the current object name to the new-name which is specified by the -n option.
 The object of site, monitoring types cannot be supported.
-Note: For the B<-n> option, only one node can be handled.
+Note: For the B<-n> option, only one node can be handled. For some special nodes such as fsp, bpa, frame, cec etc., usually their hcp attributes are their names, if you use B<-n> option, please check if you need to change the hcp attribute to their new names.
 
 =item I<noderange>
 
