@@ -262,7 +262,16 @@ sub deconfig {
 	     #####################################
              # Format fsp-api results
              #####################################
-             my $decfg = XMLin($data);
+         #my $decfg = XMLin($data);
+         my $decfg;
+         eval {
+             $decfg = XMLin($data);
+         };
+         if( $@ ) {
+             push @result,[$name, "Error: there are some unreadable XML data from the firmware. Please check with the data provider.", -1];
+             return (\@result);
+         }
+
 	     my $node =  $decfg->{NODE};
 	     if( defined($node) &&  exists($node->{Location_code}) ) {
 		 push @result,[$name,"Deconfigured resources", 0];
