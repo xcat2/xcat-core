@@ -429,8 +429,8 @@ sub process_request {
         }
         else
         {
+            system("/sbin/service $service stop");
             system("/sbin/service $service start");
-            system("/sbin/service $service reload");
         }
             xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
         }
