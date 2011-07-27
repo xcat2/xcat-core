@@ -1247,10 +1247,6 @@ sub initDB
             {
                 xCAT::MsgUtils->message('E',"Could not set ddns as dnshandler.");
             }
-            else
-            {
-                xCAT::MsgUtils->message('I',"xCAT uses Dynamic DNS instead of BIND. If you want to keep the existing DNS settings made by xCAT BIND, then you should not run \"makedns\" commands. If you want to use the Dynamic DNS feature then you must run \"makedns -n\" to refresh the DNS settings.");
-            }
         }
     }
 }    # end initial DB install setup
