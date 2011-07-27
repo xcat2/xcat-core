@@ -26,7 +26,9 @@ The command scans the specified directory structure for Firmware update package 
 
 The POWER5  and POWER6 systems contain several components that use Licensed Internal Code.  The B<rflash> command supports two of these components: the managed system (also known as the Central Electronics Complex, or CEC) and the power subsystem (also known as the Bulk Power Assembly (BPA) or Bulk Power Controller (BPC)).  Some POWER5 managed systems can be attached to a power subsystem.  These power subsystems can support multiple managed systems.  When the B<rflash> command is invoked, xCAT will determine the managed system or power subsystem associated with that CEC and perform the update. 
 
-The B<noderange> can be an CEC or CEC list, a Lpar or Lpar list and a BPA or BPA list. But CEC (or Lpar) and BPA B<can't> be used at the same time. When the I<noderange> is an CEC or CEC list, B<rflash> will upgrade the firmware of the CEC or CECs in the cec list. If I<noderange> is a Lpar or Lpar list, B<rflash> will update Licensed Internal Code (LIC) on  HMC-attached POWER5 and POWER6 pSeries nodes.  If I<noderange> is a BPA or BPA list, B<rflash> will update Licensed Internal Code (LIC) of the power subsystem on  HMC-attached POWER5 and POWER6 pSeries nodes. The I<noderange> can also be the specified node groups. You  can  specify a  comma or space-separated list of node group ranges. See the I<noderange>  man  page  for  detailed usage information. 
+The B<noderange> can be an CEC or CEC list, a Lpar or Lpar list and a Frame or Frame list. But CEC (or Lpar) and Frame B<can't> be used at the same time. When the I<noderange> is an CEC or CEC list, B<rflash> will upgrade the firmware of the CEC or CECs in the cec list. If I<noderange> is a Lpar or Lpar list, B<rflash> will update Licensed Internal Code (LIC) on  HMC-attached POWER5 and POWER6 pSeries nodes, and POWER7 systems using Direct FSP management.  If I<noderange> is a Frame or Frame list, B<rflash> will update Licensed Internal Code (LIC) of the power subsystem on  HMC-attached POWER5 and POWER6 pSeries nodes. The I<noderange> can also be the specified node groups. You  can  specify a  comma or space-separated list of node group ranges. See the I<noderange>  man  page  for  detailed usage information. 
+
+=head2 PPC (with HMC) specific:
 
 The B<rflash> command uses the B<xdsh> command to connect to the HMC controlling the given managed system and perform the updates. Before run B<rflash>, please use B<rspconfig> to check if the related HMC ssh is enabled. If enable a HMC ssh connection, please use B<rspconfig> comamnd.
 
@@ -47,6 +49,12 @@ Any previously activated code on the affected systems will be automatically acce
 B<IMPORTANT!>  If the power subsystem is recycled, all of its attached managed systems will be recycled. 
 
 If it outputs B<"Timeout waiting for prompt"> during the upgrade, please set the B<"ppctimeout"> larger in the B<site> table. After the upgrade, remeber to change it back. If run the B<"rflash"> command on an AIX management node, need to make sure the value of B<"useSSHonAIX"> is B<"yes"> in the site table.
+
+=head2 PPC (using Direct FSP Management) specific:
+
+In currently Direct FSP/BPA Management, our B<rflash> doesn't support B<concurrent> value of B<--activate> flag, and only support B<disruptive>. The B<disruptive> option will cause any affected systems that are powered on to be powered down before installing and activating the update. So we require that the systems should be powered off before do the firmware update. 
+
+For Power 775, the rflash command takes effect on the primary and secondary FSPs or BPAs almost in parallel. 
 
 =head1 B<Options>
 
