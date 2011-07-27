@@ -2281,10 +2281,18 @@ sub runrollupdate {
                 print RULOG "\n";
                 xCAT::Utils->setAppStatus(\@error_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded");
                 if ( @remaining_nodes ) {
-                  print RULOG localtime()." ERROR:  bringuptimeout exceeded for some nodes in a preceding bringuporder.  The following nodes will not be powered on: \n";
-                  print RULOG join(",",@remaining_nodes);
-                  print RULOG "\n";
-                  xCAT::Utils->setAppStatus(\@remaining_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded_for_previous_node");
+                  my @leftover_nodes;
+                  foreach my $rn (@remaining_nodes) {
+                    if (defined($rn)) {
+                        push (@leftover_nodes,$rn);
+                    }
+                  }
+                  if ( @leftover_nodes ) {
+                    print RULOG localtime()." ERROR:  bringuptimeout exceeded for some nodes in a preceding bringuporder.  The following nodes will not be powered on: \n";
+                    print RULOG join(",",@leftover_nodes);
+                    print RULOG "\n";
+                    xCAT::Utils->setAppStatus(\@leftover_nodes,"RollingUpdate","ERROR_bringuptimeout_exceeded_for_previous_node");
+                  }
                 }
                 close (RULOG);
             }
@@ -2405,22 +2413,31 @@ sub get_hostlist {
         print RULOG localtime()." $llstatus \n";
         close (RULOG);
     }
-    my @status_fields = split(/!/,$llstatus);
-    if ($::VERBOSE) {
-        open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-        print RULOG localtime()." Hostlist:  $status_fields[22] \n";
-        close (RULOG);
+    if ($::RUNCMD_RC) {
+        if ($::VERBOSE) {
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." ERROR:  FAILED calling: \n     $cmd \n";
+            close (RULOG);
+        }
+      return 0;
+    } else {
+        my @status_fields = split(/!/,$llstatus);
+        if ($::VERBOSE) {
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." Hostlist:  $status_fields[22] \n";
+            close (RULOG);
+        }
+        my $return_list;
+        foreach my $machine (split( /\,/, $status_fields[22])) {
+           if ( defined($::XLATED{$machine}) ) {
+               $return_list = $return_list.','.$::XLATED{$machine};
+           } else {
+               $return_list = $return_list.','.$machine;
+           }
+        }
+        $return_list =~ s/^,//;
+        return $return_list;
     }
-    my $return_list;
-    foreach my $machine (split( /\,/, $status_fields[22])) {
-       if ( defined($::XLATED{$machine}) ) {
-           $return_list = $return_list.','.$::XLATED{$machine};
-       } else {
-           $return_list = $return_list.','.$machine;
-       }
-    }
-    $return_list =~ s/^,//;
-    return $return_list;
 }
 
 
@@ -2473,9 +2490,14 @@ sub remove_LL_reservations {
         print RULOG localtime()." $llstatus \n";
         close (RULOG);
     }
-#    if ( $::RUNCMD_RC != 0 ) {
-#        return 0;
-#    }
+    if ( $::RUNCMD_RC ) {
+        if ($::VERBOSE) {
+            open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+            print RULOG localtime()." ERROR:  FAILED calling:\n   $cmd  \n";
+            close (RULOG);
+        }
+        return 0;
+    }
     my @status_fields = split(/!/,$llstatus);
     my $llnodelist = $status_fields[22];
     my @llnodes = split(/,/,$llnodelist);
@@ -2530,11 +2552,11 @@ sub remove_LL_reservations {
             # Are there any nodes with this feature still set?
             $llset = $stat_out[0];
 ### DEBUG - print output to see what's going on
-if ($llset) {
-   open (RULOG, ">>$::LOGDIR/$::LOGFILE");
-   print RULOG localtime()." llset:  $llset\n";
-   close (RULOG);
-}
+#if ($llset) {
+#   open (RULOG, ">>$::LOGDIR/$::LOGFILE");
+#   print RULOG localtime()." llset:  $llset\n";
+#   close (RULOG);
+#}
 ### end DEBUG
             $statrun ++;
          } until ((! $llset) || ($statrun > 10) );
