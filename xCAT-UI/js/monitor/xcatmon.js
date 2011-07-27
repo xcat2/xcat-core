@@ -74,12 +74,9 @@ function loadXcatMonSetting(data){
 
 	//create contariner for new contents use for update the monsetting table
 	var newCont =new Object();
-	newCont[0]=rsp[0].split(","); // table header	
-	// create container for other monsetting lines not xcatmon
+	newCont[0]=rsp[0].split(","); //table header	
+	//create container for other monsetting lines not xcatmon
 	var otherCont =new Array();
-	
-
-
 
 	$('#xcatmonTable').append(XcatmonTable.object()); //add table object
 	var m=1; //the count for origCont
@@ -108,7 +105,8 @@ function loadXcatMonSetting(data){
 				
 				cols.push('<input type="checkbox" name="'+cols[0]+'" title="Click this checkbox will add/remove the app from the configure apps value." />');
 				cols.unshift('<span class="ui-icon ui-icon-close" onclick="deleteRow1(this)"></span>');
-				//add teh column tho the table.
+				
+				//add the column tho the table
 				XcatmonTable.add(cols);
 				
 				origCont[m++]=cols;
@@ -130,6 +128,7 @@ function loadXcatMonSetting(data){
 						apps_flag=1; //set the flag to 1 to avoid this subroute
 					}
 				}
+				
 				//get into the ping setting subroute
 				if (!ping_flag){
 					//check the ping-interval config
@@ -368,8 +367,6 @@ function loadXcatMonSetting(data){
 		//delete the last "," of the apps value
 		appValue=appValue.substring(0,(appValue.length-1));
 		apps[2]=appValue;
-
-//		tmp =apps;
 		
 		//newCont add the apps row
 		newCont[count++]=apps;

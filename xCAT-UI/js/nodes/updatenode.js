@@ -53,7 +53,7 @@ function loadUpdatenodePage(tgtNodes) {
 
 	// Create loader
 	var loader = createLoader('updatenodeLoader');
-	statusBar.append(loader);
+	statusBar.find('div').append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Update nodes in an xCAT environment');

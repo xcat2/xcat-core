@@ -304,7 +304,38 @@ DataTable.prototype.add = function(rowCont) {
  * @return Status bar
  */
 function createStatusBar(barId) {
-	var statusBar = $('<div class="ui-state-highlight ui-corner-all" id="' + barId + '"></div>').css('padding', '10px');
+	var statusBar = $('<div class="ui-state-highlight ui-corner-all" id="' + barId + '"></div>').css({
+		'margin-bottom': '5px',
+		'min-height': '30px'
+	});
+	
+	// Create info icon
+	var icon = $('<span class="ui-icon ui-icon-circle-check"></span>').css({
+		'display': 'inline-block',
+		'margin': '10px 5px'
+	});
+	
+	// Create message section
+	var msg = $('<div></div>').css({
+		'display': 'inline-block',
+		'margin': '10px 0px',
+		'width': '90%'
+	});
+	
+	// Create hide button
+	var hide = $('<span class="ui-icon ui-icon-minus"></span>').css({
+		'display': 'inline-block',
+		'float': 'right',
+		'margin': '10px 5px',
+		'cursor': 'pointer'
+	}).click(function() {
+		// Remove info box on-click
+		$(this).parent().hide();
+	});
+	
+	statusBar.append(icon);
+	statusBar.append(msg);
+	statusBar.append(hide);
 	return statusBar;
 }
 
@@ -409,7 +440,6 @@ function createMenu(items) {
 				'border-left' : '1px solid #BDBDBD'
 			});
 		}
-
 		menu.append(item);
 	}
 
@@ -431,10 +461,12 @@ function initPage() {
 	includeJs("js/jquery/superfish.min.js");
 	includeJs("js/jquery/hoverIntent.min.js");
 	includeJs("js/jquery/jquery.jstree.min.js");
-	includeJs("js/jquery/jquery.flot.min.js");
 	includeJs("js/jquery/tooltip.min.js");
 	includeJs("js/jquery/jquery.serverBrowser.min.js");
-
+	includeJs("js/jquery/jquery.jqplot.min.js");
+    includeJs("js/jquery/jqplot.pieRenderer.min.js");
+    includeJs("js/jquery/jqplot.dateAxisRenderer.min.js");
+    
 	// Page plugins
 	includeJs("js/configure/configure.js");	
 	includeJs("js/monitor/monitor.js");
@@ -456,16 +488,7 @@ function initPage() {
 
 	// Show the page
 	$("#content").children().remove();
-	if (page == 'index.php') {
-		includeJs("js/jquery/jquery.topzindex.min.js");
-		includeJs("js/nodes/nodeset.js");
-		includeJs("js/nodes/rnetboot.js");
-		includeJs("js/nodes/updatenode.js");
-		includeJs("js/nodes/physical.js");
-		includeJs("js/nodes/mtm.js");
-		headers.eq(0).css('background-color', '#A9D0F5');
-		loadNodesPage();
-	} else if (page == 'configure.php') {
+	if (page == 'configure.php') {
 		includeJs("js/configure/update.js");
 		includeJs("js/configure/discover.js");
 		headers.eq(1).css('background-color', '#A9D0F5');
@@ -480,7 +503,18 @@ function initPage() {
 		includeJs("js/monitor/gangliamon.js");
 		headers.eq(3).css('background-color', '#A9D0F5');
 		loadMonitorPage();
+	} else if (page == 'guide.php') {
+	    includeJs("js/guide/guide.js");
+	    headers.eq(4).css('background-color', '#A9D0F5');
+        loadGuidePage();
 	} else {
+		// Load nodes page by default
+	    includeJs("js/jquery/jquery.topzindex.min.js");
+        includeJs("js/nodes/nodeset.js");
+        includeJs("js/nodes/rnetboot.js");
+        includeJs("js/nodes/updatenode.js");
+        includeJs("js/nodes/physical.js");
+        includeJs("js/nodes/mtm.js");
 		headers.eq(0).css('background-color', '#A9D0F5');
 		loadNodesPage();
 	}
@@ -520,17 +554,18 @@ function includeJs(file) {
  */
 function writeRsp(rsp, pattern) {
 	// Create paragraph to hold ajax response
-	var prg = $('<p></p>');
+	var prg = $('<pre></pre>');
+	
 	for ( var i in rsp) {
 		if (rsp[i]) {
 			// Create regular expression for given pattern
 			// Replace pattern with break
 			if (pattern) {
-				rsp[i] = rsp[i].replace(new RegExp(pattern, 'g'), '<br>');
+				rsp[i] = rsp[i].replace(new RegExp(pattern, 'g'), '<br/>');
 				prg.append(rsp[i]);
 			} else {
 				prg.append(rsp[i]);
-				prg.append('<br>');
+				prg.append('<br/>');
 			}			
 		}
 	}
@@ -582,19 +617,34 @@ function openDialog(type, msg) {
  */
 function createIFrame(src) {
 	// Put an iframe inside an info box
-	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>');
+	var infoBar = $('<div class="ui-state-highlight ui-corner-all"></div>').css({
+		'margin-bottom': '5px'
+	});
+	
+	// Create info and close icons
 	var icon = $('<span class="ui-icon ui-icon-info"></span>').css({
 		'display': 'inline-block',
 		'margin': '10px 5px'
 	});
+	var close = $('<span class="ui-icon ui-icon-close"></span>').css({
+		'display': 'inline-block',
+		'float': 'right',
+		'margin': '10px 5px'
+	}).click(function() {
+		// Remove info box on-click
+		$(this).parent().remove();
+	});
+		
 	var iframe = $('<iframe></iframe>').attr('src', src).css({
 		'display': 'inline-block',
 		'border': '0px',
 		'margin': '10px 0px',
-		'width': '95%'
+		'width': '90%'
 	});
 	
 	infoBar.append(icon);
 	infoBar.append(iframe);
+	infoBar.append(close);
+	
 	return infoBar;
 }

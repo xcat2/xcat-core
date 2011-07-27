@@ -39,7 +39,7 @@ function loadNetbootPage(tgtNodes) {
 
 	// Create loader
 	var loader = createLoader('netbootLoader');
-	statusBar.append(loader);
+	statusBar.find('div').append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Cause the range of nodes to boot to network');

@@ -162,7 +162,7 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
 
 	// Create loader
 	var loader = createLoader('loader').hide();
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Provision a node on System p.');
@@ -463,7 +463,7 @@ function pProvisionExisting(data) {
 	else if (cmd == 'nodeset') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');
-		tempTab.find('#statBar').append(prg);
+		tempTab.find('#statBar div').append(prg);
 
 		// If there was an error, do not continue
 		if (prg.html().indexOf('Error') > -1) {
@@ -495,7 +495,7 @@ function pProvisionExisting(data) {
 	else if (cmd == 'rnetboot') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');
-		tempTab.find('#statBar').append(prg);
+		tempTab.find('#statBar div').append(prg);
 		tempTab.find('#loader').remove();
 	}
 }

@@ -1,13 +1,13 @@
 /*associate the step name with step number*/
-var steps = ['Discover hardware', 
-             'Cluster patterns',
-             'Supernode numbers',
-             'More cluster patterns',
+var steps = ['Platform', 
+             'Patterns',
+             'Supernode',
+             'More patterns',
              'Power on hardware',
              'Discover frames',
-             'Prepare management node',
-             'Update definitions',
-             'Create LPARs',
+             'Management node',
+             'Update',
+             'LPARs',
              'Complete'];
 
 /*associate the function with step number*/
@@ -70,10 +70,11 @@ function updateDiscoverStep(){
 	for (var index in steps){
 		showString += '<span';
 		if (currentStep == index){
-			showString += ' style="background-color:yellow;"';
+			showString += ' class="discovercurrentstep"';
 		}
-		showString += '>' + steps[index] + '</span><br/>';
+		showString += '>' + steps[index] + '</span>->';
 	}
+	showString = showString.substr(0, showString.length - 2);
 	$('#discoverStepDiv').html(showString);
 }
 
@@ -183,7 +184,7 @@ function createBackButton(){
 function getDiscoverEnv(envName){
 	if (discoverEnv[envName]){
 		return discoverEnv[envName];
-	}
+	} 
 	else{
 		return '';
 	}
@@ -330,7 +331,6 @@ function initSelectPlatform(){
 	temp += '<p>This wizard will guide you through the process of defining the naming conventions within' + 
 		'your cluster, discovering the hardware on your network, and automatically defining it in the xCAT' +
 		'database.<br/>Choose which type of hardware you want to discover, and then click Next.</p>';
-	
 	temp += '<input type="radio" name="platform" disabled="true"><span  style="color:gray;"> System x hardware (not implemented yet)</span></input><br/>';
 	temp += '<input type="radio" name="platform" id="ih"> System p hardware (P7 IH)</input><br/>';
 	temp += '<input type="radio" name="platform" id="nonih"> System p hardware (Non P7 IH)</input><br/>';
@@ -358,9 +358,9 @@ function initSelectPlatform(){
 function getPlatform(){
 	var radioValue = $('#discoverContentDiv :checked').attr('id');
 	setDiscoverEnv('machineType', radioValue);
-
 	return true;
 }
+
 /**
  * Step 2: Cluster basic patterns 
  *         users can input the switches' name range, the number of port, start ip and port prefix
@@ -412,7 +412,6 @@ function initBasicPattern(){
 	showString += '</tbody></table></div>';
 	
 	$('#discoverContentDiv').append(showString);
-	
 	$('#discoverContentDiv [title]').tooltip({
 		position: "center right",
 		offset: [-2, 10],
@@ -639,6 +638,7 @@ function checkSupernode(operType){
 			cmd : 'echo -e "' + args + '" > /tmp/websupernode.txt'
 		}
 	});
+	
 	return true;
 }
 
@@ -671,7 +671,7 @@ function initSiteTable(operType){
 	$('.tooltip').remove();
 	var showDiv = $('<div style="min-height:360px" id="siteDiv"><h2>' + steps[currentStep] + '(Site info)</h2></div>');
 	var statBar = createStatusBar('siteTableStat');
-	statBar.append(createLoader());
+	statBar.find('div').append(createLoader());
 	showDiv.append(statBar);
 	$('#discoverContentDiv').append(showDiv);
 	
@@ -770,7 +770,7 @@ function showSiteArea(){
 		},
 	
 		success : function(data){
-			$('#discoverContentDiv #siteTableStat').html('Current network interface configuration:<br/><pre>' + 
+			$('#discoverContentDiv #siteTableStat div').html('Current network interface configuration:<br/><pre>' + 
 						data.rsp + '</pre>');
 		}
 	});
@@ -810,6 +810,7 @@ function calcEndIp(ipStart, num){
 	ipArray[0] = ipArray[0] + parseInt(sum / 255);
 	return (ipArray.join('.'));
 }
+
 /**
  * Step 4: check the input are all filled 
  *          
@@ -887,7 +888,7 @@ function initDiscoverFrames(){
 			+ '</td><td style="width:20px"></td><td id="mtmsTd"></td></tr></table></center>');
 	
 	if (getDiscoverEnv('framemtmsmap')){
-		$('#framedisc').html('Mapping the frame name and mtms which discovered by lsslp.<br\>' + 
+		$('#framedisc div').html('Mapping the frame name and mtms which discovered by lsslp.<br\>' + 
 							 'Select the frame name, then select the mtms.');
 		var mapArray = getDiscoverEnv('framemtmsmap').split(':');
 		for(var i in mapArray){
@@ -899,7 +900,7 @@ function initDiscoverFrames(){
 		return;
 	}
 	
-	statBar.append('Discovering all Frames by lsslp.').append(createLoader());
+	statBar.find('div').append('Discovering all Frames by lsslp.').append(createLoader());
 	//use lsslp to find all bpas in cluster
 	$.ajax({
 		url : 'lib/cmd.php',
@@ -914,7 +915,7 @@ function initDiscoverFrames(){
 		success : function(data){
 			var tempInfo = data.rsp[0];
 			if (-1 != tempInfo.indexOf('Error')){
-				$('#framedisc').html(tempInfo);
+				$('#framedisc div').html(tempInfo);
 				createDiscoverButtons();
 				return;
 			}
@@ -923,19 +924,18 @@ function initDiscoverFrames(){
 			var frameArray = expandNR(getDiscoverEnv('frameName'));
 			//chech the defined number and discovered number
 			if (mtmsArray.length != frameArray.length){
-				$('#framedisc').html('Error: Definded Number is ' + frameArray.length + 
+				$('#framedisc div').html('Error: Definded Number is ' + frameArray.length + 
 									', but lsslp discovered Number is ' + mtmsArray.length + ', please check your configure!');
 				createDiscoverButtons();
 				return;
 			}
 			
-			$('#framedisc').html('Mapping the frame name and mtms which discovered by lsslp.<br\>' + 
+			$('#framedisc div').html('Mapping the frame name and mtms which discovered by lsslp.<br\>' + 
 			 		'Select the frame name, then select the mtms.');
 			
 			for (var i in frameArray){
 				$('#frameTd').append('<p><input name="frameradio" type="radio" onclick="createMap(this)"><span>' +
 						frameArray[i] + '</span></p>');
-				
 			}
 			
 			for (var i in mtmsArray){
@@ -1081,6 +1081,7 @@ function initConfig(operType){
 	
 	createSetupFile();
 }
+
 /**
  * Step 7: create the xcat configure file
  *          
@@ -1174,6 +1175,7 @@ function runSetup(){
 		}
 	});
 }
+
 /**
  * Step 7: create the dhcp configure file
  *          
@@ -1340,9 +1342,9 @@ function lsslpWriteHMC(){
 							tempSpan.addClass('ui-icon-check');
 							lsslpWriteCec();
 						}
-				});
+					});
 				}
-		});
+			});
 		}
 	});
 }

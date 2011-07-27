@@ -43,8 +43,6 @@ function loadImages(data) {
 	// Image attributes
 	var headers = new Object();
 	
-	// Clear cookie containing list of images where their attributes need to be updated
-	$.cookie('images2update', '');
 	// Clear hash table containing image attributes
 	origAttrs = '';
 
@@ -118,11 +116,8 @@ function loadImages(data) {
 	$('#imagesTab').children().remove();
 	
 	// Create info bar for images tab
-	var info = createInfoBar('Click on a cell to edit.  Click outside the table to write to the cell.  Hit the Escape key to ignore changes. Once you are satisfied with how the table looks, click on Save.');
+	var info = createInfoBar('Click on a cell to edit.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
 	$('#imagesTab').append(info);
-
-	// Create action bar
-	var actionBar = $('<div class="actionBar"></div>');
 
 	/**
 	 * The following actions are available for images:
@@ -149,28 +144,7 @@ function loadImages(data) {
 			 loadEditImagePage(tgtImages[i]);
 		}
 	});
-	
-	// Create save button
-	var saveBtn = createButton('Save');
-	// Do not show button until table is edited
-	saveBtn.css({
-		'display': 'inline',
-		'margin-left': '550px'
-	}).hide();
-	saveBtn.bind('click', function(event){
-		updateImageAttrs();
-	});
-	
-	// Create undo button
-	var undoBtn = createButton('Undo');
-	// Do not show button until table is edited
-	undoBtn.css({
-		'display': 'inline'
-	}).hide();
-	undoBtn.bind('click', function(event){
-		restoreImageAttrs();
-	});
-	
+
 	/**
 	 * Create an action bar
 	 */
@@ -178,8 +152,6 @@ function loadImages(data) {
 	actionsBar.append(copyLinuxBtn);
 	actionsBar.append(newBtn);
 	actionsBar.append(editBtn);
-	actionsBar.append(saveBtn);
-	actionsBar.append(undoBtn);
 	$('#imagesTab').append(actionsBar);
 	
 	// Insert table
@@ -203,9 +175,6 @@ function loadImages(data) {
 	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
 	$('#imagesDataTable td:not(td:nth-child(1),td:nth-child(2))').editable(
 		function(value, settings) {	
-			// Change text color to red
-			$(this).css('color', 'red');
-			
 			// Get column index
 			var colPos = this.cellIndex;
 						
@@ -218,15 +187,32 @@ function loadImages(data) {
 			
 			// Get image name
 			var image = $(this).parent().find('td:eq(1)').text();
-			
-			// Flag image to update
-			flagImage2Update(image);
-			
-			// Show table menu actions
-			saveBtn.show();
-			undoBtn.show();
+					
+			// Get table headers
+			var headers = $('#imagesDataTable thead tr th');
 
-			return (value);
+        	// Get attribute name
+        	var attrName = jQuery.trim(headers.eq(colPos).text());
+        	// Get column value
+        	var value = $(this).text();		
+        	// Build argument
+        	var args = attrName + '=' + value;
+        			
+        	// Send command to change image attributes
+        	$.ajax( {
+        		url : 'lib/cmd.php',
+        		dataType : 'json',
+        		data : {
+        			cmd : 'chdef',
+        			tgt : '',
+        			args : '-t;osimage;-o;' + image + ';' + args,
+        			msg : 'out=imagesTab;tgt=' + image
+        		},
+
+        		success: showChdefOutput
+        	});
+
+			return value;
 		}, {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',	// Input type to use
@@ -247,145 +233,6 @@ function loadImages(data) {
 
 		success : setImageDefAttrs
 	});
-}
-
-/**
- * Flag the image in the table to update
- * 
- * @param image
- *            The image name
- * @return Nothing
- */
-function flagImage2Update(image) {
-	// Get list containing current images to update
-	var images = $.cookie('images2update');
-
-	// If the node is not in the list
-	if (images.indexOf(image) == -1) {
-		// Add the new node to list
-		images += image + ';';
-		$.cookie('images2update', images);
-	}
-}
-
-/**
- * Update the image attributes
- * 
- * @return Nothing
- */
-function updateImageAttrs() {
-	// Get the nodes datatable
-	var dTable = $('#imagesDataTable').dataTable();
-	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
-	
-	// Get table headers
-	var headers = $('#imagesDataTable thead tr th');
-							
-	// Get list of nodes to update
-	var imagesList = $.cookie('images2update');
-	var images = imagesList.split(';');
-		
-	// Create the arguments
-	var args;
-	var rowPos, colPos, value;
-	var attrName;
-	// Go through each node where an attribute was changed
-	for (var i in images) {
-		if (images[i]) {
-			args = '';
-			
-        	// Get the row containing the image name
-        	rowPos = findRow(images[i], '#imagesDataTable', 1);
-        	$(rows[rowPos]).find('td').each(function (){
-        		if ($(this).css('color') == 'red') {
-        			// Change color back to normal
-        			$(this).css('color', '');
-        			
-        			// Get column position
-        			colPos = $(this).parent().children().index($(this));
-        			// Get column value
-        			value = $(this).text();
-        			
-        			// Get attribute name
-        			attrName = jQuery.trim(headers.eq(colPos).text());
-        			
-        			// Build argument string
-        			if (args) {
-        				// Handle subsequent arguments
-        				args += ';' + attrName + '=' + value;
-        			} else {
-        				// Handle the 1st argument
-        				args += attrName + '=' + value;
-        			}		
-        		}
-        	});
-        	
-        	// Send command to change image attributes
-        	$.ajax( {
-        		url : 'lib/cmd.php',
-        		dataType : 'json',
-        		data : {
-        			cmd : 'chdef',
-        			tgt : '',
-        			args : '-t;osimage;-o;' + images[i] + ';' + args,
-        			msg : 'out=imagesTab;tgt=' + images[i]
-        		},
-
-        		success: showChdefOutput
-        	});
-		} // End of if
-	} // End of for
-	
-	// Clear cookie containing list of images where their attributes need to be updated
-	$.cookie('images2update', '');
-}
-
-/**
- * Restore image attributes to their original content
- * 
- * @return Nothing
- */
-function restoreImageAttrs() {
-	// Get list of images to restore
-	var imagesList = $.cookie('images2update');
-	var images = imagesList.split(';');
-	
-	// Get the image datatable
-	var dTable = $('#imagesDataTable').dataTable();
-	// Get table headers
-	var headers = $('#imagesDataTable thead tr th');
-	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
-		
-	// Go through each node where an attribute was changed
-	var rowPos, colPos;
-	var attrName, origVal;
-	for (var i in images) {
-		if (images[i]) {			
-			// Get the row containing the image name
-			rowPos = findRow(images[i], '#imagesDataTable', 1);
-        	$(rows[rowPos]).find('td').each(function (){
-        		if ($(this).css('color') == 'red') {
-        			// Change color back to normal
-        			$(this).css('color', '');
-        			
-        			// Get column position
-        			colPos = $(this).parent().children().index($(this));	        			
-        			// Get attribute name
-        			attrName = jQuery.trim(headers.eq(colPos).text());
-        			// Get original content
-        			origVal = origAttrs[images[i]][attrName];
-        			
-        			// Update column
-        			dTable.fnUpdate(origVal, rowPos, colPos);
-        		}
-        	});
-		} // End of if
-	} // End of for
-	
-	// Clear cookie containing list of images where their attributes need to be updated
-	$.cookie('images2update', '');
 }
 
 /**
@@ -414,12 +261,13 @@ function setImageDefAttrs(data) {
     			// Get attribute name and description
     			key = jQuery.trim(attr.substring(0, attr.indexOf(':')));
     			descr = jQuery.trim(attr.substring(attr.indexOf(':') + 1));
-    			
+    			descr = descr.replace(new RegExp('<', 'g'), '[').replace(new RegExp('>', 'g'), ']');
+    			    			
     			// Set hash table where key = attribute name and value = description
         		defAttrs[key] = descr;
 			} else {				
 				// Append description to hash table
-				defAttrs[key] = defAttrs[key] + '\n' + attr;
+				defAttrs[key] = defAttrs[key] + '\n' + attr.replace(new RegExp('<', 'g'), '[').replace(new RegExp('>', 'g'), ']');
 			}
 		} // End of if
 	} // End of for
@@ -444,6 +292,8 @@ function loadCreateImage() {
 	var showStr = '';
 	var imageOsvers = $.cookie("osvers").split(",");
 	var imageArch = $.cookie("osarchs").split(",");
+	var profileArray = $.cookie("profiles").split(",");
+	var index = 0;
 
 	// Create set properties form
 	var setPropsForm = $('<div class="form" ></div>');
@@ -454,24 +304,28 @@ function loadCreateImage() {
 
 	// OS version selector
 	showStr += '<p><label>OS Version:</label><select id="osvers" onchange="hpcShow()">';
-	for ( var i = 0; i < imageOsvers.length; i++) {
-		showStr += '<option value="' + imageOsvers[i] + '">' + imageOsvers[i] + '</option>';
+	for ( index in imageOsvers) {
+		showStr += '<option value="' + imageOsvers[index] + '">' + imageOsvers[index] + '</option>';
 	}
 	showStr += '</select></p>';
 
 	// OS arch selector
 	showStr += '<p><label>OS Architecture:</label><select id="osarch" onchange="hpcShow()">';
-	for ( var i = 0; i < imageArch.length; i++) {
-		showStr += '<option value="' + imageArch[i] + '">' + imageArch[i] + '</option>';
+	for ( index in imageArch) {
+		showStr += '<option value="' + imageArch[index] + '">' + imageArch[index] + '</option>';
 	}
 	showStr += '</select></p>';
 
 	// Netboot interface input
 	showStr += '<p><label>Net Boot Interface:</label><input type="text" id="netbootif"></p>';
 	// Profile selector
-	showStr += '<p><label>Profile:</label><select id="profile" onchange="hpcShow()">' + '<option value="compute">compute</option>' + '<option value="service">service</option></select></p>';
+	showStr += '<p><label>Profile:</label><select id="profile" onchange="hpcShow()">';
+	for( index in profileArray){
+	    showStr += '<option value="' + profileArray[index] + '">' + profileArray[index] + '</option>';
+	}
+	showStr += '</select></p>';
 	// Boot method selector
-	showStr += '<p><label>Boot Method:</label><select id="bootmethod">' + '<option value="stateless">stateless</option>' + '<option value="statelite">statelite</option></select></p>';
+	showStr += '<p><label>Boot Method:</label><select id="bootmethod"><option value="stateless">stateless</option></select></p>';
 	setPropsForm.append(showStr);
 	createHpcSelect(setPropsForm);
 
@@ -483,39 +337,13 @@ function loadCreateImage() {
 	// If they are valid, show the hpc stack select area.
 	hpcShow();
 
-	$.ajax( {
-		url : 'lib/systemcmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'lsb_release -d;uname -p'
-		},
-		success : function(data) {
-			var tempArray = data.rsp.split("\n");
-			var mnOs = tempArray[0];
-			var mnArch = tempArray[1];
-			tempArray = mnOs.split(" ");
-			
-			// Get the the version of MN
-			if (mnOs.indexOf("Red Hat") != -1) {
-				mnOs = "rhels" + tempArray[6];
-			}
+	// The button used to create images is created here
+    var createImageBtn = createButton("Create Image");
+    createImageBtn.bind('click', function(event) {
+        createImage();
+    });
 
-			$('#createImageTab option[value=' + mnOs + ']').attr('selected', 'selected');
-			$('#createImageTab option[value=' + mnArch + ']').attr('selected', 'selected');
-			
-			// The button used to create images is created here
-			var createImageBtn = createButton("Create Image");
-			createImageBtn.bind('click', function(event) {
-				createImage();
-			});
-
-			$('#createImageTab').append(createImageBtn);
-
-			// Check the option and decide to show the hpcsoft or not
-			hpcShow();
-		}
-	});
-
+    $('#createImageTab').append(createImageBtn);
 }
 
 /**
@@ -546,6 +374,7 @@ function createHpcSelect(container) {
 
 	container.append(hpcFieldset);
 }
+
 var softwareList = {
 	"rsct" : [ "rsct.core.utils", "rsct.core", "src" ],
 	"pe" : [ "IBMJava2-142-ppc64-JRE", "ibm_lapi_ip_rh6p", "ibm_lapi_us_rh6p", "IBM_pe_license", "ibm_pe_rh6p", "ppe_pdb_ppc64_rh600", "sci_ppc_32bit_rh600", "sci_ppc_64bit_rh600", "vac.cmp",
@@ -662,7 +491,6 @@ function rpmCopyCheck(data) {
  */
 function genRpmCmd(softwareName) {
 	var cmdString;
-	var packageLength;
 	cmdString = "rpm -q ";
 	for (var i in softwareList[softwareName]) {
 		cmdString += softwareList[softwareName][i] + " ";
@@ -775,7 +603,7 @@ function loadEditImagePage(tgtImage) {
 	setPropsForm.append(infoBar);
 
 	// Create an input for each definable attribute
-	var div, label, input, descr, value;
+	var div, label, input, value;
 	// Set node attribute
 	origAttrs[tgtImage]['imagename'] = tgtImage;
 	for (var key in defAttrs) {
@@ -1043,7 +871,7 @@ function loadCopyCdPage() {
 
 	// Create loader
 	var loader = createLoader('');
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 	
 	// Create info bar
 	var infoBar = createInfoBar('Copy Linux distributions and service levels from CDs or DVDs to the install directory.');
@@ -1154,13 +982,13 @@ function loadCopyCdPage() {
 				var tabId = statBarId.replace('copyLinuxStatusBar', 'copyLinuxTab'); 
 				
 				// Go through output and append to paragraph
-				var prg = $('<p></p>');
+				var prg = $('<pre></pre>');
 				for (var i in out) {
 					if (out[i].length > 6) {
-						prg.append(out[i] + '<br>');
+						prg.append(out[i] + '<br/>');
 					}
 				}
-				$('#' + statBarId).append(prg);
+				$('#' + statBarId).find('div').append(prg);
 				
 				// Hide loader
 				$('#' + statBarId).find('img').hide();

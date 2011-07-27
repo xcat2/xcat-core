@@ -11,6 +11,8 @@ var nodeAttrs;
 var nodesList;
 // Nodes datatable ID
 var nodesTableId = 'nodesDatatable';
+// provision clock for provision progress stop
+var provisionClock;
 
 /**
  * Set node tab
@@ -83,10 +85,129 @@ function loadNodesPage() {
 				msg : ''
 			},
 
-			success : loadGroups
+			success : function(data){
+				loadGroups(data);
+				// draw cluster's summary by group names
+				loadPieSummary();
+			}
 		});
-		
 	}
+}
+
+/**
+ * show cluster's summary in pie chats
+ * 
+ * @return Nothing
+ */
+function loadPieSummary(){
+    $('#nodes').append('<h3>Cluster Summary</h3><hr/>');
+    var summaryTable = '<table>' +
+                       '<tr>' +
+                       '<td><div id="ospie" class="summarypie"></div></td>' +
+                       '<td><div id="archpie" class="summarypie"></div></td>' +
+                       '</tr>' +
+                       '<tr>' +
+                       '<td><div id="provmethodpie" class="summarypie"></td>' +
+                       '<td><div id="nodetypepie" class="summarypie"></div></td>' +
+                       '</tr></table>';
+    $('#nodes').append(summaryTable);
+
+    $('#nodes .summarypie').append(createLoader());
+    
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webrun',
+            tgt : '',
+            args : 'summary',
+            msg : '' 
+        },
+        success:function(data){
+             for(var i in data.rsp){
+                 drawPieSummary(i, data.rsp[i]);
+             }
+        }
+    });
+}
+
+/**
+ * use nodels to get nodes' information and call jqplot to draw on the page
+ * 
+ * @return Nothing
+ */
+function drawPieSummary(index, valuepair){
+	var position = 0;
+	var key = '';
+	var val = '';
+	var chattitle = '';
+	var dataArray = [];
+	var tempArray = [];
+	var container = $('#nodes .summarypie').eq(index);
+	
+	position = valuepair.indexOf('=');
+	chattitle = valuepair.substr(0, position);
+	tempArray = valuepair.substr(position + 1).split(';');
+    
+	for (var i in tempArray){
+	    position = tempArray[i].indexOf(':');
+	    key = tempArray[i].substr(0, position);
+	    val = Number(tempArray[i].substr(position + 1));
+	    dataArray.push([key,val]);
+	}
+                
+	container.empty();
+	var plot = $.jqplot(container.attr('id'),
+			[dataArray],
+			{
+                title: chattitle,
+    	        seriesDefaults: {
+            	renderer: $.jqplot.PieRenderer,
+    	        rendererOptions: {
+            	    padding: 5,
+                    fill: true,
+                    shadow: true,
+                    shadowOffset: 2,
+                    shadowDepth: 5,
+                    shadowAlpha: 0.07,
+	                dataLabels : 'value',
+	                showDataLabels: true
+            		}
+                },
+                legend: {
+                    show:true,
+                    location: 'e'
+                }
+            });
+	container.bind('jqplotDataClick',loadSummaryDetail);
+	container.bind('jqplotDataHighlight',function(){this.style.cursor='pointer';});
+	container.bind('jqplotDataUnhighlight',function(){this.style.cursor='';});
+}
+
+function loadSummaryDetail(ev, seriesIndex, pointIndex, data){
+	var temp = $(this).attr('id');
+	temp = temp.replace('pie', '');
+	var table = '';
+	switch(temp){
+	    case 'os':
+	    case 'arch':
+	    case 'provmethod':
+	    case 'nodetype':{
+	        table = 'nodetype';
+	    }
+        break;
+	    case 'status': {
+	        table = 'nodelist';
+	    }
+	    break;
+	}
+
+	var args = table + '.' + temp + '==';
+	if(data[0] != 'unknown'){
+	    args += data[0];
+	}
+	
+	drawNodesArea('', args, '');
 }
 
 /**
@@ -105,144 +226,122 @@ function loadGroups(data) {
 	setGroupsCookies(data);
 
 	// Create a list of groups
-	var list = $('<ul></ul>');
-	var item = $('<li id="root"><h3>Groups</h3></li>');
-	var subList = $('<ul></ul>');
-	list.append(item);
-	item.append(subList);
-
+	$('#groups').append('<div class="grouplabel">Groups</div>');
+	var grouplist= $('<div class="groupdiv"></div>');
 	// Create a link for each group
 	for (var i = groups.length; i--;) {
-		var subItem = $('<li id="' + groups[i] + '"></li>');
-		var link = $('<a>' + groups[i] + '</a>');
-		subItem.append(link);
-		subList.append(subItem);
+	    grouplist.append('<div><a href="#">' + groups[i] + '</a></div>');
 	}
-
-	// Turn groups list into a tree
-	$('#groups').append(list);
-	$('#groups').jstree( {
-		core : { "initially_open" : [ "root" ] },
-		themes : {
-			"theme" : "default",
-			"dots" : false,	// No dots
-			"icons" : false	// No icons
-		}
-	});
 	
-	// Load nodes onclick
-	$('#groups').bind('select_node.jstree', function(event, data) {
-		// If there are subgroups, remove them
-		data.rslt.obj.children('ul').remove();
-		
-		var thisGroup = jQuery.trim(data.rslt.obj.text());
-		if (thisGroup) {
-			// Clear nodes division
-			$('#nodes').children().remove();
-			
-			// Create loader
-			var loader = $('<center></center>').append(createLoader());
-			
-			// Create a tab for this group
-			var tab = new Tab('nodesPageTabs');
-			setNodesTab(tab);
-			tab.init();
-			$('#nodes').append(tab.object());
-			tab.add('nodesTab', 'Nodes', loader, false);
-			tab.add('graphTab', 'Graphical', '', false);
-			
-			$('#nodesPageTabs').bind('tabsselect', function(event, ui){
-				//for the graphical tab, we should check the graphical data first
-				if (1 == ui.index){
-					createPhysicalLayout(nodesList);
-				}
-			});
-			// To improve performance, get all nodes within selected group
-			// Get node definitions only for first 50 nodes
-			$.ajax( {
-				url : 'lib/cmd.php',
-				dataType : 'json',
-				data : {
-					cmd : 'nodels',
-					tgt : thisGroup,
-					args : '',
-					msg : thisGroup
-				},
+	$('#groups').append(grouplist);
+	
+	// bind the click event
+	$('#groups .groupdiv div').bind('click', function(){
+	    var thisGroup = $(this).text();
+	    $('#groups .groupdiv div').removeClass('selectgroup');
 
-				/**
-				 * Get node definitions for first 50 nodes
-				 * 
-				 * @param data
-				 *            Data returned from HTTP request
-				 * @return Nothing
-				 */
-				success : function(data) {
-					var rsp = data.rsp;
-					var group = data.msg;
-					
-					// Save nodes in a list so it can be accessed later
-					nodesList = new Array();
-					for (var i in rsp) {
-						if (rsp[i][0]) {
-							nodesList.push(rsp[i][0]);
-						}
-					}
-					
-					// Sort nodes list
-					nodesList.sort();
-					
-					// Get first 50 nodes
-					var nodes = '';
-					for (var i = 0; i < nodesList.length; i++) {
-						if (i > 49) {
-							break;
-						}
-						
-						nodes += nodesList[i] + ',';						
-					}
-								
-					// Remove last comma
-					nodes = nodes.substring(0, nodes.length-1);
-					
-					// Get nodes definitions
-					$.ajax( {
-						url : 'lib/cmd.php',
-						dataType : 'json',
-						data : {
-							cmd : 'lsdef',
-							tgt : '',
-							args : nodes,
-							msg : group
-						},
-
-						success : loadNodes
-					});
-					
-				}
-			});
-						
-			// Get subgroups within selected group
-			// only when this is the parent group and not a subgroup
-			if (data.rslt.obj.attr('id').indexOf('Subgroup') < 0) {
-    			$.ajax( {
-    				url : 'lib/cmd.php',
-    				dataType : 'json',
-    				data : {
-    					cmd : 'extnoderange',
-    					tgt : thisGroup,
-    					args : 'subgroups',
-    					msg : thisGroup
-    				},
-    
-    				success : loadSubgroups
-    			});
-			}
-			
-		} // End of if (thisGroup)
+	    $(this).addClass('selectgroup');
+	    drawNodesArea(thisGroup,'',thisGroup);
 	});
 	
 	// Make a link to add nodes
-	$('#groups').append(mkAddNodeLink());
+	$('#groups').append('<div class="actionDiv" id="adddiv"></div>');
+	$('#groups #adddiv').append(mkAddNodeLink());
+}
+
+/**
+ * empty the nodes area, and add two tabs for add loading nodes result
+ * 
+ * @param targetgroup: the name range for nodels command
+ *        arguments: filter arguments for nodels command
+ *        message: the useful information for the http request
+ *            
+ * @return
+ */
+function drawNodesArea(targetgroup, cmdargs, message){
+	// Clear nodes division
+    $('#nodes').empty();
+    
+    // Create loader
+    var loader = $('<center></center>').append(createLoader());
+    
+    // Create a tab for this group
+    var tab = new Tab('nodesPageTabs');
+    setNodesTab(tab);
+    tab.init();
+    $('#nodes').append(tab.object());
+    tab.add('nodesTab', 'Table', loader, false);
+    tab.add('graphTab', 'Graphic', '', false);
+    
+    $('#nodesPageTabs').bind('tabsselect', function(event, ui){
+        // for the graphical tab, we should check the graphical data first
+        if (1 == ui.index){
+            createPhysicalLayout(nodesList);
+        }
+    });
+    // To improve performance, get all nodes within selected group
+    // Get node definitions only for first 50 nodes
+    $.ajax( {
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'nodels',
+            tgt : targetgroup,
+            args : cmdargs,
+            msg : message
+        },
+
+        /**
+         * Get node definitions for first 50 nodes
+         * 
+         * @param data
+         *            Data returned from HTTP request
+         * @return Nothing
+         */
+        success : function(data) {
+            var rsp = data.rsp;
+            var group = data.msg;
+            
+            // Save nodes in a list so it can be accessed later
+            nodesList = new Array();
+            for (var i in rsp) {
+                if (rsp[i][0]) {
+                    nodesList.push(rsp[i][0]);
+                }
+            }
+            
+            // Sort nodes list
+            nodesList.sort();
+            
+            // Get first 50 nodes
+            var nodes = '';
+            for (var i = 0; i < nodesList.length; i++) {
+                if (i > 49) {
+                    break;
+                }
+                
+                nodes += nodesList[i] + ',';                        
+            }
+                        
+            // Remove last comma
+            nodes = nodes.substring(0, nodes.length-1);
+            
+            // Get nodes definitions
+            $.ajax( {
+                url : 'lib/cmd.php',
+                dataType : 'json',
+                data : {
+                    cmd : 'lsdef',
+                    tgt : '',
+                    args : nodes,
+                    msg : targetgroup
+                },
+
+                success : loadNodes
+            });
+            
+        }
+    });
 }
 
 /**
@@ -252,7 +351,7 @@ function loadGroups(data) {
  */
 function mkAddNodeLink() {
 	// Create link to add nodes
-	var addNodeLink = $('<a title="Add a node or a node range to xCAT">Add node</a>');
+	var addNodeLink = $('<a title="Add a node or a node range to xCAT">+ Add Node</a>');
 	addNodeLink.click(function() {
 		// Create info bar
 		var info = createInfoBar('Select the hardware management for the new node range');
@@ -262,16 +361,19 @@ function mkAddNodeLink() {
 		addNodeForm.append(info);
 		addNodeForm.append('<div><label for="mgt">Hardware management:</label>'
     		+ '<select id="mgt" name="mgt">'
-    			+ '<option>ipmi</option>' 
-    			+ '<option>blade</option>'
-    			+ '<option>hmc</option>'
-    			+ '<option>zvm</option>'
+    			+ '<option value="ipmi">iDataPlex</option>' 
+    			+ '<option value="blade">BladeCenter</option>'
+    			+ '<option value="hmc">System p</option>'
+    			+ '<option value="zvm">System z</option>'
     		+ '</select>'
     	+ '</div>');
 		
 		// Create advanced link to set advanced node properties
 		var advanced = $('<div></div>');
-		var advancedLnk = $('<a>Advanced</a>').css('cursor', 'pointer');
+		var advancedLnk = $('<a>Advanced</a>').css({
+			'cursor': 'pointer',
+			'color': '#0000FF'
+		});
 		advancedLnk.click(function() {
 			// Get node attributes
 			$.ajax( {
@@ -309,6 +411,8 @@ function mkAddNodeLink() {
 		addNodeForm.dialog({
 			modal: true,
 			width: 400,
+			title:'Add Node',
+			close: function(){$(this).remove();},
 			buttons: {
         		'Ok': function(){
 					// Get hardware management
@@ -396,9 +500,7 @@ function loadNodes(data) {
 	
 	// Variable to send command and request node status
 	var getNodeStatus = true;
-	
-	// Clear cookie containing list of nodes where their attributes need to be updated
-	$.cookie('nodes2update', '');
+
 	// Clear hash table containing node attributes
 	origAttrs = '';
 	
@@ -452,11 +554,12 @@ function loadNodes(data) {
 	}
 	sorted.sort();
 
-	// Add column for check box, node, ping, power, and comments
+	// Add column for check box, node, ping, power, monitor, and comments
 	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 
 		'node', 
 		'<span><a>status</a></span><img src="images/loader.gif"></img>', 
 		'<span><a>power</a></span><img src="images/loader.gif" style="display: none;"></img>',
+		'<span><a>monitor</a></span><img src="images/loader.gif" style="display: none;"></img>',
 		'comments');
 
 	// Create a datatable
@@ -479,8 +582,8 @@ function loadNodes(data) {
 			status = attrs[node]['status'].replace('sshd', 'ping');
 		}
 			
-		// Push in checkbox, node, status, and power
-		row.push(checkBx, nodeLink, status, '');
+		// Push in checkbox, node, status, monitor, and power
+		row.push(checkBx, nodeLink, status, '', '');
 		
 		// If the node attributes are known (i.e the group is known)
 		if (attrs[node]['groups']) {
@@ -523,7 +626,7 @@ function loadNodes(data) {
 		}
 		
 		// Go through each header
-		for (var i = 5; i < sorted.length; i++) {
+		for (var i = 6; i < sorted.length; i++) {
 			// Add the node attributes to the row
 			var key = sorted[i];
 			
@@ -546,7 +649,7 @@ function loadNodes(data) {
 	$('#nodesTab').children().remove();
 	
 	// Create info bar for nodes tab
-	var info = createInfoBar('Click on a cell to edit.  Click outside the table to write to the cell.  Hit the Escape key to ignore changes. Once you are satisfied with how the table looks, click on Save.');
+	var info = createInfoBar('Click on a cell to edit.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
 	$('#nodesTab').append(info);
 
 	// Create action bar
@@ -557,8 +660,6 @@ function loadNodes(data) {
 	 * power, clone, delete, unlock, and advanced
 	 */
 
-	var powerLnk = $('<a>Power</a>');
-	
 	// Power on
 	var powerOnLnk = $('<a>Power on</a>');
 	powerOnLnk.click(function() {
@@ -574,6 +675,26 @@ function loadNodes(data) {
 		var tgtNodes = getNodesChecked(nodesTableId);
 		if (tgtNodes) {
 			powerNode(tgtNodes, 'off');
+		}
+	});
+	
+	var monitorLnk = $('<a>Monitor</a>');
+
+	// Turn monitoring on
+	var monitorOnLnk = $('<a>Monitor on</a>');
+	monitorOnLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
+		if (tgtNodes) {
+			monitorNode(tgtNodes, 'on');
+		}
+	});
+
+	// Turn monitoring off
+	var monitorOffLnk = $('<a>Monitor off</a>');
+	monitorOffLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
+		if (tgtNodes) {
+			monitorNode(tgtNodes, 'off');
 		}
 	});
 
@@ -654,7 +775,6 @@ function loadNodes(data) {
 		if (tgtNodes) {
 			loadNodesetPage(tgtNodes);
 		}
-
 	});
 
 	// Boot to network
@@ -664,6 +784,14 @@ function loadNodes(data) {
 		if (tgtNodes) {
 			loadNetbootPage(tgtNodes);
 		}
+	});
+	
+	var provisionLnk = $('<a>Provision</a>');
+	provisionLnk.click(function(){
+	    var tgtNodes = getNodesChecked(nodesTableId);
+	    if (tgtNodes){
+	        openQuickProvisionDia(tgtNodes);
+	    }
 	});
 
 	// Remote console
@@ -684,57 +812,39 @@ function loadNodes(data) {
 		}
 	});
 	
-	// Power actions
-	var powerActions = [ powerOnLnk, powerOffLnk ];
-	var powerActionMenu = createMenu(powerActions);
-
+	// Install Ganglia
+	var installMonLnk = $('<a>Install monitoring</a>');
+	installMonLnk.click(function() {
+		var tgtNodes = getNodesChecked(nodesTableId);
+		if (tgtNodes) {
+			installGanglia(tgtNodes);
+		}
+	});
+	
+	// actions (power monitor)
+	var powerLnk = '<a>Actions</a>';
+	var powerActionMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, scriptLnk]);
+	
+	// configurations
+	var configLnk = '<a>Configuration</a>';
+	var configMenu = createMenu([unlockLnk, updateLnk, editProps, installMonLnk]);
 	// Advanced actions
-	var advancedLnk = $('<a>Advanced</a>');
-	var advancedActions;
-	if ('compute' == group) {
-		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons, editProps ];
-	} else {
-		advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, editProps ];
-	}
-	var advancedActionMenu = createMenu(advancedActions);
+	var advancedLnk = '<a>Provision</a>';
+	var advancedActionMenu = createMenu([ boot2NetworkLnk, setBootStateLnk, rcons, provisionLnk]);
 
 	// Create an action menu
-	var actionsDiv = $('<div></div>');
-	var actions = [ [ powerLnk, powerActionMenu ], cloneLnk, deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
-	var actionsMenu = createMenu(actions);
+	var actionsMenu = createMenu([ [ powerLnk, powerActionMenu ], [ configLnk, configMenu ],  [ advancedLnk, advancedActionMenu ] ]);
 	actionsMenu.superfish();
-	actionsDiv.append(actionsMenu);
-	actionBar.append(actionsDiv);
+	actionsMenu.css('display', 'inline-block');
+	actionBar.append(actionsMenu);
 	
 	// Insert action bar and nodes datatable
-	$('#nodesTab').append(actionBar);
 	$('#nodesTab').append(nodesTable.object());
-	
-	/**
-	 * Create menu to save and undo table changes
-	 */
-	
-	// Save changes
-	var saveLnk = $('<a>Save</a>');
-	saveLnk.bind('click', function(event){
-		updateNodeAttrs(group);
-	});
-	
-	// Undo changes
-	var undoLnk = $('<a>Undo</a>');
-	undoLnk.bind('click', function(event){
-		restoreNodeAttrs();
-	});
-	
-	// It will be hidden until a change is made
-	var tableActionsMenu = createMenu([saveLnk, undoLnk]).hide();
-	tableActionsMenu.css('margin-left', '90px');
-	tableActionsMenu.attr('id', 'tableActionMenu');
-	actionsDiv.append(tableActionsMenu);
-
+		
 	// Turn table into a datatable
 	var nodesDatatable = $('#' + nodesTableId).dataTable({
-		'iDisplayLength': 50
+		'iDisplayLength': 50,
+		'bLengthChange': false
 	});
 	
 	// Filter table when enter key is pressed
@@ -766,62 +876,68 @@ function loadNodes(data) {
 	});
 	var pingCol = $('#' + nodesTableId + ' thead tr th').eq(2);
 	var powerCol = $('#' + nodesTableId + ' thead tr th').eq(3);
-	var commentCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	var monitorCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	var commentCol = $('#' + nodesTableId + ' thead tr th').eq(5);
 	pingCol.unbind('click');
 	powerCol.unbind('click');
+	monitorCol.unbind('click');
 	commentCol.unbind('click');
 	
 	// Create enough space for loader to be displayed
-	$('#' + nodesTableId + ' tbody tr td:nth-child(3)').css('min-width', '60px');
-	$('#' + nodesTableId + ' tbody tr td:nth-child(4)').css('min-width', '60px');
-	
 	// Center align power, ping, and comments
-	$('#' + nodesTableId + ' tbody tr td:nth-child(3)').css('text-align', 'center');
-	$('#' + nodesTableId + ' tbody tr td:nth-child(4)').css('text-align', 'center');
-	$('#' + nodesTableId + ' tbody tr td:nth-child(5)').css('text-align', 'center');
+	$('#' + nodesTableId + ' td:nth-child(3),td:nth-child(4),td:nth-child(5)').css({
+		'min-width': '65px',
+		'text-align': 'center'
+	});
 	
-	// Instead refresh the node status and power status
+	// No minimum width for comments column
+	$('#' + nodesTableId + ' tbody tr td:nth-child(6)').css('text-align', 'center');
+	
+	// Instead refresh the node, power, and monitor status
 	pingCol.find('span a').click(function() {
 		refreshNodeStatus(group, nodesTableId);
 	});
 	powerCol.find('span a').click(function() {
 		refreshPowerStatus(group, nodesTableId);
 	});
+	monitorCol.find('span a').click(function() {
+		refreshGangliaStatus(group, nodesTableId);
+	});
+	var menuDiv=$('<div id=\''+nodesTableId+'_menuDiv\' class=\'menuDiv\'></div>');
+	$('#' + nodesTableId + '_wrapper').prepend(menuDiv);
+	menuDiv.append(actionBar);	
+	$('#'+nodesTableId+'_filter').appendTo(menuDiv);
 	
 	// Create tooltip for status
+	var tooltipConf = {
+			position: "center right",
+			offset: [-2, 10],
+			effect: "fade",	
+			opacity: 0.8,
+			relative: true,
+			predelay: 800
+		};
+
 	var pingTip = createStatusToolTip();
 	pingCol.find('span').append(pingTip);
-	pingCol.find('span a').tooltip({
-		position: "center right",
-		offset: [-2, 10],
-		effect: "fade",	
-		opacity: 0.8,
-		relative: true,
-		predelay: 800
-	});
+	pingCol.find('span a').tooltip(tooltipConf);
 	
 	// Create tooltip for power
 	var powerTip = createPowerToolTip();
 	powerCol.find('span').append(powerTip);
-	powerCol.find('span a').tooltip({
-		position: "center right",
-		offset: [-2, 10],
-		effect: "fade",	
-		opacity: 0.8,
-		relative: true,
-		predelay: 800
-	});
+	powerCol.find('span a').tooltip(tooltipConf);
+	
+	// Create tooltip for monitor
+	var monitorTip = createMonitorToolTip();
+	monitorCol.find('span').append(monitorTip);
+	monitorCol.find('span a').tooltip(tooltipConf);
 	
 	/**
 	 * Enable editable columns
 	 */
-	
-	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
-	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5))').editable(
+	// Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
+	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
 		function(value, settings) {			
-			// Change text color to red
-			$(this).css('color', 'red');
-			
 			// Get column index
 			var colPos = this.cellIndex;
 						
@@ -832,16 +948,34 @@ function loadNodes(data) {
 			// Update datatable
 			dTable.fnUpdate(value, rowPos, colPos, false);
 			
+			// Get table headers
+			var headers = $('#' + nodesTableId + ' thead tr th');
+			
 			// Get node name
 			var node = $(this).parent().find('td a.node').text();
+			// Get attribute name
+			var attrName = jQuery.trim(headers.eq(colPos).text());
+			// Get column value
+			var value = $(this).text();
 			
-			// Flag node to update
-			flagNode2Update(node);
+			// Build argument
+			var args = attrName + '=' + value;
 			
-			// Show table menu actions
-			tableActionsMenu.show();
+			// Send command to change node attributes
+        	$.ajax( {
+        		url : 'lib/cmd.php',
+        		dataType : 'json',
+        		data : {
+        			cmd : 'chdef',
+        			tgt : '',
+        			args : '-t;node;-o;' + node + ';' + args,
+        			msg : 'out=nodesTab;tgt=' + node
+        		},
 
-			return (value);
+        		success: showChdefOutput
+        	});
+
+			return value;
 		}, {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',
@@ -891,51 +1025,10 @@ function loadNodes(data) {
 	});
 	
 	/**
-	 * Additional ajax requests need to be made for zVM
-	 */
-	
-	// Get index of hcp column
-	var i = $.inArray('hcp', sorted);
-	var archCol = $.inArray('arch', sorted);
-	if (i) {
-		// Get hardware control point
-		var rows = nodesTable.object().find('tbody tr');
-		var hcps = new Object();
-		var rowsNum = rows.size();
-		for (var j = 0; j < rowsNum; j++) {
-			var val = rows.eq(j).find('td').eq(i).html();
-			var archval = rows.eq(j).find('td').eq(archCol).html();
-			if (-1 == archval.indexOf('390')){
-				continue;
-			}
-			hcps[val] = 1;
-		}
-
-		var args;
-		for (var h in hcps) {
-			// Get node without domain name
-			args = h.split('.');
-			
-			// If there are no disk pools or network names cookie for this hcp
-			if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
-    			// Check if SMAPI is online
-    			$.ajax( {
-    				url : 'lib/cmd.php',
-    				dataType : 'json',
-    				data : {
-    					cmd : 'lsvm',
-    					tgt : args[0],
-    					args : '',
-    					msg : 'group=' + group + ';hcp=' + args[0]
-    				},
-    
-    				// Load hardware control point specific info
-    				// Get disk pools and network names
-    				success : loadHcpInfo
-    			});		
-			}
-		} // End of for
-	} // End of if
+     * Additional ajax requests need to be made for zVM
+     * load advanced information based on hardware architecture 
+     */
+	advancedLoad(group);
 }
 
 /**
@@ -1049,9 +1142,6 @@ function addNodes2Table(data) {
 	// Variable to send command and request node status
 	var getNodeStatus = true;
 	
-	// Clear cookie containing list of nodes where their attributes need to be updated
-	$.cookie('nodes2update', '');
-
 	// Go through each attribute
 	var node, args;
 	for (var i in rsp) {
@@ -1132,11 +1222,11 @@ function addNodes2Table(data) {
 		datatable.fnUpdate(rows[nodeRowPos], nodeRowPos, 0, false);
 		
 		// Insert node comments
-		// This is done after datatable is updated because 
+		// This is done after datatable is updated because
 		// you cannot insert an object using fnUpdate()
 		var comments = attrs[node]['usercomment'];
 				
-		// If no comments exists, show 'No comments' and 
+		// If no comments exists, show 'No comments' and
 		// set icon image source
 		var iconSrc;
 		if (!comments) {
@@ -1181,13 +1271,10 @@ function addNodes2Table(data) {
 	/**
 	 * Enable editable columns
 	 */
-	
-	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
-	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5))').editable(
+	alert('I am here');
+	// Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
+	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
 		function(value, settings) {			
-			// Change text color to red
-			$(this).css('color', 'red');
-			
 			// Get column index
 			var colPos = this.cellIndex;
 						
@@ -1198,16 +1285,34 @@ function addNodes2Table(data) {
 			// Update datatable
 			dTable.fnUpdate(value, rowPos, colPos, false);
 			
+			// Get table headers
+			var headers = $('#' + nodesTableId + ' thead tr th');
+			
 			// Get node name
 			var node = $(this).parent().find('td a.node').text();
+			// Get attribute name
+			var attrName = jQuery.trim(headers.eq(colPos).text());
+			// Get column value
+			var value = $(this).text();
 			
-			// Flag node to update
-			flagNode2Update(node);
+			// Build argument
+			var args = attrName + '=' + value;
 			
-			// Show table menu actions
-			$('#tableActionMenu').show();
+			// Send command to change node attributes
+        	$.ajax( {
+        		url : 'lib/cmd.php',
+        		dataType : 'json',
+        		data : {
+        			cmd : 'chdef',
+        			tgt : '',
+        			args : '-t;node;-o;' + node + ';' + args,
+        			msg : 'out=nodesTab;tgt=' + node
+        		},
 
-			return (value);
+        		success: showChdefOutput
+        	});
+
+			return value;
 		}, {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',
@@ -1239,41 +1344,67 @@ function addNodes2Table(data) {
 	/**
 	 * Additional ajax requests need to be made for zVM
 	 */
-	// If there is an hcp column
-	if (headersCol['hcp']) {
-		// Get hardware control point
-		var rows = $('#' + nodesTableId + ' tbody tr');
-		var hcps = new Object();
-		for (var j in rows) {
-			var val = rows.eq(j).find('td').eq(headersCol['hcp']).html();
-			hcps[val] = 1;
-		}
+	advancedLoad(group);
+}
 
-		var args;
-		for (var h in hcps) {
-			// Get node without domain name
-			args = h.split('.');
-						
-			// If there are no disk pools or network names cookie for this hcp
-			if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
-    			// Check if SMAPI is online
-    			$.ajax( {
-    				url : 'lib/cmd.php',
-    				dataType : 'json',
-    				data : {
-    					cmd : 'lsvm',
-    					tgt : args[0],
-    					args : '',
-    					msg : 'group=' + group + ';hcp=' + args[0]
-    				},
-    
-    				// Load hardware control point specific info
-    				// Get disk pools and network names
-    				success : loadHcpInfo
-    			});		
-			}
-		} // End of for
-	} // End of if
+/**
+ * Load the status of Ganglia for a given group
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function loadGangliaStatus(data) {
+	// Get datatable
+	var datatable = $('#' + nodesTableId).dataTable();
+	var ganglia = data.rsp;
+	var rowNum, node, status, args;
+
+	for ( var i in ganglia) {
+		// ganglia[0] = nodeName and ganglia[1] = state
+		node = jQuery.trim(ganglia[i][0]);
+		status = jQuery.trim(ganglia[i][1]);
+
+		// Get the row containing the node
+		rowNum = findRow(node, '#' + nodesTableId, 1);
+
+		// Update the power status column
+		datatable.fnUpdate(status, rowNum, 4);
+	}
+
+	// Hide Ganglia loader
+	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	gangliaCol.find('img').hide();
+}
+
+/**
+ * Refresh the status of Ganglia for each node
+ * 
+ * @param group
+ *            Group name
+ * @return Nothing
+ */
+function refreshGangliaStatus(group) {
+	// Show ganglia loader
+	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	gangliaCol.find('img').show();
+	
+	// Get power status for nodes shown
+	var nodes = getNodesShown(nodesTableId);
+
+	// Get the status of Ganglia
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'webrun',
+			tgt : '',
+			args : 'gangliastatus;' + nodes,
+			msg : ''
+		},
+
+		success : loadGangliaStatus
+	});
 }
 
 /**
@@ -1312,7 +1443,7 @@ function loadPowerStatus(data) {
  * @param group
  *            Group name
  * @param tableId
- * 			  Table to update node status
+ *            Table to update node status
  * @return Nothing
  */
 function refreshPowerStatus(group, tableId) {
@@ -1376,7 +1507,7 @@ function loadNodeStatus(data) {
  * @param group
  *            Group name
  * @param tableId
- * 			  Table to update node status
+ *            Table to update node status
  * @return Nothing
  */
 function refreshNodeStatus(group, tableId) {
@@ -1506,7 +1637,7 @@ function loadUnlockPage(tgtNodes) {
 
 	// Create loader
 	var loader = createLoader('');
-	statusBar.append(loader);
+	statusBar.find('div').append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Give the root password for this node range to setup its SSH keys.');
@@ -1606,7 +1737,7 @@ function loadScriptPage(tgtNodes) {
 
 	// Create loader
 	var loader = createLoader('scriptLoader' + inst);
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 
 	// Create info bar
 	var infoBar = createInfoBar('Load a script to run against this node range.');
@@ -1747,7 +1878,7 @@ function loadDeletePage(tgtNodes) {
 
 	// Create loader
 	var loader = createLoader('');
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 	statBar.hide();
 
 	// Create target nodes string
@@ -1846,7 +1977,7 @@ function updateStatusBar(data) {
 
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 	} else if (cmd == 'rmvm') {
 		// Get data table
 		var dTable = $('#' + nodesTableId).dataTable();
@@ -1857,7 +1988,7 @@ function updateStatusBar(data) {
 
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 		
 		// If there was an error, do not continue
 		if (prg.html().indexOf('Error') > -1) {
@@ -1878,7 +2009,7 @@ function updateStatusBar(data) {
 		$('#' + statBarId).find('img').hide();
 		
 		// Write ajax response to status bar
-		var prg = $('<pre style="margin: 0px;"></pre>');
+		var prg = $('<pre></pre>');
 		for (var i in rsp) {
 			for (var j in tgts) {
 				rsp[i] = rsp[i].replace(new RegExp(tgts[j] + ':', 'g'), '');
@@ -1887,7 +2018,7 @@ function updateStatusBar(data) {
 			prg.append(rsp[i]);
 			prg.append('<br>');	
 		}
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 		
 		// Enable fields
 		$('#' + statBarId).parent().find('input').removeAttr('disabled');
@@ -1901,7 +2032,7 @@ function updateStatusBar(data) {
 		
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '[A-Za-z0-9._-]+:');	
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 	}
 }
 
@@ -2046,7 +2177,7 @@ function setOSImageCookies(data) {
 	var profilePos = 0;
 	var osversPos = 0;
 	var osarchPos = 0;
-	//get the column value
+	// get the column value
 	var colNameArray = rsp[0].substr(1).split(',');
 	for (var i in colNameArray){
 		switch (colNameArray[i]){
@@ -2191,7 +2322,7 @@ function findRow(str, table, col){
 function selectAllCheckbox(event, obj) {
 	// Get datatable ID
 	// This will ascend from <input> <td> <tr> <thead> <table>
-	var tableObj = obj.parent().parent().parent().parent();
+	var tableObj = obj.parents('table');
 	var status = obj.attr('checked');
 	tableObj.find(' :checkbox').attr('checked', status);
 	event.stopPropagation();
@@ -2223,148 +2354,6 @@ function loadRconsPage(tgtNodes){
 	
 	// Open the rcons page
 	window.open(redirectUrl + "?rconsnd=" + tgtNodes, '', "toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=no,width=670,height=436");
-}
-
-/**
- * Flag the node in the group table to update
- * 
- * @param node
- *            The node name
- * @return Nothing
- */
-function flagNode2Update(node) {
-	// Get list containing current nodes to update
-	var nodes = $.cookie('nodes2update');
-
-	// If the node is not in the list
-	if (nodes.indexOf(node) == -1) {
-		// Add the new node to list
-		nodes += node + ';';
-		$.cookie('nodes2update', nodes);
-	}
-}
-
-/**
- * Update node attributes
- * 
- * @param group
- *            The node group name
- * @return Nothing
- */
-function updateNodeAttrs(group) {
-	// Get the nodes datatable
-	var dTable = $('#' + nodesTableId).dataTable();
-	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
-	
-	// Get table headers
-	var headers = $('#' + nodesTableId + ' thead tr th');
-							
-	// Get list of nodes to update
-	var nodesList = $.cookie('nodes2update');
-	var nodes = nodesList.split(';');
-	
-	// Create the arguments
-	var args;
-	var rowPos, colPos, value;
-	var attrName;
-	// Go through each node where an attribute was changed
-	for (var i in nodes) {
-		if (nodes[i]) {
-			args = '';
-			
-        	// Get the row containing the node link
-        	rowPos = findRow(nodes[i], '#' + nodesTableId, 1);
-        	$(rows[rowPos]).find('td').each(function (){
-        		if ($(this).css('color') == 'red' || $(this).css('color') == 'rgb(255, 0, 0)') {
-        			// Change color back to normal
-        			$(this).css('color', '');
-        			
-        			// Get column position
-        			colPos = $(this).parent().children().index($(this));
-        			// Get column value
-        			value = $(this).text();
-        			
-        			// Get attribute name
-        			attrName = jQuery.trim(headers.eq(colPos).text());
-        			        			
-        			// Build argument string
-        			if (args) {
-        				// Handle subsequent arguments
-        				args += ';' + attrName + '=' + value;
-        			} else {
-        				// Handle the 1st argument
-        				args += attrName + '=' + value;
-        			}		
-        		}
-        	});
-        	        	
-        	// Send command to change node attributes
-        	$.ajax( {
-        		url : 'lib/cmd.php',
-        		dataType : 'json',
-        		data : {
-        			cmd : 'chdef',
-        			tgt : '',
-        			args : '-t;node;-o;' + nodes[i] + ';' + args,
-        			msg : 'out=nodesTab;tgt=' + nodes[i]
-        		},
-
-        		success: showChdefOutput
-        	});
-		} // End of if
-	} // End of for
-	
-	// Clear cookie containing list of nodes where
-	// their attributes need to be updated
-	$.cookie('nodes2update', '');
-}
-
-/**
- * Restore node attributes to their original content
- * 
- * @return Nothing
- */
-function restoreNodeAttrs() {
-	// Get list of nodes to update
-	var nodesList = $.cookie('nodes2update');
-	var nodes = nodesList.split(';');
-	
-	// Get the nodes datatable
-	var dTable = $('#' + nodesTableId).dataTable();
-	// Get table headers
-	var headers = $('#' + nodesTableId + ' thead tr th');
-	// Get all nodes within the datatable
-	var rows = dTable.fnGetNodes();
-		
-	// Go through each node where an attribute was changed
-	var rowPos, colPos;
-	var attrName, origVal;
-	for (var i in nodes) {
-		if (nodes[i]) {			
-			// Get the row containing the node link
-        	rowPos = findRow(nodes[i], '#' + nodesTableId, 1);
-        	$(rows[rowPos]).find('td').each(function (){
-        		if ($(this).css('color') == 'red' || $(this).css('color') == 'rgb(255, 0, 0)') {
-        			// Change color back to normal
-        			$(this).css('color', '');
-        			
-        			// Get column position
-        			colPos = $(this).parent().children().index($(this));	        			
-        			// Get attribute name
-        			attrName = jQuery.trim(headers.eq(colPos).text());
-        			// Get original content
-        			origVal = origAttrs[nodes[i]][attrName];
-        			
-        			// Update column
-        			dTable.fnUpdate(origVal, rowPos, colPos, false);
-        		}
-        	});
-		} // End of if
-	} // End of for
-	
-	// Clear cookie containing list of nodes where their attributes need to be updated
-	$.cookie('nodes2update', '');
 }
 
 /**
@@ -2505,6 +2494,19 @@ function createStatusToolTip() {
 function createPowerToolTip() {
 	// Create tooltip container
 	var toolTip = $('<div class="tooltip">Click here to refresh the power status</div>').css({
+		'width': '150px'
+	});	
+	return toolTip;
+}
+
+/**
+ * Create a tool tip for monitoring status
+ * 
+ * @return Tool tip
+ */
+function createMonitorToolTip() {
+	// Create tooltip container
+	var toolTip = $('<div class="tooltip">Click here to refresh the monitoring status</div>').css({
 		'width': '150px'
 	});	
 	return toolTip;
@@ -2661,8 +2663,7 @@ function setNodeAttrs(data) {
     			// Remove arrow brackets
     			descr = descr.replace(new RegExp('<|>', 'g'), '');
     			
-    			// Set hash table where key = attribute name and value =
-				// description
+    			// Set hash table where key = attribute name and value = description
         		nodeAttrs[key] = descr;
 			} else {
 				// Remove arrow brackets
@@ -2969,4 +2970,397 @@ function openSetAttrsDialog() {
         	}
 		}
 	});
+}
+
+/**
+ * Turn on monitoring for a given node
+ * 
+ * @param node
+ *            Node to monitor on or off
+ * @param monitor
+ *            Monitor state, on or off
+ * @return Nothing
+ */
+function monitorNode(node, monitor) {
+	if (monitor == 'on') {
+		// Append loader to warning bar
+		var gangliaLoader = createLoader('');
+		var warningBar = $('#nodesTab').find('.ui-state-error p');
+		if (warningBar.length) {
+			warningBar.append(gangliaLoader);
+		}
+
+		if (node) {
+			// Check if ganglia RPMs are installed
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'webrun',
+					tgt : '',
+					args : 'gangliacheck;' + node,
+					msg : node	// Node range will be passed along in data.msg
+				},
+
+				/**
+				 * Start ganglia on a given node range
+				 * 
+				 * @param data
+				 *            Data returned from HTTP request
+				 * @return Nothing
+				 */
+				success : function(data) {
+					// Get response
+					var out = data.rsp[0].split(/\n/);
+
+					// Go through each line
+					var warn = false;
+					var warningMsg = '';
+					for (var i in out) {
+						// If an RPM is not installed
+						if (out[i].indexOf('not installed') > -1) {
+							warn = true;
+							
+							if (warningMsg) {
+								warningMsg += '<br>' + out[i];
+							} else {
+								warningMsg = out[i];
+							}
+						}
+					}
+					
+					// If there are warnings
+					if (warn) {
+						// Create warning bar
+						var warningBar = createWarnBar(warningMsg);
+						warningBar.css('margin-bottom', '10px');
+						warningBar.prependTo($('#nodesTab'));
+					} else {
+						$.ajax( {
+							url : 'lib/cmd.php',
+							dataType : 'json',
+							data : {
+								cmd : 'webrun',
+								tgt : '',
+								args : 'gangliastart;' + data.msg,
+								msg : ''
+							},
+
+							success : function(data) {
+								// Remove any warnings
+								$('#nodesTab').find('.ui-state-error').remove();
+							}
+						});
+					} // End of if (warn)
+				} // End of function(data)
+			});
+		} else {
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'webrun',
+					tgt : '',
+					args : 'gangliastart',
+					msg : ''
+				},
+
+				success : function(data) {
+					// Remove any warnings
+					$('#nodesTab').find('.ui-state-error').remove();
+				}
+			});
+		} // End of if (node)
+	} else {
+		var args;
+		if (node) {
+			args = 'gangliastop;' + node;
+		} else {
+			args = 'gangliastop';
+		}
+
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'webrun',
+				tgt : '',
+				args : args,
+				msg : ''
+			},
+
+			success : function(data) {
+				// Do nothing
+			}
+		});
+	}
+}
+
+/**
+ * Install Ganglia on a given node
+ * 
+ * @param node
+ *            Node to install Ganglia on
+ * @return Nothing
+ */
+function installGanglia(node) {
+	var iframe = createIFrame('lib/cmd.php?cmd=webrun&tgt=&args=installganglia;' + node + '&msg=' + node + '&opts=flush');
+	iframe.prependTo($('#nodesTab'));
+	
+	// Turn on Ganglia for node
+	monitorNode(node, 'on');
+}
+
+/**
+ * when nodes are loaded, based on different hardware architecture, should load different informations
+ * 
+ * @return Nothing
+ */
+function advancedLoad(group){
+    var tempIndex = 0;
+    var tableHeaders = $('#' + nodesTableId + ' th');
+    var colNameHash = new Object();
+    var colName = '';
+    var archCol = 0, hcpCol = 0;
+    // find out the column name and their index
+    for (tempIndex = 0; tempIndex < tableHeaders.size(); tempIndex++){
+        var header = tableHeaders.eq(tempIndex);
+        // if link header(status, power, monitor) can dump to next one
+        if (header.find('a').size() > 0){
+            continue;
+        }
+        
+        colName = header.text();
+        
+        if (colName){
+            colNameHash[colName] = tempIndex;
+        }
+    }
+    
+    // there is not arch column, can not distinguish hardware type return directly
+    if (!colNameHash['arch']){
+        return;
+    }
+    
+    if (!colNameHash['hcp']){
+        return;
+    }
+    archCol = colNameHash['arch'];
+    hcpCol = colNameHash['hcp'];
+    
+    // Get hardware control point
+    var rows = $('#' + nodesTableId + ' tbody tr');
+    var hcps = new Object();
+    var rowsNum = rows.size();
+    for (var j = 0; j < rowsNum; j++) {
+        var val = rows.eq(j).find('td').eq(hcpCol).html();
+        var archval = rows.eq(j).find('td').eq(archCol).html();
+        if (-1 == archval.indexOf('390')){
+            continue;
+        }
+        hcps[val] = 1;
+    }
+
+    var args;
+    for (var h in hcps) {
+        // Get node without domain name
+        args = h.split('.');
+        
+        // If there are no disk pools or network names cookie for this hcp
+        if (!$.cookie(args[0] + 'diskpools') || !$.cookie(args[0] + 'networks')) {
+            // Check if SMAPI is online
+            $.ajax( {
+                url : 'lib/cmd.php',
+                dataType : 'json',
+                data : {
+                    cmd : 'lsvm',
+                    tgt : args[0],
+                    args : '',
+                    msg : 'group=' + group + ';hcp=' + args[0]
+                },
+
+                // Load hardware control point specific info
+                // Get disk pools and network names
+                success : loadHcpInfo
+            });     
+        }
+    } // End of for
+}
+
+/**
+ * when click the provison button, show this dislog for provision
+ * this is the quick way to deploy on the nodes page. 
+ * 
+ * @return Nothing
+ */
+function openQuickProvisionDia(tgtnodes){
+    var nodeArray = tgtnodes.split(',');
+    var nodeName = '';
+    var index = 0;
+    var archtype = '';
+    var errormessage = '';
+    var diaDiv = $('<div title="Provision(only support Linux)" class="form" id="deployDiv"></div>');
+    // check the first node's arch type
+    for (index in nodeArray){
+        nodeName = nodeArray[index];
+        // does not have arch
+        if (!origAttrs[nodeName]['arch']){
+            errormessage = 'All nodes should define arch first!';
+            break;
+        }
+        
+        if (0 == index){
+            archtype = origAttrs[nodeName]['arch'];
+        }
+        
+        // all nodes should have same archtype
+        if (archtype != origAttrs[nodeName]['arch']){
+            errormessage = 'All nodes should belong to same arch!<br/>';
+            break;
+        }
+    }
+
+    // check the mac address
+    for (index in nodeArray){
+        if (!origAttrs[nodeName]['mac'] || !origAttrs[nodeName]['ip']){
+            errormessage += 'All nodes should define ip and mac!<br/>';
+            break;
+        }
+    }
+    
+    if (-1 != archtype.indexOf('390')){
+        errormessage += 'System Z should use provision page.';
+    }
+    
+    // error message should show in a dialog
+    if ('' != errormessage){
+        diaDiv.append(createWarnBar(errormessage));
+        diaDiv.dialog({
+            modal: true,
+            width: 400,
+            buttons: {
+                'Close': function(){
+                    $(this).dialog('destroy');
+                }
+            }
+        });
+        
+        return;
+    }
+    
+    // organize the provison dialog
+    var showstr = '<table><tbody>';
+    showstr += '<tr><td>Target node:</td><td><input id="nodesinput" value="' + tgtnodes + '" readonly="readonly"></td></tr>';
+    showstr += '<tr><td>Arch:</td><td><input id="archinput" value="' + archtype + '" disabled="disabled"></td></tr>';
+    showstr += '<tr><td>Image:</td><td><select></select></td></tr>';
+    showstr += '<tr><td>Install Nic:</td><td><input id="inicinput" value="ent0"></td></tr>';
+    showstr += '<tr><td>Primary Nic:</td><td><input id="pnicinput" value="ent0"></td></tr>';
+    showstr += '<tr><td>xCAT Master:</td><td><input id="masterinput"></td></tr>';
+    showstr += '<tr><td>TFTP Server:</td><td><input id="tftpinput"></td></tr>';
+    showstr += '<tr><td>NFS Server:</td><td><input id="nfsinput"></td></tr>';
+    showstr += '</tbody></table>';
+    showstr += '<div id="imageinfo"></div>';
+    diaDiv.append(showstr);
+    diaDiv.dialog({
+        modal: true,
+        width: 400,
+        height: 480,
+        close: function(){$(this).remove();},
+        buttons: {
+            'Close': function(){$(this).remove();}
+        }
+    });
+    
+    $('#deployDiv select').parent().append(createLoader());
+
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'lsdef',
+            tgt : '',
+            args : '-t;osimage',
+            msg : ''
+        },
+
+        success : function(data){
+            var index = 0;
+            var imagename = 0;
+            var position = 0;
+            $('#deployDiv img').remove();
+            if (data.rsp.lenght < 1){
+                $('#deployDiv').append(createWarnBar('Please copycds and genimage in provision page first!'));
+                return;
+            }
+            
+            for (index in data.rsp){
+                imagename = data.rsp[index];
+                position = imagename.indexOf(' ');
+                imagename = imagename.substr(0, position);
+                
+                $('#deployDiv select').append('<option value="' + imagename + '">' + imagename + '</option>');
+            }
+            
+            $('#deployDiv').dialog( "option", "buttons", {'Ok': function(){quickProvision();},
+                                                          'Cancel': function(){$(this).remove();}}
+            );
+        }
+    });
+}
+
+/**
+ * get all needed field for provsion and send the command to server 
+ * 
+ * @return Nothing
+ */
+function quickProvision(){
+    var errormessage = '';
+    var argsArray = new Array();
+    var nodesName = '';
+    var provisionArg = '';
+    var provisionFrame;
+    var imageName = '';
+    var url = '';
+    $('#deployDiv .ui-state-error').remove();
+    $('#deployDiv input').each(function(){
+        if ('' == $(this).val()){
+            errormessage = 'You are missing input!';
+            return false;
+        }
+    });
+    
+    if ('' != errormessage){
+        $('#deployDiv').prepend('<p class="ui-state-error">' + errormessage + '</p>');
+        return;
+    }
+    
+    $('#deployDiv input').each(function(){
+        argsArray.push($(this).val());
+    });
+    
+    nodesName = argsArray.shift();
+    imageName = $('#deployDiv select').val();
+    provisionArg = argsArray.join(',');
+    url = 'lib/cmd.php?cmd=webrun&tgt=&args=provision;' + nodesName + ';' + imageName + ';' + provisionArg + '&msg=&opts=flush';
+    
+    // show the result
+    $('#deployDiv').empty().append(createLoader()).append('<br/>');
+    $('#deployDiv').dialog( "option", "buttons", {'Close': function(){$(this).remove();clearTimeout(provisionClock);}});
+    $('#deployDiv').dialog( "option", "width", 600);
+    provisionFrame = $('<iframe id="provisionFrame" width="95%" height="90%"></iframe>');
+    $('#deployDiv').append(provisionFrame);
+    
+    provisionFrame.attr('src', url);
+    provisionStopCheck();
+}
+
+function provisionStopCheck(){
+    var content = $('#provisionFrame').contents().find('body').text();
+    if (-1 != content.indexOf('provision stop')){
+        $('#deployDiv img').remove();
+        clearTimeout(provisionClock);
+    }
+    else{
+        provisionClock = setTimeout('provisionStopCheck()', 5000);
+    }
 }

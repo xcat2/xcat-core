@@ -4,7 +4,7 @@
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
-.ui-dialog label,.ui-dialog input,.ui-dialog p,.ui-dialog button {
+.ui-dialog label,.ui-dialog input,.ui-dialog p,.ui-dialog button,.ui-dialog td {
 	font: 12px verdana, arial, helvetica, sans-serif;
 }
 
@@ -29,6 +29,46 @@
 
 .tooltip h3 {
 	margin: 0px;
+}
+
+/*--------------- login dialog ---------*/
+#logdialog {
+	width: 600px;
+}
+
+#logdialog td{
+	width: 110px;
+	height: 30px;
+	color: #0078AE;
+	font-size: 14px;
+	font-weight: bold;
+}
+
+#logdialog input{
+	width: 219px;
+	border: solid 1px #0078AE;
+	font-size: 14px;
+}
+
+#logdialog p{
+	
+	font-size: 18px;
+}
+
+#logdialog button{
+	font-weight: bold;
+	width: 90px;
+}
+
+#loginput {
+	background-color: #f5f5f5;
+	height: 260px;
+}
+
+#loginfo{
+	text-align:right;
+	color: #f5f5f5;
+	font-weight:bold;
 }
 
 /*--------------- Header ---------------*/
@@ -123,45 +163,73 @@ body {
 	overflow: auto;
 }
 
+#content .ui-widget-header {
+	border-color: #4297D7 #4297D7 #7BB642;
+	border-width: 1px 1px 4px;
+}
+
 /*--------------- Groups ---------------*/
 #groups {
 	width: 150px;
 	vertical-align: top;
 	float: left;
 	position: relative;
-	margin: 15px 0px 15px 15px;
-}
-
-#groups ul {
-	list-style: none;
+	margin-top: 10px;
 }
 
 #groups ul h3 {
 	text-transform: uppercase;
-	font: 12px verdana, arial, helvetica, sans-serif;
-	font-weight: bold;
 	color: #424242;
 	display: inline-table;
 }
 
 #groups a {
-	font: 12px verdana, arial, helvetica, sans-serif;
 	color: #0000FF;
 	display: inline-table;
-	padding: 5px 15px 5px 15px; /* Top right bottom left */
+	padding: 5px 0px 5px 20px; /* Top right bottom left */
 	text-decoration: none;
 	cursor: pointer;
 }
 
-#groups a:hover {
-	color: #FF0000;
+#groups .grouplabel {
+	padding: 5px 0px 5px 10px;
+	font-weight: bold;
+	font-size: 15px;
+}
+
+#groups .groupdiv{
+	padding-left: 10px;
+}
+
+#groups .groupdiv div:hover {
+	background: #E7EBFF;
+	cursor: pointer;
+}
+
+#groups .selectgroup {
+    background: #E6E6F2;
+    font-weight: bold;
+}
+
+#groups .actionDiv{
+	text-align: right;
+	padding-right: 5px;
+	border-top: thin solid #E7EBFF;
 }
 
 /*--------------- Nodes section ---------------*/
 #nodes {
-	width: 700px;
-	margin: 20px;
-	display: inline-table;
+	width: 790px;
+	min-height: 570px;
+	margin: 10px 0px 0px 0px;
+	padding: 0px 0px 0px 5px;
+	display: inline-block;
+	border-left: medium solid #E6E6F2;
+}
+
+#nodes .summarypie {
+	width: 370px;
+	height: 280px;
 }
 
 /*--------------- Info/warning bar ---------------*/
@@ -205,6 +273,7 @@ span.ui-icon-info {
 
 .tab a {
 	cursor: pointer;
+	color: #0000FF;
 }
 
 .tab .ui-icon-close {
@@ -279,7 +348,7 @@ legend {
 .tab li {
 	list-style: none;
 	padding: 5px;
-	margin: 0;
+	margin: 1;
 }
 
 .tab textarea {
@@ -291,36 +360,56 @@ legend {
 	height: 300px;
 }
 
-/*--------------- Actions bar ---------------*/
+/*--------------- menu Div Actions bar ---------------*/
+.menuDiv {
+	background:none repeat scroll 0 0 #79B7E7;
+	padding: 0.5em;
+}
+
+.sf-menu {
+	background : none repeat scroll 0 0 #79B7E7;
+	border :1px solid #f5f5f5;
+	border-radius :0.5em 0.5em 0.5em 0.5em;
+	margin-bottom: 0;
+}
+
+.sf-sub-indicator{
+	right:0;
+}
+
 .actionBar {
 	display: inline-table;
+	width:50%;
 }
 
 .actionBar div {
 	padding: 10px 0px;
 }
 
-.actionBar span {
-	padding: 0px 10px;
+.actionBar a {
+	color: #FFFFFF;
+	font-weight: bold;
 }
 
-.actionBar a {
-	color: #2E6E9E;
-	font-weight: bold;
-	cursor: pointer;
+.actionBar a:hover {
+	color: #026890;
 }
 
 .actionBar li {
 	list-style: none;
-	padding: 5px;
+	padding: 2px;
 	margin: 0;
 }
 
 /*--------------- jQuery datatable ---------------*/
 .dataTables_wrapper {
 	overflow: auto;
-	width: 700px;
-	margin: 0px auto;
+	width: auto;
+	margin: 10px auto;
+	-moz-border-radius:5px;
+	-webkit-border-radius:5px;
+	border-radius:5px;
+	background-color: #f5f5f5;
 }
 
 /*** Show X entries ***/
@@ -333,11 +422,10 @@ legend {
 
 /*** Search ***/
 .dataTables_filter {
-	width: 50%;
+	width: 40%;
 	display: block;
 	float: right;
 	text-align: right;
-	padding: 10px 10px;
 }
 
 .tab input,select {
@@ -364,7 +452,7 @@ legend {
 
 /*** Table ***/
 .datatable {
-	width: 660px;
+	width: 100%;
 	border-width: 1px;
 	border-spacing: 0px;
 	border-style: solid;
@@ -595,6 +683,47 @@ table a:hover {
 }
 
 /*--------------- Provision and monitor forms ---------------*/
+.rmcnormal {
+	border: 2px outset #7FFFD4;
+	background: #66CD00;
+	cursor: pointer;
+}
+
+.rmcwarning {
+   	background: #FFD700;
+  	border: 2px outset #EEEE00;
+	cursor: pointer;
+}
+
+.rmcerror {
+	background:  #FF3030;
+	border: 2px outset #FF4040;
+}
+
+.rmcunknown {
+    background:  #8B8B7A;
+    border: 2px outset #858585;
+}
+
+.rmcnodeli {
+	width: 16px;
+	height: 16px;
+	float: left;
+}
+
+.rmcsumdiv {
+	width: 300px;
+	height: 150px;
+	float: left;
+	margin: 0px 0px 10px 0px;
+}
+
+.rmcnodediv {
+	width: 240px;
+	height: 120px;
+	margin: 0px 0px 15px 0px;
+}
+
 .provision div,.monitor div {
 	margin: 10px 0;
 	display: block;
@@ -607,19 +736,6 @@ table a:hover {
 	display: inline-table;
 	width: 350px;
 	height: 150px;
-}
-
-.monitorsumdiv {
-	width: 300px;
-	height: 150px;
-	float: left;
-	margin: 0px 0px 10px 0px;
-}
-
-.monitornodediv {
-	width: 240px;
-	height: 120px;
-	margin: 0px 0px 15px 0px;
 }
 
 /*--------------- Physical layout section ---------------*/
@@ -685,28 +801,25 @@ table a:hover {
 
 /*--------------- Discovery section ---------------*/
 .discoverstep {
-	width: 220px;
+	width: 960px;
 	vertical-align: top;
-	float: left;
-	position: relative;
-	overflow: auto;
 	background-color: #A9D0F5;
-	padding: 5px 0px;
+	padding: 0px 0px 0px 5px;
 	-moz-border-radius: .5em;
 	-webkit-border-radius: .5em;
 	border-radius: .5em;
 }
 
-.discoverstep span {
+.discovercurrentstep{
+	background-color: yellow;
 	font: normal bold 12px/ 35px verdana, arial, helvetica, sans-serif;
 	padding: 5px;
-	margin: 0px 5px; /* Top right left bottom*/
 }
 
 .discovercontent {
-	width: 700px;
+	width: 960px;
 	display: inline-table;
-	padding: 0 0 0 20px;
+	padding: 0;
 }
 
 .discovercontent table{

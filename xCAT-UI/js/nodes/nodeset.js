@@ -42,10 +42,10 @@ function loadNodesetPage(tgtNodes) {
 
 	// Create loader
 	var loader = createLoader('nodesetLoader');
-	statBar.append(loader);
+	statBar.find('div').append(loader);
 
 	// Create info bar
-	var infoBar = createInfoBar('Set the boot state for a node range.');
+	var infoBar = createInfoBar('Set the boot state for a node range');
 	nodesetForm.append(infoBar);
 
 	// Create target node or group
@@ -249,7 +249,7 @@ function updateNodesetStatus(data) {
 	if (cmd == 'nodeadd') {
 		if (rsp.length) {
 			$('#' + statBarId).find('img').hide();
-			$('#' + statBarId).append('<p>(Error) Failed to create node definition</p>');
+			$('#' + statBarId).find('div').append('<pre>(Error) Failed to create node definition</pre>');
 		} else {
 			// Create target nodes string
 			var tgtNodesStr = '';
@@ -277,7 +277,7 @@ function updateNodesetStatus(data) {
 				}
 			}
 			
-			$('#' + statBarId).append('<p>Node definition created for ' + tgtNodesStr + '</p>');
+			$('#' + statBarId).find('div').append('<pre>Node definition created for ' + tgtNodesStr + '</pre>');
 			$.ajax( {
 				url : 'lib/cmd.php',
 				dataType : 'json',
@@ -299,9 +299,9 @@ function updateNodesetStatus(data) {
 	else if (cmd == 'makehosts') {
 		// If no output, no errors occurred
 		if (rsp.length) {
-			$('#' + statBarId).append('<p>(Error) Failed to update /etc/hosts</p>');
+			$('#' + statBarId).find('div').append('<pre>(Error) Failed to update /etc/hosts</pre>');
 		} else {
-			$('#' + statBarId).append('<p>/etc/hosts updated</p>');
+			$('#' + statBarId).find('div').append('<pre>/etc/hosts updated</pre>');
 		}
 
 		// Update DNS
@@ -325,7 +325,7 @@ function updateNodesetStatus(data) {
 	else if (cmd == 'makedns') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 		
 		// Update DHCP
 		$.ajax( {
@@ -348,7 +348,7 @@ function updateNodesetStatus(data) {
 	else if (cmd == 'makedhcp') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 
 		// Prepare node for boot
 		$.ajax( {
@@ -371,7 +371,7 @@ function updateNodesetStatus(data) {
 	else if (cmd == 'nodeset') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
-		$('#' + statBarId).append(prg);	
+		$('#' + statBarId).find('div').append(prg);	
 
 		// Hide loader
 		$('#' + statBarId).find('img').hide();

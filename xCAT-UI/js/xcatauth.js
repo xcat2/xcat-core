@@ -2,28 +2,39 @@
  * Open login dialog
  */
 $(document).ready(function() {
-	$("#logdialog").dialog( {
-		modal : true,
-		closeOnEscape : false,
-		closebutton : false,
-		height : 300,
-		width : 350,
-		autoOpen : true,
-		buttons : {
-			"Log in" : authenticate
-		},
-		open : function(type, dialog) {
-			if (document.location.protocol == "http:") {
-				$("#logstatus").html("You are using an unencrypted session!");
-				$("#logstatus").css("color", "#ff0000");
-			}
-			if ($("#username").val() == "") {
-				$("#username").focus();
-			} else {
-				$("#password").focus();
-			}
-		}
-	});
+    $('#header').remove();
+    $('#content').remove();
+    
+    var winheight = document.body.clientHeight;
+    var diaheight = $('#logdialog').css('height');
+    diaheight = diaheight.substr(0, diaheight.length - 2);
+    diaheight = Number(diaheight);
+    
+    // the window's height is to small to show the dialog
+    var tempheight = 0;
+    if ((winheight - 50) < diaheight){
+    	tempheight = 0;
+    } else {
+    	tempheight = parseInt((winheight - diaheight - 50) / 2); 
+    }
+    
+    $('#logdialog').css('margin', tempheight + 'px auto');
+    $('button').bind('click', function(){
+    	authenticate();
+    });
+    
+    $('button').button();
+    
+	if (document.location.protocol == "http:") {
+		$("#logstatus").html("You are using an unencrypted session!");
+		$("#logstatus").css("color", "#ff0000");
+	}
+	
+	if ($("#username").val() == "") {
+		$("#username").focus();
+	} else {
+		$("#password").focus();
+	}
 
 	// When enter is hit while in username, advance to password
 	$("#username").keydown(function(event) {
@@ -54,10 +65,21 @@ function onlogin(data, txtStatus) {
 	$("#password").val("");
 	if (data.authenticated == "yes") {
 		$("#logstatus").text("Login successful");
-		$("#logdialog").dialog("close");
 
-		// Remembered what page they were trying to go to
-		window.location = 'index.php';
+		// Not the first time to log
+		if ($.cookie('logonflag')){
+			// Remembered what page they were trying to go to
+	        window.location = window.location.pathname;
+		} else {
+		    window.location = 'guide.php';
+		}
+		
+		// Set the logonflag
+		$.cookie('logonflag', 'yes', {
+		    path : '/xcat',
+		    expires : 100
+		});
+		
 	} else {
 		$("#logstatus").text("Authentication failure");
 		$("#logstatus").css("color", "#FF0000");
