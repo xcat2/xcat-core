@@ -169,6 +169,12 @@ foreach (split /,/,$netdriver) {
    push @ndrivers, $_;
 }
 
+foreach (@ndrivers) {
+   unless (/\.ko$/) {
+      s/$/.ko/;
+   }
+}
+
 unless ($onlyinitrd) {
    @yumdirs=();
    find(\&isyumdir, <$installroot/$osver/$arch/>);

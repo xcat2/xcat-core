@@ -172,6 +172,12 @@ foreach (split /,/,$netdriver) {
     }
 }
 
+foreach (@ndrivers) {
+   unless (/\.ko$/) {
+      s/$/.ko/;
+   }
+}
+
 unless (grep /af_packet/,@ndrivers) {
     unshift(@ndrivers,"af_packet.ko");
 }
