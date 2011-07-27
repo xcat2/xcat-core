@@ -20,11 +20,11 @@ B<rpower> I<noderange> [B<softoff>]
 
 =head2 CEC (using Direct FSP Management) specific:
 
-B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<lowpower>]
+B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<lowpower>|B<resetsp>]
 
 =head2 Frame (using Direct FSP Management) specific:
 
-B<rpower> I<noderange> [B<rackstandby>|B<exit_rackstandby>|B<stat>|B<state>]
+B<rpower> I<noderange> [B<rackstandby>|B<exit_rackstandby>|B<stat>|B<state>|B<resetsp>]
 
 =head2 LPAR (using Direct FSP Management) specific:
 
@@ -61,6 +61,10 @@ Places the rack in the rack standby state. It requires that all CECs and DE be p
 =item B<exit_rackstandby>
 
 Exit Rack standby will be the default state that a rack goes into when power is initially applied to the rack. It simply moves the BPA from Rack standby to both bpa's in standby state.
+
+=item B<resetsp>
+
+Reboot the service processor. If there are primary and secondary FSPs/BPAs of one cec/frame, it will reboot them almost at the sametime.
 
 =item B<softoff>
 
