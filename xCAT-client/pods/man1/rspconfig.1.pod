@@ -130,6 +130,10 @@ B<rspconfig> I<noderange> {B<sysname>}
 
 B<rspconfig> I<noderange> B<sysname>={B<*>|B<name>}
 
+B<rspconfig> I<noderange> {B<pending_power_on_side>}
+
+B<rspconfig> I<noderange> B<pending_power_on_side>={B<temp>|B<perm>}
+
 B<rspconfig> I<noderange> {B<cec_off_policy>}
 
 B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
@@ -153,6 +157,11 @@ B<rspconfig> I<noderange> B<frame>={B<*|frame_number>}
 B<rspconfig> I<noderange> {B<sysname>}
 
 B<rspconfig> I<noderange> B<sysname>={B<*>|B<name>}
+
+B<rspconfig> I<noderange> {B<pending_power_on_side>}
+
+B<rspconfig> I<noderange> B<pending_power_on_side>={B<temp>|B<perm>}
+
 
 B<rspconfig> I<noderange> B<--resetnet>
 
@@ -340,7 +349,11 @@ Performs a system dump.
 
 =item B<sysname>
 
-Query or set sysname for CEC or Frame. If no value specified, means to query sysname of the specified nodes. If '*' specified, it means to set sysname for the specified nodes, and the sysname values would get from xCAT datebase. If a string was specified, it means to use the string as sysname value to set for the specified node.
+Query or set sysname for CEC or Frame. If no value specified, means to query sysname of the specified nodes. If '*' specified, it means to set sysname for the specified nodes, and the sysname values would get from xCAT datebase. If a string is specified, it means to use the string as sysname value to set for the specified node.
+
+=item B<pending_power_on_side>={I<temp|perm>}
+
+List or set pending power on side for CEC or Frame. If no pending_power_on_side value specified, the pending power on side for the CECs or frames will be displayed. If specified, the pending_power_on_side value will be set to CEC's FSPs or Frame's BPAs. The value 'temp' means T-side or temporary side. The value 'perm' means P-side or permanent side. 
 
 =item B<time>={I<hh:mm:ss>}
 
@@ -542,19 +555,37 @@ B<rspconfig> I<mm01 procedecfg=deconfigure:0:4,5>
 
 =item *
 
-To check if CEC sysname set correct:
+To check if CEC sysname set correct on mm01:
 
 B<rspconfig> I<mm01 sysname>
 
  mm01: mm01
 
-B<rspconfig> I<mm01 sysname=frame1>
+B<rspconfig> I<mm01 sysname=cec01>
 
  mm01: Success
 
 B<rspconfig> I<mm01 sysname>
 
- mm01: frame1
+ mm01: cec01
+
+=item *
+
+To check and change the pending_power_on_side value of cec01's fsps:
+
+B<rspconfig> I<cec01 pending_power_on_side>
+
+ cec01: Pending Power On Side Primary: temp
+ cec01: Pending Power On Side Secondary: temp
+
+B<rspconfig> I<cec01 pending_power_on_side=perm>
+
+ cec01: Success
+
+B<rspconfig> I<cec01 pending_power_on_side>
+
+ cec01: Pending Power On Side Primary: perm
+ cec01: Pending Power On Side Secondary: perm
 
 =item *
 

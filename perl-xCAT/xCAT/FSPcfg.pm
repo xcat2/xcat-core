@@ -56,7 +56,8 @@ sub parse_args {
         "*_passwd",
         "cec_off_policy",
         "resetnet",
-	    "sysname"
+        "sysname",
+        "pending_power_on_side"
     );
     my @frame = (
 	"frame",
@@ -65,7 +66,8 @@ sub parse_args {
         "general_passwd",
         "*_passwd",
         "resetnet",
-	    "sysname"
+        "sysname",
+        "pending_power_on_side"
     );
 
     
@@ -183,7 +185,7 @@ sub parse_args {
     # Return method to invoke
     ####################################
     if ( exists($cmds{frame}) or exists($cmds{cec_off_policy})) {
-        $request->{hcp} = "bpa";
+        $request->{hcp} = (exists($cmds{frame})) ? "bpa" : "fsp";
         $request->{method} = "cfg";
         return( \%opt );
     }
@@ -196,11 +198,11 @@ sub parse_args {
         $request->{method} = "resetnet";
         return( \%opt );
     }
-    if(exists($cmds{sysname})) {
-		$request->{hcp} = $request->{hwtype} eq 'frame' ? "bpa":"fsp";
-		$request->{method} = "sysname";
-		return (\%opt);
-	}
+    if(exists($cmds{sysname}) or exists($cmds{pending_power_on_side})) {
+        $request->{hcp} = $request->{hwtype} eq 'frame' ? "bpa":"fsp";
+        $request->{method} = "do_fspapi_function";
+        return (\%opt);
+    }
     ####################################
     # Return method to invoke
     ####################################
@@ -256,19 +258,24 @@ sub parse_option {
     if ($command eq 'sysname') {
         if ($value ne '*') {
             if ($value !~ /^[a-zA-Z0-9-_]+$/) {
-                return( "Invalid sysname '$value'" );
+                return( "Invalid sysname param '$value'" );
             } elsif (scalar(@{$request->{node}}) gt '1') {
-                return( "Invalid sysname '$value'" );
+                return( "Invalid sysname param '$value'" );
             }
             my $len = rindex $value."\$", "\$";
             if ($len > '31') {
-                return ("Invalid sysname '$value', name is too long, max 31 characters");
+                return ("Invalid sysname param '$value', name is too long, max 31 characters");
             }
+        }
+    }
+    if ($command eq 'pending_power_on_side') {
+        if ($value !~ /^(temp|perm)$/) {
+            return ("Invalid pending_power_on_side param '$value'");
         }
     }
     return undef;
 }
-sub sysname_check_node_info {
+sub check_node_info {
 	my $hash = shift;
 	my $invalid_node = undef;
 	while (my ($mtsm, $h) = each (%$hash)) {
@@ -282,72 +289,140 @@ sub sysname_check_node_info {
 	return $invalid_node;
 }
 
-my %sysname_action = (
-    query => {
+my %fspapi_action = (
+        sysname => {
+        query => {
         cec => "get_cec_name",
         frame => "get_frame_name"
-    },
-    set => {
+        },
+        set => {
         cec => "set_cec_name",
         frame => "set_frame_name"
-    }
+        }
+        },
+        pending_power_on_side => {
+        query => {
+        cec => "list_firmware_level",
+        frame => "list_firmware_level"
+        },
+        set => {
+        cec => "set_ipl_param",
+        frame => "set_ipl_param"
+        }
+        }
 );
-sub do_query_sysname {
+sub do_process_query_res {
+    my $name = shift;
+    my $cmd = shift;
+    my $result = shift;
+    my $res = shift;
+    if ($cmd =~ /^sysname$/) {
+        push @$result, $res;
+        if (@$res[2] != 0) {
+            return "Error";
+        }
+    } elsif($cmd =~ /^pending_power_on_side$/) {
+        if (@$res[2] != 0) {
+	        push @$result, $res;
+            return "Error";
+        } else {
+            my @values = split(/\n/, @$res[1]);
+            foreach my $v (@values) {
+                if ($v =~ /pend_power_on_side_(\w+)=(temp|perm),/) {
+                    push @$result, [$name, "Pending Power On Side \L\u$1: $2", '0'];
+                } else {
+                    push @$result, [$name, $v, '1'];
+                    return "Error";
+                }
+            }
+        }
+    }
+    return undef;
+}
+sub do_query {
     my $request = shift;
     my $hash = shift;
+    my $cmd = shift;
     my @result = ();
     while (my ($mtms, $h) = each(%$hash)) {
         while (my($name, $d) = each(%$h)) {
-            my $action = $sysname_action{query}{@$d[4]};
+            my $action = $fspapi_action{$cmd}{query}{@$d[4]};
             my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action);
-            push @result, $values;
-            if (@$values[2] != 0)  {
+            my $res = &do_process_query_res($name, $cmd, \@result, $values);
+            if (defined($res)) {
                 last;
             }
         }
     }
     return (\@result);
 }
-sub do_set_sysname {
+sub do_set_get_para {
+    my $node_name = shift;
+    my $cmd = shift;
+    my $value = shift;
+    if ($cmd =~ /^sysname$/) {
+        return (($value eq '*') ? $node_name : $value);
+    } elsif ($cmd =~ /^pending_power_on_side$/){
+        return ($value =~ /^perm$/) ? '0' : '1';
+    }
+}
+
+sub do_process_set_res {
+    my $name = shift;
+    my $cmd = shift;
+    my $result = shift;
+    my $res = shift;
+    if (@$res[1] && @$res[1] !~ /success/i) {
+        push @$result, $res;
+        return "Error";
+    } else {
+        push @$result, [$name, "Success", 0];
+    }
+}
+sub do_set {
     my $request = shift;
     my $hash = shift;
+    my $cmd = shift;
     my $value = shift;
     my @result = ();
     while (my ($mtms, $h) = each(%$hash)) {
         while (my($name, $d) = each(%$h)) {
-           my $sysname = ($value eq '*') ? $name : $value;
-           my $action = $sysname_action{set}{@$d[4]};
-           my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action, 0, $sysname);
-           if (@$values[1] && ((@$values[1] =~ /Error/i) && (@$values[2] != 0))) {
-                return ([[$name, @$values[1], '1']]);
-           } else {
-                push $result, [$name, "Success", 0];
-           }
+            my $action = $fspapi_action{$cmd}{set}{@$d[4]};
+            my $para = &do_set_get_para($name, $cmd, $value);
+            my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action, 0, $para);
+#           print Dumper($values);
+            my $res = &do_process_set_res($name, $cmd, \@result, $values);
+            if (defined($res)) {
+                last;
+            }
         }
     }
     return (\@result);
 }
-sub sysname {
-	my $request = shift;
-	my $hash = shift;
-	my $exp = shift;
-	my $args = $request->{arg};
-	my $invalid_node = &sysname_check_node_info($hash);
-	if (defined($invalid_node)) {
-		retrun ([[$invalid_node, "Node must be CEC or Frame", '1']]);
-	}
-	foreach my $arg (@$args) {
-		my ($cmd, $value) = split /=/, $arg;
-		if ($cmd !~ /^sysname$/) {
-			return ([[$cmd, "Can't be exec with sysname", 1]]);
-		}
-		if ($value) {
-			return &do_set_sysname($request, $hash, $value)
-		} else {
-			return &do_query_sysname($request, $hash);
-		}
-	}
-    return ([["Error", "Arguments invalid", 1]]);
+sub do_fspapi_function {
+    my $request = shift;
+    my $hash = shift;
+    my $exp = shift;
+    my @ret = ();
+    my $res;
+    my $args = $request->{arg};
+    my $invalid_node = &check_node_info($hash);
+    if (defined($invalid_node)) {
+        return ([[$invalid_node, "Node must be CEC or Frame", '1']]);
+    }
+    foreach my $arg (@$args) {
+        my ($cmd, $value) = split /=/, $arg;
+	    if ($cmd !~ /^(sysname|pending_power_on_side)$/) {
+	        return ([["Error", "'$cmd' can not execute with 'sysname' or 'pending_power_on_side'", '1']]);
+	    }
+        if ($value) {
+            $res = &do_set($request, $hash, $cmd, $value)
+        } else {
+            $res = &do_query($request, $hash, $cmd);
+        }
+        push @ret, @$res;
+    }
+    return \@ret;
 }
 ##########################################################################
 # Update passwords for different users on FSP/BPA
@@ -365,6 +440,9 @@ sub passwd {
 
 	foreach my $arg ( @$args ) {
         my ($user,$value) = split /=/, $arg;
+	if ($user !~ /_passwd$/) {
+	    return ([["Error", "'$user' can not execute with '*_passwd' commands", '1']]);
+	}
         my ($passwd,$newpasswd) = split /,/, $value;
         $user =~ s/_passwd$//;
         #$user =~ s/^HMC$/access/g;
@@ -429,6 +507,9 @@ sub cfg {
         ##################################
         unless ( /^-/ ) {
             my ($cmd,$value) = split /=/;
+	    if ($cmd !~ /(frame|cec_off_policy)/) {
+		return ([["Error", "'$cmd' can not execute with 'frame' or 'cec_off_policy'", '1']]);		
+	    }
 
             no strict 'refs';
             $result = $rspconfig{$cmd}( $request, $value, $hash );

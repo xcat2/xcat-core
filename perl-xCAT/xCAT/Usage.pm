@@ -136,6 +136,8 @@ my %usage = (
        rspconfig noderange *_passwd={currentpasswd,newpasswd}
        rspconfig <noderange> [sysname]
        rspconfig <noderange> [sysname=<*|name>]
+       rspconfig <noderange> [pending_power_on_side]
+       rspconfig <noderange> [pending_power_on_side=<temp|perm>]
        rspconfig <noderange> [cec_off_policy]
        rspconfig <noderange> [cec_off_policy=<poweroff|stayon>]
    BPA/Frame (using Direct FSP Management)specific:
@@ -147,6 +149,8 @@ my %usage = (
        rspconfig <noderange> frame=<*|frame>
        rspconfig <noderange> [sysname]
        rspconfig <noderange> [sysname=<*|name>]
+       rspconfig <noderange> [pending_power_on_side]
+       rspconfig <noderange> [pending_power_on_side=<temp|perm>]
    HMC specific:
        rspconfig <noderange>  [sshcfg]
        rspconfig <noderange>  [sshcfg=<enable|disable>]
