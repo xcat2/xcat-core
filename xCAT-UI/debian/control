@@ -1,0 +1,12 @@
+Source: xcat-ui
+Section: admin
+Priority: extra
+Maintainer: Arif Ali <aali@ocf.co.uk>
+Build-Depends: debhelper (>= 5)
+Standards-Version: 3.7.2
+
+Package: xcat-ui
+Architecture: all
+Depends: ${perl:Depends}, python (>= 2.3), apache2, libapache2-mod-php5
+Description: Provides a browser-based interface for xCAT (extreme Cluster Administration Tool).
+ Provides a browser-based interface for xCAT (extreme Cluster Administration Tool).
