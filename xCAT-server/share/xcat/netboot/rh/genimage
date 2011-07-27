@@ -1154,7 +1154,7 @@ EOMS
    print $inifile "cd /\n";
    print $inifile "cp /var/lib/dhclient/dhclient.leases \$NEWROOT/dev/.dhclient-\$IFACE.leases\n";
    print $inifile "cp /var/lib/dhclient/dhclient.leases \$NEWROOT/var/lib/dhclient/dhclient-\$IFACE.leases\n";
-   print $inifile 'if [ -z "$SNAPSHOTSERVER" ]; then cp /etc/resolv.conf \$NEWROOT/etc/resolv.conf; fi'."\n";
+   print $inifile 'if [ -z "$SNAPSHOTSERVER" ]; then cp /etc/resolv.conf $NEWROOT/etc/resolv.conf; fi'."\n";
    print $inifile "mknod \$NEWROOT/dev/console c 5 1\n";
    print $inifile "exec switch_root -c /dev/console \$NEWROOT /sbin/init\n";
    close($inifile);
