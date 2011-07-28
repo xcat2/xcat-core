@@ -1099,7 +1099,7 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=http://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg.$suffix ";
+              "imgurl=http://$imgsrv/$rootimgdir/rootimg.$suffix ";
         }
         if (defined $sent->{serialport})
         {

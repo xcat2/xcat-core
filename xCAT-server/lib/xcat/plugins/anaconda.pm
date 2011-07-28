@@ -40,6 +40,7 @@ my %distnames = (
                  "1272326751.405938" => "centos5.5",
                  "1195488871.805863" => "centos4.6",
                  "1195487524.127458" => "centos4.6",
+                 "1301444731.448392" => "centos5.6",
                  "1170973598.629055" => "rhelc5",
                  "1170978545.752040" => "rhels5",
                  "1192660014.052098" => "rhels5.1",
@@ -620,7 +621,7 @@ sub mknetboot
 	    }
         else {
             $kcmdline =
-              "imgurl=http://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg.$suffix ";
+              "imgurl=http://$imgsrv/$rootimgdir/rootimg.$suffix ";
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
         }
 
