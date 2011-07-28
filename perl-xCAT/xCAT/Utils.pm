@@ -6233,6 +6233,7 @@ sub setAppStatus
 
     my %new_nodeappstat;
     foreach my $node (keys %$nodeappstat) {
+        if ( $node =~ /^\s*$/ ) { next; }  # Skip blank node names 
         my $new_appstat = "";
         my $changed = 0;
 
