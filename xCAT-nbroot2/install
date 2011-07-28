@@ -6,7 +6,7 @@ dracut_install mount.nfs sshd vi reboot lspci parted libvirtd /usr/share/libvirt
 dracut_install mkswap df brctl vconfig ifenslave ssh-keygen /usr/bin/qemu-img /usr/libexec/qemu-kvm scp clear dhclient lldpad
 dracut_install lldptool /lib64/libnss_dns-2.12.so /lib64/libnss_dns.so.2
 dracut_install poweroff ntpq ntpd hwclock date /usr/share/terminfo/x/xterm /etc/nsswitch.conf /etc/services
-dracut_install /sbin/rsyslogd
+dracut_install /sbin/rsyslogd /etc/protocols umount
 dracut_install chmod /lib/libc.so.6 /lib/ld-linux.so.2 /lib/libdl.so.2 /lib/libm.so.6 /sbin/route /sbin/ifconfig /usr/bin/head /etc/redhat-release ping tr lsusb #ibm fw wrapper requirements
 dracut_install /usr/share/zoneinfo/posix/Zulu
 dracut_install /usr/share/zoneinfo/posix/GMT-0
@@ -586,9 +586,33 @@ inst "$moddir/dodiscovery" "/bin/dodiscovery"
 inst "$moddir/udpcat.awk" "/bin/udpcat.awk"
 inst "$moddir/minixcatd.awk" "/bin/minixcatd.awk"
 inst "$moddir/bmcsetup" "/bin/bmcsetup"
+inst "$moddir/dhclient.conf" "/etc/dhclient.conf"
 inst "$moddir/dhclient-script" "/sbin/dhclient-script"
+inst "$moddir/rsyslog.conf" "/etc/rsyslog.conf"
+dracut_install /sbin/rpc.statd /usr/sbin/sm-notify /etc/netconfig rpcbind /etc/host.conf /usr/sbin/rpc.idmapd
+dracut_install ps free find #debug 
+inst_dir /var/lib/nfs 
+inst_dir /var/lib/nfs/statd/sm 
+inst_dir /var/lib/nfs/statd/sm.bak
+inst_dir /var/lib/nfs/rpc_pipefs/nfs
 inst "/bin/bash" "/bin/sh"
 inst "/lib64/libnss_dns-2.12.so"
 inst "/root/.ssh/id_rsa.pub" "/.ssh/authorized_keys"
 inst "/lib/terminfo/l/linux" "/lib/terminfo/l/linux"
 inst_hook cmdline 10 "$moddir/xcat-cmdline.sh" 
+dracut_install /lib64/rsyslog/lmtcpclt.so
+dracut_install /lib64/rsyslog/omtesting.so
+dracut_install /lib64/rsyslog/lmnetstrms.so
+dracut_install /lib64/rsyslog/imfile.so
+dracut_install /lib64/rsyslog/imklog.so
+dracut_install /lib64/rsyslog/lmzlibw.so
+dracut_install /lib64/rsyslog/immark.so
+dracut_install /lib64/rsyslog/imudp.so
+dracut_install /lib64/rsyslog/lmregexp.so
+dracut_install /lib64/rsyslog/lmtcpsrv.so
+dracut_install /lib64/rsyslog/lmnsd_ptcp.so
+dracut_install /lib64/rsyslog/imtcp.so
+dracut_install /lib64/rsyslog/lmnet.so
+dracut_install /lib64/rsyslog/lmstrmsrv.so
+dracut_install /lib64/rsyslog/imuxsock.so
+dracut_install /usr/lib64/libnfsidmap/nsswitch.so

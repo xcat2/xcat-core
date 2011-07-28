@@ -25,6 +25,14 @@ elif [ $reason = "BOUND" ]; then
 	for gw in $new_routers; do
 		ip route add default via $gw
 	done
+        if [ ! -z "$new_log_servers" ]; do
+		head -n -1 /etc/rsyslog.conf > /etc/rsyslog.conf.new
+		cp /etc/rsyslog.conf.new /etc/rsyslog.conf
+	done
+        for ls in $new_log_servers; do
+		echo *.* @$ls >> /etc/rsyslog.conf
+	done
+
 	if [ ! -z "$new_tcode" -a -r "/usr/share/zoneinfo/posix/$new_tcode" ]; then
 		cp "/usr/share/zoneinfo/posix/$new_tcode" /etc/localtime
 		rm -rf /usr/share/zoneinfo #free up ramdisk

@@ -3,6 +3,8 @@ rootok=1
 netroot=xcat
 clear
 echo '[ -e $NEWROOT/proc ]' > /initqueue-finished/xcatroot.sh
+mkdir /dev/cgroup
+mount -t cgroup -o cpu,memory,devices cgroup /dev/cgroup
 udevd --daemon
 udevadm trigger
 mkdir -p /var/lib/dhclient/
@@ -43,11 +45,16 @@ mkdir -p /etc/ssh
 mkdir -p /var/empty/sshd
 echo root:x:0:0::/:/bin/sh >> /etc/passwd
 echo sshd:x:30:30:SSH User:/var/empty/sshd:/sbin/nologin >> /etc/passwd
+echo rpc:x:32:32:Rpcbind Daemon:/var/cache/rpcbind:/sbin/nologin >> /etc/passwd
+echo rpcuser:x:29:29:RPC Service User:/var/lib/nfs:/sbin/nologin >> /etc/passwd
+echo qemu:x:107:107:qemu user:/:/sbin/nologin >> /etc/passwd
+rpcbind
+rpc.statd
 ssh-keygen -q -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
 ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
 echo 'Protocol 2' >> /etc/ssh/sshd_config
 /usr/sbin/sshd
-dhclient -pf /var/run/dhclient.$bootnic.pid $bootnic &
+dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
 dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
 mkdir -p /etc/xcat
 mkdir -p /etc/pki/tls
