@@ -683,42 +683,42 @@ table a:hover {
 }
 
 /*--------------- Provision and monitor forms ---------------*/
-.rmcnormal {
+.monitornormal {
 	border: 2px outset #7FFFD4;
 	background: #66CD00;
 	cursor: pointer;
 }
 
-.rmcwarning {
+.mornitorwarning {
    	background: #FFD700;
   	border: 2px outset #EEEE00;
 	cursor: pointer;
 }
 
-.rmcerror {
+.monitorerror {
 	background:  #FF3030;
 	border: 2px outset #FF4040;
 }
 
-.rmcunknown {
+.monitorunknown {
     background:  #8B8B7A;
     border: 2px outset #858585;
 }
 
-.rmcnodeli {
+.monitornodeli {
 	width: 16px;
 	height: 16px;
 	float: left;
 }
 
-.rmcsumdiv {
+.monitorsumdiv {
 	width: 300px;
 	height: 150px;
 	float: left;
 	margin: 0px 0px 10px 0px;
 }
 
-.rmcnodediv {
+.monitornodediv {
 	width: 240px;
 	height: 120px;
 	margin: 0px 0px 15px 0px;
