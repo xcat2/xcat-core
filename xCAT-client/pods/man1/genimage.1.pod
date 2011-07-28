@@ -34,7 +34,9 @@ image, install any additional software you would like, or make modifications to 
 B<packimage> to prepare the image for deployment.
 
 The B<genimage> and B<geninitrd> commands will generate two initial ramdisks for B<statelite> and B<stateless>, one is B<initrd-statelite.gz>, the other one is B<initrd-stateless.gz>.
-
+ 
+The B<genimage> command can not be used in interactive mode.  If any of the rpms or other scripts prompt, such as to accept a license agreement, you must use the genimage script specific to your OS from the /opt/xcat/share/xcat/netboot/<os> directory.  
+ 
 =head1 Parameters
 
 I<imagename> specifies the name of a os image definition to be used. The specification for the image is storted in the I<osimage> table and I<linuximage> table.
