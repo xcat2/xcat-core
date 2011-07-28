@@ -8,7 +8,7 @@ use xCAT::Utils;
 use xCAT::SvrUtils;
 use xCAT::Table;
 use Data::Dumper;
-
+use File::Path;
 use Getopt::Long;
 Getopt::Long::Configure("bundling");
 Getopt::Long::Configure("pass_through");
@@ -289,12 +289,21 @@ sub process_request {
        $cmd.= " $imagename";
    }
    
-
+   # now run the specific genimage command
    $callback->({info=>["$cmd"]});
-   
-   my $output = xCAT::Utils->runcmd("$cmd", 0, 1);
+   $::CALLBACK=$callback;
+   #my $output = xCAT::Utils->runcmd("$cmd", 0, 1); 
+   my $output = xCAT::Utils->runcmd_S("$cmd", 0, 1); # stream output
+   open(FILE, ">/tmp/genimageoutput");
+   foreach my $entry (@$output) {
+    print FILE $entry;
+    print FILE "\n";
+   }
+   close FILE; 
 
    #save the new settings to the osimage and linuximage tables
+   $cmd="cat /tmp/genimageoutput";
+   $output = xCAT::Utils->runcmd("$cmd", 0, 1); 
    if ($output && (@$output > 0)) {
        my $i=0;
        while ($i < @$output) {
@@ -337,9 +346,11 @@ sub process_request {
 	       $i++;
 	   }
        } 
-       
+       # remove tmp file
+       #`rm /tmp/genimageoutput`; 
        #remove the database upgrade section
-       $callback->({info=>$output}); 
+       # runcmd_S displays the output
+       #$callback->({info=>$output}); 
    }
 }
 
