@@ -665,7 +665,7 @@ sub remove {
             # Remove the LPARs
             ####################################
             foreach ( @lpars ) {
-            my $lparinfo   = shift(@lpars);
+            my $lparinfo   = $_;     # shift(@lpars);
                 my ($name,$id) = split /,/, $lparinfo;
                 my $mtms = @$d[2];
                 
@@ -710,7 +710,7 @@ sub remove {
                 # Remove LPAR from database 
                 ################################
                 if ( $Rc == SUCCESS and !exists( $opt->{r} ) ) {
-                    my $err = xCATdB( "rmvm", $name );
+                    my $err = xCATdB( "rmvm", $name,"", $id,"", $type,"" , $lpar );
                     if ( defined( $err )) {
                         push @values, [$lpar,$err,RC_ERROR];
                         next;
@@ -1782,7 +1782,20 @@ sub xCATdB {
     # Remove entry 
     #######################################
     if ( $cmd eq "rmvm" ) {
-        return( xCAT::PPCdb::rm_ppc( $name )); 
+
+        my $ppctab = xCAT::Table->new('ppc');
+        unless ($ppctab) {   # no ppc table
+            return( "Error opening 'ppc' database" );
+        }
+
+        my @nodes = $ppctab->getAllNodeAttribs(['node','id','parent']);
+
+        foreach my $node (@nodes) {
+            my $type = xCAT::DBobjUtils->getnodetype($node->{node});
+            if ( $type =~ /lpar/ and $lparid eq $node->{id} and $parent eq $node->{parent} ) {
+                return( xCAT::PPCdb::rm_ppc( $node->{node} ));
+            }
+        }
     }
     #######################################
     # Change entry 
