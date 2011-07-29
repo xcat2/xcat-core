@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<swapnodes> - swap the location info in the db between 2 nodes. If swapping within a cec, it will assign the IO adapters that were assigned to the defective node to the available node. 
+B<swapnodes> - swap the location info in the db (all the attributes in the ppc table and the nodepos table) between 2 nodes. If swapping within a cec, it will assign the IO adapters that were assigned to the defective node to the available node. 
 
 =head1 SYNOPSIS
 
@@ -10,7 +10,20 @@ B<swapnodes> B<-c> I<current_node> B<-f> I<fip_node> [B<-o>]
 
 =head1 DESCRIPTION
 
-This command is only for Power 775 using Direct FSP Management. Without B<-o> option, it's used to swap the location info in the db between 2 nodes. With B<-o> option, it's used to move the I<current_node> definition to I<fip_node> (the 2nd octant), not move the I<fip_node> definition to the 1st octant. If the two nodes are in a cec, it will assign the IO adapters that were assigned to the defective node to the available node. Originally, the I<current_node> is a defective non-compute node, and I<fip_node> is a avaible compute node. After the swapping, the I<current_node> will be a available node.
+This command is only for Power 775 using Direct FSP Management, and used in Power 775 Availability Plus. 
+
+The B<swapnodes> command will keep the B<current_node> name in the xCAT table, and use the I<fip_node>'s hardware resource. Besides that, the IO adapters will be assigned to the new hardware resource if they are in the same CEC. So the swapnodes command will do 2 things:
+  
+  (1)swap the location info in the db between 2 nodes:
+   All the ppc table attributes (including hcp, id, parent, supernode and so on).
+   All the nodepos table attributes(including rack, u, chassis, slot, room and so on).
+  (2)assign the I/O adapters from the defective node(the original current_node) to the available node(the original fip_node)
+
+The B<swapnodes> command shouldn't make the decision of which 2 nodes are swapped. It will just received the 2 node names as cmd line parameters.
+
+After running B<swapnodes> command, the order of the I/O devices may be changed after IO re-assignment, so the administrator needs to run B<rbootseq> to set the boot string for the current_node. And then boot the node with the same image and same postscripts because they have the same attributes.
+
+Without B<-o> option, it's used to swap the location info in the db between 2 nodes. With B<-o> option, it's used to move the I<current_node> definition to I<fip_node> (the 2nd octant), not move the I<fip_node> definition to the 1st octant. If the two nodes are in a cec, it will assign the IO adapters that were assigned to the defective node to the available node. Originally, the I<current_node> is a defective non-compute node, and I<fip_node> is a avaible compute node. After the swapping, the I<current_node> will be a available node.
 
 =head1 OPTIONS
 
@@ -30,7 +43,7 @@ I<fip_node> -- a compute node which will be swapped as the non-compute node.
 
 =item B<-o>
 
-one way. Move the I<current_node> definition to I<fip_node> (the 2nd octant), and not move the I<fip_node> definition to the 1st octant.
+one way. Only move the I<current_node> definition to the I<fip_node>'s hardware resource, and not move the fip_node definition to the I<current_node>. And then the I<current_node> will use the I<fip_node>'s hardware resource, and the I<fip_node> definition is not changed. if the two nodes are in the same CEC, the I/O adapter from the original I<current_node> will be assigned to the I<fip_node>.
 
 =back
 
@@ -45,11 +58,24 @@ one way. Move the I<current_node> definition to I<fip_node> (the 2nd octant), an
 
 =over 3
 
-=item 1.
+=item 1
 
-To swap the service node attributes and IO assignments between sn1 and compute2 which are in the same cec:
+To swap the service node attributes and IO assignments between sn1 and compute2 which are in the same cec, all the attributes in the ppc table and nodepos talbe of the two node will be swapped, and the the I/O adapters from the defective node (the original sn1) will be assigned to the available node (the original compute2). After the swapping, the sn1 will use the compute2's hardware resource and the I/O adapters from the original sn1.
 
  swapnodes -c sn1 -f compute2
+
+=item 2
+
+To swap the service node attributes and IO assignments between sn1 and compute2 which are NOT in the same cec, all the attributes in the ppc table and nodepos talbe of the two node will be swapped. After the swapping, the sn1 will use the compute2's hardware resource.
+
+ swapnodes -c sn1 -f compute2 
+
+=item 3
+
+Only to move the service node (sn1) definition to the compute node (compute2)'s hardware resource, and not move the compute2 definition to the sn1. After the swapping, the sn1 will use the compute2's hardware resource, and the compute2 definition is not changed.
+
+ swapnodes -c sn1 -f compute2 -o
+
 
 =back
 
