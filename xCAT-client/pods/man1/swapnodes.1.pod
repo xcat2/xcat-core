@@ -17,7 +17,7 @@ The B<swapnodes> command will keep the B<current_node> name in the xCAT table, a
   (1)swap the location info in the db between 2 nodes:
    All the ppc table attributes (including hcp, id, parent, supernode and so on).
    All the nodepos table attributes(including rack, u, chassis, slot, room and so on).
-  (2)assign the I/O adapters from the defective node(the original current_node) to the available node(the original fip_node)
+  (2)assign the I/O adapters from the defective node(the original current_node) to the available node(the original fip_node) if the nodes are in the same cec.
 
 The B<swapnodes> command shouldn't make the decision of which 2 nodes are swapped. It will just received the 2 node names as cmd line parameters.
 
