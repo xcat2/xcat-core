@@ -265,6 +265,7 @@ my %chassis_types = (
 my %MFG_ID = (
 	2 => "IBM",
 	343 => "Intel",
+	20301 => "IBM",
 );
 
 my %PROD_ID = (
@@ -1499,7 +1500,7 @@ sub got_bmc_fw_info {
         my @returnd = (@{$rsp->{data}});
 			my @a = ($fw_rev2);
             my $prefix = pack("C*",@returnd[0..3]);
-            if ($prefix =~ /yuoo/i) { #we have an imm
+            if ($prefix =~ /yuoo/i or $prefix =~ /1aoo/i) { #we have an imm
                 $isanimm=1;
             }
 			$mprom = sprintf("%d.%s (%s)",$fw_rev1,decodebcd(\@a),getascii(@returnd));
@@ -1640,7 +1641,7 @@ sub initfru_withguid {
     my $prod_id = $sessdata->{prod_id};
 	my $mprom;
 
-	if($mfg_id == 2 && $prod_id != 34869) {
+	if($mfg_id = 20301 or $mfg_id == 2 && $prod_id != 34869) {
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x50,data=>[],callback=>\&got_bmc_fw_info,callback_args=>$sessdata);
 	} else {
         got_bmc_fw_info(0,$sessdata);
