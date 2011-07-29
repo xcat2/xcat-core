@@ -1,0 +1,59 @@
+start:makenetworks_h
+description:help
+cmd:makenetworks -h
+check:rc==0
+check:output=~Usage
+end
+
+start:makenetworks_help
+description:help
+cmd:makedhcp --help
+check:rc==0
+check:output=~Usage
+end
+
+start:makenetworks_v
+description:version
+cmd:makenetworks -v
+check:rc==0
+check:output=~Version
+end
+
+start:makenetworks_d
+description:display
+cmd:makenetworks -d > /tmp/mynetworksstanzas
+check:rc==0
+cmd:echo -ne "auto-testnetworks:\n objtype=network\n gateway=1.2.3.0\n mask=255.255.255.0\n net=1.2.3.1\n" >> /tmp/mynetworksstanzas 
+cmd:cat /tmp/mynetworksstanzas | chdef -z
+check:rc==0
+cmd:tabdump networks
+check:output=~("auto-testnetworks","1.2.3.1","255.255.255.0",,"1.2.3.0",,,,,,,,,,,,)
+cmd:chtab -d netname=auto-testnetworks networks
+cmd:rm -f /tmp/mynetworksstanzas
+end
+
+start:makenetworks_d_V
+description:display,verbose
+cmd:makenetworks
+check:rc==0
+cmd:makenetworks -d -V
+check:rc==0
+check:output=~objtype=network
+check:output=~(net=)
+check:output=~(mask=)
+end
+
+start:makenetworks
+description:makenetworks
+cmd:num=`lsdef -t network |cut -d" " -f1 |tee test|wc -l`;for((i=1;i<=$num;i++)) do rmdef -t network `cat 1|sed -n "${i}p"`; done
+check:rc==0
+check:output=~(Object definitions have been removed)
+cmd:tabdump networks
+check:rc==0
+cmd:makenetworks
+check:rc==0
+cmd:tabdump networks
+check:rc==0
+check:output=~$$autotestnet
+check:output=~$$autotestgateway
+end
