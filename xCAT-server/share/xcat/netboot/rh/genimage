@@ -183,7 +183,6 @@ unless ($onlyinitrd) {
       find(\&isyumdir, <$kerneldir/>);
       if (!grep /$kerneldir/, @yumdirs) {
          print "The repository for $kerneldir should be created before running the geniamge. Try to run [createrepo $kerneldir].\n";
-         exit 1;
       }
    }
    unless (scalar(@yumdirs)) {
