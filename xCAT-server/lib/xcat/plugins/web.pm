@@ -13,6 +13,7 @@ package xCAT_plugin::web;
 use strict;
 require xCAT::Utils;
 require xCAT::MsgUtils;
+require xCAT::DBobjUtils;
 use Getopt::Long;
 use Data::Dumper;
 use LWP::Simple;
@@ -48,7 +49,9 @@ sub process_request {
 		'monls'         => \&web_monls,
 		'discover'      => \&web_discover,
 		'updatevpd'     => \&web_updatevpd,
-		'createimage'   => \&web_createimage
+		'createimage'   => \&web_createimage,
+        'provision'     => \&web_provision,
+        'summary'       => \&web_summay
 	);
 
 	#check whether the request is authorized or not
@@ -209,7 +212,7 @@ sub web_mkcondition {
 		my $conditionName = $request->{arg}->[2];
 		my $groupName     = $request->{arg}->[3];
 
-		my $retInfo = xCAT::Utils->runcmd( 'nodels ' . $groupName . " nodetype.nodetype", -1, 1 );
+		my $retInfo = xCAT::Utils->runcmd( 'nodels ' . $groupName . " ppc.nodetype", -1, 1 );
 		foreach my $line (@$retInfo) {
 			my @temp = split( ':', $line );
 			if ( @temp[1] !~ /lpar/ ) {
@@ -501,100 +504,83 @@ sub web_installganglia() {
 	my $nr = $request->{arg}->[1];
 	my @nodes = split( ',', $nr );
 	
-	# Get repository type
-	my $os = xCAT::Utils->osver();
-	# Get repository name
-	my $xcatDep = 'xCAT-dep';
-	
-	# Get location of repository
-	my $loc;
-	if ($os =~ /rh/) {
-		# Red Hat
-		$loc = `cat /etc/yum.repos.d/$xcatDep.repo | grep "baseurl"`;
-	} elsif ($os =~ /sles11/) {
-		# SUSE
-		$loc = `cat /etc/zypp/repos.d/$xcatDep.repo | grep "baseurl"`;
-	} else {
-		$loc = '';
-	}
-
-	$loc =~ s/baseurl=//g;
-	$loc =~ s/file://g; 	# Downloaded xCAT-dep
-	
-	# Trim right and left
-	$loc =~ s/\s*$//;
-	$loc =~ s/^\s*//;
-	
-	# Get the base directory for xcat-dep
-	$loc = substr($loc, 0, index($loc, 'xcat-dep/') + 8);
-	
-	# Get the appropriate directory for each nodes
-	# This is based on the nodetype.os and nodetype.arch attributes
-	# e.g. xcat-dep/<os>/<arch>, where <os> can be: fedora8, fedora9, fedora12, fedora13, rh4, rh5, rh6, sles10, sles11
-	# and where <arch> can be: ppc64, s390x, x86, x86_64
+	# Loop through each node
 	my $info;
 	my $tab;
 	my $attrs;
-	my $tmp;
-	
-	# Repository location: $repo{$node}
-	my $repo;
-	# Go through each node because each node might have a different repository 
-	# location, based on its OS and arch
+	my $osType;
+	my $dir;
+	my $pkglist;
+	my $defaultDir;
 	foreach (@nodes) {
-		# Get table
+		# Get os, arch, profile, and provmethod
 		$tab = xCAT::Table->new('nodetype');
-		# Get property values
-		$attrs = $tab->getNodeAttribs( $_, ['os', 'arch'] );
-
-		if ($attrs->{'arch'} && $attrs->{'os'}) {
-			# Point to the right OS
-			if ($attrs->{'os'} =~ /fedora8/) {
-				$attrs->{'os'} = 'fedora8';
-			} elsif ($attrs->{'os'} =~ /fedora9/) {
-				$attrs->{'os'} = 'fedora9';
-			} elsif ($attrs->{'os'} =~ /fedora12/) {
-				$attrs->{'os'} = 'fedora12';
-			} elsif ($attrs->{'os'} =~ /fedora13/) {
-				$attrs->{'os'} = 'fedora13';
-			} elsif ($attrs->{'os'} =~ /rh4/ || $attrs->{'os'} =~ /rhel4/) {
-				$attrs->{'os'} = 'rh4';
-			} elsif ($attrs->{'os'} =~ /rh5/ || $attrs->{'os'} =~ /rhel5/) {
-				$attrs->{'os'} = 'rh5';
-			} elsif ($attrs->{'os'} =~ /rh6/ || $attrs->{'os'} =~ /rhel6/) {
-				$attrs->{'os'} = 'rh6';
-			} elsif ($attrs->{'os'} =~ /sles10/) {
-				$attrs->{'os'} = 'sles10';
-			} elsif ($attrs->{'os'} =~ /sles11/) {
-				$attrs->{'os'} = 'sles11';
+		$attrs = $tab->getNodeAttribs( $_, ['os', 'arch', 'profile', 'provmethod'] );
+		
+		# If any attributes are missing, skip
+		if (!$attrs->{'os'} || !$attrs->{'arch'} || !$attrs->{'profile'} || !$attrs->{'provmethod'}) {
+			$callback->( { info => "$_: (Error) Missing attribute (os, arch, profile, or provmethod) in nodetype table" } );
+			next;
+		}
+		
+		# Get the right OS type
+		if ($attrs->{'os'} =~ /fedora/) {
+			$osType = 'fedora';
+		} elsif ($attrs->{'os'} =~ /rh/ || $attrs->{'os'} =~ /rhel/ || $attrs->{'os'} =~ /rhels/) {
+			$osType = 'rh';
+		} elsif ($attrs->{'os'} =~ /sles/) {
+			$osType = 'sles';
+		}
+		
+		# Assume /install/post/otherpkgs/<os>/<arch>/ directory is created
+		# If Ganglia RPMs (ganglia-gmond-*, libconfuse-*, and libganglia-*) are not in directory
+		$dir = "/install/post/otherpkgs/$attrs->{'os'}/$attrs->{'arch'}/";
+		if (!(`test -e $dir/ganglia-gmond-* && echo 'File exists'` &&
+			`test -e $dir/libconfuse-* && echo 'File exists'` &&
+			`test -e $dir/libganglia-* && echo 'File exists'`)) {
+			# Skip
+			$callback->( { info => "$_: (Error) Missing Ganglia RPMs under $dir" } );
+			next;
+		}
+					
+		# Find pkglist directory
+		$dir = "/install/custom/$attrs->{'provmethod'}/$osType";
+		if (!(`test -d $dir && echo 'Directory exists'`)) {
+			# Create pkglist directory
+			`mkdir -p $dir`;
+		}
+		
+		# Find pkglist file
+		# Ganglia RPM names should be added to /install/custom/<inst_type>/<ostype>/<profile>.<os>.<arch>.otherpkgs.pkglist
+		$pkglist = "$attrs->{'profile'}.$attrs->{'os'}.$attrs->{'arch'}.otherpkgs.pkglist";
+		if (!(`test -e $dir/$pkglist && echo 'File exists'`)) {
+			# Copy default otherpkgs.pkglist
+			$defaultDir = "/opt/xcat/share/xcat/$attrs->{'provmethod'}/$osType";
+			if (`test -e $defaultDir/$pkglist && echo 'File exists'`) {
+				# Copy default pkglist
+				`cp $defaultDir/$pkglist $dir/$pkglist`;
+			} else {
+				# Create pkglist
+				`touch $dir/$pkglist`;
 			}
 			
-			$repo = "$loc/$attrs->{'os'}/$attrs->{'arch'}";
-		} else {
-			$callback->( { info => '(Error) Missing the nodetype.os and nodetype.arch attributes for $_' } );	
+			# Add Ganglia RPMs to pkglist
+			`echo ganglia-gmond >> $dir/$pkglist`;
+			`echo libconfuse >> $dir/$pkglist`;
+			`echo libganglia >> $dir/$pkglist`;
 		}
-				
-		# Transfer Ganglia packages into /tmp directory of node
-		$callback->( { info => "$_: Copying over Ganglia packages..." } );
-		$info = `xdcp $_ $repo/ganglia-gmond-* $repo/libconfuse-* $repo/libganglia-* /tmp`;
-		$callback->( { info => $info } );
-		
+
 		# Check if libapr1 is installed
-		$tmp = '/tmp';
 		$info = `xdsh $_ "rpm -qa libapr1"`;
 		if (!($info =~ /libapr1/)) {
-			$callback->( { info => "(Error) libapr1 package not installed on $_" } );
-		} else {
-			# If libapr1 is installed, install Ganglia packages
-			$callback->( { info => "$_: Installing Ganglia..." } );
-			$info = `xdsh $_ "rpm -i $tmp/ganglia-gmond-* $tmp/libconfuse-* $tmp/libganglia-*"`;
-			$callback->( { info => $info } );
+			$callback->( { info => "$_: (Error) libapr1 package not installed" } );
+			next;
 		}
 		
-		# Remove Ganglia packages from /tmp
-		$callback->( { info => "$_: Removing Ganglia packages..." } );
-		$info = `xdsh $_ "rm $tmp/ganglia-gmond-* $tmp/libconfuse-* $tmp/libganglia-*"`;
-		$callback->( { info => $info } );
+		# Install Ganglia RPMs using updatenode
+		$callback->( { info => "$_: Installing Ganglia..." } );
+		$info = `updatenode $_ -S`;
+		$callback->( { info => "$info" } );
 	}
 	
 	return;
@@ -682,15 +668,12 @@ sub web_rmcmonShow() {
 	my $retInfo;
 	my $retHash = {};
 	my $output;
-	my @activeNodes;
-	my @rmcNodes;
-	my $tempNodes;
 	my $temp = "";
 
 	#only get the system rmc info
 	#like this PctTotalTimeIdle=>"10.0000, 20.0000, 12.0000, 30.0000"
 	if ( 'summary' eq $nodeRange ) {
-		$output = xCAT::Utils->runcmd( "monshow rmcmon -s -t 60 -a " . $attr, -1, 1 );
+		$output = xCAT::Utils->runcmd( "monshow rmcmon -s -t 60 -o p -a " . $attr, -1, 1 );
 		foreach $temp (@$output) {
 
 			#the attribute name
@@ -720,68 +703,16 @@ sub web_rmcmonShow() {
 		return;
 	}
 
-	if ( 'lpar' eq $nodeRange ) {
-
+	if ( 'compute' eq $nodeRange ) {
+		my $node;
 		#get nodes detail containt
 		@nodes = xCAT::NodeRange::noderange($nodeRange);
-		if ( (@nodes) && ( @nodes > 0 ) ) {
-
-			#get all the active nodes
-			$temp = join( ' ', @nodes );
-			$output = `fping -a $temp 2> /dev/null`;
-			chomp($output);
-			@activeNodes = split( /\n/, $output );
-
-			#get all the inactive nodes by substracting the active nodes from all.
-			my %temp2;
-			foreach (@activeNodes) {
-				$temp2{$_} = 1;
+		for $node (@nodes){
+			if (-e "/var/rrd/$node"){
+				push( @{ $retHash->{node} }, { name => $node, data => 'OK' } );
 			}
-			foreach (@nodes) {
-				if ( !$temp2{$_} ) {
-					push( @{ $retHash->{node} }, { name => $_, data => 'NA' } );
-				}
-			}
-		}
-
-		if ( @activeNodes < 1 ) {
-			$callback->($retHash);
-			return;
-		}
-
-		$tempNodes = join( ',', @activeNodes );
-		$output = xCAT::Utils->runcmd( "xdsh $tempNodes rpm -q rsct.core", -1, 1 );
-
-		#non-installed
-		foreach (@$output) {
-			my @temp = split( /:/, $_ );
-			if ( @temp[1] =~ /not installed/ ) {
-				push( @{ $retHash->{node} }, { name => @temp[0], data => 'NI' } );
-			} else {
-				push( @rmcNodes, @temp[0] );
-			}
-		}
-
-		#there are not rmc nodes, so we should return directly
-		if ( @rmcNodes < 1 ) {
-			$callback->($retHash);
-			return;
-		}
-
-		$tempNodes = join( ',', @rmcNodes );
-		$output = xCAT::Utils->runcmd(
-"xdsh $tempNodes \"/bin/ps -ef | /bin/grep rmcd | /bin/grep -v grep\" | /bin/awk '{print \$1\$9}'",
-			-1, 1
-		);
-		foreach (@$output) {
-			my @temp = split( /:/, $_ );
-			if ( @temp[1] =~ /rmcd/ ) {
-				push( @{ $retHash->{node} }, { name => @temp[0], data => 'OK' } );
-			}
-
-			#not running
-			else {
-				push( @{ $retHash->{node} }, { name => @temp[0], data => 'NR' } );
+			else{
+				push( @{ $retHash->{node} }, { name => $node, data => 'UNKNOWN' } );
 			}
 		}
 
@@ -789,43 +720,35 @@ sub web_rmcmonShow() {
 		return;
 	}
 
-	my $attrName  = "";
-	my @attrValue = ();
-	$output = xCAT::Utils->runcmd( "monshow rmcmon $nodeRange -t 60 -a " . $attr, -1, 1 );
-	foreach (@$output) {
-		$temp = $_;
-		if ( $temp =~ /\t/ ) {
-			$temp =~ s/\t/ /g;
-			chomp($temp);
-		}
-
-		#the attribute name
-		if ( $temp =~ m/\s+(Pct.*)\s+/ ) {
-			$temp = $1;
-
-			#the first one
-			if ( "" ne $attrName ) {
-				push(
-					@{ $retHash->{node} },
-					{ name => $attrName, data => join( ',', @attrValue ) }
-				);
-				$attrName  = "";
-				@attrValue = ();
-			}
-			$attrName = $temp;
-			next;
-		}
-
-		#the content of the attribute
-		$temp =~ m/\s+(\d+\.\d{4})\s*$/;
-		if ( defined($1) ) {
-			push( @attrValue, $1 );
-		}
-	}
-
-	#push the last attribute name and values.
-	push( @{ $retHash->{node} }, { name => $attrName, data => join( ',', @attrValue ) } );
-	$callback->($retHash);
+    my $attrName  = "";
+    my @attrs = split(/,/, $attr);
+    for $attrName (@attrs){
+        my @attrValue = ();
+        $output = xCAT::Utils->runcmd( "rrdtool fetch /var/rrd/${nodeRange}/${attrName}.rrd -r 60 -s e-1h AVERAGE", -1, 1 );
+        foreach(@$output){
+            $temp = $_;
+            if ($temp eq ''){
+                next;
+            }
+            
+            if ($temp =~ /[NaNQ|nan]/){
+                next;
+            }
+            
+            if ($temp =~ /^(\d+): (\S+) (\S+)/){
+                push( @attrValue, (sprintf "%.2f", $2));
+            }
+        }
+        
+        if(scalar(@attrValue) > 1){
+            push(@{$retHash->{node}}, { name => $attrName, data => join( ',', @attrValue )});
+        }
+        else{
+        	$retHash->{node}= { name => $attrName, data => ''};
+        	last;
+        }
+    }
+    $callback->($retHash);
 }
 
 sub web_monls() {
@@ -1228,5 +1151,308 @@ sub web_restoreChange {
 "rm -r /tmp/litefile.csv ; mv /tmp/litefilearchive.csv /tmp/litefile.csv ; tabrestore /tmp/litefile.csv"
 		);
 	}
+}
+
+sub web_provision{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $nodes = $request->{arg}->[1];
+    my $imageName = $request->{arg}->[2];
+    my ($arch, $inic, $pnic, $master, $tftp, $nfs) = split(/,/,$request->{arg}->[3]);
+    my $line = '';
+    my %imageattr;
+    my $retinfo = xCAT::Utils->runcmd("lsdef -t osimage -l $imageName", -1, 1);
+    #parse output, get the os name, type
+    foreach $line(@$retinfo){
+        if ($line =~ /(\w+)=(\S*)/){
+            $imageattr{$1} = $2;
+        }
+    }
+
+    #check the output
+    unless($imageattr{'osname'}){
+        web_infomsg("Image infomation error. Check the image first.\nprovision stop.", $callback);
+        return;
+    }
+    
+    if($imageattr{'osname'} =~ /aix/i){
+        web_provisionaix($nodes, $imageName, $imageattr{'nimtype'}, $inic, $pnic, $master, $tftp, $nfs, $callback);
+    }
+    else{
+        web_provisionlinux($nodes, $arch, $imageattr{'osvers'}, $imageattr{'provmethod'}, $imageattr{'profile'}, $inic, $pnic, $master, $tftp, $nfs, $callback);
+    }
+}
+
+sub web_provisionlinux{
+    my ($nodes, $arch, $os, $provmethod, $profile, $inic, $pnic, $master, $tftp, $nfs, $callback) = @_;
+    my $outputMessage = '';
+    my $retvalue = 0;
+    my $netboot = '';
+    if ($arch =~ /ppc/i){
+        $netboot = 'yaboot';
+    }
+    elsif($arch =~ /x.*86/i){
+        $netboot = 'xnba';
+    }
+    $outputMessage = "Do provison : $nodes \n".
+          " Arch:$arch\n OS:$os\n Provision:$provmethod\n Profile:$profile\n Install NIC:$inic\n Primary NIC:$pnic\n" .
+          " xCAT Master:$master\n TFTP Server:$tftp\n NFS Server:$nfs\n Netboot:$netboot\n";
+
+    web_infomsg($outputMessage, $callback);
+
+    #change the nodes attribute
+    my $cmd = "chdef -t node -o $nodes arch=$arch os=$os provmethod=$provmethod profile=$profile installnic=$inic tftpserver=$tftp nfsserver=$nfs netboot=$netboot" .
+              " xcatmaster=$master primarynic=$pnic";
+    web_runcmd($cmd, $callback);
+    #error return
+    if ($::RUNCMD_RC){
+        web_infomsg("Configure nodes' attributes error.\nprovision stop.", $callback);
+        return;
+    }
+
+    #dhcp
+    $cmd = "makedhcp $nodes";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Make DHCP error.\nprovision stop.", $callback);
+        return;
+    }
+    #restart dhcp
+    $cmd = "service dhcpd restart";
+    web_runcmd($cmd, $callback);
+    #conserver
+    $cmd = "makeconservercf $nodes";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Configure conserver error.\nprovision stop.", $callback);
+        return;
+    }
+
+    #for system x, should configure boot sequence first.
+    if ($arch =~ /x.*86/i){
+        $cmd = "rbootseq $nodes net,hd";
+        web_runcmd($cmd, $callback);
+        if($::RUNCMD_RC){
+            web_infomsg("Set boot sequence error.\nprovision stop.", $callback);
+            return;
+        }
+    }
+
+    #nodeset
+    $cmd = "nodeset $nodes $provmethod";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Set nodes provision method error.\nprovision stop.", $callback);
+        return;
+    }
+    
+    #reboot the node fro provision
+    if($arch =~ /ppc/i){
+        $cmd = "rnetboot $nodes";
+    }
+    else{
+        $cmd = "rpower $nodes boot";
+    }
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Boot nodes error.\nprovision stop.", $callback);
+        return;
+    }
+
+    #provision complete
+    web_infomsg("Provision on $nodes success.\nprovision stop.");
+}
+
+sub web_provisionaix{
+    my ($nodes, $imagename, $nimtype, $inic, $pnic, $master, $tftp, $nfs, $callback) = @_;
+    my $outputMessage = '';
+    my $retinfo;
+    my %nimhash;
+    my $line;
+    my @updatenodes;
+    my @addnodes;
+    my $cmd = '';
+    #set attibutes
+    $cmd = "chdef -t node -o $nodes installnic=$inic tftpserver=$tftp nfsserver=$nfs xcatmaster=$master primarynic=$pnic";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Change nodes' attributes error.\nprovision stop.", $callback);
+        return;
+    }
+    #get all nim resource to filter nodes
+    $retinfo = xCAT::Utils->runcmd("lsnim -c machines", -1, 1);
+    foreach $line (@$retinfo){
+        if($line =~ /(\S+)\s+\S+/){
+            $nimhash{$1} = 1;
+        }
+    }
+
+    foreach my $node(split(/,/, $nodes)){
+        if ($nimhash{$node}){
+            push(@updatenodes, $node);
+        }
+        else{
+            push(@addnodes, $node);
+        }
+    }
+
+    #xcat2nim
+    if(0 < scalar(@addnodes)){
+        $cmd = "xcat2nim -t node -o " . join(",", @addnodes);
+        web_runcmd($cmd, $callback);
+        if ($::RUNCMD_RC){
+            web_infomsg("xcat2nim command error.\nprovision stop.", $callback);
+            return;
+        }
+    }
+
+    #update nimnode
+    if(0 < scalar(@updatenodes)){
+        $cmd = "xcat2nim -u -t node -o " . join(",", @updatenodes);
+        web_runcmd($cmd, $callback);
+        if ($::RUNCMD_RC){
+            web_infomsg("xcat2nim command error.\nprovision stop.", $callback);
+            return;
+        }
+    }
+
+    #make con server
+    $cmd = "makeconservercf $nodes";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Configure conserver error.\nprovision stop.", $callback);
+        return;
+    }
+
+    #nodeset
+    if ($nimtype =~ /diskless/){
+        $cmd = "mkdsklsnode -i $imagename $nodes";
+    }
+    else{
+        $cmd = "nimnodeset -i $imagename $nodes";
+    }
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Set node install method error.\nprovision stop.", $callback);
+        return;
+    }
+
+    #reboot nodes
+    $cmd = "rnetboot $nodes";
+    web_runcmd($cmd, $callback);
+    if ($::RUNCMD_RC){
+        web_infomsg("Reboot nodes error.\nprovision stop.", $callback);
+        return;
+    }
+
+    web_infomsg("Provision on $nodes success.\nprovision stop.");
+}
+
+#run the cmd by xCAT::Utils->runcmd and show information.
+sub web_runcmd{
+    my $cmd = shift;
+    my $callback = shift;
+    my $showstr = "\n" . $cmd . "\n";
+    web_infomsg($showstr, $callback);
+    my $retvalue = xCAT::Utils->runcmd($cmd, -1, 1);
+    $showstr = join("\n", @$retvalue);
+    $showstr .= "\n";
+    web_infomsg($showstr, $callback);
+}
+
+sub web_infomsg {
+    my $msg = shift;
+    my $callback = shift;
+    my %rsp;
+    push @{$rsp{info}}, $msg;
+    xCAT::MsgUtils->message('I', \%rsp, $callback);
+    return;
+}
+
+sub web_summay{
+    my ( $request, $callback, $sub_req ) = @_;
+    my $groupName = $request->{arg}->[1];
+    my @nodes;
+    my $nodetypeTab;
+    my $attrs;
+    my %oshash;
+    my %archhash;
+    my %provhash;
+    my %typehash;
+    my $retHash = {};
+    my $temp;
+    #$groupName is undefined, use all nodes
+    if (defined($groupName)){
+        @nodes = xCAT::NodeRange::noderange($groupName);
+    }
+    #groupName if definded, use the defined group name
+    else{
+        @nodes = xCAT::DBobjUtils->getObjectsOfType('node');
+    }
+
+    $nodetypeTab = xCAT::Table->new('nodetype');
+    unless($nodetypeTab){
+        return;
+    }
+
+    $attrs = $nodetypeTab->getNodesAttribs(\@nodes, ['os','arch','provmethod','nodetype']);
+    unless($attrs){
+        return;
+    }
+
+    while( my ($key, $value) = each(%{$attrs})){
+        web_attrcount($value->[0]->{'os'}, \%oshash);
+        web_attrcount($value->[0]->{'arch'}, \%archhash);
+        web_attrcount($value->[0]->{'provmethod'},, \%provhash);
+        web_attrcount($value->[0]->{'nodetype'},, \%typehash);
+    }
+    
+    #os
+    $temp = '';
+    while(my ($key, $value) = each(%oshash)){
+        $temp .= ($key . ':' . $value . ';');
+    }
+    $temp = substr($temp, 0, -1);
+    push(@{$retHash->{'data'}}, 'OS=' . $temp);
+
+    #arch
+    $temp = '';
+    while(my ($key, $value) = each(%archhash)){
+        $temp .= ($key . ':' . $value . ';');
+    }
+    $temp = substr($temp, 0, -1);
+    push(@{$retHash->{'data'}}, 'Architecture=' . $temp);
+
+    #provmethod
+    $temp = '';
+    while(my ($key, $value) = each(%provhash)){
+        $temp .= ($key . ':' . $value . ';');
+    }
+    $temp = substr($temp, 0, -1);
+    push(@{$retHash->{'data'}}, 'Provision Method=' . $temp);
+
+    #nodetype
+    $temp = '';
+    while(my ($key, $value) = each(%typehash)){
+        $temp .= ($key . ':' . $value . ';');
+    }
+    $temp = substr($temp, 0, -1);
+    push(@{$retHash->{'data'}}, 'Node Type=' . $temp);
+    #return data
+    $callback->($retHash);
+}
+
+#called by web_summay, count all attr numbers
+sub web_attrcount{
+    my ($key, $container) = @_;
+    unless(defined($key)){
+        $key = 'unknown';
+    }
+
+    if ($container->{$key}){
+        $container->{$key}++;
+    }
+    else{
+        $container->{$key} = 1;
+    }
 }
 1;
