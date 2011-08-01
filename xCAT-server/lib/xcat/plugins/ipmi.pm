@@ -1641,7 +1641,7 @@ sub initfru_withguid {
     my $prod_id = $sessdata->{prod_id};
 	my $mprom;
 
-	if($mfg_id = 20301 or $mfg_id == 2 && $prod_id != 34869) {
+	if($mfg_id == 20301 or $mfg_id == 2 && $prod_id != 34869) {
         $sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x50,data=>[],callback=>\&got_bmc_fw_info,callback_args=>$sessdata);
 	} else {
         got_bmc_fw_info(0,$sessdata);
