@@ -31,7 +31,25 @@ function loadGangliaMon() {
 	gangliaTab.append(nodes);
 
 	// Create info bar
-	var info = createInfoBar('Select a group to view the nodes summary');
+	var gangliaLnk = $('<a href="#">Click here</a>');
+	gangliaLnk.css( {
+		'color' : 'blue',
+		'text-decoration' : 'none'
+	});
+	gangliaLnk.click(function() {
+		// Open a new window for Ganglia
+		window.open('../ganglia/');
+	});
+
+	// Create info bar
+	var info = $('<div class="ui-state-highlight ui-corner-all"></div>');
+	info.append('<span class="ui-icon ui-icon-info" style="display: inline-block; margin: 10px 5px;"></span>');
+	var msg = $('<p style="display: inline-block; width: 95%;"></p>');
+	msg.append('Select a group to view the nodes summary. ');
+	msg.append(gangliaLnk);
+	msg.append(' to open the Ganglia page.');
+	info.append(msg);
+	info.css('margin-bottom', '10px');
 	nodes.append(info);
 
 	// Get groups
