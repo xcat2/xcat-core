@@ -4707,7 +4707,7 @@ sub parse_sdr { #parse sdr data, then cann initsdr_withreserveation to advance t
 
 	my $sdr = SDR->new();
 
-	if ($mfg_id == 2 && $sdr_type==0xC0 && $sdr_data[9] == 0xED) {
+	if (($mfg_id == 2 || $mfg_id == 20301) && $sdr_type==0xC0 && $sdr_data[9] == 0xED) {
 			#printf("%02x%02x\n",$sdr_data[13],$sdr_data[12]);
 		$sdr->rec_type($sdr_type);
 		$sdr->sensor_type($sdr_data[9]);
