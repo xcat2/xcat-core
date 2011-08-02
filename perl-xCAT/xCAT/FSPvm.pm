@@ -585,7 +585,7 @@ sub lsvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose ) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose l|long) )) {
         return( usage() );
     }
     ####################################
@@ -854,7 +854,9 @@ sub get_lpar_lpar_name {
     my $attr = shift;
     my $values = xCAT::FSPUtils::fsp_api_action($name, $attr, "get_lpar_name");
     if (@$values[1] && ((@$values[1] =~ /Error/i) && (@$values[2] ne '0'))) {
-        return $values;
+        my @result = ();
+        push @result, $values;
+        return \@result;
     }
     return @$values[1];
 }
