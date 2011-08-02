@@ -576,9 +576,9 @@ sub trim
 {
    my $str = shift @_;
    if($str){
-       $str =~ s/\#/__wellnumber__/g;
+#       $str =~ s/\#/__wellnumber__/g;
        $str =~ s/^\s+|#.+|\s+$//g;
-       $str =~ s/__wellnumber__/#/g;
+ #      $str =~ s/__wellnumber__/#/g;
    }
    return $str;
 }
