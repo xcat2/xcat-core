@@ -45,7 +45,7 @@ end
 
 start:makenetworks
 description:makenetworks
-cmd:num=`lsdef -t network |cut -d" " -f1 |tee test|wc -l`;for((i=1;i<=$num;i++)) do rmdef -t network `cat 1|sed -n "${i}p"`; done
+cmd:num=`lsdef -t network |cut -d" " -f1 |tee test|wc -l`;for((i=1;i<=$num;i++)) do rmdef -t network `cat test|sed -n "${i}p"`; done
 check:rc==0
 check:output=~(Object definitions have been removed)
 cmd:tabdump networks
@@ -56,4 +56,5 @@ cmd:tabdump networks
 check:rc==0
 check:output=~$$autotestnet
 check:output=~$$autotestgateway
+cmd:rm -f test
 end
