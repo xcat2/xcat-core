@@ -102,10 +102,6 @@ if dmidecode|grep IPMI > /dev/null; then
 	modprobe ipmi_si
 	modprobe ipmi_devintf
 fi
-if lsusb -d 04b3:4010 > /dev/null; then
-	modprobe cdc_ether 
-	/sbin/setupimmnic
-fi
 if [ "$destiny" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
 	/bin/dodiscovery
 fi
