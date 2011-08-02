@@ -7,7 +7,8 @@ dracut_install mkswap df brctl vconfig ifenslave ssh-keygen /usr/bin/qemu-img /u
 dracut_install lldptool /lib64/libnss_dns-2.12.so /lib64/libnss_dns.so.2
 dracut_install poweroff ntpq ntpd hwclock date /usr/share/terminfo/x/xterm /etc/nsswitch.conf /etc/services
 dracut_install /sbin/rsyslogd /etc/protocols umount
-dracut_install chmod /lib/libc.so.6 /lib/ld-linux.so.2 /lib/libdl.so.2 /lib/libm.so.6 /sbin/route /sbin/ifconfig /usr/bin/head /etc/redhat-release ping tr lsusb #ibm fw wrapper requirements
+dracut_install chmod /lib/libc.so.6 /lib/ld-linux.so.2 /lib/libdl.so.2 /lib/libm.so.6 /sbin/route /sbin/ifconfig /usr/bin/head /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
+dracut_install dmidecode /usr/lib64/libstdc++.so.6 #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
 dracut_install /usr/share/zoneinfo/posix/Zulu
 dracut_install /usr/share/zoneinfo/posix/GMT-0
 dracut_install /usr/share/zoneinfo/posix/Europe/Istanbul
@@ -589,6 +590,8 @@ inst "$moddir/bmcsetup" "/bin/bmcsetup"
 inst "$moddir/dhclient.conf" "/etc/dhclient.conf"
 inst "$moddir/dhclient-script" "/sbin/dhclient-script"
 inst "$moddir/rsyslog.conf" "/etc/rsyslog.conf"
+inst "$moddir/99-imm.rules" "/etc/udev/rules.d/99-imm.rules"
+inst "$moddir/setupimmnic" "/sbin/setupimmnic"
 dracut_install /sbin/rpc.statd /usr/sbin/sm-notify /etc/netconfig rpcbind /etc/host.conf /usr/sbin/rpc.idmapd
 dracut_install ps free find #debug 
 inst_dir /var/lib/nfs 

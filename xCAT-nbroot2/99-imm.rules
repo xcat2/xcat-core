@@ -1,0 +1,1 @@
+SUBSYSTEM=="usb", ATTRS{idVendor}=="04b3", ATTRS{idProduct}=="4010", RUN+="/sbin/setupimmnic"

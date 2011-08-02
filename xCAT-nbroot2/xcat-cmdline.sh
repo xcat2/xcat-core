@@ -98,11 +98,14 @@ echo -n "Acquired IPv4 address "
 ip addr show dev $bootnic|grep -v 'scope link'|grep -v 'dynamic'|grep -v  inet6|grep inet|awk '{print $2}'
 ntpd -g -x
 (while ! ntpq -c "rv 0 state"|grep 'state=4' > /dev/null; do sleep 1; done; hwclock --systohc) &
-modprobe cdc_ether 
-modprobe ipmi_si
-modprobe ipmi_devintf
-ip link set usb0 up
-ip addr add dev usb0 169.254.95.120/16
+if dmidecode|grep IPMI > /dev/null; then
+	modprobe ipmi_si
+	modprobe ipmi_devintf
+fi
+if lsusb -d 04b3:4010 > /dev/null; then
+	modprobe cdc_ether 
+	/sbin/setupimmnic
+fi
 if [ "$destiny" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
 	/bin/dodiscovery
 fi
