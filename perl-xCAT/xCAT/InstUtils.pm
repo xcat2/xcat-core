@@ -794,6 +794,10 @@ sub dolitesetup
         %imghash = %$imagehash;
     }
 
+	# get name as known by xCAT
+    my $Sname = xCAT::InstUtils->myxCATname();
+    chomp $Sname;
+
 	my @nodelist;
 	my @nodel;
 	my @nl;
@@ -842,7 +846,7 @@ sub dolitesetup
 	}
 
 	# get spot inst_root loc
-	my $spotloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{spot}, 'location', $callback, "", $subreq);
+	my $spotloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{spot}, 'location', $callback, $Sname, $subreq);
 
 	my $instrootloc = $spotloc . "/lpp/bos/inst_root";
 
@@ -1286,7 +1290,7 @@ sub dolitesetup
 			my $nimprime = xCAT::InstUtils->getnimprime();
     		chomp $nimprime;
 			# get the location of the shared_root directory
-			my $SRloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{shared_root}, 'location', $callback, $nimprime, $subreq);
+			my $SRloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{shared_root}, 'location', $callback, $Sname, $subreq);
 
 			# copy the statelite table file to the shared root location
 			# this will not effect any running nodes that are using 
