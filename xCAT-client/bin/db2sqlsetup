@@ -1486,7 +1486,7 @@ sub setupODBC
       if (($foundppc64 !=1) || ($foundppc != 1))
       {
         my $message =
-          "If Redhat on power is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc rpms must be installed to run ISNM. ";
+          "If Redhat on power is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc rpms must be installed. ";
         xCAT::MsgUtils->message("I", "$message");
     
       }
@@ -1508,7 +1508,7 @@ sub setupODBC
       if (($foundppc64 !=1) || ($foundppc != 1))
       {
         my $message =
-          "If Redhat on power is being used then both pam-*.ppc64 and pam-*.ppc rpms must be installed to run ISNM. ";
+          "If Redhat on power is being used then both pam-*.ppc64 and pam-*.ppc rpms must be installed. ";
         xCAT::MsgUtils->message("I", "$message");
     
        }
@@ -1530,7 +1530,7 @@ sub setupODBC
       if (($foundppc64 !=1) || ($foundppc != 1))
       {
         my $message =
-          "If Redhat on power is being used then both openssl*.ppc64 and openssl*.ppc rpms must be installed to run ISNM. ";
+          "If Redhat on power is being used then both openssl*.ppc64 and openssl*.ppc rpms must be installed. ";
         xCAT::MsgUtils->message("I", "$message");
     
        }
