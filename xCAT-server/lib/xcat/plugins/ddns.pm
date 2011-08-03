@@ -637,7 +637,7 @@ sub update_namedconf {
                 $gotoptions=1;
                 my $skip=0;
                 do {
-		    push @newnamed,"\t\t//listen-on-v6 { any; };\n";
+		    #push @newnamed,"\t\t//listen-on-v6 { any; };\n";
                     if ($ctx->{forwarders} and $line =~ /forwarders {/) {
                         push @newnamed,"\tforwarders \{\n";
                         $skip=1;
