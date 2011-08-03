@@ -255,9 +255,9 @@ sub parse_args {
     ####################################
     # Check for an extra argument
     ####################################
-    if ( defined( $ARGV[0] )) {
-        return(usage( "Invalid Argument: $ARGV[0]" ));
-    }
+    #if ( defined( $ARGV[0] )) {
+    #    return(usage( "Invalid Argument: $ARGV[0]" ));
+    #}
 
 
     #############################################
@@ -273,6 +273,9 @@ sub parse_args {
         my @nodes = xCAT::NodeRange::noderange( @ARGV );
         foreach (@nodes)  {
             push @filternodes, $_;
+        }
+        unless (@filternodes) {
+            return(usage( "Invalid Argument: $ARGV[0]" ));
         }
     } elsif ( scalar(@ARGV) > 1 ) {
         return(usage( "Invalid flag, please check and retry." ));
@@ -1172,13 +1175,6 @@ sub format_output {
     ###########################################
     my $outhash = parse_responses( $request, $values, \$length );
 
-    ###########################################
-    # No responses
-    ###########################################
-    if (( keys %$outhash ) == 0 ){
-        send_msg( $request, 0, "No responses" );
-        return;
-    }
 
     ###########################################
     # filter the result and keep the specified nodes
@@ -1196,6 +1192,15 @@ sub format_output {
         my $outhash1 = filtersamevlan( $outhash );
         $outhash = $outhash1;
     }
+
+    ###########################################
+    # No responses
+    ###########################################
+    if (( keys %$outhash ) == 0 ){
+        send_msg( $request, 0, "No responses" );
+        return;
+    }
+
 
     ###########################################
     # -w flag for write to xCat database
