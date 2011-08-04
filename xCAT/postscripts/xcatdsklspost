@@ -17,14 +17,9 @@
 
 update_VPD()
 {
-    which vpdupdate > /dev/null
-
-    if [ $? -ne 0 ];then
-        echo "Command vpdupdate not found, VPD database won't be updated"
-		logger -t xCAT "xcatdsklspost: Command vpdupdate not found, VPD database won't be updated"
-    else
+    if [ -f /usr/sbin/vpdupdate ]; then
         vpdupdate
-		logger -t xCAT "xcatdsklspost: updating VPD database"
+	logger -t xCAT "xcatdsklspost: updating VPD database"
     fi
 }
 update_VPD
