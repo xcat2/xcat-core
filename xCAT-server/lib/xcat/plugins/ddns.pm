@@ -422,6 +422,12 @@ sub process_request {
                 unlink $_;
             }
         }
+
+        if ($::XCATSITEVALS{useDNSonMN})
+        {
+            create_resolvconf_on_mn($ctx);
+        }
+        
         #We manipulate local namedconf
         $ctx->{dbdir} = get_dbdir();
         $ctx->{zonesdir} = get_zonesdir();
@@ -1008,6 +1014,74 @@ sub makedns_usage
     push @{$rsp->{data}}, "\n";
     xCAT::MsgUtils->message("I", $rsp, $callback);
     return 0;
+}
+
+sub create_resolvconf_on_mn
+{
+    my $ctx = shift;
+    
+    my $resolvlocation = "/etc/resolv.conf";
+    if ( -e $resolvlocation)
+    {
+       # backup the existing /etc/resolv.conf on mn if it's there
+       system("mv $resolvlocation $resolvlocation.xcatbak");
+       
+       # put the foreign nameserver in site.forwarders
+       
+       # get forwarders which are the nameserver entries in /etc/resolv.conf
+       # don't use if the address is this machine (Management Node)
+       my $forwarders;
+       # find out the names for the Management Node
+       my @MNnodeinfo   = xCAT::Utils->determinehostname;
+       my $MNnodename   = pop @MNnodeinfo;                  # hostname
+       my @MNnodeipaddr = @MNnodeinfo;                      # ipaddresses
+
+       my @names; 
+       my @tmpnames =
+       xCAT::Utils->runcmd("/bin/grep ^[^#]*nameserver $resolvlocation.xcatbak | awk '{print \$2}'", -1);
+       foreach my $ip (@tmpnames) 
+       {
+           if (!grep(/$ip/, @MNnodeipaddr))
+           {     # if not the MN
+               push @names,$ip;  # add it as a forwarder
+           }
+        }
+        if (@names)
+        {
+            if ($ctx->{forwarders})
+            {
+                my $curforwarders = join(',', @{$ctx->{forwarders}});
+
+                foreach my $name (@names)
+                {
+                    if (!grep(/$name/, $curforwarders))
+                    {
+                        $forwarders = $curforwarders . ",$name";
+                        push @{$ctx->{forwarders}}, $name;
+                    }
+                }
+            }
+            else
+            {
+                $forwarders = join(',', @names);
+                $ctx->{forwarders} = \@names;
+            }
+            system("$::XCATROOT/sbin/chtab key=forwarders site.value=$forwarders;");
+        }
+    }
+    # create the new /etc/resolv.conf pointing to mn itself
+    my @newresolv;
+    push @newresolv, "search $ctx->{domain}\n";
+    push @newresolv, "nameserver $::XCATSITEVALS{master}\n";
+    my $newresolvconf;
+    open($newresolvconf,">",$resolvlocation);
+    flock($newresolvconf,LOCK_EX);
+    seek($newresolvconf,0,0);
+    truncate($newresolvconf,0);
+    for my $l  (@newresolv) { print $newresolvconf $l; }
+    flock($newresolvconf,LOCK_UN);
+    close($newresolvconf);
+    return;
 }
 
 1;
