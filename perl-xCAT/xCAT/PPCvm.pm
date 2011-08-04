@@ -1217,7 +1217,24 @@ sub list {
                         $count++;
                     }
                 } else {
-                    $pprofile .= "@$prof[0]\n\n";
+                    #$pprofile .= "@$prof[0]\n\n";
+                    my $lparprof = xCAT::PPCcli::lssyscfg(
+                                      $exp,
+                                      "lpar2",
+                                      $mtms,
+                                      "lpar_ids=$id" );
+                    my $Rc = shift(@$lparprof);
+                    if ( $Rc != SUCCESS ) {
+                        $pprofile .= "@$lparprof[0]\n\n";
+                    } else {
+                        @$lparprof[0] =~ /curr_profile=(\w+)/;
+                        my $pname = $1;
+                        foreach my $pr (@$prof) {
+                            if ($pr =~ /name=$pname/) {
+                                $pprofile .= "$pr\n\n";
+                            }    
+                        }
+                    }                   
                 }
             }                
             $values->{$lpar} = [$lpar, $pprofile, SUCCESS];
