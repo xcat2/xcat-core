@@ -993,6 +993,7 @@ sub initDB
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=dnshandler site.value=ddns;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=vsftp site.value=y;";
         $chtabcmds .= "$::XCATROOT/sbin/chtab key=cleanupxcatpost site.value=no;";
+        $chtabcmds .= "$::XCATROOT/sbin/chtab key=useDNSonMN site.value=1;";
 
         if ($::osname eq 'AIX')
         {
@@ -1246,6 +1247,19 @@ sub initDB
             if ($::RUNCMD_RC != 0)
             {
                 xCAT::MsgUtils->message('E',"Could not set ddns as dnshandler.");
+            }
+        }
+
+        my $cmds = "$::XCATROOT/sbin/tabdump site|grep useDNSonMN";
+        $outref = xCAT::Utils->runcmd("$cmds", -1);
+        if ($::RUNCMD_RC != 0)
+        {
+            # set site.useDNSonMN
+            $cmds = "$::XCATROOT/sbin/chtab key=useDNSonMN site.value=1;";
+            $outref = xCAT::Utils->runcmd("$cmds", 0);
+            if ($::RUNCMD_RC != 0)
+            {
+                xCAT::MsgUtils->message('E',"Could not set site.useDNSonMN.");
             }
         }
     }
