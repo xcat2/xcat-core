@@ -866,10 +866,6 @@ site => {
    "              mgmt node.\n\n".
    " timezone:  (e.g. America/New_York)\n\n".
    " tftpdir:  tftp directory path. Default is /tftpboot\n\n".
-   " useDNSonMN:    (yes/1 or no/0). If yes, create a new /etc/resolv.conf on the management\n".
-   "                node and pointing the nameserver to mn itself, set the original\n".
-   "                nameservers as DNS forwarders. If you are using an external DNS server,\n".
-   "                set it to no. Default is yes.\n\n".
    " useNmapfromMN:  When set to yes, nodestat command should obtain the node status\n".
    "                 using nmap (if available) from the management node instead of the\n".
    "                 service node. This will improve the performance in a flat network.\n\n".
