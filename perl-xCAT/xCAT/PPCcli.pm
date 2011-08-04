@@ -33,6 +33,7 @@ my %lssyscfg = (
   fsps   =>"lssyscfg -r sys -F %s",
   node   =>"lssyscfg -r lpar -m %s -F %s --filter lpar_ids=%s",
   lpar   =>"lssyscfg -r lpar -m %s -F %s",
+  lpar2  =>"lssyscfg -r lpar -m %s --filter %s",
   bpa    =>"lssyscfg -r frame -e %s -F %s",
   frame  =>"lssyscfg -r frame -e %s -F %s",
   bpas   =>"lssyscfg -r frame -F %s",
