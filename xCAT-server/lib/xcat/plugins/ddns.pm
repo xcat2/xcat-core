@@ -874,6 +874,7 @@ sub add_or_delete_records {
             $ctx->{currnode}=$node;
             $ctx->{currname}=$name;
             $ctx->{currrevname}=$ip;
+            unless ($domain =~ /\.$/) { $domain = $domain.'.'; } #example.com becomes example.com.
             find_nameserver_for_dns($ctx,$revzone);
             find_nameserver_for_dns($ctx,$domain);
         }
