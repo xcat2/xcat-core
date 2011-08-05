@@ -732,12 +732,6 @@ sub process_request
         foreach my $node (@nodes)
         {
 	    
-	    if (($nimtype{$node}) && ($nimtype{$node} eq 'diskless')) {
-		# don't run scripts on AIX diskless nodes 
-		#	- they will have to be rebooted anyway.
-		next;
-	    }
-	    
             foreach my $rec (@{$nodeposhash->{$node}})
             {
                 my $scripts;
