@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<rmhwconn> - Use this command to remove connections from FSP and BPA nodes to HMC nodes.
+B<rmhwconn> - Use this command to remove connections from CEC and Frame nodes to HMC nodes.
 
 =head1 SYNOPSIS
 
@@ -20,13 +20,13 @@ B<rmhwconn> I<noderange> B<-T> I<tooltype>
 
 For PPC (with HMC) specific:
 
-This command is used to disconnect FSP and BPA nodes from HMC nodes, according to the connection information defined in ppc talbe in xCAT DB. 
+This command is used to disconnect CEC and Frame nodes from HMC nodes, according to the connection information defined in ppc talbe in xCAT DB. 
 
-Note: If a CEC (FSP node represents) belongs to a frame with a BPA installed, this CEC cannot be disconnected individually. Instead, the whole frame (BPA node represents) should be disconnected.
+Note: If a CEC belongs to a frame with a BPA installed, this CEC cannot be disconnected individually. Instead, the whole frame should be disconnected.
 
 For PPC (without HMC, using FSPAPI) specific:
 
-It's used to disconnection FSP and BPA nodes from hardware server.
+It's used to disconnection CEC and Frame nodes from hardware server.
 
 =head1 OPTIONS
 
@@ -42,7 +42,7 @@ Verbose output.
 
 =item B<-T>
 
-The tooltype is used to communicate to the FSP/BPA. The value could be B<lpar> or B<fnm>. The tooltype value B<lpar> is for xCAT and B<fnm> is for CNM.
+The tooltype is used to communicate to the CEC/Frame. The value could be B<lpar> or B<fnm>. The tooltype value B<lpar> is for xCAT and B<fnm> is for CNM.
 
 =back
 
@@ -59,21 +59,21 @@ The tooltype is used to communicate to the FSP/BPA. The value could be B<lpar> o
 
 =item 1.
 
-To disconnect all FSP nodes in node group fsp from their HMC nodes:
+To disconnect all CEC nodes in node group cec from their HMC nodes:
 
- rmhwconn fsp
+ rmhwconn cec
 
 =item 2.
 
-To remove the connection for BPA node frame1:
+To remove the connection for Frame node frame1:
 
  rmhwconn frame1
 
 =item 3.
 
-To disconnect all FSP nodes in node group fsp from their related hardware serveri, using lpar tooltype:
+To disconnect all CEC nodes in node group cec from their related hardware serveri, using lpar tooltype:
  
- rmhwconn fsp -T lpar
+ rmhwconn cec -T lpar
 
 =back
 
