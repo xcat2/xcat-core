@@ -24,6 +24,9 @@ nameservers at your site that can resolve names outside of your cluster.  With t
 management node to resolve names, and if it is a name that the MN DNS does not know about, it will ask the outside
 world.
 
+For more information on Cluster Name Resolution:
+https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Cluster_Name_Resolution
+
 =head1 OPTIONS
 
 =over 6
