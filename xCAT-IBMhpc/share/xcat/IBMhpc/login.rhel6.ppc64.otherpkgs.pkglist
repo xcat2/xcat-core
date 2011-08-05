@@ -6,7 +6,3 @@
 
 xcat/xcat-core/perl-xCAT
 xcat/xcat-core/xCAT-client
-xcat/xcat-dep/perl-IO-Socket-SSL
-xcat/xcat-dep/perl-Net-SSLeay
-xcat/xcat-dep/perl-DBI
-xcat/xcat-dep/perl-XML-Simple
