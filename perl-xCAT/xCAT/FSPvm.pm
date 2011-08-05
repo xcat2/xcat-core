@@ -59,7 +59,7 @@ sub chvm_parse_lparname {
         return "'$cmd' not support";
     }
     if (!defined($value)) {
-        return "value not specify";
+        return "value not specified";
     }
     $opt->{$cmd} = $value;
     if ($value && $value ne '*' && $value !~ /^[a-zA-Z0-9-_]+$/) {
@@ -105,26 +105,6 @@ sub chvm_parse_args {
     ####################################
     if ( grep(/^-$/, @ARGV )) {
         return(usage( "Missing option: -" ));
-    }
-    ####################################
-    # Check for an extra argument
-    ####################################
-    if ( defined( $ARGV[0] )) {
-        my $check_chvm_lpar_arg = chvm_parse_lparname(\@ARGV, \%opt);
-        if (defined($check_chvm_lpar_arg)) {
-            return (usage("Invalid argument: $check_chvm_lpar_arg"));
-        } elsif (($opt{lparname} ne '*') && (scalar(@{$request->{node}}) > '1')){
-            return(usage( "Invalid argument: must specify '*' for more than one node" ));
-        } else { 
-            my $len = rindex $opt{lparname}."\$", "\$";
-            if ($len > '47') {
-                return (usage("Invalid lparname '$opt{lparname}', name is too long, max 47 characters"));
-            }
-        }
-        if (exists($opt{lparname}) && 
-                (exists($opt{p}) || exists($opt{i}) || exists($opt{m}) || exists($opt{r}))) {
-            return (usage("lparname should NOT be used with -p, -i, -m or -r."));
-        }
     }
     ####################################
     # Configuration file required 
@@ -309,6 +289,26 @@ sub chvm_parse_args {
         } 
         $request->{node} = [$other_p]; 
         $request->{noderange} = $other_p;  
+    }
+    ####################################
+    # Check for an extra argument
+    ####################################
+    if ( defined( $ARGV[0] )) {
+        my $check_chvm_lpar_arg = chvm_parse_lparname(\@ARGV, \%opt);
+        if (defined($check_chvm_lpar_arg)) {
+            return (usage("Invalid argument: $check_chvm_lpar_arg"));
+        } elsif (($opt{lparname} ne '*') && (scalar(@{$request->{node}}) > '1')){
+            return(usage( "Invalid argument: must specify '*' for more than one node" ));
+        } else { 
+            my $len = rindex $opt{lparname}."\$", "\$";
+            if ($len > '47') {
+                return (usage("Invalid lparname '$opt{lparname}', name is too long, max 47 characters"));
+            }
+        }
+        if (exists($opt{lparname}) && 
+                (exists($opt{p}) || exists($opt{i}) || exists($opt{m}) || exists($opt{r}))) {
+            return (usage("lparname should NOT be used with -p, -i, -m or -r."));
+        }
     }
 
     ####################################
