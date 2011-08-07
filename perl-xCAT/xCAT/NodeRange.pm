@@ -39,6 +39,7 @@ my %allgrphash;
 my $retaincache=0;
 my $recurselevel=0;
 
+my @cachedcolumns;
 #TODO:  With a very large nodelist (i.e. 65k or so), deriving the members
 # of a group is a little sluggish.  We may want to put in a mechanism to 
 # maintain a two-way hash anytime nodelist or nodegroup changes, allowing
@@ -133,6 +134,22 @@ sub nodesbycriteria {
        foreach (@{$tables{$tab}}) {
            push @cols, $_->[0];
         }
+       if ($tab eq "nodelist") { #fun caching interaction
+	 my $neednewcache=0;
+	 my $nlcol;
+	 foreach $nlcol (@cols) {
+	   unless (grep /^$nlcol\z/,@cachedcolumns) {
+	     $neednewcache=1;
+	     push @cachedcolumns,$nlcol;
+	   }
+	 }
+	 if ($neednewcache) {
+	   if ($nodelist) { 
+	     $nodelist->_clear_cache(); 
+	     $nodelist->_build_cache(\@cachedcolumns);
+	   }
+	  }
+	 }
         my $rechash = $tabh->getNodesAttribs($nodes,\@cols); #TODO: if not defined nodes, getAllNodesAttribs may be faster actually...
         foreach my $node (@$nodes) {
             my $recs = $rechash->{$node};
@@ -518,7 +535,8 @@ sub noderange {
   unless ($nodelist) { 
     $nodelist =xCAT::Table->new('nodelist',-create =>1); 
     $nodelist->_set_use_cache(0); #TODO: a more proper external solution
-    $nodelist->_build_cache(['node','groups']);
+    @cachedcolumns = ('node','groups');
+    $nodelist->_build_cache(\@cachedcolumns);
     $nodelist->_set_use_cache(1); #TODO: a more proper external solution
   }
   my %nodes = ();

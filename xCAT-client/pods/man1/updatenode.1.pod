@@ -4,11 +4,13 @@ B<updatenode> - Update nodes in an xCAT cluster environment.
 
 =head1 SYNOPSIS
 
-B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-S>|B<--sw>] [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<attr=val> [B<attr=val...>]]
+B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-F>|B<--sync>] [B<-f>|B<--snsync>] [B<-S>|B<--sw>] [B<-P>|B<--scripts> [B<script1,script2...>]] [B<-s>|B<--sn>] [B<-A>|B<--updateallsw>] [B<-c>|B<--cmdlineonly>] [B<-d alt_source_dir>] [B<attr=val> [B<attr=val...>]]
 
 B<updatenode> B<noderange> [B<-k>|B<--security> [B<--user>] [B<--devicetype>]]
 
 B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<script1,script2...>]
+
+B<updatenode> B<noderange> [B<-V>|B<--verbose>] [B<-f>|B<--snsync>]
 
 B<updatenode> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
@@ -82,10 +84,7 @@ Run the updatenode command to update the nodes.
 =back
 
 Files may be distributed and synchronized for both diskless and 
-diskfull nodes.  However, since some filesystems are mounted 
-read-only on AIX diskless nodes it my not be possible to update all 
-files on AIX systems.  For example, any files under /usr on AIX 
-diskless nodes cannot be updated.
+diskfull nodes.  Syncing files to statelite nodes is not supported. 
 
 More information on using the  synchronization file function is in  
 https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Using_Updatenode.
@@ -97,86 +96,10 @@ where the files should be synced to. In the synclist file, each
 line is an entry which describes the location of the source files 
 and the destination location for the files on the target node. 
 
-The basic entry format looks like following:
+For more information on creating your synclist files and where to put them, read:
 
-  path_of_src_file1  -> path_of_dst_file1
-  path_of_src_file1  -> path_of_dst_directory ( must end in /)
-  path_of_src_file1  path_of_src_file2 ... -> path_of_dst_directory
+http://sourceforge.net/apps/mediawiki/xcat/index.php?title=Sync-ing_Config_Files_to_Nodes
 
-The path_of_src_file* should be the full path of the source file 
-on the Management Node.
-The path_of_dst_file* should be the full path of the destination 
-file on target node.
-The path_of_dst_directory should be the full path of the destination directory.
-Since the synclist file is for common purpose, the target node 
-need not be configured in it, it will be the noderange input to 
-updatenode. 
-
-The following formats are supported:
-
-=over 3
-
-=item 1
-
-sync file /etc/file1 to the file /etc/file1 on the node with 
-the same file name. Note with one file, full path to file 
-must be provide.
-
-  /etc/file1 -> /etc/file1
- or
-  /etc/file1 -> /etc/
-
-=item 2
-
-sync file /etc/file2 to the file /etc/file3 on the node (with 
-different file name)
-
-  /etc/file2 -> /etc/file3
-
-=item 3
-
-sync file /etc/file2 to the file /etc/tmp/file3 on the node  
-with different file name, different directory)
-If the directory does not exist, it will be created.
-
-  /etc/file2 -> /etc/tmp/file3
-
-=item 4
-
-sync the multiple files /etc/file1, /etc/file2,  /etc/file3, 
-... to the directory /tmp/etc (/tmp/etc must be a directory when 
-multiple files are sync'd at one time).  If the directory does 
-not exist, xdcp will create it.
-
-  /etc/file1 /etc/file2 /etc/file3 -> /tmp/etc
-  or
-  /etc/file1 /etc/file2 /etc/file3 -> /tmp/etc/
-
-=item 5 
-
-sync all the files in /etc to /tmp/etc 
-
-  /etc/* -> /tmp/etc/
-
-=back
-
-=head3 Indicate the location of the synclist file
-
-For Linux nodes, the path of the synclist should be following format:
-
-   /install/custom/<inst_type>/<distro>/<profile>.<os>.<arch>.synclist
- 
-where:
-
-     <inst_type>: "install", "netboot"
-     <distro>: "rh", "centos", "fedora", "sles"
-     <profile>,<os> and <arch> are what you set for the node
-
-For AIX nodes, add a full path of the synclist file to the "synclists" 
-attribute base on the xCAT osimage name used by the node 
-in the osimage table. 
-
-  chdef -t osimage -o myosimage synclists=/mydir/syncfile1
 
 =head3 Run updatenode to synchronize the files
         
@@ -185,170 +108,24 @@ in the osimage table.
 
 =head2 To install or update software
 
-The basic process for updating software on a node is:
+updatenode can be use to install or update software on the nodes. See the following documentation for setting up otherpkgs:
+https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Install_Additional_Packages
 
-=over 3
-
-=item *
-
-Copy the software to a directory.
-
-=item *
-
-Create a record of what software to install.
-
-=item *
-
-Run the updatenode command to update the nodes.
-
-=back
-
-=over 3
-
-B<For Linux systems:>
-
-=over 3
-
-=item 1
-
-Copy the extra rpms you are going to add on to
-
-  /install/post/otherpkgs/<os>/<arch>/
- 
- where <os> and <arch> are defined in the <nodetype> table.
-
-=item 2
-
-Add rpm names (without version number) into
-
-  /install/custom/<inst_type>/<ostype>/<profile>.<os>.<arch>.otherpkgs.pkglist
-
-In the file path, the <inst_type> should be "install" if the
-node was installed in diskfull state, otherwise it should be 
-"netboot" if it was installed in diskless state.
-<ostype> is the operating system name without the version
-number.The following <ostype> are recognized by xCAT:
-
-=over 1
-
-=item centos
-
-=item fedora
-
-=item rh
-
-=item sles
-
-=item windows
-
-=back
-
-In the file name, the <profile>, <os>, <arch> are defined in
-the <nodetype> table. And the <os> and <arch> fields can be
-ignored if the pkglist file is available just depend on the 
-<profile> attribute.
-
-=item 3
-
-Type:
+To install/update the packages, run:
 
   updatenode <noderange> -S
 
-=back
+
 
 B<For AIX systems:>
 
 Note: The updatenode command is used to update AIX diskfull nodes only. For updating diskless AIX nodes refer to the xCAT for AIX update documentation and use the xCAT mknimimage command.
+For information on updating software on AIX cluster:
+For diskful installs, read:
+https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_AIX_RTE_Diskfull_Nodes
+For diskless installs, read:
+https://sourceforge.net/apps/mediawiki/xcat/index.php?title=XCAT_AIX_Diskless_Nodes
 
-You can update the software on AIX nodes using AIX installp filesets, RPM 
-packages or AIX interim fix manager packages. The updatenode command will 
-handle the underlying calls to the appropriate AIX commands.  The AIX
-installp, rpm and emgr commands will be used.  See the AIX documentation for 
-more details on these commands.
-
-The software packages that you wish to install on the nodes must be 
-copied to a directory location that can be exported and mounted on the
-node.  This should normally be the appropriate directory location in 
-the NIM lpp_source resource corresponding to the operating system image
-that was used to install the node.  You can, however, specify a different
-directory location by specifying the "-d" option on the command line.
-
-Note: To find the correct lpp_source for the node get the name of
-the xCAT osimage definition from the "provmethod" attribute of the xCAT node
-definition and then get the name of the lpp_source resource from the
-osimage definition. You can use the xCAT lsdef command to display the node 
-and osimage definitions.
-
-A simple way to copy software to the lpp_source resource is to use 
-the "nim -o update" command.  For example, assuming the software is in 
-/images and the lpp_source resource used for this node is named "mylpp" then 
-you could run:
-
-B<nim -o update -a packages=all -a source=/images mylpp>
-
-The software you wish to install or update must be specified to
-the updatenode command.  There are two methods that may be used to specify 
-the software to update.
-
-The first is to specify the software in the osimage definition 
-that is included in the node definiton.  In this case the software 
-to install would be whatever is provided in the "installp_bundle" and/or
-"otherpkgs" attributes of the xCAT osimage definition.
-
-The second method is to specify the software to install on the updatenode
-command line.  You can do this by providing either the "otherpkgs" or
-"installp_bundle" attributes or the "-A" flag.
-
-Using the first method provides a record of what was updated which is stored
-in the xCAT database. This can be useful when managing a large cluster 
-environment.  The second method is more "ad hoc" but also can be more flexible.
-
-The updatenode command will either use the information in the database or the
-information on the command line - BUT NOT BOTH.  If you specify information
-on the command line it will use that, otherwise it will use what is in the 
-database.
-
-The "installp_bundle" attribute value may be set to a comma separated list of
-one or more NIM installp_bundle resource names.  These NIM resources must
-be created using standard NIM interfaces. See the AIX documentation for more 
-information on creating NIM resources. Also, there are examples for creating 
-installp_bundle resources in several of the xCAT for AIX documents.
-
-The "otherpkgs" attribute value may be set to a comma separated list of 
-installp filesets, RPM packages or epkg (AIX interim fix package) files.
-
-Along with the names of the software to install you may also provide the
-specific installp, rpm, and emgr flags you want used when those commands 
-are run on the nodes.  Use the "installp_flags", "rpm_flags", and "emgr_flags"
-attributes to provide this information. Make sure you specify the exact 
-string you want used in quotes.  For example: 
-I<installp_flags="-apXY" rpm_flags="-i --nodeps" emgr_flags="-X">.  The 
-flags specified on the updatenode command line will replace the
-default values.
-
-The default value for installp_flags is "-agQX" and the default value for 
-rpm_flags is "-Uvh --replacepkgs". There is no default for the emgr command.  
-
-The underlying calls to the installp and emgr commands are both handled by
-creating a temporary file containing the list of software to install and 
-then using the "-f listfile" option. 
-
-When doing software maintenance on AIX nodes you may also find the "-c" 
-flag useful.  When you specify this flag on the updatenode command line
-the command will know to use the command line information ONLY, even if
-there is no software specified (i.e. It won't go look in the database.).  
-This option would be needed when using installp, rpm or emgr options that 
-do not require a list of software.
-
-If you wish to see the output from the installp, emgr or rpm commands 
-then you must specifiy "-V" on the updatenode command line.
-
-See the examples below for more details.
-
-When working in a hierarchical xCAT cluster the updatenode command will
-distribute the software to the service nodes as needed.
-
-=back
 
 =head2 To run postscripts
 
@@ -368,7 +145,7 @@ determines the order in which they will be run.  You could also set
 the postscripts value by directly editing the xCAT "postscripts" 
 database table using the xCAT tabedit command.
 
-Scripts may be run on both diskless and diskfull nodes.
+Scripts can  be run on both diskless and diskfull nodes.
 
 To run all the customization scripts that have been designated 
 for the nodes, (in the "postscripts" attribute), type:
@@ -515,9 +292,24 @@ Used to specify a source directory other than the standard lpp_source directory 
 
 =item B<-F|--sync>
 
-Specifies the file synchronization should be
+Specifies that file synchronization should be
 performed on the nodes.  rsync and ssh must
-be installed and configured on the nodes.
+be installed and configured on the nodes. 
+The function is not supported for statelite installations.
+For statelite installations to sync files, you should use the
+read-only option for files/directories listed in
+litefile table with source location specified in the litetree table.
+
+
+=item B<-f|--snsync>
+
+Specifies that file synchronization should be
+performed to the service nodes that service the
+nodes in the noderange. This updates the service
+nodes with the data to sync to the nodes. rsync and ssh must
+be installed and configured on the service nodes.
+For hierachy, this should be done before syncing the files
+to the nodes with the -F flag. 
 The function is not supported for statelite installations.
 For statelite installations to sync files, you should use the
 read-only option for files/directories listed in
@@ -728,6 +520,12 @@ B<updatenode xcatsn11 -V -S -c emgr_flags="-r -L IZ38930TL0">
 To update the security keys for the node "node01"
 
 B<updatenode node01 -k>
+
+=item 19
+
+To update the service nodes with the files to be synchronized to node group compute: 
+
+B<updatenode compute -f>
 
 =back
 

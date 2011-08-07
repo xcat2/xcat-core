@@ -984,21 +984,21 @@ proc ping_server { full_path_name phandle } {
     set done(0) 0
     set cmd(0) "dev $full_path_name\r"
     set msg(0) "$PROGRAM Status: selected $full_path_name as the active adapter\n"
-    set pattern(0) "(.*)0 >(.*)"
+    set pattern(0) ".*dev(.*)0 >(.*)"
     set newstate(0) 1
 
     # state 1, send property command to set selected type
     set done(1) 0
     set cmd(1) "\" ethernet,$adap_speed,$adap_conn,$adap_duplex\" encode-string \" chosen-network-type\" property\r"
     set msg(1) "$PROGRAM Status: chosen network type set\n"
-    set pattern(1) "(.*)0 >(.*)"
+    set pattern(1) ".*ethernet(.*)0 >(.*)"
     set newstate(1) 2
 
     # state 2, activate /packages/net
     set done(2) 0
     set cmd(2) "dev /packages/net\r"
     set msg(2) "$PROGRAM Status: selected the /packages/net node as the active package\n"
-    set pattern(2) "(.*)ok(.*)0 >(.*)"
+    set pattern(2) ".*dev(.*)ok(.*)0 >(.*)"
     set newstate(2) 3
 
     # state 3, ping the server
@@ -1018,7 +1018,7 @@ proc ping_server { full_path_name phandle } {
     } else {
         set cmd(3) "ping $full_path_name:$server_ip,$client_ip,$gateway_ip\r"
     }
-    set pattern(3) "(.*)ok(.*)0 >(.*)"
+    set pattern(3) ".*ping(.*)ok(.*)0 >(.*)"
     
     # state 4, all done
     set done(4) 0
@@ -1102,6 +1102,7 @@ proc ping_server { full_path_name phandle } {
 		if { ( ($tty_do_ping == 1) && ($state == 4) ) || ($tty_do_ping != 1) && ($state == 3) } {
                     set ping_debug $expect_out(buffer)
                 }
+
 
                 if { ( ($tty_do_ping == 1) && ($state == 5) ) || ($tty_do_ping != 1) && ($state == 4) } {
                     if { ($tty_do_ping == 1) && ($state == 5) } {
@@ -1709,7 +1710,7 @@ proc multiple_open-dev {} {
     set timeout 30
     expect {
         -i $spawn_id_rconsole
-        -re ">" {
+        -re "patch new-open-dev(.*)>" {
             nc_msg "$PROGRAM Status: at End of multiple_open-dev \n"
         }
         -re "]" {
@@ -2610,7 +2611,7 @@ if { $noboot } { # Display information for all supported adapters
                 set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]
             }
             set mac_address [get_mac_addr $phandle_array($i)]
-            if { [string compare -nocase "$mac_address" "$macaddress"] == 0 } {
+            if { [string first "$mac_address" "$macaddress"] != -1 } {
                 if { $discovery == 1 } {
                     if { $adap_type($i) != "hfi-ent" } {
                         set ping_rc [ping_server $full_path_name_array($i) $phandle_array($i)]

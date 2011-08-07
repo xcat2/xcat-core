@@ -194,22 +194,8 @@ sub getmulcon {
     #################################
     # Get node type
     #################################
-    my ($ent) = $tabs{nodetype}->getNodeAttribs($node, ["nodetype"] );
-    if ( !defined( $ent )) {
-        $rsp->{node}->[0]->{error}=["Not define nodetype"];
-        $rsp->{node}->[0]->{errorcode}=[1];    
-    }
-    #################################
-    # Check for type
-    #################################
-    if ( !exists( $ent->{nodetype} )) {
-        $rsp->{node}->[0]->{error}=["Can't find nodetype"];
-        $rsp->{node}->[0]->{errorcode}=[1];    
-    }
-    #################################
-    # Check for valid "type"
-    #################################
-    my @types = split /,/, $ent->{nodetype};
+    my $ntype = xCAT::DBobjUtils->getnodetype($node);
+    my @types = split /,/, $ntype;
     my ($type) = grep( /^(lpar|osi)$/, @types );
     
     if ( !defined( $type )) {
@@ -246,7 +232,8 @@ sub getmulcon {
 
 
     foreach my $thishcp ( @hcp_list ) {
-        my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($thishcp);
+        #my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($thishcp);
+        my $thishcp_type = xCAT::DBobjUtils->getnodetype($thishcp);
         if(!defined($thishcp_type)) {
             $rsp->{node}->[0]->{error}=["Can't get nodetype of $thishcp"];
             $rsp->{node}->[0]->{errorcode}=[1];   

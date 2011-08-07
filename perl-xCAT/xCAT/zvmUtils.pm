@@ -130,6 +130,37 @@ sub setNodeProp {
 
 #-------------------------------------------------------
 
+=head3   setNodeProps
+
+	Description	: Set node properties in a given table
+    Arguments	: 	Table name
+    			 	Node
+    				Reference to property name/value hash
+    Returns		: Nothing
+    Example		: xCAT::zvmUtils->setNodeProps($tabName, $node, \%propHash);
+    
+=cut
+
+#-------------------------------------------------------
+sub setNodeProps {
+
+	# Get inputs
+	my ( $class, $tabName, $node, $propHash ) = @_;
+
+	# Get table
+	my $tab = xCAT::Table->new( $tabName, -create => 1, -autocommit => 0 );
+
+	# Set property
+	$tab->setAttribs( { 'node' => $node }, $propHash );
+
+	# Save table
+	$tab->commit;
+
+	return;
+}
+
+#-------------------------------------------------------
+
 =head3   delTabEntry
 
 	Description	: Delete a table entry
@@ -1053,4 +1084,70 @@ sub getUserProfile {
 	# Return the file contents
 	$out = `ssh $hcp "cat $file"`;
 	return $out;
+}
+
+#-------------------------------------------------------
+
+=head3   inArray
+
+	Description	: Checks if a value exists in an array
+    Arguments	: 	Value to search for
+    				Array to search in
+    Returns		: The searched expression
+    Example		: my $rtn = xCAT::zvmUtils->inArray($needle, @haystack);
+    
+=cut
+
+#-------------------------------------------------------
+sub inArray {
+
+	# Get inputs
+	my ( $class, $needle, @haystack ) = @_;
+	return grep{ $_ eq $needle } @haystack;
+}
+
+#-------------------------------------------------------
+
+=head3   getOsVersion
+
+	Description	: Get the operating system of a given node
+    Arguments	: Node
+    Returns		: Operating system name
+    Example		: my $os = xCAT::zvmUtils->getOsVersion($node);
+    
+=cut
+
+#-------------------------------------------------------
+sub getOsVersion {
+	
+	# Get inputs
+	my ( $class, $node ) = @_;
+
+	my $os = '';
+	my $version = '';
+
+	# Get operating system
+	my $release = `ssh -o ConnectTimeout=2 $node "cat /etc/*release"`;
+	my @lines = split('\n', $release);
+	if (grep(/SLES|Enterprise Server/, @lines)) {
+		$os = 'sles';
+		$version = $lines[0];
+		$version =~ tr/\.//;
+		$version =~ s/[^0-9]*([0-9]+).*/$1/;
+		$os = $os . $version;
+		
+		# Append service level
+		$version = `echo "$release" | grep "LEVEL"`;
+		$version =~ tr/\.//;
+		$version =~ s/[^0-9]*([0-9]+).*/$1/;
+		$os = $os . 'sp' . $version;
+	} elsif (grep(/Red Hat Enterprise Linux Server/, @lines)) {
+		$os = 'rhel';
+		$version = $lines[0];
+		$version =~ tr/\.//;
+		$version =~ s/([A-Za-z\s\(\)]+)//g;
+		$os = $os . $version;
+	}
+
+	return xCAT::zvmUtils->trimStr($os);
 }

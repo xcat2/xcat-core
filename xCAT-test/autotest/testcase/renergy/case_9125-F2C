@@ -11,6 +11,11 @@ check:output=~Set dsavingstatus succeeded
 cmd:renergy $$CN cappingstatus=off
 check:rc==0
 check:output=~Set cappingstatus succeeded
+cmd:renergy $$CN fsavingstatus=off
+check:rc==0
+check:output=~Set fsavingstatus succeeded
+cmd:renergy $$CN ffovalue=3000
+check:rc==0
 cmd:renergy $$CN cappingwatt=14555
 check:rc==0
 end
@@ -34,6 +39,12 @@ check:output~~ exhausttemp: 24
 check:output~~CPUspeed: 3836
 check:output=~syssbpower: na
 check:output~~sysIPLtime: 900
+check:output=~fsavingstatus: off
+check:output=~ffoMin: 2856 MHz
+check:output=~ffoVmin: 2856 MHz
+check:output=~ffoTurbo: 3836 MHz
+check:output=~ffoNorm: 3836 MHz
+check:output=~ffovalue: 3000 MHz
 end
 
 start:query_9125-F2C_savingstatus
@@ -164,7 +175,7 @@ description:
 type:9125-F2C
 cmd:renergy $$CN syssbpower
 check:rc==0
-check:output=~syssbpower: na
+check:output=~syssbpower: 20 W
 check:output!~averageAC
 check:output!~ambienttemp
 check:output!~exhausttemp
@@ -185,13 +196,83 @@ check:output!~averageDC
 check:output!~syssbpower
 end
 
+start:query_9125-F2C_fsavingstatus
+description:
+type:9125-F2C
+cmd:renergy $$CN fsavingstatus
+check:rc==0
+check:output=~fsavingstatus: off
+check:output!~dsavingstatus
+check:output!~cappingstatus
+end
+
+start:query_9125-F2C_ffoMin
+description:
+type:9125-F2C
+cmd:renergy $$CN ffoMin
+check:rc==0
+check:output=~ffoMin: 2856 MHz
+check:output!~ffoVmin
+check:output!~ffoTurbo
+check:output!~ffoNorm
+check:output!~ffovalue
+end
+
+tart:query_9125-F2C_ffoVmin
+description:
+type:9125-F2C
+cmd:renergy $$CN ffoVmin
+check:rc==0
+check:output=~ffoVmin: 2856 MHz
+check:output!~ffomin
+check:output!~ffoTurbo
+check:output!~ffoNorm
+check:output!~ffovalue
+end
+
+start:query_9125-F2C_ffoTurbo
+description:
+type:9125-F2C
+cmd:renergy $$CN ffoTurbo
+check:rc==0
+check:output=~ffoTurbo: 3836 MHz
+check:output!~ffomin
+check:output!~ffoVmin
+check:output!~ffoNorm
+check:output!~ffovalue
+end
+
+start:query_9125-F2C_ffoNorm
+description:
+type:9125-F2C
+cmd:renergy $$CN ffoNorm
+check:rc==0
+check:output=~ffoNorm: 3836 MHz
+check:output!~ffomin
+check:output!~ffoVmin
+check:output!~ffoTurbo
+check:output!~ffovalue
+end
+
+start:query_9125-F2C_ffovalue
+description:
+type:9125-F2C
+cmd:renergy $$CN ffovalue
+check:rc==0
+check:output=~ffovalue: 3000 MHz
+check:output!~ffomin
+check:output!~ffoVmin
+check:output!~ffoTurbo
+check:output!~ffoNorm
+end
+
 start:set_9125-F2C_savingstatus
 description:
 type:9125-F2C
 cmd:renergy $$CN savingstatus=on
 check:rc==0
 check:output=~Set savingstatus succeeded
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set savingstatus failed.
 cmd:sleep 60
 
@@ -215,7 +296,7 @@ check:output=~Set dsavingstatus failed.
 cmd:renergy $$CN savingstatus=off
 check:rc==0
 check:output=~Set savingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set savingstatus failed.
 
 cmd:sleep 60
@@ -240,7 +321,7 @@ check:output=~ Usage:
 cmd:renergy $$CN dsavingstatus=on-norm
 check:rc==0
 check:output=~Set dsavingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set dsavingstatus failed.
 
 cmd:sleep 60
@@ -265,7 +346,7 @@ check:output=~ Usage:
 cmd:renergy $$CN dsavingstatus=on-maxp
 check:rc==0
 check:output=~Set dsavingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set dsavingstatus failed.
 
 cmd:renergy $$CN dsavingstatus
@@ -279,7 +360,7 @@ check:output~~CPUspeed: 3836
 cmd:renergy $$CN  dsavingstatus=off
 check:rc==0
 check:output=~Set dsavingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set dsavingstatus failed.
 
 cmd:sleep 60
@@ -299,7 +380,7 @@ type:9125-F2C
 cmd:renergy $$CN cappingstatus=on
 check:rc==0
 check:output=~Set cappingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set cappingstatus failed.
 
 cmd:sleep 60
@@ -315,7 +396,7 @@ check:output=~Usage:
 cmd:renergy $$CN cappingstatus=off
 check:rc==0
 check:output=~Set cappingstatus succeeded.
-check:output=~This setting may need some minutes to take effect.
+check:output=~This setting may need several minutes to take effect.
 check:output!~Set cappingstatus failed.
 
 cmd:sleep 60
@@ -403,3 +484,51 @@ check:rc==0
 check:output=~cappingvalue: 14555
 
 end
+
+
+start:set_9125-F2C_fsavingstatus
+description:
+type:9125-F2C
+cmd:renergy $$CN fsavingstatus=on
+check:rc==0
+check:output=~Set fsavingstatus succeeded.
+check:output!~Set fsavingstatus failed.
+
+cmd:renergy $$CN fsavingstatus
+check:rc==0
+check:output=~fsavingstatus: on
+
+cmd:renergy $$CN fsavingstatus=onxx
+check:rc!=0
+check:output=~ Usage:
+
+cmd:renergy $$CN ffovalue=3100
+check:rc==0
+check:output=~Set ffovalue succeeded.
+check:output=~This setting may need several minutes to take effect.
+check:output!~Set ffovalue failed.
+
+cmd:sleep 90
+
+cmd:renergy $$CN CPUspeed
+check:rc==0
+check:output~~CPUspeed: 3100
+
+cmd:renergy $$CN ffovalue=2000
+check:rc!=0
+check:output=~Set ffovalue failed.
+check:output=~Invalid value for ffovalue
+check:output!~Set ffovalue succeeded.
+
+cmd:renergy $$CN fsavingstatus=off
+check:rc==0
+check:output=~Set fsavingstatus succeeded.
+check:output!~Set fsavingstatus failed.
+
+cmd:renergy $$CN fsavingstatus
+check:rc==0
+check:output=~fsavingstatus: off
+
+end
+
+

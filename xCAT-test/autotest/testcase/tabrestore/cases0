@@ -1,3 +1,10 @@
+start:tabrestore_null
+description:tabrestore without any flag
+cmd:tabrestore
+check:rc!=0
+check:output=~Usage
+end
+
 start:tabrestore_table
 cmd:tabdump site > /tmp/site.csv
 check:rc==0
@@ -11,3 +18,16 @@ cmd:diff /tmp/site1.csv /tmp/site.csv
 check:rc==0
 cmd:rm -f /tmp/site.csv /tmp/site1.csv
 end
+
+start:tabrestore_h
+cmd:tabrestore -h
+check:output=~Usage
+end
+
+start:tabrestore_err
+description:tabrestore wrong.csv
+cmd:tabrestore wrong.csv
+check:rc!=0
+check:output=~Error
+end
+

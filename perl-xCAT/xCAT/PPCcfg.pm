@@ -43,7 +43,10 @@ sub parse_args {
         "admin_passwd",
         "general_passwd",
         "*_passwd",
-        "hostname"
+        "hostname",
+        "resetnet",
+        "dev",
+        "celogin1"
     );
     my @bpa = (
         "frame",
@@ -53,7 +56,10 @@ sub parse_args {
         "admin_passwd",
         "general_passwd",
         "*_passwd",
-        "hostname"
+        "hostname",
+        "resetnet",
+        "dev",
+        "celogin1"
     );
     my @ppc = (
         "sshcfg"
@@ -69,18 +75,24 @@ sub parse_args {
     #############################################
     # Get support command list
     #############################################
-    my $sitetab  = xCAT::Table->new( 'nodetype' );
+    #my $typetab  = xCAT::Table->new( 'nodetype' );
+    #my $nodes = $request->{node};
+    #foreach (@$nodes) {
+    #    if ( defined( $typetab )) {      
+    #        my ($ent) = $typetab->getAttribs({ node=>$_},'nodetype');
+    #        if ( defined($ent) ) {
+    #               $request->{hwtype} = $ent->{nodetype};
+    #               last;
+    #        }
+    #
+    #    }
+    #
+    #}
+    
     my $nodes = $request->{node};
-    foreach (@$nodes) {
-        if ( defined( $sitetab )) {      
-            my ($ent) = $sitetab->getAttribs({ node=>$_},'nodetype');
-            if ( defined($ent) ) {
-                   $request->{hwtype} = $ent->{nodetype};
-                   last;
-            }
-
-        }
-
+    foreach my $nn (@$nodes) {
+        $request->{hwtype} = xCAT::DBobjUtils->getnodetype($nn);
+        last if ($request->{hwtype});
     }
  
     my $supported = $rsp{$request->{hwtype}};
@@ -108,7 +120,7 @@ sub parse_args {
     Getopt::Long::Configure( "bundling" );
     $request->{method} = undef;
 
-    if ( !GetOptions( \%opt, qw(V|Verbose) )) {
+    if ( !GetOptions( \%opt, qw(V|Verbose resetnet))) {
         return( usage() );
     }
     ####################################
@@ -128,7 +140,7 @@ sub parse_args {
     ####################################
     foreach my $arg ( @ARGV ) {
         my ($command,$value) = split( /=/, $arg );
-        if ( !grep( /^$command$/, @$supported )) {
+        if ( !grep( /^$command$/, @$supported) and !$opt{resetnet}) {
             return(usage( "Invalid command: $arg" ));
         } 
         if ( exists( $cmds{$command} )) {
@@ -148,6 +160,12 @@ sub parse_args {
             }
         } 
     }
+    {
+        my $result = parse_dev_option( $request, \%cmds);
+        if ($result) {
+            return ( usage($result));
+        }
+    }
     ####################################
     # Return method to invoke 
     ####################################
@@ -161,6 +179,14 @@ sub parse_args {
     if ( exists($cmds{frame}) or exists($cmds{hostname}) ) {
         $request->{hcp} = "hmc";
         $request->{method} = "cfg";
+        return( \%opt );
+    }
+    ####################################
+    # Return method to invoke
+    ####################################
+    if ( $opt{resetnet}  ) {
+        $request->{hcp} = "hmc";
+        $request->{method} = "resetnet";
         return( \%opt );
     }
 
@@ -178,6 +204,24 @@ sub parse_args {
 }
 
 
+sub parse_dev_option{
+    my $req = shift;
+    my $cmds = shift;
+    foreach my $cmd (keys %$cmds) {
+        if ( $cmd =~ /^(dev|celogin1)$/ ) {
+            if ($cmds->{$cmd} and ($cmds->{$cmd} !~ /^(enable|disable)$/i) ) {
+                return( "Invalid argument ".$cmds->{$cmd}." for ".$cmd );
+            }
+            $req->{dev} = 1;
+        } else {
+            $req->{other} = 1; 
+        }
+    }
+    if ($req->{dev} eq '1' && $req->{other} eq '1') {
+        return ("Invalid command arrays");
+    } 
+    return undef;
+}
 ##########################################################################
 # Parse the command line optional arguments 
 ##########################################################################
@@ -392,7 +436,7 @@ sub sshcfg {
         # Find logon in key file 
         #################################
         foreach ( @$result ) {
-            if ( /= $logon$/ ) {
+            if ( /$logon$/ ) {
                 return( [[$server,"enabled",SUCCESS]] );
             }
         }
@@ -579,6 +623,20 @@ sub hostname {
     }
 
     return( [@$result] );
+}
+##########################################################################
+# Do resetnet 
+##########################################################################
+sub resetnet {
+    my $request = shift;
+    my $hash    = shift;
+    my %nodehash;
+    foreach ( @{$request->{noderange}}) {
+       $nodehash{$_} = 1;
+    }
+    # go to use lsslp do_resetnet
+    my $result = xCAT_plugin::lsslp::do_resetnet($request, \%nodehash);
+	return [$result];
 }
 
 1;

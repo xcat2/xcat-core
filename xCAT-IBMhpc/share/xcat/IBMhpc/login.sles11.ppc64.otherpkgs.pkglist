@@ -7,3 +7,6 @@
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/pe/pe.otherpkgs.pkglist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/essl/essl.otherpkgs.pkglist#
 #INCLUDE:/opt/xcat/share/xcat/IBMhpc/loadl/login-loadl.otherpkgs.pkglist#
+
+xcat/xcat-core/perl-xCAT
+xcat/xcat-core/xCAT-client

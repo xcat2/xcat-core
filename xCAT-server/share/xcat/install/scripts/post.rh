@@ -30,11 +30,7 @@ then
 	dhclient eth0
 	IP=$(ifconfig $PRINIC | grep inet | awk '{print $2}' | awk -F: '{print $2}')
 fi
-echo "search #TABLE:site:key=domain:value#" >/etc/resolv.conf
-for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
-do
-	echo "nameserver $i"
-done >>/etc/resolv.conf
+
 export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
 hostname $HOSTNAME
 #
@@ -138,8 +134,8 @@ export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
 addsiteyum
-sed -i 's/^serial/#serial/' /boot/grub/menu.lst
-sed -i 's/^terminal/#terminal/' /boot/grub/menu.lst
+sed -i 's/^serial/#serial/' /boot/grub/grub.conf
+sed -i 's/^terminal/#terminal/' /boot/grub/grub.conf
 updateflag.awk $MASTER 3002
 cd /
 #rm -Rf /xcatpost

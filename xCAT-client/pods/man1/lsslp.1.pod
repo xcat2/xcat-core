@@ -9,7 +9,7 @@ I<lsslp [-h| --help]>
 I<lsslp [-v| --version]>
 
 
-I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp][--resetnet]>
+I<lsslp [<noderange>] [-V| --verbose] [-i ip[,ip..]][-w][-r|-x|-z][-n][-s CEC|FRAME|MM|IVM|RSA|HMC][-t tries][-m][-I][-e command][-c [timeinterval[timeinterval,..]]][-C counts][-T timeout][--vpdtable][-M vpd|switchport][--updatehosts][-makedhcp]>
 
 
 =head1 DESCRIPTION
@@ -65,8 +65,6 @@ B<-C>          The number of the nodes expected to find, specified by the user.
 B<-T>          The number in seconds to limite the time costing of lsslp. Must be used with the flag -C.
             See the help of flag -C for more details.            
 
-B<--resetnet>  Login to hardwares and reset the network interfaces. This option is only valid
-            for the nodes with different attributes: ip and otherinterfaces in hosts table.
 
 B<-s>          Service type interested in discovering.
 
@@ -243,20 +241,9 @@ Output is similar to:
     ip=50.0.0.1
 
 
-6. To list all the FSPs and reset their network interfaces to get new IP from dhcp server, enter:
+6. To list all the CECs, enter:
 
- lsslp -s CEC --resetnet
-
-Output is similar to:
-
- Start to reset network..
-
- Reset network failed nodes:
-
- Reset network succeed nodes:
- Server-8233-E8B-SN1000ECP-A,Server-9119-FHA-SN0275995-B,Server-9119-FHA-SN0275995-A,
-
- Reset network finished.
+ lsslp -s CEC 
  
 device  type-model  serial-number  side  ip-addresses  hostname
 FSP     9117-MMB    105EBEP        A-1   20.0.0.138    20.0.0.138

@@ -202,6 +202,10 @@ sub is_me
     my $nameIP = xCAT::NetworkUtils->getipaddr($name);
     chomp $nameIP;
 
+    # shut off verbose - just for this routine
+    my $verb = $::VERBOSE;
+    $::VERBOSE = 0;
+
     # split into octets
     #my ($b1, $b2, $b3, $b4) = split /\./, $nameIP;
 
@@ -213,6 +217,7 @@ sub is_me
         my $rsp;
         #	push @{$rsp->{data}}, "Could not run $ifcmd.\n";
         #    xCAT::MsgUtils->message("E", $rsp, $callback);
+		$::VERBOSE = $verb;
         return 0;
     }
 
@@ -225,9 +230,11 @@ sub is_me
 
         if ($myIP eq $nameIP)
         {
+			$::VERBOSE = $verb;
             return 1;
         }
     }
+	$::VERBOSE = $verb;
     return 0;
 }
 
@@ -355,9 +362,11 @@ sub get_nim_attr_val
       xCAT::InstUtils->xcmd($callback, $sub_req, "xdsh", $target, $cmd, 0);
     if ($::RUNCMD_RC != 0)
     {
-        my $rsp;
-        push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
-        xCAT::MsgUtils->message("E", $rsp, $callback);
+		if ($::VERBOSE) {
+			my $rsp;
+        	push @{$rsp->{data}}, "Could not run lsnim command: \'$cmd\'.\n";
+        	xCAT::MsgUtils->message("E", $rsp, $callback);
+		}
         return undef;
     }
 
@@ -785,6 +794,10 @@ sub dolitesetup
         %imghash = %$imagehash;
     }
 
+	# get name as known by xCAT
+    my $Sname = xCAT::InstUtils->myxCATname();
+    chomp $Sname;
+
 	my @nodelist;
 	my @nodel;
 	my @nl;
@@ -833,7 +846,7 @@ sub dolitesetup
 	}
 
 	# get spot inst_root loc
-	my $spotloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{spot}, 'location', $callback, "", $subreq);
+	my $spotloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{spot}, 'location', $callback, $Sname, $subreq);
 
 	my $instrootloc = $spotloc . "/lpp/bos/inst_root";
 
@@ -1277,7 +1290,7 @@ sub dolitesetup
 			my $nimprime = xCAT::InstUtils->getnimprime();
     		chomp $nimprime;
 			# get the location of the shared_root directory
-			my $SRloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{shared_root}, 'location', $callback, $nimprime, $subreq);
+			my $SRloc = xCAT::InstUtils->get_nim_attr_val($imghash{$imagename}{shared_root}, 'location', $callback, $Sname, $subreq);
 
 			# copy the statelite table file to the shared root location
 			# this will not effect any running nodes that are using 
@@ -1329,5 +1342,23 @@ sub dolitesetup
 	return 0;
 }
 
+#----------------------------------------------------------------------------
+
+=head3  convert_xcatmaster
+
+    Convert the keyword <xcatmaster> of nameservers attr in site/networks table to IP address.
+    (Either the management node or a service node)
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub convert_xcatmaster
+{
+    my $shorthost = xCAT::InstUtils->myxCATname();
+    my $selfip = xCAT::NetworkUtils->getipaddr($shorthost);
+
+    return $selfip;
+}
 
 1;

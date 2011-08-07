@@ -55,32 +55,35 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t p=s P=s port=s s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t  p=s P=s  port=s  s:s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
 
-    #if ( exists $opt{s} )
-    #{
-    #    return( usage('Flags -s is just used in direct-attach enviroment.'));
-    #}
-    
-    if ( exists $opt{t} and exists $opt{p})
+    if ( !exists $opt{t} and !exists $opt{p} and !exists $opt{s}) {
+        return ( usage('Flag -t or -p or -s must be used.'));
+    }
+
+    if (( exists $opt{t} and exists $opt{p}) or (exists $opt{s} and exists $opt{p}) or (exists $opt{t} and exists $opt{p}))
     {
         return( usage('Flags -t and -p cannot be used together.'));
     }
 
-    if ( exists $opt{P} and ! exists $opt{p})
+    if ( exists $opt{P} and (!exists $opt{p} and !exists $opt{s}))
     {
         return( usage('Flags -P can only be used when flag -p is specified.'));
     }
 
     ##########################################
+    # Find the sfp for the mkhwconn -s
+    ##########################################
+    $request->{sfp} = $opt{s};
+    ##########################################
     # Check if CECs are controlled by a frame
     ##########################################
     my $nodes = $request->{node};
     my $ppctab  = xCAT::Table->new( 'ppc' );
-    my $nodetypetab = xCAT::Table->new( 'nodetype');
+    #my $nodetypetab = xCAT::Table->new( 'nodetype');
     my $vpdtab = xCAT::Table->new( 'vpd');
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
@@ -91,9 +94,10 @@ sub mkhwconn_parse_args
         {
             my $node_parent = undef;
             my $nodetype    = undef;
-            my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
+            #my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
             my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
-            $nodetype    = $nodetype_hash->{nodetype};
+            #$nodetype    = $nodetype_hash->{nodetype};
+            $nodetype = xCAT::DBobjUtils->getnodetype($node);
             $node_parent = $node_parent_hash->{parent};
             if ( !$nodetype )
             {
@@ -147,7 +151,7 @@ sub mkhwconn_parse_args
             if ( $nodetype eq 'frame')
             {
                 my $my_frame_bpa_cec =  xCAT::DBobjUtils::getcecchildren( $node)                                                                             ;
-                push @frame_members, @$my_frame_bpa_cec;
+                push @frame_members, @$my_frame_bpa_cec if($my_frame_bpa_cec);
                 push @frame_members, $node;
             }
         }
@@ -164,7 +168,7 @@ sub mkhwconn_parse_args
         my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
         return ( usage("Node(s) $tmp_nodelist is(are) controlled by BPA."));
     }
-    
+
     if ( scalar( @frame_members))
     {
         my @all_nodes = xCAT::Utils::get_unique_members( @$nodes, @frame_members);
@@ -252,7 +256,7 @@ sub lshwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -261,13 +265,15 @@ sub lshwconn_parse_args
     # Process command-line arguments
     #############################################
     if ( scalar( @ARGV)) {
+        unless( $opt{s}) {
         return(usage( "No additional flag is support by this command" ));
+      }
     }
-    my $nodetypetab = xCAT::Table->new('nodetype');
-    if (! $nodetypetab)
-    {
-        return( ["Failed to open table 'nodetype'.\n"]);
-    }
+    #my $nodetypetab = xCAT::Table->new('nodetype');
+    #if (! $nodetypetab)
+    #{
+    #    return( ["Failed to open table 'nodetype'.\n"]);
+    #}
     my $nodehmtab = xCAT::Table->new('nodehm');
     if (! $nodehmtab)
     {
@@ -277,9 +283,10 @@ sub lshwconn_parse_args
     my $nodetype;
     for my $node ( @{$request->{node}})
     {
-        my $ent = $nodetypetab->getNodeAttribs( $node, [qw(nodetype)]);
+        #my $ent = $nodetypetab->getNodeAttribs( $node, [qw(nodetype)]);
+        my $ttype = xCAT::DBobjUtils->getnodetype($node);
         my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
-        if ( ! $ent)
+        if ( ! $ttype)
         {
             return( ["Failed to get node type for node $node.\n"]);
         }
@@ -291,19 +298,19 @@ sub lshwconn_parse_args
         {
             return( ["lshwconn can only support HMC nodes, or nodes managed by HMC, i.e. nodehm.mgt should be 'hmc'. Please make sure node $node has correect nodehm.mgt and ppc.hcp value.\n"]);
         }
-        if ( $ent->{nodetype} ne 'hmc'
-                and $ent->{nodetype} ne 'fsp' and $ent->{nodetype} ne 'cec'
-                and $ent->{nodetype} ne 'bpa' and $ent->{nodetype} ne 'frame')
+        if ( $ttype ne 'hmc'
+                and $ttype ne 'fsp' and $ttype ne 'cec'
+                and $ttype ne 'bpa' and $ttype ne 'frame')
         {
-            return( ["Node type $ent->{nodetype} is not supported for this command.\n"]);
+            return( ["Node type $ttype is not supported for this command.\n"]);
         }
         if ( ! $nodetype)
         {
-            $nodetype = $ent->{nodetype};
+            $nodetype = $ttype;
         }
         else
         {
-            if ( $nodetype ne $ent->{nodetype})
+            if ( $nodetype ne $ttype)
             {
                 return( ["Cannot support multiple node types in this command line.\n"]);
             }
@@ -336,7 +343,7 @@ sub rmhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -345,7 +352,9 @@ sub rmhwconn_parse_args
     # Process command-line arguments
     #############################################
     if ( scalar (@ARGV)) {
+        unless( $opt{s}) {
         return(usage( "No additional flag is support by this command" ));
+        }
     }
     ##########################################
     # Check if CECs are controlled by a frame
@@ -417,7 +426,7 @@ sub rmhwconn_parse_args
         my $tmp_nodelist = join ',', @bpa_ctrled_nodes;
         return ( usage("Node(s) $tmp_nodelist is(are) controlled by BPA."));
     }
-    
+
     if ( scalar( @frame_members))
     {
         my @all_nodes = xCAT::Utils::get_unique_members( @$nodes, @frame_members);
@@ -500,7 +509,7 @@ sub mkhwconn
                 my $res = xCAT::PPCcli::mksysconn( $exp, $node_ip, $type, $passwd);
                 $Rc = shift @$res;
                 push @value, [$node_name, @$res[0], $Rc];
-                if ( !$Rc and !$opt->{s})
+                if ( !$Rc and !(exists $opt->{s}))
                 {
                     sethmcmgt( $node_name, $exp->[3]);
                 }
@@ -677,7 +686,7 @@ sub rmhwconn
                 my $res = xCAT::PPCcli::rmsysconn( $exp, $type, $nn);
                 $Rc = shift @$res;
                 push @value, [$node_name, @$res[0], $Rc];
-                if ( !$Rc)
+                if ( !$Rc and !$opt->{s})
                 {
                     rmhmcmgt( $node_name, $type);
                 }

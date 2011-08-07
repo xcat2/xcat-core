@@ -11,6 +11,7 @@ use File::Basename;
 use xCAT::Client;
 use xCAT::MsgUtils;
 use xCAT::Usage;
+use strict;
 
 sub updatenode_usage
 {
@@ -35,8 +36,8 @@ Getopt::Long::Configure("bundling");
 #             'v|version' => \$::VERSION);
 # display the usage if -h or --help is specified
 
-my $tmp=join(' ', @ARGV);
-if (!($tmp =~ /--help|-h|-v|--version/)) {
+my $tmp=" ".join(' ', @ARGV);
+if (!($tmp =~ / (--help|-h|-v|--version)/)) {
   my $arg=shift(@ARGV);
   # Set the noderange
   if ($arg !~ /^-/) {
@@ -75,6 +76,7 @@ if (
                 'v|version'        => \$::VERSION,
                 'V|verbose'        => \$::VERBOSE,
                 'F|sync'           => \$::FILESYNC,
+                'f|snsync'         => \$::SNFILESYNC,
                 'S|sw'             => \$::SWMAINTENANCE,
                 's|sn'             => \$::SETSERVER,
                 'P|scripts:s'      => \$::RERUNPS,
@@ -90,7 +92,7 @@ if (
 
 if ($::HELP)
 {
-  &updatenode_usage($callback);
+  &updatenode_usage();
   exit 0;
 }
 
@@ -101,6 +103,11 @@ if ($::VERSION)
   print "$version\n";
   exit 0;
 }
+if (($::FILESYNC) && ($::SNFILESYNC)){  # only one
+     my $msg = "Choose either -f to sync the service nodes, or -F  to sync the nodes not both.";
+     xCAT::MsgUtils->message("E", $msg);
+     exit 1;
+} 
 
 
 my $current_userid = getpwuid($>);

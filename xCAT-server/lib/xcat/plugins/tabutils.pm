@@ -283,14 +283,17 @@ sub noderm
     if (scalar(@$nodes))  {
         for my $nn ( @$nodes ) {
             my $nt = xCAT::DBobjUtils->getnodetype($nn);
-            if ( $nt =~ /^(cec|frame)$/ )  {
+            if ( $nt and $nt =~ /^(cec|frame)$/ )  {
                 my $cnodep = xCAT::DBobjUtils->getchildren($nn);
                 if ($cnodep) {
                     my $cnode = join ',', @$cnodep;            
-                    my $rsp;
-                    $rsp->{data}->[0] =
-                      "Removed a $nt node, please remove these nodes belongs to it manually: $cnode \n";
-                    xCAT::MsgUtils->message("I", $rsp, $cb);
+                    if ($cnode)
+                    {
+                        my $rsp;
+                        $rsp->{data}->[0] =
+                          "Removed a $nt node, please remove these nodes belongs to it manually: $cnode \n";
+                        xCAT::MsgUtils->message("I", $rsp, $cb);
+                    }
                 }
             }
         }
@@ -307,6 +310,11 @@ sub tabrestore
     my $request    = shift;
     my $cb         = shift;
     my $table      = $request->{table}->[0];
+    # do not allow teal tables
+    if ( $table =~ /^x_teal/ ) {
+        $cb->({error => "$table is not supported in tabrestore. Use Teal maintenance commands. ",errorcode=>1});
+        return 1;
+    }
     my $tab        = xCAT::Table->new($table, -create => 1, -autocommit => 0);
     unless ($tab) {
         $cb->({error => "Unable to open $table",errorcode=>4});
@@ -491,13 +499,16 @@ sub tabdump
     my $DESC;
     my $OPTW;
     my $VERSION;
+    my $FILENAME;
 
     my $tabdump_usage = sub {
         my $exitcode = shift @_;
         my %rsp;
         push @{$rsp{data}}, "Usage: tabdump [-d] [table]";
         push @{$rsp{data}}, "       tabdump      [table]";
+        push @{$rsp{data}}, "       tabdump [-f <filename>]  [table]";
         push @{$rsp{data}}, "       tabdump [-w attr==val [-w attr=~val] ...] [table]";
+        push @{$rsp{data}}, "       tabdump [-w attr==val [-w attr=~val] ...] [-f <filename>] [table]";
         push @{$rsp{data}}, "       tabdump [-?|-h|--help]";
         push @{$rsp{data}}, "       tabdump {-v|--version}"; 
         push @{$rsp{data}}, "       tabdump ";
@@ -514,6 +525,7 @@ sub tabdump
           'h|?|help' => \$HELP,
           'v|version' => \$VERSION,
           'd' => \$DESC,
+          'f=s' => \$FILENAME,
           'w=s@' => \$OPTW,
          ) 
        )
@@ -535,6 +547,11 @@ sub tabdump
     my %rsp;
     # If no arguments given, we display a list of the tables
     if (!scalar(@ARGV)) {
+        # if -f filename give but no table name, display error
+        if ($FILENAME) {
+          $cb->({error => "table name missing from the command input. ",errorcode=>1});
+          return 1;
+        }
         if ($DESC) {  # display the description of each table
             my $tab = xCAT::Table->getDescriptions();
             foreach my $key (keys %$tab) {
@@ -550,6 +567,11 @@ sub tabdump
     }
     # get the table name
     $table = $ARGV[0];
+    # do not allow teal tables
+    if ( $table =~ /^x_teal/ ) {
+        $cb->({error => "$table is not supported in tabdump. Use Teal maintenance commands. ",errorcode=>1});
+        return 1;
+    }
     if ($DESC) {     # only show the attribute descriptions, not the values
         my $schema = xCAT::Table->getTableSchema($table);
         if (!$schema) { $cb->({error => "table $table does not exist.",errorcode=>1}); return; }
@@ -587,30 +609,54 @@ sub tabdump
     my $recs;
     my @ents;
     my @attrarray;
-    if (!($OPTW)) {   # if no -w flag to filter, then get all
-      $recs = $tabh->getAllEntries("all");
-    } else {  # filter entries  
-       foreach my $w (@{$OPTW}){  # get each attr=val  
-         push @attrarray, $w;
-       }
-       @ents = $tabh->getAllAttribsWhere(\@attrarray, 'ALL');
-       @$recs = ();
-       foreach my $e (@ents) {
-          push @$recs,$e;
-       }
-     }
-     my $rec;
-     unless (@$recs)        # table exists, but is empty.  Show header.
-     {
+    if (!($FILENAME)) {  # not dumping to a file
+     if (!($OPTW)) {   # if no -w flag to filter, then get all
+       $recs = $tabh->getAllEntries("all");
+     } else {  # filter entries  
+        foreach my $w (@{$OPTW}){  # get each attr=val  
+          push @attrarray, $w;
+        }
+        @ents = $tabh->getAllAttribsWhere(\@attrarray, 'ALL');
+        @$recs = ();
+        foreach my $e (@ents) {
+           push @$recs,$e;
+        }
+      }
+      my $rec;
+      unless (@$recs)        # table exists, but is empty.  Show header.
+      {
        if (defined($xCAT::Schema::tabspec{$table}))
        {
             $tabdump_header->(@{$xCAT::Schema::tabspec{$table}->{cols}});
             $cb->(\%rsp);
             return;
        }
-     }
-     #Display all the rows of the table  the order of the columns in the schema
+      }
+      #Display all the rows of the table  the order of the columns in the schema
       output_table($table,$cb,$tabh,$recs); 
+    } else { # dump to file
+      
+      my $rc1;
+      my $fh;
+      # check to see if you can open the file
+      unless (open($fh," > $FILENAME")) {
+        $cb->({error => "Error on tabdump of $table to $FILENAME. Unable to open the file for write. ",errorcode=>1});
+        return 1;
+      }
+      close $fh;
+      if (!($OPTW)) {   # if no -w flag to filter, then get all
+       $rc1=$tabh->writeAllEntries($FILENAME);
+      } else {  # filter entries  
+        foreach my $w (@{$OPTW}){  # get each attr=val  
+          push @attrarray, $w;
+        }
+        $rc1 = $tabh->writeAllAttribsWhere(\@attrarray, $FILENAME);
+      }
+      if ($rc1 != 0) {
+        $cb->({error => "Error on tabdump of $table to $FILENAME ",errorcode=>1});
+        return 1;
+      }
+    }
 }
 # Display information from the daemon.
 #  
@@ -648,12 +694,14 @@ sub lsxcatd
 
     if ($HELP) { $lsxcatd_usage->(0); return; }
     # Version
-    if ($VERSION) {
+    if ($VERSION || $ALL) {
         my %rsp;
         my $version = xCAT::Utils->Version();
         $rsp{data}->[0] = "$version";
         $cb->(\%rsp);
+      if (!$ALL) {
         return;
+      }
     }
     # no arguments error
     my $xcatcfg;
@@ -720,12 +768,13 @@ sub tabprune
     my $tabprune_usage = sub {
         my $exitcode = shift @_;
         my %rsp;
-        push @{$rsp{data}}, "Usage: tabprune <eventlog | auditlog > [-V] -a";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog > [-V] -n <# of records>";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog > [-V] -i <recid>";
-        push @{$rsp{data}}, "       tabprune <eventlog | auditlog > [-V] -p <percent>";
+        push @{$rsp{data}}, "Usage: tabprune <tablename> [-V] -a";
+        push @{$rsp{data}}, "       tabprune <tablename> [-V] -n <# of records>";
+        push @{$rsp{data}}, "       tabprune <tablename> [-V] -i <recid>";
+        push @{$rsp{data}}, "       tabprune <tablename> [-V] -p <percent>";
         push @{$rsp{data}}, "       tabprune [-h|--help]";
         push @{$rsp{data}}, "       tabprune [-v|--version]";
+        push @{$rsp{data}}, "       tables supported:eventlog,auditlog,isnm_perf,isnm_perf_sum";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
     };
@@ -756,16 +805,16 @@ sub tabprune
     my $table = $ARGV[0];
     if (!(defined $table)) {
         my %rsp;
-        $rsp{data}->[0] = "Table name eventlog, or auditlog.";
+        $rsp{data}->[0] = "Table name required.";
         $rsp{errorcode} = 1; 
         $cb->(\%rsp);
         return 1;
       
     }
     $table=~ s/\s*//g; # remove blanks 
-    if (($table ne "eventlog") && ($table ne "auditlog")) {
+    if (($table ne "eventlog") && ($table ne "auditlog") && ($table ne "isnm_perf") && ($table ne "isnm_perf_sum") ) {
         my %rsp;
-        $rsp{data}->[0] = "Table name eventlog, or auditlog required.";
+        $rsp{data}->[0] = "Table $table not supported, see tabprune -h for supported tables.";
         $rsp{errorcode} = 1; 
         $cb->(\%rsp);
         return 1;
@@ -812,6 +861,12 @@ sub tabprune
     my $attrrecid; 
     if (($table eq "eventlog") || ($table eq "auditlog")) {
       $attrrecid="recid";
+    } else {
+      if ($table eq "isnm_perf") {  # if ISNM
+        $attrrecid="perfid";
+      } else {
+        $attrrecid="period";   # isnm_perf_sum table
+      }
     }
     if (defined $ALL ) {
      $rc=tabprune_all($table,$cb, $attrrecid,$VERBOSE); 
@@ -875,40 +930,47 @@ sub tabprune_numberentries {
   my $DBname = xCAT::Utils->get_DBName;
   my @attribs = ("$attrrecid");
   my @ents=$tab->getAllAttribs(@attribs);
-  # find smallest and largest  recid, note table is not ordered by recid after
-  # a while
-  my $smallrid;
-  my $largerid;
-  foreach my $rid (@ents) {
-    if (!(defined $smallrid)) {
+  if (@ents) {    # anything to process 
+    # find smallest and largest  recid, note table is not ordered by recid after
+    # a while
+    my $smallrid;
+    my $largerid;
+    foreach my $rid (@ents) {
+      if (!(defined $smallrid)) {
          $smallrid=$rid;
-    }
-    if (!(defined $largerid)) {
+      }
+      if (!(defined $largerid)) {
          $largerid=$rid;
-    }
-    if ($rid->{$attrrecid} < $smallrid->{$attrrecid}) {
+      }
+      if ($rid->{$attrrecid} < $smallrid->{$attrrecid}) {
          $smallrid=$rid;
-    }
-    if ($rid->{$attrrecid} > $largerid->{$attrrecid}) {
+      }
+      if ($rid->{$attrrecid} > $largerid->{$attrrecid}) {
          $largerid=$rid;
+      }
     }
-  }
-  my $RECID;
-  if ($flag eq "n") {  # deleting number of records
-    #determine recid to delete all entries that come before like the -i flag
-    $RECID= $smallrid->{$attrrecid} + $numberentries ; 
-  } else {  # flag must be percentage
-     #take largest and smallest recid and percentage and determine the recid
-     # that will remove the requested percentage.   If some are missing in the
-     # middle due to tabedit,  we are not worried about it.
+    my $RECID;
+    if ($flag eq "n") {  # deleting number of records
+      #determine recid to delete all entries that come before like the -i flag
+      $RECID= $smallrid->{$attrrecid} + $numberentries ; 
+    } else {  # flag must be percentage
+       #take largest and smallest recid and percentage and determine the recid
+       # that will remove the requested percentage.   If some are missing in the
+       # middle due to tabedit,  we are not worried about it.
      
-     my $totalnumberrids = $largerid->{$attrrecid} - $smallrid->{$attrrecid} +1;
-     my $percent = $numberentries / 100;
-     my $percentage=$totalnumberrids * $percent ;
-     my $cnt=sprintf( "%d", $percentage ); # round to whole number
-     $RECID=$smallrid->{$attrrecid} + $cnt; # get recid to remove all before
+       my $totalnumberrids = $largerid->{$attrrecid} - $smallrid->{$attrrecid} +1;
+       my $percent = $numberentries / 100;
+       my $percentage=$totalnumberrids * $percent ;
+       my $cnt=sprintf( "%d", $percentage ); # round to whole number
+       $RECID=$smallrid->{$attrrecid} + $cnt; # get recid to remove all before
+    }
+    $rc=tabprune_recid($table,$cb,$RECID, $attrrecid,$VERBOSE); 
+  } else {
+      my %rsp;
+      push @{$rsp{data}}, "Nothing to prune from $table.";
+      $rsp{errorcode} = $rc; 
+      $cb->(\%rsp);
   }
-  $rc=tabprune_recid($table,$cb,$RECID, $attrrecid,$VERBOSE); 
   return $rc;
 }
 

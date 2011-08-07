@@ -16,6 +16,7 @@ use xCAT::GlobalDef;
 use xCAT_monitoring::monitorctrl;
 use xCAT_monitoring::rmcmetrix;
 use xCAT::MsgUtils;
+use xCAT::DBobjUtils;
 #print "xCAT_monitoring::rmcmon loaded\n";
 1;
 
@@ -485,7 +486,7 @@ sub config {
         my $nodetype=$_->[1];
         if ($nodetype){ 
 	  if ($nodetype =~ /$::NODETYPE_OSI/) { push(@nodes_to_add, $node); }
-	  elsif ($nodetype =~ /$::NODETYPE_HMC/) { push(@hmc_nodes, $node); }
+	  elsif (xCAT::DBobjUtils->getnodetype($node) =~ /$::NODETYPE_HMC/) { push(@hmc_nodes, $node); }
         } 
       }     
     }
@@ -560,7 +561,7 @@ sub deconfig {
         my $nodetype=$_->[1];
         if ($nodetype) {
           if ($nodetype =~ /$::NODETYPE_OSI/) { push(@nodes_to_rm, $node);}
-	  elsif ($nodetype =~ /$::NODETYPE_HMC/) { push(@hmc_nodes, $node); }
+	  elsif (xCAT::DBobjUtils->getnodetype($node) =~ /$::NODETYPE_HMC/) { push(@hmc_nodes, $node); }
         }  
       }     
     }
@@ -648,11 +649,11 @@ sub startNodeStatusMon {
     if (! $iphash{$key_a[0]}) { next;}
     my $mon_nodes=$pPairHash->{$key};
 
-    foreach(@$mon_nodes) {
-      my $nodetype=$_->[1];
+    foreach my $nn(@$mon_nodes) {
+      my $nodetype=$nn->[1];
       if ($nodetype) {
-	if (($nodetype =~ /$::NODETYPE_OSI/)|| ($nodetype =~ /$::NODETYPE_HMC/)) {
-          $status_hash{$_->[0]}=$_->[2];
+	if (($nodetype =~ /$::NODETYPE_OSI/)|| (xCAT::DBobjUtils->getnodetype($nn->[0]) =~ /$::NODETYPE_HMC/)) {
+          $status_hash{$nn->[0]}=$nn->[2];
         }
       }  
     }

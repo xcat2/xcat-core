@@ -7,6 +7,7 @@ use xCAT::PPCcli qw(SUCCESS EXPECT_ERROR RC_ERROR NR_ERROR);
 use xCAT::PPCdb;
 use xCAT::Usage;
 use xCAT::NodeRange;
+use Data::Dumper;
 
 
 ##############################################
@@ -56,7 +57,7 @@ sub chvm_parse_args {
     #############################################
     # Process command-line arguments
     #############################################
-    if ( !defined( $args )) {
+    if ( !defined( $args ) && !defined( $request->{stdin} ) ) {
         $request->{method} = $cmd;
         return( usage() );
     }
@@ -65,7 +66,8 @@ sub chvm_parse_args {
     # to be grouped (e.g. -vx), and terminates
     # at the first unrecognized option.
     #############################################
-    @ARGV = @$args;
+    if ($args) { @ARGV = @$args; }
+    else { @ARGV = (); }
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
@@ -663,7 +665,7 @@ sub remove {
             # Remove the LPARs
             ####################################
             foreach ( @lpars ) {
-            my $lparinfo   = shift(@lpars);
+            my $lparinfo   = $_;     # shift(@lpars);
                 my ($name,$id) = split /,/, $lparinfo;
                 my $mtms = @$d[2];
                 
@@ -708,7 +710,7 @@ sub remove {
                 # Remove LPAR from database 
                 ################################
                 if ( $Rc == SUCCESS and !exists( $opt->{r} ) ) {
-                    my $err = xCATdB( "rmvm", $name );
+                    my $err = xCATdB( "rmvm", $name,"", $id,"", $type,"" , $lpar );
                     if ( defined( $err )) {
                         push @values, [$lpar,$err,RC_ERROR];
                         next;
@@ -1215,7 +1217,24 @@ sub list {
                         $count++;
                     }
                 } else {
-                    $pprofile .= "@$prof[0]\n\n";
+                    #$pprofile .= "@$prof[0]\n\n";
+                    my $lparprof = xCAT::PPCcli::lssyscfg(
+                                      $exp,
+                                      "lpar2",
+                                      $mtms,
+                                      "lpar_ids=$id" );
+                    my $Rc = shift(@$lparprof);
+                    if ( $Rc != SUCCESS ) {
+                        $pprofile .= "@$lparprof[0]\n\n";
+                    } else {
+                        @$lparprof[0] =~ /curr_profile=(\w+)/;
+                        my $pname = $1;
+                        foreach my $pr (@$prof) {
+                            if ($pr =~ /name=$pname/) {
+                                $pprofile .= "$pr\n\n";
+                            }    
+                        }
+                    }                   
                 }
             }                
             $values->{$lpar} = [$lpar, $pprofile, SUCCESS];
@@ -1780,7 +1799,20 @@ sub xCATdB {
     # Remove entry 
     #######################################
     if ( $cmd eq "rmvm" ) {
-        return( xCAT::PPCdb::rm_ppc( $name )); 
+
+        my $ppctab = xCAT::Table->new('ppc');
+        unless ($ppctab) {   # no ppc table
+            return( "Error opening 'ppc' database" );
+        }
+
+        my @nodes = $ppctab->getAllNodeAttribs(['node','id','parent']);
+
+        foreach my $node (@nodes) {
+            my $type = xCAT::DBobjUtils->getnodetype($node->{node});
+            if ( $type =~ /lpar/ and $lparid eq $node->{id} and $parent eq $node->{parent} ) {
+                return( xCAT::PPCdb::rm_ppc( $node->{node} ));
+            }
+        }
     }
     #######################################
     # Change entry 

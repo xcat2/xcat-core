@@ -121,6 +121,22 @@ sub process_request {
        
        $exlistloc =$ref1->{'exlist'};
        $destdir=$ref1->{'rootimgdir'};
+   } else {
+       $provmethod="netboot";
+       unless ($osver) {
+	   $callback->({error=>["Please specify a os version with the -o flag"],errorcode=>[1]});
+           return;
+       }
+       unless ($arch) {
+	   $arch = `uname -m`;
+	   chomp($arch);
+	   $arch = "x86" if ($arch =~ /i.86$/);
+       }
+
+       unless ($profile) {
+	   $callback->({error=>["Please specify a profile name with -p flag"],errorcode=>[1]});
+           return;
+       }
    }
 
    unless ($destdir) {
@@ -136,16 +152,22 @@ sub process_request {
       $callback->({error=>["Unable to find $::XCATROOT/share/xcat/netboot directory for $osver"],errorcode=>[1]});
       return;
    }
-    unless ($installroot) {
-        $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
-        return;
-    }
-    my $oldpath=cwd();
+   unless ($installroot) {
+       $callback->({error=>["No installdir defined in site table"],errorcode=>[1]});
+       return;
+   }
+   my $oldpath=cwd();
    unless ($imagename) {
        $exlistloc=xCAT::SvrUtils->get_exlist_file_name("$installroot/custom/netboot/$distname", $profile, $osver, $arch);
        unless ($exlistloc) {  $exlistloc=xCAT::SvrUtils->get_exlist_file_name("$::XCATROOT/share/xcat/netboot/$distname", $profile, $osver, $arch); }
+      
+       #save the settings into DB, it will not update if the image already exist
+       my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($osver, $arch, $profile, "netboot");
+       unless ($ret[0] eq 0) {
+	   $callback->({error=>["Error when updating the osimage tables: " . $ret[1]], errorcode=>[1]});
+	   return;
+       }
    }
-
 
     # before generating rootimg.gz or rootimg.sfs, need to switch the rootimg to stateless mode if necessary
     my $rootimg_status = 0; # 0 means stateless mode, while 1 means statelite mode
@@ -153,11 +175,6 @@ sub process_request {
     
     my $ref_liteList; # get the litefile entries
 
-    my @ret = xCAT::SvrUtils->update_tables_with_diskless_image($osver, $arch, $profile, "statelite");
-    unless ($ret[0] eq 0) {
-        $callback->({error=>["Error when updating the osimage tables: " . $ret[1]], errorcode=>[1]});
-        return;
-    }
     my @ret = xCAT::Utils->runcmd("ilitefile $osver-$arch-statelite-$profile" , 0, 1);
     $ref_liteList = $ret[0];
 

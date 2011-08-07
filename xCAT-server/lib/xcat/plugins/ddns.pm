@@ -223,7 +223,7 @@ sub process_request {
     }
     
     $ctx->{deletemode}=$deletemode;
-        
+    # check for site.domain     
     my $sitetab = xCAT::Table->new('site');
     my $stab = $sitetab->getAttribs({key=>'domain'},['value']);
     unless ($stab and $stab->{value}) {
@@ -231,7 +231,34 @@ sub process_request {
         return;
     }
     $ctx->{domain} = $stab->{value};
-
+    # get site.master
+    # check to see if /etc/resolv.conf has nameserver=site.master, if no
+    # put out a warning
+    my $master = $sitetab->getAttribs({key=>'master'},['value']);
+    unless ($master and $master->{value}) {
+        xCAT::SvrUtils::sendmsg([1,"master not defined in site table"], $callback);
+        return;
+    }
+    my $resolv="/etc/resolv.conf";
+    my $found=0;
+    my $nameserver=$master->{value};
+    my $cmd="grep $nameserver $resolv";
+    my @output=xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        $found=0;
+    } else { # if it is there check it is a nameserver 
+      foreach my $line (@output) {    
+        if ($line =~ /^nameserver/) { # line is a nameserver line 
+           $found=1;
+           last;
+        }
+      } 
+   } 
+   if ($found == 0) { # not nameserver master found
+        xCAT::SvrUtils::sendmsg([0,"Warning:The management node is not defined as a nameserver in /etc/resolv.conf. Add \"nameserver $nameserver\" to /etc/resolv.conf and run makedns again."], $callback);
+   }
+      
     my $networkstab = xCAT::Table->new('networks',-create=>0);
     unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
     my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain');
@@ -241,6 +268,11 @@ sub process_request {
     } elsif ($allnodes) {
         #read all nodelist specified nodes
     } else { 
+	if ($deletemode) {
+		#when this was permitted, it really ruined peoples' days
+		xCAT::SvrUtils::sendmsg([1,"makedns -d without noderange or -a is not supported"],$callback); 
+		return;
+	}
         #legacy behavior, read from /etc/hosts
         my $hostsfile;
         open($hostsfile,"<","/etc/hosts");
@@ -278,6 +310,9 @@ sub process_request {
             }
             my %names = ();
             my $node = $canonical;
+
+            xCAT::SvrUtils::sendmsg(":Handling $node in /etc/hosts.", $callback);
+            
             unless ($canonical =~ /$domain/) {
                 $canonical.=$domain;
             }
@@ -356,6 +391,7 @@ sub process_request {
     if ($pent and $pent->{password}) { 
         $ctx->{privkey} = $pent->{password};
     } #do not warn/error here yet, if we can't generate or extract, we'll know later
+
     $stab =  $sitetab->getAttribs({key=>'forwarders'},['value']);
     if ($stab and $stab->{value}) {
         my @forwarders = split /[ ,]/,$stab->{value};
@@ -511,6 +547,8 @@ sub get_dbdir {
     } elsif (-d "/var/named") {
         return "/var/named/";
     } elsif (-d "/var/lib/named") {
+        # Temp fix for bugzilla 73119
+        chown(scalar(getpwnam('root')),scalar(getgrnam('named')),"/var/lib/named");
         return "/var/lib/named/";
     } else {
         mkpath "/var/named/";
@@ -626,6 +664,7 @@ sub update_namedconf {
                 $gotoptions=1;
                 my $skip=0;
                 do {
+		    #push @newnamed,"\t\t//listen-on-v6 { any; };\n";
                     if ($ctx->{forwarders} and $line =~ /forwarders {/) {
                         push @newnamed,"\tforwarders \{\n";
                         $skip=1;
@@ -728,6 +767,7 @@ sub update_namedconf {
     }
     unless ($gotoptions) {
         push @newnamed,"options {\n","\tdirectory \"".$ctx->{zonesdir}."\";\n";
+	push @newnamed,"\t\t//listen-on-v6 { any; };\n";
         if ($ctx->{forwarders}) {
             push @newnamed,"\tforwarders {\n";
             foreach (@{$ctx->{forwarders}}) {
@@ -777,6 +817,19 @@ sub update_namedconf {
         #$zfilename =~ s/\..*//;
         push @newnamed,"\t};\n","\tfile \"db.$zfilename\";\n","};\n\n";
     }
+
+    # For AIX, add a hint zone
+    if (xCAT::Utils->isAIX())
+    {
+        unless (grep(/hint/, @newnamed))
+        {
+            push @newnamed,"zone \"\.\" in {\n","\ttype hint;\n","\tfile \"db\.cache\";\n","};\n\n";
+            # Toutch the stub zone file
+            system("/usr/bin/touch $ctx->{dbdir}.'/db.cache'");
+            $ctx->{restartneeded}=1;
+        }
+    }
+        
     my $newnameconf;
     open($newnameconf,">>",$namedlocation);
     flock($newnameconf,LOCK_EX);
@@ -918,6 +971,8 @@ sub find_nameserver_for_dns {
        unless (defined $ctx->{nsmap}->{$zone}) { #ok, we already thought about this zone and made a decision
            if ($zone =~ /^\.*192.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*172.IN-ADDR.ARPA\.*/ or $zone =~ /127.IN-ADDR.ARPA\.*/ or $zone =~ /^\.*IN-ADDR.ARPA\.*/ or $zone =~ /^\.*ARPA\.*/) {
                 $ctx->{nsmap}->{$zone} = 0; #ignore zones that are likely to appear, but probably not ours
+	   } elsif ($::XCATSITEVALS{ddnsserver}) {
+                $ctx->{nsmap}->{$zone} = $::XCATSITEVALS{ddnsserver};
            } else {
                my $reply = $ctx->{resolver}->query($zone,'NS');
                if ($reply)  {

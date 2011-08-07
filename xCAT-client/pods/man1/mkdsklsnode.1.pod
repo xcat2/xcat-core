@@ -6,15 +6,29 @@ B<mkdsklsnode> - Use this xCAT command to define and initialize AIX/NIM diskless
 
 B<mkdsklsnode [-h|--help ]>
 
-B<mkdsklsnode [-V|--verbose] [-f|--force] [--hfi] [-n|--newname] [-i osimage_name] [-p|--primarySN] [-b|--backupSN] noderange [attr=val [attr=val ...]]>
+B<mkdsklsnode [-V|--verbose] [-f|--force] [-n|--newname] [-i osimage_name] [-l location] [-p|--primarySN] [-b|--backupSN] noderange [attr=val [attr=val ...]]>
 
 =head1 DESCRIPTION
 
-This xCAT command can be used to define and/or initialize AIX/NIM diskless machines. Once this step is completed the xCAT rnetboot command may be used to initiate a network boot of the nodes.
+This xCAT command can be used to define and/or initialize AIX/NIM diskless machines. Once this step is completed the xCAT B<rnetboot> command may be used to initiate a network boot of the nodes.
 
-The command can be used to define and initialize a new NIM machine object or it may be used to reinitialize an existing machine to use a different operating system image.
+The command can be used to define and initialize a new NIM machine object or it can be used to reinitialize an existing machine to use a different operating system image.
 
-Note:  The length of a NIM object name must be no longer than 39 characters.
+This command will also create a NIM resolv_conf resource to be used when installing the node.  If a resolv_conf resource is not already included in the xCAT osimage definition and if the "domain" and "nameservers" values are set then a new resolv_conf resource will be created and the name will be added to the osimage definition.
+
+The "domain" and "nameservers" attributes can be set in either the xCAT "network" definition used by the nodes or in the xCAT cluster "site" definition. The setting in the "network" definition will take priority.
+
+The "nameservers" value can either be set to a specific IP address or the "<xcatmaster>" key word.  The "<xcatmaster>" key word means that the value of the "xcatmaster" attribute of the node definition will be used in the /etc/resolv.conf file.  (I.e.  The name of the install server as known by the node.)
+
+You can set the "domain" and "nameservers" attributes by using the B<chdef> command.  For example:
+
+=over 3
+
+chdef -t network -o clstr_net domain=cluster.com nameservers=<xcatmaster>
+
+=back
+
+If the "domain" and "nameservers" attributes are not set in either the nodes "network" definition or the "site" definition then no new NIM resolv_conf resource will be created.
 
 If you are using xCAT service nodes the B<mkdsklsnode> command will automatically determine the correct server(s) for the node and create the NIM definitions on that server(s).
 
@@ -24,9 +38,9 @@ You can use the "-n" option of the mkdsklsnode command to create and initialize 
 
 You can use the force option to reinitialize a node if it already has resources allocated or it is in the wrong NIM state. This option will reset the NIM node and deallocate resources before reinititializing. Use this option with caution since reinitializing a node will stop the node if it is currently running.
 
-After the mkdsklsnode command completes you can use the lsnim command to check the NIM node definition to see if it is ready for booting the node. ("lsnim -l <nim_node_name>").
+After the mkdsklsnode command completes you can use the B<lsnim> command to check the NIM node definition to see if it is ready for booting the node. ("lsnim -l <nim_node_name>").
 
-You can supply your own scripts to be run on the mn or on the service node (if their is hierarchy) for a node during the mkdsklsnode command. Such scripts are called B<prescripts>. They should be copied to /install/prescripts dirctory. A table called I<prescripts> is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the mkdsklsnode command are stored in the 'begin' column of I<prescripts> table. The scripts to be run at the end of the mkdsklsnode command are stored in the 'end' column of I<prescripts> table. Please run 'tabdump prescripts -d' command for details. An example for the 'begin' or the 'end' column is: I<diskless:myscript1,myscript2>. The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current current nodeset action, in this case "diskless". If I<#xCAT setting:MAX_INSTANCE=number> is specified in the script, the script will get invoked for each node in parallel, but no more than I<number> of instances will be invoked at at a time. If it is not sepcified, the script will be invoked once for all the nodes.
+You can supply your own scripts to be run on the management node  or on the service node (if their is hierarchy) for a node during the B<mkdsklsnode> command. Such scripts are called B<prescripts>. They should be copied to /install/prescripts dirctory. A table called I<prescripts> is used to specify the scripts and their associated actions. The scripts to be run at the beginning of the B<mkdsklsnode> command are stored in the 'begin' column of I<prescripts> table. The scripts to be run at the end of the B<mkdsklsnode> command are stored in the 'end' column of I<prescripts> table. Please run 'tabdump prescripts -d' command for details. An example for the 'begin' or the 'end' column is: I<diskless:myscript1,myscript2>. The following two environment variables will be passed to each script: NODES contains all the names of the nodes that need to run the script for and ACTION contains the current current nodeset action, in this case "diskless". If I<#xCAT setting:MAX_INSTANCE=number> is specified in the script, the script will get invoked for each node in parallel, but no more than I<number> of instances will be invoked at at a time. If it is not sepcified, the script will be invoked once for all the nodes.
 
 
 =head1 OPTIONS
@@ -80,13 +94,13 @@ Use the force option to reinitialize the NIM machines.
 
 Display usage message.
 
-=item B<--hfi>
-
-Create a new NIM machine booting from HFI interfaces.
-
 =item B<-i image_name>
 
-The name of an existing xCAT osimage definition. If this information is not provided on the command line the code checks the node definition for the value of the "profile" attribute. If the "-i" value is provided on the command line then that value will be used to set the "profile" attribute of the node definiions.
+The name of an existing xCAT osimage definition. If this information is not provided on the command line the code checks the node definition for the value of the "provmethod" attribute. If the "-i" value is provided on the command line then that value will be used to set the "provmethod" attribute of the node definitions.
+
+=item B<-l|--location>
+
+The directory location to use when creating new NIM resolv_conf resources. The default location is /install/nim.
 
 =item B<-n|--newname>
 
@@ -132,7 +146,7 @@ B<mkdsklsnode -i 61spot node01>
 
 =item 2
 
-Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "profile" attribute of the xCAT node definitions.
+Initialize all AIX diskless nodes contained in the xCAT node group called "aixnodes" using the image definitions pointed to by the "provmethod" attribute of the xCAT node definitions.
 
 B<mkdsklsnode aixnodes>
 

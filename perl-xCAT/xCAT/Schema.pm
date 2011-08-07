@@ -167,7 +167,7 @@ vmmaster => {
 #storagemodel to allow chvm on a clone to be consistent with the master by default
 #nics to track the network mapping that may not be preserved by the respective plugin's specific cfg info
 #nicmodel same as storagemodel, except omitting for now until chvm actually does nics...
-    cols => [qw(name os arch profile storage storagemodel nics vintage originator comments disable)],
+    cols => [qw(name os arch profile storage storagemodel nics vintage originator virttype comments disable)],
     keys => [qw(name)],
     nodecol => 'name', #well what do you know, I used it...
     table_desc => 'Inventory of virtualization images for use with clonevm.  Manual intervention in this table is not intended.',
@@ -265,6 +265,7 @@ boottarget => {
 bootparams => {
    cols => [qw(node kernel initrd kcmdline addkcmdline dhcpstatements adddhcpstatements comments disable)],
    keys => [qw(node)],
+   tablespace =>'XCATTBS16K',
    table_desc => 'Current boot settings to be sent to systems attempting network boot for deployment, stateless, or other reasons.  Mostly automatically manipulated by xCAT.',
    descriptions => {
       'node' => 'The node or group name',
@@ -348,6 +349,7 @@ ipmi => {
 iscsi => {
     cols => [qw(node server target lun iname file userid passwd kernel kcmdline initrd comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS16K',
     table_desc => 'Contains settings that control how to boot a node from an iSCSI target',
  descriptions => {
   node => 'The node name or group name.',
@@ -368,6 +370,7 @@ iscsi => {
 mac => {
     cols => [qw(node interface mac comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS16K',
     table_desc => "The MAC address of the node's install adapter.  Normally this table is populated by getmacs or node discovery, but you can also add entries to it manually.",
  descriptions => {
   node => 'The node name or group name.',
@@ -428,7 +431,7 @@ mpa => {
  },
   },
 networks => {
-    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange nodehostname ddnsdomain vlanid comments disable)],
+    cols => [qw(netname net mask mgtifname gateway dhcpserver tftpserver nameservers ntpservers logservers dynamicrange nodehostname ddnsdomain vlanid domain comments disable)],
     keys => [qw(net mask)],
     table_desc => 'Describes the networks in the cluster and info necessary to set up nodes on that network.',
  descriptions => {
@@ -439,13 +442,14 @@ networks => {
   gateway => 'The network gateway. It can be set to an ip address or the keyword <xcatmaster>, the keyword <xcatmaster> indicates the cluster-facing ip address configured on this management node or service node. Leaving this field blank means that there is no gateway for this network.',
   dhcpserver => 'The DHCP server that is servicing this network.  Required to be explicitly set for pooled service node operation.',
   tftpserver => 'The TFTP server that is servicing this network.  If not set, the DHCP server is assumed.',
-  nameservers => 'The nameservers for this network.  Used in creating the DHCP network definition, and DNS configuration.',
+  nameservers => 'A comma delimited list of DNS servers that each node in this network should use. This value will end up in the nameserver settings of the /etc/resolv.conf on each node in this network. If this attribute value is set to the IP address of an xCAT node, make sure DNS is running on it. In a hierarchical cluster, you can also set this attribute to "<xcatmaster>" to mean the DNS server for each node in this network should be the node that is managing it (either its service node or the management node).  Used in creating the DHCP network definition, and DNS configuration.',
   ntpservers => 'The ntp servers for this network.  Used in creating the DHCP network definition.  Assumed to be the DHCP server if not set.',
   logservers => 'The log servers for this network.  Used in creating the DHCP network definition.  Assumed to be the DHCP server if not set.',
   dynamicrange => 'The IP address range used by DHCP to assign dynamic IP addresses for requests on this network.  This should not overlap with entities expected to be configured with static host declarations, i.e. anything ever expected to be a node with an address registered in the mac table.',
   nodehostname => 'A regular expression used to specify node name to network-specific hostname.  i.e. "/\z/-secondary/" would mean that the hostname of "n1" would be n1-secondary on this network.  By default, the nodename is assumed to equal the hostname, followed by nodename-interfacename.',
   ddnsdomain => 'A domain to be combined with nodename to construct FQDN for DDNS updates induced by DHCP.  This is not passed down to the client as "domain"',
   vlanid => 'The vlan ID if this network is within a vlan.',
+  domain => 'The DNS domain name (ex. cluster.com).',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -466,6 +470,7 @@ nodegroup => {
 nodehm => {
     cols => [qw(node power mgt cons termserver termport conserver serialport serialspeed serialflow getmac comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS16K',
     table_desc => "Settings that control how each node's hardware is managed.  Typically, an additional table that is specific to the hardware type of the node contains additional info.  E.g. the ipmi, mp, and ppc tables.",
  descriptions => {
   node => 'The node name or group name.',
@@ -486,6 +491,7 @@ nodehm => {
 nodelist => {
     cols => [qw(node groups status statustime appstatus appstatustime primarysn hidden comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS16K',
     table_desc => "The list of all the nodes in the cluster, including each node's current status and what groups it is in.",
     descriptions => {
      node => 'The hostname of a node in the cluster.',
@@ -503,6 +509,7 @@ nodelist => {
 nodepos => {
     cols => [qw(node rack u chassis slot room comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS16K',
     table_desc => 'Contains info about the physical location of each node.  Currently, this info is not used by xCAT, and therefore can be in whatevery format you want.  It will likely be used in xCAT in the future.',
  descriptions => {
   node => 'The node name or group name.',
@@ -518,6 +525,7 @@ nodepos => {
 noderes => {
     cols => [qw(node servicenode netboot tftpserver nfsserver monserver nfsdir installnic primarynic discoverynics cmdinterface xcatmaster current_osimage next_osimage nimserver routenames comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS16K',
     table_desc => 'Resources and settings to use when installing nodes.',
  descriptions => {
   node => 'The node name or group name.',
@@ -559,15 +567,16 @@ noderes => {
 nodetype => {
     cols => [qw(node os arch profile provmethod supportedarchs nodetype comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS16K',
     table_desc => 'A few hardware and software characteristics of the nodes.',
  descriptions => {
   node => 'The node name or group name.',
-  os => 'The operating system deployed on this node.  Valid values: AIX, rh*, centos*, SL*, fedora*, sles* (where * is the version #). As a special case, if this is set to "boottarget", then it will use the initrd/kernel/parameters specified in the row in the boottarget table in which boottarget.bprofile equals nodetype.profile.',
+  os => 'The operating system deployed on this node.  Valid values: AIX, rhels*,rhelc*, rhas*,centos*,SL*, fedora*, sles* (where * is the version #). As a special case, if this is set to "boottarget", then it will use the initrd/kernel/parameters specified in the row in the boottarget table in which boottarget.bprofile equals nodetype.profile.',
   arch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
   profile => 'The string to use to locate a kickstart or autoyast template to use for OS deployment of this node.  If the provmethod attribute is set to an osimage name, that takes precendence.  Otherwise, the os, profile, and arch are used to search for the files in /install/custom first, and then in /opt/xcat/share/xcat.',
   provmethod => 'The provisioning method for node deployment. The valid values are install, netboot, statelite or an os image name from the osimage table. If an image name is specified, the osimage definition stored in the osimage table and the linuximage table (for Linux) or nimimage table (for AIX) are used to locate the files for templates, pkglists, syncfiles, etc. On Linux, if install, netboot or statelite is specified, the os, profile, and arch are used to search for the files in /install/custom first, and then in /opt/xcat/share/xcat.',
   supportedarchs => 'Comma delimited list of architectures this node can execute.',
-  nodetype => 'A comma-delimited list of characteristics of this node.  Valid values: blade, vm (virtual machine), lpar, osi (OS image), hmc, fsp, ivm, bpa, mm, rsa, switch.',
+  nodetype => 'A comma-delimited list of characteristics of this node.  Valid values: blade, vm (virtual machine), osi (OS image), mm, rsa, switch.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -585,20 +594,20 @@ notification => {
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
   },
-osimage  => {
+osimage => {
  cols => [qw(imagename profile imagetype provmethod rootfstype osname osvers osdistro osarch synclists postscripts postbootscripts comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Basic information about an operating system image that can be used to deploy cluster nodes.',
  descriptions => {
   imagename => 'The name of this xCAT OS image definition.',
-  imagetype => 'The type of operating system image this definition represents.',
+  imagetype => 'The type of operating system image this definition represents (linux,AIX).',
   provmethod => 'The provisioning method for node deployment. The valid values are install, netboot or statelite. It is not used by AIX.',
   rootfstype => 'The filesystem type for the rootfs is used when the provmethod is statelite. The valid values are nfs or ramdisk. The default value is nfs',
   profile => 'The node usage category. For example compute, service.',
   osname => 'Operating system name- AIX or Linux.',
-  osvers => 'Not used.',
+  osvers => 'The Linux operating system deployed on this node.  Valid values:  rhels*,rhelc*, rhas*,centos*,SL*, fedora*, sles* (where * is the version #).',
   osdistro => 'Not used.',
-  osarch => 'Not used.',
+  osarch => 'The hardware architecture of this node.  Valid values: x86_64, ppc64, x86, ia64.',
   synclists => 'The fully qualified name of a file containing a list of files to synchronize on the nodes.',
   postscripts => 'Comma separated list of scripts that should be run on this image after diskfull installation or diskless boot. For installation of RedHat, CentOS, Fedora, the scripts will be run before the reboot. For installation of SLES, the scripts will be run after the reboot but before the init.d process. For diskless deployment, the scripts will be run at the init.d time, and xCAT will automatically add the list of scripts from the postbootscripts attribute to run after postscripts list. For installation of AIX, the scripts will run after the reboot and acts the same as the postbootscripts attribute.  For AIX, use the postbootscripts attribute. Support will be added in the future for  the postscripts attribute to run the scripts before the reboot in AIX. ',
   postbootscripts => 'Comma separated list of scripts that should be run on this after diskfull installation or diskless boot. On AIX these scripts are run during the processing of /etc/inittab.  On Linux they are run at the init.d time. xCAT automatically adds the scripts in the xcatdefaults.postbootscripts attri bute to run first in the list.',
@@ -607,7 +616,7 @@ osimage  => {
  },
   },
 linuximage  => {
- cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver permission dump comments disable)],
+ cols => [qw(imagename template pkglist pkgdir otherpkglist otherpkgdir exlist postinstall rootimgdir kerneldir nodebootif otherifce netdrivers kernelver krpmver permission dump crashkernelsize comments disable)],
  keys => [qw(imagename)],
     table_desc => 'Information about a Linux operating system image that can be used to deploy cluster nodes.',
  descriptions => {
@@ -623,10 +632,12 @@ linuximage  => {
   kerneldir => 'The directory name where the 3rd-party kernel is stored. It is used for diskless image only.',
   nodebootif => 'The network interface the stateless/statelite node will boot over (e.g. eth0)',
   otherifce => 'Other network interfaces (e.g. eth1) in the image that should be configured via DHCP',
-  netdrivers => 'the ethernet device drivers of the nodes which will use this linux image, at least the device driver for the nodes\' installnic should be included',
-  kernelver => 'the version of linux kernel used in the linux image. If the kernel version is not set, the default kernel in rootimgdir will be used',
-  permission => 'the mount permission of /.statelite directory is used, its default value is 755',
+  netdrivers => 'The ethernet device drivers of the nodes which will use this linux image, at least the device driver for the nodes\' installnic should be included',
+  kernelver => 'The version of linux kernel used in the linux image. If the kernel version is not set, the default kernel in rootimgdir will be used',
+  krpmver => 'The rpm version of kernel packages (for SLES only). If it is not set, the default rpm version of kernel packages will be used.',
+  permission => 'The mount permission of /.statelite directory is used, its default value is 755',
   dump => qq{The NFS directory to hold the Linux kernel dump file (vmcore) when the node with this image crashes, its format is "nfs://<nfs_server_ip>/<kdump_path>". If you want to use the node's "xcatmaster" (its SN or MN), <nfs_server_ip> can be left blank. For example, "nfs:///<kdump_path>" means the NFS directory to hold the kernel dump file is on the node's SN, or MN if there's no SN.},
+  crashkernelsize => 'the size that assigned to the kdump kernel. If the kernel size is not set, 256M will be the default value.',
   comments => 'Any user-written notes.',
   disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -636,7 +647,7 @@ passwd => {
     keys => [qw(key username)],
     table_desc => 'Contains default userids and passwords for xCAT to access cluster components.  In most cases, xCAT will also actually set the userid/password in the relevant component when it is being configured or installed.  Userids/passwords for specific cluster components can be overidden in other tables, e.g. mpa, ipmi, ppchcp, etc.',
  descriptions => {
-  key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes), omapi (DHCP), hmc, ivm, fsp, bpa.',
+  key => 'The type of component this user/pw is for.  Valid values: blade (management module), ipmi (BMC), system (nodes), omapi (DHCP), hmc, ivm, cec, frame.',
   username => 'The default userid for this type of component',
   password => 'The default password for this type of component',
   cryptmethod => 'Indicates the method that was used to encrypt the password attribute.  On AIX systems, if a value is provided for this attribute it indicates that the passwword attribute is encrypted.  If the cryptmethod value is not set it indicates the password is a simple string value. On Linux systems, the cryyptmethod is not supported however the code attempts to auto-discover MD5 encrypted passowrds.',
@@ -655,7 +666,7 @@ policy => {
   commands => 'The list of commands that this rule applies to.  Default is "*" (all commands).',
   noderange => 'The Noderange that this rule applies to.  Default is "*" (all nodes).',
   parameters => 'A regular expression that matches the command parameters (everything except the noderange) that this rule applies to.  Default is "*" (all parameters).',
-  time => 'Time ranges that this command may be executed in.  Default is any time.',
+  time => 'Time ranges that this command may be executed in.  This is not supported.',
   rule => 'Specifies how this rule should be applied.  Valid values are: allow, accept, trusted. Allow or accept  will allow the user to run the commands. Any other value will deny the user access to the commands. Trusted means that once this client has been authenticated via the certificate, all other information that is sent (e.g. the username) is believed without question.  This authorization should only be given to the xcatd on the management node at this time.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -664,6 +675,7 @@ policy => {
 postscripts => {
     cols => [qw(node postscripts postbootscripts comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS16K',
     table_desc => ' The scripts that should be run on each node after installation or diskless boot.',
  descriptions => {
   node => 'The node name or group name.',
@@ -676,16 +688,17 @@ postscripts => {
 ppc => {
     cols => [qw(node hcp id pprofile parent nodetype supernode sfp comments disable)],
     keys => [qw(node)],
-    table_desc => 'List of system p hardware: HMCs, IVMs, FSPs, BPCs.',
+    tablespace =>'XCATTBS16K',
+    table_desc => 'List of system p hardware: HMCs, IVMs, FSPs, BPCs, CECs, Frames.',
  descriptions => {
   node => 'The node name or group name.',
-  hcp => 'The hardware control point for this node (HMC or IVM).',
-  id => 'For LPARs: the LPAR numeric id; for FSPs: the cage number; for BPAs: the frame number.',
-  pprofile => 'The LPAR profile that will be used the next time the LPAR is powered on with rpower.',
-  parent => 'For LPARs: the FSP/CEC; for FSPs: the BPA (if one exists); for BPAs: the building block (BB) which consists 1 or more service nodes and compute/storage nodes that are serviced by them.',
-  nodetype => 'The hardware type of the node. Only can be one of fsp, bpa, cec, frame, hmc and lpar',
-  supernode => 'Comma separated list of 2 ids. The first one is the id of the supernode the FSP resides in. The second one is the logic location number (0-3) within the supernode for the FSP.',
-     sfp => ' The Service Focal Point of the Frame. It should be the name of HMC.',
+  hcp => 'The hardware control point for this node (HMC, IVM, Frame or CEC).  Do not need to set for BPAs and FSPs.',
+  id => 'For LPARs: the LPAR numeric id; for CECs: the cage number; for Frames: the frame number.',
+  pprofile => 'The LPAR profile that will be used the next time the LPAR is powered on with rpower. For DFM, the pprofile attribute should be set to blank ',
+  parent => 'For LPARs: the CEC; for FSPs: the CEC; for CEC: the frame (if one exists); for BPA: the frame; for frame: the building block number (which consists 1 or more service nodes and compute/storage nodes that are serviced by them - optional).',
+  nodetype => 'The hardware type of the node. Only can be one of fsp, bpa, cec, frame, ivm, hmc and lpar',
+  supernode => 'Indicates the connectivity of this CEC in the HFI network. A comma separated list of 2 ids. The first one is the supernode number the CEC is part of. The second one is the logical location number (0-3) of this CEC within the supernode.',
+  sfp => 'The Service Focal Point of this Frame. This is the name of the HMC that is responsible for collecting hardware service events for this frame and all of the CECs within this frame.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -694,11 +707,11 @@ ppcdirect => {
     cols => [qw(hcp username password comments disable)],
     keys => [qw(hcp username)],
     nodecol => "hcp",
-    table_desc => 'Info necessary to use FSPs to control system p CECs.',
+    table_desc => 'Info necessary to use FSPs/BPAs to control system p CECs/Frames.',
  descriptions => {
-  hcp => 'Hostname of the FSP.',
-  username => 'Userid of the FSP.  If not filled in, xCAT will look in the passwd table for key=fsp.  If not in the passwd table, the default used is admin.',
-  password => 'Password of the FSP.  If not filled in, xCAT will look in the passwd table for key=fsp.  If not in the passwd table, the default used is admin.',
+  hcp => 'Hostname of the FSPs/BPAs(for ASMI) and CECs/Frames(for DFM).',
+  username => 'Userid of the FSP/BPA(for ASMI) and CEC/Frame(for DFM).  If not filled in, xCAT will look in the passwd table for key=fsp.  If not in the passwd table, the default used is admin.',
+  password => 'Password of the FSP/BPA(for ASMI) and CEC/Frame(for DFM).  If not filled in, xCAT will look in the passwd table for key=fsp.  If not in the passwd table, the default used is admin.',
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
  },
@@ -722,17 +735,17 @@ servicenode => {
     table_desc => 'List of all Service Nodes and services that will be set up on the Service Node.',
  descriptions => {
   node => 'The hostname of the service node as known by the Management Node.',
-  nameserver => 'Do we set up DNS on this service node? Valid values:yes or 1, no or 0.',
-  dhcpserver => 'Do we set up DHCP on this service node? Valid values:yes or 1, no or 0.',
-  tftpserver => 'Do we set up TFTP on this service node? Valid values:yes or 1, no or 0.',
-  nfsserver => 'Do we set up file services (HTTP,FTP,or NFS) on this service node? Valid values:yes or 1, no or 0.',
-  conserver => 'Do we set up Conserver on this service node? Valid values:yes or 1, no or 0.',
-  monserver => 'Is this a monitoring event collection point? Valid values:yes or 1, no or 0.',
-  ldapserver => 'Do we set up ldap caching proxy on this service node? Valid values:yes or 1, no or 0.',
-  ntpserver => 'Not used presently. Do we set up a ntp server on this service node? Valid values:yes or 1, no or 0.',
-  ftpserver => 'Do we set up a ftp server on this service node? Valid values:yes or 1, no or 0.',
-  nimserver => 'Do we set up a NIM server on this service node? Valid values:yes or 1, no or 0.',
-  ipforward => 'Do we set up ip forwarding on this service node? Valid values:yes or 1, no or 0.',
+  nameserver => 'Do we set up DNS on this service node? Valid values:yes or 1, no or 0. If yes, creates named.conf file with forwarding to the management node and starts named. If no or 0, it does not change the current state of the service. ',
+  dhcpserver => 'Do we set up DHCP on this service node? Not supported on AIX. Valid values:yes or 1, no or 0. If yes, runs makedhcp -n. If no or 0, it does not change the current state of the service. ',
+  tftpserver => 'Do we set up TFTP on this service node? Not supported on AIX. Valid values:yes or 1, no or 0. If yes, configures and starts atftp. If no or 0, it does not change the current state of the service. ',
+  nfsserver => 'Do we set up file services (HTTP,FTP,or NFS) on this service node? For AIX will only setup NFS, not HTTP or FTP. Valid values:yes or 1, no or 0.If no or 0, it does not change the current state of the service. ',
+  conserver => 'Do we set up Conserver on this service node?  Valid values:yes or 1, no or 0. If yes, configures and starts conserver daemon. If no or 0, it does not change the current state of the service.',
+  monserver => 'Is this a monitoring event collection point? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
+  ldapserver => 'Do we set up ldap caching proxy on this service node? Not supported on AIX.  Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
+  ntpserver => 'Not used. Use setupntp postscript to setup a ntp server on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
+  ftpserver => 'Do we set up a ftp server on this service node? Not supported on AIX Valid values:yes or 1, no or 0. If yes, configure and start vsftpd. If no or 0, it does not change the current state of the service.',
+  nimserver => 'Not used. Do we set up a NIM server on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
+  ipforward => 'Do we set up ip forwarding on this service node? Valid values:yes or 1, no or 0. If no or 0, it does not change the current state of the service.',
 
      comments => 'Any user-written notes.',
      disable => "Set to 'yes' or '1' to comment out this row.",
@@ -752,6 +765,9 @@ site => {
    "                For example: tabdump,nodels,lsdef will not log those cmds.\n".
    "                ALL will not log any cmds.\n\n".
    " blademaxp:  The maximum number of processes for blade hardware control.\n\n".
+   " cleanupxcatpost:  (yes/1 or no/0). Set to 'yes' or '1' to clean up the /xcatpost directory\n".
+   "                   on the stateless and statelite nodes after the postscripts are run.\n".
+   "                   Default is no.\n\n".
    " consoleondemand:  When set to 'yes', conserver connects and creates the console\n".
    "                   output only when the user opens the console. Default is no on\n".
    "                   Linux, yes on AIX.\n\n".
@@ -768,6 +784,7 @@ site => {
    "                       mn|eth1,eth2;service|bond0.\n\n".
    " dhcpsetup:  If set to 'n', it will skip the dhcp setup process in the nodeset cmd.\n\n".
    " disjointdhcps:  If set to '1', the .leases file on a service node only contains\n".
+   " dnshandler:  Name of plugin that handles DNS setup for makedns.\n".
    "                 the nodes it manages. The default value is '0'.\n\n".
    " domain:  The DNS domain name used for the cluster.\n\n".
    " ea_primary_hmc:  The hostname of the HMC that the Integrated Switch Network\n".
@@ -783,8 +800,10 @@ site => {
    "                failed nodes for any xCAT commands. See the 'noderange' manpage for\n".
    "                details on supported formats.\n\n".
    " forwarders:  The DNS servers at your site that can provide names outside of the\n".
-   "              cluster.  The DNS on the management node will forward requests it\n".
-   "              does not know to these servers.\n\n".
+   "              cluster. The makedns command will configuire the DNS on the management node\n".
+   "              to forward requests it does not know to these servers.\n".
+   "              Note that the DNS servers on the service nodes will ignore this value\n".
+   "              and always be configured to forward requests to the management node.\n\n".
    " fsptimeout:  The timeout, in milliseconds, to use when communicating with FSPs.\n\n".
    " genmacprefix:  When generating mac addresses automatically, use this manufacturing\n".
    "                prefix (e.g. 00:11:aa)\n\n".
@@ -806,7 +825,13 @@ site => {
    " mnroutenames:  The name of the routes to be setup on the management node.\n\n".
    "            It is a comma separated list of route names that are defined in the routes table.\n\n".
    " nameservers:  A comma delimited list of DNS servers that each node in the cluster\n".
-   "               should use - often the xCAT management node.\n\n".
+   "               should use. This value will end up in the nameserver settings of the\n".
+   "               /etc/resolv.conf on each node. It is common (but not required) to set\n".
+   "               this attribute value to the IP address of the xCAT management node, if you have\n".
+   "               set up the DNS on the management node by running makedns.\n".
+   "               In a hierarchical cluster, you can also set this attribute to \"<xcatmaster>\"\n".
+   "               to mean the DNS server for each node should be the node that is managing it\n".
+   "               (either its service node or the management node).\n\n".
    " nodestatus:  If set to 'n', the nodelist.status column will not be updated during\n".
    "              the node deployment, node discovery and power operations.\n\n".
    " ntpservers:  A comma delimited list of NTP servers for the cluster - often the\n".
@@ -822,10 +847,11 @@ site => {
    "                 removing DHCP entries when noderm is executed)\n\n".
    " rsh:  This is no longer used. path to remote shell command for xdsh.\n\n".
    " rcp:  This is no longer used. path to remote copy command for xdcp.\n\n".
-   " sharedtftp:  Set to 0 or no, if xCAT should not assume the directory\n".
+   " sharedtftp:  Set to 0 or no, xCAT should not assume the directory\n".
    "              in tftpdir is mounted on all on Service Nodes. Default is 1/yes.\n". 
    "              If value is set to a hostname, the directory in tftpdir\n".
    "              will be mounted from that hostname on the SN\n\n". 
+   " skiptables:  Comma separated list of tables to be skipped by dumpxCATdb\n".
    " SNsyncfiledir:  The directory on the Service Node, where xdcp will copy the files\n".
    "                 from the MN that will eventually be copied to the compute nodes.\n\n".
    " snmpc:  The snmp community string that xcat should use when communicating with the\n".
@@ -885,7 +911,7 @@ vpd => {
   node => 'The node name or group name.',
   serial => 'The serial number of the node.',
   mtm => 'The machine type and model number of the node.  E.g. 7984-6BU',
-  side => 'The side information for the BPA/FSP',
+  side => '<BPA>-<port> or <FSP>-<port>. The side information for the BPA/FSP. The side attribute refers to which BPA/FSP, A or B, which is determined by the slot value returned from lsslp command. It also lists the physical port within each BPA/FSP which is determined by the IP address order from the lsslp response. This information is used internally when communicating with the BPAs/FSPs',
   asset => 'A field for administators to use to correlate inventory numbers they may have to accomodate',
   uuid => 'The UUID applicable to the node',
      comments => 'Any user-written notes.',
@@ -942,6 +968,7 @@ eventlog => {
     types => {
 	recid => 'INTEGER AUTO_INCREMENT',  
     },
+    tablespace =>'XCATTBS32K',
     table_desc => 'Stores the events occurred.',  
     descriptions => {
         recid => 'The record id.',
@@ -967,6 +994,8 @@ auditlog => {
     types => {
 	recid => 'INTEGER AUTO_INCREMENT',  
     },
+    compress =>'YES',
+    tablespace =>'XCATTBS32K',
     table_desc => ' Audit Data log.',  
     descriptions => {
         recid => 'The record id.',
@@ -986,6 +1015,7 @@ auditlog => {
 prescripts => {
     cols => [qw(node begin end comments disable)],
     keys => [qw(node)],
+    tablespace =>'XCATTBS16K',
     table_desc => 'The scripts that will be run at the beginning and the end of the nodeset(Linux), nimnodeset(AIX) or mkdsklsnode(AIX) command.',
     descriptions => {
 	node => 'The node name or group name.',
@@ -1039,13 +1069,15 @@ routes => {
 },
 
 zvm => {
-	cols => [qw(node hcp userid comments disable)],
+	cols => [qw(node hcp userid nodetype parent comments disable)],
 	keys => [qw(node)],
 	table_desc => 'List of z/VM virtual servers.',
 	descriptions => {
 		node => 'The node name.',
 		hcp => 'The hardware control point for this node.',
 		userid => 'The z/VM userID of this node.',
+		nodetype => 'The node type. Valid values: cec (Central Electronic Complex), lpar (logical partition), zvm (z/VM host operating system), and vm (virtual machine).',
+		parent => 'The parent node. For LPAR, this specifies the CEC. For z/VM, this specifies the LPAR. For VM, this specifies the z/VM host operating system.',
 		comments => 'Any user provided notes.',
 		disable => "Set to 'yes' or '1' to comment out this row.",
 	},
@@ -1451,6 +1483,17 @@ my @nodeattrs = (
                  tabentry => 'ppchcp.password',
                  access_tabentry => 'ppchcp.hcp=attr:node',
                 },
+ {attr_name => 'username',
+                 only_if => 'nodetype=ppc',
+                 tabentry => 'ppchcp.username',
+                 access_tabentry => 'ppchcp.hcp=attr:node',
+                },
+ {attr_name => 'password',
+                 only_if => 'nodetype=ppc',
+                 tabentry => 'ppchcp.password',
+                 access_tabentry => 'ppchcp.hcp=attr:node',
+                },
+
 ####################
 #  ppc table       #
 ####################
@@ -1498,16 +1541,36 @@ my @nodeattrs = (
                  tabentry => 'ppc.parent',
                  access_tabentry => 'ppc.node=attr:node',
                 },
- {attr_name => 'nodetype',
+ {attr_name => 'hwtype',
+                 only_if => 'mgt=fsp',
                  tabentry => 'ppc.nodetype',
                  access_tabentry => 'ppc.node=attr:node',
-                },                
+                },    
+ {attr_name => 'hwtype',
+                 only_if => 'mgt=bpa',
+                 tabentry => 'ppc.nodetype',
+                 access_tabentry => 'ppc.node=attr:node',
+                },    
+ {attr_name => 'hwtype',
+                 only_if => 'mgt=ivm',
+                 tabentry => 'ppc.nodetype',
+                 access_tabentry => 'ppc.node=attr:node',
+                },  
+ {attr_name => 'hwtype',
+                 only_if => 'mgt=hmc',
+                 tabentry => 'ppc.nodetype',
+                 access_tabentry => 'ppc.node=attr:node',
+                },                  
+ {attr_name => 'hwtype',
+                 only_if => 'mgt=zvm',
+                 tabentry => 'zvm.nodetype',
+                 access_tabentry => 'ppc.node=attr:node',
+                },                   
  {attr_name => 'supernode',
                  tabentry => 'ppc.supernode',
                  access_tabentry => 'ppc.node=attr:node',
                 },
  {attr_name => 'sfp',
-                 only_if => 'nodetype=frame',
                  tabentry => 'ppc.sfp',
                  access_tabentry => 'ppc.node=attr:node',
                 },
@@ -1533,6 +1596,15 @@ my @nodeattrs = (
                  only_if => 'mgt=fsp',
                  tabentry => 'ppcdirect.password',
                  access_tabentry => 'ppcdirect.hcp=attr:node::ppcdirect.username=str:general',
+  },
+        {attr_name => 'passwd.celogin',
+                 only_if => 'mgt=fsp',
+                 tabentry => 'ppcdirect.password',
+                 access_tabentry => 'ppcdirect.hcp=attr:node::ppcdirect.username=str:celogin',
+  },        {attr_name => 'passwd.celogin',
+                 only_if => 'mgt=bpa',
+                 tabentry => 'ppcdirect.password',
+                 access_tabentry => 'ppcdirect.hcp=attr:node::ppcdirect.username=str:celogin',
   },
         {attr_name => 'passwd.HMC',
                  only_if => 'mgt=bpa',
@@ -1936,6 +2008,11 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
                  tabentry => 'linuximage.kernelver',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 },
+ {attr_name => 'krpmver',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.krpmver',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                },
  {attr_name => 'permission',
                  only_if => 'imagetype=linux',
                  tabentry => 'linuximage.permission',
@@ -1944,6 +2021,11 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
  {attr_name => 'dump',
                  only_if => 'imagetype=linux',
                  tabentry => 'linuximage.dump',
+                 access_tabentry => 'linuximage.imagename=attr:imagename',
+                },
+ {attr_name => 'crashkernelsize',
+                 only_if => 'imagetype=linux',
+                 tabentry => 'linuximage.crashkernelsize',
                  access_tabentry => 'linuximage.imagename=attr:imagename',
                 },
 ####################
@@ -2103,6 +2185,10 @@ push(@{$defspec{node}->{'attrs'}}, @nodeattrs);
   },
         {attr_name => 'vlanid',
                  tabentry => 'networks.vlanid',
+                 access_tabentry => 'networks.netname=attr:netname',
+  },
+  		{attr_name => 'domain',
+                 tabentry => 'networks.domain',
                  access_tabentry => 'networks.netname=attr:netname',
   },
  {attr_name => 'usercomment',

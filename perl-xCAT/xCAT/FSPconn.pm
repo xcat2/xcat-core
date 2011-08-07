@@ -56,25 +56,29 @@ sub mkhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help t T=s p=s P=s port=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help t  s:s T=s p=s P=s port=s ) )) {
         return( usage() );
     }
 
     if ( exists $opt{s} )
     {
-       my $opttmp = xCAT::PPCconn::mkhwconn_parse_args($request, $args);
-           return $opttmp;
+        my $opttmp = xCAT::PPCconn::mkhwconn_parse_args($request, $args);
+        return $opttmp;
     }
 
 
     return usage() if ( exists $opt{h});
+
+    if ( !exists $opt{t} and !exists $opt{p}) {
+        return ( usage('Flag -t or -p must be used.'));
+    }
 
     if ( exists $opt{t} and exists $opt{p})
     {
         return( usage('Flags -t and -p cannot be used together.'));
     }
 
-    if ( exists $opt{P} and ! exists $opt{p})
+    if ( (exists $opt{P} or grep(/^(-P)$/, @$args)) and !exists $opt{p})
     {
         return( usage('Flags -P can only be used when flag -p is specified.'));
     }
@@ -84,7 +88,7 @@ sub mkhwconn_parse_args
     ##########################################
     my $nodes = $request->{node};
     my $ppctab  = xCAT::Table->new( 'ppc' );
-    my $nodetypetab = xCAT::Table->new( 'nodetype');
+    #my $nodetypetab = xCAT::Table->new( 'nodetype');
     my $vpdtab = xCAT::Table->new( 'vpd');
     my @bpa_ctrled_nodes = ();
     my @no_type_nodes    = ();
@@ -95,8 +99,9 @@ sub mkhwconn_parse_args
     ##########################################
     if ( exists $opt{p} )
     {
-        my $nodetype_hash    = $nodetypetab->getNodeAttribs( $opt{p},[qw(nodetype)]);
-        my $nodetype    = $nodetype_hash->{nodetype};
+        #my $nodetype_hash    = $nodetypetab->getNodeAttribs( $opt{p},[qw(nodetype)]);
+        #my $nodetype    = $nodetype_hash->{nodetype};
+        my $nodetype = xCAT::DBobjUtils->getnodetype($opt{p});
         if( !defined($nodetype) ) {
             return(usage("Something wrong with the specified HMC (-p Option). The HMC type doesn't exist."));
         }
@@ -114,15 +119,16 @@ sub mkhwconn_parse_args
             my $node_parent = undef;
             my $nodetype    = undef;
             my $node_hcp_nodetype = undef;    
-            my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
+            #my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
             my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
             if ( exists $opt{t} )
             {
                 my $node_hcp_hash = $ppctab->getNodeAttribs( $node,[qw(hcp)]);
                 if ( $node_hcp_hash->{hcp} )
                 {
-                    my $node_hcp_nodetype_hash = $nodetypetab->getNodeAttribs($node_hcp_hash->{hcp},[qw(nodetype)]);
-                    $node_hcp_nodetype = $node_hcp_nodetype_hash->{nodetype};
+                    #my $node_hcp_nodetype_hash = $nodetypetab->getNodeAttribs($node_hcp_hash->{hcp},[qw(nodetype)]);
+                    #$node_hcp_nodetype = $node_hcp_nodetype_hash->{nodetype};
+                    $node_hcp_nodetype = xCAT::DBobjUtils->getnodetype($node_hcp_hash->{hcp});
                 }
                 if ( defined $hcp_nodetype )
                 {
@@ -141,7 +147,8 @@ sub mkhwconn_parse_args
                 }
  
             }
-            $nodetype    = $nodetype_hash->{nodetype};
+            #$nodetype    = $nodetype_hash->{nodetype};
+            $nodetype = xCAT::DBobjUtils->getnodetype($node);
             $node_parent = $node_parent_hash->{parent};
             if ( !$nodetype )
             {
@@ -170,7 +177,7 @@ sub mkhwconn_parse_args
             if ( $nodetype eq 'frame')
             {
                 my $my_frame_bpa_cec =  xCAT::DBobjUtils::getcecchildren( $node)                                                                             ;
-                push @frame_members, @$my_frame_bpa_cec;
+                push @frame_members, @$my_frame_bpa_cec if($my_frame_bpa_cec);
                 push @frame_members, $node;
             }
 
@@ -223,7 +230,7 @@ sub mkhwconn_parse_args
     }
     
     $ppctab->close();
-    $nodetypetab->close();
+    #$nodetypetab->close();
     $vpdtab->close();
     
     $request->{method} = 'mkhwconn';
@@ -296,7 +303,13 @@ sub lshwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s) )) {
+    if ( exists $opt{s} )
+    {
+        my $opttmp = xCAT::PPCconn::lshwconn_parse_args($request, $args);
+        return $opttmp;
+    }
+	
+    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
@@ -322,49 +335,50 @@ sub lshwconn_parse_args
     if ( scalar( @ARGV)) {
         return(usage( "No additional flag is support by this command" ));
     }
-    my $nodetypetab = xCAT::Table->new('nodetype');
-    if (! $nodetypetab)
-    {
-        return( ["Failed to open table 'nodetype'.\n"]);
-    }
+    #my $nodetypetab = xCAT::Table->new('nodetype');
+    #if (! $nodetypetab)
+    #{
+    #    return( ["Failed to open table 'nodetype'.\n"]);
+    #}
     my $nodehmtab = xCAT::Table->new('nodehm');
     if (! $nodehmtab)
     {
         return( ["Failed to open table 'nodehm'.\n"]);
     }
-
+       
     my $nodetype;
     for my $node ( @{$request->{node}})
     {
-        my $ent = $nodetypetab->getNodeAttribs( $node, [qw(nodetype)]);
+        #my $ent = $nodetypetab->getNodeAttribs( $node, [qw(nodetype)]);
         my $nodehm = $nodehmtab->getNodeAttribs( $node, [qw(mgt)]);
-        if ( ! $ent) 
-        {
-            return( ["Failed to get node type for node $node.\n"]);
-        }
-        if ( ! $nodehm)
+        #if ( ! $ent) 
+        #{
+        #    return( ["Failed to get node type for node $node.\n"]);
+        #}
+        my $ttype = xCAT::DBobjUtils->getnodetype($node);
+        if ( ! $ttype)
         {
             return( ["Failed to get nodehm.mgt value for node $node.\n"]);
         }
-        if ( $ent->{nodetype} ne 'fsp' and $ent->{nodetype} ne 'cec'
-                and $ent->{nodetype} ne 'bpa' and $ent->{nodetype} ne 'frame')
+        if ( $ttype ne 'fsp' and $ttype ne 'cec'
+                and $ttype ne 'bpa' and $ttype ne 'frame')
         {
-            return( ["Node type $ent->{nodetype} is not supported for this command in FSPAPI\n"]);
+            return( ["Node type $ttype is not supported for this command in FSPAPI\n"]);
         }
         if ( ! $nodetype)
         {
-            $nodetype = $ent->{nodetype};
+            $nodetype = $ttype; #$ent->{nodetype};
         }
         else
         {
-            if ( $nodetype ne $ent->{nodetype})
+            if ( $nodetype ne $ttype) #$ent->{nodetype})
             {
                 return( ["Cannot support multiple node types in this command line.\n"]);
             }
         }
     }
 
-    $nodetypetab->close();
+    #$nodetypetab->close();
     $nodehmtab->close();
     
     $request->{nodetype} = $nodetype;
@@ -393,11 +407,17 @@ sub rmhwconn_parse_args
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose h|help T=s s) )) {
         return( usage() );
     }
     return usage() if ( exists $opt{h});
-    
+
+    if ( $opt{s} )
+    {
+        my $opttmp = xCAT::PPCconn::rmhwconn_parse_args($request, $args);
+        return $opttmp;
+    }	
+	
     if( ! exists $opt{T} )
     {
         $opt{T} = "lpar"; #defaut value is lpar.
@@ -425,8 +445,8 @@ sub rmhwconn_parse_args
     my $nodes = $request->{node};
     my $ppctab  = xCAT::Table->new( 'ppc' );
     return( ["Failed to open table 'ppc'.\n"]) if ( ! $ppctab);
-    my $nodetypetab = xCAT::Table->new( 'nodetype');
-    return( ["Failed to open table 'nodetype'.\n"]) if ( ! $nodetypetab);
+    #my $nodetypetab = xCAT::Table->new( 'nodetype');
+    #return( ["Failed to open table 'nodetype'.\n"]) if ( ! $nodetypetab);
     my $vpdtab = xCAT::Table->new( 'vpd');
     return( ["Failed to open table 'vpd'.\n"]) if ( ! $vpdtab);
     my $nodehmtab = xCAT::Table->new('nodehm');
@@ -444,9 +464,10 @@ sub rmhwconn_parse_args
         
 	my $node_parent = undef;
         my $nodetype    = undef;
-        my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
+        #my $nodetype_hash    = $nodetypetab->getNodeAttribs( $node,[qw(nodetype)]);
         my $node_parent_hash = $ppctab->getNodeAttribs( $node,[qw(parent)]);
-        $nodetype    = $nodetype_hash->{nodetype};
+        #$nodetype    = $nodetype_hash->{nodetype};
+        $nodetype = xCAT::DBobjUtils->getnodetype($node);
         $node_parent = $node_parent_hash->{parent};
         if ( !$nodetype)
         {
@@ -481,7 +502,7 @@ sub rmhwconn_parse_args
     }
 
     $ppctab->close();
-    $nodetypetab->close();
+    #$nodetypetab->close();
     $vpdtab->close();
     $nodehmtab->close();
 
@@ -576,54 +597,39 @@ sub lshwconn
 	      #print "in lshwconn:\n";
 	      #print Dumper($res);
 	      my $Rc = @$res[2];
-	      my $data = @$res[1];
+	      my $values = @$res[1];
 		     
 	      ############################################
               # If lssysconn failed, put error into all
               # nodes' return values
               ############################################
-              if ( $Rc ) 
-              {
-                    push @value, [$node_name, $data, $Rc];
-                    next;
-               }
-               
-	       my $node_ip = xCAT::Utils::getNodeIPaddress( $node_name );
-	       if(!defined($node_ip)) {
-                    $data = "Failed to get the $node_name\'s ip";
-		    push @value, [$node_name, $data, -1];
-		    next;
-	       }
-	       if( $data =~ /state/) { 
-	           $data =~ /state=([\w\s]+), type=([\w-]+), MTMS=([\w-\*]+), ([\w=]+), slot=([\w]+), ipadd=([\w.]+), alt_ipadd=([\w.]+)/ ;
-	          #$data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
-	           print "parsing: $1,$2,$3,$4,$5,$6,$7\n";
-	           my $state      = $1;
-	           my $type       = $2;
-	           my $mtms       = $3;
-	           my $sp         = $4;
-	           my $slot       = $5;
-	           my $ipadd      = $6;
-	           my $alt_ipaddr = $7;
-               #if($ipadd ne $node_ip) {
-               #    $ipadd=$7;
-               #    $alt_ipaddr = $6;
-               #}
-               #$data = "$sp,ipadd=$node_ip,alt_ipadd=$alt_ipaddr,state=$state";
-	           $data = "$sp,ipadd=$ipadd,alt_ipadd=$alt_ipaddr,state=$state";
-	       #my $s;
-	       #foreach my $val ( @infomap ) {
-	       #    if ( $data =~ /@$val[0]=([\w.\-\s]+)/ ) {
-	       #  	print "$1\n";
-	       #         $s = $s + "@$val[1]=$1";
-	       #   }
-	       #}
-	       #$data = $s;
-               }
-               push @value, [$node_name, $data, $Rc];
-                
-            }
-        }
+          #if ( $Rc ) 
+          #    {
+          #          push @value, [$node_name, $values, $Rc];
+          #          next;
+          #     }
+                  
+           my @data_a = split("\n", $values);         
+           foreach my $data(@data_a) {
+	           if( $data =~ /state/) { 
+	               $data =~ /state=([\w\s\,]+), type=([\w-]+), MTMS=([\w-\*]+), ([\w=]+), slot=([\w]+), ipadd=([\w.]+), alt_ipadd=([\w.]+)/ ;
+	               #$data =~ /state=([\w\s]+),\(type=([\w-]+)\),\(serial-number=([\w]+)\),\(machinetype-model=([\w-]+)\),sp=([\w]+),\(ip-address=([\w.]+),([\w.]+)\)/ ;
+	               print "parsing: $1,$2,$3,$4,$5,$6,$7\n";
+	               my $state      = $1;
+	               my $type       = $2;
+	               my $mtms       = $3;
+	               my $sp         = $4;
+	               my $slot       = $5;
+	               my $ipadd      = $6;
+	               my $alt_ipaddr = $7;
+	               $data = "$ipadd: $sp,ipadd=$ipadd,alt_ipadd=$alt_ipaddr,state=$state";
+                }
+             push @value, [$node_name, $data, $Rc];
+          } 
+       }
+    } 
+
+
     return \@value;
 
 

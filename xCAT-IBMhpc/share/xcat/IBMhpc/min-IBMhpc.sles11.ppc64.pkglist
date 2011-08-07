@@ -53,3 +53,4 @@ libstdc++33
 #xorg-x11-libX11
 #xorg-x11-libXext
 
+insserv

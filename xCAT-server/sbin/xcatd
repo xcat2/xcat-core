@@ -32,6 +32,8 @@ use xCAT::Client qw(submit_request);
 my $clientselect = new IO::Select;
 my $sslclients = 0; #THROTTLE
 my $maxsslclients = 64; #default
+my @deferredmsgargs; # hold argumentlist for MsgUtils call until after fork
+			#parallelizing logging overhead with real work
 
 sub xexit {
    while (wait() > 0) {
@@ -63,7 +65,7 @@ unless ($inet6support) {
 
 my $dispatch_requests = 1; # govern whether commands are dispatchable
 use IO::Socket;
-use IO::Handle;
+#use IO::Handle;
 use IO::Select;
 use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
@@ -769,12 +771,8 @@ until ($quit) {
     } else {
       $peername=undef;
     }
-    $sitetab=xCAT::Table->new('site');
-    my ($tmp) = $sitetab->getAttribs({'key'=>'domain'},'value');
-    if (defined $tmp->{value}) {
-        $domain = $tmp->{value};
-    }
-    $sitetab->close;
+    populate_site_hash();
+    $domain = $::XCATSITEVALS{domain};
 
 if ($inet6support) {
     $peerhost = gethostbyaddr($connection->peeraddr,AF_INET6);
@@ -813,7 +811,13 @@ if ($inet6support) {
       close($mainpidfile);
   }
 if ($listener) { $listener->close; }
-while (keys %immediatechildren) { yield(); }
+my $lastpid;
+while (keys %immediatechildren) { 
+	$lastpid=wait(); 
+       if ($immediatechildren{$lastpid}) {
+           delete $immediatechildren{$lastpid};
+       }
+}
 xCAT::Table::shut_dbworker;
 if ($dbmaster) {
     kill 2, $dbmaster;
@@ -838,6 +842,7 @@ sub plugin_command {
   use xCAT::NodeRange qw/extnoderange nodesmissed noderange/;
   $Main::resps={};  
   my @nodes;
+  @ARGV = ();
   if ($req->{node}) {
     @nodes = @{$req->{node}};
   } elsif ($req->{noderange} and $req->{noderange}->[0]) {
@@ -1024,8 +1029,11 @@ sub plugin_command {
           die;
         }
         #pipe($pfd,$cfd);
-        $parfd->autoflush(1);
-        $pfd->autoflush(1);
+	my $oldfh = select $parfd;
+	$|=1;
+	select $pfd;
+	$|=1;
+	select $oldfh;
         binmode($parfd,':utf8');
         binmode($pfd,':utf8');
         $child = xCAT::Utils->xfork;
@@ -1044,6 +1052,8 @@ sub plugin_command {
         $$progname=$oldprogname.": $modname instance";
         if ($sock) { close $pfd; }
         unless ($handler_hash{$_} == 1) {
+	  #ok, if nodes have numbers, this sorts them numerically... roughly..
+	  #if node doesn't, then it spews a message, need to fix
           my @nodes = sort {($a =~ /(\d+)/)[0] <=> ($b =~ /(\d+)/)[0] || $a cmp $b } (keys %{$handler_hash{$_}});
           $req->{node}=\@nodes;
         }
@@ -1109,6 +1119,8 @@ sub plugin_command {
     return $Main::resps 
   }
 
+  if (@deferredmsgargs) { xCAT::MsgUtils->message(@deferredmsgargs) };
+  @deferredmsgargs=();
   while (($plugin_numchildren > 0) and ($check_fds->count > 0)) { #this tracks end of useful data from children much more closely
     relay_fds($check_fds,$sock);
   }
@@ -1245,8 +1257,11 @@ sub dispatch_request {
       xCAT::MsgUtils->message("S", "ERROR: socketpair: $!");
       die;
     }
-    $parfd->autoflush(1);
-    $pfd->autoflush(1);
+	my $oldfh = select $parfd;
+	$|=1;
+	select $pfd;
+	$|=1;
+	select $oldfh;
     binmode($parfd,':utf8');
     binmode($pfd,':utf8');
     $child = xCAT::Utils->xfork;
@@ -1388,11 +1403,14 @@ sub convey_response {
     build_response($resp);
     return;
   }
-  $resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
+  unless ($resp) { return; }
+  $resp = freeze($resp);
+  #$resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
   #sanitize the response, to avoid being killed by non-printable bytes
-  $resp =~ tr/\011-\177/?/c;
+  #$resp =~ tr/\011-\177/?/c;
   #seeing if using utf-8 offloads potential issues to client terminal, it didn't
   print $parent_fd $resp;
+  print $parent_fd "\nENDOFFREEZE6sK6xa\n";
   yield; #parent must get timeslice anyway before an ack could possibly return
   my $parsel = new IO::Select;
   $parsel->add($parent_fd);
@@ -1487,7 +1505,6 @@ sub service_connection {
   my $peerfqdn = shift;
   my $peerport = $sock->peerport;
   my %tables=();
-  populate_site_hash();
   #some paranoid measures could reduce a third party abusing stage3 image to attempting to get USER/PASS for BMCs:
   # -Well, minimally, ignore requests if requesting node is not in spconfig mode (stage3)
   # -Option to generate a random password per 'getipmi' request.  This reduces the exposure to a D.O.S. hopefully
@@ -1647,22 +1664,31 @@ sub relay_fds { #Relays file descriptors from pipes to children to the SSL socke
   my $text;
   foreach $rfh (@readyset) { #go through each child, extract a complete, atomic message
     my $line;
+    my $resp;
     while ($line = <$rfh>) { #Will break on complete </xcatresponse> messages, avoid interleave
-      eval {
-        print $sock $line; 
-      };
+	$resp .= $line;
+	if ($line =~ /ENDOFFREEZE6sK6xa\n/) {
+		print $rfh "nfin\n"; #ok, ack the data (superfluous, but svn revision history shows an oddity with killed processes and assuming that was legit... for now)
+					#ack before doing the real work to allow child to get back to work
+		$resp = thaw($resp);
+  		$resp = XMLout($resp,KeyAttr=>[], NoAttr=>1,RootName=>'xcatresponse');
+		#sanitize the response, to avoid being killed by non-printable bytes
+  		$resp =~ tr/\011-\177/?/c;
+  		#seeing if using utf-8 offloads potential issues to client terminal, it didn't
+      		eval {
+		        print $sock $resp; 
+	      	};
+		last;
+      }
       if ($@ and $@ =~ /PIPE/) {
           $goneclient=1;
           print "Piped while writing to client\n";
           last;
       }
-      if ($line =~ /<\/xcatresponse>/) {
-        last;
-      }
     }                       
-    if ($line) { 
-      print $rfh "nfin\n"; #Notify convey_response message done
-    } else {
+    unless ($line) { 
+#      print $rfh "nfin\n"; #Notify convey_response message done
+#    } else {
       $fds->remove($rfh);      
       close($rfh);             
     }
@@ -1850,7 +1876,7 @@ sub validate {
 
       # read site.auditskipcmds attribute,
       # if set skip commands else audit all cmds.
-      my @skipcmds=xCAT::Utils->get_site_attribute('auditskipcmds');
+      my @skipcmds=($::XCATSITEVALS{auditskipcmds}); #xCAT::Utils->get_site_attribute('auditskipcmds');
       # if not "ALL" and not a command from site.auditskipcmds 
       # and not getcredentials and not getcredentials ,
       # put in syslog and  auditlog
@@ -1865,6 +1891,7 @@ sub validate {
           }
         }
       }
+      @deferredmsgargs=(); #should be redundant, but just in case
       if (($request->{command}->[0] ne "getpostscript") && ($request->{command}->[0] ne "getcredentials") && ($skip == 0)) {
       
         # put in audit Table and syslog
@@ -1891,9 +1918,9 @@ sub validate {
         }
         $rsp->{args} -> [0] =$arglist; 
         $rsp->{status} -> [0] = $status;
-        xCAT::MsgUtils->message("SA",$rsp);
+	@deferredmsgargs = ("SA",$rsp);
       } else { # getpostscript or getcredentials, just syslog
-          xCAT::MsgUtils->message("S",$logst);
+          unless ($::XCATSITEVALS{skipvalidatelog}) { @deferredmsgargs=("S",$logst); }
       }
      } # end getbladecons,etc check
       return $rc;

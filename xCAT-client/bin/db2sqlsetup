@@ -90,6 +90,7 @@ if (
                 'h|help'    => \$::HELP,
                 'v|version' => \$::VERSION,
                 'V|verbose' => \$::VERBOSE,
+                'p|passwd' =>  \$::PASSWD,
                 'r|rm'      => \$::RM,
     )
   )
@@ -154,15 +155,21 @@ if ($::RM)
 }
 
 
-if ((!($::INIT)) && (!($::SETUPODBC)))
+if ((!($::INIT)) && (!($::SETUPODBC)) && (!($::PASSWD)))
 {
-    xCAT::MsgUtils->message("I", "Either -i  or -o flag must be chosen");
+    xCAT::MsgUtils->message("I", "Either -i,-o or -p flag must be chosen");
     &usage;
     exit(1);
 }
-if ((!($::SERVER)) && (!($::CLIENT)))
+if (($::PASSWD) && ($::VERBOSE))
 {
-    xCAT::MsgUtils->message("I", "Either -S  or -C flag must be chosen");
+    xCAT::MsgUtils->message("I", "Change password cannot be used with Verbose mode. ");
+    &usage;
+    exit(1);
+}
+if ((!($::SERVER)) && (!($::CLIENT))&& (!($::PASSWD)))
+{
+    xCAT::MsgUtils->message("I", "Either -S, -C, or -p flag must be chosen");
     &usage;
     exit(1);
 }
@@ -176,7 +183,7 @@ if (($::SERVER) && ($::CLIENT))
 if ((!($::SERVER)) && (!($::CLIENT)) && ($::SETUPODBC))
 {
     xCAT::MsgUtils->message("I",
-                       "Either -S  or -C flag must be chosen with the -o flag");
+                      "Either -S  or -C flag must be chosen with the -o flag.");
     &usage;
     exit(1);
 }
@@ -220,10 +227,12 @@ $::xcatrunningdb2 = 0;
 # determine the location of the xcatdb instance
 #
 $::databaseloc            = "/var/lib/db2";    # database location default
+$::databaselocdir         = "/var/lib";       # database path 
 # if database location environment variable is set, use it
 if ($ENV{'DATABASELOC'})    # input where xcatdb is located  
 {
     $::databaseloc = $ENV{'DATABASELOC'};
+    $::databaselocdir = $ENV{'DATABASELOC'};
     $::databaseloc .="\/db2";
 } else { # use site.databaseloc if set
     my $cmd = " XCATBYPASS=1  tabdump site | grep databaseloc";
@@ -232,12 +241,20 @@ if ($ENV{'DATABASELOC'})    # input where xcatdb is located
     {
        (my $attr, my $db) = split(",", $output[0]);
        (my $q, $::databaseloc) = split("\"", $db);
+       $::databaselocdir = $::databaseloc;
        $::databaseloc .="\/db2";
    
     }
 }
-
-
+if (!(-e $::databaselocdir)){ # if it does not exist, create it
+   my $cmd = "mkdir -p $::databaselocdir";
+   xCAT::Utils->runcmd($cmd, 0);
+   if ($::RUNCMD_RC != 0)
+   {
+       xCAT::MsgUtils->message("E", " $cmd failed.");
+       exit(1);
+   }
+}
 # if we are on the MN ( db2 server) 
 if ($::SERVER)
 {
@@ -277,9 +294,10 @@ if ($::SERVER)
 
 #  if not just odbc update  and xcat MN is not already running on DB2
 #   or if we are setting up the  Client and not just the ODBC 
+#   or change password
 #   then Get  instance password
 #
-if ((($odbconly == 0) && ($::xcatrunningdb2 == 0)) || (($::CLIENT) && ($odbconly == 0)))
+if ((($odbconly == 0) && ($::xcatrunningdb2 == 0)) || (($::CLIENT) && ($odbconly == 0)) || ($::PASSWD))
 {
     if ($ENV{'XCATDB2PW'})    # passwd supplied
     {
@@ -288,12 +306,30 @@ if ((($odbconly == 0) && ($::xcatrunningdb2 == 0)) || (($::CLIENT) && ($odbconly
     else
     {                         #prompt for password
 
-        my $msg = "Input the password for xcatdb instance id: ";
+        my $msg = "Enter the password for xcatdb instance id: ";
         xCAT::MsgUtils->message('I', "$msg");
         `stty -echo`;
         chop($::adminpassword = <STDIN>);
         `stty echo`;
+        $msg = "Retype the password for xcatdb instance id: ";
+        xCAT::MsgUtils->message('I', "$msg");
+        `stty -echo`;
+        chop(my $adminpwd2 = <STDIN>);
+        `stty echo`;
+        if ($::adminpassword ne $adminpwd2) { # no match
+            $msg = "Sorry, passwords do not match. ";
+             xCAT::MsgUtils->message('I', "$msg");
+             exit 1;
+        }
     }
+}
+
+# if we are just changing the password for the instance
+#  do it and exit
+if ($::PASSWD) {
+  my $rc=0;
+  $rc=&updatepasswd;
+  exit $rc;
 }
 
 # initial setup request and not already running db2
@@ -433,6 +469,9 @@ if (($::INIT) && ($::xcatrunningdb2 == 0))
         xCAT::MsgUtils->message("I",
                                 "xCAT is  running on the DB2 database.\n");
 
+       # add cron entry for table reorg
+       &updatecrontab;
+
     }
     else  # client
     {
@@ -481,8 +520,8 @@ sub usage
         'I',
         "Usage:\ndb2sqlsetup - Performs the setup of IBM DB2 for xCAT to use as its database. See man db2sqlsetup for more information."
         );
-    my $msg =
-      "db2sqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> <-S|-C> [-o|--setupODBC] [-V|--verbose]\n           <-o|--setupODBC> <-S|-C> [-V|--verbose]\n           <-r|--rm> <-S|-C> [-V|--verbose]";
+  my $msg=
+      "db2sqlsetup <-h|--help>\n           <-v|--version>\n           <-i|--init> <-S|-C> [-o|--setupODBC] [-V|--verbose]\n           <-o|--setupODBC> <-S|-C> [-V|--verbose]\n           <-p|--passwd> [-S|-C]\n ";
 
     xCAT::MsgUtils->message('I', "$msg");
 }
@@ -502,7 +541,11 @@ sub startxcatd
    my $xcmd;
    if ($::osname eq 'AIX')
    {
-      $xcmd = "$::XCATROOT/sbin/restartxcatd";
+      if ($ENV{'XCATDB2QUIET'} == 1){    # don't show errors
+        $xcmd = "$::XCATROOT/sbin/restartxcatd >/dev/null 2>&1";
+      } else {
+        $xcmd = "$::XCATROOT/sbin/restartxcatd";
+      }
 
    }
    else
@@ -674,6 +717,11 @@ sub mkdb2user
         }
 
         # set xcatdb id password
+        my $verboseflg=0;
+        if ($::VERBOSE) {   # do not show commands with password
+          $verboseflg=1;
+          $::VERBOSE=undef;
+        }
         $cmd = qq~echo "xcatdb:$::adminpassword" | /bin/chpasswd -c~;
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -681,6 +729,9 @@ sub mkdb2user
 
             xCAT::MsgUtils->message("SE", " $cmd failed.");
             exit(1);
+        }
+        if ($verboseflg == 1) {
+          $::VERBOSE=1;
         }
     }
     else
@@ -735,6 +786,11 @@ sub mkdb2user
         }
 
         # set xcatdb id password
+        my $verboseflg=0;
+        if ($::VERBOSE) {   # do not show commands with password
+          $verboseflg=1;
+          $::VERBOSE=undef;
+        }
         $cmd = qq~echo $::adminpassword | passwd xcatdb --stdin~;
         xCAT::Utils->runcmd($cmd, 0);
         if ($::RUNCMD_RC != 0)
@@ -742,6 +798,9 @@ sub mkdb2user
 
             xCAT::MsgUtils->message("SE", " $cmd failed.");
             exit(1);
+        }
+        if ($verboseflg == 1) {
+          $::VERBOSE=1;
         }
     }
 
@@ -793,7 +852,7 @@ db2c_xcatdb     50001/tcp    # Port for server connection";
 	
  Create the db2 server or client instance 
  For server
- run <db2installpath>/instance/db2icrt -a server -p db2c_xcatdb -s ese -u xcatdb xcatdb 
+ run <db2installpath>/instance/db2icrt -a server -p db2c_xcatdb -u xcatdb xcatdb 
  For Client
  run <db2installpath>/instance/db2icrt -s client xcatdb 
 
@@ -820,7 +879,7 @@ sub setupinstance
         if ($::SERVER)
         {
 
-            $cmd .= "-a server -p db2c_xcatdb -s ese -u xcatdb xcatdb ";
+            $cmd .= "-a server -p db2c_xcatdb -u xcatdb xcatdb ";
             xCAT::Utils->runcmd($cmd, 0);
             if ($::RUNCMD_RC != 0)
             {                       # if error exit
@@ -908,6 +967,45 @@ sub setupinstance
     if ($rc != 0)
     {
       xCAT::MsgUtils->message("SI", " $cmd warning.");
+    }
+    # add export of EXTSHM to /etc/rc.db2 on AIX, so env variable will
+    # be exported when db2fmcd starts the database on reboot
+    my  $message;
+    if ($::osname eq 'AIX') {
+       my $rcdb2file="/etc/rc.db2";
+       my $entry="EXTSHM=ON\nexport EXTSHM";
+       my $entry2="#!/usr/bin/ksh \nEXTSHM=ON\nexport EXTSHM";
+       if (-e($rcdb2file)) { # add to file
+          $cmd = "fgrep EXTSHM $rcdb2file"; # check to see if there
+          xCAT::Utils->runcmd($cmd, -1);
+          if ($::RUNCMD_RC != 0)  # if not there
+          {
+             $cmd = "echo \"$entry\" >> $rcdb2file";
+             xCAT::Utils->runcmd($cmd, 0);
+             if ($::RUNCMD_RC != 0)
+             {
+               $message = "$cmd failed. Could not setup $rcdb2file. This will affect running ISNM on the system.";
+               xCAT::MsgUtils->message("E", "$message");
+             }
+          }
+       } else{  # create the file
+           $cmd = "echo \"$entry2\" >> $rcdb2file";
+           xCAT::Utils->runcmd($cmd, 0);
+           if ($::RUNCMD_RC != 0)
+           {
+              $message = "$cmd failed. Could not setup $rcdb2file. This will affect running ISNM on the system. Please check documentation for manual setup. ";
+              xCAT::MsgUtils->message("E", "$message");
+            } else {
+                $cmd = "chmod 554 $rcdb2file";
+                xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                  xCAT::MsgUtils->message("E", " $cmd failed.");
+                }
+
+            }
+                   
+      }
     }
 
     
@@ -1365,10 +1463,81 @@ sub setupODBC
     if ($::RUNCMD_RC != 0)
     {
         my $message =
-          "\nunixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs. If RHEL6 and ppc is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc should be installed. ";
+          "\nunixODBC is not installed.  If on AIX, it should be first obtained from the xcat dependency tarballs and installed before we can setup the ODBC. If on Linux, install from the OS CDs. If Redhat and ppc is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc should be installed. ";
         xCAT::MsgUtils->message("E", " $cmd failed. $message");
         exit(1);
     }
+    # For CNM you  must have the 32 bit version on Unix ODBC, Pam, 
+    # and openssl installed on Redhat.   Put out a warning.
+    if ($::linuxos =~ /rh.*/) {
+      $cmd = "rpm -qa | grep unixODBC";
+      my @output=xCAT::Utils->runcmd($cmd, 0);
+      # check for two lines one ppc and one ppc64
+      my $foundppc64 =0;
+      my $foundppc =0;
+      foreach my $line (@output)  {
+        if ($line =~ /\.ppc$/i) {
+         $foundppc=1;
+        }
+        if ($line =~ /\.ppc64$/i) {
+         $foundppc64=1;
+        }
+      }
+      if (($foundppc64 !=1) || ($foundppc != 1))
+      {
+        my $message =
+          "If Redhat on power is being used then both unixODBC.*.ppc64 and unixODBC.*.ppc rpms must be installed. ";
+        xCAT::MsgUtils->message("I", "$message");
+    
+      }
+      # check pam 32 and 64 bit installed
+      @output=();
+      $cmd = "rpm -qa | grep \^pam-";
+      @output=xCAT::Utils->runcmd($cmd, 0);
+      # check for two lines one ppc and one ppc64
+      $foundppc64 =0;
+      $foundppc =0;
+      foreach my $line (@output)  {
+        if ($line =~ /\.ppc$/i) {
+         $foundppc=1;
+        }
+        if ($line =~ /\.ppc64$/i) {
+         $foundppc64=1;
+        }
+      }
+      if (($foundppc64 !=1) || ($foundppc != 1))
+      {
+        my $message =
+          "If Redhat on power is being used then both pam-*.ppc64 and pam-*.ppc rpms must be installed. ";
+        xCAT::MsgUtils->message("I", "$message");
+    
+       }
+      # check openssl 32 and 64 bit installed
+      @output=();
+      $cmd = "rpm -qa | grep \^openssl-";
+      @output=xCAT::Utils->runcmd($cmd, 0);
+      # check for two lines one ppc and one ppc64
+      $foundppc64 =0;
+      $foundppc =0;
+      foreach my $line (@output)  {
+        if ($line =~ /\.ppc$/i) {
+         $foundppc=1;
+        }
+        if ($line =~ /\.ppc64$/i) {
+         $foundppc64=1;
+        }
+      }
+      if (($foundppc64 !=1) || ($foundppc != 1))
+      {
+        my $message =
+          "If Redhat on power is being used then both openssl*.ppc64 and openssl*.ppc rpms must be installed. ";
+        xCAT::MsgUtils->message("I", "$message");
+    
+       }
+    }
+
+
+
 
     my @rpmoutput;
     my $odbcinstfile;
@@ -1460,7 +1629,7 @@ sub setupODBC
         $sharedlibaix = "$::databaseloc/sqllib/lib/libdb2.so";
     } else {
         $sharedlib32="$::databaseloc/sqllib/lib32/libdb2.so";
-        $sharedlib64="/var/lib/db2/sqllib/lib/libdb2o.so";
+        $sharedlib64="$::databaseloc/sqllib/lib/libdb2o.so";
     }
     $cmd = "fgrep -i  DB2 $odbcinstfile ";
     xCAT::Utils->runcmd($cmd, -1);
@@ -1620,6 +1789,11 @@ sub createcfgloc
             xCAT::MsgUtils->message("E", " $cmd failed.");
         }
     }
+    my $verboseflg=0;
+    if ($::VERBOSE) {   # do not show commands with password
+          $verboseflg=1;
+          $::VERBOSE=undef;
+    }
     my $db2entry = "DB2:xcatdb|xcatdb|$::adminpassword";
     $cmd = "echo \"$db2entry\" > $cfgloc";
     xCAT::Utils->runcmd($cmd, 0);
@@ -1629,6 +1803,9 @@ sub createcfgloc
         xCAT::MsgUtils->message("SE", "$message");
         exit(1);
 
+    }
+    if ($verboseflg == 1) {
+          $::VERBOSE=1;
     }
 
     # allow readonly by root
@@ -1682,6 +1859,28 @@ sub restorexcatdb
     # start the daemon
     #
     &startxcatd;
+}
+#-----------------------------------------------------------------------------
+
+=head3   updatecrontab 
+	   
+	    Sets up a crontab entry to reorg the database, once a week on Sunday 
+               night midnight	
+	
+=cut
+
+#-----------------------------------------------------------------------------
+
+sub  updatecrontab
+{
+  my $cmd="/opt/xcat/share/xcat/tools/reorgtbls";
+  my $entry="0 0 * * 0 $cmd";
+  my ($code, $msg)=xCAT::Utils::add_cron_job($entry);
+  if ($code==0) {
+        xCAT::MsgUtils->message("I", "A crontab entry has been added to run DB2 table reorg once a week on Sunday 12am.\nIf you would like to change this time, use crontab -e to modify the entry for reorgtbls execution.\nYou may also limit the tables to reorg by using the -t parameter on reorgtbls.\nRun reorgtbls -h.");
+  } else {
+        xCAT::MsgUtils->message("W", " Failed to add crontab entry for Table reorg.");
+  }
 }
 #-----------------------------------------------------------------------------
 
@@ -2190,6 +2389,84 @@ sub remove
     xCAT::MsgUtils->message("I", "Cleanup completely finished. $error errors have got. \n");        
     
 }
+#-----------------------------------------------------------------------------
 
+=head3    updatepasswd 
+	
+   if -S , then update the xcatdb instance password on the MN
+      -C , then update the xcatdb instance password on the clients (SN)
+      if just -p , then update the xcatdb intance password on both  
 
+=cut
 
+#-----------------------------------------------------------------------------
+
+sub updatepasswd 
+
+{
+  my $rc=0;
+  $ENV{'XCATDB2QUIET'} = 1;
+  my $updateclient=0;
+  my $updateserver=0;
+  if ($::SERVER) {  # going to update the server MN
+    $updateserver=1;
+  }
+
+  if ($::CLIENT) {  # going to update the clients (SNs)
+    $updateclient=1;
+  }
+  if ((!($::CLIENT)) && (!($::SERVER))) { # update both MN and SNs
+    $updateserver=1;
+    $updateclient=1;
+  }
+  my $snlist;
+  # must read the database before we change the password on the MN
+  # to get the list of Service Nodes
+  if ($updateclient==1) { 
+   if (xCAT::Utils->isMN()) {    # if on Management Node
+     my @allSN=xCAT::Utils->getAllSN;
+     foreach my $nodes (@allSN) {
+       $snlist.=$nodes;
+       $snlist.="\,";
+     }
+     chop $snlist;
+   }
+  }
+  # change password on the MN
+  if ($updateserver==1) {  # we will change the MN
+     # then shutdown xcatd
+     # First change xcatd password
+     # change /etc/xcat/cfgloc
+     # then restart xcatd
+     # change odbc password, if it exists
+     &shutdownxcatd;
+     &mkdb2user;
+     &createcfgloc; 
+     &startxcatd;
+     &setupODBC;
+  }
+  # change password on the Service Nodes
+  # note this routine will be run on the SN's also from xdsh
+  if ($updateclient==1)  {  # Update the clients 
+   if (xCAT::Utils->isMN()) {    # if on Management Node
+     # xdsh <servicenodes>  -v /opt/xcat/bin/db2sqlsetup -C -p
+     my $cmd="xdsh $snlist -v DATABASELOC=$::databaselocdir XCATDB2PW=$::adminpassword \/opt\/xcat\/bin\/db2sqlsetup -C -p";
+     xCAT::Utils->runcmd($cmd, 0);
+     if ($::RUNCMD_RC != 0)
+     {
+         my $cmd2="xdsh $snlist -v DATABASELOC=$::databaselocdir XCATDB2PW=XXXXXX \/opt\/xcat\/bin\/db2sqlsetup -C -p";
+        my $message =
+          "$cmd2 failed.  Could not change password on all the Service Nodes";
+        xCAT::MsgUtils->message("E", "$message");
+     }
+   } else { # on the SN
+     &shutdownxcatd;
+     &mkdb2user;
+     &createcfgloc; 
+     &startxcatd;
+     &setupODBC;
+   }
+  }
+ 
+  return $::RUNCMD_RC;
+}

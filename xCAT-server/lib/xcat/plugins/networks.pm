@@ -365,28 +365,7 @@ sub donets
 		# For Linux systems
         my @ip6table = split /\n/,`/sbin/ip -6 route`;
     	my @rtable = split /\n/, `/bin/netstat -rn`;
-    	open($rconf, "/etc/resolv.conf");
-    	my @nameservers;
-    	if ($rconf)
-    	{
-        	my @rcont;
-        	while (<$rconf>)
-        	{
-            	push @rcont, $_;
-        	}
-        	close($rconf);
-        	foreach (grep /nameserver/, @rcont)
-        	{
-                    my $line = $_;
-                    my @pair;
-                    $line =~ s/#.*//;
-                    $line =~ s/^\s*//; 
-                    @pair = split(/\s+/, $line);
-                    if ($pair[0] eq 'nameserver' && $pair[1] ne '') {
-                        push @nameservers, $pair[1];
-                    }
-        	}
-    	}
+
     	splice @rtable, 0, 2;
 
         my %netgw = ();
@@ -539,19 +518,7 @@ sub donets
 						$nettab->setAttribs({'net' => $net, 'mask' => $mask}, {'netname' => $netname, 'mgtifname' => $mgtifname, 'gateway' => $gw});
 					}
 				}
-
-            	my $tent = $nettab->getAttribs({'net' => $net, 'mask' => $mask}, 'nameservers');
-            	unless ($tent and $tent->{nameservers})
-            	{
-                	my $text = join ',', @nameservers;
-					if ($::DISPLAY) {
-                    	push @{$rsp->{data}}, "    nameservers=$text";
-					} else {
-						if (!$foundmatch) {
-                			$nettab->setAttribs({'net' => $net, 'mask' => $mask}, {nameservers => $text});
-						}
-					}
-            	}
+            	
             	unless ($tent and $tent->{tftpserver})
             	{
                 	my $netdev = $ent[7];

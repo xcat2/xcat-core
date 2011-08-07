@@ -42,6 +42,13 @@ if ($? != 0)
     xCAT::MsgUtils->message("E", $msg);
     exit 1;
 }
+# read tables to skip during restore from site.skiptables attribute
+my @output2=xCAT::Utils->get_site_attribute('skiptables');
+my @skiptbls;
+if (@output2) {
+  @skiptbls = split (/\,/,$output2[0]);
+}
+
 my @files = readdir(DIRPATH);
 foreach my $table (@files)
 {
@@ -63,6 +70,17 @@ foreach my $table (@files)
             xCAT::MsgUtils->message("I", "Skipping $table\n");
            }
            next;
+        }
+        # skip and table in the site.skiptables attribute
+        if (@skiptbls) {
+          my ($tmptable,$suffix) = split(/\./,$table);
+          chomp $tmptable;
+          if (grep(/^$tmptable$/, @skiptbls)) {
+            if ($::VERBOSEREST) {
+             xCAT::MsgUtils->message("I", "Skipping $tmptable\n");
+            }
+             next;
+          }
         }
 
         my $cmd = "tabrestore $tablename";

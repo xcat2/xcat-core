@@ -1,6 +1,9 @@
 #!/usr/bin/perl
 # IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
 package xCAT::MacMap;
+require Exporter;
+our @ISA=qw/Exporter/;
+our @EXPORT_OK=qw/walkoid/;
 use strict;
 use xCAT::Table;
 use xCAT::Utils;

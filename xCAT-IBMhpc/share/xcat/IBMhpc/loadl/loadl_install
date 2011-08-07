@@ -140,9 +140,10 @@ chmod 777 $installroot$logdir/core
 # Owner set to 'loadl' userid, change if using a different userid
 chown -R $loadl_admin:$loadl_group $installroot$logdir/
 
-if [ "$NODESETSTATE" == "genimage" ] && [ -f /etc/LoadL.cfg ] ; then
-    cp /etc/LoadL.cfg $installroot/etc/LoadL.cfg
-fi
+# UNCOMMENT to let llcompute.sh/llserver.sh to create /etc/LoadL.cfg
+#if [ "$NODESETSTATE" == "genimage" ] && [ -f /etc/LoadL.cfg ] ; then
+#    cp /etc/LoadL.cfg $installroot/etc/LoadL.cfg
+#fi
 
 
 # UNCOMMENT to  Start loadleveler during postscripts 

@@ -94,6 +94,8 @@ function submit_request($req, $skipVerify, $opts_array){
 		set_time_limit(900);			// Set 15 minutes timeout (for long running requests) 
 										// The default is 30 seconds which is too short for some requests
 		
+		// Turn on output buffering
+		ob_start();
 		while(!feof($fp)) {				// Read until there is no more	
 			// Remove newlines and add it to the response
 			$str = fread($fp, 8192);
@@ -109,12 +111,12 @@ function submit_request($req, $skipVerify, $opts_array){
 							format_TBD($tmp);
 						} else {
 							// Print out output by default
-							echo $tmp . '<br/>';
+							echo '<pre>' . $tmp . '</pre>';
 							ob_flush();
 							flush();
 						}
 					}
-				}
+				}				
 			}
 							
 			// Look for serverdone response
@@ -144,6 +146,9 @@ function submit_request($req, $skipVerify, $opts_array){
 	} else {
 		echo "<p>xCAT submit request socket error: $errno - $errstr</p>";
 	}
+	
+	// Flush (send) the output buffer and turn off output buffering
+	ob_end_flush();
 
 	// Close syslog
 	closelog();

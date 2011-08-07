@@ -8,7 +8,7 @@ B<lsdef> [B<-h>|B<--help>] [B<-t> I<object-types>]
 
 B<lsdef> [B<-V>|B<--verbose>] [B<-l>|B<--long>] [B<-s>|B<--short>] [B<-a>|B<--all>] [B<-S>] 
 [B<-t> I<object-types>] [B<-o> I<object-names>] [B<-z>|B<--stanza>] [B<-i> I<attr-list>]
-[[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
+[B<-c>|B<--compress>] [B<--osimage>][[B<-w> I<attr>==I<val>] [B<-w> I<attr>=~I<val>] ...] [I<noderange>]
 
 
 =head1 DESCRIPTION
@@ -24,6 +24,12 @@ in the xCAT database.
 =item B<-a|--all>
 
 Display all definitions.
+
+=item B<-c|--compress>
+
+Display information in compressed mode, each output line has format "<object name>: <data>".
+The output can be passed to command xcoll or xdshbak for formatted output. 
+The -c flag must be used with -i flag.
 
 =item B<-h|--help>
 
@@ -53,6 +59,10 @@ See the "noderange" man page for details on supported formats.
 =item B<-o> I<object-names>
 
 A set of comma delimited object names.
+
+=item B<--osimage>
+
+Show all the osimage information for the node.
 
 =item B<-t> I<object-types>
 
@@ -185,8 +195,14 @@ The hidden nodes are FSP/BPAs.
 
  lsdef -S
 
-=back
 
+=item 15.
+
+To list the nodes status and use xcoll to format the output.
+
+ lsdef -t node -i status -c | xcoll
+
+=back
 
 =head1 FILES
 

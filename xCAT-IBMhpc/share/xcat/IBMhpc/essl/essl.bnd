@@ -14,6 +14,7 @@ I:pessl.rte.up
 I:pessl.rte.smp
 I:pessl.rte.rs1
 I:pessl.rte.mp
+# If you are using PESSL 4.1.0 or beyond, comment pessl.rte.hv out, it's not needed.
 I:pessl.rte.hv
 I:pessl.rte.common
 I:pessl.rte

@@ -1,10 +1,11 @@
 start:mkdef_null
+description:mkdef without any flag
 cmd:mkdef
-check:rc!=0
 check:output=~Usage
 end
 
-start:mkdef_t_o_attr
+start:mkdef_node
+description:mkdef -t node
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
 cmd:lsdef -i groups testnode
@@ -16,7 +17,8 @@ check:output=~groups=all,aix
 cmd:rmdef -t node -o testnode,testnode1
 end
 
-start:mkdef_f_t_o_attr
+start:mkdef_f
+description:mkdef -f
 cmd:mkdef -t node -o testnode groups=all,aix
 check:rc==0
 cmd:mkdef -f -t node -o testnode nodetype=lpar,osi groups=all
@@ -29,6 +31,7 @@ cmd:rmdef -t node -o testnode
 end	
 
 start:mkdef_z
+description:mkdef -z
 cmd:mkdef -t node -o orignode mgt=fsp cons=hmc pprofile=orignode groups=lpar,all
 check:rc==0
 cmd:lsdef -l orignode -z > /tmp/orignode.stanza
@@ -133,10 +136,26 @@ cmd:rmdef -t node -o testfsp
 check:rc==0
 end
 
+start:mkdef_t_network
+description: mkdef -t network
+cmd:mkdef -t network -o testnetwork net=1.2.3.0 mask=255.255.255.0 gateway=1.2.3.1
+check:rc==0
+cmd:lsdef -t network
+check:rc==0
+check:output=~testnetwork
+cmd:lsdef -t network -o testnetwork -l
+check:rc==0
+check:output=~net=1.2.3.0
+check:output=~mask=255.255.255.0
+check:output=~gateway=1.2.3.1
+cmd:rmdef -t network testnetwork
+end
+
 start:mkdef_t_o_error
-cmd:mkdef -t testtype -o testnode groups=all,aix
+description:mkdef -t wrongtype
+cmd:mkdef -t wrongtype -o testnode groups=all,aix
 check:rc!=0
-check:output=~Error
+check:output=~not a valid
 end
 
 

@@ -426,7 +426,7 @@ sub mknetboot
         else
         {
             $kcmdline =
-              "imgurl=http://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg.$suffix ";
+              "imgurl=http://$imgsrv/$rootimgdir/rootimg.$suffix ";
         }
         $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
 
@@ -482,6 +482,18 @@ sub mknetboot
 
         my $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
         $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-statelite.gz" if ($statelite);
+
+		if($statelite)
+		{
+		    my $statelitetb = xCAT::Table->new('statelite');
+		    my $mntopts = $statelitetb->getAttribs({node => $node}, 'mntopts');
+		    
+		    my $mntoptions = $mntopts->{'mntopts'};
+		    if(defined($mntoptions))
+		    {
+				$kcmdline .= "MNTOPTS=\'$mntoptions\'";
+		    }			
+		}
         $bptab->setNodeAttribs(
                       $node,
                       {
@@ -616,8 +628,9 @@ sub mkinstall
 		print "You should never get here!  Programmer error!";
 		return;
 	    }
-	    $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$plat", $profile, $os, $arch);
-	    if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$plat", $profile, $os, $arch); }
+
+		$tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$installroot/custom/install/$plat", $profile, $os, $arch);
+		if (! $tmplfile) { $tmplfile=xCAT::SvrUtils::get_tmpl_file_name("$::XCATROOT/share/xcat/install/$plat", $profile, $os, $arch); }
 
 	    $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$installroot/custom/install/$plat", $profile, $os, $arch);
 	    if (! $pkglistfile) { $pkglistfile=xCAT::SvrUtils::get_pkglist_file_name("$::XCATROOT/share/xcat/install/$plat", $profile, $os, $arch); }
@@ -659,7 +672,8 @@ sub mkinstall
                          $tmplfile,
                          "$installroot/autoinst/$node",
                          $node,
-		         $pkglistfile
+		         $pkglistfile,
+		         $pkgdir
                          );
         }
 
@@ -969,7 +983,7 @@ sub copycd
             my $prod = <$mfile>;
             close($mfile);
 
-            if ($prod =~ m/SUSE-Linux-Enterprise-Server/)
+            if ($prod =~ m/SUSE-Linux-Enterprise-Server/ || $prod =~ m/SUSE-Linux-Enterprise-Software-Development-Kit/)
             {
                 if (-f "$path/content") {
                     my $content;
@@ -988,6 +1002,9 @@ sub copycd
                     my @subparts = split /-/,   $parts[2];
                     $detdistname = "sles" . $subparts[0];
                     unless ($distname) { $distname = "sles" . $subparts[0] };
+                }
+                if($prod =~ m/Software-Development-Kit/) {
+                    $discnumber = 'sdk' . $discnumber;
                 }
 		# check media.1/products for text.  
 		# the cselx is a special GE built version.
@@ -1130,7 +1147,14 @@ sub copycd
         if ($ret[0] != 0) {
 	    $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
 	}
-
+        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot");
+        if ($ret[0] != 0) {
+            $callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
+        }
+        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite");
+        if ($ret[0] != 0) {
+            $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
+        }
     }
 }
 

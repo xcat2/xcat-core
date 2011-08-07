@@ -1,0 +1,43 @@
+#!/bin/sh
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
+# This script, ("make_sn_fs"), is a sample xCAT post script for 
+#	creating file systems on xCAT service
+#	nodes.  You can modify this script to create and mount local 
+#	file systems when the service nodes are installed.
+#
+#	Make sure your script is executable and that is is in the 
+#	/install/postscripts directory on the xCAT management node.
+#
+#	You must also add the script name to the list of scripts that 
+#	must be run at install time.  (See below.)
+#
+# 	To use this script you should make sure it gets run before the 
+#	"servicenode" script or any other scipts that may need to use these 
+#	file systems.
+#	
+#	For example, to get it to run before the "servicenode" script you
+#	could set the "postbootscripts" attribute of the service node
+#	definitions as follows:
+#
+#	chdef -t node -o service postbootscripts="make_sn_fs,servicenode"	
+#
+
+# create file systems
+/usr/sbin/crfs -v jfs2 -g rootvg -m /install -a size=80G -A yes
+/usr/sbin/crfs -v jfs2 -g rootvg -m /nodedata -a size=10G -A yes
+/usr/sbin/crfs -v jfs2 -g rootvg -m /sn_local -a size=10G -A yes
+
+# mount the files systems
+/usr/sbin/mount /install
+/usr/sbin/mount /nodedata
+/usr/sbin/mount /sn_local
+
+# add entries to the /etc/exports file
+/usr/bin/echo "/sn_local-rw,anon=0" >> /etc/exports
+/usr/bin/echo "/nodedata -rw,anon=0" >> /etc/exports
+
+# export the file systems
+/usr/sbin/exportfs /install
+/usr/sbin/exportfs /nodedata
+/usr/sbin/exportfs /sn_local

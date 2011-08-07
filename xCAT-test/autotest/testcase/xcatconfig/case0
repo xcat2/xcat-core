@@ -1,0 +1,89 @@
+start:xcatconfig_null
+description:xcatconfig with no argument
+cmd:xcatconfig
+check:output=~Usage
+end
+
+start:xcatconfig_f
+description:To force regeneration of keys and credentials and reinitialize the site table
+cmd:xcatconfig -f 
+check:rc==0
+end
+
+
+start:xcatconfig_k
+description:To regenerate root's ssh keys
+cmd:cp -rf /root/.ssh /root/.sshbak
+cmd:xcatconfig -k
+check:rc==0
+check:output=~(Generated /root/.ssh/id_rsa.pub)
+cmd:diff /root/.ssh/id_rsa.pub /root/.sshbak/id_rsa.pub
+check:rc!=0
+cmd:diff /root/.ssh/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+check:rc==0
+cmd:cp -rf /root/.sshbak/id_rsa.pub /install/postscripts/_ssh/authorized_keys
+cmd:mv -f /root/.sshbak /root/.ssh
+end
+
+
+start:xcatconfig_d
+description:This option will reinitialize the basic xCAT database table setup
+cmd:dumpxCATdb -p /tmp
+check:rc==0
+cmd:xcatconfig -d
+check:rc==0
+check:output=~(Updated cluster site definition)
+cmd:restorexCATdb -p /tmp
+check:rc==0
+cmd:rm -rf /tmp/*.csv
+end
+
+
+start:xcatconfig_s
+description:To regenerate node host ssh keys
+cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
+check:rc==0
+cmd:xcatconfig -s
+check:rc==0
+check:output=~(Generating new node hostkeys)
+cmd:diff /etc/xcat/hostkeys/ssh_host_key.pub /etc/xcat/hostkeysbak/ssh_host_key.pub
+check:rc!=0
+cmd:rm -rf /etc/xcat/hostkeysbak
+end
+
+start:xcatconfig_s_c
+description:To regenerate node host ssh keys and credentials
+cmd:cp -rf /root/.xcat /root/.xcatbak
+check:rc==0
+cmd:cp -rf /etc/xcat/hostkeys /etc/xcat/hostkeysbak
+check:rc==0
+cmd:xcatconfig -s -c
+check:rc==0
+check:output=~Created xCAT certificate
+check:output=~Signature ok
+check:output=~OK
+check:output!~Fail
+cmd:diff /etc/xcat/hostkeys/ssh_host_key.pub /etc/xcat/hostkeysbak/ssh_host_key.pub
+check:rc!=0
+cmd:diff /etc/xcat/hostkeys/ssh_host_key.pub /etc/xcat/hostkeysbak/ssh_host_key.pub
+check:rc!=0
+cmd:rm -rf /etc/xcat/hostkeysbak
+cmd:rm -rf /root/.xcatbak
+end
+
+start:xcatconfig_h
+description:xcatconfig -h and --help
+cmd:xcatconfig -h
+check:output=~Usage
+cmd:xcatconfig --help
+check:output=~Usage
+end
+
+
+start:xcatconfig_v
+description:xcatconfig -v and --version
+cmd:xcatconfig -v 
+check:output=~version|Version
+cmd:xcatconfig --version
+check:output=~version|Version
+end

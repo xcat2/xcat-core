@@ -8,11 +8,8 @@ I:ppe.openshmem
 I:ppe.rte
 I:ppe.loc.license
 
-# PE HPC toolkit, needed on login node, it will be merged into ppe.rte, need to verify before GA.
-#I:ppe.hpct
-
-# LAPI
-I:rsct.lapi
+# PE HPC toolkit, needed on login node
+#I:ppedev.hpct
 
 # MetaCluster (checkpoint/restore)
 I:mcr.rte

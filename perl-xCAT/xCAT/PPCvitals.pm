@@ -56,6 +56,13 @@ sub parse_args {
     if ( !defined( $cmd )) {
         return(usage( "Invalid command: $ARGV[0]" ));
     }
+     
+    if($ARGV[0] =~ /^rackenv$/) {
+        if($request->{hwtype} =~ /^hmc$/) {
+            return(usage( "Command $ARGV[0] is not valid when the nodes' hcp is hmc" ));
+        }
+    }
+
     ####################################
     # Check for an extra argument
     ####################################

@@ -1,10 +1,29 @@
 start:chdef_null
+description:chdef without any flag
 cmd:chdef
-check:rc!=0
 check:output=~Usage
 end
 
-start:chdef_t_o_attr
+start:chdef_t_node
+description:chdef -t node
+cmd:mkdef -t node -o testnode groups=all
+check:rc==0
+cmd:chdef -t node -o testnode groups=aix
+check:rc==0
+cmd:lsdef -t node -l testnode 
+check:rc==0
+check:output=~groups=aix
+cmd:chdef testnode groups=linux
+check:rc==0
+cmd:lsdef -t node -l testnode 
+check:rc==0
+check:output=~groups=linux
+cmd:rmdef -t node testnode
+check:rc==0
+end
+
+start:chdef_t_network
+description:chdef -t network
 cmd:chdef -t network -o testnetwork net=111.222.33.0 mask=255.255.255.254
 check:rc==0
 cmd:lsdef -t network -l testnetwork
@@ -21,7 +40,8 @@ check:output=~gateway=111.222.34.1
 cmd:rmdef -t network testnetwork
 end
 
-start:chdef_p_t_o_attr
+start:chdef_p
+description:chdef -p -t node
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
 cmd:chdef -p -t node -o testnode groups=aix
@@ -31,7 +51,8 @@ check:output=~groups=all,aix
 cmd:rmdef -t node testnode
 end
 
-start:chdef_m_t_o_attr
+start:chdef_m
+description:chdef -m -t node
 cmd:mkdef -t node -o testnode groups=all,testgroup
 check:rc==0
 cmd:chdef -m -t node -o testnode groups=testgroup
@@ -42,38 +63,20 @@ cmd:rmdef -t node testnode
 end
 
 start:chdef_z
+description:chdef -z
 cmd:mkdef -t node -o testnode groups=all
 check:rc==0
-cmd:lsdef -l $$CN -z > /tmp/testnode.stanza
+cmd:lsdef testnode -z > /tmp/testnode.stanza
 check:rc==0
-cmd:perl -pi -e 's/$$CN/testnode/g' /tmp/testnode.stanza
+cmd:perl -pi -e 's/all/aix/g' /tmp/testnode.stanza
 cmd:cat /tmp/testnode.stanza | chdef -z
 check:rc==0
-cmd:lsdef -l testnode -z > /tmp/testnode1.stanza
+cmd:lsdef testnode -l
 check:rc==0
-cmd:diff -w /tmp/testnode.stanza /tmp/testnode1.stanza
-check:rc==0
-cmd:rm -f /tmp/testnode1.stanza
+check:output=~groups=aix
 cmd:rm -f /tmp/testnode.stanza
 cmd:rmdef -t node testnode
-end
-
-start:chdef_t_o_attr_noderange
-cmd:chdef -t node -o orignode mgt=fsp cons=hmc pprofile=orignode groups=lpar,all
 check:rc==0
-cmd:lsdef -l orignode -z > /tmp/orignode.stanza
-check:rc==0
-cmd:perl -pi -e 's/orignode/testnode/g' /tmp/orignode.stanza
-cmd:cat /tmp/orignode.stanza | chdef -z
-check:rc==0
-cmd:lsdef -l testnode -z > /tmp/testnode.stanza
-check:rc==0
-cmd:diff /tmp/orignode.stanza /tmp/testnode.stanza
-check:rc==0
-cmd:rm -f /tmp/orignode.stanza
-cmd:rm -f /tmp/testnode.stanza
-cmd:rmdef -t node testnode
-cmd:rmdef -t node orignode
 end
 
 start:chdef_group
@@ -82,31 +85,31 @@ cmd:mkdef -t node -o testnode1-testnode2 mgt=hmc cons=hmc groups=all,systemp
 check:rc==0
 cmd:mkdef -t node -o testnode3-testnode4 mgt=ipmi cons=ipmi groups=all,systemx
 check:rc==0
-cmd:mkdef -t group -o testgrp members=testnode1,testnode3
+cmd:mkdef -t group -o testgrp1 members=testnode1,testnode3
 check:rc==0
-cmd:lsdef -s testgrp
+cmd:lsdef -s testgrp1
 check:rc==0
 check:output=~testnode1
 check:output=~testnode3
 check:output!~testnode2
 check:output!~testnode4
-cmd:chdef -t group -o testgrp -p members=testnode2,testnode4
+cmd:chdef -t group -o testgrp1 -p members=testnode2,testnode4
 check:rc==0
-cmd:lsdef -s testgrp
+cmd:lsdef -s testgrp1
 check:rc==0
 check:output=~testnode1
 check:output=~testnode3
 check:output=~testnode2
 check:output=~testnode4
-cmd:chdef -t group -o testgrp -m members=testnode1,testnode2
+cmd:chdef -t group -o testgrp1 -m members=testnode1,testnode2
 check:rc==0
-cmd:lsdef -s testgrp
+cmd:lsdef -s testgrp1
 check:rc==0
 check:output!~testnode1
 check:output=~testnode3
 check:output!~testnode2
 check:output=~testnode4
-cmd:rmdef -t group testgrp
+cmd:rmdef -t group testgrp1
 check:rc==0
 cmd:rmdef -t node -o testnode1-testnode4
 check:rc==0
@@ -178,8 +181,27 @@ cmd:rmdef -t node -o testfsp
 check:rc==0
 end
 
+start:chdef_n
+description:chdef -n
+cmd:mkdef -t node -o testnode1 mgt=hmc cons=hmc groups=all,systemp
+check:rc==0
+cmd:chdef testnode1 -n testnode2
+check:rc==0
+cmd:lsdef testnode1
+check:output=~Could not find
+cmd:lsdef testnode2
+check:rc==0
+check:output=~Object name
+check:output=~mgt=hmc
+check:output=~cons=hmc
+check:output=~groups=all,systemp
+cmd:rmdef testnode2
+check:rc==0
+end
+
 start:chdef_t_o_error
-cmd:chdef -t testtype -o testnode groups=all,aix
+description:chdef -t wrongtype
+cmd:chdef -t wrongtype -o testnode groups=all,aix
 check:rc!=0
-check:output=~Error
+check:output=~not a valid
 end

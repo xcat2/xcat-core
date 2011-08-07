@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<tabprune> - Deletes records from the eventlog or auditlog tables.
+B<tabprune> - Deletes records from the eventlog,auditlog,isnm_perf,isnm_perf_sum tables.
 
 =head1 SYNOPSIS
 
@@ -10,7 +10,7 @@ B<tabprune> [B<-h>|B<--help>] [B<-v>|B<--version>]
 
 =head1 DESCRIPTION
 
-The tabprune command is used to delete records from the auditlog or eventlog. As an option, the table header and all the rows pruned from the specified table will be displayed in CSV (comma separated values) format.  
+The tabprune command is used to delete records from the auditlog,eventlog,isnm_perf,isnm_perf_sum tables. As an option, the table header and all the rows pruned from the specified table will be displayed in CSV (comma separated values) format.  
 
 =head1 OPTIONS
 

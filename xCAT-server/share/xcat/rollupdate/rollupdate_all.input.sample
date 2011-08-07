@@ -68,6 +68,24 @@ updateall_nodes=compute
 updateall_nodecount=3
 
 
+# translatenames:
+# If your scheduler will be using names for nodes that are different from
+# xCAT node names (e.g. the scheduler is using a different administrative
+# network), you will need to tell xCAT how to translate from xCAT node names
+# to the node names registered with your scheduler.
+#
+# Syntax:
+#  translatenames=<xCAT_noderange>:/<pattern>/<replacement>/
+# where <pattern> and <replacement> are perl regular expressions to
+# be performed on the node names in <xCAT_noderange>.
+# See the xcatdb man page for more details on using regular expressions.
+# Multiple translatenames statements are allowed.  If an xCAT nodename
+# exists in more than one xCAT_noderange, the last translated value
+# will be used.
+#translatenames=service:|bb(\d+)s(\d+)|bb($1)sn($2)|
+#translatenames=compute:/\z/-hf2/
+
+
 
 # Scheduler Feature values 
 #    Node feature values that will be changed in the scheduler during the
@@ -154,13 +172,12 @@ update_if_down=no
 
 
 
-# NOT IMPLEMENTED YET! FUTURE SUPPORT FOR ROLLING UPDATE OF DISKFULL NODES
-# shutdownrequired:  Should a shutdown command be sent to the nodes.
+# skipshutdown:  Should a shutdown command be sent to the nodes.
 #    Shutdown is required for diskless nodes.  For diskfull nodes, simple
 #    updates may be applied to the nodes through prescripts, and a node
 #    reboot may not be required.
-# Default is "yes".
-shutdownrequired=yes
+# Default is "no" - a node shutdown will be performed.
+skipshutdown=no
 
 
 

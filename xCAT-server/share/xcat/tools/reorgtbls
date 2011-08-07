@@ -1,0 +1,117 @@
+#!/usr/bin/env perl
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#
+#####################################################
+#
+# This script will run a reorg on the DB2 table(s)
+# It is dependent on the setup of DB2 by the db2sqlsetup script
+# It is to be set in a cron job on the xCAT Management Node and
+# requires xCAT to be installed because it uses xCAT Perl libraries
+#  and xCAT commands
+#
+#####################################################
+BEGIN
+{
+    $::XCATROOT = $ENV{'XCATROOT'} ? $ENV{'XCATROOT'} : '/opt/xcat';
+    $::XCATDIR  = $ENV{'XCATDIR'}  ? $ENV{'XCATDIR'}  : '/etc/xcat';
+}
+
+use lib "$::XCATROOT/lib/perl";
+use xCAT::Utils;
+use Getopt::Long;
+
+use strict;
+use warnings;
+
+
+# Use runsqlcmd to run the SQL query to read the list of tables in 
+# the XCATDB schema
+# Then use runsqlcmd to run the reorg on the list of tables,
+# allow read/write by other applications during reorg
+#
+my $tablelist;
+my $help;
+my $cmd;
+my @tablist;
+GetOptions( 'V|verbose' => \$::VERBOSE,
+             't=s' => \$tablelist,
+             'h|help' => \$help,);
+if ($help) {
+    print "DB2 Table Reorganization utility.\n";
+    print
+      "This script can be set as a cron job or run on the command line to reorg the xcatdb DB2 database tables.\n";
+    print "Usage:\n";
+    print "\t--V - Verbose mode\n";
+    print "\t--h - usage\n";
+    print
+      "\t--t -comma delimitated list of tables.\n             Without this flag it reorgs all tables in the xcatdb database .\n";
+    print "\n";
+    exit 0;
+}
+# check to see if running DB2
+my $DBname = xCAT::Utils->get_DBName;
+if ($DBname ne "DB2") {
+ 
+   print " Reorg of table only supported for DB2 database\n";
+   `logger -txcat " reorgtbls:Only supports DB2 database"` ;
+    exit 1;
+  
+}
+if ($tablelist) {  # input list of tables 
+  @tablist=split(/\,/, $tablelist);
+} else { # get all tables
+  $cmd="$::XCATROOT/sbin/runsqlcmd \"select tabname from syscat.tables where TABSCHEMA='XCATDB';\"";
+  @tablist = xCAT::Utils->runcmd($cmd, 0);
+  if ($::RUNCMD_RC != 0)
+  {
+   `logger -txcat " reorgtbls:error in select tabname from syscat.tables"` ;
+   exit 1;
+  }
+}
+
+# reorg each table
+my $foundheader=0;
+foreach my $table (@tablist) {
+  chomp $table;
+  # skip lines untils we find the header unless -t option
+  if (!($tablelist)) {
+    if ($foundheader==0) {
+      if ( !($table =~ /TABNAME/)) {
+        next;
+      } else {
+        $foundheader=1;
+        next;
+      }
+    }
+  }
+  # skip blanks and -- lines
+  $table =~ s/\s*//g;    # remove blanks
+  if ($table =~ /^\s*$/) {  # skip blanks
+      next;
+  }
+  if ($table =~ m/[^a-zA-Z0-9_]/) # skip non alphanumeric lines not underscore
+  {
+      next;
+  }
+  $table  =~ tr/a-z/A-Z/;    # convert to upper
+  if ($::VERBOSE) {
+    print " Reorg of table $table\n";
+  }
+  $cmd="$::XCATROOT/sbin/runsqlcmd \"reorg indexes all for table $table allow write access;\"";
+  xCAT::Utils->runcmd($cmd, 0);
+  if ($::RUNCMD_RC != 0)
+  {
+    `logger -txcat " reorgtbls:error $cmd"`;
+  } else {
+    `logger -txcat " reorgtbls:reorg indexes for $table"`;
+  }
+  $cmd="$::XCATROOT/sbin/runsqlcmd \"reorg table $table inplace allow write access;\"";
+  xCAT::Utils->runcmd($cmd, 0);
+  if ($::RUNCMD_RC != 0)
+  {
+    `logger -txcat " reorgtbls:error $cmd"`;
+  } else {
+    `logger -txcat " reorgtbls:reorg $table inplace"`;
+  }
+}
+exit 0;

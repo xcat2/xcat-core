@@ -1,12 +1,12 @@
 Source: xcat-client
 Section: admin
 Priority: extra
-Maintainer: Isaac Freeman <ifreeman@us.ibm.com>
+Maintainer: Isaac Freeman <ifreeman@us.ibm.com>, Arif Ali <aali@ocf.co.uk>
 Build-Depends: debhelper (>= 5)
 Standards-Version: 3.7.2
 
 Package: xcat-client
-Architecture: any
-Depends: ${perl:Depends}, perl-xcat (>= 2.0-2), libsys-syslog-perl, libio-socket-ssl-perl, libxml-simple-perl, conserver-xcat-client
+Architecture: all
+Depends: ${perl:Depends}, nmap
 Description: Core executables and data of the xCAT management project
  xCAT-client provides the fundamental xCAT commands (chtab, chnode, rpower, etc) helpful in administrating systems at scale, with particular attention paid to large HPC clusters.

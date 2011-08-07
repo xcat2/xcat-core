@@ -347,7 +347,8 @@ sub getNodeinfo
                     if ($value)
                     {    # this is an LPAR
                         $xcatline = "    id=$value\n";
-                        $xcatline .= "    nodetype=lpar\n";
+                        $xcatline .= "    hwtype=lpar\n";
+                        $xcatline .= "    nodetype=ppc\n";
                     }
                 }
             }
@@ -523,9 +524,10 @@ sub getDevinfo
                 if ($value)
                 {
                     my $lcvalue = lc($value);
-                    $xcatline = "    nodetype=$lcvalue\n";
+                    $xcatline = "    nodetype=ppc\n";
                     if ($lcvalue eq "hmc") {
                       $xcatline .= "    mgt=$lcvalue\n";
+                      $xcatline .= "    hwtype=$lcvalue\n";
                     }
                 }
             }

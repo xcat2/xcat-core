@@ -3,3 +3,39 @@ cmd:gettab key=xcatdport site.value
 check:rc==0
 check:output==3001
 end
+
+
+start:gettab_H
+description:gettab -H and --with-fieldname
+cmd:gettab -H key=master site.value
+check:rc==0
+check:output=~site.value:
+cmd:gettab --with-fieldname key=master site.value
+check:rc==0
+check:output=~site.value:
+end
+
+start:gettab_err
+description:gettab with error symble ,error key ,error attr.
+cmd:gettab -c
+check:rc!=0
+check:output=~Usage
+cmd:gettab -H groups=master site.key
+check:rc!=0
+cmd:gettab -H key=master site.groups
+check:rc==0
+check:output=site.groups:
+end
+
+end
+
+
+start:gettab_h
+description:gettab -h and -? and --help
+cmd:gettab -h
+check:output=~Usage
+cmd:gettab -?
+check:output=~Usage
+cmd:gettab --help
+check:output=~Usage
+end

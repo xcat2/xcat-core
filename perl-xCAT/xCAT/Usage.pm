@@ -28,10 +28,12 @@ my %usage = (
        rpower <noderange> [--nodeps] [of] [-V|--verbose]
      PPC (HMC) specific:
        rpower <noderange> [onstandby] [-V|--verbose]
-     CEC/FSP(using Direct FSP Management) specific:
-       rpower <noderange> [on|onstandby|off|stat|state|lowpower]
-     Frame/BPA(using Direct FSP Management) specific:
-       rpower <noderange> [stat|state|rackstandby|exit_rackstandby]
+     CEC(using Direct FSP Management) specific:
+       rpower <noderange> [on|onstandby|off|stat|state|lowpower|resetsp]
+     Frame(using Direct FSP Management) specific:
+       rpower <noderange> [stat|state|rackstandby|exit_rackstandby|resetsp]
+     LPAR(using Direct FSP Management) specific:
+       rpower <noderange> [on|off|reset|stat|state|boot|of|sms]
      Blade specific:
        rpower <noderange> [cycle|softoff] [-V|--verbose]
 ",
@@ -44,8 +46,8 @@ my %usage = (
       rvitals [-h|--help|-v|--version]
   FSP/LPAR (with HMC) specific:
       rvitals noderange {temp|voltage|lcds|all}
-  FSP/LPAR (using Direct FSP Management)specific:
-      rvitals noderange {lcds|rackenv|all}
+  CEC/LPAR/Frame (using Direct FSP Management)specific:
+      rvitals noderange {rackenv|lcds|all}
   MPA specific:
       rvitals noderange {temp|voltage|wattage|fanspeed|power|leds|summary|all}
   Blade specific:
@@ -127,12 +129,36 @@ my %usage = (
            general_passwd=<currentpasswd,newpasswd>|
            *_passwd=<currentpasswd,newpasswd>|
            hostname=<*|hostname>
-   BPA specific:
+   FSP/CEC (using Direct FSP Management) Specific:
+       rspconfig noderange HMC_passwd={currentpasswd,newpasswd}
+       rspconfig noderange admin_passwd={currentpasswd,newpasswd}
+       rspconfig noderange general_passwd={currentpasswd,newpasswd}
+       rspconfig noderange *_passwd={currentpasswd,newpasswd}
+       rspconfig <noderange> [sysname]
+       rspconfig <noderange> [sysname=<*|name>]
+       rspconfig <noderange> [pending_power_on_side]
+       rspconfig <noderange> [pending_power_on_side=<temp|perm>]
+       rspconfig <noderange> [cec_off_policy]
+       rspconfig <noderange> [cec_off_policy=<poweroff|stayon>]
+   BPA/Frame (using Direct FSP Management)specific:
+       rspconfig noderange HMC_passwd={currentpasswd,newpasswd}
+       rspconfig noderange admin_passwd={currentpasswd,newpasswd}
+       rspconfig noderange general_passwd={currentpasswd,newpasswd}
+       rspconfig noderange *_passwd={currentpasswd,newpasswd}
        rspconfig <noderange> [frame]
        rspconfig <noderange> frame=<*|frame>
+       rspconfig <noderange> [sysname]
+       rspconfig <noderange> [sysname=<*|name>]
+       rspconfig <noderange> [pending_power_on_side]
+       rspconfig <noderange> [pending_power_on_side=<temp|perm>]
    HMC specific:
        rspconfig <noderange>  [sshcfg]
-       rspconfig <noderange>  [sshcfg=<enable|disable>]",
+       rspconfig <noderange>  [sshcfg=<enable|disable>]
+   CEC|Frame(using ASM)Specific:
+       rspconfig <noderange>  [dev|celogin1]
+       rspconfig <noderange>  [dev=<enable|disable>]|
+       rspconfig <noderange>  [celogin1=<enable|disable>]
+    ",
     "getmacs" => 
 "Usage: 
    Common:
@@ -161,7 +187,7 @@ my %usage = (
    PPC (with HMC) specific:
        lsvm <noderange> [-a|--all]
    PPC (using Direct FSP Management) specific:
-       lsvm <noderange> ",
+       lsvm <noderange> [-l|--long]",
     "chvm" => 
 "Usage:
    Common:
@@ -171,15 +197,17 @@ my %usage = (
        chvm <noderange> <attr>=<val> [<attr>=<val>...]
    PPC (using Direct FSP Management) specific:
        chvm <noderange> [-p <profile>]
+       chvm <noderange> [lparname=<*|name>]
        chvm <noderange> -i <id> [-m <memory_interleaving>] -r <partition_rule>
    VMware specific:
        chvm <noderange> [-a size][-d disk][-p disk][--resize disk=size][--cpus count][--mem memory]",
     "rmvm" => 
 "Usage: rmvm <noderange> [--service][-V|--verbose] 
-       rmvm [-h|--help|-v|--version]",
+       rmvm [-h|--help|-v|--version],
+       rmvm [-p] [-f]",
     "lsslp" =>
 "Usage: lsslp [-h|--help|-v|--version]
-       lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s BPA|MM|IVM|RSA|FSP|HMC][-C counts][-T timeout]
+       lsslp [<noderange>][-V|--verbose][-i ip[,ip..]][-w][-r|-x|-z][-n][-I][-s FRAME|CEC|MM|IVM|RSA|HMC][-C counts][-T timeout]
              [-t tries][-m][-e cmd][-c [timeinterval[interval,..]]][--vpdtable]
              [-M vpd|switchport][--makedhcp][--updatehost][--resetnet]",
   "rflash" =>
@@ -200,7 +228,8 @@ my %usage = (
     mkhwconn noderange -p single_hmc [-P HMC passwd] [-V|--verbose]
     
     PPC (using Direct FSP Management) specific:
-    mkhwconn noderange -t [-T tooltype] [--port port_value]",
+    mkhwconn noderange -t [-T tooltype] [--port port_value]
+    mkhwconn noderange -s [hmcnode] [-P HMC passwd] [-V|--verbose]",
     "rmhwconn" =>
 "Usage:
     rmhwconn [-h|--help]
@@ -209,7 +238,8 @@ my %usage = (
     rmhwconn noderange [-V|--verbose]
     
     PPC (using Direct FSP Management) specific:
-    rmhwconn noderange [-T tooltype]",
+    rmhwconn noderange [-T tooltype]
+    rmhwconn noderange -s",
     "lshwconn" =>
 "Usage:
     lshwconn [-h|--help]
@@ -218,7 +248,8 @@ my %usage = (
     lshwconn noderange [-V|--verbose]
     
     PPC (using Direct FSP Management) specific:
-    lshwconn noderange [-T tooltype]",
+    lshwconn noderange [-T tooltype]
+    lshwconn noderange -s",
     "renergy" =>
 "Usage:
     renergy [-h | --help] 
@@ -229,8 +260,8 @@ my %usage = (
     renergy noderange [-V] { {savingstatus}={on | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage } 
 
     Power 7 server specific :
-    renergy noderange [-V] { all | { [savingstatus] [dsavingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime] } }
-    renergy noderange [-V] { {savingstatus}={on | off} | {dsavingstatus}={on-norm | on-maxp | off} | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage }
+    renergy noderange [-V] { all | { [savingstatus] [dsavingstatus] [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] [syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] [ffoTurbo] [ffoNorm] [ffovalue] } }
+    renergy noderange [-V] { {savingstatus}={on | off} | {dsavingstatus}={on-norm | on-maxp | off} | {fsavingstatus}={on | off} | {ffovalue}=MHZ | {cappingstatus}={on | off} | {cappingwatt}=watt | {cappingperc}=percentage }
 
     Blade specific :
     renergy noderange [-V] { all | pd1all | pd2all | { [pd1status] [pd2status] [pd1policy] [pd2policy] [pd1powermodule1] [pd1powermodule2] [pd2powermodule1] [pd2powermodule2] [pd1avaiablepower] [pd2avaiablepower] [pd1reservedpower] [pd2reservedpower] [pd1remainpower] [pd2remainpower] [pd1inusedpower] [pd2inusedpower] [availableDC] [averageAC] [thermaloutput] [ambienttemp] [mmtemp] } }
@@ -245,7 +276,7 @@ my %usage = (
     updatenode <noderange> [-V|--verbose] [-k|--security] [--user] 
         [--devicetype]
     or
-    updatenode <noderange> [-V|--verbose] [-F|--sync] [-S|--sw] 
+    updatenode <noderange> [-V|--verbose] [-F|--sync | -f|--snsync] [-S|--sw] 
         [-P|--scripts [script1,script2,...]] [-s|--sn] 
         [-A|--updateallsw] [-c|--cmdlineonly] [-d alt_source_dir]
         [attr=val [attr=val...]]
@@ -262,6 +293,9 @@ Options:
         specific device.
 
     [-F|--sync] Perform File Syncing.
+
+    [-f|--snsync] Performs File Syncing to the service nodes that service 
+        the nodes in the noderange.
 
     [-S|--sw] Perform Software Maintenance.
 

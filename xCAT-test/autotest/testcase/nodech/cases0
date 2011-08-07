@@ -1,4 +1,5 @@
 start:nodech_noderange_table
+description:nodech testnode groups=all,rhels5.5 nodetype.os=rhels5.5 nodehm.mgt=hmc
 cmd:chdef -t node -o testnode groups=all,rhels5.4
 check:rc==0
 cmd:nodech testnode groups=all,rhels5.5 nodetype.os=rhels5.5 nodehm.mgt=hmc
@@ -9,7 +10,10 @@ check:output=~os=rhels5.5
 check:output=~mgt=hmc
 cmd:rmdef -t node testnode
 end
+
+
 start:nodech_noderange_table_comma
+description:nodech testnode groups,=rhels5.5.Check nodech command with ,=.
 cmd:chdef -t node -o testnode groups=all
 check:rc==0
 cmd:nodech testnode groups,=rhels5.5
@@ -18,6 +22,8 @@ cmd:lsdef -t node -i groups testnode
 check:output=~groups=rhels5.5,all
 cmd:rmdef -t node testnode
 end
+
+
 start:nodech_noderange_table_arrow
 cmd:chdef -t node -o testnode groups=all,rhels5.5
 check:rc==0
@@ -27,7 +33,21 @@ cmd:lsdef -t node -i groups testnode
 check:output!=rhels5.5
 cmd:rmdef -t node testnode
 end
+
+
+start:nodech_noderange_table_comma_arrow
+description:nodech testnode groups^=rhels5.5 groups,=rhels5.4 . Check nodech command with both ^= and ,=.
+cmd:chdef -t node -o testnode groups=all,rhels5.5
+check:rc==0
+cmd:nodech testnode groups^=rhels5.5 groups,=rhels5.4
+check:rc==0
+cmd:lsdef -t node -i groups testnode
+check:output=~groups=rhels5.4,all
+cmd:rmdef -t node testnode
+end
+
 start:nodech_noderanage_table_at
+description:nodech testnode nodetype.os=@=helloworld.Check nodech command with =@=.
 cmd:chdef -t node -o testnode os=hello
 check:rc==0
 cmd:nodech testnode nodetype.os=@=helloworld
@@ -36,7 +56,95 @@ cmd:lsdef -t node -i os testnode
 check:output=~os==helloworld
 cmd:rmdef -t node testnode
 end
+
+
+start:nodech_noderange_table_include
+description:nodech groups=~rh4.123456789 groups=rhels5.5.The command nodech with =~.
+cmd:chdef -t node -o testnode groups=rh4.123456789
+check:rc==0
+cmd:nodech groups=~rh4.123456789 groups=rhels5.5
+check:rc==0
+cmd:lsdef -t node -i groups testnode
+check:output=~groups=rhels5.5
+cmd:rmdef -t node testnode
+end
+
+start:nodech_noderange_table_uninclude
+description:nodech testnode1-testnode2 nodelist.groups\!~rhels5.5 nodelist.groups=rhels5.5,all.The command nodech with !~.
+cmd:chdef -t node -o testnode1 groups=rhels5.5,all
+check:rc==0
+cmd:chdef -t node -o testnode2 groups=rhels5.4,all
+check:rc==0
+cmd:nodech testnode1-testnode2 nodelist.groups\!~rhels5.5 nodelist.groups=rhels5.5,all
+check:rc==0
+cmd:lsdef -t node -i groups testnode2
+check:output=~groups=rhels5.5,all
+cmd:rmdef -t node testnode1-testnode2
+end
+
+
+start:nodech_noderange_table_equal
+description:nodech groups==rh4.123456789 groups=rhels5.5.The command nodech with ==.
+cmd:chdef -t node -o testnode groups=rh4.123456789
+check:rc==0
+cmd:nodech groups==rh4.123456789 groups=rhels5.5
+check:rc==0
+cmd:lsdef -t node -i groups testnode
+check:output=~groups=rhels5.5
+cmd:rmdef -t node testnode
+end
+
+
+start:nodech_noderange_table_unequal
+description::nodech testnode1-testnode2 groups!=rhels5.5 groups=rhels5.5.The command nodech with !=.
+cmd:chdef -t node -o testnode1 groups=rhels5.5
+check:rc==0
+cmd:chdef -t node -o testnode2 groups=rhels5.4
+check:rc==0
+cmd:nodech testnode1-testnode2 groups!=rhels5.5 groups=rhels5.5
+check:rc==0
+cmd:lsdef -t node -i groups testnode2
+check:output=~groups=rhels5.5
+cmd:rmdef -t node testnode1-testnode2
+end
+
+start:nodech_noderange_shortname_groups
+description:nodech testnode groups=rhels5.4.The nodech use shortname groups
+cmd:chdef -t node -o testnode groups=rhels5.5
+check:rc==0
+cmd:nodech testnode groups=rhels5.4
+check:rc==0
+cmd:lsdef -t node -i groups testnode
+check:output=~groups=rhels5.4
+cmd:rmdef -t node testnode
+end
+
+
+start:nodech_noderange_shortname_tags
+description:nodech testnode tags=rhels5.4.The nodech use shortname tags
+cmd:chdef -t node -o testnode groups=rhels5.5
+check:rc==0
+cmd:nodech testnode tags=rhels5.4
+check:rc==0
+cmd:lsdef -t node -i groups testnode
+check:output=~groups=rhels5.4
+cmd:rmdef -t node testnode
+end
+
+
+start:nodech_noderange_shortname_mgt
+description:nodech testnode mgt=hmc.The nodech use shortname mgt
+cmd:chdef -t node -o testnode mgt=blade
+check:rc==0
+cmd:nodech testnode mgt=hmc
+check:rc==0
+cmd:lsdef -t node -i mgt testnode
+check:output=~mgt=hmc
+cmd:rmdef -t node testnode
+end
+
 start:nodech_delete
+description:nodech -d 
 cmd:chdef -t node -o testnode os=hello
 check:rc==0
 cmd:nodech -d testnode nodetype
@@ -45,7 +153,26 @@ cmd:tabdump nodetype | grep testnode
 check:output!~testnode
 cmd:rmdef -t node testnode
 end
-start:nodech_delete_error
+
+start:nodech_h
+description:nodech -h
+cmd:nodech -h
+check:output=~Usage
+cmd:nodech -?
+check:output=~Usage
+cmd:nodech --help
+check:output=~Usage
+end
+
+start:nodech_v
+description:nodech -v
+cmd:nodech -v
+check:output=~Version
+end
+
+
+start:nodech_d_error
+description:nodech --delete
 cmd:chdef -t node -o testnode os=hello
 check:rc==0
 cmd:nodech --delete
@@ -56,7 +183,10 @@ check:rc!=0
 check:output=~Usage
 cmd:rmdef -t node testnode
 end
+
+
 start:nodech_error_node
+description: nodech error noderange,nodech testnode1 groups=all,rhels5.5 nodetype.os=rhels5.5 nodehm.mgt=hmc
 cmd:chdef -t node -o testnode groups=all,rhels5.4
 check:rc==0
 cmd:nodech testnode1 groups=all,rhels5.5 nodetype.os=rhels5.5 nodehm.mgt=hmc
@@ -64,7 +194,10 @@ check:rc!=0
 check:output=~Error
 cmd:rmdef -t node testnode
 end
+
+
 start:nodech_error_table
+description: nodech error table.
 cmd:chdef -t node -o testnode groups=all,rhels5.4
 check:rc==0
 cmd:nodech testnode groups=all,rhels5.5 nodetypes.os=rhels5.5 nodehm.mgt=hmc

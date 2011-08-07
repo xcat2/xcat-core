@@ -1,0 +1,3 @@
+#!/bin/sh
+/sbin/ip link set usb0 up
+/sbin/ip addr add dev usb0 169.254.95.120/16

@@ -1,0 +1,62 @@
+start:regnotif_null
+description:regnotif with no argument
+cmd:regnotif
+check:rc==0
+check:output=~Usage
+end
+
+start:regnotif_o
+description:regnotif with normal argument
+cmd:echo "hello,world" > test.pm
+check:rc==0
+cmd:regnotif test.pm nodelist -o a,d
+check:rc==0
+cmd:tabdump notification
+check:rc==0
+check:output=~"test.pm","nodelist","a,d"
+cmd:unregnotif test.pm
+cmd:rm -f test.pm
+end
+
+
+start:regnotif_err
+description:regnotif with error arguments
+cmd:echo "hello,world" > test.pm
+check:rc==0
+cmd:regnotif test.pm  -o a,d
+check:output=~Usage
+cmd:regnotif nodelist -o a,d
+check:output=~Usage
+cmd:regnotif nodelist
+check:output=~Usage
+cmd:rm -f test.pm
+end
+
+
+
+start:regnotif_h
+description:regnotif -h and --help
+cmd:regnotif -h 
+check:rc==0
+check:output=~Usage
+cmd:regnotif --help
+check:rc==0
+check:output=~Usage
+end
+
+
+start:regnotif_v
+description:regnotif -v and --version
+cmd:regnotif -v
+check:rc==0
+check:output=~Version|version
+cmd:regnotif --version
+check:rc==0
+check:output=~Version|version
+end
+
+
+
+
+
+

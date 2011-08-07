@@ -112,26 +112,35 @@ This sample configuration file is for a 2 building block cluster.
   xcat-frames:
    # these are the connections to the frames
    hostname-range = frame[1-6]
-   starting-ip = 10.200.2.1
    num-frames-per-hmc = 3
    # this lists which serial numbers go with which frame numbers
    vpd-file = vpd2bb.stanza
-
+   # This assumes you have 2 service LANs:  a primary service LAN 10.230.0.0/255.255.0.0 that all of the port 0's
+   # are connected to, and a backup service LAN 10.231.0.0/255.255.0.0 that all of the port 1's are connected to.
+   bpa-a-0-starting-ip = 10.230.1.1
+   bpa-b-0-starting-ip = 10.230.2.1
+   bpa-a-1-starting-ip = 10.231.1.1
+   bpa-b-1-starting-ip = 10.231.2.1
+ 
   xcat-cecs:
    # These are the connections to the CECs.  Either form of hostname is supported.
-   #hostname-range = cec01-cec60
+   #hostname-range = cec01-cec64
    hostname-range = f[1-6]c[01-12]
    # If you use the frame/cec hostname scheme above, but do not have a consistent
    # number of cecs in each frame, xcat can delete the cecs that do not get
    # supernode numbers assigned to them.
    delete-unused-cecs = 1
-   starting-ip = 10.200.3.1
    # lists the HFI supernode numbers for each group of cecs in each frame
    supernode-list = supernodelist2bb.txt
    # If you do not want to specify the supernode-list at this time and you have a consistent
    # number of cecs in each frame, you can instead just use this setting:
    #num-cecs-per-frame = 12
-
+   fsp-a-0-starting-ip = 10.230.3.1
+   fsp-b-0-starting-ip = 10.230.4.1
+   fsp-a-1-starting-ip = 10.231.3.1
+   fsp-b-1-starting-ip = 10.231.4.1
+ 
+ 
   xcat-building-blocks:
    num-frames-per-bb = 3
    num-cecs-per-bb = 32
@@ -160,7 +169,7 @@ This sample configuration file is for a 2 building block cluster.
   xcat-storage-nodes:
    num-storage-nodes-per-bb = 3
    # which cecs within the bldg block that the storage nodes are located in
-   cec-positions-in-bb = 12,20,32
+   cec-positions-in-bb = 12,20,31
    #hostname-range = stor1-stor6
    #starting-ip = 10.20.1.1
    #aliases = -hf0
@@ -183,41 +192,32 @@ in the cluster must be specified.
 
 Here is a sample file:
 
- frame1:
-  objtype=node
-  serial=99200A1
-  mtm=78AC-100
-  side=A
+  frame1:
+    objtype=node
+    serial=99200G1
+    mtm=9A00-100
+  frame2:
+    objtype=node
+    serial=99200D1
+    mtm=9A00-100
+  frame3:
+    objtype=node
+    serial=99200G1
+    mtm=9A00-100
+  frame4:
+    objtype=node
+    serial=99200D1
+    mtm=9A00-100
+  frame5:
+    objtype=node
+    serial=99200G1
+    mtm=9A00-100
+  frame6:
+    objtype=node
+    serial=99200D1
+    mtm=9A00-100
 
- frame2:
-  objtype=node
-  serial=99200B1
-  mtm=78AC-100
-  side=A
 
- frame3:
-  objtype=node
-  serial=99200C1
-  mtm=78AC-100
-  side=A
-
- frame4:
-  objtype=node
-  serial=99200D1
-  mtm=78AC-100
-  side=A
-
- frame5:
-  objtype=node
-  serial=99200E1
-  mtm=78AC-100
-  side=A
-
- frame6:
-  objtype=node
-  serial=99200F1
-  mtm=78AC-100
-  side=A
 
 =head2 Supernode Numbers for CECs
 

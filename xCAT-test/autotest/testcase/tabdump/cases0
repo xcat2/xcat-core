@@ -1,9 +1,163 @@
+start:tabdump_null
+description:display table list
+cmd:tabdump
+check:rc==0
+check:output=~site
+end
+
 start:tabdump_table
 cmd:tabdump site | grep xcatiport
 check:rc==0
 check:output=="xcatiport","3002",,
 end
+
+start:tabdump_v
+description:version
+cmd:tabdump -v
+check:rc==0
+check:output=~Version
+end
+
+start:tabdump_h
+description:usage
+cmd:tabdump -h
+check:rc==0
+check:output=~Usage
+end
+
+start:tabdump_help
+description:usage
+cmd:tabdump -?
+check:rc==0
+check:output=~Usage
+end
+
+
+
+start:tabdump_w_match
+description:-w flags to specify the selection string,Select nodes where the attribute value matches the SQL LIKE value.
+cmd:mkdef -t node -o testnode01 groups="all,aix"
+check:rc==0
+cmd:mkdef -t node -o testnode02 groups="aix"
+check:rc==0
+cmd:tabdump -w 'groups=~all%' nodelist
+check:rc==0
+check:output=~testnode01
+check:output!~testnode02
+cmd:rmdef testnode01
+cmd:rmdef testnode02
+end
+
+start:tabdump_w_equal
+description:-w flags to specify the selection string,Select nodes where the attribute value is exactly this value
+cmd:mkdef -t node -o testnode01 groups="all,aix"
+check:rc==0
+cmd:mkdef -t node -o testnode02 groups="aix"
+check:rc==0
+cmd:tabdump -w 'groups==aix' nodelist
+check:rc==0
+check:output=~testnode02
+check:output!~testnode01
+cmd:rmdef testnode01
+cmd:rmdef testnode02
+end
+
+start:tabdump_w_ne
+cmd:mkdef -t node -o testnode01,testnode02,testnode03 groups="aix"
+check:rc==0
+cmd:mkdef -t node -o testnode04 groups="linux"
+check:rc==0
+cmd:tabdump -w 'groups!=linux' nodelist
+check:rc==0
+check:output=~testnode01
+check:output=~testnode02
+check:output=~testnode03
+check:output!~testnode04
+cmd:rmdef testnode01
+cmd:rmdef testnode02
+cmd:rmdef testnode03
+cmd:rmdef testnode04
+end
+
+start:tabdump_w_notmatch
+cmd:mkdef -t node -o testnode01 groups="all"
+check:rc==0
+cmd:mkdef -t node -o testnode02 groups="aix"
+check:rc==0
+cmd:tabdump -w 'groups!~all' nodelist
+check:rc==0
+check:output=~testnode02
+check:output!~testnode01
+cmd:rmdef testnode01
+cmd:rmdef testnode02
+end
+
+start:tabdump_w_gt
+description:Select nodes where the attribute value is greater than this  specific value
+cmd:mkdef -t node -o testnode01 groups="aix" statustime=2011-04-19
+check:rc==0
+cmd:mkdef -t node -o testnode02 groups="aix" statustime=2011-04-18
+check:rc==0
+cmd:tabdump -w 'statustime>2011-04-18' nodelist
+check:rc==0
+check:output=~testnode01
+cmd:rmdef -t node testnode01-testnode02
+end
+
+start:tabdump_w_ge
+description:Select nodes where the attribute value is greater than this  specific value
+cmd:mkdef -t node -o testnode01 groups="aix" statustime=2011-04-19
+check:rc==0
+cmd:mkdef -t node -o testnode02 groups="aix" statustime=2011-04-18
+check:rc==0
+cmd:tabdump -w 'statustime>=2011-04-18' nodelist
+check:rc==0
+check:output=~testnode01
+check:output=~testnode02
+cmd:rmdef -t node testnode01-testnode02
+end
+
+start:tabdump_w_lt
+description:Select nodes where the attribute value is greater than this  specific value
+cmd:mkdef -t node -o testnode01 groups="aix" statustime=2011-04-19
+check:rc==0
+cmd:mkdef -t node -o testnode02 groups="aix" statustime=2011-04-18
+check:rc==0
+cmd:tabdump -w 'statustime<2011-04-19' nodelist
+check:rc==0
+check:output=~testnode02
+cmd:rmdef -t node testnode01-testnode02
+end
+
+start:tabdump_w_le
+description:Select nodes where the attribute value is greater than this  specifi
+c value
+cmd:mkdef -t node -o testnode01 groups="aix" statustime=2011-04-19
+check:rc==0
+cmd:mkdef -t node -o testnode02 groups="aix" statustime=2011-04-18
+check:rc==0
+cmd:tabdump -w 'statustime<=2011-04-19' nodelist
+check:rc==0
+check:output=~testnode02
+check:output=~testnode01
+cmd:rmdef -t node testnode01-testnode02
+end
+
+
 start:tabdump_d
+cmd:tabdump -d |grep site
+check:rc==0
+check:output=~site:
+end
+
+start:tabdump_f_d
+cmd:tabdump -f /tmp/table -d site|grep site
+check:rc==0
+check:output=~site
+cmd:rm -f /tmp/table
+end
+
+start:tabdump_d_nodehm
 cmd:tabdump -d site | grep xcatiport
 check:rc==0
 check:output=~xcatiport

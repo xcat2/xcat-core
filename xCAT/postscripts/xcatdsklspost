@@ -14,6 +14,16 @@
 #      update security  --> xcatdsklspost 5 -m/-M ...
 #
 #####################################################
+
+update_VPD()
+{
+    if [ -f /usr/sbin/vpdupdate ]; then
+        vpdupdate
+	logger -t xCAT "xcatdsklspost: updating VPD database"
+    fi
+}
+update_VPD
+
 download_postscripts()
 {
     server=$1
@@ -297,7 +307,8 @@ run_ps () {
  
  if [[ -f \$1 ]]; then 
   echo \"Running postscript: \$@\" | tee -a \$logfile
-  ./\$@ 2>&1 | tee -a \$logfile
+  ./\$@ 2>&1 1> /tmp/tmp4xcatlog
+  cat /tmp/tmp4xcatlog | tee -a \$logfile
  else
   echo \"Postscript \$1 does NOT exist.\" | tee -a \$logfile
  fi
@@ -319,6 +330,13 @@ fi
 
 DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /tmp/mypostscript`
 echo "$DHCP_TMP" > /tmp/mypostscript
+
+CLEANUPXCATPOST=`grep CLEANUPXCATPOST= /tmp/mypostscript |awk -F = '{print $2}'` 
+if [ "$CLEANUPXCATPOST" = "'1'" ] || [ "$CLEANUPXCATPOST" = "'yes'" ]; then
+  echo "cd /" >> /tmp/mypostscript
+  # /xcatpost might be read-only for statelite nodes
+  echo "rm -rf /xcatpost/*" >> /tmp/mypostscript
+fi
 
 chmod +x /tmp/mypostscript
 if [ -x /tmp/mypostscript ];then

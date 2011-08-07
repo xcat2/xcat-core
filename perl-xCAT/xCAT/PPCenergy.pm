@@ -22,6 +22,13 @@ use xCAT::DBobjUtils;
 'CPUspeed' => 1,
 'syssbpower' => 1,
 'sysIPLtime' => 1,
+# for FFO, only supported when communicating to fsp directly
+'ffoMin' => 1,
+'ffoVmin' => 1,
+'ffoTurbo' => 1,
+'ffoNorm' => 1,
+'fsavingstatus' => 1,
+'ffovalue' => 1,
 );
 
 %::SET_ATTRS = (
@@ -30,6 +37,9 @@ use xCAT::DBobjUtils;
 'cappingstatus' => 1,
 'cappingwatt' => 1,
 'cappingperc' => 1,
+# for FFO
+'fsavingstatus' => 1,
+'ffovalue' => 1,
 );
 
 $::CIM_CLIENT_PATH = "$::XCATROOT/sbin/xCAT_cim_client";
@@ -84,7 +94,7 @@ sub parse_args {
                         return (&usage());
                     }
     
-                    if ($set_attr eq "savingstatus" 
+                    if (($set_attr eq "savingstatus" || $set_attr eq "fsavingstatus") 
                          && ($set_value ne "on" && $set_value ne "off")) {
                         return (&usage());
                     } elsif ($set_attr eq "dsavingstatus"
@@ -95,7 +105,7 @@ sub parse_args {
                          && ($set_value ne "on" && $set_value ne "off")) {
                         return (&usage());
                     } elsif ( ($set_attr eq "cappingwatt"  
-                         || $set_attr eq "cappingperc")
+                         || $set_attr eq "cappingperc" ||  $set_attr eq "ffovalue")
                            && $set_value =~ /\D/) {
                         return (&usage());
                     }
@@ -160,19 +170,22 @@ sub parse_args {
     }
 
     # Check whether the hardware type of nodes are fsp or cec
-    my $nodetype_tb = xCAT::Table->new('nodetype');
-    unless ($nodetype_tb) {
-        return ([undef, "Error: Cannot open the nodetype table"]);
-    }
+    #my $nodetype_tb = xCAT::Table->new('nodetype');
+    #unless ($nodetype_tb) {
+    #    return ([undef, "Error: Cannot open the nodetype table"]);
+    #}
 
-    my $nodetype_v = $nodetype_tb->getNodesAttribs($nodes, ['nodetype']);
+    #my $nodetype_v = $nodetype_tb->getNodesAttribs($nodes, ['nodetype']);
+    my $nodetyperef = xCAT::DBobjUtils->getnodetype($nodes);  
+    my $i = 0;
     foreach my $node (@{$nodes}) {
-        if ($nodetype_v->{$node}->[0]->{'nodetype'} ne 'fsp' && 
-            $nodetype_v->{$node}->[0]->{'nodetype'} ne 'cec') {
+        if (@$nodetyperef[$i] ne 'fsp' && 
+            @$nodetyperef[$i] ne 'cec') {
             push @notfspnodes, $node;
         }
+        $i++;
     }
-    $nodetype_tb->close();
+    #$nodetype_tb->close();
 
     if (@notfspnodes) {
         return ([undef, "Error: The hardware type of following nodes are not fsp or cec: ".join(',', @notfspnodes)]);

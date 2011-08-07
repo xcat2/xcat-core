@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<makedhcp> - Creates new dhcp configuration files and updates live dhcp configuration using omapi.
+B<makedhcp> - Creates and updates DHCP configuration files.
 
 =head1 SYNOPSIS
 
@@ -14,29 +14,28 @@ B<makedhcp> B<-d> I<noderange>
 
 B<makedhcp> I<noderange> [B<-s> I<statements>]
 
-B<makedhcp> I<noderange> B<--hfi> 
-
 B<makedhcp> [I<-h|--help>]
 
 
 =head1 DESCRIPTION
 
-The B<makedhcp> command configures the DHCP daemon on the local system so that xCAT
-can manage the nodes of the cluster during discovery, full install, diskless booting, and normal booting.
-With the B<-n> option, B<makedhcp> will create a dhcpd.conf file, including certain general parameters
-such as a dynamic range and omapi configuration.
-With a noderange or the B<-a> option, makedhcp will inject configuration data (via omapi) pertinent to the
-specified nodes that immediately takes effect without a restart of DHCP.
+The B<makedhcp> command creates and updates the DHCP configuration file on the local system. 
 
-If the B<-d> flag is used with the B<-a> flag then it will delete all nodes' dhcp host definitions.
-The B<-d> flag followed by a I<noderange> will delete the dhcp host definitons for the noderange.
+The B<makedhcp> command is supported for both Linux and AIX clusters.
 
-The B<makedhcp> command also uses the following attributes from the xCAT database:
-B<site.dhcpinterfaces>, B<site.domain>, B<networks.dynamicrange>, B<networks.dhcpserver>.  See
-the xcatdb man page for details about the database attributes.
+With the B<-n> option, B<makedhcp> will create a new dhcp configuration file.  For Linux systems the file will include network entries as well as certain general parameters such as a dynamic range and omapi configuration.  For AIX systems the file will include network entries.
 
-Note: This command is not supported for AIX clusters.
+If a configuration file already exist the B<makedhcp> command will create a backup before creating a new one.
 
+On AIX systems, if there are any non-xCAT entries in the configuration file they will be preserved and added to the end of the new configuration file.
+
+With a noderange or the B<-a> option, B<makedhcp> will inject configuration data pertinent to the specified nodes that immediately takes effect without a restart of DHCP.
+
+On AIX systems B<makedhcp> will not add entries for cluster nodes that will be installed using NIM.  The entries for these nodes will be managed by NIM.  
+
+If the B<-d> flag is used with the B<-a> flag then B<makedhcp> will delete all the node entries created by xCAT. The B<-d> flag followed by a I<noderange> will delete the dhcp host definitons for the noderange.  
+
+Any entries created by NIM will not be removed. 
 
 =head1 OPTIONS
 
@@ -44,13 +43,11 @@ Note: This command is not supported for AIX clusters.
 
 =item B<-n>
 
-Create a new dhcpd.conf file with a network statement for each network dhcpd should listen on.
-The B<makedhcp> command will automatically restart dhcpd after this operation.
+Create a new dhcp configuration file with a network statement for each network the dhcp daemon should listen on. The B<makedhcp> command will automatically restart the dhcp daemon after this operation.  This option will replace any existing configuration file!
 
 =item B<-a>
 
-Define all nodes to the DHCP server.  (Will only add nodes that can be reached, network-wise, by
-this DHCP server.)  The dhcpd daemon does not have to be restarted after this.
+Define all nodes to the DHCP server.  (Will only add nodes that can be reached, network-wise, by this DHCP server.)  The dhcp daemon does not have to be restarted after this.
 
 =item I<noderange>
 
@@ -58,19 +55,15 @@ Add the specified nodes to the DHCP server configuration.
 
 =item [B<-s> I<statements>]
 
-For the input noderange, the argument will be interpreted like dhcpd.conf text.
+For the input noderange, the argument will be interpreted like dhcp configuration file text.
 
 =item B<-a -d>
 
-Delete all nodes from the DHCP server configuration.
+Delete all node entries added by xCAT from the DHCP server configuration.
 
 =item B<-d> I<noderange>
 
-Delete all nodes in the noderange from the DHCP server configuration.
-
-=item B<--hfi> I<noderange>
-
-Add the specified nodes to the DHCP server configuration with HFI device type.
+Delete all node entries, added by xCAT, in the noderange from the DHCP server configuration.
 
 =item B<-h>
 
@@ -92,7 +85,7 @@ Display usage message.
 
 =item 1.
 
-Add the network definitions to DHCP by updating the dhcpd.conf file:
+Create a new DHCP configuration file and add the network definitions:
 
  makedhcp -n
 
@@ -102,6 +95,8 @@ Define all nodes to the dhcp server:
 
  makedhcp -a
 
+Note:  This does not add nodes that will be installed with AIX/NIM.
+
 =item 3.
 
 Will cause dhcp on the next request to set root-path appropriately for only node5.  Note some characters (e.g. ") must be doubly escaped (once for the shell, and once for the OMAPI layer).
@@ -110,6 +105,15 @@ Will cause dhcp on the next request to set root-path appropriately for only node
 
 =back
 
+=head1 FILES
+
+DHCP configuration files.
+
+[AIX]     /etc/dhcpsd.cnf
+
+[SLES]    /etc/dhcpd.conf
+
+[RH]      /etc/dhcp/dhcpd.conf
 
 =head1 SEE ALSO
 

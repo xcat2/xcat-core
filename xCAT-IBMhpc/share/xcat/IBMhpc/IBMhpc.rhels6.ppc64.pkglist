@@ -27,3 +27,5 @@ libstdc++-devel.ppc
 libstdc++-devel.ppc64
 glibc-devel.ppc
 glibc-devel.ppc64
+
+redhat-lsb.ppc64

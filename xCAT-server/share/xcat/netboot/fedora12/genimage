@@ -53,6 +53,8 @@ my $postinstall_filename;
 my $rootimg_dir;
 my $mode;
 my $permission; # the permission works only for statelite mode currently
+my $internal;
+my $kerneldir;
 
 
 sub xdie {
@@ -72,75 +74,29 @@ GetOptions(
    't=s' => \$tmplimit,
    'k=s' => \$kernelver,
    'm=s' => \$mode,
-   'permission=s' => \$permission
+   'permission=s' => \$permission,
+   'kerneldir=s' => \$kerneldir,   
+   'internal' =>\$internal, #internal flag
+   'pkglist=s' => \$pkglist,   #internal flag
+   'srcdir=s' => \$srcdir,   #internal flag
+   'otherpkgdir=s' => \$srcdir_otherpkgs,  #internal flag
+   'otherpkglist=s' => \$otherpkglist,      #internal flag
+   'postinstall=s' => \$postinstall_filename,  #internal flag
+   'rootimgdir=s' => \$destdir,   #internal flag
 );
+
 if (@ARGV > 0) {
     $imagename=$ARGV[0];
-    if ($arch or $osver or $profile) {
-	print "-o, -p and -a options are not allowed when a image name is specified.\n";
-        exit 1;
-    }
-    #load the module in memory
-    eval {require("$::XCATROOT/lib/perl/xCAT/Table.pm")};
-    if ($@) {
-	print $@;
-	exit 1;
-    }
-   
-    #get the info from the osimage and linux 
-    my $osimagetab=xCAT::Table->new('osimage', -create=>1);
-    if (!$osimagetab) {
-	print "The osimage table cannot be opened.\n";
-	exit 1;
-    }
-    my $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
-    if (!$linuximagetab) {
-	print "The linuximage table cannot be opened.\n";
-	exit 1;
-    }
-    (my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'osvers', 'osarch', 'profile', 'provmethod');
-    if (!$ref) {
-	print "Cannot find image \'$imagename\' from the osimage table.\n";
-	exit 1;
-    }
-    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'pkglist', 'pkgdir', 'otherpkglist', 'otherpkgdir', 'postinstall', 'rootimgdir');
-    if (!$ref1) {
-	print "Cannot find $imagename from the linuximage table\n";
-	exit 1;
-    }
-
-    $osver=$ref->{'osvers'};
-    $arch=$ref->{'osarch'};
-    $profile=$ref->{'profile'};
-    my $provmethod=$ref->{'provmethod'};
-    
-    unless ($osver and $arch and $profile and $provmethod) {
-	print"osimage.osvers, osimage.osarch, osimage.profile and osimage.provmethod must be specified for the image $imagename in the database.\n";
-	exit 1;
-    }
-
-    if ($provmethod ne 'netboot') {
-	print "\'$imagename\' cannot be used to build diskless image. Make sure osimage.provmethod is 'netboot'.";
-	exit 1;
-    }
-
-    if (! $ref1->{'pkglist'}) {
-	print"A .pkglist file must be specified for image \'$imagename\' in the linuximage table.\n";
-        exit 0;
-    }
-    $pkglist =$ref1->{'pkglist'};
-
-    $srcdir=$ref1->{'pkgdir'};
-    $srcdir_otherpkgs=$ref1->{'otherpkgdir'};
-    $otherpkglist=$ref1->{'otherpkglist'};
-    $postinstall_filename=$ref1->{'postinstall'};
-    $destdir=$ref1->{'rootimgdir'};
 }
+
+my %updates_os = (); # the hash for updating osimage table
+my %updates = (); # the hash for updating linuximage table
 
 if ($mode eq "statelite") {
     if (!$permission) {
         $permission = "755";
     }
+    $updates{'permission'} = $permission if ( $internal );
 }
 
 if (!$arch) {
@@ -154,29 +110,31 @@ if (!$arch) {
 if (!$srcdir) { 
     $srcdir="$installroot/$osver/$arch";
 }
+$updates{'pkgdir'} = $srcdir if ($internal);
 
 if (!$srcdir_otherpkgs) { 
     $srcdir_otherpkgs = "$installroot/post/otherpkgs/$osver/$arch";
 }
+$updates{'otherpkgdir'} = $srcdir_otherpkgs if ($internal);
 
 if (!$destdir)
 {
     $destdir="$installroot/netboot/$osver/$arch/$profile";
 }
+$updates{'rootimgdir'} = $destdir if ($internal);
+
 $rootimg_dir="$destdir/rootimg";
 
 
 unless ($osver and $profile and $netdriver and $prinic) {
-   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [-m <mode> [--permission <permission>]]'."\n";
-   print '       genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -k <KERNELVER> <imagename>'."\n";
-   print "       --permission only works when '-m statelite' is set\n";
-   print "Examples:\n";
-   print " genimage -i eth0 -n tg3 -o centos5.1 -p compute\n";
-   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
-   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot -m statelite\n";
-   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot -m statelite --permission 777\n";
-   print " genimage -i eth0 -n tg3 myimage\n";
-   exit 1;
+    usage();
+    exit 1;
+}
+
+if ($netdriver) {
+    if ( ($updates{'netdrivers'} ne $netdriver) and ($internal) ) {
+        $updates{'netdrivers'} = $netdriver;
+    }
 }
 
 my @ndrivers;
@@ -239,9 +197,11 @@ unless ($onlyinitrd) {
        }  
    }
 
-   if (!$pkglist) {
-      print "Unable to find package list for $profile!";
-      exit 1;
+   if ($pkglist) {
+       $updates{'pkglist'} = $pkglist if ($internal);
+   } else {
+       print "Unable to find package list for $profile!";
+       exit 1;
    }
 
    my %pkg_hash=imgutils::get_package_names($pkglist);
@@ -270,6 +230,7 @@ unless ($onlyinitrd) {
     }
     my %extra_hash=();
     if ($otherpkglist) {
+	$updates{'otherpkglist'} = $otherpkglist if ($internal);
        %extra_hash=imgutils::get_package_names($otherpkglist);
     }
     my %extrapkgnames; 
@@ -372,6 +333,9 @@ unless ($kernelver) {
     $kernelver=$basekernelver;
 }
 chomp($kernelver);
+#$updates{'kernelver'} = $kernelver if ($internal);
+
+
 open($moddeps,"<","$rootimg_dir/lib/modules/$kernelver/modules.dep");
 my @moddeps = <$moddeps>;
 my @checkdeps = @ndrivers;
@@ -406,6 +370,9 @@ if (!$imagename) {
 } 
 
 if (($postinstall_filename) && (-x $postinstall_filename)) {
+
+    $updates{'postinstall'} = $postinstall_filename if ($internal);
+
     my $rc = system($postinstall_filename, $rootimg_dir,$osver,$arch,$profile);
     if($rc) {
         print "postinstall script failed\n";
@@ -438,6 +405,49 @@ if($mode eq "statelite"){
 	}
 }   
 
+# all the attributes have been gathered
+# now, update the linuximage and osimage tables
+# TODO: do statelite and stateless share the same attributes?
+#BEGIN: PLEASE DO NOT CHANGE THE FOLLOWING CODE, genimage PLUGIN NEEDS TO PARSE THR OUTPUT
+if ($internal) {
+    if ($imagename) {
+	if (keys(%updates) > 0) {
+	    print "The output for table updates starts here\n";
+	    print "table::linuximage\n";
+	    print "imagename::$imagename\n";
+	    my @a=%updates;
+	    print join('::',@a) . "\n";
+	    print "The output for table updates ends here\n";
+	}
+    } else {
+	$updates_os{'profile'} = $profile;
+	$updates_os{'imagetype'} = 'linux';
+	if($mode eq "statelite") {
+	    $updates_os{'provmethod'} = 'statelite';
+	} else {
+	    $updates_os{'provmethod'} = 'netboot';
+	}
+	$updates_os{'osname'} = 'Linux';
+	$updates_os{'osvers'} = $osver;
+	$updates_os{'osdistro'} = 'sles'; # not used currently
+	$updates_os{'osarch'} = $arch;
+	# update the imagename for stateless 
+	print "The output for table updates starts here\n";
+	print "table::osimage\n";
+	print "imagename::$osver-$arch-netboot-$profile\n";
+	my @a=%updates_os;
+	print join('::',@a) . "\n";
+	print "The output for table updates ends here\n";
+	
+	print "The output for table updates starts here\n";
+	print "table::linuximage\n";
+	print "imagename::$osver-$arch-netboot-$profile\n";
+	my @a=%updates;
+	print join('::',@a) . "\n";
+	print "The output for table updates ends here\n";
+   }
+}
+#END
 
 
 mkinitrd();
@@ -1042,10 +1052,9 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    open($cfgfile,">","$rootimg_dir/etc/resolv.conf");
    print $cfgfile "#Dummy resolv.conf to make boot cleaner";
    close($cfgfile);
-   #this code breaks statelite  see defect 3324448
-   #open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$prinic");
-   #print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
-   #close($cfgfile);
+   open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$prinic");
+   print $cfgfile "ONBOOT=yes\nBOOTPROTO=dhcp\nDEVICE=$prinic\n";
+   close($cfgfile);
    foreach (split /,/,$othernics) {
       if (/^$/) { next; }
       open($cfgfile,">","$rootimg_dir/etc/sysconfig/network-scripts/ifcfg-$_");
@@ -1108,3 +1117,14 @@ sub generic_post { #This function is meant to leave the image in a state approxi
    
    copy(<$rootimg_dir/boot/vmlinuz*>,"$destdir/kernel"); } 
 
+
+sub usage {	
+   print 'Usage: genimage -i <nodebootif> -n <nodenetdrivers> [-r <otherifaces>] -o <OSVER> -p <PROFILE> -k <KERNELVER> [-m <mode> [--permission <permission>]]'."\n";
+   print "       --permission only works when '-m statelite' is set\n";
+   print "Examples:\n";
+   print " genimage -i eth0 -n tg3 -o centos5.1 -p compute\n";
+   print " genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute\n";
+   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot -m statelite\n";
+   print " genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot -m statelite --permission 777\n";
+   return 0;
+}

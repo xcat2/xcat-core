@@ -29,10 +29,12 @@ B<Power 7 server specific :>
 B<renergy> I<noderange> [-V] { all | [savingstatus] [dsavingstatus] 
 [cappingstatus] [cappingmaxmin] [cappingvalue] [cappingsoftmin] 
 [averageAC] [averageDC] [ambienttemp] [exhausttemp] [CPUspeed] 
-[syssbpower] [sysIPLtime] }
+[syssbpower] [sysIPLtime] [fsavingstatus] [ffoMin] [ffoVmin] 
+[ffoTurbo] [ffoNorm] [ffovalue]}
 
 B<renergy> I<noderange> [-V] { savingstatus={on | off} 
-| dsavingstatus={on-norm | on-maxp | off} 
+| dsavingstatus={on-norm | on-maxp | off}
+| fsavingstatus={on | off} | ffovalue=MHZ 
 | cappingstatus={on | off} | cappingwatt=watt 
 | cappingperc=percentage }
 
@@ -142,7 +144,7 @@ B<Set>:   savingstatus
 
 =back
 
-B<8233-E8B>, B<8236-E8C>, B<9125-F2C>
+B<8233-E8B>, B<8236-E8C>
 
 =over 4
 
@@ -154,6 +156,22 @@ ambienttemp,exhausttemp,CPUspeed,syssbpower,sysIPLtime
 
 B<Set>:   savingstatus,dsavingstatus,cappingstatus,cappingwatt,
 cappingperc
+
+=back
+
+B<9125-F2C>
+
+=over 4
+
+Supported attributes:
+
+B<Query>: savingstatus,dsavingstatus,cappingstatus,cappingmin,
+cappingmax,cappingvalue,cappingsoftmin,averageAC,averageDC,
+ambienttemp,exhausttemp,CPUspeed,syssbpower,sysIPLtime,
+fsavingstatus,ffoMin,ffoVmin,ffoTurbo,ffoNorm,ffovalue
+
+B<Set>:   savingstatus,dsavingstatus,cappingstatus,cappingwatt,
+cappingperc,fsavingstatus,ffovalue
 
 =back
 
@@ -330,6 +348,62 @@ B<savingstatus> is in turn off status.
 =item B<exhausttemp>
 
 Query the current exhaust temperature. (Unit is centigrade)
+
+=item B<ffoMin>
+
+Query the minimum cpu frequency which can be set for FFO. (Fixed 
+Frequency Override)
+
+=item B<ffoNorm>
+
+Query the maximum cpu frequency which can be set for FFO. 
+
+=item B<ffoTurbo>
+
+Query the advertised maximum cpu frequency (selling point). 
+
+=item B<ffoVmin>
+
+Query the minimum cpu frequency which can be set for dropping down 
+the voltage to save power. That means when you drop the cpu 
+frequency from the ffoVmin to ffoVmin, the voltage won't change, 
+then there's no obvious power to be saved.
+
+=item B<ffovalue>
+
+Query the current value of FFO.
+
+=item B<ffovalue>=B<MHZ>
+
+Set the current value of FFO. The valid value of ffovalue should 
+be between the ffoMin and ffoNorm.
+
+Note1: Due to the limitation of firmware, the frequency in the range 
+3501 MHz - 3807 MHz can NOT be set to ffovalue. This range may be 
+changed in future.
+
+Note2: The setting will take effect only when the fsavingstatus is in 
+'on' status. But you need to set the ffovalue to a valid value before 
+enabling the fsavingstatus. (It's a limitation of the initial firmware 
+and will be fixed in future.) 
+
+The ffovalue setting operation needs about 1 minute to take effect.
+
+=item B<fsavingstatus>
+
+Query the status of FFO. The result should be 'on' or 'off'. 
+'on' - enable; 'off' - disable.
+
+=item B<fsavingstatus>={B<on> │ B<off>}
+
+Set the status of FFO. The value must be 'on' or 'off'.
+
+'on' - enable. It will take effect only when the B<ffovalue> 
+has been set to a valid value.
+
+'off' -disable. It will take effect immediately.
+
+Note: See the Note2 of ffovalue=MHZ.
 
 =item B<maxCPUspeed>
 

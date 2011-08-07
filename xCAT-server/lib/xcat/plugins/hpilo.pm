@@ -1,6 +1,36 @@
 # 
-# © Copyright 2009 Hewlett-Packard Development Company, L.P.
+# Copyright 2009 Hewlett-Packard Development Company, L.P.
 # EPL license http://www.eclipse.org/legal/epl-v10.html
+# 
+# CHANGES:
+#	VERSION 1.3 - Adaptive Computing Enterprises Inc <lmsilva@adaptivecomputing.com>
+#		(tested with a BladeSystem c3000 running iLO2 (firmware version: 1.50 Mar 14 2008))
+#
+#		- fixed ssl connection bug by introducing a 15 second sleep between boot commands (stat / on|off) in issuePowerCmd() 
+#
+#	VERSION 1.2 - Adaptive Computing Enterprises Inc <lmsilva@adaptivecomputing.com>
+#		(tested with a BladeSystem c3000 running iLO2 (firmware version: 1.50 Mar 13 2008))
+#
+#		- fixed boot process (to account for different power states)
+#		- found a bug in the Net::SSLeay library
+#			- it seems we cannot trust the following instructions inside openSSLconnection
+#			Net::SSLeay::connect($ssl) and die_if_ssl_error("ERROR: ssl connect") 
+#			- it seems this problem only happens during several requests at the same time, i believe the iLO service becomes unresponsive
+#			- here is how to reproduce it: rpower node01 off ; rpower node01 on ; rpower node01 boot
+#			- added a timeout to try and minimize the issue (it can be controlled by changing the $SSL_CONNECT_TIMEOUT variable
+#
+#	VERSION 1.1 - Adaptive Computing Enterprises Inc <lmsilva@adaptivecomputing.com>
+#		(tested with a BladeSystem c3000 running iLO2 (firmware version: 1.50 Mar 12 2008))
+#
+#		- fixed bug where we tried to use an existing xCAT library (xCAT::Utils->getNodesetStates())
+#		- fixed protocol handling logic (sendScript was returning an incorrect value)
+#		- fixed processReply sub as it wasn't prepared to handle on/off requests (just STAT or BEACON requests) 
+#		- added TOGGLE parameter to HOLD_PWR_BTN command. Otherwise requests would not work as expected
+#		- changed issuePowerCmd() so that "off" subcommands would use SET_HOST_POWER_NO requests instead of HOLD_PWR_BTN
+#		- added CHANGES to module
+#
+#	VERSION 1.0? - Hewlett-Packard Development Company, L.P.
+#		- first version of hpilo.pm module?
 #
 
 package xCAT_plugin::hpilo;
@@ -28,6 +58,7 @@ my $globalDebug = 0;
 my $outfd;
 my $currnode;
 my $status_noop="XXXno-opXXX";
+my $SSL_CONNECT_TIMEOUT = 30;
 
 require Exporter;
 our @ISA = qw(Exporter);
@@ -35,6 +66,7 @@ our @EXPORT = qw(
 		hpiloinit
         hpilocmd
 );
+our $VERSION = 1.1;
 
 sub handled_commands {
   return {
@@ -105,7 +137,7 @@ my $PRESS_POWER_BUTTON = '
 
 my $HOLD_POWER_BUTTON = '
 <SERVER_INFO MODE="write">
-<HOLD_PWR_BTN/>
+<HOLD_PWR_BTN TOGGLE="Yes"/>
 </SERVER_INFO>
 </LOGIN>
 </RIBCL>';
@@ -210,7 +242,16 @@ sub openSSLconnection($)
 	$ssl = Net::SSLeay::new($ctx) or die_now("ERROR: Failed to create SSL $!");
 
 	Net::SSLeay::set_fd($ssl, fileno(S));
-	Net::SSLeay::connect($ssl) and die_if_ssl_error("ERROR: ssl connect");
+	eval {
+		local $SIG{ALRM} = sub { die "TIMEOUT" };
+		alarm $SSL_CONNECT_TIMEOUT;
+		Net::SSLeay::connect($ssl) and die_if_ssl_error("ERROR: ssl connect");
+		alarm 0;
+	};
+	if ($@) {
+		die "TIMEOUT!" if $@ eq "TIMEOUT";
+		die "Caught ssl error!";
+	}
 	#print STDERR 'SSL Connected ';
 	print 'Using Cipher: ' . Net::SSLeay::get_cipher($ssl) if $globalDebug;
 	#print STDERR "\n\n";
@@ -285,16 +326,19 @@ sub sendScript($$)
 		}
 	}
 	print "READ: $lastreply\n" if $globalDebug;
-	if($lastreply =~ m/STATUS="(0x[0-9A-F]+)"[\s]+MESSAGE='(.*)'[\s]+\/>[\s]*(([\s]|.)*?)<\/RIBCL>/) {
+	if($lastreply =~ m/STATUS="(0x[0-9A-F]+)"[\s]+MESSAGE='(.*)'[\s]+\/>[\s]*(([\s]|.)*?)<\/RIBCL>\n/) {
 		if($1 eq "0x0000") {
 			#Sprint STDERR "$3\n" if $3;
 		} else {
 			$reply2return =  "ERROR: STATUS: $1, MESSAGE: $2\n";
 		}
 	}
-
+	else
+	{
+		$reply2return = $reply;
+	}
 	closeSSLconnection($ssl);
-	return $$reply2return;
+	return $reply2return;
 }
 
 sub process_request {
@@ -358,7 +402,7 @@ sub process_request {
 				#get the current nodeset stat
 				if (@allnodes>0) {
 					my $nsh={};
-					my ($ret, $msg)=xCAT::Utils->getNodesetStates(\@allnodes, $nsh);
+					my ($ret, $msg)=xCAT::SvrUtils->getNodesetStates(\@allnodes, $nsh);
 					if (!$ret) {
 						foreach (keys %$nsh) {
 							my $currstate=$nsh->{$_};
@@ -441,24 +485,41 @@ sub updateNodeStatus {
 
 sub processReply 
 {
-	
-	
 	my $command = shift;
 	my $subcommand = shift;
 	my $reply = shift;   # This is the returned xml string from the iLO that we will now parse
 	my $replyToReturn = "";
 	my $rc = 0;
-	
+
 	if ($command eq "power" ) {
 		if($subcommand =~ m/stat/) {
 			# Process power status command
-			$replyToReturn = "ON" if $reply =~ m/HOST_POWER="ON"/;
-			$replyToReturn = "OFF" if $reply =~ m/HOST_POWER="OFF"/;
+			$replyToReturn = "on" if $reply =~ m/HOST_POWER="ON"/;
+			$replyToReturn = "off" if $reply =~ m/HOST_POWER="OFF"/;
+			$replyToReturn = "timeout!" if $reply =~ m/ERROR: timed out/;
+		}
+		elsif (($subcommand =~/on/) || ($subcommand =~/off/) || ($subcommand =~ /reset/))
+		{
+			# Power commands do not actually return anything we can use
+			# so we have to check for error RESPONSE STATUS!
+			my $error_check = 0;
+			while ($reply =~ m/STATUS="(0x[0-9A-F]+)"[\s]+MESSAGE='(.*)'[\s]+\/>[\s]*(([\s]|.)*?)<\/RIBCL>/g) {
+				if ($1 ne "0x0000") {
+					$error_check = 1;
+					last;
+				}
+			}
+			if (!$error_check) {
+				return lc($subcommand);
+			}
+			else {
+				return "could not process command!\n";
+			}
 		}
 	} elsif ($command eq "beacon") {
 		if($subcommand =~ m/stat/) {
-			$replyToReturn = "ON" if $reply =~ /GET_UID_STATUS UID="ON"/;
-			$replyToReturn = "OFF" if $reply =~ /GET_UID_STATUS UID="OFF"/;
+			$replyToReturn = "on" if $reply =~ /GET_UID_STATUS UID="ON"/;
+			$replyToReturn = "off" if $reply =~ /GET_UID_STATUS UID="OFF"/;
 		}
 	}
 	
@@ -638,8 +699,8 @@ sub issuePowerCmd {
 	if ($subcommand eq "on") {
 		$cmdString = $SET_HOST_POWER_YES;
 	} elsif($subcommand eq "off") {
-		# $cmdString = $SET_HOST_POWER_NO;
-		$cmdString = $HOLD_POWER_BUTTON;
+		$cmdString = $SET_HOST_POWER_NO;
+		#$cmdString = $HOLD_POWER_BUTTON;
 	} elsif ($subcommand eq "stat" || $subcommand eq "state") {
 		$cmdString = $GET_HOST_POWER_STATUS;
 	} elsif ($subcommand eq "reset") {
@@ -663,23 +724,27 @@ sub issuePowerCmd {
 		if ($rc == 0) {
 			my $powerstatus = processReply("power", "status", $reply);
 			
-			if ($reply eq "ON") {
+			if ($powerstatus eq "on") {
+				$subcommand = "on reset";
 				$cmdString = $RESET_SERVER;
 			} else {
+				$subcommand = "on";
 				$cmdString = $SET_HOST_POWER_YES;
 			}
+			# iLO doesn't seem to handle several connections in a small amount of time
+			# so let's just wait a few seconds...
+			sleep(15);
 		} else {
 			print STDERR "issuePowerCmd:boot Power status of server failed. \n";
 			return ($rc, $reply);
 		}
 		
 	}
-	print "cmdstring is $cmdString \n";
-	
+
 	($rc, $reply) = iloCmd($ipaddr, $username, $password, 0, $cmdString);
 	
 	my $condensedReply = processReply("power", $subcommand, $reply);
-	
+
 	return ($rc, $condensedReply);
 }
 

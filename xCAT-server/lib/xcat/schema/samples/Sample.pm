@@ -28,8 +28,8 @@ package xCAT_schema::Sample;
 #   8 Restart the the xcatd, the tables will be automatically generated. 
 #   9 If you have service nodes,  copy all the files to those also and restart
 #     the daemon.
-#
-# 
+#   Note compress and tablespace are only supported for DB2
+#   engine is only supported for MySQL 
 ###############################################################################
 %tabspec = (
     x_lljob => {      #your table name should start with "x_".
@@ -40,7 +40,7 @@ package xCAT_schema::Sample;
         types => {
 	    jobid => 'INTEGER',  
 	},
-        engine => 'InnoDB',
+        engine => 'InnoDB',  
 	table_desc => 'Stores jobs.',
 	descriptions => {
 	    jobid => 'The job id.',
@@ -57,6 +57,8 @@ package xCAT_schema::Sample;
 	    jobid => 'INTEGER',
 	    cpu_usage => 'FLOAT',
 	},
+        compress =>'YES',  
+        tablespace =>'XCATTBS32K', 
         table_desc => 'Stores the node status.',
         descriptions => {
             node=> 'The node.',

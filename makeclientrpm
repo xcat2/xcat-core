@@ -24,15 +24,22 @@ then
         rpm -ba xCAT-client/xCAT-client.spec
         #rpm -ta $source/SOURCES/xCAT-client-$VER.tar.gz
 else
-	if [ -f /etc/redhat-release ]
+	rpmbuild --version > /dev/null
+	if [ $? -gt 0 ]
 	then
-   		pkg="redhat"
-	else
-   		pkg="packages"
+		echo "Error: Is rpmbuild installed and working?"
+		exit 1
 	fi
+	RPMROOT=`rpmbuild --eval '%_topdir' xCATsn/xCATsn.spec`
+	if [ $? -gt 0 ]
+	then
+		echo "Could not determine rpmbuild's root"
+		exit 1
+	fi
+	echo "The location for rpm building is ${RPMROOT}"
 
 	set -x
-	tar --exclude=.svn -czhf /usr/src/$pkg/SOURCES/xCAT-client-$VER.tar.gz xCAT-client
-	rm -f /usr/src/$pkg/SRPMS/xCAT-client-$VER*rpm /usr/src/$pkg/RPMS/noarch/xCAT-client-$VER*rpm
-	rpmbuild -ta /usr/src/$pkg/SOURCES/xCAT-client-$VER.tar.gz
+	tar --exclude=.svn -czhf $RPMROOT/SOURCES/xCAT-client-$VER.tar.gz xCAT-client
+	rm -f $RPMROOT/SRPMS/xCAT-client-$VER*rpm $RPMROOT/RPMS/noarch/xCAT-client-$VER*rpm
+	rpmbuild -ta $RPMROOT/SOURCES/xCAT-client-$VER.tar.gz
 fi

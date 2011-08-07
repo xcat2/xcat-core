@@ -44,3 +44,4 @@ xorg-x11-libs-32bit
 xorg-x11-libX11
 xorg-x11-libXext
 
+insserv

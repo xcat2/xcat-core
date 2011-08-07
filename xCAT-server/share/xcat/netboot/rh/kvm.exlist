@@ -1,5 +1,5 @@
-./usr/share/man*
-./usr/share/locale*
+./usr/share/man/*
+./usr/share/locale/*
 ./usr/share/i18n*
 ./var/cache/yum*
 ./usr/share/doc*

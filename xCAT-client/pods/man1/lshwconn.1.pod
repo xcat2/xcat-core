@@ -1,6 +1,6 @@
 =head1 NAME
 
-B<lshwconn> - Use this command to display the connection status for FSP and BPA nodes.
+B<lshwconn> - Use this command to display the connection status for CEC and Frame nodes.
 
 =head1 SYNOPSIS
 
@@ -18,7 +18,7 @@ B<lshwconn> I<noderange> B<-T> I<tooltype>
 
 =head1 DESCRIPTION
 
-This command is used to display the connection status for FSP and BPA node. 
+This command is used to display the connection status for CEC and Frame node. 
 
 =head1 OPTIONS
 
@@ -34,7 +34,7 @@ Verbose output.
 
 =item B<-T>
 
-The tooltype is used to communicate to the FSP/BPA. The value could be lpar or fnm. The tooltype value lpar is for xCAT and fnm is for CNM.
+The tooltype is used to communicate to the CEC/Frame. The value could be lpar or fnm. The tooltype value lpar is for xCAT and fnm is for CNM.
 
 =back
 
@@ -51,9 +51,9 @@ The tooltype is used to communicate to the FSP/BPA. The value could be lpar or f
 
 =item 1.
 
-To display connection status for all FSP nodes in node group fsp:
+To display connection status for all CEC nodes in node group CEC:
 
- lshwconn fsp
+ lshwconn cec
 
 Output is similar to:
 
@@ -62,7 +62,7 @@ Output is similar to:
 
 =item 2.
 
-To display connection status for BPA node frame1:
+To display connection status for Frame node frame1:
 
  lshwconn frame1
 
@@ -73,9 +73,9 @@ Output is similar to:
 
 =item 3.
 
-To display connection status for all FSP nodes in node group fsp to hardware server, and using lpar tooltype:
+To display connection status for all CEC nodes in node group CEC to hardware server, and using lpar tooltype:
 
- lshwconn fsp -T lpar
+ lshwconn cec -T lpar
 
 Output is similar to:
 

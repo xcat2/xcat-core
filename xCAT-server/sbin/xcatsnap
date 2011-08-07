@@ -184,7 +184,7 @@ sub snap_it {
             "/etc/hosts",                "/etc/conserver.cf",
             "/var/log/conserver",        "/etc/db_file.cr",
             "/etc/dhcpsd.cnf",           "/var/adm/ras/nimlog",
-            "/var/log/messages");
+            "/etc/resolv.conf", "/etc/named.conf",  "/var/log/messages");
     }
 
     elsif ( $OSname eq "Linux" ) {
@@ -194,8 +194,8 @@ sub snap_it {
             "$INSTALLDIR/postscripts/*",   "$INSTALLDIR/prescripts/*",
             "/tftpboot/*",                 "/var/log/consoles/*",
             "/etc/*-release",              "/etc/dhcpd.conf",
-            "/var/lib/dhcpd/dhcpd.leases", "/etc/hosts",
-            "/etc/conserver.cf",           "/var/log/conserver",
+            "/var/lib/dhcpd/dhcpd.leases", "/etc/hosts", "/etc/resolv.conf",
+            "/etc/named.conf", "/etc/conserver.cf",           "/var/log/conserver",
             "/etc/nsswitch.conf",          "/var/log/messages");
         print("@files_array \n");
     }

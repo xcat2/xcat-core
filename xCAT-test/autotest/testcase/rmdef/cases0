@@ -1,10 +1,11 @@
 start:rmdef_null
+description:rmdef without any flag
 cmd:rmdef
-check:rc!=0
 check:output=~Usage
 end
 
 start:rmdef_t_o_node
+description:rmdef -t node -o
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
 cmd:lsdef -t node testnode,testnode1
@@ -18,6 +19,7 @@ check:output=~Could not find an object named 'testnode1' of type 'node'.
 end
 
 start:rmdef_t_node
+description:rmdef -t node
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
 cmd:lsdef -t node testnode,testnode1
@@ -31,6 +33,7 @@ check:output=~Could not find an object named 'testnode1' of type 'node'.
 end
 
 start:rmdef_node
+description:rmdef nodename
 cmd:mkdef -t node -o testnode,testnode1 groups=all,aix
 check:rc==0
 cmd:lsdef -t node testnode,testnode1
@@ -44,6 +47,7 @@ check:output=~Could not find an object named 'testnode1' of type 'node'.
 end
 
 start:rmdef_t_o_network
+description:rmdef -t network
 cmd:mkdef -t network -o testnet net=1.2.3.0 mask=255.0.0.0 gateway=1.2.3.1 
 check:rc==0
 cmd:lsdef -t network
@@ -96,30 +100,31 @@ cmd:lsdef -t group -o dyngrp
 check:output=~Could not find an object named 'dyngrp' of type 'group'.
 end
 
-start:rmdef_f_all
-cmd:mkdir -p /tmp/db
-cmd:dumpxCATdb -p /tmp/db
-check:rc==0
-cmd:rmdef -f -a
-check:rc==0
-cmd:XCATBYPASS=yes lsdef -a
-check:rc==0
-check:output!~group
-check:output!~node
-check:output!~network
-check:output!~osimage
-check:output!~policy
-check:output!~notification
-check:output!~eventlog
-check:output!~boottarget
-check:output!~firmware
-check:output!~monitoring
-cmd:XCATBYPASS=yes restorexCATdb -a -p /tmp/db
-check:rc==0
-end
+#start:rmdef_f_all
+#cmd:mkdir -p /tmp/db
+#cmd:dumpxCATdb -p /tmp/db
+#check:rc==0
+#cmd:rmdef -f -a
+#check:rc==0
+#cmd:XCATBYPASS=yes lsdef -a
+#check:rc==0
+#check:output!~group
+#check:output!~node
+#check:output!~network
+#check:output!~osimage
+#check:output!~policy
+#check:output!~notification
+#check:output!~eventlog
+#check:output!~boottarget
+#check:output!~firmware
+#check:output!~monitoring
+#cmd:XCATBYPASS=yes restorexCATdb -a -p /tmp/db
+#check:rc==0
+#end
 
 start:rmdef_t_err
-cmd:rmdef -t testtype -o testnode
+description:rmdef -t wrongtype
+cmd:rmdef -t wrongtype -o testnode
 check:rc!=0
-check:output=~Error
+check:output=~not a valid
 end

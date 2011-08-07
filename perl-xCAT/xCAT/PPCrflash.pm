@@ -256,13 +256,14 @@ sub noderange_validate {
     ###########################################
     foreach my $node ( @$noderange ) {
         my $type = undef;
-        my $sitetab  = xCAT::Table->new( 'nodetype' );
-        if ( defined( $sitetab )) {
-            my ($ent) = $sitetab->getAttribs({ node=>$node},'nodetype');
-            if ( defined($ent) ) {
-               $type = $ent->{nodetype};
-            }
-        }
+        #my $sitetab  = xCAT::Table->new( 'nodetype' );
+        #if ( defined( $sitetab )) {
+        #    my ($ent) = $sitetab->getAttribs({ node=>$node},'nodetype');
+        #    if ( defined($ent) ) {
+        #       $type = $ent->{nodetype};
+        #    }
+        #}
+        $type = xCAT::DBobjUtils->getnodetype($node);
         #print "type:$type\n";
         if( $type =~/(fsp|lpar|cec)/) {
             $f1 = 1;
@@ -271,11 +272,11 @@ sub noderange_validate {
             my $exargs=$request->{arg};
             #my $t = print_var($exargs, "exargs");
             #print $t;
-            if ( grep(/commit/,@$exargs) != 0 || grep(/recover/,@$exargs) != 0) {
-                send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
-                send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
-                return -1;
-             }
+            #if ( grep(/commit/,@$exargs) != 0 || grep(/recover/,@$exargs) != 0) {
+            #    send_msg( $request, 1, "When run \"rflash\" with the \"commit\" or \"recover\" operation, the noderange cannot be BPA and can only be CEC or LPAR.");
+            #    send_msg( $request, 1, "And then, it will do the operation for both managed systems and power subsystems.");
+            #    return -1;
+            # }
         }
     }
 
@@ -634,7 +635,7 @@ sub rflash {
         } else {
             while(my ($name, $d) = each(%$h)) {
                 if ( @$d[4] !~ /^(fsp|bpa|lpar|cec|frame)$/ ) {
-                       push @value, [$name,"Information only available for LPAR/CEC/BPA",RC_ERROR];
+                       push @value, [$name,"Information only available for LPAR/CEC/BPA/Frame",RC_ERROR];
                        next;
                 }
             

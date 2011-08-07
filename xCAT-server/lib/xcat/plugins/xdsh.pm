@@ -1,4 +1,4 @@
-# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+
 #-------------------------------------------------------
 
 =head1
@@ -121,9 +121,11 @@ sub preprocess_request
         my @snoderange;
 
         # check to see if service nodes and not just the MN
-        # if just MN, then no hierarchy to deal with
-        if ($sn)
-        {
+        # if just MN or I am on a Service Node, then no hierarchy to deal with
+
+        if (! (xCAT::Utils->isServiceNode())) {  # not on a servicenode 
+          if ($sn)
+          {
             foreach my $snkey (keys %$sn)
             {
                 if (!grep(/$snkey/, @MNnodeipaddr))
@@ -134,6 +136,7 @@ sub preprocess_request
 
                 }
             }
+          }
         }
 
         # if servicenodes and (if xdcp and not pull function or xdsh -e)

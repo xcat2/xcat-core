@@ -25,6 +25,7 @@ use xCAT::Utils;
 use xCAT::NodeRange;
 use Fcntl ':flock';
 
+my @aixcfg;  # hold AIX entries created by NIM
 my @dhcpconf; #Hold DHCP config file contents to be written back.
 my @dhcp6conf; #ipv6 equivalent
 my @nrn;      # To hold output of networks table to be consulted throughout process
@@ -58,8 +59,9 @@ if ( $^O ne 'aix' and -d "/etc/dhcp" ) {
 }
 my $usingipv6;
 
-sub ipIsDynamic { #meant to be v4/v6 agnostic.  DHCPv6 however takes some care to allow a dynamic range to overlap static reservations
-                  #xCAT will for now continue to advise people to keep their nodes out of the dynamic range
+sub ipIsDynamic { 
+	#meant to be v4/v6 agnostic.  DHCPv6 however takes some care to allow a dynamic range to overlap static reservations
+    #xCAT will for now continue to advise people to keep their nodes out of the dynamic range
     my $ip = shift;
     my $number = getipaddr($ip,GetNumber=>1);
     unless ($number) { # shouldn't be possible, but pessimistically presume it dynamically if so
@@ -281,8 +283,7 @@ sub addnode
     {
         $callback->(
                    {
-                    error => ["Unable to open mac table, it may not exist yet"],
-                    errorcode => [1]
+                    warning => ["Unable to open mac table, it may not exist yet"]
                    }
                    );
         return;
@@ -292,8 +293,7 @@ sub addnode
     {
         $callback->(
                     {
-                     error     => ["Unable to find mac address for $node"],
-                     errorcode => [1]
+                     warning => ["Unable to find mac address for $node"]
                     }
                     );
         return;
@@ -301,6 +301,7 @@ sub addnode
     my @macs = split(/\|/, $ent->{mac});
     my $mace;
     my $deflstaments=$lstatements;
+    my $count = 0;
     foreach $mace (@macs)
     {
         $lstatements=$deflstaments; #force recalc on every entry
@@ -384,11 +385,25 @@ sub addnode
                 $mac =~ s/(\w{2})/$1:/g;
                 $mac =~ s/:$//;
             }
+            my $hostname = $hname;
+            my $hardwaretype = 1;
+            my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
+            if ( $client_nethash{$node}{mgtifname} =~ /hf/ )
+            {
+                $hardwaretype = 37;
+                if ( scalar(@macs) > 1 ) {
+                    if ( $hname !~ /^(.*)-hf(.*)$/ ) {
+                        $hostname = $hname . "-hf" . $count;
+                    } else {
+                        $hostname = $1 . "-hf" . $count;
+                    }
+                }
+            }
 
             #syslog("local4|err", "Setting $node ($hname|$ip) to " . $mac);
             print $omshell "new host\n";
             print $omshell
-                "set name = \"$hname\"\n";    #Find and destroy conflict name
+                "set name = \"$hostname\"\n";    #Find and destroy conflict name
                 print $omshell "open\n";
             print $omshell "remove\n";
             print $omshell "close\n";
@@ -406,9 +421,9 @@ sub addnode
             print $omshell "remove\n";
             print $omshell "close\n";
             print $omshell "new host\n";
-            print $omshell "set name = \"$hname\"\n";
+            print $omshell "set name = \"$hostname\"\n";
             print $omshell "set hardware-address = " . $mac . "\n";
-            print $omshell "set hardware-type = 1\n";
+            print $omshell "set hardware-type = $hardwaretype\n";
 
             if ($ip eq "DENIED")
             { #Blacklist this mac to preclude confusion, give best shot at things working
@@ -431,12 +446,13 @@ sub addnode
 
             print $omshell "create\n";
             print $omshell "close\n";
-            unless (grep /#definition for host $node aka host $hname/, @dhcpconf)
+            unless (grep /#definition for host $node aka host $hostname/, @dhcpconf)
             {
                 push @dhcpconf,
-                     "#definition for host $node aka host $hname can be found in the dhcpd.leases file\n";
+                     "#definition for host $node aka host $hostname can be found in the dhcpd.leases file\n";
             }
         }
+        $count = $count + 2;
     }
 }
 
@@ -446,11 +462,31 @@ sub addrangedetection {
     my $trange;
     my $begin;
     my $end;
-    $netcfgs{$net->{net}}->{nameservers} = $net->{nameservers};
+    my $myip;
+    $myip = xCAT::Utils->my_ip_facing($net->{net});
+    
+    # convert <xcatmaster> to nameserver IP
+    if ($net->{nameservers} eq '<xcatmaster>')
+    {
+        $netcfgs{$net->{net}}->{nameservers} = $myip;
+    }
+    else
+    {
+        $netcfgs{$net->{net}}->{nameservers} = $net->{nameservers};
+    }
+    
     $netcfgs{$net->{net}}->{ddnsdomain} = $net->{ddnsdomain};
     $netcfgs{$net->{net}}->{domain} = $domain; #TODO: finer grained domains
     unless ($netcfgs{$net->{net}}->{nameservers}) {
-        $netcfgs{$net->{net}}->{nameservers} = $::XCATSITEVALS{nameservers};
+        # convert <xcatmaster> to nameserver IP
+        if ($::XCATSITEVALS{nameservers} eq '<xcatmaster>')
+        {
+            $netcfgs{$net->{net}}->{nameservers} = $myip;
+        }
+        else
+        {
+            $netcfgs{$net->{net}}->{nameservers} = $::XCATSITEVALS{nameservers};
+        }
     }
     foreach $trange (split /;/,$tranges) {
         if ($trange =~ /[ ,-]/) { #a range of one number to another..
@@ -612,38 +648,71 @@ sub preprocess_request
 	    $snonly=$href->{value};
 	}
     }
-
     my @requests=();
     my $hasHierarchy=0;
-    if (($snonly == 1) && (! grep /-n/,@{$req->{arg}})) {
-	my @nodes=();
+
+    my @nodes=();
+    if (! grep /-n/,@{$req->{arg}}) {
 	if ($req->{node}) {
 	    @nodes=@{$req->{node}};
 	}
 	elsif(grep /-a/,@{$req->{arg}}) {
 	    if (grep /-d$/, @{$req->{arg}})
 	    {
-		my $nodelist = xCAT::Table->new('nodelist');
-		my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
-		foreach (@entries)
-		{
-		    push @nodes, $_->{node};
-		}
+			my $nodelist = xCAT::Table->new('nodelist');
+			my @entries  = ($nodelist->getAllNodeAttribs([qw(node)]));
+			foreach (@entries)
+			{
+		    	push @nodes, $_->{node};
+			}
 	    }
 	    else
 	    {
-		my $mactab  = xCAT::Table->new('mac');
-		my @entries=();
-		if ($mactab) {
-		    @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
-		}
-		foreach (@entries)
-		{
-		    push @nodes, $_->{node};
-		}
+			my $mactab  = xCAT::Table->new('mac');
+			my @entries=();
+			if ($mactab) {
+		    	@entries = ($mactab->getAllNodeAttribs([qw(mac)]));
+			}
+			foreach (@entries)
+			{
+		    	push @nodes, $_->{node};
+			}
 	    }	    
+	} # end - if -a
+
+	# don't put compute node entries in for AIX nodes
+    # this is handled by NIM - duplicate entires will cause
+    # an error
+	if ($^O eq 'aix') {
+		my @tmplist;
+		my $Imsg;
+		foreach my $n (@nodes)
+		{
+			# get the nodetype for each node
+			#my $ntype = xCAT::DBobjUtils->getnodetype($n);
+            my $ntable = xCAT::Table->new('nodetype');
+            if ($ntable) {
+                my $mytype = $ntable->getNodeAttribs($n,['nodetype']);
+			    if ($mytype =~ /osi/) {
+				$Imsg++;
+			    }
+			    unless ($mytype =~ /osi/) {
+				    push @tmplist, $n;
+			    }
+            }
+		}
+		@nodes = @tmplist;
+
+		if ($Imsg) {
+			my $rsp;
+			push @{$rsp->{data}}, "AIX nodes with a nodetype of \'osi\' will not be added to the dhcp configuration file.  This is handled by NIM.\n";
+			xCAT::MsgUtils->message("I", $rsp, $callback);
+		}
+	}
 	}
 
+
+    if (($snonly == 1) && (! grep /-n/,@{$req->{arg}})) {
         if (@nodes > 0) {
 	    my $sn_hash =xCAT::Utils->getSNformattedhash(\@nodes,"xcat","MN"); 
 	    if ($localonly) {
@@ -681,6 +750,7 @@ sub preprocess_request
 
 	    foreach my $s (@sn)
 	    {
+		if (scalar @nodes == 1 and $nodes[0] eq $s) { next; }
 		my $reqcopy = {%$req};
 		$reqcopy->{'_xcatdest'} = $s;
 		$reqcopy->{_xcatpreprocessed}->[0] = 1;
@@ -814,8 +884,6 @@ sub process_request
 
     @dhcpconf = ();
     
-
-
    my $dhcplockfd;
    open($dhcplockfd,">","/tmp/xcat/dhcplock");
    flock($dhcplockfd,LOCK_EX);
@@ -823,6 +891,34 @@ sub process_request
     {
         if (-e $dhcpconffile)
         {
+			if ($^O eq 'aix')
+    		{
+				# save NIM aix entries - to be restored later
+				my $aixconf;
+        		open($aixconf, $dhcpconffile); 
+        		if ($aixconf)
+        		{
+					my $save=0;
+            		while (<$aixconf>)
+            		{
+						if ($save) {	
+                			push @aixcfg, $_;
+						}
+
+						if ($_ =~ /#Network configuration end\n/) {
+							$save++;
+						}
+            		}
+            		close($aixconf);
+        		}
+				$restartdhcp=1;  
+        		@dhcpconf = ();
+			}
+
+			my $rsp;
+            push @{$rsp->{data}}, "Renamed existing dhcp configuration file to  $dhcpconffile.xcatbak\n";
+            xCAT::MsgUtils->message("I", $rsp, $callback);
+
             my $bakname = "$dhcpconffile.xcatbak";
             rename("$dhcpconffile", $bakname);
         }
@@ -1033,10 +1129,33 @@ sub process_request
             if ($mactab) {
                 @entries = ($mactab->getAllNodeAttribs([qw(mac)]));
             }
+
             foreach (@entries)
             {
                 push @{$req->{node}}, $_->{node};
             }
+
+			# don't put compute node entries in for AIX nodes
+			# this is handled by NIM - duplicate entires will cause
+			# an error
+			if ($^O eq 'aix') {
+				my @tmplist;
+				foreach my $n (@{$req->{node}})
+				{
+					# get the nodetype for each node
+					#my $ntype = xCAT::DBobjUtils->getnodetype($n);
+                    my $ntable = xCAT::Table->new('nodetype');
+                    if ($ntable) {
+                        my $ntype = $ntable->getNodeAttribs($n,['nodetype']);
+
+					    # don't add if it is type "osi"
+					    unless ($ntype =~ /osi/) {
+						push @tmplist, $n;
+					    }
+                    }    
+				}
+				@{$req->{node}} = @tmplist;
+			}
         }
     }
 
@@ -1180,39 +1299,6 @@ sub process_request
                         );
                 next;
             }
-            my $mac = $ent->{mac};
-            # Workarounds for HFI devices, omshell doesn't support HFI device type, we cannot set hfi as hardware type in dhcp lease-file.
-            # Replace the ethernet with hfi in lease-file.
-            # After omshell supports HFI devices, remove these code and add correct hardware type from omshell
-            my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
-            if ( grep /hf/, $client_nethash{$node}{mgtifname} )
-            {
-                unless ( open( HOSTS,"</var/lib/dhcpd/dhcpd.leases" ))
-                {
-                    next;
-                }
-                my @rawdata = <HOSTS>;
-                my @newdata = ();
-                close( HOSTS );
-                chomp @rawdata;
-                foreach my $line ( @rawdata ) {
-                    if ( $line =~ /^(.*)ethernet $mac(.*)$/ ) {
-                        push @newdata, "$1hfi $mac$2";
-                    } else {
-                        push @newdata, $line;
-                    }
-                }
-
-                unless ( open( HOSTS,">/var/lib/dhcpd/dhcpd.leases" )) {
-                    next;
-                }
-                for my $line (@newdata)
-                {
-                    print HOSTS "$line\n";
-                }
-                close( HOSTS );
-            }
-
         }
     }
     writeout();
@@ -1263,6 +1349,7 @@ sub getzonesfornet {
             die "Not supporting having a mask like $mask on an ipv6 network like $net";
         }
         my $netnum= getipaddr($net,GetNumber=>1);
+        unless ($netnum) { return (); }
         $netnum->brsft(128-$maskbits);
         my $prefix=$netnum->as_hex();
         my $nibbs=$maskbits/4;
@@ -1361,6 +1448,7 @@ sub addnet6
     if (grep /\} # $net subnet_end/,@dhcp6conf) { #need to add to dhcp6conf
         return;
     } else { #need to add to dhcp6conf
+	$restartdhcp6=1;
         while ($idx <= $#dhcp6conf)
         {
             if ($dhcp6conf[$idx] =~ /\} # $iface nic_end/) {
@@ -1517,6 +1605,13 @@ sub addnet
                     );
                 }
             }
+
+            # convert <xcatmaster> to nameserver IP
+            if ($nameservers eq '<xcatmaster>')
+            {
+                $nameservers = $myip;
+            }
+            
             $nameservers=putmyselffirst($nameservers);
             $ntpservers=putmyselffirst($ntpservers);
             $logservers=putmyselffirst($logservers);
@@ -1627,9 +1722,9 @@ sub addnet
         } elsif ($myip){
         	push @netent, "    option ntp-servers $myip;\n";
         }
-        push @netent, "    option domain-name \"$domain\";\n";
         if ($nameservers)
         {
+            push @netent, "    option domain-name \"$domain\";\n";
             push @netent, "    option domain-name-servers  $nameservers;\n";
         }
         my $ddnserver = $nameservers;
@@ -1645,11 +1740,17 @@ sub addnet
         } else {
             push @netent, "    zone $domain. {\n";
         }
-        push @netent, "   primary $ddnserver; key xcat_key; \n";
+        if ($ddnserver)
+        {
+            push @netent, "   primary $ddnserver; key xcat_key; \n";
+        }
         push @netent, " }\n";
         foreach (getzonesfornet($net,$mask)) {
             push @netent, "zone $_ {\n";
-            push @netent, "   primary $ddnserver; key xcat_key; \n";
+            if ($ddnserver)
+            {
+                push @netent, "   primary $ddnserver; key xcat_key; \n";
+            }
             push @netent, " }\n";
         }
         }
@@ -1784,8 +1885,8 @@ sub addnic
     my $lastindex  = 0;
     unless (grep /} # $nic nic_end/, @$conf)
     {    #add a section if not there
-        $restartdhcp=1;
-        print "Adding NIC $nic\n";
+        #$restartdhcp=1;
+        #print "Adding NIC $nic\n";
         if ($nic =~ /!remote!/) {
             push @$conf, "#shared-network $nic {\n";
             push @$conf, "#\} # $nic nic_end\n";
@@ -1815,6 +1916,8 @@ sub addnic
 
 sub writeout
 {
+
+	# add the new entries to the dhcp config file
     my $targ;
     open($targ, '>', $dhcpconffile);
     my $idx;
@@ -1831,7 +1934,20 @@ sub writeout
         }
         print $targ $dhcpconf[$idx];
     }
+
+	if ($^O eq 'aix')
+	{
+		# add back any NIM entries that were saved earlier
+		if (@aixcfg) {
+			foreach $idx (0..$#aixcfg)
+			{
+				print $targ $aixcfg[$idx];
+			}
+		}
+	}
     close($targ);
+
+
     if (@dhcp6conf) {
     open($targ, '>', $dhcp6conffile);
     foreach $idx (0..$#dhcp6conf)
@@ -1856,7 +1972,7 @@ sub newconfig6 {
     push @dhcp6conf, "\n";
     push @dhcp6conf, "ddns-update-style interim;\n";
     push @dhcp6conf, "ignore client-updates;\n";
-    push @dhcp6conf, "update-static-leases on;\n";
+#    push @dhcp6conf, "update-static-leases on;\n";
     push @dhcp6conf, "omapi-port 7912;\n";        #Enable omapi...
     push @dhcp6conf, "key xcat_key {\n";
     push @dhcp6conf, "  algorithm hmac-md5;\n";
@@ -1905,7 +2021,7 @@ sub newconfig
     push @dhcpconf, "option iscsi-initiator-iqn code 203 = string;\n"; #Only via gPXE, not a standard
     push @dhcpconf, "ddns-update-style interim;\n";
     push @dhcpconf, "ignore client-updates;\n"; #Windows clients like to do all caps, very un xCAT-like
-    push @dhcpconf, "update-static-leases on;\n"; #makedns rendered optional
+#    push @dhcpconf, "update-static-leases on;\n"; #makedns rendered optional
     push @dhcpconf,
       "option client-architecture code 93 = unsigned integer 16;\n";
     push @dhcpconf, "option gpxe.no-pxedhcp 1;\n";

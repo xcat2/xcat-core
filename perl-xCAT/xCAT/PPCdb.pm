@@ -43,7 +43,25 @@ my %defaultgrp = (
     cec   => "cec",
     
 );
+my %globlehwtype = (
+    fsp   => $::NODETYPE_FSP,
+    bpa   => $::NODETYPE_BPA,
+    lpar  => $::NODETYPE_LPAR,
+    hmc   => $::NODETYPE_HMC,
+    ivm   => $::NODETYPE_IVM,
+    frame => $::NODETYPE_FRAME,
+    cec   => $::NODETYPE_CEC,
+);
 
+my %globalnodetype = (
+    fsp  => $::NODETYPE_PPC,
+    bpa  => $::NODETYPE_PPC,
+    cec  => $::NODETYPE_PPC,
+    frame=> $::NODETYPE_PPC,
+    hmc  => $::NODETYPE_PPC,
+    ivm  => $::NODETYPE_PPC,
+    lpar =>"$::NODETYPE_PPC,$::NODETYPE_OSI"
+);
 
 ##########################################################################
 # Adds a node to the xCAT databases
@@ -56,16 +74,6 @@ sub add_ppc {
     my $otherinterfaces = shift;
     my @tabs     = qw(ppc vpd nodehm nodelist nodetype hosts mac); 
     my %db       = ();
-    my %nodetype = (
-        fsp   => $::NODETYPE_FSP,
-        bpa   => $::NODETYPE_BPA,
-        lpar  =>"$::NODETYPE_LPAR,$::NODETYPE_OSI",
-        hmc   => $::NODETYPE_HMC,
-        ivm   => $::NODETYPE_IVM,
-        frame => $::NODETYPE_FRAME,
-        cec   => $::NODETYPE_CEC,
-    );
-
     ###################################
     # Open database needed
     ###################################
@@ -94,8 +102,11 @@ sub add_ppc {
         ###############################
         # Update nodetype table
         ###############################
-        if ( $type =~ /^(fsp|bpa|lpar|hmc|ivm|frame|cec)$/ ) {
-            $db{nodetype}->setNodeAttribs( $name,{nodetype=>$nodetype{$type}} );
+        if ( $type =~ /^(fsp|bpa|hmc|ivm|frame|cec)$/ ) {
+            $db{nodetype}->setNodeAttribs( $name,{nodetype=>'ppc'} );
+            $db{nodetype}{commit} = 1;
+        } elsif ($type =~ /^lpar$/) {
+            $db{nodetype}->setNodeAttribs( $name,{nodetype=>'ppc,osi'} );
             $db{nodetype}{commit} = 1;
         }
         ###############################
@@ -147,7 +158,7 @@ sub add_ppc {
                  id=>$id,
                  pprofile=>$pprofile,
                  parent=>$parent,
-                 nodetype=>$nodetype{$type},
+                 nodetype=>$globlehwtype{$type},
                }); 
             $db{ppc}{commit} = 1;
 
@@ -176,14 +187,20 @@ sub add_ppc {
         ###############################
         # Update vpd table
         ###############################
-        if ( $type =~ /^(fsp|bpa|frame|cec)$/ ) {
+        if ( $type =~ /^(fsp|bpa)$/ ) {
             $db{vpd}->setNodeAttribs( $name, 
                 { mtm=>$model,
                   serial=>$serial,
                   side=>$side
                  });
-            $db{vpd}{commit} = 1;
+        }                     
+        if ( $type =~ /^(frame|cec)$/ ) {
+            $db{vpd}->setNodeAttribs( $name, 
+                { mtm=>$model,
+                  serial=>$serial,
+                 }); 
         }
+        $db{vpd}{commit} = 1;
 
         ###############################
         # Update hosts table
@@ -228,15 +245,7 @@ sub update_ppc {
     my $not_overwrite = shift;
     my @tabs     = qw(ppc vpd nodehm nodelist nodetype ppcdirect hosts mac); 
     my %db       = ();
-    my %nodetype = (
-        fsp  => $::NODETYPE_FSP,
-        bpa  => $::NODETYPE_BPA,
-        lpar =>"$::NODETYPE_LPAR,$::NODETYPE_OSI",
-        hmc  => $::NODETYPE_HMC,
-        ivm  => $::NODETYPE_IVM,
-    );
     my @update_list = ();
-    my @create_list = ();
 
     ###################################
     # Open database needed
@@ -253,58 +262,6 @@ sub update_ppc {
                                                'pprofile','parent','supernode',
                                                'comments', 'disable']);
     my @maclist = $db{mac}->getAllNodeAttribs(['node','mac']);
-
-    ###################################
-    # By pass the CEC/Frame with same
-    # mtms and node name
-    ###################################
-    my %cec_frame_hash = ();
-    foreach my $value ( @$values ) {
-        my ($ttype,
-            $tname,
-            $tid,
-            $tmtm,
-            $tsn,
-            $tside,
-            $server,
-            $pprofile,
-            $parent,
-            $ips ) = split /,/, $value;
-
-        if ( $ttype ne 'cec' && $ttype ne 'frame' )
-        {
-            next;
-        }
-
-        foreach my $vpdent (@vpdlist) {
-            my $type =  xCAT::DBobjUtils::getnodetype($vpdent->{node});
-            if ( $vpdent->{mtm} eq $tmtm && $vpdent->{serial} eq $tsn && $type eq $ttype) {
-                $cec_frame_hash{$tmtm*$tsn} = $tname;
-            }
-        }
-
-        foreach my $vpdent (@vpdlist) {
-            my $type =  xCAT::DBobjUtils::getnodetype($vpdent->{node});
-            if ( $vpdent->{mtm} eq $tmtm && $vpdent->{serial} eq $tsn ) {
-                if ( $type eq $ttype ) {
-                    if ( $vpdent->{node} ne $tname ) {
-                        if ( update_node_attribs($hwtype, $ttype, $tname, $tid, $tmtm, $tsn, $tside,
-                                   $server, $pprofile, $parent, $ips, \%db, $vpdent->{node}, \@ppclist))
-                        {
-                             push @update_list, $value;
-                        }
-                    }
-                } else {
-                    if ( !$cec_frame_hash{$tmtm*$tsn} ) {
-                        push @create_list, $value;
-                    }
-                }
-                $cec_frame_hash{$tmtm*$tsn} = $tname;
-            }
-        }
-    }
-            
-
     ###################################
     # Need to do database migration first
     ###################################
@@ -322,127 +279,111 @@ sub update_ppc {
  
         if ( $ttype eq 'cec' )
         {
-            foreach my $vpdent (@vpdlist) {
-                my $type =  xCAT::DBobjUtils::getnodetype($vpdent->{node});
-                if ( $vpdent->{mtm} eq $tmtm && $vpdent->{serial} eq $tsn && $type eq 'fsp' ) {
-                    my $newname = $vpdent->{node};
-                    if ( $vpdent->{node} eq $tname ) {
-                        if ( $vpdent->{side} =~ /^(A|B)$/ ) {
-                            $newname = $tname . "-" . $vpdent->{side};
-                        }
-                    }
-                    
-                    my $pparent = $cec_frame_hash{$tmtm*$tsn};
-                    if ( update_node_attribs($hwtype, $type, $newname, $tid, $tmtm, $tsn, $tside,
-                                   $server, $pprofile, $pparent, $ips, \%db, $vpdent->{node}, 1, \@ppclist))
-                    {
-                        push @update_list, $value;
-                    }
+            my $hostname =  xCAT_plugin::lsslp::gethost_from_url_or_old($tname, "FSP", $tmtm, $tsn, "", "", $tid, "","");
+            if ($hostname ne $tname) 
+            {
+                $hostname =~ /\-(\w)$/;
+                if ($1 =~ /^(A|B)$/)
+                {
+                    $tside = $1;
+                }
+                if ( update_node_attribs($hwtype, $ttype, $hostname, $tid, $tmtm, $tsn, $tside,
+                                    $server, $pprofile, $parent, $ips, \%db, $tname, \@ppclist))
+                {
+                    push @update_list, $value;  
                 }
             }
         } elsif ( $ttype eq 'frame' )
         {
-            foreach my $vpdent (@vpdlist) {
-                my $type =  xCAT::DBobjUtils::getnodetype($vpdent->{node});
-                if ( $vpdent->{mtm} eq $tmtm && $vpdent->{serial} eq $tsn && $type eq 'bpa' ) {
-                    my $newname = $vpdent->{node};
-                    if ( $vpdent->{node} eq $tname ) {
-                        if ( $vpdent->{side} =~ /^(A|B)$/ ) {
-                            $newname = $tname . "-" . $vpdent->{side};
-                        }
-                    }
-
-                    my $pparent = $cec_frame_hash{$tmtm*$tsn};
-                    if ( update_node_attribs($hwtype, $type, $newname, $tid, $tmtm, $tsn, $tside,
-                                   $server, $pprofile, $pparent, $ips, \%db, $vpdent->{node}, 1, \@ppclist))
-                    {
-                        push @update_list, $value;
-                    }
+            my $hostname =  xCAT_plugin::lsslp::gethost_from_url_or_old($tname, "BPA", $tmtm, $tsn, "", "", $tid, "","");
+            if ($hostname ne $tname) 
+            {
+                $hostname =~ /\-(\w)$/;
+                if ($1 =~ /^(A|B)$/)
+                {
+                    $tside = $1;
                 }
-            }
-        } 
 
+                if ( update_node_attribs($hwtype, $ttype, $hostname, $tid, $tmtm, $tsn, $tside,
+                                    $server, $pprofile, $parent, $ips, \%db, $tname, \@ppclist))
+                {
+                    push @update_list, $value;  
+                }
+            }   
+        } 
     }        
         
     ###################################
-    # Add the CEC/Frame object if they
-    # are not existing.
+    # Update CEC in tables 
     ###################################
-    add_ppc($hwtype, \@create_list);
+    foreach my $value ( @$values ) {
+        my ($type,
+            $name,
+            $id,
+            $model,
+            $serial,
+            $side,
+            $server,
+            $pprofile,
+            $parent,
+            $ips ) = split /,/, $value;
+         
+        next if ( $type ne 'cec' );
 
+        my $predefined_node = undef;
+        foreach my $vpdent (@vpdlist)
+        {
+            if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial )
+            {
+                $predefined_node = $vpdent->{node};
+                if ( update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
+                                    $server, $pprofile, $parent, $ips,
+                                    \%db, $predefined_node, \@ppclist))
+                {
+                    push @update_list, $value;
+                }
+            }
+        }
 
+    }
 
- #   ###################################
- #   # Update CEC in tables 
- #   ###################################
- #   foreach my $value ( @$values ) {
- #       my ($type,
- #           $name,
- #           $id,
- #           $model,
- #           $serial,
- #           $side,
- #           $server,
- #           $pprofile,
- #           $parent,
- #           $ips ) = split /,/, $value;
- #        
- #       next if ( $type ne 'cec' );
+    my @newppclist = $db{ppc}->getAllNodeAttribs(['node','hcp','id',
+                                               'pprofile','parent','supernode',
+                                               'comments', 'disable']);
+    ###################################
+    # Update FRAME in tables 
+    ###################################
+    foreach my $value ( @$values ) {
+        my ($type,
+            $name,
+            $id,
+            $model,
+            $serial,
+            $side,
+            $server,
+            $pprofile,
+            $parent,
+            $ips ) = split /,/, $value;
+         
+        next if ( $type ne 'frame');
 
- #       my $predefined_node = undef;
- #       foreach my $vpdent (@vpdlist)
- #       {
- #           if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial )
- #           {
- #               $predefined_node = $vpdent->{node};
- #               if ( update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
- #                                   $server, $pprofile, $parent, $ips,
- #                                   \%db, $predefined_node, 0, \@ppclist))
- #               {
- #                   push @update_list, $value;
- #               }
- #           }
- #       }
-
- #  }
-
-#    my @newppclist = $db{ppc}->getAllNodeAttribs(['node','hcp','id',
-#                                               'pprofile','parent','supernode',
- #                                              'comments', 'disable']);
- #   ###################################
- #   # Update FRAME in tables 
- #   ###################################
- #   foreach my $value ( @$values ) {
- #       my ($type,
- #           $name,
- #           $id,
- #           $model,
- #           $serial,
- #           $side,
- #           $server,
- #           $pprofile,
- #           $parent,
- #           $ips ) = split /,/, $value;
- #        
- #       next if ( $type ne 'frame');
-
- #       my $predefined_node = undef;
- #       foreach my $vpdent (@vpdlist)
- #       {
- #           if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
- #           {
- #               $predefined_node = $vpdent->{node};
+        my $predefined_node = undef;
+        foreach my $vpdent (@vpdlist)
+        {
+            if ( $vpdent->{mtm} eq $model && $vpdent->{serial} eq $serial && $vpdent->{side} eq $side )
+            {
+                $predefined_node = $vpdent->{node};
  
- #               if (update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
- #                                   $server, $pprofile, $parent, $ips, 
- #                                   \%db, $predefined_node, 0, \@newppclist))
- #               {
- #                   push @update_list, $value;
- #               }
- #           }
- #       }
+                if (update_node_attribs($hwtype, $type, $name, $id, $model, $serial, $side,
+                                    $server, $pprofile, $parent, $ips, 
+                                    \%db, $predefined_node, \@newppclist))
+                {
+                    push @update_list, $value;
+                }
+            }
+        }
 
- #   }
+    }
 
     ###################################
     # Commit changes 
@@ -473,7 +414,6 @@ sub update_node_attribs
     my $ips = shift;
     my $db = shift;
     my $predefined_node = shift;
-    my $hidden = shift;
     my $ppclist = shift;
 
     my $updated = undef;
@@ -483,12 +423,9 @@ sub update_node_attribs
     #############################
     # update vpd table
     #############################
-    my $vpdhash = $db->{vpd}->getNodeAttribs( $predefined_node, [qw(mtm serial side)]);
+    my $vpdhash = $db->{vpd}->getNodeAttribs( $predefined_node, [qw(mtm serial)]);
     if ( $model ne $vpdhash->{mtm} or $serial ne $vpdhash->{serial} or $namediff)
     {
-        if ( !$side ) {
-            $side = $vpdhash->{side};
-        }
         $db->{vpd}->delEntries( $key_col) if ( $namediff);
         $db->{vpd}->setNodeAttribs( $name, { mtm=>$model, serial=>$serial, side=>$side});
         $db->{vpd}->{commit} = 1;
@@ -519,17 +456,17 @@ sub update_node_attribs
     #############################
     # update ppc table
     #############################
-    my $ppchash = $db->{ppc}->getNodeAttribs( $predefined_node, [qw(hcp id pprofile parent nodetype)]);
+    my $ppchash = $db->{ppc}->getNodeAttribs( $predefined_node, [qw(hcp id pprofile parent)]);
+    if ( $ppchash->{parent} ne $predefined_node ) 
+    {
+        $parent = $ppchash->{parent};
+    }
 
-#    if ( $ppchash->{parent} ne $predefined_node ) 
-#    {
-#        $parent = $ppchash->{parent};
-#    }
-#
     if ( $server ne $ppchash->{hcp} or
          $id     ne $ppchash->{id} or
          $pprofile ne $ppchash->{pprofile} or
          $parent ne $ppchash->{parent} or
+         $type ne $ppchash->{nodetype} or
          $namediff)
     {
         $db->{ppc}->delEntries( $key_col) if ( $namediff);
@@ -538,6 +475,7 @@ sub update_node_attribs
                 id=>$id,
                 pprofile=>$pprofile,
                 parent=>$parent,
+                nodetype=>$globlehwtype{$type},
                 }); 
         if ( $namediff)
         {
@@ -546,12 +484,7 @@ sub update_node_attribs
                 next if ($ppcent->{node} eq $predefined_node);
                 if ($ppcent->{parent} eq $predefined_node)
                 {
-                    my $type = xCAT::DBobjUtils->getnodetype($predefined_node);
-                    if ($type eq 'fsp' or $type eq 'bpa') {
-                        $db->{ppc}->setNodeAttribs( $ppcent->{node}, {parent=>$parent});
-                    } else {
-                        $db->{ppc}->setNodeAttribs( $ppcent->{node}, {parent=>$name});
-                    }
+                    $db->{ppc}->setNodeAttribs( $ppcent->{node}, {parent=>$name});
                 }
             }
         }
@@ -578,7 +511,7 @@ sub update_node_attribs
     if ( $type ne $nodetypehash->{nodetype} or $namediff)
     {
         $db->{nodetype}->delEntries( $key_col) if ( $namediff);
-        $db->{nodetype}->setNodeAttribs( $name,{nodetype=>$type} );
+        $db->{nodetype}->setNodeAttribs( $name,{nodetype=>$globalnodetype{$type}} );
         $db->{nodetype}->{commit} = 1;
         $updated = 1;
     }
@@ -586,7 +519,7 @@ sub update_node_attribs
     ###########################
     # Update nodelist table
     ###########################
-    my $nodelisthash = $db->{nodelist}->getNodeAttribs( $predefined_node, [qw(groups status appstatus primarysn hidden comments disable)]);
+    my $nodelisthash = $db->{nodelist}->getNodeAttribs( $predefined_node, [qw(groups status appstatus primarysn comments disable)]);
     if ( $namediff)
     {
         updategroups( $name, $db->{nodelist}, $type );
@@ -594,16 +527,9 @@ sub update_node_attribs
                                                  appstatus=>$nodelisthash->{appstatus},
                                                  primarysn=>$nodelisthash->{primarysn},
                                                  comments=>$nodelisthash->{comments},
-                                                 hidden=>$nodelisthash->{hidden},
                                                  disable=>$nodelisthash->{disable}
                                                });
         $db->{nodelist}->delEntries( $key_col);
-        $db->{nodelist}->{commit} = 1;
-        $updated = 1;
-    } 
-    if ( $hidden ne $nodelisthash->{hidden} )
-    {
-        $db->{nodelist}->setNodeAttribs( $name, {hidden=>$hidden});
         $db->{nodelist}->{commit} = 1;
         $updated = 1;
     }
@@ -614,7 +540,6 @@ sub update_node_attribs
     my $hostslisthash = $db->{hosts}->getNodeAttribs( $predefined_node, [qw(ip otherinterfaces)]);
     if ( $namediff )
     {
-        $ips = $hostslisthash->{ip} if (!$ips);
         $db->{hosts}->delEntries( $key_col);
         $db->{hosts}->setNodeAttribs( $name,{ip=>$ips,
                                              otherinterfaces=>$hostslisthash->{otherinterfaces}
@@ -677,7 +602,7 @@ sub add_ppchcp {
 
     my $hwtype = shift;
     my $values = shift;
-    my @tabs   = qw(ppchcp nodehm nodelist nodetype mac);
+    my @tabs   = qw(ppchcp nodehm nodelist nodetype mac ppc);
     my %db     = ();
 
     my ($name, $mac) = split ',', $values;
@@ -709,7 +634,8 @@ sub add_ppchcp {
     ###################################
     # Update nodetype table
     ###################################
-    $db{nodetype}->setNodeAttribs( $name, {nodetype=>lc($hwtype)});
+    $db{nodetype}->setNodeAttribs( $name, {nodetype=>$globalnodetype{$hwtype}});
+    $db{ppc}->setNodeAttribs( $name, {nodetype=>$globlehwtype{$hwtype}});
 
     ###################################
     # Update mac table

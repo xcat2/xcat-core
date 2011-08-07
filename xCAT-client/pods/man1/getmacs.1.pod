@@ -12,7 +12,7 @@ B<getmacs> [B<-h>| B<--help> | B<-v>| B<--version>]
 
 B<getmacs> I<noderange> [B<-F> I<filter>]
 
-B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-f>] [B<-d>] [B<--arp>] | [B<-D> [B<-S> I<server>] [B<-G> I<gateway>] [B<-C> I<client>] [B<--hfi>] [B<-o>]]
+B<getmacs> I<noderange> [B<-V>| B<--verbose>] [B<-f>] [B<-d>] [B<--arp>] | [B<-D> [B<-S> I<server>] [B<-G> I<gateway>] [B<-C> I<client>] [B<-o>]]
 
 =head2 blade specific:
 
@@ -25,8 +25,6 @@ Note that on AIX systems, the returned MAC address is not colon-seperated (for e
 If no ping test performed,  getmacs writes the first adapter MAC to the xCAT database.  If ping test performed, getmacs will write the first successfully pinged MAC to xCAT database.
 
 For PPC (without HMC, using Direct FSP Management) specific:
-
-If users run "B<getmacs> I<noderange>" directly for P7 IH LPARs, it will return the HIF MAC addresses which are owned by the LPARs. If run B<getmacs> with ping test by default, it will return the physical mac address. If run getmacs with ping test using B<--hfi>, it will return the HFI MAC address.
 
 Note: If network adapters are physically assigned to LPARs, getmacs cannot read the MAC addresses unless perform ping test, since there is no HMC command to read them and getmacs has to login to open formware. And if the LPARs has never been activated before, getmacs need to be performed with the option "B<-D>" to get theirs MAC addresses.
 
@@ -63,10 +61,6 @@ Gateway IP address of the partition.  The default is to read from xCAT database 
 B<-h>          
 
 Display usage message.
-
-B<--hfi>       
-
-Read HFI MAC address.  This option mush be used with [B<-D>] option to perform ping test.
 
 B<-o>          
 
@@ -152,26 +146,15 @@ Output is similar to:
  #Type  Location Code   MAC Address      Full Path Name  Ping Result
  ent U9133.55A.10B7D1G-V12-C4-T1 8e:e2:24:5c:f0:04 /vdevice/l-lan@30000004 successful virtual
 
-6. To retrieve the MAC address for P7 IH LPARl using Direct FSP Management without ping test and display the result only, enter:
+6. To retrieve the MAC address for Power 775 LPAR using Direct FSP Management without ping test and display the result only, enter:
 
- getmacs c250f07c04ap01 -d
+ getmacs lpar4 -d
 
 Output is similar to:
 
- c250f07c04ap01:
+ lpar4:
  #Type  Phys_Port_Loc  MAC_Address  Adapter  Port_Group  Phys_Port  Logical_Port  VLan  VSwitch  Curr_Conn_Speed
  HFI  N/A  02:00:02:00:00:04:|02:00:02:00:00:05:|02:00:02:00:00:06  N/A  N/A  N/A  N/A  N/A  N/A  N/A
-
-7.  To retrieve the HFI MAC address for P7 IH LPARl using Direct FSP Management ping test and display the result only, enter:
-
- getmacs c250f07c07ap01 -d -D --hfi
-
-Output is similar to:
-
- c250f07c07ap01:
- # Type  Location Code   MAC Address      Full Path Name  Ping Result
- hfi-ent U78A9.001.0123456-P1 020004200004 /hfi-iohub@300000000000000/hfi-ethernet@0 unsuccessful physical
- hfi-ent U78A9.001.0123456-P1 020004200004 /hfi-iohub@300000000000000/hfi-ethernet@1 unsuccessful physical
 
 =head1 FILES
 

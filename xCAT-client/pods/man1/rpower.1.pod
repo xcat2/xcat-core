@@ -20,11 +20,15 @@ B<rpower> I<noderange> [B<softoff>]
 
 =head2 CEC (using Direct FSP Management) specific:
 
-B<rpower> I<noderange> [B<on>|B<onstandby>|B<off>|B<stat>|B<state>|B<lowpower>]
+B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<lowpower>|B<resetsp>]
 
 =head2 Frame (using Direct FSP Management) specific:
 
-B<rpower> I<noderange> [B<rackstandby>|B<exit_rackstandby>|B<stat>|B<state>]
+B<rpower> I<noderange> [B<rackstandby>|B<exit_rackstandby>|B<stat>|B<state>|B<resetsp>]
+
+=head2 LPAR (using Direct FSP Management) specific:
+
+B<rpower> I<noderange> [B<on>|B<off>|B<stat>|B<state>|B<reset>|B<boot>|B<of>|B<sms>]
 
 =head2 Blade specific:
 
@@ -48,7 +52,7 @@ Turn power on to standby state
 
 =item B<lowpower>
 
-Turn CEC to low power state. This is a disruptive operation which requires the CEC to be powered off prior to entering low power mode.
+Turn CEC to low power state (state EOCT). This is a disruptive operation which requires the CEC to be powered off prior to entering low power mode. And we can use power off command to get out of lowepower state.
 
 =item B<rackstandby>
 
@@ -57,6 +61,10 @@ Places the rack in the rack standby state. It requires that all CECs and DE be p
 =item B<exit_rackstandby>
 
 Exit Rack standby will be the default state that a rack goes into when power is initially applied to the rack. It simply moves the BPA from Rack standby to both bpa's in standby state.
+
+=item B<resetsp>
+
+Reboot the service processor. If there are primary and secondary FSPs/BPAs of one cec/frame, it will reboot them almost at the sametime.
 
 =item B<softoff>
 
@@ -90,7 +98,11 @@ Power off, then on.
 
 =item B<of>
 
-Boot the node to open firmware mode.
+Boot the node to open firmware console mode.
+
+=item B<sms>
+
+Boot the node to open firmware SMS menu mode.
 
 =item B<-m> I<table.column>==I<expectedstatus> B<-m> I<table.column>=~I<expectedstatus>
 

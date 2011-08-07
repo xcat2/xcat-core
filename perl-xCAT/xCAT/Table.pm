@@ -108,11 +108,12 @@ sub dbc_submit {
     print $clisock $data;
     $data="";
     my $lastline="";
-    while ($lastline ne "ENDOFFREEZEQFVyo4Cj6Q0j\n" and $lastline ne "*XCATBUGDETECTED*76e9b54341\n") { #index($lastline,"ENDOFFREEZEQFVyo4Cj6Q0j") < 0) {
-        $lastline = <$clisock>;
+    while (read($clisock,$lastline,32768)) { #$lastline ne "ENDOFFREEZEQFVyo4Cj6Q0j\n" and $lastline ne "*XCATBUGDETECTED*76e9b54341\n") { #index($lastline,"ENDOFFREEZEQFVyo4Cj6Q0j") < 0) {
+#        $lastline = <$clisock>;
 	    $data .= $lastline;
     }
-    if ($lastline eq "*XCATBUGDETECTED*76e9b54341\n") { #if it was an error
+    close($clisock);
+    if ($lastline =~  m/\*XCATBUGDETECTED\*76e9b54341\n\z/) { #if it was an error
         #in the midst of the operation, die like it used to die
         my $err;
         $data =~ /\*XCATBUGDETECTED\*:(.*):\*XCATBUGDETECTED\*/s;
@@ -241,8 +242,10 @@ sub handle_dbc_conn {
             @returndata = (scalar(handle_dbc_request($request)));
         }
         $response = freeze(\@returndata);
-        $response .= "\nENDOFFREEZEQFVyo4Cj6Q0j\n";
+    #    $response .= "\nENDOFFREEZEQFVyo4Cj6Q0j\n";
         print $client $response;
+        $clientset->remove($client);
+        close($client);
     } else { #Connection terminated, clean up
         $clientset->remove($client);
         close($client);
@@ -310,8 +313,12 @@ sub handle_dbc_request {
          return $opentables{$tablename}->{$autocommit}->getAllNodeAttribs(@args);
     } elsif ($functionname eq 'getAllEntries') {
          return $opentables{$tablename}->{$autocommit}->getAllEntries(@args);
+    } elsif ($functionname eq 'writeAllEntries') {
+         return $opentables{$tablename}->{$autocommit}->writeAllEntries(@args);
     } elsif ($functionname eq 'getAllAttribsWhere') {
          return $opentables{$tablename}->{$autocommit}->getAllAttribsWhere(@args);
+    } elsif ($functionname eq 'writeAllAttribsWhere') {
+         return $opentables{$tablename}->{$autocommit}->writeAllAttribsWhere(@args);
     } elsif ($functionname eq 'addAttribs') {
          return $opentables{$tablename}->{$autocommit}->addAttribs(@args);
     } elsif ($functionname eq 'setAttribs') {
@@ -346,7 +353,12 @@ sub _set_use_cache {
     if ($dbworkerpid) {
         return dbc_call($self,'_set_use_cache',@_);
     }
-    $self->{_use_cache} = shift;
+    
+    my $usecache = shift;
+    if ($usecache and not $self->{_tablecache}) {
+	return; #do not allow cache to be enabled while the cache is broken
+    }
+    $self->{_use_cache} = $usecache;
 }
 #--------------------------------------------------------------------------------
 
@@ -479,6 +491,18 @@ sub buildcreatestmt
     if ($descr->{engine}) {
        if ($xcatcfg =~ /^mysql:/) {  #for mysql
 	  $retv .= " ENGINE=$descr->{engine} ";
+       }
+    }
+    # allow compression for DB2 
+    if ($descr->{compress}) {
+       if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+	  $retv .= " compress $descr->{compress} ";
+       }
+    }
+    # allow tablespace change for DB2 
+    if ($descr->{tablespace}) {
+       if ($xcatcfg =~ /^DB2:/) {  #for DB2 
+	  $retv .= " in $descr->{tablespace} ";
        }
     }
 	#print "retv=$retv\n";
@@ -2028,7 +2052,7 @@ sub getNodesAttribs {
                 push @locattribs,'node';
             }
             unless (grep(/^groups$/,@locattribs)) {
-                push @locattribs,'node';
+                push @locattribs,'groups';
             }
             $self->_build_cache(\@locattribs);
         } else {
@@ -2045,8 +2069,10 @@ sub getNodesAttribs {
     }
     $self->_clear_cache;
     $self->{_use_cache} = 0;
-    $self->{nodelist}->_clear_cache;
-    $self->{nodelist}->{_use_cache} = 0;
+    if ($self->{tabname} ne 'nodelist') { #avoid calling clear_cache on nodelist twice
+	    $self->{nodelist}->_clear_cache;
+	    $self->{nodelist}->{_use_cache} = 0;
+    }
     return $rethash;
 }
 
@@ -2083,6 +2109,7 @@ sub _clear_cache { #PRIVATE FUNCTION TO EXPIRE CACHED DATA EXPLICITLY
     }
     #it shouldn't have been zero, but whether it was 0 or 1, ensure that the cache is gone
     $self->{_use_cache}=0; # Signal slow operation to any in-flight operations that may fail with empty cache
+    $self->{_cached_attriblist} = undef;
     undef $self->{_tablecache};
     undef $self->{_nodecache};
 }
@@ -2096,13 +2123,32 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
     }
     my $attriblist = shift;
     my $refresh = not ref $attriblist; #if attriblist is not a reference, it is a refresh request
+    if (not ref $attriblist) {
+       $attriblist = $self->{_cached_attriblist}; #need attriblist to mean something, don't know how this didn't break horribly already
+    }
+    
     if (not $refresh and $self->{_cache_ref}) { #we have active cache reference, increment counter and return
         #TODO: ensure that the cache isn't somehow still ludirously old
         $self->{_cache_ref} += 1;
-        return;
+	my $currattr;
+	my $cachesufficient=1;
+	foreach $currattr (@$attriblist) { #if any of the requested attributes are not cached, we must rebuild
+	   unless (grep { $currattr eq  $_ } @{$self->{_cached_attriblist}}) {
+	      $cachesufficient=0;
+	      last;
+	   }
+	}
+	if ($cachesufficient) { return; }
+	#cache is insufficient, now we must do the converse of above
+	#must add any currently cached columns to new list if not requested
+	foreach $currattr (@{$self->{_cached_attriblist}}) { 
+	   unless (grep { $currattr eq $_ } @$attriblist) {
+	       push @$attriblist,$currattr;
+	   }
+	}
     }
     #If here, _cache_ref indicates no cache
-    if (not $refresh) {
+    if (not $refresh and not $self->{_cache_ref}) { #we have active cache reference, increment counter and return
         $self->{_cache_ref} = 1;
     }
     my $oldusecache = $self->{_use_cache}; #save previous 'use_cache' setting
@@ -2123,7 +2169,7 @@ sub _build_cache { #PRIVATE FUNCTION, PLEASE DON'T CALL DIRECTLY
             push @{$self->{_nodecache}->{$_->{$nodekey}}},$_;
         }
     }
-
+    $self->{_cached_attriblist} = $attriblist;
     $self->{_use_cache} = $oldusecache; #Restore setting to previous value
     $self->{_cachestamp} = time;
 }
@@ -3688,6 +3734,199 @@ sub buildWhereClause {
     }  
     return $whereclause;
      
+}
+#--------------------------------------------------------------------------
+
+=head3 writeAllEntries
+
+    Description:  Read entire table and writes all entries to file
+                  This routine was written specifically for the tabdump 
+                  command.
+
+    Arguments:
+          filename or path 
+
+    Returns:
+       0=good
+       1=bad 
+    Globals:
+
+    Error:
+
+    Example:
+
+	 my $tabh = xCAT::Table->new($table);
+         my $recs=$tabh->writeAllEntries($filename);
+
+    Comments:
+        none
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub writeAllEntries
+{
+    my $self = shift;
+    if ($dbworkerpid) {
+        return dbc_call($self,'writeAllEntries',@_);
+    }
+    my $filename = shift;
+    my $fh;
+    my $rc;
+    # open the file for write
+    unless (open($fh," > $filename")) {
+     my $msg="Unable to open $filename for write \n.";
+       `logger -t xcat $msg`;
+        return 1;  
+    }
+    my $query;
+    my $header;
+    my $tabdump_header = sub {
+        $header = "#" . join(",", @_);
+    };
+    $tabdump_header->(@{$self->{colnames}});
+    # write the header to the file
+    print $fh $header;    # write line to file
+    print $fh "\n";
+
+    # delimit the disable column based on the DB 
+    my $disable= &delimitcol("disable");	
+    $query = $self->{dbh}->prepare('SELECT * FROM ' . $self->{tabname});
+
+    $query->execute();
+    while (my $data = $query->fetchrow_hashref())
+    {
+        foreach (keys %$data)
+        {
+            if ($data->{$_} =~ /^$/)
+            {
+                $data->{$_} = undef;
+            }
+        }
+        $rc=output_table($self->{tabname},$fh,$self,$data);
+    }
+    $query->finish();
+    close $fh;
+    return $rc;
+}
+
+#--------------------------------------------------------------------------
+
+=head3 writeAllAttribsWhere
+
+    Description:  writes all attributes to file using the "where" clause
+                  written for the tabdump command
+
+
+    Arguments:
+       array of attr<operator>val strings to be build into a Where clause
+       filename or path
+    Returns:
+       Outputs to filename the table header and rows
+    Globals:
+
+    Error:
+
+    Example:
+
+    $nodelist->getAllAttribsWhere(array of attr<operator>val,$filename);
+     where operator can be
+     (==,!=,=~,!~, >, <, >=,<=)
+
+
+
+    Comments:
+        none
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub writeAllAttribsWhere
+{
+
+    #Takes a list of attributes, returns all records in the table.
+    my $self        = shift;
+    if ($dbworkerpid) {
+        return dbc_call($self,'writeAllAttribsWhere',@_);
+    }
+    my $clause = shift; 
+    my $filename        = shift;
+    my $whereclause; 
+    my @attribs     = @_;
+    my @results     = ();
+    my $query;
+    my $query2;
+    my $fh;
+    my $rc;
+    # open the file for write
+    unless (open($fh," > $filename")) {
+     my $msg="Unable to open $filename for write \n.";
+       `logger -t xcat $msg`;
+        return 1;  
+    }
+    my $header;
+    my $tabdump_header = sub {
+        $header = "#" . join(",", @_);
+    };
+    $tabdump_header->(@{$self->{colnames}});
+    # write the header to the file
+    print $fh $header;    # write line to file
+    print $fh "\n";
+    $whereclause = &buildWhereClause($clause);
+
+
+    # delimit the disable column based on the DB 
+    my $disable= &delimitcol("disable");	
+    $query2='SELECT * FROM '  . $self->{tabname} . ' WHERE (' . $whereclause . ")  and  ($disable  is NULL or $disable in ('0','no','NO','No','nO'))";
+    $query = $self->{dbh}->prepare($query2);
+    $query->execute();
+    while (my $data = $query->fetchrow_hashref())
+    {
+       foreach (keys %$data){
+           
+         if ($data->{$_} =~ /^$/)
+         {
+                $data->{$_} = undef;
+         }
+       }
+       $rc=output_table($self->{tabname},$fh,$self,$data);
+    }
+    $query->finish();
+    close $fh;
+    return $rc ;
+}
+#--------------------------------------------------------------------------
+
+=head3 output_table
+
+    Description:  writes table rows to file
+                  written for the tabdump command
+
+=cut
+
+#--------------------------------------------------------------------------------
+sub output_table {
+   my $table = shift;
+   my $fh  = shift;
+   my $tabh=shift;
+   my $rec=shift;
+   my $line = '';
+   foreach (@{$tabh->{colnames}})
+   {
+            if (defined $rec->{$_})
+            {
+                $rec->{$_} =~ s/"/""/g;
+                $line = $line . '"' . $rec->{$_} . '",';
+            }
+            else
+            {
+                $line .= ',';
+            }
+   }
+   $line =~ s/,$//;    # remove the extra comma at the end
+   print $fh $line;    # write line to file
+   print $fh "\n";
+   return 0;
 }
 1;
 

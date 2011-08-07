@@ -62,6 +62,8 @@ if [[ -z "$OSPKGDIR" ]]; then
 	    OSPKGDIR="$OSPKGDIR/1"
     elif [[ $OSVER = rhel* ]]; then
         OSPKGDIR="$OSPKGDIR/Server"
+    elif [[ $OSVER = SL* ]]; then
+        OSPKGDIR="$OSPKGDIR/SL"
     fi
 fi
 

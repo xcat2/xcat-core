@@ -4,9 +4,9 @@ B<genimage> - Generates a stateless image to be used for a diskless install.
 
 =head1 SYNOPSIS
 
-B<genimage> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] B<-o> I<OS> B<-p> I<profile> [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<--permission> I<permission>]
+B<genimage> B<-o> I<OS> B<-p> I<profile> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-g> I<krpm_version>] [B<-m> statelite] [B<--permission> I<permission>]
 
-B<genimage> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-o> I<OS>] [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] imagename
+B<genimage> [B<-o> I<OS>] [B<-l> I<rootlimit>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-g> I<krpm_version>] [B<-m> statelite] imagename
 
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
@@ -34,7 +34,9 @@ image, install any additional software you would like, or make modifications to 
 B<packimage> to prepare the image for deployment.
 
 The B<genimage> and B<geninitrd> commands will generate two initial ramdisks for B<statelite> and B<stateless>, one is B<initrd-statelite.gz>, the other one is B<initrd-stateless.gz>.
-
+ 
+The B<genimage> command can not be used in interactive mode.  If any of the rpms or other scripts prompt, such as to accept a license agreement, you must use the genimage script specific to your OS from the /opt/xcat/share/xcat/netboot/<os> directory.  
+ 
 =head1 Parameters
 
 I<imagename> specifies the name of a os image definition to be used. The specification for the image is storted in the I<osimage> table and I<linuximage> table.
@@ -88,6 +90,15 @@ Other network interfaces (e.g. eth1) in the image that should be configured via 
 Use this flag if you want to use a specific version of the kernel in the image.  Defaults to the first kernel found
 in the install image.
 
+=item B<-g> I<krpm_version>
+
+This flag is for SLES only. Use this flag to specify the rpm version for kernel packages in the image. It must be present if -k flag is specified in the command for SLES.
+
+=item B<-m> statelite
+
+This flag is for Ubuntu, Debian and Fedora12 only. Use this flag to specify if you want to generate statelite image. The default is to generate stateless image for these three operating systems. For others, this flag is invalid because both stateless and statelite images will be generated with this command.
+
+
 =item B<-v|--version>
 
 Display version.
@@ -125,6 +136,8 @@ This would use the profile information from the /opt/xcat/share/xcat/netboot/fed
 
 
 =head1 FILES
+
+/opt/xcat/bin/genimage
 
 /opt/xcat/share/xcat/netboot/<OS>/genimage
 

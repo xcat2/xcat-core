@@ -13,7 +13,7 @@ B<db2sqlsetup> {B<-i>|B<--init>}{<-S> | <-C>} [-o|--setupODBC]  [B<-V>|B<--verbo
 
 B<db2sqlsetup> {B<-o>|B<--setupODBC>} {<-S> | <-C>} [-V|--verbose] 
 
-B<db2sqlsetup> {B<-r>|B<--removal>}{<-S> | <-C>} [B<-V>|B<--verbose>]
+B<db2sqlsetup> {B<-p>|B<--passwd>} [<-S> | <-C>]
 
 =head1 DESCRIPTION
 
@@ -54,9 +54,9 @@ Displays verbose messages.
 
 The init option is used to setup an installed DB2 database on AIX or Linux (p-Series) so that xCAT can use the database. This must be combined with either the -S or -C flag to indicate whether we are setting up the Server or the Client. With the -S flag, it involves creating the xcatdb database, the xcatdb instance id, allowing access to the xcatdb database by the Management Node. It also backs up the current xCAT database and restores it into the newly setup xcatdb DB2 database.  It creates the /etc/xcat/cfgloc file to point the xcatd daemon to the DB2 database and restarts the xcatd daemon using the database. 
 
-=item B<-r|--removal>
+=item B<-p|--passwd>
 
-The removal option is used to remove DB2 from xCAT and uninstall DB2 from either management node or service node. This must be combined with either the -S or -C flag. It not only remove the configuration of DB2 but also un-install DB2.
+The password change option is to change the database access password for the DB2 xcatdb database. If -S is input then it will only change the password on the DB2 Server (MN).  If -C is input it will only change on the DB2 clients (SN).  If neither -S or -C are input with this flag, then it will change both the DB2 Server and Clients. When changing the password the xcatd daemon will be stopped and restarted.  Any other tools accessing the database should also be stopped before changing and restarted after changing. 
 
 =item B<-S|-C>
 
@@ -104,8 +104,8 @@ B<db2sqlsetup> I<-r> I<-S>
 
 =item *
 
-To remove DB2 from xCAT MN:
+To change the DB2 xcatdb password on both the Management and Service Nodes:
 
-B<db2sqlsetup> I<-r> I<-C>
+B<db2sqlsetup> I<-p>
 
 =back

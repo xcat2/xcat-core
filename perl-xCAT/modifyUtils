@@ -1,9 +1,9 @@
 #!/bin/sh
-# Put the version, svn revision #, and build date into the Version function in Utils.pm
+# Put the version, svn revision #, and build date into the Version function in Version.pm
 
 if [ -z "$1" ]
 	then
-	echo "modifyUtils:  Error:  must specify the xCAT version as an argument!"
+	echo "modifyVersion:  Error:  must specify the xCAT version as an argument!"
 	exit
 	fi 
 VER=$1
@@ -24,8 +24,8 @@ BUILDDATE=`date`
 
 if [ "$(uname)" = "AIX" ]
 then
-	sed -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${SVNREF}built $BUILDDATE)'"/ xCAT/Utils.pm >xCAT/Utils.pm.new
-	mv xCAT/Utils.pm.new xCAT/Utils.pm
+	sed -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${SVNREF}built $BUILDDATE)'"/ xCAT/Version.pm >xCAT/Version.pm.new
+	mv xCAT/Version.pm.new xCAT/Version.pm
 else
-	sed -i -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${SVNREF}built $BUILDDATE)'"/ xCAT/Utils.pm
+	sed -i -e s/"#XCATVERSIONSUBHERE"/". '$VER'"/ -e s/"#XCATSVNBUILDSUBHERE"/". ' (${SVNREF}built $BUILDDATE)'"/ xCAT/Version.pm
 fi

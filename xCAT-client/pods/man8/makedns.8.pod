@@ -24,13 +24,16 @@ nameservers at your site that can resolve names outside of your cluster.  With t
 management node to resolve names, and if it is a name that the MN DNS does not know about, it will ask the outside
 world.
 
+For more information on Cluster Name Resolution:
+https://sourceforge.net/apps/mediawiki/xcat/index.php?title=Cluster_Name_Resolution
+
 =head1 OPTIONS
 
 =over 6
 
 =item B<-n>|B<--new>
 
-B<named> sometimes may hold on to stale journal filehandles, use this flag to remove the named configuration file and db files to start fresh.
+Use this flag to create new named configuration and db files.
 
 =item B<-d>|B<--delete> I<noderange>
 
@@ -56,7 +59,7 @@ B<makedns> I<node1>
 
 =item 3
 
-To fresh the DNS configuration for all the hosts in /etc/hosts file.
+To create a new named configuration and db files for all hosts in /etc/hosts.
 
 B<makedns> B<-n>
 

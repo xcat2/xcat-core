@@ -20,6 +20,7 @@ use strict;
 
 #  IPv6 not yet implemented - need Socket6
 use Socket;
+my @tabletype = qw(ppc zvm);
 
 #----------------------------------------------------------------------------
 
@@ -2106,8 +2107,10 @@ sub getchildren
             my $p = $entry->{parent};
             my $c = $entry->{node};
             if ( $p and $c) {
-                my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
-                if ( $type and ($type->{nodetype} eq 'fsp') or ($type->{nodetype} eq 'bpa'))
+                #my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
+                my $type = getnodetype($c);
+                #if ( $type and ($type->{nodetype} eq 'fsp') or ($type->{nodetype} eq 'bpa'))
+                if ( $type eq 'fsp' or $type eq 'bpa')
                 {
                     push @{$::PARENT_CHILDREN{$p}}, $c;
                 }
@@ -2176,65 +2179,94 @@ sub getnodetype
     {
         $nodes = shift;
     }
+    my $rsp;
 
-    my $ppctab  = xCAT::Table->new( 'ppc' );
-    if ( !$ppctab ) {
-        my $rsp;
-        $rsp->{data}->[0] = "Could not open the ppc table.";
-        xCAT::MsgUtils->message("E", $rsp, $::callback);
-    }
     my $nodetypetab = xCAT::Table->new( 'nodetype' );
     if ( !$nodetypetab )
     {
-        my $rsp;
         $rsp->{data}->[0] = "Could not open the nodetype table.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
-        if ( !$ppctab ) {
-            return undef;
-        }
+
     }
     
     my @types = ();
     my $typep;
     my $type;
+    my %typehash;
     if ( $nodes =~ /^ARRAY/) {
-        foreach ( @$nodes ) {
-            if ( $ppctab ) {
-                $typep = $ppctab->getNodeAttribs($_, ["nodetype"]);
-                if ($typep and $typep->{nodetype}) {
-                    $type = $typep->{nodetype};
-                    push (@types, $type);
-                    next;
+        my @nodetypes = $nodetypetab->getAllAttribs('node','nodetype');
+        for my $tn( @nodetypes ) {
+            $typehash{ $tn->{'node'} } = $tn->{'nodetype'};
+        }    
+        for my $nn (@$nodes) {
+            $type = $typehash{$nn};
+            if ($type) {
+                my $flag = 0;
+                my @tablename;
+                for my $tt ( split /,/, $type ) {
+                    if ( grep(/$tt/, @tabletype)) {
+                        @tablename = grep(/$tt/, @tabletype);
+                        $flag = 1;
+                        next;
+                    }    
                 }
-            }
-            if ( $nodetypetab ) {
-                $typep = $nodetypetab->getNodeAttribs($_, ["nodetype"]);
-                if ($typep and $typep->{nodetype}) {
-                    $type = $typep->{nodetype};
+                unless ($flag) { # find type in nodetype table
                     push (@types, $type);
+                } else {
+                    my $tablehandler = xCAT::Table->new( $tablename[0] );
+                    if ( !$tablehandler ) {
+                        $rsp->{data}->[0] = "Could not open the $tablename[0] table.";
+                        xCAT::MsgUtils->message("E", $rsp, $::callback);
+                        push (@types, undef);
                     next;
-                }
-            }
-            push (@types, undef);
+                    }
+                    $typep = $tablehandler->getNodeAttribs($nn, ["nodetype"]);  # find type in ppc table
+                    if ($typep and $typep->{nodetype}) {
+                        $type = $typep->{nodetype};
+                        push (@types, $type);
+                    } else {
+                        push (@types, undef);
+                    }
+                }    
+            } else {
+                push (@types, undef);
+            }    
         }
         return \@types;
     } else {
-        if ( $ppctab ) {
-            $typep  = $ppctab->getNodeAttribs($nodes, ["nodetype"]);
-            if ( $typep and $typep->{nodetype} ) {
-                $type = $typep->{nodetype};
-                return $type;
+        $typep  = $nodetypetab->getNodeAttribs($nodes, ["nodetype"]);
+        if ( $typep and $typep->{nodetype} ) {  
+            $type = $typep->{nodetype};
+            my $flag = 0;
+            my @tablename;
+            for my $tt ( split /,/, $type ) {
+                if ( grep(/$tt/, @tabletype)) {
+                    @tablename = grep(/$tt/, @tabletype);
+                    $flag = 1;
+                    next;
+                }
             }
-        }
-        if ( $nodetypetab ) {
-            $typep = $nodetypetab->getNodeAttribs($nodes, ["nodetype"]);
-            if ( $typep and $typep->{nodetype} ) {
-                $type = $typep->{nodetype};
+            unless ($flag) { # find type in nodetype table
                 return $type;
+            } else {    # find type in ppc table
+                my $tablehandler = xCAT::Table->new( $tablename[0] );
+                if ( !$tablehandler ) {
+                    $rsp->{data}->[0] = "Could not open the $tablename[0] table.";
+                    xCAT::MsgUtils->message("E", $rsp, $::callback);
+                    return undef;
+                }
+                $typep = $tablehandler->getNodeAttribs($nodes, ["nodetype"]);
+                if ( $typep and $typep->{nodetype} ) {  
+                    $type = $typep->{nodetype};
+                    return $type;
+                } else {
+                    return undef;
+                }                    
             }
-        }
+        } else {
+            return undef;
+        }    
     }
-    return undef;
 }
 #-------------------------------------------------------------------------------
 
@@ -2272,8 +2304,9 @@ sub getcecchildren
                 my $p = $entry->{parent};
                 my $c = $entry->{node};
                 if ( $p and $c) {
-                    my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
-                    if ( $type and ($type->{nodetype} eq 'cec')) {
+                    #my $type = $ppctab->getNodeAttribs($c, ["nodetype"]);
+                    my $type = getnodetype($c);
+                    if ( $type eq 'cec') {
                         push @{$::PARENT_CHILDREN_CEC{$p}}, $c;
                     }
                 }

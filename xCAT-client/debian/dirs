@@ -1,7 +1,7 @@
-usr/bin
-usr/sbin
-usr/share/man/man1
-usr/share/man/man3
-usr/share/man/man5
-usr/share/man/man8
-usr/share/doc
+opt/xcat/bin
+opt/xcat/sbin
+opt/xcat/share/man/man1
+opt/xcat/share/man/man3
+opt/xcat/share/man/man5
+opt/xcat/share/man/man8
+opt/xcat/share/doc

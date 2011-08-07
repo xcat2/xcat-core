@@ -80,7 +80,6 @@ sub fsp_api_action {
     if( !defined($tooltype) ) {
         $tooltype = 0; 
     }
-
     $id = $$attrs[0];
     $fsp_name = $$attrs[3]; 
 
@@ -149,9 +148,15 @@ sub fsp_api_action {
         $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name: -d $install_dir/packages_fw/";
     } elsif($action =~ /^add_connection$/) {
     	$cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+    } elsif ($action =~ /^set_frame_number$/) { 
+    	$cmd = "$fsp_api -a $action -T $tooltype -f $parameter -t $type:$fsp_ip:$id:$node_name:";
     } else {
         if( defined($parameter) ) {
-            $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter";
+            if ($action =~ /^set_(frame|cec|lpar)_name$/) {
+                $cmd = "$fsp_api -a $action -n $parameter -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
+            } else {
+                $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter";
+            }
         } else {
             $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
         }

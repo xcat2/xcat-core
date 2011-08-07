@@ -242,6 +242,7 @@ sub processArgs
     if (
         !GetOptions(
                     'all|a'     => \$::opt_a,
+                    'compress|c'=> \$::opt_c,
                     'dynamic|d' => \$::opt_d,
                     'f|force'   => \$::opt_f,
                     'i=s'       => \$::opt_i,
@@ -258,8 +259,9 @@ sub processArgs
                     'w=s@'       => \$::opt_w,
                     'x|xml'     => \$::opt_x,
                     'z|stanza'  => \$::opt_z,
-                    'nocache'  => \$::opt_c,
+                    'nocache'  => \$::opt_nc,
                     'S'        => \$::opt_S,
+                    'osimage'  => \$::opt_osimg,
         )
       )
     {
@@ -270,9 +272,15 @@ sub processArgs
         return 2;
     }
     
+    # -t node is the default value
+    if (!$::opt_t && !$::opt_a && ($::command eq "lsdef"))
+    {
+        $::opt_t = 'node';
+    }
+
     # Initialize some global arrays in case this is being called twice in the same process.
     # Currently only doing this when --nocache is specified, but i think it should be done all of the time.
-    if ($::opt_c) {
+    if ($::opt_nc) {
             &initialize_variables();
     }
 
@@ -283,6 +291,22 @@ sub processArgs
         my $rsp;
         $rsp->{data}->[0] =
           "The \'-x\' (XML format) option is not yet implemented.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
+    # -i and --osimage cannot be used together
+    if ($::opt_i && $::opt_osimg) {
+        my $rsp;
+        $rsp->{data}->[0] = "The flags \'-i'\ and \'--osimage'\ cannot be used together.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
+
+    # -z and --osimage cannot be used together
+    if ($::opt_z && $::opt_osimg) {
+        my $rsp;
+        $rsp->{data}->[0] = "The flags \'-z'\ and \'--osimage'\ cannot be used together.";
         xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 2;
     }
@@ -303,6 +327,13 @@ sub processArgs
         return 2;
     }
 
+    # -c must be used together with -i
+    if ($::opt_c && !$::opt_i) {
+        my $rsp;
+        $rsp->{data}->[0] = "The flags \'-c'\ and \'-i'\ must be used together.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
+        return 2;
+    }
     # can get object names in many ways - easier to keep track
     $::objectsfrom_args = 0;
     $::objectsfrom_opto = 0;
@@ -767,6 +798,10 @@ sub processArgs
     # must have object name(s) -
     if ((scalar(@::clobjnames) == 0) && (scalar(@::fileobjnames) == 0))
     {
+        my $rsp;
+        $rsp->{data}->[0] =
+          "No object names were provided.";
+        xCAT::MsgUtils->message("E", $rsp, $::callback);
         return 3;
     }
 
@@ -2625,8 +2660,75 @@ sub defls
             }
         }
     }
+    my %nodeosimagehash = ();
     if ($getnodes)
     {
+        # Show osimage information
+        if($::opt_osimg)
+        {
+            my %nodeosimgname;
+            my %imghash;
+            my %imglist;
+            foreach my $obj (keys %myhash)
+            {
+                if ($myhash{$obj}{'objtype'} eq 'node')
+                {
+                    my $osimagename;
+                    #provmethod can be set to osimage name
+                    if($myhash{$obj}{'provmethod'} && ($myhash{$obj}{'provmethod'} ne 'install')
+                      && ($myhash{$obj}{'provmethod'} ne 'netboot') && ($myhash{$obj}{'provmethod'} ne 'statelite')) 
+                    {
+                        $osimagename = $myhash{$obj}{'provmethod'};
+                    }
+                    else
+                    {
+                        if ($myhash{$obj}{'os'} && $myhash{$obj}{'arch'} 
+                           && $myhash{$obj}{'provmethod'} && $myhash{$obj}{'profile'})
+                        {
+                            $osimagename = "$myhash{$obj}{'os'}-$myhash{$obj}{'arch'}-$myhash{$obj}{'provmethod'}-$myhash{$obj}{'profile'}";
+                        }
+                    }
+                    # do not call xCAT::DBobjUtils->getobjdefs for each object
+                    # for performance consideration
+                    if($osimagename)
+                    {
+                        if(!defined($imglist{$osimagename}))
+                        {
+                            $imglist{$osimagename} = 'osimage';
+                        }
+                        $nodeosimgname{$obj} = $osimagename;
+                    }
+                }
+            }
+
+            # Get osimage definition info in one invocation
+            if(scalar(keys %imglist) > 0)
+            {
+                my @attrs = ();
+                %imghash = xCAT::DBobjUtils->getobjdefs(\%imglist, 0, \@attrs);
+            }
+
+            # Put the osimage definition in %nodeosimagehash
+            foreach my $obj (keys %myhash)
+            {    
+                if ($myhash{$obj}{'objtype'} eq 'node')
+                {
+                    my $imgname = $nodeosimgname{$obj};
+                    if($imgname && defined($imghash{$imgname}))
+                    {
+                        my %imgentry = %{$imghash{$imgname}};
+                        foreach my $imgattr (keys %imgentry)
+                        {
+                            # Only store the attributes that are not in general node attributes
+                            if(!defined($myhash{$obj}{$imgattr}) && defined($imgentry{$imgattr}))
+                            {
+                                $nodeosimagehash{$obj}{$imgattr} = $imgentry{$imgattr};
+                            }
+                        }
+                    }
+                }
+            }
+        }
         my $xcatdefaultsps;
         my $xcatdefaultspbs;
         my @TableRowArray = xCAT::DBobjUtils->getDBtable('postscripts');
@@ -2867,7 +2969,10 @@ sub defls
                         }
                         else
                         {
-                            push (@{$rsp_info->{data}}, "Object name: $obj");
+                            if (!$::opt_c)
+                            {
+                                push (@{$rsp_info->{data}}, "Object name: $obj");
+                            } 
                         }
                     }
 
@@ -2903,7 +3008,15 @@ sub defls
 
                                     # since they asked for this attr
                                     #   show it even if not set
-                                    push (@{$rsp_info->{data}}, "    $showattr=$attrval");
+                                    if (!$::opt_c)
+                                    {
+                                        push (@{$rsp_info->{data}}, "    $showattr=$attrval");
+                                    } 
+                                    else
+                                    {
+                                        push (@{$rsp_info->{data}}, "$obj: $showattr=$attrval");
+
+                                    } 
                                 }
                             }
                         }
@@ -2930,7 +3043,24 @@ sub defls
                             }
                         }
                     }
-
+                    # Additional osimage attributes
+                    if(($type eq "node") && $::opt_osimg)
+                    {
+                        if(defined($nodeosimagehash{$obj}))
+                        {
+                            foreach my $attr (keys %{$nodeosimagehash{$obj}})
+                            {
+                                if (($attr eq "osname") || ($attr eq "osarch") || ($attr eq "osvers"))
+                                {
+                                    next;
+                                }
+                                if($nodeosimagehash{$obj}{$attr})
+                                {
+                                    push (@{$rsp_info->{data}}, "    $attr=$nodeosimagehash{$obj}{$attr}");
+                                }
+                            }
+                        }
+                    }
                 }
                 else
                 {

@@ -20,12 +20,16 @@ my @licmap = (
     ["accepted_level",         "Accepted Level "],
     ["curr_ecnumber_a",        "Release Level A"],
     ["curr_level_a",           "Level A        "],
+    ["curr_power_on_side_a",        "Current Power on side A"],
     ["curr_ecnumber_b",        "Release Level B"],
     ["curr_level_b",           "Level B        "],
+    ["curr_power_on_side_b",        "Current Power on side B"],
     ["curr_ecnumber_primary",  "Release Level Primary"],
     ["curr_level_primary",     "Level Primary  "],
+    ["curr_power_on_side_primary",  "Current Power on side Primary"],
     ["curr_ecnumber_secondary","Release Level Secondary"],
-    ["curr_level_secondary",   "Level Secondary"]
+    ["curr_level_secondary",   "Level Secondary"],
+    ["curr_power_on_side_secondary","Current Power on side Secondary"]
 );
 
 ##########################################################################
@@ -254,14 +258,25 @@ sub deconfig {
                  next; 
              }
             
+ 
 	     #####################################
              # Format fsp-api results
              #####################################
-             my $decfg = XMLin($data);
+         #my $decfg = XMLin($data);
+         my $decfg;
+         eval {
+             $decfg = XMLin($data);
+         };
+         if( $@ ) {
+             push @result,[$name, "Error: there are some unreadable XML data from the firmware. Please check with the data provider.", -1];
+             return (\@result);
+         }
+
 	     my $node =  $decfg->{NODE};
-	     if( $node ) {
+	     if( defined($node) &&  exists($node->{Location_code}) ) {
 		 push @result,[$name,"Deconfigured resources", 0];
-	         push @result,[$name,$node->{Location_code}.",".$node->{RID}, 0];
+		 push @result,[$name,"Location_code                RID   Call_Out_Method    Call_Out_Hardware_State    TYPE", 0];
+	         push @result,[$name,"$node->{Location_code}         $node->{RID}", 0];
 		 foreach my $unit(@{$node->{GARDRECORD}}) {
 		      my $Call_Out_Hardware_State = $unit->{GARDUNIT}->{Call_Out_Hardware_State};
 		      my $Call_Out_Method = $unit->{GARDUNIT}->{Call_Out_Method};
@@ -269,7 +284,7 @@ sub deconfig {
 		      my $RID = $unit->{GARDUNIT}->{RID};
 		      my $TYPE = $unit->{GARDUNIT}->{TYPE};
 
-		      push @result,[$name,"$Location_code,$RID,$Call_Out_Method,$Call_Out_Hardware_State,$TYPE",0]; 
+		      push @result,[$name,"$Location_code     $RID    $Call_Out_Method            $Call_Out_Hardware_State            $TYPE",0]; 
 		 }
 	     
 	     } else {

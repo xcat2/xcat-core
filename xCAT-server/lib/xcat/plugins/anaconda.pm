@@ -40,6 +40,7 @@ my %distnames = (
                  "1272326751.405938" => "centos5.5",
                  "1195488871.805863" => "centos4.6",
                  "1195487524.127458" => "centos4.6",
+                 "1301444731.448392" => "centos5.6",
                  "1170973598.629055" => "rhelc5",
                  "1170978545.752040" => "rhels5",
                  "1192660014.052098" => "rhels5.1",
@@ -57,6 +58,8 @@ my %distnames = (
                  "1269263646.691048" => "rhels5.5", #x86_64
                  "1285193176.460470" => "rhels6", #x86_64
                  "1285192093.430930" => "rhels6", #ppc64
+                 "1305068199.328169" => "rhels6.1", #x86_64
+                 "1305067911.467189" => "rhels6.1", #ppc64
                  "1285193176.593806" => "rhelhpc6",
                  "1194015916.783841" => "fedora8",
                  "1194015385.299901" => "fedora8",
@@ -74,6 +77,7 @@ my %distnames = (
                  "1241464993.830723" => "rhas4.8", #x86-64
 
 		 "1273608367.051780" => "SL5.5", #x86_64 DVD ISO
+                "1299104542.844706" => "SL6", #x86_64 DVD ISO
                  );
 my %numdiscs = (
                 "1156364963.862322" => 4,
@@ -246,6 +250,7 @@ sub mknetboot
         my $rootimgdir;
         my $nodebootif; # nodebootif will be used if noderes.installnic is not set
         my $dump; # for kdump, its format is "nfs://<nfs_server_ip>/<kdump_path>"
+        my $crashkernelsize;
         my $rootfstype; 
 
         my $ent = $oents{$node}->[0]; #ostab->getNodeAttribs($node, ['os', 'arch', 'profile']);
@@ -266,7 +271,7 @@ sub mknetboot
                     if (!$linuximagetab) {
                 	    $linuximagetab=xCAT::Table->new('linuximage', -create=>1);
                     }
-                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif', 'dump'); 
+                    (my $ref1) = $linuximagetab->getAttribs({imagename => $imagename}, 'rootimgdir', 'nodebootif', 'dump', 'crashkernelsize'); 
                     if (($ref1) && ($ref1->{'rootimgdir'})) {
                 	    $img_hash{$imagename}->{rootimgdir}=$ref1->{'rootimgdir'};
                     }
@@ -277,6 +282,9 @@ sub mknetboot
                         if ($ref1->{'dump'}) {
                             $img_hash{$imagename}->{dump} = $ref1->{'dump'};
                         }
+                    }
+                    if (($ref1) && ($ref1->{'crashkernelsize'})) {
+                        $img_hash{$imagename}->{crashkernelsize} = $ref1->{'crashkernelsize'};
                     }
                 } else {
                     $callback->(
@@ -299,7 +307,7 @@ sub mknetboot
             }
             
             $nodebootif = $ph->{nodebootif};
-            
+            $crashkernelsize = $ph->{crashkernelsize};
             $dump = $ph->{dump};
 	    }
         else {
@@ -338,9 +346,12 @@ sub mknetboot
                 $linuximagetab = xCAT::Table->new('linuximage');
             }
             if ( $linuximagetab ) {
-                (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'dump');
+                (my $ref1) = $linuximagetab->getAttribs({imagename => $imgname}, 'dump', 'crashkernelsize');
                 if($ref1 and $ref1->{'dump'})  {
                     $dump = $ref1->{'dump'};
+                }
+                if($ref1 and $ref1->{'crashkernelsize'})  {
+                    $crashkernelsize = $ref1->{'crashkernelsize'};
                 }
             } else {
                 $callback->(
@@ -555,9 +566,9 @@ sub mknetboot
 		        }
 
                 # special case for redhat6, fedora12/13/14
-                if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/ 
+                if ($osver =~ m/rhel6/ || $osver =~ m/rhels6/
                     || $osver =~ m/fedora12/ || $osver =~ m/fedora13/ 
-                    || $osver =~ m/fedora14/ ) {
+                    || $osver =~ m/fedora14/ || $osver =~ m/SL6/) {
                     $kcmdline = "root=nfs:$nfssrv:$nfsdir/rootimg:ro STATEMNT=";
                 } else {
                     $kcmdline = "NFSROOT=$nfssrv:$nfsdir STATEMNT=";	
@@ -610,7 +621,7 @@ sub mknetboot
 	    }
         else {
             $kcmdline =
-              "imgurl=http://$imgsrv/install/netboot/$osver/$arch/$profile/rootimg.$suffix ";
+              "imgurl=http://$imgsrv/$rootimgdir/rootimg.$suffix ";
             $kcmdline .= "XCAT=$xcatmaster:$xcatdport ";
         }
 
@@ -635,18 +646,18 @@ sub mknetboot
         #}
         # append the mac address
         my $mac;
-        if($machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
+        if( $useifname && $machash->{$node}->[0] && $machash->{$node}->[0]->{'mac'}) {
             # TODO: currently, only "mac" attribute with classic style is used, the "|" delimited string of "macaddress!hostname" format is not used
             $mac = $machash->{$node}->[0]->{'mac'};
-            if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
+#            if ( (index($mac, "|") eq -1) and (index($mac, "!") eq -1) ) {
                #convert to linux format
                 if ($mac !~ /:/) {
                    $mac =~s/(..)(..)(..)(..)(..)(..)/$1:$2:$3:$4:$5:$6/;
                 }
-            } else {
-                $callback->({ error=>[ qq{In the "mac" table, the "|" delimited string of "macaddress!hostname" format is not supported by "nodeset <nr> netboot|statelite if installnic/primarynic is set".}], errorcode=>[1]});
-                return;
-            }
+#            } else {
+#                $callback->({ error=>[ qq{In the "mac" table, the "|" delimited string of "macaddress!hostname" format is not supported by "nodeset <nr> netboot|statelite if installnic/primarynic is set".}], errorcode=>[1]});
+#                return;
+#            }
         }
 
         if ($useifname && $mac) {
@@ -663,7 +674,7 @@ sub mknetboot
         } elsif ( $reshash->{$node}->[0] and $reshash->{$node}->[0]->{primarynic} and $reshash->{$node}->[0]->{primarynic} ne "mac") {
             $kcmdline .= "netdev=" . $reshash->{$node}->[0]->{primarynic} . " ";
         } else {
-            if ($useifname && $mac) {
+            if ( $useifname && $mac) {
                 $kcmdline .= "BOOTIF=" . $mac . " ";
             }
         }
@@ -706,7 +717,11 @@ sub mknetboot
         # if kdump service is enbaled, add "crashkernel=" and "kdtarget="
         if ($dump) {
             if ($arch eq "ppc64") { # for ppc64, the crashkernel paramter should be "128M@32M", otherwise, some kernel crashes will be met
-                $kcmdline .= " crashkernel=128M\@32M dump=$dump ";
+                if ( $crashkernelsize ) {
+                    $kcmdline .= " crashkernel=$crashkernelsize\@32M dump=$dump ";
+                } else {
+                    $kcmdline .= " crashkernel=256M\@32M dump=$dump ";
+                }
             }
         }
 
@@ -729,11 +744,28 @@ sub mknetboot
         # special case for the dracut-enabled OSes
         if ($osver =~ m/rhels6/ || $osver =~ m/rhel6/ 
             || $osver =~ m/fedora12/ || $osver =~ m/fedora13/
-            || $osver =~ m/fedora14/ ) {
+            || $osver =~ m/fedora14/ || $osver =~ m/SL6/) {
             if($statelite and $rootfstype eq "ramdisk") {
                 $initrdstr = "xcat/netboot/$osver/$arch/$profile/initrd-stateless.gz";
             }
         }
+
+        if($statelite)
+        {
+            my $statelitetb = xCAT::Table->new('statelite');
+            my $mntopts = $statelitetb->getAttribs({node => $node}, 'mntopts');
+
+            my $mntoptions = $mntopts->{'mntopts'};
+            unless (defined($mntoptions))
+            {
+                $kcmdline .= " MNTOPTS=";
+            }
+            else
+            {
+                $kcmdline .= " MNTOPTS=$mntoptions";
+            }
+        }
+
         $bptab->setNodeAttribs(
             $node,
             {
@@ -1382,8 +1414,10 @@ sub copycd
     #my $rc = system("cd $path;rsync -a . $installroot/$distname/$arch/");
     chmod 0755, "$installroot/$distname/$arch";
     require xCAT::Yum;
-    xCAT::Yum->localize_yumrepo($installroot, $distname, $arch);
-    if ($rc != 0)
+	
+	xCAT::Yum->localize_yumrepo($installroot, $distname, $arch);
+    
+	if ($rc != 0)
     {
         $callback->({error => "Media copy operation failed, status $rc"});
     }
@@ -1394,6 +1428,14 @@ sub copycd
         if ($ret[0] != 0) {
 	    $callback->({data => "Error when updating the osimage tables: " . $ret[1]});
 	}
+        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "netboot");
+        if ($ret[0] != 0) {
+            $callback->({data => "Error when updating the osimage tables for stateless: " . $ret[1]});
+        }
+        my @ret=xCAT::SvrUtils->update_tables_with_diskless_image($distname, $arch, undef, "statelite");
+        if ($ret[0] != 0) {
+            $callback->({data => "Error when updating the osimage tables for statelite: " . $ret[1]});
+        }
     }
 }
 

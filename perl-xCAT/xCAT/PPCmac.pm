@@ -142,7 +142,8 @@ sub parse_args {
                     $client_nethash{@$node[0]} = $client_nethash{$tmpll};
                 }
             } else {
-                return( [RC_ERROR,"Cannot get network information for node"] );
+                my $nodes = join( ",", @$node);
+                return( [RC_ERROR,"Cannot get network information for $nodes, check networks table and IP address for this node to make sure there is correct network in networks table"] );
             }
         }
 

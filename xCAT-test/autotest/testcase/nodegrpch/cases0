@@ -1,0 +1,47 @@
+start:nodegrpch_v
+description:nodegrpch -v and --version
+cmd:nodegrpch -v 
+check:output=~Version
+cmd:nodegrpch --version
+check:output=~Version
+end
+
+start:nodegrpch_h
+description:nodegrpch -? and -h --help
+cmd:nodegrpch -h
+check:output=~Usage
+cmd:nodegrpch -?
+check:output=~Usage
+cmd:nodegrpch --help
+check:output=~Usage
+end
+
+
+start:nodegrpch_groups
+description:nodegrpch rh4.1234567890 mgt=hmc
+cmd:chdef -t node -o testnode groups=rh4.1234567890 mgt=blade
+check:rc==0
+cmd:nodegrpch rh4.1234567890 mgt=hmc
+check:rc==0
+cmd:lsdef -t node -o testnode -i mgt
+check:rc==0
+check:output=~mgt=hmc
+cmd:rmdef -t node testnode
+end
+
+
+start:nodegrpch_err
+description:
+cmd:nodegrpch -c 
+check:rc!=0
+check:output=~Usage
+end
+
+
+
+
+
+
+
+
+

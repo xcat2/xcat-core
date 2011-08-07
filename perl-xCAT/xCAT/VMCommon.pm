@@ -10,8 +10,8 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
   my $vpdtab = xCAT::Table->new("vpd");
   my $hmtab = xCAT::Table->new("nodehm");
   my $nttab = xCAT::Table->new("nodetype");
-  my $sitetab = xCAT::Table->new("site");
-  $cfghash->{site}->{genmacprefix} = xCAT::Utils->get_site_attribute('genmacprefix');
+  #my $sitetab = xCAT::Table->new("site");
+  $cfghash->{site}->{genmacprefix} = $::XCATSITEVALS{genmacprefix}; #xCAT::Utils->get_site_attribute('genmacprefix');
   if ($hmtab) {
       $cfghash->{nodehm}  = $hmtab->getNodesAttribs($noderange,['serialspeed']);
   }
@@ -26,7 +26,7 @@ sub grab_table_data{ #grab table data relevent to VM guest nodes
   if ($vpdtab) {
       $cfghash->{vpd} = $vpdtab->getNodesAttribs($noderange,['uuid']);
   }
-  $cfghash->{vm} = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','cfgstore','storage','storagemodel','memory','cpus','nics','nicmodel','bootorder','virtflags','datacenter','guestostype','othersettings','master']);
+  $cfghash->{vm} = $vmtab->getNodesAttribs($noderange,['node','host','migrationdest','cfgstore','storage','vidmodel','vidproto','storagemodel','memory','cpus','nics','nicmodel','bootorder','virtflags','datacenter','guestostype','othersettings','master']);
   my $mactab = xCAT::Table->new("mac",-create=>1);
   my $nrtab= xCAT::Table->new("noderes",-create=>1);
   $cfghash->{mac} = $mactab->getAllNodeAttribs(['mac'],1);

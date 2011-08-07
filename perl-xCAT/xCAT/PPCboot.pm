@@ -187,7 +187,8 @@ sub do_rnetboot {
         #######################################
         # Network specified
         #######################################
-        $cmd.= " -s auto -d auto -m $mac -S $opt->{S} -C $opt->{C} -N $opt->{N}";
+        my $mac_a = lc($mac);
+        $cmd.= " -s auto -d auto -m $mac_a -S $opt->{S} -C $opt->{C} -N $opt->{N}";
         if (defined($opt->{G}))
         {
             $cmd.= " -G $opt->{G}";

@@ -277,7 +277,7 @@ function showRmcSummary(returnData) {
             summaryTable.append(summaryRow);
         }
         summaryRow.append(tempTd);
-        attrDiv = $('<div id="monitorsumdiv' + attr + '" class="rmcsumdiv"></div>');
+        attrDiv = $('<div id="monitorsumdiv' + attr + '" class="monitorsumdiv"></div>');
         tempTd.append(attrDiv);
         for ( var i in attrValues) {
             tempArray.push( [ globalTimeStamp[i], Number(attrValues[i]) ]);
@@ -352,13 +352,13 @@ function parseRmcData(returnData){
 }
 
 function createUnkownNode(nodeName){
-    var tempLi = '<li class="rmcunknown ui-corner-all rmcnodeli" id="' + nodeName + '" ' + 
+    var tempLi = '<li class="monitorunknown ui-corner-all monitornodeli" id="' + nodeName + '" ' + 
                  'title="Name:' + nodeName + '<br/>Unknown"></li>';
     return tempLi;
 }
 
 function createErrorNode(nodeName){
-    var tempLi = '<li class="rmcerror ui-corner-all rmcnodeli id="' + nodeName + '" ' +
+    var tempLi = '<li class="monitorerror ui-corner-all monitornodeli id="' + nodeName + '" ' +
                  'title="Name:' + nodeName + '<br/>Error"></li>';
 }
 
@@ -407,13 +407,13 @@ function showRmcNodes(data, nodename) {
     memAvg = parseInt(tempSum / index);
     
     if (cpuAvg >= 10 && memAvg <= 90){
-        classname = 'rmcnormal';
+        classname = 'monitornormal';
     }
     else{
-        classname = 'rmcwarning';
+        classname = 'mornitorwarning';
     }
     
-    var normalLi = $('<li class="' + classname + ' ui-corner-all rmcnodeli" id="' + nodename + '" title="' +
+    var normalLi = $('<li class="' + classname + ' ui-corner-all monitornodeli" id="' + nodename + '" title="' +
          'Name:' + nodename + '<br/> CpuIdle: ' + cpuAvg + '%<br/> MemFree: ' + memAvg + '%"></li>');
     
     $('#rmcmonDetail ul').append(normalLi);
@@ -446,7 +446,7 @@ function showNode(nodeName) {
     for ( var attr in globalNodesDetail[nodeName]) {
         var tempTd = $('<td style="border:0px;padding:1px 1px;"></td>');
         var attrChat = $('<div id="monitornodediv' + nodeName + attr
-                + '" class="rmcnodediv"></div>');
+                + '" class="monitornodediv"></div>');
         if (0 == parseNum % 4) {
             nodeRow = $('<tr></tr>');
             nodeTable.append(nodeRow);

@@ -1,0 +1,39 @@
+start:unregnotif_null
+description:unregnotif with no argument
+cmd:unregnotif
+check:output=~Usage
+end
+
+
+start:unregnotif_f
+description:unregnotif with a argument filename
+cmd:echo "hello" > test.pm
+check:rc==0
+cmd:regnotif test.pm nodelist -o a,d
+check:rc==0
+cmd:tabdump notification
+check:rc==0
+check:output=~"test.pm","nodelist","a,d"
+cmd:unregnotif test.pm
+check:rc==0
+cmd:tabdump notification
+check:output!~test.pm","nodelist","a,d"
+cmd:rm -f test.pm
+end
+
+
+start:unregnotif_h
+description:unregnotif -h and -help
+cmd:unregnotif -h
+check:output=~Usage
+cmd:unregnotif -help
+check:output=~Usage
+end
+
+start:unregnotif_v
+description:unregnotif -v and -version
+cmd:unregnotif -v
+check:output=~version|Version
+cmd:unregnotif -version
+check:output=~version|Version
+end

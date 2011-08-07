@@ -47,6 +47,26 @@ sub parse_args {
 ##########################################################################
 # Parse the chvm command line for options and operands
 ##########################################################################
+sub chvm_parse_lparname {
+    my $args = shift;
+    my $opt = shift;
+    if ((ref($args) ne 'ARRAY') || 
+            (scalar(@$args) > '1')){ 
+        return "@$args";
+    }
+    my ($cmd, $value) = split(/\=/, $args->[0]);        
+    if ($cmd !~ /^lparname$/) {
+        return "'$cmd' not support";
+    }
+    if (!defined($value)) {
+        return "value not specified";
+    }
+    $opt->{$cmd} = $value;
+    if ($value && $value ne '*' && $value !~ /^[a-zA-Z0-9-_]+$/) {
+        return "'$value' invalid";
+    }
+    return undef;
+}
 sub chvm_parse_args {
 
     my $request = shift;
@@ -85,12 +105,6 @@ sub chvm_parse_args {
     ####################################
     if ( grep(/^-$/, @ARGV )) {
         return(usage( "Missing option: -" ));
-    }
-    ####################################
-    # Check for an extra argument
-    ####################################
-    if ( defined( $ARGV[0] )) {
-        return(usage( "Invalid argument: $ARGV[0]" ));
     }
     ####################################
     # Configuration file required 
@@ -159,16 +173,16 @@ sub chvm_parse_args {
         my @id = (1, 5, 9, 13, 17, 21, 25, 29);
         my @found =  grep(/^$opt{i}$/, @id );
 	if ( @found != 1) {
-            return(usage( "Invalid entry: $opt{i}.\n For P7 IH, starting numeric id of the newly created partitions only could be 1, 5, 9, 13, 17, 21, 25 and 29." ));
+            return(usage( "Invalid entry: $opt{i}.\n For Power 775, starting numeric id of the newly created partitions only could be 1, 5, 9, 13, 17, 21, 25 and 29." ));
         }
        
 	#if ( !exists($opt{o})  ) {
-	#    return(usage("For P7 IH, -i should be used with -o"));
+	#    return(usage("For Power 775, -i should be used with -o"));
 	#}
       
 	#my @value = (1, 2, 3, 4, 5);
 	#if ( grep(/^$opt{i}$/, @id ) != 1) {
-	#    return(usage( "Invalid entry: $opt{o}.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	#    return(usage( "Invalid entry: $opt{o}.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
 	#}
        
 	
@@ -184,7 +198,7 @@ sub chvm_parse_args {
 	} elsif( $opt{m} =~ /^non-interleaved$/ || $opt{m} =~ /^2$/  ) {
 	    $opt{m} = 2;
 	} else {
-            return(usage( "Invalid entry: $opt{m}.\n For P7 IH, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
+            return(usage( "Invalid entry: $opt{m}.\n For Power 775, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
 	}
     } else {
         $opt{m} = 2 ;# non-interleaved, which is the default    
@@ -201,13 +215,16 @@ sub chvm_parse_args {
         my @elems = split(/\,/,$opt{r});
         my $range="";
         while (my $elem = shift @elems) {
+            if ($elem !~ /\:/) {
+                return (usage("Invalid argument $elem.\n The input format for 'r' should be like this: \"-r Octant_id:Value\"."))
+            }
             if($elem !~ /\-/) {
 		my @subelems = split(/\:/, $elem);
 	        if( $subelems[0] < 0 || $subelems[0] > 7) {
 		    return(usage("Octant ID only could be 0 to 7 in the octant configuration value $elem"));
 		}
 		if( grep(/^$subelems[1]$/, @ratio ) != 1) {
-	            return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	            return(usage( "Invalid octant configuration value in $elem.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of chvm." ));
 		}
 		if( exists($octant_cfg{$subelems[0]}) && $octant_cfg{$subelems[0]} == $subelems[1] ) {
 	            return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
@@ -222,7 +239,7 @@ sub chvm_parse_args {
 		}
                 if($left == $right) {
 		   if( grep(/^$subelems[1]$/, @ratio ) != 1) {
-	               return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	               return(usage( "Invalid octant configuration value in $elem.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of chvm." ));
 		   }
 		   if( exists($octant_cfg{$left}) || $octant_cfg{$left} == $subelems[1] ) {
 	               return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
@@ -267,11 +284,31 @@ sub chvm_parse_args {
                 $other_p = $p;
             } 
             if ($other_p ne $p) {
-                return(usage("For P7 IH, please make sure the noderange are in one CEC "));
+                return(usage("For Power 775, please make sure the noderange are in one CEC "));
             }
         } 
         $request->{node} = [$other_p]; 
         $request->{noderange} = $other_p;  
+    }
+    ####################################
+    # Check for an extra argument
+    ####################################
+    if ( defined( $ARGV[0] )) {
+        my $check_chvm_lpar_arg = chvm_parse_lparname(\@ARGV, \%opt);
+        if (defined($check_chvm_lpar_arg)) {
+            return (usage("Invalid argument: $check_chvm_lpar_arg"));
+        } elsif (($opt{lparname} ne '*') && (scalar(@{$request->{node}}) > '1')){
+            return(usage( "Invalid argument: must specify '*' for more than one node" ));
+        } else { 
+            my $len = rindex $opt{lparname}."\$", "\$";
+            if ($len > '47') {
+                return (usage("Invalid lparname '$opt{lparname}', name is too long, max 47 characters"));
+            }
+        }
+        if (exists($opt{lparname}) && 
+                (exists($opt{p}) || exists($opt{i}) || exists($opt{m}) || exists($opt{r}))) {
+            return (usage("lparname should NOT be used with -p, -i, -m or -r."));
+        }
     }
 
     ####################################
@@ -337,16 +374,16 @@ sub mkvm_parse_args {
         my @id = (1, 5, 9, 13, 17, 21, 25, 29);
         my @found =  grep(/^$opt{i}$/, @id );
 	if ( @found != 1) {
-            return(usage( "Invalid entry: $opt{i}.\n For P7 IH, starting numeric id of the newly created partitions only could be 1, 5, 9, 13, 17, 21, 25 and 29." ));
+            return(usage( "Invalid entry: $opt{i}.\n For Power 775, starting numeric id of the newly created partitions only could be 1, 5, 9, 13, 17, 21, 25 and 29." ));
         }
        
 	#if ( !exists($opt{o})  ) {
-	#    return(usage("For P7 IH, -i should be used with -o"));
+	#    return(usage("For Power 775, -i should be used with -o"));
 	#}
       
 	#my @value = (1, 2, 3, 4, 5);
 	#if ( grep(/^$opt{i}$/, @id ) != 1) {
-	#    return(usage( "Invalid entry: $opt{o}.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	#    return(usage( "Invalid entry: $opt{o}.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
 	#}
        
 	
@@ -362,7 +399,7 @@ sub mkvm_parse_args {
 	} elsif( $opt{m} =~ /^non-interleaved$/ || $opt{m} =~ /^2$/  ) {
 	    $opt{m} = 2;
 	} else {
-            return(usage( "Invalid entry: $opt{m}.\n For P7 IH, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
+            return(usage( "Invalid entry: $opt{m}.\n For Power 775, the pending memory interleaving mode only could be interleaved(or 1), or non-interleaved(or 2)." ));
 	}
     } else {
         $opt{m} = 2 ;# non-interleaved, which is the default    
@@ -380,7 +417,7 @@ sub mkvm_parse_args {
 		    return(usage("Octant ID only could be 0 to 7 in the octant configuration value $elem"));
 		}
 		if( grep(/^$subelems[1]$/, @ratio ) != 1) {
-	            return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	            return(usage( "Invalid octant configuration value in $elem.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
 		}
 		if( exists($octant_cfg{$subelems[0]}) && $octant_cfg{$subelems[0]} == $subelems[1] ) {
 	            return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
@@ -395,7 +432,7 @@ sub mkvm_parse_args {
 		}
                 if($left == $right) {
 		   if( grep(/^$subelems[1]$/, @ratio ) != 1) {
-	               return(usage( "Invalid octant configuration value in $elem.\n For P7 IH, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
+	               return(usage( "Invalid octant configuration value in $elem.\n For Power 775, octant configuration values only could be 1, 2, 3, 4, 5. Please see the details in manpage of mkvm." ));
 		   }
 		   if( exists($octant_cfg{$left}) || $octant_cfg{$left} == $subelems[1] ) {
 	               return(usage("In the octant configuration rule, same octant with different octant configuration value. Error!"));	
@@ -443,7 +480,7 @@ sub mkvm_parse_args {
             $other_p = $p;
         } 
         if ($other_p ne $p) {
-            return(usage("For P7 IH, please make sure the noderange are in one CEC "));
+            return(usage("For Power 775, please make sure the noderange are in one CEC "));
         }
     } 
     $request->{node} = [$other_p]; 
@@ -494,7 +531,7 @@ sub rmvm_parse_args {
     if ( !GetOptions( \%opt, qw(V|verbose service r) )) {
         return( usage() );
     }
-    return(usage( "rmvm doesn't support for P7 IH." ));
+    return(usage( "rmvm doesn't support for Power 775." ));
     ####################################
     # Check for "-" with no option
     ####################################
@@ -548,7 +585,7 @@ sub lsvm_parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|verbose ) )) {
+    if ( !GetOptions( \%opt, qw(V|verbose l|long) )) {
         return( usage() );
     }
     ####################################
@@ -577,8 +614,54 @@ sub lsvm_parse_args {
 sub modify {
     my $request = shift;
     my $hash    = shift;
-    return modify_by_prof( $request, $hash) if ( $request->{opt}->{p}); 
+    my $usage_string = xCAT::Usage->getUsage($request->{command});
+    return modify_by_prof( $request, $hash) if ( $request->{opt}->{p} || $request->{stdin}); 
     return create( $request, $hash) if ( $request->{opt}->{i}); 
+    return op_lparname ($request, $hash) if ($request->{opt}->{lparname});
+    return ([["Error", "Miss argument\n".$usage_string, 1]]);
+}
+sub do_set_lparname {
+    my $request = shift;
+    my $hash = shift;
+    my @values = ();
+    my $lparname_para = $request->{opt}->{lparname};
+    while (my ($mtms, $h) = each(%$hash)) {
+        while (my($name, $d) = each(%$h)) {
+            my $lparname = ($lparname_para eq '*') ? $name : $lparname_para;
+            my $values = xCAT::FSPUtils::fsp_api_action($name, $d, "set_lpar_name", 0, $lparname);
+            if (@$values[1] && ((@$values[1] =~ /Error/i) && (@$values[2] ne '0'))) {
+                return ([[$name, @$values[1], '1']]) ;
+            } else {
+                push @values, [$name, "Success", '0'];
+            } 
+        }
+    } 
+    return \@values;
+}
+sub check_node_info {
+    my $hash = shift;
+    my $not_lpar = undef;
+    while (my ($mtms, $h) = each(%$hash)) {
+        while (my($name, $d) = each(%$h)) {
+            my $node_type = @$d[4];
+            if ($node_type !~ /^lpar$/) {
+                $not_lpar = $name;
+                last; 
+            }
+        } 
+    }
+    return $not_lpar;
+}
+
+sub op_lparname {
+    my $request = shift;
+    my $hash = shift;
+    my $node = $request->{node};
+    my $lpar_flag = &check_node_info($hash);
+    if (defined($lpar_flag)) {
+        return ([[$lpar_flag,"Node must be LPAR", 1]]);
+    }
+    return &do_set_lparname($request, $hash);
 }
 
 
@@ -623,12 +706,12 @@ sub modify_by_prof {
         #get the current I/O slot information
         my $action = "get_io_slot_info";
         my $values =  xCAT::FSPUtils::fsp_api_action ($cec_name, $td, $action);
-        my $Rc = shift(@$values);
+        my $Rc = $$values[2];
         if ( $Rc != 0 ) {
-            push @result, [$cec_name, $$values[0], $Rc];
+            push @result, [$cec_name, $$values[1], $Rc];
             return (\@result);
         }
-        my @data = split(/\n/, $$values[0]);
+        my @data = split(/\n/, $$values[1]);
         foreach my $v (@data) {
             my ($lparid, $busid, $location, $drc_index, $owner_type, $owner, $descr) = split(/,/, $v);
             $io{$drc_index}{lparid} = $lparid;
@@ -704,12 +787,13 @@ sub enumerate {
     $td[4]="fsp"; 
     my $action = "get_io_slot_info";
     my $values =  xCAT::FSPUtils::fsp_api_action ($cec, \@td, $action);
-    my $Rc = shift(@$values);
+    #my $Rc = shift(@$values);
+    my $Rc = $$values[2];
     if ( $Rc != 0 ) {
-        return( [$Rc,@$values[0]] );
-    }
-    
-    $outhash{ 0 } = $$values[0];
+        $outhash{ 1 } = "The LPARs' I/O slots information could NOT be listed  because the cec is in power off state";
+    } else {
+        $outhash{ 0 } = $$values[1];
+    } 
     #my @t; 
     #foreach my $value ( @$values ) {
     #    my ($lparid, $busid, $slot_location_code, $drc_index,@t ) = split (/,/, $value);
@@ -719,25 +803,62 @@ sub enumerate {
     if( $type =~ /^(fsp|cec)$/ )  {
 	$action = "query_octant_cfg";
 	my $values =  xCAT::FSPUtils::fsp_api_action ($cec, \@td, $action);
-	my $Rc = shift(@$values);
+	my $Rc = pop(@$values);
 	if ( $Rc != 0 ) {
-	    return( [$Rc,@$values[0]] );
+	    return( [$Rc,$$values[1]] );
         }	    
         #$outhash{ $cec } = @$values[0];
-        my $data = @$values[0];	
+        my $data = $$values[1];	
 	my @value =  split(/:/, $data);
 	my $pendingpumpmode = $value[0];
 	my $currentpumpMode = $value[1];
 	my $octantcount     = $value[2];
         my $j = 3;
-	my $res = "PendingPumpMode=$pendingpumpmode,CurrentPumpMode=$currentpumpMode,OctantCount=$octantcount:";
+	my $res = "PendingPumpMode=$pendingpumpmode,CurrentPumpMode=$currentpumpMode,OctantCount=$octantcount:\n";
 	for(my $i=0; $i < $octantcount; $i++) {
-	    $res = $res."OctantID=".$value[$j++].",PendingOctCfg=".$value[$j++].",CurrentOctCfg=".$value[$j++].",PendingMemoryInterleaveMode=".$value[$j++].",CurrentMemoryInterleaveMode=".$value[$j++].";";
+	    $res = $res."OctantID=".$value[$j++].",PendingOctCfg=".$value[$j++].",CurrentOctCfg=".$value[$j++].",PendingMemoryInterleaveMode=".$value[$j++].",CurrentMemoryInterleaveMode=".$value[$j++].";\n";
 	}
         $outhash{ $cec } = $res;	
     } 
     
     return( [0,\%outhash] );
+}
+
+sub get_cec_lpar_info {
+    my $name = shift;
+    my $attr = shift;
+    my $lparid = shift;
+    my $values = xCAT::FSPUtils::fsp_api_action($name, $attr, "get_lpar_info");
+    if (@$values[1] && ((@$values[1] =~ /Error/i) && @$values[2] ne '0')) {
+        return ([[$name, @$values[1], '1']]);
+    }
+    return @$values[1];
+}
+sub get_cec_lpar_name {
+    my $name = shift;
+    my $lpar_info = shift;
+    my $lparid = shift;
+    my @value = split(/\n/, $lpar_info);
+    foreach my $v (@value) {
+        if($v =~ /lparname:\s*([^\,]*),\s*lparid:\s*([\d]+),/) {
+            if($2 == $lparid) {
+                return $1;
+            }
+        }
+    }
+    return ([[$name, "can not get lparname for lpar id $lparid", '1']]);
+
+}
+sub get_lpar_lpar_name {
+    my $name = shift;
+    my $attr = shift;
+    my $values = xCAT::FSPUtils::fsp_api_action($name, $attr, "get_lpar_name");
+    if (@$values[1] && ((@$values[1] =~ /Error/i) && (@$values[2] ne '0'))) {
+        my @result = ();
+        push @result, $values;
+        return \@result;
+    }
+    return @$values[1];
 }
 
 ##########################################################################
@@ -753,13 +874,12 @@ sub list {
     my $node_name; 
     my $d;
     my @result;
-
+    my $lpar_infos;
     #print Dumper($hash);    
     while (my ($mtms,$h) = each(%$hash) ) {
 	my $info = enumerate( $h, $mtms );
 	my $Rc = shift(@$info);
 	my $data = @$info[0];
-        my $values = $data->{0};
          	
         while (($node_name,$d) = each(%$h) ) {
             my $cec   = @$d[3];
@@ -771,23 +891,50 @@ sub list {
 	        push @result, [$node_name, $data,$Rc]; 
 		next;
 	    }
+            my $values = $data->{0};
+            my $msg = $data->{1};
 	   
 	   # if ( !exists( $data->{$id} )) {
            #     push @result, [$node_name, "Node not found",1];
            # 	next;
            # }
            
-            # get the I/O slot information  
-            my $v;
-            my @t;  
-            my @value = split(/\n/, $values);
-            foreach my $v (@value) {
-                my ($lparid, @t ) = split (/,/, $v);  
-                if ($type=~/^(fsp|cec)$/) {
-                    push @result,[$lparid, join('/', @t), $Rc];
-                } else {
-                    if( $lparid eq $id) {
-                        push @result,[$lparid, join('/', @t), $Rc];
+            if( defined($msg)) { 
+                 push @result,[$node_name, $msg, 0];
+            } else {
+                # get the I/O slot information  
+                if($request->{opt}->{l} and $type =~ /^(fsp|cec)$/) {
+                    $lpar_infos = get_cec_lpar_info($node_name, $d);
+                    if (ref($lpar_infos) eq 'ARRAY') {
+                        return $lpar_infos;
+                    }
+                }
+                my $v;
+                my @t; 
+                my @value = split(/\n/, $values);
+                foreach my $v (@value) {
+                    my ($lparid, @t ) = split (/,/, $v);  
+                    my $lparname = undef;
+                    if ($request->{opt}->{l}) {
+                        if ($type =~ /^(fsp|cec)$/) {
+                            $lparname = get_cec_lpar_name($node_name, $lpar_infos, $lparid);
+                        } else {
+                            $lparname = get_lpar_lpar_name($node_name, $d);
+                        }
+                        if (ref($lparname) eq 'ARRAY') {
+                            return $lparname;
+                        } else {
+                            $lparname = "$lparname: $lparid";
+                        }
+                    } else {
+                        $lparname = $lparid;
+                    }
+                    if ($type=~/^(fsp|cec)$/) {
+                        push @result,[$lparname, join('/', @t), $Rc];
+                    } else {
+                        if( $lparid eq $id) {
+                            push @result,[$lparname, join('/', @t), $Rc];
+                        }
                     }
                 } 
             }
@@ -918,7 +1065,7 @@ sub create {
         if ( $Rc != 0 ) {
             return( [[$cec_name,$$values[0],$Rc]] );
         } 
-        my @v = split(/:/, @$values[0]);
+        my @v = split(/:/, $$values[0]);
         $octant_cfg->{pendingpumpmode} = $v[0];        
 
     
@@ -991,8 +1138,8 @@ sub create {
 	
 	#$values = xCAT::FSPUtils::fsp_api_create_parttion( $starting_lpar_id, $octant_cfg, $node_number, $d, "set_octant_cfg");
         $values =  xCAT::FSPUtils::fsp_api_action ($cec_name, $d, "set_octant_cfg", 0, $parameters);   
-        my $Rc = @$values[2];
-     	my $data = @$values[1];
+        my $Rc = $$values[2];
+     	my $data = $$values[1];
 	if ( $Rc != SUCCESS ) {
 	    push @result, [$cec_name,$data,$Rc];
         } else {
@@ -1137,7 +1284,7 @@ sub chvm {
 
 
 ##########################################################################
-# No rmvm for P7 IH 
+# No rmvm for Power 775 
 ##########################################################################
 #sub rmvm  {
 #    return( remove(@_) );

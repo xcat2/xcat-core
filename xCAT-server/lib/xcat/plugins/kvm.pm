@@ -96,7 +96,6 @@ my $doreq;
 my %hyphash;
 my $node;
 my $vmtab;
-my $kvmdatatab;
 
 
 sub get_path_for_pool {
@@ -324,13 +323,24 @@ sub waitforack {
     }
 }
 
-sub fixbootorder {
+sub reconfigvm {
     $node=shift;
     my $xml = shift;
     my $domdesc = $parser->parse_string($xml);
     my @bootdevs = $domdesc->findnodes("/domain/os/boot");
     my @oldbootdevs;
     my $needfixin=0;
+    if (defined $confdata->{vm}->{$node}->[0]->{memory}) {
+	$needfixin=1;
+	$domdesc->findnodes("/domain/memory/text()")->[0]->setData(getUnits($confdata->{vm}->{$node}->[0]->{memory},"M",1024));
+	foreach ($domdesc->findnodes("/domain/currentMemory/text()")) {
+		$_->setData(getUnits($confdata->{vm}->{$node}->[0]->{memory},"M",1024));
+	}
+    }
+    if (defined $confdata->{vm}->{$node}->[0]->{cpus}) {
+	$needfixin=1;
+	$domdesc->findnodes("/domain/vcpu/text()")->[0]->setData($confdata->{vm}->{$node}->[0]->{cpus});
+    }
     if (defined $confdata->{vm}->{$node}->[0]->{bootorder}) {
         my @expectedorder = split(/[:,]/,$confdata->{vm}->{$node}->[0]->{bootorder});
         foreach (@expectedorder) { #this loop will check for changes and fix 'n' and 'net'
@@ -360,6 +370,8 @@ sub fixbootorder {
             my $fragment = $parser->parse_balanced_chunk('<boot dev="'.$_.'"/>');
             $osnode->appendChild($fragment);
         }
+    }
+    if ($needfixin) {
         return $domdesc->toString();
     } else { return 0; }
 }
@@ -705,6 +717,7 @@ sub getrvidparms {
     return 0,@output;
 }
 
+my %cached_noderanges;
 sub pick_target {
     my $node = shift;
     my $addmemory = shift;
@@ -717,7 +730,14 @@ sub pick_target {
     unless ($candidates) {
         return undef;
     }
-    foreach (noderange($candidates)) {
+    my @fosterhyps; #noderange is relatively expensive, and generally we only will have a few distinct noderange descriptions to contend with in a mass adoption, so cache eache one for reuse across pick_target() calls
+    if (defined $cached_noderanges{$candidates}) {
+	@fosterhyps = @{$cached_noderanges{$candidates}};
+    } else {
+	@fosterhyps = noderange($candidates);
+        $cached_noderanges{$candidates} = \@fosterhyps;
+    }
+    foreach (@fosterhyps) {
         my $targconn;
         my $cand=$_;
         if ($_ eq $currhyp) { next; } #skip current node
@@ -892,6 +912,7 @@ sub migrate {
     close($sock);
     if ($desthypconn->get_domain_by_name($node)) {
         #$updatetable->{vm}->{$node}->{host} = $targ;
+      	unless ($vmtab) { $vmtab = new xCAT::Table('vm',-create=>1); }
         $vmtab->setNodeAttribs($node,{host=>$targ});
         return (0,"migrated to $targ");
     } else { #This *should* not be possible
@@ -1002,7 +1023,7 @@ sub makedom {
             }
         }
         $xml = $confdata->{kvmnodedata}->{$node}->[0]->{xml};
-        my $newxml = fixbootorder($node,$xml);
+        my $newxml = reconfigvm($node,$xml);
         if ($newxml) {
             $xml=$newxml;
         }
@@ -1201,13 +1222,20 @@ sub rinv {
     my $cpus = $domain->findnodes('/domain/vcpu')->[0]->to_literal;
     xCAT::SvrUtils::sendmsg("CPUs: $cpus", $callback,$node);
     my $memnode = $domain->findnodes('/domain/currentMemory')->[0];
+    my $maxmemnode = $domain->findnodes('/domain/memory')->[0];
     unless ($memnode) {
-        $memnode = $domain->findnodes('/domain/memory')->[0];
+        $memnode = $maxmemnode;
     }
     if ($memnode) {
         my $mem = $memnode->to_literal;
         $mem=$mem/1024;
         xCAT::SvrUtils::sendmsg("Memory: $mem MB", $callback,$node);
+    }
+    if ($maxmemnode) {
+	my $maxmem = $maxmemnode->to_literal;
+	$maxmem=$maxmem/1024;
+        xCAT::SvrUtils::sendmsg("Maximum Memory: $maxmem MB", $callback,$node);
+	
     }
     invstorage($domain);
     invnics($domain);
@@ -1253,7 +1281,11 @@ sub invstorage {
             }
         }
 
-        my $file = $disk->findnodes('./source')->[0]->getAttribute('file');
+	my @candidatenodes = $disk->findnodes('./source');
+	unless (scalar @candidatenodes) {
+		next;
+	}
+        my $file = $candidatenodes[0]->getAttribute('file');
         #we'll attempt to map file path to pool name and volume name
         #fallback to just reporting filename if not feasible
         #libvirt lacks a way to lookup a storage pool by path, so we'll only do so if using the 'default' xCAT scheme with uuid in the path
@@ -1591,15 +1623,26 @@ sub chvm {
 	$updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
       }
     }
-    if ($cpucount or  $memory) {
+    if ($cpucount or $memory) {
         if ($currstate eq 'on') {
-            xCAT::SvrUtils::sendmsg([1,"Hot add of cpus or memory not supported"],$callback,$node);
+            if ($cpucount) {xCAT::SvrUtils::sendmsg([1,"Hot add of cpus not supported (VM must be powered down to successfuly change)"],$callback,$node); }
             if ($cpucount) {
                 #$dom->set_vcpus($cpucount); this didn't work out as well as I hoped..
                 #xCAT::SvrUtils::sendmsg([1,"Hot add of cpus not supported"],$callback,$node);
             }
             if ($memory) {
-                #$dom->set_max_memory(getUnits($memory,"M",1024));
+		eval {
+	                $dom->set_memory(getUnits($memory,"M",1024));
+		};
+		if ($@) {
+			if ($@ =~ /cannot set memory higher/) {
+				xCAT::SvrUtils::sendmsg([1,"Unable to increase memory beyond current capacity (requires VM to be powered down to change)"],$callback,$node);
+			}
+		}
+         	$vmxml=$dom->get_xml_description();
+		if ($vmxml) {
+            		$updatetable->{kvm_nodedata}->{$node}->{xml}=$vmxml;
+		}
             }
         } else { #offline xml edits
             my $parsed=$parser->parse_string($vmxml); #TODO: should only do this once, oh well
@@ -1923,11 +1966,27 @@ sub clone_vm_from_master {
             eval {
              $newvol =$destinationpool->clone_volume($targxml,$sourcevol);
             };
+	    if ($@) {
+		if ($@ =~ /already exists/) {
+                        return 1,"Storage creation request conflicts with existing file(s)";
+		} else {
+                        return 1,"Unknown issue $@";
+		}
+	   }
         } else {
             my $sourcevol = $hypconn->get_storage_volume_by_path($srcfilename);
             my %sourceinfo = %{$sourcevol->get_info()};
             my $newbasexml="<volume><name>$filename</name><target><format type='$format'/></target><capacity>".$sourceinfo{capacity}."</capacity><backingStore><path>$srcfilename</path><format type='$format'/></backingStore></volume>";
+	    eval {
            $newvol = $destinationpool->create_volume($newbasexml);
+		};
+	    if ($@) {
+		if ($@ =~ /already in use/) {
+                        return 1,"Storage creation request conflicts with existing file(s)";
+		} else {
+                        return 1,"Unknown issue $@";
+		}
+	   }
            $updatetable->{vm}->{$node}->{master}=$mastername;
         }
         my $newfilename=$newvol->get_path();
@@ -2014,7 +2073,18 @@ sub mkvm {
     }
     #print "force=$force\n";
     if ($mastername or $disksize) {
-       my @return= createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force);
+       my @return;
+	eval {
+	@return = createstorage($diskname,$mastername,$disksize,$confdata->{vm}->{$node}->[0],$force);
+	};
+	if ($@) {
+                if ($@ =~ /ath already exists/) {
+                        return 1,"Storage creation request conflicts with existing file(s)";
+                } else {
+                        return 1,"Unknown issue $@";
+                }
+          }
+
          unless ($confdata->{kvmnodedata}->{$node} and $confdata->{kvmnodedata}->{$node}->[0] and $confdata->{kvmnodedata}->{$node}->[0]->{xml}) {
              my $xml;
              $xml = build_xmldesc($node,cpus=>$cpucount,memory=>$memory);
@@ -2084,7 +2154,7 @@ sub power {
     } elsif ($subcommand eq 'reset') {
         if ($dom) {
             my $oldxml=$dom->get_xml_description();
-            my $newxml=fixbootorder($node,$oldxml);
+            my $newxml=reconfigvm($node,$oldxml);
             #This *was* to be clever, but libvirt doesn't even frontend the capability, great...
             unless ($newxml) { $newxml=$oldxml; } #TODO: remove this when the 'else' line can be sanely filled out
             if ($newxml) { #need to destroy and repower..
@@ -2246,6 +2316,7 @@ sub adopt {
         delete $orphash->{$node};
         $vmupdates->{$node}->{host}=$target;
     }
+    unless ($vmtab) { $vmtab = new xCAT::Table('vm',-create=>1); }
     $vmtab->setNodesAttribs($vmupdates);
     if (keys %{$orphash}) {
         return 0;
@@ -2401,21 +2472,17 @@ sub process_request {
       $command = 'rmigrate';
   }
 
-  my $sitetab = xCAT::Table->new('site');
-  if ($sitetab) {
-      my $xhent = $sitetab->getAttribs({key=>'usexhrm'},['value']);
-      if ($xhent and $xhent->{value} and $xhent->{value} !~ /no/i and $xhent->{value} !~ /disable/i) {
-          $use_xhrm=1;
-      }
-  }
+  if ($::XCATSITEVALS{usexhrm}) { $use_xhrm=1; }
   $vmtab = xCAT::Table->new("vm");
   $confdata={};
-  xCAT::VMCommon::grab_table_data($noderange,$confdata,$callback);
-  $kvmdatatab = xCAT::Table->new("kvm_nodedata",-create=>0); #grab any pertinent pre-existing xml
+  unless ($command eq 'lsvm') { 
+	xCAT::VMCommon::grab_table_data($noderange,$confdata,$callback); 
+  my $kvmdatatab = xCAT::Table->new("kvm_nodedata",-create=>0); #grab any pertinent pre-existing xml
   if ($kvmdatatab) {
       $confdata->{kvmnodedata} = $kvmdatatab->getNodesAttribs($noderange,[qw/xml/]);
   } else {
       $confdata->{kvmnodedata} = {};
+  }
   }
   if ($command eq 'mkvm' or ($command eq 'clonevm' and (grep { "$_" eq '-b' } @exargs)) or ($command eq 'rpower' and (grep { "$_" eq "on"  or $_ eq "boot" or $_ eq "reset" } @exargs))) {
       xCAT::VMCommon::requestMacAddresses($confdata,$noderange);
@@ -2433,10 +2500,7 @@ sub process_request {
       $vmmaxp=1; #for now throttle concurrent migrations, requires more sophisticated heuristics to ensure sanity
   } else {
       my $tmp;
-      if ($sitetab) {
-        ($tmp)=$sitetab->getAttribs({'key'=>'vmmaxp'},'value');
-        if (defined($tmp)) { $vmmaxp=$tmp->{value}; }
-      }
+      if ($::XCATSITEVALS{vmmaxp}) { $vmmaxp=$::XCATSITEVALS{vmmaxp}; }
   }
 
   my $children = 0;
@@ -2506,12 +2570,7 @@ sub process_request {
   my @allerrornodes=();
   my $check=0;
   my $global_check=1;
-  if ($sitetab) {
-    (my $ref) = $sitetab->getAttribs({key => 'nodestatus'}, 'value');
-    if ($ref) {
-       if ($ref->{value} =~ /0|n|N/) { $global_check=0; }
-    }
-  }
+  if ($::XCATSITEVALS{nodestatus} =~ /0|n|N/) { $global_check=0; }
 
 
   if ($command eq 'rpower') {
@@ -2561,10 +2620,7 @@ sub process_request {
     }
   }
 
-  my $sent = $sitetab->getAttribs({key=>'masterimgdir'},'value');
-  if ($sent) {
-    $xCAT_plugin::kvm::masterdir=$sent->{value};
-  }
+  if ($::XCATSITEVALS{masterimgdir}) { $xCAT_plugin::kvm::masterdir=$::XCATSITEVALS{masterimgdir} }
 
 
 
@@ -2594,7 +2650,7 @@ sub process_request {
     close ($pfd);
     $sub_fds->add($cfd);
   }
-  while ($sub_fds->count > 0 or $children > 0) {
+  while ($sub_fds->count > 0) { # or $children > 0) { #if count is zero, even if we have live children, we can't possibly get data from them
     my $handlednodes={};
     forward_data($callback,$sub_fds,$handlednodes);
     #update the node status to the nodelist.status table
@@ -2602,17 +2658,18 @@ sub process_request {
       updateNodeStatus($handlednodes, \@allerrornodes);
     }
   }
+  #while (wait() > -1) { } #keep around just in case we find the absolute need to wait for children to be gone
 
   #Make sure they get drained, this probably is overkill but shouldn't hurt
-  my $rc=1;
-  while ( $rc>0 ) {
-    my $handlednodes={};
-    $rc=forward_data($callback,$sub_fds,$handlednodes);
-    #update the node status to the nodelist.status table
-    if ($check) {
-      updateNodeStatus($handlednodes, \@allerrornodes);
-    }
-  } 
+  #my $rc=1;
+  #while ( $rc>0 ) {
+  #  my $handlednodes={};
+  #  $rc=forward_data($callback,$sub_fds,$handlednodes);
+  #  #update the node status to the nodelist.status table
+  #  if ($check) {
+  #    updateNodeStatus($handlednodes, \@allerrornodes);
+  #  }
+  #} 
 
   if ($check) {
       #print "allerrornodes=@allerrornodes\n";
@@ -2694,7 +2751,8 @@ sub dohyp {
   my @exargs=@{$namedargs{-args}};
   my $node;
   my $args = \@exargs;
-  $vmtab = xCAT::Table->new("vm");
+  #$vmtab = xCAT::Table->new("vm");
+  $vmtab = undef;
   unless ($offlinehyps{$hyp} or ($hyp eq '!@!XCATDUMMYHYPERVISOR!@!') or nodesockopen($hyp,22)) {
     $offlinehyps{$hyp}=1;
   }
@@ -2750,8 +2808,11 @@ sub dohyp {
       $text =~ s/\s+$//;
       $output{node}->[0]->{errorcode} = $rc;
       $output{node}->[0]->{name}->[0]=$node;
-      $output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
-      $output{node}->[0]->{error} = $text unless $rc == 0;
+      if ($rc == 0) {
+	$output{node}->[0]->{data}->[0]->{contents}->[0]=$text;
+      } else {
+         $output{node}->[0]->{error} = $text;
+      }
       print $out freeze([\%output]);
       print $out "\nENDOFFREEZE6sK4ci\n";
       yield();
@@ -2763,9 +2824,11 @@ sub dohyp {
       my $tabhandle = xCAT::Table->new($_,-create=>1);
       my $updates = $updatetable->{$_};
       if ($updates->{'!*XCATNODESTODELETE*!'}) {
+          my @delkeys;
           foreach (keys %{$updates->{'!*XCATNODESTODELETE*!'}}) {
-              if ($_) { $tabhandle->delEntries({node=>$_}); }
+              if ($_) { push @delkeys, {node=>$_}; }
           }
+          if (@delkeys) {  $tabhandle->delEntries(\@delkeys); }
           delete $updates->{'!*XCATNODESTODELETE*!'};
       }
       $tabhandle->setNodesAttribs($updatetable->{$_});

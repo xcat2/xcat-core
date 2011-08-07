@@ -26,19 +26,27 @@ then
         rpm -ba perl-xCAT/perl-xCAT.spec
         #rpm -ta $source/SOURCES/perl-xCAT-$VER.tar.gz
 else
-	if [ -f /etc/redhat-release ]
+
+	rpmbuild --version > /dev/null
+	if [ $? -gt 0 ]
 	then
-   		pkg="redhat"
-	else
-   		pkg="packages"
+		echo "Error: Is rpmbuild installed and working?"
+		exit 1
 	fi
+	RPMROOT=`rpmbuild --eval '%_topdir' xCATsn/xCATsn.spec`
+	if [ $? -gt 0 ]
+	then
+		echo "Could not determine rpmbuild's root"
+		exit 1
+	fi
+	echo "The location for rpm building is ${RPMROOT}"
 
 	set -x
 	
-    svn info > perl-xCAT/.svninfo
-	tar  --exclude .svn -czhf /usr/src/$pkg/SOURCES/perl-xCAT-$VER.tar.gz perl-xCAT;
-    rm perl-xCAT/.svninfo
-	rm -f /usr/src/$pkg/SRPMS/perl-xCAT-$VER*rpm /usr/src/$pkg/RPMS/noarch/perl-xCAT-$VER*rpm
-	rpmbuild -ta /usr/src/$pkg/SOURCES/perl-xCAT-$VER.tar.gz
+	svn info > perl-xCAT/.svninfo
+	tar  --exclude .svn -czhf $RPMROOT/SOURCES/perl-xCAT-$VER.tar.gz perl-xCAT;
+	rm perl-xCAT/.svninfo
+	rm -f $RPMROOT/SRPMS/perl-xCAT-$VER*rpm $RPMROOT/RPMS/noarch/perl-xCAT-$VER*rpm
+	rpmbuild -ta $RPMROOT/SOURCES/perl-xCAT-$VER.tar.gz
 	
 fi

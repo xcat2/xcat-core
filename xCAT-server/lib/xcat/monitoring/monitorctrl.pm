@@ -15,6 +15,7 @@ use xCAT_plugin::notification;
 use xCAT_monitoring::montbhandler;
 use Sys::Hostname;
 use xCAT::GlobalDef;
+use xCAT::DBobjUtils;
 
 #the list stores the names of the monitoring plug-in and the file name and module names.
 #the names are stored in the "name" column of the monitoring table. 
@@ -968,6 +969,7 @@ sub getMonHierarchy {
       if (defined($row3) && ($row3)) {
         if ($row3->{nodetype}) { $nodetype=$row3->{nodetype}; }
       }
+      #$nodetype=xCAT::DBobjUtils->getnodetype($node);
 
       my $monserver;
       my $monmaster;
@@ -1069,6 +1071,7 @@ sub getMonServerWithInfo {
     if (defined($tmp3) && ($tmp3)) {
       if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
     }
+    #$nodetype=xCAT::DBobjUtils->getnodetype($node);
 
     my $pairs=$pPairHash->{$node};
 
@@ -1139,6 +1142,7 @@ sub getMonServer {
       if (defined($tmp3) && ($tmp3)) {
 	if ($tmp3->{nodetype}) { $nodetype=$tmp3->{nodetype}; }
       }
+      #$nodetype=xCAT::DBobjUtils->getnodetype($node);
 
       my $pairs=$pPairHash->{$node};
 
