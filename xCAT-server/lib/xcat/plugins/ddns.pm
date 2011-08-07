@@ -223,7 +223,7 @@ sub process_request {
     }
     
     $ctx->{deletemode}=$deletemode;
-        
+    # check for site.domain     
     my $sitetab = xCAT::Table->new('site');
     my $stab = $sitetab->getAttribs({key=>'domain'},['value']);
     unless ($stab and $stab->{value}) {
@@ -231,7 +231,34 @@ sub process_request {
         return;
     }
     $ctx->{domain} = $stab->{value};
-
+    # get site.master
+    # check to see if /etc/resolv.conf has nameserver=site.master, if no
+    # put out a warning
+    my $master = $sitetab->getAttribs({key=>'master'},['value']);
+    unless ($master and $master->{value}) {
+        xCAT::SvrUtils::sendmsg([1,"master not defined in site table"], $callback);
+        return;
+    }
+    my $resolv="/etc/resolv.conf";
+    my $found=0;
+    my $nameserver=$master->{value};
+    my $cmd="grep $nameserver $resolv";
+    my @output=xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        $found=0;
+    } else { # if it is there check it is a nameserver 
+      foreach my $line (@output) {    
+        if ($line =~ /^nameserver/) { # line is a nameserver line 
+           $found=1;
+           last;
+        }
+      } 
+   } 
+   if ($found == 0) { # not nameserver master found
+        xCAT::SvrUtils::sendmsg([0,"Warning:The management node is not defined as a nameserver in /etc/resolv.conf. Add \"nameserver $nameserver\" to /etc/resolv.conf and run makedns again."], $callback);
+   }
+      
     my $networkstab = xCAT::Table->new('networks',-create=>0);
     unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
     my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain');
