@@ -191,6 +191,21 @@ sub process_request
             }
         }
     }
+
+	#
+	# make sure all the nodes are resolvable
+	#
+	foreach my $n (@nodes)
+    {
+        my $packed_ip = xCAT::NetworkUtils->getipaddr($n);
+        if (!$packed_ip)
+        {
+            my $rsp;
+            $rsp->{data}->[0] = "Could not resolve node \'$n\'.\n";
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+    }
     
     #
     #  get the node object definitions
@@ -727,7 +742,6 @@ sub process_request
 	if ($::POST) {
 	    $user_posts=$::POST;
 	}
-
         my $pos_hash = {};
         foreach my $node (@nodes)
         {
@@ -748,7 +762,7 @@ sub process_request
                     $scripts = join(',', $defscripts, $defbootscripts);
                 }
                 my @tmp_a = split(',', $scripts);
-		
+
 		# xCAT's default scripts to be run: syslog, setupntp, and mkresolvconf
 		my @valid_scripts = ("syslog", "setupntp", "mkresolvconf");
                 my $scripts1="";
@@ -781,7 +795,7 @@ sub process_request
 			}
 		    }
 		}
-		
+
                 if ($scripts1)
                 {
 		    if (exists($pos_hash->{$scripts1}))
@@ -804,8 +818,9 @@ sub process_request
 	xCAT::MsgUtils->message("I", $rsp, $callback);
         foreach my $scripts (keys(%$pos_hash))
         {
+
             my $pos_nodes = $pos_hash->{$scripts};
-	    #print "pos_nodes=@$pos_nodes\n";
+
             my $ret =
 		xCAT::Utils->runxcmd(
 		    {
@@ -818,6 +833,7 @@ sub process_request
 	    if ($::RUNCMD_RC != 0)
 	    {
 		$error++;
+
 	    }
 	    
 	    my $rsp;
