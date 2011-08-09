@@ -713,11 +713,16 @@ table a:hover {
 
 .monitorsumdiv {
 	width: 300px;
-	height: 150px;
+	height: 180px;
 	float: left;
-	margin: 0px 0px 10px 0px;
+	margin: 0px 0px 10px 10px;
 }
 
+.monitorsumdiv td{
+	padding: 0;
+	border-style: none;
+	font-size: 10px;
+}
 .monitornodediv {
 	width: 240px;
 	height: 120px;

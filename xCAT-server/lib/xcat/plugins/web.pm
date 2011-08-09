@@ -14,12 +14,13 @@ use strict;
 require xCAT::Utils;
 require xCAT::MsgUtils;
 require xCAT::DBobjUtils;
+require IO::Socket::INET;
 use Getopt::Long;
 use Data::Dumper;
 use LWP::Simple;
 use xCAT::Table;
 use xCAT::NodeRange;
-
+require XML::Parser;
 sub handled_commands {
 	return { webrun => "web", };
 }
@@ -51,7 +52,9 @@ sub process_request {
 		'updatevpd'     => \&web_updatevpd,
 		'createimage'   => \&web_createimage,
         'provision'     => \&web_provision,
-        'summary'       => \&web_summay
+        'summary'       => \&web_summay,
+	    'gangliashow'  => \&web_gangliaShow,
+	    'gangliacurrent' => \&web_gangliaLatest
 	);
 
 	#check whether the request is authorized or not
@@ -584,6 +587,287 @@ sub web_installganglia() {
 	}
 	
 	return;
+}
+
+#get ganglia data from rrd file. 
+#args : 
+#	nodeRange : the nodes' name which want to get
+#	time range : which period want to get, like last hour, last day, last week .....
+#	metric : which monitor attribute want to get, like load_one, bytes_in, bytes_out ......
+#
+#output: (till now there are 6 metic to get at one time at most)
+#   metric1:timestamp1,value1,timestamp2,value2,.....;metric2:timestamp1,value1,timestamp2,value2,.....;....
+sub web_gangliaShow{
+	my ( $request, $callback, $sub_req ) = @_;
+	my $nodename = $request->{arg}->[1];
+	my $timeRange = 'now-1h';
+	my $resolution = 60;
+	my $metric = $request->{arg}->[3];
+	my @nodes = ();
+	my $retStr = '';
+	my $runInfo;
+	my $cmd = '';
+	my $dirname = '/var/lib/ganglia/rrds/__SummaryInfo__/';
+	#get the summary for this grid(the meaning of grid is referenced from ganglia )
+	if ('_grid_' ne $nodename){
+		$dirname = '/var/lib/ganglia/rrds/' . $nodename . '/';
+	}
+
+	if ('hour' eq $request->{arg}->[2]){
+		$timeRange = 'now-1h';
+		$resolution = 60;
+	}
+	elsif('day' eq $request->{arg}->[2]){
+		$timeRange = 'now-1d';
+		$resolution = 1800;
+	}
+	
+	if ('_summary_' eq $metric){
+		my @metricArray = ('load_one', 'cpu_num', 'cpu_idle', 'mem_free', 'mem_total',);
+		my $filename = '';
+		my $step = 1;
+		my $index = 0;
+		my $size = 0;
+		foreach my $tempmetric (@metricArray){
+			my $temp = '';
+			my $line = '';
+			$retStr .= $tempmetric . ':';
+			$filename = $dirname . $tempmetric . '.rrd';
+			$cmd = "rrdtool fetch $filename -s $timeRange -r $resolution AVERAGE";
+			$runInfo = xCAT::Utils->runcmd($cmd, -1, 1);
+			if (scalar(@$runInfo) < 3){
+				$callback->({data=>'error.'});
+				return;
+			}
+			#delete the first 2 lindes
+			shift(@$runInfo);
+			shift(@$runInfo);
+
+			#we only support 60 lines for one metric, in order to reduce the data load for web gui
+			$size = scalar(@$runInfo);
+			if ($size > 60){
+				$step = int($size / 60) + 1;
+			}
+			
+			if (($tempmetric eq 'cpu_idle') && ('_grid_' eq $nodename)){
+				my $cpuidle = 0;
+				my $cpunum = 0;
+				for($index = 0; $index < $size; $index += $step){
+					if ($runInfo->[$index] =~ /^(\S+): (\S+) (\S+)/){
+						if (($2 eq 'NaNQ') || ($2 eq 'nan')){
+							#the rrdtool fetch last outline line always nan, so no need to add into return string
+							if ($index == ($size - 1)){
+								next;
+							}
+							$temp .= $1 . ',0,';
+						}
+						else{
+							$cpuidle = sprintf "%.2f", $2;
+							$cpunum = sprintf "%.2f", $3;
+							$temp .= $1 . ',' . (sprintf "%.2f", $cpuidle/$cpunum) . ',';
+						}
+					}
+				}
+			}
+			else{
+				for($index = 0; $index < $size; $index += $step){
+					if ($runInfo->[$index] =~ /^(\S+): (\S+).*/){
+						if (($2 eq 'NaNQ') || ($2 eq 'nan')){
+							#the rrdtool fetch last outline line always nan, so no need to add into return string
+							if ($index == ($size - 1)){
+								next;
+							}
+							$temp .= $1 . ',0,';
+						}
+						else{
+							$temp .= $1 . ',' . (sprintf "%.2f", $2) . ',';
+						}
+					}
+				}
+			}
+			$retStr .= substr($temp, 0, -1) . ';';
+		}
+		$retStr = substr($retStr, 0, -1);
+		$callback->({data=>$retStr});
+		return;
+	}
+}
+
+my $ganglia_return_flag = 0;
+my %gangliaHash;
+my $gangliaclustername;
+my $ganglianodename;
+#use socket to connect ganglia port to get the latest value/status
+sub web_gangliaLatest{
+	my ( $request, $callback, $sub_req ) = @_;
+	my $type = $request->{arg}->[1];
+	my $groupname = '';
+	my $xmlparser;
+	my $telnetcmd = '';
+	my $connect;
+	my $xmloutput = '';
+
+	$ganglia_return_flag = 0;
+	$gangliaclustername = '';
+	$ganglianodename = '';
+	undef(%gangliaHash);
+
+	if($request->{arg}->[2]){
+		$groupname = $request->{arg}->[2];
+	}
+	if ('grid' eq $type){
+		$xmlparser = XML::Parser->new(Handlers=>{Start=>\&web_gangliaGridXmlStart, End=>\&web_gangliaXmlEnd});
+		$telnetcmd = "/?filter=summary\n";
+	}
+	elsif('node' eq $type){
+		$xmlparser = XML::Parser->new(Handlers=>{Start=>\&web_gangliaNodeXmlStart, End=>\&web_gangliaXmlEnd});
+		$telnetcmd = "/\n";
+	}
+
+	#use socket to telnet 127.0.0.1 8652(ganglia's interactive port)
+	$connect = IO::Socket::INET->new('127.0.0.1:8652');
+	unless($connect){
+		$callback->({'data'=>'error: connect local port failed.'});
+		return;
+	}
+
+	print $connect $telnetcmd;
+	while(<$connect>){
+		$xmloutput .= $_;
+	}
+	close($connect);
+
+	$xmlparser->parse($xmloutput);
+
+	if ('grid' eq $type){
+		web_gangliaGridLatest($callback);
+	}
+	elsif('node' eq $type){
+		web_gangliaNodeLatest($callback, $groupname);
+	}
+	return;
+}
+
+#create return data for grid current status
+sub web_gangliaGridLatest{
+	my $callback = shift;
+	my $retStr = '';
+	my $timestamp = time();
+	if ($gangliaHash{'load_one'}){
+		$retStr .= 'load_one:' . $timestamp . ',' . $gangliaHash{'load_one'}->{'SUM'} . ';';
+	}
+	if ($gangliaHash{'cpu_num'}){
+		$retStr .= 'cpu_num:' . $timestamp . ',' . $gangliaHash{'cpu_num'}->{'SUM'} . ';';
+	}
+	if ($gangliaHash{'cpu_idle'}){
+		my $sum = $gangliaHash{'cpu_idle'}->{'SUM'};
+		my $num = $gangliaHash{'cpu_idle'}->{'NUM'};
+		$retStr .= 'cpu_idle:' . $timestamp . ',' . (sprintf("%.2f", $sum/$num )) . ';';
+	}
+	if ($gangliaHash{'mem_total'}){
+		$retStr .= 'mem_total:' . $timestamp . ',' . $gangliaHash{'mem_total'}->{'SUM'} . ';';
+	}
+	if ($gangliaHash{'mem_free'}){
+		$retStr .= 'mem_free:' . $timestamp . ',' . $gangliaHash{'mem_free'}->{'SUM'} . ';';
+	}
+
+	$retStr = substr($retStr, 0, -1);
+	$callback->({data=>$retStr});
+}
+
+#create return data for node current status
+sub web_gangliaNodeLatest{
+	my ($callback, $groupname) = @_;
+	my $node = '';
+	my $retStr = '';
+	my $timestamp = time() - 180;
+	my @nodes;
+	#get all nodes by group
+	if ($groupname){
+		@nodes = xCAT::NodeRange::noderange($groupname, 1);
+	}
+	else{
+		@nodes = xCAT::DBobjUtils->getObjectsOfType('node');
+	}
+	foreach $node(@nodes){
+		#if the node install the ganglia
+		if ($gangliaHash{$node}){
+			my $lastupdate = $gangliaHash{$node}->{'timestamp'};
+			#can not get the monitor data for too long time
+			if ($lastupdate < $timestamp){
+				$retStr .= $node . ':ERROR,Can not get monitor data more than 3 minutes!;';
+				next;
+			}
+			
+			if ($gangliaHash{$node}->{'load_one'} > $gangliaHash{$node}->{'cpu_num'}){
+				$retStr .= $node . ':WARNING,';
+			}
+			else{
+				$retStr .= $node . ':NORMAL,';
+			}
+			$retStr .= $gangliaHash{$node}->{'path'} . ';'
+		}
+		else{
+			$retStr .= $node . ':UNKNOWN,;' ;
+		}
+	}
+
+	$retStr = substr($retStr, 0, -1);
+	$callback->({data=>$retStr});
+}
+#xml parser end function, do noting here
+sub web_gangliaXmlEnd{
+}
+
+#xml parser start function for grid latest value
+sub web_gangliaGridXmlStart{
+	my( $parseinst, $elementname, %attrs ) = @_;
+	my $metricname = '';
+
+	#only parser grid infomation
+	if ($ganglia_return_flag){
+		return;
+	}
+	if ('METRICS' eq $elementname){
+		$metricname = $attrs{'NAME'};
+		$gangliaHash{$metricname}->{'SUM'} = $attrs{'SUM'};
+		$gangliaHash{$metricname}->{'NUM'} = $attrs{'NUM'};
+	}
+	elsif ('CLUSTER' eq $elementname){
+		$ganglia_return_flag = 1;
+		return;
+	}
+	else{
+		return;
+	}
+	#only need the grid summary info, if receive cluster return directly
+}
+
+#xml parser start function for node current status
+sub web_gangliaNodeXmlStart{
+	my( $parseinst, $elementname, %attrs ) = @_;
+	my $metricname = '';
+	#save the cluster name
+	if('CLUSTER' eq $elementname){
+		$gangliaclustername = $attrs{'NAME'};
+		return;
+	}
+	elsif('HOST' eq $elementname){
+		if ($attrs{'NAME'} =~ /(\S+?)\.(.*)/){
+			$ganglianodename = $1;
+		}
+		else{
+			$ganglianodename = $attrs{'NAME'};
+		}
+		$gangliaHash{$ganglianodename}->{'path'} = $gangliaclustername . '/' . $attrs{'NAME'};
+		$gangliaHash{$ganglianodename}->{'timestamp'} = $attrs{'REPORTED'};
+	}
+	elsif('METRIC' eq $elementname){
+		$metricname = $attrs{'NAME'};
+		if (('load_one' eq $metricname) || ('cpu_num' eq $metricname)){
+			$gangliaHash{$ganglianodename}->{$metricname} = $attrs{'VAL'};
+		}
+	}
 }
 
 sub web_rmcmonStart {

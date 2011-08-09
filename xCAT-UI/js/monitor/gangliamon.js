@@ -1,8 +1,19 @@
 /**
  * Global variables
  */
-var gangliaTableId = 'nodesDatatable';
-var gangliaData;
+//save grid summary data, update every one minute
+var gridData;
+
+//save nodes path, used for getting detail from rrd file
+var nodePath = new Object();
+
+//save nodes current status, 
+//unknown-> -2, error->-1, warning->0 ,normal->1   which is used for sorting 
+var nodeStatus = new Object();
+
+//update timer
+var gangliaTimer;
+
 
 /**
  * Load Ganglia monitoring tool
@@ -11,61 +22,33 @@ var gangliaData;
  */
 function loadGangliaMon() {
 	// Get Ganglia tab
-	var gangliaTab = $('#gangliamon');
+	$('#gangliamon').append(createInfoBar('Checking RPMs.'));
+	
+	//should get the groups first
+	if (!$.cookie('groups')){
+	    $.ajax( {
+            url : 'lib/cmd.php',
+            dataType : 'json',
+            data : {
+                cmd : 'extnoderange',
+                tgt : '/.*',
+                args : 'subgroups',
+                msg : ''
+            },
 
+            success : setGroupsCookies
+        });
+	}
 	// Check whether Ganglia RPMs are installed on the xCAT MN
 	$.ajax({
 		url : 'lib/systemcmd.php',
 		dataType : 'json',
 		data : {
-			cmd : 'rpm -q rrdtool ganglia-gmetad ganglia-gmond ganglia-web'
+			cmd : 'rpm -q rrdtool ganglia-gmetad ganglia-gmond'
 		},
 
 		success : checkGangliaRPMs
 	});
-
-	// Create groups and nodes DIV
-	var groups = $('<div id="groups"></div>');
-	var nodes = $('<div id="nodes"></div>');
-	gangliaTab.append(groups);
-	gangliaTab.append(nodes);
-
-	// Create info bar
-	var gangliaLnk = $('<a href="#">Click here</a>');
-	gangliaLnk.css( {
-		'color' : 'blue',
-		'text-decoration' : 'none'
-	});
-	gangliaLnk.click(function() {
-		// Open a new window for Ganglia
-		window.open('../ganglia/');
-	});
-
-	// Create info bar
-	var info = $('<div class="ui-state-highlight ui-corner-all"></div>');
-	info.append('<span class="ui-icon ui-icon-info" style="display: inline-block; margin: 10px 5px;"></span>');
-	var msg = $('<p style="display: inline-block; width: 95%;"></p>');
-	msg.append('Select a group to view the nodes summary. ');
-	msg.append(gangliaLnk);
-	msg.append(' to open the Ganglia page.');
-	info.append(msg);
-	info.css('margin-bottom', '10px');
-	nodes.append(info);
-
-	// Get groups
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'extnoderange',
-			tgt : '/.*',
-			args : 'subgroups',
-			msg : ''
-		},
-
-		success : loadGroups4Ganglia
-	});
-
 	return;
 }
 
@@ -78,10 +61,10 @@ function loadGangliaMon() {
  */
 function checkGangliaRPMs(data) {
 	var gangliaTab = $('#gangliamon');
-
+	gangliaTab.empty();
 	// Get the list of Ganglia RPMs installed
 	var status = data.rsp.split(/\n/);
-	var gangliaRPMs = [ "rrdtool", "ganglia-gmetad", "ganglia-gmond", "ganglia-web" ];
+	var gangliaRPMs = [ "rrdtool", "ganglia-gmetad", "ganglia-gmond"];
 	var warningMsg = 'Before continuing, please install the following packages: ';
 	var missingRPMs = false;
 	for ( var i in status) {
@@ -99,6 +82,7 @@ function checkGangliaRPMs(data) {
 		warningBar.css('margin-bottom', '10px');
 		warningBar.prependTo(gangliaTab);
 	} else {
+	    gangliaTab.append(createInfoBar('Checking Running status.'));
 		// Check if ganglia is running on the xCAT MN
 		$.ajax( {
 			url : 'lib/cmd.php',
@@ -110,255 +94,598 @@ function checkGangliaRPMs(data) {
 				msg : ''
 			},
 
-			/**
-			 * Append warning message
-			 * 
-			 * @param data
-			 *            Data returned from HTTP request
-			 * @return Nothing
-			 */
-			success : function(data) {
-				if (data.rsp[0].indexOf("not-monitored") > -1) {
-					// Create link to start Ganglia
-					var startLnk = $('<a href="#">Click here</a>');
-					startLnk.css( {
-						'color' : 'blue',
-						'text-decoration' : 'none'
-					});
-					startLnk.click(function() {
-						// Turn on Ganglia for all nodes
-						monitorNode('', 'on');
-					});
-		
-					// Create warning bar
-					var warningBar = $('<div class="ui-state-error ui-corner-all"></div>');
-					var msg = $('<p></p>');
-					msg.append('<span class="ui-icon ui-icon-alert"></span>');
-					msg.append('Please start Ganglia Monitoring on xCAT. ');
-					msg.append(startLnk);
-					msg.append(' to start Ganglia Monitoring.');
-					warningBar.append(msg);
-					warningBar.css('margin-bottom', '10px');
-		
-					// If there are any warning messages, append this warning after it
-					var curWarnings = $('#gangliamon').find('.ui-state-error');
-					var gangliaTab = $('#gangliamon');
-					if (curWarnings.length) {
-						curWarnings.after(warningBar);
-					} else {
-						warningBar.prependTo(gangliaTab);
-					}
-				}
-			}
+			success : checkGangliaRunning
 		});
 	}
+	
 	return;
 }
 
 /**
- * Load groups
- * 
- * @param data
- *            Data returned from HTTP request
- * @return
- */
-function loadGroups4Ganglia(data) {
-	// Remove loader
-	$('#groups').find('img').remove();
-	
-	// Save group in cookie
-	var groups = data.rsp;
-	setGroupsCookies(data);
-
-	// Create a list of groups
-	$('#groups').append('<div class="grouplabel">Groups</div>');
-	var grouplist= $('<div class="groupdiv"></div>');
-	// Create a link for each group
-	for (var i = groups.length; i--;) {
-	    grouplist.append('<div><a href="#">' + groups[i] + '</a></div>');
-	}
-	
-	$('#groups').append(grouplist);
-	
-	// Bind the click event
-	$('#groups .groupdiv div').bind('click', function(){
-		$('#nodes .jqplot-target').remove();
-		
-		// Create loader
-		var loader = createLoader();
-		loader.css('padding', '5px');
-		$('#nodes').append(loader);
-		
-	    var thisGroup = $(this).text();
-	    $('#groups .groupdiv div').removeClass('selectgroup');
-	    $(this).addClass('selectgroup');
-	    
-	    $.ajax( {
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'nodels',
-				tgt : thisGroup,
-				args : '',
-				msg : thisGroup
-			},
-
-			/**
-			 * Get node definitions
-			 * 
-			 * @param data
-			 *            Data returned from HTTP request
-			 * @return Nothing
-			 */
-			success : function(data) {
-				var group = data.msg;
-									
-				// Get nodes definitions
-				$.ajax( {
-					url : 'lib/cmd.php',
-					dataType : 'json',
-					data : {
-						cmd : 'nodestat',
-						tgt : group,
-						args : '',
-						msg : group
-					},
-
-					success : loadGangliaSummary
-				});
-			}
-		});
-	});
-}
-
-/**
- * Load Ganglia summary page
+ * Check whether Ganglia is running
  * 
  * @param data
  *            Data returned from HTTP request
  * @return Nothing
  */
-function loadGangliaSummary(data) {	
-	// Data returned
-	var rsp = data.rsp;
-	// Group name
-	var group = data.msg;
-	// Node attributes hash
-	var attrs = new Object();
-	
-	var node, status, args;
-	for ( var i in rsp) {
-		// Get key and value
-		args = rsp[i].split(':', 2);
-		node = jQuery.trim(args[0]);
-		status = jQuery.trim(args[1]);
-		
-		// Create a hash table
-		attrs[node] = new Object();
-		attrs[node]['status'] = status;		
-	}
-	
-	// Save node attributes hash
-	gangliaData = attrs;
-	
-	// Get the status of Ganglia
-	// Then create pie chart for node and Ganglia status
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'webrun',
-			tgt : '',
-			args : 'gangliastatus;' + group,
-			msg : ''
-		},
+function checkGangliaRunning(data){
+    var gangliaTab = $('#gangliamon');
+    var groupsSelectStr = '';
+    var groupsArray = $.cookie('groups').split(',');
+    gangliaTab.empty();
+    if (data.rsp[0].indexOf("not-monitored") > -1) {
+        // Create link to start Ganglia
+        var startLnk = $('<a href="#">Click here</a>');
+        startLnk.css( {
+            'color' : 'blue',
+            'text-decoration' : 'none'
+        });
+        startLnk.click(function() {
+            // Turn on Ganglia for all nodes
+            monitorNode('', 'on');
+        });
 
-		success : loadGangliaStatus
-	});
-}
+        // Create warning bar
+        var warningBar = $('<div class="ui-state-error ui-corner-all"></div>');
+        var msg = $('<p></p>');
+        msg.append('<span class="ui-icon ui-icon-alert"></span>');
+        msg.append('Please start Ganglia Monitoring on xCAT. ');
+        msg.append(startLnk);
+        msg.append(' to start Ganglia Monitoring.');
+        warningBar.append(msg);
+        warningBar.css('margin-bottom', '10px');
 
-/**
- * Load the status of Ganglia for a given group
- * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
- */
-function loadGangliaStatus(data) {
-	// Remove loader
-	$('#nodes').find('img').remove();
-	
-	// Get datatable
-	var ganglia = data.rsp;
-	var node, ping, monitored;
+        // If there are any warning messages, append this warning after it
+        var curWarnings = $('#gangliamon').find('.ui-state-error');
+        
+        if (curWarnings.length) {
+            curWarnings.after(warningBar);
+        } else {
+            warningBar.prependTo(gangliaTab);
+        }
+        
+        return;
+    }
 
-	// Count nodes that are pingable and not pingable
-	// and nodes that are pingable and monitored by Ganglia
-	var pingWGanglia = 0;
-	var pingWOGanglia = 0;
-	var noping = 0;
-	for ( var i in ganglia) {
-		// ganglia[0] = nodeName and ganglia[1] = state
-		node = jQuery.trim(ganglia[i][0]);
-		if (node) {
-			monitored = jQuery.trim(ganglia[i][1]);
-			ping = gangliaData[node]['status'];
-			
-			// If the node is monitored, increment count
-			if (ping == 'sshd' && monitored == 'on') {
-				pingWGanglia++;
-			} else if (ping == 'sshd' && monitored == 'off') {
-				pingWOGanglia++;
-			} else {
-				noping++;
-			}
-		}
-	}
-		
-	// Create pie chart
-	var summary = $('<div id="ganglia_sum"></div>');
-	$('#nodes').append(summary);
-	
-	// Create pie details
-	var details = $('<div id="ganglia_details"></div>');
-	$('#nodes').append(details);
-		
-	var pie = [['Ping + monitored', pingWGanglia], ['Ping + not monitored', pingWOGanglia], ['Noping', noping]];
-	var plot = $.jqplot('ganglia_sum',
-		[pie], {
-	        seriesDefaults: {
-        	renderer: $.jqplot.PieRenderer,
-	        rendererOptions: {
-        	    padding: 5,
-                fill:true,
-                shadow:true,
-                shadowOffset: 2,
-                shadowDepth: 5,
-                shadowAlpha: 0.07,
-                dataLabels : 'value',
-                showDataLabels: true
-        		}
-            },
-            legend: {
-                show: true,
-                location: 'e'
+    groupsSelectStr = '<select style="padding:0px;" id="gangliagroup">';
+    for (var i in groupsArray){
+        groupsSelectStr += '<option value="' + groupsArray[i] + '">' + groupsArray[i] + '</option>';
+    }
+    groupsSelectStr += '</select>';
+    
+    //help info
+    var helpStr = '<div class="tooltip">aaa</div>';
+    
+    //pass checking
+    var showStr = '<h3>Grid Overview</h3><hr>' +
+                  '<div id="gangliaGridSummary"></div>' +
+                  '<h3 style="display:inline;">Nodes Current Status</h3>' +
+                  '<sup style="cursor: pointer;color:blue"> ?</sup>' +
+                  '<hr>Nodes in Group:' + groupsSelectStr +
+                  ' order by: <select id="gangliaorder" style="padding:0px;"><option value="name">Name</option>' +
+                  '<option value="asc">Ascending</option><option value="des">Descending</option></select>' +
+                  '<div id="gangliaNodes"></div>';
+    
+    //ganglia help information
+    
+    gangliaTab.append(showStr);
+
+    //get summary data and draw on the page
+    $('#gangliaGridSummary').append('Getting Grid summary Data.<img src="images/loader.gif"></img>');
+    sendGridSummaryAjax();
+    
+    //get nodes current status and draw on the page
+    $('#gangliaNodes').append('Getting ' + $('#gangliagroup').val() + ' nodes Status.<img src="images/loader.gif"></img>');
+    sendNodeCurrentAjax();
+    
+    //start the timer to update page per minute.
+    gangliaTimer = window.setTimeout('updateGangliaPage()', 60000);
+    
+    //bind the group select change event
+    $('#gangliagroup').bind('change', function(){
+        var groupname = $(this).val();
+        $('#gangliaNodes').html('Getting ' + groupname + ' nodes Status.<img src="images/loader.gif"></img>');
+        sendNodeCurrentAjax();
+    });
+    
+    //bind the order select change event
+    $('#gangliaorder').bind('change', function(){
+        drawGangliaNodesArea($(this).val());
+    });
+    
+    //bind the info click enent
+    $('#gangliamon sup').bind('click', function(){
+        var helpStr = '<table>' +
+                      '<tr><td style="background:#66CD00;" width="16px"> </td><td>Normal</td></tr>' +
+                      '<tr><td style="background:#FFD700;" width="16px"> </td><td>Heavy Load</td></tr>' +
+                      '<tr><td style="background:#FF3030;" width="16px"> </td><td>Can not get status longer than 3 minutes</td></tr>' +
+                      '<tr><td style="background:#8B8B7A;" width="16px"> </td><td>Unknown</td></tr>' +
+                      '</table>';
+        var helpDia = $('<div></div>');
+        helpDia.append(helpStr);
+        helpDia.dialog({
+            modal: true,
+            width: 350,
+            title: 'Node Status Help Info',
+            close: function(){$(this).remove();},
+            buttons: {
+                'Close': function(){
+                    $(this).dialog('close');
+                }
             }
         });
-	
-	// Change CSS styling for legend
-	summary.find('table').css({
-		'border-style': 'none'
-	}).find('td').css({
-		'border-style': 'none'
-	});
+    });
+}
 
-	// Open nodes page on-click
-	$('#ganglia_sum').bind('jqplotDataClick', function(env, srIndex, ptIndex, data) {
-		window.open('../xcat/index.php');
-	});
-	
-	// Special note
-	// To redraw pie chart: 
-	//     - Use chart.series[0].data[i] to reference existing data
-	//     - Use chart.redraw() to redraw chart
+/**
+ * send ajax request to get grid summary information
+ * 
+ * @param 
+ *        
+ * @return Nothing
+ */
+function sendGridSummaryAjax(){
+  //get the summary data
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webrun',
+            tgt : '',
+            args : 'gangliashow;_grid_;hour;_summary_',
+            msg : ''
+        },
+        
+        success: function(data){
+            createGridSummaryData(data.rsp[0]);
+            drawGridSummary();
+        }
+    });
+}
+
+/**
+ * send ajax request to get nodes current load information
+ * 
+ * @param which group name want to get
+ *        
+ * @return Nothing
+ */
+function sendNodeCurrentAjax(){
+    var groupname = $('#gangliagroup').val();
+  //get all nodes current status
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webrun',
+            tgt : '',
+            args : 'gangliacurrent;node;' + groupname,
+            msg : ''
+        },
+        
+        success: function(data){
+            createNodeStatusData(data.rsp[0]);
+            drawGangliaNodesArea($('#gangliaorder').val());
+        }
+    });
+}
+
+/**
+ * send ajax request to get grid current summary information for update the page
+ * 
+ * @param 
+ *        
+ * @return Nothing
+ */
+function sendGridCurrentAjax(){
+    //get the summary data
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'webrun',
+            tgt : '',
+            args : 'gangliacurrent;grid',
+            msg : ''
+        },
+        
+        success: function(data){
+            updateGridSummaryData(data.rsp[0]);
+            drawGridSummary();
+        }
+    });
+}
+
+/**
+ * save the grid summary data to local global variable
+ * 
+ * @param data structure
+ *            metric1:time11,val11,time12,val12....;metric2:time21,val21,time22,val22,...;....
+ * @return Nothing
+ */
+function createGridSummaryData(summaryString){
+    //empty the global data
+    gridData = new Object();
+    
+    var metricArray = summaryString.split(';');
+    var metricname = '';
+    var valueArray = '';
+    var position = 0;
+    var tempLength = 0;
+    for (var index = 0; index < metricArray.length; index++){
+        position = metricArray[index].indexOf(':');
+        //get the metric name and init its global array to save timestamp and value pair
+        metricname = metricArray[index].substr(0, position);
+        gridData[metricname] = new Array();
+        valueArray = metricArray[index].substr(position + 1).split(',');
+        tempLength = valueArray.length;
+        //save timestamp and value into global array
+        for (var i = 0; i < tempLength; i++){
+            gridData[metricname].push(Number(valueArray[i]));
+        }
+    }
+}
+
+/**
+ * update the grid summary data to local global variable
+ * 
+ * @param data structure
+ *            metric1:time11,val11;metric2:time21,val21,time22;....
+ * @return Nothing
+ */
+function updateGridSummaryData(currentString){
+    var metricArray = currentString.split(';');
+    var metricname = '';
+    var position = 0;
+    var tempLength = 0;
+    var index = 0;
+    var tempArray;
+    
+    tempLength = metricArray.length;
+    for (index = 0; index < tempLength; index++){
+        position = metricArray[index].indexOf(':');
+        metricname = metricArray[index].substr(0, position);
+        tempArray = metricArray[index].substr(position + 1).split(',');
+        if (gridData[metricname]){
+            gridData[metricname].shift();
+            gridData[metricname].shift();
+            gridData[metricname].push(Number(tempArray[0]));
+            gridData[metricname].push(Number(tempArray[1]));
+        }
+    }
+}
+/**
+ * draw the Grid summay area by global data
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function drawGridSummary() {
+    var gridDrawArea = $('#gangliaGridSummary');
+    var showStr = '';
+    var tempStr = $('#gangliamon').attr('class');
+    
+    //jqflot only draw on the area visiable, if the tab is hide, return directly
+    if (-1 != tempStr.indexOf('hide')){
+        return;
+    };
+    gridDrawArea.empty();
+    showStr = '<table style="border-style:none;"><tr><td style="padding:0;border-style:none;"><div id="gangliasummaryload" class="monitorsumdiv"></div></td>' + 
+              '<td style="padding:0;border-style:none;"><div id="gangliasummarycpu" class="monitorsumdiv"></div></td>' +
+              '<td style="padding:0;border-style: none;"><div id="gangliasummarymem" class="monitorsumdiv"></div></td></tr></table>';
+    gridDrawArea.append(showStr);
+    drawLoadFlot('gangliasummaryload', 'Grid', gridData['load_one'], gridData['cpu_num']);
+    drawCpuFlot('gangliasummarycpu', 'Grid', gridData['cpu_idle']);
+    drawMemFlot('gangliasummarymem', 'Grid', gridData['mem_free'], gridData['mem_total']);
+}
+
+/**
+ * draw the load flot by data(maybe summary data, or one node's data)
+ * 
+ * @param areaid: which div draw this flot
+ *        loadpair: the load timestamp and value pair
+ *        cpupair: the cpu number and value pair
+ *            
+ * @return Nothing
+ */
+function drawLoadFlot(areaid, titleprefix, loadpair, cpupair){
+    var load = new Array();
+    var cpunum = new Array();
+    var index = 0;
+    var templength = 0;
+    var yaxismax = 0;
+    var interval = 1;
+    
+    $('#' + areaid).empty();
+    //parse load pair, the timestamp must mutiply 1000, javascript time stamp is millisecond
+    templength = loadpair.length;
+    for (index = 0; index < templength; index += 2){
+        load.push([loadpair[index] * 1000, loadpair[index + 1]]);
+        if (loadpair[index + 1] > yaxismax){
+            yaxismax = loadpair[index + 1];
+        }
+    }
+    
+    //parse cpu pair
+    templength = cpupair.length;
+    for (index = 0; index < templength; index += 2){
+        cpunum.push([cpupair[index] * 1000, cpupair[index + 1]]);
+        if (cpupair[index + 1] > yaxismax){
+            yaxismax = cpupair[index + 1];
+        }
+    }
+    
+    interval = parseInt(yaxismax / 3);
+    if (interval < 1){
+        interval = 1;
+    }
+    $.jqplot(areaid, [load, cpunum],{
+        title: titleprefix + ' Loads/Procs Last Hour',
+        axes:{
+            xaxis:{
+                renderer : $.jqplot.DateAxisRenderer,
+                numberTicks: 4,
+                tickOptions : {
+                    formatString : '%R',
+                    show : true
+                }
+            },
+            yaxis: {
+                min : 0,
+                tickInterval : interval
+            }
+        },
+        legend : {
+            show: true,
+            location: 'nw'
+        },
+        series:[{label:'Load'}, {label: 'CPU Number'}],
+        seriesDefaults : {showMarker: false}
+    } 
+    );
+}
+
+/**
+ * draw the cpu usage flot by data(maybe summary data, or one node's data)
+ * 
+ * @param areaid: which div draw this flot
+ *        titleprefix : title used name
+ *        cpupair: the cpu timestamp and value pair
+ *            
+ * @return Nothing
+ */
+function drawCpuFlot(areaid, titleprefix, cpupair){
+    var cpu = new Array();
+    var index = 0;
+    var tempLength = 0;
+    
+    $('#' + areaid).empty();
+    tempLength = cpupair.length;
+    // time stamp should mutiply 1000
+    // we get the cpu idle from server, we should use 1 subtract the idle.
+    for(index = 0; index < tempLength; index +=2){
+        cpu.push([(cpupair[index] * 1000), (100 - cpupair[index + 1])]);
+    }
+    
+    $.jqplot(areaid, [cpu],{
+        title: titleprefix + ' Cpu Use Last Hour',
+        axes:{
+            xaxis:{
+                renderer : $.jqplot.DateAxisRenderer,
+                numberTicks: 4,
+                tickOptions : {
+                    formatString : '%R',
+                    show : true
+                }
+            },
+            yaxis: {
+                min : 0,
+                max : 100,
+                tickOptions:{formatString : '%d\%'}
+            }
+        },
+        seriesDefaults : {showMarker: false}
+    } 
+    );
+}
+
+/**
+ * draw the memory usage flot by data(maybe summary data, or one node's data)
+ * 
+ * @param areaid: which div draw this flot
+ *        titleprefix : title used name
+ *        cpupair: the cpu timestamp and value pair
+ *            
+ * @return Nothing
+ */
+function drawMemFlot(areaid, titleprefix, freepair, totalpair){
+    var use = new Array();
+    var total = new Array();
+    var tempsize = 0;
+    var index = 0;
+    
+    $('#' + areaid).empty();
+    if(freepair.length < totalpair.length){
+        tempsize = freepair.length;
+    }
+    else{
+        tempsize = freepair.length;
+    }
+    
+    for(index = 0; index < tempsize; index += 2){
+        var temptotal = totalpair[index + 1];
+        var tempuse = temptotal - freepair[index + 1];
+        temptotal = temptotal / 1000000;
+        tempuse = tempuse / 1000000;
+        total.push([totalpair[index] * 1000, temptotal]);
+        use.push([freepair[index] * 1000, tempuse]);
+    }
+    
+    $.jqplot(areaid, [use, total],{
+        title: titleprefix + ' Memory Use Last Hour',
+        axes:{
+            xaxis:{
+                renderer : $.jqplot.DateAxisRenderer,
+                numberTicks: 4,
+                tickOptions : {
+                    formatString : '%R',
+                    show : true
+                }
+            },
+            yaxis: {
+                min : 0,
+                tickOptions:{formatString : '%.2fG'}
+            }
+        },
+        legend : {
+            show: true,
+            location: 'nw'
+        },
+        series:[{label:'Used'}, {label: 'Total'}],
+        seriesDefaults : {showMarker: false}
+    } 
+    );
+}
+
+function createNodeStatusData(nodesStatus){
+    var index;
+    var nodesArray = nodesStatus.split(';');
+    var position = 0;
+    var nodename = '';
+    var index = 0;
+    var tempArray;
+    var tempStr = '';
+    var templength = nodesArray.length;
+    
+    for (index in nodePath){
+        delete(nodePath[index]);
+    }
+    
+    for (index in nodeStatus){
+        delete(nodeStatus[index]);
+    }
+    
+    for (index = 0; index < templength; index++){
+        tempStr = nodesArray[index];
+        position = tempStr.indexOf(':');
+        nodename = tempStr.substring(0, position);
+        tempArray = tempStr.substring(position + 1).split(',');
+        
+        switch(tempArray[0]){
+            case 'UNKNOWN':{
+                nodeStatus[nodename] = -2;
+            }
+            break;
+            case 'ERROR':{
+                nodeStatus[nodename] = -1;
+            }
+            break;
+            case 'WARNING':{
+                nodeStatus[nodename] = 0;
+                nodePath[nodename] = tempArray[1];
+            }
+            break;
+            case 'NORMAL':{
+                nodeStatus[nodename] = 1;
+                nodePath[nodename] = tempArray[1];
+            }
+            break;
+        }
+    }
+}
+/**
+ * draw nodes current status, there are four type:
+ *  a. unknown(gray): can not find save data for this node
+ *  b. error(red): get status sometime early, but can not get now
+ *  c. warning(orange): node are heavy load
+ *  d. normal(green): 
+ * 
+ * @param 
+ *            
+ * @return Nothing
+ */
+function drawGangliaNodesArea(ordertype){
+    var index = 0;
+    var templength = 0;
+    var showStr = '';
+    var nodename = '';
+    var sortarray = new Array();
+    $('#gangliaNodes').html('<ul style="margin:0px;padding:0px;"></ul>');
+    //empty the hash
+    for (index in nodeStatus){
+        sortarray.push([index, nodeStatus[index]]);
+    }
+    
+    if ('asc' == ordertype){
+        sortarray.sort(statusAsc);
+    }
+    else if('des' == ordertype){
+        sortarray.sort(statusDes);
+    }
+    else{
+        //do nothing
+    }
+    
+    templength = sortarray.length;
+    for (index = 0; index < templength; index++){
+        nodename = sortarray[index][0];
+        switch(sortarray[index][1]){
+            case -2:{
+                showStr = '<li class="monitorunknown ui-corner-all monitornodeli" ' + 
+                        'title="' + nodename + '"></li>';
+            }
+            break;
+            case -1:{
+                showStr = '<li class="monitorerror ui-corner-all monitornodeli" ' + 
+                        'title="' + nodename + '"></li>';
+            }
+            break;
+            case 0:{
+                showStr = '<li class="mornitorwarning ui-corner-all monitornodeli" ' + 
+                        'title="' + nodename + '"></li>';
+            }
+            break;
+            case 1:{
+                showStr = '<li class="monitornormal ui-corner-all monitornodeli" ' + 
+                        'title="' + nodename + '"></li>';
+            }
+            break;
+        }
+        $('#gangliaNodes ul').append(showStr);
+    }
+    
+    //bind all normal and warning nodes' click event
+    $('.monitornormal,.monitorwarning').bind('click', function(){
+        var nodename = $(this).attr('title');
+        window.open('ganglianode.php?n=' + nodename + '&p=' + nodePath[nodename],
+                'nodedetail','height=250,width=950,scrollbars=yes,status =no');
+    });
+    
+}
+
+/**
+ * update all tab per minute.
+ * 
+ * @param 
+ *            
+ * @return Nothing
+ */
+function updateGangliaPage(){
+    if ($('#gangliaNodes').size() < 1){
+        return;
+    }
+    
+    sendGridCurrentAjax();
+    sendNodeCurrentAjax();
+    
+    gangliaTimer = window.setTimeout('updateGangliaPage()', 60000);
+}
+
+function statusAsc(a, b){
+    return a[1] - b[1];
+}
+
+function statusDes(a, b){
+    return b[1] - a[1];
 }
