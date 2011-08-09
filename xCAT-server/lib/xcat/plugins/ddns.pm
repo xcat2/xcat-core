@@ -241,6 +241,7 @@ sub process_request {
     }
     my $resolv="/etc/resolv.conf";
     my $found=0;
+    # check if nameserver site.master in /etc/resolv.conf
     my $nameserver=$master->{value};
     my $cmd="grep $nameserver $resolv";
     my @output=xCAT::Utils->runcmd($cmd, 0);
@@ -257,6 +258,26 @@ sub process_request {
    } 
    if ($found == 0) { # not nameserver master found
         xCAT::SvrUtils::sendmsg([0,"Warning:The management node is not defined as a nameserver in /etc/resolv.conf. Add \"nameserver $nameserver\" to /etc/resolv.conf and run makedns again."], $callback);
+   }
+
+    # check if search site.domain in /etc/resolv.conf
+    $found=0;
+    my $domain=$ctx->{domain};
+    my $cmd="grep $domain $resolv";
+    my @output=xCAT::Utils->runcmd($cmd, 0);
+    if ($::RUNCMD_RC != 0)
+    {
+        $found=0;
+    } else { # if it is there check it is a search clause 
+      foreach my $line (@output) {    
+        if ($line =~ /^search/) { # line is a search line 
+           $found=1;
+           last;
+        }
+      } 
+   } 
+   if ($found == 0) { # no search site.domain found
+        xCAT::SvrUtils::sendmsg([0,"Warning:The domain is not defined in a search path in /etc/resolv.conf. Add \"search $domain\" to /etc/resolv.conf and run makedns again."], $callback);
    }
       
     my $networkstab = xCAT::Table->new('networks',-create=>0);
