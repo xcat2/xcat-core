@@ -475,7 +475,7 @@ sub setulimits
             print LIMITSTMP "        data= -1\n";
             print LIMITSTMP "        rss= -1\n";
             print LIMITSTMP "        stack= -1\n";
-            print LIMITSTMP "        nofiles= -1\n";
+            print LIMITSTMP "        nofiles= 102400\n";
             print LIMITSTMP "\n";
             $rootstanza = 1;
         }
