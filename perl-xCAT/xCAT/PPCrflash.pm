@@ -12,7 +12,6 @@ use Getopt::Long;
 use File::Spec;
 use POSIX qw(tmpnam);
 
-
 my $packages_dir= ();
 my $activate    = ();
 my $verbose     = 0;
@@ -96,7 +95,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(h|help v|version V|verbose p=s activate=s commit recover) )) {
+    if ( !GetOptions( \%opt, qw(h|help v|version V|verbose p=s d=s activate=s commit recover) )) {
         return( usage() );
     }
     
@@ -136,6 +135,17 @@ sub parse_args {
     if ( exists( $opt{p} ) && ($opt{p} !~ /^\//) ) {#relative path
         $opt{p} = xCAT::Utils->full_path($opt{p}, $request->{cwd}->[0]);
     }
+    
+    if( exists( $opt{d} ) ) {
+         if(!exists( $opt{activate}) ) {
+             return( usage("Option -d must be used with --activate ") );
+         }
+    }
+
+    if ( exists( $opt{d} ) && ($opt{d} !~ /^\//) ) {#relative path
+        $opt{d} = xCAT::Utils->full_path($opt{d}, $request->{cwd}->[0]);
+    }
+
     ###############################
     #--activate's value only can be concurrent and disruptive
     ################################
@@ -143,8 +153,12 @@ sub parse_args {
         if( ($opt{activate} ne "concurrent") && ($opt{activate} ne "disruptive")) {
             return (usage("--activate's value can only be concurrent or disruptive"));
         }
+
+        if(!exists( $opt{d} )) {
+            $opt{d} = "/tmp";
+        }
     }
-    
+   
     ####################################
     # Check for "-" with no option
     ####################################
