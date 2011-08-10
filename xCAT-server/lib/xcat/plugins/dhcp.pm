@@ -1293,8 +1293,7 @@ sub process_request
             {
                 $callback->(
                         {
-                         error     => ["Unable to find mac address for $node"],
-                         errorcode => [1]
+                         warning     => ["Unable to find mac address for $node"]
                         }
                         );
                 next;
