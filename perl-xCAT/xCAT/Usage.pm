@@ -214,10 +214,10 @@ my %usage = (
 "Usage: 
     rflash [ -h|--help|-v|--version]
     PPC (with HMC) specific:
-	rflash <noderange> -p directory [--activate concurrent | disruptive][-V|--verbose] 
+	rflash <noderange> -p <rpm_directory> [--activate concurrent | disruptive][-V|--verbose] 
 	rflash <noderange> [--commit | --recover] [-V|--verbose]
     PPC (using Direct FSP Management) specific:
-	rflash <noderange> -p directory --activate disruptive 
+	rflash <noderange> -p <rpm_directory> --activate disruptive [-d <data_directory>]
 	rflash <noderange> [--commit | --recover] [-V|--verbose]",
     "mkhwconn" =>
 "Usage:

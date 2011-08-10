@@ -472,7 +472,7 @@ sub rflash {
 	   dpush ( \@value, [$name, $msg]);
 	   }
 
-       my $res = xCAT::FSPUtils::fsp_api_action( $name, $d, $action );
+       my $res = xCAT::FSPUtils::fsp_api_action( $name, $d, $action, 0, $request->{opt}->{d} );
        push(@value,[$name, @$res[1], @$res[2]]);
        return (\@value);
 

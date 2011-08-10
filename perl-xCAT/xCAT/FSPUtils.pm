@@ -145,7 +145,7 @@ sub fsp_api_action {
     my $cmd;
     my $install_dir = xCAT::Utils->getInstallDir();
     if( $action =~ /^code_update$/) { 
-        $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name: -d $install_dir/packages_fw/";
+        $cmd = "$fsp_api -a $action -T $tooltype -t $type:$fsp_ip:$id:$node_name:$parameter -d $install_dir/packages_fw/";
     } elsif($action =~ /^add_connection$/) {
     	$cmd = "$fsp_api -a $action -u $user -p $password -T $tooltype -t $type:$fsp_ip:$id:$node_name:";
     } elsif ($action =~ /^set_frame_number$/) { 
