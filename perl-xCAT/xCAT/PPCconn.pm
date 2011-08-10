@@ -662,6 +662,12 @@ sub rmhwconn
     my @value   = ();
     my $Rc      = undef;
 
+    my $nodes_found = xCAT::PPCcli::lssysconn ($exp, "all");
+    if ( @$nodes_found[0] eq SUCCESS ) {
+        $Rc = shift(@$nodes_found);
+    } else { 
+        return undef;
+    }    
     for my $cec_bpa ( keys %$hash)
     {
         my $node_hash = $hash->{$cec_bpa};
@@ -674,14 +680,30 @@ sub rmhwconn
             ############################
             # Get IP address
             ############################
-            my $node_ip = xCAT::PPCcli::getHMCcontrolIP($node_name, $exp);
-            if (!$node_ip)
+            #get node ip from hmc
+            #my $node_ip = xCAT::PPCcli::getHMCcontrolIP($node_name, $exp);
+            my $tab = xCAT::Table->new("vpd");
+            my $ent;
+            if ($tab) {
+               $ent = $tab->getNodeAttribs($node_name, ['serial', 'mtm']);	
+            }
+            my $serial = $ent->{'serial'};
+            my $mtm  = $ent->{'mtm'};
+            my $node_ip;
+
+            my @ips;
+            foreach my $entry ( @$nodes_found ) {
+                if ( $entry =~ /$mtm\*$serial/)   {
+                    $entry =~ /ipaddr=(\d+\.\d+\.\d+\.\d+),/;
+                    push @ips, $1;
+                }
+            } 
+            if (!@ips)
             {
                 push @value, [$node_name, $node_ip, $Rc];
                 next;
             }
-            my @newnodes = split(/,/, $node_ip);
-            for my $nn ( @newnodes )
+            for my $nn ( @ips )
             {
                 my $res = xCAT::PPCcli::rmsysconn( $exp, $type, $nn);
                 $Rc = shift @$res;
