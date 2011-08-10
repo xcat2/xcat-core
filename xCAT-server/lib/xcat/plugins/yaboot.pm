@@ -86,7 +86,7 @@ sub setstate {
                 }
                 );
       }
-      $kern->{kcmdline} =~ s/!myipfn!/$ipfn/;
+      $kern->{kcmdline} =~ s/!myipfn!/$ipfn/g;
   }
   if ($kern->{addkcmdline}) {
       $kern->{kcmdline} .= " ".$kern->{addkcmdline};
