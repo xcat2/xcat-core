@@ -14,7 +14,7 @@ B<rflash> I<noderange> [B<--commit>|B<--recover>] [B<-V>|B<--verbose>]
 
 =head2 PPC (without HMC, using Direct FSP Management) specific:
 
-B<rflash> I<noderange> B<-p> I<directory> B<--activate> B<disruptive>
+B<rflash> I<noderange> B<-p> I<directory> B<--activate> B<disruptive> [B<-d> I<data_directory>]
 
 B<rflash> I<noderange> [B<--commit>|B<--recover>]
 
@@ -54,6 +54,19 @@ If it outputs B<"Timeout waiting for prompt"> during the upgrade, please set the
 
 In currently Direct FSP/BPA Management, our B<rflash> doesn't support B<concurrent> value of B<--activate> flag, and only support B<disruptive>. The B<disruptive> option will cause any affected systems that are powered on to be powered down before installing and activating the update. So we require that the systems should be powered off before do the firmware update. 
 
+In Direct FSP/BPA Management, there is -d <data_directory> option. The default value is /tmp. When do firmware update, rflash will put some related data from rpm packages in <data_directory> directory, so the execution of rflash will require available disk space in <data_directory> for the command to properly execute: 
+
+   (1) For one CEC/Frame, if the rpm package size is rpmsize, it requires that the available disk space should be more than: 
+       3 * rpmsize 
+   (2) For 12 CECs and 1 Frame in a building block, the rpm packages of the CECs are the same one, it require that the available disk space should be more than: 
+        3 * rpmsize + 11 * 1.5 * rpmsize =  19.5 * rpmsize
+   (3)For n CECs/Frames, all the rpm packages are different, it require that the available disk space should be more than: 
+       3 * rpmsize * n  
+   (4)For 2 building block, each building block including 12 CECs and 1 Frame, and the rpm packages of the CECs in two building block are the same one. it require that the available disk space should be more than: 
+        3 * rpmsize + 11 * 1.5 * rpmsize + 12 * 1.5 * rpmsize =  37.5 * rpmsize
+   (5) For 2 building block, each building block including 12 CECs and 1 Frame, and the rpm packages of the CECs in the same building block are the same one, but in different building block are different. it require that the available disk space should be more than:
+       (3 * rpmsize + 11 * 1.5 * rpmsize) * 2 =  39 * rpmsize
+
 For Power 775, the rflash command takes effect on the primary and secondary FSPs or BPAs almost in parallel. 
 
 =head1 B<Options>
@@ -68,9 +81,13 @@ Writes the command’s usage statement to standard output.
 
 Specifies the directory where the packages are located.
 
+=item B<-d data_directory>
+
+Specifies the directory where the raw data from rpm packages for each CEC/Frame are located. The default directory is /tmp. The option is only used in Direct FSP/BPA Management. 
+
 =item B<--activate> B<concurrent> | B<disruptive>
 
-Must be specified to activate the new Licensed Internal Code.  The “disruptive” option will cause the target systems to be recycled.  Without this flag, LIC updates will be installed only, not activated.
+Must be specified to activate the new Licensed Internal Code.  The "disruptive" option will cause the target systems to be recycled.  Without this flag, LIC updates will be installed only, not activated.
 
 =item B<--commit>
 
