@@ -590,7 +590,7 @@ sub make_bundle {
 	if ($rootimgdir) {
 	    $callback->({data=>["Packing root image. It will take a while"]});
 	    system("cd $rootimgdir; find rootimg |cpio -H newc -o | gzip -c - > $tpath/rootimgtree.gz");
-	    $attribs->{'rootimgtree'} = "$rootimgdir/rootimg/rootimgtree.gz";
+	    $attribs->{'rootimgtree'} = "$rootimgdir/rootimgtree.gz";
 	} else {
 	    $callback->({error=>["Couldn't locate the root image directory. "],errorcode=>[1]});
 	    return 0;
@@ -744,7 +744,6 @@ sub extract_bundle {
     # go through each image directory.  Find the XML and put it into the array.  If there are any 
     # errors then the whole thing is over and we error and leave.
     foreach my $imgdir (@files){
-	#print "$imgdir \n";
 	unless(-r "$imgdir/manifest.xml"){
 	    $callback->({error=>["Failed to find manifest.xml file in image bundle"],errorcode=>[1]});
 	    return;
