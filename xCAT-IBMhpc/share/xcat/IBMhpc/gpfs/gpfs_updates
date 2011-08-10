@@ -60,7 +60,7 @@ if [ $OS != "AIX" ]; then
             zypper -R $installroot rr gpfs_updates
         else
 	# For Redhat, etc., assume yum is available on the system running genimage
-             yum --installroot $installroot --nogpgcheck localupdate $INSTALL_DIR/$UPDATES_DIR/*.rpm
+             yum -y --installroot $installroot --nogpgcheck localupdate $INSTALL_DIR/$UPDATES_DIR/*.rpm
         fi
       fi
     fi
