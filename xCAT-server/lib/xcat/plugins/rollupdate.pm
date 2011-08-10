@@ -1965,6 +1965,11 @@ sub runrollupdate {
                 "S",
 "ROLLUPDATE failure: $::ug_name:  Node $node appstatus not in valid state for rolling update "
             );
+            if ($::ll_reservation_id){
+               my @remove_res;
+               $remove_res[0]='CANCEL_DUE_TO_ERROR';
+               &remove_LL_reservations(\@remove_res);
+            }
             exit(1);
         }
     }
