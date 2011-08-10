@@ -48,8 +48,40 @@ if [[ $OS = "Linux" ]]; then
                 exit 0
             fi
 
-            if echo $MPATH | grep "sda"
+            if echo $BOOTDEVICE | grep "mpath"
             then
+                found=0
+                for i in $MPATH
+                do
+                    if echo $BOOTDEVICE | grep "$i"
+                    then
+                        found=1
+                    else
+                        if echo $i | grep "mpath"
+                        then
+                            found=0
+                        fi
+                    fi
+
+                    if [[ $found = 1 ]]
+                    then
+                        if echo $i | grep "sda"
+                        then
+                            logger -t xcat setbootfromdisk: Setting sda sdb to be the default bootup device
+                            echo "setbootfromdisk: setting up sda sdb to be the default bootup device"
+                            bootlist -m normal sda sdb
+                            exit 0
+                        elif echo $i | grep "sdc" 
+                        then
+                            logger -t xcat setbootfromdisk: Setting sdc sdd to be the default bootup device
+                            echo "setbootfromdisk: setting up sdc sdd to be the default bootup device"
+                            bootlist -m normal sdc sdd
+                            exit 0
+                        fi
+                    fi
+                done
+
+
                 if echo $MPATH | grep "sdb"
                 then
                     logger -t xcat setbootfromdisk: Setting sda sdb to be the default bootup device
