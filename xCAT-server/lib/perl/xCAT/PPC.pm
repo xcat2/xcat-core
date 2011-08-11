@@ -2064,7 +2064,6 @@ sub process_request {
 	        #my $thishcp_type = xCAT::FSPUtils->getTypeOfNode($thishcp,$callback);
 	        my  $thishcp_type = xCAT::DBobjUtils->getnodetype($thishcp);
             if(!defined($thishcp_type)) {
-                $request = {};
                 $output{node}->[0]->{name} = [$node];
                 $output{node}->[0]->{data} = ["the $node\'s hcp type is not defined in the 'ppc' table."];
                 $output{errorcode} = '1';
