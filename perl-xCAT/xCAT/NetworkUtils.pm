@@ -261,7 +261,8 @@ sub getipaddr
              #return inet_ntoa(inet_aton($iporhost))
              #TODO, what if no scoket6 support, but passing in a IPv6 hostname?
 	     if ($iporhost =~ /:/) { #ipv6
-		die "Attempt to process IPv6 address, but system does not have requisite IPv6 perl support";
+		return undef;
+		#die "Attempt to process IPv6 address, but system does not have requisite IPv6 perl support";
 	     }
 	     my $packed_ip;
              $iporhost and $packed_ip = inet_aton($iporhost);
