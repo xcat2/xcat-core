@@ -623,7 +623,7 @@ sub web_gangliaShow{
 	}
 	
 	if ('_summary_' eq $metric){
-		my @metricArray = ('load_one', 'cpu_num', 'cpu_idle', 'mem_free', 'mem_total',);
+		my @metricArray = ('load_one', 'cpu_num', 'cpu_idle', 'mem_free', 'mem_total', 'disk_total', 'disk_free', 'bytes_in', 'bytes_out');
 		my $filename = '';
 		my $step = 1;
 		my $index = 0;
@@ -753,24 +753,19 @@ sub web_gangliaGridLatest{
 	my $callback = shift;
 	my $retStr = '';
 	my $timestamp = time();
-	if ($gangliaHash{'load_one'}){
-		$retStr .= 'load_one:' . $timestamp . ',' . $gangliaHash{'load_one'}->{'SUM'} . ';';
-	}
-	if ($gangliaHash{'cpu_num'}){
-		$retStr .= 'cpu_num:' . $timestamp . ',' . $gangliaHash{'cpu_num'}->{'SUM'} . ';';
-	}
+	my $metricname = '';
+	my @metricArray = ('load_one', 'cpu_num', 'mem_total', 'mem_free', 'disk_total', 'disk_free', 'bytes_in', 'bytes_out');
+
 	if ($gangliaHash{'cpu_idle'}){
 		my $sum = $gangliaHash{'cpu_idle'}->{'SUM'};
 		my $num = $gangliaHash{'cpu_idle'}->{'NUM'};
 		$retStr .= 'cpu_idle:' . $timestamp . ',' . (sprintf("%.2f", $sum/$num )) . ';';
 	}
-	if ($gangliaHash{'mem_total'}){
-		$retStr .= 'mem_total:' . $timestamp . ',' . $gangliaHash{'mem_total'}->{'SUM'} . ';';
+	foreach $metricname (@metricArray){
+		if ($gangliaHash{$metricname}){
+			$retStr .= $metricname . ':' . $timestamp . ',' . $gangliaHash{$metricname}->{'SUM'} . ';';
+		}
 	}
-	if ($gangliaHash{'mem_free'}){
-		$retStr .= 'mem_free:' . $timestamp . ',' . $gangliaHash{'mem_free'}->{'SUM'} . ';';
-	}
-
 	$retStr = substr($retStr, 0, -1);
 	$callback->({data=>$retStr});
 }

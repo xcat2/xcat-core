@@ -60,6 +60,8 @@ function drawNodesummary(summaryString){
     drawLoadFlot('ganglianodeload', nodename, nodeData['load_one'], nodeData['cpu_num']);
     drawCpuFlot('ganglianodecpu', nodename, nodeData['cpu_idle']);
     drawMemFlot('ganglianodemem', nodename, nodeData['mem_free'], nodeData['mem_total']);
+    drawDiskFlot('ganglianodedisk', nodename, nodeData['disk_free'], nodeData['disk_total']);
+    drawNetworkFlot('ganglianodenetwork', nodename, nodeData['bytes_in'], nodeData['bytes_out']);
 }
 </script>
 <?php
@@ -74,6 +76,11 @@ echo <<<EEE
 					<td style="padding:0;border-style:none;"><div id="ganglianodeload" class="monitorsumdiv"></div></td>
 					<td style="padding:0;border-style:none;"><div id="ganglianodecpu" class="monitorsumdiv"></div></td>
 					<td style="padding:0;border-style: none;"><div id="ganglianodemem" class="monitorsumdiv"></div></td>
+				</tr>
+				<tr>
+					<td style="padding:0;border-style:none;"><div id="ganglianodedisk" class="monitorsumdiv"></div></td>
+					<td style="padding:0;border-style:none;"><div id="ganglianodenetwork" class="monitorsumdiv"></div></td>
+					<td style="padding:0;border-style:none;"></td>
 				</tr>
 			</table>
 		</div>

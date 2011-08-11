@@ -157,10 +157,11 @@ function checkGangliaRunning(data){
     var helpStr = '<div class="tooltip">aaa</div>';
     
     //pass checking
-    var showStr = '<h3>Grid Overview</h3><hr>' +
+    var showStr = '<h3 style="display:inline;">Grid Overview</h3>' +
+                  '<sup id="hidesup" style="cursor: pointer;color:blue">[Hide]</sup><hr>' +
                   '<div id="gangliaGridSummary"></div>' +
                   '<h3 style="display:inline;">Nodes Current Status</h3>' +
-                  '<sup style="cursor: pointer;color:blue"> ?</sup>' +
+                  '<sup id="nodehelp" style="cursor: pointer;color:blue"> ?</sup>' +
                   '<hr>Nodes in Group:' + groupsSelectStr +
                   ' order by: <select id="gangliaorder" style="padding:0px;"><option value="name">Name</option>' +
                   '<option value="asc">Ascending</option><option value="des">Descending</option></select>' +
@@ -194,7 +195,7 @@ function checkGangliaRunning(data){
     });
     
     //bind the info click enent
-    $('#gangliamon sup').bind('click', function(){
+    $('#gangliamon #nodehelp').bind('click', function(){
         var helpStr = '<table>' +
                       '<tr><td style="background:#66CD00;" width="16px"> </td><td>Normal</td></tr>' +
                       '<tr><td style="background:#FFD700;" width="16px"> </td><td>Heavy Load</td></tr>' +
@@ -214,6 +215,19 @@ function checkGangliaRunning(data){
                 }
             }
         });
+    });
+    
+    //bind the hide/show buttion event
+    $('#gangliamon #hidesup').bind('click', function(){
+        var a = $(this).text();
+        if ('[Hide]' == $(this).text()){
+            $(this).html('[Show]');
+        }
+        else{
+            $(this).html('[Hide]');
+        }
+        
+        $('#gangliaGridSummary').toggle();
     });
 }
 
@@ -370,14 +384,23 @@ function drawGridSummary() {
     if (-1 != tempStr.indexOf('hide')){
         return;
     };
+    
+    if ('[Show]' == $('#gangliamon #hidesup').text()){
+        return;
+    }
     gridDrawArea.empty();
     showStr = '<table style="border-style:none;"><tr><td style="padding:0;border-style:none;"><div id="gangliasummaryload" class="monitorsumdiv"></div></td>' + 
               '<td style="padding:0;border-style:none;"><div id="gangliasummarycpu" class="monitorsumdiv"></div></td>' +
-              '<td style="padding:0;border-style: none;"><div id="gangliasummarymem" class="monitorsumdiv"></div></td></tr></table>';
+              '<td style="padding:0;border-style:none;"><div id="gangliasummarymem" class="monitorsumdiv"></div></td></tr>' +
+              '<tr><td style="padding:0;border-style:none;"><div id="gangliasummarydisk" class="monitorsumdiv"></div></td>' +
+              '<td style="padding:0;border-style:none;"><div id="gangliasummarynetwork" class="monitorsumdiv"></div></td>' +
+              '<td style="padding:0;border-style:none;"></td></tr></table>';
     gridDrawArea.append(showStr);
     drawLoadFlot('gangliasummaryload', 'Grid', gridData['load_one'], gridData['cpu_num']);
     drawCpuFlot('gangliasummarycpu', 'Grid', gridData['cpu_idle']);
     drawMemFlot('gangliasummarymem', 'Grid', gridData['mem_free'], gridData['mem_total']);
+    drawDiskFlot('gangliasummarydisk', 'Grid', gridData['disk_free'], gridData['disk_total']);
+    drawNetworkFlot('gangliasummarynetwork', 'Grid', gridData['bytes_in'], gridData['bytes_out']);
 }
 
 /**
@@ -548,6 +571,134 @@ function drawMemFlot(areaid, titleprefix, freepair, totalpair){
     );
 }
 
+/**
+ * draw the disk usage flot by data(maybe summary data, or one node's data)
+ * 
+ * @param areaid: which div draw this flot
+ *        titleprefix : title used name
+ *        freepair: the free disk number, ganglia only log the free data
+ *        totalpair: the all disk number
+ *            
+ * @return Nothing
+ */
+function drawDiskFlot(areaid, titleprefix, freepair, totalpair){
+    var use = new Array();
+    var total = new Array();
+    var tempsize = 0;
+    var index = 0;
+    
+    $('#' + areaid).empty();
+    if(freepair.length < totalpair.length){
+        tempsize = freepair.length;
+    }
+    else{
+        tempsize = freepair.length;
+    }
+    
+    for(index = 0; index < tempsize; index += 2){
+        var temptotal = totalpair[index + 1];
+        var tempuse = temptotal - freepair[index + 1];
+        total.push([totalpair[index] * 1000, temptotal]);
+        use.push([freepair[index] * 1000, tempuse]);
+    }
+    
+    $.jqplot(areaid, [use, total],{
+        title: titleprefix + ' Disk Use Last Hour',
+        axes:{
+            xaxis:{
+                renderer : $.jqplot.DateAxisRenderer,
+                numberTicks: 4,
+                tickOptions : {
+                    formatString : '%R',
+                    show : true
+                }
+            },
+            yaxis: {
+                min : 0,
+                tickOptions:{formatString : '%.2fG'}
+            }
+        },
+        legend : {
+            show: true,
+            location: 'nw'
+        },
+        series:[{label:'Used'}, {label: 'Total'}],
+        seriesDefaults : {showMarker: false}
+    } 
+    );
+}
+
+function drawNetworkFlot(areaid, titleprefix, inpair, outpair){
+    var inArray = new Array();
+    var outArray = new Array();
+    var templength = 0;
+    var index = 0;
+    var maxvalue = 0;
+    var unitname = 'B';
+    var divisor = 1;
+    
+    templength = inpair.length;
+    for (index = 0; index < templength; index += 2){
+        if (inpair[index + 1] > maxvalue){
+            maxvalue = inpair[index + 1];
+        }
+    }
+    
+    templength = outpair.length;
+    for (index = 0; index < templength; index += 2){
+        if (outpair[index + 1] > maxvalue){
+            maxvalue = outpair[index + 1];
+        }
+    }
+    
+    if (maxvalue > 3000000){
+        divisor = 1000000;
+        unitname = 'GB';
+    }
+    else if(maxvalue >= 3000){
+        divisor = 1000;
+        unitname = 'MB';
+    }
+    else{
+        //do nothing
+    }
+    
+    templength = inpair.length;
+    for (index = 0; index < templength; index += 2){
+        inArray.push([(inpair[index] * 1000), (inpair[index + 1] / divisor)]);
+    }
+    
+    templength = outpair.length;
+    for (index = 0; index < templength; index += 2){
+        outArray.push([(outpair[index] * 1000), (outpair[index + 1] / divisor)]);
+    }
+    
+    $.jqplot(areaid, [inArray, outArray],{
+        title: titleprefix + ' Network Last Hour',
+        axes:{
+            xaxis:{
+                renderer : $.jqplot.DateAxisRenderer,
+                numberTicks: 4,
+                tickOptions : {
+                    formatString : '%R',
+                    show : true
+                }
+            },
+            yaxis: {
+                min : 0,
+                tickOptions:{formatString : '%d' + unitname}
+            }
+        },
+        legend : {
+            show: true,
+            location: 'nw'
+        },
+        series:[{label:'In'}, {label: 'Out'}],
+        seriesDefaults : {showMarker: false}
+    } 
+    );
+}
+
 function createNodeStatusData(nodesStatus){
     var index;
     var nodesArray = nodesStatus.split(';');
@@ -659,7 +810,7 @@ function drawGangliaNodesArea(ordertype){
     $('.monitornormal,.monitorwarning').bind('click', function(){
         var nodename = $(this).attr('title');
         window.open('ganglianode.php?n=' + nodename + '&p=' + nodePath[nodename],
-                'nodedetail','height=250,width=950,scrollbars=yes,status =no');
+                'nodedetail','height=430,width=950,scrollbars=yes,status =no');
     });
     
 }
