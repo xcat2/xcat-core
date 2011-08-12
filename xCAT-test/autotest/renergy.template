@@ -4,3 +4,4 @@
 [System]
 CN=   #specify the node name of CEC
 TYPE= #specify the CEC type like: 8233-E8B, 9125-F2C
+
