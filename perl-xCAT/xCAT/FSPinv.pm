@@ -272,24 +272,53 @@ sub deconfig {
              return (\@result);
          }
 
-	     my $node =  $decfg->{NODE};
-	     if( defined($node) &&  exists($node->{Location_code}) ) {
-		 push @result,[$name,"Deconfigured resources", 0];
-		 push @result,[$name,"Location_code                RID   Call_Out_Method    Call_Out_Hardware_State    TYPE", 0];
-	         push @result,[$name,"$node->{Location_code}         $node->{RID}", 0];
-		 foreach my $unit(@{$node->{GARDRECORD}}) {
-		      my $Call_Out_Hardware_State = $unit->{GARDUNIT}->{Call_Out_Hardware_State};
-		      my $Call_Out_Method = $unit->{GARDUNIT}->{Call_Out_Method};
-		      my $Location_code = $unit->{GARDUNIT}->{Location_code};
-		      my $RID = $unit->{GARDUNIT}->{RID};
-		      my $TYPE = $unit->{GARDUNIT}->{TYPE};
+	#print "decfg";
+        #print Dumper($decfg); 
+	my $node =  $decfg->{NODE};
+	if( defined($node) &&  exists($node->{Location_code}) ) {
+        push @result,[$name,"Deconfigured resources", 0];
+        push @result,[$name,"Location_code                RID   Call_Out_Method    Call_Out_Hardware_State   TYPE", 0];
+        push @result,[$name,"$node->{Location_code}         $node->{RID}", 0];
+        my $Call_Out_Hardware_State ;
+        my $Call_Out_Method;
+        my $Location_code;
+        my $RID;
+        my $TYPE;
+        if(ref($node->{GARDRECORD}) ne "ARRAY") {
+           return( \@result );
+        }
+        foreach my $unit(@{$node->{GARDRECORD}}) {
 
-		      push @result,[$name,"$Location_code     $RID    $Call_Out_Method            $Call_Out_Hardware_State            $TYPE",0]; 
-		 }
-	     
-	     } else {
-		 push @result,[$name,"NO Deconfigured resources", 0];
-             }
+		while (my ($key, $unit3) = each(%$unit) ) {
+
+                   if($key eq "GARDUNIT") {
+                       if (ref($unit3) eq "HASH") {
+                           $Call_Out_Hardware_State = $unit3->{Call_Out_Hardware_State};
+                           $Call_Out_Method = $unit3->{Call_Out_Method};
+                           $Location_code = $unit3->{Location_code};
+                           $RID = $unit3->{RID};
+                           $TYPE = $unit3->{TYPE};
+
+                           push @result,[$name,"$Location_code     $RID    $Call_Out_Method            $Call_Out_Hardware_State            $TYPE",0];
+                       } elsif(ref($unit3) eq "ARRAY")  {
+
+                                  foreach my $unit4(@$unit3) {
+                                     $Call_Out_Hardware_State = $unit4->{Call_Out_Hardware_State};
+                                     $Call_Out_Method = $unit4->{Call_Out_Method};
+                                     $Location_code = $unit4->{Location_code};
+                                     $RID = $unit4->{RID};
+                                    $TYPE = $unit4->{TYPE};
+                                     push @result,[$name,"$Location_code     $RID    $Call_Out_Method            $Call_Out_Hardware_State            $TYPE",0];
+                                  }
+                       }     
+                    }                   
+                 }
+
+
+         }
+
+      } 
+
 	         
         }
     }
