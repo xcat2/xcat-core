@@ -177,28 +177,30 @@ sub enumerate {
     #########################################
     # Save hardware connections
     #########################################
-    $filter = "type_model_serial_num,ipaddr,sp,side";
-    my $conns = xCAT::PPCcli::lssysconn( $exp, "alls", $filter );
-    $Rc = shift(@$conns);
+    if ( $hwtype ne "ivm" ) {  #Not applicable for IVM
+        $filter = "type_model_serial_num,ipaddr,sp,side";
+        my $conns = xCAT::PPCcli::lssysconn( $exp, "alls", $filter );
+        $Rc = shift(@$conns);
 
-    #########################################
-    # Return error
-    #########################################
-    if ( $Rc != SUCCESS ) {
-        return( @$conns[0] );
-    }
-
-    foreach my $con ( @$conns ) {
-        my ($mtms,$ipaddr,$sp,$side) = split /,/,$con;
-        my $value = undef;
- 
-        if ( $sp =~ /^primary$/ or $side =~ /^a$/ ) {
-            $value = "A";
-        } elsif ($sp =~ /^secondary$/ or $side =~ /^b$/ ) {
-            $value = "B";
+        #########################################
+        # Return error
+        #########################################
+        if ( $Rc != SUCCESS ) {
+            return( @$conns[0] );
         }
 
-        $hwconn{$ipaddr} = "$mtms,$value";
+        foreach my $con ( @$conns ) {
+            my ($mtms,$ipaddr,$sp,$side) = split /,/,$con;
+            my $value = undef;
+
+            if ( $sp =~ /^primary$/ or $side =~ /^a$/ ) {
+                $value = "A";
+            } elsif ($sp =~ /^secondary$/ or $side =~ /^b$/ ) {
+                $value = "B";
+            }
+
+            $hwconn{$ipaddr} = "$mtms,$value";
+        }
     }
  
     #########################################
@@ -332,7 +334,9 @@ sub enumerate {
         }
 
         my $mtmss = $hwconn{$ips};
-        my ($mtms,$side) = split /,/, $mtmss;
+        if ( $hwtype ne "ivm" ) {  #Not applicable for IVM
+            my ($mtms,$side) = split /,/, $mtmss;
+        }
         push @values, join( ",",
             "cec",$fsp,$cageid,$model,$serial,"",$server,$prof,$fname,"" );
 
