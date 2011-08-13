@@ -1,90 +1,93 @@
 #!/bin/sh
 
-AWK=`find / -name awk | tail -1`
-#old awk /mounts/instsys/bin/awk -f
-
-cat >/tmp/bar.awk <<EOF
-#!$AWK -f
-
-BEGIN {
-	xcatdport = "#TABLE:site:key=xcatiport:value#"
-	xcatdhost = "#XCATVAR:XCATMASTER#"
-
-	ns = "/inet/tcp/0/" xcatdhost "/" xcatiport
-
-	print "xCAT_xcatd" |& ns
-
-	while(1) {
-		ns |& getline
-
-		if(\$0 == "ready")
-			print "installmonitor" |& ns
-		if(\$0 == "done")
-			break
-	}
-
-	close(ns)
-
-	exit 0
-}
-EOF
-
 if [ ! -c /dev/vcs ]; then
-	mknod /dev/vcs c 7 0
+    mknod /dev/vcs c 7 0
 fi
-cat >/tmp/foo.awk <<EOF
-#!$AWK -f
 
-BEGIN {
-	ns = "/inet/tcp/3001/0/0"
+cat >/tmp/foo.sh <<EOF
+#!/bin/sh
 
-	while(1) {
-		ns |& getline
+#
+#  If no arguments:
+#
+#     1) Start child process to connect as client to master, and re-execute this script to send
+#        "installmonitor" to master.  Do not wait for child process.
+#
+#     2) Loop forever.  For each iteration, start child process as server waiting for a client
+#        connection.  Once a connection is established, child process re-executes this script to
+#        handle request from that particular client.
+#
 
-#		if(\$1 == "sh") { #TODO: ENABLE IF DEBUG
-#			sub(/^sh +/,"",\$0)
-#			output = \$0
-#			while((output | getline) > 0)
-#				print \$0 |& ns
-#			print "EOO" |& ns
-#			close(output)
-#		}
+if [ \$# -eq 0 ]; then
+    xcatdhost="#XCATVAR:XCATMASTER#"
+    xcatdport="#TABLE:site:key=xcatiport:value#"
 
-		if(\$1 == "screendump") {
-			output = "chvt " \$2 ";cat /dev/vcs"
-			while((output | getline) > 0)
-				print \$0 |& ns
-			close(output)
-		}
+    /usr/bin/nc "\$xcatdhost" "\$xcatdport" -e /tmp/foo.sh install_monitor &
 
-		if(\$1 == "stat") {
-			while((getline < "/target/var/log/installer/syslog") > 0) {
-				line = \$0
-			}
-			close("/target/var/log/installer/syslog")
+    while true; do
+        /usr/bin/nc -l -p 3001 -e /tmp/foo.sh serve_client
+    done
 
-			if(line ~ /Unpacking/) {
-				sub(/\.[^\.]+\.deb .*$/,"",line)
-				sub(/^.* /,"",line)
-			}
-			if( (line ~ /Installing/) (line ~ /Selecting/) or (line ~ /Setting\ up/)) {
-				sub(/\.[^\.]+\.deb .*$/,"",line)
-				sub(/^.* /,"",line)
-			}
-			else {
-				line = "prep"
-			}
+    exit 1                        # never reached; reboot ends this
+fi
 
-			print ("installing " line) |& ns
-		}
+#
+#  If the script was called with the "install_monitor" argument, stdin and stdout are
+#  connected to an xCAT daemon on the master.  Write the "installmonitor" request to the
+#  daemon.
+#
 
-		close(ns)
-	}
-}
+if [ "\$1" = "install_monitor" ]; then
+    cmd=""
+    while [ "\$cmd" != "done" ]; do
+        read cmd remainder
+    
+        if [ "\$cmd" == "ready" ]; then
+            echo "installmonitor"
+        fi
+    done
+
+    exit 0
+fi
+
+#
+#  When execution reaches here, script called with "serve_client" argument, which means
+#  stdin and stdout are connected to a client.  Read the request from the client, provide
+#  the answer to the client, and terminate.
+#
+
+read cmd arg remainder
+
+case "\$cmd" in
+#   "sh")                        #TODO: ENABLE IF DEBUG
+#       output=\$(eval \$arg \$remainder)
+#       echo "\$output"
+#       echo "EOO"
+#       ;;
+
+    "screendump")
+        output=\$(eval chvt \$arg; cat /dev/vcs)
+        echo "\$output"
+        ;;
+
+    "stat")
+        sedcmds='/^[^ ]+ +[^ ]+ +install /h; \${ g; s,^[^ ]+ +[^ ]+ +install +([^ ]+) +[^ ]+ ([^ ]+).*,installing \1 \2,; p }'
+        output=\$(sed -nre "\$sedcmds" /target/var/log/dpkg.log 2>/dev/null)
+
+        if [ -z "\$output" ]; then
+            output="installing prep"
+        fi
+
+        echo "\$output"
+        ;;
+esac
+
+exit 0
 EOF
 
-chmod 755 /tmp/foo.awk
-chmod 755 /tmp/bar.awk
+chmod 755 /tmp/foo.sh
 
-/tmp/bar.awk &
-/tmp/foo.awk >/tmp/foo.log 2>&1 &
+/tmp/foo.sh >/tmp/foo.log 2>&1 &
+
+exit 0
+
