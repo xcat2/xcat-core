@@ -46,4 +46,3 @@ usr/bin/xcatDBcmds usr/bin/chdef
 usr/bin/xcatDBcmds usr/bin/lsdef
 usr/bin/xcatDBcmds usr/bin/rmdef
 usr/bin/xcatDBcmds usr/bin/xcat2nim
-usr/bin/xdsh usr/bin/xdcp
