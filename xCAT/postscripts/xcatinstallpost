@@ -20,7 +20,7 @@ export PATH
 chmod +x /xcatpost/*;
 
 if [ -x /usr/bin/openssl ]; then
-     SIP=`grep "^MASTER=" /tmp/mypostscript.post  |cut -d= -f2`
+     SIP=`grep "^MASTER=" /var/tmp/mypostscript.post  |cut -d= -f2`
      XCATSERVER="$SIP:3001"
      export XCATSERVER
      USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
@@ -28,12 +28,17 @@ if [ -x /usr/bin/openssl ]; then
 fi
 
 
-DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /tmp/mypostscript.post`
-echo "$DHCP_TMP" > /tmp/mypostscript.post
+DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /var/tmp/mypostscript.post`
+echo "$DHCP_TMP" > /var/tmp/mypostscript.post
 
-echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /tmp/mypostscript.post
+echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /var/tmp/mypostscript.post
 
-chmod +x /tmp/mypostscript.post
-if [ -x /tmp/mypostscript.post ];then
-   /tmp/mypostscript.post
+chmod +x /var/tmp/mypostscript.post
+if [ -x /var/tmp/mypostscript.post ];then
+   /var/tmp/mypostscript.post
+fi
+
+chmod +x /var/tmp/mypostscript.post
+if [ -x /var/tmp/mypostscript.post ];then
+   /var/tmp/mypostscript.post
 fi
