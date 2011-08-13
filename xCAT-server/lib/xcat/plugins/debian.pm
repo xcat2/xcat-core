@@ -755,6 +755,9 @@ sub mkinstall
 	    # I don't need the timeout for ubuntu, but for debian there is a problem with getting dhcp in a timely manner
 	    $kcmdline .= " netcfg/dhcp_timeout=120";
 
+     # safer way to set hostname, avoid problems with nameservers
+     $kcmdline .= " hostname=".$node;
+
             $bptab->setNodeAttribs(
                                    $node,
                                    {

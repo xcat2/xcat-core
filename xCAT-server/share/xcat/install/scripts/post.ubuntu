@@ -25,8 +25,6 @@ for i in $(echo #TABLE:site:key=nameservers:value# | tr ',' ' ')
 do
 	echo "nameserver $i"
 done >>/etc/resolv.conf
-export HOSTNAME=$(host $IP 2>/dev/null | awk '{print $5}' | awk -F. '{print $1}')
-hostname $HOSTNAME
 #
 # Run xCAT post install
 #
