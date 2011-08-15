@@ -33,7 +33,7 @@ hostname $HOSTNAME
 export MASTER_IP="#XCATVAR:XCATMASTER#"
 export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
-cd /tmp
+cd /var/tmp
 mkdir -p /xcatpost
 service portmap start
 ifconfig

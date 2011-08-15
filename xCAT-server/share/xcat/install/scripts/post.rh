@@ -39,7 +39,7 @@ hostname $HOSTNAME
 export MASTER_IP="#XCATVAR:XCATMASTER#"
 export MASTER_IPS="#XCATVAR:XCATMASTER#"
 export MASTER="#XCATVAR:XCATMASTER#"
-cd /tmp
+cd /var/tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 sleep $RAND
 for i in $(seq 1 20)
@@ -61,8 +61,8 @@ do
          mv $i/postscripts /xcatpost
          rm -rf $i
          chmod +x /xcatpost/*
-         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
-         MYCONT=`grep MASTER /tmp/mypostscript`
+         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /var/tmp/mypostscript
+         MYCONT=`grep MASTER /var/tmp/mypostscript`
          MAX_RETRIES=10
          RETRY=0
          while [ -z "$MYCONT" ]; do
@@ -74,12 +74,12 @@ do
 
             let SLI=$RANDOM%10+10
             sleep $SLI
-            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
-            MYCONT=`grep MASTER /tmp/mypostscript`
+            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /var/tmp/mypostscript
+            MYCONT=`grep MASTER /var/tmp/mypostscript`
          done
 
             
-         chmod +x /tmp/mypostscript
+         chmod +x /var/tmp/mypostscript
 			GOTIT=1
 			break
 		fi
@@ -104,9 +104,9 @@ cd /xcatpost
 export PATH=/xcatpost:$PATH
 
 #save the postboot scripts to /tmp/mypostscript.post
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript.post
-chmod 755 /tmp/mypostscript.post
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /var/tmp/mypostscript`
+echo "$TMP" > /var/tmp/mypostscript.post
+chmod 755 /var/tmp/mypostscript.post
 
 #create the post init 
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
@@ -126,10 +126,10 @@ chmod 755 /opt/xcat/xcatinstallpost
 chkconfig --add xcatpostinit1
 
 #only run the prebooot scripts here
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
-echo "$TMP" > /tmp/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /var/tmp/mypostscript`
+echo "$TMP" > /var/tmp/mypostscript
 
-/tmp/mypostscript
+/var/tmp/mypostscript
 export NODE=#TABLE:nodelist:THISNODE:node#
 export OSVER=#TABLE:nodetype:THISNODE:os#
 export ARCH=#TABLE:nodetype:THISNODE:arch#
