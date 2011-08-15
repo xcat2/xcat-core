@@ -4909,6 +4909,19 @@ sub osver
         $ver =~ tr/\.//;
         $ver =~ s/[^0-9]*([0-9]+).*/$1/;
     }
+    elsif (-f "/etc/lsb-release")#ubuntu
+    {
+
+        $os = "ubuntu";
+        open($relfile,"<","/etc/lsb-release");
+        my @text = <$relfile>;
+        close($relfile);
+        foreach (@text){
+        	if ( $_ =~ /DISTRIB_RELEASE=(\S+)/ ) {
+        		$ver = $1;
+        	}
+        }
+    }
     $os = "$os" . "$ver";
     return ($os);
 }
