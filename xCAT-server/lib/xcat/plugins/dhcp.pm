@@ -50,6 +50,7 @@ use Math::BigInt;
 my $dhcpconffile = $^O eq 'aix' ? '/etc/dhcpsd.cnf' : '/etc/dhcpd.conf'; 
 my %dynamicranges; #track dynamic ranges defined to see if a host that resolves is actually a dynamic address
 my %netcfgs;
+my $distro = xCAT::Utils->osver();
 
 # dhcp 4.x will use /etc/dhcp/dhcpd.conf as the config file
 my $dhcp6conffile;
@@ -58,6 +59,11 @@ if ( $^O ne 'aix' and -d "/etc/dhcp" ) {
     $dhcp6conffile = '/etc/dhcp/dhcpd6.conf'; 
 }
 my $usingipv6;
+
+# is this ubuntu ?
+if ( $distro =~ /ubuntu*/ ){
+	$dhcpconffile = '/etc/dhcp3/dhcpd.conf';	
+}
 
 sub ipIsDynamic { 
 	#meant to be v4/v6 agnostic.  DHCPv6 however takes some care to allow a dynamic range to overlap static reservations
@@ -1013,9 +1019,9 @@ sub process_request
     
     if ( $^O ne 'aix')
     {
-#add the active nics to /etc/sysconfig/dhcpd
+#add the active nics to /etc/sysconfig/dhcpd or /etc/default/dhcp3-server(ubuntu)
         my $dhcpver;
-        foreach $dhcpver ("dhcpd","dhcpd6") {
+        foreach $dhcpver ("dhcpd","dhcpd6","dhcp3-server") {
         if (-e "/etc/sysconfig/$dhcpver") {
             open DHCPD_FD, "/etc/sysconfig/$dhcpver";
             my $syscfg_dhcpd = "";
@@ -1051,6 +1057,39 @@ sub process_request
             open DBG_FD, '>', "/etc/sysconfig/$dhcpver";
             print DBG_FD $syscfg_dhcpd;
             close DBG_FD;
+        }elsif (-e "/etc/default/$dhcpver") { #ubuntu
+        	 open DHCPD_FD, "/etc/default/$dhcpver";
+            my $syscfg_dhcpd = "";
+            my $found = 0;
+            my $dhcpd_key = "INTERFACES";
+            my $os = xCAT::Utils->osver();
+
+            my $ifarg = "$dhcpd_key=\"";
+            foreach (keys %activenics) {
+                if (/!remote!/) { next; }
+                $ifarg .= " $_";
+            }
+            $ifarg =~ s/^ //;
+            $ifarg .= "\"\n";
+
+            while (<DHCPD_FD>) {
+                if ($_ =~ m/^$dhcpd_key/) {
+                    $found = 1;
+                    $syscfg_dhcpd .= $ifarg;
+                }else {
+                    $syscfg_dhcpd .= $_;
+                }
+            }
+
+            if ( $found eq 0 ) {
+                $syscfg_dhcpd .= $ifarg;
+            }
+            close DHCPD_FD; 
+
+            open DBG_FD, '>', "/etc/default/$dhcpver";
+            print DBG_FD $syscfg_dhcpd;
+            close DBG_FD;
+        	
         } elsif ($_ eq "dhcpd" or $usingipv6) {
             $callback->({error=>"The file /etc/sysconfig/$_ doesn't exist, check the dhcp server"});
 #        return;
@@ -1305,6 +1344,12 @@ sub process_request
         if ( $^O eq 'aix')
         {
             restart_dhcpd_aix();
+        }
+        elsif ( $distro =~ /ubuntu*/)
+        {
+        	#ubuntu config
+            system("chmod a+r /etc/dhcp3/dhcpd.conf");
+            system("/etc/init.d/dhcp3-server restart");
         }
         else
         {
@@ -1971,7 +2016,7 @@ sub newconfig6 {
     push @dhcp6conf, "\n";
     push @dhcp6conf, "ddns-update-style interim;\n";
     push @dhcp6conf, "ignore client-updates;\n";
-#    push @dhcp6conf, "update-static-leases on;\n";
+    push @dhcp6conf, "update-static-leases on;\n";
     push @dhcp6conf, "omapi-port 7912;\n";        #Enable omapi...
     push @dhcp6conf, "key xcat_key {\n";
     push @dhcp6conf, "  algorithm hmac-md5;\n";
@@ -2020,7 +2065,7 @@ sub newconfig
     push @dhcpconf, "option iscsi-initiator-iqn code 203 = string;\n"; #Only via gPXE, not a standard
     push @dhcpconf, "ddns-update-style interim;\n";
     push @dhcpconf, "ignore client-updates;\n"; #Windows clients like to do all caps, very un xCAT-like
-#    push @dhcpconf, "update-static-leases on;\n"; #makedns rendered optional
+    push @dhcpconf, "update-static-leases on;\n"; #makedns rendered optional
     push @dhcpconf,
       "option client-architecture code 93 = unsigned integer 16;\n";
     push @dhcpconf, "option gpxe.no-pxedhcp 1;\n";
