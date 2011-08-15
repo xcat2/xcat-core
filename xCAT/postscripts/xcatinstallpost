@@ -37,8 +37,3 @@ chmod +x /var/tmp/mypostscript.post
 if [ -x /var/tmp/mypostscript.post ];then
    /var/tmp/mypostscript.post
 fi
-
-chmod +x /var/tmp/mypostscript.post
-if [ -x /var/tmp/mypostscript.post ];then
-   /var/tmp/mypostscript.post
-fi
