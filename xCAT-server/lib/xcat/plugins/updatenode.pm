@@ -467,17 +467,21 @@ sub preprocess_updatenode
     my @MNip   = xCAT::Utils->determinehostname;
     my @sns = ();
     foreach my $s (keys %$sn) {
-        if (!grep (/^$s$/, @MNip)) {
-            push @sns, $s;
-        }
+	my @tmp_a=split(',',$s);
+	foreach my $s1 (@tmp_a) {
+	    if (!grep (/^$s1$/, @MNip)) {
+		push @sns, $s1;
+	    }
+	}
     }
+    
     if (scalar(@sns) && $::SECURITY) {
-        
+            
         $::CALLBACK = $callback;
         $::NODEOUT = ();
 
         # setup the ssh keys
-        my $req_sshkey = {%$request};
+        my $req_sshkey = {%$request}; 
         $req_sshkey->{node} = \@sns;
         $req_sshkey->{security}->[0] = "yes";
         if ($::USER) {
@@ -535,22 +539,27 @@ sub preprocess_updatenode
     # build each request for each service node
     foreach my $snkey (keys %$sn)
     {
-        if ($::SECURITY
-            && !(grep /^$snkey$/, @good_sns)
-            && !(grep /^$snkey$/, @MNip)) {
-            my $rsp;
-            push @{$rsp->{data}}, "The security update for service node $snkey encountered error, update security for following nodes will be skipped: @{$sn->{$snkey}}";
-            xCAT::MsgUtils->message("E", $rsp, $callback);
-            next;
-        }
 
-        # remove the service node which have been handled before
-        if ($::SECURITY && (grep /^$snkey$/, @MNip)) {
-            delete @{$sn->{$snkey}}[@sns];
-            if (scalar(@{$sn->{$snkey}}) == 0) {
-                next;
-            }
-        }
+	my @tmp_a=split(',',$s);
+	foreach my $s1 (@tmp_a) {
+	    if ($::SECURITY
+		&& !(grep /^$s1$/, @good_sns)
+		&& !(grep /^$s1$/, @MNip)) {
+		my $rsp;
+		push @{$rsp->{data}}, "The security update for service node $snkey encountered error, update security for following nodes will be skipped: @{$sn->{$snkey}}";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		next;
+	    }
+
+	    # remove the service node which have been handled before
+	    if ($::SECURITY && (grep /^$s1$/, @MNip)) {
+		delete @{$sn->{$snkey}}[@sns];
+		if (scalar(@{$sn->{$snkey}}) == 0) {
+		    next;
+		}
+	    }
+	}
+
         
         my $reqcopy = {%$request};
         $reqcopy->{node}                   = $sn->{$snkey};
