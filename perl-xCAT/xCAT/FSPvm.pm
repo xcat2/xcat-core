@@ -306,8 +306,8 @@ sub chvm_parse_args {
             }
         }
         if (exists($opt{lparname}) && 
-                (exists($opt{p}) || exists($opt{i}) || exists($opt{m}) || exists($opt{r}))) {
-            return (usage("lparname should NOT be used with -p, -i, -m or -r."));
+                (exists($opt{p}) || exists($opt{i}) || exists($opt{r}))) {
+            return (usage("lparname should NOT be used with -p, -i or -r."));
         }
     }
 
