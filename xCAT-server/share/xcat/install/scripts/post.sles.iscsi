@@ -51,8 +51,8 @@ do
          mv $i/postscripts /xcatpost
          rm -rf $i
          chmod +x /xcatpost/*
-         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /var/tmp/mypostscript
-         MYCONT=`grep MASTER /var/tmp/mypostscript`
+         /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+         MYCONT=`grep MASTER /tmp/mypostscript`
          MAX_RETRIES=10
          RETRY=0
          while [ -z "$MYCONT" ]; do
@@ -64,10 +64,10 @@ do
 
             let SLI=$RANDOM%10+10
             sleep $SLI
-            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /var/tmp/mypostscript
-            MYCONT=`grep MASTER /var/tmp/mypostscript`
+            /xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+            MYCONT=`grep MASTER /tmp/mypostscript`
          done
-         chmod +x /var/tmp/mypostscript
+         chmod +x /tmp/mypostscript
 			GOTIT=1
 			break
 		fi
@@ -88,10 +88,10 @@ done
 PATH=/xcatpost:$PATH
 export PATH
 
-#save the postboot scripts to /var/tmp/mypostscript.post
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /var/tmp/mypostscript`
-echo "$TMP" > /var/tmp/mypostscript.post
-chmod 755 /var/tmp/mypostscript.post
+#save the postboot scripts to /tmp/mypostscript.post
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript.post
+chmod 755 /tmp/mypostscript.post
 
 #create the post init 
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
@@ -111,14 +111,14 @@ chmod 755 /opt/xcat/xcatinstallpost
 chkconfig --add xcatpostinit1
 
 #only run the prebooot scripts here
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /var/tmp/mypostscript`
-echo "$TMP" > /var/tmp/mypostscript
-/var/tmp/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript
+/tmp/mypostscript
 updateflag.awk $MASTER 3002
 cd /
 /xcatpost/#TABLE:nodelist:$NODE:node#
 #rm -Rf /xcatpost
-#rm -f /var/tmp/mypostscript
+#rm -f /tmp/mypostscript
 #rmdir /xcatpost
 ]]>
 

@@ -8,7 +8,7 @@ hostname $HOSTNAME
 # Master/service node set by nodeset
 export MASTER_IPS=( replace_master )
 export MASTER=replace_master
-cd /var/tmp
+cd /tmp
 RAND=$(perl -e 'print int(rand(50)). "\n"')
 sleep $RAND
 
@@ -41,8 +41,8 @@ do
 			chmod +x /xcatpost/*
 
 			# Get postscript to run on this node from xcat server
-			/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /var/tmp/mypostscript
-			MYCONT=`grep MASTER /var/tmp/mypostscript`
+			/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+			MYCONT=`grep MASTER /tmp/mypostscript`
          		MAX_RETRIES=10
 			RETRY=0
 			while [ -z "$MYCONT" ]; do
@@ -57,12 +57,12 @@ do
 				sleep $SLI
 			
 				# Get postscript to run on this node from xcat server
-				/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /var/tmp/mypostscript
-				MYCONT=`grep MASTER /var/tmp/mypostscript`
+				/xcatpost/getpostscript.awk |sed -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' > /tmp/mypostscript
+				MYCONT=`grep MASTER /tmp/mypostscript`
 			done
 
 			# Make executable
-			chmod +x /var/tmp/mypostscript
+			chmod +x /tmp/mypostscript
 			GOTIT=1
 			break
 		fi
@@ -86,9 +86,9 @@ cd /xcatpost
 export PATH=/xcatpost:$PATH
 
 # Save post boot scripts to /tmp/mypostscript.post
-TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /var/tmp/mypostscript`
-echo "$TMP" > /var/tmp/mypostscript.post
-chmod 755 /var/tmp/mypostscript.post
+TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript.post
+chmod 755 /tmp/mypostscript.post
 
 # Create post init
 cat >/etc/init.d/xcatpostinit1 << 'EOF'
@@ -110,9 +110,9 @@ chmod 755 /opt/xcat/xcatinstallpost
 chkconfig --add xcatpostinit1
 
 # Only run preboot scripts here
-TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /var/tmp/mypostscript`
-echo "$TMP" > /var/tmp/mypostscript
-/var/tmp/mypostscript
+TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ d" /tmp/mypostscript`
+echo "$TMP" > /tmp/mypostscript
+/tmp/mypostscript
 
 # Master/service node variable set by nodeset
 updateflag.awk replace_master 3002
