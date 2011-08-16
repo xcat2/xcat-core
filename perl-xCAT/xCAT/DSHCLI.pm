@@ -4353,7 +4353,7 @@ sub rsync_to_image
             }
             else    # linux
             {
-                $synccmd = "/usr/bin/rsync -Lpotz ";
+                $synccmd = "/usr/bin/rsync -Lprotz ";
             }
             my $syncopt = "";
             foreach my $srcfile (@srcfiles)
