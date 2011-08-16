@@ -476,9 +476,9 @@ sub mkinstall
 	    $pkgdir="$installroot/$os/$arch";
 	}
 
-        if ($arch == "x86_64") {
+        if ($arch eq "x86_64") {
             $darch = "amd64";
-        } elsif ($arch == "x86") {
+        } elsif ($arch eq "x86") {
             $darch = "i386";
         } else {
             xCAT::MsgUtils->message("S","debian.pm: Unknown arch ($arch)");
