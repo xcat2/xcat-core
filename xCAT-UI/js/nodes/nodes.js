@@ -230,7 +230,7 @@ function loadGroups(data) {
 	var grouplist= $('<div class="groupdiv"></div>');
 	// Create a link for each group
 	for (var i = groups.length; i--;) {
-	    grouplist.append('<div><a href="#">' + groups[i] + '</a></div>');
+	    grouplist.append('<div>' + groups[i] + '</div>');
 	}
 	
 	$('#groups').append(grouplist);
@@ -3259,7 +3259,7 @@ function openQuickProvisionDia(tgtnodes){
     showstr += '<tr><td>TFTP Server:</td><td><input id="tftpinput"></td></tr>';
     showstr += '<tr><td>NFS Server:</td><td><input id="nfsinput"></td></tr>';
     showstr += '</tbody></table>';
-    showstr += '<div id="imageinfo"></div>';
+    showstr += '<div id="advoption"></div>';
     diaDiv.append(showstr);
     diaDiv.dialog({
         modal: true,
@@ -3272,7 +3272,11 @@ function openQuickProvisionDia(tgtnodes){
     });
     
     $('#deployDiv select').parent().append(createLoader());
-
+    $('#deployDiv select').bind('change', function(){
+        $('#deployDiv #advoption').html('<img src="images/loader.gif"></img>');
+        provisionAdvOption($(this).val());
+    });
+    
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -3301,6 +3305,8 @@ function openQuickProvisionDia(tgtnodes){
                 $('#deployDiv select').append('<option value="' + imagename + '">' + imagename + '</option>');
             }
             
+            $('#deployDiv select').trigger('change');
+            
             $('#deployDiv').dialog( "option", "buttons", {'Ok': function(){quickProvision();},
                                                           'Cancel': function(){$(this).remove();}}
             );
@@ -3308,6 +3314,46 @@ function openQuickProvisionDia(tgtnodes){
     });
 }
 
+function provisionAdvOption(imagename){
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'lsdef',
+            tgt : '',
+            args : '-t;osimage;' + imagename + ';-i;osname,provmethod',
+            msg : ''
+        },
+
+        success : function(data){
+            var index = 0;
+            var osname = '';
+            var provmethod = '';
+            var tempstr = '';
+            var position = 0;
+            for (index = 0; index < data.rsp.length; index++){
+                tempstr = data.rsp[index];
+                if (-1 != tempstr.indexOf('osname')){
+                    position = tempstr.indexOf('=');
+                    osname = tempstr.substr(position + 1);
+                }
+                if (-1 != tempstr.indexOf('provmethod')){
+                    position = tempstr.indexOf('=');
+                    provmethod = tempstr.substr(position + 1);
+                }
+            }
+            
+            $('#deployDiv #advoption').empty();
+            if ('aix' == osname.toLowerCase()){
+                return;
+            }
+            
+            if ('install' == provmethod){
+                $('#deployDiv #advoption').html('<input type="checkbox" checked="checked">Install Ganglia.');
+            }
+        }
+    });
+}
 /**
  * get all needed field for provsion and send the command to server 
  * 

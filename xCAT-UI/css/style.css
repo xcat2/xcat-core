@@ -201,6 +201,11 @@ body {
 	padding-left: 10px;
 }
 
+#groups .groupdiv div{
+	color: blue;
+	padding: 5px 0px 5px 20px;
+}
+
 #groups .groupdiv div:hover {
 	background: #E7EBFF;
 	cursor: pointer;
