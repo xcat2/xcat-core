@@ -5,13 +5,13 @@
 #   xCAT script for running postboot scripts for full install case.
 #################################################################
 
-if [ ! `uname` == Linux ]; then
+if [ ! `uname` = Linux ]; then
    MYDIR=`dirname $0`
    #exec $MYDIR/xcatdsklspost.aix
    logger -t xcat "$0: the OS name is not Linux"
    exit
 fi
-let SLI=$RANDOM%10
+SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 sleep $SLI
 
 cd /xcatpost; 
