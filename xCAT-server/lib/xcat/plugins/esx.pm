@@ -17,6 +17,7 @@ use POSIX qw(WNOHANG nice);
 use File::Path qw/mkpath rmtree/;
 use File::Temp qw/tempdir/;
 use File::Copy;
+use Fcntl qw/:flock/;
 use IO::Socket; #Need name resolution
 #use Data::Dumper;
 Getopt::Long::Configure("bundling");
@@ -54,7 +55,21 @@ my $vmwaresdkdetect = eval {
     VMware::VIRuntime->import();
     1;
 };
+my %lockhandles;
 
+sub lockbyname {
+	my $name = shift;
+	my $lckh;
+	mkpath("/tmp/xcat/locks/");
+	while (-e "/tmp/xcat/locks/$name") { sleep 1; }
+	open($lockhandles{$name},">>","/tmp/xcat/locks/$name"); 
+	flock($lockhandles{$name},LOCK_EX);
+}
+sub unlockbyname {
+	my $name = shift;
+	unlink("/tmp/xcat/locks/$name");
+	close($lockhandles{$name});
+}
 
 my %guestidmap = (
     "rhel.6.*" => "rhel6_",
@@ -3561,6 +3576,16 @@ sub refreshclusterdatastoremap {
     #a whole cluster instead of chasing one host, a whole lot slower.  One would hope vmware would've done this, but they don't
 }
 sub validate_datastore_prereqs {
+	my $hyp = $_[1];
+	lockbyname($hyp.".datastores");
+	$@="";
+	my $rc;
+	eval { $rc=validate_datastore_prereqs_inlock(@_); };
+	unlockbyname($hyp.".datastores");
+	if ($@) { die $@; }
+	return $rc;
+}
+sub validate_datastore_prereqs_inlock {
     my $nodes = shift;
     my $hyp = shift;
     my $newdatastores = shift; # a hash reference of URLs to afflicted nodes outside of table space
@@ -3627,7 +3652,7 @@ sub validate_datastore_prereqs {
                     my $uri = "nfs://$server/$path";
                     unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, must mount it
 						unless ($datastoreautomount) {
-                    		xCAT::SvrUtils::sendmsg([1,":) $uri is not currently accessible at the given location and automount is disabled in site table"], $output_handler,$node);
+                    		xCAT::SvrUtils::sendmsg([1,": $uri is not currently accessible at the given location and automount is disabled in site table"], $output_handler,$node);
 							return 0;
 						}
                         $refresh_names=1;
