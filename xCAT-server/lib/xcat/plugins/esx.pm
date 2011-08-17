@@ -46,6 +46,7 @@ my $requester;
 my $viavcenter;
 my $viavcenterbyhyp;
 my $vcenterautojoin=1;
+my $datastoreautomount=1;
 my $vcenterforceremove=0; #used in rmhypervisor
 my $reconfigreset=1;
 my $vmwaresdkdetect = eval {
@@ -310,6 +311,13 @@ sub process_request {
 			$vcenterautojoin = $ref->{value};
             if ($vcenterautojoin =~ /^n/ or $vcenterautojoin =~ /^dis/) {
                 $vcenterautojoin=0;
+            }
+		}
+		($ref) = $sitetab->getAttribs({key => 'vmwaredatastoreautomount'}, 'value');
+		if ($ref and defined $ref->{value}) {
+			$datastoreautomount = $ref->{value};
+            if ($datastoreautomount =~ /^n/ or $datastoreautomount =~ /^dis/) {
+                $datastoreautomount=0;
             }
 		}
         ($ref) = $sitetab->getAttribs({key => 'vmwarereconfigonpower'},'value');
@@ -3618,6 +3626,10 @@ sub validate_datastore_prereqs {
                     $server = inet_ntoa($servern);
                     my $uri = "nfs://$server/$path";
                     unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, must mount it
+						unless ($datastoreautomount) {
+                    		xCAT::SvrUtils::sendmsg([1,":) $uri is not currently accessible at the given location and automount is disabled in site table"], $output_handler,$node);
+							return 0;
+						}
                         $refresh_names=1;
                         ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=mount_nfs_datastore($hostview,$location);
 						$hyphash{$hyp}->{datastoreurlmap}->{$hyphash{$hyp}->{datastoremap}->{$uri}} = $uri;
@@ -3668,6 +3680,10 @@ sub validate_datastore_prereqs {
                         return 0;
                     }
                     unless ($hyphash{$hyp}->{datastoremap}->{$uri}) { #If not already there, must mount it
+						unless ($datastoreautomount) {
+                    		xCAT::SvrUtils::sendmsg([1,":) $uri is not currently accessible at the given location and automount is disabled in site table"], $output_handler,$node);
+							return 0;
+						}
                         $refresh_names=1;
                         ($hyphash{$hyp}->{datastoremap}->{$uri},$hyphash{$hyp}->{datastorerefmap}->{$uri})=mount_nfs_datastore($hostview,$location);
                     }
@@ -3751,6 +3767,9 @@ sub mount_nfs_datastore {
     my $location = shift;
     my $server;
     my $path;
+	unless ($datastoreautomount) {
+		die "automount of VMware datastores is disabled in site configuration, not continuing";
+	}
     ($server,$path) = split /\//,$location,2;
     $location = getlabel_for_datastore('nfs',$location);
 
