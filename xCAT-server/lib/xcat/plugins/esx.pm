@@ -4258,12 +4258,16 @@ sub mknetboot {
         }
 		unless(
             -r "$custprofpath/vmkboot.gz"
+			or -r "$custprofpath/b.z"
 			or	-r "$installroot/$osver/$arch/mboot.c32"
 			or -r "$installroot/$osver/$arch/install.tgz" ){
 			xCAT::SvrUtils::sendmsg([1,"Please run copycds first for $osver or create custom image in $custprofpath/"], $output_handler);
 		}
 
         my @reqmods = qw/vmkboot.gz vmk.gz sys.vgz cim.vgz/; #Required modules for an image to be considered complete
+		if ( -r "$custprofpath/b.z" ) { #if someone hand extracts from imagedd, a different name scheme is used
+			@reqmods = qw/b.z k.z s.z c.z/;
+		}
         my %mods;
         foreach (@reqmods) {
             $mods{$_} = 1;
@@ -4304,14 +4308,27 @@ sub mknetboot {
 	  }	
 	      # now make <HEX> file entry stuff
 		$kernel = "$tp/mboot.c32";
-		my $prepend = "$tp/vmkboot.gz";
-        delete $mods{"vmkboot.gz"};
-		$append = " --- $tp/vmk.gz";
-        delete $mods{"vmk.gz"};
-		$append .= " --- $tp/sys.vgz";
-        delete $mods{"sys.vgz"};
-		$append .= " --- $tp/cim.vgz";
-        delete $mods{"cim.vgz"};
+		my $prepend;
+		if ($reqmods[0] eq "vmkboot.gz") {
+			$prepend = "$tp/vmkboot.gz";
+	        delete $mods{"vmkboot.gz"};
+			$append = " --- $tp/vmk.gz";
+	        delete $mods{"vmk.gz"};
+			$append .= " --- $tp/sys.vgz";
+	        delete $mods{"sys.vgz"};
+			$append .= " --- $tp/cim.vgz";
+	        delete $mods{"cim.vgz"};
+		} else { #the single letter style
+			$prepend = "$tp/b.z";
+	        delete $mods{"b.z"};
+			$append = " --- $tp/k.z";
+	        delete $mods{"k.z"};
+			$append .= " --- $tp/s.z";
+	        delete $mods{"s.z"};
+			$append .= " --- $tp/c.z";
+	        delete $mods{"c.z"};
+		}
+			
         if ($mods{"mod.tgz"}) {
 		    $append .= " --- $tp/mod.tgz";
             delete $mods{"mod.tgz"};
