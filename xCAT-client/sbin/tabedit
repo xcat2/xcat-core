@@ -3,7 +3,7 @@
 
 # Opens the specified table in the users editor;writes changes back to the db
 
-function cexit {
+cexit () {
   if [ -d /tmp/tabedit.$$ ]; then
     rm -rf /tmp/tabedit.$$;
   fi
@@ -13,7 +13,7 @@ trap cexit 2 15
 
 if [ -r /etc/profile.d/xcat.sh ]; then
     #Source for environment variables
-    source /etc/profile.d/xcat.sh
+    . /etc/profile.d/xcat.sh
 fi
 
 TABLE=$1
@@ -54,7 +54,7 @@ while [ $EXIT -eq 0 ]; do
   $TABEDITOR $TABLE.csv
   cd - >/dev/null
   NEWSUM=`$SUMPROGRAM /tmp/tabedit.$$/$TABLE.csv`
-  if [ "$NEWSUM" == "$SUM" ]; then
+  if [ "$NEWSUM" = "$SUM" ]; then
     echo "No file modifications detected, not restoring."
     break;
   fi
