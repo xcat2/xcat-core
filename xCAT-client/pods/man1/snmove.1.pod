@@ -50,7 +50,7 @@ service node.
 
 If the -i option is specified, the nodes themselves will not be modified.
 
-If the -i option is NOT specified then the nodes will e modified as follows:
+If the -i option is NOT specified then the nodes will be modified as follows:
 
 =over 3
 
@@ -67,6 +67,10 @@ The B<setupntp> script will be run IF it was included in the nodes postscript li
 The B<mkresolvconf> script will be run IF it was included in the nodes postscript list.
 
 =item 4.
+
+The default gateway will be switched to the backup service node if B<networks.gateway=<xcatmaster>>.
+
+=item 5.
 
 If it is an AIX diskful node then the B<niminit> command will be run so that it will recognize the new service node as it's NIM master.
 
