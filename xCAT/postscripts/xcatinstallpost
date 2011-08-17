@@ -19,21 +19,32 @@ PATH=/xcatpost:$PATH
 export PATH
 chmod +x /xcatpost/*;
 
+#  Traditionally, mypostscript.post has been kept in /tmp across the first boot.
+#  However, Ubuntu cleans /tmp on reboot.  So, for Ubuntu, /var/tmp is used instead.
+#  Therefore, allow for finding mypostscript.post in /var/tmp or /tmp.
+
+if [ -e /var/tmp/mypostscript.post ]; then
+    POST_IN_DIR="/var/tmp"
+else
+    POST_IN_DIR="/tmp"
+fi
+
 if [ -x /usr/bin/openssl ]; then
-     SIP=`grep "^MASTER=" /var/tmp/mypostscript.post  |cut -d= -f2`
+     SIP=`grep "^MASTER=" ${POST_IN_DIR}/mypostscript.post  |cut -d= -f2`
      XCATSERVER="$SIP:3001"
      export XCATSERVER
      USEOPENSSLFORXCAT=1 #Though this is the only method going forward, flag to allow backward compatibility with 2.2 generated netboot images
      export USEOPENSSLFORXCAT
 fi
 
+#  Regardless of where mypostscript.post was found, modify and run it in /tmp.
 
-DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' /var/tmp/mypostscript.post`
-echo "$DHCP_TMP" > /var/tmp/mypostscript.post
+DHCP_TMP=`sed 's/\(DHCPINTERFACES=\)\(.*\)$/\1"\2"/' ${POST_IN_DIR}/mypostscript.post`
+echo "$DHCP_TMP" > /tmp/mypostscript.post
 
-echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /var/tmp/mypostscript.post
+echo "updateflag.awk \$MASTER 3002 \"installstatus booted\"" >> /tmp/mypostscript.post
 
-chmod +x /var/tmp/mypostscript.post
-if [ -x /var/tmp/mypostscript.post ];then
-   /var/tmp/mypostscript.post
+chmod +x /tmp/mypostscript.post
+if [ -x /tmp/mypostscript.post ];then
+   /tmp/mypostscript.post
 fi
