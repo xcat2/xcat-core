@@ -37,7 +37,7 @@ RHFailure()
 }
 MStatus()
 {
-  ps ax|grep -v grep|grep xcatd: >& /dev/null
+  ps ax|grep -v grep|grep xcatd: > /dev/null 2>&1
   if [ "$?" = "0" ]; then
     RVAL=0
     echo "xCAT service is running"
@@ -74,8 +74,8 @@ restart)
   if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
   fi
-  $STATUS >& /dev/null
-  if [ "$?" == "0" ]; then
+  $STATUS > /dev/null 2>&1
+  if [ "$?" = "0" ]; then
     if ! nodels --version |grep -q 'Version 2.6'; then  #upgrade or downgrade from another major release, stop it just in case
         $0 stop
     fi
@@ -87,8 +87,8 @@ reload)
    if [ -r /etc/profile.d/xcat.sh ]; then
        . /etc/profile.d/xcat.sh
   fi
-  $STATUS >& /dev/null
-  if [ "$?" == "0" ]; then
+  $STATUS > /dev/null 2>&1
+  if [ "$?" = "0" ]; then
     if ! nodels --version |grep -q 'Version 2.6'; then  #upgrade or downgrade from another major release, stop it just in case
         $0 stop
     fi
@@ -101,25 +101,25 @@ status)
   ;;
 stop)
   echo -n "Stopping xCATd "
-  $STATUS >& /dev/null
+  $STATUS > /dev/null 2>&1
   if [ "$?" != "0" ]; then
     echo -n "xCATd not running, not stopping "
     $LOG_WARNING
     exit 0
   fi
   kill -TERM -`cat /var/run/xcatd.pid`
-  let i=0;
-  while $STATUS >& /dev/null && [ $i -lt 15 ]; do
-    usleep 100000
-    let i=i+1
+  i=0;
+  while $STATUS > /dev/null 2>&1 && [ $i -lt 15 ]; do
+    sleep .1
+    i=$((i+1))
   done
-  $STATUS >& /dev/null
-  if [ "$?" == "0" ]; then
+  $STATUS > /dev/null 2>&1
+  if [ "$?" = "0" ]; then
     kill -KILL -`cat /var/run/xcatd.pid`
   fi
-  usleep 100000
-  $STATUS >& /dev/null
-  if [ "$?" == "0" ]; then
+  sleep .1
+  $STATUS > /dev/null 2>&1
+  if [ "$?" = "0" ]; then
     $LOG_FAILURE
     exit 0
   fi
@@ -127,8 +127,8 @@ stop)
   rm /var/run/xcatd.pid
   ;;
 start)
-  $STATUS >& /dev/null
-  if [ "$?" == "0" ]; then
+  $STATUS > /dev/null 2>&1
+  if [ "$?" = "0" ]; then
     echo -n "xCATd already running "
     $LOG_WARNING
     exit
