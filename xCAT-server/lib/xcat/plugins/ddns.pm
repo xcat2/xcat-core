@@ -266,7 +266,7 @@ sub process_request {
         xCAT::SvrUtils::sendmsg([0,"Warning:The management node is not defined as a nameserver in /etc/resolv.conf. Add \"nameserver $nameserver\" to /etc/resolv.conf and run makedns again."], $callback);
    }
 
-    # check if search site.domain in /etc/resolv.conf
+    # chk if search site.domain or domain site.domain on AIX in /etc/resolv.conf
     $found=0;
     my $domain=$ctx->{domain};
     my $cmd="grep $domain $resolv";
@@ -280,10 +280,17 @@ sub process_request {
            $found=1;
            last;
         }
+        # if AIX could be a domain line
+        if (xCAT::Utils->isAIX()) {
+          if ($line =~ /^domain/) {
+             $found=1;
+             last;
+          }
+        }
       } 
    } 
    if ($found == 0) { # no search site.domain found
-        xCAT::SvrUtils::sendmsg([0,"Warning:The domain is not defined in a search path in /etc/resolv.conf. Add \"search $domain\" to /etc/resolv.conf and run makedns again."], $callback);
+        xCAT::SvrUtils::sendmsg([0,"Warning:The domain is not defined in a search path or domain path for AIX (in /etc/resolv.conf. Add \"search $domain\" to /etc/resolv.conf and run makedns again."], $callback);
    }
       
     my $networkstab = xCAT::Table->new('networks',-create=>0);
