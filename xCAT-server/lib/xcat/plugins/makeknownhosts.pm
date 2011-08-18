@@ -248,7 +248,7 @@ sub add_known_host
         xCAT::MsgUtils->message("E", $rsp, $callback, 1);
         return 1;
     }
-    chop($ip_address);
+    chomp($ip_address);
 
     if (defined $hostname)
     {
