@@ -975,6 +975,10 @@ sub add_or_delete_records {
         if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
             $update->sign_tsig("xcat_key",$ctx->{privkey});
             my $reply = $resolver->send($update);
+            if ($reply->header->rcode ne 'NOERROR') {
+                 xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
+            }
+            
             # sometimes resolver does not work if the update zone request sent so quick
             sleep 1;
         }
@@ -1020,6 +1024,9 @@ sub find_nameserver_for_dns {
            } else {
                my $reply = $ctx->{resolver}->query($zone,'NS');
                if ($reply)  {
+                   if ($reply->header->rcode ne 'NOERROR') {
+                      xCAT::SvrUtils::sendmsg([1,"Failure encountered querying $zone, error was ".$reply->header->rcode], $callback);
+                    }
                     foreach my $record ($reply->answer) {
                         if ( $record->nsdname =~ /blackhole.*\.iana\.org/) {
                             $ctx->{nsmap}->{$zone} = 0; 
