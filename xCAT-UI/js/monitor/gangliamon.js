@@ -154,14 +154,18 @@ function checkGangliaRunning(data){
     groupsSelectStr += '</select>';
     
     //help info
-    var helpStr = '<div class="tooltip">aaa</div>';
+    var helpStr = '<table style="float:right"><tr>' +
+                  '<td style="background:#66CD00;width:16px;padding:0px;"> </td><td style="padding:0px;border:0px">Normal</td>' +
+                  '<td style="background:#FFD700;width:16px;padding:0px;"> </td><td style="padding:0px;">Heavy Load</td>' +
+                  '<td style="background:#FF3030;width:16px;padding:0px;"> </td><td style="padding:0px;">Error</td>' +
+                  '<td style="background:#8B8B7A;width:16px;padding:0px;"> </td><td style="padding:0px;">Unknown</td>' +
+                  '</tr></table>';
     
     //pass checking
-    var showStr = '<h3 style="display:inline;">Grid Overview</h3>' +
-                  '<sup id="hidesup" style="cursor: pointer;color:blue">[Hide]</sup><hr>' +
+    var showStr = '<div><h3 style="display:inline;">Grid Overview</h3>' +
+                  '<sup id="hidesup" style="cursor: pointer;color:blue;float:right">[Hide]</sup></div><hr>' +
                   '<div id="gangliaGridSummary"></div>' +
-                  '<h3 style="display:inline;">Nodes Current Status</h3>' +
-                  '<sup id="nodehelp" style="cursor: pointer;color:blue"> ?</sup>' +
+                  '<div><h3 style="display:inline;">Nodes Current Status</h3>' + helpStr + '</div>' +
                   '<hr>Nodes in Group:' + groupsSelectStr +
                   ' order by: <select id="gangliaorder" style="padding:0px;"><option value="name">Name</option>' +
                   '<option value="asc">Ascending</option><option value="des">Descending</option></select>' +
@@ -192,29 +196,6 @@ function checkGangliaRunning(data){
     //bind the order select change event
     $('#gangliaorder').bind('change', function(){
         drawGangliaNodesArea($(this).val());
-    });
-    
-    //bind the info click enent
-    $('#gangliamon #nodehelp').bind('click', function(){
-        var helpStr = '<table>' +
-                      '<tr><td style="background:#66CD00;" width="16px"> </td><td>Normal</td></tr>' +
-                      '<tr><td style="background:#FFD700;" width="16px"> </td><td>Heavy Load</td></tr>' +
-                      '<tr><td style="background:#FF3030;" width="16px"> </td><td>Can not get status longer than 3 minutes</td></tr>' +
-                      '<tr><td style="background:#8B8B7A;" width="16px"> </td><td>Unknown</td></tr>' +
-                      '</table>';
-        var helpDia = $('<div></div>');
-        helpDia.append(helpStr);
-        helpDia.dialog({
-            modal: true,
-            width: 350,
-            title: 'Node Status Help Info',
-            close: function(){$(this).remove();},
-            buttons: {
-                'Close': function(){
-                    $(this).dialog('close');
-                }
-            }
-        });
     });
     
     //bind the hide/show buttion event

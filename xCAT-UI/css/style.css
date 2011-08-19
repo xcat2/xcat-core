@@ -689,31 +689,28 @@ table a:hover {
 
 /*--------------- Provision and monitor forms ---------------*/
 .monitornormal {
-	border: 2px outset #7FFFD4;
 	background: #66CD00;
 	cursor: pointer;
 }
 
 .mornitorwarning {
    	background: #FFD700;
-  	border: 2px outset #EEEE00;
 	cursor: pointer;
 }
 
 .monitorerror {
 	background:  #FF3030;
-	border: 2px outset #FF4040;
 }
 
 .monitorunknown {
     background:  #8B8B7A;
-    border: 2px outset #858585;
 }
 
 .monitornodeli {
-	width: 16px;
-	height: 16px;
+	width: 10px;
+	height: 10px;
 	float: left;
+	border: 1px solid white;
 }
 
 .monitorsumdiv {
