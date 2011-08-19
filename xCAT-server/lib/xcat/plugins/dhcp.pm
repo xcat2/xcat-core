@@ -2016,7 +2016,7 @@ sub newconfig6 {
     push @dhcp6conf, "\n";
     push @dhcp6conf, "ddns-update-style interim;\n";
     push @dhcp6conf, "ignore client-updates;\n";
-    push @dhcp6conf, "update-static-leases on;\n";
+#    push @dhcp6conf, "update-static-leases on;\n";
     push @dhcp6conf, "omapi-port 7912;\n";        #Enable omapi...
     push @dhcp6conf, "key xcat_key {\n";
     push @dhcp6conf, "  algorithm hmac-md5;\n";
@@ -2065,7 +2065,7 @@ sub newconfig
     push @dhcpconf, "option iscsi-initiator-iqn code 203 = string;\n"; #Only via gPXE, not a standard
     push @dhcpconf, "ddns-update-style interim;\n";
     push @dhcpconf, "ignore client-updates;\n"; #Windows clients like to do all caps, very un xCAT-like
-    push @dhcpconf, "update-static-leases on;\n"; #makedns rendered optional
+#    push @dhcpconf, "update-static-leases on;\n"; #makedns rendered optional
     push @dhcpconf,
       "option client-architecture code 93 = unsigned integer 16;\n";
     push @dhcpconf, "option gpxe.no-pxedhcp 1;\n";
