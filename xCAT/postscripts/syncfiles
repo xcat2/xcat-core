@@ -8,14 +8,14 @@
 #####################################################
 
 # do nothing when UPDATENODE=1 because it is done from the top down
-if [[ $UPDATENODE -eq 1 ]]; then
+if [ -n "$UPDATENODE" ] && [ $UPDATENODE -eq 1 ]; then
    echo "  Did not sync any files. Use updatenode -F to sync the files."
   
    exit 0
 fi
 
 #do nothing id there is no sync file template for the node
-if [[ $NOSYNCFILES -eq 1 ]]; then
+if [ -n "$NOSYNCFILES" ] && [ $NOSYNCFILES -eq 1 ]; then
    echo "  Did not sync any files."
    logger -t xCAT "$0: there is no sync file template for the node"
    exit 0
