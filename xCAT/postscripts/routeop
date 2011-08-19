@@ -79,7 +79,7 @@ if [[ "$result" == "0" ]]; then
 	if [[ $OSTYPE = linux* ]]; then
 	    cmd="route add -net $net netmask $mask gw $gw"
 	else 
-	    cmd="/etc/route add -net $net -netmask $mask $gw"
+	    cmd="route add -net $net -netmask $mask $gw"
 	fi
 	echo "$cmd"
 	result=`$cmd 2>&1`
