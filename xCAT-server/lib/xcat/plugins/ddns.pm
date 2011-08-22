@@ -293,18 +293,14 @@ sub process_request {
         xCAT::SvrUtils::sendmsg([0,"Warning:The domain is not defined in a search path or domain path for AIX (in /etc/resolv.conf. Add \"search $domain\" to /etc/resolv.conf and run makedns again."], $callback);
    }
    # check for selinux disabled
-   my $selinux="/etc/selinux/config";
-   if (-e ($selinux)) {
-    # check if selinux is disabled 
-    my $disabled="\"SELINUX=disabled\"";
-    my $cmd="fgrep $disabled $selinux";
-    my @output=xCAT::Utils->runcmd($cmd, -1);
-    if ($::RUNCMD_RC != 0)
+    my $rc=xCAT::Utils->isSELINUX();
+    if ($rc == 0)
     {
         xCAT::SvrUtils::sendmsg([0,"Warning:SELINUX is not disabled. The makedns command will not be able to generate a complete DNS setup. Disable SELINUX and run the command again."], $callback);
 
-    } 
-   } 
+    }
+
+     
     my $networkstab = xCAT::Table->new('networks',-create=>0);
     unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
     my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain');
