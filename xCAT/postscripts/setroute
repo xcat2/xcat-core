@@ -10,7 +10,7 @@
 #=cut
 #-------------------------------------------------------------------------------
 
-if [[ -z "$NODEROUTENAMES" ]]; then
+if [ -z "$NODEROUTENAMES" ]; then
     exit 0
 fi
 
