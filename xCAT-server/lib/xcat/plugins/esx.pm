@@ -4218,6 +4218,12 @@ sub mknetboot {
 	my %donetftp=();
 
 	my $bpadds = $bptab->getNodesAttribs(\@nodes,['addkcmdline']);
+	my $nodehmtab = xCAT::Table->new('nodehm',-create=>0);
+	my $serialconfig;
+	if ($nodehmtab) {
+		$serialconfig = $nodehmtab->getNodesAttribs(\@nodes,['serialport','serialspeed']);
+	}
+		
     my %tablecolumnsneededforaddkcmdline;
     my %nodesubdata;
 	foreach my $key (keys %$bpadds){ #First, we identify all needed table.columns needed to aggregate database call
@@ -4350,6 +4356,16 @@ sub mknetboot {
 	elsif ($osver =~ /esxi5/) { #do a more straightforward thing..
 	  $kernel = "$tp/mboot.c32";
 	  $append = "-c $tp/boot.cfg.stateless";
+	  if ($serialconfig->{$node}) {
+		my $comport = 1;
+		if (defined $serialconfig->{$node}->[0]->{serialport}) {
+			 $comport = $serialconfig->{$node}->[0]->{serialport}+1;
+			 $append .= " -S $comport tty2port=com$comport";
+		}
+		if (defined $serialconfig->{$node}->[0]->{serialspeed}) {
+			$append .= " -s ".$serialconfig->{$node}->[0]->{serialspeed}." com".$comport."_baud=".$serialconfig->{$node}->[0]->{serialspeed};
+		}
+	}
 	}
 	$output_handler->({node=>[{name=>[$node],'_addkcmdlinehandled'=>[1]}]});
 
