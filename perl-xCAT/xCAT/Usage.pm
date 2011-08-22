@@ -130,27 +130,29 @@ my %usage = (
            *_passwd=<currentpasswd,newpasswd>|
            hostname=<*|hostname>
    FSP/CEC (using Direct FSP Management) Specific:
-       rspconfig noderange HMC_passwd={currentpasswd,newpasswd}
-       rspconfig noderange admin_passwd={currentpasswd,newpasswd}
-       rspconfig noderange general_passwd={currentpasswd,newpasswd}
-       rspconfig noderange *_passwd={currentpasswd,newpasswd}
+       rspconfig <noderange> HMC_passwd=<currentpasswd,newpasswd>
+       rspconfig <noderange> admin_passwd=<currentpasswd,newpasswd>
+       rspconfig <noderange> general_passwd=<currentpasswd,newpasswd>
+       rspconfig <noderange> *_passwd=<currentpasswd,newpasswd>
        rspconfig <noderange> [sysname]
        rspconfig <noderange> [sysname=<*|name>]
        rspconfig <noderange> [pending_power_on_side]
        rspconfig <noderange> [pending_power_on_side=<temp|perm>]
        rspconfig <noderange> [cec_off_policy]
        rspconfig <noderange> [cec_off_policy=<poweroff|stayon>]
+       rspconfig <noderange> --resetnet
    BPA/Frame (using Direct FSP Management)specific:
-       rspconfig noderange HMC_passwd={currentpasswd,newpasswd}
-       rspconfig noderange admin_passwd={currentpasswd,newpasswd}
-       rspconfig noderange general_passwd={currentpasswd,newpasswd}
-       rspconfig noderange *_passwd={currentpasswd,newpasswd}
+       rspconfig <noderange> HMC_passwd=<currentpasswd,newpasswd>
+       rspconfig <noderange> admin_passwd=<currentpasswd,newpasswd>
+       rspconfig <noderange> general_passwd=<currentpasswd,newpasswd>
+       rspconfig <noderange> *_passwd=<currentpasswd,newpasswd>
        rspconfig <noderange> [frame]
        rspconfig <noderange> frame=<*|frame>
        rspconfig <noderange> [sysname]
        rspconfig <noderange> [sysname=<*|name>]
        rspconfig <noderange> [pending_power_on_side]
        rspconfig <noderange> [pending_power_on_side=<temp|perm>]
+       rspconfig <noderange> --resetnet
    HMC specific:
        rspconfig <noderange>  [sshcfg]
        rspconfig <noderange>  [sshcfg=<enable|disable>]
