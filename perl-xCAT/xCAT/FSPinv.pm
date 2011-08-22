@@ -317,6 +317,8 @@ sub deconfig {
 
          }
 
+      } else {
+         push @result,[$name,"NO Deconfigured resources", 0];
       } 
 
 	         
