@@ -6604,5 +6604,37 @@ sub runcmd_S
 
 }
 
+#-------------------------------------------------------------------------------
+
+=head3    isSELINUX
+    Returns:
+       returns 0 if SELINUX is  enabled 
+       returns 1 if SELINUX is not enabled 
+    Globals:
+        none
+    Error:
+        none
+    Example:
+         if (xCAT::Utils->isSELINUX()) { blah; }
+    Comments:
+       This is tested on Redhat,  may need more for SLES 
+=cut
+
+#-------------------------------------------------------------------------------
+sub isSELINUX
+{
+    if (-e "/usr/sbin/selinuxenabled") {
+       `/usr/sbin/selinuxenabled`;
+       if ($? == 0) {
+         return 0;
+       } else {
+         return 1;
+       }
+    } else {
+       return 1;
+    }
+}
+
+#-------------------------------------------------------------------------------
 
 1;
