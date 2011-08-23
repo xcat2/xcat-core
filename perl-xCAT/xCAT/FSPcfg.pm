@@ -146,17 +146,21 @@ sub parse_args {
     foreach my $arg ( @ARGV ) {
         my ($command,$value) = split( /=/, $arg );
         if ( !grep( /^$command$/, @$supported) and !$opt{resetnet}) {
-            my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
-            if (defined($enableASMI[0])) {
-                $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
-                    if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES"))
-                    {
+            my $res = xCAT::PPCcfg::parse_args($request, @_);
+            if (ref($res) eq 'ARRAY') {
+                return(usage( "Invalid command for $request->{hwtype} : $arg" ));
+            } else {
+                my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
+                if (defined($enableASMI[0])) {
+                    $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
+                    if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES")) {
                         $request->{enableASMI} = 1;
-                        return xCAT::PPCcfg::parse_args($request, @_);
-                    }
-            }
-            return(usage( "Invalid command for $request->{hwtype} : $arg" ));
-        } 
+                        return $res;
+                    } 
+                }
+                return (usage( "You should enable \"ASMI\" first for \'$command\'."));
+            } 
+        }
         if ( exists( $cmds{$command} )) {
             return(usage( "Command multiple times: $command" ));
         }
