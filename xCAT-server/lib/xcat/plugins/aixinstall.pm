@@ -11136,7 +11136,7 @@ sub sync_spot_files
             # for each file on the line
             # create rsync cmd
             #  run from management node even if it's not the nim primary
-            my $synccmd = "rsync -Lpotz ";
+            my $synccmd = "rsync -Lprogtz ";
 
             my $syncopt = "";
             foreach my $srcfile (@srcfiles)
@@ -11149,7 +11149,7 @@ sub sync_spot_files
             $syncopt .= $imageupdatepath;
             $synccmd .= $syncopt;
 
-            # ex. xdsh $nimprime "rsync -Lpotz /etc/foo /install/nim/spot/.../inst_root/etc"
+            # ex. xdsh $nimprime "rsync -Lprogtz /etc/foo /install/nim/spot/.../inst_root/etc"
             if ($::VERBOSE)
             {
                 my $rsp;
