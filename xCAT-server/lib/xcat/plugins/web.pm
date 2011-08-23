@@ -53,8 +53,9 @@ sub process_request {
 		'createimage'   => \&web_createimage,
         'provision'     => \&web_provision,
         'summary'       => \&web_summay,
-	    'gangliashow'  => \&web_gangliaShow,
-	    'gangliacurrent' => \&web_gangliaLatest
+	    'gangliashow'   => \&web_gangliaShow,
+	    'gangliacurrent' => \&web_gangliaLatest,
+	    'rinstall'	    => \&web_rinstall
 	);
 
 	#check whether the request is authorized or not
@@ -1733,5 +1734,18 @@ sub web_attrcount{
     else{
         $container->{$key} = 1;
     }
+}
+
+sub web_rinstall {
+	my ( $request, $callback, $sub_req ) = @_;
+	my $os = $request->{arg}->[1];
+	my $profile = $request->{arg}->[2];
+	my $arch = $request->{arg}->[3];
+	my $node = $request->{arg}->[4];
+
+	# Begin installation
+	my $out = `rinstall -o $os -p $profile -a $arch $node`;
+
+	$callback->( { data => $out } );
 }
 1;
