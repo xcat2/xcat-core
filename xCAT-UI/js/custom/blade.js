@@ -139,7 +139,7 @@ bladePlugin.prototype.loadProvisionPage = function(tabId) {
 	$('#' + tabId).append(provForm);
 
 	// Create provision existing node division
-	var provExisting = createProvisionExisting(inst);
+	var provExisting = createBladeProvisionExisting(inst);
 	provForm.append(provExisting);
 };
 
@@ -359,7 +359,7 @@ function addBladeNode(){
  *            Provision tab instance
  * @return Provision existing node division
  */
-function createProvisionExisting(inst) {
+function createBladeProvisionExisting(inst) {
 	// Create provision existing division
 	var provExisting = $('<div></div>');
 
@@ -563,7 +563,7 @@ function createProvisionExisting(inst) {
 				data : {
 					cmd : 'nodeadd',
 					tgt : '',
-					args : tgts + ';noderes.netboot=zvm;nodetype.os=' + os.val() + ';nodetype.arch=' + arch.val() + ';nodetype.profile=' + profile.val(),
+					args : tgts + ';noderes.netboot=xnba;nodetype.os=' + os.val() + ';nodetype.arch=' + arch.val() + ';nodetype.profile=' + profile.val(),
 					msg : 'cmd=nodeadd;out=' + inst
 				},
 
@@ -711,15 +711,15 @@ function updateBladeProvisionExistingStatus(data) {
 	var inst = args[1].replace('out=', '');
 	
 	// Get provision tab and status bar ID
-	var statBarId = 'ipmiProvisionStatBar' + inst;
-	var tabId = 'ipmiProvisionTab' + inst;
+	var statBarId = 'bladeProvisionStatBar' + inst;
+	var tabId = 'bladeProvisionTab' + inst;
 	
 	/**
 	 * (2) Remote install
 	 */
 	if (cmd == 'nodeadd') {
 		// Write ajax response to status bar
-		var prg = writeRsp(rsp, '');	
+		var prg = writeRsp(rsp, '');
 		$('#' + statBarId).find('div').append(prg);
 
 		// Get parameters
@@ -728,7 +728,7 @@ function updateBladeProvisionExistingStatus(data) {
 		var arch = $('#' + tabId + ' input[name="arch"]').val();
 		
 		// Get nodes that were checked
-		var dTableId = 'ipmiNodesDatatable' + inst;
+		var dTableId = 'bladeNodesDatatable' + inst;
 		var tgts = getNodesChecked(dTableId);
 		
 		// Begin installation
@@ -736,10 +736,10 @@ function updateBladeProvisionExistingStatus(data) {
 			url : 'lib/cmd.php',
 			dataType : 'json',
 			data : {
-				cmd : 'webrun',
-				tgt : '',
-				args : 'rinstall;' + os + ';' + profile + ';' + arch + ';' + tgts,
-				msg : 'cmd=rinstall;out=' + inst
+				cmd : 'rbootseq',
+				tgt : tgts,
+				args : 'net,hd',
+				msg : 'cmd=rbootseq;out=' + inst
 			},
 
 			success : updateBladeProvisionExistingStatus
@@ -747,9 +747,61 @@ function updateBladeProvisionExistingStatus(data) {
 	} 
 	
 	/**
-	 * (3) Done
+	 * (3) Prepare node for boot
 	 */
-	else if (cmd == 'rinstall') {
+	if (cmd == 'nodeadd') {
+		// Get provision method
+		var bootMethod = $('#' + tabId + ' select[name=bootMethod]').val();
+		
+		// Get nodes that were checked
+		var dTableId = 'bladeNodesDatatable' + inst;
+		var tgts = getNodesChecked(dTableId);
+		
+		// Prepare node for boot
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'nodeset',
+				tgt : tgts,
+				args : bootMethod,
+				msg : 'cmd=nodeset;out=' + inst
+			},
+
+			success : updateBladeProvisionExistingStatus
+		});
+	}
+	
+	/**
+	 * (4) Power on node
+	 */
+	if (cmd == 'nodeset') {
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).find('div').append(prg);
+		
+		// Get nodes that were checked
+		var dTableId = 'bladeNodesDatatable' + inst;
+		var tgts = getNodesChecked(dTableId);
+		
+		// Prepare node for boot
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'rpower',
+				tgt : tgts,
+				args : 'boot',
+				msg : 'cmd=rpower;out=' + inst
+			},
+
+			success : updateBladeProvisionExistingStatus
+		});
+	}
+	
+	/**
+	 * (5) Done
+	 */
+	else if (cmd == 'rpower') {
 		// Write ajax response to status bar
 		var prg = writeRsp(rsp, '');	
 		$('#' + statBarId).find('div').append(prg);
@@ -757,7 +809,7 @@ function updateBladeProvisionExistingStatus(data) {
 		
 		// If installation was successful
 		if (prg.html().indexOf('Error') == -1) {
-			$('#' + statBarId).find('div').append('<pre>It will take several minutes before the nodes are up and ready. Use nodestat to check the status of the install.</pre>');
+			$('#' + statBarId).find('div').append('<pre>It will take several minutes before the nodes are up and ready. Use rcons to monitor the status of the install.</pre>');
 		}
 	}
 }

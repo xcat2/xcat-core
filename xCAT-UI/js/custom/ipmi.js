@@ -140,7 +140,7 @@ ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
 	$('#' + tabId).append(provForm);
 
 	// Create provision existing node division
-	var provExisting = createProvisionExisting(inst);
+	var provExisting = createIpmpProvisionExisting(inst);
 	provForm.append(provExisting);
 };
 
@@ -273,7 +273,7 @@ function addidataplexNode(){
  *            Provision tab instance
  * @return Provision existing node division
  */
-function createProvisionExisting(inst) {
+function createIpmpProvisionExisting(inst) {
 	// Create provision existing division
 	var provExisting = $('<div></div>');
 
