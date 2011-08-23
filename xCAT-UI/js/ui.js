@@ -312,7 +312,8 @@ function createStatusBar(barId) {
 	// Create info icon
 	var icon = $('<span class="ui-icon ui-icon-circle-check"></span>').css({
 		'display': 'inline-block',
-		'margin': '10px 5px'
+		'margin': '10px 5px',
+		'vertical-align': 'top'
 	});
 	
 	// Create message section
@@ -478,7 +479,6 @@ function initPage() {
 	includeJs("js/custom/ipmi.js");
 	includeJs("js/custom/zvm.js");
 	includeJs("js/custom/hmc.js");
-	includeJs("js/custom/customUtils.js");
 
 	// Get the page being loaded
 	var url = window.location.pathname;

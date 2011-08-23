@@ -91,13 +91,16 @@ if (isset($_GET["cmd"])) {
 		foreach ($xml->children() as $child) {
 			foreach ($child->children() as $data) {
 				if($data->name) {
-					$node = $data->name;
+					$node = $data->name;	
 					
-					if($data->data->contents){
+					if ($data->data->contents) {
 						$cont = $data->data->contents;
-					}
-					else{
+					} else {
 						$cont = $data->data;
+					}
+					
+					if ($data->data->desc) {
+						$cont = $data->data->desc . ": " . $cont;
 					}
 					
 					$cont = str_replace(":|:", "\n", $cont);

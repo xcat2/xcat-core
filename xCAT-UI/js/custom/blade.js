@@ -22,12 +22,10 @@ var bladePlugin = function() {
  * @return Nothing
  */
 bladePlugin.prototype.loadInventory = function(data) {
-	// Get arguments
 	var args = data.msg.split(',');
-	// Get tab ID
 	var tabId = args[0].replace('out=', '');
-	// Get node
 	var node = args[1].replace('node=', '');
+	
 	// Get node inventory
 	var inv = data.rsp;
 
@@ -36,10 +34,29 @@ bladePlugin.prototype.loadInventory = function(data) {
 
 	// Create division to hold inventory
 	var invDivId = tabId + 'Inventory';
-	var invDiv = $('<div class="inventory" id="' + invDivId + '"></div>');
-	var info = createInfoBar('Under construction');
-	invDiv.append(info);
+	var invDiv = $('<div></div>');
 	
+	// Create a fieldset
+	var fieldSet = $('<fieldset></fieldset>');
+	var legend = $('<legend>Hardware</legend>');
+	fieldSet.append(legend);
+	var oList = $('<ol></ol>');
+	fieldSet.append(oList);
+	invDiv.append(fieldSet);
+
+	// Loop through each line
+	var item;
+	for (var k = 0; k < inv.length; k++) {
+		// Remove node name in front
+		var str = inv[k].replace(node + ': ', '');
+		str = jQuery.trim(str);
+
+		// Append the string to a list
+		item = $('<li></li>');
+		item.append(str);
+		oList.append(item);
+	}
+
 	// Append to inventory form
 	$('#' + tabId).append(invDiv);
 };
@@ -58,16 +75,11 @@ bladePlugin.prototype.loadClonePage = function(node) {
 
 	// If there is no existing clone tab
 	if (!$('#' + newTabId).length) {
-		// Create status bar and hide it
-		var statBarId = node + 'CloneStatusBar';
-		var statBar = $('<div class="statusBar" id="' + statBarId + '"></div>').hide();
-
 		// Create info bar
-		var infoBar = createInfoBar('Under construction');
+		var infoBar = createInfoBar('Not supported');
 
 		// Create clone form
 		var cloneForm = $('<div class="form"></div>');
-		cloneForm.append(statBar);
 		cloneForm.append(infoBar);
 
 		// Add clone tab
@@ -119,59 +131,16 @@ bladePlugin.prototype.loadProvisionPage = function(tabId) {
 	// Create provision form
 	var provForm = $('<div class="form"></div>');
 
-	// Create status bar
-	var statBarId = 'bladeProvisionStatBar' + inst;
-	var statBar = createStatusBar(statBarId).hide();
-	provForm.append(statBar);
-
-	// Create loader
-	var loader = createLoader('bladeProvisionLoader' + inst).hide();
-	statBar.find('div').append(loader);
-
 	// Create info bar
-	var infoBar = createInfoBar('Provision a node on BladeCenter.');
+	var infoBar = createInfoBar('Provision a blade');
 	provForm.append(infoBar);
 
 	// Append to provision tab
 	$('#' + tabId).append(provForm);
 
-	// Create provision type drop down
-	var provType = $('<div></div>');
-	var typeLabel = $('<label>Provision:</label>');
-	var typeSelect = $('<select></select>');
-	var provNewNode = $('<option value="new">New node</option>');
-	var provExistNode = $('<option value="existing">Existing node</option>');
-	typeSelect.append(provNewNode);
-	typeSelect.append(provExistNode);
-	provType.append(typeLabel);
-	provType.append(typeSelect);
-	provForm.append(provType);
-
-	/**
-	 * Create provision new node division
-	 */
-	// You should copy whatever is in this function, put it here, and customize it
-	var provNew = createProvisionNew('blade', inst);
-	provForm.append(provNew);
-
-	/**
-	 * Create provision existing node division
-	 */
-	// You should copy whatever is in this function, put it here, and customize it
-	var provExisting = createProvisionExisting('blade', inst);
+	// Create provision existing node division
+	var provExisting = createProvisionExisting(inst);
 	provForm.append(provExisting);
-
-	// Toggle provision new/existing on select
-	typeSelect.change(function() {
-		var selected = $(this).val();
-		if (selected == 'new') {
-			provNew.toggle();
-			provExisting.toggle();
-		} else {
-			provNew.toggle();
-			provExisting.toggle();
-		}
-	});
 };
 
 /**
@@ -381,4 +350,414 @@ function addBladeNode(){
         }
     });
 
+}
+
+/**
+ * Create provision existing node division
+ * 
+ * @param inst
+ *            Provision tab instance
+ * @return Provision existing node division
+ */
+function createProvisionExisting(inst) {
+	// Create provision existing division
+	var provExisting = $('<div></div>');
+
+	// Create group input
+	var group = $('<div></div>');
+	var groupLabel = $('<label for="provType">Group:</label>');
+	group.append(groupLabel);
+
+	// Turn on auto complete for group
+	var dTableDivId = 'bladeNodesDatatableDIV' + inst;	// Division ID where nodes datatable will be appended
+	var groupNames = $.cookie('groups');
+	if (groupNames) {
+		// Split group names into an array
+		var tmp = groupNames.split(',');
+
+		// Create drop down for groups
+		var groupSelect = $('<select></select>');
+		groupSelect.append('<option></option>');
+		for ( var i in tmp) {
+			// Add group into drop down
+			var opt = $('<option value="' + tmp[i] + '">' + tmp[i] + '</option>');
+			groupSelect.append(opt);
+		}
+		group.append(groupSelect);
+
+		// Create node datatable
+		groupSelect.change(function() {
+			// Get group selected
+			var thisGroup = $(this).val();
+			// If a valid group is selected
+			if (thisGroup) {
+				createNodesDatatable(thisGroup, dTableDivId);
+			} // End of if (thisGroup)
+		});
+	} else {
+		// If no groups are cookied
+		var groupInput = $('<input type="text" name="group"/>');
+		group.append(groupInput);
+	}
+	provExisting.append(group);
+
+	// Create node input
+	var node = $('<div></div>');
+	var nodeLabel = $('<label for="nodeName">Nodes:</label>');
+	var nodeDatatable = $('<div id="' + dTableDivId + '" style="display: inline-block; max-width: 800px;"><p>Select a group to view its nodes</p></div>');
+	node.append(nodeLabel);
+	node.append(nodeDatatable);
+	provExisting.append(node);
+
+	// Create boot method drop down
+	var method = $('<div></div>');
+	var methodLabel = $('<label for="method">Boot method:</label>');
+	var methodSelect = $('<select id="bootMethod" name="bootMethod"></select>');
+	methodSelect.append('<option value=""></option>'
+		+ '<option value="boot">boot</option>'
+		+ '<option value="install">install</option>'
+		+ '<option value="iscsiboot">iscsiboot</option>'
+		+ '<option value="netboot">netboot</option>'
+		+ '<option value="statelite">statelite</option>'
+	);
+	method.append(methodLabel);
+	method.append(methodSelect);
+	provExisting.append(method);
+	
+	// Create operating system input
+	var os = $('<div></div>');
+	var osLabel = $('<label for="os">Operating system:</label>');
+	var osInput = $('<input type="text" name="os"/>');
+	osInput.one('focus', function() {
+		var tmp = $.cookie('osvers');		
+		if (tmp) {
+			// Turn on auto complete
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
+		}
+	});
+	os.append(osLabel);
+	os.append(osInput);
+	provExisting.append(os);
+
+	// Create architecture input
+	var arch = $('<div></div>');
+	var archLabel = $('<label for="arch">Architecture:</label>');
+	var archInput = $('<input type="text" name="arch"/>');
+	archInput.one('focus', function() {
+		var tmp = $.cookie('osarchs');
+		if (tmp) {
+			// Turn on auto complete
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
+		}
+	});
+	arch.append(archLabel);
+	arch.append(archInput);
+	provExisting.append(arch);
+
+	// Create profile input
+	var profile = $('<div></div>');
+	var profileLabel = $('<label for="profile">Profile:</label>');
+	var profileInput = $('<input type="text" name="profile"/>');
+	profileInput.one('focus', function() {
+		var tmp = $.cookie('profiles');
+		if (tmp) {
+			// Turn on auto complete
+			$(this).autocomplete({
+				source: tmp.split(',')
+			});
+		}
+	});
+	profile.append(profileLabel);
+	profile.append(profileInput);
+	provExisting.append(profile);
+
+	/**
+	 * Provision existing
+	 */
+	var provisionBtn = createButton('Provision');
+	provisionBtn.bind('click', function(event) {
+		// Remove any warning messages
+		$(this).parents('.ui-tabs-panel').find('.ui-state-error').remove();
+		var ready = true;
+		var errorMessage = '';
+
+		// Get provision tab ID
+		var thisTabId = 'bladeProvisionTab' + inst;
+		
+		// Get nodes that were checked
+		var dTableId = 'bladeNodesDatatable' + inst;
+		var tgts = getNodesChecked(dTableId);
+		if (!tgts) {
+			errorMessage += 'You need to select a node. ';
+			ready = false;
+		}
+		
+		// Check booth method
+		var boot = $('#' + thisTabId + ' select[name=bootMethod]');
+		if (!boot.val()) {
+			errorMessage += 'You need to select a boot method. ';
+			boot.css('border', 'solid #FF0000 1px');
+			ready = false;
+		} else {
+			boot.css('border', 'solid #BDBDBD 1px');
+		}
+		
+		// Check operating system image
+		var os = $('#' + thisTabId + ' input[name=os]');
+		if (!os.val()) {
+			errorMessage += 'You need to select a operating system image. ';
+			os.css('border', 'solid #FF0000 1px');
+			ready = false;
+		} else {
+			os.css('border', 'solid #BDBDBD 1px');
+		}
+		
+		// Check architecture
+		var arch = $('#' + thisTabId + ' input[name=arch]');
+		if (!arch.val()) {
+			errorMessage += 'You need to select an architecture. ';
+			arch.css('border', 'solid #FF0000 1px');
+			ready = false;
+		} else {
+			arch.css('border', 'solid #BDBDBD 1px');
+		}
+		
+		// Check profile
+		var profile = $('#' + thisTabId + ' input[name=profile]');
+		if (!profile.val()) {
+			errorMessage += 'You need to select a profile. ';
+			profile.css('border', 'solid #FF0000 1px');
+			ready = false;
+		} else {
+			profile.css('border', 'solid #BDBDBD 1px');
+		}
+		
+		// If all inputs are valid, ready to provision
+		if (ready) {			
+			// Disable provision button
+			$(this).attr('disabled', 'true');
+			
+			// Prepend status bar
+			var statBar = createStatusBar('bladeProvisionStatBar' + inst);
+			statBar.append(createLoader(''));
+			statBar.prependTo($('#' + thisTabId));
+
+			// Disable all inputs
+			var inputs = $('#' + thisTabId + ' input');
+			inputs.attr('disabled', 'disabled');
+						
+			// Disable all selects
+			var selects = $('#' + thisTabId + ' select');
+			selects.attr('disabled', 'disabled');
+															
+			/**
+			 * (1) Set operating system
+			 */
+			$.ajax( {
+				url : 'lib/cmd.php',
+				dataType : 'json',
+				data : {
+					cmd : 'nodeadd',
+					tgt : '',
+					args : tgts + ';noderes.netboot=zvm;nodetype.os=' + os.val() + ';nodetype.arch=' + arch.val() + ';nodetype.profile=' + profile.val(),
+					msg : 'cmd=nodeadd;out=' + inst
+				},
+
+				success : updateBladeProvisionExistingStatus
+			});
+		} else {
+			// Show warning message
+			var warn = createWarnBar(errorMessage);
+			warn.prependTo($(this).parent().parent());
+		}
+	});
+	provExisting.append(provisionBtn);
+
+	return provExisting;
+}
+
+/**
+ * Create nodes datatable for a given group
+ * 
+ * @param group
+ *            Group name
+ * @param outId
+ *            Division ID to append datatable
+ * @return Nodes datatable
+ */
+function createNodesDatatable(group, outId) {
+	// Get group nodes
+	$.ajax( {
+		url : 'lib/cmd.php',
+		dataType : 'json',
+		data : {
+			cmd : 'lsdef',
+			tgt : '',
+			args : group,
+			msg : outId
+		},
+
+		/**
+		 * Create nodes datatable
+		 * 
+		 * @param data
+		 *            Data returned from HTTP request
+		 * @return Nothing
+		 */
+		success : function(data) {
+			// Data returned
+    		var rsp = data.rsp;
+    
+    		// Get output ID
+    		var outId = data.msg;
+    		// Get datatable ID
+    		var dTableId = outId.replace('DIV', '');
+    
+    		// Node attributes hash
+    		var attrs = new Object();
+    		// Node attributes
+    		var headers = new Object();
+    
+    		// Clear nodes datatable division
+    		$('#' + outId).empty();
+    
+    		// Create nodes datatable
+    		var node, args;
+    		for ( var i in rsp) {
+    			// Get node
+    			var pos = rsp[i].indexOf('Object name:');
+    			if (pos > -1) {
+    				var temp = rsp[i].split(': ');
+    				node = jQuery.trim(temp[1]);
+    
+    				// Create a hash for the node attributes
+    				attrs[node] = new Object();
+    				i++;
+    			}
+    
+    			// Get key and value
+    			args = rsp[i].split('=');
+    			var key = jQuery.trim(args[0]);
+    			var val = jQuery.trim(args[1]);
+    
+    			// Create hash table
+    			attrs[node][key] = val;
+    			headers[key] = 1;
+    		}
+    
+    		// Sort headers
+    		var sorted = new Array();
+    		for ( var key in headers) {
+    			sorted.push(key);
+    		}
+    		sorted.sort();
+    
+    		// Add column for check box and node
+    		sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'node');
+    
+    		// Create nodes datatable
+    		var dTable = new DataTable(dTableId);
+    		dTable.init(sorted);
+    
+    		// Go through each node
+    		for ( var node in attrs) {
+    			// Create a row
+    			var row = new Array();
+    			// Create a check box
+    			var checkBx = '<input type="checkbox" name="' + node + '"/>';
+    			row.push(checkBx, node);
+    
+    			// Go through each header
+    			for ( var i = 2; i < sorted.length; i++) {
+    				// Add node attributes to the row
+    				var key = sorted[i];
+    				var val = attrs[node][key];
+    				if (val) {
+    					row.push(val);
+    				} else {
+    					row.push('');
+    				}
+    			}
+    
+    			// Add row to table
+    			dTable.add(row);
+    		}
+
+    		$('#' + outId).append(dTable.object());
+    		$('#' + dTableId).dataTable();
+    	} // End of function(data)
+	});
+}
+
+/**
+ * Update the provision existing node status
+ * 
+ * @param data
+ *            Data returned from HTTP request
+ * @return Nothing
+ */
+function updateBladeProvisionExistingStatus(data) {
+	// Get ajax response
+	var rsp = data.rsp;
+	var args = data.msg.split(';');
+
+	// Get command invoked
+	var cmd = args[0].replace('cmd=', '');
+	// Get provision tab instance
+	var inst = args[1].replace('out=', '');
+	
+	// Get provision tab and status bar ID
+	var statBarId = 'ipmiProvisionStatBar' + inst;
+	var tabId = 'ipmiProvisionTab' + inst;
+	
+	/**
+	 * (2) Remote install
+	 */
+	if (cmd == 'nodeadd') {
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).find('div').append(prg);
+
+		// Get parameters
+		var os = $('#' + tabId + ' input[name="os"]').val();
+		var profile = $('#' + tabId + ' input[name="profile"]').val();
+		var arch = $('#' + tabId + ' input[name="arch"]').val();
+		
+		// Get nodes that were checked
+		var dTableId = 'ipmiNodesDatatable' + inst;
+		var tgts = getNodesChecked(dTableId);
+		
+		// Begin installation
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'webrun',
+				tgt : '',
+				args : 'rinstall;' + os + ';' + profile + ';' + arch + ';' + tgts,
+				msg : 'cmd=rinstall;out=' + inst
+			},
+
+			success : updateBladeProvisionExistingStatus
+		});
+	} 
+	
+	/**
+	 * (3) Done
+	 */
+	else if (cmd == 'rinstall') {
+		// Write ajax response to status bar
+		var prg = writeRsp(rsp, '');	
+		$('#' + statBarId).find('div').append(prg);
+		$('#' + statBarId).find('img').remove();
+		
+		// If installation was successful
+		if (prg.html().indexOf('Error') == -1) {
+			$('#' + statBarId).find('div').append('<pre>It will take several minutes before the nodes are up and ready. Use nodestat to check the status of the install.</pre>');
+		}
+	}
 }
