@@ -116,9 +116,9 @@ sub remote_copy_command
         # if only syncing the service node or no postscripts then do not
         # get update file notification
         if (($::SYNCSN  == 1) || (!(defined @::postscripts))) { 
-          $sync_opt .= '-Lprotz ';
+          $sync_opt .= '-Lprogtz ';
         } else {
-           $sync_opt .= '-Liprotz --out-format=%f%L '; # add notify of update
+           $sync_opt .= '-Liprogtz --out-format=%f%L '; # add notify of update
         }
         $sync_opt .= $$config{'options'};
         if ($::SYNCSN == 1)
