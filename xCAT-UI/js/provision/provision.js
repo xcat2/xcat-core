@@ -101,38 +101,40 @@ function loadProvisionPage() {
 	okBtn.bind('click', function(event) {
 		// Get hardware that was selected
 		var hw = $(this).parent().find('input[name="hw"]:checked').val();
+	    var newTabId = hw + 'ProvisionTab';
 
-		// Generate new tab ID
-		var instance = 0;
-		var newTabId = hw + 'ProvisionTab' + instance;
-		while ($('#' + newTabId).length) {
-			// If one already exists, generate another one
-			instance = instance + 1;
-			newTabId = hw + 'ProvisionTab' + instance;
-		}
+	    if ($('#' + newTabId).size() > 0){
+	        tab.select(newTabId);
+	    }
+	    else{
+	        var tabtitle = '';
+	        
+	     // Create an instance of the plugin
+	        var plugin;
+	        switch (hw) {
+	        case "blade":
+	            plugin = new bladePlugin();
+	            tabtitle = 'Blade';
+	            break;
+	        case "hmc":
+	            plugin = new hmcPlugin();
+	            tabtitle = 'System P';
+	            break;
+	        case "ipmi":
+	            plugin = new ipmiPlugin();
+	            tabtitle = 'System X';
+	            break;
+	        case "zvm":
+	            plugin = new zvmPlugin();
+	            tabtitle = 'ZVM';
+	            break;
+	        }
 
-		tab.add(newTabId, hw, '', true);
-
-		// Create an instance of the plugin
-		var plugin;
-		switch (hw) {
-		case "blade":
-			plugin = new bladePlugin();
-			break;
-		case "hmc":
-			plugin = new hmcPlugin();
-			break;
-		case "ipmi":
-			plugin = new ipmiPlugin();
-			break;
-		case "zvm":
-			plugin = new zvmPlugin();
-			break;
-		}
-
-		// Select tab
-		tab.select(newTabId);
-		plugin.loadProvisionPage(newTabId);
+	        // Select tab
+	        tab.add(newTabId, tabtitle, '', true);
+	        tab.select(newTabId);
+	        plugin.loadProvisionPage(newTabId);
+	    }
 	});
 	provPg.append(okBtn);
 
@@ -143,4 +145,14 @@ function loadProvisionPage() {
 	var loader = $('<center></center>').append(createLoader(''));
 	tab.add('imagesTab', 'Images', loader, false);
 	loadImagesPage();
+	
+	//should open the quick provision tab
+	if (window.location.search){
+	    tab.add('quickProvisionTab', 'Quick Provision', '', true);
+	    tab.select('quickProvisionTab');
+	    
+	    var provForm = $('<div class="form"></div>');
+	    $('#quickProvisionTab').append(provForm);
+	    createProvision('quick', provForm);
+	}
 }

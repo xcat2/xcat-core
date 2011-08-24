@@ -769,7 +769,8 @@ function loadNodes(data) {
 	provisionLnk.click(function(){
 	    var tgtNodes = getNodesChecked(nodesTableId);
 	    if (tgtNodes){
-	        openQuickProvisionDia(tgtNodes);
+	        //jump to the provision page directly
+	        jumpProvision(tgtNodes);
 	    }
 	});
 
@@ -3194,7 +3195,7 @@ function advancedLoad(group){
  * 
  * @return Nothing
  */
-function openQuickProvisionDia(tgtnodes){
+function jumpProvision(tgtnodes){
     var nodeArray = tgtnodes.split(',');
     var nodeName = '';
     var index = 0;
@@ -3249,169 +3250,8 @@ function openQuickProvisionDia(tgtnodes){
         return;
     }
     
-    // organize the provison dialog
-    var showstr = '<table><tbody>';
-    showstr += '<tr><td>Target node:</td><td><input id="nodesinput" value="' + tgtnodes + '" readonly="readonly"></td></tr>';
-    showstr += '<tr><td>Arch:</td><td><input id="archinput" value="' + archtype + '" disabled="disabled"></td></tr>';
-    showstr += '<tr><td>Image:</td><td><select></select></td></tr>';
-    showstr += '<tr><td>Install Nic:</td><td><input id="inicinput" value="ent0"></td></tr>';
-    showstr += '<tr><td>Primary Nic:</td><td><input id="pnicinput" value="ent0"></td></tr>';
-    showstr += '<tr><td>xCAT Master:</td><td><input id="masterinput"></td></tr>';
-    showstr += '<tr><td>TFTP Server:</td><td><input id="tftpinput"></td></tr>';
-    showstr += '<tr><td>NFS Server:</td><td><input id="nfsinput"></td></tr>';
-    showstr += '</tbody></table>';
-    showstr += '<div id="advoption"></div>';
-    diaDiv.append(showstr);
-    diaDiv.dialog({
-        modal: true,
-        width: 400,
-        height: 480,
-        close: function(){$(this).remove();},
-        buttons: {
-            'Close': function(){$(this).remove();}
-        }
-    });
-    
-    $('#deployDiv select').parent().append(createLoader());
-    $('#deployDiv select').bind('change', function(){
-        $('#deployDiv #advoption').html('<img src="images/loader.gif"></img>');
-        provisionAdvOption($(this).val());
-    });
-    
-    $.ajax({
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'lsdef',
-            tgt : '',
-            args : '-t;osimage',
-            msg : ''
-        },
-
-        success : function(data){
-            var index = 0;
-            var imagename = 0;
-            var position = 0;
-            $('#deployDiv img').remove();
-            if (data.rsp.lenght < 1){
-                $('#deployDiv').append(createWarnBar('Please copycds and genimage in provision page first!'));
-                return;
-            }
-            
-            for (index in data.rsp){
-                imagename = data.rsp[index];
-                position = imagename.indexOf(' ');
-                imagename = imagename.substr(0, position);
-                
-                $('#deployDiv select').append('<option value="' + imagename + '">' + imagename + '</option>');
-            }
-            
-            $('#deployDiv select').trigger('change');
-            
-            $('#deployDiv').dialog( "option", "buttons", {'Ok': function(){quickProvision();},
-                                                          'Cancel': function(){$(this).remove();}}
-            );
-        }
-    });
+    window.location.href = 'provision.php?nodes=' + tgtnodes + '&arch=' + archtype;
 }
-
-function provisionAdvOption(imagename){
-    $.ajax({
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'lsdef',
-            tgt : '',
-            args : '-t;osimage;' + imagename + ';-i;osname,provmethod',
-            msg : ''
-        },
-
-        success : function(data){
-            var index = 0;
-            var osname = '';
-            var provmethod = '';
-            var tempstr = '';
-            var position = 0;
-            for (index = 0; index < data.rsp.length; index++){
-                tempstr = data.rsp[index];
-                if (-1 != tempstr.indexOf('osname')){
-                    position = tempstr.indexOf('=');
-                    osname = tempstr.substr(position + 1);
-                }
-                if (-1 != tempstr.indexOf('provmethod')){
-                    position = tempstr.indexOf('=');
-                    provmethod = tempstr.substr(position + 1);
-                }
-            }
-            
-            $('#deployDiv #advoption').empty();
-            if ('aix' == osname.toLowerCase()){
-                return;
-            }
-            
-            if ('install' == provmethod){
-                $('#deployDiv #advoption').html('<input type="checkbox" checked="checked">Install Ganglia.');
-            }
-        }
-    });
-}
-/**
- * get all needed field for provsion and send the command to server 
- * 
- * @return Nothing
- */
-function quickProvision(){
-    var errormessage = '';
-    var argsArray = new Array();
-    var nodesName = '';
-    var provisionArg = '';
-    var provisionFrame;
-    var imageName = '';
-    var url = '';
-    $('#deployDiv .ui-state-error').remove();
-    $('#deployDiv input').each(function(){
-        if ('' == $(this).val()){
-            errormessage = 'You are missing input!';
-            return false;
-        }
-    });
-    
-    if ('' != errormessage){
-        $('#deployDiv').prepend('<p class="ui-state-error">' + errormessage + '</p>');
-        return;
-    }
-    
-    $('#deployDiv input').each(function(){
-        argsArray.push($(this).val());
-    });
-    
-    nodesName = argsArray.shift();
-    imageName = $('#deployDiv select').val();
-    provisionArg = argsArray.join(',');
-    url = 'lib/cmd.php?cmd=webrun&tgt=&args=provision;' + nodesName + ';' + imageName + ';' + provisionArg + '&msg=&opts=flush';
-    
-    // show the result
-    $('#deployDiv').empty().append(createLoader()).append('<br/>');
-    $('#deployDiv').dialog( "option", "buttons", {'Close': function(){$(this).remove();clearTimeout(provisionClock);}});
-    $('#deployDiv').dialog( "option", "width", 600);
-    provisionFrame = $('<iframe id="provisionFrame" width="95%" height="90%"></iframe>');
-    $('#deployDiv').append(provisionFrame);
-    
-    provisionFrame.attr('src', url);
-    provisionStopCheck();
-}
-
-function provisionStopCheck(){
-    var content = $('#provisionFrame').contents().find('body').text();
-    if (-1 != content.indexOf('provision stop')){
-        $('#deployDiv img').remove();
-        clearTimeout(provisionClock);
-    }
-    else{
-        provisionClock = setTimeout('provisionStopCheck()', 5000);
-    }
-}
-
 /**
  * Adjust datatable column size
  */

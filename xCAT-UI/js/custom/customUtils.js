@@ -7,6 +7,9 @@
  *            Division ID to append datatable
  * @return Nodes datatable
  */
+
+var provisionClock;
+
 function createNodesDatatable(group, outId) {
 	// Get group nodes
 	$.ajax( {
@@ -380,4 +383,329 @@ function createProvisionNew(plugin, inst) {
 	provNew.append(provisionBtn);
 
 	return provNew;
+}
+
+function createProvision(plugin, container){
+    var showStr = '';
+    
+  //group, nodes, arch
+    if ('quick' == plugin){
+        container.append(createProvWithUrl());
+    }
+    else{
+        container.append(createProvNonurl(plugin));
+        container.find('#' + plugin + 'group').bind('change', function(){
+            var pluginname = $(this).attr('id').replace('group', '');
+            $('#' + pluginname + 'SelectNodesTable').html('<img src="images/loader.gif"></img>');
+            createNodesArea($(this).val(), pluginname + 'SelectNodesTable');
+        });
+    }
+    
+    //image,nic,master,tftp,nfs,option
+    showStr = '<div><label>Image:</label><select id="' + plugin + 'image"></select><img src="images/loader.gif"></img></div>' +
+            '<div><label>Install Nic:</label><input value="mac"></div>' +
+            '<div><label>Primary Nic:</label><input value="mac"></div>' +
+            '<div><label>xCAT Master:</label><input ></div>' +
+            '<div><label>TFTP Server:</label><input ></div>' +
+            '<div><label>NFS Server:</label><input ></div>' +
+            '<div id="advoption"></div>';
+    
+    container.append(showStr);
+    
+    //add the provision button
+    var provisionBtn = createButton('Provision');
+    provisionBtn.bind('click', function(){
+        var plugin = $(this).parent().parent().attr('id').replace('ProvisionTab', '');
+        quickProvision(plugin);
+    });
+    provisionBtn.hide();
+    container.append(provisionBtn);
+    
+    //bind the image select change event
+    container.find('#' + plugin + 'image').bind('change', function(){
+        var temp = $(this).attr('id');
+        temp = temp.replace('image', '');
+        $('#' + temp + 'ProvisionTab #advoption').html('<img src="images/loader.gif"></img>');
+        provAdvOption($(this).val(), temp);
+    });
+    
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'lsdef',
+            tgt : '',
+            args : '-t;osimage',
+            msg : plugin
+        },
+
+        success : function(data){
+            var containerid = data.msg + 'ProvisionTab';
+            var index = 0;
+            var imagename = 0;
+            var position = 0;
+            var imageselect = $('#' + containerid + ' #' + data.msg + 'image');
+            $('#' + containerid + ' img').remove();
+            if (data.rsp.lenght < 1){
+                $('#' + containerid).prepend(createWarnBar('Please copycds and genimage in provision page first!'));
+                return;
+            }
+            
+            for (index in data.rsp){
+                imagename = data.rsp[index];
+                position = imagename.indexOf(' ');
+                imagename = imagename.substr(0, position);
+                
+                imageselect.append('<option value="' + imagename + '">' + imagename + '</option>');
+            }
+            //trigger the select change event
+            imageselect.trigger('change');
+            //show provision button
+            $('#' + containerid + ' button').show();
+        }
+    });
+}
+
+function createProvWithUrl(){
+    var querystr = window.location.search;
+    var argarray = querystr.substr(1).split('&');
+    var temphash = new Object();
+    var index = 0;
+    var temparray;
+    var showstr = '';
+    for (index = 0; index < argarray.length; index++){
+        temparray = argarray[index].split('=');
+        temphash[temparray[0]] = temparray[1];
+    }
+    
+    showstr += '<div><label>Nodes:</label><input type="text" disabled="disabled" value="' + 
+                temphash['nodes'] + '"></div>';
+    showstr += '<div><label>Architecture:</label><input type="text" disabled="disabled" value="' +
+                temphash['arch'] + '"></div>';
+    
+    return showstr;
+}
+
+function createProvNonurl(plugin){
+    // Create the group area
+    var strGroup = '<div><label>Group:</label>';
+    var groupNames = $.cookie('groups');
+    if (groupNames) {
+        strGroup += '<select id="' + plugin + 'group"><option></option>';
+        var temp = groupNames.split(',');
+        for (var i in temp) {
+            strGroup += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
+        }
+        strGroup += '</select>';
+    } 
+    strGroup += '</div>';
+
+    // Create nodes area
+    var strNodes = '<div><label>Nodes:</label><div id="' + plugin + 'SelectNodesTable" ' +
+            ' style="display:inline-block;width:700px;overflow-y:auto;">Select a group to view its nodes</div></div>';
+
+    // Create architecture
+    var strArch = '<div><label>Architecture:</label>';
+    var archName = $.cookie('osarchs');
+    if ('' != archName) {
+        strArch += '<select id="arch">';
+        var temp = archName.split(',');
+        for (var i in temp) {
+            strArch += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
+        }
+        strArch += '</select>';
+    } else {
+        strArch += '<input type="text" id="arch">';
+    }
+    strArch += '</div>';
+
+    return strGroup + strNodes + strArch;
+}
+
+/**
+ * get all needed field for provsion and send the command to server 
+ * 
+ * @return Nothing
+ */
+function quickProvision(plugin){
+    var errormessage = '';
+    var argsArray = new Array();
+    var nodesName = '';
+    var provisionArg = '';
+    var provisionFrame;
+    var imageName = '';
+    var url = '';
+    var softwareArg = '';
+    var containerid = plugin + 'ProvisionTab';
+    $('#' + containerid + ' .ui-state-error').remove();
+    
+    $('#' + containerid + ' input[type!="checkbox"]').each(function(){
+        if ('' == $(this).val()){
+            errormessage = 'You are missing input!';
+            return false;
+        }
+        else{
+            argsArray.push($(this).val());
+        }
+    });
+    
+    if ('' != errormessage){
+        $('#' + containerid).prepend('<p class="ui-state-error">' + errormessage + '</p>');
+        return;
+    }
+    
+    //if jumped from nodes page, get nodes name from input 
+    if ('quick' == plugin){
+        nodesName = argsArray.shift();
+    }
+    //select the different platform, get nodes name from table checkbox
+    else{
+        //should unshift the arch type
+        argsArray.unshift($('#' + containerid + ' #arch').val());
+        nodesName = getCheckedByObj($('#' + containerid + ' #' + plugin + 'SelectNodesTable'));
+    }
+    
+    if ('' == nodesName){
+        $('#' + containerid).prepend('<p class="ui-state-error">Please select nodes first.</p>');
+        return;
+    }
+    
+    softwareArg = getCheckedByObj($('#' + containerid + ' #advoption'));
+    imageName = $('#' + containerid + ' #'  + plugin + 'image').val();
+    provisionArg = argsArray.join(',');
+    url = 'lib/cmd.php?cmd=webrun&tgt=&args=provision;' + nodesName + ';' + imageName + ';' + 
+          provisionArg + ';' + softwareArg + '&msg=&opts=flush';
+    
+    // show the result
+    var deployDia = $('<div id="deployDia"></div>');
+    deployDia.append(createLoader()).append('<br/>');
+    deployDia.append('<iframe id="provisionFrame" width="95%" height="90%" src="' + url + '"></iframe>');
+    deployDia.dialog({
+        modal: true,
+        width: 600,
+        height: 480,
+        title:'Provision on Nodes',
+        close: function(){$(this).remove();},
+        buttons: {
+            Close : function(){$(this).dialog('close');}
+        }
+    });
+
+    provisionStopCheck();
+}
+
+function provAdvOption(imagename, plugin){
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'lsdef',
+            tgt : '',
+            args : '-t;osimage;' + imagename + ';-i;osname,provmethod',
+            msg : plugin
+        },
+
+        success : function(data){
+            var containerid = data.msg + 'ProvisionTab';
+            var index = 0;
+            var osname = '';
+            var provmethod = '';
+            var tempstr = '';
+            var position = 0;
+            for (index = 0; index < data.rsp.length; index++){
+                tempstr = data.rsp[index];
+                if (-1 != tempstr.indexOf('osname')){
+                    position = tempstr.indexOf('=');
+                    osname = tempstr.substr(position + 1);
+                }
+                if (-1 != tempstr.indexOf('provmethod')){
+                    position = tempstr.indexOf('=');
+                    provmethod = tempstr.substr(position + 1);
+                }
+            }
+            
+            $('#' + containerid + ' #advoption').empty();
+            if ('aix' == osname.toLowerCase()){
+                return;
+            }
+            
+            if ('install' == provmethod){
+                $('#' + containerid + ' #advoption').html('<input type="checkbox" checked="checked" name="ganglia">Install Ganglia.');
+            }
+        }
+    });
+}
+
+/**
+ * Refresh the nodes area base on group selected
+ * 
+ * @return Nothing
+ */
+function createNodesArea(groupName, areaId) {
+    // Get group nodes
+    $.ajax({
+        url : 'lib/cmd.php',
+        dataType : 'json',
+        data : {
+            cmd : 'nodels',
+            tgt : groupName,
+            args : '',
+            msg : areaId
+        },
+
+        success : function(data) {
+            var areaObj = $('#' + data.msg);
+            var nodes = data.rsp;
+            var index;
+            var showStr = '<table><thead><tr><th><input type="checkbox" onclick="selectAllCheckbox(event, $(this))"></th>';
+            showStr += '<th>Node</th></tr></thead><tbody>';
+            for (index in nodes) {
+                var node = nodes[index][0];
+                if ('' == node) {
+                    continue;
+                }
+                showStr += '<tr><td><input type="checkbox" name="' + node + '"/></td><td>'
+                        + node + '</td></tr>';
+            }
+            showStr += '</tbody></table>';
+            areaObj.empty().append(showStr);
+            if (index > 10) {
+                areaObj.css('height', '300px');
+            } else {
+                areaObj.css('height', 'auto');
+            }
+        } // End of function(data)
+    });
+}
+
+function provisionStopCheck(){
+    var content = $('#provisionFrame').contents().find('body').text();
+    if (-1 != content.indexOf('provision stop')){
+        $('#deployDia img').remove();
+        clearTimeout(provisionClock);
+    }
+    else{
+        provisionClock = setTimeout('provisionStopCheck()', 5000);
+    }
+}
+
+/**
+ * Get all select elements' name in the obj
+ * 
+ * @return All nodes name, seperate by ','
+ */
+function getCheckedByObj(obj) {
+    var tempStr = '';
+    // Get nodes that were checked
+    obj.find('input:checked').each(function() {
+        if ($(this).attr('name')) {
+            tempStr += $(this).attr('name') + ',';
+        }
+    });
+
+    if ('' != tempStr) {
+        tempStr = tempStr.substr(0, tempStr.length - 1);
+    }
+
+    return tempStr;
 }
