@@ -458,30 +458,6 @@ function mkAddNodeLink() {
 }
 
 /**
- * Load subgroups
- * 
- * @param data
- *            Data returned from HTTP request
- * @return Nothing
- */
-function loadSubgroups(data) {
-	var rsp = data.rsp;		// Data returned
-	var group = data.msg;	// Group name
-	
-	// Go through each subgroup
-	for (var i in rsp) {
-		// Do not put the same group in the subgroup
-		if (rsp[i] != group && $('#' + group).length) {
-			// Add subgroup inside group
-			$('#groups').jstree('create', $('#' + group), 'inside', {
-				'attr': {'id': rsp[i] + 'Subgroup'},
-				'data': rsp[i]}, 
-			'', true);
-		}
-	}
-}
-
-/**
  * Load nodes belonging to a given group
  * 
  * @param data
@@ -946,7 +922,13 @@ function loadNodes(data) {
 	 */
 	// Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
 	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
-		function(value, settings) {			
+		function(value, settings) {		
+		    //if users did not do changes, return the value directly
+		    //jeditable save the old value in this.revert
+		    if ($(this).attr('revert') == value){
+		        return value;
+		    }
+		    
 			// Get column index
 			var colPos = this.cellIndex;
 						
@@ -989,6 +971,7 @@ function loadNodes(data) {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',
 			placeholder: ' ',
+			event : "dblclick", //double click and edit
 			height : '30px' 	// The height of the text area
 		});
 	
@@ -1283,6 +1266,11 @@ function addNodes2Table(data) {
 	// Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
 	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
 		function(value, settings) {			
+	         //if users did not do changes, return the value directly
+            //jeditable save the old value in this.revert
+            if ($(this).attr('revert') == value){
+                return value;
+            }
 			// Get column index
 			var colPos = this.cellIndex;
 						
@@ -1325,6 +1313,7 @@ function addNodes2Table(data) {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',
 			placeholder: ' ',
+			event : "dblclick",
 			height : '30px' 	// The height of the text area
 		});
 	
