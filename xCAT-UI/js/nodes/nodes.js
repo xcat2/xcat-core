@@ -628,7 +628,7 @@ function loadNodes(data) {
 	$('#nodesTab').children().remove();
 	
 	// Create info bar for nodes tab
-	var info = createInfoBar('Click on a cell to edit.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
+	var info = createInfoBar('Double-click on a cell to edit.  Click outside the table to save changes.  Hit the Escape key to ignore changes.');
 	$('#nodesTab').append(info);
 
 	// Create action bar
@@ -1060,7 +1060,7 @@ function getNodesShown(tableId) {
  */
 function getNodeAttrs(group) {	
 	// Get datatable headers and rows
-	var headers = $('#' + nodesTableId + ' thead tr th');
+	var headers = $('#' + nodesTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
 	var nodes = $('#' + nodesTableId + ' tbody tr');
 	
 	// Find group column
@@ -1203,7 +1203,7 @@ function addNodes2Table(data) {
 		// Go through each header
 		for (var key in headersCol) {
 			// Do not put comments and status in twice
-			if (key != 'usercomment' && key != 'status' && key.indexOf('statustime') < 0) {
+			if (key != 'usercomment' && key != 'status' && key.indexOf('status') < 0) {
     			var val = attrs[node][key];
     			if (val) {
     				rows[nodeRowPos][headersCol[key]] = val;
@@ -1343,6 +1343,7 @@ function addNodes2Table(data) {
 	 * Additional ajax requests need to be made for zVM
 	 */
 	advancedLoad(group);
+	adjustColumnSize();
 }
 
 /**

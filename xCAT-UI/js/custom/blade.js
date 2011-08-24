@@ -563,7 +563,7 @@ function createBladeProvisionExisting(inst) {
 				data : {
 					cmd : 'nodeadd',
 					tgt : '',
-					args : tgts + ';noderes.netboot=xnba;nodetype.os=' + os.val() + ';nodetype.arch=' + arch.val() + ';nodetype.profile=' + profile.val(),
+					args : tgts + ';noderes.netboot=xnba;nodetype.os=' + os.val() + ';nodetype.arch=' + arch.val() + ';nodetype.profile=' + profile.val() + ';nodetype.provmethod=' + boot.val(),
 					msg : 'cmd=nodeadd;out=' + inst
 				},
 
