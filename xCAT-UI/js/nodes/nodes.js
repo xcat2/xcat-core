@@ -2131,11 +2131,12 @@ function runScript(inst) {
  */
 function getNodeAttr(node, attrName) {
 	// Get the row
-	var row = $('[id=' + node + ']').parent().parent();
+	var row = $('[id=' + node + ']').parents('tr');
 
 	// Search for the column containing the attribute
 	var attrCol;
-	var cols = row.parent().parent().find('th:contains("' + attrName + '")');
+	
+	var cols = row.parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
 	// Loop through each column
 	for (var i in cols) {
 		// Find column that matches the attribute
