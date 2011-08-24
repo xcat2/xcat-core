@@ -28,7 +28,7 @@ function loadPage(){
 	'<body>
 		<div id="header">
 			<ul>
-				<li><img src="images/logo.gif" height="40px" style="margin-right: 60px;"/></li>	
+				<li><img src="images/logo.gif" height="39px" style="margin-right: 60px;"/></li>	
 				<li><a href="index.php" class="top_link">Nodes</a></li>		
 				<li><a href="configure.php" class="top_link">Configure</a></li>
 				<li><a href="provision.php" class="top_link">Provision</a></li>

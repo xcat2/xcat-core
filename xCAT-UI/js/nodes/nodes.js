@@ -1514,7 +1514,7 @@ function loadNodeStatus(data) {
  */
 function refreshNodeStatus(group, tableId) {
 	// Show ping loader
-	var pingCol = $('#' + tableId + ' thead tr th').eq(2);
+	var pingCol = $('#' + tableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
 	pingCol.find('img').show();
 	
 	// Get power status for nodes shown
@@ -2456,11 +2456,14 @@ function createCommentsToolTip(comment) {
 function createStatusToolTip() {
 	// Create tooltip container
 	var toolTip = $('<div class="tooltip"></div>').css({
-		'width': '150px'
+		'width': '150px',
+		'font-weight': 'normal'
 	});
 	
 	// Create info text
-	var info = $('<p></p>');
+	var info = $('<p></p>').css({
+		'white-space': 'normal'
+	});
 	info.append('Click here to refresh the node status. To configure the xCAT monitor, ');
 	
 	// Create link to turn on xCAT monitoring
@@ -2500,8 +2503,10 @@ function createStatusToolTip() {
 function createPowerToolTip() {
 	// Create tooltip container
 	var toolTip = $('<div class="tooltip">Click here to refresh the power status</div>').css({
-		'width': '150px'
-	});	
+		'width': '150px',
+		'white-space': 'normal',
+		'font-weight': 'normal'
+	});
 	return toolTip;
 }
 
@@ -2513,7 +2518,9 @@ function createPowerToolTip() {
 function createMonitorToolTip() {
 	// Create tooltip container
 	var toolTip = $('<div class="tooltip">Click here to refresh the monitoring status</div>').css({
-		'width': '150px'
+		'width': '150px',
+		'white-space': 'normal',
+		'font-weight': 'normal'
 	});	
 	return toolTip;
 }
