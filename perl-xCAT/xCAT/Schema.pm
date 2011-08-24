@@ -770,8 +770,8 @@ site => {
    "                   Default is no.\n\n".
    " consoleondemand:  When set to 'yes', conserver connects and creates the console\n".
    "                   output only when the user opens the console. Default is no on\n".
-   "                   Linux, yes on AIX.\n\n".
-   " databaseloc:    Directory where we create the db instance directory (db2).\n                 Default is /var/lib. Only DB2 is currently supported. \n                 Do not use the directory in the site.installloc attribute.\n".
+   "                   Linux, yes on AIX.\n\n\n".
+   " databaseloc:    Directory where we create the db instance directory (db2).\n                 Default is /var/lib. Only DB2 is currently supported. \n                 Do not use the directory in the site.installloc or \n                 installdir attribute.\n                 This attribute must not be changed once db2sqlsetup script has \n                 been run and DB2 has been setup.\n\n".
    " db2installloc:  The location which the service nodes should mount for \n".
    "                 the db2 code to install. Format hostname:/path.  If hostname is\n".
    "                 omitted, it defaults to the management node. Default /mntdb2.\n\n".
