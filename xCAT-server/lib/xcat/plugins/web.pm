@@ -1295,7 +1295,7 @@ sub web_gpfsConfigure {
 	my $CONFILE;
 
 	#createrepo
-	system('createrepo $installdir/post/otherpkgs/$ostype/$osarch/gpfs');
+	system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/gpfs");
 
 	#other pakgs
 	open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.otherpkgs.pkglist" );
@@ -1321,7 +1321,7 @@ sub web_rsctConfigure {
 	my $CONFILE;
 
 	#createrepo
-	system('createrepo $installdir/post/otherpkgs/$ostype/$osarch/rsct');
+	system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/rsct");
 
 	#packagelist for sles11
 	if ( $ostype =~ /sles/i ) {
@@ -1347,8 +1347,8 @@ sub web_peConfigure {
 	my $CONFILE;
 
 	#createrepo
-	system('createrepo $installdir/post/otherpkgs/$ostype/$osarch/pe');
-	system('createrepo $installdir/post/otherpkgs/$ostype/$osarch/compilers');
+	system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/pe");
+	system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/compilers");
 
 	#pkglist
 	open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist" );
@@ -1384,8 +1384,8 @@ sub web_esslConfigure {
 	my ( $ostype, $profile, $osarch, $installdir ) = @_;
 	my $CONFILE;
 
-	#reaterepo
-	system('createrepo $installdir/post/otherpkgs/$ostype/$osarch/essl');
+	#createrepo
+	system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/essl");
 
 	#pkglist
 	open( $CONFILE, ">>$installdir/custom/netboot/$ostype/$profile.pkglist" );
@@ -1413,6 +1413,56 @@ sub web_esslConfigure {
 	close($CONFILE);
 }
 
+sub web_gangliaConfig{
+	my ( $ostype, $profile, $osarch, $provtype, $installdir ) = @_;
+	my $CONFILE;
+	#createrepo
+	system("createrepo $installdir/post/otherpkgs/$ostype/$osarch/ganglia");
+
+	#pkglist
+	open ( $CONFILE, ">>$installdir/custom/$provtype/$ostype/$profile.otherpkgs.pkglist" );
+	print( $CONFILE, "#created by xCAT Web Gui.\n");
+	print( $CONFILE, "ganglia/ganglia\n");
+	print( $CONFILE, "ganglia/ganglia-gmond\n");
+	print( $CONFILE, "ganglia/ganglia-gmetad\n");
+	print( $CONFILE, "ganglia/rrdtool\n");
+	close($CONFILE);
+}
+#check ganglia install needed rpm are put in the right directory
+sub web_gangliaRpmCheck{
+	my ( $ostype, $profile, $osarch, $installdir ) = @_;
+	my @rpmnames = ("rrdtool", "ganglia", "ganglia-gmond", "ganglia-gmetad");
+	my %temphash;
+	my $rpmdir = "$installdir/post/otherpkgs/$ostype/$osarch/ganglia";
+	my $errorstr = '';
+	unless (-e $rpmdir){
+		return "Put rrdtool,ganglia,ganglia-gmond,ganglia-gmetad rpms into $rpmdir.";
+	}
+
+	opendir(DIRHANDLE, $rpmdir);
+	foreach my $filename (readdir(DIRHANDLE)){
+		if ($filename =~ /(\D+)-(\d+)\..*\.rpm$/){
+			$temphash{$1} = 1;
+		}
+	}
+	closedir(DIRHANDLE);
+	
+	#check if all rpm are in the array
+	foreach (@rpmnames){
+		unless ($temphash{$_}){
+			$errorstr .= $_ . ',';
+		}
+	}
+
+	if ($errorstr){
+		$errorstr = substr($errorstr, 0, -1);
+		return "Put $errorstr rpms into $rpmdir.";
+	}
+	else{
+		return "";
+	}
+}
+
 sub web_restoreChange {
 	my ( $software, $archFlag, $imagetype, $ostype, $installdir ) = @_;
 
@@ -1433,26 +1483,97 @@ sub web_restoreChange {
 	}
 }
 
+sub web_provision_preinstall{
+	my ($ostype, $profile, $arch, $installdir, $softwarenames) = @_;
+	my $checkresult = '';
+	my $errorstr = '';
+	my @software = split(',', $softwarenames);
+	my $softwarenum = scalar(@software);
+  
+    if (-e "$installdir/custom/install/$ostype/"){
+        opendir(DIRHANDLE, "$installdir/custom/install/$ostype/");
+        foreach my $filename (readdir(DIRHANDLE)){
+            if ('.' eq $filename || '..' eq $filename){
+                next;
+            }
+            $filename = "$installdir/custom/install/$ostype/" . $filename;
+            if ($filename =~ /(.*)\.guibak$/){
+                #no software recover the file, else do nothing
+                if ($softwarenum < 1){
+                    system("mv $filename $1");
+                }
+                next;
+            }
+            `/bin/grep 'xCAT Web Gui' $filename`;
+            if ($?){
+                #backup the origional config file
+                if ($softwarenum > 0){
+                    system("mv $filename ${filename}.guibak");
+                }
+            }
+            else{
+                unlink($filename);
+            }
+        }
+        closedir(DIRHANDLE);
+    }
+    else{
+        `mkdir -p $installdir/custom/install/$ostype -m 0755`;
+    }
+
+	if ($softwarenum < 1){
+		return '';
+	}
+
+	foreach (@software){
+		if ('ganglia' eq $_){
+            $checkresult = web_gangliaRpmCheck($ostype, $profile, $arch, $installdir);
+        }
+        if ($checkresult){
+            $errorstr .= $checkresult . "\n";
+        }
+	}
+	
+	if ($errorstr){
+		return $errorstr;
+	}
+
+	foreach(@software){
+		if ('ganglia' eq $_){
+			web_gangliaConfig($ostype, $profile, $arch, 'install', $installdir);
+		}
+	}
+	return '';
+}
+
 sub web_provision{
     my ( $request, $callback, $sub_req ) = @_;
     my $nodes = $request->{arg}->[1];
     my $imageName = $request->{arg}->[2];
-    my ($arch, $inic, $pnic, $master, $tftp, $nfs) = split(/,/,$request->{arg}->[3]);
+    my ($arch, $inic, $pnic, $master, $tftp, $nfs) = split(/,/, $request->{arg}->[3]);
     my $line = '';
     my %imageattr;
     my $retinfo = xCAT::Utils->runcmd("lsdef -t osimage -l $imageName", -1, 1);
+	my $installdir = xCAT::Utils->getInstallDir();
     #parse output, get the os name, type
     foreach $line(@$retinfo){
         if ($line =~ /(\w+)=(\S*)/){
             $imageattr{$1} = $2;
         }
     }
-
-    #check the output
+	#check the output
     unless($imageattr{'osname'}){
         web_infomsg("Image infomation error. Check the image first.\nprovision stop.", $callback);
         return;
     }
+
+	if ('install' eq $imageattr{'provmethod'}){
+		my $prepareinfo = web_provision_preinstall($imageattr{'osvers'}, $imageattr{'profile'}, $arch, $installdir, $request->{arg}->[4]);
+		if ($prepareinfo){
+			web_infomsg("$prepareinfo \nprovision stop.", $callback);
+			return;
+		}
+	}
     
     if($imageattr{'osname'} =~ /aix/i){
         web_provisionaix($nodes, $imageName, $imageattr{'nimtype'}, $inic, $pnic, $master, $tftp, $nfs, $callback);
