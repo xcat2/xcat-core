@@ -157,6 +157,10 @@ function loadMonitorPage() {
 			
 			// Do not word wrap
 			monTableBody.find('td:nth-child(1)').css('white-space', 'nowrap');
+			monTableBody.find('td:nth-child(3)').css({
+				'white-space': 'normal',
+				'text-align': 'left'
+			});
 			
 			// Append info bar
 			$('#monitorTab div').empty().append(createInfoBar('Select a monitoring tool to use'));

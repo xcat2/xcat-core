@@ -30,8 +30,8 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 	// If there is no existing clone tab
 	if (!$('#' + newTabId).length) {
 		// Get table headers
-		var table = $('#' + node).parent().parent().parent().parent();
-		var headers = table.find('thead th');
+		var tableId = $('#' + node).parents('table').attr('id');
+		var headers = $('#' + tableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
 		var cols = new Array();
 		for ( var i = 0; i < headers.length; i++) {
 			var col = headers.eq(i).text();
@@ -53,7 +53,7 @@ zvmPlugin.prototype.loadClonePage = function(node) {
 		var statBar = createStatusBar(statBarId).hide();
 
 		// Create info bar
-		var infoBar = createInfoBar('Clone a zvm node.');
+		var infoBar = createInfoBar('Clone a zVM node.');
 
 		// Create clone form
 		var cloneForm = $('<div class="form"></div>');

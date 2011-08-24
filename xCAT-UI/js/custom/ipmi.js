@@ -171,28 +171,50 @@ ipmiPlugin.prototype.loadResources = function() {
  * @return Nothing
  */
 ipmiPlugin.prototype.addNode = function() {
-    var diaDiv = $('<div id="addIdpDiv" class="form" title="Add iDataPlex Node"></div>');
-    var showStr = '<div><label>Node Name: </label><input type="text"></div>' +
-               '<div><label>Node MAC:</label><input type="text"></div>' + 
-               '<div><label>Node IP: </label><input type="text"></div>' +
-               '<div><label>Node Groups : </label><input type="text"></div>' +
-               '<div><label>BMC Name:</label><input type="text"></div>' +
-               '<div><label>BMC IP:</label><input type="text"></div>' +
-               '<div><label>BMC Groups:</label><input type="text"></div>';
+    var diag = $('<div id="addIdpDiv" class="form" title="Add iDataPlex"></div>');
+    var info = createInfoBar('Add a node range');
+    diag.append(info);
     
-    diaDiv.append(showStr);
-    diaDiv.dialog({
+    // Create node inputs
+    var nodeFieldSet = $('<fieldset></fieldset>');
+	var legend = $('<legend>Node</legend>');
+	nodeFieldSet.append(legend);
+	diag.append(nodeFieldSet);
+	
+    var nodeInputs = '<div><label>Node: </label><input type="text"></div>' +
+               '<div><label>MAC:</label><input type="text"></div>' + 
+               '<div><label>IP: </label><input type="text"></div>' +
+               '<div><label>Groups: </label><input type="text"></div>';    
+    nodeFieldSet.append(nodeInputs);
+    
+    var bmcFieldSet = $('<fieldset></fieldset>');
+	var legend = $('<legend>BMC</legend>');
+	bmcFieldSet.append(legend);
+	diag.append(bmcFieldSet);
+	
+	// Create BMC inputs
+	var bmcInputs = '<div><label>BMC:</label><input type="text"></div>' +
+     	'<div><label>IP:</label><input type="text"></div>' +
+     	'<div><label>Groups:</label><input type="text"></div>';    
+	 bmcFieldSet.append(bmcInputs);
+
+    diag.dialog({
         modal: true,
         width: 400,
         close: function(){$(this).remove();},
         buttons: {
-            "OK" : function(){addidataplexNode();},
+            "OK" : function(){addIdataplex();},
             "Cancel": function(){$(this).dialog('close');}
         }
     });
 };
 
-function addidataplexNode(){
+/**
+ * Add iDataPlex node range
+ * 
+ * @return Nothing
+ */
+function addIdataplex(){
     var tempArray = new Array();
     var errormessage = '';
     var attr = '';
@@ -208,7 +230,7 @@ function addidataplexNode(){
             tempArray.push($(this).val());
         }
         else{
-            errormessage = "You are missing some input!";
+            errormessage = "You are missing some inputs!";
             return false;
         }
     });
@@ -228,7 +250,6 @@ function addidataplexNode(){
     args = '-t;node;-o;' + tempArray[0] + ';mac=' + tempArray[1] + ';ip=' + tempArray[2] + ';groups=' + 
           tempArray[3] + ';mgt=ipmi;chain="runcmd=bmcsetup";netboot=xnba;nodetype=osi;profile=compute;' +
           'bmc=' + tempArray[4];
-    
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -242,7 +263,6 @@ function addidataplexNode(){
     
     //compose all args into chdef for bmc
     args = '-t;node;-o;' + tempArray[4] + ';ip=' + tempArray[5] + ';groups=' + tempArray[6];
-    
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',

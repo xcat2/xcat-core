@@ -127,11 +127,18 @@ function checkGangliaRunning(data){
 
         // Create warning bar
         var warningBar = $('<div class="ui-state-error ui-corner-all"></div>');
-        var msg = $('<p></p>');
-        msg.append('<span class="ui-icon ui-icon-alert"></span>');
-        msg.append('Please start Ganglia Monitoring on xCAT. ');
+        var msg = $('<p></p>').css({
+    		'display': 'inline-block',
+    		'width': '90%'
+    	});
+        var icon = $('<span class="ui-icon ui-icon-alert"></span>').css({
+    		'display': 'inline-block',
+    		'margin': '10px 5px'
+    	});
+        warningBar.append(icon);
+        msg.append('Please start Ganglia on xCAT. ');
         msg.append(startLnk);
-        msg.append(' to start Ganglia Monitoring.');
+        msg.append(' to start Ganglia.');
         warningBar.append(msg);
         warningBar.css('margin-bottom', '10px');
 

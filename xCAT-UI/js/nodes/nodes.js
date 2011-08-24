@@ -788,7 +788,7 @@ function loadNodes(data) {
 	editProps.bind('click', function(event){
 		var tgtNodes = getNodesChecked(nodesTableId).split(',');
 		for (var i in tgtNodes) {
-			loadEditPropsPage(tgtNodes[i]);
+			editNodeProps(tgtNodes[i]);
 		}
 	});
 	
@@ -941,8 +941,8 @@ function loadNodes(data) {
 			dTable.fnUpdate(value, rowPos, colPos, false);
 			
 			// Get table headers
-			var headers = $('#' + nodesTableId + ' thead tr th');
-			
+			var headers = $('#' + nodesTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
+						
 			// Get node name
 			var node = $(this).parent().find('td a.node').text();
 			// Get attribute name
@@ -2077,6 +2077,9 @@ function updatePowerStatus(data) {
 			alert(rsp[i]);
 		}
 	}
+	
+	// Adjust datatable column size
+	adjustColumnSize();
 }
 
 /**
@@ -2325,7 +2328,7 @@ function findRow(str, table, col){
 function selectAllCheckbox(event, obj) {
 	// Get datatable ID
 	// This will ascend from <input> <td> <tr> <thead> <table>
-	var tableObj = obj.parents('table');
+	var tableObj = obj.parents('.dataTables_scroll').find('.dataTables_scrollBody');
 	var status = obj.attr('checked');
 	tableObj.find(' :checkbox').attr('checked', status);
 	event.stopPropagation();
@@ -2686,7 +2689,7 @@ function setNodeAttrs(data) {
  *            Target node to set properties
  * @return Nothing
  */
-function loadEditPropsPage(tgtNode) {
+function editNodeProps(tgtNode) {
 	// Get nodes tab
 	var tab = getNodesTab();
 
@@ -2721,7 +2724,7 @@ function loadEditPropsPage(tgtNode) {
 		}
 		
 		// Create label and input for attribute
-		div = $('<div></div>').css('display', 'inline');
+		div = $('<div></div>').css('display', 'inline-table');		
 		label = $('<label>' + key + ':</label>').css('vertical-align', 'middle');
 		input = $('<input type="text" value="' + value + '" title="' + nodeAttrs[key] + '"/>').css('margin-top', '5px');
 		
@@ -3121,7 +3124,7 @@ function installGanglia(node) {
  */
 function advancedLoad(group){
     var tempIndex = 0;
-    var tableHeaders = $('#' + nodesTableId + ' th');
+    var tableHeaders = $('#' + nodesTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
     var colNameHash = new Object();
     var colName = '';
     var archCol = 0, hcpCol = 0;
@@ -3202,13 +3205,13 @@ function jumpProvision(tgtnodes){
     var index = 0;
     var archtype = '';
     var errormessage = '';
-    var diaDiv = $('<div title="Provision(only support Linux)" class="form" id="deployDiv"></div>');
+    var diaDiv = $('<div title="Provision (only supported for Linux)" class="form" id="deployDiv"></div>');
     // check the first node's arch type
     for (index in nodeArray){
         nodeName = nodeArray[index];
         // does not have arch
         if (!origAttrs[nodeName]['arch']){
-            errormessage = 'All nodes should define arch first!';
+            errormessage = 'All nodes should have arch defined first!';
             break;
         }
         
@@ -3218,7 +3221,7 @@ function jumpProvision(tgtnodes){
         
         // all nodes should have same archtype
         if (archtype != origAttrs[nodeName]['arch']){
-            errormessage = 'All nodes should belong to same arch!<br/>';
+            errormessage = 'All nodes should belong to the same arch!<br/>';
             break;
         }
     }
@@ -3226,13 +3229,13 @@ function jumpProvision(tgtnodes){
     // check the mac address
     for (index in nodeArray){
         if (!origAttrs[nodeName]['mac'] || !origAttrs[nodeName]['ip']){
-            errormessage += 'All nodes should define ip and mac!<br/>';
+            errormessage += 'All nodes should have the IP and MAC defined!<br/>';
             break;
         }
     }
     
     if (-1 != archtype.indexOf('390')){
-        errormessage += 'System Z should use provision page.';
+        errormessage += 'Please use the provision page.';
     }
     
     // error message should show in a dialog

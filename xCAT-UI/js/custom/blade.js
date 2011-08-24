@@ -171,11 +171,14 @@ bladePlugin.prototype.loadResources = function() {
  */
 bladePlugin.prototype.addNode = function() {
     var nodeTypeSelectDia = $('<div id="nodeTypeSelectDia" class="form"></div>');
-    nodeTypeSelectDia.append('<div><label for="mgt">Node Type :</label><select id="nodeTypeSelect">' +
-            '<option value="mm">AMM Node</option><option value="blade">Blade Node</option></select></div>');
+    var info = createInfoBar('Add a node range');
+    nodeTypeSelectDia.append(info);
+    nodeTypeSelectDia.append('<div><label for="mgt">Node type:</label><select id="nodeTypeSelect">' +
+            '<option value="mm">AMM</option><option value="blade">Blade</option></select></div>');
+   
     //append the mm div
     var mmStr = '<div id="mmNode">' +
-                   '<label>AMM Name: </label><input id="ammName" type="text"></input><br/><br/>' +
+                   '<label>AMM name: </label><input id="ammName" type="text"></input><br/><br/>' +
                    '<label>AMM IP: </label><input id="ammIp" type="text"></input>' +
                    '</div>';
     
