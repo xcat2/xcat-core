@@ -126,7 +126,7 @@ function loadProvisionPage() {
 	            break;
 	        case "zvm":
 	            plugin = new zvmPlugin();
-	            tabtitle = 'ZVM';
+	            tabtitle = 'zVM';
 	            break;
 	        }
 
