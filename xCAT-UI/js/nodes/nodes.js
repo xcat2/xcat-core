@@ -103,12 +103,12 @@ function loadPieSummary(){
     $('#nodes').append('<h3>Cluster Summary</h3><hr/>');
     var summaryTable = '<table>' +
                        '<tr>' +
-                       '<td><div id="ospie" class="summarypie"></div></td>' +
-                       '<td><div id="archpie" class="summarypie"></div></td>' +
+                       '<td style="border: 0px;"><div id="ospie" class="summarypie"></div></td>' +
+                       '<td style="border: 0px;"><div id="archpie" class="summarypie"></div></td>' +
                        '</tr>' +
                        '<tr>' +
-                       '<td><div id="provmethodpie" class="summarypie"></td>' +
-                       '<td><div id="nodetypepie" class="summarypie"></div></td>' +
+                       '<td style="border: 0px;"><div id="provmethodpie" class="summarypie"></td>' +
+                       '<td style="border: 0px;"><div id="nodetypepie" class="summarypie"></div></td>' +
                        '</tr></table>';
     $('#nodes').append(summaryTable);
 
@@ -489,6 +489,9 @@ function loadSubgroups(data) {
  * @return Nothing
  */
 function loadNodes(data) {
+	// Clear the tab before inserting the table
+	$('#nodesTab').children().remove();
+
 	// Data returned	
 	var rsp = data.rsp;
 	// Group name
@@ -548,7 +551,7 @@ function loadNodes(data) {
 	var sorted = new Array();
 	for (var key in headers) {
 		// Do not put comments and status in twice
-		if (key != 'usercomment' && key != 'status' && key.indexOf('statustime') < 0) {
+		if (key != 'usercomment' && key != 'status' && key.indexOf('status') < 0) {
 			sorted.push(key);
 		}
 	}
@@ -631,7 +634,7 @@ function loadNodes(data) {
 			var key = sorted[i];
 			
 			// Do not put comments and status in twice
-			if (key != 'usercomment' && key != 'status' && key.indexOf('statustime') < 0) {
+			if (key != 'usercomment' && key != 'status' && key.indexOf('status') < 0) {
     			var val = attrs[node][key];
     			if (val) {
     				row.push(val);
@@ -844,7 +847,12 @@ function loadNodes(data) {
 	// Turn table into a datatable
 	var nodesDatatable = $('#' + nodesTableId).dataTable({
 		'iDisplayLength': 50,
-		'bLengthChange': false
+		'bLengthChange': false,
+		"sScrollX": "100%",
+		"bAutoWidth": true,
+		"fnInitComplete": function() {
+			adjustColumnSize();
+		}
 	});
 	
 	// Filter table when enter key is pressed
@@ -874,19 +882,20 @@ function loadNodes(data) {
 	var cols = $('#' + nodesTableId + ' thead tr th').click(function() {		
 		getNodeAttrs(group);
 	});
-	var pingCol = $('#' + nodesTableId + ' thead tr th').eq(2);
-	var powerCol = $('#' + nodesTableId + ' thead tr th').eq(3);
-	var monitorCol = $('#' + nodesTableId + ' thead tr th').eq(4);
-	var commentCol = $('#' + nodesTableId + ' thead tr th').eq(5);
+	var checkboxCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(0)');
+	var pingCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
+	var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
+	var monitorCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
+	var commentCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(5)');
+	checkboxCol.unbind('click');
 	pingCol.unbind('click');
 	powerCol.unbind('click');
 	monitorCol.unbind('click');
 	commentCol.unbind('click');
-	
+			
 	// Create enough space for loader to be displayed
 	// Center align power, ping, and comments
 	$('#' + nodesTableId + ' td:nth-child(3),td:nth-child(4),td:nth-child(5)').css({
-		'min-width': '65px',
 		'text-align': 'center'
 	});
 	
@@ -1006,7 +1015,7 @@ function loadNodes(data) {
     	});
 	} else {
 		// Hide status loader
-		var statCol = $('#' + nodesTableId + ' thead tr th').eq(2);
+		var statCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
 		statCol.find('img').hide();
 	}
 	
@@ -1271,7 +1280,6 @@ function addNodes2Table(data) {
 	/**
 	 * Enable editable columns
 	 */
-	alert('I am here');
 	// Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
 	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
 		function(value, settings) {			
@@ -1337,7 +1345,7 @@ function addNodes2Table(data) {
     	});
 	} else {
 		// Hide status loader
-		var statCol = $('#' + nodesTableId + ' thead tr th').eq(2);
+		var statCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
 		statCol.find('img').hide();
 	}
 	
@@ -1373,8 +1381,9 @@ function loadGangliaStatus(data) {
 	}
 
 	// Hide Ganglia loader
-	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	var gangliaCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
 	gangliaCol.find('img').hide();
+	adjustColumnSize();
 }
 
 /**
@@ -1386,7 +1395,7 @@ function loadGangliaStatus(data) {
  */
 function refreshGangliaStatus(group) {
 	// Show ganglia loader
-	var gangliaCol = $('#' + nodesTableId + ' thead tr th').eq(4);
+	var gangliaCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
 	gangliaCol.find('img').show();
 	
 	// Get power status for nodes shown
@@ -1433,8 +1442,9 @@ function loadPowerStatus(data) {
 	}
 	
 	// Hide power loader
-	var powerCol = $('#' + nodesTableId + ' thead tr th').eq(3);
+	var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
 	powerCol.find('img').hide();
+	adjustColumnSize();
 }
 
 /**
@@ -1448,7 +1458,7 @@ function loadPowerStatus(data) {
  */
 function refreshPowerStatus(group, tableId) {
 	// Show power loader
-	var powerCol = $('#' + tableId + ' thead tr th').eq(3);
+	var powerCol = $('#' + tableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
 	powerCol.find('img').show();
 	
 	// Get power status for nodes shown
@@ -1497,8 +1507,9 @@ function loadNodeStatus(data) {
 	}
 	
 	// Hide status loader
-	var statCol = $('#' + nodesTableId + ' thead tr th').eq(2);
+	var statCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
 	statCol.find('img').hide();
+	adjustColumnSize();
 }
 
 /**
@@ -3409,4 +3420,15 @@ function provisionStopCheck(){
     else{
         provisionClock = setTimeout('provisionStopCheck()', 5000);
     }
+}
+
+/**
+ * Adjust datatable column size
+ */
+function adjustColumnSize() {
+	var cols = $('#' + nodesTableId).find('tbody tr:eq(0) td');
+	for (var i in cols) {
+		var header = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th').eq(i);
+		header.css('width', cols.eq(i).outerWidth());
+	}
 }

@@ -42,6 +42,7 @@
 	color: #0078AE;
 	font-size: 14px;
 	font-weight: bold;
+	border-width: 0px;
 }
 
 #logdialog input{
@@ -457,37 +458,26 @@ legend {
 
 /*** Table ***/
 .datatable {
-	width: 100%;
-	border-width: 1px;
+	border: solid 1px #BDBDBD;
 	border-spacing: 0px;
-	border-style: solid;
-	border-color: #BDBDBD;
 	border-collapse: collapse;
 	display: inline-table;
 }
 
-.datatable th {
+.datatable th,td {
 	font: 12px verdana, arial, helvetica, sans-serif;
-	color: #424242;
-	padding: 10px;
-	background-color: #F2F2F2;
-	border-width: 1px;
-	border-style: solid;
-	border-color: #BDBDBD;
+	padding: 5px 0px;
+	white-space: nowrap; /* Do not use word wrap */
+	border: solid 1px #BDBDBD;
 	vertical-align: middle;
 	text-align: center;
 	min-width: 30px;
 }
 
-.datatable td {
-	font: 12px verdana, arial, helvetica, sans-serif;
-	color: #424242;
-	padding: 6px 12px;
-	white-space: nowrap; /* Do not use word wrap */
-	border-width: 1px;
-	border-style: solid;
-	border-color: #BDBDBD;
-	vertical-align: middle;
+.datatable th {
+	font: bold 12px verdana, arial, helvetica, sans-serif;
+	background-color: #F2F2F2;
+	border-width: 0px;
 }
 
 /*** Row color (odd) ***/
@@ -538,6 +528,10 @@ legend {
 
 .tab .datatable button:hover {
 	background-color: #E6E6E6;
+}
+
+.sorting_asc,.sorting_desc,.sorting {
+	background: none;	
 }
 
 /*--------------- jQuery context menu ---------------*/
@@ -841,4 +835,13 @@ table a:hover {
 	font: normal bold 15px verdana, arial, helvetica, sans-serif;
 	text-align: center;
 	border: none;
+}
+
+/*--------------- jqPlot Pie legend ---------------*/
+td.jqplot-table-legend {
+	border-width: 0px;
+}
+
+td.jqplot-table-legend > div {
+	border-width: 0px;
 }

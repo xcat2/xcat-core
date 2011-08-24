@@ -132,7 +132,7 @@ bladePlugin.prototype.loadProvisionPage = function(tabId) {
 	var provForm = $('<div class="form"></div>');
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision a blade');
+	var infoBar = createInfoBar('Provision a blade. This will install an operating system onto the blade.');
 	provForm.append(infoBar);
 
 	// Append to provision tab

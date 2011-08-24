@@ -133,7 +133,7 @@ ipmiPlugin.prototype.loadProvisionPage = function(tabId) {
 	var provForm = $('<div class="form"></div>');
 
 	// Create info bar
-	var infoBar = createInfoBar('Provision an iDataPlex.');
+	var infoBar = createInfoBar('Provision an iDataPlex. This will install an operating system onto the iDataPlex.');
 	provForm.append(infoBar);
 
 	// Append to provision tab
