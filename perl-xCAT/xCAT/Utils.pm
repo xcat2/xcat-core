@@ -997,7 +997,7 @@ sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and
    is joined into a single string with the newlines separating the lines.
 
    Arguments:
-	   command, exitcode and reference to output
+     command, exitcode, reference to output, streaming mode 
    Returns:
 	   see below
    Globals:
@@ -1016,6 +1016,7 @@ sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and
 
    Example:
 		my $outref = xCAT::Utils->runcmd($cmd, -2, 1);
+		my $outref = xCAT::Utils->runcmd($cmd,-2, 1, 1); streaming
 
    Comments:
 		   If refoutput is true, then the output will be returned as a
@@ -1029,7 +1030,7 @@ sub runcmd
 
 {
 
-    my ($class, $cmd, $exitcode, $refoutput) = @_;
+    my ($class, $cmd, $exitcode, $refoutput, $stream) = @_;
     $::RUNCMD_RC = 0;
     # redirect stderr to stdout
     if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }   
@@ -1055,7 +1056,50 @@ sub runcmd
 	}
 
     my $outref = [];
-    @$outref = `$cmd`;
+    if (!defined($stream) || (length($exitcode) == 0)) { # do not stream
+      @$outref = `$cmd`;
+    } else {  # streaming mode
+      my @cmd;
+      push @cmd,$cmd;
+      my $outreferr = [];
+      my $cmdin;
+      my $cmdout;
+      my $cmderr = gensym;
+      my $cmdpid = open3($cmdin,$cmdout,$cmderr,@cmd);
+      my $cmdsel = IO::Select->new($cmdout,$cmderr);
+      close($cmdin);
+      my @handles;
+      my $rsp    = {};
+      my $output;
+      my $errout;
+      while ($cmdsel->count()) {
+        @handles = $cmdsel->can_read();
+        foreach (@handles) {
+           my $line;
+           my $done = sysread $_,$line,180;
+            if ($done) {
+                if ($_ eq $cmdout) {
+                    $rsp->{data}->[0] = $line;
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
+                    $output .= $line;
+                } else {
+                    $rsp->{data}->[0] = $line;
+                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
+                    #push @$outreferr,$line;
+                    $errout .= $line;
+                }
+            } else {
+                $cmdsel->remove($_);
+                close($_);
+            }
+        }
+      }
+      waitpid($cmdpid,0);
+      # store the return string
+      push  @$outref,$output;   
+    }
+
+    # now whether streaming or not process
     if ($?)
     {
         $::RUNCMD_RC = $? >> 8;
@@ -6419,188 +6463,6 @@ sub enablessh
     }
 
     return $enablessh;
-
-}
-#-------------------------------------------------------------------------------
-
-=head3    runcmd_S
-   Note this routine is being used solely by genimage to steam output.  It
-   will be merged with runcmd in a later release.  Not all paths have been
-   tested.
-   Right now requires  $cmd and $::CALLBACK set
-   Run the given cmd and return the output in an array (already chopped).
-   This routine in addition streams the output to the $::CALLBACK which is
-   required input.
-   Alternately, if this function is used in a scalar context, the output
-   is joined into a single string with the newlines separating the lines.
-
-   Arguments:
-	   command, exitcode and reference to output
-   Returns:
-	   see below
-   Globals:
-	   $::RUNCMD_RC  , $::CALLBACK
-   Error:
-      Normally, if there is an error running the cmd,it will display the
-		error and exit with the cmds exit code, unless exitcode
-		is given one of the following values:
-            0:     display error msg, DO NOT exit on error, but set
-					$::RUNCMD_RC to the exit code.
-			-1:     DO NOT display error msg and DO NOT exit on error, but set
-				    $::RUNCMD_RC to the exit code.
-			-2:    DO the default behavior (display error msg and exit with cmds
-				exit code.
-             number > 0:    Display error msg and exit with the given code
-
-   Example:
-		my $outref = xCAT::Utils->runcmd($cmd, -2, 1);
-
-   Comments:
-		   If refoutput is true, then the output will be returned as a
-		   reference to an array for efficiency.
-
-
-=cut
-
-#-------------------------------------------------------------------------------
-sub runcmd_S
-
-{
-
-    my ($class, $cmd, $exitcode, $refoutput) = @_;
-    $::RUNCMD_RC = 0;
-    # redirect stderr to stdout
-    if (!($cmd =~ /2>&1$/)) { $cmd .= ' 2>&1'; }   
-
-	if ($::VERBOSE)
-	{
-		# get this systems name as known by xCAT management node
-		my $Sname = xCAT::InstUtils->myxCATname();
-		my $msg;
-		if ($Sname) {
-			$msg = "Running command on $Sname: $cmd";
-		} else {
-			$msg="Running command: $cmd";
-		}
-
-		if ($::CALLBACK){
-			my $rsp    = {};
-			$rsp->{data}->[0] = "$msg\n";
-			xCAT::MsgUtils->message("I", $rsp, $::CALLBACK);
-		} else {
-			xCAT::MsgUtils->message("I", "$msg\n");
-		}
-	}
-    # steam output to $::CALLBACK and return the buffer
-    my @cmd;
-    push @cmd,$cmd;
-    my $outref = [];
-    my $outreferr = [];
-    my $cmdin;
-    my $cmdout;
-    my $cmderr = gensym;
-    my $cmdpid = open3($cmdin,$cmdout,$cmderr,@cmd);
-    my $cmdsel = IO::Select->new($cmdout,$cmderr);
-    #foreach (@indata) {
-    #    print $cmdin $_;
-    #}
-    close($cmdin);
-    my @handles;
-    my $rsp    = {};
-    my $output;
-    my $errout;
-    while ($cmdsel->count()) {
-        @handles = $cmdsel->can_read();
-        foreach (@handles) {
-           my $line;
-           my $done = sysread $_,$line,180;
-            if ($done) {
-                if ($_ eq $cmdout) {
-                    $rsp->{data}->[0] = $line;
-                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
-                    #push @$outref,$line;
-                    $output .= $line;
-                } else {
-                    $rsp->{data}->[0] = $line;
-                    xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
-                    #push @$outreferr,$line;
-                    $errout .= $line;
-                }
-            } else {
-                $cmdsel->remove($_);
-                close($_);
-            }
-        }
-    }
-    waitpid($cmdpid,0);
-    # store the return string
-    push  @$outref,$output; 
-    if ($?)
-    {
-        $::RUNCMD_RC = $? >> 8;
-        my $displayerror = 1;
-        my $rc;
-        if (defined($exitcode) && length($exitcode) && $exitcode != -2)
-        {
-            if ($exitcode > 0)
-            {
-                $rc = $exitcode;
-            }    # if not zero, exit with specified code
-            elsif ($exitcode <= 0)
-            {
-                $rc = '';    # if zero or negative, do not exit
-                if ($exitcode < 0) { $displayerror = 0; }
-            }
-        }
-        else
-        {
-            $rc = $::RUNCMD_RC;
-        }    # if exitcode not specified, use cmd exit code
-        if ($displayerror)
-        {
-            my $rsp    = {};
-            my $errmsg = '';
-            if (xCAT::Utils->isLinux() && $::RUNCMD_RC == 139)
-            {
-                $errmsg = "Segmentation fault  $errmsg";
-            }
-            else
-            {
-                $errmsg = join('', @$outref);
-                chomp $errmsg;
-
-            }
-            if ($::CALLBACK)
-            {
-                $rsp->{data}->[0] =
-                  "Command failed: $cmd. Error message: $errmsg.\n";
-                xCAT::MsgUtils->message("E", $rsp, $::CALLBACK);
-
-            }
-            else
-            {
-                xCAT::MsgUtils->message("E",
-                             "Command failed: $cmd. Error message: $errmsg.\n");
-            }
-            $xCAT::Utils::errno = 29;
-        }
-    }
-    if ($refoutput)
-    {
-        chomp(@$outref);
-        return $outref;
-    }
-    elsif (wantarray)
-    {
-        chomp(@$outref);
-        return @$outref;
-    }
-    else
-    {
-        my $line = join('', @$outref);
-        chomp $line;
-        return $line;
-    }
 
 }
 
