@@ -1061,11 +1061,11 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
                 }
                 my $args1;
 		if ($::SETSERVER) {
-		    $args1 = ["-s", "-v", "-e", "$installdir/postscripts/xcatdsklspost $mode -M $snkey $postscripts"];
+		    $args1 = ["-s", "-v", "-e", "$installdir/postscripts/xcatdsklspost $mode -M $snkey '$postscripts'"];
 
 		} else {
 		    
-		    $args1 = ["-s", "-v", "-e", "$installdir/postscripts/xcatdsklspost $mode -m $snkey $postscripts"];
+		    $args1 = ["-s", "-v", "-e", "$installdir/postscripts/xcatdsklspost $mode -m $snkey '$postscripts'"];
 		}
 		
 
@@ -1134,9 +1134,9 @@ $AIXnodes_nd, $subreq  ) != 0 ) {
                 }
 
 		if ($::SETSERVER) {
-		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode $postscripts 2>&1";
+		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcataixpost -M $snkey -c $mode '$postscripts' 2>&1";
 		} else {
-		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode $postscripts 2>&1";
+		    $cmd = "XCATBYPASS=Y $::XCATROOT/bin/xdsh $nodestring -s -v -e $installdir/postscripts/xcataixpost -m $snkey -c $mode '$postscripts' 2>&1";
 		}
 		
             	if ($::VERBOSE)
