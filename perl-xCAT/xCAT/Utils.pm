@@ -1016,6 +1016,7 @@ sub runcmd3 { #a proper runcmd that indpendently returns stdout, stderr, pid and
 
    Example:
 		my $outref = xCAT::Utils->runcmd($cmd, -2, 1);
+                $::CALLBACK= your callback (required for streaming from plugins)
 		my $outref = xCAT::Utils->runcmd($cmd,-2, 1, 1); streaming
 
    Comments:
@@ -1079,14 +1080,21 @@ sub runcmd
            my $done = sysread $_,$line,180;
             if ($done) {
                 if ($_ eq $cmdout) {
+		  if ($::CALLBACK){
                     $rsp->{data}->[0] = $line;
                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
-                    $output .= $line;
+                  } else {
+	   	     xCAT::MsgUtils->message("I", "$line\n");
+                  }
+                   $output .= $line;
                 } else {
+		  if ($::CALLBACK){
                     $rsp->{data}->[0] = $line;
                     xCAT::MsgUtils->message("I", $rsp, $::CALLBACK, 0);
-                    #push @$outreferr,$line;
-                    $errout .= $line;
+                  } else {
+	   	     xCAT::MsgUtils->message("I", "$line\n");
+                  }
+                   $errout .= $line;
                 }
             } else {
                 $cmdsel->remove($_);
