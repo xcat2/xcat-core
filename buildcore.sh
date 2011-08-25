@@ -11,10 +11,10 @@
 #    the upload user listed below, so you don't have to keep entering pw's.  You can do this
 #    at https://sourceforge.net/account/ssh
 #  - On Linux:  make sure createrepo is installed on the build machine
-#  - On AIX:  Install openssl and openssh installp pkgs and run updtvpkg.  Install from http://www.perzl.org/aix/
+#  - On AIX:  Install openssl and openssh installp pkgs and run updtvpkg.  Install from http://www.perzl.org/aix/ :
 #			apr, apr-util, bash, bzip2, db4, expat, gdbm, gettext, glib2, gmp, info, libidn, neon, openssl (won't
-#			conflict with the installp version), pcre, perl-DBD-SQLite, perl-DBI, popt, python, readline, rsynce, sqlite,
-#			subversion, unixODBC, wget, zlib.
+#			conflict with the installp version - but i don't think you need this), pcre, perl-DBD-SQLite, perl-DBI,
+#           popt, python, readline, rsynce, sqlite, subversion, unixODBC, zlib.  Install wget from http://www-03.ibm.com/systems/power/software/aix/linux/toolbox/alpha.html
 #  - Run this script from the local svn repository you just created.  It will create the other
 #    directories that are needed.
 
