@@ -26,6 +26,7 @@ use strict;
 use Symbol;
 use Digest::SHA1 qw/sha1/;
 use IPC::Open3;
+use IO::Select;
 use warnings "all";
 require xCAT::InstUtils;
 require xCAT::NetworkUtils;
