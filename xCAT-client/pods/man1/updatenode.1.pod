@@ -156,9 +156,11 @@ To run the "syslog" script for the nodes, type:
 
   updatenode <noderange> -P syslog
 
-To run  a list of scripts, type:
+To run a list of scripts, type:
 
-  updatenode <noderange> -P script1,script2
+  updatenode <noderange> -P "script1 p1 p2,script2"
+
+where p1 p2 are the parameters for script1. 
 
 The flag '-P' can be omitted when only postscripts parameters are
 specified.
@@ -250,6 +252,11 @@ formats.
 A comma-separated list of script names. 
 The scripts must be executable and copied 
 to the /install/postscripts directory.
+Each script can take zero or more parameters.
+If parameters are spcified, the whole list needs to be quoted by double quotes. 
+For example:
+
+B<"script1 p1 p2,script2">
 
 =item [B<attr=val> [B<attr=val...>]]
 
@@ -398,27 +405,29 @@ Run:
 
 B<updatenode clstrn01 -F>
 
-=item 3
+=item 4
 
 To run the postscripts which indicated in the postscripts attribute on 
 the node "clstrn01":
 
 B<updatenode clstrn01 -P>
 
-=item 4
+=item 5
 
 To run the postscripts script1 and script2 on the node "clstrn01":
 
 B<cp script1,script2 /install/postscripts>
 
-B<updatenode clstrn01 -P script1,script2>
+B<updatenode clstrn01 -P "script1 p1 p2,script2">
 
 Since flag '-P' can be omitted when only postscripts parameters are specified, 
 the following command is equivalent:
 
-B<updatenode clstrn01 script1,script2>
+B<updatenode clstrn01 "script1 p1 p2,script2">
 
-=item 5
+p1 p2 are parameters for script1.
+
+=item 6
 
 To synchronize the files on the node "clstrn01":  Prepare the synclist file. 
 For AIX, set the full path of synclist in the osimage table synclists 
@@ -428,7 +437,7 @@ Then:
 
 B<updatenode clstrn01 -F>
 
-=item 6
+=item 7
 
 To perform the software update on the Linux node "clstrn01":  Copy the extra 
 rpm into the /install/post/otherpkgs/<os>/<arch>/* and add the rpm names into 
@@ -436,7 +445,7 @@ the /install/custom/install/<ostype>/profile.otherpkgs.pkglist .  Then:
 
 B<updatenode clstrn01 -S>
 
-=item 7
+=item 8
 
 To update the AIX node named "xcatn11" using the "installp_bundle" and/or
 "otherpkgs" attribute values stored in the xCAT database.  Use the default installp, rpm and emgr flags.
@@ -447,20 +456,20 @@ Note: The xCAT "xcatn11" node definition points to an xCAT osimage definition
 which contains the "installp_bundle" and "otherpkgs" attributes as well as
 the name of the NIM lpp_source resource.
 
-=item 8
+=item 9
 
 To update the AIX node "xcatn11" by installing the "bos.cpr" fileset using 
 the "-agQXY" installp flags.  Also display the output of the installp command.
 
 B<updatenode xcatn11 -V -S otherpkgs="bos.cpr" installp_flags="-agQXY">
 
-=item 9 
+=item 10 
 
 To uninstall the "bos.cpr" fileset that was installed in the previous example.
 
 B<updatenode xcatn11 -V -S otherpkgs="bos.cpr" installp_flags="-u">
 
-=item 10
+=item 11
 
 To update the AIX nodes "xcatn11" and "xcatn12" with the "gpfs.base" fileset
 and the "rsync" rpm using the installp flags "-agQXY" and the rpm flags "-i --nodeps".
@@ -469,31 +478,31 @@ B<updatenode xcatn11,xcatn12 -V -S otherpkgs="gpfs.base,R:rsync-2.6.2-1.aix5.1.p
 
 Note: Using the "-V" flag with multiple nodes may result in a large amount of output.
 
-=item 11
+=item 12
 
 To uninstall the rsync rpm that was installed in the previous example.
 
 B<updatenode xcatn11 -V -S otherpkgs="R:rsync-2.6.2-1" rpm_flags="-e">
 
-=item 12
+=item 13
 
 Update the AIX node "node01" using the software specified in the NIM "sslbnd" and "sshbnd" installp_bundle resources and the "-agQXY" installp flags.
 
 B<updatenode node01 -V -S installp_bundle="sslbnd,sshbnd" installp_flags="-agQXY">
 
-=item 13
+=item 14
 
 To get a preview of what would happen if you tried to install the "rsct.base" fileset on AIX node "node42".  (You must use the "-V" option to get the full output from the installp command.)
 
 B<updatenode node42 -V -S otherpkgs="rsct.base" installp_flags="-apXY">
 
-=item 14
+=item 15
 
 To check what rpm packages are installed on the AIX node "node09". (You must use the "-c" flag so updatenode does not get a list of packages from the database.)
 
 B<updatenode node09 -V -c -S rpm_flags="-qa">
 
-=item 15
+=item 16
 
 To install all software updates contained in the /images directory.
 
@@ -503,25 +512,25 @@ Note:  Make sure the directory is exportable and that the permissions are set
 correctly for all the files.  (Including the .toc file in the case of
 installp filesets.)
 
-=item 16
+=item 17
 
 Install the interim fix package located in the /efixes directory.
 
 B<updatenode node29 -V -S -d /efixes otherpkgs=IZ38930TL0.120304.epkg.Z>
 
-=item 17
+=item 18
 
 To uninstall the interim fix that was installed in the previous example.
 
 B<updatenode xcatsn11 -V -S -c emgr_flags="-r -L IZ38930TL0">
 
-=item 18
+=item 19
 
 To update the security keys for the node "node01"
 
 B<updatenode node01 -k>
 
-=item 19
+=item 20
 
 To update the service nodes with the files to be synchronized to node group compute: 
 
