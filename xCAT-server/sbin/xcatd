@@ -215,9 +215,24 @@ my $socket;
   my $installpidfile;
   my $retry=1;
   $SIG{USR2} = sub { 
+	if ($socket) { #do not mess with pid file except when we still have  the socket.
+      	unlink("/tmp/xcat/installservice.pid"); close($socket); $quit=1; 
        xCAT::MsgUtils->message("S","xcatd install monitor $$ quiescing");
-      unlink("/tmp/xcat/installservice.pid"); close($socket); $quit=1; };
-  if (open($installpidfile,"<","/tmp/xcat/installservice.pid")) {
+	}
+	};
+	if ($inet6support) {
+            $socket = IO::Socket::INET6->new(LocalPort=>$sport,
+                                     Proto    => 'tcp',
+                                     ReuseAddr => 1,
+                                     Listen => 8192);
+	} else {
+	 $socket = IO::Socket::INET->new(LocalPort=>$sport,
+                                     Proto    => 'tcp',
+                                     ReuseAddr => 1,
+                                     Listen => 8192);
+	}
+  if (not $socket and open($installpidfile,"<","/tmp/xcat/installservice.pid")) { #if we couldn't get the socket, go to pid to figure out current owner
+			#TODO: lsof or similar may be a more accurate measure
       my $pid = <$installpidfile>;
       if ($pid) {
           $retry=100; #grace period for old instance to get out of the way, 5 seconds
@@ -241,14 +256,15 @@ if ($inet6support) {
 }
 sleep 0.05; #up to 50 ms outage possible
 }
-  open($installpidfile,">","/tmp/xcat/installservice.pid"); #if here, everyone else has unlinked installservicepid or doesn't care
-  print $installpidfile $$;
-  close($installpidfile);
 
   unless ($socket) {
     xCAT::MsgUtils->message("S","xcatd unable to open install monitor services on $sport");
     die;
   }
+   #we have the socket, now we claim the pid file as our own
+  open($installpidfile,">","/tmp/xcat/installservice.pid"); #if here, everyone else has unlinked installservicepid or doesn't care
+  print $installpidfile $$;
+  close($installpidfile);
   until ($quit) {
     $SIG{ALRM} = sub { xCAT::MsgUtils->message("S","XCATTIMEOUT"); die; }; 
     my $conn;
@@ -407,9 +423,21 @@ sub do_udp_service { #This function opens up a UDP port
   my $retry=1;
   my $socket;
   $SIG{USR2} = sub { 
-       xCAT::MsgUtils->message("S","xcatd udp service $$ quiescing");
-      unlink("/tmp/xcat/udpservice.pid"); close($socket); $quit=1; };
-  if (open($udppidfile,"<","/tmp/xcat/udpservice.pid")) {
+	if ($socket) {
+		#only clear out pid file when we still have socket.
+      		unlink("/tmp/xcat/udpservice.pid"); close($socket); $quit=1; $socket=0;
+       		xCAT::MsgUtils->message("S","xcatd udp service $$ quiescing");
+	};
+	if ($inet6support) {
+	  $socket = IO::Socket::INET6->new(LocalPort => $port,
+                                     Proto     => 'udp',
+                                     Domain => AF_INET);
+	} else {
+	  $socket = IO::Socket::INET->new(LocalPort => $port,
+                                     Proto     => 'udp',
+	                                     Domain => AF_INET);
+	}
+  if (not $socket and open($udppidfile,"<","/tmp/xcat/udpservice.pid")) {
       my $pid = <$udppidfile>;
       if ($pid) {
           $retry=100; #grace period for old instance to get out of the way, 5 seconds
@@ -431,9 +459,6 @@ if ($inet6support) {
 }
 sleep 0.05;
 }
-  open($udppidfile,">","/tmp/xcat/udpservice.pid"); #if here, everyone else has unlinked udpservicepid or doesn't care
-  print $udppidfile $$;
-  close($udppidfile);
 
   openlog("xCAT UDP",'','local4');
   unless ($socket) {
@@ -441,6 +466,10 @@ sleep 0.05;
     closelog();
     die "Unable to start UDP on $port";
   }
+  #only take udp pid if we get the socket
+  open($udppidfile,">","/tmp/xcat/udpservice.pid"); #if here, everyone else has unlinked udpservicepid or doesn't care
+  print $udppidfile $$;
+  close($udppidfile);
   $select->add($socket);
   my $data;
   my $part;
@@ -674,10 +703,26 @@ my $retry=1;
 openlog("xCAT SSL","","local4");
 my $listener;
 my $mainpidfile;
-  $SIG{USR2} = sub { 
-       xCAT::MsgUtils->message("S","xcatd main service $$ quiescing");
-      unlink("/tmp/xcat/mainservice.pid"); close($listener); $quit=1; $listener=0; };
-  if (open($mainpidfile,"<","/tmp/xcat/mainservice.pid")) {
+$SIG{USR2} = sub { 
+	if ($listener) {
+	      unlink("/tmp/xcat/mainservice.pid"); close($listener); $quit=1; $listener=0; 
+	       xCAT::MsgUtils->message("S","xcatd main service $$ quiescing");
+	}
+};
+    if ($inet6support) {
+        $listener = IO::Socket::INET6->new(
+            LocalPort => $port,
+            Listen => 8192,
+            Reuse => 1,
+            );
+    } else {
+        $listener = IO::Socket::INET->new(
+            LocalPort => $port,
+            Listen => 8192,
+            Reuse => 1,
+            );
+    }
+  if (not $listener and open($mainpidfile,"<","/tmp/xcat/mainservice.pid")) {
       my $pid = <$mainpidfile>;
       if ($pid) {
           $retry=100; #grace period for old instance to get out of the way, 5 seconds
@@ -703,9 +748,6 @@ while (not $listener and $retry) {
     }
     sleep(0.05);
 }
-open($mainpidfile,">","/tmp/xcat/mainservice.pid"); #if here, everyone else has unlinked mainservicepid or doesn't care
-print $mainpidfile $$;
-close($mainpidfile);
 
 unless ($listener) {
   kill 2, $pid_UDP;
@@ -718,6 +760,10 @@ unless ($listener) {
   closelog();
   die "ERROR:Unable to start xCAT service on port $port.";
 }
+#only write to pid file if we have listener, listener ownership serves as lock to protect integrity
+open($mainpidfile,">","/tmp/xcat/mainservice.pid"); #if here, everyone else has unlinked mainservicepid or doesn't care
+print $mainpidfile $$;
+close($mainpidfile);
 closelog();
 until ($quit) {
   $SIG{CHLD} = \&ssl_reaper; #set here to ensure that signal handler is not corrupted during loop
