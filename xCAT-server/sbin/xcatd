@@ -386,8 +386,16 @@ if ($inet6support) {
           
         plugin_command(\%request,undef,\&build_response);
         close($conn);
-    }
-        
+    } elsif ($text =~ /basecustremv/) {
+
+          $text =~ s/basecustremv //;
+          chomp $text;
+          # remove the BASECUST_REMOVAL line from /tftpboot/hostname.info file
+          my $myfile = "/tftpboot/$text" . ".info";
+          `/usr/bin/cat $myfile | /usr/bin/sed "/BASECUST_REMOVAL/d">/tmp/$text.nimtmp`;
+          `/usr/bin/mv /tmp/$text.nimtmp $myfile`;
+          close($conn);
+    }        
         alarm(2);
       }
       alarm(0);
