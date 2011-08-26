@@ -306,7 +306,9 @@ if (@ARGV<1) {
       if ((!$?) && ($CNS =~ /\'0\'|\'N\'|\'n\'/)) { $update=0;}  #only update is nonodestatus is not set in the site table
   }
   if ($update) {
-      if (&updateflag($nodesetstat) != 0) {
+      my $keywd="installstatus";
+      my $state="booted";
+      if (&updateflag($keywd, $state) != 0) {
 	  print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
 	  print $::LOG_FILE "$::sdate xcataixpost: Failed to update the xCAT server..\n";
       }
@@ -349,6 +351,35 @@ if ($nodesetstat eq 'standalone') {
         }
     }
 }
+
+if ($nodesetstat eq 'diskless') {
+    # see if BASECUST_REMOVAL is set in /etc/niminfo
+    if (-f "/etc/niminfo") {
+        $cmd = "cat /etc/niminfo | grep 'BASECUST_REMOVAL'";
+        &runcmd($cmd);
+        my $line = $::outref;
+        my ($junk, $torm) =  split(/=/, $line);
+
+        $cmd = "cat /etc/niminfo | grep 'NIM_HOSTNAME'";
+        &runcmd($cmd);
+        $line = $::outref;
+        my ($junkn, $hostn) =  split(/=/, $line);
+
+        if ($torm) {
+            chomp $hostn;
+            $hostn =~ s/^\s*//;
+
+            # notify the xcatd on nim master to remove this value
+            # so that it will not be present in the subsequent reboots
+            my $keywd = "basecustremv";
+            if (&updateflag($keywd, $hostn) != 0) {
+                print "$::sdate xcataixpost: Failed to update the xCAT server.\n";
+                print $::LOG_FILE "$::sdate xcataixpost: Failed to update the xCAT server.\n";
+            }
+        }
+    }    
+}
+
 $cleanupxcatpost = `grep "CLEANUPXCATPOST=" $scriptname|awk -F \= '{print \$2}'`;
 if ((!$?) && ($cleanupxcatpost =~ /\'1\'|\'yes\'/i)) {
     &runcmd("cd /; rm -rf /xcatpost/*");
@@ -444,8 +475,8 @@ sub  getmypost {
 #
 ############################################################
 sub  updateflag {
-    my $nodesetstat=shift;
-    my $state="booted";
+    my $keywd=shift;
+    my $state=shift;
  
     my $port = "3002";
     my $servip = `host $servnode | awk '{print \$3}'`;
@@ -470,7 +501,7 @@ sub  updateflag {
     while (defined ($line = <$remote>)) {
         chomp $line;
         if ($line eq "ready") {
-           print $remote "installstatus $state\n";
+           print $remote "$keywd $state\n";
         } elsif ($line eq "done") {
 	    last;
         }
