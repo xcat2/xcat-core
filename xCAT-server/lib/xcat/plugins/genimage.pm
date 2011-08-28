@@ -292,8 +292,8 @@ sub process_request {
    # now run the specific genimage command
    $callback->({info=>["$cmd"]});
    $::CALLBACK=$callback;
-   #my $output = xCAT::Utils->runcmd("$cmd", 0, 1); 
-   my $output = xCAT::Utils->runcmd_S("$cmd", 0, 1); # stream output
+   #my $output = xCAT::Utils->runcmd("$cmd", 0, 1); # non-stream 
+   my $output = xCAT::Utils->runcmd("$cmd", 0, 1, 1); # stream output 
    open(FILE, ">/tmp/genimageoutput");
    foreach my $entry (@$output) {
     print FILE $entry;
