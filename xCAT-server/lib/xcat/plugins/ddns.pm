@@ -14,8 +14,14 @@ use Fcntl qw/:flock/;
 #This is a rewrite of DNS management using nsupdate rather than direct zone mangling
 
 my $callback;
-my $service="named";
+my $distro = xCAT::Utils->osver();
 
+
+my $service="named";
+# is this ubuntu ?
+if ( $distro =~ /ubuntu*/ ){
+	$service = "bind9";	
+}
 
 sub handled_commands
 {
@@ -260,7 +266,7 @@ sub process_request {
         xCAT::SvrUtils::sendmsg([0,"Warning:The management node is not defined as a nameserver in /etc/resolv.conf. Add \"nameserver $nameserver\" to /etc/resolv.conf and run makedns again."], $callback);
    }
 
-    # check if search site.domain in /etc/resolv.conf
+    # chk if search site.domain or domain site.domain on AIX in /etc/resolv.conf
     $found=0;
     my $domain=$ctx->{domain};
     my $cmd="grep $domain $resolv";
@@ -274,12 +280,27 @@ sub process_request {
            $found=1;
            last;
         }
+        # if AIX could be a domain line
+        if (xCAT::Utils->isAIX()) {
+          if ($line =~ /^domain/) {
+             $found=1;
+             last;
+          }
+        }
       } 
    } 
    if ($found == 0) { # no search site.domain found
-        xCAT::SvrUtils::sendmsg([0,"Warning:The domain is not defined in a search path in /etc/resolv.conf. Add \"search $domain\" to /etc/resolv.conf and run makedns again."], $callback);
+        xCAT::SvrUtils::sendmsg([0,"Warning:The domain is not defined in a search path or domain path for AIX (in /etc/resolv.conf. Add \"search $domain\" to /etc/resolv.conf and run makedns again."], $callback);
    }
-      
+   # check for selinux disabled
+    my $rc=xCAT::Utils->isSELINUX();
+    if ($rc == 0)
+    {
+        xCAT::SvrUtils::sendmsg([0,"Warning:SELINUX is not disabled. The makedns command will not be able to generate a complete DNS setup. Disable SELINUX and run the command again."], $callback);
+
+    }
+
+     
     my $networkstab = xCAT::Table->new('networks',-create=>0);
     unless ($networkstab) { xCAT::SvrUtils::sendmsg([1,'Unable to enumerate networks, try to run makenetworks'], $callback); }
     my @networks = $networkstab->getAllAttribs('net','mask','ddnsdomain');
@@ -461,7 +482,7 @@ sub process_request {
             }
             else
             {
-                system("/sbin/service $service stop"); #named may otherwise hold on to stale journal filehandles
+                system("service $service stop"); #named may otherwise hold on to stale journal filehandles
             }
             my $conf = get_conf();
             unlink $conf;
@@ -486,8 +507,8 @@ sub process_request {
         }
         else
         {
-            system("/sbin/service $service stop");
-            system("/sbin/service $service start");
+            system("service $service stop");
+            system("service $service start");
         }
             xCAT::SvrUtils::sendmsg("Restarting named complete", $callback);
         }
@@ -526,7 +547,11 @@ sub get_zonesdir {
 
 sub get_conf {
     my $conf="/etc/named.conf";
-
+	# is this ubuntu ?
+	if ( $distro =~ /ubuntu*/ ){
+		$conf="/etc/bind/named.conf";
+	}
+	
     my $sitetab = xCAT::Table->new('site');
 
     unless ($sitetab)
@@ -571,7 +596,11 @@ sub get_dbdir {
         # Temp fix for bugzilla 73119
         chown(scalar(getpwnam('root')),scalar(getgrnam('named')),"/var/lib/named");
         return "/var/lib/named/";
-    } else {
+    } 
+    elsif (-d "/var/lib/bind") {
+        return "/var/lib/bind/";
+    } 
+    else {
         mkpath "/var/named/";
         chown(scalar(getpwnam('named')),scalar(getgrnam('named')),"/var/named");
         return "/var/named/";
@@ -954,6 +983,10 @@ sub add_or_delete_records {
         if ($numreqs != 300) { #either no entries at all to begin with or a perfect multiple of 300
             $update->sign_tsig("xcat_key",$ctx->{privkey});
             my $reply = $resolver->send($update);
+            if ($reply->header->rcode ne 'NOERROR') {
+                 xCAT::SvrUtils::sendmsg([1,"Failure encountered updating $zone, error was ".$reply->header->rcode], $callback);
+            }
+            
             # sometimes resolver does not work if the update zone request sent so quick
             sleep 1;
         }
@@ -999,6 +1032,9 @@ sub find_nameserver_for_dns {
            } else {
                my $reply = $ctx->{resolver}->query($zone,'NS');
                if ($reply)  {
+                   if ($reply->header->rcode ne 'NOERROR') {
+                      xCAT::SvrUtils::sendmsg([1,"Failure encountered querying $zone, error was ".$reply->header->rcode], $callback);
+                    }
                     foreach my $record ($reply->answer) {
                         if ( $record->nsdname =~ /blackhole.*\.iana\.org/) {
                             $ctx->{nsmap}->{$zone} = 0; 
