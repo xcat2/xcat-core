@@ -4257,8 +4257,8 @@ sub parse_and_run_dcp
           /.../file1 /..../filex  -> /...../dir1
 
        rsync command format
-	   /usr/bin/rsync -Lpotz  /etc/services  $pathtoimage/etc/services 
-	   /usr/bin/rsync -Lpotz  /tmp/lissa/file1 /tmp/lissa/file $pathtoimage/tmp/lissa
+	   /usr/bin/rsync -Lprgotz  /etc/services  $pathtoimage/etc/services 
+	   /usr/bin/rsync -Lprgotz  /tmp/lissa/file1 /tmp/lissa/file $pathtoimage/tmp/lissa
 
         Arguments:
 		  Input:
@@ -4344,16 +4344,16 @@ sub rsync_to_image
             {
                 if (-e ("/usr/bin/rsync"))
                 {
-                    $synccmd = "/usr/bin/rsync -Lpotz ";
+                    $synccmd = "/usr/bin/rsync -Lprogtz ";
                 }
                 else
                 {
-                    $synccmd = "/usr/local/bin/rsync -Lpotz ";
+                    $synccmd = "/usr/local/bin/rsync -Lprogtz ";
                 }
             }
             else    # linux
             {
-                $synccmd = "/usr/bin/rsync -Lpotz ";
+                $synccmd = "/usr/bin/rsync -Lprogtz ";
             }
             my $syncopt = "";
             foreach my $srcfile (@srcfiles)
