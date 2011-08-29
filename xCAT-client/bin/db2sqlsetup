@@ -246,6 +246,35 @@ if ($ENV{'DATABASELOC'})    # input where xcatdb is located
    
     }
 }
+
+
+
+# check that they have not defined the databaseloc under the site.installoc 
+# directory, default /install.  This is invalid because this directory
+# is usually mounted on the Service Nodes.  Error out if they do
+# this is really the attribute in installdir which I will check. 
+my @installlocdir;
+my $cmd = " XCATBYPASS=1  tabdump site | grep installdir";
+my @installlocation = xCAT::Utils->runcmd($cmd, -1);
+if ($::RUNCMD_RC == 0)   
+{
+ (my $attr, my $installoc) = split(",", $installlocation[0]);
+ (my $q,my $installpt) = split("\"", $installoc);  # remove quotes
+ @installlocdir = split '/', $installpt;  # get the base directory
+
+} else { 
+   $installlocdir[1] = "install";   # default
+}
+  
+# is it the same as the first directory in databaseloc
+my @dblocdir = split '/', $::databaselocdir;  # get the base directory
+$installlocdir[1] =~ s/\s*//g; #remove blanks
+$dblocdir[1] =~ s/\s*//g; #remove blanks
+if ($installlocdir[1] eq $dblocdir[1] ) { # if they match,error
+       xCAT::MsgUtils->message("E", "The site databaseloc  attribute is set to the directory or a sub-directory of the site table installloc or installdir attribute or the default of /install.  This is not a supported configuration.");
+       exit(1);
+}
+
 if (!(-e $::databaselocdir)){ # if it does not exist, create it
    my $cmd = "mkdir -p $::databaselocdir";
    xCAT::Utils->runcmd($cmd, 0);
