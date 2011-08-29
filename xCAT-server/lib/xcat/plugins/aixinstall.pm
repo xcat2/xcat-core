@@ -6283,10 +6283,10 @@ sub update_dd_boot
     {
 
         # only update if it has not been done yet
-        my $cmd = "cat $dd_boot_file_mn | grep 'xCAT basecust support'";
-        my @result = xCAT::Utils->runcmd("$cmd", -1);
-        if ($::RUNCMD_RC != 0)
-        {
+        #my $cmd = "cat $dd_boot_file_mn | grep 'xCAT basecust support'";
+        #my @result = xCAT::Utils->runcmd("$cmd", -1);
+        #if ($::RUNCMD_RC != 0)
+        #{
             if ($::VERBOSE)
             {
                 my $rsp;
@@ -6362,6 +6362,18 @@ sub update_dd_boot
 		fi
 	\n\n~;
 
+        	my $basecustrm = qq~
+        # xCAT basecust removal support #5
+        # Check if BASECUST_REMOVAL is specified, 
+        # if yes, then remove the specified device
+        # This change will finally go into AIX NIM support
+        [ -n "\${BASECUST_REMOVAL}" ] && {
+            cp /SPOT/usr/sbin/rmdev /usr/sbin
+            rmdev -l \${BASECUST_REMOVAL} -d
+            rm -f /usr/sbin/rmdev
+        }    
+    \n\n~;
+
             if (open(DDBOOT, "<$dd_boot_file_mn"))
             {
                 @lines = <DDBOOT>;
@@ -6391,31 +6403,46 @@ sub update_dd_boot
             }
 
             # Create a new one
-            my $dontupdate = 0;
+            my $dontupdt1 = 0;
+            my $dontupdt2 = 0;
+            my $dontupdt3 = 0;
             if (open(DDBOOT, ">$dd_boot_file_mn"))
             {
                 foreach my $l (@lines)
                 {
+                    if ($l =~ /xCAT basecust support/)
+                    {
+                        $dontupdt1 = 1;
+                    }
                     if ($l =~ /xCAT support/)
                     {
-                        $dontupdate = 1;
+                        $dontupdt2 = 1;
                     }
-					if (($l =~ /network boot phase 1/)) {
+                    if ($l =~ /xCAT basecust removal support/)
+                    {
+                        $dontupdt3 = 1;
+                    }
+					if (($l =~ /network boot phase 1/) && (!$dontupdt1)) {
 						# add /etc/basecust to restore
 						print DDBOOT $odmrestore;
 					}
-					if (($l =~ /configure paging - local or NFS network/)) {
+					if (($l =~ /configure paging - local or NFS network/) && (!$dontupdt1)) {
 						# make basecust persistent
 						print DDBOOT $mntbase;
 					}
-                    if (($l =~ /0x620/) && (!$dontupdate))
+                    if (($l =~ /0x620/) && (!$dontupdt2))
                     {
                         # add the patch to set the console 
                         print DDBOOT $patch;
                     }
-					if (($l =~ /Copy the local_domain file to/) && (!$dontupdate)) {
+					if (($l =~ /Copy the local_domain file to/) && (!$dontupdt2)) {
 						# add the aixlitesetup hook for xCAT statelite support
 						print DDBOOT $scripthook;
+					}
+					if (($l =~ /Start NFS remote paging/) && (!$dontupdt3))
+					{
+					    # add basecuse removal for swapdev
+					    print DDBOOT $basecustrm;
 					}
                     print DDBOOT $l;
                 }
@@ -6454,7 +6481,7 @@ sub update_dd_boot
                 xCAT::MsgUtils->message("I", $rsp, $callback);
             }
         }
-    }
+    #}
     else
     {    # dd_boot file doesn't exist
         return 1;
@@ -8738,6 +8765,69 @@ sub mkdsklsnode
             }
         }
 
+        # Update /tftpboot/nodeip.info to export the variable BASECUST_REMOVAL
+        # then during the network boot, rc.dd_boot script will check this variable
+        # to see if we need remove any device after restbase /etc/basecust.
+        # For now, we only need to remove swapnfs0.
+
+        # Only for the ODM persistent feature
+        if ($imagehash{$image_name}{shared_root})
+        {
+            # This has a shared_root resource, then it might have /etc/basecust restore
+
+            # Update /tftpboot/nodeip.info
+            my ($nodehost, $nodeip) = xCAT::NetworkUtils->gethostnameandip($node);
+            if (!$nodehost || !$nodeip)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Can not resolve the node $node";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                next;
+            }
+                        
+            my $tftpdir = xCAT::Utils->getTftpDir();
+            my $niminfoloc = "$tftpdir/${nodeip}.info";
+
+            my $cmd = "cat $niminfoloc | grep 'BASECUST_REMOVAL'";
+            my @result = xCAT::Utils->runcmd("$cmd", -1);
+            if ($::RUNCMD_RC != 0)
+            {
+                if ($::VERBOSE)
+                {
+                    my $rsp;
+                    push @{$rsp->{data}}, "Updating the $niminfoloc file.\n";
+                    xCAT::MsgUtils->message("I", $rsp, $callback);
+                }
+
+                unless (open(NIMINFOFILE, "<$niminfoloc"))
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Can not open the niminfo file $niminfoloc for reading.";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+
+                my @infofile = <NIMINFOFILE>;
+                close(NIMINFOFILE);
+                
+                push @infofile, "export BASECUST_REMOVAL=swapnfs0\n";
+
+                unless (open(NEWINFO, ">$niminfoloc"))
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Can not open the file $niminfoloc for writing";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+
+                for my $line (@infofile)
+                {
+                    print NEWINFO $line;
+                }
+                close(NEWINFO);
+            }    
+        }
+        
         if (0)
         {
 
