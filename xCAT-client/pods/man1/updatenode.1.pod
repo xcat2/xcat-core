@@ -388,7 +388,7 @@ the synclist files specified in the osimage "synclists" attribute.
 
 =item 2
 
-To perform a software update and file synchronization only on the node
+To run postscripts and file synchronization only on the node
 "clstrn01":
 
 B<updatenode clstrn01 -F -P>
