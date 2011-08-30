@@ -2387,6 +2387,10 @@ nc_msg "$PROGRAM Status: Check for active console.\n"
 while { ! $done } {
     expect {
         -i $spawn_id_rconsole
+        -re "ok(.*)0 >" {
+            nc_msg "$PROGRAM Status: at ok prompt\n"
+            set done 1
+        }
         -re "(.*)elect this consol(.*)" {
             nc_msg "$PROGRAM Status: selecting active console\n"
             set command  "0"
@@ -2406,10 +2410,6 @@ while { ! $done } {
             nc_msg "$PROGRAM Status:  FSP password is invalid.\n"
             send_user "$PROGRAM Status: FSP password is invalid.\n"
             exit 1
-        }
-        -re "ok(.*)0 >" {
-            nc_msg "$PROGRAM Status: at ok prompt\n"
-            set done 1
         }
         -re "SMS(.*)Navigation Keys" {
             nc_msg "$PROGRAM Status: SMS\n"
