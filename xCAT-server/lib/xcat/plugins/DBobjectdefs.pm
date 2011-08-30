@@ -1144,6 +1144,7 @@ sub defmk
                   "To change the existing definition use the \'chdef\' command.";
                 xCAT::MsgUtils->message("E", $rsp, $::callback);
                 $error = 1;
+                delete $::FINALATTRS{$obj};
                 next;
 
             }
