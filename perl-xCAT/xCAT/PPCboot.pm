@@ -107,9 +107,10 @@ sub do_rnetboot {
     my $ssh     = @$exp[0];
     my $userid  = @$exp[4];
     my $pw      = @$exp[5];
-    my $subreq = $request->{subreq};
+    my $subreq  = $request->{subreq};
+    my $Rc      = SUCCESS;
+    my $result  = "";
     my $cmd;
-    my $result;
 
     #######################################
     # Disconnect Expect session
@@ -181,7 +182,6 @@ sub do_rnetboot {
         $cmd.= " -o";
     }
 
-    my $Rc = SUCCESS;
     my @macs = split /,/, $opt->{m};
     foreach my $mac ( @macs ) {
         #######################################
@@ -259,6 +259,8 @@ sub do_rnetboot {
 
         my $done = 0;
         while ( $done < 2 ) {
+            $result = "";
+            $Rc = SUCCESS;
             #######################################
             # Execute command
             #######################################
