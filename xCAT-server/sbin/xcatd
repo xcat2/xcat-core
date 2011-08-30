@@ -435,6 +435,7 @@ sub do_udp_service { #This function opens up a UDP port
 		#only clear out pid file when we still have socket.
       		unlink("/tmp/xcat/udpservice.pid"); close($socket); $quit=1; $socket=0;
        		xCAT::MsgUtils->message("S","xcatd udp service $$ quiescing");
+	}
 	};
 	if ($inet6support) {
 	  $socket = IO::Socket::INET6->new(LocalPort => $port,
