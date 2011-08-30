@@ -31,8 +31,9 @@ sub do_rnetboot {
     my $ssh     = @$exp[0];
     my $userid  = @$exp[4];
     my $pw      = @$exp[5];
+    my $result  = "";
+    my $Rc      = SUCCESS;
     my $cmd;
-    my $result;
     
     #######################################
     # Disconnect Expect session
@@ -121,8 +122,9 @@ sub do_rnetboot {
     $cmd.= " -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
     print "cmd: $cmd\n";
     my $done = 0;
-    my $Rc = SUCCESS;
     while ( $done < 2 ) {
+        $result = "";
+        $Rc = SUCCESS;
         #######################################
         # Execute command
         #######################################
