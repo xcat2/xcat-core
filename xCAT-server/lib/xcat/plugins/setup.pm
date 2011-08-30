@@ -206,10 +206,20 @@ sub writedb {
     if ( ($bpaa0 or $bpaa1 or $bpab0 or $bpab1) and (!scalar(keys(%$sections))||$$sections{'xcat-frames'})) {
         unless (writechildren($bpaa0, $bpaa1, $bpab0, $bpab1, "bpa")) { closetables(); return; }
     }
-    #if ( !($bpaa0 and $bpaa1 and $bpab0 and $bpab1) and
-    #    ($bpaa0 or $bpaa1 or $bpab0 or $bpab1))  {
-    #    # need to do something here?
-    #}
+    # for support another kind of fromat for bpa definition: vlan.frame.0.primary/secondary
+    my $vlan1 = $STANZAS{'xcat-frames'}->{'vlan-1'};
+    my $vlan2 = $STANZAS{'xcat-frames'}->{'vlan-2'};
+    if (($vlan1 or $vlan2) and ($bpaa0 or $bpaa1 or $bpab0 or $bpab1)) {
+        errormsg("Please do not use starting ip and vlan id for bpa at the same time", 3);
+        closetables(); return;  }
+
+    if (($vlan1 and !$vlan2) or (!$vlan1 and $vlan2)) {
+        errormsg("Please specify vlan1 id and vlan2 id at the same time", 3);
+        closetables(); return;  }
+        
+    if ( ($vlan1 and $vlan2) and ((!scalar(keys(%$sections))||$$sections{'xcat-frames'}))) {
+        unless (writechildren2($vlan1, $vlan2, "bpa")) { closetables(); return; }
+    }
 	# Write CEC info (hash key=xcat-cecs)
 	my $cecrange = $STANZAS{'xcat-cecs'}->{'hostname-range'};
 	if ($cecrange && (!scalar(keys(%$sections))||$$sections{'xcat-cecs'})) { 
@@ -224,10 +234,15 @@ sub writedb {
     if ( ($fspa0 or $fspa1 or $fspb0 or $fspb1) and (!scalar(keys(%$sections))||$$sections{'xcat-cecs'})) {
         unless (writechildren($fspa0, $fspa1, $fspb0, $fspb1, "fsp")) { closetables(); return; }
     }
-    #if ( !($fspa0 and $fspa1 and $fspb0 and $fspb1) and
-    #    ($fspa0 or $fspa1 or $fspb0 or $fspb1))  {
-    #    # need to do something here?
-    #}
+    
+    # for support another kind of fromat for fsp definition: vlan.frame.cec.primary/secondary
+    if (($vlan1 or $vlan2) and ($fspa0 or $fspa1 or $fspb0 or $fspb1) ) {
+        errormsg("Please do not use starting ip and vlan id for fsp at the same time", 3);
+        closetables(); return;  }
+    if ($vlan1 and $vlan2 and (!scalar(keys(%$sections))||$$sections{'xcat-cecs'}))  {
+        unless (writechildren2($vlan1, $vlan2, "fsp")) { closetables(); return; }
+    }
+    
 	# Save the CEC positions for all the node definitions later
 	if ($cecrange) {
 		$CECPOSITIONS = $tables{'nodepos'}->getNodesAttribs([noderange($cecrange)], ['rack','u']);
@@ -618,6 +633,109 @@ sub writechildren {
 }
 
 
+sub writechildren2 {
+
+    my $vlan1 = shift;
+    my $vlan2 = shift;
+    my $ntype = shift;
+    my @ipgroup;
+    my %sidehash;
+    my $myip;
+
+	my $framehash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
+	my $framebase = $$framehash{'primary-base'};
+    my $attached = $$framehash{'attach'};
+    if (!$framebase) { errormsg("when using vlanid, you must also use frame names like frame1",7); return 0; }
+    my $framestart = $$framehash{'primary-start'};   
+    my $frameend = $$framehash{'primary-end'};
+    my $cecprimbase;
+    my $cecsecbase;
+    if ($ntype =~ /bpa/) {
+        for (my $ii = $framestart; $ii <= $frameend; $ii++) {
+            $myip = $vlan1 . '.' . $ii . '.0.1';
+            $sidehash{$myip}->{side} = 'A-0';
+            push @ipgroup, $myip;
+            $myip = $vlan1 . '.' . $ii . '.0.2';
+            $sidehash{$myip}->{side} = 'A-1';  
+            push @ipgroup, $myip;
+            $myip = $vlan2 . '.' . $ii . '.0.1';
+            $sidehash{$myip}->{side} = 'B-0';
+            push @ipgroup, $myip;
+            $myip = $vlan2 . '.' . $ii . '.0.2';
+            $sidehash{$myip}->{side} = 'B-1';   
+            push @ipgroup, $myip;    
+        }    
+    }    
+    if ($ntype =~ /fsp/) {
+	    my $cechash = parsenoderange($STANZAS{'xcat-cecs'}->{'hostname-range'});
+        $cecprimbase = $$cechash{'primary-base'};
+	    $cecsecbase = $$cechash{'secondary-base'};
+        my $attached = $$cechash{'attach'};
+	    if (!$cecsecbase) { errormsg("when using vlanid, you must also use CEC names like f1c1",7); return 0; }
+        my $cecstart = $$cechash{'primary-start'};
+	    my $cecend = $$cechash{'secondary-end'};
+        for (my $ii = $framestart; $ii <= $frameend; $ii++) {
+            for (my $jj = $cecstart; $jj <= $cecend; $jj++) {
+                $myip = $vlan1 . '.' . $ii . '.' . $jj . '1';
+                $sidehash{$myip}->{side} = 'A-0';
+                push @ipgroup, $myip; 
+                $myip = $vlan1 . '.' . $ii . '.' . $jj . '2';
+                $sidehash{$myip}->{side} = 'A-1';
+                push @ipgroup, $myip; 
+                $myip = $vlan2 . '.' . $ii . '.' . $jj . '1';
+                $sidehash{$myip}->{side} = 'B-0';
+                push @ipgroup, $myip; 
+                $myip = $vlan2 . '.' . $ii . '.' . $jj . '2';
+                $sidehash{$myip}->{side} = 'B-1';
+                push @ipgroup, $myip; 
+            }
+        }    
+    }
+
+    if ($DELETENODES) {
+        deletenodes($ntype, \@ipgroup);
+        deletegroup($ntype);
+        return 1;
+    }
+
+    # write bpa/fsp nodes to database with nodelist.node, nodelist.groups
+    infomsg("Defining $ntype"."s...");
+    $tables{'nodelist'}->setNodesAttribs(\@ipgroup, { groups => "$ntype,all" , hidden => 1 });
+    staticGroup($ntype);
+
+    # Using the bpa group, write: ppc.nodetype, nodetype.nodetype,
+    $tables{'ppc'}->setNodeAttribs($ntype, {nodetype => $ntype});
+    $tables{'nodetype'}->setNodeAttribs($ntype, {nodetype => 'ppc'});
+
+    # Using the bpa group, write regex for: nodehm.mgt, ppc.node, ppc.hcp
+    my %hash ;
+    if ($STANZAS{'xcat-site'}->{'use-direct-fsp-control'}) {
+            $tables{'nodehm'}->setNodeAttribs($ntype, {mgt => $ntype});
+            my $hcpregex = '|(.+)|($1)|';           # its managed by itself
+            $hash{hcp} = $hcpregex;
+    }
+    else {
+            $tables{'nodehm'}->setNodeAttribs($ntype, {mgt => 'hmc'});
+    }
+
+
+    # Using the bpa group, write regex for:ppc.parent
+    # we should not assume the user define four fsp/bpas with the same starting ip the last bit
+    $tables{'vpd'}->setNodesAttribs(\%sidehash);
+    my $parentregex;
+    if ($ntype =~ /bpa/) {
+        $parentregex = '|^\d+\.(\d+)\.\d+\.\d+$|'.$framebase.$1.$attached.'|';
+    }
+    if ($ntype =~ /bpa/) {
+        $parentregex = '|^\d+\.(\d+)\.\d+\.\d+$|'.$cecprimbase.$1.$cecsecbase.$2.$attached.'|';
+    }
+    $hash{parent} = $parentregex;
+    $tables{'ppc'}->setNodeAttribs($ntype, \%hash);   
+    return 1;
+}
+
+
+
 sub readwritevpd {
 	my $filename = shift;
 	if (!defined($filename)) { return; }
@@ -710,7 +828,7 @@ sub writecec {
 		my %nodehash;
 		my %nodeposhash;
 		my $numcecs = 1;		# the # of cecs we have assigned to the current frame
-		my $cageid = 5;		#todo: p7 ih starts at 5, but what about other models?
+		my $cageid = 3;		#todo: p7 ih starts at 3, but what about other models?
 		my $frames = [noderange($STANZAS{'xcat-frames'}->{'hostname-range'}, 0)];
 		my $frameindex = 0;
 		foreach my $cec (@$nodes) {
@@ -721,9 +839,9 @@ sub writecec {
             my ($framenum) = $framename =~ /\S+?(\d+)\D*$/;
 			$nodeposhash{$cec} = { rack => $framenum+0, u => $cageid };
 			# increment indexes for the next iteration of the loop
-			$cageid += 2;
+			$cageid += 1;
 			$numcecs++;
-			if ($numcecs > $cecsperframe) { $frameindex++; $numcecs=1; $cageid=5; }		#todo: p7 ih starts at 5
+			if ($numcecs > $cecsperframe) { $frameindex++; $numcecs=1; $cageid=3; }		#todo: p7 ih starts at 3
 		}
 		$tables{'ppc'}->setNodesAttribs(\%ppchash);
 		$tables{'nodelist'}->setNodesAttribs(\%nodehash);
@@ -747,7 +865,7 @@ sub writecec {
 	foreach my $k (sort keys %framesupers) {
 		my $f = $framesupers{$k};	# $f is a ptr to an array of super node numbers
 		if (!$f) { next; }		# in case some frame nums did not get filled in by user
-		my $cageid = 5;		#todo: p7 ih starts at 5, but what about other models?
+		my $cageid = 3;		#todo: p7 ih starts at 3, but what about other models?
 		my $numcecs = 0;
 		foreach my $s (@$f) {	# loop thru the supernode nums in this frame
 			my $supernum = $s;
@@ -762,7 +880,7 @@ sub writecec {
                 $nodehash{$nodename} = { groups => "${k}cecs,cec,all" };
                 my ($framenum) = $k =~ /\S+?(\d+)\D*$/;
 				$nodeposhash{$nodename} = { rack => $framenum+0, u => $cageid };
-				$cageid += 2;
+				$cageid += 1;
 			}
 		}
 		$NUMCECSINFRAME{$k} = $numcecs;		# save this for later
@@ -944,7 +1062,7 @@ sub writelpar {
 	}
 	
 	# If there are an inconsistent # of cecs in each frame, delete the lpars that are not really there
-	if ($STANZAS{'xcat-cecs'}->{'delete-unused-cecs'} and $STANZAS{'xcat-cecs'}->{'supernode-list'} and !$STANZAS{'xcat-cecs'}->{'num-cecs-per-frame'}) {
+	if ($STANZAS{'xcat-cecs'}->{'delete-unused-cecs'} and $STANZAS{'xcat-cecs'}->{'supernode-list'} ){#and !$STANZAS{'xcat-cecs'}->{'num-cecs-per-frame'}) {
 		my @nodestodelete;		# the lpars to delete
 		my $maxcecs = $$rangeparts{'secondary-end'} - $$rangeparts{'secondary-start'} + 1;
 		foreach my $k (sort keys %NUMCECSINFRAME) {
@@ -958,7 +1076,12 @@ sub writelpar {
 			$index2 = sprintf("%0${len}d", $index2);
 			$len = length($$rangeparts{'primary-start'});
 			$framenum = sprintf("%0${len}d", $framenum);
-			my $nr = $$rangeparts{'primary-base'} . $framenum . $$rangeparts{'secondary-base'} . "[$index1-$index2]" . $$rangeparts{'tertiary-base'} . '[' . $$rangeparts{'tertiary-start'} . '-' . $$rangeparts{'tertiary-end'} . ']';
+            my $nr;
+            if ($$rangeparts{'tertiary-range'}) {
+                $nr = $$rangeparts{'primary-base'} . $framenum . $$rangeparts{'secondary-base'} . "[$index1-$index2]" . $$rangeparts{'tertiary-base'} . '[' . $$rangeparts{'tertiary-range'} . ']';
+            } elsif ($$rangeparts{'tertiary-start'})  {
+			    $nr = $$rangeparts{'primary-base'} . $framenum . $$rangeparts{'secondary-base'} . "[$index1-$index2]" . $$rangeparts{'tertiary-base'} . '[' . $$rangeparts{'tertiary-start'} . '-' . $$rangeparts{'tertiary-end'} . ']';
+            }       
             if ($$rangeparts{'attach'}) { $nr .= $$rangeparts{'attach'};}
 			push @nodestodelete, $nr;
 		}
@@ -986,7 +1109,8 @@ sub writelpar {
 	#my $framelen = length($$framehash{'primary-start'});
 	my %ppchash;
 	my %nodeposhash;
-    $ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)\D*$|(($1-1)*4+1)|';              #todo: this is p7 ih specific
+    #$ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)\D*$|(($1-1)*4+1)|';              #todo: this is p7 ih specific
+    $ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)\D*$|($1+0)|';   
 	# convert between the lpar name and the cec name.  Assume that numbers are the same, but the base can be different
     my $regex = '|^\D+(\d+)\D+(\d+)\D+\d+\D*$|' . "$cecprimbase" . '($1)' . "$cecsecbase" .'($2)|';
 	$ppchash{hcp} = $regex;
@@ -1618,7 +1742,7 @@ sub parsenoderange {
 	my $ret = {};
 	
     # Check for a 3 square bracket range, e.g. f[1-2]c[01-10]p[1-8] or f[1-2]c[01-10]p[1-8]a
-        if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S*?)\s*$/ ) {
+        if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\w*?)\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'tertiary-base'}, $$ret{'tertiary-start'}, $$ret{'tertiary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) || (length($$ret{'tertiary-start'}) != length($$ret{'tertiary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
 		#if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) || ($$ret{'tertiary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
@@ -1627,7 +1751,7 @@ sub parsenoderange {
     
     
     # Check for a 2 square bracket range, e.g.  f[1-2]c[01-10] or f[1-2]c[01-10]a
-        if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S*?)\s*$/ ) {
+        if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\w*?)\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4, $5, $6, $7);
 		if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
 		#if ( ($$ret{'primary-start'} != 1) || ($$ret{'secondary-start'} != 1) ) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
@@ -1635,7 +1759,7 @@ sub parsenoderange {
 	}
     
     # Check for a square bracket range, e.g. n[01-20] or n[01-20]a
-    if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S*?)\s*$/ ) {
+    if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\w*?)\s*$/ ) {
 		($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'attach'}) = ($1, $2, $3, $4);
 		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
 		#if ($$ret{'primary-start'} != 1) { errormsg("invalid noderange format: $nr. Currently noderanges must start at 1.", 5); return undef; }
@@ -1645,7 +1769,7 @@ sub parsenoderange {
 	
     # Check for normal range, e.g. n01-n20 or n01a-n20a
 	my $base2;
-        if ( $nr =~ /^\s*(\S+?)(\d+)(\S*?)\-(\S+?)(\d+)(\S*?)\s*$/ ) {
+        if ( $nr =~ /^\s*(\S+?)(\d+)(\S*?)\-(\S+?)(\d+)(\w*?)\s*$/ ) {
         ($$ret{'primary-base'}, $$ret{'primary-start'},  $$ret{'attach'}, $base2, $$ret{'primary-end'}, $$ret{'attach2'}) = ($1, $2, $3, $4, $5, $6);
 		if ($$ret{'primary-base'} ne $base2) { errormsg("invalid noderange format: $nr", 5); return undef; }
 		if (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
@@ -1660,6 +1784,14 @@ sub parsenoderange {
 		return $ret;
 	}
 	
+    # Check for discrete lpar hostname f[1-2]c[1-2]p[01,05,09,13,17,21,25,29] or f[1-2]c[1-2]p[01,05,09,13,17,21,25,29]a
+    if ( $nr =~ /^\s*(\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+)[\-\:](\d+)\](\S+?)\[(\d+\,.+)\](\w*?)\s*$/ ) {
+    ($$ret{'primary-base'}, $$ret{'primary-start'}, $$ret{'primary-end'}, $$ret{'secondary-base'}, $$ret{'secondary-start'}, $$ret{'secondary-end'}, $$ret{'tertiary-base'}, $$ret{'tertiary-range'}, $$ret{'attach'}) = ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+		$$ret{'tertiary-start'} = $1 if ($$ret{'tertiary-range'} =~ /(\d+)\,\S?/); 
+        if ( (length($$ret{'primary-start'}) != length($$ret{'primary-end'})) || (length($$ret{'secondary-start'}) != length($$ret{'secondary-end'})) ) { errormsg("invalid noderange format: $nr. The beginning and ending numbers of the range must have the same number of digits.", 5); return undef; }
+		return $ret;
+	}
+    
 	errormsg("invalid noderange format: $nr", 5);
 	return undef;   # range did not match any of the cases above
 }
