@@ -9058,6 +9058,63 @@ sub mkdsklsnode
 
                 } #end if(!xCAT::InstUtils->is_me...
             }
+
+            # Enable /proc filesystem by default
+
+            my $filesystemsfile;
+            my $osimg = $nodeosi{$snd};
+            my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
+            if (!$nfshost || !$nfsip)
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                next;
+            }
+
+            #shared_root or root configuration
+            if($imagehash{$osimg}{'shared_root'})
+            {
+                my $imgsrdir = xCAT::InstUtils->get_nim_attr_val(
+                                                $imagehash{$osimg}{'shared_root'},
+                                                 "location", $callback, $Sname, $subreq);
+                $filesystemsfile = "$imgsrdir/etc/.client_data/filesystems.$snd";
+            }
+            else # non-shared_root configuration
+            {
+                my $imgrootdir = xCAT::InstUtils->get_nim_attr_val(
+                                                  $imagehash{$osimg}{'root'},
+                                                  "location", $callback, $Sname, $subreq);
+                $filesystemsfile = "$imgrootdir/$snd/etc/filesystems";
+            }
+
+            my $fscontent;
+            unless (open(FSFILE, "<$filesystemsfile"))
+            {
+                my $rsp = {};
+                $rsp->{data}->[0] = "Can not open the filesystems file $filesystemsfile for node $snd";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                next;
+            }
+            while (my $line = <FSFILE>)
+            {
+                $fscontent .= $line;
+            }
+
+            if (!grep(/proc:/, $fscontent))
+            {
+                my $line = qq~/proc:\n	dev		=	/proc\n	vol		=	\"/proc\"\n	mount		=	true\n	check		=	false\n	free		=	false\n	vfs		=	procfs~;
+
+                $cmd = "echo \"$line\" >> $filesystemsfile";
+                xCAT::Utils->runcmd($cmd, 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Can not update the NIM filesystems file $filesystemsfile for node $snd";
+                    xCAT::MsgUtils->message("E", $rsp, $callback);
+                    next;
+                }
+            }
         }
     }
 
