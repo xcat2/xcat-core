@@ -98,69 +98,76 @@ sub do_rnetboot {
         }
     }
 
-    my $mac = lc($opt->{m});
-    #######################################
-    # Network specified
-    #######################################
-    $cmd.= " -s auto -d auto -m \"$mac\" -S $opt->{S} -G $opt->{G} -C $opt->{C}";
-    if (  exists( $opt->{o} )) {
-        $cmd.= " -o";
-    }
+    my @macs = split /\|/, $opt->{m};
+    foreach my $mac ( @macs ) {
+        $mac = lc($mac);
+        #######################################
+        # Network specified
+        #######################################
+        $cmd.= " -s auto -d auto -m \"$mac\" -S $opt->{S} -G $opt->{G} -C $opt->{C}";
+        if (  exists( $opt->{o} )) {
+            $cmd.= " -o";
+        }
 
-    my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
-    if ( grep /hf/, $client_nethash{$node}{mgtifname} ) {
-        $cmd.= " -t hfi-ent";
-    } else {
-        $cmd.= " -t ent";
-    }
+        my %client_nethash = xCAT::DBobjUtils->getNetwkInfo( [$node] );
+        if ( grep /hf/, $client_nethash{$node}{mgtifname} ) {
+            $cmd.= " -t hfi-ent";
+        } else {
+            $cmd.= " -t ent";
+        }
     
-   $pprofile = "not_use"; #lpar_netboot.expect need pprofile for p5 & p6, but for p7 ih, we don't use this attribute.
-
-    #######################################
-    # Add command options
-    #######################################
-    $cmd.= " -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
-    print "cmd: $cmd\n";
-    my $done = 0;
-    while ( $done < 2 ) {
-        $result = "";
-        $Rc = SUCCESS;
-        #######################################
-        # Execute command
-        #######################################
-	print "cmd:$cmd\n";
-        my $pid = open( OUTPUT, "$cmd 2>&1 |");
-        $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
-            kill 9, $pid;
-            return( [RC_ERROR,"Received INT or TERM signal"] );
-        };
-        if ( !$pid ) {
-            return( [RC_ERROR,"$cmd fork error: $!"] );
-        }
-        #######################################
-        # Get command output
-        #######################################
-        while ( <OUTPUT> ) {
-            $result.=$_;
-        }
-        close OUTPUT;
+        $pprofile = "not_use"; #lpar_netboot.expect need pprofile for p5 & p6, but for p7 ih, we don't use this attribute.
 
         #######################################
-        # Get command exit code
+        # Add command options
         #######################################
+        $cmd.= " -f \"$name\" \"$pprofile\" \"$fsp\" $id $hcp \"$node\"";
+        print "cmd: $cmd\n";
+        my $done = 0;
+        while ( $done < 2 ) {
+            $result = "";
+            $Rc = SUCCESS;
+            #######################################
+            # Execute command
+            #######################################
+	    print "cmd:$cmd\n";
+            my $pid = open( OUTPUT, "$cmd 2>&1 |");
+            $SIG{INT} = $SIG{TERM} = sub { #prepare to process job termination and propogate it down
+                kill 9, $pid;
+                return( [RC_ERROR,"Received INT or TERM signal"] );
+            };
+            if ( !$pid ) {
+                return( [RC_ERROR,"$cmd fork error: $!"] );
+            }
+            #######################################
+            # Get command output
+            #######################################
+            while ( <OUTPUT> ) {
+                $result.=$_;
+            }
+            close OUTPUT;
+    
+            #######################################
+            # Get command exit code
+            #######################################
 
-        foreach ( split /\n/, $result ) {
-            if ( /^lpar_netboot / ) {
-                $Rc = RC_ERROR;
-                last;
+            foreach ( split /\n/, $result ) {
+                if ( /^lpar_netboot / ) {
+                    $Rc = RC_ERROR;
+                    last;
+                }
+            }
+
+            if ( $Rc == SUCCESS ) {
+                $done = 2;
+            } else {
+                $done = $done + 1;
+                sleep 1;
             }
         }
 
         if ( $Rc == SUCCESS ) {
-            $done = 2;
-        } else {
-            $done = $done + 1;
-            sleep 1;
+            last;
         }
     }
     return( [$Rc,$result] );
