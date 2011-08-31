@@ -1856,6 +1856,11 @@ mxnode_loop:  foreach my $mxnode ( xCAT::NodeRange::noderange($mxnodegroup) ) {
 sub runrollupdate {
 
     my $reboot_request = shift;
+    if ( ! $reboot_request->{arg} ) {
+       &runrollupdate_usage;
+       return;
+    }
+
     my @reboot_args = @{$reboot_request->{arg}};
     my $internal = 0;
     if ( $reboot_args[0] eq "internal" ) { $internal = 1; }
@@ -2534,6 +2539,8 @@ sub remove_LL_reservations {
             }
         }
     }
+    # Send LL reconfig to all central mgrs and resource mgrs
+    llreconfig();
    #  Verify that the config change has been registered and that updatefeature 
    #  has been removed according to what the LL daemons report 
      if (defined($::DATAATTRS{updatefeature}[0])) {
@@ -2689,7 +2696,7 @@ sub change_LL_feature {
     }
 
     # Send LL reconfig to all central mgrs and resource mgrs
-    llreconfig();
+  #  llreconfig();
 
     return 0;
 }
@@ -2769,7 +2776,7 @@ sub remove_LL_updatefeature_only {
     }
 
     # Send LL reconfig to all central mgrs and resource mgrs
-    llreconfig();
+ #   llreconfig();
 
     return 0;
 }
@@ -2816,7 +2823,7 @@ sub llreconfig {
     my @llms = split(/\s+/,$llcms." ".$llrms);
     my %have = ();
     my @llnodes;
-    my $runlocal=0;
+    my $runlocal=1;   # need to always run reconfig at least on local MN
     foreach my $m (@llms) {
        my ($sm,$rest) = split(/\./,$m);
        my $xlated_sm = $sm;
