@@ -182,7 +182,7 @@ sub do_rnetboot {
         $cmd.= " -o";
     }
 
-    my @macs = split /,/, $opt->{m};
+    my @macs = split /\|/, $opt->{m};
     foreach my $mac ( @macs ) {
         #######################################
         # Network specified
