@@ -87,8 +87,8 @@ function loadNodesPage() {
 
 			success : function(data){
 				loadGroups(data);
-				// draw cluster's summary by group names
-				loadPieSummary();
+				// triggle the first group click event
+				$('#groups .groupdiv div').eq(0).trigger('click');
 			}
 		});
 	}
@@ -99,20 +99,19 @@ function loadNodesPage() {
  * 
  * @return Nothing
  */
-function loadPieSummary(){
-    $('#nodes').append('<h3>Cluster Summary</h3><hr/>');
-    var summaryTable = '<table>' +
+function loadPieSummary(groupname){
+    var summaryTable = '<table style="border: 0px none;">' +
                        '<tr>' +
-                       '<td style="border: 0px;"><div id="ospie" class="summarypie"></div></td>' +
-                       '<td style="border: 0px;"><div id="archpie" class="summarypie"></div></td>' +
+                       '<td><div id="ospie" class="summarypie"></div></td>' +
+                       '<td><div id="archpie" class="summarypie"></div></td>' +
                        '</tr>' +
                        '<tr>' +
-                       '<td style="border: 0px;"><div id="provmethodpie" class="summarypie"></td>' +
-                       '<td style="border: 0px;"><div id="nodetypepie" class="summarypie"></div></td>' +
+                       '<td><div id="provmethodpie" class="summarypie"></td>' +
+                       '<td><div id="nodetypepie" class="summarypie"></div></td>' +
                        '</tr></table>';
-    $('#nodes').append(summaryTable);
+    $('#summaryTab').append(summaryTable);
 
-    $('#nodes .summarypie').append(createLoader());
+    $('#summaryTab .summarypie').append(createLoader());
     
     $.ajax({
         url : 'lib/cmd.php',
@@ -120,7 +119,7 @@ function loadPieSummary(){
         data : {
             cmd : 'webrun',
             tgt : '',
-            args : 'summary',
+            args : 'summary;' + groupname,
             msg : '' 
         },
         success:function(data){
@@ -143,7 +142,7 @@ function drawPieSummary(index, valuepair){
 	var chattitle = '';
 	var dataArray = [];
 	var tempArray = [];
-	var container = $('#nodes .summarypie').eq(index);
+	var container = $('#summaryTab .summarypie').eq(index);
 	
 	position = valuepair.indexOf('=');
 	chattitle = valuepair.substr(0, position);
@@ -179,9 +178,9 @@ function drawPieSummary(index, valuepair){
                     location: 'e'
                 }
             });
-	container.bind('jqplotDataClick',loadSummaryDetail);
-	container.bind('jqplotDataHighlight',function(){this.style.cursor='pointer';});
-	container.bind('jqplotDataUnhighlight',function(){this.style.cursor='';});
+	//container.bind('jqplotDataClick',loadSummaryDetail);
+	//container.bind('jqplotDataHighlight',function(){this.style.cursor='pointer';});
+	//container.bind('jqplotDataUnhighlight',function(){this.style.cursor='';});
 }
 
 function loadSummaryDetail(ev, seriesIndex, pointIndex, data){
@@ -229,7 +228,7 @@ function loadGroups(data) {
 	$('#groups').append('<div class="grouplabel">Groups</div>');
 	var grouplist= $('<div class="groupdiv"></div>');
 	// Create a link for each group
-	for (var i = groups.length; i--;) {
+	for (var i = 0; i < groups.length; i++) {
 	    grouplist.append('<div>' + groups[i] + '</div>');
 	}
 	
@@ -270,15 +269,18 @@ function drawNodesArea(targetgroup, cmdargs, message){
     setNodesTab(tab);
     tab.init();
     $('#nodes').append(tab.object());
-    tab.add('nodesTab', 'Table', loader, false);
+    tab.add('summaryTab', 'Summary', '', false);
+    tab.add('nodesTab', 'Nodes', loader, false);
     tab.add('graphTab', 'Graphic', '', false);
     
     $('#nodesPageTabs').bind('tabsselect', function(event, ui){
         // for the graphical tab, we should check the graphical data first
-        if (1 == ui.index){
+        if (2 == ui.index){
             createPhysicalLayout(nodesList);
         }
     });
+    
+    loadPieSummary(targetgroup);
     // To improve performance, get all nodes within selected group
     // Get node definitions only for first 50 nodes
     $.ajax( {
@@ -1003,19 +1005,21 @@ function loadNodes(data) {
 		statCol.find('img').hide();
 	}
 	
-	// Get definable node attributes
-	$.ajax( {
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'lsdef',
-			tgt : '',
-			args : '-t;node;-h',
-			msg : ''
-		},
+	if (undefined == nodeAttrs){
+		// Get definable node attributes
+		$.ajax( {
+			url : 'lib/cmd.php',
+			dataType : 'json',
+			data : {
+				cmd : 'lsdef',
+				tgt : '',
+				args : '-t;node;-h',
+				msg : ''
+			},
 
-		success : setNodeAttrs
-	});
+			success : setNodeAttrs
+		});
+	}
 	
 	/**
      * Additional ajax requests need to be made for zVM

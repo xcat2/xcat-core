@@ -152,13 +152,14 @@ function createPhysicalLayout(nodeList){
 		}
 	}
 	
+    bpaList = new Object();
+    fspList = new Object();
+    lparList = new Object();
+    selectNode = new Object();
+    
 	//there is not graphical data, get the info now
 	if (!flag){
 		graphicalNodeList = new Object();
-		bpaList = new Object();
-	    fspList = new Object();
-	    lparList = new Object();
-	    selectNode = new Object();
 		initGraphicalData(0);
 	}
 	else{
@@ -174,16 +175,29 @@ function createPhysicalLayout(nodeList){
 	}
 }
 
-function fillList(nodeName){
-	var parentName = graphicalNodeList[nodeName]['parent'];
-	var mtm = graphicalNodeList[nodeName]['mtm'];
-	var status = graphicalNodeList[nodeName]['status']; 
-	
+function fillList(nodeName, defaultnodetype){
+    var parentName = '';
+    var mtm = '';
+    var status = '';
+    var nodetype = '';
+    if (!graphicalNodeList[nodeName]){
+        parentName = '';
+        mtm = '';
+        status = '';
+        nodetype = defaultnodetype;
+    }
+    else{
+        parentName = graphicalNodeList[nodeName]['parent'];
+        mtm = graphicalNodeList[nodeName]['mtm'];
+        status = graphicalNodeList[nodeName]['status']; 
+        nodetype = graphicalNodeList[nodeName]['type'];
+    }
+    
 	if ('' == status){
 		status = 'unknown';
 	}
 	
-	switch (graphicalNodeList[nodeName]['type']){
+	switch (nodetype){
 		case 'frame': {
 			if (undefined == bpaList[nodeName]){
 				bpaList[nodeName] = new Array();
@@ -198,7 +212,7 @@ function fillList(nodeName){
 			}
 			
 			if (undefined == fspList[parentName]){
-				fillList(parentName);
+				fillList(parentName, 'cec');
 			}
 			
 			fspList[parentName]['children'].push(nodeName);
@@ -219,7 +233,7 @@ function fillList(nodeName){
 			}
 			
 			if (undefined == bpaList[parentName]){
-				fillList(parentName);
+				fillList(parentName, 'frame');
 			}
 			
 			bpaList[parentName].push(nodeName);

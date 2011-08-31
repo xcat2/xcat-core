@@ -233,11 +233,15 @@ body {
 	border-left: medium solid #E6E6F2;
 }
 
-#nodes .summarypie {
+.summarypie {
 	width: 370px;
 	height: 280px;
 }
 
+#summaryTab td{
+	border: 0px;
+	padding: 0px;
+}
 /*--------------- Info/warning bar ---------------*/
 span.ui-icon-info {
 	float: left;
