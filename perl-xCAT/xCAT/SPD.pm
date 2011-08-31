@@ -6,6 +6,26 @@ require Exporter;
 our @ISA=qw/Exporter/;
 our @EXPORT_OK=qw/decode_spd/;
 
+sub do_crc16 {
+	my @data = @_;
+	my $crc = 0;
+	while (@data) {
+		my $byte = shift @data;
+		$crc = $crc ^ $byte<<8;
+		my $loopcount=8;
+		while ($loopcount--) {
+			if ($crc & 0x8000) {
+				$crc = $crc <<1 ^ 0x1021;
+			} else {
+				$crc = $crc << 1;
+			}
+		}
+	}
+	return $crc & 0xffff;;;;
+}
+			
+
+
 sub decode_manufacturer {
         my $jedec_ids = [
           {
@@ -720,7 +740,23 @@ sub decode_spd {
         unless ($rethash->{product}->{model}) {
             $rethash->{product}->{model}=pack("C*",@spd[128..145]);
         }
-    }
+        if ($spd[0] & 0b10000000) { #crc is to exclude 117-125, crc 0 to 116
+		unless (do_crc16(@spd[0..116]) == ($spd[126]+($spd[127]<<8))) {
+			push @{$rethash->{product}->{extra}},"SPD CRC Invalid!";
+		}
+	} else { #crc for 0 to 125
+		unless (do_crc16(@spd[0..125]) == ($spd[126]+($spd[127]<<8))) {
+				push @{$rethash->{product}->{extra}},"CRC Invalid!";
+		}
+	}
+	my $rawspd="SPD Dump: ";
+	foreach (@spd) {
+		$rawspd .= sprintf("%02X ",$_);
+	}
+	push @{$rethash->{product}->{extra}},$rawspd;
+    } else {
+        $rethash->{product}->{model}="Unrecognized SPD";
+    } 
     return $rethash;
 }
         
