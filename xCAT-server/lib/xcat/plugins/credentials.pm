@@ -181,6 +181,59 @@ sub process_request
            push @{$rsp->{'data'}},{content=>[$tabdata],desc=>[$_]};
            unlink "/tmp/xcat/keytab.$$";
            next;
+       } elsif (/x509cert/) {
+	   my $csr = $request->{'csr'}->[0];
+	   my $csrfile;
+           my $oldumask = umask 0077;
+	   if (-e "/tmp/xcat/client.csr.$$") { unlink "/tmp/xcat/client.csr.$$"; }
+	   open($csrfile,">","/tmp/xcat/client.csr.$$");
+	   unless($csrfile) { next; }
+	   my @statdat = stat $csrfile;
+	   while ($statdat[4] != 0 or $statdat[2] & 020 or $statdat[2] & 002) { #try to be paranoid, root better own the file, and it better not be writable by anyone but owner
+		#this means to assure the filehandle is not write-accessible to others who may insert their malicious CSR
+		close($csrfile);
+                unlink("/tmp/xcat/client.csr.$$");
+	        open($csrfile,">","/tmp/xcat/client.csr.$$");
+	        @statdat = stat $csrfile;
+           }
+	   print $csrfile $csr;
+	   close($csrfile);
+           #ok, at this point, we can verify that the subject is one we wouldn't mind signing...
+           my $subject=`openssl req -in /tmp/xcat/client.csr.$$ -subject -noout`;
+	   chomp($subject);
+	   unless ($subject =~ /CN=$client\z/) { unlink("/tmp/xcat/client.csr.$$"); next; }
+	   unlink "/tmp/xcat/client.cert.$$";
+           open($csrfile,">","/tmp/xcat/client.cert.$$");
+	   @statdat = stat $csrfile;
+	   while ($statdat[4] != 0 or $statdat[2] & 020 or $statdat[2] & 002) { #try to be paranoid, root better own the file, and it better not be writable by anyone but owner
+		#this prevents an attacker from predicting pid and pre-setting up a file that they can corrupt for DoS
+		close($csrfile);
+                unlink("/tmp/xcat/client.csr.$$");
+	        open($csrfile,">","/tmp/xcat/client.csr.$$");
+	        @statdat = stat $csrfile;
+           }
+	   close($csrfile);
+	   open($csrfile,"<","/etc/xcat/ca/index");
+	   my @caindex = <$csrfile>;
+	   close($csrfile);
+           foreach (@caindex) {
+		chomp;
+		my ($type, $expiry, $revoke, $serial, $fname, $subject) = split /\t/;
+		if ($type eq 'V' and $subject =~ /CN=$client\z/) { #we already have a valid certificate, new request replaces it, revoke old
+			print "The time of replacing is at hand for $client\n";
+			system("openssl ca -config /etc/xcat/ca/openssl.cnf -revoke /etc/xcat/ca/certs/$serial.pem");
+		}
+	   }
+	   my $rc = system("openssl ca -config /etc/xcat/ca/openssl.cnf -in /tmp/xcat/client.csr.$$ -out /tmp/xcat/client.cert.$$ -batch");
+	   unlink("/tmp/xcat/client.csr.$$");
+	   umask ($oldumask);
+	   if ($rc) { next; }
+	   open ($csrfile,"<","/tmp/xcat/client.cert.$$");
+	   my @certdata = <$csrfile>;
+	   close($csrfile);
+	   unlink "/tmp/xcat/client.cert.$$";
+           my $certcontents = join('',@certdata);
+           push @{$rsp->{'data'}},{content=>[$certcontents],desc=>[$_]};
        } else {
           next;
        }
