@@ -1,0 +1,38 @@
+#!/bin/bash
+allowcred.awk &
+CREDPID=$!
+if [ -z "$XCATDEST" ]; then
+	XCATDEST=$1
+fi
+for LANCHAN in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do 
+   if ipmitool channel info $LANCHAN 2> /dev/null | grep 802.3 > /dev/null 2>&1 && ipmitool raw 0xc 2 $LANCHAN 5 0 0 > /dev/null 2>&1; 
+     then break; 
+   fi; 
+done
+BMCMAC=`ipmitool lan print $LANCHAN|grep ^MAC|awk '{print $4}'` #bmcconfig may opt to use DHCP, if so we need to feed up the mac address
+#TODO: need a way to get the DUID the service processor may use, perhaps reserve that for 'ibmsetup' since spec doesn't touch ipv6?
+
+echo "<xcatrequest>
+<command>getbmcconfig</command>
+<callback_port>300</callback_port>
+<bmcmac>$BMCMAC</bmcmac>
+</xcatrequest>" > /tmp/bmcreq.xml
+rm /tmp/ipmicfg.xml
+while [ ! -f /tmp/ipmicfg.xml ] || grep error /tmp/ipmicfg.xml; do
+	if [ -f /tmp/ipmicfg.xml ]; then
+		echo -n "Retrying in 60 seconds...";
+		timer=60
+		while [ $timer -gt 0 ]; do
+			sleep 1
+			echo -n .
+			timer=$(($timer-1));
+		done
+	fi
+	if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
+		cat /tmp/bmcreq.xml | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/ipmicfg.xml
+	else
+		cat /tmp/bmcreq.xml | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > /tmp/ipmicfg.xml
+	fi
+done
+rm /tmp/bmcreq.xml
+kill $CREDPID

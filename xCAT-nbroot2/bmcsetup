@@ -17,31 +17,36 @@ CREDPID=$!
 sleep 2
 modprobe ipmi_si
 modprobe ipmi_devintf
-while [ -z "$BMCIP" ]; do
+IPCFGMETHOD=static
+while [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; do
     while ! getipmi
     do
         echo "Retrying retrieval of IPMI settings from server"
     done
     TIMEOUT=15
-    BMCIP=`grep bmcip /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-    BMCGW=`grep gateway /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-    BMCNM=`grep netmask /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-    BMCUS=`grep username /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-    BMCPW=`grep password /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
-    if [ -z "$BMCIP" ]; then
+    BMCIP=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    BMCGW=`grep gateway /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    BMCNM=`grep netmask /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    BMCUS=`grep username /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    BMCPW=`grep password /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    IPCFGMETHOD=`grep ipcfgmethod /tmp/ipmicfg.xml|awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+    if [ -z "$IPCFGMETHOD" ]; then
+	IPCFGMETHOD="static"
+    fi
+    if [ -z "$BMCIP" -a $IPCFGMETHOD="static" ]; then
         echo "FAILED TO RETRIEVE SETTINGS, RETRYING in 15 seconds"
         sleep 15
     fi
 done
 kill $CREDPID
-NUMBMCS=`grep bmcip /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'|wc -l`
+NUMBMCS=`grep bmcip /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'|wc -l`
 IPMIVER=`ipmitool mc info|grep ^IPMI|awk  '{print $4}'`
 IPMIMFG=`ipmitool mc info|grep "^Manufacturer ID"|awk  '{print $4}'`
 if [ "$IPMIMFG" == 2 ]; then #IBM
     XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
     if [ "$XPROD" == "220" ]; then
         LOCKEDUSERS=1
-        BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+        BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
 	    let idev=NUMBMCS-1
 	    for p in $BMCPORT; do
@@ -53,7 +58,7 @@ if [ "$IPMIMFG" == 2 ]; then #IBM
     else
         IBMFAM=`ipmitool raw 0x3a 0x50 |head -n 1| awk '{print $1 $2 $3 $4}'`
         if [ "$IBMFAM" == "59554f4f" ]; then
-            BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+            BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
             if [ ! -z "$BMCPORT" ]; then
 	    	let idev=NUMBMCS-1
 		    for p in $BMCPORT; do
@@ -67,7 +72,7 @@ elif [ "$IPMIMFG" == 20301 ] ; then
     XPROD=`ipmitool mc info|grep "^Product ID"|awk '{print $4}'`
     if [ "$XPROD" == "220" ]; then
         LOCKEDUSERS=1
-        BMCPORT=`grep bmcport /tmp/ipmi.data |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
+        BMCPORT=`grep bmcport /tmp/ipmicfg.xml |awk -F\> '{print $2}'|awk -F\< '{print $1}'`
         if [ ! -z "$BMCPORT" ]; then
 	    	let idev=NUMBMCS-1
 		    for p in $BMCPORT; do
@@ -88,49 +93,63 @@ done
 echo "Detected LAN channel $LANCHAN"
         
 let idev=NUMBMCS
-while [ $idev -gt 0 ]; do
-	let idev=idev-1
-	TRIES=0
-	while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
-	    sleep 1
-	    let TRIES=TRIES+1
-	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+if [ $IPCFGMETHOD="static" ]; then
+	while [ $idev -gt 0 ]; do
+		let idev=idev-1
+		TRIES=0
+		while ! ipmitool -d $idev lan set $LANCHAN ipsrc static; do
+		    sleep 1
+		    let TRIES=TRIES+1
+		    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+		done
 	done
-done
-let idev=NUMBMCS-1
-for b in $BMCIP; do
-	TRIES=0
-	while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
-	    sleep 1
-	    let TRIES=TRIES+1
-	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+	let idev=NUMBMCS-1
+	for b in $BMCIP; do
+		TRIES=0
+		while ! ipmitool -d $idev lan set $LANCHAN ipaddr $b; do
+		    sleep 1
+		    let TRIES=TRIES+1
+		    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+		done
+		let idev=idev-1
 	done
-	let idev=idev-1
-done
-let idev=NUMBMCS-1
-for m in $BMCNM; do
-	TRIES=0
-	while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
-	    sleep 1
-	    let TRIES=TRIES+1
-	    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+	let idev=NUMBMCS-1
+	for m in $BMCNM; do
+		TRIES=0
+		while ! ipmitool -d $idev lan set $LANCHAN netmask $m; do
+		    sleep 1
+		    let TRIES=TRIES+1
+		    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+		done
+		let idev=idev-1
 	done
-	let idev=idev-1
-done
-TRIES=0
-if [ ! -z "$BMCGW" ]; then
-    let idev=NUMBMCS-1
-    for g in $BMCGW; do
-    	TRIES=0
-	    while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
-	        sleep 1
-	        let TRIES=TRIES+1
-	        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+	TRIES=0
+	if [ ! -z "$BMCGW" ]; then
+	    let idev=NUMBMCS-1
+	    for g in $BMCGW; do
+	    	TRIES=0
+		    while ! ipmitool -d $idev lan set $LANCHAN defgw ipaddr $g; do
+		        sleep 1
+		        let TRIES=TRIES+1
+		        if [ $TRIES -gt $TIMEOUT ]; then break; fi
+		    done
+	            let idev=idev-1
 	    done
-            let idev=idev-1
-    done
-    TRIES=0
+	    TRIES=0
+	fi
+else
+	 let idev=NUMBMCS-1
+	 while [ $idev -gt 0 ]; do
+                let idev=idev-1
+                TRIES=0
+                while ! ipmitool -d $idev lan set $LANCHAN ipsrc $IPCFGMETHOD; do
+                    sleep 1
+                    let TRIES=TRIES+1
+                    if [ $TRIES -gt $TIMEOUT ]; then break; fi
+                done
+        done
 fi
+
 let idev=NUMBMCS-1
 for bmcu in $BMCUS; do
 DISABLEUSERS="1 2 3 4"
