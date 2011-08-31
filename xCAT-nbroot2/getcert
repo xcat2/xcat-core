@@ -5,7 +5,7 @@ if [ -z "$XCATDEST" ]; then
 	XCATDEST=$1
 fi
 #retry in case certkey.pem is not right, yet
-while ! openssl req -new -key /etc/xcat/certkey.pem -out /tmp/tls.csr -subj "/CN=`hostname`"; do
+while ! openssl req -new -key /etc/xcat/certkey.pem -out /tmp/tls.csr -subj "/CN=`hostname`" >& /dev/null; do
 	sleep 1
 done
 echo "<xcatrequest>
@@ -36,7 +36,6 @@ if grep 'BEGIN CERTIFICATE' /tmp/certresp.xml > /dev/null; then
 		lldptool -T -i $iface -V sysDesc enableTx=no
 	done
 fi
-cat /tmp/certreq.xml
 rm /tmp/certreq.xml
 rm /tmp/certresp.xml
 kill $CREDPID

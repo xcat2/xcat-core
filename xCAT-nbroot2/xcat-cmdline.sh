@@ -56,7 +56,10 @@ echo 'Protocol 2' >> /etc/ssh/sshd_config
 /usr/sbin/sshd
 mkdir -p /etc/xcat
 mkdir -p /etc/pki/tls
-touch /etc/pki/tls/openssl.cnf
+echo "[ req ]
+distinguished_name = nodedn
+
+[ nodedn ]" > /etc/pki/tls/openssl.cnf
 openssl genrsa -out /etc/xcat/privkey.pem 1024
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
@@ -103,7 +106,17 @@ if dmidecode|grep IPMI > /dev/null; then
 	modprobe ipmi_si
 	modprobe ipmi_devintf
 fi
+XCATPORT=3001
+export XCATPORT
+for parm in `cat /proc/cmdline`; do
+        key=`echo $parm|awk -F= '{print $1}'`
+        if [ "$key" = "xcatd" ]; then
+                XCATMASTER=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $1}'`
+                XCATPORT=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $2}'`
+        fi
+done
 if [ "$destiny" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
 	/bin/dodiscovery
 fi
+/bin/getcert $XCATMASTER:$XCATPORT
 /bin/sh
