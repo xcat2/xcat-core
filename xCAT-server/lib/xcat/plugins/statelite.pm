@@ -559,6 +559,31 @@ sub getRelDir {
 	return $l
 }
 
+sub include_file
+{
+   my $file = shift;
+   my $idir = shift;
+   my @text = ();
+   unless ($file =~ /^\//) {
+       $file = $idir."/".$file;
+   }
+
+   open(INCLUDE,$file) || \
+       return "#INCLUDEBAD:cannot open $file#";
+
+   while(<INCLUDE>) {
+       chomp($_);
+       s/\s+$//;  #remove trailing spaces
+       next if /^\s*$/; #-- skip empty lines
+       push(@text, $_);
+   }
+
+   close(INCLUDE);
+
+   return join("\n", @text);
+}
+
+
 =head3 parseLiteFiles
 In the liteentry table, one directory and its sub-items (including sub-directory and entries) can co-exist;
 In order to handle such a scenario, one hash is generated to show the hirarachy relationship
