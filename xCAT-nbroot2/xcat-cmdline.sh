@@ -54,13 +54,10 @@ ssh-keygen -q -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
 ssh-keygen -q -t dsa -f /etc/ssh/ssh_host_dsa_key -C '' -N ''
 echo 'Protocol 2' >> /etc/ssh/sshd_config
 /usr/sbin/sshd
-dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
-dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
 mkdir -p /etc/xcat
 mkdir -p /etc/pki/tls
 touch /etc/pki/tls/openssl.cnf
 openssl genrsa -out /etc/xcat/privkey.pem 1024
-openssl genrsa -out /etc/xcat/certkey.pem 4096
 PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
@@ -81,6 +78,9 @@ echo '};' >> /var/lib/lldpad/lldpad.conf
 done
 echo '};' >> /var/lib/lldpad/lldpad.conf
 lldpad -d
+dhclient -cf /etc/dhclient.conf -pf /var/run/dhclient.$bootnic.pid $bootnic &
+dhclient -6 -pf /var/run/dhclient6.$bootnic.pid $bootnic -lf /var/lib/dhclient/dhclient6.leases &
+openssl genrsa -out /etc/xcat/certkey.pem 4096 > /dev/null 2>&1 &
 
 	
 	
