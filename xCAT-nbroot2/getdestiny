@@ -1,0 +1,26 @@
+#!/bin/bash
+if [ -z "$XCATDEST" ]; then
+	XCATDEST=$1
+fi
+echo "<xcatrequest>
+<command>getdestiny</command>
+<callback_port>300</callback_port>
+</xcatrequest>" > /tmp/destreq.xml
+rm /tmp/destreq.xml
+while [ ! -f /tmp/destreq.xml ] || grep error /tmp/ipmicfg.xml; do
+	if [ -f /tmp/destreq.xml ]; then
+		echo -n "Retrying in 60 seconds...";
+		timer=60
+		while [ $timer -gt 0 ]; do
+			sleep 1
+			echo -n .
+			timer=$(($timer-1));
+		done
+	fi
+	if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
+		cat /tmp/destreq.xml | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/ipmicfg.xml
+	else
+		cat /tmp/destreq.xml | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > /tmp/ipmicfg.xml
+	fi
+done
+rm /tmp/destreq.xml
