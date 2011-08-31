@@ -1,5 +1,8 @@
 #!/bin/sh
 minixcatd.awk &
+PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout|grep -v "PUBLIC KEY"`
+PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
+export PUBKEY
 
 echo "Beginning node discovery process"
 NICSTOBRINGUP=`ip link|grep mtu|grep -v LOOPBACK|grep -v usb|grep -v ,UP|awk -F: '{print $2}'`
