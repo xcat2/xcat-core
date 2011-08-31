@@ -1,0 +1,42 @@
+#!/bin/bash
+allowcred.awk &
+CREDPID=$!
+if [ -z "$XCATDEST" ]; then
+	XCATDEST=$1
+fi
+#retry in case certkey.pem is not right, yet
+while ! openssl req -new -key /etc/xcat/certkey.pem -out /tmp/tls.csr -subj "/CN=`hostname`"; do
+	sleep 1
+done
+echo "<xcatrequest>
+<command>getcredentials</command>
+<arg>x509cert</arg>
+<callback_port>300</callback_port>
+<csr>" > /tmp/certreq.xml
+cat /tmp/tls.csr >> /tmp/certreq.xml
+echo "</csr>
+<sha512sig>
+</sha512sig>
+</xcatrequest>" >> /tmp/certreq.xml
+openssl dgst -sha512 -out /tmp/certreq.sha512 -sign /etc/xcat/privkey.pem /tmp/certreq.xml #chain off the switch published key
+openssl enc -e -a -in /tmp/certreq.sha512  > /tmp/certreq.b64sig
+cat /tmp/certreq.xml |while read line; do
+        if [ "$line" = "</sha512sig>" ]; then
+                cat /tmp/certreq.b64sig >> /tmp/certreq.xml.new
+        fi
+        echo $line >> /tmp/certreq.xml.new
+done
+mv /tmp/certreq.xml.new /tmp/certreq.xml
+rm /tmp/certreq.b64sig /tmp/certreq.sha512 
+cat /tmp/certreq.xml | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > /tmp/certresp.xml
+if grep 'BEGIN CERTIFICATE' /tmp/certresp.xml > /dev/null; then
+	awk '/BEGIN CERTIFICATE/,/END CERTIFICATE/' < /tmp/certresp.xml > /etc/xcat/cert.pem
+	#stop transmitting sysDesc, allowing the public key to age out of validity
+	for iface in `grep '^  e' /var/lib/lldpad/lldpad.conf|awk '{print $1}' `; do
+		lldptool -T -i $iface -V sysDesc enableTx=no
+	done
+fi
+cat /tmp/certreq.xml
+rm /tmp/certreq.xml
+rm /tmp/certresp.xml
+kill $CREDPID
