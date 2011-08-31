@@ -753,7 +753,7 @@ sub mknetboot
         if($statelite)
         {
             my $statelitetb = xCAT::Table->new('statelite');
-            my $mntopts = $statelitetb->getAttribs({node => $node}, 'mntopts');
+            my $mntopts = $statelitetb->getNodeAttribs($node, ['mntopts']);
 
             my $mntoptions = $mntopts->{'mntopts'};
             unless (defined($mntoptions))
