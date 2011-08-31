@@ -625,6 +625,18 @@ sub setup_DHCP
     my ($nodename) = @_;
     my $rc = 0;
     my $cmd;
+    my $snonly = 0;
+    # read the disjointdhcps attribute to determine if we will setup
+    # dhcp for all nodes or just for the nodes service by this service node
+    my $sitetab = xCAT::Table->new('site');
+    if ($sitetab)
+    {
+        my $href;
+        ($href) = $sitetab->getAttribs({key => 'disjointdhcps'}, 'value');
+        if ($href and $href->{value}) {
+            $snonly=$href->{value};
+        }
+    }
 
     # run makedhcp
     my $XCATROOT = "/opt/xcat";    # default
@@ -635,9 +647,8 @@ sub setup_DHCP
     }
     my $cmdref;
     $cmdref->{command}->[0] = "makedhcp";
-    $cmdref->{arg}->[0]     = "-l";
+    $cmdref->{arg}->[0]     = "-n";
     $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-    $cmdref->{arg}->[1]     = "-n";
     no strict "refs";
     my $modname = "dhcp";
     ${"xCAT_plugin::" . $modname . "::"}{process_request}
@@ -654,16 +665,48 @@ sub setup_DHCP
     {
         return 1;
     }
-    $cmdref;
-    $cmdref->{command}->[0] = "makedhcp";
-    $cmdref->{arg}->[0]     = "-l";
-    $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
-    $cmdref->{arg}->[1]     = "-a";
-
+    
+    # setup DHCP 
+    # 
     my $modname = "dhcp";
-    ${"xCAT_plugin::" . $modname . "::"}{process_request}
-      ->($cmdref, \&xCAT::Client::handle_response);
+    if ($snonly != 1)  {  # setup  dhcp for all nodes
+      $cmdref;
+      $cmdref->{command}->[0] = "makedhcp";
+      $cmdref->{arg}->[0]     = "-a";
+      $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
 
+   } else {  # setup dhcp just for the nodes owned by the SN
+     # determine my name
+     # get servicenodes and their nodes
+     # find the list of nodes serviced
+     my @hostinfo=xCAT::Utils->determinehostname();
+     my $sn_hash =xCAT::Utils->getSNandNodes();
+     my @nodes;
+     my %iphash=();
+     my $snkey;
+     $cmdref;
+     foreach  $snkey (keys %$sn_hash) {  # find the service node
+        if (grep(/$snkey/, @hostinfo)) {
+            push @nodes, @{$sn_hash->{$snkey}};
+            $cmdref->{node} = $sn_hash->{$snkey};
+            $cmdref->{'_xcatdest'}            = $snkey;
+        }
+     }
+     if (@nodes) {
+       my $nodelist;
+       foreach my $n (@nodes) { 
+        $nodelist .= $n;
+        $nodelist .= ",";
+       }
+       chop $nodelist;
+       $cmdref->{arg}->[0] = ();
+       $cmdref->{command}->[0] = "makedhcp";
+       $cmdref->{noderange}->[0]     = "$nodelist";
+       $cmdref->{cwd}->[0]     = "/opt/xcat/sbin";
+    }
+   }
+   ${"xCAT_plugin::" . $modname . "::"}{process_request}
+        ->($cmdref, \&xCAT::Client::handle_response);
     return $rc;
 }
 
