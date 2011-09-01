@@ -1203,7 +1203,7 @@ sub power_with_acpistate {
 		}
 	} elsif ($subcommand eq "suspend") {
 		if ($sessdata->{hardpowerstatus} eq "on") {
-			$sessdata->{ipmisession}->subcmd(netfn=>6,command=>6,data=>[3,0],callback=>\&power_response,callback_args=>$sessdata);
+			$sessdata->{ipmisession}->subcmd(netfn=>6,command=>6,data=>[0x83,0],callback=>\&power_response,callback_args=>$sessdata);
 			return;
 		} elsif ($sessdata->{powerstatus} eq "suspended") {
 			xCAT::SvrUtils::sendmsg("suspended",$callback,$sessdata->{node},%allerrornodes);
