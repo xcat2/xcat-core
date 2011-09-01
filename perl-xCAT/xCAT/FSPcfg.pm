@@ -27,6 +27,23 @@ my %default_passwd = (
 ##########################################################################
 # Parse the command line for options and operands
 ##########################################################################
+sub array_to_string {
+    my $array = shift;
+    my $string = "";
+    my $i = 0;
+    if (!scalar(@$array)) {
+        return undef;
+    }
+    $string .= "\'$array->[0]\'";
+    for ($i = 1; $i < scalar(@$array) - 1; $i++) {
+        $string .= ", ";
+        $string .= "\'$array->[$i]\'";
+    }
+    if ($i < scalar(@$array)) {
+        $string .= " or \'$array->[$i]\'";
+    }
+    return $string;
+}
 sub parse_args {
 
     my $request = shift;
@@ -57,7 +74,8 @@ sub parse_args {
         "cec_off_policy",
         "resetnet",
         "sysname",
-        "pending_power_on_side"
+        "pending_power_on_side",
+        "BSR"
     );
     my @frame = (
 	"frame",
@@ -143,26 +161,44 @@ sub parse_args {
     ####################################
     # Check for unsupported commands
     ####################################
-    foreach my $arg ( @ARGV ) {
+    my @arg_array = @ARGV;
+    my @fsp_cmds = ();
+    my @ppc_cmds = ();
+    foreach my $arg ( @arg_array ) {
         my ($command,$value) = split( /=/, $arg );
         if ( !grep( /^$command$/, @$supported) and !$opt{resetnet}) {
-            my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
-            if (defined($enableASMI[0])) {
-                $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
-                    if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES"))
-                    {
-                        $request->{enableASMI} = 1;
-                        return xCAT::PPCcfg::parse_args($request, @_);
-                    }
-            }
-            return(usage( "Invalid command for $request->{hwtype} : $arg" ));
-        } 
+            $request->{arg} = [$arg];
+            my $res = xCAT::PPCcfg::parse_args($request, @_);
+            if (ref($res) eq 'ARRAY') {
+                return $res;
+            } else {
+                push @ppc_cmds, $command;
+            } 
+        } else {
+            push @fsp_cmds, $command;
+        }
         if ( exists( $cmds{$command} )) {
             return(usage( "Command multiple times: $command" ));
         }
         $cmds{$command} = $value;
     } 
-
+    $request->{arg} = \@arg_array;
+    if (scalar(@fsp_cmds) && scalar(@ppc_cmds)) {
+        my $fsp_cmds_string = &array_to_string(\@fsp_cmds);
+        my $ppc_cmds_string = &array_to_string(\@ppc_cmds);
+        return (usage("Invalid command array: $fsp_cmds_string can not execute with $ppc_cmds_string."));
+    } elsif(scalar(@ppc_cmds)) {
+        my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
+        if (defined($enableASMI[0])) {
+            $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
+            if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES")) {
+                $request->{enableASMI} = 1;
+            } 
+        } 
+        if ($request->{enableASMI} ne '1') {
+            return (usage( "You should enable \"ASMI\" first for \'$command\'."));
+        }
+    }
     ####################################
     # Check command arguments 
     ####################################
@@ -198,7 +234,7 @@ sub parse_args {
         $request->{method} = "resetnet";
         return( \%opt );
     }
-    if(exists($cmds{sysname}) or exists($cmds{pending_power_on_side})) {
+    if(exists($cmds{sysname}) or exists($cmds{pending_power_on_side}) or exists($cmds{BSR})) {
         $request->{hcp} = $request->{hwtype} eq 'frame' ? "bpa":"fsp";
         $request->{method} = "do_fspapi_function";
         return (\%opt);
@@ -273,6 +309,9 @@ sub parse_option {
             return ("Invalid pending_power_on_side param '$value'");
         }
     }
+    if ($command eq 'BSR') {
+        return ("BSR value can not be set");
+    }
     return undef;
 }
 sub check_node_info {
@@ -291,24 +330,29 @@ sub check_node_info {
 
 my %fspapi_action = (
         sysname => {
-        query => {
-        cec => "get_cec_name",
-        frame => "get_frame_name"
-        },
-        set => {
-        cec => "set_cec_name",
-        frame => "set_frame_name"
-        }
+            query => {
+                cec => "get_cec_name",
+                frame => "get_frame_name"
+            },
+            set => {
+                cec => "set_cec_name",
+                frame => "set_frame_name"
+            }
         },
         pending_power_on_side => {
-        query => {
-        cec => "list_firmware_level",
-        frame => "list_firmware_level"
+            query => {
+                cec => "list_firmware_level",
+                frame => "list_firmware_level"
+            },
+            set => {
+                cec => "set_ipl_param",
+                frame => "set_ipl_param"
+            }
         },
-        set => {
-        cec => "set_ipl_param",
-        frame => "set_ipl_param"
-        }
+        BSR => {
+            query => {
+                cec => "get_cec_bsr"
+            }    
         }
 );
 sub do_process_query_res {
@@ -316,25 +360,26 @@ sub do_process_query_res {
     my $cmd = shift;
     my $result = shift;
     my $res = shift;
+    if (@$res[2] != 0) {
+        push @$result, $res;
+        return "Error";
+    }
     if ($cmd =~ /^sysname$/) {
         push @$result, $res;
-        if (@$res[2] != 0) {
-            return "Error";
-        }
-    } elsif($cmd =~ /^pending_power_on_side$/) {
-        if (@$res[2] != 0) {
-	        push @$result, $res;
-            return "Error";
-        } else {
-            my @values = split(/\n/, @$res[1]);
-            foreach my $v (@values) {
-                if ($v =~ /pend_power_on_side_(\w+)=(temp|perm),/) {
-                    push @$result, [$name, "Pending Power On Side \L\u$1: $2", '0'];
-                } else {
-                    push @$result, [$name, $v, '1'];
-                    return "Error";
-                }
+    } elsif ($cmd =~ /^pending_power_on_side$/) {
+        my @values = split(/\n/, @$res[1]);
+        foreach my $v (@values) {
+            if ($v =~ /pend_power_on_side_(\w+)=(temp|perm),/) {
+                push @$result, [$name, "Pending Power On Side \L\u$1: $2", '0'];
+            } else {
+                push @$result, [$name, $v, '1'];
+                return "Error";
             }
+        }
+    } elsif ($cmd =~ /^BSR$/) {
+        my @values = split(/\n/, @$res[1]);
+        foreach my $v (@values) {
+            push @$result, [$name, $v, '0'];
         }
     }
     return undef;
@@ -348,10 +393,11 @@ sub do_query {
         while (my($name, $d) = each(%$h)) {
             my $action = $fspapi_action{$cmd}{query}{@$d[4]};
             my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action);
-            my $res = &do_process_query_res($name, $cmd, \@result, $values);
-            if (defined($res)) {
-                last;
-            }
+            &do_process_query_res($name, $cmd, \@result, $values);
+            #my $res = &do_process_query_res($name, $cmd, \@result, $values);
+            #if (defined($res)) {
+            #    last;
+            #}
         }
     }
     return (\@result);
@@ -391,10 +437,11 @@ sub do_set {
             my $para = &do_set_get_para($name, $cmd, $value);
             my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action, 0, $para);
 #           print Dumper($values);
-            my $res = &do_process_set_res($name, $cmd, \@result, $values);
-            if (defined($res)) {
-                last;
-            }
+            &do_process_set_res($name, $cmd, \@result, $values);
+            #my $res = &do_process_set_res($name, $cmd, \@result, $values);
+            #if (defined($res)) {
+            #    last;
+            #}
         }
     }
     return (\@result);
@@ -406,14 +453,16 @@ sub do_fspapi_function {
     my @ret = ();
     my $res;
     my $args = $request->{arg};
+    my @fspapi_array = qw/sysname pending_power_on_side BSR/;
     my $invalid_node = &check_node_info($hash);
     if (defined($invalid_node)) {
         return ([[$invalid_node, "Node must be CEC or Frame", '1']]);
     }
     foreach my $arg (@$args) {
         my ($cmd, $value) = split /=/, $arg;
-	    if ($cmd !~ /^(sysname|pending_power_on_side)$/) {
-	        return ([["Error", "'$cmd' can not execute with 'sysname' or 'pending_power_on_side'", '1']]);
+	    if (!grep(/^$cmd$/, @fspapi_array)) {
+            my $fspapi_array_string = &array_to_string(\@fspapi_array);
+	        return ([["Error", "'$cmd' can not execute with $fspapi_array_string", '1']]);
 	    }
         if ($value) {
             $res = &do_set($request, $hash, $cmd, $value)

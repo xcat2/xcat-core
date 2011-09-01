@@ -1398,6 +1398,7 @@ sub process_children {
         if (defined($conn_flag{$dir})) {
             next;
         }
+        $request->{$index->{node}}{cred} = $request->{$host}{cred};
         my $res = &handle_cmd($index->{node}, $host, $request);
         $output{$side} = \$res;
         if ($res->[0]->{errorcode} ne '128') {
@@ -2118,22 +2119,24 @@ sub process_request {
            if ($request_new->{command} =~ /^(rspconfig|rpower|reventlog)$/){
                my @enableASMI = xCAT::Utils->get_site_attribute("enableASMI");
                if (defined($enableASMI[0])) {
-                   $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
-                   if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES")) {
-                        #through asmi ......
-                        $request_new->{fsp_api} = 0;
-                        if(@failed_nodes != 0) {
-                            my @temp = @failed_nodes;
-                            @failed_nodes = (); 
-                            $request_new->{node} = \@temp;
-                            process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
-                        } #end of if
-                   } #end of if
-               } # end of if
-           } #end of if  
+                   if (($request_new->{command} !~ /^rspconfig$/) || 
+                       (ref($request_new->{method} eq 'HASH'))) {
+                       $enableASMI[0] =~ tr/a-z/A-Z/;    # convert to upper
+                       if (($enableASMI[0] eq "1") || ($enableASMI[0] eq "YES")) {
+                           #through asmi ......
+                           $request_new->{fsp_api} = 0;
+                           if(@failed_nodes != 0) {
+                               my @temp = @failed_nodes;
+                               @failed_nodes = (); 
+                               $request_new->{node} = \@temp;
+                               process_command( $request_new , \%hcps_will, \@failed_nodes, \%failed_msg);
+                           } #end of if
+                       } #end of if
+                   } # end of if
+               } #end of if  
+           }
        } #end of if
     } #end of while(1)
-      
 }
 
 ##########################################################################
