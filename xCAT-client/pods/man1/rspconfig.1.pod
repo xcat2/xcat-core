@@ -138,6 +138,8 @@ B<rspconfig> I<noderange> {B<cec_off_policy>}
 
 B<rspconfig> I<noderange> B<cec_off_policy>={B<poweroff>|B<stayon>}
 
+B<rspconfig> I<noderange> {B<BSR>}
+
 B<rspconfig> I<noderange> B<--resetnet>
 
 =head2 BPA/Frame (using Direct FSP Management) Specific:
@@ -246,7 +248,11 @@ The gateway ip address.
 
 =item B<hostname>
 
-Display the CEC/BPA system names
+Display the CEC/BPA system names.
+
+=item B<BSR>
+
+Get (Barrier Synchronization Register) BSR allocation for a CEC. 
 
 =item B<hostname>={I<*|name>}
 
@@ -586,6 +592,24 @@ B<rspconfig> I<cec01 pending_power_on_side>
 
  cec01: Pending Power On Side Primary: perm
  cec01: Pending Power On Side Secondary: perm
+
+=item * 
+
+To show the BSR allocation for cec01:
+
+B<rspconfig> I<cec01 BSR>
+
+ cec01: Number of BSR arrays: 256
+ cec01: Bytes per BSR array: 4096
+ cec01: Available BSR array: 0
+ cec01: lpar01: 32
+ cec01: lpar02: 32
+ cec01: lpar03: 32
+ cec01: lpar04: 32
+ cec01: lpar05: 32
+ cec01: lpar06: 32
+ cec01: lpar07: 32
+ cec01: lpar08: 32
 
 =item *
 
