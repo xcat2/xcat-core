@@ -606,105 +606,106 @@ sub process_request
         }
     } # end - for Linux system only    
     
-    #
-    # for both AIX and Linux systems
-    #
-    # setup the default gateway if the network.gateway=xcatmaster for the node
-    my %nethash;
-    my %ipmap=();
-    my %gwhash=();
-    my $nwtab=xCAT::Table->new("networks");
-    if ($nwtab) {
-	my @tmp1=$nwtab->getAllAttribs(('net','mask','gateway','mgtifname'));
-	if (@tmp1 && (@tmp1 > 0)) {
-	    foreach my $nwitem (@tmp1) {
-		my $gw=$nwitem->{'gateway'};
-		if (!$gw) {  
-		    next; 
-		}
-		
-		chomp $gw; 
-		if ($gw ne '<xcatmaster>') {
-		    next;
-		}
-		
-		#now only handle the networks that has <xcatmaster> as the gateway
-		my $NM = $nwitem->{'mask'};
-		my $net=$nwitem->{'net'};
-		my $ifname=$nwitem->{'mgtifname'};
-		chomp $NM;
-		chomp $net;
-		chomp $ifname;
-		#print "NM=$NM, net=$net, ifname=$ifname, nodes=@nodes\n";
-		
-		# for each node - get the network info
-		foreach my $node (@nodes)
-		{
-		    # get, check, split the node IP
-		    my $IP = xCAT::NetworkUtils->getipaddr($node);
-		    chomp $IP;
+    if (!$::IGNORE){
+	#
+	# for both AIX and Linux systems
+	#
+	# setup the default gateway if the network.gateway=xcatmaster for the node
+	my %nethash;
+	my %ipmap=();
+	my %gwhash=();
+	my $nwtab=xCAT::Table->new("networks");
+	if ($nwtab) {
+	    my @tmp1=$nwtab->getAllAttribs(('net','mask','gateway','mgtifname'));
+	    if (@tmp1 && (@tmp1 > 0)) {
+		foreach my $nwitem (@tmp1) {
+		    my $gw=$nwitem->{'gateway'};
+		    if (!$gw) {  
+			next; 
+		    }
 		    
-		    # check the entries of the networks table
-		    # - if the bitwise AND of the IP and the netmask gives you 
-		    #	the "net" name then that is the entry you want.
-		    if(xCAT::NetworkUtils->ishostinsubnet($IP, $NM, $net))
+		    chomp $gw; 
+		    if ($gw ne '<xcatmaster>') {
+			next;
+		    }
+		    
+		    #now only handle the networks that has <xcatmaster> as the gateway
+		    my $NM = $nwitem->{'mask'};
+		    my $net=$nwitem->{'net'};
+		    my $ifname=$nwitem->{'mgtifname'};
+		    chomp $NM;
+		    chomp $net;
+		    chomp $ifname;
+		    #print "NM=$NM, net=$net, ifname=$ifname, nodes=@nodes\n";
+		    
+		    # for each node - get the network info
+		    foreach my $node (@nodes)
 		    {
-			my $newmaster=$newxcatmaster{$node};
-			my $newmasterIP;
-			if (exists($ipmap{$newmaster})) {
-			    $newmasterIP=$ipmap{$newmaster};
-			} else {
-			    $newmasterIP = xCAT::NetworkUtils->getipaddr($newmaster);
-			    chomp($newmasterIP);
-			    $ipmap{$newmaster}=$newmasterIP;
-			}
-			$nethash{$node}{'gateway'}=$newmasterIP;
-			$nethash{$node}{'net'} = $net;
-			$nethash{$node}{'mask'} = $NM;
-			$nethash{$node}{'mgtifname'} = $ifname;
-			if ($newmasterIP) {
-			    if (exists($gwhash{$newmasterIP})) {
-				my $pa=$gwhash{$newmasterIP};
-				push (@$pa, $node);
+			# get, check, split the node IP
+			my $IP = xCAT::NetworkUtils->getipaddr($node);
+			chomp $IP;
+			
+			# check the entries of the networks table
+			# - if the bitwise AND of the IP and the netmask gives you 
+			#	the "net" name then that is the entry you want.
+			if(xCAT::NetworkUtils->ishostinsubnet($IP, $NM, $net))
+			{
+			    my $newmaster=$newxcatmaster{$node};
+			    my $newmasterIP;
+			    if (exists($ipmap{$newmaster})) {
+				$newmasterIP=$ipmap{$newmaster};
 			    } else {
-				$gwhash{$newmasterIP}=[$node];
+				$newmasterIP = xCAT::NetworkUtils->getipaddr($newmaster);
+				chomp($newmasterIP);
+				$ipmap{$newmaster}=$newmasterIP;
+			    }
+			    $nethash{$node}{'gateway'}=$newmasterIP;
+			    $nethash{$node}{'net'} = $net;
+			    $nethash{$node}{'mask'} = $NM;
+			    $nethash{$node}{'mgtifname'} = $ifname;
+			    if ($newmasterIP) {
+				if (exists($gwhash{$newmasterIP})) {
+				    my $pa=$gwhash{$newmasterIP};
+				    push (@$pa, $node);
+				} else {
+				    $gwhash{$newmasterIP}=[$node];
+				}
 			    }
 			}
 		    }
 		}
 	    }
 	}
-    }
-    
-    if (keys(%gwhash) > 0) {
-	my $rsp;
-	$rsp->{data}->[0]="Setting up the default routes on the nodes."; 
-	xCAT::MsgUtils->message("I", $rsp, $callback);
-    }
-    foreach my $gw (keys %gwhash) { 
-	my $cmd="route add default gw"; #this is temporary,TODO, set perminant route on the nodes.
-	if (xCAT::Utils->isAIX()) {
-	    $cmd="route add default";
-	}
-	my $ret =
-	    xCAT::Utils->runxcmd(
-		{
-		    command => ['xdsh'],
-		    node    => $gwhash{$gw},
-		    arg     => ["-v", "$cmd $gw"],
-		},
-		$sub_req, -1, 1
-	    );
-	if ($::RUNCMD_RC != 0)
-	{
-	    $error++;
-	}
 	
-	my $rsp;
-	$rsp->{data}=$ret; 
-	xCAT::MsgUtils->message("I", $rsp, $callback);
+	if (keys(%gwhash) > 0) {
+	    my $rsp;
+	    $rsp->{data}->[0]="Setting up the default routes on the nodes."; 
+	    xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
+	foreach my $gw (keys %gwhash) { 
+	    my $cmd="route add default gw"; #this is temporary,TODO, set perminant route on the nodes.
+	    if (xCAT::Utils->isAIX()) {
+		$cmd="route add default";
+	    }
+	    my $ret =
+		xCAT::Utils->runxcmd(
+		    {
+			command => ['xdsh'],
+			node    => $gwhash{$gw},
+			arg     => ["-v", "$cmd $gw"],
+		    },
+		    $sub_req, -1, 1
+		);
+	    if ($::RUNCMD_RC != 0)
+	    {
+		$error++;
+	    }
+	    
+	    my $rsp;
+	    $rsp->{data}=$ret; 
+	    xCAT::MsgUtils->message("I", $rsp, $callback);
+	}
     }
-    
     
     # run postscripts to take care of syslog, ntp, and mkresolvconf 
     #	 - if they are included in the postscripts table
