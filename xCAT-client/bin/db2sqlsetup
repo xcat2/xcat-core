@@ -997,46 +997,6 @@ sub setupinstance
     {
       xCAT::MsgUtils->message("SI", " $cmd warning.");
     }
-    # add export of EXTSHM to /etc/rc.db2 on AIX, so env variable will
-    # be exported when db2fmcd starts the database on reboot
-    my  $message;
-    if ($::osname eq 'AIX') {
-       my $rcdb2file="/etc/rc.db2";
-       my $entry="EXTSHM=ON\nexport EXTSHM";
-       my $entry2="#!/usr/bin/ksh \nEXTSHM=ON\nexport EXTSHM";
-       if (-e($rcdb2file)) { # add to file
-          $cmd = "fgrep EXTSHM $rcdb2file"; # check to see if there
-          xCAT::Utils->runcmd($cmd, -1);
-          if ($::RUNCMD_RC != 0)  # if not there
-          {
-             $cmd = "echo \"$entry\" >> $rcdb2file";
-             xCAT::Utils->runcmd($cmd, 0);
-             if ($::RUNCMD_RC != 0)
-             {
-               $message = "$cmd failed. Could not setup $rcdb2file. This will affect running ISNM on the system.";
-               xCAT::MsgUtils->message("E", "$message");
-             }
-          }
-       } else{  # create the file
-           $cmd = "echo \"$entry2\" >> $rcdb2file";
-           xCAT::Utils->runcmd($cmd, 0);
-           if ($::RUNCMD_RC != 0)
-           {
-              $message = "$cmd failed. Could not setup $rcdb2file. This will affect running ISNM on the system. Please check documentation for manual setup. ";
-              xCAT::MsgUtils->message("E", "$message");
-            } else {
-                $cmd = "chmod 554 $rcdb2file";
-                xCAT::Utils->runcmd($cmd, 0);
-                if ($::RUNCMD_RC != 0)
-                {
-                  xCAT::MsgUtils->message("E", " $cmd failed.");
-                }
-
-            }
-                   
-      }
-    }
-
     
 }
 
