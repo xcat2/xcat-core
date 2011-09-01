@@ -319,6 +319,11 @@ sub plugin_command {
     unless (@nodes) {
        $req->{emptynoderange} = [1];
     }
+
+    if(@nodes == 0 ) {
+        print "No nodes or noderanges specified\n";
+        return 1;
+     }
   }
   if (@nodes) { $req->{node} = \@nodes; }
   my %unhandled_nodes;
