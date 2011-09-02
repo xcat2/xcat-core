@@ -87,8 +87,19 @@ function loadNodesPage() {
 
 			success : function(data){
 				loadGroups(data);
-				// triggle the first group click event
-				$('#groups .groupdiv div').eq(0).trigger('click');
+				var cookiegroup = $.cookie('selectgrouponnodes');
+				if (cookiegroup){
+					
+					$('#groups .groupdiv div').each(function(){
+						if ($(this).text() == cookiegroup){
+							$(this).trigger('click');
+							return false;
+						}
+					});
+				}else{
+					// triggle the first group click event
+					$('#groups .groupdiv div').eq(0).trigger('click');
+				}
 			}
 		});
 	}
@@ -241,6 +252,9 @@ function loadGroups(data) {
 
 	    $(this).addClass('selectgroup');
 	    drawNodesArea(thisGroup,'',thisGroup);
+	    
+	    //save the selected groups into cookie
+	    $.cookie('selectgrouponnodes', thisGroup, { expires: 7 });
 	});
 	
 	// Make a link to add nodes
@@ -968,6 +982,9 @@ function loadNodes(data) {
 
         		success: showChdefOutput
         	});
+        	
+        	//save the data into global origAttrs
+        	origAttrs[node][attrName] = value;
 
 			return value;
 		}, {
@@ -3216,6 +3233,9 @@ function jumpProvision(tgtnodes){
     var index = 0;
     var archtype = '';
     var errormessage = '';
+    var master = '';
+    var tftpserver = '';
+    var nfsserver = '';
     var diaDiv = $('<div title="Provision (only supported for Linux)" class="form" id="deployDiv"></div>');
     // check the first node's arch type
     for (index in nodeArray){
@@ -3265,7 +3285,19 @@ function jumpProvision(tgtnodes){
         return;
     }
     
-    window.location.href = 'provision.php?nodes=' + tgtnodes + '&arch=' + archtype;
+    if (origAttrs[nodeName]['xcatmaster']){
+    	master = origAttrs[nodeName]['xcatmaster'];
+    }
+    
+    if (origAttrs[nodeName]['tftpserver']){
+    	tftpserver = origAttrs[nodeName]['tftpserver'];
+    }
+    
+    if (origAttrs[nodeName]['nfsserver']){
+    	nfsserver = origAttrs[nodeName]['nfsserver'];
+    }
+    window.location.href = 'provision.php?nodes=' + tgtnodes + '&arch=' + archtype + '&master=' + master +
+                           '&tftpserver=' + tftpserver + '&nfsserver=' + nfsserver;
 }
 /**
  * Adjust datatable column size

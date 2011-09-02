@@ -401,16 +401,8 @@ function createProvision(plugin, container){
         });
     }
     
-    //image,nic,master,tftp,nfs,option
-    showStr = '<div><label>Image:</label><select id="' + plugin + 'image"></select><img src="images/loader.gif"></img></div>' +
-            '<div><label>Install Nic:</label><input value="mac"></div>' +
-            '<div><label>Primary Nic:</label><input value="mac"></div>' +
-            '<div><label>xCAT Master:</label><input ></div>' +
-            '<div><label>TFTP Server:</label><input ></div>' +
-            '<div><label>NFS Server:</label><input ></div>' +
-            '<div id="advoption"></div>';
-    
-    container.append(showStr);
+    //option
+    container.append('<div id="advoption"></div>');
     
     //add the provision button
     var provisionBtn = createButton('Provision');
@@ -473,6 +465,9 @@ function createProvWithUrl(){
     var index = 0;
     var temparray;
     var showstr = '';
+    var master = '';
+    var tftpserver = '';
+    var nfsserver = '';
     for (index = 0; index < argarray.length; index++){
         temparray = argarray[index].split('=');
         temphash[temparray[0]] = temparray[1];
@@ -483,6 +478,25 @@ function createProvWithUrl(){
     showstr += '<div><label>Architecture:</label><input type="text" disabled="disabled" value="' +
                 temphash['arch'] + '"></div>';
     
+    showstr += '<div><label>Image:</label><select id="quickimage"></select><img src="images/loader.gif"></img></div>' +
+    		   '<div><label>Install NIC:</label><input value="mac"></div>' +
+    		   '<div><label>Primary NIC:</label><input value="mac"></div>' ;
+    
+    if (temphash['master']){
+    	master = temphash['master'];
+    }
+    
+    if (temphash['nfsserver']){
+    	nfsserver = temphash['nfsserver'];
+    }
+    
+    if (temphash['tftpserver']){
+    	tftpserver = temphash['tftpserver'];
+    }
+    
+    showstr += '<div><label>xCAT Master:</label><input type="text" value="' + master + '"></div>';
+    showstr += '<div><label>TFTP Server:</label><input type="text" value="' + tftpserver + '"></div>';
+    showstr += '<div><label>NFS Server:</label><input type="text" value="' + nfsserver + '"></div>';
     return showstr;
 }
 
@@ -519,7 +533,14 @@ function createProvNonurl(plugin){
     }
     strArch += '</div>';
 
-    return strGroup + strNodes + strArch;
+    //add the static input part
+    strSta = '<div><label>Image:</label><select id="' + plugin + 'image"></select><img src="images/loader.gif"></img></div>' +
+    		 '<div><label>Install NIC:</label><input value="mac"></div>' +
+    		 '<div><label>Primary NIC:</label><input value="mac"></div>' +
+    		 '<div><label>xCAT Master:</label><input ></div>' +
+    		 '<div><label>TFTP Server:</label><input ></div>' +
+    		 '<div><label>NFS Server:</label><input ></div>';
+    return strGroup + strNodes + strArch + strSta;
 }
 
 /**
