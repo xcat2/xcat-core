@@ -1,0 +1,61 @@
+# IBM(c) 2007 EPL license http://www.eclipse.org/legal/epl-v10.html
+#Redhcp, do the xcat part again
+FORCENICS=`cat /restart|awk '{print $2}'`
+rm /restart
+if [ ! -z "$FORCENICS" ]; then
+    echo "Forcing down nics aside from $FORCENICS due to discoverynics setting"
+    for pidfile in /var/run/dhclient.*.pid; do
+	NIC=`echo $pidfile|awk -F. '{print $2}'`
+	if [ ! -z "$NIC" -a "$NIC" != "$FORCENICS" ]; then
+		dhclient -r -cf /etc/dhclient.conf -pf $pidfile $NIC
+		rm $pidfile
+		ip link set $NIC down
+	fi
+    done
+    for pidfile in /var/run/dhclient6.*.pid; do
+	NIC=`echo $pidfile|awk -F. '{print $2}'`
+	if [ ! -z "$NIC" -a "$NIC" != "$FORCENICS" ]; then
+		dhclient -6 -r -pf $pidfile -lf /var/lib/dhclient/dhclient6.leases $NIC
+		rm $pidfile
+		ip link set $NIC down
+	fi
+    done
+fi
+WAITING=1
+while [ $WAITING -gt 0 ]; do
+    for pidfile in /var/run/dhclient.*.pid; do
+	NIC=`echo $pidfile|awk -F. '{print $2}'`
+	dhclient -r -cf /etc/dhclient.conf -pf $pidfile $NIC
+	dhclient -cf /etc/dhclient.conf -nw -pf $pidfile $NIC
+    done
+    for pidfile in /var/run/dhclient6.*.pid; do
+	NIC=`echo $pidfile|awk -F. '{print $2}'`
+	dhclient -r -pf $pidfile -lf /var/lib/dhclient/dhclient6.leases $NIC
+	dhclient -6 -r -pf $pidfile -nw -lf /var/lib/dhclient/dhclient6.leases $NIC
+    done
+    
+    echo -n "Waiting 10 seconds for DHCP changes to take effect "
+    for i in 10 9 8 7 6 5 4 3 2 1; do
+       sleep 1
+       echo -en "Waiting $i seconds for DHCP changes to take effect    \r"
+    done
+    WAITING=0
+    if [ ! -z "$FORCENICS" ]; then
+        for nic in `ifconfig|grep HWaddr|awk '{print $1}'|egrep "$FORCENICS"`; do
+            if ! ifconfig $nic|grep "inet addr" > /dev/null; then
+                WAITING=1
+            fi
+        done
+        if [ $WAITING -gt 0 ]; then
+	    delay=30
+	    while [ $delay -gt 0 ]; do
+                    echo -en "Not all of the nics $FORCENICS managed to acquire an address, retrying in $delay seconds...    \r"
+	    done
+	    echo "                                                                                                                         \r"
+        fi
+    fi
+done
+        
+echo "Done waiting                                                                                                                              ";
+#/etc/init.d/S11stunnel #redo stunnel config
+#exec /etc/init.d/S99xcat.sh

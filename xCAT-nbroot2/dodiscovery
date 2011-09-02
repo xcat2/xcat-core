@@ -126,4 +126,4 @@ while [ ! -r /restart ]; do
 	cat /tmp/discopacket
 	sleep 5
 done
-	
+/bin/restart
