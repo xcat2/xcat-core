@@ -115,8 +115,47 @@ for parm in `cat /proc/cmdline`; do
                 XCATPORT=`echo $parm|awk -F= '{print $2}'|awk -F: '{print $2}'`
         fi
 done
-if [ "$destiny" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
-	/bin/dodiscovery
+if [ "$destiny" != "discover" ]; then #we aren't discoverying, we probably can and should get a cert
+	/bin/getcert $XCATMASTER:$XCATPORT
 fi
-/bin/getcert $XCATMASTER:$XCATPORT
-/bin/sh
+while :; do
+	if [ -z "$destiny" ]; then
+		destiny=`getdestiny`
+	fi
+	destparameter=`echo $destiny|awk -F= '{print $2}'`
+	destiny=`echo $destiny|awk -F= '{print $1}'`
+	if [ "$destiny" = "discover" ]; then #skip a query to xCAT when /proc/cmdline will do
+		/bin/dodiscovery
+		/bin/getcert $XCATMASTER:$XCATPORT
+		destiny=''
+	elif [ "$destiny" = shell ]; then
+		echo "Dropping to debug shell, exit to check for further action"
+		destiny=''
+		/bin/sh
+	elif [ "$destiny" = runcmd ]; then
+		destiny=''
+		$destparameter
+	elif [ "$destiny" = "reboot" -o "$destiny" = "boot" ]; then
+		/bin/nextdestiny
+		reboot -f
+	elif [ "$destiny" = standby ]; then
+		destiny=''
+		delay=$((30+$RANDOM%270))
+		while [ $delay -gt 0 ]; do
+			echo -en "Received request to retry in a bit, will call xCAT back in $delay seconds  \r"
+			delay=$((delay-1))
+			sleep 1
+		done
+		echo "Retrying                                                                                   ";
+	else 
+		echo "Unrecognized directive $destiny"
+		destiny=''
+		delay=$((30+$RANDOM%270))
+		while [ $delay -gt 0 ]; do
+			echo -en "Will retry in $delay seconds  \r"
+			delay=$((delay-1))
+			sleep 1
+		done
+
+	fi
+done

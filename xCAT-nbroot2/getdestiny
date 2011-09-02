@@ -7,20 +7,24 @@ echo "<xcatrequest>
 <callback_port>300</callback_port>
 </xcatrequest>" > /tmp/destreq.xml
 rm /tmp/destreq.xml
-while [ ! -f /tmp/destreq.xml ] || grep error /tmp/ipmicfg.xml; do
+while [ ! -f /tmp/destreq.xml ] || grep error /tmp/destiny.xml; do
 	if [ -f /tmp/destreq.xml ]; then
-		echo -n "Retrying in 60 seconds...";
 		timer=60
 		while [ $timer -gt 0 ]; do
+			echo -en  "Retrying in $timer seconds  \r"
 			sleep 1
-			echo -n .
 			timer=$(($timer-1));
 		done
 	fi
+	echo -en "                                                         \r";
 	if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
-		cat /tmp/destreq.xml | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/ipmicfg.xml
+		cat /tmp/destreq.xml | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/destiny.xml
 	else
-		cat /tmp/destreq.xml | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > /tmp/ipmicfg.xml
+		cat /tmp/destreq.xml | openssl s_client -connect $XCATDEST -quiet 2> /dev/null > /tmp/destiny.xml
 	fi
 done
 rm /tmp/destreq.xml
+DESTINY=`grep destiny /tmp/destiny.xml | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
+rm /tmp/destiny.xml
+echo $DESTINY
+

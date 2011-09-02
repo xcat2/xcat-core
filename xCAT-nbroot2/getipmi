@@ -20,14 +20,15 @@ echo "<xcatrequest>
 rm /tmp/ipmicfg.xml
 while [ ! -f /tmp/ipmicfg.xml ] || grep error /tmp/ipmicfg.xml; do
 	if [ -f /tmp/ipmicfg.xml ]; then
-		echo -n "Retrying in 60 seconds...";
 		timer=60
 		while [ $timer -gt 0 ]; do
 			sleep 1
-			echo -n .
+			echo -en  "Retrying in $timer seconds  \r"
 			timer=$(($timer-1));
 		done
 	fi
+	echo -en "                                                         \r";
+	
 	if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
 		cat /tmp/bmcreq.xml | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/ipmicfg.xml
 	else
