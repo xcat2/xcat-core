@@ -185,12 +185,12 @@ will get response immediately.
 =head1 B<PREREQUISITES>
 
 For the system p nodes, the B<renergy> command depends 
-on the Energy Management Plugin B<xCAT-energy> to 
-communicate with server.  B<xCAT-energy> can be downloaded from the IBM web site: 
-http://www14.software.ibm.com/webapp/set2/sas/f/xcat/energy.html
+on the Energy Management Plugin B<xCAT-pEnergy> to 
+communicate with server.  B<xCAT-pEnergy> can be downloaded from the IBM web site: 
+http://www.ibm.com/support/fixcentral/. (Other Software -> EM)
 
 For iDataPlex nodes, the B<renergy> command depends 
-on the Energy Management Plugin B<perl-IBM-EnergyManager> to 
+on the Energy Management Plugin B<xCAT-xEnergy> to 
 communicate with server.  This plugin must be requested from IBM.
 
 (The support for BladeCenter energy management is built into base xCAT,
