@@ -1,0 +1,37 @@
+start:xcatsnap_null
+description:xcatsnap with no argument
+cmd:xcatsnap
+check:rc==0
+check:output=~Send .* to IBM Support
+end
+
+
+start:xcatsnap_b_d
+description:xcatsnap -B -d
+cmd:xcatsnap -B -d /tmp/testdir
+check:rc==0
+check:output=~Send .* to IBM Support
+cmd:rm -rf /tmp/testdir
+end
+
+
+
+start:xcatsnap_h
+description:xcatsnap -h and --help
+cmd:xcatsnap -h
+check:output=~Usage
+cmd:xcatsnap --help
+check:output=~Usage
+end
+
+
+start;xcatsnap_v
+description:xcatsnap -v and --version
+cmd:xcatsnap -v
+check:output=~version|Version
+cmd:xcatsnamp --version
+check:output=~version|Version
+end
+
+
+
