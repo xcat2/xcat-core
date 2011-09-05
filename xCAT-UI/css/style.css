@@ -234,8 +234,8 @@ body {
 }
 
 .summarypie {
-	width: 370px;
-	height: 280px;
+	width: 260px;
+	height: 220px;
 }
 
 #summaryTab td{
@@ -750,6 +750,7 @@ table a:hover {
 	font-size: 10px;
 	background: url(../images/nodes/bpa.jpg);
 	border-width: 2px;
+	text-align: left;
 }
 
 .fspDiv2 {

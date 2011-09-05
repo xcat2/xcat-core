@@ -113,6 +113,7 @@ function loadNodesPage() {
 function loadPieSummary(groupname){
     var summaryTable = '<table style="border: 0px none;">' +
                        '<tr>' +
+                       '<td><div id="statuspie" class="summarypie"></div></td>' +
                        '<td><div id="ospie" class="summarypie"></div></td>' +
                        '<td><div id="archpie" class="summarypie"></div></td>' +
                        '</tr>' +

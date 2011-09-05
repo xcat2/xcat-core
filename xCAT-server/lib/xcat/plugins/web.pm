@@ -52,7 +52,7 @@ sub process_request {
 		'updatevpd'     => \&web_updatevpd,
 		'createimage'   => \&web_createimage,
         'provision'     => \&web_provision,
-        'summary'       => \&web_summay,
+        'summary'       => \&web_summary,
 	    'gangliashow'   => \&web_gangliaShow,
 	    'gangliacurrent' => \&web_gangliaLatest,
 	    'rinstall'	    => \&web_rinstall
@@ -1769,16 +1769,18 @@ sub web_infomsg {
     return;
 }
 
-sub web_summay{
+sub web_summary{
     my ( $request, $callback, $sub_req ) = @_;
     my $groupName = $request->{arg}->[1];
     my @nodes;
     my $nodetypeTab;
+	my $nodelistTab;
     my $attrs;
     my %oshash;
     my %archhash;
     my %provhash;
     my %typehash;
+	my %statushash;
     my $retHash = {};
     my $temp;
     #$groupName is undefined, use all nodes
@@ -1795,6 +1797,11 @@ sub web_summay{
         return;
     }
 
+	$nodelistTab = xCAT::Table->new('nodelist');
+	unless($nodelistTab){
+		return;
+	}
+
     $attrs = $nodetypeTab->getNodesAttribs(\@nodes, ['os','arch','provmethod','nodetype']);
     unless($attrs){
         return;
@@ -1807,13 +1814,25 @@ sub web_summay{
         web_attrcount($value->[0]->{'nodetype'},, \%typehash);
     }
     
-    #os
+	$attrs = $nodelistTab->getNodesAttribs(\@nodes, ['status']);
+	while(my ($key, $value) = each(%{$attrs})){
+		web_attrcount($value->[0]->{'status'}, \%statushash);
+	}
+
+    #status
+	$temp = '';
+	while(my ($key, $value) = each(%statushash)){
+		$temp .= ($key . ':' . $value . ';');
+	}
+	$temp = substr($temp, 0, -1);
+	push(@{$retHash->{'data'}}, 'Status=' . $temp);
+	#os
     $temp = '';
     while(my ($key, $value) = each(%oshash)){
         $temp .= ($key . ':' . $value . ';');
     }
     $temp = substr($temp, 0, -1);
-    push(@{$retHash->{'data'}}, 'OS=' . $temp);
+    push(@{$retHash->{'data'}}, 'Operating System=' . $temp);
 
     #arch
     $temp = '';
@@ -1838,6 +1857,7 @@ sub web_summay{
     }
     $temp = substr($temp, 0, -1);
     push(@{$retHash->{'data'}}, 'Node Type=' . $temp);
+
     #return data
     $callback->($retHash);
 }
