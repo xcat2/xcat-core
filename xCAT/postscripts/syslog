@@ -24,6 +24,17 @@ isLinux=1
 isRsyslog=0
 isC3=0
 
+# pmatch determines if 1st argument string is matched by 2nd argument pattern
+
+pmatch ()
+{
+  case $1 in
+    $2) return 0;;  # zero return code means string matched by pattern
+  esac
+
+  return 1          # non-zero return code means string not matched by pattern
+}
+
 config_Rsyslog_C3()
 {
   isReceiving=0
@@ -69,12 +80,12 @@ config_Rsyslog_C3()
 
 #echo "NTYPE=$NTYPE,OSVER=$OSVER,OSTYPE=$OSTYPE"
 
-if [[ $NTYPE = service ]]; then 
+if [ $NTYPE = service ]; then 
   isSN=1
 fi
 
-if [[ $OSTYPE = linux* ]]; then
-  if [[ $OSVER = fedora* ]] || [[ $OSVER = rhels5* ]] || [[ $OSVER = rhel6* ]] || [[ $OSVER = rhels6* ]] || [[ -f /etc/fedora-release ]] || [[ -f /etc/redhat-release ]] || [[ $OSVER = ubuntu* ]]; then
+if [ "$(uname -s)" = "Linux" ]; then
+  if ( pmatch $OSVER "fedora*" ) || ( pmatch $OSVER "rhels5*" ) || ( pmatch $OSVER "rhel6*" ) || ( pmatch $OSVER "rhels6*" ) || [ -f /etc/fedora-release ] || [ -f /etc/redhat-release ] || ( pmatch $OSVER "ubuntu*" ); then
     if [ -e /etc/rsyslog.conf ]; then
       conf_file="/etc/rsyslog.conf"
       sysconfig="/etc/sysconfig/rsyslog"
@@ -82,10 +93,10 @@ if [[ $OSTYPE = linux* ]]; then
       isRsyslog=1
     fi
   else 
-    if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+    if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
       #find out which syslog is used for SLES, syslog or syslog-ng
       result=`grep "^SYSLOG_DAEMON=" $sysconfig 2>&1`
-      if [[ $result = *syslog-ng* ]]; then
+      if ( pmatch $result "*syslog-ng*" ); then
         conf_file="/etc/syslog-ng/syslog-ng.conf"
         ng=1
       fi
@@ -102,8 +113,8 @@ fi
 
 
 #handle sysconfig file to make remote loggling possible 
-if [ $isLinux -eq 1 ] && [ -a $sysconfig ]; then 
-  if [[ ! -f "$sysconfig.XCATORIG" ]]; then
+if [ $isLinux -eq 1 ] && [ -e $sysconfig ]; then 
+  if [ ! -f "$sysconfig.XCATORIG" ]; then
     cp -f $sysconfig $sysconfig.XCATORIG
   fi
 
@@ -165,7 +176,7 @@ if [ -f /etc/xCATMN ]; then
   goLocal=1
 else 
   if [ $isSN -eq 1 ]; then
-     if [[ $SVLOGLOCAL -eq 1 ]]; then
+     if [ $SVLOGLOCAL -eq 1 ]; then
        goLocal=1  
      fi
   fi
@@ -227,22 +238,22 @@ fi
 if [ $isLinux -eq 0 ]; then
   PARSE_SRC_STATE="-e1d;s/.* \([a-zA-Z0-9]*\)$/\1/"
   state=$(LC_ALL=C lssrc -s syslogd | LC_ALL=C sed "$PARSE_SRC_STATE")
-  if [[ -n "$state" && "$state" = "active" ]];then
+  if [ -n "$state" ] && [ "$state" = "active" ]; then
      stopsrc -s syslogd
   fi
      
   #wait for syslogd to fully started
   RETRY_LIMIT=30          # number of 2 second retry intervals (60 second total)
-  let i=$RETRY_LIMIT
+  i=$RETRY_LIMIT
   while :
   do
       ret=`LC_ALL=C startsrc -s syslogd 2>&1`
-      if [[ $ret == *PID* ]];then
+      if ( pmatch $ret "*PID*" ); then
         break
       fi
 
       i=$((i - 1))
-      if (( i > 0 ));then
+      if [ $i -gt 0 ]; then
           sleep 2
       else
           break
