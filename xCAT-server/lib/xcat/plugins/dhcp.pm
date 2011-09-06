@@ -1026,7 +1026,7 @@ sub process_request
         if (-e "/etc/sysconfig/$dhcpver") {
 		if ($dhcpver eq "dhcpd") {
 		    delete($missingfiles{dhcpd});
-		    delete($missingfiles{dhcp3-server});
+		    delete($missingfiles{"dhcp3-server"});
 		} else {
 			delete($missingfiles{$dhcpver});
 		}
@@ -1066,7 +1066,7 @@ sub process_request
             close DBG_FD;
         }elsif (-e "/etc/default/$dhcpver") { #ubuntu
 	    delete($missingfiles{dhcpd});
-	    delete($missingfiles{dhcp3-server});
+	    delete($missingfiles{"dhcp3-server"});
         	 open DHCPD_FD, "/etc/default/$dhcpver";
             my $syscfg_dhcpd = "";
             my $found = 0;
