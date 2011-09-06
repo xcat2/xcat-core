@@ -9063,14 +9063,6 @@ sub mkdsklsnode
 
             my $filesystemsfile;
             my $osimg = $nodeosi{$snd};
-            my ($nfshost,$nfsip) = xCAT::NetworkUtils->gethostnameandip($nfshash->{$snd}->[0]->{'nfsserver'});
-            if (!$nfshost || !$nfsip)
-            {
-                my $rsp = {};
-                $rsp->{data}->[0] = "Can not resolve the nfsserver $nfshost for node $snd";
-                xCAT::MsgUtils->message("E", $rsp, $callback);
-                next;
-            }
 
             #shared_root or root configuration
             if($imagehash{$osimg}{'shared_root'})
