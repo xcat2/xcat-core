@@ -88,7 +88,7 @@ Indicates that the file being piped to the command is in stanza format.  See the
 
 To create a site definition.
 
- mkdef -t site -o clustersite rsh=/bin/rsh rcp=/bin/rcp installdir=/xcatinstall
+ mkdef -t site -o clustersite  installdir=/xcatinstall
 
 =item 2.
 
