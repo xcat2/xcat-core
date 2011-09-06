@@ -117,9 +117,11 @@ sub addotherinterfaces {
     my @itf_pairs=split(/,/, $otherinterfaces);
     foreach (@itf_pairs) {
       my ($itf,$ip)=split(/:/, $_);
-      if ($itf =~ /^-/ ) {
-          $itf = $node.$itf };
-      addnode $itf,$ip,'',$domain;
+      if ( $ip && xCAT::Utils->isIpaddr($ip) ) {
+          if ($itf =~ /^-/ ) {
+              $itf = $node.$itf };
+          addnode $itf,$ip,'',$domain;
+      }
     }
 }
 
@@ -227,10 +229,10 @@ sub process_request {
           } else {
               if ( xCAT::Utils->isIpaddr($ref->{ip}) ) { 
                   addnode $ref->{node},$ref->{ip},$ref->{hostnames},$domain;
-                  if (defined($ref->{otherinterfaces})){
-                     addotherinterfaces $ref->{node},$ref->{otherinterfaces},$domain;
-                  }
-              } 
+              }
+              if (defined($ref->{otherinterfaces})){
+                  addotherinterfaces $ref->{node},$ref->{otherinterfaces},$domain;
+              }
           }
         } #end foreach
     } # end else
@@ -242,9 +244,9 @@ sub process_request {
     foreach (@hostents) {
         if ( xCAT::Utils->isIpaddr($_->{ip}) ) {
             addnode $_->{node},$_->{ip},$_->{hostnames},$domain;
-            if (defined($_->{otherinterfaces})){
-               addotherinterfaces $_->{node},$_->{otherinterfaces},$domain;
-            }
+        }
+        if (defined($_->{otherinterfaces})){
+           addotherinterfaces $_->{node},$_->{otherinterfaces},$domain;
         }
     }
   }
