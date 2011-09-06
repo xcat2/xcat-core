@@ -1021,8 +1021,15 @@ sub process_request
     {
 #add the active nics to /etc/sysconfig/dhcpd or /etc/default/dhcp3-server(ubuntu)
         my $dhcpver;
+	my %missingfiles = ( "dhcpd"=>1, "dhcpd6"=>1, "dhcp3-server"=>1 );
         foreach $dhcpver ("dhcpd","dhcpd6","dhcp3-server") {
         if (-e "/etc/sysconfig/$dhcpver") {
+		if ($dhcpver eq "dhcpd") {
+		    delete($missingfiles{dhcpd});
+		    delete($missingfiles{dhcp3-server});
+		} else {
+			delete($missingfiles{$dhcpver});
+		}
             open DHCPD_FD, "/etc/sysconfig/$dhcpver";
             my $syscfg_dhcpd = "";
             my $found = 0;
@@ -1058,6 +1065,8 @@ sub process_request
             print DBG_FD $syscfg_dhcpd;
             close DBG_FD;
         }elsif (-e "/etc/default/$dhcpver") { #ubuntu
+	    delete($missingfiles{dhcpd});
+	    delete($missingfiles{dhcp3-server});
         	 open DHCPD_FD, "/etc/default/$dhcpver";
             my $syscfg_dhcpd = "";
             my $found = 0;
@@ -1090,11 +1099,15 @@ sub process_request
             print DBG_FD $syscfg_dhcpd;
             close DBG_FD;
         	
-        } elsif ($_ eq "dhcpd" or $usingipv6) {
-            $callback->({error=>"The file /etc/sysconfig/$_ doesn't exist, check the dhcp server"});
-#        return;
         }
         }
+	if ($usingipv6 and $missingfiles{dhcpd6}) {
+            $callback->({error=>"The file /etc/sysconfig/dhcpd6 doesn't exist, check the dhcp server"});
+	}
+	if ($missingfiles{dhcpd}) {
+            $callback->({error=>"The file /etc/sysconfig/dhcpd doesn't exist, check the dhcp server"});
+	}
+		
     }
     
     unless ($dhcpconf[0])
