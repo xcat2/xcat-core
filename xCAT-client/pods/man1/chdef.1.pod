@@ -96,7 +96,7 @@ Indicates that the file being piped to the command is in stanza format. See the 
 
 To change a site definition.
 
- chdef -t site -o clustersite rsh=/bin/rsh rcp=/bin/rcp installdir=/xcatinstall
+ chdef -t site -o clustersite installdir=/xcatinstall
 
 =item 2.
 
