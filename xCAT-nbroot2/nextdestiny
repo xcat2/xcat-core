@@ -6,17 +6,17 @@ echo "<xcatrequest>
 <command>nextdestiny</command>
 <callback_port>300</callback_port>
 </xcatrequest>" > /tmp/destreq.xml
-rm /tmp/destreq.xml
-while [ ! -f /tmp/destreq.xml ] || grep error /tmp/destiny.xml; do
-	if [ -f /tmp/destreq.xml ]; then
+if [ -f /tmp/destiny.xml ]; then rm /tmp/destiny.xml; fi
+while [ ! -f /tmp/destiny.xml ] || grep error /tmp/destiny.xml; do
+	if [ -f /tmp/destiny.xml ]; then
 		timer=60
 		while [ $timer -gt 0 ]; do
-			echo -en  "Retrying in $timer seconds  \r"
+			echo -en  "Retrying in $timer seconds  \r" >&2
 			sleep 1
 			timer=$(($timer-1));
 		done
 	fi
-	echo -en "                                                         \r";
+	echo "                                                         " >&2;
 	if [ -f /etc/xcat/cert.pem -a -f /etc/xcat/certkey.pem ]; then #use client cert if available
 		cat /tmp/destreq.xml | openssl s_client -key /etc/xcat/certkey.pem -cert /etc/xcat/cert.pem -connect $XCATDEST -quiet 2> /dev/null > /tmp/destiny.xml
 	else

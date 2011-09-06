@@ -120,7 +120,7 @@ if [ "$destiny" != "discover" ]; then #we aren't discoverying, we probably can a
 fi
 while :; do
 	if [ -z "$destiny" ]; then
-		destiny=`getdestiny`
+		destiny=`getdestiny $XCATMASTER:$XCATPORT`
 	fi
 	destparameter=`echo $destiny|awk -F= '{print $2}'`
 	destiny=`echo $destiny|awk -F= '{print $1}'`
@@ -133,10 +133,22 @@ while :; do
 		destiny=''
 		/bin/sh
 	elif [ "$destiny" = runcmd ]; then
-		destiny=''
+		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
 		$destparameter
+	elif [ "$destiny" = runimage ]; then
+		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
+		mkdir /tmp/`basename $destparameter`
+		cd /tmp/`basename $destparameter`
+		ERROR=`wget $desparamater 2>&1`
+		while [ $? == 1 ] && echo $ERROR|grep -v 416; do
+			sleep 10
+			ERROR=`wget -c $TARG 2>&1`
+		done
+		tar xvf `basename $TARG`
+		./runme.sh
+		cd -
 	elif [ "$destiny" = "reboot" -o "$destiny" = "boot" ]; then
-		/bin/nextdestiny
+		/bin/nextdestiny $XCATMASTER:$XCATPORT
 		reboot -f
 	elif [ "$destiny" = standby ]; then
 		destiny=''
