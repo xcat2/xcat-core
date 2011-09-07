@@ -35,7 +35,7 @@ stop)
   ;;
 start)
         # Node is stateless by default
-        STATELITE="No"
+        STATELITE=0
 
         # Node is statelite if /proc/cmdline have flag `STATEMNT='
         STATELITE_FLAG="STATEMNT="
@@ -46,7 +46,7 @@ start)
         # Usefull information passed as kernel arguments
         if [ -f "/proc/cmdline" ]; then
             if grep --quiet --no-messages "$STATELITE_FLAG" "/proc/cmdline"; then
-                STATELITE="Yes"
+                STATELITE=1
             fi
         fi
 
@@ -57,7 +57,7 @@ start)
         fi
 
         # Run $SCRIPT according to node type
-        if [ -n "$STATELITE" -a -z "${STATELITE/[yY][eE][sS]/}" ]; then
+        if [ $STATELITE -ne 0 ]; then
             logger -t xCAT "Call $SCRIPT for statelite mode"
             "$SCRIPT" 4
         else
