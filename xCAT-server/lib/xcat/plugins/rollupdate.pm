@@ -842,6 +842,9 @@ sub ll_jobs {
         if (defined($::FILEATTRS{newfeature}[0])){
             push (@ugdflines, "newfeature=$::FILEATTRS{newfeature}[0]\n");
         } 
+        if (defined($::FILEATTRS{reconfiglist}[0])){
+            push (@ugdflines, "reconfiglist=$::FILEATTRS{reconfiglist}[0]\n");
+        } 
         push (@ugdflines, "\n");
         push (@ugdflines, &get_prescripts($nodelist));
         if (defined($::FILEATTRS{shutdowntimeout}[0])){
@@ -2833,6 +2836,11 @@ sub llreconfig {
        } else {
            $runlocal=1;
        }
+    }
+    if ( defined($::FILEATTRS{reconfiglist}[0]) ) { 
+        push (@llnodes, split( /,/,$::FILEATTRS{reconfiglist}[0]) ); 
+    } elsif ( defined($::DATAATTRS{reconfiglist}[0]) ) {
+        push (@llnodes, split( /,/,$::DATAATTRS{reconfiglist}[0]) ); 
     }
     if ($runlocal) {
         if ($::VERBOSE) {

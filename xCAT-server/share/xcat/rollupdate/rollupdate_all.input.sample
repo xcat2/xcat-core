@@ -111,6 +111,17 @@ newfeature=newvalue
 maxupdates=16
 
 
+# reconfiglist:  For LoadLeveler, the list of nodes (as known by xCAT)
+#   that xCAT will xdsh an 'llctl reconfig' command to.  xCAT will always send
+#   the reconfig command to the local xCAT management node, and to all nodes
+#   listed as the LL central managers and LL resource managers in the LL
+#   database. This is a list of additional machines required to immediately see
+#   any database changes xCAT may make.  For example, all LL submit-only nodes
+#   should be added to this list so that any machine FEATURE changes are
+#   visible for job submission.
+#reconfiglist=login1,login2
+
+
 
 #jobtemplate:  Scheduler job template file.  See this sample LoadLeveler file 
 #    for details on how the template will be processed:
