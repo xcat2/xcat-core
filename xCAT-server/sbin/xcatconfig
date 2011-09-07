@@ -999,6 +999,8 @@ sub initDB
             $chtabcmds .=
               "$::XCATROOT/sbin/chtab key=useSSHonAIX site.value=yes;";
             $chtabcmds .=
+              "$::XCATROOT/sbin/chtab key=useNFSv4onAIX site.value=no;";
+            $chtabcmds .=
               "$::XCATROOT/sbin/chtab key=consoleondemand site.value=yes;";
         }
 

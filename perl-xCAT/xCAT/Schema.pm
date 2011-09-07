@@ -871,6 +871,8 @@ site => {
    "                 service node. This will improve the performance in a flat network.\n\n".
    " useSSHonAIX:  (yes/1 or no/0). If yes, ssh/scp will be setup and used. If no,\n".
    "               rsh/rcp will be setup and used on AIX. Default is yes.\n\n".
+   " useNFSv4onAIX:  (yes/1 or no/0). If yes, NFSv4 will be used with NIM. If no,\n".
+   "               NFSv3 will be used with NIM. Default is no.\n\n".
    " vcenterautojoin:  When set to no, the VMWare plugin will not attempt to auto remove\n".
    "                   and add hypervisors while trying to perform operations.  If users\n".
    "                   or tasks outside of xCAT perform the joining this assures xCAT\n".
