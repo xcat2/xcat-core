@@ -2521,16 +2521,16 @@ sub remove_LL_reservations {
     }
     my @llnodes_removed;
     foreach my $n (@{$nodes}) {
+        # change features for this node
+        if ($CANCEL_DUE_TO_ERROR) {
+            &remove_LL_updatefeature_only($n);
+        } else {
+            &change_LL_feature($n);
+        }
         my @lln;
         if ( (@lln=grep(/^$n$/,@llnodes)) | (@lln=grep(/^$n\./,@llnodes)) ) {
             $remove_count++;
             push (@llnodes_removed,$lln[0]);
-            # change features for this node
-            if ($CANCEL_DUE_TO_ERROR) {
-                &remove_LL_updatefeature_only($lln[0]);
-            } else {
-                &change_LL_feature($lln[0]);
-            }
             if ( $remove_count < $llnode_count ) {
               $remove_cmd .= " $lln[0]";
             } else {
