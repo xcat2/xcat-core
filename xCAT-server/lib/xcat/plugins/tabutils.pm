@@ -40,7 +40,7 @@ sub handled_commands
             lsxcatd    => "tabutils",
             tabprune   => "tabutils",
             tabrestore => "tabutils",
-            tabch      => "tabutils",     # not implemented yet
+            tabch      => "tabutils",    
             nodegrpch     => "tabutils",
             nodech     => "tabutils",
             nodeadd    => "tabutils",
@@ -138,7 +138,7 @@ sub process_request
         return tabgrep($nodes, $callback);
     }
     elsif ($command eq "tabch"){
-        return tabch($args, $callback);
+        return tabch($request, $callback);
     }
     else
     {
@@ -1937,76 +1937,177 @@ sub nodels
 #########
 
 sub tabch {
-    my $args = shift;
+    my $req = shift;
     my $callback = shift;
-    my @ARGV = @{$args};
-    my $delete = 0;
-    if ($ARGV[0] =~ /^-d$/){
-        shift @ARGV;
-        $delete = 1;
-    }
+
+   # tabch usages message
+    my $tabch_usage = sub {
+        my $exitcode = shift @_;
+        my %rsp;
+        push @{$rsp{data}}, "Usage: tabch";
+        push @{$rsp{data}}, "       To add or update rows for tables:";
+        push @{$rsp{data}}, "       chtab [keycolname=keyvalue[,keycolname=keyvalue...]] [tablename.colname=newvalue] [tablename.colname=newvalue]...";
+        push @{$rsp{data}}, "       To delete rows from tables:";
+        push @{$rsp{data}}, "       chtab -d|--delete keycolname=keyvalue[,keycolname=keyvalue...] tablename [tablename]...";
+        push @{$rsp{data}}, "       keycolname=keyvalue   a column name-and-value pair that identifies the rows in a table to be changed.
+   tablename.colname=newvalue    the new value for the specified row and column of the table.";
+        push @{$rsp{data}}, "       tabprune [-h|--help]";
+        push @{$rsp{data}}, "       tabprune [-v|--version]";
+        if ($exitcode) { $rsp{errorcode} = $exitcode; }
+        $callback->(\%rsp);
+    };
+
+# check for parameters 
+if (!defined($req->{arg})) { $tabch_usage->(1); return; }
+@ARGV = @{$req->{arg}};
+
+# options can be bundled up like -vV
+Getopt::Long::Configure("bundling");
+$Getopt::Long::ignorecase = 0;
+
+# parse the options
+if (
+    !GetOptions(
+                'd|delete'  => \$::DELETE,
+                'h|help'    => \$::HELP,
+                'v|version' => \$::VERSION,
+    )
+  )
+{
+    $tabch_usage->(1); 
+    return; 
+}
+
+if ($::HELP) { $tabch_usage->(0); return; }
+
+# display the version statement if -v or --verison is specified
+if ($::VERSION)
+{
+    my %rsp;
+    my $version = xCAT::Utils->Version();
+    $rsp{data}->[0] = "tabch :$version";
+    $callback->(\%rsp);
+    exit(0);
+}
+
+# now start processing the input 
+
+my $target = shift @ARGV;
+unless ($target)
+{
     
-    my $target = shift @ARGV;
-    my %tables;
-    my %keyhash=();
-    my @keypairs=split(/,/,$target);
-    if ($keypairs[0] !~ /([^\.\=]+)\.([^\.\=]+)\=(.+)/) {
-        foreach (@keypairs) {
-            m/(.*)=(.*)/;
-            my $key=$1;
-            my $val=$2;
-            $keyhash{$key}=$val;
+    $tabch_usage->(1); return;
+}
+my %tables;
+my %keyhash = ();
+my @keypairs = split(/,/, $target);
+if ($keypairs[0] !~ /([^\.\=]+)\.([^\.\=]+)\=(.+)/)
+{
+    foreach (@keypairs)
+    {
+        m/(.*)=(.*)/;
+        my $key = $1;
+        my $val = $2;
+        if (!defined($key) || !defined($val))
+        {
+            my %rsp;
+            $rsp{data}->[0] = "Incorrect argument \"$_\".\n"; 
+            $rsp{data}->[1] = "Check man tabch or tabch -h\n"; 
+            $callback->(\%rsp);
+            return 1;
         }
-    } else {
-        unshift(@ARGV, $target);
+        $keyhash{$key} = $val;
     }
+}
+else
+{
+    unshift(@ARGV, $target);
+}
 
-    if($delete){
-        my @tables_to_del=@ARGV;
-        if(@tables_to_del == 0){
-            $callback->({error => ["Missing table name."],errorcode=>[1]});
-            return;
-        }
+if ($::DELETE)
+{
 
-        for(@tables_to_del){
-            $tables{$_} = xCAT::Table->new($_,-create=> 1,-autocommit => 0);
-            $tables{$_}->delEntries(\%keyhash);
-            $tables{$_}->commit;
-        }
-    }else{    
-        my %tableupdates;
-        for (@ARGV) {
-            my $temp;
-            my $table;
-            my $column;
-            my $value;
-            ($table,$temp) = split('\.',$_,2);
-            ($column,$value) = split("=",$temp,2);
-            unless ($tables{$table}) {
-                my $tab = xCAT::Table->new($table,-create => 1,-autocommit => 0);
-                if ($tab) {
-                    $tables{$table}=$tab;
-                } else {
-                    $callback->({error => [ "Table $table does not exist."],errorcode=>[1]});
+    #delete option is specified
+    my @tables_to_del = @ARGV;
+    if (@tables_to_del == 0)
+    {
+       my %rsp;
+       $rsp{data}->[0] = "Missing table name.\n"; 
+       $rsp{data}->[1] = "Check man tabch or tabch -h\n"; 
+       $callback->(\%rsp);
+       return 1;
+    }
+    for (@tables_to_del)
+    {
+        $tables{$_} = xCAT::Table->new($_, -create => 1, -autocommit => 0);
+        $tables{$_}->delEntries(\%keyhash);
+        $tables{$_}->commit;
+    }
+} 
+else {
+  #update or create option
+  my %tableupdates;
+  for (@ARGV) {
+	my $temp;
+	my $table;
+	my $column;
+	my $value;
+
+	($table,$temp) = split('\.',$_,2);
+
+    #try to create the entry if it doesn't exist
+      unless ($tables{$table}) {
+          my $tab = xCAT::Table->new($table,-create => 1,-autocommit => 0);
+	  if ($tab) {
+	      $tables{$table}=$tab;
+	  } else {
+              my %rsp;
+              $rsp{data}->[0] = "Table $table does not exist.\n";
+              $callback->(\%rsp);
+              return 1;
+
+	  }
+       }
+
+        #splice assignment
+	if(grep /\+=/, $temp) {
+            ($column,$value) = split('\+=',$temp,2);
+
+            #grab the current values to check against
+            my ($attrHash) = $tables{$table}->getAttribs(\%keyhash, $column);
+            my @existing = split(",",$attrHash->{$column});
+
+            #if it has values, merge the new and old ones together so no dupes
+            if (@existing) {
+                my @values = split(",",$value);
+                my %seen = ();
+                my @uniq = ();
+                my $item;
+
+                foreach $item (@existing,@values) {
+                    unless ($seen{$item}) {
+                        # if we get here, we have not seen it before
+                        $seen{$item} = 1;
+                        push(@uniq, $item);
+                    }
                 }
+                $value = join(",",@uniq);
             }
-            $tableupdates{$table}{$column}=$value;
-            $tableupdates{$table}{$column}=$value;
         }
-      #commit all the changes
-      foreach (keys %tables) {
-        if (exists($tableupdates{$_})) {
-            $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
-            }
-            $tables{$_}->commit;
+        #normal non-splicing assignment
+	else {
+            ($column,$value) = split("=",$temp,2);
         }
 
-        #commit all the changes
-        foreach (keys %tables) {
-            if (exists($tableupdates{$_})) {
-                $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
-            }
-            $tables{$_}->commit;
-        }
+    $tableupdates{$table}{$column}=$value;
+  }
+  
+  #commit all the changes
+  foreach (keys %tables) {
+    if (exists($tableupdates{$_})) {
+      $tables{$_}->setAttribs(\%keyhash,\%{$tableupdates{$_}});
     }
+    $tables{$_}->commit;
+  }
+ }
 }
