@@ -47,8 +47,8 @@ download_postscripts()
             break
 	fi
 
-	let sli=$RANDOM%20
-	sleep $sli
+	SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*20)}')
+        sleep $SLI
     done
     return $rc
 }
@@ -63,10 +63,10 @@ else
     1|2|5)
       MODE=$1
       if [ $ARGNUM -gt 1 ]; then
-        if [ $2 == "-m" ]; then
+        if [ $2 = "-m" ]; then
           P_SIP=$3
         else
-          if [ $2 == "-M" ]; then
+          if [ $2 = "-M" ]; then
             P_SIP=$3
             new_ms=$P_SIP
           fi
@@ -81,12 +81,12 @@ else
 fi
 
 
-if [ ! `uname` == Linux ]; then
+if [ ! `uname` = Linux ]; then
    MYDIR=`dirname $0`
    exec $MYDIR/xcatdsklspost.aix
    exit
 fi
-let SLI=$RANDOM%10
+SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
 sleep $SLI
 
 if [ ! -d /xcatpost ]; then
@@ -103,11 +103,11 @@ rm -R -f /tmp/postage/*
 cd /tmp/postage
 
 
-if [ "$MODE" == "4" ]; then # for statelite mode
+if [ "$MODE" = "4" ]; then # for statelite mode
     # We have written the xCATSERVER info into the kernel command line!!
     for i in `cat /proc/cmdline`; do
         KEY=`echo $i | awk -F= '{print $1}'`
-        if [ "$KEY" ==  "XCAT" ]; then
+        if [ "$KEY" =  "XCAT" ]; then
             TMP=`echo $i | awk -F= '{print $2}'`
             XCATSERVER=`echo $TMP | cut -d: -f1`
             echo "XCATSERVER=$XCATSERVER" > /opt/xcat/xcatinfo
@@ -124,7 +124,8 @@ if [ "$MODE" == "4" ]; then # for statelite mode
             fi
         fi
     else
-        echo "xCAT management server IP can't be determined.\nexiting...";
+        echo "xCAT management server IP can't be determined.";
+	echo "exiting...";
         logger -t xCAT "xcatdsklspost:xCAT management server IP can't be determined.\nexiting...";
         exit;
     fi
@@ -196,7 +197,7 @@ else # for common mode
 
 fi # finish the postscripts download
 
-if grep 'rw /rw tmpfs ' /proc/mounts  >& /dev/null; then
+if grep 'rw /rw tmpfs ' /proc/mounts  >/dev/null 2>&1; then
     touch /var/lock/subsys/xcatmounts
     echo '#!/bin/bash' > /etc/rc6.d/K10xcatmounts
     echo umount -l /ro >> /etc/rc6.d/K10xcatmounts
@@ -232,8 +233,8 @@ while [ -z "$MYCONT" ]; do
         break
     fi
 
-    let SLI=$RANDOM%10
-    let SLI=10+$SLI
+    SLI=$(awk 'BEGIN{srand(); printf("%d\n",rand()*10)}')
+    SLI=$((10 + $SLI))
     sleep $SLI
     
     /xcatpost/getpostscript.awk | sed  -e 's/<[^>]*>//g'|egrep -v '^ *$'|sed -e 's/^ *//' >  /tmp/mypostscript;
@@ -245,7 +246,7 @@ done
 
 #save the MASTER into the xcatinfo file for node deployment case, 
 #for updatenode case, only save it when -M is specified
-if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" == "4" ]; then
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
     new_ms=`grep '^MASTER' /tmp/mypostscript |cut -d= -f2`
 fi
 if [ -n "$new_ms" ]; then
@@ -264,11 +265,11 @@ fi
 
 # when called by the updatenode command
 #modify the UPDATENODE flag to 1 
-if [ "$MODE" == "1" ] || [ "$MODE" == "2" ]; then
+if [ "$MODE" = "1" ] || [ "$MODE" = "2" ]; then
   TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1/g' /tmp/mypostscript`;
   echo "$TMP" > /tmp/mypostscript;
 fi
-if [ "$MODE" == "5" ]; then
+if [ "$MODE" = "5" ]; then
   TMP=`sed -e 's/UPDATENODE=0/UPDATENODE=1\nUPDATESECURITY=1\nexport UPDATESECURITY/g' /tmp/mypostscript`;
   echo "$TMP" > /tmp/mypostscript;
 fi
@@ -281,10 +282,10 @@ if [ "XX$POSTSCRIPTS" != "XX" ]; then
   #remove all the postscripts
   TMP=`sed "/postscripts-start-here/,/postscripts-end-here/ d" /tmp/mypostscript`
   echo "$TMP" > /tmp/mypostscript
-  echo "# postscripts-start-here\n" >> /tmp/mypostscript
+  echo "# postscripts-start-here" >> /tmp/mypostscript
   #add requested postscripts in
   echo "$POSTSCRIPTS" | tr "," "\n" >> /tmp/mypostscript
-  echo "# postscripts-end-here\n" >> /tmp/mypostscript
+  echo "# postscripts-end-here" >> /tmp/mypostscript
 fi
 
 #ADDSITEYUM is set by post.rh and post.rh.iscsi for full installtion
@@ -305,7 +306,7 @@ run_ps () {
  mkdir -p \$logdir
  logfile=\"/var/log/xcat/xcat.log\"
  
- if [[ -f \$1 ]]; then 
+ if [ -f \$1 ]; then 
   echo \"Running postscript: \$@\" | tee -a \$logfile
   ./\$@ 2>&1 1> /tmp/tmp4xcatlog
   cat /tmp/tmp4xcatlog | tee -a \$logfile
@@ -320,7 +321,7 @@ echo "$TMP" >> /tmp/mypostscript
 TMP=`sed "/postbootscripts-start-here/,/postbootscripts-end-here/ s/\(.*\)/run_ps \1/;s/run_ps\s*#/#/;s/run_ps\s*$//" /tmp/mypostscript`
 echo "$TMP" > /tmp/mypostscript 
 
-if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" == "4" ]; then
+if [ $NODE_DEPLOYMENT -eq 1 ] || [ "$MODE" = "4" ]; then
   #notify the server that we are done with netbooting
   CNS=`grep NODESTATUS= /tmp/mypostscript |awk -F = '{print $2}'`
   if [ -z "$CNS" ] || [ "$CNS" != "'0'" -a   "$CNS" != "'N'"  -a  "$CNS" != "'n'" ]; then
@@ -345,7 +346,7 @@ fi
 #rm -f /tmp/mypostscript
 
 #tell user it is done when this is called by updatenode command
-if [ "$MODE" == "1" ] || [ "$MODE" == "2" ] || [ "$MODE" == "5" ]; then
+if [ "$MODE" = "1" ] || [ "$MODE" = "2" ] || [ "$MODE" = "5" ]; then
   echo "returned from postscript"
 fi
 
