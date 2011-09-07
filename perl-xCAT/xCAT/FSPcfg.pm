@@ -74,8 +74,7 @@ sub parse_args {
         "cec_off_policy",
         "resetnet",
         "sysname",
-        "pending_power_on_side",
-        "BSR"
+        "pending_power_on_side"
     );
     my @frame = (
 	"frame",
@@ -234,7 +233,7 @@ sub parse_args {
         $request->{method} = "resetnet";
         return( \%opt );
     }
-    if(exists($cmds{sysname}) or exists($cmds{pending_power_on_side}) or exists($cmds{BSR})) {
+    if(exists($cmds{sysname}) or exists($cmds{pending_power_on_side})) {
         $request->{hcp} = $request->{hwtype} eq 'frame' ? "bpa":"fsp";
         $request->{method} = "do_fspapi_function";
         return (\%opt);
@@ -309,9 +308,6 @@ sub parse_option {
             return ("Invalid pending_power_on_side param '$value'");
         }
     }
-    if ($command eq 'BSR') {
-        return ("BSR value can not be set");
-    }
     return undef;
 }
 sub check_node_info {
@@ -349,11 +345,6 @@ my %fspapi_action = (
                 frame => "set_ipl_param"
             }
         },
-        BSR => {
-            query => {
-                cec => "get_cec_bsr"
-            }    
-        }
 );
 sub do_process_query_res {
     my $name = shift;
@@ -375,11 +366,6 @@ sub do_process_query_res {
                 push @$result, [$name, $v, '1'];
                 return "Error";
             }
-        }
-    } elsif ($cmd =~ /^BSR$/) {
-        my @values = split(/\n/, @$res[1]);
-        foreach my $v (@values) {
-            push @$result, [$name, $v, '0'];
         }
     }
     return undef;
@@ -436,7 +422,7 @@ sub do_set {
             my $action = $fspapi_action{$cmd}{set}{@$d[4]};
             my $para = &do_set_get_para($name, $cmd, $value);
             my $values = xCAT::FSPUtils::fsp_api_action($name, $d, $action, 0, $para);
-#           print Dumper($values);
+            #print Dumper($values);
             &do_process_set_res($name, $cmd, \@result, $values);
             #my $res = &do_process_set_res($name, $cmd, \@result, $values);
             #if (defined($res)) {
@@ -453,7 +439,7 @@ sub do_fspapi_function {
     my @ret = ();
     my $res;
     my $args = $request->{arg};
-    my @fspapi_array = qw/sysname pending_power_on_side BSR/;
+    my @fspapi_array = qw/sysname pending_power_on_side/;
     my $invalid_node = &check_node_info($hash);
     if (defined($invalid_node)) {
         return ([[$invalid_node, "Node must be CEC or Frame", '1']]);
