@@ -619,6 +619,7 @@ sub decode_manufacturer {
         }
     ];
     my $arr_index = shift;
+    $arr_index = $arr_index & 0x7f;
     my $code = shift;
     unless ($code) {
         return "Malformed SPD";
@@ -749,11 +750,11 @@ sub decode_spd {
 				push @{$rethash->{product}->{extra}},"CRC Invalid!";
 		}
 	}
-	my $rawspd="SPD Dump: ";
-	foreach (@spd) {
-		$rawspd .= sprintf("%02X ",$_);
-	}
-	push @{$rethash->{product}->{extra}},$rawspd;
+	#my $rawspd="SPD Dump: ";
+	#foreach (@spd) {
+	#	$rawspd .= sprintf("%02X ",$_);
+	#}
+	#push @{$rethash->{product}->{extra}},$rawspd;
     } else {
         $rethash->{product}->{model}="Unrecognized SPD";
     } 
