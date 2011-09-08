@@ -1122,9 +1122,9 @@ sub power {
 	my $rc = 0;
 	my $text;
 	my $code;
-	$sessdata->{ipmisession}->subcmd(netfn=>0,command=>1,data=>[],callback=>\&power_with_chassisstatus,callback_args=>$sessdata);
+	$sessdata->{ipmisession}->subcmd(netfn=>0,command=>1,data=>[],callback=>\&power_with_context,callback_args=>$sessdata);
 }
-sub power_with_chassisstatus {
+sub power_with_context {
 	my $rsp = shift;
 	my $sessdata = shift;
 	my $text="";
@@ -1139,30 +1139,6 @@ sub power_with_chassisstatus {
 		return;
 	}
 	$sessdata->{powerstatus} = ($rsp->{data}->[0] & 1 ? "on" : "off");
-	$sessdata->{hardpowerstatus} = ($rsp->{data}->[0] & 1 ? "on" : "off"); #if get acpi state overrides, having this saved is handy
-	$sessdata->{ipmisession}->subcmd(netfn=>6,command=>7,data=>[],callback=>\&power_with_acpistate,callback_args=>$sessdata);
-}
-sub power_with_acpistate {
-	my $rsp = shift;
-	my $sessdata = shift;
-	my $text="";
-	if ($rsp->{error}) {
-		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
-		return;
-	}
-	if ($rsp->{code} != 0) {
-		$text = $codes{$rsp->{code}};
-		unless ($text) { $text = sprintf("Unknown error code %02xh",$rsp->{code}); }
-		xCAT::SvrUtils::sendmsg([1,$text],$callback,$sessdata->{node},%allerrornodes);
-		return;
-	}
-	my %acpistates = (
-		3 => "suspended",
-		4 => "hibernated",
-	);
-	if ($acpistates{$rsp->{data}->[0]}) { #if it's one of the above values, it is more specific than 'off|on"
-		$sessdata->{powerstatus} = $acpistates{$rsp->{data}->[0]};
-	}
 	if ($sessdata->{subcommand} eq "stat" or $sessdata->{subcommand} eq "state" or $sessdata->{subcommand} eq "status") { 
         if ($sessdata->{powerstatprefix}) {
 		    xCAT::SvrUtils::sendmsg($sessdata->{powerstatprefix}.$sessdata->{powerstatus},$callback,$sessdata->{node},%allerrornodes);
@@ -1177,7 +1153,6 @@ sub power_with_acpistate {
 	}
 	my $subcommand = $sessdata->{subcommand};
 	if ($sessdata->{subcommand} eq "boot") {
-		#TODO: if 'suspended', figure out platform response.  if 'hibernated', probably warn that it's really a resume
 		$text = $sessdata->{powerstatus}. " ";
 		$subcommand = ($sessdata->{powerstatus} eq "on" ? "reset" : "on");
 		$sessdata->{subcommand}=$subcommand; #lazy typing..
@@ -1189,29 +1164,16 @@ sub power_with_acpistate {
 		"reset" => 3,
 		"nmi" => 4
 		);
-	if($subcommand eq "on" or $subcommand eq "wake") {
+	if($subcommand eq "on") {
 		if ($sessdata->{powerstatus} eq "on") {
 			xCAT::SvrUtils::sendmsg("on",$callback,$sessdata->{node},%allerrornodes);
             $allerrornodes{$sessdata->{node}}=1;
 			return; # don't bother sending command
 		}
 	} elsif ($subcommand eq "softoff" or $subcommand eq "off" or $subcommand eq "reset") {
-		if ($sessdata->{powerstatus} eq "off" or $sessdata->{powerstatus} eq "hibernated") { #TODO: skip when suspended?  I could see reset/off to discard suspend state..
+		if ($sessdata->{powerstatus} eq "off") {
 			xCAT::SvrUtils::sendmsg("off",$callback,$sessdata->{node},%allerrornodes);
             $allerrornodes{$sessdata->{node}}=1;
-			return;
-		}
-	} elsif ($subcommand eq "suspend") {
-		if ($sessdata->{hardpowerstatus} eq "on") {
-			$sessdata->{ipmisession}->subcmd(netfn=>6,command=>6,data=>[0x83,0],callback=>\&power_response,callback_args=>$sessdata);
-			return;
-		} elsif ($sessdata->{powerstatus} eq "suspended") {
-			xCAT::SvrUtils::sendmsg("suspended",$callback,$sessdata->{node},%allerrornodes);
-            		$allerrornodes{$sessdata->{node}}=1;
-			return;
-		} else {
-			xCAT::SvrUtils::sendmsg($sessdata->{powerstatus},$callback,$sessdata->{node},%allerrornodes);
-            		$allerrornodes{$sessdata->{node}}=1;
 			return;
 		}
 	} elsif (not $argmap{$subcommand}) {
@@ -1228,7 +1190,7 @@ sub power_response {
 		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
 		return;
 	}
-#	my @returnd = ($rsp->{code},@{$rsp->{data}});
+	my @returnd = ($rsp->{code},@{$rsp->{data}});
 	if ($rsp->{code}) {
 		my $text = $codes{$rsp->{code}};
 		unless ($text) { $text = sprintf("Unknown response %02xh",$rsp->{code}); }
@@ -5288,7 +5250,7 @@ sub preprocess_request {
 				return 0;
 
 			}
-      if ( ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'suspend') && ($subcmd ne 'wake')) {
+      if ( ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot')) {
 	  $callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
 	  $request = {};
 	  return;
