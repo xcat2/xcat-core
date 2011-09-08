@@ -140,6 +140,12 @@ To create a dynamic node group definition called SLESNodes containing all the SL
 
  mkdef -t group -o SLESNodes -d -w "os=~^sles[0-9]+$"
 
+=item 10.
+
+To create a entry (7.0) in the policy table for user admin1 
+
+ mkdef -t policy -o 7.0 name=admin1 rule=allow 
+
 =back
 
 

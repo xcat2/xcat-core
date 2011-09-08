@@ -154,6 +154,12 @@ To change the node hwtype, this command will change the value of ppc.nodetype.
 
  chdef -t node -o node1 hwtype=lpar
 
+=item 11.
+
+To change the policy table for policy number 7.0 for admin1
+
+ chdef -t policy -o 7.0 name=admin1 rule=allow 
+
 =back
 
 
