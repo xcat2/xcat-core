@@ -19,7 +19,7 @@ master=$MASTER  # this is the ip for the nodes xcatmaster attribute
 domain=$DOMAIN  # this is the domain name used in this cluster
 node=$NODE
 
-if [[ -n "$master" ]] && [[ -n "$domain" ]]; then
+if [ -n "$master" ] && [ -n "$domain" ]; then
 
 	#logger -t xcat "Created /etc/resolv.conf file on $node."
 	cp $conf_file $conf_file_bak > /dev/null 2>&1
