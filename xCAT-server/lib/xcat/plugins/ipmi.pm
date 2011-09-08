@@ -1122,6 +1122,27 @@ sub power {
 	my $rc = 0;
 	my $text;
 	my $code;
+        if (not $sessdata->{acpistate} and $sessdata->{mfg_id} == 20301) { #Only implemented for IBM servers
+		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[],callback=>\&power_with_acpi,callback_args=>$sessdata);
+	} else {
+		$sessdata->{ipmisession}->subcmd(netfn=>0,command=>1,data=>[],callback=>\&power_with_context,callback_args=>$sessdata);
+	}
+}
+sub power_with_acpi {
+	my $rsp = shift;
+	my $sessdata = shift;
+	if ($rsp->{error}) {
+		xCAT::SvrUtils::sendmsg([1,$rsp->{error}],$callback,$sessdata->{node},%allerrornodes);
+		return;
+	}
+	if ($rsp->{code} == 0) {
+		if ($rsp->{data}->[0] == 3) {
+			$sessdata->{acpistate} = "suspend";
+		}
+	}
+		#unless ($text) { $text = sprintf("Unknown error code %02xh",$rsp->{code}); }
+		#xCAT::SvrUtils::sendmsg([1,$text],$callback,$sessdata->{node},%allerrornodes);
+	#}
 	$sessdata->{ipmisession}->subcmd(netfn=>0,command=>1,data=>[],callback=>\&power_with_context,callback_args=>$sessdata);
 }
 sub power_with_context {
@@ -1139,11 +1160,18 @@ sub power_with_context {
 		return;
 	}
 	$sessdata->{powerstatus} = ($rsp->{data}->[0] & 1 ? "on" : "off");
+	my $reportstate;
+	if ($sessdata->{acpistate}) {
+		$reportstate = $sessdata->{acpistate};
+	} else {
+		$reportstate = $sessdata->{powerstatus};
+	}
+		
 	if ($sessdata->{subcommand} eq "stat" or $sessdata->{subcommand} eq "state" or $sessdata->{subcommand} eq "status") { 
         if ($sessdata->{powerstatprefix}) {
-		    xCAT::SvrUtils::sendmsg($sessdata->{powerstatprefix}.$sessdata->{powerstatus},$callback,$sessdata->{node},%allerrornodes);
+		    xCAT::SvrUtils::sendmsg($sessdata->{powerstatprefix}.$reportstate,$callback,$sessdata->{node},%allerrornodes);
         } else {
-		    xCAT::SvrUtils::sendmsg($sessdata->{powerstatus},$callback,$sessdata->{node},%allerrornodes);
+		    xCAT::SvrUtils::sendmsg($reportstate,$callback,$sessdata->{node},%allerrornodes);
         }
         if ($sessdata->{sensorstoread} and scalar @{$sessdata->{sensorstoread}}) { #if we are in an rvitals path, hook back into good graces
             $sessdata->{currsdr} = shift @{$sessdata->{sensorstoread}};
@@ -1166,6 +1194,11 @@ sub power_with_context {
 		);
 	if($subcommand eq "on") {
 		if ($sessdata->{powerstatus} eq "on") {
+			if ($sessdata->{acpistate} eq "suspend") { #ok, make this a wake
+				$sessdata->{subcommand}="wake";
+				$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[0,0],callback=>\&power_response,callback_args=>$sessdata);
+				return;
+			} 
 			xCAT::SvrUtils::sendmsg("on",$callback,$sessdata->{node},%allerrornodes);
             $allerrornodes{$sessdata->{node}}=1;
 			return; # don't bother sending command
@@ -1176,6 +1209,11 @@ sub power_with_context {
             $allerrornodes{$sessdata->{node}}=1;
 			return;
 		}
+	} elsif ($subcommand eq "suspend") {
+		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[0,3],callback=>\&power_response,callback_args=>$sessdata);
+		return;
+	} elsif ($subcommand eq "wake") {
+		$sessdata->{ipmisession}->subcmd(netfn=>0x3a,command=>0x1d,data=>[0,0],callback=>\&power_response,callback_args=>$sessdata);
 	} elsif (not $argmap{$subcommand}) {
 		xCAT::SvrUtils::sendmsg([1,"unsupported command power $subcommand"],$callback);
 		return;
@@ -5250,7 +5288,7 @@ sub preprocess_request {
 				return 0;
 
 			}
-      if ( ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot')) {
+      if ( ($subcmd ne 'stat') && ($subcmd ne 'state') && ($subcmd ne 'status') && ($subcmd ne 'on') && ($subcmd ne 'off') && ($subcmd ne 'softoff') && ($subcmd ne 'nmi')&& ($subcmd ne 'cycle') && ($subcmd ne 'reset') && ($subcmd ne 'boot') && ($subcmd ne 'wake') && ($subcmd ne 'suspend')) {
 	  $callback->({data=>["Unsupported command: $command $subcmd", $usage_string]});
 	  $request = {};
 	  return;
