@@ -11,13 +11,25 @@ sitemaster=$SITEMASTER
 conf_file="/etc/ntp.conf"
 conf_file_org="/etc/ntp.conf.org"
 conf_file_backup="/etc/ntp.conf.postbackup"
+
+# pmatch determines if 1st argument string is matched by 2nd argument pattern
+
+pmatch ()
+{
+  case $1 in
+    $2) return 0;;  # zero return code means string matched by pattern
+  esac
+
+  return 1          # non-zero return code means string not matched by pattern
+}
+
 logger -t xcat "Install: Setup NTP"
 # if master is the sitemaster, then use the ntpservers defined in the site
 # table, if they exist. If they don't exist, do not setup ntp
 # else use the master which should be a service node
-if [ "$master" ==  "$sitemaster" ]; then
+if [ "$master" =  "$sitemaster" ]; then
   if [ $NTPSERVERS ]; then
-        if [ "$NODESETSTATE" == "statelite" ]; then
+        if [ "$NODESETSTATE" = "statelite" ]; then
             cp -a $conf_file $conf_file_org
             echo  "" > $conf_file
         else
@@ -38,7 +50,7 @@ if [ "$master" ==  "$sitemaster" ]; then
 
   fi
 else
-    if [ "$NODESETSTATE" == "statelite" ]; then
+    if [ "$NODESETSTATE" = "statelite" ]; then
         cp -a $conf_file $conf_file_org
         echo  "" > $conf_file
     else
@@ -51,8 +63,8 @@ else
     echo "server $master" >$conf_file
 fi
 
-
-if [[ $OSTYPE = linux* ]]; then
+OS_TYPE=`uname`
+if [ $OS_TYPE = Linux ]; then
   mkdir -p /var/lib/ntp
   chown ntp /var/lib/ntp
   echo "driftfile /var/lib/ntp/drift
@@ -61,14 +73,14 @@ restrict 127.0.0.1" >>$conf_file
 # default service for redhat/fedora
 SERVICE=ntpd
 echo $SERVICE
-if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ] || ( pmatch $OSVER "ubuntu*" ); then
   SERVICE=ntp
 fi
 
 #service ntpd restart 
   service $SERVICE stop 
 #ntpdate program is deprecated on SuSE
-if [[ $OSVER = sles* ]] || [[ $OSVER = suse* ]] || [[ -f /etc/SuSE-release ]]; then
+if ( pmatch $OSVER "sles*" ) || ( pmatch $OSVER "suse*" ) || [ -f /etc/SuSE-release ]; then
   logger -t xcat "ntpd -q -g"
   ntpd -q -g
   if [ "$?" != "0" ]
