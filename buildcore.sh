@@ -373,8 +373,10 @@ fi
 if [ ! -e core-snap ]; then
 	ln -s xcat-core core-snap
 fi
-while ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/$YUM/$REL/
-do : ; done
+if [ "$REL" = "devel" -o "$PREGA" != 1 ]; then
+	while ! rsync -urLv --delete $CORE $UPLOADUSER,xcat@web.sourceforge.net:htdocs/$YUM/$REL/
+	do : ; done
+fi
 
 # Upload the individual source RPMs to sourceforge
 while ! rsync -urLv --delete $SRCD $UPLOADUSER,xcat@web.sourceforge.net:htdocs/$YUM/$REL/
