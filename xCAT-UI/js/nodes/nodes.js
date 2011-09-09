@@ -11,8 +11,6 @@ var nodeAttrs;
 var nodesList;
 // Nodes datatable ID
 var nodesTableId = 'nodesDatatable';
-// provision clock for provision progress stop
-var provisionClock;
 
 /**
  * Set node tab
@@ -66,13 +64,9 @@ function loadNodesPage() {
 		$('#content').append(groups);
 		$('#content').append(nodes);
 
-		// Create loader
-		var loader = createLoader();
-		groups.append(loader);
-		
-		// Create info bar
-		var info = createInfoBar('Select a group to view its nodes.');
-		$('#nodes').append(info);
+		// Create loader and info bar
+		groups.append(createLoader());
+		$('#nodes').append(createInfoBar('Select a group to view its nodes.'));
 
 		// Get groups
 		$.ajax( {
@@ -85,19 +79,20 @@ function loadNodesPage() {
 				msg : ''
 			},
 
+			// Load groups
 			success : function(data){
 				loadGroups(data);
-				var cookiegroup = $.cookie('selectgrouponnodes');
-				if (cookiegroup){
-					
+				
+				var cookieGroup = $.cookie('selectgrouponnodes');
+				if (cookieGroup) {
 					$('#groups .groupdiv div').each(function(){
-						if ($(this).text() == cookiegroup){
+						if ($(this).text() == cookieGroup){
 							$(this).trigger('click');
 							return false;
 						}
 					});
-				}else{
-					// triggle the first group click event
+				} else {
+					// Trigger the first group click event
 					$('#groups .groupdiv div').eq(0).trigger('click');
 				}
 			}
@@ -106,23 +101,24 @@ function loadNodesPage() {
 }
 
 /**
- * show cluster's summary in pie chats
+ * Show cluster summary in pie charts
  * 
+ * @param groupName
+ * 				Group name
  * @return Nothing
  */
-function loadPieSummary(groupname){
+function loadPieSummary(groupName){
     var summaryTable = '<table style="border: 0px none;">' +
                        '<tr>' +
-                       '<td><div id="statuspie" class="summarypie"></div></td>' +
-                       '<td><div id="ospie" class="summarypie"></div></td>' +
-                       '<td><div id="archpie" class="summarypie"></div></td>' +
+                       		'<td><div id="statuspie" class="summarypie"></div></td>' +
+                       		'<td><div id="ospie" class="summarypie"></div></td>' +
+                       		'<td><div id="archpie" class="summarypie"></div></td>' +
                        '</tr>' +
                        '<tr>' +
-                       '<td><div id="provmethodpie" class="summarypie"></td>' +
-                       '<td><div id="nodetypepie" class="summarypie"></div></td>' +
+                       		'<td><div id="provmethodpie" class="summarypie"></td>' +
+                       		'<td><div id="nodetypepie" class="summarypie"></div></td>' +
                        '</tr></table>';
     $('#summaryTab').append(summaryTable);
-
     $('#summaryTab .summarypie').append(createLoader());
     
     $.ajax({
@@ -131,11 +127,12 @@ function loadPieSummary(groupname){
         data : {
             cmd : 'webrun',
             tgt : '',
-            args : 'summary;' + groupname,
+            args : 'summary;' + groupName,
             msg : '' 
         },
-        success:function(data){
-             for(var i in data.rsp){
+        
+        success:function(data) {
+             for (var i in data.rsp) {
                  drawPieSummary(i, data.rsp[i]);
              }
         }
@@ -143,24 +140,28 @@ function loadPieSummary(groupname){
 }
 
 /**
- * use nodels to get nodes' information and call jqplot to draw on the page
+ * Get nodes information and draw pie chart
  * 
+ * @param index
+ * 			Node index
+ * @param valuePair
+ * 			Node information key value pairing
  * @return Nothing
  */
-function drawPieSummary(index, valuepair){
+function drawPieSummary(index, valuePair){
 	var position = 0;
 	var key = '';
 	var val = '';
-	var chattitle = '';
+	var chartTitle = '';
 	var dataArray = [];
 	var tempArray = [];
 	var container = $('#summaryTab .summarypie').eq(index);
 	
-	position = valuepair.indexOf('=');
-	chattitle = valuepair.substr(0, position);
-	tempArray = valuepair.substr(position + 1).split(';');
+	position = valuePair.indexOf('=');
+	chartTitle = valuePair.substr(0, position);
+	tempArray = valuePair.substr(position + 1).split(';');
     
-	for (var i in tempArray){
+	for (var i in tempArray) {
 	    position = tempArray[i].indexOf(':');
 	    key = tempArray[i].substr(0, position);
 	    val = Number(tempArray[i].substr(position + 1));
@@ -168,10 +169,9 @@ function drawPieSummary(index, valuepair){
 	}
                 
 	container.empty();
-	var plot = $.jqplot(container.attr('id'),
-			[dataArray],
-			{
-                title: chattitle,
+	
+	var plot = $.jqplot(container.attr('id'), [dataArray], {
+				title: chartTitle,
     	        seriesDefaults: {
             	renderer: $.jqplot.PieRenderer,
     	        rendererOptions: {
@@ -190,31 +190,42 @@ function drawPieSummary(index, valuepair){
                     location: 'e'
                 }
             });
-	//container.bind('jqplotDataClick',loadSummaryDetail);
-	//container.bind('jqplotDataHighlight',function(){this.style.cursor='pointer';});
-	//container.bind('jqplotDataUnhighlight',function(){this.style.cursor='';});
+	
+//	container.bind('jqplotDataClick',loadSummaryDetail);
+//	container.bind('jqplotDataHighlight',function(){this.style.cursor='pointer';});
+//	container.bind('jqplotDataUnhighlight',function(){this.style.cursor='';});
 }
 
+/**
+ * Load node summary details
+ * 
+ * @param ev
+ * @param seriesIndex
+ * @param pointIndex
+ * @param data
+ * @return Nothing
+ */
 function loadSummaryDetail(ev, seriesIndex, pointIndex, data){
 	var temp = $(this).attr('id');
 	temp = temp.replace('pie', '');
 	var table = '';
-	switch(temp){
+	switch (temp) {
 	    case 'os':
+	    	break;
 	    case 'arch':
+	    	break;
 	    case 'provmethod':
-	    case 'nodetype':{
+	    	break;
+	    case 'nodetype':
 	        table = 'nodetype';
-	    }
-        break;
-	    case 'status': {
+        	break;
+	    case 'status':
 	        table = 'nodelist';
-	    }
-	    break;
+	    	break;
 	}
 
 	var args = table + '.' + temp + '==';
-	if(data[0] != 'unknown'){
+	if (data[0] != 'unknown') {
 	    args += data[0];
 	}
 	
@@ -226,7 +237,7 @@ function loadSummaryDetail(ev, seriesIndex, pointIndex, data){
  * 
  * @param data
  *            Data returned from HTTP request
- * @return
+ * @return Nothing
  */
 function loadGroups(data) {
 	// Remove loader
@@ -246,15 +257,15 @@ function loadGroups(data) {
 	
 	$('#groups').append(grouplist);
 	
-	// bind the click event
+	// Bind the click event
 	$('#groups .groupdiv div').bind('click', function(){
 	    var thisGroup = $(this).text();
 	    $('#groups .groupdiv div').removeClass('selectgroup');
-
 	    $(this).addClass('selectgroup');
+	    
 	    drawNodesArea(thisGroup,'',thisGroup);
 	    
-	    //save the selected groups into cookie
+	    // Save selected group into cookie
 	    $.cookie('selectgrouponnodes', thisGroup, { expires: 7 });
 	});
 	
@@ -264,13 +275,15 @@ function loadGroups(data) {
 }
 
 /**
- * empty the nodes area, and add two tabs for add loading nodes result
+ * Empty the nodes area and add two tabs for nodes result
  * 
- * @param targetgroup: the name range for nodels command
- *        arguments: filter arguments for nodels command
- *        message: the useful information for the http request
- *            
- * @return
+ * @param targetgroup
+ * 			The name range for nodels command
+ * @param cmdargs
+ * 			Filter arguments for nodels command
+ * @param message
+ * 			The useful information from the HTTP request
+ * @return Nothing
  */
 function drawNodesArea(targetgroup, cmdargs, message){
 	// Clear nodes division
@@ -289,13 +302,15 @@ function drawNodesArea(targetgroup, cmdargs, message){
     tab.add('graphTab', 'Graphic', '', false);
     
     $('#nodesPageTabs').bind('tabsselect', function(event, ui){
-        // for the graphical tab, we should check the graphical data first
-        if (2 == ui.index){
+        // For the graphical tab, check the graphical data first
+        if (ui.index == 2){
             createPhysicalLayout(nodesList);
         }
     });
     
+    // Load group's summary pie charts
     loadPieSummary(targetgroup);
+    
     // To improve performance, get all nodes within selected group
     // Get node definitions only for first 50 nodes
     $.ajax( {
@@ -572,7 +587,7 @@ function loadNodes(data) {
 		var nodeLink = $('<a class="node" id="' + node + '">' + node + '</a>').bind('click', loadNode);
 		
 		// If there is no status attribute for the node, do not try to access hash table
-		// Else the code will break
+		// else the code will break
 		var status = '';
 		if (attrs[node]['status']) {
 			status = attrs[node]['status'].replace('sshd', 'ping');
@@ -584,7 +599,7 @@ function loadNodes(data) {
 		// If the node attributes are known (i.e the group is known)
 		if (attrs[node]['groups']) {
 			// Put in comments
-			var comments = attrs[node]['usercomment'];			
+			var comments = attrs[node]['usercomment'];		
 			// If no comments exists, show 'No comments' and set icon image source
 			var iconSrc;
 			if (!comments) {
@@ -652,8 +667,7 @@ function loadNodes(data) {
 	var actionBar = $('<div class="actionBar"></div>');
 
 	/**
-	 * Create menu for actions to perform against a given node:
-	 * power, clone, delete, unlock, and advanced
+	 * Create menu for actions to perform against a given node
 	 */
 
 	// Power on
@@ -674,8 +688,6 @@ function loadNodes(data) {
 		}
 	});
 	
-	var monitorLnk = $('<a>Monitor</a>');
-
 	// Turn monitoring on
 	var monitorOnLnk = $('<a>Monitor on</a>');
 	monitorOnLnk.click(function() {
@@ -782,12 +794,13 @@ function loadNodes(data) {
 		}
 	});
 	
+	// Provision node
 	var provisionLnk = $('<a>Provision</a>');
-	provisionLnk.click(function(){
+	provisionLnk.click(function() {
 	    var tgtNodes = getNodesChecked(nodesTableId);
 	    if (tgtNodes){
-	        //jump to the provision page directly
-	        jumpProvision(tgtNodes);
+	        // Jump directly to the provision page
+	        jump2Provision(tgtNodes);
 	    }
 	});
 
@@ -818,23 +831,24 @@ function loadNodes(data) {
 		}
 	});
 	
-	// actions (power monitor)
-	var powerLnk = '<a>Actions</a>';
-	var powerActionMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, scriptLnk]);
-	
-	// configurations
+	// Actions
+	var actionsLnk = '<a>Actions</a>';
+	var actsMenu = createMenu([cloneLnk, deleteLnk, monitorOnLnk, monitorOffLnk, powerOnLnk, powerOffLnk, scriptLnk]);
+
+	// Configurations
 	var configLnk = '<a>Configuration</a>';
 	var configMenu = createMenu([unlockLnk, updateLnk, editProps, installMonLnk]);
-	// Advanced actions
-	var advancedLnk = '<a>Provision</a>';
-	var advancedActionMenu = createMenu([ boot2NetworkLnk, setBootStateLnk, rcons, provisionLnk]);
+
+	// Provision
+	var provLnk = '<a>Provision</a>';
+	var provMenu = createMenu([ boot2NetworkLnk, setBootStateLnk, rcons, provisionLnk]);
 
 	// Create an action menu
-	var actionsMenu = createMenu([ [ powerLnk, powerActionMenu ], [ configLnk, configMenu ],  [ advancedLnk, advancedActionMenu ] ]);
+	var actionsMenu = createMenu([ [ actionsLnk, actsMenu ], [ configLnk, configMenu ],  [ provLnk, provMenu ] ]);
 	actionsMenu.superfish();
 	actionsMenu.css('display', 'inline-block');
 	actionBar.append(actionsMenu);
-	
+
 	// Insert action bar and nodes datatable
 	$('#nodesTab').append(nodesTable.object());
 		
@@ -941,8 +955,8 @@ function loadNodes(data) {
 	// Do not make 1st, 2nd, 3rd, 4th, 5th, or 6th column editable
 	$('#' + nodesTableId + ' td:not(td:nth-child(1),td:nth-child(2),td:nth-child(3),td:nth-child(4),td:nth-child(5),td:nth-child(6))').editable(
 		function(value, settings) {		
-		    //if users did not do changes, return the value directly
-		    //jeditable save the old value in this.revert
+		    // If users did not make changes, return the value directly
+		    // jeditable saves the old value in this.revert
 		    if ($(this).attr('revert') == value){
 		        return value;
 		    }
@@ -984,7 +998,7 @@ function loadNodes(data) {
         		success: showChdefOutput
         	});
         	
-        	//save the data into global origAttrs
+        	// Save the data into global origAttrs
         	origAttrs[node][attrName] = value;
 
 			return value;
@@ -992,7 +1006,7 @@ function loadNodes(data) {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',
 			placeholder: ' ',
-			event : "dblclick", //double click and edit
+			event : "dblclick", // Double click and edit
 			height : '30px' 	// The height of the text area
 		});
 	
@@ -1021,6 +1035,7 @@ function loadNodes(data) {
 		// Hide status loader
 		var statCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
 		statCol.find('img').hide();
+		adjustColumnSize();
 	}
 	
 	if (undefined == nodeAttrs){
@@ -1336,7 +1351,7 @@ function addNodes2Table(data) {
 			onblur : 'submit', 	// Clicking outside editable area submits changes
 			type : 'textarea',
 			placeholder: ' ',
-			event : "dblclick",
+			event : 'dblclick',
 			height : '30px' 	// The height of the text area
 		});
 	
@@ -2205,30 +2220,28 @@ function setOSImageCookies(data) {
 	var profilePos = 0;
 	var osversPos = 0;
 	var osarchPos = 0;
-	// get the column value
+	
+	// Get column value
 	var colNameArray = rsp[0].substr(1).split(',');
 	for (var i in colNameArray){
 		switch (colNameArray[i]){
-			case 'imagename': {
+			case 'imagename':
 				imagePos = i;
-			}
-			break;
-			case 'profile':{
+				break;
+			case 'profile':
 				profilePos = i;
-			}
-			break;
-			case 'osvers':{
+				break;
+			case 'osvers':
 				osversPos = i;
-			}
-			break;
-			case 'osarch':{
+				break;
+			case 'osarch':
 				osarchPos = i;
-			}
-			break;
+				break;
 			default :
-			break;
+				break;
 		}
 	}
+	
 	// Go through each index
 	for (var i = 1; i < rsp.length; i++) {
 		// Get image name
@@ -2789,9 +2802,7 @@ function editNodeProps(tgtNode) {
 		}
 	});
 
-	/**
-	 * Save
-	 */
+	// Save changes
 	var saveBtn = createButton('Save');
 	saveBtn.click(function() {	
 		// Get all inputs
@@ -2837,9 +2848,7 @@ function editNodeProps(tgtNode) {
 	});
 	editPropsForm.append(saveBtn);
 	
-	/**
-	 * Cancel
-	 */
+	// Cancel changes
 	var cancelBtn = createButton('Cancel');
 	cancelBtn.click(function() {
 		// Close the tab
@@ -3019,10 +3028,9 @@ function openSetAttrsDialog() {
 function monitorNode(node, monitor) {
 	if (monitor == 'on') {
 		// Append loader to warning bar
-		var gangliaLoader = createLoader('');
 		var warningBar = $('#nodesTab').find('.ui-state-error p');
 		if (warningBar.length) {
-			warningBar.append(gangliaLoader);
+			warningBar.append(createLoader(''));
 		}
 
 		if (node) {
@@ -3147,8 +3155,10 @@ function installGanglia(node) {
 }
 
 /**
- * when nodes are loaded, based on different hardware architecture, should load different informations
+ * After nodes are loaded, load more information based on different hardware architectures 
  * 
+ * @param group
+ * 			Group name
  * @return Nothing
  */
 function advancedLoad(group){
@@ -3157,27 +3167,28 @@ function advancedLoad(group){
     var colNameHash = new Object();
     var colName = '';
     var archCol = 0, hcpCol = 0;
-    // find out the column name and their index
+    
+    // Find out the column name and their index
     for (tempIndex = 0; tempIndex < tableHeaders.size(); tempIndex++){
         var header = tableHeaders.eq(tempIndex);
-        // if link header(status, power, monitor) can dump to next one
+        // Skip headers that are links, e.g. status, power, and monitor
         if (header.find('a').size() > 0){
             continue;
         }
         
         colName = header.text();
         
-        if (colName){
+        if (colName) {
             colNameHash[colName] = tempIndex;
         }
     }
     
-    // there is not arch column, can not distinguish hardware type return directly
-    if (!colNameHash['arch']){
+    // If there is no arch column, exit because you cannot distinguish hardware type
+    if (!colNameHash['arch']) {
         return;
     }
     
-    if (!colNameHash['hcp']){
+    if (!colNameHash['hcp']) {
         return;
     }
     archCol = colNameHash['arch'];
@@ -3223,56 +3234,59 @@ function advancedLoad(group){
 }
 
 /**
- * when click the provison button, show this dislog for provision
- * this is the quick way to deploy on the nodes page. 
+ * Jump to provision page onclick
  * 
+ * @param tgtNodes
+ * 			Target nodes
  * @return Nothing
  */
-function jumpProvision(tgtnodes){
-    var nodeArray = tgtnodes.split(',');
+function jump2Provision(tgtNodes){
+    var nodeArray = tgtNodes.split(',');
     var nodeName = '';
     var index = 0;
-    var archtype = '';
-    var errormessage = '';
+    var archType = '';
+    var errorMsg = '';
     var master = '';
     var tftpserver = '';
     var nfsserver = '';
     var diaDiv = $('<div title="Provision (only supported for Linux)" class="form" id="deployDiv"></div>');
-    // check the first node's arch type
+    
+    // Check the first node's arch type
     for (index in nodeArray){
         nodeName = nodeArray[index];
-        // does not have arch
+        
+        // Skip if node does not have arch
         if (!origAttrs[nodeName]['arch']){
-            errormessage = 'All nodes should have arch defined first!';
+            errorMsg = 'Nodes should have arch defined!';
             break;
         }
         
-        if (0 == index){
-            archtype = origAttrs[nodeName]['arch'];
+        if (0 == index) {
+            archType = origAttrs[nodeName]['arch'];
         }
         
-        // all nodes should have same archtype
-        if (archtype != origAttrs[nodeName]['arch']){
-            errormessage = 'All nodes should belong to the same arch!<br/>';
+        // Skip if nodes do not have same arch
+        if (archType != origAttrs[nodeName]['arch']){
+            errorMsg = 'Nodes should belong to the same arch!<br/>';
             break;
         }
     }
 
-    // check the mac address
+    // Skip if nodes do not have MAC address
     for (index in nodeArray){
         if (!origAttrs[nodeName]['mac'] || !origAttrs[nodeName]['ip']){
-            errormessage += 'All nodes should have the IP and MAC defined!<br/>';
+            errorMsg += 'Nodes should have the IP and MAC addresses defined!<br/>';
             break;
         }
     }
     
-    if (-1 != archtype.indexOf('390')){
-        errormessage += 'Please use the provision page.';
+    if (archType.indexOf('390') != -1) {
+        errorMsg += 'Please use the provision page.';
     }
     
-    // error message should show in a dialog
-    if ('' != errormessage){
-        diaDiv.append(createWarnBar(errormessage));
+    // Open dialog to show error message
+    if ('' != errorMsg){
+        diaDiv.append(createWarnBar(errorMsg));
         diaDiv.dialog({
             modal: true,
             width: 400,
@@ -3286,22 +3300,25 @@ function jumpProvision(tgtnodes){
         return;
     }
     
-    if (origAttrs[nodeName]['xcatmaster']){
+    if (origAttrs[nodeName]['xcatmaster']) {
     	master = origAttrs[nodeName]['xcatmaster'];
     }
     
-    if (origAttrs[nodeName]['tftpserver']){
+    if (origAttrs[nodeName]['tftpserver']) {
     	tftpserver = origAttrs[nodeName]['tftpserver'];
     }
     
-    if (origAttrs[nodeName]['nfsserver']){
+    if (origAttrs[nodeName]['nfsserver']) {
     	nfsserver = origAttrs[nodeName]['nfsserver'];
     }
-    window.location.href = 'provision.php?nodes=' + tgtnodes + '&arch=' + archtype + '&master=' + master +
+    window.location.href = 'provision.php?nodes=' + tgtNodes + '&arch=' + archType + '&master=' + master +
                            '&tftpserver=' + tftpserver + '&nfsserver=' + nfsserver;
 }
+
 /**
  * Adjust datatable column size
+ * 
+ * @return Nothing
  */
 function adjustColumnSize() {
 	var cols = $('#' + nodesTableId).find('tbody tr:eq(0) td');
