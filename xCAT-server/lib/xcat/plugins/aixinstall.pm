@@ -147,10 +147,21 @@ sub preprocess_request
     my $nimprime = xCAT::InstUtils->getnimprime();
     chomp $nimprime;
     my $nimprimeip = xCAT::NetworkUtils->getipaddr($nimprime);
-    if ($nimprimeip =~ /:/) #IPv6, needs NFSv4 support
+    if ($nimprimeip =~ /:/) #IPv6
     {
-        $::NFSV4 = 1;
+        $::IPv6 = 1;
     }
+
+    my $sitetab = xCAT::Table->new('site');
+    my $nfsv4entry = $sitetab->getAttribs({'key' => 'useNFSv4onAIX'}, 'value');
+    if($nfsv4entry and defined ($nfsv4entry->{'value'}))
+    {
+        if ($nfsv4entry->{value}  =~ /1|Yes|yes|YES|Y|y/)
+        { 
+            $::NFSv4 = 1;
+        }
+    }
+    $sitetab->close;
 
     #exit if preprocessed
     # if ($req->{_xcatpreprocessed}->[0] == 1) { return [$req]; }
@@ -471,6 +482,17 @@ sub process_request
         xCAT::MsgUtils->message("E", $rsp, $callback);
     }
         
+    my $sitetab = xCAT::Table->new('site');
+    my $nfsv4entry = $sitetab->getAttribs({'key' => 'useNFSv4onAIX'}, 'value');
+    if($nfsv4entry and defined ($nfsv4entry->{'value'}))
+    {
+        if ($nfsv4entry->{value}  =~ /1|Yes|yes|YES|Y|y/)
+        { 
+            $::NFSv4 = 1;
+        }
+    }
+    $sitetab->close;
+
     # figure out which cmd and call the subroutine to process
     if ($command eq "mkdsklsnode")
     {
@@ -597,7 +619,6 @@ sub nimnodeset
 					'p|primarySN' => \$::PRIMARY,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
-                    'nfsv4'     => \$::NFSV4,
         )
       )
     {
@@ -2047,7 +2068,6 @@ sub mknimimage
                     'u|update'     => \$::UPDATE,
                     'verbose|V'    => \$::VERBOSE,
                     'v|version'    => \$::VERSION,
-                    'nfsv4'        => \$::NFSV4,
         )
       )
     {
@@ -2210,7 +2230,7 @@ sub mknimimage
 			$loc = "$install_dir/nim";
 		}
 
-        if ($::NFSV4)
+        if ($::IPv6)
         {
             #nim_master_setup does not support IPv6, needs to use separate nim commands
             #1. start ndpd-host service for IPv6
@@ -2525,6 +2545,66 @@ sub mknimimage
         }
     }
 
+
+    if ($::NFSv4)
+    {
+        my $nimcmd = qq~chnfsdom~;
+        my $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
+        if ($::RUNCMD_RC != 0)
+        {
+            my $rsp;
+            push @{$rsp->{data}}, "Could not get NFSv4 domain setting.\n";
+            if ($::VERBOSE)
+            {
+                push @{$rsp->{data}}, "$nimout";
+            }
+            xCAT::MsgUtils->message("E", $rsp, $callback);
+            return 1;
+        }
+        # NFSv4 domain is not set yet
+        if ($nimout =~ /N\/A/)
+        {
+            my $sitetab = xCAT::Table->new('site');
+            my ($tmp) = $sitetab->getAttribs({'key' => 'domain'}, 'value');
+            my $domain = $tmp->{value};
+            $sitetab->close;
+            if (!$domain)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Can not determine domain name, check site table.\n";
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+            $nimcmd = qq~chnfsdom $domain~;
+            $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not change NFSv4 domain to $domain.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+
+            #nim -o change -a nfs_domain=$nfsdom master
+            $nimcmd = qq~nim -o change -a nfs_domain=$domain master~;
+            $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
+            if ($::RUNCMD_RC != 0)
+            {
+                my $rsp;
+                push @{$rsp->{data}}, "Could not set NFSv4 domain with nim master.\n";
+                if ($::VERBOSE)
+                {
+                    push @{$rsp->{data}}, "$nimout";
+                }
+                xCAT::MsgUtils->message("E", $rsp, $callback);
+                return 1;
+            }
+        }
+    }
     #
     #  get list of defined xCAT osimage objects
     #
@@ -3444,7 +3524,7 @@ sub mk_lpp_source
 
             # check for relevant cmd line attrs
             my %cmdattrs;
-            if ( ($::NFSV4) && (!$attrres{nfs_vers}) )
+            if ( ($::NFSv4) && (!$attrres{nfs_vers}) )
             {
                 $cmdattrs{nfs_vers}=4;
             }
@@ -3598,7 +3678,7 @@ sub mk_lpp_source
 
 			# check for relevant cmd line attrs
 			my %cmdattrs;
-			if ( ($::NFSV4) && (!$attrres{nfs_vers}) )
+			if ( ($::NFSv4) && (!$attrres{nfs_vers}) )
 			{
 				$cmdattrs{nfs_vers}=4;
 			}
@@ -3817,7 +3897,7 @@ sub mk_spot
 
 			# check for relevant cmd line attrs
 			my %cmdattrs;
-			if ( ($::NFSV4) && (!$attrres{nfs_vers}) )
+			if ( ($::NFSv4) && (!$attrres{nfs_vers}) )
 			{
 				$cmdattrs{nfs_vers}=4;
 			}
@@ -4045,7 +4125,7 @@ sub mk_bosinst_data
 
 			# check for relevant cmd line attrs
 			my %cmdattrs;
-			if ( ($::NFSV4) && (!$attrres{nfs_vers}) )
+			if ( ($::NFSv4) && (!$attrres{nfs_vers}) )
 			{
 				$cmdattrs{nfs_vers}=4;
 			}
@@ -4504,7 +4584,7 @@ sub chk_resolv_conf
             	$cmd = "/usr/sbin/nim -o define -t resolv_conf -a server=master ";
 				# check for relevant cmd line attrs
 				my %cmdattrs;
-				if ( ($::NFSV4) && (!$attrres{nfs_vers}) )
+				if ( ($::NFSv4) && (!$attrres{nfs_vers}) )
 				{
 					$cmdattrs{nfs_vers}=4;
 				}
@@ -4657,7 +4737,7 @@ sub mk_resolv_conf
 
 				# check for relevant cmd line attrs
 				my %cmdattrs;
-				if ( ($::NFSV4) && (!$attrres{nfs_vers}) )
+				if ( ($::NFSv4) && (!$attrres{nfs_vers}) )
 				{
 					$cmdattrs{nfs_vers}=4;
 				}
@@ -4806,7 +4886,7 @@ sub mk_mksysb
 
 				# check for relevant cmd line attrs
 				my %cmdattrs;
-				if ( ($::NFSV4) && (!$attrres{nfs_vers}) )
+				if ( ($::NFSv4) && (!$attrres{nfs_vers}) )
 				{
 					$cmdattrs{nfs_vers}=4;
 				}
@@ -4850,7 +4930,7 @@ sub mk_mksysb
 
                 # def res with existing mksysb image
                 my $mkcmd;
-                if ($::NFSV4)
+                if ($::NFSv4)
                 {
                   $mkcmd = "/usr/sbin/nim -o define -t mksysb -a server=master -a nfs_vers=4 -a location=$::SYSB $mksysb_name 2>&1";
                 }
@@ -5385,7 +5465,7 @@ sub mkScriptRes
     {
 
         my $defcmd;
-        if ($::NFSV4)
+        if ($::NFSv4)
         {
            $defcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a nfs_vers=4 -a location=$respath $resname 2>/dev/null~;
         }
@@ -5855,7 +5935,7 @@ sub mkdumpres
 
 	my %cmdattrs;
 
-	if ( ($::NFSV4) && (!$attrvals{nfs_vers}) )
+	if ( ($::NFSv4) && (!$attrvals{nfs_vers}) )
 	{
 		$cmdattrs{nfs_vers}=4;
 	}
@@ -5957,7 +6037,7 @@ sub mknimres
     my $install_dir = xCAT::Utils->getInstallDir();
 
 	my %cmdattrs;
-    if ($::NFSV4)
+    if ($::NFSv4)
     {
 		$cmdattrs{nfs_vers}=4;
     }
@@ -6845,7 +6925,7 @@ sub nimnodecust
                 # try to define it
                 my $bcmd =
                   "/usr/sbin/nim -Fo define -t installp_bundle -a server=master -a location=$bndloc{$bnd} $bnd";
-                if ($::NFSV4)
+                if ($::NFSv4)
                 {
                     $bcmd .= "-a nfs_vers=4 ";
                 }
@@ -6949,7 +7029,6 @@ sub prenimnodeset
 					'p|primarySN' => \$::PRIMARY,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
-                    'nfsv4'     => \$::NFSV4,
         )
       )
     {
@@ -7289,7 +7368,7 @@ sub prenimnodeset
 
             # define the xcataixscript resource
             my $dcmd;
-            if ($::NFSV4)
+            if ($::NFSv4)
             {
               $dcmd = qq~/usr/sbin/nim -o define -t script -a server=master -a nfs_vers=4 -a location=$install_dir/nim/scripts/xcataixscript xcataixscript 2>/dev/null~;
             }
@@ -8132,7 +8211,6 @@ sub mkdsklsnode
 					'p|primary' => \$::PRIMARY,
                     'verbose|V' => \$::VERBOSE,
                     'v|version' => \$::VERSION,
-                    'nfsv4'     => \$::NFSV4,
         )
       )
     {
@@ -9803,7 +9881,7 @@ sub make_SN_resource
 					my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "packages", "use_source_simages", "arch", "show_progress", "multi_volume", "group");
 
 					my %cmdattrs;
-					if ($::NFSV4)
+					if ($::NFSv4)
 					{
 						$cmdattrs{nfs_vers}=4;
 					}
@@ -9862,7 +9940,7 @@ sub make_SN_resource
 							my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "source", "dest_dir", "group");
 
 							my %cmdattrs;
-							if ($::NFSV4)
+							if ($::NFSv4)
 							{
 								$cmdattrs{nfs_vers}=4;
 							}
@@ -9912,7 +9990,7 @@ sub make_SN_resource
 
 					my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "dest_dir", "group", "source", "size_preview", "exclude_files", "mksysb_flags", "mk_image");
 					my %cmdattrs;
-					if ($::NFSV4)
+					if ($::NFSv4)
 					{
 						$cmdattrs{nfs_vers}=4;
 					}
@@ -9964,7 +10042,7 @@ sub make_SN_resource
 					$cmd = "/usr/sbin/nim -Fo define -t $restype -a server=master -a location=$lochash{$imghash{$image}{$restype}} ";
 					my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "group");
 					my %cmdattrs;
-					if ($::NFSV4)
+					if ($::NFSv4)
 					{
 						$cmdattrs{nfs_vers}=4;
 					}
@@ -10058,7 +10136,7 @@ sub make_SN_resource
 					my @validattrs = ("verbose", "nfs_vers", "nfs_sec", "installp_flags", "auto_expand", "show_progress", "debug");
 
 					my %cmdattrs;
-					if ($::NFSV4)
+					if ($::NFSv4)
 					{
 						$cmdattrs{nfs_vers}=4;
 					}
