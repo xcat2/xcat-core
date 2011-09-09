@@ -55,7 +55,8 @@ sub process_request {
         'summary'       => \&web_summary,
 	    'gangliashow'   => \&web_gangliaShow,
 	    'gangliacurrent' => \&web_gangliaLatest,
-	    'rinstall'	    => \&web_rinstall
+	    'rinstall'	    => \&web_rinstall,
+        'addpnode'      => \&web_addpnode
 	);
 
 	#check whether the request is authorized or not
@@ -1888,5 +1889,66 @@ sub web_rinstall {
 	my $out = `rinstall -o $os -p $profile -a $arch $node`;
 
 	$callback->( { data => $out } );
+}
+
+sub web_addpnode{
+	my ( $request, $callback, $sub_req ) = @_;
+	my $nodetype = $request->{arg}->[1];
+	my @tempArray = split(',', $request->{arg}->[2]);
+
+	my $hmcname = shift(@tempArray);
+	if ('hmc' eq $nodetype){
+		my $username = $tempArray[0];
+		my $passwd = $tempArray[1];
+		my $ip = $tempArray[2];
+		`/bin/grep '$hmcname' /etc/hosts`;
+		if ($?){
+			open(OUTPUTFILE, '>>/etc/hosts');
+			print OUTPUTFILE "$ip  $hmcname\n";
+			close(OUTPUTFILE);
+		}
+
+		`chdef -t node -o $hmcname username=$username password=$passwd mgt=hmc nodetype=hmc groups=all`;
+		return;
+	}
+
+	my %temphash;
+	my $writeflag = 0;
+	my $line = '';
+	#save all node into a hash
+	foreach(@tempArray) {
+		$temphash{$_} = 1;
+	}
+	`rscan $hmcname -z > /tmp/rscanall.tmp`;
+	#if can not create the rscan result file, error
+	unless(-e '/tmp/rscanall.tmp'){
+		return;
+	}
+
+	open(INPUTFILE, '/tmp/rscanall.tmp');
+	open(OUTPUTFILE, '>/tmp/webrscan.tmp');
+	while($line=<INPUTFILE>){
+		if ($line =~ /(\S+):$/){
+			if ($temphash{$1}){
+				$writeflag = 1;
+				print OUTPUTFILE $line;
+			}
+			else{
+				$writeflag = 0;
+			}
+		}
+		else{
+			if ($writeflag){
+				print OUTPUTFILE $line;
+			}
+		}
+	}
+
+	close(INPUTFILE);
+	close(OUTPUTFILE);
+	unlink('/tmp/rscanall.tmp');
+
+	`cat /tmp/webrscan.tmp | chdef -z`;
+	unlink('/tmp/webrscan.tmp');
 }
 1;

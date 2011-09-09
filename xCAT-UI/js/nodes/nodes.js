@@ -211,17 +211,16 @@ function loadSummaryDetail(ev, seriesIndex, pointIndex, data){
 	var table = '';
 	switch (temp) {
 	    case 'os':
-	    	break;
 	    case 'arch':
-	    	break;
 	    case 'provmethod':
-	    	break;
-	    case 'nodetype':
+	    case 'nodetype':{
 	        table = 'nodetype';
-        	break;
-	    case 'status':
+	    }
+        break;
+	    case 'status': {
 	        table = 'nodelist';
-	    	break;
+	    }
+	    break;
 	}
 
 	var args = table + '.' + temp + '==';
@@ -395,8 +394,8 @@ function mkAddNodeLink() {
     		+ '<select id="mgt" name="mgt">'
     			+ '<option value="ipmi">iDataPlex</option>' 
     			+ '<option value="blade">BladeCenter</option>'
-    			+ '<option value="hmc">System p</option>'
-    			+ '<option value="zvm">System z</option>'
+    			+ '<option value="hmc">System P</option>'
+    			+ '<option value="zvm">System Z</option>'
     		+ '</select>'
     	+ '</div>');
 		
