@@ -1,0 +1,12 @@
+DIR=`dirname $0`
+mkdir -p /usr/share/dracut/modules/97xcat
+cp $DIR/* /usr/share/dracut/modules/97xcat
+mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
+dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs
+cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
+zcat /tmp/xcatgenesis.$$.rfs|cpio -dumi
+cp /boot/vmlinuz-`uname -r` /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/kernel
+cd -
+cd /tmp/xcatgenesis.$$
+tar jcf ~/rpmbuild/SOURCES/xCAT-genesis-`uname -m`.tar.bz2 opt
+rpmbuild -ba $DIR/xCAT-genesis.spec 

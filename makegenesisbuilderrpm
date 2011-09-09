@@ -1,0 +1,23 @@
+#!/bin/sh
+VER=`cat Version`
+rpmbuild --version > /dev/null
+if [ $? -gt 0 ]
+then
+	echo "Error: Is rpmbuild installed and working?"
+	exit 1
+fi
+RPMROOT=`rpmbuild --eval '%_topdir' xCATsn/xCATsn.spec`
+if [ $? -gt 0 ]
+then
+	echo "Could not determine rpmbuild's root"
+	exit 1
+fi
+echo "The location for rpm building is ${RPMROOT}"
+cd `dirname $0`/xCAT-nbroot2
+tar --exclude .svn -cjvf $RPMROOT/SOURCES/xCAT-genesis-builder.tar.bz2 .
+#mv -f *.gz $RPMROOT/SOURCES
+cp LICENSE.html $RPMROOT/BUILD
+cp xCAT-genesis-builder.spec $RPMROOT/SOURCES
+cd -
+rm -f $RPMROOT/SRPMS/xCAT-genesis-builder-$VER*rpm $RPMROOT/RPMS/*/xCAT-genesis-builder-$VER*rpm
+rpmbuild -ba xCAT-nbroot2/xCAT-genesis-builder.spec
