@@ -456,17 +456,12 @@ function updateSelectNodeDiv(){
  * @return action menu object
  */
 function createActionMenu(){
-	//create action bar
+	// Create action bar
 	var actionBar = $('<div class="actionBar"></div>');
 
-	/**
-	 * The following actions are available to perform against a given node:
-	 * power, clone, delete, unlock, and advanced
-	 */
-	var powerLnk = $('<a>Power</a>');
-	//power on
+	// Power on
 	var powerOnLnk = $('<a>Power on</a>');
-	powerOnLnk.bind('click', function(event) {
+	powerOnLnk.click(function() {
 		var tgtNodes = getSelectNodes();
 		$.ajax({
 			url : 'lib/cmd.php',
@@ -479,10 +474,10 @@ function createActionMenu(){
 			}
 		});
 	});
-
-	//power off
+	
+	// Power off
 	var powerOffLnk = $('<a>Power off</a>');
-	powerOffLnk.bind('click', function(event) {
+	powerOffLnk.click(function() {
 		var tgtNodes = getSelectNodes();
 		$.ajax({
 			url : 'lib/cmd.php',
@@ -495,133 +490,96 @@ function createActionMenu(){
 			}
 		});
 	});
-
-	//clone
-	var cloneLnk = $('<a>Clone</a>');
-	cloneLnk.bind('click', function(event) {
-		/*
-		for (var name in selectNode) {
-			var mgt = graphicalNodeList[name]['mgt'];
-			
-			//create an instance of the plugin
-			var plugin;
-			switch(mgt) {
-				case "blade":
-		    		plugin = new bladePlugin();
-		    		break;
-				case "fsp":
-					plugin = new fspPlugin();
-					break;
-				case "hmc":
-					plugin = new hmcPlugin();
-					break;
-				case "ipmi":
-					plugin = new ipmiPlugin();
-					break;		
-				case "ivm":
-					plugin = new ivmPlugin();
-					break;
-				case "zvm":
-					plugin = new zvmPlugin();
-					break;
-			}
-			
-			plugin.loadClonePage(name);
-		}
-		*/
-	});
-
-	//delete
+	
+	// Delete
 	var deleteLnk = $('<a>Delete</a>');
-	deleteLnk.bind('click', function(event) {
+	deleteLnk.click(function() {
 		var tgtNodes = getSelectNodes();
 		if (tgtNodes) {
 			loadDeletePage(tgtNodes);
 		}
 	});
 
-	//unlock
+	// Unlock
 	var unlockLnk = $('<a>Unlock</a>');
-	unlockLnk.bind('click', function(event) {
+	unlockLnk.click(function() {
 		var tgtNodes = getSelectNodes();
 		if (tgtNodes) {
 			loadUnlockPage(tgtNodes);
 		}
 	});
 
-	//run script
+	// Run script
 	var scriptLnk = $('<a>Run script</a>');
-	scriptLnk.bind('click', function(event) {
+	scriptLnk.click(function() {
 		var tgtNodes = getSelectNodes();
 		if (tgtNodes) {
 			loadScriptPage(tgtNodes);
 		}
 	});
 
-	//update node
+	// Update
 	var updateLnk = $('<a>Update</a>');
-	updateLnk.bind('click', function(event) {
+	updateLnk.click(function() {
 		var tgtNodes = getSelectNodes();
 		if (tgtNodes) {
 			loadUpdatenodePage(tgtNodes);
 		}
 	});
 
-	//set boot state
+	// Set boot state
 	var setBootStateLnk = $('<a>Set boot state</a>');
-	setBootStateLnk.bind('click', function(event) {
+	setBootStateLnk.click(function() {
 		var tgtNodes = getSelectNodes();
 		if (tgtNodes) {
 			loadNodesetPage(tgtNodes);
 		}
 	});
 
-	//boot to network
+	// Boot to network
 	var boot2NetworkLnk = $('<a>Boot to network</a>');
-	boot2NetworkLnk.bind('click', function(event) {
+	boot2NetworkLnk.click(function() {
 		var tgtNodes = getSelectNodes();
 		if (tgtNodes) {
 			loadNetbootPage(tgtNodes);
 		}
 	});
-
-	//remote console
-	var rcons = $('<a>Open console</a>');
-	rcons.bind('click', function(event){
+	
+	// Remote console
+	var rconLnk = $('<a>Open console</a>');
+	rconLnk.bind('click', function(event){
 		var tgtNodes = getSelectNodes();
 		if (tgtNodes) {
 			loadRconsPage(tgtNodes);
 		}
 	});
 	
-	//edit properties
+	// Edit properties
 	var editProps = $('<a>Edit properties</a>');
 	editProps.bind('click', function(event){
 		for (var node in selectNode) {
 			loadEditPropsPage(node);
 		}
 	});
+	
+	// Actions
+	var actionsLnk = '<a>Actions</a>';
+	var actsMenu = createMenu([deleteLnk, powerOnLnk, powerOffLnk, scriptLnk]);
 
-	var advancedLnk = $('<a>Advanced</a>');
+	// Configurations
+	var configLnk = '<a>Configuration</a>';
+	var configMenu = createMenu([unlockLnk, updateLnk, editProps]);
 
-	//power actions
-	var powerActions = [ powerOnLnk, powerOffLnk ];
-	var powerActionMenu = createMenu(powerActions);
+	// Provision
+	var provLnk = '<a>Provision</a>';
+	var provMenu = createMenu([boot2NetworkLnk, setBootStateLnk, rconLnk]);
 
-	//advanced actions
-	var advancedActions;
-	advancedActions = [ boot2NetworkLnk, scriptLnk, setBootStateLnk, updateLnk, rcons, editProps ];
-	var advancedActionMenu = createMenu(advancedActions);
-
-	/**
-	 * create an action menu
-	 */
-	var actionsDIV = $('<div></div>');
-	var actions = [ [ powerLnk, powerActionMenu ], deleteLnk, unlockLnk, [ advancedLnk, advancedActionMenu ] ];
-	var actionMenu = createMenu(actions);
-	actionMenu.superfish();
-	actionsDIV.append(actionMenu);
-	actionBar.append(actionsDIV);
+	// Create an action menu
+	var actionsMenu = createMenu([ [ actionsLnk, actsMenu ], [ configLnk, configMenu ],  [ provLnk, provMenu ] ]);
+	actionsMenu.superfish();
+	actionsMenu.css('display', 'inline-block');
+	actionBar.append(actionsMenu);
+	actionBar.css('margin-top', '10px');
 	
 	return actionBar;
 }

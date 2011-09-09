@@ -213,21 +213,19 @@ function loadSummaryDetail(ev, seriesIndex, pointIndex, data){
 	    case 'os':
 	    case 'arch':
 	    case 'provmethod':
-	    case 'nodetype':{
+	    case 'nodetype':
 	        table = 'nodetype';
-	    }
-        break;
-	    case 'status': {
+	        break;
+	    case 'status':
 	        table = 'nodelist';
-	    }
-	    break;
+	        break;
 	}
 
 	var args = table + '.' + temp + '==';
 	if (data[0] != 'unknown') {
 	    args += data[0];
 	}
-	
+
 	drawNodesArea('', args, '');
 }
 
@@ -288,91 +286,97 @@ function drawNodesArea(targetgroup, cmdargs, message){
 	// Clear nodes division
     $('#nodes').empty();
     
-    // Create loader
-    var loader = $('<center></center>').append(createLoader());
-    
     // Create a tab for this group
     var tab = new Tab('nodesPageTabs');
     setNodesTab(tab);
     tab.init();
     $('#nodes').append(tab.object());
     tab.add('summaryTab', 'Summary', '', false);
-    tab.add('nodesTab', 'Nodes', loader, false);
+    tab.add('nodesTab', 'Nodes', '', false);
     tab.add('graphTab', 'Graphic', '', false);
-    
-    $('#nodesPageTabs').bind('tabsselect', function(event, ui){
-        // For the graphical tab, check the graphical data first
-        if (ui.index == 2){
-            createPhysicalLayout(nodesList);
-        }
-    });
-    
-    // Load group's summary pie charts
-    loadPieSummary(targetgroup);
-    
-    // To improve performance, get all nodes within selected group
-    // Get node definitions only for first 50 nodes
-    $.ajax( {
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'nodels',
-            tgt : targetgroup,
-            args : cmdargs,
-            msg : message
-        },
-
-        /**
-         * Get node definitions for first 50 nodes
-         * 
-         * @param data
-         *            Data returned from HTTP request
-         * @return Nothing
-         */
-        success : function(data) {
-            var rsp = data.rsp;
-            var group = data.msg;
-            
-            // Save nodes in a list so it can be accessed later
-            nodesList = new Array();
-            for (var i in rsp) {
-                if (rsp[i][0]) {
-                    nodesList.push(rsp[i][0]);
-                }
-            }
-            
-            // Sort nodes list
-            nodesList.sort();
-            
-            // Get first 50 nodes
-            var nodes = '';
-            for (var i = 0; i < nodesList.length; i++) {
-                if (i > 49) {
-                    break;
-                }
-                
-                nodes += nodesList[i] + ',';                        
-            }
-                        
-            // Remove last comma
-            nodes = nodes.substring(0, nodes.length-1);
-            
-            // Get nodes definitions
+       
+    // Load nodes table when tab is selected
+    $('#nodesPageTabs').bind('tabsselect', function(event, ui){    	
+        if (!$('#nodesTab').children().length && ui.index == 1) {
+        	// Create loader
+        	$('#nodesTab').append($('<center></center>').append(createLoader()));
+        			
+        	// To improve performance, get all nodes within selected group
+            // Get node definitions only for first 50 nodes
             $.ajax( {
                 url : 'lib/cmd.php',
                 dataType : 'json',
                 data : {
-                    cmd : 'lsdef',
-                    tgt : '',
-                    args : nodes,
-                    msg : targetgroup
+                    cmd : 'nodels',
+                    tgt : targetgroup,
+                    args : cmdargs,
+                    msg : message
                 },
 
-                success : loadNodes
+                /**
+                 * Get node definitions for first 50 nodes
+                 * 
+                 * @param data
+                 *            Data returned from HTTP request
+                 * @return Nothing
+                 */
+                success : function(data) {
+                    var rsp = data.rsp;
+                    var group = data.msg;
+                    
+                    // Save nodes in a list so it can be accessed later
+                    nodesList = new Array();
+                    for (var i in rsp) {
+                        if (rsp[i][0]) {
+                            nodesList.push(rsp[i][0]);
+                        }
+                    }
+                    
+                    // Sort nodes list
+                    nodesList.sort();
+                    
+                    // Get first 50 nodes
+                    var nodes = '';
+                    for (var i = 0; i < nodesList.length; i++) {
+                        if (i > 49) {
+                            break;
+                        }
+                        
+                        nodes += nodesList[i] + ',';                        
+                    }
+                                
+                    // Remove last comma
+                    nodes = nodes.substring(0, nodes.length-1);
+                    
+                    // Get nodes definitions
+                    $.ajax( {
+                        url : 'lib/cmd.php',
+                        dataType : 'json',
+                        data : {
+                            cmd : 'lsdef',
+                            tgt : '',
+                            args : nodes,
+                            msg : targetgroup
+                        },
+
+                        success : loadNodes
+                    });
+                    
+                }
             });
-            
         }
     });
+    
+    // Load graphical layout when tab is selected
+    $('#nodesPageTabs').bind('tabsselect', function(event, ui){
+        // For the graphical tab, check the graphical data first
+        if (!$('#graphTab').children().length && ui.index == 2) {
+            createPhysicalLayout(nodesList);
+        }
+    });
+    
+    // Load group's summary pie charts (default)
+    loadPieSummary(targetgroup);
 }
 
 /**
@@ -394,8 +398,8 @@ function mkAddNodeLink() {
     		+ '<select id="mgt" name="mgt">'
     			+ '<option value="ipmi">iDataPlex</option>' 
     			+ '<option value="blade">BladeCenter</option>'
-    			+ '<option value="hmc">System P</option>'
-    			+ '<option value="zvm">System Z</option>'
+    			+ '<option value="hmc">System p</option>'	// Documentation refers to 'IBM System p' (where p is NOT capitalized)
+    			+ '<option value="zvm">System z</option>'	// Documentation refers to 'IBM System z' (where z is NOT capitalized)
     		+ '</select>'
     	+ '</div>');
 		
@@ -840,7 +844,7 @@ function loadNodes(data) {
 
 	// Provision
 	var provLnk = '<a>Provision</a>';
-	var provMenu = createMenu([ boot2NetworkLnk, setBootStateLnk, rcons, provisionLnk]);
+	var provMenu = createMenu([boot2NetworkLnk, setBootStateLnk, rcons, provisionLnk]);
 
 	// Create an action menu
 	var actionsMenu = createMenu([ [ actionsLnk, actsMenu ], [ configLnk, configMenu ],  [ provLnk, provMenu ] ]);
@@ -3321,8 +3325,14 @@ function jump2Provision(tgtNodes){
  */
 function adjustColumnSize() {
 	var cols = $('#' + nodesTableId).find('tbody tr:eq(0) td');
-	for (var i in cols) {
-		var header = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th').eq(i);
-		header.css('width', cols.eq(i).outerWidth());
-	}
+	
+	// If the column size is zero, wait until table is initialized
+	if (!cols.eq(1).outerWidth()) {
+		adjustColumnSize();
+	} else {
+		for (var i in cols) {
+			var headers = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th').eq(i);
+			headers.css('width', cols.eq(i).outerWidth());
+		}		
+	}	
 }
