@@ -62,16 +62,18 @@ function loadDiscoverPage(){
  */
 function updateDiscoverStep(){
 	$('#discoverStepDiv').empty();
-	var showString = '';
+	
 	for (var index in steps){
-		showString += '<span';
 		if (currentStep == index){
-			showString += ' class="discovercurrentstep"';
+			$('#discoverStepDiv').append($('<span class="discovercurrentstep" style="display: inline-block; float: none; padding: 0px 5px;">' + steps[index] + '</span>'));	
+		} else {
+			$('#discoverStepDiv').append($('<span style="display: inline-block; float: none; padding: 0px 5px;">' + steps[index] + '</span>'));
 		}
-		showString += '>' + steps[index] + '</span>->';
+		$('#discoverStepDiv').append($('<span style="display: inline-block; float: none; vertical-align: middle;" class="ui-icon ui-icon-arrowthick-1-e"/>'));
 	}
-	showString = showString.substr(0, showString.length - 2);
-	$('#discoverStepDiv').html(showString);
+	
+	//remove last arrow
+	$('#discoverStepDiv span:last-child').remove();
 }
 
 /**
