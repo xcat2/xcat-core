@@ -73,7 +73,7 @@ foreach($cont as $line){
 
 // Run command
 $request->addChild('table', $tab);
-$xml = submit_request($request, 0);
+$xml = submit_request($request, 0, NULL);
 
 // Reply in the form of JSON
 $rtn = array("rsp" => $xml);

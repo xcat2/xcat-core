@@ -176,7 +176,7 @@ set -x
 %endif
 
 %preun
-#---------- Pre-uninstall ----------
+#********** Pre-uninstall **********
 %ifos linux
 	if [ "$1" = 0 ]         # RPM being removed
 	then
