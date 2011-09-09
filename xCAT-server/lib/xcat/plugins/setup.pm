@@ -693,7 +693,8 @@ sub writechildren2 {
     }
 
     if ($DELETENODES) {
-        deletenodes($ntype, \@ipgroup);
+        my $newrange = join(',', @ipgroup);
+        deletenodes($ntype, $newrange);
         deletegroup($ntype);
         return 1;
     }
