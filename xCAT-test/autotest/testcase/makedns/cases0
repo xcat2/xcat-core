@@ -1,0 +1,116 @@
+start:makedns_h
+description:help
+cmd:makedns -h
+check:rc==0
+cmd:makedns --help
+check:rc==0
+check:output=~Usage
+end
+
+start:makedns_v
+description:version
+cmd:makedns -v
+check:rc==0
+check:output=~Version
+end
+
+start:makedns_n_node
+description:makedns -n nodename
+cmd:cp -r /etc/hosts /etc/hosts.backup
+check:rc==0
+cmd:echo "10.1.1.1 testnodedns" >> /etc/hosts
+cmd:mkdef -t node -o testnodedns groups=compute
+check:rc==0
+cmd:chdef -t network -o testnet net="10.1.1.0" mask="255.255.255.0"
+check:rc==0
+cmd:makedns -n testnodedns
+check:rc==0
+cmd:nslookup testnodedns
+check:rc==0
+check:output=~(Address: 10.1.1.1)
+cmd:makedns -d testnodedns
+cmd:rmdef -t node -o testnodedns
+cmd:rmdef -t network -o testnet
+cmd:cp -r /etc/hosts.backup /etc/hosts
+cmd:rm -f /etc/hosts.backup
+end
+
+start:makedns_d_node
+description:makedns -d nodename
+cmd:cp -r /etc/hosts /etc/hosts.backup
+check:rc==0
+cmd:echo "10.1.1.1 testnodedns" >> /etc/hosts
+cmd:mkdef -t node -o testnodedns groups=compute
+check:rc==0
+cmd:chdef -t network -o testnet net="10.1.1.0" mask="255.255.255.0"
+check:rc==0
+cmd:makedns -n testnodedns
+check:rc==0
+cmd:nslookup testnodedns
+check:rc==0
+check:output=~(Address: 10.1.1.1)
+cmd:makedns -d testnodedns
+check:rc==0
+check:output=~(Completed updating zones)
+cmd:nslookup testnodedns
+check:rc==0
+check:rc=~(server can't find testnodedns)
+cmd:rmdef -t node -o testnodedns
+cmd:rmdef -t network -o testnet
+cmd:cp -r /etc/hosts.backup /etc/hosts
+cmd:rm -f /etc/hosts.backup
+end
+
+start:makedns_n
+description:makedns,check /var/named 
+cmd:cp -r /etc/hosts /etc/hosts.backup
+check:rc==0
+cmd:echo "10.1.1.1 testnodedns" >> /etc/hosts
+cmd:mkdef -t node -o testnodedns groups=compute
+check:rc==0
+cmd:chdef -t network -o testnet net="10.1.1.0" mask="255.255.255.0"
+check:rc==0
+cmd:makedns -n
+check:rc==0
+cmd:nslookup testnodedns
+check:rc==0
+check:output=~(Address: 10.1.1.1)
+cmd:ls /var/named/ |grep db.10.1.1
+check:rc==0
+check:output=~(db.10.1.1)
+check:output=~(db.10.1.1.jnl)
+cmd:makedns -d testnodedns
+cmd:rmdef -t node -o testnodedns
+cmd:rmdef -t network -o testnet
+cmd:cp -r /etc/hosts.backup /etc/hosts
+cmd:rm -f /etc/hosts.backup
+end
+
+start:makedns
+description:makedns,check /var/named
+os:Linux
+cmd:cp -r /etc/hosts /etc/hosts.backup
+check:rc==0
+cmd:echo "10.1.1.1 testnodedns" >> /etc/hosts
+cmd:mkdef -t node -o testnodedns groups=compute
+check:rc==0
+cmd:chdef -t network -o testnet net="10.1.1.0" mask="255.255.255.0"
+check:rc==0
+cmd:makedns
+check:rc==0
+cmd:service named stop
+cmd:service named start
+cmd:nslookup testnodedns
+check:rc==0
+check:output=~(Address: 10.1.1.1)
+cmd:ls /var/named/ |grep db.10.1.1
+check:rc==0
+check:output=~(db.10.1.1)
+check:output=~(db.10.1.1.jnl)
+cmd:makedns -d testnodedns
+cmd:rmdef -t node -o testnodedns
+cmd:rmdef -t network -o testnet
+cmd:cp -r /etc/hosts.backup /etc/hosts
+cmd:rm -f /etc/hosts.backup
+end
+
