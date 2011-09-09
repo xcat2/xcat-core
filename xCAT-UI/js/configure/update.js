@@ -65,7 +65,7 @@ function showRepository(data) {
 
 	// Display the Devel Repository, remember user's last selection
 	show = show + "<li><input type='radio' ";
-	if (1 == $.cookie('xcatrepository')) {
+	if ($.cookie('xcatrepository') == 1) {
 		show = show + "checked='true'";
 	}
 	show = show + "name='reporadio' value='" + develRepository + "'>";
@@ -74,7 +74,7 @@ function showRepository(data) {
 
 	// Display the Stable Repository, remember user's last selection
 	show = "<li><input type='radio' ";
-	if (2 == $.cookie('xcatrepository')) {
+	if ($.cookie('xcatrepository') == 2) {
 		show = show + "checked='true'";
 	}
 	show = show + "name='reporadio' value='" + stableRepository + "' checked='true'>";
@@ -82,8 +82,8 @@ function showRepository(data) {
 	repoList.append(show);
 
 	// Display the Input Repository, remember user's last selection
-	if (($.cookie('xcatrepository')) && (1 != $.cookie('xcatrepository'))
-			&& (2 != $.cookie('xcatrepository'))) {
+	if (($.cookie('xcatrepository')) && ($.cookie('xcatrepository') != 1)
+			&& ($.cookie('xcatrepository') != 2)) {
 		show = "<li><input type='radio' checked='true' name='reporadio' value=''>Other: ";
 		show += "<input style='width: 500px' id='repositoryaddr' value='"
 				+ $.cookie('xcatrepository') + "'</li>";
@@ -92,6 +92,7 @@ function showRepository(data) {
 		show += "<input style='width: 500px' id='repositoryaddr' value=''</li>";
 	}
 	repoList.append(show);
+	
 	$('#repository fieldset').append(repoList);
 }
 
@@ -114,6 +115,7 @@ function showRpmInfo(data) {
 	}
 
 	rpms = data.rsp.split(/\n/);
+	
 	// No rpm installed, return
 	if (1 > rpms.length) {
 		$('#rpm fieldset').append("No RPMs installed!");
@@ -130,12 +132,12 @@ function showRpmInfo(data) {
 	show += "</tr></thead>";
 	for (temp = 0; temp < rpms.length; temp++) {
 		// Empty line continue
-		if ("" == rpms[temp]) {
+		if (!rpms[temp]) {
 			continue;
 		}
 
 		// The RPM is not installed, continue
-		if (-1 != rpms[temp].indexOf("not")) {
+		if (rpms[temp].indexOf("not") != -1) {
 			continue;
 		}
 
@@ -161,7 +163,6 @@ function showRpmInfo(data) {
 /**
  * Select all checkboxes
  * 
- * @param Nothing
  * @return Nothing
  */
 function updateSelectAll() {
@@ -189,7 +190,7 @@ function updateRpm() {
 
 	// Select other and we should use the value in the input
 	if ("" == rpmPath) {
-		// user input the repo, and we must stroe it in the cookie
+		// Store repo in a cookie
 		rpmPath = $('#repositoryaddr').val();
 		rpmPathType = rpmPath;
 	} else {

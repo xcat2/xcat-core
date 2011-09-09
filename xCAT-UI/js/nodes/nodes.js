@@ -923,10 +923,12 @@ function loadNodes(data) {
 	monitorCol.find('span a').click(function() {
 		refreshGangliaStatus(group, nodesTableId);
 	});
-	var menuDiv=$('<div id=\''+nodesTableId+'_menuDiv\' class=\'menuDiv\'></div>');
+	
+	// Create a division to hold actions menu
+	var menuDiv = $('<div id="' + nodesTableId + '_menuDiv" class="menuDiv"></div>');
 	$('#' + nodesTableId + '_wrapper').prepend(menuDiv);
 	menuDiv.append(actionBar);	
-	$('#'+nodesTableId+'_filter').appendTo(menuDiv);
+	$('#' + nodesTableId + '_filter').appendTo(menuDiv);
 	
 	// Create tooltip for status
 	var tooltipConf = {

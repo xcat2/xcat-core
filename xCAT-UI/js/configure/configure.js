@@ -191,7 +191,7 @@ function loadTable(data) {
 	$('#' + tabId).find('img').remove();
 
 	// Create info bar
-	var infoBar = createInfoBar('Click on a cell to edit.  Click outside the table to write to the cell.<br>Once you are satisfied with how the table looks, click on Save.');
+	var infoBar = createInfoBar('Click on a cell to edit. ddClick outside the table to write to the cell. Once you are satisfied with how the table looks, click on Save.');
 	$('#' + tabId).append(infoBar);
 
 	// Create action bar
@@ -287,82 +287,27 @@ function loadTable(data) {
 		});
 
 	// Turn table into datatable
-	dTable = $('#' + id + 'Datatable').dataTable();
-	setConfigDatatable(id + 'Datatable', dTable);
-
-	// Create add row button
-	var addBar = $('<div></div>');
-	$('#' + tabId).append(addBar);
-	var addRowBtn = createButton('Add row');
-	addBar.append(addRowBtn);
-
-	// Create save and undo buttons
-	var saveBtn = createButton('Save');
-	var undoBtn = createButton('Undo');
-	actionBar.append(saveBtn);
-	actionBar.append(undoBtn);
-
-	/**
-	 * Add row
-	 */
-	addRowBtn.bind('click',	function(event) {
-		// Create an empty row
-		var row = new Array();
-
-		/**
-		 * Remove button
-		 */
-		row.push('<span class="ui-icon ui-icon-close" onclick="deleteRow(this)"></span>');
-		for ( var i = 0; i < headers.length; i++) {
-			row.push('');
+	dTable = $('#' + id + 'Datatable').dataTable({
+		'iDisplayLength': 50,
+		'bLengthChange': false,
+		"sScrollX": "100%",
+		"bAutoWidth": true,
+		"fnInitComplete": function() {
+			
 		}
-
-		// Get tab ID
-		var tabId = $(this).parent().parent().attr('id');
-		// Get table name
-		var tableName = tabId.replace('Tab', '');
-		// Get table ID
-		var tableId = tableName + 'Datatable';
-
-		// Get datatable
-		var dTable = getConfigDatatable(tableId);
-		// Add the row to the data table
-		dTable.fnAddData(row);
-
-		// Enable editable columns (again)
-		// Do not make 1st column editable
-		$('#' + tabId + ' td:not(td:nth-child(1))').editable(
-			function(value, settings) {
-				// Get column index
-				var colPos = this.cellIndex;
-				// Get row index
-				var rowPos = dTable.fnGetPosition(this.parentNode);
-
-				// Update datatable
-				dTable.fnUpdate(value, rowPos, colPos);
-
-				return (value);
-			}, {
-				onblur : 'submit', // Clicking outside editable area submits changes
-				type : 'textarea',
-				placeholder: ' ',
-				height : '30px' // The height of the text area
-			});
 	});
 
-	/**
-	 * Save changes
-	 */
-	saveBtn.bind('click', function(event) {
-		// Get tab ID
-		var tabId = $(this).parent().parent().attr('id');
-		// Get table name
-		var tableName = tabId.replace('Tab', '');
-		// Get table ID
-		var tableId = tableName + 'Datatable';
-
+	// Create action bar
+	var actionBar = $('<div class="actionBar"></div>');
+	
+	var saveLnk = $('<a>Save</a>');
+	saveLnk.click(function() {
+		// Get table ID and name
+		var tableId = $(this).parents('.dataTables_wrapper').attr('id').replace('_wrapper', '');
+		var tableName = tableId.replace('Datatable', '');
+		
 		// Get datatable
-		var dTable = getConfigDatatable(tableId);
+		var dTable = $('#' + tableId).dataTable();
 		// Get the nodes from the table
 		var dRows = dTable.fnGetNodes();
 
@@ -390,9 +335,6 @@ function loadTable(data) {
 			}
 		}
 		
-		// Update datatable
-		setConfigDatatable(tableId, dTable);
-
 		// Update xCAT table
 		$.ajax( {
 			type : 'POST',
@@ -407,22 +349,15 @@ function loadTable(data) {
 			}
 		});
 	});
-
-	/**
-	 * Undo changes
-	 */
-	undoBtn.bind('click', function(event) {
-		// Get tab ID
-		var tabId = $(this).parent().parent().attr('id');
-		// Get table name
-		var tableName = tabId.replace('Tab', '');
+	
+	var undoLnk = $('<a>Undo</a>');
+	undoLnk.click(function() {
 		// Get table ID
-		var tableId = tableName + 'Datatable';
-
+		var tableId = $(this).parents('.dataTables_wrapper').attr('id').replace('_wrapper', '');
+		
 		// Get datatable
-		var dTable = getConfigDatatable(tableId);
-		// Get the nodes from the table
-
+		var dTable = $('#' + tableId).dataTable();
+		
 		// Clear entire datatable
 		dTable.fnClearTable();
 
@@ -451,6 +386,66 @@ function loadTable(data) {
 				height : '30px' // The height of the text area
 			});
 	});
+	
+	var addLnk = $('<a>Add row</a>');
+	addLnk.click(function() {
+		// Create an empty row
+		var row = new Array();
+
+		/**
+		 * Remove button
+		 */
+		row.push('<span class="ui-icon ui-icon-close" onclick="deleteRow(this)"></span>');
+		for ( var i = 0; i < headers.length; i++) {
+			row.push('');
+		}
+
+		// Get table ID and name
+		var tableId = $(this).parents('.dataTables_wrapper').attr('id').replace('_wrapper', '');
+		var tableName = tableId.replace('Datatable', '');
+		
+		// Get datatable
+		var dTable = $('#' + tableId).dataTable();
+		
+		// Add the row to the data table
+		dTable.fnAddData(row);
+
+		// Enable editable columns (again)
+		// Do not make 1st column editable
+		$('#' + tableId + ' td:not(td:nth-child(1))').editable(
+			function(value, settings) {
+				// Get column index
+				var colPos = this.cellIndex;
+				// Get row index
+				var rowPos = dTable.fnGetPosition(this.parentNode);
+
+				// Update datatable
+				dTable.fnUpdate(value, rowPos, colPos);
+
+				return (value);
+			}, {
+				onblur : 'submit', // Clicking outside editable area submits changes
+				type : 'textarea',
+				placeholder: ' ',
+				height : '30px' // The height of the text area
+			});
+	});
+	
+	// Actions
+	var actionsLnk = '<a>Actions</a>';
+	var actsMenu = createMenu([saveLnk, undoLnk, addLnk]);
+
+	// Create an action menu
+	var actionsMenu = createMenu([ [ actionsLnk, actsMenu ] ]);
+	actionsMenu.superfish();
+	actionsMenu.css('display', 'inline-block');
+	actionBar.append(actionsMenu);
+	
+	// Create a division to hold actions menu
+	var menuDiv = $('<div id="' + id + 'Datatable_menuDiv" class="menuDiv"></div>');
+	$('#' + id + 'Datatable_wrapper').prepend(menuDiv);
+	menuDiv.append(actionBar);	
+	$('#' + id + 'Datatable_filter').appendTo(menuDiv);
 }
 
 /**
@@ -462,10 +457,10 @@ function loadTable(data) {
  */
 function deleteRow(obj) {
 	// Get table ID
-	var tableId = $(obj).parent().parent().parent().parent().attr('id');
+	var tableId = $(obj).parents('table').attr('id');
 
 	// Get datatable
-	var dTable = getConfigDatatable(tableId);
+	var dTable = $('#' + tableId).dataTable();
 
 	// Get all nodes within the datatable
 	var rows = dTable.fnGetNodes();

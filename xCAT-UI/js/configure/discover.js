@@ -43,9 +43,7 @@ var discoverEnv;
 /**
  * create the discover page
  * 
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function loadDiscoverPage(){
 	currentStep = 0;
@@ -60,9 +58,7 @@ function loadDiscoverPage(){
 /**
  * update the step show are on the left side of discover page
  * 
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function updateDiscoverStep(){
 	$('#discoverStepDiv').empty();
@@ -81,9 +77,7 @@ function updateDiscoverStep(){
 /**
  * create the navigator buttons on the bottom of discover page
  * 
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function createDiscoverButtons(){
 	var buttonDiv = $('<div style="text-align:center;padding:20px 0px 10px 0px;"></div>');
@@ -113,9 +107,7 @@ function createDiscoverButtons(){
 /**
  * create the next button base on the currentStep, the last step does not need this button
  * 
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function createNextButton(){
 	var tempFlag = true;
@@ -143,9 +135,7 @@ function createNextButton(){
 /**
  * create the next button base on the currentStep, the first step does not need this button
  * 
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function createBackButton(){
 	var tempFlag = true;
@@ -174,9 +164,8 @@ function createBackButton(){
 /**
  * get the input value on discover page
  * 
- * @param 
- *        envName :  value's name(discoverEnv's key)
- * 
+ * @param envName 
+ * 			value's name(discoverEnv's key)
  * @return
  *       if there is assciate value, return the value. 
  *       else return null.
@@ -193,10 +182,11 @@ function getDiscoverEnv(envName){
 /**
  * set the input value on discover page
  * 
- * @param 
- *        envName :  value's name(discoverEnv's key)
- * 	      envValue:  value
- * @return null.
+ * @param envName
+ * 			value's name(discoverEnv's key)
+ * @param envValue 
+ * 			value
+ * @return nothing
  */
 function setDiscoverEnv(envName, envValue){
 	if (envName){
@@ -207,10 +197,9 @@ function setDiscoverEnv(envName, envValue){
 /**
  * delete the input value on discover page
  * 
- * @param 
- *        envName :  value's name(discoverEnv's key)
- * 
- * @return null.
+ * @param envName
+ * 			value's name(discoverEnv's key)
+ * @return nothing
  */
 function removeDiscoverEnv(envName){
 	if (discoverEnv[envName]){
@@ -221,12 +210,8 @@ function removeDiscoverEnv(envName){
 /**
  * Expand the noderange into node names.
  * 
- * @param 
- *        nodeRange :  
- * 
- * @return
- *       node names array.
- *       
+ * @param nodeRange  
+ * @return node names array
  */
 function expandNR(nodeRange){
 	var retArray = new Array();
@@ -294,8 +279,6 @@ function expandNR(nodeRange){
 /**
  * collect all inputs' value from the page
  * 
- * @param 
- * 
  * @return true: this step is correct, can go to the next page
  *         false: this step contains error.
  */
@@ -318,9 +301,7 @@ function collectInputValue(){
  * Step 1: show the wizard's function 
  *         platform selector(system P or system X)
  * 
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function initSelectPlatform(){
 	var temp = '';
@@ -351,9 +332,7 @@ function initSelectPlatform(){
 /**
  * Step 1: Get the platform type
  * 
- * @param 
- * 
- * @return
+ * @return true
  */
 function getPlatform(){
 	var radioValue = $('#discoverContentDiv :checked').attr('id');
@@ -367,16 +346,14 @@ function getPlatform(){
  *                             hmcs' name range, number and start ip
  *                             frames' name range, number and start ip
  *                             drawers' name range, number and start ip
- * 
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function initBasicPattern(){
 	$('#discoverContentDiv').empty();
 	$('.tooltip').remove();
 	var showString = '<div style="min-height:360px" id="patternDiv"><h2>' + steps[currentStep] + '</h2>';
 	showString += '<table><tbody>';
+	
 	//Frame title
 	showString += '<tr><td><h3>Frames:</h3></td></tr>';
 	//Frame Name
@@ -433,9 +410,9 @@ function initBasicPattern(){
 /**
  * Step 2: check basic patterns 
  * 			when user input the basic patterns, we should check if the input is correct. 
- * @param 
- * 
- * @return
+ * @param operType
+ * 			type of operation
+ * @return true or false
  */
 function checkBasicPattern(operType){
 	collectInputValue();
@@ -547,9 +524,7 @@ function checkBasicPattern(operType){
 /**
  * Step 3: allowed the users to edit the super node condigure file 
  *          
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function initSupernode(){
 	$('#discoverContentDiv').empty();
@@ -582,9 +557,9 @@ function initSupernode(){
 /**
  * Step 3: check the super node configure file 
  *          
- * @param 
- * 
- * @return
+ * @param operType
+ * 			type of operation
+ * @return true or false
  */
 function checkSupernode(operType){
 	collectInputValue();
@@ -662,9 +637,9 @@ function calcCec(spConfigStr){
 /**
  * Step 4: show the field which need to be configured in site table 
  *          
- * @param 
- * 
- * @return
+ * @param operType
+ * 			type of operation
+ * @return nothing
  */
 function initSiteTable(operType){
 	$('#discoverContentDiv').empty();
@@ -715,13 +690,12 @@ function initSiteTable(operType){
 
 /**
  * Step 4: when the values are ready, create the table 
- *          
- * @param 
  * 
- * @return
+ * @return nothing
  */
 function showSiteArea(){
 	var showString = '<table><tbody>';
+	
 	//domain name:
 	showString += '<tr><td>Domain Name:</td><td><input type="text" name="domainname" value="' + getDiscoverEnv('domainname') + 
 				  '" title="The DNS domain name used for the cluster."></td></tr>';
@@ -814,9 +788,9 @@ function calcEndIp(ipStart, num){
 /**
  * Step 4: check the input are all filled 
  *          
- * @param 
- * 
- * @return
+ * @param operType
+ * 			type of operation
+ * @return true or false
  */
 function checkSiteTable(operType){
 	$('#discoverContentDiv input[name=ipStart]').trigger('change');
@@ -851,10 +825,8 @@ function checkSiteTable(operType){
 
 /**
  * Step 5: told users to power on machines
- *          
- * @param 
  * 
- * @return
+ * @return nothing
  */
 function initPoweronHardware(){
 	$('#discoverContentDiv').empty();
@@ -872,10 +844,8 @@ function initPoweronHardware(){
 
 /**
  * Step 6: discover all frames from the cluster and map all mtms with frame name
- *          
- * @param 
- * 
- * @return
+ *
+ * @return nothing
  */
 function initDiscoverFrames(){
 	$('#discoverContentDiv').empty();
@@ -901,6 +871,7 @@ function initDiscoverFrames(){
 	}
 	
 	statBar.find('div').append('Discovering all Frames by lsslp.').append(createLoader());
+	
 	//use lsslp to find all bpas in cluster
 	$.ajax({
 		url : 'lib/cmd.php',
@@ -1001,9 +972,9 @@ function deleteMap(obj){
 /**
  * Step 6: write the frame and mtms map file
  *          
- * @param 
- * 
- * @return
+ * @param operType
+ * 			type of operation
+ * @return true or false
  */
 function checkFrameMtms(operType){
 	//check the number of radio button
@@ -1051,8 +1022,8 @@ function checkFrameMtms(operType){
  * Step 7: create the xcatsetup configure file and run xcatsetup to define all objects 
  * 		   in xcat database.   
  *          
- * @param 
- * 
+ * @param operType
+ * 			type of operation
  * @return
  */
 function initConfig(operType){
@@ -1085,9 +1056,7 @@ function initConfig(operType){
 /**
  * Step 7: create the xcat configure file
  *          
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function createSetupFile(){
 	var fileContent = '';
@@ -1150,9 +1119,7 @@ function createSetupFile(){
 /**
  * Step 7: run the xcatsetup command
  *          
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function runSetup(){
 	$('#setupLine').append(createLoader());
@@ -1178,10 +1145,8 @@ function runSetup(){
 
 /**
  * Step 7: create the dhcp configure file
- *          
- * @param 
  * 
- * @return
+ * @return nothing
  */
 function configDHCP(){
 	$('#dhcpLine').append(createLoader());
@@ -1208,9 +1173,9 @@ function configDHCP(){
 /**
  * Step 8: discover all hmc,cec in cluster and update into xcat database
  *          
- * @param 
- * 
- * @return
+ * @param operType
+ * 			type of operation
+ * @return nothing
  */
 function initUpdateDefinition(operType){
 	$('#discoverContentDiv').empty();
@@ -1236,9 +1201,7 @@ function initUpdateDefinition(operType){
 /**
  * Step 8: write all the lsslp -s FRAME info into database
  *          
- * @param 
- * 
- * @return
+ * @return nothing
  */
 function lsslpWriteFrame(){
 	$('#frameLine').append(createLoader());
@@ -1264,10 +1227,8 @@ function lsslpWriteFrame(){
 
 /**
  * Step 8: write all the lsslp -s HMC info into database
- *          
- * @param 
  * 
- * @return
+ * @return nothing
  */
 function lsslpWriteHMC(){
 	$('#hmcLine1').append(createLoader());
@@ -1351,10 +1312,8 @@ function lsslpWriteHMC(){
 
 /**
  * Step 8: write all the lsslp -s cec info into database
- *          
- * @param 
  * 
- * @return
+ * @return nothing
  */
 function lsslpWriteCec(){
 	$('#cecLine').append(createLoader());
@@ -1379,10 +1338,8 @@ function lsslpWriteCec(){
 
 /**
  * Step 9: create lpars
- *          
- * @param 
  * 
- * @return
+ * @return nothing
  */
 function initCreateLpar(){
 	$('#discoverContentDiv').empty();
@@ -1526,10 +1483,8 @@ function nonihCreateLpar(parentDiv){
 
 /**
  * Step 10: complete
- *          
- * @param 
  * 
- * @return
+ * @return nothing
  */
 function complete(){
 	$('#discoverContentDiv').empty();
