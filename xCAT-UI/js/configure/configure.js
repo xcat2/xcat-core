@@ -291,10 +291,7 @@ function loadTable(data) {
 		'iDisplayLength': 50,
 		'bLengthChange': false,
 		"sScrollX": "100%",
-		"bAutoWidth": true,
-		"fnInitComplete": function() {
-			
-		}
+		"bAutoWidth": true
 	});
 
 	// Create action bar

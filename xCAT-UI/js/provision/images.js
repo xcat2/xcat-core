@@ -3,6 +3,7 @@
  */
 var origAttrs = new Object();	// Original image attributes
 var defAttrs; 					// Definable image attributes
+var imgTableId = 'imagesDatatable';	// Images datatable ID
 
 /**
  * Load images page
@@ -84,7 +85,7 @@ function loadImages(data) {
 	sorted.unshift('<input type="checkbox" onclick="selectAllCheckbox(event, $(this))">', 'imagename');
 
 	// Create a datatable
-	var dTable = new DataTable('imagesDataTable');
+	var dTable = new DataTable(imgTableId);
 	dTable.init(sorted);
 
 	// Go through each image
@@ -124,62 +125,75 @@ function loadImages(data) {
 	 * copy Linux distribution and edit image properties
 	 */
 
-	// Create copy Linux button
-	var copyLinuxBtn = createButton('Copy CD');
-	copyLinuxBtn.bind('click', function(event) {
+	// Create copy CD link
+	var copyCDLnk = $('<a>Copy CD</a>');
+	copyCDLnk.click(function() {
 		loadCopyCdPage();
 	});
 	
-	// Create new button
-	var newBtn = createButton("Create Image");
-	newBtn.bind('click',function(event){
+	// Create image link
+	var newLnk = $('<a>Create image</a>');
+	newLnk.click(function() {
 		loadCreateImage();
 	});
 	
-	// Create edit button
-	var editBtn = createButton('Edit');
-	editBtn.bind('click', function(event){
-		var tgtImages = getNodesChecked('imagesDataTable').split(',');
+	// Create edit link
+	var editBtn = $('<a>Edit</a>');
+	editBtn.click(function() {
+		var tgtImages = getNodesChecked(imgTableId).split(',');
 		for (var i in tgtImages) {
 			 loadEditImagePage(tgtImages[i]);
 		}
 	});
-
-	/**
-	 * Create an action bar
-	 */
-	var actionsBar = $('<div></div>').css('margin', '10px 0px');
-	actionsBar.append(copyLinuxBtn);
-	actionsBar.append(newBtn);
-	actionsBar.append(editBtn);
-	$('#imagesTab').append(actionsBar);
 	
 	// Insert table
 	$('#imagesTab').append(dTable.object());
 
 	// Turn table into a datatable
-	var myDataTable = $('#imagesDataTable').dataTable({
-		'iDisplayLength': 50
+	var myDataTable = $('#' + imgTableId).dataTable({
+		'iDisplayLength': 50,
+		'bLengthChange': false,
+		"sScrollX": "100%",
+		"bAutoWidth": true,
+		"fnInitComplete": function() {
+			adjustColumnSize(imgTableId);
+		}
 	});
 	
 	// Set datatable width
-	$('#imagesDataTable_wrapper').css({
-		'width': '880px',
-		'margin': '0px'
+	$('#' + imgTableId + '_wrapper').css({
+		'width': '880px'
 	});
+	
+	// Actions
+	var actionBar = $('<div class="actionBar"></div>');
+	var actionsLnk = '<a>Actions</a>';
+	var actsMenu = createMenu([copyCDLnk, newLnk, editBtn]);
+
+	// Create an action menu
+	var actionsMenu = createMenu([ [ actionsLnk, actsMenu ] ]);
+	actionsMenu.superfish();
+	actionsMenu.css('display', 'inline-block');
+	actionBar.append(actionsMenu);
+	
+	// Create a division to hold actions menu
+	var menuDiv = $('<div id="' + imgTableId + '_menuDiv" class="menuDiv"></div>');
+	$('#' + imgTableId + '_wrapper').prepend(menuDiv);
+	menuDiv.append(actionBar);	
+	$('#' + imgTableId + '_filter').appendTo(menuDiv);
 	
 	/**
 	 * Enable editable columns
 	 */
 	
 	// Do not make 1st, 2nd, 3rd, 4th, or 5th column editable
-	$('#imagesDataTable td:not(td:nth-child(1),td:nth-child(2))').editable(
+	$('#' + imgTableId + ' td:not(td:nth-child(1),td:nth-child(2))').editable(
 		function(value, settings) {	
 			// Get column index
 			var colPos = this.cellIndex;
 						
 			// Get row index
-			var dTable = $('#imagesDataTable').dataTable();
+			var dTable = $('#' + imgTableId).dataTable();
 			var rowPos = dTable.fnGetPosition(this.parentNode);
 			
 			// Update datatable
@@ -189,7 +203,7 @@ function loadImages(data) {
 			var image = $(this).parent().find('td:eq(1)').text();
 					
 			// Get table headers
-			var headers = $('#imagesDataTable thead tr th');
+			var headers = $('#' + imgTableId).parents('.dataTables_scroll').find('.dataTables_scrollHead thead tr:eq(0) th');
 
         	// Get attribute name
         	var attrName = jQuery.trim(headers.eq(colPos).text());
@@ -276,13 +290,13 @@ function setImageDefAttrs(data) {
 /**
  * Load create image page
  * 
- * @param Nothing
  * @return Nothing
  */
 function loadCreateImage() {
 	// Get nodes tab
 	var tab = getProvisionTab();
 	var tabId = 'createImageTab';
+	
 	// Generate new tab ID
 	if ($('#' + tabId).size()) {
 		tab.select(tabId);

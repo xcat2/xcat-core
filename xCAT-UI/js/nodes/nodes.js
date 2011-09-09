@@ -862,7 +862,7 @@ function loadNodes(data) {
 		"sScrollX": "100%",
 		"bAutoWidth": true,
 		"fnInitComplete": function() {
-			adjustColumnSize();
+			adjustColumnSize(nodesTableId);
 		}
 	});
 	
@@ -1040,7 +1040,7 @@ function loadNodes(data) {
 		// Hide status loader
 		var statCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
 		statCol.find('img').hide();
-		adjustColumnSize();
+		adjustColumnSize(nodesTableId);
 	}
 	
 	if (undefined == nodeAttrs){
@@ -1385,7 +1385,7 @@ function addNodes2Table(data) {
 	 * Additional ajax requests need to be made for zVM
 	 */
 	advancedLoad(group);
-	adjustColumnSize();
+	adjustColumnSize(nodesTableId);
 }
 
 /**
@@ -1416,7 +1416,7 @@ function loadGangliaStatus(data) {
 	// Hide Ganglia loader
 	var gangliaCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(4)');
 	gangliaCol.find('img').hide();
-	adjustColumnSize();
+	adjustColumnSize(nodesTableId);
 }
 
 /**
@@ -1477,7 +1477,7 @@ function loadPowerStatus(data) {
 	// Hide power loader
 	var powerCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(3)');
 	powerCol.find('img').hide();
-	adjustColumnSize();
+	adjustColumnSize(nodesTableId);
 }
 
 /**
@@ -1542,7 +1542,7 @@ function loadNodeStatus(data) {
 	// Hide status loader
 	var statCol = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th:eq(2)');
 	statCol.find('img').hide();
-	adjustColumnSize();
+	adjustColumnSize(nodesTableId);
 }
 
 /**
@@ -2121,7 +2121,7 @@ function updatePowerStatus(data) {
 	}
 	
 	// Adjust datatable column size
-	adjustColumnSize();
+	adjustColumnSize(nodesTableId);
 }
 
 /**
@@ -3323,17 +3323,19 @@ function jump2Provision(tgtNodes){
 /**
  * Adjust datatable column size
  * 
+ * @param tableId
+ * 			Table ID
  * @return Nothing
  */
-function adjustColumnSize() {
-	var cols = $('#' + nodesTableId).find('tbody tr:eq(0) td');
+function adjustColumnSize(tableId) {
+	var cols = $('#' + tableId).find('tbody tr:eq(0) td');
 	
 	// If the column size is zero, wait until table is initialized
 	if (!cols.eq(1).outerWidth()) {
-		adjustColumnSize();
+		adjustColumnSize(tableId);
 	} else {
 		for (var i in cols) {
-			var headers = $('#' + nodesTableId + '_wrapper .dataTables_scrollHead .datatable thead tr th').eq(i);
+			var headers = $('#' + tableId + '_wrapper .dataTables_scrollHead .datatable thead tr th').eq(i);
 			headers.css('width', cols.eq(i).outerWidth());
 		}		
 	}	

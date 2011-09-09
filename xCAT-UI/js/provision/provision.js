@@ -76,7 +76,7 @@ function loadProvisionPage() {
 	provPg.append(infoBar);
 
 	// Create provision tab
-	var tab = new Tab();
+	var tab = new Tab('provisionPageTabs');
 	setProvisionTab(tab);
 	tab.init();
 	$('#content').append(tab.object());
@@ -140,14 +140,20 @@ function loadProvisionPage() {
 
 	// Add provision tab
 	tab.add('provisionTab', 'Provision', provPg, false);
-	
 	// Add image tab
-	var loader = $('<center></center>').append(createLoader(''));
-	tab.add('imagesTab', 'Images', loader, false);
-	loadImagesPage();
+	tab.add('imagesTab', 'Images', '', false);
 	
-	//should open the quick provision tab
-	if (window.location.search){
+	// Load tabs onselect
+	$('#provisionPageTabs').bind('tabsselect', function(event, ui){ 
+		// Load image page 
+		if (!$('#imagesTab').children().length && ui.index == 1) {
+			$('#imagesTab').append($('<center></center>').append(createLoader('')));
+			loadImagesPage();
+		}
+	});
+	
+	// Open the quick provision tab
+	if (window.location.search) {
 	    tab.add('quickProvisionTab', 'Quick Provision', '', true);
 	    tab.select('quickProvisionTab');
 	    
