@@ -1,3 +1,18 @@
+start:restartxcatd_v
+os:AIX
+cmd:restartxcatd -v
+check:rc==0
+check:output=~Version
+end
+
+start:restartxcatd_h
+os:AIX
+cmd:restartxcatd -h
+check:rc==0
+cmd:restartxcatd --help
+check:rc==0
+end
+
 start:restartxcatd
 os:AIX
 cmd:restartxcatd
@@ -5,3 +20,13 @@ check:rc==0
 check:output=~The xcatd Subsystem was requested to stop
 check:output=~The xcatd Subsystem has been started. Subsystem PID is \d+
 end
+
+start:restartxcatd_V
+os:AIX
+cmd:restartxcatd -V
+check:output=~Stopped the xcatd subsystem
+check:output=~The xcatd Subsystem has been started
+check:output=~Running command on 
+check:output=~Started the xcatd subsystem
+end
+
