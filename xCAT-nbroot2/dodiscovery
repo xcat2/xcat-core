@@ -83,7 +83,7 @@ CPUTYPE=`cat /tmp/cpumod|awk -F':' '{print $2}'|sed -e 's/^ //'`
 echo '<xcatrequest>' > /tmp/discopacket
 echo "<command>findme</command>" >> /tmp/discopacket
 echo "<arch>$ARCH</arch>" >> /tmp/discopacket
-if [ ! -z "$IAMAVM" ]; then
+if [ "$IAMAVM"=1 ]; then
 	echo "<nodetype>virtual</nodetype>" >> /tmp/discopacket
 fi
 echo "<cpucount>$CPUCOUNT</cpucount>" >> /tmp/discopacket
@@ -99,7 +99,7 @@ for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://`; do
 	DRIVER=`grep DRIVER /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
 	ADDRESS=`ip address show dev $dev|grep "inet "|grep global|awk '{print $2}'`
 	MAC=`ip link show dev $dev|grep ether|awk '{print $2}'`
-	echo "<mac>$DRIVER|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
+	echo "<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
 done
 echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> /tmp/discopacket #this is not secure to use by itself, switch sourced pubkey for security
 echo "<sha512sig>" >> /tmp/discopacket
@@ -123,7 +123,7 @@ while [ ! -r /restart ]; do
 	for dhcps in `grep dhcp-server /var/lib/dhclient/dhclient.leases|awk '{print $4}'|sed -s 's/;//'`; do
 		(cat /tmp/discopacket | udpcat.awk $dhcps $XCATPORT ) &
 	done
-	cat /tmp/discopacket
+	#cat /tmp/discopacket
 	sleep 5
 done
 /bin/restart

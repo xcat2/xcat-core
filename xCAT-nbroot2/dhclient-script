@@ -42,5 +42,9 @@ elif [ $reason = "BOUND6" ]; then
 	if [ ! -z "$new_ip6_address" ]; then 
 		ip addr add dev $interface $new_ip6_address/$new_ip6_prefixlen
 	fi
+elif [ $reason = "RELEASE" ]; then
+	if [ ! -z "$old_ip_address" ]; then
+		ip addr del dev $interface $old_ip_address/$old_subnet_mask
+	fi
 fi
 exit 0
