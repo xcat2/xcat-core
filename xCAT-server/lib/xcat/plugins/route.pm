@@ -378,7 +378,7 @@ sub process_makeroutes {
 		}
 	    } else {
 		my $rsp={};
-		$rsp->{data}->[0]= "No routes defined in the site.mnroutnames for the management node.";
+		$rsp->{data}->[0]= "No routes defined in the site.mnroutenames for the management node.";
 		$callback->($rsp);
 		return 1;
 	    }
