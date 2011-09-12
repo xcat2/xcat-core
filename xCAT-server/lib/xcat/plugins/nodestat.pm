@@ -32,7 +32,9 @@ my %default_ports = (
     'loadl' => '9616',
     'loadl_master' => '9616',
     'loadleveler' => '9616',
-    'gpfs' => '1191'
+    'gpfs' => '1191',
+    'rdp' => '3389',
+    'msrpc' => '135',
     );
 
 sub handled_commands {
@@ -195,6 +197,10 @@ sub preprocess_request
 	    $apps{'pbs'}->{'port'} = "15002"; 
 	    $apps{'xend'}->{'group'} = "ALL"; 
 	    $apps{'xend'}->{'port'} = "8002"; 
+            $apps{'rdp'}->{'group'} = "ALL";
+            $apps{'rdp'}->{'port'} = "3389";
+            $apps{'msrpc'}->{'group'} = "ALL";
+            $apps{'msrpc'}->{'port'} = "135";
             $apps{'APPS'}=['sshd', 'pbs', 'xend'];
         } else {
 	    #go thorugh the settings and put defaults in
@@ -590,7 +596,8 @@ sub process_request_nmap {
        $deadnodes{$_}=1;
    }
    #print "nmap -PE --send-ip -p $ports,3001 ".join(' ',@nodes) . "\n";
-   open($fping,"nmap -PE --send-ip -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
+   # open($fping,"nmap -PE --send-ip -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
+   open($fping,"nmap -PE -p $ports,3001 ".join(' ',@nodes). " 2> /dev/null|") or die("Can't start nmap: $!");
    my $currnode='';
    my $port;
    my $state;
