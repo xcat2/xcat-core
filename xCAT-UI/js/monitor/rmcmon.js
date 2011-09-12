@@ -14,14 +14,13 @@ function loadRmcMon() {
     rmcStatusBar.find('div').append(createLoader());
     rmcMonTab.append(rmcStatusBar);
 
-    //add the configure button.
+    //add the configure button
     var configButton = createButton('Configure');
     configButton.hide();
     configButton.click(function() {
         if ($('#rmcMonConfig').is(':hidden')) {
             $('#rmcMonConfig').show();
-        }
-        else {
+        } else {
             $('#rmcMonConfig').hide();
         }
     });
@@ -39,18 +38,18 @@ function loadRmcMon() {
     $('#nodeDetail').hide();
 
     //check the software work status by platform(linux and aix)
-    $.ajax( {
-        url : 'lib/systemcmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'ostype'
+    $.ajax({
+        url: 'lib/systemcmd.php',
+        dataType: 'json',
+        data: {
+            cmd: 'ostype'
         },
 
-        success : rsctRpmCheck
+        success: rsctRpmCheck
     });
 }
 
-function loadRmcMonConfigure(){
+function loadRmcMonConfigure() {
 	//get the configure div and clean its content.
 	var rmcmonCfgDiv = $('#rmcMonConfig');
 	rmcmonCfgDiv.empty();
@@ -61,13 +60,13 @@ function loadRmcMonConfigure(){
 	startButton.click(function(){
 		$('#rmcMonStatus div').empty().append(createLoader());
 		$.ajax({
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'webrun',
-				tgt : '',
-				args : 'rmcstart;compute',
-				msg : ''
+			url: 'lib/cmd.php',
+			dataType: 'json',
+			data: {
+				cmd: 'webrun',
+				tgt: '',
+				args: 'rmcstart;compute',
+				msg: ''
 			},
 
 			success : function(data){
@@ -79,19 +78,19 @@ function loadRmcMonConfigure(){
 	//add the stop button
 	var stopButton = createButton('Stop');
 	rmcmonCfgDiv.append(stopButton);
-	stopButton.click(function(){
+	stopButton.click(function() {
 		$('#rmcMonStatus div').empty().append(createLoader());
 		$.ajax({
-			url : 'lib/cmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'monstop',
-				tgt : '',
-				args : 'rmcmon',
-				msg : ''
+			url: 'lib/cmd.php',
+			dataType: 'json',
+			data: {
+				cmd: 'monstop',
+				tgt: '',
+				args: 'rmcmon',
+				msg: ''
 			},
 
-			success : function(data){
+			success: function(data) {
 				$('#rmcMonStatus div').empty().append(data.rsp[0]);
 			}
 		});
@@ -100,93 +99,90 @@ function loadRmcMonConfigure(){
 	//add the cancel button
 	var cancelButton = createButton('Cancel');
 	rmcmonCfgDiv.append(cancelButton);
-	cancelButton.click(function(){
+	cancelButton.click(function() {
 		$('#rmcMonConfig').hide();
 	});
 }
 
-function rsctRpmCheck(data){
+function rsctRpmCheck(data) {
 	//linux had to check the rscp first
-	if ('aix' != data.rsp){
-		$.ajax( {
-			url : 'lib/systemcmd.php',
-			dataType : 'json',
-			data : {
-				cmd : 'rpm -q rsct.core'
+	if ('aix' != data.rsp) {
+		$.ajax({
+			url: 'lib/systemcmd.php',
+			dataType: 'json',
+			data: {
+				cmd: 'rpm -q rsct.core'
 			},
 
-			success : function(data){
-				if (-1 != data.rsp.indexOf("not")){
+			success: function(data) {
+				if (-1 != data.rsp.indexOf("not")) {
 					$('#rmcMonStatus div').empty().append(
 					'Please install the <a href="http://www14.software.ibm.com/webapp/set2/sas/f/rsct/rmc/download/home.html" target="install_window">RSCT</a> first.<br/>' +
 					'You can find more support from <a href="http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/xCAT-client/share/doc/xCAT2-Monitoring.pdf" target="pdf_window">xCAT2-Monitoring.pdf</a>');
-				}
-				else{
+				} else {
 					xcatrmcRpmCheck();
 				}
 			}
 		});
-	}
-	else{		
+	} else {		
 		xcatrmcRpmCheck();
 	}
 }
 
-function xcatrmcRpmCheck(){
-	$.ajax( {
+function xcatrmcRpmCheck() {
+	$.ajax({
 		url : 'lib/systemcmd.php',
 		dataType : 'json',
 		data : {
 			cmd : 'rpm -q xCAT-rmc rrdtool'
 		},
 
-		success : function(data){
+		success : function(data) {
 			var softInstallStatus = data.rsp.split(/\n/);
 			var needHelp = false;
 			$('#rmcMonStatus div').empty();
 			//check the xcat-rmc
-			if (-1 != softInstallStatus[0].indexOf("not")){
+			if (-1 != softInstallStatus[0].indexOf("not")) {
 				needHelp = true;
 				$('#rmcMonStatus div').append(
 				'Please install the <a href="http://xcat.sourceforge.net/#download" target="install_window">xCAT-rmc</a> first.<br/>');
 			}
 			
 			//check the rrdtool
-			if (-1 != softInstallStatus[1].indexOf("not")){
+			if (-1 != softInstallStatus[1].indexOf("not")) {
 				needHelp = true;
 				$('#rmcMonStatus div').append(
 					'Please install the <a href="http://oss.oetiker.ch/rrdtool/download.en.html" target="install_window">RRD-tool</a> first.<br/>');
 			}
 			
 			//add help info or load the rmc show
-			if (needHelp){
+			if (needHelp) {
 				$('#rmcMonStatus div').append(
 				'You can find more support form <a href="http://xcat.svn.sourceforge.net/viewvc/xcat/xcat-core/trunk/xCAT-client/share/doc/xCAT2-Monitoring.pdf" target="pdf_window">xCAT2-Monitoring.pdf</a>');
-			}
-			else{
+			} else {
 				rmcWorkingCheck();
 			}
 		}
 	});
 }
 
-function rmcWorkingCheck(){
-	$('#rmcMonStatus div').empty().append("Checking RMC working status.");
+function rmcWorkingCheck() {
+	$('#rmcMonStatus div').empty().append("Checking RMC working status");
 	$('#rmcMonStatus div').append(createLoader());
 	$('#rmcmon button:first').show();
 	$.ajax({
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'monls',
-			tgt : '',
-			args : 'rmcmon',
-			msg : ''
+		url: 'lib/cmd.php',
+		dataType: 'json',
+		data: {
+			cmd: 'monls',
+			tgt: '',
+			args: 'rmcmon',
+			msg: ''
 		},
 
-		success : function(data){
+		success: function(data) {
 			if (-1 != data.rsp[0].indexOf("not-monitored")){
-				$('#rmcMonStatus div').empty().append("Please start the RMC Monitoring first.");
+				$('#rmcMonStatus div').empty().append("Please start the RMC Monitoring first");
 				return;
 			}
 			loadRmcMonShow();
@@ -203,21 +199,21 @@ function removeStatusBar(){
 }
 
 function loadRmcMonShow(){
-	$('#rmcMonStatus div').empty().append("Getting Summary Data.");
+	$('#rmcMonStatus div').empty().append("Getting summary data");
 	$('#rmcMonStatus div').append(createLoader());
 	
 	//load the rmc status summary
 	$.ajax({
-		url : 'lib/cmd.php',
-		dataType : 'json',
-		data : {
-			cmd : 'webrun',
-			tgt : '',
-			args : 'rmcshow;summary;PctTotalTimeIdle,PctRealMemFree',
-			msg : ''
+		url: 'lib/cmd.php',
+		dataType: 'json',
+		data: {
+			cmd: 'webrun',
+			tgt: '',
+			args: 'rmcshow;summary;PctTotalTimeIdle,PctRealMemFree',
+			msg: ''
 		},
 
-		success : function(data){			
+		success: function(data) {			
 			showRmcSummary(data.rsp[0]);
 		}
 	});
@@ -234,19 +230,19 @@ function showRmcSummary(returnData) {
     globalTimeStamp = new Array();
 
     //update the rmc status area
-    $('#rmcMonStatus div').empty().append("Getting Nodes' Data").append(createLoader());
+    $('#rmcMonStatus div').empty().append("Getting nodes data").append(createLoader());
     //load each nodes' status
-    $.ajax( {
-        url : 'lib/cmd.php',
-        dataType : 'json',
-        data : {
-            cmd : 'webrun',
-            tgt : '',
-            args : 'rmcshow;compute;PctTotalTimeIdle,PctRealMemFree',
-            msg : ''
+    $.ajax({
+        url: 'lib/cmd.php',
+        dataType: 'json',
+        data: {
+            cmd: 'webrun',
+            tgt: '',
+            args: 'rmcshow;compute;PctTotalTimeIdle,PctRealMemFree',
+            msg: ''
         },
 
-        success : function(data) {
+        success: function(data) {
             parseRmcData(data.rsp);
         }
     });
@@ -256,7 +252,7 @@ function showRmcSummary(returnData) {
     var tempDate = new Date();
     var tempOffset = tempDate.getTimezoneOffset();
     var tempTime = tempDate.getTime() - 3600000;
-    for ( var i = 0; i < 60; i++) {
+    for (var i = 0; i < 60; i++) {
         tempDate.setTime(tempTime + i * 60000);
         globalTimeStamp.push(tempDate.getTime());
     }
@@ -279,29 +275,29 @@ function showRmcSummary(returnData) {
         summaryRow.append(tempTd);
         attrDiv = $('<div id="monitorsumdiv' + attr + '" class="monitorsumdiv"></div>');
         tempTd.append(attrDiv);
-        for ( var i in attrValues) {
+        for (var i in attrValues) {
             tempArray.push( [ globalTimeStamp[i], Number(attrValues[i]) ]);
         }
 
         $.jqplot('monitorsumdiv' + attr, [ tempArray ], {
-            series : [ {
+            series: [{
                 showMarker : false
-            } ],
-            axes : {
-                xaxis : {
-                    label : attrName,
-                    renderer : $.jqplot.DateAxisRenderer,
-                    numberTicks : 5,
-                    tickOptions : {
-                        formatString : '%R',
-                        show : true,
-                        fontSize : '10px'
+            }],
+            axes: {
+                xaxis: {
+                    label: attrName,
+                    renderer: $.jqplot.DateAxisRenderer,
+                    numberTicks: 5,
+                    tickOptions: {
+                        formatString: '%R',
+                        show: true,
+                        fontSize: '10px'
                     }
                 },
-                yaxis : {
-                    tickOptions : {
-                        formatString : '%.2f',
-                        fontSize : '10px'
+                yaxis: {
+                    tickOptions: {
+                        formatString: '%.2f',
+                        fontSize: '10px'
                     }
                 }
             }
@@ -309,7 +305,7 @@ function showRmcSummary(returnData) {
     }
 }
 
-function parseRmcData(returnData){
+function parseRmcData(returnData) {
     var nodeName;
     var nodeStatus;
     
@@ -323,12 +319,12 @@ function parseRmcData(returnData){
     
     globalAllNodesNum = returnData.length;
     globalFinishNodesNum = 0;
-    for(var i in returnData){
+    for (var i in returnData) {
         var temp = returnData[i].indexOf(':');;
         nodeName = returnData[i].substr(0, temp);
         nodeStatus = returnData[i].substr(temp + 1).replace(/(^\s*)|(\s*$)/g, '');
         
-        if ('OK' != nodeStatus){
+        if ('OK' != nodeStatus) {
             globalFinishNodesNum++;
             detailUl.append(createUnkownNode(nodeName));
             removeStatusBar();
@@ -351,13 +347,13 @@ function parseRmcData(returnData){
     }
 }
 
-function createUnkownNode(nodeName){
+function createUnkownNode(nodeName) {
     var tempLi = '<li class="monitorunknown ui-corner-all monitornodeli" id="' + nodeName + '" ' + 
                  'title="Name:' + nodeName + '<br/>Unknown"></li>';
     return tempLi;
 }
 
-function createErrorNode(nodeName){
+function createErrorNode(nodeName) {
     var tempLi = '<li class="monitorerror ui-corner-all monitornodeli id="' + nodeName + '" ' +
                  'title="Name:' + nodeName + '<br/>Error"></li>';
 }
@@ -370,14 +366,14 @@ function showRmcNodes(data, nodename) {
     var classname = '';
     var tempObj = {};
     
-    for (index in data){
+    for (index in data) {
         position = data[index].indexOf(':');
         attrname = data[index].substr(0, position);
         values = data[index].substr(position + 1);
         //error node, can not get the last hour's data
-        if ('' == values){
+        if (!values) {
             $('#rmcmonDetail ul').append(createErrorNode(nodename));
-            if (globalNodesDetail[nodename]){
+            if (globalNodesDetail[nodename]) {
                 delete(globalNodesDetail[nodename]);
             }
             return;
@@ -394,22 +390,21 @@ function showRmcNodes(data, nodename) {
     var memAvg = 0;
     var tempSum = 0;
     var tempArray = globalNodesDetail[nodename]['PctTotalTimeIdle'].split(',');
-    for (index = 0; index < tempArray.length; index++){
+    for (index = 0; index < tempArray.length; index++) {
         tempSum += Number(tempArray[index]);
     }
     cpuAvg = parseInt(tempSum / index);
     
     tempArray = globalNodesDetail[nodename]['PctRealMemFree'].split(',');
     tempSum = 0;
-    for (index = 0; index < tempArray.length; index++){
+    for (index = 0; index < tempArray.length; index++) {
         tempSum += Number(tempArray[index]);
     }
     memAvg = parseInt(tempSum / index);
     
     if (cpuAvg >= 10 && memAvg <= 90){
         classname = 'monitornormal';
-    }
-    else{
+    } else {
         classname = 'mornitorwarning';
     }
     
@@ -463,9 +458,9 @@ function showNode(nodeName) {
         }
 
         $.jqplot('monitornodediv' + nodeName + attr, [ tempArray ], {
-            series : [ {
+            series : [{
                 showMarker : false
-            } ],
+            }],
             axes : {
                 xaxis : {
                     label : attr,
@@ -488,14 +483,10 @@ function showNode(nodeName) {
     }
 }
 
-/*===========RMC Event Tab============*/
 /**
- * load the rmc event tab.
+ * load the rmc event tab
  * 
- * @param
- * 
- * @return
- * 
+ * @return nothing 
  */
 function loadRmcEvent(){
 	//find the rmcevent tab
@@ -506,7 +497,7 @@ function loadRmcEvent(){
 	$('#rmcevent').append(rmcStatusBar);
 	$('#rmcevent').append('<div id="rmcEventDiv"></div>');
 	
-	$.ajax( {
+	$.ajax({
 		url : 'lib/cmd.php',
 		dataType : 'json',
 		data : {
@@ -523,11 +514,10 @@ function loadRmcEvent(){
 /**
  * get all conditions
  * 
- * @return
- * 
+ * @return nothing
  */
 function getConditions(){
-	if ('' == globalCondition){
+	if (!globalCondition) {
 		$('#rmcEventStatus div').empty().append('Getting predefined conditions').append(createLoader());
 		$.ajax({
 			url : 'lib/cmd.php',
@@ -545,8 +535,7 @@ function getConditions(){
 				globalCondition = data.rsp[0];
 			}
 		});
-	}
-	else{
+	} else {
 		$('#rmcEventButtons').show();
 	}
 }
@@ -554,18 +543,17 @@ function getConditions(){
 /**
  * get all response
  * 
- * @return
- * 
+ * @return nothing
  */
-function getResponse(){
+function getResponse() {
 	var tempFlag = false;
 	//get all response first
-	for (var i in globalResponse){
+	for (var i in globalResponse) {
 		tempFlag = true; 
 		break;
 	}
 	
-	if (!tempFlag){
+	if (!tempFlag) {
 		$.ajax({
 			url : 'lib/cmd.php',
 			dataType : 'json',
@@ -576,9 +564,9 @@ function getResponse(){
 				msg : ''
 			},
 			
-			success : function(data){
+			success : function(data) {
 				var resps = data.rsp[0].split(';');
-				for (var i in resps){
+				for (var i in resps) {
 					var name = resps[i];
 					name = name.substr(1, (name.length - 2));
 					globalResponse[name] = 1;
@@ -591,24 +579,20 @@ function getResponse(){
 /**
  * show all the event in the rmc event tab
  * 
- * @param data response from the xcat server.
-
- * @return
- * 
+ * @param data 
+ * 			response from the xcat server
+ * @return nothing 
  */
-function showEventLog(data){
+function showEventLog(data) {
 	$('#rmcEventStatus div').empty();
 	// rsct not installed.
-	if (data.rsp[0] && (-1 != data.rsp[0].indexOf('lsevent'))){
+	if (data.rsp[0] && (-1 != data.rsp[0].indexOf('lsevent'))) {
 		$('#rmcEventStatus div').append('Please install RSCT first!');
 		return;
 	}
 	var eventDiv = $('#rmcEventDiv');
 	eventDiv.empty();
-	
-	//add the configure button
-	loadRmcEventConfig();
-	
+		
 	//get conditions and responses, save in the global
 	getConditions();
 	getResponse();
@@ -616,19 +600,21 @@ function showEventLog(data){
 	var eventTable = new DataTable('lsEventTable');
 	eventTable.init(['Time', 'Type', 'Content']);
 	
-	for (var i in data.rsp){
+	for (var i in data.rsp) {
 		var row = data.rsp[i].split(';');
 		eventTable.add(row);
 	}
 	
 	eventDiv.append(eventTable.object());
 	$('#lsEventTable').dataTable({
-		'bFilter' : true,
-		'bLengthChange' :true,
-		'bSort' :true,
-		'bPaginate' :true,
-		'iDisplayLength' :10
+		'iDisplayLength': 50,
+		'bLengthChange': false,
+		"sScrollX": "100%",
+		"bAutoWidth": true
 	});
+	
+	//add the configure button
+	loadRmcEventConfig();
 	
 	//unsort on the content column
 	$('#lsEventTable thead tr th').eq(2).unbind('click');
@@ -636,60 +622,65 @@ function showEventLog(data){
 
 /**
  * Add the configure button into rmc event tab
- * 
- * @param 
-
- * @return
- * 
+ *
+ * @return nothing 
  */
 function loadRmcEventConfig(){
-	var buttons = $('<div id="rmcEventButtons" style="display:none;"></div>');
-	var chCondScopeBut = createButton('Change Condition Scope');
-	chCondScopeBut.bind('click', function(){
+	//create action bar
+	var actionBar = $('<div class="actionBar"></div>');
+	var chCondScopeLnk = $('<a>Change condition scope</a>');
+	chCondScopeLnk.bind('click', function() {
 		chCondScopeDia();
 	});
-	buttons.append(chCondScopeBut);
 	
-	var mkCondRespBut = createButton('Make/Remove Association');
-	mkCondRespBut.bind('click', function(){
+	var mkCondRespLnk = $('<a>Make/remove associatione</a>');
+	mkCondRespLnk.bind('click', function() {
 		mkCondRespDia();
 	});
-	buttons.append(mkCondRespBut);
 	
-	var startCondRespBut = createButton('Start/Stop Association');
-	startCondRespBut.bind('click', function(){
+	var startCondRespLnk = $('<a>Start/stop association</a>');
+	startCondRespLnk.bind('click', function() {
 		startStopCondRespDia();
 	});
-	buttons.append(startCondRespBut);
 	
-	$('#rmcEventDiv').append(buttons);
+	//actions
+	var actionsLnk = '<a>Actions</a>';
+	var actsMenu = createMenu([chCondScopeLnk, mkCondRespLnk, startCondRespLnk]);
+
+	//create an action menu
+	var actionsMenu = createMenu([ [ actionsLnk, actsMenu ] ]);
+	actionsMenu.superfish();
+	actionsMenu.css('display', 'inline-block');
+	actionBar.append(actionsMenu);
+	
+	//create a division to hold actions menu
+	var menuDiv = $('<div id="lsEventTable_menuDiv" class="menuDiv"></div>');
+	$('#lsEventTable_wrapper').prepend(menuDiv);
+	menuDiv.append(actionBar);	
+	$('#lsEventTable_filter').appendTo(menuDiv);
 }
 
 /**
  * show the make association dialogue
  * 
- * @param 
-
- * @return
- * 
+ * @return nothing
  */
 function mkCondRespDia(){
 	var diaDiv = $('<div title="Configure Association" id="mkAssociation" class="tab"></div>');
 	var mkAssociationTable = '<center><table><thead><tr><th>Condition Name</th><th>Response Name</th></tr></thead>';
 	mkAssociationTable += '<tbody><tr><td id="mkAssCond">';
 	//add the conditions into fieldset
-	if ('' == globalCondition){
-		mkAssociationTable += 'Getting predefined conditions, open this dislogue later.';
-	}
-	else{
+	if (!globalCondition) {
+		mkAssociationTable += 'Getting predefined conditions, open this dislogue later';
+	} else {
 		mkAssociationTable += createConditionTd(globalCondition);
 	}
 	
-	mkAssociationTable += '</td><td id="mkAssResp">Plase select condition first.</td></tr></tbody></table></center>';
+	mkAssociationTable += '</td><td id="mkAssResp">Please select condition first</td></tr></tbody></table></center>';
 	diaDiv.append(mkAssociationTable);
 	diaDiv.append('<div id="selectedResp" style="display: none;" ><div>');
 	//change the response field when click the condition
-	diaDiv.find('input:radio').bind('click', function(){
+	diaDiv.find('input:radio').bind('click', function() {
 		diaDiv.find('#mkAssResp').empty().append('Getting response').append(createLoader());
 		$.ajax({
 			url : 'lib/cmd.php',
@@ -701,25 +692,24 @@ function mkCondRespDia(){
 				msg : ''
 			},
 			
-			success : function (data){
+			success : function(data) {
 				var tempHash = new Object();
 				var oldSelectedResp = '';
 				var showStr = '';
 				if (data.rsp[0]){
 					var names = data.rsp[0].split(';');
-					for (var i in names){
+					for (var i in names) {
 						var name = names[i];
 						name = name.substr(1, name.length - 2);
 						tempHash[name] = 1;
 					}
 				}
 				
-				for (var name in globalResponse){
-					if (tempHash[name]){
+				for (var name in globalResponse) {
+					if (tempHash[name]) {
 						showStr += '<input type="checkbox" checked="checked" value="' + name + '">' + name + '<br/>';
 						oldSelectedResp += ';' + name;
-					}
-					else{
+					} else {
 						showStr += '<input type="checkbox" value="' + name + '">' + name + '<br/>';
 					}
 				}
@@ -734,14 +724,11 @@ function mkCondRespDia(){
 		 modal: true,
          width: 620,
          height: 600,
-         close: function(event, ui){
+         close: function(event, ui) {
 					$(this).remove();
 				},
 		buttons: {
-			cancel : function(){
-				$(this).dialog('close');
-			},
-			ok : function(){
+			'Ok' : function() {
 				var newResp = new Object();
 				var oldResp = new Object();
 				var oldString = '';
@@ -749,15 +736,15 @@ function mkCondRespDia(){
 				
 				//get the old seelected responses
 				var conditionName = $(this).find('#mkAssCond :checked').attr('value');
-				if (!conditionName){
+				if (!conditionName) {
 					return;
 				}
 				var temp = $(this).find('#selectedResp').html();
-				if('' == temp){
+				if(!temp) {
 					return;
 				}
 				var tempArray = temp.substr(1).split(';');
-				for (var i in tempArray){
+				for (var i in tempArray) {
 					oldResp[tempArray[i]] = 1;
 				}
 				
@@ -767,31 +754,31 @@ function mkCondRespDia(){
 					newResp[respName] = 1;
 				});
 				
-				for (var i in newResp){
-					if (oldResp[i]){
+				for (var i in newResp) {
+					if (oldResp[i]) {
 						delete oldResp[i];
 						delete newResp[i];
 					}
 				}
 				
 				//add the response which are delete.
-				for (var i in oldResp){
+				for (var i in oldResp) {
 					oldString += ',"' + i + '"';
 				}
-				if ('' != oldString){
+				if ('' != oldString) {
 					oldString = oldString.substr(1);
 				}
 				
 				//add the response which are new add
-				for (var i in newResp){
+				for (var i in newResp) {
 					newString += ',"' + i +'"';
 				}
-				if ('' != newString){
+				if ('' != newString) {
 					newString = newString.substr(1);
 				}
 				
-				if (('' != oldString) || ('' != newString)){
-					$('#rmcEventStatus div').empty().append('Create/Remove associations').append(createLoader());
+				if (('' != oldString) || ('' != newString)) {
+					$('#rmcEventStatus div').empty().append('Create/remove associations ').append(createLoader());
 					$.ajax({
 						url : 'lib/cmd.php',
 						dataType : 'json',
@@ -802,11 +789,14 @@ function mkCondRespDia(){
 							msg : ''
 						},
 						
-						success : function(data){
+						success : function(data) {
 							$('#rmcEventStatus div').empty().append(data.rsp[0]);;
 						}
 					});
 				}
+				$(this).dialog('close');
+			},
+			'Cancel' : function() {
 				$(this).dialog('close');
 			}
 		}
@@ -815,29 +805,25 @@ function mkCondRespDia(){
 
 /**
  * show the make condition dialogue
- * 
- * @param 
-
- * @return
- * 
+ *
+ * @return nothing 
  */
-function chCondScopeDia(){
+function chCondScopeDia() {
 	var diaDiv = $('<div title="Change Condition Scope" id="chScopeDiaDiv" class="tab"></div>');
 	var tableContent = '<center><table id="changeScopeTable" ><thead><tr><th>Condition Name</th><th>Group Name</th></tr></thead>';
 	
 	tableContent += '<tbody><tr><td id="changePreCond">';
 	//add the conditions into fieldset
-	if ('' == globalCondition){
-		tableContent += 'Getting predefined conditions, open this dislogue later.';
-	}
-	else{
+	if ('' == globalCondition) {
+		tableContent += 'Getting predefined conditions, open this dialogue later';
+	} else {
 		tableContent += createConditionTd(globalCondition);
 	}
 	tableContent += '</td><td id="changeGroup">';
 	
 	//add the groups into table
 	var groups = $.cookie('groups').split(',');
-	for (var i in groups){
+	for (var i in groups) {
 		tableContent += '<input type="checkbox" value="' + groups[i] + '">' + groups[i] + '<br/>';
 	}
 	
@@ -850,33 +836,29 @@ function chCondScopeDia(){
 		modal: true,
         width: 500,
         height : 600,
-        close: function(event, ui){
+        close: function(event, ui) {
 					$(this).remove();
 				},
 		buttons: {
-			cancel : function(){
-				$(this).dialog('close');
-			},
-			ok : function(){
+			'Ok' : function() {
 				$('#changeStatus').empty().append('<legend>Status</legend>');
 				var conditionName = $('#changePreCond :checked').attr('value');
 				var groupName = '';
-				$('#changeGroup :checked').each(function(){
-					if ('' == groupName){
+				$('#changeGroup :checked').each(function() {
+					if ('' == groupName) {
 						groupName += $(this).attr('value');
-					}
-					else{
+					} else {
 						groupName += ',' + $(this).attr('value');
 					}
 				});
 				
-				if (undefined == conditionName){
-					$('#changeStatus').append('Please select conditon.');
+				if (undefined == conditionName) {
+					$('#changeStatus').append('Please select conditon');
 					return;
 				}
 				
-				if ('' == groupName){
-					$('#changeStatus').append('Please select group.');
+				if ('' == groupName) {
+					$('#changeStatus').append('Please select group');
 					return;
 				}
 				
@@ -893,15 +875,17 @@ function chCondScopeDia(){
 					
 					success : function(data){
 						$('#changeStatus img').remove();
-						if (-1 != data.rsp[0].indexOf('Error')){
+						if (-1 != data.rsp[0].indexOf('Error')) {
 							$('#changeStatus').append(data.rsp[0]);
-						}
-						else{
+						} else {
 							$('#rmcEventStatus div').empty().append(data.rsp[0]);
 							$('#chScopeDiaDiv').remove();
 						}
 					}
 				});
+			},
+			'Cancel' : function() {
+				$(this).dialog('close');
 			}
 		}
 	});
@@ -910,26 +894,23 @@ function chCondScopeDia(){
 /**
  * show the make response dialogue
  * 
- * @param 
-
- * @return
- * 
+ * @return nothing
  */
-function mkResponseDia(){
+function mkResponseDia() {
 	var diaDiv = $('<div title="Make Response"><div>');
 	diaDiv.append('under construction.');
 	
 	diaDiv.dialog({
 		 modal: true,
          width: 400,
-         close: function(event, ui){
+         close: function(event, ui) {
 					$(this).remove();
 				},
 		buttons: {
-			cancel : function(){
+			'Ok' : function() {
 				$(this).dialog('close');
 			},
-			ok : function(){
+			'Cancel' : function() {
 				$(this).dialog('close');
 			}
 		}
@@ -941,16 +922,13 @@ function mkResponseDia(){
 /**
  * start the condition and response associations
  * 
- * @param 
-
- * @return
- * 
+ * @return nothing
  */
-function startStopCondRespDia(){
+function startStopCondRespDia() {
 	var diaDiv = $('<div title="Start/Stop Association" id="divStartStopAss" class="tab"><div>');
 	diaDiv.append('Getting conditions').append(createLoader());
 	
-	if ('' == globalCondition){
+	if (!globalCondition) {
 		$.ajax({
 			url : 'lib/cmd.php',
 			dataType : 'json',
@@ -961,19 +939,17 @@ function startStopCondRespDia(){
 				msg : ''
 			},
 			
-			success : function(data){
+			success : function(data) {
 				if (data.rsp[0]){
 					globalcondition = data.rsp[0];
 					$('#divStartStopAss').empty().append(createAssociationTable(globalCondition));
 					$('#divStartStopAss').dialog("option", "position", 'center');
-				}
-				else{
-					$('#divStartStopAss').empty().append('There is not condition.');
+				} else {
+					$('#divStartStopAss').empty().append('There are no conditions');
 				}
 			}
 		});
-	}
-	else{
+	} else {
 		diaDiv.empty().append(createAssociationTable(globalCondition));
 	}
 	
@@ -986,19 +962,18 @@ function startStopCondRespDia(){
 					$(this).remove();
 				},
 		buttons: {
-			close : function(){
+			'Close' : function(){
 				$(this).dialog('close');
 			}
 		}
 	});
 	
-	$('#divStartStopAss button').bind('click', function(){
+	$('#divStartStopAss button').bind('click', function() {
 		var operationType = '';
 		var conditionName = $(this).attr('name');
-		if ('Start' == $(this).html()){
+		if ('Start' == $(this).html()) {
 			operationType = 'start';
-		}
-		else{
+		} else {
 			operationType = 'stop';
 		}
 		
@@ -1019,13 +994,12 @@ function startStopCondRespDia(){
 				var newOperationType = '';
 				var associationStatus = '';
 				var backgroudColor = '';
-				if ('start' == data.msg.substr(0, 5)){
+				if ('start' == data.msg.substr(0, 5)) {
 					newOperationType = 'Stop';
 					conditionName = data.msg.substr(6);
 					associationStatus = 'Monitored';
 					backgroudColor = '#ffffff';
-				}
-				else{
+				} else {
 					newOperationType = 'Start';
 					conditionName = data.msg.substr(5);
 					associationStatus = 'Not Monitored';
@@ -1033,7 +1007,7 @@ function startStopCondRespDia(){
 				}
 								
 				var button = $('#divStartStopAss button[name="' + conditionName + '"]');
-				if (data.rsp[0]){
+				if (data.rsp[0]) {
 					$('#rmcEventStatus div').empty().append('Getting associations\' status').append(createLoader());
 					$('#rmcEventButtons').hide();
 					button.html(newOperationType);
@@ -1041,8 +1015,7 @@ function startStopCondRespDia(){
 					button.parent().parent().css('background-color', backgroudColor);
 					globalCondition = '';
 					getConditions();
-				}
-				else{
+				} else {
 					button.html('Error');
 				}
 				
@@ -1055,10 +1028,7 @@ function startStopCondRespDia(){
 /**
  * stop the condition and response associations
  * 
- * @param 
-
- * @return
- * 
+ * @return nothing
  */
 function stopCondRespDia(){
 	var diaDiv = $('<div title="Stop Association" id="stopAss"><div>');
@@ -1074,12 +1044,11 @@ function stopCondRespDia(){
 			msg : ''
 		},
 		
-		success : function(data){
-			if (data.rsp[0]){
+		success : function(data) {
+			if (data.rsp[0]) {
 				$('#stopAss').empty().append(createConditionTable(data.rsp[0]));
 				$('#stopAss').dialog("option", "position", 'center');
-			}
-			else{
+			} else {
 				$('#stopAss').empty().append('There is not monitored condition.');
 			}
 		}
@@ -1088,16 +1057,13 @@ function stopCondRespDia(){
 	diaDiv.dialog({
 		 modal: true,
          width: 570,
-         close: function(event, ui){
+         close: function(event, ui) {
 					$(this).remove();
 				},
 		buttons: {
-			cancel : function(){
-				$(this).dialog('close');
-			},
-			stop : function(){
+			'Stop' : function() {
 				var conditionName = $('#stopAss :checked').attr('value');
-				if (!conditionName){
+				if (!conditionName) {
 					alert('Select condition name please.');
 					return;
 				}
@@ -1112,10 +1078,13 @@ function stopCondRespDia(){
 						msg : ''
 					},
 					
-					success : function(data){
+					success : function(data) {
 						$('#rmcEventStatus div').empty().append(data.rsp[0]);
 					}
 				});
+				$(this).dialog('close');
+			},
+			'Cancel' : function() {
 				$(this).dialog('close');
 			}
 		}
@@ -1124,17 +1093,16 @@ function stopCondRespDia(){
 
 /**
  * create the condition table for dialogue
- * 
- * @param 
-
- * @return
- * 
+ *
+ * @param cond
+ * 			condition
+ * @return nothing
  */
 function createConditionTd(cond){
 	var conditions = cond.split(';');
 	var name = '';
 	var showStr = '';
-	for (var i in conditions){
+	for (var i in conditions) {
 		name = conditions[i];
 		//because there is status and quotation marks in name, so we must delete the status and quotation marks
 		name = name.substr(1, name.length - 6);
@@ -1148,10 +1116,9 @@ function createConditionTd(cond){
  * create the association table for dialogue, which show the status 
  * and start/stop associations
  * 
- * @param 
-
- * @return
- * 
+ * @param cond
+ * 			Condition
+ * @return nothing 
  */
 function createAssociationTable(cond){
 	var conditions = cond.split(';');
@@ -1161,17 +1128,16 @@ function createAssociationTable(cond){
 	var showStr = '<center><table><thead><tr><th>Condition Name</th><th>Status</th><th>Start/Stop</th></tr></thead>';
 	showStr += '<tbody>';
 	
-	for (var i in conditions){
+	for (var i in conditions) {
 		name = conditions[i];
 		tempLength = name.length;
 		tempStatus = name.substr(tempLength - 3);
 		name = name.substr(1, tempLength - 6);
 		
-		if ('Not' == tempStatus){
+		if ('Not' == tempStatus) {
 			showStr += '<tr style="background-color:#fffacd;"><td>' + name + '</td><td>Not Monitored</td>';
 			showStr += '<td><button id="button" name="' + name + '">Start</button></td>';
-		}
-		else{
+		} else {
 			showStr += '<tr><td>' + name + '</td><td>Monitored</td>';
 			showStr += '<td><button id="button" name="' + name + '">Stop</button></td>';
 		}

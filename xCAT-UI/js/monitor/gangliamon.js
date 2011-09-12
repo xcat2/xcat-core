@@ -22,10 +22,10 @@ var gangliaTimer;
  */
 function loadGangliaMon() {
 	// Get Ganglia tab
-	$('#gangliamon').append(createInfoBar('Checking RPMs.'));
+	$('#gangliamon').append(createInfoBar('Checking RPMs'));
 	
 	//should get the groups first
-	if (!$.cookie('groups')){
+	if (!$.cookie('groups')) {
 	    $.ajax( {
             url : 'lib/cmd.php',
             dataType : 'json',
@@ -62,12 +62,13 @@ function loadGangliaMon() {
 function checkGangliaRPMs(data) {
 	var gangliaTab = $('#gangliamon');
 	gangliaTab.empty();
+	
 	// Get the list of Ganglia RPMs installed
 	var status = data.rsp.split(/\n/);
 	var gangliaRPMs = [ "rrdtool", "ganglia-gmetad", "ganglia-gmond"];
 	var warningMsg = 'Before continuing, please install the following packages: ';
 	var missingRPMs = false;
-	for ( var i in status) {
+	for (var i in status) {
 		if (status[i].indexOf("not installed") > -1) {
 			warningMsg += gangliaRPMs[i] + ' ';
 			missingRPMs = true;
@@ -82,8 +83,9 @@ function checkGangliaRPMs(data) {
 		warningBar.css('margin-bottom', '10px');
 		warningBar.prependTo(gangliaTab);
 	} else {
-	    gangliaTab.append(createInfoBar('Checking Running status.'));
-		// Check if ganglia is running on the xCAT MN
+	    gangliaTab.append(createInfoBar('Checking running status'));
+		
+	    // Check if ganglia is running on the xCAT MN
 		$.ajax( {
 			url : 'lib/cmd.php',
 			dataType : 'json',
@@ -155,7 +157,7 @@ function checkGangliaRunning(data){
     }
 
     groupsSelectStr = '<select style="padding:0px;" id="gangliagroup">';
-    for (var i in groupsArray){
+    for (var i in groupsArray) {
         groupsSelectStr += '<option value="' + groupsArray[i] + '">' + groupsArray[i] + '</option>';
     }
     groupsSelectStr += '</select>';
@@ -183,11 +185,11 @@ function checkGangliaRunning(data){
     gangliaTab.append(showStr);
 
     //get summary data and draw on the page
-    $('#gangliaGridSummary').append('Getting Grid summary Data.<img src="images/loader.gif"></img>');
+    $('#gangliaGridSummary').append('Getting grid summary data <img src="images/loader.gif"></img>');
     sendGridSummaryAjax();
     
     //get nodes current status and draw on the page
-    $('#gangliaNodes').append('Getting ' + $('#gangliagroup').val() + ' nodes Status.<img src="images/loader.gif"></img>');
+    $('#gangliaNodes').append('Getting ' + $('#gangliagroup').val() + ' nodes status <img src="images/loader.gif"></img>');
     sendNodeCurrentAjax();
     
     //start the timer to update page per minute.
@@ -220,14 +222,12 @@ function checkGangliaRunning(data){
 }
 
 /**
- * send ajax request to get grid summary information
- * 
- * @param 
- *        
+ * Send AJAX request to get grid summary information
+ *       
  * @return Nothing
  */
 function sendGridSummaryAjax(){
-  //get the summary data
+	//get the summary data
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -246,15 +246,14 @@ function sendGridSummaryAjax(){
 }
 
 /**
- * send ajax request to get nodes current load information
- * 
- * @param which group name want to get
+ * Send AJAX request to get nodes current load information
  *        
  * @return Nothing
  */
 function sendNodeCurrentAjax(){
     var groupname = $('#gangliagroup').val();
-  //get all nodes current status
+    
+    //get all nodes current status
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -273,10 +272,8 @@ function sendNodeCurrentAjax(){
 }
 
 /**
- * send ajax request to get grid current summary information for update the page
- * 
- * @param 
- *        
+ * Send AJAX request to get grid current summary information for update the page
+ *   
  * @return Nothing
  */
 function sendGridCurrentAjax(){
@@ -299,7 +296,7 @@ function sendGridCurrentAjax(){
 }
 
 /**
- * save the grid summary data to local global variable
+ * Save the grid summary data to local global variable
  * 
  * @param data structure
  *            metric1:time11,val11,time12,val12....;metric2:time21,val21,time22,val22,...;....
@@ -329,7 +326,7 @@ function createGridSummaryData(summaryString){
 }
 
 /**
- * update the grid summary data to local global variable
+ * Update the grid summary data to local global variable
  * 
  * @param data structure
  *            metric1:time11,val11;metric2:time21,val21,time22;....
@@ -344,11 +341,11 @@ function updateGridSummaryData(currentString){
     var tempArray;
     
     tempLength = metricArray.length;
-    for (index = 0; index < tempLength; index++){
+    for (index = 0; index < tempLength; index++) {
         position = metricArray[index].indexOf(':');
         metricname = metricArray[index].substr(0, position);
         tempArray = metricArray[index].substr(position + 1).split(',');
-        if (gridData[metricname]){
+        if (gridData[metricname]) {
             gridData[metricname].shift();
             gridData[metricname].shift();
             gridData[metricname].push(Number(tempArray[0]));
@@ -357,10 +354,8 @@ function updateGridSummaryData(currentString){
     }
 }
 /**
- * draw the Grid summay area by global data
+ * Draw the grid summay area by global data
  * 
- * @param data
- *            Data returned from HTTP request
  * @return Nothing
  */
 function drawGridSummary() {
@@ -369,13 +364,14 @@ function drawGridSummary() {
     var tempStr = $('#gangliamon').attr('class');
     
     //jqflot only draw on the area visiable, if the tab is hide, return directly
-    if (-1 != tempStr.indexOf('hide')){
-        return;
-    };
-    
-    if ('[Show]' == $('#gangliamon #hidesup').text()){
+    if (tempStr.indexOf('hide') != -1){
         return;
     }
+    
+    if ($('#gangliamon #hidesup').text() == '[Show]'){
+        return;
+    }
+    
     gridDrawArea.empty();
     showStr = '<table style="border-style:none;"><tr><td style="padding:0;border-style:none;"><div id="gangliasummaryload" class="monitorsumdiv"></div></td>' + 
               '<td style="padding:0;border-style:none;"><div id="gangliasummarycpu" class="monitorsumdiv"></div></td>' +
@@ -392,26 +388,26 @@ function drawGridSummary() {
 }
 
 /**
- * draw the load flot by data(maybe summary data, or one node's data)
+ * Draw the load flot by data(summary data, or one node's data)
  * 
- * @param areaid: which div draw this flot
- *        loadpair: the load timestamp and value pair
- *        cpupair: the cpu number and value pair
- *            
+ * @param areaid
+ * 			Which DIV draw this flot
+ * @param loadpair
+ * 			The load timestamp and value pair
+ * @param cpupair
+ * 			The CPU number and value pair
  * @return Nothing
  */
 function drawLoadFlot(areaid, titleprefix, loadpair, cpupair){
     var load = new Array();
     var cpunum = new Array();
     var index = 0;
-    var templength = 0;
     var yaxismax = 0;
     var interval = 1;
     
     $('#' + areaid).empty();
     //parse load pair, the timestamp must mutiply 1000, javascript time stamp is millisecond
-    templength = loadpair.length;
-    for (index = 0; index < templength; index += 2){
+    for (index = 0; index < loadpair.length; index += 2){
         load.push([loadpair[index] * 1000, loadpair[index + 1]]);
         if (loadpair[index + 1] > yaxismax){
             yaxismax = loadpair[index + 1];
@@ -419,8 +415,7 @@ function drawLoadFlot(areaid, titleprefix, loadpair, cpupair){
     }
     
     //parse cpu pair
-    templength = cpupair.length;
-    for (index = 0; index < templength; index += 2){
+    for (index = 0; index < cpupair.length; index += 2){
         cpunum.push([cpupair[index] * 1000, cpupair[index + 1]]);
         if (cpupair[index + 1] > yaxismax){
             yaxismax = cpupair[index + 1];
@@ -431,6 +426,7 @@ function drawLoadFlot(areaid, titleprefix, loadpair, cpupair){
     if (interval < 1){
         interval = 1;
     }
+    
     $.jqplot(areaid, [load, cpunum],{
         title: titleprefix + ' Loads/Procs Last Hour',
         axes:{
@@ -458,24 +454,25 @@ function drawLoadFlot(areaid, titleprefix, loadpair, cpupair){
 }
 
 /**
- * draw the cpu usage flot by data(maybe summary data, or one node's data)
+ * Draw the CPU usage flot by data(maybe summary data, or one node's data)
  * 
- * @param areaid: which div draw this flot
- *        titleprefix : title used name
- *        cpupair: the cpu timestamp and value pair
- *            
+ * @param areaid
+ * 			Which DIV draw this flot
+ * @param titleprefix
+ * 			Title used name
+ * @param cpupair
+ * 			The CPU timestamp and value pair        
  * @return Nothing
  */
 function drawCpuFlot(areaid, titleprefix, cpupair){
     var cpu = new Array();
     var index = 0;
-    var tempLength = 0;
     
     $('#' + areaid).empty();
-    tempLength = cpupair.length;
+    
     // time stamp should mutiply 1000
-    // we get the cpu idle from server, we should use 1 subtract the idle.
-    for(index = 0; index < tempLength; index +=2){
+    // we get the CPU idle from server, we should use 1 subtract the idle
+    for (index = 0; index < cpupair.length; index +=2) {
         cpu.push([(cpupair[index] * 1000), (100 - cpupair[index + 1])]);
     }
     
@@ -502,12 +499,14 @@ function drawCpuFlot(areaid, titleprefix, cpupair){
 }
 
 /**
- * draw the memory usage flot by data(maybe summary data, or one node's data)
+ * Draw the memory usage flot by data(summary data, or one node's data)
  * 
- * @param areaid: which div draw this flot
- *        titleprefix : title used name
- *        cpupair: the cpu timestamp and value pair
- *            
+ * @param areaid
+ * 			Which DIV draw this flot
+ * @param titleprefix
+ * 			Title used name
+ * @param cpupair
+ * 			The CPU timestamp and value pair
  * @return Nothing
  */
 function drawMemFlot(areaid, titleprefix, freepair, totalpair){
@@ -517,14 +516,13 @@ function drawMemFlot(areaid, titleprefix, freepair, totalpair){
     var index = 0;
     
     $('#' + areaid).empty();
-    if(freepair.length < totalpair.length){
+    if (freepair.length < totalpair.length) {
         tempsize = freepair.length;
-    }
-    else{
+    } else {
         tempsize = freepair.length;
     }
     
-    for(index = 0; index < tempsize; index += 2){
+    for (index = 0; index < tempsize; index += 2) {
         var temptotal = totalpair[index + 1];
         var tempuse = temptotal - freepair[index + 1];
         temptotal = temptotal / 1000000;
@@ -560,13 +558,16 @@ function drawMemFlot(areaid, titleprefix, freepair, totalpair){
 }
 
 /**
- * draw the disk usage flot by data(maybe summary data, or one node's data)
+ * Draw the disk usage flot by data(summary data, or one node's data)
  * 
- * @param areaid: which div draw this flot
- *        titleprefix : title used name
- *        freepair: the free disk number, ganglia only log the free data
- *        totalpair: the all disk number
- *            
+ * @param areaid
+ * 			Which div draw this flot
+ * @param titleprefix
+ * 			Title used name
+ * @param freepair
+ * 			The free disk number, Ganglia only logs the free data
+ * @param totalpair
+ * 			The total disk number
  * @return Nothing
  */
 function drawDiskFlot(areaid, titleprefix, freepair, totalpair){
@@ -616,52 +617,58 @@ function drawDiskFlot(areaid, titleprefix, freepair, totalpair){
     );
 }
 
+/**
+ * Draw the network load flot by data(summary data, or one node's data)
+ * 
+ * @param areaid
+ * 			Which div draw this flot
+ * @param titleprefix
+ * 			Title used name
+ * @param inpair
+ * 			The timestamp and value pair for download
+ * @param outpair
+ * 			The timestamp and value pair for upload
+ * @return Nothing
+ */
 function drawNetworkFlot(areaid, titleprefix, inpair, outpair){
     var inArray = new Array();
     var outArray = new Array();
-    var templength = 0;
     var index = 0;
     var maxvalue = 0;
     var unitname = 'B';
     var divisor = 1;
     
-    templength = inpair.length;
-    for (index = 0; index < templength; index += 2){
-        if (inpair[index + 1] > maxvalue){
+    for (index = 0; index < inpair.length; index += 2) {
+        if (inpair[index + 1] > maxvalue) {
             maxvalue = inpair[index + 1];
         }
     }
     
-    templength = outpair.length;
-    for (index = 0; index < templength; index += 2){
-        if (outpair[index + 1] > maxvalue){
+    for (index = 0; index < outpair.length; index += 2) {
+        if (outpair[index + 1] > maxvalue) {
             maxvalue = outpair[index + 1];
         }
     }
     
-    if (maxvalue > 3000000){
+    if (maxvalue > 3000000) {
         divisor = 1000000;
         unitname = 'GB';
-    }
-    else if(maxvalue >= 3000){
+    } else if (maxvalue >= 3000) {
         divisor = 1000;
         unitname = 'MB';
-    }
-    else{
+    } else {
         //do nothing
     }
     
-    templength = inpair.length;
-    for (index = 0; index < templength; index += 2){
+    for (index = 0; index < inpair.length; index += 2) {
         inArray.push([(inpair[index] * 1000), (inpair[index + 1] / divisor)]);
     }
     
-    templength = outpair.length;
-    for (index = 0; index < templength; index += 2){
+    for (index = 0; index < outpair.length; index += 2) {
         outArray.push([(outpair[index] * 1000), (outpair[index + 1] / divisor)]);
     }
     
-    $.jqplot(areaid, [inArray, outArray],{
+    $.jqplot(areaid, [inArray, outArray], {
         title: titleprefix + ' Network Last Hour',
         axes:{
             xaxis:{
@@ -683,10 +690,16 @@ function drawNetworkFlot(areaid, titleprefix, inpair, outpair){
         },
         series:[{label:'In'}, {label: 'Out'}],
         seriesDefaults : {showMarker: false}
-    } 
-    );
+    });
 }
 
+/**
+ * Create node status data
+ * 
+ * @param nodesStatus
+ * 			Node status
+ * @return Nothing
+ */
 function createNodeStatusData(nodesStatus){
     var index;
     var nodesArray = nodesStatus.split(';');
@@ -695,53 +708,49 @@ function createNodeStatusData(nodesStatus){
     var index = 0;
     var tempArray;
     var tempStr = '';
-    var templength = nodesArray.length;
     
-    for (index in nodePath){
+    for (index in nodePath) {
         delete(nodePath[index]);
     }
     
-    for (index in nodeStatus){
+    for (index in nodeStatus) {
         delete(nodeStatus[index]);
     }
     
-    for (index = 0; index < templength; index++){
+    for (index = 0; index < nodesArray.length; index++) {
         tempStr = nodesArray[index];
         position = tempStr.indexOf(':');
         nodename = tempStr.substring(0, position);
         tempArray = tempStr.substring(position + 1).split(',');
         
-        switch(tempArray[0]){
-            case 'UNKNOWN':{
+        switch (tempArray[0]) {
+            case 'UNKNOWN':
                 nodeStatus[nodename] = -2;
-            }
-            break;
-            case 'ERROR':{
+                break;
+            case 'ERROR':
                 nodeStatus[nodename] = -1;
-            }
-            break;
-            case 'WARNING':{
+                break;
+            case 'WARNING':
                 nodeStatus[nodename] = 0;
                 nodePath[nodename] = tempArray[1];
-            }
-            break;
-            case 'NORMAL':{
+                break;
+            case 'NORMAL':
                 nodeStatus[nodename] = 1;
                 nodePath[nodename] = tempArray[1];
-            }
-            break;
+                break;
         }
     }
 }
+
 /**
- * draw nodes current status, there are four type:
+ * Draw nodes current status, there are four type:
  *  a. unknown(gray): can not find save data for this node
  *  b. error(red): get status sometime early, but can not get now
  *  c. warning(orange): node are heavy load
  *  d. normal(green): 
  * 
- * @param 
- *            
+ * @param ordertype
+ * 			Ascending or descending order
  * @return Nothing
  */
 function drawGangliaNodesArea(ordertype){
@@ -751,51 +760,42 @@ function drawGangliaNodesArea(ordertype){
     var nodename = '';
     var sortarray = new Array();
     $('#gangliaNodes').html('<ul style="margin:0px;padding:0px;"></ul>');
+    
     //empty the hash
-    for (index in nodeStatus){
+    for (index in nodeStatus) {
         sortarray.push([index, nodeStatus[index]]);
     }
     
-    if ('asc' == ordertype){
+    if ('asc' == ordertype) {
         sortarray.sort(statusAsc);
-    }
-    else if('des' == ordertype){
+    } else if('des' == ordertype) {
         sortarray.sort(statusDes);
-    }
-    else{
+    } else {
         //do nothing
     }
     
     templength = sortarray.length;
-    for (index = 0; index < templength; index++){
+    for (index = 0; index < templength; index++) {
         nodename = sortarray[index][0];
-        switch(sortarray[index][1]){
-            case -2:{
-                showStr = '<li class="monitorunknown ui-corner-all monitornodeli" ' + 
-                        'title="' + nodename + '"></li>';
-            }
-            break;
-            case -1:{
-                showStr = '<li class="monitorerror ui-corner-all monitornodeli" ' + 
-                        'title="' + nodename + '"></li>';
-            }
-            break;
-            case 0:{
-                showStr = '<li class="mornitorwarning ui-corner-all monitornodeli" ' + 
-                        'title="' + nodename + '"></li>';
-            }
-            break;
-            case 1:{
-                showStr = '<li class="monitornormal ui-corner-all monitornodeli" ' + 
-                        'title="' + nodename + '"></li>';
-            }
-            break;
+        switch (sortarray[index][1]) {
+            case -2:
+                showStr = '<li class="monitorunknown ui-corner-all monitornodeli" title="' + nodename + '"></li>';
+                break;
+            case -1:
+                showStr = '<li class="monitorerror ui-corner-all monitornodeli" title="' + nodename + '"></li>';
+                break;
+            case 0:
+                showStr = '<li class="mornitorwarning ui-corner-all monitornodeli" title="' + nodename + '"></li>';
+                break;
+            case 1:
+                showStr = '<li class="monitornormal ui-corner-all monitornodeli" title="' + nodename + '"></li>';
+                break;
         }
         $('#gangliaNodes ul').append(showStr);
     }
     
     //bind all normal and warning nodes' click event
-    $('.monitornormal,.monitorwarning').bind('click', function(){
+    $('.monitornormal,.monitorwarning').bind('click', function() {
         var nodename = $(this).attr('title');
         window.open('ganglianode.php?n=' + nodename + '&p=' + nodePath[nodename],
                 'nodedetail','height=430,width=950,scrollbars=yes,status =no');
@@ -804,14 +804,12 @@ function drawGangliaNodesArea(ordertype){
 }
 
 /**
- * update all tab per minute.
+ * Update all tab per minute.
  * 
- * @param 
- *            
  * @return Nothing
  */
 function updateGangliaPage(){
-    if ($('#gangliaNodes').size() < 1){
+    if ($('#gangliaNodes').size() < 1) {
         return;
     }
     
@@ -821,10 +819,10 @@ function updateGangliaPage(){
     gangliaTimer = window.setTimeout('updateGangliaPage()', 60000);
 }
 
-function statusAsc(a, b){
+function statusAsc(a, b) {
     return a[1] - b[1];
 }
 
-function statusDes(a, b){
+function statusDes(a, b) {
     return b[1] - a[1];
 }

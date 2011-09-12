@@ -120,19 +120,19 @@ function loadMonitorPage() {
 			}
 						
 			var monTable = $('<table></table>');
-			monTable.append($('<thead><tr><th><b>Monitor Tool</b></th><th><b>Status</b></th><th><b>Description</b></th></tr></thead>'));
+			monTable.append($('<thead><tr><th><b>Tool</b></th><th><b>Status</b></th><th><b>Description</b></th></tr></thead>'));
 			
 			var monTableBody = $('<tbody></tbody>');
 			monTable.append(monTableBody);			
 			
 			var xcatMon = $('<tr></tr>');
-			xcatMon.append($('<td><a href="#" name="xcatmon">xCAT Monitor</a></td>'));
+			xcatMon.append($('<td><a href="#" name="xcatmon">xCAT</a></td>'));
 			xcatMon.append($('<td></td>').append(statusButtonHash['xcatmon']));
 			xcatMon.append($('<td>Provides node status monitoring using fping on AIX and nmap on Linux. It also provides application status monitoring. The status and the appstatus columns of the nodelist table will be updated periodically  with the latest status values for the nodes.</td>'));
 			monTableBody.append(xcatMon);
 			
 			var rmcMon = $('<tr></tr>');
-			rmcMon.append($('<td><a href="#" name="rmcmon">RMC Monitor</a></td>'));
+			rmcMon.append($('<td><a href="#" name="rmcmon">RMC</a></td>'));
 			rmcMon.append($('<td></td>').append(statusButtonHash['rmcmon']));
 			rmcMon.append($('<td>IBM\'s Resource Monitoring and Control (RMC) subsystem is our recommended software for monitoring xCAT clusters. It\'s is part of the IBM\'s Reliable Scalable Cluster Technology (RSCT) that provides a comprehensive clustering environment for AIX and Linux.</td>'));
 			monTableBody.append(rmcMon);
@@ -144,13 +144,13 @@ function loadMonitorPage() {
 			monTableBody.append(rmcEvent);
 
 			var gangliaMon = $('<tr></tr>');
-			gangliaMon.append($('<td><a href="#" name="gangliamon">Ganglia Monitor</a></td>'));
+			gangliaMon.append($('<td><a href="#" name="gangliamon">Ganglia</a></td>'));
 			gangliaMon.append($('<td></td>').append(statusButtonHash['gangliamon']));
 			gangliaMon.append($('<td>A scalable distributed monitoring system for high-performance computing systems such as clusters and Grids.</td>'));
 			monTableBody.append(gangliaMon);
 			
 			var pcpMon = $('<tr></tr>');
-			pcpMon.append($('<td><a href="#" name="pcpmon">PCP Monitor</a></td>'));
+			pcpMon.append($('<td><a href="#" name="pcpmon">PCP</a></td>'));
 			pcpMon.append($('<td></td>').append(statusButtonHash['pcpmon']));
 			pcpMon.append($('<td>Under construction.</td>'));
 			monTableBody.append(pcpMon);
