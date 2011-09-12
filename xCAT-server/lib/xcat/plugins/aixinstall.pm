@@ -1011,14 +1011,10 @@ sub nimnodeset
             $arg_string .= "$bnd_string";
         }
 
-            # see if we have a resolv_conf resource
-            if ($imagehash{$image_name}{resolv_conf})
-            {
-                # could be from the osimage
-            } elsif ($resolv_conf_hash{$node}) {
-                # or could be specific resolv_conf res created locally
-                $arg_string .= "-a resolv_conf=$resolv_conf_hash{$node}" ;
-            }
+        # see if we have a resolv_conf resource
+        if ($resolv_conf_hash{$node}) {
+            $arg_string .= "-a resolv_conf=$resolv_conf_hash{$node}" ;
+        }
 
         my $initcmd;
         $initcmd = "/usr/sbin/nim -o bos_inst $arg_string $nim_name 2>&1";
@@ -8775,13 +8771,7 @@ sub mkdsklsnode
             }
 
 			# see if we have a resolv_conf resource 
-            if ($imagehash{$image_name}{resolv_conf}) 
-            {
-				# could be from the osimage
-         #       $arg_string .= 
-         #         "-a resolv_conf=$imagehash{$image_name}{resolv_conf} ";
-            } elsif ($resolv_conf_hash{$node}) {
-				# or could be specific resolv_conf res created locally
+            if ($resolv_conf_hash{$node}) {
 				$arg_string .= " -a resolv_conf=$resolv_conf_hash{$node} " ;
 			}
 
