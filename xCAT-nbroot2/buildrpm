@@ -1,6 +1,6 @@
 DIR=`dirname $0`
-mkdir -p /usr/share/dracut/modules/97xcat
-cp $DIR/* /usr/share/dracut/modules/97xcat
+mkdir -p /usr/share/dracut/modules.d/97xcat
+cp $DIR/* /usr/share/dracut/modules.d/97xcat
 mkdir -p /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
 dracut -m "xcat base" -f /tmp/xcatgenesis.$$.rfs
 cd /tmp/xcatgenesis.$$/opt/xcat/share/xcat/netboot/genesis/`uname -m`/fs 
