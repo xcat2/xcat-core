@@ -3262,7 +3262,7 @@ function jump2Provision(tgtNodes){
         
         // Skip if node does not have arch
         if (!origAttrs[nodeName]['arch']){
-            errorMsg = 'Nodes should have arch defined!';
+            errorMsg = 'Nodes should have arch defined! ';
             break;
         }
         

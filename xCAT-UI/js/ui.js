@@ -87,9 +87,9 @@ Tab.prototype.add = function(tabId, tabName, tabCont, closeable) {
 			var tabIndex = ($('li', tabs).index(thisTab));
 			
 			// Do not remove first tab
-			if (tabIndex != 0) {			
-				tabs.tabs('remove', tabIndex);
+			if (tabIndex != 0) {
 				tabs.tabs('select', 0);
+				tabs.tabs('remove', tabIndex);
 			}
 		});
 	}

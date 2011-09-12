@@ -166,27 +166,26 @@ hmcPlugin.prototype.addNode = function() {
 	diaDiv.append('<div><label>Type:</label><select id="pnodetype"><option>HMC</option><option>Scan Node</option></select></div>');
 	diaDiv.append('<div id="pnodeeditarea" ></div>');
 	
-	//show the dialog
-	diaDiv.dialog( {
+	// Show the dialog
+	diaDiv.dialog({
         modal : true,
         width : 400,
-        title : 'Add System P Node',
+        title : 'Add System p Node',
         close : function(){$('#addpnodeDiv').remove();}
 	});
 	
-	//bind the select change event
-	$('#pnodetype').bind('change', function(){
+	// Bind the select change event
+	$('#pnodetype').bind('change', function() {
 		$('#pnodeeditarea').empty();
-		if ('HMC' == $(this).val()){
+		if ('HMC' == $(this).val()) {
 			$('#addpnodeDiv').dialog('option', 'width', '400');
 			$('#pnodeeditarea').append('<label>Name:</label><input><br/><label>Username:</label><input><br/>' +
 		              '<label>Password:</label><input><br/><label>IP Adress:</label><input>');
 			
 			$('#addpnodeDiv').dialog('option', 'buttons', 
 					                 {'Add': function(){addHmcNode();}, 
-				                      'Cancle': function(){$('#addpnodeDiv').dialog('close');}});
-		}
-		else{
+				                      'Cancel': function(){$('#addpnodeDiv').dialog('close');}});
+		} else {
 			//add loader image and delete buttons
 			$('#pnodeeditarea').append(createLoader());
 			$('#addpnodeDiv').dialog('option', 'buttons', {'Cancel': function(){$('#addpnodeDiv').dialog('close');}});
@@ -200,7 +199,7 @@ hmcPlugin.prototype.addNode = function() {
 		            args : 'ppc.nodetype==hmc',
 		            msg : ''
 		        },
-		        success : function(data){
+		        success : function(data) {
 		        	$('#pnodeeditarea img').remove();
 		        	drawHmcSelector(data.rsp);
 		        }
@@ -208,32 +207,34 @@ hmcPlugin.prototype.addNode = function() {
 		}
 	});
 	
-	//trigger the selector change event
+	// Trigger the select change event
 	$('#pnodetype').trigger('change');
 };
 
 /**
- * add all hmcs into the dialog
+ * Add HMCs into the dialog
  * 
+ * @param hmc
+ * 			HMCs
  * @return Nothing
  */
 function drawHmcSelector(hmcs){
-	if (1 > hmcs.length){
+	if (1 > hmcs.length) {
 		$('#pnodeeditarea').append(createWarnBar('Please define HMC node first.'));
 		return;
 	}
 	
-	//add all hmcs into a selecter, add a scan button
+	// Add HMCs into a selector and add a scan button
 	var hmcoption = '';
 	var scanbutton = createButton('Scan');
-	for (var i in hmcs){
+	for (var i in hmcs) {
 		hmcoption += '<option>' + hmcs[i][0] + '</option>';
 	}
 	
 	$('#pnodeeditarea').append('<label>HMC:</label><select>' + hmcoption + '</select>');
 	$('#pnodeeditarea').append(scanbutton);
 	
-	scanbutton.bind('click', function(){
+	scanbutton.bind('click', function() {
 		var hmcname = $('#pnodeeditarea select').val();
 		$('#pnodeeditarea').append(createLoader());
 		$.ajax({
@@ -245,16 +246,16 @@ function drawHmcSelector(hmcs){
 	            args : '',
 	            msg : ''
 	        },
-	        success : function(data){
+	        success : function(data) {
 	        	$('#pnodeeditarea img').remove();
 	        	
-	        	//draw a table with checkbox
+	        	// Draw a table with checkbox
 	        	drawRscanResult(data.rsp[0]);
 	        	
-	        	//add the add button
+	        	// Add the add button
 	        	$('#addpnodeDiv').dialog('option', 'buttons', 
 		                 {'Add': function(){addPNode();}, 
-	                      'Cancle': function(){$('#addpnodeDiv').dialog('close');}});
+	                      'Cancel': function(){$('#addpnodeDiv').dialog('close');}});
 	        }
 		});
 	});
@@ -271,44 +272,45 @@ function drawRscanResult(rscanresult){
 	var fields = 0;
 	
 	$('#pnodeeditarea div').remove();
-	if (!rscanresult){
+	if (!rscanresult) {
 		return;
 	}
 	
 	var rows = rscanresult.split("\n");
-	if (rows.length < 2){
+	if (rows.length < 2) {
 		return;
 	}
 	
-	//add the table header
+	// Add the table header
 	fields = rows[0].match(tempreg);
 	colnum = fields.length;
 	temprow = '<tr><td><input type="checkbox" onclick="selectAllRscanNode(this)"></td>';
-	for(var i in fields){
+	for(var i in fields) {
 		temprow += '<td>' + fields[i] + '</td>';
 	}
 	rscantable.append(temprow);
 	
-	//add the tbody
-	for (var i = 1; i < rows.length; i++){
+	// Add the tbody
+	for (var i = 1; i < rows.length; i++) {
 		line = rows[i];
-		if (!line){
-			continue;
-		}
-		var fields = line.match(tempreg);
-		if ('hmc' == fields[0]){
+		if (!line) {
 			continue;
 		}
 		
-		//may be the 3rd field(id) is empty, so we should add the new 
+		var fields = line.match(tempreg);
+		if ('hmc' == fields[0]) {
+			continue;
+		}
+		
+		// May be the 3rd field(id) is empty, so we should add the new 
 		if (!idpreg.test(fields[2])){
 			fields = [fields[0], fields[1], ''].concat(fields.slice(2));
 		}
 		temprow = '<tr><td><input type="checkbox" name="' + fields[1] + '"></td>';
 		
-		for(var j = 0; j < colnum; j++){
+		for(var j = 0; j < colnum; j++) {
 			temprow += '<td>';
-			if (fields[j]){
+			if (fields[j]) {
 				temprow += fields[j];
 			}
 			temprow += '</td>';
@@ -320,6 +322,7 @@ function drawRscanResult(rscanresult){
 	resultDiv.append(rscantable);
 	$('#pnodeeditarea').append(resultDiv);
 }
+
 /**
  * Add hmc node
  * 
@@ -330,24 +333,24 @@ function addHmcNode(){
 	var args = '';
 	$('#pnodeeditarea input').each(function(){
 		if (!$(this).val()){
-			errorinfo = 'You are missing input.';
+			errorinfo = 'You are missing some inputs!';
 		}
 		args += $(this).val() + ',';
 	});
 	
 	if (errorinfo){
-		//add warning message
+		// Add warning message
 		alert(errorinfo);
 		return;
 	}
 	
-	//disabled the button
+	// Disabled the button
 	$('.ui-dialog-buttonpane button').attr('disabled', 'disabled');
 	
 	args = args.substr(0, args.length - 1);
 	
 	$('#pnodeeditarea').append(createLoader());
-	//send the save hmc request
+	// Send the save HMC request
 	$.ajax({
 		url : 'lib/cmd.php',
         dataType : 'json',
@@ -358,7 +361,7 @@ function addHmcNode(){
             msg : ''
         },
         success : function(data){
-        	//refresh the area on the right side
+        	// Refresh the area on the right side
         	$('#addpnodeDiv').dialog('close');
         	$('.selectgroup').trigger('click');
         }
@@ -371,26 +374,27 @@ function addHmcNode(){
  * @return Nothing
  */
 function addPNode(){
-	//get the hmc name
+	// Get the HMC name
 	var hmcname = $('#pnodeeditarea select').val();
 	var nodename = '';
-	//get all need added node
-	$('#pnodeeditarea :checked').each(function(){
-		if ($(this).attr('name')){
+	// Get checked nodes
+	$('#pnodeeditarea :checked').each(function() {
+		if ($(this).attr('name')) {
 			nodename += $(this).attr('name') + ',';
 		}
 	});
 	
-	if (!nodename){
+	if (!nodename) {
 		alert('You should select nodes first!');
 		return;
 	}
-	//disabled the button
+	
+	// Disabled the button
 	$('.ui-dialog-buttonpane button').attr('disabled', 'disabled');
 	
 	nodename = nodename.substr(0, nodename.length - 1);
 	$('#pnodeeditarea').append(createLoader());
-	//send the add request
+	// Send the add request
 	$.ajax({
 		url : 'lib/cmd.php',
         dataType : 'json',
@@ -400,8 +404,8 @@ function addPNode(){
             args : 'addpnode;node;' + hmcname + ',' + nodename,
             msg : ''
         },
-        success : function(data){
-        	//refresh the area on the right side
+        success : function(data) {
+        	// Refresh the area on the right side
         	$('#addpnodeDiv').dialog('close');
         	$('.selectgroup').trigger('click');
         }
@@ -409,7 +413,7 @@ function addPNode(){
 }
 
 /**
- * select all checkbox in a table 
+ * Select all checkbox in a table 
  * 
  * @return Nothing
  */

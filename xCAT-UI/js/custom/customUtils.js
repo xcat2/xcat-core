@@ -1,3 +1,5 @@
+var provisionClock;
+
 /**
  * Create nodes datatable for a given group
  * 
@@ -7,9 +9,6 @@
  *            Division ID to append datatable
  * @return Nodes datatable
  */
-
-var provisionClock;
-
 function createNodesDatatable(group, outId) {
 	// Get group nodes
 	$.ajax( {
@@ -385,26 +384,32 @@ function createProvisionNew(plugin, inst) {
 	return provNew;
 }
 
+/**
+ * Create provision node division
+ * 
+ * @param plugin
+ * 			  Plugin name to create division for
+ * @param container
+ *            Container to hold provisioning form
+ * @return Nothing
+ */
 function createProvision(plugin, container){
-    var showStr = '';
-    
-  //group, nodes, arch
-    if ('quick' == plugin){
+	// Group, nodes, arch
+    if ('quick' == plugin) {
         container.append(createProvWithUrl());
-    }
-    else{
-        container.append(createProvNonurl(plugin));
-        container.find('#' + plugin + 'group').bind('change', function(){
-            var pluginname = $(this).attr('id').replace('group', '');
-            $('#' + pluginname + 'SelectNodesTable').html('<img src="images/loader.gif"></img>');
-            createNodesArea($(this).val(), pluginname + 'SelectNodesTable');
+    } else {
+        container.append(createProvNoUrl(plugin));
+        container.find('#' + plugin + 'group').bind('change', function() {
+            var pluginName = $(this).attr('id').replace('group', '');
+            $('#' + pluginName + 'SelectNodesTable').html('<img src="images/loader.gif"></img>');
+            createNodesArea($(this).val(), pluginName + 'SelectNodesTable');
         });
     }
     
-    //option
+    // Advanced options
     container.append('<div id="advoption"></div>');
     
-    //add the provision button
+    // Add provision button
     var provisionBtn = createButton('Provision');
     provisionBtn.bind('click', function(){
         var plugin = $(this).parent().parent().attr('id').replace('ProvisionTab', '');
@@ -413,7 +418,7 @@ function createProvision(plugin, container){
     provisionBtn.hide();
     container.append(provisionBtn);
     
-    //bind the image select change event
+    // Bind image select to change event
     container.find('#' + plugin + 'image').bind('change', function(){
         var temp = $(this).attr('id');
         temp = temp.replace('image', '');
@@ -432,124 +437,138 @@ function createProvision(plugin, container){
         },
 
         success : function(data){
-            var containerid = data.msg + 'ProvisionTab';
-            var index = 0;
-            var imagename = 0;
+            var containerId = data.msg + 'ProvisionTab';
+            var i = 0;
+            var imageName = 0;
             var position = 0;
-            var imageselect = $('#' + containerid + ' #' + data.msg + 'image');
-            $('#' + containerid + ' img').remove();
-            if (data.rsp.lenght < 1){
-                $('#' + containerid).prepend(createWarnBar('Please copycds and genimage in provision page first!'));
+            var imageSelect = $('#' + containerId + ' #' + data.msg + 'image');
+            $('#' + containerId + ' img').remove();
+            if (!data.rsp.length) {
+                $('#' + containerId).prepend(createWarnBar('Please run copycds and genimage in provision page before continuing!'));
                 return;
             }
             
-            for (index in data.rsp){
-                imagename = data.rsp[index];
-                position = imagename.indexOf(' ');
-                imagename = imagename.substr(0, position);
+            for (i in data.rsp) {
+                imageName = data.rsp[i];
+                position = imageName.indexOf(' ');
+                imageName = imageName.substr(0, position);
                 
-                imageselect.append('<option value="' + imagename + '">' + imagename + '</option>');
+                imageSelect.append($('<option value="' + imageName + '">' + imageName + '</option>'));
             }
-            //trigger the select change event
-            imageselect.trigger('change');
-            //show provision button
-            $('#' + containerid + ' button').show();
+            
+            // Trigger select change event
+            imageSelect.trigger('change');
+            // Show provision button
+            $('#' + containerId + ' button').show();
         }
     });
 }
 
+/**
+ * Create provision node division using URL
+ * 
+ * @returns Provisiong node division
+ */
 function createProvWithUrl(){
-    var querystr = window.location.search;
-    var argarray = querystr.substr(1).split('&');
-    var temphash = new Object();
-    var index = 0;
-    var temparray;
-    var showstr = '';
+    var queryStr = window.location.search;
+    var argArray = queryStr.substr(1).split('&');
+    var tempHash = new Object();
+    var i = 0;
+    var tempArray;
+    
+    var provHtml = '';
+    
     var master = '';
     var tftpserver = '';
-    var nfsserver = '';
-    for (index = 0; index < argarray.length; index++){
-        temparray = argarray[index].split('=');
-        temphash[temparray[0]] = temparray[1];
+    var nfsserver = '';    
+    for (i = 0; i < argArray.length; i++) {
+        tempArray = argArray[i].split('=');
+        tempHash[tempArray[0]] = tempArray[1];
     }
     
-    showstr += '<div><label>Nodes:</label><input type="text" disabled="disabled" value="' + 
-                temphash['nodes'] + '"></div>';
-    showstr += '<div><label>Architecture:</label><input type="text" disabled="disabled" value="' +
-                temphash['arch'] + '"></div>';
+    provHtml += '<div><label>Nodes:</label><input type="text" disabled="disabled" value="' + tempHash['nodes'] + '"></div>';
+    provHtml += '<div><label>Architecture:</label><input type="text" disabled="disabled" value="' + tempHash['arch'] + '"></div>';
+    provHtml += '<div><label>Image:</label><select id="quickimage"></select><img src="images/loader.gif"></img></div>' +
+    		   '<div><label>Install NIC:</label><input value="mac"/></div>' +
+    		   '<div><label>Primary NIC:</label><input value="mac"/></div>' ;
     
-    showstr += '<div><label>Image:</label><select id="quickimage"></select><img src="images/loader.gif"></img></div>' +
-    		   '<div><label>Install NIC:</label><input value="mac"></div>' +
-    		   '<div><label>Primary NIC:</label><input value="mac"></div>' ;
-    
-    if (temphash['master']){
-    	master = temphash['master'];
+    if (tempHash['master']) {
+    	master = tempHash['master'];
     }
     
-    if (temphash['nfsserver']){
-    	nfsserver = temphash['nfsserver'];
+    if (tempHash['nfsserver']) {
+    	nfsserver = tempHash['nfsserver'];
     }
     
-    if (temphash['tftpserver']){
-    	tftpserver = temphash['tftpserver'];
+    if (tempHash['tftpserver']) {
+    	tftpserver = tempHash['tftpserver'];
     }
     
-    showstr += '<div><label>xCAT Master:</label><input type="text" value="' + master + '"></div>';
-    showstr += '<div><label>TFTP Server:</label><input type="text" value="' + tftpserver + '"></div>';
-    showstr += '<div><label>NFS Server:</label><input type="text" value="' + nfsserver + '"></div>';
-    return showstr;
-}
-
-function createProvNonurl(plugin){
-    // Create the group area
-    var strGroup = '<div><label>Group:</label>';
-    var groupNames = $.cookie('groups');
-    if (groupNames) {
-        strGroup += '<select id="' + plugin + 'group"><option></option>';
-        var temp = groupNames.split(',');
-        for (var i in temp) {
-            strGroup += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
-        }
-        strGroup += '</select>';
-    } 
-    strGroup += '</div>';
-
-    // Create nodes area
-    var strNodes = '<div><label>Nodes:</label><div id="' + plugin + 'SelectNodesTable" ' +
-            ' style="display:inline-block;width:700px;overflow-y:auto;">Select a group to view its nodes</div></div>';
-
-    // Create architecture
-    var strArch = '<div><label>Architecture:</label>';
-    var archName = $.cookie('osarchs');
-    if ('' != archName) {
-        strArch += '<select id="arch">';
-        var temp = archName.split(',');
-        for (var i in temp) {
-            strArch += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
-        }
-        strArch += '</select>';
-    } else {
-        strArch += '<input type="text" id="arch">';
-    }
-    strArch += '</div>';
-
-    //add the static input part
-    strSta = '<div><label>Image:</label><select id="' + plugin + 'image"></select><img src="images/loader.gif"></img></div>' +
-    		 '<div><label>Install NIC:</label><input value="mac"></div>' +
-    		 '<div><label>Primary NIC:</label><input value="mac"></div>' +
-    		 '<div><label>xCAT Master:</label><input ></div>' +
-    		 '<div><label>TFTP Server:</label><input ></div>' +
-    		 '<div><label>NFS Server:</label><input ></div>';
-    return strGroup + strNodes + strArch + strSta;
+    provHtml += '<div><label>xCAT master:</label><input type="text" value="' + master + '"></div>';
+    provHtml += '<div><label>TFTP server:</label><input type="text" value="' + tftpserver + '"></div>';
+    provHtml += '<div><label>NFS server:</label><input type="text" value="' + nfsserver + '"></div>';
+    
+    return provHtml;
 }
 
 /**
- * get all needed field for provsion and send the command to server 
+ * Create provision node division without using URL
  * 
+ * @param plugin
+ * 			  Plugin name to create division for
+ * @returns {String}
+ */
+function createProvNoUrl(plugin){
+    // Select group
+    var groupHtml = '<div><label>Group:</label>';
+    var groupNames = $.cookie('groups');
+    if (groupNames) {
+        groupHtml += '<select id="' + plugin + 'group"><option></option>';
+        var temp = groupNames.split(',');
+        for (var i in temp) {
+            groupHtml += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
+        }
+        groupHtml += '</select>';
+    } 
+    groupHtml += '</div>';
+
+    // Select nodes
+    var nodesHtml = '<div><label>Nodes:</label><div id="' + plugin + 'SelectNodesTable" style="display: inline-block; width:700px; overflow-y:auto;">Select a group to view its nodes</div></div>';
+
+    // Select architecture
+    var archHtml = '<div><label>Architecture:</label>';
+    var archName = $.cookie('osarchs');
+    if (archName) {
+        archHtml += '<select id="arch">';
+        var temp = archName.split(',');
+        for (var i in temp) {
+            archHtml += '<option value="' + temp[i] + '">' + temp[i] + '</option>';
+        }
+        archHtml += '</select>';
+    } else {
+        archHtml += '<input type="text" id="arch">';
+    }
+    archHtml += '</div>';
+
+    // Add static input part
+    var staticHtml = '<div><label>Image:</label><select id="' + plugin + 'image"></select><img src="images/loader.gif"></img></div>' +
+    		 '<div><label>Install NIC:</label><input value="mac"/></div>' +
+    		 '<div><label>Primary NIC:</label><input value="mac"/></div>' +
+    		 '<div><label>xCAT Master:</label><input/></div>' +
+    		 '<div><label>TFTP Server:</label><input/></div>' +
+    		 '<div><label>NFS Server:</label><input/></div>';
+    return groupHtml + nodesHtml + archHtml + staticHtml;
+}
+
+/**
+ * Get needed fields for provsioning and send command to server 
+ * 
+ * @param plugin
+ * 			  Plugin name of platform to provision
  * @return Nothing
  */
 function quickProvision(plugin){
-    var errormessage = '';
+    var errorMessage = '';
     var argsArray = new Array();
     var nodesName = '';
     var provisionArg = '';
@@ -557,47 +576,47 @@ function quickProvision(plugin){
     var imageName = '';
     var url = '';
     var softwareArg = '';
-    var containerid = plugin + 'ProvisionTab';
-    $('#' + containerid + ' .ui-state-error').remove();
+    var containerId = plugin + 'ProvisionTab';
+    $('#' + containerId + ' .ui-state-error').remove();
     
-    $('#' + containerid + ' input[type!="checkbox"]').each(function(){
-        if ('' == $(this).val()){
-            errormessage = 'You are missing input!';
+    $('#' + containerId + ' input[type!="checkbox"]').each(function() {
+        if (!$(this).val()) {
+            errorMessage = 'You are missing some inputs!';
             return false;
-        }
-        else{
+        } else {
             argsArray.push($(this).val());
         }
     });
     
-    if ('' != errormessage){
-        $('#' + containerid).prepend('<p class="ui-state-error">' + errormessage + '</p>');
+    if (errorMessage) {
+        $('#' + containerId).prepend('<p class="ui-state-error">' + errorMessage + '</p>');
         return;
     }
     
-    //if jumped from nodes page, get nodes name from input 
-    if ('quick' == plugin){
+    // If jumped from nodes page, get node names 
+    if ('quick' == plugin) {
         nodesName = argsArray.shift();
     }
-    //select the different platform, get nodes name from table checkbox
-    else{
-        //should unshift the arch type
-        argsArray.unshift($('#' + containerid + ' #arch').val());
-        nodesName = getCheckedByObj($('#' + containerid + ' #' + plugin + 'SelectNodesTable'));
+    // Select platform, get node names from table checkbox
+    else {
+        // Should unshift the arch type
+        argsArray.unshift($('#' + containerId + ' #arch').val());
+        nodesName = getCheckedByObj($('#' + containerId + ' #' + plugin + 'SelectNodesTable'));
     }
     
-    if ('' == nodesName){
-        $('#' + containerid).prepend('<p class="ui-state-error">Please select nodes first.</p>');
+    if (!nodesName) {
+        $('#' + containerId).prepend('<p class="ui-state-error">Please select a node</p>');
         return;
     }
     
-    softwareArg = getCheckedByObj($('#' + containerid + ' #advoption'));
-    imageName = $('#' + containerid + ' #'  + plugin + 'image').val();
+    softwareArg = getCheckedByObj($('#' + containerId + ' #advoption'));
+    imageName = $('#' + containerId + ' #'  + plugin + 'image').val();
     provisionArg = argsArray.join(',');
+    
     url = 'lib/cmd.php?cmd=webrun&tgt=&args=provision;' + nodesName + ';' + imageName + ';' + 
           provisionArg + ';' + softwareArg + '&msg=&opts=flush';
     
-    // show the result
+    // Show output
     var deployDia = $('<div id="deployDia"></div>');
     deployDia.append(createLoader()).append('<br/>');
     deployDia.append('<iframe id="provisionFrame" width="95%" height="90%" src="' + url + '"></iframe>');
@@ -605,7 +624,7 @@ function quickProvision(plugin){
         modal: true,
         width: 600,
         height: 480,
-        title:'Provision on Nodes',
+        title:'Provision return',
         close: function(){$(this).remove();},
         buttons: {
             Close : function(){$(this).dialog('close');}
@@ -615,7 +634,16 @@ function quickProvision(plugin){
     provisionStopCheck();
 }
 
-function provAdvOption(imagename, plugin){
+/**
+ * Create provisioning advance option
+ * 
+ * @param imagename
+ * 			Image name
+ * @param plugin
+ * 			Plugin name of platform to provision
+ * @return Nothing
+ */
+function provAdvOption(imagename, plugin) {
     $.ajax({
         url : 'lib/cmd.php',
         dataType : 'json',
@@ -626,40 +654,45 @@ function provAdvOption(imagename, plugin){
             msg : plugin
         },
 
-        success : function(data){
-            var containerid = data.msg + 'ProvisionTab';
-            var index = 0;
-            var osname = '';
-            var provmethod = '';
-            var tempstr = '';
+        success : function(data) {
+            var containerId = data.msg + 'ProvisionTab';
+            var i = 0;
+            var osName = '';
+            var provMethod = '';
+            var tempStr = '';
             var position = 0;
-            for (index = 0; index < data.rsp.length; index++){
-                tempstr = data.rsp[index];
-                if (-1 != tempstr.indexOf('osname')){
-                    position = tempstr.indexOf('=');
-                    osname = tempstr.substr(position + 1);
+            for (i = 0; i < data.rsp.length; i++) {
+                tempStr = data.rsp[i];
+                if (tempStr.indexOf('osname') != -1) {
+                    position = tempStr.indexOf('=');
+                    osName = tempStr.substr(position + 1);
                 }
-                if (-1 != tempstr.indexOf('provmethod')){
-                    position = tempstr.indexOf('=');
-                    provmethod = tempstr.substr(position + 1);
+                
+                if (tempStr.indexOf('provmethod') != -1) {
+                    position = tempStr.indexOf('=');
+                    provMethod = tempStr.substr(position + 1);
                 }
             }
             
-            $('#' + containerid + ' #advoption').empty();
-            if ('aix' == osname.toLowerCase()){
+            $('#' + containerId + ' #advoption').empty();
+            if ('aix' == osName.toLowerCase()) {
                 return;
             }
             
-            if ('install' == provmethod){
-                $('#' + containerid + ' #advoption').html('<input type="checkbox" checked="checked" name="ganglia">Install Ganglia.');
+            if ('install' == provMethod){
+                $('#' + containerId + ' #advoption').html('<input type="checkbox" checked="checked" name="ganglia">Install Ganglia.');
             }
         }
     });
 }
 
 /**
- * Refresh the nodes area base on group selected
+ * Refresh nodes area base on group selected
  * 
+ * @param groupName
+ * 			Group name
+ * @param areaId
+ * 			Area ID to refresh
  * @return Nothing
  */
 function createNodesArea(groupName, areaId) {
@@ -678,18 +711,18 @@ function createNodesArea(groupName, areaId) {
             var areaObj = $('#' + data.msg);
             var nodes = data.rsp;
             var index;
-            var showStr = '<table><thead><tr><th><input type="checkbox" onclick="selectAllCheckbox(event, $(this))"></th>';
-            showStr += '<th>Node</th></tr></thead><tbody>';
+            var nodesHtml = '<table><thead><tr><th><input type="checkbox" onclick="selectAllCheckbox(event, $(this))"></th>';
+            nodesHtml += '<th>Node</th></tr></thead><tbody>';
             for (index in nodes) {
                 var node = nodes[index][0];
-                if ('' == node) {
+                if (!node) {
                     continue;
                 }
-                showStr += '<tr><td><input type="checkbox" name="' + node + '"/></td><td>'
-                        + node + '</td></tr>';
+                nodesHtml += '<tr><td><input type="checkbox" name="' + node + '"/></td><td>' + node + '</td></tr>';
             }
-            showStr += '</tbody></table>';
-            areaObj.empty().append(showStr);
+            nodesHtml += '</tbody></table>';
+            
+            areaObj.empty().append(nodesHtml);
             if (index > 10) {
                 areaObj.css('height', '300px');
             } else {
@@ -701,32 +734,34 @@ function createNodesArea(groupName, areaId) {
 
 function provisionStopCheck(){
     var content = $('#provisionFrame').contents().find('body').text();
-    if (-1 != content.indexOf('provision stop')){
+    if (content.indexOf('provision stop') != -1) {
         $('#deployDia img').remove();
         clearTimeout(provisionClock);
-    }
-    else{
+    } else {
         provisionClock = setTimeout('provisionStopCheck()', 5000);
     }
 }
 
 /**
- * Get all select elements' name in the obj
+ * Get select element names
  * 
- * @return All nodes name, seperate by ','
+ * @param obj
+ * 			Object to get selected element names
+ * @return Nodes name seperate by a comma
  */
 function getCheckedByObj(obj) {
-    var tempStr = '';
+    var str = '';
+    
     // Get nodes that were checked
     obj.find('input:checked').each(function() {
         if ($(this).attr('name')) {
-            tempStr += $(this).attr('name') + ',';
+            str += $(this).attr('name') + ',';
         }
     });
 
-    if ('' != tempStr) {
-        tempStr = tempStr.substr(0, tempStr.length - 1);
+    if (str) {
+        str = str.substr(0, str.length - 1);
     }
 
-    return tempStr;
+    return str;
 }

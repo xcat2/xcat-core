@@ -171,7 +171,7 @@ ipmiPlugin.prototype.loadResources = function() {
  * @return Nothing
  */
 ipmiPlugin.prototype.addNode = function() {
-    var diag = $('<div id="addIdpDiv" class="form" title="Add iDataPlex"></div>');
+    var diag = $('<div id="addIdplx" class="form" title="Add iDataPlex"></div>');
     var info = createInfoBar('Add a node range');
     diag.append(info);
     
@@ -216,37 +216,40 @@ ipmiPlugin.prototype.addNode = function() {
  */
 function addIdataplex(){
     var tempArray = new Array();
-    var errormessage = '';
+    var errorMessage = '';
     var attr = '';
     var args = '';
     
-    //remove the warning bar
-    $('#addIdpDiv .ui-state-error').remove();
+    // Remove existing warnings
+    $('#addIdplx .ui-state-error').remove();
     
-    //get all inputs' value
-    $('#addIdpDiv input').each(function(){
+    // Get input values
+    $('#addIdplx input').each(function(){
         attr = $(this).val();
-        if (attr){
+        if (attr) {
             tempArray.push($(this).val());
-        }
-        else{
-            errormessage = "You are missing some inputs!";
+        } else {
+            errorMessage = "You are missing some inputs!";
             return false;
         }
     });
     
-    if ('' != errormessage){
-        $('#addIdpDiv').prepend(createWarnBar(errormessage));
+    if (errorMessage) {
+        $('#addIdplx').prepend(createWarnBar(errorMessage));
         return;
     }
     
-    //add the loader
-    $('#addIdpDiv').append(createLoader());
+    // Create loader
+    $('#addIdplx').append(createLoader());
     
-    //change the dialog button
-    $('#addIdpDiv').dialog('option', 'buttons', {'Close':function(){$('#addIdpDiv').dialog('close');}});
+    // Change dialog buttons
+    $('#addIdplx').dialog('option', 'buttons', {
+    	'Close':function(){
+    		$('#addIdplx').dialog('close');
+    	}
+    });
     
-    //compose all args into chdef for node
+    // Generate chdef arguments
     args = '-t;node;-o;' + tempArray[0] + ';mac=' + tempArray[1] + ';ip=' + tempArray[2] + ';groups=' + 
           tempArray[3] + ';mgt=ipmi;chain="runcmd=bmcsetup";netboot=xnba;nodetype=osi;profile=compute;' +
           'bmc=' + tempArray[4];
@@ -260,8 +263,8 @@ function addIdataplex(){
             msg : ''
         }
     });
-    
-    //compose all args into chdef for bmc
+     
+    // Generate chdef arguments for BMC
     args = '-t;node;-o;' + tempArray[4] + ';ip=' + tempArray[5] + ';groups=' + tempArray[6];
     $.ajax({
         url : 'lib/cmd.php',
@@ -272,15 +275,15 @@ function addIdataplex(){
             args : args,
             msg : ''
         },
-        success: function(data){
-            $('#addIdpDiv img').remove();
+        success: function(data) {
+            $('#addIdplx img').remove();
             var message = '';
-            for (var i in data.rsp){
+            for (var i in data.rsp) {
                 message += data.rsp[i];
             }
             
-            if ('' != message){
-                $('#addIdpDiv').prepend(createInfoBar(message));
+            if (message) {
+                $('#addIdplx').prepend(createInfoBar(message));
             }
         }
     });
