@@ -95,7 +95,7 @@ sub process_request {
    }
    mkpath($tempdir."$sshdir");
    chmod(0700,$tempdir."$sshdir");
-   copy("$sshdir/id_rsa.pub","$tempdir$sshdir/authorized_keys");
+   copy("/root/.ssh/id_rsa.pub","$tempdir$sshdir/authorized_keys");
    chmod(0600,"$tempdir$sshdir/authorized_keys");
    if (not $invisibletouch and -r "/etc/xcat/hostkeys/ssh_host_key") {
     copy("/etc/xcat/hostkeys/ssh_host_key","$tempdir/etc/ssh_host_key");
