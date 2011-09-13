@@ -4,38 +4,61 @@ B<genimage> - Generates a stateless image to be used for a diskless install.
 
 =head1 SYNOPSIS
 
-B<genimage> B<-o> I<OS> B<-p> I<profile> [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-l> I<rootlimit>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-g> I<krpm_version>] [B<-m> statelite] [B<--permission> I<permission>]
+B<genimage>
 
-B<genimage> [B<-o> I<OS>] [B<-l> I<rootlimit>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-r> I<additional_nics>] [B<-k> I<kernel_version>] [B<-g> I<krpm_version>] [B<-m> statelite] imagename
+B<genimage>  B<-o> I<osver> [B<-a> I<arch>] B<-p> I<profile> B<-i> I<nodebootif> B<-n> I<nodenetdrivers> [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<-t> I<tmplimitsize>] [B<--permission> I<permission>]
+
+B<genimage> [B<-o> I<osver>] [B<-a> I<arch>] [B<-p> I<profile>] [B<-i> I<nodebootif>] [B<-n> I<nodenetdrivers>] [B<-r> I<otherifaces>] [B<-k> I<kernelver>] [B<-g> I<krpmver>] [B<-m> I<statelite>] [B<-l> I<rootlimitsize>] [B<-t> I<tmplimitsize>] [B<--permission> I<permission>] I<imagename>
+
 
 B<genimage> [B<-h> | B<--help> | B<-v> | B<--version>]
 
 
 =head1 DESCRIPTION
 
-Generates a stateless image that can be used to boot xCAT nodes in a diskless mode.  
+Generates a stateless and a statelite image that can be used to boot xCAT nodes in a diskless mode.  
 If I<imagename> is not specified, the default packages included
-(and excluded) in the image are specified by /opt/xcat/share/xcat/netboot/<OS>/<profile>.<OS>.<arch>.pkglist and
-/opt/xcat/share/xcat/netboot/<OS>/<profile>.exlist. 
-Additional packages that are not from the os distro can be specified in a <profile><OS>.<arch>.otherpkgs.pkglist file.
-Customized package list files can be specified under /install/custom/netboot/<OS> directory. The generated image will be put in /install/netboot/<OS>/<arch>/<profile>.
+(and excluded) in the image are specified by 
 
-If I<imagename> is specified, the package list files are specified in the I<osimage> table and I<linuximage> table. 
-If B<genimage> runs on the Management node, both the I<osimage> table and I<linuximage> table will be updated following the B<genimage> options. And, if there is no I<imagename> called <OS>-<arch>-netboot-<profile> or <OS>-<arch>-statelite-<profile>, the B<genimage> command will create them into I<linuximage> and I<osimage> tables.
+/opt/xcat/share/xcat/netboot/<os>/<profile>[.<osver>][.<arch>].pkglist and
+
+/opt/xcat/share/xcat/netboot/<os>/<profile>[.<osver>][.<arch>].exlist. 
+
+Additional packages that are not from the os distro can be specified in a 
+
+/opt/xcat/share/xcat/netboot/<os>/<profile>[.<osver>][.<arch>].otherpkgs.pkglist file.
+
+Customized package list files can be specified under /install/custom/netboot/<os> directory. The generated image will be put in /install/netboot/<osver>/<arch>/<profile> directory.
+
+The newly generated image names will have the following format:
+
+ for stateless: <osver>-<arch>-netboot-<profile>
+
+ for statelite: <osver>-<arch>-statelite-<profile>
+
+B<genimage> command will create them into I<linuximage> and I<osimage> tables.
+
+If I<imagename> is specified, the package list file names are read from the I<osimage> table and I<linuximage> tables. 
+
+If B<genimage> runs on the management node, both the I<osimage> table and I<linuximage> table will be updated with the given values from the options.
+
+The B<genimage> command will generate two initial ramdisks for B<stateless> and B<statelite>, one is B<initrd-stateless.gz>, the other one is B<initrd-statelite.gz>.
+
+After your image is created, you can chroot to the
+image, install any additional software you would like, or make modifications to files, and then run the following command to prepare the image for deployment.
+
+for stateless: B<packimage>
+
+for statelite: B<liteimg>
+
+Becides prompting for the input for some flags, the B<genimage> command can not be used in interactive mode.  If any of the rpms or other scripts prompt, such as to accept a license agreement, you must use the genimage script specific to your OS from the /opt/xcat/share/xcat/netboot/<os> directory.  
 
 The B<genimage> command must be run on a system that is the same architecture as the nodes it will be
 used on.  If the management node is not the same architecture, copy the contents of
-/opt/xcat/share/xcat/netboot/<OS> to a system that is the proper architecture, and mount /install from
-the management node to that system. 
+/opt/xcat/share/xcat/netboot/<os> to a system that is the proper architecture, and mount /install from
+the management node to that system. Then change directory to /opt/xcat/share/xcat/netboot/<os> and run ./genimage.
 
-The B<genimage> command will run geninitrd automatically.  (You can run geninitrd yourself at a later time, if
-you want to rebuild the initrd.)  After your image is created, you can chroot to the
-image, install any additional software you would like, or make modifications to files, and then run
-B<packimage> to prepare the image for deployment.
 
-The B<genimage> and B<geninitrd> commands will generate two initial ramdisks for B<statelite> and B<stateless>, one is B<initrd-statelite.gz>, the other one is B<initrd-stateless.gz>.
- 
-The B<genimage> command can not be used in interactive mode.  If any of the rpms or other scripts prompt, such as to accept a license agreement, you must use the genimage script specific to your OS from the /opt/xcat/share/xcat/netboot/<os> directory.  
  
 =head1 Parameters
 
@@ -46,24 +69,24 @@ I<imagename> specifies the name of a os image definition to be used. The specifi
 
 =over 12
 
-=item B<-o> I<OS>
+=item B<-a> I<arch>
+
+The hardware architecture of this node: x86_64, ppc64, x86, ia64, etc. If omitted, the current hardware architecture will be used.
+
+=item B<-o> I<osver>
 
 The operating system for the image:  fedora8, rhel5, sles10, etc.  The OS packages must be in
-/install/<OS>/<arch> (use L<copycds(8)|copycds.8>).
+/install/<osver>/<arch> (use L<copycds(8)|copycds.8>).
 
 =item B<-p> I<profile>
 
 The profile (e.g. compute, service) to use to create the image.  This determines what package lists are
-used from /opt/xcat/share/xcat/netboot/<OS> to create the image with.  When deploying nodes with this image,
+used from /opt/xcat/share/xcat/netboot/<os> to create the image with.  When deploying nodes with this image,
 the nodes' nodetype.profile attribute must be set to this same value.
 
 =item B<-i> I<nodebootif>
 
 The network interface the diskless node will boot over (e.g. eth0).
-
-=item B<--permission> I<permission>
-
-The mount permission of B</.statelite> directory for B<statelite> mode, which is only used for B<statelite> mode, and the default permission is 755.
 
 =item B<-n> I<nodenetdrivers>
 
@@ -81,16 +104,20 @@ which may prove important in some cases.
 
 The maximum size allowed for the root file system in the image.  Specify in bytes, or can append k, m, or g.
 
-=item B<-r> I<additional_nics>
+=item B<--permission> I<permission>
+
+The mount permission of B</.statelite> directory for B<statelite> mode, which is only used for B<statelite> mode, and the default permission is 755.
+
+=item B<-r> I<otherifaces>
 
 Other network interfaces (e.g. eth1) in the image that should be configured via DHCP.
 
-=item B<-k> I<kernel_version>
+=item B<-k> I<kernelver>
 
 Use this flag if you want to use a specific version of the kernel in the image.  Defaults to the first kernel found
 in the install image.
 
-=item B<-g> I<krpm_version>
+=item B<-g> I<krpmver>
 
 This flag is for SLES only. Use this flag to specify the rpm version for kernel packages in the image. It must be present if -k flag is specified in the command for SLES.
 
@@ -121,16 +148,39 @@ Display usage message.
 
 =over 3
 
-=item 1.
+=item 1
+To prompt the user for inputs:
 
-For example, to generate a fedora8 image for a compute node architecture
+  genimage
+
+=item 2
+
+To generate a fedora8 image for a compute node architecture
 x86_64 and place it in the
 /install/netboot/fedora8/x86_64/compute/rootimg directory:
 
- cd /opt/xcat/share/xcat/netboot/fedora/
- genimage -i eth0 -o fedora8 -p compute
+  genimage -i eth0 -o fedora8 -p compute
 
-This would use the profile information from the /opt/xcat/share/xcat/netboot/fedora/compute* files.
+=item 3
+
+  genimage -i eth0 -r eth1,eth2 -n tg3,bnx2 -o centos5.1 -p compute
+
+=item 4
+
+  genimage -i eth0 -n tg3,bnx2 -o sles11 -p compute
+
+=item 5
+
+  genimage -i eth0 -n igb,e1000e,e1000,bnx2,tg3 -o centos5.4 -p nfsroot --permission 777
+
+=item 6
+
+  genimage -i eth0 -n tg3 myimagename
+
+=item 7
+
+  genimage myimagename
+
 
 =back
 
@@ -144,4 +194,4 @@ This would use the profile information from the /opt/xcat/share/xcat/netboot/fed
 
 =head1 SEE ALSO
 
-L<geninitrd(1)|geninitrd.1>, L<packimage(1)|packimage.1>
+L<geninitrd(1)|geninitrd.1>, L<packimage(1)|packimage.1>, L<liteimg(1)|liteimg.1>
