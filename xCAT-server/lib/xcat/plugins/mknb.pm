@@ -87,6 +87,7 @@ sub process_request {
       }
       return;
    }
+   my $sshdir;
    if ($invisibletouch) {
 	$sshdir="/.ssh";
    } else {
@@ -190,7 +191,7 @@ sub process_request {
          open($cfg,">","$tftpdir/xcat/xnba/nets/$net.elilo");
          print $cfg "default=xCAT Genesis\ndelay=5\n\n";
          print $cfg 'image=xcat/genesis.kernel.'."$arch\n";
-	 print $cfg "   label=xCAT Genesis\n"
+	 print $cfg "   label=xCAT Genesis\n";
 	 print $cfg "   initrd=xcat/genesis.fs.$arch.gz\n";
 	 print $cfg "   append=\"quiet xcatd=".$normnets->{$_}.":$xcatdport destiny=discover $consolecmdline\n";
 	 close($cfg);
@@ -198,6 +199,7 @@ sub process_request {
          print $cfg "#!gpxe\n";
 	 print $cfg "chain http://${next-server}/tftpboot/elilo-x64.efi\n";
 	 close($cfg);
+	}
 	
       }
    }
