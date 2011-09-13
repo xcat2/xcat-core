@@ -676,16 +676,16 @@ sub writechildren2 {
 	    my $cecend = $$cechash{'secondary-end'};
         for (my $ii = $framestart; $ii <= $frameend; $ii++) {
             for (my $jj = $cecstart; $jj <= $cecend; $jj++) {
-                $myip = $vlan1 . '.' . $ii . '.' . $jj . '1';
+                $myip = $vlan1 . '.' . $ii . '.' . $jj . '.1';
                 $sidehash{$myip}->{side} = 'A-0';
                 push @ipgroup, $myip; 
-                $myip = $vlan1 . '.' . $ii . '.' . $jj . '2';
+                $myip = $vlan1 . '.' . $ii . '.' . $jj . '.2';
                 $sidehash{$myip}->{side} = 'A-1';
                 push @ipgroup, $myip; 
-                $myip = $vlan2 . '.' . $ii . '.' . $jj . '1';
+                $myip = $vlan2 . '.' . $ii . '.' . $jj . '.1';
                 $sidehash{$myip}->{side} = 'B-0';
                 push @ipgroup, $myip; 
-                $myip = $vlan2 . '.' . $ii . '.' . $jj . '2';
+                $myip = $vlan2 . '.' . $ii . '.' . $jj . '.2';
                 $sidehash{$myip}->{side} = 'B-1';
                 push @ipgroup, $myip; 
             }
@@ -1103,6 +1103,7 @@ sub writelpar {
 	my $cecprimbase = $$cechash{'primary-base'};
 	#my $cecprimlen = length($$cechash{'primary-start'});
 	my $cecsecbase = $$cechash{'secondary-base'};
+    my $cecattach = $$cechash{'attach'};
 	if (!$cecsecbase) { errormsg("when using LPAR names like f1c1p1, you must also use CEC names like f1c1",7); return 0; }
 	#my $framehash = parsenoderange($STANZAS{'xcat-frames'}->{'hostname-range'});
 	#my $framebase = $$framehash{'primary-base'};
@@ -1113,7 +1114,7 @@ sub writelpar {
     #$ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)\D*$|(($1-1)*4+1)|';              #todo: this is p7 ih specific
     $ppchash{id} = '|^\D+\d+\D+\d+\D+(\d+)\D*$|($1+0)|';   
 	# convert between the lpar name and the cec name.  Assume that numbers are the same, but the base can be different
-    my $regex = '|^\D+(\d+)\D+(\d+)\D+\d+\D*$|' . "$cecprimbase" . '($1)' . "$cecsecbase" .'($2)|';
+    my $regex = '|^\D+(\d+)\D+(\d+)\D+\d+\D*$|' . "$cecprimbase" . '($1)' . "$cecsecbase" .'($2)' . $cecattach . '|';
 	$ppchash{hcp} = $regex;
 	$ppchash{parent} = $regex;
 	$ppchash{nodetype} = 'lpar';
