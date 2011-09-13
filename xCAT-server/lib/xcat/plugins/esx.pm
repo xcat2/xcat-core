@@ -1251,7 +1251,8 @@ sub enable_vmotion {
     if ($qnc->{selectedVnic}) {
         return 1;
     } else {
-        if (scalar @{$qnc->candidateVnic} eq 1) { #There is only one possible path, use it
+        my $vniccount=scalar @{$qnc->candidateVnic};
+        if ($vniccount==1 or ($vniccount==2 and $qnc->candidateVnic->[1]->spec->ip->ipAddress =~ /^169.254/)) { #There is only one possible path, use it
             $nicmgr->SelectVnicForNicType(nicType=>"vmotion",device=>$qnc->candidateVnic->[0]->device);
             return 1;
         } else {
