@@ -69,29 +69,51 @@ sub process_request {
       $callback->({error=>["Failed to create a temporary directory"],errorcode=>[1]});
       return;
    }
-   my $rc = system("cp -a $::XCATROOT/share/xcat/netboot/$arch/nbroot/* $tempdir");
+   my $rc;
+   my $invisibletouch=0;
+   if (-e  "$::XCATROOT/share/xcat/netboot/genesis/$arch") {
+      $rc = system("cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/fs/* $tempdir");
+      $rc = system("cp -a $::XCATROOT/share/xcat/netboot/genesis/$arch/kernel $tftpdir/xcat/genesis.kernel.$arch");
+      $invisibletouch=1;
+   } else {
+      $rc = system("cp -a $::XCATROOT/share/xcat/netboot/$arch/nbroot/* $tempdir");
+   }
    if ($rc) {
       system("rm -rf $tempdir");
-      $callback->({error=>["Failed to copy  $::XCATROOT/share/xcat/netboot/$arch/nbroot/ contents"],errorcode=>[1]});
+      if ($invisibletouch) {
+          $callback->({error=>["Failed to copy  $::XCATROOT/share/xcat/netboot/genesis/$arch/fs contents"],errorcode=>[1]});
+      } else {
+          $callback->({error=>["Failed to copy  $::XCATROOT/share/xcat/netboot/$arch/nbroot/ contents"],errorcode=>[1]});
+      }
       return;
    }
-   mkpath($tempdir."/root/.ssh");
-   chmod(0700,$tempdir."/root/.ssh");
-   copy("/root/.ssh/id_rsa.pub","$tempdir/root/.ssh/authorized_keys");
-   chmod(0600,"$tempdir/root/.ssh/authorized_keys");
-   if (-r "/etc/xcat/hostkeys/ssh_host_key") {
+   if ($invisibletouch) {
+	$sshdir="/.ssh";
+   } else {
+        $sshdir="/root/.ssh";
+   }
+   mkpath($tempdir."$sshdir");
+   chmod(0700,$tempdir."$sshdir");
+   copy("$sshdir/id_rsa.pub","$tempdir$sshdir/authorized_keys");
+   chmod(0600,"$tempdir$sshdir/authorized_keys");
+   if (not $invisibletouch and -r "/etc/xcat/hostkeys/ssh_host_key") {
     copy("/etc/xcat/hostkeys/ssh_host_key","$tempdir/etc/ssh_host_key");
     copy("/etc/xcat/hostkeys/ssh_host_rsa_key","$tempdir/etc/ssh_host_rsa_key");
     copy("/etc/xcat/hostkeys/ssh_host_dsa_key","$tempdir/etc/ssh_host_dsa_key");
       chmod(0600,<$tempdir/etc/ssh_*>);
    }
-   unless (-r "$tempdir/etc/ssh_host_key") {
+   unless ($invisibletouch or -r "$tempdir/etc/ssh_host_key") {
       system("ssh-keygen -t rsa1 -f $tempdir/etc/ssh_host_key -C '' -N ''");
       system("ssh-keygen -t rsa -f $tempdir/etc/ssh_host_rsa_key -C '' -N ''");
       system("ssh-keygen -t dsa -f $tempdir/etc/ssh_host_dsa_key -C '' -N ''");
    }
-   $callback->({data=>["Creating nbfs.$arch.gz in $tftpdir/xcat"]});
-   system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/nbfs.$arch.gz");
+   if ($invisibletouch) {
+       $callback->({data=>["Creating genesis.fs.$arch.gz in $tftpdir/xcat"]});
+       system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/genesis.fs.$arch.gz");
+   } else {
+   	$callback->({data=>["Creating nbfs.$arch.gz in $tftpdir/xcat"]});
+       system("cd $tempdir; find . | cpio -o -H newc | gzip -9 > $tftpdir/xcat/nbfs.$arch.gz");
+   }
    system ("rm -rf $tempdir");
    my $hexnets = xCAT::Utils->my_hexnets();
    my $normnets = xCAT::Utils->my_nets();
@@ -133,7 +155,7 @@ sub process_request {
       $net =~s/\//_/;
       $dopxe=0;
       if ($arch =~ /x86/) { #only do pxe if just x86 or x86_64 and no x86
-          if ($arch =~ /x86_64/) {
+          if ($arch =~ /x86_64/ and not $invisibletouch) {
               if (-r "$tftpdir/xcat/xnba/nets/$net") {
                   my $cfg;
                   my @contents;
@@ -154,11 +176,29 @@ sub process_request {
           my $cfg;
          open($cfg,">","$tftpdir/xcat/xnba/nets/$net");
          print $cfg "#!gpxe\n";
+	 if ($invisibletouch) {
+         print $cfg 'imgfetch -n kernel http://${next-server}/tftpboot/xcat/genesis.kernel.'."$arch quiet xcatd=".$normnets->{$_}.":$xcatdport $consolecmdline BOOTIF=01-".'${netX/machyp}'."\n";
+         print $cfg 'imgfetch -n nbfs http://${next-server}/tftpboot/xcat/genesis.fs.'."$arch.gz\n";
+         } else {
          print $cfg 'imgfetch -n kernel http://${next-server}/tftpboot/xcat/nbk.'."$arch quiet xcatd=".$normnets->{$_}.":$xcatdport $consolecmdline\n";
          print $cfg 'imgfetch -n nbfs http://${next-server}/tftpboot/xcat/nbfs.'."$arch.gz\n";
+	 }
          print $cfg "imgload kernel\n";
          print $cfg "imgexec kernel\n";
          close($cfg);
+	if ($invisibletouch and $arch =~ /x86_64/) { #UEFI time
+         open($cfg,">","$tftpdir/xcat/xnba/nets/$net.elilo");
+         print $cfg "default=xCAT Genesis\ndelay=5\n\n";
+         print $cfg 'image=xcat/genesis.kernel.'."$arch\n";
+	 print $cfg "   label=xCAT Genesis\n"
+	 print $cfg "   initrd=xcat/genesis.fs.$arch.gz\n";
+	 print $cfg "   append=\"quiet xcatd=".$normnets->{$_}.":$xcatdport destiny=discover $consolecmdline\n";
+	 close($cfg);
+         open($cfg,">","$tftpdir/xcat/xnba/nets/$net.uefi");
+         print $cfg "#!gpxe\n";
+	 print $cfg "chain http://${next-server}/tftpboot/elilo-x64.efi\n";
+	 close($cfg);
+	
       }
    }
    $dopxe=0;

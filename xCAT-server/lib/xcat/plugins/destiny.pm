@@ -277,9 +277,15 @@ sub setdestiny {
       if ($portent and $portent->{value}) {
           $xcatdport = $portent->{value};
       }
+      if (-r "$tftpdir/xcat/genesis.kernel.$arch") {
+          $bootparms->setNodeAttribs($_,{kernel => "xcat/genesis.kernel.$arch",
+                                   initrd => "xcat/genesis.fs.$arch.gz",
+                                   kcmdline => $kcmdline."xcatd=$master:$xcatdport destiny=$state"});
+      } else {  #'legacy' environment
       $bootparms->setNodeAttribs($_,{kernel => "xcat/nbk.$arch",
                                    initrd => "xcat/nbfs.$arch.gz",
                                    kcmdline => $kcmdline."xcatd=$master:$xcatdport"});
+      }
     }
 	}elsif ($state eq "offline"){
 		1;
