@@ -877,6 +877,18 @@ sub update_namedconf {
             # Toutch the stub zone file
             system("/usr/bin/touch $ctx->{dbdir}.'/db.cache'");
             $ctx->{restartneeded}=1;
+            if($ctx->{forwarders})
+            {
+                my $dbcachefile = $ctx->{dbdir}.'/db.cache';
+                my $cmd = qq~dig @"$ctx->{forwarders}[0]" . ns >> $dbcachefile~;
+                my $outref = xCAT::Utils->runcmd("$cmd", 0);
+                if ($::RUNCMD_RC != 0)
+                {
+                    my $rsp = {};
+                    $rsp->{data}->[0] = "Failed to run command: $cmd.\n";
+                    xCAT::MsgUtils->message("W", $rsp, $callback, 1);
+                }
+            }
         }
     }
         
