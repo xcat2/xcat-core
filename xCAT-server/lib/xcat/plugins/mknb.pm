@@ -197,7 +197,7 @@ sub process_request {
 	 close($cfg);
          open($cfg,">","$tftpdir/xcat/xnba/nets/$net.uefi");
          print $cfg "#!gpxe\n";
-	 print $cfg "chain http://${next-server}/tftpboot/elilo-x64.efi\n";
+	 print $cfg 'chain http://${next-server}/tftpboot/elilo-x64.efi'."\n";
 	 close($cfg);
 	}
 	
