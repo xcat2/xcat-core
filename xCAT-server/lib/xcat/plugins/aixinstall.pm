@@ -2585,6 +2585,17 @@ sub mknimimage
                 return 1;
             }
 
+            $nimcmd = qq~stopsrc -g nfs~;
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+            sleep 2;
+            $nimcmd = qq~startsrc -g nfs~;
+            $nimout =
+              xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,
+                                    0);
+
+
             #nim -o change -a nfs_domain=$nfsdom master
             $nimcmd = qq~nim -o change -a nfs_domain=$domain master~;
             $nimout = xCAT::InstUtils->xcmd($callback, $subreq, "xdsh", $nimprime, $nimcmd,0);
