@@ -409,6 +409,12 @@ sub process_command {
             $remain_node = ();
             foreach my $hash ( @$nodes ) {
                 $SIG{CHLD} = sub { my $pid = 0; while (($pid = waitpid(-1, WNOHANG)) > 0) { $hw->{$pid_owner->{$pid}}--; $children--; } };
+                $SIG{INT} = $SIG{TERM} = $SIG{KILL} = sub { #prepare to process job termination and propogate it down
+                    foreach my $pid (keys %{$pid_owner}) {
+                        &kill_children_by_pid($pid);
+                    }
+                    exit 0;
+                };
  
                 while ( $children >= $request->{ppcmaxp} ) {
                     my $handlednodes={};
@@ -453,7 +459,14 @@ sub process_command {
     }  elsif ( $request->{command} =~ /^rspconfig$/&& exists( $request->{opt}->{resetnet} ) ) {
         runcmd( $request );
     } else {
+        my %pid_owner = ();
         $SIG{CHLD} = sub { while (waitpid(-1, WNOHANG) > 0) { $children--; } };
+        $SIG{INT} = $SIG{TERM} = $SIG{KILL} = sub { #prepare to process job termination and propogate it down
+                foreach my $pid (keys %pid_owner) {
+                    &kill_children_by_pid($pid);
+                }
+                exit 0;
+        };
         my $hw;
         my $sessions;
 
@@ -481,8 +494,9 @@ sub process_command {
             }
             $hw = @$_[0];
 
-            my ($pipe) = fork_cmd( @$_[0], @$_[1], $request );
+            my ($pipe,$pid) = fork_cmd( @$_[0], @$_[1], $request );
             if ( $pipe ) {
+                $pid_owner{$pid} = $pid;
                 $fds->add( $pipe );
                 $children++;
             }
@@ -541,6 +555,20 @@ ENDOFFORK:
 
 
     return(0);
+}
+
+sub kill_children_by_pid {
+    my $pid = shift;
+    my @pids = `ps -o pid,ppid -e`;
+    for my $a_pid (@pids) {
+        if( $a_pid =~ /\s*(\d*)\s*(\d*)/ ) {
+            my $tmp_pid = $1;
+            my $tmp_ppid = $2;
+            if($tmp_ppid == $pid) {
+                kill 9, $tmp_pid;
+            }
+        }
+    }
 }
 
 ##########################################################################
