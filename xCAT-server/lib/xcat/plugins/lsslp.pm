@@ -144,6 +144,7 @@ my $enter_time = 0;
 my @filternodes;
 my %otherinterfacehash;
 my $TRACE = 0;
+my $DEBUG_MATCH = 0;
 my %globlehwtype = (
     fsp   => $::NODETYPE_FSP,
     bpa   => $::NODETYPE_BPA,
@@ -1392,7 +1393,90 @@ sub getip_from_url {
     return( $1 );
 }
 
+sub read_from_table {
+    my %idhash;
+    my %typehash;
+    my %iphash;
+    my %vpdhash;
+    if ( !defined(%::OLD_DATA_CACHE))
+    {
+        # find out all the existed nodes' ipaddresses
+        my $hoststab  = xCAT::Table->new('hosts');
+        if ( $hoststab ) {
+            my @ipentries = $hoststab->getAllNodeAttribs( ['node','ip'] );
+            for my $ipentry ( @ipentries ) {
+                $iphash{$ipentry->{node}} = $ipentry->{ip};
+            }
+        } else {
+            return 1;
+        }
 
+        #find out all the existed nodes' type
+        my $nodetypetab  = xCAT::Table->new('nodetype');
+        if ( $nodetypetab ) {
+            my @typeentries = $nodetypetab->getAllNodeAttribs( ['node','nodetype'] );
+            for my $typeentry ( @typeentries) {
+                $typehash{$typeentry->{node}} = $typeentry->{nodetype};
+            }
+        } else {
+            return 2;
+        }
+
+        # find out all the existed nodes' mtms and side
+        my $vpdtab  = xCAT::Table->new( 'vpd' );
+        if ( $vpdtab )  {
+            my @vpdentries = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
+            for my $entry ( @vpdentries ) {
+                @{$vpdhash{$entry->{node}}}[0] = $entry->{mtm};
+                @{$vpdhash{$entry->{node}}}[1] = $entry->{serial}; 
+                @{$vpdhash{$entry->{node}}}[2] = $entry->{side};
+            }
+        } else {
+            return 3;
+        }
+        # find out all the existed nodes' attributes
+        my $ppctab  = xCAT::Table->new('ppc');
+        if ( $ppctab ) {
+            my @identries = $ppctab->getAllNodeAttribs( ['node','id','parent','nodetype'] );
+            for my $entry ( @identries ) {
+                next if ($entry->{nodetype} =~ /hmc|lpar/);
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[0] = @{$vpdhash{$entry->{node}}}[0];#mtm
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[1] = @{$vpdhash{$entry->{node}}}[1];#sn
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[2] = @{$vpdhash{$entry->{node}}}[2];#side
+                # find node ip address, check node name first, then check hosts table
+                my $ifip = xCAT::Utils->isIpaddr($entry->{node});
+                if ( $ifip )
+                {
+                    @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $entry->{node};#ip
+                } else
+                {
+                    if ( exists ($iphash{$entry->{node}}) ) {
+                       @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $iphash{$entry->{node}};#ip
+                    }
+                    else  {
+                        @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = "";#ip
+                    }
+                }
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[4] = $entry->{id};#id
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[5] = $entry->{parent};#parent
+                if ( exists $entry->{nodetype}) {
+                    @{$::OLD_DATA_CACHE{$entry->{node}}}[6] = $entry->{nodetype};#nodetype
+                } else {
+                    if ( exists ($typehash{$entry->{node}}) ) {
+                        @{$::OLD_DATA_CACHE{$entry->{node}}}[6] = $typehash{$entry->{node}};
+                    } else {
+                        @{$::OLD_DATA_CACHE{$entry->{node}}}[6] = "";
+                    }
+                }    
+                @{$::OLD_DATA_CACHE{$entry->{node}}}[7] = 1;
+            }
+        } else
+        {
+            return 4;
+        }
+    }
+    return 0;
+}
 
 #############################################################################
 # Get hostname from SLP URL response and match databse meanwhile
@@ -1414,9 +1498,7 @@ sub gethost_from_url_or_old {
     my $parmtm          = shift;
     my $parsn           = shift;
     my $pname           = shift;
-    my %idhash = ();
-    my %iphash = ();
-    my %typehash = ();
+    my $flagref         = shift;
 
     #######################################
     # Extract IP from URL
@@ -1430,113 +1512,14 @@ sub gethost_from_url_or_old {
         #}
     }
     # get the information of existed nodes to do the migration
-    if ( !defined(%::OLD_DATA_CACHE))
-    {
-        # find out all the existed nodes' ipaddresses
-        my $hoststab  = xCAT::Table->new('hosts');
-        if ( $hoststab )
-        {
-            my @ipentries = $hoststab->getAllNodeAttribs( ['node','ip'] );
-            for my $ipentry ( @ipentries )
-            {
-                $iphash{$ipentry->{node}} = $ipentry->{ip};
-            }
-        } else
-        {
-            # need to do something here
-        }
 
-        # find out all the existed nodes' type
-        my $nodetypetab  = xCAT::Table->new('nodetype');
-        if ( $nodetypetab )
-        {
-            my @typeentries = $nodetypetab->getAllNodeAttribs( ['node','nodetype'] );
-            for my $typeentry ( @typeentries)
-            {
-                $typehash{$typeentry->{node}} = $typeentry->{nodetype};
-            }
-        } else
-        {
-            # need to do something here
-        }
-
-        # find out all the existed nodes' attributes
-        my $ppctab  = xCAT::Table->new('ppc');
-        if ( $ppctab )
-        {
-            my @identries = $ppctab->getAllNodeAttribs( ['node','id','parent','nodetype'] );
-            for my $identry ( @identries )
-            {
-                if ( $identry->{id} )
-                {
-                    @{$idhash{$identry->{node}}}[0] = $identry->{id};
-                }
-                if ($identry->{parent} )
-                {
-                    @{$idhash{$identry->{node}}}[1] = $identry->{parent};
-                }
-                if ($identry->{nodetype} )
-                {
-                    @{$idhash{$identry->{node}}}[2] = $identry->{nodetype};
-                } else
-                {
-                    @{$idhash{$identry->{node}}}[2] = $typehash{$identry->{node}};
-                }
-            }
-        } else
-        {
-            # need to do something here
-        }
-
-        # find out all the existed nodes' mtms and side
-        my $vpdtab  = xCAT::Table->new( 'vpd' );
-        if ( $vpdtab )
-        {
-            my @entries = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
-            for my $entry ( @entries ) {
-                if ( $entry->{mtm} and $entry->{serial})
-                {
-                    @{$::OLD_DATA_CACHE{$entry->{node}}}[0] = $entry->{mtm};
-                    @{$::OLD_DATA_CACHE{$entry->{node}}}[1] = $entry->{serial};
-                } else {
-                    @{$::OLD_DATA_CACHE{$entry->{node}}}[0] = undef;
-                    @{$::OLD_DATA_CACHE{$entry->{node}}}[1] = undef;
-                }
-                @{$::OLD_DATA_CACHE{$entry->{node}}}[2] = $entry->{side};
-                # find node ip address, check node name first, then check hosts table
-                my $ifip = xCAT::Utils->isIpaddr($entry->{node});
-                if ( $ifip )
-                {
-                    @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $entry->{node};
-                } else
-                {
-                    if ( exists ($iphash{$entry->{node}}) )
-                    {
-                        @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = $iphash{$entry->{node}};
-                    }
-                    else
-                    {
-                        @{$::OLD_DATA_CACHE{$entry->{node}}}[3] = "";
-                    }
-                }
-                @{$::OLD_DATA_CACHE{$entry->{node}}}[4] = @{$idhash{$entry->{node}}}[0];
-                @{$::OLD_DATA_CACHE{$entry->{node}}}[5] = @{$idhash{$entry->{node}}}[1];
-                @{$::OLD_DATA_CACHE{$entry->{node}}}[6] = @{$idhash{$entry->{node}}}[2];
-                @{$::OLD_DATA_CACHE{$entry->{node}}}[7] = 1;
-
-            }
-        }
-        else
-        {
-            # need to do something here
-        }
-    }
 
     if (($type eq TYPE_BPA or $type eq TYPE_FSP) and  $pname)
     {
         $enter_time = ($enter_time + 1) % 2;
     }
 
+    read_from_table() unless (%::OLD_DATA_CACHE);
 
     foreach my $oldnode ( keys %::OLD_DATA_CACHE )
     {
@@ -1553,6 +1536,8 @@ sub gethost_from_url_or_old {
         # should return fast to save time
         if (($type eq TYPE_BPA or $type eq TYPE_FSP) and ($tmptype eq $type) and $pname and $side) {
             if ($pname eq $tmpparent and $side eq $tmpside)  {
+                $$flagref = 1;
+                print "1 got old name $oldnode \n" if($DEBUG_MATCH eq 1);                
                 return $oldnode;
             }
         }
@@ -1569,6 +1554,8 @@ sub gethost_from_url_or_old {
                     if ( $tmpside eq $side ) {# match! which means that node is the same as the new one
                         if ( $ip eq $tmpip ) { #which means that the ip is not changed
                             # maybe we should check if the ip is invalid and send a warning
+                            $$flagref = 1;
+                            print "2 got old name $ip\n" if($DEBUG_MATCH eq 1); 
                             return $ip;
                         }  else { #which means that the ip is changed
                             my $vip = check_ip($ip);
@@ -1576,6 +1563,8 @@ sub gethost_from_url_or_old {
                                 # maybe we should check if the old ip is invalid and send a warning
                                 # even so we should keep the definition as before
                                 # because this case, we can't put check_ip in the end
+                                $$flagref = 1;
+                                print "3 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                                 return $oldnode;
                             } else {
                                 return $ip;
@@ -1592,24 +1581,34 @@ sub gethost_from_url_or_old {
                                 if ( $ip eq $tmpip ) {
                                     if ( $oldnode =~ /\-(A|B)$/) {
                                         @{$::OLD_DATA_CACHE{$oldnode}}[7] = 0;
+                                        $$flagref = 1;
+                                        print "4 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                                         return  $oldnode;
                                     } else {
                                         @{$::OLD_DATA_CACHE{$oldnode}}[7] = 0;
                                         #change node name, need to record the node here
                                         $::UPDATE_CACHE{$mtm.'-'.$sn} = $oldnode;
+                                        $$flagref = 1;
+                                        print "5 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                                         return $oldnode.'-'.$slot;
                                     }
                                 } else   {# not find a matched definition, but need to use the old node name
                                     if ( $enter_time eq 0 and $unmatched){
+                                        $$flagref = 1;
+                                        print "6 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                                         return $oldnode;
                                     }
                                 }
                             } elsif ( $tmpside =~ /\-/ )  {# end of if ( $oldnode =~ /^Server\-/)
                                 if ( $ip eq $tmpip ) {
                                     @{$::OLD_DATA_CACHE{$oldnode}}[7] = 0;
+                                    $$flagref = 1;
+                                    print "7 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                                     return $oldnode;
                                 } else{
                                     if ( $enter_time eq 0 and $unmatched){
+                                        $$flagref = 1;
+                                        print "8 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                                         return $oldnode;
                                     }
                                 }
@@ -1617,25 +1616,32 @@ sub gethost_from_url_or_old {
                         }
                     } elsif ( $tmpside =~ /\-/ ){
                         if ( $side eq $tmpside ) {
+                            $$flagref = 1;
+                            print "9 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                             return $oldnode;
                         }
                     } elsif ( !$tmpside ) {
                         if ( $oldnode =~ /^Server\-/)  {#judge if need to change node's name
                             if ( $oldnode !~ /\-(A|B)$/ ) {
                                 delete $::OLD_DATA_CACHE{$oldnode};
+                                $$flagref = 1;
+                                print "10 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                                 return $oldnode."-".$slot;
                             }
                         }
                         # if mtms could match but side not defined, we will trate
                         # it as the result by rscan. And alway use its name.
                         delete $::OLD_DATA_CACHE{$oldnode};
+                        $$flagref = 1;
+                        print "11 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                         return $oldnode;
                     }
                 }
             }# end of if ($tmpmtm eq $mtm  and  $tmpsn eq $sn)
 
 
-        } elsif ( ($type eq TYPE_FRAME or $type eq TYPE_CEC) and ($type eq $tmptype)){
+        } 
+        if ( ($type eq TYPE_FRAME or $type eq TYPE_CEC) and ($type eq $tmptype)){
             if ( !$tmpmtm and !$tmpid)  {
                 next;
             }
@@ -1645,6 +1651,8 @@ sub gethost_from_url_or_old {
                 my $tpparmtm = @{$::OLD_DATA_CACHE{$tmpparent}}[0];
                 my $tpparsn  = @{$::OLD_DATA_CACHE{$tmpparent}}[1];
                 if ( ($tpparmtm eq $parmtm) and ($tpparsn eq $parsn) and ($cage_number eq $tmpid) and ($type eq $tmptype) ) {
+                    $$flagref = 1;
+                    print "12 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                     return $oldnode;
                 }
             }
@@ -1656,12 +1664,18 @@ sub gethost_from_url_or_old {
                     if ( $oldnode =~ /(\-A)$/) {
                         $nodename = s/(\-A)$//;
                         # should send a warning here
+                        $$flagref = 1;
+                        print "13 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                         return $nodename;
                     }
                     else  {
+                        $$flagref = 1;
+                        print "14 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                         return $oldnode;
                     }
                 } else {
+                    $$flagref = 1;
+                    print "15 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
                     return $oldnode;
                 }
             }
@@ -2075,8 +2089,8 @@ sub parse_responses {
     my $request = shift;
     my $values  = shift;
     my $length  = shift;
-
-    my %outhash = ();
+    my $matchflag = 0;
+    my %outhash;
     my @attrs   = (
         "type",
         "machinetype-model",
@@ -2101,7 +2115,7 @@ sub parse_responses {
     my %fid1;
     my %fid2;
     my %cid;
-
+    my @matchnodes;
     trace( $request, "Now I will explain how the lsslp parse its response: " , 1);
     foreach my $rsp ( @$values ) {
         ###########################################
@@ -2171,7 +2185,7 @@ sub parse_responses {
         #    $hostip{$entry->{node}} = $entry->{ip};
         #}
 
-        trace( $request, "The type is $result[0], mtm is $result[1], sn is $result[2], side is $result[3], ip is $result[4], parent mtm is $result[5], parent sn is $result[6], frame num is $result[7], cage num is $result[8].", 1 );
+        trace( $request, ">>>>>>>>The type is $result[0], mtm is $result[1], sn is $result[2], side is $result[3], ip is $result[4], parent mtm is $result[5], parent sn is $result[6], frame num is $result[7], cage num is $result[8].", 1 );
 
         # begin to define FSP/BPA/FRAME/CEC
         my $typetp;
@@ -2185,9 +2199,7 @@ sub parse_responses {
         }
         my $hostname = undef;
         if ( $type eq SERVICE_BPA or $type eq SERVICE_FSP ) {
-
-            trace( $request, "........First begin to define FSP/BPA nodes", 1 );
-            trace( $request, "     we will keep the datas here first", 1);
+            trace( $request, "........First define FSP/BPA nodes", 1 );
             ###########################################
             #  begin to define fsp/bpa, use ip as the hostname of the fsp/bpa
             #  for there are redundancy of fsp/bpa,
@@ -2218,17 +2230,18 @@ sub parse_responses {
             $severnode1[4] = $ips[0];
             $severnode1[0] = $typetp;
             push @severnode1, $rsp;
+            $matchflag = 0;
             $hostname =  gethost_from_url_or_old($ips[0], $severnode1[0], $severnode1[1], $severnode1[2],
-                            $severnode1[3], $ips[0], $severnode1[8], $severnode1[5],$severnode1[6]);
-            if ( $hostname )
-            {
+                            $severnode1[3], $ips[0], $severnode1[8], $severnode1[5],$severnode1[6], undef, \$matchflag);
+            trace( $request, "     The node $ips[0] match the old data and got the new name $hostname, $matchflag" , 1);
+            if ( $hostname ) {
                 $outhash{$hostname} = \@severnode1;
-            }
+                push @matchnodes, $hostname if ($matchflag eq 1) ; 
             if ( length( $severnode1[4] ) > $$length ) {
                 $$length = length( $severnode1[4] );
             }
+            } 
 
-            trace( $request, "     The node $ips[0] match the old data and got the new name $hostname" , 1);
             #begin to define another fsp/bpa
             $hostname = undef;
             foreach (@result) {
@@ -2238,24 +2251,24 @@ sub parse_responses {
             $severnode2[4] = $ips[1];
             $severnode2[0] = $typetp;
             push @severnode2, $rsp;
+            $matchflag = 0;
             $hostname =  gethost_from_url_or_old($ips[1], $severnode2[0], $severnode2[1], $severnode2[2],
-                            $severnode2[3], $ips[1], $severnode2[8], $severnode2[5],$severnode2[6]);
-            if ( $hostname )
-            {
+                            $severnode2[3], $ips[1], $severnode2[8], $severnode2[5],$severnode2[6], undef, \$matchflag);
+            trace( $request, "     The node $ips[1] match the old data and got the new name $hostname, $matchflag" , 1);
+            if ( $hostname ) {
                  $outhash{$hostname} = \@severnode2;
-            }
+                push @matchnodes, $hostname if ($matchflag eq 1) ; 
             if ( length( $severnode2[4] ) > $$length ) {
                 $$length = length( $severnode2[4] );
             }
-            trace( $request, "     The node $ips[1] match the old data and got the new name $hostname" , 1);
-
+            }
             ###########################################
             #  begin to define frame and cec
             #  As default, use Server-$result[1]-SN$result[2] as hostname
             #  put the definitions into %outhash
             ###########################################
 
-            trace( $request, "........second begin to define frame and cec " , 1);
+            trace( $request, "......Second define frame and cec " , 1);
             $hostname = undef;
             $host = "Server-$result[1]-SN$result[2]";
             unless ( exists( $outhash{$host} ))
@@ -2273,13 +2286,15 @@ sub parse_responses {
                 # side of frame and cec should be null
                 $result[4] = "";
                 push @result, $rsp;
+                $matchflag = 0;
                 $hostname =  gethost_from_url_or_old($host, $result[0], $result[1], $result[2],
-                             $result[3],$result[4], $result[8],$result[5],$result[6]);
-                if ( $hostname )
-                {
+                             $result[3],$result[4], $result[8],$result[5],$result[6], undef, \$matchflag);
+                trace( $request, "     The node $host match the old data and got the new name $hostname, $matchflag" , 1);         
+                if ( $hostname ) {
                     $outhash{$hostname} = \@result;
+                    push @matchnodes, $hostname if ($matchflag eq 1);      
                 }
-                trace( $request, "      the node $host match the old data and got the new name $hostname " , 1);
+
             }
 
         } else   {
@@ -2287,12 +2302,14 @@ sub parse_responses {
             ###########################################
             # for HMC
             ###########################################
-            trace( $request, "........begin to define hmc ", 1);
-            $host = gethost_from_url( $request, $rsp, @result);
+            trace( $request, "......Begin to define hmc ", 1);
+            $matchflag = 0;
+            $host = gethost_from_url( $request, $rsp, @result, \$matchflag);
+            trace( $request, "     The node $host match the old data and got the new name $host, $matchflag" , 1);         
             if ( !defined( $host )) {
                 next;
             }
-
+            push @matchnodes, $host if ($matchflag eq 1) ; 
             ###########################################
             # Strip commas from IP list
             ###########################################
@@ -2330,7 +2347,7 @@ sub parse_responses {
     ############################################################
     # find out the cageid for the cec
     ############################################################
-    trace( $request, "\n\n.......the cageid need to be adjust,because some secondary fsp return wrong side value ( always 0)", 1);
+    trace( $request, "\n\nThe cageid need to be adjust,because some secondary fsp return wrong side value ( always 0)", 1);
     foreach my $idtmp( keys(%fid1) )
     {
         if ($fid1{$idtmp} > 0)
@@ -2354,7 +2371,6 @@ sub parse_responses {
     ############################################################
     # -n flag to skip the existing node
     ############################################################
-    trace( $request, "\n\ncheck if there is -n, and skip the existing nodes ", 1);
     my %vpd_table_hash;
     my $vpdtab  = xCAT::Table->new( 'vpd' );
     my @entries = $vpdtab->getAllNodeAttribs(['node','mtm','serial','side']);
@@ -2364,23 +2380,16 @@ sub parse_responses {
         }
     }
 
-    my %nodehm_table_hash;
-    my $nodehm_tab  = xCAT::Table->new('nodehm');
-    my @nodehm_entries = $nodehm_tab->getAllNodeAttribs(['node','mgt']);
-    for my $entry ( @nodehm_entries ) {
-        if ( $entry->{'mgt'} ) {
-            $nodehm_table_hash{$entry->{'node'}} = $entry->{ 'mgt'};
-        }
-    }
 
     ##########################################################
     # Find the parent and mac and set them as the 10th and 11th
     # of the attribute of the server nodes
     ##########################################################
-    my %hash = ();
+    my %hash;
     my $mac;
     my $parent;
-    trace( $request, "\n\n\n Begin to parse these datas second time: ", 1);
+    my $newhostname;
+    trace( $request, "\n\n\nBegin to find cec's id, parent and hostname, find frame's hostname", 1);
     foreach my $h ( keys %outhash ) {
         my $data    = $outhash{$h};
         my $type    = @$data[0];
@@ -2396,33 +2405,35 @@ sub parse_responses {
         my $bpamtm  = @$data[5];
         my $bpasn   = @$data[6];
         my $cagenum = @$data[8];
-        trace( $request, ">>>>>>>>The node is $h, type is $type, mtm is $mtm, sn is $sn, side is $side, ip is $ip0, bpamtm is $bpamtm, bpasn is $bpasn, cagenum is $cagenum", 1);
+        trace( $request, "......The node is $h, type is $type, mtm is $mtm, sn is $sn, side is $side, ip is $ip0, bpamtm is $bpamtm, bpasn is $bpasn, cagenum is $cagenum", 1);
         # find cageid for the secondary fsp node
         if ( $type =~ /^FSP$/ || $type =~ /^CEC$/) {
             @$data[8] = $cid{$mtm."*".$sn};
+            trace ( $request, "            Adjust cageid to @$data[8]", 1); 
         }
 
         # if there is a -n flag, skip the existed nodes
-        if ( exists( $opt{n} ) ) {
-             if ( exists $vpd_table_hash{$mtm . '*' . $sn . '-' . $side} ) {
-                my $existing_node = $vpd_table_hash{$mtm . '*' . $sn . '-' . $side};
-                if ( exists $nodehm_table_hash{$existing_node} ) {
-                    trace ( $request, "    This node is exites, so skipped. ", 1);
-                    next;
+        if ($type =~ /^HMC$/) {
+            $matchflag = 0;
+            $newhostname = match_hosts_defined_by_xcatsetup($h, $type, $mtm, $sn, $side, $ip0, $cagenum, $bpamtm, $bpasn, $parent, \$matchflag);
+            if ($newhostname) {
+                $hash{$newhostname} = $data;
+                push @matchnodes, $newhostname;
+            } else {
+                $hash{$h} = $data;
                 }
+            trace ( $request, "            HMC $h macth the data defined by xcatsetup and got name $newhostname", 1);
             }
-        }
+
         # begin to find parent
+        next unless( $type eq TYPE_CEC or $type eq TYPE_FRAME );
         my $newname;
         foreach my $h1 ( keys %outhash ) {
             my $data1 = $outhash{$h1};
             my $type1 = @$data1[0];
             my $mtm1  = @$data1[1];
             my $sn1   = @$data1[2];
-            if ( $type1 eq TYPE_FRAME and ($type eq TYPE_BPA or $type eq TYPE_CEC) and $mtm1 eq $bpamtm and $sn1 eq $bpasn ) {
-                $parent = $h1;       # BPA and CEC's parent is Frame
-                last;
-            } elsif ( $type1 eq TYPE_CEC and $type eq TYPE_FSP and $mtm1 eq $mtm and $sn1 eq $sn ) {
+            if ($mtm1 eq $bpamtm and $sn1 eq $bpasn) {
                 $parent = $h1;       # FSP's parent is CEC
                 last;
             } else {
@@ -2443,41 +2454,100 @@ sub parse_responses {
         }
 
         push @$data, $parent;
-        trace ( $request, "    Then find the node's parent $parent.", 1);
+        push @$data, undef;   #This is for $data[9], which is mac address;
+        trace ( $request, "            $h find the parent $parent.", 1);
 
         #find the mac address
-        if ( $type ne TYPE_FRAME and $type ne TYPE_CEC )  {# the ips of frame and cec are null
-            $mac = match_ip_mac( $ip0 );
+        ##########################################################
+        $newhostname = match_hosts_defined_by_xcatsetup($h, $type, $mtm, $sn, $side, $ip0, $cagenum, $bpamtm, $bpasn, $parent, \$matchflag);
+        if ($newhostname) {
+            $hash{$newhostname} = $data;
+            push @matchnodes, $newhostname;
         } else {
-            $mac = undef;
+            $hash{$h} = $data;
         }
-        # This is originally used to check the invalid mac address in AIX, but failed to do it.
-        #unless ( $mac =~ /\w+\:\w+\:\w+\:\w+\:\w+\:\w+/ ) { $mac = undef;}
-        push @$data, $mac;
-        trace ( $request, "    Then find the node's mac $mac.", 1);
+        trace ( $request, "            CEC $h macth the data defined by xcatsetup and got name $newhostname", 1);
+    }
 
-
-
-        # have got node's parent and id, need to match fsp here
-        trace ( $request, "    Need to find new name for the fsp/bpa with parent $parent and id @$data[8].", 1);
-        if (($type eq TYPE_FSP or $type eq TYPE_BPA) and $parent)
-        {
-            $newname = gethost_from_url_or_old($h, $type, undef, undef, $side, undef, undef, undef, undef, $parent);
+    ##########################################################
+    # Find the parent,hostname and mac address for fsp/bpa
+    # Find mac address for HMC
+    ##########################################################
+    trace( $request, "\n\n\nBegin to find parent and hostname for fsp/bpa: ", 1);
+    foreach my $h ( keys %outhash ) {
+        my $data    = $outhash{$h};
+        my $type    = @$data[0];
+        my $mtm     = @$data[1];
+        my $sn      = @$data[2];
+        my $side    = @$data[3];
+        my $ip0;
+        if ( $h =~ /^([^\(]+)\(([^\)]+)\)$/ ) {
+            $ip0    = $2;
+        } else {
+            $ip0    = @$data[4];
         }
+        my $bpamtm  = @$data[5];
+        my $bpasn   = @$data[6];
+        my $cagenum = @$data[8];
 
-        if ($newname)
-        {
-            trace ( $request, "    The new name is $newname.", 1);
-            $hash{$newname} = $data;
-            $otherinterfacehash{$newname}{otherinterfaces} = $ip0;
-            trace( $request, "     Keep the node ip $ip0 in its otherinterfaces" , 1);
+        trace( $request, "......The node is $h", 1);
+
+        ##########################################################
+        # begin to find fsp/bpa's parent
+        ##########################################################
+        next unless ( $type eq TYPE_BPA or $type eq TYPE_FSP );
+        foreach my $h1 ( keys %hash ) {
+            my $data1 = $hash{$h1};
+            my $type1 = @$data1[0];
+            my $mtm1  = @$data1[1];
+            my $sn1   = @$data1[2];
+            if ((( $type1 eq TYPE_FRAME and $type eq TYPE_BPA) or ($type1 eq TYPE_CEC and $type eq TYPE_FSP)) and ($mtm1 eq $mtm and $sn1 eq $sn) ) {
+                $parent = $h1;       # FSP's parent is CEC
+                last;
+            } else {
+                $parent = undef;   # Frame and HMC have no parent
+            }
         }
-        else
-        {
-            trace ( $request, "    The new name is $h.", 1);
+        push @$data, $parent; #This is for $data[8];
+        trace ( $request, "            Find the $h parent $parent.", 1);
+        
+        ##########################################################
+        # match fsp/bpa nodes with the definition made by xcatsetup
+        # keep the otherinterfaces for the nodes.
+        ##########################################################
+        $newhostname = match_hosts_defined_by_xcatsetup($h, $type, $mtm, $sn, $side, $ip0, $cagenum, $bpamtm, $bpasn, $parent);
+        if ($newhostname) {
+            trace ( $request, "            Find the new hostname $newhostname.", 1); 
+            $hash{$newhostname} = $data;
+            push @matchnodes, $newhostname;
+            $otherinterfacehash{$newhostname}{otherinterfaces} = $ip0;
+            trace( $request, "            Keep the node ip $ip0 in $newhostname otherinterfaces" , 1);
+        } else {    
             $hash{$h} = $data;
             $otherinterfacehash{$h}{otherinterfaces} = $ip0;
-            trace( $request, "     Keep the node ip $ip0 in its otherinterfaces" , 1);
+            trace( $request, "            Keep the node ip $ip0 in $h otherinterfaces" , 1);
+        }                
+
+        ##########################################################
+        # find the mac address for the fsp/bpa nodes.
+        ##########################################################
+        $mac = match_ip_mac( $ip0 ); 
+        # This is originally used to check the invalid mac address in AIX, but failed to do it.
+        #unless ( $mac =~ /\w+\:\w+\:\w+\:\w+\:\w+\:\w+/ ) { $mac = undef;}
+        push @$data, $mac;  #This is for $data[9], which is mac address;
+        trace ( $request, "            Find the $h mac $mac.", 1);
+    }
+  
+    ##########################################################
+    # If there is -n flag, skip the matched nodes
+    ##########################################################
+    if (exists($opt{n})) {
+        trace( $request, "\n\n\nThere is -n flag, skip these nodes:\n", 1);
+        for my $matchednode (@matchnodes) {
+            if ($hash{$matchednode}) {
+                trace( $request, "$matchednode,", 1);
+                delete $hash{$matchednode};
+            }
         }
     }
 
@@ -3927,6 +3997,72 @@ sub filtersamevlan {
     }
     return $newhash;
 }
-
+##########################################################################
+# Match the nodes defined by xcatsetup
+# The match rules are:
+# match Frame nodes with mtms
+# match CEC nodes with parent name and id
+# match FSP/BPA nodes with parent name and side
+##########################################################################
+sub match_hosts_defined_by_xcatsetup {
+    my $nodename        = shift;
+    my $type            = shift;
+    my $mtm             = shift;
+    my $sn              = shift;
+    my $side            = shift;
+    my $ip              = shift;
+    my $cage_number     = shift;
+    my $parmtm          = shift;
+    my $parsn           = shift;
+    my $pname           = shift;
+    my $flagref         = shift;
+    
+    read_from_table() unless (%::OLD_DATA_CACHE);
+    foreach my $oldnode ( keys %::OLD_DATA_CACHE )
+    {
+        my $tmpmtm    = @{$::OLD_DATA_CACHE{$oldnode}}[0];
+        my $tmpsn     = @{$::OLD_DATA_CACHE{$oldnode}}[1];
+        my $tmpside   = @{$::OLD_DATA_CACHE{$oldnode}}[2];
+        my $tmpip     = @{$::OLD_DATA_CACHE{$oldnode}}[3];
+        my $tmpid     = @{$::OLD_DATA_CACHE{$oldnode}}[4];
+        my $tmpparent = @{$::OLD_DATA_CACHE{$oldnode}}[5];
+        my $tmptype   = uc(@{$::OLD_DATA_CACHE{$oldnode}}[6]);
+        my $unmatched = @{$::OLD_DATA_CACHE{$oldnode}}[7];
+        if ($type eq TYPE_FRAME)
+        {
+            if ($tmpmtm eq $mtm and $tmpsn eq $sn) {
+                $$flagref = 1;
+                print "20 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
+                return $oldnode;
+            }    
+        }
+        if ($type eq TYPE_CEC)
+        {
+            if ($pname eq $tmpparent and $cage_number eq $tmpid) {
+                $$flagref = 1;
+                print "21 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
+                return $oldnode;
+            }    
+        }
+        if ($type eq TYPE_BPA or $type eq TYPE_FSP)
+        {
+            if ($pname eq $tmpparent and $side eq $tmpside) {
+                $$flagref = 1;
+                print "22 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
+                return $oldnode;
+            }    
+        }
+        if ($type eq TYPE_BPA or $type eq TYPE_FSP)
+        {
+            if ($pname eq $tmpparent and $side eq $tmpside) {
+                $$flagref = 1;
+                print "23 got old name $oldnode\n" if($DEBUG_MATCH eq 1); 
+                return $oldnode;
+            }    
+        }
+    }    
+    
+    return undef;
+}
 1;
 
