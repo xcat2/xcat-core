@@ -252,7 +252,7 @@ Display the CEC/BPA system names.
 
 =item B<BSR>
 
-Get (Barrier Synchronization Register) BSR allocation for a CEC. 
+Get Barrier Synchronization Register (BSR) allocation for a CEC. 
 
 =item B<hostname>={I<*|name>}
 
@@ -599,17 +599,19 @@ To show the BSR allocation for cec01:
 
 B<rspconfig> I<cec01 BSR>
 
+ cec01: Barrier Synchronization Register (BSR)
  cec01: Number of BSR arrays: 256
- cec01: Bytes per BSR array: 4096
- cec01: Available BSR array: 0
- cec01: lpar01: 32
- cec01: lpar02: 32
- cec01: lpar03: 32
- cec01: lpar04: 32
- cec01: lpar05: 32
- cec01: lpar06: 32
- cec01: lpar07: 32
- cec01: lpar08: 32
+ cec01: Bytes per BSR array : 4096
+ cec01: Available BSR array : 0
+ cec01: Partition name: BSR arrays
+ cec01: lpar01        : 32
+ cec01: lpar02        : 32
+ cec01: lpar03        : 32
+ cec01: lpar04        : 32
+ cec01: lpar05        : 32
+ cec01: lpar06        : 32
+ cec01: lpar07        : 32
+ cec01: lpar08        : 32
 
 =item *
 
