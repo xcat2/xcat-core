@@ -4,7 +4,7 @@ B<tabprune> - Deletes records from the eventlog,auditlog,isnm_perf,isnm_perf_sum
 
 =head1 SYNOPSIS
 
-B<tabprune> B<eventlog | auditlog>  [B<-V>] B<-i> I<recid> |B<-n> I<number of records> | B<-p> I<percentage> | B<-a>  
+B<tabprune> B<eventlog | auditlog>  [B<-V>] B<-i> I<recid> |B<-n> I<number of records> | B<-p> I<percentage> |  B<-d> I<number of days> | B<-a>  
 
 B<tabprune> [B<-h>|B<--help>] [B<-v>|B<--version>] 
 
@@ -35,6 +35,10 @@ Remove the number of records input.
 =item B<-p> I<percent>
 
 Remove the percentage of records input.
+
+=item B<-d> I<number of days>
+
+Remove all records that occurred >= than number of days ago. 
 
 =back
 
@@ -85,6 +89,12 @@ B<tabprune> I<auditlog> -V -n 400
 To remove 50% of the  eventlog table: 
 
 B<tabprune> I<eventlog>  -p 50 
+
+=item *
+
+To remove all records that occurred >= 5 days ago in the eventlog: 
+
+B<tabprune> I<eventlog>  -d 5 
 
 
 
