@@ -66,7 +66,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose) )) { 
+    if ( !GetOptions( \%opt, qw(V|Verbose x) )) { 
         return( usage() );
     }
     ####################################
@@ -88,6 +88,9 @@ sub parse_args {
     shift @ARGV;
     if ( defined( $ARGV[0] )) {
         return(usage( "Invalid Argument: $ARGV[0]" ));
+    }
+    if (exists($opt{x}) and $cmd !~ /^deconfig$/) {
+        return (usage("Option '-x' can't work with '$cmd'"));
     }
     ####################################
     # Set method to invoke 
@@ -268,10 +271,13 @@ sub deconfig {
              $decfg = XMLin($data);
          };
          if( $@ ) {
-             push @result,[$name, "Error: there are some unreadable XML data from the firmware. Please check with the data provider.", -1];
+             push @result,[$name, "Error: there are some unreadable XML data from the firmware. It can't be parsed by 'xcatd'.", -1];
              return (\@result);
          }
-
+         if( exists($request->{opt}->{x})) {
+             push @result, [$name, "\n".$data, -1];
+             next;
+         }
 	#print "decfg";
         #print Dumper($decfg); 
 	my $node =  $decfg->{NODE};

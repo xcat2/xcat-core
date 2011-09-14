@@ -16,7 +16,9 @@ B<rinv> I<noderange> {B<bus>|B<config>|B<serial>|B<model>|B<firm>|B<all>}
 
 =head2 PPC (using Direct FSP Management) specific:
 
-B<rinv> I<noderange> {B<firm>|B<deconfig>}
+B<rinv> I<noderange> {B<firm>}
+
+B<rinv> I<noderange> {B<deconfig> [B<-x>]}
 
 =head2 Blade specific:
 
@@ -65,6 +67,10 @@ Retrieves firmware versions.
 =item B<deconfig>
 
 Retrieves deconfigured resources. Deconfigured resources are hw components (cpus, memory, etc.) that have failed so the firmware has automatically turned those components off. 
+
+=item B<-x>
+
+To output the information of deconfigured resources in XML format.
 
 =item B<asset>
 
@@ -138,6 +144,21 @@ To retrieve all information available from blade node4, enter:
  node5: Processor Speed: 866 MHz
  node5: Total Memory:	  512 MB
  node5: Memory DIMM locations:  Slot(s)  3  4
+
+=item *
+
+To output the information of deconfigured resources in XML format for CEC cec01, enter:
+
+ rinv cec01 deconfig -x
+
+ cec01:
+ <SYSTEM>
+ <System_type>IH</System_type>
+ <NODE>
+ <Location_code>U78A9.001.0123456-P1</Location_code>
+ <RID>800</RID>
+ </NODE>
+ </SYSTEM>
 
 =item *
 
