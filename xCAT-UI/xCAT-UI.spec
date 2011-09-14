@@ -139,6 +139,10 @@ set -x
 	
 	if [ "$1" = 1 ] || [ "$1" = 2 ]		# Install or upgrade
 	then
+		# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
+		cp %{prefix}/ui/xcat/plugins/web.pm /opt/xcat/lib/perl/xCAT_plugin/
+		/etc/init.d/xcatd restart
+		
 		# Copy php.ini file into /opt/xcat/ui and turn off output_buffering
 		if [ -e "/etc/redhat-release" ]; then
 			/bin/sed /etc/php.ini -e 's/output_buffering = 4096/output_buffering = Off/g' > %{prefix}/ui/php.ini
