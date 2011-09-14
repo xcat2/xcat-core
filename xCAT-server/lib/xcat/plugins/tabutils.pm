@@ -763,6 +763,7 @@ sub tabprune
     my $PERCENT;
     my $VERBOSE;
     my $RECID;
+    my $NUMBERDAYS;
     my $rc=0;
 
     my $tabprune_usage = sub {
@@ -772,9 +773,11 @@ sub tabprune
         push @{$rsp{data}}, "       tabprune <tablename> [-V] -n <# of records>";
         push @{$rsp{data}}, "       tabprune <tablename> [-V] -i <recid>";
         push @{$rsp{data}}, "       tabprune <tablename> [-V] -p <percent>";
+        push @{$rsp{data}}, "       tabprune <tablename> [-V] -d <# of days>";
         push @{$rsp{data}}, "       tabprune [-h|--help]";
         push @{$rsp{data}}, "       tabprune [-v|--version]";
         push @{$rsp{data}}, "       tables supported:eventlog,auditlog,isnm_perf,isnm_perf_sum";
+        push @{$rsp{data}}, "       -d option only supported for eventlog,auditlog";
         if ($exitcode) { $rsp{errorcode} = $exitcode; }
         $cb->(\%rsp);
     };
@@ -787,6 +790,7 @@ sub tabprune
                      'v|version' => \$VERSION,
                      'V' => \$VERBOSE,
                      'p|percent=i' => \$PERCENT,
+                     'd|days=i' => \$NUMBERDAYS,
                      'i|recid=s' => \$RECID,
                      'a' => \$ALL,
                      'n|number=i' => \$NUMBERENTRIES))
@@ -819,10 +823,19 @@ sub tabprune
         $cb->(\%rsp);
         return 1;
       
-    } 
-    if (!(defined $PERCENT ) && (!(defined $RECID) && (!(defined $ALL)) && (!(defined $NUMBERENTRIES)))) {
+    }
+    # only support days option for eventlog and auditlog 
+    if (($table ne "eventlog") && ($table ne "auditlog") && (defined $NUMBERDAYS)  ) {
         my %rsp;
-        $rsp{data}->[0] = "One option -p or -i or -n or -a must be supplied.";
+        $rsp{data}->[0] = "Table $table not supported for the -d option.";
+        $rsp{errorcode} = 1; 
+        $cb->(\%rsp);
+        return 1;
+      
+    } 
+    if ((!(defined $PERCENT ))  && (!(defined $NUMBERDAYS))&& (!(defined $RECID)) && (!(defined $ALL)) && (!(defined $NUMBERENTRIES))) {
+        my %rsp;
+        $rsp{data}->[0] = "One option -p or -i or -n or -a or -d must be supplied.";
         $rsp{errorcode} = 1; 
         $cb->(\%rsp);
         return 1;
@@ -879,6 +892,9 @@ sub tabprune
     }
     if (defined $RECID ) {
      $rc=tabprune_recid($table,$cb,$RECID, $attrrecid,$VERBOSE); 
+    }
+    if (defined $NUMBERDAYS ) {
+     $rc=tabprune_numberdays($table,$cb,$NUMBERDAYS, $attrrecid,$VERBOSE); 
     }
     if (!($VERBOSE)) {  # not putting out changes
       my %rsp;
@@ -1013,6 +1029,50 @@ sub tabprune_recid {
    $tab->commit;       
    return $rc;
 }
+#  prune all record up to number of days from today 
+sub tabprune_numberdays {
+   my $table = shift;
+   my $cb  = shift;
+   my $numberdays  = shift;
+   my  $attrrecid  = shift;
+   my $VERBOSE  = shift;
+   my $rc=0;
+   # check which database so can build the correct Where clause
+   my $tab        = xCAT::Table->new($table);
+   unless ($tab) {
+        $cb->({error => "Unable to open $table",errorcode=>4});
+        return 1;
+   }
+   # get number of seconds in the day count
+   my $numbersecs=($numberdays * 86400);
+   # get time now
+   my $timenow=time;
+   my $secsdaysago=$timenow - $numbersecs;
+   # Format like the database table timestamp record
+   my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) =
+              localtime($secsdaysago);
+   my $daysago = sprintf("%04d-%02d-%02d %02d:%02d:%02d",
+                                        $year + 1900, $mon + 1, $mday,
+                                        $hour, $min, $sec);
+   # delete all records before # days ago
+ 
+   # display the output 
+   my @attrarray;
+   push  @attrarray, "audittime<$daysago";
+   my @recs;
+   if ($VERBOSE) { # need to get all attributes 
+      @recs = $tab->getAllAttribsWhere(\@attrarray, 'ALL');
+       output_table($table,$cb,$tab,\@recs); 
+   }  
+   my @ents = $tab->getAllAttribsWhere(\@attrarray, $attrrecid);
+   # delete them 
+   foreach my $rid (@ents) {
+     $tab->delEntries($rid);
+   } 
+   $tab->commit;       
+   return $rc;
+}
+
 
 #  Dump table records to  stdout.  
 sub output_table {
