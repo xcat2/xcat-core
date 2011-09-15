@@ -23,9 +23,10 @@ my @header = (
     ["name",          "placeholder" ],
     ["id",            "%-8s" ],
     ["type-model",    "%-12s" ],
-    ["serial-number", "%-15s" ],
-    ["side",          "%-8s" ],
-    ["address",       "%-20s\n" ]);
+    ["serial-number", "%-15s\n" ]);
+#,
+#   ["side",          "%-8s" ],
+#    ["address",       "%-20s\n" ]);
 
 my @attribs = qw(nodetype node id mtm serial side hcp pprofile parent groups mgt cons hwtype);
 my %globalnodetype = (
@@ -152,15 +153,15 @@ sub enumerate {
                 my $ip_s = $8;
                 if(! defined( $ips)) {
                     if( $ip_s =~ /unavailable/ ) {
-                        $ips ="$ip;";
+                        $ips ="$ip";
                     } else {	 
-                        $ips ="$ip;$ip_s;";
+                        $ips ="$ip;$ip_s";
                     }	 
                 } else {
                     if( $ip_s =~ /unavailable/ ) {
-                        $ips .="$ip";
+                        $ips .=";$ip";
                     } else {	 
-                        $ips .="$ip;$ip_s";
+                        $ips .=";$ip;$ip_s";
                     }	 
                 }
             }
@@ -173,7 +174,8 @@ sub enumerate {
                 $side="";
             }
             push @values, join( ",",
-             $$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $ips, $$d[4]);
+             $$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname);
+            #$$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $ips, $$d[4]);
          # $$d[4],$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
             # "fsp",$node_name,$cageid,$model,$serial,$side, $server,$prof,$fname, $7);
             #"fsp",$fsp,$cageid,$model,$serial,$side,$server,$prof,$fname,$ips );
@@ -204,14 +206,15 @@ sub enumerate {
 		     my $server = $fsp;
              my $ips  = "";
           	 my $port = "";
-		     $name =~ s/\-//g;
-		     $name =~ tr/A-Z/a-z/;
+#            $name =~ s/\-//g;
+#            $name =~ tr/A-Z/a-z/;
                  	
                  #####################################
                  # Save LPAR information
                  #####################################
                  push @values, join( ",",
-                    "lpar",$name,$lparid,$model,$serial,$port,$server,$prof,$fsp,$ips,"lpar" );
+                    "lpar",$name,$lparid,$model,$serial,$port,$server,$prof,$fsp );
+                    #"lpar",$name,$lparid,$model,$serial,$port,$server,$prof,$fsp,$ips,"lpar" );
 		 
            	 } 
 
