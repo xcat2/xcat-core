@@ -141,6 +141,8 @@ set -x
 	then
 		# Copy xCAT plugins to /opt/xcat/lib/perl/xCAT_plugin
 		cp %{prefix}/ui/xcat/plugins/web.pm /opt/xcat/lib/perl/xCAT_plugin/
+		cp %{prefix}/ui/xcat/plugins/webportal.pm /opt/xcat/lib/perl/xCAT_plugin/
+		/bin/ln -s /opt/xcat/bin/xcatclientnnr /opt/xcat/bin/webportal
 		/etc/init.d/xcatd restart
 		
 		# Copy php.ini file into /opt/xcat/ui and turn off output_buffering
