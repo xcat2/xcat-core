@@ -159,7 +159,7 @@ else # for common mode
         if [ -e '/etc/SuSE-release' ]; then
             OSVER=`grep -h VERSION /etc/SuSE-release |awk '{print $3}'`
         fi
-        SIPS=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*.leases 2> /dev/null|awk '{print $3}'|sed -e 's/;//'`
+        SIPS=`grep -h dhcp-server-identifier /var/lib/dhclient/dhclient*eth*.leases 2> /dev/null|awk '{print $3}'|sed -e 's/;//'`
         if [ -z "$SIPS" ]; then
             SIPS=`grep -h DHCPSID /var/lib/dhcpcd/*.info 2> /dev/null|awk -F= '{print $2}'|sed -e s/\'//g`
         fi
