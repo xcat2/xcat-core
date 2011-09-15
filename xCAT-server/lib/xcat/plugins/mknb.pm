@@ -189,15 +189,15 @@ sub process_request {
          close($cfg);
 	if ($invisibletouch and $arch =~ /x86_64/) { #UEFI time
          open($cfg,">","$tftpdir/xcat/xnba/nets/$net.elilo");
-         print $cfg "default=xCAT Genesis\ndelay=5\n\n";
-         print $cfg 'image=xcat/genesis.kernel.'."$arch\n";
-	 print $cfg "   label=xCAT Genesis\n";
-	 print $cfg "   initrd=xcat/genesis.fs.$arch.gz\n";
-	 print $cfg "   append=\"quiet xcatd=".$normnets->{$_}.":$xcatdport destiny=discover $consolecmdline\n";
+         print $cfg "default=\"xCAT Genesis\"\ndelay=5\n\n";
+         print $cfg 'image=/tftpboot/xcat/genesis.kernel.'."$arch\n";
+	 print $cfg "   label=\"xCAT Genesis\"\n";
+	 print $cfg "   initrd=/tftpboot/xcat/genesis.fs.$arch.gz\n";
+	 print $cfg "   append=\"quiet xcatd=".$normnets->{$_}.":$xcatdport destiny=discover $consolecmdline BOOTIF=%B\"\n";
 	 close($cfg);
          open($cfg,">","$tftpdir/xcat/xnba/nets/$net.uefi");
          print $cfg "#!gpxe\n";
-	 print $cfg 'chain http://${next-server}/tftpboot/elilo-x64.efi'."\n";
+	 print $cfg 'chain http://${next-server}/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nets/'."$net.elilo\n";
 	 close($cfg);
 	}
 	

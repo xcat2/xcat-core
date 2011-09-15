@@ -2,7 +2,7 @@
 echo $drivers
 dracut_install wget openssl tar ipmitool cpio gzip modprobe touch echo cut wc
 dracut_install grep ip hostname awk egrep grep dirname expr
-dracut_install mount.nfs sshd vi reboot lspci parted libvirtd /usr/share/libvirt/cpu_map.xml mkfs mkfs.ext4 mkfs.btrfs
+dracut_install mount.nfs sshd vi reboot lspci parted screen libvirtd /usr/share/libvirt/cpu_map.xml mkfs mkfs.ext4 mkfs.btrfs
 dracut_install mkswap df brctl vconfig ifenslave ssh-keygen /usr/bin/qemu-img /usr/libexec/qemu-kvm scp clear dhclient lldpad
 dracut_install lldptool /lib64/libnss_dns-2.12.so /lib64/libnss_dns.so.2
 dracut_install poweroff ntpq ntpd hwclock date /usr/share/terminfo/x/xterm /etc/nsswitch.conf /etc/services
@@ -591,6 +591,7 @@ inst "$moddir/allowcred.awk" "/bin/allowcred.awk"
 inst "$moddir/getipmi" "/bin/getipmi"
 inst "$moddir/getdestiny" "/bin/getdestiny"
 inst "$moddir/restart" "/bin/restart"
+inst "$moddir/doxcat" "/bin/doxcat"
 inst "$moddir/nextdestiny" "/bin/nextdestiny"
 inst "$moddir/getcert" "/bin/getcert"
 inst "$moddir/dhclient.conf" "/etc/dhclient.conf"
@@ -608,6 +609,7 @@ inst "/bin/bash" "/bin/sh"
 inst "/lib64/libnss_dns-2.12.so"
 inst "/root/.ssh/id_rsa.pub" "/.ssh/authorized_keys"
 inst "/lib/terminfo/l/linux" "/lib/terminfo/l/linux"
+inst "/lib/terminfo/v/vt100" "/lib/terminfo/v/vt100"
 inst_hook cmdline 10 "$moddir/xcat-cmdline.sh" 
 dracut_install /lib64/rsyslog/lmtcpclt.so
 dracut_install /lib64/rsyslog/omtesting.so

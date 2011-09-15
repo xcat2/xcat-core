@@ -44,6 +44,7 @@ my $nrhash;
 my $machash;
 my $vpdhash;
 my $iscsients;
+my $nodetypeents;
 my $chainents;
 my $tftpdir = xCAT::Utils->getTftpDir();
 use Math::BigInt;
@@ -64,6 +65,25 @@ my $usingipv6;
 if ( $distro =~ /ubuntu*/ ){
 	$dhcpconffile = '/etc/dhcp3/dhcpd.conf';	
 }
+
+sub check_uefi_support {
+	my $ntent = shift;
+	my %blacklist = (
+		"rhels5.*" => 1,
+		"centos5.*" => 1,
+		"sl5.*" => 1,
+		"sles10.*" => 1,
+		"esxi4.*" => 1);
+	if ($ntent and $ntent->{os}) {
+		 foreach (keys %blacklist) {
+			if ($ntent->{os} =~ /$_/) {
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
 
 sub ipIsDynamic { 
 	#meant to be v4/v6 agnostic.  DHCPv6 however takes some care to allow a dynamic range to overlap static reservations
@@ -237,12 +257,16 @@ sub addnode
     my $nrent;
     my $chainent;
     my $ient;
+    my $ntent;
     my $tftpserver;
     if ($chainents and $chainents->{$node}) {
         $chainent = $chainents->{$node}->[0];
     }
     if ($iscsients and $iscsients->{$node}) {
         $ient = $iscsients->{$node}->[0];
+    }
+    if ($nodetypeents and $nodetypeents->{$node}) {
+	$ntent = $nodetypeents->{$node}->[0];
     }
     my $lstatements       = $statements;
     my $guess_next_server = 0;
@@ -361,12 +385,18 @@ sub addnode
                 $lstatements = 'option root-path \"'.$iscsirootpath.'\";'.$lstatements;
             }
         }
+        my $douefi=check_uefi_support($ntent);
         if ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'xnba' and $lstatements !~ /filename/) {
             if (-f "$tftpdir/xcat/xnba.kpxe") {
                 if ($doiscsi and $chainent and $chainent->{currstate} and ($chainent->{currstate} eq 'iscsiboot' or $chainent->{currstate} eq 'boot')) {
-                    $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
+                    $lstatements = 'if client-architecture = 00:00 and not gpxe.bus-id { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; } '.$lstatements;
                 } else {
-                    $lstatements = 'if option user-class-identifier = \"xNBA\" { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements; #Only PXE compliant clients should ever receive xNBA
+			#TODO: if windows uefi, do vendor-class-identifier of "PXEClient" to bump it over to proxydhcp.c
+		    if ($douefi) {
+                        $lstatements = 'if option user-class-identifier = \"xNBA\" and client-architecture = 00:00 { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if option user-class-identifier = \"xNBA\" and client-architecture = 00:09 { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'.uefi\"; } else if client-architecture = 00:07 { filename = \"xcat/xnba.efi\"; } else if client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }'.$lstatements; #Only PXE compliant clients should ever receive xNBA
+		    } else {
+                        $lstatements = 'if option user-class-identifier = \"xNBA\" and client-architecture = 00:00 { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }'.$lstatements; #Only PXE compliant clients should ever receive xNBA
+		   }
                 } 
             } #TODO: warn when windows
         } elsif ($nrent and $nrent->{netboot} and $nrent->{netboot} eq 'pxe' and $lstatements !~ /filename/) {
@@ -1293,7 +1323,12 @@ sub process_request
             $chainents = undef;
         }
         $nrhash = $nrtab->getNodesAttribs($req->{node}, ['tftpserver','netboot']);
-        my $iscsitab = xCAT::Table->new('iscsi');
+        my $nodetypetab;
+	$nodetypetab = xCAT::Table->new('nodetype',-create=>0);
+	if ($nodetypetab) {
+            $nodetypeents = $nodetypetab->getNodesAttribs($req->{node},[qw(os)]);
+	}
+        my $iscsitab = xCAT::Table->new('iscsi',-create=>0);
         if ($iscsitab) {
             $iscsients = $iscsitab->getNodesAttribs($req->{node},[qw(server target lun iname)]);
         }
@@ -1820,12 +1855,20 @@ sub addnet
         }
 
                        # $lstatements = 'if exists gpxe.bus-id { filename = \"\"; } else if exists client-architecture { filename = \"xcat/xnba.kpxe\"; } '.$lstatements;
-        push @netent, "    if option user-class-identifier = \"xNBA\" { #x86, xCAT Network Boot Agent\n";
+        push @netent, "    if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { #x86, xCAT Network Boot Agent\n";
         push @netent, "       filename = \"http://$tftp/tftpboot/xcat/xnba/nets/".$net."_".$maskbits."\";\n";
+        push @netent, "    } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { #x86, xCAT Network Boot Agent\n";
+        push @netent, "       filename = \"http://$tftp/tftpboot/xcat/xnba/nets/".$net."_".$maskbits.".uefi\";\n";
         push @netent, "    } else if option client-architecture = 00:00  { #x86\n";
         push @netent, "      filename \"xcat/xnba.kpxe\";\n";
         push @netent, "    } else if option vendor-class-identifier = \"Etherboot-5.4\"  { #x86\n";
         push @netent, "      filename \"xcat/xnba.kpxe\";\n";
+        push @netent,
+          "    } else if option client-architecture = 00:07 { #x86_64 uefi\n ";
+        push @netent, "      filename \"xcat/xnba.efi\";\n";
+        push @netent,
+          "    } else if option client-architecture = 00:09 { #x86_64 uefi alternative id\n ";
+        push @netent, "      filename \"xcat/xnba.efi\";\n";
         push @netent,
           "    } else if option client-architecture = 00:02 { #ia64\n ";
         push @netent, "      filename \"elilo.efi\";\n";

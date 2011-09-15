@@ -1,16 +1,3 @@
-root=1
-rootok=1
-netroot=xcat
-clear
-echo '[ -e $NEWROOT/proc ]' > /initqueue-finished/xcatroot.sh
-mkdir /dev/cgroup
-mount -t cgroup -o cpu,memory,devices cgroup /dev/cgroup
-udevd --daemon
-udevadm trigger
-mkdir -p /var/lib/dhclient/
-mkdir -p /var/log
-ip link set lo up
-echo '127.0.0.1 localhost' >> /etc/hosts
 if [ ! -z "$BOOTIF" ]; then
 	BOOTIF=`echo $BOOTIF|sed -e s/01-// -e s/-/:/g`
 	echo -n "Waiting for device with address $BOOTIF to appear.."
@@ -40,14 +27,6 @@ if [ -r /sys/devices/virtual/dmi/id/product_uuid ]; then
 	duid=$duid'";'
 	echo $duid > /var/lib/dhclient/dhclient6.leases
 fi
-#/bin/sh
-mkdir -p /etc/ssh
-mkdir -p /var/empty/sshd
-echo root:x:0:0::/:/bin/sh >> /etc/passwd
-echo sshd:x:30:30:SSH User:/var/empty/sshd:/sbin/nologin >> /etc/passwd
-echo rpc:x:32:32:Rpcbind Daemon:/var/cache/rpcbind:/sbin/nologin >> /etc/passwd
-echo rpcuser:x:29:29:RPC Service User:/var/lib/nfs:/sbin/nologin >> /etc/passwd
-echo qemu:x:107:107:qemu user:/:/sbin/nologin >> /etc/passwd
 rpcbind
 rpc.statd
 ssh-keygen -q -t rsa -f /etc/ssh/ssh_host_rsa_key -C '' -N ''
@@ -60,8 +39,10 @@ echo "[ req ]
 distinguished_name = nodedn
 
 [ nodedn ]" > /etc/pki/tls/openssl.cnf
-openssl genrsa -out /etc/xcat/privkey.pem 1024
-PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout|grep -v "PUBLIC KEY"`
+echo -n "Generating private key..."
+openssl genrsa -out /etc/xcat/privkey.pem 1024 >& /dev/null
+echo "Done"
+PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
 /sbin/rsyslogd -c4
@@ -131,7 +112,7 @@ while :; do
 	elif [ "$destiny" = shell ]; then
 		echo "Dropping to debug shell, exit to check for further action"
 		destiny=''
-		/bin/sh
+		/bin/bash
 	elif [ "$destiny" = runcmd ]; then
 		destiny=`/bin/nextdestiny $XCATMASTER:$XCATPORT`
 		$destparameter
