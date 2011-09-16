@@ -4386,6 +4386,32 @@ sub chk_resolv_conf
         return 1;
     }
 
+	# 
+	# get all the possible IPs for the node I'm running on
+	#
+	my $ifgcmd = "ifconfig -a | grep 'inet '";
+	my @result = xCAT::Utils->runcmd($ifgcmd, 0);
+	if ($::RUNCMD_RC != 0)
+	{
+		my $rsp;
+		push @{$rsp->{data}}, "Could not run \'$ifgcmd\'.\n";
+		xCAT::MsgUtils->message("E", $rsp, $callback);
+		return 1;
+	}
+
+	my @myIPs;
+	foreach my $int (@result) {
+		my ($inet, $IP, $str) = split(" ", $int);
+		chomp $IP;
+		$IP =~ s/\/.*//; # ipv6 address 4000::99/64
+		$IP =~ s/\%.*//; # ipv6 address ::1%1/128
+		push @myIPs, $IP;
+	}
+
+	#
+	# check each node to make sure we have the correct resolv.conf 
+	#	for each one
+	#
 	foreach my $node (@nodelist) {
 
 		my $domain;
@@ -4431,9 +4457,35 @@ sub chk_resolv_conf
 				# -  service node/network  oriented
 
 				# then use xcatmaster value of node def
+				# with statelite we need to set up both primary and backup SNs
+				# see which one we are and set the correct server
+				my $xmast;
+				my ($sn1, $sn2) = split(/,/, $nodehash{$node}{servicenode});
+
+				# if I'm the primary SN then just use the 
+				#		the xcatmaster value.
+				if ($sn1) {
+					if (xCAT::InstUtils->is_me($sn1)) {
+						$xmast = $nodehash{$node}{xcatmaster};
+					}
+				} 
+				
+				# if I'm the backup SN then figure out which interface
+				#	 to use for the node server name (ie. xcatmaster value)
+				if ($sn2) {
+					if (xCAT::InstUtils->is_me($sn2)) {
+						foreach my $int (@myIPs) {
+							if ( xCAT::NetworkUtils->ishostinsubnet($int, $nethash{$node}{mask}, $nethash{$node}{net} )) {
+								$xmast = xCAT::NetworkUtils->gethostname($int);
+								last;
+							}
+						}
+					}
+				}
+
 				my $server;
-                if ($nodehash{$node}{xcatmaster}) {
-                    $server=$nodehash{$node}{xcatmaster};
+                if ($xmast) {
+                    $server=$xmast;
                 } else {
                     $server=$nimprime;
                 }
@@ -4467,12 +4519,39 @@ sub chk_resolv_conf
 				# service node oriented
 
 				# then use xcatmaster value of node def
+
+				# with statelite we need to set up both primary and backup SNs
+                # see which one we are and set the correct server
+                my $xmast;
+                my ($sn1, $sn2) = split(/,/, $nodehash{$node}{servicenode});
+
+                # if I'm the primary SN then just use the
+                #       the xcatmaster value.
+                if ($sn1) {
+                    if (xCAT::InstUtils->is_me($sn1)) {
+                        $xmast = $nodehash{$node}{xcatmaster};
+                    }
+                }
+
+				# if I'm the backup SN then figure out which interface
+                #    to use for the node server name (ie. xcatmaster value)
+                if ($sn2) {
+                    if (xCAT::InstUtils->is_me($sn2)) {
+                        foreach my $int (@myIPs) {
+                            if ( xCAT::NetworkUtils->ishostinsubnet($int, $nethash{$node}{mask}, $nethash{$node}{net} )) {
+								$xmast = xCAT::NetworkUtils->gethostname($int);
+                                last;
+                            }
+                        }
+                    }
+                }
+
 				my $server;
-				if ($nodehash{$node}{xcatmaster}) {
-					$server=$nodehash{$node}{xcatmaster};
-				} else {
-					$server=$nimprime;
-				}
+                if ($xmast) {
+                    $server=$xmast;
+                } else {
+                    $server=$nimprime;
+                }
 
                 my $n = xCAT::NetworkUtils->getipaddr($server);
                 chomp $n;
