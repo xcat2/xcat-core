@@ -6,7 +6,7 @@ dracut_install mount.nfs sshd vi reboot lspci parted screen libvirtd /usr/share/
 dracut_install mkswap df brctl vconfig ifenslave ssh-keygen /usr/bin/qemu-img /usr/libexec/qemu-kvm scp clear dhclient lldpad
 dracut_install lldptool /lib64/libnss_dns-2.12.so /lib64/libnss_dns.so.2
 dracut_install poweroff ntpq ntpd hwclock date /usr/share/terminfo/x/xterm /etc/nsswitch.conf /etc/services
-dracut_install /sbin/rsyslogd /etc/protocols umount
+dracut_install /sbin/rsyslogd /etc/protocols umount /bin/rpm /usr/lib/rpm/rpmrc
 dracut_install chmod /lib/libc.so.6 /lib/ld-linux.so.2 /lib/libdl.so.2 /lib/libm.so.6 /sbin/route /sbin/ifconfig /usr/bin/head /etc/redhat-release ping tr lsusb /usr/share/hwdata/usb.ids #ibm fw wrapper requirements
 dracut_install dmidecode /usr/lib64/libstdc++.so.6 #uxspi prereqs, but will use dmidecode to improve decision on loading ipmi_si
 dracut_install /usr/share/zoneinfo/posix/Zulu

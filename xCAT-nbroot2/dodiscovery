@@ -1,6 +1,6 @@
 #!/bin/sh
 minixcatd.awk &
-PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout|grep -v "PUBLIC KEY"`
+PUBKEY=`openssl rsa -in /etc/xcat/privkey.pem -pubout 2> /dev/null|grep -v "PUBLIC KEY"`
 PUBKEY=`echo $PUBKEY|sed -e 's/ //g'`
 export PUBKEY
 
@@ -34,14 +34,14 @@ while [ ! -z "$NICSGETTINGADDR" -a $timewaiting != 700 ]; do
 	done
 	sleep 0.1
 	timewaiting=$((timewaiting+1))
-	if [ $timewaiting = 450 ]; then
-		echo "45 seconds without an address on $nic, is spanning tree set to slow?"
-	fi
 	if [ $timewaiting = 699 ]; then
 		echo "No DHCP answer for $nic, ignoring interface"
 	fi
 	NICSGETTINGADDR=$NEWNICSGETTINGADDR
 done
+if [ $timewaiting != 700 -a $timewaiting -gt 450 ]; then
+	echo "Got an address, but it took inordinately long, you may want to check spanning tree configuration"
+fi
 echo "Stopped waiting on nics to get addresses"
 XCATPORT=3001
 export XCATPORT

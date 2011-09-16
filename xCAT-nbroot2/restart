@@ -30,8 +30,8 @@ while [ $WAITING -gt 0 ]; do
     done
     for pidfile in /var/run/dhclient6.*.pid; do
 	NIC=`echo $pidfile|awk -F. '{print $2}'`
-	dhclient -r -pf $pidfile -lf /var/lib/dhclient/dhclient6.leases $NIC
-	dhclient -6 -r -pf $pidfile -nw -lf /var/lib/dhclient/dhclient6.leases $NIC
+	dhclient -6 -r -pf $pidfile -lf /var/lib/dhclient/dhclient6.leases $NIC
+	dhclient -6 -pf $pidfile -nw -lf /var/lib/dhclient/dhclient6.leases $NIC
     done
     
     echo -n "Waiting 10 seconds for DHCP changes to take effect "
