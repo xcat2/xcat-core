@@ -122,7 +122,7 @@ hmcPlugin.prototype.loadProvisionPage = function(tabId) {
     var provForm = $('<div class="form"></div>');
 
     // Create info bar
-    var infoBar = createInfoBar('Provision a node on system P server.');
+    var infoBar = createInfoBar('Provision a node on System p.');
     provForm.append(infoBar);
 
     // Append to provision tab
@@ -369,7 +369,7 @@ function addHmcNode(){
 }
 
 /**
- * Add system p node, contains frame, cec, lpar 
+ * Add System p node, contains frame, cec, lpar 
  * 
  * @return Nothing
  */
