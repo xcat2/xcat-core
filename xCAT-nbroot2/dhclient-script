@@ -2,8 +2,13 @@
 PATH=/bin:/sbin:/usr/bin:/usr/sbin
 if [ $reason = "PREINIT" -o $reason = "PREINIT6" ]; then
 	ip link set $interface up
+	tries=50
 	while ! (ip link show $interface|grep LOWER_UP > /dev/null 2>&1); do
 		sleep 0.1
+		if [ $tries = 0 ]; then
+			break
+		fi
+		tries=$((tries-1))
 	done
 elif [ $reason = "BOUND" ]; then
 	if [ ! -z "$new_ip_address" -a ! -z "$new_subnet_mask" ]; then
