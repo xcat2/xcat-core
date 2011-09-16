@@ -1,5 +1,45 @@
+#!/bin/sh
+# pmatch determines if 1st argument string is matched by 2nd argument pattern
+
+pmatch ()
+{
+  case $1 in
+    $2) return 0;;  # zero return code means string matched by pattern
+  esac
+
+  return 1          # non-zero return code means string not matched by pattern
+}
+
+network_ipv4calc ()
+{
+    # Returns the network value needed for Ubuntu /etc/network/interface file
+    # $1 must be the IP Address
+    # $2 must be the Netmask value
+    IP_1=`echo $1 | cut -d . -f 1`
+    IP_2=`echo $1 | cut -d . -f 2`
+    IP_3=`echo $1 | cut -d . -f 3`
+    IP_4=`echo $1 | cut -d . -f 4`
+
+    NETM_1=`echo $2 | cut -d . -f 1`
+    NETM_2=`echo $2 | cut -d . -f 2`
+    NETM_3=`echo $2 | cut -d . -f 3`
+    NETM_4=`echo $2 | cut -d . -f 4`
+
+    NET_1=$(($IP_1 & $NETM_1))
+    NET_2=$(($IP_2 & $NETM_2))
+    NET_3=$(($IP_3 & $NETM_3))
+    NET_4=$(($IP_4 & $NETM_4))
+
+    NETWORK="$NET_1.$NET_2.$NET_3.$NET_4"
+    echo $NETWORK
+}
+
 defgw=`ip route | grep default | awk '{print $3}'`
-if [ -f /etc/SuSE-release ]
+if ( pmatch $OSVER "ubuntu*" )
+then
+    echo `hostname` >/etc/hostname
+    mv /etc/network/interfaces /etc/network/interfaces.old # this file will be filled up next
+elif [ -f /etc/SuSE-release ]
 then
     #SLES9 and SLES10, uses /etc/sysconfig/network/ifcfg-eth-id-<mac>
     #SLES11, uses /etc/sysconfig/network/ifcfg-eth<x>
@@ -17,18 +57,52 @@ else
     fi
 fi
 for nic in `ifconfig -a|grep -B1 "inet addr"|awk '{print $1}'|grep -v inet|grep -v -- --|grep -v lo`; do
-   IPADDR=`ifconfig $nic |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}'`
-   NETMASK=`ifconfig $nic |grep "inet addr"|awk '{print $4}' |awk -F: '{print $2}'`
-   if [ -f ${NICFILEPRE}${nic} ]
-   then
-       NICFILE=${NICFILEPRE}${nic}
-   else
-       mac=`ifconfig $nic|grep HWaddr|awk '{print $5}'|tr "[A-Z]" "[a-z]"`
-       NICFILE=${NICFILEPRE}eth-id-${mac}
-   fi
-   sed -i s/BOOTPROTO=dhcp/BOOTPROTO=static/ $NICFILE
-   sed -i s/BOOTPROTO=\'dhcp\'/BOOTPROTO=static/ $NICFILE
-   sed -i s/BOOTPROTO=\"dhcp\"/BOOTPROTO=static/ $NICFILE
-   echo IPADDR=$IPADDR >> $NICFILE
-   echo NETMASK=$NETMASK >> $NICFILE 
+    IPADDR=`ifconfig $nic |grep "inet addr"|awk '{print $2}' |awk -F: '{print $2}'`
+    NETMASK=`ifconfig $nic |grep "inet addr"|awk '{print $4}' |awk -F: '{print $2}'`
+    if ( pmatch $OSVER "ubuntu*" )
+    then
+        NETWORK=`network_ipv4calc $IPADDR $NETMASK`
+        BROADCAST=`ifconfig $nic | grep Bcast | awk '{print $3}' | awk -F: '{print $2}'`
+        
+        if [ ! -z "$defgw" ]; then
+            gateway_line="gateway $defgw"
+        else
+            gateway_line=""
+        fi
+
+        cat >>/etc/network/interfaces <<EOF
+auto $nic
+iface $nic inet static
+    address $IPADDR
+    network $NETWORK
+    netmask $NETMASK
+    broadcast $BROADCAST
+    $gateway_line
+
+
+EOF
+    else
+        if [ -f ${NICFILEPRE}${nic} ]
+        then
+            NICFILE=${NICFILEPRE}${nic}
+        else
+            mac=`ifconfig $nic|grep HWaddr|awk '{print $5}'|tr "[A-Z]" "[a-z]"`
+            NICFILE=${NICFILEPRE}eth-id-${mac}
+        fi
+        sed -i s/BOOTPROTO=dhcp/BOOTPROTO=static/ $NICFILE
+        sed -i s/BOOTPROTO=\'dhcp\'/BOOTPROTO=static/ $NICFILE
+        sed -i s/BOOTPROTO=\"dhcp\"/BOOTPROTO=static/ $NICFILE
+        echo IPADDR=$IPADDR >> $NICFILE
+        echo NETMASK=$NETMASK >> $NICFILE 
+    fi
 done
+
+if ( pmatch $OSVER "ubuntu*")
+then
+    cat >>/etc/network/interfaces <<EOF
+auto lo
+iface lo inet loopback
+
+
+EOF
+fi
