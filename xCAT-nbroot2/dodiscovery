@@ -76,6 +76,7 @@ elif [ -r /proc/device-tree/model ]; then #POWER
 fi
 CPUCOUNT=`cat /proc/cpuinfo |grep "model name"|wc -l`
 MEMORY=`cat /proc/meminfo |grep MemTotal|awk '{print $2}'`
+UUID=`cat /sys/devices/virtual/dmi/id/product_uuid`
 grep "model name" /proc/cpuinfo | while read line; do #to avoid pulling in tail, we do a goofy thing
 	echo $line > /tmp/cpumod
 done
@@ -89,6 +90,7 @@ fi
 echo "<cpucount>$CPUCOUNT</cpucount>" >> /tmp/discopacket
 echo "<cputype>$CPUTYPE</cputype>" >> /tmp/discopacket
 echo "<memory>$MEMORY</memory>" >> /tmp/discopacket
+echo "<uuid>$UUID</uuid>" >> /tmp/discopacket
 if [ "$MTM" != "unknown" ]; then
 	echo "<mtm>$MTM</mtm>" >> /tmp/discopacket
 fi
@@ -98,7 +100,7 @@ fi
 for dev in `ip link|grep -B1 ether|grep UP|awk '{print $2}'|sed -e s/://`; do
 	DRIVER=`grep DRIVER /sys/class/net/$dev/device/uevent|awk -F= '{print $2}'`
 	ADDRESS=`ip address show dev $dev|grep "inet "|grep global|awk '{print $2}'`
-	MAC=`ip link show dev $dev|grep ether|awk '{print $2}'`
+	MAC=`ip link show dev $dev|grep ether|awk '{print $2}'| tr /a-f/ /A-F/`
 	echo "<mac>$DRIVER|$dev|$MAC|$ADDRESS</mac>" >> /tmp/discopacket
 done
 echo "<xcatpubkey>$PUBKEY</xcatpubkey>" >> /tmp/discopacket #this is not secure to use by itself, switch sourced pubkey for security
