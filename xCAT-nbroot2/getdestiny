@@ -24,7 +24,7 @@ while [ ! -f /tmp/destiny.xml ] || grep error /tmp/destiny.xml; do
 	fi
 done
 rm /tmp/destreq.xml
-DESTINY=`grep destiny /tmp/destiny.xml | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
+DESTINY=`grep '<destiny>' /tmp/destiny.xml | awk -F'>' '{print $2}'|awk -F'<' '{print $1}'`
 rm /tmp/destiny.xml
 echo $DESTINY
 
