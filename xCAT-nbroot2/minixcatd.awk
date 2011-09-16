@@ -10,7 +10,6 @@ BEGIN {
 				print "restarting bootstrap process" |& listener
                 quit="yes"
 				system("echo \"" $0 "\" > /restart")
-				system("killall sleep")
 		        close(listener)
 			}
 		}
