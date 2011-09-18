@@ -2100,6 +2100,7 @@ sub parse_responses {
         trace( $request, "Can't get networks information from networks table" , 1);
     } else {
         foreach my $enet (@nets) {
+            next if ($enet->{'net'} =~ /:/);
             $net{$enet->{'mgtifname'}}{subnet} = $enet->{'net'};
             $net{$enet->{'mgtifname'}}{netmask} = $enet->{'mask'};
         }
@@ -2351,8 +2352,8 @@ sub parse_responses {
                         $matchhmc = 1; 
                         $result[4] = $ii;
                     } elsif (exists($opt{i})){
-                        my $subnet = $addr{$ii}{subnet};
-                        my $netmask = $addr{$ii}{netmask};
+                        my $subnet = $addr{$opt{i}}{subnet};
+                        my $netmask = $addr{$opt{i}}{netmask};
                         if(xCAT::NetworkUtils->ishostinsubnet($ii, $netmask, $subnet)) {
                             $matchhmc = 1;
                             $result[4] = $ii;
