@@ -13,6 +13,7 @@ use XML::Simple;
 $XML::Simple::PREFERRED_PARSER='XML::Parser';
 use xCAT::PPCdb;
 use xCAT::NodeRange;
+use xCAT::Utils;
 
 require xCAT::MacMap;
 require xCAT_plugin::blade;
@@ -1439,7 +1440,7 @@ sub read_from_table {
         if ( $ppctab ) {
             my @identries = $ppctab->getAllNodeAttribs( ['node','id','parent','nodetype'] );
             for my $entry ( @identries ) {
-                next if ($entry->{nodetype} =~ /hmc|lpar/);
+                next if ($entry->{nodetype} =~ /lpar/);
                 @{$::OLD_DATA_CACHE{$entry->{node}}}[0] = @{$vpdhash{$entry->{node}}}[0];#mtm
                 @{$::OLD_DATA_CACHE{$entry->{node}}}[1] = @{$vpdhash{$entry->{node}}}[1];#sn
                 @{$::OLD_DATA_CACHE{$entry->{node}}}[2] = @{$vpdhash{$entry->{node}}}[2];#side
@@ -2091,6 +2092,23 @@ sub parse_responses {
     my $length  = shift;
     my $matchflag = 0;
     my %outhash;
+    my %net;
+    my %addr; 
+    my $nettab = xCAT::Table->new('networks');
+    my @nets = $nettab->getAllAttribs('netname', 'net','mask','mgtifname');
+    if (scalar(@nets) == 0) {
+        trace( $request, "Can't get networks information from networks table" , 1);
+    } else {
+        foreach my $enet (@nets) {
+            $net{$enet->{'mgtifname'}}{subnet} = $enet->{'net'};
+            $net{$enet->{'mgtifname'}}{netmask} = $enet->{'mask'};
+        }
+    }   
+    my $netref = xCAT::NetworkUtils->get_nic_ip();        
+    for my $entry (keys %$netref) {
+        $addr{$netref->{$entry}}{subnet} = $net{$entry}{subnet};
+        $addr{$netref->{$entry}}{netmask} = $net{$entry}{netmask};
+    }
     my @attrs   = (
         "type",
         "machinetype-model",
@@ -2311,18 +2329,42 @@ sub parse_responses {
             }
             push @matchnodes, $host if ($matchflag eq 1) ; 
             ###########################################
-            # Strip commas from IP list
+            # Find IP for HMC
+            # 1. If it can match the definintion made by
+            #    xcatsetup, just return the ip matched
+            # 2. If there is -i flag, return the ip that
+            #    within the same subnet with opt{i}
+            # 3. If no match and no flag -i, return first
             ###########################################
 
             # we need to hide ipv6 ip address temporarily
             my @iptmp = split /,/, $result[4];
             my @iptmp2;
-            foreach (@iptmp){
-                if ($_ =~ /\d+\.\d+\.\d+\.\d+/) {
-                   push @iptmp2,$_;
+            my $matchhmc = 0;
+            foreach my $ii (@iptmp){
+                if ($ii =~ /\d+\.\d+\.\d+\.\d+/) {
+                    $matchflag = 1;
+                    my $newhost = match_ip_defined_by_xcatsetup($ii, \$matchflag);
+                    push @matchnodes, $host if ($matchflag eq 1) ; 
+                    if ($newhost) { 
+                        $host = $newhost;
+                        $matchhmc = 1; 
+                        $result[4] = $ii;
+                    } elsif (exists($opt{i})){
+                        my $subnet = $addr{$ii}{subnet};
+                        my $netmask = $addr{$ii}{netmask};
+                        if(xCAT::NetworkUtils->ishostinsubnet($ii, $netmask, $subnet)) {
+                            $matchhmc = 1;
+                            $result[4] = $ii;
+                        }
+                    }
+                    push @iptmp2,$ii;
                 }
              }
-             $result[4] = join( ",", @iptmp2);
+            unless($matchhmc) {
+                #$result[4] = join( ",", @iptmp2);
+                $result[4] = $iptmp2[0];
+            }		
             # end of hidden ipv6 ip address
 
 
@@ -4063,6 +4105,26 @@ sub match_hosts_defined_by_xcatsetup {
     }    
     
     return undef;
+}
+##########################################################################
+# Match the nodes defined by xcatsetup
+# Use ip to find HMC defined by the user
+##########################################################################
+sub match_ip_defined_by_xcatsetup {
+    my $ip = shift;
+    my $matchflag = shift;
+    
+    read_from_table() unless (%::OLD_DATA_CACHE);
+    foreach my $oldnode ( keys %::OLD_DATA_CACHE ) {
+        my $tmpip     = @{$::OLD_DATA_CACHE{$oldnode}}[3];
+        my $tmptype   = uc(@{$::OLD_DATA_CACHE{$oldnode}}[6]);
+        next unless($tmptype eq TYPE_HMC);
+        if ($ip eq $tmpip) {
+            $$matchflag = 1;
+            return $oldnode;
+        }
+    }
+    return undef;    
 }
 1;
 
