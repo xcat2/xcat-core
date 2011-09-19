@@ -69,6 +69,9 @@ if ( $distro =~ /ubuntu*/ ){
 sub check_uefi_support {
 	my $ntent = shift;
 	my %blacklist = (
+		"win2k3.*" => 1,
+		"winxp.*" => 1,
+		"SL5.*" => 1,
 		"rhels5.*" => 1,
 		"centos5.*" => 1,
 		"sl5.*" => 1,
@@ -80,6 +83,9 @@ sub check_uefi_support {
 				return 0;
 			}
 		}
+	}
+	if ($ntent->{os} =~ /win/) { #UEFI support is a tad different, need to punt..
+		return 2;
 	}
 	return 1;
 }
@@ -392,7 +398,9 @@ sub addnode
                     $lstatements = 'if option client-architecture = 00:00 and not gpxe.bus-id { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; } '.$lstatements;
                 } else {
 			#TODO: if windows uefi, do vendor-class-identifier of "PXEClient" to bump it over to proxydhcp.c
-		    if ($douefi and $chainent->{currstate} ne "boot" and $chainent->{currstate} ne "iscsiboot") {
+		    if ($douefi == 2 and $chainent->{currstate} =~ /^install/) { #proxy dhcp required in uefi invocation
+                        $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if option client-architecture = 00:07 or option client-architecture = 00:09 { filename = \"\"; option vendor-class-identifier \"PXEClient\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }'.$lstatements; #Only PXE compliant clients should ever receive xNBA
+		    } elsif ($douefi and $chainent->{currstate} ne "boot" and $chainent->{currstate} ne "iscsiboot") {
                         $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { always-broadcast on; filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if option user-class-identifier = \"xNBA\" and option client-architecture = 00:09 { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'.uefi\"; } else if option client-architecture = 00:07 { filename = \"xcat/xnba.efi\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }'.$lstatements; #Only PXE compliant clients should ever receive xNBA
 		    } else {
                         $lstatements = 'if option user-class-identifier = \"xNBA\" and option client-architecture = 00:00 { filename = \"http://'.$nxtsrv.'/tftpboot/xcat/xnba/nodes/'.$node.'\"; } else if option client-architecture = 00:00 { filename = \"xcat/xnba.kpxe\"; } else { filename = \"\"; }'.$lstatements; #Only PXE compliant clients should ever receive xNBA
