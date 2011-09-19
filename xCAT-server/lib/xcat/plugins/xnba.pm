@@ -211,6 +211,21 @@ sub setstate {
                 print $pcfg "imgfetch http://".'${next-server}'."/tftpboot/".$kern->{initrd}."\n";
             }
             print $pcfg "imgexec kernel\n";
+	    if ($kern->{kcmdline} and $kern->{initrd}) { #only a linux kernel/initrd pair should land here, write elilo config and uefi variant of xnba config file
+	       my $ucfg;
+	       open($ucfg,'>',$tftpdir."/xcat/xnba/nodes/".$node.".uefi");
+	       print $ucfg "#!gpxe\n";
+	       print $ucfg 'chain http://${next-server}/tftpboot/xcat/elilo-x64.efi -C /tftpboot/xcat/xnba/nodes/'.$node.".elilo\n";
+	       close($ucfg);
+	       open($ucfg,'>',$tftpdir."/xcat/xnba/nodes/".$node.".elilo");
+	       print $ucfg 'default="xCAT"'."\n";
+	       print $ucfg "delay=0\n\n";
+	       print $ucfg "image=/tftpboot/".$kern->{kernel}."\n";
+	       print $ucfg "   label=\"xCAT\"\n";
+	       print $ucfg "   initrd=/tftpboot/".$kern->{initrd}."\n";
+	       print $ucfg "   append=\"".$kern->{kcmdline}.' BOOTIF=%B"'."\n";
+	       close($ucfg);
+	    }
         }
     }
     close($pcfg);
