@@ -66,7 +66,7 @@ sub parse_args {
     $Getopt::Long::ignorecase = 0;
     Getopt::Long::Configure( "bundling" );
 
-    if ( !GetOptions( \%opt, qw(V|Verbose) )) { 
+    if ( !GetOptions( \%opt, qw(V|Verbose x) )) { 
         return( usage() );
     }
     ####################################
@@ -88,6 +88,9 @@ sub parse_args {
     shift @ARGV;
     if ( defined( $ARGV[0] )) {
         return(usage( "Invalid Argument: $ARGV[0]" ));
+    }
+    if (exists($opt{x}) and $cmd !~ /^deconfig$/) {
+        return (usage("Option '-x' can't work with '$cmd'"));
     }
     ####################################
     # Set method to invoke 
@@ -268,25 +271,29 @@ sub deconfig {
              $decfg = XMLin($data);
          };
          if( $@ ) {
-             push @result,[$name, "Error: there are some unreadable XML data from the firmware. Please check with the data provider.", -1];
+             push @result,[$name, "Error: there are some unreadable XML data from the firmware. It can't be parsed by 'xcatd'.", -1];
              return (\@result);
          }
-
+         if( exists($request->{opt}->{x})) {
+             push @result, [$name, "\n".$data, -1];
+             next;
+         }
 	#print "decfg";
         #print Dumper($decfg); 
 	my $node =  $decfg->{NODE};
 	if( defined($node) &&  exists($node->{Location_code}) ) {
-        push @result,[$name,"Deconfigured resources", 0];
-        push @result,[$name,"Location_code                RID   Call_Out_Method    Call_Out_Hardware_State   TYPE", 0];
-        push @result,[$name,"$node->{Location_code}         $node->{RID}", 0];
         my $Call_Out_Hardware_State ;
         my $Call_Out_Method;
         my $Location_code;
         my $RID;
         my $TYPE;
         if(ref($node->{GARDRECORD}) ne "ARRAY") {
+           push @result,[$name,"NO Deconfigured resources", 0];
            return( \@result );
         }
+        push @result,[$name,"Deconfigured resources", 0];
+        push @result,[$name,"Location_code                RID   Call_Out_Method    Call_Out_Hardware_State   TYPE", 0];
+        push @result,[$name,"$node->{Location_code}         $node->{RID}", 0];
         foreach my $unit(@{$node->{GARDRECORD}}) {
 
 		while (my ($key, $unit3) = each(%$unit) ) {
