@@ -282,17 +282,18 @@ sub deconfig {
         #print Dumper($decfg); 
 	my $node =  $decfg->{NODE};
 	if( defined($node) &&  exists($node->{Location_code}) ) {
-        push @result,[$name,"Deconfigured resources", 0];
-        push @result,[$name,"Location_code                RID   Call_Out_Method    Call_Out_Hardware_State   TYPE", 0];
-        push @result,[$name,"$node->{Location_code}         $node->{RID}", 0];
         my $Call_Out_Hardware_State ;
         my $Call_Out_Method;
         my $Location_code;
         my $RID;
         my $TYPE;
         if(ref($node->{GARDRECORD}) ne "ARRAY") {
+           push @result,[$name,"NO Deconfigured resources", 0];
            return( \@result );
         }
+        push @result,[$name,"Deconfigured resources", 0];
+        push @result,[$name,"Location_code                RID   Call_Out_Method    Call_Out_Hardware_State   TYPE", 0];
+        push @result,[$name,"$node->{Location_code}         $node->{RID}", 0];
         foreach my $unit(@{$node->{GARDRECORD}}) {
 
 		while (my ($key, $unit3) = each(%$unit) ) {
