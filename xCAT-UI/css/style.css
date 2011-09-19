@@ -759,6 +759,7 @@ table a:hover {
 	background: url(../images/nodes/bpa.jpg);
 	border-width: 2px;
 	text-align: left;
+	white-space: normal;
 }
 
 .fspDiv2 {
@@ -804,7 +805,7 @@ table a:hover {
 }
 
 .lparStatus {
-	width: 10px;
+	min-width: 10px;
 	height: 11px;
 }
 
