@@ -199,6 +199,16 @@ sub setstate {
               print $pcfg "\n";
             }
             print $pcfg "IPAPPEND 2\n";
+	    if ($kern->{kernel} =~ /esxi5/) { #Make uefi boot provisions
+	       my $ucfg;
+	       open($ucfg,'>',$tftpdir."/xcat/xnba/nodes/".$node.".uefi");
+	       if ($kern->{kcmdline} =~ / xcat\/netboot/) {
+	       	$kern->{kcmdline} =~ s/xcat\/netboot/\/tftpboot\/xcat\/netboot/;
+	       }
+	       print $ucfg "#!gpxe\n";
+	       print $ucfg 'chain http://${next-server}/tftpboot/xcat/esxboot-x64.efi '.$kern->{kcmdline}."\n";
+	       close($ucfg);
+	    }
         } else { #other than comboot/multiboot, we won't have need of pxelinux
             print $pcfg "imgfetch -n kernel http://".'${next-server}/tftpboot/'.$kern->{kernel}."\n";
             print $pcfg "imgload kernel\n";
@@ -533,6 +543,8 @@ sub process_request {
       if($args[0] eq 'offline') {
         unlink($tftpdir."/xcat/xnba/nodes/".$_);
         unlink($tftpdir."/xcat/xnba/nodes/".$_.".pxelinux");
+        unlink($tftpdir."/xcat/xnba/nodes/".$_.".uefi");
+        unlink($tftpdir."/xcat/xnba/nodes/".$_.".elilo");
       }
     }
   }
