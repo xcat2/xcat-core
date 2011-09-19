@@ -890,7 +890,9 @@ sub getNodeID {
   my $tmp=$tab->getNodeAttribs($node, ['mac']);
   if (defined($tmp) && ($tmp)) {
     my $mac=$tmp->{mac};
-    $mac =~ s/://g;
+    $mac =~ s/\|.*//g; #use the first mac
+    $mac =~ s/\!.*//g; #remove the hostname
+    $mac =~ s/://g;    #remove :
     $mac = "EA" . $mac . "EA";
     $tab->close();
     return $mac;  
