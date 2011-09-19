@@ -114,13 +114,19 @@ sub process_request {
 			return;
 		}
 		# get the os, arch, and profile from the image name table.
-		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'rootfstype', 'osvers', 'osarch', 'profile');
+		(my $ref) = $osimagetab->getAttribs({imagename => $imagename}, 'rootfstype', 'osvers', 'osarch', 'profile','provmethod');
 		if (!$ref) {
 			$callback->({error=>["Cannot find image \'$imagename\' from the osimage table."],errorcode=>[1]});
 			return;
 		}
 
-        $rootfstype = $ref->{'rootfstype'};
+		my $provmethod=$ref->{'provmethod'}; 
+		if ($provmethod !~ /statelite/) {
+		    $callback->({error=>["Please make sure that osimage.provmethod is set to statelite before calling this command."],errorcode=>[1]});
+			return;
+		}
+
+                $rootfstype = $ref->{'rootfstype'};
 		$osver=$ref->{'osvers'};
 		$arch=$ref->{'osarch'};
 		$profile=$ref->{'profile'};
