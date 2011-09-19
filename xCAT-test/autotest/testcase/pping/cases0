@@ -1,0 +1,28 @@
+start:pping_h
+cmd:pping -h
+check:rc==0
+check:output=~Usage
+cmd:pping --help
+check:rc==0
+end
+
+start:pping_v
+cmd:pping -v
+check:rc==0
+check:output=~Version
+cmd:pping -v
+check:rc==0
+check:output=~Version
+end
+
+start:pping_all
+cmd:pping all
+check:rc==0
+check:output=~ping
+end
+
+start:pping_node
+cmd:pping $$CN
+check:rc==0
+check:output=~ping
+end
