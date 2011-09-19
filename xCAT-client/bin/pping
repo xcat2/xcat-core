@@ -175,7 +175,7 @@ sub nmap_pping {
               }
           }
           delete $deadnodes{$node};
-          print "$node: ping\n";
+          print "$node: ping\n" if ($node);
       } elsif (/Nmap scan report for ([^ ]*) /) {
           $node=$1;
       } elsif (/Host is up./) {
@@ -188,7 +188,7 @@ sub nmap_pping {
               }
           }
           delete $deadnodes{$node};
-          print "$node: ping\n";
+          print "$node: ping\n" if ($node);
       }
     }
     foreach (sort keys %deadnodes) {
